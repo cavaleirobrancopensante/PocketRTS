@@ -70,3 +70,41 @@ Attach the musketeer sheet every time (and one or two other finished sheets as e
 - Reds are snapped to the two key shades on import, so near-reds are fine.
 - Frame counts may differ a little from the prompt; the importer reads whatever each row has.
 - Sprites will be shrunk to their true pixel size (about 32 px tall for infantry) and scaled up crisply, for a consistent NES look.
+
+## Structures and objects
+
+What the prototype needs (Crown vs Crown, four units): **Town Hall, Cottage, Barracks, Foundry, gold mine, trees and rocks, ground tiles, effects, icons.** Later: Stables, Chapel, Redoubt (defence tower), Palisade walls.
+
+**Shared part for buildings (paste first, attach the musketeer and cannon sheets):**
+
+> Sprite sheet for a building in the same top-down 2D RTS as the attached unit sheets. Match their style, pixel size, outline and colours exactly: low-res NES-style pixel art, 3/4 overhead view seen from the same angle, transparent background, no ground shadow, no text, no labels, no grid lines.
+> Scale: the musketeer from the attached sheet must be about one quarter of the building's height.
+> Team colour: flags, banners and painted trim only, in pure red (#FF0000) with one darker shade (#960000). No other reds anywhere (use brown, grey, slate or thatch for roofs).
+> One row, 4 frames left to right, each in its own equal cell: 1 finished, 2 under construction (wooden scaffolding, half-built walls), 3 damaged (cracks, broken roof, small orange fire), 4 destroyed (rubble and charred beams).
+
+**Town Hall** (cells 192×192)
+> Building: fortified stone manor with a tiled slate roof, a central tower with a red flag (team colour), a big wooden gate where workers drop off gold, a small gold store beside it.
+
+**Cottage** (cells 96×96)
+> Building: small timber-framed cottage with a thatched roof and a chimney, a red pennant on the door (team colour). Supply building.
+
+**Barracks** (cells 160×160)
+> Building: long stone-and-timber barracks with a slate roof, weapon racks with muskets and pikes outside, a red banner over the door (team colour).
+
+**Foundry** (cells 160×160)
+> Building: brick gun foundry with a tall smoking chimney, an open forge glowing orange, a finished cannon barrel on blocks outside, red cloth awning (team colour).
+
+**Gold mine** (no team colour; cells 128×128)
+> Sprite sheet in the same style and scale as the attached unit sheets: low-res NES-style pixel art, 3/4 overhead view, transparent background, no text. One row, 3 frames: 1 rocky hillside mine entrance with wooden supports and glittering gold veins, 2 half-depleted (fewer veins), 3 depleted (collapsed entrance, no gold).
+
+**Nature** (no team colour; cells 64×64)
+> Sprite sheet in the same style and scale as the attached unit sheets: low-res NES-style pixel art, 3/4 overhead view, transparent background, no text. Two rows: 1 six different trees (oak, pine, birch, dead tree, two bushes), 2 six rocks and boulders of different sizes.
+
+**Ground tiles** (cells 32×32)
+> Seamless top-down ground tiles in low-res NES-style pixel art matching the attached sheets, viewed straight down, no outlines, no text. 4×4 grid of 32×32 tiles: row 1 four grass variations, row 2 four dirt variations, row 3 grass-to-dirt edges (top, bottom, left, right), row 4 shallow water, water edge, mud, flowers on grass. Every tile must tile seamlessly with its neighbours.
+
+**Effects** (cells 48×48)
+> Sprite sheet of effects in low-res NES-style pixel art matching the attached sheets, transparent background, no text. Rows: 1 musket muzzle smoke puff (4 frames), 2 cannonball in flight (1 frame) and its impact explosion with dirt (5 frames), 3 building fire flames (4 frames, looping), 4 dust cloud from collapsing building (4 frames), 5 small blood/hit spark (3 frames). Fire and explosions orange and yellow, never pure red.
+
+**Icons** (cells 48×48)
+> Set of square button icons in low-res NES-style pixel art matching the attached sheets, each in its own 48×48 cell with a dark frame, no text. One row each: units (labourer, musketeer, pikeman, field cannon) as head-and-shoulders portraits in red coats; buildings (town hall, cottage, barracks, foundry); commands (move, attack, stop, build, gather, repair).
