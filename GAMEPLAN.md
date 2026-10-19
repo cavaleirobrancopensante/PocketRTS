@@ -28,7 +28,7 @@ A StarCraft 2 / Beyond All Reason style RTS for phones and the browser, made in 
 | 3 | Pikeman | Anti-cavalry, anti-charge, screens shooters | ✅ `art/crown/pikeman.png` |
 | 4 | Grenadier | Splash damage against swarms | ⬜ |
 | 5 | Dragoon | Mounted raider, carbine and sabre | ⬜ |
-| 6 | Field cannon | Siege, long range, slow | ⬜ |
+| 6 | Field cannon | Siege, long range, slow | ✅ `art/crown/cannon.png` (1 frame per row) |
 | 7 | Chaplain | Healer / support | ⬜ |
 | 8 | Captain | Hero with a banner, buffs nearby units | ⬜ |
 
