@@ -6,6 +6,7 @@ A StarCraft 2 / Beyond All Reason style RTS for phones and the browser, made in 
 
 - **Three factions, asymmetric in every respect**: economy, building, production, army size, strengths and weaknesses.
 - **Engine feel like Beyond All Reason and StarCraft 2**: units act individually, with no formations. Box-select, attack-move, control groups, fast responsive micro, and a macro economy.
+- **Prototype (v0.1)**: the Crown only, 4 units (labourer, musketeer, pikeman, field cannon) and 4 buildings, 1v1 vs AI on one mirrored map.
 - **Art**: low-res, NES-style pixel art made in ChatGPT; 3/4 top-down view; 5 facing directions (the left-facing ones are mirrored in-game).
 - **Team colour**: every unit's team-coloured parts are pure red (`#FF0000` + one dark shade `#960000`); the game recolours them per player.
 - **Order of work**: all Crown sprites first, then the other factions, then the game.
