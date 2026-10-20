@@ -1815,9 +1815,9 @@ func _zone_fx(z: Dictionary, stage: String) -> void:
 	var want_w: float = float(z["r"]) * 2.1
 	var sc := want_w / maxf(1.0, float(info["size"].x))
 	fx.scale = Vector2(sc, sc)
-	fx.z_index = 2
-	if z["kind"] == "miasma":
-		fx.modulate.a = 0.8
+	# the storm lies on the ground under the units it stuns; the cloud drifts over them
+	fx.z_index = -1 if z["kind"] == "storm" else 2
+	fx.modulate.a = 0.85 if z["kind"] == "storm" else 0.65
 	z["fx"] = fx
 	z["in_t"] = float(info["frames"]) / 14.0
 

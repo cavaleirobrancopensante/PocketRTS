@@ -269,7 +269,8 @@ def deslate(img, bgc, iters=6, kmin=0.08):
 
 
 def to_game(img, scale, bgc, glow=None, glow_cut=0.2, mirror=False):
-    """Source frame -> game-size RGBA uint8 (hard alpha) plus its glow mask."""
+    """Source frame -> game-size RGBA uint8 plus its glow mask. The body gets a hard
+    alpha edge; painted light keeps three alpha steps (95/170/255)."""
     f, gm = unblend(img, bgc, glow)
     h, w = f.shape[:2]
     nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
@@ -614,8 +615,8 @@ def plan_cuirassier(S):
     """Rows: 0 = S, 1 = SE, 2 = E, 3 = N (rear view; meant as NE), 4 = N (rear).
     No NE was drawn: NE uses row 3's rear idle and row 4's rear gallop. Row 2 (E) turns
     toward the camera from idle 1 and gallop 3 on (gallop 5-7 are front views, gallop 3
-    holds a carbine): E gallops on frames 0-2 plus idle 0 (a mid-stride pose), and E
-    idles on idle 0 with the rider bobbing a pixel. Row 3's gallop mixes front and rear
+    holds a carbine): E gallops on frames 0-2 only, and E idles on idle 0 with the rider
+    bobbing a pixel. Row 3's gallop mixes front and rear
     views (not used). The sabre frames face right three-quarter in every
     row, also in the rear-view rows, and several "slash" frames show no sabre at all
     (E, N), or a pistol (S slash 1) or a carbine (SE slash 2, painted out), so each
@@ -629,7 +630,7 @@ def plan_cuirassier(S):
         if d == "e":
             i0 = S(2, "idle", 0)
             A["idle", d] = [i0, bob(i0)]
-            A["walk", d] = steady(S.seq(2, "walk", [0, 1, 2]) + [S(2, "idle", 0)], "high")
+            A["walk", d] = steady(S.seq(2, "walk", [0, 1, 2]), "high")
         else:
             A["idle", d] = steady(S.seq(ri, "idle"))
             A["walk", d] = steady(S.seq(rw, "walk"), "high")
@@ -744,6 +745,27 @@ def write_effects_data(entries):
     open(path, "w").write(src)
 
 
+# Icon drawings: (row, group, index, share of the figure's height kept from the top).
+# Rendered straight from the source at icon size (the sprites are too small to blow up).
+ICONS = {
+    "stormcaller": (0, "idle", 0, 0.6),      # bust: the coil head, chest tanks and tabard
+    "cuirassier": (1, "idle", 0, 0.62),      # rider and the horse's head, three-quarter
+    "spore_mother": (1, "idle", 0, 1.0),     # three-quarter view
+}
+
+
+def make_unit_icon(S, kind, size=54):
+    r, g, i, keep = ICONS[kind]
+    src = S.frames[(r, g)][i]["img"].copy()
+    ys = np.flatnonzero((src[..., 3] > 0).any(1))
+    src = src[:ys.min() + int((ys.max() + 1 - ys.min()) * keep)]
+    xs = np.flatnonzero((src[..., 3] > 0).any(0))
+    src = src[:, xs.min():xs.max() + 1]
+    scale = size / max(src.shape[:2])
+    img, _ = to_game(src, scale, S.bgc, S.cfg.get("glow"))
+    make_icon(img, kind)
+
+
 def build_unit(kind):
     S = Src(kind)
     if DEBUG:
@@ -762,8 +784,7 @@ def build_unit(kind):
     for key, strip in sorted(strips.items()):
         Image.fromarray(strip).save(f"{out}/{key}.png")
         counts[key] = strip.shape[1] // cell[0]
-    idle = A[("idle", "s")][0]
-    make_icon(idle.img, kind)
+    make_unit_icon(S, kind)
     if CONTACT:
         os.makedirs(CONTACT, exist_ok=True)
         unit_contact(kind, cell, anchor, counts)
@@ -977,10 +998,15 @@ def build_effects():
             ys = np.flatnonzero((w / 255.0 > 0.1).any(1))
             hs.append(max(cs[-1][1] - ys.min(), ys.max() + 1 - cs[-1][1]))
         cents[name] = cs
-    H = 2 * int(np.ceil(max(hs) * s)) + 4
+    # the fade row is drawn smaller than the loop: it starts at the loop's width
+    zooms = {"miasma_in": 1.0, "miasma_loop": 1.0,
+             "miasma_out": float(np.median(widths)) / (light_box(cells["miasma_out"][0])[1] -
+                                                        light_box(cells["miasma_out"][0])[0])}
+    H = 2 * int(np.ceil(max(hs) * s * max(zooms.values()))) + 4
     W = MIASMA_W
     for name in ("miasma_in", "miasma_loop", "miasma_out"):
-        made[name] = [L.warp(c, W, H, lambda U, V, cx=cx, cy=cy: (cx + (U - W / 2) / s, cy + (V - H / 2) / s))
+        k = s * zooms[name]
+        made[name] = [L.warp(c, W, H, lambda U, V, cx=cx, cy=cy, k=k: (cx + (U - W / 2) / k, cy + (V - H / 2) / k))
                       for c, (cx, cy) in zip(cells[name], cents[name])]
     out = {}
     os.makedirs("assets/effects", exist_ok=True)

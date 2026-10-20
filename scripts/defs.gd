@@ -314,7 +314,7 @@ const BUILDINGS := {
 
 
 ## Units whose art is still being finished: they can't be trained yet.
-const PENDING := ["cuirassier", "spore_mother", "stormcaller"]
+const PENDING := []
 
 
 static func is_worker(kind: String) -> bool:
