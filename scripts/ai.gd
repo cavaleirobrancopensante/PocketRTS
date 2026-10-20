@@ -12,6 +12,9 @@ var game: Game
 var team := 1
 var difficulty := 1
 var strategy := "balanced"      # one of STRATEGIES (picked in the skirmish lobby)
+## Debug/benchmark only (tools/econ_bench.gd): never attack, raid or drop; the army just
+## gathers at home. Off in every real match.
+var peaceful := false
 
 ## How each strategy plays.
 ##  wave: army supply for the first attack (then each wave waits for `step` more)
@@ -73,7 +76,7 @@ func _physics_process(delta: float) -> void:
 	_build_up()
 	_research()
 	_produce()
-	if difficulty >= 1 and _crown():
+	if difficulty >= 1 and _crown() and not peaceful:
 		_raid()
 		_balloon_drop()
 	_army()
@@ -666,6 +669,8 @@ func _army() -> void:
 	# timing attack: nothing goes out before the timing; then everything does, wave after wave
 	if strategy == "timing" and game.clock >= float(_s("timing")) * (1.0 if difficulty >= 2 else 1.25) and _attack_at >= 999:
 		_attack_at = 6
+	if peaceful:
+		_attack_at = 99999
 	if _brood():
 		_swarm_army(army, sup)
 		return

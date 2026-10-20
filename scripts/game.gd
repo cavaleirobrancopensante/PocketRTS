@@ -112,7 +112,7 @@ var _first_of := {}             # "team:kind" -> true once that player has had o
 
 static func _new_stats() -> Dictionary:
 	return {"lost": 0, "killed": 0, "gold": 0, "spent": 0, "trained": 0, "built": 0,
-		"razed": 0, "bld_lost": 0, "damage": 0.0, "peak_army": 0, "value_killed": 0,
+		"razed": 0, "bld_lost": 0, "damage": 0.0, "peak_army": 0, "value_killed": 0, "res2_in": 0.0,
 		"kills_by": {}, "army_tl": [0], "gold_tl": [0], "workers_tl": [0]}
 
 
@@ -841,6 +841,7 @@ func econ_limit(t: int, kind: String) -> int:
 func add_res2(t: int, v: float) -> void:
 	if v > 0.0:
 		v *= float(income_mult[t])
+		stats[t]["res2_in"] += v       # (a statistic only: secondary resource earned)
 	players[t]["res2"] = float(players[t]["res2"]) + v
 
 
