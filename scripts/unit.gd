@@ -67,7 +67,8 @@ var run_t := 0.0                # Cuirassier: seconds at the gallop (a charge af
 var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
-var auto_work := true           # workers: go back to work on their own when idle
+var auto_work := true
+var _hold_note := 0             # when this unit may next say it's holding fire           # workers: go back to work on their own when idle
 
 
 func is_unit() -> bool:
@@ -692,6 +693,9 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		# area attacks hurt friends too: hold fire on our own, unless ordered to shoot
 		if order != "attack" and not game.aoe_worth_it(self, e):
 			cooldown = 0.4
+			if team == game.human and Time.get_ticks_msec() > _hold_note:
+				_hold_note = Time.get_ticks_msec() + 5000
+				game.float_text(position + Vector2(0, -40), "Holding fire: own men in the way", Color(1, 0.85, 0.4))
 			if order != "hold":
 				target = null
 			return

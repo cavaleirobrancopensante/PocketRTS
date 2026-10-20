@@ -385,6 +385,31 @@ static func is_econ(kind: String) -> bool:
 const TEAM_COLOURS := [Color("#3a78e8"), Color("#e03a32")]
 const TEAM_NAMES := ["Blue", "Red"]
 ## Player colours to choose from (the art's pure-red parts are recoloured to these).
+## Lobby colour choices besides the palette: any colour at random, or a random colour that
+## stands out on the map's ground (no green armies on a green map).
+const COLOUR_RANDOM := -1
+const COLOUR_FITS_MAP := -2
+## Palette colours that blend into each biome's ground.
+const BIOME_AVOID := {
+	"grass": ["Green"], "marsh": ["Green"], "autumn": ["Orange", "Yellow"], "desert": ["Yellow", "Orange"],
+	"snow": ["Blue"], "volcanic": ["Red", "Orange"],
+}
+
+
+static func colour_name(c: int) -> String:
+	if c == COLOUR_RANDOM:
+		return "Random"
+	if c == COLOUR_FITS_MAP:
+		return "Fits map"
+	return PALETTE[c][0]
+
+
+static func colour_of(c: int) -> Color:
+	if c < 0:
+		return Color(0.45, 0.42, 0.38)
+	return PALETTE[c][1]
+
+
 const PALETTE := [
 	["Blue", Color("#3a78e8")], ["Red", Color("#e03a32")], ["Green", Color("#3fae4a")],
 	["Yellow", Color("#e8c53a")], ["Purple", Color("#9a4fd6")], ["Orange", Color("#ec8a2c")],

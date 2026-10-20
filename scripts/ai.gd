@@ -793,6 +793,16 @@ func _enemy_base() -> Vector2:
 	var best := Vector2.INF
 	var bd := INF
 	var me := game.center_of_team(team)
+	# go for the economy: the enemy's nearest hall (its workers and farms are around it);
+	# the army fights whatever is in the way on the walk there
+	for b in game.buildings:
+		if b.team == enemy and not b.dead and b.kind == game.faction_hall(enemy):
+			var dd: float = b.center().distance_to(me)
+			if dd < bd:
+				bd = dd
+				best = b.center()
+	if best != Vector2.INF:
+		return best
 	for b in game.buildings:
 		if b.team == enemy and not b.dead:
 			var dd: float = b.center().distance_to(me)

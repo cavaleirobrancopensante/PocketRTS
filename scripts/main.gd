@@ -699,7 +699,7 @@ func _slot_row(i: int) -> Control:
 	var sl: Dictionary = lobby["slots"][i]
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
-	var colour: Color = Defs.PALETTE[int(sl["colour"])][1]
+	var colour: Color = Defs.colour_of(int(sl["colour"]))
 	# who
 	var who := _cycle(WHO_LABEL[sl["who"]], 170, func(dir: int) -> void:
 		var list := WHO.duplicate()
@@ -726,14 +726,15 @@ func _slot_row(i: int) -> Control:
 		fb.add_theme_color_override("font_color", UiStyle.accent(f).lightened(0.4))
 	h.add_child(fb)
 	# colour
-	var cb := _cycle(Defs.PALETTE[int(sl["colour"])][0].to_upper(), 110, func(dir: int) -> void:
-		var n := Defs.PALETTE.size()
-		var c := int(sl["colour"])
-		for k in n:
-			c = (c + dir + n) % n
-			if not _colour_taken(c, i):
+	var cb := _cycle(Defs.colour_name(int(sl["colour"])).to_upper(), 110, func(dir: int) -> void:
+		# the palette, then RANDOM and FITS MAP (any colour / one that stands out on the map)
+		var opts: Array = [Defs.COLOUR_FITS_MAP, Defs.COLOUR_RANDOM] + range(Defs.PALETTE.size())
+		var k := opts.find(int(sl["colour"]))
+		for step in opts.size():
+			k = (k + dir + opts.size()) % opts.size()
+			if int(opts[k]) < 0 or not _colour_taken(int(opts[k]), i):
 				break
-		sl["colour"] = c)
+		sl["colour"] = opts[k])
 	for st in ["normal", "hover", "pressed"]:
 		cb.add_theme_stylebox_override(st, UiStyle.box(colour.darkened(0.25 if st == "normal" else 0.1), Color(1, 1, 1, 0.5 if st == "normal" else 0.9), 2))
 	cb.add_theme_color_override("font_color", Color(1, 1, 1))
@@ -1046,7 +1047,7 @@ class MapPreview extends Control:
 		for i in mini(st.size(), slots.size()):
 			var p: Vector2 = r.position + (Vector2(st[i][0], st[i][1]) + Vector2(2.5, 2)) * k
 			draw_circle(p, 9.0, Color(0, 0, 0, 0.6))
-			draw_circle(p, 7.0, Defs.PALETTE[int(slots[i]["colour"])][1])
+			draw_circle(p, 7.0, Defs.colour_of(int(slots[i]["colour"])))
 
 	func _starts(r: Rect2) -> void:
 		var k := r.size / Vector2(Game.W, Game.H)
@@ -1069,7 +1070,7 @@ class MapPreview extends Control:
 			var s: Dictionary = slots[order[i]]
 			var p: Vector2 = r.position + corners[use[i]] * k
 			draw_circle(p, 9.0, Color(0, 0, 0, 0.6))
-			draw_circle(p, 7.0, Defs.PALETTE[int(s["colour"])][1])
+			draw_circle(p, 7.0, Defs.colour_of(int(s["colour"])))
 			var f := ThemeDB.fallback_font
 			draw_string(f, p + Vector2(-4, 5), str(int(s["side"]) + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
@@ -1196,6 +1197,11 @@ func start(cfg: Dictionary = {}) -> void:
 		cfg = last_cfg
 	if not cfg.has("seed"):
 		cfg["seed"] = randi()
+	cfg = cfg.duplicate(true)
+	# a random built-in map is picked here, so colours can be chosen to suit its ground
+	if String(cfg.get("map", "random")) == "random":
+		cfg["map"] = MapGen.MAPS.keys()[randi() % MapGen.MAPS.size()]
+	_resolve_colours(cfg)
 	last_cfg = cfg.duplicate(true)
 	var slots: Array = cfg["slots"]
 	var facs: Array = []
@@ -1306,6 +1312,32 @@ func _on_end(winner: int) -> void:
 	o.play_again.connect(func() -> void: start())
 	o.to_menu.connect(func() -> void: _to_menu())
 	ui_layer.add_child(o)
+
+
+## RANDOM / FITS MAP colours become real palette colours, all different.
+func _resolve_colours(cfg: Dictionary) -> void:
+	var slots: Array = cfg["slots"]
+	var used := {}
+	for sl in slots:
+		if int(sl["colour"]) >= 0:
+			used[int(sl["colour"])] = true
+	var avoid: Array = []
+	var mid: String = String(cfg.get("map", ""))
+	if MapGen.MAPS.has(mid):
+		for biome in String(MapGen.MAPS[mid][2]).split("+"):
+			avoid += Defs.BIOME_AVOID.get(biome, [])
+	for sl in slots:
+		var c := int(sl["colour"])
+		if c >= 0:
+			continue
+		var free: Array = range(Defs.PALETTE.size()).filter(func(k: int) -> bool: return not used.has(k))
+		if c == Defs.COLOUR_FITS_MAP:
+			var fit: Array = free.filter(func(k: int) -> bool: return not avoid.has(Defs.PALETTE[k][0]))
+			if not fit.is_empty():
+				free = fit
+		var pick: int = free[randi() % free.size()] if not free.is_empty() else 0
+		sl["colour"] = pick
+		used[pick] = true
 
 
 ## Every match log is also kept in user://logs (the last 20).

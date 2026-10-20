@@ -1720,6 +1720,8 @@ func find_target(u: Unit, r: float) -> Entity:
 		# it floods in and goes for the base, not for the rest of the wall
 		if b.kind == "wall" or b.kind == "gate":
 			dd += 400.0
+		elif Defs.is_econ(b.kind) or b.kind == faction_hall(b.team):
+			dd -= 80.0       # the economy first
 		if dd < bd:
 			bd = dd
 			best = b
@@ -1870,12 +1872,19 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 		e.take_damage(dmg * 0.6, u)
 	Sfx.play_any(["combat/cannon_attack", "cannon"], u.global_position)
 	spawn_effect("smoke", from + dir * 12.0, 0.9)
-	for i in 7:
-		var a := randf_range(-0.55, 0.55)
-		var end := from + dir.rotated(a) * reach * randf_range(0.6, 1.0)
-		_tracers.append([from, end, 0.12, Color(1, 0.9, 0.6, 0.75), 1.0])
-		if randf() < 0.5:
-			spawn_effect("hit", end, 1.2)
+	spawn_effect("smoke", from + dir * 30.0, 1.2).modulate = Color(1, 1, 1, 0.6)
+	# a spray of musket balls fanning out of the muzzle
+	var spread := acos(float(Defs.CANISTER["cone"]))
+	for i in 18:
+		var a := randf_range(-spread, spread) * randf_range(0.4, 1.0)
+		var end := from + dir.rotated(a) * reach * randf_range(0.45, 1.0)
+		var b := Shot.new()
+		b.scale = Vector2(0.45, 0.6)
+		b.modulate = Color(1, 0.95, 0.8)
+		if randf() < 0.35:
+			b.impact = "hit"
+			b.impact_scale = 0.7
+		b.launch(self, "ball", from + dir.rotated(a) * randf_range(0.0, 10.0), end, randf_range(650.0, 950.0))
 
 
 func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
