@@ -17,5 +17,6 @@ PYTHONPATH=tools python3 tools/make_aim_up.py   # musketeer aiming up at flyers
 python3 tools/import_balloon.py          # Observation Balloon (gunners cut from the musketeer above)
 python3 tools/import_lightning.py        # lightning effects
 python3 tools/make_walls.py              # Crown walls and gates (drawn in code)
+python3 tools/import_round9.py           # Tesla Cart as a spider cart (all its strips + art_data entry)
 python3 tools/make_packs.py              # Clockwork battery backpacks (after every unit sheet)
 echo "Now run: godot --headless --import"

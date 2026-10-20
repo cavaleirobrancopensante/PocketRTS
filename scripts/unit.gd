@@ -4,6 +4,11 @@ extends Entity
 ## (move, attack-move, attack, hold, gather, build) and fights by type.
 
 const WALK_FPS := 8.0
+## Tesla Cart: the glowing sphere on top of the deployed coil, from the feet, per drawn
+## direction (facing right; x mirrored when the sprite is flipped). Measured by
+## tools/import_round9.py.
+const COIL_TOP := {"s": Vector2(0, -53), "se": Vector2(1, -54), "e": Vector2(3, -57),
+		"ne": Vector2(1, -57), "n": Vector2(-1, -57)}
 
 var d: Dictionary
 var order := "idle"            # idle, move, amove, attack, hold, gather, build
@@ -427,6 +432,14 @@ func _ready() -> void:
 
 func rect() -> Rect2:
 	return Rect2(global_position - Vector2(radius, radius), Vector2(radius, radius) * 2.0)
+
+
+## Where the Tesla Cart's lightning starts: the sphere on its coil.
+func coil_point() -> Vector2:
+	var p: Vector2 = COIL_TOP.get(anim_dir, Vector2(0, -55))
+	if anim_flip:
+		p.x = -p.x
+	return global_position + p * float(d.get("art_scale", 1.0))
 
 
 func center() -> Vector2:
@@ -2394,6 +2407,8 @@ func _draw() -> void:
 	var top := -float(ArtData.UNITS[kind]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0
 	if kind == "pikeman":
 		top = -44.0
+	elif kind == "tesla_cart" and tesla_mode != "packed":
+		top = -70.0    # above the raised coil's sparks (the packed body: the anchor height)
 	elif kind == "cannon":
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	draw_health(top, radius * 2.4)
