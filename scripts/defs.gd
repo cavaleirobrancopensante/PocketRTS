@@ -60,7 +60,7 @@ const FACTIONS := {
 		"build": ["town_hall", "cottage", "farm", "powder_mill", "wall", "gate", "barracks", "foundry", "church"],
 		"start_workers": 5, "ready": true, "max_supply": 100,
 		"res": ["Gold", "Powder"], "econ": {"farm": 4, "powder_mill": 1},
-		"start": ["farm", "farm", "powder_mill"],
+		"start": ["farm", "farm"],
 		"about": "Musketeers and cannons. Farms ripen into big harvests; muskets and cannons burn powder. Slow and strong when dug in.",
 	},
 	"brood": {
@@ -76,7 +76,7 @@ const FACTIONS := {
 		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works"],
 		"start_workers": 3, "ready": true, "max_supply": 80,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
-		"start": ["boiler", "ore_crusher"],
+		"start": ["ore_crusher"],
 		"about": "Few, very tough constructs. Winders crank Boilers; you split the energy between ore, assembly speed and wind. Army cap 80.",
 	},
 }
@@ -90,9 +90,9 @@ const UNITS := {
 	},
 	"musketeer": {
 		"tags": ["light"],
-		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "time": 15.0, "supply": 2,
-		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks", "research": "matchlocks",
-		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Each shot burns powder.",
+		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 2,
+		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks", "requires": "powder_mill",
+		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Needs a Powder Mill; each shot burns powder.",
 	},
 	"pikeman": {
 		"tags": ["armored"],
@@ -131,7 +131,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Spitters", "hp": 45, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
 		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
-		"acid": 3.0, "requires": "warren", "research": "acid_glands", "anti_air": true, "faction": "brood",
+		"acid": 3.0, "requires": ["warren", "bone_midden"], "cost2": 5, "anti_air": true, "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
 	},
 	"brute": {
@@ -165,7 +165,7 @@ const UNITS := {
 		"tags": ["armored"],
 		"name": "Bolt Automaton", "hp": 150, "armor": 1, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
 		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 15, "from": "assembly_works",
-		"pierce": true, "research": "tension_springs", "anti_air": true, "faction": "clockwork", "about": "Crossbow bolts pierce up to three enemies in a line.",
+		"pierce": true, "requires": "boiler", "anti_air": true, "faction": "clockwork", "about": "Crossbow bolts pierce up to three enemies in a line.",
 	},
 	"steam_walker": {
 		"tags": ["armored"],
@@ -326,14 +326,7 @@ const BUILDINGS := {
 
 ## Tech step: each faction's first ranged unit needs one piece of research at the building
 ## that makes its first fighters, so the opening is melee and the ranged unit comes a little later.
-const RESEARCH := {
-	"matchlocks": {"name": "Matchlocks", "at": "barracks", "cost": 100, "time": 35.0, "faction": "crown",
-		"unlocks": "musketeer", "about": "Arm the Barracks with matchlock muskets: unlocks Musketeers."},
-	"acid_glands": {"name": "Acid Glands", "at": "warren", "cost": 100, "time": 35.0, "faction": "brood",
-		"unlocks": "spitter", "about": "Grow acid glands in the Warren: the Hive can hatch Spitters."},
-	"tension_springs": {"name": "Tension Springs", "at": "assembly_works", "cost": 125, "time": 35.0, "faction": "clockwork",
-		"unlocks": "bolt", "about": "Wind heavy crossbow springs: unlocks the Bolt Automaton."},
-}
+const RESEARCH := {}   # (the tech step is now the second economy building: see "requires")
 
 
 ## Units whose art is still being finished: they can't be trained yet.

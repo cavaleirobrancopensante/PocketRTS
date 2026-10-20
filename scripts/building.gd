@@ -10,8 +10,10 @@ var built := false
 var progress := 0.0              # 0..1 while under construction
 var queue: Array = []            # unit kinds
 var prod_t := 0.0
+var auto_train := ""             # keep training this unit (right-click / long press on its button)
 var research := ""               # research going on here (Defs.RESEARCH key)
 var research_t := 0.0
+var _auto_t := 0.0
 var rally := Vector2.INF
 var rally_target: Entity = null
 var worker_rally := Vector2.INF  # Hive: workers and army have separate rally points
@@ -228,6 +230,12 @@ func _physics_process(delta: float) -> void:
 			prod_t = 0.0
 			queue.pop_front()
 			game.spawn_trained(self, k)
+	if built and auto_train != "" and not dead:
+		_auto_t -= delta
+		if _auto_t <= 0.0:
+			_auto_t = 0.5
+			if (uses_eggs() and eggs > 0) or (not uses_eggs() and queue.is_empty()):
+				game.train(self, auto_train)
 	if built and research != "":
 		research_t += delta
 		if research_t >= float(Defs.RESEARCH[research]["time"]):

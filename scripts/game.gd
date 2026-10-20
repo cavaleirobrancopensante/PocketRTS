@@ -1094,9 +1094,11 @@ func can_train(b: Building, k: String) -> String:
 	if rs != "" and not has_tech(b.team, rs):
 		var info: Dictionary = Defs.RESEARCH[rs]
 		return "Research %s at the %s first." % [info["name"], Defs.BUILDINGS[info["at"]]["name"]]
-	var req: String = u.get("requires", "")
-	if req != "" and not _has_built(b.team, req):
-		return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
+	# the tech step: each faction's ranged unit needs its second economy building
+	var reqs: Array = u["requires"] if u.get("requires", "") is Array else ([u["requires"]] if u.get("requires", "") != "" else [])
+	for req in reqs:
+		if not _has_built(b.team, req):
+			return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
 	if b.uses_eggs():
 		if b.eggs < 1:
 			return "No eggs ready."

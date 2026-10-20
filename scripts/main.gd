@@ -38,7 +38,7 @@ Labourers work Farms (up to 3 each): a farm ripens into a 350-gold harvest, fast
 
 Walls and gates: lay them in a line across your ramp (every main base sits on high ground with one way up); gates open for your side only.
 
-Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
+Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
 
 Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some).

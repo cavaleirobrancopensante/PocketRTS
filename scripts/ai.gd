@@ -561,7 +561,7 @@ func _produce() -> void:
 			if not h.built:
 				continue
 			while h.eggs > 0:
-				var k := "raptor" if randf() < 0.6 or not game.has_tech(team, "acid_glands") else "spitter"
+				var k := "raptor" if randf() < 0.6 or game.can_train(h, "spitter") != "" else "spitter"
 				if game.can_train(h, "brute") == "" and brutes * 12 < army.size() + 6:
 					k = "brute"
 					brutes += 1
@@ -578,7 +578,7 @@ func _produce() -> void:
 	var short_powder := _res2() < 20.0
 	for b in _mine("barracks"):
 		if b.built and b.queue.size() < (3 if _gold() > 600 else 2):
-			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) and game.has_tech(team, "matchlocks") else "pikeman"
+			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) and game.can_train(b, "musketeer") == "" else "pikeman"
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
 			if (horse < 3 or horse * 6 < army.size()) and randf() < 0.45 and game.can_train(b, "cuirassier") == "":
 				k = "cuirassier"

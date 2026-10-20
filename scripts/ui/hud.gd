@@ -73,6 +73,10 @@ var _redraw_t := 0.0
 
 func _process(delta: float) -> void:
 	_msg_t = maxf(_msg_t - delta, 0.0)
+	if not _alt_press.is_empty() and not _alt_press["done"] and Time.get_ticks_msec() - int(_alt_press["t"]) > 450:
+		_alt_press["done"] = true
+		(_alt_press["b"]["alt"] as Callable).call()
+		Sfx.play_any(["ui/click", "click"])
 	# the HUD changes slowly: redraw 20 times a second (and at once after a touch or click)
 	_redraw_t -= delta
 	if _redraw_t > 0.0:
@@ -200,6 +204,12 @@ func _input(event: InputEvent) -> void:
 			game.smart_command(game.selected_units(), w)
 			get_viewport().set_input_as_handled()
 		elif _hud_has(mb.position) and mb.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
+			if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and not paused:
+				for b in _buttons:
+					if (b["rect"] as Rect2).has_point(mb.position) and b.has("alt"):
+						(b["alt"] as Callable).call()
+						Sfx.play_any(["ui/click", "click"])
+						break
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and Settings.pc() and _mouse_hud:
 		var mm := event as InputEventMouseMotion
@@ -236,6 +246,10 @@ func _press(p: Vector2) -> void:
 			return
 	for b in _buttons:
 		if (b["rect"] as Rect2).has_point(p):
+			if b.has("alt") and not Settings.pc():
+				# phone: a tap trains, a long press switches automatic training (on release / in _process)
+				_alt_press = {"b": b, "t": Time.get_ticks_msec(), "done": false}
+				return
 			if b["enabled"]:
 				b["cb"].call()
 				Sfx.play_any(["ui/click", "click"])
@@ -245,6 +259,15 @@ func _press(p: Vector2) -> void:
 
 
 func _release(p: Vector2) -> void:
+	if not _alt_press.is_empty():
+		var b: Dictionary = _alt_press["b"]
+		if not _alt_press["done"] and (b["rect"] as Rect2).has_point(p):
+			if b["enabled"]:
+				b["cb"].call()
+				Sfx.play_any(["ui/click", "click"])
+			elif b.has("why"):
+				toast(b["why"])
+		_alt_press = {}
 	for i in _hold_t.keys():
 		var held := (Time.get_ticks_msec() - int(_hold_t[i])) / 1000.0
 		_hold_t.erase(i)
@@ -301,7 +324,12 @@ var _last_group_tap := 0
 
 # ------------------------------------------------------------------ command card
 
+var _alt_for := {}             # card label -> its right-click / long-press action (auto-train)
+var _alt_press := {}           # the card button being held on a phone: {b, t, done}
+
+
 func _build_card() -> Array:
+	_alt_for = {}
 	var list: Array = []   # [icon, label, cb, enabled, why, cost]
 	var units := game.selected_units()
 	var b := game.selected_building()
@@ -416,7 +444,14 @@ func _build_card() -> Array:
 		for k in b.d["trains"]:
 			var kk: String = k
 			var why := game.can_train(b, k)
-			list.append([k, Defs.UNITS[k]["name"].to_upper(), func() -> void:
+			var ulab: String = Defs.UNITS[k]["name"].to_upper()
+			# right-click (computer) or a long press (phone): keep training it automatically
+			_alt_for[ulab] = func() -> void:
+				b.auto_train = "" if b.auto_train == kk else kk
+				toast(("Training %s automatically." % Defs.UNITS[kk]["name"]) if b.auto_train != "" else "Automatic training off.")
+			if b.auto_train == k:
+				ulab = "~ " + ulab
+			list.append([k, ulab, func() -> void:
 				var w := game.train(b, kk)
 				if w != "":
 					toast(w), why == "", why, str(Defs.UNITS[k]["cost"])])
@@ -914,7 +949,11 @@ func _draw_card(font: Font) -> void:
 			_autocast_glow(br)
 		if hov:
 			_tooltip(font, it, cr)
-		_buttons.append({"rect": br, "cb": it[2], "enabled": enabled, "why": it[4]})
+		var bt := {"rect": br, "cb": it[2], "enabled": enabled, "why": it[4]}
+		var plain := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
+		if _alt_for.has(plain):
+			bt["alt"] = _alt_for[plain]
+		_buttons.append(bt)
 
 
 ## Autocast (WORK, PUSH): a golden outline that breathes, with sparks running round it.
@@ -991,6 +1030,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		if u.has("cost2"):
 			cost += " + %d %s" % [u["cost2"], _res()[1].to_lower()]
 		title += "   (%s, supply %d)" % [cost, int(u["supply"]) * int(u.get("spawn", 1))]
+		body += "  Right-click: train it automatically (glows while on)."
 		var tg: Array = u.get("tags", [])
 		if not tg.is_empty():
 			body = "[%s] " % " ".join(tg.map(func(x: String) -> String: return x.capitalize())) + body
