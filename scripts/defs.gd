@@ -109,7 +109,7 @@ const UNITS := {
 	},
 	"cuirassier": {
 		"tags": ["armored"],
-		"name": "Cuirassier", "hp": 170, "armor": 2, "speed": 118, "cost": 175, "time": 24.0, "supply": 3,
+		"name": "Cuirassier", "hp": 170, "armor": 2, "speed": 108, "cost": 175, "time": 24.0, "supply": 3,
 		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
 		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "bolt": 1.3}, "charge": true, "faction": "crown",
 		"about": "Fast armoured horseman with a sabre. After a gallop his first blow hits double and throws the enemy back. Pikes beat him.",
@@ -123,7 +123,7 @@ const UNITS := {
 	},
 	"raptor": {
 		"tags": ["light"],
-		"name": "Raptors", "hp": 36, "armor": 0, "speed": 100, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
+		"name": "Raptors", "hp": 36, "armor": 0, "speed": 108, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
 		"sight": 7, "range": 22, "damage": 6, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "hive",
 		"requires": "warren", "faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
 	},

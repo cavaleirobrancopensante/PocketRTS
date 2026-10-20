@@ -666,6 +666,12 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 	if phase == "":
 		if cooldown > 0.0 or stun_t > 0.0:
 			return
+		# area attacks hurt friends too: hold fire on our own, unless ordered to shoot
+		if order != "attack" and not game.aoe_worth_it(self, e):
+			cooldown = 0.4
+			if order != "hold":
+				target = null
+			return
 		phase = "aim"
 		phase_t = _aim()
 		return

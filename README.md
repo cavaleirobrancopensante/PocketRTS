@@ -44,6 +44,9 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Stormcallers** (need a Charging Pylon) are fragile casters with a weak zap. **STORM** throws a 3-tile ring of lightning on a spot for 3 s: everything inside is **stunned** (your own units too) and enemies take damage. A storm costs 70 of the Stormcaller's 100 charge, and the charge only fills inside a Clockwork field.
 - Army cap 80.
 
+### Area damage hits everyone
+Canister, round shot, cannon splash, the Steam Walker's steam, the Spore Mother's spit blobs and the Stormcaller's storm hurt your own units too, so where your men stand matters. Units only fire an area attack on their own when the enemies in it clearly outweigh the friends; an explicit ATTACK order fires anyway.
+
 ### Editor: sandbox and map editor
 **EDITOR** on the main menu has two tools:
 

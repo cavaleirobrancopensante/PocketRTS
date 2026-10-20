@@ -27,6 +27,8 @@ const HELP := {
 
 There are no resources on the map: each faction builds its own economy. Every Town Hall, Hive or Clocktower allows only so many economy structures nearby, so expanding to a new hall spot is how you grow, and the expansions are what you fight over.
 
+Area damage (canister, round shot, steam, spit blobs, storms) hurts your own units too: keep your men out of the blast.
+
 High ground: units below a cliff can't see up onto it, and ramps are the only way up. Rivers can only be crossed at the fords.
 
 Skirmish: up to four players. Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",

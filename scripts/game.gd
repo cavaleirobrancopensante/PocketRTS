@@ -1516,7 +1516,7 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 	var dir := (e.center() - from).normalized()
 	var reach := float(u.d["range"]) + 24.0
 	for o in units_near(from, reach + 20.0):
-		if not hostile(o.team, u.team) or o.dead:
+		if o == u or o.dead or o.off_field or o.is_air():
 			continue
 		var to: Vector2 = o.center() - from
 		if to.length() <= reach + o.radius and dir.dot(to.normalized()) > 0.72:
@@ -1534,8 +1534,9 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var from := u.center() + u.facing * 24.0
 	var dir := (e.center() - from).normalized()
 	var reach := float(Defs.CANISTER["range"]) + 30.0
+	# area damage hits whoever is in it, friend or foe (not the gun itself)
 	for o in units_near(from, reach + 20.0):
-		if not hostile(o.team, u.team) or o.dead or o.off_field:
+		if o == u or o.dead or o.off_field:
 			continue
 		var to: Vector2 = o.center() - from
 		if to.length() <= reach + o.radius and dir.dot(to.normalized()) > float(Defs.CANISTER["cone"]):
@@ -1678,7 +1679,7 @@ func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Ent
 	var b := p + dir * float(Defs.ROUND_SHOT["line"])
 	var w := float(Defs.ROUND_SHOT["width"])
 	for o in units_near(p + dir * float(Defs.ROUND_SHOT["line"]) * 0.4, float(Defs.ROUND_SHOT["line"]) + 40.0):
-		if allied(o.team, t) or o.dead or o.is_air() or o.off_field:
+		if o == shooter or o.dead or o.is_air() or o.off_field:
 			continue
 		var q := Geometry2D.get_closest_point_to_segment(o.position, a, b)
 		if q.distance_to(o.position) <= o.radius + w:
@@ -1692,6 +1693,53 @@ func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Ent
 		var fx := spawn_effect("dust", p + dir * (25.0 + i * 28.0), 1.4)
 		fx.scale = Vector2(0.45, 0.45)
 	explode(p, dmg * float(Defs.ROUND_SHOT["splash_dmg"]), float(Defs.ROUND_SHOT["splash"]), t, shooter)
+
+
+## Area attacks hurt friends too. Before a unit fires one on its own (not on an explicit
+## order), it checks who stands in the blast: it holds fire unless the enemies hit clearly
+## outweigh the friends.
+func aoe_worth_it(u: Unit, e: Entity) -> bool:
+	var foes := 0.0
+	var friends := 0.0
+	var from := u.center()
+	var dir := (e.center() - from).normalized()
+	var cone := -2.0
+	var reach := 0.0
+	var at := e.center()
+	var r := 0.0
+	match u.kind:
+		"cannon":
+			if u.mode == "canister":
+				cone = float(Defs.CANISTER["cone"])
+				reach = float(Defs.CANISTER["range"]) + 30.0
+			else:
+				r = float(Defs.ROUND_SHOT["line"]) * 0.6
+				at = e.center() + dir * r * 0.6
+		"steam_walker":
+			cone = 0.72
+			reach = float(u.d["range"]) + 24.0
+		"spore_mother":
+			r = float(u.d["splash"]) + 8.0
+		_:
+			return true
+	var centre := from if cone > -2.0 else at
+	for o in units_near(centre, (reach if cone > -2.0 else r) + 24.0):
+		if o == u or o.dead or o.off_field or o.untouchable():
+			continue
+		var inside := false
+		if cone > -2.0:
+			var to: Vector2 = o.center() - from
+			inside = to.length() <= reach + o.radius and dir.dot(to.normalized()) > cone and (u.mode == "canister" or not o.is_air())
+		else:
+			inside = not o.is_air() and o.position.distance_to(at) <= r + o.radius
+		if not inside:
+			continue
+		var w := float(o.d["supply"])
+		if hostile(o.team, u.team):
+			foes += w
+		else:
+			friends += w
+	return friends == 0.0 or foes >= friends * 2.0
 
 
 # ------------------------------------------------------------------ new units: blobs and spells
@@ -1722,7 +1770,7 @@ func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -
 		f2.scale = Vector2(0.9, 0.9)
 	Sfx.play_any(["combat/spitter_hit", "acid"], p)
 	for u in units_near(p, splash + 12.0):
-		if allied(u.team, t) or u.dead or u.is_air() or u.off_field:
+		if u == shooter or u.dead or u.is_air() or u.off_field:
 			continue
 		var d2: Vector2 = u.position - p
 		d2.y /= FIELD_Y
@@ -1838,8 +1886,8 @@ func _tick_zones(delta: float) -> void:
 					continue
 				u.stun_t = maxf(u.stun_t, 0.2)
 				u.phase = ""
-				if hostile(u.team, int(z["team"])):
-					var c = z["caster"]
+				var c = z["caster"]
+				if u != c:
 					u.take_damage(float(Defs.STORM["dps"]) * delta, c if is_instance_valid(c) else null)
 			z["bolt_t"] = float(z.get("bolt_t", 0.0)) - delta
 			if z["bolt_t"] <= 0.0:
@@ -1889,7 +1937,7 @@ func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> 
 		sm.modulate.a = 0.7
 	Sfx.play_any(["combat/cannon_hit", "boom"], p)
 	for u in units_near(p, splash + 12.0):
-		if not allied(u.team, t) and not u.dead:
+		if u != shooter and not u.dead and not u.off_field:
 			var f := 1.0 - 0.5 * clampf(u.position.distance_to(p) / splash, 0.0, 1.0)
 			u.take_damage(dmg * f, shooter)
 	for b in buildings.duplicate():
