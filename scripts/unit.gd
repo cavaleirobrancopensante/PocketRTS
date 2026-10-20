@@ -89,6 +89,8 @@ func _ready() -> void:
 	sprite.centered = false
 	sprite.material = team_material()
 	add_child(sprite)
+	if kind == "cannon":
+		_make_wheel()
 	_set_anim("idle", true)
 
 
@@ -736,8 +738,53 @@ func _animate(delta: float) -> void:
 var _gun_t := 0.0
 
 
+## The cannon's near wheel, measured on each frame (from the feet): x, y, width radius,
+## height radius. Side views show it round; the diagonal views as an upright ellipse.
+## Head-on and back views see the wheels edge-on, so nothing spins there.
+const WHEEL_AT := {
+	"idle_e": [-0.8, -13.8, 12.0, 12.0], "move_e": [-1.7, -11.7, 11.5, 11.0],
+	"fire_e": [10.0, -13.0, 13.0, 13.0], "reload_e": [-4.9, -13.4, 12.4, 12.4],
+	"idle_se": [-11.0, -15.0, 9.4, 14.6], "move_se": [-14.0, -13.5, 9.7, 12.7],
+	"fire_se": [-2.0, -13.0, 10.0, 13.5], "reload_se": [-15.0, -12.5, 10.5, 13.5],
+	"idle_ne": [7.5, -13.0, 7.5, 13.5], "move_ne": [17.5, -15.0, 7.5, 14.3],
+	"fire_ne": [20.0, -15.0, 8.7, 14.0], "reload_ne": [17.0, -16.5, 8.0, 15.0],
+}
+var _wheel: Node2D
+var _wheel_spin: Sprite2D
+var _wheel_angle := 0.0
+var _gun_key := ""
+
+
+func _make_wheel() -> void:
+	_wheel = Node2D.new()
+	var back := Sprite2D.new()
+	back.texture = Game.tex("res://assets/units/cannon_wheel_back.png")
+	_wheel.add_child(back)
+	_wheel_spin = Sprite2D.new()
+	_wheel_spin.texture = Game.tex("res://assets/units/cannon_wheel.png")
+	_wheel.add_child(_wheel_spin)
+	sprite.add_child(_wheel)
+	_wheel.visible = false
+
+
+func _update_wheel(delta: float) -> void:
+	if _wheel == null:
+		return
+	var w: Array = WHEEL_AT.get(_gun_key, [])
+	_wheel.visible = not w.is_empty() and not dead
+	if w.is_empty():
+		return
+	_wheel.position = Vector2(w[0], w[1])
+	_wheel.scale = Vector2(w[2], w[3]) / 15.0
+	# Rolling: the wheel turns by distance / radius (always forward: the sprite flips
+	# with the cannon, and the wheel with it).
+	_wheel_angle += velocity.length() * delta / maxf(w[3], 1.0)
+	_wheel_spin.rotation = _wheel_angle
+
+
 func _animate_cannon(delta: float) -> void:
 	_gun_t += delta
+	_gun_key = anim + "_" + anim_dir
 	sprite.position = Vector2.ZERO
 	sprite.rotation = 0.0
 	match anim:
@@ -754,6 +801,7 @@ func _animate_cannon(delta: float) -> void:
 		"reload":
 			var ram := int(_gun_t * 2.6) % 2 == 0
 			var key := ("reload_" if ram else "idle_") + anim_dir
+			_gun_key = key
 			sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, key])
 			sprite.position.x = facing.x * (1.0 if ram else 0.0)
 		_:
@@ -763,6 +811,7 @@ func _animate_cannon(delta: float) -> void:
 		_gun_t = 0.0
 		if anim != "reload":
 			sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, anim + "_" + anim_dir])
+	_update_wheel(delta)
 
 
 var _last_gun_anim := ""
