@@ -577,62 +577,66 @@ func _paint_ramps(img: Image) -> void:
 				continue
 			var dir := (lo_sum / lo_n - hi_sum / hi_n).normalized()
 			var side := Vector2(-dir.y, dir.x)
-			# the slope itself runs through the cliff line: from half a tile above the ramp
-			# cells that sit between cliff faces to a tile below them. Above it the ramp is
-			# plain high ground, below it plain low ground.
 			var lo_p := INF
 			var hi_p := -INF
 			var s_lo := INF
 			var s_hi := -INF
 			for c in cells:
 				var m := (Vector2(c) + Vector2(0.5, 0.5)) * T
+				lo_p = minf(lo_p, m.dot(dir) - T * 0.5)
+				hi_p = maxf(hi_p, m.dot(dir) + T * 0.5)
 				s_lo = minf(s_lo, m.dot(side) - T * 0.5)
 				s_hi = maxf(s_hi, m.dot(side) + T * 0.5)
-				var by_cliff := false
-				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-					var n: Vector2i = c + d
-					if in_map(n) and cliff[idx(n)] == 1 and ramp[idx(n)] == 0:
-						by_cliff = true
-				if by_cliff:
-					lo_p = minf(lo_p, m.dot(dir) - T * 1.0)
-					hi_p = maxf(hi_p, m.dot(dir) + T * 1.0)
-			if lo_p == INF:
-				continue
 			var b: Dictionary = MapGen.BIOMES[mapgen.biome_at(c0.x, c0.y)]
 			var top_t := _tile(b["high"], 1)
 			var low: Array = b["low"]
 			var bot_t := _tile(low[0], 2)
 			var face_t := _tile(b["face"], 0)
+			var path_t := _tile(b["base"], 3)
+			# the side axis on the grid, and which cells continue the ramp on each side
+			var sa := Vector2i(1, 0) if absf(side.x) >= absf(side.y) else Vector2i(0, 1)
+			var neg_open := {}
+			var pos_open := {}
+			for c in cells:
+				var nn: Vector2i = c - sa
+				var pp: Vector2i = c + sa
+				neg_open[c] = in_map(nn) and ramp[idx(nn)] == 1
+				pos_open[c] = in_map(pp) and ramp[idx(pp)] == 1
 			for c in cells:
 				for py in T:
 					for px in T:
 						var p := Vector2(c.x * T + px, c.y * T + py) + Vector2(0.5, 0.5)
-						var raw := (p.dot(dir) - lo_p) / maxf(hi_p - lo_p, 1.0)
-						if raw <= 0.0 or raw >= 1.0:
-							var plain: Color = top_t.get_pixel(px, py) * 1.15 if raw <= 0.0 else bot_t.get_pixel(px, py)
-							plain.a = 1.0
-							img.set_pixel(c.x * T + px, c.y * T + py, plain)
-							continue
-						var f := raw
+						var f := clampf((p.dot(dir) - lo_p) / maxf(hi_p - lo_p, 1.0), 0.0, 1.0)
+						# the ramp's own surface: a worn track of the biome's bare ground (dirt,
+						# gravel, mud...) cut into steps, fading into the grass at both ends
 						var a: Color = top_t.get_pixel(px, py) * 1.15
 						var z: Color = bot_t.get_pixel(px, py)
-						# top ground to bottom ground with an ordered dither (stays pixel art)
-						var mixf := smoothstep(0.2, 0.8, f)
-						var bayer: float = [0.0, 0.5, 0.125, 0.625, 0.75, 0.25, 0.875, 0.375, 0.1875, 0.6875, 0.0625, 0.5625, 0.9375, 0.4375, 0.8125, 0.3125][(py % 4) * 4 + (px % 4)]
-						var col: Color = z if mixf > bayer else a
-						# the slope is shaded a little (most in the middle, none at either end, so
-						# it melts into the ground above and below), with contour steps across it
-						var bump := sin(PI * f)
-						col = col.darkened(0.1 * bump)
-						if fmod(p.dot(dir) - lo_p, 6.0) < 1.0:
-							col = col.darkened(0.16 * bump)
-						# its sides: a wedge of cliff rock that narrows to nothing at the bottom
-						var sd := minf(p.dot(side) - s_lo, s_hi - p.dot(side))
-						var wedge := 11.0 * (1.0 - f)
+						var ends := a.lerp(z, f)
+						var track: Color = path_t.get_pixel(px, py)
+						var col := ends.lerp(track, smoothstep(0.0, 0.18, f) * (1.0 - smoothstep(0.82, 1.0, f)))
+						col = col.darkened(0.04 + 0.12 * f)
+						var step_d := fmod(p.dot(dir) - lo_p, 8.0)
+						if step_d < 1.0:
+							col = col.darkened(0.3)
+						elif step_d < 2.0:
+							col = col.lightened(0.15)
+						# clear edges down both sides: a dark line with a lit rim inside it,
+						# and a wedge of cliff rock at the top that narrows down the slope
+						# how far this pixel is from the ramp's side edge (the side of its cell
+						# that faces a cell which isn't ramp)
+						var sd := 99.0
+						var along: float = float(px) if sa.x != 0 else float(py)
+						if not neg_open.get(c, false):
+							sd = minf(sd, along)
+						if not pos_open.get(c, false):
+							sd = minf(sd, float(T) - 1.0 - along)
+						var wedge := 8.0 * (1.0 - f)
 						if sd < wedge:
-							col = face_t.get_pixel(px, py).darkened(0.1 + 0.2 * (1.0 - sd / maxf(wedge, 0.01)))
-						elif sd < wedge + 1.5:
-							col = col.lightened(0.2 * (1.0 - f))
+							col = face_t.get_pixel(px, py).darkened(0.1 + 0.25 * (1.0 - sd / maxf(wedge, 0.01)))
+						elif sd < wedge + 2.0 and f < 0.92:
+							col = col.darkened(0.6)
+						elif sd < wedge + 4.0 and f < 0.92:
+							col = col.lightened(0.3)
 						col.a = 1.0
 						img.set_pixel(c.x * T + px, c.y * T + py, col)
 

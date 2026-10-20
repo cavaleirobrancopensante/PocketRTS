@@ -433,6 +433,22 @@ func _ramp(from: Vector2, to: Vector2) -> void:
 			var cell := Vector2i(int(q.x), int(q.y))
 			if g.in_map(cell):
 				ramp[g.idx(cell)] = 1
+	# tidy the bottom: ramp cells on the low ground that stick out (one ramp neighbour or
+	# none) are just low ground, so the ramp ends in a clean edge
+	for pass_i in 2:
+		for k in range(-3, 3):
+			for w in range(-2, 3):
+				var q := p - dir * k * 0.7 + side * w
+				var cell := Vector2i(int(q.x), int(q.y))
+				if not g.in_map(cell) or ramp[g.idx(cell)] == 0 or height[g.idx(cell)] == 1:
+					continue
+				var n := 0
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var c2: Vector2i = cell + d
+					if g.in_map(c2) and ramp[g.idx(c2)] == 1:
+						n += 1
+				if n <= 1:
+					ramp[g.idx(cell)] = 0
 
 
 func _lake(c: Vector2, r: Vector2) -> void:

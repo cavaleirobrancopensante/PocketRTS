@@ -37,6 +37,8 @@ func _physics_process(delta: float) -> void:
 	_supply()
 	_build_up()
 	_produce()
+	if difficulty >= 1 and _crown():
+		_raid()
 	_army()
 	if difficulty >= 1:
 		_abilities()
@@ -283,6 +285,70 @@ func _build_up() -> void:
 
 
 var _walled := false
+var _raiders: Array = []        # Crown: cuirassiers out hunting the enemy's workers
+var _raid_home := 0.0
+
+
+## Crown: up to four Cuirassiers ride out to hunt the enemy's workers and economy, the
+## farther from the enemy's main the better (Brood grubs hauling from distant pits,
+## undefended farms). They avoid armies and ride home to mend when badly hurt.
+func _raid() -> void:
+	_raiders = _raiders.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	for u in game.army(team):
+		if _raiders.size() >= 4:
+			break
+		if u.kind == "cuirassier" and not _raiders.has(u):
+			_raiders.append(u)
+	if _raiders.size() < 2:
+		return
+	var foe := _foe()
+	if foe < 0:
+		return
+	var c := Vector2.ZERO
+	var hp := 0.0
+	for u in _raiders:
+		c += u.position
+		hp += u.hp / u.max_hp
+	c /= _raiders.size()
+	hp /= _raiders.size()
+	var home: Vector2 = _halls()[0].center() if not _halls().is_empty() else c
+	# badly hurt, or an army closing in: ride home
+	var danger := 0
+	for o in game.units_near(c, 260.0):
+		if game.hostile(o.team, team) and not o.dead and not o.is_worker() and o.kind != "grub":
+			danger += int(o.d["supply"])
+	if hp < 0.45 or danger >= 6:
+		_raid_home = 12.0
+	if _raid_home > 0.0:
+		_raid_home -= 1.0
+		for u in _raiders:
+			if u.position.distance_to(home) > 200.0:
+				u.cmd_move(home + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
+		return
+	# the best prey: workers and economy buildings far from the enemy's main, few guards
+	var their_main: Vector2 = Vector2(game.starts[foe]) * Defs.TILE if game.starts.size() > foe else c
+	var best := Vector2.INF
+	var score := -INF
+	for o in game.units:
+		if o.dead or not game.hostile(o.team, team) or not o.is_worker() or not game.is_visible_to(team, o.position):
+			continue
+		var s: float = o.position.distance_to(their_main) - o.position.distance_to(c) * 0.5
+		if s > score:
+			score = s
+			best = o.position
+	if best == Vector2.INF:
+		for b in game.buildings:
+			if b.dead or not game.hostile(b.team, team) or not Defs.is_econ(b.kind):
+				continue
+			var s: float = b.center().distance_to(their_main) - b.center().distance_to(c) * 0.5
+			if s > score:
+				score = s
+				best = b.center()
+	if best == Vector2.INF:
+		best = _enemy_base()
+	for u in _raiders:
+		if u.order == "idle" or (u.order == "amove" and u.order_point.distance_to(best) > 160.0 and u.target == null):
+			u.cmd_move(best + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 
 
 ## Crown: wall the top of each ramp up to the main base, with a two-wide gate in the
@@ -436,7 +502,7 @@ func _produce() -> void:
 		if b.built and b.queue.size() < 2:
 			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) else "pikeman"
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
-			if horse * 6 < army.size() and randf() < 0.35 and game.can_train(b, "cuirassier") == "":
+			if (horse < 3 or horse * 6 < army.size()) and randf() < 0.45 and game.can_train(b, "cuirassier") == "":
 				k = "cuirassier"
 			game.train(b, k)
 	for f in _mine("foundry"):
@@ -455,7 +521,7 @@ func _army_supply(list: Array) -> int:
 
 
 func _army() -> void:
-	var army := game.army(team)
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u))
 	# Defend: enemies near our buildings get everyone's attention.
 	var threat := _threat()
 	if threat != Vector2.INF:
