@@ -1714,7 +1714,13 @@ func find_target(u: Unit, r: float) -> Entity:
 		if not hostile(b.team, u.team) or b.dead:
 			continue
 		var dd: float = b.edge_distance(u.position)
-		if dd < r and dd < bd:
+		if dd >= r:
+			continue
+		# walls and gates only when nothing else is in reach: once a swarm is through,
+		# it floods in and goes for the base, not for the rest of the wall
+		if b.kind == "wall" or b.kind == "gate":
+			dd += 400.0
+		if dd < bd:
 			bd = dd
 			best = b
 	return best

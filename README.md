@@ -49,6 +49,9 @@ There are **no resources on the map**: the map is about geography, chokes and to
 ### Match log (for playtesting)
 Every match keeps a plain-text log: who played (and at what AI level), what each side built, lost and cast, the first of each unit type, the walls laid, a snapshot of every player each minute (income, resources, supply, workers, halls, army and its value, kills and losses) and the final result with kills by unit type. **COPY LOG** on the end screen copies it to the clipboard; the last 20 logs are also saved in `user://logs`.
 
+### Closing the game
+The match is saved every 15 seconds (and whenever the app goes to the background): if you close it, **CONTINUE** on the main menu picks it up where it was (soldiers stand where they were, workers go back to work). **MATCH LOGS** on the main menu lists every match's log, including an unfinished one, each with a COPY button.
+
 ### Workers work by themselves
 **WORK** is on by default (its button glows): a worker with nothing to do goes back to a free post on its own, after building, after walking to a rally point, after a STOP. Press WORK to switch it off for the selected workers (to scout, or keep a builder free) and again to switch it back on.
 

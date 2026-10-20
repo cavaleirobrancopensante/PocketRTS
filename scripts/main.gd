@@ -153,12 +153,25 @@ func show_menu() -> void:
 	var sub := UiStyle.text("The Crown  ·  The Brood  ·  The Clockwork", 20, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	left.add_child(sub)
 	left.add_child(_gap(14))
+	var save := SaveGame.peek()
+	if not save.is_empty() and save.get("version", "") == version:
+		var facs: Array = []
+		for sl in save["cfg"]["slots"]:
+			facs.append(String(sl["faction"]).capitalize())
+		var secs := int(save["clock"])
+		var cont := _button("CONTINUE  (%s, %d:%02d)" % [" vs ".join(facs), secs / 60, secs % 60], func() -> void:
+			var cfg: Dictionary = save["cfg"].duplicate(true)
+			cfg["resume"] = save
+			start(cfg))
+		UiStyle.primary(cont, Color("#2f6a8a"))
+		cont.custom_minimum_size = Vector2(360, 58)
+		left.add_child(cont)
 	var play := _button("SKIRMISH", func() -> void: show_skirmish())
 	UiStyle.primary(play)
 	play.custom_minimum_size = Vector2(360, 68)
 	play.add_theme_font_size_override("font_size", 30)
 	left.add_child(play)
-	for it in [["EDITOR", func() -> void: show_editor_menu()], ["HOW TO PLAY", func() -> void: show_help()], ["SETTINGS", func() -> void: show_settings()]]:
+	for it in [["EDITOR", func() -> void: show_editor_menu()], ["HOW TO PLAY", func() -> void: show_help()], ["SETTINGS", func() -> void: show_settings()], ["MATCH LOGS", func() -> void: show_logs()]]:
 		var b := _button(it[0], it[1])
 		b.custom_minimum_size = Vector2(360, 54)
 		left.add_child(b)
@@ -175,6 +188,66 @@ func show_menu() -> void:
 	h.add_child(cards)
 	for f in ["crown", "brood", "clockwork"]:
 		cards.add_child(_faction_card(f))
+
+
+## Match logs: every finished match (and the one still going) with a COPY button, to
+## paste into a playtest report.
+func show_logs() -> void:
+	var root := _page()
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 40
+	v.offset_right = -40
+	v.offset_top = 20
+	v.offset_bottom = -20
+	v.add_theme_constant_override("separation", 10)
+	root.add_child(v)
+	v.add_child(UiStyle.heading("MATCH LOGS", 40, UiStyle.TRIM))
+	v.add_child(UiStyle.text("COPY puts a match's log on the clipboard, ready to paste.", 17, UiStyle.MUTED))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+	var files := Array(DirAccess.get_files_at("user://logs")) if DirAccess.dir_exists_absolute("user://logs") else []
+	files = files.filter(func(f: String) -> bool: return f.begins_with("match_") or f == "unfinished.txt")   # (Godot keeps its own logs there too)
+	files.sort()
+	files.reverse()
+	if files.has("unfinished.txt"):
+		files.erase("unfinished.txt")
+		files.push_front("unfinished.txt")
+	if files.is_empty():
+		list.add_child(UiStyle.text("No logs yet: play a match.", 20, UiStyle.MUTED))
+	for fn in files:
+		var path: String = "user://logs/" + fn
+		var txt := FileAccess.get_file_as_string(path)
+		var lines := txt.split("\n")
+		var what: String = lines[1] if lines.size() > 1 else ""
+		var result := ""
+		for ln in lines:
+			if ln.begins_with("RESULT"):
+				result = ln
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		list.add_child(row)
+		var name: String = "Unfinished or closed match" if fn == "unfinished.txt" else fn.trim_prefix("match_").trim_suffix(".txt").replace("_", "  ").replace("T", " ")
+		var l := UiStyle.text("%s   ·   %s%s" % [name, what, ("   ·   " + result) if result != "" else ""], 17, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.clip_text = true
+		row.add_child(l)
+		var b := _button("COPY", func() -> void: pass)
+		b.custom_minimum_size = Vector2(130, 46)
+		b.pressed.connect(func() -> void:
+			DisplayServer.clipboard_set(txt)
+			b.text = "COPIED!")
+		row.add_child(b)
+	var back := _button("BACK", func() -> void: show_menu())
+	back.custom_minimum_size = Vector2(200, 54)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(back)
 
 
 func _faction_card(f: String) -> Control:
@@ -1047,7 +1120,31 @@ func _make_rotate_overlay() -> void:
 var _rotate_paused := false
 
 
-func _process(_delta: float) -> void:
+var _save_t := 0.0
+
+
+## Autosave the match every 15 s (and the log with it), so closing the game loses nothing.
+func _autosave() -> void:
+	if game == null or game.over or game.demo or game.edit_mode:
+		return
+	var cfg := last_cfg.duplicate(true)
+	cfg.erase("resume")
+	SaveGame.save(game, cfg)
+	if game.mlog:
+		_write_log("user://logs/unfinished.txt", game.mlog.text())
+
+
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
+		_autosave()
+
+
+func _process(delta: float) -> void:
+	if game and not game.over and not get_tree().paused:
+		_save_t += delta
+		if _save_t >= 15.0:
+			_save_t = 0.0
+			_autosave()
 	if _rotate == null:
 		return
 	var vs := get_viewport().get_visible_rect().size
@@ -1097,6 +1194,8 @@ func start(cfg: Dictionary = {}) -> void:
 		game.queue_free()
 	if cfg.is_empty():
 		cfg = last_cfg
+	if not cfg.has("seed"):
+		cfg["seed"] = randi()
 	last_cfg = cfg.duplicate(true)
 	var slots: Array = cfg["slots"]
 	var facs: Array = []
@@ -1109,6 +1208,7 @@ func start(cfg: Dictionary = {}) -> void:
 		var sl: Dictionary = slots[i]
 		var f: String = sl["faction"]
 		facs.append(["crown", "brood", "clockwork"][randi() % 3] if f == "random" else f)
+		last_cfg["slots"][i]["faction"] = facs[i]     # a continued match keeps the same factions
 		cols.append(int(sl["colour"]))
 		sides.append(int(sl["side"]))
 		var lvl := LEVELS.find(sl["who"])
@@ -1127,6 +1227,7 @@ func start(cfg: Dictionary = {}) -> void:
 	game.map_id = cfg.get("map", "random")
 	game.sandbox = cfg.get("sandbox", false)
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
+	game.rng.seed = int(cfg["seed"])
 	add_child(game)
 	sfx.camera = game.camera
 	for t in slots.size():
@@ -1169,6 +1270,10 @@ func start(cfg: Dictionary = {}) -> void:
 			foes.append(game.faction_of(t))
 	Music.me.match_started(game.faction_of(game.human), foes)
 	Music.me.ambience(game.mapgen.biome_a if game.mapgen else "")
+	if cfg.has("resume"):
+		SaveGame.restore(game, cfg["resume"])
+		last_cfg.erase("resume")
+	_save_t = 0.0
 
 
 func _to_menu() -> void:
@@ -1189,6 +1294,7 @@ func _on_end(winner: int) -> void:
 	if game.mlog:
 		game.mlog.finish(winner)
 		_save_log(game.mlog.text())
+	SaveGame.clear()
 	await get_tree().create_timer(1.2, true, false, true).timeout
 	if game == null:
 		return
@@ -1204,13 +1310,19 @@ func _on_end(winner: int) -> void:
 
 ## Every match log is also kept in user://logs (the last 20).
 func _save_log(t: String) -> void:
-	DirAccess.make_dir_recursive_absolute("user://logs")
 	var name := "user://logs/match_%s.txt" % Time.get_datetime_string_from_system(false, true).replace(":", "-").replace(" ", "_")
-	var f := FileAccess.open(name, FileAccess.WRITE)
+	_write_log(name, t)
+	if FileAccess.file_exists("user://logs/unfinished.txt"):
+		DirAccess.remove_absolute("user://logs/unfinished.txt")
+
+
+func _write_log(path: String, t: String) -> void:
+	DirAccess.make_dir_recursive_absolute("user://logs")
+	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f:
 		f.store_string(t)
 		f.close()
-	var files := Array(DirAccess.get_files_at("user://logs"))
+	var files := Array(DirAccess.get_files_at("user://logs")).filter(func(f: String) -> bool: return f.begins_with("match_"))
 	files.sort()
 	while files.size() > 20:
 		DirAccess.remove_absolute("user://logs/" + String(files.pop_front()))

@@ -452,6 +452,12 @@ func _physics_process(delta: float) -> void:
 			if _arrived():
 				_finish_move()
 		"amove":
+			# hacking at a wall: look again now and then, and leave it for anything better
+			if target is Building and (target.kind == "wall" or target.kind == "gate") and scan_t <= 0.0 and stuck_t < 0.5:
+				scan_t = 0.6
+				var better := game.find_target(self, _scan_range())
+				if better and better != target and not (better is Building and (better.kind == "wall" or better.kind == "gate")):
+					target = better
 			if scan_t <= 0.0 and target == null and not is_worker():
 				scan_t = 0.3
 				target = game.find_target(self, _scan_range())
