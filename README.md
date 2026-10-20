@@ -104,6 +104,7 @@ Everything is synthesised, with no samples. `tools/music/compose.py` holds the h
 - **The Crown**: *The King's Muster* (lute, recorder, shawm) and *Pike and Shot* (fife and drum, horns, timpani).
 - **The Brood**: *The Warm Swamp* (drones, throat-choir, log drums) and *Hunger* (6/8 war drums, phrygian shawm).
 - **The Clockwork**: *Winding the Spring* (music box, dulcimer, ticks; it slows down at the end as the spring runs out) and *Brass and Steam* (7/8 machinery, anvils, steam). It is played on a dead-straight grid, with no human timing.
+- Each faction also has three more calm pieces and two more battle pieces (21 match pieces in all). Crown: *The Orchard Minuet*, *Ballad of the Lost Regiment*, *Raising the Bastion*, *Volley Fire*, *Sabres at the Ford*. Brood: *Spawning Pools*, *Moonlit Mudflats*, *The Queen Stirs*, *Teeth in the Reeds*, *The Swarm Rises*. Clockwork: *The Orrery*, *Rust and Rain*, *The Assembly Line*, *Overclock*, *Gearstorm*.
 - A victory sting per faction and a defeat sting.
 
 In a match a shuffled playlist of your faction's calm pieces plays, with an enemy faction's piece now and then. It cross-fades to battle music when fighting heats up near your units, and goes back after things are quiet. **Settings > Music player** lets you listen to every piece and choose the playlist: your faction plus a little of the enemy's (default), your faction only, everything, or only the pieces you tick.

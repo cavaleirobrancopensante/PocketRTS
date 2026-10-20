@@ -1,14 +1,16 @@
 """PocketRTS soundtrack: hand-written pieces for the menu and for each faction.
 
-Every faction has a calm piece (building up) and a battle piece (the game cross-fades to it
-when fighting breaks out), plus a victory sting; there is one shared defeat sting.
+Every faction has four calm pieces (building up: <f>_peace, <f>_peace_2.._4) and three battle pieces
+(<f>_battle, <f>_battle_2, _3; the game cross-fades to one when fighting breaks out), plus a victory
+sting; there is one shared defeat sting. The titles of all pieces go to scripts/music_tracks.gd.
 
   The Crown      17th-century pike-and-shot: lute, recorder (fife), shawm, horns, snare and timpani.
   The Brood      the swamp: buzzing drones, a low "throat" choir, log drums, big drums, phrygian modes.
   The Clockwork  music boxes and machinery: glass chimes, dulcimer, reedy regal, ticks, anvils, steam;
                  played dead on the grid (no human timing), the battle piece in 7/8.
 
-Usage: python3 tools/music/compose.py [name ...]   -> assets/music/<name>.ogg
+Usage: python3 tools/music/compose.py [name ...]   -> assets/music/<name>.ogg (+ scripts/music_tracks.gd)
+       python3 tools/music/compose.py --tracks       -> only rewrite scripts/music_tracks.gd
 Needs numpy, scipy and ffmpeg. The instrument library (synth.py) is shared with TCG-RPG.
 """
 import os
@@ -224,8 +226,9 @@ synth.DRUMS.update({"q": croak, "w": bubble, "W": lambda v: bubble(v, 260), "z":
 # --------------------------------------------------------------------------- score
 
 class Song:
-    def __init__(self, name, title, bpm, meter, tonic, mode, reverb=(2.0, 0.4), humanize=0.006, seed=1, q=3):
-        self.name, self.title, self.q = name, title, q
+    def __init__(self, name, title, bpm, meter, tonic, mode, reverb=(2.0, 0.4), humanize=0.006, seed=1,
+                 q=3, ceiling=0.89):
+        self.name, self.title, self.q, self.ceiling = name, title, q, ceiling
         self.bpm, self.meter, self.tonic, self.mode = bpm, meter, tonic, mode
         self.reverb, self.humanize = reverb, humanize
         self.rng = np.random.default_rng(seed)
@@ -362,7 +365,7 @@ class Song:
             send[i:i + len(x)] += x * snd
         ir = synth.reverb_ir(*self.reverb)
         L, R = synth.apply_reverb(L, R, send, ir)
-        return master(L, R)
+        return master(L, R, ceiling=self.ceiling)
 
 
 def master(l, r, target_rms=0.17, ceiling=0.89):
@@ -771,7 +774,7 @@ def _minuet_acc(s, b, roots, vel=0.32, open_=False):
 
 
 def crown_peace_2():
-    s = Song("crown_peace_2", "The Orchard Minuet", 104, 3, n("F", 4), "ionian", reverb=(1.9, 0.4), seed=111, q=2)
+    s = Song("crown_peace_2", "The Orchard Minuet", 104, 3, n("F", 4), "ionian", reverb=(1.9, 0.4), seed=111, q=1.5)
     A1 = ["1:1 3:1 5:1", "6:1 5:0.5 4:0.5 3:1", "2:1 4:1 6:1", "5:2 7,:1",
           "4:1 6:1 1':1", "7:0.5 6:0.5 5:1 4:1", "3:1 1:1 7,:1", "2:3"]
     A1r = [0, 3, 1, 4, 3, 4, 0, 4]
@@ -826,7 +829,7 @@ def crown_peace_2():
 
 def crown_peace_3():
     s = Song("crown_peace_3", "Ballad of the Lost Regiment", 76, 4, n("E", 4), "aeolian", reverb=(2.6, 0.5),
-             seed=112, q=2)
+             seed=112, q=1.5)
     V = ["5,:1 1:1 2:1 3:1", "4:1.5 3:0.5 2:2", "3:1 2:1 1:1 7,:1", "1:3 5,:1",
          "5,:1 1:1 2:1 3:1", "5:1.5 4:0.5 3:1 4:1", "3:1 2:0.5 1:0.5 7,:1 2:1", "1:4"]
     Vr = [0, 3, 5, 0, 0, 2, 6, 0]
@@ -1195,7 +1198,8 @@ def brood_peace_3():
 
 
 def brood_peace_4():
-    s = Song("brood_peace_4", "The Queen Stirs", 88, 4, n("G", 3), "dorian", reverb=(3.2, 0.7), seed=213, q=2)
+    s = Song("brood_peace_4", "The Queen Stirs", 88, 4, n("G", 3), "dorian", reverb=(3.2, 0.7), seed=213,
+             q=2, ceiling=0.8)
     A = ["1:2 5:2", "4:1 3:1 4:1 6:1", "5:2 4:1 3:1", "2:2 7,:2",
          "1:2 3:1 5:1", "6:2 4:2", "5:1 4:1 2:1 7,:1", "1:4"]
     Ar = [0, 3, 0, 6, 0, 3, 6, 0]
@@ -1398,7 +1402,7 @@ def brood_battle_3():
 
 def clock_peace_2():
     s = Song("clock_peace_2", "The Orrery", 92, 3, n("E", 4), "lydian", reverb=(2.4, 0.35), humanize=0.0,
-             seed=311, q=2)
+             seed=311, q=2, ceiling=0.8)
     A = ["1:1 2:1 3:1", "5:3", "4:1.5 3:1.5", "2:3", "3:1 4:1 5:1", "7:2 6:1", "5:3", "5:3",
          "1':1 7:1 6:1", "5:2 3:1", "4:2 3:1", "2:3", "3:1 2:1 1:1", "7,:2 2:1", "1:3", "1:3"]
     Ar = [0, 0, 1, 1, 0, 4, 0, 0, 5, 0, 1, 1, 0, 4, 0, 0]
@@ -1443,7 +1447,7 @@ def clock_peace_2():
 
 def clock_peace_3():
     s = Song("clock_peace_3", "Rust and Rain", 76, 4, n("A", 4), "aeolian", reverb=(2.8, 0.45), humanize=0.0,
-             seed=312, q=2)
+             seed=312, q=2, ceiling=0.8)
     A = ["5:2 4:1 3:1", "4:2 2:2", "3:1 2:1 1:1 7,:1", "1:3 r:1",
          "6:2 5:1 4:1", "5:2 3:2", "4:1 3:1 2:1 3:1", "2:4"]
     Ar = [0, 3, 5, 0, 5, 2, 3, 4]
@@ -1495,7 +1499,7 @@ def clock_peace_3():
 
 def clock_peace_4():
     s = Song("clock_peace_4", "The Assembly Line", 116, 4, n("F", 4), "ionian", reverb=(1.6, 0.3), humanize=0.0,
-             seed=313, q=2)
+             seed=313, q=1.5, ceiling=0.78)
     A = ["1:1 3:1 5:1.5 3:0.5", "4:1 6:1 1':2", "7:1 6:1 5:1 4:1", "3:2 5:2",
          "1:1 3:1 5:1.5 3:0.5", "4:1 6:1 2':2", "1':1 7:1 6:1 7:1", "1':4"]
     Ar = [0, 3, 4, 0, 0, 1, 4, 0]
@@ -1640,7 +1644,7 @@ def clock_battle_2():
 def clock_battle_3():
     # 5/4 (3+2)
     s = Song("clock_battle_3", "Gearstorm", 140, 5, n("G", 4), "phrygian", reverb=(1.4, 0.3), humanize=0.0,
-             seed=322, q=2)
+             seed=322, q=1.5, ceiling=0.8)
     ost = "1:1 1:0.5 1:0.5 2:1 1:1 7,:1"
     A = ["5:1.5 4:0.5 5:1 6:1 5:1", "4:1 3:1 2:1 1:2", "5:1.5 4:0.5 5:1 1':1 7:1", "6:5",
          "1':1.5 7:0.5 6:1 5:1 4:1", "3:1 4:1 5:3", "4:1 3:1 2:1 1:1 2:1", "1:5"]

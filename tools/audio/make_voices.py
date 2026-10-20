@@ -44,16 +44,19 @@ def kokoro():
     return _kokoro
 
 
-def trim(x, db=-38):
+def trim(x, db=-38, start_db=None, pre=0.01):
+    """Cut leading/trailing silence. start_db: separate (tighter) threshold for the start."""
     a = np.abs(x)
-    th = a.max() * 10 ** (db / 20)
-    # smooth so we don't stop inside a word gap
-    env = np.convolve(a, np.ones(256) / 256, mode="same")
-    idx = np.nonzero(env > th * 0.5)[0]
+    env = np.convolve(a, np.ones(256) / 256, mode="same")   # smoothed: don't stop inside a word gap
+    pk = env.max() + 1e-12
+    idx = np.nonzero(env > pk * 10 ** (db / 20))[0]
     if not len(idx):
         return x
-    s = max(0, idx[0] - int(0.01 * SR))
-    e = min(len(x), idx[-1] + int(0.04 * SR))
+    st = idx[0]
+    if start_db is not None:
+        st = np.nonzero(env > pk * 10 ** (start_db / 20))[0][0]
+    s = max(0, st - int(pre * SR))
+    e = min(len(x), idx[-1] + int(0.03 * SR))
     return x[s:e]
 
 
@@ -73,7 +76,7 @@ def tts(text, voice, speed=1.0, semis=0.0):
 
 
 def out_write(rel, x, peak=PEAK, max_len=MAX_LEN):
-    x = trim(x, -42)
+    x = trim(x, -48, start_db=-26, pre=0.006)
     if len(x) / SR > max_len:      # dry speech is already <= MAX_LEN-0.25 s: cut the reverb tail
         x = x[:N(max_len)].copy()
         f = N(0.2)
@@ -136,18 +139,18 @@ def hive(x, rng):
     import librosa
     w = whisper(x)
     w = w / (np.max(np.abs(w)) + 1e-9)
-    layers = [(0, 0.55, 0.0), (-4, 0.8, 0.012), (-8, 0.6, 0.025), (-12, 0.35, 0.04)]
+    layers = [(0, 0.6, 0.0), (-4, 0.75, 0.01), (-8, 0.5, 0.02), (-12, 0.25, 0.03)]
     out = np.zeros(len(w) + N(0.1))
     for st, g, dly in layers:
         y = librosa.effects.pitch_shift(w, sr=SR, n_steps=st) if st else w
         out = place(out, y * g, dly)
     # add a quiet dry voice an octave down for intelligibility
     dry = librosa.effects.pitch_shift(x / (np.max(np.abs(x)) + 1e-9), sr=SR, n_steps=-7)
-    out = place(out, dry * 0.18, 0.006)
+    out = place(out, dry * 0.35, 0.004)
     env = np.convolve(np.abs(out), np.ones(1024) / 1024, mode="same")
-    hiss = hp(noise(rng, len(out) / SR + 1e-9)[:len(out)], 3500) * env * 0.9
+    hiss = hp(noise(rng, len(out) / SR + 1e-9)[:len(out)], 3500) * env * 0.6
     out = out + hiss
-    return reverb(out, rng, rt=0.9, wet=0.25, pre=0.02, damp=5000)
+    return reverb(out, rng, rt=0.8, wet=0.16, pre=0.02, damp=5000)
 
 
 # ------------------------------------------------------------------ line tables
@@ -159,18 +162,18 @@ CROWN_UNITS = {
         "move": ["On my way.", "Right then.", "Going."],
         "attack": ["With a shovel?!", "If I must!"]}),
     "pikeman": ("bm_lewis", 1.0, 0.0, {
-        "select": ["Pikes ready.", "Hold the line!", "Sir?"],
+        "select": ["Pikes ready.", "Hold the line!", "Yes, sir?"],
         "move": ["Forward.", "Marching.", "Steady pace."],
         "attack": ["Brace!", "Pikes down!"]}),
     "musketeer": ("bm_fable", 1.05, 0.0, {
         "select": ["Powder dry.", "Loaded, sir.", "Musket ready."],
         "move": ["Moving out.", "By the left!", "Aye."],
         "attack": ["Present... fire!", "Take aim!"]}),
-    "cannon": ("bm_lewis", 1.0, -1.5, {
+    "cannon": ("bm_lewis", 0.95, -1.0, {
         "select": ["Gun crew ready.", "Where to, sir?", "Heavy, this."],
         "move": ["Push!", "Roll her out!", "Heave!"],
-        "attack": ["Fire in the hole!", "Give 'em iron!"]}),
-    "missionary": ("bf_emma", 0.88, 0.0, {
+        "attack": ["Fire in the hole!", "Give them iron!"]}),
+    "missionary": ("bf_emma", 0.92, 0.0, {
         "select": ["Peace be with you.", "Who is hurt?", "I am here."],
         "move": ["I will go.", "Lead me.", "With faith."]}),
 }
@@ -189,10 +192,10 @@ CLOCK_UNITS = {
         "select": ["Bolts loaded.", "Target?", "Tension set."],
         "move": ["Moving.", "Repositioning.", "Confirmed."],
         "attack": ["Loosing!", "Bolt away."]}),
-    "steam_walker": ("am_onyx", 0.95, 72, 60, {
-        "select": ["Pressure at maximum.", "Boilers hot.", None],
+    "steam_walker": ("am_onyx", 0.92, 85, 60, {
+        "select": ["Pressure at maximum.", "Boilers are hot.", None],
         "move": ["Stomping forward.", "Underway.", None],
-        "attack": ["Venting fury!", "Crush them."]}),
+        "attack": ["Venting fury!", "Crush them all."]}),
     "tesla_cart": ("am_puck", 1.05, 135, 100, {
         "select": ["Charge holding.", "Capacitors full.", None],
         "move": ["Packing up.", "Rolling.", "Unit mobile."],
@@ -331,7 +334,7 @@ def main(filters):
                 rng = seed(rel)
                 x = tts(text, voice, speed, semis)
                 if unit == "missionary":
-                    x = warm_room(x, rng, rt=0.6, wet=0.18, warmth=0.25)
+                    x = warm_room(x, rng, rt=0.5, wet=0.12, warmth=0.25)
                 else:
                     x = warm_room(x, rng)
                 out_write(rel, x)
@@ -347,6 +350,7 @@ def main(filters):
                     x = clock_nonverbal(unit, kind, rng)
                 else:
                     x = robot(tts(text, voice, speed), rng, f0=f0, ring=ring)
+                    x = x / (np.max(np.abs(x)) + 1e-9)
                     if unit == "tesla_cart":
                         x = mix(x, crackle(rng, len(x) / SR, 80, None, 2500) * 0.15)
                     if unit == "steam_walker":
