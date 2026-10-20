@@ -390,6 +390,10 @@ const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius
 ## Bloater: its acid cloud
 ## (a full sac: burst damage and cloud at their biggest; each spit empties some of it)
 const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 60.0, "spit_cost": 15.0, "reach": 22.0}
+## Veterancy: every kill adds damage (to a cap); a fallen unit's body holds essence for the
+## Brood: a little for its size, more for every kill it made.
+const VET := {"per_kill": 0.05, "max": 0.5}
+const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}

@@ -729,6 +729,13 @@ func _swarm_army(army: Array, sup: int) -> void:
 			if ready or hit or _swarm_t > 40.0:
 				_swarm_phase = "strike"
 				_wave_target = _enemy_base()
+				# a few grubs follow the swarm to harvest the fallen
+				var spare := game.workers(team).filter(func(u: Unit) -> bool: return u.kind == "grub" and u.order != "build" and u.cocoon == 0)
+				var want_h := 2 if spare.size() > 10 else (1 if spare.size() > 6 else 0)
+				var have := game.workers(team).filter(func(u: Unit) -> bool: return u.order == "harvest").size()
+				for g2 in spare.slice(0, maxi(0, want_h - have)):
+					g2.cmd_harvest()
+					g2.harvest_home = (_swarm[0][1] as Vector2) if not _swarm.is_empty() else _wave_target
 				for g in _swarm:
 					for u in g[0]:
 						u.cmd_move(_wave_target + Vector2(randf_range(-70, 70), randf_range(-70, 70)), true)

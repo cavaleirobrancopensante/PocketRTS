@@ -17,6 +17,7 @@ var seen_by_human := false     # enemy buildings stay on screen once spotted
 var flash := 0.0
 var last_hit_by := ""           # kind that last hurt us, for battle stats
 var last_hit_team := -1
+var last_hitter: Entity = null  # who dealt the last blow (veterancy)
 var off_field := false             # a soldier being bandaged: off the field for a moment
 var cross_t := 0.0              # just bandaged: can't be bandaged again yet
 var acid_t := 0.0               # Spitter acid: burns and strips 2 armour while > 0
@@ -81,6 +82,7 @@ func take_damage(amount: float, _from: Entity) -> void:
 	if _from and is_instance_valid(_from) and game.hostile(_from.team, team):
 		last_hit_by = _from.kind
 		last_hit_team = _from.team
+		last_hitter = _from
 		game.stats[_from.team]["damage"] += dmg
 		if team == game.human:
 			game.under_attack(self)

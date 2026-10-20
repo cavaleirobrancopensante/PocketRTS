@@ -989,8 +989,13 @@ func on_unit_died(u: Unit) -> void:
 	for g in groups:
 		g.erase(u)
 	stats[u.team]["lost"] += 1
+	# veterancy: the unit that dealt the last blow gets the kill
+	var hitter = u.last_hitter
+	if is_instance_valid(hitter) and hitter is Unit and not hitter.dead and hostile(hitter.team, u.team):
+		(hitter as Unit).kills += 1
+	var absorbed := false
 	for t in n_players():
-		if faction_of(t) == "brood":
+		if faction_of(t) == "brood" and not absorbed:
 			for b in buildings:
 				if b.team == t and b.kind == "bone_midden" and b.built and not b.dead \
 						and b.center().distance_to(u.position) < Defs.MIDDEN_RANGE * T:
@@ -998,7 +1003,10 @@ func on_unit_died(u: Unit) -> void:
 					add_res2(t, ess)
 					if t == human:
 						float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
+					absorbed = true          # the Midden took it: nothing left to harvest
 					break
+	if not absorbed and brood_in_match() and not u.is_air():
+		corpses.append(u)
 	var k := _killer(u)
 	if k >= 0:
 		var foe: Dictionary = stats[k]
@@ -1006,6 +1014,38 @@ func on_unit_died(u: Unit) -> void:
 		foe["value_killed"] += int(u.d["cost"]) / maxi(1, int(u.d.get("spawn", 1)))
 		if u.last_hit_by != "" and u.last_hit_team == k:
 			foe["kills_by"][u.last_hit_by] = int(foe["kills_by"].get(u.last_hit_by, 0)) + 1
+
+
+## Bodies on the field that a Brood grub can still harvest.
+var corpses: Array = []
+
+
+func brood_in_match() -> bool:
+	for t in n_players():
+		if faction_of(t) == "brood" and not eliminated[t]:
+			return true
+	return false
+
+
+func corpse_value(u: Unit) -> int:
+	return int(u.d["supply"]) * int(Defs.HARVEST["per_supply"]) + u.kills
+
+
+## The nearest unclaimed body within reach of a grub.
+func find_corpse(g: Unit, r: float) -> Unit:
+	var best: Unit = null
+	var bd := r
+	for c in corpses:
+		if not is_instance_valid(c):
+			continue
+		var h = c.harvester
+		if h != null and h != g and is_instance_valid(h) and not h.dead and h.order == "harvest":
+			continue
+		var dd: float = c.position.distance_to(g.position)
+		if dd < bd:
+			bd = dd
+			best = c
+	return best
 
 
 ## Who gets the credit for a kill: the last enemy to hit it (or the only enemy).

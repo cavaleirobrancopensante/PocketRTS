@@ -70,6 +70,9 @@ var cast_at := Vector2.ZERO
 var auto_work := true
 var _cold := false
 var slow_t := 0.0              # slowed (Bloater acid)
+var kills := 0                  # veterancy
+var harvester: Unit = null      # (a body) the grub coming to take it
+var cocoon := 0                 # (a grub) essence it carries home
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # Observation Balloon: two gunners, each with its own target, reload and pose
 var gun_cd: Array = [0.0, 1.5]
@@ -92,7 +95,9 @@ func _rest_in_peace() -> void:
 	set_physics_process(false)
 	set_process(false)
 	var tw := create_tween()
-	tw.tween_interval(CORPSE_TIME)
+	# bodies the Brood can harvest lie there longer
+	tw.tween_interval(float(Defs.HARVEST["time"]) if game.corpses.has(self) else CORPSE_TIME)
+	tw.tween_callback(func() -> void: game.corpses.erase(self))
 	tw.tween_property(self, "modulate:a", 0.0, 3.0)
 	tw.tween_callback(queue_free)
 
@@ -482,6 +487,9 @@ func cmd_build(site: Building) -> void:
 
 
 func _reset_work() -> void:
+	if _corpse and is_instance_valid(_corpse):
+		_corpse.harvester = null
+	_corpse = null
 	_leave_mine()
 	_release_patient()
 	work = ""
@@ -633,12 +641,14 @@ func _physics_process(delta: float) -> void:
 			want = _build(delta)
 		"cast":
 			want = _cast(delta)
+		"harvest":
+			want = _harvest(delta)
 	if deploys():
 		want = _tesla(want, delta)
 	_move(want, delta)
 	_animate(delta)
 	# redraw the shadow, ring and bars only when something on them changed
-	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0),
+	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
 		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp))
 	if key != _draw_key:
 		_draw_key = key
@@ -869,7 +879,7 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 func _strike(e: Entity) -> void:
 	if not _valid_target(e):
 		return
-	var dmg := float(d["damage"])
+	var dmg := float(d["damage"]) * (1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
 	if d["faction"] == "clockwork":
 		dmg *= lerpf(0.7, 1.0, wind)
 	if e.is_building():
@@ -1083,6 +1093,73 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 		return Vector2.ZERO
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
 		_request_path(game.approach_point(src, position))
+	return _follow(delta)
+
+
+## Grub on HARVEST: take the bodies of the fallen (friend or foe) near it, wrap each in a
+## cocoon and carry it to the nearest Hive for essence; then come back to where it was.
+var harvest_home := Vector2.ZERO
+var _corpse: Unit = null
+
+
+func cmd_harvest() -> void:
+	_reset_work()
+	order = "harvest"
+	harvest_home = position
+	work = ""
+	target = null
+
+
+func _harvest(delta: float) -> Vector2:
+	if cocoon > 0:
+		var hive := game.nearest_hall(position, team)
+		if hive == null:
+			return Vector2.ZERO
+		if hive.edge_distance(position) < radius + 17.0:
+			game.add_res2(team, cocoon)
+			if team == game.human:
+				game.float_text(position + Vector2(0, -26), "+%d essence" % cocoon, Color(0.8, 0.5, 1.0))
+			cocoon = 0
+			path = PackedVector2Array()
+			_request_path(harvest_home)
+			return Vector2.ZERO
+		if (path.is_empty() or path_i >= path.size()) and not path_pending:
+			_request_path(game.approach_point(hive, position))
+		return _follow(delta)
+	if _corpse == null or not is_instance_valid(_corpse) or not game.corpses.has(_corpse):
+		_corpse = null
+		work = ""
+		if scan_t <= 0.0:
+			scan_t = 0.8
+			_corpse = game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE)
+			if _corpse:
+				_corpse.harvester = self
+				_request_path(_corpse.position)
+		if _corpse == null:
+			if position.distance_to(harvest_home) > 40.0:
+				if (path.is_empty() or path_i >= path.size()) and not path_pending:
+					_request_path(harvest_home)
+				return _follow(delta)
+			return Vector2.ZERO
+	if position.distance_to(_corpse.position) < radius + 14.0:
+		path = PackedVector2Array()
+		facing = (_corpse.position - position).normalized()
+		if work != "wrapping":
+			work = "wrapping"
+			work_t = float(Defs.HARVEST["take"])
+		work_t -= delta
+		if work_t <= 0.0:
+			cocoon = game.corpse_value(_corpse)
+			game.corpses.erase(_corpse)
+			var body := _corpse
+			_corpse = null
+			work = ""
+			var tw := body.create_tween()
+			tw.tween_property(body, "modulate:a", 0.0, 0.4)
+			tw.tween_callback(body.queue_free)
+		return Vector2.ZERO
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		_request_path(_corpse.position)
 	return _follow(delta)
 
 
@@ -1641,6 +1718,19 @@ func _draw() -> void:
 		var w := radius * 2.0
 		draw_rect(Rect2(-w * 0.5, top + 7.0, w, 2), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(-w * 0.5, top + 7.0, w * gas / 100.0, 2), Color(0.75, 0.95, 0.25))
+	if cocoon > 0:
+		# the cocoon on its back
+		draw_set_transform(Vector2(0, -17), 0.0, Vector2(1.0, 0.7))
+		draw_circle(Vector2.ZERO, 6.0, Color(0.86, 0.82, 0.68))
+		draw_arc(Vector2.ZERO, 6.0, 0, TAU, 14, Color(0.45, 0.35, 0.25), 1.0)
+		draw_line(Vector2(-5, -2), Vector2(5, 2), Color(0.6, 0.5, 0.4), 1.0)
+		draw_line(Vector2(-5, 2), Vector2(5, -2), Color(0.6, 0.5, 0.4), 1.0)
+		draw_set_transform(Vector2.ZERO)
+	if kills > 0 and not is_worker():
+		# veteran pips: a gold one per kill, up to 5 (a red one after 10)
+		var pips := mini(kills, 5)
+		for i in pips:
+			draw_rect(Rect2(-pips * 2.5 + i * 5.0, top - 6.0, 3, 3), Color(1, 0.82, 0.3) if kills < 10 else Color(1, 0.35, 0.25))
 	if carrying > 0 and kind == "grub":
 		draw_circle(Vector2(0, -16), 3.5, Color(0.55, 0.85, 0.3))
 		draw_circle(Vector2(0, -16), 3.5, Color(0.2, 0.3, 0.1), false, 1.0)

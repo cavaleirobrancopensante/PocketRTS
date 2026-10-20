@@ -26,6 +26,8 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Grubs** haul food from **Feeding Pits** (up to 5 each) to the nearest **Hive**. The farther the pit is from the Hive, the richer each load (it grows with the square of the distance), so spreading swamp pays.
 - Pits and every Brood structure except Hives must grow on your swamp. **Spore Vents** spread it far. Each Hive allows 3 Feeding Pits and 1 Bone Midden.
 - A grub **turns into** a building and is used up.
+- **Harvest the fallen:** select grubs and press **HARVEST**: they stay where they are and wrap every body nearby (friend or foe) in a cocoon, carrying it to a Hive as essence: 1 per supply of the dead unit plus 1 per kill it made. Bodies rot away after 2 minutes, and a grub carrying a cocoon can be caught on the way home.
+- **Veterancy (all factions):** every kill gives a unit +5% damage (up to +50%), shown as gold pips over it.
 - **Bone Middens** turn every body that falls nearby (friend or foe) into **essence**. Brutes and Skywings cost essence.
 - Every unit hatches from the **Hive's eggs** (each Clutch Mound makes the Hives lay 10% faster, up to +30%): **Raptors** (3 per egg), **Spitters** (2 per egg), **Brutes** (need a Gorge Pit) and **Skywings** (need a Roost).
 - **Skywings** fly over everything, and only ranged units can hit them.
