@@ -37,6 +37,12 @@ var _last_tap_kind := ""
 var _long_done := false
 var _mid_pan := false
 var _lmb_down := false
+# Line move (as in Beyond All Reason): drag a line and the selected units spread out
+# evenly along it. Computer: right-drag (or left-drag after MOVE / ATTACK); phone: drag
+# after MOVE / ATTACK.
+var line := PackedVector2Array()   # world points of the line being drawn
+var line_attack := false
+var _line_btn := ""                # which button/touch is drawing: "right", "left", "touch"
 var _lmb_from := Vector2.ZERO
 var _mouse_inside := true
 var _last_click_t := 0
@@ -51,6 +57,30 @@ func box_rect() -> Rect2:
 	if _box_from == Vector2.INF:
 		return Rect2()
 	return Rect2(_box_from, Vector2.ZERO).expand(_box_to)
+
+
+func _line_add(screen: Vector2) -> void:
+	var w := to_world(screen)
+	if line.is_empty() or line[line.size() - 1].distance_to(w) > 6.0:
+		line.append(w)
+
+
+func _line_len() -> float:
+	var l := 0.0
+	for i in range(1, line.size()):
+		l += line[i - 1].distance_to(line[i])
+	return l
+
+
+## Finish a line drag: true if it was long enough to be a line (units sent along it).
+func _line_end() -> bool:
+	var ok := line.size() >= 2 and _line_len() > 40.0
+	if ok:
+		game.line_move(game.selected_units(), line, line_attack)
+		Sfx.play_any(["ui/click", "click"])
+	line = PackedVector2Array()
+	_line_btn = ""
+	return ok
 
 
 func cancel_mode() -> void:
@@ -83,6 +113,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _mid_pan:
 			game.camera.position -= mm.relative / game.camera.zoom
 		elif Settings.pc():
+			if _line_btn != "":
+				_line_add(mm.position)
 			if mode == "place":
 				_move_ghost(mm.position)
 			if _lmb_down and _box_from == Vector2.INF and mm.position.distance_to(_lmb_from) > 6.0:
@@ -111,6 +143,14 @@ func _touch(e: InputEventScreenTouch) -> void:
 	_press.erase(e.index)
 	if was_multi or info.is_empty():
 		_box_from = Vector2.INF
+		line = PackedVector2Array()
+		_line_btn = ""
+		return
+	if _line_btn == "touch":
+		if _line_end():
+			cancel_mode()
+		else:
+			_tap(e.position, info["mouse"])
 		return
 	if _box_from != Vector2.INF:
 		_finish_box()
@@ -142,10 +182,18 @@ func _drag(e: InputEventScreenDrag) -> void:
 		return
 	if not info["moved"] and e.position.distance_to(info["pos"]) > DRAG_START:
 		info["moved"] = true
-		if mode == "place" or Settings.drag_mode == "pan":
+		if mode == "move" or mode == "attack":
+			line = PackedVector2Array()
+			line_attack = mode == "attack"
+			_line_btn = "touch"
+			_line_add(info["pos"])
+		elif mode == "place" or Settings.drag_mode == "pan":
 			pass
 		else:
 			_box_from = info["pos"]
+	if _line_btn == "touch":
+		_line_add(e.position)
+		return
 	if Settings.drag_mode == "pan" and mode != "place" and info["moved"]:
 		game.camera.position -= e.relative / game.camera.zoom
 		return
@@ -172,16 +220,30 @@ func _mouse(e: InputEventMouseButton) -> void:
 		_zoom_at(e.position, 1.0 / 1.12)
 	elif e.button_index == MOUSE_BUTTON_MIDDLE:
 		_mid_pan = e.pressed
+	elif e.button_index == MOUSE_BUTTON_RIGHT and e.pressed and mode == "" and Settings.pc() \
+			and not game.selected_units().is_empty():
+		line = PackedVector2Array()
+		line_attack = false
+		_line_btn = "right"
+		_line_add(e.position)
+	elif e.button_index == MOUSE_BUTTON_RIGHT and not e.pressed and _line_btn == "right":
+		_line_add(e.position)
+		if not _line_end():
+			_right_click(e.position)
 	elif e.button_index == MOUSE_BUTTON_RIGHT and e.pressed:
 		if mode != "":
 			cancel_mode()
 			return
-		var p := to_world(e.position)
-		var b := game.selected_building()
-		if b:
-			game.set_rally(b, p)
-		else:
-			game.smart_command(game.selected_units(), p)
+		_right_click(e.position)
+
+
+func _right_click(screen: Vector2) -> void:
+	var p := to_world(screen)
+	var b := game.selected_building()
+	if b:
+		game.set_rally(b, p)
+	else:
+		game.smart_command(game.selected_units(), p)
 
 
 ## Computer: left button.
@@ -197,12 +259,24 @@ func _left_pc(e: InputEventMouseButton) -> void:
 					begin_place(kind)        # Shift keeps placing
 					_move_ghost(e.position)
 				return
-			"move", "attack", "rally", "rally_army", "rally_worker", "cast":
+			"move", "attack":
+				line = PackedVector2Array()
+				line_attack = mode == "attack"
+				_line_btn = "left"
+				_line_add(e.position)
+				return
+			"rally", "rally_army", "rally_worker", "cast":
 				_tap(e.position, false)
 				return
 		_lmb_down = true
 		_lmb_from = e.position
 		_box_from = Vector2.INF
+		return
+	if _line_btn == "left":
+		if _line_end():
+			cancel_mode()
+		else:
+			_tap(e.position, false)
 		return
 	if not _lmb_down:
 		return

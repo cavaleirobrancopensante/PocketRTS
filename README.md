@@ -13,7 +13,7 @@ Destroy every enemy building to win.
 There are **no resources on the map**: the map is about geography, chokes and town-hall spots. Each faction builds its own economy, and every Town Hall, Hive or Clocktower allows only so many economy structures, so you grow by taking and holding expansions. Each faction's economy works differently.
 
 ### The Crown: dig in
-- **Labourers** work **Farms** (up to 3 each). A farm ripens into a **280-gold harvest** all at once, faster with more hands (about 40 s with a full crew).
+- **Labourers** work **Farms** (up to 3 each). A farm ripens into a **350-gold harvest** all at once, faster with more hands (about 40 s with a full crew).
 - The **Powder Mill** (up to 2 labourers) makes **black powder**. Every musket shot burns 1 and every cannon shot 3: no powder, no fire.
 - Each **Town Hall** allows 4 Farms and 1 Powder Mill within 14 tiles. **Cottages** add supply (max 100).
 - **Walls and gates** (10 and 25 gold a piece): lay them in a line (pick the start, then the end; your labourers build piece after piece). A gate opens for your side and your allies and stays shut to the enemy. Every main base sits on high ground with one ramp (two in four-player games), so a few pieces wall it off. Enemies that can't get through hack at the wall.
@@ -44,6 +44,9 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Assembly Works**: **Gearknights**, **Bolt Automatons** (pierce up to 3), **Steam Walkers** and **Tesla Carts**. A Tesla Cart rolls when packed; deploying or packing takes 3 s. Deployed, it powers constructs around it and fires chain lightning that can hit flyers.
 - **Stormcallers** (need a Charging Pylon) are fragile casters with a weak zap. **STORM** throws a 3-tile ring of lightning on a spot for 3 s: everything inside is **stunned** (your own units too) and enemies take damage. A storm costs 70 of the Stormcaller's 100 charge, and the charge only fills inside a Clockwork field.
 - Army cap 80.
+
+### Line move
+Drag a line and your selected units spread out evenly along it (as in Beyond All Reason): good against splash, for firing lines and for holding a choke. Computer: hold the right button and drag (a short right click is still a normal command), or press MOVE / ATTACK and drag with the left button. Phone: tap MOVE or ATTACK, then drag the line. With ATTACK they attack-move to their spots.
 
 ### Area damage hits everyone
 Canister, round shot, cannon splash, the Steam Walker's steam, the Spore Mother's spit blobs and the Stormcaller's storm hurt your own units too, so where your men stand matters. Units only fire an area attack on their own when the enemies in it clearly outweigh the friends; an explicit ATTACK order fires anyway.

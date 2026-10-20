@@ -2044,6 +2044,40 @@ func _tick_zones(delta: float) -> void:
 			zones.erase(z)
 
 
+## Spots spread evenly along a drawn line, one per unit.
+func line_spots(pts: PackedVector2Array, n: int) -> Array:
+	var total := 0.0
+	for i in range(1, pts.size()):
+		total += pts[i - 1].distance_to(pts[i])
+	var out: Array = []
+	for k in n:
+		var want := total * (float(k) + 0.5) / float(n) if n > 1 else total
+		var seg := 1
+		var acc := 0.0
+		while seg < pts.size() - 1 and acc + pts[seg - 1].distance_to(pts[seg]) < want:
+			acc += pts[seg - 1].distance_to(pts[seg])
+			seg += 1
+		var l := pts[seg - 1].distance_to(pts[seg])
+		var f := clampf((want - acc) / maxf(l, 0.001), 0.0, 1.0)
+		out.append(pts[seg - 1].lerp(pts[seg], f))
+	return out
+
+
+## Line move: every selected unit takes its own spot along the line. Units are matched to
+## spots in order along the line, so their paths don't cross.
+func line_move(list: Array, pts: PackedVector2Array, attack: bool) -> void:
+	var us: Array = list.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	if us.is_empty() or pts.size() < 2:
+		return
+	var spots := line_spots(pts, us.size())
+	var dir := (pts[pts.size() - 1] - pts[0]).normalized()
+	us.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.dot(dir) < b.position.dot(dir))
+	for i in us.size():
+		var u: Unit = us[i]
+		u.cmd_move(spots[i], attack)
+	_ping(pts[pts.size() - 1], Color(1, 0.4, 0.3) if attack else Color(0.4, 1, 0.4))
+
+
 func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
 	match randi() % 3:
 		0:
@@ -2568,14 +2602,14 @@ func _draw_overlay() -> void:
 	for pg in _pings:
 		var f: float = pg[2] / 0.5
 		overlay.draw_arc(pg[0], 16.0 * (1.5 - f), 0, TAU, 20, Color(pg[1], f), 2.0)
-	if controls and controls.mode == "cast":
-		var info: Dictionary = Defs.STORM if controls.cast_spell == "storm" else Defs.MIASMA
-		var col := Color(0.55, 0.8, 1.0, 0.9) if controls.cast_spell == "storm" else Color(0.6, 1.0, 0.35, 0.9)
-		var at: Vector2 = get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position()
-		field_layer.draw_set_transform(at, 0.0, Vector2(1.0, FIELD_Y))
-		field_layer.draw_circle(Vector2.ZERO, float(info["radius"]), Color(col.r, col.g, col.b, 0.12))
-		field_layer.draw_arc(Vector2.ZERO, float(info["radius"]), 0.0, TAU, 48, col, 2.0)
-		field_layer.draw_set_transform(Vector2.ZERO)
+	# a line move being drawn: the line and where each unit will stand
+	if controls and controls.line.size() >= 2:
+		var lc := Color(1.0, 0.45, 0.35, 0.9) if controls.line_attack else Color(0.45, 1.0, 0.45, 0.9)
+		overlay.draw_polyline(controls.line, lc, 2.0)
+		var n := selected_units().size()
+		if n > 0:
+			for sp in line_spots(controls.line, n):
+				overlay.draw_circle(sp, 4.0, lc)
 	if controls and controls.mode == "place" and controls.line_from.x >= 0:
 		# laying a wall: every piece from the start to here
 		var lk: String = controls.place_kind

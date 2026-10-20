@@ -90,13 +90,13 @@ const UNITS := {
 	},
 	"musketeer": {
 		"tags": ["light"],
-		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 100, "time": 20.0, "supply": 2,
+		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "time": 15.0, "supply": 2,
 		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks",
 		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Each shot burns powder.",
 	},
 	"pikeman": {
 		"tags": ["armored"],
-		"name": "Pikeman", "hp": 120, "armor": 2, "speed": 60, "cost": 75, "time": 16.0, "supply": 2,
+		"name": "Pikeman", "hp": 120, "armor": 2, "speed": 60, "cost": 50, "time": 13.0, "supply": 2,
 		"sight": 7, "range": 30, "damage": 13, "cooldown": 1.1, "radius": 11, "from": "barracks",
 		"bonus": {"cannon": 2.5, "brute": 1.6, "cuirassier": 2.0}, "faction": "crown", "about": "Tough melee. Wrecks cannons, brutes and cavalry up close.",
 	},
@@ -273,7 +273,7 @@ const BUILDINGS := {
 	"farm": {
 		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 5, "trains": [], "crew": 3, "faction": "crown",
-		"about": "Ripens into a 280-gold harvest. Up to 3 labourers make it grow faster.",
+		"about": "Ripens into a 350-gold harvest. Up to 3 labourers make it grow faster.",
 	},
 	"powder_mill": {
 		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
