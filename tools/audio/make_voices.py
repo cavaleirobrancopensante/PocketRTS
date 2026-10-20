@@ -76,14 +76,19 @@ def tts(text, voice, speed=1.0, semis=0.0):
 
 
 def out_write(rel, x, peak=PEAK, max_len=MAX_LEN):
-    x = trim(x, -48, start_db=-26, pre=0.006)
+    x = trim(x, -44, start_db=-26, pre=0.006)
     if len(x) / SR > max_len:      # dry speech is already <= MAX_LEN-0.25 s: cut the reverb tail
         x = x[:N(max_len)].copy()
         f = N(0.2)
         x[-f:] *= np.linspace(1, 0, f) ** 2
     x = finish(x, peak, fade_in=0.003, fade_out=0.03, trim=False)
-    path = os.path.join(OUT, rel + ".wav")
-    write_wav(path, x)
+    # the longer announcer/taunt lines go out as Ogg Vorbis to keep the build small (game loads .wav or .ogg)
+    ext = ".ogg" if rel.startswith(("announcer/", "taunt/")) else ".wav"
+    path = os.path.join(OUT, rel + ext)
+    other = os.path.join(OUT, rel + (".wav" if ext == ".ogg" else ".ogg"))
+    if os.path.exists(other):
+        os.remove(other)
+    (write_ogg if ext == ".ogg" else write_wav)(path, x)
     print("ok", rel, f"{len(x) / SR:.2f}s", flush=True)
 
 
