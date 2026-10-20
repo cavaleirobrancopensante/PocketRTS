@@ -1485,6 +1485,30 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 		fx.modulate = Color(1.3, 1.3, 1.3, 0.85)
 
 
+## Cannon canister: a cone of musket balls; every enemy in it is hit (buildings barely).
+func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
+	var from := u.center() + u.facing * 24.0
+	var dir := (e.center() - from).normalized()
+	var reach := float(Defs.CANISTER["range"]) + 30.0
+	for o in units_near(from, reach + 20.0):
+		if not hostile(o.team, u.team) or o.dead or o.is_air() or o.off_field:
+			continue
+		var to: Vector2 = o.center() - from
+		if to.length() <= reach + o.radius and dir.dot(to.normalized()) > float(Defs.CANISTER["cone"]):
+			var bonus: float = Defs.CANISTER["vs_light"] if Defs.has_tag(o.kind, "light") else 1.0
+			o.take_damage(dmg * bonus * (1.3 if to.length() < reach * 0.5 else 1.0), u)
+	if e.is_building():
+		e.take_damage(dmg * 0.6, u)
+	Sfx.play_any(["combat/cannon_attack", "cannon"], u.global_position)
+	spawn_effect("smoke", from + dir * 12.0, 0.9)
+	for i in 7:
+		var a := randf_range(-0.55, 0.55)
+		var end := from + dir.rotated(a) * reach * randf_range(0.6, 1.0)
+		_tracers.append([from, end, 0.12, Color(1, 0.9, 0.6, 0.75), 1.0])
+		if randf() < 0.5:
+			spawn_effect("hit", end, 1.2)
+
+
 func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 	var from := u.global_position + Vector2(0, -46)
 	var hit: Array = [e]
@@ -1542,10 +1566,35 @@ func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	pr.duration = clampf(muzzle.distance_to(p) / 520.0, 0.25, 0.8)
 	pr.damage = dmg
 	pr.splash = float(u.d["splash"])
+	pr.round_shot = true
 	pr.team = u.team
 	pr.shooter = u
 	add_child(pr)
 	Sfx.play_any(["combat/cannon_attack", "cannon"], u.global_position)
+
+
+## A round shot lands: everyone in a line from a little before the spot to well past it
+## takes the full blow (more against armour); a small splash where it hits.
+func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Entity) -> void:
+	var dir := (p - from).normalized()
+	var a := p - dir * 30.0
+	var b := p + dir * float(Defs.ROUND_SHOT["line"])
+	var w := float(Defs.ROUND_SHOT["width"])
+	for o in units_near(p + dir * float(Defs.ROUND_SHOT["line"]) * 0.4, float(Defs.ROUND_SHOT["line"]) + 40.0):
+		if allied(o.team, t) or o.dead or o.is_air() or o.off_field:
+			continue
+		var q := Geometry2D.get_closest_point_to_segment(o.position, a, b)
+		if q.distance_to(o.position) <= o.radius + w:
+			var bonus: float = Defs.ROUND_SHOT["vs_armored"] if Defs.has_tag(o.kind, "armored") else 1.0
+			o.take_damage(dmg * bonus, shooter)
+	# a building where it lands takes the whole ball
+	for bd in buildings.duplicate():
+		if not allied(bd.team, t) and not bd.dead and bd.edge_distance(p) < 18.0:
+			bd.take_damage(dmg * float(Defs.UNITS["cannon"].get("building_bonus", 1.0)), shooter)
+	for i in 3:
+		var fx := spawn_effect("dust", p + dir * (25.0 + i * 28.0), 1.4)
+		fx.scale = Vector2(0.45, 0.45)
+	explode(p, dmg * float(Defs.ROUND_SHOT["splash_dmg"]), float(Defs.ROUND_SHOT["splash"]), t, shooter)
 
 
 func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
@@ -1581,6 +1630,9 @@ func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> E
 
 # ------------------------------------------------------------------ fog of war
 
+var _fog_bytes := PackedByteArray()
+
+
 func _init_fog() -> void:
 	fog_img = Image.create(W, H, false, Image.FORMAT_LA8)
 	fog_tex = ImageTexture.create_from_image(fog_img)
@@ -1615,12 +1667,19 @@ func _reveal(t: int, c: Vector2i, r: int) -> void:
 func _update_vis() -> void:
 	for t in n_players():
 		vis[t].fill(0)
+	# units standing in the same cell see the same thing: stamp each spot once
+	var done := {}
 	for u in units:
 		if not u.dead and not u.off_field:
+			var c := cell_of(u.position)
+			var key: int = ((u.team * 64 + u.sight) * 2 + int(u.is_air())) * 8192 + c.y * W + c.x
+			if done.has(key):
+				continue
+			done[key] = true
 			if u.is_air():
-				_reveal_air(u.team, cell_of(u.position), u.sight)
+				_reveal_air(u.team, c, u.sight)
 			else:
-				_reveal(u.team, cell_of(u.position), u.sight)
+				_reveal(u.team, c, u.sight)
 	for b in buildings:
 		if not b.dead:
 			_reveal(b.team, cell_of(b.rect().get_center()), b.sight)
@@ -1643,11 +1702,11 @@ func _update_vis() -> void:
 			b.visible = true
 		return
 	fog_sprite.visible = true
-	for y in H:
-		for x in W:
-			var i := y * W + x
-			var a := 0 if hv[i] == 1 else (140 if explored[i] == 1 else 250)
-			fog_img.set_pixel(x, y, Color(0, 0, 0, a / 255.0))
+	if _fog_bytes.size() != W * H * 2:
+		_fog_bytes.resize(W * H * 2)
+	for i in W * H:
+		_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (140 if explored[i] == 1 else 250)
+	fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_bytes)
 	fog_tex.update(fog_img)
 	for u in units:
 		if not allied(u.team, human):
@@ -1676,6 +1735,7 @@ func on_high(p: Vector2) -> bool:
 
 
 var _human_vis := PackedByteArray()
+var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
 
 
 func is_visible_to(t: int, p: Vector2) -> bool:
@@ -1691,6 +1751,8 @@ func _physics_process(delta: float) -> void:
 		return
 	clock += delta
 	alert_t = maxf(alert_t - delta, 0.0)
+	var vsz := get_viewport().get_visible_rect().size / camera.zoom
+	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 	_economy(delta)
 	for fl in _floats:
 		fl[3] -= delta
@@ -1716,7 +1778,7 @@ func _physics_process(delta: float) -> void:
 		_update_swamp()
 	_vis_t -= delta
 	if _vis_t <= 0.0:
-		_vis_t = 0.2
+		_vis_t = 0.25
 		_update_vis()
 	for pg in _pings:
 		pg[2] -= delta

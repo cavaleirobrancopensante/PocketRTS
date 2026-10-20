@@ -52,6 +52,15 @@ var tesla_mode := "packed"     # Tesla Cart: packed, deploying, deployed, packin
 var tesla_t := 0.0
 var _bob_t := 0.0
 var _draw_key := Vector4i(-1, -1, -1, -1)
+var _push := Vector2.ZERO
+# Crown abilities
+var mode := ""                  # musketeer "" (muskets) or "bayonet"; cannon "" (round shot) or "canister"
+var push_auto := true           # pikeman: shove enemies back with the pike when it's ready
+var push_cd := 0.0
+var knock := Vector2.ZERO       # being shoved back
+var stun_t := 0.0
+var _sep_tick := false
+var _anim_dt := 0.0
 
 
 func is_unit() -> bool:
@@ -70,9 +79,42 @@ func is_air() -> bool:
 func can_hit(e: Entity) -> bool:
 	if d.get("medic", false) or e.untouchable():
 		return false
-	if e.is_air() and not d.get("anti_air", false):
+	if e.is_air() and (not d.get("anti_air", false) or mode == "bayonet"):
 		return false
 	return true
+
+
+## Musketeer: fix bayonets (melee, no powder) or go back to muskets.
+func set_bayonet(on: bool) -> void:
+	if kind != "musketeer" or (mode == "bayonet") == on:
+		return
+	mode = "bayonet" if on else ""
+	phase = ""
+	target = null
+
+
+## Cannon: round shot (long range, splash, smashes buildings) or canister (short range,
+## a cone of musket balls that shreds crowds).
+func set_canister(on: bool) -> void:
+	if kind != "cannon" or (mode == "canister") == on:
+		return
+	mode = "canister" if on else ""
+	phase = ""
+	target = null
+
+
+func _cooldown() -> float:
+	if mode == "bayonet":
+		return Defs.BAYONET["cooldown"]
+	if mode == "canister":
+		return Defs.CANISTER["cooldown"]
+	return float(d["cooldown"])
+
+
+func _aim() -> float:
+	if mode == "bayonet":
+		return Defs.BAYONET["aim"]
+	return float(d.get("aim", 0.25))
 
 
 func can_gather() -> bool:
@@ -102,6 +144,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 
 
 func _ready() -> void:
+	_sep_tick = get_instance_id() % 2 == 0
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -247,6 +290,8 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	cooldown = maxf(cooldown - delta, 0.0)
+	push_cd = maxf(push_cd - delta, 0.0)
+	stun_t = maxf(stun_t - delta, 0.0)
 	scan_t -= delta
 	repath_t -= delta
 	var want := Vector2.ZERO
@@ -374,6 +419,10 @@ func _valid_target(e: Entity) -> bool:
 
 
 func _range() -> float:
+	if mode == "bayonet":
+		return Defs.BAYONET["range"]
+	if mode == "canister":
+		return Defs.CANISTER["range"]
 	return float(d["range"])
 
 
@@ -433,13 +482,25 @@ func _move(want: Vector2, delta: float) -> void:
 	if work == "feeding" or work == "morphing":
 		velocity = Vector2.ZERO
 		return
-	var push := game.separation(self)
+	# neighbours only nudge each other: half the units work it out on each tick
+	_sep_tick = not _sep_tick
+	if _sep_tick:
+		_push = game.separation(self)
+	var push := _push
 	var v := want + push
 	if want == Vector2.ZERO:
 		v = push
+	if stun_t > 0.0:
+		v = Vector2.ZERO
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
+	if knock.length_squared() > 25.0:
+		position = game.resolve_terrain(position + knock * delta, position, radius)
+		knock *= exp(-7.0 * delta)
 	if velocity.length() > speed * 1.3:
 		velocity = velocity.normalized() * speed * 1.3
+	if velocity.length_squared() < 1.0:
+		velocity = Vector2.ZERO
+		return
 	var before := position
 	position += velocity * delta
 	if is_air():
@@ -464,7 +525,7 @@ func _move(want: Vector2, delta: float) -> void:
 func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	var dist := e.edge_distance(position) - radius
 	var rng := _range()
-	var min_r := float(d.get("min_range", 0.0))
+	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
 	if kind == "tesla_cart" and tesla_mode != "deployed":
 		if tesla_mode == "packed" and dist <= rng:
 			tesla_mode = "deploying"
@@ -501,10 +562,10 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 func _attack_cycle(e: Entity, delta: float) -> void:
 	facing = (e.center() - center()).normalized()
 	if phase == "":
-		if cooldown > 0.0:
+		if cooldown > 0.0 or stun_t > 0.0:
 			return
 		phase = "aim"
-		phase_t = float(d.get("aim", 0.25))
+		phase_t = _aim()
 		return
 	phase_t -= delta
 	if phase == "aim" and phase_t <= 0.0:
@@ -513,7 +574,7 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		_strike(e)
 	elif phase == "strike" and phase_t <= 0.0:
 		phase = ""
-		cooldown = float(d["cooldown"])
+		cooldown = _cooldown()
 
 
 func _strike(e: Entity) -> void:
@@ -524,13 +585,24 @@ func _strike(e: Entity) -> void:
 		dmg *= wind
 	if e.is_building():
 		dmg *= float(d.get("building_bonus", 1.0))
-	if Defs.POWDER_SHOT.has(kind) and not game.use_powder(team, int(Defs.POWDER_SHOT[kind])):
+	if mode == "bayonet":
+		e.take_damage(Defs.BAYONET["damage"] * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self)
+		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
+		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
+		return
+	var powder := int(Defs.POWDER_SHOT.get(kind, 0))
+	if mode == "canister":
+		powder = int(Defs.CANISTER["powder"])
+	if powder > 0 and not game.use_powder(team, powder):
 		return    # no powder: the shot never goes off
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
 		"cannon":
-			game.cannon_shot(self, e.center(), dmg)
+			if mode == "canister":
+				game.canister_shot(self, e, Defs.CANISTER["damage"])
+			else:
+				game.cannon_shot(self, e.center(), dmg)
 		"tesla_cart":
 			game.tesla_zap(self, e, dmg)
 		"spitter":
@@ -548,6 +620,15 @@ func _strike(e: Entity) -> void:
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
 				e.position = game.resolve_terrain(e.position + push, e.position, e.radius)
+			# Pikeman: when the shove is ready, the thrust drives the enemy back and staggers it.
+			if kind == "pikeman" and push_auto and push_cd <= 0.0 and e is Unit and not e.dead and not e.is_air():
+				push_cd = Defs.PIKE_PUSH["cooldown"]
+				var heavy: float = 0.4 if int(e.d["supply"]) >= 3 else 1.0
+				e.knock = (e.position - position).normalized() * Defs.PIKE_PUSH["force"] * heavy
+				e.stun_t = Defs.PIKE_PUSH["stun"] * heavy
+				e.phase = ""
+				e.take_damage(Defs.PIKE_PUSH["damage"], self)
+				game.spawn_effect("smoke", e.position + Vector2(0, -4), 1.5).modulate = Color(0.85, 0.75, 0.6, 0.7)
 
 
 # ------------------------------------------------------------------ workers
@@ -769,6 +850,8 @@ func _anim_name() -> String:
 	var moving := velocity.length() > 10.0
 	match kind:
 		"musketeer":
+			if mode == "bayonet":
+				return "melee" if phase != "" else ("walk" if moving else "idle")
 			if phase == "aim":
 				return "aim"
 			if phase == "strike":
@@ -852,7 +935,17 @@ func _anim_name() -> String:
 	return "walk" if moving else "idle"
 
 
+## Animation runs at most 15 times a second, and not at all for units nobody can see.
 func _animate(delta: float) -> void:
+	_anim_dt += delta
+	if _anim_dt < 0.066 and not dead:
+		return
+	if not dead and (not visible or not game.view_rect.has_point(position)):
+		if _anim_dt > 0.5:
+			_anim_dt = 0.0     # (keeps the clock from running away)
+		return
+	delta = _anim_dt
+	_anim_dt = 0.0
 	_set_anim(_anim_name(), false)
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[kind]["frames"].get(key, 1)
@@ -866,7 +959,7 @@ func _animate(delta: float) -> void:
 		"death":
 			fps = 7.0
 			loop = false
-		"aim", "fire", "thrust", "brace", "attack":
+		"aim", "fire", "thrust", "brace", "attack", "melee":
 			fps = 9.0
 			loop = false
 		"burrow":
@@ -916,9 +1009,7 @@ func _animate(delta: float) -> void:
 	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
 	if kind == "grub" and anim == "burrow" and n > 3:
 		sprite.frame = clampi(2 + int(_bob_t * 6.0) % (n - 2), 0, sprite.hframes - 1)
-	# One-frame idles breathe instead of standing frozen.
-	var breathe := anim == "idle" and n <= 1 and not dead and kind != "tesla_cart"
-	sprite.scale.y = 1.0 + (0.03 * sin(_bob_t * 2.6 + float(get_instance_id() % 7)) if breathe else 0.0)
+	sprite.scale.y = 1.0
 	if kind == "cannon":
 		_animate_cannon(delta)
 
@@ -981,8 +1072,7 @@ func _animate_cannon(delta: float) -> void:
 	match anim:
 		"move":
 			var k := _gun_t * 9.0
-			sprite.position.y = -absf(sin(k)) * 1.6
-			sprite.rotation = sin(k * 0.5) * 0.035 * (1.0 if facing.x >= 0.0 else -1.0)
+			sprite.rotation = sin(k * 0.5) * 0.02 * (1.0 if facing.x >= 0.0 else -1.0)
 			if int(_gun_t * 4.0) != int((_gun_t - delta) * 4.0) and randf() < 0.5:
 				var fx := game.spawn_effect("dust", global_position - facing * 16.0 + Vector2(randf_range(-6, 6), randf_range(-2, 2)), 1.6)
 				fx.scale = Vector2(0.3, 0.3)

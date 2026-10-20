@@ -11,6 +11,7 @@ var damage := 30.0
 var splash := 40.0
 var team := 0
 var shooter: Entity
+var round_shot := false
 var sprite: Sprite2D
 
 
@@ -30,5 +31,8 @@ func _physics_process(delta: float) -> void:
 	var dh := cos(f * PI) * PI * from.distance_to(to) * 0.18
 	sprite.rotation = ((to - from) - Vector2(0, dh)).angle() + PI
 	if f >= 1.0:
-		game.explode(to, damage, splash, team, shooter)
+		if round_shot:
+			game.round_shot_land(from, to, damage, team, shooter)
+		else:
+			game.explode(to, damage, splash, team, shooter)
 		queue_free()

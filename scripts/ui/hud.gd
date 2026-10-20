@@ -68,8 +68,16 @@ func toast(t: String, sound := true) -> void:
 			Sfx.announce(fac, "no_supply", 5.0)
 
 
+var _redraw_t := 0.0
+
+
 func _process(delta: float) -> void:
 	_msg_t = maxf(_msg_t - delta, 0.0)
+	# the HUD changes slowly: redraw 20 times a second (and at once after a touch or click)
+	_redraw_t -= delta
+	if _redraw_t > 0.0:
+		return
+	_redraw_t = 0.05
 	if not size.is_equal_approx(get_viewport_rect().size / ui_scale) or ui_scale != Settings.ui_scale_now():
 		_fit()
 	queue_redraw()
@@ -161,6 +169,7 @@ func _hud_has(p: Vector2) -> bool:
 func _input(event: InputEvent) -> void:
 	if game == null or game.over:
 		return
+	_redraw_t = 0.0
 	if ui_scale != 1.0 and (event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouse):
 		event = event.xformed_by(Transform2D().scaled(Vector2.ONE / ui_scale))
 	if event is InputEventScreenTouch:
@@ -348,6 +357,7 @@ func _build_card() -> Array:
 				page = "advanced"
 				build_page = 0, true, "", ""])
 		else:
+			_ability_buttons(list, units)
 			list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 		if has_lab:
 			if units.any(func(u: Unit) -> bool: return u.can_gather()):
@@ -394,10 +404,36 @@ func _build_card() -> Array:
 	return list
 
 
+## Crown abilities for the selected soldiers. Each button switches all of that kind.
+func _ability_buttons(list: Array, units: Array) -> void:
+	var muskets := units.filter(func(u: Unit) -> bool: return u.kind == "musketeer")
+	if not muskets.is_empty():
+		var bay: bool = muskets.any(func(u: Unit) -> bool: return u.mode != "bayonet")
+		list.append(["musketeer", "BAYONETS" if bay else "MUSKETS", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "musketeer":
+					u.set_bayonet(bay), true, "", ""])
+	var pikes := units.filter(func(u: Unit) -> bool: return u.kind == "pikeman")
+	if not pikes.is_empty():
+		var on: bool = pikes.any(func(u: Unit) -> bool: return u.push_auto)
+		list.append(["pikeman", "> PUSH" if on else "PUSH", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "pikeman":
+					u.push_auto = not on, true, "", ""])
+	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
+	if not guns.is_empty():
+		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")
+		list.append(["cannon", "CANISTER" if can else "ROUND SHOT", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "cannon":
+					u.set_canister(can), true, "", ""])
+
+
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
-	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P"}
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P",
+	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -661,6 +697,9 @@ func _draw_panel(font: Font) -> void:
 		var info := ""
 		if e is Unit:
 			name = (e as Unit).d["name"]
+			var tags: Array = (e as Unit).d.get("tags", [])
+			if not tags.is_empty():
+				name += "  ·  " + " ".join(tags.map(func(x: String) -> String: return x.capitalize()))
 			info = (e as Unit).d["about"]
 			var uu := e as Unit
 			if uu.order == "gather" and uu.home_mine is Building:
@@ -812,7 +851,16 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 	var title: String = String(it[1]).trim_prefix("> ")
 	var body := ""
 	var k: String = it[0]
-	if Defs.UNITS.has(k) and title == Defs.UNITS[k]["name"].to_upper():
+	const ABOUT := {
+		"BAYONETS": "Fix bayonets: fight hand to hand, no powder used. Can't hit flyers.",
+		"MUSKETS": "Back to muskets: long-range volleys (each shot burns powder).",
+		"PUSH": "Pike push (automatic when ready, every 7 s): the thrust shoves the enemy back and staggers it. Click to switch on or off.",
+		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units. 2 powder a shot.",
+		"ROUND SHOT": "Load round shot: long range; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. 3 powder.",
+	}
+	if ABOUT.has(title):
+		body = ABOUT[title]
+	elif Defs.UNITS.has(k) and title == Defs.UNITS[k]["name"].to_upper():
 		var u: Dictionary = Defs.UNITS[k]
 		title = u["name"]
 		body = u["about"]
@@ -820,6 +868,9 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		if u.has("cost2"):
 			cost += " + %d %s" % [u["cost2"], _res()[1].to_lower()]
 		title += "   (%s, supply %d)" % [cost, int(u["supply"]) * int(u.get("spawn", 1))]
+		var tg: Array = u.get("tags", [])
+		if not tg.is_empty():
+			body = "[%s] " % " ".join(tg.map(func(x: String) -> String: return x.capitalize())) + body
 	elif Defs.BUILDINGS.has(k) and page in ["build", "advanced"]:
 		var bd: Dictionary = Defs.BUILDINGS[k]
 		title = "%s   (%d %s)" % [bd["name"], bd["cost"], _res()[0].to_lower()]

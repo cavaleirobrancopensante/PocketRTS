@@ -35,6 +35,8 @@ func _physics_process(delta: float) -> void:
 	_build_up()
 	_produce()
 	_army()
+	if difficulty >= 1:
+		_abilities()
 	if difficulty >= 2:
 		_micro()
 	if _clock():
@@ -494,6 +496,32 @@ func _enemy_base() -> Vector2:
 	if best == Vector2.INF:
 		return Vector2(game.starts[enemy]) * Defs.TILE
 	return best
+
+
+# ------------------------------------------------------------------ abilities (Normal and up)
+
+## Bayonets when the powder runs dry; canister when a crowd closes on a cannon.
+func _abilities() -> void:
+	if not _crown():
+		return
+	var powder := _res2()
+	for u in game.army(team):
+		if u.kind == "musketeer":
+			if powder < 4.0:
+				u.set_bayonet(true)
+			elif powder > 25.0:
+				# fix bayonets when the enemy is already on top of us
+				var close := 0
+				for o in game.units_near(u.position, 40.0):
+					if game.hostile(o.team, team) and not o.dead and float(o.d["range"]) < 50.0:
+						close += 1
+				u.set_bayonet(close >= 2 and difficulty >= 2)
+		elif u.kind == "cannon":
+			var crowd := 0
+			for o in game.units_near(u.position, Defs.CANISTER["range"] + 20.0):
+				if game.hostile(o.team, team) and not o.dead and not o.is_air():
+					crowd += 1
+			u.set_canister(crowd >= 3)
 
 
 # ------------------------------------------------------------------ micro (Hard and Brutal)

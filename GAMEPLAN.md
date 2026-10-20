@@ -357,3 +357,34 @@ Online play between friends first (1v1, 2v2, co-op against the AI); ranked play 
 - **In-game text chat.** Enter (PC) or a chat button (mobile) opens a line; all / allies toggle; messages fade in the corner; quick-chat buttons on mobile ("Attack!", "Help!", "gg").
 - **Save replay.** A SAVE REPLAY button on the end screen writes the command log + seed + lobby setup (a few KB) to user://replays/. A REPLAYS screen plays them back at 1x/2x/4x with fog off and player switching.
 - **Cheating.** Lockstep clients know the whole map, so a modded client could remove the fog. That's acceptable between friends.
+
+## Animation prompts (round 3): fixing the Crown infantry and the cannon crew
+
+All three sheets use the same rules as before:
+- 16-bit SNES/NES-style pixel art in the current style.
+- Coat pieces in pure team red (#FF0000, shaded with #960000) so the team colour can be swapped in.
+- A flat single-colour background (slate #34404F), with no gradient, shadows or text.
+- Each row is one animation in one direction; frames sit in a grid with equal spacing and the figure the same size in every frame.
+- Directions as rows: south, south-east, east, north-east, north. The game mirrors the west-facing ones.
+
+**1. Pikeman (fixes the crooked pike and the shrinking pike).** "Pixel-art sprite sheet of a 17th-century pikeman, steel morion helmet and breastplate, red coat, brown boots, carrying an 18-foot pike. The pike is ONE perfectly straight line and keeps EXACTLY the same length in every frame. Rows:
+- walk: 6 frames, pike sloped over the right shoulder, tip up and back, the butt held low in the right hand, legs clearly stepping.
+- idle: 2 frames, pike upright, butt on the ground.
+- brace: 1 frame, pike levelled forward at chest height, butt against the right foot.
+- thrust: 3 frames: draw back (pike pulled back but still full length), lunge forward, recover.
+- death: 3 frames.
+Each in the five directions."
+
+**2. Musketeer (fixes the musket that shrinks).** "Pixel-art sprite sheet of a 17th-century musketeer, steel morion helmet, red coat, bandolier, brown boots, with a long matchlock musket. The musket is the SAME length in every frame, as long as in the firing pose (about the soldier's height). Rows:
+- walk: 6 frames, musket on the left shoulder, barrel pointing up and back, legs clearly stepping.
+- idle: 2 frames, musket butt on the ground beside him.
+- aim: 3 frames, raising the musket to the shoulder.
+- fire: 3 frames, flash and smoke from the muzzle.
+- reload: 8 frames, ramrod down the barrel.
+- melee: 3 frames, bayonet fixed on the muzzle, a lunge forward.
+- death: 3 frames.
+Each in the five directions."
+
+**3. Field cannon crew pushing (so the gun walks instead of bobbing).** "Pixel-art sprite sheet of a bronze field cannon on a wooden carriage pushed by two red-coated gunners. Rows:
+- move: 6 frames, the gunners leaning into the wheels with their legs stepping, the wheels turned a little further in each frame.
+In the five directions, with the same scale and camera angle as the existing cannon sprite."

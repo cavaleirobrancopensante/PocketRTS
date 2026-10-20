@@ -83,84 +83,99 @@ const FACTIONS := {
 
 const UNITS := {
 	"labourer": {
+		"tags": ["light"],
 		"name": "Labourer", "hp": 45, "armor": 0, "speed": 74, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 5, "cooldown": 1.3, "radius": 9, "from": "town_hall",
 		"faction": "crown", "worker": true, "about": "Mines gold and builds. Weak in a fight.",
 	},
 	"musketeer": {
+		"tags": ["light"],
 		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 100, "time": 20.0, "supply": 2,
 		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks",
 		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Each shot burns powder.",
 	},
 	"pikeman": {
+		"tags": ["armored"],
 		"name": "Pikeman", "hp": 120, "armor": 2, "speed": 60, "cost": 75, "time": 16.0, "supply": 2,
 		"sight": 7, "range": 30, "damage": 13, "cooldown": 1.1, "radius": 11, "from": "barracks",
 		"bonus": {"cannon": 2.5, "brute": 1.6}, "faction": "crown", "about": "Tough melee. Wrecks cannons and brutes up close.",
 	},
 	"cannon": {
+		"tags": ["armored"],
 		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 40, "cost": 200, "time": 32.0, "supply": 4,
 		"sight": 9, "range": 300, "min_range": 70, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
 		"radius": 19, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
 		"about": "Long-range splash. Smashes buildings. Can't hit what's too close. Burns 3 powder a shot.",
 	},
 	"grub": {
+		"tags": ["light"],
 		"name": "Grub", "hp": 40, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 6, "range": 18, "damage": 4, "cooldown": 1.2, "radius": 8, "from": "hive",
 		"faction": "brood", "worker": true,
 		"about": "Hauls food from Feeding Pits to a Hive (longer hauls pay more). Turns into buildings.",
 	},
 	"raptor": {
+		"tags": ["light"],
 		"name": "Raptors", "hp": 36, "armor": 0, "speed": 100, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
 		"sight": 7, "range": 22, "damage": 6, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "hive",
 		"requires": "warren", "faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
 	},
 	"spitter": {
+		"tags": ["light"],
 		"name": "Spitters", "hp": 45, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
 		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
 		"acid": 3.0, "requires": "warren", "anti_air": true, "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
 	},
 	"brute": {
+		"tags": ["armored"],
 		"name": "Brute", "hp": 240, "armor": 2, "speed": 56, "cost": 150, "time": 22.0, "supply": 3,
 		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 20, "from": "hive",
 		"building_bonus": 1.6, "requires": "gorge_pit", "cost2": 20, "faction": "brood",
 		"about": "Huge horned tank. Charges in and knocks enemies back.",
 	},
 	"winder": {
+		"tags": ["light"],
 		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 5, "cooldown": 1.2, "radius": 12, "from": "clocktower",
 		"faction": "clockwork", "worker": true, "repairs": true,
 		"about": "Cranks Boilers for energy, starts buildings and repairs constructs and buildings.",
 	},
 	"gearknight": {
+		"tags": ["armored"],
 		"name": "Gearknight", "hp": 300, "armor": 3, "speed": 52, "cost": 170, "time": 24.0, "supply": 3,
 		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.4, "aim": 0.3, "radius": 19, "from": "assembly_works",
 		"regen": 1.5, "faction": "clockwork", "about": "Iron knight. Very hard to kill; slowly repairs itself.",
 	},
 	"bolt": {
+		"tags": ["armored"],
 		"name": "Bolt Automaton", "hp": 150, "armor": 1, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
 		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 15, "from": "assembly_works",
 		"pierce": true, "anti_air": true, "faction": "clockwork", "about": "Crossbow bolts pierce up to three enemies in a line.",
 	},
 	"steam_walker": {
+		"tags": ["armored"],
 		"name": "Steam Walker", "hp": 380, "armor": 2, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
 		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "assembly_works",
 		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
 		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
 	},
 	"missionary": {
+		"tags": ["light"],
 		"name": "Missionary", "hp": 60, "armor": 0, "speed": 62, "cost": 125, "time": 20.0, "supply": 1,
 		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 10, "from": "church",
 		"medic": true, "per": "church", "faction": "crown",
 		"about": "Bandages wounded soldiers back to full health. Can't be hurt unless near enemy buildings. One per Church.",
 	},
 	"skywing": {
+		"tags": ["light"],
 		"name": "Skywing", "hp": 75, "armor": 0, "speed": 118, "cost": 100, "cost2": 40, "time": 16.0, "supply": 2,
 		"sight": 9, "range": 24, "damage": 9, "cooldown": 1.0, "aim": 0.15, "radius": 13, "from": "hive",
 		"air": true, "anti_air": true, "requires": "roost", "faction": "brood",
 		"about": "Flies over cliffs and walls. Only ranged units can hit it. Costs essence.",
 	},
 	"tesla_cart": {
+		"tags": ["armored"],
 		"name": "Tesla Cart", "hp": 240, "armor": 2, "speed": 50, "cost": 190, "time": 28.0, "supply": 3,
 		"sight": 9, "range": 170, "damage": 14, "cooldown": 1.6, "aim": 0.2, "radius": 18, "from": "assembly_works",
 		"tesla": true, "anti_air": true, "requires": "charging_pylon", "faction": "clockwork",
@@ -283,6 +298,18 @@ static func is_worker(kind: String) -> bool:
 
 ## Basic structures (halls, supply, economy) go on the BUILD page; production and tech
 ## buildings on ADVANCED.
+## Crown abilities.
+const PIKE_PUSH := {"cooldown": 7.0, "force": 260.0, "stun": 0.7, "damage": 4.0}
+const BAYONET := {"range": 26.0, "damage": 11.0, "cooldown": 1.2, "aim": 0.2, "bonus": {"cannon": 2.0, "spitter": 1.3}}
+const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "powder": 2, "cone": 0.82, "vs_light": 1.5}
+## Round shot: the ball tears through a line of men past where it lands (bonus against
+## armour); only a little splash where it hits.
+const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 24.0, "splash_dmg": 0.35}
+
+
+static func has_tag(kind: String, tag: String) -> bool:
+	return UNITS.has(kind) and (UNITS[kind].get("tags", []) as Array).has(tag)
+
 const ADVANCED := ["barracks", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "charging_pylon"]
 
 

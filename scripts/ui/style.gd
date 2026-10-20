@@ -145,11 +145,22 @@ static func chosen(b: Button, col := TRIM) -> void:
 
 # ------------------------------------------------------------------ drawing (HUD)
 
+static var _boxes := {}
+
+
+## The same style box every frame instead of a new one (the HUD draws dozens a frame).
+static func cached_box(bg: Color, border: Color, bw: int, radius: int, shadow: int) -> StyleBoxFlat:
+	var key := "%s|%s|%d|%d|%d" % [bg.to_html(), border.to_html(), bw, radius, shadow]
+	if not _boxes.has(key):
+		var sb := box(bg, border, bw, radius, 0.0)
+		sb.shadow_size = shadow
+		_boxes[key] = sb
+	return _boxes[key]
+
+
 ## A rounded panel with brass trim, drawn on any CanvasItem.
 static func draw_panel(ci: CanvasItem, r: Rect2, accent_col := Color(0, 0, 0, 0), alpha := 0.88) -> void:
-	var sb := box(Color(PANEL.r, PANEL.g, PANEL.b, alpha), TRIM_DIM, 2, 9, 0.0)
-	sb.shadow_size = 6
-	sb.draw(ci.get_canvas_item(), r)
+	cached_box(Color(PANEL.r, PANEL.g, PANEL.b, alpha), TRIM_DIM, 2, 9, 6).draw(ci.get_canvas_item(), r)
 	if accent_col.a > 0.0:
 		ci.draw_rect(Rect2(r.position + Vector2(10, 2), Vector2(r.size.x - 20, 2)), Color(accent_col.r, accent_col.g, accent_col.b, 0.8))
 
@@ -167,6 +178,4 @@ static func draw_button(ci: CanvasItem, r: Rect2, hover := false, on := false, e
 	elif hover:
 		bg = Color(0.23, 0.19, 0.13, 0.95)
 		bd = TRIM
-	var sb := box(bg, bd, 2, 7, 0.0)
-	sb.shadow_size = 2
-	sb.draw(ci.get_canvas_item(), r)
+	cached_box(bg, bd, 2, 7, 2).draw(ci.get_canvas_item(), r)
