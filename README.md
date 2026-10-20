@@ -2,7 +2,7 @@
 
 **Play in your browser: https://cavaleirobrancopensante.github.io/PocketRTS/**
 
-A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a 1v1 **skirmish** against the computer: choose your faction and colour, the enemy's, the difficulty and the map (or set Player 1 to the computer and watch). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
+A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a **skirmish** with up to four players: 1v1, 2v2, you against two or three computers, or a free-for-all. Each slot picks a player (you or an Easy, Normal, Hard or **Brutal** AI), a faction, a colour and a team. If nobody is "you", the computers play and you watch. The Brutal AI micro-manages every fight and cheats (+50% income). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
 
 See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and all the art prompts.
 
@@ -43,7 +43,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - Army cap 80.
 
 ### Maps
-Nine maps, chosen in Skirmish (or at random). Every map is mirrored, so both sides get the same ground. There are three layouts:
+Nine maps, chosen in Skirmish (or at random). Every map is mirrored, so both sides get the same ground. With three or four players it is mirrored both ways and everyone starts in a corner, with allies on the same side. There are three layouts:
 
 - **Crossroads**: open ground with a hill in the middle.
 - **Highlands**: each main base sits on high ground with a single ramp, so it's hard to rush.
@@ -100,7 +100,9 @@ Everything is synthesised, with no samples. `tools/music/compose.py` holds the h
 - **The Clockwork**: *Winding the Spring* (music box, dulcimer, ticks; it slows down at the end as the spring runs out) and *Brass and Steam* (7/8 machinery, anvils, steam). It is played on a dead-straight grid, with no human timing.
 - A victory sting per faction and a defeat sting.
 
-In a match you hear your faction's calm piece. It cross-fades to the battle piece when fighting heats up near your units, and goes back after things are quiet. Music and sound can each be switched on or off on the menu and in the pause menu.
+In a match a shuffled playlist of your faction's calm pieces plays, with an enemy faction's piece now and then. It cross-fades to battle music when fighting heats up near your units, and goes back after things are quiet. **Settings > Music player** lets you listen to every piece and choose the playlist: your faction plus a little of the enemy's (default), your faction only, everything, or only the pieces you tick.
+
+Sound effects and voices live in `assets/audio/` and `assets/voice/`. [AUDIO_PROMPTS.md](AUDIO_PROMPTS.md) lists every file the game looks for, so a better recording can replace any sound just by taking its name. Variants `_1`, `_2`, `_3` are picked at random.
 
 ## Art pipeline
 
