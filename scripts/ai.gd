@@ -19,6 +19,9 @@ var _wave_target := Vector2.ZERO
 var _saving := false            # holding gold back for an expansion
 var _escort: Array = []         # Clockwork: Winders that follow the army to repair it
 var _reserve := 0               # gold held back for the next economy structure
+var _swarm: Array = []          # Brood: the groups of a wave, each [units, staging point]
+var _swarm_phase := ""          # "", "flank" (getting into position), "strike"
+var _swarm_t := 0.0
 var _no_room := {}              # economy kinds with no free spot, and when we looked
 
 
@@ -388,9 +391,15 @@ func _army() -> void:
 	# Defend: enemies near our buildings get everyone's attention.
 	var threat := _threat()
 	if threat != Vector2.INF:
+		# attacked from several sides at once: each soldier goes to the nearest raid
+		var spots := _threats()
 		for u in army:
 			if u.order != "attack" and (u.target == null or u.order == "idle"):
-				u.cmd_move(threat + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+				var best: Vector2 = threat
+				for sp in spots:
+					if u.position.distance_to(sp) < u.position.distance_to(best):
+						best = sp
+				u.cmd_move(best + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 		# Workers pitch in when the base is being overrun and there's no army.
 		if army.size() < 3:
 			for u in game.workers(team):
@@ -398,8 +407,11 @@ func _army() -> void:
 					u.cmd_move(threat, true)
 		return
 	var sup := _army_supply(army)
-	if _brood() and _attack_at < 22:
-		_attack_at = 22     # a swarm waits until it's a swarm
+	if _brood() and _attack_at < 30:
+		_attack_at = 30     # a swarm waits until it's a swarm
+	if _brood():
+		_swarm_army(army, sup)
+		return
 	if not _attacking and sup >= _attack_at:
 		_attacking = true
 		_wave_target = _enemy_base()
@@ -430,6 +442,120 @@ func _army() -> void:
 				u.cmd_move(front + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
 			elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 				u.cmd_deploy()
+
+
+## Brood: a swarm never walks into the guns in one lump. Each wave splits into groups
+## that circle round to different sides of the target, wait until everyone is in place,
+## and then all go in at once. Hatchlings that come out mid-attack wait at home for the
+## next wave instead of trickling in one by one.
+func _swarm_army(army: Array, sup: int) -> void:
+	var hall: Array = _halls()
+	var front: Vector2 = hall[0].center().lerp(_enemy_base(), 0.15) if not hall.is_empty() else game.center_of_team(team)
+	# don't throw a small swarm at a much bigger army: wait until it's worth as much
+	var mine := 0.0
+	for u in army:
+		mine += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
+	var theirs := 0.0
+	var foe := _foe()
+	if foe >= 0:
+		for u in game.army(foe):
+			theirs += float(u.d["cost"])
+	var big_enough := mine >= theirs * 0.8 or sup >= 70
+	if _swarm_phase == "" and sup >= _attack_at and big_enough:
+		_attacking = true
+		_wave_target = _enemy_base()
+		_attack_at = mini(_attack_at + int(_lv([6, 8, 10])), 70)
+		if not game.demo and _foe() == game.human and randf() < 0.5:
+			Sfx.taunt(game.faction_of(team))
+		_plan_swarm(army)
+		_swarm_phase = "flank"
+		_swarm_t = 0.0
+	elif _swarm_phase != "":
+		_swarm_t += 1.0
+		var alive := 0
+		for g in _swarm:
+			g[0] = (g[0] as Array).filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+			alive += _army_supply(g[0])
+		if alive < 6:
+			_swarm_phase = ""
+			_swarm.clear()
+			_attacking = false
+		elif _swarm_phase == "flank":
+			# everyone in place (or it's taking too long, or we were spotted and hit): go
+			var ready := true
+			var hit := false
+			for g in _swarm:
+				var there := 0
+				for u in g[0]:
+					if u.position.distance_to(g[1]) < 200.0:
+						there += 1
+					if u.target != null:
+						hit = true
+				if there < (g[0] as Array).size() * 0.6:
+					ready = false
+			if ready or hit or _swarm_t > 40.0:
+				_swarm_phase = "strike"
+				_wave_target = _enemy_base()
+				for g in _swarm:
+					for u in g[0]:
+						u.cmd_move(_wave_target + Vector2(randf_range(-70, 70), randf_range(-70, 70)), true)
+		else:
+			_wave_target = _enemy_base()
+			for g in _swarm:
+				for u in g[0]:
+					if u.order == "idle" and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
+						u.cmd_move(_wave_target + Vector2(randf_range(-70, 70), randf_range(-70, 70)), true)
+	# everyone not in the wave gathers at home
+	var in_wave := {}
+	for g in _swarm:
+		for u in g[0]:
+			in_wave[u] = true
+	for u in army:
+		if in_wave.has(u):
+			continue
+		if u.order == "idle" and u.position.distance_to(front) > 160.0:
+			u.cmd_move(front + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+		elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
+			u.cmd_deploy()
+
+
+## Split the army into groups (two or three, mixed: every group gets its share of
+## raptors, spitters and brutes) and give each a spot on a different side of the target.
+func _plan_swarm(army: Array) -> void:
+	_swarm.clear()
+	var target := _wave_target
+	var home := game.center_of_team(team)
+	var n := 1
+	if army.size() >= 24:
+		n = 3
+	elif army.size() >= 10:
+		n = 2
+	var dir := (home - target).normalized()
+	var angles: Array = [0.0] if n == 1 else ([-1.1, 1.1] if n == 2 else [0.0, -1.3, 1.3])
+	var dist := 520.0
+	for a in angles:
+		var p: Vector2 = target + dir.rotated(a) * dist
+		var c: Vector2i = game.cell_of(p)
+		c = Vector2i(clampi(c.x, 1, game.W - 2), clampi(c.y, 1, game.H - 2))
+		c = game.nearest_free(c, 12)
+		if c.x < 0:
+			c = game.cell_of(target.lerp(home, 0.4))
+		_swarm.append([[], Vector2(c) * Defs.TILE + Vector2(16, 16)])
+	# deal the units out kind by kind so each group is a mix; slow casters go up the middle
+	var by_kind := {}
+	for u in army:
+		if not by_kind.has(u.kind):
+			by_kind[u.kind] = []
+		by_kind[u.kind].append(u)
+	var i := 0
+	for k in by_kind:
+		for u in by_kind[k]:
+			var gi := 0 if k == "spore_mother" else i % n
+			_swarm[gi][0].append(u)
+			i += 1
+	for g in _swarm:
+		for u in g[0]:
+			u.cmd_move(g[1] + Vector2(randf_range(-50, 50), randf_range(-50, 50)), false)
 
 
 ## Clockwork: two Winders walk behind the army and repair it (they repair whatever is
@@ -463,6 +589,20 @@ func _release_escort() -> void:
 		if is_instance_valid(u) and not u.dead:
 			u.cmd_stop()
 	_escort.clear()
+
+
+## Every place our buildings are under attack (one spot per raid, at least 300 px apart).
+func _threats() -> Array:
+	var out: Array = []
+	for b in game.buildings:
+		if b.team != team or b.dead:
+			continue
+		for u in game.units_near(b.center(), 330.0):
+			if game.hostile(u.team, team) and not u.dead and not u.off_field:
+				if out.all(func(p: Vector2) -> bool: return p.distance_to(u.position) > 300.0):
+					out.append(u.position)
+				break
+	return out
 
 
 func _threat() -> Vector2:

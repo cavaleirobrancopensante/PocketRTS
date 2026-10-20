@@ -243,8 +243,10 @@ func _brood(delta: float) -> void:
 		if swamp_r < target:
 			swamp_r = minf(target, swamp_r + delta / 1.2)
 			game.swamp_dirty = true
-		if uses_eggs() and eggs + queue.size() < Defs.EGGS_MAX:
-			egg_t += delta
+		# Eggs: the ones already hatching don't stop the Hive laying new ones, and every
+		# Clutch Mound makes it lay faster (a swarm's output grows with its economy).
+		if uses_eggs() and eggs < Defs.EGGS_MAX:
+			egg_t += delta * game.egg_rate(team)
 			if egg_t >= Defs.EGG_TIME:
 				egg_t = 0.0
 				eggs += 1

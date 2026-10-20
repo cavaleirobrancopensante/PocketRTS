@@ -652,6 +652,11 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 		return (position - e.center()).normalized() * speed   # back off
 	# Chase: straight when close and clear, otherwise path.
 	var goal := e.center() if e.is_unit() else e.rect().get_center()
+	# A swarm surrounds its prey: each Brood melee unit runs for its own side of the
+	# target, so one blast or cone can't catch them all.
+	if (kind == "raptor" or kind == "brute") and e is Unit:
+		var ang := float(get_instance_id() % 628) * 0.01
+		goal = (e as Unit).position + Vector2.from_angle(ang) * ((e as Unit).radius + radius + 4.0)
 	if is_air() or (position.distance_to(goal) < 140.0 and game.line_clear(position, goal)):
 		path = PackedVector2Array()
 		return (goal - position).normalized() * speed

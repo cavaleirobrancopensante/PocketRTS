@@ -873,6 +873,15 @@ func can_train(b: Building, k: String) -> String:
 	return ""
 
 
+## How fast a Brood player's Hives lay eggs: +10% for every Clutch Mound, up to +30%.
+func egg_rate(t: int) -> float:
+	var n := 0
+	for b in buildings:
+		if b.team == t and b.kind == "clutch_mound" and b.built and not b.dead:
+			n += 1
+	return 1.0 + minf(0.1 * n, 0.3)
+
+
 func _has_built(t: int, kind: String) -> bool:
 	for b in buildings:
 		if b.team == t and b.kind == kind and b.built and not b.dead:
