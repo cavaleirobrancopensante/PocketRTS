@@ -38,18 +38,17 @@ import re
 import sys
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 _argv, sys.argv = sys.argv, sys.argv[:1]          # import_round4 reads its own flags
 import import_round4 as R  # noqa: E402
 sys.argv = _argv
-from import_art import TEAM_DARK, TEAM_LIGHT  # noqa: E402
+from import_art import TEAM_DARK  # noqa: E402
 
 DIRS = ["s", "se", "e", "ne", "n"]
 ROW_OF = {"s": 0, "e": 1, "se": 2, "ne": 3, "n": 4}
-FLIP_LEAN = {"ne"}                 # drawn leaning the other way
 OUT = "assets/units/balloon"
 CONTACT = _argv[_argv.index("--contact") + 1] if "--contact" in _argv else None
 
@@ -741,8 +740,8 @@ def main():
     allb = [f for v in body.values() for f in v] + [f for v in death.values() for f in v]
     box = union_box(allb)
     x0, y0, x1, y1 = box
-    cell = (x1 - x0, y1 - y0)
-    anchor = (CAN_AX - x0, CAN_AY - y0)
+    cell = (int(x1 - x0), int(y1 - y0))
+    anchor = (int(CAN_AX - x0), int(CAN_AY - y0))
     counts = {}
     for (anim, d), fs in body.items():
         save(strip(fs, box), f"{OUT}/{anim}_{d}.png")
@@ -763,8 +762,8 @@ def main():
             gun[(k, d)] = [np.roll(np.roll(f, gw - g.waist, 0), gp - g.px, 1) for f in fs]
     gbox = union_box([f for v in gun.values() for f in v])
     gx0, gy0, gx1, gy1 = gbox
-    gcell = (gx1 - gx0, gy1 - gy0)
-    ganchor = (gp - gx0, Gunners.PAD + gw - gy0)
+    gcell = (int(gx1 - gx0), int(gy1 - gy0))
+    ganchor = (int(gp - gx0), int(Gunners.PAD + gw - gy0))
     gframes = {}
     for (k, d), fs in gun.items():
         save(strip(fs, gbox), f"{OUT}/gunner_{k}_{d}.png")

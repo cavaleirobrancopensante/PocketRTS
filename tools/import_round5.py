@@ -407,7 +407,7 @@ PLANS = {"ornithopter": plan_ornithopter, "bloater": plan_bloater}
 # ---------------------------------------------------------------- bloat cloud effect
 
 CLOUD_W = 150          # frame width; the game scales it to the 2.1 x 72 px zone anyway
-CLOUD_FILL = 124       # the cloud's width (2-98% of its gas) in it
+CLOUD_FILL = 112       # the cloud's width (2-98% of its gas) in it
 
 
 def build_cloud(S, row=0):
@@ -451,7 +451,7 @@ def build_cloud(S, row=0):
         yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
         cx, cy = (a * xx).sum() / a.sum() + 0.5, (a * yy).sum() / a.sum() + 0.5
         cents.append((cx, cy))
-        ys = np.flatnonzero((a / 255.0 > 0.1).any(1))
+        ys = np.flatnonzero((a / 255.0 > 0.35).any(1))
         hs.append(max(cy - ys.min(), ys.max() + 1 - cy))
     ks = [CLOUD_FILL * z / float(wd) for z, wd in zip((0.9, 0.95, 1.0), widths)]
     # the thin first frame is not blown up more than 1.4x the last one's scale (it would
@@ -465,7 +465,10 @@ def build_cloud(S, row=0):
     for i, f in enumerate(own):
         under = sum(own[j] for j in range(3) if j != i) * 0.25
         a = f[..., 3:4] / 255.0
-        frames.append(L.finish(f + under * (1 - a)))       # premultiplied 'over'
+        fin = L.finish(f + under * (1 - a))                # premultiplied 'over'
+        fin[:2] = fin[-2:] = 0                             # droplets cut by the frame edge
+        fin[:, :2] = fin[:, -2:] = 0
+        frames.append(fin)
     strip = np.concatenate(frames, 1)
     os.makedirs("assets/effects", exist_ok=True)
     Image.fromarray(strip, "RGBA").save("assets/effects/bloat_cloud.png")
@@ -549,7 +552,20 @@ def build_building():
     icon, _ = to_game(img, 56 / max(img.shape[:2]), bgc, "blue_smoke")
     r4.glow_kind = _glow4
     make_icon(icon, kind)
+    flatten_icon(kind)
     return out
+
+
+def flatten_icon(kind):
+    """make_icon pastes glow pixels with their partial alpha over its opaque backdrop;
+    blend them into it instead (the other icons are fully opaque)."""
+    path = f"assets/icons/{kind}.png"
+    a = np.array(Image.open(path).convert("RGBA")).astype(float)
+    al = a[..., 3:4] / 255.0
+    bg = np.array([28, 30, 30], float)
+    a[..., :3] = a[..., :3] * al + bg * (1 - al)
+    a[..., 3] = 255
+    Image.fromarray(a.round().astype(np.uint8), "RGBA").save(path)
 
 
 def write_building_size(kind, size):
@@ -636,6 +652,7 @@ def build_unit(kind):
         counts[key] = strip.shape[1] // cell[0]
     r4.ICONS.update(ICONS)
     r4.make_unit_icon(S, kind)
+    flatten_icon(kind)
     print(f"{kind}: cell {cell[0]}x{cell[1]}, anchor {anchor}")
     print("  " + ", ".join(f"{k} {n}" for k, n in sorted(counts.items())))
     return S, (cell, anchor, counts)
