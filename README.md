@@ -70,17 +70,25 @@ Six biomes: grass, autumn, desert, snow, marsh and volcanic (lava lakes). Two ma
 - Each economy structure shows its crew as **X/Y** (green when full). Farms also show a harvest bar.
 - When a match ends, the **battle report** shows income and spending, units trained, killed and lost, structures built and razed, damage dealt, value destroyed, peak army and top killers, plus army, income and worker graphs over time.
 
-### Touch
-- Tap a unit to select it; double-tap to select all of that type on screen.
-- Drag on the map to box-select (soldiers are picked over labourers).
-- Tap the ground to move; soldiers attack anything on the way. Tap an enemy to attack it, your own Farm, Mill, Pit or Boiler to put workers on it, your own unfinished building to help build it.
-- Long-press the ground to move without stopping to fight.
-- Two fingers to pan, pinch to zoom; tap or drag on the minimap to jump.
-- **ARMY / IDLE / HALL** select quickly. **Groups 1–3**: tap an empty one to save the selection, tap to select, hold to overwrite.
-- Command card (bottom right): Move, Attack, Stop, Hold, Build, Work (Deploy/Pack for Tesla Carts); buildings show what they train, Rally and Cancel.
+### Computer or mobile
+On the first start the game asks where you are playing. The two control schemes are separate, and you can switch from the menu (PLAYING ON).
 
-### Mouse and keyboard
-Left click selects (click ground to deselect), left drag box-selects, right click commands, wheel zooms, middle drag or arrow keys pan. Keys: **A** attack, **M** move, **S** stop, **H** hold, **B** build, **1–3** select group, **Ctrl+1–3** save group, **Esc** cancel.
+### Computer controls
+- **Left click** selects; **Shift**-click adds or removes; **Ctrl**-click or double-click selects every unit of that type on screen. **Left drag** box-selects (Shift adds).
+- **Right click** commands: move or attack, put workers on a Farm, Mill, Pit or Boiler, help build, or set a building's rally point. Right-click on the minimap sends units there.
+- **Building:** the ghost follows the mouse. Click to place, **Shift**-click to place another, right click or **Esc** cancels.
+- **Hotkeys:** every command-card button shows its letter. Hover for cost and details. **B** build menu (then the building's letter, e.g. **F** Farm), **A** attack, **M** move, **S** stop, **H** hold, **G** work, **D** deploy or pack, **R** rally, **X** back or cancel, **N** more.
+- **1–9** select a group, **Ctrl+1–9** save one, **Shift+1–9** add it; press twice to jump to it. **F1** idle worker, **F2** army, **F3** hall, **Space** jumps to the selection.
+- **Camera:** mouse wheel zooms; pan with the screen edges, the arrow keys or a middle-button drag.
+
+### Mobile controls
+- Tap a unit to select it; double-tap to select all of that type on screen.
+- Drag on the map to box-select (soldiers are picked over workers). The **DRAG: BOX / PAN** switch (top right) makes a one-finger drag move the view instead.
+- Tap the ground to move (soldiers fight anything on the way). Tap an enemy to attack, your own Farm, Mill, Pit or Boiler to put workers on it, your own unfinished building to help build it.
+- Long-press the ground to move without stopping to fight.
+- Two fingers pan and pinch to zoom; tap or drag the minimap to jump.
+- **ARMY / IDLE / HALL** select quickly. **Groups 1–3**: tap an empty one to save the selection, tap to select, hold to overwrite.
+- Play it held sideways: in portrait the game pauses and asks you to turn the phone.
 
 ## Music and sound
 

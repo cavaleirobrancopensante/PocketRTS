@@ -38,8 +38,8 @@ const ESSENCE_PER_SUPPLY := 3     # a body falling near a Bone Midden
 const MIDDEN_RANGE := 12          # tiles
 const MIDDEN_TRICKLE := 0.15      # essence per second per midden
 # Clockwork: Winders crank Boilers for energy, split between ore, assembly and wind.
-const ENERGY_PER_WINDER := 4.0
-const ENERGY_HALL := 4.0
+const ENERGY_PER_WINDER := 3.5
+const ENERGY_HALL := 3.0
 const ORE_PER_ENERGY := 1.8
 const CRUSHER_CAP := 12.0         # ore per second one Ore Crusher can handle
 const SPLITS := {

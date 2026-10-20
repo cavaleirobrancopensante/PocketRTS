@@ -298,7 +298,9 @@ func _find_spot(kind: String) -> Vector2i:
 # ------------------------------------------------------------------ army
 
 func _produce() -> void:
-	if _saving or (_reserve > 0 and _gold() < _reserve + 60):
+	# Saving up only pauses the army once there is a minimum army to hold the line.
+	var minimum := mini(40, 6 + int(game.clock / 20.0))
+	if (_saving or (_reserve > 0 and _gold() < _reserve + 60)) and _army_supply(game.army(team)) >= minimum:
 		return
 	var army := game.army(team)
 	if _clock():
