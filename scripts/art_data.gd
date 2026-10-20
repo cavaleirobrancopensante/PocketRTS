@@ -68,7 +68,7 @@ const UNITS := {
 		"walk_s": 3,
 		"walk_se": 4,
 	}},
-	"pikeman": {"cell": Vector2i(64, 59), "anchor": Vector2(32, 56), "frames": {
+	"pikeman": {"cell": Vector2i(72, 67), "anchor": Vector2(36, 64), "frames": {
 		"brace_e": 1,
 		"brace_n": 1,
 		"brace_ne": 1,

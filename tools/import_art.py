@@ -34,7 +34,7 @@ UNITS = {
     "pikeman": {"rows": ["idle", "walk", "brace", "thrust", "skip", "death"], "dilate": 1,
                 "last_only": ["brace", "thrust"], "jab": True,
                 "by_coat": {"walk": "right", "brace": "left", "thrust": "left"},
-                "mask": "flat_flood", "panels": [0, 295, 585, 910, 1218, 1536], "walk_height": 44,
+                "mask": "flat_flood", "panels": [0, 295, 585, 910, 1218, 1536], "walk_height": 50,
                 "nosplit": True,
                 "drop": [("walk", "s", 2), ("walk", "se", 2), ("brace", "n", 0), ("thrust", "n", 0),
                          ("thrust", "n", 1), ("death", "s", 0), ("death", "se", 0), ("death", "e", 0),
