@@ -256,6 +256,14 @@ def death_clock():    # spring snaps, parts clatter
     return mix(snap, out, hiss)
 
 
+def zap():            # Tesla arc: crackling electric snap
+    d = 0.45
+    t = T(d)
+    buzz = np.sign(np.sin(2 * np.pi * 95 * t)) * 0.3 + np.sign(np.sin(2 * np.pi * 143 * t)) * 0.2
+    crack = hp(noise(d), 2500) * (rng.random(int(SR * d)) > 0.86)
+    return (buzz * 0.6 + crack) * env(d, 0.002, 7)
+
+
 def collapse():       # a building falls
     d = 1.6
     t = T(d)
@@ -267,7 +275,7 @@ def collapse():       # a building falls
 
 SOUNDS = {f.__name__: f for f in [clash, bite, gear_hit, acid, bolt, steam, roar, hatch, ready_crown, ready_brood,
                                   ready_clock, built_crown, built_brood, built_clock, ratchet, burrow,
-                                  death_crown, death_brood, death_clock, collapse]}
+                                  death_crown, death_brood, death_clock, zap, collapse]}
 
 if __name__ == "__main__":
     for nm in sys.argv[1:] or list(SOUNDS):

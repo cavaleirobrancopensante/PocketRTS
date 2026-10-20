@@ -17,6 +17,8 @@ var seen_by_human := false     # enemy buildings stay on screen once spotted
 var flash := 0.0
 var last_hit_by := ""           # kind that last hurt us, for battle stats
 var last_hit_team := -1
+var off_field := false             # a soldier being bandaged: off the field for a moment
+var cross_t := 0.0              # just bandaged: can't be bandaged again yet
 var acid_t := 0.0               # Spitter acid: burns and strips 2 armour while > 0
 var _mat: ShaderMaterial
 
@@ -31,6 +33,15 @@ func is_building() -> bool:
 
 func is_mine() -> bool:
 	return false
+
+
+func is_air() -> bool:
+	return false
+
+
+## Missionaries can't be hurt away from enemy buildings.
+func untouchable() -> bool:
+	return off_field or (kind == "missionary" and not game.near_enemy_building(team, global_position, Defs.MISSIONARY_DANGER))
 
 
 func alive() -> bool:
@@ -62,7 +73,7 @@ func team_material() -> ShaderMaterial:
 
 
 func take_damage(amount: float, _from: Entity) -> void:
-	if dead:
+	if dead or untouchable():
 		return
 	var arm := armor - (2.0 if acid_t > 0.0 else 0.0)
 	var dmg := minf(hp, maxf(1.0, amount - maxf(arm, 0.0)))

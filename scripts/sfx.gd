@@ -5,7 +5,7 @@ extends Node
 const NAMES := ["musket", "cannon", "boom", "click", "done", "error", "alarm",
 	"clash", "bite", "gear_hit", "acid", "bolt", "steam", "roar", "hatch",
 	"ready_crown", "ready_brood", "ready_clock", "built_crown", "built_brood", "built_clock",
-	"ratchet", "burrow", "death_crown", "death_brood", "death_clock", "collapse"]
+	"ratchet", "burrow", "death_crown", "death_brood", "death_clock", "collapse", "zap"]
 const SHORT := {"crown": "crown", "brood": "brood", "clockwork": "clock"}
 static var me: Sfx
 var camera: Camera2D

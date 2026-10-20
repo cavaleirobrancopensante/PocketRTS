@@ -10,39 +10,50 @@ See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and al
 
 Destroy every enemy building to win.
 
-### The Crown
+There are **no resources on the map**: the map is about geography, chokes and town-hall spots. Each faction builds its own economy, and every Town Hall, Hive or Clocktower allows only so many economy structures, so you grow by taking and holding expansions. Each faction's economy works differently.
 
-- **Labourers** mine gold and carry it to the **Town Hall**. Train more there.
-- **Cottages** add supply (8 each, max 100).
-- **Barracks** train **Musketeers** (ranged, long reload) and **Pikemen** (tough melee, deal heavy damage to cannons).
-- The **Foundry** (needs a Barracks) casts **Field Cannons**: long range, splash damage, smash buildings, can't fire at point-blank.
+### The Crown: dig in
+- **Labourers** work **Farms** (up to 3 each). A farm ripens into a **280-gold harvest** all at once, faster with more hands (about 40 s with a full crew).
+- The **Powder Mill** (up to 2 labourers) makes **black powder**. Every musket shot burns 1 and every cannon shot 3: no powder, no fire.
+- Each **Town Hall** allows 4 Farms and 1 Powder Mill within 14 tiles. **Cottages** add supply (max 100).
+- **Barracks**: **Musketeers** and **Pikemen**. **Foundry**: **Field Cannons**. **Church**: one **Missionary** per church.
+- The **Missionary** walks to a wounded soldier and takes him off the field to bandage him (4 s). The soldier comes back at full health with a cross over his head and can't be bandaged again for 5 s. The Missionary can't be hurt unless he is within 8 tiles of an enemy building.
 
-### The Brood
-- **Grubs** burrow into a gold mine on your swamp and feed where they sit (up to 8 per mine, no trips, half damage while burrowed).
-- A grub **turns into** a building and is used up. Brood structures (except Hives) must grow on your swamp.
-- Every unit hatches from the **Hive's eggs** (up to 5, one every 6 s), several to an egg: **Raptors** (3 per egg, fast, flimsy), **Spitters** (2 per egg, acid strips armour), **Brutes** (charge and knock back; need a Gorge Pit).
-- **Swamp** spreads from Brood structures: Brood units run faster and heal on it. Brood structures regrow damage.
-- The swarm's army cap is **160** (the Crown's is 100).
+### The Brood: the swarm
+- **Grubs** haul food from **Feeding Pits** (up to 5 each) to the nearest **Hive**. The farther the pit is from the Hive, the richer each load (it grows with the square of the distance), so spreading swamp pays.
+- Pits and every Brood structure except Hives must grow on your swamp. **Spore Vents** spread it far. Each Hive allows 3 Feeding Pits and 1 Bone Midden.
+- A grub **turns into** a building and is used up.
+- **Bone Middens** turn every body that falls nearby (friend or foe) into **essence**. Brutes and Skywings cost essence.
+- Every unit hatches from the **Hive's eggs**: **Raptors** (3 per egg), **Spitters** (2 per egg), **Brutes** (need a Gorge Pit) and **Skywings** (need a Roost).
+- **Skywings** fly over everything, and only ranged units can hit them.
+- Swamp heals the Brood and makes it faster. Army cap 160.
 
-### The Clockwork
-- Only 2 **Winders** to start. They don't carry gold: they lay a **Drill Rig** on a gold mine (8 gold/s each) and repair constructs and buildings.
-- A Winder only *seeds* a building; it then assembles itself, so Winders are free straight away. **Clocktowers** also trickle gold.
-- Constructs run on their wind: inside the field of a Clocktower or **Spring Tower** they are fully wound; outside it they slowly run down (slower, weaker, down to 55%).
-- The **Assembly Works** builds **Gearknights** (armoured, self-repairing melee), **Bolt Automatons** (long-range piercing shots) and **Steam Walkers** (flame cone; need a Spring Tower).
-- Few, expensive units, with an army cap of **80**.
+### The Clockwork: wind and energy
+- **Winders** crank **Boilers** (up to 3 each) for **energy**; each Clocktower adds a little.
+- Tap a Boiler, Ore Crusher or Clocktower to split the energy between three uses:
+  - **ORE**: **Ore Crushers** turn it into ore.
+  - **ASSEMBLY**: faster production.
+  - **WIND**: bigger wind fields, and constructs run down slower.
+- Presets: ECONOMY, BALANCED, WAR, HOLD.
+- Each Clocktower allows 2 Boilers and 2 Ore Crushers nearby.
+- Winders also start buildings, which then assemble themselves, and repair.
+- Constructs run down (slower and weaker) outside the field of a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart.
+- The **Charging Pylon** also mends constructs.
+- **Assembly Works**: **Gearknights**, **Bolt Automatons** (pierce up to 3), **Steam Walkers** and **Tesla Carts**. A Tesla Cart rolls when packed; deploying or packing takes 3 s. Deployed, it powers constructs around it and fires chain lightning that can hit flyers.
+- Army cap 80.
 
-### Resources and the battle report
-- Each gold mine near your base shows its workers as **X/Y**, as in StarCraft II: white is under-saturated, green is full, orange is over-saturated (Crown 12 labourers, Brood 8 grubs, Clockwork 1 rig).
-- When a match ends, the **battle report** shows gold mined and spent, units trained, killed and lost, structures built and razed, damage dealt, value destroyed, peak army and top killers, plus army, gold and worker graphs over time.
+### Economy labels and the battle report
+- Each economy structure shows its crew as **X/Y** (green when full). Farms also show a harvest bar.
+- When a match ends, the **battle report** shows income and spending, units trained, killed and lost, structures built and razed, damage dealt, value destroyed, peak army and top killers, plus army, income and worker graphs over time.
 
 ### Touch
 - Tap a unit to select it; double-tap to select all of that type on screen.
 - Drag on the map to box-select (soldiers are picked over labourers).
-- Tap the ground to move; soldiers attack anything on the way. Tap an enemy to attack it, a gold mine to gather, your own unfinished building to help build it.
+- Tap the ground to move; soldiers attack anything on the way. Tap an enemy to attack it, your own Farm, Mill, Pit or Boiler to put workers on it, your own unfinished building to help build it.
 - Long-press the ground to move without stopping to fight.
 - Two fingers to pan, pinch to zoom; tap or drag on the minimap to jump.
 - **ARMY / IDLE / HALL** select quickly. **Groups 1–3**: tap an empty one to save the selection, tap to select, hold to overwrite.
-- Command card (bottom right): Move, Attack, Stop, Hold, Build, Gather; buildings show what they train, Rally and Cancel.
+- Command card (bottom right): Move, Attack, Stop, Hold, Build, Work (Deploy/Pack for Tesla Carts); buildings show what they train, Rally and Cancel.
 
 ### Mouse and keyboard
 Left click selects (click ground to deselect), left drag box-selects, right click commands, wheel zooms, middle drag or arrow keys pan. Keys: **A** attack, **M** move, **S** stop, **H** hold, **B** build, **1–3** select group, **Ctrl+1–3** save group, **Esc** cancel.

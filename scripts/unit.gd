@@ -48,6 +48,9 @@ var corpse_t := 0.0
 
 
 var _charging := false
+var tesla_mode := "packed"     # Tesla Cart: packed, deploying, deployed, packing
+var tesla_t := 0.0
+var _bob_t := 0.0
 
 
 func is_unit() -> bool:
@@ -58,8 +61,21 @@ func is_worker() -> bool:
 	return Defs.is_worker(kind)
 
 
+func is_air() -> bool:
+	return d.get("air", false)
+
+
+## Can this unit attack that one at all?
+func can_hit(e: Entity) -> bool:
+	if d.get("medic", false) or e.untouchable():
+		return false
+	if e.is_air() and not d.get("anti_air", false):
+		return false
+	return true
+
+
 func can_gather() -> bool:
-	return kind == "labourer" or kind == "grub"
+	return kind == "labourer" or kind == "grub" or kind == "winder"
 
 
 func take_damage(amount: float, from: Entity) -> void:
@@ -91,6 +107,8 @@ func _ready() -> void:
 	add_child(sprite)
 	if kind == "cannon":
 		_make_wheel()
+	if is_air():
+		z_index = 3
 	_set_anim("idle", true)
 
 
@@ -120,6 +138,26 @@ func cmd_attack(e: Entity) -> void:
 	target = e
 
 
+func cmd_deploy() -> void:
+	if kind == "tesla_cart" and tesla_mode == "packed":
+		cmd_stop()
+		tesla_mode = "deploying"
+		tesla_t = Defs.TESLA_SWITCH
+
+
+func cmd_pack() -> void:
+	if kind == "tesla_cart" and tesla_mode == "deployed":
+		tesla_mode = "packing"
+		tesla_t = Defs.TESLA_SWITCH
+
+
+func cmd_heal(e: Unit) -> void:
+	_reset_work()
+	order = "heal"
+	order_target = e
+	target = null
+
+
 func cmd_stop() -> void:
 	_reset_work()
 	order = "idle"
@@ -134,15 +172,29 @@ func cmd_hold() -> void:
 	order = "hold"
 
 
-func cmd_gather(mine: Entity) -> void:
-	if not can_gather():
-		cmd_move(mine.center())
+## Go and work at an economy structure (Farm, Powder Mill, Feeding Pit, Boiler).
+func cmd_gather(site: Entity) -> void:
+	if not can_gather() or not (site is Building):
+		cmd_move(site.center())
 		return
+	var b := site as Building
+	if b.team != team or int(b.d.get("crew", 0)) == 0:
+		cmd_move(site.center())
+		return
+	if not b.crew.has(self) and b.crew.size() >= int(b.d["crew"]):
+		var alt := game.free_site(team, b.center())
+		if alt == null:
+			if team == game.human:
+				game.notify("That %s is fully crewed." % b.d["name"])
+			cmd_move(b.center())
+			return
+		b = alt
 	_reset_work()
 	order = "gather"
-	home_mine = mine
-	order_target = mine
-	work = "to_hall" if carrying >= Defs.CARRY else "to_mine"
+	home_mine = b
+	order_target = b
+	b.crew.append(self)
+	work = "to_hall" if kind == "grub" and carrying > 0 else "to_site"
 	target = null
 
 
@@ -167,6 +219,7 @@ func cmd_build(site: Building) -> void:
 
 func _reset_work() -> void:
 	_leave_mine()
+	_release_patient()
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
@@ -177,6 +230,9 @@ func _reset_work() -> void:
 
 func _physics_process(delta: float) -> void:
 	_process_flash(delta)
+	if off_field:
+		return
+	cross_t = maxf(cross_t - delta, 0.0)
 	if dead:
 		corpse_t += delta
 		_animate(delta)
@@ -213,7 +269,7 @@ func _physics_process(delta: float) -> void:
 		if _in_field:
 			wind = minf(1.0, wind + 0.3 * delta)
 		else:
-			wind = maxf(Defs.WIND_MIN, wind - Defs.WIND_DECAY * delta)
+			wind = maxf(Defs.WIND_MIN, wind - Defs.WIND_DECAY * game.wind_decay_mult(team) * delta)
 		speed *= lerpf(0.75, 1.0, (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN))
 		if d.has("regen") and hp < max_hp:
 			hp = minf(max_hp, hp + float(d["regen"]) * delta)
@@ -223,6 +279,11 @@ func _physics_process(delta: float) -> void:
 		phase = ""
 	match order:
 		"idle":
+			if d.get("medic", false) and scan_t <= 0.0:
+				scan_t = 0.5
+				var pt := game.find_patient(self, 9 * Defs.TILE)
+				if pt:
+					cmd_heal(pt)
 			if kind == "winder" and scan_t <= 0.0:
 				scan_t = 1.0
 				var hurt := game.find_repair(self, 6 * Defs.TILE)
@@ -268,11 +329,31 @@ func _physics_process(delta: float) -> void:
 			want = _gather(delta)
 		"repair":
 			want = _repair(delta)
+		"heal":
+			want = _heal(delta)
 		"build":
 			want = _build(delta)
+	if kind == "tesla_cart":
+		want = _tesla(want, delta)
 	_move(want, delta)
 	_animate(delta)
 	queue_redraw()
+
+
+## Tesla Cart: it only rolls when packed and only zaps when deployed; switching takes a while.
+func _tesla(want: Vector2, delta: float) -> Vector2:
+	match tesla_mode:
+		"deploying", "packing":
+			tesla_t -= delta
+			if tesla_t <= 0.0:
+				tesla_mode = "deployed" if tesla_mode == "deploying" else "packed"
+			return Vector2.ZERO
+		"deployed":
+			if want.length() > 5.0 and order in ["move", "amove", "gather", "build"]:
+				tesla_mode = "packing"
+				tesla_t = Defs.TESLA_SWITCH
+			return Vector2.ZERO
+	return want
 
 
 func _finish_move() -> void:
@@ -282,7 +363,7 @@ func _finish_move() -> void:
 
 
 func _valid_target(e: Entity) -> bool:
-	return is_instance_valid(e) and not e.dead and e.is_inside_tree() and e.team != team and e.team >= 0
+	return is_instance_valid(e) and not e.dead and e.is_inside_tree() and e.team != team and e.team >= 0 and can_hit(e)
 
 
 func _range() -> float:
@@ -292,6 +373,12 @@ func _range() -> float:
 # ------------------------------------------------------------------ movement
 
 func _request_path(goal: Vector2) -> void:
+	if is_air():
+		path_goal = goal
+		path = PackedVector2Array([goal])
+		path_i = 0
+		path_pending = false
+		return
 	path_goal = goal
 	path_pending = true
 	game.queue_path(self)
@@ -348,7 +435,10 @@ func _move(want: Vector2, delta: float) -> void:
 		velocity = velocity.normalized() * speed * 1.3
 	var before := position
 	position += velocity * delta
-	position = game.resolve_terrain(position, before, radius)
+	if is_air():
+		position = position.clamp(Vector2(8, 8), Vector2(Game.W, Game.H) * Game.T - Vector2(8, 8))
+	else:
+		position = game.resolve_terrain(position, before, radius)
 	if want.length() > 5.0 and phase == "":
 		facing = facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
 	# Stuck detection while trying to move
@@ -368,6 +458,17 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	var dist := e.edge_distance(position) - radius
 	var rng := _range()
 	var min_r := float(d.get("min_range", 0.0))
+	if kind == "tesla_cart" and tesla_mode != "deployed":
+		if tesla_mode == "packed" and dist <= rng:
+			tesla_mode = "deploying"
+			tesla_t = Defs.TESLA_SWITCH
+			path = PackedVector2Array()
+			return Vector2.ZERO
+		if tesla_mode != "packed":
+			return Vector2.ZERO
+	elif kind == "tesla_cart" and dist > rng and phase == "":
+		target = null
+		return Vector2.ZERO
 	if phase != "":
 		_attack_cycle(e, delta)
 		return Vector2.ZERO
@@ -381,7 +482,7 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 		return (position - e.center()).normalized() * speed   # back off
 	# Chase: straight when close and clear, otherwise path.
 	var goal := e.center() if e.is_unit() else e.rect().get_center()
-	if position.distance_to(goal) < 140.0 and game.line_clear(position, goal):
+	if is_air() or (position.distance_to(goal) < 140.0 and game.line_clear(position, goal)):
 		path = PackedVector2Array()
 		return (goal - position).normalized() * speed
 	if repath_t <= 0.0 or path.is_empty():
@@ -416,11 +517,15 @@ func _strike(e: Entity) -> void:
 		dmg *= wind
 	if e.is_building():
 		dmg *= float(d.get("building_bonus", 1.0))
+	if Defs.POWDER_SHOT.has(kind) and not game.use_powder(team, int(Defs.POWDER_SHOT[kind])):
+		return    # no powder: the shot never goes off
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
 		"cannon":
 			game.cannon_shot(self, e.center(), dmg)
+		"tesla_cart":
+			game.tesla_zap(self, e, dmg)
 		"spitter":
 			game.acid_shot(self, e, dmg)
 		"bolt":
@@ -462,93 +567,128 @@ func _repair(delta: float) -> Vector2:
 
 func _leave_mine() -> void:
 	if home_mine and is_instance_valid(home_mine):
-		home_mine.feeders.erase(self)
+		if home_mine is Building:
+			(home_mine as Building).crew.erase(self)
+		elif home_mine is GoldMine:
+			home_mine.feeders.erase(self)
 
 
+## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
 func _gather(delta: float) -> Vector2:
+	var site := home_mine as Building
+	if site == null or not is_instance_valid(site) or site.dead or not site.built:
+		_leave_mine()
+		var alt := game.free_site(team, position)
+		if alt:
+			cmd_gather(alt)
+		else:
+			cmd_stop()
+		return Vector2.ZERO
 	if kind == "grub":
-		return _feed(delta)
-	if work != "to_hall" and (home_mine == null or not is_instance_valid(home_mine) or home_mine.gold <= 0):
-		home_mine = game.nearest_mine(position, team)
-		if home_mine == null:
-			if carrying > 0:
-				work = "to_hall"
-			else:
-				cmd_stop()
-				return Vector2.ZERO
-		order_target = home_mine
+		return _haul(site, delta)
+	if work == "manning":
+		facing = (site.center() - position).normalized()
+		return Vector2.ZERO
+	work = "to_site"
+	if site.edge_distance(position) < radius + 18.0:
+		work = "manning"
+		path = PackedVector2Array()
+		return Vector2.ZERO
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		_request_path(game.approach_point(site, position))
+	return _follow(delta)
+
+
+func _haul(pit: Building, delta: float) -> Vector2:
 	match work:
-		"to_mine":
-			if home_mine.edge_distance(position) < radius + 17.0:
-				work = "mining"
-				work_t = Defs.MINE_TIME
-				path = PackedVector2Array()
-				return Vector2.ZERO
-			if (path.is_empty() or path_i >= path.size()) and not path_pending:
-				_request_path(game.approach_point(home_mine, position))
-			return _follow(delta)
-		"mining":
-			facing = (home_mine.center() - position).normalized()
+		"feeding":
+			facing = (pit.center() - position).normalized()
 			work_t -= delta
 			if work_t <= 0.0:
-				carrying = home_mine.take(Defs.CARRY)
+				carrying = game.food_value(pit)
 				work = "to_hall"
 				path = PackedVector2Array()
 			return Vector2.ZERO
 		"to_hall":
-			var hall := game.nearest_hall(position, team)
-			if hall == null:
+			var hive := game.nearest_hall(pit.center(), team)
+			if hive == null:
 				return Vector2.ZERO
-			if hall.edge_distance(position) < radius + 17.0:
+			if hive.edge_distance(position) < radius + 17.0:
 				game.add_gold(team, carrying)
+				if team == game.human and carrying > 0:
+					game.float_text(position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
 				carrying = 0
-				work = "to_mine"
-				if home_mine == null or not is_instance_valid(home_mine) or home_mine.gold <= 0:
-					home_mine = game.nearest_mine(position, team)
+				work = "to_site"
 				path = PackedVector2Array()
 				return Vector2.ZERO
 			if (path.is_empty() or path_i >= path.size()) and not path_pending:
-				_request_path(game.approach_point(hall, position))
+				_request_path(game.approach_point(hive, position))
 			return _follow(delta)
-	work = "to_mine"
-	return Vector2.ZERO
+	work = "to_site"
+	if pit.edge_distance(position) < radius + 16.0:
+		work = "feeding"
+		work_t = Defs.PIT_TIME
+		path = PackedVector2Array()
+		return Vector2.ZERO
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		_request_path(game.approach_point(pit, position))
+	return _follow(delta)
 
 
-## Brood grubs: walk to a mine on our swamp, burrow, and turn out gold in place.
-func _feed(delta: float) -> Vector2:
-	var m := home_mine as GoldMine
-	if m == null or not is_instance_valid(m) or m.gold <= 0 or not game.mine_on_swamp(m, team) \
-			or (work != "feeding" and m.feeders.size() >= Defs.FEEDERS_PER_MINE):
-		_leave_mine()
-		home_mine = game.nearest_mine(position, team)
-		work = "to_mine"
-		if home_mine == null:
+## Missionary: walk to the wounded soldier, take him off the field, bandage him and send
+## him back at full health.
+var _patient: Unit = null
+
+
+func _heal(delta: float) -> Vector2:
+	if work == "bandaging":
+		work_t -= delta
+		if _patient == null or not is_instance_valid(_patient) or _patient.dead:
+			_release_patient()
 			cmd_stop()
+			return Vector2.ZERO
+		if work_t <= 0.0:
+			_patient.hp = _patient.max_hp
+			_patient.acid_t = 0.0
+			_patient.cross_t = Defs.CROSS_TIME
 			if team == game.human:
-				game.notify("Grubs can only feed at mines on your swamp.")
-			return Vector2.ZERO
-		m = home_mine
-		order_target = m
-	match work:
-		"feeding":
-			facing = (m.center() - position).normalized()
-			work_t -= delta
-			if work_t <= 0.0:
-				work_t = Defs.FEED_TIME
-				game.add_gold(team, m.take(1))
-			return Vector2.ZERO
-		_:
-			work = "to_mine"
-			if m.edge_distance(position) < radius + 17.0:
-				if m.feeders.size() < Defs.FEEDERS_PER_MINE:
-					m.feeders.append(self)
-					work = "feeding"
-					work_t = Defs.FEED_TIME
-					path = PackedVector2Array()
-				return Vector2.ZERO
-			if (path.is_empty() or path_i >= path.size()) and not path_pending:
-				_request_path(game.approach_point(m, position))
-			return _follow(delta)
+				game.float_text(position + Vector2(0, -30), "healed", Color(1, 1, 1))
+			_release_patient()
+			cmd_stop()
+		return Vector2.ZERO
+	var p := order_target as Unit
+	if p == null or not is_instance_valid(p) or p.dead or p.off_field or p.cross_t > 0.0 or p.hp >= p.max_hp:
+		cmd_stop()
+		return Vector2.ZERO
+	if position.distance_to(p.position) < radius + p.radius + 10.0:
+		_patient = p
+		p.cmd_stop()
+		p.velocity = Vector2.ZERO
+		p.off_field = true
+		p.visible = false
+		p.selected = false
+		game.selection.erase(p)
+		position = p.position
+		work = "bandaging"
+		work_t = Defs.BANDAGE_TIME
+		path = PackedVector2Array()
+		return Vector2.ZERO
+	if position.distance_to(p.position) < 140.0:
+		return (p.position - position).normalized() * speed
+	if repath_t <= 0.0 or path.is_empty():
+		repath_t = 0.8
+		_request_path(p.position)
+	return _follow(delta)
+
+
+func _release_patient() -> void:
+	if _patient and is_instance_valid(_patient):
+		_patient.off_field = false
+		_patient.visible = true
+		_patient.position = position + Vector2(14, 4)
+	_patient = null
+	if work == "bandaging":
+		work = ""
 
 
 func _build(delta: float) -> Vector2:
@@ -564,7 +704,7 @@ func _build(delta: float) -> Vector2:
 		if kind == "winder":
 			cmd_stop()
 			return Vector2.ZERO
-		var m := game.nearest_mine(position, team)
+		var m := game.free_site(team, position)
 		if m:
 			cmd_gather(m)
 		else:
@@ -605,6 +745,7 @@ func die() -> void:
 	selected = false
 	velocity = Vector2.ZERO
 	_leave_mine()
+	_release_patient()
 	game.on_unit_died(self)
 	Sfx.play_f("death", d["faction"], position)
 	_set_anim("death", true)
@@ -637,6 +778,9 @@ func _anim_name() -> String:
 				return "reload"
 			return "move" if moving else "idle"
 		"labourer":
+			if work == "manning":
+				var site := home_mine as Building
+				return "mine" if site and site.kind == "farm" else "build"
 			if work == "mining" or phase != "":
 				return "mine"
 			if work == "building":
@@ -661,6 +805,8 @@ func _anim_name() -> String:
 			if moving and target and target.edge_distance(position) < 170.0:
 				return "charge"
 		"winder":
+			if work == "manning":
+				return "wind"
 			if work == "repairing":
 				return "repair"
 			if phase != "":
@@ -682,6 +828,18 @@ func _anim_name() -> String:
 				return "attack"
 			if not moving and cooldown > 0.0 and target:
 				return "vent"
+		"missionary":
+			if work == "bandaging":
+				return "bandage"
+		"skywing":
+			if phase != "":
+				return "attack"
+		"tesla_cart":
+			if tesla_mode == "deploying" or tesla_mode == "packing":
+				return "deploy"
+			if tesla_mode == "deployed":
+				return "attack" if phase != "" else "deployed"
+			return "walk" if moving else "idle"
 	return "walk" if moving else "idle"
 
 
@@ -722,12 +880,30 @@ func _animate(delta: float) -> void:
 			fps = 6.0
 		"reload":
 			fps = float(n) / maxf(float(d["cooldown"]) * 0.8, 0.5)
+		"deploy":
+			fps = float(n) / Defs.TESLA_SWITCH
+			loop = false
+		"deployed":
+			fps = 6.0
+		"bandage":
+			fps = 4.0
 	anim_t += delta * fps
 	if anim_t >= 1.0:
 		anim_t -= 1.0
 		frame_i += 1
 	frame_i = posmod(frame_i, n) if loop else mini(frame_i, n - 1)
-	sprite.frame = mini(frame_i, sprite.hframes - 1)
+	var shown := frame_i
+	if anim == "deploy" and tesla_mode == "packing":
+		shown = n - 1 - frame_i         # packing plays the deploy frames backwards
+	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
+	_bob_t += delta
+	if is_air():
+		# flyers hover above their shadow and drop to the ground when they die
+		sprite.position.y = lerpf(sprite.position.y, 0.0, delta * 3.0) if dead else -20.0 + sin(_bob_t * 4.0) * 2.5
+	elif anim == "bandage":
+		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
+	elif kind != "cannon":
+		sprite.position.y = 0.0
 	if kind == "cannon":
 		_animate_cannon(delta)
 
@@ -876,3 +1052,13 @@ func _draw() -> void:
 		draw_rect(Rect2(-w * 0.5, y, w * (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN), 2), Color(0.95, 0.7, 0.25))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
+	if carrying > 0 and kind == "grub":
+		draw_circle(Vector2(0, -16), 3.5, Color(0.55, 0.85, 0.3))
+		draw_circle(Vector2(0, -16), 3.5, Color(0.2, 0.3, 0.1), false, 1.0)
+	if cross_t > 0.0:
+		# just bandaged: a little cross over his head
+		var y := top - 12.0
+		var a := minf(cross_t, 1.0)
+		draw_rect(Rect2(-1.5, y - 5, 3, 10), Color(1, 1, 1, a))
+		draw_rect(Rect2(-4, y - 2, 8, 3), Color(1, 1, 1, a))
+		draw_rect(Rect2(-1.5, y - 5, 3, 10), Color(0.8, 0.1, 0.1, a), false, 1.0)

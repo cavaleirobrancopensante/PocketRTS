@@ -94,7 +94,8 @@ func _ready() -> void:
 	for t in 2:
 		vis[t].resize(W * H)
 		swamp[t].resize(W * H)
-		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t]})
+		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t], "res2": 0.0,
+			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY"})
 	ground = Sprite2D.new()
 	ground.centered = false
 	ground.z_index = -20
@@ -163,23 +164,13 @@ func _generate_map() -> void:
 	# Fixed layout, mirrored for fairness: main base + 2 mines, a natural
 	# expansion with 2 mines, and 2 contested mines near the middle.
 	var hall := Vector2i(6, 6)
-	var base_mines := [Vector2i(14, 4), Vector2i(4, 13)]
 	var nat_hall := Vector2i(7, 34)
-	var nat_mines := [Vector2i(3, 41), Vector2i(14, 41)]
-	var mid_mines := [Vector2i(30, 26)]
 	starts = [hall, _mirror(hall, Vector2i(5, 4))]
 	expansions = [nat_hall, _mirror(nat_hall, Vector2i(5, 4))]
-	var mine_cells: Array = base_mines + nat_mines + mid_mines
-	var mirrored: Array = []
-	for m in mine_cells:
-		mirrored.append(_mirror(m, Vector2i(3, 2)))
-	mine_cells += mirrored
-	# Keep-clear zones around bases, mines and expansion spots.
+	# No resources on the map: the economy comes from each player's own structures.
 	var keep: Array = []
-	for s in starts + expansions:
-		keep.append([Vector2(s) + Vector2(2.5, 2), 11.0])
-	for m in mine_cells:
-		keep.append([Vector2(m) + Vector2(1.5, 1), 4.5])
+	for st in starts + expansions:
+		keep.append([Vector2(st) + Vector2(2.5, 2), 13.0])
 	# Obstacles: try seeds until both bases connect.
 	for attempt in 30:
 		solid.fill(0)
@@ -187,12 +178,6 @@ func _generate_map() -> void:
 		_scatter_obstacles(keep)
 		if _connected(starts[0], starts[1]) and _connected(starts[0], expansions[1]):
 			break
-	for m in mine_cells:
-		var gm := GoldMine.new()
-		gm.setup(self, m)
-		world.add_child(gm)
-		mines.append(gm)
-		_mark(m, Vector2i(3, 2), 2)
 
 
 func _scatter_obstacles(keep: Array) -> void:
@@ -351,22 +336,223 @@ func _start_positions() -> void:
 	for t in 2:
 		var f: Dictionary = Defs.FACTIONS[factions[t]]
 		var b := _add_building(f["hall"], t, starts[t], true)
+		players[t]["res2"] = float(Defs.START_POWDER) if factions[t] == "crown" else 0.0
+		_update_swamp()
+		# Starting economy structures, already standing.
+		var sites: Array = []
+		for k in f["start"]:
+			var spot := find_spot(t, k, b, 5, 11, "toward_middle")
+			if spot.x >= 0:
+				var eb := _add_building(k, t, spot, true)
+				sites.append(eb)
+				_update_swamp()
 		var hall_center := b.rect().get_center()
 		for i in int(f["start_workers"]):
 			var u := _add_unit(f["worker"], t, hall_center + Vector2(-60 + i * 30, 80 if t == 0 else -80))
-			if u.can_gather():
-				var m := nearest_mine(u.position, t)
-				if m:
-					u.cmd_gather(m)
-		if factions[t] == "clockwork":
-			# The Clockwork arrive with Drill Rigs already on their home mines.
-			for m in mines:
-				if m.center().distance_to(hall_center) < 420.0:
-					var spot := rig_spot(m, t)
-					if spot.x >= 0:
-						_add_building("drill_rig", t, spot, true)
+			var site := free_site(t, u.position)
+			if site:
+				u.cmd_gather(site)
 		players[t]["gold"] = Defs.START_GOLD
 	_update_swamp()
+
+
+## A free cell for a building of this kind around a building: distance in tiles from
+## its middle; "near" picks the closest, "far" the farthest, "toward_middle" the one
+## nearest the middle of the map.
+func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near") -> Vector2i:
+	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var c0: Vector2 = around.rect().get_center() / T
+	var mid := Vector2(W, H) * 0.5
+	var best := Vector2i(-1, -1)
+	var bs := INF
+	for y in range(int(c0.y) - max_d - 2, int(c0.y) + max_d + 2):
+		for x in range(int(c0.x) - max_d - 2, int(c0.x) + max_d + 2):
+			var cell := Vector2i(x, y)
+			var cc := Vector2(cell) + Vector2(size) * 0.5
+			var dd := cc.distance_to(c0)
+			if dd < min_d or dd > max_d:
+				continue
+			if placement_problem(t, kind, cell, true) != "" or not margin_free(cell, size):
+				continue
+			var score := dd
+			if prefer == "far":
+				score = -dd
+			elif prefer == "far_safe":
+				# far from the building, but not toward the enemy's side
+				var own := cc.distance_to(Vector2(starts[t]) + Vector2(2.5, 2))
+				var foe := cc.distance_to(Vector2(starts[1 - t]) + Vector2(2.5, 2))
+				score = -dd + maxf(0.0, own - foe * 0.8) * 3.0
+			elif prefer == "toward_middle":
+				score = cc.distance_to(mid) + dd * 0.5
+			if score < bs:
+				bs = score
+				best = cell
+	return best
+
+
+func margin_free(cell: Vector2i, size: Vector2i) -> bool:
+	for y in range(-1, size.y + 1):
+		for x in range(-1, size.x + 1):
+			if x >= 0 and y >= 0 and x < size.x and y < size.y:
+				continue
+			if not is_free(cell + Vector2i(x, y)):
+				return false
+	return true
+
+
+# ------------------------------------------------------------------ economy
+
+## An economy structure with room in its crew for this team's workers, nearest first.
+func free_site(t: int, p: Vector2) -> Building:
+	var best: Building = null
+	var bd := INF
+	for b in buildings:
+		if b.team != t or b.dead or not b.built or int(b.d.get("crew", 0)) == 0:
+			continue
+		if b.crew.size() >= int(b.d["crew"]):
+			continue
+		var dd: float = b.center().distance_to(p) + b.crew.size() * 40.0
+		if dd < bd:
+			bd = dd
+			best = b
+	return best
+
+
+func halls_of(t: int, built_only := true) -> Array:
+	var k := faction_hall(t)
+	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == k and not b.dead and (b.built or not built_only))
+
+
+func econ_count(t: int, kind: String) -> int:
+	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == kind and not b.dead).size()
+
+
+func econ_limit(t: int, kind: String) -> int:
+	return int(Defs.FACTIONS[faction_of(t)]["econ"].get(kind, 0)) * maxi(1, halls_of(t).size())
+
+
+func add_res2(t: int, v: float) -> void:
+	players[t]["res2"] = float(players[t]["res2"]) + v
+
+
+func add_gold_f(t: int, v: float) -> void:
+	var acc: float = float(players[t]["gold_f"]) + v
+	var n := int(acc)
+	players[t]["gold_f"] = acc - n
+	if n > 0:
+		add_gold(t, n)
+
+
+## Spend powder for a shot. False when there isn't enough.
+func use_powder(t: int, n: int) -> bool:
+	if faction_of(t) != "crown":
+		return true
+	if float(players[t]["res2"]) < n:
+		if t == human:
+			notify("Out of powder! Man your Powder Mill.")
+		return false
+	players[t]["res2"] = float(players[t]["res2"]) - n
+	return true
+
+
+var energy := [0.0, 0.0]          # Clockwork energy per second
+var ore_rate := [0.0, 0.0]
+var asm_mult := [1.0, 1.0]        # production speed of Clockwork buildings
+var wind_e := [0.0, 0.0]          # energy on wind
+var _econ_t := 0.0
+
+
+func set_split(t: int, name: String) -> void:
+	players[t]["split"] = Defs.SPLITS[name].duplicate()
+	players[t]["split_name"] = name
+
+
+func _economy(delta: float) -> void:
+	for t in 2:
+		if faction_of(t) != "clockwork":
+			continue
+		var e: float = Defs.ENERGY_HALL * halls_of(t).size()
+		var crushers := 0
+		for b in buildings:
+			if b.team != t or b.dead or not b.built:
+				continue
+			if b.kind == "boiler":
+				e += Defs.ENERGY_PER_WINDER * b.working_crew()
+			elif b.kind == "ore_crusher":
+				crushers += 1
+		var split: Array = players[t]["split"]
+		energy[t] = e
+		ore_rate[t] = minf(e * float(split[0]) * Defs.ORE_PER_ENERGY, crushers * Defs.CRUSHER_CAP)
+		asm_mult[t] = clampf(0.6 + e * float(split[1]) / 6.0, 0.6, 2.0)
+		wind_e[t] = e * float(split[2])
+		players[t]["res2"] = e
+		add_gold_f(t, ore_rate[t] * delta)
+	_econ_t -= delta
+	if _econ_t <= 0.0:
+		_econ_t = 0.5
+		# Charging Pylons slowly mend constructs around them.
+		for b in buildings:
+			if b.dead or not b.built or not b.d.has("mends"):
+				continue
+			for u in units_near(b.center(), float(b.d["field"]) * T * field_mult(b.team)):
+				if u.team == b.team and not u.dead and u.hp < u.max_hp:
+					u.hp = minf(u.max_hp, u.hp + float(b.d["mends"]) * 0.5)
+
+
+## Clockwork fields grow with the energy put on wind.
+func field_mult(t: int) -> float:
+	if faction_of(t) != "clockwork":
+		return 1.0
+	return 0.8 + minf(wind_e[t] / 12.0, 0.8)
+
+
+func wind_decay_mult(t: int) -> float:
+	return maxf(0.25, 1.0 - wind_e[t] / 10.0)
+
+
+## Value of one load of food hauled from this pit to the nearest Hive.
+func food_value(pit: Building) -> int:
+	var hive := nearest_hall(pit.center(), pit.team)
+	if hive == null:
+		return 0
+	var d := hive.center().distance_to(pit.center()) / T
+	return int(minf(Defs.FOOD_BASE + Defs.FOOD_PER_TILE2 * d * d, Defs.FOOD_MAX))
+
+
+## The most wounded soldier nearby that a Missionary may bandage.
+func find_patient(m: Unit, r: float) -> Unit:
+	var best: Unit = null
+	var bf := 0.75
+	for o in units_near(m.position, r):
+		if o.team != m.team or o.dead or o.off_field or o.is_worker() or o.is_air() or o.d.get("medic", false):
+			continue
+		if o.cross_t > 0.0 or o.d["faction"] == "clockwork":
+			continue
+		var f: float = o.hp / o.max_hp
+		if f < bf:
+			var taken := false
+			for x in units:
+				if x != m and x.order == "heal" and x.order_target == o:
+					taken = true
+					break
+			if not taken:
+				bf = f
+				best = o
+	return best
+
+
+func near_enemy_building(t: int, p: Vector2, tiles: float) -> bool:
+	for b in buildings:
+		if b.team != t and b.team >= 0 and not b.dead and b.edge_distance(p) < tiles * T:
+			return true
+	return false
+
+
+var _floats: Array = []           # [position, text, colour, time left]
+
+
+func float_text(p: Vector2, txt: String, col: Color) -> void:
+	_floats.append([p, txt, col, 1.4])
 
 
 func faction_of(t: int) -> String:
@@ -447,6 +633,16 @@ func on_unit_died(u: Unit) -> void:
 	for g in groups:
 		g.erase(u)
 	stats[u.team]["lost"] += 1
+	for t in 2:
+		if faction_of(t) == "brood":
+			for b in buildings:
+				if b.team == t and b.kind == "bone_midden" and b.built and not b.dead \
+						and b.center().distance_to(u.position) < Defs.MIDDEN_RANGE * T:
+					var ess := int(u.d["supply"]) * Defs.ESSENCE_PER_SUPPLY
+					add_res2(t, ess)
+					if t == human:
+						float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
+					break
 	if u.team >= 0:
 		var foe: Dictionary = stats[1 - u.team]
 		foe["killed"] += 1
@@ -499,6 +695,7 @@ func add_gold(t: int, n: int) -> void:
 
 func refund(t: int, k: String) -> void:
 	players[t]["gold"] += int(Defs.UNITS[k]["cost"])
+	add_res2(t, int(Defs.UNITS[k].get("cost2", 0)))
 
 
 # ------------------------------------------------------------------ production & building
@@ -516,8 +713,19 @@ func can_train(b: Building, k: String) -> String:
 			return "No eggs ready."
 	elif b.queue.size() >= 5:
 		return "Queue is full."
+	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	if players[b.team]["gold"] < int(u["cost"]):
-		return "Not enough gold."
+		return "Not enough %s." % res[0].to_lower()
+	if float(players[b.team]["res2"]) < int(u.get("cost2", 0)):
+		return "Not enough %s." % res[1].to_lower()
+	if u.has("per"):
+		var have := units.filter(func(x: Unit) -> bool: return x.team == b.team and not x.dead and x.kind == k).size()
+		for bb in buildings:
+			if bb.team == b.team and not bb.dead:
+				have += bb.queue.count(k)
+		var allowed := buildings.filter(func(x: Building) -> bool: return x.team == b.team and x.kind == u["per"] and x.built and not x.dead).size()
+		if have >= allowed:
+			return "Only one %s per %s." % [u["name"], Defs.BUILDINGS[u["per"]]["name"]]
 	if supply_used(b.team) + int(u["supply"]) * int(u.get("spawn", 1)) > players[b.team]["cap"]:
 		if players[b.team]["cap"] >= max_supply(b.team):
 			return "Supply is maxed out."
@@ -538,6 +746,7 @@ func train(b: Building, k: String) -> String:
 	if why != "":
 		return why
 	players[b.team]["gold"] -= int(Defs.UNITS[k]["cost"])
+	add_res2(b.team, -int(Defs.UNITS[k].get("cost2", 0)))
 	stats[b.team]["spent"] += int(Defs.UNITS[k]["cost"])
 	b.queue.append(k)
 	if b.uses_eggs():
@@ -580,23 +789,25 @@ func spawn_trained(b: Building, k: String) -> void:
 			Sfx.play_f("ready", b.d["faction"])
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
-		if b.dual_rally() and u.is_worker():
-			if b.worker_rally_target is GoldMine:
-				u.cmd_gather(b.worker_rally_target)
-			elif b.worker_rally != Vector2.INF:
-				u.cmd_move(b.worker_rally + Vector2(randf_range(-12, 12), randf_range(-12, 12)))
-			else:
-				var wm := nearest_mine(u.position, b.team)
-				if wm and u.can_gather():
-					u.cmd_gather(wm)
+		if u.is_worker():
+			var site: Building = null
+			if b.dual_rally() and b.worker_rally_target is Building:
+				site = b.worker_rally_target
+			elif not b.dual_rally() and b.rally_target is Building:
+				site = b.rally_target
+			if site == null or site.dead or site.crew.size() >= int(site.d.get("crew", 0)):
+				site = null
+				var rp: Vector2 = b.worker_rally if b.dual_rally() else b.rally
+				if rp == Vector2.INF:
+					site = free_site(b.team, u.position)
+				else:
+					u.cmd_move(rp + Vector2(randf_range(-12, 12), randf_range(-12, 12)))
+					continue
+			if site:
+				u.cmd_gather(site)
 			continue
-		if u.can_gather():
-			var m: Entity = b.rally_target if b.rally_target is GoldMine else nearest_mine(u.position, b.team)
-			if m and (b.rally == Vector2.INF or b.rally_target is GoldMine):
-				u.cmd_gather(m)
-				continue
 		if b.rally != Vector2.INF:
-			u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)), not u.is_worker())
+			u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)), true)
 
 
 func requirement_met(t: int, k: String) -> bool:
@@ -609,25 +820,31 @@ func requirement_met(t: int, k: String) -> bool:
 	return false
 
 
-## "" if the building can go at this cell, else the reason.
-func placement_problem(t: int, k: String, c: Vector2i) -> String:
+## "" if the building can go at this cell, else the reason. ai: skip the fog check.
+func placement_problem(t: int, k: String, c: Vector2i, ai := false) -> String:
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
 			if not in_map(cc) or solid[idx(cc)] != 0:
 				return "Blocked."
-			if t == human and not demo and explored[idx(cc)] == 0:
+			if not ai and t == human and not demo and explored[idx(cc)] == 0:
 				return "Unexplored."
 			if needs_swamp(k) and swamp[t][idx(cc)] == 0:
 				return "Brood structures must grow on your swamp."
-	var r := Rect2(Vector2(c) * T, Vector2(size) * T)
-	if Defs.BUILDINGS[k].get("rig", false):
-		return "" if _rig_mine_at(r) else "Must be right next to a gold mine without a rig."
-	# Keep a lane open beside gold mines so labourers don't get boxed in.
-	for m in mines:
-		if r.grow(T * 1.5).intersects((m as GoldMine).rect()):
-			return "Too close to a gold mine."
+	if Defs.is_econ(k):
+		if econ_count(t, k) >= econ_limit(t, k):
+			return "Each %s allows %d %s. Expand for more." % [Defs.BUILDINGS[faction_hall(t)]["name"],
+				int(Defs.FACTIONS[faction_of(t)]["econ"][k]), Defs.BUILDINGS[k]["name"] + ("s" if int(Defs.FACTIONS[faction_of(t)]["econ"][k]) > 1 else "")]
+		if faction_of(t) != "brood":
+			var mid := (Vector2(c) + Vector2(size) * 0.5) * T
+			var near := false
+			for h in halls_of(t):
+				if h.center().distance_to(mid) <= Defs.ECON_RANGE * T:
+					near = true
+					break
+			if not near:
+				return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
 	return ""
 
 
@@ -682,9 +899,14 @@ func rig_spot(m: GoldMine, t: int) -> Vector2i:
 
 
 func in_field(t: int, p: Vector2) -> bool:
+	var m := field_mult(t)
 	for b in buildings:
 		if b.team == t and b.built and not b.dead and b.d.has("field"):
-			if b.center().distance_to(p) <= float(b.d["field"]) * T:
+			if b.center().distance_to(p) <= float(b.d["field"]) * T * m:
+				return true
+	for u in units:
+		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+			if u.position.distance_to(p) <= Defs.TESLA_FIELD * T * m:
 				return true
 	return false
 
@@ -904,7 +1126,7 @@ func units_near(p: Vector2, r: float) -> Array:
 func separation(u: Unit) -> Vector2:
 	var push := Vector2.ZERO
 	for o in units_near(u.position, u.radius + 18.0):
-		if o == u or o.dead:
+		if o == u or o.dead or o.off_field or o.is_air() != u.is_air():
 			continue
 		var dvec: Vector2 = u.position - o.position
 		var dist := dvec.length()
@@ -926,7 +1148,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	var best: Entity = null
 	var bd := INF
 	for o in units_near(u.position, r):
-		if o.team == u.team or o.dead or o.team < 0:
+		if o.team == u.team or o.dead or o.team < 0 or not u.can_hit(o):
 			continue
 		var dd: float = o.position.distance_to(u.position)
 		if o.is_worker():
@@ -936,6 +1158,8 @@ func find_target(u: Unit, r: float) -> Entity:
 			best = o
 	if best:
 		return best
+	if u.d.get("medic", false):
+		return null
 	for b in buildings:
 		if b.team == u.team or b.dead:
 			continue
@@ -975,7 +1199,7 @@ func nearest_hall(p: Vector2, t: int) -> Building:
 	var best: Building = null
 	var bd := INF
 	for b in buildings:
-		if b.team == t and b.kind == "town_hall" and b.built and not b.dead:
+		if b.team == t and b.kind == faction_hall(t) and b.built and not b.dead:
 			var dd: float = b.edge_distance(p)
 			if dd < bd:
 				bd = dd
@@ -1040,8 +1264,8 @@ func bolt_shot(u: Unit, e: Entity, dmg: float) -> void:
 		if o.team == u.team or o.dead or o.team < 0:
 			continue
 		var q := Geometry2D.get_closest_point_to_segment(o.center(), from, to)
-		if q.distance_to(o.center()) < o.radius + 6.0:
-			o.take_damage(dmg * (1.0 if hits == 0 else 0.75), u)
+		if q.distance_to(o.center()) < o.radius + 6.0 and hits < 3:
+			o.take_damage(dmg * (1.0 if hits == 0 else 0.6), u)
 			spawn_effect("hit", o.center(), 1.0)
 			hits += 1
 	if e.is_building():
@@ -1069,6 +1293,40 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 	for i in 3:
 		var fx := spawn_effect("smoke", from + dir * (20.0 + i * 22.0) + Vector2(randf_range(-6, 6), randf_range(-6, 6)), 1.6)
 		fx.modulate = Color(1.3, 1.3, 1.3, 0.85)
+
+
+func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
+	var from := u.global_position + Vector2(0, -46)
+	var hit: Array = [e]
+	e.take_damage(dmg, u)
+	_bolt_line(from, e.center())
+	var last := e
+	for k in 2:
+		var nxt: Entity = null
+		var bd := 80.0
+		for o in units_near(last.center(), 80.0):
+			if o.team == u.team or o.dead or o.team < 0 or o.off_field or hit.has(o):
+				continue
+			var dd: float = o.center().distance_to(last.center())
+			if dd < bd:
+				bd = dd
+				nxt = o
+		if nxt == null:
+			break
+		nxt.take_damage(dmg * 0.6, u)
+		_bolt_line(last.center(), nxt.center())
+		hit.append(nxt)
+		last = nxt
+	Sfx.play("zap", u.global_position)
+
+
+func _bolt_line(a: Vector2, b: Vector2) -> void:
+	var pts := [a]
+	for i in range(1, 5):
+		pts.append(a.lerp(b, i / 5.0) + Vector2(randf_range(-7, 7), randf_range(-7, 7)))
+	pts.append(b)
+	for i in pts.size() - 1:
+		_tracers.append([pts[i], pts[i + 1], 0.12, Color(0.65, 0.85, 1.0, 0.95), 2.0])
 
 
 func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
@@ -1176,7 +1434,7 @@ func _update_vis() -> void:
 	if demo:
 		fog_sprite.visible = false
 		for u in units:
-			u.visible = true
+			u.visible = not u.off_field
 		return
 	for y in H:
 		for x in W:
@@ -1186,7 +1444,7 @@ func _update_vis() -> void:
 	fog_tex.update(fog_img)
 	for u in units:
 		if u.team != human:
-			u.visible = hv[idx(cell_of(u.position))] == 1
+			u.visible = hv[idx(cell_of(u.position))] == 1 and not u.off_field
 	for b in buildings:
 		if b.team != human:
 			if not b.seen_by_human:
@@ -1206,6 +1464,11 @@ func _physics_process(delta: float) -> void:
 	if over:
 		return
 	clock += delta
+	_economy(delta)
+	for fl in _floats:
+		fl[3] -= delta
+		fl[0] += Vector2(0, -18) * delta
+	_floats = _floats.filter(func(fl: Array) -> bool: return fl[3] > 0.0)
 	_sample_t += delta
 	if _sample_t >= 5.0:
 		_sample_t = 0.0
@@ -1283,6 +1546,15 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 	if us.is_empty():
 		return
 	var e := null if force_move else entity_at(p)
+	if e is Building and e.team == us[0].team and e.built and int(e.d.get("crew", 0)) > 0 \
+			and us.any(func(u: Unit) -> bool: return u.can_gather()):
+		for u in us:
+			if u.can_gather():
+				u.cmd_gather(e)
+			else:
+				u.cmd_move(p)
+		_ping(p, Color(1, 0.85, 0.3))
+		return
 	if e is GoldMine:
 		for u in us:
 			if u.can_gather():
@@ -1307,15 +1579,6 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 			else:
 				u.cmd_move(p)
 		_ping(p, Color(1, 0.85, 0.3))
-		return
-	if e is Building and e.team == us[0].team and e.kind == "town_hall":
-		for u in us:
-			if u.kind == "labourer" and u.carrying > 0:
-				u.order = "gather"
-				u.work = "to_hall"
-				u.home_mine = nearest_mine(u.position, u.team)
-			else:
-				u.cmd_move(p)
 		return
 	if e and e.team >= 0 and e.team != us[0].team:
 		for u in us:
@@ -1382,17 +1645,18 @@ func command_all(list: Array, what: String) -> void:
 func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 	var e := entity_at(p)
 	if b.dual_rally():
+		var site: bool = e is Building and e.team == b.team and int(e.d.get("crew", 0)) > 0
 		if which == "auto":
-			which = "worker" if e is GoldMine else "army"
+			which = "worker" if site else "army"
 		if which == "worker":
 			b.worker_rally = p
-			b.worker_rally_target = e if e is GoldMine else null
+			b.worker_rally_target = e if site else null
 			return
 		b.rally = p
 		b.rally_target = null
 		return
 	b.rally = p
-	b.rally_target = e if e is GoldMine else null
+	b.rally_target = e if e is Building and e.team == b.team and int(e.d.get("crew", 0)) > 0 else null
 
 
 func army(t: int) -> Array:
@@ -1472,24 +1736,26 @@ func faction_hall(t: int) -> String:
 
 func _draw_mine_labels() -> void:
 	var font := ThemeDB.fallback_font
-	for m in mines:
-		if not demo and explored[idx(cell_of(m.center()))] == 0:
+	for b in buildings:
+		if b.dead or not b.built or not b.visible:
 			continue
-		var sat := mine_saturation(m)
-		if sat.is_empty():
+		var crew_max := int(b.d.get("crew", 0))
+		if crew_max == 0 or (b.team != human and not demo):
 			continue
-		var have: int = sat[1]
-		var want: int = sat[2]
-		var col := Color(1, 1, 1) if have < want else (Color(0.45, 1, 0.45) if have == want else Color(1, 0.75, 0.3))
-		var txt := "%d/%d" % [have, want]
-		var tex_h := 40.0
-		if m.sprite and m.sprite.texture:
-			tex_h = m.sprite.texture.get_height() - 8.0
+		var have: int = b.crew.size()
+		var col := Color(1, 1, 1) if have < crew_max else Color(0.45, 1, 0.45)
+		var txt := "%d/%d" % [have, crew_max]
+		var top: float = b.global_position.y - (b.sprite.texture.get_height() - 6.0 if b.sprite and b.sprite.texture else 60.0)
 		var sz := 13
 		var w: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var p: Vector2 = m.global_position + Vector2(-w * 0.5, -tex_h - 6)
+		var p: Vector2 = Vector2(b.global_position.x - w * 0.5, top - 4)
 		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.55))
 		overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+	for fl in _floats:
+		var a: float = minf(float(fl[3]), 1.0)
+		var w2: float = font.get_string_size(fl[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		overlay.draw_string_outline(font, fl[0] - Vector2(w2 * 0.5, 0), fl[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, Color(0, 0, 0, a * 0.8))
+		overlay.draw_string(font, fl[0] - Vector2(w2 * 0.5, 0), fl[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(fl[2], a))
 
 
 func _draw_overlay() -> void:

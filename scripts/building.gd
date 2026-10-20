@@ -21,6 +21,8 @@ var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
 var swamp_r := 0.0               # Brood: current swamp radius in tiles
 var rig_mine: GoldMine = null    # Clockwork Drill Rig: the mine it drills
 var gold_acc := 0.0
+var crew: Array = []             # workers assigned to this economy structure
+var growth := 0.0                # Farm: 0..1 until the harvest
 var sprite: Sprite2D
 var fire: Effect = null
 var rubble_t := 0.0
@@ -100,6 +102,33 @@ func dual_rally() -> bool:
 	return w and a
 
 
+## Crew members actually at their post (labourers and Winders standing at it).
+func working_crew() -> int:
+	var n := 0
+	for u in crew:
+		if is_instance_valid(u) and not u.dead and u.work == "manning":
+			n += 1
+	return n
+
+
+func _econ(delta: float) -> void:
+	crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
+	match kind:
+		"farm":
+			var w := mini(working_crew(), 3)
+			growth += (Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * w / 3.0) / Defs.FARM_GROW * delta
+			if growth >= 1.0:
+				growth = 0.0
+				game.add_gold(team, Defs.FARM_YIELD)
+				if team == game.human:
+					game.float_text(center() + Vector2(0, -30), "+%d harvest" % Defs.FARM_YIELD, Color(1, 0.9, 0.4))
+					Sfx.play("done", center())
+		"powder_mill":
+			game.add_res2(team, Defs.MILL_RATE * working_crew() * delta)
+		"bone_midden":
+			game.add_res2(team, Defs.MIDDEN_TRICKLE * delta)
+
+
 func uses_eggs() -> bool:
 	return d.get("eggs", false)
 
@@ -114,6 +143,8 @@ func _physics_process(delta: float) -> void:
 			if rubble_t > 28.0:
 				queue_free()
 		return
+	if built and not dead:
+		_econ(delta)
 	if d["faction"] == "brood":
 		_brood(delta)
 	elif d["faction"] == "clockwork":
@@ -149,7 +180,7 @@ func _physics_process(delta: float) -> void:
 			else:
 				i += 1
 	elif built and not queue.is_empty():
-		prod_t += delta
+		prod_t += delta * (game.asm_mult[team] if d["faction"] == "clockwork" else 1.0)
 		var k: String = queue[0]
 		if prod_t >= float(Defs.UNITS[k]["time"]):
 			prod_t = 0.0
@@ -223,6 +254,10 @@ func die() -> void:
 	for k in queue:
 		game.refund(team, k)
 	queue.clear()
+	for u in crew:
+		if is_instance_valid(u) and not u.dead:
+			u.cmd_stop()
+	crew.clear()
 	morph_t.clear()
 	if rig_mine and is_instance_valid(rig_mine) and rig_mine.rig == self:
 		rig_mine.rig = null
@@ -263,6 +298,10 @@ func _draw() -> void:
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * progress, 4), Color(0.95, 0.8, 0.3))
+	elif kind == "farm" and (team == game.human or game.demo):
+		var w := r.size.x * 0.7
+		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-w * 0.5, top + 7, w * growth, 4), Color(0.95, 0.85, 0.3))
 	elif not queue.is_empty() and team == game.human:
 		var w := r.size.x * 0.7
 		var k: String = queue[0]

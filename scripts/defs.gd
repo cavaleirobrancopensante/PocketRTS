@@ -17,22 +17,66 @@ const WIND_DECAY := 0.04          # Clockwork: wind lost per second outside a fi
 const WIND_MIN := 0.55
 const REPAIR_RATE := 14.0         # hp per second a Winder restores
 
+# ---- Economy: no resources on the map; every faction makes its own from structures.
+# Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
+# Crown and Clockwork ones must stand near one of their halls.
+const ECON_RANGE := 14            # tiles from a hall
+# Crown: farms grow (faster with labourers working them) and pay out a whole harvest.
+const FARM_GROW := 40.0           # seconds to ripen with a full crew
+const FARM_BASE := 0.15           # share of that speed with nobody working it
+const FARM_YIELD := 280
+const MILL_RATE := 0.5            # powder per second per labourer at a Powder Mill
+const START_POWDER := 80
+const POWDER_SHOT := {"musketeer": 1, "cannon": 3}
+# Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
+const PIT_TIME := 2.5             # seconds a grub feeds at the pit before hauling
+const FOOD_BASE := 6.0
+const FOOD_PER_TILE2 := 0.07      # value grows with the square of the distance (in tiles)
+const FOOD_MAX := 100
+const ESSENCE_PER_SUPPLY := 3     # a body falling near a Bone Midden
+const MIDDEN_RANGE := 12          # tiles
+const MIDDEN_TRICKLE := 0.15      # essence per second per midden
+# Clockwork: Winders crank Boilers for energy, split between ore, assembly and wind.
+const ENERGY_PER_WINDER := 3.0
+const ENERGY_HALL := 2.0
+const ORE_PER_ENERGY := 1.6
+const CRUSHER_CAP := 10.0         # ore per second one Ore Crusher can handle
+const SPLITS := {
+	"ECONOMY": [0.7, 0.15, 0.15], "BALANCED": [0.45, 0.3, 0.25],
+	"WAR": [0.15, 0.5, 0.35], "HOLD": [0.2, 0.2, 0.6],
+}
+# Missionary
+const BANDAGE_TIME := 4.0
+const CROSS_TIME := 5.0           # after bandaging, that soldier can't be bandaged again yet
+const MISSIONARY_DANGER := 8      # tiles from an enemy building where he can be hurt
+# Tesla Cart
+const TESLA_SWITCH := 3.0         # seconds to deploy or pack
+const TESLA_FIELD := 6            # tiles
+
 const FACTIONS := {
 	"crown": {
 		"name": "The Crown", "hall": "town_hall", "worker": "labourer", "supply": "cottage",
-		"build": ["town_hall", "cottage", "barracks", "foundry"], "start_workers": 5, "ready": true, "max_supply": 100,
-		"about": "Musketeers and cannons. Labourers carry gold home. Strong at range and in sieges.",
+		"build": ["town_hall", "cottage", "farm", "powder_mill", "barracks", "foundry", "church"],
+		"start_workers": 5, "ready": true, "max_supply": 100,
+		"res": ["Gold", "Powder"], "econ": {"farm": 4, "powder_mill": 1},
+		"start": ["farm", "farm", "powder_mill"],
+		"about": "Musketeers and cannons. Farms ripen into big harvests; muskets and cannons burn powder. Slow and strong when dug in.",
 	},
 	"brood": {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
-		"build": ["hive", "clutch_mound", "warren", "gorge_pit"], "start_workers": 4, "ready": true, "max_supply": 160,
-		"about": "A swarm of cheap, fragile lizards that hatch several to an egg. Grubs feed on gold where they sit and become buildings. Swamp heals and speeds them. Army cap 160.",
+		"build": ["hive", "clutch_mound", "feeding_pit", "bone_midden", "spore_vent", "warren", "gorge_pit", "roost"],
+		"start_workers": 5, "ready": true, "max_supply": 160,
+		"res": ["Biomass", "Essence"], "econ": {"feeding_pit": 3, "bone_midden": 1},
+		"start": ["feeding_pit"],
+		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Hive: the longer the haul, the richer the food. Essence comes from the fallen. Army cap 160.",
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
-		"build": ["clocktower", "spring_tower", "drill_rig", "assembly_works"], "start_workers": 2, "ready": true,
-		"max_supply": 80,
-		"about": "Few, very tough constructs. Drill Rigs mine by themselves. Winders build and repair. Constructs run down outside a wind-up field. Army cap 80.",
+		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works"],
+		"start_workers": 3, "ready": true, "max_supply": 80,
+		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
+		"start": ["boiler", "ore_crusher"],
+		"about": "Few, very tough constructs. Winders crank Boilers; you split the energy between ore, assembly speed and wind. Army cap 80.",
 	},
 }
 
@@ -45,7 +89,7 @@ const UNITS := {
 	"musketeer": {
 		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 100, "time": 20.0, "supply": 2,
 		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks",
-		"faction": "crown", "about": "Ranged line infantry. Long reload.",
+		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Each shot burns powder.",
 	},
 	"pikeman": {
 		"name": "Pikeman", "hp": 120, "armor": 2, "speed": 60, "cost": 75, "time": 16.0, "supply": 2,
@@ -56,13 +100,13 @@ const UNITS := {
 		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 40, "cost": 200, "time": 32.0, "supply": 4,
 		"sight": 9, "range": 300, "min_range": 70, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
 		"radius": 19, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
-		"about": "Long-range splash. Smashes buildings. Can't hit what's too close.",
+		"about": "Long-range splash. Smashes buildings. Can't hit what's too close. Burns 3 powder a shot.",
 	},
 	"grub": {
 		"name": "Grub", "hp": 40, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 6, "range": 18, "damage": 4, "cooldown": 1.2, "radius": 8, "from": "hive",
 		"faction": "brood", "worker": true,
-		"about": "Burrows into a mine on swamp and feeds. Turns into buildings.",
+		"about": "Hauls food from Feeding Pits to a Hive (longer hauls pay more). Turns into buildings.",
 	},
 	"raptor": {
 		"name": "Raptors", "hp": 30, "armor": 0, "speed": 100, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
@@ -72,20 +116,20 @@ const UNITS := {
 	"spitter": {
 		"name": "Spitters", "hp": 45, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
 		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
-		"acid": 3.0, "requires": "warren", "faction": "brood",
+		"acid": 3.0, "requires": "warren", "anti_air": true, "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
 	},
 	"brute": {
 		"name": "Brute", "hp": 240, "armor": 2, "speed": 56, "cost": 150, "time": 22.0, "supply": 3,
 		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 20, "from": "hive",
-		"building_bonus": 1.6, "requires": "gorge_pit", "faction": "brood",
+		"building_bonus": 1.6, "requires": "gorge_pit", "cost2": 20, "faction": "brood",
 		"about": "Huge horned tank. Charges in and knocks enemies back.",
 	},
 	"winder": {
 		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 5, "cooldown": 1.2, "radius": 12, "from": "clocktower",
 		"faction": "clockwork", "worker": true, "repairs": true,
-		"about": "Starts buildings and repairs constructs and buildings. Never mines.",
+		"about": "Cranks Boilers for energy, starts buildings and repairs constructs and buildings.",
 	},
 	"gearknight": {
 		"name": "Gearknight", "hp": 300, "armor": 4, "speed": 52, "cost": 170, "time": 24.0, "supply": 3,
@@ -95,7 +139,7 @@ const UNITS := {
 	"bolt": {
 		"name": "Bolt Automaton", "hp": 150, "armor": 2, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
 		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 15, "from": "assembly_works",
-		"pierce": true, "faction": "clockwork", "about": "Crossbow bolts pierce every enemy in a line.",
+		"pierce": true, "anti_air": true, "faction": "clockwork", "about": "Crossbow bolts pierce up to three enemies in a line.",
 	},
 	"steam_walker": {
 		"name": "Steam Walker", "hp": 380, "armor": 3, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
@@ -103,12 +147,30 @@ const UNITS := {
 		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
 		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
 	},
+	"missionary": {
+		"name": "Missionary", "hp": 60, "armor": 0, "speed": 62, "cost": 125, "time": 20.0, "supply": 1,
+		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 10, "from": "church",
+		"medic": true, "per": "church", "faction": "crown",
+		"about": "Bandages wounded soldiers back to full health. Can't be hurt unless near enemy buildings. One per Church.",
+	},
+	"skywing": {
+		"name": "Skywing", "hp": 75, "armor": 0, "speed": 118, "cost": 100, "cost2": 40, "time": 16.0, "supply": 2,
+		"sight": 9, "range": 24, "damage": 9, "cooldown": 1.0, "aim": 0.15, "radius": 13, "from": "hive",
+		"air": true, "anti_air": true, "requires": "roost", "faction": "brood",
+		"about": "Flies over cliffs and walls. Only ranged units can hit it. Costs essence.",
+	},
+	"tesla_cart": {
+		"name": "Tesla Cart", "hp": 240, "armor": 2, "speed": 50, "cost": 190, "time": 28.0, "supply": 3,
+		"sight": 9, "range": 170, "damage": 14, "cooldown": 1.6, "aim": 0.2, "radius": 18, "from": "assembly_works",
+		"tesla": true, "anti_air": true, "requires": "charging_pylon", "faction": "clockwork",
+		"about": "Rolls packed; deploy it (3 s) to power nearby constructs and zap enemies in chains.",
+	},
 }
 
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Gold is brought here.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 4 Farms and a Powder Mill nearby.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -124,8 +186,8 @@ const BUILDINGS := {
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
-		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs. Every Brood unit hatches here. Can grow off swamp.",
+		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing"], "eggs": true, "swamp": 9,
+		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits.",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
@@ -142,8 +204,8 @@ const BUILDINGS := {
 	},
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "trickle": 1.0, "faction": "clockwork",
-		"about": "Builds Winders. Winds up constructs nearby and ticks out a little gold.",
+		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "faction": "clockwork",
+		"about": "Builds Winders and gives a little energy. Allows 2 Boilers and 2 Ore Crushers nearby.",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -157,8 +219,58 @@ const BUILDINGS := {
 	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1300, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker"], "faction": "clockwork",
-		"about": "Assembles every combat construct.",
+		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker", "tesla_cart"], "faction": "clockwork",
+		"about": "Assembles every combat construct. Faster with more energy on assembly.",
+	},
+	"farm": {
+		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 5, "trains": [], "crew": 3, "faction": "crown",
+		"about": "Ripens into a 280-gold harvest. Up to 3 labourers make it grow faster.",
+	},
+	"powder_mill": {
+		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 5, "trains": [], "crew": 2, "faction": "crown",
+		"about": "Labourers grind black powder. Muskets and cannons can't fire without it.",
+	},
+	"church": {
+		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 7, "trains": ["missionary"], "requires": "barracks", "faction": "crown",
+		"about": "Sends out one Missionary. Needs a Barracks.",
+	},
+	"feeding_pit": {
+		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 6, "trains": [], "crew": 5, "swamp": 4, "faction": "brood",
+		"about": "Up to 5 grubs haul food from here to the nearest Hive. Far from a Hive = richer food.",
+	},
+	"bone_midden": {
+		"name": "Bone Midden", "hp": 500, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 6, "trains": [], "swamp": 4, "faction": "brood",
+		"about": "Gathers essence from every body that falls nearby (and a little on its own).",
+	},
+	"spore_vent": {
+		"name": "Spore Vent", "hp": 300, "armor": 0, "cost": 90, "time": 16.0, "size": Vector2i(2, 2),
+		"supply": 0, "sight": 7, "trains": [], "swamp": 12, "faction": "brood",
+		"about": "Spreads swamp far around it.",
+	},
+	"roost": {
+		"name": "Roost", "hp": 700, "armor": 1, "cost": 175, "time": 35.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 8, "trains": [], "swamp": 4, "requires": "warren", "faction": "brood",
+		"about": "Lets the Hive hatch Skywings. Needs a Warren.",
+	},
+	"boiler": {
+		"name": "Boiler", "hp": 800, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
+		"about": "Up to 3 Winders crank it for energy.",
+	},
+	"ore_crusher": {
+		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
+		"about": "Turns the energy you put on ore into ore (up to 10 a second).",
+	},
+	"charging_pylon": {
+		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),
+		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "faction": "clockwork",
+		"about": "Winds up and slowly mends constructs nearby. Unlocks the Tesla Cart.",
 	},
 }
 
@@ -166,6 +278,12 @@ const BUILDINGS := {
 
 static func is_worker(kind: String) -> bool:
 	return Defs.UNITS.has(kind) and Defs.UNITS[kind].get("worker", false)
+
+
+static func is_econ(kind: String) -> bool:
+	if not BUILDINGS.has(kind):
+		return false
+	return FACTIONS[BUILDINGS[kind]["faction"]]["econ"].has(kind)
 
 const TEAM_COLOURS := [Color("#3a78e8"), Color("#e03a32")]
 const TEAM_NAMES := ["Blue", "Red"]

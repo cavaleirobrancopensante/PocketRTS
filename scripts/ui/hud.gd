@@ -11,6 +11,7 @@ const MINI_W := 210.0
 var game: Game
 var controls: Controls
 var page := ""                       # command card page: "", build
+var build_page := 0
 var paused := false
 var _buttons: Array = []             # {rect, cb, enabled}
 var _hud_touches := {}               # touch index -> what it pressed
@@ -206,18 +207,31 @@ func _build_card() -> Array:
 	if not units.is_empty():
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
 		if page == "build" and has_lab:
-			for k in Defs.FACTIONS[game.faction_of(game.human)]["build"]:
+			var all: Array = Defs.FACTIONS[game.faction_of(game.human)]["build"]
+			var per := 4 if all.size() > 5 else 5
+			var pages := int(ceil(all.size() / float(per)))
+			build_page = clampi(build_page, 0, pages - 1)
+			for k in all.slice(build_page * per, build_page * per + per):
 				var d: Dictionary = Defs.BUILDINGS[k]
 				var why := ""
 				if not game.requirement_met(game.human, k):
 					why = "Needs a %s first." % Defs.BUILDINGS[d["requires"]]["name"]
 				elif game.players[game.human]["gold"] < int(d["cost"]):
-					why = "Not enough gold."
+					why = "Not enough %s." % _res()[0].to_lower()
+				elif Defs.is_econ(k) and game.econ_count(game.human, k) >= game.econ_limit(game.human, k):
+					why = "Limit reached: expand with another %s." % Defs.BUILDINGS[game.faction_hall(game.human)]["name"]
 				var kk: String = k
-				list.append([k, d["name"].to_upper(), func() -> void:
+				var label: String = d["name"].to_upper()
+				if Defs.is_econ(k):
+					label = "%s %d/%d" % [label.split(" ")[0], game.econ_count(game.human, k), game.econ_limit(game.human, k)]
+				list.append([k, label, func() -> void:
 					page = ""
 					controls.begin_place(kk), why == "", why, str(d["cost"])])
-			list.append(["stop", "BACK", func() -> void: page = "", true, "", ""])
+			if pages > 1:
+				list.append(["build", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
+			list.append(["stop", "BACK", func() -> void:
+				page = ""
+				build_page = 0, true, "", ""])
 			return list
 		list.append(["move", "MOVE", func() -> void: controls.mode = "move", true, "", ""])
 		list.append(["attack", "ATTACK", func() -> void: controls.mode = "attack", true, "", ""])
@@ -226,13 +240,31 @@ func _build_card() -> Array:
 		if has_lab:
 			list.append(["build", "BUILD", func() -> void: page = "build", true, "", ""])
 			if units.any(func(u: Unit) -> bool: return u.can_gather()):
-				list.append(["gather", "GATHER", func() -> void:
+				list.append(["gather", "WORK", func() -> void:
 					for u in game.selected_units():
 						if u.can_gather():
-							var m := game.nearest_mine(u.position, u.team)
+							var m := game.free_site(u.team, u.position)
 							if m:
-								u.cmd_gather(m), true, "", ""])
+								u.cmd_gather(m)
+							else:
+								toast("Every post is taken: build more."), true, "", ""])
+		if units.any(func(u: Unit) -> bool: return u.kind == "tesla_cart"):
+			var packed := units.any(func(u: Unit) -> bool: return u.kind == "tesla_cart" and u.tesla_mode == "packed")
+			list.insert(3, ["tesla_cart", "DEPLOY" if packed else "PACK", func() -> void:
+				for u in game.selected_units():
+					if u.kind == "tesla_cart":
+						if packed:
+							u.cmd_deploy()
+						else:
+							u.cmd_pack(), true, "", ""])
 		return list
+	if b and b.built and game.faction_of(game.human) == "clockwork" and b.kind in ["clocktower", "boiler", "ore_crusher"]:
+		for name in Defs.SPLITS:
+			var nm: String = name
+			var on: bool = game.players[game.human]["split_name"] == nm
+			list.append(["boiler", ("> " if on else "") + nm, func() -> void: game.set_split(game.human, nm), true, "", ""])
+		if b.kind != "clocktower":
+			return list
 	if b and b.built:
 		for k in b.d["trains"]:
 			var kk: String = k
@@ -243,7 +275,7 @@ func _build_card() -> Array:
 					toast(w), why == "", why, str(Defs.UNITS[k]["cost"])])
 		if b.dual_rally():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
-			list.append(["gather", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
+			list.append(["feeding_pit", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
 		elif not b.d["trains"].is_empty():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
@@ -310,12 +342,23 @@ func _draw() -> void:
 	var pl: Dictionary = game.players[game.human]
 	# Top bar
 	draw_rect(top_rect(), Color(0.05, 0.05, 0.06, 0.75))
-	draw_circle(Vector2(20, 18), 8, Color(0.98, 0.8, 0.2))
+	var fac := game.faction_of(game.human)
+	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.25, 0.25, 0.28)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
+		"clockwork": [Color(0.7, 0.72, 0.78), Color(0.45, 0.75, 1.0)]}[fac]
+	draw_circle(Vector2(20, 18), 8, cols[0])
 	_text(font, Vector2(34, 25), "%d" % pl["gold"], 20, Color(1, 0.9, 0.5))
+	draw_circle(Vector2(112, 18), 8, cols[1])
+	draw_arc(Vector2(112, 18), 8, 0, TAU, 16, Color(1, 1, 1, 0.5), 1.0)
+	var r2 := "%d" % int(pl["res2"])
+	if fac == "clockwork":
+		var sp: Array = pl["split"]
+		r2 = "%d/s  ore %d · asm %d · wind %d" % [int(game.energy[game.human]), int(sp[0] * 100), int(sp[1] * 100), int(sp[2] * 100)]
+	_text(font, Vector2(126, 25), r2, 18 if fac == "clockwork" else 20, Color(0.85, 0.9, 1.0))
+	var sx := 430.0 if fac == "clockwork" else 200.0
 	var used := game.supply_used(game.human)
 	var cap: int = pl["cap"]
-	draw_rect(Rect2(124, 10, 14, 16), Color(0.75, 0.55, 0.3))
-	_text(font, Vector2(144, 25), "%d / %d" % [used, cap], 20, Color(1, 0.5, 0.45) if used >= cap else Color.WHITE)
+	draw_rect(Rect2(sx, 10, 14, 16), Color(0.75, 0.55, 0.3))
+	_text(font, Vector2(sx + 20, 25), "%d / %d" % [used, cap], 20, Color(1, 0.5, 0.45) if used >= cap else Color.WHITE)
 	var secs := int(game.clock)
 	_text(font, Vector2(vs.x * 0.5, 25), "%d:%02d" % [secs / 60, secs % 60], 18, Color(1, 1, 1, 0.8), 1)
 	var mr := menu_rect()
@@ -334,7 +377,7 @@ func _draw() -> void:
 		draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
 	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
-			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a mine (or a spot) for new grubs"}[controls.mode]
+			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a Feeding Pit (or a spot) for new grubs"}[controls.mode]
 		_text(font, Vector2(vs.x * 0.5, 66), t, 20, Color(1, 1, 0.7), 1)
 	elif controls.mode == "place":
 		_text(font, Vector2(vs.x * 0.5, 66), "Drag to position, tap again or PLACE to build", 20, Color(1, 1, 0.7), 1)
@@ -405,15 +448,25 @@ func _draw_panel(font: Font) -> void:
 		var icon := _icon(e.kind)
 		if icon:
 			draw_texture_rect(icon, Rect2(r.position + Vector2(10, 10), Vector2(68, 68)), false)
-		var name := "Gold mine"
+		var name := ""
 		var info := ""
 		if e is Unit:
 			name = (e as Unit).d["name"]
 			info = (e as Unit).d["about"]
-			if e.kind == "labourer" and (e as Unit).carrying > 0:
-				info = "Carrying %d gold." % (e as Unit).carrying
-			elif (e as Unit).work == "feeding":
-				info = "Burrowed and feeding: takes half damage."
+			var uu := e as Unit
+			if uu.order == "gather" and uu.home_mine is Building:
+				info = "Working at the %s." % (uu.home_mine as Building).d["name"]
+			if uu.kind == "grub" and uu.carrying > 0:
+				info = "Hauling food worth %d to the Hive." % uu.carrying
+			elif uu.work == "feeding":
+				info = "Feeding at the pit: takes half damage."
+			elif uu.work == "bandaging":
+				info = "Bandaging a soldier."
+			elif uu.kind == "tesla_cart":
+				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
+					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
+			elif uu.kind == "missionary":
+				info = "In danger near enemy buildings!" if not uu.untouchable() else "Can't be hurt here. Bandages wounded soldiers."
 			elif (e as Unit).d["faction"] == "clockwork" and (e as Unit).wind < 0.99:
 				info = "Winding down (%d%%): go back near a Spring Tower." % int((e as Unit).wind * 100)
 		elif e is Building:
@@ -424,8 +477,18 @@ func _draw_panel(font: Font) -> void:
 				info = "Waiting for a %s." % ("Winder to start it" if bb.d["faction"] == "clockwork" else "grub to turn into it")
 			elif not bb.built:
 				info = "%s: %d%%" % ["Growing" if bb.d["faction"] == "brood" else "Under construction", int(bb.progress * 100)]
-			elif bb.rig_mine and is_instance_valid(bb.rig_mine):
-				info = "Drilling %d gold/s. %d left in the mine." % [int(Defs.RIG_RATE), bb.rig_mine.gold]
+			elif bb.kind == "farm":
+				info = "Harvest in %ds · %d/3 working · +%d gold" % [int(ceil((1.0 - bb.growth) * Defs.FARM_GROW / maxf(Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(bb.working_crew(), 3) / 3.0, 0.01))), bb.working_crew(), Defs.FARM_YIELD]
+			elif bb.kind == "powder_mill":
+				info = "%d/2 grinding · +%.1f powder/s" % [bb.working_crew(), Defs.MILL_RATE * bb.working_crew()]
+			elif bb.kind == "feeding_pit":
+				info = "%d/5 grubs · each load is worth %d" % [bb.crew.size(), game.food_value(bb)]
+			elif bb.kind == "boiler":
+				info = "%d/3 Winders cranking · +%d energy/s" % [bb.working_crew(), int(Defs.ENERGY_PER_WINDER * bb.working_crew())]
+			elif bb.kind == "ore_crusher" or (bb.kind == "clocktower" and e.team == game.human):
+				info = "Energy %d/s → ore %.1f/s · assembly x%.1f" % [int(game.energy[e.team]), game.ore_rate[e.team], game.asm_mult[e.team]]
+			elif bb.kind == "bone_midden":
+				info = "Bodies falling within %d tiles give essence." % Defs.MIDDEN_RANGE
 			elif bb.uses_eggs() and e.team == game.human:
 				var nxt := "" if bb.eggs + bb.queue.size() >= Defs.EGGS_MAX else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
 				info = "Eggs: %d / %d%s" % [bb.eggs, Defs.EGGS_MAX, nxt]
@@ -434,8 +497,7 @@ func _draw_panel(font: Font) -> void:
 		if e.team >= 0 and e.team != game.human:
 			name += "  (enemy)"
 		_text(font, r.position + Vector2(90, 28), name, 20, Color.WHITE)
-		if not (e is GoldMine):
-			_text(font, r.position + Vector2(90, 50), "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)], 16, Color(0.6, 1, 0.6))
+		_text(font, r.position + Vector2(90, 50), "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)], 16, Color(0.6, 1, 0.6))
 		_text(font, r.position + Vector2(90, 72), info, 14, Color(1, 1, 1, 0.65))
 		if e is Building and e.team == game.human and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
@@ -497,6 +559,10 @@ func _draw_card(font: Font) -> void:
 			draw_rect(Rect2(br.end.x - 30, br.position.y, 30, 15), Color(0, 0, 0, 0.65))
 			_text(font, Vector2(br.end.x - 15, br.position.y + 12), it[5], 11, Color(1, 0.88, 0.4), 1)
 		_buttons.append({"rect": br, "cb": it[2], "enabled": enabled, "why": it[4]})
+
+
+func _res() -> Array:
+	return Defs.FACTIONS[game.faction_of(game.human)]["res"]
 
 
 func _icon(name: String) -> Texture2D:

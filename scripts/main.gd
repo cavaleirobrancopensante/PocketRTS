@@ -9,13 +9,13 @@ var menu: Control
 var _went_fullscreen := false
 var pick := {"me": "crown", "enemy": "brood", "difficulty": 1, "blue": "you", "c1": 0, "c2": 1}
 
-const HELP := """Destroy every enemy building to win.
+const HELP := """Destroy every enemy building to win. There are no resources on the map: each faction builds its own economy, and every Town Hall, Hive or Clocktower allows only so many economy structures, so expanding is how you grow.
 
-THE CROWN  Labourers mine gold and carry it to the Town Hall. Cottages give supply. Barracks train Musketeers (ranged, slow reload) and Pikemen (tough, crush cannons and brutes). The Foundry casts Field Cannons (long-range splash, smash buildings).
+THE CROWN  Labourers work Farms (up to 3 each): a farm ripens into a 280-gold harvest, faster with more hands. The Powder Mill makes black powder; muskets and cannons can't fire without it. Each Town Hall allows 4 Farms and 1 Powder Mill nearby. Barracks: Musketeers and Pikemen. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.
 
-THE BROOD  Grubs burrow into mines on your swamp and feed where they sit - up to 8 per mine, no trips, half damage while burrowed. A grub turns into a building (it's used up). Every unit hatches from the Hive's eggs (up to 5, one every 6s), several to an egg. The Brood fields a bigger army: 160 supply instead of 100. Swamp spreads from Brood structures: Brood units run 30% faster and heal on it, and new structures (except Hives) must grow on it. Warren: Raptors (three per egg) and Spitters (two per egg; acid strips armour). Gorge Pit: Brutes (charge, knock back).
+THE BROOD  Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some). Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, flyers only ranged units can hit. Army cap 160.
 
-THE CLOCKWORK  Drill Rigs built next to a gold mine drill it by themselves (you start with two). Winders never mine: a Winder starts each building, which then assembles itself, and Winders repair constructs and buildings (tap something damaged). Constructs slowly run down (slower, weaker) away from a Clocktower or Spring Tower. The Assembly Works builds Gearknights (armoured, self-repairing), Bolt Automatons (bolts pierce a whole line) and Steam Walkers (steam cone; needs a Spring Tower). Army cap 80.
+THE CLOCKWORK  Winders crank Boilers for energy. Split the energy (tap a Boiler or Clocktower) between ORE (Ore Crushers turn it into ore), ASSEMBLY (faster production) and WIND (bigger fields; constructs run down slower). Winders also start buildings and repair. Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Army cap 80.
 
 TOUCH
 - Tap a unit to select it; double-tap to select all of that type on screen.

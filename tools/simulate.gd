@@ -27,9 +27,16 @@ func _process(delta: float) -> bool:
 			for b in g.buildings:
 				if b.team == team and not b.dead:
 					bl[b.kind] = bl.get(b.kind, 0) + 1
-			line += "| T%d gold=%d sup=%d/%d units=%s bld=%s " % [team, g.players[team]["gold"], g.supply_used(team), g.players[team]["cap"], counts, bl]
+			var ws := {}
+			for u in g.workers(team):
+				var k: String = u.order + ":" + u.work
+				ws[k] = ws.get(k, 0) + 1
+			line += "| T%d gold=%d earned=%d r2=%d sup=%d/%d units=%s bld=%s work=%s " % [team, g.players[team]["gold"], g.stats[team]["gold"], int(g.players[team]["res2"]), g.supply_used(team), g.players[team]["cap"], counts, bl, ws]
 		print(line)
 	if g.over:
-		print("WINNER team ", g.winner, " at ", int(g.clock), "s  stats ", g.stats)
+		var short: Array = []
+		for st in g.stats:
+			short.append({"earned": st["gold"], "killed": st["killed"], "lost": st["lost"], "razed": st["razed"], "kills_by": st["kills_by"]})
+		print("WINNER team ", g.winner, " at ", int(g.clock), "s  ", short)
 		return true
 	return g.clock > 1500.0
