@@ -168,9 +168,9 @@ const UNITS := {
 	"bloater": {
 		"tags": ["light"],
 		"name": "Bloater", "hp": 60, "armor": 0, "speed": 44, "cost": 50, "cost2": 25, "time": 14.0, "supply": 1,
-		"sight": 7, "range": 18, "damage": 20, "cooldown": 1.0, "aim": 0.7, "radius": 12, "from": "hive",
+		"sight": 8, "range": 160, "damage": 7, "cooldown": 2.2, "aim": 0.5, "radius": 12, "from": "hive",
 		"air": true, "ground_only": true, "requires": "roost", "faction": "brood",
-		"about": "A floating gas sac. It drifts over walls to the enemy and bursts: an acid cloud for 8 s that strips armour and slows everyone inside. Used up when it bursts.",
+		"about": "A floating gas sac full of acid. It spits acid from afar, but every glob uses up gas; on HOLD GAS it keeps it all and drifts in to burst as a huge acid bomb. Used up when it bursts.",
 	},
 	"winder": {
 		"tags": ["light"],
@@ -388,7 +388,8 @@ const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius
 ## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
 ## inside it, up to a share of each unit's health per cloud; clouds don't stack.
 ## Bloater: its acid cloud
-const BLOAT := {"radius": 72.0, "time": 8.0, "dps": 3.0, "slow": 0.6}
+## (a full sac: burst damage and cloud at their biggest; each spit empties some of it)
+const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 60.0, "spit_cost": 15.0, "reach": 22.0}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}

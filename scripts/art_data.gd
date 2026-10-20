@@ -387,7 +387,7 @@ const UNITS := {
 		"walk_s": 4,
 		"walk_se": 4,
 	}},
-	"ornithopter": {"cell": Vector2i(58, 70), "anchor": Vector2(29, 43), "frames": {
+	"ornithopter": {"cell": Vector2i(48, 50), "anchor": Vector2(24, 35), "frames": {
 		"attack_e": 4,
 		"attack_n": 4,
 		"attack_ne": 4,
@@ -409,7 +409,7 @@ const UNITS := {
 		"walk_s": 7,
 		"walk_se": 7,
 	}},
-	"bloater": {"cell": Vector2i(56, 61), "anchor": Vector2(28, 38), "frames": {
+	"bloater": {"cell": Vector2i(56, 61), "anchor": Vector2(28, 36), "frames": {
 		"attack_e": 4,
 		"attack_n": 4,
 		"attack_ne": 4,
@@ -431,6 +431,29 @@ const UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
+	"balloon": {"cell": Vector2i(87, 119), "anchor": Vector2(42, 103), "frames": {
+		"death_e": 5,
+		"death_n": 5,
+		"death_ne": 5,
+		"death_s": 5,
+		"death_se": 5,
+		"drift_e": 5,
+		"drift_n": 5,
+		"drift_ne": 5,
+		"drift_s": 5,
+		"drift_se": 5,
+		"idle_e": 4,
+		"idle_n": 4,
+		"idle_ne": 4,
+		"idle_s": 4,
+		"idle_se": 4,
+	}, "gunners": {
+		"s": [Vector2(37, 79), Vector2(46, 81)],
+		"se": [Vector2(37, 80), Vector2(46, 82)],
+		"e": [Vector2(38, 82), Vector2(46, 84)],
+		"ne": [Vector2(38, 80), Vector2(46, 82)],
+		"n": [Vector2(36, 79), Vector2(46, 81)],
+	}, "gunner_cell": Vector2i(55, 51), "gunner_anchor": Vector2(12, 33), "gunner_frames": {"idle": 2, "down": 3, "up": 3}},
 }
 
 const BUILDING_SIZE := {
@@ -493,5 +516,5 @@ const EFFECTS := {
 	"miasma_in": {"frames": 7, "size": Vector2i(200, 188)},
 	"miasma_loop": {"frames": 7, "size": Vector2i(200, 188)},
 	"miasma_out": {"frames": 7, "size": Vector2i(200, 188)},
-	"bloat_cloud": {"frames": 3, "size": Vector2i(150, 180)},
+	"bloat_cloud": {"frames": 3, "size": Vector2i(150, 170)},
 }

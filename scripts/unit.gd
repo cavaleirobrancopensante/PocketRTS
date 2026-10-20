@@ -69,6 +69,7 @@ var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
 var auto_work := true
 var slow_t := 0.0              # slowed (Bloater acid)
+var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # Observation Balloon: two gunners, each with its own target, reload and pose
 var gun_cd: Array = [0.0, 1.5]
 var gun_state: Array = ["idle", "idle"]
@@ -116,6 +117,14 @@ func set_bayonet(on: bool) -> void:
 
 ## Cannon: round shot (long range, splash, smashes buildings) or canister (short range,
 ## a cone of musket balls that shreds crowds).
+## Bloater: HOLD GAS (no spitting, a full-size burst) or SPIT.
+func set_hold_gas(on: bool) -> void:
+	if kind != "bloater":
+		return
+	mode = "hold" if on else ""
+	phase = ""
+
+
 func set_canister(on: bool) -> void:
 	if kind != "cannon" or (mode == "canister") == on:
 		return
@@ -605,7 +614,7 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 	# redraw the shadow, ring and bars only when something on them changed
 	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0),
-		int(hp), int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp))
+		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp))
 	if key != _draw_key:
 		_draw_key = key
 		queue_redraw()
@@ -648,6 +657,10 @@ func _scan_range() -> float:
 
 
 func _range() -> float:
+	if kind == "bloater":
+		# holding its gas, out of it, or about to pop anyway: it goes in to burst
+		if mode == "hold" or gas < float(Defs.BLOAT["spit_cost"]) or hp < max_hp * 0.35:
+			return float(Defs.BLOAT["reach"])
 	if mode == "bayonet":
 		return Defs.BAYONET["range"]
 	if mode == "canister":
@@ -867,8 +880,13 @@ func _strike(e: Entity) -> void:
 			game._zap_visual(center() + Vector2(0, 6), e.center(), false, true)
 			Sfx.play_any(["combat/tesla_attack", "zap"], position)
 		"bloater":
-			game.bloat_burst(self)
-			die()
+			if _range() > float(Defs.BLOAT["reach"]):
+				# spit a glob of acid (uses gas)
+				gas -= float(Defs.BLOAT["spit_cost"])
+				game.acid_shot(self, e, dmg)
+			else:
+				game.bloat_burst(self)
+				die()
 		"stormcaller":
 			# a short zap from the forked hands
 			e.take_damage(dmg, self)
@@ -1564,6 +1582,10 @@ func _draw() -> void:
 		draw_texture_rect_region(bt, Rect2(-14, top + 10, 11, 22), Rect2(fr * 11, 0, 11, 22))
 		draw_rect(Rect2(-15, top + 33, 13, 3), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-14, top + 34, 11 * f, 1), Color(0.4, 1, 0.3).lerp(Color(1, 0.2, 0.1), f))
+	if kind == "bloater" and team == game.human:
+		var w := radius * 2.0
+		draw_rect(Rect2(-w * 0.5, top + 7.0, w, 2), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(-w * 0.5, top + 7.0, w * gas / 100.0, 2), Color(0.75, 0.95, 0.25))
 	if carrying > 0 and kind == "grub":
 		draw_circle(Vector2(0, -16), 3.5, Color(0.55, 0.85, 0.3))
 		draw_circle(Vector2(0, -16), 3.5, Color(0.2, 0.3, 0.1), false, 1.0)

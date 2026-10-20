@@ -53,8 +53,9 @@ FLIP_LEAN = {"ne"}                 # drawn leaning the other way
 OUT = "assets/units/balloon"
 CONTACT = _argv[_argv.index("--contact") + 1] if "--contact" in _argv else None
 
-ENV_W = 42          # envelope width in game px (the whole balloon is ~2 musketeers tall)
+ENV_W = 40          # envelope width in game px (the whole balloon is ~2 musketeers tall)
 LEAN_K = 0.55       # share of the sheet's sideways lean that is kept
+ROPE_MIN = 20       # ring to basket rim, game px: room for a standing gunner
 ROPE_COL = (92, 62, 30)
 ROPE_DARK = (52, 34, 18)
 
@@ -372,6 +373,8 @@ class Direction:
             drops.append(e[3] * ENV_W / e[1])
         # the rim drawn above the wicker top: the ropes are that much shorter
         self.rope = float(np.median(drops)) - self.basket.ext
+        # ...but long enough that the gunners' helmets stay clear of the envelope
+        self.rope = max(self.rope, ROPE_MIN)
         bk = self.basket
         self.ox = int(round(CAN_AX - bk.bx))
         self.oy = CAN_AY - bk.bottom
@@ -595,14 +598,13 @@ class Gunners:
         # the shot of the east view, turned to this barrel
         fires, _ = musk_frames("fire", "e")
         ef = self.fire_frame(fires)
-        flash, smoke = effects_mask(ef)
-        fx = np.nonzero(flash)[1].min() if flash.any() else 60
-        fy = int(np.median(np.nonzero(flash)[0])) if flash.any() else 20
-        core = largest(ndimage.binary_opening(ef[..., 3] > 0, structure=np.ones((3, 3))))
+        # the muzzle: the tip of the barrel in the aim frame (no flash there yet)
+        ea = musk_frames("aim", "e")[0][-1]
+        ys, xs = np.nonzero(ea[..., 3] > 0)
+        fx = xs.max()
+        fy = int(np.median(ys[xs >= fx - 1]))
         eff = ef.copy()
-        keep = (ef[..., 3] > 0) & ~core
-        keep[:, :fx - 1] = False
-        eff[~keep] = 0
+        eff[:, :fx - 1] = 0
         eff, fwd = rotate(eff, -25.0, fx, fy, pad=20)
         mx, my = fwd(fx, fy)
         fire = aim.copy()
@@ -619,3 +621,226 @@ class Gunners:
     def clip(self, f):
         """Smoke may hang lower than the waist; nothing of the body does."""
         return f
+
+
+# ---------------------------------------------------------------- death
+
+def wicker_geom(img):
+    """(width, bottom row, centre x) of the wicker basket of a source drawing."""
+    a = img[..., 3] > 0
+    ys = np.flatnonzero(a.any(1))
+    wk = a & wicker(img[..., :3])
+    wk[:ys.min() + int((ys.max() - ys.min()) * 0.55)] = False
+    wk = largest(ndimage.binary_closing(wk, iterations=2) & a)
+    rows = wk.sum(1)
+    big = np.flatnonzero(rows >= 0.6 * rows.max())
+    width = float(np.median([np.ptp(np.flatnonzero(wk[y])) + 1 for y in big]))
+    wy, wx = np.nonzero(wk)
+    bottom = wy.max() + 1
+    low = wy >= bottom - (bottom - wy.min()) / 3
+    return width, bottom, float(wx[low].mean()) + 0.5
+
+
+def wreck_ground(img):
+    """Ground point of the wreck: under its solid heap (smoke and sparks left out)."""
+    a = img[..., 3] > 0
+    r, g, b = [img[..., c].astype(int) for c in range(3)]
+    grey = (np.abs(r - g) <= 16) & (np.abs(g - b) <= 20) & (r >= 70)
+    solid = largest(ndimage.binary_opening(a & ~grey, structure=np.ones((3, 3)), iterations=2))
+    wy, wx = np.nonzero(solid)
+    rows = solid.sum(1)
+    bottom = np.flatnonzero(rows >= 3).max() + 1
+    low = wy >= bottom - (bottom - wy.min()) * 0.3
+    return bottom, float(np.median(wx[low])) + 0.5
+
+
+def death_frames(D, fr):
+    # the death group is drawn at the idle group's zoom: one scale for all of it (the
+    # envelope shrinks as it deflates), every frame hung from its basket bottom
+    best = min(D.idle_src, key=lambda f: abs(lean_of(f["img"])[0]))
+    s0 = ENV_W / envelope_part(best["img"])[1]
+    out = []
+    for f in fr[(D.r, "death")]:
+        img = f["img"]
+        _, bot, cx = wicker_geom(img)
+        g = to_game(img, s0, D.bgc)
+        can = np.zeros((CAN_H, CAN_W, 4), np.uint8)
+        paste(can, g, int(round(CAN_AX - cx * s0)), int(round(CAN_AY - bot * s0)))
+        out.append(can)
+    img = fr[(D.r, "wreck")][0]["img"]
+    bot, cx = wreck_ground(img)
+    g = to_game(img, s0, D.bgc)
+    can = np.zeros((CAN_H, CAN_W, 4), np.uint8)
+    paste(can, g, int(round(CAN_AX - cx * s0)), int(round(CAN_AY - bot * s0)))
+    out.append(can)
+    return out
+
+
+# ---------------------------------------------------------------- output
+
+def union_box(frames):
+    m = np.zeros(frames[0].shape[:2], bool)
+    for f in frames:
+        m |= f[..., 3] > 0
+    ys, xs = np.nonzero(m)
+    return xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+
+
+def strip(frames, box):
+    x0, y0, x1, y1 = box
+    return np.concatenate([f[y0:y1, x0:x1] for f in frames], 1)
+
+
+def save(arr, path):
+    Image.fromarray(arr, "RGBA").save(path)
+
+
+def write_art_data(entry_text):
+    path = "scripts/art_data.gd"
+    src = open(path).read()
+    pat = re.compile(r'\t"balloon": \{"cell".*?"gunner_frames": \{[^}]*\}\},\n', re.S)
+    if pat.search(src):
+        src = pat.sub(lambda m: entry_text, src, count=1)
+    else:
+        i = src.index("\n}\n", src.index("const UNITS := {")) + 1
+        src = src[:i] + entry_text + src[i:]
+    open(path, "w").write(src)
+
+
+def make_icon(fr, bgc):
+    """Button icon: the whole balloon, crew and all, drawn from the sheet at icon size in
+    the frame of the other unit icons."""
+    src = fr[(0, "idle")][0]["img"]
+    ys = np.flatnonzero(src[..., 3].any(1))
+    img = to_game(src, 57.0 / (ys.max() - ys.min() + 1), bgc)
+    img, _, _ = crop(img)
+    # the bevelled frame of the hand-made icons: their edge profile (median over the
+    # straight parts of the cannon and musketeer icons), their corners as they are
+    refs = [np.array(Image.open(f"assets/icons/{n}.png").convert("RGBA")).astype(float)
+            for n in ("cannon", "musketeer")]
+    B = 5
+    prof = np.median(np.concatenate([np.concatenate(
+        [r[12:52, :B], r[12:52, ::-1][:, :B], r[:B, 12:52].transpose(1, 0, 2),
+         r[::-1][:B, 12:52].transpose(1, 0, 2)], 0) for r in refs], 0), 0)
+    icon = np.zeros((64, 64, 4), np.uint8)
+    yy = np.arange(64)[:, None]
+    icon[..., :3] = np.clip(np.array([31, 34, 37]) - yy[..., None] * 0.15, 0, 255).astype(np.uint8)
+    icon[..., 3] = 255
+    h, w = img.shape[:2]
+    inner = icon[B:64 - B, B:64 - B]
+    paste(inner, img, (64 - 2 * B - w) // 2, (64 - 2 * B - h) // 2 + 1)
+    for dpt in range(B):
+        c = prof[dpt].round().astype(np.uint8)
+        icon[dpt, dpt:64 - dpt] = c
+        icon[63 - dpt, dpt:64 - dpt] = c
+        icon[dpt:64 - dpt, dpt] = c
+        icon[dpt:64 - dpt, 63 - dpt] = c
+    corner = refs[0].astype(np.uint8)
+    for (ys_, xs_) in ((slice(0, B), slice(0, B)), (slice(0, B), slice(64 - B, 64)),
+                       (slice(64 - B, 64), slice(0, B)), (slice(64 - B, 64), slice(64 - B, 64))):
+        icon[ys_, xs_] = corner[ys_, xs_]
+    save(icon, "assets/icons/balloon.png")
+
+
+def main():
+    fr, bgc = R.extract("balloon")
+    os.makedirs(OUT, exist_ok=True)
+    body, front, death, dirs = {}, {}, {}, {}
+    for d in DIRS:
+        D = Direction(fr, bgc, d)
+        dirs[d] = D
+        for anim, src in (("drift", D.drift_src), ("idle", D.idle_src)):
+            fs = [D.frame(f, anim) for f in src]
+            body[(anim, d)] = [b for b, _ in fs]
+            front[(anim, d)] = [f for _, f in fs]
+        death[d] = death_frames(D, fr)
+    allb = [f for v in body.values() for f in v] + [f for v in death.values() for f in v]
+    box = union_box(allb)
+    x0, y0, x1, y1 = box
+    cell = (x1 - x0, y1 - y0)
+    anchor = (CAN_AX - x0, CAN_AY - y0)
+    counts = {}
+    for (anim, d), fs in body.items():
+        save(strip(fs, box), f"{OUT}/{anim}_{d}.png")
+        save(strip(front[(anim, d)], box), f"{OUT}/front_{anim}_{d}.png")
+        counts[f"{anim}_{d}"] = len(fs)
+    for d, fs in death.items():
+        save(strip(fs, box), f"{OUT}/death_{d}.png")
+        counts[f"death_{d}"] = len(fs)
+    slots = {d: [(int(round(sx - x0)), int(round(sy - y0))) for sx, sy in dirs[d].slots] for d in DIRS}
+
+    # gunners: every direction's frames moved so the waist points coincide
+    G = {d: Gunners(d) for d in DIRS}
+    gw = max(g.waist for g in G.values())
+    gp = max(g.px for g in G.values())
+    gun = {}
+    for d, g in G.items():
+        for k, fs in g.anims.items():
+            gun[(k, d)] = [np.roll(np.roll(f, gw - g.waist, 0), gp - g.px, 1) for f in fs]
+    gbox = union_box([f for v in gun.values() for f in v])
+    gx0, gy0, gx1, gy1 = gbox
+    gcell = (gx1 - gx0, gy1 - gy0)
+    ganchor = (gp - gx0, Gunners.PAD + gw - gy0)
+    gframes = {}
+    for (k, d), fs in gun.items():
+        save(strip(fs, gbox), f"{OUT}/gunner_{k}_{d}.png")
+        gframes[k] = len(fs)
+    make_icon(fr, bgc)
+
+    # stale files from an older run
+    keep = {f"{a}_{d}.png" for a in ("drift", "idle", "death", "front_drift", "front_idle",
+                                     "gunner_idle", "gunner_down", "gunner_up") for d in DIRS}
+    for f in os.listdir(OUT):
+        if f.endswith(".png") and f not in keep:
+            os.remove(os.path.join(OUT, f))
+            if os.path.exists(os.path.join(OUT, f + ".import")):
+                os.remove(os.path.join(OUT, f + ".import"))
+
+    def v2(p):
+        return f"Vector2({p[0]:g}, {p[1]:g})"
+    lines = [f'\t"balloon": {{"cell": Vector2i({cell[0]}, {cell[1]}), "anchor": {v2(anchor)}, "frames": {{']
+    lines += [f'\t\t"{k}": {counts[k]},' for k in sorted(counts)]
+    lines.append("\t}, \"gunners\": {")
+    lines += [f'\t\t"{d}": [{v2(slots[d][0])}, {v2(slots[d][1])}],' for d in DIRS]
+    lines.append(f'\t}}, "gunner_cell": Vector2i({gcell[0]}, {gcell[1]}), "gunner_anchor": {v2(ganchor)}, '
+                 f'"gunner_frames": {{"idle": {gframes["idle"]}, "down": {gframes["down"]}, "up": {gframes["up"]}}}}},')
+    write_art_data("\n".join(lines) + "\n")
+    print(f"balloon: cell {cell}, anchor {anchor}; gunner cell {gcell}, anchor {ganchor}")
+    print("  " + ", ".join(f"{k} {n}" for k, n in sorted(counts.items())))
+    print("  slots " + "; ".join(f"{d} {slots[d]}" for d in DIRS))
+    if CONTACT:
+        contact(CONTACT, cell, anchor, slots, gcell, ganchor, counts)
+
+
+def contact(path, cell, anchor, slots, gcell, ganchor, counts):
+    """Per direction: the drift frames with the gunners in five combinations, then the
+    death frames - x3 on grass green, drawn the way the engine layers them."""
+    os.makedirs(path, exist_ok=True)
+
+    def load(name):
+        return np.array(Image.open(f"{OUT}/{name}.png").convert("RGBA"))
+
+    def cells(a, w):
+        return [a[:, i * w:(i + 1) * w] for i in range(a.shape[1] // w)]
+    combos = [("idle", "idle"), ("down", "down"), ("down", "up"), ("up", "up")]
+    lines = []
+    for d in DIRS:
+        body = cells(load(f"drift_{d}"), cell[0])
+        front = cells(load(f"front_drift_{d}"), cell[0])
+        g = {k: cells(load(f"gunner_{k}_{d}"), gcell[0]) for k in ("idle", "down", "up")}
+        for ka, kb in combos:
+            ims = []
+            for i, b in enumerate(body):
+                can = b.copy()
+                for (sx, sy), k, off in ((slots[d][0], ka, 0), (slots[d][1], kb, 1)):
+                    gf = g[k][(i + off) % len(g[k])]
+                    paste(can, gf, int(sx - ganchor[0]), int(sy - ganchor[1]))
+                paste(can, front[i], 0, 0)
+                ims.append(can)
+            lines.append((f"{d} A:{ka} B:{kb}", ims))
+        lines.append((f"{d} death", cells(load(f"death_{d}"), cell[0])))
+    R.contact_sheet(os.path.join(path, "contact_balloon.png"), lines)
+
+
+if __name__ == "__main__":
+    main()

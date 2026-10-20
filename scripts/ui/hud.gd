@@ -491,6 +491,13 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["spore_mother", "MIASMA", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "miasma", ok, why, ""])
+	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
+	if not sacs.is_empty():
+		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
+		list.append(["bloater", "HOLD GAS" if hold else "SPIT", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "bloater":
+					u.set_hold_gas(hold), true, "", ""])
 	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	if not guns.is_empty():
 		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")
@@ -505,7 +512,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "START": "P", "END": "P"}
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "START": "P", "END": "P"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -1003,6 +1010,8 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
 		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. 2 powder a shot.",
 		"STORM": "Static storm: a ring of lightning on a spot for 3 s. Everything inside is stunned, your own units too, and enemies take damage. Costs 70 charge; the Stormcaller recharges only inside a Clockwork field.",
+		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
+		"SPIT": "Spit: lob acid from range (160). Every glob uses up gas, so the final burst gets smaller.",
 		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
 		"ROOT": "Root (2.5 s): she digs in, lobs big spit blobs that splash an area, and spreads swamp. She can't move until she uproots.",
 		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",

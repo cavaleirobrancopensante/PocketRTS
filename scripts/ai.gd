@@ -917,6 +917,9 @@ func _abilities() -> void:
 ## hurt swarm in the middle of a fight.
 func _spells() -> void:
 	for u in game.army(team):
+		# half the Bloaters keep their gas for big bursts (on walls and clumps)
+		if u.kind == "bloater" and u.mode == "" and u.get_instance_id() % 2 == 0:
+			u.set_hold_gas(true)
 		if u.order == "cast":
 			continue
 		if u.kind == "stormcaller" and u.charge >= float(Defs.STORM["cost"]):

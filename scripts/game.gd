@@ -2142,14 +2142,18 @@ var zones: Array = []
 ## A Bloater bursts: a little damage where it pops, and an acid cloud that lingers.
 func bloat_burst(u: Unit) -> void:
 	var p := u.position
-	for o in units_near(p, float(Defs.BLOAT["radius"])):
+	# everything scales with the gas left in the sac: a full one is a huge bomb
+	var full := clampf(u.gas / 100.0, 0.15, 1.0)
+	var r := float(Defs.BLOAT["radius"]) * (0.5 + 0.5 * full)
+	var dmg := float(Defs.BLOAT["burst"]) * full
+	for o in units_near(p, r):
 		if not o.dead and not o.is_air() and hostile(o.team, u.team):
-			o.take_damage(float(u.d["damage"]), u)
+			o.take_damage(dmg * (1.0 - 0.4 * clampf(o.position.distance_to(p) / r, 0.0, 1.0)), u)
 	for b in buildings.duplicate():
-		if not b.dead and hostile(b.team, u.team) and b.edge_distance(p) < 30.0:
-			b.take_damage(float(u.d["damage"]) * 2.0, u)
+		if not b.dead and hostile(b.team, u.team) and b.edge_distance(p) < r * 0.5:
+			b.take_damage(dmg * 2.0, u)
 	var z := {"kind": "bloat", "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {},
-		"r": float(Defs.BLOAT["radius"]), "t": float(Defs.BLOAT["time"])}
+		"r": r, "t": float(Defs.BLOAT["time"]) * (0.4 + 0.6 * full)}
 	zones.append(z)
 	_zone_fx(z, "loop")
 	Sfx.play_any(["combat/spitter_hit", "acid"], p)

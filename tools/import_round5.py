@@ -72,7 +72,8 @@ SHEETS = {
 
 UNITS = {
     "ornithopter": dict(scale=0.38, glow="blue", norm=[]),
-    "bloater": dict(scale=0.4, glow="green", target=42, norm=["drift", "idle"],
+    # target: height from the crest to the bottom of the sac (tendrils hang ~20 px more)
+    "bloater": dict(scale=0.4, glow="green", target=26, norm=["drift", "idle"],
                     borrow={"swell": "drift", "burst": "drift"}),
 }
 
@@ -361,15 +362,18 @@ def plan_ornithopter(S):
     for d, r in rows.items():
         A["walk", d] = steady_c(S.seq(r, "fly"), fuselage, drop)
         A["idle", d] = A["walk", d] if d == "e" else steady_c(S.seq(r, "hover"), fuselage, drop)
-        A["attack", d] = [cap_bolt(f, ORN_BOLT - drop) for f in
-                          steady_c(S.seq(r, "attack"), fuselage, drop)]
+        # the top-down attack's last frame is drawn banking away (a stray pose): N and NE
+        # end on frame 1 again
+        idx = [0, 1, 2, 1] if r in (5, 6) else None
+        A["attack", d] = [cap_bolt(f, ORN_BOLT) for f in
+                          steady_c(S.seq(r, "attack", idx), fuselage, drop)]
         sc = S.seq(r, "scatter")
         hit = anchored(S(r, "death", 0), fuselage, drop)
         brk = anchored(sc[0], fuselage, drop)
         hull = anchored(sc[-1], fuselage, drop)
         parts = debris(S, 5 if r == 6 else r)
         near = overlay(hull, spread(parts, 0.75, 0), dy=-drop)
-        far = overlay(hull, spread(parts, 1.0, 6), dy=-drop + 2)
+        far = overlay(hull, spread(parts, 1.0, 3), dy=-drop + 1)
         A["death", d] = [hit, brk, near, far, hull]
     return A
 
@@ -407,9 +411,13 @@ CLOUD_FILL = 138       # the biggest cloud's width in it
 
 
 def build_cloud(S, row=0):
-    """The last three burst frames' acid cloud alone: un-blended from the slate, the crest,
-    bone shards and tendrils taken out (only the yellow-green gas stays), each frame
-    centred on the gas's light-weighted middle, one scale for all three."""
+    """The last three burst frames' acid cloud alone (S row): un-blended from the slate;
+    the crest, bone shards and tendrils taken out and their holes filled with the gas
+    around them; each frame centred on the gas's light-weighted middle and brought to
+    nearly the same width (the sheet's cloud triples in size over the three frames, but
+    the game loops them for the cloud's whole 8 s: they should boil, not pulse). The first
+    of the three is thin (the sac just torn), so every frame has the other two laid
+    faintly under it - the loop doesn't flicker."""
     import import_lightning as L
     cells = []
     for fr in S.frames[(row, "burst")][-3:]:
@@ -420,30 +428,41 @@ def build_cloud(S, row=0):
         al[img[..., 3] == 0] = 0
         col = np.clip((rgb - bg * (1 - al[..., None])) / np.maximum(al, 1e-6)[..., None], 0, 255)
         r, g, b = col[..., 0], col[..., 1], col[..., 2]
-        gas = (g >= r + 6) & (g >= b + 40)
-        # the opaque crest / shards / tendrils and a 1 px halo round them go
-        solid = (img[..., 3] > 0) & ~gas
-        solid = ndimage.binary_dilation(solid & (al > 0.6), iterations=1) & ~gas
-        al = np.where(gas & ~solid, al, 0)
-        al = ndimage.uniform_filter(al, 3) * (al > 0)
-        cells.append(np.dstack([col * al[..., None], al * 255.0]))
-    widths = []
+        gas = (g >= r + 6) & (g >= b + 40) & (al > 0)
+        solid = ndimage.binary_dilation((img[..., 3] > 0) & ~gas, iterations=1) & ~gas
+        keep = gas & ~solid
+        # holes left by the shards: the average of the gas around them, where gas is
+        # around on most sides
+        w = ndimage.uniform_filter(keep.astype(float), 9)
+        hole = solid & (w >= 0.45)
+        acc = [ndimage.uniform_filter(np.where(keep, ch, 0.0), 9) / np.maximum(w, 1e-6)
+               for ch in (col[..., 0] * al, col[..., 1] * al, col[..., 2] * al, al)]
+        a2 = np.where(keep, al, np.where(hole, acc[3], 0.0))
+        pre = np.dstack([np.where(keep, col[..., c] * al, np.where(hole, acc[c], 0.0)) for c in range(3)])
+        a2 = np.clip(a2 * 1.3, 0, 1)
+        pre = pre * 1.3
+        cells.append(np.dstack([pre, a2 * 255.0]))
+    # width: the middle 90% of the gas (stray droplets don't count)
+    widths, cents, hs = [], [], []
     for c in cells:
-        xs = np.flatnonzero((c[..., 3] / 255.0 > 0.25).any(0))
-        widths.append(xs.max() - xs.min() + 1)
-    k = CLOUD_FILL / float(max(widths))
-    cents, hs = [], []
-    for c in cells:
-        w = c[..., 3]
-        yy, xx = np.mgrid[0:w.shape[0], 0:w.shape[1]]
-        cx, cy = (w * xx).sum() / w.sum() + 0.5, (w * yy).sum() / w.sum() + 0.5
+        a = c[..., 3]
+        cm = np.cumsum(a.sum(0)) / a.sum()
+        widths.append((np.searchsorted(cm, 0.95) - np.searchsorted(cm, 0.05)) / 0.9)
+        yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
+        cx, cy = (a * xx).sum() / a.sum() + 0.5, (a * yy).sum() / a.sum() + 0.5
         cents.append((cx, cy))
-        ys = np.flatnonzero((w / 255.0 > 0.1).any(1))
+        ys = np.flatnonzero((a / 255.0 > 0.1).any(1))
         hs.append(max(cy - ys.min(), ys.max() + 1 - cy))
+    ks = [CLOUD_FILL * z / float(wd) for z, wd in zip((0.9, 0.95, 1.0), widths)]
     W = CLOUD_W
-    H = 2 * int(np.ceil(max(hs) * k)) + 4
-    frames = [L.finish(L.warp(c, W, H, lambda U, V, cx=cx, cy=cy: (cx + (U - W / 2) / k, cy + (V - H / 2) / k)))
-              for c, (cx, cy) in zip(cells, cents)]
+    H = min(W + 20, 2 * int(np.ceil(max(h * k for h, k in zip(hs, ks)))) + 4)
+    own = [L.warp(c, W, H, lambda U, V, cx=cx, cy=cy, k=k: (cx + (U - W / 2) / k, cy + (V - H / 2) / k))
+           for c, (cx, cy), k in zip(cells, cents, ks)]
+    frames = []
+    for i, f in enumerate(own):
+        under = sum(own[j] for j in range(3) if j != i) * 0.25
+        a = f[..., 3:4] / 255.0
+        frames.append(L.finish(f + under * (1 - a)))       # premultiplied 'over'
     strip = np.concatenate(frames, 1)
     os.makedirs("assets/effects", exist_ok=True)
     Image.fromarray(strip, "RGBA").save("assets/effects/bloat_cloud.png")
@@ -553,10 +572,53 @@ ICONS = {
 }
 
 
+class Src5(Src):
+    """Round 4's Src; the bloater's sac is painted light-green but solid: only the burst
+    frames with the gas cloud (2 on) are un-blended as light."""
+
+    def __call__(self, r, g, i, m=False):
+        self._gi = (g, i)
+        return Src.__call__(self, r, g, i, m)
+
+    def hs(self, r, g):
+        """Bloater: figure heights from the crest to the bottom of the sac - the swinging
+        tendrils would make every frame a different 'size'."""
+        if self.kind != "bloater":
+            return Src.hs(self, r, g)
+        if (r, g) not in self.heights:
+            hs = []
+            for i in range(len(self.frames[(r, g)])):
+                f = self.raw(r, g, i, self.cfg["scale"])
+                top = np.flatnonzero(body_of(f.img, f.glow).any(1)).min()
+                m = sac(f)
+                bot = np.flatnonzero(m.any(1)).max() if m.any() else f.img.shape[0] - 1
+                hs.append(bot - top + 1)
+            self.heights[(r, g)] = hs
+        return self.heights[(r, g)]
+
+    def raw(self, r, g, i, scale):
+        glow = self.cfg.get("glow")
+        if self.kind == "bloater" and not (g == "burst" and i >= 2):
+            glow = None
+        img, gl = to_game(self.frames[(r, g)][i]["img"], scale, self.bgc, glow)
+        return F(img, gl)
+
+
+def trim(f):
+    """f cropped to what is drawn (padding from overlays would widen the shared cell)."""
+    ys, xs = np.nonzero(f.img[..., 3] > 0)
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    return F(f.img[y0:y1, x0:x1].copy(), f.glow[y0:y1, x0:x1].copy(), f.ax - x0, f.ay - y0)
+
+
 def build_unit(kind):
-    S = Src(kind)
-    S.OUTLIER = {}                 # the sheets' size changes are drawn on purpose
+    S = Src5(kind)
+    # single frames drawn smaller than the rest of their group (the bloater's drift
+    # shrinks along the SE row, the last idle frames are smaller): brought to the
+    # group's median height. The ornithopter's height changes with the wing beat: kept.
+    S.OUTLIER = {"drift": 0.04, "idle": 0.04} if kind == "bloater" else {}
     A = PLANS[kind](S)
+    A = {k: [trim(f) for f in fr] for k, fr in A.items()}
     strips, cell, anchor = assemble(A)
     out = f"assets/units/{kind}"
     os.makedirs(out, exist_ok=True)

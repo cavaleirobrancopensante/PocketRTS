@@ -61,7 +61,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			continue
 		d["units"].append({"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
 			"charge": u.charge, "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying,
-			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "f": _v2(u.facing)})
+			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing)})
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -135,6 +135,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.auto_work = bool(ud["auto"])
 		u.push_auto = bool(ud["push"])
 		u.spell_cd = float(ud["spell_cd"])
+		u.gas = float(ud.get("gas", 100.0))
 		u.facing = _to_v2(ud["f"])
 	for a in d.get("ai", []):
 		for ai in game.ais:

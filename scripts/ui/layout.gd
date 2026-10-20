@@ -99,7 +99,7 @@ static func _preset(base: String, hud: Vector2, sizes: Dictionary) -> Dictionary
 # ------------------------------------------------------------------ hotkeys
 
 ## Command ids that can be rebound, besides every unit and building kind.
-const COMMANDS := ["MOVE", "ATTACK", "STOP", "HOLD", "BUILD", "ADVANCED", "WORK", "DEPLOY", "RALLY", "GRUBS", "CANCEL", "MORE", "PLACE", "BAYONETS", "MUSKETS", "PUSH", "CANISTER", "ROUND SHOT", "UNLIMBER", "LIMBER", "ROOT", "UPROOT", "STORM", "MIASMA"]
+const COMMANDS := ["MOVE", "ATTACK", "STOP", "HOLD", "BUILD", "ADVANCED", "WORK", "DEPLOY", "RALLY", "GRUBS", "CANCEL", "MORE", "PLACE", "BAYONETS", "MUSKETS", "PUSH", "CANISTER", "ROUND SHOT", "UNLIMBER", "LIMBER", "ROOT", "UPROOT", "STORM", "MIASMA", "HOLD GAS", "SPIT"]
 
 
 ## The player's own key for a command or a unit/building kind ("" = the default).
