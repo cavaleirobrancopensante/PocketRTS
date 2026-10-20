@@ -432,10 +432,9 @@ KICK = 9.0              # recoil: the musket kicks back up this much
 
 
 def musk_frames(anim, d):
+    """Frames of a musketeer strip (aim-up strips are taller, padded on top)."""
     a = np.array(Image.open(f"{MUSK}/{anim}_{d}.png").convert("RGBA"))
-    pad = 0 if a.shape[0] == 36 else a.shape[0] - 36     # aim-up sheets are taller on top
-    return [a[pad:, i * MCW:(i + 1) * MCW].copy() if pad == 0 else a[:, i * MCW:(i + 1) * MCW].copy()
-            for i in range(a.shape[1] // MCW)], pad
+    return [a[:, i * MCW:(i + 1) * MCW].copy() for i in range(a.shape[1] // MCW)], a.shape[0] - 36
 
 
 def effects_mask(f):
@@ -486,40 +485,28 @@ class Gunners:
             "up": self.up(),
         }
 
-    def padded(self, f, pad_top=None):
-        P = self.PAD
-        out = np.zeros((36 + P + 20, MCW, 4), np.uint8)
-        h = f.shape[0]
-        out[P + 36 - h:P + 36] = f
-        return out
-
     def cut(self, f, keep_below=2):
-        """Padded frame with everything under the waist (+ keep_below rows) removed."""
-        g = self.padded(f) if f.shape[0] == 36 else self.padded_tall(f)
-        g[self.PAD + self.waist + keep_below + 1:] = 0
-        return g
-
-    def padded_tall(self, f):
+        """f on the gunner work cell (bottom-aligned, PAD rows of sky on top) with
+        everything under the waist (+ keep_below rows) removed."""
         P = self.PAD
-        out = np.zeros((36 + P + 20, MCW, 4), np.uint8)
-        h = f.shape[0]
-        top = P + 36 - h
+        g = np.zeros((36 + P + 20, MCW, 4), np.uint8)
+        top = P + 36 - f.shape[0]
         if top < 0:
-            f = f[-top:]
-            top = 0
-        out[top:top + f.shape[0]] = f
-        return out
+            f, top = f[-top:], 0
+        g[top:top + f.shape[0]] = f
+        g[P + self.waist + keep_below + 1:] = 0
+        return g
 
     def fire_frame(self, frames):
         """The fire frame with the most flash and smoke in it."""
         best = max(frames, key=lambda f: sum(m.sum() for m in effects_mask(f)))
         return best
 
-    def recoil(self, aim, fire, base_deg):
+    def recoil(self, aim, fire):
         """The shot just gone: musket kicked up, the gunner rocked back a pixel, the
         smoke from the shot drifting on."""
         P, w = self.PAD, self.waist
-        g = turn_upper(aim, KICK, self.px, P + w) if base_deg is not None else aim.copy()
+        g = turn_upper(aim, KICK, self.px, P + w)
         g = np.roll(g, -1, 1)
         g[P + w + 3:] = 0
         _, smoke = effects_mask(fire)
@@ -540,8 +527,8 @@ class Gunners:
         fire = self.cut(self.fire_frame(fires), 3)
         aim_d = turn_upper(aim, -DOWN, self.px, P + w)
         fire_d = turn_upper(fire, -DOWN, self.px, P + w)
-        rec = self.recoil(aim_d, fire_d, -DOWN)
-        return [self.clip(f) for f in (aim_d, fire_d, rec)]
+        rec = self.recoil(aim_d, fire_d)
+        return [aim_d, fire_d, rec]
 
     def up(self):
         P, w = self.PAD, self.waist
@@ -549,8 +536,9 @@ class Gunners:
         fires, _ = musk_frames("fireup", self.d)
         aim = self.cut(aims[-1], 3)
         fire = self.cut(self.fire_frame(fires), 3)
-        rec = self.recoil(aim, fire, 0.0 if self.d != "n" else None)
-        if self.d == "n":
+        if self.d != "n":
+            rec = self.recoil(aim, fire)
+        else:              # from behind: no kick to see, he settles and the smoke rises
             rec = aim.copy()
             _, smoke = effects_mask(fire)
             sm = fire.copy()
@@ -559,7 +547,7 @@ class Gunners:
             m = (sm[..., 3] > 0) & (rec[..., 3] == 0)
             rec[m] = sm[m]
             rec = np.roll(rec, 1, 0)
-        return [self.clip(f) for f in (aim, fire, rec)]
+        return [aim, fire, rec]
 
     def down_n(self):
         """Seen from behind: the musket comes out at his right side, pointing down past
@@ -616,11 +604,7 @@ class Gunners:
         rec = np.roll(rec, -1, 1)
         rec[P + w + 3:] = 0
         paste(rec, smoke_only, int(round(muzzle[0] - mx)) + 1, int(round(muzzle[1] - my)) - 1, under=True)
-        return [self.clip(f) for f in (aim, fire, rec)]
-
-    def clip(self, f):
-        """Smoke may hang lower than the waist; nothing of the body does."""
-        return f
+        return [aim, fire, rec]
 
 
 # ---------------------------------------------------------------- death
