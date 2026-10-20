@@ -1130,7 +1130,7 @@ func _update_swamp() -> void:
 							g[y * W + x] = 1
 		swamp[t] = g
 	swamp_layer.queue_redraw()
-_swamp_minimap()
+	_swamp_minimap()
 
 
 ## One small picture of every Brood swamp, drawn on the minimap for everyone.

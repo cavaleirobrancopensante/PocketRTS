@@ -293,8 +293,9 @@ func _build_card() -> Array:
 		return list
 	if not units.is_empty():
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
-		if page == "build" and has_lab:
-			var all: Array = Defs.FACTIONS[game.faction_of(game.human)]["build"]
+		if page in ["build", "advanced"] and has_lab:
+			var all: Array = Defs.FACTIONS[game.faction_of(game.human)]["build"].filter(func(k: String) -> bool:
+				return Defs.is_basic(k) == (page == "build"))
 			var slots := _cols() * _rows()
 			var per := slots - 1 if all.size() <= slots - 1 else slots - 2
 			var pages := int(ceil(all.size() / float(per)))
@@ -324,9 +325,17 @@ func _build_card() -> Array:
 		list.append(["move", "MOVE", func() -> void: controls.mode = "move", true, "", ""])
 		list.append(["attack", "ATTACK", func() -> void: controls.mode = "attack", true, "", ""])
 		list.append(["stop", "STOP", func() -> void: game.command_all(game.selected_units(), "stop"), true, "", ""])
-		list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 		if has_lab:
-			list.append(["build", "BUILD", func() -> void: page = "build", true, "", ""])
+			# workers don't need HOLD: two build pages instead, basic and advanced
+			list.append(["build", "BUILD", func() -> void:
+				page = "build"
+				build_page = 0, true, "", ""])
+			list.append(["repair", "ADVANCED", func() -> void:
+				page = "advanced"
+				build_page = 0, true, "", ""])
+		else:
+			list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
+		if has_lab:
 			if units.any(func(u: Unit) -> bool: return u.can_gather()):
 				list.append(["gather", "WORK", func() -> void:
 					for u in game.selected_units():
@@ -373,7 +382,7 @@ func _build_card() -> Array:
 
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
-const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "WORK": "G",
+const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P"}
 
 
@@ -412,7 +421,7 @@ func _with_keys(items: Array) -> Array:
 func hotkey(code: int) -> bool:
 	if paused or game.over:
 		return false
-	if code == KEY_ESCAPE and controls.mode == "" and page == "build":
+	if code == KEY_ESCAPE and controls.mode == "" and page != "":
 		page = ""
 		return true
 	var letter := OS.get_keycode_string(code)
@@ -782,7 +791,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		if u.has("cost2"):
 			cost += " + %d %s" % [u["cost2"], _res()[1].to_lower()]
 		title += "   (%s, supply %d)" % [cost, int(u["supply"]) * int(u.get("spawn", 1))]
-	elif Defs.BUILDINGS.has(k) and page == "build":
+	elif Defs.BUILDINGS.has(k) and page in ["build", "advanced"]:
 		var bd: Dictionary = Defs.BUILDINGS[k]
 		title = "%s   (%d %s)" % [bd["name"], bd["cost"], _res()[0].to_lower()]
 		body = bd["about"]

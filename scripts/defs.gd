@@ -281,6 +281,15 @@ static func is_worker(kind: String) -> bool:
 	return Defs.UNITS.has(kind) and Defs.UNITS[kind].get("worker", false)
 
 
+## Basic structures (halls, supply, economy) go on the BUILD page; production and tech
+## buildings on ADVANCED.
+const ADVANCED := ["barracks", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "charging_pylon"]
+
+
+static func is_basic(kind: String) -> bool:
+	return not ADVANCED.has(kind)
+
+
 static func is_econ(kind: String) -> bool:
 	if not BUILDINGS.has(kind):
 		return false
