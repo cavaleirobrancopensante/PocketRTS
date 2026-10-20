@@ -22,6 +22,8 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
 import synth  # noqa: E402
+import orchestra  # noqa: E402,F401  (registers the orchestral sections and percussion)
+from orchestra import chord, transpose, voicing, bass_of, rel_interval  # noqa: E402
 from synth import SR, _t, _env, _phase, _additive, _lowpass, _bandpass, _highpass, _noise  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -227,8 +229,9 @@ synth.DRUMS.update({"q": croak, "w": bubble, "W": lambda v: bubble(v, 260), "z":
 
 class Song:
     def __init__(self, name, title, bpm, meter, tonic, mode, reverb=(2.0, 0.4), humanize=0.006, seed=1,
-                 q=3, ceiling=0.89):
+                 q=3, ceiling=0.89, mastering="classic", predelay=0.0, target=0.16):
         self.name, self.title, self.q, self.ceiling = name, title, q, ceiling
+        self.mastering, self.predelay, self.target = mastering, predelay, target
         self.bpm, self.meter, self.tonic, self.mode = bpm, meter, tonic, mode
         self.reverb, self.humanize = reverb, humanize
         self.rng = np.random.default_rng(seed)
@@ -245,10 +248,13 @@ class Song:
         o, d = divmod(di, 7)
         return (tonic if tonic is not None else self.tonic) + MODES[mode or self.mode][d] + 12 * o + acc
 
-    def note(self, inst, beat, dur, midi, vel=0.7, pan=0.0, send=0.3):
+    def note(self, inst, beat, dur, midi, vel=0.7, pan=0.0, send=0.3, shape=None):
+        """shape: None, or a dynamic over the note - "swell" (crescendo), "dim", "fp" (forte-piano),
+        "fpc" (forte-piano then crescendo), "arc" (swell up and back)."""
         j = self.rng.normal(0, self.humanize) if self.humanize else 0.0
         v = float(np.clip(vel + (self.rng.normal(0, 0.04) if self.humanize else 0), 0.05, 1.0))
-        self.ev.append((max(0.0, self.sec(beat) + j), "n", inst, midi, self.sec(dur), v, pan, send))
+        e = (max(0.0, self.sec(beat) + j), "n", inst, midi, self.sec(dur), v, pan, send)
+        self.ev.append(e + (shape,) if shape else e)
 
     def hit(self, code, beat, vel=0.7, pan=0.0, send=0.15):
         j = self.rng.normal(0, self.humanize * 0.7) if self.humanize else 0.0
@@ -276,14 +282,15 @@ class Song:
         return evs
 
     def mel(self, inst, bar0, bars, vel=0.7, octave=0, pan=0.0, send=0.3, legato=0.95, accent=0.08,
-            tonic=None, mode=None, dshift=0):
-        """dshift moves the whole line by scale steps (2 = a diatonic third above)."""
+            tonic=None, mode=None, dshift=0, shape=None, shape_min=2.0):
+        """dshift moves the whole line by scale steps (2 = a diatonic third above).
+        shape (see note) is given to the notes at least shape_min beats long."""
         for i, b in enumerate(bars):
             for off, dur, di, acc in self.parse(b):
                 strong = off % 1 == 0 and int(off) % 2 == 0
                 self.note(inst, self.bar(bar0 + i) + off, dur * legato,
                           self.pitch(di + dshift, acc, tonic, mode) + 12 * octave,
-                          vel + (accent if strong else 0), pan, send)
+                          vel + (accent if strong else 0), pan, send, shape if dur >= shape_min else None)
         return bar0 + len(bars)
 
     def tones(self, root, idx):
@@ -355,17 +362,41 @@ class Song:
         L = np.zeros(int(end * SR) + SR)
         R = np.zeros_like(L)
         send = np.zeros_like(L)
-        for t0, kind, inst, midi, dur, vel, pan, snd in self.ev:
+        for e in self.ev:
+            t0, kind, inst, midi, dur, vel, pan, snd = e[:8]
             x = synth.render_note(inst, midi, dur, vel) if kind == "n" else synth.render_drum(inst, vel)
+            if len(e) > 8:
+                x = x * _shape_curve(e[8], len(x), dur)
             i = int(t0 * SR)
             x = x[: len(L) - i]
             a = (pan + 1) * np.pi / 4
             L[i:i + len(x)] += x * np.cos(a)
             R[i:i + len(x)] += x * np.sin(a)
             send[i:i + len(x)] += x * snd
+        if self.predelay:
+            send = np.concatenate([np.zeros(int(self.predelay * SR)), send])[:len(L)]
         ir = synth.reverb_ir(*self.reverb)
         L, R = synth.apply_reverb(L, R, send, ir)
+        if self.mastering == "epic":
+            return orchestra.master_epic(L, R, self.target, self.ceiling)
         return master(L, R, ceiling=self.ceiling)
+
+
+def _shape_curve(kind, n, dur):
+    """A gain curve over a rendered note of n samples whose held part lasts dur seconds."""
+    t = np.arange(n) / SR
+    u = np.clip(t / max(dur, 1e-3), 0, 1)
+    if kind == "swell":
+        return 0.18 + 0.82 * u ** 1.6
+    if kind == "dim":
+        return 1.0 - 0.8 * u ** 0.8
+    if kind == "fp":
+        return 0.35 + 0.65 * np.exp(-t / 0.12)
+    if kind == "fpc":
+        return np.maximum(0.3 + 0.7 * np.exp(-t / 0.1), 0.3 + 0.75 * u ** 2)
+    if kind == "arc":
+        return 0.25 + 0.75 * np.sin(np.pi * u) ** 1.2
+    return np.ones(n)
 
 
 def master(l, r, target_rms=0.17, ceiling=0.89):
