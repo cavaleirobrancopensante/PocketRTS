@@ -57,6 +57,7 @@ func _ready() -> void:
 	_b = _player()
 	_sting = _player()
 	_amb = AudioStreamPlayer.new()
+	_web_stream(_amb)
 	_amb.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
 	add_child(_amb)
 	var cfg := ConfigFile.new()
@@ -68,8 +69,17 @@ func _ready() -> void:
 	_apply()
 
 
+## On the web, music and ambience are streamed through the engine's mixer instead of being
+## turned into Web Audio samples: each piece as a sample is a fully decoded copy of tens
+## of megabytes that is never freed, which phone browsers run out of after a few pieces.
+static func _web_stream(p: AudioStreamPlayer) -> void:
+	if OS.has_feature("web"):
+		p.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+
+
 func _player() -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
+	_web_stream(p)
 	p.bus = "Music"
 	p.volume_db = -80.0
 	p.finished.connect(_on_finished.bind(p))
@@ -197,7 +207,7 @@ func play(track: String, loop := false) -> void:
 	var old := _a
 	_a = _b
 	_b = old
-	_a.stream = Sfx.prep(stream)
+	_a.stream = stream
 	_a.volume_db = -40.0
 	_a.play()
 	_fade(_a, VOL)
@@ -263,7 +273,7 @@ func ambience(biome: String) -> void:
 	if s is AudioStreamOggVorbis:
 		s = (s as AudioStreamOggVorbis).duplicate()
 		(s as AudioStreamOggVorbis).loop = true
-	_amb.stream = Sfx.prep(s)
+	_amb.stream = s
 	_amb.volume_db = -10.0
 	_amb.play()
 
@@ -275,7 +285,7 @@ func match_ended(won: bool, faction: String) -> void:
 	_faction = ""
 	_fade(_a, -80.0, true)
 	_fade(_b, -80.0, true)
-	_sting.stream = Sfx.prep(load("res://assets/music/%s.ogg" % ("win_" + FACTION_KEY.get(faction, "crown").replace("clock", "clockwork") if won else "defeat")))
+	_sting.stream = (load("res://assets/music/%s.ogg" % ("win_" + FACTION_KEY.get(faction, "crown").replace("clock", "clockwork") if won else "defeat")))
 	_sting.volume_db = VOL
 	_sting.play()
 
