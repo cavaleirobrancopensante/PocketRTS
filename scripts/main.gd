@@ -31,7 +31,7 @@ Area damage (canister, round shot, steam, spit blobs, storms) hurts your own uni
 
 High ground: units below a cliff can't see up onto it, and ramps are the only way up. Rivers can only be crossed at the fords.
 
-Skirmish: up to four players. Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
+Skirmish: up to four players. Each computer player has a PLAN (Balanced, Rush, Economy, Timing attack, Air rush for the Brood, or Random). Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
 	"CROWN": """THE CROWN: pike, shot and black powder.
 
 Labourers work Farms (up to 3 each): a farm ripens into a 350-gold harvest, faster with more hands. The Powder Mill makes black powder; muskets and cannons can't fire without it. Each Town Hall allows 4 Farms and 1 Powder Mill nearby.
@@ -587,7 +587,7 @@ func show_skirmish() -> void:
 	pp.add_child(pv)
 	var hdr := HBoxContainer.new()
 	hdr.add_theme_constant_override("separation", 8)
-	for col in [["PLAYER", 170], ["FACTION", 190], ["COLOUR", 110], ["TEAM", 80]]:
+	for col in [["PLAYER", 170], ["FACTION", 190], ["COLOUR", 110], ["PLAN", 150], ["TEAM", 80]]:
 		var l := UiStyle.text(col[0], 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_CENTER, true)
 		l.custom_minimum_size.x = col[1]
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -740,6 +740,20 @@ func _slot_row(i: int) -> Control:
 	cb.add_theme_color_override("font_color", Color(1, 1, 1))
 	cb.add_theme_color_override("font_hover_color", Color(1, 1, 1))
 	h.add_child(cb)
+	# strategy (computer players)
+	if sl["who"] != "you":
+		var st: String = String(sl.get("strategy", "balanced"))
+		var opts: Array = ["random"] + AI.STRATEGIES.keys()
+		var sb := _cycle("RANDOM PLAN" if st == "random" else String(AI.STRATEGIES[st]["name"]).to_upper(), 150, func(dir: int) -> void:
+			sl["strategy"] = opts[(opts.find(String(sl.get("strategy", "balanced"))) + dir + opts.size()) % opts.size()])
+		sb.tooltip_text = "How this computer player plays. Air rush is Brood only (others play Balanced)."
+		h.add_child(sb)
+	else:
+		var sp := Control.new()
+		sp.custom_minimum_size.x = 150
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sp.size_flags_stretch_ratio = 1.5
+		h.add_child(sp)
 	# team
 	var tb := _cycle(str(int(sl["side"]) + 1), 80, func(dir: int) -> void:
 		sl["side"] = (int(sl["side"]) + dir + 4) % 4)
@@ -1243,6 +1257,12 @@ func start(cfg: Dictionary = {}) -> void:
 		ai.game = game
 		ai.team = t
 		ai.difficulty = maxi(0, LEVELS.find(slots[t]["who"]))
+		var strat: String = String(slots[t].get("strategy", "balanced"))
+		var allowed := AI.strategies_for(facs[t])
+		if strat == "random" or not allowed.has(strat):
+			strat = "balanced" if strat != "random" else allowed[randi() % allowed.size()]
+		ai.strategy = strat
+		last_cfg["slots"][t]["strategy"] = strat
 		game.add_child(ai)
 		game.ais.append(ai)
 	if game.mlog:
@@ -1250,6 +1270,9 @@ func start(cfg: Dictionary = {}) -> void:
 		for t in slots.size():
 			if t != human:
 				lv[t] = String(slots[t]["who"]).to_upper()
+				for ai2 in game.ais:
+					if ai2.team == t:
+						lv[t] += ", " + String(AI.STRATEGIES[ai2.strategy]["name"]).to_upper()
 		game.mlog.begin(lv)
 		if game.sandbox:
 			game.mlog.add("(sandbox match)")

@@ -17,7 +17,11 @@ func _process(delta: float) -> bool:
 		var map := "random"
 		var mode := "ffa"
 		var first := "hard"
+		var strats: Array = []
 		for a in args:
+			if a.begins_with("s:"):
+				strats.append(a.substr(2))
+				continue
 			if a in ["crown", "brood", "clockwork", "random"]:
 				facs.append(a)
 			elif MapGen.MAPS.has(a):
@@ -35,7 +39,8 @@ func _process(delta: float) -> bool:
 				side = 0 if i < 2 else 1
 			elif mode in ["1v2", "1v3"]:
 				side = 0 if i == 0 else 1
-			slots.append({"who": first if i == 0 else "hard", "faction": facs[i], "colour": i, "side": side})
+			slots.append({"who": first if i == 0 else "hard", "faction": facs[i], "colour": i, "side": side,
+				"strategy": strats[i] if i < strats.size() else "balanced"})
 		main.start({"map": map, "slots": slots})
 	var g = main.game
 	if g == null:
@@ -62,6 +67,10 @@ func _process(delta: float) -> bool:
 		var short: Array = []
 		for st in g.stats:
 			short.append({"earned": st["gold"], "killed": st["killed"], "lost": st["lost"], "razed": st["razed"], "kills_by": st["kills_by"]})
+		var plans := []
+		for ai in g.ais:
+			plans.append(ai.strategy)
+		print("PLANS ", plans)
 		print("WINNER team ", g.winner, " at ", int(g.clock), "s on ", g.map_name, "  ", short)
 		return true
 	return g.clock > 1500.0

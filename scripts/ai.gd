@@ -11,6 +11,41 @@ extends Node
 var game: Game
 var team := 1
 var difficulty := 1
+var strategy := "balanced"      # one of STRATEGIES (picked in the skirmish lobby)
+
+## How each strategy plays.
+##  wave: army supply for the first attack (then each wave waits for `step` more)
+##  expand: when to take more halls (x the normal time; lower = sooner) and how many at most
+##  tech: when to get tech buildings (x the normal time)
+##  workers: how many workers (x normal)
+##  timing: (timing attack) no attacks before this many seconds, then everything goes
+const STRATEGIES := {
+	"balanced": {"name": "Balanced", "wave": 14, "step": 8, "expand": 1.0, "halls": 3, "tech": 1.0, "workers": 1.0},
+	"rush": {"name": "Rush", "wave": 6, "step": 2, "expand": 2.5, "halls": 2, "tech": 2.0, "workers": 0.75},
+	"economy": {"name": "Economy", "wave": 34, "step": 10, "expand": 0.45, "halls": 4, "tech": 1.1, "workers": 1.25},
+	"timing": {"name": "Timing attack", "wave": 999, "step": 6, "expand": 0.9, "halls": 3, "tech": 0.75, "workers": 1.0, "timing": 400.0},
+	"air": {"name": "Air rush", "wave": 10, "step": 4, "expand": 1.6, "halls": 2, "tech": 0.5, "workers": 0.9, "brood_only": true},
+}
+
+
+## Which strategies this faction can use ("air" needs flyers: only the Brood has them).
+static func strategies_for(faction: String) -> Array:
+	var out: Array = []
+	for k in STRATEGIES:
+		if STRATEGIES[k].get("brood_only", false) and faction != "brood":
+			continue
+		out.append(k)
+	return out
+
+
+func _s(key: String) -> Variant:
+	return STRATEGIES.get(strategy, STRATEGIES["balanced"]).get(key, STRATEGIES["balanced"].get(key))
+
+
+func _ready() -> void:
+	if not strategies_for(game.faction_of(team)).has(strategy):
+		strategy = "balanced"
+	_attack_at = int(_s("wave"))
 
 var _think := 0.0
 var _attack_at := 14            # army supply needed for the next wave
@@ -109,7 +144,7 @@ func _workers() -> void:
 		extra = 3          # grubs get used up as buildings
 	elif _clock():
 		extra = 1 + (2 if game.army(team).size() >= 4 else 0)   # builder + escorts
-	var want := mini(int(cap * fill) + extra, 46 if difficulty >= 3 else _lv([16, 30, 40]))
+	var want := mini(int((cap * fill + extra) * float(_s("workers"))), 46 if difficulty >= 3 else _lv([16, 30, 40]))
 	var worker: String = _f()["worker"]
 	var queued := 0
 	for h in _halls():
@@ -229,7 +264,8 @@ func _supply() -> void:
 
 func _build_up() -> void:
 	var labs := game.workers(team).size()
-	var t := game.clock
+	# tech comes sooner or later by strategy (and sooner with money in the bank)
+	var t := game.clock / float(_s("tech")) + (60.0 if _gold() > 500 else 0.0)
 	var gold := _gold()
 	if _clock():
 		var works := _mine("assembly_works").size()
@@ -246,11 +282,13 @@ func _build_up() -> void:
 			_construct("gorge_pit")
 		if _mine("roost").is_empty() and game.requirement_met(team, "roost") and t > _lv([560.0, 320.0, 260.0]):
 			_construct("roost")
+		elif strategy == "air" and _mine("roost").is_empty() and game.requirement_met(team, "roost"):
+			_construct("roost")
 	else:
 		var barracks := _mine("barracks").size()
 		if barracks == 0 and labs >= _lv([9, 8, 7]):
 			_construct("barracks")
-		elif barracks == 1 and t > _lv([420.0, 200.0, 150.0]) and gold > 200:
+		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150:
 			_construct("barracks")
 		elif barracks == 2 and difficulty >= 2 and t > _lv([9999.0, 9999.0, 330.0]) and gold > 300:
 			_construct("barracks")
@@ -260,21 +298,25 @@ func _build_up() -> void:
 			_construct("church")
 		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140:
 			_wall_off()
-	# Floating money: more production.
-	if gold > 550 and not _saving and _threat() == Vector2.INF:
-		if _crown() and _mine("foundry").size() < 2 and gold > 900 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
+	# Money in the bank: more production (and for the Brood, more Hives to lay eggs).
+	if gold > 400 and not _saving:
+		if _crown() and _mine("foundry").size() < 3 and gold > 700 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
 			_construct("foundry")
-		elif _crown() and _mine("barracks").size() < 7 and not _busy_building("barracks") and not _mine("barracks").is_empty():
+		elif _crown() and _mine("barracks").size() < 9 and not _busy_building("barracks") and not _mine("barracks").is_empty():
 			_construct("barracks")
-		elif _clock() and _mine("assembly_works").size() < 3 and not _busy_building("assembly_works") and not _mine("assembly_works").is_empty():
+		elif _clock() and _mine("assembly_works").size() < 5 and not _busy_building("assembly_works") and not _mine("assembly_works").is_empty():
 			_construct("assembly_works")
+		elif _brood() and gold > 700:
+			_more_halls(true)
 	# Expand once our economy structures are all up (a new hall brings more slots).
 	var hall: String = _f()["hall"]
 	var full := true
 	for kind in _f()["econ"]:
 		if game.econ_count(team, kind) < game.econ_limit(team, kind):
 			full = false
-	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * (0.7 if _brood() else 1.0)
+	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * (0.7 if _brood() else 1.0) * float(_s("expand"))
+	if _halls().size() >= 2 and game.clock > expand_t * 1.8 and gold > int(Defs.BUILDINGS[hall]["cost"]) + 150:
+		_more_halls(false)
 	_saving = false
 	if _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
 		var spot: Vector2i = game.expansions[team]
@@ -286,6 +328,23 @@ func _build_up() -> void:
 
 
 var _walled := false
+
+
+## Take more ground: a new hall at a free spot on our side of the map, 18-30 tiles from one
+## of ours. `macro`: the Brood just needs more Hives to spend its food (eggs come from Hives).
+func _more_halls(macro: bool) -> void:
+	var hall: String = _f()["hall"]
+	if _halls().size() >= int(_s("halls")) + (1 if macro else 0) or _busy_building(hall):
+		return
+	if _gold() < int(Defs.BUILDINGS[hall]["cost"]):
+		return
+	for h in _halls():
+		if not h.built:
+			continue
+		var spot := game.find_spot(team, hall, h, Defs.HALL_SPACING, Defs.HALL_SPACING + 12, "far_safe")
+		if spot.x >= 0:
+			_construct(hall, spot)
+			return
 
 
 ## The tech step to the first ranged unit, as soon as there's a little money for it.
@@ -481,7 +540,7 @@ func _produce() -> void:
 		var carts := army.filter(func(u: Unit) -> bool: return u.kind == "tesla_cart").size()
 		var callers := army.filter(func(u: Unit) -> bool: return u.kind == "stormcaller").size()
 		for w in _mine("assembly_works"):
-			if w.built and w.queue.size() < 2:
+			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "gearknight" if randf() < 0.5 or game.can_train(w, "bolt") != "" else "bolt"
 				if walkers * 5 < army.size() + 2 and game.can_train(w, "steam_walker") == "":
 					k = "steam_walker"
@@ -506,7 +565,7 @@ func _produce() -> void:
 				if game.can_train(h, "brute") == "" and brutes * 12 < army.size() + 6:
 					k = "brute"
 					brutes += 1
-				elif game.can_train(h, "skywing") == "" and wings * 6 < army.size():
+				elif game.can_train(h, "skywing") == "" and wings * (2 if strategy == "air" else 6) < army.size() + (6 if strategy == "air" else 0):
 					k = "skywing"
 					wings += 1
 				elif game.can_train(h, "spore_mother") == "" and mothers * 14 < army.size():
@@ -518,14 +577,14 @@ func _produce() -> void:
 	var cannons := army.filter(func(u: Unit) -> bool: return u.kind == "cannon").size()
 	var short_powder := _res2() < 20.0
 	for b in _mine("barracks"):
-		if b.built and b.queue.size() < 2:
+		if b.built and b.queue.size() < (3 if _gold() > 600 else 2):
 			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) and game.has_tech(team, "matchlocks") else "pikeman"
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
 			if (horse < 3 or horse * 6 < army.size()) and randf() < 0.45 and game.can_train(b, "cuirassier") == "":
 				k = "cuirassier"
 			game.train(b, k)
 	for f in _mine("foundry"):
-		if f.built and f.queue.size() < 1 and cannons * 4 < army.size() + 2 and not short_powder:
+		if f.built and f.queue.size() < (2 if _gold() > 600 else 1) and cannons * 4 < army.size() + 2 and not short_powder:
 			game.train(f, "cannon")
 	for c in _mine("church"):
 		if c.built and c.queue.is_empty() and game.can_train(c, "missionary") == "":
@@ -560,15 +619,19 @@ func _army() -> void:
 					u.cmd_move(threat, true)
 		return
 	var sup := _army_supply(army)
-	if _brood() and _attack_at < 30:
-		_attack_at = 30     # a swarm waits until it's a swarm
+	var swarm_min := 10 if strategy in ["rush", "air"] else 30
+	if _brood() and _attack_at < swarm_min:
+		_attack_at = swarm_min     # a swarm waits until it's a swarm
+	# timing attack: nothing goes out before the timing; then everything does, wave after wave
+	if strategy == "timing" and game.clock >= float(_s("timing")) * (1.0 if difficulty >= 2 else 1.25) and _attack_at >= 999:
+		_attack_at = 6
 	if _brood():
 		_swarm_army(army, sup)
 		return
 	if not _attacking and sup >= _attack_at:
 		_attacking = true
 		_wave_target = _enemy_base()
-		_attack_at = mini(_attack_at + int(_lv([6, 8, 10])), 70)
+		_attack_at = mini(_attack_at + int(_s("step")), 70)
 		if not game.demo and _foe() == game.human and randf() < 0.5:
 			Sfx.taunt(game.faction_of(team))
 		for u in army:
@@ -613,11 +676,11 @@ func _swarm_army(army: Array, sup: int) -> void:
 	if foe >= 0:
 		for u in game.army(foe):
 			theirs += float(u.d["cost"])
-	var big_enough := mine >= theirs * 0.8 or sup >= 70
+	var big_enough := mine >= theirs * 0.8 or sup >= 70 or strategy in ["rush", "air", "timing"]
 	if _swarm_phase == "" and sup >= _attack_at and big_enough:
 		_attacking = true
 		_wave_target = _enemy_base()
-		_attack_at = mini(_attack_at + int(_lv([6, 8, 10])), 70)
+		_attack_at = mini(_attack_at + int(_s("step")), 70)
 		if not game.demo and _foe() == game.human and randf() < 0.5:
 			Sfx.taunt(game.faction_of(team))
 		_plan_swarm(army)

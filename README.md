@@ -49,6 +49,9 @@ There are **no resources on the map**: the map is about geography, chokes and to
 ### Match log (for playtesting)
 Every match keeps a plain-text log: who played (and at what AI level), what each side built, lost and cast, the first of each unit type, the walls laid, a snapshot of every player each minute (income, resources, supply, workers, halls, army and its value, kills and losses) and the final result with kills by unit type. **COPY LOG** on the end screen copies it to the clipboard; the last 20 logs are also saved in `user://logs`.
 
+### Computer plans
+In the skirmish lobby each computer player has a **PLAN**: Balanced, Rush (early, small, constant attacks; expands late), Economy (expands early and often, attacks late and big), Timing attack (techs up and holds everything back until about 6-7 minutes, then attacks wave after wave), Air rush (Brood only: a Roost early and masses of Skywings) or Random. Every plan spends its bank: more Barracks, Foundries and Assembly Works, deeper queues, and the Brood builds more Hives (its eggs come from Hives).
+
 ### Closing the game
 The match is saved every 15 seconds (and whenever the app goes to the background): if you close it, **CONTINUE** on the main menu picks it up where it was (soldiers stand where they were, workers go back to work). **MATCH LOGS** on the main menu lists every match's log, including an unfinished one, each with a COPY button.
 
