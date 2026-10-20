@@ -125,14 +125,29 @@ def fire_px(img):
 _snap = c2.snap_team
 
 
+def off_keys(img):
+    """Pixels the team shader would still catch (within 0.08 of a key red, not only
+    exactly on it) get a little green: out of its reach, same colour to the eye."""
+    out = img.copy()
+    rgb = out[..., :3].astype(float)
+    for key in (TEAM_LIGHT, TEAM_DARK):
+        d = np.linalg.norm((rgb - np.array(key, float)) / 255.0, axis=-1)
+        m = (out[..., 3] > 0) & (d < 0.1)
+        out[m, 1] = np.maximum(out[m, 1], 28)
+    return out
+
+
+ALL_FIRE = [False]      # True while converting blast frames: no team colour at all
+
+
 def snap_team(img, effect=False):
     """c2.snap_team, but reds touching fire pixels are treated as fire (nudged off the
     key colours), so flames and explosions don't take the team colour."""
-    if effect:
-        return _snap(img, True)
+    if effect or ALL_FIRE[0]:
+        return off_keys(_snap(img, True))
     near = ndimage.binary_dilation(fire_px(img), iterations=2)
     team = _snap(img, False)
-    fx = _snap(img, True)
+    fx = off_keys(_snap(img, True))
     team[near] = fx[near]
     return team
 
@@ -145,8 +160,14 @@ def to_game(img, scale, bgc):
     return out
 
 
-def frame_of(src, scale, bgc):
-    img = to_game(src["img"], scale, bgc)
+def frame_of(src, scale, bgc, blast=False):
+    """Game-scale frame; blast=True: an explosion or wreck, every red nudged off the
+    team keys (stray red bits flying in a blast shouldn't flash in team colour)."""
+    ALL_FIRE[0] = blast
+    try:
+        img = to_game(src["img"], scale, bgc)
+    finally:
+        ALL_FIRE[0] = False
     return F(img, np.zeros(img.shape[:2], bool))
 
 
@@ -204,7 +225,8 @@ def fire_layer(f):
     reach = ndimage.binary_dilation(fire, iterations=2)
     sm = smoke_px(f.img)
     lab, n = ndimage.label(sm | fire, structure=np.ones((3, 3)))
-    keep = fire | (reach & (f.img[..., 3] > 0) & (f.img[..., 0].astype(int) > f.img[..., 2].astype(int) + 40))
+    r_, g_, b_ = [f.img[..., c].astype(int) for c in range(3)]
+    keep = fire | (reach & (f.img[..., 3] > 0) & (r_ >= 120) & (r_ > b_ + 60) & (g_ < 0.6 * r_))
     for i in range(1, n + 1):
         m = lab == i
         if (m & fire).any():
@@ -232,17 +254,20 @@ def lay(base, top, dx=0, dy=0):
 
 def bob_rect(f, rect, dy=1):
     """The pixels in rect (x0, y0, x1, y1 relative to the anchor) moved down dy: a horse
-    lowering its head, for an idle from one drawing."""
+    lowering its head, for an idle from one drawing. Only the rect's own top edge (pixels
+    with nothing above them) is uncovered; inside the body nothing opens up."""
     g = f.copy()
     x0, y0, x1, y1 = [int(round(v)) for v in (rect[0] + f.ax, rect[1] + f.ay, rect[2] + f.ax, rect[3] + f.ay)]
     h, w = g.img.shape[:2]
-    x0, x1, y0, y1 = max(0, x0), min(w, x1), max(0, y0), min(h - dy, y1)
+    x0, x1, y0, y1 = max(0, x0), min(w, x1), max(1, y0), min(h - dy, y1)
     part = f.img[y0:y1, x0:x1].copy()
-    g.img[y0:y0 + dy, x0:x1] = 0
-    # the vacated top row keeps whatever was behind... nothing: the head moved
     m = part[..., 3] > 0
     tgt = g.img[y0 + dy:y1 + dy, x0:x1]
     tgt[m] = part[m]
+    # uncovered: in the rect, nothing moved onto it, and nothing drawn right above it
+    for y in range(y0, y0 + dy):
+        above = f.img[y - 1, x0:x1, 3] > 0
+        g.img[y, x0:x1][~above] = 0
     return g
 
 
@@ -276,8 +301,8 @@ def plan_wagon():
         unload, death = fr[-5], fr[-4:]
         groups.append((walk, unload, death))
 
-    def conv(s):
-        return keep_main(wagon_anchor(frame_of(s, WAGON_SCALE, bgc)))
+    def conv(s, blast=False):
+        return keep_main(wagon_anchor(frame_of(s, WAGON_SCALE, bgc, blast)))
     use = {"s": 0, "se": 3, "e": 2, "ne": 2, "n": 4}
     A = {}
     for d, r in use.items():
@@ -285,8 +310,11 @@ def plan_wagon():
         w = [conv(s) for s in walk]
         w = [w[0]] + [align(w[0], f, "high", 4) for f in w[1:]]
         A["walk", d] = w
-        A["unload", d] = [align(w[0], conv(unload), "high", 4)]
-        dd = [conv(s) for s in death]
+        if r in UNLOAD_MAN:
+            A["unload", d] = [unload_composite(w[0], unload, r, d, bgc)]
+        else:
+            A["unload", d] = [align(w[0], conv(unload), "high", 4)]
+        dd = [conv(s, i >= 2) for i, s in enumerate(death)]
         if d in ("s", "n"):
             burn = []
             wx0, wx1, wy0, wy1 = bbox(w[0])
@@ -304,6 +332,33 @@ def plan_wagon():
     return A, groups, bgc
 
 
+# The unload frames of rows 2 and 3 draw the wagon unhitched (no horse) and turned more
+# side-on than the walk: the man handing down the keg is cut out of them instead
+# (sheet coordinates: his figure right of x_fig from y_fig down, the keg right of x_keg
+# from y_keg down) and stood at the wagon's tailboard (the rear, on the left) on the walk
+# pose, mirrored so he faces the wagon; feet at (x, y) from the anchor.
+UNLOAD_MAN = {
+    2: dict(x_fig=941, y_fig=465, x_keg=930, y_keg=525, feet=(-19, -5)),
+    3: dict(x_fig=943, y_fig=665, x_keg=933, y_keg=717, feet=(-14, -2)),
+}
+
+
+def unload_composite(w0, src, r, d, bgc):
+    c = UNLOAD_MAN[r]
+    img = src["img"].copy()
+    h, w = img.shape[:2]
+    X = np.arange(w)[None, :] + src["x0"]
+    Y = np.arange(h)[:, None] + src["y0"]
+    keep = ((X >= c["x_fig"]) & (Y >= c["y_fig"])) | ((X >= c["x_keg"]) & (Y >= c["y_keg"]))
+    img[~keep] = 0
+    man = keep_main(frame_of(dict(img=img), WAGON_SCALE, bgc), 8)
+    man = mirror(trim(man))
+    x0, x1, y0, y1 = bbox(man)
+    man = anchored_at(man, (x0 + x1) / 2.0, float(y1))
+    fx, fy = c["feet"]
+    return lay(w0, man, dx=fx, dy=fy)
+
+
 BURN_AT = {"s": 0.38, "n": 0.42}   # flame centre: share of the wagon's height from the top
 
 
@@ -317,12 +372,13 @@ def finish_wagon(A):
 
 
 # horse head boxes for the idle nod, relative to the anchor (x0, y0, x1, y1), game px
+# (N: the head is hidden behind the rump; the rump settles instead)
 WAGON_HEADS = {
-    "s": (-6, -4, 6, 6),
-    "se": (2, -12, 14, 0),
-    "e": (6, -12, 18, 0),
-    "ne": (6, -12, 18, 0),
-    "n": (-6, -4, 6, 6),
+    "s": (-5, -14, 6, -3),
+    "se": (3, -17, 16, -6),
+    "e": (12, -20, 23, -8),
+    "ne": (12, -20, 23, -8),
+    "n": (-6, -14, 7, -4),
 }
 
 
@@ -371,8 +427,8 @@ def plan_labourer():
     if DEBUG:
         dump("labourer", rows, scale, bgc)
 
-    def conv(s, k=scale):
-        return keep_main(frame_of(s, k, bgc))
+    def conv(s, k=scale, blast=False):
+        return keep_main(frame_of(s, k, bgc, blast))
     groups = {}
     for r in range(5):
         fr = rows[r]
@@ -391,7 +447,7 @@ def plan_labourer():
         rb = r if r < 5 else 4
         bury = [conv(s) for s in groups[rb]["bury"]]
         A["bury", d] = bury_anchors(bury)
-        death = [conv(s) for s in groups[rb]["death"]]
+        death = [conv(s, blast=i >= 2) for i, s in enumerate(groups[rb]["death"])]
         # the blast's smoke rises higher than the cell allows: the blast frames (2 on)
         # are drawn a little smaller, all by the same factor, so they fit
         fit = 1.0
@@ -401,7 +457,7 @@ def plan_labourer():
                       (cell[0] - anchor[0]) / max(x1 - f.ax, 1e-6))
         if fit < 1.0:
             fit *= 0.97
-            death[2:] = [conv(s, scale * fit) for s in groups[rb]["death"][2:]]
+            death[2:] = [conv(s, scale * fit, True) for s in groups[rb]["death"][2:]]
             BLAST_FIT[d] = fit
         death = [death[0], align(death[0], death[1], "low", 3)] + death[2:]
         if d in ("s", "n"):
@@ -508,7 +564,7 @@ def build_mine(rows, bgc):
                           ("keg_mine_blast", blast_src, k_arm)):
         frames = []
         for s in srcs:
-            f = keep_main(frame_of(s, k, bgc), 4)
+            f = keep_main(frame_of(s, k, bgc, name == "keg_mine_blast"), 4)
             f = anchored_at(f, *ground_point(f))
             frames.append(f)
         if name != "keg_mine_blast":
