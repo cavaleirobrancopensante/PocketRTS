@@ -40,6 +40,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - Winders also repair constructs and buildings, which costs ore (0.2 per hit point).
 - Each Clocktower allows 2 Boilers and 2 Ore Crushers nearby.
 - Winders also start buildings, which then assemble themselves.
+- Every construct carries a **battery on its back** (everyone can see it). Away from a field it drains (empty in about 2 minutes, slower with blue energy), making it a little slower and weaker; when it is empty the construct **shuts down** like a cold statue until a field reaches it (a tower, pylon or deployed Tesla Cart) or a Winder winds it up again.
 - Constructs run down (slower and weaker) outside the field of a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart.
 - The **Charging Pylon** also mends constructs.
 - **Assembly Works**: **Gearknights**, **Bolt Automatons** (pierce up to 3), **Steam Walkers** and **Tesla Carts**. A Tesla Cart rolls when packed; deploying or packing takes 3 s. Deployed, it powers constructs around it and fires chain lightning that can hit flyers.

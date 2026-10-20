@@ -624,6 +624,17 @@ func _army() -> void:
 				if u.position.distance_to(threat) < 260.0 and u.order == "gather":
 					u.cmd_move(threat, true)
 		return
+	# Clockwork: constructs running low on charge go back into a field first
+	if _clock():
+		var fields: Array = game.buildings.filter(func(b: Building) -> bool: return b.team == team and not b.dead and b.built and b.d.has("field"))
+		for u in army:
+			if u.wind < 0.3 and not u._in_field and not u.powered_down() and u.order != "move" and not fields.is_empty():
+				var best: Building = fields[0]
+				for f in fields:
+					if f.center().distance_to(u.position) < best.center().distance_to(u.position):
+						best = f
+				u.cmd_move(best.center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.3 or u._in_field)
 	var sup := _army_supply(army)
 	var swarm_min := 10 if strategy in ["rush", "air"] else 30
 	if _brood() and _attack_at < swarm_min:

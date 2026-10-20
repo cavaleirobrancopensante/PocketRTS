@@ -1386,7 +1386,7 @@ func find_repair(u: Unit, r: float) -> Entity:
 	var best: Entity = null
 	var bd := INF
 	for o in units_near(u.position, r):
-		if o.team == u.team and not o.dead and o != u and o.hp < o.max_hp * 0.95 and o.d["faction"] == "clockwork":
+		if o.team == u.team and not o.dead and o != u and (o.hp < o.max_hp * 0.95 or (o.wind < 0.5 and not o.is_worker())) and o.d["faction"] == "clockwork":
 			var dd: float = o.position.distance_to(u.position)
 			if dd < bd:
 				bd = dd

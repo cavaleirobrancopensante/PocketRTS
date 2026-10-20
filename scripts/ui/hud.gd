@@ -836,8 +836,10 @@ func _draw_panel(font: Font) -> void:
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
 			elif uu.kind == "missionary":
 				info = "In danger near enemy buildings!" if not uu.untouchable() else "Can't be hurt here. Bandages wounded soldiers."
-			elif (e as Unit).d["faction"] == "clockwork" and (e as Unit).wind < 0.99:
-				info = "Winding down (%d%%): go back near a Spring Tower." % int((e as Unit).wind * 100)
+			elif (e as Unit).powered_down():
+				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."
+			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99:
+				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
 		elif e is Building:
 			name = (e as Building).d["name"]
 			info = (e as Building).d["about"]

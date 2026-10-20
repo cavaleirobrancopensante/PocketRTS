@@ -68,6 +68,7 @@ var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
 var auto_work := true
+var _cold := false
 var slow_t := 0.0              # slowed (Bloater acid)
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # Observation Balloon: two gunners, each with its own target, reload and pose
@@ -81,6 +82,11 @@ var _hold_note := 0             # when this unit may next say it's holding fire 
 
 func is_unit() -> bool:
 	return true
+
+
+## A Clockwork construct with no charge left.
+func powered_down() -> bool:
+	return d["faction"] == "clockwork" and not is_worker() and wind <= 0.0
 
 
 func is_worker() -> bool:
@@ -529,9 +535,15 @@ func _physics_process(delta: float) -> void:
 			wind = minf(1.0, wind + 0.3 * delta)
 			if kind == "stormcaller":
 				charge = minf(float(Defs.STORM["max"]), charge + float(Defs.STORM["fill"]) * delta)
-		else:
-			wind = maxf(Defs.WIND_MIN, wind - Defs.WIND_DECAY * game.wind_decay_mult(team) * delta)
-		speed *= lerpf(0.75, 1.0, (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN))
+		elif not is_worker():
+			wind = maxf(0.0, wind - Defs.WIND_DECAY * game.wind_decay_mult(team) * delta)
+		speed *= lerpf(0.75, 1.0, wind)
+		# out of charge: it shuts down where it stands, like a statue, until a field
+		# reaches it or a Winder winds it up again
+		if powered_down():
+			stun_t = maxf(stun_t, 0.25)
+			phase = ""
+			target = null
 		if d.has("regen") and hp < max_hp:
 			hp = minf(max_hp, hp + float(d["regen"]) * delta)
 
@@ -846,7 +858,7 @@ func _strike(e: Entity) -> void:
 		return
 	var dmg := float(d["damage"])
 	if d["faction"] == "clockwork":
-		dmg *= wind
+		dmg *= lerpf(0.7, 1.0, wind)
 	if e.is_building():
 		dmg *= float(d.get("building_bonus", 1.0))
 	if mode == "bayonet":
@@ -930,8 +942,8 @@ func _strike(e: Entity) -> void:
 
 func _repair(delta: float) -> Vector2:
 	var e := order_target
-	if e == null or not is_instance_valid(e) or e.dead or e.team != team or e.hp >= e.max_hp \
-			or (e is Building and not e.built):
+	if e == null or not is_instance_valid(e) or e.dead or e.team != team \
+			or (e.hp >= e.max_hp and not (e is Unit and (e as Unit).wind < 0.98)) or (e is Building and not e.built):
 		cmd_stop()
 		return Vector2.ZERO
 	if e.edge_distance(position) < radius + 20.0:
@@ -951,6 +963,8 @@ func _repair(delta: float) -> Vector2:
 			game.players[team]["gold_f"] = float(game.players[team]["gold_f"]) + 1.0
 			game.players[team]["gold"] -= 1
 		e.hp = minf(e.max_hp, e.hp + heal)
+		if e is Unit:
+			(e as Unit).wind = minf(1.0, (e as Unit).wind + 0.15 * delta)     # and winds it up
 		return Vector2.ZERO
 	work = ""
 	if e.is_unit() and position.distance_to(e.global_position) < 140.0:
@@ -1347,6 +1361,13 @@ func _animate(delta: float) -> void:
 		return
 	delta = _anim_dt
 	_anim_dt = 0.0
+	if powered_down() and not dead:
+		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3(0.5, 0.52, 0.6))   # a cold statue: no frames move
+		_cold = true
+		return
+	elif _cold:
+		_cold = false
+		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE)
 	_set_anim(_anim_name(), false)
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[kind]["frames"].get(key, 1)
@@ -1566,11 +1587,12 @@ func _draw() -> void:
 	draw_health(top, radius * 2.4)
 	if work == "feeding":
 		return
-	if d["faction"] == "clockwork" and wind < 0.99 and team == game.human:
-		var w := radius * 2.4
-		var y := top + 7.0
-		draw_rect(Rect2(-w * 0.5, y, w, 2), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(-w * 0.5, y, w * (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN), 2), Color(0.95, 0.7, 0.25))
+	if d["faction"] == "clockwork" and not is_worker():
+		# the battery on its back, for everyone to see: how much charge is left
+		var bt: Texture2D = Game.tex("res://assets/effects/battery_charge.png")
+		var fr := clampi(int(round(wind * 13.0)), 0, 13)
+		var bx := -radius - 7.0 if not anim_flip else radius - 5.0
+		draw_texture_rect_region(bt, Rect2(bx, top * 0.6 - 4.0, 12, 26), Rect2(fr * 10, 0, 10, 22), Color(1, 1, 1) if wind > 0.0 else Color(0.6, 0.6, 0.6))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
 	if carrying > 0 and kind == "winder":

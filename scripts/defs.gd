@@ -13,7 +13,7 @@ const FEEDERS_PER_MINE := 8
 const EGGS_MAX := 5
 const EGG_TIME := 6.0
 const RIG_RATE := 8.0             # Clockwork: gold per second from a Drill Rig
-const WIND_DECAY := 0.04          # Clockwork: wind lost per second outside a field
+const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
 const REPAIR_RATE := 14.0         # hp per second a Winder restores
 
