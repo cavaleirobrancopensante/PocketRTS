@@ -508,8 +508,16 @@ func _render_ground() -> void:
 				set_name = b["face"] if in_map(below) and height[idx(below)] == 0 else b["high"]
 				shade = 1.0 if set_name == b["face"] else 0.72
 			elif height[i] == 1:
-				set_name = b["high"]
-				shade = 1.15
+				# high ground: mostly the calm low-ground tiles, a touch brighter, with
+				# patches of the strong high-ground tile here and there (smooth noise, so
+				# they come in soft clumps, not a checkerboard)
+				if _value_noise(x, y, 3.0) > 0.72:
+					set_name = b["high"]
+					shade = 1.0
+				else:
+					var low_h: Array = b["low"]
+					set_name = low_h[rnd % low_h.size()]
+					shade = 1.07
 			elif near_base.call(c):
 				set_name = b["base"]
 			else:
@@ -541,6 +549,21 @@ func _render_ground() -> void:
 						var col := img.get_pixelv(p)
 						img.set_pixelv(p, col.darkened(0.35 * (1.0 - py / 6.0)))
 	ground.texture = ImageTexture.create_from_image(img)
+
+
+## Smooth value noise in 0..1 (a random value every `cell` tiles, blended between them).
+func _value_noise(x: int, y: int, cell: float) -> float:
+	var fx := x / cell
+	var fy := y / cell
+	var ix := int(floor(fx))
+	var iy := int(floor(fy))
+	var tx := smoothstep(0.0, 1.0, fx - ix)
+	var ty := smoothstep(0.0, 1.0, fy - iy)
+	var h := func(a: int, b: int) -> float:
+		return fposmod(sin(a * 127.1 + b * 311.7) * 43758.5453, 1.0)
+	var top: float = lerpf(h.call(ix, iy), h.call(ix + 1, iy), tx)
+	var bot: float = lerpf(h.call(ix, iy + 1), h.call(ix + 1, iy + 1), tx)
+	return lerpf(top, bot, ty)
 
 
 ## Ramps: each ramp is painted as one smooth slope, from the high ground's grass at the
@@ -596,7 +619,7 @@ func _paint_ramps(img: Image) -> void:
 				s_lo = minf(s_lo, m.dot(side) - T * 0.5)
 				s_hi = maxf(s_hi, m.dot(side) + T * 0.5)
 			var b: Dictionary = MapGen.BIOMES[mapgen.biome_at(c0.x, c0.y)]
-			var top_t := _tile(b["high"], 1)
+			var top_t := _tile(String((b["low"] as Array)[0]), 1)
 			var low: Array = b["low"]
 			var bot_t := _tile(low[0], 2)
 			var face_t := _tile(b["face"], 0)
@@ -617,7 +640,7 @@ func _paint_ramps(img: Image) -> void:
 						var f := clampf((p.dot(dir) - lo_p) / maxf(hi_p - lo_p, 1.0), 0.0, 1.0)
 						# the ramp's own surface: a worn track of the biome's bare ground (dirt,
 						# gravel, mud...) cut into steps, fading into the grass at both ends
-						var a: Color = top_t.get_pixel(px, py) * 1.15
+						var a: Color = top_t.get_pixel(px, py) * 1.07
 						var z: Color = bot_t.get_pixel(px, py)
 						var ends := a.lerp(z, f)
 						var track: Color = path_t.get_pixel(px, py)
