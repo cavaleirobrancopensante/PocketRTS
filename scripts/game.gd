@@ -153,7 +153,8 @@ func _ready() -> void:
 		sw.resize(W * H)
 		swamp.append(sw)
 		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t], "res2": 0.0,
-			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY", "gold_x": 0.0})
+			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY", "gold_x": 0.0,
+			"tech": {}})
 	ground = Sprite2D.new()
 	ground.centered = false
 	ground.z_index = -20
@@ -657,7 +658,7 @@ func _start_positions() -> void:
 		# Starting economy structures, already standing.
 		var sites: Array = []
 		for k in f["start"]:
-			var spot := find_spot(t, k, b, 5, 11, "toward_middle")
+			var spot := find_spot(t, k, b, 4, 11, "behind")
 			if spot.x >= 0:
 				var eb := _add_building(k, t, spot, true)
 				sites.append(eb)
@@ -706,6 +707,10 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				score = -dd + maxf(0.0, own - foe * 0.8) * 3.0
 			elif prefer == "toward_middle":
 				score = cc.distance_to(mid) + dd * 0.5
+			elif prefer == "behind":
+				# tucked behind the hall, away from the middle of the map (like minerals
+				# behind a command centre), and close to it
+				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
 			if score < bs:
 				bs = score
 				best = cell
@@ -1062,6 +1067,10 @@ func can_train(b: Building, k: String) -> String:
 	if not ArtData.UNITS.has(k) or Defs.PENDING.has(k):
 		return "Coming soon."      # its sprites aren't in (or tested) yet
 	var u: Dictionary = Defs.UNITS[k]
+	var rs: String = u.get("research", "")
+	if rs != "" and not has_tech(b.team, rs):
+		var info: Dictionary = Defs.RESEARCH[rs]
+		return "Research %s at the %s first." % [info["name"], Defs.BUILDINGS[info["at"]]["name"]]
 	var req: String = u.get("requires", "")
 	if req != "" and not _has_built(b.team, req):
 		return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
@@ -1105,6 +1114,50 @@ func _has_built(t: int, kind: String) -> bool:
 		if b.team == t and b.kind == kind and b.built and not b.dead:
 			return true
 	return false
+
+
+func has_tech(t: int, key: String) -> bool:
+	return players[t]["tech"].get(key, false) == true
+
+
+## Research going on anywhere for this player?
+func researching(t: int, key: String) -> bool:
+	for b in buildings:
+		if b.team == t and not b.dead and b.research == key:
+			return true
+	return false
+
+
+func research_problem(b: Building, key: String) -> String:
+	var info: Dictionary = Defs.RESEARCH[key]
+	if not b.built or b.kind != info["at"]:
+		return "Can't research that here."
+	if has_tech(b.team, key):
+		return "Already done."
+	if researching(b.team, key) or b.research != "":
+		return "Already researching."
+	if players[b.team]["gold"] < int(info["cost"]):
+		return "Not enough %s." % String(Defs.FACTIONS[factions[b.team]]["res"][0]).to_lower()
+	return ""
+
+
+func start_research(b: Building, key: String) -> String:
+	var why := research_problem(b, key)
+	if why != "":
+		return why
+	players[b.team]["gold"] -= int(Defs.RESEARCH[key]["cost"])
+	stats[b.team]["spent"] += int(Defs.RESEARCH[key]["cost"])
+	b.research = key
+	b.research_t = 0.0
+	return ""
+
+
+func research_done(b: Building, key: String) -> void:
+	players[b.team]["tech"][key] = true
+	if b.team == human:
+		notify("%s researched: %s unlocked." % [Defs.RESEARCH[key]["name"], Defs.UNITS[Defs.RESEARCH[key]["unlocks"]]["name"]], true)
+	if mlog:
+		mlog.add("%s researched %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
 
 
 func train(b: Building, k: String) -> String:

@@ -36,6 +36,7 @@ func _physics_process(delta: float) -> void:
 	_econ_build()
 	_supply()
 	_build_up()
+	_research()
 	_produce()
 	if difficulty >= 1 and _crown():
 		_raid()
@@ -178,7 +179,7 @@ func _econ_spot(kind: String) -> Vector2i:
 		elif kind == "bone_midden":
 			spot = game.find_spot(team, kind, h, 3, 12, "near")
 		else:
-			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "near")
+			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind")
 		if spot.x >= 0:
 			return spot
 	return Vector2i(-1, -1)
@@ -285,6 +286,20 @@ func _build_up() -> void:
 
 
 var _walled := false
+
+
+## The tech step to the first ranged unit, as soon as there's a little money for it.
+func _research() -> void:
+	for key in Defs.RESEARCH:
+		var info: Dictionary = Defs.RESEARCH[key]
+		if info["faction"] != game.faction_of(team) or game.has_tech(team, key) or game.researching(team, key):
+			continue
+		if _gold() < int(info["cost"]) + _lv([150, 60, 20]):
+			continue
+		for b in _mine(info["at"]):
+			if game.research_problem(b, key) == "":
+				game.start_research(b, key)
+				break
 var _raiders: Array = []        # Crown: cuirassiers out hunting the enemy's workers
 var _raid_home := 0.0
 
@@ -467,7 +482,7 @@ func _produce() -> void:
 		var callers := army.filter(func(u: Unit) -> bool: return u.kind == "stormcaller").size()
 		for w in _mine("assembly_works"):
 			if w.built and w.queue.size() < 2:
-				var k := "gearknight" if randf() < 0.5 else "bolt"
+				var k := "gearknight" if randf() < 0.5 or game.can_train(w, "bolt") != "" else "bolt"
 				if walkers * 5 < army.size() + 2 and game.can_train(w, "steam_walker") == "":
 					k = "steam_walker"
 					walkers += 1
@@ -487,7 +502,7 @@ func _produce() -> void:
 			if not h.built:
 				continue
 			while h.eggs > 0:
-				var k := "raptor" if randf() < 0.6 else "spitter"
+				var k := "raptor" if randf() < 0.6 or not game.has_tech(team, "acid_glands") else "spitter"
 				if game.can_train(h, "brute") == "" and brutes * 12 < army.size() + 6:
 					k = "brute"
 					brutes += 1
@@ -504,7 +519,7 @@ func _produce() -> void:
 	var short_powder := _res2() < 20.0
 	for b in _mine("barracks"):
 		if b.built and b.queue.size() < 2:
-			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) else "pikeman"
+			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) and game.has_tech(team, "matchlocks") else "pikeman"
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
 			if (horse < 3 or horse * 6 < army.size()) and randf() < 0.45 and game.can_train(b, "cuirassier") == "":
 				k = "cuirassier"

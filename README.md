@@ -17,6 +17,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - The **Powder Mill** (up to 2 labourers) makes **black powder**. Every musket shot burns 1 and every cannon shot 3: no powder, no fire.
 - Each **Town Hall** allows 4 Farms and 1 Powder Mill within 14 tiles. **Cottages** add supply (max 100).
 - **Walls and gates** (10 and 25 gold a piece): lay them in a line (pick the start, then the end; your labourers build piece after piece). A gate opens for your side and your allies and stays shut to the enemy. Every main base sits on high ground with one ramp (two in four-player games), so a few pieces wall it off. Enemies that can't get through hack at the wall.
+- **Tech step:** Musketeers need the **Matchlocks** research at a Barracks (100 gold, 35 s). The Brood researches **Acid Glands** at the Warren for Spitters, the Clockwork **Tension Springs** at the Assembly Works for Bolt Automatons.
 - **Barracks**: **Musketeers**, **Pikemen** and, once you have a Foundry, **Cuirassiers**: fast armoured horsemen, melee only. After about 2 s at the gallop the next sabre blow is a **charge**: double damage, and the enemy is thrown back and staggered. Pikes do double damage to them. **Foundry**: **Field Cannons**. **Church**: one **Missionary** per church.
 - The **Missionary** walks to a wounded soldier and takes him off the field to bandage him (4 s). The soldier comes back at full health with a cross over his head and can't be bandaged again for 5 s. The Missionary can't be hurt unless he is within 8 tiles of an enemy building.
 
@@ -47,6 +48,9 @@ There are **no resources on the map**: the map is about geography, chokes and to
 
 ### Match log (for playtesting)
 Every match keeps a plain-text log: who played (and at what AI level), what each side built, lost and cast, the first of each unit type, the walls laid, a snapshot of every player each minute (income, resources, supply, workers, halls, army and its value, kills and losses) and the final result with kills by unit type. **COPY LOG** on the end screen copies it to the clipboard; the last 20 logs are also saved in `user://logs`.
+
+### Workers work by themselves
+**WORK** is on by default (its button glows): a worker with nothing to do goes back to a free post on its own, after building, after walking to a rally point, after a STOP. Press WORK to switch it off for the selected workers (to scout, or keep a builder free) and again to switch it back on.
 
 ### Line move
 Drag a line and your selected units spread out evenly along it (as in Beyond All Reason): good against splash, for firing lines and for holding a choke. Computer: hold the right button and drag (a short right click is still a normal command), or press MOVE / ATTACK and drag with the left button. Phone: tap MOVE or ATTACK, then drag the line. With ATTACK they attack-move to their spots.

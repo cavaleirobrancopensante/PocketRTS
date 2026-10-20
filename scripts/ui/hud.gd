@@ -365,15 +365,20 @@ func _build_card() -> Array:
 			_ability_buttons(list, units)
 			list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 		if has_lab:
-			if units.any(func(u: Unit) -> bool: return u.can_gather()):
-				list.append(["gather", "WORK", func() -> void:
+			var gatherers := units.filter(func(u: Unit) -> bool: return u.can_gather())
+			if not gatherers.is_empty():
+				# WORK is automatic: idle workers go back to work on their own. Press it to
+				# switch that off (to scout or to keep a builder free), and again to switch it on.
+				var auto: bool = gatherers.all(func(u: Unit) -> bool: return u.auto_work)
+				list.append(["gather", ("~ " if auto else "") + "WORK", func() -> void:
 					for u in game.selected_units():
 						if u.can_gather():
-							var m := game.free_site(u.team, u.position)
-							if m:
-								u.cmd_gather(m)
-							else:
-								toast("Every post is taken: build more."), true, "", ""])
+							u.auto_work = not auto
+							if u.auto_work and u.order == "idle":
+								var m := game.free_site(u.team, u.position)
+								if m:
+									u.cmd_gather(m)
+					toast("Workers go back to work on their own." if not auto else "Automatic work off: these workers wait for orders."), true, "", ""])
 		for dk in ["cannon", "tesla_cart", "spore_mother"]:
 			var kk: String = dk
 			if units.any(func(u: Unit) -> bool: return u.kind == kk):
@@ -395,6 +400,19 @@ func _build_card() -> Array:
 		if b.kind != "clocktower":
 			return list
 	if b and b.built:
+		for rk in Defs.RESEARCH:
+			var rkk: String = rk
+			var info: Dictionary = Defs.RESEARCH[rk]
+			if info["at"] != b.kind or game.has_tech(game.human, rk):
+				continue
+			var rwhy := game.research_problem(b, rk)
+			var lab: String = info["name"].to_upper()
+			if b.research == rk:
+				lab = "> " + lab
+			list.append([info["unlocks"], lab, func() -> void:
+				var w := game.start_research(b, rkk)
+				if w != "":
+					toast(w), rwhy == "", rwhy, str(info["cost"])])
 		for k in b.d["trains"]:
 			var kk: String = k
 			var why := game.can_train(b, k)
@@ -424,7 +442,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var pikes := units.filter(func(u: Unit) -> bool: return u.kind == "pikeman")
 	if not pikes.is_empty():
 		var on: bool = pikes.any(func(u: Unit) -> bool: return u.push_auto)
-		list.append(["pikeman", "> PUSH" if on else "PUSH", func() -> void:
+		list.append(["pikeman", "~ PUSH" if on else "PUSH", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "pikeman":
 					u.push_auto = not on, true, "", ""])
@@ -464,7 +482,7 @@ const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
 static func key_id(it: Array) -> String:
-	var lab: String = String(it[1]).trim_prefix("> ")
+	var lab: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 	if FIXED_KEYS.has(lab):
 		return lab
 	if Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0]):
@@ -479,7 +497,7 @@ func _with_keys(items: Array) -> Array:
 	for i in items.size():
 		var it: Array = items[i]
 		var own := UiLayout.key_for(key_id(it))
-		var lab: String = String(it[1]).trim_prefix("> ")
+		var lab: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 		var k: String = own if own != "" else String(FIXED_KEYS.get(lab, ""))
 		if k != "" and not used.has(k):
 			used[k] = true
@@ -489,7 +507,7 @@ func _with_keys(items: Array) -> Array:
 		var it: Array = items[i]
 		var key: String = chosen.get(i, "")
 		if key == "":
-			var name: String = String(it[1]).trim_prefix("> ")
+			var name: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 			if Defs.UNITS.has(it[0]):
 				name = Defs.UNITS[it[0]]["name"].to_upper()
 			elif Defs.BUILDINGS.has(it[0]):
@@ -583,6 +601,8 @@ func _pause_buttons() -> Array:
 		{"label": "SOUND: " + ("ON" if Music.me.sound_on else "OFF"), "cb": func() -> void: Music.me.toggle_sound()},
 		{"label": "SURRENDER", "cb": func() -> void:
 			set_paused(false)
+			if game.mlog:
+				game.mlog.add("%s surrendered" % game.mlog.who(game.human))
 			for b in game.buildings.duplicate():
 				if b.team == game.human:
 					b.take_damage(99999, null)},
@@ -875,10 +895,11 @@ func _draw_card(font: Font) -> void:
 		var hov := br.has_point(hover)
 		var on := String(it[1]).begins_with("> ")
 		UiStyle.draw_button(self, br, hov, on, enabled)
+		var auto_on := String(it[1]).begins_with("~ ")
 		if ic:
 			draw_texture_rect(ic, br.grow(-3), false, Color.WHITE if enabled else Color(0.4, 0.4, 0.4, 0.8))
 		draw_rect(Rect2(br.position.x + 2, br.end.y - 17, br.size.x - 4, 15), Color(0, 0, 0, 0.62))
-		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), String(it[1]).trim_prefix("> "), 11, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
+		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), String(it[1]).trim_prefix("> ").trim_prefix("~ "), 11, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
 		if it[5] != "":
 			var cw := font.get_string_size(it[5], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 8
 			var cbr := Rect2(br.end.x - cw - 2, br.position.y + 2, cw, 15)
@@ -889,9 +910,32 @@ func _draw_card(font: Font) -> void:
 			draw_rect(kr, Color(0.1, 0.08, 0.05, 0.85))
 			draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
 			_text(UiStyle.bold_font(), kr.position + Vector2(8, 13), it[6], 12, Color(1, 0.92, 0.6), 1)
+		if auto_on:
+			_autocast_glow(br)
 		if hov:
 			_tooltip(font, it, cr)
 		_buttons.append({"rect": br, "cb": it[2], "enabled": enabled, "why": it[4]})
+
+
+## Autocast (WORK, PUSH): a golden outline that breathes, with sparks running round it.
+func _autocast_glow(br: Rect2) -> void:
+	var t := Time.get_ticks_msec() / 1000.0
+	var a := 0.55 + 0.35 * sin(t * 4.0)
+	draw_rect(br.grow(1), Color(1.0, 0.82, 0.3, a), false, 2.0)
+	var per := 2.0 * (br.size.x + br.size.y)
+	for k in 2:
+		var d := fmod(t * 90.0 + k * per * 0.5, per)
+		var p := br.position
+		if d < br.size.x:
+			p += Vector2(d, 0)
+		elif d < br.size.x + br.size.y:
+			p += Vector2(br.size.x, d - br.size.x)
+		elif d < 2.0 * br.size.x + br.size.y:
+			p += Vector2(br.size.x - (d - br.size.x - br.size.y), br.size.y)
+		else:
+			p += Vector2(0, br.size.y - (d - 2.0 * br.size.x - br.size.y))
+		draw_circle(p, 3.5, Color(1, 0.95, 0.6, 0.95))
+		draw_circle(p, 6.0, Color(1, 0.8, 0.3, 0.3))
 
 
 ## A resource readout in the top bar; returns where the next one starts.
@@ -915,7 +959,7 @@ func _res() -> Array:
 
 
 func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
-	var title: String = String(it[1]).trim_prefix("> ")
+	var title: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 	var body := ""
 	var k: String = it[0]
 	const ABOUT := {
@@ -931,6 +975,12 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",
 		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. Can't hit flyers. 3 powder.",
 	}
+	for rk in Defs.RESEARCH:
+		if title == String(Defs.RESEARCH[rk]["name"]).to_upper():
+			title = "%s   (%d %s, %d s)" % [Defs.RESEARCH[rk]["name"], int(Defs.RESEARCH[rk]["cost"]), _res()[0].to_lower(), int(Defs.RESEARCH[rk]["time"])]
+			body = Defs.RESEARCH[rk]["about"]
+	if title == "WORK":
+		body = "Automatic work: idle workers go back to their posts on their own (glowing = on). Press to switch it off for the selected workers, to scout or keep a builder free."
 	if ABOUT.has(title):
 		body = ABOUT[title]
 	elif Defs.UNITS.has(k) and title == Defs.UNITS[k]["name"].to_upper():

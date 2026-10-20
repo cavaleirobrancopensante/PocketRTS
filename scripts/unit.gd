@@ -67,6 +67,7 @@ var run_t := 0.0                # Cuirassier: seconds at the gallop (a charge af
 var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
+var auto_work := true           # workers: go back to work on their own when idle
 
 
 func is_unit() -> bool:
@@ -426,6 +427,12 @@ func _physics_process(delta: float) -> void:
 				var hurt := game.find_repair(self, 6 * Defs.TILE)
 				if hurt:
 					cmd_repair(hurt)
+			# WORK is on by default: an idle worker goes back to its post by itself
+			if is_worker() and auto_work and order == "idle" and scan_t <= 0.0:
+				scan_t = 1.5
+				var post := game.free_site(team, position)
+				if post:
+					cmd_gather(post)
 			if not is_worker() and scan_t <= 0.0:
 				scan_t = 0.35
 				target = game.find_target(self, _scan_range())

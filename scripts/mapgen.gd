@@ -232,7 +232,7 @@ func four() -> bool:
 ## Hall spots: two opposite corners, or all four corners with 3-4 players.
 ## `nat4` is the natural expansion used when there are four corners (the 2-player
 ## natural would sit too close to the corner below it).
-func _base_spots(hall: Vector2i, nat: Vector2i, nat4 := Vector2i(24, 8)) -> void:
+func _base_spots(hall: Vector2i, nat: Vector2i, nat4 := Vector2i(30, 6)) -> void:
 	var sz := Vector2i(5, 4)
 	if not four():
 		g.starts = [hall, g._mirror(hall, sz)]
@@ -306,7 +306,7 @@ func _keep() -> Array:
 
 ## Open ground (mains up on high ground), a hill in the middle with two ramps, lakes and woods.
 func _crossroads() -> void:
-	_base_spots(Vector2i(6, 6), Vector2i(7, 34))
+	_base_spots(Vector2i(10, 8), Vector2i(7, 34))
 	_main_plateau()
 	_plateau(Vector2(42, 30), Vector2(5, 4), [Vector2(30, 30), Vector2(54, 30)], false)
 	_lake(Vector2(22, 50), Vector2(5, 3))
@@ -316,7 +316,7 @@ func _crossroads() -> void:
 
 ## Each main base sits on high ground with a single ramp down toward its natural.
 func _highlands() -> void:
-	_base_spots(Vector2i(6, 5), Vector2i(8, 38), Vector2i(26, 6))
+	_base_spots(Vector2i(10, 8), Vector2i(8, 38))
 	_main_plateau()
 	_plateau(Vector2(42, 30), Vector2(4, 3), [Vector2(42, 37), Vector2(42, 23)], false)
 	_lake(Vector2(30, 46), Vector2(4, 3))
@@ -326,7 +326,7 @@ func _highlands() -> void:
 
 ## A river splits the map between the two bases (mains up on high ground); three fords are the only crossings.
 func _rivers() -> void:
-	_base_spots(Vector2i(6, 6), Vector2i(7, 34))
+	_base_spots(Vector2i(10, 8), Vector2i(7, 34))
 	_main_plateau()
 	var fords: Array = [0.22, 0.5, 0.78]
 	for i in 160:
@@ -366,7 +366,7 @@ func _rivers() -> void:
 
 ## Four players: two rivers cross in the middle, cutting the map into quarters.
 func _rivers4() -> void:
-	_base_spots(Vector2i(6, 6), Vector2i(7, 34), Vector2i(24, 8))
+	_base_spots(Vector2i(10, 8), Vector2i(7, 34))
 	_main_plateau()
 	for i in 120:
 		var f := i / 119.0
@@ -393,7 +393,7 @@ func _rivers4() -> void:
 ## Every main base sits on high ground with one ramp down toward its natural (two with
 ## four players), so it can be walled off.
 func _main_plateau() -> void:
-	_plateau(Vector2(9, 8), Vector2(13, 11), [Vector2(16, 26), Vector2(34, 8)] if four() else [Vector2(16, 26)], true)
+	_plateau(Vector2(11, 9), Vector2(15, 12), [Vector2(17, 28), Vector2(36, 8)] if four() else [Vector2(17, 28)], true)
 
 
 ## High ground (mirrored too when `mirror`): an ellipse, with ramps toward the given points.

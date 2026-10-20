@@ -10,6 +10,8 @@ var built := false
 var progress := 0.0              # 0..1 while under construction
 var queue: Array = []            # unit kinds
 var prod_t := 0.0
+var research := ""               # research going on here (Defs.RESEARCH key)
+var research_t := 0.0
 var rally := Vector2.INF
 var rally_target: Entity = null
 var worker_rally := Vector2.INF  # Hive: workers and army have separate rally points
@@ -226,6 +228,13 @@ func _physics_process(delta: float) -> void:
 			prod_t = 0.0
 			queue.pop_front()
 			game.spawn_trained(self, k)
+	if built and research != "":
+		research_t += delta
+		if research_t >= float(Defs.RESEARCH[research]["time"]):
+			var key := research
+			research = ""
+			research_t = 0.0
+			game.research_done(self, key)
 	_update_fire()
 	# bars and labels change slowly: redraw 6 times a second, or at once when picked
 	_redraw_t -= delta
@@ -451,6 +460,10 @@ func _draw() -> void:
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * growth, 4), Color(0.95, 0.85, 0.3))
+	elif research != "" and team == game.human:
+		var w := r.size.x * 0.7
+		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-w * 0.5, top + 7, w * research_t / float(Defs.RESEARCH[research]["time"]), 4), Color(0.75, 0.55, 1.0))
 	elif not queue.is_empty() and team == game.human:
 		var w := r.size.x * 0.7
 		var k: String = queue[0]
