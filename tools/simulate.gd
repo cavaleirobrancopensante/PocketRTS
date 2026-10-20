@@ -11,6 +11,8 @@ func _process(delta: float) -> bool:
 	if t > 0.2 and main.game == null:
 		var args := OS.get_cmdline_user_args()
 		var fs: Array = [args[0], args[1]] if args.size() >= 2 else ["crown", "brood"]
+		if args.size() >= 3:
+			main.pick["map"] = args[2]
 		main.start(2, true, fs)
 	var g = main.game
 	if g == null:
@@ -37,6 +39,6 @@ func _process(delta: float) -> bool:
 		var short: Array = []
 		for st in g.stats:
 			short.append({"earned": st["gold"], "killed": st["killed"], "lost": st["lost"], "razed": st["razed"], "kills_by": st["kills_by"]})
-		print("WINNER team ", g.winner, " at ", int(g.clock), "s  ", short)
+		print("WINNER team ", g.winner, " at ", int(g.clock), "s on ", g.map_name, "  ", short)
 		return true
 	return g.clock > 1500.0
