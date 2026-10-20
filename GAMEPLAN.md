@@ -13,12 +13,20 @@ A StarCraft 2 / Beyond All Reason style RTS for phones and the browser, made in 
 
 ## Factions
 
+Each faction has 4 units and 4 structures in the first version, and nothing works the same way across them.
+
 | | The Crown | The Brood | The Clockwork |
 | --- | --- | --- | --- |
-| Theme | 17th-century musketeers and pikemen | Beasts / lizard swarm *(to design)* | Primitive, steampunk-ish clockwork constructs *(to design)* |
-| Economy | Labourers mine gold and carry it home | *(to design)* | *(to design)* |
-| Building | Labourers construct buildings | *(to design)* | *(to design)* |
-| Army | Fewer, expensive, ranged-heavy units | *(to design)* | *(to design)* |
+| Theme | 17th-century musketeers and pikemen | Lizard-beast swarm | Primitive, steampunk-ish clockwork constructs |
+| Worker | Labourer walks to the mine and carries gold home | Grub burrows into a mine and feeds on it in place (no trips); it is used up to grow a building | Winder never mines; it winds up buildings and repairs constructs |
+| Income | Many workers, trips to the hall | Few grubs, steady trickle; more grubs per mine = more income | Drill Rig built on top of a mine extracts by itself |
+| Building | Labourer builds; can be helped | Grub turns into the building (worker is spent) | Winder places a frame; the building assembles itself while wound |
+| Supply | Cottages | Clutch Mounds; the Hive gives a lot | Spring Towers, which also make a wind-up field |
+| Production | Several buildings, each trains its own units | Every unit hatches from eggs at the Hive; other structures only unlock types | One Assembly Works builds every combat unit |
+| Special rule | Long-range firepower, cannons | Swamp spreads from Brood structures: Brood units heal and run faster on it | Constructs outside a Spring Tower field slowly run down (slower, weaker) |
+| Army | Mid-sized, ranged-heavy | Many cheap, fast melee units | Few, expensive, very tough units |
+| Strong at | Holding ground, sieges | Swarming, out-expanding, harassment | Pushing slowly with an unbreakable line |
+| Weak at | Slow, cannons die to flanks | Fragile, weak off the swamp | Slow to build, weak far from its towers |
 
 ## The Crown — units
 
@@ -109,3 +117,112 @@ What the prototype needs (Crown vs Crown, four units): **Town Hall, Cottage, Bar
 
 **Icons** (cells 48×48)
 > Set of square button icons in low-res NES-style pixel art matching the attached sheets, each in its own 48×48 cell with a dark frame, no text. One row each: units (labourer, musketeer, pikeman, field cannon) as head-and-shoulders portraits in red coats; buildings (town hall, cottage, barracks, foundry); commands (move, attack, stop, build, gather, repair).
+
+
+## The Brood — units and structures
+
+| # | Name | What it does |
+| --- | --- | --- |
+| U1 | Grub | Worker. Burrows into a gold mine and feeds; turns into structures |
+| U2 | Raptor | Fast, cheap melee; hatches two per egg |
+| U3 | Spitter | Ranged acid; damage over time that melts armour |
+| U4 | Brute | Huge tank; charges and knocks enemies back |
+| S1 | Hive | Main structure; makes eggs, grubs hatch here; big supply |
+| S2 | Clutch Mound | Supply; spreads swamp |
+| S3 | Warren | Unlocks Raptors and Spitters |
+| S4 | Gorge Pit | Unlocks Brutes |
+
+**Shared part for Brood units (attach the Crown musketeer sheet as the style reference):**
+
+> Sprite sheet for the same top-down 2D RTS as the attached sheet. Match its style, pixel size, outline and level of detail exactly: low-res NES-style pixel art, 3/4 overhead view, transparent background, no ground shadows, no text, no labels, no grid lines. This is a different faction: reptilian lizard-beasts.
+> Team colour: the head frill, crest and back spines must be pure red (#FF0000) with only one darker shade (#960000). Skin olive and moss green, belly pale yellow, claws bone white. No other reds anywhere: blood and acid are yellow-green.
+> Directions as 5 separate panels: facing down, down-right, right, up-right, up. Same feet baseline in every frame.
+
+**U1 Grub** (cells 48×48)
+> Character: small fat grub-lizard on four stubby legs, big jaws, red frill.
+> Rows: 1 idle (2), 2 crawl (6), 3 burrowing into the ground and feeding, only the back visible (4), 4 bite (3), 5 swelling up and splitting open as it turns into a building (4), 6 death (4).
+
+**U2 Raptor** (cells 64×64)
+> Character: lean bipedal raptor-lizard, long tail, sickle claws on the feet, red crest.
+> Rows: 1 idle (2), 2 run (6), 3 leap attack (4), 4 claw slash (3), 5 death (4).
+
+**U3 Spitter** (cells 64×64)
+> Character: hunched lizard with a swollen throat sac and a red frill that flares open.
+> Rows: 1 idle (2), 2 walk (6), 3 frill flaring and throat swelling (2), 4 spitting a yellow-green acid glob (3), 5 death (4).
+
+**U4 Brute** (cells 96×96)
+> Character: huge armoured lizard beast on four legs, horned head like a triceratops, red spines along the back.
+> Rows: 1 idle (2), 2 walk (6), 3 charge, head lowered (4), 4 head-butt / gore (3), 5 death, collapsing on its side (4).
+
+**Shared part for Brood structures (attach the Crown musketeer and Town Hall sheets):**
+
+> Sprite sheet for a structure in the same top-down 2D RTS as the attached sheets. Match their style, pixel size, outline and colours exactly: low-res NES-style pixel art, 3/4 overhead view from the same angle, transparent background, no ground shadow, no text, no labels, no grid lines.
+> This faction's buildings are living organic mounds of hide, bone and mud on dark green swamp ground, with ribbed membranes and glowing yellow-green pores.
+> Team colour: only the fleshy frills and crest spikes on the structure, pure red (#FF0000) with one darker shade (#960000). No other reds anywhere.
+> One row, 4 frames left to right, each in its own equal cell: 1 finished, 2 growing (a smaller translucent egg-sac version, half-formed), 3 damaged (torn membranes, oozing yellow-green), 4 destroyed (collapsed husk and bones).
+
+**S1 Hive** (cells 192×192)
+> Structure: huge domed nest of hide and bone with a ring of eggs around its base, a large red-frilled crest on top, swamp pooling around it.
+
+**S2 Clutch Mound** (cells 96×96)
+> Structure: small mud mound covered in leathery eggs, with a little red frill on top.
+
+**S3 Warren** (cells 160×160)
+> Structure: low sprawling burrow of ribbed tunnels and claw-marked earth, several dark tunnel mouths, red frill spikes along the ridge.
+
+**S4 Gorge Pit** (cells 160×160)
+> Structure: deep pit ringed by giant bones and tusks, steaming swamp inside, a huge horned skull at the front with red frill spikes.
+
+## The Clockwork — units and structures
+
+| # | Name | What it does |
+| --- | --- | --- |
+| U1 | Winder | Builder and repairer; never mines |
+| U2 | Gearknight | Heavily armoured melee; repairs itself slowly |
+| U3 | Bolt Automaton | Crossbow construct; bolts pierce through a line of enemies |
+| U4 | Steam Walker | Big two-legged walker; scalding steam cone, strong against swarms and buildings |
+| S1 | Clocktower | Main structure; builds Winders; Spring Tower field |
+| S2 | Drill Rig | Built on a gold mine; extracts gold by itself |
+| S3 | Spring Tower | Supply; wind-up field that keeps constructs at full strength |
+| S4 | Assembly Works | Builds every combat construct |
+
+**Shared part for Clockwork units (attach the Crown musketeer sheet as the style reference):**
+
+> Sprite sheet for the same top-down 2D RTS as the attached sheet. Match its style, pixel size, outline and level of detail exactly: low-res NES-style pixel art, 3/4 overhead view, transparent background, no ground shadows, no text, no labels, no grid lines. This is a different faction: primitive steampunk clockwork constructs made of brass, copper, iron rivets and dark wood, with visible gears and a wind-up key on the back.
+> Team colour: the painted armour plates and pennants must be pure red (#FF0000) with only one darker shade (#960000). Everything else natural metal and wood. No other reds anywhere: glows and sparks are orange or yellow, steam is white.
+> Directions as 5 separate panels: facing down, down-right, right, up-right, up. Same feet baseline in every frame.
+
+**U1 Winder** (cells 48×48)
+> Character: small round brass construct on two short legs, a giant wind-up key on its back, two thin arms holding a big wrench, red painted chest plate.
+> Rows: 1 idle, key slowly turning (2), 2 walk (6), 3 winding / repairing with the wrench, sparks (4), 4 wrench strike (3), 5 death, falling apart into gears (4).
+
+**U2 Gearknight** (cells 64×64)
+> Character: tall knight-shaped iron construct with a bucket helm, round shield with a red painted face, a heavy mace, exposed gears at the joints.
+> Rows: 1 idle (2), 2 walk, heavy and stiff (6), 3 mace strike (4), 4 shield raised, blocking (2), 5 death, toppling over with springs flying out (4).
+
+**U3 Bolt Automaton** (cells 64×64)
+> Character: wooden and brass torso on a tripod of legs, a big crossbow built into its chest, red painted shoulder plates, a crank on the side.
+> Rows: 1 idle (2), 2 walk (6), 3 cranking the crossbow back (3), 4 firing a bolt (2), 5 death, collapsing (4).
+
+**U4 Steam Walker** (cells 96×96)
+> Character: large two-legged walking boiler with a smokestack, a funnel-shaped steam nozzle at the front, rivets, red painted boiler plates.
+> Rows: 1 idle, puffing smoke (2), 2 walk (6), 3 spraying a white steam cone from the nozzle (4), 4 venting steam, cooling down (2), 5 death, boiler bursting (4).
+
+**Shared part for Clockwork structures (attach the Crown musketeer and Town Hall sheets):**
+
+> Sprite sheet for a structure in the same top-down 2D RTS as the attached sheets. Match their style, pixel size, outline and colours exactly: low-res NES-style pixel art, 3/4 overhead view from the same angle, transparent background, no ground shadow, no text, no labels, no grid lines.
+> This faction's buildings are made of brass, copper, iron girders and dark timber, with big visible gears, chimneys and steam pipes.
+> Team colour: only painted plates and pennants, pure red (#FF0000) with one darker shade (#960000). No other reds anywhere: glows orange, steam white.
+> One row, 4 frames left to right, each in its own equal cell: 1 finished, 2 assembling (iron frame half-built, gears lying around, no scaffolding with people), 3 damaged (broken gears, sparks, steam leaks, small orange fire), 4 destroyed (pile of scrap metal and timber).
+
+**S1 Clocktower** (cells 192×192)
+> Structure: tall brass clock tower on a stone and iron base, a huge clock face, gears turning on the sides, a red pennant on the spire, a hatch at the bottom.
+
+**S2 Drill Rig** (cells 128×128)
+> Structure: iron drilling rig built over a rocky gold seam, a turning drill shaft, a small boiler and chimney, a conveyor pouring gold nuggets into a hopper, red painted plates.
+
+**S3 Spring Tower** (cells 96×96)
+> Structure: slim iron tower holding a giant coiled brass spring, with a slowly turning key on top and a red pennant.
+
+**S4 Assembly Works** (cells 160×160)
+> Structure: wide workshop with sawtooth roof, a big open door with a half-assembled construct on a gantry crane inside, chimneys, steam pipes, red painted plates.
