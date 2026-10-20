@@ -18,6 +18,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - Each **Town Hall** allows 4 Farms and 1 Powder Mill within 14 tiles. **Cottages** add supply (max 100).
 - **Walls and gates** (10 and 25 gold a piece): lay them in a line (pick the start, then the end; your labourers build piece after piece). A gate opens for your side and your allies and stays shut to the enemy. Every main base sits on high ground with one ramp (two in four-player games), so a few pieces wall it off. Enemies that can't get through hack at the wall.
 - **Tech step:** each faction's ranged unit needs its second economy building, which it doesn't start with: Musketeers need a **Powder Mill** (and cost 10 powder each), Spitters a **Bone Midden** (5 essence an egg), Bolt Automatons a **Boiler** (the Clockwork starts on the Clocktower's own power).
+- **Observation Balloon** (Foundry): a snipers' nest in the sky. Two musketeers in the basket each pick their own target, on the ground or in the air. It sees 12 tiles, so your cannons can fire as far as it looks. Slow and fragile; shots burn powder.
 - **Barracks**: **Musketeers**, **Pikemen** and, once you have a Foundry, **Cuirassiers**: fast armoured horsemen, melee only. After about 2 s at the gallop the next sabre blow is a **charge**: double damage, and the enemy is thrown back and staggered. Pikes do double damage to them. **Foundry**: **Field Cannons**. **Church**: one **Missionary** per church.
 - The **Missionary** walks to a wounded soldier and takes him off the field to bandage him (4 s). The soldier comes back at full health with a cross over his head and can't be bandaged again for 5 s. The Missionary can't be hurt unless he is within 8 tiles of an enemy building.
 
@@ -28,6 +29,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Bone Middens** turn every body that falls nearby (friend or foe) into **essence**. Brutes and Skywings cost essence.
 - Every unit hatches from the **Hive's eggs** (each Clutch Mound makes the Hives lay 10% faster, up to +30%): **Raptors** (3 per egg), **Spitters** (2 per egg), **Brutes** (need a Gorge Pit) and **Skywings** (need a Roost).
 - **Skywings** fly over everything, and only ranged units can hit them.
+- **Bloaters** (need a Roost): floating gas sacs. They SPIT acid from range, every glob using up gas, or on **HOLD GAS** they keep it all and drift in to burst: damage and an acid cloud (armour down, slowed) that grow with the gas left.
 - **Spore Mothers** (need a Gorge Pit) are slow and can't attack while walking. **ROOT** her (2.5 s): she lobs big spit blobs that splash an area and spreads swamp around her. **MIASMA** (30 essence, 18 s to recover) lays a green cloud for 8 s; Brood inside heal up to 30% of their health. Clouds don't stack.
 - Swamp heals the Brood and makes it faster. Army cap 160.
 
@@ -41,6 +43,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - Constructs run down (slower and weaker) outside the field of a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart.
 - The **Charging Pylon** also mends constructs.
 - **Assembly Works**: **Gearknights**, **Bolt Automatons** (pierce up to 3), **Steam Walkers** and **Tesla Carts**. A Tesla Cart rolls when packed; deploying or packing takes 3 s. Deployed, it powers constructs around it and fires chain lightning that can hit flyers.
+- **Ornithopters** (need a Charging Pylon): fast flyers with a lightning gun, best against other flyers. They wind down away from a field like every construct.
 - **Stormcallers** (need a Charging Pylon) are fragile casters with a weak zap. **STORM** throws a 3-tile ring of lightning on a spot for 3 s: everything inside is **stunned** (your own units too) and enemies take damage. A storm costs 70 of the Stormcaller's 100 charge, and the charge only fills inside a Clockwork field.
 - Army cap 80.
 

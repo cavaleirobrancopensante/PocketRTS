@@ -366,7 +366,7 @@ const RESEARCH := {}   # (the tech step is now the second economy building: see 
 
 
 ## Units whose art is still being finished: they can't be trained yet.
-const PENDING := ["balloon", "ornithopter", "bloater"]
+const PENDING := []
 
 
 static func is_worker(kind: String) -> bool:
