@@ -588,7 +588,7 @@ func _with_keys(items: Array) -> Array:
 func hotkey(code: int) -> bool:
 	if paused or game.over:
 		return false
-	if code == KEY_ESCAPE and controls.mode == "" and page != "":
+	if (code == KEY_ESCAPE or code == KEY_BACKSPACE) and controls.mode == "" and page != "":
 		page = ""
 		return true
 	var letter := OS.get_keycode_string(code)

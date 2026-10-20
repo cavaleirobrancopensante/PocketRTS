@@ -362,7 +362,7 @@ func _key(e: InputEventKey) -> void:
 				_last_click_t = Time.get_ticks_msec()
 			return
 	match e.keycode:
-		KEY_ESCAPE:
+		KEY_ESCAPE, KEY_BACKSPACE:
 			if mode != "":
 				cancel_mode()
 			else:

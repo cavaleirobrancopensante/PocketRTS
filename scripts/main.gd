@@ -363,6 +363,15 @@ func show_settings() -> void:
 	sh.add_child(szb)
 	v.add_child(sh)
 	v.add_child(dev)
+	if OS.has_feature("web"):
+		v.add_child(_toggle_row("FULL SCREEN", func() -> bool: return Settings.fullscreen, func() -> void:
+			Settings.fullscreen = not Settings.fullscreen
+			Settings.save_all()
+			if Settings.fullscreen:
+				_went_fullscreen = false
+				_web_fullscreen()
+			else:
+				_web_leave_fullscreen(), "ON", "OFF"))
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
@@ -1387,18 +1396,42 @@ func _write_log(path: String, t: String) -> void:
 		DirAccess.remove_absolute("user://logs/" + String(files.pop_front()))
 
 
+## Web: go full screen on the first click or tap (browsers only allow it then), and on a
+## computer ask the browser to give Esc to the game: Chrome and Edge then leave full screen
+## only when Esc is HELD, so a quick Esc just closes a card. Settings > FULL SCREEN turns it off.
 func _web_fullscreen() -> void:
-	if _went_fullscreen or not OS.has_feature("web") or not DisplayServer.is_touchscreen_available():
+	if _went_fullscreen or not OS.has_feature("web") or not Settings.fullscreen:
 		return
 	_went_fullscreen = true
 	JavaScriptBridge.eval("""
 		(function(){
 			var el = document.documentElement;
+			if (document.fullscreenElement) return;
 			var req = el.requestFullscreen || el.webkitRequestFullscreen;
 			if (!req) return;
-			var p = req.call(el);
+			var p = req.call(el, {navigationUI: 'hide'});
 			if (p && p.then) p.then(function(){
+				if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(function(){});
 				if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function(){});
 			}).catch(function(){});
 		})();
 	""", true)
+
+
+func _web_leave_fullscreen() -> void:
+	if not OS.has_feature("web"):
+		return
+	_went_fullscreen = false
+	JavaScriptBridge.eval("""
+		(function(){
+			if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+			if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+		})();
+	""", true)
+
+
+func _input(event: InputEvent) -> void:
+	# the first click or tap anywhere: full screen (if it's on)
+	if not _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
+			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)):
+		_web_fullscreen()

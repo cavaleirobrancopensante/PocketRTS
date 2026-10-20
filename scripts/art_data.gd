@@ -246,7 +246,22 @@ const UNITS := {
 	"grub": {"cell": Vector2i(42, 29), "anchor": Vector2(21, 27), "frames": {
 		"attack_e": 3,
 		"burrow_e": 5,
+		"carry_cocoon_e": 5,
+		"carry_cocoon_n": 6,
+		"carry_cocoon_ne": 5,
+		"carry_cocoon_s": 5,
+		"carry_cocoon_se": 5,
+		"death_cocoon_e": 5,
+		"death_cocoon_n": 5,
+		"death_cocoon_ne": 5,
+		"death_cocoon_s": 5,
+		"death_cocoon_se": 5,
 		"death_e": 5,
+		"idle_cocoon_e": 3,
+		"idle_cocoon_n": 3,
+		"idle_cocoon_ne": 3,
+		"idle_cocoon_s": 3,
+		"idle_cocoon_se": 3,
 		"idle_e": 1,
 		"idle_n": 1,
 		"idle_ne": 1,
@@ -254,6 +269,11 @@ const UNITS := {
 		"idle_se": 1,
 		"morph_e": 5,
 		"walk_e": 6,
+		"wrap_e": 5,
+		"wrap_n": 5,
+		"wrap_ne": 5,
+		"wrap_s": 5,
+		"wrap_se": 5,
 	}},
 	"raptor": {"cell": Vector2i(58, 30), "anchor": Vector2(29, 28), "frames": {
 		"attack_e": 5,
@@ -480,6 +500,7 @@ const BUILDING_SIZE := {
 	"barracks": Vector2i(128, 140),
 	"foundry": Vector2i(118, 171),
 	"capacitor_works": Vector2i(78, 96),
+	"brood_pen": Vector2i(134, 116),
 }
 
 const NATURE := ["tree_0", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "rock_0", "rock_1", "rock_2", "rock_3", "rock_4", "rock_5"]

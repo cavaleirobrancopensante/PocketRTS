@@ -6,6 +6,7 @@ const PATH := "user://settings.cfg"
 
 static var device := ""
 static var drag_mode := "box"        # mobile: "box" = drag selects, "pan" = drag moves the view
+static var fullscreen := true         # web: play full screen (Esc no longer leaves it in Chrome/Edge)
 static var ui_size := 0               # 0 = automatic, else a percentage (100-200)
 static var _loaded := false
 
@@ -19,6 +20,7 @@ static func load_all() -> void:
 		device = cfg.get_value("input", "device", "")
 		drag_mode = cfg.get_value("input", "drag_mode", "box")
 		ui_size = cfg.get_value("input", "ui_size", 0)
+		fullscreen = cfg.get_value("input", "fullscreen", true)
 	apply()
 
 
@@ -28,6 +30,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "device", device)
 	cfg.set_value("input", "drag_mode", drag_mode)
 	cfg.set_value("input", "ui_size", ui_size)
+	cfg.set_value("input", "fullscreen", fullscreen)
 	cfg.save(PATH)
 
 
