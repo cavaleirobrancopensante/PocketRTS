@@ -114,7 +114,7 @@ const UNITS := {
 		"deploy_e": 5,
 		"deploy_n": 5,
 		"deploy_ne": 5,
-		"deploy_s": 4,
+		"deploy_s": 5,
 		"deploy_se": 5,
 		"fire_e": 4,
 		"fire_n": 4,

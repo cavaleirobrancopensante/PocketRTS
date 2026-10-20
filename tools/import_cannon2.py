@@ -94,12 +94,30 @@ def is_effect(rgb):
 # horse: polygon (sheet px) holding the horse and its leader (moved/faded separately).
 # erase: polygons removed outright; effect: polygon holding the painted flash+smoke.
 
+# around the axle of the side-view walk gun (source px): breech knob at -43, the rammer
+# rod of the man behind at -46..-40 high, trail end under his boot at about -64
+def gun_side(muzzle):
+    return [(-43, -72), (muzzle + 1, -72), (muzzle + 1, 9), (-64, 9), (-64, -14), (-52, -30), (-43, -38)]
+
+
+def horse_side(tail):
+    return [(tail, -140), (300, -140), (300, 20), (tail, 20)]
+
+
 DRAWINGS = {
     # --- side sheet (facing east) ---
-    "W1": dict(sheet="side", box=(11, 82, 316, 222), soldier=96, anchor=(133, 208)),
-    "W2": dict(sheet="side", box=(363, 80, 632, 222), soldier=96, anchor=(470, 208)),
-    "W3": dict(sheet="side", box=(685, 80, 985, 222), soldier=96, anchor=(795, 206)),
-    "W4": dict(sheet="side", box=(1038, 80, 1306, 222), soldier=96, anchor=(1142, 206)),
+    # Side walk frames: the sheet draws the limbered gun with its muzzle toward the horse.
+    # A towed gun trails behind the limber with its muzzle backwards, so the gun ("gun",
+    # cut around the axle) is mirrored in build(); the rear crewman stays ("main"), the
+    # horse and leader ("horse") move up to the trail end. Polygons are relative to anchor.
+    "W1": dict(sheet="side", box=(11, 82, 316, 222), soldier=96, anchor=(133, 208), rel=True,
+               gun=gun_side(55), horse=horse_side(57), muzzle=55),
+    "W2": dict(sheet="side", box=(363, 80, 632, 222), soldier=96, anchor=(470, 208), rel=True,
+               gun=gun_side(41), horse=horse_side(30), muzzle=41),
+    "W3": dict(sheet="side", box=(685, 80, 985, 222), soldier=96, anchor=(795, 206), rel=True,
+               gun=gun_side(50), horse=horse_side(54), muzzle=50),
+    "W4": dict(sheet="side", box=(1038, 80, 1306, 222), soldier=96, anchor=(1142, 206), rel=True,
+               gun=gun_side(44), horse=horse_side(33), muzzle=44),
     "P1": dict(sheet="side", box=(8, 252, 346, 392), soldier=96, anchor=(143, 378),
                horse=[(203, 252), (346, 252), (346, 392), (203, 392)]),
     "F3": dict(sheet="side", box=(720, 434, 1039, 566), soldier=96, anchor=(847, 557),
@@ -176,9 +194,20 @@ def cut(name):
         m &= ~(poly_mask(m.shape, (x0, y0), pts) & (fl | sp | sm))
     parts = {}
     rest = m.copy()
-    for key in ("effect", "horse"):
+    for key in ("effect", "horse", "gun"):
         if key in d:
-            pm = poly_mask(m.shape, (x0, y0), d[key]) & rest
+            pts = d[key]
+            if d.get("rel"):
+                pts = [(d["anchor"][0] + x, d["anchor"][1] + y) for x, y in pts]
+            pm = poly_mask(m.shape, (x0, y0), pts) & rest
+            if key == "horse" and "muzzle" in d:
+                # tail and hind legs drawn over/behind the muzzle: leave the gun's bronze and
+                # wood to the gun
+                rgb = img[..., :3].astype(int)
+                r, g, b_ = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+                gunlike = (r > b_ + 25) & (g > b_ + 8) & (g > r * 0.42)
+                xs = np.arange(m.shape[1])[None, :] + x0 - d["anchor"][0]
+                pm &= ~(gunlike & (xs <= d["muzzle"] + 1))
             parts[key] = pm
             rest &= ~pm
     parts["main"] = rest
@@ -620,7 +649,7 @@ def without(layers, *keys):
     return {k: v for k, v in layers.items() if k not in keys}
 
 
-def stack(layers, order=("horse", "main", "effect")):
+def stack(layers, order=("horse", "main", "gun", "effect")):
     return compose([layers[k] for k in order if k in layers])
 
 
@@ -646,6 +675,72 @@ def blast(effect, wreck, up=0):
     return out
 
 
+HITCH_SHIFT = 10     # game px the horse moves forward so the trail end reaches it
+
+
+def mirror(lay):
+    """Flip a layer left-right about its anchor."""
+    return Layer(lay.img[:, ::-1].copy(), lay.img.shape[1] - lay.ax, lay.ay)
+
+
+def pole(a, b):
+    """The limber pole: a 2 px wooden line between two points (game px relative to the
+    anchor), dark underside."""
+    (x0, y0), (x1, y1) = a, b
+    xs0, ys0 = int(np.floor(min(x0, x1))) - 2, int(np.floor(min(y0, y1))) - 2
+    w, h = int(np.ceil(abs(x1 - x0))) + 6, int(np.ceil(abs(y1 - y0))) + 6
+    img = np.zeros((h, w, 4), np.uint8)
+    n = int(max(abs(x1 - x0), abs(y1 - y0))) * 2 + 1
+    for t in np.linspace(0, 1, n):
+        x = int(round(x0 + (x1 - x0) * t)) - xs0
+        y = int(round(y0 + (y1 - y0) * t)) - ys0
+        img[y, x] = (104, 68, 34, 255)
+        if img[y + 1, x, 3] == 0:
+            img[y + 1, x] = (44, 28, 14, 255)
+    return Layer(img, -xs0, -ys0)
+
+
+def fill_gaps(lay, it=2):
+    """Close small notches in a figure (where another object hid it) with the nearest
+    colour of the figure."""
+    img = lay.img.copy()
+    a = img[..., 3] > 0
+    closed = ndimage.binary_fill_holes(ndimage.binary_closing(a, iterations=it)) & \
+        ndimage.binary_dilation(a, iterations=1)
+    new = closed & ~a
+    _, (iy, ix) = ndimage.distance_transform_edt(~a, return_indices=True)
+    img[new] = img[iy[new], ix[new]]
+    return Layer(img, lay.ax, lay.ay)
+
+
+def limbered_side(name, ref, gun=None):
+    """A side walk drawing with the gun turned round: trail toward the horse, muzzle back,
+    wheel on the same spot. The horse steps forward so its rump stands at the trail end
+    (the same spot in every frame) and a pole joins them. `gun` (already mirrored) replaces
+    the frame's own gun so the gun stays put through the cycle. Returns (frame, parts)."""
+    d = DRAWINGS[name]
+    L = drawing(name)
+    _, (dx, dy) = align(ref, L["gun"], search=4)
+    L = {k: shifted(v, dx, dy) for k, v in L.items()}
+    mg = gun if gun is not None else mirror(L["gun"])
+    s = SOLDIER_H / d["soldier"]
+    horse = fill_gaps(shifted(L["horse"], HITCH_SHIFT + (57 - d["horse"][0][0]) * s, 0))
+    # trail end: the right-most gun pixel in the lowest third of the gun
+    a = mg.img[..., 3] > 0
+    ys, xs = np.nonzero(a)
+    low = ys >= ys.max() - (ys.max() - ys.min()) // 3
+    i = np.argmax(xs[low])
+    trail = (xs[low][i] - mg.ax - 0.5, ys[low][i] - mg.ay - 1)
+    # the horse's trace: its left-most pixel at harness height
+    ha = horse.img[..., 3] > 0
+    hy, hx = np.nonzero(ha)
+    band = (hy - horse.ay >= -22) & (hy - horse.ay <= -16)
+    j = np.argmin(hx[band])
+    trace = (hx[band][j] - horse.ax + 1, hy[band][j] - horse.ay)
+    parts = dict(gun=mg, horse=horse, crew=L["main"], pole=pole(trail, trace))
+    return compose([horse, parts["pole"], L["main"], mg]), parts
+
+
 def build():
     A = {}
     prof = barrel_profile()
@@ -653,10 +748,15 @@ def build():
     # ---- east (side sheet) ----
     F3 = drawing("F3")
     idle_e = F3["main"]
-    walk = [stack(drawing(n)) for n in ("W1", "W2", "W3", "W4")]
-    walk[0], off = align(idle_e, walk[0])
-    for i in range(1, 4):
-        walk[i], _ = align(walk[0], walk[i], search=3)
+    walk, parts = [], []
+    fr, pt = limbered_side("W1", idle_e)
+    walk.append(fr)
+    parts.append(pt)
+    ref = mirror(pt["gun"])                 # W1's gun as drawn, aligned
+    for n in ("W2", "W3", "W4"):
+        fr, p2 = limbered_side(n, ref, gun=pt["gun"])
+        walk.append(fr)
+        parts.append(p2)
     A["walk", "e"] = walk
     A["idle", "e"] = [idle_e]
     fx = fire_effects(effect_source("F3", (895, 497)))
@@ -667,10 +767,15 @@ def build():
         r, _ = align(idle_e, drawing(n)["main"])
         rel.append(r)
     A["reload", "e"] = rel
-    P1 = drawing("P1")
-    p1, (dx, dy) = align(idle_e, stack(P1))
-    P1 = {k: shifted(v, dx, dy) for k, v in P1.items()}
-    A["deploy", "e"] = deploy_frames(walk[0], P1, idle_e, (5, 0), mid=p1)
+    # unlimbering: unhitch, swing the gun round (through a muzzle-toward-camera pose),
+    # lead the horse off, deployed muzzle forward. Played backwards to limber up.
+    pt = parts[0]
+    unhitched = compose([shifted(pt["horse"], 2, 0), pt["crew"], pt["gun"]])
+    swing_horse = shifted(pt["horse"], 4, 0)
+    off_horse = dither(shifted(pt["horse"], 6, 0))
+
+    def deploy_side(mid, end):
+        return [walk[0], unhitched, compose([swing_horse, mid]), compose([off_horse, mid]), end]
 
     # ---- south-east (angles col 1) ----
     S1 = drawing("A1R1")
@@ -684,7 +789,6 @@ def build():
     A["fire", "se"] = [compose([idle_se, at_muzzle(f, idle_se, mz)]) for f in fx]
     r3, _ = align(idle_se, drawing("A1R3")["main"])
     A["reload", "se"] = [idle_se, r3, r3]
-    A["deploy", "se"] = A["deploy", "e"][:-1] + [idle_se]
 
     # ---- north-east (angles col 1, firing row) ----
     N1 = drawing("A1R2")
@@ -698,7 +802,6 @@ def build():
     w1 = move_figure(idle_ne.img, (46, 10, 62, 33), 33, dx=1, dy=1)
     w2 = move_figure(w1, (26, 28, 44, 59), 46, bob=1)
     A["reload", "ne"] = [Layer(w1, idle_ne.ax, idle_ne.ay), Layer(w2, idle_ne.ax, idle_ne.ay), idle_ne]
-    A["deploy", "ne"] = A["deploy", "e"][:-1] + [idle_ne]
 
     # ---- south (front sheet cols 0-1) ----
     F0 = drawing("F0R0")
@@ -710,26 +813,52 @@ def build():
     r1, _ = align(idle_s, drawing("F1R0")["main"])
     w = move_figure(idle_s.img, (39, 10, 64, 47), 31, dx=-1, dy=1)
     A["reload", "s"] = [r1, Layer(w, idle_s.ax, idle_s.ay), r1]
-    # limbered: the horse and its leader walk in front of the muzzle (toward the camera)
+    # ---- deployed north gun (needed for the limbered south view) ----
+    N5 = drawing("A5R3")
+    idle_n = paint_north_barrel(N5["main"], prof)
+
+    # limbered, heading south: horse and leader toward the camera, the gun towed behind
+    # them by its trail, muzzle away (north): the deployed north gun without its two side
+    # men, the front sheet's two front-facing crew beside it.
     HS = shifted(drawing("HS")["main"], 0, 12)
+    g = idle_n.img.copy()
+    hh, ww = g.shape[:2]
+    yy, xx = np.mgrid[0:hh, 0:ww]
+    side = (xx <= 15) | ((xx <= 22) & (yy < 44)) | (xx >= 48) | ((xx >= 40) & (yy < 44))
+    g[side] = 0
+    gunN = Layer(clean(g, min_size=7, keep_near=1), idle_n.ax, idle_n.ay)
+    c = idle_s.img.copy()
+    hh, ww = c.shape[:2]
+    yy, xx = np.mgrid[0:hh, 0:ww]
+    men = ((xx <= 17) & (yy < 33)) | ((xx <= 13) & (yy < 48)) | \
+          ((xx >= 41) & (yy < 33)) | ((xx >= 46) & (yy < 48))
+    c[~men] = 0
+    crewS = c
     ws = []
     for k in range(4):
-        main, horse = idle_s.img, HS.img
+        crew, horse = crewS, HS.img
         if k in (1, 3):
             for wk in WALKERS["F0R0"]:
                 kw = dict(bob=1, raise_l=2) if (k == 1) != bool(wk.get("swap")) else dict(bob=1, raise_r=2)
-                main = move_figure(main, wk["box"], wk["legs"], **kw)
+                crew = move_figure(crew, wk["box"], wk["legs"], **kw)
             h, w = horse.shape[:2]
             hk = dict(bob=1, raise_r=2) if k == 1 else dict(bob=1, raise_l=2)
             horse = move_figure(horse, (0, 0, w, h), 30, **hk)
-        ws.append(compose([Layer(main, idle_s.ax, idle_s.ay), Layer(horse, HS.ax, HS.ay)]))
+        ws.append(compose([gunN, Layer(crew, idle_s.ax, idle_s.ay), Layer(horse, HS.ax, HS.ay)]))
     A["walk", "s"] = ws
-    A["deploy", "s"] = [ws[0], compose([idle_s, shifted(HS, 0, 4)]),
-                        compose([idle_s, dither(shifted(HS, 0, 8))]), idle_s]
+    crewL = Layer(crewS, idle_s.ax, idle_s.ay)
+    A["deploy", "s"] = [ws[0],
+                        compose([gunN, crewL, shifted(HS, 0, 4)]),
+                        compose([idle_e, shifted(HS, 13, 6)]),
+                        compose([idle_s, dither(shifted(HS, 18, 8))]),
+                        idle_s]
+
+    # side unlimbering (east, and reused by south-east / north-east)
+    A["deploy", "e"] = deploy_side(idle_s, idle_e)
+    A["deploy", "se"] = deploy_side(idle_s, idle_se)
+    A["deploy", "ne"] = deploy_side(idle_n, idle_ne)
 
     # ---- north (angles col 5) ----
-    N5 = drawing("A5R3")
-    idle_n = paint_north_barrel(N5["main"], prof)
     A["idle", "n"] = [idle_n]
     mz = (idle_n.ax, 22.5)
     fx = fire_effects(effect_source("F3", (895, 497)), aim=90, squash=0.6)
