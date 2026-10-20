@@ -9,6 +9,7 @@ python3 tools/import_round4.py           # Stormcaller, Cuirassier, Spore Mother
 python3 tools/import_round5.py           # Ornithopter, Bloater (+ bloat cloud), Capacitor Works
 python3 tools/import_round6.py           # Powder Wagon, labourer keg anims, keg mine, keg/cross/digits
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
+python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
 python3 tools/recolour_grub_cocoon.py     # cocoon grubs to the olive grub colour
 python3 tools/fix_weapons.py             # straight pike and musket, held properly
 python3 tools/fix_pike.py                # full-length pike in the thrust frames
