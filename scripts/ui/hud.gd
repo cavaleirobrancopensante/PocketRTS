@@ -85,9 +85,26 @@ func top_rect() -> Rect2:
 	return Rect2(0, 0, _vs().x, 36)
 
 
+## Where everything sits comes from the chosen layout profile (Settings > Interface layout).
+var _rects := {}
+var _rects_frame := -1
+
+
+func _layout() -> Dictionary:
+	var f := Engine.get_process_frames()
+	if f != _rects_frame:
+		_rects_frame = f
+		var b := _btn()
+		_rects = UiLayout.rects(_vs(), {
+			"mini": Vector2(MINI_W, MINI_W * float(Game.H) / float(Game.W)),
+			"groups": Vector2(206, 90),
+			"card": Vector2(b * _cols() + 4, b * _rows() + 4),
+			"panel": Vector2(0, 88)})
+	return _rects
+
+
 func mini_rect() -> Rect2:
-	var h := MINI_W * float(Game.H) / float(Game.W)
-	return Rect2(8, _vs().y - h - 8, MINI_W, h)
+	return _layout()["mini"]
 
 
 func _cols() -> int:
@@ -103,8 +120,7 @@ func _btn() -> float:
 
 
 func card_rect() -> Rect2:
-	var b := _btn()
-	return Rect2(_vs().x - b * _cols() - 12, _vs().y - b * _rows() - 12, b * _cols() + 4, b * _rows() + 4)
+	return _layout()["card"]
 
 
 func drag_rect() -> Rect2:
@@ -112,16 +128,14 @@ func drag_rect() -> Rect2:
 
 
 func panel_rect() -> Rect2:
-	var l := mini_rect().end.x + 8
-	var r := card_rect().position.x - 8
-	return Rect2(l, _vs().y - 96, r - l, 88)
+	return _layout()["panel"]
 
 
 ## Quick-select buttons above the minimap: ARMY, IDLE, HALL / groups 1-3.
 func group_rect(i: int) -> Rect2:
-	var m := mini_rect()
-	var row := 0 if i < 3 else 1
-	return Rect2(m.position.x + (i % 3) * 70, m.position.y - 50 - row * 48, 66, 42)
+	var g: Rect2 = _layout()["groups"]
+	var row := 1 if i < 3 else 0      # ARMY / IDLE / HALL on the bottom row, groups above
+	return Rect2(g.position.x + (i % 3) * 70, g.position.y + row * 48, 66, 42)
 
 
 func menu_rect() -> Rect2:
@@ -386,19 +400,34 @@ const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P"}
 
 
+## The id a card item is known by for hotkeys: a command name or a unit/building kind.
+static func key_id(it: Array) -> String:
+	var lab: String = String(it[1]).trim_prefix("> ")
+	if FIXED_KEYS.has(lab):
+		return lab
+	if Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0]):
+		return it[0]
+	return lab
+
+
 func _with_keys(items: Array) -> Array:
 	var used := {}
-	for it in items:
+	var chosen := {}
+	# the player's own keys and the fixed command keys first
+	for i in items.size():
+		var it: Array = items[i]
+		var own := UiLayout.key_for(key_id(it))
 		var lab: String = String(it[1]).trim_prefix("> ")
-		if FIXED_KEYS.has(lab):
-			used[FIXED_KEYS[lab]] = true
-	for it in items:
-		var lab: String = String(it[1]).trim_prefix("> ")
-		var key := ""
-		if FIXED_KEYS.has(lab):
-			key = FIXED_KEYS[lab]
-		else:
-			var name: String = lab
+		var k: String = own if own != "" else String(FIXED_KEYS.get(lab, ""))
+		if k != "" and not used.has(k):
+			used[k] = true
+			chosen[i] = k
+	# everything else takes the first free letter of its name
+	for i in items.size():
+		var it: Array = items[i]
+		var key: String = chosen.get(i, "")
+		if key == "":
+			var name: String = String(it[1]).trim_prefix("> ")
 			if Defs.UNITS.has(it[0]):
 				name = Defs.UNITS[it[0]]["name"].to_upper()
 			elif Defs.BUILDINGS.has(it[0]):
@@ -412,7 +441,7 @@ func _with_keys(items: Array) -> Array:
 					if not used.has(ch):
 						key = ch
 						break
-		used[key] = true
+			used[key] = true
 		it.append(key)
 	return items
 

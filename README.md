@@ -76,6 +76,11 @@ Six biomes: grass, autumn, desert, snow, marsh and volcanic (lava lakes). Two ma
 - Each economy structure shows its crew as **X/Y** (green when full). Farms also show a harvest bar.
 - When a match ends, the **battle report** shows income and spending, units trained, killed and lost, structures built and razed, damage dealt, value destroyed, peak army and top killers, plus army, income and worker graphs over time.
 
+### Interface layout and hotkeys
+**Settings > Interface layout & hotkeys** has two fixed layouts, STANDARD and MINIMAP TOP RIGHT, and three CUSTOM slots. In a custom slot you drag the minimap, quick buttons, selection panel and command card anywhere, change the selection panel's width, and set your own letter for any command, unit or building (Backspace returns it to automatic). USE THIS LAYOUT picks the one used in matches. **Settings > In-game interface size** makes the HUD bigger or smaller; on phones it is 150% by default.
+
+Workers' command cards have **BUILD** (halls, supply and economy) and **ADVANCED** (production and tech) instead of HOLD; soldiers keep HOLD, which stops them chasing enemies.
+
 ### Computer or mobile
 On the first start the game asks where you are playing. The two control schemes are separate, and you can switch from the menu (PLAYING ON).
 

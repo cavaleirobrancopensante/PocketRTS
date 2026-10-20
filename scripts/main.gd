@@ -269,6 +269,7 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
 	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
 	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
+	v.add_child(_button("INTERFACE LAYOUT & HOTKEYS", func() -> void: show_layout()))
 	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
 	var sizes := [0, 100, 125, 150, 175, 200]
 	var sz_text := "AUTO (%d%%)" % int(Settings.ui_scale_now() * 100) if Settings.ui_size == 0 else "%d%%" % Settings.ui_size
@@ -291,6 +292,14 @@ func show_settings() -> void:
 	v.add_child(_gap(4))
 	var back := _button("BACK", func() -> void: show_menu())
 	v.add_child(back)
+
+
+## Interface layout profiles and hotkeys.
+func show_layout() -> void:
+	_clear_ui()
+	var ed := LayoutEditor.new()
+	ui_layer.add_child(ed)
+	ed.done.connect(func() -> void: show_settings())
 
 
 ## The music player: how the match playlist is chosen, and every piece to listen to.

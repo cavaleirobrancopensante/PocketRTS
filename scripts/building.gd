@@ -134,6 +134,10 @@ func uses_eggs() -> bool:
 	return d.get("eggs", false)
 
 
+var _redraw_t := 0.0
+var _was_selected := false
+
+
 func _physics_process(delta: float) -> void:
 	_process_flash(delta)
 	_process_acid(delta)
@@ -188,7 +192,12 @@ func _physics_process(delta: float) -> void:
 			queue.pop_front()
 			game.spawn_trained(self, k)
 	_update_fire()
-	queue_redraw()
+	# bars and labels change slowly: redraw 6 times a second, or at once when picked
+	_redraw_t -= delta
+	if _redraw_t <= 0.0 or selected != _was_selected:
+		_redraw_t = 0.16
+		_was_selected = selected
+		queue_redraw()
 
 
 func _brood(delta: float) -> void:

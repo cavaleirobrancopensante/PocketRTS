@@ -51,6 +51,7 @@ var _charging := false
 var tesla_mode := "packed"     # Tesla Cart: packed, deploying, deployed, packing
 var tesla_t := 0.0
 var _bob_t := 0.0
+var _draw_key := Vector4i(-1, -1, -1, -1)
 
 
 func is_unit() -> bool:
@@ -338,7 +339,12 @@ func _physics_process(delta: float) -> void:
 		want = _tesla(want, delta)
 	_move(want, delta)
 	_animate(delta)
-	queue_redraw()
+	# redraw the shadow, ring and bars only when something on them changed
+	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0),
+		int(hp), int(wind * 40.0) if d["faction"] == "clockwork" else 0, int(max_hp))
+	if key != _draw_key:
+		_draw_key = key
+		queue_redraw()
 
 
 ## Tesla Cart: it only rolls when packed and only zaps when deployed; switching takes a while.
