@@ -114,7 +114,7 @@ const UNITS := {
 		"tags": ["armored"],
 		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 38, "cost": 200, "time": 32.0, "supply": 4,
 		"sight": 8, "range": 430, "min_range": 80, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
-		"radius": 19, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
+		"radius": 22, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
 		"about": "Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers.",
 	},
 	"cuirassier": {

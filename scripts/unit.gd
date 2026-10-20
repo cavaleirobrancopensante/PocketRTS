@@ -1727,11 +1727,14 @@ func _draw() -> void:
 	if work == "feeding":
 		return
 	if d["faction"] == "clockwork" and not is_worker():
-		# the battery on its back, for everyone to see: how much charge is left
-		var bt: Texture2D = Game.tex("res://assets/effects/battery_charge.png")
-		var fr := clampi(int(round(wind * 13.0)), 0, 13)
-		var bx := -radius - 7.0 if not anim_flip else radius - 5.0
-		draw_texture_rect_region(bt, Rect2(bx, top * 0.6 - 4.0, 12, 26), Rect2(fr * 10, 0, 10, 22), Color(1, 1, 1) if wind > 0.0 else Color(0.6, 0.6, 0.6))
+		# the battery on its back, for everyone to see: how much charge is left. A cell
+		# strapped onto the body sprite (scripts/battery_pack.gd follows the frames and the
+		# charge itself); constructs with no pack in ArtData.PACKS carry none.
+		if ArtData.PACKS.has(kind) and sprite.get_node_or_null("Pack") == null:
+			var pk: Sprite2D = preload("res://scripts/battery_pack.gd").new()
+			pk.name = "Pack"
+			pk.set("unit", self)
+			sprite.add_child(pk)
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
 	if carry_empty and carrying == 0 and kind == "winder":

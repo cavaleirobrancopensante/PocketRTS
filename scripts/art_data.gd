@@ -125,7 +125,7 @@ const UNITS := {
 		"walk_s": 2,
 		"walk_se": 2,
 	}},
-	"cannon": {"cell": Vector2i(152, 115), "anchor": Vector2(72, 78), "frames": {
+	"cannon": {"cell": Vector2i(165, 129), "anchor": Vector2(73, 89), "frames": {
 		"death_e": 3,
 		"death_n": 3,
 		"death_ne": 3,
@@ -631,4 +631,68 @@ const EFFECTS := {
 	"keg": {"frames": 7, "size": Vector2i(15, 16)},
 	"cross": {"frames": 1, "size": Vector2i(12, 12)},
 	"digits": {"frames": 10, "size": Vector2i(7, 9)},
+}
+
+## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):
+## kind -> pack type, its cell, and per animation strip one entry per frame:
+## [view (row of the sheet: s, se, e, ne, n), in front of the body, centre x, centre y
+## (game px from the feet, unflipped art), rotation (degrees clockwise)].
+const PACKS := {
+	"gearknight": {"type": "medium", "cell": Vector2i(22, 28), "keys": {
+		"attack_e": [[1, false, -6, -42, 0], [2, true, -9, -39, 0], [2, true, -1, -33, 0], [2, true, -9, -27, 0], [2, true, 2, -37, 70], [2, true, -6, -40, 60], [2, true, -7, -39, 60], [2, true, -4, -37, 40]],
+		"block_e": [[2, true, -16, -31, 0], [2, true, -13, -32, 0], [2, true, -13, -31, 0], [2, true, -9, -31, 0], [2, true, -9, -30, 0], [2, true, -11, -30, 0], [2, true, -9, -28, 0], [2, true, -10, -27, 0], [2, true, -11, -27, 0]],
+		"idle_s": [[0, false, -4, -40, 0], [0, false, -6, -41, 0]],
+		"walk_e": [[2, true, -15, -33, 0], [2, true, -16, -34, 0], [2, true, -15, -34, 0], [2, true, -16, -35, 0], [2, true, -14, -34, 0], [2, true, -16, -35, 0], [2, true, -15, -35, 0], [2, true, -15, -34, 0], [2, true, -17, -35, 0]],
+	}},
+	"bolt": {"type": "medium", "cell": Vector2i(22, 28), "keys": {
+		"attack_e": [[1, false, 1, -36, 0], [1, false, 0, -36, 0], [1, false, 1, -36, 0], [1, false, 1, -36, 0]],
+		"crank_e": [[1, false, 1, -35, 0], [1, false, 1, -35, 0], [1, false, -9, -35, 0]],
+		"idle_s": [[0, false, -6, -35, 0], [0, false, -6, -35, 0]],
+		"walk_e": [[1, false, -7, -33, 0], [1, false, -10, -33, 0], [1, false, -9, -36, 0], [1, false, -8, -36, 0], [1, false, 3, -36, 0], [1, false, -1, -37, 0], [1, false, -1, -38, 0]],
+	}},
+	"steam_walker": {"type": "large", "cell": Vector2i(30, 38), "keys": {
+		"attack_e": [[2, true, -15, -50, 0], [2, true, -34, -48, 0], [2, true, -43, -46, 0], [2, true, -80, -58, 0], [2, true, -36, -48, 0]],
+		"idle_e": [[2, true, -32, -47, 0], [2, true, -33, -47, 0]],
+		"vent_e": [[2, true, -30, -45, 0], [2, true, -33, -45, 0]],
+		"walk_e": [[2, true, -21, -52, 0], [2, true, -28, -50, 0], [2, true, -37, -55, 0], [2, true, -20, -49, 0], [2, true, -28, -50, 0], [2, true, -35, -52, 0]],
+	}},
+	"ornithopter": {"type": "sling", "cell": Vector2i(22, 18), "keys": {
+		"attack_e": [[2, true, -4, -2, 0], [2, true, -5, -1, 0], [2, true, -5, -1, 0], [2, true, -5, -1, 0]],
+		"attack_n": [[4, false, 1, -3, 0], [4, false, 0, -2, 0], [4, false, 1, -3, 0], [4, false, 0, -2, 0]],
+		"attack_ne": [[3, false, 4, -3, 0], [3, false, 3, -4, 0], [3, false, 4, -3, 0], [3, false, 3, -4, 0]],
+		"attack_s": [[0, true, 0, -5, 0], [0, true, 0, -5, 0], [0, true, -1, -5, 0], [0, true, -1, -8, 0]],
+		"attack_se": [[1, true, -3, -2, 0], [1, true, -4, -2, 0], [1, true, -5, -3, 0], [1, true, -4, -3, 0]],
+		"idle_e": [[2, true, -1, -2, 0], [2, true, -3, -2, 0], [2, true, -4, -1, 0], [2, true, -2, -2, 0], [2, true, -5, -1, 0], [2, true, -3, -1, 0]],
+		"idle_n": [[4, false, 0, -3, 0], [4, false, 0, -3, 0], [4, false, 0, -2, 0], [4, false, -1, -3, 0]],
+		"idle_ne": [[3, false, 3, -3, 0], [3, false, 3, -3, 0], [3, false, 4, -3, 0], [3, false, 3, -4, 0]],
+		"idle_s": [[0, true, -1, -7, 0], [0, true, -1, -5, 0], [0, true, -1, -5, 0], [0, true, -1, -8, 0]],
+		"idle_se": [[1, true, -4, -1, 0], [1, true, -5, -2, 0], [1, true, -3, -2, 0], [1, true, -6, -1, 0]],
+		"walk_e": [[2, true, -1, -2, 0], [2, true, -3, -2, 0], [2, true, -4, -1, 0], [2, true, -2, -2, 0], [2, true, -5, -1, 0], [2, true, -3, -1, 0]],
+		"walk_n": [[4, false, -1, -2, 0], [4, false, 0, -2, 0], [4, false, 0, -3, 0], [4, false, 1, -3, 0], [4, false, 0, -2, 0], [4, false, 0, -2, 0]],
+		"walk_ne": [[3, false, 3, -5, 0], [3, false, 3, -4, 0], [3, false, 3, -4, 0], [3, false, 3, -3, 0], [3, false, 3, -4, 0], [3, false, 3, -3, 0]],
+		"walk_s": [[0, true, 0, -4, 0], [0, true, -1, -5, 0], [0, true, -1, -7, 0], [0, true, -1, -6, 0], [0, true, 0, -7, 0], [0, true, -1, -6, 0], [0, true, -1, -7, 0]],
+		"walk_se": [[1, true, -2, -2, 0], [1, true, -2, -1, 0], [1, true, -3, -2, 0], [1, true, -3, -2, 0], [1, true, -2, -1, 0], [1, true, -1, -2, 0], [1, true, -1, -2, 0]],
+	}},
+	"stormcaller": {"type": "small", "cell": Vector2i(20, 24), "keys": {
+		"attack_e": [[2, true, -5, -28, 0], [2, true, -8, -27, 0], [2, true, -7, -27, 0]],
+		"attack_n": [[4, true, -1, -25, 0], [4, true, -1, -25, 0], [4, true, -1, -25, 0]],
+		"attack_ne": [[3, true, -3, -25, 0], [3, true, -3, -25, 0], [3, true, -3, -25, 0]],
+		"attack_s": [[0, false, -5, -33, 0], [0, false, -4, -33, 0], [0, false, -5, -33, 0]],
+		"attack_se": [[1, false, -9, -31, 0], [1, false, -7, -32, 0], [1, false, -7, -32, 0]],
+		"cast_e": [[2, true, -6, -26, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0]],
+		"cast_n": [[4, true, 0, -25, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0]],
+		"cast_ne": [[3, true, -2, -25, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0]],
+		"cast_s": [[0, false, -4, -33, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0]],
+		"cast_se": [[1, false, -5, -31, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0], [0, false, -1, -31, 0]],
+		"idle_e": [[2, true, -6, -27, 0], [2, true, -6, -27, 0], [2, true, -6, -27, 0]],
+		"idle_n": [[4, true, 0, -25, 0], [4, true, 0, -25, 0], [4, true, 0, -25, 0]],
+		"idle_ne": [[3, true, -2, -25, 0], [3, true, -2, -25, 0], [3, true, -2, -25, 0]],
+		"idle_s": [[0, false, -4, -33, 0], [0, false, -5, -33, 0], [0, false, -3, -32, 0]],
+		"idle_se": [[1, false, -8, -30, 0], [1, false, -7, -30, 0], [1, false, -7, -31, 0]],
+		"walk_e": [[2, true, -9, -26, 0], [2, true, -7, -27, 0], [2, true, -9, -27, 0], [2, true, -7, -27, 0], [2, true, -8, -27, 0]],
+		"walk_n": [[4, true, 0, -25, 0], [4, true, 1, -24, 0], [4, true, 0, -25, 0], [4, true, 0, -24, 0], [4, true, 0, -25, 0]],
+		"walk_ne": [[3, true, -2, -25, 0], [3, true, -1, -24, 0], [3, true, -2, -25, 0], [3, true, -2, -24, 0], [3, true, -2, -25, 0]],
+		"walk_s": [[0, false, -5, -33, 0], [0, false, -4, -33, 0], [0, false, -4, -33, 0], [0, false, -4, -32, 0], [0, false, -4, -33, 0]],
+		"walk_se": [[1, false, -7, -31, 0], [1, false, -7, -31, 0], [1, false, -6, -31, 0], [1, false, -8, -31, 0], [1, false, -6, -31, 0]],
+	}},
 }

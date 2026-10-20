@@ -3,8 +3,8 @@ art/crown/cannon2_front.png, cannon2_side.png and cannon2_angles.png.
 
 The sheets are inconsistent (horses that come and go, two guns in one frame, crew
 counts that change, a different zoom in every column), so every frame is picked by
-hand in the DRAWINGS table below: cut out, cleaned, scaled so its soldiers are as tall
-as the musketeers, split into a gun+crew layer and a horse layer, and then combined
+hand in the DRAWINGS table below: cut out, cleaned, scaled so its soldiers are K times
+as tall as the musketeers (K: the horse matches the cuirassier's), split into a gun+crew layer and a horse layer, and then combined
 into the animations in build_*().
 
 Output: assets/units/cannon/<anim>_<dir>.png strips (walk, idle, fire, reload, deploy,
@@ -28,8 +28,26 @@ from import_art import TEAM_DARK, TEAM_LIGHT, load  # noqa: E402
 SHEETS = {k: f"art/crown/cannon2_{k}.png" for k in ("front", "side", "angles")}
 OUT = "assets/units/cannon"
 DIRS = ["s", "se", "e", "ne", "n"]
-SOLDIER_H = 33.0          # musketeer height in game pixels (helmet to boots)
-CELL, CELL_ANCHOR = (152, 115), (72, 78)   # the published strip layout
+# The whole gun is drawn K times bigger than "soldiers as tall as the musketeers", so its
+# horse matches the cuirassier's horse (the cannon read too small next to the cavalry).
+# Every hand-placed game-pixel number below (boxes, shifts, painted barrel, patches) is
+# written at K = 1 and goes through g()/gf().
+K = 1.15
+SOLDIER_H = 33.0 * K      # the gun crew's height in game pixels (helmet to boots)
+CELL, CELL_ANCHOR = (165, 129), (73, 89)   # the published strip layout (at K = 1.15)
+
+
+def g(v):
+    """A hand-placed game-pixel number (written for K = 1) at the current scale."""
+    return int(round(v * K))
+
+
+def gf(v):
+    return v * K
+
+
+def gbox(b):
+    return tuple(g(v) for v in b)
 
 
 # ---------------------------------------------------------------- cutting out
@@ -517,12 +535,12 @@ def fire_effects(src, aim=0.0, squash=1.0):
     dist = np.hypot(xx - ex, yy - ey)
     hot, smoke = classify(img)
     a = img.copy()
-    a[dist > 9] = 0                                     # the first flash, close to the muzzle
+    a[dist > gf(9)] = 0                                     # the first flash, close to the muzzle
     b = img
     c = fill_smoke(img, hot)
-    c[dist < 3] = 0
+    c[dist < gf(3)] = 0
     d = c.copy()
-    d[dist < 9] = 0
+    d[dist < gf(9)] = 0
     out = []
     for im, drift in ((a, 0), (b, 0), (c, 2), (d, 5)):
         im = np.roll(im, drift, axis=1)
@@ -564,14 +582,14 @@ def paint_north_barrel(lay, profile):
     img = lay.img.copy()
     shades = [np.array(c, float) for c in profile if sum(c) > 120]   # drop the outline
     cx = lay.ax                              # barrel centre = anchor column
-    top, bottom = 23, 40
+    top, bottom = g(23), g(40)
     red = (img[..., 0].astype(int) > 120) & (img[..., 1] < 70) & (img[..., 3] > 0)
     for y in range(top - 1, bottom + 1):
         t = (y - top) / (bottom - top)
-        half = 2.2 + 1.4 * t
-        ring = y in (top, top + 1) or y in (top + 7,)
+        half = gf(2.2 + 1.4 * t)
+        ring = y in (top, top + 1) or y in (top + g(7),)
         if ring:
-            half += 0.9
+            half += gf(0.9)
         x0, x1 = int(np.floor(cx - half)), int(np.ceil(cx + half))
         for x in range(x0 - 1, x1 + 1):
             if red[y, x]:
@@ -610,14 +628,18 @@ NE_MUZZLE = dict(origin=(72, 24), clear=(72, 24, 84, 36), rows=[
 
 
 def patch(lay, p):
+    """Paint a patch drawn at K = 1, scaled by K (nearest pixel) onto the layer."""
     img = lay.img.copy()
-    x0, y0, x1, y1 = p["clear"]
+    x0, y0, x1, y1 = gbox(p["clear"])
     keep = img.copy()
     img[y0:y1, x0:x1] = 0
-    ox, oy = p["origin"]
-    for j, row in enumerate(p["rows"]):
-        for i, ch in enumerate(row):
-            y, x = oy + j, ox + i
+    ox, oy = g(p["origin"][0]), g(p["origin"][1])
+    rows = p["rows"]
+    for y in range(oy, oy + g(len(rows))):
+        j = min(len(rows) - 1, int((y - oy) / K))
+        for x in range(ox, ox + g(max(len(r) for r in rows))):
+            i = int((x - ox) / K)
+            ch = rows[j][i] if i < len(rows[j]) else "."
             if ch == ".":
                 img[y, x] = keep[y, x]
             elif ch != " ":
@@ -628,20 +650,20 @@ def patch(lay, p):
 def barrel_profile():
     """Bronze shades across the south-pointing barrel of F0R0 (left to right)."""
     lay = drawing("F0R0")["main"]
-    y = int(round(lay.ay)) - 8
+    y = int(round(lay.ay)) - g(8)
     row = lay.img[y]
-    xs = [x for x in range(row.shape[0]) if abs(x - lay.ax) <= 5 and row[x, 3]]
+    xs = [x for x in range(row.shape[0]) if abs(x - lay.ax) <= gf(5) and row[x, 3]]
     return [tuple(int(c) for c in row[x, :3]) for x in xs]
 
 
 # ---------------------------------------------------------------- the animations
 
 WALKERS = {
-    "F0R0": [dict(kind="man", box=(1, 8, 18, 47), legs=31),
-             dict(kind="man", box=(39, 10, 64, 47), legs=31, swap=True)],
-    "A5R1": [dict(kind="man", box=(1, 28, 16, 63), legs=47),
-             dict(kind="man", box=(46, 28, 67, 62), legs=47, swap=True),
-             dict(kind="horse", box=(19, 2, 42, 36), legs=36)],
+    "F0R0": [dict(kind="man", box=gbox((1, 8, 18, 47)), legs=g(31)),
+             dict(kind="man", box=gbox((39, 10, 64, 47)), legs=g(31), swap=True)],
+    "A5R1": [dict(kind="man", box=gbox((1, 28, 16, 63)), legs=g(47)),
+             dict(kind="man", box=gbox((46, 28, 67, 62)), legs=g(47), swap=True),
+             dict(kind="horse", box=gbox((19, 2, 42, 36)), legs=g(36))],
 }
 
 
@@ -675,7 +697,7 @@ def blast(effect, wreck, up=0):
     return out
 
 
-HITCH_SHIFT = 10     # game px the horse moves forward so the trail end reaches it
+HITCH_SHIFT = gf(10)     # game px the horse moves forward so the trail end reaches it
 
 
 def mirror(lay):
@@ -734,7 +756,7 @@ def limbered_side(name, ref, gun=None):
     # the horse's trace: its left-most pixel at harness height
     ha = horse.img[..., 3] > 0
     hy, hx = np.nonzero(ha)
-    band = (hy - horse.ay >= -22) & (hy - horse.ay <= -16)
+    band = (hy - horse.ay >= -gf(22)) & (hy - horse.ay <= -gf(16))
     j = np.argmin(hx[band])
     trace = (hx[band][j] - horse.ax + 1, hy[band][j] - horse.ay)
     parts = dict(gun=mg, horse=horse, crew=L["main"], pole=pole(trail, trace))
@@ -770,9 +792,9 @@ def build():
     # unlimbering: unhitch, swing the gun round (through a muzzle-toward-camera pose),
     # lead the horse off, deployed muzzle forward. Played backwards to limber up.
     pt = parts[0]
-    unhitched = compose([shifted(pt["horse"], 2, 0), pt["crew"], pt["gun"]])
-    swing_horse = shifted(pt["horse"], 4, 0)
-    off_horse = dither(shifted(pt["horse"], 6, 0))
+    unhitched = compose([shifted(pt["horse"], g(2), 0), pt["crew"], pt["gun"]])
+    swing_horse = shifted(pt["horse"], g(4), 0)
+    off_horse = dither(shifted(pt["horse"], g(6), 0))
 
     def deploy_side(mid, end):
         return [walk[0], unhitched, compose([swing_horse, mid]), compose([off_horse, mid]), end]
@@ -799,8 +821,8 @@ def build():
     fx = fire_effects(effect_source("A1R2", (484, 469)))
     mz = game_pt("A1R2", (484, 469))
     A["fire", "ne"] = [compose([idle_ne, at_muzzle(f, idle_ne, mz)]) for f in fx]
-    w1 = move_figure(idle_ne.img, (46, 10, 62, 33), 33, dx=1, dy=1)
-    w2 = move_figure(w1, (26, 28, 44, 59), 46, bob=1)
+    w1 = move_figure(idle_ne.img, gbox((46, 10, 62, 33)), g(33), dx=1, dy=1)
+    w2 = move_figure(w1, gbox((26, 28, 44, 59)), g(46), bob=1)
     A["reload", "ne"] = [Layer(w1, idle_ne.ax, idle_ne.ay), Layer(w2, idle_ne.ax, idle_ne.ay), idle_ne]
 
     # ---- south (front sheet cols 0-1) ----
@@ -811,7 +833,7 @@ def build():
     mz = game_pt("F0R0", (131, 160))
     A["fire", "s"] = [compose([idle_s, at_muzzle(f, idle_s, mz)]) for f in fx]
     r1, _ = align(idle_s, drawing("F1R0")["main"])
-    w = move_figure(idle_s.img, (39, 10, 64, 47), 31, dx=-1, dy=1)
+    w = move_figure(idle_s.img, gbox((39, 10, 64, 47)), g(31), dx=-1, dy=1)
     A["reload", "s"] = [r1, Layer(w, idle_s.ax, idle_s.ay), r1]
     # ---- deployed north gun (needed for the limbered south view) ----
     N5 = drawing("A5R3")
@@ -820,18 +842,18 @@ def build():
     # limbered, heading south: horse and leader toward the camera, the gun towed behind
     # them by its trail, muzzle away (north): the deployed north gun without its two side
     # men, the front sheet's two front-facing crew beside it.
-    HS = shifted(drawing("HS")["main"], 0, 12)
-    g = idle_n.img.copy()
-    hh, ww = g.shape[:2]
+    HS = shifted(drawing("HS")["main"], 0, gf(12))
+    gi = idle_n.img.copy()
+    hh, ww = gi.shape[:2]
     yy, xx = np.mgrid[0:hh, 0:ww]
-    side = (xx <= 15) | ((xx <= 22) & (yy < 44)) | (xx >= 48) | ((xx >= 40) & (yy < 44))
-    g[side] = 0
-    gunN = Layer(clean(g, min_size=7, keep_near=1), idle_n.ax, idle_n.ay)
+    side = (xx <= g(15)) | ((xx <= g(22)) & (yy < g(44))) | (xx >= g(48)) | ((xx >= g(40)) & (yy < g(44)))
+    gi[side] = 0
+    gunN = Layer(clean(gi, min_size=7, keep_near=1), idle_n.ax, idle_n.ay)
     c = idle_s.img.copy()
     hh, ww = c.shape[:2]
     yy, xx = np.mgrid[0:hh, 0:ww]
-    men = ((xx <= 17) & (yy < 33)) | ((xx <= 13) & (yy < 48)) | \
-          ((xx >= 41) & (yy < 33)) | ((xx >= 46) & (yy < 48))
+    men = ((xx <= g(17)) & (yy < g(33))) | ((xx <= g(13)) & (yy < g(48))) | \
+          ((xx >= g(41)) & (yy < g(33))) | ((xx >= g(46)) & (yy < g(48)))
     c[~men] = 0
     crewS = c
     ws = []
@@ -843,14 +865,14 @@ def build():
                 crew = move_figure(crew, wk["box"], wk["legs"], **kw)
             h, w = horse.shape[:2]
             hk = dict(bob=1, raise_r=2) if k == 1 else dict(bob=1, raise_l=2)
-            horse = move_figure(horse, (0, 0, w, h), 30, **hk)
+            horse = move_figure(horse, (0, 0, w, h), g(30), **hk)
         ws.append(compose([gunN, Layer(crew, idle_s.ax, idle_s.ay), Layer(horse, HS.ax, HS.ay)]))
     A["walk", "s"] = ws
     crewL = Layer(crewS, idle_s.ax, idle_s.ay)
     A["deploy", "s"] = [ws[0],
-                        compose([gunN, crewL, shifted(HS, 0, 4)]),
-                        compose([idle_e, shifted(HS, 13, 6)]),
-                        compose([idle_s, dither(shifted(HS, 18, 8))]),
+                        compose([gunN, crewL, shifted(HS, 0, gf(4))]),
+                        compose([idle_e, shifted(HS, gf(13), gf(6))]),
+                        compose([idle_s, dither(shifted(HS, gf(18), gf(8)))]),
                         idle_s]
 
     # side unlimbering (east, and reused by south-east / north-east)
@@ -860,23 +882,23 @@ def build():
 
     # ---- north (angles col 5) ----
     A["idle", "n"] = [idle_n]
-    mz = (idle_n.ax, 22.5)
+    mz = (idle_n.ax, gf(23) - 0.5)
     fx = fire_effects(effect_source("F3", (895, 497)), aim=90, squash=0.6)
     A["fire", "n"] = [compose([idle_n, at_muzzle(f, idle_n, (mz[0], mz[1] - 0.5))]) for f in fx]
-    m1 = move_figure(idle_n.img, (1, 18, 19, 52), 40, bob=1)
-    m2 = move_figure(idle_n.img, (40, 18, 64, 52), 40, bob=1)
-    m2 = move_figure(m2, (24, 42, 40, 75), 62, dy=1)
+    m1 = move_figure(idle_n.img, gbox((1, 18, 19, 52)), g(40), bob=1)
+    m2 = move_figure(idle_n.img, gbox((40, 18, 64, 52)), g(40), bob=1)
+    m2 = move_figure(m2, gbox((24, 42, 40, 75)), g(62), dy=1)
     A["reload", "n"] = [Layer(m1, idle_n.ax, idle_n.ay), Layer(m2, idle_n.ax, idle_n.ay), idle_n]
     W5 = drawing("A5R1")
     wn = walk_frames(W5, WALKERS["A5R1"])
     A["walk", "n"] = wn
     N5b = dict(N5, main=idle_n)
-    A["deploy", "n"] = deploy_frames(wn[0], N5b, idle_n, (0, -5), mid=stack(N5))
+    A["deploy", "n"] = deploy_frames(wn[0], N5b, idle_n, (0, -gf(5)), mid=stack(N5))
 
     # ---- death: the wreck, with the gun's own blast rising from it ----
     for d, name in (("e", "D_E"), ("s", "D_S"), ("se", "D_SE"), ("ne", "D_NE"), ("n", "D_N")):
         wreck = drawing(name)["main"]
-        bl = blast(effect_source("F3", (895, 497)), wreck, up=6)
+        bl = blast(effect_source("F3", (895, 497)), wreck, up=gf(6))
         A["death", d] = [compose([wreck, bl[0]]), compose([wreck, bl[2]]), wreck]
     return A
 

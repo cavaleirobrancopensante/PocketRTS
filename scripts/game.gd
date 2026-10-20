@@ -1981,7 +1981,7 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 
 ## Cannon canister: a cone of musket balls; every enemy in it is hit (buildings barely).
 func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
-	var from := u.center() + u.facing * 24.0
+	var from := u.center() + u.facing * 28.0
 	var dir := (e.center() - from).normalized()
 	var reach := float(Defs.CANISTER["range"]) + 30.0
 	# area damage hits whoever is in it, friend or foe (not the gun itself)
@@ -2112,7 +2112,7 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 
 
 func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
-	var muzzle := u.center() + u.facing * 26.0
+	var muzzle := u.center() + u.facing * 30.0
 	spawn_effect("smoke", muzzle + u.facing * 10.0, 0.8)
 	var pr := Projectile.new()
 	pr.game = self
