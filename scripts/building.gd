@@ -10,6 +10,8 @@ var built := false
 var progress := 0.0              # 0..1 while under construction
 var queue: Array = []            # unit kinds
 var prod_t := 0.0
+var batteries := 0               # Clockwork: full batteries waiting to be carried off
+var _bat_t := 0.0
 var auto_train := ""             # keep training this unit (right-click / long press on its button)
 var research := ""               # research going on here (Defs.RESEARCH key)
 var research_t := 0.0
@@ -194,6 +196,13 @@ func _physics_process(delta: float) -> void:
 	elif d["faction"] == "clockwork":
 		if not built and seeded:
 			add_progress(delta)
+		if built and d.has("battery"):
+			var bat: Array = d["battery"]
+			if batteries < int(bat[1]):
+				_bat_t += delta
+				if _bat_t >= float(bat[0]):
+					_bat_t = 0.0
+					batteries += 1
 		if built:
 			var rate := 0.0
 			if d.get("rig", false) and rig_mine and is_instance_valid(rig_mine):
@@ -460,6 +469,12 @@ func _draw() -> void:
 			draw_circle(worker_rally - global_position, 4, Color(1, 0.85, 0.3, 0.9))
 	var top := -sprite.texture.get_height() + 2.0 if sprite and sprite.texture else -r.size.y
 	draw_health(top, r.size.x * 0.7)
+	# full batteries waiting at an energy building
+	if built and batteries > 0 and (team == game.human or game.demo or game.reveal):
+		var bt: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % ("blue" if game.blue_energy(team) else "yellow"))
+		var fw := 11.0
+		for i in batteries:
+			draw_texture_rect_region(bt, Rect2(-r.size.x * 0.5 + 2 + i * 8, -18, 8, 16), Rect2(0, 0, fw, 22))
 	if not built:
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))

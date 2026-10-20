@@ -137,6 +137,25 @@ func take_damage(amount: float, from: Entity) -> void:
 	if work == "feeding":
 		amount *= 0.5      # burrowed grubs are hard to hit
 	super.take_damage(amount, from)
+	# a Winder hit while carrying a battery: it blows up
+	if kind == "winder" and carrying > 0 and not dead and from != self:
+		_battery_blast()
+
+
+## The battery on a Winder's back overloads (carried too long, or hit): it bursts.
+func _battery_blast() -> void:
+	carrying = 0
+	carry_t = 0.0
+	work = "to_site"
+	path = PackedVector2Array()
+	game.spawn_effect("zap_burst" if ArtData.EFFECTS.has("zap_burst") else "hit", position + Vector2(0, -16), 1.4)
+	Sfx.play_any(["combat/tesla_attack", "zap"], position)
+	if team == game.human:
+		game.float_text(position + Vector2(0, -30), "battery burst!", Color(1, 0.6, 0.3))
+	for o in game.units_near(position, 34.0):
+		if o != self and not o.dead and not o.is_air():
+			o.take_damage(float(Defs.BATTERY["splash"]), self)
+	super.take_damage(float(Defs.BATTERY["blast"]), self)
 
 
 func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
@@ -492,7 +511,7 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 	# redraw the shadow, ring and bars only when something on them changed
 	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0),
-		int(hp), int(wind * 40.0) if d["faction"] == "clockwork" else 0, int(max_hp))
+		int(hp), int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp))
 	if key != _draw_key:
 		_draw_key = key
 		queue_redraw()
@@ -795,7 +814,19 @@ func _repair(delta: float) -> Vector2:
 		work = "repairing"
 		path = PackedVector2Array()
 		facing = (e.center() - position).normalized()
-		e.hp = minf(e.max_hp, e.hp + Defs.REPAIR_RATE * delta)
+		# repairs cost ore
+		var heal := minf(Defs.REPAIR_RATE * delta, e.max_hp - e.hp)
+		var cost := heal * Defs.REPAIR_COST
+		if game.players[team]["gold"] < 1:
+			if team == game.human:
+				game.notify("Not enough ore to repair.")
+			cmd_stop()
+			return Vector2.ZERO
+		game.players[team]["gold_f"] = float(game.players[team].get("gold_f", 0.0)) - cost
+		while float(game.players[team]["gold_f"]) <= -1.0:
+			game.players[team]["gold_f"] = float(game.players[team]["gold_f"]) + 1.0
+			game.players[team]["gold"] -= 1
+		e.hp = minf(e.max_hp, e.hp + heal)
 		return Vector2.ZERO
 	work = ""
 	if e.is_unit() and position.distance_to(e.global_position) < 140.0:
@@ -826,6 +857,8 @@ func _gather(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if kind == "grub":
 		return _haul(site, delta)
+	if kind == "winder" and site.d.has("battery"):
+		return _haul_battery(site, delta)
 	if work == "manning":
 		facing = (site.center() - position).normalized()
 		return Vector2.ZERO
@@ -836,6 +869,66 @@ func _gather(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
 		_request_path(game.approach_point(site, position))
+	return _follow(delta)
+
+
+## Winder: take a full battery from an energy building and carry it to the nearest Ore
+## Crusher. Its charge grows on the road; too long and it overloads.
+var carry_t := 0.0
+var carry_blue := false
+
+
+func _haul_battery(src: Building, delta: float) -> Vector2:
+	var info: Dictionary = Defs.BATTERY["blue" if carry_blue else "yellow"]
+	match work:
+		"loading":
+			facing = (src.center() - position).normalized()
+			work_t -= delta
+			if work_t <= 0.0:
+				if src.batteries > 0 and game.nearest_of(position, team, "ore_crusher") != null:
+					src.batteries -= 1
+					carrying = 1
+					carry_t = 0.0
+					carry_blue = game.blue_energy(team)
+					work = "to_crusher"
+				else:
+					work = "waiting"
+			return Vector2.ZERO
+		"to_crusher":
+			carry_t += delta
+			if carry_t >= float(info["overload"]):
+				_battery_blast()
+				return Vector2.ZERO
+			var cr := game.nearest_of(position, team, "ore_crusher")
+			if cr == null:
+				return Vector2.ZERO
+			if cr.edge_distance(position) < radius + 17.0:
+				var value := int(round(float(info["base"]) + float(info["gain"]) * carry_t))
+				game.add_gold(team, value)
+				if team == game.human:
+					game.float_text(position + Vector2(0, -30), "+%d" % value, Color(0.5, 0.8, 1.0) if carry_blue else Color(1, 0.9, 0.35))
+				carrying = 0
+				carry_t = 0.0
+				work = "to_site"
+				path = PackedVector2Array()
+				return Vector2.ZERO
+			if (path.is_empty() or path_i >= path.size()) and not path_pending:
+				_request_path(game.approach_point(cr, position))
+			return _follow(delta)
+		"waiting":
+			facing = (src.center() - position).normalized()
+			if src.batteries > 0:
+				work = "loading"
+				work_t = float(Defs.BATTERY["load"])
+			return Vector2.ZERO
+	work = "to_site"
+	if src.edge_distance(position) < radius + 16.0:
+		path = PackedVector2Array()
+		work = "loading" if src.batteries > 0 else "waiting"
+		work_t = float(Defs.BATTERY["load"])
+		return Vector2.ZERO
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		_request_path(game.approach_point(src, position))
 	return _follow(delta)
 
 
@@ -1349,6 +1442,15 @@ func _draw() -> void:
 		draw_rect(Rect2(-w * 0.5, y, w * (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN), 2), Color(0.95, 0.7, 0.25))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
+	if carrying > 0 and kind == "winder":
+		# the battery on its back, and how close it is to overloading
+		var info: Dictionary = Defs.BATTERY["blue" if carry_blue else "yellow"]
+		var f := clampf(carry_t / float(info["overload"]), 0.0, 1.0)
+		var bt: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % ("blue" if carry_blue else "yellow"))
+		var fr := int(_bob_t * 10.0) % 13
+		draw_texture_rect_region(bt, Rect2(-14, top + 10, 11, 22), Rect2(fr * 11, 0, 11, 22))
+		draw_rect(Rect2(-15, top + 33, 13, 3), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-14, top + 34, 11 * f, 1), Color(0.4, 1, 0.3).lerp(Color(1, 0.2, 0.1), f))
 	if carrying > 0 and kind == "grub":
 		draw_circle(Vector2(0, -16), 3.5, Color(0.55, 0.85, 0.3))
 		draw_circle(Vector2(0, -16), 3.5, Color(0.2, 0.3, 0.1), false, 1.0)

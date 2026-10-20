@@ -31,15 +31,13 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Spore Mothers** (need a Gorge Pit) are slow and can't attack while walking. **ROOT** her (2.5 s): she lobs big spit blobs that splash an area and spreads swamp around her. **MIASMA** (30 essence, 18 s to recover) lays a green cloud for 8 s; Brood inside heal up to 30% of their health. Clouds don't stack.
 - Swamp heals the Brood and makes it faster. Army cap 160.
 
-### The Clockwork: wind and energy
-- **Winders** crank **Boilers** (up to 3 each) for **energy**; each Clocktower adds a little.
-- Tap a Boiler, Ore Crusher or Clocktower to split the energy between three uses:
-  - **ORE**: **Ore Crushers** turn it into ore.
-  - **ASSEMBLY**: faster production.
-  - **WIND**: bigger wind fields, and constructs run down slower.
-- Presets: ECONOMY, BALANCED, WAR, HOLD.
+### The Clockwork: batteries
+- Every energy building fills **batteries** by itself: the **Clocktower** (one every 2 s), **Boilers** (every second), **Charging Pylons** and **Spring Towers** (slower).
+- **Winders** carry them to an **Ore Crusher**, where the charge becomes ore. A battery gains charge the longer it's on the road (yellow: 10 ore + 1 a second), so a crusher far from the source pays more per trip, but a battery that's carried too long (22 s) or whose Winder is hit **bursts**, hurting the Winder and anyone next to it. Hauling routes are worth raiding.
+- The **Capacitor Works** (after an Assembly Works) turns every source **blue**: 14 ore + 1.6 a second, 30 s before overloading, and slightly faster assembly and bigger fields.
+- Winders also repair constructs and buildings, which costs ore (0.2 per hit point).
 - Each Clocktower allows 2 Boilers and 2 Ore Crushers nearby.
-- Winders also start buildings, which then assemble themselves, and repair.
+- Winders also start buildings, which then assemble themselves.
 - Constructs run down (slower and weaker) outside the field of a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart.
 - The **Charging Pylon** also mends constructs.
 - **Assembly Works**: **Gearknights**, **Bolt Automatons** (pierce up to 3), **Steam Walkers** and **Tesla Carts**. A Tesla Cart rolls when packed; deploying or packing takes 3 s. Deployed, it powers constructs around it and fires chain lightning that can hit flyers.

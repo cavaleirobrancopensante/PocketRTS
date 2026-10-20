@@ -80,8 +80,6 @@ func _physics_process(delta: float) -> void:
 		_abilities()
 	if difficulty >= 2:
 		_micro()
-	if _clock():
-		_energy_split()
 
 
 # ------------------------------------------------------------------ helpers
@@ -173,12 +171,9 @@ func _econ_build() -> void:
 		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
 			order.append("bone_midden")
 	else:
-		order = ["boiler"]
-		# a crusher once the energy on ore would overflow the ones we have
+		# batteries need somewhere to go: a crusher first, then Boilers, a crusher per Boiler
 		var crushers := _mine("ore_crusher").size()
-		var split: Array = game.players[team]["split"]
-		if game.energy[team] * float(split[0]) * Defs.ORE_PER_ENERGY > crushers * Defs.CRUSHER_CAP * 0.8 or crushers == 0:
-			order.push_front("ore_crusher")
+		order = ["ore_crusher", "boiler"] if crushers <= _mine("boiler").size() else ["boiler", "ore_crusher"]
 	_reserve = 0
 	for k in _no_room.keys():
 		if game.clock - float(_no_room[k]) > 20.0:
@@ -275,6 +270,8 @@ func _build_up() -> void:
 			_construct("assembly_works")
 		if works > 0 and _mine("charging_pylon").is_empty() and t > _lv([520.0, 280.0, 220.0]):
 			_construct("charging_pylon")
+		if works > 0 and _mine("capacitor_works").is_empty() and game.requirement_met(team, "capacitor_works") and (t > _lv([700.0, 400.0, 320.0]) or gold > 450):
+			_construct("capacitor_works")
 	elif _brood():
 		if _mine("warren").is_empty() and labs >= _lv([8, 7, 6]):
 			_construct("warren")

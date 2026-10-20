@@ -38,6 +38,16 @@ const ESSENCE_PER_SUPPLY := 3     # a body falling near a Bone Midden
 const MIDDEN_RANGE := 12          # tiles
 const MIDDEN_TRICKLE := 0.15      # essence per second per midden
 # Clockwork: Winders crank Boilers for energy, split between ore, assembly and wind.
+## Clockwork economy: every energy building fills batteries by itself; Winders carry them to
+## an Ore Crusher. A battery gains charge the longer it's on the road (so far crushers pay
+## more), but past its limit, or if its carrier is hit, it blows up. Yellow batteries at
+## first; a Capacitor Works makes every source fill blue ones (more charge, more time).
+const BATTERY := {
+	"yellow": {"base": 10.0, "gain": 1.0, "overload": 22.0},
+	"blue": {"base": 14.0, "gain": 1.6, "overload": 30.0},
+	"load": 1.0, "blast": 10.0, "splash": 8.0,
+}
+const REPAIR_COST := 0.2          # ore per hit point a Winder repairs
 const ENERGY_PER_WINDER := 3.5
 const ENERGY_HALL := 3.0
 const ORE_PER_ENERGY := 1.8
@@ -73,11 +83,11 @@ const FACTIONS := {
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
-		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works"],
+		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "capacitor_works"],
 		"start_workers": 3, "ready": true, "max_supply": 80,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
 		"start": ["ore_crusher"],
-		"about": "Few, very tough constructs. Winders crank Boilers; you split the energy between ore, assembly speed and wind. Army cap 80.",
+		"about": "Few, very tough constructs. Energy buildings fill batteries; Winders carry them to Ore Crushers (farther = more charge, but they can blow up). Army cap 80.",
 	},
 }
 
@@ -252,13 +262,13 @@ const BUILDINGS := {
 	},
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "faction": "clockwork",
-		"about": "Builds Winders and gives a little energy. Allows 2 Boilers and 2 Ore Crushers nearby.",
+		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
+		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby.",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
-		"supply": 10, "sight": 6, "trains": [], "field": 7, "faction": "clockwork",
-		"about": "10 more supply. Keeps nearby constructs wound up.",
+		"supply": 10, "sight": 6, "trains": [], "field": 7, "battery": [6.0, 3], "crew": 1, "faction": "clockwork",
+		"about": "10 more supply. Keeps nearby constructs wound up, and slowly fills batteries.",
 	},
 	"drill_rig": {
 		"name": "Drill Rig", "hp": 700, "armor": 2, "cost": 175, "time": 30.0, "size": Vector2i(2, 2),
@@ -307,17 +317,22 @@ const BUILDINGS := {
 	},
 	"boiler": {
 		"name": "Boiler", "hp": 800, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
-		"about": "Up to 3 Winders crank it for energy.",
+		"supply": 0, "sight": 6, "trains": [], "battery": [1.0, 8], "crew": 7, "faction": "clockwork",
+		"about": "Fills a battery every second by itself. Up to 7 Winders carry them to Ore Crushers. Unlocks Bolt Automatons.",
 	},
 	"ore_crusher": {
 		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
-		"about": "Turns the energy you put on ore into ore (up to 12 a second).",
+		"about": "Winders bring batteries here and the charge becomes ore. The farther a battery travelled, the more it holds.",
+	},
+	"capacitor_works": {
+		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
+		"supply": 0, "sight": 7, "trains": [], "requires": "assembly_works", "faction": "clockwork",
+		"about": "Blue energy: every source fills blue batteries, with more charge and more time before they overload. Needs an Assembly Works.",
 	},
 	"charging_pylon": {
 		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),
-		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "faction": "clockwork",
+		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "battery": [3.0, 4], "crew": 3, "faction": "clockwork",
 		"about": "Winds up and slowly mends constructs nearby. Unlocks the Tesla Cart and the Stormcaller.",
 	},
 }
@@ -363,7 +378,7 @@ const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 2
 static func has_tag(kind: String, tag: String) -> bool:
 	return UNITS.has(kind) and (UNITS[kind].get("tags", []) as Array).has(tag)
 
-const ADVANCED := ["barracks", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "charging_pylon"]
+const ADVANCED := ["barracks", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "charging_pylon", "capacitor_works"]
 
 
 static func is_basic(kind: String) -> bool:

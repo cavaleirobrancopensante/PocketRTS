@@ -827,23 +827,17 @@ func _economy(delta: float) -> void:
 	for t in n_players():
 		if faction_of(t) != "clockwork":
 			continue
-		var e: float = Defs.ENERGY_HALL * halls_of(t).size()
-		var crushers := 0
+		# ore now only comes from batteries Winders deliver; assembly and wind are fixed,
+		# a bit better with blue energy
+		var blue := blue_energy(t)
+		asm_mult[t] = 1.25 if blue else 1.0
+		wind_e[t] = 5.0 if blue else 3.0
+		var waiting := 0
 		for b in buildings:
-			if b.team != t or b.dead or not b.built:
-				continue
-			if b.kind == "boiler":
-				e += Defs.ENERGY_PER_WINDER * b.working_crew()
-			elif b.kind == "ore_crusher":
-				crushers += 1
-		var split: Array = players[t]["split"]
-		e *= float(income_mult[t])
-		energy[t] = e
-		ore_rate[t] = minf(e * float(split[0]) * Defs.ORE_PER_ENERGY, crushers * Defs.CRUSHER_CAP)
-		asm_mult[t] = clampf(0.6 + e * float(split[1]) / 6.0, 0.6, 2.0)
-		wind_e[t] = e * float(split[2])
-		players[t]["res2"] = e
-		add_gold_f(t, ore_rate[t] * delta / float(income_mult[t]))   # energy already had the bonus
+			if b.team == t and not b.dead and b.built:
+				waiting += b.batteries
+		energy[t] = waiting
+		players[t]["res2"] = waiting
 	_econ_t -= delta
 	if _econ_t <= 0.0:
 		_econ_t = 0.5
@@ -1752,6 +1746,26 @@ func nearest_mine(p: Vector2, t: int) -> GoldMine:
 		if score < bd:
 			bd = score
 			best = m
+	return best
+
+
+## Clockwork: blue energy while a Capacitor Works stands.
+func blue_energy(t: int) -> bool:
+	for b in buildings:
+		if b.team == t and b.kind == "capacitor_works" and b.built and not b.dead:
+			return true
+	return false
+
+
+func nearest_of(p: Vector2, t: int, kind: String) -> Building:
+	var best: Building = null
+	var bd := INF
+	for b in buildings:
+		if b.team == t and b.kind == kind and b.built and not b.dead:
+			var dd: float = b.edge_distance(p)
+			if dd < bd:
+				bd = dd
+				best = b
 	return best
 
 

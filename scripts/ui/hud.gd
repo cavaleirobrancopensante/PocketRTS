@@ -420,13 +420,6 @@ func _build_card() -> Array:
 							else:
 								u.cmd_pack(), true, "", ""])
 		return list
-	if b and b.built and game.faction_of(game.human) == "clockwork" and b.kind in ["clocktower", "boiler", "ore_crusher"]:
-		for name in Defs.SPLITS:
-			var nm: String = name
-			var on: bool = game.players[game.human]["split_name"] == nm
-			list.append(["boiler", ("> " if on else "") + nm, func() -> void: game.set_split(game.human, nm), true, "", ""])
-		if b.kind != "clocktower":
-			return list
 	if b and b.built:
 		for rk in Defs.RESEARCH:
 			var rkk: String = rk
@@ -673,8 +666,7 @@ func _draw() -> void:
 	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
 	var r2 := "%d" % int(pl["res2"])
 	if fac == "clockwork":
-		var sp: Array = pl["split"]
-		r2 = "%d/s   ore %d · asm %d · wind %d" % [int(game.energy[game.human]), int(sp[0] * 100), int(sp[1] * 100), int(sp[2] * 100)]
+		r2 = "%d %s batteries ready" % [int(game.energy[game.human]), "blue" if game.blue_energy(game.human) else "yellow"]
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(game.human)
 	var cap: int = pl["cap"]
@@ -853,10 +845,12 @@ func _draw_panel(font: Font) -> void:
 				info = "%d/2 grinding · +%.1f powder/s" % [bb.working_crew(), Defs.MILL_RATE * bb.working_crew()]
 			elif bb.kind == "feeding_pit":
 				info = "%d/5 grubs · each load is worth %d" % [bb.crew.size(), game.food_value(bb)]
-			elif bb.kind == "boiler":
-				info = "%d/3 Winders cranking · +%d energy/s" % [bb.working_crew(), int(Defs.ENERGY_PER_WINDER * bb.working_crew())]
-			elif bb.kind == "ore_crusher" or (bb.kind == "clocktower" and e.team == game.human):
-				info = "Energy %d/s → ore %.1f/s · assembly x%.1f" % [int(game.energy[e.team]), game.ore_rate[e.team], game.asm_mult[e.team]]
+			elif bb.d.has("battery") and e.team == game.human:
+				var bat: Array = bb.d["battery"]
+				info = "%d/%d batteries ready (one every %.1f s) · %d/%d Winders carrying" % [bb.batteries, int(bat[1]), float(bat[0]), bb.crew.size(), int(bb.d["crew"])]
+			elif bb.kind == "ore_crusher":
+				var bi: Dictionary = Defs.BATTERY["blue" if game.blue_energy(e.team) else "yellow"]
+				info = "%s batteries: %d ore + %.1f per second on the road (they burst after %d s)" % ["Blue" if game.blue_energy(e.team) else "Yellow", int(bi["base"]), float(bi["gain"]), int(bi["overload"])]
 			elif bb.kind == "bone_midden":
 				info = "Bodies falling within %d tiles give essence." % Defs.MIDDEN_RANGE
 			elif bb.uses_eggs() and e.team == game.human:

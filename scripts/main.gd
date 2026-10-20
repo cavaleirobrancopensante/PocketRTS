@@ -46,7 +46,7 @@ Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, 
 Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, flyers only ranged units can hit. Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Army cap 160.""",
 	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.
 
-Winders crank Boilers for energy. Split the energy (tap a Boiler or Clocktower) between ORE (Ore Crushers turn it into ore), ASSEMBLY (faster production) and WIND (bigger fields; constructs run down slower). Winders also start buildings and repair.
+Every energy building (Clocktower, Boilers, Pylons, Spring Towers) fills batteries by itself; Winders carry them to Ore Crushers, where the charge becomes ore. The longer a battery travels the more it holds, but carried too long, or hit, it bursts. A Capacitor Works turns every battery blue (more charge). Winders also repair, which costs ore.
 
 Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Stormcallers cast a STORM that stuns everything inside it, your own units too; their charge only fills inside a field. Army cap 80.""",
 	"CONTROLS": """COMPUTER
