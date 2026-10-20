@@ -1,5 +1,5 @@
 extends SceneTree
-## AI vs AI test: godot --headless --fixed-fps 30 --script res://tools/simulate.gd
+## AI vs AI test: godot --headless --fixed-fps 30 --script res://tools/simulate.gd -- crown brood
 var main: Node
 var t := 0.0
 var next_report := 30.0
@@ -9,7 +9,9 @@ func _initialize() -> void:
 func _process(delta: float) -> bool:
 	t += delta
 	if t > 0.2 and main.game == null:
-		main.start(2, true)
+		var args := OS.get_cmdline_user_args()
+		var fs: Array = [args[0], args[1]] if args.size() >= 2 else ["crown", "brood"]
+		main.start(2, true, fs)
 	var g = main.game
 	if g == null:
 		return false

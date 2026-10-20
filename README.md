@@ -2,7 +2,7 @@
 
 **Play in your browser: https://cavaleirobrancopensante.github.io/PocketRTS/**
 
-A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. This prototype has one faction, **the Crown**, in 1v1 skirmishes against the computer (or watch AI vs AI).
+A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a 1v1 **skirmish** against the computer: choose your faction, the enemy's and the difficulty (or watch AI vs AI). Two factions are playable: **the Crown** and **the Brood**; the Clockwork is coming.
 
 See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and all the art prompts.
 
@@ -10,10 +10,19 @@ See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and al
 
 Destroy every enemy building to win.
 
+### The Crown
+
 - **Labourers** mine gold and carry it to the **Town Hall**. Train more there.
 - **Cottages** add supply (8 each, max 100).
 - **Barracks** train **Musketeers** (ranged, long reload) and **Pikemen** (tough melee, deal heavy damage to cannons).
 - The **Foundry** (needs a Barracks) casts **Field Cannons**: long range, splash damage, smash buildings, can't fire at point-blank.
+
+### The Brood
+- **Grubs** burrow into a gold mine on your swamp and feed where they sit (up to 8 per mine, no trips, half damage while burrowed).
+- A grub **turns into** a building and is used up. Brood structures (except Hives) must grow on your swamp.
+- Every unit hatches from the **Hive's eggs** (up to 5, one every 6 s), several to an egg: **Raptors** (3 per egg, fast, flimsy), **Spitters** (2 per egg, acid strips armour), **Brutes** (charge and knock back; need a Gorge Pit).
+- **Swamp** spreads from Brood structures: Brood units run faster and heal on it. Brood structures regrow damage.
+- The swarm's army cap is **160** (the Crown's is 100).
 
 ### Touch
 - Tap a unit to select it; double-tap to select all of that type on screen.

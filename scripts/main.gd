@@ -7,11 +7,13 @@ var game: Game
 var ui_layer: CanvasLayer
 var menu: Control
 var _went_fullscreen := false
+var pick := {"me": "crown", "enemy": "brood", "difficulty": 1}
 
 const HELP := """Destroy every enemy building to win.
 
-ECONOMY  Labourers mine gold and carry it to the Town Hall. Train more labourers there. Build Cottages for supply.
-ARMY  Barracks train Musketeers (ranged, slow reload) and Pikemen (tough, crush cannons). The Foundry casts Field Cannons (long-range splash, smash buildings).
+THE CROWN  Labourers mine gold and carry it to the Town Hall. Cottages give supply. Barracks train Musketeers (ranged, slow reload) and Pikemen (tough, crush cannons and brutes). The Foundry casts Field Cannons (long-range splash, smash buildings).
+
+THE BROOD  Grubs burrow into mines on your swamp and feed where they sit - up to 8 per mine, no trips, half damage while burrowed. A grub turns into a building (it's used up). Every unit hatches from the Hive's eggs (up to 5, one every 6s), several to an egg. The Brood fields a bigger army: 160 supply instead of 100. Swamp spreads from Brood structures: Brood units run 30% faster and heal on it, and new structures (except Hives) must grow on it. Warren: Raptors (three per egg) and Spitters (two per egg; acid strips armour). Gorge Pit: Brutes (charge, knock back).
 
 TOUCH
 - Tap a unit to select it; double-tap to select all of that type on screen.
@@ -78,15 +80,88 @@ func show_menu() -> void:
 	v.position = Vector2(-220, -250)
 	menu.add_child(v)
 	v.add_child(_label("POCKET RTS", 64))
-	v.add_child(_label("The Crown  ·  prototype", 20, Color(1, 1, 1, 0.6)))
+	v.add_child(_label("The Crown  ·  The Brood  ·  prototype", 20, Color(1, 1, 1, 0.6)))
 	v.add_child(_gap(10))
-	for d in [["PLAY  ·  EASY", 0], ["PLAY  ·  NORMAL", 1], ["PLAY  ·  HARD", 2]]:
-		var dd: int = d[1]
-		v.add_child(_button(d[0], func() -> void: start(dd, false)))
-	v.add_child(_button("WATCH AI vs AI", func() -> void: start(1, true)))
+	v.add_child(_button("SKIRMISH", func() -> void: show_skirmish()))
+	v.add_child(_button("WATCH AI vs AI", func() -> void:
+		var fs := ["crown", "brood"]
+		start(1, true, [fs[randi() % 2], fs[randi() % 2]])))
 	v.add_child(_button("HOW TO PLAY", func() -> void: _show_help()))
 	v.add_child(_gap(6))
 	v.add_child(_label("v" + version, 14, Color(1, 1, 1, 0.35)))
+
+
+func show_skirmish() -> void:
+	_clear_ui()
+	menu = Control.new()
+	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu.theme = _theme()
+	ui_layer.add_child(menu)
+	var dark := ColorRect.new()
+	dark.color = Color("#121612")
+	dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu.add_child(dark)
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 60
+	v.offset_right = -60
+	v.offset_top = 20
+	v.offset_bottom = -20
+	v.add_theme_constant_override("separation", 10)
+	menu.add_child(v)
+	v.add_child(_label("SKIRMISH", 44))
+	v.add_child(_choice_row("YOUR FACTION", "me", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "CLOCKWORK (soon)"]]))
+	var about := _label(Defs.FACTIONS[pick["me"]]["about"], 16, Color(1, 1, 1, 0.6))
+	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(about)
+	v.add_child(_choice_row("ENEMY", "enemy", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["random", "RANDOM"]]))
+	v.add_child(_choice_row("DIFFICULTY", "difficulty", [[0, "EASY"], [1, "NORMAL"], [2, "HARD"]]))
+	var sp := Control.new()
+	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(sp)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(_button("BACK", func() -> void: show_menu()))
+	var go := _button("START", func() -> void:
+		var enemy: String = pick["enemy"]
+		if enemy == "random":
+			enemy = ["crown", "brood"][randi() % 2]
+		start(pick["difficulty"], false, [pick["me"], enemy]))
+	go.custom_minimum_size = Vector2(260, 60)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#3f8a4c")
+	sb.set_corner_radius_all(8)
+	go.add_theme_stylebox_override("normal", sb)
+	row.add_child(go)
+	v.add_child(row)
+
+
+func _choice_row(title: String, key: String, options: Array) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	var l := _label(title, 18, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_LEFT)
+	l.custom_minimum_size.x = 170
+	h.add_child(l)
+	for o in options:
+		var val: Variant = o[0]
+		var b := _button(o[1], func() -> void:
+			pick[key] = val
+			show_skirmish())
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 18)
+		var ready: bool = not (val is String and Defs.FACTIONS.has(val)) or Defs.FACTIONS[val]["ready"]
+		b.disabled = not ready
+		if pick[key] == val:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color("#447a4c")
+			sb.set_corner_radius_all(8)
+			sb.border_color = Color(1, 0.9, 0.5)
+			sb.set_border_width_all(2)
+			b.add_theme_stylebox_override("normal", sb)
+			b.add_theme_stylebox_override("hover", sb)
+		h.add_child(b)
+	return h
 
 
 func _show_help() -> void:
@@ -140,13 +215,20 @@ func _gap(h: float) -> Control:
 
 # ------------------------------------------------------------------ match
 
-func start(difficulty: int, demo: bool) -> void:
+var last_factions: Array = ["crown", "brood"]
+
+
+func start(difficulty: int, demo: bool, factions: Array = []) -> void:
 	_clear_ui()
 	if game:
 		game.queue_free()
+	if factions.is_empty():
+		factions = last_factions
+	last_factions = factions
 	game = Game.new()
 	game.difficulty = difficulty
 	game.demo = demo
+	game.factions = factions.duplicate()
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(game)
 	sfx.camera = game.camera
@@ -196,7 +278,7 @@ func _on_end(winner: int) -> void:
 	v.custom_minimum_size = Vector2(440, 0)
 	v.add_theme_constant_override("separation", 10)
 	o.add_child(v)
-	var title := ("%s WINS" % Defs.TEAM_NAMES[winner].to_upper()) if game.demo else ("VICTORY" if won else "DEFEAT")
+	var title := ("%s (%s) WINS" % [Defs.TEAM_NAMES[winner].to_upper(), Defs.FACTIONS[game.faction_of(winner)]["name"].to_upper()]) if game.demo else ("VICTORY" if won else "DEFEAT")
 	v.add_child(_label(title, 60, Color(1, 0.9, 0.5) if won or game.demo else Color(1, 0.5, 0.45)))
 	var s: Dictionary = game.stats[game.human]
 	var secs := int(game.clock)

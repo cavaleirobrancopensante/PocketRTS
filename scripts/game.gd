@@ -14,6 +14,12 @@ const HASH := 64
 static var _tex_cache := {}
 
 var human := 0
+var factions: Array = ["crown", "crown"]
+var swamp: Array = [PackedByteArray(), PackedByteArray()]
+var swamp_dirty := true
+var swamp_layer: Node2D
+var _swamp_t := 0.0
+var _notify_t := 0
 var difficulty := 1
 var demo := false                        # AI controls both sides
 var rng := RandomNumberGenerator.new()
@@ -71,11 +77,16 @@ func _ready() -> void:
 	explored.resize(W * H)
 	for t in 2:
 		vis[t].resize(W * H)
-		players.append({"gold": Defs.START_GOLD, "cap": 0})
+		swamp[t].resize(W * H)
+		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t]})
 	ground = Sprite2D.new()
 	ground.centered = false
 	ground.z_index = -20
 	add_child(ground)
+	swamp_layer = Node2D.new()
+	swamp_layer.z_index = -19
+	swamp_layer.draw.connect(_draw_swamp)
+	add_child(swamp_layer)
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
@@ -322,19 +333,30 @@ func _render_ground() -> void:
 
 func _start_positions() -> void:
 	for t in 2:
-		var b := _add_building("town_hall", t, starts[t], true)
+		var f: Dictionary = Defs.FACTIONS[factions[t]]
+		var b := _add_building(f["hall"], t, starts[t], true)
 		var hall_center := b.rect().get_center()
-		for i in 5:
-			var u := _add_unit("labourer", t, hall_center + Vector2(-60 + i * 30, 80 if t == 0 else -80))
+		for i in int(f["start_workers"]):
+			var u := _add_unit(f["worker"], t, hall_center + Vector2(-60 + i * 30, 80 if t == 0 else -80))
 			var m := nearest_mine(u.position, t)
 			if m:
 				u.cmd_gather(m)
 		players[t]["gold"] = Defs.START_GOLD
+	_update_swamp()
+
+
+func faction_of(t: int) -> String:
+	return factions[t]
+
+
+func max_supply(t: int) -> int:
+	return int(Defs.FACTIONS[factions[t]]["max_supply"])
 
 
 func _own_hall(t: int) -> Building:
+	var hall: String = Defs.FACTIONS[factions[t]]["hall"]
 	for b in buildings:
-		if b.team == t and b.kind == "town_hall" and not b.dead:
+		if b.team == t and b.kind == hall and not b.dead:
 			return b
 	for b in buildings:
 		if b.team == t and not b.dead:
@@ -417,7 +439,7 @@ func _recount_supply(t: int) -> void:
 	for b in buildings:
 		if b.team == t:
 			cap += b.supply()
-	players[t]["cap"] = mini(cap, Defs.MAX_SUPPLY)
+	players[t]["cap"] = mini(cap, max_supply(t))
 
 
 func supply_used(t: int) -> int:
@@ -428,7 +450,7 @@ func supply_used(t: int) -> int:
 	for b in buildings:
 		if b.team == t:
 			for k in b.queue:
-				n += int(Defs.UNITS[k]["supply"])
+				n += int(Defs.UNITS[k]["supply"]) * int(Defs.UNITS[k].get("spawn", 1))
 	return n
 
 
@@ -447,13 +469,30 @@ func refund(t: int, k: String) -> void:
 func can_train(b: Building, k: String) -> String:
 	if not b.can_train(k):
 		return "Can't train that here."
-	if b.queue.size() >= 5:
+	var u: Dictionary = Defs.UNITS[k]
+	var req: String = u.get("requires", "")
+	if req != "" and not _has_built(b.team, req):
+		return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
+	if b.uses_eggs():
+		if b.eggs < 1:
+			return "No eggs ready."
+	elif b.queue.size() >= 5:
 		return "Queue is full."
-	if players[b.team]["gold"] < int(Defs.UNITS[k]["cost"]):
+	if players[b.team]["gold"] < int(u["cost"]):
 		return "Not enough gold."
-	if supply_used(b.team) + int(Defs.UNITS[k]["supply"]) > players[b.team]["cap"]:
-		return "Need more supply: build a Cottage." if players[b.team]["cap"] < Defs.MAX_SUPPLY else "Supply is maxed out."
+	if supply_used(b.team) + int(u["supply"]) * int(u.get("spawn", 1)) > players[b.team]["cap"]:
+		if players[b.team]["cap"] >= max_supply(b.team):
+			return "Supply is maxed out."
+		var sup: String = Defs.FACTIONS[factions[b.team]]["supply"]
+		return "Need more supply: build a %s." % Defs.BUILDINGS[sup]["name"]
 	return ""
+
+
+func _has_built(t: int, kind: String) -> bool:
+	for b in buildings:
+		if b.team == t and b.kind == kind and b.built and not b.dead:
+			return true
+	return false
 
 
 func train(b: Building, k: String) -> String:
@@ -462,6 +501,9 @@ func train(b: Building, k: String) -> String:
 		return why
 	players[b.team]["gold"] -= int(Defs.UNITS[k]["cost"])
 	b.queue.append(k)
+	if b.uses_eggs():
+		b.eggs -= 1
+		b.morph_t.append(0.0)
 	return ""
 
 
@@ -469,6 +511,9 @@ func cancel_train(b: Building) -> void:
 	if b.queue.is_empty():
 		return
 	var k: String = b.queue.pop_back()
+	if b.uses_eggs():
+		b.morph_t.pop_back()
+		b.eggs += 1
 	if b.queue.is_empty():
 		b.prod_t = 0.0
 	refund(b.team, k)
@@ -488,14 +533,15 @@ func spawn_trained(b: Building, k: String) -> void:
 				if dd < bd:
 					bd = dd
 					best = c
-	var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-4, 4), randf_range(-4, 4)))
-	if k == "labourer":
-		var m: Entity = b.rally_target if b.rally_target is GoldMine else nearest_mine(u.position, b.team)
-		if m and (b.rally == Vector2.INF or b.rally_target is GoldMine):
-			u.cmd_gather(m)
-			return
-	if b.rally != Vector2.INF:
-		u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)), k != "labourer")
+	for n in int(Defs.UNITS[k].get("spawn", 1)):
+		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+		if u.is_worker():
+			var m: Entity = b.rally_target if b.rally_target is GoldMine else nearest_mine(u.position, b.team)
+			if m and (b.rally == Vector2.INF or b.rally_target is GoldMine):
+				u.cmd_gather(m)
+				continue
+		if b.rally != Vector2.INF:
+			u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)), not u.is_worker())
 
 
 func requirement_met(t: int, k: String) -> bool:
@@ -518,6 +564,8 @@ func placement_problem(t: int, k: String, c: Vector2i) -> String:
 				return "Blocked."
 			if t == human and not demo and explored[idx(cc)] == 0:
 				return "Unexplored."
+			if needs_swamp(k) and swamp[t][idx(cc)] == 0:
+				return "Brood structures must grow on your swamp."
 	# Keep a lane open beside gold mines so labourers don't get boxed in.
 	var r := Rect2(Vector2(c) * T, Vector2(size) * T)
 	for m in mines:
@@ -534,10 +582,89 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 	players[t]["gold"] -= int(Defs.BUILDINGS[k]["cost"])
 	var b := _add_building(k, t, c, false)
 	_astar_dirty = true
+	if Defs.BUILDINGS[k]["faction"] == "brood":
+		b.seeded = false
+		b._update_sprite()
+		builders = builders.slice(0, 1)   # one grub becomes the building
 	for u in builders:
-		if u is Unit and u.kind == "labourer" and not u.dead:
+		if u is Unit and u.is_worker() and not u.dead:
 			u.cmd_build(b)
 	return b
+
+
+func needs_swamp(k: String) -> bool:
+	return Defs.BUILDINGS[k]["faction"] == "brood" and not Defs.BUILDINGS[k].get("eggs", false)
+
+
+## A unit that turned into something else: gone, but not a loss.
+func consume_unit(u: Unit) -> void:
+	u._leave_mine()
+	units.erase(u)
+	selection.erase(u)
+	for g in groups:
+		g.erase(u)
+	u.dead = true
+	u.queue_free()
+
+
+func notify(msg: String) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _notify_t > 3000 and hud:
+		_notify_t = now
+		hud.toast(msg)
+
+
+# ------------------------------------------------------------------ swamp
+
+func on_swamp(t: int, p: Vector2) -> bool:
+	return swamp[t][idx(cell_of(p))] == 1
+
+
+func mine_on_swamp(m: GoldMine, t: int) -> bool:
+	if faction_of(t) != "brood":
+		return true
+	for y in range(-1, m.size.y + 1):
+		for x in range(-1, m.size.x + 1):
+			var c := m.cell + Vector2i(x, y)
+			if in_map(c) and swamp[t][idx(c)] == 1:
+				return true
+	return false
+
+
+func _update_swamp() -> void:
+	swamp_dirty = false
+	for t in 2:
+		var g: PackedByteArray = swamp[t]
+		g.fill(0)
+		if faction_of(t) == "brood":
+			for b in buildings:
+				if b.team != t or b.dead or b.swamp_r <= 0.0:
+					continue
+				var c: Vector2 = b.rect().get_center() / T
+				var r: float = b.swamp_r + maxf(b.size.x, b.size.y) * 0.5
+				for y in range(int(c.y - r) - 1, int(c.y + r) + 2):
+					for x in range(int(c.x - r) - 1, int(c.x + r) + 2):
+						if x < 0 or y < 0 or x >= W or y >= H or water[y * W + x] == 1:
+							continue
+						var dx: float = (x + 0.5 - c.x)
+						var dy: float = (y + 0.5 - c.y) * 1.15
+						if dx * dx + dy * dy <= r * r:
+							g[y * W + x] = 1
+		swamp[t] = g
+	swamp_layer.queue_redraw()
+
+
+func _draw_swamp() -> void:
+	var t: Texture2D = tex("res://assets/tiles/swamp.png")
+	for team in 2:
+		var g: PackedByteArray = swamp[team]
+		for i in W * H:
+			if g[i] == 1:
+				var x := i % W
+				var y := i / W
+				var edge := (x > 0 and g[i - 1] == 0) or (x < W - 1 and g[i + 1] == 0) \
+					or (y > 0 and g[i - W] == 0) or (y < H - 1 and g[i + W] == 0)
+				swamp_layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
 
 
 var _astar_dirty := false
@@ -688,7 +815,7 @@ func find_target(u: Unit, r: float) -> Entity:
 		if o.team == u.team or o.dead or o.team < 0:
 			continue
 		var dd: float = o.position.distance_to(u.position)
-		if o.kind == "labourer":
+		if o.is_worker():
 			dd += 60.0   # prefer fighters
 		if dd < bd:
 			bd = dd
@@ -710,12 +837,20 @@ func find_target(u: Unit, r: float) -> Entity:
 func nearest_mine(p: Vector2, t: int) -> GoldMine:
 	var best: GoldMine = null
 	var bd := INF
+	var brood := faction_of(t) == "brood"
 	for m in mines:
 		if m.gold <= 0:
 			continue
-		var hall := nearest_hall(m.center(), t)
-		var trip := hall.edge_distance(m.center()) if hall else 3000.0
-		var score: float = m.center().distance_to(p) * 0.5 + trip * 2.0
+		var score: float
+		if brood:
+			# Grubs: mines on our swamp with room left, nearest first.
+			if not mine_on_swamp(m, t) or m.feeders.size() >= Defs.FEEDERS_PER_MINE:
+				continue
+			score = m.center().distance_to(p)
+		else:
+			var hall := nearest_hall(m.center(), t)
+			var trip := hall.edge_distance(m.center()) if hall else 3000.0
+			score = m.center().distance_to(p) * 0.5 + trip * 2.0
 		if score < bd:
 			bd = score
 			best = m
@@ -774,6 +909,13 @@ func musket_shot(u: Unit, e: Entity, dmg: float) -> void:
 
 
 var _tracers: Array = []
+
+
+func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
+	var mouth := u.center() + u.facing * 14.0
+	e.take_damage(dmg, u)
+	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
+	_tracers.append([mouth, e.center(), 0.12, Color(0.75, 0.95, 0.2), 3.0])
 
 
 func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
@@ -898,6 +1040,10 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()
 			budget -= 1
+	_swamp_t -= delta
+	if swamp_dirty and _swamp_t <= 0.0:
+		_swamp_t = 0.5
+		_update_swamp()
 	_vis_t -= delta
 	if _vis_t <= 0.0:
 		_vis_t = 0.2
@@ -959,7 +1105,7 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 	var e := null if force_move else entity_at(p)
 	if e is GoldMine:
 		for u in us:
-			if u.kind == "labourer":
+			if u.is_worker():
 				u.cmd_gather(e)
 			else:
 				u.cmd_move(p, true)
@@ -967,7 +1113,7 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 		return
 	if e is Building and e.team == us[0].team and not e.built:
 		for u in us:
-			if u.kind == "labourer":
+			if u.is_worker():
 				u.cmd_build(e)
 			else:
 				u.cmd_move(p)
@@ -1022,7 +1168,7 @@ func group_move(us: Array, p: Vector2, attack_move: bool) -> void:
 		var sp: Vector2 = s
 		if not is_free(cell_of(sp)):
 			sp = p
-		best.cmd_move(sp, attack_move and best.kind != "labourer")
+		best.cmd_move(sp, attack_move and not best.is_worker())
 	_ping(p, Color(1, 0.3, 0.3) if attack_move else Color(0.4, 1, 0.4))
 
 
@@ -1049,11 +1195,15 @@ func set_rally(b: Building, p: Vector2) -> void:
 
 
 func army(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.kind != "labourer")
+	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and not u.is_worker())
 
 
 func labourers(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.kind == "labourer")
+	return workers(t)
+
+
+func workers(t: int) -> Array:
+	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.is_worker())
 
 
 func center_of_team(t: int) -> Vector2:
@@ -1070,7 +1220,8 @@ func center_of_team(t: int) -> Vector2:
 
 func _draw_overlay() -> void:
 	for tr in _tracers:
-		overlay.draw_line(tr[0], tr[1], Color(1, 0.95, 0.7, 0.8), 1.0)
+		var col: Color = tr[3] if tr.size() > 3 else Color(1, 0.95, 0.7, 0.8)
+		overlay.draw_line(tr[0], tr[1], col, tr[4] if tr.size() > 4 else 1.0)
 	for pg in _pings:
 		var f: float = pg[2] / 0.5
 		overlay.draw_arc(pg[0], 16.0 * (1.5 - f), 0, TAU, 20, Color(pg[1], f), 2.0)
@@ -1082,7 +1233,7 @@ func _draw_overlay() -> void:
 		for y in size.y:
 			for x in size.x:
 				var cc := c + Vector2i(x, y)
-				var free := is_free(cc) and (demo or explored[idx(cc)] == 1) if in_map(cc) else false
+				var free: bool = is_free(cc) and (demo or explored[idx(cc)] == 1) and (not needs_swamp(k) or swamp[human][idx(cc)] == 1) if in_map(cc) else false
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
 		var t: Texture2D = tex("res://assets/buildings/%s_built.png" % k)
 		var r := Rect2(Vector2(c) * T, Vector2(size) * T)

@@ -5,6 +5,7 @@ extends Entity
 var cell := Vector2i.ZERO
 var size := Vector2i(3, 2)
 var gold := Defs.MINE_GOLD
+var feeders: Array = []          # Brood grubs burrowed here
 var sprite: Sprite2D
 
 

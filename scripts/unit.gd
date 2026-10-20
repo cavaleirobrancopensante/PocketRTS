@@ -48,6 +48,16 @@ func is_unit() -> bool:
 	return true
 
 
+func is_worker() -> bool:
+	return Defs.is_worker(kind)
+
+
+func take_damage(amount: float, from: Entity) -> void:
+	if work == "feeding":
+		amount *= 0.5      # burrowed grubs are hard to hit
+	super.take_damage(amount, from)
+
+
 func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	game = g
 	kind = k
@@ -113,7 +123,7 @@ func cmd_hold() -> void:
 
 
 func cmd_gather(mine: Entity) -> void:
-	if kind != "labourer":
+	if not is_worker():
 		cmd_move(mine.center())
 		return
 	_reset_work()
@@ -125,7 +135,7 @@ func cmd_gather(mine: Entity) -> void:
 
 
 func cmd_build(site: Building) -> void:
-	if kind != "labourer":
+	if not is_worker():
 		return
 	_reset_work()
 	order = "build"
@@ -135,6 +145,7 @@ func cmd_build(site: Building) -> void:
 
 
 func _reset_work() -> void:
+	_leave_mine()
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
@@ -153,17 +164,28 @@ func _physics_process(delta: float) -> void:
 			if corpse_t > 8.0:
 				queue_free()
 		return
+	_process_acid(delta)
+	if dead:
+		return
 	cooldown = maxf(cooldown - delta, 0.0)
 	scan_t -= delta
 	repath_t -= delta
 	var want := Vector2.ZERO
+	# Brood on swamp: faster, and wounds close up.
+	speed = float(d["speed"])
+	if d["faction"] == "brood" and game.on_swamp(team, position):
+		speed *= 1.3
+		if hp < max_hp:
+			hp = minf(max_hp, hp + 2.0 * delta)
+	if kind == "brute" and target and phase == "" and target.edge_distance(position) < 170.0:
+		speed *= 1.6      # charge
 
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
 	match order:
 		"idle":
-			if kind != "labourer" and scan_t <= 0.0:
+			if not is_worker() and scan_t <= 0.0:
 				scan_t = 0.35
 				target = game.find_target(self, sight * Defs.TILE)
 			if target:
@@ -182,7 +204,7 @@ func _physics_process(delta: float) -> void:
 			if _arrived():
 				_finish_move()
 		"amove":
-			if scan_t <= 0.0 and target == null and kind != "labourer":
+			if scan_t <= 0.0 and target == null and not is_worker():
 				scan_t = 0.3
 				target = game.find_target(self, sight * Defs.TILE)
 			if target:
@@ -269,6 +291,9 @@ func _arrived() -> bool:
 
 
 func _move(want: Vector2, delta: float) -> void:
+	if work == "feeding" or work == "morphing":
+		velocity = Vector2.ZERO
+		return
 	var push := game.separation(self)
 	var v := want + push
 	if want == Vector2.ZERO:
@@ -342,21 +367,35 @@ func _strike(e: Entity) -> void:
 	if not _valid_target(e):
 		return
 	var dmg := float(d["damage"])
+	if e.is_building():
+		dmg *= float(d.get("building_bonus", 1.0))
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
 		"cannon":
 			game.cannon_shot(self, e.center(), dmg)
+		"spitter":
+			game.acid_shot(self, e, dmg)
 		_:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
 			e.take_damage(dmg, self)
 			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
+			if kind == "brute" and e is Unit and not e.dead:
+				var push: Vector2 = (e.position - position).normalized() * 26.0
+				e.position = game.resolve_terrain(e.position + push, e.position, e.radius)
 
 
 # ------------------------------------------------------------------ workers
 
+func _leave_mine() -> void:
+	if home_mine and is_instance_valid(home_mine):
+		home_mine.feeders.erase(self)
+
+
 func _gather(delta: float) -> Vector2:
+	if kind == "grub":
+		return _feed(delta)
 	if work != "to_hall" and (home_mine == null or not is_instance_valid(home_mine) or home_mine.gold <= 0):
 		home_mine = game.nearest_mine(position, team)
 		if home_mine == null:
@@ -373,9 +412,7 @@ func _gather(delta: float) -> Vector2:
 				work_t = Defs.MINE_TIME
 				path = PackedVector2Array()
 				return Vector2.ZERO
-			if path.is_empty() and not path_pending:
-				_request_path(game.approach_point(home_mine, position))
-			elif path_i >= path.size() and not path_pending:
+			if (path.is_empty() or path_i >= path.size()) and not path_pending:
 				_request_path(game.approach_point(home_mine, position))
 			return _follow(delta)
 		"mining":
@@ -405,10 +442,53 @@ func _gather(delta: float) -> Vector2:
 	return Vector2.ZERO
 
 
+## Brood grubs: walk to a mine on our swamp, burrow, and turn out gold in place.
+func _feed(delta: float) -> Vector2:
+	var m := home_mine as GoldMine
+	if m == null or not is_instance_valid(m) or m.gold <= 0 or not game.mine_on_swamp(m, team) \
+			or (work != "feeding" and m.feeders.size() >= Defs.FEEDERS_PER_MINE):
+		_leave_mine()
+		home_mine = game.nearest_mine(position, team)
+		work = "to_mine"
+		if home_mine == null:
+			cmd_stop()
+			if team == game.human:
+				game.notify("Grubs can only feed at mines on your swamp.")
+			return Vector2.ZERO
+		m = home_mine
+		order_target = m
+	match work:
+		"feeding":
+			facing = (m.center() - position).normalized()
+			work_t -= delta
+			if work_t <= 0.0:
+				work_t = Defs.FEED_TIME
+				game.add_gold(team, m.take(1))
+			return Vector2.ZERO
+		_:
+			work = "to_mine"
+			if m.edge_distance(position) < radius + 17.0:
+				if m.feeders.size() < Defs.FEEDERS_PER_MINE:
+					m.feeders.append(self)
+					work = "feeding"
+					work_t = Defs.FEED_TIME
+					path = PackedVector2Array()
+				return Vector2.ZERO
+			if (path.is_empty() or path_i >= path.size()) and not path_pending:
+				_request_path(game.approach_point(m, position))
+			return _follow(delta)
+
+
 func _build(delta: float) -> Vector2:
 	var site := order_target as Building
-	if site == null or not is_instance_valid(site) or site.dead or site.built:
-		# Done: go back to mining, like a sensible labourer would.
+	if work == "morphing":
+		work_t -= delta
+		if work_t <= 0.0:
+			if site and is_instance_valid(site) and not site.dead:
+				site.seeded = true
+			game.consume_unit(self)
+		return Vector2.ZERO
+	if site == null or not is_instance_valid(site) or site.dead or site.built or (site.seeded and kind == "grub"):
 		var m := game.nearest_mine(position, team)
 		if m:
 			cmd_gather(m)
@@ -416,9 +496,15 @@ func _build(delta: float) -> Vector2:
 			cmd_stop()
 		return Vector2.ZERO
 	if site.edge_distance(position) < radius + 17.0:
-		work = "building"
 		path = PackedVector2Array()
 		facing = (site.center() - position).normalized()
+		if kind == "grub":
+			# The grub becomes the building.
+			work = "morphing"
+			work_t = 1.6
+			position = site.rect().get_center() + Vector2(0, site.rect().size.y * 0.3)
+			return Vector2.ZERO
+		work = "building"
 		site.add_progress(delta)
 		return Vector2.ZERO
 	work = "to_site"
@@ -435,6 +521,7 @@ func die() -> void:
 	dead = true
 	selected = false
 	velocity = Vector2.ZERO
+	_leave_mine()
 	game.on_unit_died(self)
 	_set_anim("death", true)
 	z_index = -1
@@ -472,6 +559,23 @@ func _anim_name() -> String:
 				return "build"
 			if moving and carrying > 0:
 				return "carry"
+		"grub":
+			if work == "feeding":
+				return "burrow"
+			if work == "morphing":
+				return "morph"
+			if phase != "":
+				return "attack"
+		"raptor", "spitter":
+			if phase != "":
+				return "attack"
+			if kind == "raptor" and moving and target and target.edge_distance(position) < 90.0:
+				return "leap"
+		"brute":
+			if phase != "":
+				return "attack"
+			if moving and target and target.edge_distance(position) < 170.0:
+				return "charge"
 	return "walk" if moving else "idle"
 
 
@@ -489,9 +593,17 @@ func _animate(delta: float) -> void:
 		"death":
 			fps = 7.0
 			loop = false
-		"aim", "fire", "thrust", "brace":
+		"aim", "fire", "thrust", "brace", "attack":
 			fps = 9.0
 			loop = false
+		"burrow":
+			fps = 7.0
+			loop = false
+		"morph":
+			fps = 3.2
+			loop = false
+		"leap", "charge":
+			fps = 10.0
 		"mine", "build":
 			fps = 6.0
 		"reload":
@@ -520,12 +632,17 @@ func _set_anim(a: String, force: bool) -> void:
 		anim_t = 0.0
 	var frames: Dictionary = ArtData.UNITS[kind]["frames"]
 	if not frames.has(a + "_" + dr):
-		for alt in ["s", "se", "e", "ne", "n"]:
+		# Closest drawn direction; side-only animations face the way we're heading.
+		var near: Dictionary = {"s": ["se", "e"], "se": ["s", "e"], "e": ["se", "ne"], "ne": ["n", "e"], "n": ["ne", "e"]}
+		for alt in near[dr] + ["s", "se", "e", "ne", "n"]:
 			if frames.has(a + "_" + alt):
 				dr = alt
 				break
 		if not frames.has(a + "_" + dr):
 			a = "idle"
+			dr = "e" if frames.has("idle_e") else "s"
+		if dr == "e":
+			flip = facing.x < 0.0
 	anim = a
 	anim_dir = dr
 	anim_flip = flip
@@ -550,5 +667,7 @@ func _draw() -> void:
 	if kind == "pikeman":
 		top = -40.0
 	draw_health(top, radius * 2.4)
+	if work == "feeding":
+		return
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))

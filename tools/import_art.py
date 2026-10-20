@@ -29,8 +29,19 @@ UNITS = {
     "cannon": {"rows": ["idle", "move", "fire", "reload", "death"], "dilate": 14},
 }
 BUILDINGS = ["town_hall", "cottage", "barracks", "foundry"]
+BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]
+
+# Brood sheets: row 0 = idle facing each direction; every other row is drawn
+# side-on (facing right) and gets mirrored in game. Height = in-game pixels.
+BROOD_UNITS = {
+    "grub": {"rows": ["idle", "walk", "burrow", "attack", "morph", "death"], "height": 17},
+    "raptor": {"rows": ["idle", "walk", "leap", "attack", "death"], "height": 28},
+    "spitter": {"rows": ["idle", "walk", "flare", "attack", "death"], "height": 26},
+    "brute": {"rows": ["idle", "walk", "charge", "attack", "death"], "height": 40},
+}
 # Width in game pixels of each finished building (ChatGPT drew each at its own zoom).
-BUILDING_WIDTH = {"town_hall": 150, "cottage": 72, "barracks": 128, "foundry": 118}
+BUILDING_WIDTH = {"town_hall": 150, "cottage": 72, "barracks": 128, "foundry": 118,
+                  "hive": 158, "clutch_mound": 74, "warren": 130, "gorge_pit": 126}
 BUILDING_STATES = ["built", "construction", "damaged", "destroyed"]
 
 TEAM_LIGHT = (255, 0, 0)
@@ -236,10 +247,14 @@ def import_unit(name, cfg, data):
             if key[0] == "death":
                 continue
             frames[key] = [p for im in lst for p in split(im)]
-    # Shrink, then build one shared canvas per unit anchored at the feet.
     small = {}
     for key, lst in frames.items():
         small[key] = [snap_team(shrink(im, UNIT_SCALE)) for im in lst]
+    assemble(name, small, names, data)
+
+
+def assemble(name, small, names, data):
+    """One shared canvas per unit with every frame anchored at the feet."""
     feet = {}
     L = R = U = D = 0
     for key, lst in small.items():
@@ -301,8 +316,103 @@ def frames_by_slot(px, fg, n):
     return out
 
 
+def import_brood_unit(name, cfg, data):
+    px = load(f"art/brood/{name}.png")
+    fg = checker_mask(px)
+    sprites = components(fg, 2, min_big=350)
+    rows = cluster_1d(np.array([s["cy"] for s in sprites]), 45)
+    rows.sort(key=lambda g: np.mean([sprites[i]["cy"] for i in g]))
+    names = cfg["rows"]
+    if len(rows) != len(names):
+        print(f"  ! {name}: found {len(rows)} rows, expected {len(names)}")
+    frames = {}
+    for ri, row in enumerate(rows[:len(names)]):
+        anim = names[ri]
+        lst = sorted([sprites[i] for i in row], key=lambda s: s["cx"])
+        med = sorted(s["area"] for s in lst)[len(lst) // 2]
+        lst = [s for s in lst if s["area"] >= med * 0.4]   # drop slash arcs / flying spit
+        if ri == 0:
+            n = len(lst)
+            for k, s in enumerate(lst):
+                aspect = (s["x1"] - s["x0"]) / (s["y1"] - s["y0"])
+                if k == 0:
+                    d = "s"
+                elif k == n - 1:
+                    d = "n"
+                elif aspect >= 1.2:
+                    d = "e"
+                elif k == 1:
+                    d = "se"
+                else:
+                    d = "ne"
+                frames.setdefault(("idle", d), []).append(cutout(px, s))
+        else:
+            frames[(anim, "e")] = [cutout(px, s) for s in lst]
+    walk = frames[("walk", "e")]
+    scale = cfg["height"] / float(np.median([im.shape[0] for im in walk]))
+    small = {key: [snap_team(shrink(im, scale)) for im in lst] for key, lst in frames.items()}
+    assemble(name, small, names, data)
+    make_icon(small[("idle", "s")][0], name)
+
+
+def make_icon(img, name):
+    """Square button icon from a sprite until hand-made icons exist."""
+    a = img[..., 3] > 0
+    ys, xs = np.nonzero(a)
+    crop = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    h, w = crop.shape[:2]
+    k = max(1, int(52 / max(h, w)))
+    big = np.array(Image.fromarray(crop).resize((w * k, h * k), Image.NEAREST))
+    if max(big.shape[:2]) > 56:
+        f = 56 / max(big.shape[:2])
+        big = np.array(Image.fromarray(big).resize((max(1, int(big.shape[1] * f)), max(1, int(big.shape[0] * f))), Image.NEAREST))
+    icon = np.zeros((64, 64, 4), np.uint8)
+    icon[..., :3] = (28, 30, 30)
+    icon[..., 3] = 255
+    icon[0:2, :, :3] = icon[-2:, :, :3] = icon[:, 0:2, :3] = icon[:, -2:, :3] = (70, 74, 72)
+    bh, bw = big.shape[:2]
+    oy, ox = (64 - bh) // 2, (64 - bw) // 2
+    m = big[..., 3] > 0
+    icon[oy:oy + bh, ox:ox + bw][m] = big[m]
+    save(icon, f"{OUT}/icons/{name}.png")
+
+
+def make_swamp_tile():
+    rng = np.random.default_rng(5)
+    t = np.zeros((32, 32, 4), np.uint8)
+    base = np.array([46, 58, 24])
+    noise = rng.integers(-8, 9, (32, 32, 1))
+    t[..., :3] = np.clip(base + noise, 0, 255)
+    t[..., 3] = 255
+    for _ in range(14):
+        y, x = rng.integers(0, 32, 2)
+        t[y, x, :3] = (34, 42, 18)
+        t[(y + 1) % 32, x, :3] = (34, 42, 18)
+    for _ in range(5):
+        y, x = rng.integers(0, 32, 2)
+        t[y, x, :3] = (176, 200, 64)
+    for _ in range(6):
+        y, x = rng.integers(0, 32, 2)
+        t[y, x, :3] = (78, 94, 38)
+    save(t, f"{OUT}/tiles/swamp.png")
+
+
 def import_buildings(data):
     data["buildings"] = {}
+    for name in BROOD_BUILDINGS:
+        px = load(f"art/brood/buildings/{name}.png")
+        fg = alpha_mask(px, 200) if name == "hive" else checker_mask(px)
+        imgs = frames_by_slot(px, fg, 4)
+        scale = BUILDING_WIDTH[name] / imgs[0].shape[1]
+        sizes = []
+        for state, im in zip(BUILDING_STATES, imgs):
+            sm = snap_team(shrink(im, scale))
+            save(sm, f"{OUT}/buildings/{name}_{state}.png")
+            sizes.append(sm.shape[1::-1])
+            if state == "built":
+                make_icon(sm, name)
+        data["buildings"][name] = sizes[0]
+        print(f"  {name}: {sizes}")
     for name in BUILDINGS:
         px = load(f"art/crown/buildings/{name}.png")
         fg = checker_mask(px)
@@ -443,6 +553,10 @@ def main():
     print("units")
     for name, cfg in UNITS.items():
         import_unit(name, cfg, data)
+    for name, cfg in BROOD_UNITS.items():
+        import_brood_unit(name, cfg, data)
+        print(f"  {name}: ok")
+    make_swamp_tile()
     print("buildings")
     import_buildings(data)
     print("world")

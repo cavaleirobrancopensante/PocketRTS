@@ -12,6 +12,11 @@ var queue: Array = []            # unit kinds
 var prod_t := 0.0
 var rally := Vector2.INF
 var rally_target: Entity = null
+var seeded := true               # Brood: a grub has turned into the site
+var eggs := 0                    # Brood Hive
+var egg_t := 0.0
+var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
+var swamp_r := 0.0               # Brood: current swamp radius in tiles
 var sprite: Sprite2D
 var fire: Effect = null
 var rubble_t := 0.0
@@ -34,6 +39,12 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	built = complete
 	progress = 1.0 if complete else 0.0
 	hp = max_hp if complete else max_hp * 0.1
+	if d["faction"] == "brood":
+		seeded = complete
+		if complete:
+			swamp_r = float(d.get("swamp", 0))
+		if d.get("eggs", false):
+			eggs = Defs.EGGS_MAX if complete else 0
 	var r := rect()
 	position = Vector2(r.get_center().x, r.end.y)
 
@@ -71,8 +82,13 @@ func can_train(k: String) -> bool:
 	return built and not dead and (d["trains"] as Array).has(k)
 
 
+func uses_eggs() -> bool:
+	return d.get("eggs", false)
+
+
 func _physics_process(delta: float) -> void:
 	_process_flash(delta)
+	_process_acid(delta)
 	if dead:
 		rubble_t += delta
 		if rubble_t > 25.0:
@@ -80,7 +96,21 @@ func _physics_process(delta: float) -> void:
 			if rubble_t > 28.0:
 				queue_free()
 		return
-	if built and not queue.is_empty():
+	if d["faction"] == "brood":
+		_brood(delta)
+	if built and uses_eggs():
+		# Every egg morphs at the same time.
+		var i := 0
+		while i < queue.size():
+			morph_t[i] += delta
+			if morph_t[i] >= float(Defs.UNITS[queue[i]]["time"]):
+				var k: String = queue[i]
+				queue.remove_at(i)
+				morph_t.remove_at(i)
+				game.spawn_trained(self, k)
+			else:
+				i += 1
+	elif built and not queue.is_empty():
 		prod_t += delta
 		var k: String = queue[0]
 		if prod_t >= float(Defs.UNITS[k]["time"]):
@@ -91,8 +121,28 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
+func _brood(delta: float) -> void:
+	if not built and seeded:
+		add_progress(delta)
+	if built:
+		if hp < max_hp:
+			hp = minf(max_hp, hp + 1.5 * delta)
+		var target := float(d.get("swamp", 0))
+		if swamp_r < target:
+			swamp_r = minf(target, swamp_r + delta / 1.2)
+			game.swamp_dirty = true
+		if uses_eggs() and eggs + queue.size() < Defs.EGGS_MAX:
+			egg_t += delta
+			if egg_t >= Defs.EGG_TIME:
+				egg_t = 0.0
+				eggs += 1
+	elif seeded and swamp_r < 2.0:
+		swamp_r = 2.0
+		game.swamp_dirty = true
+
+
 func _update_fire() -> void:
-	var burning := built and hp < max_hp * 0.5
+	var burning: bool = built and hp < max_hp * 0.5 and d["faction"] != "brood"
 	if burning and fire == null:
 		fire = game.spawn_effect("fire", Vector2.ZERO, 1.0, true)
 		fire.reparent(self, false)
@@ -118,7 +168,10 @@ func _update_sprite() -> void:
 	if sprite.texture != t:
 		sprite.texture = t
 		sprite.offset = Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
-	sprite.modulate = Color(1, 1, 1, 0.55 + 0.45 * progress) if not built and not dead else Color.WHITE
+	if not seeded and not dead:
+		sprite.modulate = Color(1, 1, 1, 0.3)
+	else:
+		sprite.modulate = Color(1, 1, 1, 0.55 + 0.45 * progress) if not built and not dead else Color.WHITE
 
 
 func die() -> void:
@@ -129,6 +182,9 @@ func die() -> void:
 	for k in queue:
 		game.refund(team, k)
 	queue.clear()
+	morph_t.clear()
+	swamp_r = 0.0
+	game.swamp_dirty = true
 	if fire:
 		fire.queue_free()
 		fire = null
@@ -157,6 +213,6 @@ func _draw() -> void:
 	elif not queue.is_empty() and team == game.human:
 		var w := r.size.x * 0.7
 		var k: String = queue[0]
-		var f := prod_t / float(Defs.UNITS[k]["time"])
+		var f: float = (morph_t[0] if uses_eggs() else prod_t) / float(Defs.UNITS[k]["time"])
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * f, 4), Color(0.4, 0.75, 1.0))

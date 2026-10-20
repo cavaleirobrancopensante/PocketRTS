@@ -159,7 +159,7 @@ func _group_pressed(i: int, held: float) -> void:
 		1:   # idle labourers
 			var idle := game.labourers(game.human).filter(func(u: Unit) -> bool: return u.order == "idle")
 			if idle.is_empty():
-				toast("No idle labourers.")
+				toast("No idle workers.")
 			else:
 				game.set_selection([idle[0]])
 				game.camera.position = idle[0].position
@@ -204,9 +204,9 @@ func _build_card() -> Array:
 		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if not units.is_empty():
-		var has_lab := units.any(func(u: Unit) -> bool: return u.kind == "labourer")
+		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
 		if page == "build" and has_lab:
-			for k in Defs.BUILD_ORDER:
+			for k in Defs.FACTIONS[game.faction_of(game.human)]["build"]:
 				var d: Dictionary = Defs.BUILDINGS[k]
 				var why := ""
 				if not game.requirement_met(game.human, k):
@@ -227,7 +227,7 @@ func _build_card() -> Array:
 			list.append(["build", "BUILD", func() -> void: page = "build", true, "", ""])
 			list.append(["gather", "GATHER", func() -> void:
 				for u in game.selected_units():
-					if u.kind == "labourer":
+					if u.is_worker():
 						var m := game.nearest_mine(u.position, u.team)
 						if m:
 							u.cmd_gather(m), true, "", ""])
@@ -256,9 +256,9 @@ func confirm_place() -> void:
 	if game.players[game.human]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		toast("Not enough gold.")
 		return
-	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.kind == "labourer")
+	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker())
 	# One builder unless several are selected on purpose.
-	if builders.size() > 3:
+	if builders.size() > 3 or game.faction_of(game.human) == "brood":
 		builders.sort_custom(func(a: Unit, c: Unit) -> bool:
 			var g := Vector2(controls.ghost_cell) * Defs.TILE
 			return a.position.distance_to(g) < c.position.distance_to(g))
@@ -405,11 +405,19 @@ func _draw_panel(font: Font) -> void:
 			info = (e as Unit).d["about"]
 			if e.kind == "labourer" and (e as Unit).carrying > 0:
 				info = "Carrying %d gold." % (e as Unit).carrying
+			elif (e as Unit).work == "feeding":
+				info = "Burrowed and feeding: takes half damage."
 		elif e is Building:
 			name = (e as Building).d["name"]
 			info = (e as Building).d["about"]
-			if not (e as Building).built:
-				info = "Under construction: %d%%" % int((e as Building).progress * 100)
+			var bb := e as Building
+			if not bb.seeded:
+				info = "Waiting for a grub to turn into it."
+			elif not bb.built:
+				info = "%s: %d%%" % ["Growing" if bb.d["faction"] == "brood" else "Under construction", int(bb.progress * 100)]
+			elif bb.uses_eggs() and e.team == game.human:
+				var nxt := "" if bb.eggs + bb.queue.size() >= Defs.EGGS_MAX else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
+				info = "Eggs: %d / %d%s" % [bb.eggs, Defs.EGGS_MAX, nxt]
 		elif e is GoldMine:
 			info = "%d gold left." % (e as GoldMine).gold
 		if e.team >= 0 and e.team != game.human:
@@ -425,8 +433,9 @@ func _draw_panel(font: Font) -> void:
 				var qr := Rect2(r.end.x - 44 - (q.size() - 1 - i) * 40, r.position.y + 8, 36, 36)
 				if ic:
 					draw_texture_rect(ic, qr, false)
-				if i == 0:
-					var f: float = (e as Building).prod_t / float(Defs.UNITS[q[0]]["time"])
+				var eb := e as Building
+				if i == 0 or eb.uses_eggs():
+					var f: float = (eb.morph_t[i] if eb.uses_eggs() else eb.prod_t) / float(Defs.UNITS[q[i]]["time"])
 					draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.4, 0.75, 1))
 	else:
 		var n := mini(sel.size(), 24)

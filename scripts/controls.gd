@@ -174,7 +174,7 @@ func _key(e: InputEventKey) -> void:
 		KEY_H:
 			game.command_all(units, "hold")
 		KEY_B:
-			if hud and units.any(func(u: Unit) -> bool: return u.kind == "labourer"):
+			if hud and units.any(func(u: Unit) -> bool: return u.is_worker()):
 				hud.page = "build"
 		KEY_1, KEY_2, KEY_3:
 			var g := int(e.keycode - KEY_1)
@@ -256,7 +256,7 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 	var own := e != null and e.team == game.human
 	# Labourers tapping their own unfinished building / hall: help build / drop gold.
 	if own and not units.is_empty() and e is Building and (not e.built or e.kind == "town_hall") \
-			and units.any(func(u: Unit) -> bool: return u.kind == "labourer") and not is_mouse:
+			and units.any(func(u: Unit) -> bool: return u.is_worker()) and not is_mouse:
 		game.smart_command(units, p)
 		return
 	if own:
@@ -303,8 +303,8 @@ func _finish_box() -> void:
 		if u.team == game.human and not u.dead and r.has_point(xf * (u.position + Vector2(0, -10))):
 			list.append(u)
 	# Army in the box? Leave the labourers out.
-	if list.any(func(u: Unit) -> bool: return u.kind != "labourer"):
-		list = list.filter(func(u: Unit) -> bool: return u.kind != "labourer")
+	if list.any(func(u: Unit) -> bool: return not u.is_worker()):
+		list = list.filter(func(u: Unit) -> bool: return not u.is_worker())
 	if not list.is_empty():
 		game.set_selection(list)
 		Sfx.play("click")

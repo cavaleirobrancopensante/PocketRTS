@@ -34,7 +34,19 @@ func _mine(kind: String) -> Array:
 
 
 func _labourers() -> Array:
-	return game.labourers(team)
+	return game.workers(team)
+
+
+func _f() -> Dictionary:
+	return Defs.FACTIONS[game.faction_of(team)]
+
+
+func _brood() -> bool:
+	return game.faction_of(team) == "brood"
+
+
+func _halls() -> Array:
+	return _mine(_f()["hall"])
 
 
 func _busy_building(kind: String) -> bool:
@@ -45,12 +57,24 @@ func _busy_building(kind: String) -> bool:
 
 func _economy() -> void:
 	var labs := _labourers()
-	var halls := _mine("town_hall").filter(func(b: Building) -> bool: return b.built)
-	var want: int = [11, 16, 20][difficulty] * maxi(1, halls.size())
-	want = mini(want, [14, 24, 30][difficulty])
+	var halls := _halls().filter(func(b: Building) -> bool: return b.built)
+	var want: int
+	if _brood():
+		var slots := 0
+		for m in game.mines:
+			if m.gold > 0 and game.mine_on_swamp(m, team):
+				slots += Defs.FEEDERS_PER_MINE
+		want = mini(slots + 2, [12, 24, 32][difficulty])
+	else:
+		want = mini([11, 16, 20][difficulty] * maxi(1, halls.size()), [14, 24, 30][difficulty])
+	var worker: String = _f()["worker"]
+	var queued := 0
 	for h in halls:
-		if labs.size() < want and h.queue.size() < 2:
-			game.train(h, "labourer")
+		queued += h.queue.filter(func(k: String) -> bool: return k == worker).size()
+	for h in halls:
+		if labs.size() + queued < want and (h.uses_eggs() or h.queue.size() < 2):
+			if game.train(h, worker) == "":
+				queued += 1
 	for u in labs:
 		if u.order == "idle":
 			var m := game.nearest_mine(u.position, team)
@@ -60,38 +84,48 @@ func _economy() -> void:
 
 func _supply() -> void:
 	var cap: int = game.players[team]["cap"]
-	if cap >= Defs.MAX_SUPPLY:
+	if cap >= game.max_supply(team):
 		return
 	var used := game.supply_used(team)
-	var margin := 3 + 3 * _mine("barracks").size() + 2 * _mine("foundry").size()
-	if cap - used <= margin and not _busy_building("cottage"):
-		_construct("cottage")
+	var sup: String = _f()["supply"]
+	var prod := _halls().size() * 3 if _brood() else 3 * _mine("barracks").size() + 2 * _mine("foundry").size()
+	var margin := 3 + prod
+	if cap - used <= margin and not _busy_building(sup):
+		_construct(sup)
 
 
 func _build_up() -> void:
 	var labs := _labourers().size()
 	var t := game.clock
-	var barracks := _mine("barracks").size()
 	var gold: int = game.players[team]["gold"]
-	if barracks == 0 and labs >= [10, 8, 7][difficulty]:
-		_construct("barracks")
-	elif barracks == 1 and t > [420.0, 200.0, 150.0][difficulty] and gold > 200:
-		_construct("barracks")
-	elif barracks == 2 and difficulty == 2 and t > 330.0 and gold > 300:
-		_construct("barracks")
-	if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > [480.0, 260.0, 200.0][difficulty]:
-		_construct("foundry")
-	# Expand to the natural once the main base is running.
+	if _brood():
+		if _mine("warren").is_empty() and labs >= [9, 7, 6][difficulty]:
+			_construct("warren")
+		if _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > [480.0, 250.0, 190.0][difficulty]:
+			_construct("gorge_pit")
+	else:
+		var barracks := _mine("barracks").size()
+		if barracks == 0 and labs >= [10, 8, 7][difficulty]:
+			_construct("barracks")
+		elif barracks == 1 and t > [420.0, 200.0, 150.0][difficulty] and gold > 200:
+			_construct("barracks")
+		elif barracks == 2 and difficulty == 2 and t > 330.0 and gold > 300:
+			_construct("barracks")
+		if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > [480.0, 260.0, 200.0][difficulty]:
+			_construct("foundry")
+	# Expand to the natural once the main base is running (or running dry).
+	var hall: String = _f()["hall"]
 	var main_gold := 0
-	for h in _mine("town_hall"):
+	for h in _halls():
 		for m in game.mines:
 			if m.center().distance_to(h.center()) < 420.0:
 				main_gold += m.gold
 	var running_low := main_gold < Defs.MINE_GOLD * 0.8
-	if _mine("town_hall").size() == 1 and (t > [9999.0, 480.0, 360.0][difficulty] or running_low) and gold >= 400:
+	var expand_t: float = [9999.0, 480.0, 360.0][difficulty] * (0.6 if _brood() else 1.0)
+	if _halls().size() == 1 and (t > expand_t or running_low) and gold >= int(Defs.BUILDINGS[hall]["cost"]) + 50:
 		var spot: Vector2i = game.expansions[team]
-		if game.placement_problem(team, "town_hall", spot) == "":
-			_construct("town_hall", spot)
+		if game.placement_problem(team, hall, spot) == "":
+			_construct(hall, spot)
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
@@ -102,7 +136,10 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	var spot := at if at.x >= 0 else _find_spot(kind)
 	if spot.x < 0:
 		return
-	# Use the labourer nearest the spot that isn't carrying gold home.
+	# Brood: the grub is used up, so don't eat into a tiny economy.
+	if _brood() and _labourers().size() <= 4 and kind != _f()["supply"]:
+		return
+	# Use the worker nearest the spot that isn't carrying gold home.
 	var best: Unit = null
 	var bd := INF
 	var target := Vector2(spot) * Defs.TILE
@@ -118,7 +155,7 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 
 
 func _find_spot(kind: String) -> Vector2i:
-	var halls := _mine("town_hall")
+	var halls := _halls()
 	if halls.is_empty():
 		return Vector2i(-1, -1)
 	var hall: Building = halls[0]
@@ -169,6 +206,20 @@ func _margin_free(cell: Vector2i, size: Vector2i) -> bool:
 
 func _produce() -> void:
 	var army := game.army(team)
+	if _brood():
+		var brutes := army.filter(func(u: Unit) -> bool: return u.kind == "brute").size()
+		for h in _halls():
+			if not h.built:
+				continue
+			while h.eggs > 0:
+				var k := "raptor" if randf() < 0.6 else "spitter"
+				if game.requirement_met(team, "gorge_pit") and _mine("gorge_pit").any(func(b: Building) -> bool: return b.built) and brutes * 12 < army.size() + 6:
+					k = "brute"
+				if game.train(h, k) != "":
+					break
+				if k == "brute":
+					brutes += 1
+		return
 	var cannons := army.filter(func(u: Unit) -> bool: return u.kind == "cannon").size()
 	for b in _mine("barracks"):
 		if b.built and b.queue.size() < 2:
@@ -201,6 +252,8 @@ func _army() -> void:
 					u.cmd_move(threat, true)
 		return
 	var sup := _army_supply(army)
+	if _brood() and _attack_at < 22:
+		_attack_at = 22     # a swarm waits until it's a swarm
 	if not _attacking and sup >= _attack_at:
 		_attacking = true
 		_wave_target = _enemy_base()
@@ -217,7 +270,7 @@ func _army() -> void:
 				u.cmd_move(_wave_target + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
 	else:
 		# Gather at a rally spot in front of the base.
-		var hall: Array = _mine("town_hall")
+		var hall: Array = _halls()
 		if hall.is_empty():
 			return
 		var front: Vector2 = hall[0].center().lerp(_enemy_base(), 0.15)
