@@ -12,6 +12,8 @@ var queue: Array = []            # unit kinds
 var prod_t := 0.0
 var rally := Vector2.INF
 var rally_target: Entity = null
+var worker_rally := Vector2.INF  # Hive: workers and army have separate rally points
+var worker_rally_target: Entity = null
 var seeded := true               # Brood: a grub has turned into the site
 var eggs := 0                    # Brood Hive
 var egg_t := 0.0
@@ -84,6 +86,18 @@ func add_progress(delta: float) -> void:
 
 func can_train(k: String) -> bool:
 	return built and not dead and (d["trains"] as Array).has(k)
+
+
+## True when this building trains both workers and soldiers (the Brood Hive).
+func dual_rally() -> bool:
+	var w := false
+	var a := false
+	for k in d["trains"]:
+		if Defs.is_worker(k):
+			w = true
+		else:
+			a = true
+	return w and a
 
 
 func uses_eggs() -> bool:
@@ -168,7 +182,10 @@ func _brood(delta: float) -> void:
 func _update_fire() -> void:
 	var burning: bool = built and hp < max_hp * 0.5 and d["faction"] != "brood"
 	if burning and fire == null:
-		fire = game.spawn_effect("fire", Vector2.ZERO, 1.0, true)
+		var big := randf() < 0.5
+		fire = game.spawn_effect("blaze" if big else "fire", Vector2.ZERO, 0.8 if big else 1.0, true)
+		if big:
+			fire.scale = Vector2(0.75, 0.75)
 		fire.reparent(self, false)
 		fire.position = Vector2(randf_range(-12, 12), -rect().size.y * 0.75)
 		fire.z_index = 1
@@ -219,6 +236,12 @@ func die() -> void:
 	_update_sprite()
 	z_index = -1
 	game.spawn_effect("dust", global_position + Vector2(0, -rect().size.y * 0.4), 2.2)
+	if d["faction"] != "brood":
+		for i in 3:
+			var fx := game.spawn_effect(["explosion", "burst", "flame"][i], global_position + Vector2(randf_range(-0.35, 0.35) * rect().size.x, -randf_range(0.2, 0.7) * rect().size.y), 1.5 + i * 0.3)
+			fx.scale = Vector2(0.9, 0.9)
+		var sm := game.spawn_effect("smoke_big", global_position + Vector2(0, -rect().size.y * 0.5), 0.9)
+		sm.modulate.a = 0.8
 
 
 func _draw() -> void:
@@ -231,6 +254,9 @@ func _draw() -> void:
 		if rally != Vector2.INF and team == game.human:
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), rally - global_position, Color(0.4, 1, 0.4, 0.6), 2.0, 8.0)
 			draw_circle(rally - global_position, 4, Color(0.4, 1, 0.4, 0.9))
+		if worker_rally != Vector2.INF and team == game.human:
+			draw_dashed_line(Vector2(0, -r.size.y * 0.5), worker_rally - global_position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
+			draw_circle(worker_rally - global_position, 4, Color(1, 0.85, 0.3, 0.9))
 	var top := -sprite.texture.get_height() + 2.0 if sprite and sprite.texture else -r.size.y
 	draw_health(top, r.size.x * 0.7)
 	if not built:

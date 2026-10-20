@@ -16,7 +16,7 @@ func setup(name: String, speed := 1.0, looping := false) -> void:
 	fps = 10.0 * speed
 	loop = looping
 	centered = true
-	if name in ["fire", "dust", "blast"]:
+	if name in ["fire", "dust", "blast", "blaze"]:
 		offset = Vector2(0, -float(info["size"].y) * 0.4)
 
 
@@ -31,3 +31,5 @@ func _process(delta: float) -> void:
 			queue_free()
 			return
 	frame = f
+	if not loop and n >= 4 and f >= n - 2:
+		modulate.a = minf(modulate.a, clampf(float(n) - t, 0.0, 1.0) * 0.5 + 0.2)

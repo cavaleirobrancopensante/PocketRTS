@@ -246,10 +246,10 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			cancel_mode()
 			Sfx.play("click")
 			return
-		"rally":
+		"rally", "rally_army", "rally_worker":
 			var b := game.selected_building()
 			if b:
-				game.set_rally(b, p)
+				game.set_rally(b, p, {"rally": "auto", "rally_army": "army", "rally_worker": "worker"}[mode])
 			cancel_mode()
 			return
 	var e := game.entity_at(p)

@@ -241,7 +241,10 @@ func _build_card() -> Array:
 				var w := game.train(b, kk)
 				if w != "":
 					toast(w), why == "", why, str(Defs.UNITS[k]["cost"])])
-		if not b.d["trains"].is_empty():
+		if b.dual_rally():
+			list.append(["move", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
+			list.append(["gather", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
+		elif not b.d["trains"].is_empty():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
 			list.append(["stop", "CANCEL", func() -> void: game.cancel_train(b), true, "", ""])
@@ -329,8 +332,9 @@ func _draw() -> void:
 	if br.size != Vector2.ZERO:
 		draw_rect(br, Color(0.4, 1, 0.4, 0.12))
 		draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
-	if controls.mode in ["move", "attack", "rally"]:
-		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point"}[controls.mode]
+	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker"]:
+		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
+			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a mine (or a spot) for new grubs"}[controls.mode]
 		_text(font, Vector2(vs.x * 0.5, 66), t, 20, Color(1, 1, 0.7), 1)
 	elif controls.mode == "place":
 		_text(font, Vector2(vs.x * 0.5, 66), "Drag to position, tap again or PLACE to build", 20, Color(1, 1, 0.7), 1)

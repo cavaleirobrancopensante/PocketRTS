@@ -44,7 +44,8 @@ BROOD_UNITS = {
     "gearknight": {"rows": ["idle", "walk", "attack", "block", "death"], "height": 30, "dir": "clockwork",
                    "row0": "s", "skip": {1: 2}},
     "bolt": {"rows": ["idle", "walk", "crank", "attack", "death"], "height": 28, "dir": "clockwork", "row0": "s"},
-    "steam_walker": {"rows": ["idle", "walk", "attack", "vent", "death"], "height": 36, "dir": "clockwork", "row0": "e"},
+    "steam_walker": {"rows": ["idle", "walk", "attack", "vent", "death"], "height": 66, "dir": "clockwork", "row0": "e",
+                     "mask": "flat"},
 }
 # Width in game pixels of each finished building (ChatGPT drew each at its own zoom).
 BUILDING_WIDTH = {"town_hall": 150, "cottage": 72, "barracks": 128, "foundry": 118,
@@ -91,6 +92,15 @@ def checker_mask(px, min_level=196, max_chroma=14):
     lines = (rgb.min(-1) >= 150) & ((rgb.max(-1) - rgb.min(-1)) <= 10)
     fg &= ~(lines & ndimage.binary_opening(lines, structure=np.ones((25, 1))))
     return fg
+
+
+def flat_mask(px, tol=46):
+    """Foreground mask of a sheet on one flat background colour (taken from the border)."""
+    rgb = px[..., :3]
+    border = np.concatenate([rgb[0], rgb[-1], rgb[:, 0], rgb[:, -1]])
+    bg = np.median(border, axis=0)
+    fg = np.abs(rgb - bg).sum(-1) > tol
+    return ndimage.binary_opening(fg, iterations=1)
 
 
 def alpha_mask(px, threshold=128):
@@ -345,7 +355,7 @@ def merge_row(px, lst, gap=5):
 
 def import_brood_unit(name, cfg, data):
     px = load(f"art/{cfg.get('dir', 'brood')}/{name}.png")
-    fg = checker_mask(px)
+    fg = flat_mask(px) if cfg.get("mask") == "flat" else checker_mask(px)
     sprites = components(fg, 2, min_big=350)
     rows = cluster_1d(np.array([s["cy"] for s in sprites]), 45)
     rows.sort(key=lambda g: np.mean([sprites[i]["cy"] for i in g]))
@@ -561,7 +571,44 @@ def import_effects(data):
             strip[oy:oy + im.shape[0], k * W + ox:k * W + ox + im.shape[1]] = im
         save(strip, f"{OUT}/effects/{name}.png")
         data["effects"][name] = (len(imgs), W, H)
+    import_effects2(data)
     print("  effects", data["effects"])
+
+
+# effects2.png: projectiles and fire / explosion varieties, one effect per row.
+EFFECTS2 = [  # (name, scale, align, frame slice)
+    [("acid_ball", 0.2, "c", (0, 1)), ("acid_splash", 0.2, "c", (3, 8))],
+    [("bolt", 0.2, "c", (2, 3))],
+    [("ball", 0.2, "c", (0, 1)), ("ball_big", 0.2, "c", (1, 2))],
+    [("explosion", 0.22, "c", (0, 9))],
+    [("blaze", 0.3, "b", (0, 10))],
+    [("smoke_big", 0.22, "c", (0, 9))],
+    [("burst", 0.2, "c", (0, 6)), ("flame", 0.22, "c", (6, 10))],
+]
+
+
+def import_effects2(data):
+    px = load("art/world/effects2.png")
+    fg = checker_mask(px)
+    sprites = components(fg, 3, min_big=40, attach_dist=0)
+    rows = cluster_1d(np.array([s["cy"] for s in sprites]), 40)
+    rows.sort(key=lambda g: np.mean([sprites[i]["cy"] for i in g]))
+    rows = [r for r in rows if sum(sprites[i]["area"] for i in r) > 3000]
+    for ri, row in enumerate(rows[:len(EFFECTS2)]):
+        lst = merge_row(px, [sprites[i] for i in row], gap=14)
+        lst = [s for s in lst if s["area"] > 30]
+        print(f"  effects2 row {ri}: {len(lst)} frames")
+        for name, scale, align, (a, b) in EFFECTS2[ri]:
+            imgs = [unteam(shrink(cutout(px, s), scale)) for s in lst[a:b]]
+            W = max(i.shape[1] for i in imgs)
+            H = max(i.shape[0] for i in imgs)
+            strip = np.zeros((H, W * len(imgs), 4), np.uint8)
+            for k, im in enumerate(imgs):
+                oy = H - im.shape[0] if align == "b" else (H - im.shape[0]) // 2
+                ox = (W - im.shape[1]) // 2
+                strip[oy:oy + im.shape[0], k * W + ox:k * W + ox + im.shape[1]] = im
+            save(strip, f"{OUT}/effects/{name}.png")
+            data["effects"][name] = (len(imgs), W, H)
 
 
 def import_icons(data):

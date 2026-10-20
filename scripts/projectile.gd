@@ -16,8 +16,8 @@ var sprite: Sprite2D
 
 func _ready() -> void:
 	sprite = Sprite2D.new()
-	sprite.texture = Game.tex("res://assets/effects/cannonball.png")
-	sprite.scale = Vector2(0.8, 0.8)
+	sprite.texture = Game.tex("res://assets/effects/ball_big.png")
+	sprite.scale = Vector2(0.9, 0.9)
 	add_child(sprite)
 	z_index = 5
 
@@ -27,8 +27,8 @@ func _physics_process(delta: float) -> void:
 	var f := clampf(t / duration, 0.0, 1.0)
 	var h := sin(f * PI) * from.distance_to(to) * 0.18
 	position = from.lerp(to, f) - Vector2(0, h)
-	sprite.rotation = (to - from).angle()
-	sprite.flip_v = to.x < from.x
+	var dh := cos(f * PI) * PI * from.distance_to(to) * 0.18
+	sprite.rotation = ((to - from) - Vector2(0, dh)).angle() + PI
 	if f >= 1.0:
 		game.explode(to, damage, splash, team, shooter)
 		queue_free()

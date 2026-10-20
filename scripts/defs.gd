@@ -99,7 +99,7 @@ const UNITS := {
 	},
 	"steam_walker": {
 		"name": "Steam Walker", "hp": 380, "armor": 3, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
-		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 16, "from": "assembly_works",
+		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 20, "from": "assembly_works",
 		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
 		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
 	},

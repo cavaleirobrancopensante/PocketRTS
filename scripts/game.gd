@@ -571,6 +571,16 @@ func spawn_trained(b: Building, k: String) -> void:
 			Sfx.play_f("ready", b.d["faction"])
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+		if b.dual_rally() and u.is_worker():
+			if b.worker_rally_target is GoldMine:
+				u.cmd_gather(b.worker_rally_target)
+			elif b.worker_rally != Vector2.INF:
+				u.cmd_move(b.worker_rally + Vector2(randf_range(-12, 12), randf_range(-12, 12)))
+			else:
+				var wm := nearest_mine(u.position, b.team)
+				if wm and u.can_gather():
+					u.cmd_gather(wm)
+			continue
 		if u.can_gather():
 			var m: Entity = b.rally_target if b.rally_target is GoldMine else nearest_mine(u.position, b.team)
 			if m and (b.rally == Vector2.INF or b.rally_target is GoldMine):
@@ -877,7 +887,7 @@ func units_near(p: Vector2, r: float) -> Array:
 		for x in range(c0.x, c1.x + 1):
 			var lst: Array = _hash.get(Vector2i(x, y), [])
 			for u in lst:
-				if u.position.distance_to(p) <= r:
+				if is_instance_valid(u) and u.position.distance_to(p) <= r:
 					out.append(u)
 	return out
 
@@ -998,8 +1008,14 @@ func musket_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var hit := randf() < 0.85
 	if hit:
 		e.take_damage(dmg, u)
-		spawn_effect("hit", e.center() + Vector2(randf_range(-5, 5), randf_range(-5, 5)), 1.0)
-	_tracers.append([muzzle, e.center() + Vector2(randf_range(-8, 8), randf_range(-8, 8)) * (0.2 if hit else 1.6), 0.07])
+	var aim := e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)) if hit \
+		else e.center() + Vector2(randf_range(-26, 26), randf_range(-20, 20))
+	var s := Shot.new()
+	s.face_offset = PI
+	s.scale = Vector2(0.45, 0.45)
+	s.impact = "hit" if hit else "smoke"
+	s.impact_scale = 1.0 if hit else 0.35
+	s.launch(self, "ball", muzzle, aim, 950.0)
 	Sfx.play("musket", u.global_position)
 
 
@@ -1022,7 +1038,9 @@ func bolt_shot(u: Unit, e: Entity, dmg: float) -> void:
 	if e.is_building():
 		e.take_damage(dmg, u)
 		to = e.center()
-	_tracers.append([from, to, 0.1, Color(0.85, 0.7, 0.45), 2.0])
+	var s := Shot.new()
+	s.scale = Vector2(0.8, 0.8)
+	s.launch(self, "bolt", from, to, 760.0)
 	Sfx.play("bolt", u.global_position)
 
 
@@ -1049,7 +1067,12 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	e.take_damage(dmg, u)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
 	Sfx.play("acid", mouth)
-	_tracers.append([mouth, e.center(), 0.12, Color(0.75, 0.95, 0.2), 3.0])
+	var s := Shot.new()
+	s.arc = 0.18
+	s.scale = Vector2(1.3, 1.3)
+	s.impact = "acid_splash"
+	s.impact_scale = 0.7
+	s.launch(self, "acid_ball", mouth, e.center(), 330.0)
 
 
 func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
@@ -1069,7 +1092,17 @@ func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
 
 
 func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
-	spawn_effect("blast", p, 1.0)
+	match randi() % 3:
+		0:
+			spawn_effect("blast", p, 1.0)
+		1:
+			spawn_effect("explosion", p, 1.8).scale = Vector2(0.8, 0.8)
+		_:
+			spawn_effect("burst", p, 1.3)
+	if randf() < 0.5:
+		var sm := spawn_effect("smoke_big", p + Vector2(0, -6), 1.2)
+		sm.scale = Vector2(0.6, 0.6)
+		sm.modulate.a = 0.7
 	Sfx.play("boom", p)
 	for u in units_near(p, splash + 12.0):
 		if u.team != t and not u.dead:
@@ -1335,9 +1368,21 @@ func command_all(list: Array, what: String) -> void:
 				u.cmd_hold()
 
 
-func set_rally(b: Building, p: Vector2) -> void:
-	b.rally = p
+## which: "auto" (a Hive sends workers to a tapped mine, the army anywhere else),
+## "army" or "worker".
+func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 	var e := entity_at(p)
+	if b.dual_rally():
+		if which == "auto":
+			which = "worker" if e is GoldMine else "army"
+		if which == "worker":
+			b.worker_rally = p
+			b.worker_rally_target = e if e is GoldMine else null
+			return
+		b.rally = p
+		b.rally_target = null
+		return
+	b.rally = p
 	b.rally_target = e if e is GoldMine else null
 
 

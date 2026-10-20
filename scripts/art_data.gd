@@ -215,7 +215,7 @@ const UNITS := {
 		"idle_s": 2,
 		"walk_e": 7,
 	}},
-	"steam_walker": {"cell": Vector2i(94, 43), "anchor": Vector2(47, 41), "frames": {
+	"steam_walker": {"cell": Vector2i(152, 74), "anchor": Vector2(76, 72), "frames": {
 		"attack_e": 5,
 		"death_e": 6,
 		"idle_e": 2,
@@ -247,4 +247,14 @@ const EFFECTS := {
 	"fire": {"frames": 4, "size": Vector2i(31, 40)},
 	"dust": {"frames": 4, "size": Vector2i(39, 35)},
 	"hit": {"frames": 2, "size": Vector2i(16, 15)},
+	"acid_ball": {"frames": 1, "size": Vector2i(6, 5)},
+	"acid_splash": {"frames": 5, "size": Vector2i(35, 26)},
+	"bolt": {"frames": 1, "size": Vector2i(30, 5)},
+	"ball": {"frames": 1, "size": Vector2i(27, 6)},
+	"ball_big": {"frames": 1, "size": Vector2i(35, 9)},
+	"explosion": {"frames": 9, "size": Vector2i(40, 36)},
+	"blaze": {"frames": 10, "size": Vector2i(39, 51)},
+	"smoke_big": {"frames": 9, "size": Vector2i(36, 27)},
+	"burst": {"frames": 6, "size": Vector2i(26, 24)},
+	"flame": {"frames": 4, "size": Vector2i(23, 24)},
 }

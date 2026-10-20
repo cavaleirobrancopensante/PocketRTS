@@ -7,7 +7,7 @@ var game: Game
 var ui_layer: CanvasLayer
 var menu: Control
 var _went_fullscreen := false
-var pick := {"me": "crown", "enemy": "brood", "difficulty": 1}
+var pick := {"me": "crown", "enemy": "brood", "difficulty": 1, "blue": "you"}
 
 const HELP := """Destroy every enemy building to win.
 
@@ -88,9 +88,6 @@ func show_menu() -> void:
 	v.add_child(_label("The Crown  ·  The Brood  ·  The Clockwork", 20, Color(1, 1, 1, 0.6)))
 	v.add_child(_gap(10))
 	v.add_child(_button("SKIRMISH", func() -> void: show_skirmish()))
-	v.add_child(_button("WATCH AI vs AI", func() -> void:
-		var fs := ["crown", "brood", "clockwork"]
-		start(1, true, [fs[randi() % 3], fs[randi() % 3]])))
 	v.add_child(_button("HOW TO PLAY", func() -> void: _show_help()))
 	var audio := HBoxContainer.new()
 	audio.add_theme_constant_override("separation", 12)
@@ -134,12 +131,15 @@ func show_skirmish() -> void:
 	v.add_theme_constant_override("separation", 10)
 	menu.add_child(v)
 	v.add_child(_label("SKIRMISH", 44))
-	v.add_child(_choice_row("YOUR FACTION", "me", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "THE CLOCKWORK"]]))
-	var about := _label(Defs.FACTIONS[pick["me"]]["about"], 16, Color(1, 1, 1, 0.6))
+	var watch: bool = pick["blue"] == "ai"
+	var facs := [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "THE CLOCKWORK"], ["random", "RANDOM"]]
+	v.add_child(_choice_row("BLUE PLAYS", "blue", [["you", "YOU"], ["ai", "COMPUTER (WATCH)"]]))
+	v.add_child(_choice_row("BLUE FACTION" if watch else "YOUR FACTION", "me", facs))
+	var about := _label(Defs.FACTIONS[pick["me"]]["about"] if Defs.FACTIONS.has(pick["me"]) else "A faction picked at random.", 16, Color(1, 1, 1, 0.6))
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(about)
-	v.add_child(_choice_row("ENEMY", "enemy", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "THE CLOCKWORK"], ["random", "RANDOM"]]))
-	v.add_child(_choice_row("DIFFICULTY", "difficulty", [[0, "EASY"], [1, "NORMAL"], [2, "HARD"]]))
+	v.add_child(_choice_row("RED FACTION" if watch else "ENEMY", "enemy", facs))
+	v.add_child(_choice_row("AI LEVEL" if watch else "DIFFICULTY", "difficulty", [[0, "EASY"], [1, "NORMAL"], [2, "HARD"]]))
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sp)
@@ -147,11 +147,12 @@ func show_skirmish() -> void:
 	row.add_theme_constant_override("separation", 16)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(_button("BACK", func() -> void: show_menu()))
-	var go := _button("START", func() -> void:
-		var enemy: String = pick["enemy"]
-		if enemy == "random":
-			enemy = ["crown", "brood", "clockwork"][randi() % 3]
-		start(pick["difficulty"], false, [pick["me"], enemy]))
+	var go := _button("WATCH" if watch else "START", func() -> void:
+		var fs := []
+		for k in ["me", "enemy"]:
+			var f: String = pick[k]
+			fs.append(["crown", "brood", "clockwork"][randi() % 3] if f == "random" else f)
+		start(pick["difficulty"], pick["blue"] == "ai", fs))
 	go.custom_minimum_size = Vector2(260, 60)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("#3f8a4c")

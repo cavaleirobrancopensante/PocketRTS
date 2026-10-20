@@ -726,9 +726,46 @@ func _animate(delta: float) -> void:
 		frame_i += 1
 	frame_i = posmod(frame_i, n) if loop else mini(frame_i, n - 1)
 	sprite.frame = mini(frame_i, sprite.hframes - 1)
-	# Cannon: fake recoil and a little bounce, since it's one frame per pose.
 	if kind == "cannon":
-		sprite.position.x = -facing.x * (4.0 if anim == "fire" else 0.0)
+		_animate_cannon(delta)
+
+
+## The cannon sheet has one frame per pose, so the crew's work is faked: the gun rocks and
+## bumps along while it's pushed, recoils when it fires, and the rammer works the barrel
+## (reload and idle poses swapped) while it reloads.
+var _gun_t := 0.0
+
+
+func _animate_cannon(delta: float) -> void:
+	_gun_t += delta
+	sprite.position = Vector2.ZERO
+	sprite.rotation = 0.0
+	match anim:
+		"move":
+			var k := _gun_t * 9.0
+			sprite.position.y = -absf(sin(k)) * 1.6
+			sprite.rotation = sin(k * 0.5) * 0.035 * (1.0 if facing.x >= 0.0 else -1.0)
+			if int(_gun_t * 4.0) != int((_gun_t - delta) * 4.0) and randf() < 0.5:
+				var fx := game.spawn_effect("dust", global_position - facing * 16.0 + Vector2(randf_range(-6, 6), randf_range(-2, 2)), 1.6)
+				fx.scale = Vector2(0.3, 0.3)
+				fx.modulate.a = 0.55
+		"fire":
+			sprite.position.x = -facing.x * 5.0 * maxf(0.0, 1.0 - _gun_t * 3.0)
+		"reload":
+			var ram := int(_gun_t * 2.6) % 2 == 0
+			var key := ("reload_" if ram else "idle_") + anim_dir
+			sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, key])
+			sprite.position.x = facing.x * (1.0 if ram else 0.0)
+		_:
+			pass
+	if anim != _last_gun_anim:
+		_last_gun_anim = anim
+		_gun_t = 0.0
+		if anim != "reload":
+			sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, anim + "_" + anim_dir])
+
+
+var _last_gun_anim := ""
 
 
 func _set_anim(a: String, force: bool) -> void:
