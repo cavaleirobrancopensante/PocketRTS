@@ -161,7 +161,8 @@ func rect() -> Rect2:
 
 
 func center() -> Vector2:
-	return global_position + Vector2(0, -12)
+	# flyers are drawn hovering 20 px up: shots and zaps go to where they're seen
+	return global_position + Vector2(0, -32 if is_air() else -12)
 
 
 # ------------------------------------------------------------------ orders
@@ -852,10 +853,11 @@ func _anim_name() -> String:
 		"musketeer":
 			if mode == "bayonet":
 				return "melee" if phase != "" else ("walk" if moving else "idle")
+			var up := target != null and is_instance_valid(target) and target.is_air()
 			if phase == "aim":
-				return "aim"
+				return "aimup" if up else "aim"
 			if phase == "strike":
-				return "fire"
+				return "fireup" if up else "fire"
 			if cooldown > 0.0 and not moving and target:
 				return "reload"
 		"pikeman":
@@ -959,7 +961,7 @@ func _animate(delta: float) -> void:
 		"death":
 			fps = 7.0
 			loop = false
-		"aim", "fire", "thrust", "brace", "attack", "melee":
+		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
 			fps = 9.0
 			loop = false
 		"burrow":
@@ -1012,6 +1014,10 @@ func _animate(delta: float) -> void:
 	sprite.scale.y = 1.0
 	if kind == "cannon":
 		_animate_cannon(delta)
+	elif kind in ["spitter", "bolt"]:
+		# rear up / tilt the crossbow at a flyer
+		var at_air: bool = target != null and is_instance_valid(target) and target.is_air() and phase != ""
+		sprite.rotation = (-0.32 if not anim_flip else 0.32) if at_air else 0.0
 
 
 ## The cannon sheet has one frame per pose, so the crew's work is faked: the gun rocks and
@@ -1129,7 +1135,9 @@ func _set_anim(a: String, force: bool) -> void:
 	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, key])
 	sprite.hframes = frames.get(key, 1)
 	var anchor: Vector2 = ArtData.UNITS[kind]["anchor"]
-	sprite.offset = -anchor
+	# some sheets (aiming up) have extra room on top: the feet stay where they were
+	var cell: Vector2i = ArtData.UNITS[kind]["cell"]
+	sprite.offset = -anchor - Vector2(0, sprite.texture.get_height() - cell.y)
 	sprite.scale.x = -1.0 if flip else 1.0
 	frame_i = mini(frame_i, sprite.hframes - 1)
 

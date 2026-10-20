@@ -132,6 +132,7 @@ Then two repair passes fix mistakes in the generated art, pixel by pixel:
 
 - `python3 tools/fix_weapons.py` finds the pikeman's pike and the musketeer's musket (the thin parts sticking out of the body) and repaints them straight and the same length in every walk and idle frame.
 - `python3 tools/fix_pike.py` keeps the pike full length in the thrust frames.
+- `PYTHONPATH=tools python3 tools/make_aim_up.py` makes the musketeer's aim-up and fire-up frames (the soldier leans back from the hips, musket raised) used against flyers.
 
 ## Project layout
 

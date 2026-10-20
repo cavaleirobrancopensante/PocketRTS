@@ -1427,6 +1427,8 @@ func entity_at(p: Vector2, include_mines := true) -> Entity:
 
 func musket_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var muzzle := u.center() + u.facing * 20.0 + Vector2(0, -2)
+	if e.is_air():
+		muzzle = u.center() + u.facing * 13.0 + Vector2(0, -15)     # aiming up
 	spawn_effect("smoke", muzzle + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
 	var hit := randf() < 0.85
 	if hit:
@@ -1446,7 +1448,7 @@ var _tracers: Array = []
 
 
 func bolt_shot(u: Unit, e: Entity, dmg: float) -> void:
-	var from := u.center() + u.facing * 16.0
+	var from := u.center() + u.facing * 16.0 + (Vector2(0, -8) if e.is_air() else Vector2.ZERO)
 	var dir := (e.center() - from).normalized()
 	var to := from + dir * (float(u.d["range"]) + 40.0)
 	var hits := 0
@@ -1544,7 +1546,7 @@ func _bolt_line(a: Vector2, b: Vector2) -> void:
 
 
 func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
-	var mouth := u.center() + u.facing * 14.0
+	var mouth := u.center() + u.facing * 14.0 + (Vector2(0, -8) if e.is_air() else Vector2.ZERO)
 	e.take_damage(dmg, u)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
 	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
