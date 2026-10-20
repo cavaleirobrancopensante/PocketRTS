@@ -91,7 +91,18 @@ func is_unit() -> bool:
 const CORPSE_TIME := 30.0
 
 
+## A number drawn with the pixel digits (centred on `at`).
+func _draw_number(v: int, at: Vector2) -> void:
+	var tex: Texture2D = Game.tex("res://assets/effects/digits.png")
+	var txt := str(v)
+	var x := at.x - txt.length() * 4.0
+	for ch in txt:
+		draw_texture_rect_region(tex, Rect2(x, at.y, 7, 9), Rect2(int(ch) * 7, 0, 7, 9))
+		x += 8.0
+
+
 func _rest_in_peace() -> void:
+	queue_redraw()
 	set_physics_process(false)
 	set_process(false)
 	var tw := create_tween()
@@ -1698,6 +1709,9 @@ func _set_anim(a: String, force: bool) -> void:
 
 func _draw() -> void:
 	if dead:
+		# a veteran's body: how much essence it holds, for the Brood to see
+		if kills > 0 and game.corpses.has(self):
+			_draw_number(game.corpse_value(self), Vector2(0, -26))
 		return
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, radius + 2.0, Color(0, 0, 0, 0.25))
@@ -1756,6 +1770,4 @@ func _draw() -> void:
 		# just bandaged: a little cross over his head
 		var y := top - 12.0
 		var a := minf(cross_t, 1.0)
-		draw_rect(Rect2(-1.5, y - 5, 3, 10), Color(1, 1, 1, a))
-		draw_rect(Rect2(-4, y - 2, 8, 3), Color(1, 1, 1, a))
-		draw_rect(Rect2(-1.5, y - 5, 3, 10), Color(0.8, 0.1, 0.1, a), false, 1.0)
+		draw_texture(Game.tex("res://assets/effects/cross.png"), Vector2(-6, y - 6), Color(1, 1, 1, a))
