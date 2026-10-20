@@ -548,7 +548,7 @@ def crisp(img, levels=None):
     a = out[..., 3] > 0
     rgb = out[..., :3].astype(float)
     mean = rgb[a].mean(0)
-    rgb = np.clip((rgb - mean) * 1.18 + mean, 0, 255)
+    rgb = np.clip((rgb - mean) * 1.18 + mean * 1.12, 0, 255)
     out[..., :3] = np.where(a[..., None], rgb.round(), 0).astype(np.uint8)
     out[..., 3] = np.where(a, 255, 0)
     return out
@@ -615,7 +615,7 @@ DIGITS = [
     [".##..", "###..", ".##..", ".##..", ".##..", ".##..", "####."],
     [".###.", "##.##", "...##", "..##.", ".##..", "##...", "#####"],
     ["####.", "...##", "...##", ".###.", "...##", "...##", "####."],
-    ["...##", "..###", ".#.##", "#..##", "#####", "...##", "...##"],
+    ["##.##", "##.##", "##.##", "#####", "...##", "...##", "...##"],
     ["#####", "##...", "####.", "...##", "...##", "##.##", ".###."],
     [".###.", "##...", "##...", "####.", "##.##", "##.##", ".###."],
     ["#####", "...##", "..##.", "..##.", ".##..", ".##..", ".##.."],
@@ -655,16 +655,14 @@ def build_cross(rows):
     square, then the gold rim: 12x12. Red shifted off the team key."""
     src = rows[1][0]
     hi, lo, gold = ui_colours(src)
-    img = src["img"].astype(int)
-    r, g, b = img[..., 0], img[..., 1], img[..., 2]
-    red = (img[..., 3] > 0) & (r >= 140) & (g <= 0.35 * r)
-    ys, xs = np.nonzero(red)
+    sil = src["img"][..., 3] > 0
+    ys, xs = np.nonzero(sil)
     span = xs.max() - xs.min() + 1
-    mid = int(np.median(ys))
-    arm = np.flatnonzero(red[:, int(np.median(xs))]).size   # vertical bar length = span
-    thick = np.flatnonzero(red[mid - span // 3, :]).size if mid - span // 3 >= 0 else span // 3
+    # the vertical bar's width a quarter of the way down (rim and outline included on
+    # both sides, as in the full span)
+    thick = np.flatnonzero(sil[ys.min() + span // 4]).size
     n = 10
-    t = int(round(thick / float(span) * n))
+    t = int(round(thick / float(span) * (n + 2))) - 2
     t = t + (n - t) % 2                       # centred: same parity as the square
     a = (n - t) // 2
     mask = np.zeros((n, n), bool)
@@ -672,7 +670,7 @@ def build_cross(rows):
     mask[:, a:a + t] = True
     out = glyph_image(mask, hi, lo, gold, a + t // 2)
     Image.fromarray(out, "RGBA").save("assets/effects/cross.png")
-    print(f"cross: 1 frame {out.shape[1]}x{out.shape[0]} (arm {t} px of {n}; sheet bar {arm} px)")
+    print(f"cross: 1 frame {out.shape[1]}x{out.shape[0]} (arm {t} px of {n})")
     return {"cross": (1, out.shape[1], out.shape[0])}
 
 
@@ -683,3 +681,141 @@ def build_ui():
     fx.update(build_cross(rows))
     fx.update(build_digits(rows))
     return fx
+
+
+# ---------------------------------------------------------------- output
+
+def write_strips(kind, strips, owned=None):
+    """Strips to assets/units/<kind>/. owned: the names this script owns in a folder it
+    shares (the labourer's): only those are replaced; stale ones of them removed."""
+    out = f"assets/units/{kind}"
+    os.makedirs(out, exist_ok=True)
+    if owned is None:
+        for f in os.listdir(out):
+            if f.endswith(".png") and f[:-4] not in strips:
+                os.remove(os.path.join(out, f))
+                if os.path.exists(os.path.join(out, f + ".import")):
+                    os.remove(os.path.join(out, f + ".import"))
+    for key, strip in sorted(strips.items()):
+        Image.fromarray(strip, "RGBA").save(f"{out}/{key}.png")
+
+
+def write_labourer_frames(counts):
+    """The new keys added to (or updated in) the labourer entry's "frames" - nothing else
+    in the entry or the file changes."""
+    path = "scripts/art_data.gd"
+    src = open(path).read()
+    start = src.index('\t"labourer": {"cell"')
+    end = src.index("\n\t}},\n", start) + 1
+    block = src[start:end]
+    for key in sorted(counts):
+        line = f'\t\t"{key}": {counts[key]},\n'
+        pat = re.compile(r'\t\t"' + key + r'": \d+,\n')
+        if pat.search(block):
+            block = pat.sub(lambda m: line, block, count=1)
+        else:
+            block = block + line
+    open(path, "w").write(src[:start] + block + src[end:])
+
+
+def wagon_icon(groups, bgc):
+    """The wagon in three-quarter view (row 1, walk frame 0), rendered from the source."""
+    src = groups[1][0][0]["img"]
+    img = to_game(src, 54.0 / max(src.shape[:2]), bgc)
+    make_icon(img, "powder_wagon")
+    path = "assets/icons/powder_wagon.png"
+    a = np.array(Image.open(path).convert("RGBA")).astype(float)
+    al = a[..., 3:4] / 255.0
+    a[..., :3] = a[..., :3] * al + np.array([28, 30, 30], float) * (1 - al)
+    a[..., 3] = 255
+    Image.fromarray(a.round().astype(np.uint8), "RGBA").save(path)
+
+
+def strip_frames(strip, w, n):
+    return [strip[:, i * w:(i + 1) * w].copy() for i in range(n)]
+
+
+def marked(fr, anchor):
+    fr = fr.copy()
+    ax, ay = int(anchor[0]), int(anchor[1])
+    fr[ay, max(0, ax - 2):ax + 3] = (255, 255, 255, 110)
+    fr[0, :, 3] = np.maximum(fr[0, :, 3], 40)
+    fr[-1, :, 3] = np.maximum(fr[-1, :, 3], 40)
+    return fr
+
+
+def contacts(wagon, lab, fx):
+    cell, anchor, counts = wagon
+    ref = []
+    for rk, rn in (("cannon", "walk_e"), ("cannon", "walk_s")):
+        a = np.array(Image.open(f"assets/units/{rk}/{rn}.png").convert("RGBA"))
+        ref.append(a[:, :152])
+    lines = [("cannon e / s", ref)]
+    for an in ("walk", "idle", "unload", "death"):
+        for d in DIRS:
+            key = f"{an}_{d}"
+            s = np.array(Image.open(f"assets/units/powder_wagon/{key}.png").convert("RGBA"))
+            lines.append((key, [marked(f, anchor) for f in strip_frames(s, cell[0], counts[key])]))
+    lines.append(("icon", [np.array(Image.open("assets/icons/powder_wagon.png").convert("RGBA")),
+                           np.array(Image.open("assets/icons/cannon.png").convert("RGBA"))]))
+    contact_sheet(os.path.join(CONTACT, "contact_powder_wagon.png"), lines)
+
+    lcell, lanchor, lcounts = lab
+    lines = []
+    for rn in ("walk_s", "carry_e"):
+        s = np.array(Image.open(f"assets/units/labourer/{rn}.png").convert("RGBA"))
+        lines.append(("old " + rn, strip_frames(s, lcell[0], s.shape[1] // lcell[0])))
+    for an in ("carry_keg", "idle_keg", "bury", "death_keg"):
+        for d in DIRS:
+            key = f"{an}_{d}"
+            s = np.array(Image.open(f"assets/units/labourer/{key}.png").convert("RGBA"))
+            lines.append((key, [marked(f, lanchor) for f in strip_frames(s, lcell[0], lcounts[key])]))
+    contact_sheet(os.path.join(CONTACT, "contact_labourer_keg.png"), lines)
+
+    lines = []
+    for name, (n, w, h) in fx.items():
+        s = np.array(Image.open(f"assets/effects/{name}.png").convert("RGBA"))
+        fr = strip_frames(s, w, n)
+        if name.startswith("keg_mine"):
+            fr = [marked(f, (w // 2, h // 2)) for f in fr]
+        lines.append((name, fr))
+    contact_sheet(os.path.join(CONTACT, "contact_keg_effects.png"), lines)
+
+
+def main():
+    if DEBUG:
+        os.makedirs(DEBUG, exist_ok=True)
+    # powder wagon
+    A, groups, bgc = plan_wagon()
+    A = finish_wagon(A)
+    A = {k: [trim(f) for f in fr] for k, fr in A.items()}
+    strips, cell, anchor = assemble(A)
+    write_strips("powder_wagon", strips)
+    counts = {k: s.shape[1] // cell[0] for k, s in strips.items()}
+    write_units_data({"powder_wagon": (cell, anchor, counts)})
+    wagon_icon(groups, bgc)
+    print(f"powder_wagon: cell {cell[0]}x{cell[1]}, anchor {anchor}")
+    print("  " + ", ".join(f"{k} {n}" for k, n in sorted(counts.items())))
+    # labourer with keg
+    L, lcell, lanchor, lscale, lrows, lbgc = plan_labourer()
+    lstrips, clipped = fit_cell(L, lcell, lanchor)
+    if clipped:
+        print("WARNING: labourer frames clipped by the cell:", clipped)
+    write_strips("labourer", lstrips, owned=True)
+    lcounts = {k: s.shape[1] // lcell[0] for k, s in lstrips.items()}
+    write_labourer_frames(lcounts)
+    print(f"labourer (keg): cell {lcell}, anchor {lanchor}, scale {lscale:.3f}, "
+          f"blast frames shrunk {', '.join(f'{d} x{k:.2f}' for d, k in BLAST_FIT.items()) or 'none'}")
+    print("  " + ", ".join(f"{k} {n}" for k, n in sorted(lcounts.items())))
+    # effects
+    os.makedirs("assets/effects", exist_ok=True)
+    fx = build_mine(lrows, lbgc)
+    fx.update(build_ui())
+    write_effects_data(fx)
+    if CONTACT:
+        os.makedirs(CONTACT, exist_ok=True)
+        contacts((cell, anchor, counts), (lcell, lanchor, lcounts), fx)
+
+
+if __name__ == "__main__":
+    main()
