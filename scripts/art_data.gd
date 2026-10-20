@@ -331,6 +331,16 @@ const BUILDING_SIZE := {
 const NATURE := ["tree_0", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "rock_0", "rock_1", "rock_2", "rock_3", "rock_4", "rock_5"]
 
 const EFFECTS := {
+	"zap_spark": {"frames": 5, "size": Vector2i(22, 22)},
+	"zap_spark_w": {"frames": 5, "size": Vector2i(22, 22)},
+	"zap_spark_y": {"frames": 5, "size": Vector2i(22, 22)},
+	"zap_burst": {"frames": 6, "size": Vector2i(30, 30)},
+	"zap_burst_y": {"frames": 6, "size": Vector2i(30, 30)},
+	"zap_bolt": {"frames": 4, "size": Vector2i(64, 16)},
+	"zap_bolt_y": {"frames": 4, "size": Vector2i(64, 16)},
+	"zap_arc": {"frames": 4, "size": Vector2i(64, 24)},
+	"zap_strike": {"frames": 4, "size": Vector2i(24, 72)},
+	"zap_crackle": {"frames": 4, "size": Vector2i(16, 16)},
 	"smoke": {"frames": 4, "size": Vector2i(27, 25)},
 	"blast": {"frames": 5, "size": Vector2i(27, 32)},
 	"fire": {"frames": 4, "size": Vector2i(31, 40)},

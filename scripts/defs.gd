@@ -102,10 +102,10 @@ const UNITS := {
 	},
 	"cannon": {
 		"tags": ["armored"],
-		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 40, "cost": 200, "time": 32.0, "supply": 4,
-		"sight": 9, "range": 300, "min_range": 70, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
+		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 38, "cost": 200, "time": 32.0, "supply": 4,
+		"sight": 8, "range": 430, "min_range": 80, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
 		"radius": 19, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
-		"about": "Long-range splash. Smashes buildings. Can't hit what's too close. Burns 3 powder a shot.",
+		"about": "Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers.",
 	},
 	"grub": {
 		"tags": ["light"],
@@ -301,6 +301,9 @@ static func is_worker(kind: String) -> bool:
 ## Crown abilities.
 const PIKE_PUSH := {"cooldown": 7.0, "force": 260.0, "stun": 0.7, "damage": 4.0}
 const BAYONET := {"range": 26.0, "damage": 11.0, "cooldown": 1.2, "aim": 0.2, "bonus": {"cannon": 2.0, "spitter": 1.3}}
+const CANNON_SWITCH := 2.5       # limber / unlimber
+## Clockwork towers zap flyers with chain lightning; while they do, their field is off.
+const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "jump": 110.0, "falloff": 0.7, "off": 3.0}
 const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "powder": 2, "cone": 0.82, "vs_light": 1.5}
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.

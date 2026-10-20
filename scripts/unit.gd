@@ -79,8 +79,12 @@ func is_air() -> bool:
 func can_hit(e: Entity) -> bool:
 	if d.get("medic", false) or e.untouchable():
 		return false
-	if e.is_air() and (not d.get("anti_air", false) or mode == "bayonet"):
-		return false
+	if e.is_air():
+		# the cannon's canister is the Crown's answer to massed flyers; round shot can't
+		if kind == "cannon":
+			return mode == "canister"
+		if not d.get("anti_air", false) or mode == "bayonet":
+			return false
 	return true
 
 
@@ -149,7 +153,7 @@ func _ready() -> void:
 	sprite.centered = false
 	sprite.material = team_material()
 	add_child(sprite)
-	if kind == "cannon":
+	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_make_wheel()
 	if is_air():
 		z_index = 3
@@ -183,7 +187,20 @@ func cmd_attack(e: Entity) -> void:
 	target = e
 
 
+func deploys() -> bool:
+	return kind == "tesla_cart" or kind == "cannon"
+
+
+func switch_time() -> float:
+	return Defs.CANNON_SWITCH if kind == "cannon" else Defs.TESLA_SWITCH
+
+
 func cmd_deploy() -> void:
+	if kind == "cannon" and tesla_mode == "packed":
+		cmd_stop()
+		tesla_mode = "deploying"
+		tesla_t = Defs.CANNON_SWITCH
+		return
 	if kind == "tesla_cart" and tesla_mode == "packed":
 		cmd_stop()
 		tesla_mode = "deploying"
@@ -192,9 +209,9 @@ func cmd_deploy() -> void:
 
 
 func cmd_pack() -> void:
-	if kind == "tesla_cart" and tesla_mode == "deployed":
+	if deploys() and tesla_mode == "deployed":
 		tesla_mode = "packing"
-		tesla_t = Defs.TESLA_SWITCH
+		tesla_t = switch_time()
 
 
 func cmd_heal(e: Unit) -> void:
@@ -339,7 +356,7 @@ func _physics_process(delta: float) -> void:
 					cmd_repair(hurt)
 			if not is_worker() and scan_t <= 0.0:
 				scan_t = 0.35
-				target = game.find_target(self, sight * Defs.TILE)
+				target = game.find_target(self, _scan_range())
 			if target:
 				want = _engage(target, delta, true)
 				if position.distance_to(leash_from) > 320.0:
@@ -358,7 +375,7 @@ func _physics_process(delta: float) -> void:
 		"amove":
 			if scan_t <= 0.0 and target == null and not is_worker():
 				scan_t = 0.3
-				target = game.find_target(self, sight * Defs.TILE)
+				target = game.find_target(self, _scan_range())
 			if target:
 				want = _engage(target, delta, true)
 				if target == null or not _valid_target(target):
@@ -381,7 +398,7 @@ func _physics_process(delta: float) -> void:
 			want = _heal(delta)
 		"build":
 			want = _build(delta)
-	if kind == "tesla_cart":
+	if deploys():
 		want = _tesla(want, delta)
 	_move(want, delta)
 	_animate(delta)
@@ -404,7 +421,7 @@ func _tesla(want: Vector2, delta: float) -> Vector2:
 		"deployed":
 			if want.length() > 5.0 and order in ["move", "amove", "gather", "build"]:
 				tesla_mode = "packing"
-				tesla_t = Defs.TESLA_SWITCH
+				tesla_t = switch_time()
 			return Vector2.ZERO
 	return want
 
@@ -417,6 +434,14 @@ func _finish_move() -> void:
 
 func _valid_target(e: Entity) -> bool:
 	return is_instance_valid(e) and not e.dead and e.is_inside_tree() and game.hostile(e.team, team) and can_hit(e)
+
+
+## How far this unit looks for targets: its sight, or for a cannon its full range (it
+## can shoot what any friendly unit sees).
+func _scan_range() -> float:
+	if kind == "cannon":
+		return maxf(sight * Defs.TILE, _range())
+	return sight * Defs.TILE
 
 
 func _range() -> float:
@@ -527,16 +552,16 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	var dist := e.edge_distance(position) - radius
 	var rng := _range()
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
-	if kind == "tesla_cart" and tesla_mode != "deployed":
-		if tesla_mode == "packed" and dist <= rng:
+	if deploys() and tesla_mode != "deployed":
+		if tesla_mode == "packed" and dist <= rng and dist >= min_r:
 			tesla_mode = "deploying"
-			tesla_t = Defs.TESLA_SWITCH
+			tesla_t = switch_time()
 			path = PackedVector2Array()
 			return Vector2.ZERO
 		if tesla_mode != "packed":
 			return Vector2.ZERO
-	elif kind == "tesla_cart" and dist > rng and phase == "":
-		target = null
+	elif deploys() and (dist > rng or dist < min_r) and phase == "":
+		target = null         # set-up guns don't chase
 		return Vector2.ZERO
 	if phase != "":
 		_attack_cycle(e, delta)
@@ -866,11 +891,16 @@ func _anim_name() -> String:
 			if order == "hold" and not moving:
 				return "brace"
 		"cannon":
+			var new_art: bool = ArtData.UNITS["cannon"]["frames"].has("walk_e")
+			if tesla_mode == "deploying" or tesla_mode == "packing":
+				return "deploy" if ArtData.UNITS["cannon"]["frames"].has("deploy_e") else "idle"
+			if tesla_mode == "packed":
+				return "walk" if new_art else ("move" if moving else "idle")
 			if phase != "":
 				return "fire"
 			if cooldown > 0.0 and target:
 				return "reload"
-			return "move" if moving else "idle"
+			return "idle"
 		"labourer":
 			if work == "manning":
 				var site := home_mine as Building
@@ -985,7 +1015,7 @@ func _animate(delta: float) -> void:
 		"reload":
 			fps = float(n) / maxf(float(d["cooldown"]) * 0.8, 0.5)
 		"deploy":
-			fps = float(n) / Defs.TESLA_SWITCH
+			fps = float(n) / switch_time()
 			loop = false
 		"deployed":
 			fps = 6.0
@@ -1012,8 +1042,10 @@ func _animate(delta: float) -> void:
 	if kind == "grub" and anim == "burrow" and n > 3:
 		sprite.frame = clampi(2 + int(_bob_t * 6.0) % (n - 2), 0, sprite.hframes - 1)
 	sprite.scale.y = 1.0
-	if kind == "cannon":
-		_animate_cannon(delta)
+	if kind == "cannon" and anim == "walk" and velocity.length() < 10.0:
+		sprite.frame = 0        # the horse stands still
+	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
+		_animate_cannon(delta)   # the old one-frame sheet: rock, recoil and a spinning wheel
 	elif kind in ["spitter", "bolt"]:
 		# rear up / tilt the crossbow at a flyer
 		var at_air: bool = target != null and is_instance_valid(target) and target.is_air() and phase != ""
@@ -1154,7 +1186,7 @@ func _draw() -> void:
 	if kind == "pikeman":
 		top = -44.0
 	elif kind == "cannon":
-		top = -64.0       # the back-view blast makes the frame taller than the gun
+		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	draw_health(top, radius * 2.4)
 	if work == "feeding":
 		return

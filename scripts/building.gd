@@ -26,6 +26,36 @@ var growth := 0.0                # Farm: 0..1 until the harvest
 var sprite: Sprite2D
 var fire: Effect = null
 var rubble_t := 0.0
+# Clockwork towers: anti-air lightning
+var zap_cd := 0.0
+var zap_off_t := 0.0             # field switched off while the tower fights
+var _zap_scan := 0.0
+# idle animation
+var _amb_t := 0.0
+var _crackle: Effect = null
+
+## Where each building puffs smoke, steams, sparks or drips spores: [effect, x, y (as
+## fractions of the sprite), seconds between puffs, size, tint]. Only drawn on screen.
+const AMBIENT := {
+	"town_hall": [["smoke", 0.26, 0.23, 1.6, 0.45, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.87, 0.21, 1.9, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
+	"cottage": [["smoke", 0.45, 0.1, 1.8, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
+	"barracks": [["smoke", 0.16, 0.3, 1.7, 0.4, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.83, 0.05, 2.1, 0.35, Color(0.85, 0.85, 0.85, 0.6)]],
+	"foundry": [["smoke", 0.25, 0.06, 0.7, 0.7, Color(0.45, 0.45, 0.45, 0.75)], ["fire", 0.72, 0.68, 1.1, 0.35, Color(1, 1, 1, 0.9)]],
+	"powder_mill": [["dust", 0.86, 0.86, 1.4, 0.3, Color(1, 1, 1, 0.6)]],
+	"church": [],
+	"hive": [["smoke", 0.5, 0.78, 1.3, 0.35, Color(0.6, 1.0, 0.3, 0.55)], ["smoke", 0.22, 0.82, 2.2, 0.3, Color(0.6, 1.0, 0.3, 0.5)], ["smoke", 0.78, 0.82, 2.4, 0.3, Color(0.6, 1.0, 0.3, 0.5)]],
+	"warren": [["smoke", 0.5, 0.74, 1.5, 0.35, Color(0.6, 1.0, 0.3, 0.5)]],
+	"gorge_pit": [["smoke", 0.5, 0.52, 0.9, 0.45, Color(0.6, 1.0, 0.3, 0.55)]],
+	"spore_vent": [["smoke", 0.42, 0.12, 0.8, 0.4, Color(0.75, 1.0, 0.4, 0.6)]],
+	"bone_midden": [["smoke", 0.5, 0.3, 1.6, 0.4, Color(0.75, 0.5, 1.0, 0.5)]],
+	"feeding_pit": [["acid_splash", 0.5, 0.55, 1.4, 0.5, Color(1, 0.6, 0.6, 0.8)]],
+	"clocktower": [["smoke", 0.2, 0.3, 1.1, 0.4, Color(1.2, 1.2, 1.2, 0.6)]],
+	"assembly_works": [["smoke", 0.3, 0.04, 0.9, 0.4, Color(1.2, 1.2, 1.2, 0.6)], ["smoke", 0.86, 0.05, 1.1, 0.4, Color(1.2, 1.2, 1.2, 0.6)]],
+	"boiler": [["smoke", 0.32, 0.07, 0.7, 0.45, Color(1.2, 1.2, 1.2, 0.65)]],
+	"ore_crusher": [["dust", 0.6, 0.55, 1.0, 0.35, Color(0.8, 0.8, 0.8, 0.7)]],
+}
+## The tip of each Clockwork tower, where its lightning lives.
+const TOWER_TOP := {"clocktower": Vector2(0.52, 0.03), "spring_tower": Vector2(0.6, 0.05), "charging_pylon": Vector2(0.52, 0.08)}
 
 
 func is_building() -> bool:
@@ -150,6 +180,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if built and not dead:
 		_econ(delta)
+		if d.has("field"):
+			_tower(delta)
+		_ambient(delta)
 	if d["faction"] == "brood":
 		_brood(delta)
 	elif d["faction"] == "clockwork":
@@ -234,6 +267,77 @@ func _update_fire() -> void:
 		fire.queue_free()
 		fire = null
 	_update_sprite()
+
+
+## A point on the sprite, given as fractions of its size, in world space.
+func sprite_point(fx: float, fy: float) -> Vector2:
+	if sprite == null or sprite.texture == null:
+		return center()
+	return global_position + sprite.offset + Vector2(sprite.texture.get_width() * fx, sprite.texture.get_height() * fy)
+
+
+func top_point() -> Vector2:
+	var f: Vector2 = TOWER_TOP.get(kind, Vector2(0.5, 0.1))
+	return sprite_point(f.x, f.y)
+
+
+## Clockwork towers shoot chain lightning up at flyers; while they do, their field is off.
+func _tower(delta: float) -> void:
+	zap_cd = maxf(zap_cd - delta, 0.0)
+	zap_off_t = maxf(zap_off_t - delta, 0.0)
+	_zap_scan -= delta
+	if _zap_scan > 0.0 or zap_cd > 0.0:
+		return
+	_zap_scan = 0.3
+	var r := float(Defs.TOWER_ZAP["range"]) * Defs.TILE
+	var best: Unit = null
+	var bd := r
+	for u in game.units_near(center(), r):
+		if u.is_air() and not u.dead and game.hostile(u.team, team) and not u.off_field:
+			var dd: float = u.position.distance_to(center())
+			if dd < bd:
+				bd = dd
+				best = u
+	if best:
+		zap_cd = Defs.TOWER_ZAP["cooldown"]
+		zap_off_t = Defs.TOWER_ZAP["off"]
+		game.tower_zap(self, best)
+
+
+func field_on() -> bool:
+	return zap_off_t <= 0.0
+
+
+## Idle life: smoke, steam, spores and, on Clockwork towers, constant crackle. Only when
+## somebody could see it.
+func _ambient(delta: float) -> void:
+	var shown := (visible or team == game.human) and game.view_rect.has_point(global_position)
+	if TOWER_TOP.has(kind) and ArtData.EFFECTS.has("zap_spark"):
+		if _crackle == null:
+			_crackle = Effect.new()
+			_crackle.setup("zap_spark", 1.0, true)
+			_crackle.z_index = 2
+			add_child(_crackle)
+		_crackle.global_position = top_point()
+		_crackle.visible = shown
+		_crackle.modulate = Color(1, 1, 1, 0.35) if not field_on() else Color.WHITE
+	if not shown:
+		return
+	var list: Array = AMBIENT.get(kind, [])
+	if list.is_empty():
+		return
+	_amb_t += delta
+	for i in list.size():
+		var e: Array = list[i]
+		var period: float = e[3]
+		# each emitter keeps its own rhythm
+		if fmod(_amb_t + i * 0.37 + float(get_instance_id() % 13) * 0.11, period) < delta:
+			if not ArtData.EFFECTS.has(e[0]):
+				continue
+			var fx := game.spawn_effect(e[0], sprite_point(e[1], e[2]) + Vector2(randf_range(-2, 2), 0), 0.8)
+			fx.scale = Vector2(e[4], e[4])
+			fx.modulate = e[5]
+			fx.z_index = 4
 
 
 func _update_sprite() -> void:

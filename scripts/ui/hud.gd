@@ -369,15 +369,18 @@ func _build_card() -> Array:
 								u.cmd_gather(m)
 							else:
 								toast("Every post is taken: build more."), true, "", ""])
-		if units.any(func(u: Unit) -> bool: return u.kind == "tesla_cart"):
-			var packed := units.any(func(u: Unit) -> bool: return u.kind == "tesla_cart" and u.tesla_mode == "packed")
-			list.insert(3, ["tesla_cart", "DEPLOY" if packed else "PACK", func() -> void:
-				for u in game.selected_units():
-					if u.kind == "tesla_cart":
-						if packed:
-							u.cmd_deploy()
-						else:
-							u.cmd_pack(), true, "", ""])
+		for dk in ["cannon", "tesla_cart"]:
+			var kk: String = dk
+			if units.any(func(u: Unit) -> bool: return u.kind == kk):
+				var packed := units.any(func(u: Unit) -> bool: return u.kind == kk and u.tesla_mode == "packed")
+				var lab: String = ("UNLIMBER" if packed else "LIMBER") if kk == "cannon" else ("DEPLOY" if packed else "PACK")
+				list.insert(3, [kk, lab, func() -> void:
+					for u in game.selected_units():
+						if u.kind == kk:
+							if packed:
+								u.cmd_deploy()
+							else:
+								u.cmd_pack(), true, "", ""])
 		return list
 	if b and b.built and game.faction_of(game.human) == "clockwork" and b.kind in ["clocktower", "boiler", "ore_crusher"]:
 		for name in Defs.SPLITS:
@@ -433,7 +436,8 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P",
-	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C"}
+	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
+	"UNLIMBER": "D", "LIMBER": "D"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -710,6 +714,10 @@ func _draw_panel(font: Font) -> void:
 				info = "Feeding at the pit: takes half damage."
 			elif uu.work == "bandaging":
 				info = "Bandaging a soldier."
+			elif uu.kind == "cannon":
+				info = {"packed": "Limbered: the horse tows it. UNLIMBER to fire.", "deploying": "Unlimbering...",
+					"deployed": "Set up: %s loaded. Fires at anything your side can see." % ("canister" if uu.mode == "canister" else "round shot"),
+					"packing": "Limbering up..."}[uu.tesla_mode]
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -855,8 +863,10 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"BAYONETS": "Fix bayonets: fight hand to hand, no powder used. Can't hit flyers.",
 		"MUSKETS": "Back to muskets: long-range volleys (each shot burns powder).",
 		"PUSH": "Pike push (automatic when ready, every 7 s): the thrust shoves the enemy back and staggers it. Click to switch on or off.",
-		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units. 2 powder a shot.",
-		"ROUND SHOT": "Load round shot: long range; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. 3 powder.",
+		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
+		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
+		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. 2 powder a shot.",
+		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. Can't hit flyers. 3 powder.",
 	}
 	if ABOUT.has(title):
 		body = ABOUT[title]

@@ -254,7 +254,9 @@ func _build_up() -> void:
 			_construct("church")
 	# Floating money: more production.
 	if gold > 550 and not _saving and _threat() == Vector2.INF:
-		if _crown() and _mine("barracks").size() < 4 and not _busy_building("barracks") and not _mine("barracks").is_empty():
+		if _crown() and _mine("foundry").size() < 2 and gold > 900 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
+			_construct("foundry")
+		elif _crown() and _mine("barracks").size() < 7 and not _busy_building("barracks") and not _mine("barracks").is_empty():
 			_construct("barracks")
 		elif _clock() and _mine("assembly_works").size() < 3 and not _busy_building("assembly_works") and not _mine("assembly_works").is_empty():
 			_construct("assembly_works")
@@ -402,7 +404,7 @@ func _army() -> void:
 			return
 		_wave_target = _enemy_base()
 		for u in army:
-			if u.order == "idle" and not (u.kind == "tesla_cart" and u.tesla_mode == "deployed" and u.target):
+			if u.order == "idle" and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
 				u.cmd_move(_wave_target + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
 		if _clock():
 			_follow_with_escort(army)
@@ -415,7 +417,7 @@ func _army() -> void:
 		for u in army:
 			if u.order == "idle" and u.position.distance_to(front) > 160.0:
 				u.cmd_move(front + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
-			elif u.kind == "tesla_cart" and u.order == "idle" and u.tesla_mode == "packed":
+			elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 				u.cmd_deploy()
 
 
@@ -518,10 +520,13 @@ func _abilities() -> void:
 				u.set_bayonet(close >= 2 and difficulty >= 2)
 		elif u.kind == "cannon":
 			var crowd := 0
+			var flyers := 0
 			for o in game.units_near(u.position, Defs.CANISTER["range"] + 20.0):
-				if game.hostile(o.team, team) and not o.dead and not o.is_air():
+				if game.hostile(o.team, team) and not o.dead:
 					crowd += 1
-			u.set_canister(crowd >= 3)
+					if o.is_air():
+						flyers += 1
+			u.set_canister(crowd >= 3 or flyers >= 1)
 
 
 # ------------------------------------------------------------------ micro (Hard and Brutal)
@@ -567,7 +572,7 @@ func _micro() -> void:
 		if not is_instance_valid(k) or k.dead or k.hp > k.max_hp * 0.85:
 			_mending.erase(k)
 	for u in army:
-		if u.kind == "tesla_cart" or u.d.get("medic", false) or _mending.has(u):
+		if u.deploys() or u.d.get("medic", false) or _mending.has(u):
 			continue
 		if brutal and u.hp < u.max_hp * 0.25 and int(u.d["supply"]) >= 2 and u.target:
 			_mending[u] = true

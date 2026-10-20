@@ -612,7 +612,7 @@ func _economy(delta: float) -> void:
 		_econ_t = 0.5
 		# Charging Pylons slowly mend constructs around them.
 		for b in buildings:
-			if b.dead or not b.built or not b.d.has("mends"):
+			if b.dead or not b.built or not b.d.has("mends") or not b.field_on():
 				continue
 			for u in units_near(b.center(), float(b.d["field"]) * T * field_mult(b.team)):
 				if u.team == b.team and not u.dead and u.hp < u.max_hp:
@@ -1043,7 +1043,7 @@ func rig_spot(m: GoldMine, t: int) -> Vector2i:
 func in_field(t: int, p: Vector2) -> bool:
 	var m := field_mult(t)
 	for b in buildings:
-		if b.team == t and b.built and not b.dead and b.d.has("field"):
+		if b.team == t and b.built and not b.dead and b.d.has("field") and b.field_on():
 			if b.center().distance_to(p) <= float(b.d["field"]) * T * m:
 				return true
 	for u in units:
@@ -1163,7 +1163,8 @@ func _draw_fields() -> void:
 		if not is_instance_valid(e) or e.dead:
 			continue
 		if e is Building and e.d.has("field") and e.built:
-			draw_ring.call(e.center(), float(e.d["field"]) * T * field_mult(e.team), 0.9)
+			# a tower busy fighting flyers has its field switched off
+			draw_ring.call(e.center(), float(e.d["field"]) * T * field_mult(e.team), 0.9 if e.field_on() else 0.18)
 		elif e is Unit and e.kind == "tesla_cart" and e.tesla_mode == "deployed":
 			draw_ring.call(e.position, Defs.TESLA_FIELD * T * field_mult(e.team), 0.9)
 	if controls and controls.mode == "place":
@@ -1340,6 +1341,9 @@ func find_target(u: Unit, r: float) -> Entity:
 			continue
 		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
 			continue
+		# beyond its own sight a unit (the cannon) can only shoot what its side can see
+		if o.position.distance_to(u.position) > u.sight * T + 8.0 and not side_sees(u.team, o.position):
+			continue
 		var dd: float = o.position.distance_to(u.position)
 		if o.is_worker():
 			dd += 60.0   # prefer fighters
@@ -1493,7 +1497,7 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var dir := (e.center() - from).normalized()
 	var reach := float(Defs.CANISTER["range"]) + 30.0
 	for o in units_near(from, reach + 20.0):
-		if not hostile(o.team, u.team) or o.dead or o.is_air() or o.off_field:
+		if not hostile(o.team, u.team) or o.dead or o.off_field:
 			continue
 		var to: Vector2 = o.center() - from
 		if to.length() <= reach + o.radius and dir.dot(to.normalized()) > float(Defs.CANISTER["cone"]):
@@ -1515,7 +1519,7 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 	var from := u.global_position + Vector2(0, -46)
 	var hit: Array = [e]
 	e.take_damage(dmg, u)
-	_bolt_line(from, e.center())
+	_zap_visual(from, e.center(), false, true)
 	var last := e
 	for k in 2:
 		var nxt: Entity = null
@@ -1530,10 +1534,63 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 		if nxt == null:
 			break
 		nxt.take_damage(dmg * 0.6, u)
-		_bolt_line(last.center(), nxt.center())
+		_zap_visual(last.center(), nxt.center(), false)
 		hit.append(nxt)
 		last = nxt
 	Sfx.play_any(["combat/tesla_attack", "zap"], u.global_position)
+
+
+## A Clockwork tower's chain lightning: straight up from its tip to a flyer, then jumping
+## from flyer to flyer.
+func tower_zap(b: Building, e: Unit) -> void:
+	var z: Dictionary = Defs.TOWER_ZAP
+	var dmg: float = z["damage"]
+	var from := b.top_point()
+	var hit: Array = [e]
+	e.take_damage(dmg, b)
+	_zap_visual(from, e.center(), true)
+	var last: Entity = e
+	for k in int(z["chain"]):
+		dmg *= float(z["falloff"])
+		var nxt: Unit = null
+		var bd: float = z["jump"]
+		for o in units_near(last.center(), z["jump"]):
+			if not o.is_air() or o.dead or o.off_field or hit.has(o) or not hostile(o.team, b.team):
+				continue
+			var dd: float = o.center().distance_to(last.center())
+			if dd < bd:
+				bd = dd
+				nxt = o
+		if nxt == null:
+			break
+		nxt.take_damage(dmg, b)
+		_zap_visual(last.center(), nxt.center(), false)
+		hit.append(nxt)
+		last = nxt
+	Sfx.play_any(["combat/tesla_attack", "zap"], b.global_position)
+
+
+## The lightning itself: sprite effects when there are any, else a jagged line.
+func _zap_visual(a: Vector2, b: Vector2, from_tower: bool, jagged := false) -> void:
+	var name := "zap_bolt" if from_tower or jagged else "zap_arc"
+	if ArtData.EFFECTS.has(name):
+		var fx := spawn_effect(name, a.lerp(b, 0.5), 1.6)
+		var effs: Dictionary = ArtData.EFFECTS
+		var size: Vector2i = effs[name]["size"]
+		fx.rotation = (b - a).angle()
+		fx.scale = Vector2(a.distance_to(b) / float(size.x), 1.0)
+		fx.z_index = 6
+	else:
+		_bolt_line(a, b)
+	if from_tower and ArtData.EFFECTS.has("zap_strike"):
+		var st := spawn_effect("zap_strike", a, 1.4)
+		var effs2: Dictionary = ArtData.EFFECTS
+		st.offset = Vector2(0, -float(effs2["zap_strike"]["size"].y) * 0.5)
+		st.z_index = 6
+	if ArtData.EFFECTS.has("zap_burst"):
+		spawn_effect("zap_burst", b, 1.3).z_index = 6
+	else:
+		spawn_effect("hit", b, 1.0)
 
 
 func _bolt_line(a: Vector2, b: Vector2) -> void:
@@ -1738,6 +1795,15 @@ func on_high(p: Vector2) -> bool:
 
 var _human_vis := PackedByteArray()
 var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
+
+
+## Anyone on this player's side sees it.
+func side_sees(t: int, p: Vector2) -> bool:
+	var i := idx(cell_of(p))
+	for o in n_players():
+		if allied(o, t) and vis[o][i] == 1:
+			return true
+	return false
 
 
 func is_visible_to(t: int, p: Vector2) -> bool:
