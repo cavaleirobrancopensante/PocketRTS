@@ -388,3 +388,64 @@ Each in the five directions."
 **3. Field cannon crew pushing (so the gun walks instead of bobbing).** "Pixel-art sprite sheet of a bronze field cannon on a wooden carriage pushed by two red-coated gunners. Rows:
 - move: 6 frames, the gunners leaning into the wheels with their legs stepping, the wheels turned a little further in each frame.
 In the five directions, with the same scale and camera angle as the existing cannon sprite."
+
+## Next units (round 4): ideas and prompts
+
+The factions so far:
+- **Crown** has modes (bayonets, limbered/unlimbered cannon, canister/round shot).
+- **Clockwork** has modes and fields (Tesla Cart, tower lightning).
+- **Brood** has only bodies. Its next unit should give it modes and spells, in the Brood way: living things that change shape.
+
+### Clockwork: Stormcaller (the storm spell)
+A walking lightning engine.
+- **Attack:** weak, a short zap.
+- **Storm spell:** throws a STATIC STORM on a spot: a 3-tile circle of lightning for 3 s. It does a little damage and STUNS everything inside for as long as it stands there (friends too, so aim it).
+- **Cost:** each Stormcaller carries its own charge. The charge fills only inside a Clockwork field (a tower, pylon or deployed Tesla Cart). The storm empties most of it, so you have to bring the casters home, or a cart forward, to recharge.
+- **Counters:** fast units that reach it before it casts, and anything outranging it. It is fragile.
+
+Prompt: "Pixel-art sprite sheet, 16-bit SNES style, of a clockwork 'Stormcaller' automaton: tall thin brass-and-iron figure with a copper Tesla coil rising from its back like a crown, glass capacitor jars on its chest glowing blue, long jointed arms ending in iron forks, red cloth panels (pure #FF0000) on its shoulders and waist. Rows: walk (6 frames), idle (4 frames, capacitors flickering), attack (4 frames, small zap from the forks), cast (6 frames: arms raised, coil blazing, a bolt shooting upward), death (4 frames, sparks and collapse). Five directions as rows: south, south-east, east, north-east, north. Flat solid slate background #34404F, no shadows, no text, every frame the same size and scale, figure about 1.3x the height of a musketeer."
+
+Storm effect prompt: "Pixel-art spell effect sheet, 16-bit style: a circular lightning storm seen from above at a 3/4 angle, about 96 px wide. Rows:
+- appear: 4 frames, sparks gathering into a ring;
+- storm: 6 looping frames, crackling bolts inside a glowing blue ring, small bolts striking the ground;
+- fade: 4 frames.
+Electric blue and white, flat solid slate background #34404F."
+
+### Crown: Cuirassier (cavalry)
+Fast, armoured horseman with sabre and pistols: scouting, harassing workers, running down cannons.
+- **Mode, carbine / sabre:** at the gallop he charges with the sabre (bonus damage on the first hit after a run). Stopped, he fires pistols at short range.
+- **Charge (automatic):** after running 3+ seconds his next hit knocks the target back, like the pike push.
+- **Counters:** pikes (bonus vs cavalry), and spitter acid.
+
+Prompt: "Pixel-art sprite sheet, 16-bit SNES style, of a 17th-century cuirassier: armoured horseman with a steel lobster-pot helmet and breastplate, red coat sleeves and saddle cloth (pure #FF0000), dark grey horse, sabre and two wheel-lock pistols. Rows:
+- walk: 4 frames;
+- gallop: 6 frames, a clear gallop cycle;
+- idle: 4 frames, the horse shifting;
+- sabre: 4 frames, a slash from horseback;
+- pistol: 4 frames, aim and fire with flash and smoke;
+- death: 5 frames, the horse falling and the rider thrown.
+Five directions as rows: south, south-east, east, north-east, north. Flat solid slate background #34404F, no shadows, no text, all frames the same size and scale, the rider's head at the same height as a standing musketeer's plus the horse."
+
+### Brood: options for its caster (pick one or mix)
+1. **Spore Mother (heal cloud, recommended).** A bloated, slow creature with gas sacs.
+   - **Mending Miasma (spell, costs essence):** a green cloud 3 tiles wide for 8 s. Brood inside regain health over time, up to a cap (e.g. 30% of their max per cloud, clouds don't stack). It blunts cannon and steam-walker splash without cancelling it.
+   - **Mode, rooted / walking:** rooted she can't move, spreads swamp around her and slowly heals everything on it. Walking she follows the swarm.
+2. **Burrower (a mode, like a lurker).** Burrowed it is hidden and can't move, but sends a line of spines through the ground (great against massed infantry). Unburrowed it is a fast, weak crawler. Detection: Clockwork towers and Crown missionaries reveal burrowed units nearby.
+3. **Hive Warden (shares pain).** Links up to 8 nearby Brood; damage taken by any linked unit is spread over all of them. That is great against single big hits and splash, and useless if the link is broken by killing the Warden.
+4. **Bloater (gas bomb).** A floating sac that drifts to the enemy and bursts: an acid cloud that lowers armour (enemy units take more damage) and slows. Flyer, cheap, one use.
+5. **Brood Queen spell, Spawn Broodlings:** on a dying Brood unit near her, 2 broodlings burst out (a swarm that refills itself).
+
+Prompt for the Spore Mother: "Pixel-art sprite sheet, 16-bit SNES style, of a 'Spore Mother': a large, bloated swamp creature on six stubby legs, translucent green gas sacs on its back, bony plates, small red crest spines (pure #FF0000), dripping glowing green spores. Rows:
+- walk: 6 frames, slow and heavy;
+- idle: 4 frames, sacs pulsing;
+- cast: 6 frames, sacs swelling then venting a green gas cloud upward;
+- root: 5 frames, legs digging into the ground, roots spreading (the game plays it backwards to uproot);
+- rooted idle: 4 frames;
+- death: 5 frames, the sacs bursting.
+Five directions as rows: south, south-east, east, north-east, north. Flat solid slate background #34404F, no shadows, no text, all frames the same size and scale, about the size of a Brute."
+
+Heal-cloud effect prompt: "Pixel-art spell effect sheet, 16-bit style: a soft green healing gas cloud seen from above at a 3/4 angle, about 96 px wide, with drifting spores and tiny glowing motes. Rows:
+- appear: 4 frames;
+- cloud: 6 looping frames, slowly churning;
+- fade: 4 frames.
+Flat solid slate background #34404F."
