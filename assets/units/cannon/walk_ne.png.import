@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cn1whiflebmdv"
-path="res://.godot/imported/move_ne.png-fafe87dabcb5bbfcc9a95fb64c02b3fb.ctex"
+uid="uid://cdpxfluc1522i"
+path="res://.godot/imported/walk_ne.png-071ab03b74e3667a8c22bff01e7106a8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/cannon/move_ne.png"
-dest_files=["res://.godot/imported/move_ne.png-fafe87dabcb5bbfcc9a95fb64c02b3fb.ctex"]
+source_file="res://assets/units/cannon/walk_ne.png"
+dest_files=["res://.godot/imported/walk_ne.png-071ab03b74e3667a8c22bff01e7106a8.ctex"]
 
 [params]
 

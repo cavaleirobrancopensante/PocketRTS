@@ -614,8 +614,9 @@ func _economy(delta: float) -> void:
 		for b in buildings:
 			if b.dead or not b.built or not b.d.has("mends") or not b.field_on():
 				continue
-			for u in units_near(b.center(), float(b.d["field"]) * T * field_mult(b.team)):
-				if u.team == b.team and not u.dead and u.hp < u.max_hp:
+			var fr := float(b.d["field"]) * T * field_mult(b.team)
+			for u in units_near(b.center(), fr):
+				if u.team == b.team and not u.dead and u.hp < u.max_hp and in_ellipse(b.center(), u.position, fr):
 					u.hp = minf(u.max_hp, u.hp + float(b.d["mends"]) * 0.5)
 
 
@@ -1040,15 +1041,27 @@ func rig_spot(m: GoldMine, t: int) -> Vector2i:
 	return best
 
 
+## Power fields lie flat on the ground, so seen at the map's angle they are ellipses:
+## as wide as the field's radius, squashed top to bottom like the ring art (512×435).
+const FIELD_Y := 435.0 / 512.0
+
+
+## Is `p` inside a field of radius `r` around `c` (the ellipse that is drawn)?
+static func in_ellipse(c: Vector2, p: Vector2, r: float) -> bool:
+	var d := p - c
+	d.y /= FIELD_Y
+	return d.length_squared() <= r * r
+
+
 func in_field(t: int, p: Vector2) -> bool:
 	var m := field_mult(t)
 	for b in buildings:
 		if b.team == t and b.built and not b.dead and b.d.has("field") and b.field_on():
-			if b.center().distance_to(p) <= float(b.d["field"]) * T * m:
+			if in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
 				return true
 	for u in units:
 		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
-			if u.position.distance_to(p) <= Defs.TESLA_FIELD * T * m:
+			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
 				return true
 	return false
 
@@ -1158,7 +1171,8 @@ func _swamp_minimap() -> void:
 func _draw_fields() -> void:
 	var ring: Texture2D = tex("res://assets/world/field_ring.png")
 	var draw_ring := func(c: Vector2, r: float, a: float) -> void:
-		field_layer.draw_texture_rect(ring, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, Color(1, 1, 1, a))
+		var half := Vector2(r, r * FIELD_Y)
+		field_layer.draw_texture_rect(ring, Rect2(c - half, half * 2.0), false, Color(1, 1, 1, a))
 	for e in selection:
 		if not is_instance_valid(e) or e.dead:
 			continue
