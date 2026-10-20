@@ -39,6 +39,8 @@ UNITS = {
                 "drop": [("walk", "s", 2), ("walk", "se", 2), ("brace", "n", 0), ("thrust", "n", 0),
                          ("thrust", "n", 1), ("death", "s", 0), ("death", "se", 0), ("death", "e", 0),
                          ("death", "ne", 0), ("death", "n", 0), ("death", "n", 1)]},
+    # The cannon is rebuilt afterwards from the new sheets by tools/import_cannon2.py (see
+    # tools/rebuild_art.sh); this old one-frame-per-pose version only exists as a fallback.
     "cannon": {"rows": ["idle", "move", "fire", "reload", "death"], "dilate": 14, "drop_smoke": True, "scale": UNIT_SCALE * 1.3,
                "smoke_to_muzzle": True},
     # New units (flat slate background). Hallucinated frames dropped: (anim, dir, index).

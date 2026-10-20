@@ -128,7 +128,12 @@ The source sheets from ChatGPT live in `art/`. `python3 tools/import_art.py` tur
 
 To add a unit: put its sheet in `art/crown/`, add it to `UNITS` in the script with its row names, and run it.
 
-Then two repair passes fix mistakes in the generated art, pixel by pixel:
+`tools/rebuild_art.sh` runs the whole pipeline in order. After the general importer come passes that replace or repair parts of its output:
+
+- `python3 tools/import_cannon2.py` builds the field cannon (horse-towed, unlimbered, firing, reloading, limbering, wreck) from the three new cannon sheets, picking the good frames and fixing the rest.
+- `python3 tools/import_lightning.py` cuts the lightning effects.
+
+Repair passes fix mistakes in the generated art, pixel by pixel:
 
 - `python3 tools/fix_weapons.py` finds the pikeman's pike and the musketeer's musket (the thin parts sticking out of the body) and repaints them straight and the same length in every walk and idle frame.
 - `python3 tools/fix_pike.py` keeps the pike full length in the thrust frames.
