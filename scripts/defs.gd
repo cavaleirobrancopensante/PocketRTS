@@ -127,9 +127,9 @@ const UNITS := {
 	"balloon": {
 		"tags": ["light"],
 		"name": "Observation Balloon", "hp": 180, "armor": 0, "speed": 46, "cost": 175, "cost2": 30, "time": 30.0, "supply": 4,
-		"sight": 12, "range": 220, "damage": 16, "cooldown": 3.0, "aim": 0.35, "radius": 16, "from": "foundry",
+		"sight": 12, "range": 220, "damage": 16, "cooldown": 3.0, "aim": 0.35, "radius": 19, "from": "foundry", "art_scale": 1.2,
 		"air": true, "anti_air": true, "gunners": 2, "faction": "crown",
-		"about": "A snipers' nest in the sky: two musketeers who each shoot at the ground or at flyers, and a long view for your cannons. Slow and fragile. Each shot burns powder.",
+		"about": "A snipers' nest in the sky: two musketeers who each shoot at the ground or at flyers, and a long view for your cannons. LOAD up to 4 Musketeers, Pikemen or Labourers (carried Musketeers fire from the basket) and UNLOAD them anywhere, even over cliffs. Slow and fragile. Each shot burns powder.",
 	},
 	"grub": {
 		"tags": ["light"],
@@ -170,7 +170,7 @@ const UNITS := {
 		"name": "Bloater", "hp": 60, "armor": 0, "speed": 44, "cost": 50, "cost2": 25, "time": 14.0, "supply": 1,
 		"sight": 8, "range": 160, "damage": 7, "cooldown": 2.2, "aim": 0.5, "radius": 12, "from": "hive",
 		"air": true, "ground_only": true, "requires": "roost", "faction": "brood",
-		"about": "A floating gas sac full of acid. It spits acid from afar, but every glob uses up gas; on HOLD GAS it keeps it all and drifts in to burst as a huge acid bomb. Used up when it bursts.",
+		"about": "A floating gas sac full of acid. It spits acid from afar, but every glob uses up gas; out of gas it deflates (slower, harmless) and slowly fills up again, faster on swamp. On HOLD GAS it keeps it all and drifts in to burst as a huge acid bomb. Used up when it bursts.",
 	},
 	"winder": {
 		"tags": ["light"],
@@ -215,16 +215,16 @@ const UNITS := {
 	"skywing": {
 		"tags": ["light"],
 		"name": "Skywing", "hp": 75, "armor": 0, "speed": 118, "cost": 100, "cost2": 40, "time": 16.0, "supply": 2,
-		"sight": 9, "range": 24, "damage": 9, "cooldown": 1.0, "aim": 0.15, "radius": 13, "from": "hive",
-		"air": true, "anti_air": true, "requires": "roost", "faction": "brood",
-		"about": "Flies over cliffs and walls. Only ranged units can hit it. Costs essence.",
+		"sight": 9, "range": 130, "damage": 11, "cooldown": 1.1, "aim": 0.15, "radius": 13, "from": "hive",
+		"air": true, "anti_air": true, "air_only": true, "requires": "roost", "faction": "brood",
+		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs essence.",
 	},
 	"ornithopter": {
 		"tags": ["light"],
 		"name": "Ornithopter", "hp": 110, "armor": 1, "speed": 112, "cost": 150, "time": 22.0, "supply": 2,
 		"sight": 9, "range": 140, "damage": 12, "cooldown": 1.4, "aim": 0.2, "radius": 13, "from": "assembly_works",
 		"air": true, "anti_air": true, "vs_air": 1.75, "requires": "charging_pylon", "faction": "clockwork",
-		"about": "Fast clockwork flyer with a lightning gun, deadliest against other flyers. Like every construct it winds down away from a field.",
+		"about": "Fast clockwork flyer with a lightning gun, deadliest against other flyers. On COURIER it fetches charged batteries and winds up stranded constructs; OVERLOAD dumps its battery into one construct (faster, harder hitting for 12 s). Like every construct it winds down away from a field.",
 	},
 	"tesla_cart": {
 		"tags": ["armored"],
@@ -390,6 +390,17 @@ const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius
 ## Bloater: its acid cloud
 ## (a full sac: burst damage and cloud at their biggest; each spit empties some of it)
 const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 60.0, "spit_cost": 15.0, "reach": 22.0}
+## Bloater out of gas: it deflates (no spitting, no bursting, slower) and fills up again.
+const DEFLATE := {"refill": 4.0, "swamp": 2.0, "slow": 0.8, "anim": 0.8}
+## Observation Balloon as a dropship: who can ride in the basket and what a fall costs.
+const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "pikeman", "labourer"], "fall": 0.5, "board": 26.0, "give_up": 30.0}
+## Skywing landed: a ground unit that bites (these replace its flying stats).
+const SKYWING_LANDED := {"air": false, "air_only": false, "ground_only": true, "anti_air": false,
+	"speed": 70, "range": 24, "damage": 14, "cooldown": 1.0, "aim": 0.15}
+const SKYWING_SWITCH := 1.2       # landing / taking off
+## Ornithopter: winding a construct from a carried battery, and overloading one with it.
+const TOPTER := {"load": 0.8, "wind": 0.8, "low": 0.5, "reach": 22.0}
+const OVERLOAD := {"time": 12.0, "damage": 1.5, "speed": 1.3, "cooldown": 0.75, "after": 0.25, "reach": 30.0}
 ## Veterancy: every kill adds damage (to a cap); a fallen unit's body holds essence for the
 ## Brood: a little for its size, more for every kill it made.
 const VET := {"per_kill": 0.05, "max": 0.5}

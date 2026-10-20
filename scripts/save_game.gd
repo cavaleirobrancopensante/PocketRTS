@@ -59,9 +59,19 @@ static func save(game: Game, cfg: Dictionary) -> void:
 	for u in game.units:
 		if u.dead or u.off_field:
 			continue
-		d["units"].append({"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
+		var ud := {"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
 			"charge": u.charge, "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying,
-			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing)})
+			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
+			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
+			"sky": u.sky if u.sky != "to_land" else "air"}
+		# the men in a balloon's basket go with it
+		if not u.passengers.is_empty():
+			var ps: Array = []
+			for p in u.passengers:
+				if is_instance_valid(p) and not p.dead:
+					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "push": p.push_auto, "kills": p.kills})
+			ud["pass"] = ps
+		d["units"].append(ud)
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -139,6 +149,29 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.spell_cd = float(ud["spell_cd"])
 		u.gas = float(ud.get("gas", 100.0))
 		u.facing = _to_v2(ud["f"])
+		u.kills = int(ud.get("kills", 0))
+		u.courier = bool(ud.get("courier", false))
+		u.topter_bat = String(ud.get("bat", ""))
+		u.overclock_t = float(ud.get("oc", 0.0))
+		var defl := String(ud.get("defl", ""))
+		if u.kind == "bloater" and defl != "":
+			u.deflate = "flat" if defl == "deflating" else ("" if defl == "refilling" else defl)
+		var sky := String(ud.get("sky", "air"))
+		if u.kind == "skywing" and sky in ["ground", "landing", "lifting"]:
+			u.sky = "ground"           # (a landing finishes; a take-off starts again from the ground)
+			u._sky_stats()
+			if sky == "lifting":
+				u.cmd_take_off()
+		for pd in ud.get("pass", []):
+			if u.kind != "balloon" or not Defs.UNITS.has(String(pd.get("k", ""))):
+				continue
+			var p := game._add_unit(String(pd["k"]), u.team, u.position)
+			p.hp = float(pd.get("hp", p.max_hp))
+			p.mode = String(pd.get("mode", ""))
+			p.auto_work = bool(pd.get("auto", true))
+			p.push_auto = bool(pd.get("push", true))
+			p.kills = int(pd.get("kills", 0))
+			u.take_aboard(p)
 	for a in d.get("ai", []):
 		for ai in game.ais:
 			if ai.team == int(a["team"]):
