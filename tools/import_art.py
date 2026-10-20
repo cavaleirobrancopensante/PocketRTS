@@ -249,9 +249,16 @@ def flat_flood_mask(px, tol=10):
         std = ndimage.standard_deviation(grey, lab, idx)
         pocket = (size >= 20) & (std <= 3.0)
         fg &= ~(pocket[lab - 1] & (lab > 0))
-    # thin separator lines between panels
+    # thin separator lines between panels (only lines: at most 4 px wide)
     lines = ndimage.binary_opening(fg, structure=np.ones((400, 1)))
-    fg &= ~ndimage.binary_dilation(lines, structure=np.ones((1, 3)))
+    if lines.any():
+        wide = ndimage.binary_opening(lines, structure=np.ones((1, 5)))
+        lab, n = ndimage.label(lines)
+        bad = np.zeros(n + 1, bool)
+        for k in np.unique(lab[wide]):
+            bad[k] = True
+        lines &= ~bad[lab]
+        fg &= ~ndimage.binary_dilation(lines, structure=np.ones((1, 3)))
     return fg
 
 
@@ -644,7 +651,7 @@ def import_unit(name, cfg, data):
         a = im[..., 3] > 0
         cols = a.sum(0)
         w = im.shape[1]
-        if depth > 2 or w < 30:
+        if depth > 4 or w < 30:
             return [im]
         lo, hi = int(w * 0.22), int(w * 0.78)
         cut = lo + int(np.argmin(cols[lo:hi]))
@@ -661,6 +668,44 @@ def import_unit(name, cfg, data):
             if key[0] == "death":
                 continue
             frames[key] = [p for im in lst for p in split(im)]
+    # frames still holding several figures side by side: cut into equal figures at the
+    # thinnest columns
+    widths = [im.shape[1] for k2, lst in frames.items() if k2[0] in ("walk", "idle") for im in lst]
+    if widths:
+        medw = float(np.median(widths))
+        for key, lst in list(frames.items()):
+            if key[0] in ("death", "bandage", "fire", "aim", "attack"):
+                continue
+            out = []
+            for im in lst:
+                w = im.shape[1]
+                k = max(2, int(round(w / medw)))
+                if w <= medw * 1.75 or k < 2:
+                    out.append(im)
+                    continue
+                cols = (im[..., 3] > 0).sum(0)
+                cuts = [0]
+                for j in range(1, k):
+                    g = int(w * j / k)
+                    lo, hi = max(cuts[-1] + 4, g - int(w / k * 0.3)), min(w - 4, g + int(w / k * 0.3))
+                    cuts.append(lo + int(np.argmin(cols[lo:hi])) if hi > lo else g)
+                cuts.append(w)
+                for x0, x1 in zip(cuts[:-1], cuts[1:]):
+                    part = im[:, x0:x1]
+                    xs = np.nonzero((part[..., 3] > 0).any(0))[0]
+                    ys = np.nonzero((part[..., 3] > 0).any(1))[0]
+                    if xs.size:
+                        out.append(part[ys.min():ys.max() + 1, xs.min():xs.max() + 1])
+            frames[key] = out
+    # stray fragments (a pick, a scrap of a neighbour) are not frames, and a frame with
+    # two figures drawn over each other (far more body than its neighbours) is dropped
+    for key, lst in list(frames.items()):
+        areas = [int((im[..., 3] > 0).sum()) for im in lst]
+        if len(lst) > 1:
+            med = float(np.median(areas))
+            big_ok = key[0] in ("death", "bandage", "fire", "attack", "deploy", "deployed")
+            keep = [im for im, a in zip(lst, areas) if a >= med * 0.3 and (big_ok or len(lst) < 3 or a <= med * 1.55)]
+            frames[key] = keep or lst
     scale = cfg.get("scale", UNIT_SCALE)
     if cfg.get("walk_height"):
         hs = [im.shape[0] for im in frames.get(("walk", "s")) or frames[("walk", "e")]]
@@ -882,8 +927,66 @@ def import_clockwork_structures(data):
         print(f"  {name}: {sizes}")
 
 
+# Second structure sheets: one building per row, its four states across, flat background.
+STRUCTURES2 = {
+    "art/crown/structures2.png": {"names": ["farm", "powder_mill", "church"], "rows": [0, 345, 640, 1024],
+                                  "width": {"farm": 112, "powder_mill": 112, "church": 100}},
+    "art/brood/structures2.png": {"names": ["feeding_pit", "bone_midden", "spore_vent", "roost"],
+                                  "rows": [0, 252, 458, 712, 1024],
+                                  "width": {"feeding_pit": 108, "bone_midden": 104, "spore_vent": 70, "roost": 100}},
+    "art/clockwork/structures2.png": {"names": ["boiler", "ore_crusher", "charging_pylon"], "rows": [0, 352, 662, 1024],
+                                      "width": {"boiler": 100, "ore_crusher": 112, "charging_pylon": 70}},
+}
+
+
+def import_structures2(data):
+    for path, cfg in STRUCTURES2.items():
+        px = load(path)
+        fg = flat_flood_mask(px)
+        h, w = fg.shape
+        rows = cfg["rows"]
+        lab, n = ndimage.label(fg, structure=np.ones((3, 3)))
+        pieces = []
+        for k, sl in enumerate(ndimage.find_objects(lab)):
+            mk = lab == k + 1
+            area = mk.sum()
+            if area < 30:
+                continue
+            ys, xs = np.nonzero(mk)
+            # a piece that spans two rows (touching neighbours) is split at the row line
+            for ri in range(len(rows) - 1):
+                part = mk.copy()
+                part[:rows[ri]] = False
+                part[rows[ri + 1]:] = False
+                if part.sum() >= 30:
+                    py, px_ = np.nonzero(part)
+                    pieces.append({"mask": part, "cy": py.mean(), "cx": px_.mean()})
+        for r, name in enumerate(cfg["names"]):
+            imgs = []
+            for c in range(4):
+                # whole pieces whose middle lies in this cell (plumes may cross the line)
+                x0, x1 = int(w * c / 4), int(w * (c + 1) / 4)
+                m = np.zeros_like(fg)
+                for piece in pieces:
+                    if rows[r] <= piece["cy"] < rows[r + 1] and x0 <= piece["cx"] < x1:
+                        m |= piece["mask"]
+                ys, xs = np.nonzero(m)
+                imgs.append(cutout(px, {"mask": m, "y0": ys.min(), "y1": ys.max() + 1, "x0": xs.min(), "x1": xs.max() + 1}))
+            scale = cfg["width"][name] / imgs[0].shape[1]
+            sizes2 = []
+            for state, im in zip(BUILDING_STATES, imgs):
+                sm = snap_team(shrink(im, scale))
+                save(sm, f"{OUT}/buildings/{name}_{state}.png")
+                sizes2.append(sm.shape[1::-1])
+                if state == "built":
+                    make_icon(sm, name)
+            data["buildings"][name] = sizes2[0]
+            print(f"  {name}: {sizes2}")
+
+
 def import_buildings(data):
     data["buildings"] = {}
+    import_structures2(data)
     import_clockwork_structures(data)
     for name in BROOD_BUILDINGS:
         px = load(f"art/brood/buildings/{name}.png")
