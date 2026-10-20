@@ -1,31 +1,46 @@
 class_name Music
 extends Node
-## Music: the overture on the menu; in a match your faction's calm piece, cross-fading to its
-## battle piece while fighting is hot near you; a victory or defeat sting at the end.
+## Music: the overture on the menu; in a match a shuffled playlist of calm pieces that
+## cross-fades to battle pieces while fighting is hot near you; a sting at the end.
+##
+## Modes (Settings > Music):
+##   "vanilla"  your faction's music, now and then a piece from an enemy faction
+##   "faction"  only your faction's music
+##   "all"      everything, shuffled
+##   "picked"   only the pieces ticked in the music player
 ## Also owns the Music / SFX buses and the on/off settings (saved in user://settings.cfg).
 
 const FACTION_KEY := {"crown": "crown", "brood": "brood", "clockwork": "clock"}
-const TITLES := {
+const BASE_TITLES := {
 	"menu": "PocketRTS Overture",
 	"crown_peace": "The King's Muster", "crown_battle": "Pike and Shot",
 	"brood_peace": "The Warm Swamp", "brood_battle": "Hunger",
 	"clock_peace": "Winding the Spring", "clock_battle": "Brass and Steam",
 }
+const MODES := ["vanilla", "faction", "all", "picked"]
+const MODE_NAMES := {"vanilla": "YOUR FACTION + A LITTLE OF THE ENEMY", "faction": "YOUR FACTION ONLY",
+	"all": "EVERYTHING, SHUFFLED", "picked": "ONLY THE TICKED PIECES"}
+const ENEMY_CHANCE := 0.2
 const FADE := 2.5
 const VOL := -6.0
-const HEAT_ON := 7.0      # combat heat that starts the battle piece
+const HEAT_ON := 7.0      # combat heat that starts the battle music
 const HEAT_OFF := 1.5     # ...and the calm it takes to go back
 
 static var me: Music
 var music_on := true
 var sound_on := true
+var mode := "vanilla"
+var off_list: Array = []  # pieces left out in "picked" mode
 var _a: AudioStreamPlayer
 var _b: AudioStreamPlayer
 var _sting: AudioStreamPlayer
 var _current := ""
 var _faction := ""
+var _enemies: Array = []
 var _battle := false
 var _calm_t := 0.0
+var _recent: Array = []
+var _preview := false
 var heat := 0.0           # raised by hits near the player, decays over a few seconds
 
 
@@ -44,6 +59,8 @@ func _ready() -> void:
 	if cfg.load("user://settings.cfg") == OK:
 		music_on = cfg.get_value("audio", "music", true)
 		sound_on = cfg.get_value("audio", "sound", true)
+		mode = cfg.get_value("audio", "music_mode", "vanilla")
+		off_list = cfg.get_value("audio", "music_off", [])
 	_apply()
 
 
@@ -51,6 +68,7 @@ func _player() -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
 	p.bus = "Music"
 	p.volume_db = -80.0
+	p.finished.connect(_on_finished.bind(p))
 	add_child(p)
 	return p
 
@@ -72,23 +90,106 @@ func toggle_sound() -> void:
 	_save()
 
 
+func set_mode(m: String) -> void:
+	mode = m
+	_save()
+
+
+func set_enabled(track: String, on: bool) -> void:
+	off_list.erase(track)
+	if not on:
+		off_list.append(track)
+	_save()
+
+
+func is_enabled(track: String) -> bool:
+	return not off_list.has(track)
+
+
 func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load("user://settings.cfg")     # keep the other sections
 	cfg.set_value("audio", "music", music_on)
 	cfg.set_value("audio", "sound", sound_on)
+	cfg.set_value("audio", "music_mode", mode)
+	cfg.set_value("audio", "music_off", off_list)
 	cfg.save("user://settings.cfg")
 
 
-## Cross-fade to a looping piece.
-func play(track: String) -> void:
-	if track == _current:
+# ------------------------------------------------------------------ the catalogue
+
+## Every piece: stem -> title (the generated list when there is one).
+static func titles() -> Dictionary:
+	var path := "res://scripts/music_tracks.gd"
+	if ResourceLoader.exists(path):
+		var s: GDScript = load(path)
+		var c: Dictionary = s.get_script_constant_map()
+		if c.has("TRACKS"):
+			return c["TRACKS"]
+	return BASE_TITLES
+
+
+## Pieces for a faction key ("crown", "brood", "clock") and mood ("peace", "battle").
+static func pieces(fkey: String, mood: String) -> Array:
+	var out: Array = []
+	for stem in titles():
+		var s: String = stem
+		if s == "%s_%s" % [fkey, mood] or s.begins_with("%s_%s_" % [fkey, mood]):
+			if ResourceLoader.exists("res://assets/music/%s.ogg" % s):
+				out.append(s)
+	return out
+
+
+func _pool(mood: String) -> Array:
+	var own := pieces(_faction, mood)
+	match mode:
+		"faction":
+			return own
+		"all", "picked":
+			var all: Array = []
+			for f in FACTION_KEY.values():
+				all += pieces(f, mood)
+			if mode == "picked":
+				all = all.filter(func(s: String) -> bool: return is_enabled(s))
+				if all.is_empty():
+					all = own
+			return all
+	# vanilla: mostly ours, sometimes theirs
+	if not _enemies.is_empty() and randf() < ENEMY_CHANCE:
+		var theirs := pieces(_enemies[randi() % _enemies.size()], mood)
+		if not theirs.is_empty():
+			return theirs
+	return own
+
+
+func _next(mood: String) -> String:
+	var pool := _pool(mood)
+	if pool.is_empty():
+		return ""
+	var fresh := pool.filter(func(s: String) -> bool: return not _recent.has(s))
+	if fresh.is_empty():
+		fresh = pool.filter(func(s: String) -> bool: return s != _current)
+		if fresh.is_empty():
+			fresh = pool
+	var pick: String = fresh[randi() % fresh.size()]
+	_recent.append(pick)
+	while _recent.size() > maxi(1, pool.size() - 1):
+		_recent.pop_front()
+	return pick
+
+
+# ------------------------------------------------------------------ playing
+
+## Cross-fade to a piece. `loop` for the menu and previews.
+func play(track: String, loop := false) -> void:
+	if track == _current or track == "":
 		return
 	_current = track
 	_sting.stop()
 	var stream: AudioStream = load("res://assets/music/%s.ogg" % track)
 	if stream is AudioStreamOggVorbis:
-		(stream as AudioStreamOggVorbis).loop = true
+		stream = (stream as AudioStreamOggVorbis).duplicate()
+		(stream as AudioStreamOggVorbis).loop = loop
 	var old := _a
 	_a = _b
 	_b = old
@@ -106,17 +207,45 @@ func _fade(p: AudioStreamPlayer, to: float, stop_after := false) -> void:
 		tw.tween_callback(p.stop)
 
 
+## A piece ended: the next one from the same mood.
+func _on_finished(p: AudioStreamPlayer) -> void:
+	if p != _a or _faction == "" or _preview:
+		return
+	_current = ""
+	play(_next("battle" if _battle else "peace"))
+
+
 func menu() -> void:
 	_faction = ""
-	play("menu")
+	_preview = false
+	play("menu", true)
 
 
-func match_started(faction: String) -> void:
+## Try a piece from the music player (loops until another is picked or the menu resumes).
+func preview(track: String) -> void:
+	_preview = true
+	_faction = ""
+	_current = ""
+	play(track, true)
+
+
+func now_playing() -> String:
+	return titles().get(_current, "")
+
+
+func match_started(faction: String, enemies: Array = []) -> void:
 	_faction = FACTION_KEY.get(faction, "crown")
+	_enemies = []
+	for e in enemies:
+		var k: String = FACTION_KEY.get(e, "")
+		if k != "" and k != _faction and not _enemies.has(k):
+			_enemies.append(k)
+	_preview = false
 	_battle = false
 	heat = 0.0
 	_current = ""
-	play(_faction + "_peace")
+	_recent.clear()
+	play(_next("peace"))
 
 
 ## End of a match: fade the music and play the sting.
@@ -140,14 +269,10 @@ func _process(delta: float) -> void:
 	heat *= exp(-delta / 5.0)
 	if not _battle and heat > HEAT_ON:
 		_battle = true
-		play(_faction + "_battle")
+		play(_next("battle"))
 	elif _battle:
 		_calm_t = _calm_t + delta if heat < HEAT_OFF else 0.0
 		if _calm_t > 10.0:
 			_battle = false
 			_calm_t = 0.0
-			play(_faction + "_peace")
-
-
-func now_playing() -> String:
-	return TITLES.get(_current, "")
+			play(_next("peace"))

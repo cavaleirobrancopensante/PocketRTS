@@ -16,15 +16,39 @@ static var _tex_cache := {}
 var human := 0
 var factions: Array = ["crown", "crown"]
 var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE
+var sides: Array = [0, 1]                   # players on the same side are allies
+var income_mult: Array = []                 # the Brutal AI's cheat (1.0 = fair)
+var eliminated: Array = []
+
+
+func n_players() -> int:
+	return factions.size()
 
 
 func team_colour(t: int) -> Color:
-	return Defs.PALETTE[colours[t]][1] if t >= 0 and t < 2 else Color.RED
+	return Defs.PALETTE[colours[t]][1] if t >= 0 and t < colours.size() else Color.RED
 
 
 func team_name(t: int) -> String:
-	return Defs.PALETTE[colours[t]][0] if t >= 0 and t < 2 else ""
-var swamp: Array = [PackedByteArray(), PackedByteArray()]
+	return Defs.PALETTE[colours[t]][0] if t >= 0 and t < colours.size() else ""
+
+
+## Enemies: both real players and on different sides.
+func hostile(a: int, b: int) -> bool:
+	return a >= 0 and b >= 0 and a != b and sides[a] != sides[b]
+
+
+func allied(a: int, b: int) -> bool:
+	return a == b or (a >= 0 and b >= 0 and sides[a] == sides[b])
+
+
+func enemies_of(t: int) -> Array:
+	var out: Array = []
+	for o in n_players():
+		if hostile(t, o) and not eliminated[o]:
+			out.append(o)
+	return out
+var swamp: Array = []
 var swamp_dirty := true
 var swamp_layer: Node2D
 var _swamp_t := 0.0
@@ -54,7 +78,7 @@ var ground: Sprite2D
 var fog_sprite: Sprite2D
 var fog_img: Image
 var fog_tex: ImageTexture
-var vis: Array = [PackedByteArray(), PackedByteArray()]
+var vis: Array = []
 var explored := PackedByteArray()
 var _vis_t := 0.0
 var _disk_cache := {}
@@ -73,7 +97,7 @@ var _end_t := 0.0
 var over := false
 var winner := -1
 var clock := 0.0
-var stats := [_new_stats(), _new_stats()]
+var stats: Array = []
 var _sample_t := 0.0
 
 
@@ -100,11 +124,28 @@ func _ready() -> void:
 	height.resize(W * H)
 	ramp.resize(W * H)
 	explored.resize(W * H)
-	for t in 2:
-		vis[t].resize(W * H)
-		swamp[t].resize(W * H)
+	var n := n_players()
+	while colours.size() < n:
+		colours.append(colours.size())
+	while sides.size() < n:
+		sides.append(sides.size())
+	while income_mult.size() < n:
+		income_mult.append(1.0)
+	for t in n:
+		eliminated.append(false)
+		energy.append(0.0)
+		ore_rate.append(0.0)
+		asm_mult.append(1.0)
+		wind_e.append(0.0)
+		stats.append(_new_stats())
+		var v := PackedByteArray()
+		v.resize(W * H)
+		vis.append(v)
+		var sw := PackedByteArray()
+		sw.resize(W * H)
+		swamp.append(sw)
 		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t], "res2": 0.0,
-			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY"})
+			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY", "gold_x": 0.0})
 	ground = Sprite2D.new()
 	ground.centered = false
 	ground.z_index = -20
@@ -366,7 +407,7 @@ func _render_ground() -> void:
 
 
 func _start_positions() -> void:
-	for t in 2:
+	for t in n_players():
 		var f: Dictionary = Defs.FACTIONS[factions[t]]
 		var b := _add_building(f["hall"], t, starts[t], true)
 		players[t]["res2"] = float(Defs.START_POWDER) if factions[t] == "crown" else 0.0
@@ -381,7 +422,7 @@ func _start_positions() -> void:
 				_update_swamp()
 		var hall_center := b.rect().get_center()
 		for i in int(f["start_workers"]):
-			var u := _add_unit(f["worker"], t, hall_center + Vector2(-60 + i * 30, 80 if t == 0 else -80))
+			var u := _add_unit(f["worker"], t, hall_center + Vector2(-60 + i * 30, 80 if starts[t].y < H / 2 else -80))
 			var site := free_site(t, u.position)
 			if site:
 				u.cmd_gather(site)
@@ -416,7 +457,10 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			elif prefer == "far_safe":
 				# far from the building, but not toward the enemy's side
 				var own := cc.distance_to(Vector2(starts[t]) + Vector2(2.5, 2))
-				var foe := cc.distance_to(Vector2(starts[1 - t]) + Vector2(2.5, 2))
+				var foe := INF
+				for o in n_players():
+					if hostile(t, o):
+						foe = minf(foe, cc.distance_to(Vector2(starts[o]) + Vector2(2.5, 2)))
 				score = -dd + maxf(0.0, own - foe * 0.8) * 3.0
 			elif prefer == "toward_middle":
 				score = cc.distance_to(mid) + dd * 0.5
@@ -472,6 +516,8 @@ func econ_limit(t: int, kind: String) -> int:
 
 
 func add_res2(t: int, v: float) -> void:
+	if v > 0.0:
+		v *= float(income_mult[t])
 	players[t]["res2"] = float(players[t]["res2"]) + v
 
 
@@ -495,10 +541,10 @@ func use_powder(t: int, n: int) -> bool:
 	return true
 
 
-var energy := [0.0, 0.0]          # Clockwork energy per second
-var ore_rate := [0.0, 0.0]
-var asm_mult := [1.0, 1.0]        # production speed of Clockwork buildings
-var wind_e := [0.0, 0.0]          # energy on wind
+var energy: Array = []            # Clockwork energy per second
+var ore_rate: Array = []
+var asm_mult: Array = []          # production speed of Clockwork buildings
+var wind_e: Array = []            # energy on wind
 var _econ_t := 0.0
 
 
@@ -508,7 +554,7 @@ func set_split(t: int, name: String) -> void:
 
 
 func _economy(delta: float) -> void:
-	for t in 2:
+	for t in n_players():
 		if faction_of(t) != "clockwork":
 			continue
 		var e: float = Defs.ENERGY_HALL * halls_of(t).size()
@@ -521,12 +567,13 @@ func _economy(delta: float) -> void:
 			elif b.kind == "ore_crusher":
 				crushers += 1
 		var split: Array = players[t]["split"]
+		e *= float(income_mult[t])
 		energy[t] = e
 		ore_rate[t] = minf(e * float(split[0]) * Defs.ORE_PER_ENERGY, crushers * Defs.CRUSHER_CAP)
 		asm_mult[t] = clampf(0.6 + e * float(split[1]) / 6.0, 0.6, 2.0)
 		wind_e[t] = e * float(split[2])
 		players[t]["res2"] = e
-		add_gold_f(t, ore_rate[t] * delta)
+		add_gold_f(t, ore_rate[t] * delta / float(income_mult[t]))   # energy already had the bonus
 	_econ_t -= delta
 	if _econ_t <= 0.0:
 		_econ_t = 0.5
@@ -583,7 +630,7 @@ func find_patient(m: Unit, r: float) -> Unit:
 
 func near_enemy_building(t: int, p: Vector2, tiles: float) -> bool:
 	for b in buildings:
-		if b.team != t and b.team >= 0 and not b.dead and b.edge_distance(p) < tiles * T:
+		if hostile(t, b.team) and not b.dead and b.edge_distance(p) < tiles * T:
 			return true
 	return false
 
@@ -673,7 +720,7 @@ func on_unit_died(u: Unit) -> void:
 	for g in groups:
 		g.erase(u)
 	stats[u.team]["lost"] += 1
-	for t in 2:
+	for t in n_players():
 		if faction_of(t) == "brood":
 			for b in buildings:
 				if b.team == t and b.kind == "bone_midden" and b.built and not b.dead \
@@ -683,12 +730,23 @@ func on_unit_died(u: Unit) -> void:
 					if t == human:
 						float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
 					break
-	if u.team >= 0:
-		var foe: Dictionary = stats[1 - u.team]
+	var k := _killer(u)
+	if k >= 0:
+		var foe: Dictionary = stats[k]
 		foe["killed"] += 1
 		foe["value_killed"] += int(u.d["cost"]) / maxi(1, int(u.d.get("spawn", 1)))
-		if u.last_hit_by != "" and u.last_hit_team == 1 - u.team:
+		if u.last_hit_by != "" and u.last_hit_team == k:
 			foe["kills_by"][u.last_hit_by] = int(foe["kills_by"].get(u.last_hit_by, 0)) + 1
+
+
+## Who gets the credit for a kill: the last enemy to hit it (or the only enemy).
+func _killer(e: Entity) -> int:
+	if e.team < 0:
+		return -1
+	if hostile(e.team, e.last_hit_team):
+		return e.last_hit_team
+	var foes := enemies_of(e.team)
+	return foes[0] if foes.size() == 1 else -1
 
 
 func on_building_died(b: Building) -> void:
@@ -697,15 +755,17 @@ func on_building_died(b: Building) -> void:
 	buildings.erase(b)
 	_recount_supply(b.team)
 	stats[b.team]["bld_lost"] += 1
-	if b.team >= 0 and b.built:
-		stats[1 - b.team]["razed"] += 1
-		stats[1 - b.team]["value_killed"] += int(b.d["cost"])
+	var k := _killer(b)
+	if k >= 0 and b.built:
+		stats[k]["razed"] += 1
+		stats[k]["value_killed"] += int(b.d["cost"])
 
 
 func on_building_complete(b: Building) -> void:
 	_recount_supply(b.team)
 	if b.team == human and clock > 1.0:
 		Sfx.play_f("built", b.d["faction"])
+		Sfx.announce(b.d["faction"], "expansion" if b.kind == faction_hall(b.team) else "building_done", 3.0)
 
 
 func _recount_supply(t: int) -> void:
@@ -729,8 +789,11 @@ func supply_used(t: int) -> int:
 
 
 func add_gold(t: int, n: int) -> void:
-	players[t]["gold"] += n
-	stats[t]["gold"] += n
+	var v: float = n * float(income_mult[t]) + float(players[t]["gold_x"])
+	var k := int(v)
+	players[t]["gold_x"] = v - k
+	players[t]["gold"] += k
+	stats[t]["gold"] += k
 
 
 func refund(t: int, k: String) -> void:
@@ -827,6 +890,7 @@ func spawn_trained(b: Building, k: String) -> void:
 			Sfx.play("hatch", b.global_position)
 		else:
 			Sfx.play_f("ready", b.d["faction"])
+		Sfx.voice(k, "select")
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
 		if u.is_worker():
@@ -988,11 +1052,11 @@ func consume_unit(u: Unit) -> void:
 	u.queue_free()
 
 
-func notify(msg: String) -> void:
+func notify(msg: String, quiet := false) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _notify_t > 3000 and hud:
 		_notify_t = now
-		hud.toast(msg)
+		hud.toast(msg, not quiet)
 
 
 # ------------------------------------------------------------------ swamp
@@ -1014,7 +1078,7 @@ func mine_on_swamp(m: GoldMine, t: int) -> bool:
 
 func _update_swamp() -> void:
 	swamp_dirty = false
-	for t in 2:
+	for t in n_players():
 		var g: PackedByteArray = swamp[t]
 		g.fill(0)
 		if faction_of(t) == "brood":
@@ -1193,7 +1257,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	var best: Entity = null
 	var bd := INF
 	for o in units_near(u.position, r):
-		if o.team == u.team or o.dead or o.team < 0 or not u.can_hit(o):
+		if not hostile(o.team, u.team) or o.dead or not u.can_hit(o):
 			continue
 		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
 			continue
@@ -1208,7 +1272,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	if u.d.get("medic", false):
 		return null
 	for b in buildings:
-		if b.team == u.team or b.dead:
+		if not hostile(b.team, u.team) or b.dead:
 			continue
 		var dd: float = b.edge_distance(u.position)
 		if dd < r and dd < bd:
@@ -1296,7 +1360,7 @@ func musket_shot(u: Unit, e: Entity, dmg: float) -> void:
 	s.impact = "hit" if hit else "smoke"
 	s.impact_scale = 1.0 if hit else 0.35
 	s.launch(self, "ball", muzzle, aim, 950.0)
-	Sfx.play("musket", u.global_position)
+	Sfx.play_any(["combat/musketeer_attack", "musket"], u.global_position)
 
 
 var _tracers: Array = []
@@ -1308,7 +1372,7 @@ func bolt_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var to := from + dir * (float(u.d["range"]) + 40.0)
 	var hits := 0
 	for o in units_near(from.lerp(to, 0.5), from.distance_to(to) * 0.5 + 20.0):
-		if o.team == u.team or o.dead or o.team < 0:
+		if not hostile(o.team, u.team) or o.dead:
 			continue
 		var q := Geometry2D.get_closest_point_to_segment(o.center(), from, to)
 		if q.distance_to(o.center()) < o.radius + 6.0 and hits < 3:
@@ -1321,7 +1385,7 @@ func bolt_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var s := Shot.new()
 	s.scale = Vector2(0.8, 0.8)
 	s.launch(self, "bolt", from, to, 760.0)
-	Sfx.play("bolt", u.global_position)
+	Sfx.play_any(["combat/bolt_attack", "bolt"], u.global_position)
 
 
 func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
@@ -1329,14 +1393,14 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 	var dir := (e.center() - from).normalized()
 	var reach := float(u.d["range"]) + 24.0
 	for o in units_near(from, reach + 20.0):
-		if o.team == u.team or o.dead or o.team < 0:
+		if not hostile(o.team, u.team) or o.dead:
 			continue
 		var to: Vector2 = o.center() - from
 		if to.length() <= reach + o.radius and dir.dot(to.normalized()) > 0.72:
 			o.take_damage(dmg, u)
 	if e.is_building():
 		e.take_damage(dmg, u)
-	Sfx.play("steam", from)
+	Sfx.play_any(["combat/steam_walker_attack", "steam"], from)
 	for i in 3:
 		var fx := spawn_effect("smoke", from + dir * (20.0 + i * 22.0) + Vector2(randf_range(-6, 6), randf_range(-6, 6)), 1.6)
 		fx.modulate = Color(1.3, 1.3, 1.3, 0.85)
@@ -1352,7 +1416,7 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 		var nxt: Entity = null
 		var bd := 80.0
 		for o in units_near(last.center(), 80.0):
-			if o.team == u.team or o.dead or o.team < 0 or o.off_field or hit.has(o):
+			if not hostile(o.team, u.team) or o.dead or o.off_field or hit.has(o):
 				continue
 			var dd: float = o.center().distance_to(last.center())
 			if dd < bd:
@@ -1364,7 +1428,7 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 		_bolt_line(last.center(), nxt.center())
 		hit.append(nxt)
 		last = nxt
-	Sfx.play("zap", u.global_position)
+	Sfx.play_any(["combat/tesla_attack", "zap"], u.global_position)
 
 
 func _bolt_line(a: Vector2, b: Vector2) -> void:
@@ -1380,7 +1444,7 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var mouth := u.center() + u.facing * 14.0
 	e.take_damage(dmg, u)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
-	Sfx.play("acid", mouth)
+	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
 	var s := Shot.new()
 	s.arc = 0.18
 	s.scale = Vector2(1.3, 1.3)
@@ -1402,7 +1466,7 @@ func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	pr.team = u.team
 	pr.shooter = u
 	add_child(pr)
-	Sfx.play("cannon", u.global_position)
+	Sfx.play_any(["combat/cannon_attack", "cannon"], u.global_position)
 
 
 func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
@@ -1417,13 +1481,13 @@ func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> 
 		var sm := spawn_effect("smoke_big", p + Vector2(0, -6), 1.2)
 		sm.scale = Vector2(0.6, 0.6)
 		sm.modulate.a = 0.7
-	Sfx.play("boom", p)
+	Sfx.play_any(["combat/cannon_hit", "boom"], p)
 	for u in units_near(p, splash + 12.0):
-		if u.team != t and not u.dead:
+		if not allied(u.team, t) and not u.dead:
 			var f := 1.0 - 0.5 * clampf(u.position.distance_to(p) / splash, 0.0, 1.0)
 			u.take_damage(dmg * f, shooter)
 	for b in buildings.duplicate():
-		if b.team != t and not b.dead and b.edge_distance(p) < splash * 0.6:
+		if not allied(b.team, t) and not b.dead and b.edge_distance(p) < splash * 0.6:
 			b.take_damage(dmg * 2.5, shooter)
 
 
@@ -1470,7 +1534,7 @@ func _reveal(t: int, c: Vector2i, r: int) -> void:
 
 
 func _update_vis() -> void:
-	for t in 2:
+	for t in n_players():
 		vis[t].fill(0)
 	for u in units:
 		if not u.dead and not u.off_field:
@@ -1481,7 +1545,14 @@ func _update_vis() -> void:
 	for b in buildings:
 		if not b.dead:
 			_reveal(b.team, cell_of(b.rect().get_center()), b.sight)
-	var hv: PackedByteArray = vis[human]
+	var hv: PackedByteArray = vis[human].duplicate()
+	for o in n_players():
+		if o != human and allied(o, human):
+			var ov: PackedByteArray = vis[o]
+			for i in W * H:
+				if ov[i] == 1:
+					hv[i] = 1
+	_human_vis = hv
 	for i in W * H:
 		if hv[i] == 1:
 			explored[i] = 1
@@ -1497,10 +1568,10 @@ func _update_vis() -> void:
 			fog_img.set_pixel(x, y, Color(0, 0, 0, a / 255.0))
 	fog_tex.update(fog_img)
 	for u in units:
-		if u.team != human:
+		if not allied(u.team, human):
 			u.visible = hv[idx(cell_of(u.position))] == 1 and not u.off_field
 	for b in buildings:
-		if b.team != human:
+		if not allied(b.team, human):
 			if not b.seen_by_human:
 				var cc := cell_of(b.rect().get_center())
 				if hv[idx(cc)] == 1:
@@ -1522,7 +1593,12 @@ func on_high(p: Vector2) -> bool:
 	return in_map(c) and height[idx(c)] == 1
 
 
+var _human_vis := PackedByteArray()
+
+
 func is_visible_to(t: int, p: Vector2) -> bool:
+	if t == human and not _human_vis.is_empty():
+		return _human_vis[idx(cell_of(p))] == 1
 	return vis[t][idx(cell_of(p))] == 1
 
 
@@ -1532,6 +1608,7 @@ func _physics_process(delta: float) -> void:
 	if over:
 		return
 	clock += delta
+	alert_t = maxf(alert_t - delta, 0.0)
 	_economy(delta)
 	for fl in _floats:
 		fl[3] -= delta
@@ -1572,22 +1649,45 @@ func _physics_process(delta: float) -> void:
 		_check_end()
 
 
+## A player with no buildings left is out; the match ends when one side is left
+## (or, when you're playing, when you're out).
 func _check_end() -> void:
-	var alive := [0, 0]
+	var alive: Array = []
+	alive.resize(n_players())
+	alive.fill(0)
 	for b in buildings:
-		if not b.dead:
+		if not b.dead and b.team >= 0:
 			alive[b.team] += 1
-	for t in 2:
-		if alive[t] == 0:
-			over = true
-			winner = 1 - t
-			ended.emit(winner)
-			return
+	for t in n_players():
+		if alive[t] == 0 and not eliminated[t]:
+			eliminated[t] = true
+			for u in units:
+				if u.team == t and not u.dead:
+					u.die()
+			if t != human and not demo and n_players() > 2:
+				notify("%s is defeated!" % team_name(t).capitalize(), true)
+	var sides_left := {}
+	for t in n_players():
+		if not eliminated[t]:
+			sides_left[sides[t]] = t
+	var human_out: bool = not demo and eliminated[human]
+	if sides_left.size() <= 1 or human_out:
+		over = true
+		winner = -1
+		for t in sides_left.values():
+			if winner < 0 or (human_out and not allied(t, human)):
+				winner = t
+		ended.emit(winner)
 
 
 # ------------------------------------------------------------------ selection & commands (used by input and HUD)
 
 func set_selection(list: Array) -> void:
+	# a unit you pick answers you (once per new pick)
+	for e in list:
+		if is_instance_valid(e) and e is Unit and e.team == human and not e.dead and not selection.has(e):
+			Sfx.voice(e.kind, "select")
+			break
 	for e in selection:
 		if is_instance_valid(e):
 			e.selected = false
@@ -1611,6 +1711,9 @@ func selected_building() -> Building:
 ## Tap/right-click on the map with units selected: do the obvious thing.
 func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead)
+	if not us.is_empty() and us[0].team == human:
+		var tgt := entity_at(p)
+		Sfx.voice(us[0].kind, "attack" if tgt and hostile(tgt.team, human) and not force_move else "move")
 	if us.is_empty():
 		return
 	var e := null if force_move else entity_at(p)
@@ -1648,7 +1751,7 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 				u.cmd_move(p)
 		_ping(p, Color(1, 0.85, 0.3))
 		return
-	if e and e.team >= 0 and e.team != us[0].team:
+	if e and hostile(e.team, us[0].team):
 		for u in us:
 			u.cmd_attack(e)
 		_ping(p, Color(1, 0.3, 0.3))
@@ -1657,7 +1760,36 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 
 
 ## Spread a group around the destination so they don't fight for one spot.
+## You're being hit: an alert (not too often) and a flashing spot on the minimap.
+var alert_at := Vector2.INF
+var alert_t := 0.0
+var _alert_ms := -99999
+
+
+func under_attack(e: Entity) -> void:
+	if demo:
+		return
+	var now := Time.get_ticks_msec()
+	alert_at = e.global_position if e is Unit else e.center()
+	alert_t = 3.0
+	if now - _alert_ms < 15000:
+		return
+	# no alarm while you're looking at the fight
+	if camera and camera.get_screen_center_position().distance_to(alert_at) < 420.0:
+		return
+	_alert_ms = now
+	var fac := faction_of(human)
+	if e is Building:
+		Sfx.announce(fac, "base_attack", 15.0, "base_alert")
+		notify("Your base is under attack!", true)
+	else:
+		Sfx.announce(fac, "under_attack", 15.0, "alert")
+		notify("Your forces are under attack!", true)
+
+
 func group_move(us: Array, p: Vector2, attack_move: bool) -> void:
+	if not us.is_empty() and us[0].team == human:
+		Sfx.voice(us[0].kind, "attack" if attack_move else "move")
 	var n := us.size()
 	var cols := int(ceil(sqrt(float(n))))
 	var spacing := 24.0
@@ -1752,7 +1884,7 @@ func center_of_team(t: int) -> Vector2:
 # ------------------------------------------------------------------ overlay (world space)
 
 func _sample_stats() -> void:
-	for t in 2:
+	for t in n_players():
 		var s: Dictionary = stats[t]
 		var value := 0
 		for u in army(t):
@@ -1768,7 +1900,7 @@ func _sample_stats() -> void:
 func mine_saturation(m: GoldMine) -> Array:
 	if m.gold <= 0:
 		return []
-	var teams := [human] if not demo else [0, 1]
+	var teams := [human] if not demo else range(n_players())
 	for t in teams:
 		if t < 0:
 			continue

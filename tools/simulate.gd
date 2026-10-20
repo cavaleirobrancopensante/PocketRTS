@@ -1,5 +1,8 @@
 extends SceneTree
-## AI vs AI test: godot --headless --fixed-fps 30 --script res://tools/simulate.gd -- crown brood
+## AI vs AI test:
+##   godot --headless --fixed-fps 30 --script res://tools/simulate.gd -- crown brood [map] [2v2] [brutal]
+## Any number of factions (2-4); every player is on its own side unless "2v2" (or "1v2",
+## "1v3": the first player alone against the rest). "brutal" makes the first player Brutal.
 var main: Node
 var t := 0.0
 var next_report := 30.0
@@ -10,17 +13,37 @@ func _process(delta: float) -> bool:
 	t += delta
 	if t > 0.2 and main.game == null:
 		var args := OS.get_cmdline_user_args()
-		var fs: Array = [args[0], args[1]] if args.size() >= 2 else ["crown", "brood"]
-		if args.size() >= 3:
-			main.pick["map"] = args[2]
-		main.start(2, true, fs)
+		var facs: Array = []
+		var map := "random"
+		var mode := "ffa"
+		var first := "hard"
+		for a in args:
+			if a in ["crown", "brood", "clockwork", "random"]:
+				facs.append(a)
+			elif MapGen.MAPS.has(a):
+				map = a
+			elif a in ["2v2", "1v2", "1v3", "ffa"]:
+				mode = a
+			elif a in ["easy", "normal", "hard", "brutal"]:
+				first = a
+		if facs.size() < 2:
+			facs = ["crown", "brood"]
+		var slots: Array = []
+		for i in facs.size():
+			var side := i
+			if mode == "2v2":
+				side = 0 if i < 2 else 1
+			elif mode in ["1v2", "1v3"]:
+				side = 0 if i == 0 else 1
+			slots.append({"who": first if i == 0 else "hard", "faction": facs[i], "colour": i, "side": side})
+		main.start({"map": map, "slots": slots})
 	var g = main.game
 	if g == null:
 		return false
 	if t >= next_report:
 		next_report += 30.0
 		var line := "t=%d " % int(g.clock)
-		for team in 2:
+		for team in g.n_players():
 			var counts := {}
 			for u in g.units:
 				if u.team == team and not u.dead:

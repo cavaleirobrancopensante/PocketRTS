@@ -1,5 +1,5 @@
 extends Node
-## Main menu, starting a match, and the victory/defeat screen.
+## Main menu, the skirmish lobby, starting a match, and the end-of-match screen.
 
 var version: String = ProjectSettings.get_setting("application/config/version", "dev")
 var sfx: Sfx
@@ -7,30 +7,56 @@ var game: Game
 var ui_layer: CanvasLayer
 var menu: Control
 var _went_fullscreen := false
-var pick := {"me": "crown", "enemy": "brood", "difficulty": 1, "blue": "you", "c1": 0, "c2": 1, "map": "random"}
+var _backdrop: MenuBackdrop
 
-const HELP := """Destroy every enemy building to win. There are no resources on the map: each faction builds its own economy, and every Town Hall, Hive or Clocktower allows only so many economy structures, so expanding is how you grow.
+## The skirmish setup, remembered between sessions.
+var lobby := {
+	"map": "random",
+	"slots": [
+		{"who": "you", "faction": "crown", "colour": 0, "side": 0},
+		{"who": "normal", "faction": "brood", "colour": 1, "side": 1},
+	],
+}
 
-THE CROWN  Labourers work Farms (up to 3 each): a farm ripens into a 280-gold harvest, faster with more hands. The Powder Mill makes black powder; muskets and cannons can't fire without it. Each Town Hall allows 4 Farms and 1 Powder Mill nearby. Barracks: Musketeers and Pikemen. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.
+const WHO := ["you", "easy", "normal", "hard", "brutal"]
+const WHO_LABEL := {"you": "YOU", "easy": "EASY AI", "normal": "NORMAL AI", "hard": "HARD AI", "brutal": "BRUTAL AI"}
+const FACS := ["crown", "brood", "clockwork", "random"]
 
-THE BROOD  Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some). Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, flyers only ranged units can hit. Army cap 160.
+const HELP := {
+	"BASICS": """Destroy every enemy building to win.
 
-THE CLOCKWORK  Winders crank Boilers for energy. Split the energy (tap a Boiler or Clocktower) between ORE (Ore Crushers turn it into ore), ASSEMBLY (faster production) and WIND (bigger fields; constructs run down slower). Winders also start buildings and repair. Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Army cap 80.
+There are no resources on the map: each faction builds its own economy. Every Town Hall, Hive or Clocktower allows only so many economy structures nearby, so expanding to a new hall spot is how you grow, and the expansions are what you fight over.
+
+High ground: units below a cliff can't see up onto it, and ramps are the only way up. Rivers can only be crossed at the fords.
+
+Skirmish: up to four players. Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
+	"CROWN": """THE CROWN: pike, shot and black powder.
+
+Labourers work Farms (up to 3 each): a farm ripens into a 280-gold harvest, faster with more hands. The Powder Mill makes black powder; muskets and cannons can't fire without it. Each Town Hall allows 4 Farms and 1 Powder Mill nearby.
+
+Barracks: Musketeers and Pikemen. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
+	"BROOD": """THE BROOD: swarm, swamp and hunger.
+
+Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some).
+
+Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, flyers only ranged units can hit. Army cap 160.""",
+	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.
+
+Winders crank Boilers for energy. Split the energy (tap a Boiler or Clocktower) between ORE (Ore Crushers turn it into ore), ASSEMBLY (faster production) and WIND (bigger fields; constructs run down slower). Winders also start buildings and repair.
+
+Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Army cap 80.""",
+	"CONTROLS": """COMPUTER
+Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen); left drag box-selects; right click commands (move, attack, work, rally). Mouse wheel zooms; screen edges, arrow keys or the middle button pan.
+Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work. 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall, Space jumps to the selection, Esc cancels.
 
 MOBILE
-- DRAG: BOX / PAN (top right) switches what a one-finger drag does.
-- Tap a unit to select it; double-tap to select all of that type on screen.
-- Drag on the map to box-select.
-- Tap the ground to move (soldiers fight anything on the way). Tap an enemy to attack, a mine to gather.
-- Long-press the ground to move without stopping to fight.
-- Two fingers to pan and pinch to zoom. Tap the minimap to jump.
-- ARMY / IDLE / HALL buttons select quickly. Groups 1-3: hold to save, tap to select.
-
-COMPUTER  Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen), left drag box-selects, right click commands (move, attack, work, rally). Mouse wheel zooms; move the mouse to a screen edge, use the arrow keys or drag with the middle button to pan. Every button on the command card has a letter hotkey (shown in its corner; hover for details): B builds, A attack, M move, S stop, H hold, G work. 1-9 select groups, Ctrl+number saves one, Shift+number adds it. F1 idle worker, F2 whole army, F3 hall, Space jumps to the selection, Esc cancels."""
+Tap to select, double-tap for every unit of that type on screen. DRAG: BOX / PAN (top right) switches what a one-finger drag does. Tap the ground to move, an enemy to attack. Long-press to move without fighting. Two fingers pan, pinch zooms, tap the minimap to jump. ARMY / IDLE / HALL select quickly; groups 1-3: hold to save, tap to select.""",
+}
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	UiStyle.install()
 	add_child(Music.new())
 	sfx = Sfx.new()
 	add_child(sfx)
@@ -39,59 +65,821 @@ func _ready() -> void:
 	add_child(ui_layer)
 	_make_rotate_overlay()
 	Settings.load_all()
+	_load_lobby()
 	if Settings.device == "":
 		show_device()
 	else:
 		show_menu()
 
 
-## First start (or from the menu): computer or phone? They play differently.
-func show_device() -> void:
+# ------------------------------------------------------------------ screens
+
+## A fresh full-screen menu page over the animated backdrop.
+func _page() -> Control:
 	_clear_ui()
+	_backdrop = MenuBackdrop.new()
+	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(_backdrop)
 	menu = Control.new()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.theme = _theme()
+	menu.theme = UiStyle.theme()
 	ui_layer.add_child(menu)
-	var dark := ColorRect.new()
-	dark.color = Color("#121612")
-	dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.add_child(dark)
+	return menu
+
+
+## First start (or from the menu): computer or phone? They play differently.
+func show_device() -> void:
+	var root := _page()
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(c)
+	var p := PanelContainer.new()
+	c.add_child(p)
 	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	v.custom_minimum_size = Vector2(560, 0)
-	v.position = Vector2(-280, -190)
-	v.add_theme_constant_override("separation", 16)
-	menu.add_child(v)
-	v.add_child(_label("POCKET RTS", 56))
-	v.add_child(_label("Where are you playing?", 26, Color(1, 1, 1, 0.8)))
-	v.add_child(_gap(8))
+	v.add_theme_constant_override("separation", 14)
+	p.add_child(v)
+	v.add_child(UiStyle.heading("POCKET RTS", 54, UiStyle.TRIM))
+	v.add_child(UiStyle.text("Where are you playing?", 26, UiStyle.TEXT))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
+	row.add_theme_constant_override("separation", 18)
 	v.add_child(row)
-	for opt in [["pc", "COMPUTER", "Mouse and keyboard: click, drag to select,\nright-click to command, letter hotkeys."],
-			["mobile", "MOBILE", "Touch: tap, drag, pinch to zoom.\nPlay it held sideways."]]:
+	for opt in [["pc", "COMPUTER", "Mouse and keyboard.\nClick, drag to select, right-click\nto command, letter hotkeys."],
+			["mobile", "MOBILE", "Touch.\nTap, drag, pinch to zoom.\nPlayed with the phone sideways."]]:
 		var col := VBoxContainer.new()
-		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		col.add_theme_constant_override("separation", 8)
 		var dev: String = opt[0]
 		var b := _button(opt[1], func() -> void:
 			Settings.set_device(dev)
 			show_menu())
-		b.custom_minimum_size = Vector2(0, 110)
-		b.add_theme_font_size_override("font_size", 30)
+		b.custom_minimum_size = Vector2(250, 96)
+		b.add_theme_font_override("font", UiStyle.title_font())
+		b.add_theme_font_size_override("font_size", 28)
 		if Settings.device == dev:
-			var sb := StyleBoxFlat.new()
-			sb.bg_color = Color("#447a4c")
-			sb.set_corner_radius_all(8)
-			sb.border_color = Color(1, 0.9, 0.5)
-			sb.set_border_width_all(2)
-			b.add_theme_stylebox_override("normal", sb)
+			UiStyle.chosen(b)
 		col.add_child(b)
-		var l := _label(opt[2], 15, Color(1, 1, 1, 0.55))
-		col.add_child(l)
+		col.add_child(UiStyle.text(opt[2], 16, UiStyle.MUTED))
 		row.add_child(col)
-	v.add_child(_gap(6))
-	v.add_child(_label("You can change this later from the menu.", 14, Color(1, 1, 1, 0.4)))
+	v.add_child(UiStyle.text("You can change this later in Settings.", 15, Color(1, 1, 1, 0.4)))
+
+
+func show_menu() -> void:
+	if Music.me:
+		Music.me.menu()
+	var root := _page()
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]:
+		m.add_theme_constant_override("margin_" + side, 56)
+	for side in ["top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 28)
+	root.add_child(m)
+	var h := HBoxContainer.new()
+	m.add_child(h)
+	var left := VBoxContainer.new()
+	left.alignment = BoxContainer.ALIGNMENT_CENTER
+	left.add_theme_constant_override("separation", 12)
+	left.custom_minimum_size.x = 400
+	h.add_child(left)
+	var title := UiStyle.heading("POCKET\nRTS", 84, UiStyle.TRIM)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title.add_theme_constant_override("line_spacing", -18)
+	left.add_child(title)
+	var sub := UiStyle.text("The Crown  ·  The Brood  ·  The Clockwork", 20, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	left.add_child(sub)
+	left.add_child(_gap(14))
+	var play := _button("SKIRMISH", func() -> void: show_skirmish())
+	UiStyle.primary(play)
+	play.custom_minimum_size = Vector2(360, 68)
+	play.add_theme_font_size_override("font_size", 30)
+	left.add_child(play)
+	for it in [["HOW TO PLAY", func() -> void: show_help()], ["SETTINGS", func() -> void: show_settings()]]:
+		var b := _button(it[0], it[1])
+		b.custom_minimum_size = Vector2(360, 54)
+		left.add_child(b)
+	left.add_child(_gap(8))
+	left.add_child(UiStyle.text("v%s  ·  playing on %s" % [version, "computer" if Settings.pc() else "mobile"], 15, Color(1, 1, 1, 0.35), HORIZONTAL_ALIGNMENT_LEFT))
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(sp)
+	# The three factions, each with its hall.
+	var cards := HBoxContainer.new()
+	cards.alignment = BoxContainer.ALIGNMENT_END
+	cards.add_theme_constant_override("separation", 14)
+	cards.size_flags_vertical = Control.SIZE_SHRINK_END
+	h.add_child(cards)
+	for f in ["crown", "brood", "clockwork"]:
+		cards.add_child(_faction_card(f))
+
+
+func _faction_card(f: String) -> Control:
+	var p := PanelContainer.new()
+	var sb := UiStyle.box(Color(0.08, 0.07, 0.055, 0.78), UiStyle.accent(f).darkened(0.1), 2, 12, 12.0)
+	p.add_theme_stylebox_override("panel", sb)
+	p.custom_minimum_size = Vector2(170, 0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	p.add_child(v)
+	var img := TextureRect.new()
+	img.texture = load("res://assets/buildings/%s_built.png" % Defs.FACTIONS[f]["hall"])
+	img.custom_minimum_size = Vector2(140, 130)
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	v.add_child(img)
+	v.add_child(UiStyle.heading(Defs.FACTIONS[f]["name"].to_upper(), 19, UiStyle.accent(f).lightened(0.35)))
+	var tag := UiStyle.text(UiStyle.FACTION_TAG[f], 14, UiStyle.MUTED)
+	tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tag.custom_minimum_size.x = 140
+	v.add_child(tag)
+	return p
+
+
+func show_settings() -> void:
+	var root := _page()
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(c)
+	var p := PanelContainer.new()
+	p.custom_minimum_size.x = 520
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	p.add_child(v)
+	v.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
+	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
+	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
+	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
+	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
+	v.add_child(dev)
+	if not Settings.pc():
+		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
+			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
+			Settings.save_all(), "BOX-SELECTS", "MOVES THE VIEW"))
+	v.add_child(_gap(4))
+	var back := _button("BACK", func() -> void: show_menu())
+	v.add_child(back)
+
+
+## The music player: how the match playlist is chosen, and every piece to listen to.
+func show_music() -> void:
+	var root := _page()
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]:
+		m.add_theme_constant_override("margin_" + side, 60)
+	for side in ["top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 18)
+	root.add_child(m)
+	var p := PanelContainer.new()
+	m.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	p.add_child(v)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
+	v.add_child(top)
+	var t := UiStyle.heading("MUSIC PLAYER", 32, UiStyle.TRIM)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(t)
+	top.add_child(UiStyle.text("IN A MATCH PLAY", 15, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_RIGHT, true))
+	var mb := Button.new()
+	mb.text = Music.MODE_NAMES[Music.me.mode]
+	mb.custom_minimum_size = Vector2(390, 48)
+	mb.add_theme_font_size_override("font_size", 16)
+	mb.pressed.connect(func() -> void:
+		var i := Music.MODES.find(Music.me.mode)
+		Music.me.set_mode(Music.MODES[(i + 1) % Music.MODES.size()])
+		Sfx.play_any(["ui/click", "click"])
+		show_music())
+	top.add_child(mb)
+	var now := Music.me.now_playing()
+	v.add_child(UiStyle.text(("Now playing: " + now) if now != "" else "Tap a piece to listen.", 16, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 16)
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(cols)
+	var titles := Music.titles()
+	for f in [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clock", "THE CLOCKWORK"]]:
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 6)
+		cols.add_child(col)
+		var fac := "clockwork" if f[0] == "clock" else String(f[0])
+		col.add_child(UiStyle.heading(f[1], 18, UiStyle.accent(fac).lightened(0.35)))
+		for mood in ["peace", "battle"]:
+			for stem in Music.pieces(f[0], mood):
+				col.add_child(_track_row(stem, titles.get(stem, stem), mood))
+	var back := _button("BACK", func() -> void:
+		Music.me.menu()
+		show_settings())
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.custom_minimum_size.x = 220
+	v.add_child(back)
+
+
+func _track_row(stem: String, title: String, mood: String) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	var play := Button.new()
+	play.text = ("♪  " if Music.me._current == stem else "") + title
+	play.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	play.custom_minimum_size.y = 46
+	play.clip_text = true
+	play.add_theme_font_size_override("font_size", 16)
+	play.tooltip_text = "Battle" if mood == "battle" else "Calm"
+	if mood == "battle":
+		play.add_theme_color_override("font_color", Color(1, 0.75, 0.6))
+	if Music.me._current == stem:
+		UiStyle.chosen(play)
+	play.pressed.connect(func() -> void:
+		Music.me.preview(stem)
+		show_music())
+	h.add_child(play)
+	if Music.me.mode == "picked":
+		var tick := Button.new()
+		var on := Music.me.is_enabled(stem)
+		tick.text = "✓" if on else ""
+		tick.custom_minimum_size = Vector2(46, 46)
+		if on:
+			UiStyle.chosen(tick)
+		tick.pressed.connect(func() -> void:
+			Music.me.set_enabled(stem, not Music.me.is_enabled(stem))
+			show_music())
+		h.add_child(tick)
+	return h
+
+
+func _toggle_row(title: String, get_on: Callable, flip: Callable, on_text := "ON", off_text := "OFF") -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	var l := UiStyle.text(title, 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(l)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(190, 50)
+	var refresh := func() -> void:
+		var on: bool = get_on.call()
+		b.text = on_text if on else off_text
+		if on:
+			UiStyle.chosen(b)
+		else:
+			for st in ["normal", "hover", "pressed"]:
+				b.remove_theme_stylebox_override(st)
+	refresh.call()
+	b.pressed.connect(func() -> void:
+		_web_fullscreen()
+		flip.call()
+		Sfx.play_any(["ui/toggle", "ui/click", "click"])
+		refresh.call())
+	h.add_child(b)
+	return h
+
+
+func show_help(section := "BASICS") -> void:
+	var root := _page()
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 36 if side in ["left", "right"] else 22)
+	root.add_child(m)
+	var p := PanelContainer.new()
+	m.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	p.add_child(v)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	v.add_child(top)
+	var t := UiStyle.heading("HOW TO PLAY", 34, UiStyle.TRIM)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(t)
+	for k in HELP:
+		var key: String = k
+		var b := _button(key, func() -> void: show_help(key))
+		b.custom_minimum_size = Vector2(0, 46)
+		b.add_theme_font_size_override("font_size", 17)
+		if key == section:
+			UiStyle.chosen(b, UiStyle.accent(key.to_lower()) if UiStyle.ACCENT.has(key.to_lower()) else UiStyle.TRIM)
+		top.add_child(b)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	var l := UiStyle.text(HELP[section], 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(l)
+	var back := _button("BACK", func() -> void: show_menu())
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.custom_minimum_size.x = 220
+	v.add_child(back)
+
+
+# ------------------------------------------------------------------ skirmish lobby
+
+func show_skirmish() -> void:
+	var root := _page()
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]:
+		m.add_theme_constant_override("margin_" + side, 30)
+	for side in ["top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 16)
+	root.add_child(m)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	m.add_child(v)
+	# Title and quick set-ups
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	v.add_child(top)
+	var t := UiStyle.heading("SKIRMISH", 38, UiStyle.TRIM)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(t)
+	for preset in ["1v1", "2v2", "1v2", "1v3", "FFA"]:
+		var pr: String = preset
+		var b := _button(pr, func() -> void:
+			_preset(pr)
+			show_skirmish())
+		b.custom_minimum_size = Vector2(76, 44)
+		b.add_theme_font_size_override("font_size", 17)
+		if _current_preset() == pr:
+			UiStyle.chosen(b)
+		top.add_child(b)
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 14)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(body)
+	# Players
+	var pp := PanelContainer.new()
+	pp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(pp)
+	var pv := VBoxContainer.new()
+	pv.add_theme_constant_override("separation", 8)
+	pp.add_child(pv)
+	var hdr := HBoxContainer.new()
+	hdr.add_theme_constant_override("separation", 8)
+	for col in [["PLAYER", 170], ["FACTION", 190], ["COLOUR", 110], ["TEAM", 80]]:
+		var l := UiStyle.text(col[0], 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_CENTER, true)
+		l.custom_minimum_size.x = col[1]
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.size_flags_stretch_ratio = col[1] / 100.0
+		hdr.add_child(l)
+	if lobby["slots"].size() > 2:
+		var gap := Control.new()
+		gap.custom_minimum_size.x = 46
+		hdr.add_child(gap)
+	pv.add_child(hdr)
+	var slots: Array = lobby["slots"]
+	for i in slots.size():
+		pv.add_child(_slot_row(i))
+	if slots.size() < 4:
+		var add := _button("+  ADD PLAYER", func() -> void:
+			_add_slot()
+			show_skirmish())
+		add.custom_minimum_size = Vector2(0, 46)
+		add.add_theme_font_size_override("font_size", 18)
+		pv.add_child(add)
+	var spc := Control.new()
+	spc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pv.add_child(spc)
+	var who_txt := "Same TEAM number = allies.  BRUTAL AI cheats (+50% income) and never lets up."
+	if not slots.any(func(s: Dictionary) -> bool: return s["who"] == "you"):
+		who_txt = "No YOU in the match: the computer plays every side and you watch."
+	var note := UiStyle.text(who_txt, 15, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pv.add_child(note)
+	# Map
+	var mp := PanelContainer.new()
+	mp.custom_minimum_size.x = 300
+	body.add_child(mp)
+	var mv := VBoxContainer.new()
+	mv.add_theme_constant_override("separation", 8)
+	mp.add_child(mv)
+	mv.add_child(UiStyle.text("MAP", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_CENTER, true))
+	var ids: Array = ["random"] + MapGen.MAPS.keys()
+	var mrow := HBoxContainer.new()
+	mrow.add_theme_constant_override("separation", 6)
+	mv.add_child(mrow)
+	var prev := _button("<", func() -> void:
+		lobby["map"] = ids[(ids.find(lobby["map"]) - 1 + ids.size()) % ids.size()]
+		show_skirmish())
+	prev.custom_minimum_size = Vector2(46, 46)
+	mrow.add_child(prev)
+	var mid: String = lobby["map"]
+	var mname := "RANDOM MAP" if mid == "random" else String(MapGen.MAPS[mid][0]).to_upper()
+	var ml := UiStyle.heading(mname, 22, UiStyle.TEXT)
+	ml.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mrow.add_child(ml)
+	var nxt := _button(">", func() -> void:
+		lobby["map"] = ids[(ids.find(lobby["map"]) + 1) % ids.size()]
+		show_skirmish())
+	nxt.custom_minimum_size = Vector2(46, 46)
+	mrow.add_child(nxt)
+	var prv := MapPreview.new()
+	prv.map_id = mid
+	prv.slots = slots
+	prv.custom_minimum_size = Vector2(270, 190)
+	prv.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	mv.add_child(prv)
+	var desc := "Any map, picked when the match starts."
+	if mid != "random":
+		desc = {"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
+			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]]
+		desc += "  " + String(MapGen.MAPS[mid][2]).replace("+", " & ").capitalize() + "."
+	var dl := UiStyle.text(desc, 15, UiStyle.MUTED)
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mv.add_child(dl)
+	# Bottom row
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(row)
+	var back := _button("BACK", func() -> void:
+		_save_lobby()
+		show_menu())
+	back.custom_minimum_size = Vector2(200, 60)
+	row.add_child(back)
+	var problem := _lobby_problem()
+	var watch := not slots.any(func(s: Dictionary) -> bool: return s["who"] == "you")
+	var go := _button("WATCH" if watch else "START", func() -> void:
+		_save_lobby()
+		Sfx.play_any(["ui/start_match"])
+		start(lobby.duplicate(true)))
+	go.custom_minimum_size = Vector2(300, 60)
+	go.add_theme_font_size_override("font_size", 28)
+	UiStyle.primary(go)
+	go.disabled = problem != ""
+	row.add_child(go)
+	if problem != "":
+		row.add_child(UiStyle.text(problem, 16, UiStyle.BAD))
+
+
+func _slot_row(i: int) -> Control:
+	var sl: Dictionary = lobby["slots"][i]
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	var colour: Color = Defs.PALETTE[int(sl["colour"])][1]
+	# who
+	var who := _cycle(WHO_LABEL[sl["who"]], 170, func(dir: int) -> void:
+		var list := WHO.duplicate()
+		var taken := false
+		for j in lobby["slots"].size():
+			if j != i and lobby["slots"][j]["who"] == "you":
+				taken = true
+		if taken:
+			list.erase("you")
+		sl["who"] = list[(list.find(sl["who"]) + dir + list.size()) % list.size()])
+	if sl["who"] == "brutal":
+		who.add_theme_color_override("font_color", UiStyle.BAD)
+	elif sl["who"] == "you":
+		who.add_theme_color_override("font_color", Color(1, 0.9, 0.55))
+	h.add_child(who)
+	# faction
+	var f: String = sl["faction"]
+	var fb := _cycle("RANDOM" if f == "random" else Defs.FACTIONS[f]["name"].to_upper(), 190, func(dir: int) -> void:
+		sl["faction"] = FACS[(FACS.find(sl["faction"]) + dir + FACS.size()) % FACS.size()])
+	if f != "random":
+		fb.icon = _faction_icon(f)
+		fb.expand_icon = false
+		fb.add_theme_constant_override("icon_max_width", 30)
+		fb.add_theme_color_override("font_color", UiStyle.accent(f).lightened(0.4))
+	h.add_child(fb)
+	# colour
+	var cb := _cycle(Defs.PALETTE[int(sl["colour"])][0].to_upper(), 110, func(dir: int) -> void:
+		var n := Defs.PALETTE.size()
+		var c := int(sl["colour"])
+		for k in n:
+			c = (c + dir + n) % n
+			if not _colour_taken(c, i):
+				break
+		sl["colour"] = c)
+	for st in ["normal", "hover", "pressed"]:
+		cb.add_theme_stylebox_override(st, UiStyle.box(colour.darkened(0.25 if st == "normal" else 0.1), Color(1, 1, 1, 0.5 if st == "normal" else 0.9), 2))
+	cb.add_theme_color_override("font_color", Color(1, 1, 1))
+	cb.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	h.add_child(cb)
+	# team
+	var tb := _cycle(str(int(sl["side"]) + 1), 80, func(dir: int) -> void:
+		sl["side"] = (int(sl["side"]) + dir + 4) % 4)
+	tb.add_theme_font_override("font", UiStyle.title_font())
+	tb.add_theme_font_size_override("font_size", 24)
+	h.add_child(tb)
+	if lobby["slots"].size() > 2:
+		var x := _button("✕", func() -> void:
+			lobby["slots"].remove_at(i)
+			show_skirmish())
+		x.custom_minimum_size = Vector2(46, 58)
+		h.add_child(x)
+	return h
+
+
+## A button that steps through options: click/tap = next; right click = previous.
+func _cycle(text: String, w: float, step: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(w, 58)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_stretch_ratio = w / 100.0
+	b.add_theme_font_size_override("font_size", 18)
+	b.clip_text = true
+	b.pressed.connect(func() -> void:
+		_web_fullscreen()
+		step.call(1)
+		Sfx.play_any(["ui/click", "click"])
+		show_skirmish())
+	b.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT:
+			step.call(-1)
+			Sfx.play_any(["ui/back", "ui/click", "click"])
+			show_skirmish())
+	return b
+
+
+func _faction_icon(f: String) -> Texture2D:
+	return load("res://assets/icons/%s.png" % Defs.FACTIONS[f]["hall"])
+
+
+func _colour_taken(c: int, except: int) -> bool:
+	for j in lobby["slots"].size():
+		if j != except and int(lobby["slots"][j]["colour"]) == c:
+			return true
+	return false
+
+
+func _add_slot() -> void:
+	var slots: Array = lobby["slots"]
+	var c := 0
+	while _colour_taken(c, -1):
+		c += 1
+	var side := 1
+	var used := {}
+	for s in slots:
+		used[int(s["side"])] = true
+	if _current_preset() == "FFA" or used.size() == slots.size():
+		side = 0
+		while used.has(side):
+			side += 1
+	slots.append({"who": "normal", "faction": "random", "colour": c, "side": side})
+
+
+func _preset(p: String) -> void:
+	var slots: Array = lobby["slots"]
+	var me: Dictionary = slots[0] if not slots.is_empty() else {"who": "you", "faction": "crown", "colour": 0, "side": 0}
+	var n: int = {"1v1": 2, "2v2": 4, "1v2": 3, "1v3": 4, "FFA": 4}[p]
+	var out: Array = [me]
+	for i in range(1, n):
+		var prev: Dictionary = slots[i] if i < slots.size() else {"who": "normal", "faction": "random"}
+		out.append({"who": "normal" if prev["who"] == "you" else prev["who"], "faction": prev["faction"], "colour": 0, "side": 1})
+	for i in out.size():
+		out[i]["colour"] = i if i != 0 else int(me["colour"])
+	# keep colours unique
+	var used := {int(me["colour"]): true}
+	for i in range(1, out.size()):
+		var c := 0
+		while used.has(c):
+			c += 1
+		out[i]["colour"] = c
+		used[c] = true
+	for i in out.size():
+		match p:
+			"2v2":
+				out[i]["side"] = 0 if i < 2 else 1
+			"FFA":
+				out[i]["side"] = i
+			_:
+				out[i]["side"] = 0 if i == 0 else 1
+	lobby["slots"] = out
+
+
+func _current_preset() -> String:
+	var slots: Array = lobby["slots"]
+	var sides: Array = slots.map(func(s: Dictionary) -> int: return int(s["side"]))
+	var n := slots.size()
+	var distinct := {}
+	for s in sides:
+		distinct[s] = true
+	if n == 2 and distinct.size() == 2:
+		return "1v1"
+	if n == 4 and distinct.size() == 4:
+		return "FFA"
+	if n == 4 and distinct.size() == 2 and sides.count(sides[0]) == 2:
+		return "2v2"
+	if distinct.size() == 2 and sides.count(sides[0]) == 1:
+		return "1v%d" % (n - 1)
+	return ""
+
+
+func _lobby_problem() -> String:
+	var distinct := {}
+	for s in lobby["slots"]:
+		distinct[int(s["side"])] = true
+	if distinct.size() < 2:
+		return "Everyone is on one team."
+	return ""
+
+
+func _load_lobby() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(Settings.PATH) == OK and cfg.has_section_key("lobby", "setup"):
+		var l: Variant = cfg.get_value("lobby", "setup")
+		if l is Dictionary and l.has("slots") and (l["slots"] as Array).size() >= 2:
+			lobby = l
+
+
+func _save_lobby() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(Settings.PATH)
+	cfg.set_value("lobby", "setup", lobby)
+	cfg.save(Settings.PATH)
+
+
+# ------------------------------------------------------------------ helpers
+
+func _clear_ui() -> void:
+	for c in ui_layer.get_children():
+		c.queue_free()
+
+
+func _theme() -> Theme:
+	return UiStyle.theme()
+
+
+func _label(t: String, sz: int, col := Color.WHITE, align := HORIZONTAL_ALIGNMENT_CENTER) -> Label:
+	return UiStyle.text(t, sz, col, align)
+
+
+func _button(t: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = t
+	b.custom_minimum_size = Vector2(0, 56)
+	b.pressed.connect(func() -> void:
+		_web_fullscreen()
+		Sfx.play_any(["ui/click", "click"])
+		cb.call())
+	if Settings.pc():
+		b.mouse_entered.connect(func() -> void: Sfx.play_any(["ui/hover"], Vector2.INF, -8.0))
+	return b
+
+
+func _gap(h: float) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, h)
+	return c
+
+
+# ------------------------------------------------------------------ backdrop and map preview
+
+## The menu background: a strip of countryside with each faction's hall and a slow
+## procession of its soldiers, under a dark vignette.
+class MenuBackdrop extends Control:
+	var t := 0.0
+	var _ground: Array = []
+	const MARCH := [["musketeer", "crown"], ["pikeman", "crown"], ["raptor", "brood"], ["spitter", "brood"],
+		["gearknight", "clockwork"], ["bolt", "clockwork"], ["brute", "brood"], ["cannon", "crown"]]
+
+	func _ready() -> void:
+		for i in TerrainData.COUNTS.get("grass", 1):
+			var p := "res://assets/terrain/grass_%d.png" % i
+			if ResourceLoader.exists(p):
+				_ground.append(load(p))
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), UiStyle.BG)
+		var tile := 64.0
+		var drift := fmod(t * 6.0, tile)
+		if not _ground.is_empty():
+			var rows := int(size.y / tile) + 2
+			var cols := int(size.x / tile) + 2
+			for y in rows:
+				for x in cols:
+					var h := (x * 73856093) ^ (y * 19349663)
+					var tex: Texture2D = _ground[absi(h) % _ground.size()]
+					draw_texture_rect(tex, Rect2(Vector2(x * tile - drift, y * tile), Vector2(tile, tile)), false, Color(0.62, 0.62, 0.58))
+		# procession
+		for i in MARCH.size():
+			var kind: String = MARCH[i][0]
+			if not ArtData.UNITS.has(kind):
+				continue
+			var a: Dictionary = ArtData.UNITS[kind]
+			var frames: int = a["frames"].get("walk_e", 1)
+			var path := "res://assets/units/%s/walk_e.png" % kind
+			if not ResourceLoader.exists(path):
+				continue
+			var tex: Texture2D = Game.tex(path)
+			var cell: Vector2i = a["cell"]
+			var span := size.x + 300.0
+			var x := fmod(t * 34.0 + i * span / MARCH.size(), span) - 150.0
+			var y := size.y * 0.5 + (i % 2) * 70.0
+			var f := int(t * 8.0 + i) % frames
+			var sc := 2.2
+			var src := Rect2(f * cell.x, 0, cell.x, cell.y)
+			var anchor: Vector2 = a["anchor"]
+			var mat_col := Color(0.9, 0.9, 0.88)
+			draw_texture_rect_region(tex, Rect2(Vector2(x, y) - anchor * sc, Vector2(cell) * sc), src, mat_col)
+		# a dark band behind the menu column, fading to the right
+		var w := size.x * 0.66
+		var dark := Color(0.05, 0.04, 0.03, 0.92)
+		var clear := Color(0.05, 0.04, 0.03, 0.2)
+		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(w, 0), Vector2(w, size.y), Vector2(0, size.y)]),
+			PackedColorArray([dark, clear, clear, dark]))
+		draw_rect(Rect2(0, 0, size.x, size.y), Color(0, 0, 0, 0.25))
+		draw_rect(Rect2(0, 0, size.x, 5), Color(0.79, 0.64, 0.29, 0.55))
+		draw_rect(Rect2(0, size.y - 5, size.x, 5), Color(0.79, 0.64, 0.29, 0.55))
+
+
+## A small schematic of a map: its biome colours, the hills, rivers and where everyone starts.
+class MapPreview extends Control:
+	var map_id := "random"
+	var slots: Array = []
+
+	func _draw() -> void:
+		var r := Rect2(Vector2(4, 4), size - Vector2(8, 8))
+		var ratio := float(Game.W) / float(Game.H)
+		if r.size.x / r.size.y > ratio:
+			var w := r.size.y * ratio
+			r = Rect2(r.position + Vector2((r.size.x - w) * 0.5, 0), Vector2(w, r.size.y))
+		else:
+			var hh := r.size.x / ratio
+			r = Rect2(r.position + Vector2(0, (r.size.y - hh) * 0.5), Vector2(r.size.x, hh))
+		var sb := UiStyle.box(Color(0, 0, 0, 0.5), UiStyle.TRIM_DIM, 2, 8, 0.0)
+		sb.draw(get_canvas_item(), r.grow(4))
+		if map_id == "random" or not MapGen.MAPS.has(map_id):
+			draw_rect(r, Color(0.2, 0.18, 0.14))
+			var f := ThemeDB.fallback_font
+			draw_string(f, r.get_center() + Vector2(-12, 22), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 64, UiStyle.MUTED)
+			_starts(r)
+			return
+		var m: Array = MapGen.MAPS[map_id]
+		var parts: PackedStringArray = String(m[2]).split("+")
+		var ca := _biome_col(parts[0])
+		var cb := _biome_col(parts[1] if parts.size() > 1 else parts[0])
+		draw_rect(r, ca)
+		if parts.size() > 1:
+			var pts := PackedVector2Array([r.position + Vector2(0, r.size.y), r.position + Vector2(r.size.x, r.size.y), r.position + Vector2(0, 0)])
+			pts = PackedVector2Array([r.position, r.position + Vector2(0, r.size.y), r.end])
+			draw_colored_polygon(pts, cb)
+		var k := r.size / Vector2(Game.W, Game.H)
+		var four := slots.size() > 2
+		var hill := ca.lightened(0.25)
+		match m[1]:
+			"crossroads":
+				draw_circle(r.position + Vector2(42, 30) * k, 5.5 * k.x, hill)
+			"highlands":
+				for c in ([Vector2(9, 8), Vector2(Game.W - 9, 8), Vector2(9, Game.H - 8), Vector2(Game.W - 9, Game.H - 8)] if four else [Vector2(9, 8), Vector2(Game.W - 9, Game.H - 8)]):
+					draw_circle(r.position + c * k, 12.0 * k.x, hill)
+				draw_circle(r.position + Vector2(42, 30) * k, 4.0 * k.x, hill)
+			"rivers":
+				var water := Color(0.15, 0.4, 0.7)
+				if four:
+					draw_line(r.position + Vector2(r.size.x * 0.5, 0), r.position + Vector2(r.size.x * 0.5, r.size.y), water, 5.0)
+					draw_line(r.position + Vector2(0, r.size.y * 0.5), r.position + Vector2(r.size.x, r.size.y * 0.5), water, 5.0)
+				else:
+					draw_line(r.position + Vector2(r.size.x, 0), r.position + Vector2(0, r.size.y), water, 7.0)
+		_starts(r)
+
+	func _starts(r: Rect2) -> void:
+		var k := r.size / Vector2(Game.W, Game.H)
+		var corners: Array = [Vector2(8, 8), Vector2(Game.W - 8, Game.H - 8)]
+		if slots.size() > 2:
+			corners = [Vector2(8, 8), Vector2(8, Game.H - 8), Vector2(Game.W - 8, 8), Vector2(Game.W - 8, Game.H - 8)]
+		# allies share a side, like the real placement
+		var order: Array = range(slots.size())
+		order.sort_custom(func(a: int, b: int) -> bool:
+			return int(slots[a]["side"]) < int(slots[b]["side"]) or (slots[a]["side"] == slots[b]["side"] and a < b))
+		var use: Array = [0, 1, 2, 3]
+		if slots.size() == 3:
+			var cnt := {}
+			for s in slots:
+				cnt[int(s["side"])] = int(cnt.get(int(s["side"]), 0)) + 1
+			use = [0, 3, 2]
+			if cnt.size() == 2:
+				use = [0, 1, 3] if int(cnt[int(slots[order[0]]["side"])]) == 2 else [0, 2, 3]
+		for i in order.size():
+			var s: Dictionary = slots[order[i]]
+			var p: Vector2 = r.position + corners[use[i]] * k
+			draw_circle(p, 9.0, Color(0, 0, 0, 0.6))
+			draw_circle(p, 7.0, Defs.PALETTE[int(s["colour"])][1])
+			var f := ThemeDB.fallback_font
+			draw_string(f, p + Vector2(-4, 5), str(int(s["side"]) + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+
+	func _biome_col(b: String) -> Color:
+		var low: Array = MapGen.BIOMES.get(b, MapGen.BIOMES["grass"])["low"]
+		var c: Color = TerrainData.COLOURS.get(low[0], Color(0.3, 0.45, 0.2))
+		return c.darkened(0.1)
 
 
 # ------------------------------------------------------------------ rotate your phone
@@ -170,273 +958,59 @@ class RotateIcon extends Control:
 		draw_arc(c, 58, -PI * 0.9, -PI * 0.55, 16, Color(1, 0.85, 0.4), 4.0)
 
 
-func _clear_ui() -> void:
-	for c in ui_layer.get_children():
-		c.queue_free()
-
-
-func _theme() -> Theme:
-	var t := Theme.new()
-	t.default_font_size = 22
-	for st in ["normal", "hover", "pressed"]:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = {"normal": Color("#2b3a2e"), "hover": Color("#35503a"), "pressed": Color("#447a4c")}[st]
-		sb.set_corner_radius_all(8)
-		sb.content_margin_left = 16
-		sb.content_margin_right = 16
-		t.set_stylebox(st, "Button", sb)
-	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
-	return t
-
-
-func show_menu() -> void:
-	_clear_ui()
-	if Music.me:
-		Music.me.menu()
-	menu = Control.new()
-	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.theme = _theme()
-	ui_layer.add_child(menu)
-	var bg := TextureRect.new()
-	bg.texture = load("res://assets/buildings/town_hall_built.png")
-	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	bg.modulate = Color(1, 1, 1, 0.12)
-	var dark := ColorRect.new()
-	dark.color = Color("#121612")
-	dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.add_child(dark)
-	menu.add_child(bg)
-	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 12)
-	v.custom_minimum_size = Vector2(440, 0)
-	v.position = Vector2(-220, -250)
-	menu.add_child(v)
-	v.add_child(_label("POCKET RTS", 64))
-	v.add_child(_label("The Crown  ·  The Brood  ·  The Clockwork", 20, Color(1, 1, 1, 0.6)))
-	v.add_child(_gap(10))
-	v.add_child(_button("SKIRMISH", func() -> void: show_skirmish()))
-	v.add_child(_button("HOW TO PLAY", func() -> void: _show_help()))
-	var audio := HBoxContainer.new()
-	audio.add_theme_constant_override("separation", 12)
-	for which in ["music", "sound"]:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(214, 48)
-		b.add_theme_font_size_override("font_size", 18)
-		var refresh := func() -> void:
-			var on: bool = Music.me.music_on if which == "music" else Music.me.sound_on
-			b.text = "%s: %s" % [which.to_upper(), "ON" if on else "OFF"]
-		refresh.call()
-		b.pressed.connect(func() -> void:
-			_web_fullscreen()
-			if which == "music":
-				Music.me.toggle_music()
-			else:
-				Music.me.toggle_sound()
-			refresh.call())
-		audio.add_child(b)
-	v.add_child(audio)
-	var dev_b := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
-	dev_b.custom_minimum_size = Vector2(0, 44)
-	dev_b.add_theme_font_size_override("font_size", 16)
-	v.add_child(dev_b)
-	v.add_child(_gap(6))
-	v.add_child(_label("v" + version, 14, Color(1, 1, 1, 0.35)))
-
-
-func show_skirmish() -> void:
-	_clear_ui()
-	menu = Control.new()
-	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.theme = _theme()
-	ui_layer.add_child(menu)
-	var dark := ColorRect.new()
-	dark.color = Color("#121612")
-	dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.add_child(dark)
-	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 60
-	v.offset_right = -60
-	v.offset_top = 20
-	v.offset_bottom = -20
-	v.add_theme_constant_override("separation", 10)
-	menu.add_child(v)
-	v.add_child(_label("SKIRMISH", 44))
-	var watch: bool = pick["blue"] == "ai"
-	var facs := [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "THE CLOCKWORK"], ["random", "RANDOM"]]
-	v.add_child(_choice_row("PLAYER 1", "blue", [["you", "YOU"], ["ai", "COMPUTER (WATCH)"]]))
-	v.add_child(_choice_row("P1 FACTION" if watch else "YOUR FACTION", "me", facs))
-	v.add_child(_colour_row("P1 COLOUR" if watch else "YOUR COLOUR", "c1", "c2"))
-	var about := _label(Defs.FACTIONS[pick["me"]]["about"] if Defs.FACTIONS.has(pick["me"]) else "A faction picked at random.", 16, Color(1, 1, 1, 0.6))
-	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(about)
-	v.add_child(_choice_row("P2 FACTION" if watch else "ENEMY", "enemy", facs))
-	v.add_child(_colour_row("P2 COLOUR" if watch else "ENEMY COLOUR", "c2", "c1"))
-	v.add_child(_choice_row("AI LEVEL" if watch else "DIFFICULTY", "difficulty", [[0, "EASY"], [1, "NORMAL"], [2, "HARD"]]))
-	var maps: Array = [["random", "RANDOM"]]
-	for id in MapGen.MAPS:
-		maps.append([id, MapGen.MAPS[id][0].to_upper()])
-	v.add_child(_choice_row("MAP", "map", maps.slice(0, 5)))
-	v.add_child(_choice_row("", "map", maps.slice(5)))
-	var sp := Control.new()
-	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(sp)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(_button("BACK", func() -> void: show_menu()))
-	var go := _button("WATCH" if watch else "START", func() -> void:
-		var fs := []
-		for k in ["me", "enemy"]:
-			var f: String = pick[k]
-			fs.append(["crown", "brood", "clockwork"][randi() % 3] if f == "random" else f)
-		start(pick["difficulty"], pick["blue"] == "ai", fs))
-	go.custom_minimum_size = Vector2(260, 60)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#3f8a4c")
-	sb.set_corner_radius_all(8)
-	go.add_theme_stylebox_override("normal", sb)
-	row.add_child(go)
-	v.add_child(row)
-
-
-## A row of colour swatches; the other player's colour can't be taken.
-func _colour_row(title: String, key: String, other: String) -> Control:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
-	var l := _label(title, 18, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_LEFT)
-	l.custom_minimum_size.x = 170
-	h.add_child(l)
-	for i in Defs.PALETTE.size():
-		var col: Color = Defs.PALETTE[i][1]
-		var taken: bool = pick[other] == i
-		var b := _button("" if taken else Defs.PALETTE[i][0].to_upper(), func() -> void:
-			pick[key] = i
-			show_skirmish())
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size.y = 48
-		b.add_theme_font_size_override("font_size", 16)
-		b.add_theme_color_override("font_color", Color(0.08, 0.08, 0.08))
-		b.add_theme_color_override("font_hover_color", Color(0.08, 0.08, 0.08))
-		b.disabled = taken
-		for st in ["normal", "hover", "pressed", "disabled"]:
-			var sb := StyleBoxFlat.new()
-			sb.bg_color = col if not taken else col.darkened(0.7)
-			sb.set_corner_radius_all(8)
-			if pick[key] == i:
-				sb.border_color = Color(1, 1, 1)
-				sb.set_border_width_all(4)
-			b.add_theme_stylebox_override(st, sb)
-		h.add_child(b)
-	return h
-
-
-func _choice_row(title: String, key: String, options: Array) -> Control:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
-	var l := _label(title, 18, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_LEFT)
-	l.custom_minimum_size.x = 170
-	h.add_child(l)
-	for o in options:
-		var val: Variant = o[0]
-		var b := _button(o[1], func() -> void:
-			pick[key] = val
-			show_skirmish())
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 18)
-		var ready: bool = not (val is String and Defs.FACTIONS.has(val)) or Defs.FACTIONS[val]["ready"]
-		b.disabled = not ready
-		if pick[key] == val:
-			var sb := StyleBoxFlat.new()
-			sb.bg_color = Color("#447a4c")
-			sb.set_corner_radius_all(8)
-			sb.border_color = Color(1, 0.9, 0.5)
-			sb.set_border_width_all(2)
-			b.add_theme_stylebox_override("normal", sb)
-			b.add_theme_stylebox_override("hover", sb)
-		h.add_child(b)
-	return h
-
-
-func _show_help() -> void:
-	var p := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.1, 0.08, 0.97)
-	sb.set_content_margin_all(24)
-	sb.set_corner_radius_all(10)
-	p.add_theme_stylebox_override("panel", sb)
-	p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	p.offset_left = 60
-	p.offset_right = -60
-	p.offset_top = 30
-	p.offset_bottom = -30
-	var v := VBoxContainer.new()
-	p.add_child(v)
-	var l := _label(HELP, 18, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(l)
-	var b := _button("BACK", func() -> void: p.queue_free())
-	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	v.add_child(b)
-	menu.add_child(p)
-
-
-func _label(t: String, sz: int, col := Color.WHITE, align := HORIZONTAL_ALIGNMENT_CENTER) -> Label:
-	var l := Label.new()
-	l.text = t
-	l.horizontal_alignment = align
-	l.add_theme_font_size_override("font_size", sz)
-	l.add_theme_color_override("font_color", col)
-	return l
-
-
-func _button(t: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = t
-	b.custom_minimum_size = Vector2(0, 56)
-	b.pressed.connect(func() -> void:
-		_web_fullscreen()
-		cb.call())
-	return b
-
-
-func _gap(h: float) -> Control:
-	var c := Control.new()
-	c.custom_minimum_size = Vector2(0, h)
-	return c
-
-
 # ------------------------------------------------------------------ match
 
-var last_factions: Array = ["crown", "brood"]
+const LEVELS := ["easy", "normal", "hard", "brutal"]
+var last_cfg := {}
 
 
-func start(difficulty: int, demo: bool, factions: Array = []) -> void:
+## Start a match. cfg = {"map": id, "slots": [{"who": "you"|"easy"|"normal"|"hard"|"brutal",
+## "faction": name|"random", "colour": palette index, "side": n}, ...]} (2-4 slots).
+## With no "you" slot the computer plays every side and you watch.
+func start(cfg: Dictionary = {}) -> void:
 	_clear_ui()
 	if game:
 		game.queue_free()
-	if factions.is_empty():
-		factions = last_factions
-	last_factions = factions
+	if cfg.is_empty():
+		cfg = last_cfg
+	last_cfg = cfg.duplicate(true)
+	var slots: Array = cfg["slots"]
+	var facs: Array = []
+	var cols: Array = []
+	var sides: Array = []
+	var mult: Array = []
+	var human := -1
+	var top := 0
+	for i in slots.size():
+		var sl: Dictionary = slots[i]
+		var f: String = sl["faction"]
+		facs.append(["crown", "brood", "clockwork"][randi() % 3] if f == "random" else f)
+		cols.append(int(sl["colour"]))
+		sides.append(int(sl["side"]))
+		var lvl := LEVELS.find(sl["who"])
+		mult.append(1.5 if lvl == 3 else 1.0)
+		if sl["who"] == "you" and human < 0:
+			human = i
+		top = maxi(top, lvl)
 	game = Game.new()
-	game.difficulty = difficulty
-	game.demo = demo
-	game.factions = factions.duplicate()
-	game.colours = [pick["c1"], pick["c2"]]
-	game.map_id = pick["map"]
+	game.demo = human < 0
+	game.human = maxi(human, 0)
+	game.difficulty = top
+	game.factions = facs
+	game.colours = cols
+	game.sides = sides
+	game.income_mult = mult
+	game.map_id = cfg.get("map", "random")
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(game)
 	sfx.camera = game.camera
-	for t in ([0, 1] if demo else [1]):
+	for t in slots.size():
+		if t == human:
+			continue
 		var ai := AI.new()
 		ai.game = game
 		ai.team = t
-		ai.difficulty = difficulty
+		ai.difficulty = maxi(0, LEVELS.find(slots[t]["who"]))
 		game.add_child(ai)
 		game.ais.append(ai)
 	var c := Controls.new()
@@ -452,7 +1026,11 @@ func start(difficulty: int, demo: bool, factions: Array = []) -> void:
 	ui_layer.add_child(hud)
 	hud.quit_requested.connect(func() -> void: _to_menu())
 	game.ended.connect(_on_end)
-	Music.me.match_started(game.faction_of(0 if demo else game.human))
+	var foes: Array = []
+	for t in game.n_players():
+		if game.hostile(t, game.human):
+			foes.append(game.faction_of(t))
+	Music.me.match_started(game.faction_of(game.human), foes)
 
 
 func _to_menu() -> void:
@@ -464,8 +1042,10 @@ func _to_menu() -> void:
 
 
 func _on_end(winner: int) -> void:
-	var won := winner == game.human or game.demo
-	Music.me.match_ended(won, game.faction_of(winner if game.demo else game.human))
+	var won := game.demo or (winner >= 0 and game.allied(winner, game.human))
+	Music.me.match_ended(won, game.faction_of(maxi(winner, 0) if game.demo else game.human))
+	if not game.demo:
+		Sfx.announce(game.faction_of(game.human), "victory" if won else "defeat", 1.0)
 	game._sample_stats()
 	await get_tree().create_timer(1.2, true, false, true).timeout
 	if game == null:
@@ -475,7 +1055,7 @@ func _on_end(winner: int) -> void:
 	o.winner = winner
 	o.theme = _theme()
 	o.process_mode = Node.PROCESS_MODE_ALWAYS
-	o.play_again.connect(func() -> void: start(game.difficulty, game.demo))
+	o.play_again.connect(func() -> void: start())
 	o.to_menu.connect(func() -> void: _to_menu())
 	ui_layer.add_child(o)
 

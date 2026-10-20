@@ -29,10 +29,21 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func toast(t: String) -> void:
+func toast(t: String, sound := true) -> void:
 	_msg = t
 	_msg_t = 2.2
-	Sfx.play("error")
+	if sound:
+		Sfx.play_any(["ui/error", "error"])
+	if game and not game.demo:
+		var fac := game.faction_of(game.human)
+		var res: Array = Defs.FACTIONS[fac]["res"]
+		var low := t.to_lower()
+		if low.begins_with("not enough " + String(res[0]).to_lower()):
+			Sfx.announce(fac, "no_gold", 5.0)
+		elif low.begins_with("not enough " + String(res[1]).to_lower()) or low.begins_with("out of powder"):
+			Sfx.announce(fac, "no_res2", 5.0)
+		elif low.begins_with("need more supply"):
+			Sfx.announce(fac, "no_supply", 5.0)
 
 
 func _process(delta: float) -> void:
@@ -176,7 +187,7 @@ func _press(p: Vector2) -> void:
 		if (b["rect"] as Rect2).has_point(p):
 			if b["enabled"]:
 				b["cb"].call()
-				Sfx.play("click")
+				Sfx.play_any(["ui/click", "click"])
 			elif b.has("why"):
 				toast(b["why"])
 			return
@@ -383,7 +394,7 @@ func hotkey(code: int) -> bool:
 		if it.size() > 6 and it[6] == letter:
 			if it[3]:
 				it[2].call()
-				Sfx.play("click")
+				Sfx.play_any(["ui/click", "click"])
 			elif it[4] != "":
 				toast(it[4])
 			return true
@@ -408,7 +419,7 @@ func confirm_place() -> void:
 		builders = builders.slice(0, 1)
 	var b := game.place_building(game.human, k, controls.ghost_cell, builders)
 	if b:
-		Sfx.play("click")
+		Sfx.play_any(["ui/click", "click"])
 	controls.cancel_mode()
 
 
@@ -430,7 +441,7 @@ func _pause_buttons() -> Array:
 			quit_requested.emit()},
 	]
 	for i in list.size():
-		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.24 + i * 76, 320, 62)
+		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.5 - list.size() * 34 + 40 + i * 68, 320, 58)
 	return list
 
 
@@ -447,34 +458,33 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var vs := _vs()
 	var pl: Dictionary = game.players[game.human]
-	# Top bar
-	draw_rect(top_rect(), Color(0.05, 0.05, 0.06, 0.75))
+	# Top bar: resource pills, supply, clock and the menu button.
 	var fac := game.faction_of(game.human)
-	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.25, 0.25, 0.28)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
+	var acc := UiStyle.accent(fac)
+	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.35, 0.33, 0.36)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
 		"clockwork": [Color(0.7, 0.72, 0.78), Color(0.45, 0.75, 1.0)]}[fac]
-	draw_circle(Vector2(20, 18), 8, cols[0])
-	_text(font, Vector2(34, 25), "%d" % pl["gold"], 20, Color(1, 0.9, 0.5))
-	draw_circle(Vector2(112, 18), 8, cols[1])
-	draw_arc(Vector2(112, 18), 8, 0, TAU, 16, Color(1, 1, 1, 0.5), 1.0)
+	var res := _res()
+	var x := 8.0
+	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
 	var r2 := "%d" % int(pl["res2"])
 	if fac == "clockwork":
 		var sp: Array = pl["split"]
-		r2 = "%d/s  ore %d · asm %d · wind %d" % [int(game.energy[game.human]), int(sp[0] * 100), int(sp[1] * 100), int(sp[2] * 100)]
-	_text(font, Vector2(126, 25), r2, 18 if fac == "clockwork" else 20, Color(0.85, 0.9, 1.0))
-	var sx := 430.0 if fac == "clockwork" else 200.0
+		r2 = "%d/s   ore %d · asm %d · wind %d" % [int(game.energy[game.human]), int(sp[0] * 100), int(sp[1] * 100), int(sp[2] * 100)]
+	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(game.human)
 	var cap: int = pl["cap"]
-	draw_rect(Rect2(sx, 10, 14, 16), Color(0.75, 0.55, 0.3))
-	_text(font, Vector2(sx + 20, 25), "%d / %d" % [used, cap], 20, Color(1, 0.5, 0.45) if used >= cap else Color.WHITE)
+	x = _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
 	var secs := int(game.clock)
-	_text(font, Vector2(vs.x * 0.5, 25), "%d:%02d" % [secs / 60, secs % 60], 18, Color(1, 1, 1, 0.8), 1)
+	var clock_r := Rect2(vs.x * 0.5 - 44, 4, 88, 30)
+	UiStyle.draw_panel(self, clock_r, acc, 0.8)
+	_text(UiStyle.title_font(), Vector2(vs.x * 0.5, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
 	if not Settings.pc():
 		var dr := drag_rect()
-		draw_rect(dr, Color(0.2, 0.25, 0.22, 0.9))
-		_text(font, dr.get_center() + Vector2(0, 6), "DRAG: " + ("BOX" if Settings.drag_mode == "box" else "PAN"), 15, Color.WHITE, 1)
+		UiStyle.draw_button(self, dr, false, Settings.drag_mode == "pan")
+		_text(font, dr.get_center() + Vector2(0, 6), "DRAG: " + ("BOX" if Settings.drag_mode == "box" else "PAN"), 15, UiStyle.TEXT, 1)
 	var mr := menu_rect()
-	draw_rect(mr, Color(0.2, 0.25, 0.22, 0.9))
-	_text(font, mr.get_center() + Vector2(0, 6), "MENU", 16, Color.WHITE, 1)
+	UiStyle.draw_button(self, mr, mr.has_point(get_viewport().get_mouse_position()) and Settings.pc())
+	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
 	if game.demo:
 		_text(font, Vector2(vs.x * 0.5, 60), "AI vs AI", 18, Color(1, 1, 1, 0.6), 1)
 	_draw_minimap()
@@ -495,19 +505,29 @@ func _draw() -> void:
 	elif controls.mode == "place":
 		_text(font, Vector2(vs.x * 0.5, 66), "Click to build (Shift-click for more), right-click or Esc cancels" if Settings.pc() else "Drag to position, tap again or PLACE to build", 20, Color(1, 1, 0.7), 1)
 	if _msg_t > 0.0:
-		_text(font, Vector2(vs.x * 0.5, card_rect().position.y - 14), _msg, 22, Color(1, 0.75, 0.6, minf(_msg_t, 1.0)), 1)
+		var a := minf(_msg_t, 1.0)
+		var mw := font.get_string_size(_msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x + 36
+		var mrr := Rect2(vs.x * 0.5 - mw * 0.5, top_rect().end.y + 46, mw, 36)
+		var sb := UiStyle.box(Color(0.1, 0.08, 0.06, 0.88 * a), Color(0.79, 0.64, 0.29, 0.6 * a), 2, 18, 0.0)
+		sb.draw(get_canvas_item(), mrr)
+		_text(UiStyle.bold_font(), Vector2(vs.x * 0.5, mrr.position.y + 25), _msg, 21, Color(1, 0.85, 0.65, a), 1)
 	if paused:
 		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.6))
-		_text(font, Vector2(vs.x * 0.5, vs.y * 0.27), "PAUSED", 48, Color.WHITE, 1)
-		for b in _pause_buttons():
+		var pbs := _pause_buttons()
+		var top_y: float = (pbs[0]["rect"] as Rect2).position.y
+		var last: Rect2 = pbs[pbs.size() - 1]["rect"]
+		UiStyle.draw_panel(self, Rect2(vs.x * 0.5 - 200, top_y - 96, 400, last.end.y - top_y + 120), UiStyle.accent(game.faction_of(game.human)), 0.96)
+		_text(UiStyle.title_font(), Vector2(vs.x * 0.5, top_y - 34), "PAUSED", 44, UiStyle.TRIM, 1)
+		var hv := get_viewport().get_mouse_position() if Settings.pc() else Vector2(-1, -1)
+		for b in pbs:
 			var r: Rect2 = b["rect"]
-			draw_rect(r, Color(0.2, 0.45, 0.25, 0.95))
-			_text(font, r.get_center() + Vector2(0, 8), b["label"], 24, Color.WHITE, 1)
+			UiStyle.draw_button(self, r, r.has_point(hv))
+			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 22, UiStyle.BAD if b["label"] == "SURRENDER" else UiStyle.TEXT, 1)
 
 
 func _draw_minimap() -> void:
 	var m := mini_rect()
-	draw_rect(m.grow(3), Color(0, 0, 0, 0.8))
+	UiStyle.draw_panel(self, m.grow(5), UiStyle.accent(game.faction_of(game.human)), 0.95)
 	if _mini_tex == null:
 		_mini_tex = ImageTexture.create_from_image(game.minimap_img)
 	draw_texture_rect(_mini_tex, m, false)
@@ -525,6 +545,12 @@ func _draw_minimap() -> void:
 	var vp := get_viewport().get_visible_rect().size / game.camera.zoom
 	var c := game.camera.get_screen_center_position()
 	draw_rect(Rect2(m.position + (c - vp * 0.5) * k, vp * k), Color(1, 1, 1, 0.9), false, 1.0)
+	# where you're being hit
+	if game.alert_t > 0.0 and game.alert_at != Vector2.INF:
+		var ap: Vector2 = m.position + game.alert_at * k
+		var ph := fmod(game.alert_t * 2.0, 1.0)
+		draw_arc(ap, 4.0 + ph * 14.0, 0, TAU, 20, Color(1, 0.25, 0.2, 1.0 - ph), 2.0)
+		draw_circle(ap, 3.0, Color(1, 0.3, 0.2))
 
 
 var _mini_tex: ImageTexture
@@ -534,8 +560,7 @@ func _draw_groups(font: Font) -> void:
 	var labels := ["ARMY", "IDLE", "HALL", "1", "2", "3"]
 	for i in 6:
 		var r := group_rect(i)
-		draw_rect(r, Color(0.12, 0.16, 0.14, 0.85))
-		draw_rect(r, Color(1, 1, 1, 0.25), false, 1.0)
+		UiStyle.draw_button(self, r, Settings.pc() and r.has_point(get_viewport().get_mouse_position()), _hold_t.has(i))
 		var sub := ""
 		match i:
 			0:
@@ -545,7 +570,7 @@ func _draw_groups(font: Font) -> void:
 			_:
 				if i >= 3:
 					sub = str(game.groups[i - 3].filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead).size())
-		_text(font, r.position + Vector2(r.size.x * 0.5, 18), labels[i], 14, Color.WHITE, 1)
+		_text(UiStyle.bold_font(), r.position + Vector2(r.size.x * 0.5, 18), labels[i], 14, UiStyle.TEXT, 1)
 		if sub != "":
 			_text(font, r.position + Vector2(r.size.x * 0.5, 36), sub, 13, Color(1, 1, 1, 0.6), 1)
 
@@ -554,13 +579,15 @@ func _draw_panel(font: Font) -> void:
 	var r := panel_rect()
 	if game.selection.is_empty():
 		return
-	draw_rect(r, Color(0.06, 0.07, 0.07, 0.8))
+	UiStyle.draw_panel(self, r, UiStyle.accent(game.faction_of(game.human)))
 	var sel: Array = game.selection.filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead)
 	if sel.size() == 1:
 		var e: Entity = sel[0]
 		var icon := _icon(e.kind)
+		var pr := Rect2(r.position + Vector2(10, 10), Vector2(68, 68))
+		UiStyle.draw_button(self, pr.grow(2), false, false)
 		if icon:
-			draw_texture_rect(icon, Rect2(r.position + Vector2(10, 10), Vector2(68, 68)), false)
+			draw_texture_rect(icon, pr, false)
 		var name := ""
 		var info := ""
 		if e is Unit:
@@ -609,9 +636,14 @@ func _draw_panel(font: Font) -> void:
 			info = "%d gold left." % (e as GoldMine).gold
 		if e.team >= 0 and e.team != game.human:
 			name += "  (enemy)"
-		_text(font, r.position + Vector2(90, 28), name, 20, Color.WHITE)
-		_text(font, r.position + Vector2(90, 50), "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)], 16, Color(0.6, 1, 0.6))
-		_text(font, r.position + Vector2(90, 72), info, 14, Color(1, 1, 1, 0.65))
+		_text(UiStyle.title_font(), r.position + Vector2(90, 28), name, 19, UiStyle.TEXT)
+		var hf := clampf(e.hp / maxf(e.max_hp, 1.0), 0.0, 1.0)
+		var hb := Rect2(r.position + Vector2(90, 38), Vector2(170, 12))
+		draw_rect(hb, Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(hb.position, Vector2(hb.size.x * hf, hb.size.y)), UiStyle.GOOD if hf > 0.5 else (Color(0.95, 0.75, 0.25) if hf > 0.25 else UiStyle.BAD))
+		draw_rect(hb, UiStyle.TRIM_DIM, false, 1.0)
+		_text(font, hb.position + Vector2(hb.size.x + 8, 11), "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)], 15, Color(0.75, 1, 0.7))
+		_text(font, r.position + Vector2(90, 72), info, 15, UiStyle.MUTED)
 		if e is Building and e.team == game.human and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
@@ -639,8 +671,8 @@ func _draw_panel(font: Font) -> void:
 	# Deselect button
 	var x := Rect2(r.end.x - 30, r.position.y + 2, 28, 28)
 	if sel.size() != 1 or not (sel[0] is Building and sel[0].team == game.human and not (sel[0] as Building).queue.is_empty()):
-		draw_rect(x, Color(0.4, 0.15, 0.15, 0.9))
-		_text(font, x.get_center() + Vector2(0, 6), "X", 16, Color.WHITE, 1)
+		UiStyle.draw_button(self, x, Settings.pc() and x.has_point(get_viewport().get_mouse_position()))
+		_text(UiStyle.bold_font(), x.get_center() + Vector2(0, 6), "✕", 16, UiStyle.TEXT, 1)
 		_buttons_extra = [{"rect": x, "cb": func() -> void: game.set_selection([]), "enabled": true}]
 	else:
 		_buttons_extra = []
@@ -657,7 +689,7 @@ func _draw_card(font: Font) -> void:
 	if items.is_empty():
 		return
 	var cr := card_rect()
-	draw_rect(cr, Color(0.06, 0.07, 0.07, 0.8))
+	UiStyle.draw_panel(self, cr.grow(4), UiStyle.accent(game.faction_of(game.human)))
 	var bsz := _btn()
 	var hover := get_viewport().get_mouse_position() if Settings.pc() else Vector2(-1, -1)
 	for i in mini(items.size(), _cols() * _rows()):
@@ -665,22 +697,42 @@ func _draw_card(font: Font) -> void:
 		var br := Rect2(cr.position + Vector2(2 + (i % _cols()) * bsz, 2 + (i / _cols()) * bsz), Vector2(bsz - 4, bsz - 4))
 		var enabled: bool = it[3]
 		var ic := _icon(it[0])
+		var hov := br.has_point(hover)
+		var on := String(it[1]).begins_with("> ")
+		UiStyle.draw_button(self, br, hov, on, enabled)
 		if ic:
-			draw_texture_rect(ic, br, false, Color.WHITE if enabled else Color(0.45, 0.45, 0.45))
-		else:
-			draw_rect(br, Color(0.2, 0.25, 0.22))
-		draw_rect(Rect2(br.position.x, br.end.y - 16, br.size.x, 16), Color(0, 0, 0, 0.6))
-		_text(font, Vector2(br.get_center().x, br.end.y - 3), it[1], 11, Color.WHITE if enabled else Color(1, 1, 1, 0.5), 1)
+			draw_texture_rect(ic, br.grow(-3), false, Color.WHITE if enabled else Color(0.4, 0.4, 0.4, 0.8))
+		draw_rect(Rect2(br.position.x + 2, br.end.y - 17, br.size.x - 4, 15), Color(0, 0, 0, 0.62))
+		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), String(it[1]).trim_prefix("> "), 11, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
 		if it[5] != "":
-			draw_rect(Rect2(br.end.x - 30, br.position.y, 30, 15), Color(0, 0, 0, 0.65))
-			_text(font, Vector2(br.end.x - 15, br.position.y + 12), it[5], 11, Color(1, 0.88, 0.4), 1)
+			var cw := font.get_string_size(it[5], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 8
+			var cbr := Rect2(br.end.x - cw - 2, br.position.y + 2, cw, 15)
+			draw_rect(cbr, Color(0, 0, 0, 0.7))
+			_text(UiStyle.bold_font(), Vector2(cbr.get_center().x, cbr.end.y - 3), it[5], 12, Color(1, 0.86, 0.4) if enabled else Color(1, 0.86, 0.4, 0.5), 1)
 		if Settings.pc() and it.size() > 6 and it[6] != "":
-			draw_rect(Rect2(br.position, Vector2(16, 16)), Color(0, 0, 0, 0.7))
-			_text(font, br.position + Vector2(8, 13), it[6], 12, Color(1, 0.95, 0.6), 1)
-		if br.has_point(hover):
-			draw_rect(br, Color(1, 1, 1, 0.12))
+			var kr := Rect2(br.position + Vector2(2, 2), Vector2(16, 16))
+			draw_rect(kr, Color(0.1, 0.08, 0.05, 0.85))
+			draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
+			_text(UiStyle.bold_font(), kr.position + Vector2(8, 13), it[6], 12, Color(1, 0.92, 0.6), 1)
+		if hov:
 			_tooltip(font, it, cr)
 		_buttons.append({"rect": br, "cb": it[2], "enabled": enabled, "why": it[4]})
+
+
+## A resource readout in the top bar; returns where the next one starts.
+func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := false) -> float:
+	var vw := font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	var w := 36.0 + vw + 14.0
+	var r := Rect2(x, 4, w, 30)
+	UiStyle.draw_panel(self, r, Color(0, 0, 0, 0), 0.8)
+	if box:
+		draw_rect(Rect2(x + 10, 11, 14, 16), dot)
+		draw_rect(Rect2(x + 10, 11, 14, 16), Color(0, 0, 0, 0.5), false, 1.0)
+	else:
+		draw_circle(Vector2(x + 18, 19), 8, dot)
+		draw_arc(Vector2(x + 18, 19), 8, 0, TAU, 18, Color(1, 1, 1, 0.45), 1.5)
+	_text(font, Vector2(x + 34, 26), value, 20, col)
+	return x + w + 8
 
 
 func _res() -> Array:
@@ -709,11 +761,10 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		title = "[%s] %s" % [it[6], title]
 	var w := maxf(font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, font.get_string_size(body, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x) + 16
 	w = minf(w, 520.0)
-	var r := Rect2(cr.end.x - w, cr.position.y - 52, w, 46)
-	draw_rect(r, Color(0.04, 0.05, 0.05, 0.92))
-	draw_rect(r, Color(1, 1, 1, 0.25), false, 1.0)
-	_text(font, r.position + Vector2(8, 18), title, 15, Color(1, 0.92, 0.6))
-	_text(font, r.position + Vector2(8, 37), body, 13, Color(1, 1, 1, 0.8))
+	var r := Rect2(cr.end.x - w, cr.position.y - 58, w, 48)
+	UiStyle.draw_panel(self, r, Color(0, 0, 0, 0), 0.96)
+	_text(UiStyle.bold_font(), r.position + Vector2(8, 19), title, 15, Color(1, 0.9, 0.6))
+	_text(font, r.position + Vector2(8, 38), body, 14, UiStyle.TEXT)
 
 
 func _icon(name: String) -> Texture2D:

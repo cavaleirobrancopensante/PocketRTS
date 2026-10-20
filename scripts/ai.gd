@@ -3,7 +3,10 @@ extends Node
 ## Computer opponent. Runs its faction's own economy (crews every economy structure,
 ## builds up to its limits and expands when they're full), techs up, trains a mixed army,
 ## attacks in growing waves and defends when its buildings are hit.
-## Difficulty: 0 easy, 1 normal, 2 hard.
+## Difficulty: 0 easy, 1 normal, 2 hard, 3 brutal. Brutal plays like Hard but faster and
+## sharper (focus fire, kiting, pulling back hurt units, retreating from fights it can't win)
+## and it cheats: +50% income from everything (set by the match) and it always knows where
+## you are.
 
 var game: Game
 var team := 1
@@ -25,18 +28,28 @@ func _physics_process(delta: float) -> void:
 	_think -= delta
 	if _think > 0.0:
 		return
-	_think = [2.2, 1.2, 0.7][difficulty]
+	_think = [2.2, 1.2, 0.7, 0.4][difficulty]
 	_workers()
 	_econ_build()
 	_supply()
 	_build_up()
 	_produce()
 	_army()
+	if difficulty >= 2:
+		_micro()
 	if _clock():
 		_energy_split()
 
 
 # ------------------------------------------------------------------ helpers
+
+## Pick the value for this level from [easy, normal, hard]; Brutal is Hard, but sooner.
+func _lv(v: Array) -> Variant:
+	if difficulty >= 3:
+		var h: Variant = v[2]
+		return h * 0.8 if h is float else h
+	return v[difficulty]
+
 
 func _mine(kind: String) -> Array:
 	return game.buildings.filter(func(b: Building) -> bool: return b.team == team and b.kind == kind and not b.dead)
@@ -82,13 +95,13 @@ func _workers() -> void:
 	for b in game.buildings:
 		if b.team == team and not b.dead and int(b.d.get("crew", 0)) > 0:
 			cap += int(b.d["crew"])
-	var fill: float = [0.75, 1.0, 1.0][difficulty]
+	var fill: float = 0.75 if difficulty == 0 else 1.0
 	var extra := 2
 	if _brood():
 		extra = 3          # grubs get used up as buildings
 	elif _clock():
 		extra = 1 + (2 if game.army(team).size() >= 4 else 0)   # builder + escorts
-	var want := mini(int(cap * fill) + extra, [16, 30, 40][difficulty])
+	var want := mini(int(cap * fill) + extra, 46 if difficulty >= 3 else _lv([16, 30, 40]))
 	var worker: String = _f()["worker"]
 	var queued := 0
 	for h in _halls():
@@ -114,7 +127,7 @@ func _econ_build() -> void:
 		order = ["farm", "powder_mill"] if game.econ_count(team, "farm") >= 2 else ["farm"]
 	elif _brood():
 		order = ["feeding_pit"]
-		if game.clock > [300.0, 200.0, 150.0][difficulty] or not _mine("warren").is_empty():
+		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
 			order.append("bone_midden")
 	else:
 		order = ["boiler"]
@@ -186,7 +199,7 @@ func _energy_split() -> void:
 	var want := "ECONOMY"
 	if _threat() != Vector2.INF:
 		want = "WAR"
-	elif _attacking or game.clock > [600.0, 420.0, 360.0][difficulty]:
+	elif _attacking or game.clock > _lv([600.0, 420.0, 360.0]):
 		want = "BALANCED"
 	if game.players[team]["split_name"] != want:
 		game.set_split(team, want)
@@ -212,30 +225,30 @@ func _build_up() -> void:
 	var gold := _gold()
 	if _clock():
 		var works := _mine("assembly_works").size()
-		if works == 0 and t > [110.0, 70.0, 50.0][difficulty]:
+		if works == 0 and t > _lv([110.0, 70.0, 50.0]):
 			_construct("assembly_works")
-		elif works == 1 and t > [600.0, 300.0, 220.0][difficulty] and gold > 300:
+		elif works == 1 and t > _lv([600.0, 300.0, 220.0]) and gold > 300:
 			_construct("assembly_works")
-		if works > 0 and _mine("charging_pylon").is_empty() and t > [520.0, 280.0, 220.0][difficulty]:
+		if works > 0 and _mine("charging_pylon").is_empty() and t > _lv([520.0, 280.0, 220.0]):
 			_construct("charging_pylon")
 	elif _brood():
-		if _mine("warren").is_empty() and labs >= [8, 7, 6][difficulty]:
+		if _mine("warren").is_empty() and labs >= _lv([8, 7, 6]):
 			_construct("warren")
-		if _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > [480.0, 250.0, 190.0][difficulty]:
+		if _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > _lv([480.0, 250.0, 190.0]):
 			_construct("gorge_pit")
-		if _mine("roost").is_empty() and game.requirement_met(team, "roost") and t > [560.0, 320.0, 260.0][difficulty]:
+		if _mine("roost").is_empty() and game.requirement_met(team, "roost") and t > _lv([560.0, 320.0, 260.0]):
 			_construct("roost")
 	else:
 		var barracks := _mine("barracks").size()
-		if barracks == 0 and labs >= [9, 8, 7][difficulty]:
+		if barracks == 0 and labs >= _lv([9, 8, 7]):
 			_construct("barracks")
-		elif barracks == 1 and t > [420.0, 200.0, 150.0][difficulty] and gold > 200:
+		elif barracks == 1 and t > _lv([420.0, 200.0, 150.0]) and gold > 200:
 			_construct("barracks")
-		elif barracks == 2 and difficulty == 2 and t > 330.0 and gold > 300:
+		elif barracks == 2 and difficulty >= 2 and t > _lv([9999.0, 9999.0, 330.0]) and gold > 300:
 			_construct("barracks")
-		if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > [480.0, 260.0, 200.0][difficulty]:
+		if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > _lv([480.0, 260.0, 200.0]):
 			_construct("foundry")
-		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > [500.0, 280.0, 220.0][difficulty]:
+		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]):
 			_construct("church")
 	# Floating money: more production.
 	if gold > 550 and not _saving and _threat() == Vector2.INF:
@@ -249,7 +262,7 @@ func _build_up() -> void:
 	for kind in _f()["econ"]:
 		if game.econ_count(team, kind) < game.econ_limit(team, kind):
 			full = false
-	var expand_t: float = [9999.0, 420.0, 330.0][difficulty] * (0.7 if _brood() else 1.0)
+	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * (0.7 if _brood() else 1.0)
 	_saving = false
 	if _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
 		var spot: Vector2i = game.expansions[team]
@@ -375,7 +388,9 @@ func _army() -> void:
 	if not _attacking and sup >= _attack_at:
 		_attacking = true
 		_wave_target = _enemy_base()
-		_attack_at = mini(_attack_at + [6, 8, 10][difficulty], 70)
+		_attack_at = mini(_attack_at + int(_lv([6, 8, 10])), 70)
+		if not game.demo and _foe() == game.human and randf() < 0.5:
+			Sfx.taunt(game.faction_of(team))
 		for u in army:
 			u.cmd_move(_wave_target + Vector2(randf_range(-50, 50), randf_range(-50, 50)), true)
 	elif _attacking:
@@ -440,13 +455,33 @@ func _threat() -> Vector2:
 		if b.team != team or b.dead:
 			continue
 		for u in game.units_near(b.center(), 330.0):
-			if u.team != team and not u.dead and not u.off_field:
+			if game.hostile(u.team, team) and not u.dead and not u.off_field:
 				return u.position
 	return Vector2.INF
 
 
+## Which enemy to go after: the nearest one; Brutal hunts the human player first.
+func _foe() -> int:
+	var foes := game.enemies_of(team)
+	if foes.is_empty():
+		return -1
+	if difficulty >= 3 and not game.demo and foes.has(game.human):
+		return game.human
+	var me := game.center_of_team(team)
+	var best: int = foes[0]
+	var bd := INF
+	for f in foes:
+		var dd: float = game.center_of_team(f).distance_to(me)
+		if dd < bd:
+			bd = dd
+			best = f
+	return best
+
+
 func _enemy_base() -> Vector2:
-	var enemy := 1 - team
+	var enemy := _foe()
+	if enemy < 0:
+		return game.center_of_team(team)
 	var best := Vector2.INF
 	var bd := INF
 	var me := game.center_of_team(team)
@@ -459,3 +494,85 @@ func _enemy_base() -> Vector2:
 	if best == Vector2.INF:
 		return Vector2(game.starts[enemy]) * Defs.TILE
 	return best
+
+
+# ------------------------------------------------------------------ micro (Hard and Brutal)
+
+var _kite := {}       # unit -> seconds until it turns back to the fight
+var _mending := {}    # hurt units sent home to heal
+
+
+func _value(u: Unit) -> float:
+	return float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1))) * (u.hp / maxf(1.0, u.max_hp)) + 20.0
+
+
+## Focus fire on the weakest enemy in reach; Brutal also kites with ranged units, sends
+## badly hurt big units home to heal and backs off from a fight that's lost.
+func _micro() -> void:
+	var army := game.army(team)
+	if army.is_empty():
+		return
+	var brutal := difficulty >= 3
+	var halls := _halls()
+	var home: Vector2 = halls[0].center() if not halls.is_empty() else game.center_of_team(team)
+	if brutal and _attacking:
+		var c := Vector2.ZERO
+		var mine := 0.0
+		for u in army:
+			c += u.position
+			mine += _value(u)
+		c /= army.size()
+		var theirs := 0.0
+		for o in game.units_near(c, 380.0):
+			if game.hostile(o.team, team) and not o.dead and not o.is_worker() and not o.off_field:
+				theirs += _value(o)
+		if theirs > mine * 1.5 and theirs > 300.0:
+			_attacking = false
+			_release_escort()
+			for u in army:
+				u.cmd_move(home.lerp(c, 0.25) + Vector2(randf_range(-50, 50), randf_range(-50, 50)))
+			return
+	for k in _kite.keys():
+		if not is_instance_valid(k) or k.dead:
+			_kite.erase(k)
+	for k in _mending.keys():
+		if not is_instance_valid(k) or k.dead or k.hp > k.max_hp * 0.85:
+			_mending.erase(k)
+	for u in army:
+		if u.kind == "tesla_cart" or u.d.get("medic", false) or _mending.has(u):
+			continue
+		if brutal and u.hp < u.max_hp * 0.25 and int(u.d["supply"]) >= 2 and u.target:
+			_mending[u] = true
+			u.cmd_move(home + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+			continue
+		if _kite.has(u):
+			_kite[u] = float(_kite[u]) - _think
+			if float(_kite[u]) <= 0.0:
+				_kite.erase(u)
+				u.cmd_move(_wave_target if _attacking else u.position, true)
+			continue
+		var reach: float = float(u.d["range"]) + u.radius + 30.0
+		if brutal and float(u.d["range"]) >= 100.0 and u.cooldown > 0.4 and not u.is_air():
+			var close: Unit = null
+			var cd := 70.0
+			for o in game.units_near(u.position, 70.0):
+				if game.hostile(o.team, team) and not o.dead and float(o.d["range"]) < 50.0 and o.can_hit(u):
+					var dd: float = o.position.distance_to(u.position)
+					if dd < cd:
+						cd = dd
+						close = o
+			if close:
+				u.cmd_move(u.position + (u.position - close.position).normalized() * 60.0)
+				_kite[u] = 0.6
+				continue
+		if u.order in ["idle", "amove", "hold"] and u.target:
+			var best: Entity = null
+			var bh := INF
+			for o in game.units_near(u.position, reach):
+				if game.hostile(o.team, team) and not o.dead and not o.off_field and u.can_hit(o) and not o.untouchable():
+					var h: float = o.hp - (200.0 if o.d.get("medic", false) else 0.0) - (40.0 if float(o.d["damage"]) > 20.0 else 0.0)
+					if h < bh:
+						bh = h
+						best = o
+			if best and best != u.target:
+				u.target = best

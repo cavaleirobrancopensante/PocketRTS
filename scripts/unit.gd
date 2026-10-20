@@ -258,7 +258,7 @@ func _physics_process(delta: float) -> void:
 		speed *= 1.6      # charge
 		if not _charging:
 			_charging = true
-			Sfx.play("roar", position)
+			Sfx.play_any(["combat/brute_attack", "roar"], position)
 	elif kind == "brute":
 		_charging = false
 	if d["faction"] == "clockwork":
@@ -363,7 +363,7 @@ func _finish_move() -> void:
 
 
 func _valid_target(e: Entity) -> bool:
-	return is_instance_valid(e) and not e.dead and e.is_inside_tree() and e.team != team and e.team >= 0 and can_hit(e)
+	return is_instance_valid(e) and not e.dead and e.is_inside_tree() and game.hostile(e.team, team) and can_hit(e)
 
 
 func _range() -> float:
@@ -536,7 +536,7 @@ func _strike(e: Entity) -> void:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
 			e.take_damage(dmg, self)
-			Sfx.play({"raptor": "bite", "brute": "bite", "grub": "bite", "gearknight": "gear_hit", "winder": "gear_hit"}.get(kind, "clash"), position)
+			Sfx.play_any(["combat/%s_attack" % kind, {"raptor": "bite", "brute": "bite", "grub": "bite", "gearknight": "gear_hit", "winder": "gear_hit"}.get(kind, "clash")], position)
 			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
@@ -747,7 +747,7 @@ func die() -> void:
 	_leave_mine()
 	_release_patient()
 	game.on_unit_died(self)
-	Sfx.play_f("death", d["faction"], position)
+	Sfx.play_any(["combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim("death", true)
 	z_index = -1
 

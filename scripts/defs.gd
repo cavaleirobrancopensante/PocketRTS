@@ -30,9 +30,9 @@ const MILL_RATE := 0.5            # powder per second per labourer at a Powder M
 const START_POWDER := 80
 const POWDER_SHOT := {"musketeer": 1, "cannon": 3}
 # Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
-const PIT_TIME := 2.5             # seconds a grub feeds at the pit before hauling
-const FOOD_BASE := 5.0
-const FOOD_PER_TILE2 := 0.05      # value grows with the square of the distance (in tiles)
+const PIT_TIME := 2.0             # seconds a grub feeds at the pit before hauling
+const FOOD_BASE := 6.5
+const FOOD_PER_TILE2 := 0.06      # value grows with the square of the distance (in tiles)
 const FOOD_MAX := 60
 const ESSENCE_PER_SUPPLY := 3     # a body falling near a Bone Midden
 const MIDDEN_RANGE := 12          # tiles
@@ -110,7 +110,7 @@ const UNITS := {
 		"about": "Hauls food from Feeding Pits to a Hive (longer hauls pay more). Turns into buildings.",
 	},
 	"raptor": {
-		"name": "Raptors", "hp": 30, "armor": 0, "speed": 100, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
+		"name": "Raptors", "hp": 36, "armor": 0, "speed": 100, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
 		"sight": 7, "range": 22, "damage": 6, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "hive",
 		"requires": "warren", "faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
 	},

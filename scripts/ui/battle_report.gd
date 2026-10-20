@@ -28,60 +28,65 @@ const ROWS := [
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var shade := ColorRect.new()
-	shade.color = Color(0.03, 0.05, 0.04, 0.88)
+	shade.color = Color(0.04, 0.035, 0.03, 0.9)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
-
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
 	var margin := MarginContainer.new()
-	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for side in ["left", "right", "top", "bottom"]:
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, 28)
-	scroll.add_child(margin)
+	for side in ["top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 16)
+	add_child(margin)
+	var panel := PanelContainer.new()
+	margin.add_child(panel)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
-	margin.add_child(v)
+	v.add_theme_constant_override("separation", 10)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(v)
 
 	# Headline
-	var won := winner == game.human
+	var won := winner >= 0 and game.allied(winner, game.human)
 	var title: String
 	if game.demo:
-		title = "%s WINS" % _side_name(winner).to_upper()
+		title = "%s WINS" % _side_name(winner).to_upper() if winner >= 0 else "DRAW"
 	else:
 		title = "VICTORY" if won else "DEFEAT"
-	v.add_child(_label(title, 54, Color(1, 0.9, 0.5) if won or game.demo else Color(1, 0.5, 0.45)))
+	v.add_child(UiStyle.heading(title, 52, Color(1, 0.85, 0.45) if won or game.demo else UiStyle.BAD))
 	var secs := int(game.clock)
-	v.add_child(_label("%s  vs  %s   ·   %s   ·   %d:%02d   ·   %s" % [_side_name(_left()), _side_name(_right()),
-			game.map_name, secs / 60, secs % 60, ["Easy", "Normal", "Hard"][clampi(game.difficulty, 0, 2)]], 18, Color(1, 1, 1, 0.7)))
+	var lvl: String = ["Easy", "Normal", "Hard", "Brutal"][clampi(game.difficulty, 0, 3)]
+	v.add_child(UiStyle.text("%s   ·   %d:%02d   ·   %s AI   ·   %d players" % [game.map_name, secs / 60, secs % 60, lvl, game.n_players()], 18, UiStyle.MUTED))
 
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 24)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(body)
 
-	# Statistics table
+	# Statistics table: one column per player, you first.
+	var order := _order()
 	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 22)
-	grid.add_theme_constant_override("v_separation", 5)
-	grid.custom_minimum_size = Vector2(420, 0)
+	grid.columns = 1 + order.size()
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 4)
 	body.add_child(grid)
-	grid.add_child(_label("", 18))
-	grid.add_child(_label(_short(_left()), 18, game.team_colour(_left()).lightened(0.3), HORIZONTAL_ALIGNMENT_RIGHT))
-	grid.add_child(_label(_short(_right()), 18, game.team_colour(_right()).lightened(0.3), HORIZONTAL_ALIGNMENT_RIGHT))
+	grid.add_child(UiStyle.text("", 16))
+	for t in order:
+		var head := UiStyle.text(_short(t), 15, game.team_colour(t).lightened(0.35), HORIZONTAL_ALIGNMENT_RIGHT, true)
+		grid.add_child(head)
 	for row in ROWS:
-		var a := int(game.stats[_left()][row[1]])
-		var b := int(game.stats[_right()][row[1]])
+		grid.add_child(UiStyle.text(row[0], 16, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+		var vals: Array = order.map(func(t: int) -> int: return int(game.stats[t][row[1]]))
 		var better_low: bool = row[1] in ["lost", "bld_lost"]
-		grid.add_child(_label(row[0], 17, Color(1, 1, 1, 0.75), HORIZONTAL_ALIGNMENT_LEFT))
-		grid.add_child(_num(a, a != b and ((a < b) == better_low)))
-		grid.add_child(_num(b, a != b and ((b < a) == better_low)))
-	var apm_l := _label("Top killers", 17, Color(1, 1, 1, 0.75), HORIZONTAL_ALIGNMENT_LEFT)
-	grid.add_child(apm_l)
-	grid.add_child(_label(_mvp(_left()), 15, Color(1, 1, 1, 0.9), HORIZONTAL_ALIGNMENT_RIGHT))
-	grid.add_child(_label(_mvp(_right()), 15, Color(1, 1, 1, 0.9), HORIZONTAL_ALIGNMENT_RIGHT))
+		var best: int = vals.min() if better_low else vals.max()
+		for val in vals:
+			grid.add_child(_num(val, vals.size() > 1 and val == best and vals.count(best) == 1))
+	grid.add_child(UiStyle.text("Top killers", 16, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	for t in order:
+		grid.add_child(UiStyle.text(_mvp(t), 14, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_RIGHT))
 
 	# Chart with tabs
 	var cv := VBoxContainer.new()
@@ -102,10 +107,10 @@ func _ready() -> void:
 		tabs.add_child(b)
 		_tab_buttons.append(b)
 	chart = Chart.new()
-	chart.custom_minimum_size = Vector2(440, 300)
+	chart.custom_minimum_size = Vector2(400, 280)
 	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chart.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	chart.colours = [game.team_colour(_left()).lightened(0.2), game.team_colour(_right()).lightened(0.2)]
+	chart.colours = order.map(func(t: int) -> Color: return game.team_colour(t).lightened(0.2))
 	chart.span = game.clock
 	cv.add_child(chart)
 	_show("army_tl", _tab_buttons[0])
@@ -118,22 +123,32 @@ func _ready() -> void:
 	for bt in [["PLAY AGAIN", play_again], ["MENU", to_menu]]:
 		var b := Button.new()
 		b.text = bt[0]
-		b.custom_minimum_size = Vector2(220, 56)
+		b.custom_minimum_size = Vector2(240, 58)
+		if bt[0] == "PLAY AGAIN":
+			UiStyle.primary(b)
 		var sig: Signal = bt[1]
-		b.pressed.connect(func() -> void: sig.emit())
+		b.pressed.connect(func() -> void:
+			Sfx.play_any(["ui/click", "click"])
+			sig.emit())
 		btns.add_child(b)
 
 
-## Left column is always the player (or Blue when watching).
-func _left() -> int:
-	return game.human if game.human >= 0 and not game.demo else 0
-
-
-func _right() -> int:
-	return 1 - _left()
+## You first, then your allies, then everyone else.
+func _order() -> Array:
+	var me := game.human if not game.demo else 0
+	var out: Array = [me]
+	for t in game.n_players():
+		if t != me and game.allied(t, me):
+			out.append(t)
+	for t in game.n_players():
+		if not out.has(t):
+			out.append(t)
+	return out
 
 
 func _side_name(t: int) -> String:
+	if t < 0:
+		return ""
 	var fac: String = Defs.FACTIONS[game.faction_of(t)]["name"]
 	if not game.demo and t == game.human:
 		return "You (%s)" % fac
@@ -142,7 +157,7 @@ func _side_name(t: int) -> String:
 
 func _short(t: int) -> String:
 	var fac: String = Defs.FACTIONS[game.faction_of(t)]["name"].replace("The ", "")
-	return ("YOU · " if not game.demo and t == game.human else "") + fac.to_upper()
+	return ("YOU · " if not game.demo and t == game.human else game.team_name(t).to_upper() + " · ") + fac.to_upper()
 
 
 func _mvp(t: int) -> String:
@@ -158,12 +173,12 @@ func _mvp(t: int) -> String:
 func _show(key: String, btn: Button) -> void:
 	for b in _tab_buttons:
 		b.button_pressed = b == btn
-	chart.series = [game.stats[_left()][key], game.stats[_right()][key]]
+	chart.series = _order().map(func(t: int) -> Array: return game.stats[t][key])
 	chart.queue_redraw()
 
 
 func _num(n: int, best: bool) -> Label:
-	return _label(_fmt(n), 18, Color(0.55, 1, 0.55) if best else Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	return UiStyle.text(_fmt(n), 17, UiStyle.GOOD if best else UiStyle.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, best)
 
 
 static func _fmt(n: int) -> String:
@@ -193,7 +208,8 @@ class Chart extends Control:
 	func _draw() -> void:
 		var font := ThemeDB.fallback_font
 		var r := Rect2(Vector2(48, 8), size - Vector2(56, 34))
-		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, 0.04))
+		var sb := UiStyle.box(Color(0, 0, 0, 0.3), UiStyle.TRIM_DIM, 1, 8, 0.0)
+		sb.draw(get_canvas_item(), Rect2(Vector2.ZERO, size))
 		var top := 1.0
 		var n := 2
 		for s in series:

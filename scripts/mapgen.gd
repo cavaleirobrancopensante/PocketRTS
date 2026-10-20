@@ -1,6 +1,6 @@
 class_name MapGen
 ## Map layouts and biomes. Every map is mirrored through its middle so both players get
-## the same ground. The map holds no resources: it's geography (cliffs, ramps, rivers,
+## the same ground; with 3-4 players it's mirrored both ways and everyone starts in a corner. The map holds no resources: it's geography (cliffs, ramps, rivers,
 ## fords, woods) and town-hall spots.
 
 ## name, layout, biome (or "a+b" for a map that mixes two biomes)
@@ -80,13 +80,22 @@ func generate(map_id: String) -> Array:
 			"highlands":
 				_highlands()
 			"rivers":
-				_rivers()
+				if four():
+					_rivers4()
+				else:
+					_rivers()
 			_:
 				_crossroads()
+		if four():
+			_fold()
 		_cliffs()
-		if g._connected(g.starts[0], g.starts[1]) and g._connected(g.starts[0], g.expansions[1]) \
-				and g._connected(g.starts[0], g.expansions[0]):
+		var ok := true
+		for i in g.starts.size():
+			if not g._connected(g.starts[0], g.starts[i]) or not g._connected(g.starts[0], g.expansions[i]):
+				ok = false
+		if ok:
 			break
+	_assign_corners()
 	g.height = height
 	g.ramp = ramp
 	return [m[1], m[2]]
@@ -102,9 +111,76 @@ func biome_at(x: int, y: int) -> String:
 
 # ------------------------------------------------------------------ layouts
 
-func _base_spots(hall: Vector2i, nat: Vector2i) -> void:
-	g.starts = [hall, g._mirror(hall, Vector2i(5, 4))]
-	g.expansions = [nat, g._mirror(nat, Vector2i(5, 4))]
+func four() -> bool:
+	return g.n_players() > 2
+
+
+## Hall spots: two opposite corners, or all four corners with 3-4 players.
+## `nat4` is the natural expansion used when there are four corners (the 2-player
+## natural would sit too close to the corner below it).
+func _base_spots(hall: Vector2i, nat: Vector2i, nat4 := Vector2i(24, 8)) -> void:
+	var sz := Vector2i(5, 4)
+	if not four():
+		g.starts = [hall, g._mirror(hall, sz)]
+		g.expansions = [nat, g._mirror(nat, sz)]
+		return
+	for c in [hall, nat4]:
+		var list: Array = [c, Vector2i(c.x, H - c.y - sz.y), Vector2i(W - c.x - sz.x, c.y), g._mirror(c, sz)]   # TL, BL, TR, BR
+		if c == hall:
+			g.starts = list
+		else:
+			g.expansions = list
+
+
+## Who starts where: allies share a side of the map (left or right).
+func _assign_corners() -> void:
+	if not four():
+		return
+	var order: Array = range(g.n_players())
+	order.sort_custom(func(a: int, b: int) -> bool:
+		return g.sides[a] < g.sides[b] or (g.sides[a] == g.sides[b] and a < b))
+	var corners: Array = [0, 1, 2, 3]       # TL, BL, TR, BR
+	if g.n_players() == 3:
+		var cnt := {}
+		for t in order:
+			cnt[g.sides[t]] = int(cnt.get(g.sides[t], 0)) + 1
+		corners = [0, 3, 2]                 # free-for-all: spread out
+		if cnt.size() == 2:
+			corners = [0, 1, 3] if int(cnt[g.sides[order[0]]]) == 2 else [0, 2, 3]
+	var st: Array = []
+	var ex: Array = []
+	for i in order.size():
+		st.append(Vector2i.ZERO)
+		ex.append(Vector2i.ZERO)
+	for i in order.size():
+		st[order[i]] = g.starts[corners[i]]
+		ex[order[i]] = g.expansions[corners[i]]
+	g.starts = st
+	g.expansions = ex
+
+
+## Copy the top-left quarter onto the other three, mirrored.
+func _fold() -> void:
+	var kinds := {}
+	for y in H:
+		for x in W:
+			var sx := mini(x, W - 1 - x)
+			var sy := mini(y, H - 1 - y)
+			if sx == x and sy == y:
+				continue
+			var i := y * W + x
+			var j := sy * W + sx
+			height[i] = height[j]
+			ramp[i] = ramp[j]
+			ford[i] = ford[j]
+			g.water[i] = g.water[j]
+			g.solid[i] = g.solid[j]
+			if g._terrain_kind.has(j):
+				kinds[i] = g._terrain_kind[j]
+			else:
+				g._terrain_kind.erase(i)
+	for i in kinds:
+		g._terrain_kind[i] = kinds[i]
 
 
 func _keep() -> Array:
@@ -125,8 +201,8 @@ func _crossroads() -> void:
 
 ## Each main base sits on high ground with a single ramp down toward its natural.
 func _highlands() -> void:
-	_base_spots(Vector2i(6, 5), Vector2i(8, 38))
-	_plateau(Vector2(9, 8), Vector2(13, 11), [Vector2(16, 26)], true)
+	_base_spots(Vector2i(6, 5), Vector2i(8, 38), Vector2i(26, 6))
+	_plateau(Vector2(9, 8), Vector2(13, 11), [Vector2(16, 26), Vector2(34, 8)] if four() else [Vector2(16, 26)], true)
 	_plateau(Vector2(42, 30), Vector2(4, 3), [Vector2(42, 37), Vector2(42, 23)], false)
 	_lake(Vector2(30, 46), Vector2(4, 3))
 	_lake(Vector2(36, 16), Vector2(3, 2))
@@ -169,6 +245,29 @@ func _rivers() -> void:
 					g.solid[i3] = 1
 					g.water[j] = 1
 					g.solid[j] = 1
+	_woods(20, _keep())
+
+
+## Four players: two rivers cross in the middle, cutting the map into quarters.
+func _rivers4() -> void:
+	_base_spots(Vector2i(6, 6), Vector2i(7, 34), Vector2i(24, 8))
+	for i in 120:
+		var f := i / 119.0
+		var is_ford := absf(f - 0.25) < 0.035 or absf(f - 0.75) < 0.035
+		for c in [Vector2(W * 0.5 + sin(f * 11.0) * 1.5, f * H), Vector2(f * W, H * 0.5 + sin(f * 13.0) * 1.5)]:
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var cell := Vector2i(int(c.x) + dx, int(c.y) + dy)
+					if not g.in_map(cell):
+						continue
+					var i2 := g.idx(cell)
+					if is_ford:
+						ford[i2] = 1
+						g.water[i2] = 0
+						g.solid[i2] = 0
+					elif ford[i2] == 0:
+						g.water[i2] = 1
+						g.solid[i2] = 1
 	_woods(20, _keep())
 
 

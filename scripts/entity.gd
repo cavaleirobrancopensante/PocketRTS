@@ -78,10 +78,12 @@ func take_damage(amount: float, _from: Entity) -> void:
 	var arm := armor - (2.0 if acid_t > 0.0 else 0.0)
 	var dmg := minf(hp, maxf(1.0, amount - maxf(arm, 0.0)))
 	hp -= dmg
-	if _from and is_instance_valid(_from) and _from.team >= 0 and _from.team != team:
+	if _from and is_instance_valid(_from) and game.hostile(_from.team, team):
 		last_hit_by = _from.kind
 		last_hit_team = _from.team
 		game.stats[_from.team]["damage"] += dmg
+		if team == game.human:
+			game.under_attack(self)
 		if Music.me and (team == game.human or _from.team == game.human):
 			Music.me.add_heat(0.6 if is_unit() else 0.4)
 	flash = 0.12

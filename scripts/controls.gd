@@ -225,7 +225,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 			game.set_selection([ent])
 		_last_click_t = now
 		_last_click_kind = ent.kind
-		Sfx.play("click")
+		Sfx.play_any(["ui/click", "click"])
 	elif ent:
 		if not e.shift_pressed:
 			game.set_selection([ent])
@@ -339,7 +339,7 @@ func _process(delta: float) -> void:
 				if not units.is_empty():
 					_long_done = true
 					game.smart_command(units, to_world(info["pos"]), true)
-					Sfx.play("click")
+					Sfx.play_any(["ui/click", "click"])
 	_clamp_camera()
 
 
@@ -370,7 +370,7 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 		"move", "attack":
 			if mode == "attack":
 				var e := game.entity_at(p, false)
-				if e and e.team >= 0 and e.team != game.human:
+				if e and game.hostile(e.team, game.human):
 					for u in units:
 						u.cmd_attack(e)
 				else:
@@ -378,7 +378,7 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			else:
 				game.group_move(units, p, false)
 			cancel_mode()
-			Sfx.play("click")
+			Sfx.play_any(["ui/click", "click"])
 			return
 		"rally", "rally_army", "rally_worker":
 			var b := game.selected_building()
@@ -401,7 +401,7 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			game.set_selection([e])
 		_last_tap_t = now
 		_last_tap_kind = e.kind
-		Sfx.play("click")
+		Sfx.play_any(["ui/click", "click"])
 		return
 	if is_mouse:
 		# Desktop: left click on enemies/mines/ground just selects (or clears).
@@ -409,7 +409,7 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 		return
 	if not units.is_empty():
 		game.smart_command(units, p)
-		Sfx.play("click")
+		Sfx.play_any(["ui/click", "click"])
 		return
 	var b := game.selected_building()
 	if b:
@@ -449,6 +449,6 @@ func _finish_box(add := false) -> void:
 				list.append(x)
 	if not list.is_empty():
 		game.set_selection(list)
-		Sfx.play("click")
+		Sfx.play_any(["ui/click", "click"])
 	elif Settings.pc() and not add:
 		game.set_selection([])

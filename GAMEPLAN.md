@@ -345,3 +345,15 @@ The game currently fakes some of these in code (breathing idles, a looping gnaw 
 
 **Field cannon: front and back views** (the side view is done)
 > Same cannon and crew as the attached cannon sheet. Row 1: facing down, crew pushing it toward the viewer, wheels turning (6). Row 2: facing up, pushed away from the viewer (6). Row 3: firing facing down (4). Row 4: firing facing up, the barrel pointing up the screen (4).
+
+## Multiplayer (to do)
+
+Online play between friends first (1v1, 2v2, co-op against the AI); ranked play would need server-side checks.
+
+- **Command queue.** Every player action (select-and-command, build, train, rally, split) becomes a small command message with a game tick. Local play, the AI and network play all go through it. This also gives replays.
+- **Determinism (lockstep).** One seeded RNG per match (no bare `randf()` in the simulation), fixed timestep, simulation separate from visuals. Run two sims from one command log and compare a checksum every few seconds to catch desyncs.
+- **Connection.** WebRTC peer-to-peer (works in the browser) with a tiny signalling/lobby server on a free tier. Room codes: "host → share code → friend joins". No secrets in the repo; server keys live in the server's settings.
+- **Lobby.** The skirmish lobby with remote slots (OPEN / player name), ready checks, host picks the map.
+- **In-game text chat.** Enter (PC) or a chat button (mobile) opens a line; all / allies toggle; messages fade in the corner; quick-chat buttons on mobile ("Attack!", "Help!", "gg").
+- **Save replay.** A SAVE REPLAY button on the end screen writes the command log + seed + lobby setup (a few KB) to user://replays/. A REPLAYS screen plays them back at 1x/2x/4x with fog off and player switching.
+- **Cheating.** Lockstep clients know the whole map, so a modded client could remove the fog. That's acceptable between friends.
