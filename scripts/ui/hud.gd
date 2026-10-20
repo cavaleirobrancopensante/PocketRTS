@@ -361,10 +361,10 @@ func _draw_minimap() -> void:
 	for b in game.buildings:
 		if b.visible or b.team == game.human:
 			var r: Rect2 = b.rect()
-			draw_rect(Rect2(m.position + r.position * k, r.size * k), Defs.TEAM_COLOURS[b.team].lightened(0.2))
+			draw_rect(Rect2(m.position + r.position * k, r.size * k), game.team_colour(b.team).lightened(0.2))
 	for u in game.units:
 		if u.visible and not u.dead:
-			draw_rect(Rect2(m.position + u.position * k - Vector2(1.5, 1.5), Vector2(3, 3)), Defs.TEAM_COLOURS[u.team].lightened(0.35))
+			draw_rect(Rect2(m.position + u.position * k - Vector2(1.5, 1.5), Vector2(3, 3)), game.team_colour(u.team).lightened(0.35))
 	# Camera view
 	var vp := get_viewport().get_visible_rect().size / game.camera.zoom
 	var c := game.camera.get_screen_center_position()

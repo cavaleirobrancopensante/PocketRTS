@@ -69,8 +69,8 @@ func _ready() -> void:
 	grid.custom_minimum_size = Vector2(420, 0)
 	body.add_child(grid)
 	grid.add_child(_label("", 18))
-	grid.add_child(_label(_short(_left()), 18, Defs.TEAM_COLOURS[_left()].lightened(0.3), HORIZONTAL_ALIGNMENT_RIGHT))
-	grid.add_child(_label(_short(_right()), 18, Defs.TEAM_COLOURS[_right()].lightened(0.3), HORIZONTAL_ALIGNMENT_RIGHT))
+	grid.add_child(_label(_short(_left()), 18, game.team_colour(_left()).lightened(0.3), HORIZONTAL_ALIGNMENT_RIGHT))
+	grid.add_child(_label(_short(_right()), 18, game.team_colour(_right()).lightened(0.3), HORIZONTAL_ALIGNMENT_RIGHT))
 	for row in ROWS:
 		var a := int(game.stats[_left()][row[1]])
 		var b := int(game.stats[_right()][row[1]])
@@ -105,7 +105,7 @@ func _ready() -> void:
 	chart.custom_minimum_size = Vector2(440, 300)
 	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chart.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	chart.colours = [Defs.TEAM_COLOURS[_left()].lightened(0.2), Defs.TEAM_COLOURS[_right()].lightened(0.2)]
+	chart.colours = [game.team_colour(_left()).lightened(0.2), game.team_colour(_right()).lightened(0.2)]
 	chart.span = game.clock
 	cv.add_child(chart)
 	_show("army_tl", _tab_buttons[0])
@@ -137,7 +137,7 @@ func _side_name(t: int) -> String:
 	var fac: String = Defs.FACTIONS[game.faction_of(t)]["name"]
 	if not game.demo and t == game.human:
 		return "You (%s)" % fac
-	return "%s (%s)" % [Defs.TEAM_NAMES[t], fac]
+	return "%s (%s)" % [game.team_name(t), fac]
 
 
 func _short(t: int) -> String:

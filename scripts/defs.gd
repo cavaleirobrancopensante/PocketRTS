@@ -169,3 +169,8 @@ static func is_worker(kind: String) -> bool:
 
 const TEAM_COLOURS := [Color("#3a78e8"), Color("#e03a32")]
 const TEAM_NAMES := ["Blue", "Red"]
+## Player colours to choose from (the art's pure-red parts are recoloured to these).
+const PALETTE := [
+	["Blue", Color("#3a78e8")], ["Red", Color("#e03a32")], ["Green", Color("#3fae4a")],
+	["Yellow", Color("#e8c53a")], ["Purple", Color("#9a4fd6")], ["Orange", Color("#ec8a2c")],
+]

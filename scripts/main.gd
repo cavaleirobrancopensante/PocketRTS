@@ -7,7 +7,7 @@ var game: Game
 var ui_layer: CanvasLayer
 var menu: Control
 var _went_fullscreen := false
-var pick := {"me": "crown", "enemy": "brood", "difficulty": 1, "blue": "you"}
+var pick := {"me": "crown", "enemy": "brood", "difficulty": 1, "blue": "you", "c1": 0, "c2": 1}
 
 const HELP := """Destroy every enemy building to win.
 
@@ -133,12 +133,14 @@ func show_skirmish() -> void:
 	v.add_child(_label("SKIRMISH", 44))
 	var watch: bool = pick["blue"] == "ai"
 	var facs := [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "THE CLOCKWORK"], ["random", "RANDOM"]]
-	v.add_child(_choice_row("BLUE PLAYS", "blue", [["you", "YOU"], ["ai", "COMPUTER (WATCH)"]]))
-	v.add_child(_choice_row("BLUE FACTION" if watch else "YOUR FACTION", "me", facs))
+	v.add_child(_choice_row("PLAYER 1", "blue", [["you", "YOU"], ["ai", "COMPUTER (WATCH)"]]))
+	v.add_child(_choice_row("P1 FACTION" if watch else "YOUR FACTION", "me", facs))
+	v.add_child(_colour_row("P1 COLOUR" if watch else "YOUR COLOUR", "c1", "c2"))
 	var about := _label(Defs.FACTIONS[pick["me"]]["about"] if Defs.FACTIONS.has(pick["me"]) else "A faction picked at random.", 16, Color(1, 1, 1, 0.6))
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(about)
-	v.add_child(_choice_row("RED FACTION" if watch else "ENEMY", "enemy", facs))
+	v.add_child(_choice_row("P2 FACTION" if watch else "ENEMY", "enemy", facs))
+	v.add_child(_colour_row("P2 COLOUR" if watch else "ENEMY COLOUR", "c2", "c1"))
 	v.add_child(_choice_row("AI LEVEL" if watch else "DIFFICULTY", "difficulty", [[0, "EASY"], [1, "NORMAL"], [2, "HARD"]]))
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -160,6 +162,37 @@ func show_skirmish() -> void:
 	go.add_theme_stylebox_override("normal", sb)
 	row.add_child(go)
 	v.add_child(row)
+
+
+## A row of colour swatches; the other player's colour can't be taken.
+func _colour_row(title: String, key: String, other: String) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	var l := _label(title, 18, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_LEFT)
+	l.custom_minimum_size.x = 170
+	h.add_child(l)
+	for i in Defs.PALETTE.size():
+		var col: Color = Defs.PALETTE[i][1]
+		var taken: bool = pick[other] == i
+		var b := _button("" if taken else Defs.PALETTE[i][0].to_upper(), func() -> void:
+			pick[key] = i
+			show_skirmish())
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size.y = 48
+		b.add_theme_font_size_override("font_size", 16)
+		b.add_theme_color_override("font_color", Color(0.08, 0.08, 0.08))
+		b.add_theme_color_override("font_hover_color", Color(0.08, 0.08, 0.08))
+		b.disabled = taken
+		for st in ["normal", "hover", "pressed", "disabled"]:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = col if not taken else col.darkened(0.7)
+			sb.set_corner_radius_all(8)
+			if pick[key] == i:
+				sb.border_color = Color(1, 1, 1)
+				sb.set_border_width_all(4)
+			b.add_theme_stylebox_override(st, sb)
+		h.add_child(b)
+	return h
 
 
 func _choice_row(title: String, key: String, options: Array) -> Control:
@@ -254,6 +287,7 @@ func start(difficulty: int, demo: bool, factions: Array = []) -> void:
 	game.difficulty = difficulty
 	game.demo = demo
 	game.factions = factions.duplicate()
+	game.colours = [pick["c1"], pick["c2"]]
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(game)
 	sfx.camera = game.camera

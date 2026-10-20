@@ -15,6 +15,15 @@ static var _tex_cache := {}
 
 var human := 0
 var factions: Array = ["crown", "crown"]
+var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE
+
+
+func team_colour(t: int) -> Color:
+	return Defs.PALETTE[colours[t]][1] if t >= 0 and t < 2 else Color.RED
+
+
+func team_name(t: int) -> String:
+	return Defs.PALETTE[colours[t]][0] if t >= 0 and t < 2 else ""
 var swamp: Array = [PackedByteArray(), PackedByteArray()]
 var swamp_dirty := true
 var swamp_layer: Node2D

@@ -57,7 +57,7 @@ func team_material() -> ShaderMaterial:
 	if _mat == null:
 		_mat = ShaderMaterial.new()
 		_mat.shader = TEAM_SHADER
-		_mat.set_shader_parameter("team", Defs.TEAM_COLOURS[team] if team >= 0 else Color.RED)
+		_mat.set_shader_parameter("team", game.team_colour(team) if team >= 0 else Color.RED)
 	return _mat
 
 
