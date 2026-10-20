@@ -1,6 +1,7 @@
 class_name Music
 extends Node
-## Music: the overture on the menu; in a match a shuffled playlist of calm pieces that
+## Music: on the menu a shuffle of the overtures (menu, menu_2, ...) - each played once, then
+## another, never the same one twice in a row; in a match a shuffled playlist of calm pieces that
 ## cross-fades to battle pieces while fighting is hot near you; a sting at the end.
 ##
 ## Modes (Settings > Music):
@@ -42,6 +43,9 @@ var _battle := false
 var _calm_t := 0.0
 var _recent: Array = []
 var _preview := false
+var _in_menu := false     # the menu shuffle is running
+var _menu_bag: Array = [] # overtures not yet played in this round of the shuffle
+var _last_menu := ""
 var heat := 0.0           # raised by hits near the player, decays over a few seconds
 
 
@@ -154,6 +158,33 @@ static func pieces(fkey: String, mood: String) -> Array:
 	return out
 
 
+## The menu overtures: "menu" and every "menu_*" piece in the catalogue.
+static func menu_pieces() -> Array:
+	var out: Array = []
+	for stem in titles():
+		var s: String = stem
+		if s == "menu" or s.begins_with("menu_"):
+			if ResourceLoader.exists("res://assets/music/%s.ogg" % s):
+				out.append(s)
+	return out
+
+
+## The next overture: a shuffled round of all of them, never the one that just played.
+func _next_menu() -> String:
+	var all := menu_pieces()
+	if all.is_empty():
+		return ""
+	_menu_bag = _menu_bag.filter(func(m: String) -> bool: return all.has(m) and m != _last_menu)
+	if _menu_bag.is_empty():
+		_menu_bag = all.filter(func(m: String) -> bool: return m != _last_menu)
+		if _menu_bag.is_empty():
+			_menu_bag = all.duplicate()
+		_menu_bag.shuffle()
+	var pick: String = _menu_bag.pop_back()
+	_last_menu = pick
+	return pick
+
+
 func _pool(mood: String) -> Array:
 	var own := pieces(_faction, mood)
 	match mode:
@@ -194,7 +225,7 @@ func _next(mood: String) -> String:
 
 # ------------------------------------------------------------------ playing
 
-## Cross-fade to a piece. `loop` for the menu and previews.
+## Cross-fade to a piece. `loop` for previews (the menu shuffles instead).
 func play(track: String, loop := false) -> void:
 	if track == _current or track == "":
 		return
@@ -221,24 +252,37 @@ func _fade(p: AudioStreamPlayer, to: float, stop_after := false) -> void:
 		tw.tween_callback(p.stop)
 
 
-## A piece ended: the next one from the same mood.
+## A piece ended: on the menu the next overture, in a match the next one from the same mood.
 func _on_finished(p: AudioStreamPlayer) -> void:
-	if p != _a or _faction == "" or _preview:
+	if p != _a or _preview:
+		return
+	if _in_menu:
+		_current = ""
+		play(_next_menu())
+		return
+	if _faction == "":
 		return
 	_current = ""
 	play(_next("battle" if _battle else "peace"))
 
 
+## The main menu: keep the overture that is playing (coming back from a sub-page), or start the
+## shuffle with one that is not the last one heard.
 func menu() -> void:
 	_amb.stop()
 	_faction = ""
 	_preview = false
-	play("menu", true)
+	if _in_menu and _current != "" and _a.playing and menu_pieces().has(_current):
+		return
+	_in_menu = true
+	_current = ""
+	play(_next_menu())
 
 
 ## Try a piece from the music player (loops until another is picked or the menu resumes).
 func preview(track: String) -> void:
 	_preview = true
+	_in_menu = false
 	_faction = ""
 	_current = ""
 	play(track, true)
@@ -250,6 +294,7 @@ func now_playing() -> String:
 
 func match_started(faction: String, enemies: Array = []) -> void:
 	_faction = FACTION_KEY.get(faction, "crown")
+	_in_menu = false
 	_enemies = []
 	for e in enemies:
 		var k: String = FACTION_KEY.get(e, "")
@@ -282,6 +327,7 @@ func ambience(biome: String) -> void:
 func match_ended(won: bool, faction: String) -> void:
 	_amb.stop()
 	_current = ""
+	_in_menu = false
 	_faction = ""
 	_fade(_a, -80.0, true)
 	_fade(_b, -80.0, true)

@@ -406,6 +406,8 @@ def rel_interval(tok, iv):
 
 def master_epic(l, r, target=0.16, ceiling=0.89, comp_ratio=2.2):
     """Slow compressor (tames the climaxes), loudness to `target` median RMS, look-ahead limiter."""
+    # a little air: ~+2 dB shelf above 2.5 kHz (synthetic sections are darker than real ones)
+    l, r = l + 0.25 * _highpass(l, 2500), r + 0.25 * _highpass(r, 2500)
     pk = max(np.max(np.abs(l)), np.max(np.abs(r)), 1e-9)
     l, r = l / pk, r / pk
     mono = (l + r) * 0.5

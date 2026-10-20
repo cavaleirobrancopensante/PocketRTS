@@ -443,6 +443,13 @@ func show_music() -> void:
 		for mood in ["peace", "battle"]:
 			for stem in Music.pieces(f[0], mood):
 				col.add_child(_track_row(stem, titles.get(stem, stem), mood))
+	var ov := VBoxContainer.new()
+	ov.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ov.add_theme_constant_override("separation", 6)
+	cols.add_child(ov)
+	ov.add_child(UiStyle.heading("OVERTURES", 18, UiStyle.TRIM))
+	for stem in Music.menu_pieces():
+		ov.add_child(_track_row(stem, titles.get(stem, stem), "menu"))
 	var back := _button("BACK", func() -> void:
 		Music.me.menu()
 		show_settings())
@@ -461,7 +468,7 @@ func _track_row(stem: String, title: String, mood: String) -> Control:
 	play.custom_minimum_size.y = 46
 	play.clip_text = true
 	play.add_theme_font_size_override("font_size", 16)
-	play.tooltip_text = "Battle" if mood == "battle" else "Calm"
+	play.tooltip_text = {"battle": "Battle", "menu": "Main menu"}.get(mood, "Calm")
 	if mood == "battle":
 		play.add_theme_color_override("font_color", Color(1, 0.75, 0.6))
 	if Music.me._current == stem:
@@ -470,7 +477,7 @@ func _track_row(stem: String, title: String, mood: String) -> Control:
 		Music.me.preview(stem)
 		show_music())
 	h.add_child(play)
-	if Music.me.mode == "picked":
+	if Music.me.mode == "picked" and mood != "menu":
 		var tick := Button.new()
 		var on := Music.me.is_enabled(stem)
 		tick.text = "✓" if on else ""
