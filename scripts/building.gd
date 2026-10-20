@@ -264,6 +264,14 @@ func _physics_process(delta: float) -> void:
 ## Gate: swings open while a friendly unit is close and no enemy is (the open picture is
 ## only for show: friends can always pass, enemies never can).
 var gate_open := false
+var vertical := false            # a gate in a north-south wall: drawn side-on
+var dir_locked := false          # turned by hand: stays as it is
+
+
+func set_vertical(v: bool) -> void:
+	if vertical != v:
+		vertical = v
+		_update_sprite()
 var _gate_t := 0.0
 
 
@@ -408,7 +416,10 @@ func _update_sprite() -> void:
 		state = "damaged"
 	if kind == "gate" and built and not dead and gate_open:
 		state = "open_damaged" if state == "damaged" else "open"
-	var t := Game.tex("res://assets/buildings/%s_%s.png" % [kind, state])
+	var base := kind
+	if kind == "gate" and vertical and ResourceLoader.exists("res://assets/buildings/gate_v_%s.png" % state):
+		base = "gate_v"
+	var t := Game.tex("res://assets/buildings/%s_%s.png" % [base, state])
 	if sprite.texture != t:
 		sprite.texture = t
 		sprite.offset = Vector2(-t.get_width() * 0.5, -t.get_height() + 6)

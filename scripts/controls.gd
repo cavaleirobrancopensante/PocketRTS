@@ -239,9 +239,9 @@ func _mouse(e: InputEventMouseButton) -> void:
 
 func _right_click(screen: Vector2) -> void:
 	var p := to_world(screen)
-	var b := game.selected_building()
-	if b:
-		for sb in game.selected_buildings():
+	var rb := game.rally_buildings()
+	if not rb.is_empty():
+		for sb in rb:
 			game.set_rally(sb, p)
 	else:
 		game.smart_command(game.selected_units(), p)
@@ -334,6 +334,9 @@ func _key(e: InputEventKey) -> void:
 				return
 			KEY_F3:
 				hud._group_pressed(2, 0.0)
+				return
+			KEY_F4:
+				hud._group_pressed(6, 0.0)
 				return
 			KEY_SPACE:
 				var sel: Array = game.selection.filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
@@ -465,7 +468,7 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			Sfx.play_any(["ui/click", "click"])
 			return
 		"rally", "rally_army", "rally_worker":
-			for sb in game.selected_buildings():
+			for sb in game.rally_buildings():
 				game.set_rally(sb, p, {"rally": "auto", "rally_army": "army", "rally_worker": "worker"}[mode])
 			cancel_mode()
 			return
@@ -494,9 +497,9 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 		game.smart_command(units, p)
 		Sfx.play_any(["ui/click", "click"])
 		return
-	var b := game.selected_building()
-	if b:
-		for sb in game.selected_buildings():
+	var rb := game.rally_buildings()
+	if not rb.is_empty():
+		for sb in rb:
 			game.set_rally(sb, p)
 		return
 	game.set_selection([e] if e else [])

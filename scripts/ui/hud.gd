@@ -143,11 +143,21 @@ func panel_rect() -> Rect2:
 	return _layout()["panel"]
 
 
-## Quick-select buttons above the minimap: ARMY, IDLE, HALL / groups 1-3.
+## Quick-select buttons above the minimap: ARMY, IDLE, HALL, MAKE on the bottom row,
+## groups 1-4 above. Index: 0 ARMY, 1 IDLE, 2 HALL, 3-5 groups 1-3, 6 MAKE, 7 group 4.
+const QUICK := 8
+
+
 func group_rect(i: int) -> Rect2:
 	var g: Rect2 = _layout()["groups"]
-	var row := 1 if i < 3 else 0      # ARMY / IDLE / HALL on the bottom row, groups above
-	return Rect2(g.position.x + (i % 3) * 70, g.position.y + row * 48, 66, 42)
+	var col := i % 3 if i < 6 else 3
+	var row := 0 if (i >= 3 and i < 6) or i == 7 else 1
+	return Rect2(g.position.x + col * 52, g.position.y + row * 48, 50, 42)
+
+
+## The group number (0-based) a quick button stands for, or -1.
+func _group_of(i: int) -> int:
+	return i - 3 if i >= 3 and i < 6 else (3 if i == 7 else -1)
 
 
 func menu_rect() -> Rect2:
@@ -162,7 +172,7 @@ func _hud_has(p: Vector2) -> bool:
 	for r in [top_rect(), mini_rect(), panel_rect(), card_rect(), drag_rect()]:
 		if (r as Rect2).has_point(p):
 			return true
-	for i in 6:
+	for i in QUICK:
 		if group_rect(i).has_point(p):
 			return true
 	return false
@@ -240,7 +250,7 @@ func _press(p: Vector2) -> void:
 		Settings.save_all()
 		toast("One-finger drag now %s." % ("moves the view" if Settings.drag_mode == "pan" else "box-selects"))
 		return
-	for i in 6:
+	for i in QUICK:
 		if group_rect(i).has_point(p):
 			_hold_t[i] = Time.get_ticks_msec()
 			return
@@ -302,8 +312,14 @@ func _group_pressed(i: int, held: float) -> void:
 			if h:
 				game.set_selection([h])
 				game.camera.position = h.global_position
+		6:   # every production building: train from all of them at once
+			var pb := game.producers(game.human)
+			if pb.is_empty():
+				toast("No buildings that train an army yet.")
+			else:
+				game.set_selection(pb)
 		_:
-			var g := i - 3
+			var g := _group_of(i)
 			if held > 0.45 or game.groups[g].is_empty():
 				if not game.selection.is_empty():
 					game.groups[g] = game.selection.duplicate()
@@ -425,11 +441,22 @@ func _build_card() -> Array:
 							else:
 								u.cmd_pack(), true, "", ""])
 		return list
+	if b == null:
+		var pbs := game.selected_producers()
+		if not pbs.is_empty():
+			return _production_card(pbs)
 	if b and not b.built:
 		list.append(["stop", "ABANDON", func() -> void:
 			for sb in game.selected_buildings():
 				game.abandon(sb), true, "", ""])
 		return list
+	if b and b.built and b.kind == "gate":
+		list.append(["gate", "ROTATE", func() -> void:
+			var v := not b.vertical
+			for sb in game.selected_buildings():
+				sb.dir_locked = true
+				sb.set_vertical(v)
+			toast("Gate turned. It now stays this way."), true, "", ""])
 	if b and b.built and b.kind != game.faction_hall(game.human):
 		list.append(["stop", "DEMOLISH", func() -> void:
 			if Time.get_ticks_msec() - _demolish_ms > 2500:
@@ -533,12 +560,60 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
-	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "START": "P", "END": "P"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
+var prod_page := 0
+
+
+## Several kinds of production building selected (MAKE): every unit any of them trains,
+## each going to the least busy building that can train it. Long press / right-click
+## switches automatic training on all of them that can.
+func _production_card(pbs: Array) -> Array:
+	var list: Array = []
+	var kinds: Array = []
+	for sb in pbs:
+		for k in sb.d["trains"]:
+			if not kinds.has(k) and not Defs.UNITS[k].get("worker", false):
+				kinds.append(k)
+	var slots := _cols() * _rows()
+	var per := slots - 1 if kinds.size() <= slots - 1 else slots - 2     # room for RALLY (and MORE)
+	var pages := maxi(1, int(ceil(kinds.size() / float(per))))
+	prod_page = clampi(prod_page, 0, pages - 1)
+	for k in kinds.slice(prod_page * per, prod_page * per + per):
+		var kk: String = k
+		var why := "Can't train that here."
+		var able: Array = []
+		for sb in pbs:
+			if (sb.d["trains"] as Array).has(kk):
+				able.append(sb)
+				var w := game.can_train(sb, kk)
+				if w == "":
+					why = ""
+				elif why != "":
+					why = w
+		var ulab: String = Defs.UNITS[kk]["name"].to_upper()
+		var auto_all := able.all(func(x: Building) -> bool: return x.auto_train == kk)
+		_alt_for[ulab] = func() -> void:
+			for sb in able:
+				if is_instance_valid(sb):
+					sb.auto_train = "" if auto_all else kk
+			toast(("Training %s automatically in every %s." % [Defs.UNITS[kk]["name"], "building that can"]) if not auto_all else "Automatic training off.")
+		if able.any(func(x: Building) -> bool: return x.auto_train == kk):
+			ulab = "~ " + ulab
+		list.append([kk, ulab, func() -> void:
+			var w := game.train_any(able, kk)
+			if w != "":
+				toast(w), why == "", why, str(Defs.UNITS[kk]["cost"])])
+	if pages > 1:
+		list.append(["build", "MORE", func() -> void: prod_page = (prod_page + 1) % pages, true, "", ""])
+	list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
+	return list
+
+
 static func key_id(it: Array) -> String:
 	var lab: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 	if FIXED_KEYS.has(lab):
@@ -792,8 +867,8 @@ var _mini_tex: ImageTexture
 
 
 func _draw_groups(font: Font) -> void:
-	var labels := ["ARMY", "IDLE", "HALL", "1", "2", "3"]
-	for i in 6:
+	var labels := ["ARMY", "IDLE", "HALL", "1", "2", "3", "MAKE", "4"]
+	for i in QUICK:
 		var r := group_rect(i)
 		UiStyle.draw_button(self, r, Settings.pc() and r.has_point(_mouse()), _hold_t.has(i))
 		var sub := ""
@@ -802,9 +877,14 @@ func _draw_groups(font: Font) -> void:
 				sub = str(game.army(game.human).size())
 			1:
 				sub = str(game.labourers(game.human).filter(func(u: Unit) -> bool: return u.order == "idle").size())
+			6:
+				var busy := 0
+				for pb in game.producers(game.human):
+					busy += (pb as Building).queue.size()
+				sub = str(busy) if busy > 0 else ""
 			_:
-				if i >= 3:
-					sub = str(game.groups[i - 3].filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead).size())
+				if _group_of(i) >= 0:
+					sub = str(game.groups[_group_of(i)].filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead).size())
 		_text(UiStyle.bold_font(), r.position + Vector2(r.size.x * 0.5, 18), labels[i], 14, UiStyle.TEXT, 1)
 		if sub != "":
 			_text(font, r.position + Vector2(r.size.x * 0.5, 36), sub, 13, Color(1, 1, 1, 0.6), 1)
@@ -914,9 +994,13 @@ func _draw_panel(font: Font) -> void:
 	else:
 		var n := mini(sel.size(), 24)
 		var per_row := int((r.size.x - 20) / 38)
+		_portraits = []
 		for i in n:
 			var e: Entity = sel[i]
 			var ir := Rect2(r.position + Vector2(10 + (i % per_row) * 38, 8 + (i / per_row) * 40), Vector2(34, 34))
+			_portraits.append({"rect": ir, "e": e})
+			if Settings.pc() and ir.has_point(_mouse()):
+				draw_rect(ir.grow(2), UiStyle.TRIM_DIM, false, 1.0)
 			var ic := _icon(e.kind)
 			if ic:
 				draw_texture_rect(ic, ir, false)
@@ -932,6 +1016,27 @@ func _draw_panel(font: Font) -> void:
 		_buttons_extra = [{"rect": x, "cb": func() -> void: game.set_selection([]), "enabled": true}]
 	else:
 		_buttons_extra = []
+	if sel.size() > 1:
+		for pt in _portraits:
+			var pe: Entity = pt["e"]
+			_buttons_extra.append({"rect": pt["rect"], "enabled": true, "cb": func() -> void: _portrait_pressed(pe)})
+
+
+var _portraits: Array = []
+
+
+## A portrait in a multiple selection: the first tap keeps only that kind, a tap when
+## they're all one kind keeps only that one (and a second tap on it centres the view).
+func _portrait_pressed(e: Entity) -> void:
+	if not is_instance_valid(e) or e.dead:
+		return
+	var sel: Array = game.selection.filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
+	var same: Array = sel.filter(func(x: Entity) -> bool: return x.kind == e.kind)
+	if same.size() < sel.size():
+		game.set_selection(same)
+	else:
+		game.set_selection([e])
+		game.camera.position = e.global_position
 
 
 var _buttons_extra: Array = []

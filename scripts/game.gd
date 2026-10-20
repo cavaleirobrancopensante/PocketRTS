@@ -357,6 +357,45 @@ func line_cells(a: Vector2i, b: Vector2i) -> Array:
 	return out
 
 
+## Your own wall piece (built or not) on this cell, if any.
+func _own_wall_at(t: int, c: Vector2i) -> Building:
+	for b in buildings:
+		if b.kind == "wall" and b.team == t and not b.dead and b.cell == c:
+			return b
+	return null
+
+
+## Take a building off the map without a death (a wall piece a gate replaces).
+func _remove_quietly(b: Building) -> void:
+	_mark(b.cell, b.size, 0)
+	gate_team.erase(idx(b.cell))
+	selection.erase(b)
+	buildings.erase(b)
+	b.dead = true
+	b.queue_free()
+	_astar_dirty = true
+
+
+## Gates face the way their wall runs: drawn side-on in a north-south wall. Each gate
+## near a cell that changed looks at its neighbours (walls, gates, cliffs and
+## buildings) unless the player turned it by hand.
+func _orient_gates(around: Vector2i) -> void:
+	for b in buildings:
+		if b.kind != "gate" or b.dead or b.dir_locked or (b.cell - around).abs().x > 1 or (b.cell - around).abs().y > 1:
+			continue
+		var ns := 0
+		var ew := 0
+		for dv in [Vector2i(0, -1), Vector2i(0, 1)]:
+			var cc: Vector2i = b.cell + dv
+			if in_map(cc) and solid[idx(cc)] != 0:
+				ns += 2 if solid[idx(cc)] >= 3 else 1
+		for dv in [Vector2i(-1, 0), Vector2i(1, 0)]:
+			var cc: Vector2i = b.cell + dv
+			if in_map(cc) and solid[idx(cc)] != 0:
+				ew += 2 if solid[idx(cc)] >= 3 else 1
+		b.set_vertical(ns > ew)
+
+
 ## Lay a line of walls or gates; returns how many pieces went down.
 func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array) -> int:
 	var n := 0
@@ -965,6 +1004,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 		gate_team[idx(c)] = t
 	else:
 		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
+	if Defs.BUILDINGS[k].get("line", false):
+		_orient_gates(c)
 	_push_units_out(b.rect())
 	_recount_supply(t)
 	return b
@@ -1091,8 +1132,10 @@ func on_building_complete(b: Building) -> void:
 	_recount_supply(b.team)
 	if mlog and clock > 1.0 and not Defs.BUILDINGS[b.kind].get("line", false):
 		mlog.add("%s finished a %s%s" % [mlog.who(b.team), b.d["name"], " (expansion)" if b.kind == faction_hall(b.team) else ""])
-	if b.team == human and clock > 1.0:
-		Sfx.play_f("built", b.d["faction"])
+	if b.team == human and clock > 1.0 and Defs.BUILDINGS[b.kind].get("line", false):
+		Sfx.play_any(["%s/placed" % Sfx.SHORT.get(b.d["faction"], "crown")], b.center(), -6.0)   # a wall piece: just a soft knock
+	elif b.team == human and clock > 1.0:
+		Sfx.play_f_once("built", b.d["faction"], 4.0)
 		Sfx.announce(b.d["faction"], "expansion" if b.kind == faction_hall(b.team) else "building_done", 3.0)
 
 
@@ -1281,7 +1324,7 @@ func spawn_trained(b: Building, k: String) -> void:
 		if b.uses_eggs():
 			Sfx.play("hatch", b.global_position)
 		else:
-			Sfx.play_f("ready", b.d["faction"])
+			Sfx.play_f_once("ready", b.d["faction"], 6.0, -3.0)
 		Sfx.voice(k, "select")
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
@@ -1323,6 +1366,8 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
 			if not in_map(cc) or solid[idx(cc)] != 0:
+				if k == "gate" and in_map(cc) and solid[idx(cc)] == 4 and _own_wall_at(t, cc) != null:
+					continue     # a gate can replace a piece of your own wall
 				return "Blocked."
 			if not ai and t == human and not demo and explored[idx(cc)] == 0:
 				return "Unexplored."
@@ -1366,6 +1411,10 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 		return null
 	if not requirement_met(t, k):
 		return null
+	if k == "gate":
+		var old_wall := _own_wall_at(t, c)
+		if old_wall:
+			_remove_quietly(old_wall)
 	players[t]["gold"] -= int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["spent"] += int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["built"] += 1
@@ -2680,6 +2729,29 @@ func selected_buildings() -> Array:
 	return selection.duplicate()
 
 
+## Several of your finished buildings that train an army, of different kinds (the MAKE
+## quick button), or [] when the selection is anything else.
+func selected_producers() -> Array:
+	if selection.size() < 2:
+		return []
+	for e in selection:
+		if not (e is Building) or e.team != human or e.dead or not e.built or (e.d["trains"] as Array).is_empty():
+			return []
+	return selection.duplicate()
+
+
+## Every finished building of a team that trains fighting units.
+func producers(t: int) -> Array:
+	return buildings.filter(func(b: Building) -> bool:
+		return b.team == t and not b.dead and b.built and (b.d["trains"] as Array).any(func(k: String) -> bool: return not Defs.UNITS[k].get("worker", false)))
+
+
+## The buildings a rally order goes to: the selected ones of one kind, or a MAKE selection.
+func rally_buildings() -> Array:
+	var bs := selected_buildings()
+	return bs if not bs.is_empty() else selected_producers()
+
+
 ## Train at the least busy of several buildings (or the only one).
 func train_any(list: Array, k: String) -> String:
 	var best: Building = null
@@ -2788,7 +2860,7 @@ func under_attack(e: Entity) -> void:
 		Sfx.announce(fac, "base_attack", 15.0, "base_alert")
 		notify("Your base is under attack!", true)
 	else:
-		Sfx.announce(fac, "under_attack", 15.0, "alert")
+		Sfx.announce(fac, "under_attack", 20.0, "alert")
 		notify("Your forces are under attack!", true)
 
 

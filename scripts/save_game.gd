@@ -52,7 +52,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			continue
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "prod_t": b.prod_t, "eggs": b.eggs,
-			"egg_t": b.egg_t, "morph_t": b.morph_t, "research": b.research, "research_t": b.research_t, "auto": b.auto_train, "bat": b.batteries,
+			"egg_t": b.egg_t, "morph_t": b.morph_t, "research": b.research, "research_t": b.research_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "growth": b.growth, "gold_acc": b.gold_acc,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
@@ -115,6 +115,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.research_t = float(bd["research_t"])
 		b.auto_train = String(bd.get("auto", ""))
 		b.batteries = int(bd.get("bat", 0))
+		b.vertical = bool(bd.get("v", false))
+		b.dir_locked = bool(bd.get("vl", false))
 		b.swamp_r = float(bd["swamp_r"])
 		b.seeded = bool(bd["seeded"])
 		b.growth = float(bd["growth"])

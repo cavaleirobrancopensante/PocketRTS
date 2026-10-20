@@ -253,7 +253,7 @@ const BUILDINGS := {
 	"gate": {
 		"name": "Gate", "hp": 600, "armor": 4, "cost": 25, "time": 6.0, "size": Vector2i(1, 1),
 		"supply": 0, "sight": 4, "trains": [], "line": true, "gate": true, "faction": "crown",
-		"about": "A piece of wall that opens for your own side and your allies, and stays shut to the enemy.",
+		"about": "A piece of wall that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own wall to swap a piece for a gate. It faces the way the wall runs; ROTATE turns it by hand.",
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),

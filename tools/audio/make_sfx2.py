@@ -351,10 +351,15 @@ def ui_minimap_ping(rng, v):
 
 # =================================================================== B. faction interface — Crown
 
-@sfx("crown/ready")
+@sfx("crown/ready", peak=-9.0)
 def crown_ready(rng, v):
-    n = [(0.0, hz("G4"), 0.13), (0.12, hz("C5"), 0.13), (0.24, hz("E5"), 0.42)]
-    return brass_seq(rng, n, voices=2, bright=1.2)
+    # heard every time a soldier steps out: a soft, distant two-note horn (rising fourth),
+    # mellow and short, so it reads as "the Crown" without nagging
+    out = np.zeros(1)
+    for st, f, du in [(0.0, hz("G3"), 0.16), (0.15, hz("C4"), 0.38)]:
+        b = brass(rng, f, du, vib=4.5, vib_depth=0.004, bright=0.45, attack=0.06, release=0.18, scoop=0.01)
+        out = place(out, b, st)
+    return reverb(lp(out, 1600), rng, rt=0.7, wet=0.2)
 
 
 @sfx("crown/placed")
@@ -367,12 +372,13 @@ def crown_placed(rng, v):
     return out
 
 
-@sfx("crown/built")
+@sfx("crown/built", peak=-4.0)
 def crown_built(rng, v):
     out = snare_roll(rng, 0.5, 26, 0.6, cresc=False)
     notes = [(0.42, hz("C4"), 0.16), (0.58, hz("E4"), 0.16), (0.74, hz("G4"), 0.16), (0.9, hz("C5"), 0.8)]
-    br = brass_seq(rng, notes, voices=3, bright=1.2)
-    br = place(br, brass_seq(rng, [(0.9, hz("E4"), 0.8), (0.9, hz("G3"), 0.8)], voices=1) * 0.5, 0)
+    br = brass_seq(rng, notes, voices=2, bright=0.7)
+    br = place(br, brass_seq(rng, [(0.9, hz("E4"), 0.8), (0.9, hz("G3"), 0.8)], voices=1, bright=0.6) * 0.5, 0)
+    br = lp(br, 2600)
     out = place(out, br, 0)
     out = place(out, drum(rng, 0.6, 110, 55) * 0.8, 0.9)
     return out
@@ -416,13 +422,13 @@ def crown_no_supply(rng, v):
     return place(crowd, horn, 0)
 
 
-@sfx("crown/alert")
+@sfx("crown/alert", peak=-5.0)
 def crown_alert(rng, v):
+    # a low horn from the walls: firm, but rounded rather than blaring
     d = 0.75
-    f = hz("D3") * (1 + 0.04 * np.minimum(1, T(d) / 0.15) - 0.04)
-    b = brass(rng, hz("D3"), d, vib=4.5, vib_depth=0.008, bright=1.4, attack=0.06, release=0.2, scoop=0.08)
-    b2 = brass(rng, hz("A3"), d, vib=4.6, vib_depth=0.008, bright=1.2, attack=0.07, release=0.2, scoop=0.08) * 0.5
-    return reverb(b + b2, rng, rt=0.6, wet=0.12)
+    b = brass(rng, hz("D3"), d, vib=4.5, vib_depth=0.006, bright=0.7, attack=0.08, release=0.25, scoop=0.05)
+    b2 = brass(rng, hz("A3"), d, vib=4.6, vib_depth=0.006, bright=0.6, attack=0.09, release=0.25, scoop=0.05) * 0.45
+    return reverb(lp(b + b2, 2200), rng, rt=0.8, wet=0.18)
 
 
 @sfx("crown/base_alert")

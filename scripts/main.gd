@@ -52,10 +52,10 @@ Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or depl
 	"CONTROLS": """COMPUTER
 Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen); left drag box-selects; right click commands (move, attack, work, rally). Mouse wheel zooms; screen edges, arrow keys or the middle button pan.
 Line move: hold the right button and drag a line; your units spread out along it (with A first, they attack-move). On a phone: tap MOVE or ATTACK, then drag.
-Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work. 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall, Space jumps to the selection, Esc cancels.
+Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work. 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall, F4 all production buildings (MAKE), Space jumps to the selection, Esc cancels.
 
 MOBILE
-Tap to select, double-tap for every unit of that type on screen. DRAG: BOX / PAN (top right) switches what a one-finger drag does. Tap the ground to move, an enemy to attack. Long-press to move without fighting. Two fingers pan, pinch zooms, tap the minimap to jump. ARMY / IDLE / HALL select quickly; groups 1-3: hold to save, tap to select.""",
+Tap to select, double-tap for every unit of that type on screen. DRAG: BOX / PAN (top right) switches what a one-finger drag does. Tap the ground to move, an enemy to attack. Long-press to move without fighting. Two fingers pan, pinch zooms, tap the minimap to jump. ARMY / IDLE / HALL / MAKE select quickly (MAKE: every production building, to train from all of them); groups 1-4: hold to save, tap to select. Tap a portrait in a group to keep only that kind.""",
 }
 
 

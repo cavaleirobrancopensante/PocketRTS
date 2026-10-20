@@ -70,6 +70,19 @@ static func play_f(base: String, faction: String, pos := Vector2.INF) -> void:
 	play_any(["%s/%s" % [s, base], "%s_%s" % [base, s]], pos)
 
 
+## The same, but at most once every `gap` seconds (sounds that would otherwise repeat
+## all match long: a soldier trained, a building finished).
+static func play_f_once(base: String, faction: String, gap: float, vol := 0.0) -> void:
+	if me == null:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - float(me._said.get("sfx:" + base, -999.0)) < gap:
+		return
+	me._said["sfx:" + base] = now
+	var s: String = SHORT.get(faction, "crown")
+	play_any(["%s/%s" % [s, base], "%s_%s" % [base, s]], Vector2.INF, vol)
+
+
 ## The first of these names that has a sound.
 static func play_any(names: Array, pos := Vector2.INF, vol := 0.0) -> void:
 	if me == null:

@@ -122,7 +122,7 @@ On the first start the game asks where you are playing. The two control schemes 
 - **Right click** commands: move or attack, put workers on a Farm, Mill, Pit or Boiler, help build, or set a building's rally point. Right-click on the minimap sends units there.
 - **Building:** the ghost follows the mouse. Click to place, **Shift**-click to place another, right click or **Esc** cancels.
 - **Hotkeys:** every command-card button shows its letter. Hover for cost and details. **B** build menu (then the building's letter, e.g. **F** Farm), **A** attack, **M** move, **S** stop, **H** hold, **G** work, **D** deploy or pack, **R** rally, **X** back or cancel, **N** more.
-- **1–9** select a group, **Ctrl+1–9** save one, **Shift+1–9** add it; press twice to jump to it. **F1** idle worker, **F2** army, **F3** hall, **Space** jumps to the selection.
+- **1–9** select a group, **Ctrl+1–9** save one, **Shift+1–9** add it; press twice to jump to it. **F1** idle worker, **F2** army, **F3** hall, **F4** every production building (MAKE: train from all of them at once), **Space** jumps to the selection.
 - **Camera:** mouse wheel zooms; pan with the screen edges, the arrow keys or a middle-button drag.
 
 ### Mobile controls
@@ -131,7 +131,8 @@ On the first start the game asks where you are playing. The two control schemes 
 - Tap the ground to move (soldiers fight anything on the way). Tap an enemy to attack, your own Farm, Mill, Pit or Boiler to put workers on it, your own unfinished building to help build it.
 - Long-press the ground to move without stopping to fight.
 - Two fingers pan and pinch to zoom; tap or drag the minimap to jump.
-- **ARMY / IDLE / HALL** select quickly. **Groups 1–3**: tap an empty one to save the selection, tap to select, hold to overwrite.
+- **ARMY / IDLE / HALL / MAKE** select quickly. MAKE selects every building that trains an army: the card shows every unit they make, each goes to the least busy building, a long press sets it to train automatically everywhere, and RALLY sends them all to one spot. **Groups 1–4**: tap an empty one to save the selection, tap to select, hold to overwrite.
+- With several units selected, tap a portrait in the selection panel to keep only that kind; tap again to keep just that one.
 - Play it held sideways: in portrait the game pauses and asks you to turn the phone.
 
 ## Music and sound
