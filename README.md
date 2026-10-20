@@ -62,6 +62,13 @@ The match is saved every 15 seconds (and whenever the app goes to the background
 ### Workers work by themselves
 **WORK** is on by default (its button glows): a worker with nothing to do goes back to a free post on its own, after building, after walking to a rally point, after a STOP. Press WORK to switch it off for the selected workers (to scout, or keep a builder free) and again to switch it back on.
 
+### Buildings
+- Every building is on the **BUILD** card (more pages if they don't fit).
+- **ABANDON** a building that isn't finished: 75% of its cost comes back. **DEMOLISH** (press twice) pulls down a finished one.
+- Labourers repair buildings, Winders repair constructs and buildings; repairs cost gold/ore.
+- Select several buildings of the same kind (or a control group of them): training goes to whichever is least busy, and a rally point applies to all.
+- Enemies walled out with no gate break the wall down.
+
 ### Line move
 Drag a line and your selected units spread out evenly along it (as in Beyond All Reason): good against splash, for firing lines and for holding a choke. Computer: hold the right button and drag (a short right click is still a normal command), or press MOVE / ATTACK and drag with the left button. Phone: tap MOVE or ATTACK, then drag the line. With ATTACK they attack-move to their spots.
 

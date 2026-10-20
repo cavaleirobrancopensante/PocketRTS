@@ -467,8 +467,17 @@ func cmd_gather(site: Entity) -> void:
 	target = null
 
 
+## Winders fix constructs and Clockwork buildings; Labourers fix buildings. It costs gold/ore.
+func can_repair(e: Entity) -> bool:
+	if kind == "winder":
+		return e.is_unit() and (e as Unit).d["faction"] == "clockwork" or e.is_building()
+	if kind == "labourer":
+		return e.is_building()
+	return false
+
+
 func cmd_repair(e: Entity) -> void:
-	if kind != "winder":
+	if not can_repair(e):
 		return
 	_reset_work()
 	order = "repair"
@@ -722,7 +731,7 @@ func compute_path() -> void:
 	path_pending = false
 	if path_goal == Vector2.INF:
 		return
-	path = game.find_path(position, path_goal)
+	path = game.find_path(position, path_goal, not is_worker())
 	path_i = 0
 	stuck_t = 0.0
 

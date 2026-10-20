@@ -241,7 +241,8 @@ func _right_click(screen: Vector2) -> void:
 	var p := to_world(screen)
 	var b := game.selected_building()
 	if b:
-		game.set_rally(b, p)
+		for sb in game.selected_buildings():
+			game.set_rally(sb, p)
 	else:
 		game.smart_command(game.selected_units(), p)
 
@@ -464,9 +465,8 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			Sfx.play_any(["ui/click", "click"])
 			return
 		"rally", "rally_army", "rally_worker":
-			var b := game.selected_building()
-			if b:
-				game.set_rally(b, p, {"rally": "auto", "rally_army": "army", "rally_worker": "worker"}[mode])
+			for sb in game.selected_buildings():
+				game.set_rally(sb, p, {"rally": "auto", "rally_army": "army", "rally_worker": "worker"}[mode])
 			cancel_mode()
 			return
 	var e := game.entity_at(p)
@@ -496,7 +496,8 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 		return
 	var b := game.selected_building()
 	if b:
-		game.set_rally(b, p)
+		for sb in game.selected_buildings():
+			game.set_rally(sb, p)
 		return
 	game.set_selection([e] if e else [])
 

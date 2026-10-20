@@ -933,61 +933,65 @@ func _gap(h: float) -> Control:
 ## The menu background: a strip of countryside with each faction's hall and a slow
 ## procession of its soldiers, under a dark vignette.
 class MenuBackdrop extends Control:
+	## The three realms side by side, each slowly panning over its painting; every so often
+	## one of them comes forward and fills the screen for a while.
 	var t := 0.0
-	var _ground: Array = []
-	const MARCH := [["musketeer", "crown"], ["pikeman", "crown"], ["raptor", "brood"], ["spitter", "brood"],
-		["gearknight", "clockwork"], ["bolt", "clockwork"], ["brute", "brood"], ["cannon", "crown"]]
+	var _art: Array = []
+	const REALMS := ["crown", "clockwork", "brood"]
+	const HOLD := 9.0          # seconds the triptych holds, then one realm takes the screen
 
 	func _ready() -> void:
-		for i in TerrainData.COUNTS.get("grass", 1):
-			var p := "res://assets/terrain/grass_%d.png" % i
-			if ResourceLoader.exists(p):
-				_ground.append(load(p))
+		for r in REALMS:
+			var p := "res://assets/menu/%s.png" % r
+			_art.append(load(p) if ResourceLoader.exists(p) else null)
 
 	func _process(delta: float) -> void:
 		t += delta
 		queue_redraw()
 
+	## Draw `tex` to cover `r`, panning top-to-bottom with phase `ph`.
+	func _cover(tex: Texture2D, r: Rect2, ph: float, zoom := 1.0, alpha := 1.0) -> void:
+		if tex == null:
+			return
+		var ts := tex.get_size()
+		var sc := maxf(r.size.x / ts.x, r.size.y / ts.y) * zoom
+		var src_size := r.size / sc
+		var free := ts - src_size
+		var pan := 0.5 - 0.5 * cos(ph)            # 0..1..0
+		var src := Rect2(Vector2(free.x * 0.5, free.y * pan), src_size)
+		draw_texture_rect_region(tex, r, src, Color(1, 1, 1, alpha))
+
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), UiStyle.BG)
-		var tile := 64.0
-		var drift := fmod(t * 6.0, tile)
-		if not _ground.is_empty():
-			var rows := int(size.y / tile) + 2
-			var cols := int(size.x / tile) + 2
-			for y in rows:
-				for x in cols:
-					var h := (x * 73856093) ^ (y * 19349663)
-					var tex: Texture2D = _ground[absi(h) % _ground.size()]
-					draw_texture_rect(tex, Rect2(Vector2(x * tile - drift, y * tile), Vector2(tile, tile)), false, Color(0.62, 0.62, 0.58))
-		# procession
-		for i in MARCH.size():
-			var kind: String = MARCH[i][0]
-			if not ArtData.UNITS.has(kind):
-				continue
-			var a: Dictionary = ArtData.UNITS[kind]
-			var frames: int = a["frames"].get("walk_e", 1)
-			var path := "res://assets/units/%s/walk_e.png" % kind
-			if not ResourceLoader.exists(path):
-				continue
-			var tex: Texture2D = Game.tex(path)
-			var cell: Vector2i = a["cell"]
-			var span := size.x + 300.0
-			var x := fmod(t * 34.0 + i * span / MARCH.size(), span) - 150.0
-			var y := size.y * 0.5 + (i % 2) * 70.0
-			var f := int(t * 8.0 + i) % frames
-			var sc := 2.2
-			var src := Rect2(f * cell.x, 0, cell.x, cell.y)
-			var anchor: Vector2 = a["anchor"]
-			var mat_col := Color(0.9, 0.9, 0.88)
-			draw_texture_rect_region(tex, Rect2(Vector2(x, y) - anchor * sc, Vector2(cell) * sc), src, mat_col)
+		var n := _art.size()
+		if n == 0:
+			return
+		# cycle: triptych (HOLD s) -> realm 1 full (HOLD s) -> triptych -> realm 2 full ...
+		var cyc := HOLD * 2.0
+		var k := int(t / cyc)
+		var in_cyc := fmod(t, cyc)
+		var focus := k % n
+		var f := smoothstep(HOLD - 1.5, HOLD + 0.5, in_cyc) * (1.0 - smoothstep(cyc - 2.0, cyc, in_cyc))
+		var col_w := size.x / n
+		for i in n:
+			var r := Rect2(Vector2(i * col_w, 0), Vector2(col_w + 1, size.y))
+			_cover(_art[i], r, t * 0.05 + i * 2.1, 1.08 + 0.04 * sin(t * 0.07 + i), 1.0 - f * 0.85)
+			# the gold seams between the panels
+			if i > 0:
+				draw_rect(Rect2(i * col_w - 1, 0, 3, size.y), Color(0.79, 0.64, 0.29, 0.7 * (1.0 - f)))
+		if f > 0.0:
+			_cover(_art[focus], Rect2(Vector2.ZERO, size), t * 0.04, 1.0 + 0.06 * f, f)
 		# a dark band behind the menu column, fading to the right
-		var w := size.x * 0.66
-		var dark := Color(0.05, 0.04, 0.03, 0.92)
-		var clear := Color(0.05, 0.04, 0.03, 0.2)
+		var w := size.x * 0.6
+		var dark := Color(0.04, 0.03, 0.02, 0.88)
+		var clear := Color(0.04, 0.03, 0.02, 0.0)
 		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(w, 0), Vector2(w, size.y), Vector2(0, size.y)]),
 			PackedColorArray([dark, clear, clear, dark]))
-		draw_rect(Rect2(0, 0, size.x, size.y), Color(0, 0, 0, 0.25))
+		# vignette top and bottom
+		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), Vector2(size.x, 90), Vector2(0, 90)]),
+			PackedColorArray([Color(0, 0, 0, 0.55), Color(0, 0, 0, 0.55), Color(0, 0, 0, 0), Color(0, 0, 0, 0)]))
+		draw_polygon(PackedVector2Array([Vector2(0, size.y - 120), Vector2(size.x, size.y - 120), Vector2(size.x, size.y), Vector2(0, size.y)]),
+			PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.6), Color(0, 0, 0, 0.6)]))
 		draw_rect(Rect2(0, 0, size.x, 5), Color(0.79, 0.64, 0.29, 0.55))
 		draw_rect(Rect2(0, size.y - 5, size.x, 5), Color(0.79, 0.64, 0.29, 0.55))
 

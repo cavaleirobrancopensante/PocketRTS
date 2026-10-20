@@ -324,6 +324,7 @@ var _last_group_tap := 0
 
 # ------------------------------------------------------------------ command card
 
+var _demolish_ms := 0
 var _alt_for := {}             # card label -> its right-click / long-press action (auto-train)
 var _alt_press := {}           # the card button being held on a phone: {b, t, done}
 
@@ -350,8 +351,8 @@ func _build_card() -> Array:
 	if not units.is_empty():
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
 		if page in ["build", "advanced"] and has_lab:
-			var all: Array = Defs.FACTIONS[game.faction_of(game.human)]["build"].filter(func(k: String) -> bool:
-				return Defs.is_basic(k) == (page == "build"))
+			# every building on one card (more pages if they don't fit)
+			var all: Array = Defs.FACTIONS[game.faction_of(game.human)]["build"].duplicate()
 			var slots := _cols() * _rows()
 			var per := slots - 1 if all.size() <= slots - 1 else slots - 2
 			var pages := int(ceil(all.size() / float(per)))
@@ -386,9 +387,7 @@ func _build_card() -> Array:
 			list.append(["build", "BUILD", func() -> void:
 				page = "build"
 				build_page = 0, true, "", ""])
-			list.append(["repair", "ADVANCED", func() -> void:
-				page = "advanced"
-				build_page = 0, true, "", ""])
+
 		else:
 			_ability_buttons(list, units)
 			list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
@@ -426,6 +425,19 @@ func _build_card() -> Array:
 							else:
 								u.cmd_pack(), true, "", ""])
 		return list
+	if b and not b.built:
+		list.append(["stop", "ABANDON", func() -> void:
+			for sb in game.selected_buildings():
+				game.abandon(sb), true, "", ""])
+		return list
+	if b and b.built and b.kind != game.faction_hall(game.human):
+		list.append(["stop", "DEMOLISH", func() -> void:
+			if Time.get_ticks_msec() - _demolish_ms > 2500:
+				_demolish_ms = Time.get_ticks_msec()
+				toast("Press DEMOLISH again to pull it down.")
+				return
+			for sb in game.selected_buildings():
+				game.demolish(sb), true, "", ""])
 	if b and b.built:
 		for rk in Defs.RESEARCH:
 			var rkk: String = rk
@@ -443,15 +455,20 @@ func _build_card() -> Array:
 		for k in b.d["trains"]:
 			var kk: String = k
 			var why := game.can_train(b, k)
+			for sb in game.selected_buildings():
+				if game.can_train(sb, k) == "":
+					why = ""
 			var ulab: String = Defs.UNITS[k]["name"].to_upper()
 			# right-click (computer) or a long press (phone): keep training it automatically
 			_alt_for[ulab] = func() -> void:
-				b.auto_train = "" if b.auto_train == kk else kk
-				toast(("Training %s automatically." % Defs.UNITS[kk]["name"]) if b.auto_train != "" else "Automatic training off.")
+				var on := b.auto_train != kk
+				for sb in game.selected_buildings():
+					sb.auto_train = kk if on else ""
+				toast(("Training %s automatically." % Defs.UNITS[kk]["name"]) if on else "Automatic training off.")
 			if b.auto_train == k:
 				ulab = "~ " + ulab
 			list.append([k, ulab, func() -> void:
-				var w := game.train(b, kk)
+				var w := game.train_any(game.selected_buildings(), kk)
 				if w != "":
 					toast(w), why == "", why, str(Defs.UNITS[k]["cost"])])
 		if b.dual_rally():
@@ -516,7 +533,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
-	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P",
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "START": "P", "END": "P"}
 

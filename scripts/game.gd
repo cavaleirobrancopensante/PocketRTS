@@ -72,6 +72,7 @@ var map_id := "random"
 var map_name := ""
 var mapgen: MapGen
 var astar := AStarGrid2D.new()
+var astar_siege := AStarGrid2D.new()     # walls and gates counted as open: the way to break in
 var units: Array = []
 var buildings: Array = []
 var mines: Array = []
@@ -303,8 +304,8 @@ func _connected(a: Vector2i, b: Vector2i) -> bool:
 	return false
 
 
-## solid: 0 open, 1 terrain, 2 building, 3 gate (paths run through gates; only units of
-## the gate's side and its allies can actually step on one).
+## solid: 0 open, 1 terrain, 2 building, 3 gate, 4 wall (paths run through gates; only
+## units of the gate's side and its allies can actually step on one).
 func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 	for y in size.y:
 		for x in size.x:
@@ -313,6 +314,8 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 				solid[idx(cc)] = v
 				if astar.region.size != Vector2i.ZERO:
 					astar.set_point_solid(cc, v != 0 and v != 3)
+				if astar_siege.region.size != Vector2i.ZERO:
+					astar_siege.set_point_solid(cc, v == 1 or v == 2)
 
 
 ## Gates: map index -> the team that owns it.
@@ -418,10 +421,21 @@ func _setup_astar() -> void:
 	astar.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	astar.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	astar.update()
+	astar_siege = AStarGrid2D.new()
+	astar_siege.region = astar.region
+	astar_siege.cell_size = astar.cell_size
+	astar_siege.offset = astar.offset
+	astar_siege.diagonal_mode = astar.diagonal_mode
+	astar_siege.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	astar_siege.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	astar_siege.update()
 	for y in H:
 		for x in W:
-			if solid[y * W + x] != 0 and solid[y * W + x] != 3:
+			var sv := solid[y * W + x]
+			if sv != 0 and sv != 3:
 				astar.set_point_solid(Vector2i(x, y), true)
+			if sv == 1 or sv == 2:
+				astar_siege.set_point_solid(Vector2i(x, y), true)
 	# Trees and rocks as sprites
 	for sp in _terrain_sprites:
 		sp.queue_free()
@@ -950,7 +964,7 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 		_mark(c, b.size, 3)
 		gate_team[idx(c)] = t
 	else:
-		_mark(c, b.size, 2)
+		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
 	_push_units_out(b.rect())
 	_recount_supply(t)
 	return b
@@ -1594,10 +1608,13 @@ func queue_path(u: Unit) -> void:
 		_path_queue.append(u)
 
 
-func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
+func find_path(from: Vector2, to: Vector2, siege := false) -> PackedVector2Array:
 	var a := nearest_free(cell_of(from), 6)
 	var b := nearest_free(cell_of(to), 8)
 	var pts := astar.get_point_path(a, b, true)
+	if pts.is_empty() and siege:
+		# walled out: walk up to the wall (the unit then breaks it down)
+		pts = astar_siege.get_point_path(a, b, true)
 	if pts.is_empty():
 		return PackedVector2Array([to])
 	# Use the exact destination when it's on open ground.
@@ -2646,10 +2663,54 @@ func selected_units() -> Array:
 	return selection.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.team == human)
 
 
+## The selected building, or the first of several of the same kind (they act together:
+## training goes to whichever is least busy, rally points go to all of them).
 func selected_building() -> Building:
-	if selection.size() == 1 and selection[0] is Building and selection[0].team == human:
-		return selection[0]
-	return null
+	var bs := selected_buildings()
+	return bs[0] if not bs.is_empty() else null
+
+
+func selected_buildings() -> Array:
+	if selection.is_empty() or not (selection[0] is Building) or selection[0].team != human:
+		return []
+	var k: String = selection[0].kind
+	for e in selection:
+		if not (e is Building) or e.team != human or e.kind != k or e.dead:
+			return []
+	return selection.duplicate()
+
+
+## Train at the least busy of several buildings (or the only one).
+func train_any(list: Array, k: String) -> String:
+	var best: Building = null
+	var why := "Can't train that here."
+	for b in list:
+		if not is_instance_valid(b) or b.dead:
+			continue
+		var w := can_train(b, k)
+		if w != "":
+			why = w
+			continue
+		if best == null or b.queue.size() < best.queue.size() or (b.uses_eggs() and b.eggs > best.eggs):
+			best = b
+	if best == null:
+		return why
+	return train(best, k)
+
+
+## Cancel a building that isn't finished: most of its cost comes back.
+func abandon(b: Building) -> void:
+	if b.built or b.dead:
+		return
+	players[b.team]["gold"] += int(int(b.d["cost"]) * 0.75)
+	b.take_damage(9999999.0, null)
+
+
+## Pull down a finished building of your own (nothing comes back).
+func demolish(b: Building) -> void:
+	if b.dead:
+		return
+	b.take_damage(9999999.0, null)
 
 
 ## Tap/right-click on the map with units selected: do the obvious thing.
@@ -2679,9 +2740,9 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 		_ping(p, Color(1, 0.85, 0.3))
 		return
 	if e and e.team == us[0].team and e.hp < e.max_hp and (e.is_unit() or e.built) \
-			and us.any(func(u: Unit) -> bool: return u.kind == "winder"):
+			and us.any(func(u: Unit) -> bool: return u.can_repair(e)):
 		for u in us:
-			if u.kind == "winder":
+			if u.can_repair(e):
 				u.cmd_repair(e)
 			else:
 				u.cmd_move(p)
