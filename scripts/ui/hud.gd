@@ -308,7 +308,12 @@ func _build_card() -> Array:
 	if controls.mode == "place":
 		var k := controls.place_kind
 		var why := game.placement_problem(game.human, k, controls.ghost_cell)
-		list.append(["build", "PLACE", func() -> void: confirm_place(), why == "", why, ""])
+		var lab := "PLACE"
+		if Defs.BUILDINGS[k].get("line", false):
+			lab = "START" if controls.line_from.x < 0 else "END"
+			if controls.line_from.x >= 0:
+				why = ""
+		list.append(["build", lab, func() -> void: confirm_place(), why == "", why, ""])
 		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if controls.mode != "":
@@ -454,7 +459,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q"}
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "START": "P", "END": "P"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -526,6 +531,9 @@ func hotkey(code: int) -> bool:
 
 func confirm_place() -> void:
 	var k := controls.place_kind
+	if Defs.BUILDINGS.has(k) and Defs.BUILDINGS[k].get("line", false):
+		_confirm_line(k)
+		return
 	var why := game.placement_problem(game.human, k, controls.ghost_cell)
 	if why != "":
 		toast(why)
@@ -543,6 +551,25 @@ func confirm_place() -> void:
 	var b := game.place_building(game.human, k, controls.ghost_cell, builders)
 	if b:
 		Sfx.play_any(["ui/click", "click"])
+	controls.cancel_mode()
+
+
+## Walls and gates go down in a line: the first PLACE marks the start, the second the end.
+func _confirm_line(k: String) -> void:
+	if controls.line_from.x < 0:
+		var why := game.placement_problem(game.human, k, controls.ghost_cell)
+		if why != "":
+			toast(why)
+			return
+		controls.line_from = controls.ghost_cell
+		toast("Now pick where it ends (the same spot for a single piece).")
+		return
+	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker())
+	var n := game.place_line(game.human, k, controls.line_from, controls.ghost_cell, builders)
+	if n > 0:
+		Sfx.play_any(["ui/click", "click"])
+	else:
+		toast("Nothing could be placed there.")
 	controls.cancel_mode()
 
 
@@ -628,7 +655,11 @@ func _draw() -> void:
 			t = t.replace("Tap", "Click") + "  (right-click or Esc cancels)"
 		_text(font, Vector2(vs.x * 0.5, 66), t, 20, Color(1, 1, 0.7), 1)
 	elif controls.mode == "place":
-		_text(font, Vector2(vs.x * 0.5, 66), "Click to build (Shift-click for more), right-click or Esc cancels" if Settings.pc() else "Drag to position, tap again or PLACE to build", 20, Color(1, 1, 0.7), 1)
+		var line_k: bool = Defs.BUILDINGS.has(controls.place_kind) and Defs.BUILDINGS[controls.place_kind].get("line", false)
+		var hint: String = "Click to build (Shift-click for more), right-click or Esc cancels" if Settings.pc() else "Drag to position, tap again or PLACE to build"
+		if line_k:
+			hint = ("Click where the wall starts" if controls.line_from.x < 0 else "Click where it ends") if Settings.pc() else ("Drag to where the wall starts, then START" if controls.line_from.x < 0 else "Drag to where it ends, then END")
+		_text(font, Vector2(vs.x * 0.5, 66), hint, 20, Color(1, 1, 0.7), 1)
 	if _msg_t > 0.0:
 		var a := minf(_msg_t, 1.0)
 		var mw := font.get_string_size(_msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x + 36

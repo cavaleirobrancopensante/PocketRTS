@@ -10,4 +10,5 @@ python3 tools/fix_weapons.py             # straight pike and musket, held proper
 python3 tools/fix_pike.py                # full-length pike in the thrust frames
 PYTHONPATH=tools python3 tools/make_aim_up.py   # musketeer aiming up at flyers
 python3 tools/import_lightning.py        # lightning effects
+python3 tools/make_walls.py              # Crown walls and gates (drawn in code)
 echo "Now run: godot --headless --import"

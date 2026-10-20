@@ -297,6 +297,8 @@ func _connected(a: Vector2i, b: Vector2i) -> bool:
 	return false
 
 
+## solid: 0 open, 1 terrain, 2 building, 3 gate (paths run through gates; only units of
+## the gate's side and its allies can actually step on one).
 func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 	for y in size.y:
 		for x in size.x:
@@ -304,7 +306,100 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 			if in_map(cc):
 				solid[idx(cc)] = v
 				if astar.region.size != Vector2i.ZERO:
-					astar.set_point_solid(cc, v != 0)
+					astar.set_point_solid(cc, v != 0 and v != 3)
+
+
+## Gates: map index -> the team that owns it.
+var gate_team := {}
+
+
+## Can a unit of team `t` stand on this cell? (t = -1: nobody may pass gates.)
+func passable(c: Vector2i, t: int) -> bool:
+	if not in_map(c):
+		return false
+	var v := solid[idx(c)]
+	if v == 0:
+		return true
+	return v == 3 and t >= 0 and allied(int(gate_team.get(idx(c), -1)), t)
+
+
+## The cells of a wall from a to b: a straight line without diagonal gaps (when it steps
+## diagonally it adds a cell, so nothing can slip between two corners).
+func line_cells(a: Vector2i, b: Vector2i) -> Array:
+	var out: Array = [a]
+	var c := a
+	var guard := 0
+	while c != b and guard < 200:
+		guard += 1
+		var d := b - c
+		var step := Vector2i(signi(d.x), signi(d.y))
+		if step.x != 0 and step.y != 0:
+			# move along the longer axis first, then the other: no corner-only contact
+			var t: float = float(absi(d.x)) / float(maxi(1, absi(d.y)))
+			var first := Vector2i(step.x, 0) if t >= 1.0 else Vector2i(0, step.y)
+			c += first
+			out.append(c)
+			if c == b:
+				break
+			c += step - first
+		else:
+			c += step
+		out.append(c)
+	return out
+
+
+## Lay a line of walls or gates; returns how many pieces went down.
+func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array) -> int:
+	var n := 0
+	var first := true
+	for c in line_cells(a, b):
+		if placement_problem(t, k, c) != "":
+			continue
+		if players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
+			if t == human:
+				notify("Not enough gold for the whole wall.")
+			break
+		var bl := place_building(t, k, c, builders if first else [])
+		if bl:
+			n += 1
+			first = false
+	return n
+
+
+## The nearest enemy wall or gate right in front of a unit that can't get through.
+func blocking_wall(u: Unit) -> Building:
+	var best: Building = null
+	var bd := 70.0
+	for b in buildings:
+		if b.dead or not b.built or not (b.kind == "wall" or b.kind == "gate") or not hostile(b.team, u.team):
+			continue
+		var dd: float = b.edge_distance(u.position)
+		if dd < bd and u.can_hit(b):
+			bd = dd
+			best = b
+	return best
+
+
+## A labourer that finishes a piece picks up the next unfinished piece of fortification
+## or building nearby that nobody is working on.
+func next_site(u: Unit) -> Building:
+	var best: Building = null
+	var bd := 8.0 * T
+	for b in buildings:
+		if b.team != u.team or b.dead or b.built or b.d["faction"] != "crown":
+			continue
+		var busy := false
+		for o in units_near(b.center(), 60.0):
+			if o != u and o.team == u.team and o.order == "build" and o.order_target == b:
+				busy = true
+				break
+		if busy:
+			continue
+		var dd: float = b.center().distance_to(u.position)
+		if dd < bd:
+			bd = dd
+			best = b
+	return best
 
 
 func _setup_astar() -> void:
@@ -317,7 +412,7 @@ func _setup_astar() -> void:
 	astar.update()
 	for y in H:
 		for x in W:
-			if solid[y * W + x] != 0:
+			if solid[y * W + x] != 0 and solid[y * W + x] != 3:
 				astar.set_point_solid(Vector2i(x, y), true)
 	# Trees and rocks as sprites
 	for sp in _terrain_sprites:
@@ -715,7 +810,11 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 			b.rig_mine = m
 	world.add_child(b)
 	buildings.append(b)
-	_mark(c, b.size, 2)
+	if Defs.BUILDINGS[k].get("gate", false):
+		_mark(c, b.size, 3)
+		gate_team[idx(c)] = t
+	else:
+		_mark(c, b.size, 2)
 	_push_units_out(b.rect())
 	_recount_supply(t)
 	return b
@@ -785,6 +884,7 @@ func _killer(e: Entity) -> int:
 
 func on_building_died(b: Building) -> void:
 	_mark(b.cell, b.size, 0)
+	gate_team.erase(idx(b.cell))
 	selection.erase(b)
 	buildings.erase(b)
 	_recount_supply(b.team)
@@ -981,6 +1081,9 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 				return "Unexplored."
 			if needs_swamp(k) and swamp[t][idx(cc)] == 0:
 				return "Brood structures must grow on your swamp."
+			# the computer keeps its ramps clear (for its own wall and its army)
+			if ai and not Defs.BUILDINGS[k].get("line", false) and _near_ramp(cc):
+				return "Keep the ramp clear."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		for h in halls_of(t, false):
@@ -1000,6 +1103,15 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			if not near:
 				return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
 	return ""
+
+
+func _near_ramp(c: Vector2i) -> bool:
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var n := c + Vector2i(dx, dy)
+			if in_map(n) and ramp[idx(n)] == 1:
+				return true
+	return false
 
 
 func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building:
@@ -1313,26 +1425,26 @@ func approach_point(e: Entity, from: Vector2) -> Vector2:
 	return best if best != Vector2.INF else r.get_center()
 
 
-func resolve_terrain(pos: Vector2, before: Vector2, radius: float) -> Vector2:
+func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -> Vector2:
 	pos = pos.clamp(Vector2(radius, radius), Vector2(W * T, H * T) - Vector2(radius, radius))
-	if _clear_at(pos, radius):
+	if _clear_at(pos, radius, team):
 		return pos
 	var a := Vector2(pos.x, before.y)
-	if _clear_at(a, radius):
+	if _clear_at(a, radius, team):
 		return a
 	var b := Vector2(before.x, pos.y)
-	if _clear_at(b, radius):
+	if _clear_at(b, radius, team):
 		return b
-	if not _clear_at(before, radius):
+	if not _clear_at(before, radius, team):
 		# Wedged inside something (e.g. a new building): pop out.
 		return cell_center(nearest_free(cell_of(before), 6))
 	return before
 
 
-func _clear_at(p: Vector2, radius: float) -> bool:
+func _clear_at(p: Vector2, radius: float, team := -1) -> bool:
 	var r := radius * 0.6
-	return is_free(cell_of(p)) and is_free(cell_of(p + Vector2(r, 0))) and is_free(cell_of(p - Vector2(r, 0))) \
-		and is_free(cell_of(p + Vector2(0, r * 0.6))) and is_free(cell_of(p - Vector2(0, r * 0.6)))
+	return passable(cell_of(p), team) and passable(cell_of(p + Vector2(r, 0)), team) and passable(cell_of(p - Vector2(r, 0)), team) \
+		and passable(cell_of(p + Vector2(0, r * 0.6)), team) and passable(cell_of(p - Vector2(0, r * 0.6)), team)
 
 
 # ------------------------------------------------------------------ spatial queries
@@ -2464,7 +2576,18 @@ func _draw_overlay() -> void:
 		field_layer.draw_circle(Vector2.ZERO, float(info["radius"]), Color(col.r, col.g, col.b, 0.12))
 		field_layer.draw_arc(Vector2.ZERO, float(info["radius"]), 0.0, TAU, 48, col, 2.0)
 		field_layer.draw_set_transform(Vector2.ZERO)
-	if controls and controls.mode == "place":
+	if controls and controls.mode == "place" and controls.line_from.x >= 0:
+		# laying a wall: every piece from the start to here
+		var lk: String = controls.place_kind
+		var lt: Texture2D = tex("res://assets/buildings/%s_built.png" % lk)
+		var gold := int(players[human]["gold"])
+		for lc in line_cells(controls.line_from, controls.ghost_cell):
+			var lok := placement_problem(human, lk, lc) == "" and gold >= int(Defs.BUILDINGS[lk]["cost"])
+			if lok:
+				gold -= int(Defs.BUILDINGS[lk]["cost"])
+			overlay.draw_rect(Rect2(Vector2(lc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if lok else Color(1, 0.3, 0.3, 0.4))
+			overlay.draw_texture(lt, Vector2(lc) * T + Vector2(T * 0.5, T) + Vector2(-lt.get_width() * 0.5, -lt.get_height() + 6), Color(1, 1, 1, 0.6) if lok else Color(1, 0.5, 0.5, 0.4))
+	elif controls and controls.mode == "place":
 		var k: String = controls.place_kind
 		var size: Vector2i = Defs.BUILDINGS[k]["size"]
 		var c: Vector2i = controls.ghost_cell

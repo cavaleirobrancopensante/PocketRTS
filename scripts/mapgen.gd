@@ -304,9 +304,10 @@ func _keep() -> Array:
 	return keep
 
 
-## Open ground, a hill in the middle with two ramps, lakes and woods.
+## Open ground (mains up on high ground), a hill in the middle with two ramps, lakes and woods.
 func _crossroads() -> void:
 	_base_spots(Vector2i(6, 6), Vector2i(7, 34))
+	_main_plateau()
 	_plateau(Vector2(42, 30), Vector2(5, 4), [Vector2(30, 30), Vector2(54, 30)], false)
 	_lake(Vector2(22, 50), Vector2(5, 3))
 	_lake(Vector2(40, 12), Vector2(3, 2))
@@ -316,16 +317,17 @@ func _crossroads() -> void:
 ## Each main base sits on high ground with a single ramp down toward its natural.
 func _highlands() -> void:
 	_base_spots(Vector2i(6, 5), Vector2i(8, 38), Vector2i(26, 6))
-	_plateau(Vector2(9, 8), Vector2(13, 11), [Vector2(16, 26), Vector2(34, 8)] if four() else [Vector2(16, 26)], true)
+	_main_plateau()
 	_plateau(Vector2(42, 30), Vector2(4, 3), [Vector2(42, 37), Vector2(42, 23)], false)
 	_lake(Vector2(30, 46), Vector2(4, 3))
 	_lake(Vector2(36, 16), Vector2(3, 2))
 	_woods(18, _keep())
 
 
-## A river splits the map between the two bases; three fords are the only crossings.
+## A river splits the map between the two bases (mains up on high ground); three fords are the only crossings.
 func _rivers() -> void:
 	_base_spots(Vector2i(6, 6), Vector2i(7, 34))
+	_main_plateau()
 	var fords: Array = [0.22, 0.5, 0.78]
 	for i in 160:
 		var f := i / 159.0
@@ -365,6 +367,7 @@ func _rivers() -> void:
 ## Four players: two rivers cross in the middle, cutting the map into quarters.
 func _rivers4() -> void:
 	_base_spots(Vector2i(6, 6), Vector2i(7, 34), Vector2i(24, 8))
+	_main_plateau()
 	for i in 120:
 		var f := i / 119.0
 		var is_ford := absf(f - 0.25) < 0.035 or absf(f - 0.75) < 0.035
@@ -386,6 +389,12 @@ func _rivers4() -> void:
 
 
 # ------------------------------------------------------------------ pieces
+
+## Every main base sits on high ground with one ramp down toward its natural (two with
+## four players), so it can be walled off.
+func _main_plateau() -> void:
+	_plateau(Vector2(9, 8), Vector2(13, 11), [Vector2(16, 26), Vector2(34, 8)] if four() else [Vector2(16, 26)], true)
+
 
 ## High ground (mirrored too when `mirror`): an ellipse, with ramps toward the given points.
 func _plateau(c: Vector2, r: Vector2, ramps: Array, mirror: bool) -> void:

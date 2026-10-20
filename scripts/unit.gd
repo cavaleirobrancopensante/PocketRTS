@@ -596,7 +596,7 @@ func _move(want: Vector2, delta: float) -> void:
 		v = Vector2.ZERO
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0:
-		position = game.resolve_terrain(position + knock * delta, position, radius)
+		position = game.resolve_terrain(position + knock * delta, position, radius, team)
 		knock *= exp(-7.0 * delta)
 	if velocity.length() > speed * 1.3:
 		velocity = velocity.normalized() * speed * 1.3
@@ -608,7 +608,7 @@ func _move(want: Vector2, delta: float) -> void:
 	if is_air():
 		position = position.clamp(Vector2(8, 8), Vector2(Game.W, Game.H) * Game.T - Vector2(8, 8))
 	else:
-		position = game.resolve_terrain(position, before, radius)
+		position = game.resolve_terrain(position, before, radius, team)
 	if want.length() > 5.0 and phase == "":
 		facing = facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
 	# Stuck detection while trying to move
@@ -617,6 +617,11 @@ func _move(want: Vector2, delta: float) -> void:
 			stuck_t += delta
 		else:
 			stuck_t = maxf(stuck_t - delta * 2.0, 0.0)
+		# Walled out: hack at the enemy wall or gate in the way.
+		if stuck_t > 1.2 and target == null and not is_worker() and order in ["amove", "idle", "attack"]:
+			var wall := game.blocking_wall(self)
+			if wall:
+				target = wall
 		if stuck_t > 1.6 and path_goal != Vector2.INF and not path_pending:
 			stuck_t = 0.9
 			_request_path(path_goal)
@@ -749,7 +754,7 @@ func _strike(e: Entity) -> void:
 			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
-				e.position = game.resolve_terrain(e.position + push, e.position, e.radius)
+				e.position = game.resolve_terrain(e.position + push, e.position, e.radius, e.team)
 			# Pikeman: when the shove is ready, the thrust drives the enemy back and staggers it.
 			if kind == "pikeman" and push_auto and push_cd <= 0.0 and e is Unit and not e.dead and not e.is_air():
 				push_cd = Defs.PIKE_PUSH["cooldown"]
@@ -921,6 +926,12 @@ func _build(delta: float) -> Vector2:
 			game.consume_unit(self)
 		return Vector2.ZERO
 	if site == null or not is_instance_valid(site) or site.dead or site.built or (site.seeded and kind != "labourer"):
+		if kind == "labourer":
+			# on to the next piece of the wall (or any unfinished building close by)
+			var nxt := game.next_site(self)
+			if nxt:
+				cmd_build(nxt)
+				return Vector2.ZERO
 		if kind == "winder":
 			cmd_stop()
 			return Vector2.ZERO

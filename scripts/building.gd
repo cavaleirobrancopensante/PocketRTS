@@ -178,6 +178,8 @@ func _physics_process(delta: float) -> void:
 			if rubble_t > 28.0:
 				queue_free()
 		return
+	if built and not dead and kind == "gate":
+		_gate(delta)
 	if built and not dead:
 		_econ(delta)
 		if d.has("field"):
@@ -231,6 +233,32 @@ func _physics_process(delta: float) -> void:
 		_redraw_t = 0.16
 		_was_selected = selected
 		queue_redraw()
+
+
+## Gate: swings open while a friendly unit is close and no enemy is (the open picture is
+## only for show: friends can always pass, enemies never can).
+var gate_open := false
+var _gate_t := 0.0
+
+
+func _gate(delta: float) -> void:
+	_gate_t -= delta
+	if _gate_t > 0.0:
+		return
+	_gate_t = 0.25
+	var friend := false
+	var foe := false
+	for u in game.units_near(rect().get_center(), 56.0):
+		if u.dead or u.is_air():
+			continue
+		if game.allied(u.team, team):
+			friend = true
+		else:
+			foe = true
+	var want := friend and not foe
+	if want != gate_open:
+		gate_open = want
+		_update_sprite()
 
 
 func _brood(delta: float) -> void:
@@ -352,6 +380,8 @@ func _update_sprite() -> void:
 		state = "construction"
 	elif hp < max_hp * 0.5:
 		state = "damaged"
+	if kind == "gate" and built and not dead and gate_open:
+		state = "open_damaged" if state == "damaged" else "open"
 	var t := Game.tex("res://assets/buildings/%s_%s.png" % [kind, state])
 	if sprite.texture != t:
 		sprite.texture = t

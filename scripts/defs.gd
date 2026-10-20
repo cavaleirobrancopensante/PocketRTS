@@ -57,7 +57,7 @@ const TESLA_FIELD := 6            # tiles
 const FACTIONS := {
 	"crown": {
 		"name": "The Crown", "hall": "town_hall", "worker": "labourer", "supply": "cottage",
-		"build": ["town_hall", "cottage", "farm", "powder_mill", "barracks", "foundry", "church"],
+		"build": ["town_hall", "cottage", "farm", "powder_mill", "wall", "gate", "barracks", "foundry", "church"],
 		"start_workers": 5, "ready": true, "max_supply": 100,
 		"res": ["Gold", "Powder"], "econ": {"farm": 4, "powder_mill": 1},
 		"start": ["farm", "farm", "powder_mill"],
@@ -212,6 +212,17 @@ const BUILDINGS := {
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
 		"supply": 8, "sight": 5, "trains": [], "faction": "crown", "about": "Houses 8 more supply.",
+	},
+	# Crown fortifications: one tile each, laid in a line (pick the start, then the end).
+	"wall": {
+		"name": "Stone Wall", "hp": 450, "armor": 4, "cost": 10, "time": 4.0, "size": Vector2i(1, 1),
+		"supply": 0, "sight": 3, "trains": [], "line": true, "faction": "crown",
+		"about": "Blocks the way. Lay it in a line: pick where it starts, then where it ends. Wall off your ramp and keep a gate.",
+	},
+	"gate": {
+		"name": "Gate", "hp": 600, "armor": 4, "cost": 25, "time": 6.0, "size": Vector2i(1, 1),
+		"supply": 0, "sight": 4, "trains": [], "line": true, "gate": true, "faction": "crown",
+		"about": "A piece of wall that opens for your own side and your allies, and stays shut to the enemy.",
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),

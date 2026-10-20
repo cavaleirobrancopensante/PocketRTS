@@ -255,6 +255,8 @@ func _build_up() -> void:
 			_construct("foundry")
 		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]):
 			_construct("church")
+		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140:
+			_wall_off()
 	# Floating money: more production.
 	if gold > 550 and not _saving and _threat() == Vector2.INF:
 		if _crown() and _mine("foundry").size() < 2 and gold > 900 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
@@ -278,6 +280,72 @@ func _build_up() -> void:
 				_construct(hall, spot)
 			elif _threat() == Vector2.INF:
 				_saving = true
+
+
+var _walled := false
+
+
+## Crown: wall the top of each ramp up to the main base, with a two-wide gate in the
+## middle. The wall is every free high-ground cell touching the ramp, so nothing slips by.
+func _wall_off() -> void:
+	_walled = true
+	if game.starts.size() <= team:
+		return
+	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
+	var left := {}
+	for y in range(int(home.y) - 22, int(home.y) + 23):
+		for x in range(int(home.x) - 22, int(home.x) + 23):
+			var c := Vector2i(x, y)
+			if game.in_map(c) and game.ramp[game.idx(c)] == 1:
+				left[c] = true
+	var builder: Unit = null
+	var bd := INF
+	for u in game.workers(team):
+		if u.order == "build":
+			continue
+		var dd: float = u.position.distance_to(home * Defs.TILE)
+		if dd < bd:
+			bd = dd
+			builder = u
+	var first := true
+	while not left.is_empty():
+		# one ramp: the cells joined to the first one left
+		var start: Vector2i = left.keys()[0]
+		var ramp_cells: Array = []
+		var todo: Array = [start]
+		left.erase(start)
+		while not todo.is_empty():
+			var c: Vector2i = todo.pop_back()
+			ramp_cells.append(c)
+			for dd2 in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n: Vector2i = c + dd2
+				if left.has(n):
+					left.erase(n)
+					todo.append(n)
+		var band := {}
+		for rc in ramp_cells:
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var c: Vector2i = rc + Vector2i(dx, dy)
+					if game.in_map(c) and game.height[game.idx(c)] == 1 and game.ramp[game.idx(c)] == 0 and game.is_free(c):
+						band[c] = true
+		if band.size() < 2:
+			continue
+		var mid := Vector2.ZERO
+		for rc in ramp_cells:
+			mid += Vector2(rc)
+		mid /= ramp_cells.size()
+		var cells: Array = band.keys()
+		cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_to(mid) < Vector2(b).distance_to(mid))
+		var gates: Array = [cells[0]]
+		for c in cells.slice(1):
+			if (c - cells[0]).length() <= 1.01:
+				gates.append(c)
+				break
+		for c in cells:
+			var k := "gate" if gates.has(c) else "wall"
+			if game.place_building(team, k, c, [builder] if first and builder else []):
+				first = false
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:

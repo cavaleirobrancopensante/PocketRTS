@@ -22,6 +22,7 @@ var hud: Control
 var mode := ""                  # "", move, attack, place, rally
 var place_kind := ""
 var cast_spell := ""            # "cast" mode: storm or miasma
+var line_from := Vector2i(-1, -1)  # laying a wall: where it starts
 var ghost_cell := Vector2i(-1, -1)
 
 var _touches := {}              # index -> position
@@ -55,12 +56,14 @@ func box_rect() -> Rect2:
 func cancel_mode() -> void:
 	mode = ""
 	place_kind = ""
+	line_from = Vector2i(-1, -1)
 	ghost_cell = Vector2i(-1, -1)
 
 
 func begin_place(kind: String) -> void:
 	mode = "place"
 	place_kind = kind
+	line_from = Vector2i(-1, -1)
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var center := game.camera.get_screen_center_position()
 	ghost_cell = game.cell_of(center) - size / 2
@@ -190,7 +193,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				var kind := place_kind
 				if hud:
 					hud.confirm_place()
-				if e.shift_pressed and kind != "":
+				if e.shift_pressed and kind != "" and mode == "":
 					begin_place(kind)        # Shift keeps placing
 					_move_ghost(e.position)
 				return

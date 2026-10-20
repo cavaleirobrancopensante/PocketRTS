@@ -16,6 +16,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Labourers** work **Farms** (up to 3 each). A farm ripens into a **280-gold harvest** all at once, faster with more hands (about 40 s with a full crew).
 - The **Powder Mill** (up to 2 labourers) makes **black powder**. Every musket shot burns 1 and every cannon shot 3: no powder, no fire.
 - Each **Town Hall** allows 4 Farms and 1 Powder Mill within 14 tiles. **Cottages** add supply (max 100).
+- **Walls and gates** (10 and 25 gold a piece): lay them in a line (pick the start, then the end; your labourers build piece after piece). A gate opens for your side and your allies and stays shut to the enemy. Every main base sits on high ground with one ramp (two in four-player games), so a few pieces wall it off. Enemies that can't get through hack at the wall.
 - **Barracks**: **Musketeers**, **Pikemen** and, once you have a Foundry, **Cuirassiers**: fast armoured horsemen, melee only. After about 2 s at the gallop the next sabre blow is a **charge**: double damage, and the enemy is thrown back and staggered. Pikes do double damage to them. **Foundry**: **Field Cannons**. **Church**: one **Missionary** per church.
 - The **Missionary** walks to a wounded soldier and takes him off the field to bandage him (4 s). The soldier comes back at full health with a cross over his head and can't be bandaged again for 5 s. The Missionary can't be hurt unless he is within 8 tiles of an enemy building.
 
@@ -137,6 +138,7 @@ To add a unit: put its sheet in `art/crown/`, add it to `UNITS` in the script wi
 
 - `python3 tools/import_cannon2.py` builds the field cannon (horse-towed, unlimbered, firing, reloading, limbering, wreck) from the three new cannon sheets, picking the good frames and fixing the rest.
 - `python3 tools/import_lightning.py` cuts the lightning effects.
+- `python3 tools/make_walls.py` draws the Crown's stone wall and gate pixel by pixel (no source sheet).
 
 Repair passes fix mistakes in the generated art, pixel by pixel:
 
