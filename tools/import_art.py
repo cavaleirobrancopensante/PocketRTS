@@ -41,6 +41,20 @@ UNITS = {
                          ("death", "ne", 0), ("death", "n", 0), ("death", "n", 1)]},
     "cannon": {"rows": ["idle", "move", "fire", "reload", "death"], "dilate": 14, "drop_smoke": True, "scale": UNIT_SCALE * 1.3,
                "smoke_to_muzzle": True},
+    # New units (flat slate background). Hallucinated frames dropped: (anim, dir, index).
+    "missionary": {"rows": ["idle", "walk", "bandage", "bandage2", "skip", "death"], "dilate": 3,
+                   "mask": "flat_flood", "panels": [0, 285, 610, 935, 1243, 1536], "walk_height": 33,
+                   "nosplit": True, "merge_rows": {"bandage2": "bandage"}, "need_dark": ["bandage"],
+                   "drop": [("bandage", "n", 1), ("bandage", "n", 2), ("bandage2", "n", 0), ("bandage2", "n", 1),
+                            ("bandage2", "n", 2), ("bandage2", "n", 3), ("death", "n", 0), ("death", "n", 1)]},
+    "skywing": {"rows": ["idle", "walk", "skip", "attack", "death", "death2"], "dilate": 1, "dir": "brood",
+                "mask": "flat_flood", "panels": [0, 310, 625, 925, 1245, 1536], "walk_height": 34,
+                "nosplit": True, "core": "dark", "by_coat": {}, "merge_rows": {"death2": "death"},
+                "drop": [("death", "n", 0), ("death", "n", 1), ("death", "n", 2), ("death2", "n", 0),
+                         ("death2", "n", 1)]},
+    "tesla_cart": {"rows": ["walk", "deploy", "deployed", "attack", "death"], "dilate": 1, "dir": "clockwork",
+                   "mask": "flat_flood", "panels": [0, 295, 585, 910, 1228, 1536], "walk_height": 54,
+                   "nosplit": True, "by_coat": {"attack": "left"}, "coat_gap": 25, "idle_from": "walk"},
     "winder": {"rows": ["idle", "wind", "walk", "repair", "attack", "death"], "dilate": 2,
                "dir": "clockwork", "mask": "alpha", "scale": 0.27 * 1.5},
 }
@@ -219,12 +233,12 @@ def flat_flood_mask(px, tol=10):
     """Sprites on a flat grey background (panels may differ a little in shade): flood the
     background in from the border through near-neutral pixels of the background's greys;
     sprite outlines stop it. Pockets of the same flat grey trapped inside go too."""
-    rgb = px[..., :3]
+    rgb = px[..., :3].astype(int)
     grey = rgb.mean(-1)
-    neutral = (rgb.max(-1) - rgb.min(-1)) <= 8
-    border = np.concatenate([grey[0], grey[-1], grey[:, 0], grey[:, -1]])
-    lo, hi = np.percentile(border, 3) - tol, np.percentile(border, 97) + tol
-    bgl = neutral & (grey >= lo) & (grey <= hi)
+    border = np.concatenate([rgb[0], rgb[-1], rgb[:, 0], rgb[:, -1]])
+    bgc = np.median(border, 0)
+    spread = np.abs(border - bgc).max(-1)
+    bgl = np.abs(rgb - bgc).max(-1) <= np.percentile(spread, 97) + tol
     lab, n = ndimage.label(bgl)
     edge_labels = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
     seen = np.isin(lab, list(edge_labels))
@@ -362,7 +376,7 @@ def save(img, path):
 
 # ---------------------------------------------------------------- units
 
-def split_by_coat(px, row_sprites, bounds, rule, margin=14):
+def split_by_coat(px, row_sprites, bounds, rule, margin=14, core="red", gap=40, half_width=34, head=34):
     """One frame per soldier: find each red coat, then give every pixel of the row to a
     soldier. rule 'left': weapons stick out to the right, so a pixel belongs to the nearest
     soldier on its left; 'right': the other way round; 'near': the nearest soldier."""
@@ -371,7 +385,12 @@ def split_by_coat(px, row_sprites, bounds, rule, margin=14):
     for s in row_sprites:
         union |= s["mask"]
     rgb = px[..., :3]
-    red = union & (rgb[..., 0] >= 170) & (rgb[..., 1] <= 70) & (rgb[..., 2] <= 70)
+    if core == "dark":
+        g = rgb.mean(-1)
+        dark = union & (g < 95) & ((rgb.max(-1) - rgb.min(-1)) < 40)
+        red = ndimage.binary_opening(dark, iterations=2)       # torso, not wing bones
+    else:
+        red = union & (rgb[..., 0] >= 170) & (rgb[..., 1] <= 70) & (rgb[..., 2] <= 70)
     for p in range(len(bounds) - 1):
         x0, x1 = bounds[p], bounds[p + 1]
         m = union.copy()
@@ -388,22 +407,54 @@ def split_by_coat(px, row_sprites, bounds, rule, margin=14):
         bodies = sorted(cx for cx, sz in zip(cxs, sizes) if sz >= 40)
         merged = []
         for cx in bodies:
-            if merged and cx - merged[-1] < 40:
+            if merged and cx - merged[-1] < gap:
                 merged[-1] = (merged[-1] + cx) / 2
             else:
                 merged.append(cx)
         if not merged:
             continue
+        # Grow each soldier out from his coat through connected pixels (geodesic Voronoi):
+        # a musket or pike stays with the hands holding it, bodies are never sliced.
+        yb, xb = np.nonzero(m)
+        Y0, Y1, X0, X1 = yb.min(), yb.max() + 1, xb.min(), xb.max() + 1
+        m_full = m
+        m = m[Y0:Y1, X0:X1]
+        r = r[Y0:Y1, X0:X1]
+        merged_full = merged
+        merged = [cx - X0 for cx in merged]
+        rl, rn = ndimage.label(r)
+        seeds = np.zeros(m.shape, np.int32)
+        for k in range(1, rn + 1):
+            yk, xk = np.nonzero(rl == k)
+            if yk.size < 10:
+                continue
+            owner = int(np.argmin([abs(xk.mean() - cx) for cx in merged]))
+            seeds[rl == k] = owner + 1
+        lab_img = seeds.copy()
+        frontier = lab_img > 0
+        for _ in range(400):
+            grown = ndimage.grey_dilation(lab_img, size=(3, 3))
+            add = (lab_img == 0) & m & (grown > 0)
+            if not add.any():
+                break
+            lab_img[add] = grown[add]
+        # pieces not joined to any soldier: by side rule
+        ys, xs = np.nonzero(m & (lab_img == 0))
+        if ys.size:
+            c = np.array(merged)
+            d = xs[:, None] - c[None, :]
+            if rule == "left":
+                score = np.where(d >= -margin, np.abs(d), 1e6 + np.abs(d))
+            elif rule == "right":
+                score = np.where(d <= margin, np.abs(d), 1e6 + np.abs(d))
+            else:
+                score = np.abs(d)
+            lab_img[ys, xs] = np.argmin(score, 1) + 1
         ys, xs = np.nonzero(m)
-        c = np.array(merged)
-        d = xs[:, None] - c[None, :]
-        if rule == "left":
-            score = np.where(d >= -margin, np.abs(d), 1e6 + np.abs(d))
-        elif rule == "right":
-            score = np.where(d <= margin, np.abs(d), 1e6 + np.abs(d))
-        else:
-            score = np.abs(d)
-        own = np.argmin(score, 1)
+        own = lab_img[ys, xs] - 1
+        ys, xs = ys + Y0, xs + X0
+        m = m_full
+        merged = merged_full
         for k in range(len(merged)):
             sel = own == k
             if sel.sum() < 30:
@@ -557,7 +608,8 @@ def import_unit(name, cfg, data):
             continue
         rowframes = {}
         if cfg.get("by_coat") is not None:
-            rowframes = split_by_coat(px, [sprites[i] for i in row], bounds, cfg["by_coat"].get(anim, "near"))
+            rowframes = split_by_coat(px, [sprites[i] for i in row], bounds, cfg["by_coat"].get(anim, "near"),
+                                      core=cfg.get("core", "red"), gap=cfg.get("coat_gap", 40))
         else:
           for i in sorted(row, key=lambda k: sprites[k]["cx"]):
             s = sprites[i]
@@ -568,13 +620,24 @@ def import_unit(name, cfg, data):
             lst = [im for k, im in enumerate(lst) if k not in bad]
             if anim in cfg.get("last_only", []) and lst:
                 lst = lst[-1:]   # the others are crossed by their neighbour's pike
-            frames.setdefault((anim, d), []).extend(lst)
+            if anim in cfg.get("need_dark", []):
+                # frames of the wounded soldier alone (no black cassock) are dropped
+                def cassock(im):
+                    a = im[..., 3] > 0
+                    g = im[..., :3].astype(int).mean(-1)
+                    return ((g < 45) & a).sum() / max(1, a.sum())
+                lst = [im for im in lst if cassock(im) >= 0.12]
+            frames.setdefault((cfg.get("merge_rows", {}).get(anim, anim), d), []).extend(lst)
     if cfg.get("jab"):
         # thrust = braced, then extended
         for d in DIRS:
             if frames.get(("brace", d)) and frames.get(("thrust", d)):
                 frames[("thrust", d)] = frames[("brace", d)][-1:] + frames[("thrust", d)][-1:]
     frames = {k: v for k, v in frames.items() if v}
+    if cfg.get("idle_from"):
+        for d in DIRS:
+            if frames.get((cfg["idle_from"], d)):
+                frames[("idle", d)] = frames[(cfg["idle_from"], d)][:1]
     # Two frames drawn touching come out as one sprite: split where the column
     # profile has a deep valley with plenty of body on both sides.
     def split(im, depth=0):
@@ -600,7 +663,7 @@ def import_unit(name, cfg, data):
             frames[key] = [p for im in lst for p in split(im)]
     scale = cfg.get("scale", UNIT_SCALE)
     if cfg.get("walk_height"):
-        hs = [im.shape[0] for im in frames[("walk", "s")]]
+        hs = [im.shape[0] for im in frames.get(("walk", "s")) or frames[("walk", "e")]]
         scale = cfg["walk_height"] / float(np.median(hs))
     small = {}
     for key, lst in frames.items():
@@ -613,8 +676,9 @@ def import_unit(name, cfg, data):
                 small[key] = [smoke_to_muzzle(im) for im in small[key]]
     print(f"  {name}: " + ", ".join(f"{a}_{d} {len(v)}" for (a, d), v in sorted(small.items())))
     assemble(name, small, names, data)
-    if cfg.get("dir") == "clockwork":
-        make_icon(small[("idle", "s")][0], name)
+    if cfg.get("dir") == "clockwork" or name in ("missionary", "skywing"):
+        first = small.get(("idle", "s")) or small.get(("idle", "e")) or small[("walk", "e")]
+        make_icon(first[0], name)
 
 
 def assemble(name, small, names, data):
