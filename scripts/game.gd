@@ -494,7 +494,7 @@ func _render_ground() -> void:
 			elif mapgen.ford.size() > i and mapgen.ford[i] == 1:
 				set_name = b["ford"]
 			elif ramp[i] == 1:
-				set_name = b["ramp"]
+				set_name = b["high"]       # painted over as a slope below (_paint_ramps)
 			elif cliff[i] == 1:
 				var below := Vector2i(x, y + 1)
 				set_name = b["face"] if in_map(below) and height[idx(below)] == 0 else b["high"]
@@ -522,6 +522,7 @@ func _render_ground() -> void:
 			elif _terrain_kind.get(i, "") == "rock":
 				mc = Color(0.45, 0.45, 0.45)
 			minimap_img.set_pixel(x, y, Color(mc.r, mc.g, mc.b, 1.0))
+	_paint_ramps(img)
 	# a soft shadow under each cliff face
 	for y in H - 1:
 		for x in W:
@@ -532,6 +533,108 @@ func _render_ground() -> void:
 						var col := img.get_pixelv(p)
 						img.set_pixelv(p, col.darkened(0.35 * (1.0 - py / 6.0)))
 	ground.texture = ImageTexture.create_from_image(img)
+
+
+## Ramps: each ramp is painted as one smooth slope, from the high ground's grass at the
+## top to the low ground at the bottom, with faint contour steps across it and darker
+## edges along its sides (one tile per cell made a saw-toothed staircase).
+func _paint_ramps(img: Image) -> void:
+	var seen := {}
+	for y in H:
+		for x in W:
+			var c0 := Vector2i(x, y)
+			if ramp[idx(c0)] != 1 or seen.has(c0):
+				continue
+			# the whole ramp: cells joined to this one
+			var cells: Array = []
+			var todo: Array = [c0]
+			seen[c0] = true
+			while not todo.is_empty():
+				var c: Vector2i = todo.pop_back()
+				cells.append(c)
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var n: Vector2i = c + d
+					if in_map(n) and ramp[idx(n)] == 1 and not seen.has(n):
+						seen[n] = true
+						todo.append(n)
+			# downhill: from the high ground next to it toward the low ground next to it
+			var hi_sum := Vector2.ZERO
+			var lo_sum := Vector2.ZERO
+			var hi_n := 0
+			var lo_n := 0
+			for c in cells:
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var n: Vector2i = c + d
+					if not in_map(n) or ramp[idx(n)] == 1:
+						continue
+					if height[idx(n)] == 1 and cliff[idx(n)] == 0:
+						hi_sum += Vector2(n)
+						hi_n += 1
+					elif height[idx(n)] == 0:
+						lo_sum += Vector2(n)
+						lo_n += 1
+			if hi_n == 0 or lo_n == 0:
+				continue
+			var dir := (lo_sum / lo_n - hi_sum / hi_n).normalized()
+			var side := Vector2(-dir.y, dir.x)
+			# the slope itself runs through the cliff line: from half a tile above the ramp
+			# cells that sit between cliff faces to a tile below them. Above it the ramp is
+			# plain high ground, below it plain low ground.
+			var lo_p := INF
+			var hi_p := -INF
+			var s_lo := INF
+			var s_hi := -INF
+			for c in cells:
+				var m := (Vector2(c) + Vector2(0.5, 0.5)) * T
+				s_lo = minf(s_lo, m.dot(side) - T * 0.5)
+				s_hi = maxf(s_hi, m.dot(side) + T * 0.5)
+				var by_cliff := false
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var n: Vector2i = c + d
+					if in_map(n) and cliff[idx(n)] == 1 and ramp[idx(n)] == 0:
+						by_cliff = true
+				if by_cliff:
+					lo_p = minf(lo_p, m.dot(dir) - T * 1.0)
+					hi_p = maxf(hi_p, m.dot(dir) + T * 1.0)
+			if lo_p == INF:
+				continue
+			var b: Dictionary = MapGen.BIOMES[mapgen.biome_at(c0.x, c0.y)]
+			var top_t := _tile(b["high"], 1)
+			var low: Array = b["low"]
+			var bot_t := _tile(low[0], 2)
+			var face_t := _tile(b["face"], 0)
+			for c in cells:
+				for py in T:
+					for px in T:
+						var p := Vector2(c.x * T + px, c.y * T + py) + Vector2(0.5, 0.5)
+						var raw := (p.dot(dir) - lo_p) / maxf(hi_p - lo_p, 1.0)
+						if raw <= 0.0 or raw >= 1.0:
+							var plain: Color = top_t.get_pixel(px, py) * 1.15 if raw <= 0.0 else bot_t.get_pixel(px, py)
+							plain.a = 1.0
+							img.set_pixel(c.x * T + px, c.y * T + py, plain)
+							continue
+						var f := raw
+						var a: Color = top_t.get_pixel(px, py) * 1.15
+						var z: Color = bot_t.get_pixel(px, py)
+						# top ground to bottom ground with an ordered dither (stays pixel art)
+						var mixf := smoothstep(0.2, 0.8, f)
+						var bayer: float = [0.0, 0.5, 0.125, 0.625, 0.75, 0.25, 0.875, 0.375, 0.1875, 0.6875, 0.0625, 0.5625, 0.9375, 0.4375, 0.8125, 0.3125][(py % 4) * 4 + (px % 4)]
+						var col: Color = z if mixf > bayer else a
+						# the slope is shaded a little (most in the middle, none at either end, so
+						# it melts into the ground above and below), with contour steps across it
+						var bump := sin(PI * f)
+						col = col.darkened(0.1 * bump)
+						if fmod(p.dot(dir) - lo_p, 6.0) < 1.0:
+							col = col.darkened(0.16 * bump)
+						# its sides: a wedge of cliff rock that narrows to nothing at the bottom
+						var sd := minf(p.dot(side) - s_lo, s_hi - p.dot(side))
+						var wedge := 11.0 * (1.0 - f)
+						if sd < wedge:
+							col = face_t.get_pixel(px, py).darkened(0.1 + 0.2 * (1.0 - sd / maxf(wedge, 0.01)))
+						elif sd < wedge + 1.5:
+							col = col.lightened(0.2 * (1.0 - f))
+						col.a = 1.0
+						img.set_pixel(c.x * T + px, c.y * T + py, col)
 
 
 func _start_positions() -> void:
