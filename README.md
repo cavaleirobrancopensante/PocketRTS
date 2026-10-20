@@ -24,7 +24,7 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - Pits and every Brood structure except Hives must grow on your swamp. **Spore Vents** spread it far. Each Hive allows 3 Feeding Pits and 1 Bone Midden.
 - A grub **turns into** a building and is used up.
 - **Bone Middens** turn every body that falls nearby (friend or foe) into **essence**. Brutes and Skywings cost essence.
-- Every unit hatches from the **Hive's eggs**: **Raptors** (3 per egg), **Spitters** (2 per egg), **Brutes** (need a Gorge Pit) and **Skywings** (need a Roost).
+- Every unit hatches from the **Hive's eggs** (each Clutch Mound makes the Hives lay 10% faster, up to +30%): **Raptors** (3 per egg), **Spitters** (2 per egg), **Brutes** (need a Gorge Pit) and **Skywings** (need a Roost).
 - **Skywings** fly over everything, and only ranged units can hit them.
 - **Spore Mothers** (need a Gorge Pit) are slow and can't attack while walking. **ROOT** her (2.5 s): she lobs big spit blobs that splash an area and spreads swamp around her. **MIASMA** (30 essence, 18 s to recover) lays a green cloud for 8 s; Brood inside heal up to 30% of their health. Clouds don't stack.
 - Swamp heals the Brood and makes it faster. Army cap 160.

@@ -228,7 +228,7 @@ const BUILDINGS := {
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
-		"supply": 12, "sight": 5, "trains": [], "swamp": 7, "faction": "brood", "about": "12 more supply. Spreads swamp.",
+		"supply": 12, "sight": 5, "trains": [], "swamp": 7, "faction": "brood", "about": "12 more supply. Spreads swamp. Each one makes your Hives lay eggs 10% faster (up to 3).",
 	},
 	"warren": {
 		"name": "Warren", "hp": 800, "armor": 1, "cost": 150, "time": 35.0, "size": Vector2i(4, 3),
