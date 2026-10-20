@@ -313,6 +313,10 @@ const BUILDINGS := {
 
 
 
+## Units whose art is still being finished: they can't be trained yet.
+const PENDING := ["cuirassier", "spore_mother", "stormcaller"]
+
+
 static func is_worker(kind: String) -> bool:
 	return Defs.UNITS.has(kind) and Defs.UNITS[kind].get("worker", false)
 

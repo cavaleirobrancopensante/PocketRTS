@@ -841,8 +841,8 @@ func refund(t: int, k: String) -> void:
 func can_train(b: Building, k: String) -> String:
 	if not b.can_train(k):
 		return "Can't train that here."
-	if not ArtData.UNITS.has(k):
-		return "Coming soon."      # its sprites aren't in yet
+	if not ArtData.UNITS.has(k) or Defs.PENDING.has(k):
+		return "Coming soon."      # its sprites aren't in (or tested) yet
 	var u: Dictionary = Defs.UNITS[k]
 	var req: String = u.get("requires", "")
 	if req != "" and not _has_built(b.team, req):
