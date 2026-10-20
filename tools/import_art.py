@@ -44,7 +44,8 @@ UNITS = {
     # New units (flat slate background). Hallucinated frames dropped: (anim, dir, index).
     "missionary": {"rows": ["idle", "walk", "bandage", "bandage2", "skip", "death"], "dilate": 3,
                    "mask": "flat_flood", "panels": [0, 285, 610, 935, 1243, 1536], "walk_height": 33,
-                   "nosplit": True, "merge_rows": {"bandage2": "bandage"}, "need_dark": ["bandage"],
+                   "nosplit": True, "merge_rows": {"bandage2": "bandage"}, "need_dark": ["bandage", "bandage2"],
+                   "by_coat": {"bandage": "left", "bandage2": "left"}, "core": "black", "coat_gap": 30, "need_pair": "bandage", "drop_keys": [("bandage", "ne")],
                    "drop": [("bandage", "n", 1), ("bandage", "n", 2), ("bandage2", "n", 0), ("bandage2", "n", 1),
                             ("bandage2", "n", 2), ("bandage2", "n", 3), ("death", "n", 0), ("death", "n", 1)]},
     "skywing": {"rows": ["idle", "walk", "skip", "attack", "death", "death2"], "dilate": 1, "dir": "brood",
@@ -247,7 +248,9 @@ def flat_flood_mask(px, tol=10):
         idx = np.arange(1, n + 1)
         size = ndimage.sum(bgl, lab, idx)
         std = ndimage.standard_deviation(grey, lab, idx)
-        pocket = (size >= 20) & (std <= 3.0)
+        dist = np.abs(rgb - bgc).max(-1).astype(float)
+        mdist = ndimage.mean(dist, lab, idx)
+        pocket = ((size >= 20) & (std <= 3.0)) | ((size >= 12) & (mdist <= 7.0))
         fg &= ~(pocket[lab - 1] & (lab > 0))
     # thin separator lines between panels (only lines: at most 4 px wide)
     lines = ndimage.binary_opening(fg, structure=np.ones((400, 1)))
@@ -392,7 +395,10 @@ def split_by_coat(px, row_sprites, bounds, rule, margin=14, core="red", gap=40, 
     for s in row_sprites:
         union |= s["mask"]
     rgb = px[..., :3]
-    if core == "dark":
+    if core == "black":
+        g = rgb.mean(-1)
+        red = ndimage.binary_opening(union & (g < 50), iterations=2)     # cassocks and hats
+    elif core == "dark":
         g = rgb.mean(-1)
         dark = union & (g < 95) & ((rgb.max(-1) - rgb.min(-1)) < 40)
         red = ndimage.binary_opening(dark, iterations=2)       # torso, not wing bones
@@ -632,8 +638,11 @@ def import_unit(name, cfg, data):
                 def cassock(im):
                     a = im[..., 3] > 0
                     g = im[..., :3].astype(int).mean(-1)
-                    return ((g < 45) & a).sum() / max(1, a.sum())
-                lst = [im for im in lst if cassock(im) >= 0.12]
+                    return ndimage.binary_opening((g < 50) & a, iterations=1).sum()
+                cs = [cassock(im) for im in lst]
+                if cs:
+                    med = float(np.median(cs))
+                    lst = [im for im, c in zip(lst, cs) if c >= med * 0.4]
             frames.setdefault((cfg.get("merge_rows", {}).get(anim, anim), d), []).extend(lst)
     if cfg.get("jab"):
         # thrust = braced, then extended
@@ -713,6 +722,32 @@ def import_unit(name, cfg, data):
     small = {}
     for key, lst in frames.items():
         small[key] = [snap_team(shrink(im, scale)) for im in lst]
+    if cfg.get("need_pair"):
+        # keep frames showing both the priest (black hat and cassock) and the soldier
+        # (grey helmet); other directions fall back to the nearest one that has them
+        def has_both(im):
+            a = im[..., 3] > 0
+            rgb = im[..., :3].astype(int)
+            g = rgb.mean(-1)
+            neutral = (rgb.max(-1) - rgb.min(-1)) <= 18
+            black = ndimage.binary_opening(a & (g < 45), iterations=1).sum()
+            helmet = ndimage.binary_opening(a & neutral & (g >= 70) & (g <= 170), iterations=1).sum()
+            return black >= 25 and helmet >= 8
+
+        def black_area(im):
+            a = im[..., 3] > 0
+            g = im[..., :3].astype(int).mean(-1)
+            return int(ndimage.binary_opening(a & (g < 45), iterations=1).sum()) + int(a.sum()) // 4
+        for d in DIRS:
+            key = (cfg["need_pair"], d)
+            if key in small:
+                good = [im for im in small[key] if has_both(im)]
+                if good:
+                    small[key] = [max(good, key=black_area)]   # the clearest priest-and-patient frame
+                else:
+                    del small[key]
+        for key in cfg.get("drop_keys", []):
+            small.pop(tuple(key), None)
     if cfg.get("smoke_to_muzzle"):
         for key in small:
             if key == ("fire", "n"):
