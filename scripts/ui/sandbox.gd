@@ -235,7 +235,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if p == Vector2.INF or _over_panel(p) or (spawn == "" and not deleting):
 		return
-	if game.hud and game.hud._hud_has(p):
+	if game.hud and game.hud.hud_has_screen(p):
 		return
 	var w: Vector2 = game.get_viewport().get_canvas_transform().affine_inverse() * p
 	if deleting:

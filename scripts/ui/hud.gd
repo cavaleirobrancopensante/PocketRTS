@@ -25,8 +25,30 @@ var _card_items: Array = []
 
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fit()
+
+
+## The HUD is drawn at Settings.ui_scale (bigger on phones): it works in its own smaller
+## coordinate space and is scaled up to fill the screen.
+var ui_scale := 1.0
+
+
+func _fit() -> void:
+	ui_scale = Settings.ui_scale_now()
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	position = Vector2.ZERO
+	scale = Vector2(ui_scale, ui_scale)
+	size = get_viewport_rect().size / ui_scale
+
+
+func _mouse() -> Vector2:
+	return get_viewport().get_mouse_position() / ui_scale
+
+
+## For callers working in screen pixels.
+func hud_has_screen(p: Vector2) -> bool:
+	return _hud_has(p / ui_scale)
 
 
 func toast(t: String, sound := true) -> void:
@@ -48,6 +70,8 @@ func toast(t: String, sound := true) -> void:
 
 func _process(delta: float) -> void:
 	_msg_t = maxf(_msg_t - delta, 0.0)
+	if not size.is_equal_approx(get_viewport_rect().size / ui_scale) or ui_scale != Settings.ui_scale_now():
+		_fit()
 	queue_redraw()
 
 
@@ -105,7 +129,9 @@ func menu_rect() -> Rect2:
 
 
 func _hud_has(p: Vector2) -> bool:
-	if paused or game.over:
+	if game.over:
+		return false        # the end screen takes the clicks
+	if paused:
 		return true
 	for r in [top_rect(), mini_rect(), panel_rect(), card_rect(), drag_rect()]:
 		if (r as Rect2).has_point(p):
@@ -119,8 +145,10 @@ func _hud_has(p: Vector2) -> bool:
 # ------------------------------------------------------------------ input
 
 func _input(event: InputEvent) -> void:
-	if game == null:
+	if game == null or game.over:
 		return
+	if ui_scale != 1.0 and (event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouse):
+		event = event.xformed_by(Transform2D().scaled(Vector2.ONE / ui_scale))
 	if event is InputEventScreenTouch:
 		var e := event as InputEventScreenTouch
 		if e.pressed:
@@ -475,15 +503,15 @@ func _draw() -> void:
 	var cap: int = pl["cap"]
 	x = _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
 	var secs := int(game.clock)
-	var clock_r := Rect2(vs.x * 0.5 - 44, 4, 88, 30)
+	var clock_r := Rect2(maxf(vs.x * 0.5 - 44, x), 4, 88, 30)
 	UiStyle.draw_panel(self, clock_r, acc, 0.8)
-	_text(UiStyle.title_font(), Vector2(vs.x * 0.5, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
+	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
 	if not Settings.pc():
 		var dr := drag_rect()
 		UiStyle.draw_button(self, dr, false, Settings.drag_mode == "pan")
 		_text(font, dr.get_center() + Vector2(0, 6), "DRAG: " + ("BOX" if Settings.drag_mode == "box" else "PAN"), 15, UiStyle.TEXT, 1)
 	var mr := menu_rect()
-	UiStyle.draw_button(self, mr, mr.has_point(get_viewport().get_mouse_position()) and Settings.pc())
+	UiStyle.draw_button(self, mr, mr.has_point(_mouse()) and Settings.pc())
 	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
 	if game.demo:
 		_text(font, Vector2(vs.x * 0.5, 60), "AI vs AI", 18, Color(1, 1, 1, 0.6), 1)
@@ -493,6 +521,7 @@ func _draw() -> void:
 	_draw_card(font)
 	# Selection box
 	var br := controls.box_rect()
+	br = Rect2(br.position / ui_scale, br.size / ui_scale)
 	if br.size != Vector2.ZERO:
 		draw_rect(br, Color(0.4, 1, 0.4, 0.12))
 		draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
@@ -518,7 +547,7 @@ func _draw() -> void:
 		var last: Rect2 = pbs[pbs.size() - 1]["rect"]
 		UiStyle.draw_panel(self, Rect2(vs.x * 0.5 - 200, top_y - 96, 400, last.end.y - top_y + 120), UiStyle.accent(game.faction_of(game.human)), 0.96)
 		_text(UiStyle.title_font(), Vector2(vs.x * 0.5, top_y - 34), "PAUSED", 44, UiStyle.TRIM, 1)
-		var hv := get_viewport().get_mouse_position() if Settings.pc() else Vector2(-1, -1)
+		var hv := _mouse() if Settings.pc() else Vector2(-1, -1)
 		for b in pbs:
 			var r: Rect2 = b["rect"]
 			UiStyle.draw_button(self, r, r.has_point(hv))
@@ -531,6 +560,8 @@ func _draw_minimap() -> void:
 	if _mini_tex == null:
 		_mini_tex = ImageTexture.create_from_image(game.minimap_img)
 	draw_texture_rect(_mini_tex, m, false)
+	if game.swamp_tex:
+		draw_texture_rect(game.swamp_tex, m, false)
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
 	if not game.demo:
 		draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95))
@@ -560,7 +591,7 @@ func _draw_groups(font: Font) -> void:
 	var labels := ["ARMY", "IDLE", "HALL", "1", "2", "3"]
 	for i in 6:
 		var r := group_rect(i)
-		UiStyle.draw_button(self, r, Settings.pc() and r.has_point(get_viewport().get_mouse_position()), _hold_t.has(i))
+		UiStyle.draw_button(self, r, Settings.pc() and r.has_point(_mouse()), _hold_t.has(i))
 		var sub := ""
 		match i:
 			0:
@@ -671,7 +702,7 @@ func _draw_panel(font: Font) -> void:
 	# Deselect button
 	var x := Rect2(r.end.x - 30, r.position.y + 2, 28, 28)
 	if sel.size() != 1 or not (sel[0] is Building and sel[0].team == game.human and not (sel[0] as Building).queue.is_empty()):
-		UiStyle.draw_button(self, x, Settings.pc() and x.has_point(get_viewport().get_mouse_position()))
+		UiStyle.draw_button(self, x, Settings.pc() and x.has_point(_mouse()))
 		_text(UiStyle.bold_font(), x.get_center() + Vector2(0, 6), "✕", 16, UiStyle.TEXT, 1)
 		_buttons_extra = [{"rect": x, "cb": func() -> void: game.set_selection([]), "enabled": true}]
 	else:
@@ -691,7 +722,7 @@ func _draw_card(font: Font) -> void:
 	var cr := card_rect()
 	UiStyle.draw_panel(self, cr.grow(4), UiStyle.accent(game.faction_of(game.human)))
 	var bsz := _btn()
-	var hover := get_viewport().get_mouse_position() if Settings.pc() else Vector2(-1, -1)
+	var hover := _mouse() if Settings.pc() else Vector2(-1, -1)
 	for i in mini(items.size(), _cols() * _rows()):
 		var it: Array = items[i]
 		var br := Rect2(cr.position + Vector2(2 + (i % _cols()) * bsz, 2 + (i / _cols()) * bsz), Vector2(bsz - 4, bsz - 4))

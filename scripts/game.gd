@@ -51,6 +51,9 @@ func enemies_of(t: int) -> Array:
 var swamp: Array = []
 var swamp_dirty := true
 var swamp_layer: Node2D
+var field_layer: Node2D                  # Clockwork fields of the selected / placed building
+var swamp_img: Image                     # the swamp of every Brood player, for the minimap
+var swamp_tex: ImageTexture
 var _swamp_t := 0.0
 var _notify_t := 0
 var difficulty := 1
@@ -157,6 +160,10 @@ func _ready() -> void:
 	swamp_layer.z_index = -19
 	swamp_layer.draw.connect(_draw_swamp)
 	add_child(swamp_layer)
+	field_layer = Node2D.new()
+	field_layer.z_index = -18
+	field_layer.draw.connect(_draw_fields)
+	add_child(field_layer)
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
@@ -1123,6 +1130,52 @@ func _update_swamp() -> void:
 							g[y * W + x] = 1
 		swamp[t] = g
 	swamp_layer.queue_redraw()
+_swamp_minimap()
+
+
+## One small picture of every Brood swamp, drawn on the minimap for everyone.
+func _swamp_minimap() -> void:
+	if swamp_img == null:
+		swamp_img = Image.create(W, H, false, Image.FORMAT_RGBA8)
+	swamp_img.fill(Color(0, 0, 0, 0))
+	for t in n_players():
+		if faction_of(t) != "brood":
+			continue
+		var g: PackedByteArray = swamp[t]
+		var col := team_colour(t).lerp(Color(0.32, 0.22, 0.38), 0.6)
+		col.a = 0.85
+		for i in W * H:
+			if g[i] == 1:
+				swamp_img.set_pixel(i % W, i / W, col)
+	if swamp_tex == null:
+		swamp_tex = ImageTexture.create_from_image(swamp_img)
+	else:
+		swamp_tex.update(swamp_img)
+
+
+## The powered field of Clockwork buildings: the selected one (anyone's), and while you
+## place a building, the one you're placing plus your existing fields.
+func _draw_fields() -> void:
+	var ring: Texture2D = tex("res://assets/world/field_ring.png")
+	var draw_ring := func(c: Vector2, r: float, a: float) -> void:
+		field_layer.draw_texture_rect(ring, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, Color(1, 1, 1, a))
+	for e in selection:
+		if not is_instance_valid(e) or e.dead:
+			continue
+		if e is Building and e.d.has("field") and e.built:
+			draw_ring.call(e.center(), float(e.d["field"]) * T * field_mult(e.team), 0.9)
+		elif e is Unit and e.kind == "tesla_cart" and e.tesla_mode == "deployed":
+			draw_ring.call(e.position, Defs.TESLA_FIELD * T * field_mult(e.team), 0.9)
+	if controls and controls.mode == "place":
+		var k: String = controls.place_kind
+		if faction_of(human) == "clockwork" or Defs.BUILDINGS[k].has("field"):
+			for b in buildings:
+				if b.team == human and b.built and not b.dead and b.d.has("field") and not selection.has(b):
+					draw_ring.call(b.center(), float(b.d["field"]) * T * field_mult(human), 0.35)
+		if Defs.BUILDINGS[k].has("field"):
+			var size: Vector2i = Defs.BUILDINGS[k]["size"]
+			var c := Vector2(controls.ghost_cell) * T + Vector2(size) * T * 0.5
+			draw_ring.call(c, float(Defs.BUILDINGS[k]["field"]) * T * field_mult(human), 0.8)
 
 
 func _draw_swamp() -> void:
@@ -1672,6 +1725,7 @@ func _physics_process(delta: float) -> void:
 		tr[2] -= delta
 	_tracers = _tracers.filter(func(tr: Array) -> bool: return tr[2] > 0.0)
 	overlay.queue_redraw()
+	field_layer.queue_redraw()
 	_end_t -= delta
 	if _end_t <= 0.0:
 		_end_t = 1.0

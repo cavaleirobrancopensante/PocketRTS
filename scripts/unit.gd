@@ -143,6 +143,7 @@ func cmd_deploy() -> void:
 		cmd_stop()
 		tesla_mode = "deploying"
 		tesla_t = Defs.TESLA_SWITCH
+		Sfx.play("combat/tesla_deploy", position)
 
 
 func cmd_pack() -> void:
@@ -617,6 +618,7 @@ func _haul(pit: Building, delta: float) -> Vector2:
 				game.add_gold(team, carrying)
 				if team == game.human and carrying > 0:
 					game.float_text(position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
+					Sfx.play("work/grub_deliver", position, -6.0)
 				carrying = 0
 				work = "to_site"
 				path = PackedVector2Array()
@@ -671,6 +673,7 @@ func _heal(delta: float) -> Vector2:
 		position = p.position
 		work = "bandaging"
 		work_t = Defs.BANDAGE_TIME
+		Sfx.play("combat/missionary_heal", position)
 		path = PackedVector2Array()
 		return Vector2.ZERO
 	if position.distance_to(p.position) < 140.0:

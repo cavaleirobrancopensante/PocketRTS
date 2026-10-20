@@ -51,6 +51,15 @@ func _find(name: String) -> Array:
 	return out
 
 
+## In the browser Godot plays sounds as Web Audio "samples", and a stream only becomes a
+## sample when it's registered; a stream put on a player after start-up isn't, and stays
+## silent. So everything we play goes through here first.
+static func prep(s: AudioStream) -> AudioStream:
+	if s and OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(s):
+		AudioServer.register_stream_as_sample(s)
+	return s
+
+
 static func has(name: String) -> bool:
 	return me != null and not me._find(name).is_empty()
 
@@ -90,7 +99,7 @@ static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	if not me._players.has(name):
 		me._players[name] = me._new_player(6)
 	var p: AudioStreamPlayer = me._players[name]
-	p.stream = list[randi() % list.size()]
+	p.stream = prep(list[randi() % list.size()])
 	p.volume_db = db
 	p.pitch_scale = randf_range(0.93, 1.07)
 	p.play()
@@ -105,7 +114,7 @@ static func voice(kind: String, what: String) -> void:
 		list = me._find("voice/%s/move" % kind)
 	if list.is_empty():
 		return
-	me._voice.stream = list[randi() % list.size()]
+	me._voice.stream = prep(list[randi() % list.size()])
 	me._voice.volume_db = -2.0
 	me._voice.play()
 
@@ -127,7 +136,7 @@ static func announce(faction: String, line: String, gap := 4.0, fallback := "") 
 		return
 	if fallback != "":
 		play_f(fallback, faction)
-	me._announcer.stream = list[randi() % list.size()]
+	me._announcer.stream = prep(list[randi() % list.size()])
 	me._announcer.volume_db = 0.0
 	me._announcer.play()
 
@@ -139,6 +148,6 @@ static func taunt(faction: String) -> void:
 	var list := me._find("voice/taunt/%s/taunt" % SHORT.get(faction, "crown"))
 	if list.is_empty() or me._announcer.playing:
 		return
-	me._announcer.stream = list[randi() % list.size()]
+	me._announcer.stream = prep(list[randi() % list.size()])
 	me._announcer.volume_db = -1.0
 	me._announcer.play()

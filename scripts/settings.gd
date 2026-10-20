@@ -6,6 +6,7 @@ const PATH := "user://settings.cfg"
 
 static var device := ""
 static var drag_mode := "box"        # mobile: "box" = drag selects, "pan" = drag moves the view
+static var ui_size := 0               # 0 = automatic, else a percentage (100-200)
 static var _loaded := false
 
 
@@ -17,6 +18,7 @@ static func load_all() -> void:
 	if cfg.load(PATH) == OK:
 		device = cfg.get_value("input", "device", "")
 		drag_mode = cfg.get_value("input", "drag_mode", "box")
+		ui_size = cfg.get_value("input", "ui_size", 0)
 	apply()
 
 
@@ -25,6 +27,7 @@ static func save_all() -> void:
 	cfg.load(PATH)          # keep the other sections (audio)
 	cfg.set_value("input", "device", device)
 	cfg.set_value("input", "drag_mode", drag_mode)
+	cfg.set_value("input", "ui_size", ui_size)
 	cfg.save(PATH)
 
 
@@ -32,6 +35,13 @@ static func set_device(d: String) -> void:
 	device = d
 	apply()
 	save_all()
+
+
+## How big the in-game interface is drawn: phones get it 50% bigger unless set otherwise.
+static func ui_scale_now() -> float:
+	if ui_size > 0:
+		return ui_size / 100.0
+	return 1.0 if pc() else 1.5
 
 
 static func pc() -> bool:

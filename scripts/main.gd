@@ -270,6 +270,19 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
 	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
 	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
+	var sizes := [0, 100, 125, 150, 175, 200]
+	var sz_text := "AUTO (%d%%)" % int(Settings.ui_scale_now() * 100) if Settings.ui_size == 0 else "%d%%" % Settings.ui_size
+	var sh := HBoxContainer.new()
+	var sl := UiStyle.text("IN-GAME INTERFACE SIZE", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sh.add_child(sl)
+	var szb := _button(sz_text, func() -> void:
+		Settings.ui_size = sizes[(sizes.find(Settings.ui_size) + 1) % sizes.size()]
+		Settings.save_all()
+		show_settings())
+	szb.custom_minimum_size = Vector2(190, 50)
+	sh.add_child(szb)
+	v.add_child(sh)
 	v.add_child(dev)
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
@@ -1133,6 +1146,7 @@ func start(cfg: Dictionary = {}) -> void:
 		if game.hostile(t, game.human):
 			foes.append(game.faction_of(t))
 	Music.me.match_started(game.faction_of(game.human), foes)
+	Music.me.ambience(game.mapgen.biome_a if game.mapgen else "")
 
 
 func _to_menu() -> void:

@@ -120,6 +120,7 @@ func _econ(delta: float) -> void:
 			if growth >= 1.0:
 				growth = 0.0
 				game.add_gold(team, Defs.FARM_YIELD)
+				Sfx.play("work/farm_harvest", center(), -4.0)
 				if team == game.human:
 					game.float_text(center() + Vector2(0, -30), "+%d harvest" % Defs.FARM_YIELD, Color(1, 0.9, 0.4))
 					Sfx.play("done", center())
@@ -270,6 +271,7 @@ func die() -> void:
 		fire = null
 	game.on_building_died(self)
 	Sfx.play_any(["combat/building_collapse", "collapse"], global_position)
+	Sfx.play("combat/explosion_big", global_position, -4.0)
 	_update_sprite()
 	z_index = -1
 	game.spawn_effect("dust", global_position + Vector2(0, -rect().size.y * 0.4), 2.2)

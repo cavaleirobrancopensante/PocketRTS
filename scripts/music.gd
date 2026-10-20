@@ -34,6 +34,7 @@ var off_list: Array = []  # pieces left out in "picked" mode
 var _a: AudioStreamPlayer
 var _b: AudioStreamPlayer
 var _sting: AudioStreamPlayer
+var _amb: AudioStreamPlayer
 var _current := ""
 var _faction := ""
 var _enemies: Array = []
@@ -55,6 +56,9 @@ func _ready() -> void:
 	_a = _player()
 	_b = _player()
 	_sting = _player()
+	_amb = AudioStreamPlayer.new()
+	_amb.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
+	add_child(_amb)
 	var cfg := ConfigFile.new()
 	if cfg.load("user://settings.cfg") == OK:
 		music_on = cfg.get_value("audio", "music", true)
@@ -193,7 +197,7 @@ func play(track: String, loop := false) -> void:
 	var old := _a
 	_a = _b
 	_b = old
-	_a.stream = stream
+	_a.stream = Sfx.prep(stream)
 	_a.volume_db = -40.0
 	_a.play()
 	_fade(_a, VOL)
@@ -216,6 +220,7 @@ func _on_finished(p: AudioStreamPlayer) -> void:
 
 
 func menu() -> void:
+	_amb.stop()
 	_faction = ""
 	_preview = false
 	play("menu", true)
@@ -248,13 +253,29 @@ func match_started(faction: String, enemies: Array = []) -> void:
 	play(_next("peace"))
 
 
+## The land's background sound (wind, frogs, lava) under the music, quietly.
+func ambience(biome: String) -> void:
+	var path := "res://assets/audio/ambience/%s.ogg" % biome
+	if biome == "" or not ResourceLoader.exists(path):
+		_amb.stop()
+		return
+	var s: AudioStream = load(path)
+	if s is AudioStreamOggVorbis:
+		s = (s as AudioStreamOggVorbis).duplicate()
+		(s as AudioStreamOggVorbis).loop = true
+	_amb.stream = Sfx.prep(s)
+	_amb.volume_db = -10.0
+	_amb.play()
+
+
 ## End of a match: fade the music and play the sting.
 func match_ended(won: bool, faction: String) -> void:
+	_amb.stop()
 	_current = ""
 	_faction = ""
 	_fade(_a, -80.0, true)
 	_fade(_b, -80.0, true)
-	_sting.stream = load("res://assets/music/%s.ogg" % ("win_" + FACTION_KEY.get(faction, "crown").replace("clock", "clockwork") if won else "defeat"))
+	_sting.stream = Sfx.prep(load("res://assets/music/%s.ogg" % ("win_" + FACTION_KEY.get(faction, "crown").replace("clock", "clockwork") if won else "defeat")))
 	_sting.volume_db = VOL
 	_sting.play()
 
