@@ -392,6 +392,17 @@ def plan_labourer():
         bury = [conv(s) for s in groups[rb]["bury"]]
         A["bury", d] = bury_anchors(bury)
         death = [conv(s) for s in groups[rb]["death"]]
+        # the blast's smoke rises higher than the cell allows: the blast frames (2 on)
+        # are drawn a little smaller, all by the same factor, so they fit
+        fit = 1.0
+        for f in death[2:]:
+            x0, x1, y0, y1 = bbox(f)
+            fit = min(fit, anchor[1] / (f.ay - y0), anchor[0] / max(f.ax - x0, 1e-6),
+                      (cell[0] - anchor[0]) / max(x1 - f.ax, 1e-6))
+        if fit < 1.0:
+            fit *= 0.97
+            death[2:] = [conv(s, scale * fit) for s in groups[rb]["death"][2:]]
+            BLAST_FIT[d] = fit
         death = [death[0], align(death[0], death[1], "low", 3)] + death[2:]
         if d in ("s", "n"):
             base = A["idle_keg", d][0]
@@ -405,10 +416,13 @@ def plan_labourer():
                 # flames on the keg: the middle of the figure, at the height drawn
                 bx0, bx1, by0, by1 = bbox(base)
                 tx = (bx0 + bx1) / 2.0 - base.ax
-                out.append(lay(base, fl, dx=tx - (cx - fl.ax), dy=cy - fl.ay))
+                out.append(lay(base, fl, dx=tx - (cx - fl.ax), dy=0))
             death = out + death[2:]
         A["death_keg", d] = death
     return A, cell, anchor, scale, rows, bgc
+
+
+BLAST_FIT = {}
 
 
 def bury_anchors(fr):
@@ -436,3 +450,236 @@ def fit_cell(A, cell, anchor):
             cells.append(img)
         strips[f"{anim}_{d}"] = np.concatenate(cells, 1)
     return strips, clipped
+
+
+# ---------------------------------------------------------------- keg mine effects
+
+MINE_W = 32             # the mound: one tile wide
+MOUND_HALF_H = 5        # its ground point: this far above its lowest pixel
+
+
+def mound_width(f):
+    """Width of the dirt mound: the widest of the drawing's lowest 30% rows."""
+    a = f.img[..., 3] > 0
+    ys = np.flatnonzero(a.any(1))
+    y0 = ys.max() - int((ys.max() - ys.min()) * 0.3)
+    w = 0
+    for y in range(y0, ys.max() + 1):
+        xs = np.flatnonzero(a[y])
+        if len(xs):
+            w = max(w, xs[-1] - xs[0] + 1)
+    return w
+
+
+def ground_point(f):
+    """The mound's (or blast's) middle on the ground: the centre of the lowest 30% rows,
+    MOUND_HALF_H above the bottom."""
+    a = f.img[..., 3] > 0
+    ys, xs = np.nonzero(a)
+    low = ys >= ys.max() - (ys.max() - ys.min()) * 0.3
+    return (xs[low].min() + xs[low].max() + 1) / 2.0, ys.max() + 1 - MOUND_HALF_H
+
+
+def centred_strip(frames, pad=1):
+    """Frames on one cell, every frame's anchor in the cell's centre."""
+    L = max(max(f.ax, f.img.shape[1] - f.ax) for f in frames)
+    U = max(max(f.ay, f.img.shape[0] - f.ay) for f in frames)
+    W, H = 2 * (int(np.ceil(L)) + pad), 2 * (int(np.ceil(U)) + pad)
+    cells = [place(f, W, H, W / 2.0, H / 2.0)[0] for f in frames]
+    return np.concatenate(cells, 1), W, H
+
+
+def build_mine(rows, bgc):
+    """rows[6]: the buried keg, fuse smouldering (5 frames, a loop); rows[7]: armed - the
+    fuse burns down (3) - then the blast (6, the last one the scorched crater). The mound
+    is scaled to one tile; idle and arm use their own row's mound width, the blast the
+    arm row's scale. Every frame is placed with the mound's middle on the ground at the
+    middle of its cell, so the three strips swap without a jump."""
+    idle_src, arm_src = rows[6], rows[7][:3]
+    blast_src = rows[7][3:]
+    probe = 0.4
+
+    def k_of(srcs):
+        ws = [mound_width(frame_of(s, probe, bgc)) for s in srcs]
+        return probe * MINE_W / float(np.median(ws))
+    k_idle, k_arm = k_of(idle_src), k_of(arm_src)
+    out = {}
+    for name, srcs, k in (("keg_mine", idle_src, k_idle), ("keg_mine_arm", arm_src, k_arm),
+                          ("keg_mine_blast", blast_src, k_arm)):
+        frames = []
+        for s in srcs:
+            f = keep_main(frame_of(s, k, bgc), 4)
+            f = anchored_at(f, *ground_point(f))
+            frames.append(f)
+        if name != "keg_mine_blast":
+            frames = [frames[0]] + [align(frames[0], f, "low", 2) for f in frames[1:]]
+        strip, W, H = centred_strip(frames)
+        Image.fromarray(strip, "RGBA").save(f"assets/effects/{name}.png")
+        out[name] = (len(frames), W, H)
+        print(f"{name}: {len(frames)} frames {W}x{H}")
+    return out
+
+
+# ---------------------------------------------------------------- UI pieces
+
+UI = "art/ui/keg_cross_numbers.png"
+KEG_BODY_H = 12          # a standing keg's height before its 1 px outline (=> 14 px)
+OUTLINE = (24, 16, 12, 255)
+
+
+def outlined(img, colour=OUTLINE):
+    """A 1 px dark outline around the silhouette (outside it): at this size the sheet's
+    own black outline is averaged away."""
+    a = img[..., 3] > 0
+    h, w = a.shape
+    out = np.zeros((h + 2, w + 2, 4), np.uint8)
+    out[1:-1, 1:-1] = img
+    big = np.zeros((h + 2, w + 2), bool)
+    big[1:-1, 1:-1] = a
+    ring = ndimage.binary_dilation(big, structure=np.ones((3, 3))) & ~big
+    out[ring] = colour
+    return out
+
+
+def crisp(img, levels=None):
+    """Hard alpha and a little extra contrast, so the shrunken picture reads as pixel art
+    instead of a blur."""
+    out = img.copy()
+    a = out[..., 3] > 0
+    rgb = out[..., :3].astype(float)
+    mean = rgb[a].mean(0)
+    rgb = np.clip((rgb - mean) * 1.18 + mean, 0, 255)
+    out[..., :3] = np.where(a[..., None], rgb.round(), 0).astype(np.uint8)
+    out[..., 3] = np.where(a, 255, 0)
+    return out
+
+
+def build_kegs(rows, bgc):
+    """The 7 kegs (standing x3, lying x2, broken, burning) at one scale - a standing keg
+    KEG_BODY_H px tall plus the outline - bottom-aligned and centred in one cell each."""
+    kegs = rows[0]
+    h0 = kegs[0]["img"].shape[0]
+    k = KEG_BODY_H / float(h0)
+    frames = []
+    for s in kegs:
+        img = to_game(s["img"], k, bgc)
+        img = clean(img, min_size=2, keep_near=1)
+        ys, xs = np.nonzero(img[..., 3] > 0)
+        img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        frames.append(outlined(crisp(img)))
+    W = max(f.shape[1] for f in frames)
+    H = max(f.shape[0] for f in frames)
+    cells = []
+    for f in frames:
+        c = np.zeros((H, W, 4), np.uint8)
+        h, w = f.shape[:2]
+        x0 = (W - w) // 2
+        c[H - h:, x0:x0 + w] = f
+        cells.append(c)
+    Image.fromarray(np.concatenate(cells, 1), "RGBA").save("assets/effects/keg.png")
+    print(f"keg: {len(cells)} frames {W}x{H}")
+    return {"keg": (len(cells), W, H)}
+
+
+def off_key(c, margin=0.12):
+    """A colour moved away from both team key colours (the shader swaps anything within
+    0.08 of them), keeping its hue: the green/blue channels are raised a little."""
+    c = np.array(c, float)
+    for key in (TEAM_LIGHT, TEAM_DARK):
+        while np.linalg.norm((c - np.array(key, float)) / 255.0) < margin:
+            c[1] += 3
+            c[2] += 3
+    return tuple(int(round(v)) for v in c)
+
+
+def ui_colours(src):
+    """Red fill (light and dark) and gold rim colours sampled from a sheet drawing."""
+    img = src["img"].astype(int)
+    r, g, b = img[..., 0], img[..., 1], img[..., 2]
+    on = img[..., 3] > 0
+    red = on & (r >= 140) & (g <= 0.35 * r) & (b <= 0.35 * r)
+    gold = on & (r >= 170) & (g >= 0.55 * r) & (b <= 0.5 * g)
+    ys = np.nonzero(red)[0]
+    mid = np.median(ys)
+    hi = img[red & (np.arange(img.shape[0])[:, None] < mid)][:, :3].mean(0)
+    lo = img[red & (np.arange(img.shape[0])[:, None] >= mid)][:, :3].mean(0)
+    gd = img[gold][:, :3].mean(0)
+    return off_key(hi), off_key(lo), tuple(int(v) for v in gd)
+
+
+# The digits drawn by hand as a bold 5x7 pixel font in the sheet's style (thick upright
+# strokes, flat-topped 1, 4 and 7): shrunk from the sheet they come out as unreadable
+# smudges at 7 px. Colours are the sheet's.
+DIGITS = [
+    [".###.", "##.##", "##.##", "##.##", "##.##", "##.##", ".###."],
+    [".##..", "###..", ".##..", ".##..", ".##..", ".##..", "####."],
+    [".###.", "##.##", "...##", "..##.", ".##..", "##...", "#####"],
+    ["####.", "...##", "...##", ".###.", "...##", "...##", "####."],
+    ["...##", "..###", ".#.##", "#..##", "#####", "...##", "...##"],
+    ["#####", "##...", "####.", "...##", "...##", "##.##", ".###."],
+    [".###.", "##...", "##...", "####.", "##.##", "##.##", ".###."],
+    ["#####", "...##", "..##.", "..##.", ".##..", ".##..", ".##.."],
+    [".###.", "##.##", "##.##", ".###.", "##.##", "##.##", ".###."],
+    [".###.", "##.##", "##.##", ".####", "...##", "...##", ".###."],
+]
+
+
+def glyph_image(mask, hi, lo, gold, split):
+    """Red glyph (rows above split light, below dark) with a 1 px gold rim around it."""
+    h, w = mask.shape
+    out = np.zeros((h + 2, w + 2, 4), np.uint8)
+    m = np.zeros((h + 2, w + 2), bool)
+    m[1:-1, 1:-1] = mask
+    rim = ndimage.binary_dilation(m, structure=np.ones((3, 3))) & ~m
+    out[rim] = gold + (255,)
+    yy = np.arange(h + 2)[:, None].repeat(w + 2, 1)
+    out[m & (yy <= split)] = hi + (255,)
+    out[m & (yy > split)] = lo + (255,)
+    return out
+
+
+def build_digits(rows):
+    hi, lo, gold = ui_colours(rows[2][0])
+    frames = []
+    for g in DIGITS:
+        mask = np.array([[ch == "#" for ch in line] for line in g])
+        frames.append(glyph_image(mask, hi, lo, gold, 3))
+    W, H = frames[0].shape[1], frames[0].shape[0]
+    Image.fromarray(np.concatenate(frames, 1), "RGBA").save("assets/effects/digits.png")
+    print(f"digits: 10 frames {W}x{H}")
+    return {"digits": (10, W, H)}
+
+
+def build_cross(rows):
+    """The cross's shape from the sheet (arm thickness relative to its span) on a 10 px
+    square, then the gold rim: 12x12. Red shifted off the team key."""
+    src = rows[1][0]
+    hi, lo, gold = ui_colours(src)
+    img = src["img"].astype(int)
+    r, g, b = img[..., 0], img[..., 1], img[..., 2]
+    red = (img[..., 3] > 0) & (r >= 140) & (g <= 0.35 * r)
+    ys, xs = np.nonzero(red)
+    span = xs.max() - xs.min() + 1
+    mid = int(np.median(ys))
+    arm = np.flatnonzero(red[:, int(np.median(xs))]).size   # vertical bar length = span
+    thick = np.flatnonzero(red[mid - span // 3, :]).size if mid - span // 3 >= 0 else span // 3
+    n = 10
+    t = int(round(thick / float(span) * n))
+    t = t + (n - t) % 2                       # centred: same parity as the square
+    a = (n - t) // 2
+    mask = np.zeros((n, n), bool)
+    mask[a:a + t, :] = True
+    mask[:, a:a + t] = True
+    out = glyph_image(mask, hi, lo, gold, a + t // 2)
+    Image.fromarray(out, "RGBA").save("assets/effects/cross.png")
+    print(f"cross: 1 frame {out.shape[1]}x{out.shape[0]} (arm {t} px of {n}; sheet bar {arm} px)")
+    return {"cross": (1, out.shape[1], out.shape[0])}
+
+
+def build_ui():
+    rows, bgc = cut_sheet(UI)
+    fx = {}
+    fx.update(build_kegs(rows, bgc))
+    fx.update(build_cross(rows))
+    fx.update(build_digits(rows))
+    return fx

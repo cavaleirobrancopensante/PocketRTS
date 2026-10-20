@@ -1343,7 +1343,7 @@ func die() -> void:
 		tw.tween_callback(b.queue_free)
 	game.on_unit_died(self)
 	Sfx.play_any(["combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
-	_set_anim("death", true)
+	_set_anim("death_cocoon" if kind == "grub" and cocoon > 0 and ArtData.UNITS["grub"]["frames"].has("death_cocoon_e") else "death", true)
 	z_index = -1
 
 
@@ -1391,6 +1391,10 @@ func _anim_name() -> String:
 			if moving and carrying > 0:
 				return "carry"
 		"grub":
+			if work == "wrapping":
+				return "wrap"
+			if cocoon > 0:
+				return "carry_cocoon" if moving else "idle_cocoon"
 			if work == "feeding":
 				return "burrow"
 			if work == "morphing":
@@ -1494,9 +1498,14 @@ func _animate(delta: float) -> void:
 			fps = 2.0
 			if kind == "pikeman":
 				n = 1
-		"death":
+		"death", "death_cocoon":
 			fps = 7.0
 			loop = false
+		"wrap":
+			fps = 5.0 / float(Defs.HARVEST["take"])
+			loop = false
+		"idle_cocoon":
+			fps = 3.0
 		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
 			if kind == "spore_mother":
 				fps = 6.0
@@ -1727,8 +1736,8 @@ func _draw() -> void:
 		var w := radius * 2.0
 		draw_rect(Rect2(-w * 0.5, top + 7.0, w, 2), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(-w * 0.5, top + 7.0, w * gas / 100.0, 2), Color(0.75, 0.95, 0.25))
-	if cocoon > 0:
-		# the cocoon on its back
+	if cocoon > 0 and not ArtData.UNITS["grub"]["frames"].has("carry_cocoon_e"):
+		# the cocoon on its back (drawn by hand when there's no sheet)
 		draw_set_transform(Vector2(0, -17), 0.0, Vector2(1.0, 0.7))
 		draw_circle(Vector2.ZERO, 6.0, Color(0.86, 0.82, 0.68))
 		draw_arc(Vector2.ZERO, 6.0, 0, TAU, 14, Color(0.45, 0.35, 0.25), 1.0)

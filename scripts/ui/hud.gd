@@ -1080,6 +1080,12 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 
 
 func _icon(name: String) -> Texture2D:
+	# the Clockwork and the Brood have their own command icons
+	var fac := game.faction_of(game.human) if game else ""
+	if fac != "crown" and fac != "":
+		var fp := "res://assets/icons/%s/%s.png" % [fac, name]
+		if ResourceLoader.exists(fp):
+			return Game.tex(fp)
 	var path := "res://assets/icons/%s.png" % name
 	if ResourceLoader.exists(path):
 		return Game.tex(path)
