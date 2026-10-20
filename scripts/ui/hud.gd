@@ -225,12 +225,13 @@ func _build_card() -> Array:
 		list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 		if has_lab:
 			list.append(["build", "BUILD", func() -> void: page = "build", true, "", ""])
-			list.append(["gather", "GATHER", func() -> void:
-				for u in game.selected_units():
-					if u.is_worker():
-						var m := game.nearest_mine(u.position, u.team)
-						if m:
-							u.cmd_gather(m), true, "", ""])
+			if units.any(func(u: Unit) -> bool: return u.can_gather()):
+				list.append(["gather", "GATHER", func() -> void:
+					for u in game.selected_units():
+						if u.can_gather():
+							var m := game.nearest_mine(u.position, u.team)
+							if m:
+								u.cmd_gather(m), true, "", ""])
 		return list
 	if b and b.built:
 		for k in b.d["trains"]:
@@ -407,14 +408,18 @@ func _draw_panel(font: Font) -> void:
 				info = "Carrying %d gold." % (e as Unit).carrying
 			elif (e as Unit).work == "feeding":
 				info = "Burrowed and feeding: takes half damage."
+			elif (e as Unit).d["faction"] == "clockwork" and (e as Unit).wind < 0.99:
+				info = "Winding down (%d%%): go back near a Spring Tower." % int((e as Unit).wind * 100)
 		elif e is Building:
 			name = (e as Building).d["name"]
 			info = (e as Building).d["about"]
 			var bb := e as Building
 			if not bb.seeded:
-				info = "Waiting for a grub to turn into it."
+				info = "Waiting for a %s." % ("Winder to start it" if bb.d["faction"] == "clockwork" else "grub to turn into it")
 			elif not bb.built:
 				info = "%s: %d%%" % ["Growing" if bb.d["faction"] == "brood" else "Under construction", int(bb.progress * 100)]
+			elif bb.rig_mine and is_instance_valid(bb.rig_mine):
+				info = "Drilling %d gold/s. %d left in the mine." % [int(Defs.RIG_RATE), bb.rig_mine.gold]
 			elif bb.uses_eggs() and e.team == game.human:
 				var nxt := "" if bb.eggs + bb.queue.size() >= Defs.EGGS_MAX else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
 				info = "Eggs: %d / %d%s" % [bb.eggs, Defs.EGGS_MAX, nxt]

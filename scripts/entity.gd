@@ -15,6 +15,8 @@ var dead := false
 var selected := false
 var seen_by_human := false     # enemy buildings stay on screen once spotted
 var flash := 0.0
+var last_hit_by := ""           # kind that last hurt us, for battle stats
+var last_hit_team := -1
 var acid_t := 0.0               # Spitter acid: burns and strips 2 armour while > 0
 var _mat: ShaderMaterial
 
@@ -63,7 +65,12 @@ func take_damage(amount: float, _from: Entity) -> void:
 	if dead:
 		return
 	var arm := armor - (2.0 if acid_t > 0.0 else 0.0)
-	hp -= maxf(1.0, amount - maxf(arm, 0.0))
+	var dmg := minf(hp, maxf(1.0, amount - maxf(arm, 0.0)))
+	hp -= dmg
+	if _from and is_instance_valid(_from) and _from.team >= 0 and _from.team != team:
+		last_hit_by = _from.kind
+		last_hit_team = _from.team
+		game.stats[_from.team]["damage"] += dmg
 	flash = 0.12
 	if hp <= 0.0:
 		hp = 0.0

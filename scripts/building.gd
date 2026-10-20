@@ -17,6 +17,8 @@ var eggs := 0                    # Brood Hive
 var egg_t := 0.0
 var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
 var swamp_r := 0.0               # Brood: current swamp radius in tiles
+var rig_mine: GoldMine = null    # Clockwork Drill Rig: the mine it drills
+var gold_acc := 0.0
 var sprite: Sprite2D
 var fire: Effect = null
 var rubble_t := 0.0
@@ -39,6 +41,8 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	built = complete
 	progress = 1.0 if complete else 0.0
 	hp = max_hp if complete else max_hp * 0.1
+	if d["faction"] == "clockwork":
+		seeded = complete
 	if d["faction"] == "brood":
 		seeded = complete
 		if complete:
@@ -98,6 +102,26 @@ func _physics_process(delta: float) -> void:
 		return
 	if d["faction"] == "brood":
 		_brood(delta)
+	elif d["faction"] == "clockwork":
+		if not built and seeded:
+			add_progress(delta)
+		if built:
+			var rate := 0.0
+			if d.get("rig", false) and rig_mine and is_instance_valid(rig_mine):
+				rate = Defs.RIG_RATE
+			rate += float(d.get("trickle", 0.0))
+			gold_acc += rate * delta
+			if gold_acc >= 1.0:
+				var n := int(gold_acc)
+				gold_acc -= n
+				if d.get("rig", false) and rig_mine:
+					var got := rig_mine.take(n)
+					game.add_gold(team, got)
+					n -= got
+					if rig_mine.gold <= 0:
+						rate = 0.0
+				if d.get("trickle", 0.0) > 0.0:
+					game.add_gold(team, n)
 	if built and uses_eggs():
 		# Every egg morphs at the same time.
 		var i := 0
@@ -183,6 +207,8 @@ func die() -> void:
 		game.refund(team, k)
 	queue.clear()
 	morph_t.clear()
+	if rig_mine and is_instance_valid(rig_mine) and rig_mine.rig == self:
+		rig_mine.rig = null
 	swamp_r = 0.0
 	game.swamp_dirty = true
 	if fire:

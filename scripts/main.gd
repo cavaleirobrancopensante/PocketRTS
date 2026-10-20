@@ -15,6 +15,8 @@ THE CROWN  Labourers mine gold and carry it to the Town Hall. Cottages give supp
 
 THE BROOD  Grubs burrow into mines on your swamp and feed where they sit - up to 8 per mine, no trips, half damage while burrowed. A grub turns into a building (it's used up). Every unit hatches from the Hive's eggs (up to 5, one every 6s), several to an egg. The Brood fields a bigger army: 160 supply instead of 100. Swamp spreads from Brood structures: Brood units run 30% faster and heal on it, and new structures (except Hives) must grow on it. Warren: Raptors (three per egg) and Spitters (two per egg; acid strips armour). Gorge Pit: Brutes (charge, knock back).
 
+THE CLOCKWORK  Drill Rigs built next to a gold mine drill it by themselves (you start with two). Winders never mine: a Winder starts each building, which then assembles itself, and Winders repair constructs and buildings (tap something damaged). Constructs slowly run down (slower, weaker) away from a Clocktower or Spring Tower. The Assembly Works builds Gearknights (armoured, self-repairing), Bolt Automatons (bolts pierce a whole line) and Steam Walkers (steam cone; needs a Spring Tower). Army cap 80.
+
 TOUCH
 - Tap a unit to select it; double-tap to select all of that type on screen.
 - Drag on the map to box-select.
@@ -80,12 +82,12 @@ func show_menu() -> void:
 	v.position = Vector2(-220, -250)
 	menu.add_child(v)
 	v.add_child(_label("POCKET RTS", 64))
-	v.add_child(_label("The Crown  ·  The Brood  ·  prototype", 20, Color(1, 1, 1, 0.6)))
+	v.add_child(_label("The Crown  ·  The Brood  ·  The Clockwork", 20, Color(1, 1, 1, 0.6)))
 	v.add_child(_gap(10))
 	v.add_child(_button("SKIRMISH", func() -> void: show_skirmish()))
 	v.add_child(_button("WATCH AI vs AI", func() -> void:
-		var fs := ["crown", "brood"]
-		start(1, true, [fs[randi() % 2], fs[randi() % 2]])))
+		var fs := ["crown", "brood", "clockwork"]
+		start(1, true, [fs[randi() % 3], fs[randi() % 3]])))
 	v.add_child(_button("HOW TO PLAY", func() -> void: _show_help()))
 	v.add_child(_gap(6))
 	v.add_child(_label("v" + version, 14, Color(1, 1, 1, 0.35)))
@@ -110,11 +112,11 @@ func show_skirmish() -> void:
 	v.add_theme_constant_override("separation", 10)
 	menu.add_child(v)
 	v.add_child(_label("SKIRMISH", 44))
-	v.add_child(_choice_row("YOUR FACTION", "me", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "CLOCKWORK (soon)"]]))
+	v.add_child(_choice_row("YOUR FACTION", "me", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "THE CLOCKWORK"]]))
 	var about := _label(Defs.FACTIONS[pick["me"]]["about"], 16, Color(1, 1, 1, 0.6))
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(about)
-	v.add_child(_choice_row("ENEMY", "enemy", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["random", "RANDOM"]]))
+	v.add_child(_choice_row("ENEMY", "enemy", [["crown", "THE CROWN"], ["brood", "THE BROOD"], ["clockwork", "THE CLOCKWORK"], ["random", "RANDOM"]]))
 	v.add_child(_choice_row("DIFFICULTY", "difficulty", [[0, "EASY"], [1, "NORMAL"], [2, "HARD"]]))
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -126,7 +128,7 @@ func show_skirmish() -> void:
 	var go := _button("START", func() -> void:
 		var enemy: String = pick["enemy"]
 		if enemy == "random":
-			enemy = ["crown", "brood"][randi() % 2]
+			enemy = ["crown", "brood", "clockwork"][randi() % 3]
 		start(pick["difficulty"], false, [pick["me"], enemy]))
 	go.custom_minimum_size = Vector2(260, 60)
 	var sb := StyleBoxFlat.new()
@@ -265,27 +267,17 @@ func _to_menu() -> void:
 func _on_end(winner: int) -> void:
 	var won := winner == game.human
 	Sfx.play("done" if won else "alarm")
-	var o := Control.new()
-	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	game._sample_stats()
+	await get_tree().create_timer(1.2, true, false, true).timeout
+	if game == null:
+		return
+	var o := preload("res://scripts/ui/battle_report.gd").new()
+	o.game = game
+	o.winner = winner
 	o.theme = _theme()
-	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.6)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	o.add_child(shade)
-	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	v.position = Vector2(-220, -160)
-	v.custom_minimum_size = Vector2(440, 0)
-	v.add_theme_constant_override("separation", 10)
-	o.add_child(v)
-	var title := ("%s (%s) WINS" % [Defs.TEAM_NAMES[winner].to_upper(), Defs.FACTIONS[game.faction_of(winner)]["name"].to_upper()]) if game.demo else ("VICTORY" if won else "DEFEAT")
-	v.add_child(_label(title, 60, Color(1, 0.9, 0.5) if won or game.demo else Color(1, 0.5, 0.45)))
-	var s: Dictionary = game.stats[game.human]
-	var secs := int(game.clock)
-	v.add_child(_label("Time %d:%02d   ·   Gold mined %d   ·   Kills %d   ·   Losses %d" % [secs / 60, secs % 60, s["gold"], s["killed"], s["lost"]], 18, Color(1, 1, 1, 0.8)))
-	v.add_child(_gap(10))
-	v.add_child(_button("PLAY AGAIN", func() -> void: start(game.difficulty, game.demo)))
-	v.add_child(_button("MENU", func() -> void: _to_menu()))
+	o.process_mode = Node.PROCESS_MODE_ALWAYS
+	o.play_again.connect(func() -> void: start(game.difficulty, game.demo))
+	o.to_menu.connect(func() -> void: _to_menu())
 	ui_layer.add_child(o)
 
 

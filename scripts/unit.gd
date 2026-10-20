@@ -34,6 +34,9 @@ var work := ""                 # to_mine, mining, to_hall, to_site, building
 var carrying := 0
 var work_t := 0.0
 var home_mine: Entity = null
+var wind := 1.0                # Clockwork: 1 = fully wound; runs down outside a field
+var _field_t := 0.0
+var _in_field := true
 
 var sprite: Sprite2D
 var anim := ""
@@ -50,6 +53,10 @@ func is_unit() -> bool:
 
 func is_worker() -> bool:
 	return Defs.is_worker(kind)
+
+
+func can_gather() -> bool:
+	return kind == "labourer" or kind == "grub"
 
 
 func take_damage(amount: float, from: Entity) -> void:
@@ -123,7 +130,7 @@ func cmd_hold() -> void:
 
 
 func cmd_gather(mine: Entity) -> void:
-	if not is_worker():
+	if not can_gather():
 		cmd_move(mine.center())
 		return
 	_reset_work()
@@ -131,6 +138,15 @@ func cmd_gather(mine: Entity) -> void:
 	home_mine = mine
 	order_target = mine
 	work = "to_hall" if carrying >= Defs.CARRY else "to_mine"
+	target = null
+
+
+func cmd_repair(e: Entity) -> void:
+	if kind != "winder":
+		return
+	_reset_work()
+	order = "repair"
+	order_target = e
 	target = null
 
 
@@ -179,12 +195,29 @@ func _physics_process(delta: float) -> void:
 			hp = minf(max_hp, hp + 2.0 * delta)
 	if kind == "brute" and target and phase == "" and target.edge_distance(position) < 170.0:
 		speed *= 1.6      # charge
+	if d["faction"] == "clockwork":
+		_field_t -= delta
+		if _field_t <= 0.0:
+			_field_t = 0.4
+			_in_field = game.in_field(team, position)
+		if _in_field:
+			wind = minf(1.0, wind + 0.3 * delta)
+		else:
+			wind = maxf(Defs.WIND_MIN, wind - Defs.WIND_DECAY * delta)
+		speed *= lerpf(0.75, 1.0, (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN))
+		if d.has("regen") and hp < max_hp:
+			hp = minf(max_hp, hp + float(d["regen"]) * delta)
 
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
 	match order:
 		"idle":
+			if kind == "winder" and scan_t <= 0.0:
+				scan_t = 1.0
+				var hurt := game.find_repair(self, 6 * Defs.TILE)
+				if hurt:
+					cmd_repair(hurt)
 			if not is_worker() and scan_t <= 0.0:
 				scan_t = 0.35
 				target = game.find_target(self, sight * Defs.TILE)
@@ -223,6 +256,8 @@ func _physics_process(delta: float) -> void:
 				want = _engage(target, delta, true)
 		"gather":
 			want = _gather(delta)
+		"repair":
+			want = _repair(delta)
 		"build":
 			want = _build(delta)
 	_move(want, delta)
@@ -367,6 +402,8 @@ func _strike(e: Entity) -> void:
 	if not _valid_target(e):
 		return
 	var dmg := float(d["damage"])
+	if d["faction"] == "clockwork":
+		dmg *= wind
 	if e.is_building():
 		dmg *= float(d.get("building_bonus", 1.0))
 	match kind:
@@ -376,6 +413,10 @@ func _strike(e: Entity) -> void:
 			game.cannon_shot(self, e.center(), dmg)
 		"spitter":
 			game.acid_shot(self, e, dmg)
+		"bolt":
+			game.bolt_shot(self, e, dmg)
+		"steam_walker":
+			game.steam_cone(self, e, dmg)
 		_:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
@@ -387,6 +428,26 @@ func _strike(e: Entity) -> void:
 
 
 # ------------------------------------------------------------------ workers
+
+func _repair(delta: float) -> Vector2:
+	var e := order_target
+	if e == null or not is_instance_valid(e) or e.dead or e.team != team or e.hp >= e.max_hp \
+			or (e is Building and not e.built):
+		cmd_stop()
+		return Vector2.ZERO
+	if e.edge_distance(position) < radius + 20.0:
+		work = "repairing"
+		path = PackedVector2Array()
+		facing = (e.center() - position).normalized()
+		e.hp = minf(e.max_hp, e.hp + Defs.REPAIR_RATE * delta)
+		return Vector2.ZERO
+	work = ""
+	if e.is_unit() and position.distance_to(e.global_position) < 140.0:
+		return (e.global_position - position).normalized() * speed
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		_request_path(game.approach_point(e, position))
+	return _follow(delta)
+
 
 func _leave_mine() -> void:
 	if home_mine and is_instance_valid(home_mine):
@@ -488,7 +549,10 @@ func _build(delta: float) -> Vector2:
 				site.seeded = true
 			game.consume_unit(self)
 		return Vector2.ZERO
-	if site == null or not is_instance_valid(site) or site.dead or site.built or (site.seeded and kind == "grub"):
+	if site == null or not is_instance_valid(site) or site.dead or site.built or (site.seeded and kind != "labourer"):
+		if kind == "winder":
+			cmd_stop()
+			return Vector2.ZERO
 		var m := game.nearest_mine(position, team)
 		if m:
 			cmd_gather(m)
@@ -498,6 +562,12 @@ func _build(delta: float) -> Vector2:
 	if site.edge_distance(position) < radius + 17.0:
 		path = PackedVector2Array()
 		facing = (site.center() - position).normalized()
+		if kind == "winder":
+			# Winds the frame up; it assembles itself from here.
+			site.seeded = true
+			site._update_sprite()
+			cmd_stop()
+			return Vector2.ZERO
 		if kind == "grub":
 			# The grub becomes the building.
 			work = "morphing"
@@ -576,6 +646,28 @@ func _anim_name() -> String:
 				return "attack"
 			if moving and target and target.edge_distance(position) < 170.0:
 				return "charge"
+		"winder":
+			if work == "repairing":
+				return "repair"
+			if phase != "":
+				return "attack"
+			if not moving and not _in_field:
+				return "wind"
+		"gearknight":
+			if phase != "":
+				return "attack"
+			if not moving and flash > 0.0:
+				return "block"
+		"bolt":
+			if phase == "aim":
+				return "crank"
+			if phase == "strike":
+				return "attack"
+		"steam_walker":
+			if phase != "":
+				return "attack"
+			if not moving and cooldown > 0.0 and target:
+				return "vent"
 	return "walk" if moving else "idle"
 
 
@@ -604,6 +696,14 @@ func _animate(delta: float) -> void:
 			loop = false
 		"leap", "charge":
 			fps = 10.0
+		"crank":
+			fps = 6.0
+			loop = false
+		"repair", "wind", "vent":
+			fps = 5.0
+		"block":
+			fps = 12.0
+			loop = false
 		"mine", "build":
 			fps = 6.0
 		"reload":
@@ -669,5 +769,10 @@ func _draw() -> void:
 	draw_health(top, radius * 2.4)
 	if work == "feeding":
 		return
+	if d["faction"] == "clockwork" and wind < 0.99 and team == game.human:
+		var w := radius * 2.4
+		var y := top + 7.0
+		draw_rect(Rect2(-w * 0.5, y, w, 2), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(-w * 0.5, y, w * (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN), 2), Color(0.95, 0.7, 0.25))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))

@@ -2,7 +2,7 @@
 
 **Play in your browser: https://cavaleirobrancopensante.github.io/PocketRTS/**
 
-A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a 1v1 **skirmish** against the computer: choose your faction, the enemy's and the difficulty (or watch AI vs AI). Two factions are playable: **the Crown** and **the Brood**; the Clockwork is coming.
+A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a 1v1 **skirmish** against the computer: choose your faction, the enemy's and the difficulty (or watch AI vs AI). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
 
 See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and all the art prompts.
 
@@ -23,6 +23,17 @@ Destroy every enemy building to win.
 - Every unit hatches from the **Hive's eggs** (up to 5, one every 6 s), several to an egg: **Raptors** (3 per egg, fast, flimsy), **Spitters** (2 per egg, acid strips armour), **Brutes** (charge and knock back; need a Gorge Pit).
 - **Swamp** spreads from Brood structures: Brood units run faster and heal on it. Brood structures regrow damage.
 - The swarm's army cap is **160** (the Crown's is 100).
+
+### The Clockwork
+- Only 2 **Winders** to start. They don't carry gold: they lay a **Drill Rig** on a gold mine (8 gold/s each) and repair constructs and buildings.
+- A Winder only *seeds* a building; it then assembles itself, so Winders are free straight away. **Clocktowers** also trickle gold.
+- Constructs run on their wind: inside the field of a Clocktower or **Spring Tower** they are fully wound; outside it they slowly run down (slower, weaker, down to 55%).
+- The **Assembly Works** builds **Gearknights** (armoured, self-repairing melee), **Bolt Automatons** (long-range piercing shots) and **Steam Walkers** (flame cone; need a Spring Tower).
+- Few, expensive units, with an army cap of **80**.
+
+### Resources and the battle report
+- Each gold mine near your base shows its workers as **X/Y**, as in StarCraft II: white is under-saturated, green is full, orange is over-saturated (Crown 12 labourers, Brood 8 grubs, Clockwork 1 rig).
+- When a match ends, the **battle report** shows gold mined and spent, units trained, killed and lost, structures built and razed, damage dealt, value destroyed, peak army and top killers, plus army, gold and worker graphs over time.
 
 ### Touch
 - Tap a unit to select it; double-tap to select all of that type on screen.

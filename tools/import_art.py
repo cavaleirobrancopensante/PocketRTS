@@ -27,6 +27,8 @@ UNITS = {
     "musketeer": {"rows": ["idle", "walk", "aim", "fire", "reload", "melee", "death"], "dilate": 2},
     "pikeman": {"rows": ["idle", "walk", "brace", "thrust", "death", "death"], "dilate": 2},
     "cannon": {"rows": ["idle", "move", "fire", "reload", "death"], "dilate": 14},
+    "winder": {"rows": ["idle", "wind", "walk", "repair", "attack", "death"], "dilate": 2,
+               "dir": "clockwork", "mask": "alpha", "scale": 0.27},
 }
 BUILDINGS = ["town_hall", "cottage", "barracks", "foundry"]
 BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]
@@ -38,6 +40,11 @@ BROOD_UNITS = {
     "raptor": {"rows": ["idle", "walk", "leap", "attack", "death"], "height": 28},
     "spitter": {"rows": ["idle", "walk", "flare", "attack", "death"], "height": 26},
     "brute": {"rows": ["idle", "walk", "charge", "attack", "death"], "height": 40},
+    # Clockwork: row 0 is a two-frame idle in one fixed direction.
+    "gearknight": {"rows": ["idle", "walk", "attack", "block", "death"], "height": 30, "dir": "clockwork",
+                   "row0": "s", "skip": {1: 2}},
+    "bolt": {"rows": ["idle", "walk", "crank", "attack", "death"], "height": 28, "dir": "clockwork", "row0": "s"},
+    "steam_walker": {"rows": ["idle", "walk", "attack", "vent", "death"], "height": 36, "dir": "clockwork", "row0": "e"},
 }
 # Width in game pixels of each finished building (ChatGPT drew each at its own zoom).
 BUILDING_WIDTH = {"town_hall": 150, "cottage": 72, "barracks": 128, "foundry": 118,
@@ -208,8 +215,8 @@ def save(img, path):
 # ---------------------------------------------------------------- units
 
 def import_unit(name, cfg, data):
-    px = load(f"art/crown/{name}.png")
-    fg = checker_mask(px)
+    px = load(f"art/{cfg.get('dir', 'crown')}/{name}.png")
+    fg = alpha_mask(px, 160) if cfg.get("mask") == "alpha" else checker_mask(px)
     sprites = components(fg, cfg["dilate"], min_big=900 if name == "cannon" else 350)
     bounds = panel_bounds(px)
     rows = cluster_1d(np.array([s["cy"] for s in sprites]), 45)
@@ -249,8 +256,10 @@ def import_unit(name, cfg, data):
             frames[key] = [p for im in lst for p in split(im)]
     small = {}
     for key, lst in frames.items():
-        small[key] = [snap_team(shrink(im, UNIT_SCALE)) for im in lst]
+        small[key] = [snap_team(shrink(im, cfg.get("scale", UNIT_SCALE))) for im in lst]
     assemble(name, small, names, data)
+    if cfg.get("dir") == "clockwork":
+        make_icon(small[("idle", "s")][0], name)
 
 
 def assemble(name, small, names, data):
@@ -316,8 +325,26 @@ def frames_by_slot(px, fg, n):
     return out
 
 
+def merge_row(px, lst, gap=5):
+    """Pieces of one frame (loose gears, slash arcs, steam) -> one sprite each,
+    by merging sprites whose x-ranges overlap or nearly touch."""
+    lst = sorted(lst, key=lambda s: s["x0"])
+    out = []
+    for s in lst:
+        if out and s["x0"] <= out[-1]["x1"] + gap:
+            o = out[-1]
+            o["mask"] = o["mask"] | s["mask"]
+            o["x0"], o["x1"] = min(o["x0"], s["x0"]), max(o["x1"], s["x1"])
+            o["y0"], o["y1"] = min(o["y0"], s["y0"]), max(o["y1"], s["y1"])
+            o["area"] += s["area"]
+            o["cx"] = (o["x0"] + o["x1"]) / 2
+        else:
+            out.append(dict(s))
+    return out
+
+
 def import_brood_unit(name, cfg, data):
-    px = load(f"art/brood/{name}.png")
+    px = load(f"art/{cfg.get('dir', 'brood')}/{name}.png")
     fg = checker_mask(px)
     sprites = components(fg, 2, min_big=350)
     rows = cluster_1d(np.array([s["cy"] for s in sprites]), 45)
@@ -329,9 +356,14 @@ def import_brood_unit(name, cfg, data):
     for ri, row in enumerate(rows[:len(names)]):
         anim = names[ri]
         lst = sorted([sprites[i] for i in row], key=lambda s: s["cx"])
+        if cfg.get("dir") == "clockwork":
+            lst = merge_row(px, lst)
         med = sorted(s["area"] for s in lst)[len(lst) // 2]
         lst = [s for s in lst if s["area"] >= med * 0.4]   # drop slash arcs / flying spit
-        if ri == 0:
+        lst = lst[cfg.get("skip", {}).get(ri, 0):]
+        if ri == 0 and cfg.get("row0"):
+            frames[("idle", cfg["row0"])] = [cutout(px, s) for s in lst]
+        elif ri == 0:
             n = len(lst)
             for k, s in enumerate(lst):
                 aspect = (s["x1"] - s["x0"]) / (s["y1"] - s["y0"])
@@ -352,7 +384,8 @@ def import_brood_unit(name, cfg, data):
     scale = cfg["height"] / float(np.median([im.shape[0] for im in walk]))
     small = {key: [snap_team(shrink(im, scale)) for im in lst] for key, lst in frames.items()}
     assemble(name, small, names, data)
-    make_icon(small[("idle", "s")][0], name)
+    first = small.get(("idle", "s")) or small.get(("idle", "e"))
+    make_icon(first[0], name)
 
 
 def make_icon(img, name):
@@ -397,8 +430,42 @@ def make_swamp_tile():
     save(t, f"{OUT}/tiles/swamp.png")
 
 
+CLOCKWORK_BUILDINGS = ["clocktower", "drill_rig", "spring_tower", "assembly_works"]
+CLOCKWORK_WIDTH = {"clocktower": 128, "drill_rig": 100, "spring_tower": 58, "assembly_works": 136}
+
+
+def import_clockwork_structures(data):
+    """All four structures in one 4x4 image: one building per row, its states across."""
+    px = load("art/clockwork/structures.png")
+    fg = checker_mask(px)
+    h, w = fg.shape
+    sprites = components(fg, 3, min_big=60, attach_dist=0)
+    for r, name in enumerate(CLOCKWORK_BUILDINGS):
+        imgs = []
+        for c in range(4):
+            mem = [s for s in sprites if int(s["cy"] * 4 / h) == r and int(s["cx"] * 4 / w) == c]
+            big = max(s["area"] for s in mem)
+            mem = [s for s in mem if s["area"] >= big * 0.004]
+            m = np.zeros_like(fg)
+            for s in mem:
+                m |= s["mask"]
+            ys, xs = np.nonzero(m)
+            imgs.append(cutout(px, {"mask": m, "y0": ys.min(), "y1": ys.max() + 1, "x0": xs.min(), "x1": xs.max() + 1}))
+        scale = CLOCKWORK_WIDTH[name] / imgs[0].shape[1]
+        sizes = []
+        for state, im in zip(BUILDING_STATES, imgs):
+            sm = snap_team(shrink(im, scale))
+            save(sm, f"{OUT}/buildings/{name}_{state}.png")
+            sizes.append(sm.shape[1::-1])
+            if state == "built":
+                make_icon(sm, name)
+        data["buildings"][name] = sizes[0]
+        print(f"  {name}: {sizes}")
+
+
 def import_buildings(data):
     data["buildings"] = {}
+    import_clockwork_structures(data)
     for name in BROOD_BUILDINGS:
         px = load(f"art/brood/buildings/{name}.png")
         fg = alpha_mask(px, 200) if name == "hive" else checker_mask(px)
@@ -555,7 +622,6 @@ def main():
         import_unit(name, cfg, data)
     for name, cfg in BROOD_UNITS.items():
         import_brood_unit(name, cfg, data)
-        print(f"  {name}: ok")
     make_swamp_tile()
     print("buildings")
     import_buildings(data)

@@ -13,6 +13,7 @@ var _attack_at := 14            # army supply needed for the next wave
 var _attacking := false
 var _wave_target := Vector2.ZERO
 var _alarm_t := 0.0
+var _saving := false             # holding gold back for an expansion
 
 
 func _physics_process(delta: float) -> void:
@@ -45,6 +46,10 @@ func _brood() -> bool:
 	return game.faction_of(team) == "brood"
 
 
+func _clock() -> bool:
+	return game.faction_of(team) == "clockwork"
+
+
 func _halls() -> Array:
 	return _mine(_f()["hall"])
 
@@ -59,7 +64,18 @@ func _economy() -> void:
 	var labs := _labourers()
 	var halls := _halls().filter(func(b: Building) -> bool: return b.built)
 	var want: int
-	if _brood():
+	if _clock():
+		want = [3, 4, 5][difficulty] + _halls().size() - 1
+		# Put a Drill Rig on every mine near our Clocktowers.
+		for h in _halls():
+			if not h.built:
+				continue
+			for m in game.mines:
+				if m.rig == null and m.gold > 0 and m.center().distance_to(h.center()) < 430.0:
+					var spot := game.rig_spot(m, team)
+					if spot.x >= 0 and not _busy_building("drill_rig"):
+						_construct("drill_rig", spot)
+	elif _brood():
 		var slots := 0
 		for m in game.mines:
 			if m.gold > 0 and game.mine_on_swamp(m, team):
@@ -76,7 +92,7 @@ func _economy() -> void:
 			if game.train(h, worker) == "":
 				queued += 1
 	for u in labs:
-		if u.order == "idle":
+		if u.order == "idle" and u.can_gather():
 			var m := game.nearest_mine(u.position, team)
 			if m:
 				u.cmd_gather(m)
@@ -89,6 +105,8 @@ func _supply() -> void:
 	var used := game.supply_used(team)
 	var sup: String = _f()["supply"]
 	var prod := _halls().size() * 3 if _brood() else 3 * _mine("barracks").size() + 2 * _mine("foundry").size()
+	if _clock():
+		prod = 4 * _mine("assembly_works").size()
 	var margin := 3 + prod
 	if cap - used <= margin and not _busy_building(sup):
 		_construct(sup)
@@ -98,7 +116,13 @@ func _build_up() -> void:
 	var labs := _labourers().size()
 	var t := game.clock
 	var gold: int = game.players[team]["gold"]
-	if _brood():
+	if _clock():
+		var works := _mine("assembly_works").size()
+		if works == 0 and t > [110.0, 70.0, 50.0][difficulty]:
+			_construct("assembly_works")
+		elif works == 1 and t > [600.0, 300.0, 220.0][difficulty] and gold > 300:
+			_construct("assembly_works")
+	elif _brood():
 		if _mine("warren").is_empty() and labs >= [9, 7, 6][difficulty]:
 			_construct("warren")
 		if _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > [480.0, 250.0, 190.0][difficulty]:
@@ -121,11 +145,15 @@ func _build_up() -> void:
 			if m.center().distance_to(h.center()) < 420.0:
 				main_gold += m.gold
 	var running_low := main_gold < Defs.MINE_GOLD * 0.8
-	var expand_t: float = [9999.0, 480.0, 360.0][difficulty] * (0.6 if _brood() else 1.0)
-	if _halls().size() == 1 and (t > expand_t or running_low) and gold >= int(Defs.BUILDINGS[hall]["cost"]) + 50:
+	var expand_t: float = [9999.0, 480.0, 360.0][difficulty] * (0.6 if _brood() else (0.55 if _clock() else 1.0))
+	_saving = false
+	if _halls().size() == 1 and (t > expand_t or running_low):
 		var spot: Vector2i = game.expansions[team]
 		if game.placement_problem(team, hall, spot) == "":
-			_construct(hall, spot)
+			if gold >= int(Defs.BUILDINGS[hall]["cost"]) + 50:
+				_construct(hall, spot)
+			elif _clock() and _threat() == Vector2.INF:
+				_saving = true
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
@@ -205,7 +233,19 @@ func _margin_free(cell: Vector2i, size: Vector2i) -> bool:
 # ------------------------------------------------------------------ army
 
 func _produce() -> void:
+	if _saving:
+		return
 	var army := game.army(team)
+	if _clock():
+		var walkers := army.filter(func(u: Unit) -> bool: return u.kind == "steam_walker").size()
+		for w in _mine("assembly_works"):
+			if w.built and w.queue.size() < 2:
+				var k := "gearknight" if randf() < 0.5 else "bolt"
+				if walkers * 5 < army.size() + 2 and game.can_train(w, "steam_walker") == "":
+					k = "steam_walker"
+					walkers += 1
+				game.train(w, k)
+		return
 	if _brood():
 		var brutes := army.filter(func(u: Unit) -> bool: return u.kind == "brute").size()
 		for h in _halls():

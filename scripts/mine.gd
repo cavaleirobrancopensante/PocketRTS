@@ -6,6 +6,7 @@ var cell := Vector2i.ZERO
 var size := Vector2i(3, 2)
 var gold := Defs.MINE_GOLD
 var feeders: Array = []          # Brood grubs burrowed here
+var rig: Node = null             # Clockwork Drill Rig on this mine
 var sprite: Sprite2D
 
 

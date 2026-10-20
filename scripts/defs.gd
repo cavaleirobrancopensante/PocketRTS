@@ -6,11 +6,16 @@ const TILE := 32
 const START_GOLD := 250
 const MINE_GOLD := 5000
 const CARRY := 8                 # gold per trip
+const MINE_IDEAL := 12           # labourers a Crown mine can keep busy (the X/Y label)
 const MINE_TIME := 2.4           # seconds swinging the pick per trip
 const FEED_TIME := 0.65          # Brood: a feeding grub turns out 1 gold this often
 const FEEDERS_PER_MINE := 8
 const EGGS_MAX := 5
 const EGG_TIME := 6.0
+const RIG_RATE := 8.0             # Clockwork: gold per second from a Drill Rig
+const WIND_DECAY := 0.04          # Clockwork: wind lost per second outside a field
+const WIND_MIN := 0.55
+const REPAIR_RATE := 14.0         # hp per second a Winder restores
 
 const FACTIONS := {
 	"crown": {
@@ -25,8 +30,9 @@ const FACTIONS := {
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
-		"build": [], "start_workers": 3, "ready": false, "max_supply": 100,
-		"about": "Coming soon: clockwork constructs.",
+		"build": ["clocktower", "spring_tower", "drill_rig", "assembly_works"], "start_workers": 2, "ready": true,
+		"max_supply": 80,
+		"about": "Few, very tough constructs. Drill Rigs mine by themselves. Winders build and repair. Constructs run down outside a wind-up field. Army cap 80.",
 	},
 }
 
@@ -75,6 +81,28 @@ const UNITS := {
 		"building_bonus": 1.6, "requires": "gorge_pit", "faction": "brood",
 		"about": "Huge horned tank. Charges in and knocks enemies back.",
 	},
+	"winder": {
+		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
+		"sight": 7, "range": 20, "damage": 5, "cooldown": 1.2, "radius": 9, "from": "clocktower",
+		"faction": "clockwork", "worker": true, "repairs": true,
+		"about": "Starts buildings and repairs constructs and buildings. Never mines.",
+	},
+	"gearknight": {
+		"name": "Gearknight", "hp": 300, "armor": 4, "speed": 52, "cost": 170, "time": 24.0, "supply": 3,
+		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.4, "aim": 0.3, "radius": 12, "from": "assembly_works",
+		"regen": 1.5, "faction": "clockwork", "about": "Iron knight. Very hard to kill; slowly repairs itself.",
+	},
+	"bolt": {
+		"name": "Bolt Automaton", "hp": 150, "armor": 2, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
+		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 11, "from": "assembly_works",
+		"pierce": true, "faction": "clockwork", "about": "Crossbow bolts pierce every enemy in a line.",
+	},
+	"steam_walker": {
+		"name": "Steam Walker", "hp": 380, "armor": 3, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
+		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 16, "from": "assembly_works",
+		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
+		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
+	},
 }
 
 const BUILDINGS := {
@@ -111,6 +139,26 @@ const BUILDINGS := {
 		"name": "Gorge Pit", "hp": 800, "armor": 1, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "requires": "warren", "faction": "brood",
 		"about": "Lets the Hive hatch Brutes. Needs a Warren.",
+	},
+	"clocktower": {
+		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
+		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "trickle": 1.0, "faction": "clockwork",
+		"about": "Builds Winders. Winds up constructs nearby and ticks out a little gold.",
+	},
+	"spring_tower": {
+		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
+		"supply": 10, "sight": 6, "trains": [], "field": 7, "faction": "clockwork",
+		"about": "10 more supply. Keeps nearby constructs wound up.",
+	},
+	"drill_rig": {
+		"name": "Drill Rig", "hp": 700, "armor": 2, "cost": 175, "time": 30.0, "size": Vector2i(2, 2),
+		"supply": 0, "sight": 6, "trains": [], "rig": true, "faction": "clockwork",
+		"about": "Build it next to a gold mine: it drills gold by itself. One per mine.",
+	},
+	"assembly_works": {
+		"name": "Assembly Works", "hp": 1300, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
+		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker"], "faction": "clockwork",
+		"about": "Assembles every combat construct.",
 	},
 }
 
