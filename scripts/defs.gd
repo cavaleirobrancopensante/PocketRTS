@@ -49,13 +49,13 @@ const UNITS := {
 	},
 	"pikeman": {
 		"name": "Pikeman", "hp": 120, "armor": 2, "speed": 60, "cost": 75, "time": 16.0, "supply": 2,
-		"sight": 7, "range": 30, "damage": 13, "cooldown": 1.1, "radius": 10, "from": "barracks",
+		"sight": 7, "range": 30, "damage": 13, "cooldown": 1.1, "radius": 11, "from": "barracks",
 		"bonus": {"cannon": 2.5, "brute": 1.6}, "faction": "crown", "about": "Tough melee. Wrecks cannons and brutes up close.",
 	},
 	"cannon": {
 		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 40, "cost": 200, "time": 32.0, "supply": 4,
 		"sight": 9, "range": 300, "min_range": 70, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
-		"radius": 15, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
+		"radius": 19, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
 		"about": "Long-range splash. Smashes buildings. Can't hit what's too close.",
 	},
 	"grub": {
@@ -66,40 +66,40 @@ const UNITS := {
 	},
 	"raptor": {
 		"name": "Raptors", "hp": 30, "armor": 0, "speed": 100, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
-		"sight": 7, "range": 22, "damage": 5, "cooldown": 0.9, "aim": 0.1, "radius": 9, "from": "hive",
+		"sight": 7, "range": 22, "damage": 5, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "hive",
 		"requires": "warren", "faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
 	},
 	"spitter": {
 		"name": "Spitters", "hp": 45, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
-		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 10, "from": "hive",
+		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
 		"acid": 3.0, "requires": "warren", "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
 	},
 	"brute": {
 		"name": "Brute", "hp": 240, "armor": 2, "speed": 56, "cost": 150, "time": 22.0, "supply": 3,
-		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 16, "from": "hive",
+		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 20, "from": "hive",
 		"building_bonus": 1.6, "requires": "gorge_pit", "faction": "brood",
 		"about": "Huge horned tank. Charges in and knocks enemies back.",
 	},
 	"winder": {
 		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
-		"sight": 7, "range": 20, "damage": 5, "cooldown": 1.2, "radius": 9, "from": "clocktower",
+		"sight": 7, "range": 20, "damage": 5, "cooldown": 1.2, "radius": 12, "from": "clocktower",
 		"faction": "clockwork", "worker": true, "repairs": true,
 		"about": "Starts buildings and repairs constructs and buildings. Never mines.",
 	},
 	"gearknight": {
 		"name": "Gearknight", "hp": 300, "armor": 4, "speed": 52, "cost": 170, "time": 24.0, "supply": 3,
-		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.4, "aim": 0.3, "radius": 12, "from": "assembly_works",
+		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.4, "aim": 0.3, "radius": 19, "from": "assembly_works",
 		"regen": 1.5, "faction": "clockwork", "about": "Iron knight. Very hard to kill; slowly repairs itself.",
 	},
 	"bolt": {
 		"name": "Bolt Automaton", "hp": 150, "armor": 2, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
-		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 11, "from": "assembly_works",
+		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 15, "from": "assembly_works",
 		"pierce": true, "faction": "clockwork", "about": "Crossbow bolts pierce every enemy in a line.",
 	},
 	"steam_walker": {
 		"name": "Steam Walker", "hp": 380, "armor": 3, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
-		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 20, "from": "assembly_works",
+		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "assembly_works",
 		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
 		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
 	},

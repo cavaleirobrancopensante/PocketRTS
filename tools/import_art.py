@@ -24,11 +24,25 @@ BUILDING_SCALE = 0.36
 
 UNITS = {
     "labourer": {"rows": ["idle", "walk", "mine", "build", "carry", "death"], "dilate": 2},
-    "musketeer": {"rows": ["idle", "walk", "aim", "fire", "reload", "melee", "death"], "dilate": 2},
-    "pikeman": {"rows": ["idle", "walk", "brace", "thrust", "death", "death"], "dilate": 2},
-    "cannon": {"rows": ["idle", "move", "fire", "reload", "death"], "dilate": 14},
+    # Musketeer and pikeman: second sheets on a flat grey background. "drop" removes
+    # hallucinated frames: (anim, dir, index within that panel's row); "fill" reuses a good
+    # frame in its place so the timing of the animation stays the same.
+    "musketeer": {"rows": ["idle", "walk", "aim", "fire", "reload", "reload", "death"], "dilate": 1,
+                  "mask": "flat_flood", "panels": [0, 270, 545, 955, 1245, 1536], "smoke_far": 18,
+                  "walk_height": 33, "nosplit": True, "drop": [("idle", "e", 3)],
+                  "by_coat": {"aim": "left", "fire": "left"}},
+    "pikeman": {"rows": ["idle", "walk", "brace", "thrust", "skip", "death"], "dilate": 1,
+                "last_only": ["brace", "thrust"], "jab": True,
+                "by_coat": {"walk": "right", "brace": "left", "thrust": "left"},
+                "mask": "flat_flood", "panels": [0, 295, 585, 910, 1218, 1536], "walk_height": 44,
+                "nosplit": True,
+                "drop": [("walk", "s", 2), ("walk", "se", 2), ("brace", "n", 0), ("thrust", "n", 0),
+                         ("thrust", "n", 1), ("death", "s", 0), ("death", "se", 0), ("death", "e", 0),
+                         ("death", "ne", 0), ("death", "n", 0), ("death", "n", 1)]},
+    "cannon": {"rows": ["idle", "move", "fire", "reload", "death"], "dilate": 14, "drop_smoke": True, "scale": UNIT_SCALE * 1.3,
+               "smoke_to_muzzle": True},
     "winder": {"rows": ["idle", "wind", "walk", "repair", "attack", "death"], "dilate": 2,
-               "dir": "clockwork", "mask": "alpha", "scale": 0.27},
+               "dir": "clockwork", "mask": "alpha", "scale": 0.27 * 1.5},
 }
 BUILDINGS = ["town_hall", "cottage", "barracks", "foundry"]
 BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]
@@ -37,14 +51,14 @@ BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]
 # side-on (facing right) and gets mirrored in game. Height = in-game pixels.
 BROOD_UNITS = {
     "grub": {"rows": ["idle", "walk", "burrow", "attack", "morph", "death"], "height": 17},
-    "raptor": {"rows": ["idle", "walk", "leap", "attack", "death"], "height": 28},
-    "spitter": {"rows": ["idle", "walk", "flare", "attack", "death"], "height": 26},
-    "brute": {"rows": ["idle", "walk", "charge", "attack", "death"], "height": 40},
+    "raptor": {"rows": ["idle", "walk", "leap", "attack", "death"], "height": 20},
+    "spitter": {"rows": ["idle", "walk", "flare", "attack", "death"], "height": 34},
+    "brute": {"rows": ["idle", "walk", "charge", "attack", "death"], "height": 52},
     # Clockwork: row 0 is a two-frame idle in one fixed direction.
-    "gearknight": {"rows": ["idle", "walk", "attack", "block", "death"], "height": 30, "dir": "clockwork",
+    "gearknight": {"rows": ["idle", "walk", "attack", "block", "death"], "height": 51, "dir": "clockwork",
                    "row0": "s", "skip": {1: 2}},
-    "bolt": {"rows": ["idle", "walk", "crank", "attack", "death"], "height": 28, "dir": "clockwork", "row0": "s"},
-    "steam_walker": {"rows": ["idle", "walk", "attack", "vent", "death"], "height": 66, "dir": "clockwork", "row0": "e",
+    "bolt": {"rows": ["idle", "walk", "crank", "attack", "death"], "height": 42, "dir": "clockwork", "row0": "s"},
+    "steam_walker": {"rows": ["idle", "walk", "attack", "vent", "death"], "height": 99, "dir": "clockwork", "row0": "e",
                      "mask": "flat"},
 }
 # Width in game pixels of each finished building (ChatGPT drew each at its own zoom).
@@ -88,6 +102,9 @@ def checker_mask(px, min_level=196, max_chroma=14):
                 seen[ny, nx] = True
                 q.append((ny, nx))
     fg = ~seen
+    fg &= ~checker_holes(px, fg, seen)
+    fg &= ~checker_specks(px, fg, seen)
+    fg |= patch_smoke(px, fg)
     # Drop the thin light-grey separator lines between panels.
     lines = (rgb.min(-1) >= 150) & ((rgb.max(-1) - rgb.min(-1)) <= 10)
     fg &= ~(lines & ndimage.binary_opening(lines, structure=np.ones((25, 1))))
@@ -101,6 +118,127 @@ def flat_mask(px, tol=46):
     bg = np.median(border, axis=0)
     fg = np.abs(rgb - bg).sum(-1) > tol
     return ndimage.binary_opening(fg, iterations=1)
+
+
+def patch_smoke(px, fg, it=9):
+    """The flood fill eats stripes of painted checker showing through smoke puffs.
+    Close those narrow gaps where the neighbours are pale, colourless smoke, and
+    paint them with the surrounding smoke colour (px is changed in place)."""
+    rgb = px[..., :3].astype(float)
+    closed = ndimage.binary_closing(fg, iterations=it)
+    gap = closed & ~fg
+    if not gap.any():
+        return gap
+    w = fg.astype(float)
+    k = np.ones((13, 13))
+    wsum = ndimage.convolve(w, k, mode="constant")
+    mean = np.stack([ndimage.convolve(rgb[..., c] * w, k, mode="constant") for c in range(3)], -1) / np.maximum(wsum, 1)[..., None]
+    sq = np.stack([ndimage.convolve((rgb[..., c] ** 2) * w, k, mode="constant") for c in range(3)], -1) / np.maximum(wsum, 1)[..., None]
+    chroma = mean.max(-1) - mean.min(-1)
+    smoke = gap & (wsum >= 8) & (mean.mean(-1) >= 165) & (chroma <= 18) & (np.sqrt(np.maximum(sq - mean ** 2, 0)).mean(-1) < 40)
+    px[smoke, :3] = mean[smoke].astype(px.dtype)
+    px[smoke, 3] = 255
+    return smoke
+
+
+def checker_specks(px, fg, bg_seen):
+    """Tiny pockets (a few pixels, between wheel spokes or fingers) in the background's own
+    two exact greys. Real white details (teeth, eyes, steam) are shaded, so they don't match."""
+    rgb = px[..., :3]
+    grey = rgb.mean(-1)
+    flat = (rgb.max(-1) - rgb.min(-1)) <= 3
+    bgvals = grey[bg_seen & flat]
+    if bgvals.size < 100:
+        return np.zeros_like(fg)
+    hist, edges = np.histogram(bgvals, bins=np.arange(200, 257, 2))
+    shades = edges[np.argsort(-hist)[:2]] + 1
+    cand = fg & flat & ((np.abs(grey - shades[0]) <= 3) | (np.abs(grey - shades[1]) <= 3))
+    lab, n = ndimage.label(cand)
+    if n == 0:
+        return np.zeros_like(fg)
+    idx = np.arange(1, n + 1)
+    size = ndimage.sum(cand, lab, idx)
+    std = ndimage.standard_deviation(grey, lab, idx)
+    bad = (size >= 3) & (size < 25) & (std <= 6)
+    out = bad[lab - 1] & (lab > 0)
+    return ndimage.binary_dilation(out, iterations=1) & fg & (grey >= 215) & ((rgb.max(-1) - rgb.min(-1)) <= 10)
+
+
+def checker_holes(px, fg, bg_seen):
+    """Painted checkerboard trapped inside a sprite (between legs, wheel spokes):
+    enclosed pockets made of the background's own two greys. Smoke, steam and white
+    details don't match: they need both checker shades, or one flat shade over a big area."""
+    rgb = px[..., :3]
+    grey = rgb.mean(-1)
+    neutral = (rgb.max(-1) - rgb.min(-1)) <= 10
+    bgvals = grey[bg_seen & neutral]
+    if bgvals.size < 100:
+        return np.zeros_like(fg)
+    hist, edges = np.histogram(bgvals, bins=np.arange(200, 257, 2))
+    top = np.argsort(-hist)[:2]
+    shades = sorted(edges[top] + 1)
+    near = [neutral & (np.abs(grey - c) <= 4) for c in shades]
+    cand = fg & (near[0] | near[1])
+    lab, n = ndimage.label(cand)
+    if n == 0:
+        return np.zeros_like(fg)
+    idx = np.arange(1, n + 1)
+    size = ndimage.sum(cand, lab, idx)
+    a = ndimage.sum(near[0] & cand, lab, idx) / np.maximum(size, 1)
+    b = ndimage.sum(near[1] & cand, lab, idx) / np.maximum(size, 1)
+    std = ndimage.standard_deviation(grey, lab, idx)
+    keep = (size >= 25) & (((a >= 0.15) & (b >= 0.15)) | ((size >= 60) & (std < 2.5)))
+    holes = keep[lab - 1] & (lab > 0)
+    # Noisier pockets: enclosed, colourless, very light and fairly even.
+    pale = fg & neutral & (grey >= 228)
+    lab2, n2 = ndimage.label(pale)
+    if n2:
+        i2 = np.arange(1, n2 + 1)
+        sz2 = ndimage.sum(pale, lab2, i2)
+        mean2 = ndimage.mean(grey, lab2, i2)
+        std2 = ndimage.standard_deviation(grey, lab2, i2)
+        ok2 = (sz2 >= 40) & (mean2 >= 236) & (std2 <= 6.5)
+        holes |= ok2[lab2 - 1] & (lab2 > 0)
+    # Keep pockets whose rim is pale too (light inside smoke or steam, not a gap).
+    lab3, n3 = ndimage.label(holes)
+    if n3:
+        dark = (grey < 200) | ~neutral
+        rim = ndimage.binary_dilation(holes, iterations=2) & ~holes
+        i3 = np.arange(1, n3 + 1)
+        grown = ndimage.grey_dilation(lab3, size=(5, 5))
+        rim_n = ndimage.sum(rim, grown * rim, i3)
+        rim_dark = ndimage.sum(rim & dark, grown * rim, i3)
+        real = (rim_dark / np.maximum(rim_n, 1)) >= 0.55
+        holes = real[lab3 - 1] & (lab3 > 0)
+    # the soft edge of the pocket
+    edge = ndimage.binary_dilation(holes, iterations=2) & fg & neutral & (grey >= shades[0] - 14)
+    return holes | edge
+
+
+def flat_flood_mask(px, tol=10):
+    """Sprites on a flat grey background (panels may differ a little in shade): flood the
+    background in from the border through near-neutral pixels of the background's greys;
+    sprite outlines stop it. Pockets of the same flat grey trapped inside go too."""
+    rgb = px[..., :3]
+    grey = rgb.mean(-1)
+    neutral = (rgb.max(-1) - rgb.min(-1)) <= 8
+    border = np.concatenate([grey[0], grey[-1], grey[:, 0], grey[:, -1]])
+    lo, hi = np.percentile(border, 3) - tol, np.percentile(border, 97) + tol
+    bgl = neutral & (grey >= lo) & (grey <= hi)
+    lab, n = ndimage.label(bgl)
+    edge_labels = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
+    seen = np.isin(lab, list(edge_labels))
+    fg = ~seen
+    if n:
+        idx = np.arange(1, n + 1)
+        size = ndimage.sum(bgl, lab, idx)
+        std = ndimage.standard_deviation(grey, lab, idx)
+        pocket = (size >= 20) & (std <= 3.0)
+        fg &= ~(pocket[lab - 1] & (lab > 0))
+    # thin separator lines between panels
+    lines = ndimage.binary_opening(fg, structure=np.ones((400, 1)))
+    fg &= ~ndimage.binary_dilation(lines, structure=np.ones((1, 3)))
+    return fg
 
 
 def alpha_mask(px, threshold=128):
@@ -224,11 +362,189 @@ def save(img, path):
 
 # ---------------------------------------------------------------- units
 
+def split_by_coat(px, row_sprites, bounds, rule, margin=14):
+    """One frame per soldier: find each red coat, then give every pixel of the row to a
+    soldier. rule 'left': weapons stick out to the right, so a pixel belongs to the nearest
+    soldier on its left; 'right': the other way round; 'near': the nearest soldier."""
+    out = {}
+    union = np.zeros(px.shape[:2], bool)
+    for s in row_sprites:
+        union |= s["mask"]
+    rgb = px[..., :3]
+    red = union & (rgb[..., 0] >= 170) & (rgb[..., 1] <= 70) & (rgb[..., 2] <= 70)
+    for p in range(len(bounds) - 1):
+        x0, x1 = bounds[p], bounds[p + 1]
+        m = union.copy()
+        m[:, :x0] = False
+        m[:, x1:] = False
+        r = red.copy()
+        r[:, :x0] = False
+        r[:, x1:] = False
+        lab, n = ndimage.label(ndimage.binary_dilation(r, iterations=3))
+        if n == 0:
+            continue
+        sizes = ndimage.sum(r, lab, range(1, n + 1))
+        cxs = [c[1] for c in ndimage.center_of_mass(r, lab, range(1, n + 1))]
+        bodies = sorted(cx for cx, sz in zip(cxs, sizes) if sz >= 40)
+        merged = []
+        for cx in bodies:
+            if merged and cx - merged[-1] < 40:
+                merged[-1] = (merged[-1] + cx) / 2
+            else:
+                merged.append(cx)
+        if not merged:
+            continue
+        ys, xs = np.nonzero(m)
+        c = np.array(merged)
+        d = xs[:, None] - c[None, :]
+        if rule == "left":
+            score = np.where(d >= -margin, np.abs(d), 1e6 + np.abs(d))
+        elif rule == "right":
+            score = np.where(d <= margin, np.abs(d), 1e6 + np.abs(d))
+        else:
+            score = np.abs(d)
+        own = np.argmin(score, 1)
+        for k in range(len(merged)):
+            sel = own == k
+            if sel.sum() < 30:
+                continue
+            mk = np.zeros_like(m)
+            mk[ys[sel], xs[sel]] = True
+            # keep what is joined to this soldier's body (drops stray tips of neighbours)
+            lab2, n2 = ndimage.label(ndimage.binary_dilation(mk, iterations=1) & union)
+            core = lab2[int(np.median(ys[sel])), int(round(merged[k]))] if n2 else 0
+            if core:
+                mk &= lab2 == core
+            yy, xx = np.nonzero(mk)
+            out.setdefault(DIRS[p], []).append(cutout(px, {"mask": mk, "y0": yy.min(), "y1": yy.max() + 1,
+                                                           "x0": xx.min(), "x1": xx.max() + 1}))
+    return out
+
+
+def smoke_to_muzzle(im):
+    """Muzzle smoke drawn far from the gun: slide it onto the muzzle flash and fill the
+    ring's hollow middle (the cut-out took it for background)."""
+    a = im[..., 3] > 0
+    rgb = im[..., :3].astype(int)
+    grey = rgb.mean(-1)
+    chroma = rgb.max(-1) - rgb.min(-1)
+    flash = a & (rgb[..., 0] >= 200) & (rgb[..., 1] >= 110) & (rgb[..., 2] <= 120) & (chroma >= 80)
+    smoke = a & (chroma <= 30) & (grey >= 140)
+    if flash.sum() < 2 or smoke.sum() < 6:
+        return im
+    lab, n = ndimage.label(ndimage.binary_dilation(smoke, iterations=1) & a)
+    fy, fx = np.nonzero(flash)
+    fc = np.array([fy.mean(), fx.mean()])
+    sizes = ndimage.sum(smoke, lab, range(1, n + 1))
+    k = int(np.argmax(sizes)) + 1
+    puff = (lab == k) & a
+    py, px_ = np.nonzero(puff)
+    pc = np.array([py.mean(), px_.mean()])
+    i = np.argmin((py - fc[0]) ** 2 + (px_ - fc[1]) ** 2)
+    j = np.argmin((fy - pc[0]) ** 2 + (fx - pc[1]) ** 2)
+    dy, dx = int(round(fy[j] - py[i])), int(round(fx[j] - px_[i]))
+    if abs(dx) + abs(dy) <= 2:
+        return im
+    out = im.copy()
+    filled = ndimage.binary_fill_holes(puff)
+    col = rgb[puff].mean(0)
+    src = im.copy()
+    src[filled & ~puff, :3] = np.clip(col * 1.05, 0, 255)
+    src[filled & ~puff, 3] = 255
+    out[puff] = 0
+    ys, xs = np.nonzero(filled)
+    ny, nx = ys + dy, xs + dx
+    ok = (ny >= 0) & (ny < im.shape[0]) & (nx >= 0) & (nx < im.shape[1])
+    ys, xs, ny, nx = ys[ok], xs[ok], ny[ok], nx[ok]
+    keep = out[ny, nx, 3] == 0
+    out[ny[keep], nx[keep]] = src[ys[keep], xs[keep]]
+    cols = np.nonzero((out[..., 3] > 0).any(0))[0]
+    rows = np.nonzero((out[..., 3] > 0).any(1))[0]
+    return out[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
+
+
+def blast_up(im):
+    """Back view: the painted flash and smoke shoot out sideways past a crewman's head,
+    but the barrel points up. Cut them out (they sit in the frame's upper right), turn
+    them to point up and set them on the muzzle (top of the barrel, a little left of
+    the middle). Positions are fractions of the frame, measured on the sheet."""
+    h, w = im.shape[:2]
+    a = im[..., 3] > 0
+    rgb = im[..., :3].astype(int)
+    grey = rgb.mean(-1)
+    chroma = rgb.max(-1) - rgb.min(-1)
+    flash = a & (rgb[..., 0] >= 190) & (rgb[..., 1] >= 100) & (rgb[..., 2] <= 160) & (chroma >= 50)
+    pale = a & (chroma <= 40) & (grey >= 110)
+    box = np.zeros_like(a)
+    box[: int(h * 0.55), int(w * 0.66):] = True
+    eff = box & (flash | pale)
+    if eff.sum() < 5:
+        return im
+    ey, ex = np.nonzero(eff)
+    y0, x0 = ey.min(), ex.min()
+    patch = np.zeros((ey.max() - y0 + 1, ex.max() - x0 + 1, 4), np.uint8)
+    patch[ey - y0, ex - x0] = im[ey, ex]
+    fy = np.nonzero((flash & eff)[y0:ey.max() + 1, x0:ex.max() + 1])[0]
+    root_row = int(fy.mean()) if fy.size else patch.shape[0] // 2
+    out = im.copy()
+    out[eff] = 0
+    # loose specks left behind
+    lab, n = ndimage.label(out[..., 3] > 0, structure=np.ones((3, 3)))
+    if n:
+        sizes = ndimage.sum(out[..., 3] > 0, lab, range(1, n + 1))
+        tiny = (sizes <= 8)[lab - 1] & (lab > 0)
+        out[tiny] = 0
+    rot = np.rot90(patch, 1)                    # pointing right -> pointing up
+    my, mx = int(h * 0.21), int(w * 0.38)       # the muzzle
+    oy = my - rot.shape[0]
+    ox = mx - root_row
+    pad_top = max(0, -oy)
+    big = np.zeros((h + pad_top, w + max(0, ox + rot.shape[1] - w), 4), np.uint8)
+    big[pad_top:pad_top + h, :w] = out
+    reg = big[oy + pad_top:oy + pad_top + rot.shape[0], ox:ox + rot.shape[1]]
+    put = (rot[..., 3] > 0) & (reg[..., 3] == 0)
+    reg[put] = rot[put]
+    rows = np.nonzero((big[..., 3] > 0).any(1))[0]
+    cols = np.nonzero((big[..., 3] > 0).any(0))[0]
+    return big[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
+
+
 def import_unit(name, cfg, data):
     px = load(f"art/{cfg.get('dir', 'crown')}/{name}.png")
-    fg = alpha_mask(px, 160) if cfg.get("mask") == "alpha" else checker_mask(px)
+    if cfg.get("mask") == "alpha":
+        fg = alpha_mask(px, 160)
+    elif cfg.get("mask") == "flat_flood":
+        fg = flat_flood_mask(px)
+    else:
+        fg = checker_mask(px)
+    if cfg.get("panels"):
+        fg[:, cfg["panels"][-1]:] = False
+    if cfg.get("smoke_far"):
+        # Painted smoke floats away from the soldier; white belts sit on the red coat.
+        rgb = px[..., :3].astype(float)
+        g = rgb.mean(-1)
+        pale = fg & ((rgb.max(-1) - rgb.min(-1)) <= 26) & (g >= 110)
+        coat = (rgb[..., 0] >= 170) & (rgb[..., 1] <= 70) & (rgb[..., 2] <= 70)
+        dist = ndimage.distance_transform_edt(~coat)
+        lab, n = ndimage.label(ndimage.binary_dilation(pale, iterations=2) & fg)
+        if n:
+            i = np.arange(1, n + 1)
+            near = ndimage.minimum(dist, lab, i)
+            far = near > cfg["smoke_far"]
+            fg &= ~(far[lab - 1] & (lab > 0))
+    if cfg.get("drop_smoke"):
+        # Painted muzzle smoke is full of checker gaps; the game makes its own smoke.
+        rgb = px[..., :3].astype(float)
+        g = rgb.mean(-1)
+        pale = fg & ((rgb.max(-1) - rgb.min(-1)) <= 22) & (g >= 150)
+        lab, n = ndimage.label(pale)
+        if n:
+            i = np.arange(1, n + 1)
+            min_size = cfg["drop_smoke"] if cfg["drop_smoke"] is not True else 20
+            bad = (ndimage.sum(pale, lab, i) >= min_size) & (ndimage.mean(g, lab, i) >= 165)
+            fg &= ~(bad[lab - 1] & (lab > 0))
     sprites = components(fg, cfg["dilate"], min_big=900 if name == "cannon" else 350)
-    bounds = panel_bounds(px)
+    bounds = cfg.get("panels") or panel_bounds(px)
     rows = cluster_1d(np.array([s["cy"] for s in sprites]), 45)
     rows.sort(key=lambda g: np.mean([sprites[i]["cy"] for i in g]))
     names = cfg["rows"]
@@ -237,10 +553,28 @@ def import_unit(name, cfg, data):
     frames = {}   # (anim, dir) -> list of images (source scale)
     for ri, row in enumerate(rows[:len(names)]):
         anim = names[ri]
-        for i in sorted(row, key=lambda k: sprites[k]["cx"]):
+        if anim == "skip":
+            continue
+        rowframes = {}
+        if cfg.get("by_coat") is not None:
+            rowframes = split_by_coat(px, [sprites[i] for i in row], bounds, cfg["by_coat"].get(anim, "near"))
+        else:
+          for i in sorted(row, key=lambda k: sprites[k]["cx"]):
             s = sprites[i]
             p = max(0, min(4, int(np.searchsorted(bounds, s["cx"], side="right")) - 1))
-            frames.setdefault((anim, DIRS[p]), []).append(cutout(px, s))
+            rowframes.setdefault(DIRS[p], []).append(cutout(px, s))
+        for d, lst in rowframes.items():
+            bad = {k for a, dd, k in cfg.get("drop", []) if a == anim and dd == d}
+            lst = [im for k, im in enumerate(lst) if k not in bad]
+            if anim in cfg.get("last_only", []) and lst:
+                lst = lst[-1:]   # the others are crossed by their neighbour's pike
+            frames.setdefault((anim, d), []).extend(lst)
+    if cfg.get("jab"):
+        # thrust = braced, then extended
+        for d in DIRS:
+            if frames.get(("brace", d)) and frames.get(("thrust", d)):
+                frames[("thrust", d)] = frames[("brace", d)][-1:] + frames[("thrust", d)][-1:]
+    frames = {k: v for k, v in frames.items() if v}
     # Two frames drawn touching come out as one sprite: split where the column
     # profile has a deep valley with plenty of body on both sides.
     def split(im, depth=0):
@@ -259,14 +593,25 @@ def import_unit(name, cfg, data):
                 out += split(part[:, xs.min():xs.max() + 1], depth + 1)
             return out
         return [im]
-    if name != "cannon":
+    if name != "cannon" and not cfg.get("nosplit"):
         for key, lst in list(frames.items()):
             if key[0] == "death":
                 continue
             frames[key] = [p for im in lst for p in split(im)]
+    scale = cfg.get("scale", UNIT_SCALE)
+    if cfg.get("walk_height"):
+        hs = [im.shape[0] for im in frames[("walk", "s")]]
+        scale = cfg["walk_height"] / float(np.median(hs))
     small = {}
     for key, lst in frames.items():
-        small[key] = [snap_team(shrink(im, cfg.get("scale", UNIT_SCALE))) for im in lst]
+        small[key] = [snap_team(shrink(im, scale)) for im in lst]
+    if cfg.get("smoke_to_muzzle"):
+        for key in small:
+            if key == ("fire", "n"):
+                small[key] = [blast_up(im) for im in small[key]]
+            elif key[0] == "fire":
+                small[key] = [smoke_to_muzzle(im) for im in small[key]]
+    print(f"  {name}: " + ", ".join(f"{a}_{d} {len(v)}" for (a, d), v in sorted(small.items())))
     assemble(name, small, names, data)
     if cfg.get("dir") == "clockwork":
         make_icon(small[("idle", "s")][0], name)
@@ -633,6 +978,27 @@ def import_icons(data):
 
 # ---------------------------------------------------------------- data file
 
+def import_cannon_wheel():
+    """The cannon's spinning wheel (drawn over the painted one in game)."""
+    px = load("art/crown/cannon_wheel.png")
+    fg = flat_mask(px)
+    sprites = components(fg, 2, min_big=2000, attach_dist=0)
+    s = min(sprites, key=lambda q: (q["cy"], q["cx"]))     # top-left: face-on
+    im = cutout(px, s)
+    side = max(im.shape[:2])
+    sq = np.zeros((side, side, 4), np.uint8)
+    oy, ox = (side - im.shape[0]) // 2, (side - im.shape[1]) // 2
+    sq[oy:oy + im.shape[0], ox:ox + im.shape[1]] = im
+    small = shrink(sq, 32 / side)
+    save(small, f"{OUT}/units/cannon_wheel.png")
+    yy, xx = np.mgrid[0:32, 0:32]
+    disc = np.zeros((32, 32, 4), np.uint8)
+    inside = (yy - 15.5) ** 2 + (xx - 15.5) ** 2 <= 13.5 ** 2
+    disc[inside] = (52, 34, 20, 255)
+    save(disc, f"{OUT}/units/cannon_wheel_back.png")
+    print("  cannon wheel", small.shape)
+
+
 def write_data(data):
     def v2(t, cls="Vector2i"):
         return f"{cls}({t[0]}, {t[1]})"
@@ -676,6 +1042,7 @@ def main():
     import_mine(data)
     import_nature(data)
     import_tiles(data)
+    import_cannon_wheel()
     import_effects(data)
     import_icons(data)
     os.makedirs("scripts", exist_ok=True)

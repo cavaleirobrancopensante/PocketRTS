@@ -814,7 +814,9 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	var top := -float(ArtData.UNITS[kind]["anchor"].y) - 4.0
 	if kind == "pikeman":
-		top = -40.0
+		top = -44.0
+	elif kind == "cannon":
+		top = -64.0       # the back-view blast makes the frame taller than the gun
 	draw_health(top, radius * 2.4)
 	if work == "feeding":
 		return
