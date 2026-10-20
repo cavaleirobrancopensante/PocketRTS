@@ -407,7 +407,7 @@ PLANS = {"ornithopter": plan_ornithopter, "bloater": plan_bloater}
 # ---------------------------------------------------------------- bloat cloud effect
 
 CLOUD_W = 150          # frame width; the game scales it to the 2.1 x 72 px zone anyway
-CLOUD_FILL = 138       # the biggest cloud's width in it
+CLOUD_FILL = 124       # the cloud's width (2-98% of its gas) in it
 
 
 def build_cloud(S, row=0):
@@ -447,15 +447,18 @@ def build_cloud(S, row=0):
     for c in cells:
         a = c[..., 3]
         cm = np.cumsum(a.sum(0)) / a.sum()
-        widths.append((np.searchsorted(cm, 0.95) - np.searchsorted(cm, 0.05)) / 0.9)
+        widths.append(float(np.searchsorted(cm, 0.98) - np.searchsorted(cm, 0.02)))
         yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
         cx, cy = (a * xx).sum() / a.sum() + 0.5, (a * yy).sum() / a.sum() + 0.5
         cents.append((cx, cy))
         ys = np.flatnonzero((a / 255.0 > 0.1).any(1))
         hs.append(max(cy - ys.min(), ys.max() + 1 - cy))
     ks = [CLOUD_FILL * z / float(wd) for z, wd in zip((0.9, 0.95, 1.0), widths)]
+    # the thin first frame is not blown up more than 1.4x the last one's scale (it would
+    # turn to blocks)
+    ks = [min(k, ks[-1] * 1.4) for k in ks]
     W = CLOUD_W
-    H = min(W + 20, 2 * int(np.ceil(max(h * k for h, k in zip(hs, ks)))) + 4)
+    H = 2 * int(np.ceil(max(h * k for h, k in zip(hs, ks)))) + 4
     own = [L.warp(c, W, H, lambda U, V, cx=cx, cy=cy, k=k: (cx + (U - W / 2) / k, cy + (V - H / 2) / k))
            for c, (cx, cy), k in zip(cells, cents, ks)]
     frames = []

@@ -516,5 +516,5 @@ const EFFECTS := {
 	"miasma_in": {"frames": 7, "size": Vector2i(200, 188)},
 	"miasma_loop": {"frames": 7, "size": Vector2i(200, 188)},
 	"miasma_out": {"frames": 7, "size": Vector2i(200, 188)},
-	"bloat_cloud": {"frames": 3, "size": Vector2i(150, 170)},
+	"bloat_cloud": {"frames": 3, "size": Vector2i(150, 232)},
 }
