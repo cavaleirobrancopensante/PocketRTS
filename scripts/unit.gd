@@ -84,6 +84,19 @@ func is_unit() -> bool:
 	return true
 
 
+## How long bodies stay on the field before they fade (Settings could change this).
+const CORPSE_TIME := 30.0
+
+
+func _rest_in_peace() -> void:
+	set_physics_process(false)
+	set_process(false)
+	var tw := create_tween()
+	tw.tween_interval(CORPSE_TIME)
+	tw.tween_property(self, "modulate:a", 0.0, 3.0)
+	tw.tween_callback(queue_free)
+
+
 ## A Clockwork construct with no charge left.
 func powered_down() -> bool:
 	return d["faction"] == "clockwork" and not is_worker() and wind <= 0.0
@@ -487,10 +500,10 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		corpse_t += delta
 		_animate(delta)
-		if corpse_t > 6.0:
-			modulate.a = maxf(0.0, 1.0 - (corpse_t - 6.0) / 2.0)
-			if corpse_t > 8.0:
-				queue_free()
+		# once it has fallen, the body is just a picture: stop updating it and let a
+		# timer fade it out (thousands of still bodies cost almost nothing)
+		if corpse_t > 1.5:
+			_rest_in_peace()
 		return
 	_process_acid(delta)
 	if dead:
@@ -625,7 +638,7 @@ func _physics_process(delta: float) -> void:
 	_move(want, delta)
 	_animate(delta)
 	# redraw the shadow, ring and bars only when something on them changed
-	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0),
+	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0),
 		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp))
 	if key != _draw_key:
 		_draw_key = key
@@ -1014,6 +1027,7 @@ func _gather(delta: float) -> Vector2:
 ## Crusher. Its charge grows on the road; too long and it overloads.
 var carry_t := 0.0
 var carry_blue := false
+var carry_empty := false        # bringing the spent battery back to the source
 
 
 func _haul_battery(src: Building, delta: float) -> Vector2:
@@ -1047,6 +1061,7 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 					game.float_text(position + Vector2(0, -30), "+%d" % value, Color(0.5, 0.8, 1.0) if carry_blue else Color(1, 0.9, 0.35))
 				carrying = 0
 				carry_t = 0.0
+				carry_empty = true          # swaps it for the spent one and takes that back
 				work = "to_site"
 				path = PackedVector2Array()
 				return Vector2.ZERO
@@ -1062,6 +1077,7 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 	work = "to_site"
 	if src.edge_distance(position) < radius + 16.0:
 		path = PackedVector2Array()
+		carry_empty = false
 		work = "loading" if src.batteries > 0 else "waiting"
 		work_t = float(Defs.BATTERY["load"])
 		return Vector2.ZERO
@@ -1225,6 +1241,20 @@ func die() -> void:
 	velocity = Vector2.ZERO
 	_leave_mine()
 	_release_patient()
+	if kind == "winder" and carry_empty:
+		# the spent battery drops and lies there for a while
+		var b := Sprite2D.new()
+		b.texture = Game.tex("res://assets/effects/battery_charge.png")
+		b.hframes = 14
+		b.frame = 0
+		b.rotation = randf_range(1.2, 1.9)
+		b.position = position + Vector2(randf_range(-8, 8), -4)
+		b.z_index = -1
+		game.add_child(b)
+		var tw := b.create_tween()
+		tw.tween_interval(CORPSE_TIME)
+		tw.tween_property(b, "modulate:a", 0.0, 3.0)
+		tw.tween_callback(b.queue_free)
 	game.on_unit_died(self)
 	Sfx.play_any(["combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim("death", true)
@@ -1595,6 +1625,9 @@ func _draw() -> void:
 		draw_texture_rect_region(bt, Rect2(bx, top * 0.6 - 4.0, 12, 26), Rect2(fr * 10, 0, 10, 22), Color(1, 1, 1) if wind > 0.0 else Color(0.6, 0.6, 0.6))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
+	if carry_empty and carrying == 0 and kind == "winder":
+		var et: Texture2D = Game.tex("res://assets/effects/battery_charge.png")
+		draw_texture_rect_region(et, Rect2(-14, top + 10, 10, 22), Rect2(0, 0, 10, 22))
 	if carrying > 0 and kind == "winder":
 		# the battery on its back, and how close it is to overloading
 		var info: Dictionary = Defs.BATTERY["blue" if carry_blue else "yellow"]
