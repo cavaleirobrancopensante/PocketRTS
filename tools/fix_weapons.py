@@ -154,7 +154,7 @@ def fix_pike(f, ref=None):
             return
         b, x0, x1, y0, y1, head_bottom = figure(f)
         for k in range(1, n + 1):
-            if sizes[k - 1] > 6:
+            if sizes[k - 1] > 6 and np.argwhere(lab == k)[:, 0].min() > head_bottom - 2 - 20 * (sizes[k - 1] > 25):
                 f[lab == k] = 0
         tip = np.array([x1, y0], float) + ref[0]
         stroke(f, tip, ref[1], PIKE, pike_colour, keeper(f, b, head_bottom, None, behind=True))
@@ -188,6 +188,8 @@ def fix_pike(f, ref=None):
         cy, cx = np.argwhere(comp).mean(0)
         q = np.array([cx, cy]) - tip
         if sizes[k - 1] <= 40 and abs(q[0] * d[1] - q[1] * d[0]) > 2.5:
+            if np.argwhere(comp)[:, 0].min() <= head_bottom:
+                continue      # part of the helmet, not the pike
             f[comp] = 0
             # the butt end is the stray bit in the upper body nearest where the line led
             dd = np.linalg.norm(np.array([cx, cy]) - probe)
@@ -230,11 +232,13 @@ def musket_colour_up(t):
 
 
 def clear_stray(f):
-    """Remove the scraps of the old musket that stick out of the body."""
+    """Remove the scraps of the old musket that stick out of the body (never anything on
+    the head: thin bits of helmet brim also stick out)."""
     w, lab, n = outside_parts(f)
+    b, x0, x1, y0, y1, head_bottom = figure(f)
     for k in range(1, n + 1):
         comp = lab == k
-        if comp.sum() <= 60:
+        if comp.sum() <= 60 and np.argwhere(comp)[:, 0].min() > head_bottom:
             f[comp] = 0
 
 
