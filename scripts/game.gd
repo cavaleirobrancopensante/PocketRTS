@@ -1761,7 +1761,7 @@ func find_target(u: Unit, r: float) -> Entity:
 			best = o
 	if best:
 		return best
-	if u.d.get("medic", false):
+	if u.d.get("medic", false) or u.d.get("air_only", false):
 		return null
 	for b in buildings:
 		if not hostile(b.team, u.team) or b.dead:
@@ -2229,6 +2229,99 @@ func spell_problem(u: Unit, spell: String) -> String:
 	return ""
 
 
+## Infantry climbs into the balloons (each man into the nearest one with room). The balloon
+## must hover over ground they can walk to; it stops and comes down while they board.
+## Units that can't ride just walk over.
+func load_order(riders: Array, balloons: Array) -> void:
+	var bs: Array = balloons.filter(func(b) -> bool: return b is Unit and is_instance_valid(b) and not b.dead and b.kind == "balloon")
+	if bs.is_empty():
+		return
+	var why := ""
+	var men: Array = riders.filter(func(u) -> bool: return u is Unit and is_instance_valid(u) and not u.dead and u.kind != "balloon")
+	men.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(bs[0].position) < b.position.distance_squared_to(bs[0].position))
+	for u in men:
+		var best: Unit = null
+		var bd := INF
+		for b in bs:
+			if not u.can_board(b) or b.room() <= 0:
+				continue
+			if not _clear_at(b.position, 8.0, b.team):
+				why = "The balloon must hover over open ground to take men aboard."
+				continue
+			var dd: float = u.position.distance_to(b.position)
+			if dd < bd:
+				bd = dd
+				best = b
+		if best:
+			if best.order != "idle" and best.order != "hold" and best.incoming.is_empty():
+				best.cmd_stop()        # it stops where it is and comes down
+			u.cmd_board(best)
+		elif not (Defs.DROPSHIP["kinds"] as Array).has(u.kind):
+			if why == "" and u.team == human:
+				why = "Only Musketeers, Pikemen and Labourers fit in the basket."
+		elif why == "" and bs.all(func(b: Unit) -> bool: return b.room() <= 0):
+			why = "The basket is full (%d men)." % int(Defs.DROPSHIP["capacity"])
+	if why != "" and not men.is_empty() and men[0].team == human:
+		notify(why)
+
+
+## The selected balloons with men aboard fly to `p` and let them off (here: right below).
+func unload_order(list: Array, p: Vector2, here := false) -> void:
+	var any := false
+	for b in list:
+		if b is Unit and not b.dead and b.kind == "balloon" and not b.passengers.is_empty():
+			b.cmd_unload(b.position if here else p)
+			any = true
+	if not any and not list.is_empty() and list[0].team == human:
+		notify("Nobody aboard.")
+
+
+## The nearest selected Ornithopter carrying a battery flies over and overloads `e`.
+func overload_order(list: Array, e: Entity) -> void:
+	if not (e is Unit) or e.dead or e.team != human or e.d["faction"] != "clockwork" or e.is_worker():
+		notify("Pick one of your constructs to overload.")
+		return
+	var best: Unit = null
+	var bd := INF
+	for u in list:
+		if u is Unit and not u.dead and u.kind == "ornithopter" and u.topter_bat != "" and u != e:
+			var dd: float = u.position.distance_to(e.position)
+			if dd < bd:
+				bd = dd
+				best = u
+	if best:
+		best.cmd_overload(e)
+		_ping(e.position, Color(1, 0.85, 0.3))
+	else:
+		notify("No Ornithopter here carries a battery.")
+
+
+## Open ground around a spot (or as near as there is) for men let off a balloon: one cell
+## each, nearest first.
+func drop_spots(at: Vector2, n: int, t: int) -> Array:
+	var out: Array = []
+	var c0 := cell_of(at)
+	for r in range(0, 9):
+		var ring: Array = []
+		for y in range(-r, r + 1):
+			for x in range(-r, r + 1):
+				if absi(x) != r and absi(y) != r:
+					continue
+				var c := c0 + Vector2i(x, y)
+				if r == 0 and _clear_at(at, 9.0, t):
+					ring.append(c)
+				elif in_map(c) and passable(c, t) and _clear_at(cell_center(c), 9.0, t):
+					ring.append(c)
+		ring.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a - c0).length() < Vector2(b - c0).length())
+		for c in ring:
+			out.append(cell_center(c) if r > 0 else at)
+			if out.size() >= n:
+				return out
+	while out.size() < n:
+		out.append(cell_center(nearest_free(c0, 12)))
+	return out
+
+
 ## The selected casters: the nearest one that can cast goes and does it.
 func cast_order(list: Array, spell: String, p: Vector2) -> void:
 	var kind := "stormcaller" if spell == "storm" else "spore_mother"
@@ -2654,7 +2747,7 @@ func set_selection(list: Array) -> void:
 			e.selected = false
 	selection = []
 	for e in list:
-		if is_instance_valid(e) and not e.dead:
+		if is_instance_valid(e) and not e.dead and not e.off_field:
 			e.selected = true
 			selection.append(e)
 
@@ -2722,6 +2815,11 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 	if us.is_empty():
 		return
 	var e := null if force_move else entity_at(p)
+	# infantry sent to one of our balloons: they climb in
+	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
+		load_order(us, [e])
+		_ping(p, Color(0.4, 1, 0.4))
+		return
 	if e is Building and e.team == us[0].team and e.built and int(e.d.get("crew", 0)) > 0 \
 			and us.any(func(u: Unit) -> bool: return u.can_gather()):
 		for u in us:
@@ -2865,7 +2963,7 @@ func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 
 
 func army(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and not u.is_worker())
+	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and not u.is_worker() and u.aboard == null)
 
 
 func labourers(t: int) -> Array:
@@ -2873,7 +2971,7 @@ func labourers(t: int) -> Array:
 
 
 func workers(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.is_worker())
+	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.is_worker() and u.aboard == null)
 
 
 func center_of_team(t: int) -> Vector2:

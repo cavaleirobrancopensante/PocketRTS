@@ -346,6 +346,11 @@ func _build_card() -> Array:
 		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if controls.mode != "":
+		if controls.mode == "unload":
+			# let them off right below the balloon, wherever it is
+			list.append(["balloon", "DROP HERE", func() -> void:
+				game.unload_order(game.selected_units(), Vector2.ZERO, true)
+				controls.cancel_mode(), true, "", ""])
 		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if not units.is_empty():
@@ -387,6 +392,7 @@ func _build_card() -> Array:
 			list.append(["build", "BUILD", func() -> void:
 				page = "build"
 				build_page = 0, true, "", ""])
+			_balloon_buttons(list, units)     # labourers can ride too
 
 		else:
 			_ability_buttons(list, units)
@@ -481,8 +487,38 @@ func _build_card() -> Array:
 	return list
 
 
+## Observation Balloon: LOAD men into the basket (the infantry selected with it climb in
+## at once; otherwise tap the men to take), UNLOAD them somewhere. The corner shows how
+## many are aboard.
+func _balloon_buttons(list: Array, units: Array) -> void:
+	var balloons := units.filter(func(u: Unit) -> bool: return u.kind == "balloon")
+	if balloons.is_empty():
+		return
+	var aboard := 0
+	var cap := 0
+	for b in balloons:
+		aboard += b.passengers.size()
+		cap += int(Defs.DROPSHIP["capacity"])
+	var count := "%d/%d" % [aboard, cap]
+	var room: bool = balloons.any(func(u: Unit) -> bool: return u.room() > 0)
+	list.append(["balloon", "LOAD", func() -> void:
+		var sel := game.selected_units()
+		var bs := sel.filter(func(u: Unit) -> bool: return u.kind == "balloon")
+		var men := sel.filter(func(u: Unit) -> bool: return bs.any(func(b: Unit) -> bool: return u.can_board(b)))
+		if not men.is_empty():
+			game.load_order(men, bs)     # the men selected with it climb in
+			toast("Climbing in: the balloon comes down and holds still until they're aboard.")
+		else:
+			controls.mode = "load"
+			toast("Tap the Musketeers, Pikemen or Labourers to take aboard."), room, "The basket is full.", count])
+	list.append(["balloon", "UNLOAD", func() -> void:
+		controls.mode = "unload"
+		toast("Tap where to let them off (or DROP HERE)."), aboard > 0, "Nobody aboard.", count])
+
+
 ## Crown abilities for the selected soldiers. Each button switches all of that kind.
 func _ability_buttons(list: Array, units: Array) -> void:
+	_balloon_buttons(list, units)
 	var muskets := units.filter(func(u: Unit) -> bool: return u.kind == "musketeer")
 	if not muskets.is_empty():
 		var bay: bool = muskets.any(func(u: Unit) -> bool: return u.mode != "bayonet")
@@ -521,6 +557,31 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			for u in game.selected_units():
 				if u.kind == "bloater":
 					u.set_hold_gas(hold), true, "", ""])
+	# Ornithopter: COURIER (automatic) and OVERLOAD
+	var topters := units.filter(func(u: Unit) -> bool: return u.kind == "ornithopter")
+	if not topters.is_empty():
+		var cour: bool = topters.all(func(u: Unit) -> bool: return u.courier)
+		list.append(["ornithopter", ("~ " if cour else "") + "COURIER", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "ornithopter":
+					u.courier = not cour
+					u._courier_t = 0.0
+					if cour and u.order == "courier":
+						u.cmd_stop()
+			toast("Courier: idle Ornithopters fetch batteries and wind up constructs that ran down." if not cour else "Courier off."), true, "", ""])
+		var has_bat: bool = topters.any(func(u: Unit) -> bool: return u.topter_bat != "")
+		list.append(["ornithopter", "OVERLOAD", func() -> void: controls.mode = "overload", has_bat, "No battery: an Ornithopter on COURIER fetches one from an energy building.", ""])
+	# Skywing: LAND (ground fighter) / TAKE OFF (hunts flyers)
+	var wings := units.filter(func(u: Unit) -> bool: return u.kind == "skywing")
+	if not wings.is_empty():
+		var flying: bool = wings.any(func(u: Unit) -> bool: return u.sky == "air" or u.sky == "to_land")
+		list.append(["skywing", "LAND" if flying else "TAKE OFF", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "skywing":
+					if flying:
+						u.cmd_land()
+					else:
+						u.cmd_take_off(), true, "", ""])
 	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	if not guns.is_empty():
 		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")
@@ -535,7 +596,8 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "START": "P", "END": "P"}
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "START": "P", "END": "P",
+	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "LAND": "L", "TAKE OFF": "L"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -857,6 +919,19 @@ func _draw_panel(font: Font) -> void:
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
+			elif uu.kind == "balloon":
+				info = ("%d / %d aboard. UNLOAD to let them off." % [uu.passengers.size(), int(Defs.DROPSHIP["capacity"])]) if not uu.passengers.is_empty() else uu.d["about"]
+				if not uu.incoming.is_empty():
+					info = "Coming down: %d climbing in." % uu.incoming.size()
+			elif uu.kind == "skywing":
+				info = {"air": "Flying: hunts flyers with spines. LAND to fight on the ground.", "to_land": "Looking for open ground to land on...",
+					"landing": "Landing...", "ground": "Landed: walks and bites ground units; anything can hit it. TAKE OFF to fly.", "lifting": "Taking off..."}.get(uu.sky, uu.d["about"])
+			elif uu.kind == "bloater" and uu.deflate != "":
+				info = "Out of gas: deflated, slower and harmless. Gas %d / 100 (fills faster on swamp)." % int(uu.gas)
+			elif uu.kind == "ornithopter" and (uu.topter_bat != "" or uu.courier):
+				info = ("Carrying a %s battery: OVERLOAD a construct with it, or it winds one up on COURIER." % uu.topter_bat) if uu.topter_bat != "" else "Courier: fetching batteries for constructs that run down."
+			elif uu.overclock_t > 0.0:
+				info = "OVERLOADED for %d s: +50%% damage, +30%% speed. Burns out to 25%% charge." % int(ceil(uu.overclock_t))
 			elif uu.kind == "missionary":
 				info = "In danger near enemy buildings!" if not uu.untouchable() else "Can't be hurt here. Bandages wounded soldiers."
 			elif (e as Unit).powered_down():
@@ -900,6 +975,19 @@ func _draw_panel(font: Font) -> void:
 		draw_rect(hb, UiStyle.TRIM_DIM, false, 1.0)
 		_text(font, hb.position + Vector2(hb.size.x + 8, 11), "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)], 15, Color(0.75, 1, 0.7))
 		_text(font, r.position + Vector2(90, 72), info, 15, UiStyle.MUTED)
+		if e is Unit and (e as Unit).kind == "balloon" and e.team == game.human:
+			# who's in the basket
+			var ps: Array = (e as Unit).passengers
+			for i in ps.size():
+				if not is_instance_valid(ps[i]):
+					continue
+				var pic := _icon(ps[i].kind)
+				var pqr := Rect2(r.end.x - 72 - (ps.size() - 1 - i) * 38, r.position.y + 8, 34, 34)
+				UiStyle.draw_button(self, pqr.grow(1), false, false)
+				if pic:
+					draw_texture_rect(pic, pqr, false)
+				var pf: float = ps[i].hp / maxf(ps[i].max_hp, 1.0)
+				draw_rect(Rect2(pqr.position.x, pqr.end.y + 1, pqr.size.x * pf, 3), Color(0.3, 0.9, 0.3) if pf > 0.5 else Color(0.95, 0.4, 0.2))
 		if e is Building and e.team == game.human and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
@@ -1041,6 +1129,13 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
 		"ROOT": "Root (2.5 s): she digs in, lobs big spit blobs that splash an area, and spreads swamp. She can't move until she uproots.",
 		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",
+		"LOAD": "Load the balloon: then tap Musketeers, Pikemen or Labourers (or right-click the balloon with them selected). They walk under it and climb in, 4 at most; it must hover over ground they can reach. Carried Musketeers shoot from the basket.",
+		"UNLOAD": "Unload: tap where to drop them. The balloon flies there and lets everyone off on the nearest open ground (over a cliff edge too). Tap the balloon, or DROP HERE, to let them off where it is.",
+		"DROP HERE": "Let everyone off right below the balloon.",
+		"COURIER": "Courier (automatic, glowing = on): idle Ornithopters fetch a charged battery from an energy building and wind up constructs that ran down (shut-down ones first). Click to switch on or off.",
+		"OVERLOAD": "Overload: tap one of your constructs. The Ornithopter dumps its battery into it: +50% damage, +30% speed and faster attacks for 12 s, then it's left with 25% charge.",
+		"LAND": "Land (1.2 s): fight on the ground with a bite. Landed it walks, can't cross cliffs and anything can hit it; it can't attack flyers.",
+		"TAKE OFF": "Take off (1.2 s): fly again and hunt flyers with spines (it can't attack the ground while flying).",
 		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. Can't hit flyers. 3 powder.",
 	}
 	for rk in Defs.RESEARCH:

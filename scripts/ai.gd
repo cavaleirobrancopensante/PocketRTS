@@ -75,6 +75,7 @@ func _physics_process(delta: float) -> void:
 	_produce()
 	if difficulty >= 1 and _crown():
 		_raid()
+		_balloon_drop()
 	_army()
 	if difficulty >= 1:
 		_abilities()
@@ -597,6 +598,18 @@ func _produce() -> void:
 			game.train(c, "missionary")
 
 
+## Units busy with something of their own the army orders must leave alone: a balloon
+## drop, an Ornithopter fetching or delivering a battery, a Bloater out of gas.
+func _on_errand(u: Unit) -> bool:
+	if u.order in ["courier", "overload", "board", "unload"]:
+		return true
+	if u.kind == "bloater" and u.deflate != "":
+		return true
+	if not _drop.is_empty() and (u == _drop.get("b") or (_drop.get("men", []) as Array).has(u)):
+		return true
+	return false
+
+
 func _army_supply(list: Array) -> int:
 	var n := 0
 	for u in list:
@@ -605,7 +618,18 @@ func _army_supply(list: Array) -> int:
 
 
 func _army() -> void:
-	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u))
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u))
+	# Bloaters out of gas float home to fill up again (faster on the swamp)
+	for u in game.army(team):
+		if u.kind == "bloater" and u.deflate == "flat" and u.order != "move":
+			var hall: Array = _halls()
+			if not hall.is_empty() and u.position.distance_to(hall[0].center()) > 220.0:
+				u.cmd_move(hall[0].center() + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
+	# Ornithopters fetch batteries for the constructs that run down
+	if _clock():
+		for u in army:
+			if u.kind == "ornithopter" and not u.courier:
+				u.courier = true
 	# Defend: enemies near our buildings get everyone's attention.
 	var threat := _threat()
 	if threat != Vector2.INF:
@@ -707,7 +731,7 @@ func _swarm_army(army: Array, sup: int) -> void:
 		_swarm_t += 1.0
 		var alive := 0
 		for g in _swarm:
-			g[0] = (g[0] as Array).filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+			g[0] = (g[0] as Array).filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and not _on_errand(u))
 			alive += _army_supply(g[0])
 		if alive < 6:
 			_swarm_phase = ""
@@ -906,6 +930,10 @@ func _enemy_base() -> Vector2:
 ## Bayonets when the powder runs dry; canister when a crowd closes on a cannon.
 func _abilities() -> void:
 	_spells()
+	if _brood():
+		_skywings()
+	if _clock():
+		_overloads()
 	if not _crown():
 		return
 	var powder := _res2()
@@ -971,6 +999,154 @@ func _spells() -> void:
 				u.cmd_cast("miasma", at / hurt)
 
 
+## Brood: Skywings hunt flyers in the air; with no enemy flyers about they land on enemy
+## ground forces and bite, and take off again when flyers show up.
+func _skywings() -> void:
+	for u in game.army(team):
+		if u.kind != "skywing" or u.sky_cd > 0.0 or u.order in ["move", "cast"]:
+			continue
+		var flyers := 0
+		var ground := 0
+		for o in game.units_near(u.position, 380.0):
+			if not game.hostile(o.team, team) or o.dead or o.off_field:
+				continue
+			if o.is_air():
+				flyers += 1
+			elif not o.is_worker() or o.position.distance_to(u.position) < 200.0:
+				ground += 1
+		if u.sky == "air" and flyers == 0 and ground >= 2 and (u.target == null or u.order == "idle"):
+			u.cmd_land()
+			u.sky_cd = 6.0
+		elif u.sky == "ground" and (flyers > 0 or (ground == 0 and u.target == null)):
+			u.cmd_take_off()
+			u.sky_cd = 6.0
+
+
+## Clockwork: an Ornithopter with a battery overloads a Gearknight (or a Steam Walker)
+## that's just getting into a fight.
+func _overloads() -> void:
+	var topters: Array = game.army(team).filter(func(u: Unit) -> bool: return u.kind == "ornithopter" and u.topter_bat != "" and u.order != "overload" and u.work != "winding")
+	if topters.is_empty():
+		return
+	for k in ["gearknight", "steam_walker"]:
+		for c in game.army(team):
+			if c.kind != k or c.overclock_t > 0.0 or c.powered_down() or c.target == null or not is_instance_valid(c.target):
+				continue
+			if c.target.edge_distance(c.position) > 140.0:
+				continue
+			var best: Unit = null
+			var bd := 600.0
+			for t in topters:
+				var dd: float = t.position.distance_to(c.position)
+				if dd < bd:
+					bd = dd
+					best = t
+			if best:
+				best.cmd_overload(c)
+				topters.erase(best)
+				if topters.is_empty():
+					return
+
+
+## Crown: now and then a balloon takes four Musketeers aboard and drops them on the
+## enemy's workers, away from its army; then it floats home.
+var _drop := {}                 # {"b": balloon, "men": [..], "phase": "load"/"fly", "at": spot, "t": seconds}
+var _drop_next := 300.0         # (match clock) the earliest next drop
+
+
+func _balloon_drop() -> void:
+	if _drop.is_empty():
+		if game.clock < _drop_next or _threat() != Vector2.INF:
+			return
+		var balloon: Unit = null
+		for u in game.army(team):
+			if u.kind == "balloon" and u.passengers.is_empty() and u.hp > u.max_hp * 0.6 and u.order in ["idle", "amove", "move"]:
+				balloon = u
+				break
+		if balloon == null or not game._clear_at(balloon.position, 8.0, team):
+			return
+		var men: Array = game.army(team).filter(func(u: Unit) -> bool: return u.kind == "musketeer" and u.order in ["idle", "amove"] \
+			and u.target == null and u.position.distance_to(balloon.position) < 700.0 and not _raiders.has(u))
+		if men.size() < 3:
+			_drop_next = game.clock + 30.0
+			return
+		men.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(balloon.position) < b.position.distance_squared_to(balloon.position))
+		men = men.slice(0, int(Defs.DROPSHIP["capacity"]))
+		var at := _drop_spot()
+		if at == Vector2.INF:
+			_drop_next = game.clock + 60.0
+			return
+		balloon.cmd_stop()
+		game.load_order(men, [balloon])
+		_drop = {"b": balloon, "men": men, "phase": "load", "at": at, "t": 0.0}
+		return
+	var b = _drop["b"]
+	_drop["t"] = float(_drop["t"]) + _think
+	_drop["men"] = (_drop["men"] as Array).filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
+	if not is_instance_valid(b) or b.dead:
+		_end_drop()
+		return
+	match _drop["phase"]:
+		"load":
+			var walking: bool = (_drop["men"] as Array).any(func(u: Unit) -> bool: return u.order == "board")
+			if not walking or float(_drop["t"]) > 30.0:
+				if b.passengers.is_empty():
+					_end_drop()
+					return
+				b.cmd_unload(_drop["at"])
+				_drop["phase"] = "fly"
+				_drop["t"] = 0.0
+		"fly":
+			if b.passengers.is_empty():
+				# they're down: at them, and the balloon goes home
+				for u in _drop["men"]:
+					u.cmd_move(_drop["at"] + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+				if game.mlog:
+					game.mlog.add("%s dropped %d Musketeers from a balloon" % [game.mlog.who(team), (_drop["men"] as Array).size()])
+				var hall: Array = _halls()
+				if not hall.is_empty():
+					b.cmd_move(hall[0].center())
+				_end_drop()
+			elif b.hp < b.max_hp * 0.4 and b.work != "dropping":
+				b.cmd_unload(b.position)        # being shot down: let them off now
+			elif b.order != "unload":
+				b.cmd_unload(_drop["at"])
+
+
+func _end_drop() -> void:
+	for u in _drop.get("men", []):
+		if is_instance_valid(u) and not u.dead and u.order == "board":
+			u.cmd_stop()
+	_drop = {}
+	_drop_next = game.clock + randf_range(150.0, 240.0)
+
+
+## Where to drop: next to the enemy's workers or economy, the farther from its army the better.
+func _drop_spot() -> Vector2:
+	var foe := _foe()
+	if foe < 0:
+		return Vector2.INF
+	var foes_army: Array = game.army(foe)
+	var best := Vector2.INF
+	var score := -INF
+	for b in game.buildings:
+		if b.team != foe or b.dead or not (Defs.is_econ(b.kind) or b.kind == game.faction_hall(foe)):
+			continue
+		var guard := 0
+		for o in foes_army:
+			if o.position.distance_to(b.center()) < 350.0:
+				guard += int(o.d["supply"])
+		var s: float = -float(guard) * 10.0 + (30.0 if Defs.is_econ(b.kind) else 0.0) - b.center().distance_to(game.center_of_team(team)) * 0.01
+		if s > score:
+			score = s
+			best = b.center()
+	if best == Vector2.INF:
+		return Vector2.INF
+	# beside it, on the side away from the enemy's base centre
+	var away: Vector2 = (best - game.center_of_team(foe)).normalized()
+	return best + (away if away != Vector2.ZERO else Vector2.RIGHT) * 70.0
+
+
 # ------------------------------------------------------------------ micro (Hard and Brutal)
 
 var _kite := {}       # unit -> seconds until it turns back to the fight
@@ -1014,7 +1190,7 @@ func _micro() -> void:
 		if not is_instance_valid(k) or k.dead or k.hp > k.max_hp * 0.85:
 			_mending.erase(k)
 	for u in army:
-		if u.deploys() or u.d.get("medic", false) or _mending.has(u):
+		if u.deploys() or u.d.get("medic", false) or _mending.has(u) or _on_errand(u):
 			continue
 		if brutal and u.hp < u.max_hp * 0.25 and int(u.d["supply"]) >= 2 and u.target:
 			_mending[u] = true

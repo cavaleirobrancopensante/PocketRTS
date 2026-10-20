@@ -266,7 +266,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_line_btn = "left"
 				_line_add(e.position)
 				return
-			"rally", "rally_army", "rally_worker", "cast":
+			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload":
 				_tap(e.position, false)
 				return
 		_lmb_down = true
@@ -464,6 +464,32 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			cancel_mode()
 			Sfx.play_any(["ui/click", "click"])
 			return
+		"load":
+			# pick men to climb into the selected balloons (it stays on until they're full)
+			var balloons := units.filter(func(u: Unit) -> bool: return u.kind == "balloon")
+			var e := game.entity_at(p, false)
+			if e is Unit and e.team == game.human and balloons.any(func(b: Unit) -> bool: return (e as Unit).can_board(b)):
+				game.load_order([e], balloons)
+				Sfx.play_any(["ui/click", "click"])
+				if balloons.all(func(b: Unit) -> bool: return b.room() <= 0):
+					cancel_mode()
+			else:
+				if e is Unit and e.team == game.human:
+					game.notify("Only Musketeers, Pikemen and Labourers fit in the basket.")
+				cancel_mode()
+			return
+		"unload":
+			# tapping the balloon itself (or right under it) lets them off where it is
+			var here := units.any(func(u: Unit) -> bool: return u.kind == "balloon" and u.position.distance_to(p) < 40.0)
+			game.unload_order(units, p, here)
+			cancel_mode()
+			Sfx.play_any(["ui/click", "click"])
+			return
+		"overload":
+			game.overload_order(units, game.entity_at(p, false))
+			cancel_mode()
+			Sfx.play_any(["ui/click", "click"])
+			return
 		"rally", "rally_army", "rally_worker":
 			for sb in game.selected_buildings():
 				game.set_rally(sb, p, {"rally": "auto", "rally_army": "army", "rally_worker": "worker"}[mode])
@@ -507,7 +533,7 @@ func _select_type_on_screen(kind: String, add := false) -> void:
 	var xf := game.get_viewport().get_canvas_transform()
 	var list: Array = []
 	for u in game.units:
-		if u.team == game.human and u.kind == kind and not u.dead and view.has_point(xf * u.position):
+		if u.team == game.human and u.kind == kind and not u.dead and not u.off_field and view.has_point(xf * u.position):
 			list.append(u)
 	if add:
 		for x in game.selection:
@@ -522,7 +548,7 @@ func _finish_box(add := false) -> void:
 	var xf := game.get_viewport().get_canvas_transform()
 	var list: Array = []
 	for u in game.units:
-		if u.team == game.human and not u.dead and r.has_point(xf * (u.position + Vector2(0, -10))):
+		if u.team == game.human and not u.dead and not u.off_field and r.has_point(xf * (u.position + Vector2(0, -10))):
 			list.append(u)
 	# Army in the box? Leave the labourers out.
 	if list.any(func(u: Unit) -> bool: return not u.is_worker()):
