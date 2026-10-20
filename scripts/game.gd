@@ -55,6 +55,9 @@ var _swamp_t := 0.0
 var _notify_t := 0
 var difficulty := 1
 var demo := false                        # AI controls both sides
+var edit_mode := false                   # the map editor: just the ground, no players
+var sandbox := false                     # the sandbox: spawn anything, any player
+var reveal := false                      # sandbox: no fog of war
 var rng := RandomNumberGenerator.new()
 
 var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building/mine
@@ -177,6 +180,11 @@ func _ready() -> void:
 	_generate_map()
 	_setup_astar()
 	_render_ground()
+	if edit_mode:
+		fog_sprite.visible = false
+		camera.position = Vector2(W, H) * T * 0.5
+		camera.zoom = Vector2(0.6, 0.6)
+		return
 	_start_positions()
 	_init_fog()
 	var me: Building = _own_hall(human)
@@ -305,6 +313,9 @@ func _setup_astar() -> void:
 			if solid[y * W + x] != 0:
 				astar.set_point_solid(Vector2i(x, y), true)
 	# Trees and rocks as sprites
+	for sp in _terrain_sprites:
+		sp.queue_free()
+	_terrain_sprites.clear()
 	for i in _terrain_kind:
 		var c := Vector2i(i % W, i / W)
 		var s := Sprite2D.new()
@@ -320,6 +331,21 @@ func _setup_astar() -> void:
 		if kind == "rock":
 			s.scale = Vector2(0.7, 0.7)
 		world.add_child(s)
+		_terrain_sprites.append(s)
+
+
+var _terrain_sprites: Array = []
+
+
+## Map editor: redo cliffs, pathing and the ground picture after painting.
+func rebuild_map(cells: String) -> void:
+	mapgen.read_cells(cells)
+	mapgen._cliffs()
+	height = mapgen.height
+	ramp = mapgen.ramp
+	astar = AStarGrid2D.new()
+	_setup_astar()
+	_render_ground()
 
 
 var _tile_cache := {}
@@ -1556,11 +1582,14 @@ func _update_vis() -> void:
 	for i in W * H:
 		if hv[i] == 1:
 			explored[i] = 1
-	if demo:
+	if demo or reveal:
 		fog_sprite.visible = false
 		for u in units:
 			u.visible = not u.off_field
+		for b in buildings:
+			b.visible = true
 		return
+	fog_sprite.visible = true
 	for y in H:
 		for x in W:
 			var i := y * W + x
@@ -1605,7 +1634,7 @@ func is_visible_to(t: int, p: Vector2) -> bool:
 # ------------------------------------------------------------------ main loop
 
 func _physics_process(delta: float) -> void:
-	if over:
+	if over or edit_mode:
 		return
 	clock += delta
 	alert_t = maxf(alert_t - delta, 0.0)

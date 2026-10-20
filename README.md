@@ -42,6 +42,12 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Assembly Works**: **Gearknights**, **Bolt Automatons** (pierce up to 3), **Steam Walkers** and **Tesla Carts**. A Tesla Cart rolls when packed; deploying or packing takes 3 s. Deployed, it powers constructs around it and fires chain lightning that can hit flyers.
 - Army cap 80.
 
+### Editor: sandbox and map editor
+**EDITOR** on the main menu has two tools:
+
+- **Sandbox**: set up any match in the usual lobby, then use the SANDBOX panel in the match. You can spawn any unit or building of any faction for any player, delete things, add resources, lift the fog, switch AIs off, speed up time (x2, x4), or take **control** of another player.
+- **Map editor**: paint ground, high ground, ramps, water, fords, trees and rocks with brush sizes 1-5, and place start spots (2-4) and extra hall spots. Mirroring (2-way or 4-way) keeps maps fair. Pick the land and an optional second biome to mix. Maps are saved on the device and show up in the Skirmish map list; PLAY takes you straight there.
+
 ### Maps
 Nine maps, chosen in Skirmish (or at random). Every map is mirrored, so both sides get the same ground. With three or four players it is mirrored both ways and everyone starts in a corner, with allies on the same side. There are three layouts:
 

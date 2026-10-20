@@ -153,7 +153,7 @@ func show_menu() -> void:
 	play.custom_minimum_size = Vector2(360, 68)
 	play.add_theme_font_size_override("font_size", 30)
 	left.add_child(play)
-	for it in [["HOW TO PLAY", func() -> void: show_help()], ["SETTINGS", func() -> void: show_settings()]]:
+	for it in [["EDITOR", func() -> void: show_editor_menu()], ["HOW TO PLAY", func() -> void: show_help()], ["SETTINGS", func() -> void: show_settings()]]:
 		var b := _button(it[0], it[1])
 		b.custom_minimum_size = Vector2(360, 54)
 		left.add_child(b)
@@ -193,6 +193,65 @@ func _faction_card(f: String) -> Control:
 	tag.custom_minimum_size.x = 140
 	v.add_child(tag)
 	return p
+
+
+## Sandbox (a match where you can spawn anything) or the map editor.
+func show_editor_menu() -> void:
+	var root := _page()
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(c)
+	var p := PanelContainer.new()
+	p.custom_minimum_size.x = 620
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	p.add_child(v)
+	v.add_child(UiStyle.heading("EDITOR", 40, UiStyle.TRIM))
+	for it in [["SANDBOX", "Set up any match, then spawn any unit or building for any player, hand out resources, lift the fog, take control of any side, switch AIs off and speed up time.", func() -> void:
+				sandbox_lobby = true
+				show_skirmish()],
+			["MAP EDITOR", "Paint ground, high ground, ramps, water, fords, trees and rocks; place start and hall spots; mirror it for fairness; save and play your maps in Skirmish.", func() -> void: show_map_editor()]]:
+		var b := _button(it[0], it[2])
+		b.custom_minimum_size.y = 64
+		b.add_theme_font_override("font", UiStyle.title_font())
+		b.add_theme_font_size_override("font_size", 26)
+		v.add_child(b)
+		var l := UiStyle.text(it[1], 16, UiStyle.MUTED)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(l)
+	var back := _button("BACK", func() -> void: show_menu())
+	v.add_child(back)
+
+
+var sandbox_lobby := false
+var _editor: MapEditor
+
+
+func show_map_editor(name := "") -> void:
+	_clear_ui()
+	if game:
+		game.queue_free()
+	game = Game.new()
+	game.edit_mode = true
+	game.map_id = ("custom:" + name) if name != "" else "blank"
+	game.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(game)
+	_editor = MapEditor.new()
+	_editor.game = game
+	ui_layer.add_child(_editor)
+	_editor.load_from(MapGen.load_custom(name) if name != "" else {})
+	_editor.back_requested.connect(func() -> void:
+		game.queue_free()
+		game = null
+		show_editor_menu())
+	_editor.play_requested.connect(func(id: String, n: int) -> void:
+		game.queue_free()
+		game = null
+		lobby["map"] = id
+		while lobby["slots"].size() > n:
+			lobby["slots"].pop_back()
+		show_skirmish())
 
 
 func show_settings() -> void:
@@ -401,7 +460,7 @@ func show_skirmish() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 8)
 	v.add_child(top)
-	var t := UiStyle.heading("SKIRMISH", 38, UiStyle.TRIM)
+	var t := UiStyle.heading("SANDBOX" if sandbox_lobby else "SKIRMISH", 38, UiStyle.TRIM)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
@@ -467,6 +526,10 @@ func show_skirmish() -> void:
 	mp.add_child(mv)
 	mv.add_child(UiStyle.text("MAP", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_CENTER, true))
 	var ids: Array = ["random"] + MapGen.MAPS.keys()
+	for n in MapGen.custom_names():
+		ids.append("custom:" + n)
+	if not ids.has(lobby["map"]):
+		lobby["map"] = "random"
 	var mrow := HBoxContainer.new()
 	mrow.add_theme_constant_override("separation", 6)
 	mv.add_child(mrow)
@@ -476,7 +539,7 @@ func show_skirmish() -> void:
 	prev.custom_minimum_size = Vector2(46, 46)
 	mrow.add_child(prev)
 	var mid: String = lobby["map"]
-	var mname := "RANDOM MAP" if mid == "random" else String(MapGen.MAPS[mid][0]).to_upper()
+	var mname := "RANDOM MAP" if mid == "random" else (mid.substr(7).to_upper() if mid.begins_with("custom:") else String(MapGen.MAPS[mid][0]).to_upper())
 	var ml := UiStyle.heading(mname, 22, UiStyle.TEXT)
 	ml.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mrow.add_child(ml)
@@ -492,7 +555,9 @@ func show_skirmish() -> void:
 	prv.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mv.add_child(prv)
 	var desc := "Any map, picked when the match starts."
-	if mid != "random":
+	if mid.begins_with("custom:"):
+		desc = "Your map, %d start spots." % (MapGen.load_custom(mid.substr(7)).get("starts", []) as Array).size()
+	elif mid != "random":
 		desc = {"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
 			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]]
 		desc += "  " + String(MapGen.MAPS[mid][2]).replace("+", " & ").capitalize() + "."
@@ -506,7 +571,11 @@ func show_skirmish() -> void:
 	v.add_child(row)
 	var back := _button("BACK", func() -> void:
 		_save_lobby()
-		show_menu())
+		if sandbox_lobby:
+			sandbox_lobby = false
+			show_editor_menu()
+		else:
+			show_menu())
 	back.custom_minimum_size = Vector2(200, 60)
 	row.add_child(back)
 	var problem := _lobby_problem()
@@ -514,7 +583,9 @@ func show_skirmish() -> void:
 	var go := _button("WATCH" if watch else "START", func() -> void:
 		_save_lobby()
 		Sfx.play_any(["ui/start_match"])
-		start(lobby.duplicate(true)))
+		var cfg := lobby.duplicate(true)
+		cfg["sandbox"] = sandbox_lobby
+		start(cfg))
 	go.custom_minimum_size = Vector2(300, 60)
 	go.add_theme_font_size_override("font_size", 28)
 	UiStyle.primary(go)
@@ -680,6 +751,11 @@ func _current_preset() -> String:
 
 
 func _lobby_problem() -> String:
+	var mid: String = lobby["map"]
+	if mid.begins_with("custom:"):
+		var n := (MapGen.load_custom(mid.substr(7)).get("starts", []) as Array).size()
+		if lobby["slots"].size() > n:
+			return "This map has %d start spots." % n
 	var distinct := {}
 	for s in lobby["slots"]:
 		distinct[int(s["side"])] = true
@@ -817,6 +893,9 @@ class MapPreview extends Control:
 			r = Rect2(r.position + Vector2(0, (r.size.y - hh) * 0.5), Vector2(r.size.x, hh))
 		var sb := UiStyle.box(Color(0, 0, 0, 0.5), UiStyle.TRIM_DIM, 2, 8, 0.0)
 		sb.draw(get_canvas_item(), r.grow(4))
+		if map_id.begins_with("custom:"):
+			_custom(r)
+			return
 		if map_id == "random" or not MapGen.MAPS.has(map_id):
 			draw_rect(r, Color(0.2, 0.18, 0.14))
 			var f := ThemeDB.fallback_font
@@ -850,6 +929,24 @@ class MapPreview extends Control:
 				else:
 					draw_line(r.position + Vector2(r.size.x, 0), r.position + Vector2(0, r.size.y), water, 7.0)
 		_starts(r)
+
+	func _custom(r: Rect2) -> void:
+		var d := MapGen.load_custom(map_id.substr(7))
+		var cells: String = d.get("cells", "")
+		var parts: PackedStringArray = String(d.get("biome", "grass")).split("+")
+		var low := _biome_col(parts[0])
+		var cols := {".": low, "h": low.lightened(0.25), "r": low.lightened(0.12), "w": Color(0.15, 0.4, 0.7),
+			"f": Color(0.4, 0.6, 0.75), "t": low.darkened(0.45), "T": low.darkened(0.3), "k": Color(0.5, 0.5, 0.5), "K": Color(0.6, 0.6, 0.6)}
+		var k := r.size / Vector2(Game.W, Game.H)
+		draw_rect(r, low)
+		for i in mini(cells.length(), Game.W * Game.H):
+			if cells[i] != ".":
+				draw_rect(Rect2(r.position + Vector2(i % Game.W, i / Game.W) * k, k + Vector2(0.5, 0.5)), cols.get(cells[i], low))
+		var st: Array = d.get("starts", [])
+		for i in mini(st.size(), slots.size()):
+			var p: Vector2 = r.position + (Vector2(st[i][0], st[i][1]) + Vector2(2.5, 2)) * k
+			draw_circle(p, 9.0, Color(0, 0, 0, 0.6))
+			draw_circle(p, 7.0, Defs.PALETTE[int(slots[i]["colour"])][1])
 
 	func _starts(r: Rect2) -> void:
 		var k := r.size / Vector2(Game.W, Game.H)
@@ -1001,6 +1098,7 @@ func start(cfg: Dictionary = {}) -> void:
 	game.sides = sides
 	game.income_mult = mult
 	game.map_id = cfg.get("map", "random")
+	game.sandbox = cfg.get("sandbox", false)
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(game)
 	sfx.camera = game.camera
@@ -1025,6 +1123,10 @@ func start(cfg: Dictionary = {}) -> void:
 	game.hud = hud
 	ui_layer.add_child(hud)
 	hud.quit_requested.connect(func() -> void: _to_menu())
+	if game.sandbox:
+		var sbx := SandboxPanel.new()
+		sbx.game = game
+		ui_layer.add_child(sbx)
 	game.ended.connect(_on_end)
 	var foes: Array = []
 	for t in game.n_players():
@@ -1035,6 +1137,7 @@ func start(cfg: Dictionary = {}) -> void:
 
 func _to_menu() -> void:
 	get_tree().paused = false
+	Engine.time_scale = 1.0
 	if game:
 		game.queue_free()
 		game = null

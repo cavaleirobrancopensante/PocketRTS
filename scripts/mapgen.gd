@@ -58,6 +58,22 @@ func _init(game: Game) -> void:
 
 ## Fills the game's grids. Returns [layout, biome].
 func generate(map_id: String) -> Array:
+	if map_id == "blank":
+		g.map_name = "New map"
+		biome_a = "grass"
+		biome_b = "grass"
+		read_cells("")
+		g.height = height
+		g.ramp = ramp
+		g.starts = []
+		g.expansions = []
+		return ["custom", "grass"]
+	if map_id.begins_with("custom:"):
+		var data := load_custom(map_id.substr(7))
+		if not data.is_empty():
+			apply_custom(data)
+			return ["custom", data.get("biome", "grass")]
+		map_id = "random"
 	if not MAPS.has(map_id):
 		map_id = MAPS.keys()[rng.randi() % MAPS.size()]
 	var m: Array = MAPS[map_id]
@@ -99,6 +115,104 @@ func generate(map_id: String) -> Array:
 	g.height = height
 	g.ramp = ramp
 	return [m[1], m[2]]
+
+
+# ------------------------------------------------------------------ custom maps (map editor)
+
+## One letter per cell: . low, h high, r ramp, w water, f ford, t/T tree (low/high), k/K rock.
+const CELL_CODES := ".hrwftTkK"
+const MAP_DIR := "user://maps"
+
+
+static func custom_names() -> Array:
+	var out: Array = []
+	var d := DirAccess.open(MAP_DIR)
+	if d == null:
+		return out
+	for f in d.get_files():
+		if f.ends_with(".json"):
+			out.append(f.trim_suffix(".json"))
+	out.sort()
+	return out
+
+
+static func load_custom(name: String) -> Dictionary:
+	var f := FileAccess.open("%s/%s.json" % [MAP_DIR, name], FileAccess.READ)
+	if f == null:
+		return {}
+	var d: Variant = JSON.parse_string(f.get_as_text())
+	return d if d is Dictionary else {}
+
+
+static func save_custom(data: Dictionary) -> bool:
+	DirAccess.make_dir_recursive_absolute(MAP_DIR)
+	var f := FileAccess.open("%s/%s.json" % [MAP_DIR, data["name"]], FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_string(JSON.stringify(data))
+	return true
+
+
+static func delete_custom(name: String) -> void:
+	DirAccess.remove_absolute("%s/%s.json" % [MAP_DIR, name])
+
+
+## Read the grids of a custom map into the game. Starts are used in order; each player's
+## expansion is the free hall spot nearest their start.
+func apply_custom(data: Dictionary) -> void:
+	g.map_name = String(data.get("name", "Custom"))
+	var parts: PackedStringArray = String(data.get("biome", "grass")).split("+")
+	biome_a = parts[0]
+	biome_b = parts[1] if parts.size() > 1 else parts[0]
+	read_cells(String(data.get("cells", "")))
+	_cliffs()
+	g.height = height
+	g.ramp = ramp
+	var st: Array = data.get("starts", [])
+	var halls: Array = data.get("halls", [])
+	g.starts = []
+	g.expansions = []
+	for t in g.n_players():
+		var s: Array = st[t % maxi(st.size(), 1)] if not st.is_empty() else [6, 6]
+		g.starts.append(Vector2i(int(s[0]), int(s[1])))
+	for t in g.n_players():
+		var best: Vector2i = g.starts[t]
+		var bd := INF
+		for hspot in halls:
+			var c := Vector2i(int(hspot[0]), int(hspot[1]))
+			var dd: float = Vector2(c).distance_to(Vector2(g.starts[t]))
+			if dd < bd:
+				bd = dd
+				best = c
+		g.expansions.append(best)
+
+
+func read_cells(cells: String) -> void:
+	height.resize(W * H)
+	ramp.resize(W * H)
+	ford.resize(W * H)
+	height.fill(0)
+	ramp.fill(0)
+	ford.fill(0)
+	g.solid.fill(0)
+	g.water.fill(0)
+	g.cliff.fill(0)
+	g._terrain_kind.clear()
+	for i in mini(cells.length(), W * H):
+		match cells[i]:
+			"h":
+				height[i] = 1
+			"r":
+				ramp[i] = 1
+			"w":
+				g.water[i] = 1
+				g.solid[i] = 1
+			"f":
+				ford[i] = 1
+			"t", "T", "k", "K":
+				height[i] = 1 if cells[i] in ["T", "K"] else 0
+				g.solid[i] = 1
+				g._terrain_kind[i] = "tree" if cells[i] in ["t", "T"] else "rock"
 
 
 func biome_at(x: int, y: int) -> String:

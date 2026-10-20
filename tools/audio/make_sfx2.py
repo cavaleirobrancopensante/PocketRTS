@@ -31,6 +31,12 @@ def sfx(path, n=1, peak=-1.0, kind="wav"):
 PV = [1.0, 0.92, 1.08, 0.96]   # per-variant pitch factor
 
 
+def drive(x, k):
+    """Soft saturation for punch (normalise, tanh, renormalise)."""
+    x = x / (np.max(np.abs(x)) + 1e-9)
+    return np.tanh(k * x) / np.tanh(k)
+
+
 # =================================================================== shared building blocks
 
 def gunshot(rng, v, size=1.0, d=1.1):
@@ -57,7 +63,7 @@ def gunshot(rng, v, size=1.0, d=1.1):
     out = place(out, puff, t0 + 0.04)
     # outdoor slap-back echo from a tree line
     out = echo(out, 0.17 + 0.04 * v, 0.22, n=2, lowpass=1500)
-    return out
+    return drive(out, 3.0)
 
 
 def explosion(rng, v, size=1.0, d=1.4, debris=1.0):
@@ -79,7 +85,7 @@ def explosion(rng, v, size=1.0, d=1.4, debris=1.0):
     for _ in range(int(6 * debris)):
         tt = rng.uniform(0.08, d * 0.7)
         out = place(out, wood_hit(rng, rng.uniform(500, 1600), 0.08, 60) * rng.uniform(0.05, 0.18) * debris, tt)
-    return fit(out, d)
+    return drive(fit(out, d), 2.5)
 
 
 def creature(rng, d, f0, f1, fm=(700, 1200, 2600), q=6, rough=0.3, breath=0.3, jitter=0.03,
@@ -128,7 +134,7 @@ def chitter(rng, d, rate=28, f=3200, voices=1):
         ff = f * rng.uniform(0.75, 1.3)
         while t < d:
             c = modal([ff * rng.uniform(0.9, 1.1), ff * 1.7], [1, 0.4], [400, 600], 0.015, rng)
-            c += hp(noise(rng, 0.004), 2500) * np.exp(-T(0.004) * 900) * 0.6
+            c = mix(c, hp(noise(rng, 0.004), 2500) * np.exp(-T(0.004) * 900) * 0.6)
             out = place(out, c * rng.uniform(0.4, 1.0), t)
             t += rng.exponential(1 / r) * 0.6 + 0.4 / r
     return out
@@ -161,7 +167,8 @@ def tesla_zap(rng, d, p=1.0, buzz=1.0):
     bz = bl_saw(np.full(N(d), 120 * p) * (1 + 0.02 * smooth_rand(rng, d, 30, -1, 1)))
     bz = bp(bz, 200, 5000) * a * gate * 0.5 * buzz
     hiss = hp(noise(rng, d), 4000) * a * gate * 0.3
-    return cr + bz + hiss
+    arc = bp(noise(rng, d), 1500, 7000) * a * gate * 0.6
+    return drive(cr + bz * 1.6 + hiss + arc, 2.0)
 
 
 def spring_boing(rng, d=0.4, f0=180, p=1.0):
@@ -265,7 +272,7 @@ def ui_hover(rng, v):
 def ui_back(rng, v):
     slide = bp(noise(rng, 0.1), 300, 1500) * adsr(0.1, 0.03, 0.03, 0.6, 0.04) * 0.25
     hit = wood_hit(rng, 430, 0.12, 40)
-    return place(slide, hit, 0.06)
+    return place(slide, hit, 0.022)
 
 
 @sfx("ui/open_panel", peak=-6)
@@ -339,7 +346,7 @@ def ui_group_set(rng, v):
 
 @sfx("ui/minimap_ping", peak=-6)
 def ui_minimap_ping(rng, v):
-    return fm_bell(1760, 0.45, ratio=3.5, index=1.5, decay=9) + 0.3 * fm_bell(3520, 0.3, 2.0, 0.5, 14)
+    return mix(fm_bell(1760, 0.45, ratio=3.5, index=1.5, decay=9), 0.3 * fm_bell(3520, 0.3, 2.0, 0.5, 14))
 
 
 # =================================================================== B. faction interface — Crown
@@ -355,15 +362,14 @@ def crown_placed(rng, v):
     out = np.zeros(1)
     for i, tt in enumerate([0, 0.16]):
         h = wood_hit(rng, 310 * (1 + 0.05 * i), 0.2, 30)
-        h += metal_hit(rng, 1650, 0.08, decay=60, bright=0.5) * 0.25
-        h += lp(noise(rng, 0.06), 400) * expenv(0.06, 50) * 0.8
+        h = mix(h, metal_hit(rng, 1650, 0.08, decay=60, bright=0.5) * 0.25, lp(noise(rng, 0.06), 400) * expenv(0.06, 50) * 0.8)
         out = place(out, h * (0.75 + 0.25 * i), tt)
     return out
 
 
 @sfx("crown/built")
 def crown_built(rng, v):
-    out = snare_roll(rng, 0.5, 26, 0.35)
+    out = snare_roll(rng, 0.5, 26, 0.6, cresc=False)
     notes = [(0.42, hz("C4"), 0.16), (0.58, hz("E4"), 0.16), (0.74, hz("G4"), 0.16), (0.9, hz("C5"), 0.8)]
     br = brass_seq(rng, notes, voices=3, bright=1.2)
     br = place(br, brass_seq(rng, [(0.9, hz("E4"), 0.8), (0.9, hz("G3"), 0.8)], voices=1) * 0.5, 0)
@@ -438,7 +444,7 @@ def crown_select_building(rng, v):
     x = np.zeros(N(d) + 100)
     for tt in times:
         x[int(tt * SR)] = rng.uniform(0.5, 1)
-    y = formants(x, [(650, 1.0), (1450, 0.7), (2600, 0.4)], 15)
+    y = lp(formants(x, [(650, 1.0), (1450, 0.7), (2600, 0.4)], 15), 4000, 4)
     y *= adsr(len(y) / SR, 0.06, 0.1, 0.8, 0.12)
     return y
 
@@ -628,13 +634,13 @@ def musketeer_attack(rng, v):
 def pikeman_attack(rng, v):
     p = PV[v]
     d = 0.5
-    w = whoosh(rng, 0.22, 400 * p, 1800 * p, 2.0, 0.6) * 0.7
+    w = whoosh(rng, 0.16, 700 * p, 1800 * p, 2.0, 0.25) * 0.7
     t = T(0.3)
     scr = svf_bp(noise(rng, 0.3), 2500 * p + 1500 * np.sin(np.pi * t / 0.3), 12) * expenv(0.3, 9, 0.01)
     scr *= 1 + 0.5 * (rng.random(N(0.3)) > 0.9)
     ring = metal_hit(rng, 1900 * p, 0.35, decay=12, bright=0.6)
-    out = place(w, scr * 0.5, 0.12)
-    out = place(out, ring * 0.45, 0.14)
+    out = place(w, scr * 0.5, 0.05)
+    out = place(out, ring * 0.45, 0.06)
     return fit(out, d)
 
 
@@ -642,8 +648,8 @@ def pikeman_attack(rng, v):
 def cannon_attack(rng, v):
     d = 1.45
     x = gunshot(rng, v, size=2.4, d=d)
-    car = wood_hit(rng, 140, 0.25, 15) * 0.4 + lp(noise(rng, 0.2), 500) * expenv(0.2, 18) * 0.3
-    creak = formants(np.where(rng.random(N(0.25)) > 0.993, 1.0, 0.0), [(700, 1), (1600, .5)], 20) * 0.6
+    car = mix(wood_hit(rng, 140, 0.25, 15) * 0.4, lp(noise(rng, 0.2), 500) * expenv(0.2, 18) * 0.3)
+    creak = lp(formants(np.where(rng.random(N(0.25)) > 0.993, 1.0, 0.0), [(700, 1), (1600, .5)], 20), 2500, 4) * 0.6
     x = place(x, car, 0.22 + 0.03 * v)
     x = place(x, creak, 0.28)
     return fit(x, d)
@@ -701,9 +707,9 @@ def missionary_heal(rng, v):
 def raptor_attack(rng, v):
     p = PV[v]
     sl = whoosh(rng, 0.12, 2000 * p, 7000 * p, 1.5, 0.3)
-    sl += hp(noise(rng, 0.1), 3000) * expenv(0.1, 30) * 0.3
+    sl = mix(sl, hp(noise(rng, 0.1), 3000) * expenv(0.1, 30) * 0.3)
     snap = modal([1300 * p, 2900 * p, 4700 * p], [1, .6, .4], [120, 160, 220], 0.06, rng)
-    snap += hp(noise(rng, 0.008), 1500) * expenv(0.008, 500)
+    snap = mix(snap, hp(noise(rng, 0.008), 1500) * expenv(0.008, 500))
     hiss = screech(rng, 0.15, 3000 * p, 2400 * p, 0.8) * 0.25
     out = place(sl, snap * 0.9, 0.09 + 0.02 * v)
     return place(out, hiss, 0.0)
@@ -737,7 +743,7 @@ def brute_attack(rng, v):
     p = PV[v]
     d = 1.3
     slam = np.sin(phase(expglide(70 * p, 35, 0.6))) * expenv(0.6, 7, 0.002) * 1.4
-    slam += lp(noise(rng, 0.25), 700) * expenv(0.25, 16) * 0.9
+    slam = mix(slam, lp(noise(rng, 0.25), 700) * expenv(0.25, 16) * 0.9)
     dirt = grains(rng, 0.4, 250, (0.004, 0.015), 300, 2500) * 0.25
     r = roar(rng, 0.9, 0.85 * p, 0.8)
     out = place(r, slam, 0.12)
@@ -788,7 +794,7 @@ def bolt_attack(rng, v):
     out = ratchet(rng, 0.2 + 0.03 * v, 24 + 4 * v, 2300 * p, 320) * 0.5
     tw = karplus(rng, 105 * p, 0.6, 0.994, 0.8)
     tw *= expenv(0.6, 5)
-    thunk = lp(noise(rng, 0.05), 600) * expenv(0.05, 60) + metal_hit(rng, 600, 0.1, decay=30) * 0.4
+    thunk = mix(lp(noise(rng, 0.05), 600) * expenv(0.05, 60), metal_hit(rng, 600, 0.1, decay=30) * 0.4)
     t0 = 0.26 + 0.03 * v
     out = place(out, thunk, t0)
     out = place(out, tw * 0.9, t0)
@@ -799,7 +805,7 @@ def bolt_attack(rng, v):
 @sfx("combat/steam_walker_attack", 2)
 def steam_walker_attack(rng, v):
     p = PV[v]
-    stomp = np.sin(phase(expglide(80 * p, 40, 0.4))) * expenv(0.4, 10) + lp(noise(rng, 0.1), 400) * expenv(0.1, 40)
+    stomp = mix(np.sin(phase(expglide(80 * p, 40, 0.4))) * expenv(0.4, 10), lp(noise(rng, 0.1), 400) * expenv(0.1, 40))
     bang = metal_hit(rng, 240 * p, 0.6, decay=8, bright=0.8)
     hiss = steam_hiss(rng, 0.9, 0.01, 3.0)
     out = place(stomp, bang, 0.18)
@@ -815,7 +821,7 @@ def tesla_attack(rng, v):
     crack = hp(noise(rng, 0.015), 1000) * expenv(0.015, 200, 0.0002) * 1.5
     z = tesla_zap(rng, d, p, 1.0)
     thump = np.sin(2 * np.pi * 60 * T(0.15)) * expenv(0.15, 25) * 0.5
-    return place(place(z, crack, 0), thump, 0)
+    return drive(place(place(z, crack, 0), thump, 0), 5.0)
 
 
 @sfx("combat/tesla_deploy")
@@ -884,7 +890,7 @@ def arrow_whoosh(rng, v):
     t = T(d)
     fc = 1200 * 2 ** (-1.3 * (t / d - 0.5))
     x = svf_bp(noise(rng, d), fc * 2, 5)
-    a = np.exp(-((t - 0.2) / 0.08) ** 2)
+    a = np.exp(-((t - 0.12) / 0.07) ** 2)
     tone = np.sin(phase(fc * 1.5)) * a * 0.15
     return x * a + tone
 
@@ -901,7 +907,7 @@ def crown_build(rng, v):
     def gen(d):
         out = np.zeros(N(d))
         for tt in np.arange(0.05, d, 0.42):
-            out = place(out, wood_hit(rng, 260, 0.15, 30) + metal_hit(rng, 2100, 0.06, decay=60) * 0.2, tt + rng.uniform(-0.02, 0.02))
+            out = place(out, mix(wood_hit(rng, 260, 0.15, 30), metal_hit(rng, 2100, 0.06, decay=60) * 0.2), tt + rng.uniform(-0.02, 0.02))
         # saw strokes
         t = T(d)
         stroke = np.clip(np.sin(2 * np.pi * 1.4 * t), 0, 1) ** 0.6
@@ -916,7 +922,7 @@ def farm_harvest(rng, v):
     sw = whoosh(rng, 0.3, 1500, 6000, 1.5, 0.5) * 0.8
     sw += grains(rng, 0.3, 900, (0.002, 0.008), 2000, 7000, env=lambda t: np.sin(np.pi * min(t / 0.3, 1)))[:N(0.3)] * 0.3
     rustle = grains(rng, 0.35, 700, (0.003, 0.02), 800, 5000, env=lambda t: np.exp(-t * 8)) * 0.6
-    thud = wood_hit(rng, 120, 0.25, 18) * 0.6 + lp(noise(rng, 0.1), 600) * expenv(0.1, 30)
+    thud = mix(wood_hit(rng, 120, 0.25, 18) * 0.6, lp(noise(rng, 0.1), 600) * expenv(0.1, 30))
     out = place(sw, rustle, 0.42)
     return place(out, thud, 0.42)
 
@@ -944,7 +950,7 @@ def powder_ready(rng, v):
     out = roll
     for tt in np.arange(0.0, d, 0.11):
         out = place(out, wood_hit(rng, 200, 0.05, 50) * 0.2, tt)
-    out = place(out, wood_hit(rng, 110, 0.35, 15) + lp(noise(rng, 0.08), 400) * expenv(0.08, 40), d)
+    out = place(out, mix(wood_hit(rng, 110, 0.35, 15), lp(noise(rng, 0.08), 400) * expenv(0.08, 40)), d)
     return out
 
 
@@ -964,15 +970,14 @@ def grub_feed(rng, v):
     out = np.zeros(1)
     for i, tt in enumerate(np.arange(0, 0.8, 0.13)):
         ch = lp(noise(rng, 0.07), 2500) * expenv(0.07, 35, 0.004)
-        ch += grains(rng, 0.06, 500, (0.002, 0.008), 1500, 5000)[:N(0.07)] * 0.4
-        ch += bubble(rng, rng.uniform(300, 600), 0.05, 5)[:N(0.07)] * 0.3 if True else 0
+        ch = mix(ch, grains(rng, 0.06, 500, (0.002, 0.008), 1500, 5000) * 0.4, bubble(rng, rng.uniform(300, 600), 0.05, 5) * 0.3)
         out = place(out, ch * rng.uniform(0.6, 1.0), tt + rng.uniform(0, 0.02))
     return out
 
 
 @sfx("work/grub_deliver", peak=-3)
 def grub_deliver(rng, v):
-    x = bubble(rng, 180, 0.2, 3, 22) + splat(rng, 0.25) * 0.6
+    x = mix(bubble(rng, 180, 0.2, 3, 22), splat(rng, 0.25) * 0.6)
     return x
 
 
@@ -985,7 +990,7 @@ def midden_essence(rng, v):
         fm = [(smooth_rand(rng, d, 4, 500, 900), 1.0), (smooth_rand(rng, d, 4, 1200, 2200), 0.7), (2800, 0.4)]
         wh += formants(noise(rng, d), fm, 10) * (smooth_rand(rng, d, 5, 0, 1) ** 2)
     wh *= np.sin(np.pi * t / d) * 0.4
-    bub = fit(grains(rng, d, 10, (0.06, 0.15), 120, 400, src="bubble"), d)
+    bub = fit(place(grains(rng, d, 10, (0.06, 0.15), 120, 400, src="bubble"), bubble(rng, 200, 0.12, 4), 0), d)
     return reverb(wh + bub * 0.8, rng, 0.8, 0.3)
 
 
@@ -1046,7 +1051,7 @@ def pylon_charge(rng, v):
     t = T(d)
     f = 100 * (1 + 0.6 * (t / d) ** 2)
     hum = bl_saw(f) * 0.3 + np.sin(phase(f)) * 0.7
-    hum = lp(hum, 3000) * (t / d) ** 1.2
+    hum = lp(hum, 3000) * (0.2 + 0.8 * (t / d) ** 1.2)
     cr = crackle(rng, d, 300, (t / d) ** 3, lo=1500) * 2
     return hum + cr
 

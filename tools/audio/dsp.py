@@ -68,15 +68,15 @@ def adsr(d, a, dcy, s, r):
 
 
 def smooth_rand(rng, d, rate, lo=0.0, hi=1.0):
-    """Slow random curve (cubic-ish interpolation of random points)."""
+    """Slow random curve: cosine interpolation between random points ~rate per second."""
     n = N(d)
-    k = max(4, int(d * rate) + 4)
+    k = max(2, int(d * rate) + 2)
     pts = rng.uniform(lo, hi, k)
-    xs = np.linspace(0, n, k)
-    c = np.interp(np.arange(n), xs, pts)
-    w = max(3, int(SR / rate / 2))
-    c = np.convolve(np.pad(c, (w, w), mode="edge"), np.ones(w) / w, mode="same")[w:-w]
-    return c[:n]
+    pos = np.arange(n) / max(n, 1) * (k - 1)
+    i = np.minimum(pos.astype(int), k - 2)
+    fr = pos - i
+    w = (1 - np.cos(np.pi * fr)) / 2
+    return pts[i] * (1 - w) + pts[i + 1] * w
 
 
 def phase(freq):
@@ -290,9 +290,9 @@ def glottal(rng, f0curve, jitter=0.01, shimmer=0.1, rough=0.0):
     """Voice-ish source: band-limited saw with jitter, shimmer and optional subharmonic roughness."""
     n = len(f0curve)
     d = n / SR
-    f = f0curve * (1 + jitter * smooth_rand(rng, d, 40, -1, 1))
+    f = f0curve * (1 + jitter * fit(smooth_rand(rng, d, 40, -1, 1), n / SR + 1e-9)[:n])
     src = bl_saw(f)
-    src *= 1 + shimmer * smooth_rand(rng, d, 30, -1, 1)
+    src *= 1 + shimmer * fit(smooth_rand(rng, d, 30, -1, 1), n / SR + 1e-9)[:n]
     if rough:
         ph = phase(f / 2)
         src *= 1 + rough * np.sin(ph)
