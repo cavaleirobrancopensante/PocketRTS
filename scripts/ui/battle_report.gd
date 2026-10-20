@@ -11,7 +11,7 @@ var chart: Chart
 var _tab_buttons: Array = []
 
 const ROWS := [
-	["Gold mined", "gold"],
+	["Income", "gold"],
 	["Gold spent", "spent"],
 	["Units trained", "trained"],
 	["Structures built", "built"],
@@ -54,8 +54,8 @@ func _ready() -> void:
 		title = "VICTORY" if won else "DEFEAT"
 	v.add_child(_label(title, 54, Color(1, 0.9, 0.5) if won or game.demo else Color(1, 0.5, 0.45)))
 	var secs := int(game.clock)
-	v.add_child(_label("%s  vs  %s   ·   %d:%02d   ·   %s" % [_side_name(_left()), _side_name(_right()),
-			secs / 60, secs % 60, ["Easy", "Normal", "Hard"][clampi(game.difficulty, 0, 2)]], 18, Color(1, 1, 1, 0.7)))
+	v.add_child(_label("%s  vs  %s   ·   %s   ·   %d:%02d   ·   %s" % [_side_name(_left()), _side_name(_right()),
+			game.map_name, secs / 60, secs % 60, ["Easy", "Normal", "Hard"][clampi(game.difficulty, 0, 2)]], 18, Color(1, 1, 1, 0.7)))
 
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 24)
@@ -91,7 +91,7 @@ func _ready() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
 	cv.add_child(tabs)
-	for tab in [["ARMY", "army_tl"], ["GOLD", "gold_tl"], ["WORKERS", "workers_tl"]]:
+	for tab in [["ARMY", "army_tl"], ["INCOME", "gold_tl"], ["WORKERS", "workers_tl"]]:
 		var b := Button.new()
 		b.text = tab[0]
 		b.toggle_mode = true

@@ -7,7 +7,7 @@ var game: Game
 var ui_layer: CanvasLayer
 var menu: Control
 var _went_fullscreen := false
-var pick := {"me": "crown", "enemy": "brood", "difficulty": 1, "blue": "you", "c1": 0, "c2": 1}
+var pick := {"me": "crown", "enemy": "brood", "difficulty": 1, "blue": "you", "c1": 0, "c2": 1, "map": "random"}
 
 const HELP := """Destroy every enemy building to win. There are no resources on the map: each faction builds its own economy, and every Town Hall, Hive or Clocktower allows only so many economy structures, so expanding is how you grow.
 
@@ -17,7 +17,8 @@ THE BROOD  Grubs haul food from Feeding Pits to a Hive: the farther the pit from
 
 THE CLOCKWORK  Winders crank Boilers for energy. Split the energy (tap a Boiler or Clocktower) between ORE (Ore Crushers turn it into ore), ASSEMBLY (faster production) and WIND (bigger fields; constructs run down slower). Winders also start buildings and repair. Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Army cap 80.
 
-TOUCH
+MOBILE
+- DRAG: BOX / PAN (top right) switches what a one-finger drag does.
 - Tap a unit to select it; double-tap to select all of that type on screen.
 - Drag on the map to box-select.
 - Tap the ground to move (soldiers fight anything on the way). Tap an enemy to attack, a mine to gather.
@@ -25,7 +26,7 @@ TOUCH
 - Two fingers to pan and pinch to zoom. Tap the minimap to jump.
 - ARMY / IDLE / HALL buttons select quickly. Groups 1-3: hold to save, tap to select.
 
-MOUSE  Left click selects, drag to box, right click commands, wheel zooms, arrows pan."""
+COMPUTER  Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen), left drag box-selects, right click commands (move, attack, work, rally). Mouse wheel zooms; move the mouse to a screen edge, use the arrow keys or drag with the middle button to pan. Every button on the command card has a letter hotkey (shown in its corner; hover for details): B builds, A attack, M move, S stop, H hold, G work. 1-9 select groups, Ctrl+number saves one, Shift+number adds it. F1 idle worker, F2 whole army, F3 hall, Space jumps to the selection, Esc cancels."""
 
 
 func _ready() -> void:
@@ -36,7 +37,137 @@ func _ready() -> void:
 	ui_layer = CanvasLayer.new()
 	ui_layer.layer = 10
 	add_child(ui_layer)
-	show_menu()
+	_make_rotate_overlay()
+	Settings.load_all()
+	if Settings.device == "":
+		show_device()
+	else:
+		show_menu()
+
+
+## First start (or from the menu): computer or phone? They play differently.
+func show_device() -> void:
+	_clear_ui()
+	menu = Control.new()
+	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu.theme = _theme()
+	ui_layer.add_child(menu)
+	var dark := ColorRect.new()
+	dark.color = Color("#121612")
+	dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu.add_child(dark)
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	v.custom_minimum_size = Vector2(560, 0)
+	v.position = Vector2(-280, -190)
+	v.add_theme_constant_override("separation", 16)
+	menu.add_child(v)
+	v.add_child(_label("POCKET RTS", 56))
+	v.add_child(_label("Where are you playing?", 26, Color(1, 1, 1, 0.8)))
+	v.add_child(_gap(8))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	v.add_child(row)
+	for opt in [["pc", "COMPUTER", "Mouse and keyboard: click, drag to select,\nright-click to command, letter hotkeys."],
+			["mobile", "MOBILE", "Touch: tap, drag, pinch to zoom.\nPlay it held sideways."]]:
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 8)
+		var dev: String = opt[0]
+		var b := _button(opt[1], func() -> void:
+			Settings.set_device(dev)
+			show_menu())
+		b.custom_minimum_size = Vector2(0, 110)
+		b.add_theme_font_size_override("font_size", 30)
+		if Settings.device == dev:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color("#447a4c")
+			sb.set_corner_radius_all(8)
+			sb.border_color = Color(1, 0.9, 0.5)
+			sb.set_border_width_all(2)
+			b.add_theme_stylebox_override("normal", sb)
+		col.add_child(b)
+		var l := _label(opt[2], 15, Color(1, 1, 1, 0.55))
+		col.add_child(l)
+		row.add_child(col)
+	v.add_child(_gap(6))
+	v.add_child(_label("You can change this later from the menu.", 14, Color(1, 1, 1, 0.4)))
+
+
+# ------------------------------------------------------------------ rotate your phone
+
+var _rotate: Control
+
+
+func _make_rotate_overlay() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	_rotate = Control.new()
+	_rotate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_rotate.mouse_filter = Control.MOUSE_FILTER_STOP
+	_rotate.visible = false
+	layer.add_child(_rotate)
+	var bg := ColorRect.new()
+	bg.color = Color("#0d110e")
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_rotate.add_child(bg)
+	var icon := RotateIcon.new()
+	icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	icon.position = Vector2(-120, -300)
+	icon.custom_minimum_size = Vector2(240, 240)
+	icon.scale = Vector2(2, 2)
+	icon.position = Vector2(-240, -360)
+	_rotate.add_child(icon)
+	var l := _label("Turn your phone sideways", 72)
+	l.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	l.position = Vector2(-300, 40)
+	l.custom_minimum_size = Vector2(600, 0)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rotate.add_child(l)
+	var l2 := _label("Pocket RTS plays in landscape.", 40, Color(1, 1, 1, 0.6))
+	l2.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	l2.position = Vector2(-300, 250)
+	l2.custom_minimum_size = Vector2(600, 0)
+	_rotate.add_child(l2)
+
+
+var _rotate_paused := false
+
+
+func _process(_delta: float) -> void:
+	if _rotate == null:
+		return
+	var vs := get_viewport().get_visible_rect().size
+	var portrait := Settings.device == "mobile" and vs.y > vs.x * 1.05
+	if portrait != _rotate.visible:
+		_rotate.visible = portrait
+		# hold the match while the phone is upright
+		if game and not game.over:
+			if portrait and not get_tree().paused:
+				get_tree().paused = true
+				_rotate_paused = true
+			elif not portrait and _rotate_paused:
+				get_tree().paused = false
+				_rotate_paused = false
+
+
+## A phone outline with a turning arrow.
+class RotateIcon extends Control:
+	var t := 0.0
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var a := -PI * 0.5 * clampf(fmod(t, 2.2) / 1.2, 0.0, 1.0)
+		draw_set_transform(c, a, Vector2.ONE)
+		draw_rect(Rect2(-24, -42, 48, 84), Color(1, 1, 1), false, 4.0)
+		draw_circle(Vector2(0, 32), 3, Color(1, 1, 1))
+		draw_set_transform(Vector2.ZERO)
+		draw_arc(c, 58, -PI * 0.9, -PI * 0.55, 16, Color(1, 0.85, 0.4), 4.0)
 
 
 func _clear_ui() -> void:
@@ -108,6 +239,10 @@ func show_menu() -> void:
 			refresh.call())
 		audio.add_child(b)
 	v.add_child(audio)
+	var dev_b := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
+	dev_b.custom_minimum_size = Vector2(0, 44)
+	dev_b.add_theme_font_size_override("font_size", 16)
+	v.add_child(dev_b)
 	v.add_child(_gap(6))
 	v.add_child(_label("v" + version, 14, Color(1, 1, 1, 0.35)))
 
@@ -142,6 +277,11 @@ func show_skirmish() -> void:
 	v.add_child(_choice_row("P2 FACTION" if watch else "ENEMY", "enemy", facs))
 	v.add_child(_colour_row("P2 COLOUR" if watch else "ENEMY COLOUR", "c2", "c1"))
 	v.add_child(_choice_row("AI LEVEL" if watch else "DIFFICULTY", "difficulty", [[0, "EASY"], [1, "NORMAL"], [2, "HARD"]]))
+	var maps: Array = [["random", "RANDOM"]]
+	for id in MapGen.MAPS:
+		maps.append([id, MapGen.MAPS[id][0].to_upper()])
+	v.add_child(_choice_row("MAP", "map", maps.slice(0, 5)))
+	v.add_child(_choice_row("", "map", maps.slice(5)))
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(sp)
@@ -288,6 +428,7 @@ func start(difficulty: int, demo: bool, factions: Array = []) -> void:
 	game.demo = demo
 	game.factions = factions.duplicate()
 	game.colours = [pick["c1"], pick["c2"]]
+	game.map_id = pick["map"]
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(game)
 	sfx.camera = game.camera

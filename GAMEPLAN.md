@@ -321,3 +321,27 @@ Upgrades (Crown drill and volleys, Brood carapace and claws, Clockwork springs a
 - Is Crown powder a **cost** (like SC2 gas) or **ammo** (cannons and mortars use powder per shot)? Recommended: a cost, with mortars also using it per shot.
 - Should the Brood's biomass come from rooting anywhere on swamp, or from special **Feeding Pits** grown on the swamp?
 - Do we keep one map, or add 2–3 maps with different vent and mine layouts?
+
+---
+
+## Animation prompts (round 2)
+
+The game currently fakes some of these in code (breathing idles, a looping gnaw for grubs). These sheets would replace the fakes with real frames.
+
+**Shared part (paste first, attach two finished sheets as style reference):**
+> Sprite sheet for the same top-down 2D RTS as the attached sheets. Match their style, pixel size, outline and colours exactly: low-res NES-style pixel art, 3/4 overhead view, flat dark slate background (#3f4a5a), no ground shadows, no text, no labels, no grid lines. Team-coloured parts pure red (#FF0000) with one darker shade (#960000); no other reds anywhere. **Leave a wide empty gap between every frame; figures must never touch or overlap.** One figure per frame.
+
+**Grub (Brood worker): harvesting and hauling**
+> Character: the same pale segmented grub as the attached Brood sheet, with red (team colour) back plates. Row 1: idle facing down, down-right, right, up-right and up, wriggling (3 frames each). All other rows side view facing right: 2 crawl (6), 3 gnawing at the rim of a fleshy feeding pit, head bobbing down and up (4, loops), 4 crawling while carrying a glowing green lump of food in its jaws (6), 5 bite (3), 6 death (4).
+
+**Raptor, Spitter and Brute: idles** (one image each)
+> Character: the same [Raptor / Spitter / Brute] as the attached sheet. Row 1: idle facing down (4 frames: breathing, tail swaying, head turning). Row 2: idle facing right (4). Row 3: idle facing up (4).
+
+**Missionary: bandaging (clean)**
+> Character: the same priest in a black cassock with a red stole as the attached sheet, and a soldier in a red coat and morion helmet sitting on the ground. Each frame shows the priest kneeling beside the seated soldier and wrapping a white bandage round his arm. Row 1 facing down, row 2 facing right, row 3 facing up (4 frames each). Keep the pair together in every frame, and far apart from the next pair.
+
+**Pikeman: brace and thrust (clean)**
+> Character: the same pikeman as the attached sheet. Five direction panels (facing down, down-right, right, up-right, up). Row 1: brace, crouched with the pike levelled forward (2 frames). Row 2: thrust, the pike lunging forward and back (4). Pikes must not cross into the neighbouring frame.
+
+**Field cannon: front and back views** (the side view is done)
+> Same cannon and crew as the attached cannon sheet. Row 1: facing down, crew pushing it toward the viewer, wheels turning (6). Row 2: facing up, pushed away from the viewer (6). Row 3: firing facing down (4). Row 4: firing facing up, the barrel pointing up the screen (4).

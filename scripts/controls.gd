@@ -1,6 +1,12 @@
 class_name Controls
 extends Node
-## Map input for touch and mouse.
+## Map input. Two schemes, picked on the first start (Settings.device):
+## COMPUTER: left click selects (Shift adds, Ctrl or double-click = all of that type on
+##   screen), left drag = box, right click = command, wheel = zoom, middle drag or the
+##   screen edges or arrow keys = pan, letter hotkeys for everything on the command card,
+##   1-9 groups (Ctrl+number saves), F1 idle worker, F2 army, F3 hall, Space = jump to
+##   the selection, Esc = cancel.
+## MOBILE:
 ## Touch:  tap = select / command,  drag = box select,  long-press = move only,
 ##         two fingers = pan and pinch-zoom,  double-tap a unit = all of that type.
 ## Mouse:  left click = select (click ground to deselect), left drag = box,
@@ -28,6 +34,11 @@ var _last_tap_t := 0
 var _last_tap_kind := ""
 var _long_done := false
 var _mid_pan := false
+var _lmb_down := false
+var _lmb_from := Vector2.ZERO
+var _mouse_inside := true
+var _last_click_t := 0
+var _last_click_kind := ""
 
 
 func to_world(screen: Vector2) -> Vector2:
@@ -63,8 +74,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		_drag(event as InputEventScreenDrag)
 	elif event is InputEventMouseButton:
 		_mouse(event as InputEventMouseButton)
-	elif event is InputEventMouseMotion and _mid_pan:
-		game.camera.position -= (event as InputEventMouseMotion).relative / game.camera.zoom
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if _mid_pan:
+			game.camera.position -= mm.relative / game.camera.zoom
+		elif Settings.pc():
+			if mode == "place":
+				_move_ghost(mm.position)
+			if _lmb_down and _box_from == Vector2.INF and mm.position.distance_to(_lmb_from) > 6.0:
+				_box_from = _lmb_from
+			if _box_from != Vector2.INF:
+				_box_to = mm.position
 	elif event is InputEventKey and event.pressed and not event.is_echo():
 		_key(event as InputEventKey)
 
@@ -118,17 +138,30 @@ func _drag(e: InputEventScreenDrag) -> void:
 		return
 	if not info["moved"] and e.position.distance_to(info["pos"]) > DRAG_START:
 		info["moved"] = true
-		if mode == "place":
+		if mode == "place" or Settings.drag_mode == "pan":
 			pass
 		else:
 			_box_from = info["pos"]
+	if Settings.drag_mode == "pan" and mode != "place" and info["moved"]:
+		game.camera.position -= e.relative / game.camera.zoom
+		return
 	if mode == "place" and info["moved"]:
 		_move_ghost(e.position)
 	if _box_from != Vector2.INF:
 		_box_to = e.position
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_MOUSE_EXIT:
+		_mouse_inside = false
+	elif what == NOTIFICATION_WM_MOUSE_ENTER:
+		_mouse_inside = true
+
+
 func _mouse(e: InputEventMouseButton) -> void:
+	if Settings.pc() and e.button_index == MOUSE_BUTTON_LEFT:
+		_left_pc(e)
+		return
 	if e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed:
 		_zoom_at(e.position, 1.12)
 	elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed:
@@ -147,6 +180,59 @@ func _mouse(e: InputEventMouseButton) -> void:
 			game.smart_command(game.selected_units(), p)
 
 
+## Computer: left button.
+func _left_pc(e: InputEventMouseButton) -> void:
+	if e.pressed:
+		match mode:
+			"place":
+				_move_ghost(e.position)
+				var kind := place_kind
+				if hud:
+					hud.confirm_place()
+				if e.shift_pressed and kind != "":
+					begin_place(kind)        # Shift keeps placing
+					_move_ghost(e.position)
+				return
+			"move", "attack", "rally", "rally_army", "rally_worker":
+				_tap(e.position, false)
+				return
+		_lmb_down = true
+		_lmb_from = e.position
+		_box_from = Vector2.INF
+		return
+	if not _lmb_down:
+		return
+	_lmb_down = false
+	if _box_from != Vector2.INF:
+		_box_to = e.position
+		_finish_box(e.shift_pressed)
+		return
+	var p := to_world(e.position)
+	var ent := game.entity_at(p)
+	var now := Time.get_ticks_msec()
+	if ent and ent.team == game.human:
+		var double: bool = ent is Unit and now - _last_click_t < 350 and _last_click_kind == ent.kind
+		if ent is Unit and (e.ctrl_pressed or double):
+			_select_type_on_screen(ent.kind, e.shift_pressed)
+		elif e.shift_pressed:
+			var sel: Array = game.selection.duplicate()
+			if sel.has(ent):
+				sel.erase(ent)
+			else:
+				sel.append(ent)
+			game.set_selection(sel)
+		else:
+			game.set_selection([ent])
+		_last_click_t = now
+		_last_click_kind = ent.kind
+		Sfx.play("click")
+	elif ent:
+		if not e.shift_pressed:
+			game.set_selection([ent])
+	elif not e.shift_pressed:
+		game.set_selection([])
+
+
 func _zoom_at(screen: Vector2, f: float) -> void:
 	var before := to_world(screen)
 	var z := clampf(game.camera.zoom.x * f, 0.55, 2.6)
@@ -157,6 +243,45 @@ func _zoom_at(screen: Vector2, f: float) -> void:
 
 func _key(e: InputEventKey) -> void:
 	var units := game.selected_units()
+	if Settings.pc() and hud and not e.ctrl_pressed and hud.hotkey(e.keycode):
+		return
+	if Settings.pc():
+		match e.keycode:
+			KEY_F1:
+				hud._group_pressed(1, 0.0)
+				return
+			KEY_F2:
+				hud._group_pressed(0, 0.0)
+				return
+			KEY_F3:
+				hud._group_pressed(2, 0.0)
+				return
+			KEY_SPACE:
+				var sel: Array = game.selection.filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
+				if not sel.is_empty():
+					var c := Vector2.ZERO
+					for x in sel:
+						c += x.global_position
+					game.camera.position = c / sel.size()
+				return
+		if e.keycode >= KEY_1 and e.keycode <= KEY_9:
+			var gi := int(e.keycode - KEY_1)
+			if e.ctrl_pressed or e.meta_pressed:
+				game.groups[gi] = game.selection.duplicate()
+				hud.toast("Group %d set." % (gi + 1))
+			elif e.shift_pressed:
+				var add: Array = game.selection.duplicate()
+				for x in game.groups[gi]:
+					if is_instance_valid(x) and not x.dead and not add.has(x):
+						add.append(x)
+				game.set_selection(add)
+			else:
+				var alive: Array = game.groups[gi].filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
+				if not alive.is_empty() and game.selection == alive and Time.get_ticks_msec() - _last_click_t < 400:
+					game.camera.position = alive[0].global_position
+				game.set_selection(alive)
+				_last_click_t = Time.get_ticks_msec()
+			return
 	match e.keycode:
 		KEY_ESCAPE:
 			if mode != "":
@@ -193,6 +318,15 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_RIGHT): k.x += 1
 	if Input.is_key_pressed(KEY_UP): k.y -= 1
 	if Input.is_key_pressed(KEY_DOWN): k.y += 1
+	if Settings.pc() and _mouse_inside and DisplayServer.window_is_focused() and not _lmb_down and mode != "place_drag":
+		var mp := game.get_viewport().get_mouse_position()
+		var vs := game.get_viewport().get_visible_rect().size
+		var edge := 6.0
+		if mp.x >= 0 and mp.y >= 0 and mp.x <= vs.x and mp.y <= vs.y:
+			if mp.x < edge: k.x -= 1
+			if mp.x > vs.x - edge: k.x += 1
+			if mp.y < edge: k.y -= 1
+			if mp.y > vs.y - edge: k.y += 1
 	if k != Vector2.ZERO:
 		game.camera.position += k.normalized() * 700.0 * delta / game.camera.zoom.x
 	# Long press = move without attacking (touch only)
@@ -284,17 +418,21 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 	game.set_selection([e] if e else [])
 
 
-func _select_type_on_screen(kind: String) -> void:
+func _select_type_on_screen(kind: String, add := false) -> void:
 	var view := Rect2(Vector2.ZERO, game.get_viewport().get_visible_rect().size)
 	var xf := game.get_viewport().get_canvas_transform()
 	var list: Array = []
 	for u in game.units:
 		if u.team == game.human and u.kind == kind and not u.dead and view.has_point(xf * u.position):
 			list.append(u)
+	if add:
+		for x in game.selection:
+			if not list.has(x):
+				list.append(x)
 	game.set_selection(list)
 
 
-func _finish_box() -> void:
+func _finish_box(add := false) -> void:
 	var r := box_rect()
 	_box_from = Vector2.INF
 	var xf := game.get_viewport().get_canvas_transform()
@@ -305,6 +443,12 @@ func _finish_box() -> void:
 	# Army in the box? Leave the labourers out.
 	if list.any(func(u: Unit) -> bool: return not u.is_worker()):
 		list = list.filter(func(u: Unit) -> bool: return not u.is_worker())
+	if add:
+		for x in game.selection:
+			if is_instance_valid(x) and not list.has(x):
+				list.append(x)
 	if not list.is_empty():
 		game.set_selection(list)
 		Sfx.play("click")
+	elif Settings.pc() and not add:
+		game.set_selection([])

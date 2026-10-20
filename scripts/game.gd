@@ -35,6 +35,12 @@ var rng := RandomNumberGenerator.new()
 
 var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building/mine
 var water := PackedByteArray()
+var height := PackedByteArray()          # 1 = high ground
+var ramp := PackedByteArray()
+var cliff := PackedByteArray()
+var map_id := "random"
+var map_name := ""
+var mapgen: MapGen
 var astar := AStarGrid2D.new()
 var units: Array = []
 var buildings: Array = []
@@ -60,7 +66,7 @@ var hud: Control
 var ais: Array = []
 
 var selection: Array = []
-var groups: Array = [[], [], []]
+var groups: Array = [[], [], [], [], [], [], [], [], []]
 var _hash := {}
 var _path_queue: Array = []
 var _end_t := 0.0
@@ -90,6 +96,9 @@ func _init() -> void:
 func _ready() -> void:
 	solid.resize(W * H)
 	water.resize(W * H)
+	cliff.resize(W * H)
+	height.resize(W * H)
+	ramp.resize(W * H)
 	explored.resize(W * H)
 	for t in 2:
 		vis[t].resize(W * H)
@@ -161,23 +170,8 @@ func _mirror(c: Vector2i, size: Vector2i) -> Vector2i:
 
 
 func _generate_map() -> void:
-	# Fixed layout, mirrored for fairness: main base + 2 mines, a natural
-	# expansion with 2 mines, and 2 contested mines near the middle.
-	var hall := Vector2i(6, 6)
-	var nat_hall := Vector2i(7, 34)
-	starts = [hall, _mirror(hall, Vector2i(5, 4))]
-	expansions = [nat_hall, _mirror(nat_hall, Vector2i(5, 4))]
-	# No resources on the map: the economy comes from each player's own structures.
-	var keep: Array = []
-	for st in starts + expansions:
-		keep.append([Vector2(st) + Vector2(2.5, 2), 13.0])
-	# Obstacles: try seeds until both bases connect.
-	for attempt in 30:
-		solid.fill(0)
-		water.fill(0)
-		_scatter_obstacles(keep)
-		if _connected(starts[0], starts[1]) and _connected(starts[0], expansions[1]):
-			break
+	mapgen = MapGen.new(self)
+	mapgen.generate(map_id)
 
 
 func _scatter_obstacles(keep: Array) -> void:
@@ -278,6 +272,7 @@ func _setup_astar() -> void:
 		if kind == "tree" and rng.randf() < 0.35:
 			n = rng.randi_range(4, 5)    # bushes
 		s.texture = tex("res://assets/world/%s_%d.png" % [kind, n])
+		s.modulate = MapGen.BIOMES[mapgen.biome_at(c.x, c.y)]["tint"]
 		s.centered = false
 		s.offset = Vector2(-s.texture.get_width() * 0.5, -s.texture.get_height() + 4)
 		s.position = cell_center(c) + Vector2(rng.randf_range(-3, 3), 14)
@@ -286,50 +281,88 @@ func _setup_astar() -> void:
 		world.add_child(s)
 
 
+var _tile_cache := {}
+var _tile_avg := {}
+
+
+func _tile_key(set_name: String, rnd: int) -> String:
+	var good: Array = TerrainData.GOOD.get(set_name, [0])
+	return "%s_%d" % [set_name, good[rnd % good.size()]]
+
+
+func _tile(set_name: String, rnd: int) -> Image:
+	var key := _tile_key(set_name, rnd)
+	if not _tile_cache.has(key):
+		var im: Image = tex("res://assets/terrain/%s.png" % key).get_image()
+		im.convert(Image.FORMAT_RGBA8)
+		if im.get_width() != T or im.get_height() != T:
+			im.resize(T, T, Image.INTERPOLATE_NEAREST)
+		_tile_cache[key] = im
+		var small := im.duplicate()
+		small.resize(1, 1, Image.INTERPOLATE_BILINEAR)
+		_tile_avg[key] = small.get_pixel(0, 0)
+	return _tile_cache[key]
+
+
 func _render_ground() -> void:
 	var img := Image.create(W * T, H * T, false, Image.FORMAT_RGBA8)
-	var tiles := {}
-	for n in ["grass_0", "grass_1", "grass_2", "grass_3", "flowers", "dirt_0", "dirt_1", "mud", "water"]:
-		var t: Texture2D = tex("res://assets/tiles/%s.png" % n)
-		var ti := t.get_image()
-		ti.convert(Image.FORMAT_RGBA8)
-		tiles[n] = ti
 	minimap_img = Image.create(W, H, false, Image.FORMAT_RGBA8)
 	var near_base := func(c: Vector2i) -> bool:
-		for s in starts:
-			if (Vector2(c) - (Vector2(s) + Vector2(2.5, 2))).length() < 6.5:
+		for st in starts:
+			if (Vector2(c) - (Vector2(st) + Vector2(2.5, 2))).length() < 6.5:
 				return true
 		return false
 	for y in H:
 		for x in W:
 			var c := Vector2i(x, y)
-			var n := "grass_0"
-			var r := rng.randf()
-			if r < 0.05:
-				n = "flowers"
-			elif r < 0.12:
-				n = "grass_1"
-			if near_base.call(c):
-				n = "dirt_0"
-			if water[idx(c)] == 1:
-				n = "water"
-			img.blit_rect(tiles[n], Rect2i(0, 0, T, T), Vector2i(x * T, y * T))
-			var col := Color(0.29, 0.52, 0.2)
-			if n == "water":
-				col = Color(0.15, 0.35, 0.75)
-			elif n.begins_with("dirt"):
-				col = Color(0.5, 0.36, 0.2)
-			if _terrain_kind.get(idx(c), "") == "tree":
-				col = Color(0.1, 0.3, 0.1)
-			elif _terrain_kind.get(idx(c), "") == "rock":
-				col = Color(0.45, 0.45, 0.45)
-			minimap_img.set_pixel(x, y, col)
+			var i := idx(c)
+			var b: Dictionary = MapGen.BIOMES[mapgen.biome_at(x, y)]
+			var rnd := int(abs(sin(x * 12.9898 + y * 78.233) * 43758.5453))
+			var set_name: String
+			var shade := 1.0
+			if water[i] == 1:
+				set_name = b["water"]
+			elif mapgen.ford.size() > i and mapgen.ford[i] == 1:
+				set_name = b["ford"]
+			elif ramp[i] == 1:
+				set_name = b["ramp"]
+			elif cliff[i] == 1:
+				var below := Vector2i(x, y + 1)
+				set_name = b["face"] if in_map(below) and height[idx(below)] == 0 else b["high"]
+				shade = 1.0 if set_name == b["face"] else 0.72
+			elif height[i] == 1:
+				set_name = b["high"]
+				shade = 1.15
+			elif near_base.call(c):
+				set_name = b["base"]
+			else:
+				var low: Array = b["low"]
+				set_name = low[rnd % low.size()]
+			var t := _tile(set_name, rnd / 7)
+			if shade != 1.0:
+				t = t.duplicate()
+				for py in T:
+					for px in T:
+						var col := t.get_pixel(px, py)
+						t.set_pixel(px, py, Color(col.r * shade, col.g * shade, col.b * shade, col.a))
+			img.blit_rect(t, Rect2i(0, 0, T, T), Vector2i(x * T, y * T))
+			var key := _tile_key(set_name, rnd / 7)
+			var mc: Color = _tile_avg.get(key, Color(0.3, 0.5, 0.2)) * shade
+			if _terrain_kind.get(i, "") == "tree":
+				mc = mc.darkened(0.45)
+			elif _terrain_kind.get(i, "") == "rock":
+				mc = Color(0.45, 0.45, 0.45)
+			minimap_img.set_pixel(x, y, Color(mc.r, mc.g, mc.b, 1.0))
+	# a soft shadow under each cliff face
+	for y in H - 1:
+		for x in W:
+			if cliff[y * W + x] == 1 and height[(y + 1) * W + x] == 0 and cliff[(y + 1) * W + x] == 0:
+				for py in 6:
+					for px in T:
+						var p := Vector2i(x * T + px, (y + 1) * T + py)
+						var col := img.get_pixelv(p)
+						img.set_pixelv(p, col.darkened(0.35 * (1.0 - py / 6.0)))
 	ground.texture = ImageTexture.create_from_image(img)
-	for m in mines:
-		var mm := m as GoldMine
-		for yy in mm.size.y:
-			for xx in mm.size.x:
-				minimap_img.set_pixelv(mm.cell + Vector2i(xx, yy), Color(0.95, 0.8, 0.2))
 
 
 func _start_positions() -> void:
@@ -360,6 +393,9 @@ func _start_positions() -> void:
 ## its middle; "near" picks the closest, "far" the farthest, "toward_middle" the one
 ## nearest the middle of the map.
 func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near") -> Vector2i:
+	if Defs.is_econ(kind) and econ_count(t, kind) >= econ_limit(t, kind):
+		return Vector2i(-1, -1)
+	_spot_halls = halls_of(t)
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var c0: Vector2 = around.rect().get_center() / T
 	var mid := Vector2(W, H) * 0.5
@@ -372,7 +408,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			var dd := cc.distance_to(c0)
 			if dd < min_d or dd > max_d:
 				continue
-			if placement_problem(t, kind, cell, true) != "" or not margin_free(cell, size):
+			if placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
 				continue
 			var score := dd
 			if prefer == "far":
@@ -387,7 +423,11 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			if score < bs:
 				bs = score
 				best = cell
+	_spot_halls = []
 	return best
+
+
+var _spot_halls: Array = []
 
 
 func margin_free(cell: Vector2i, size: Vector2i) -> bool:
@@ -821,7 +861,7 @@ func requirement_met(t: int, k: String) -> bool:
 
 
 ## "" if the building can go at this cell, else the reason. ai: skip the fog check.
-func placement_problem(t: int, k: String, c: Vector2i, ai := false) -> String:
+func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_checked := false) -> String:
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	for y in size.y:
 		for x in size.x:
@@ -832,14 +872,19 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false) -> String:
 				return "Unexplored."
 			if needs_swamp(k) and swamp[t][idx(cc)] == 0:
 				return "Brood structures must grow on your swamp."
+	if k == faction_hall(t):
+		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
+		for h in halls_of(t, false):
+			if h.center().distance_to(mid0) < Defs.HALL_SPACING * T:
+				return "Too close to your other %s: it needs its own ground." % Defs.BUILDINGS[k]["name"]
 	if Defs.is_econ(k):
-		if econ_count(t, k) >= econ_limit(t, k):
+		if not limits_checked and econ_count(t, k) >= econ_limit(t, k):
 			return "Each %s allows %d %s. Expand for more." % [Defs.BUILDINGS[faction_hall(t)]["name"],
 				int(Defs.FACTIONS[faction_of(t)]["econ"][k]), Defs.BUILDINGS[k]["name"] + ("s" if int(Defs.FACTIONS[faction_of(t)]["econ"][k]) > 1 else "")]
 		if faction_of(t) != "brood":
 			var mid := (Vector2(c) + Vector2(size) * 0.5) * T
 			var near := false
-			for h in halls_of(t):
+			for h in (_spot_halls if limits_checked else halls_of(t)):
 				if h.center().distance_to(mid) <= Defs.ECON_RANGE * T:
 					near = true
 					break
@@ -1150,6 +1195,8 @@ func find_target(u: Unit, r: float) -> Entity:
 	for o in units_near(u.position, r):
 		if o.team == u.team or o.dead or o.team < 0 or not u.can_hit(o):
 			continue
+		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
+			continue
 		var dd: float = o.position.distance_to(u.position)
 		if o.is_worker():
 			dd += 60.0   # prefer fighters
@@ -1411,10 +1458,14 @@ func _disk(r: int) -> Array:
 
 func _reveal(t: int, c: Vector2i, r: int) -> void:
 	var v: PackedByteArray = vis[t]
+	var low := in_map(c) and height[idx(c)] == 0
 	for o in _disk(r):
 		var cc: Vector2i = c + o
 		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
-			v[cc.y * W + cc.x] = 1
+			var i := cc.y * W + cc.x
+			if low and height[i] == 1 and o.length_squared() > 2:
+				continue     # can't see up onto high ground from below
+			v[i] = 1
 	vis[t] = v
 
 
@@ -1422,8 +1473,11 @@ func _update_vis() -> void:
 	for t in 2:
 		vis[t].fill(0)
 	for u in units:
-		if not u.dead:
-			_reveal(u.team, cell_of(u.position), u.sight)
+		if not u.dead and not u.off_field:
+			if u.is_air():
+				_reveal_air(u.team, cell_of(u.position), u.sight)
+			else:
+				_reveal(u.team, cell_of(u.position), u.sight)
 	for b in buildings:
 		if not b.dead:
 			_reveal(b.team, cell_of(b.rect().get_center()), b.sight)
@@ -1452,6 +1506,20 @@ func _update_vis() -> void:
 				if hv[idx(cc)] == 1:
 					b.seen_by_human = true
 			b.visible = b.seen_by_human
+
+
+func _reveal_air(t: int, c: Vector2i, r: int) -> void:
+	var v: PackedByteArray = vis[t]
+	for o in _disk(r):
+		var cc: Vector2i = c + o
+		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
+			v[cc.y * W + cc.x] = 1
+	vis[t] = v
+
+
+func on_high(p: Vector2) -> bool:
+	var c := cell_of(p)
+	return in_map(c) and height[idx(c)] == 1
 
 
 func is_visible_to(t: int, p: Vector2) -> bool:

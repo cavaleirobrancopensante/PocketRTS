@@ -16,6 +16,7 @@ var _wave_target := Vector2.ZERO
 var _saving := false            # holding gold back for an expansion
 var _escort: Array = []         # Clockwork: Winders that follow the army to repair it
 var _reserve := 0               # gold held back for the next economy structure
+var _no_room := {}              # economy kinds with no free spot, and when we looked
 
 
 func _physics_process(delta: float) -> void:
@@ -123,18 +124,24 @@ func _econ_build() -> void:
 		if game.energy[team] * float(split[0]) * Defs.ORE_PER_ENERGY > crushers * Defs.CRUSHER_CAP * 0.8 or crushers == 0:
 			order.push_front("ore_crusher")
 	_reserve = 0
+	for k in _no_room.keys():
+		if game.clock - float(_no_room[k]) > 20.0:
+			_no_room.erase(k)
 	for kind in order:
+		if _no_room.has(kind):
+			continue
 		if game.econ_count(team, kind) >= game.econ_limit(team, kind) or _busy_building(kind):
 			continue
 		if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
-			if _econ_spot(kind).x >= 0 and _threat() == Vector2.INF:
+			if _threat() == Vector2.INF:
 				_reserve = int(Defs.BUILDINGS[kind]["cost"])    # save up for it first
 			return
 		var spot := _econ_spot(kind)
 		if spot.x >= 0:
 			_construct(kind, spot)
 			return
-		elif kind == "feeding_pit":
+		_no_room[kind] = game.clock      # nowhere to put it right now; look again later
+		if kind == "feeding_pit":
 			_spread_swamp()
 	if _brood() and _mine("spore_vent").size() < _halls().size() and game.clock > 120.0:
 		_spread_swamp()
@@ -161,6 +168,9 @@ func _econ_spot(kind: String) -> Vector2i:
 func _spread_swamp() -> void:
 	if _busy_building("spore_vent") or _mine("spore_vent").size() >= 2 * _halls().size():
 		return
+	if _no_room.has("spore_vent"):
+		return
+	_no_room["spore_vent"] = game.clock
 	if _gold() < int(Defs.BUILDINGS["spore_vent"]["cost"]) + 40:
 		return
 	for h in _halls():
@@ -227,6 +237,12 @@ func _build_up() -> void:
 			_construct("foundry")
 		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > [500.0, 280.0, 220.0][difficulty]:
 			_construct("church")
+	# Floating money: more production.
+	if gold > 550 and not _saving and _threat() == Vector2.INF:
+		if _crown() and _mine("barracks").size() < 4 and not _busy_building("barracks") and not _mine("barracks").is_empty():
+			_construct("barracks")
+		elif _clock() and _mine("assembly_works").size() < 3 and not _busy_building("assembly_works") and not _mine("assembly_works").is_empty():
+			_construct("assembly_works")
 	# Expand once our economy structures are all up (a new hall brings more slots).
 	var hall: String = _f()["hall"]
 	var full := true

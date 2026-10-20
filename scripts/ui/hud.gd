@@ -5,7 +5,8 @@ extends Control
 
 signal quit_requested
 
-const CARD_BTN := 70.0
+const CARD_BTN := 70.0           # mobile: 3 x 2 big buttons
+const CARD_BTN_PC := 60.0        # computer: 4 x 3 with letter hotkeys
 const MINI_W := 210.0
 
 var game: Game
@@ -19,6 +20,8 @@ var _msg := ""
 var _msg_t := 0.0
 var _hold_t := {}                    # group index -> press time
 var _attack_alarm_t := 0.0
+var _mouse_hud := false
+var _card_items: Array = []
 
 
 func _ready() -> void:
@@ -52,8 +55,25 @@ func mini_rect() -> Rect2:
 	return Rect2(8, _vs().y - h - 8, MINI_W, h)
 
 
+func _cols() -> int:
+	return 4 if Settings.pc() else 3
+
+
+func _rows() -> int:
+	return 3 if Settings.pc() else 2
+
+
+func _btn() -> float:
+	return CARD_BTN_PC if Settings.pc() else CARD_BTN
+
+
 func card_rect() -> Rect2:
-	return Rect2(_vs().x - CARD_BTN * 3 - 12, _vs().y - CARD_BTN * 2 - 12, CARD_BTN * 3 + 4, CARD_BTN * 2 + 4)
+	var b := _btn()
+	return Rect2(_vs().x - b * _cols() - 12, _vs().y - b * _rows() - 12, b * _cols() + 4, b * _rows() + 4)
+
+
+func drag_rect() -> Rect2:
+	return Rect2(_vs().x - 96 - 128, 2, 122, 32)
 
 
 func panel_rect() -> Rect2:
@@ -76,7 +96,7 @@ func menu_rect() -> Rect2:
 func _hud_has(p: Vector2) -> bool:
 	if paused or game.over:
 		return true
-	for r in [top_rect(), mini_rect(), panel_rect(), card_rect()]:
+	for r in [top_rect(), mini_rect(), panel_rect(), card_rect(), drag_rect()]:
 		if (r as Rect2).has_point(p):
 			return true
 	for i in 6:
@@ -101,6 +121,29 @@ func _input(event: InputEvent) -> void:
 			_hud_touches.erase(e.index)
 			_release(e.position)
 			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseButton and Settings.pc():
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed and _hud_has(mb.position):
+				_mouse_hud = true
+				_press(mb.position)
+				get_viewport().set_input_as_handled()
+			elif not mb.pressed and _mouse_hud:
+				_mouse_hud = false
+				_release(mb.position)
+				get_viewport().set_input_as_handled()
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and mini_rect().has_point(mb.position) and not paused:
+			var m := mini_rect()
+			var w := ((mb.position - m.position) / m.size).clamp(Vector2.ZERO, Vector2.ONE) * Vector2(Game.W, Game.H) * Game.T
+			game.smart_command(game.selected_units(), w)
+			get_viewport().set_input_as_handled()
+		elif _hud_has(mb.position) and mb.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
+			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and Settings.pc() and _mouse_hud:
+		var mm := event as InputEventMouseMotion
+		if mini_rect().has_point(mm.position) and not paused:
+			_minimap_to(mm.position)
+		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag:
 		var e := event as InputEventScreenDrag
 		if _hud_touches.has(e.index):
@@ -119,6 +162,11 @@ func _press(p: Vector2) -> void:
 		return
 	if mini_rect().has_point(p):
 		_minimap_to(p)
+		return
+	if not Settings.pc() and drag_rect().has_point(p):
+		Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
+		Settings.save_all()
+		toast("One-finger drag now %s." % ("moves the view" if Settings.drag_mode == "pan" else "box-selects"))
 		return
 	for i in 6:
 		if group_rect(i).has_point(p):
@@ -208,7 +256,8 @@ func _build_card() -> Array:
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
 		if page == "build" and has_lab:
 			var all: Array = Defs.FACTIONS[game.faction_of(game.human)]["build"]
-			var per := 4 if all.size() > 5 else 5
+			var slots := _cols() * _rows()
+			var per := slots - 1 if all.size() <= slots - 1 else slots - 2
 			var pages := int(ceil(all.size() / float(per)))
 			build_page = clampi(build_page, 0, pages - 1)
 			for k in all.slice(build_page * per, build_page * per + per):
@@ -281,6 +330,64 @@ func _build_card() -> Array:
 		if not b.queue.is_empty():
 			list.append(["stop", "CANCEL", func() -> void: game.cancel_train(b), true, "", ""])
 	return list
+
+
+## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
+## everything else takes the first free letter of its name.
+const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "WORK": "G",
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P"}
+
+
+func _with_keys(items: Array) -> Array:
+	var used := {}
+	for it in items:
+		var lab: String = String(it[1]).trim_prefix("> ")
+		if FIXED_KEYS.has(lab):
+			used[FIXED_KEYS[lab]] = true
+	for it in items:
+		var lab: String = String(it[1]).trim_prefix("> ")
+		var key := ""
+		if FIXED_KEYS.has(lab):
+			key = FIXED_KEYS[lab]
+		else:
+			var name: String = lab
+			if Defs.UNITS.has(it[0]):
+				name = Defs.UNITS[it[0]]["name"].to_upper()
+			elif Defs.BUILDINGS.has(it[0]):
+				name = Defs.BUILDINGS[it[0]]["name"].to_upper()
+			for ch in name:
+				if ch >= "A" and ch <= "Z" and not used.has(ch):
+					key = ch
+					break
+			if key == "":
+				for ch in "QWERTYUIOPLKJFZCV":
+					if not used.has(ch):
+						key = ch
+						break
+		used[key] = true
+		it.append(key)
+	return items
+
+
+## A key pressed on the keyboard: run the card button with that letter. True if used.
+func hotkey(code: int) -> bool:
+	if paused or game.over:
+		return false
+	if code == KEY_ESCAPE and controls.mode == "" and page == "build":
+		page = ""
+		return true
+	var letter := OS.get_keycode_string(code)
+	if letter.length() != 1:
+		return false
+	for it in _card_items:
+		if it.size() > 6 and it[6] == letter:
+			if it[3]:
+				it[2].call()
+				Sfx.play("click")
+			elif it[4] != "":
+				toast(it[4])
+			return true
+	return false
 
 
 func confirm_place() -> void:
@@ -361,6 +468,10 @@ func _draw() -> void:
 	_text(font, Vector2(sx + 20, 25), "%d / %d" % [used, cap], 20, Color(1, 0.5, 0.45) if used >= cap else Color.WHITE)
 	var secs := int(game.clock)
 	_text(font, Vector2(vs.x * 0.5, 25), "%d:%02d" % [secs / 60, secs % 60], 18, Color(1, 1, 1, 0.8), 1)
+	if not Settings.pc():
+		var dr := drag_rect()
+		draw_rect(dr, Color(0.2, 0.25, 0.22, 0.9))
+		_text(font, dr.get_center() + Vector2(0, 6), "DRAG: " + ("BOX" if Settings.drag_mode == "box" else "PAN"), 15, Color.WHITE, 1)
 	var mr := menu_rect()
 	draw_rect(mr, Color(0.2, 0.25, 0.22, 0.9))
 	_text(font, mr.get_center() + Vector2(0, 6), "MENU", 16, Color.WHITE, 1)
@@ -378,9 +489,11 @@ func _draw() -> void:
 	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
 			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a Feeding Pit (or a spot) for new grubs"}[controls.mode]
+		if Settings.pc():
+			t = t.replace("Tap", "Click") + "  (right-click or Esc cancels)"
 		_text(font, Vector2(vs.x * 0.5, 66), t, 20, Color(1, 1, 0.7), 1)
 	elif controls.mode == "place":
-		_text(font, Vector2(vs.x * 0.5, 66), "Drag to position, tap again or PLACE to build", 20, Color(1, 1, 0.7), 1)
+		_text(font, Vector2(vs.x * 0.5, 66), "Click to build (Shift-click for more), right-click or Esc cancels" if Settings.pc() else "Drag to position, tap again or PLACE to build", 20, Color(1, 1, 0.7), 1)
 	if _msg_t > 0.0:
 		_text(font, Vector2(vs.x * 0.5, card_rect().position.y - 14), _msg, 22, Color(1, 0.75, 0.6, minf(_msg_t, 1.0)), 1)
 	if paused:
@@ -537,16 +650,19 @@ var _buttons_extra: Array = []
 
 
 func _draw_card(font: Font) -> void:
-	var items := _build_card()
+	var items := _with_keys(_build_card())
+	_card_items = items
 	_buttons = _buttons_extra.duplicate()
 	_buttons.append({"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true})
 	if items.is_empty():
 		return
 	var cr := card_rect()
 	draw_rect(cr, Color(0.06, 0.07, 0.07, 0.8))
-	for i in mini(items.size(), 6):
+	var bsz := _btn()
+	var hover := get_viewport().get_mouse_position() if Settings.pc() else Vector2(-1, -1)
+	for i in mini(items.size(), _cols() * _rows()):
 		var it: Array = items[i]
-		var br := Rect2(cr.position + Vector2(2 + (i % 3) * CARD_BTN, 2 + (i / 3) * CARD_BTN), Vector2(CARD_BTN - 4, CARD_BTN - 4))
+		var br := Rect2(cr.position + Vector2(2 + (i % _cols()) * bsz, 2 + (i / _cols()) * bsz), Vector2(bsz - 4, bsz - 4))
 		var enabled: bool = it[3]
 		var ic := _icon(it[0])
 		if ic:
@@ -558,11 +674,46 @@ func _draw_card(font: Font) -> void:
 		if it[5] != "":
 			draw_rect(Rect2(br.end.x - 30, br.position.y, 30, 15), Color(0, 0, 0, 0.65))
 			_text(font, Vector2(br.end.x - 15, br.position.y + 12), it[5], 11, Color(1, 0.88, 0.4), 1)
+		if Settings.pc() and it.size() > 6 and it[6] != "":
+			draw_rect(Rect2(br.position, Vector2(16, 16)), Color(0, 0, 0, 0.7))
+			_text(font, br.position + Vector2(8, 13), it[6], 12, Color(1, 0.95, 0.6), 1)
+		if br.has_point(hover):
+			draw_rect(br, Color(1, 1, 1, 0.12))
+			_tooltip(font, it, cr)
 		_buttons.append({"rect": br, "cb": it[2], "enabled": enabled, "why": it[4]})
 
 
 func _res() -> Array:
 	return Defs.FACTIONS[game.faction_of(game.human)]["res"]
+
+
+func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
+	var title: String = String(it[1]).trim_prefix("> ")
+	var body := ""
+	var k: String = it[0]
+	if Defs.UNITS.has(k) and title == Defs.UNITS[k]["name"].to_upper():
+		var u: Dictionary = Defs.UNITS[k]
+		title = u["name"]
+		body = u["about"]
+		var cost := "%d %s" % [u["cost"], _res()[0].to_lower()]
+		if u.has("cost2"):
+			cost += " + %d %s" % [u["cost2"], _res()[1].to_lower()]
+		title += "   (%s, supply %d)" % [cost, int(u["supply"]) * int(u.get("spawn", 1))]
+	elif Defs.BUILDINGS.has(k) and page == "build":
+		var bd: Dictionary = Defs.BUILDINGS[k]
+		title = "%s   (%d %s)" % [bd["name"], bd["cost"], _res()[0].to_lower()]
+		body = bd["about"]
+	if not it[3] and it[4] != "":
+		body = it[4]
+	if it.size() > 6 and it[6] != "":
+		title = "[%s] %s" % [it[6], title]
+	var w := maxf(font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, font.get_string_size(body, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x) + 16
+	w = minf(w, 520.0)
+	var r := Rect2(cr.end.x - w, cr.position.y - 52, w, 46)
+	draw_rect(r, Color(0.04, 0.05, 0.05, 0.92))
+	draw_rect(r, Color(1, 1, 1, 0.25), false, 1.0)
+	_text(font, r.position + Vector2(8, 18), title, 15, Color(1, 0.92, 0.6))
+	_text(font, r.position + Vector2(8, 37), body, 13, Color(1, 1, 1, 0.8))
 
 
 func _icon(name: String) -> Texture2D:

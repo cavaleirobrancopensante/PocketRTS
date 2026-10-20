@@ -21,6 +21,7 @@ const REPAIR_RATE := 14.0         # hp per second a Winder restores
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
+const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
 # Crown: farms grow (faster with labourers working them) and pay out a whole harvest.
 const FARM_GROW := 40.0           # seconds to ripen with a full crew
 const FARM_BASE := 0.15           # share of that speed with nobody working it
@@ -30,17 +31,17 @@ const START_POWDER := 80
 const POWDER_SHOT := {"musketeer": 1, "cannon": 3}
 # Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
 const PIT_TIME := 2.5             # seconds a grub feeds at the pit before hauling
-const FOOD_BASE := 6.0
-const FOOD_PER_TILE2 := 0.07      # value grows with the square of the distance (in tiles)
-const FOOD_MAX := 100
+const FOOD_BASE := 5.0
+const FOOD_PER_TILE2 := 0.05      # value grows with the square of the distance (in tiles)
+const FOOD_MAX := 60
 const ESSENCE_PER_SUPPLY := 3     # a body falling near a Bone Midden
 const MIDDEN_RANGE := 12          # tiles
 const MIDDEN_TRICKLE := 0.15      # essence per second per midden
 # Clockwork: Winders crank Boilers for energy, split between ore, assembly and wind.
-const ENERGY_PER_WINDER := 3.0
-const ENERGY_HALL := 2.0
-const ORE_PER_ENERGY := 1.6
-const CRUSHER_CAP := 10.0         # ore per second one Ore Crusher can handle
+const ENERGY_PER_WINDER := 4.0
+const ENERGY_HALL := 4.0
+const ORE_PER_ENERGY := 1.8
+const CRUSHER_CAP := 12.0         # ore per second one Ore Crusher can handle
 const SPLITS := {
 	"ECONOMY": [0.7, 0.15, 0.15], "BALANCED": [0.45, 0.3, 0.25],
 	"WAR": [0.15, 0.5, 0.35], "HOLD": [0.2, 0.2, 0.6],
@@ -110,7 +111,7 @@ const UNITS := {
 	},
 	"raptor": {
 		"name": "Raptors", "hp": 30, "armor": 0, "speed": 100, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
-		"sight": 7, "range": 22, "damage": 5, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "hive",
+		"sight": 7, "range": 22, "damage": 6, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "hive",
 		"requires": "warren", "faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
 	},
 	"spitter": {
@@ -132,17 +133,17 @@ const UNITS := {
 		"about": "Cranks Boilers for energy, starts buildings and repairs constructs and buildings.",
 	},
 	"gearknight": {
-		"name": "Gearknight", "hp": 300, "armor": 4, "speed": 52, "cost": 170, "time": 24.0, "supply": 3,
+		"name": "Gearknight", "hp": 300, "armor": 3, "speed": 52, "cost": 170, "time": 24.0, "supply": 3,
 		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.4, "aim": 0.3, "radius": 19, "from": "assembly_works",
 		"regen": 1.5, "faction": "clockwork", "about": "Iron knight. Very hard to kill; slowly repairs itself.",
 	},
 	"bolt": {
-		"name": "Bolt Automaton", "hp": 150, "armor": 2, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
+		"name": "Bolt Automaton", "hp": 150, "armor": 1, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
 		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 15, "from": "assembly_works",
 		"pierce": true, "anti_air": true, "faction": "clockwork", "about": "Crossbow bolts pierce up to three enemies in a line.",
 	},
 	"steam_walker": {
-		"name": "Steam Walker", "hp": 380, "armor": 3, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
+		"name": "Steam Walker", "hp": 380, "armor": 2, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
 		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "assembly_works",
 		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
 		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
@@ -265,7 +266,7 @@ const BUILDINGS := {
 	"ore_crusher": {
 		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
-		"about": "Turns the energy you put on ore into ore (up to 10 a second).",
+		"about": "Turns the energy you put on ore into ore (up to 12 a second).",
 	},
 	"charging_pylon": {
 		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),

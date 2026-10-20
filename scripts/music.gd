@@ -74,6 +74,7 @@ func toggle_sound() -> void:
 
 func _save() -> void:
 	var cfg := ConfigFile.new()
+	cfg.load("user://settings.cfg")     # keep the other sections
 	cfg.set_value("audio", "music", music_on)
 	cfg.set_value("audio", "sound", sound_on)
 	cfg.save("user://settings.cfg")

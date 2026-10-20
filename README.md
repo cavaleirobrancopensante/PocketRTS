@@ -2,7 +2,7 @@
 
 **Play in your browser: https://cavaleirobrancopensante.github.io/PocketRTS/**
 
-A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a 1v1 **skirmish** against the computer: choose your faction, the enemy's and the difficulty (or watch AI vs AI). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
+A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a 1v1 **skirmish** against the computer: choose your faction and colour, the enemy's, the difficulty and the map (or set Player 1 to the computer and watch). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
 
 See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and all the art prompts.
 
@@ -41,6 +41,30 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - The **Charging Pylon** also mends constructs.
 - **Assembly Works**: **Gearknights**, **Bolt Automatons** (pierce up to 3), **Steam Walkers** and **Tesla Carts**. A Tesla Cart rolls when packed; deploying or packing takes 3 s. Deployed, it powers constructs around it and fires chain lightning that can hit flyers.
 - Army cap 80.
+
+### Maps
+Nine maps, chosen in Skirmish (or at random). Every map is mirrored, so both sides get the same ground. There are three layouts:
+
+- **Crossroads**: open ground with a hill in the middle.
+- **Highlands**: each main base sits on high ground with a single ramp, so it's hard to rush.
+- **Rivers**: a river splits the map, and three fords are the only crossings.
+
+Six biomes: grass, autumn, desert, snow, marsh and volcanic (lava lakes). Two maps mix two biomes.
+
+- **High ground:** units below can't see up a cliff unless one of their side is up there (or a flyer is overhead), and they can't shoot what they can't see.
+- **Cliffs and ramps:** cliffs block walking and ramps don't. Flyers ignore both.
+
+| Map | Layout | Biome |
+| --- | --- | --- |
+| Greenhold | Crossroads | Grass |
+| Highmoor | Highlands | Autumn |
+| Dune Sea | Crossroads | Desert |
+| Frostfang | Highlands | Snow |
+| Twin Fords | Rivers | Grass |
+| Ashfall | Highlands | Volcanic |
+| Mirewood | Rivers | Marsh |
+| Border March | Rivers | Snow and grass |
+| Red Coast | Highlands | Desert and marsh |
 
 ### Economy labels and the battle report
 - Each economy structure shows its crew as **X/Y** (green when full). Farms also show a harvest bar.

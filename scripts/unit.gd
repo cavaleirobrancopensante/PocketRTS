@@ -904,6 +904,12 @@ func _animate(delta: float) -> void:
 		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
 	elif kind != "cannon":
 		sprite.position.y = 0.0
+	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
+	if kind == "grub" and anim == "burrow" and n > 3:
+		sprite.frame = clampi(2 + int(_bob_t * 6.0) % (n - 2), 0, sprite.hframes - 1)
+	# One-frame idles breathe instead of standing frozen.
+	var breathe := anim == "idle" and n <= 1 and not dead and kind != "tesla_cart"
+	sprite.scale.y = 1.0 + (0.03 * sin(_bob_t * 2.6 + float(get_instance_id() % 7)) if breathe else 0.0)
 	if kind == "cannon":
 		_animate_cannon(delta)
 
