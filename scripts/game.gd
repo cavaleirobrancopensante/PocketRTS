@@ -841,6 +841,8 @@ func refund(t: int, k: String) -> void:
 func can_train(b: Building, k: String) -> String:
 	if not b.can_train(k):
 		return "Can't train that here."
+	if not ArtData.UNITS.has(k):
+		return "Coming soon."      # its sprites aren't in yet
 	var u: Dictionary = Defs.UNITS[k]
 	var req: String = u.get("requires", "")
 	if req != "" and not _has_built(b.team, req):
@@ -1141,6 +1143,20 @@ func _update_swamp() -> void:
 						var dy: float = (y + 0.5 - c.y) * 1.15
 						if dx * dx + dy * dy <= r * r:
 							g[y * W + x] = 1
+			# a rooted Spore Mother spreads swamp around her
+			for u in units:
+				if u.team != t or u.dead or u.kind != "spore_mother" or u.tesla_mode != "deployed":
+					continue
+				var uc: Vector2 = u.position / T
+				var ur: float = Defs.ROOT_SWAMP
+				for y in range(int(uc.y - ur) - 1, int(uc.y + ur) + 2):
+					for x in range(int(uc.x - ur) - 1, int(uc.x + ur) + 2):
+						if x < 0 or y < 0 or x >= W or y >= H or water[y * W + x] == 1:
+							continue
+						var ddx: float = (x + 0.5 - uc.x)
+						var ddy: float = (y + 0.5 - uc.y) * 1.15
+						if ddx * ddx + ddy * ddy <= ur * ur:
+							g[y * W + x] = 1
 		swamp[t] = g
 	swamp_layer.queue_redraw()
 	_swamp_minimap()
@@ -1181,6 +1197,14 @@ func _draw_fields() -> void:
 			draw_ring.call(e.center(), float(e.d["field"]) * T * field_mult(e.team), 0.9 if e.field_on() else 0.18)
 		elif e is Unit and e.kind == "tesla_cart" and e.tesla_mode == "deployed":
 			draw_ring.call(e.position, Defs.TESLA_FIELD * T * field_mult(e.team), 0.9)
+	if controls and controls.mode == "cast":
+		var info: Dictionary = Defs.STORM if controls.cast_spell == "storm" else Defs.MIASMA
+		var col := Color(0.55, 0.8, 1.0, 0.9) if controls.cast_spell == "storm" else Color(0.6, 1.0, 0.35, 0.9)
+		var at: Vector2 = get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position()
+		field_layer.draw_set_transform(at, 0.0, Vector2(1.0, FIELD_Y))
+		field_layer.draw_circle(Vector2.ZERO, float(info["radius"]), Color(col.r, col.g, col.b, 0.12))
+		field_layer.draw_arc(Vector2.ZERO, float(info["radius"]), 0.0, TAU, 48, col, 2.0)
+		field_layer.draw_set_transform(Vector2.ZERO)
 	if controls and controls.mode == "place":
 		var k: String = controls.place_kind
 		if faction_of(human) == "clockwork" or Defs.BUILDINGS[k].has("field"):
@@ -1670,6 +1694,187 @@ func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Ent
 	explode(p, dmg * float(Defs.ROUND_SHOT["splash_dmg"]), float(Defs.ROUND_SHOT["splash"]), t, shooter)
 
 
+# ------------------------------------------------------------------ new units: blobs and spells
+
+## Spore Mother: a big spit blob lobbed high onto a spot.
+func blob_shot(u: Unit, p: Vector2, dmg: float) -> void:
+	var mouth := u.center() + Vector2(0, -14)
+	var pr := Projectile.new()
+	pr.game = self
+	pr.from = mouth
+	pr.to = p + Vector2(randf_range(-10, 10), randf_range(-8, 8))
+	pr.duration = clampf(mouth.distance_to(p) / 300.0, 0.5, 1.2)
+	pr.damage = dmg
+	pr.splash = float(u.d["splash"])
+	pr.blob = true
+	pr.team = u.team
+	pr.shooter = u
+	add_child(pr)
+	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
+
+
+## The blob bursts: acid over a whole area (less at the edge), and it keeps burning.
+func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
+	var fx := spawn_effect("acid_splash", p, 0.9)
+	fx.scale = Vector2(1.8, 1.5)
+	for i in 3:
+		var f2 := spawn_effect("acid_splash", p + Vector2(randf_range(-splash, splash) * 0.6, randf_range(-splash, splash) * 0.4), 1.2)
+		f2.scale = Vector2(0.9, 0.9)
+	Sfx.play_any(["combat/spitter_hit", "acid"], p)
+	for u in units_near(p, splash + 12.0):
+		if allied(u.team, t) or u.dead or u.is_air() or u.off_field:
+			continue
+		var d2: Vector2 = u.position - p
+		d2.y /= FIELD_Y
+		if d2.length() > splash + u.radius:
+			continue
+		var f := 1.0 - 0.5 * clampf(d2.length() / splash, 0.0, 1.0)
+		u.take_damage(dmg * f, shooter)
+		u.acid_t = maxf(u.acid_t, 2.0)
+	for b in buildings.duplicate():
+		if not allied(b.team, t) and not b.dead and b.edge_distance(p) < splash * 0.5:
+			b.take_damage(dmg, shooter)
+
+
+## Spells on the ground for a while: [{kind, pos, r, t, team, age, fx, healed}]
+var zones: Array = []
+
+
+## Why this unit can't cast that spell now ("" = it can).
+func spell_problem(u: Unit, spell: String) -> String:
+	if spell == "storm":
+		if u.charge < float(Defs.STORM["cost"]):
+			return "Not enough charge: the Stormcaller recharges inside a Clockwork field."
+	elif spell == "miasma":
+		if u.spell_cd > 0.0:
+			return "Miasma isn't ready yet (%ds)." % int(ceil(u.spell_cd))
+		if float(players[u.team]["res2"]) < float(Defs.MIASMA["cost2"]):
+			return "Not enough essence."
+	return ""
+
+
+## The selected casters: the nearest one that can cast goes and does it.
+func cast_order(list: Array, spell: String, p: Vector2) -> void:
+	var kind := "stormcaller" if spell == "storm" else "spore_mother"
+	var best: Unit = null
+	var bd := INF
+	var why := "Nobody here can cast that."
+	for u in list:
+		if not (u is Unit) or u.dead or u.kind != kind:
+			continue
+		if u.order == "cast":
+			continue           # already busy with one
+		var w := spell_problem(u, spell)
+		if w != "":
+			why = w
+			continue
+		var dd: float = u.position.distance_to(p)
+		if dd < bd:
+			bd = dd
+			best = u
+	if best:
+		best.cmd_cast(spell, p)
+	elif list.size() > 0 and list[0].team == human:
+		notify(why)
+
+
+func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
+	var w := spell_problem(u, spell)
+	if w != "":
+		if u.team == human:
+			notify(w)
+		return
+	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {}}
+	if spell == "storm":
+		u.charge -= float(Defs.STORM["cost"])
+		z["r"] = float(Defs.STORM["radius"])
+		z["t"] = float(Defs.STORM["time"])
+		Sfx.play_any(["combat/tesla_attack", "zap"], p)
+	else:
+		players[u.team]["res2"] = float(players[u.team]["res2"]) - float(Defs.MIASMA["cost2"])
+		u.spell_cd = float(Defs.MIASMA["cooldown"])
+		z["r"] = float(Defs.MIASMA["radius"])
+		z["t"] = float(Defs.MIASMA["time"])
+		Sfx.play_any(["combat/spitter_attack", "acid"], p)
+	zones.append(z)
+	_zone_fx(z, "in")
+
+
+## Show the zone's effect for a stage ("in", "loop", "out"); falls back to sparks when the
+## effect art isn't there.
+func _zone_fx(z: Dictionary, stage: String) -> void:
+	var name: String = ("storm_" if z["kind"] == "storm" else "miasma_") + stage
+	if z["fx"] and is_instance_valid(z["fx"]):
+		(z["fx"] as Node).queue_free()
+	z["fx"] = null
+	z["stage"] = stage
+	if not ArtData.EFFECTS.has(name):
+		return
+	var info: Dictionary = ArtData.EFFECTS[name]
+	var fx := spawn_effect(name, z["pos"], 1.4 if stage != "loop" else 1.0, stage == "loop")
+	var want_w: float = float(z["r"]) * 2.1
+	var sc := want_w / maxf(1.0, float(info["size"].x))
+	fx.scale = Vector2(sc, sc)
+	fx.z_index = 2
+	if z["kind"] == "miasma":
+		fx.modulate.a = 0.8
+	z["fx"] = fx
+	z["in_t"] = float(info["frames"]) / 14.0
+
+
+func _tick_zones(delta: float) -> void:
+	if zones.is_empty():
+		return
+	var mended := {}       # clouds don't stack: one cloud heals a unit per tick
+	for z in zones:
+		z["age"] = float(z["age"]) + delta
+		var p: Vector2 = z["pos"]
+		var r: float = z["r"]
+		if z["stage"] == "in" and z["age"] >= float(z.get("in_t", 0.4)):
+			_zone_fx(z, "loop")
+		if z["kind"] == "storm":
+			for u in units_near(p, r + 20.0):
+				if u.dead or u.off_field or not in_ellipse(p, u.position, r + u.radius):
+					continue
+				u.stun_t = maxf(u.stun_t, 0.2)
+				u.phase = ""
+				if hostile(u.team, int(z["team"])):
+					var c = z["caster"]
+					u.take_damage(float(Defs.STORM["dps"]) * delta, c if is_instance_valid(c) else null)
+			z["bolt_t"] = float(z.get("bolt_t", 0.0)) - delta
+			if z["bolt_t"] <= 0.0:
+				z["bolt_t"] = 0.18
+				var a := randf() * TAU
+				var q := p + Vector2(cos(a), sin(a) * FIELD_Y) * r * sqrt(randf())
+				if ArtData.EFFECTS.has("zap_strike"):
+					var fx := spawn_effect("zap_strike", q, 1.6)
+					var sinfo: Dictionary = ArtData.EFFECTS["zap_strike"]
+					fx.offset = Vector2(0, -float(sinfo["size"].y) * 0.45)
+				else:
+					spawn_effect("hit", q, 1.0)
+		else:
+			for u in units_near(p, r + 20.0):
+				if u.dead or not allied(u.team, int(z["team"])) or u.d["faction"] != "brood" or u.hp >= u.max_hp:
+					continue
+				if mended.has(u) or not in_ellipse(p, u.position, r + u.radius):
+					continue
+				var done: float = z["healed"].get(u, 0.0)
+				var cap: float = u.max_hp * float(Defs.MIASMA["cap"])
+				if done >= cap:
+					continue
+				var h := minf(float(Defs.MIASMA["hps"]) * delta, cap - done)
+				u.hp = minf(u.max_hp, u.hp + h)
+				z["healed"][u] = done + h
+				mended[u] = true
+	for z in zones.duplicate():
+		if float(z["age"]) >= float(z["t"]):
+			_zone_fx(z, "out")
+			var fx = z["fx"]
+			if fx and is_instance_valid(fx):
+				(fx as Effect).loop = false
+			zones.erase(z)
+
+
 func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
 	match randi() % 3:
 		0:
@@ -1854,6 +2059,7 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()
 			budget -= 1
+	_tick_zones(delta)
 	_swamp_t -= delta
 	if swamp_dirty and _swamp_t <= 0.0:
 		_swamp_t = 0.5
@@ -2193,6 +2399,14 @@ func _draw_overlay() -> void:
 	for pg in _pings:
 		var f: float = pg[2] / 0.5
 		overlay.draw_arc(pg[0], 16.0 * (1.5 - f), 0, TAU, 20, Color(pg[1], f), 2.0)
+	if controls and controls.mode == "cast":
+		var info: Dictionary = Defs.STORM if controls.cast_spell == "storm" else Defs.MIASMA
+		var col := Color(0.55, 0.8, 1.0, 0.9) if controls.cast_spell == "storm" else Color(0.6, 1.0, 0.35, 0.9)
+		var at: Vector2 = get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position()
+		field_layer.draw_set_transform(at, 0.0, Vector2(1.0, FIELD_Y))
+		field_layer.draw_circle(Vector2.ZERO, float(info["radius"]), Color(col.r, col.g, col.b, 0.12))
+		field_layer.draw_arc(Vector2.ZERO, float(info["radius"]), 0.0, TAU, 48, col, 2.0)
+		field_layer.draw_set_transform(Vector2.ZERO)
 	if controls and controls.mode == "place":
 		var k: String = controls.place_kind
 		var size: Vector2i = Defs.BUILDINGS[k]["size"]

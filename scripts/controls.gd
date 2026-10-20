@@ -21,6 +21,7 @@ var game: Game
 var hud: Control
 var mode := ""                  # "", move, attack, place, rally
 var place_kind := ""
+var cast_spell := ""            # "cast" mode: storm or miasma
 var ghost_cell := Vector2i(-1, -1)
 
 var _touches := {}              # index -> position
@@ -193,7 +194,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 					begin_place(kind)        # Shift keeps placing
 					_move_ghost(e.position)
 				return
-			"move", "attack", "rally", "rally_army", "rally_worker":
+			"move", "attack", "rally", "rally_army", "rally_worker", "cast":
 				_tap(e.position, false)
 				return
 		_lmb_down = true
@@ -377,6 +378,11 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 					game.group_move(units, p, true)
 			else:
 				game.group_move(units, p, false)
+			cancel_mode()
+			Sfx.play_any(["ui/click", "click"])
+			return
+		"cast":
+			game.cast_order(units, cast_spell, p)
 			cancel_mode()
 			Sfx.play_any(["ui/click", "click"])
 			return

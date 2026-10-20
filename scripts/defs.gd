@@ -98,7 +98,7 @@ const UNITS := {
 		"tags": ["armored"],
 		"name": "Pikeman", "hp": 120, "armor": 2, "speed": 60, "cost": 75, "time": 16.0, "supply": 2,
 		"sight": 7, "range": 30, "damage": 13, "cooldown": 1.1, "radius": 11, "from": "barracks",
-		"bonus": {"cannon": 2.5, "brute": 1.6}, "faction": "crown", "about": "Tough melee. Wrecks cannons and brutes up close.",
+		"bonus": {"cannon": 2.5, "brute": 1.6, "cuirassier": 2.0}, "faction": "crown", "about": "Tough melee. Wrecks cannons, brutes and cavalry up close.",
 	},
 	"cannon": {
 		"tags": ["armored"],
@@ -106,6 +106,13 @@ const UNITS := {
 		"sight": 8, "range": 430, "min_range": 80, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
 		"radius": 19, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
 		"about": "Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers.",
+	},
+	"cuirassier": {
+		"tags": ["armored"],
+		"name": "Cuirassier", "hp": 170, "armor": 2, "speed": 118, "cost": 175, "time": 24.0, "supply": 3,
+		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
+		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "bolt": 1.3}, "charge": true, "faction": "crown",
+		"about": "Fast armoured horseman with a sabre. After a gallop his first blow hits double and throws the enemy back. Pikes beat him.",
 	},
 	"grub": {
 		"tags": ["light"],
@@ -134,6 +141,13 @@ const UNITS := {
 		"building_bonus": 1.6, "requires": "gorge_pit", "cost2": 20, "faction": "brood",
 		"about": "Huge horned tank. Charges in and knocks enemies back.",
 	},
+	"spore_mother": {
+		"tags": ["armored"],
+		"name": "Spore Mother", "hp": 260, "armor": 1, "speed": 40, "cost": 175, "cost2": 40, "time": 26.0, "supply": 4,
+		"sight": 10, "range": 300, "min_range": 70, "damage": 26, "splash": 50, "cooldown": 4.0, "aim": 0.6,
+		"radius": 20, "from": "hive", "requires": "gorge_pit", "faction": "brood",
+		"about": "Walking, she can't attack. ROOT her (2.5 s): she lobs big spit blobs that splash a whole area, and spreads swamp. Casts MIASMA, a cloud that heals the Brood.",
+	},
 	"winder": {
 		"tags": ["light"],
 		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
@@ -159,6 +173,13 @@ const UNITS := {
 		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "assembly_works",
 		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
 		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
+	},
+	"stormcaller": {
+		"tags": ["light"],
+		"name": "Stormcaller", "hp": 90, "armor": 0, "speed": 56, "cost": 150, "time": 24.0, "supply": 2,
+		"sight": 9, "range": 120, "damage": 7, "cooldown": 1.3, "aim": 0.25, "radius": 12, "from": "assembly_works",
+		"requires": "charging_pylon", "anti_air": true, "faction": "clockwork",
+		"about": "Fragile lightning caster. STORM stuns everything inside it, friends too. Its charge only fills inside a Clockwork field.",
 	},
 	"missionary": {
 		"tags": ["light"],
@@ -194,15 +215,15 @@ const BUILDINGS := {
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "pikeman"], "faction": "crown", "about": "Trains musketeers and pikemen.",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "pikeman", "cuirassier"], "faction": "crown", "about": "Trains musketeers, pikemen and (with a Foundry) cuirassiers.",
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["cannon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons. Needs a Barracks.",
+		"supply": 0, "sight": 7, "trains": ["cannon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons. Lets the Barracks train cuirassiers. Needs a Barracks.",
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
-		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing"], "eggs": true, "swamp": 9,
+		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother"], "eggs": true, "swamp": 9,
 		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits.",
 	},
 	"clutch_mound": {
@@ -216,7 +237,7 @@ const BUILDINGS := {
 	"gorge_pit": {
 		"name": "Gorge Pit", "hp": 800, "armor": 1, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "requires": "warren", "faction": "brood",
-		"about": "Lets the Hive hatch Brutes. Needs a Warren.",
+		"about": "Lets the Hive hatch Brutes and Spore Mothers. Needs a Warren.",
 	},
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
@@ -235,7 +256,7 @@ const BUILDINGS := {
 	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1300, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker", "tesla_cart"], "faction": "clockwork",
+		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker", "tesla_cart", "stormcaller"], "faction": "clockwork",
 		"about": "Assembles every combat construct. Faster with more energy on assembly.",
 	},
 	"farm": {
@@ -286,7 +307,7 @@ const BUILDINGS := {
 	"charging_pylon": {
 		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "faction": "clockwork",
-		"about": "Winds up and slowly mends constructs nearby. Unlocks the Tesla Cart.",
+		"about": "Winds up and slowly mends constructs nearby. Unlocks the Tesla Cart and the Stormcaller.",
 	},
 }
 
@@ -304,6 +325,15 @@ const BAYONET := {"range": 26.0, "damage": 11.0, "cooldown": 1.2, "aim": 0.2, "b
 const CANNON_SWITCH := 2.5       # limber / unlimber
 ## Clockwork towers zap flyers with chain lightning; while they do, their field is off.
 const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "jump": 110.0, "falloff": 0.7, "off": 3.0}
+## Cuirassier: after galloping this long, his next blow is a charge.
+const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
+## Stormcaller: a storm of lightning that stuns everything inside (friends too).
+const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 96.0, "time": 3.0, "dps": 8.0, "cast": 0.7}
+## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
+## inside it, up to a share of each unit's health per cloud; clouds don't stack.
+const ROOT_SWITCH := 2.5
+const ROOT_SWAMP := 4.0          # tiles
+const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
 const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "powder": 2, "cone": 0.82, "vs_light": 1.5}
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.

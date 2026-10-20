@@ -391,6 +391,11 @@ In the five directions, with the same scale and camera angle as the existing can
 
 ## Next units (round 4): ideas and prompts
 
+**Built (Oct 2026), with the user's changes:** the Stormcaller as below; the Cuirassier is
+melee only and fast (no pistols); the Spore Mother does not spawn broodlings or attack
+through the ground: walking she can't attack, rooted she lobs big area-damage spit blobs
+(and spreads swamp), and she casts the healing miasma.
+
 The factions so far:
 - **Crown** has modes (bayonets, limbered/unlimbered cannon, canister/round shot).
 - **Clockwork** has modes and fields (Tesla Cart, tower lightning).

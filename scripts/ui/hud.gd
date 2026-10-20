@@ -369,11 +369,11 @@ func _build_card() -> Array:
 								u.cmd_gather(m)
 							else:
 								toast("Every post is taken: build more."), true, "", ""])
-		for dk in ["cannon", "tesla_cart"]:
+		for dk in ["cannon", "tesla_cart", "spore_mother"]:
 			var kk: String = dk
 			if units.any(func(u: Unit) -> bool: return u.kind == kk):
 				var packed := units.any(func(u: Unit) -> bool: return u.kind == kk and u.tesla_mode == "packed")
-				var lab: String = ("UNLIMBER" if packed else "LIMBER") if kk == "cannon" else ("DEPLOY" if packed else "PACK")
+				var lab: String = {"cannon": "UNLIMBER" if packed else "LIMBER", "spore_mother": "ROOT" if packed else "UPROOT"}.get(kk, "DEPLOY" if packed else "PACK")
 				list.insert(3, [kk, lab, func() -> void:
 					for u in game.selected_units():
 						if u.kind == kk:
@@ -423,6 +423,23 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			for u in game.selected_units():
 				if u.kind == "pikeman":
 					u.push_auto = not on, true, "", ""])
+	# spells: pick the spot on the map; the nearest caster that can goes and does it
+	var callers := units.filter(func(u: Unit) -> bool: return u.kind == "stormcaller")
+	if not callers.is_empty():
+		var ready: bool = callers.any(func(u: Unit) -> bool: return u.charge >= float(Defs.STORM["cost"]))
+		list.append(["stormcaller", "STORM", func() -> void:
+			controls.mode = "cast"
+			controls.cast_spell = "storm", ready, "" if ready else "Not enough charge: recharge inside a Clockwork field.", ""])
+	var mothers := units.filter(func(u: Unit) -> bool: return u.kind == "spore_mother")
+	if not mothers.is_empty():
+		var ok: bool = mothers.any(func(u: Unit) -> bool: return u.spell_cd <= 0.0)
+		var why := "" if ok else "Miasma isn't ready yet."
+		if float(game.players[game.human]["res2"]) < float(Defs.MIASMA["cost2"]):
+			ok = false
+			why = "Not enough essence."
+		list.append(["spore_mother", "MIASMA", func() -> void:
+			controls.mode = "cast"
+			controls.cast_spell = "miasma", ok, why, ""])
 	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	if not guns.is_empty():
 		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")
@@ -437,7 +454,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D"}
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -603,8 +620,9 @@ func _draw() -> void:
 	if br.size != Vector2.ZERO:
 		draw_rect(br, Color(0.4, 1, 0.4, 0.12))
 		draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
-	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker"]:
+	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker", "cast"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
+			"cast": "Tap where to cast the %s" % ("storm (it stuns your own units too)" if controls.cast_spell == "storm" else "healing miasma"),
 			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a Feeding Pit (or a spot) for new grubs"}[controls.mode]
 		if Settings.pc():
 			t = t.replace("Tap", "Click") + "  (right-click or Esc cancels)"
@@ -718,6 +736,16 @@ func _draw_panel(font: Font) -> void:
 				info = {"packed": "Limbered: the horse tows it. UNLIMBER to fire.", "deploying": "Unlimbering...",
 					"deployed": "Set up: %s loaded. Fires at anything your side can see." % ("canister" if uu.mode == "canister" else "round shot"),
 					"packing": "Limbering up..."}[uu.tesla_mode]
+			elif uu.kind == "spore_mother":
+				info = {"packed": "Walking: can't attack. ROOT her to lob spit blobs.", "deploying": "Rooting...",
+					"deployed": "Rooted: lobs spit blobs and spreads swamp.", "packing": "Uprooting..."}[uu.tesla_mode]
+				if uu.spell_cd > 0.0:
+					info += "  Miasma ready in %ds." % int(ceil(uu.spell_cd))
+			elif uu.kind == "stormcaller":
+				info = "Charge %d / %d (a storm costs %d). %s" % [int(uu.charge), int(Defs.STORM["max"]), int(Defs.STORM["cost"]),
+					"Recharging in the field." if uu._in_field and uu.charge < float(Defs.STORM["max"]) else ("Full." if uu.charge >= float(Defs.STORM["max"]) else "Bring it into a Clockwork field to recharge.")]
+			elif uu.kind == "cuirassier":
+				info = "Charge ready: the next blow hits double and throws the enemy back." if uu.run_t >= float(Defs.CHARGE["run"]) else uu.d["about"]
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -866,6 +894,10 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
 		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
 		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. 2 powder a shot.",
+		"STORM": "Static storm: a ring of lightning on a spot for 3 s. Everything inside is stunned, your own units too, and enemies take damage. Costs 70 charge; the Stormcaller recharges only inside a Clockwork field.",
+		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
+		"ROOT": "Root (2.5 s): she digs in, lobs big spit blobs that splash an area, and spreads swamp. She can't move until she uproots.",
+		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",
 		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. Can't hit flyers. 3 powder.",
 	}
 	if ABOUT.has(title):

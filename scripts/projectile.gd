@@ -12,13 +12,19 @@ var splash := 40.0
 var team := 0
 var shooter: Entity
 var round_shot := false
+var blob := false               # Spore Mother: a big glob of spit lobbed high
 var sprite: Sprite2D
 
 
 func _ready() -> void:
 	sprite = Sprite2D.new()
-	sprite.texture = Game.tex("res://assets/effects/ball_big.png")
-	sprite.scale = Vector2(0.9, 0.9)
+	if blob:
+		sprite.texture = Game.tex("res://assets/effects/acid_ball.png")
+		sprite.hframes = int(ArtData.EFFECTS.get("acid_ball", {"frames": 1})["frames"])
+		sprite.scale = Vector2(3.0, 3.0)
+	else:
+		sprite.texture = Game.tex("res://assets/effects/ball_big.png")
+		sprite.scale = Vector2(0.9, 0.9)
 	add_child(sprite)
 	z_index = 5
 
@@ -26,12 +32,15 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	t += delta
 	var f := clampf(t / duration, 0.0, 1.0)
-	var h := sin(f * PI) * from.distance_to(to) * 0.18
+	var arc := 0.45 if blob else 0.18
+	var h := sin(f * PI) * from.distance_to(to) * arc
 	position = from.lerp(to, f) - Vector2(0, h)
-	var dh := cos(f * PI) * PI * from.distance_to(to) * 0.18
+	var dh := cos(f * PI) * PI * from.distance_to(to) * arc
 	sprite.rotation = ((to - from) - Vector2(0, dh)).angle() + PI
 	if f >= 1.0:
-		if round_shot:
+		if blob:
+			game.blob_land(to, damage, splash, team, shooter)
+		elif round_shot:
 			game.round_shot_land(from, to, damage, team, shooter)
 		else:
 			game.explode(to, damage, splash, team, shooter)

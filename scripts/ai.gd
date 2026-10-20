@@ -323,6 +323,7 @@ func _produce() -> void:
 	if _clock():
 		var walkers := army.filter(func(u: Unit) -> bool: return u.kind == "steam_walker").size()
 		var carts := army.filter(func(u: Unit) -> bool: return u.kind == "tesla_cart").size()
+		var callers := army.filter(func(u: Unit) -> bool: return u.kind == "stormcaller").size()
 		for w in _mine("assembly_works"):
 			if w.built and w.queue.size() < 2:
 				var k := "gearknight" if randf() < 0.5 else "bolt"
@@ -332,11 +333,15 @@ func _produce() -> void:
 				elif carts * 6 < army.size() and game.can_train(w, "tesla_cart") == "":
 					k = "tesla_cart"
 					carts += 1
+				elif difficulty >= 1 and callers * 7 < army.size() and game.can_train(w, "stormcaller") == "":
+					k = "stormcaller"
+					callers += 1
 				game.train(w, k)
 		return
 	if _brood():
 		var brutes := army.filter(func(u: Unit) -> bool: return u.kind == "brute").size()
 		var wings := army.filter(func(u: Unit) -> bool: return u.kind == "skywing").size()
+		var mothers := army.filter(func(u: Unit) -> bool: return u.kind == "spore_mother").size()
 		for h in _halls():
 			if not h.built:
 				continue
@@ -348,6 +353,9 @@ func _produce() -> void:
 				elif game.can_train(h, "skywing") == "" and wings * 6 < army.size():
 					k = "skywing"
 					wings += 1
+				elif game.can_train(h, "spore_mother") == "" and mothers * 14 < army.size():
+					k = "spore_mother"
+					mothers += 1
 				if game.train(h, k) != "":
 					break
 		return
@@ -356,6 +364,9 @@ func _produce() -> void:
 	for b in _mine("barracks"):
 		if b.built and b.queue.size() < 2:
 			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) else "pikeman"
+			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
+			if horse * 6 < army.size() and randf() < 0.35 and game.can_train(b, "cuirassier") == "":
+				k = "cuirassier"
 			game.train(b, k)
 	for f in _mine("foundry"):
 		if f.built and f.queue.size() < 1 and cannons * 4 < army.size() + 2 and not short_powder:
@@ -504,6 +515,7 @@ func _enemy_base() -> Vector2:
 
 ## Bayonets when the powder runs dry; canister when a crowd closes on a cannon.
 func _abilities() -> void:
+	_spells()
 	if not _crown():
 		return
 	var powder := _res2()
@@ -527,6 +539,43 @@ func _abilities() -> void:
 					if o.is_air():
 						flyers += 1
 			u.set_canister(crowd >= 3 or flyers >= 1)
+
+
+## Stormcallers drop storms on packed enemies (not on our own men); Spore Mothers heal a
+## hurt swarm in the middle of a fight.
+func _spells() -> void:
+	for u in game.army(team):
+		if u.order == "cast":
+			continue
+		if u.kind == "stormcaller" and u.charge >= float(Defs.STORM["cost"]):
+			var best := Vector2.INF
+			var score := 3.5 if difficulty >= 2 else 4.5
+			var r: float = Defs.STORM["radius"]
+			for e in game.units_near(u.position, float(Defs.STORM["range"]) + 60.0):
+				if not game.hostile(e.team, team) or e.dead or e.off_field:
+					continue
+				var s := 0.0
+				for o in game.units_near(e.position, r):
+					if o.dead or o.off_field:
+						continue
+					if game.hostile(o.team, team):
+						s += 1.0 + float(o.d["supply"]) * 0.25
+					else:
+						s -= 2.0
+				if s > score:
+					score = s
+					best = e.position
+			if best != Vector2.INF:
+				u.cmd_cast("storm", best)
+		elif u.kind == "spore_mother" and u.spell_cd <= 0.0 and _res2() >= float(Defs.MIASMA["cost2"]) + 10.0:
+			var hurt := 0
+			var at := Vector2.ZERO
+			for o in game.units_near(u.position, float(Defs.MIASMA["range"])):
+				if o.team == team and not o.dead and o.hp < o.max_hp * 0.65:
+					hurt += 1
+					at += o.position
+			if hurt >= 4:
+				u.cmd_cast("miasma", at / hurt)
 
 
 # ------------------------------------------------------------------ micro (Hard and Brutal)

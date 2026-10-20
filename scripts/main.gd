@@ -34,17 +34,17 @@ Skirmish: up to four players. Give players the same TEAM number to make them all
 
 Labourers work Farms (up to 3 each): a farm ripens into a 280-gold harvest, faster with more hands. The Powder Mill makes black powder; muskets and cannons can't fire without it. Each Town Hall allows 4 Farms and 1 Powder Mill nearby.
 
-Barracks: Musketeers and Pikemen. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
+Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
 
 Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some).
 
-Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, flyers only ranged units can hit. Army cap 160.""",
+Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, flyers only ranged units can hit. Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Army cap 160.""",
 	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.
 
 Winders crank Boilers for energy. Split the energy (tap a Boiler or Clocktower) between ORE (Ore Crushers turn it into ore), ASSEMBLY (faster production) and WIND (bigger fields; constructs run down slower). Winders also start buildings and repair.
 
-Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Army cap 80.""",
+Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Stormcallers cast a STORM that stuns everything inside it, your own units too; their charge only fills inside a field. Army cap 80.""",
 	"CONTROLS": """COMPUTER
 Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen); left drag box-selects; right click commands (move, attack, work, rally). Mouse wheel zooms; screen edges, arrow keys or the middle button pan.
 Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work. 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall, Space jumps to the selection, Esc cancels.

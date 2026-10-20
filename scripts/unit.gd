@@ -61,6 +61,12 @@ var knock := Vector2.ZERO       # being shoved back
 var stun_t := 0.0
 var _sep_tick := false
 var _anim_dt := 0.0
+# New units
+var charge := 0.0               # Stormcaller: fills inside a Clockwork field, spent on storms
+var run_t := 0.0                # Cuirassier: seconds at the gallop (a charge after Defs.CHARGE.run)
+var spell_cd := 0.0             # Spore Mother: miasma cooldown
+var cast_spell := ""            # the spell this unit is on its way to cast
+var cast_at := Vector2.ZERO
 
 
 func is_unit() -> bool:
@@ -138,6 +144,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	d = Defs.UNITS[k]
 	max_hp = d["hp"]
 	hp = max_hp
+	if k == "stormcaller":
+		charge = float(Defs.STORM["max"]) * 0.5
 	armor = d["armor"]
 	sight = d["sight"]
 	radius = d["radius"]
@@ -187,25 +195,80 @@ func cmd_attack(e: Entity) -> void:
 	target = e
 
 
+## Units with two modes: moving (packed) and set up (deployed). The cannon limbers and
+## unlimbers, the Tesla Cart packs and deploys, the Spore Mother uproots and roots.
 func deploys() -> bool:
-	return kind == "tesla_cart" or kind == "cannon"
+	return kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother"
 
 
 func switch_time() -> float:
-	return Defs.CANNON_SWITCH if kind == "cannon" else Defs.TESLA_SWITCH
+	match kind:
+		"cannon":
+			return Defs.CANNON_SWITCH
+		"spore_mother":
+			return Defs.ROOT_SWITCH
+	return Defs.TESLA_SWITCH
 
 
 func cmd_deploy() -> void:
-	if kind == "cannon" and tesla_mode == "packed":
-		cmd_stop()
-		tesla_mode = "deploying"
-		tesla_t = Defs.CANNON_SWITCH
+	if not deploys() or tesla_mode != "packed":
 		return
-	if kind == "tesla_cart" and tesla_mode == "packed":
-		cmd_stop()
-		tesla_mode = "deploying"
-		tesla_t = Defs.TESLA_SWITCH
+	cmd_stop()
+	tesla_mode = "deploying"
+	tesla_t = switch_time()
+	if kind == "tesla_cart":
 		Sfx.play("combat/tesla_deploy", position)
+
+
+## Go to a spot and cast a spell there (Stormcaller: storm; Spore Mother: miasma).
+func cmd_cast(spell: String, p: Vector2) -> void:
+	_reset_work()
+	order = "cast"
+	cast_spell = spell
+	cast_at = p
+	target = null
+	order_target = null
+	if position.distance_to(p) > _spell_range():
+		_request_path(p)
+
+
+func _spell_range() -> float:
+	return float((Defs.STORM if cast_spell == "storm" else Defs.MIASMA)["range"])
+
+
+func _cast(delta: float) -> Vector2:
+	if phase == "cast":
+		if stun_t <= 0.0:
+			phase_t -= delta
+		if phase_t <= 0.0:
+			phase = ""
+			game.cast_spell(self, cast_spell, cast_at)
+			cmd_stop()
+		return Vector2.ZERO
+	var why := game.spell_problem(self, cast_spell)
+	if why != "":
+		if team == game.human:
+			game.notify(why)
+		cmd_stop()
+		return Vector2.ZERO
+	if position.distance_to(cast_at) <= _spell_range():
+		if tesla_mode == "deploying" or tesla_mode == "packing":
+			return Vector2.ZERO
+		path = PackedVector2Array()
+		phase = "cast"
+		phase_t = float((Defs.STORM if cast_spell == "storm" else Defs.MIASMA)["cast"])
+		facing = (cast_at - position).normalized() if cast_at != position else facing
+		frame_i = 0
+		anim_t = 0.0
+		return Vector2.ZERO
+	if deploys() and tesla_mode != "packed":
+		if tesla_mode == "deployed":
+			tesla_mode = "packing"
+			tesla_t = switch_time()
+		return Vector2.ZERO
+	if path.is_empty() and not path_pending:
+		_request_path(cast_at)
+	return _follow(delta)
 
 
 func cmd_pack() -> void:
@@ -309,6 +372,13 @@ func _physics_process(delta: float) -> void:
 		return
 	cooldown = maxf(cooldown - delta, 0.0)
 	push_cd = maxf(push_cd - delta, 0.0)
+	spell_cd = maxf(spell_cd - delta, 0.0)
+	if kind == "cuirassier":
+		# a gallop builds up to a charge; standing about loses it
+		if velocity.length() > speed * 0.7:
+			run_t += delta
+		elif phase == "":
+			run_t = maxf(run_t - delta * 3.0, 0.0)
 	stun_t = maxf(stun_t - delta, 0.0)
 	scan_t -= delta
 	repath_t -= delta
@@ -333,6 +403,8 @@ func _physics_process(delta: float) -> void:
 			_in_field = game.in_field(team, position)
 		if _in_field:
 			wind = minf(1.0, wind + 0.3 * delta)
+			if kind == "stormcaller":
+				charge = minf(float(Defs.STORM["max"]), charge + float(Defs.STORM["fill"]) * delta)
 		else:
 			wind = maxf(Defs.WIND_MIN, wind - Defs.WIND_DECAY * game.wind_decay_mult(team) * delta)
 		speed *= lerpf(0.75, 1.0, (wind - Defs.WIND_MIN) / (1.0 - Defs.WIND_MIN))
@@ -398,6 +470,8 @@ func _physics_process(delta: float) -> void:
 			want = _heal(delta)
 		"build":
 			want = _build(delta)
+		"cast":
+			want = _cast(delta)
 	if deploys():
 		want = _tesla(want, delta)
 	_move(want, delta)
@@ -417,9 +491,11 @@ func _tesla(want: Vector2, delta: float) -> Vector2:
 			tesla_t -= delta
 			if tesla_t <= 0.0:
 				tesla_mode = "deployed" if tesla_mode == "deploying" else "packed"
+				if kind == "spore_mother":
+					game.swamp_dirty = true
 			return Vector2.ZERO
 		"deployed":
-			if want.length() > 5.0 and order in ["move", "amove", "gather", "build"]:
+			if want.length() > 5.0 and order in ["move", "amove", "gather", "build", "cast"]:
 				tesla_mode = "packing"
 				tesla_t = switch_time()
 			return Vector2.ZERO
@@ -633,6 +709,13 @@ func _strike(e: Entity) -> void:
 			game.tesla_zap(self, e, dmg)
 		"spitter":
 			game.acid_shot(self, e, dmg)
+		"spore_mother":
+			game.blob_shot(self, e.center() + Vector2(0, 12), dmg)
+		"stormcaller":
+			# a short zap from the forked hands
+			e.take_damage(dmg, self)
+			game._zap_visual(center() + facing * 14.0 + Vector2(0, -4), e.center(), false, true)
+			Sfx.play_any(["combat/tesla_attack", "zap"], position)
 		"bolt":
 			game.bolt_shot(self, e, dmg)
 		"steam_walker":
@@ -640,7 +723,17 @@ func _strike(e: Entity) -> void:
 		_:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
+			var charged := kind == "cuirassier" and run_t >= float(Defs.CHARGE["run"])
+			if charged:
+				dmg *= float(Defs.CHARGE["mult"])
+				run_t = 0.0
 			e.take_damage(dmg, self)
+			if charged and e is Unit and not e.dead and not e.is_air():
+				var heavy: float = 0.4 if int(e.d["supply"]) >= 3 else 1.0
+				e.knock = (e.position - position).normalized() * float(Defs.CHARGE["force"]) * heavy
+				e.stun_t = float(Defs.CHARGE["stun"]) * heavy
+				e.phase = ""
+				game.spawn_effect("dust", e.position, 1.4).scale = Vector2(0.6, 0.6)
 			Sfx.play_any(["combat/%s_attack" % kind, {"raptor": "bite", "brute": "bite", "grub": "bite", "gearknight": "gear_hit", "winder": "gear_hit"}.get(kind, "clash")], position)
 			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			if kind == "brute" and e is Unit and not e.dead:
@@ -964,6 +1057,21 @@ func _anim_name() -> String:
 			if tesla_mode == "deployed":
 				return "attack" if phase != "" else "deployed"
 			return "walk" if moving else "idle"
+		"spore_mother":
+			if tesla_mode == "deploying" or tesla_mode == "packing":
+				return "deploy"
+			if phase == "cast" or (tesla_mode == "deployed" and phase != ""):
+				return "fire"
+			if tesla_mode == "deployed":
+				return "deployed"
+		"stormcaller":
+			if phase == "cast":
+				return "cast"
+			if phase != "":
+				return "attack"
+		"cuirassier":
+			if phase != "":
+				return "attack"
 	return "walk" if moving else "idle"
 
 
@@ -992,6 +1100,8 @@ func _animate(delta: float) -> void:
 			fps = 7.0
 			loop = false
 		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
+			if kind == "spore_mother":
+				fps = 6.0
 			fps = 9.0
 			loop = false
 		"burrow":
@@ -1018,7 +1128,10 @@ func _animate(delta: float) -> void:
 			fps = float(n) / switch_time()
 			loop = false
 		"deployed":
-			fps = 6.0
+			fps = 6.0 if kind != "spore_mother" else 3.0
+		"cast":
+			fps = float(n) / maxf(phase_t + 0.05, 0.3) if phase == "cast" else 8.0
+			loop = false
 		"bandage":
 			fps = 4.0
 	anim_t += delta * fps
