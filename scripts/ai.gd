@@ -408,10 +408,14 @@ func _wall_off() -> void:
 			if (c - cells[0]).length() <= 1.01:
 				gates.append(c)
 				break
+		var placed := 0
 		for c in cells:
 			var k := "gate" if gates.has(c) else "wall"
 			if game.place_building(team, k, c, [builder] if first and builder else []):
 				first = false
+				placed += 1
+		if game.mlog and placed > 0:
+			game.mlog.add("%s walled its ramp (%d pieces)" % [game.mlog.who(team), placed])
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:

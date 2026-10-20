@@ -45,6 +45,9 @@ There are **no resources on the map**: the map is about geography, chokes and to
 - **Stormcallers** (need a Charging Pylon) are fragile casters with a weak zap. **STORM** throws a 3-tile ring of lightning on a spot for 3 s: everything inside is **stunned** (your own units too) and enemies take damage. A storm costs 70 of the Stormcaller's 100 charge, and the charge only fills inside a Clockwork field.
 - Army cap 80.
 
+### Match log (for playtesting)
+Every match keeps a plain-text log: who played (and at what AI level), what each side built, lost and cast, the first of each unit type, the walls laid, a snapshot of every player each minute (income, resources, supply, workers, halls, army and its value, kills and losses) and the final result with kills by unit type. **COPY LOG** on the end screen copies it to the clipboard; the last 20 logs are also saved in `user://logs`.
+
 ### Line move
 Drag a line and your selected units spread out evenly along it (as in Beyond All Reason): good against splash, for firing lines and for holding a choke. Computer: hold the right button and drag (a short right click is still a normal command), or press MOVE / ATTACK and drag with the left button. Phone: tap MOVE or ATTACK, then drag the line. With ATTACK they attack-move to their spots.
 

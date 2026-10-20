@@ -131,6 +131,16 @@ func _ready() -> void:
 			Sfx.play_any(["ui/click", "click"])
 			sig.emit())
 		btns.add_child(b)
+	# the playtest log, to paste to the developer
+	if game.mlog:
+		var cb := Button.new()
+		cb.text = "COPY LOG"
+		cb.custom_minimum_size = Vector2(200, 58)
+		cb.pressed.connect(func() -> void:
+			Sfx.play_any(["ui/click", "click"])
+			DisplayServer.clipboard_set(game.mlog.text())
+			cb.text = "COPIED!")
+		btns.add_child(cb)
 
 
 ## You first, then your allies, then everyone else.

@@ -105,6 +105,8 @@ var winner := -1
 var clock := 0.0
 var stats: Array = []
 var _sample_t := 0.0
+var mlog: MatchLog              # the playtest log (copied from the end screen)
+var _first_of := {}             # "team:kind" -> true once that player has had one
 
 
 static func _new_stats() -> Dictionary:
@@ -194,6 +196,9 @@ func _ready() -> void:
 		return
 	_start_positions()
 	_init_fog()
+	mlog = MatchLog.new()
+	mlog.game = self
+	add_child(mlog)
 	var me: Building = _own_hall(human)
 	camera.position = me.global_position + Vector2(160, 40)
 	camera.zoom = Vector2(1.5, 1.5)
@@ -363,6 +368,8 @@ func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array) ->
 		if bl:
 			n += 1
 			first = false
+	if mlog and n > 0:
+		mlog.add("%s laid %d piece%s of %s" % [mlog.who(t), n, "" if n == 1 else "s", Defs.BUILDINGS[k]["name"]])
 	return n
 
 
@@ -997,6 +1004,8 @@ func on_building_died(b: Building) -> void:
 	_recount_supply(b.team)
 	stats[b.team]["bld_lost"] += 1
 	var k := _killer(b)
+	if mlog and b.built:
+		mlog.add("%s lost a %s%s" % [mlog.who(b.team), b.d["name"], (" to " + mlog.who(k) + (" (" + b.last_hit_by + ")" if b.last_hit_by != "" else "")) if k >= 0 else ""])
 	if k >= 0 and b.built:
 		stats[k]["razed"] += 1
 		stats[k]["value_killed"] += int(b.d["cost"])
@@ -1004,6 +1013,8 @@ func on_building_died(b: Building) -> void:
 
 func on_building_complete(b: Building) -> void:
 	_recount_supply(b.team)
+	if mlog and clock > 1.0 and not Defs.BUILDINGS[b.kind].get("line", false):
+		mlog.add("%s finished a %s%s" % [mlog.who(b.team), b.d["name"], " (expansion)" if b.kind == faction_hall(b.team) else ""])
 	if b.team == human and clock > 1.0:
 		Sfx.play_f("built", b.d["faction"])
 		Sfx.announce(b.d["faction"], "expansion" if b.kind == faction_hall(b.team) else "building_done", 3.0)
@@ -1137,6 +1148,9 @@ func spawn_trained(b: Building, k: String) -> void:
 					bd = dd
 					best = c
 	stats[b.team]["trained"] += int(Defs.UNITS[k].get("spawn", 1))
+	if mlog and not _first_of.has("%d:%s" % [b.team, k]):
+		_first_of["%d:%s" % [b.team, k]] = true
+		mlog.add("%s got its first %s" % [mlog.who(b.team), Defs.UNITS[k]["name"]])
 	if b.team == human:
 		if b.uses_eggs():
 			Sfx.play("hatch", b.global_position)
@@ -2074,6 +2088,12 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 		Sfx.play_any(["combat/spitter_attack", "acid"], p)
 	zones.append(z)
 	_zone_fx(z, "in")
+	if mlog:
+		var inside := 0
+		for o in units_near(p, float(z["r"])):
+			if not o.dead and hostile(o.team, u.team):
+				inside += 1
+		mlog.add("%s cast %s (%d enemies inside)" % [mlog.who(u.team), "a storm" if spell == "storm" else "miasma", inside])
 
 
 ## Show the zone's effect for a stage ("in", "loop", "out"); falls back to sparks when the
@@ -2409,6 +2429,8 @@ func _check_end() -> void:
 					u.die()
 			if t != human and not demo and n_players() > 2:
 				notify("%s is defeated!" % team_name(t).capitalize(), true)
+			if mlog:
+				mlog.add("%s is out" % mlog.who(t))
 	var sides_left := {}
 	for t in n_players():
 		if not eliminated[t]:

@@ -1138,6 +1138,14 @@ func start(cfg: Dictionary = {}) -> void:
 		ai.difficulty = maxi(0, LEVELS.find(slots[t]["who"]))
 		game.add_child(ai)
 		game.ais.append(ai)
+	if game.mlog:
+		var lv := {}
+		for t in slots.size():
+			if t != human:
+				lv[t] = String(slots[t]["who"]).to_upper()
+		game.mlog.begin(lv)
+		if game.sandbox:
+			game.mlog.add("(sandbox match)")
 	var c := Controls.new()
 	c.game = game
 	game.controls = c
@@ -1178,6 +1186,9 @@ func _on_end(winner: int) -> void:
 	if not game.demo:
 		Sfx.announce(game.faction_of(game.human), "victory" if won else "defeat", 1.0)
 	game._sample_stats()
+	if game.mlog:
+		game.mlog.finish(winner)
+		_save_log(game.mlog.text())
 	await get_tree().create_timer(1.2, true, false, true).timeout
 	if game == null:
 		return
@@ -1189,6 +1200,20 @@ func _on_end(winner: int) -> void:
 	o.play_again.connect(func() -> void: start())
 	o.to_menu.connect(func() -> void: _to_menu())
 	ui_layer.add_child(o)
+
+
+## Every match log is also kept in user://logs (the last 20).
+func _save_log(t: String) -> void:
+	DirAccess.make_dir_recursive_absolute("user://logs")
+	var name := "user://logs/match_%s.txt" % Time.get_datetime_string_from_system(false, true).replace(":", "-").replace(" ", "_")
+	var f := FileAccess.open(name, FileAccess.WRITE)
+	if f:
+		f.store_string(t)
+		f.close()
+	var files := Array(DirAccess.get_files_at("user://logs"))
+	files.sort()
+	while files.size() > 20:
+		DirAccess.remove_absolute("user://logs/" + String(files.pop_front()))
 
 
 func _web_fullscreen() -> void:
