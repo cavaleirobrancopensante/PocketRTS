@@ -30,6 +30,7 @@ MOUSE  Left click selects, drag to box, right click commands, wheel zooms, arrow
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(Music.new())
 	sfx = Sfx.new()
 	add_child(sfx)
 	ui_layer = CanvasLayer.new()
@@ -59,6 +60,8 @@ func _theme() -> Theme:
 
 func show_menu() -> void:
 	_clear_ui()
+	if Music.me:
+		Music.me.menu()
 	menu = Control.new()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu.theme = _theme()
@@ -89,6 +92,25 @@ func show_menu() -> void:
 		var fs := ["crown", "brood", "clockwork"]
 		start(1, true, [fs[randi() % 3], fs[randi() % 3]])))
 	v.add_child(_button("HOW TO PLAY", func() -> void: _show_help()))
+	var audio := HBoxContainer.new()
+	audio.add_theme_constant_override("separation", 12)
+	for which in ["music", "sound"]:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(214, 48)
+		b.add_theme_font_size_override("font_size", 18)
+		var refresh := func() -> void:
+			var on: bool = Music.me.music_on if which == "music" else Music.me.sound_on
+			b.text = "%s: %s" % [which.to_upper(), "ON" if on else "OFF"]
+		refresh.call()
+		b.pressed.connect(func() -> void:
+			_web_fullscreen()
+			if which == "music":
+				Music.me.toggle_music()
+			else:
+				Music.me.toggle_sound()
+			refresh.call())
+		audio.add_child(b)
+	v.add_child(audio)
 	v.add_child(_gap(6))
 	v.add_child(_label("v" + version, 14, Color(1, 1, 1, 0.35)))
 
@@ -254,6 +276,7 @@ func start(difficulty: int, demo: bool, factions: Array = []) -> void:
 	ui_layer.add_child(hud)
 	hud.quit_requested.connect(func() -> void: _to_menu())
 	game.ended.connect(_on_end)
+	Music.me.match_started(game.faction_of(0 if demo else game.human))
 
 
 func _to_menu() -> void:
@@ -265,8 +288,8 @@ func _to_menu() -> void:
 
 
 func _on_end(winner: int) -> void:
-	var won := winner == game.human
-	Sfx.play("done" if won else "alarm")
+	var won := winner == game.human or game.demo
+	Music.me.match_ended(won, game.faction_of(winner if game.demo else game.human))
 	game._sample_stats()
 	await get_tree().create_timer(1.2, true, false, true).timeout
 	if game == null:

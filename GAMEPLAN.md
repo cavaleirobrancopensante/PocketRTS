@@ -226,3 +226,82 @@ What the prototype needs (Crown vs Crown, four units): **Town Hall, Cottage, Bar
 
 **S4 Assembly Works** (cells 160×160)
 > Structure: wide workshop with sawtooth roof, a big open door with a half-assembled construct on a gantry crane inside, chimneys, steam pipes, red painted plates.
+
+---
+
+## Proposal (for discussion): resources and tech trees
+
+Design idea: this is a single-player game, so each faction can run its **own economy** with 2 resources, and a structure-dependent one like SC2's refinery. No faction plays like another:
+
+- **The Crown** plays like Terran mech: it takes ground slowly, digs in and holds it.
+- **The Brood** is the Zerg swarm: it breaks positions by throwing waves at them, and losses feed the next wave.
+- **The Clockwork** is Protoss-like but not Protoss: few expensive constructs, power fields, sustain instead of shields.
+
+### Map resources
+
+Every base spot has a **gold mine** and an **ember vent** (a new hot fissure in the ground, like an SC2 geyser). Each faction takes something different from them:
+
+| | Main resource | Second resource (structure-dependent) | Supply |
+| --- | --- | --- | --- |
+| **Crown** | **Gold**. Labourers mine and carry it, as now. | **Powder**. A Powder Mill on an ember vent; 3 labourers carry saltpetre from it (gas-style). | Cottages |
+| **Brood** | **Biomass**. The Brood ignores gold. Grubs root *anywhere on its own swamp* and feed on it; each Hive's swamp feeds up to N grubs. The swamp is the economy, so spreading it is expanding. | **Essence**. Every body that falls (theirs or ours) on or near swamp is absorbed. War pays for the elite strains. | Clutch Mounds |
+| **Clockwork** | **Ore**. A Drill Rig on a gold mine, with no workers, as now. | **Steam**. A Boiler on an ember vent, with no workers. Steam is spent on units *and* on **Overwind** (see below). | Spring Towers (field) |
+
+So the Crown competes for both nodes. The Brood needs neither and wants *map area* and *fights*. The Clockwork wants nodes but no workers, so it is hurt most when rigs and boilers die.
+
+### Faction mechanics (what makes the playstyles)
+
+- **Crown: dig in.**
+  - Infantry that stands still for 4 s **entrenches** (+2 armour, +15% range).
+  - Cannons and mortars must **unlimber** (stop and set up) to fire, like siege tanks.
+  - **Palisades** and **forward Outposts** (cheap; they extend supply and heal) let it creep across the map.
+- **Brood: the swarm.**
+  - **Frenzy**: kills nearby give stacking speed and attack for a few seconds.
+  - Eggs hatch in parallel, and units are cheap and short-lived.
+  - **Bursters** blow up walls.
+  - Raptors can **burrow** on swamp for ambushes.
+- **Clockwork: wind.**
+  - The wind field (power) is kept, and Winders repair: sustain instead of shields.
+  - **Overwind** spends steam to overclock units in an area for 10 s (+40% speed and damage), but afterwards they are unwound to the minimum.
+
+### Tech trees (3 tiers; 7 units and 8 buildings each)
+
+**Crown**
+
+| Tier | Buildings | Units |
+| --- | --- | --- |
+| 1 | Town Hall, Cottage, Powder Mill, Barracks, Palisade | Labourer, Musketeer, Pikeman |
+| 2 | Foundry (needs powder), Watchtower (musket tower), Bastion (cannon fort) | Grenadier (powder grenades, splash against swarms), Field Cannon (unlimbers) |
+| 3 | Arsenal | Mortar (huge range, minimum range, unlimbers), War Wagon (a mobile fort that deploys into a wall-and-cannon block) |
+
+**Brood**
+
+| Tier | Buildings | Units |
+| --- | --- | --- |
+| 1 | Hive (eggs), Clutch Mound, Warren | Grub, Raptor (×3), Spitter (×2) |
+| 2 | Gorge Pit, Brood Pool (upgrades) | Brute, Burster (×2; rolling acid sac that bursts on walls and buildings) |
+| 3 | Bone Spire (essence) | Swarm Mother (lays raptor eggs as she walks), Behemoth (essence; siege beast that tramples walls) |
+
+The Brood has no static defence; instead, **Spine Mounds** grow on the swamp from a grub.
+
+**Clockwork**
+
+| Tier | Buildings | Units |
+| --- | --- | --- |
+| 1 | Clocktower, Spring Tower, Drill Rig, Boiler, Assembly Works | Winder, Gearknight, Bolt Automaton |
+| 2 | Steamworks, Spring Gun (turret) | Steam Walker (steam), Tick (cheap spider scout that marks targets) |
+| 3 | Grand Orrery | Juggernaut (huge walking engine, steam), Orrery Seer (area rewind: heals and re-winds constructs; sees hidden units) |
+
+Upgrades (Crown drill and volleys, Brood carapace and claws, Clockwork springs and plating) come from the tier buildings.
+
+### Suggested order
+
+1. **Resources**: ember vents on the map; Powder Mill, Boiler, Brood swamp biomass and essence; two-resource costs and HUD.
+2. **Mechanics**: entrench and unlimber, frenzy and burrow, Overwind.
+3. **New units and buildings, tier by tier.** Each needs sprites (prompts to follow in the same style as the others).
+
+### Open questions
+
+- Is Crown powder a **cost** (like SC2 gas) or **ammo** (cannons and mortars use powder per shot)? Recommended: a cost, with mortars also using it per shot.
+- Should the Brood's biomass come from rooting anywhere on swamp, or from special **Feeding Pits** grown on the swamp?
+- Do we keep one map, or add 2–3 maps with different vent and mine layouts?

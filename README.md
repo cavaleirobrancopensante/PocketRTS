@@ -47,6 +47,18 @@ Destroy every enemy building to win.
 ### Mouse and keyboard
 Left click selects (click ground to deselect), left drag box-selects, right click commands, wheel zooms, middle drag or arrow keys pan. Keys: **A** attack, **M** move, **S** stop, **H** hold, **B** build, **1–3** select group, **Ctrl+1–3** save group, **Esc** cancel.
 
+## Music and sound
+
+Everything is synthesised, with no samples. `tools/music/compose.py` holds the hand-written score, and `tools/make_sfx.py` makes the effects (numpy, scipy, ffmpeg). The instrument library is shared with TCG-RPG.
+
+- **Menu**: *PocketRTS Overture*, with the Crown's call, then the Brood's swamp, the Clockwork's music box, and all three together.
+- **The Crown**: *The King's Muster* (lute, recorder, shawm) and *Pike and Shot* (fife and drum, horns, timpani).
+- **The Brood**: *The Warm Swamp* (drones, throat-choir, log drums) and *Hunger* (6/8 war drums, phrygian shawm).
+- **The Clockwork**: *Winding the Spring* (music box, dulcimer, ticks; it slows down at the end as the spring runs out) and *Brass and Steam* (7/8 machinery, anvils, steam). It is played on a dead-straight grid, with no human timing.
+- A victory sting per faction and a defeat sting.
+
+In a match you hear your faction's calm piece. It cross-fades to the battle piece when fighting heats up near your units, and goes back after things are quiet. Music and sound can each be switched on or off on the menu and in the pause menu.
+
 ## Art pipeline
 
 The source sheets from ChatGPT live in `art/`. `python3 tools/import_art.py` turns them into game sprites in `assets/`:

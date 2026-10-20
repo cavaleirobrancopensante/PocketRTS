@@ -2,7 +2,11 @@ class_name Sfx
 extends Node
 ## Sound effects, quieter the further they are from the camera.
 
-const NAMES := ["musket", "cannon", "boom", "click", "done", "error", "alarm"]
+const NAMES := ["musket", "cannon", "boom", "click", "done", "error", "alarm",
+	"clash", "bite", "gear_hit", "acid", "bolt", "steam", "roar", "hatch",
+	"ready_crown", "ready_brood", "ready_clock", "built_crown", "built_brood", "built_clock",
+	"ratchet", "burrow", "death_crown", "death_brood", "death_clock", "collapse"]
+const SHORT := {"crown": "crown", "brood": "brood", "clockwork": "clock"}
 static var me: Sfx
 var camera: Camera2D
 var _players := {}
@@ -14,9 +18,15 @@ func _ready() -> void:
 	for n in NAMES:
 		var p := AudioStreamPlayer.new()
 		p.stream = load("res://assets/audio/%s.wav" % n)
+		p.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
 		p.max_polyphony = 6
 		add_child(p)
 		_players[n] = p
+
+
+## Faction-flavoured sound: Sfx.play_f("ready", "brood") plays ready_brood.
+static func play_f(base: String, faction: String, pos := Vector2.INF) -> void:
+	play("%s_%s" % [base, SHORT.get(faction, "crown")], pos)
 
 
 static func play(name: String, pos := Vector2.INF) -> void:

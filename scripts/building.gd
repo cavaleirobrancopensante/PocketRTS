@@ -215,6 +215,7 @@ func die() -> void:
 		fire.queue_free()
 		fire = null
 	game.on_building_died(self)
+	Sfx.play("collapse", global_position)
 	_update_sprite()
 	z_index = -1
 	game.spawn_effect("dust", global_position + Vector2(0, -rect().size.y * 0.4), 2.2)

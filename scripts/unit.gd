@@ -47,6 +47,9 @@ var frame_i := 0
 var corpse_t := 0.0
 
 
+var _charging := false
+
+
 func is_unit() -> bool:
 	return true
 
@@ -195,6 +198,11 @@ func _physics_process(delta: float) -> void:
 			hp = minf(max_hp, hp + 2.0 * delta)
 	if kind == "brute" and target and phase == "" and target.edge_distance(position) < 170.0:
 		speed *= 1.6      # charge
+		if not _charging:
+			_charging = true
+			Sfx.play("roar", position)
+	elif kind == "brute":
+		_charging = false
 	if d["faction"] == "clockwork":
 		_field_t -= delta
 		if _field_t <= 0.0:
@@ -421,6 +429,7 @@ func _strike(e: Entity) -> void:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
 			e.take_damage(dmg, self)
+			Sfx.play({"raptor": "bite", "brute": "bite", "grub": "bite", "gearknight": "gear_hit", "winder": "gear_hit"}.get(kind, "clash"), position)
 			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
@@ -566,12 +575,14 @@ func _build(delta: float) -> Vector2:
 			# Winds the frame up; it assembles itself from here.
 			site.seeded = true
 			site._update_sprite()
+			Sfx.play("ratchet", position)
 			cmd_stop()
 			return Vector2.ZERO
 		if kind == "grub":
 			# The grub becomes the building.
 			work = "morphing"
 			work_t = 1.6
+			Sfx.play("burrow", position)
 			position = site.rect().get_center() + Vector2(0, site.rect().size.y * 0.3)
 			return Vector2.ZERO
 		work = "building"
@@ -593,6 +604,7 @@ func die() -> void:
 	velocity = Vector2.ZERO
 	_leave_mine()
 	game.on_unit_died(self)
+	Sfx.play_f("death", d["faction"], position)
 	_set_anim("death", true)
 	z_index = -1
 

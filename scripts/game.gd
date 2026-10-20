@@ -459,6 +459,8 @@ func on_building_died(b: Building) -> void:
 
 func on_building_complete(b: Building) -> void:
 	_recount_supply(b.team)
+	if b.team == human and clock > 1.0:
+		Sfx.play_f("built", b.d["faction"])
 
 
 func _recount_supply(t: int) -> void:
@@ -562,6 +564,11 @@ func spawn_trained(b: Building, k: String) -> void:
 					bd = dd
 					best = c
 	stats[b.team]["trained"] += int(Defs.UNITS[k].get("spawn", 1))
+	if b.team == human:
+		if b.uses_eggs():
+			Sfx.play("hatch", b.global_position)
+		else:
+			Sfx.play_f("ready", b.d["faction"])
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
 		if u.can_gather():
@@ -1016,7 +1023,7 @@ func bolt_shot(u: Unit, e: Entity, dmg: float) -> void:
 		e.take_damage(dmg, u)
 		to = e.center()
 	_tracers.append([from, to, 0.1, Color(0.85, 0.7, 0.45), 2.0])
-	Sfx.play("musket", u.global_position)
+	Sfx.play("bolt", u.global_position)
 
 
 func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
@@ -1031,6 +1038,7 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 			o.take_damage(dmg, u)
 	if e.is_building():
 		e.take_damage(dmg, u)
+	Sfx.play("steam", from)
 	for i in 3:
 		var fx := spawn_effect("smoke", from + dir * (20.0 + i * 22.0) + Vector2(randf_range(-6, 6), randf_range(-6, 6)), 1.6)
 		fx.modulate = Color(1.3, 1.3, 1.3, 0.85)
@@ -1040,6 +1048,7 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var mouth := u.center() + u.facing * 14.0
 	e.take_damage(dmg, u)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
+	Sfx.play("acid", mouth)
 	_tracers.append([mouth, e.center(), 0.12, Color(0.75, 0.95, 0.2), 3.0])
 
 

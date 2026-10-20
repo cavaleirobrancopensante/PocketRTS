@@ -71,6 +71,8 @@ func take_damage(amount: float, _from: Entity) -> void:
 		last_hit_by = _from.kind
 		last_hit_team = _from.team
 		game.stats[_from.team]["damage"] += dmg
+		if Music.me and (team == game.human or _from.team == game.human):
+			Music.me.add_heat(0.6 if is_unit() else 0.4)
 	flash = 0.12
 	if hp <= 0.0:
 		hp = 0.0

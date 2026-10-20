@@ -276,6 +276,8 @@ func _pause_buttons() -> Array:
 	var vs := _vs()
 	var list := [
 		{"label": "RESUME", "cb": func() -> void: set_paused(false)},
+		{"label": "MUSIC: " + ("ON" if Music.me.music_on else "OFF"), "cb": func() -> void: Music.me.toggle_music()},
+		{"label": "SOUND: " + ("ON" if Music.me.sound_on else "OFF"), "cb": func() -> void: Music.me.toggle_sound()},
 		{"label": "SURRENDER", "cb": func() -> void:
 			set_paused(false)
 			for b in game.buildings.duplicate():
@@ -286,7 +288,7 @@ func _pause_buttons() -> Array:
 			quit_requested.emit()},
 	]
 	for i in list.size():
-		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.35 + i * 80, 320, 64)
+		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.24 + i * 76, 320, 62)
 	return list
 
 
