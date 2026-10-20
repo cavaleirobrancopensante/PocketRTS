@@ -55,9 +55,8 @@ UNITS = {
                 "nosplit": True, "core": "dark", "by_coat": {}, "merge_rows": {"death2": "death"},
                 "drop": [("death", "n", 0), ("death", "n", 1), ("death", "n", 2), ("death2", "n", 0),
                          ("death2", "n", 1)]},
-    "tesla_cart": {"rows": ["walk", "deploy", "deployed", "attack", "death"], "dilate": 1, "dir": "clockwork",
-                   "mask": "flat_flood", "panels": [0, 295, 585, 910, 1228, 1536], "walk_height": 54,
-                   "nosplit": True, "by_coat": {"attack": "left"}, "coat_gap": 25, "idle_from": "walk"},
+    # The Tesla Cart (the spider cart) is built by tools/import_round9.py from
+    # art/clockwork/tesla_spider.png; the old art/clockwork/tesla_cart.png is no longer used.
     "winder": {"rows": ["idle", "wind", "walk", "repair", "attack", "death"], "dilate": 2,
                "dir": "clockwork", "mask": "alpha", "scale": 0.27 * 1.5},
 }

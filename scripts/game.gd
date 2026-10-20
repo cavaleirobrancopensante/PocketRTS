@@ -2012,7 +2012,7 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 
 
 func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
-	var from := u.global_position + Vector2(0, -46)
+	var from := u.coil_point()
 	var hit: Array = [e]
 	e.take_damage(dmg, u)
 	_zap_visual(from, e.center(), false, true)
