@@ -79,8 +79,34 @@ var gun_cd: Array = [0.0, 1.5]
 var gun_state: Array = ["idle", "idle"]
 var gun_t: Array = [0.0, 0.0]
 var _gun_sprites: Array = []
+var _pass_sprites: Array = []   # (a balloon) the men it carries, standing at the back of the basket
 var _front: Sprite2D
 var _hold_note := 0             # when this unit may next say it's holding fire           # workers: go back to work on their own when idle
+# Observation Balloon as a dropship
+var passengers: Array = []      # (a balloon) the men in its basket
+var incoming: Array = []        # (a balloon) men walking over to climb in
+var aboard: Unit = null         # (a passenger) the balloon it rides in
+var _board_t := 0.0
+var _descend := 0.0             # (a balloon) 1 = down low, taking men on or letting them off
+# Skywing: "air" (hunts flyers), "to_land" (flying to a spot it can land on), "landing",
+# "ground" (walks and bites), "lifting"
+var sky := "air"
+var sky_t := 0.0
+var sky_cd := 0.0               # (the computer) not too many landings and take-offs
+var _land_at := Vector2.INF
+# Bloater out of gas: "" (normal), "deflating", "flat", "refilling"
+var deflate := ""
+var deflate_t := 0.0
+# Ornithopter: COURIER (fetch batteries, wind up constructs) and the battery it carries
+var courier := false
+var topter_bat := ""            # "", "yellow" or "blue"
+var _wind_target: Unit = null
+var _courier_t := 0.0
+# Clockwork construct overloaded by an Ornithopter's battery
+var overclock_t := 0.0
+var _spark_t := 0.0
+var _hot := false
+static var _sky_ground := {}
 
 
 func is_unit() -> bool:
@@ -130,8 +156,12 @@ func is_air() -> bool:
 func can_hit(e: Entity) -> bool:
 	if d.get("medic", false) or e.untouchable():
 		return false
+	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
+		return false            # a deflated Bloater, a Skywing landing or taking off
 	if e.is_air() and d.get("ground_only", false):
 		return false
+	if not e.is_air() and d.get("air_only", false):
+		return false            # (buildings too)
 	if e.is_air():
 		# the cannon's canister is the Crown's answer to massed flyers; round shot can't
 		if kind == "cannon":
@@ -173,6 +203,8 @@ func _cooldown() -> float:
 		return Defs.BAYONET["cooldown"]
 	if mode == "canister":
 		return Defs.CANISTER["cooldown"]
+	if overclock_t > 0.0:
+		return float(d["cooldown"]) * float(Defs.OVERLOAD["cooldown"])
 	return float(d["cooldown"])
 
 
@@ -233,6 +265,50 @@ func _gunners(delta: float) -> void:
 		if _gun_sprites.size() > i:
 			muzzle = (_gun_sprites[i] as Sprite2D).global_position + Vector2(0, -4)
 		game.musket_shot(self, best, float(d["damage"]), muzzle)
+	_basket_fire(delta, taken)
+
+
+## Musketeers carried in the basket shoot too: their own reload, range and damage, from
+## between the two gunners.
+func _basket_fire(delta: float, taken: Entity) -> void:
+	for pi in passengers.size():
+		var p = passengers[pi]
+		if not is_instance_valid(p) or p.dead or p.kind != "musketeer":
+			continue
+		p.gun_t[0] = float(p.gun_t[0]) + delta
+		if p.gun_state[0] != "idle" and float(p.gun_t[0]) > 0.7:
+			p.gun_state[0] = "idle"
+		p.cooldown = maxf(p.cooldown - delta, 0.0)
+		if p.cooldown > 0.0 or stun_t > 0.0:
+			continue
+		var rng := float(p.d["range"])
+		var best: Entity = null
+		var bd := INF
+		for o in game.units_near(position, rng + 40.0):
+			if not game.hostile(o.team, team) or o.dead or o.off_field or not can_hit(o) or not game.side_sees(team, o.position):
+				continue
+			var dd: float = o.center().distance_to(center())
+			if dd > rng:
+				continue
+			if o == taken:
+				dd += 80.0
+			if dd < bd:
+				bd = dd
+				best = o
+		if best == null:
+			continue
+		if not game.use_powder(team, int(Defs.POWDER_SHOT["musketeer"])):
+			continue
+		taken = best
+		p.cooldown = float(p.d["cooldown"]) + randf_range(0.0, 0.3)
+		p.gun_state[0] = "up" if best.is_air() else "down"
+		p.gun_t[0] = 0.0
+		var muzzle := center() + Vector2(randf_range(-4.0, 4.0), -4.0)
+		if _pass_sprites.size() > pi and (_pass_sprites[pi] as Sprite2D).visible:
+			muzzle = (_pass_sprites[pi] as Sprite2D).global_position + Vector2(0, -6)
+		p.facing = (best.center() - muzzle).normalized()
+		var dmg := float(p.d["damage"]) * (1.0 + minf(p.kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
+		game.musket_shot(p, best, dmg, muzzle)
 
 
 func _update_gunners() -> void:
@@ -243,6 +319,8 @@ func _update_gunners() -> void:
 	_front.visible = not dead_anim
 	for g in _gun_sprites:
 		(g as Sprite2D).visible = not dead_anim
+	for g in _pass_sprites:
+		(g as Sprite2D).visible = false
 	if dead_anim:
 		return
 	var fk := "front_%s_%s" % [anim, anim_dir]
@@ -261,6 +339,22 @@ func _update_gunners() -> void:
 		g.frame = clampi(int(float(gun_t[i]) / 0.7 * g.hframes), 0, g.hframes - 1) if st != "idle" else 0
 		g.offset = -Vector2(info.get("gunner_anchor", Vector2.ZERO))
 		g.position = sprite.offset + Vector2(slots[mini(i, slots.size() - 1)])
+	# the men it carries stand in a row behind the two gunners; Musketeers shoot from there
+	var mid: Vector2 = (Vector2(slots[0]) + Vector2(slots[slots.size() - 1])) * 0.5
+	for i in mini(passengers.size(), _pass_sprites.size()):
+		var p = passengers[i]
+		if not is_instance_valid(p):
+			continue
+		var g: Sprite2D = _pass_sprites[i]
+		var st: String = p.gun_state[0]
+		g.visible = true
+		g.texture = Game.tex("res://assets/units/%s/gunner_%s_%s.png" % [kind, st, anim_dir])
+		g.hframes = int(gfr.get(st, 1))
+		g.frame = clampi(int(float(p.gun_t[0]) / 0.7 * g.hframes), 0, g.hframes - 1) if st != "idle" else 0
+		g.offset = -Vector2(info.get("gunner_anchor", Vector2.ZERO))
+		g.position = sprite.offset + mid + Vector2([-10.0, -3.5, 3.5, 10.0][i], -3.0 if i == 0 or i == 3 else -4.0)
+		# the others (pikes, picks) are just along for the ride: a little darker
+		g.self_modulate = Color.WHITE if p.kind == "musketeer" else Color(0.8, 0.8, 0.8)
 
 
 ## The battery on a Winder's back overloads (carried too long, or hit): it bursts.
@@ -306,7 +400,16 @@ func _ready() -> void:
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_make_wheel()
 	if ArtData.UNITS.has(kind) and ArtData.UNITS[kind].has("gunners"):
-		# layered: body, the two gunners, then the basket's front wall over their legs
+		# layered: body, the men it carries (at the back), the two gunners, then the basket's
+		# front wall over their legs
+		if kind == "balloon":
+			for i in int(Defs.DROPSHIP["capacity"]):
+				var ps := Sprite2D.new()
+				ps.centered = false
+				ps.use_parent_material = true
+				ps.visible = false
+				sprite.add_child(ps)
+				_pass_sprites.append(ps)
 		for i in int(d.get("gunners", 2)):
 			var g := Sprite2D.new()
 			g.centered = false
@@ -334,6 +437,8 @@ func center() -> Vector2:
 # ------------------------------------------------------------------ orders
 
 func cmd_move(p: Vector2, attack_move := false) -> void:
+	if aboard:
+		return      # riding in a balloon
 	_reset_work()
 	order = "amove" if attack_move else "move"
 	order_point = p
@@ -343,6 +448,8 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 
 
 func cmd_attack(e: Entity) -> void:
+	if aboard:
+		return      # riding in a balloon
 	_reset_work()
 	order = "attack"
 	order_target = e
@@ -365,6 +472,8 @@ func switch_time() -> float:
 
 
 func cmd_deploy() -> void:
+	if aboard:
+		return      # riding in a balloon
 	if not deploys() or tesla_mode != "packed":
 		return
 	cmd_stop()
@@ -376,6 +485,8 @@ func cmd_deploy() -> void:
 
 ## Go to a spot and cast a spell there (Stormcaller: storm; Spore Mother: miasma).
 func cmd_cast(spell: String, p: Vector2) -> void:
+	if aboard:
+		return      # riding in a balloon
 	_reset_work()
 	order = "cast"
 	cast_spell = spell
@@ -432,6 +543,8 @@ func cmd_pack() -> void:
 
 
 func cmd_heal(e: Unit) -> void:
+	if aboard:
+		return      # riding in a balloon
 	_reset_work()
 	order = "heal"
 	order_target = e
@@ -448,12 +561,16 @@ func cmd_stop() -> void:
 
 
 func cmd_hold() -> void:
+	if aboard:
+		return      # riding in a balloon
 	cmd_stop()
 	order = "hold"
 
 
 ## Go and work at an economy structure (Farm, Powder Mill, Feeding Pit, Boiler).
 func cmd_gather(site: Entity) -> void:
+	if aboard:
+		return      # riding in a balloon
 	if not can_gather() or not (site is Building):
 		cmd_move(site.center())
 		return
@@ -488,6 +605,8 @@ func can_repair(e: Entity) -> bool:
 
 
 func cmd_repair(e: Entity) -> void:
+	if aboard:
+		return      # riding in a balloon
 	if not can_repair(e):
 		return
 	_reset_work()
@@ -497,6 +616,8 @@ func cmd_repair(e: Entity) -> void:
 
 
 func cmd_build(site: Building) -> void:
+	if aboard:
+		return      # riding in a balloon
 	if not is_worker():
 		return
 	_reset_work()
@@ -512,10 +633,424 @@ func _reset_work() -> void:
 	_corpse = null
 	_leave_mine()
 	_release_patient()
+	_cancel_boarding()
+	_wind_target = null
+	if sky == "to_land":
+		sky = "air"
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
 	path_goal = Vector2.INF
+
+
+# ------------------------------------------------------------------ balloon dropship
+
+## Can this unit climb into that balloon?
+func can_board(b: Unit) -> bool:
+	return not dead and aboard == null and not off_field and b != null and is_instance_valid(b) and b.kind == "balloon" \
+		and not b.dead and b.team == team and (Defs.DROPSHIP["kinds"] as Array).has(kind)
+
+
+## (a balloon) free places in the basket, counting the men already walking over.
+func room() -> int:
+	incoming = incoming.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.order == "board" and u.order_target == self)
+	return int(Defs.DROPSHIP["capacity"]) - passengers.size() - incoming.size()
+
+
+## Walk to the spot under the balloon and climb in.
+func cmd_board(b: Unit) -> void:
+	if not can_board(b):
+		return
+	_reset_work()
+	order = "board"
+	order_target = b
+	target = null
+	_board_t = 0.0
+	repath_t = 0.0
+	if not b.incoming.has(self):
+		b.incoming.append(self)
+
+
+func _board(delta: float) -> Vector2:
+	var b := order_target as Unit
+	if b == null or not is_instance_valid(b) or b.dead or b.passengers.size() >= int(Defs.DROPSHIP["capacity"]):
+		cmd_stop()
+		return Vector2.ZERO
+	_board_t += delta
+	if _board_t > float(Defs.DROPSHIP["give_up"]):
+		if team == game.human:
+			game.notify("They can't reach the balloon: it must hover over ground they can walk to.")
+		cmd_stop()
+		return Vector2.ZERO
+	if position.distance_to(b.position) < float(Defs.DROPSHIP["board"]):
+		b.take_aboard(self)
+		return Vector2.ZERO
+	if position.distance_to(b.position) < 90.0 and game.line_clear(position, b.position):
+		path = PackedVector2Array()
+		return (b.position - position).normalized() * speed
+	if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
+		repath_t = 1.5
+		_request_path(b.position)
+	return _follow(delta)
+
+
+## (a balloon) a man climbs into the basket: off the field until he's let off.
+func take_aboard(u: Unit) -> void:
+	incoming.erase(u)
+	if dead or u.dead or u.aboard != null or passengers.size() >= int(Defs.DROPSHIP["capacity"]):
+		return
+	u.cmd_stop()
+	u.velocity = Vector2.ZERO
+	u.aboard = self
+	u.off_field = true
+	u.visible = false
+	u.selected = false
+	u.target = null
+	u.phase = ""
+	game.selection.erase(u)
+	u.position = position
+	passengers.append(u)
+	if team == game.human:
+		Sfx.play_any(["ui/click", "click"], position)
+
+
+## (a balloon) stop the men still walking over.
+func _cancel_boarding() -> void:
+	for u in incoming:
+		if is_instance_valid(u) and not u.dead and u.order == "board" and u.order_target == self:
+			u.order = "idle"
+			u.order_target = null
+			u.path = PackedVector2Array()
+	incoming.clear()
+
+
+## (a balloon) fly to a spot and let everyone off there (on the nearest open ground).
+func cmd_unload(p: Vector2) -> void:
+	if passengers.is_empty():
+		return
+	_reset_work()
+	order = "unload"
+	order_point = p
+	target = null
+	order_target = null
+	if position.distance_to(p) > 8.0:
+		_request_path(p)
+
+
+func _unload(delta: float) -> Vector2:
+	if passengers.is_empty():
+		cmd_stop()
+		return Vector2.ZERO
+	if work == "dropping":
+		work_t -= delta
+		if work_t <= 0.0:
+			drop_passengers(order_point)
+			cmd_stop()
+		return Vector2.ZERO
+	if position.distance_to(order_point) < 10.0 or (_arrived() and position.distance_to(order_point) < 60.0) or path.is_empty() and not path_pending:
+		path = PackedVector2Array()
+		work = "dropping"
+		work_t = 0.6
+		return Vector2.ZERO
+	return _follow(delta)
+
+
+## Every man in the basket gets off onto open ground near `at`; a fall (the balloon shot
+## down) costs each of them half his health.
+func drop_passengers(at: Vector2, fall := false) -> void:
+	var list := passengers.duplicate()
+	passengers.clear()
+	var spots := game.drop_spots(at, list.size(), team)
+	var n := 0
+	for i in list.size():
+		var u = list[i]
+		if not is_instance_valid(u) or u.dead:
+			continue
+		n += 1
+		u.aboard = null
+		u.off_field = false
+		u.visible = game.allied(u.team, game.human) or game.demo or game.reveal
+		u.position = spots[i] + Vector2(randf_range(-5, 5), randf_range(-5, 5))
+		u.last_pos = u.position
+		u.velocity = Vector2.ZERO
+		u.cmd_stop()
+		u.facing = Vector2.DOWN
+		var fx := game.spawn_effect("dust", u.position, 1.6)
+		fx.scale = Vector2(0.4, 0.4)
+		if fall:
+			u.last_hit_by = last_hit_by
+			u.last_hit_team = last_hit_team
+			u.last_hitter = last_hitter
+			u.flash = 0.12
+			u.hp -= u.max_hp * float(Defs.DROPSHIP["fall"])
+			if u.hp <= 0.0:
+				u.hp = 0.0
+				u.die()
+	if n > 0 and team == game.human and not fall:
+		Sfx.play_any(["ui/click", "click"], at)
+
+
+# ------------------------------------------------------------------ skywing
+
+func _sky_stats() -> void:
+	if sky == "ground" or sky == "lifting":
+		if _sky_ground.is_empty():
+			_sky_ground = Defs.UNITS["skywing"].duplicate()
+			_sky_ground.merge(Defs.SKYWING_LANDED, true)
+		d = _sky_ground
+	else:
+		d = Defs.UNITS["skywing"]
+	z_index = 3 if is_air() else 0
+	speed = float(d["speed"])
+
+
+## Skywing: come down (on the nearest open ground) and fight on foot.
+func cmd_land() -> void:
+	if kind != "skywing" or sky != "air":
+		return
+	_reset_work()
+	order = "idle"
+	target = null
+	order_target = null
+	leash_from = position
+	if game._clear_at(position, radius, team):
+		_start_switch("landing")
+		return
+	var c := game.nearest_free(game.cell_of(position), 8)
+	_land_at = game.cell_center(c)
+	sky = "to_land"
+
+
+func cmd_take_off() -> void:
+	if kind != "skywing" or sky != "ground":
+		return
+	_reset_work()
+	order = "idle"
+	target = null
+	order_target = null
+	_start_switch("lifting")
+
+
+func _start_switch(m: String) -> void:
+	sky = m
+	sky_t = Defs.SKYWING_SWITCH
+	phase = ""
+	target = null
+	path = PackedVector2Array()
+	frame_i = 0
+	anim_t = 0.0
+	_sky_stats()
+
+
+## Landing or taking off (it can't do anything else meanwhile); returns where it wants to go.
+func _sky_switch(delta: float) -> Vector2:
+	if sky == "to_land":
+		if position.distance_to(_land_at) < 4.0:
+			position = _land_at
+			_start_switch("landing")
+			return Vector2.ZERO
+		return (_land_at - position).normalized() * minf(speed, position.distance_to(_land_at) * 4.0 + 10.0)
+	sky_t -= delta
+	if sky_t <= 0.0:
+		sky = "ground" if sky == "landing" else "air"
+		_sky_stats()
+		leash_from = position
+		if sky == "ground" and not game._clear_at(position, radius, team):
+			position = game.resolve_terrain(position, position, radius, team)
+	return Vector2.ZERO
+
+
+# ------------------------------------------------------------------ bloater gas
+
+## Out of gas, a Bloater deflates (no spitting, no burst, slower) and fills up again.
+func _bloater_gas(delta: float) -> void:
+	match deflate:
+		"":
+			if mode != "hold" and gas < float(Defs.BLOAT["spit_cost"]):
+				deflate = "deflating"
+				deflate_t = float(Defs.DEFLATE["anim"])
+				frame_i = 0
+				anim_t = 0.0
+				phase = ""
+				target = null
+				if order in ["attack", "amove", "hold"]:
+					cmd_stop()
+				if team == game.human:
+					game.float_text(position + Vector2(0, -40), "out of gas", Color(0.75, 0.95, 0.25))
+		"deflating", "refilling":
+			deflate_t -= delta
+			if deflate_t <= 0.0:
+				deflate = "flat" if deflate == "deflating" else ""
+				frame_i = 0
+				anim_t = 0.0
+		"flat":
+			var rate := float(Defs.DEFLATE["refill"]) * (float(Defs.DEFLATE["swamp"]) if game.on_swamp(team, position) else 1.0)
+			gas = minf(100.0, gas + rate * delta)
+			speed *= float(Defs.DEFLATE["slow"])
+			if gas >= 100.0:
+				deflate = "refilling"
+				deflate_t = float(Defs.DEFLATE["anim"])
+				frame_i = 0
+				anim_t = 0.0
+
+
+# ------------------------------------------------------------------ ornithopter
+
+func _is_construct(e) -> bool:
+	return e is Unit and is_instance_valid(e) and not e.dead and not e.off_field and e.d["faction"] == "clockwork" and not e.is_worker()
+
+
+## Ornithopter: dump its battery into a construct (overloaded for a while).
+func cmd_overload(e: Unit) -> void:
+	if kind != "ornithopter" or topter_bat == "" or not _is_construct(e) or e == self or e.team != team:
+		return
+	if aboard:
+		return
+	_reset_work()
+	order = "overload"
+	order_target = e
+	target = null
+
+
+func _overload(_delta: float) -> Vector2:
+	var c = order_target
+	if topter_bat == "" or not _is_construct(c) or c.team != team:
+		cmd_stop()
+		return Vector2.ZERO
+	if position.distance_to(c.position) < float(Defs.OVERLOAD["reach"]) + c.radius:
+		c.overclock(self)
+		topter_bat = ""
+		cmd_stop()
+		return Vector2.ZERO
+	return (c.position - position).normalized() * speed
+
+
+## A construct takes an Ornithopter's battery: overloaded (faster, harder hitting, quicker
+## to strike), fully wound; when it burns out it's left with little charge.
+func overclock(by: Unit) -> void:
+	overclock_t = float(Defs.OVERLOAD["time"])
+	wind = 1.0
+	stun_t = 0.0
+	game.spawn_effect("zap_burst_y" if ArtData.EFFECTS.has("zap_burst_y") else "hit", center(), 1.2)
+	Sfx.play_any(["combat/tesla_attack", "zap"], position)
+	if team == game.human:
+		game.float_text(position + Vector2(0, -44), "OVERLOAD!", Color(1, 0.9, 0.35))
+	if game.mlog and by != null:
+		game.mlog.add("%s overloaded a %s" % [game.mlog.who(team), d["name"]])
+
+
+## Ornithopter on COURIER, with nothing to do: fetch a battery, or take one to a construct
+## that's run down. True if it found a job.
+func _courier_scan() -> bool:
+	if topter_bat == "":
+		var src := _battery_source()
+		if src == null:
+			return false
+		_reset_work()
+		order = "courier"
+		order_target = src
+		work = "to_bat"
+		target = null
+		return true
+	var c := _wind_job()
+	if c == null:
+		return false
+	_reset_work()
+	order = "courier"
+	_wind_target = c
+	order_target = null
+	work = "to_unit"
+	target = null
+	return true
+
+
+## The nearest of our energy buildings with a full battery waiting.
+func _battery_source() -> Building:
+	var best: Building = null
+	var bd := INF
+	for b in game.buildings:
+		if b.team != team or b.dead or not b.built or b.batteries <= 0:
+			continue
+		var dd: float = b.center().distance_to(position)
+		if dd < bd:
+			bd = dd
+			best = b
+	return best
+
+
+## The construct that needs winding most: shut-down ones first, then the lowest charge
+## (not in a field, and not one another Ornithopter is already flying to).
+func _wind_job() -> Unit:
+	var taken := {}
+	for o in game.units:
+		if o != self and o.kind == "ornithopter" and o.team == team and is_instance_valid(o._wind_target):
+			taken[o._wind_target] = true
+	var best: Unit = null
+	var bs := INF
+	for o in game.units:
+		if o.team != team or not _is_construct(o) or taken.has(o):
+			continue
+		var down: bool = o.powered_down()
+		if not down and (o.wind >= float(Defs.TOPTER["low"]) or o._in_field or o.overclock_t > 0.0):
+			continue
+		if o == self and not down and o.wind > 0.25:
+			continue
+		var s: float = o.wind * 1000.0 + o.position.distance_to(position) * 0.2 - (5000.0 if down else 0.0)
+		if s < bs:
+			bs = s
+			best = o
+	return best
+
+
+func _courier(delta: float) -> Vector2:
+	match work:
+		"to_bat", "loading":
+			var src := order_target as Building
+			if src == null or not is_instance_valid(src) or src.dead or src.batteries <= 0 or topter_bat != "":
+				cmd_stop()
+				return Vector2.ZERO
+			if work == "loading":
+				work_t -= delta
+				if work_t <= 0.0:
+					src.batteries -= 1
+					topter_bat = "blue" if game.blue_energy(team) else "yellow"
+					cmd_stop()
+					_courier_t = 0.0
+				return Vector2.ZERO
+			if src.edge_distance(position) < radius + 10.0:
+				work = "loading"
+				work_t = float(Defs.TOPTER["load"])
+				path = PackedVector2Array()
+				return Vector2.ZERO
+			return (src.center() - position).normalized() * speed
+		"to_unit", "winding":
+			var c := _wind_target
+			if topter_bat == "" or not _is_construct(c) or (not c.powered_down() and c.wind >= 0.95):
+				cmd_stop()
+				return Vector2.ZERO
+			if c == self:
+				work = "winding"
+			if work == "winding":
+				# it settles onto the construct and winds it up from the battery
+				position = position.lerp(c.position, clampf(delta * 6.0, 0.0, 1.0))
+				work_t -= delta
+				if work_t <= 0.0:
+					c.wind = 1.0
+					topter_bat = ""
+					game.spawn_effect("zap_spark_y" if ArtData.EFFECTS.has("zap_spark_y") else "hit", c.center(), 1.0)
+					Sfx.play("ratchet", c.position)
+					if team == game.human:
+						game.float_text(c.position + Vector2(0, -40), "wound up", Color(1, 0.9, 0.35))
+					cmd_stop()
+					_courier_t = 0.0
+				return Vector2.ZERO
+			if position.distance_to(c.position) < float(Defs.TOPTER["reach"]) + c.radius * 0.5:
+				work = "winding"
+				work_t = float(Defs.TOPTER["wind"])
+				return Vector2.ZERO
+			return (c.position - position).normalized() * speed
+	cmd_stop()
+	return Vector2.ZERO
 
 
 # ------------------------------------------------------------------ update
@@ -548,6 +1083,8 @@ func _physics_process(delta: float) -> void:
 	stun_t = maxf(stun_t - delta, 0.0)
 	scan_t -= delta
 	repath_t -= delta
+	sky_cd = maxf(sky_cd - delta, 0.0)
+	_courier_t -= delta
 	var want := Vector2.ZERO
 	# Brood on swamp: faster, and wounds close up.
 	speed = float(d["speed"])
@@ -558,6 +1095,8 @@ func _physics_process(delta: float) -> void:
 		speed *= 1.3
 		if hp < max_hp:
 			hp = minf(max_hp, hp + 2.0 * delta)
+	if kind == "bloater":
+		_bloater_gas(delta)
 	if kind == "brute" and target and phase == "" and target.edge_distance(position) < 170.0:
 		speed *= 1.6      # charge
 		if not _charging:
@@ -567,6 +1106,27 @@ func _physics_process(delta: float) -> void:
 		_charging = false
 	if d.has("gunners"):
 		_gunners(delta)
+	if kind == "balloon":
+		# the men in the basket ride along; it comes down low while they climb in or out
+		for p in passengers:
+			if is_instance_valid(p):
+				p.position = position
+		var low := room() < int(Defs.DROPSHIP["capacity"]) - passengers.size() or work == "dropping"
+		_descend = move_toward(_descend, 1.0 if low else 0.0, delta * 1.5)
+	if overclock_t > 0.0:
+		overclock_t -= delta
+		wind = 1.0
+		speed *= float(Defs.OVERLOAD["speed"])
+		_spark_t -= delta
+		if _spark_t <= 0.0 and visible and game.view_rect.has_point(position):
+			_spark_t = 0.35
+			var fx := game.spawn_effect("zap_spark_y" if ArtData.EFFECTS.has("zap_spark_y") else "hit", center() + Vector2(randf_range(-radius, radius), randf_range(-14, 10)), 1.4)
+			fx.scale = Vector2(0.7, 0.7)
+		if overclock_t <= 0.0:
+			overclock_t = 0.0
+			wind = float(Defs.OVERLOAD["after"])     # burnt out
+			if team == game.human:
+				game.float_text(position + Vector2(0, -40), "burnt out", Color(0.7, 0.75, 0.85))
 	if d["faction"] == "clockwork":
 		_field_t -= delta
 		if _field_t <= 0.0:
@@ -588,6 +1148,11 @@ func _physics_process(delta: float) -> void:
 		if d.has("regen") and hp < max_hp:
 			hp = minf(max_hp, hp + float(d["regen"]) * delta)
 
+	if kind == "skywing" and sky != "air" and sky != "ground":
+		# landing or taking off: it can't do anything else meanwhile
+		_move(_sky_switch(delta), delta)
+		_animate(delta)
+		return
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
@@ -609,6 +1174,11 @@ func _physics_process(delta: float) -> void:
 				var post := game.free_site(team, position)
 				if post:
 					cmd_gather(post)
+			# COURIER: an idle Ornithopter fetches batteries and winds up constructs
+			if kind == "ornithopter" and courier and _courier_t <= 0.0 and order == "idle":
+				_courier_t = 1.0
+				if _courier_scan():
+					return
 			if not is_worker() and scan_t <= 0.0:
 				scan_t = 0.35
 				target = game.find_target(self, _scan_range())
@@ -663,13 +1233,32 @@ func _physics_process(delta: float) -> void:
 			want = _cast(delta)
 		"harvest":
 			want = _harvest(delta)
+		"board":
+			want = _board(delta)
+		"unload":
+			want = _unload(delta)
+		"courier":
+			want = _courier(delta)
+		"overload":
+			want = _overload(delta)
 	if deploys():
 		want = _tesla(want, delta)
+	if kind == "balloon" and not incoming.is_empty():
+		want = Vector2.ZERO        # holds still while men climb in
+	if deflate == "deflating" or deflate == "refilling":
+		want = Vector2.ZERO
 	_move(want, delta)
 	_animate(delta)
 	# redraw the shadow, ring and bars only when something on them changed
+	var extra := 0
+	if topter_bat != "":
+		extra += 500000 + (int(_bob_t * 10.0) % 13) * 1000
+	if overclock_t > 0.0:
+		extra += int(overclock_t * 8.0) * 1000000
+	if kind == "balloon":
+		extra += passengers.size() * 100000
 	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp))
+		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp) + extra)
 	if key != _draw_key:
 		_draw_key = key
 		queue_redraw()
@@ -713,8 +1302,9 @@ func _scan_range() -> float:
 
 func _range() -> float:
 	if kind == "bloater":
-		# holding its gas, out of it, or about to pop anyway: it goes in to burst
-		if mode == "hold" or gas < float(Defs.BLOAT["spit_cost"]) or hp < max_hp * 0.35:
+		# holding its gas, or about to pop anyway: it goes in to burst (out of gas it
+		# deflates instead, and can't attack at all until it has filled up again)
+		if mode == "hold" or hp < max_hp * 0.35:
 			return float(Defs.BLOAT["reach"])
 	if mode == "bayonet":
 		return Defs.BAYONET["range"]
@@ -902,6 +1492,8 @@ func _strike(e: Entity) -> void:
 	var dmg := float(d["damage"]) * (1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
 	if d["faction"] == "clockwork":
 		dmg *= lerpf(0.7, 1.0, wind)
+	if overclock_t > 0.0:
+		dmg *= float(Defs.OVERLOAD["damage"])
 	if e.is_building():
 		dmg *= float(d.get("building_bonus", 1.0))
 	if mode == "bayonet":
@@ -928,6 +1520,19 @@ func _strike(e: Entity) -> void:
 			game.acid_shot(self, e, dmg)
 		"spore_mother":
 			game.blob_shot(self, e.center() + Vector2(0, 12), dmg)
+		"skywing":
+			if sky == "air":
+				# a volley of spines at a flyer
+				e.take_damage(dmg, self)
+				var s := Shot.new()
+				s.scale = Vector2(0.5, 0.6)
+				s.impact = "hit"
+				s.impact_scale = 0.6
+				s.launch(game, "bolt" if ArtData.EFFECTS.has("bolt") else "acid_ball", center() + facing * 10.0, e.center(), 700.0)
+			else:
+				e.take_damage(dmg, self)
+				game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
+			Sfx.play_any(["combat/skywing_attack", "bite"], position)
 		"ornithopter":
 			if e.is_air():
 				dmg *= float(d.get("vs_air", 1.0))
@@ -1123,6 +1728,8 @@ var _corpse: Unit = null
 
 
 func cmd_harvest() -> void:
+	if aboard:
+		return      # riding in a balloon
 	_reset_work()
 	order = "harvest"
 	harvest_home = position
@@ -1338,6 +1945,9 @@ func die() -> void:
 	velocity = Vector2.ZERO
 	_leave_mine()
 	_release_patient()
+	_cancel_boarding()
+	if not passengers.is_empty():
+		drop_passengers(position, true)     # shot down: the men in the basket fall out
 	if kind == "winder" and carry_empty:
 		# the spent battery drops and lies there for a while
 		var b := Sprite2D.new()
@@ -1354,15 +1964,35 @@ func die() -> void:
 		tw.tween_callback(b.queue_free)
 	game.on_unit_died(self)
 	Sfx.play_any(["combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
-	_set_anim("death_cocoon" if kind == "grub" and cocoon > 0 and ArtData.UNITS["grub"]["frames"].has("death_cocoon_e") else "death", true)
+	_set_anim(_death_anim(), true)
 	z_index = -1
 
 
 # ------------------------------------------------------------------ animation
 
+## This unit's sheet has an animation `a` (in any direction)? Else use `fallback`: new art
+## (a landed Skywing, a deflated Bloater) may not be in yet.
+func _anim_or(a: String, fallback: String) -> String:
+	var frames: Dictionary = ArtData.UNITS[kind]["frames"]
+	for dr in ["s", "se", "e", "ne", "n"]:
+		if frames.has(a + "_" + dr):
+			return a
+	return fallback
+
+
+func _death_anim() -> String:
+	if kind == "grub" and cocoon > 0 and ArtData.UNITS["grub"]["frames"].has("death_cocoon_e"):
+		return "death_cocoon"
+	if kind == "skywing" and sky != "air" and sky != "to_land":
+		return _anim_or("gdeath", "death")
+	if kind == "bloater" and deflate != "":
+		return _anim_or("ddeath", "death")
+	return "death"
+
+
 func _anim_name() -> String:
 	if dead:
-		return "death"
+		return _death_anim()
 	var moving := velocity.length() > 10.0
 	match kind:
 		"musketeer":
@@ -1450,6 +2080,12 @@ func _anim_name() -> String:
 			if work == "bandaging":
 				return "bandage"
 		"skywing":
+			if sky == "landing" or sky == "lifting":
+				return _anim_or("land", "idle")
+			if sky == "ground":
+				if phase != "":
+					return _anim_or("gattack", "attack")
+				return _anim_or("gwalk", "walk") if moving else _anim_or("gidle", "idle")
 			if phase != "":
 				return "attack"
 		"tesla_cart":
@@ -1475,7 +2111,17 @@ func _anim_name() -> String:
 				return "attack"
 		"balloon":
 			return "drift" if moving else "idle"
-		"ornithopter", "bloater":
+		"bloater":
+			match deflate:
+				"deflating":
+					return _anim_or("deflate", "idle")
+				"refilling":
+					return _anim_or("refill", "idle")
+				"flat":
+					return _anim_or("dwalk", "walk" if moving else "idle")
+			if phase != "":
+				return "attack"
+		"ornithopter":
 			if phase != "":
 				return "attack"
 	return "walk" if moving else "idle"
@@ -1499,6 +2145,14 @@ func _animate(delta: float) -> void:
 	elif _cold:
 		_cold = false
 		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE)
+	if overclock_t > 0.0 and not dead:
+		# overloaded: it glows hot, flickering
+		var g := 1.25 + 0.15 * sin(_bob_t * 18.0)
+		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3(g, g * 0.95, 0.85))
+		_hot = true
+	elif _hot:
+		_hot = false
+		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE)
 	_set_anim(_anim_name(), false)
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[kind]["frames"].get(key, 1)
@@ -1509,8 +2163,19 @@ func _animate(delta: float) -> void:
 			fps = 2.0
 			if kind == "pikeman":
 				n = 1
-		"death", "death_cocoon":
+		"death", "death_cocoon", "gdeath", "ddeath":
 			fps = 7.0
+			loop = false
+		"gidle":
+			fps = 3.0
+		"gattack":
+			fps = 9.0
+			loop = false
+		"land":
+			fps = float(n) / Defs.SKYWING_SWITCH
+			loop = false
+		"deflate", "refill":
+			fps = float(n) / float(Defs.DEFLATE["anim"])
 			loop = false
 		"wrap":
 			fps = 5.0 / float(Defs.HARVEST["take"])
@@ -1560,13 +2225,21 @@ func _animate(delta: float) -> void:
 	var shown := frame_i
 	if anim == "deploy" and tesla_mode == "packing":
 		shown = n - 1 - frame_i         # packing plays the deploy frames backwards
+	if anim == "land" and sky == "lifting":
+		shown = n - 1 - frame_i         # taking off plays the landing backwards
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
 	if _front:
 		_update_gunners()
 	_bob_t += delta
-	if is_air():
+	if kind == "skywing" and (sky == "landing" or sky == "lifting") and not dead:
+		# coming down to (or rising from) the ground
+		var f := clampf(sky_t / Defs.SKYWING_SWITCH, 0.0, 1.0)
+		sprite.position.y = -20.0 * (f if sky == "landing" else 1.0 - f)
+	elif is_air():
 		# flyers hover above their shadow and drop to the ground when they die
 		sprite.position.y = lerpf(sprite.position.y, 0.0, delta * 3.0) if dead else -20.0 + sin(_bob_t * 4.0) * 2.5
+		if kind == "balloon" and not dead:
+			sprite.position.y += _descend * 14.0     # down low to take men on or let them off
 	elif anim == "bandage":
 		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
 	elif kind != "cannon":
@@ -1574,7 +2247,7 @@ func _animate(delta: float) -> void:
 	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
 	if kind == "grub" and anim == "burrow" and n > 3:
 		sprite.frame = clampi(2 + int(_bob_t * 6.0) % (n - 2), 0, sprite.hframes - 1)
-	sprite.scale.y = 1.0
+	sprite.scale.y = float(d.get("art_scale", 1.0))
 	if kind == "cannon" and anim == "walk" and velocity.length() < 10.0:
 		sprite.frame = 0        # the horse stands still
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
@@ -1703,7 +2376,7 @@ func _set_anim(a: String, force: bool) -> void:
 	# some sheets (aiming up) have extra room on top: the feet stay where they were
 	var cell: Vector2i = ArtData.UNITS[kind]["cell"]
 	sprite.offset = -anchor - Vector2(0, sprite.texture.get_height() - cell.y)
-	sprite.scale.x = -1.0 if flip else 1.0
+	sprite.scale = Vector2(-1.0 if flip else 1.0, 1.0) * float(d.get("art_scale", 1.0))
 	frame_i = mini(frame_i, sprite.hframes - 1)
 
 
@@ -1718,7 +2391,7 @@ func _draw() -> void:
 	if selected:
 		draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
 	draw_set_transform(Vector2.ZERO)
-	var top := -float(ArtData.UNITS[kind]["anchor"].y) - 4.0
+	var top := -float(ArtData.UNITS[kind]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0
 	if kind == "pikeman":
 		top = -44.0
 	elif kind == "cannon":
@@ -1726,6 +2399,25 @@ func _draw() -> void:
 	draw_health(top, radius * 2.4)
 	if work == "feeding":
 		return
+	if topter_bat != "":
+		# the battery it carries, hanging under it
+		var tb: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % topter_bat)
+		var tf := int(_bob_t * 10.0) % 13
+		draw_texture_rect_region(tb, Rect2(-5, -18, 11, 22), Rect2(tf * 11, 0, 11, 22))
+	if overclock_t > 0.0:
+		# overloaded: a crackling ring at its feet
+		var a := 0.55 + 0.3 * sin(overclock_t * 14.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, radius + 7.0, 0, TAU, 28, Color(1.0, 0.85, 0.3, a), 2.5)
+		draw_arc(Vector2.ZERO, radius + 11.0, overclock_t * 3.0, overclock_t * 3.0 + 2.0, 10, Color(0.6, 0.85, 1.0, a), 1.5)
+		draw_set_transform(Vector2.ZERO)
+	if kind == "balloon" and not passengers.is_empty() and game.allied(team, game.human):
+		# one pip under the basket for every man aboard
+		var np := passengers.size()
+		for i in np:
+			var pr := Rect2(-np * 4.0 + i * 8.0 + 1.0, 8, 6, 6)
+			draw_rect(pr, Color(1, 0.85, 0.4))
+			draw_rect(pr, Color(0, 0, 0, 0.7), false, 1.0)
 	if d["faction"] == "clockwork" and not is_worker():
 		# the battery on its back, for everyone to see: how much charge is left. A cell
 		# strapped onto the body sprite (scripts/battery_pack.gd follows the frames and the

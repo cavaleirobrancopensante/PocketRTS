@@ -38,17 +38,17 @@ Labourers work Farms (up to 3 each): a farm ripens into a 350-gold harvest, fast
 
 Walls and gates: lay them in a line across your ramp (every main base sits on high ground with one way up); gates open for your side only.
 
-Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
+Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons and Observation Balloons, which also carry 4 Musketeers, Pikemen or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
 
 Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some).
 
-Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, flyers only ranged units can hit. Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Army cap 160.""",
+Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, which hunt flyers in the air; LAND them (1.2 s) to bite ground units, but landed anything can hit them. Bloaters spit acid until their gas runs out, then deflate and slowly fill up again (faster on swamp). Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Army cap 160.""",
 	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.
 
 Every energy building (Clocktower, Boilers, Pylons, Spring Towers) fills batteries by itself; Winders carry them to Ore Crushers, where the charge becomes ore. The longer a battery travels the more it holds, but carried too long, or hit, it bursts. A Capacitor Works turns every battery blue (more charge). Winders also repair, which costs ore.
 
-Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Stormcallers cast a STORM that stuns everything inside it, your own units too; their charge only fills inside a field. Army cap 80.""",
+Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Stormcallers cast a STORM that stuns everything inside it, your own units too; their charge only fills inside a field. Ornithopters on COURIER carry batteries to constructs that ran down; OVERLOAD dumps one into a construct for 12 s of extra speed and damage (then it's left at 25% charge). Army cap 80.""",
 	"CONTROLS": """COMPUTER
 Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen); left drag box-selects; right click commands (move, attack, work, rally). Mouse wheel zooms; screen edges, arrow keys or the middle button pan.
 Line move: hold the right button and drag a line; your units spread out along it (with A first, they attack-move). On a phone: tap MOVE or ATTACK, then drag.
