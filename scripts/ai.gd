@@ -545,6 +545,8 @@ func _produce() -> void:
 				elif carts * 6 < army.size() and game.can_train(w, "tesla_cart") == "":
 					k = "tesla_cart"
 					carts += 1
+				elif army.filter(func(u: Unit) -> bool: return u.kind == "ornithopter").size() * 6 < army.size() and game.can_train(w, "ornithopter") == "" and randf() < 0.4:
+					k = "ornithopter"
 				elif difficulty >= 1 and callers * 7 < army.size() and game.can_train(w, "stormcaller") == "":
 					k = "stormcaller"
 					callers += 1
@@ -565,6 +567,8 @@ func _produce() -> void:
 				elif game.can_train(h, "skywing") == "" and wings * (2 if strategy == "air" else 6) < army.size() + (6 if strategy == "air" else 0):
 					k = "skywing"
 					wings += 1
+				elif game.can_train(h, "bloater") == "" and army.filter(func(u: Unit) -> bool: return u.kind == "bloater").size() * 10 < army.size() and randf() < 0.3:
+					k = "bloater"
 				elif game.can_train(h, "spore_mother") == "" and mothers * 14 < army.size():
 					k = "spore_mother"
 					mothers += 1

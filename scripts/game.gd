@@ -2139,6 +2139,22 @@ func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -
 var zones: Array = []
 
 
+## A Bloater bursts: a little damage where it pops, and an acid cloud that lingers.
+func bloat_burst(u: Unit) -> void:
+	var p := u.position
+	for o in units_near(p, float(Defs.BLOAT["radius"])):
+		if not o.dead and not o.is_air() and hostile(o.team, u.team):
+			o.take_damage(float(u.d["damage"]), u)
+	for b in buildings.duplicate():
+		if not b.dead and hostile(b.team, u.team) and b.edge_distance(p) < 30.0:
+			b.take_damage(float(u.d["damage"]) * 2.0, u)
+	var z := {"kind": "bloat", "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {},
+		"r": float(Defs.BLOAT["radius"]), "t": float(Defs.BLOAT["time"])}
+	zones.append(z)
+	_zone_fx(z, "loop")
+	Sfx.play_any(["combat/spitter_hit", "acid"], p)
+
+
 ## Why this unit can't cast that spell now ("" = it can).
 func spell_problem(u: Unit, spell: String) -> String:
 	if spell == "storm":
@@ -2209,11 +2225,13 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 ## effect art isn't there.
 func _zone_fx(z: Dictionary, stage: String) -> void:
 	var name: String = ("storm_" if z["kind"] == "storm" else "miasma_") + stage
+	if z["kind"] == "bloat":
+		name = "bloat_cloud" if stage == "loop" else ""
 	if z["fx"] and is_instance_valid(z["fx"]):
 		(z["fx"] as Node).queue_free()
 	z["fx"] = null
 	z["stage"] = stage
-	if not ArtData.EFFECTS.has(name):
+	if name == "" or not ArtData.EFFECTS.has(name):
 		return
 	var info: Dictionary = ArtData.EFFECTS[name]
 	var fx := spawn_effect(name, z["pos"], 1.4 if stage != "loop" else 1.0, stage == "loop")
@@ -2237,6 +2255,14 @@ func _tick_zones(delta: float) -> void:
 		var r: float = z["r"]
 		if z["stage"] == "in" and z["age"] >= float(z.get("in_t", 0.4)):
 			_zone_fx(z, "loop")
+		if z["kind"] == "bloat":
+			for u in units_near(p, r + 20.0):
+				if u.dead or u.off_field or u.is_air() or not hostile(u.team, int(z["team"])) or not in_ellipse(p, u.position, r + u.radius):
+					continue
+				u.acid_t = maxf(u.acid_t, 0.4)
+				u.slow_t = maxf(u.slow_t, 0.4)
+				u.take_damage(float(Defs.BLOAT["dps"]) * delta, null)
+			continue
 		if z["kind"] == "storm":
 			for u in units_near(p, r + 20.0):
 				if u.dead or u.off_field or not in_ellipse(p, u.position, r + u.radius):

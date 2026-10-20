@@ -68,6 +68,7 @@ var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
 var auto_work := true
+var slow_t := 0.0              # slowed (Bloater acid)
 # Observation Balloon: two gunners, each with its own target, reload and pose
 var gun_cd: Array = [0.0, 1.5]
 var gun_state: Array = ["idle", "idle"]
@@ -92,6 +93,8 @@ func is_air() -> bool:
 ## Can this unit attack that one at all?
 func can_hit(e: Entity) -> bool:
 	if d.get("medic", false) or e.untouchable():
+		return false
+	if e.is_air() and d.get("ground_only", false):
 		return false
 	if e.is_air():
 		# the cannon's canister is the Crown's answer to massed flyers; round shot can't
@@ -492,6 +495,9 @@ func _physics_process(delta: float) -> void:
 	var want := Vector2.ZERO
 	# Brood on swamp: faster, and wounds close up.
 	speed = float(d["speed"])
+	if slow_t > 0.0:
+		slow_t -= delta
+		speed *= float(Defs.BLOAT["slow"])
 	if d["faction"] == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
 		if hp < max_hp:
@@ -854,6 +860,15 @@ func _strike(e: Entity) -> void:
 			game.acid_shot(self, e, dmg)
 		"spore_mother":
 			game.blob_shot(self, e.center() + Vector2(0, 12), dmg)
+		"ornithopter":
+			if e.is_air():
+				dmg *= float(d.get("vs_air", 1.0))
+			e.take_damage(dmg, self)
+			game._zap_visual(center() + Vector2(0, 6), e.center(), false, true)
+			Sfx.play_any(["combat/tesla_attack", "zap"], position)
+		"bloater":
+			game.bloat_burst(self)
+			die()
 		"stormcaller":
 			# a short zap from the forked hands
 			e.take_damage(dmg, self)
@@ -1297,6 +1312,9 @@ func _anim_name() -> String:
 				return "attack"
 		"balloon":
 			return "drift" if moving else "idle"
+		"ornithopter", "bloater":
+			if phase != "":
+				return "attack"
 	return "walk" if moving else "idle"
 
 

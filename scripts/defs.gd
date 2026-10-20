@@ -165,6 +165,13 @@ const UNITS := {
 		"radius": 20, "from": "hive", "requires": "gorge_pit", "faction": "brood",
 		"about": "Walking, she can't attack. ROOT her (2.5 s): she lobs big spit blobs that splash a whole area, and spreads swamp. Casts MIASMA, a cloud that heals the Brood.",
 	},
+	"bloater": {
+		"tags": ["light"],
+		"name": "Bloater", "hp": 60, "armor": 0, "speed": 44, "cost": 50, "cost2": 25, "time": 14.0, "supply": 1,
+		"sight": 7, "range": 18, "damage": 20, "cooldown": 1.0, "aim": 0.7, "radius": 12, "from": "hive",
+		"air": true, "ground_only": true, "requires": "roost", "faction": "brood",
+		"about": "A floating gas sac. It drifts over walls to the enemy and bursts: an acid cloud for 8 s that strips armour and slows everyone inside. Used up when it bursts.",
+	},
 	"winder": {
 		"tags": ["light"],
 		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
@@ -212,6 +219,13 @@ const UNITS := {
 		"air": true, "anti_air": true, "requires": "roost", "faction": "brood",
 		"about": "Flies over cliffs and walls. Only ranged units can hit it. Costs essence.",
 	},
+	"ornithopter": {
+		"tags": ["light"],
+		"name": "Ornithopter", "hp": 110, "armor": 1, "speed": 112, "cost": 150, "time": 22.0, "supply": 2,
+		"sight": 9, "range": 140, "damage": 12, "cooldown": 1.4, "aim": 0.2, "radius": 13, "from": "assembly_works",
+		"air": true, "anti_air": true, "vs_air": 1.75, "requires": "charging_pylon", "faction": "clockwork",
+		"about": "Fast clockwork flyer with a lightning gun, deadliest against other flyers. Like every construct it winds down away from a field.",
+	},
 	"tesla_cart": {
 		"tags": ["armored"],
 		"name": "Tesla Cart", "hp": 240, "armor": 2, "speed": 50, "cost": 190, "time": 28.0, "supply": 3,
@@ -251,7 +265,7 @@ const BUILDINGS := {
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
-		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother"], "eggs": true, "swamp": 9,
+		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater"], "eggs": true, "swamp": 9,
 		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits.",
 	},
 	"clutch_mound": {
@@ -284,7 +298,7 @@ const BUILDINGS := {
 	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1300, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker", "tesla_cart", "stormcaller"], "faction": "clockwork",
+		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker", "tesla_cart", "stormcaller", "ornithopter"], "faction": "clockwork",
 		"about": "Assembles every combat construct. Faster with more energy on assembly.",
 	},
 	"farm": {
@@ -352,7 +366,7 @@ const RESEARCH := {}   # (the tech step is now the second economy building: see 
 
 
 ## Units whose art is still being finished: they can't be trained yet.
-const PENDING := ["balloon"]
+const PENDING := ["balloon", "ornithopter", "bloater"]
 
 
 static func is_worker(kind: String) -> bool:
@@ -373,6 +387,8 @@ const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
 const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 96.0, "time": 3.0, "dps": 8.0, "cast": 0.7}
 ## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
 ## inside it, up to a share of each unit's health per cloud; clouds don't stack.
+## Bloater: its acid cloud
+const BLOAT := {"radius": 72.0, "time": 8.0, "dps": 3.0, "slow": 0.6}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
