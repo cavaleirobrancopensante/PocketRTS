@@ -124,6 +124,13 @@ const UNITS := {
 		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "bolt": 1.3}, "charge": true, "faction": "crown",
 		"about": "Fast armoured horseman with a sabre. After a gallop his first blow hits double and throws the enemy back. Pikes beat him.",
 	},
+	"balloon": {
+		"tags": ["light"],
+		"name": "Observation Balloon", "hp": 180, "armor": 0, "speed": 46, "cost": 175, "cost2": 30, "time": 30.0, "supply": 4,
+		"sight": 12, "range": 220, "damage": 16, "cooldown": 3.0, "aim": 0.35, "radius": 16, "from": "foundry",
+		"air": true, "anti_air": true, "gunners": 2, "faction": "crown",
+		"about": "A snipers' nest in the sky: two musketeers who each shoot at the ground or at flyers, and a long view for your cannons. Slow and fragile. Each shot burns powder.",
+	},
 	"grub": {
 		"tags": ["light"],
 		"name": "Grub", "hp": 40, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
@@ -240,7 +247,7 @@ const BUILDINGS := {
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["cannon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons. Lets the Barracks train cuirassiers. Needs a Barracks.",
+		"supply": 0, "sight": 7, "trains": ["cannon", "balloon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and rigs observation balloons. Lets the Barracks train cuirassiers. Needs a Barracks.",
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
@@ -345,7 +352,7 @@ const RESEARCH := {}   # (the tech step is now the second economy building: see 
 
 
 ## Units whose art is still being finished: they can't be trained yet.
-const PENDING := []
+const PENDING := ["balloon"]
 
 
 static func is_worker(kind: String) -> bool:

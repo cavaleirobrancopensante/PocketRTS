@@ -1809,10 +1809,12 @@ func entity_at(p: Vector2, include_mines := true) -> Entity:
 
 # ------------------------------------------------------------------ combat helpers
 
-func musket_shot(u: Unit, e: Entity, dmg: float) -> void:
+func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 	var muzzle := u.center() + u.facing * 20.0 + Vector2(0, -2)
 	if e.is_air():
 		muzzle = u.center() + u.facing * 13.0 + Vector2(0, -15)     # aiming up
+	if from != Vector2.INF:
+		muzzle = from
 	spawn_effect("smoke", muzzle + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
 	var hit := randf() < 0.85
 	if hit:

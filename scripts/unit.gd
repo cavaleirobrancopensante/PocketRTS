@@ -68,6 +68,12 @@ var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
 var auto_work := true
+# Observation Balloon: two gunners, each with its own target, reload and pose
+var gun_cd: Array = [0.0, 1.5]
+var gun_state: Array = ["idle", "idle"]
+var gun_t: Array = [0.0, 0.0]
+var _gun_sprites: Array = []
+var _front: Sprite2D
 var _hold_note := 0             # when this unit may next say it's holding fire           # workers: go back to work on their own when idle
 
 
@@ -142,6 +148,74 @@ func take_damage(amount: float, from: Entity) -> void:
 		_battery_blast()
 
 
+## Balloon gunners: each picks its own target in range (the second prefers a different one,
+## and flyers if there are any), fires down or up, reloads on its own.
+func _gunners(delta: float) -> void:
+	var taken: Entity = null
+	for i in gun_cd.size():
+		gun_cd[i] = float(gun_cd[i]) - delta
+		gun_t[i] = float(gun_t[i]) + delta
+		if gun_state[i] != "idle" and float(gun_t[i]) > 0.7:
+			gun_state[i] = "idle"
+		if float(gun_cd[i]) > 0.0 or stun_t > 0.0:
+			continue
+		var best: Entity = null
+		var bd := INF
+		for o in game.units_near(position, _range() + 40.0):
+			if not game.hostile(o.team, team) or o.dead or o.off_field or not can_hit(o) or not game.side_sees(team, o.position):
+				continue
+			var dd: float = o.center().distance_to(center())
+			if dd > _range():
+				continue
+			if i == 1 and o.is_air():
+				dd -= 150.0          # gunner B watches the sky
+			if o == taken:
+				dd += 120.0          # spread the fire
+			if dd < bd:
+				bd = dd
+				best = o
+		if best == null:
+			continue
+		if not game.use_powder(team, 1):
+			continue
+		taken = best
+		gun_state[i] = "up" if best.is_air() else "down"
+		gun_t[i] = 0.0
+		gun_cd[i] = float(d["cooldown"]) + randf_range(0.0, 0.4)
+		var muzzle := center() + Vector2(-6.0 if i == 0 else 6.0, -4.0)
+		if _gun_sprites.size() > i:
+			muzzle = (_gun_sprites[i] as Sprite2D).global_position + Vector2(0, -4)
+		game.musket_shot(self, best, float(d["damage"]), muzzle)
+
+
+func _update_gunners() -> void:
+	if _front == null or not ArtData.UNITS[kind].has("gunners"):
+		return
+	var info: Dictionary = ArtData.UNITS[kind]
+	var dead_anim := anim == "death"
+	_front.visible = not dead_anim
+	for g in _gun_sprites:
+		(g as Sprite2D).visible = not dead_anim
+	if dead_anim:
+		return
+	var fk := "front_%s_%s" % [anim, anim_dir]
+	if ResourceLoader.exists("res://assets/units/%s/%s.png" % [kind, fk]):
+		_front.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, fk])
+		_front.hframes = sprite.hframes
+		_front.frame = sprite.frame
+		_front.offset = sprite.offset
+	var slots: Array = info["gunners"].get(anim_dir, [Vector2(-6, 0), Vector2(6, 0)])
+	var gfr: Dictionary = info.get("gunner_frames", {"idle": 1, "down": 3, "up": 3})
+	for i in _gun_sprites.size():
+		var g: Sprite2D = _gun_sprites[i]
+		var st: String = gun_state[i]
+		g.texture = Game.tex("res://assets/units/%s/gunner_%s_%s.png" % [kind, st, anim_dir])
+		g.hframes = int(gfr.get(st, 1))
+		g.frame = clampi(int(float(gun_t[i]) / 0.7 * g.hframes), 0, g.hframes - 1) if st != "idle" else 0
+		g.offset = -Vector2(info.get("gunner_anchor", Vector2.ZERO))
+		g.position = sprite.offset + Vector2(slots[mini(i, slots.size() - 1)])
+
+
 ## The battery on a Winder's back overloads (carried too long, or hit): it bursts.
 func _battery_blast() -> void:
 	carrying = 0
@@ -184,6 +258,18 @@ func _ready() -> void:
 	add_child(sprite)
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_make_wheel()
+	if ArtData.UNITS.has(kind) and ArtData.UNITS[kind].has("gunners"):
+		# layered: body, the two gunners, then the basket's front wall over their legs
+		for i in int(d.get("gunners", 2)):
+			var g := Sprite2D.new()
+			g.centered = false
+			g.use_parent_material = true
+			sprite.add_child(g)
+			_gun_sprites.append(g)
+		_front = Sprite2D.new()
+		_front.centered = false
+		_front.use_parent_material = true
+		sprite.add_child(_front)
 	if is_air():
 		z_index = 3
 	_set_anim("idle", true)
@@ -417,6 +503,8 @@ func _physics_process(delta: float) -> void:
 			Sfx.play_any(["combat/brute_attack", "roar"], position)
 	elif kind == "brute":
 		_charging = false
+	if d.has("gunners"):
+		_gunners(delta)
 	if d["faction"] == "clockwork":
 		_field_t -= delta
 		if _field_t <= 0.0:
@@ -705,6 +793,9 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 
 
 func _attack_cycle(e: Entity, delta: float) -> void:
+	if d.has("gunners"):
+		facing = (e.center() - center()).normalized()
+		return          # its gunners do the shooting
 	facing = (e.center() - center()).normalized()
 	if phase == "":
 		if cooldown > 0.0 or stun_t > 0.0:
@@ -1204,6 +1295,8 @@ func _anim_name() -> String:
 		"cuirassier":
 			if phase != "":
 				return "attack"
+		"balloon":
+			return "drift" if moving else "idle"
 	return "walk" if moving else "idle"
 
 
@@ -1275,6 +1368,8 @@ func _animate(delta: float) -> void:
 	if anim == "deploy" and tesla_mode == "packing":
 		shown = n - 1 - frame_i         # packing plays the deploy frames backwards
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
+	if _front:
+		_update_gunners()
 	_bob_t += delta
 	if is_air():
 		# flyers hover above their shadow and drop to the ground when they die

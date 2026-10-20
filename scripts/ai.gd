@@ -583,6 +583,11 @@ func _produce() -> void:
 	for f in _mine("foundry"):
 		if f.built and f.queue.size() < (2 if _gold() > 600 else 1) and cannons * 4 < army.size() + 2 and not short_powder:
 			game.train(f, "cannon")
+	var balloons := army.filter(func(u: Unit) -> bool: return u.kind == "balloon").size()
+	for f in _mine("foundry"):
+		if f.built and f.queue.is_empty() and balloons * 8 < army.size() and _gold() > 350 and game.can_train(f, "balloon") == "":
+			game.train(f, "balloon")
+			balloons += 1
 	for c in _mine("church"):
 		if c.built and c.queue.is_empty() and game.can_train(c, "missionary") == "":
 			game.train(c, "missionary")
