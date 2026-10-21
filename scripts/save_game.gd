@@ -81,8 +81,11 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			var ps: Array = []
 			for p in u.passengers:
 				if is_instance_valid(p) and not p.dead:
-					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "kills": p.kills, "cross": p.cross_t})
+					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "kills": p.kills, "cross": p.cross_t, "pw": p.powder})
 			ud["pass"] = ps
+		if u.haul_t >= 0.0:
+			# a keg on the balloon's rope (paid for): it keeps climbing after a load
+			ud["haul"] = [u.haul_t, u.haul_shots, u.haul_at.x, u.haul_at.y]
 		d["units"].append(ud)
 	# Clockwork crates on the ground, and the ones on a Winder's back (they come back lying
 	# where he stood): [x, y, team, site cell x, site cell y, hp]
@@ -290,7 +293,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 			p.auto_work = bool(pd.get("auto", true))
 			p.kills = int(pd.get("kills", 0))
 			p.cross_t = float(pd.get("cross", 0.0))
+			p.powder = minf(float(pd.get("pw", p.powder)), p._pmax)
 			u.take_aboard(p)
+		var hl: Array = ud.get("haul", [])
+		if u.kind == "balloon" and hl.size() == 4:
+			u.haul_t = float(hl[0])
+			u.haul_shots = float(hl[1])
+			u.haul_at = Vector2(float(hl[2]), float(hl[3]))
 	for a in d.get("ai", []):
 		for ai in game.ais:
 			if ai.team == int(a["team"]):

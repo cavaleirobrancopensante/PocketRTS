@@ -1039,7 +1039,7 @@ func _produce() -> void:
 ## Units busy with something of their own the army orders must leave alone: a balloon
 ## drop, an Ornithopter fetching or delivering a battery, a Bloater out of gas.
 func _on_errand(u: Unit) -> bool:
-	if u.order in ["courier", "overload", "board", "unload", "heal", "revive"]:
+	if u.order in ["courier", "overload", "board", "unload", "heal", "revive", "restock"]:
 		return true
 	if u.kind == "bloater" and u.deflate != "":
 		return true
@@ -1775,6 +1775,11 @@ var _drop_next := 300.0         # (match clock) the earliest next drop
 
 
 func _balloon_drop() -> void:
+	# balloons low on powder (their store refills the Musketeers aboard) go and restock
+	for u in game.army(team):
+		if u.kind == "balloon" and u.passengers.is_empty() and u.powder < u._pmax * 0.5 and u.order in ["idle", "amove", "move"] \
+				and (_drop.is_empty() or _drop.get("b") != u):
+			u.cmd_restock()
 	if _drop.is_empty():
 		if game.clock < _drop_next or _threat() != Vector2.INF:
 			return

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://805yrbrxikw4"
-path="res://.godot/imported/front_drift_e.png-7a0a99350b86f9b44ec2d3169c56ac97.ctex"
+uid="uid://0nin3h26aqry"
+path="res://.godot/imported/balloon_basket_pilot.png-e2faa3baccf9f36bbf000db75e40b339.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/balloon/front_drift_e.png"
-dest_files=["res://.godot/imported/front_drift_e.png-7a0a99350b86f9b44ec2d3169c56ac97.ctex"]
+source_file="res://art/crown/balloon_basket_pilot.png"
+dest_files=["res://.godot/imported/balloon_basket_pilot.png-e2faa3baccf9f36bbf000db75e40b339.ctex"]
 
 [params]
 

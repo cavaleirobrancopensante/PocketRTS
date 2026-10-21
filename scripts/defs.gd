@@ -52,8 +52,7 @@ const START_POWDER := 80
 ## one of their side's finished `from` buildings, paid from the powder bank at `cost` powder
 ## a shot (a full musketeer: 6 powder; with the bank empty the refill waits), or of a Powder
 ## Wagon with powder left (drawn from the wagon's store, already paid for: a cannon shot takes
-## 3 of the wagon's musket shots). Shots themselves don't touch the bank any more (the
-## Balloon's gunners still burn 1 a shot).
+## 3 of the wagon's musket shots). Shots themselves don't touch the bank any more.
 const POWDER := {"musketeer": 12, "cannon": 8, "mortar": 6, "refill": 2.0, "range": 3.0, "rearm": 4,
 	"cost": {"musketeer": 0.5, "cannon": 1.5, "mortar": 1.5}, "from": ["powder_mill", "barracks", "town_hall"]}
 ## Powder Wagon: holds `store` musket shots. Parked within POWDER.range tiles of a Powder Mill,
@@ -64,6 +63,13 @@ const POWDER := {"musketeer": 12, "cannon": 8, "mortar": 6, "refill": 2.0, "rang
 ## powder left, never under `blast_min`) within `radius` px, friends included.
 const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_load": 1.5, "runners": 2,
 	"blast": 120.0, "blast_min": 20.0, "radius": 96.0}
+## Observation Balloon's powder store: `store` musket shots (full when it's rigged). The
+## Musketeers in its basket top up from it (POWDER.refill shots a second). Hovering still within
+## `reach` tiles of a Powder Wagon with powder left, or of a finished POWDER.from building, with
+## room in the store, the pilot lowers a rope and hauls up a keg of `keg` shots in `haul` s
+## (from a building: paid from the bank at WAGON.per_powder shots a powder; from a wagon:
+## taken from its store). Moving off reels the rope in (the keg goes back).
+const BALLOON := {"store": 48, "keg": 12, "haul": 3.0, "reach": 2.0}
 ## A labourer killed with a keg on his back: a small blast (friends included).
 ## (Step 3, keg mines, will reuse the keg carry and Game.powder_blast.)
 const KEG := {"blast": 40.0, "radius": 48.0}
@@ -245,10 +251,10 @@ const UNITS := {
 	},
 	"balloon": {
 		"tags": ["light"],
-		"name": "Observation Balloon", "hp": 180, "armor": 0, "speed": 46, "cost": 175, "cost2": 30, "time": 30.0, "supply": 4,
-		"sight": 12, "range": 220, "damage": 16, "cooldown": 3.0, "aim": 0.35, "radius": 19, "from": "foundry", "art_scale": 1.2,
-		"air": true, "anti_air": true, "gunners": 2, "faction": "crown",
-		"about": "A snipers' nest in the sky: two musketeers who each shoot at the ground or at flyers, and a long view for your cannons. LOAD up to 4 Musketeers or Labourers (carried Musketeers fire from the basket) and UNLOAD them anywhere, even over cliffs. Slow and fragile. Each shot burns powder.",
+		"name": "Observation Balloon", "hp": 180, "armor": 0, "speed": 46, "cost": 125, "cost2": 20, "time": 25.0, "supply": 2,
+		"sight": 12, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 22, "from": "foundry",
+		"air": true, "no_attack": true, "faction": "crown",
+		"about": "A pilot and a basket for 4 Musketeers or Labourers: LOAD them and UNLOAD them anywhere, even over cliffs. Musketeers aboard shoot from the basket (at the ground or at flyers) and refill from its 48-shot powder store; hover it within 2 tiles of a Powder Wagon, Mill, Barracks or Town Hall and the pilot hauls up kegs (RESTOCK). Sees 12 tiles. Slow and fragile; the pilot doesn't fight.",
 	},
 	"grub": {
 		"tags": ["light"],

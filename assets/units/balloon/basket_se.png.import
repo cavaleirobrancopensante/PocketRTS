@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c0qirkhrgvlyy"
-path="res://.godot/imported/front_idle_se.png-02869962a9dbca3b8623463da97c2d8b.ctex"
+uid="uid://csujyb4go7ki2"
+path="res://.godot/imported/basket_se.png-81409a0688bf830cfb789ba815bccd2d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/balloon/front_idle_se.png"
-dest_files=["res://.godot/imported/front_idle_se.png-02869962a9dbca3b8623463da97c2d8b.ctex"]
+source_file="res://assets/units/balloon/basket_se.png"
+dest_files=["res://.godot/imported/basket_se.png-81409a0688bf830cfb789ba815bccd2d.ctex"]
 
 [params]
 

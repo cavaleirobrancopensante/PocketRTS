@@ -1,6 +1,10 @@
 """The Crown Observation Balloon: a layered sprite set so the two musketeers in the basket
 can each idle, fire down at the ground or fire up at flyers independently.
 
+SUPERSEDED for the game's files by tools/import_balloon2.py (the wide basket with its pilot),
+which imports this module for the envelope, rigging, death and the riders' gunner frames.
+Running this one again brings back the old small basket (and its two-gunner ArtData entry).
+
 Sources:
   art/crown/balloon_v2.png   rows = directions, groups drift(5) idle(4) death(4) wreck(1)
                              and eight basket close-ups (not used). Flat slate background.

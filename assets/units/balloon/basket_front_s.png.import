@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ctqu5jgu8pm3"
-path="res://.godot/imported/front_drift_ne.png-a3ac1de68e0c597d2aac1a524e87ea39.ctex"
+uid="uid://ch5hhtco7wqou"
+path="res://.godot/imported/basket_front_s.png-5a9c1df349377270ed7bf9e8e499f4a6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/balloon/front_drift_ne.png"
-dest_files=["res://.godot/imported/front_drift_ne.png-a3ac1de68e0c597d2aac1a524e87ea39.ctex"]
+source_file="res://assets/units/balloon/basket_front_s.png"
+dest_files=["res://.godot/imported/basket_front_s.png-5a9c1df349377270ed7bf9e8e499f4a6.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b8e8jesxb2q87"
-path="res://.godot/imported/front_drift_se.png-87505c99a60b0f723ffff821666932de.ctex"
+uid="uid://b5rg1abuxf1ge"
+path="res://.godot/imported/balloon_rope_barrel.png-90dfbd02bd2d5fdd7af1e5b06df95386.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/balloon/front_drift_se.png"
-dest_files=["res://.godot/imported/front_drift_se.png-87505c99a60b0f723ffff821666932de.ctex"]
+source_file="res://art/crown/balloon_rope_barrel.png"
+dest_files=["res://.godot/imported/balloon_rope_barrel.png-90dfbd02bd2d5fdd7af1e5b06df95386.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bkxjg715eqi4w"
-path="res://.godot/imported/front_idle_n.png-77f1b0589b543c3587affa24d1a8daef.ctex"
+uid="uid://cyylei2jduahi"
+path="res://.godot/imported/haul_barrel.png-515638bc3f8db2bca4e986effdb5bdcb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/balloon/front_idle_n.png"
-dest_files=["res://.godot/imported/front_idle_n.png-77f1b0589b543c3587affa24d1a8daef.ctex"]
+source_file="res://assets/effects/haul_barrel.png"
+dest_files=["res://.godot/imported/haul_barrel.png-515638bc3f8db2bca4e986effdb5bdcb.ctex"]
 
 [params]
 

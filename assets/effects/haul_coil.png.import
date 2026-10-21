@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ckkfp3ehx6cwq"
-path="res://.godot/imported/front_drift_s.png-df6ad8a2bd927051cf89229ce1fc088c.ctex"
+uid="uid://owmuh4n5h0i5"
+path="res://.godot/imported/haul_coil.png-1ef651e35c3025d1e917bac34ca46431.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/balloon/front_drift_s.png"
-dest_files=["res://.godot/imported/front_drift_s.png-df6ad8a2bd927051cf89229ce1fc088c.ctex"]
+source_file="res://assets/effects/haul_coil.png"
+dest_files=["res://.godot/imported/haul_coil.png-1ef651e35c3025d1e917bac34ca46431.ctex"]
 
 [params]
 

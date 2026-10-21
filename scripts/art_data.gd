@@ -521,7 +521,7 @@ const UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"balloon": {"cell": Vector2i(87, 119), "anchor": Vector2(42, 103), "frames": {
+	"balloon": {"cell": Vector2i(131, 178), "anchor": Vector2(64, 154), "frames": {
 		"death_e": 5,
 		"death_n": 5,
 		"death_ne": 5,
@@ -537,12 +537,12 @@ const UNITS := {
 		"idle_ne": 4,
 		"idle_s": 4,
 		"idle_se": 4,
-	}, "gunners": {
-		"s": [Vector2(37, 79), Vector2(46, 81)],
-		"se": [Vector2(37, 80), Vector2(46, 82)],
-		"e": [Vector2(38, 82), Vector2(46, 84)],
-		"ne": [Vector2(38, 80), Vector2(46, 82)],
-		"n": [Vector2(36, 79), Vector2(46, 81)],
+	}, "basket_frames": 4, "haul_coil": Vector2i(9, 9), "haul_barrel": Vector2i(10, 19), "gunners": {
+		"s": [Vector2(64, 144), Vector2(64, 144)],
+		"se": [Vector2(64, 144), Vector2(64, 144)],
+		"e": [Vector2(64, 144), Vector2(64, 144)],
+		"ne": [Vector2(64, 144), Vector2(64, 144)],
+		"n": [Vector2(64, 144), Vector2(64, 144)],
 	}, "gunner_cell": Vector2i(54, 49), "gunner_anchor": Vector2(13, 31), "gunner_frames": {"idle": 2, "down": 3, "up": 3}},
 	"powder_wagon": {"cell": Vector2i(60, 80), "anchor": Vector2(30, 69), "frames": {
 		"death_e": 4,

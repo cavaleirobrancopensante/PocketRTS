@@ -797,6 +797,13 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 	list.append(["ab_unload", "UNLOAD", func() -> void:
 		controls.mode = "unload"
 		toast("Tap where to let them off (or DROP HERE)."), aboard > 0, "Nobody aboard.", count])
+	var low: bool = balloons.any(func(u: Unit) -> bool: return u.powder < u._pmax)
+	list.append(["ab_supply", "RESTOCK", func() -> void:
+		var sent := 0
+		for u in game.selected_units():
+			if u.kind == "balloon" and u.powder < u._pmax and u.cmd_restock():
+				sent += 1
+		toast("Flying to the nearest powder: the pilot hauls kegs up on a rope until the store is full." if sent > 0 else "No Powder Wagon, Mill, Barracks or Town Hall to restock from."), low, "The powder store is full.", ""])
 
 
 ## Crown abilities for the selected soldiers. Each button switches all of that kind.
@@ -897,7 +904,7 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
-	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G"}
+	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G"}
 ## Keys the left hand reaches without leaving the group numbers: names only take letters
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
@@ -1389,10 +1396,13 @@ func _draw_panel(font: Font) -> void:
 					"packing": "Limbering up..."}[uu.tesla_mode]
 				info += "  Powder %d/%d%s" % [int(uu.powder), int(uu._pmax), " (OUT: refill at a Mill, Barracks, Hall or Wagon)" if uu.powder < 1.0 else ""]
 			elif uu.kind == "musketeer":
+				var rl := uu.musket_cooldown()
+				var rf := uu.reload_frac()
+				var rtxt := "Reload %.1f s%s" % [rl, (" (%.1f s left)" % uu.cooldown) if rf < 1.0 and uu.cooldown > 0.0 else " (ready)"]
 				if uu.powder < 1.0:
-					info = "OUT OF POWDER: fights with the bayonet. Refills at a Mill, Barracks, Hall or Wagon."
+					info = "Powder 0/%d: OUT, bayonet · %s · refill at a Mill, Barracks, Hall or Wagon" % [int(uu._pmax), rtxt]
 				else:
-					info = "Powder %d/%d%s · refills at a Mill, Barracks, Hall or Wagon" % [int(uu.powder), int(uu._pmax), "  (bayonet: the enemy is on him)" if uu.mode == "bayonet" else ""]
+					info = "Powder %d/%d · %s%s" % [int(uu.powder), int(uu._pmax), rtxt, " · bayonet: the enemy is on him" if uu.mode == "bayonet" else (" · refill at a Mill, Barracks, Hall or Wagon" if uu.powder < uu._pmax * 0.5 else "")]
 			elif uu.kind == "powder_wagon":
 				var runs := game.units.filter(func(x: Unit) -> bool: return x.order == "keg" and x.order_target == uu).size()
 				info = "Powder %d/%d shots · SUPPLY %s%s · blows up when destroyed" % [int(uu.powder), int(uu._pmax), "on" if uu.supplying else "off",
@@ -1418,9 +1428,16 @@ func _draw_panel(font: Font) -> void:
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
 			elif uu.kind == "balloon":
-				info = ("%d / %d aboard. UNLOAD to let them off." % [uu.passengers.size(), int(Defs.DROPSHIP["capacity"])]) if not uu.passengers.is_empty() else uu.d["about"]
+				var store := "Powder store %d/%d" % [int(uu.powder), int(uu._pmax)]
+				if uu.haul_t >= 0.0:
+					store += " · keg coming up (%.1f s)" % maxf(float(Defs.BALLOON["haul"]) - uu.haul_t, 0.0)
+				elif uu.order == "restock":
+					store += " · restocking"
+				elif uu.powder < uu._pmax:
+					store += " · RESTOCK at a Wagon, Mill, Barracks or Hall"
+				info = store + " · " + (("%d/%d aboard" % [uu.passengers.size(), int(Defs.DROPSHIP["capacity"])]) if not uu.passengers.is_empty() else "pilot only: LOAD Musketeers to fight")
 				if not uu.incoming.is_empty():
-					info = "Coming down: %d climbing in." % uu.incoming.size()
+					info = store + " · Coming down: %d climbing in." % uu.incoming.size()
 			elif uu.kind == "skywing":
 				info = {"air": "Flying: hunts flyers with spines. LAND to fight on the ground.", "to_land": "Looking for open ground to land on...",
 					"landing": "Landing...", "ground": "Landed: walks and bites ground units; anything can hit it. TAKE OFF to fly.", "lifting": "Taking off..."}.get(uu.sky, uu.d["about"])
@@ -1518,6 +1535,17 @@ func _draw_panel(font: Font) -> void:
 		draw_rect(hb, UiStyle.TRIM_DIM, false, 1.0)
 		var hpt := "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)]
 		_text(font, hb.position + Vector2(hb.size.x + 8, 11), hpt, 15, Color(0.75, 1, 0.7))
+		if e is Unit and (e as Unit)._pmax > 0.0 and (e.team == game.human or game.demo):
+			# the powder it carries (a balloon: its store), and a Musketeer's reload
+			var pu := e as Unit
+			var pb := Rect2(hb.position + Vector2(0, hb.size.y + 3), Vector2(hb.size.x, 4))
+			draw_rect(pb, Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(pb.position, Vector2(pb.size.x * clampf(pu.powder / pu._pmax, 0.0, 1.0), pb.size.y)), Unit.POWDER_BAR if pu.powder >= 1.0 else UiStyle.BAD)
+			if pu.kind == "musketeer":
+				var rb := Rect2(pb.position + Vector2(0, pb.size.y + 2), Vector2(hb.size.x, 2))
+				var rf := pu.reload_frac() if pu.powder >= 1.0 else 0.0
+				draw_rect(rb, Color(0, 0, 0, 0.6))
+				draw_rect(Rect2(rb.position, Vector2(rb.size.x * rf, rb.size.y)), Color(1.0, 0.85, 0.3) if rf >= 1.0 else Color(0.92, 0.92, 0.85))
 		if e is Unit and (e as Unit).kills > 0:
 			# veterancy: kills and the damage they've earned
 			var ku := e as Unit
@@ -1551,6 +1579,11 @@ func _draw_panel(font: Font) -> void:
 					draw_texture_rect(pic, pqr, false)
 				var pf: float = ps[i].hp / maxf(ps[i].max_hp, 1.0)
 				draw_rect(Rect2(pqr.position.x, pqr.end.y + 1, pqr.size.x * pf, 3), Color(0.3, 0.9, 0.3) if pf > 0.5 else Color(0.95, 0.4, 0.2))
+				if ps[i]._pmax > 0.0:
+					# his powder, under his health
+					var pp := Rect2(pqr.position.x, pqr.end.y + 5, pqr.size.x, 2)
+					draw_rect(pp, Color(0, 0, 0, 0.6))
+					draw_rect(Rect2(pp.position, Vector2(pp.size.x * clampf(ps[i].powder / ps[i]._pmax, 0.0, 1.0), 2)), Unit.POWDER_BAR if ps[i].powder >= 1.0 else UiStyle.BAD)
 		if e is Building and (e.team == game.human or game.spectating()) and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
@@ -1725,6 +1758,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"LOAD": "Load the balloon: then tap Musketeers or Labourers (or right-click the balloon with them selected). They walk under it and climb in, 4 at most; it must hover over ground they can reach. Carried Musketeers shoot from the basket.",
 		"UNLOAD": "Unload: tap where to drop them. The balloon flies there and lets everyone off on the nearest open ground (over a cliff edge too). Tap the balloon, or DROP HERE, to let them off where it is.",
 		"DROP HERE": "Let everyone off right below the balloon.",
+		"RESTOCK": "Restock the balloon's powder store (48 shots; the Musketeers aboard refill from it): it flies to the nearest Powder Wagon, Mill, Barracks or Town Hall and hovers there while the pilot hauls 12-shot kegs up on a rope (3 s each; 6 powder from the bank, or from the wagon's store). It also hauls by itself whenever it stops within 2 tiles of one.",
 		"COURIER": "Courier (automatic, glowing = on): idle Ornithopters fetch a charged battery from an energy building and wind up constructs that ran down (shut-down ones first). Click to switch on or off.",
 		"BRACE": "Brace (glowing = braced): the Bulwark plants its tower shield. It can't move (a move order lifts it), its armour goes up to 7, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead. Its lance still pokes at anything in reach.",
 		"OVERLOAD": "Overload: tap one of your constructs. The Ornithopter dumps its battery into it: +50% damage, +30% speed and faster attacks for 12 s, then it's left with 25% charge.",
