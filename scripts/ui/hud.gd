@@ -71,8 +71,63 @@ func toast(t: String, sound := true) -> void:
 var _redraw_t := 0.0
 
 
+## A match opens with a short countdown (3, 2, 1, GO): the world waits while you get ready.
+var countdown := 0.0
+var _count_shown := -1
+
+
+func start_countdown(secs := 3.0) -> void:
+	countdown = secs
+	_count_shown = -1
+	get_tree().paused = true
+
+
+func _countdown(delta: float) -> void:
+	if countdown <= 0.0 or paused:
+		return
+	get_tree().paused = true
+	countdown -= delta
+	var n := int(ceil(countdown))
+	if n != _count_shown:
+		_count_shown = n
+		if n > 0:
+			Sfx.play_any(["ui/click", "click"])
+		else:
+			Sfx.play_any(["ui/start_match", "ui/click"])
+	if countdown <= 0.0:
+		countdown = 0.0
+		_go_t = 0.6
+		get_tree().paused = false
+	queue_redraw()
+
+
+var _go_t := 0.0
+
+
+func _draw_countdown() -> void:
+	if countdown <= 0.0 and _go_t <= 0.0:
+		return
+	var vs := _vs()
+	var c := vs * 0.5 - Vector2(0, 40)
+	var font := UiStyle.bold_font()
+	var txt := str(int(ceil(countdown))) if countdown > 0.0 else "GO!"
+	var f: float = (countdown - floor(countdown)) if countdown > 0.0 else _go_t / 0.6
+	var sz := int(96 + 40 * f)
+	if countdown > 0.0:
+		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
+	var a := clampf(f * 1.6, 0.0, 1.0) if countdown > 0.0 else clampf(_go_t / 0.6, 0.0, 1.0)
+	_text(font, c + Vector2(3, 3), txt, sz, Color(0, 0, 0, 0.6 * a), 1)
+	_text(font, c, txt, sz, Color(1, 0.88, 0.45, a), 1)
+	if countdown > 0.0:
+		_text(font, c + Vector2(0, 60), "Get ready", 22, Color(1, 1, 1, 0.8), 1)
+
+
 func _process(delta: float) -> void:
 	_msg_t = maxf(_msg_t - delta, 0.0)
+	_countdown(delta)
+	if _go_t > 0.0:
+		_go_t = maxf(_go_t - delta, 0.0)
+		queue_redraw()
 	if not _alt_press.is_empty() and not _alt_press["done"] and Time.get_ticks_msec() - int(_alt_press["t"]) > 450:
 		_alt_press["done"] = true
 		(_alt_press["b"]["alt"] as Callable).call()
@@ -903,6 +958,8 @@ func _draw() -> void:
 		var sb := UiStyle.box(Color(0.1, 0.08, 0.06, 0.88 * a), Color(0.79, 0.64, 0.29, 0.6 * a), 2, 18, 0.0)
 		sb.draw(get_canvas_item(), mrr)
 		_text(UiStyle.bold_font(), Vector2(vs.x * 0.5, mrr.position.y + 25), _msg, 21, Color(1, 0.85, 0.65, a), 1)
+	if not paused:
+		_draw_countdown()
 	if paused:
 		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.6))
 		var pbs := _pause_buttons()
