@@ -1517,6 +1517,12 @@ func _to_menu() -> void:
 	get_tree().paused = false
 	Engine.time_scale = 1.0
 	if game:
+		# a watched match left before its end still keeps its log (MATCH LOGS)
+		if game.demo and not game.over and game.mlog:
+			game.mlog.add("(stopped watching before the end)")
+			game._sample_stats()
+			game.mlog.finish(-1)
+			_save_log(game.mlog.text())
 		game.queue_free()
 		game = null
 	show_menu()
