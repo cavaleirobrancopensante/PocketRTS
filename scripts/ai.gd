@@ -59,6 +59,10 @@ func _wave_start(army: Array) -> void:
 		_wave_value += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
 	_wave_sup = _army_supply(army)
 	_wave_kill0 = int(game.stats[team]["value_killed"])
+	_siege_clear()
+	_siege_said = ""
+	_siege_next = 0.0
+	_hold_back.clear()
 
 
 ## A wave is over (it died or fell back). One that killed less than it was worth failed:
@@ -1189,9 +1193,13 @@ func _army() -> void:
 			_wave_end()
 			return
 		_wave_target = _enemy_base()
+		# a wall in the way: the army weighs it up as one (break in, or pull back)
+		_siege_tick(army)
+		if not _attacking:
+			return
 		var wagon := _wagon() if _crown() else null
 		for u in army:
-			if u.order == "idle" and u.wall_flee_t <= 0.0 and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
+			if u.order == "idle" and u.wall_flee_t <= 0.0 and u.siege_t <= 0.0 and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
 				# a dry musketeer topping up at the wagon waits there until it can shoot again
 				if wagon and u.kind == "musketeer" and u.powder < float(Defs.POWDER["rearm"]) + 2.0 \
 						and wagon.powder >= 1.0 and u.position.distance_to(wagon.position) < 120.0 and u.target == null:
@@ -1242,10 +1250,21 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 	elif _swarm_phase != "":
 		_swarm_t += 1.0
 		var alive := 0
+		var wave: Array = []
 		for g in _swarm:
 			g[0] = (g[0] as Array).filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and not _on_errand(u))
 			alive += _army_supply(g[0])
-		if alive < 6:
+			wave.append_array(g[0])
+		var sieging := false
+		if alive >= 6:
+			# a wall in the way: the swarm weighs it up as one (break in, or pull back), and
+			# doesn't circle round to flanking spots it can't reach
+			sieging = _siege_tick(wave)
+			if sieging and _swarm_phase == "flank":
+				_swarm_phase = "strike"
+		if _swarm_phase == "":
+			pass                     # (it just pulled back from a wall)
+		elif alive < 6:
 			_swarm_phase = ""
 			_swarm.clear()
 			_attacking = false
@@ -1290,6 +1309,8 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 				for u in g[0]:
 					if u.deploys() and u.tesla_mode == "deployed" and u.target:
 						continue
+					if u.siege_t > 0.0:
+						continue             # breaking in at a wall: the siege gives its orders
 					var join: bool = fs != Vector2.INF and u.target == null and u.position.distance_to(fs) > 140.0
 					if (u.order == "idle" or join) and u.wall_flee_t <= 0.0:
 						u.cmd_move(_wave_target + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), true)
@@ -1382,6 +1403,636 @@ func _fight_spot() -> Vector2:
 				sum += u.position
 				n += 1
 	return sum / n if n > 0 else Vector2.INF
+
+
+# ------------------------------------------------------------------ sieges (every faction)
+
+## When the way to the wave's target is shut by an enemy wall or gate, the army decides as
+## one whether to break in, instead of every unit making up its own mind at the wall:
+##  * how fast it can knock down one piece (the melee units that fit at the wall face plus
+##    every ranged unit that can shoot it, less any repair), against
+##  * how fast the defenders in reach of that spot (muskets, canister, round shot...) shoot
+##    the men doing it.
+## A short simulation races one against the other, for each piece the army can reach that
+## opens the way. If one piece falls in time, with enough of the army left to win the fight
+## behind it, everything goes for that one piece: melee at its face (only as many as fit,
+## the rest waiting out of reach to step up), ranged units standing back off the melee lane
+## and shooting the same piece. If none does, the wave pulls back out of range and the
+## computer gathers a bigger army (and goes for another of the enemy's halls meanwhile, if
+## there's one). Weighed up again every SIEGE_EVAL seconds.
+const SIEGE_EVAL := 3.0
+var _siege := {}                # {"piece", "out" (outward dir), "stage", "cap" (melee at the face), "spots" {unit: point}, "splash", "flood"}
+var _siege_next := 0.0          # (match clock) when the siege is weighed up again
+var _siege_said := ""           # the last siege decision written to the match log (not said twice running)
+var _walled_halls := {}         # enemy hall -> clock until which waves leave it be (walled too strongly)
+var _hold_back := {}            # after a breach: unit -> clock when it goes on after the base (the melee walk
+                                # through the gap first, the ranged hold a moment so they don't block it)
+
+
+func _siege_clear() -> void:
+	_siege.clear()
+
+
+## Is this unit out with the attacking wave? (Unit._wall_watch leaves those to the siege.)
+func in_wave(u: Unit) -> bool:
+	if not _attacking:
+		return false
+	if not _brood():
+		return not _guards.has(u) and not _raiders.has(u)
+	for g in _swarm:
+		if (g[0] as Array).has(u):
+			return true
+	return false
+
+
+func _melee(u: Unit) -> bool:
+	return float(u.d["range"]) <= 40.0
+
+
+## The time one blow takes: aim, strike and reload (as Unit._attack_cycle runs it).
+func _cycle(u: Unit) -> float:
+	var cd := float(u.d["cooldown"])
+	if u.kind == "musketeer":
+		cd = u.musket_cooldown()
+	return float(u.d.get("aim", 0.25)) + 0.35 + maxf(cd, 0.1)
+
+
+## The cells reachable on foot from `cells` (4-way, as the pathfinder walks), with gates
+## open only to team `t`'s side. 1 = reachable.
+func _flood_from(cells: Array, t: int) -> PackedByteArray:
+	var w: int = game.W
+	var seen := PackedByteArray()
+	seen.resize(w * game.H)
+	var q: Array = []
+	for c in cells:
+		if game.in_map(c) and seen[game.idx(c)] == 0 and _walkable(c, t):
+			seen[game.idx(c)] = 1
+			q.append(c)
+	var qi := 0
+	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	while qi < q.size():
+		var c: Vector2i = q[qi]
+		qi += 1
+		for dv in dirs:
+			var n: Vector2i = c + dv
+			if not game.in_map(n):
+				continue
+			var i: int = n.y * w + n.x
+			if seen[i] == 0 and _walkable(n, t):
+				seen[i] = 1
+				q.append(n)
+	return seen
+
+
+func _walkable(c: Vector2i, t: int) -> bool:
+	var v: int = game.solid[game.idx(c)]
+	if v == 0 or v == 5:
+		return true
+	return v == 3 and t >= 0 and game.allied(int(game.gate_team.get(game.idx(c), -1)), t)
+
+
+func _is_piece(b) -> bool:
+	return b is Building and (b.kind == "wall" or b.kind == "gate")
+
+
+## Called every think while a wave is out. True while a siege runs the wave (the caller then
+## leaves units with siege_t > 0 alone) or the wave has just pulled back from one.
+func _siege_tick(wave: Array) -> bool:
+	# after a breach: the melee walk through the gap, the ranged let them by first; then
+	# everyone goes on after the base
+	for u in _hold_back.keys():
+		if not is_instance_valid(u) or u.dead:
+			_hold_back.erase(u)
+		elif game.clock >= float(_hold_back[u]) or (u.order == "idle" and u.target == null):
+			_hold_back.erase(u)
+			u.siege_t = 0.0
+			if u.order == "hold" or u.order == "move" or u.order == "idle":
+				u.cmd_move(_enemy_base() + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+	var ground: Array = wave.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and not u.is_air() and not u.off_field)
+	if ground.is_empty():
+		_siege_clear()
+		return false
+	var piece = _siege.get("piece")
+	if piece != null and (not is_instance_valid(piece) or piece.dead):
+		# through: the melee go in through the gap after the defenders behind it; the ranged
+		# step up to the wall face beside the gap (not into it, in front of the melee) and shoot
+		# over the wall; a few seconds on, all after the base
+		var at: Vector2 = _siege["at"]
+		var out: Vector2 = _siege["out"]
+		var flood: PackedByteArray = _siege["flood"]
+		var inside: Vector2 = _flood_point(_siege["inner"], at - out * 90.0, at)
+		_siege_clear()
+		_siege_said = ""
+		_siege_next = game.clock + 5.0          # (another wall behind it? weigh that up once through)
+		var target := _enemy_base()
+		for u in wave:
+			if is_instance_valid(u) and not u.dead:
+				u.wall_flee_t = 0.0
+				if u.is_air():
+					u.siege_t = 0.0
+					u.cmd_move(target + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+				elif u.has_attack() and not _melee(u) and not u.deploys():
+					# up to the wall face beside the gap (not in it): from there they shoot over
+					# the wall at the defenders behind it
+					var side: Vector2 = out.orthogonal() * (1.0 if randf() < 0.5 else -1.0)
+					var face: Vector2 = _flood_point(flood, at + out * 30.0 + side * randf_range(56.0, 90.0), u.position)
+					u.cmd_move(face, true)
+					u.siege_t = 7.0
+					_hold_back[u] = game.clock + 6.0
+				else:
+					u.cmd_move(inside + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+					u.siege_t = 8.0
+					_hold_back[u] = game.clock + 7.0
+		return true
+	if game.clock >= _siege_next:
+		_siege_next = game.clock + SIEGE_EVAL
+		if not _siege_plan(ground, wave):
+			return true            # pulled back: the wave is over
+	if _siege.is_empty():
+		return false
+	_siege_orders(ground)
+	return true
+
+
+## Weigh up the wall in the way. Returns false when the wave pulls back (it's over).
+func _siege_plan(ground: Array, wave: Array) -> bool:
+	var objective := _enemy_base()
+	var starts: Array = []
+	var centre := Vector2.ZERO
+	for u in ground:
+		starts.append(game.cell_of(u.position))
+		centre += u.position
+	centre /= ground.size()
+	var ours := _flood_from(starts, team)
+	# can we walk up to the target? (any open cell next to it)
+	var oc: Vector2i = game.cell_of(objective)
+	var goal_cells: Array = []
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var c := oc + Vector2i(dx, dy)
+			if game.in_map(c) and _walkable(c, -1):
+				goal_cells.append(c)
+				if ours[game.idx(c)] == 1:
+					_siege_release(ground)
+					return true          # an open way in: no siege
+	if goal_cells.is_empty():
+		_siege_release(ground)
+		return true
+	var inner := _flood_from(goal_cells, _foe())
+	# the enemy walls and gates we can stand against that open the way
+	var pieces: Array = []
+	var touching: Array = []
+	for b in game.buildings:
+		if b.dead or not b.built or not _is_piece(b) or not game.hostile(b.team, team):
+			continue
+		var out_side := false
+		var in_side: bool = inner[game.idx(b.cell)] == 1
+		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = b.cell + dv
+			if not game.in_map(n):
+				continue
+			if ours[game.idx(n)] == 1:
+				out_side = true
+			if inner[game.idx(n)] == 1:
+				in_side = true
+		if out_side:
+			touching.append(b)
+			if in_side:
+				pieces.append(b)
+	if pieces.is_empty():
+		# several layers: the piece we can reach nearest to the target
+		touching.sort_custom(func(a, b) -> bool: return a.center().distance_to(objective) < b.center().distance_to(objective))
+		pieces = touching.slice(0, 1)
+	if pieces.is_empty():
+		_siege_release(ground)
+		return true                  # shut out by something it can't break: carry on as before
+	pieces.sort_custom(func(a, b) -> bool: return a.center().distance_to(centre) < b.center().distance_to(centre))
+	var best: Dictionary = {}
+	var cur = _siege.get("piece")
+	if cur != null and (not is_instance_valid(cur) or cur.dead):
+		cur = null
+	for b in pieces.slice(0, 6):
+		var r := _siege_sim(b, ground, ours, centre)
+		# once in, it keeps going unless it's clearly lost (no dithering at the wall)
+		var ok: bool = r["win"] or (b == cur and r["breach"] and r["left"] >= 0.15)
+		if not ok:
+			if best.is_empty() or (not best["ok"] and r["t"] < best["t"]):
+				best = r.merged({"ok": false, "piece": b})
+			continue
+		var score: float = r["t"] + b.center().distance_to(centre) / 90.0 - (4.0 if b == cur else 0.0)
+		if best.is_empty() or not best["ok"] or score < best["score"]:
+			best = r.merged({"ok": true, "piece": b, "score": score})
+	var who: String = game.mlog.who(team) if game.mlog else "AI"
+	if best["ok"]:
+		var piece: Building = best["piece"]
+		if piece != cur:
+			_siege = {"piece": piece, "out": best["out"], "stage": best["stage"], "cap": best["cap"], "spots": {}, "splash": best["splash"], "flood": ours,
+				"since": game.clock, "formed": false, "inner": inner, "at": piece.center()}
+		else:
+			_siege["cap"] = best["cap"]
+			_siege["stage"] = best["stage"]
+			_siege["flood"] = ours
+			_siege["inner"] = inner
+		_say("breach", "%s breaks in at a %s: down in ~%d s (%d dps on it) against %d dps of fire" % [who, String(piece.d["name"]).to_lower(), int(best["t"]), int(best["dps"]), int(best["inc"])])
+		return true
+	# lost: pull back out of reach, gather more, and leave this hall be for a while
+	var b0: Building = best["piece"]
+	var back: Vector2 = _flood_point(ours, b0.center() + best["out"] * (best["reach"] + 160.0), centre)
+	_say("back", "%s pulls back from the %s: %s under %d dps of fire (%d dps on it)" % [who, String(b0.d["name"]).to_lower(),
+		("down in ~%d s, too dear" % int(best["t"])) if best["breach"] else "it can't get through", int(best["inc"]), int(best["dps"])])
+	for u in wave:
+		if is_instance_valid(u) and not u.dead:
+			u.siege_t = 0.0
+			u.cmd_move(back + Vector2(randf_range(-70, 70), randf_range(-70, 70)))
+			u.wall_flee_t = 10.0
+	var hall := _hall_at(objective)
+	if hall:
+		_walled_halls[hall] = game.clock + 120.0
+	_siege_clear()
+	_attacking = false
+	_swarm_phase = ""
+	_swarm.clear()
+	_release_escort()
+	_wave_end()
+	return false
+
+
+func _say(kind: String, msg: String) -> void:
+	if _siege_said == kind:
+		return
+	_siege_said = kind
+	if game.mlog:
+		game.mlog.add(msg)
+
+
+func _hall_at(p: Vector2) -> Building:
+	for b in game.buildings:
+		if not b.dead and b.kind == game.faction_hall(b.team) and b.center().distance_to(p) < 8.0:
+			return b
+	return null
+
+
+## The siege is off (an open way in): the units go back to the wave's ordinary orders.
+func _siege_release(ground: Array) -> void:
+	if _siege.is_empty():
+		return
+	_siege_clear()
+	_siege_said = ""
+	for u in ground:
+		if u.siege_t > 0.0:
+			u.siege_t = 0.0
+			u.cmd_move(_enemy_base() + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+
+
+## The reachable cell nearest to p (searched outward from p), or `fallback`.
+func _flood_point(flood: PackedByteArray, p: Vector2, fallback: Vector2) -> Vector2:
+	var c0: Vector2i = game.cell_of(p)
+	for r in 14:
+		var best := Vector2.INF
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var c := c0 + Vector2i(dx, dy)
+				if game.in_map(c) and flood[game.idx(c)] == 1:
+					var q: Vector2 = game.cell_center(c)
+					if best == Vector2.INF or q.distance_to(p) < best.distance_to(p):
+						best = q
+		if best != Vector2.INF:
+			return best
+	return fallback
+
+
+## Race the army against one piece. Returns {win, breach, t, left, dps, inc, cap, out, stage,
+## reach, splash}.
+func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: Vector2) -> Dictionary:
+	var pc := piece.center()
+	var out: Vector2 = (centre - pc).normalized()
+	if out == Vector2.ZERO:
+		out = (game.center_of_team(team) - pc).normalized()
+	# --- the defenders that reach the wall face, and how far out past it they reach
+	var our_armor := 0.0
+	for u in ground:
+		our_armor += float(u.d["armor"])
+	our_armor /= maxf(1.0, ground.size())
+	var single := 0.0            # dps on the man in front
+	var spray := 0.0             # dps on each man of a crowd (canister, round shot, shells)
+	var reach := 0.0             # how far out past the wall their muskets and canister reach
+	var art_reach := 0.0         # ... and their round shot and shells
+	var their_hp := 0.0
+	var their_armor := 0.0
+	var all_single := 0.0        # (all of them, in reach of the wall or not: the fight once we're through)
+	var all_spray := 0.0
+	var splash := false
+	var seen_out := 0.0          # how far out past the wall they see (their guns fire on what they see)
+	for o in game.units_near(pc, 520.0):
+		if o.dead or o.off_field or not game.hostile(o.team, team) or o.is_worker() or not o.has_attack():
+			continue
+		if o.d.get("air_only", false):
+			continue
+		var dd: float = o.position.distance_to(pc)
+		seen_out = maxf(seen_out, float(o.sight) * Defs.TILE - dd)
+		var dps := maxf(1.0, float(o.d["damage"]) - our_armor) / _cycle(o)
+		if o.d.has("gunners"):
+			dps *= float(o.d["gunners"])
+		their_hp += o.hp
+		their_armor += float(o.d["armor"]) * o.hp
+		var o_out := float(o.d["range"]) - dd + 16.0
+		if o.kind == "cannon":
+			var can_out: float = float(Defs.CANISTER["range"]) - dd + 16.0
+			var can_dps: float = float(Defs.CANISTER["damage"]) * float(Defs.CANISTER["vs_light"]) / (float(Defs.CANISTER["cooldown"]) + 0.95)
+			all_spray += can_dps
+			if can_out >= 0.0:
+				# canister into the crowd at the wall: a cone of balls into every man there
+				spray += can_dps
+				reach = maxf(reach, can_out)
+				splash = true
+			elif o_out >= 0.0:
+				spray += dps * 0.6       # round shot through a line of men
+				art_reach = maxf(art_reach, o_out)
+				splash = true
+			continue
+		if SPLASH_KINDS.has(o.kind):
+			all_spray += dps * 0.7
+		else:
+			all_single += dps
+		if o_out < 0.0:
+			continue
+		if SPLASH_KINDS.has(o.kind):
+			spray += dps * 0.7
+			splash = true
+			if float(o.d["range"]) > 250.0:
+				art_reach = maxf(art_reach, o_out)
+			else:
+				reach = maxf(reach, o_out)
+			continue
+		single += dps
+		reach = maxf(reach, o_out)
+	art_reach = maxf(art_reach, reach)
+	their_armor /= maxf(their_hp, 1.0)
+	# --- our side: who can hurt the piece (spitter acid strips 2 of its armour)
+	var acid := false
+	for u in ground:
+		if u.kind == "spitter" and u.can_hit(piece):
+			acid = true
+	var arm := maxf(0.0, piece.armor - (2.0 if acid else 0.0))
+	var melee: Array = []       # [hp, dps on the wall, room it takes, how long it lasts there, dps on men]
+	var ranged: Array = []      # [hp, dps on the wall, how far back it stands, dps on men]
+	var hp_hit := 0.0
+	for u in ground:
+		if not u.has_attack() or not u.can_hit(piece):
+			continue
+		var dmg := float(u.d["damage"]) * float(u.d.get("building_bonus", 1.0))
+		var wd := maxf(1.0, dmg - arm) / _cycle(u)
+		if u.deploys():
+			wd *= 0.8            # (it has to set up)
+		hp_hit += u.hp
+		if _melee(u):
+			var side: float = u.radius * 2.0 + 4.0
+			# (canister shreds light troops: a tough one lasts longer at the face)
+			var lasts: float = u.hp / (float(Defs.CANISTER["vs_light"]) if Defs.has_tag(u.kind, "light") else 1.0)
+			melee.append([u.hp, wd, side * side, lasts, maxf(1.0, float(u.d["damage"]) - their_armor) / _cycle(u)])
+		else:
+			ranged.append([u.hp, wd, maxf(float(u.d["range"]) * 0.85, float(u.d.get("min_range", 0.0)) + 24.0), maxf(1.0, float(u.d["damage"]) - their_armor) / _cycle(u)])
+	var none := {"win": false, "breach": false, "t": INF, "left": 0.0, "dps": 0.0, "inc": single + spray, "cap": 0,
+		"out": out, "stage": pc + out * 200.0, "reach": art_reach, "splash": splash}
+	if melee.is_empty() and ranged.is_empty():
+		return none
+	# room at the wall face: the reachable cells touching the piece (a second rank reaches past the first)
+	var room := 0.0
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var c: Vector2i = piece.cell + Vector2i(dx, dy)
+			if (dx != 0 or dy != 0) and game.in_map(c) and flood[game.idx(c)] == 1:
+				room += float(Defs.TILE * Defs.TILE) * (1.0 if dx == 0 or dy == 0 else 0.5)
+	room *= 2.0
+	# the best wall-breakers go to the face first: the most damage for the room they take,
+	# for the longest (a Brute before Raptors); the room left is filled with smaller ones,
+	# and the rest queue up behind (in that order) to step up as the first fall
+	melee.sort_custom(func(a, b) -> bool: return a[1] * a[3] / a[2] > b[1] * b[3] / b[2])
+	var at_face: Array = []
+	var queue: Array = []
+	var used := 0.0
+	for m in melee:
+		if used + m[2] <= room or at_face.is_empty():
+			used += m[2]
+			at_face.append(m)
+		else:
+			queue.append(m)
+	var cap := at_face.size()
+	melee = at_face + queue
+	# repairers on the wall (and those close enough to start)
+	var rep := 0.0
+	for o in game.units_near(pc, 220.0):
+		if not o.dead and game.hostile(o.team, team) and (o.kind == "labourer" or o.kind == "winder"):
+			var rate := maxf(float(Defs.REPAIR_RATE), piece.max_hp / maxf(float(piece.d.get("time", 10.0)), 1.0))
+			rep += rate * (1.0 if o.work == "repairing" else 0.5)
+	# --- the race, half a second at a time. First the wall: the men at the face (the next
+	# stepping up as each falls) and the ranged behind against the piece; the defenders in
+	# reach fire on the men in front (canister on all of the crowd there), and on the
+	# ranged once no melee are left (if they reach that far). Then the fight through the
+	# gap: only so many get through at once, against all the defenders behind the wall.
+	var mhp: Array = []
+	for m in melee:
+		mhp.append(m[0])
+	var rhp: Array = []
+	for r in ranged:
+		rhp.append(r[0])
+	var wall_hp: float = piece.hp
+	var foe_hp := their_hp
+	var t := 0.0
+	var dt := 0.5
+	var limit := 90.0 if single + spray > 0.0 else 200.0
+	var next_m := mini(cap, melee.size())
+	var active: Array = []
+	for i in next_m:
+		active.append(i)
+	var breached := false
+	var t_breach := INF
+	var won := their_hp <= 0.0
+	var dps0 := -1.0
+	while t < limit and not won:
+		var dps := 0.0
+		for i in active:
+			dps += melee[i][1 if not breached else 4]
+		for j in ranged.size():
+			if rhp[j] > 0.0:
+				dps += ranged[j][1 if not breached else 3]
+		if dps0 < 0.0:
+			dps0 = dps
+		if not breached:
+			dps -= rep
+		if dps <= 0.0:
+			break
+		t += dt
+		if not breached:
+			wall_hp -= dps * dt
+			if wall_hp <= 0.0:
+				breached = true
+				t_breach = t
+				limit = t + 60.0
+				# through the gap: a few more fit than at the wall face
+				var cap2 := int(ceil(cap * 1.5))
+				while active.size() < cap2 and next_m < melee.size():
+					active.append(next_m)
+					next_m += 1
+				continue
+		else:
+			foe_hp -= dps * dt
+			if foe_hp <= 0.0:
+				won = true
+				break
+		var f_single := single if not breached else all_single
+		var f_spray := spray if not breached else all_spray
+		var scale := foe_hp / maxf(their_hp, 1.0)
+		if not active.is_empty():
+			var fire: float = (f_single + f_spray * minf(active.size() + 2.0, 8.0)) * scale * dt     # (canister catches the next in line too)
+			while fire > 0.0 and not active.is_empty():
+				var i: int = active[0]
+				var take: float = minf(fire, mhp[i])
+				mhp[i] -= take
+				fire -= take
+				if mhp[i] <= 0.0:
+					active.pop_front()
+					if next_m < melee.size():
+						active.append(next_m)
+						next_m += 1
+		else:
+			var fire_r: float = (f_single + f_spray * 2.0) * scale * dt
+			for j in ranged.size():
+				if fire_r <= 0.0:
+					break
+				if rhp[j] > 0.0 and (breached or ranged[j][2] <= reach):
+					var take: float = minf(fire_r, rhp[j])
+					rhp[j] -= take
+					fire_r -= take
+	var hp_left := 0.0
+	for v in mhp:
+		hp_left += maxf(0.0, v)
+	for v in rhp:
+		hp_left += maxf(0.0, v)
+	var all_hp := 0.0
+	for u in ground:
+		all_hp += u.hp
+	var frac_left := clampf((all_hp - (hp_hit - hp_left)) / maxf(all_hp, 1.0), 0.0, 1.0)
+	# through, the defenders beaten, and enough left to go on and raze the base
+	var win := breached and won and frac_left >= 0.25
+	# the reserve waits out of their muskets' reach, and out of sight of their guns if it can
+	var stage: Vector2 = _flood_point(flood, pc + out * clampf(maxf(reach + 70.0, minf(art_reach, seen_out) + 50.0), 130.0, 420.0), centre)
+	return {"win": win, "breach": breached, "t": t_breach, "left": frac_left, "dps": maxf(dps0, 0.0),
+		"inc": single + spray * minf(cap + 2.0, 8.0), "cap": cap, "out": out, "stage": stage, "reach": art_reach, "splash": splash}
+
+
+## Orders while breaking in: first the army forms up out of the defenders' reach (the melee
+## at a staging spot, the ranged at their firing spots, which they open fire from), so it
+## doesn't arrive at the wall a few at a time; then the melee go to the face (as many as fit;
+## the rest wait out of reach and step up as the first fall). All on the one piece; units
+## that can't hurt a wall wait with the reserve.
+func _siege_orders(ground: Array) -> void:
+	var piece: Building = _siege["piece"]
+	var pc := piece.center()
+	var out: Vector2 = _siege["out"]
+	var stage: Vector2 = _siege["stage"]
+	var spots: Dictionary = _siege["spots"]
+	var flood: PackedByteArray = _siege["flood"]
+	var gap := 44.0 if _siege["splash"] else 26.0      # (against splash the waiting men spread)
+	var melee: Array = []
+	for u in ground:
+		u.siege_t = SIEGE_EVAL + 2.0
+		u.wall_flee_t = 0.0
+		if not u.has_attack() or not u.can_hit(piece):
+			if u.order != "move" or u.order_point.distance_to(stage) > gap * 4.0:
+				u.cmd_move(stage + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * gap * 2.0)
+			continue
+		if _melee(u):
+			melee.append(u)
+			continue
+		# ranged: to its own spot first, then shoot the piece from there
+		if not spots.has(u):
+			spots[u] = _ranged_spot(u, piece, out, flood, spots, gap)
+		var spot: Vector2 = spots[u]
+		var in_reach: bool = piece.edge_distance(u.position) - u.radius <= u._range() - 4.0
+		if u.order == "attack" and u.order_target == piece and in_reach:
+			continue
+		if in_reach and (u.position.distance_to(spot) < 28.0 or u.stuck_t > 0.8):
+			u.cmd_attack(piece)
+		elif u.order != "move" or u.order_point.distance_to(spot) > 8.0:
+			u.cmd_move(spot)
+	if not _siege["formed"]:
+		var there := 0
+		for u in melee:
+			if u.position.distance_to(stage) < 110.0 or piece.edge_distance(u.position) < 60.0:
+				there += 1
+		if there >= melee.size() * 0.75 or game.clock - float(_siege["since"]) > 15.0:
+			_siege["formed"] = true
+		else:
+			for u in melee:
+				if u.order == "attack" and u.order_target == piece and piece.edge_distance(u.position) < 60.0:
+					continue         # (already at it)
+				if u.order != "move" or u.order_point.distance_to(stage) > gap * 3.0:
+					u.cmd_move(stage + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * gap * 2.0)
+			return
+	# melee: the nearest `cap` to the face, the rest wait at the stage out of reach
+	melee.sort_custom(func(a, b) -> bool: return a.position.distance_to(pc) < b.position.distance_to(pc))
+	var cap: int = maxi(1, int(ceil(float(_siege["cap"]) * 1.15)))
+	# a few seconds before the piece falls the reserve moves up behind the men at the face, so
+	# the whole lot goes through the gap together, not in a trickle from the staging spot
+	var now := game.clock
+	if _siege.has("hp_at"):
+		var dt: float = now - float(_siege["hp_at"])
+		if dt > 0.1:
+			var rate: float = (float(_siege["hp_was"]) - piece.hp) / dt
+			_siege["rate"] = lerpf(float(_siege.get("rate", rate)), rate, 0.5)
+	_siege["hp_at"] = now
+	_siege["hp_was"] = piece.hp
+	var rate_now: float = float(_siege.get("rate", 0.0))
+	var close_in: bool = rate_now > 1.0 and piece.hp / rate_now < 4.0
+	var near_pt: Vector2 = _flood_point(flood, pc + out * 70.0, stage)
+	for i in melee.size():
+		var u: Unit = melee[i]
+		if u.order == "attack" and u.order_target == piece:
+			if i < cap or piece.edge_distance(u.position) < 40.0:
+				continue
+		if i < cap:
+			u.cmd_attack(piece)
+		elif close_in:
+			if u.order != "move" or u.order_point.distance_to(near_pt) > 60.0:
+				u.cmd_move(near_pt + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * gap)
+		elif u.order != "move" or u.order_point.distance_to(stage) > gap * 3.0:
+			u.cmd_move(stage + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * gap * 2.0)
+
+
+## A firing spot for a ranged unit: in its range of the piece, off the lane the melee walk up
+## (straight out from the piece), apart from the others' spots, on ground it can reach.
+func _ranged_spot(u: Unit, piece: Building, out: Vector2, flood: PackedByteArray, spots: Dictionary, gap: float) -> Vector2:
+	var pc := piece.center()
+	var rng: float = u._range()
+	var lo: float = maxf(float(u.d.get("min_range", 0.0)) + 24.0, minf(70.0, rng * 0.6))
+	var want: float = clampf(rng * 0.85, lo, rng - 10.0)
+	var r := int(ceil(rng / Defs.TILE)) + 1
+	var best := u.position
+	var bs := INF
+	var side := out.orthogonal()
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			var c: Vector2i = piece.cell + Vector2i(dx, dy)
+			if not game.in_map(c) or flood[game.idx(c)] == 0:
+				continue
+			var p: Vector2 = game.cell_center(c)
+			var e: float = piece.edge_distance(p)
+			if e > rng - 10.0 or e < lo:
+				continue
+			var v := p - pc
+			var s := absf(e - want) * 0.5 + p.distance_to(u.position) * 0.15
+			if v.dot(out) > 0.0 and absf(v.dot(side)) < 52.0:
+				s += 200.0           # the melee lane
+			for o in spots:
+				if is_instance_valid(o) and o != u and (spots[o] as Vector2).distance_to(p) < gap:
+					s += 150.0
+			if s < bs:
+				bs = s
+				best = p
+	return best + Vector2(randf_range(-6, 6), randf_range(-6, 6))
 
 
 ## Clockwork: two Winders walk behind the army and repair it (they repair whatever is
@@ -1481,9 +2132,16 @@ func _enemy_base() -> Vector2:
 	var bd := INF
 	var me := game.center_of_team(team)
 	# go for the economy: the enemy's nearest hall (its workers and farms are around it);
-	# the army fights whatever is in the way on the walk there
+	# the army fights whatever is in the way on the walk there. A hall walled too strongly
+	# for the last wave is left be for a while, if there's another one.
+	var open_hall := false
+	for b in game.buildings:
+		if b.team == enemy and not b.dead and not b.ghost and b.kind == game.faction_hall(enemy) and float(_walled_halls.get(b, 0.0)) <= game.clock:
+			open_hall = true
 	for b in game.buildings:
 		if b.team == enemy and not b.dead and not b.ghost and b.kind == game.faction_hall(enemy):
+			if open_hall and float(_walled_halls.get(b, 0.0)) > game.clock:
+				continue
 			var dd: float = b.center().distance_to(me)
 			if dd < bd:
 				bd = dd
@@ -1910,7 +2568,7 @@ func _micro() -> void:
 		if not is_instance_valid(k) or k.dead or k.hp > k.max_hp * 0.85:
 			_mending.erase(k)
 	for u in army:
-		if u.deploys() or u.d.get("medic", false) or _mending.has(u) or _on_errand(u):
+		if u.deploys() or u.d.get("medic", false) or _mending.has(u) or _on_errand(u) or u.siege_t > 0.0:
 			continue
 		if brutal and u.hp < u.max_hp * 0.25 and int(u.d["supply"]) >= 2 and u.target:
 			_mending[u] = true
