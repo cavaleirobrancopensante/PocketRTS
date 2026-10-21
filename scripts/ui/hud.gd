@@ -1243,16 +1243,17 @@ func _draw() -> void:
 	if not paused:
 		_draw_countdown()
 	if paused:
-		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.6))
+		# see-through: the match stays visible behind (for screenshots and a look at the field)
+		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.12))
 		var pbs := _pause_buttons()
 		var top_y: float = (pbs[0]["rect"] as Rect2).position.y
 		var last: Rect2 = pbs[pbs.size() - 1]["rect"]
-		UiStyle.draw_panel(self, Rect2(vs.x * 0.5 - 200, top_y - 96, 400, last.end.y - top_y + 120), UiStyle.accent(game.faction_of(game.human)), 0.96)
+		UiStyle.draw_panel(self, Rect2(vs.x * 0.5 - 200, top_y - 96, 400, last.end.y - top_y + 120), UiStyle.accent(game.faction_of(game.human)), 0.3)
 		_text(UiStyle.title_font(), Vector2(vs.x * 0.5, top_y - 34), "PAUSED", 44, UiStyle.TRIM, 1)
 		var hv := _mouse() if Settings.pc() else Vector2(-1, -1)
 		for b in pbs:
 			var r: Rect2 = b["rect"]
-			UiStyle.draw_button(self, r, r.has_point(hv))
+			UiStyle.draw_button(self, r, r.has_point(hv), false, true, 0.45)
 			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 22, UiStyle.BAD if b["label"] == "SURRENDER" else UiStyle.TEXT, 1)
 
 

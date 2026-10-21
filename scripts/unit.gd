@@ -2161,9 +2161,10 @@ func _move(want: Vector2, delta: float) -> void:
 	last_pos = position
 
 
-## Computer players: melee units hacking at a wall keep at it while it's only being
-## repaired (that drains the defender), but pull back as soon as enemy shooters can hit
-## them over it: dying to men they can't reach is pointless.
+## Computer players: melee units hacking at a wall weigh it up rather than run at the first
+## shot. Time to breach (the wall's hp over the hackers' damage, less any repair) against the
+## time the shooters covering it need to kill them all: they push on while the breach comes
+## clearly first, and pull back together when it doesn't.
 func _wall_watch(delta: float) -> void:
 	wall_flee_t = maxf(wall_flee_t - delta, 0.0)
 	_wall_chk -= delta
@@ -2175,21 +2176,52 @@ func _wall_watch(delta: float) -> void:
 		return
 	if not game.ais.any(func(a) -> bool: return a.team == team):
 		return
-	var shooter: Unit = null
-	for o in game.units_near(position, 320.0):
-		if o.dead or not game.hostile(o.team, team) or float(o.d["range"]) < 100.0:
-			continue
-		if o.edge_distance(position) <= float(o.d["range"]) + 10.0 and o.can_hit(self):
-			shooter = o
-			break
-	if shooter == null:
+	var wall: Building = target
+	# the hackers: our melee units at this wall
+	var hackers: Array = []
+	for o in game.units_near(wall.center(), 140.0):
+		if not o.dead and o.team == team and o.target == wall and float(o.d["range"]) <= 40.0:
+			hackers.append(o)
+	if hackers.is_empty():
 		return
-	# back off out of its reach, the way it came
-	var away: Vector2 = (position - shooter.position).normalized()
-	var to: Vector2 = position + away * (float(shooter.d["range"]) + 90.0)
-	target = null
-	cmd_move(to, false)
-	wall_flee_t = 25.0
+	# the shooters that can reach any of them
+	var shooters := {}
+	for h in hackers:
+		for o in game.units_near(h.position, 320.0):
+			if o.dead or not game.hostile(o.team, team) or float(o.d["range"]) < 100.0 or shooters.has(o):
+				continue
+			if o.edge_distance(h.position) <= float(o.d["range"]) + 10.0 and o.can_hit(h):
+				shooters[o] = true
+	if shooters.is_empty():
+		return                       # only being repaired: keep draining them
+	var hack_dps := 0.0
+	var hack_hp := 0.0
+	for h in hackers:
+		hack_dps += maxf(1.0, float(h.d["damage"]) - wall.armor) / maxf(float(h.d["cooldown"]), 0.1)
+		hack_hp += h.hp
+	var shoot_dps := 0.0
+	for o in shooters:
+		shoot_dps += float(o.d["damage"]) / maxf(float(o.d["cooldown"]), 0.1)
+	# repairers on the wall
+	var rep := 0.0
+	for o in game.units_near(wall.center(), 90.0):
+		if not o.dead and game.hostile(o.team, team) and o.work == "repairing":
+			rep += maxf(float(Defs.REPAIR_RATE), wall.max_hp / maxf(float(wall.d.get("time", 10.0)), 1.0))
+	var net := hack_dps - rep
+	var breach_t := wall.hp / net if net > 0.5 else INF
+	var die_t := hack_hp / maxf(shoot_dps, 0.1)
+	if breach_t < die_t * 0.6:
+		return                       # we break through well before they shoot us down: push on
+	var c := Vector2.ZERO
+	for o in shooters:
+		c += (o as Unit).position
+	c /= shooters.size()
+	for h in hackers:
+		var away: Vector2 = (h.position - c).normalized()
+		h.target = null
+		h.cmd_move(h.position + away * 260.0, false)
+		h.wall_flee_t = 25.0
+		h._wall_chk = 0.5
 
 
 ## Move toward and fight a target. Returns the desired velocity.

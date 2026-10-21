@@ -166,7 +166,7 @@ static func draw_panel(ci: CanvasItem, r: Rect2, accent_col := Color(0, 0, 0, 0)
 
 
 ## A small button face: hover/pressed/disabled looks.
-static func draw_button(ci: CanvasItem, r: Rect2, hover := false, on := false, enabled := true) -> void:
+static func draw_button(ci: CanvasItem, r: Rect2, hover := false, on := false, enabled := true, alpha := 1.0) -> void:
 	var bg := Color(0.17, 0.14, 0.105, 0.95)
 	var bd := TRIM_DIM
 	if not enabled:
@@ -178,4 +178,5 @@ static func draw_button(ci: CanvasItem, r: Rect2, hover := false, on := false, e
 	elif hover:
 		bg = Color(0.23, 0.19, 0.13, 0.95)
 		bd = TRIM
+	bg.a *= alpha
 	cached_box(bg, bd, 2, 7, 2).draw(ci.get_canvas_item(), r)
