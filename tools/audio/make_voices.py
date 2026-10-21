@@ -378,7 +378,8 @@ def brood_line(unit, kind, i, rng):
     raise KeyError(unit)
 
 
-BROOD_UNITS = {"grub": ["select", "move"], "raptor": ["select", "move", "attack"],
+# (the Raptor's voice is the designer's lizard recording, cut by tools/audio/cut_lizard.sh)
+BROOD_UNITS = {"grub": ["select", "move"],
                "spitter": ["select", "move", "attack"], "brute": ["select", "move", "attack"],
                "skywing": ["select", "move", "attack"]}
 
