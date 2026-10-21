@@ -2495,12 +2495,18 @@ func _draw_swamp() -> void:
 	var t: Texture2D = tex("res://assets/tiles/swamp.png")
 	for team in 2:
 		var g: PackedByteArray = swamp[team]
+		# not on cliffs or ramps: the swamp hid the hillsides and slopes (the ground there
+		# still counts as swamp; it just isn't painted over)
+		var sh := PackedByteArray()
+		sh.resize(W * H)
+		for j in W * H:
+			sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 else 0
 		for i in W * H:
-			if g[i] == 1:
+			if sh[i] == 1:
 				var x := i % W
 				var y := i / W
-				var edge := (x > 0 and g[i - 1] == 0) or (x < W - 1 and g[i + 1] == 0) \
-					or (y > 0 and g[i - W] == 0) or (y < H - 1 and g[i + W] == 0)
+				var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
+					or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
 				swamp_layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
 
 
