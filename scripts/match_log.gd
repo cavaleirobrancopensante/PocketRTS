@@ -90,14 +90,21 @@ func snapshot() -> void:
 			if not soil.is_empty():
 				lines[lines.size() - 1] += (" | soil " if game.faction_hall(t) == "town_hall" else " | ground ") + " ".join(soil)
 		if game.faction_hall(t) != "hive":
-			# the deposits each hall's site has left: saltpetre for the Crown, ore for the Clockwork
-			var dep := "saltpetre" if game.faction_hall(t) == "town_hall" else "ore"
+			# what each hall's lode has left: saltpetre for the Crown, ore for the Clockwork
 			var left := PackedStringArray()
 			for h in game.halls_of(t):
-				var f := game.site_left_at(h.center(), dep)
-				left.append(("%d%%" % int(round(f * 100))) if f >= 0.0 else "-")
+				left.append("%d%%" % int(round(h.lode_left() * 100)))
 			if not left.is_empty():
-				lines[lines.size() - 1] += " | %s %s" % [dep, " ".join(left)]
+				lines[lines.size() - 1] += " | %s %s" % [Defs.LODE_NAME[game.faction_hall(t)], " ".join(left)]
+		# the economy buildings' average efficiency (staffing x reserve, as their bars show)
+		var effs: Array = []
+		for b in game.buildings:
+			if b.team == t and b.built and not b.dead and Defs.is_econ(b.kind):
+				var e: Array = b.efficiency()
+				if not e.is_empty():
+					effs.append(float(e[0]))
+		if not effs.is_empty():
+			lines[lines.size() - 1] += " | efficiency %d%%" % int(round(effs.reduce(func(x: float, y: float) -> float: return x + y, 0.0) / effs.size() * 100))
 		if int(st.get("sacrificed", 0)) > 0:
 			lines[lines.size() - 1] += " | sacrificed %d (+%d essence)" % [int(st["sacrificed"]), int(st["sacrifice_essence"])]
 		_last[t] = {"killed": st["killed"], "lost": st["lost"]}

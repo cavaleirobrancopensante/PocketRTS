@@ -16,16 +16,21 @@ const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); fast
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
 const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
-## Deposits: every base site (each main and every expansion spot) has a line of rock outcrops
-## (2x2 tiles) along its back, saltpetre and ore alternating, like a mineral line. A Powder
-## Mill must stand next to saltpetre and an Ore Crusher next to ore (a gap of at most
-## `adjacent` tiles); each draws on every outcrop of its kind within `reach` tiles (edge to
-## edge), nearest first, and once those are spent works at `spent` of its rate. Amounts are in
-## what they pay: powder for saltpetre, ore for ore. A site's 3 saltpetre outcrops last a fully
-## worked Mill (~120 powder a minute) about 11 minutes; its 3 ore outcrops last a saturated
-## Clockwork base (~1,150-1,200 ore a minute) about 11 minutes. The Brood ignores them.
-const DEPOSIT := {"saltpetre": 440.0, "ore": 3800.0, "per_site": 6, "adjacent": 2, "reach": 6.0, "spent": 0.25}
-const DEPOSIT_FOR := {"powder_mill": "saltpetre", "ore_crusher": "ore"}
+## Lodes: every Town Hall's ground holds a reserve of saltpetre for its Powder Mill, every
+## Clocktower's a reserve of ore for its Ore Crushers (a Mill / Crusher draws on the nearest
+## hall of its own). Amounts are in what they pay: powder for saltpetre, ore for ore. A hall's
+## saltpetre lasts a fully worked Mill (~120 powder a minute) about 11 minutes; a Clocktower's
+## ore lasts a saturated Clockwork base (~1,150-1,200 ore a minute) about 10 minutes. Once
+## spent, its Mill / Crushers work at LODE_SPENT. Like soil, a hall raised where one fell takes
+## over what was left there. The Brood has no lode (its Hive ground is GROUND_RESERVE).
+const LODE := {"town_hall": 1320.0, "clocktower": 11400.0}     # 3 x 440 powder, 3 x 3,800 ore
+const LODE_NAME := {"town_hall": "saltpetre", "clocktower": "ore"}
+const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "boiler": "clocktower"}
+const LODE_SPENT := 0.25
+## Efficiency bars (economy buildings): staffing (crew at work / full crew) x the state of the
+## base's reserve, from 100% fresh down to its trickle share once spent (Building.efficiency).
+const EFF_GOOD := 0.8             # green from here, through yellow, to red at EFF_POOR and below
+const EFF_POOR := 0.4
 # Crown: farms grow (faster with labourers working them) and pay out a whole harvest.
 # Each Town Hall allows 2 Farms (crew 8) and 1 Powder Mill (crew 6): a full base is 16
 # farmers + 6 millers, ~1,140 gold and ~120 powder a minute.
@@ -35,7 +40,7 @@ const FARM_YIELD := 380           # gold a harvest (fresh soil)
 ## Soil fatigue: each Town Hall's farmland holds a fixed reserve of gold, shared by the farms
 ## that belong to it (a farm belongs to the nearest hall). Every harvest draws its yield from
 ## the reserve; once it's spent those farms pay a third. A new hall brings fresh soil (one
-## built where a hall fell takes over what was left there). Powder Mills don't tire.
+## built where a hall fell takes over what was left there). Powder Mills draw on its saltpetre (LODE).
 const SOIL_RESERVE := 9000
 const SOIL_TIRED := 1.0 / 3.0     # share of a harvest that tired soil still pays
 const SOIL_LOW := 0.25            # warn the player below this share of the reserve (Hive ground too)
@@ -92,8 +97,8 @@ const PEN_RANGE := 12             # tiles
 const SACRIFICE := 0.12
 # Clockwork: Winders carry batteries from the energy buildings to the Ore Crushers.
 ## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
-## Winders carry them to an Ore Crusher, which turns the charge into ore drawn from the ore
-## outcrops beside it (a quarter once they're spent). A carried battery keeps its charge
+## Winders carry them to an Ore Crusher, which turns the charge into ore drawn from its
+## Clocktower's ore (LODE; a quarter once it's spent). A carried battery keeps its charge
 ## for `fresh` s, then slowly loses it on the road (`decay`: share of its charge a second,
 ## never below `floor`), so long hauls pay less; if its carrier is hit, it bursts. Yellow batteries at first; a Capacitor Works
 ## makes every source fill blue ones (more charge, slower to fade).
@@ -168,7 +173,7 @@ const FACTIONS := {
 		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 100,
 		"res": ["Gold", "Powder"], "econ": {"farm": 2, "powder_mill": 1},
 		"start": ["farm"],
-		"about": "Musketeers, cannons and mortars. Farms ripen into big harvests; Powder Mills grind saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
+		"about": "Musketeers, cannons and mortars. Farms ripen into big harvests; Powder Mills grind each Town Hall's saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
 	},
 	"brood": {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
@@ -184,7 +189,7 @@ const FACTIONS := {
 		"start_workers": 4, "ready": true, "max_supply": 100,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
 		"start": ["ore_crusher"],
-		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers beside the ore outcrops (a battery fades on the road), and the batteries left waiting are your Energy. Each base's ore and coal run out in time. Army cap 100.",
+		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (a battery fades on the road), and the batteries left waiting are your Energy. Each Clocktower's ore and coal run out in time. Army cap 100.",
 	},
 }
 
@@ -359,7 +364,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 2 Farms and 1 Powder Mill nearby (the mill goes next to saltpetre), and its farmland holds a reserve of gold: once the farms have drawn it out they pay a third. Expand to fresh land.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay a third) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at a quarter). Expand to fresh land.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -405,7 +410,7 @@ const BUILDINGS := {
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
 		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
-		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby (crushers go next to ore). Its Boilers share its coal: once that's burnt they fill batteries at a third. Expand to fresh coal and ore.",
+		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby. Its ground holds a reserve of ore for its crushers (spent, they pay a quarter), and its Boilers share its coal (once that's burnt they fill batteries at a third). Expand to fresh coal and ore.",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -431,7 +436,7 @@ const BUILDINGS := {
 	"powder_mill": {
 		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 100, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 5, "trains": [], "crew": 6, "faction": "crown",
-		"about": "Build it next to saltpetre (the rock outcrops at the back of a base). Up to 6 labourers grind the saltpetre within 6 tiles into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds at a quarter. Soldiers and wagons nearby refill here.",
+		"about": "Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds at a quarter. Soldiers and wagons nearby refill here.",
 	},
 	"church": {
 		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
@@ -466,7 +471,7 @@ const BUILDINGS := {
 	"ore_crusher": {
 		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
-		"about": "Build it next to ore (the rock outcrops at the back of a base). Winders bring batteries here and the charge becomes ore, drawn from the ore within 6 tiles; once that's spent it pays a quarter. The farther a battery travelled, the more it holds.",
+		"about": "Winders bring batteries here and the charge becomes ore, drawn from its Clocktower's ore; once that's spent it pays a quarter. The farther a battery travelled, the more it holds.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),

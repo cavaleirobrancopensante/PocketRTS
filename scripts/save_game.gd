@@ -50,12 +50,10 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
 		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true,
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
-		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2]]), "buildings": [], "units": [], "deposits": []}
+		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]), "buildings": [], "units": []}
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at, "strategy": ai.strategy,
 			"failed": ai._failed, "regroup": ai._regroup_until})
-	for dp in game.deposits:
-		d["deposits"].append([dp.cell.x, dp.cell.y, dp.kind, snappedf(dp.amount, 0.01)])
 	for b in game.buildings:
 		if b.dead:
 			continue
@@ -63,7 +61,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "growth": b.growth, "gold_acc": b.gold_acc,
-			"soil": b.soil, "sw": b.soil_warned,
+			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
 	for u in game.units:
@@ -88,6 +86,22 @@ static func save(game: Game, cfg: Dictionary) -> void:
 	if f:
 		f.store_string(JSON.stringify(d))
 		f.close()
+
+
+## Saves from v0.7.32 on had rock outcrops ([x, y, kind, amount left], 2x2 tiles): the share
+## of the saltpetre (Town Hall) or ore (Clocktower) left in those within 13 tiles of a hall
+## (1.0 when there were none).
+static func _outcrops_left(deps: Array, h: Building) -> float:
+	var kind: String = Defs.LODE_NAME.get(h.kind, "")
+	var full := 0.0
+	var left := 0.0
+	for sd in deps:
+		if sd is Array and sd.size() > 3 and String(sd[2]) == kind:
+			var c := (Vector2(float(sd[0]), float(sd[1])) + Vector2.ONE) * Defs.TILE
+			if c.distance_to(h.center()) <= 13.0 * Defs.TILE:
+				full += 440.0 if kind == "saltpetre" else 3800.0
+				left += float(sd[3])
+	return clampf(left / full, 0.0, 1.0) if full > 0.0 else 1.0
 
 
 ## Put a saved match back onto a freshly generated map (same seed).
@@ -142,12 +156,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex
-	# deposits: the same map comes back from the seed; put back what was drawn from each outcrop
-	for sd in d.get("deposits", []):
-		var at := Vector2i(int(sd[0]), int(sd[1]))
-		var dp: Deposit = game.deposit_at.get(game.idx(at)) if game.in_map(at) else null
-		if dp and dp.cell == at and dp.kind == String(sd[2]):
-			dp.take(dp.amount - float(sd[3]))
 	# (Farms last: in saves from before Farms grew to 5x4 tiles each may have to shift a little
 	# to fit between what stands round it)
 	var blist: Array = Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) != "farm") \
@@ -187,6 +195,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower":
 			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground / coal)
 			b.soil_warned = int(bd.get("sw", 0))
+		if b.lode_full() > 0.0:
+			if bd.has("lode"):
+				b.lode = float(bd["lode"])
+			else:
+				# (older saves: fresh, or what the rock outcrops of v0.7.32 left by this hall)
+				b.lode = b.lode_full() * _outcrops_left(d.get("deposits", []), b)
+			b.lode_warned = int(bd.get("lw", 2 if b.lode <= 0.0 else (1 if b.lode / b.lode_full() < Defs.SOIL_LOW else 0)))
 		if bd["rally"] != null:
 			b.rally = _to_v2(bd["rally"])
 		if bd["wrally"] != null:
@@ -194,14 +209,11 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b._update_sprite()
 	game.soil_scars.clear()
 	for sc in d.get("soil_scars", []):
-		game.soil_scars.append([_to_v2(sc[0]), float(sc[1]), String(sc[2]) if sc.size() > 2 else "town_hall"])
+		var sk := String(sc[2]) if sc.size() > 2 else "town_hall"
+		game.soil_scars.append([_to_v2(sc[0]), float(sc[1]), sk, float(sc[3]) if sc.size() > 3 else float(Defs.LODE.get(sk, 0.0))])
 	for b in game.buildings:
 		if b.kind == "farm" or b.kind == "feeding_pit":
 			b._update_sprite()      # (its tired-soil tint needs the halls back first)
-		if Defs.DEPOSIT_FOR.has(b.kind) and not game.site_deposits(b).is_empty():
-			# (a warning already given about its saltpetre / ore isn't given again)
-			var left := game.deposit_left(b)
-			game._dep_warned["%d:%d" % [b.team, game.site_deposits(b)[0].get_instance_id()]] = 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
 	for ud in d["units"]:
 		var uk := _kind(String(ud["k"]))
 		if not Defs.UNITS.has(uk):

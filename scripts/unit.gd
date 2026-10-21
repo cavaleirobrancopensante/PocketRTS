@@ -2192,8 +2192,8 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 			if cr == null:
 				return Vector2.ZERO
 			if cr.edge_distance(position) < radius + 17.0:
-				# the charge becomes ore drawn from the ore beside the crusher (a quarter once it's spent)
-				var value := game.draw_deposits(cr, Defs.battery_charge(carry_blue, carry_t) * float(Defs.BATTERY["ore"]))
+				# the charge becomes ore drawn from its Clocktower's ore (a quarter once that's spent)
+				var value := game.draw_lode(cr, Defs.battery_charge(carry_blue, carry_t) * float(Defs.BATTERY["ore"]))
 				game.add_gold_f(team, value)
 				crusher = null
 				if team == game.human:

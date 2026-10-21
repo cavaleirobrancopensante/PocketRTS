@@ -848,7 +848,6 @@ const EFFECTS := {
 	"mortar_blast": {"frames": 6, "size": Vector2i(64, 66)},
 	"arc_ball": {"frames": 3, "size": Vector2i(56, 24)},
 	"arc_impact": {"frames": 4, "size": Vector2i(52, 40)},
-	"deposit_sparkle": {"frames": 4, "size": Vector2i(34, 34)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):

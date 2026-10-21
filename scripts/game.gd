@@ -63,7 +63,7 @@ var sandbox := false                     # the sandbox: spawn anything, any play
 var reveal := false                      # sandbox: no fog of war
 var rng := RandomNumberGenerator.new()
 
-var solid := PackedByteArray()           # 0 free, 1 terrain or deposit, 2 building, 3 gate, 4 wall, 5 farm field (walkable, not buildable)
+var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building, 3 gate, 4 wall, 5 farm field (walkable, not buildable)
 var water := PackedByteArray()
 var height := PackedByteArray()          # 1 = high ground
 var ramp := PackedByteArray()
@@ -75,9 +75,6 @@ var astar := AStarGrid2D.new()
 var astar_siege := AStarGrid2D.new()     # walls and gates counted as open: the way to break in
 var units: Array = []
 var buildings: Array = []
-var deposits: Array = []                 # Deposit outcrops (saltpetre and ore) along the back of every base site
-var deposit_at := {}                     # map index -> the Deposit on that cell
-var deposit_plan: Array = []             # [cell, kind(, amount)] from the map generator
 var base_sites: Array = []               # hall cells of every base site (all mains and expansions)
 var players: Array = []
 var starts: Array = []                   # town hall cells per team
@@ -108,7 +105,7 @@ var over := false
 var winner := -1
 var clock := 0.0
 var stats: Array = []
-var soil_scars: Array = []               # [centre, soil left, hall kind] where a Town Hall or Hive fell
+var soil_scars: Array = []               # [centre, soil left, hall kind, lode left] where a Town Hall, Hive or Clocktower fell
 var _sample_t := 0.0
 var mlog: MatchLog              # the playtest log (copied from the end screen)
 var _first_of := {}             # "team:kind" -> true once that player has had one
@@ -193,7 +190,6 @@ func _ready() -> void:
 	add_child(camera)
 	camera.make_current()
 	_generate_map()
-	spawn_deposits(deposit_plan)
 	_setup_astar()
 	_render_ground()
 	if edit_mode:
@@ -505,14 +501,12 @@ func _setup_astar() -> void:
 var _terrain_sprites: Array = []
 
 
-## Map editor: redo cliffs, deposits, pathing and the ground picture after painting.
-func rebuild_map(cells: String, plan: Array = []) -> void:
-	_clear_deposits(false)
+## Map editor: redo cliffs, pathing and the ground picture after painting.
+func rebuild_map(cells: String) -> void:
 	mapgen.read_cells(cells)
 	mapgen._cliffs()
 	height = mapgen.height
 	ramp = mapgen.ramp
-	spawn_deposits(plan)
 	astar = AStarGrid2D.new()
 	_setup_astar()
 	_render_ground()
@@ -766,7 +760,6 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 		return Vector2i(-1, -1)
 	_spot_halls = halls_of(t)
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
-	var need: String = Defs.DEPOSIT_FOR.get(kind, "")
 	var c0: Vector2 = around.rect().get_center() / T
 	var mid := Vector2(W, H) * 0.5
 	var best := Vector2i(-1, -1)
@@ -781,17 +774,6 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			if placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
 				continue
 			var score := dd
-			if need != "":
-				# a Mill / Crusher: as much of its kind of rock within reach as it can get
-				for dp in deposits_near(Rect2i(cell, size), need, float(Defs.DEPOSIT["reach"])):
-					score -= 2.0 * dp.left() + 0.5
-			elif not deposits.is_empty() and kind != faction_hall(t):
-				# farms, boilers and the rest keep off the deposit line (it's for Mills and Crushers)
-				for dp in deposits:
-					var gp := tile_gap(Rect2i(cell, size), Rect2i(dp.cell, dp.size))
-					if maxi(gp.x, gp.y) <= 2:
-						score += 8.0
-						break
 			if prefer == "far":
 				score = -dd
 			elif prefer == "far_safe":
@@ -808,6 +790,16 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				# tucked behind the hall, away from the middle of the map (like minerals
 				# behind a command centre), and close to it
 				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
+			if kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0):
+				# Boilers and crushers close together (once there's a Boiler; the starting crusher
+				# goes behind the hall): a battery fades on a long road, and a Boiler's Winders
+				# must be back for the next one within a few seconds
+				var near := INF
+				for b in buildings:
+					if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
+						near = minf(near, b.center().distance_to(cc * T) / T)
+				if near < INF:
+					score += maxf(0.0, near - SOURCE_NEAR) * 3.0
 			if score < bs:
 				bs = score
 				best = cell
@@ -816,181 +808,92 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 
 
 var _spot_halls: Array = []
+const SOURCE_NEAR := 6.0               # tiles: a crusher further than this from a Boiler (or the reverse) scores worse in find_spot
 
 
-## A free ring around a footprint (room to walk round it). Deposits may touch it: Mills and
-## Crushers stand right against their outcrops.
+## A free ring around a footprint (room to walk round it).
 func margin_free(cell: Vector2i, size: Vector2i) -> bool:
 	for y in range(-1, size.y + 1):
 		for x in range(-1, size.x + 1):
 			if x >= 0 and y >= 0 and x < size.x and y < size.y:
 				continue
-			var c := cell + Vector2i(x, y)
-			if not is_free(c) and not (in_map(c) and deposit_at.has(idx(c))):
+			if not is_free(cell + Vector2i(x, y)):
 				return false
 	return true
 
 
-# ------------------------------------------------------------------ deposits
+# ------------------------------------------------------------------ lodes (saltpetre, ore)
 
-## Put the map's outcrops down (replacing any there were); each blocks its 2x2 cells. Ones
-## that don't fit (off the map, or on water, cliffs, ramps or anything solid) are left out.
-## plan: [cell, kind] or [cell, kind, amount].
-func spawn_deposits(plan: Array) -> void:
-	_clear_deposits(true)
-	for p in plan:
-		var c: Vector2i = p[0]
-		if not deposit_fits(c):
-			continue
-		var d := Deposit.new()
-		d.setup(self, String(p[1]), c, float(p[2]) if p.size() > 2 else -1.0)
-		d.visible = edit_mode or demo or reveal
-		world.add_child(d)
-		deposits.append(d)
-		_mark(c, d.size, 1)
-		for y in d.size.y:
-			for x in d.size.x:
-				deposit_at[idx(c + Vector2i(x, y))] = d
+## The hall whose lode a Powder Mill (Town Hall: saltpetre) or an Ore Crusher / Boiler
+## (Clocktower: ore) draws on: the nearest built one of its team.
+func lode_hall(b: Building) -> Building:
+	var hk: String = Defs.LODE_FOR.get(b.kind, "")
+	if hk == "" or faction_hall(b.team) != hk:
+		return null
+	return nearest_hall(b.center(), b.team)
 
 
-func _clear_deposits(unmark: bool) -> void:
-	for d in deposits:
-		if unmark:
-			_mark(d.cell, d.size, 0)
-		d.queue_free()
-	deposits.clear()
-	deposit_at.clear()
+## Clockwork: the battery sources that belong to a Clocktower: itself and the Boilers whose
+## nearest Clocktower it is.
+func battery_sources(h: Building) -> Array:
+	var out: Array = [h]
+	for b in buildings:
+		if b.team == h.team and b.kind == "boiler" and b.built and not b.dead and lode_hall(b) == h:
+			out.append(b)
+	return out
 
 
-## Can a 2x2 outcrop go here: open, dry, flat ground (no ramp, cliff or water) on the map?
-func deposit_fits(c: Vector2i) -> bool:
-	for y in 2:
-		for x in 2:
-			var cc := c + Vector2i(x, y)
-			if not in_map(cc):
-				return false
-			var i := idx(cc)
-			if solid[i] != 0 or water[i] == 1 or cliff[i] == 1 or (ramp.size() == W * H and ramp[i] == 1):
-				return false
-	return true
-
-
-## The outcrops as a plan ([cell, kind]), e.g. for the map editor to save.
-func deposit_list() -> Array:
-	return deposits.map(func(d: Deposit) -> Array: return [d.cell, d.kind])
-
-
-## Tiles between two footprints along each axis (0 = touching or overlapping).
-static func tile_gap(a: Rect2i, b: Rect2i) -> Vector2i:
-	return Vector2i(maxi(0, maxi(a.position.x - b.end.x, b.position.x - a.end.x)),
-		maxi(0, maxi(a.position.y - b.end.y, b.position.y - a.end.y)))
-
-
-## Outcrops of a kind within `tiles` (edge to edge) of a footprint, nearest first.
-func deposits_near(r: Rect2i, kind: String, tiles: float) -> Array:
-	var found: Array = []
-	for d in deposits:
-		if d.kind != kind:
-			continue
-		var dist := Vector2(tile_gap(r, Rect2i(d.cell, d.size))).length()
-		if dist <= tiles:
-			found.append([dist, d])
-	found.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	return found.map(func(x: Array) -> Deposit: return x[1])
-
-
-## Is an outcrop of this kind right beside the footprint (a gap of at most DEPOSIT.adjacent)?
-func deposit_adjacent(r: Rect2i, kind: String) -> bool:
-	for d in deposits:
-		if d.kind == kind:
-			var gp := tile_gap(r, Rect2i(d.cell, d.size))
-			if maxi(gp.x, gp.y) <= int(Defs.DEPOSIT["adjacent"]):
-				return true
-	return false
-
-
-## A Powder Mill's saltpetre, an Ore Crusher's ore: its kind of outcrop within reach.
-func site_deposits(b: Building) -> Array:
-	if not b.deps_done:
-		b.deps_done = true
-		var kind: String = Defs.DEPOSIT_FOR.get(b.kind, "")
-		b.deps = deposits_near(Rect2i(b.cell, b.size), kind, float(Defs.DEPOSIT["reach"])) if kind != "" else []
-	return b.deps
-
-
-## Share (0..1) of a Mill's (Crusher's) saltpetre (ore) still in the rock.
-func deposit_left(b: Building) -> float:
-	var full := 0.0
-	var left := 0.0
-	for d in site_deposits(b):
-		full += d.full
-		left += d.amount
-	return left / full if full > 0.0 else 0.0
-
-
-## Share (0..1) of the outcrops of a kind still in the rock at the base site around a point
-## (within 13 tiles of it, e.g. a hall's middle); -1 if there are none of that kind.
-func site_left_at(c: Vector2, kind: String) -> float:
-	var full := 0.0
-	var left := 0.0
-	for d in deposits:
-		if d.kind == kind and d.center().distance_to(c) <= 13.0 * T:
-			full += d.full
-			left += d.amount
-	return left / full if full > 0.0 else -1.0
-
-
-## A hall's own site: share of its saltpetre (ore) left (0 if it has none).
-func site_left(h: Building, kind: String) -> float:
-	return maxf(0.0, site_left_at(h.center(), kind))
-
-
-## Draw `v` worth from a Mill's or Crusher's outcrops (nearest first): what the rock still
-## holds pays in full, the rest only DEPOSIT.spent. Returns what it pays.
-func draw_deposits(b: Building, v: float) -> float:
+## Draw `v` worth from the lode of a Mill's (Crusher's) hall: what it still holds pays in
+## full, the rest only LODE_SPENT. Returns what it pays.
+func draw_lode(b: Building, v: float) -> float:
 	if v <= 0.0:
 		return 0.0
-	var need := v
-	for d in site_deposits(b):
-		if need <= 0.0:
-			break
-		need -= d.take(need)
-	_deposit_check(b)
-	return (v - need) + need * float(Defs.DEPOSIT["spent"])
+	var h := lode_hall(b)
+	var fresh := 0.0
+	if h:
+		fresh = minf(h.lode, v)
+		h.lode -= fresh
+		_lode_check(h)
+	return fresh + (v - fresh) * Defs.LODE_SPENT
 
 
 ## What `v` worth would pay right now (no side effects).
-func deposit_pay(b: Building, v: float) -> float:
-	var left := 0.0
-	for d in site_deposits(b):
-		left += d.amount
-	var fresh := minf(left, v)
-	return fresh + (v - fresh) * float(Defs.DEPOSIT["spent"])
+func lode_pay(b: Building, v: float) -> float:
+	var h := lode_hall(b)
+	var fresh := minf(h.lode, v) if h else 0.0
+	return fresh + (v - fresh) * Defs.LODE_SPENT
 
 
-var _dep_warned := {}             # "team:first outcrop" -> 1 running low told, 2 spent told
-
-
-## Running low / spent: once per site and team, a match-log line and (for you) a toast.
-func _deposit_check(b: Building) -> void:
-	var ds := site_deposits(b)
-	if ds.is_empty():
+## Running low / spent: once per hall, a match-log line and (for you) a toast.
+func _lode_check(h: Building) -> void:
+	var left := h.lode / h.lode_full()
+	var level := 2 if h.lode <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
+	if level <= h.lode_warned:
 		return
-	var left := deposit_left(b)
-	var level := 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
-	var key := "%d:%d" % [b.team, ds[0].get_instance_id()]
-	if level <= int(_dep_warned.get(key, 0)):
-		return
-	_dep_warned[key] = level
-	var what := "saltpetre" if b.kind == "powder_mill" else "ore"
+	h.lode_warned = level
+	var what: String = Defs.LODE_NAME[h.kind]
+	var user := "its Mill grinds" if h.kind == "town_hall" else "its crushers pay"
 	if mlog:
-		mlog.add("%s: the %s by a %s %s" % [mlog.who(b.team), what, b.d["name"], "is spent (it works at a quarter)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
-	if b.team == human and not demo and hud:
+		mlog.add("%s: the %s at a %s %s" % [mlog.who(h.team), what, h.d["name"], ("is spent (%s at a quarter)" % user) if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+	if h.team == human and not demo and hud:
 		if level == 2:
-			hud.toast("The %s by your %s is spent: it works at a quarter. Expand to a base with fresh %s." % [what, b.d["name"], what], false)
+			hud.toast("The %s at your %s is spent: %s at a quarter. Expand to fresh %s." % [what, h.d["name"], user, what], false)
 		else:
-			hud.toast("The %s by your %s is running low (%d%% left): expand to fresh %s soon." % [what, b.d["name"], int(round(left * 100)), what], false)
-		Sfx.play("done", b.center())
+			hud.toast("The %s at your %s is running low (%d%% left): expand to fresh %s soon." % [what, h.d["name"], int(round(left * 100)), what], false)
+		Sfx.play("done", h.center())
+
+
+## Share (0..1) of the lode a new hall of this kind would find at a spot (cell): fresh, unless
+## a hall fell there and left some of it drawn out (see soil_scars).
+func lode_at_spot(c: Vector2i, hall_kind: String) -> float:
+	var full := float(Defs.LODE.get(hall_kind, 0.0))
+	if full <= 0.0:
+		return 0.0
+	var mid := (Vector2(c) + Vector2(Defs.BUILDINGS[hall_kind]["size"]) * 0.5) * T
+	for sc in soil_scars:
+		if String(sc[2]) == hall_kind and (sc[0] as Vector2).distance_to(mid) <= Defs.HALL_SPACING * T:
+			return clampf(float(sc[3]) / full, 0.0, 1.0) if sc.size() > 3 else 1.0
+	return 1.0
 
 
 ## Clockwork: the Ore Crusher a Winder takes a battery to: the nearest, but one whose ore is
@@ -1002,7 +905,7 @@ func best_crusher(p: Vector2, t: int, reach := INF) -> Building:
 	for b in buildings:
 		if b.team == t and b.kind == "ore_crusher" and b.built and not b.dead:
 			var dd: float = b.edge_distance(p)
-			var sc: float = dd + (0.0 if deposit_left(b) > 0.0 and dd <= reach else 40.0 * T)
+			var sc: float = dd + (0.0 if b.lode_left() > 0.0 and dd <= reach else 40.0 * T)
 			if sc < bs:
 				bs = sc
 				best = b
@@ -1099,6 +1002,9 @@ func _take_scar(h: Building) -> void:
 		if String(sc[2]) == h.kind and (sc[0] as Vector2).distance_to(h.center()) <= Defs.HALL_SPACING * T:
 			h.soil = float(sc[1])
 			h.soil_warned = 2 if h.soil <= 0.0 else (1 if h.soil / h.reserve() < Defs.SOIL_LOW else 0)
+			if h.lode_full() > 0.0 and sc.size() > 3:
+				h.lode = float(sc[3])
+				h.lode_warned = 2 if h.lode <= 0.0 else (1 if h.lode / h.lode_full() < Defs.SOIL_LOW else 0)
 			soil_scars.remove_at(i)
 			return
 
@@ -1512,8 +1418,9 @@ func _killer(e: Entity) -> int:
 
 
 func on_building_died(b: Building) -> void:
-	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and b.soil < b.reserve():
-		soil_scars.append([b.center(), b.soil, b.kind])     # the land stays tired for the next hall here
+	# the land stays tired (its soil / ground / coal and its saltpetre / ore drawn out) for the next hall here
+	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
+		soil_scars.append([b.center(), b.soil, b.kind, b.lode])
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
 	selection.erase(b)
@@ -1909,9 +1816,6 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 					break
 			if not near:
 				return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
-	var need: String = Defs.DEPOSIT_FOR.get(k, "")
-	if need != "" and not deposit_adjacent(Rect2i(c, size), need):
-		return "Must be built next to %s (the %s rocks along the back of a base)." % [need, "white crystal" if need == "saltpetre" else "rusty orange"]
 	return ""
 
 
@@ -2410,7 +2314,8 @@ func nearest_hall(p: Vector2, t: int) -> Building:
 	return best
 
 
-func entity_at(p: Vector2, include_deposits := true) -> Entity:
+## (`_any`: kept for its callers; there's nothing on the map but units and buildings to pick.)
+func entity_at(p: Vector2, _any := true) -> Entity:
 	var best: Entity = null
 	var bd := 26.0
 	for u in units:
@@ -2429,10 +2334,6 @@ func entity_at(p: Vector2, include_deposits := true) -> Entity:
 			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
 			if sr.grow(-6).has_point(p):
 				return b
-	if include_deposits:
-		for d in deposits:
-			if d.visible and d.rect().grow(4).has_point(p + Vector2(0, 8)):
-				return d
 	return null
 
 
@@ -3328,10 +3229,6 @@ func _update_vis() -> void:
 	for i in W * H:
 		if hv[i] == 1:
 			explored[i] = 1
-	for d in deposits:
-		# outcrops are seen through the fog once their ground has been explored
-		if not d.visible:
-			d.visible = demo or reveal or explored[idx(d.cell)] == 1 or explored[idx(d.cell + Vector2i(1, 1))] == 1
 	if demo or reveal:
 		fog_sprite.visible = false
 		for u in units:
@@ -3778,23 +3675,61 @@ func faction_hall(t: int) -> String:
 	return Defs.FACTIONS[faction_of(t)]["hall"]
 
 
+## Efficiency colour: green from Defs.EFF_GOOD, through yellow, to red at Defs.EFF_POOR.
+static func eff_colour(f: float) -> Color:
+	var green := Color(0.35, 0.95, 0.35)
+	var yellow := Color(1.0, 0.85, 0.25)
+	var red := Color(1.0, 0.3, 0.22)
+	if f >= Defs.EFF_GOOD:
+		return green
+	var mid := (Defs.EFF_GOOD + Defs.EFF_POOR) * 0.5
+	if f >= mid:
+		return yellow.lerp(green, (f - mid) / (Defs.EFF_GOOD - mid))
+	return red.lerp(yellow, clampf((f - Defs.EFF_POOR) / (mid - Defs.EFF_POOR), 0.0, 1.0))
+
+
+## Over your economy buildings: the crew (X/Y) and the efficiency bar with its % (see
+## Building.efficiency): one compact strip, readable on a phone.
 func _draw_mine_labels() -> void:
 	var font := ThemeDB.fallback_font
 	for b in buildings:
-		if b.dead or not b.built or not b.visible:
+		if b.dead or not b.built or not b.visible or (b.team != human and not demo):
 			continue
 		var crew_max := int(b.d.get("crew", 0))
-		if crew_max == 0 or (b.team != human and not demo):
+		var eff: Array = b.efficiency()
+		if crew_max == 0 and eff.is_empty():
 			continue
-		var have: int = b.crew.size()
-		var col := Color(1, 1, 1) if have < crew_max else Color(0.45, 1, 0.45)
-		var txt := "%d/%d" % [have, crew_max]
 		var top: float = b.global_position.y - (b.sprite.texture.get_height() - 6.0 if b.sprite and b.sprite.texture else 60.0)
-		var sz := 13
-		var w: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var p: Vector2 = Vector2(b.global_position.x - w * 0.5, top - 4)
-		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.55))
-		overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+		var sz := 15
+		var txt := ""
+		var w1 := 0.0
+		if crew_max > 0:
+			txt = "%d/%d" % [b.crew.size(), crew_max]
+			w1 = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+		var bar_w := 40.0
+		var pct := ""
+		var w2 := 0.0
+		if not eff.is_empty():
+			pct = "%d%%" % int(round(float(eff[0]) * 100))
+			w2 = font.get_string_size(pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+		var gap := 4.0
+		var total := w1 + ((gap + bar_w + gap + w2) if pct != "" else 0.0)
+		if txt == "":
+			total -= gap
+		var p := Vector2(b.global_position.x - total * 0.5, top - 4)
+		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(total + 8, sz + 5)), Color(0, 0, 0, 0.6))
+		if txt != "":
+			var have: int = b.crew.size()
+			overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, Color(1, 1, 1) if have < crew_max else Color(0.45, 1, 0.45))
+		if pct != "":
+			var f := float(eff[0])
+			var col := eff_colour(f)
+			var bx := p.x + w1 + (gap if txt != "" else 0.0)
+			var bar := Rect2(bx, p.y - 10.0, bar_w, 8.0)
+			overlay.draw_rect(bar, Color(0.12, 0.12, 0.12, 0.95))
+			overlay.draw_rect(Rect2(bar.position, Vector2(bar_w * clampf(f, 0.0, 1.0), 8.0)), col)
+			overlay.draw_rect(bar.grow(0.5), Color(0, 0, 0, 0.9), false, 1.0)
+			overlay.draw_string(font, Vector2(bx + bar_w + gap, p.y), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
 	for fl in _floats:
 		var a: float = minf(float(fl[3]), 1.0)
 		var w2: float = font.get_string_size(fl[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x

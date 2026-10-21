@@ -23,13 +23,13 @@ var eggs := 0                    # Brood Hive
 var egg_t := 0.0
 var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
 var swamp_r := 0.0               # Brood: current swamp radius in tiles
-var deps: Array = []             # Powder Mill / Ore Crusher: its outcrops within reach (Game.site_deposits)
-var deps_done := false
 var gold_acc := 0.0
 var crew: Array = []             # workers assigned to this economy structure
 var growth := 0.0                # Farm: 0..1 until the harvest
 var soil := 0.0                  # Town Hall: gold left in its farmland; Hive: biomass left in its ground (full when fresh: reserve())
 var soil_warned := 0             # Town Hall: 1 = told the player it's low, 2 = spent
+var lode := 0.0                  # Town Hall: saltpetre (in powder) for its Mill; Clocktower: ore for its Crushers (Defs.LODE)
+var lode_warned := 0             # 1 = told it's running low, 2 = spent
 var sprite: Sprite2D
 var field: Sprite2D = null       # Farm: its fields, on the ground under the units (they work in them)
 var fire: Effect = null
@@ -94,6 +94,7 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 		seeded = complete
 	if k == "town_hall" or k == "hive" or k == "clocktower":
 		soil = reserve()
+	lode = lode_full()
 	if d["faction"] == "brood":
 		seeded = complete
 		if complete:
@@ -228,6 +229,62 @@ func soil_left() -> float:
 	return clampf(h.soil / h.reserve(), 0.0, 1.0) if h else 0.0
 
 
+## Town Hall / Clocktower: its full lode (saltpetre / ore); 0 for anything else.
+func lode_full() -> float:
+	return float(Defs.LODE.get(kind, 0.0))
+
+
+## Powder Mill / Ore Crusher / Boiler: share of its hall's lode left (0..1), 0 with no hall;
+## a Town Hall / Clocktower: its own.
+func lode_left() -> float:
+	var h: Building = self if Defs.LODE.has(kind) else game.lode_hall(self)
+	return clampf(h.lode / h.lode_full(), 0.0, 1.0) if h else 0.0
+
+
+## Economy buildings (and the Clocktower): production efficiency right now, as
+## [efficiency 0..1, crew at work, full crew, reserve left 0..1, reserve name], or [] for
+## anything else. Efficiency = staffing x the reserve's state: 100% fresh, falling to the
+## share it still pays once spent (a third for soil, Hive ground and coal, a quarter for saltpetre
+## and ore). An Ore Crusher has no crew of its own: its staffing is its Clocktower's battery
+## carriers (the Winders on the Clocktower and its Boilers) against their full crews.
+func efficiency() -> Array:
+	var have := 0
+	var want := 0
+	var left := 0.0
+	var res := ""
+	var trickle := Defs.SOIL_TIRED
+	match kind:
+		"farm", "powder_mill":
+			have = working_crew()
+			want = int(d["crew"])
+		"feeding_pit", "boiler", "clocktower":
+			have = crew.size()
+			want = int(d["crew"])
+		"ore_crusher":
+			var h := game.lode_hall(self)
+			if h:
+				for b in game.battery_sources(h):
+					have += b.crew.size()
+					want += int(b.d.get("crew", 0))
+		_:
+			return []
+	match kind:
+		"farm", "feeding_pit":
+			left = soil_left()
+			res = "soil" if kind == "farm" else "ground"
+		"boiler":
+			# a Boiler burns its Clocktower's coal (a third once it's spent)
+			left = soil_left()
+			res = "coal"
+			trickle = Defs.COAL_SPENT
+		_:
+			left = lode_left()
+			res = "saltpetre" if kind == "powder_mill" else "ore"
+			trickle = Defs.LODE_SPENT
+	var staff := clampf(float(have) / float(want), 0.0, 1.0) if want > 0 else 0.0
+	return [staff * (trickle + (1.0 - trickle) * left), have, want, left, res]
+
+
 func _econ(delta: float) -> void:
 	crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
 	match kind:
@@ -242,10 +299,10 @@ func _econ(delta: float) -> void:
 					game.float_text(center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 					Sfx.play("done", center())
 		"powder_mill":
-			# grinds the saltpetre beside it; once that's spent, a quarter
+			# grinds its Town Hall's saltpetre; once that's spent, a quarter
 			var n := working_crew()
 			if n > 0:
-				game.add_res2(team, game.draw_deposits(self, Defs.MILL_RATE * n * delta))
+				game.add_res2(team, game.draw_lode(self, Defs.MILL_RATE * n * delta))
 
 
 func uses_eggs() -> bool:

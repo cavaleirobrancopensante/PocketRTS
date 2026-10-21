@@ -306,9 +306,9 @@ func _ai_run(fac: String) -> void:
 	_write_csv("ai_%s.csv" % fac, rows)
 
 
-## Share of its deposits left (%) for each of team 0's Powder Mills (Ore Crushers).
+## Share of its hall's saltpetre (ore) left (%) for each of team 0's Powder Mills (Ore Crushers).
 func _dep_pcts(g: Game, kind: String) -> String:
-	return " ".join(_built(g, 0, kind).map(func(b: Building) -> String: return str(int(round(g.deposit_left(b) * 100)))))
+	return " ".join(_built(g, 0, kind).map(func(b: Building) -> String: return str(int(round(b.lode_left() * 100)))))
 
 
 # ------------------------------------------------------------------ mode: sat
