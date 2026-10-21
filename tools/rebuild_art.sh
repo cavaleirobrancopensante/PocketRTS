@@ -22,4 +22,6 @@ python3 tools/make_walls.py              # Crown walls and gates (drawn in code)
 python3 tools/import_round9.py           # Tesla Cart as a spider cart (all its strips + art_data entry)
 python3 tools/make_packs.py              # Clockwork battery backpacks (after every unit sheet)
 python3 tools/import_deposits.py         # saltpetre / ore deposits (4 states), chips, icons, sparkle
+python3 tools/import_round11.py          # painted portraits, research + ability icons, Engine Hall,
+                                         # musketeer bayonet strips (last: replaces earlier icons/melee)
 echo "Now run: godot --headless --import"

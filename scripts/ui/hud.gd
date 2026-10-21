@@ -419,7 +419,7 @@ func _build_card() -> Array:
 	if controls.mode != "":
 		if controls.mode == "unload":
 			# let them off right below the balloon, wherever it is
-			list.append(["balloon", "DROP HERE", func() -> void:
+			list.append(["ab_unload", "DROP HERE", func() -> void:
 				game.unload_order(game.selected_units(), Vector2.ZERO, true)
 				controls.cancel_mode(), true, "", ""])
 		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
@@ -484,7 +484,7 @@ func _build_card() -> Array:
 									u.cmd_gather(m)
 					toast("Workers go back to work on their own." if not auto else "Automatic work off: these workers wait for orders."), true, "", ""])
 			if units.any(func(u: Unit) -> bool: return u.kind == "grub"):
-				list.append(["grub", "HARVEST", func() -> void:
+				list.append(["ab_harvest", "HARVEST", func() -> void:
 					for u in game.selected_units():
 						if u.kind == "grub":
 							u.cmd_harvest()
@@ -496,7 +496,7 @@ func _build_card() -> Array:
 			var ess := 0
 			for u in offer:
 				ess += Game.sacrifice_value(u.kind)
-			list.append(["brood_pen", "SACRIFICE", func() -> void:
+			list.append(["ab_sacrifice", "SACRIFICE", func() -> void:
 				var n := 0
 				for u in game.selected_units():
 					if u.can_sacrifice():
@@ -508,7 +508,7 @@ func _build_card() -> Array:
 			if units.any(func(u: Unit) -> bool: return u.kind == kk):
 				var packed := units.any(func(u: Unit) -> bool: return u.kind == kk and u.tesla_mode == "packed")
 				var lab: String = {"cannon": "UNLIMBER" if packed else "LIMBER", "spore_mother": "ROOT" if packed else "UPROOT"}.get(kk, "DEPLOY" if packed else "PACK")
-				list.insert(3, [kk, lab, func() -> void:
+				list.insert(3, [{"cannon": "ab_limber", "spore_mother": "ab_root"}.get(kk, "ab_deploy"), lab, func() -> void:
 					for u in game.selected_units():
 						if u.kind == kk:
 							if packed:
@@ -526,7 +526,7 @@ func _build_card() -> Array:
 				game.abandon(sb), true, "", ""])
 		return list
 	if b and b.built and b.kind == "gate":
-		list.append(["gate", "ROTATE", func() -> void:
+		list.append(["ab_rotate", "ROTATE", func() -> void:
 			var v := not b.vertical
 			for sb in game.selected_buildings():
 				sb.dir_locked = true
@@ -597,7 +597,7 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 		cap += int(Defs.DROPSHIP["capacity"])
 	var count := "%d/%d" % [aboard, cap]
 	var room: bool = balloons.any(func(u: Unit) -> bool: return u.room() > 0)
-	list.append(["balloon", "LOAD", func() -> void:
+	list.append(["ab_load", "LOAD", func() -> void:
 		var sel := game.selected_units()
 		var bs := sel.filter(func(u: Unit) -> bool: return u.kind == "balloon")
 		var men := sel.filter(func(u: Unit) -> bool: return bs.any(func(b: Unit) -> bool: return u.can_board(b)))
@@ -607,7 +607,7 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 		else:
 			controls.mode = "load"
 			toast("Tap the Musketeers, Pikemen or Labourers to take aboard."), room, "The basket is full.", count])
-	list.append(["balloon", "UNLOAD", func() -> void:
+	list.append(["ab_unload", "UNLOAD", func() -> void:
 		controls.mode = "unload"
 		toast("Tap where to let them off (or DROP HERE)."), aboard > 0, "Nobody aboard.", count])
 
@@ -633,7 +633,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var callers := units.filter(func(u: Unit) -> bool: return u.kind == "stormcaller")
 	if not callers.is_empty():
 		var ready: bool = callers.any(func(u: Unit) -> bool: return u.charge >= float(Defs.STORM["cost"]))
-		list.append(["stormcaller", "STORM", func() -> void:
+		list.append(["ab_storm", "STORM", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "storm", ready, "" if ready else "Not enough charge: recharge inside a Clockwork field.", ""])
 	var mothers := units.filter(func(u: Unit) -> bool: return u.kind == "spore_mother")
@@ -643,13 +643,13 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		if float(game.players[game.human]["res2"]) < float(Defs.MIASMA["cost2"]):
 			ok = false
 			why = "Not enough essence."
-		list.append(["spore_mother", "MIASMA", func() -> void:
+		list.append(["ab_miasma", "MIASMA", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "miasma", ok, why, ""])
 	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
 	if not sacs.is_empty():
 		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
-		list.append(["bloater", "HOLD GAS" if hold else "SPIT", func() -> void:
+		list.append(["ab_hold_gas", "HOLD GAS" if hold else "SPIT", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "bloater":
 					u.set_hold_gas(hold), true, "", ""])
@@ -657,7 +657,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var topters := units.filter(func(u: Unit) -> bool: return u.kind == "ornithopter")
 	if not topters.is_empty():
 		var cour: bool = topters.all(func(u: Unit) -> bool: return u.courier)
-		list.append(["ornithopter", ("~ " if cour else "") + "COURIER", func() -> void:
+		list.append(["ab_courier", ("~ " if cour else "") + "COURIER", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "ornithopter":
 					u.courier = not cour
@@ -666,12 +666,12 @@ func _ability_buttons(list: Array, units: Array) -> void:
 						u.cmd_stop()
 			toast("Courier: idle Ornithopters fetch batteries and wind up constructs that ran down." if not cour else "Courier off."), true, "", ""])
 		var has_bat: bool = topters.any(func(u: Unit) -> bool: return u.topter_bat != "")
-		list.append(["ornithopter", "OVERLOAD", func() -> void: controls.mode = "overload", has_bat, "No battery: an Ornithopter on COURIER fetches one from an energy building.", ""])
+		list.append(["ab_overload", "OVERLOAD", func() -> void: controls.mode = "overload", has_bat, "No battery: an Ornithopter on COURIER fetches one from an energy building.", ""])
 	# Skywing: LAND (ground fighter) / TAKE OFF (hunts flyers)
 	var wings := units.filter(func(u: Unit) -> bool: return u.kind == "skywing")
 	if not wings.is_empty():
 		var flying: bool = wings.any(func(u: Unit) -> bool: return u.sky == "air" or u.sky == "to_land")
-		list.append(["skywing", "LAND" if flying else "TAKE OFF", func() -> void:
+		list.append(["ab_land", "LAND" if flying else "TAKE OFF", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "skywing":
 					if flying:
@@ -681,7 +681,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var wagons := units.filter(func(u: Unit) -> bool: return u.kind == "powder_wagon")
 	if not wagons.is_empty():
 		var sup: bool = wagons.all(func(u: Unit) -> bool: return u.supplying)
-		list.append(["powder_mill", ("~ " if sup else "") + "SUPPLY", func() -> void:
+		list.append(["ab_supply", ("~ " if sup else "") + "SUPPLY", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "powder_wagon":
 					u.set_supply(not sup)
@@ -689,7 +689,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	if not guns.is_empty():
 		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")
-		list.append(["cannon", "CANISTER" if can else "ROUND SHOT", func() -> void:
+		list.append(["ab_canister" if can else "ab_round_shot", "CANISTER" if can else "ROUND SHOT", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "cannon":
 					u.set_canister(can), true, "", ""])
