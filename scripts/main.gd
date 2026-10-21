@@ -9,12 +9,13 @@ var menu: Control
 var _went_fullscreen := false
 var _backdrop: MenuBackdrop
 
-## The skirmish setup, remembered between sessions.
+## The skirmish setup, remembered between sessions. A first-time player gets everything
+## random: faction, map, the computer's plan, and colours that fit the map.
 var lobby := {
 	"map": "random",
 	"slots": [
-		{"who": "you", "faction": "crown", "colour": 0, "side": 0},
-		{"who": "normal", "faction": "brood", "colour": 1, "side": 1},
+		{"who": "you", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "side": 0},
+		{"who": "hard", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "side": 1, "strategy": "random"},
 	],
 }
 
@@ -1018,22 +1019,23 @@ func _add_slot() -> void:
 
 func _preset(p: String) -> void:
 	var slots: Array = lobby["slots"]
-	var me: Dictionary = slots[0] if not slots.is_empty() else {"who": "you", "faction": "crown", "colour": 0, "side": 0}
+	var me: Dictionary = slots[0] if not slots.is_empty() else {"who": "you", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "side": 0}
 	var n: int = {"1v1": 2, "2v2": 4, "1v2": 3, "1v3": 4, "FFA": 4}[p]
 	var out: Array = [me]
 	for i in range(1, n):
-		var prev: Dictionary = slots[i] if i < slots.size() else {"who": "normal", "faction": "random"}
-		out.append({"who": "normal" if prev["who"] == "you" else prev["who"], "faction": prev["faction"], "colour": 0, "side": 1})
+		var prev: Dictionary = slots[i] if i < slots.size() else {"who": "hard", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "strategy": "random"}
+		out.append({"who": "hard" if prev["who"] == "you" else prev["who"], "faction": prev["faction"],
+			"colour": int(prev.get("colour", Defs.COLOUR_FITS_MAP)), "side": 1, "strategy": prev.get("strategy", "random")})
+	# keep chosen colours unique (fits-map and random ones are picked when the match starts)
+	var used := {}
 	for i in out.size():
-		out[i]["colour"] = i if i != 0 else int(me["colour"])
-	# keep colours unique
-	var used := {int(me["colour"]): true}
-	for i in range(1, out.size()):
-		var c := 0
-		while used.has(c):
-			c += 1
-		out[i]["colour"] = c
-		used[c] = true
+		var c := int(out[i]["colour"])
+		if c < 0:
+			continue
+		if used.has(c):
+			out[i]["colour"] = Defs.COLOUR_FITS_MAP
+		else:
+			used[c] = true
 	for i in out.size():
 		match p:
 			"2v2":
