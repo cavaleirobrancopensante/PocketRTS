@@ -1146,77 +1146,78 @@ def scatter(rng, d, rate, maker, amp, out=None):
     return out[:N(d)]
 
 
-@sfx("ambience/grass", peak=-14, kind="loop")
+# Ambience: soft and natural. Everything is low-passed; nothing clicks or crackles in the
+# high end (the first versions' leaf "grains" read as static and scratching). Wind is a slow
+# swell of dark noise; leaves and sand are gentle gusts of rustle that follow the wind.
+
+def breeze(rng, d, cutoff=600, swell=0.06, amt=1.0):
+    """A soft, dark wind that rises and falls slowly."""
+    body = lp(lp(noise(rng, d), cutoff, 2), cutoff * 1.4, 2)
+    gust = 0.35 + 0.65 * smooth_rand(rng, d, swell, 0, 1) ** 1.5
+    low = lp(noise(rng, d), cutoff * 0.35, 2) * 1.6
+    return (body + low) * gust * amt
+
+
+def rustle(rng, d, gust, f0=900, f1=2600, amt=0.05):
+    """Leaves or grass stirring: band-limited noise that swells with the wind, no clicks."""
+    band = lp(hp(noise(rng, d), f0, 2), f1, 2)
+    return band * lp(gust, 3) * amt
+
+
+@sfx("ambience/grass", peak=-20, kind="loop")
 def amb_grass(rng, v):
     d = AMB_LEN + AMB_XF
-    w = wind(rng, d, 350, 1.2, 0.12, 1.0)
-    b = birdsong(rng, d, 0.25, 0.6)
-    leaves = grains(rng, d, lambda t: 40, (0.005, 0.02), 2000, 6000)[:N(d)] * 0.15
-    return w + b * 0.25 + leaves
+    gust = smooth_rand(rng, d, 0.08, 0, 1) ** 2
+    w = breeze(rng, d, 550, 0.07, 1.0)
+    r = rustle(rng, d, gust, 800, 2400, 0.08)
+    b = birdsong(rng, d, 0.12, 0.6)
+    return w + r + lp(b, 5000) * 0.12
 
 
-@sfx("ambience/autumn", peak=-14, kind="loop")
+@sfx("ambience/autumn", peak=-20, kind="loop")
 def amb_autumn(rng, v):
     d = AMB_LEN + AMB_XF
-    w = wind(rng, d, 300, 1.2, 0.12, 0.8)
-    gust = smooth_rand(rng, d, 0.4, 0, 1) ** 2
-    leaves = grains(rng, d, lambda t: 50 + 600 * gust[min(int(t * SR), len(gust) - 1)], (0.003, 0.015), 1500, 8000)[:N(d)] * 0.3
-    crows = scatter(rng, d, 0.07, crow, 0.25)
+    gust = smooth_rand(rng, d, 0.07, 0, 1) ** 2
+    w = breeze(rng, d, 500, 0.06, 1.0)
+    leaves = rustle(rng, d, gust, 700, 2200, 0.11)
+    crows = lp(scatter(rng, d, 0.03, crow, 0.12), 2500)      # rare and distant
     return w + leaves + crows
 
 
-@sfx("ambience/desert", peak=-14, kind="loop")
+@sfx("ambience/desert", peak=-20, kind="loop")
 def amb_desert(rng, v):
     d = AMB_LEN + AMB_XF
-    w = wind(rng, d, 250, 1.0, 0.1, 1.2, q=0.9)
-    gust = smooth_rand(rng, d, 0.3, 0, 1) ** 2
-    sand = hp(noise(rng, d), 4500) * (0.1 + gust) * 0.12
+    gust = smooth_rand(rng, d, 0.05, 0, 1) ** 2
+    w = breeze(rng, d, 420, 0.05, 1.1)
+    sand = rustle(rng, d, gust, 1200, 3000, 0.05)
     return w + sand
 
 
-@sfx("ambience/snow", peak=-14, kind="loop")
+@sfx("ambience/snow", peak=-20, kind="loop")
 def amb_snow(rng, v):
     d = AMB_LEN + AMB_XF
-    howl = np.zeros(N(d))
-    for k in range(2):
-        fc = 500 + 400 * smooth_rand(rng, d, 0.25, 0, 1) + 200 * k
-        howl += svf_bp(noise(rng, d), fc, 14) * smooth_rand(rng, d, 0.2, 0, 1) ** 2 * 0.35
-    w = wind(rng, d, 300, 1.4, 0.15, 0.8)
-
-    def crunch(r):
-        return lp(grains(r, 0.18, 1500, (0.001, 0.006), 800, 5000), 4000) * 0.6
-    cr = np.zeros(N(d) + N(3))
-    t = 3.0
-    while t < d - 3:
-        for s in range(rng.integers(3, 6)):
-            cr = place(cr, crunch(rng) * 0.15, t + s * 0.55)
-        t += rng.uniform(8, 14)
-    return w + howl + cr[:N(d)]
+    w = breeze(rng, d, 380, 0.05, 1.0)
+    # a low, slow moan of wind over the snow
+    moan = svf_bp(noise(rng, d), 260 + 120 * smooth_rand(rng, d, 0.06, 0, 1), 6) * smooth_rand(rng, d, 0.05, 0, 1) ** 2 * 0.5
+    return w + lp(moan, 900)
 
 
-@sfx("ambience/marsh", peak=-14, kind="loop")
+@sfx("ambience/marsh", peak=-20, kind="loop")
 def amb_marsh(rng, v):
     d = AMB_LEN + AMB_XF
-    w = wind(rng, d, 250, 0.8, 0.1, 0.25)
-    frogs = scatter(rng, d, 0.5, frog, 0.12)
-    bub = fit(grains(rng, d, 1.2, (0.05, 0.12), 90, 300, src="bubble"), d) * 0.25
-    t = T(d)
-    ins = np.zeros(N(d))
-    for k in range(3):
-        f = rng.uniform(4000, 6500)
-        am = (np.sin(2 * np.pi * rng.uniform(25, 60) * t) > 0.2).astype(float) * smooth_rand(rng, d, 0.3, 0, 1) ** 3
-        ins += np.sin(2 * np.pi * f * t) * lp(am, 200) * 0.015
-    return w + frogs + bub + ins
+    w = breeze(rng, d, 350, 0.05, 0.6)
+    frogs = lp(scatter(rng, d, 0.35, frog, 0.10), 2500)
+    bub = lp(fit(grains(rng, d, 0.8, (0.06, 0.14), 90, 260, src="bubble"), d), 1200) * 0.2
+    return w + frogs + bub
 
 
-@sfx("ambience/volcanic", peak=-14, kind="loop")
+@sfx("ambience/volcanic", peak=-20, kind="loop")
 def amb_volcanic(rng, v):
     d = AMB_LEN + AMB_XF
-    rum = lp(noise(rng, d), 70, 4) * (0.6 + 0.4 * smooth_rand(rng, d, 0.2, 0, 1)) * 8
-    cr = crackle(rng, d, 25, smooth_rand(rng, d, 0.5, 0.2, 1), lo=800) * 0.5
-    bub = fit(grains(rng, d, 0.8, (0.1, 0.25), 50, 120, src="bubble"), d) * 0.4
-    hiss = wind(rng, d, 600, 0.6, 0.1, 0.15)
-    return rum + cr + bub + hiss
+    rum = lp(noise(rng, d), 70, 4) * (0.6 + 0.4 * smooth_rand(rng, d, 0.15, 0, 1)) * 8
+    bub = lp(fit(grains(rng, d, 0.5, (0.1, 0.25), 50, 120, src="bubble"), d), 600) * 0.4
+    w = breeze(rng, d, 450, 0.05, 0.35)
+    return rum + bub + w
 
 
 # =================================================================== main

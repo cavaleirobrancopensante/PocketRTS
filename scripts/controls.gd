@@ -45,6 +45,7 @@ var line_attack := false
 var _line_btn := ""                # which button/touch is drawing: "right", "left", "touch"
 var _lmb_from := Vector2.ZERO
 var _mouse_inside := true
+var _exit_dir := Vector2.ZERO    # the edge the mouse left the window by (it keeps panning that way)
 var _last_click_t := 0
 var _last_click_kind := ""
 
@@ -210,8 +211,20 @@ func _drag(e: InputEventScreenDrag) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_MOUSE_EXIT:
 		_mouse_inside = false
+		# left past an edge (to the browser's tabs, the taskbar...): keep scrolling that way
+		# until the mouse comes back in
+		_exit_dir = Vector2.ZERO
+		if game and game.is_inside_tree():
+			var mp := game.get_viewport().get_mouse_position()
+			var vs := game.get_viewport().get_visible_rect().size
+			const M := 60.0
+			if mp.x < M: _exit_dir.x -= 1
+			if mp.x > vs.x - M: _exit_dir.x += 1
+			if mp.y < M: _exit_dir.y -= 1
+			if mp.y > vs.y - M: _exit_dir.y += 1
 	elif what == NOTIFICATION_WM_MOUSE_ENTER:
 		_mouse_inside = true
+		_exit_dir = Vector2.ZERO
 
 
 func _mouse(e: InputEventMouseButton) -> void:
@@ -294,8 +307,8 @@ func _left_pc(e: InputEventMouseButton) -> void:
 	var ent := game.entity_at(p)
 	var now := Time.get_ticks_msec()
 	if ent and ent.team == game.human:
-		var double: bool = ent is Unit and now - _last_click_t < 350 and _last_click_kind == ent.kind
-		if ent is Unit and (e.ctrl_pressed or double):
+		var double: bool = now - _last_click_t < 350 and _last_click_kind == ent.kind
+		if e.ctrl_pressed or double:
 			_select_type_on_screen(ent.kind, e.shift_pressed)
 		elif e.shift_pressed:
 			var sel: Array = game.selection.duplicate()
@@ -419,6 +432,8 @@ func _process(delta: float) -> void:
 			if mp.x > vs.x - edge: k.x += 1
 			if mp.y < edge: k.y -= 1
 			if mp.y > vs.y - edge: k.y += 1
+	elif Settings.pc() and not _mouse_inside and DisplayServer.window_is_focused() and not _lmb_down and game.hud and not game.hud.paused:
+		k += _exit_dir
 	if k != Vector2.ZERO:
 		game.camera.position += k.normalized() * 700.0 * delta / game.camera.zoom.x
 		_user_cam()
@@ -571,6 +586,9 @@ func _select_type_on_screen(kind: String, add := false) -> void:
 	for u in game.units:
 		if u.team == game.human and u.kind == kind and not u.dead and not u.off_field and view.has_point(xf * u.position):
 			list.append(u)
+	for b in game.buildings:
+		if b.team == game.human and b.kind == kind and not b.dead and view.intersects(Rect2(xf * b.rect().position, b.rect().size * xf.get_scale())):
+			list.append(b)
 	if add:
 		for x in game.selection:
 			if not list.has(x):

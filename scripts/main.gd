@@ -99,16 +99,31 @@ func _ready() -> void:
 	Settings.load_all()
 	_load_lobby()
 	if OS.has_feature("web"):
-		# F11 belongs to the browser: the game page would swallow it (so it did nothing), and the
-		# game's own full screen (the Fullscreen API) is left by Esc in some browsers (Brave).
-		# Stopping the key before the engine sees it lets the browser's own full screen happen,
-		# which Esc never leaves.
+		# F11: the page toggles the same full screen the first click asks for, where the game
+		# keeps Esc (a quick Esc closes a card; Esc never leaves it), and F11 leaves it again.
+		# (Left to the engine F11 did nothing; left to the browser, its own full screen and
+		# this one fought, and Esc fell out of it.)
 		JavaScriptBridge.eval("""
 			window.addEventListener('keydown', function(e) {
-				if (e.key === 'F11' || e.keyCode === 122) e.stopImmediatePropagation();
+				if (!(e.key === 'F11' || e.keyCode === 122)) return;
+				e.preventDefault();
+				e.stopImmediatePropagation();
+				if (e.repeat) return;
+				if (document.fullscreenElement) {
+					if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+					document.exitFullscreen();
+				} else {
+					var el = document.documentElement;
+					var req = el.requestFullscreen || el.webkitRequestFullscreen;
+					if (!req) return;
+					var p = req.call(el, {navigationUI: 'hide'});
+					if (p && p.then) p.then(function() {
+						if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(function(){});
+					}).catch(function(){});
+				}
 			}, true);
 			window.addEventListener('keyup', function(e) {
-				if (e.key === 'F11' || e.keyCode === 122) e.stopImmediatePropagation();
+				if (e.key === 'F11' || e.keyCode === 122) { e.preventDefault(); e.stopImmediatePropagation(); }
 			}, true);
 		""", true)
 	var crash := _crash_report()
