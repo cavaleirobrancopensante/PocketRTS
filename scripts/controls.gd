@@ -21,7 +21,7 @@ var game: Game
 var hud: Control
 var mode := ""                  # "", move, attack, place, rally
 var place_kind := ""
-var cast_spell := ""            # "cast" mode: storm or miasma
+var cast_spell := ""            # "cast" mode: storm, miasma, fog (a spot) or tongue (an enemy unit)
 var line_from := Vector2i(-1, -1)  # laying a wall: where it starts
 var ghost_cell := Vector2i(-1, -1)
 
@@ -475,7 +475,10 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			cancel_mode()
 			return
 		"cast":
-			game.cast_order(units, cast_spell, p)
+			if cast_spell == "tongue":
+				game.tongue_order(units, game.entity_at(p, false))     # (Mist Toad) tap the enemy
+			else:
+				game.cast_order(units, cast_spell, p)
 			cancel_mode()
 			Sfx.play_any(["ui/click", "click"])
 			return

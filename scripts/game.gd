@@ -2097,9 +2097,9 @@ func _draw_fields() -> void:
 			draw_ring.call(e.center(), float(e.d["field"]) * T * field_mult(e.team), 0.9 if e.field_on() else 0.18)
 		elif e is Unit and e.kind == "tesla_cart" and e.tesla_mode == "deployed":
 			draw_ring.call(e.position, Defs.TESLA_FIELD * T * field_mult(e.team), 0.9)
-	if controls and controls.mode == "cast":
-		var info: Dictionary = Defs.STORM if controls.cast_spell == "storm" else Defs.MIASMA
-		var col := Color(0.55, 0.8, 1.0, 0.9) if controls.cast_spell == "storm" else Color(0.6, 1.0, 0.35, 0.9)
+	if controls and controls.mode == "cast" and controls.cast_spell != "tongue":
+		var info: Dictionary = spell_info(controls.cast_spell)
+		var col: Color = {"storm": Color(0.55, 0.8, 1.0, 0.9), "fog": Color(0.75, 0.85, 0.8, 0.9)}.get(controls.cast_spell, Color(0.6, 1.0, 0.35, 0.9))
 		var at: Vector2 = get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position()
 		field_layer.draw_set_transform(at, 0.0, Vector2(1.0, FIELD_Y))
 		field_layer.draw_circle(Vector2.ZERO, float(info["radius"]), Color(col.r, col.g, col.b, 0.12))
@@ -2855,9 +2855,20 @@ func bloat_burst(u: Unit) -> void:
 	Sfx.play_any(["combat/spitter_hit", "acid"], p)
 
 
+## A spell's numbers (range, radius, cast time...) and who casts it.
+static func spell_info(spell: String) -> Dictionary:
+	return {"storm": Defs.STORM, "miasma": Defs.MIASMA, "fog": Defs.FOG}.get(spell, Defs.MIASMA)
+
+
+const CASTERS := {"storm": "stormcaller", "miasma": "spore_mother", "fog": "mist_toad"}
+
+
 ## Why this unit can't cast that spell now ("" = it can).
 func spell_problem(u: Unit, spell: String) -> String:
-	if spell == "storm":
+	if spell == "fog":
+		if u.charge < float(Defs.FOG["cost"]):
+			return "Not enough energy: FOG needs %d (it fills over time, faster on swamp)." % int(Defs.FOG["cost"])
+	elif spell == "storm":
 		if u.charge < float(Defs.STORM["cost"]):
 			return "Not enough charge: the Stormcaller recharges inside a Clockwork field."
 		if energy_stored(u.team) < int(Defs.STORM["cost2"]):
@@ -2965,7 +2976,7 @@ func drop_spots(at: Vector2, n: int, t: int) -> Array:
 
 ## The selected casters: the nearest one that can cast goes and does it.
 func cast_order(list: Array, spell: String, p: Vector2) -> void:
-	var kind := "stormcaller" if spell == "storm" else "spore_mother"
+	var kind: String = CASTERS.get(spell, "spore_mother")
 	var best: Unit = null
 	var bd := INF
 	var why := "Nobody here can cast that."
@@ -2995,7 +3006,13 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 			notify(w)
 		return
 	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {}}
-	if spell == "storm":
+	if spell == "fog":
+		u.charge -= float(Defs.FOG["cost"])
+		z["r"] = float(Defs.FOG["radius"])
+		z["t"] = float(Defs.FOG["time"])
+		z["puffs"] = []
+		Sfx.play_any(["combat/steam_walker_attack", "steam"], p)
+	elif spell == "storm":
 		u.charge -= float(Defs.STORM["cost"])
 		spend_batteries(u.team, int(Defs.STORM["cost2"]))
 		z["r"] = float(Defs.STORM["radius"])
@@ -3014,7 +3031,7 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 		for o in units_near(p, float(z["r"])):
 			if not o.dead and hostile(o.team, u.team):
 				inside += 1
-		mlog.add("%s cast %s (%d enemies inside)" % [mlog.who(u.team), "a storm" if spell == "storm" else "miasma", inside])
+		mlog.add("%s cast %s (%d enemies inside)" % [mlog.who(u.team), {"storm": "a storm", "fog": "a fog bank"}.get(spell, "miasma"), inside])
 
 
 ## Show the zone's effect for a stage ("in", "loop", "out"); falls back to sparks when the
@@ -3023,6 +3040,9 @@ func _zone_fx(z: Dictionary, stage: String) -> void:
 	var name: String = ("storm_" if z["kind"] == "storm" else "miasma_") + stage
 	if z["kind"] == "bloat":
 		name = "bloat_cloud" if stage == "loop" else ""
+	if z["kind"] == "fog":
+		_fog_fx(z, stage)
+		return
 	if z["fx"] and is_instance_valid(z["fx"]):
 		(z["fx"] as Node).queue_free()
 	z["fx"] = null
@@ -3041,6 +3061,261 @@ func _zone_fx(z: Dictionary, stage: String) -> void:
 	z["in_t"] = float(info["frames"]) / 14.0
 
 
+## Mist Toad's FOG: the miasma cloud turned murky grey-green (a shader greys it), with a
+## few smaller banks drifting slowly round inside it.
+var _fog_mat: ShaderMaterial
+
+
+func _fog_material() -> ShaderMaterial:
+	if _fog_mat == null:
+		var sh := Shader.new()
+		sh.code = """shader_type canvas_item;
+void fragment() {
+	vec4 c = COLOR;     // (the texture already multiplied by the modulate)
+	float l = dot(c.rgb, vec3(0.3, 0.55, 0.15));
+	COLOR = vec4(mix(c.rgb, vec3(l) * vec3(0.74, 0.9, 0.76), 0.82), c.a);
+}"""
+		_fog_mat = ShaderMaterial.new()
+		_fog_mat.shader = sh
+	return _fog_mat
+
+
+func _fog_fx(z: Dictionary, stage: String) -> void:
+	if z["fx"] and is_instance_valid(z["fx"]):
+		(z["fx"] as Node).queue_free()
+	z["fx"] = null
+	z["stage"] = stage
+	var name := "miasma_" + stage
+	if not ArtData.EFFECTS.has(name):
+		return
+	var info: Dictionary = ArtData.EFFECTS[name]
+	var fx := spawn_effect(name, z["pos"], 1.0 if stage == "loop" else 1.2, stage == "loop")
+	var sc := float(z["r"]) * 2.3 / maxf(1.0, float(info["size"].x))
+	fx.scale = Vector2(sc, sc * 0.9)
+	fx.material = _fog_material()
+	fx.z_index = 4            # over the units it hides
+	fx.modulate.a = 0.72
+	z["fx"] = fx
+	z["in_t"] = float(info["frames"]) / 12.0
+	var puffs: Array = z.get("puffs", [])
+	if stage == "in" and puffs.is_empty() and ArtData.EFFECTS.has("bloat_cloud"):
+		for i in 4:
+			var a := TAU * float(i) / 4.0 + randf() * 0.6
+			var pf := spawn_effect("bloat_cloud", z["pos"], 0.5, true)
+			pf.material = _fog_material()
+			pf.z_index = 4
+			pf.modulate.a = 0.0
+			pf.scale = Vector2(0.62, 0.42) * randf_range(0.85, 1.1)
+			pf.set_meta("ang", a)
+			pf.set_meta("spin", randf_range(0.18, 0.3) * (1.0 if i % 2 == 0 else -1.0))
+			puffs.append(pf)
+		z["puffs"] = puffs
+	elif stage == "out":
+		for pf in puffs:
+			if is_instance_valid(pf):
+				var tw := (pf as Node2D).create_tween()
+				tw.tween_property(pf, "modulate:a", 0.0, 0.8)
+				tw.tween_callback((pf as Node).queue_free)
+		z["puffs"] = []
+
+
+## The fog banks drift slowly round inside the fog.
+func _drift_fog(z: Dictionary, delta: float) -> void:
+	var p: Vector2 = z["pos"]
+	var r: float = z["r"]
+	var fade := clampf(float(z["age"]) / 0.8, 0.0, 1.0)
+	for pf in z.get("puffs", []):
+		if not is_instance_valid(pf):
+			continue
+		var a := float(pf.get_meta("ang")) + float(pf.get_meta("spin")) * delta
+		pf.set_meta("ang", a)
+		pf.position = p + Vector2(cos(a), sin(a) * FIELD_Y) * r * 0.48 + Vector2(0, -10)
+		pf.modulate.a = 0.5 * fade
+	if z["fx"] and is_instance_valid(z["fx"]):
+		(z["fx"] as Node2D).position = p + Vector2(sin(float(z["age"]) * 0.7) * 5.0, cos(float(z["age"]) * 0.5) * 3.0)
+
+
+## Inside a Mist Toad's fog bank?
+func in_fog(p: Vector2) -> bool:
+	for z in zones:
+		if z["kind"] == "fog" and in_ellipse(z["pos"], p, float(z["r"])):
+			return true
+	return false
+
+
+## A shot from `u` at `e` is fired from inside a fog bank or into one.
+func fog_blinds(u: Entity, e: Entity) -> bool:
+	if zones.is_empty() or u == null or e == null:
+		return false
+	return in_fog(u.global_position) or in_fog(e.global_position if e is Unit else e.center())
+
+
+## A ranged attack lost in the fog: the shot flies off into the murk and hits nothing.
+func fog_miss(u: Unit, e: Entity) -> void:
+	var from := u.center() + u.facing * 14.0
+	var to := e.center() + Vector2.from_angle(randf() * TAU) * randf_range(30.0, 55.0)
+	var sname := "ball"
+	var snd: Array = ["combat/musketeer_attack", "musket"]
+	match u.kind:
+		"spitter", "bloater":
+			sname = "acid_ball"
+			snd = ["combat/spitter_attack", "acid"]
+		"arc_thrower":
+			sname = "arc_ball" if ArtData.EFFECTS.has("arc_ball") else "acid_ball"
+			snd = ["combat/tesla_attack", "zap"]
+		"tesla_cart", "stormcaller", "ornithopter":
+			_bolt_line(from, to)
+			sname = ""
+			snd = ["combat/tesla_attack", "zap"]
+		"skywing":
+			sname = "bolt" if ArtData.EFFECTS.has("bolt") else "acid_ball"
+			snd = ["combat/skywing_attack", "bite"]
+		"cannon":
+			snd = ["combat/cannon_attack", "cannon"]
+			spawn_effect("smoke", from + u.facing * 12.0, 0.9)
+		"balloon", "musketeer":
+			spawn_effect("smoke", from + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+	if sname != "":
+		var s := Shot.new()
+		s.scale = Vector2(0.45, 0.45) if sname == "ball" else Vector2(0.8, 0.8)
+		if sname == "ball":
+			s.face_offset = PI
+		s.impact = "smoke"
+		s.impact_scale = 0.35
+		s.launch(self, sname, from, to, 700.0)
+	Sfx.play_any(snd, u.global_position)
+	fog_miss_note(e)
+
+
+## "miss" over the target now and then, so the fog's work can be seen.
+var _miss_note_t := 0.0
+
+
+func fog_miss_note(e: Entity) -> void:
+	if clock < _miss_note_t or not is_instance_valid(e) or not view_rect.has_point(e.global_position):
+		return
+	_miss_note_t = clock + 0.6
+	float_text(e.center() + Vector2(randf_range(-10, 10), -26), "miss", Color(0.75, 0.82, 0.78))
+
+
+# ------------------------------------------------------------------ Mist Toad: TONGUE
+
+## Mist Toads with their tongue on someone (windup, lash or pull): drawn on the overlay.
+var tongues: Array = []
+
+
+## The selected Toads: the nearest one with the energy goes for `e`.
+func tongue_order(list: Array, e) -> void:
+	var toads := list.filter(func(u) -> bool: return u is Unit and not u.dead and u.kind == "mist_toad")
+	if toads.is_empty():
+		return
+	if not (e is Unit) or not toads[0].can_tongue(e):
+		if toads[0].team == human:
+			notify("Pick an enemy unit on the ground (not a building or a flyer).")
+		return
+	var best: Unit = null
+	var bd := INF
+	for u in toads:
+		if u.tongue_stage != "" or u.charge < float(Defs.TONGUE["cost"]):
+			continue
+		var dd: float = u.position.distance_to(e.position)
+		if dd < bd:
+			bd = dd
+			best = u
+	if best:
+		best.cmd_tongue(e)
+		_ping(e.position, Color(1.0, 0.45, 0.6))
+	elif toads[0].team == human:
+		notify("Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
+
+
+## A Toad has marked its victim: the crosshair goes up (its owner is warned).
+func tongue_marked(toad: Unit, e: Unit) -> void:
+	if not tongues.has(toad):
+		tongues.append(toad)
+	if e.team == human:
+		notify("A Mist Toad is aiming its tongue at your %s: move it away or stun the Toad!" % String(e.d["name"]), true)
+		_ping(e.position, Color(1.0, 0.3, 0.3))
+	Sfx.play_any(["combat/spitter_hit", "acid"], toad.position)
+
+
+## The tongue lands: "Tongue!" over the victim.
+func tongue_hit(toad: Unit, e: Unit) -> void:
+	var heavy := Unit.too_heavy(e)
+	if toad.visible or e.visible or toad.team == human or e.team == human:
+		float_text(e.center() + Vector2(0, -30), "Tongue!" if not heavy else "Tongue! (staggered)", Color(1.0, 0.55, 0.7))
+	Sfx.play_any(["combat/brute_hit", "combat/spitter_hit", "acid"], e.position)
+	spawn_effect("hit", e.center(), 1.0)
+	if mlog:
+		mlog.add("%s's Mist Toad %s %s's %s" % [mlog.who(toad.team), "staggered" if heavy else "pulled in", mlog.who(e.team), String(e.d["name"])])
+
+
+## The crosshairs and tongues, over everything.
+func _draw_tongues() -> void:
+	for toad in tongues.duplicate():
+		if not is_instance_valid(toad) or toad.tongue_stage == "":
+			tongues.erase(toad)
+			continue
+		var e = toad.tongue_victim
+		if e == null or not is_instance_valid(e):
+			continue
+		var mine: bool = allied(toad.team, human)
+		var theirs: bool = allied(e.team, human)
+		if toad.tongue_stage == "windup":
+			# the victim's owner (and the Toad's) sees the mark: that's the counterplay
+			if not (mine or theirs or demo or reveal):
+				continue
+			var c: Vector2 = e.center()
+			var left: float = toad.tongue_t / float(Defs.TONGUE["windup"])
+			var pulse := 0.5 + 0.5 * sin(clock * 10.0)
+			var col := Color(1.0, 0.25, 0.3, 0.75 + 0.25 * pulse)
+			var rr: float = maxf(14.0, e.radius + 8.0) + 4.0 * left
+			var rot := clock * 1.6
+			overlay.draw_arc(c, rr, 0.0, TAU, 32, Color(0, 0, 0, 0.5), 4.0)
+			overlay.draw_arc(c, rr, 0.0, TAU, 32, col, 2.0)
+			for k in 4:
+				var a := rot + k * PI * 0.5
+				var dir := Vector2.from_angle(a)
+				overlay.draw_line(c + dir * (rr - 6.0), c + dir * (rr + 7.0), Color(0, 0, 0, 0.6), 4.0)
+				overlay.draw_line(c + dir * (rr - 6.0), c + dir * (rr + 7.0), col, 2.0)
+			overlay.draw_circle(c, 2.0, col)
+			# how long until it lashes: the arc that's left
+			overlay.draw_arc(c, rr + 11.0, -PI * 0.5, -PI * 0.5 + TAU * left, 24, Color(1.0, 0.75, 0.8, 0.9), 2.0)
+			if mine:
+				# its owner sees the line of aim, faintly
+				overlay.draw_dashed_line(toad.mouth_point(), c, Color(1.0, 0.55, 0.7, 0.35), 1.0, 6.0)
+			continue
+		if not (toad.visible or e.visible):
+			continue
+		var from: Vector2 = toad.mouth_point()
+		var to: Vector2 = e.center()
+		if toad.tongue_stage == "lash":
+			to = from.lerp(to, 1.0 - clampf(toad.tongue_t / float(Defs.TONGUE["lash"]), 0.0, 1.0))
+		elif toad.tongue_stage == "recoil":
+			to = from.lerp(to, clampf(toad.tongue_t / 0.15, 0.0, 1.0))
+		_draw_tongue(from, to)
+
+
+## A fleshy pink tongue: a sagging curve with a dark edge and a fat tip.
+func _draw_tongue(a: Vector2, b: Vector2) -> void:
+	var dist := a.distance_to(b)
+	if dist < 2.0:
+		return
+	var n := (b - a).normalized().orthogonal()
+	if n.y < 0.0:
+		n = -n
+	var ctrl := a.lerp(b, 0.5) + n * minf(dist * 0.18, 26.0)
+	var pts := PackedVector2Array()
+	for i in 13:
+		var t := i / 12.0
+		pts.append(a.lerp(ctrl, t).lerp(ctrl.lerp(b, t), t))
+	overlay.draw_polyline(pts, Color(0.35, 0.08, 0.14), 6.0, true)
+	overlay.draw_polyline(pts, Color(0.9, 0.42, 0.55), 3.6, true)
+	overlay.draw_polyline(pts.slice(0, 7), Color(1.0, 0.7, 0.78, 0.8), 1.2, true)
+	overlay.draw_circle(b, 5.0, Color(0.35, 0.08, 0.14))
+	overlay.draw_circle(b, 3.6, Color(0.95, 0.48, 0.6))
+
+
 func _tick_zones(delta: float) -> void:
 	if zones.is_empty():
 		return
@@ -3051,6 +3326,9 @@ func _tick_zones(delta: float) -> void:
 		var r: float = z["r"]
 		if z["stage"] == "in" and z["age"] >= float(z.get("in_t", 0.4)):
 			_zone_fx(z, "loop")
+		if z["kind"] == "fog":
+			_drift_fog(z, delta)
+			continue
 		if z["kind"] == "bloat":
 			for u in units_near(p, r + 20.0):
 				if u.dead or u.off_field or u.is_air() or not hostile(u.team, int(z["team"])) or not in_ellipse(p, u.position, r + u.radius):
@@ -3823,6 +4101,8 @@ func _draw_mine_labels() -> void:
 
 func _draw_overlay() -> void:
 	_draw_mine_labels()
+	if not tongues.is_empty():
+		_draw_tongues()
 	for tr in _tracers:
 		var col: Color = tr[3] if tr.size() > 3 else Color(1, 0.95, 0.7, 0.8)
 		overlay.draw_line(tr[0], tr[1], col, tr[4] if tr.size() > 4 else 1.0)

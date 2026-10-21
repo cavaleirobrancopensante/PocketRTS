@@ -69,7 +69,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		if u.dead or u.off_field:
 			continue
 		var ud := {"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
-			"charge": u.charge, "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying, "lf": u.load_f,
+			# (a Mist Toad's TONGUE windup isn't kept: it comes back with that energy unspent)
+			"charge": u.charge + (float(Defs.TONGUE["cost"]) if u.tongue_stage == "windup" else 0.0), "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying, "lf": u.load_f,
 			"auto": u.auto_work, "cross": u.cross_t, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",

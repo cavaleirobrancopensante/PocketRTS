@@ -78,6 +78,8 @@ BROOD_UNITS = {
     "steam_walker": {"rows": ["idle", "walk", "attack", "vent", "death"], "height": 99, "dir": "clockwork", "row0": "e",
                      "mask": "flat"},
 }
+# (The Mist Toad's sheet, art/brood/mist_toad.png, is on black with an idle loop per direction
+# and a painted fog cloud to key out: tools/import_mist_toad.py imports it, using the helpers here.)
 # Width in game pixels of each finished building (ChatGPT drew each at its own zoom).
 BUILDING_WIDTH = {"town_hall": 150, "cottage": 72, "barracks": 128, "foundry": 118,
                   "hive": 158, "clutch_mound": 74, "warren": 130, "gorge_pit": 126}
