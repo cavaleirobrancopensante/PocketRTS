@@ -75,7 +75,12 @@ var _push := Vector2.ZERO
 var mode := ""                  # musketeer "" (musket) or "bayonet" (chosen by itself); cannon "" (round shot) or "canister"
 var _melee_t := 0.0             # musketeer: when it next looks for an enemy close enough for the bayonet
 var art := ""                   # whose sprites it wears (an armoured Musketeer: "musketeer_armoured")
-var armoured := false           # Musketeer: its player has researched Armour
+var armoured := false           # Musketeer: refitted with Armour (or came out with it)
+var lock := ""                  # Musketeer: his musket lock ("", or one of Defs.LOCKS)
+var refit: Array = []           # Musketeer on a "refit" order: the upgrades he's going to get (paid)
+var refit_paid := [0, 0]        # what was paid for them (back if the refit is called off)
+var _refit_t := 0.0
+var auto_refit := false         # Powder Wagon: AUTO REFIT (idle Musketeers nearby get the upgrades researched)
 # Missionary raising the fallen; a raised soldier's second life
 var _body: Unit = null          # (a Missionary) the body he's going to raise
 var reviver: Unit = null        # (a body) the Missionary coming to raise it
@@ -271,10 +276,9 @@ func revive() -> void:
 	game.on_unit_revived(self)
 
 
-## Research its player has done: a Musketeer gets Armour (+armour, +health, and the armoured
-## sprites). Called when it's made and when the research finishes.
-func apply_tech() -> void:
-	if kind != "musketeer" or armoured or game == null or team < 0 or not game.has_tech(team, "armour"):
+## A Musketeer refitted with Armour: +armour, +health, and the armoured sprites.
+func put_on_armour() -> void:
+	if kind != "musketeer" or armoured:
 		return
 	var info: Dictionary = Defs.RESEARCH["armour"]
 	armoured = true
@@ -288,13 +292,137 @@ func apply_tech() -> void:
 	queue_redraw()
 
 
-## Musketeer reload with the best lock its player has researched.
+## A Musketeer's kit ({"armour": bool, "lock": key}): a recruit's, or a saved one.
+func set_kit(kit: Dictionary) -> void:
+	if kind != "musketeer":
+		return
+	if kit.get("armour", false):
+		put_on_armour()
+	var lk := String(kit.get("lock", ""))
+	if Defs.LOCKS.has(lk) and Defs.LOCKS.find(lk) > lock_level():
+		lock = lk
+	queue_redraw()
+
+
+func get_kit() -> Dictionary:
+	return {"armour": armoured, "lock": lock}
+
+
+## His lock as a number: -1 none, 0 matchlock, 1 flintlock, 2 caplock (`pending`: counting
+## the one he's on his way to get).
+func lock_level(pending := false) -> int:
+	var lv := Defs.LOCKS.find(lock)
+	if pending:
+		for w in refit:
+			lv = maxi(lv, Defs.LOCKS.find(w))
+	return lv
+
+
+## The upgrades he has, for the unit card: "Armour · Flintlock" ("" for none).
+func kit_text() -> String:
+	var parts: Array = []
+	if armoured:
+		parts.append("Armour")
+	if lock != "":
+		parts.append(String(Defs.RESEARCH[lock]["name"]))
+	return " · ".join(parts)
+
+
+## Paid for `what` (Game.refit_order / AUTO REFIT): off to `place` to get it, or, already
+## on his way to a refit, it's added to that one (a later lock replaces the one he was
+## going for, which is paid back).
+func add_refit(place: Entity, what: String, fee: Array) -> void:
+	if order == "refit" and not refit.is_empty():
+		if Defs.LOCKS.has(what):
+			for w in refit.duplicate():
+				if Defs.LOCKS.has(w):
+					var back := Game.refit_fee(w)
+					refit.erase(w)
+					refit_paid = [int(refit_paid[0]) - back[0], int(refit_paid[1]) - back[1]]
+					game.refund_refit(team, back)
+		refit.append(what)
+		refit_paid = [int(refit_paid[0]) + int(fee[0]), int(refit_paid[1]) + int(fee[1])]
+		return
+	cmd_refit(place, [what], fee)
+
+
+func cmd_refit(place: Entity, what: Array, fee: Array) -> void:
+	if aboard:
+		game.refund_refit(team, fee)
+		return
+	_reset_work()
+	order = "refit"
+	order_target = place
+	target = null
+	refit = what.duplicate()
+	refit_paid = [int(fee[0]), int(fee[1])]
+	_refit_t = 0.0
+	work = "to_refit"
+	work_t = 0.0
+	repath_t = 0.0
+
+
+## The refit called off (another order, killed, the place gone): the fees back.
+func _cancel_refit() -> void:
+	if refit.is_empty():
+		return
+	game.refund_refit(team, refit_paid)
+	refit.clear()
+	refit_paid = [0, 0]
+	_refit_t = 0.0
+
+
+func _refit_run(delta: float) -> Vector2:
+	var p = order_target
+	if p == null or not is_instance_valid(p) or p.dead or (p is Building and not p.built) \
+			or (p is Unit and (p.off_field or p.aboard != null)) or refit.is_empty():
+		if team == game.human and not refit.is_empty():
+			game.notify("Refit called off: the place is gone. Paid back.")
+		cmd_stop()          # (the fee goes back)
+		return Vector2.ZERO
+	var at: Vector2 = p.position if p is Unit else p.center()
+	var gap: float = p.edge_distance(position) - radius - (p.radius if p is Unit else 0.0)
+	if gap < float(Defs.REFIT["reach"]) or (work == "refitting" and gap < float(Defs.REFIT["reach"]) + 30.0):
+		# there: a couple of seconds with the armourer
+		path = PackedVector2Array()
+		facing = (at - position).normalized() if at != position else facing
+		work = "refitting"
+		_refit_t += delta
+		if _refit_t >= float(Defs.REFIT["time"]):
+			var done := refit.duplicate()
+			for w in done:
+				if w == "armour":
+					put_on_armour()
+				elif Defs.LOCKS.find(w) > lock_level():
+					lock = w
+			refit.clear()
+			refit_paid = [0, 0]
+			game.refit_done(self, done)
+			queue_redraw()
+			cmd_stop()
+		return Vector2.ZERO
+	work = "to_refit"
+	work_t += delta
+	if work_t > float(Defs.REFIT["give_up"]):
+		if team == game.human:
+			game.notify("A Musketeer couldn't reach the place to be refitted. Paid back.")
+		cmd_stop()
+		return Vector2.ZERO
+	# a wagon may be on the move: head straight for it when close, else find the way there
+	if position.distance_to(at) < 140.0 and game.line_clear(position, at):
+		path = PackedVector2Array()
+		return (at - position).normalized() * speed
+	if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
+		repath_t = 1.5
+		_request_path(game.approach_point(p, position) if p is Building else at)
+	return _follow(delta)
+
+
+## Musketeer reload with his own lock.
 func musket_cooldown() -> float:
 	var m := 1.0
-	if kind == "musketeer" and game and team >= 0:
-		for k in Defs.LOCKS:
-			if game.has_tech(team, k):
-				m = minf(m, float(Defs.RESEARCH[k]["reload"]))
+	if kind == "musketeer" and Defs.RESEARCH.has(lock):
+		m = float(Defs.RESEARCH[lock]["reload"])
 	return float(d["cooldown"]) * m
 
 
@@ -700,7 +828,6 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	last_pos = pos
 	leash_from = pos
 	art = k
-	apply_tech()
 
 
 func _ready() -> void:
@@ -1299,6 +1426,7 @@ func _reset_work() -> void:
 		# given another job on the way: the keg goes back into the stores
 		keg = false
 		game.add_res2(team, _keg_cost())
+	_cancel_refit()            # (a refit called off: paid back)
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
@@ -1977,6 +2105,8 @@ func _physics_process(delta: float) -> void:
 			want = _overload(delta)
 		"keg":
 			want = _keg_run(delta)
+		"refit":
+			want = _refit_run(delta)
 		"sacrifice":
 			want = _sacrifice(delta)
 	if deploys():
@@ -3198,6 +3328,7 @@ func die() -> void:
 	_release_patient()
 	_drop_body()
 	_cancel_boarding()
+	_cancel_refit()            # (killed on the way to a refit: the fee goes back)
 	drop_crate()               # (a Winder) the crate on his back falls where he stood
 	if tongue_stage != "":
 		_break_tongue("killed")    # (a Mist Toad) the mark goes, or the tongue lets go
@@ -3863,6 +3994,22 @@ func _draw() -> void:
 			rcol = Color(1.0, 0.85, 0.3)
 		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw * clampf(rf, 0.0, 1.0), 2), rcol)
+	if kind == "musketeer" and team == game.human and (armoured or lock != ""):
+		# his refits, on top of the health bar's left end (own men only): a little steel
+		# shield for Armour, then one gold pip per lock level (matchlock 1, flintlock 2,
+		# caplock 3)
+		var mx := -bw * 0.5
+		var my := top - 9.0
+		if armoured:
+			var sh := PackedVector2Array([Vector2(mx, my), Vector2(mx + 6, my), Vector2(mx + 6, my + 4), Vector2(mx + 3, my + 7), Vector2(mx, my + 4)])
+			draw_colored_polygon(sh, Color(0.8, 0.85, 0.93))
+			sh.append(sh[0])
+			draw_polyline(sh, Color(0.1, 0.1, 0.15, 0.9), 1.0)
+			mx += 8.5
+		for i in lock_level() + 1:
+			var pr := Rect2(mx + i * 4.0, my, 2.5, 6)
+			draw_rect(pr.grow(0.5), Color(0, 0, 0, 0.8))
+			draw_rect(pr, Color(1.0, 0.8, 0.3))
 	if work == "feeding":
 		return
 	if topter_bat != "":

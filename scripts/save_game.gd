@@ -58,7 +58,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		if b.dead:
 			continue
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
-			"progress": b.progress, "hp": b.hp, "queue": b.queue, "prod_t": b.prod_t, "eggs": b.eggs,
+			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
 			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
@@ -76,12 +76,19 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"sky": u.sky if u.sky != "to_land" else "air",
 			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying,
 			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
+		if u.kind == "musketeer":
+			ud["kit"] = u.get_kit()
+			if not u.refit.is_empty():
+				ud["rf"] = u.refit       # on his way to a refit (paid): he goes again after loading
+				ud["rfp"] = u.refit_paid
+		if u.auto_refit:
+			ud["ar"] = true
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
 			for p in u.passengers:
 				if is_instance_valid(p) and not p.dead:
-					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "kills": p.kills, "cross": p.cross_t})
+					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "kills": p.kills, "cross": p.cross_t, "kit": p.get_kit()})
 			ud["pass"] = ps
 		d["units"].append(ud)
 	# Clockwork crates on the ground, and the ones on a Winder's back (they come back lying
@@ -189,8 +196,16 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.progress = float(bd["progress"])
 		b.hp = float(bd["hp"])
 		# (research is in the queue as "@key")
-		b.queue = Array(bd["queue"]).map(func(x) -> String: return String(x) if String(x).begins_with("@") else _kind(String(x))) \
-			.filter(func(x: String) -> bool: return Defs.RESEARCH.has(x.substr(1)) if x.begins_with("@") else Defs.UNITS.has(x))
+		# (and beside it what each queued Musketeer was paid to come out with; older saves: nothing)
+		var saved_kits: Array = Array(bd.get("kits", []))
+		var saved_q: Array = Array(bd["queue"])
+		b.queue = []
+		b.kits = []
+		for qi in saved_q.size():
+			var x := String(saved_q[qi]) if String(saved_q[qi]).begins_with("@") else _kind(String(saved_q[qi]))
+			if Defs.RESEARCH.has(x.substr(1)) if x.begins_with("@") else Defs.UNITS.has(x):
+				b.add_entry(x, saved_kits[qi] if qi < saved_kits.size() and saved_kits[qi] is Dictionary else {})
+		b.auto_refit = bool(bd.get("ar", false))
 		b.prod_t = float(bd["prod_t"])
 		b.eggs = int(bd["eggs"])
 		b.egg_t = float(bd["egg_t"])
@@ -199,6 +214,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		var old_rs := String(bd.get("research", ""))
 		if Defs.RESEARCH.has(old_rs) and not b.queue.has("@" + old_rs):
 			b.queue.push_front("@" + old_rs)
+			b.kits.push_front({})
 			b.prod_t = float(bd.get("research_t", 0.0))
 		b.auto_train = _kind(String(bd.get("auto", "")))
 		b.batteries = int(bd.get("bat", 0))
@@ -245,6 +261,10 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if not Defs.UNITS.has(uk):
 			continue
 		var u := game._add_unit(uk, int(ud["t"]), _to_v2(ud["p"]))
+		if uk == "musketeer":
+			# his own refits (older saves: research applied to every Musketeer, so he has it all)
+			u.set_kit(ud["kit"] if ud.get("kit") is Dictionary else game.kit_for_new(u.team))
+		u.auto_refit = bool(ud.get("ar", false))
 		u.hp = minf(float(ud["hp"]), u.max_hp)
 		u.cross_t = float(ud.get("cross", 0.0))
 		u.wind = float(ud["wind"])
@@ -270,6 +290,16 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.carry_t = float(ud.get("ct", 0.0))
 		if bool(ud.get("brace", false)):
 			u.set_brace(true)
+		if ud.get("rf") is Array and not (ud["rf"] as Array).is_empty():
+			# on his way to a refit he'd paid for: he goes again (or it's paid back)
+			var rfp: Array = ud.get("rfp", [0, 0])
+			var fee := [int(rfp[0]), int(rfp[1])]
+			var place := game.refit_place(u.team, u.position)
+			var what: Array = (ud["rf"] as Array).map(func(x) -> String: return String(x)).filter(func(x: String) -> bool: return Defs.RESEARCH.has(x))
+			if place and not what.is_empty():
+				u.cmd_refit(place, what, fee)
+			else:
+				game.refund_refit(u.team, fee)
 		u.hp = minf(u.hp, u.max_hp)
 		var defl := String(ud.get("defl", ""))
 		if u.kind == "bloater" and defl != "":
@@ -285,6 +315,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			if u.kind != "balloon" or not Defs.UNITS.has(pk):
 				continue
 			var p := game._add_unit(pk, u.team, u.position)
+			if pk == "musketeer":
+				p.set_kit(pd["kit"] if pd.get("kit") is Dictionary else game.kit_for_new(u.team))
 			p.hp = minf(float(pd.get("hp", p.max_hp)), p.max_hp)
 			p.mode = String(pd.get("mode", ""))
 			p.auto_work = bool(pd.get("auto", true))

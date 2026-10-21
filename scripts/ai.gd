@@ -682,9 +682,10 @@ const RESEARCH_AT := {"matchlock": 4, "armour": 6, "flintlock": 8, "caplock": 12
 
 
 func _research() -> void:
+	_refit_army()
 	if _hall_reserve:
 		return
-	var muskets := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "musketeer").size()
+	var muskets :=game.army(team).filter(func(u: Unit) -> bool: return u.kind == "musketeer").size()
 	for key in Defs.RESEARCH:
 		var info: Dictionary = Defs.RESEARCH[key]
 		if info["faction"] != game.faction_of(team) or game.has_tech(team, key) or game.researching(team, key):
@@ -697,6 +698,33 @@ func _research() -> void:
 			if game.research_problem(b, key) == "":
 				game.start_research(b, key)
 				break
+
+
+## Crown: research only unlocks the Musketeers' upgrades; each man is refitted at a
+## Barracks or a Powder Wagon. AUTO REFIT stays on at our Barracks, and between attacks
+## (nothing on our base) idle Musketeers that lack an upgrade walk back to get it while
+## the money allows.
+func _refit_army() -> void:
+	if not _crown():
+		return
+	for b in _mine("barracks"):
+		b.auto_refit = true
+	if _attacking or _gold() < _lv([200, 120, 80]) or _threat() != Vector2.INF:
+		return
+	var sent := 0
+	for u in game.army(team):
+		if sent >= 6 or _gold() < _lv([200, 120, 80]):
+			break
+		if u.kind != "musketeer" or u.order != "idle" or u.target != null or _on_errand(u):
+			continue
+		var went := false
+		for w in game.refit_options(u):
+			if int(game.refit_order([u], w, true)[0]) > 0:
+				went = true
+		if went:
+			sent += 1
+	if sent > 0 and game.mlog:
+		game.mlog.add("%s sent %d Musketeer%s back to refit" % [game.mlog.who(team), sent, "" if sent == 1 else "s"])
 var _raiders: Array = []        # Crown: cuirassiers out hunting the enemy's workers
 var _raid_home := 0.0
 
@@ -1039,7 +1067,7 @@ func _produce() -> void:
 ## Units busy with something of their own the army orders must leave alone: a balloon
 ## drop, an Ornithopter fetching or delivering a battery, a Bloater out of gas.
 func _on_errand(u: Unit) -> bool:
-	if u.order in ["courier", "overload", "board", "unload", "heal", "revive"]:
+	if u.order in ["courier", "overload", "board", "unload", "heal", "revive", "refit"]:
 		return true
 	if u.kind == "bloater" and u.deflate != "":
 		return true

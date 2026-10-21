@@ -9,6 +9,8 @@ var size := Vector2i.ONE
 var built := false
 var progress := 0.0              # 0..1 while under construction
 var queue: Array = []            # unit kinds, and research as "@key" (Defs.RESEARCH)
+var kits: Array = []             # beside `queue`: what a queued Musketeer was paid to come out with ({} for the rest)
+var auto_refit := false          # Barracks: AUTO REFIT (idle Musketeers nearby get the upgrades researched)
 var prod_t := 0.0
 var batteries := 0               # Clockwork: full batteries waiting to be carried off
 var _bat_t := 0.0
@@ -269,6 +271,27 @@ static func entry_time(k: String) -> float:
 	return float(Defs.UNITS[k]["time"])
 
 
+## What the queue entry at `i` was paid to come out with ({} if nothing: research, other units).
+func kit_at(i: int) -> Dictionary:
+	return kits[i] if i >= 0 and i < kits.size() and kits[i] is Dictionary else {}
+
+
+## Put an entry at the back of the queue, with its kit beside it.
+func add_entry(k: String, kit: Dictionary = {}) -> void:
+	kits.resize(queue.size())
+	queue.append(k)
+	kits.append(kit)
+
+
+## Take the queue entry at `i` out (and its kit beside it); returns the kit.
+func take_entry(i: int) -> Dictionary:
+	var kit := kit_at(i)
+	queue.remove_at(i)
+	if i < kits.size():
+		kits.remove_at(i)
+	return kit
+
+
 func can_train(k: String) -> bool:
 	return built and not dead and (d["trains"] as Array).has(k)
 
@@ -444,9 +467,9 @@ func _physics_process(delta: float) -> void:
 			morph_t[i] += delta
 			if morph_t[i] >= float(Defs.UNITS[queue[i]]["time"]):
 				var k: String = queue[i]
-				queue.remove_at(i)
+				var kit := take_entry(i)
 				morph_t.remove_at(i)
-				game.spawn_trained(self, k)
+				game.spawn_trained(self, k, kit)
 			else:
 				i += 1
 	elif built and not queue.is_empty():
@@ -454,11 +477,11 @@ func _physics_process(delta: float) -> void:
 		var k: String = queue[0]
 		if prod_t >= entry_time(k):
 			prod_t = 0.0
-			queue.pop_front()
+			var kit := take_entry(0)
 			if is_research(k):
 				game.research_done(self, k.substr(1))
 			else:
-				game.spawn_trained(self, k)
+				game.spawn_trained(self, k, kit)
 	if built and auto_train != "" and not dead:
 		_auto_t -= delta
 		if _auto_t <= 0.0:
@@ -709,9 +732,10 @@ func die() -> void:
 	selected = false
 	if team == game.human and built and not game.over:
 		Sfx.announce(d["faction"], "building_lost", 6.0)
-	for k in queue:
-		game.refund(team, k)
+	for i in queue.size():
+		game.refund(team, queue[i], kit_at(i))
 	queue.clear()
+	kits.clear()
 	for u in crew:
 		if is_instance_valid(u) and not u.dead:
 			u.cmd_stop()
