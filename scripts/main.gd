@@ -1327,6 +1327,8 @@ func start(cfg: Dictionary = {}) -> void:
 		SaveGame.restore(game, cfg["resume"])
 		last_cfg.erase("resume")
 	_save_t = 0.0
+	if not game.demo:
+		hud.start_countdown(3.0)
 
 
 func _to_menu() -> void:
