@@ -31,8 +31,10 @@ static func _v2(v: Vector2) -> Array:
 
 
 ## Units that are no more: a saved Pikeman comes back as a Musketeer.
+## A unit kind from an older save: the Pikeman became a Musketeer (Crown rework), the
+## Gearknight a Thresher and the Bolt Automaton an Arc Thrower (Clockwork rework).
 static func _kind(k: String) -> String:
-	return "musketeer" if k == "pikeman" else k
+	return {"pikeman": "musketeer", "gearknight": "thresher", "bolt": "arc_thrower"}.get(k, k)
 
 
 static func _to_v2(a) -> Vector2:
@@ -72,7 +74,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"auto": u.auto_work, "cross": u.cross_t, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
-			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying}
+			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying,
+			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
@@ -181,8 +184,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.seeded = bool(bd["seeded"])
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
-		if b.kind == "town_hall" or b.kind == "hive":
-			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground)
+		if b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower":
+			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground / coal)
 			b.soil_warned = int(bd.get("sw", 0))
 		if bd["rally"] != null:
 			b.rally = _to_v2(bd["rally"])
@@ -223,6 +226,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.courier = bool(ud.get("courier", false))
 		u.topter_bat = String(ud.get("bat", ""))
 		u.overclock_t = float(ud.get("oc", 0.0))
+		u.spin = float(ud.get("spin", 0.0))
+		u.overcharge_t = float(ud.get("ovc", 0.0))
+		u.self_wind_t = float(ud.get("sw", 0.0))
+		u.carry_t = float(ud.get("ct", 0.0))
+		if bool(ud.get("brace", false)):
+			u.set_brace(true)
+		u.hp = minf(u.hp, u.max_hp)
 		var defl := String(ud.get("defl", ""))
 		if u.kind == "bloater" and defl != "":
 			u.deflate = "flat" if defl == "deflating" else ("" if defl == "refilling" else defl)

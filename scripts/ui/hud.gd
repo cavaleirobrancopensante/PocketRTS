@@ -444,7 +444,7 @@ func _build_card() -> Array:
 				var d: Dictionary = Defs.BUILDINGS[k]
 				var why := ""
 				if not game.requirement_met(game.human, k):
-					why = "Needs a %s first." % Defs.BUILDINGS[d["requires"]]["name"]
+					why = game.requirement_text(game.human, k)
 				elif game.players[game.human]["gold"] < int(d["cost"]):
 					why = "Not enough %s." % _res()[0].to_lower()
 				elif Defs.is_econ(k) and game.econ_count(game.human, k) >= game.econ_limit(game.human, k):
@@ -690,6 +690,14 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			toast("Courier: idle Ornithopters fetch batteries and wind up constructs that ran down." if not cour else "Courier off."), true, "", ""])
 		var has_bat: bool = topters.any(func(u: Unit) -> bool: return u.topter_bat != "")
 		list.append(["ab_overload", "OVERLOAD", func() -> void: controls.mode = "overload", has_bat, "No battery: an Ornithopter on COURIER fetches one from an energy building.", ""])
+	# Bulwark: BRACE plants the tower shield (it can't move; shots at the men behind hit it)
+	var shields := units.filter(func(u: Unit) -> bool: return u.kind == "bulwark")
+	if not shields.is_empty():
+		var up: bool = shields.any(func(u: Unit) -> bool: return not u.braced)
+		list.append(["ab_brace", "BRACE" if up else "~ BRACE", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "bulwark":
+					u.set_brace(up), true, "", ""])
 	# Skywing: LAND (ground fighter) / TAKE OFF (hunts flyers)
 	var wings := units.filter(func(u: Unit) -> bool: return u.kind == "skywing")
 	if not wings.is_empty():
@@ -724,7 +732,7 @@ const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "E", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
-	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
+	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "BRACE": "E", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -933,7 +941,7 @@ func _draw() -> void:
 	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
 	var r2 := "%d" % int(pl["res2"])
 	if fac == "clockwork":
-		r2 = "%d %s batteries ready" % [int(game.energy[game.human]), "blue" if game.blue_energy(game.human) else "yellow"]
+		r2 = "%d energy (%s batteries stored)" % [int(game.energy[game.human]), "blue" if game.blue_energy(game.human) else "yellow"]
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(game.human)
 	var cap: int = pl["cap"]
@@ -1140,6 +1148,18 @@ func _draw_panel(font: Font) -> void:
 				info = "Out of gas: deflated, slower and harmless. Gas %d / 100 (fills faster on swamp)." % int(uu.gas)
 			elif uu.kind == "ornithopter" and (uu.topter_bat != "" or uu.courier):
 				info = ("Carrying a %s battery: OVERLOAD a construct with it, or it winds one up on COURIER." % uu.topter_bat) if uu.topter_bat != "" else "Courier: fetching batteries for constructs that run down."
+			elif uu.kind == "windup_soldier" and uu.powered_down():
+				info = "RUN DOWN: frozen until a Winder cranks it up again (or a field reaches it)."
+			elif uu.kind == "windup_soldier":
+				info = "Spring %d%%%s: about 50 s away from a field and it runs down." % [int(uu.wind * 100), " (being cranked)" if uu.cranked_t > 0.0 else ""]
+			elif uu.kind == "bulwark" and uu.braced:
+				info = "BRACED: can't move; armour 7; shots at your units behind the shield hit it instead. Charge %d%%." % int(uu.wind * 100)
+			elif uu.kind == "thresher" and uu.spin > 0.05 and uu.overclock_t <= 0.0:
+				info = "Saws %d%% spun up (x%.1f damage) · Charge %d%%: spinning drains it fast." % [int(uu.spin * 100), lerpf(float(Defs.THRESHER["low"]), float(Defs.THRESHER["high"]), uu.spin), int(uu.wind * 100)]
+			elif uu.kind == "winder" and uu.self_wind_t > 0.0:
+				info = "Winding its own spring (%d s)." % int(ceil(uu.self_wind_t))
+			elif uu.overcharged() and uu.overclock_t <= 0.0:
+				info = "OVERCHARGED: +15%% damage while it stays here. Charge %d%%." % int(uu.wind * 100)
 			elif uu.overclock_t > 0.0:
 				info = "OVERLOADED for %d s: +50%% damage, +30%% speed. Burns out to 25%% charge." % int(ceil(uu.overclock_t))
 			elif uu.kind == "missionary":
@@ -1168,7 +1188,9 @@ func _draw_panel(font: Font) -> void:
 					("%d%%" % int(round(salt * 100))) if salt >= 0.0 else "none"]
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
 				var ore := game.site_left_at(bb.center(), "ore")
-				info = "Ore here: %s · %d/%d batteries ready (one every %.1f s) · allows 2 Boilers and 2 Ore Crushers nearby (crushers next to ore)" % [("%d%%" % int(round(ore * 100))) if ore >= 0.0 else "none",
+				var coal := bb.soil_left()
+				info = "Ore here: %s · Coal: %d%%%s · %d/%d batteries ready (one every %.1f s) · allows 2 Boilers and 2 Ore Crushers nearby" % [("%d%%" % int(round(ore * 100))) if ore >= 0.0 else "none",
+					int(round(coal * 100)), " (spent: its Boilers fill at a third)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else ""),
 					bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0])]
 			elif bb.kind == "powder_mill":
 				var sl := game.deposit_left(bb)
@@ -1180,14 +1202,17 @@ func _draw_panel(font: Font) -> void:
 					" (spent: a third; grow a Hive on fresh ground)" if gl <= 0.0 else ""]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
-				info = "%d/%d batteries ready (one every %.1f s) · %d/%d Winders carrying" % [bb.batteries, int(bat[1]), float(bat[0]), bb.crew.size(), int(bb.d["crew"])]
+				var coal2 := bb.soil_left()
+				info = "%d/%d batteries ready (one every %.1f s) · %d/%d Winders carrying · Coal: %d%%%s" % [bb.batteries, int(bat[1]),
+					float(bat[0]) / (1.0 if coal2 > 0.0 else Defs.COAL_SPENT), bb.crew.size(), int(bb.d["crew"]), int(round(coal2 * 100)), " (spent: a third as fast)" if coal2 <= 0.0 else (" (running low)" if coal2 < Defs.SOIL_LOW else "")]
 			elif bb.kind == "ore_crusher":
-				var bi: Dictionary = Defs.BATTERY["blue" if game.blue_energy(e.team) else "yellow"]
+				var blue := game.blue_energy(e.team)
+				var bi: Dictionary = Defs.BATTERY["blue" if blue else "yellow"]
 				var ol := game.deposit_left(bb)
 				var q := 1.0 if ol > 0.0 else float(Defs.DEPOSIT["spent"])
-				info = "Ore: %d%% nearby%s · %s batteries: %d ore + %.1f per second on the road (they burst after %d s)" % [int(round(ol * 100)),
-					" (spent: a quarter)" if ol <= 0.0 else (" (running low)" if ol < Defs.SOIL_LOW else ""), "Blue" if game.blue_energy(e.team) else "Yellow",
-					int(round(float(bi["base"]) * float(Defs.BATTERY["ore"]) * q)), float(bi["gain"]) * float(Defs.BATTERY["ore"]) * q, int(bi["overload"])]
+				info = "Ore: %d%% nearby%s · %s batteries: %d ore; after %d s on the road they lose %d%% a second" % [int(round(ol * 100)),
+					" (spent: a quarter)" if ol <= 0.0 else (" (running low)" if ol < Defs.SOIL_LOW else ""), "Blue" if blue else "Yellow",
+					int(round(Defs.battery_charge(blue, 0.0) * float(Defs.BATTERY["ore"]) * q)), int(Defs.BATTERY["fresh"]), int(round(float(bi["decay"]) * 100))]
 			elif bb.kind == "brood_pen":
 				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
@@ -1402,7 +1427,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
 		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
 		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. One of the gun's 8 shots.",
-		"STORM": "Static storm: a ring of lightning on a spot for 3 s. Everything inside is stunned, your own units too, and enemies take damage. Costs 70 charge; the Stormcaller recharges only inside a Clockwork field.",
+		"STORM": "Static storm: a ring of lightning (2.5-tile radius) on a spot for 2.5 s. Everything inside is stunned, your own units too; it does no damage: hit them while they stand. Costs 70 charge and 2 stored batteries; the Stormcaller recharges only inside a Clockwork field.",
 		"HARVEST": "Harvest the fallen: the grubs stay here and wrap every body nearby (friend or foe) in a cocoon, carrying it to a Hive as essence. Veterans hold more. Bodies rot away after 2 minutes.",
 		"SACRIFICE": "Sacrifice: the selected Brood creatures (not grubs) go to the nearest Brood Pen and are offered up there, each for 12% of its biomass cost as essence (a Raptor 3, a Spitter 5, a Brute 18). Turn spare biomass into essence for Skywings, Bloaters, Brutes and Spore Mothers.",
 		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
@@ -1414,6 +1439,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"UNLOAD": "Unload: tap where to drop them. The balloon flies there and lets everyone off on the nearest open ground (over a cliff edge too). Tap the balloon, or DROP HERE, to let them off where it is.",
 		"DROP HERE": "Let everyone off right below the balloon.",
 		"COURIER": "Courier (automatic, glowing = on): idle Ornithopters fetch a charged battery from an energy building and wind up constructs that ran down (shut-down ones first). Click to switch on or off.",
+		"BRACE": "Brace (glowing = braced): the Bulwark plants its tower shield. It can't move (a move order lifts it), its armour goes up to 7, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead. Its lance still pokes at anything in reach.",
 		"OVERLOAD": "Overload: tap one of your constructs. The Ornithopter dumps its battery into it: +50% damage, +30% speed and faster attacks for 12 s, then it's left with 25% charge.",
 		"LAND": "Land (1.2 s): fight on the ground with a bite. Landed it walks, can't cross cliffs and anything can hit it; it can't attack flyers.",
 		"TAKE OFF": "Take off (1.2 s): fly again and hunt flyers with spines (it can't attack the ground while flying).",
