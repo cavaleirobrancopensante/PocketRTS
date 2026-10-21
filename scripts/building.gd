@@ -700,10 +700,10 @@ func _draw() -> void:
 	var local := Rect2(r.position - global_position, r.size)
 	if selected:
 		draw_rect(local.grow(3), Color(0.4, 1.0, 0.4, 0.8), false, 2.0)
-		if rally != Vector2.INF and team == game.human:
+		if rally != Vector2.INF and (team == game.human or game.demo):
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), rally - global_position, Color(0.4, 1, 0.4, 0.6), 2.0, 8.0)
 			draw_circle(rally - global_position, 4, Color(0.4, 1, 0.4, 0.9))
-		if worker_rally != Vector2.INF and team == game.human:
+		if worker_rally != Vector2.INF and (team == game.human or game.demo):
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), worker_rally - global_position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
 			draw_circle(worker_rally - global_position, 4, Color(1, 0.85, 0.3, 0.9))
 	var top := -sprite.texture.get_height() + 2.0 if sprite and sprite.texture else -r.size.y

@@ -3817,8 +3817,15 @@ func set_selection(list: Array) -> void:
 			selection.append(e)
 
 
+## The team your orders go to: none while watching computers play (you can select and
+## read anything, but never command it).
+func controlled_team() -> int:
+	return -1 if demo else human
+
+
 func selected_units() -> Array:
-	return selection.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.team == human)
+	var me := controlled_team()
+	return selection.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.team == me)
 
 
 ## The selected building, or the first of several of the same kind (they act together:
@@ -3829,11 +3836,12 @@ func selected_building() -> Building:
 
 
 func selected_buildings() -> Array:
-	if selection.is_empty() or not (selection[0] is Building) or selection[0].team != human:
+	var me := controlled_team()
+	if selection.is_empty() or not (selection[0] is Building) or selection[0].team != me:
 		return []
 	var k: String = selection[0].kind
 	for e in selection:
-		if not (e is Building) or e.team != human or e.kind != k or e.dead:
+		if not (e is Building) or e.team != me or e.kind != k or e.dead:
 			return []
 	return selection.duplicate()
 
@@ -3864,7 +3872,7 @@ func selected_producers() -> Array:
 	if selection.size() < 2:
 		return []
 	for e in selection:
-		if not (e is Building) or e.team != human or e.dead or not e.built or (e.d["trains"] as Array).is_empty():
+		if not (e is Building) or e.team != controlled_team() or e.dead or not e.built or (e.d["trains"] as Array).is_empty():
 			return []
 	return selection.duplicate()
 
