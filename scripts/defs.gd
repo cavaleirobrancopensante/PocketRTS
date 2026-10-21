@@ -475,7 +475,7 @@ const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "
 ## Cuirassier: after galloping this long, his next blow is a charge.
 const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
 ## Stormcaller: a storm of lightning that stuns everything inside (friends too).
-const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 96.0, "time": 3.0, "dps": 8.0, "cast": 0.7}
+const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 96.0, "time": 3.0, "dps": 4.0, "cast": 0.7}
 ## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
 ## inside it, up to a share of each unit's health per cloud; clouds don't stack.
 ## Bloater: its acid cloud
