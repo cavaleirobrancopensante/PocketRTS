@@ -49,7 +49,7 @@ Powder: each Musketeer carries 12 shots, each Cannon 8 and each Mortar 6 (the am
 
 Walls and gates: lay them in a line across your ramp (every main base sits on high ground with one way up); gates open for your side only.
 
-Musketeers need only a Barracks, but cost 10 powder: the 80 you start with buys eight, then build a Powder Mill to grind more. They shoot at range and stab with the bayonet by themselves when the enemy closes in (no button). Barracks: Musketeers and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. The Barracks also researches Armour (+1 armour, +20 health and breastplates for every Musketeer) and better locks, one after another: Matchlock, Flintlock, Caplock (reload 10%, 20%, 30% faster). Research goes into the production queue like a unit (CANCEL takes it back out, paid back); the next lock can be queued behind the one before.
+Musketeers need only a Barracks, but cost 10 powder: the 80 you start with buys eight, then build a Powder Mill to grind more. They shoot at range and stab with the bayonet by themselves when the enemy closes in (no button). Barracks: Musketeers and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. The Barracks also researches Armour (+1 armour, +20 health, breastplates) and better locks, one after another: Matchlock, Flintlock, Caplock (reload 10%, 20%, 30% faster); Armour and Flintlock need a Foundry. Research goes into the production queue like a unit (CANCEL takes it back out, paid back); the next lock can be queued behind the one before. Research only unlocks an upgrade: each Musketeer is refitted one by one. Select Musketeers and press ARMOUR or the best lock (they skip the ones between): each man who lacks it pays a small fee (Armour 12 gold + 4 powder; Matchlock 8, Flintlock 12, Caplock 16 gold) and walks to the nearest Barracks or Powder Wagon to be fitted (2 s). Another order calls it off, paid back. AUTO REFIT on a Barracks or a Powder Wagon (glowing = on) refits idle Musketeers within 3 tiles of it by itself. New Musketeers come out with everything researched, the fees added to their price. Your men show their refits over the health bar: a little shield for Armour, one gold pip per lock.
 
 Foundry: Field Cannons, Mortars, Powder Wagons and Observation Balloons: only a pilot aboard, they carry 4 Musketeers or Labourers. LOAD them (they walk under it and climb in; Musketeers shoot from the basket and refill from its 48-shot powder store), then UNLOAD anywhere, over cliffs too. Stopped within 2 tiles of a Powder Wagon, Mill, Barracks or Town Hall, the pilot hauls powder kegs up on a rope (RESTOCK flies it to one). Round shot flies over to where it's aimed, then ploughs through everyone in its line past that spot, your own men too: a selected cannon shows that stretch, red over your men (it holds fire on its own while they're there; canister never holds). The Mortar must DEPLOY to fire; it lobs shells over men and walls 5 to 11 tiles away that burst over a wide area (friends too).
 
@@ -1402,7 +1402,9 @@ func _update_f11_hint() -> void:
 		if _f11_hint:
 			_f11_hint.visible = false
 		return
-	var full := bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.innerHeight >= screen.height - 2)", true))
+	# (Brave hides the real screen size from pages, so the size test alone never sees its
+	# F11: the display-mode query and "no browser frame around the page" catch it there)
+	var full := bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches || window.innerHeight >= screen.height - 2 || (window.outerHeight > 0 && window.outerHeight - window.innerHeight <= 1 && window.outerWidth - window.innerWidth <= 1 && window.innerHeight > 500))", true))
 	if _f11_hint == null:
 		var layer := CanvasLayer.new()
 		layer.layer = 30

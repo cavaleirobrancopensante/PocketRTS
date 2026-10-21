@@ -7,7 +7,12 @@ The model dir must contain kokoro-v1.0.onnx and voices-v1.0.bin from
 https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0 (keep them out of the repo).
 Needs: pip install kokoro-onnx soundfile librosa pyworld numba scipy
 
-Crown: Kokoro British voices + warmth EQ and room reverb (herald/general: deeper, slower, bigger hall).
+Crown: gruff adult men (soldiers and labourers). Deep, un-nasal Kokoro voices (blends of a British voice
+with a deeper one, spoken with British phonemes; Piper's British voices were tried and were less clear)
+-> gruff(): WORLD pitch shift
+down 2-4 semitones with the spectral envelope kept (formants only ~3% lower, so they stay human), a little
+jitter and breath for grit, +chest (150 Hz) and -nasal (1-2.5 kHz) EQ, soft saturation; then warmth and
+room reverb (herald: bigger hall). Median F0 of every Crown line lands around 85-125 Hz.
 Clockwork: Kokoro voice -> WORLD resynthesis with a flat monotone pitch, ring modulation, chorus and a
 metallic comb filter. Brood: units are synthesised creature calls (no words); the hive-mind lines are
 WORLD-whispered TTS (am_onyx, with a time-aligned bm_lewis whisper layer) at several pitch shifts with hiss.
@@ -61,11 +66,23 @@ def trim(x, db=-38, start_db=None, pre=0.01):
     return x[s:e]
 
 
+def kvoice(voice):
+    """A Kokoro voice name, or a blend "bm_george*0.6+am_onyx*0.4" (a mix of their style vectors)."""
+    if "+" not in voice:
+        return voice
+    style = 0
+    for part in voice.split("+"):
+        name, _, w = part.partition("*")
+        style = style + kokoro().get_voice_style(name) * float(w or 1.0 / len(voice.split("+")))
+    return style
+
+
 def tts(text, voice, speed=1.0, semis=0.0):
-    """Kokoro -> 44.1 kHz, trimmed. Raises speed automatically if the line gets too long."""
+    """Kokoro -> 44.1 kHz, trimmed. Raises speed automatically if the line gets too long.
+    A blend speaks with the accent of its first voice (bm_* British, am_* American)."""
     lang = "en-gb" if voice[0] == "b" else "en-us"
     for sp in [speed, speed * 1.12, speed * 1.25, speed * 1.4]:
-        y, sr = kokoro().create(text, voice=voice, speed=min(sp, 1.6), lang=lang)
+        y, sr = kokoro().create(text, voice=kvoice(voice), speed=min(sp, 1.6), lang=lang)
         y = resample_poly(np.asarray(y, dtype=np.float64), 147, 80)  # 24k -> 44.1k
         y = trim(y)
         if len(y) / SR <= MAX_LEN - 0.25:
@@ -99,6 +116,45 @@ def warm_room(x, rng, rt=0.35, wet=0.12, warmth=0.35):
     x = x + warmth * lp(x, 260)          # low-mid warmth
     x = x - 0.25 * hp(x, 7500)           # soften sibilance a touch
     return reverb(x, rng, rt=rt, wet=wet, pre=0.012, damp=5000)
+
+
+def peq(x, f0, gain_db, q):
+    """RBJ peaking EQ (one biquad)."""
+    from scipy.signal import lfilter
+    a_ = 10 ** (gain_db / 40)
+    w = 2 * np.pi * f0 / SR
+    al = np.sin(w) / (2 * q)
+    b = [1 + al * a_, -2 * np.cos(w), 1 - al * a_]
+    a = [1 + al / a_, -2 * np.cos(w), 1 - al / a_]
+    return lfilter(b, a, x)
+
+
+def gruff(x, rng, semis=-3.0, warp=0.97, grit=0.2, chest=5.0, nasal=-4.5):
+    """A gruffer, deeper man: WORLD pitch shift down `semis` with the spectral envelope kept (formants
+    lowered only by `warp`, a bigger chest, still human), f0 jitter and some breath (grit), then
+    +chest at ~150 Hz, -nasal around 1-2.5 kHz and soft saturation."""
+    import pyworld as pw
+    xs = np.ascontiguousarray(x.astype(np.float64))
+    f, t = pw.harvest(xs, SR, f0_floor=55, f0_ceil=400, frame_period=5.0)
+    sp = pw.cheaptrick(xs, f, t, SR)
+    ap = pw.d4c(xs, f, t, SR)
+    n = len(f)
+    jit = 1 + 0.015 * grit / 0.2 * np.interp(np.arange(n), np.linspace(0, n, max(2, n // 4)),
+                                             rng.uniform(-1, 1, max(2, n // 4)))
+    f2 = np.where(f > 0, f * 2 ** (semis / 12) * jit, 0.0)
+    if warp != 1.0:
+        k = np.arange(sp.shape[1])
+        src = np.minimum(k / warp, sp.shape[1] - 1)
+        sp = np.array([np.interp(src, k, row) for row in sp])
+    hi = np.linspace(0, 1, ap.shape[1]) > 0.06            # above ~1.3 kHz: a little more breath
+    ap = np.where(hi, np.clip(ap, 1e-6, 1) ** (1 - grit), ap)
+    y = pw.synthesize(f2, np.ascontiguousarray(sp), np.ascontiguousarray(ap), SR, 5.0)[:len(x)]
+    y = peq(y, 150, chest, 0.9)
+    y = peq(y, 1600, nasal, 0.8)
+    y = peq(y, 3600, 1.5, 1.2)            # keep the consonants clear
+    y = y / (np.max(np.abs(y)) + 1e-9)
+    sat = np.tanh(2.2 * y) / np.tanh(2.2)
+    return 0.55 * y + 0.45 * sat
 
 
 def herald(x, rng):
@@ -181,24 +237,28 @@ def hive(src, rng, dry_semis=-3):
 # ------------------------------------------------------------------ line tables
 
 CROWN_UNITS = {
-    # unit: (voice, speed, semitones, lines)
-    "labourer": ("bm_daniel", 1.05, 0.8, {
+    # unit: (voice or blend, speed, semitones for gruff(), lines)
+    "labourer": ("bm_daniel*0.5+am_onyx*0.5", 1.0, -2.0, {
         "select": ["Aye?", "Work to do?", "Hands ready."],
         "move": ["On my way.", "Right then.", "Going."],
         "attack": ["With a shovel?!", "If I must!"]}),
-    "pikeman": ("bm_lewis", 1.0, 0.0, {
+    "pikeman": ("bm_lewis*0.5+bm_george*0.5", 1.0, -3.0, {
         "select": ["Pikes ready.", "Hold the line!", "Yes, sir?"],
         "move": ["Forward.", "Marching.", "Steady pace."],
         "attack": ["Brace!", "Pikes down!"]}),
-    "musketeer": ("bm_fable", 1.05, 0.0, {
+    "musketeer": ("bm_george*0.6+am_echo*0.4", 1.05, -3.0, {
         "select": ["Powder dry.", "Loaded, sir.", "Musket ready."],
         "move": ["Moving out.", "By the left!", "Aye."],
         "attack": ["Present... fire!", "Take aim!"]}),
-    "cannon": ("bm_lewis", 0.95, -1.0, {
+    "cannon": ("bm_george*0.5+am_onyx*0.5", 0.95, -2.0, {
         "select": ["Gun crew ready.", "Where to, sir?", "Heavy, this."],
         "move": ["Push!", "Roll her out!", "Heave!"],
         "attack": ["Fire in the hole!", "Give them iron!"]}),
-    "missionary": ("bm_george", 0.85, -1.5, {   # calm older priest
+    "cuirassier": ("bm_daniel*0.4+am_michael*0.6", 1.05, -2.5, {   # horseman
+        "select": ["Mounted, sir.", "Sabres ready.", "Horse and steel."],
+        "move": ["Riding!", "At the gallop!", "Away!"],
+        "attack": ["Charge!", "Ride them down!"]}),
+    "missionary": ("bm_george", 0.85, -3.5, {   # calm older priest
         "select": ["Peace be with you.", "Who is hurt?", "I am here."],
         "move": ["I will go.", "Lead me.", "With faith."]}),
 }
@@ -318,7 +378,8 @@ def brood_line(unit, kind, i, rng):
     raise KeyError(unit)
 
 
-BROOD_UNITS = {"grub": ["select", "move"], "raptor": ["select", "move", "attack"],
+# (the Raptor's voice is the designer's lizard recording, cut by tools/audio/cut_lizard.sh)
+BROOD_UNITS = {"grub": ["select", "move"],
                "spitter": ["select", "move", "attack"], "brute": ["select", "move", "attack"],
                "skywing": ["select", "move", "attack"]}
 
@@ -357,11 +418,11 @@ def main(filters):
                 if not want(rel, filters):
                     continue
                 rng = seed(rel)
-                x = tts(text, voice, speed, semis)
-                if unit == "missionary":
+                if unit == "missionary":     # a calm man, less grit
+                    x = gruff(tts(text, voice, speed), rng, semis, grit=0.12)
                     x = warm_room(x, rng, rt=0.5, wet=0.12, warmth=0.25)
                 else:
-                    x = warm_room(x, rng)
+                    x = warm_room(gruff(tts(text, voice, speed), rng, semis), rng)
                 out_write(rel, x)
     # Clockwork units
     for unit, (voice, speed, f0, ring, lines) in CLOCK_UNITS.items():
@@ -396,7 +457,7 @@ def main(filters):
                 continue
             rng = seed(rel)
             if fac == "crown":
-                x = herald(tts(text, "bm_george", 0.9, -1.0), rng)
+                x = herald(gruff(tts(text, "bm_george", 0.9), rng, -4.0, grit=0.12), rng)
             elif fac == "brood":
                 x = hive(hive_tts(text, 0.85), rng)
             else:
@@ -410,7 +471,7 @@ def main(filters):
                 continue
             rng = seed(rel)
             if fac == "crown":
-                x = warm_room(tts(text, "bm_george", 0.95, -1.0), rng, rt=0.5, wet=0.14, warmth=0.45)
+                x = warm_room(gruff(tts(text, "bm_daniel", 0.95), rng, -3.0), rng, rt=0.5, wet=0.14, warmth=0.45)
             elif fac == "brood":
                 if text.startswith("Hss"):
                     d = 1.3

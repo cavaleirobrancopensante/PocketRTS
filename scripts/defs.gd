@@ -62,7 +62,7 @@ const POWDER := {"musketeer": 12, "cannon": 8, "mortar": 6, "refill": 2.0, "rang
 ## same way: 30 shots = 15 powder). Destroyed, it blows up: up to `blast` damage (scaled by the
 ## powder left, never under `blast_min`) within `radius` px, friends included.
 const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_load": 1.5, "runners": 2,
-	"blast": 120.0, "blast_min": 20.0, "radius": 96.0}
+	"blast": 170.0, "blast_min": 70.0, "radius": 110.0}
 ## Observation Balloon's powder store: `store` musket shots (full when it's rigged). The
 ## Musketeers in its basket top up from it (POWDER.refill shots a second). Hovering still within
 ## `reach` tiles of a Powder Wagon with powder left, or of a finished POWDER.from building, with
@@ -217,7 +217,7 @@ const UNITS := {
 	},
 	"musketeer": {
 		"tags": ["light"],
-		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 2,
+		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 1,
 		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks",
 		"anti_air": true, "faction": "crown", "about": "Line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 12 shots run dry; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Costs 10 powder: the Powder Mill grinds more. The Barracks researches Armour and better locks for it.",
 	},
@@ -271,7 +271,7 @@ const UNITS := {
 	},
 	"spitter": {
 		"tags": ["light"],
-		"name": "Spitters", "hp": 45, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
+		"name": "Spitters", "hp": 55, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
 		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
 		"acid": 3.0, "requires": ["warren", "brood_pen"], "cost2": 5, "anti_air": true, "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
@@ -405,7 +405,7 @@ const BUILDINGS := {
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains musketeers and (with a Foundry) cuirassiers. Researches Armour and better musket locks.",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains musketeers and (with a Foundry) cuirassiers. Researches Armour and better musket locks, and refits Musketeers with them (AUTO REFIT: idle ones nearby).",
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
@@ -510,27 +510,34 @@ const BUILDINGS := {
 
 
 ## Research: done once per player at a building (`at`), paid in the first resource (`cost`)
-## and the second (`cost2`), taking `time` seconds; `requires` another research first.
-## (`icon`: assets/icons/<icon>.png.)
-## Crown, at the Barracks: Armour (+`armor` and +`hp` for every Musketeer, those in the
-## field too, and the armoured look) and the musket locks, one after the other: each sets
-## the Musketeers' reload to `reload` of the base (the totals, not on top of each other).
+## and the second (`cost2`), taking `time` seconds; `requires` another research first,
+## `needs` a finished building of that kind. (`icon`: assets/icons/<icon>.png.)
+## Crown, at the Barracks: Armour and the musket locks only UNLOCK the upgrade. Each
+## Musketeer is then refitted one by one (REFIT): he walks to a Barracks or a Powder Wagon
+## and pays `fee` gold (+ `fee2` powder) there. Armour: +`armor` and +`hp` and the armoured
+## look. A lock sets his reload to `reload` of the base (the totals, not on top of each
+## other); a soldier refitted to a later lock skips the ones between and pays only its fee.
+## New recruits come out with everything researched, the fees added to their price.
 const RESEARCH := {
-	"armour": {"name": "Armour", "at": "barracks", "faction": "crown", "cost": 150, "cost2": 50, "time": 45.0,
-		"icon": "research_armour", "armor": 1, "hp": 20,
-		"about": "Breastplates and helmets for every Musketeer, those already in the field too: +1 armour, +20 health."},
-	"matchlock": {"name": "Matchlock", "at": "barracks", "faction": "crown", "cost": 100, "cost2": 25, "time": 35.0,
-		"icon": "research_matchlock", "reload": 0.9,
-		"about": "Better matchlocks: Musketeers reload 10% faster (and burn their powder faster)."},
-	"flintlock": {"name": "Flintlock", "at": "barracks", "faction": "crown", "cost": 150, "cost2": 50, "time": 45.0,
-		"icon": "research_flintlock", "reload": 0.8, "requires": "matchlock",
-		"about": "Flintlocks: Musketeers reload 20% faster than at the start (and burn their powder faster)."},
-	"caplock": {"name": "Caplock", "at": "barracks", "faction": "crown", "cost": 200, "cost2": 75, "time": 55.0,
-		"icon": "research_caplock", "reload": 0.7, "requires": "flintlock",
-		"about": "Percussion caps: Musketeers reload 30% faster than at the start (and burn their powder faster)."},
+	"armour": {"name": "Armour", "at": "barracks", "faction": "crown", "cost": 75, "cost2": 25, "time": 40.0,
+		"icon": "research_armour", "armor": 1, "hp": 20, "needs": "foundry", "fee": 12, "fee2": 4,
+		"about": "Breastplates and helmets: unlocks the ARMOUR refit (+1 armour, +20 health), 12 gold + 4 powder a man. New Musketeers come out armoured."},
+	"matchlock": {"name": "Matchlock", "at": "barracks", "faction": "crown", "cost": 50, "cost2": 10, "time": 30.0,
+		"icon": "research_matchlock", "reload": 0.9, "fee": 8,
+		"about": "Better matchlocks: unlocks the refit (reload 10% faster, powder burns faster), 8 gold a man. New Musketeers come out with it."},
+	"flintlock": {"name": "Flintlock", "at": "barracks", "faction": "crown", "cost": 75, "cost2": 25, "time": 40.0,
+		"icon": "research_flintlock", "reload": 0.8, "requires": "matchlock", "needs": "foundry", "fee": 12,
+		"about": "Flintlocks: unlocks the refit (reload 20% faster than at the start), 12 gold a man. New Musketeers come out with it."},
+	"caplock": {"name": "Caplock", "at": "barracks", "faction": "crown", "cost": 100, "cost2": 40, "time": 50.0,
+		"icon": "research_caplock", "reload": 0.7, "requires": "flintlock", "fee": 16,
+		"about": "Percussion caps: unlocks the refit (reload 30% faster than at the start), 16 gold a man. New Musketeers come out with it."},
 }
 ## The musket locks, in order.
 const LOCKS := ["matchlock", "flintlock", "caplock"]
+## Refitting a Musketeer: `time` s at a Barracks or a Powder Wagon (within `reach` px of
+## it). AUTO REFIT (a toggle on the Barracks and the Powder Wagon) sends idle Musketeers
+## within `auto` tiles of it, every `scan` s.
+const REFIT := {"time": 2.0, "reach": 20.0, "auto": 3, "scan": 1.0, "give_up": 40.0}
 
 
 ## Units whose art is still being finished: they can't be trained yet.

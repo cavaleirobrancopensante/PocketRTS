@@ -1819,18 +1819,20 @@ func add_gold(t: int, n: int) -> void:
 	stats[t]["gold"] += k
 
 
-func refund(t: int, k: String) -> void:
+## A queue entry paid back (`kit`: what a queued Musketeer was paid to come out with).
+func refund(t: int, k: String, kit: Dictionary = {}) -> void:
 	if Building.is_research(k):
 		var info: Dictionary = Defs.RESEARCH[k.substr(1)]
 		players[t]["gold"] += int(info["cost"])
 		add_res2(t, float(info.get("cost2", 0)))
 		stats[t]["spent"] -= int(info["cost"])
 		return
-	players[t]["gold"] += int(Defs.UNITS[k]["cost"])
+	var fee := kit_fee(kit)
+	players[t]["gold"] += int(Defs.UNITS[k]["cost"]) + fee[0]
 	if faction_of(t) == "clockwork":
 		give_batteries(t, int(Defs.UNITS[k].get("cost2", 0)))
 	else:
-		add_res2(t, int(Defs.UNITS[k].get("cost2", 0)))
+		add_res2(t, int(Defs.UNITS[k].get("cost2", 0)) + fee[1])
 
 
 ## Clockwork ENERGY: the full batteries waiting at the player's Clocktowers and Boilers.
@@ -1913,9 +1915,10 @@ func can_train(b: Building, k: String) -> String:
 	elif b.queue.size() >= 5:
 		return "Queue is full."
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
-	if players[b.team]["gold"] < int(u["cost"]):
+	var price := unit_price(b.team, k)
+	if players[b.team]["gold"] < price[0]:
 		return "Not enough %s." % res[0].to_lower()
-	if float(players[b.team]["res2"]) < int(u.get("cost2", 0)):
+	if float(players[b.team]["res2"]) < price[1]:
 		return "Not enough %s." % res[1].to_lower()
 	if u.has("per"):
 		var have := units.filter(func(x: Unit) -> bool: return x.team == b.team and not x.dead and x.kind == k).size()
@@ -1975,6 +1978,9 @@ func research_problem(b: Building, key: String) -> String:
 	var req: String = info.get("requires", "")
 	if req != "" and not has_tech(b.team, req) and not researching(b.team, req):
 		return "Research %s first." % Defs.RESEARCH[req]["name"]
+	var needs: String = info.get("needs", "")
+	if needs != "" and not _has_built(b.team, needs):
+		return "Needs a %s first." % Defs.BUILDINGS[needs]["name"]
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	if players[b.team]["gold"] < int(info["cost"]):
 		return "Not enough %s." % String(res[0]).to_lower()
@@ -1994,7 +2000,7 @@ func start_research(b: Building, key: String) -> String:
 	stats[b.team]["spent"] += int(Defs.RESEARCH[key]["cost"])
 	if b.queue.is_empty():
 		b.prod_t = 0.0
-	b.queue.append("@" + key)
+	b.add_entry("@" + key)
 	if mlog:
 		mlog.add("%s queued research: %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
 	return ""
@@ -2009,7 +2015,7 @@ func _drop_dependent_research(t: int, key: String) -> void:
 		for i in range(b.queue.size() - 1, -1, -1):
 			var k: String = b.queue[i]
 			if Building.is_research(k) and String(Defs.RESEARCH[k.substr(1)].get("requires", "")) == key:
-				b.queue.remove_at(i)
+				b.take_entry(i)
 				if i == 0:
 					b.prod_t = 0.0
 				refund(t, k)
@@ -2019,11 +2025,7 @@ func _drop_dependent_research(t: int, key: String) -> void:
 func research_done(b: Building, key: String) -> void:
 	players[b.team]["tech"][key] = true
 	var info: Dictionary = Defs.RESEARCH[key]
-	# what's already in the field gets it too (Armour; men in a balloon's basket are in
-	# `units` as well)
-	for u in units:
-		if u.team == b.team and not u.dead:
-			u.apply_tech()
+	# (only unlocked: the soldiers in the field are refitted one by one, REFIT)
 	if b.team == human:
 		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		notify("%s researched: %s" % [info["name"], what], true)
@@ -2031,17 +2033,185 @@ func research_done(b: Building, key: String) -> void:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
 
+# ------------------------------------------------------------------ Musketeer refits
+
+var _refit_t := 0.0
+
+
+## The best musket lock this player has researched ("" for none).
+func best_lock(t: int) -> String:
+	var best := ""
+	for k in Defs.LOCKS:
+		if has_tech(t, k):
+			best = k
+	return best
+
+
+## What a Musketeer trained now comes out with: everything researched.
+func kit_for_new(t: int) -> Dictionary:
+	return {"armour": has_tech(t, "armour"), "lock": best_lock(t)}
+
+
+## One refit's fee: [gold, powder].
+static func refit_fee(what: String) -> Array:
+	var info: Dictionary = Defs.RESEARCH[what]
+	return [int(info.get("fee", 0)), int(info.get("fee2", 0))]
+
+
+## The fees for a whole kit ({"armour": bool, "lock": key}); a lock costs only its own fee.
+static func kit_fee(kit: Dictionary) -> Array:
+	var f := [0, 0]
+	var parts: Array = []
+	if kit.get("armour", false):
+		parts.append("armour")
+	if Defs.RESEARCH.has(String(kit.get("lock", ""))):
+		parts.append(String(kit["lock"]))
+	for w in parts:
+		var e := refit_fee(w)
+		f[0] += e[0]
+		f[1] += e[1]
+	return f
+
+
+## A unit's price now: [first resource, second]. A Musketeer's includes the refit fees
+## for everything he comes out with.
+func unit_price(t: int, k: String) -> Array:
+	var u: Dictionary = Defs.UNITS[k]
+	var p := [int(u["cost"]), int(u.get("cost2", 0))]
+	if k == "musketeer" and t >= 0:
+		var f := kit_fee(kit_for_new(t))
+		p[0] += f[0]
+		p[1] += f[1]
+	return p
+
+
+## The refits this Musketeer can still get: "armour" and the best lock researched, when
+## he has neither it nor a later one (counting what he's already on his way to get).
+func refit_options(u: Unit) -> Array:
+	var out: Array = []
+	if u == null or u.kind != "musketeer" or u.dead or u.team < 0:
+		return out
+	if has_tech(u.team, "armour") and not u.armoured and not u.refit.has("armour"):
+		out.append("armour")
+	var bl := best_lock(u.team)
+	if bl != "" and Defs.LOCKS.find(bl) > u.lock_level(true):
+		out.append(bl)
+	return out
+
+
+func can_pay(t: int, fee: Array) -> bool:
+	return int(players[t]["gold"]) >= int(fee[0]) and float(players[t]["res2"]) >= float(fee[1])
+
+
+func pay_refit(t: int, fee: Array) -> void:
+	players[t]["gold"] -= int(fee[0])
+	players[t]["res2"] = float(players[t]["res2"]) - float(fee[1])
+	stats[t]["spent"] += int(fee[0])
+
+
+## A refit cancelled (another order, the place gone): the fee back, exactly.
+func refund_refit(t: int, fee: Array) -> void:
+	if t < 0 or t >= players.size():
+		return
+	players[t]["gold"] += int(fee[0])
+	players[t]["res2"] = float(players[t]["res2"]) + float(fee[1])
+	stats[t]["spent"] -= int(fee[0])
+
+
+## The nearest place to be refitted: a finished Barracks or a Powder Wagon of ours.
+func refit_place(t: int, p: Vector2) -> Entity:
+	var best: Entity = nearest_of(p, t, "barracks")
+	var bd := best.edge_distance(p) if best else INF
+	for u in units:
+		if u.team == t and u.kind == "powder_wagon" and not u.dead and not u.off_field and u.aboard == null:
+			var dd: float = u.position.distance_to(p)
+			if dd < bd:
+				bd = dd
+				best = u
+	return best
+
+
+## REFIT: these Musketeers pay `what`'s fee now and go to the nearest Barracks or Powder
+## Wagon to be fitted (those who have it already, or are on their way for it, are
+## skipped). Returns [how many went, why the others didn't ("" if none were held back)].
+func refit_order(list: Array, what: String, quiet := false) -> Array:
+	var n := 0
+	var why := ""
+	var t := -1
+	for u in list:
+		if not (u is Unit) or not is_instance_valid(u) or u.aboard != null or u.off_field or not refit_options(u).has(what):
+			continue
+		var place := refit_place(u.team, u.position)
+		if place == null:
+			why = "No Barracks or Powder Wagon to refit at."
+			break
+		var fee := refit_fee(what)
+		if not can_pay(u.team, fee):
+			why = "Not enough %s." % ("gold" if int(players[u.team]["gold"]) < int(fee[0]) else "powder")
+			break
+		t = u.team
+		pay_refit(u.team, fee)
+		u.add_refit(place, what, fee)
+		n += 1
+	if n > 0 and mlog and not quiet:
+		mlog.add("%s sent %d Musketeer%s to refit: %s" % [mlog.who(t), n, "" if n == 1 else "s", Defs.RESEARCH[what]["name"]])
+	return [n, why]
+
+
+## AUTO REFIT (on a Barracks or a Powder Wagon): idle Musketeers of ours close to it that
+## lack an upgrade go and get it there, if the fee can be paid.
+func _auto_refit() -> void:
+	var places: Array = []
+	for b in buildings:
+		if b.auto_refit and b.kind == "barracks" and b.built and not b.dead:
+			places.append(b)
+	for u in units:
+		if u.auto_refit and u.kind == "powder_wagon" and not u.dead and not u.off_field and u.aboard == null:
+			places.append(u)
+	if places.is_empty():
+		return
+	var reach := float(Defs.REFIT["auto"]) * Defs.TILE
+	var sent := {}
+	for u in units:
+		if u.kind != "musketeer" or u.dead or u.off_field or u.aboard != null or u.order != "idle" or u.target != null:
+			continue
+		var opts := refit_options(u)
+		if opts.is_empty():
+			continue
+		for pl in places:
+			if pl.team != u.team or pl.edge_distance(u.position) > reach:
+				continue
+			for w in opts:
+				var fee := refit_fee(w)
+				if can_pay(u.team, fee):
+					pay_refit(u.team, fee)
+					u.add_refit(pl, w, fee)
+					sent[u.team] = int(sent.get(u.team, 0)) + 1
+			break
+	if mlog:
+		for t in sent:
+			mlog.add("%s auto-refit: %d upgrade%s ordered" % [mlog.who(t), sent[t], "" if sent[t] == 1 else "s"])
+
+
+## (a Musketeer) refitted: a word over his head for the player.
+func refit_done(u: Unit, what: Array) -> void:
+	if u.team == human:
+		var names: Array = what.map(func(w: String) -> String: return "+" + String(Defs.RESEARCH[w]["name"]))
+		float_text(u.position + Vector2(0, -34), " ".join(names), Color(0.85, 0.9, 1.0))
+
+
 func train(b: Building, k: String) -> String:
 	var why := can_train(b, k)
 	if why != "":
 		return why
-	players[b.team]["gold"] -= int(Defs.UNITS[k]["cost"])
+	var price := unit_price(b.team, k)
+	players[b.team]["gold"] -= price[0]
 	if faction_of(b.team) == "clockwork":
-		spend_batteries(b.team, int(Defs.UNITS[k].get("cost2", 0)))
+		spend_batteries(b.team, price[1])
 	else:
-		add_res2(b.team, -int(Defs.UNITS[k].get("cost2", 0)))
-	stats[b.team]["spent"] += int(Defs.UNITS[k]["cost"])
-	b.queue.append(k)
+		add_res2(b.team, -price[1])
+	stats[b.team]["spent"] += price[0]
+	b.add_entry(k, kit_for_new(b.team) if k == "musketeer" else {})
 	if b.uses_eggs():
 		b.eggs -= 1
 		b.morph_t.append(0.0)
@@ -2051,18 +2221,40 @@ func train(b: Building, k: String) -> String:
 func cancel_train(b: Building) -> void:
 	if b.queue.is_empty():
 		return
+	var kit := b.kit_at(b.queue.size() - 1)
 	var k: String = b.queue.pop_back()
+	if b.kits.size() > b.queue.size():
+		b.kits.resize(b.queue.size())
 	if b.uses_eggs():
 		b.morph_t.pop_back()
 		b.eggs += 1
 	if b.queue.is_empty():
 		b.prod_t = 0.0
-	refund(b.team, k)
+	refund(b.team, k, kit)
 	if Building.is_research(k):
 		_drop_dependent_research(b.team, k.substr(1))
 
 
-func spawn_trained(b: Building, k: String) -> void:
+## Cancel one entry of the production line (a click on its picture in the unit card).
+func cancel_train_at(b: Building, i: int) -> void:
+	if i < 0 or i >= b.queue.size():
+		return
+	if i == b.queue.size() - 1:
+		cancel_train(b)
+		return
+	var k: String = b.queue[i]
+	var kit := b.take_entry(i)
+	if b.uses_eggs():
+		b.morph_t.remove_at(i)
+		b.eggs += 1
+	elif i == 0:
+		b.prod_t = 0.0               # the next one starts from scratch
+	refund(b.team, k, kit)
+	if Building.is_research(k):
+		_drop_dependent_research(b.team, k.substr(1))
+
+
+func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 	var r := b.rect()
 	var toward := b.rally if b.rally != Vector2.INF else r.get_center() + Vector2(0, r.size.y)
 	# Spawn on the free cell around the building closest to the rally point.
@@ -2090,6 +2282,8 @@ func spawn_trained(b: Building, k: String) -> void:
 		Sfx.voice(k, "select")
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+		if not kit.is_empty():
+			u.set_kit(kit)          # (a Musketeer paid to come out armoured, with a better lock)
 		if u.is_worker():
 			var site: Building = null
 			if b.dual_rally() and b.worker_rally_target is Building:
@@ -2476,12 +2670,18 @@ func _draw_swamp() -> void:
 	var t: Texture2D = tex("res://assets/tiles/swamp.png")
 	for team in 2:
 		var g: PackedByteArray = swamp[team]
+		# not on cliffs or ramps: the swamp hid the hillsides and slopes (the ground there
+		# still counts as swamp; it just isn't painted over)
+		var sh := PackedByteArray()
+		sh.resize(W * H)
+		for j in W * H:
+			sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 else 0
 		for i in W * H:
-			if g[i] == 1:
+			if sh[i] == 1:
 				var x := i % W
 				var y := i / W
-				var edge := (x > 0 and g[i - 1] == 0) or (x < W - 1 and g[i + 1] == 0) \
-					or (y > 0 and g[i - W] == 0) or (y < H - 1 and g[i + W] == 0)
+				var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
+					or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
 				swamp_layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
 
 
@@ -2897,7 +3097,7 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 			o.take_damage(dmg * bonus * (1.3 if to.length() < reach * 0.5 else 1.0), u)
 	if e.is_building():
 		e.take_damage(dmg * 0.6, u)
-	Sfx.play_any(["combat/cannon_attack", "cannon"], u.global_position)
+	Sfx.play_any(["combat/cannon_canister", "combat/cannon_attack", "cannon"], u.global_position)
 	spawn_effect("smoke", from + dir * 12.0, 0.9)
 	spawn_effect("smoke", from + dir * 30.0, 1.2).modulate = Color(1, 1, 1, 0.6)
 	# a spray of musket balls fanning out of the muzzle
@@ -3818,11 +4018,15 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 	fx.scale = Vector2(sc, sc)
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
 	if big:
-		spawn_effect("explosion", p + Vector2(0, -10), 1.4).scale = Vector2(1.6, 1.6)
-		for i in 3:
-			var sm := spawn_effect("smoke_big", p + Vector2(randf_range(-r, r) * 0.4, randf_range(-20, 0)), 0.8)
-			sm.scale = Vector2(1.0, 1.0)
-			sm.modulate.a = 0.75
+		spawn_effect("explosion", p + Vector2(0, -10), 1.4).scale = Vector2(2.2, 2.2)
+		for i in 4:
+			var a := TAU * i / 4.0 + randf() * 0.6
+			spawn_effect("explosion", p + Vector2(cos(a), sin(a) * 0.6) * r * 0.45, randf_range(1.0, 1.3)).scale = Vector2(1.2, 1.2)
+		for i in 6:
+			var sm := spawn_effect("smoke_big", p + Vector2(randf_range(-r, r) * 0.6, randf_range(-30, 10)), 0.8)
+			sm.scale = Vector2(1.3, 1.3)
+			sm.modulate.a = 0.8
+		Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
 	Sfx.play_any(["combat/cannon_hit", "boom"], p)
 	for u in units_near(p, r + 24.0):
 		if u == src or u.dead or u.off_field or u.is_air():
@@ -3830,7 +4034,7 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 		var dd: float = u.position.distance_to(p)
 		if dd > r + u.radius:
 			continue
-		u.take_damage(dmg * (1.0 - 0.5 * clampf(dd / r, 0.0, 1.0)), src)
+		u.take_damage(dmg * (1.0 - (0.3 if big else 0.5) * clampf(dd / r, 0.0, 1.0)), src)
 	for b in buildings.duplicate():
 		if not allied(b.team, src.team) and not b.dead and b.edge_distance(p) < r * 0.5:
 			b.take_damage(dmg, src)
@@ -4131,6 +4335,10 @@ func _physics_process(delta: float) -> void:
 	if _end_t <= 0.0:
 		_end_t = 1.0
 		_check_end()
+	_refit_t -= delta
+	if _refit_t <= 0.0:
+		_refit_t = float(Defs.REFIT["scan"])
+		_auto_refit()
 
 
 ## A player with no buildings left is out; the match ends when one side is left
@@ -4172,10 +4380,13 @@ func _check_end() -> void:
 # ------------------------------------------------------------------ selection & commands (used by input and HUD)
 
 func set_selection(list: Array) -> void:
-	# a unit you pick answers you (once per new pick)
+	# a unit or building you pick answers you (once per new pick)
 	for e in list:
-		if is_instance_valid(e) and e is Unit and e.team == human and not e.dead and not selection.has(e):
-			Sfx.voice(e.kind, "select")
+		if is_instance_valid(e) and (e is Unit or e is Building) and e.team == human and not e.dead and not selection.has(e):
+			if e is Building:
+				Sfx.building_selected(e.kind, e.d["faction"])
+			else:
+				Sfx.voice(e.kind, "select")
 			break
 	for e in selection:
 		if is_instance_valid(e):
@@ -4696,9 +4907,15 @@ func _draw_overlay() -> void:
 				var cc := c + Vector2i(x, y)
 				var free: bool = is_free(cc) and (demo or explored[idx(cc)] == 1) and (not needs_swamp(k) or swamp[human][idx(cc)] == 1) if in_map(cc) else false
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
-		var t: Texture2D = tex("res://assets/buildings/%s_built.png" % k)
+		var t: Texture2D = Building.farm_body("built") if k == "farm" else tex("res://assets/buildings/%s_built.png" % k)
 		var r := Rect2(Vector2(c) * T, Vector2(size) * T)
 		if k == "farm":
 			overlay.draw_texture(tex("res://assets/buildings/farm_field_young.png"), r.position, Color(1, 1, 1, 0.5) if ok else Color(1, 0.5, 0.5, 0.4))
-		var pos := Building.anchor(k, r) + Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
+		var pos := Building.anchor(k, r) + Building.body_offset(k, t)
 		overlay.draw_texture(t, pos, Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))
+		if k == "farm" and String(Building.FARM_ART["sails"]) != "":
+			# the windmill's sails, standing still
+			var st: Texture2D = tex(Building.FARM_ART["sails"])
+			var fw := st.get_width() / int(Building.FARM_ART["sail_frames"])
+			var hub: Vector2 = Building.anchor(k, r) + Vector2(Building.FARM_ART["hub"])
+			overlay.draw_texture_rect_region(st, Rect2(hub - Vector2(fw, st.get_height()) * 0.5, Vector2(fw, st.get_height())), Rect2(0, 0, fw, st.get_height()), Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))

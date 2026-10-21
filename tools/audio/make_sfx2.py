@@ -631,10 +631,8 @@ def clock_select_building(rng, v):
 
 # =================================================================== C. Combat — Crown
 
-@sfx("combat/musketeer_attack", 3)
-def musketeer_attack(rng, v):
-    return gunshot(rng, v, size=1.0 + 0.1 * v, d=1.1)
-
+# musketeer_attack, cannon_attack, cannon_canister and mortar_attack are recordings
+# (tools/audio/import_shots.py), not made here.
 
 @sfx("combat/pikeman_attack", 3)
 def pikeman_attack(rng, v):
@@ -648,17 +646,6 @@ def pikeman_attack(rng, v):
     out = place(w, scr * 0.5, 0.05)
     out = place(out, ring * 0.45, 0.06)
     return fit(out, d)
-
-
-@sfx("combat/cannon_attack", 2)
-def cannon_attack(rng, v):
-    d = 1.45
-    x = gunshot(rng, v, size=2.4, d=d)
-    car = mix(wood_hit(rng, 140, 0.25, 15) * 0.4, lp(noise(rng, 0.2), 500) * expenv(0.2, 18) * 0.3)
-    creak = lp(formants(np.where(rng.random(N(0.25)) > 0.993, 1.0, 0.0), [(700, 1), (1600, .5)], 20), 2500, 4) * 0.6
-    x = place(x, car, 0.22 + 0.03 * v)
-    x = place(x, creak, 0.28)
-    return fit(x, d)
 
 
 @sfx("combat/cannon_hit", 2)
@@ -1218,6 +1205,276 @@ def amb_volcanic(rng, v):
     bub = lp(fit(grains(rng, d, 0.5, (0.1, 0.25), 50, 120, src="bubble"), d), 600) * 0.4
     w = breeze(rng, d, 450, 0.05, 0.35)
     return rum + bub + w
+
+
+# =================================================================== F. Cuirassier (horse and sabre)
+
+def neigh(rng, d=0.9, p=1.0, scream=0.0):
+    """Horse whinny: a quavering call that leaps up and sinks, nasal formants, breath. scream>0: harsh."""
+    t = T(d)
+    u = t / d
+    f = p * (420 + 520 * np.sin(np.pi * np.clip(u * 1.6, 0, 1)) * (1 - 0.55 * u))   # leap up, sink
+    f = f * (1 + (0.06 + 0.05 * scream) * np.sin(2 * np.pi * (11 + 4 * u) * t))     # the whinny's trill
+    src = glottal(rng, f, jitter=0.03 + 0.05 * scream, shimmer=0.35, rough=0.25 + 0.6 * scream)
+    src = src + (0.35 + 0.5 * scream) * noise(rng, d)
+    v = formants(src, [(900 * p, 1.0), (1700 * p, 0.7), (2900 * p, 0.35)], 5)
+    v *= adsr(d, 0.04, 0.1, 0.85, d * 0.45)
+    if scream:
+        v = np.tanh(2.5 * v / (np.max(np.abs(v)) + 1e-9))
+    return v
+
+
+def hoof(rng, p=1.0, soft=1.0):
+    """One hoof on packed earth: a dull thump with a little grit."""
+    d = 0.09
+    th = np.sin(phase(expglide(130 * p, 60 * p, d))) * expenv(d, 45)
+    dirt = lp(noise(rng, d), 1600) * expenv(d, 70) * 0.5
+    grit = grains(rng, 0.06, 140, (0.002, 0.008), 900, 3500)[:N(0.06)] * 0.15
+    return place(th + dirt, grit, 0.004) * soft
+
+
+def gallop(rng, d, rate=2.3, p=1.0):
+    """Four-beat gallop (ta-ta-ta..dum), harness jingle and the horse's breath."""
+    out = np.zeros(N(d) + N(0.2))
+    t, k = 0.0, 0
+    while t < d:
+        for j, (off, g) in enumerate([(0.0, 0.75), (0.055, 0.6), (0.11, 0.9), (0.17, 1.0)]):
+            out = place(out, hoof(rng, p * rng.uniform(0.92, 1.08)) * g * rng.uniform(0.85, 1.0), t + off)
+        if k % 2 == 0:
+            out = place(out, metal_hit(rng, 5200 * rng.uniform(0.95, 1.05), 0.12, decay=40, bright=0.5) * 0.06, t + 0.11)
+        out = place(out, bp(noise(rng, 0.14), 300, 1500) * np.hanning(N(0.14)) * 0.12, t + 0.2)
+        t += 1 / rate
+        k += 1
+    out = out[:N(d)]
+    out *= np.minimum(1, T(d) / 0.015) * np.minimum(1, (d - T(d)) / 0.25)
+    return out
+
+
+def sabre_swing(rng, p=1.0):
+    return whoosh(rng, 0.2, 900 * p, 3200 * p, 3.0, 0.6)
+
+
+# (horse/whinny, the horse answering an order, is a recording: tools/audio/import_shots.py)
+
+@sfx("combat/cuirassier_move", 2, peak=-2.0)
+def cuirassier_move(rng, v):
+    return gallop(rng, 1.25, 2.3 + 0.2 * v, PV[v])
+
+
+@sfx("combat/cuirassier_attack", 3)
+def cuirassier_attack(rng, v):
+    """Sabre: a swing, the steel biting (ring and a meaty thud)."""
+    p = PV[v]
+    sw = sabre_swing(rng, p) * 0.8
+    hit = metal_hit(rng, 2300 * p, 0.35, decay=14, bright=0.65) * 0.5
+    thud = lp(noise(rng, 0.12), 900) * expenv(0.12, 35) * 0.7
+    out = place(sw, thud, 0.14)
+    out = place(out, hit, 0.14)
+    return place(out, hoof(rng, 0.9) * 0.4, 0.02)
+
+
+@sfx("combat/cuirassier_death", 2)
+def cuirassier_death(rng, v):
+    """The horse screams and goes down: a heavy fall, the rider's armour clattering."""
+    p = PV[v]
+    out = neigh(rng, 0.65, 1.08 * p, scream=1.0) * 0.7
+    fall = lp(noise(rng, 0.5), 400) * expenv(0.5, 9, 0.01) * 1.4
+    fall += np.sin(phase(expglide(70, 38, 0.5))) * expenv(0.5, 10) * 1.2
+    out = place(out, fall, 0.55)
+    for k in range(4):
+        out = place(out, metal_hit(rng, rng.uniform(900, 2200), 0.25, decay=18, bright=0.6) * 0.25, 0.6 + k * 0.07)
+    return fit(out, 1.45)
+
+
+# =================================================================== G. Building selection (one per building)
+
+def creak(rng, d, f0=180, f1=120, q=18):
+    """Wooden creak: a slow stick-slip pulse train through a few wood resonances."""
+    t = T(d)
+    f = f0 + (f1 - f0) * t / d
+    ph = np.cumsum(f * (1 + 0.15 * smooth_rand(rng, d, 25, -1, 1))) / SR
+    pulses = np.diff(np.floor(ph), prepend=0) * rng.uniform(0.5, 1.0, N(d))
+    return formants(pulses, [(650, 1.0), (1400, 0.6), (2300, 0.3)], q) * adsr(d, 0.03, 0.05, 0.9, d * 0.3)
+
+
+def knock(rng, f0=210, n=2, gap=0.13):
+    out = np.zeros(1)
+    for k in range(n):
+        out = place(out, wood_hit(rng, f0 * rng.uniform(0.97, 1.03), 0.12, 38), k * gap)
+    return out
+
+
+def squelch(rng, d, p=1.0, wet=1.0):
+    t = T(d)
+    sl = svf_bp(noise(rng, d), (250 + 700 * np.exp(-t * 9)) * p, 4) * expenv(d, 7, 0.01)
+    bub = fit(grains(rng, d, 90 * wet, (0.015, 0.05), 90 * p, 320 * p, src="bubble"), d) * 0.7
+    return sl + bub
+
+
+def gear_tick(rng, n, rate, f0=3000, p=1.0):
+    return ratchet(rng, n / rate, rate, f0 * p, 300)
+
+
+SEL = {}
+
+
+def sel(kind):
+    def deco(fn):
+        SEL[kind] = fn
+        return sfx("select/" + kind, peak=-2.0)(fn)
+    return deco
+
+
+# --- Crown
+@sel("town_hall")
+def sel_town_hall(rng, v):      # the hall's bell, once
+    return fit(bell(rng, 330, 0.5, decay=6), 0.5) * np.minimum(1, (0.5 - T(0.5)) / 0.15)
+
+
+@sel("cottage")
+def sel_cottage(rng, v):        # a knock on the door
+    return knock(rng, 230, 2, 0.12)
+
+
+@sel("wall")
+def sel_wall(rng, v):           # stone on stone
+    out = np.zeros(1)
+    for k in range(2):
+        st = bp(noise(rng, 0.08), 500, 3000) * expenv(0.08, 60) + wood_hit(rng, 420, 0.08, 60) * 0.5
+        out = place(out, st, k * 0.09)
+    return fit(out, 0.3)
+
+
+@sel("gate")
+def sel_gate(rng, v):           # hinges and a bar dropped home
+    out = creak(rng, 0.3, 140, 95, 14) * 0.8
+    return place(out, mix(wood_hit(rng, 150, 0.15, 30), metal_hit(rng, 1400, 0.12, 30, 0.5) * 0.3), 0.27)
+
+
+@sel("barracks")
+def sel_barracks(rng, v):       # drum tap and a musket's rattle
+    out = drum(rng, 0.3, 160, 90) * 0.7 + fit(snare_roll(rng, 0.12, 30, 0.5, False), 0.3) * 0.5
+    rat = mix(metal_hit(rng, 2600, 0.08, 60, 0.6) * 0.3, wood_hit(rng, 600, 0.08, 50) * 0.5)
+    return place(out, rat, 0.18)
+
+
+@sel("foundry")
+def sel_foundry(rng, v):        # hammer on the anvil
+    return place(metal_hit(rng, 1250, 0.45, decay=9, bright=0.8), lp(noise(rng, 0.2), 500) * expenv(0.2, 20) * 0.3, 0.0)
+
+
+@sel("farm")
+def sel_farm(rng, v):           # a hoe in the soil and a rustle of wheat
+    hoe = mix(lp(noise(rng, 0.07), 1200) * expenv(0.07, 55), wood_hit(rng, 300, 0.06, 70) * 0.4)
+    rus = bp(noise(rng, 0.3), 2500, 7000) * smooth_rand(rng, 0.3, 30, 0, 1) ** 2 * np.hanning(N(0.3)) * 0.5
+    return place(place(np.zeros(N(0.4)), hoe, 0), rus, 0.08)
+
+
+@sel("powder_mill")
+def sel_powder_mill(rng, v):    # the mill's wooden creak
+    return creak(rng, 0.42, 110, 75, 16)
+
+
+@sel("church")
+def sel_church(rng, v):         # a small chapel bell
+    return fit(bell(rng, 620, 0.5, decay=5, bright=0.7), 0.5) * np.minimum(1, (0.5 - T(0.5)) / 0.15)
+
+
+# --- Brood
+@sel("hive")
+def sel_hive(rng, v):           # deep wet throb
+    return squelch(rng, 0.45, 0.6) + fx_heart(rng)
+
+
+def fx_heart(rng):
+    return fit(np.sin(phase(expglide(70, 45, 0.18))) * expenv(0.18, 18), 0.45) * 0.8
+
+
+@sel("clutch_mound")
+def sel_clutch_mound(rng, v):   # eggs shifting, a soft pop
+    out = squelch(rng, 0.3, 1.4, 0.6)
+    return place(out, bubble(rng, 520, 0.08) * 0.8, 0.12)
+
+
+@sel("warren")
+def sel_warren(rng, v):         # many small things scurrying and chittering
+    return fit(chitter(rng, 0.35, 45, 3600, 3), 0.4) * 0.8 + bp(noise(rng, 0.4), 1500, 5000) * smooth_rand(rng, 0.4, 40, 0, 1) * 0.15
+
+
+@sel("gorge_pit")
+def sel_gorge_pit(rng, v):      # a gulp and a growl
+    g = creature(rng, 0.35, 85, 65, (380, 900, 2200), 4, 0.9, 0.5) * adsr(0.35, 0.02, 0.1, 0.8, 0.12)
+    return place(squelch(rng, 0.25, 0.8), g * 0.7, 0.08)
+
+
+@sel("feeding_pit")
+def sel_feeding_pit(rng, v):    # slurping
+    return squelch(rng, 0.4, 1.0, 1.5)
+
+
+@sel("brood_pen")
+def sel_brood_pen(rng, v):      # a low chitter and a squelch
+    return mix(fit(chitter(rng, 0.3, 25, 1800, 1), 0.35), squelch(rng, 0.35, 0.9) * 0.6)
+
+
+@sel("spore_vent")
+def sel_spore_vent(rng, v):     # a wet puff of spores
+    t = T(0.35)
+    puff = bp(noise(rng, 0.35), 700, 4000) * np.exp(-t * 9) * np.minimum(1, t / 0.02)
+    return puff + fit(grains(rng, 0.3, 60, (0.01, 0.03), 300, 800, src="bubble"), 0.35) * 0.5
+
+
+@sel("roost")
+def sel_roost(rng, v):          # a high shriek-chitter overhead
+    return mix(fit(chitter(rng, 0.25, 35, 5200, 2), 0.3), screech(rng, 0.2, 3800, 4400, 0.4) * 0.4)
+
+
+# --- Clockwork
+@sel("clocktower")
+def sel_clocktower(rng, v):     # tick-tock and a chime
+    out = place(wood_hit(rng, 1800, 0.05, 120), wood_hit(rng, 1400, 0.05, 120), 0.14)
+    return place(out, fit(bell(rng, 880, 0.3, decay=8, bright=0.6), 0.3) * 0.5, 0.26)
+
+
+@sel("spring_tower")
+def sel_spring_tower(rng, v):   # a wound spring twangs
+    return place(gear_tick(rng, 3, 30, 3400), spring_boing(rng, 0.35, 220) * 0.8, 0.1)
+
+
+@sel("assembly_works")
+def sel_assembly_works(rng, v): # ratchet and a riveting clank
+    return place(gear_tick(rng, 6, 28, 2600), metal_hit(rng, 900, 0.25, decay=16, bright=0.7) * 0.7, 0.2)
+
+
+@sel("engine_hall")
+def sel_engine_hall(rng, v):    # big gear and a steam hiss
+    big = metal_hit(rng, 420, 0.4, decay=10, bright=0.6) * 0.8
+    return place(big, steam_hiss(rng, 0.3, 0.03, 6) * 0.4, 0.1)
+
+
+@sel("boiler")
+def sel_boiler(rng, v):         # steam valve hiss
+    return steam_hiss(rng, 0.45, 0.01, 5) * 0.9 + lp(noise(rng, 0.45), 200) * expenv(0.45, 6) * 0.4
+
+
+@sel("ore_crusher")
+def sel_ore_crusher(rng, v):    # heavy clank and gravel
+    cl = metal_hit(rng, 300, 0.3, decay=14, bright=0.5) + lp(noise(rng, 0.3), 700) * expenv(0.3, 15) * 0.5
+    return place(cl, grains(rng, 0.25, 160, (0.003, 0.01), 600, 3000)[:N(0.25)] * 0.4, 0.05)
+
+
+@sel("capacitor_works")
+def sel_capacitor_works(rng, v):  # electric hum and a click
+    t = T(0.4)
+    hum = bl_saw(np.full(N(0.4), 100.0)) * adsr(0.4, 0.05, 0.1, 0.8, 0.15) * 0.25
+    return place(bp(hum, 100, 3000) + crackle(rng, 0.4, 60, None, 2500) * 0.4, metal_hit(rng, 3800, 0.05, 150, 0.6) * 0.4, 0)
+
+
+@sel("charging_pylon")
+def sel_charging_pylon(rng, v):   # a rising whine and a zap
+    t = T(0.35)
+    wh = np.sin(phase(expglide(500, 1600, 0.35))) * (0.3 + 0.7 * t / 0.35) * 0.3
+    return place(wh, tesla_zap(rng, 0.15, 1.2) * 0.4, 0.2)
 
 
 # =================================================================== main

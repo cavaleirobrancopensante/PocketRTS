@@ -121,7 +121,8 @@ func _process_flash(delta: float) -> void:
 
 ## always: units show theirs all the time; buildings only when hurt or selected.
 func draw_health(top: float, width: float, always := false) -> void:
-	if hp >= max_hp and not selected and not always:
+	# only once hurt (until healed to full): no bars over healthy units and buildings
+	if hp >= max_hp:
 		return
 	var w := width
 	var r := Rect2(-w * 0.5, top, w, 4)

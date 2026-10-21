@@ -44,8 +44,8 @@ sys.argv = _argv
 DIRS = B.DIRS
 OUT = B.OUT
 BASKET_W = 46       # wicker width of the new basket, game px
-ENV_W = 60          # envelope width, game px (in proportion to the wider basket)
-RING_UP = 9         # the envelope's load ring this far above the tops of the basket's ropes
+ENV_W = 84          # envelope width, game px: its load ring about as wide as the basket's corner ropes
+RING_UP = 12        # the envelope's load ring this far above the tops of the basket's corner ropes
 BARREL_W = 9        # the hauled barrel's width, game px
 CAN_W, CAN_H, CAN_AX, CAN_AY = 200, 240, 100, 190
 
@@ -121,9 +121,22 @@ def basket_frames(fr, bgc, d):
     return out
 
 
-def env_frame(D, src, anim, tops):
+def back_rim(g):
+    """Row of the top of the basket's back rim (game image): the first row the opaque
+    basket spans most of its width."""
+    a = g[..., 3] > 0
+    w = np.ptp(np.flatnonzero(a.any(0))) + 1
+    for y in range(a.shape[0]):
+        xs = np.flatnonzero(a[y])
+        if xs.size and np.ptp(xs) + 1 >= w * 0.7 and a[y].sum() >= w * 0.5:
+            return y
+    return a.shape[0] // 2
+
+
+def env_frame(D, src, anim, tops, back):
     """The envelope of one body frame, its ring RING_UP above the rope tops, and rigging
-    from the ring to them. tops: rope tops on the work canvas."""
+    from the ring to them. tops: rope tops on the work canvas; back: the canvas row of the
+    basket's back rim, where the two back ropes are tied (behind the pilot)."""
     img = src["img"]
     lean, _ = B.lean_of(img)
     th = D.theta(lean, anim)
@@ -145,8 +158,8 @@ def env_frame(D, src, anim, tops):
     P = [(px + ex, py + ey) for px, py in pts]
     # two back ropes to the far rim (behind the basket), the two of the basket's own
     w = tops[1][0] - tops[0][0]
-    B.line(can, P[1], (tops[0][0] + w * 0.22, tops[0][1] + 3), B.ROPE_DARK)
-    B.line(can, P[2], (tops[1][0] - w * 0.22, tops[1][1] + 3), B.ROPE_DARK)
+    B.line(can, P[1], (tops[0][0] + w * 0.22, back), B.ROPE_DARK)
+    B.line(can, P[2], (tops[1][0] - w * 0.22, back), B.ROPE_DARK)
     B.line(can, P[0], tops[0], B.ROPE_COL)
     B.line(can, P[3], tops[1], B.ROPE_COL)
     B.paste(can, g, ex, ey)
@@ -237,10 +250,11 @@ def main():
             if tops is None:
                 tops = [(x + ox, y + oy) for x, y in rope_tops(g)]
                 rim = (CAN_AX, oy + fy)
+                back = oy + back_rim(g)
         bask[d], front[d] = bk, fk
         slots[d] = rim
         for anim, src in (("drift", D.drift_src), ("idle", D.idle_src)):
-            body[(anim, d)] = [env_frame(D, f, anim, tops) for f in src]
+            body[(anim, d)] = [env_frame(D, f, anim, tops, back) for f in src]
         death[d] = death_frames(D, fr)
     allf = [f for v in body.values() for f in v] + [f for v in death.values() for f in v] \
         + [f for v in bask.values() for f in v]
