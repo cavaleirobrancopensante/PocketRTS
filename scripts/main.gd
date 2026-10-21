@@ -150,27 +150,26 @@ func show_menu() -> void:
 	if Music.me:
 		Music.me.menu()
 	var root := _page()
-	var m := MarginContainer.new()
-	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right"]:
-		m.add_theme_constant_override("margin_" + side, 56)
-	for side in ["top", "bottom"]:
-		m.add_theme_constant_override("margin_" + side, 28)
-	root.add_child(m)
-	var h := HBoxContainer.new()
-	m.add_child(h)
-	var left := VBoxContainer.new()
-	left.alignment = BoxContainer.ALIGNMENT_CENTER
-	left.add_theme_constant_override("separation", 12)
-	left.custom_minimum_size.x = 400
-	h.add_child(left)
-	var title := UiStyle.heading("POCKET\nRTS", 84, UiStyle.TRIM)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	title.add_theme_constant_override("line_spacing", -18)
-	left.add_child(title)
-	var sub := UiStyle.text("The Crown  ·  The Brood  ·  The Clockwork", 20, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-	left.add_child(sub)
-	left.add_child(_gap(14))
+	# the title on top, the buttons along the bottom: the landscapes stay in view
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 24
+	v.offset_right = -24
+	v.offset_top = 18
+	v.offset_bottom = -16
+	v.add_theme_constant_override("separation", 10)
+	root.add_child(v)
+	var title := UiStyle.heading("POCKET RTS", 72, UiStyle.TRIM)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_constant_override("outline_size", 12)
+	title.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.85))
+	title.add_theme_constant_override("shadow_offset_y", 4)
+	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	v.add_child(title)
+	var sp := Control.new()
+	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(sp)
 	var save := SaveGame.peek()
 	if not save.is_empty() and save.get("version", "") == version:
 		var facs: Array = []
@@ -182,30 +181,28 @@ func show_menu() -> void:
 			cfg["resume"] = save
 			start(cfg))
 		UiStyle.primary(cont, Color("#2f6a8a"))
-		cont.custom_minimum_size = Vector2(360, 58)
-		left.add_child(cont)
-	var play := _button("SKIRMISH", func() -> void: show_skirmish())
-	UiStyle.primary(play)
-	play.custom_minimum_size = Vector2(360, 68)
-	play.add_theme_font_size_override("font_size", 30)
-	left.add_child(play)
-	for it in [["EDITOR", func() -> void: show_editor_menu()], ["HOW TO PLAY", func() -> void: show_help()], ["SETTINGS", func() -> void: show_settings()], ["MATCH LOGS", func() -> void: show_logs()]]:
+		cont.custom_minimum_size = Vector2(420, 54)
+		var crow := HBoxContainer.new()
+		crow.alignment = BoxContainer.ALIGNMENT_CENTER
+		crow.add_child(cont)
+		v.add_child(crow)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	v.add_child(row)
+	var items := [["EDITOR", func() -> void: show_editor_menu()], ["HOW TO PLAY", func() -> void: show_help()],
+		["SKIRMISH", func() -> void: show_skirmish()], ["SETTINGS", func() -> void: show_settings()], ["MATCH LOGS", func() -> void: show_logs()]]
+	for it in items:
 		var b := _button(it[0], it[1])
-		b.custom_minimum_size = Vector2(360, 54)
-		left.add_child(b)
-	left.add_child(_gap(8))
-	left.add_child(UiStyle.text("v%s  ·  playing on %s" % [version, "computer" if Settings.pc() else "mobile"], 15, Color(1, 1, 1, 0.35), HORIZONTAL_ALIGNMENT_LEFT))
-	var sp := Control.new()
-	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(sp)
-	# The three factions, each with its hall.
-	var cards := HBoxContainer.new()
-	cards.alignment = BoxContainer.ALIGNMENT_END
-	cards.add_theme_constant_override("separation", 14)
-	cards.size_flags_vertical = Control.SIZE_SHRINK_END
-	h.add_child(cards)
-	for f in ["crown", "brood", "clockwork"]:
-		cards.add_child(_faction_card(f))
+		if it[0] == "SKIRMISH":
+			UiStyle.primary(b)
+			b.custom_minimum_size = Vector2(260, 64)
+			b.add_theme_font_size_override("font_size", 28)
+		else:
+			b.custom_minimum_size = Vector2(196, 54)
+		row.add_child(b)
+	var ver := UiStyle.text("v%s  ·  playing on %s" % [version, "computer" if Settings.pc() else "mobile"], 14, Color(1, 1, 1, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
+	v.add_child(ver)
 
 
 ## Match logs: every finished match (and the one still going) with a COPY button, to
