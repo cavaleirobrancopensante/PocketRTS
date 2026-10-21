@@ -793,7 +793,14 @@ static func key_id(it: Array) -> String:
 	return lab
 
 
+const GRID_KEYS := ["Q", "W", "E", "R", "A", "S", "D", "F", "Z", "X", "C", "V"]
+
 func _with_keys(items: Array) -> Array:
+	# computer, grid keys: the key is the button's place on the 4 x 3 card, under the left hand
+	if Settings.pc() and Settings.grid_keys:
+		for i in items.size():
+			items[i].append(GRID_KEYS[i] if i < GRID_KEYS.size() else "")
+		return items
 	var used := {}
 	var chosen := {}
 	# the player's own keys and the fixed command keys first

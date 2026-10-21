@@ -464,6 +464,10 @@ func show_settings() -> void:
 				_web_fullscreen()
 			else:
 				_web_leave_fullscreen(), "ON", "OFF"))
+	if Settings.pc():
+		v.add_child(_toggle_row("COMMAND KEYS", func() -> bool: return Settings.grid_keys, func() -> void:
+			Settings.grid_keys = not Settings.grid_keys
+			Settings.save_all(), "GRID (QWER/ASDF/ZXCV)", "BY NAME"))
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
