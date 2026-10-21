@@ -93,8 +93,12 @@ func _ready() -> void:
 	_make_rotate_overlay()
 	Settings.load_all()
 	_load_lobby()
+	var crash := _crash_report()
+	_mark_running("menu")
 	if Settings.device == "":
 		show_device()
+	elif crash != "":
+		show_crash(crash)
 	else:
 		show_menu()
 
@@ -148,6 +152,73 @@ func show_device() -> void:
 		col.add_child(UiStyle.text(opt[2], 16, UiStyle.MUTED))
 		row.add_child(col)
 	v.add_child(UiStyle.text("You can change this later in Settings.", 15, Color(1, 1, 1, 0.4)))
+
+
+# ------------------------------------------------------------------ crash report
+## While the game runs, user://running.txt says so (and what it was doing); it goes when the
+## app is closed or sent to the background. If it's still there at start, the last session
+## died (the phone killed the app, or the engine crashed): the report is the end of that
+## session's engine log (Godot keeps the last few in user://logs), ready to copy.
+const RUNNING := "user://running.txt"
+
+func _mark_running(what: String) -> void:
+	var f := FileAccess.open(RUNNING, FileAccess.WRITE)
+	if f:
+		f.store_string("v%s  %s  %s\n" % [version, Time.get_datetime_string_from_system(), what])
+		f.close()
+	print("[session] v%s %s" % [version, what])
+
+
+func _crash_report() -> String:
+	if not FileAccess.file_exists(RUNNING):
+		return ""
+	var what := FileAccess.get_file_as_string(RUNNING).strip_edges()
+	DirAccess.remove_absolute(RUNNING)
+	# the previous session's engine log: the newest of the rotated ones (this session's is godot.log)
+	var logs := Array(DirAccess.get_files_at("user://logs")) if DirAccess.dir_exists_absolute("user://logs") else []
+	logs = logs.filter(func(f: String) -> bool: return f.begins_with("godot") and f.ends_with(".log") and f != "godot.log")
+	logs.sort()
+	var tail := "(no engine log was kept)"
+	if not logs.is_empty():
+		var lines := FileAccess.get_file_as_string("user://logs/" + String(logs[-1])).strip_edges().split("\n")
+		tail = "\n".join(lines.slice(maxi(0, lines.size() - 60)))
+	return "PocketRTS crash report (v%s, %s)\nDevice: %s, %s\nThe last session was doing: %s\n--- end of its engine log ---\n%s" % [
+		version, Time.get_datetime_string_from_system(), OS.get_name(), OS.get_model_name(), what, tail]
+
+
+func show_crash(report: String) -> void:
+	var root := _page()
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 40
+	v.offset_right = -40
+	v.offset_top = 20
+	v.offset_bottom = -20
+	v.add_theme_constant_override("separation", 10)
+	root.add_child(v)
+	v.add_child(UiStyle.heading("THE GAME CLOSED UNEXPECTEDLY", 34, UiStyle.TRIM))
+	v.add_child(UiStyle.text("Last time the game didn't close normally (a crash, or the phone shut it). COPY the report and paste it to the developer. Your match was autosaved: CONTINUE is on the menu.", 17, UiStyle.MUTED))
+	var box := TextEdit.new()
+	box.text = report
+	box.editable = false
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_theme_font_size_override("font_size", 13)
+	box.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	v.add_child(box)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	v.add_child(row)
+	var copy := _button("COPY REPORT", func() -> void: pass)
+	UiStyle.primary(copy)
+	copy.custom_minimum_size = Vector2(260, 56)
+	copy.pressed.connect(func() -> void:
+		DisplayServer.clipboard_set(report)
+		copy.text = "COPIED!")
+	row.add_child(copy)
+	var ok := _button("MENU", func() -> void: show_menu())
+	ok.custom_minimum_size = Vector2(200, 56)
+	row.add_child(ok)
 
 
 func show_menu() -> void:
@@ -1223,14 +1294,21 @@ func _autosave() -> void:
 		return
 	var cfg := last_cfg.duplicate(true)
 	cfg.erase("resume")
+	print("[save] %d:%02d  %d units, %d buildings  mem %d MB" % [int(game.clock) / 60, int(game.clock) % 60, game.units.size(), game.buildings.size(), int(OS.get_static_memory_usage() / 1048576)])
 	SaveGame.save(game, cfg)
 	if game.mlog:
 		_write_log("user://logs/unfinished.txt", game.mlog.text())
+	print("[save] done")
 
 
 func _notification(what: int) -> void:
 	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
 		_autosave()
+	# closed or sent to the background on purpose: not a crash (back in front: running again)
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST]:
+		DirAccess.remove_absolute(RUNNING)
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		_mark_running("resumed" if game == null else "resumed a match")
 
 
 func _process(delta: float) -> void:
@@ -1327,7 +1405,9 @@ func start(cfg: Dictionary = {}) -> void:
 	game.sandbox = cfg.get("sandbox", false)
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	game.rng.seed = int(cfg["seed"])
+	_mark_running("match on %s: %s (seed %d)%s" % [game.map_id, " vs ".join(facs), int(cfg["seed"]), " (continued)" if cfg.has("resume") else ""])
 	add_child(game)
+	print("[match] map ready")
 	sfx.camera = game.camera
 	for t in slots.size():
 		if t == human:
