@@ -831,11 +831,11 @@ func _produce() -> void:
 				var swarm := _foe() >= 0 and game.faction_of(_foe()) == "brood"
 				if game.clock > _lv([300.0, 200.0, 160.0]) or big >= 2:
 					var r := randf()
-					if tins < (4 if swarm else 6) + big or r < 0.12:
+					if tins < (3 + big / 2 if swarm else 3 + big / 3) or r < (0.12 if swarm else 0.06):
 						k = "windup_soldier"
-					elif arcs * (4 if swarm else 3) < big + 1 and game.can_train(w, "arc_thrower") == "":
+					elif arcs * (4 if swarm else 2) < big + 1 and game.can_train(w, "arc_thrower") == "":
 						k = "arc_thrower"
-					elif shields * (10 if swarm else 5) < big and game.can_train(w, "bulwark") == "":
+					elif shields * (10 if swarm else 4) < big and game.can_train(w, "bulwark") == "":
 						k = "bulwark"
 					else:
 						k = "thresher"
@@ -1063,13 +1063,13 @@ func _army() -> void:
 	if _clock():
 		var fields: Array = game.buildings.filter(func(b: Building) -> bool: return b.team == team and not b.dead and b.built and b.d.has("field"))
 		for u in army:
-			if u.wind < 0.2 and not u._in_field and not u.powered_down() and u.order != "move" and not fields.is_empty():
+			if u.wind < 0.2 and not u.runs_on_spring() and not u._in_field and not u.powered_down() and u.order != "move" and not fields.is_empty():
 				var best: Building = fields[0]
 				for f in fields:
 					if f.center().distance_to(u.position) < best.center().distance_to(u.position):
 						best = f
 				u.cmd_move(best.center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
-		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field)
+		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field or u.runs_on_spring())   # (wind-ups fight on; the escort cranks them)
 	var sup := _army_supply(army)
 	var swarm_min := 10 if strategy in ["rush", "air"] else 30
 	if _brood() and _attack_at < swarm_min:
@@ -1249,7 +1249,8 @@ func _follow_with_escort(army: Array) -> void:
 	for u in army:
 		c += u.position
 	c /= army.size()
-	while _escort.size() < 2:
+	var tins := army.filter(func(o: Unit) -> bool: return o.runs_on_spring()).size()
+	while _escort.size() < 2 + mini(tins / 6, 3):
 		var pick: Unit = null
 		for u in game.workers(team):
 			if not _escort.has(u) and u.order != "build":

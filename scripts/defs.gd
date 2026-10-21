@@ -283,14 +283,14 @@ const UNITS := {
 	},
 	"windup_soldier": {
 		"tags": ["light"],
-		"name": "Wind-up Soldiers", "hp": 50, "armor": 1, "speed": 66, "cost": 80, "time": 13.0, "supply": 1, "spawn": 3,
+		"name": "Wind-up Soldiers", "hp": 50, "armor": 2, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
 		"sight": 7, "range": 24, "damage": 7, "cooldown": 1.1, "aim": 0.15, "radius": 8, "from": "assembly_works",
 		"spring": true, "faction": "clockwork",
 		"about": "Cheap tin spearmen, three to an order. They run on a spring, not a battery: about 50 s away from a field and they run down and freeze until a Winder cranks them up again (or a field reaches them).",
 	},
 	"thresher": {
 		"tags": ["armored"],
-		"name": "Thresher", "hp": 280, "armor": 3, "speed": 54, "cost": 165, "time": 24.0, "supply": 3,
+		"name": "Thresher", "hp": 280, "armor": 3, "speed": 54, "cost": 165, "time": 21.0, "supply": 3,
 		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.0, "aim": 0.2, "radius": 18, "from": "assembly_works",
 		"wind_drain": 2.0, "faction": "clockwork",
 		"about": "Saw-armed brute. Its saws SPIN UP while it keeps cutting: from 40% to 160% damage over 3 s, and every blow bites the enemies round its target too. Strong against swarms that stand and fight, weak against anything that runs. A battery junkie: it runs down fast, faster still while spinning.",
@@ -304,8 +304,8 @@ const UNITS := {
 	},
 	"arc_thrower": {
 		"tags": ["armored"],
-		"name": "Arc Thrower", "hp": 140, "armor": 1, "speed": 54, "cost": 150, "time": 22.0, "supply": 3,
-		"sight": 9, "range": 210, "damage": 24, "cooldown": 2.6, "aim": 0.4, "radius": 14, "from": "assembly_works",
+		"name": "Arc Thrower", "hp": 160, "armor": 1, "speed": 54, "cost": 150, "time": 22.0, "supply": 3,
+		"sight": 9, "range": 210, "damage": 28, "cooldown": 2.6, "aim": 0.4, "radius": 14, "from": "assembly_works",
 		"requires": "boiler", "anti_air": true, "faction": "clockwork",
 		"about": "Throws balls of lightning at one enemy, ground or air. Every throw takes a good bite of its own wind: it runs down fast in a long fight away from a field.",
 	},
