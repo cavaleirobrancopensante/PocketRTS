@@ -3330,6 +3330,26 @@ func selected_buildings() -> Array:
 	return selection.duplicate()
 
 
+## The damaged building (or construct) of a team that a REPAIR tap at p means: the one under
+## the finger, else the most damaged of its finished buildings within 3 tiles (walls are small).
+func repair_target_near(p: Vector2, t: int, exclude: Entity = null) -> Entity:
+	var e := entity_at(p, false)
+	if e and e != exclude and e.team == t and not e.dead and e.hp < e.max_hp and (e.is_unit() or (e as Building).built):
+		return e
+	var best: Entity = null
+	var bf := 1.0
+	for b in buildings:
+		if b == exclude or b.team != t or b.dead or not b.built or b.hp >= b.max_hp:
+			continue
+		if b.edge_distance(p) > 3.0 * T:
+			continue
+		var f: float = b.hp / b.max_hp
+		if f < bf:
+			bf = f
+			best = b
+	return best
+
+
 ## Several of your finished buildings that train an army, of different kinds (the MAKE
 ## quick button), or [] when the selection is anything else.
 func selected_producers() -> Array:

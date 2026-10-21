@@ -266,7 +266,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_line_btn = "left"
 				_line_add(e.position)
 				return
-			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload":
+			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair":
 				_tap(e.position, false)
 				return
 		_lmb_down = true
@@ -461,6 +461,18 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 				game.group_move(units, p, false)
 			cancel_mode()
 			Sfx.play_any(["ui/click", "click"])
+			return
+		"repair":
+			var fixers := units.filter(func(u: Unit) -> bool: return u.d.get("repairs", false) or u.kind == "labourer")
+			var target := game.repair_target_near(p, game.human)
+			if target == null:
+				game.notify("Nothing damaged there to repair.")
+			else:
+				for u in fixers:
+					if u.can_repair(target):
+						u.cmd_repair(target)
+				Sfx.play_any(["ui/click", "click"])
+			cancel_mode()
 			return
 		"cast":
 			game.cast_order(units, cast_spell, p)

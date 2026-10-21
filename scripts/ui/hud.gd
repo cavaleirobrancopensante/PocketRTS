@@ -464,6 +464,10 @@ func _build_card() -> Array:
 				page = "build"
 				build_page = 0, true, "", ""])
 			_balloon_buttons(list, units)     # labourers can ride too
+			if units.any(func(u: Unit) -> bool: return u.d.get("repairs", false) or u.kind == "labourer"):
+				list.append(["repair", "REPAIR", func() -> void:
+					controls.mode = "repair"
+					toast("Tap a damaged building (or wall) to repair it."), true, "", ""])
 
 		else:
 			_ability_buttons(list, units)
@@ -698,7 +702,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
-	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "E", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
 	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}

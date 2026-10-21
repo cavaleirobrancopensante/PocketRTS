@@ -1881,6 +1881,13 @@ func _repair(delta: float) -> Vector2:
 	var e := order_target
 	if e == null or not is_instance_valid(e) or e.dead or e.team != team \
 			or (e.hp >= e.max_hp and not (e is Unit and (e as Unit).wind < 0.98)) or (e is Building and not e.built):
+		# done: carry on with the next damaged piece close by (a wall is many pieces)
+		var next: Entity = null
+		if e is Building and is_instance_valid(e):
+			next = game.repair_target_near((e as Building).center(), team, e)
+		if next and next is Building and can_repair(next):
+			cmd_repair(next)
+			return Vector2.ZERO
 		cmd_stop()
 		return Vector2.ZERO
 	if e.edge_distance(position) < radius + 20.0:
