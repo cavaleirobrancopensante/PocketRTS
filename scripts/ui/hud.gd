@@ -226,7 +226,7 @@ func _hud_has(p: Vector2) -> bool:
 		return false        # the end screen takes the clicks
 	if paused:
 		return true
-	if game.spectator and (view_open or view_rect().has_point(p)):
+	if game.spectating() and (view_open or view_rect().has_point(p) or prod_rect().has_point(p)):
 		return true         # (an open list takes the next press anywhere: it closes it)
 	for r in [top_rect(), mini_rect(), panel_rect(), card_rect(), drag_rect()]:
 		if (r as Rect2).has_point(p):
@@ -301,7 +301,11 @@ func _press(p: Vector2) -> void:
 		return
 	if game.over:
 		return
-	if game.spectator and (view_open or view_rect().has_point(p)):
+	if game.spectating() and not view_open and prod_rect().has_point(p):
+		prod_open = not prod_open
+		Sfx.play_any(["ui/click", "click"])
+		return
+	if game.spectating() and (view_open or view_rect().has_point(p)):
 		_view_press(p)
 		return
 	if mini_rect().has_point(p):
@@ -368,6 +372,75 @@ func _jump(p: Vector2) -> void:
 # ------------------------------------------------------------------ spectator VIEW dropdown
 
 var view_open := false
+var prod_open := false
+
+
+## Watching computers: the PRODUCTION button beside VIEW.
+func prod_rect() -> Rect2:
+	var v := view_rect()
+	return Rect2(v.end.x + 8, v.position.y, 160, v.size.y)
+
+
+## What each watched player is making: every unit and research in its queues (the one in
+## progress with its bar), eggs morphing, and buildings going up.
+func _draw_production(font: Font) -> void:
+	var pr := prod_rect()
+	UiStyle.draw_button(self, pr, pr.has_point(_mouse()) and Settings.pc(), prod_open)
+	_text(UiStyle.bold_font(), pr.get_center() + Vector2(0, 6), "PRODUCTION" + ("  ▴" if prod_open else "  ▾"), 15, UiStyle.TEXT, 1)
+	if not prod_open or view_open:
+		return
+	var teams: Array = []
+	if game.view_team >= 0:
+		teams = [game.view_team]
+	else:
+		for t in game.players.size():
+			if not game.eliminated[t]:
+				teams.append(t)
+	const SZ := 34.0
+	const PER := 9
+	var w := PER * (SZ + 4) + 16
+	var x0 := _vs().x - w - 8
+	var y := pr.end.y + 8
+	# work out the rows first, then draw the panel behind them
+	var blocks: Array = []
+	var h := 8.0
+	for t in teams:
+		var items: Array = []           # [icon, progress 0..1 or -1, colour]
+		for b in game.buildings:
+			if b.team != t or b.dead:
+				continue
+			if not b.built:
+				items.append([b.kind, b.progress, Color(0.95, 0.75, 0.3)])
+				continue
+			var q: Array = b.queue
+			for i in q.size():
+				var res := Building.is_research(q[i])
+				var f := -1.0
+				if i == 0 or b.uses_eggs():
+					f = (b.morph_t[i] if b.uses_eggs() and i < b.morph_t.size() else b.prod_t) / Building.entry_time(q[i])
+				items.append([_research_icon(String(q[i]).substr(1)) if res else String(q[i]), f, Color(0.75, 0.55, 1.0) if res else Color(0.4, 0.75, 1.0)])
+		var rows := maxi(1, int(ceil(items.size() / float(PER))))
+		blocks.append([t, items])
+		h += 22 + rows * (SZ + 10)
+	UiStyle.draw_panel(self, Rect2(x0, y, w, h), UiStyle.accent(game.faction_of(maxi(game.view_team, 0))), 0.92)
+	y += 8
+	for bl in blocks:
+		var t: int = bl[0]
+		var items: Array = bl[1]
+		draw_rect(Rect2(x0 + 10, y + 3, 10, 12), game.team_colour(t))
+		_text(UiStyle.bold_font(), Vector2(x0 + 26, y + 14), "P%d %s" % [t + 1, Defs.FACTIONS[game.faction_of(t)]["name"]] + ("   (nothing in production)" if items.is_empty() else ""), 13, UiStyle.TEXT)
+		y += 22
+		for i in items.size():
+			var it: Array = items[i]
+			var r := Rect2(x0 + 10 + (i % PER) * (SZ + 4), y + (i / PER) * (SZ + 10), SZ, SZ)
+			draw_rect(r, Color(0, 0, 0, 0.35))
+			var ic := _icon(String(it[0]))
+			if ic:
+				draw_texture_rect(ic, r, false, Color.WHITE if float(it[1]) >= 0.0 else Color(1, 1, 1, 0.55))
+			if float(it[1]) >= 0.0:
+				draw_rect(Rect2(r.position.x, r.end.y + 2, SZ, 4), Color(0, 0, 0, 0.5))
+				draw_rect(Rect2(r.position.x, r.end.y + 2, SZ * clampf(float(it[1]), 0.0, 1.0), 4), it[2])
+		y += maxi(1, int(ceil(items.size() / float(PER)))) * (SZ + 10)
 
 
 ## Watching computers: the VIEW button under the clock; its list opens below it.
@@ -1079,7 +1152,7 @@ func _draw() -> void:
 	# Top bar: resource pills, supply, clock and the menu button. Watching computers play:
 	# the pills are the player whose eyes you're using; with all vision, a line per player.
 	var shown := game.human
-	if game.demo:
+	if game.spectating():
 		shown = game.view_team
 	var fac := game.faction_of(maxi(shown, 0))
 	var acc := UiStyle.accent(fac)
@@ -1144,8 +1217,9 @@ func _draw() -> void:
 		var sb := UiStyle.box(Color(0.1, 0.08, 0.06, 0.88 * a), Color(0.79, 0.64, 0.29, 0.6 * a), 2, 18, 0.0)
 		sb.draw(get_canvas_item(), mrr)
 		_text(UiStyle.bold_font(), Vector2(vs.x * 0.5, mrr.position.y + 25), _msg, 21, Color(1, 0.85, 0.65, a), 1)
-	if game.spectator:
+	if game.spectating():
 		_draw_view(font)
+		_draw_production(font)
 	if not paused:
 		_draw_countdown()
 	if paused:
@@ -1455,7 +1529,7 @@ func _draw_panel(font: Font) -> void:
 					draw_texture_rect(pic, pqr, false)
 				var pf: float = ps[i].hp / maxf(ps[i].max_hp, 1.0)
 				draw_rect(Rect2(pqr.position.x, pqr.end.y + 1, pqr.size.x * pf, 3), Color(0.3, 0.9, 0.3) if pf > 0.5 else Color(0.95, 0.4, 0.2))
-		if e is Building and e.team == game.human and not (e as Building).queue.is_empty():
+		if e is Building and (e.team == game.human or game.spectating()) and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
 				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else q[i])

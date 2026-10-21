@@ -3817,6 +3817,13 @@ func set_selection(list: Array) -> void:
 			selection.append(e)
 
 
+## Watching computers play: the only time the spectator tools (VIEW, PRODUCTION, other
+## players' resources, queues and rally points, their fog) exist. Never while you play a
+## side, so they can never be used against an opponent.
+func spectating() -> bool:
+	return demo and spectator != null
+
+
 ## The team your orders go to: none while watching computers play (you can select and
 ## read anything, but never command it).
 func controlled_team() -> int:

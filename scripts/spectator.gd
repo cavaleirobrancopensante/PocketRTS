@@ -59,6 +59,8 @@ func options() -> Array:
 
 
 func set_mode(m: String, t: int, quiet := false) -> void:
+	if not game.demo:
+		return              # (only ever while watching computers: never in a game you play)
 	if m != "all" and (t < 0 or t >= game.n_players()):
 		return
 	mode = m

@@ -700,10 +700,10 @@ func _draw() -> void:
 	var local := Rect2(r.position - global_position, r.size)
 	if selected:
 		draw_rect(local.grow(3), Color(0.4, 1.0, 0.4, 0.8), false, 2.0)
-		if rally != Vector2.INF and (team == game.human or game.demo):
+		if rally != Vector2.INF and (team == game.human or game.spectating()):
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), rally - global_position, Color(0.4, 1, 0.4, 0.6), 2.0, 8.0)
 			draw_circle(rally - global_position, 4, Color(0.4, 1, 0.4, 0.9))
-		if worker_rally != Vector2.INF and (team == game.human or game.demo):
+		if worker_rally != Vector2.INF and (team == game.human or game.spectating()):
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), worker_rally - global_position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
 			draw_circle(worker_rally - global_position, 4, Color(1, 0.85, 0.3, 0.9))
 	var top := -sprite.texture.get_height() + 2.0 if sprite and sprite.texture else -r.size.y
@@ -718,7 +718,7 @@ func _draw() -> void:
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * progress, 4), Color(0.95, 0.8, 0.3))
-	elif kind == "farm" and (team == game.human or game.demo):
+	elif kind == "farm" and (team == game.human or game.spectating()):
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * growth, 4), Color(0.95, 0.85, 0.3))
