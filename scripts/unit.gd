@@ -661,6 +661,10 @@ func take_damage(amount: float, from: Entity) -> void:
 
 ## Musketeers carried in the basket shoot: each with its own reload, range, damage and
 ## powder (topped up from the balloon's store), spreading their fire.
+## A Musketeer firing from a balloon's basket reaches this much further than on the ground.
+const BASKET_RANGE := 1.35
+
+
 func _basket_fire(delta: float) -> void:
 	var taken: Entity = null
 	for pi in passengers.size():
@@ -673,7 +677,7 @@ func _basket_fire(delta: float) -> void:
 		p.cooldown = maxf(p.cooldown - delta, 0.0)
 		if p.cooldown > 0.0 or stun_t > 0.0 or p.powder < 1.0:
 			continue
-		var rng := float(p.d["range"])
+		var rng := float(p.d["range"]) * BASKET_RANGE      # shooting down from the sky reaches further
 		var best: Entity = null
 		var bd := INF
 		for o in game.units_near(position, rng + 40.0):

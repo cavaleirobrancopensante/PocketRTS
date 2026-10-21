@@ -252,9 +252,9 @@ const UNITS := {
 	"balloon": {
 		"tags": ["light"],
 		"name": "Observation Balloon", "hp": 180, "armor": 0, "speed": 46, "cost": 125, "cost2": 20, "time": 25.0, "supply": 2,
-		"sight": 12, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 22, "from": "foundry",
+		"sight": 14, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 22, "from": "foundry",
 		"air": true, "no_attack": true, "faction": "crown",
-		"about": "A pilot and a basket for 4 Musketeers or Labourers: LOAD them and UNLOAD them anywhere, even over cliffs. Musketeers aboard shoot from the basket (at the ground or at flyers) and refill from its 48-shot powder store; hover it within 2 tiles of a Powder Wagon, Mill, Barracks or Town Hall and the pilot hauls up kegs (RESTOCK). Sees 12 tiles. Slow and fragile; the pilot doesn't fight.",
+		"about": "A pilot and a basket for 4 Musketeers or Labourers: LOAD them and UNLOAD them anywhere, even over cliffs. Musketeers aboard shoot from the basket (at the ground or at flyers) and reach 35% further from up there, and refill from its 48-shot powder store; hover it within 2 tiles of a Powder Wagon, Mill, Barracks or Town Hall and the pilot hauls up kegs (RESTOCK). Sees 14 tiles. Slow and fragile; the pilot doesn't fight.",
 	},
 	"grub": {
 		"tags": ["light"],
