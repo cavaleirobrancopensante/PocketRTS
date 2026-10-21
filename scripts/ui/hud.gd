@@ -729,10 +729,15 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
-	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "E", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
-	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "BRACE": "E", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
+	"LOAD": "F", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "U"}
+## Keys a left hand on the keyboard reaches easily (left side and the middle columns): names
+## only take letters from here, so nothing ends up far to the right (I, O, P, K, L).
+const NEAR_KEYS := "QWERTASDFGZXCVBYHNUJM"
+## Command keys that never move: everything else gives way to them.
+const MUST_KEYS := ["MOVE", "ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -803,36 +808,49 @@ func _with_keys(items: Array) -> Array:
 		return items
 	var used := {}
 	var chosen := {}
-	# the player's own keys and the fixed command keys first
+	var lab_of := func(it: Array) -> String: return String(it[1]).trim_prefix("> ").trim_prefix("~ ")
+	var named := func(it: Array) -> bool: return Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0])
+	# 1. the player's own keys and the must-have command keys (A attack, S stop, H hold, ...)
 	for i in items.size():
-		var it: Array = items[i]
-		var own := UiLayout.key_for(key_id(it))
-		var lab: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
-		var k: String = own if own != "" else String(FIXED_KEYS.get(lab, ""))
+		var own := UiLayout.key_for(key_id(items[i]))
+		var lab: String = lab_of.call(items[i])
+		var k: String = own if own != "" else (String(FIXED_KEYS[lab]) if MUST_KEYS.has(lab) else "")
 		if k != "" and not used.has(k):
 			used[k] = true
 			chosen[i] = k
-	# everything else takes the first free letter of its name
-	for i in items.size():
-		var it: Array = items[i]
-		var key: String = chosen.get(i, "")
-		if key == "":
-			var name: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
-			if Defs.UNITS.has(it[0]):
-				name = Defs.UNITS[it[0]]["name"].to_upper()
-			elif Defs.BUILDINGS.has(it[0]):
-				name = Defs.BUILDINGS[it[0]]["name"].to_upper()
-			for ch in name:
-				if ch >= "A" and ch <= "Z" and not used.has(ch):
-					key = ch
-					break
-			if key == "":
-				for ch in "QWERTYUIOPLKJFZCV":
-					if not used.has(ch):
+	# 2. units and buildings: a letter of their name; 3. the other commands' usual keys;
+	# 4. whatever is left: a letter of its label
+	for pass_i in 3:
+		for i in items.size():
+			if chosen.has(i):
+				continue
+			var it: Array = items[i]
+			var key := ""
+			if pass_i == 1:
+				var fk: String = String(FIXED_KEYS.get(lab_of.call(it), ""))
+				if fk != "" and not used.has(fk):
+					key = fk
+			elif (pass_i == 0) == bool(named.call(it)):
+				var name: String = lab_of.call(it)
+				if Defs.UNITS.has(it[0]):
+					name = Defs.UNITS[it[0]]["name"].to_upper()
+				elif Defs.BUILDINGS.has(it[0]):
+					name = Defs.BUILDINGS[it[0]]["name"].to_upper()
+				# the first letter of the name within reach, then the next ones
+				for ch in name:
+					if NEAR_KEYS.contains(ch) and not used.has(ch):
 						key = ch
 						break
-			used[key] = true
-		it.append(key)
+				if key == "":
+					for ch in NEAR_KEYS:
+						if not used.has(ch):
+							key = ch
+							break
+			if key != "":
+				used[key] = true
+				chosen[i] = key
+	for i in items.size():
+		items[i].append(chosen.get(i, ""))
 	return items
 
 

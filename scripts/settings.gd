@@ -8,7 +8,7 @@ static var device := ""
 static var drag_mode := "box"        # mobile: "box" = drag selects, "pan" = drag moves the view
 static var fullscreen := true         # web: play full screen (Esc no longer leaves it in Chrome/Edge)
 static var ui_size := 0               # 0 = automatic, else a percentage (100-200)
-static var grid_keys := true          # computer: command card keys by position (QWER / ASDF / ZXCV) instead of by name
+static var grid_keys := false         # computer: command card keys by position (QWER / ASDF / ZXCV) instead of by name
 static var _loaded := false
 
 
@@ -22,7 +22,7 @@ static func load_all() -> void:
 		drag_mode = cfg.get_value("input", "drag_mode", "box")
 		ui_size = cfg.get_value("input", "ui_size", 0)
 		fullscreen = cfg.get_value("input", "fullscreen", true)
-		grid_keys = cfg.get_value("input", "grid_keys", true)
+		grid_keys = cfg.get_value("input", "grid_keys", false)
 	apply()
 
 
