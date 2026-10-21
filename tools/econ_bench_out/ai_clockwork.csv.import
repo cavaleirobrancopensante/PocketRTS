@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://btxw78agky0ny"
+
+[deps]
+
+files=["res://tools/econ_bench_out/ai_clockwork.income.translation", "res://tools/econ_bench_out/ai_clockwork.income.translation", "res://tools/econ_bench_out/ai_clockwork.bank.translation", "res://tools/econ_bench_out/ai_clockwork.bank.translation", "res://tools/econ_bench_out/ai_clockwork.spent.translation", "res://tools/econ_bench_out/ai_clockwork.workers.translation", "res://tools/econ_bench_out/ai_clockwork.workers.translation", "res://tools/econ_bench_out/ai_clockwork.halls.translation", "res://tools/econ_bench_out/ai_clockwork.boiler.translation", "res://tools/econ_bench_out/ai_clockwork.ore.translation", "res://tools/econ_bench_out/ai_clockwork.spring.translation", "res://tools/econ_bench_out/ai_clockwork.charging.translation", "res://tools/econ_bench_out/ai_clockwork.crew.translation", "res://tools/econ_bench_out/ai_clockwork.supply.translation", "res://tools/econ_bench_out/ai_clockwork.supply.translation", "res://tools/econ_bench_out/ai_clockwork.army.translation", "res://tools/econ_bench_out/ai_clockwork.army.translation", "res://tools/econ_bench_out/ai_clockwork.deliveries.translation", "res://tools/econ_bench_out/ai_clockwork.avg.translation", "res://tools/econ_bench_out/ai_clockwork.avg.translation", "res://tools/econ_bench_out/ai_clockwork.overloads.translation", "res://tools/econ_bench_out/ai_clockwork.battery.translation"]
+
+source_file="res://tools/econ_bench_out/ai_clockwork.csv"
+dest_files=["res://tools/econ_bench_out/ai_clockwork.income.translation", "res://tools/econ_bench_out/ai_clockwork.income.translation", "res://tools/econ_bench_out/ai_clockwork.bank.translation", "res://tools/econ_bench_out/ai_clockwork.bank.translation", "res://tools/econ_bench_out/ai_clockwork.spent.translation", "res://tools/econ_bench_out/ai_clockwork.workers.translation", "res://tools/econ_bench_out/ai_clockwork.workers.translation", "res://tools/econ_bench_out/ai_clockwork.halls.translation", "res://tools/econ_bench_out/ai_clockwork.boiler.translation", "res://tools/econ_bench_out/ai_clockwork.ore.translation", "res://tools/econ_bench_out/ai_clockwork.spring.translation", "res://tools/econ_bench_out/ai_clockwork.charging.translation", "res://tools/econ_bench_out/ai_clockwork.crew.translation", "res://tools/econ_bench_out/ai_clockwork.supply.translation", "res://tools/econ_bench_out/ai_clockwork.supply.translation", "res://tools/econ_bench_out/ai_clockwork.army.translation", "res://tools/econ_bench_out/ai_clockwork.army.translation", "res://tools/econ_bench_out/ai_clockwork.deliveries.translation", "res://tools/econ_bench_out/ai_clockwork.avg.translation", "res://tools/econ_bench_out/ai_clockwork.avg.translation", "res://tools/econ_bench_out/ai_clockwork.overloads.translation", "res://tools/econ_bench_out/ai_clockwork.battery.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

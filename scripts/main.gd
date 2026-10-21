@@ -27,18 +27,20 @@ const HELP := {
 
 There are no resources on the map: each faction builds its own economy. Every Town Hall, Hive or Clocktower allows only so many economy structures nearby, so expanding to a new hall spot is how you grow, and the expansions are what you fight over.
 
-Area damage (canister, round shot, steam, spit blobs, storms) hurts your own units too: keep your men out of the blast.
+Area damage (canister, round shot, steam, spit blobs, storms, exploding powder) hurts your own units too: keep your men out of the blast.
 
 High ground: units below a cliff can't see up onto it, and ramps are the only way up. Rivers can only be crossed at the fords.
 
 Skirmish: up to four players. Each computer player has a PLAN (Balanced, Rush, Economy, Timing attack, Air rush for the Brood, or Random). Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
 	"CROWN": """THE CROWN: pike, shot and black powder.
 
-Labourers work Farms (up to 3 each): a farm ripens into a 350-gold harvest, faster with more hands. The Powder Mill makes black powder; muskets and cannons can't fire without it. Each Town Hall allows 4 Farms and 1 Powder Mill nearby.
+Labourers work Farms (up to 3 each): a farm ripens into a 350-gold harvest, faster with more hands. The Powder Mill makes black powder (musketeers, balloons and wagons cost some). Each Town Hall allows 4 Farms and 2 Powder Mills nearby.
+
+Powder: each Musketeer carries 12 shots and each Cannon 8 (the amber bar). A dry musketeer fixes bayonets by itself until it refills; a dry cannon can't fire. They refill within 3 tiles of a Powder Mill, Barracks or Town Hall (paid from the powder bank: 6 for a full musketeer; an empty bank makes them wait), or of a Powder Wagon (Foundry): it carries 120 shots for the army, fills up near those buildings (1 powder per 2 shots), and on SUPPLY two labourers run 30-shot kegs to it from the Mill. A wagon that's destroyed explodes (friends too), and so does a labourer killed with a keg: guard them.
 
 Walls and gates: lay them in a line across your ramp (every main base sits on high ground with one way up); gates open for your side only.
 
-Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons and Observation Balloons, which also carry 4 Musketeers, Pikemen or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
+Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons, Powder Wagons and Observation Balloons, which also carry 4 Musketeers, Pikemen or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
 
 Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some).

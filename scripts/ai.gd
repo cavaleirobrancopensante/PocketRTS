@@ -80,6 +80,8 @@ func _physics_process(delta: float) -> void:
 		_raid()
 		_balloon_drop()
 	_army()
+	if _crown():
+		_tend_wagon()
 	if difficulty >= 1:
 		_abilities()
 	if difficulty >= 2:
@@ -170,6 +172,10 @@ func _econ_build() -> void:
 	var order: Array = []
 	if _crown():
 		order = ["farm", "powder_mill"] if game.econ_count(team, "farm") >= 2 else ["farm"]
+		# a second mill per hall only later, and while powder runs short (early on the gold
+		# is for expanding, and its crew would rather farm)
+		if game.econ_count(team, "powder_mill") >= _halls().size() and (_res2() > 100.0 or game.clock < 420.0):
+			order.erase("powder_mill")
 	elif _brood():
 		order = ["feeding_pit"]
 		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
@@ -313,6 +319,8 @@ func _build_up() -> void:
 	var hall: String = _f()["hall"]
 	var full := true
 	for kind in _f()["econ"]:
+		if kind == "powder_mill" and game.econ_count(team, kind) >= _halls().size():
+			continue        # (the second mill per hall is optional)
 		if game.econ_count(team, kind) < game.econ_limit(team, kind):
 			full = false
 	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * (0.7 if _brood() else 1.0) * float(_s("expand"))
@@ -583,7 +591,8 @@ func _produce() -> void:
 	var short_powder := _res2() < 20.0
 	for b in _mine("barracks"):
 		if b.built and b.queue.size() < (3 if _gold() > 600 else 2):
-			var k := "musketeer" if randf() < (0.25 if short_powder else 0.6) and game.can_train(b, "musketeer") == "" else "pikeman"
+			# (more musketeers while powder piles up: it's what the powder is for)
+			var k := "musketeer" if randf() < (0.25 if short_powder else (0.75 if _res2() > 150.0 else 0.6)) and game.can_train(b, "musketeer") == "" else "pikeman"
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
 			if (horse < 3 or horse * 6 < army.size()) and randf() < 0.45 and game.can_train(b, "cuirassier") == "":
 				k = "cuirassier"
@@ -591,6 +600,16 @@ func _produce() -> void:
 	for f in _mine("foundry"):
 		if f.built and f.queue.size() < (2 if _gold() > 600 else 1) and cannons * 4 < army.size() + 2 and not short_powder:
 			game.train(f, "cannon")
+	# one Powder Wagon once there's a real firing line (6+ musketeers) to keep in powder
+	if _wagon() == null and army.filter(func(u: Unit) -> bool: return u.kind == "musketeer").size() >= 6:
+		var queued := false
+		for f in _mine("foundry"):
+			queued = queued or f.queue.has("powder_wagon")
+		if not queued:
+			for f in _mine("foundry"):
+				if f.built and f.queue.size() < 2 and game.can_train(f, "powder_wagon") == "":
+					game.train(f, "powder_wagon")
+					break
 	var balloons := army.filter(func(u: Unit) -> bool: return u.kind == "balloon").size()
 	for f in _mine("foundry"):
 		if f.built and f.queue.is_empty() and balloons * 8 < army.size() and _gold() > 350 and game.can_train(f, "balloon") == "":
@@ -620,8 +639,67 @@ func _army_supply(list: Array) -> int:
 	return n
 
 
+## Crown: our Powder Wagon (there's only ever one).
+func _wagon() -> Unit:
+	for u in game.units:
+		if u.team == team and not u.dead and u.kind == "powder_wagon":
+			return u
+	return null
+
+
+var _wagon_refill := false
+
+
+## The Powder Wagon follows a little behind the army (never in front), has SUPPLY on while
+## it's out in the field so labourers bring it kegs, and goes back to a Barracks, Mill or Town Hall to fill up when it's
+## nearly empty. Musketeers out of powder with nothing to fight fall back to it.
+func _tend_wagon() -> void:
+	var w := _wagon()
+	if w == null:
+		return
+	# keg runs only while it's out in the field (at home it fills from the buildings itself)
+	var away := w._powder_building() == null
+	if w.supplying != away:
+		w.set_supply(away)
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return u != w and not _raiders.has(u) and not u.is_air())
+	if w.powder < w.max_powder() * 0.25:
+		_wagon_refill = true
+	elif w.powder > w.max_powder() * 0.9:
+		_wagon_refill = false
+	if _wagon_refill:
+		if w._powder_building() == null and w.order != "move":
+			var best: Building = null
+			var bd := INF
+			for b in game.buildings:
+				if b.team == team and b.built and not b.dead and (Defs.POWDER["from"] as Array).has(b.kind):
+					var dd: float = b.edge_distance(w.position)
+					if dd < bd:
+						bd = dd
+						best = b
+			if best:
+				w.cmd_move(game.approach_point(best, w.position))
+		return
+	if army.is_empty():
+		return
+	var c := Vector2.ZERO
+	for u in army:
+		c += u.position
+	c /= army.size()
+	var halls := _halls()
+	var home: Vector2 = halls[0].center() if not halls.is_empty() else game.center_of_team(team)
+	var spot := c + (home - c).normalized() * 120.0 if home.distance_to(c) > 120.0 else home
+	if w.position.distance_to(spot) > 100.0 and (w.order != "move" or w.order_point.distance_to(spot) > 140.0):
+		w.cmd_move(spot)
+	if w.powder >= 6.0:
+		for u in army:
+			if u.kind == "musketeer" and u.powder < 1.0 and u.target == null and u.order != "move":
+				var dd: float = u.position.distance_to(w.position)
+				if dd > 70.0 and dd < 700.0:
+					u.cmd_move(w.position + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+
+
 func _army() -> void:
-	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u))
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon")
 	# Bloaters out of gas float home to fill up again (faster on the swamp)
 	for u in game.army(team):
 		if u.kind == "bloater" and u.deflate == "flat" and u.order != "move":
@@ -688,8 +766,13 @@ func _army() -> void:
 			_release_escort()
 			return
 		_wave_target = _enemy_base()
+		var wagon := _wagon() if _crown() else null
 		for u in army:
 			if u.order == "idle" and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
+				# a dry musketeer topping up at the wagon waits there until it can shoot again
+				if wagon and u.kind == "musketeer" and u.powder < float(Defs.POWDER["rearm"]) + 2.0 \
+						and wagon.powder >= 1.0 and u.position.distance_to(wagon.position) < 120.0 and u.target == null:
+					continue
 				u.cmd_move(_wave_target + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
 		if _clock():
 			_follow_with_escort(army)
@@ -941,18 +1024,16 @@ func _abilities() -> void:
 		_overloads()
 	if not _crown():
 		return
-	var powder := _res2()
 	for u in game.army(team):
 		if u.kind == "musketeer":
-			if powder < 4.0:
-				u.set_bayonet(true)
-			elif powder > 25.0:
-				# fix bayonets when the enemy is already on top of us
+			# (out of powder they fix bayonets by themselves) fix them when the enemy is
+			# already on top of us
+			if difficulty >= 2:
 				var close := 0
 				for o in game.units_near(u.position, 40.0):
-					if game.hostile(o.team, team) and not o.dead and float(o.d["range"]) < 50.0:
+					if game.hostile(o.team, team) and not o.dead and float(o.d["range"]) < 50.0 and float(o.d["damage"]) > 0.0:
 						close += 1
-				u.set_bayonet(close >= 2 and difficulty >= 2)
+				u.set_bayonet(close >= 2)
 		elif u.kind == "cannon":
 			var crowd := 0
 			var flyers := 0

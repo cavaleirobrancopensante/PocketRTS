@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c7akq1rbnyucx"
+
+[deps]
+
+files=["res://tools/econ_bench_out/ai_crown.income.translation", "res://tools/econ_bench_out/ai_crown.income.translation", "res://tools/econ_bench_out/ai_crown.bank.translation", "res://tools/econ_bench_out/ai_crown.bank.translation", "res://tools/econ_bench_out/ai_crown.spent.translation", "res://tools/econ_bench_out/ai_crown.workers.translation", "res://tools/econ_bench_out/ai_crown.workers.translation", "res://tools/econ_bench_out/ai_crown.halls.translation", "res://tools/econ_bench_out/ai_crown.farm.translation", "res://tools/econ_bench_out/ai_crown.powder.translation", "res://tools/econ_bench_out/ai_crown.cottage.translation", "res://tools/econ_bench_out/ai_crown.crew.translation", "res://tools/econ_bench_out/ai_crown.supply.translation", "res://tools/econ_bench_out/ai_crown.supply.translation", "res://tools/econ_bench_out/ai_crown.army.translation", "res://tools/econ_bench_out/ai_crown.army.translation", "res://tools/econ_bench_out/ai_crown.harvests.translation", "res://tools/econ_bench_out/ai_crown.farm.translation"]
+
+source_file="res://tools/econ_bench_out/ai_crown.csv"
+dest_files=["res://tools/econ_bench_out/ai_crown.income.translation", "res://tools/econ_bench_out/ai_crown.income.translation", "res://tools/econ_bench_out/ai_crown.bank.translation", "res://tools/econ_bench_out/ai_crown.bank.translation", "res://tools/econ_bench_out/ai_crown.spent.translation", "res://tools/econ_bench_out/ai_crown.workers.translation", "res://tools/econ_bench_out/ai_crown.workers.translation", "res://tools/econ_bench_out/ai_crown.halls.translation", "res://tools/econ_bench_out/ai_crown.farm.translation", "res://tools/econ_bench_out/ai_crown.powder.translation", "res://tools/econ_bench_out/ai_crown.cottage.translation", "res://tools/econ_bench_out/ai_crown.crew.translation", "res://tools/econ_bench_out/ai_crown.supply.translation", "res://tools/econ_bench_out/ai_crown.supply.translation", "res://tools/econ_bench_out/ai_crown.army.translation", "res://tools/econ_bench_out/ai_crown.army.translation", "res://tools/econ_bench_out/ai_crown.harvests.translation", "res://tools/econ_bench_out/ai_crown.farm.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

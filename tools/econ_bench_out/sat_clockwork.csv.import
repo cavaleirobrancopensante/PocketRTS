@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cbph46qrdajeh"
+
+[deps]
+
+files=["res://tools/econ_bench_out/sat_clockwork.at.translation", "res://tools/econ_bench_out/sat_clockwork.crew.translation", "res://tools/econ_bench_out/sat_clockwork.income.translation", "res://tools/econ_bench_out/sat_clockwork.income.translation", "res://tools/econ_bench_out/sat_clockwork.per.translation", "res://tools/econ_bench_out/sat_clockwork.per.translation", "res://tools/econ_bench_out/sat_clockwork.deliveries.translation", "res://tools/econ_bench_out/sat_clockwork.avg.translation", "res://tools/econ_bench_out/sat_clockwork.avg.translation", "res://tools/econ_bench_out/sat_clockwork.overloads.translation", "res://tools/econ_bench_out/sat_clockwork.batteries.translation", "res://tools/econ_bench_out/sat_clockwork.battery.translation", "res://tools/econ_bench_out/sat_clockwork.crews.translation", "res://tools/econ_bench_out/sat_clockwork.crusher.translation"]
+
+source_file="res://tools/econ_bench_out/sat_clockwork.csv"
+dest_files=["res://tools/econ_bench_out/sat_clockwork.at.translation", "res://tools/econ_bench_out/sat_clockwork.crew.translation", "res://tools/econ_bench_out/sat_clockwork.income.translation", "res://tools/econ_bench_out/sat_clockwork.income.translation", "res://tools/econ_bench_out/sat_clockwork.per.translation", "res://tools/econ_bench_out/sat_clockwork.per.translation", "res://tools/econ_bench_out/sat_clockwork.deliveries.translation", "res://tools/econ_bench_out/sat_clockwork.avg.translation", "res://tools/econ_bench_out/sat_clockwork.avg.translation", "res://tools/econ_bench_out/sat_clockwork.overloads.translation", "res://tools/econ_bench_out/sat_clockwork.batteries.translation", "res://tools/econ_bench_out/sat_clockwork.battery.translation", "res://tools/econ_bench_out/sat_clockwork.crews.translation", "res://tools/econ_bench_out/sat_clockwork.crusher.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

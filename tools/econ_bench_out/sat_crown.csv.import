@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://74vhuubriufx"
+
+[deps]
+
+files=["res://tools/econ_bench_out/sat_crown.at.translation", "res://tools/econ_bench_out/sat_crown.crew.translation", "res://tools/econ_bench_out/sat_crown.income.translation", "res://tools/econ_bench_out/sat_crown.income.translation", "res://tools/econ_bench_out/sat_crown.per.translation", "res://tools/econ_bench_out/sat_crown.per.translation", "res://tools/econ_bench_out/sat_crown.harvests.translation", "res://tools/econ_bench_out/sat_crown.farm.translation", "res://tools/econ_bench_out/sat_crown.mill.translation"]
+
+source_file="res://tools/econ_bench_out/sat_crown.csv"
+dest_files=["res://tools/econ_bench_out/sat_crown.at.translation", "res://tools/econ_bench_out/sat_crown.crew.translation", "res://tools/econ_bench_out/sat_crown.income.translation", "res://tools/econ_bench_out/sat_crown.income.translation", "res://tools/econ_bench_out/sat_crown.per.translation", "res://tools/econ_bench_out/sat_crown.per.translation", "res://tools/econ_bench_out/sat_crown.harvests.translation", "res://tools/econ_bench_out/sat_crown.farm.translation", "res://tools/econ_bench_out/sat_crown.mill.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

@@ -26,9 +26,29 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 const FARM_GROW := 40.0           # seconds to ripen with a full crew
 const FARM_BASE := 0.15           # share of that speed with nobody working it
 const FARM_YIELD := 280
-const MILL_RATE := 0.5            # powder per second per labourer at a Powder Mill
+const MILL_RATE := 0.35           # powder per second per labourer at a Powder Mill (2 mills x 3 per hall: 2.1/s)
 const START_POWDER := 80
-const POWDER_SHOT := {"musketeer": 1, "cannon": 3}
+## Personal powder: Musketeers and Cannons carry their own, in shots (one per shot, round
+## shot or canister alike). A dry Musketeer fixes bayonets by itself until it has `rearm`
+## shots again. They refill by themselves (`refill` shots a second) within `range` tiles of
+## one of their side's finished `from` buildings, paid from the powder bank at `cost` powder
+## a shot (a full musketeer: 6 powder; with the bank empty the refill waits), or of a Powder
+## Wagon with powder left (drawn from the wagon's store, already paid for: a cannon shot takes
+## 3 of the wagon's musket shots). Shots themselves don't touch the bank any more (the
+## Balloon's gunners still burn 1 a shot).
+const POWDER := {"musketeer": 12, "cannon": 8, "refill": 2.0, "range": 3.0, "rearm": 4,
+	"cost": {"musketeer": 0.5, "cannon": 1.5}, "from": ["powder_mill", "barracks", "town_hall"]}
+## Powder Wagon: holds `store` musket shots. Parked within POWDER.range tiles of a Powder Mill,
+## Barracks or Town Hall it fills `fill` shots a second, paid from the powder bank at
+## 1 powder per `per_powder` shots (the musket rate). SUPPLY: up to `runners` labourers carry
+## kegs from the nearest Powder Mill to it (`keg` shots a keg, loaded in `keg_load` s, paid the
+## same way: 30 shots = 15 powder). Destroyed, it blows up: up to `blast` damage (scaled by the
+## powder left, never under `blast_min`) within `radius` px, friends included.
+const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_load": 1.5, "runners": 2,
+	"blast": 120.0, "blast_min": 20.0, "radius": 96.0}
+## A labourer killed with a keg on his back: a small blast (friends included).
+## (Step 3, keg mines, will reuse the keg carry and Game.powder_blast.)
+const KEG := {"blast": 40.0, "radius": 48.0}
 # Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
 const PIT_TIME := 2.0             # seconds a grub feeds at the pit before hauling
 const FOOD_BASE := 6.5
@@ -69,7 +89,7 @@ const FACTIONS := {
 		"name": "The Crown", "hall": "town_hall", "worker": "labourer", "supply": "cottage",
 		"build": ["town_hall", "cottage", "farm", "powder_mill", "wall", "gate", "barracks", "foundry", "church"],
 		"start_workers": 5, "ready": true, "max_supply": 100,
-		"res": ["Gold", "Powder"], "econ": {"farm": 4, "powder_mill": 1},
+		"res": ["Gold", "Powder"], "econ": {"farm": 4, "powder_mill": 2},
 		"start": ["farm", "farm"],
 		"about": "Musketeers and cannons. Farms ripen into big harvests; muskets and cannons burn powder. Slow and strong when dug in.",
 	},
@@ -102,7 +122,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 2,
 		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks", "requires": "powder_mill",
-		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Needs a Powder Mill; each shot burns powder.",
+		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Needs a Powder Mill. Carries 12 shots; dry, it fixes bayonets until it refills near a Mill, Barracks, Town Hall or Powder Wagon.",
 	},
 	"pikeman": {
 		"tags": ["armored"],
@@ -115,7 +135,14 @@ const UNITS := {
 		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 38, "cost": 200, "time": 32.0, "supply": 4,
 		"sight": 8, "range": 430, "min_range": 80, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
 		"radius": 22, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
-		"about": "Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers.",
+		"about": "Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers. Carries 8 shots; refills near a Mill, Barracks, Town Hall or Powder Wagon.",
+	},
+	"powder_wagon": {
+		"tags": ["armored"],
+		"name": "Powder Wagon", "hp": 220, "armor": 1, "speed": 38, "cost": 100, "cost2": 30, "time": 25.0, "supply": 2,
+		"sight": 7, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 16, "from": "foundry",
+		"no_attack": true, "faction": "crown",
+		"about": "Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY sends 2 labourers with kegs from the Powder Mill. No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.",
 	},
 	"cuirassier": {
 		"tags": ["armored"],
@@ -238,7 +265,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 4 Farms and a Powder Mill nearby.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 4 Farms and 2 Powder Mills nearby.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -261,7 +288,7 @@ const BUILDINGS := {
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["cannon", "balloon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and rigs observation balloons. Lets the Barracks train cuirassiers. Needs a Barracks.",
+		"supply": 0, "sight": 7, "trains": ["cannon", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons, rigs observation balloons and builds powder wagons. Lets the Barracks train cuirassiers. Needs a Barracks.",
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
@@ -307,9 +334,9 @@ const BUILDINGS := {
 		"about": "Ripens into a 350-gold harvest. Up to 3 labourers make it grow faster.",
 	},
 	"powder_mill": {
-		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 5, "trains": [], "crew": 2, "faction": "crown",
-		"about": "Labourers grind black powder. Muskets and cannons can't fire without it.",
+		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 100, "time": 30.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 5, "trains": [], "crew": 3, "faction": "crown",
+		"about": "Up to 3 labourers grind black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Soldiers and wagons nearby refill here.",
 	},
 	"church": {
 		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
@@ -408,7 +435,7 @@ const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
-const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "powder": 2, "cone": 0.82, "vs_light": 1.5}
+const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "cone": 0.82, "vs_light": 1.5}
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.
 const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 24.0, "splash_dmg": 0.35}

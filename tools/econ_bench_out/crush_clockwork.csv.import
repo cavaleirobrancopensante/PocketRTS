@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://rdrncwm160hu"
+
+[deps]
+
+files=["res://tools/econ_bench_out/crush_clockwork.walk.translation", "res://tools/econ_bench_out/crush_clockwork.winders.translation", "res://tools/econ_bench_out/crush_clockwork.deliveries.translation", "res://tools/econ_bench_out/crush_clockwork.avg.translation", "res://tools/econ_bench_out/crush_clockwork.avg.translation", "res://tools/econ_bench_out/crush_clockwork.ore.translation", "res://tools/econ_bench_out/crush_clockwork.per.translation", "res://tools/econ_bench_out/crush_clockwork.overloads.translation", "res://tools/econ_bench_out/crush_clockwork.boiler.translation", "res://tools/econ_bench_out/crush_clockwork.batteries.translation"]
+
+source_file="res://tools/econ_bench_out/crush_clockwork.csv"
+dest_files=["res://tools/econ_bench_out/crush_clockwork.walk.translation", "res://tools/econ_bench_out/crush_clockwork.winders.translation", "res://tools/econ_bench_out/crush_clockwork.deliveries.translation", "res://tools/econ_bench_out/crush_clockwork.avg.translation", "res://tools/econ_bench_out/crush_clockwork.avg.translation", "res://tools/econ_bench_out/crush_clockwork.ore.translation", "res://tools/econ_bench_out/crush_clockwork.per.translation", "res://tools/econ_bench_out/crush_clockwork.overloads.translation", "res://tools/econ_bench_out/crush_clockwork.boiler.translation", "res://tools/econ_bench_out/crush_clockwork.batteries.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://do2g1k4q0dryl"
+
+[deps]
+
+files=["res://tools/econ_bench_out/pits_brood.walk.translation", "res://tools/econ_bench_out/pits_brood.food.translation", "res://tools/econ_bench_out/pits_brood.swamp.translation", "res://tools/econ_bench_out/pits_brood.loads.translation", "res://tools/econ_bench_out/pits_brood.food.translation", "res://tools/econ_bench_out/pits_brood.per.translation", "res://tools/econ_bench_out/pits_brood.cycle.translation", "res://tools/econ_bench_out/pits_brood.theory.translation"]
+
+source_file="res://tools/econ_bench_out/pits_brood.csv"
+dest_files=["res://tools/econ_bench_out/pits_brood.walk.translation", "res://tools/econ_bench_out/pits_brood.food.translation", "res://tools/econ_bench_out/pits_brood.swamp.translation", "res://tools/econ_bench_out/pits_brood.loads.translation", "res://tools/econ_bench_out/pits_brood.food.translation", "res://tools/econ_bench_out/pits_brood.per.translation", "res://tools/econ_bench_out/pits_brood.cycle.translation", "res://tools/econ_bench_out/pits_brood.theory.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

@@ -63,7 +63,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"charge": u.charge, "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying,
 			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
-			"sky": u.sky if u.sky != "to_land" else "air"}
+			"sky": u.sky if u.sky != "to_land" else "air",
+			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying}
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
@@ -148,6 +149,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.push_auto = bool(ud["push"])
 		u.spell_cd = float(ud["spell_cd"])
 		u.gas = float(ud.get("gas", 100.0))
+		u.powder = float(ud.get("pw", u.powder))      # (older saves: full)
+		u._auto_bayonet = bool(ud.get("ab", false))
+		u.supplying = bool(ud.get("sup", false))
 		u.facing = _to_v2(ud["f"])
 		u.kills = int(ud.get("kills", 0))
 		u.courier = bool(ud.get("courier", false))

@@ -112,6 +112,15 @@ var overclock_t := 0.0
 var _spark_t := 0.0
 var _hot := false
 static var _sky_ground := {}
+# Crown powder logistics
+var powder := 0.0               # Musketeer / Cannon: shots carried; Powder Wagon: shots in store
+var _pmax := 0.0                # how many it can hold (0: it doesn't use personal powder)
+var _powder_t := 0.0
+var _auto_bayonet := false      # Musketeer: fixed bayonets because it ran dry (muskets again once refilled)
+var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs from the Powder Mill)
+var _supply_t := 0.0
+var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
+var keg := false                # Labourer: carrying a powder keg (it blows up if he's killed)
 
 
 func is_unit() -> bool:
@@ -159,7 +168,7 @@ func is_air() -> bool:
 
 ## Can this unit attack that one at all?
 func can_hit(e: Entity) -> bool:
-	if d.get("medic", false) or e.untouchable():
+	if d.get("medic", false) or d.get("no_attack", false) or e.untouchable():
 		return false
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
 		return false            # a deflated Bloater, a Skywing landing or taking off
@@ -176,13 +185,120 @@ func can_hit(e: Entity) -> bool:
 	return true
 
 
-## Musketeer: fix bayonets (melee, no powder) or go back to muskets.
+## Musketeer: fix bayonets (melee, no powder) or go back to muskets. Out of powder, it keeps
+## its bayonets and goes back to muskets by itself once it has refilled.
 func set_bayonet(on: bool) -> void:
-	if kind != "musketeer" or (mode == "bayonet") == on:
+	if kind != "musketeer":
+		return
+	if on:
+		_auto_bayonet = false
+	elif powder < 1.0:
+		_auto_bayonet = true
+		return
+	if (mode == "bayonet") == on:
 		return
 	mode = "bayonet" if on else ""
 	phase = ""
 	target = null
+
+
+## A fighting unit (it gets a reload bar over its head; workers, medics and wagons don't).
+func has_attack() -> bool:
+	return not is_worker() and float(d["damage"]) > 0.0 and not d.get("medic", false) and not d.get("no_attack", false)
+
+
+## How far its weapon is through reloading: 0 just fired, 1 ready.
+func reload_frac() -> float:
+	if d.has("gunners"):
+		var least := INF
+		for c in gun_cd:
+			least = minf(least, float(c))
+		return 1.0 - clampf(least / float(d["cooldown"]), 0.0, 1.0)
+	if phase == "strike":
+		return 0.0
+	if phase != "":
+		return 1.0
+	return 1.0 - clampf(cooldown / maxf(_cooldown(), 0.01), 0.0, 1.0)
+
+
+## Shots of powder this unit can carry (a Powder Wagon: its whole store).
+func max_powder() -> float:
+	if kind == "powder_wagon":
+		return float(Defs.WAGON["store"])
+	return float(Defs.POWDER.get(kind, 0))
+
+
+## A finished Powder Mill, Barracks or Town Hall of ours within reach (refills for free).
+func _powder_building() -> Building:
+	var reach := float(Defs.POWDER["range"]) * Defs.TILE
+	for b in game.buildings:
+		if b.team == team and b.built and not b.dead and (Defs.POWDER["from"] as Array).has(b.kind) and b.edge_distance(position) < reach:
+			return b
+	return null
+
+
+## Personal powder: refill near a powder building or a stocked wagon; a Powder Wagon fills
+## its store near a building (paid from the bank) and calls labourers to bring kegs.
+func _powder_tick(delta: float) -> void:
+	_dispense_t = maxf(_dispense_t - delta, 0.0)
+	if kind == "musketeer" and phase == "":
+		if powder < 1.0 and mode != "bayonet":
+			mode = "bayonet"
+			_auto_bayonet = true
+			target = null
+			if team == game.human:
+				game.float_text(position + Vector2(0, -36), "out of powder: bayonets!", Color(1, 0.75, 0.4))
+		elif _auto_bayonet and mode == "bayonet" and powder >= float(Defs.POWDER["rearm"]):
+			mode = ""
+			_auto_bayonet = false
+			target = null
+	if kind == "powder_wagon" and supplying:
+		_supply_t -= delta
+		if _supply_t <= 0.0:
+			_supply_t = 1.0
+			game.call_runners(self)
+	_powder_t -= delta
+	if _powder_t > 0.0:
+		return
+	_powder_t = 0.5
+	var step := 0.5
+	if powder >= _pmax:
+		return
+	if kind == "powder_wagon":
+		if _powder_building() == null:
+			return
+		var room := minf(float(Defs.WAGON["fill"]) * step, _pmax - powder)
+		var bank := float(game.players[team]["res2"])
+		room = minf(room, bank * float(Defs.WAGON["per_powder"]))
+		if room <= 0.0:
+			if team == game.human:
+				game.powder_short()
+			return
+		game.players[team]["res2"] = bank - room / float(Defs.WAGON["per_powder"])
+		powder += room
+		return
+	var amount := minf(float(Defs.POWDER["refill"]) * step, _pmax - powder)
+	var cost := float(Defs.POWDER["cost"].get(kind, 0.5))      # powder a shot
+	if _powder_building() != null:
+		# from the stores: the bank pays; with the bank empty the refill waits
+		var bank := float(game.players[team]["res2"])
+		amount = minf(amount, bank / cost)
+		if amount <= 0.0:
+			if team == game.human:
+				game.powder_short()
+			return
+		game.players[team]["res2"] = bank - amount * cost
+		powder += amount
+		return
+	# from a wagon's store (counted in musket shots: a cannon shot takes 3)
+	var per := cost / float(Defs.POWDER["cost"]["musketeer"])
+	for o in game.units_near(position, float(Defs.POWDER["range"]) * Defs.TILE + 16.0):
+		if o.kind == "powder_wagon" and o.team == team and not o.dead and not o.off_field and o.powder > 0.0:
+			var take := minf(amount, o.powder / per)
+			o.powder -= take * per
+			o._dispense_t = 0.8
+			powder += take
+			return
 
 
 ## Cannon: round shot (long range, splash, smashes buildings) or canister (short range,
@@ -193,6 +309,15 @@ func set_hold_gas(on: bool) -> void:
 		return
 	mode = "hold" if on else ""
 	phase = ""
+
+
+## Powder Wagon: SUPPLY on: up to two labourers bring it kegs from the Powder Mill while it
+## has room for one. (Runners already carrying a keg still deliver it when it goes off.)
+func set_supply(on: bool) -> void:
+	if kind != "powder_wagon":
+		return
+	supplying = on
+	_supply_t = 0.0
 
 
 func set_canister(on: bool) -> void:
@@ -302,7 +427,7 @@ func _basket_fire(delta: float, taken: Entity) -> void:
 				best = o
 		if best == null:
 			continue
-		if not game.use_powder(team, int(Defs.POWDER_SHOT["musketeer"])):
+		if not game.use_powder(team, 1):       # from the bank, like the basket's own gunners
 			continue
 		taken = best
 		p.cooldown = float(p.d["cooldown"]) + randf_range(0.0, 0.3)
@@ -387,6 +512,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	hp = max_hp
 	if k == "stormcaller":
 		charge = float(Defs.STORM["max"]) * 0.5
+	_pmax = max_powder()
+	powder = _pmax
 	armor = d["armor"]
 	sight = d["sight"]
 	radius = d["radius"]
@@ -650,6 +777,10 @@ func _reset_work() -> void:
 	_wind_target = null
 	if sky == "to_land":
 		sky = "air"
+	if keg:
+		# given another job on the way: the keg goes back into the stores
+		keg = false
+		game.add_res2(team, _keg_cost())
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
@@ -1087,6 +1218,8 @@ func _physics_process(delta: float) -> void:
 	cooldown = maxf(cooldown - delta, 0.0)
 	push_cd = maxf(push_cd - delta, 0.0)
 	spell_cd = maxf(spell_cd - delta, 0.0)
+	if _pmax > 0.0:
+		_powder_tick(delta)
 	if kind == "cuirassier":
 		# a gallop builds up to a charge; standing about loses it
 		if velocity.length() > speed * 0.7:
@@ -1254,6 +1387,8 @@ func _physics_process(delta: float) -> void:
 			want = _courier(delta)
 		"overload":
 			want = _overload(delta)
+		"keg":
+			want = _keg_run(delta)
 	if deploys():
 		want = _tesla(want, delta)
 	if kind == "balloon" and not incoming.is_empty():
@@ -1271,7 +1406,8 @@ func _physics_process(delta: float) -> void:
 	if kind == "balloon":
 		extra += passengers.size() * 100000
 	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else 0, int(max_hp) + extra)
+		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
+		int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * ["packed", "deploying", "deployed", "packing"].find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
 	if key != _draw_key:
 		_draw_key = key
 		queue_redraw()
@@ -1477,6 +1613,13 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 	if phase == "":
 		if cooldown > 0.0 or stun_t > 0.0:
 			return
+		# out of powder: a gun can't fire (a dry Musketeer has fixed bayonets instead)
+		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
+			cooldown = 0.5
+			if team == game.human and Time.get_ticks_msec() > _hold_note:
+				_hold_note = Time.get_ticks_msec() + 5000
+				game.float_text(position + Vector2(0, -40), "Out of powder!", Color(1, 0.75, 0.4))
+			return
 		# area attacks hurt friends too: hold fire on our own, unless ordered to shoot
 		if order != "attack" and not game.aoe_worth_it(self, e):
 			cooldown = 0.4
@@ -1514,11 +1657,11 @@ func _strike(e: Entity) -> void:
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 		return
-	var powder := int(Defs.POWDER_SHOT.get(kind, 0))
-	if mode == "canister":
-		powder = int(Defs.CANISTER["powder"])
-	if powder > 0 and not game.use_powder(team, powder):
-		return    # no powder: the shot never goes off
+	# every musket or cannon shot uses one of the shots it carries
+	if _pmax > 0.0:
+		if powder < 1.0:
+			return    # no powder: the shot never goes off
+		powder -= 1.0
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
@@ -1840,6 +1983,78 @@ func _haul(pit: Building, delta: float) -> Vector2:
 	return _follow(delta)
 
 
+## Labourer on a keg run for a Powder Wagon with SUPPLY on: take a keg at the nearest Powder
+## Mill (paid from the powder bank), carry it to the wagon, and again while it has room.
+## (Step 3's keg mines will start from the same keg carry.)
+func cmd_keg(wagon: Unit) -> void:
+	if kind != "labourer":
+		return
+	_reset_work()
+	order = "keg"
+	order_target = wagon
+	work = "to_mill"
+	target = null
+
+
+func _keg_cost() -> float:
+	return float(Defs.WAGON["keg"]) / float(Defs.WAGON["per_powder"])
+
+
+func _keg_run(delta: float) -> Vector2:
+	var w := order_target as Unit
+	if w == null or not is_instance_valid(w) or w.dead:
+		cmd_stop()          # (a keg on his back goes back into the stores)
+		return Vector2.ZERO
+	var room := w.max_powder() - w.powder
+	if keg:
+		work = "to_wagon"
+		if position.distance_to(w.position) < radius + w.radius + 16.0:
+			keg = false
+			w.powder = minf(w.max_powder(), w.powder + float(Defs.WAGON["keg"]))
+			w._dispense_t = 0.8
+			if team == game.human:
+				game.float_text(position + Vector2(0, -30), "+%d shots" % int(Defs.WAGON["keg"]), Color(1, 0.85, 0.5))
+			path = PackedVector2Array()
+			work = "to_mill"
+			if not w.supplying or w.max_powder() - w.powder < float(Defs.WAGON["keg"]):
+				cmd_stop()
+			return Vector2.ZERO
+		# the wagon may be on the move: head straight for it when close, else path there
+		if position.distance_to(w.position) < 140.0 and game.line_clear(position, w.position):
+			path = PackedVector2Array()
+			return (w.position - position).normalized() * speed
+		if repath_t <= 0.0 or (path.is_empty() and not path_pending):
+			repath_t = 1.5
+			_request_path(w.position)
+		return _follow(delta)
+	if not w.supplying or room < float(Defs.WAGON["keg"]):
+		cmd_stop()
+		return Vector2.ZERO
+	var mill := game.nearest_of(position, team, "powder_mill")
+	if mill == null:
+		cmd_stop()
+		return Vector2.ZERO
+	if mill.edge_distance(position) < radius + 18.0:
+		path = PackedVector2Array()
+		facing = (mill.center() - position).normalized()
+		if work != "loading":
+			work = "loading"
+			work_t = float(Defs.WAGON["keg_load"])
+		work_t -= delta
+		if work_t <= 0.0:
+			if float(game.players[team]["res2"]) >= _keg_cost():
+				game.players[team]["res2"] = float(game.players[team]["res2"]) - _keg_cost()
+				keg = true
+				work = "to_wagon"
+			else:
+				work_t = 1.0      # wait for the mill to grind enough
+		return Vector2.ZERO
+	work = "to_mill"
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		_request_path(game.approach_point(mill, position))
+	return _follow(delta)
+
+
 ## Missionary: walk to the wounded soldier, take him off the field, bandage him and send
 ## him back at full health.
 var _patient: Unit = null
@@ -1979,6 +2194,19 @@ func die() -> void:
 	Sfx.play_any(["combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim(_death_anim(), true)
 	z_index = -1
+	# powder goes up: a keg on a labourer's back, or a whole Powder Wagon
+	if keg:
+		keg = false
+		game.powder_blast(self, position, float(Defs.KEG["blast"]), float(Defs.KEG["radius"]))
+	elif kind == "powder_wagon":
+		var full := clampf(powder / maxf(_pmax, 1.0), 0.0, 1.0)
+		var dmg := maxf(float(Defs.WAGON["blast"]) * full, float(Defs.WAGON["blast_min"]))
+		if game.mlog:
+			game.mlog.add("%s's Powder Wagon exploded (%d shots aboard)" % [game.mlog.who(team), int(powder)])
+		if team == game.human:
+			game.notify("Your Powder Wagon blew up!", true)
+		powder = 0.0
+		game.powder_blast(self, position, dmg, float(Defs.WAGON["radius"]) * (0.7 + 0.3 * full), true)
 
 
 # ------------------------------------------------------------------ animation
@@ -2000,6 +2228,8 @@ func _death_anim() -> String:
 		return _anim_or("gdeath", "death")
 	if kind == "bloater" and deflate != "":
 		return _anim_or("ddeath", "death")
+	if keg and ArtData.UNITS[kind]["frames"].has("death_keg_e"):
+		return "death_keg"
 	return "death"
 
 
@@ -2010,7 +2240,8 @@ func _anim_name() -> String:
 	match kind:
 		"musketeer":
 			if mode == "bayonet":
-				return "melee" if phase != "" else ("walk" if moving else "idle")
+				# the bayonet thrust: the musket levelled as in its aim
+				return "aim" if phase != "" else ("walk" if moving else "idle")
 			var up := target != null and is_instance_valid(target) and target.is_air()
 			if phase == "aim":
 				return "aimup" if up else "aim"
@@ -2034,7 +2265,14 @@ func _anim_name() -> String:
 			if cooldown > 0.0 and target:
 				return "reload"
 			return "idle"
+		"powder_wagon":
+			if _dispense_t > 0.0 and not moving:
+				return "unload"
 		"labourer":
+			if keg:
+				return "carry_keg" if moving else "idle_keg"
+			if work == "loading":
+				return "build"
 			if work == "manning":
 				var site := home_mine as Building
 				return "mine" if site and site.kind == "farm" else "build"
@@ -2176,7 +2414,7 @@ func _animate(delta: float) -> void:
 			fps = 2.0
 			if kind == "pikeman":
 				n = 1
-		"death", "death_cocoon", "gdeath", "ddeath":
+		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0
 			loop = false
 		"gidle":
@@ -2190,6 +2428,8 @@ func _animate(delta: float) -> void:
 		"deflate", "refill":
 			fps = float(n) / float(Defs.DEFLATE["anim"])
 			loop = false
+		"idle_keg":
+			fps = 3.0
 		"wrap":
 			fps = 5.0 / float(Defs.HARVEST["take"])
 			loop = false
@@ -2411,7 +2651,22 @@ func _draw() -> void:
 		top = -70.0    # above the raised coil's sparks (the packed body: the anchor height)
 	elif kind == "cannon":
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
-	draw_health(top, radius * 2.4)
+	var bw := radius * 2.4
+	draw_health(top, bw, true)
+	if has_attack():
+		# under it, for every armed unit (friend or foe): the reload, full = ready to strike
+		var rf := reload_frac()
+		var rcol := Color(0.92, 0.92, 0.85)
+		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
+			rcol = Color(0.9, 0.25, 0.2)           # out of powder: can't fire
+			rf = 0.0
+		elif deploys() and tesla_mode != "deployed":
+			rcol = Color(0.45, 0.7, 1.0)           # limbered / rooted / packed: setting up
+			rf = 1.0 - tesla_t / switch_time() if tesla_mode == "deploying" else 0.0
+		elif rf >= 1.0:
+			rcol = Color(1.0, 0.85, 0.3)
+		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw * clampf(rf, 0.0, 1.0), 2), rcol)
 	if work == "feeding":
 		return
 	if topter_bat != "":
@@ -2460,6 +2715,21 @@ func _draw() -> void:
 		var w := radius * 2.0
 		draw_rect(Rect2(-w * 0.5, top + 7.0, w, 2), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(-w * 0.5, top + 7.0, w * gas / 100.0, 2), Color(0.75, 0.95, 0.25))
+	if _pmax > 0.0 and team == game.human and (powder < _pmax or selected or kind == "powder_wagon"):
+		# the powder it carries: a little horn and a thin bar (amber; red when empty)
+		var pw := bw
+		var ph := 3.0 if kind == "powder_wagon" else 1.0
+		var py := top + 5.0 if kind == "powder_wagon" else top + 8.5
+		var pf := clampf(powder / _pmax, 0.0, 1.0)
+		draw_rect(Rect2(-pw * 0.5, py, pw, ph).grow(0.5), Color(0, 0, 0, 0.65))
+		if powder >= 1.0:
+			draw_rect(Rect2(-pw * 0.5, py, pw * pf, ph), Color(0.95, 0.68, 0.22))
+		else:
+			draw_rect(Rect2(-pw * 0.5, py, pw, ph), Color(0.75, 0.15, 0.12))     # empty: all red
+		var hx := -pw * 0.5 - 6.0
+		draw_colored_polygon(PackedVector2Array([Vector2(hx, py - 2), Vector2(hx + 4, py - 1), Vector2(hx + 4, py + ph + 1), Vector2(hx + 1, py + ph)]), Color(0.86, 0.78, 0.6))
+		if kind == "powder_wagon" and supplying:
+			draw_rect(Rect2(pw * 0.5 + 2.0, py - 1.0, 3, 3), Color(1, 0.85, 0.35))   # SUPPLY on
 	if cocoon > 0 and not ArtData.UNITS["grub"]["frames"].has("carry_cocoon_e"):
 		# the cocoon on its back (drawn by hand when there's no sheet)
 		draw_set_transform(Vector2(0, -17), 0.0, Vector2(1.0, 0.7))
@@ -2468,11 +2738,6 @@ func _draw() -> void:
 		draw_line(Vector2(-5, -2), Vector2(5, 2), Color(0.6, 0.5, 0.4), 1.0)
 		draw_line(Vector2(-5, 2), Vector2(5, -2), Color(0.6, 0.5, 0.4), 1.0)
 		draw_set_transform(Vector2.ZERO)
-	if kills > 0 and not is_worker():
-		# veteran pips: a gold one per kill, up to 5 (a red one after 10)
-		var pips := mini(kills, 5)
-		for i in pips:
-			draw_rect(Rect2(-pips * 2.5 + i * 5.0, top - 6.0, 3, 3), Color(1, 0.82, 0.3) if kills < 10 else Color(1, 0.35, 0.25))
 	if carrying > 0 and kind == "grub":
 		draw_circle(Vector2(0, -16), 3.5, Color(0.55, 0.85, 0.3))
 		draw_circle(Vector2(0, -16), 3.5, Color(0.2, 0.3, 0.1), false, 1.0)

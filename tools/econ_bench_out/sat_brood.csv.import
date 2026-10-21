@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cgcdhmqs8kw27"
+
+[deps]
+
+files=["res://tools/econ_bench_out/sat_brood.at.translation", "res://tools/econ_bench_out/sat_brood.crew.translation", "res://tools/econ_bench_out/sat_brood.income.translation", "res://tools/econ_bench_out/sat_brood.income.translation", "res://tools/econ_bench_out/sat_brood.per.translation", "res://tools/econ_bench_out/sat_brood.per.translation", "res://tools/econ_bench_out/sat_brood.loads.translation", "res://tools/econ_bench_out/sat_brood.avg.translation", "res://tools/econ_bench_out/sat_brood.pit.translation", "res://tools/econ_bench_out/sat_brood.pit.translation", "res://tools/econ_bench_out/sat_brood.pit.translation", "res://tools/econ_bench_out/sat_brood.essence.translation"]
+
+source_file="res://tools/econ_bench_out/sat_brood.csv"
+dest_files=["res://tools/econ_bench_out/sat_brood.at.translation", "res://tools/econ_bench_out/sat_brood.crew.translation", "res://tools/econ_bench_out/sat_brood.income.translation", "res://tools/econ_bench_out/sat_brood.income.translation", "res://tools/econ_bench_out/sat_brood.per.translation", "res://tools/econ_bench_out/sat_brood.per.translation", "res://tools/econ_bench_out/sat_brood.loads.translation", "res://tools/econ_bench_out/sat_brood.avg.translation", "res://tools/econ_bench_out/sat_brood.pit.translation", "res://tools/econ_bench_out/sat_brood.pit.translation", "res://tools/econ_bench_out/sat_brood.pit.translation", "res://tools/econ_bench_out/sat_brood.essence.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

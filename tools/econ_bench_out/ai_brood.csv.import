@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://b4ul3837kj5gr"
+
+[deps]
+
+files=["res://tools/econ_bench_out/ai_brood.income.translation", "res://tools/econ_bench_out/ai_brood.income.translation", "res://tools/econ_bench_out/ai_brood.bank.translation", "res://tools/econ_bench_out/ai_brood.bank.translation", "res://tools/econ_bench_out/ai_brood.spent.translation", "res://tools/econ_bench_out/ai_brood.workers.translation", "res://tools/econ_bench_out/ai_brood.workers.translation", "res://tools/econ_bench_out/ai_brood.halls.translation", "res://tools/econ_bench_out/ai_brood.feeding.translation", "res://tools/econ_bench_out/ai_brood.bone.translation", "res://tools/econ_bench_out/ai_brood.clutch.translation", "res://tools/econ_bench_out/ai_brood.spore.translation", "res://tools/econ_bench_out/ai_brood.crew.translation", "res://tools/econ_bench_out/ai_brood.supply.translation", "res://tools/econ_bench_out/ai_brood.supply.translation", "res://tools/econ_bench_out/ai_brood.army.translation", "res://tools/econ_bench_out/ai_brood.army.translation", "res://tools/econ_bench_out/ai_brood.food.translation", "res://tools/econ_bench_out/ai_brood.avg.translation", "res://tools/econ_bench_out/ai_brood.pit.translation", "res://tools/econ_bench_out/ai_brood.pit.translation"]
+
+source_file="res://tools/econ_bench_out/ai_brood.csv"
+dest_files=["res://tools/econ_bench_out/ai_brood.income.translation", "res://tools/econ_bench_out/ai_brood.income.translation", "res://tools/econ_bench_out/ai_brood.bank.translation", "res://tools/econ_bench_out/ai_brood.bank.translation", "res://tools/econ_bench_out/ai_brood.spent.translation", "res://tools/econ_bench_out/ai_brood.workers.translation", "res://tools/econ_bench_out/ai_brood.workers.translation", "res://tools/econ_bench_out/ai_brood.halls.translation", "res://tools/econ_bench_out/ai_brood.feeding.translation", "res://tools/econ_bench_out/ai_brood.bone.translation", "res://tools/econ_bench_out/ai_brood.clutch.translation", "res://tools/econ_bench_out/ai_brood.spore.translation", "res://tools/econ_bench_out/ai_brood.crew.translation", "res://tools/econ_bench_out/ai_brood.supply.translation", "res://tools/econ_bench_out/ai_brood.supply.translation", "res://tools/econ_bench_out/ai_brood.army.translation", "res://tools/econ_bench_out/ai_brood.army.translation", "res://tools/econ_bench_out/ai_brood.food.translation", "res://tools/econ_bench_out/ai_brood.avg.translation", "res://tools/econ_bench_out/ai_brood.pit.translation", "res://tools/econ_bench_out/ai_brood.pit.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
