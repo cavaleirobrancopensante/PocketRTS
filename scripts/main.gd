@@ -675,8 +675,11 @@ func show_skirmish() -> void:
 	mrow.add_child(prev)
 	var mid: String = lobby["map"]
 	var mname := "RANDOM MAP" if mid == "random" else (mid.substr(7).to_upper() if mid.begins_with("custom:") else String(MapGen.MAPS[mid][0]).to_upper())
-	var ml := UiStyle.heading(mname, 22, UiStyle.TEXT)
-	ml.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var map_opts: Array = []
+	for mi in ids:
+		map_opts.append(["RANDOM MAP" if mi == "random" else (String(mi).substr(7).to_upper() if String(mi).begins_with("custom:") else String(MapGen.MAPS[mi][0]).to_upper()), mi, false])
+	var ml := _dropdown(mname, 160, map_opts, func(v) -> void: lobby["map"] = v)
+	ml.add_theme_font_size_override("font_size", 20)
 	mrow.add_child(ml)
 	var nxt := _button(">", func() -> void:
 		lobby["map"] = ids[(ids.find(lobby["map"]) + 1) % ids.size()]
@@ -736,15 +739,16 @@ func _slot_row(i: int) -> Control:
 	h.add_theme_constant_override("separation", 8)
 	var colour: Color = Defs.colour_of(int(sl["colour"]))
 	# who
-	var who := _cycle(WHO_LABEL[sl["who"]], 170, func(dir: int) -> void:
-		var list := WHO.duplicate()
+	var who_opts: Array = []
+	for w in WHO:
 		var taken := false
 		for j in lobby["slots"].size():
 			if j != i and lobby["slots"][j]["who"] == "you":
 				taken = true
-		if taken:
-			list.erase("you")
-		sl["who"] = list[(list.find(sl["who"]) + dir + list.size()) % list.size()])
+		if w == "you" and taken:
+			continue
+		who_opts.append([WHO_LABEL[w], w, false])
+	var who := _dropdown(WHO_LABEL[sl["who"]], 170, who_opts, func(v) -> void: sl["who"] = v)
 	if sl["who"] == "brutal":
 		who.add_theme_color_override("font_color", UiStyle.BAD)
 	elif sl["who"] == "you":
@@ -752,8 +756,10 @@ func _slot_row(i: int) -> Control:
 	h.add_child(who)
 	# faction
 	var f: String = sl["faction"]
-	var fb := _cycle("RANDOM" if f == "random" else Defs.FACTIONS[f]["name"].to_upper(), 190, func(dir: int) -> void:
-		sl["faction"] = FACS[(FACS.find(sl["faction"]) + dir + FACS.size()) % FACS.size()])
+	var fac_opts: Array = []
+	for ff in FACS:
+		fac_opts.append(["RANDOM" if ff == "random" else String(Defs.FACTIONS[ff]["name"]).to_upper(), ff, false])
+	var fb := _dropdown("RANDOM" if f == "random" else Defs.FACTIONS[f]["name"].to_upper(), 190, fac_opts, func(v) -> void: sl["faction"] = v)
 	if f != "random":
 		fb.icon = _faction_icon(f)
 		fb.expand_icon = false
@@ -761,15 +767,10 @@ func _slot_row(i: int) -> Control:
 		fb.add_theme_color_override("font_color", UiStyle.accent(f).lightened(0.4))
 	h.add_child(fb)
 	# colour
-	var cb := _cycle(Defs.colour_name(int(sl["colour"])).to_upper(), 110, func(dir: int) -> void:
-		# the palette, then RANDOM and FITS MAP (any colour / one that stands out on the map)
-		var opts: Array = [Defs.COLOUR_FITS_MAP, Defs.COLOUR_RANDOM] + range(Defs.PALETTE.size())
-		var k := opts.find(int(sl["colour"]))
-		for step in opts.size():
-			k = (k + dir + opts.size()) % opts.size()
-			if int(opts[k]) < 0 or not _colour_taken(int(opts[k]), i):
-				break
-		sl["colour"] = opts[k])
+	var col_opts: Array = []
+	for c in [Defs.COLOUR_FITS_MAP, Defs.COLOUR_RANDOM] + range(Defs.PALETTE.size()):
+		col_opts.append([Defs.colour_name(int(c)).to_upper(), int(c), int(c) >= 0 and _colour_taken(int(c), i)])
+	var cb := _dropdown(Defs.colour_name(int(sl["colour"])).to_upper(), 110, col_opts, func(v) -> void: sl["colour"] = v)
 	for st in ["normal", "hover", "pressed"]:
 		cb.add_theme_stylebox_override(st, UiStyle.box(colour.darkened(0.25 if st == "normal" else 0.1), Color(1, 1, 1, 0.5 if st == "normal" else 0.9), 2))
 	cb.add_theme_color_override("font_color", Color(1, 1, 1))
@@ -779,8 +780,10 @@ func _slot_row(i: int) -> Control:
 	if sl["who"] != "you":
 		var st: String = String(sl.get("strategy", "balanced"))
 		var opts: Array = ["random"] + AI.STRATEGIES.keys()
-		var sb := _cycle("RANDOM PLAN" if st == "random" else String(AI.STRATEGIES[st]["name"]).to_upper(), 150, func(dir: int) -> void:
-			sl["strategy"] = opts[(opts.find(String(sl.get("strategy", "balanced"))) + dir + opts.size()) % opts.size()])
+		var st_opts: Array = []
+		for o in opts:
+			st_opts.append(["RANDOM PLAN" if o == "random" else String(AI.STRATEGIES[o]["name"]).to_upper(), o, false])
+		var sb := _dropdown("RANDOM PLAN" if st == "random" else String(AI.STRATEGIES[st]["name"]).to_upper(), 150, st_opts, func(v) -> void: sl["strategy"] = v)
 		sb.tooltip_text = "How this computer player plays. Air rush is Brood only (others play Balanced)."
 		h.add_child(sb)
 	else:
@@ -790,8 +793,7 @@ func _slot_row(i: int) -> Control:
 		sp.size_flags_stretch_ratio = 1.5
 		h.add_child(sp)
 	# team
-	var tb := _cycle(str(int(sl["side"]) + 1), 80, func(dir: int) -> void:
-		sl["side"] = (int(sl["side"]) + dir + 4) % 4)
+	var tb := _dropdown(str(int(sl["side"]) + 1), 80, [["TEAM 1", 0, false], ["TEAM 2", 1, false], ["TEAM 3", 2, false], ["TEAM 4", 3, false]], func(v) -> void: sl["side"] = v)
 	tb.add_theme_font_override("font", UiStyle.title_font())
 	tb.add_theme_font_size_override("font_size", 24)
 	h.add_child(tb)
@@ -802,6 +804,42 @@ func _slot_row(i: int) -> Control:
 		x.custom_minimum_size = Vector2(46, 58)
 		h.add_child(x)
 	return h
+
+
+## A button that opens a list to pick from (big rows, easy to tap). items: [label, value, disabled].
+func _dropdown(text: String, w: float, items: Array, pick: Callable) -> Button:
+	var b := Button.new()
+	b.text = text + "  ▾"
+	b.custom_minimum_size = Vector2(w, 58)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_stretch_ratio = w / 100.0
+	b.add_theme_font_size_override("font_size", 18)
+	b.clip_text = true
+	b.pressed.connect(func() -> void:
+		_web_fullscreen()
+		Sfx.play_any(["ui/click", "click"])
+		var pm := PopupMenu.new()
+		pm.add_theme_font_size_override("font_size", 24)
+		pm.add_theme_constant_override("v_separation", 18)
+		pm.add_theme_constant_override("item_start_padding", 16)
+		pm.add_theme_constant_override("item_end_padding", 16)
+		for k in items.size():
+			var it: Array = items[k]
+			pm.add_item(String(it[0]), k)
+			pm.set_item_disabled(k, bool(it[2]))
+			if String(it[0]) == text:
+				pm.set_item_as_radio_checkable(k, true)
+				pm.set_item_checked(k, true)
+		pm.id_pressed.connect(func(id: int) -> void:
+			pick.call(items[id][1])
+			Sfx.play_any(["ui/click", "click"])
+			show_skirmish())
+		pm.popup_hide.connect(func() -> void: pm.queue_free())
+		add_child(pm)
+		var r := b.get_global_rect()
+		pm.min_size = Vector2i(int(maxf(r.size.x, 220.0)), 0)
+		pm.popup(Rect2i(Vector2i(r.position + Vector2(0, r.size.y)), Vector2i(int(maxf(r.size.x, 220.0)), 0))))
+	return b
 
 
 ## A button that steps through options: click/tap = next; right click = previous.
