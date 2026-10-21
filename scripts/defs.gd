@@ -327,7 +327,7 @@ const UNITS := {
 		"about": "Throws balls of lightning at one enemy, ground or air. Every throw takes a good bite of its own wind: it runs down fast in a long fight away from a field.",
 	},
 	"steam_walker": {
-		"tags": ["armored"],
+		"tags": ["armored", "massive"],
 		"name": "Steam Walker", "hp": 380, "armor": 2, "speed": 44, "cost": 240, "cost2": 3, "time": 34.0, "supply": 5,
 		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "engine_hall",
 		"cone": true, "building_bonus": 2.0, "wind_drain": 2.0, "faction": "clockwork",
@@ -353,6 +353,13 @@ const UNITS := {
 		"sight": 9, "range": 130, "damage": 11, "cooldown": 1.1, "aim": 0.15, "radius": 13, "from": "hive",
 		"air": true, "anti_air": true, "air_only": true, "requires": "roost", "faction": "brood",
 		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs essence.",
+	},
+	"mist_toad": {
+		"tags": ["light"],
+		"name": "Mist Toad", "hp": 90, "armor": 0, "speed": 42, "cost": 100, "cost2": 25, "time": 22.0, "supply": 3,
+		"sight": 9, "range": 24, "damage": 4, "cooldown": 1.6, "aim": 0.3, "radius": 14, "from": "hive",
+		"requires": "gorge_pit", "faction": "brood",
+		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet; heavy engines are only staggered.",
 	},
 	"ornithopter": {
 		"tags": ["light"],
@@ -400,7 +407,7 @@ const BUILDINGS := {
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
-		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater"], "eggs": true, "swamp": 9,
+		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
 		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Its ground holds a reserve of biomass: once the pits have drawn it out they yield a third. Expand to fresh ground.",
 	},
 	"clutch_mound": {
@@ -414,7 +421,7 @@ const BUILDINGS := {
 	"gorge_pit": {
 		"name": "Gorge Pit", "hp": 800, "armor": 1, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "requires": "warren", "faction": "brood",
-		"about": "Lets the Hive hatch Brutes and Spore Mothers. Needs a Warren.",
+		"about": "Lets the Hive hatch Brutes, Spore Mothers and Mist Toads. Needs a Warren.",
 	},
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
@@ -579,6 +586,21 @@ const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
+## Mist Toad: its energy (`charge`) fills `fill` a second (x `swamp` on Brood swamp) up to
+## `max`; a new Toad hatches with `start`. Its two spells spend it.
+const TOAD := {"max": 150.0, "fill": 1.5, "swamp": 2.0, "start": 75.0}
+## FOG: a swamp fog bank (`radius` px) laid on a spot within `range` for `time` s. Ranged
+## attacks (range 100+) fired from inside it or into it miss `miss` of the time, and units
+## inside see only `sight` tiles. It hides everyone, friend or foe.
+const FOG := {"cost": 50.0, "range": 224.0, "radius": 96.0, "time": 12.0, "miss": 0.5, "sight": 2, "cast": 0.6}
+## TONGUE: one enemy ground unit within `range` px is marked for `windup` s (its owner sees
+## the crosshair); the windup breaks if the Toad is stunned, killed or moved more than
+## `moved` px, or the target gets beyond `break` x the range. Then the tongue lashes out
+## (`lash` s) and drags it to the Toad's feet over `pull` s, stunned meanwhile (and `after` s
+## more). Heavy units (supply `heavy`+ or tagged massive, like the Steam Walker) can't be
+## pulled: they're staggered (stunned `stagger` s). The energy is spent when the windup starts.
+const TONGUE := {"cost": 75.0, "range": 224.0, "windup": 3.0, "break": 1.5, "moved": 12.0, "lash": 0.15,
+	"pull": 0.6, "after": 0.3, "stagger": 1.0, "heavy": 5}
 const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "cone": 0.82, "vs_light": 1.5}
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.

@@ -947,6 +947,9 @@ func _produce() -> void:
 		var brutes := army.filter(func(u: Unit) -> bool: return u.kind == "brute").size()
 		var wings := army.filter(func(u: Unit) -> bool: return u.kind == "skywing").size()
 		var mothers := army.filter(func(u: Unit) -> bool: return u.kind == "spore_mother").size()
+		var toads := army.filter(func(u: Unit) -> bool: return u.kind == "mist_toad").size()
+		for h in _halls():
+			toads += (h.queue as Array).count("mist_toad")     # (hatching ones too)
 		for h in _halls():
 			if not h.built:
 				continue
@@ -958,6 +961,10 @@ func _produce() -> void:
 				if want_wing and game.can_train(h, "skywing") == "":
 					k = "skywing"
 					wings += 1
+				elif army.size() >= 12 and toads < (1 if army.size() < 24 else 2) and game.can_train(h, "mist_toad") == "":
+					# a Mist Toad or two in the middle game: fog for the swarm, a tongue for their guns
+					k = "mist_toad"
+					toads += 1
 				elif game.can_train(h, "brute") == "" and brutes * 12 < army.size() + 6:
 					k = "brute"
 					brutes += 1
@@ -1463,9 +1470,11 @@ func _spells() -> void:
 		# half the Bloaters keep their gas for big bursts (on walls and clumps)
 		if u.kind == "bloater" and u.mode == "" and u.get_instance_id() % 2 == 0:
 			u.set_hold_gas(true)
-		if u.order == "cast":
+		if u.order == "cast" or u.order == "tongue" or u.tongue_stage != "":
 			continue
-		if u.kind == "stormcaller" and u.charge >= float(Defs.STORM["cost"]):
+		if u.kind == "mist_toad":
+			_toad(u)
+		elif u.kind == "stormcaller" and u.charge >= float(Defs.STORM["cost"]):
 			var best := Vector2.INF
 			var score := 3.5 if difficulty >= 2 else 4.5
 			var r: float = Defs.STORM["radius"]
@@ -1495,6 +1504,77 @@ func _spells() -> void:
 					at += o.position
 			if hurt >= 4:
 				u.cmd_cast("miasma", at / hurt)
+
+
+## Mist Toad: TONGUE drags a high-value target (guns, casters, a Missionary) into the swarm,
+## once our army is close enough to eat it; FOG goes down on an enemy firing line while our
+## army is engaging it. It keeps the energy for a TONGUE when there's a prize about.
+const TONGUE_PRIZES := ["cannon", "mortar", "stormcaller", "tesla_cart", "arc_thrower", "missionary", "spore_mother"]
+
+
+func _toad(u: Unit) -> void:
+	# (Toads share the work: one prize per tongue, one fog bank at a time)
+	var taken := {}
+	var fogging := false
+	for o in game.army(team):
+		if o.kind == "mist_toad" and o != u:
+			if o.tongue_victim:
+				taken[o.tongue_victim] = true
+			if o.order == "tongue" and o.order_target:
+				taken[o.order_target] = true
+			if o.order == "cast":
+				fogging = true
+	var near: Array = game.units_near(u.position, float(Defs.TONGUE["range"]) + 120.0)
+	var friends := 0
+	for f in game.units_near(u.position, 220.0):
+		if f.team == team and not f.dead and not f.is_worker() and f != u:
+			friends += 1
+	# TONGUE: the best prize in reach (round to it if it's just out of range)
+	var prize: Unit = null
+	var pv := 0.0
+	for e in near:
+		if not TONGUE_PRIZES.has(e.kind) or taken.has(e) or not u.can_tongue(e) or not game.side_sees(team, e.position):
+			continue
+		var dd: float = e.position.distance_to(u.position)
+		var v := float(e.d["cost"]) + float(e.d.get("cost2", 0)) * 2.0 - dd * 0.3
+		if v > pv:
+			pv = v
+			prize = e
+	if prize and u.charge >= float(Defs.TONGUE["cost"]) and friends >= 3:
+		u.cmd_tongue(prize)
+		return
+	# FOG: on the enemy's shooters, while our army is in the fight
+	var keep := float(Defs.TONGUE["cost"]) if prize else 0.0
+	if fogging or u.charge < float(Defs.FOG["cost"]) + keep:
+		return
+	var best := Vector2.INF
+	var score := 2.5
+	var r := float(Defs.FOG["radius"])
+	for e in game.units_near(u.position, float(Defs.FOG["range"]) + r):
+		if not game.hostile(e.team, team) or e.dead or e.off_field or e.is_worker() or float(e.d["range"]) < 100.0:
+			continue
+		if game.in_fog(e.position):
+			continue
+		var s := 0.0
+		for o in game.units_near(e.position, r):
+			if o.dead or o.off_field or o.is_worker():
+				continue
+			if game.hostile(o.team, team):
+				s += (1.0 + float(o.d["supply"]) * 0.25) if float(o.d["range"]) >= 100.0 else 0.2
+			elif float(o.d["range"]) >= 100.0:
+				s -= 0.6      # our own shooters in there would miss too
+		if s > score:
+			score = s
+			best = e.position
+	if best == Vector2.INF:
+		return
+	# only while our army engages them: someone of ours fighting close by
+	var engaged := game.units_near(best, r + 200.0).any(func(f: Unit) -> bool: return f.team == team and not f.dead and not f.is_worker() and f.kind != "mist_toad" and (f.target != null or f.position.distance_to(best) < r + 60.0))
+	if engaged:
+		var at := best
+		if at.distance_to(u.position) > float(Defs.FOG["range"]):
+			at = u.position + (best - u.position).normalized() * float(Defs.FOG["range"])
+		u.cmd_cast("fog", at)
 
 
 ## Brood: Skywings hunt flyers in the air; with no enemy flyers about they land on enemy
@@ -1534,7 +1614,7 @@ func _offer() -> void:
 	if pen == null:
 		return
 	var want := 0
-	for k in ["skywing", "bloater", "brute", "spore_mother", "spitter"]:
+	for k in ["skywing", "bloater", "brute", "spore_mother", "mist_toad", "spitter"]:
 		var u: Dictionary = Defs.UNITS[k]
 		var reqs: Array = u["requires"] if u.get("requires", "") is Array else [u["requires"]]
 		if reqs.all(func(r: String) -> bool: return game._has_built(team, r)):

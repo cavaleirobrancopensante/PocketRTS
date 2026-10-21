@@ -4,6 +4,8 @@ extends Entity
 ## (move, attack-move, attack, hold, gather, build) and fights by type.
 
 const WALK_FPS := 8.0
+## Mist Toad: the frame of its tongue strip with the mouth wide open, the tongue not out yet.
+const TOAD_MOUTH_OPEN := 2
 ## Tesla Cart: the glowing sphere on top of the deployed coil, from the feet, per drawn
 ## direction (facing right; x mirrored when the sprite is flipped). Measured by
 ## tools/import_round9.py.
@@ -130,6 +132,12 @@ var brace_t := 0.0              # Bulwark: planting / lifting the shield
 var _shield_t := 0.0            # Bulwark: a shot just hit the shield (braced_hit)
 var self_wind_t := 0.0          # Winder: stopped to wind itself
 var cranked_t := 0.0            # Wind-up Soldier: a Winder is cranking it (wind-up anim)
+# Mist Toad (its energy is `charge`): TONGUE
+var tongue_victim: Unit = null  # who its tongue is on
+var tongue_stage := ""          # "", "windup" (the crosshair), "lash" (the tongue flies out), "pull"
+var tongue_t := 0.0             # what's left of this stage
+var _tongue_at := Vector2.ZERO  # where it sat when the windup began
+var _pull_from := Vector2.ZERO  # where the victim was when the pull began
 
 
 ## Overcharged: long enough in overcharge ground (and still there).
@@ -538,6 +546,10 @@ func _gunners(delta: float) -> void:
 			continue
 		if not game.use_powder(team, 1):
 			continue
+		if game.fog_blinds(self, best) and randf() < float(Defs.FOG["miss"]):
+			gun_cd[i] = float(d["cooldown"]) + randf_range(0.0, 0.4)
+			game.fog_miss(self, best)
+			continue
 		taken = best
 		gun_state[i] = "up" if best.is_air() else "down"
 		gun_t[i] = 0.0
@@ -663,6 +675,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	hp = max_hp
 	if k == "stormcaller":
 		charge = float(Defs.STORM["max"]) * 0.5
+	elif k == "mist_toad":
+		charge = float(Defs.TOAD["start"])
 	if Defs.is_worker(k) and d["faction"] == "clockwork":
 		wind = randf_range(0.6, 1.0)     # (Winders don't all stop to wind at once)
 	_pmax = max_powder()
@@ -735,6 +749,8 @@ func center() -> Vector2:
 func cmd_move(p: Vector2, attack_move := false) -> void:
 	if aboard:
 		return      # riding in a balloon
+	if _ai_keeps_windup():
+		return
 	if braced:
 		set_brace(false)     # a Bulwark lifts its shield to walk
 	_reset_work()
@@ -748,6 +764,8 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 func cmd_attack(e: Entity) -> void:
 	if aboard:
 		return      # riding in a balloon
+	if _ai_keeps_windup():
+		return
 	if braced and e.edge_distance(position) > _range() + radius:
 		set_brace(false)     # out of the lance's reach: it lifts the shield and goes
 	_reset_work()
@@ -800,7 +818,7 @@ func cmd_cast(spell: String, p: Vector2) -> void:
 
 
 func _spell_range() -> float:
-	return float((Defs.STORM if cast_spell == "storm" else Defs.MIASMA)["range"])
+	return float(Game.spell_info(cast_spell)["range"])
 
 
 func _cast(delta: float) -> Vector2:
@@ -823,7 +841,7 @@ func _cast(delta: float) -> Vector2:
 			return Vector2.ZERO
 		path = PackedVector2Array()
 		phase = "cast"
-		phase_t = float((Defs.STORM if cast_spell == "storm" else Defs.MIASMA)["cast"])
+		phase_t = float(Game.spell_info(cast_spell)["cast"])
 		facing = (cast_at - position).normalized() if cast_at != position else facing
 		frame_i = 0
 		anim_t = 0.0
@@ -836,6 +854,168 @@ func _cast(delta: float) -> Vector2:
 	if path.is_empty() and not path_pending:
 		_request_path(cast_at)
 	return _follow(delta)
+
+
+# ------------------------------------------------------------------ Mist Toad: TONGUE
+
+## Can this Toad's tongue go for `e` at all? (One enemy ground unit, not a building or a
+## flyer, nor one being bandaged or riding in a balloon.)
+func can_tongue(e) -> bool:
+	return e is Unit and is_instance_valid(e) and not e.dead and not e.off_field and e.aboard == null \
+		and not e.is_air() and game.hostile(e.team, team) and e.is_inside_tree()
+
+
+## Heavy units can't be pulled, only staggered: supply TONGUE.heavy and up, or tagged massive.
+static func too_heavy(e: Unit) -> bool:
+	return int(e.d["supply"]) >= int(Defs.TONGUE["heavy"]) or Defs.has_tag(e.kind, "massive")
+
+
+## TONGUE: walk into range of `e`, then mark it (the windup) and drag it in.
+func cmd_tongue(e: Unit) -> void:
+	if aboard or kind != "mist_toad" or not can_tongue(e):
+		return
+	_reset_work()
+	order = "tongue"
+	order_target = e
+	target = null
+	if e.position.distance_to(position) > float(Defs.TONGUE["range"]):
+		_request_path(e.position)
+
+
+## The "tongue" order: get within range, then start the windup (it pays the energy).
+func _tongue_order(delta: float) -> Vector2:
+	if tongue_stage != "":
+		return Vector2.ZERO
+	var e = order_target
+	if not can_tongue(e):
+		cmd_stop()
+		return Vector2.ZERO
+	if charge < float(Defs.TONGUE["cost"]):
+		if team == game.human:
+			game.notify("Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
+		cmd_stop()
+		return Vector2.ZERO
+	var dist: float = (e as Unit).position.distance_to(position)
+	if dist <= float(Defs.TONGUE["range"]):
+		if stun_t > 0.0:
+			return Vector2.ZERO
+		path = PackedVector2Array()
+		charge -= float(Defs.TONGUE["cost"])
+		tongue_victim = e
+		tongue_stage = "windup"
+		tongue_t = float(Defs.TONGUE["windup"])
+		_tongue_at = position
+		velocity = Vector2.ZERO
+		facing = ((e as Unit).position - position).normalized()
+		game.tongue_marked(self, e)
+		return Vector2.ZERO
+	if (path.is_empty() or path_i >= path.size()) and not path_pending or repath_t <= 0.0:
+		repath_t = 1.0
+		_request_path((e as Unit).position)
+	return _follow(delta)
+
+
+## The windup, the lash and the pull, every tick (the pull goes on whatever the Toad is
+## told meanwhile).
+func _tongue_tick(delta: float) -> void:
+	var e := tongue_victim
+	match tongue_stage:
+		"windup":
+			var why := ""
+			if not can_tongue(e):
+				why = "gone"
+			elif stun_t > 0.0:
+				why = "stunned"
+			elif position.distance_to(_tongue_at) > float(Defs.TONGUE["moved"]):
+				why = "moved"
+			elif e.position.distance_to(position) > float(Defs.TONGUE["range"]) * float(Defs.TONGUE["break"]):
+				why = "out of reach"
+			if why != "":
+				_break_tongue(why)
+				return
+			facing = (e.position - position).normalized()
+			tongue_t -= delta
+			if tongue_t <= 0.0:
+				tongue_stage = "lash"
+				tongue_t = float(Defs.TONGUE["lash"])
+				frame_i = 0
+				anim_t = 0.0
+				Sfx.play_any(["combat/brute_attack", "roar", "combat/spitter_attack", "acid"], position)
+		"lash":
+			if e == null or not is_instance_valid(e) or e.dead:
+				_end_tongue()
+				return
+			tongue_t -= delta
+			if tongue_t <= 0.0:
+				game.tongue_hit(self, e)
+				if too_heavy(e):
+					e.stun_t = maxf(e.stun_t, float(Defs.TONGUE["stagger"]))
+					e.phase = ""
+					tongue_stage = "recoil"
+					tongue_t = 0.15
+				else:
+					tongue_stage = "pull"
+					tongue_t = float(Defs.TONGUE["pull"])
+					_pull_from = e.position
+					e.stun_t = maxf(e.stun_t, float(Defs.TONGUE["pull"]) + float(Defs.TONGUE["after"]))
+					e.phase = ""
+					e.target = null
+					e.path = PackedVector2Array()
+					e.velocity = Vector2.ZERO
+					e.knock = Vector2.ZERO
+		"recoil":
+			tongue_t -= delta
+			if tongue_t <= 0.0:
+				_end_tongue()
+		"pull":
+			if e == null or not is_instance_valid(e) or e.dead:
+				_end_tongue()
+				return
+			tongue_t -= delta
+			var f := 1.0 - clampf(tongue_t / float(Defs.TONGUE["pull"]), 0.0, 1.0)
+			f = 1.0 - (1.0 - f) * (1.0 - f)      # fast at first, easing in at the end
+			var dir := (_pull_from - position).normalized()
+			if dir == Vector2.ZERO:
+				dir = facing
+			var feet := position + dir * (radius + e.radius + 4.0)
+			e.position = game.resolve_terrain(_pull_from.lerp(feet, f), e.position, e.radius, e.team)
+			e.velocity = Vector2.ZERO
+			if tongue_t <= 0.0:
+				_end_tongue()
+
+
+## The windup is over before the lash (its energy is lost): the mark goes.
+func _break_tongue(why := "") -> void:
+	if tongue_stage == "":
+		return
+	if tongue_stage == "windup" and why != "" and (team == game.human or (tongue_victim and is_instance_valid(tongue_victim) and tongue_victim.team == game.human)):
+		game.float_text(position + Vector2(0, -44), "tongue broken", Color(0.85, 0.75, 0.8))
+	if game.mlog and tongue_stage == "windup":
+		game.mlog.add("%s's Mist Toad lost its mark (%s)" % [game.mlog.who(team), why if why != "" else "new order"])
+	_end_tongue()
+
+
+func _end_tongue() -> void:
+	tongue_stage = ""
+	tongue_t = 0.0
+	tongue_victim = null
+	game.tongues.erase(self)
+	if order == "tongue":
+		order = "idle"
+		order_target = null
+		leash_from = position
+
+
+## Where the tongue comes out: the Toad's mouth, at the front of its head.
+func mouth_point() -> Vector2:
+	var side := 1.0 if facing.x >= 0.0 else -1.0
+	var across := absf(facing.x)
+	return global_position + Vector2(side * across * 35.0, -25.0 + (1.0 - across) * 10.0)
+
+
+## AI orders (its army moving on) don't interrupt a Toad in the middle of its windup.
+func _ai_keeps_windup() -> bool:
+	return tongue_stage == "windup" and game.ais.any(func(a) -> bool: return a.team == team)
 
 
 func cmd_pack() -> void:
@@ -948,6 +1128,8 @@ func cmd_build(site: Building) -> void:
 
 
 func _reset_work() -> void:
+	if tongue_stage == "windup":
+		_break_tongue()        # a new order: the Toad lets its mark go
 	if _corpse and is_instance_valid(_corpse):
 		_corpse.harvester = null
 	_corpse = null
@@ -1425,6 +1607,14 @@ func _physics_process(delta: float) -> void:
 			hp = minf(max_hp, hp + 2.0 * delta)
 	if kind == "bloater":
 		_bloater_gas(delta)
+	if not game.zones.is_empty() or sight != int(d["sight"]):
+		# a fog bank: inside it you see only a couple of tiles
+		sight = int(Defs.FOG["sight"]) if game.in_fog(position) else int(d["sight"])
+	if kind == "mist_toad":
+		var fill := float(Defs.TOAD["fill"]) * (float(Defs.TOAD["swamp"]) if game.on_swamp(team, position) else 1.0)
+		charge = minf(float(Defs.TOAD["max"]), charge + fill * delta)
+		if tongue_stage != "":
+			_tongue_tick(delta)
 	if kind == "brute" and target and phase == "" and target.edge_distance(position) < 170.0:
 		speed *= 1.6      # charge
 		if not _charging:
@@ -1615,6 +1805,8 @@ func _physics_process(delta: float) -> void:
 			want = _build(delta)
 		"cast":
 			want = _cast(delta)
+		"tongue":
+			want = _tongue_order(delta)
 		"harvest":
 			want = _harvest(delta)
 		"board":
@@ -1637,6 +1829,8 @@ func _physics_process(delta: float) -> void:
 		want = Vector2.ZERO
 	if self_wind_t > 0.0:
 		want = Vector2.ZERO        # a Winder cranking its own spring
+	if tongue_stage != "":
+		want = Vector2.ZERO        # a Mist Toad sits still to aim, lash and pull
 	if kind == "bulwark":
 		brace_t = maxf(brace_t - delta, 0.0)
 		_shield_t = maxf(_shield_t - delta, 0.0)
@@ -1781,8 +1975,8 @@ func _move(want: Vector2, delta: float) -> void:
 	var v := want + push
 	if want == Vector2.ZERO:
 		v = push
-	if stun_t > 0.0 or braced:
-		v = Vector2.ZERO
+	if stun_t > 0.0 or braced or tongue_stage != "":
+		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it)
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0:
 		position = game.resolve_terrain(position + knock * delta, position, radius, team)
@@ -1936,6 +2130,16 @@ func _strike(e: Entity) -> void:
 		powder -= 1.0
 		if powder < 1.0 and kind != "musketeer":
 			game.out_of_powder(self)     # that was the last one (a Musketeer says so as it fixes bayonets)
+	# a Mist Toad's fog bank: shots fired from inside it or into it miss half the time. Guns
+	# aimed at a spot (round shot, shells, spit blobs) land wide; the others fly off into the murk.
+	var wide := Vector2.ZERO
+	if mode != "bayonet" and _range() >= 100.0 and game.fog_blinds(self, e) and randf() < float(Defs.FOG["miss"]):
+		if (kind == "cannon" and mode != "canister") or kind == "mortar" or kind == "spore_mother":
+			wide = Vector2.from_angle(randf() * TAU) * randf_range(55.0, 95.0)
+			game.fog_miss_note(e)
+		else:
+			game.fog_miss(self, e)
+			return
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
@@ -1943,15 +2147,15 @@ func _strike(e: Entity) -> void:
 			if mode == "canister":
 				game.canister_shot(self, e, Defs.CANISTER["damage"])
 			else:
-				game.cannon_shot(self, e.center(), dmg)
+				game.cannon_shot(self, e.center() + wide, dmg)
 		"mortar":
-			game.mortar_shot(self, e.position if e is Unit else e.center(), dmg)
+			game.mortar_shot(self, (e.position if e is Unit else e.center()) + wide, dmg)
 		"tesla_cart":
 			game.tesla_zap(self, e, dmg)
 		"spitter":
 			game.acid_shot(self, e, dmg)
 		"spore_mother":
-			game.blob_shot(self, e.center() + Vector2(0, 12), dmg)
+			game.blob_shot(self, e.center() + Vector2(0, 12) + wide, dmg)
 		"skywing":
 			if sky == "air":
 				# a volley of spines at a flyer (a braced Bulwark catches them for the men behind it)
@@ -2738,6 +2942,8 @@ func die() -> void:
 	_drop_body()
 	_cancel_boarding()
 	drop_crate()               # (a Winder) the crate on his back falls where he stood
+	if tongue_stage != "":
+		_break_tongue("killed")    # (a Mist Toad) the mark goes, or the tongue lets go
 	if _crate_spr:
 		_crate_spr.visible = false
 	# fallen under the cross (just raised, or just bandaged): gone for good
@@ -2949,6 +3155,15 @@ func _anim_name() -> String:
 				return "fire"
 			if tesla_mode == "deployed":
 				return "deployed"
+		"mist_toad":
+			if tongue_stage == "lash" or tongue_stage == "pull" or tongue_stage == "recoil":
+				return _anim_or("tongue", "attack")
+			if tongue_stage == "windup":
+				return "idle"           # it squats and stares (the crosshair shows the mark)
+			if phase == "cast":
+				return _anim_or("fog", "idle")
+			if phase != "":
+				return _anim_or("attack", "tongue")   # the weak lick
 		"stormcaller":
 			if phase == "cast":
 				return "cast"
@@ -3085,8 +3300,11 @@ func _animate(delta: float) -> void:
 			loop = false
 		"deployed":
 			fps = 6.0 if kind != "spore_mother" else 3.0
-		"cast":
+		"cast", "fog":
 			fps = float(n) / maxf(phase_t + 0.05, 0.3) if phase == "cast" else 8.0
+			loop = false
+		"tongue":
+			fps = 14.0
 			loop = false
 		"bandage":
 			fps = 4.0
@@ -3102,6 +3320,8 @@ func _animate(delta: float) -> void:
 		shown = n - 1 - frame_i         # lifting the shield plays the brace backwards
 	if anim == "land" and sky == "lifting":
 		shown = n - 1 - frame_i         # taking off plays the landing backwards
+	if kind == "mist_toad" and anim == "tongue" and tongue_stage != "":
+		shown = mini(shown, TOAD_MOUTH_OPEN)   # the mouth gapes; the drawn tongue does the reaching
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
 	if _front:
 		_update_gunners()

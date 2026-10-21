@@ -773,6 +773,16 @@ const UNITS := {
 		"windup_s": 3,
 		"windup_se": 3,
 	}},
+	"mist_toad": {"cell": Vector2i(100, 56), "anchor": Vector2(50, 54), "frames": {
+		"death_e": 13,
+		"fog_e": 14,
+		"idle_e": 1,
+		"idle_n": 6,
+		"idle_s": 5,
+		"idle_se": 1,
+		"tongue_e": 13,
+		"walk_e": 14,
+	}},
 }
 
 const BUILDING_SIZE := {

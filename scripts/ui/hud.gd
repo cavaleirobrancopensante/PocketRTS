@@ -669,6 +669,20 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_miasma", "MIASMA", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "miasma", ok, why, ""])
+	# Mist Toad: FOG (a spot) and TONGUE (an enemy unit), both paid from its energy
+	var toads := units.filter(func(u: Unit) -> bool: return u.kind == "mist_toad")
+	if not toads.is_empty():
+		var top := 0.0
+		for u in toads:
+			top = maxf(top, u.charge)
+		var fog_ok := top >= float(Defs.FOG["cost"])
+		list.append(["ab_fog", "FOG", func() -> void:
+			controls.mode = "cast"
+			controls.cast_spell = "fog", fog_ok, "" if fog_ok else "Not enough energy: FOG needs %d." % int(Defs.FOG["cost"]), str(int(Defs.FOG["cost"]))])
+		var tongue_ok: bool = toads.any(func(u: Unit) -> bool: return u.charge >= float(Defs.TONGUE["cost"]) and u.tongue_stage == "")
+		list.append(["ab_tongue", "TONGUE", func() -> void:
+			controls.mode = "cast"
+			controls.cast_spell = "tongue", tongue_ok, "" if tongue_ok else "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]), str(int(Defs.TONGUE["cost"]))])
 	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
 	if not sacs.is_empty():
 		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
@@ -731,7 +745,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "E", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
 	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "BRACE": "E", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
 
 
@@ -971,7 +985,8 @@ func _draw() -> void:
 		draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
 	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker", "cast"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
-			"cast": "Tap where to cast the %s" % ("storm (it stuns your own units too)" if controls.cast_spell == "storm" else "healing miasma"),
+			"cast": "Tap the enemy to lash with the tongue" if controls.cast_spell == "tongue" else "Tap where to cast the %s" % {"storm": "storm (it stuns your own units too)",
+				"fog": "fog (shots from or into it miss half the time, yours too)"}.get(controls.cast_spell, "healing miasma"),
 			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a Feeding Pit (or a spot) for new grubs"}[controls.mode]
 		if Settings.pc():
 			t = t.replace("Tap", "Click") + "  (right-click or Esc cancels)"
@@ -1126,6 +1141,11 @@ func _draw_panel(font: Font) -> void:
 					"deployed": "Rooted: lobs spit blobs and spreads swamp.", "packing": "Uprooting..."}[uu.tesla_mode]
 				if uu.spell_cd > 0.0:
 					info += "  Miasma ready in %ds." % int(ceil(uu.spell_cd))
+			elif uu.kind == "mist_toad":
+				info = "Energy %d / %d (FOG %d, TONGUE %d) · fills %s" % [int(uu.charge), int(Defs.TOAD["max"]), int(Defs.FOG["cost"]), int(Defs.TONGUE["cost"]),
+					"twice as fast on swamp (now)" if game.on_swamp(uu.team, uu.position) else "faster on swamp"]
+				if uu.tongue_stage == "windup":
+					info = "Aiming its tongue: %.1f s (don't move it!)" % uu.tongue_t
 			elif uu.kind == "stormcaller":
 				info = "Charge %d / %d (a storm costs %d). %s" % [int(uu.charge), int(Defs.STORM["max"]), int(Defs.STORM["cost"]),
 					"Recharging in the field." if uu._in_field and uu.charge < float(Defs.STORM["max"]) else ("Full." if uu.charge >= float(Defs.STORM["max"]) else "Bring it into a Clockwork field to recharge.")]
@@ -1434,6 +1454,8 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"SACRIFICE": "Sacrifice: the selected Brood creatures (not grubs) go to the nearest Brood Pen and are offered up there, each for 12% of its biomass cost as essence (a Raptor 3, a Spitter 5, a Brute 18). Turn spare biomass into essence for Skywings, Bloaters, Brutes and Spore Mothers.",
 		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
 		"SPIT": "Spit: lob acid from range (160). Every glob uses up gas, so the final burst gets smaller.",
+		"FOG": "Swamp fog (50 energy): a fog bank, 3 tiles across each way, on a spot within 7 tiles for 12 s. Ranged attacks fired from inside it or into it miss half the time (yours too), and units inside see only 2 tiles. Black powder's own smoke, turned on the Crown.",
+		"TONGUE": "Tongue (75 energy): tap an enemy unit on the ground within 7 tiles. A crosshair marks it for 3 s (its owner sees it), then the tongue lashes out and drags it to the Toad's feet. The windup breaks if the Toad is stunned, killed or moved, or the target gets 1.5x the range away (the energy is lost). Steam Walkers and other heavy engines are only staggered (1 s). Not buildings or flyers.",
 		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
 		"ROOT": "Root (2.5 s): she digs in, lobs big spit blobs that splash an area, and spreads swamp. She can't move until she uproots.",
 		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",
