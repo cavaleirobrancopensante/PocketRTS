@@ -913,7 +913,7 @@ func can_repair(e: Entity) -> bool:
 	if kind == "winder":
 		return e.is_unit() and (e as Unit).d["faction"] == "clockwork" or e.is_building()
 	if kind == "labourer":
-		return e.is_building()
+		return e.is_building() or (e is Unit and Defs.CROWN_MACHINES.has(e.kind))
 	return false
 
 
@@ -2397,10 +2397,14 @@ func _heal(delta: float) -> Vector2:
 		p.cmd_stop()
 		p.velocity = Vector2.ZERO
 		p.off_field = true
-		p.visible = false
-		p.selected = false
-		game.selection.erase(p)
-		position = p.position
+		if p.kind == "cuirassier":
+			# a horseman is tended where he stands: horse and rider stay in view
+			position = p.position + Vector2(-14, 4)
+		else:
+			p.visible = false
+			p.selected = false
+			game.selection.erase(p)
+			position = p.position
 		work = "bandaging"
 		work_t = Defs.BANDAGE_TIME
 		Sfx.play("combat/missionary_heal", position)
@@ -2459,8 +2463,9 @@ func _drop_body() -> void:
 func _release_patient() -> void:
 	if _patient and is_instance_valid(_patient):
 		_patient.off_field = false
+		if not _patient.visible:
+			_patient.position = position + Vector2(14, 4)
 		_patient.visible = true
-		_patient.position = position + Vector2(14, 4)
 	_patient = null
 	if work == "bandaging":
 		work = ""

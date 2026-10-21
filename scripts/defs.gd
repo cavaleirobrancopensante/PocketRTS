@@ -138,6 +138,8 @@ const WINDER_SELF := {"run": 90.0, "stop": 3.0, "low": 0.04}
 static func battery_charge(blue: bool, t: float) -> float:
 	var info: Dictionary = BATTERY["blue" if blue else "yellow"]
 	return float(info["base"]) * maxf(float(BATTERY["floor"]), 1.0 - float(info["decay"]) * maxf(0.0, t - float(BATTERY["fresh"])))
+## Crown machines: Labourers repair them like buildings; Missionaries don't bandage them.
+const CROWN_MACHINES := ["cannon", "mortar", "powder_wagon", "balloon"]
 const REPAIR_COST := 0.25        # a full repair costs this share of the price (StarCraft: 25%)
 const ENERGY_PER_WINDER := 3.5
 const ENERGY_HALL := 3.0
