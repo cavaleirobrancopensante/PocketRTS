@@ -182,87 +182,117 @@ def build_mortar():
 
 R_SCALE = 38.0 / 113.0    # reload_rammer px -> game px: the gunner standing (helmet to boots,
                           # 113 px on the sheet) as tall as the cannon's crew (38 px)
-# The rammer's frames: 0 standing with the rammer, 1 raising it, 2 thrusting it, 3 thrust
-# deeper, 4 pulling it back up, 5 standing ready. In the thrust frames (2, 3) the sheet's
-# pole points wherever it likes, so it is cut off at his hands and a new one is drawn from
-# his hands into the muzzle.
-# The load: (frame, step, out) - step = px his whole body has moved toward the gun along
-# the bore from where he stands to pull; out = px of the rammer's head showing outside the
-# muzzle (0: it is in the bore). Three strokes: push in, ram deep, pull back.
-C_SEQ = [(0, 0, None), (1, 0, None), (2, 2, 0), (3, 4, 0), (2, 0, 3), (3, 4, 0), (2, 0, 3),
-         (3, 4, 0), (4, 0, None), (5, 0, None)]
-# Per facing: the rammer sheet's row (0 s, 1 se, 2 e, 3 ne, 4 n) and whether it is
-# mirrored; the muzzle (cell px: where the pole enters the bore); `bore`: the direction the
-# pole goes in (his body moves along it); `hand`: where his front hand is when he pulls;
-# `over`: he stands in front of the gun (drawn over it) or behind (under it); `erase`:
-# cell boxes (x0, y0, x1, y1) of the gun crewman he replaces; `stand`: px he steps toward
-# the camera to stand upright (no room for him and his raised rammer where he rams).
-#   s:  muzzle toward the camera: he stands left of it and a step in front, side-on (the
-#       side view), the pole across into the mouth.
-#   se: muzzle toward the lower right: he stands right of it and in front, facing back at
-#       it (side view mirrored).
-#   e:  in front of the muzzle, facing back at it (side view mirrored).
-#   ne: muzzle toward the upper right: he stands beyond it, facing down-left at it (the
-#       south-east view mirrored); behind the gun.
-#   n:  muzzle away from the camera: he stands behind the gun, left of the muzzle, facing
-#       the camera, in place of the gun's left crewman; behind the gun.
-C_SPEC = {
-    "s": dict(row=2, mirror=False, mouth=(68.0, 93.0), bore=(1.0, -0.15), hand=(57.0, 95.0),
-              over=True),
-    "se": dict(row=2, mirror=True, mouth=(89.5, 87.5), bore=(-0.85, -0.5), hand=(102.0, 94.0),
-               over=True),
-    "e": dict(row=2, mirror=True, mouth=(91.5, 65.5), bore=(-1.0, -0.15), hand=(106.0, 70.0),
-              over=False),
-    "ne": dict(row=1, mirror=True, mouth=(104.0, 55.0), bore=(-0.8, 0.6), hand=(115.0, 47.0),
-               over=False),
-    "n": dict(row=0, mirror=False, mouth=(73.0, 39.0), bore=(0.35, 0.95), hand=(63.0, 31.0),
-              over=False, erase=[(30, 25, 56, 76), (56, 25, 60, 66)], stand=(1, 6)),
+# The rule: the rammer stands on the barrel's axis carried on past the muzzle, facing the
+# muzzle, feet on the gun's ground; his pole runs along the axis into the bore, and his
+# whole body moves 2-4 px along it with each stroke.
+#
+# Ways to show the pole:
+#  "drawn" (se, e, ne: the axis runs across the screen): the side / three-quarter views
+#     standing upright, hands at chest height (the muzzle's height); their upright pole is
+#     cut away at the hands in the ramming frames and a new one drawn from his hands along
+#     the axis into the muzzle.
+#  "own" (s: the axis runs at the camera): the back view, standing in front of the muzzle
+#     and pushing up into it, drawn over the gun, with the pole as drawn; its top is put in
+#     the muzzle (and what of it is past the mouth hidden).
+#  "crouch" (n: the axis runs away from the camera): the front view stooping over the
+#     muzzle from beyond it (there is no room above the gun in the cell for him upright),
+#     the sheet's pole cut at his hands and a new one drawn straight down into the muzzle;
+#     drawn under the gun.
+#
+# The rammer sheet's frames: 0 standing with the rammer upright, 1 raising it, 2 / 3
+# thrusting it (stooped), 4 pulling it back up, 5 standing ready (rammer upright). "Nc" is
+# frame N with the pole cut off at his hands.
+# The loads: (frame, step, out) - step = px his body has moved along the axis toward the
+# muzzle; out = px of the rammer's head showing outside the muzzle (a pull), 0 = in the
+# bore, None = standing with the pole as drawn.
+C_SEQ = {
+    "drawn": [(0, 0, None), (1, 0, None), ("0c", 2, 0), ("5c", 4, 0), ("0c", 0, 3),
+              ("5c", 4, 0), ("0c", 0, 3), ("5c", 4, 0), (4, 0, None), (5, 0, None)],
+    "own": [(0, 0, None), (0, 0, None), (5, 2, None), (0, 4, None), (5, 0, None), (0, 4, None),
+            (5, 0, None), (0, 4, None), (5, 0, None), (0, 0, None)],
+    "crouch": [("2c", 0, 3), ("3c", 0, 3), ("2c", 2, 0), ("3c", 4, 0), ("2c", 0, 3),
+               ("3c", 4, 0), ("2c", 0, 3), ("3c", 4, 0), ("2c", 0, 3), ("3c", 0, 3)],
 }
-# The thrust frames on the sheet (sheet px, read off it): where the pole leaves his front
-# hand, and the middle of the rammer's head - the pole between them is cut away.
-R_HAND = {(0, 2): (682.0, 147.0), (0, 3): (916.0, 147.0),
-          (1, 2): (682.0, 335.0), (1, 3): (915.0, 336.0),
-          (2, 2): (683.0, 512.0), (2, 3): (913.0, 512.0)}
-R_TIP = {(0, 2): (703.5, 175.0), (0, 3): (930.0, 179.0),
-         (1, 2): (700.0, 361.0), (1, 3): (931.0, 366.0),
-         (2, 2): (723.0, 527.0), (2, 3): (957.0, 528.0)}
+# Per facing: the rammer sheet's row (0 front, 1 three-quarter front, 2 side, 4 back) and
+# whether it's mirrored; the muzzle (cell px, the middle of the bore's mouth); `axis`: the
+# barrel's axis on screen, pointing out of the muzzle; `reach`: how far past the muzzle
+# along the axis his hands are ("drawn") or how far into the bore his pole's end goes
+# ("own", negative: in); `over`: drawn over the gun (he's in front of it) or under it.
+C_SPEC = {
+    "s": dict(mode="own", row=4, mirror=False, mouth=(73.0, 93.0), axis=(0.0, 1.0),
+              reach=-7.0, over=True),
+    "se": dict(mode="drawn", row=2, mirror=True, mouth=(88.5, 87.5), axis=(0.68, 0.73),
+               reach=14.0, over=True),
+    "e": dict(mode="drawn", row=2, mirror=True, mouth=(91.5, 65.5), axis=(1.0, 0.0),
+              reach=15.0, over=False),
+    "ne": dict(mode="drawn", row=1, mirror=True, mouth=(104.0, 55.0), axis=(0.96, -0.28),
+               reach=14.0, over=False),
+    "n": dict(mode="crouch", row=0, mirror=False, mouth=(73.0, 38.0), axis=(0.0, -1.0),
+              reach=10.0, over=False),
+}
+# Read off the sheet (sheet px). "drawn" frames: `ref` = his front hand on the pole, `cut` =
+# the pole's ends (the pole between the hand and each end is cut away). "own" frames:
+# `ref` = the end of the pole that goes into the muzzle.
+R_REF = {
+    (2, 0): dict(ref=(170.0, 497.0), cut=[(170.0, 452.0), (170.0, 548.0)]),
+    (2, 5): dict(ref=(1408.0, 497.0), cut=[(1408.0, 478.0), (1408.0, 547.0)]),
+    (1, 0): dict(ref=(175.0, 311.0), cut=[(165.0, 253.0), (192.0, 345.0)]),
+    (1, 5): dict(ref=(1406.0, 305.0), cut=[(1401.0, 255.0), (1410.0, 351.0)]),
+    (4, 0): dict(ref=(163.0, 825.0)),
+    (4, 5): dict(ref=(1398.0, 828.0)),
+    (0, 2): dict(ref=(682.0, 147.0), cut=[(703.5, 175.0)]),
+    (0, 3): dict(ref=(916.0, 147.0), cut=[(930.0, 179.0)]),
+}
 POLE = {"edge": (40, 22, 12), "lit": (214, 140, 74), "wood": (160, 92, 44)}
 HEAD = {"edge": (26, 26, 30), "iron": (72, 74, 82), "lit": (138, 140, 150)}
 
 
-def cut_pole(img, origin, hand, tip):
-    """Erase the sheet's pole from just past the hand to the head (sheet px)."""
+def cut_pole(img, origin, hand, ends):
+    """Erase the sheet's pole from just past the hand to each end (sheet px): its wood and
+    the dark outline along it, and the iron head at an end that lies below the hand. Only
+    wood-coloured pixels (and their outline) go, so a helmet or face the pole passes stays."""
     h, w = img.shape[:2]
     yy, xx = np.mgrid[0:h, 0:w].astype(float)
     xx += origin[0]
     yy += origin[1]
+    rgb = img[..., :3].astype(int)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    wood = (r > 70) & (g < 0.72 * r) & (b < 0.48 * r) & (g > b)
+    dark = rgb.max(-1) < 75
     hx, hy = hand
-    tx, ty = tip
-    L = np.hypot(tx - hx, ty - hy)
-    ux, uy = (tx - hx) / L, (ty - hy) / L
-    t = (xx - hx) * ux + (yy - hy) * uy
-    dist = np.abs((xx - hx) * uy - (yy - hy) * ux)
-    pole = (t > 3) & (t < L) & (dist <= 8)
-    head = np.hypot(xx - tx, yy - ty) <= 13
+    gone = np.zeros((h, w), bool)
+    for tx, ty in ends:
+        L = np.hypot(tx - hx, ty - hy)
+        ux, uy = (tx - hx) / L, (ty - hy) / L
+        t = (xx - hx) * ux + (yy - hy) * uy
+        dist = np.abs((xx - hx) * uy - (yy - hy) * ux)
+        band = (t > 4) & (t < L + 6) & (dist <= 8)
+        w_ = band & wood
+        gone |= w_ | (band & dark & ndimage.binary_dilation(w_, iterations=2))
+        if ty > hy:
+            gone |= np.hypot(xx - tx, yy - ty) <= 12       # the iron rammer head
     out = img.copy()
-    out[pole | head] = 0
+    out[gone] = 0
     return out
 
 
 def heel_of(img, back):
     """The rear heel: the back-most pixel of the lowest rows of his back half (back = -1:
-    his back is to the left). The back half only: the rammer's head, resting on the ground
-    in front of him, reaches lower than his boots."""
+    his back is to the left; 0: seen from the front/back, the middle of his feet). The back
+    half only: the rammer's head, resting on the ground in front of him, reaches lower than
+    his boots."""
     a = img[..., 3] > 0
     xs = np.flatnonzero(a.any(0))
     mid = (xs.min() + xs.max() + 1) // 2
     rear = a.copy()
     if back < 0:
         rear[:, mid:] = False
-    else:
+    elif back > 0:
         rear[:, :mid] = False
     yb = np.flatnonzero(rear.any(1)).max()
     xs = np.flatnonzero(rear[yb - 6:yb + 1].any(0))
+    if back == 0:
+        return (xs.min() + xs.max() + 1) / 2.0, yb + 1.0
     return (xs.min() if back < 0 else xs.max() + 1.0), yb + 1.0
 
 
@@ -298,12 +328,20 @@ def draw_pole(a, b, head):
     return Layer(img, ax, ay)
 
 
-def erase_boxes(lay, boxes):
-    img = lay.img.copy()
+def into_bore(lay, mouth):
+    """Seen from the front (s), the pole above the middle of the muzzle's mouth is inside
+    the bore: its wood there goes (the rammer's helmet and shoulders stay)."""
     ax, ay = UNITS["cannon"]["anchor"]
-    for x0, y0, x1, y1 in boxes:
-        ox, oy = int(round(lay.ax - ax)), int(round(lay.ay - ay))
-        img[max(0, y0 + oy):y1 + oy, max(0, x0 + ox):x1 + ox] = 0
+    img = lay.img.copy()
+    h, w = img.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    cx = xx + 0.5 - lay.ax + ax
+    cy = yy + 0.5 - lay.ay + ay
+    rgb = img[..., :3].astype(int)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    wood = (r > g + 25) & (g > b + 10) | (rgb.max(-1) < 60)      # wood and its dark outline
+    zone = (np.abs(cx - mouth[0]) <= 3.0) & (cy < mouth[1])
+    img[zone & wood] = 0
     return Layer(img, lay.ax, lay.ay)
 
 
@@ -313,48 +351,56 @@ def build_cannon():
     out = {}
     for d in DIRS:
         sp = C_SPEC[d]
-        bore = np.array(sp["bore"], float)
-        bore /= np.hypot(*bore)
-        back = 1 if sp["mirror"] else -1          # which side his back (rear heel) is on
+        seq = C_SEQ[sp["mode"]]
+        axis = np.array(sp["axis"], float)
+        axis /= np.hypot(*axis)
+        if sp["mode"] == "own":
+            back = 0
+        else:
+            back = 1 if sp["mirror"] else -1        # which side his back (rear heel) is on
         gun = published("cannon", "idle", d)[0]
-        if "erase" in sp:
-            gun = erase_boxes(gun, sp["erase"])
-        figs, hands = {}, {}
-        for c in sorted({c for c, _, _ in C_SEQ}):
-            img, (x0, y0) = sh.cut(sp["row"], c)
-            key = (sp["row"], c)
-            if key in R_HAND:
-                img = cut_pole(img, (x0, y0), R_HAND[key], R_TIP[key])
+        figs, refs = {}, {}
+        for c in {c for c, _, _ in seq}:
+            n = int(str(c)[0])
+            img, (x0, y0) = sh.cut(sp["row"], n)
+            info = R_REF.get((sp["row"], n))
+            if str(c).endswith("c"):
+                img = cut_pole(img, (x0, y0), info["ref"], info["cut"])
             small = to_game(img, R_SCALE, sh.bgc)
             k = small.shape[1] / img.shape[1]
-            if key in R_HAND:
-                hands[c] = ((R_HAND[key][0] - x0) * k, (R_HAND[key][1] - y0) * k)
+            if info:
+                refs[c] = ((info["ref"][0] - x0) * k, (info["ref"][1] - y0) * k)
             if sp["mirror"]:
                 small = small[:, ::-1].copy()
-                if c in hands:
-                    hands[c] = (small.shape[1] - hands[c][0], hands[c][1])
+                if c in refs:
+                    refs[c] = (small.shape[1] - refs[c][0], refs[c][1])
             figs[c] = small
-        # where he stands to pull: his rear heel when frame 2's hand is at sp["hand"]
-        hx, hy = heel_of(figs[2], back)
-        heel0 = (sp["hand"][0] + hx - hands[2][0], sp["hand"][1] + hy - hands[2][1])
+        mouth = np.array(sp["mouth"])
+        home = mouth + axis * sp["reach"]       # where the reference point sits at step 0
+        # his heel at step 0 (from frame 0's reference point at home)
+        f0 = seq[2][0]
+        hx, hy = heel_of(figs[f0], back)
+        heel0 = home + np.array([hx - refs[f0][0], hy - refs[f0][1]])
         frames = []
-        for c, step, outpx in C_SEQ:
-            dx, dy = bore * step
-            hx, hy = heel_of(figs[c], back)
-            if outpx is None:
-                # standing: by the rear heel, rammer upright as drawn (`stand`: a step from
-                # the ramming spot, where there's no room for him upright)
-                sx, sy = sp.get("stand", (0, 0))
-                lay = Layer(figs[c], hx - (heel0[0] + sx - ax), hy - (heel0[1] + sy - ay))
-                layers = [lay]
+        for c, step, outpx in seq:
+            shift = -axis * step                # toward the muzzle along the axis
+            if c in refs:
+                at = home + shift
+                lay = Layer(figs[c], refs[c][0] - (at[0] - ax), refs[c][1] - (at[1] - ay))
             else:
-                # by the hand; the hand moves with the body, so pin the rear heel first and
-                # read where that puts his hand
-                lay = Layer(figs[c], hx - (heel0[0] + dx - ax), hy - (heel0[1] + dy - ay))
-                hand = (hands[c][0] - lay.ax + ax, hands[c][1] - lay.ay + ay)
-                end = (sp["mouth"][0] - bore[0] * outpx, sp["mouth"][1] - bore[1] * outpx)
-                layers = [draw_pole(hand, end, outpx > 0), lay]
+                hx, hy = heel_of(figs[c], back)
+                at = heel0 + shift
+                lay = Layer(figs[c], hx - (at[0] - ax), hy - (at[1] - ay))
+            layers = [lay]
+            if sp["mode"] != "own" and outpx is not None:
+                hand = home + shift
+                end = mouth + axis * outpx
+                pole = draw_pole(tuple(hand), tuple(end), outpx > 0)
+                # facing the camera (crouch) the pole is in front of him; else behind his arm
+                layers = [lay, pole] if sp["mode"] == "crouch" else [pole, lay]
             fig = compose(layers)
+            if d == "s":
+                fig = into_bore(fig, mouth)
             frames.append(compose([gun, fig]) if sp["over"] else compose([fig, gun]))
         out[d] = frames
     return out
