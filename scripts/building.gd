@@ -86,7 +86,7 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	hp = max_hp if complete else max_hp * 0.1
 	if d["faction"] == "clockwork":
 		seeded = complete
-	if k == "town_hall" or k == "hive":
+	if k == "town_hall" or k == "hive" or k == "clocktower":
 		soil = reserve()
 	if d["faction"] == "brood":
 		seeded = complete
@@ -157,15 +157,18 @@ func farm_speed() -> float:
 	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])
 
 
-## Town Hall / Hive: the full reserve of its land (Crown soil, Brood ground).
+## Town Hall / Hive / Clocktower: the full reserve of its land (Crown soil, Brood ground,
+## Clockwork coal for its Boilers).
 func reserve() -> float:
+	if kind == "clocktower":
+		return float(Defs.COAL_RESERVE)
 	return float(Defs.GROUND_RESERVE if kind == "hive" else Defs.SOIL_RESERVE)
 
 
 ## Farm / Feeding Pit: share of its hall's soil (ground) left (0..1); 0 with no hall.
 ## Town Hall / Hive: its own.
 func soil_left() -> float:
-	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "feeding_pit" else self
+	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "feeding_pit" or kind == "boiler" else self
 	return clampf(h.soil / h.reserve(), 0.0, 1.0) if h else 0.0
 
 
@@ -223,9 +226,17 @@ func _physics_process(delta: float) -> void:
 			var bat: Array = d["battery"]
 			if batteries < int(bat[1]):
 				_bat_t += delta
-				if _bat_t >= float(bat[0]):
+				# a Boiler burns its Clocktower's coal; on spent coal it fills at a third
+				var every := float(bat[0])
+				var coal: Building = game.soil_hall(self) if kind == "boiler" else null
+				if kind == "boiler" and (coal == null or coal.soil < 1.0):
+					every /= Defs.COAL_SPENT
+				if _bat_t >= every:
 					_bat_t = 0.0
 					batteries += 1
+					if coal and coal.soil >= 1.0:
+						coal.soil -= 1.0
+						game._soil_check(coal)
 	if built and uses_eggs():
 		# Every egg morphs at the same time.
 		var i := 0

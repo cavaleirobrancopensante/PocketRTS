@@ -20,7 +20,7 @@ func _run() -> void:
 	while g.clock < 120.0:
 		await physics_frame
 	var c := Vector2(42, 30) * Game.T
-	var ks := ["musketeer", "pikeman", "raptor", "spitter", "gearknight", "bolt"]
+	var ks := ["musketeer", "pikeman", "raptor", "spitter", "thresher", "arc_thrower"]
 	for k in ks:
 		for i in 14:
 			g._add_unit(k, ks.find(k) / 2, c + Vector2(randf_range(-220, 220), randf_range(-140, 140)))

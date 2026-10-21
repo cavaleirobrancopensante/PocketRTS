@@ -66,7 +66,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
-			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying}
+			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying,
+			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
@@ -128,14 +129,14 @@ static func restore(game: Game, d: Dictionary) -> void:
 		var b := game._add_building(bk, int(bd["t"]), Vector2i(int(bd["c"][0]), int(bd["c"][1])), bool(bd["built"]))
 		b.progress = float(bd["progress"])
 		b.hp = float(bd["hp"])
-		b.queue = Array(bd["queue"])
+		b.queue = Array(bd["queue"]).map(func(q) -> String: return {"gearknight": "thresher", "bolt": "arc_thrower"}.get(String(q), String(q))).filter(func(q: String) -> bool: return Defs.UNITS.has(q))
 		b.prod_t = float(bd["prod_t"])
 		b.eggs = int(bd["eggs"])
 		b.egg_t = float(bd["egg_t"])
 		b.morph_t = Array(bd["morph_t"]).map(func(x) -> float: return float(x))
 		b.research = String(bd["research"])
 		b.research_t = float(bd["research_t"])
-		b.auto_train = String(bd.get("auto", ""))
+		b.auto_train = {"gearknight": "thresher", "bolt": "arc_thrower"}.get(String(bd.get("auto", "")), String(bd.get("auto", "")))
 		b.batteries = int(bd.get("bat", 0))
 		b.vertical = bool(bd.get("v", false))
 		b.dir_locked = bool(bd.get("vl", false))
@@ -143,8 +144,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.seeded = bool(bd["seeded"])
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
-		if b.kind == "town_hall" or b.kind == "hive":
-			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground)
+		if b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower":
+			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground / coal)
 			b.soil_warned = int(bd.get("sw", 0))
 		if bd["rally"] != null:
 			b.rally = _to_v2(bd["rally"])
@@ -162,7 +163,11 @@ static func restore(game: Game, d: Dictionary) -> void:
 			var left := game.deposit_left(b)
 			game._dep_warned["%d:%d" % [b.team, game.site_deposits(b)[0].get_instance_id()]] = 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
 	for ud in d["units"]:
-		var u := game._add_unit(String(ud["k"]), int(ud["t"]), _to_v2(ud["p"]))
+		# (older saves: the Clockwork rework replaced the Gearknight and the Bolt Automaton)
+		var uk: String = {"gearknight": "thresher", "bolt": "arc_thrower"}.get(String(ud["k"]), String(ud["k"]))
+		if not Defs.UNITS.has(uk):
+			continue
+		var u := game._add_unit(uk, int(ud["t"]), _to_v2(ud["p"]))
 		u.hp = float(ud["hp"])
 		u.wind = float(ud["wind"])
 		u.charge = float(ud["charge"])
@@ -182,6 +187,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.courier = bool(ud.get("courier", false))
 		u.topter_bat = String(ud.get("bat", ""))
 		u.overclock_t = float(ud.get("oc", 0.0))
+		u.spin = float(ud.get("spin", 0.0))
+		u.overcharge_t = float(ud.get("ovc", 0.0))
+		u.self_wind_t = float(ud.get("sw", 0.0))
+		u.carry_t = float(ud.get("ct", 0.0))
+		if bool(ud.get("brace", false)):
+			u.set_brace(true)
+		u.hp = minf(u.hp, u.max_hp)
 		var defl := String(ud.get("defl", ""))
 		if u.kind == "bloater" and defl != "":
 			u.deflate = "flat" if defl == "deflating" else ("" if defl == "refilling" else defl)
