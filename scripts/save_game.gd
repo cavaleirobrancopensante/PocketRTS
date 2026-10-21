@@ -31,8 +31,10 @@ static func _v2(v: Vector2) -> Array:
 
 
 ## Units that are no more: a saved Pikeman comes back as a Musketeer.
+## A unit kind from an older save: the Pikeman became a Musketeer (Crown rework), the
+## Gearknight a Thresher and the Bolt Automaton an Arc Thrower (Clockwork rework).
 static func _kind(k: String) -> String:
-	return "musketeer" if k == "pikeman" else k
+	return {"pikeman": "musketeer", "gearknight": "thresher", "bolt": "arc_thrower"}.get(k, k)
 
 
 static func _to_v2(a) -> Vector2:
@@ -46,17 +48,18 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"saved_at": Time.get_datetime_string_from_system(false, true), "cfg": cfg, "clock": game.clock,
 		"players": game.players, "stats": game.stats, "eliminated": game.eliminated,
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
-		"zoom": game.camera.zoom.x, "first_of": game._first_of,
+		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true,
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
 		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]), "buildings": [], "units": []}
 	for ai in game.ais:
-		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at})
+		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at, "strategy": ai.strategy,
+			"failed": ai._failed, "regroup": ai._regroup_until})
 	for b in game.buildings:
 		if b.dead:
 			continue
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "prod_t": b.prod_t, "eggs": b.eggs,
-			"egg_t": b.egg_t, "morph_t": b.morph_t, "research": b.research, "research_t": b.research_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
+			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "growth": b.growth, "gold_acc": b.gold_acc,
 			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
@@ -69,7 +72,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"auto": u.auto_work, "cross": u.cross_t, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
-			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying}
+			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying,
+			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
@@ -101,6 +105,26 @@ static func _outcrops_left(deps: Array, h: Building) -> float:
 
 
 ## Put a saved match back onto a freshly generated map (same seed).
+## The nearest corner to `at` (at most 3 tiles off) where a footprint of this size is all
+## free ground; `at` itself if there's none.
+static func _fit(game: Game, at: Vector2i, size: Vector2i) -> Vector2i:
+	var best := at
+	var bd := INF
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var c := at + Vector2i(dx, dy)
+			var ok := true
+			for y in size.y:
+				for x in size.x:
+					if not game.is_free(c + Vector2i(x, y)):
+						ok = false
+			var dd := Vector2(dx, dy).length()
+			if ok and dd < bd:
+				bd = dd
+				best = c
+	return best
+
+
 static func restore(game: Game, d: Dictionary) -> void:
 	# clear what the start placed
 	for u in game.units.duplicate():
@@ -132,22 +156,34 @@ static func restore(game: Game, d: Dictionary) -> void:
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex
-	for bd in d["buildings"]:
+	# (Farms last: in saves from before Farms grew to 5x4 tiles each may have to shift a little
+	# to fit between what stands round it)
+	var blist: Array = Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) != "farm") \
+		+ Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) == "farm")
+	for bd in blist:
 		var bk := String(bd["k"])
 		if bk == "bone_midden":
 			bk = "brood_pen"        # (older saves: the Bone Midden became the Brood Pen)
 		if not Defs.BUILDINGS.has(bk):
 			continue
-		var b := game._add_building(bk, int(bd["t"]), Vector2i(int(bd["c"][0]), int(bd["c"][1])), bool(bd["built"]))
+		var at := Vector2i(int(bd["c"][0]), int(bd["c"][1]))
+		if bk == "farm" and not bool(d.get("big_farms", false)):
+			at = _fit(game, at, Defs.BUILDINGS[bk]["size"])
+		var b := game._add_building(bk, int(bd["t"]), at, bool(bd["built"]))
 		b.progress = float(bd["progress"])
 		b.hp = float(bd["hp"])
-		b.queue = Array(bd["queue"]).map(func(x) -> String: return _kind(String(x))).filter(func(x: String) -> bool: return Defs.UNITS.has(x))
+		# (research is in the queue as "@key")
+		b.queue = Array(bd["queue"]).map(func(x) -> String: return String(x) if String(x).begins_with("@") else _kind(String(x))) \
+			.filter(func(x: String) -> bool: return Defs.RESEARCH.has(x.substr(1)) if x.begins_with("@") else Defs.UNITS.has(x))
 		b.prod_t = float(bd["prod_t"])
 		b.eggs = int(bd["eggs"])
 		b.egg_t = float(bd["egg_t"])
 		b.morph_t = Array(bd["morph_t"]).map(func(x) -> float: return float(x))
-		b.research = String(bd["research"]) if Defs.RESEARCH.has(String(bd["research"])) else ""
-		b.research_t = float(bd["research_t"])
+		# (older saves: research ran beside the queue; it goes to the front now)
+		var old_rs := String(bd.get("research", ""))
+		if Defs.RESEARCH.has(old_rs) and not b.queue.has("@" + old_rs):
+			b.queue.push_front("@" + old_rs)
+			b.prod_t = float(bd.get("research_t", 0.0))
 		b.auto_train = _kind(String(bd.get("auto", "")))
 		b.batteries = int(bd.get("bat", 0))
 		b.vertical = bool(bd.get("v", false))
@@ -156,8 +192,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.seeded = bool(bd["seeded"])
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
-		if b.kind == "town_hall" or b.kind == "hive":
-			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground)
+		if b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower":
+			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground / coal)
 			b.soil_warned = int(bd.get("sw", 0))
 		if b.lode_full() > 0.0:
 			if bd.has("lode"):
@@ -202,6 +238,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.courier = bool(ud.get("courier", false))
 		u.topter_bat = String(ud.get("bat", ""))
 		u.overclock_t = float(ud.get("oc", 0.0))
+		u.spin = float(ud.get("spin", 0.0))
+		u.overcharge_t = float(ud.get("ovc", 0.0))
+		u.self_wind_t = float(ud.get("sw", 0.0))
+		u.carry_t = float(ud.get("ct", 0.0))
+		if bool(ud.get("brace", false)):
+			u.set_brace(true)
+		u.hp = minf(u.hp, u.max_hp)
 		var defl := String(ud.get("defl", ""))
 		if u.kind == "bloater" and defl != "":
 			u.deflate = "flat" if defl == "deflating" else ("" if defl == "refilling" else defl)
@@ -227,6 +270,11 @@ static func restore(game: Game, d: Dictionary) -> void:
 			if ai.team == int(a["team"]):
 				ai._walled = bool(a["walled"])
 				ai._attack_at = int(a["attack_at"])
+				# (a failed rush that switched to a balanced game stays switched)
+				if AI.STRATEGIES.has(String(a.get("strategy", ""))):
+					ai.strategy = String(a["strategy"])
+				ai._failed = int(a.get("failed", 0))
+				ai._regroup_until = float(a.get("regroup", 0.0))
 	for t in game.n_players():
 		game._recount_supply(t)
 	game.swamp_dirty = true

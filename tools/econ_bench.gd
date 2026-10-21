@@ -176,11 +176,10 @@ class Tracker:
 			if fac == "clockwork":
 				if prev[0] > 0 and u.carrying == 0:
 					if u.carry_empty:
-						var info: Dictionary = Defs.BATTERY["blue" if prev[2] else "yellow"]
 						var ct: float = prev[1] + dt
 						c["deliveries"] += 1
 						c["carry_t"] += ct
-						c["delivered"] += roundf((float(info["base"]) + float(info["gain"]) * ct) * float(Defs.BATTERY["ore"]))
+						c["delivered"] += roundf(Defs.battery_charge(prev[2], ct) * float(Defs.BATTERY["ore"]))
 					else:
 						c["blasts"] += 1
 				w_carry[u] = [u.carrying, u.carry_t, u.carry_blue, u.home_mine]

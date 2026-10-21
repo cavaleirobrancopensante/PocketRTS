@@ -512,8 +512,9 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			return
 	var e := game.entity_at(p)
 	var own := e != null and e.team == game.human
-	# Labourers tapping their own unfinished building / hall: help build / drop gold.
-	if own and not units.is_empty() and e is Building and (not e.built or e.kind == "town_hall") \
+	# Labourers tapping their own unfinished building: help build. (A finished one, a new
+	# Town Hall too, is selected like anything else: a long press sends them to it.)
+	if own and not units.is_empty() and e is Building and not e.built \
 			and units.any(func(u: Unit) -> bool: return u.is_worker()) and not is_mouse:
 		game.smart_command(units, p)
 		return

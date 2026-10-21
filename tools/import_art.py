@@ -931,7 +931,7 @@ def make_swamp_tile():
 
 
 CLOCKWORK_BUILDINGS = ["clocktower", "drill_rig", "spring_tower", "assembly_works"]
-CLOCKWORK_WIDTH = {"clocktower": 128, "drill_rig": 100, "spring_tower": 58, "assembly_works": 136}
+CLOCKWORK_WIDTH = {"clocktower": 128, "drill_rig": 100, "spring_tower": 58, "assembly_works": 168}   # Assembly Works: 5x4 since round 12
 
 
 def import_clockwork_structures(data):
@@ -971,7 +971,7 @@ STRUCTURES2 = {
                                   "rows": [0, 252, 458, 712, 1024],
                                   "width": {"feeding_pit": 108, "bone_midden": 104, "spore_vent": 70, "roost": 100}},
     "art/clockwork/structures2.png": {"names": ["boiler", "ore_crusher", "charging_pylon"], "rows": [0, 352, 662, 1024],
-                                      "width": {"boiler": 100, "ore_crusher": 112, "charging_pylon": 70}},
+                                      "width": {"boiler": 126, "ore_crusher": 112, "charging_pylon": 70}},
 }
 
 

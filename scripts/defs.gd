@@ -8,6 +8,7 @@ const EGGS_MAX := 5
 const EGG_TIME := 6.0
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
+const AUTO_REPAIR := 8           # REPAIR autocast: how far (tiles) an idle worker looks for something to fix
 const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); faster when the thing builds quickly
 
 # ---- Economy: every faction makes its own resources from structures.
@@ -19,7 +20,7 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 ## Clocktower's a reserve of ore for its Ore Crushers (a Mill / Crusher draws on the nearest
 ## hall of its own). Amounts are in what they pay: powder for saltpetre, ore for ore. A hall's
 ## saltpetre lasts a fully worked Mill (~120 powder a minute) about 11 minutes; a Clocktower's
-## ore lasts a saturated Clockwork base (~1,000-1,100 ore a minute) about 11 minutes. Once
+## ore lasts a saturated Clockwork base (~1,150-1,200 ore a minute) about 10 minutes. Once
 ## spent, its Mill / Crushers work at LODE_SPENT. Like soil, a hall raised where one fell takes
 ## over what was left there. The Brood has no lode (its Hive ground is GROUND_RESERVE).
 const LODE := {"town_hall": 1320.0, "clocktower": 11400.0}     # 3 x 440 powder, 3 x 3,800 ore
@@ -94,19 +95,57 @@ const PEN_RANGE := 12             # tiles
 ## Brood Pen SACRIFICE: a Brood creature offered up at a Pen gives this share of its biomass
 ## cost as essence (a Raptor, 25 biomass, gives 3).
 const SACRIFICE := 0.12
-# Clockwork: Winders crank Boilers for energy, split between ore, assembly and wind.
+# Clockwork: Winders carry batteries from the energy buildings to the Ore Crushers.
 ## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
 ## Winders carry them to an Ore Crusher, which turns the charge into ore drawn from its
-## Clocktower's ore (LODE; a quarter once it's spent). A battery gains charge the longer it's
-## on the road (so far crushers pay more), but past its limit, or if its carrier is hit, it
-## blows up. Yellow batteries at first; a Capacitor Works makes every source fill blue ones
-## (more charge, more time).
+## Clocktower's ore (LODE; a quarter once it's spent). A carried battery keeps its charge
+## for `fresh` s, then slowly loses it on the road (`decay`: share of its charge a second,
+## never below `floor`), so long hauls pay less; if its carrier is hit, it bursts. Yellow batteries at first; a Capacitor Works
+## makes every source fill blue ones (more charge, slower to fade).
 const BATTERY := {
-	"yellow": {"base": 10.0, "gain": 1.0, "overload": 22.0},
-	"blue": {"base": 14.0, "gain": 1.6, "overload": 30.0},
-	"load": 1.0, "blast": 10.0, "splash": 8.0,
-	"ore": 0.7,     # ore per point of charge at the crusher (interim pace until the Clockwork rework; was 1.0)
+	"yellow": {"base": 11.5, "decay": 0.03},
+	"blue": {"base": 15.5, "decay": 0.02},
+	"fresh": 6.0, "floor": 0.4, "load": 1.0, "blast": 10.0, "splash": 8.0,
+	"ore": 0.7,     # ore per point of charge at the crusher
 }
+## ENERGY: the full batteries waiting at the Clocktowers and Boilers are the Clockwork's
+## energy. Winders leave the last `keep` of them for it; top constructs (cost2), storms
+## and the like spend them.
+const ENERGY_KEEP := 6
+## Coal: each Clocktower's Boilers (a Boiler belongs to the nearest Clocktower) share a
+## reserve of coal, one unit a battery; once it's spent they fill batteries at a third.
+## (A saturated base's 2 Boilers burn ~110 a minute: ~11 minutes.)
+const COAL_RESERVE := 1200
+const COAL_SPENT := 1.0 / 3.0
+## Overcharged: a construct that stays inside a Boiler's glow (`boiler` tiles), a Charging
+## Pylon's or a deployed Tesla Cart's field for `time` s hits `damage` harder while it
+## stays. (The Ornithopter's OVERLOAD is the strong version.)
+const OVERCHARGE := {"time": 10.0, "damage": 1.15, "boiler": 5.0}
+## Thresher: its saws spin up while it keeps attacking: damage from `low` to `high` times
+## over `time` s; `reset` s without a blow and they spin down. Spinning drains its wind
+## (`drain` a second at full spin). Every blow also bites up to `cleave` more enemies
+## within `reach` px of its target (`cleave_dmg` of the blow).
+const THRESHER := {"low": 0.4, "high": 1.6, "time": 3.0, "reset": 1.0, "drain": 0.02, "cleave": 2, "reach": 30.0, "cleave_dmg": 0.6}
+## Arc Thrower: each lightning ball takes `drain` of its own wind.
+const ARC := {"drain": 0.05, "speed": 420.0}
+## Bulwark: BRACE plants the tower shield (`switch` s): it can't move, its armour is `armor`,
+## and shots (musket balls, spit, arc balls, spines) at friendly units up to `reach` px
+## behind it, inside the `cone` (cosine) away from the shooter, hit the shield instead
+## (the shooter must be in front of it: `front`).
+const BRACE := {"armor": 7, "reach": 120.0, "cone": 0.45, "front": 0.2, "switch": 0.6}
+## Wind-up Soldiers run on a spring, not a battery: `run` s away from a field and they run
+## down; a Winder cranks one back up at `crank` a second (or a field does).
+const SPRING := {"run": 50.0, "crank": 0.6}
+## Winders wind themselves: `run` s away from a field, then they stop for `stop` s to crank.
+const WINDER_SELF := {"run": 90.0, "stop": 3.0, "low": 0.04}
+
+
+## A carried battery's charge after `t` seconds on the road.
+static func battery_charge(blue: bool, t: float) -> float:
+	var info: Dictionary = BATTERY["blue" if blue else "yellow"]
+	return float(info["base"]) * maxf(float(BATTERY["floor"]), 1.0 - float(info["decay"]) * maxf(0.0, t - float(BATTERY["fresh"])))
+## Crown machines: Labourers repair them like buildings; Missionaries don't bandage them.
+const CROWN_MACHINES := ["cannon", "mortar", "powder_wagon", "balloon"]
 const REPAIR_COST := 0.25        # a full repair costs this share of the price (StarCraft: 25%)
 const ENERGY_PER_WINDER := 3.5
 const ENERGY_HALL := 3.0
@@ -123,6 +162,9 @@ const MISSIONARY_DANGER := 8      # tiles from an enemy building where he can be
 # Tesla Cart
 const TESLA_SWITCH := 3.0         # seconds to deploy or pack
 const TESLA_FIELD := 6            # tiles
+## Tesla Cart lightning: the bolt, then `jumps` more enemies within `reach` px at `falloff`
+## of it (the rework leans the cart toward powering constructs: was 2 jumps at 60%, 80 px).
+const TESLA_CHAIN := {"jumps": 1, "falloff": 0.4, "reach": 70.0}
 
 const FACTIONS := {
 	"crown": {
@@ -143,11 +185,11 @@ const FACTIONS := {
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
-		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "capacitor_works"],
-		"start_workers": 3, "ready": true, "max_supply": 80,
+		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works"],
+		"start_workers": 4, "ready": true, "max_supply": 100,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
 		"start": ["ore_crusher"],
-		"about": "Few, very tough constructs. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (farther = more charge, but they can blow up). Each base's ore runs out in time. Army cap 80.",
+		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (a battery fades on the road), and the batteries left waiting are your Energy. Each Clocktower's ore and coal run out in time. Army cap 100.",
 	},
 }
 
@@ -189,7 +231,7 @@ const UNITS := {
 		"tags": ["armored"],
 		"name": "Cuirassier", "hp": 170, "armor": 2, "speed": 108, "cost": 175, "time": 24.0, "supply": 3,
 		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
-		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "bolt": 1.3}, "charge": true, "faction": "crown",
+		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "arc_thrower": 1.3}, "charge": true, "faction": "crown",
 		"about": "Fast armoured horseman with a sabre. After a gallop his first blow hits double and throws the enemy back. Bayonets hurt him.",
 	},
 	"balloon": {
@@ -247,31 +289,47 @@ const UNITS := {
 		"faction": "clockwork", "worker": true, "repairs": true,
 		"about": "Cranks Boilers for energy, starts buildings and repairs constructs and buildings.",
 	},
-	"gearknight": {
-		"tags": ["armored"],
-		"name": "Gearknight", "hp": 300, "armor": 3, "speed": 52, "cost": 170, "time": 24.0, "supply": 3,
-		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.4, "aim": 0.3, "radius": 19, "from": "assembly_works",
-		"regen": 1.5, "faction": "clockwork", "about": "Iron knight. Very hard to kill; slowly repairs itself.",
+	"windup_soldier": {
+		"tags": ["light"],
+		"name": "Wind-up Soldiers", "hp": 55, "armor": 1, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
+		"sight": 7, "range": 24, "damage": 7, "cooldown": 1.1, "aim": 0.15, "radius": 8, "from": "assembly_works",
+		"spring": true, "faction": "clockwork",
+		"about": "Cheap tin spearmen, three to an order. They run on a spring, not a battery: about 50 s away from a field and they run down and freeze until a Winder cranks them up again (or a field reaches them).",
 	},
-	"bolt": {
+	"thresher": {
 		"tags": ["armored"],
-		"name": "Bolt Automaton", "hp": 150, "armor": 1, "speed": 52, "cost": 160, "time": 22.0, "supply": 3,
-		"sight": 9, "range": 230, "damage": 30, "cooldown": 3.0, "aim": 0.5, "radius": 15, "from": "assembly_works",
-		"pierce": true, "requires": "boiler", "anti_air": true, "faction": "clockwork", "about": "Crossbow bolts pierce up to three enemies in a line.",
+		"name": "Thresher", "hp": 280, "armor": 3, "speed": 54, "cost": 165, "time": 21.0, "supply": 3,
+		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.0, "aim": 0.2, "radius": 18, "from": "assembly_works",
+		"wind_drain": 2.0, "faction": "clockwork",
+		"about": "Saw-armed brute. Its saws SPIN UP while it keeps cutting: from 40% to 160% damage over 3 s, and every blow bites the enemies round its target too. Strong against swarms that stand and fight, weak against anything that runs. A battery junkie: it runs down fast, faster still while spinning.",
+	},
+	"bulwark": {
+		"tags": ["armored"],
+		"name": "Bulwark", "hp": 340, "armor": 4, "speed": 46, "cost": 175, "time": 26.0, "supply": 3,
+		"sight": 7, "range": 34, "damage": 9, "cooldown": 1.6, "aim": 0.3, "radius": 16, "from": "assembly_works",
+		"requires": "boiler", "faction": "clockwork",
+		"about": "A tower shield on legs, with a weak piston lance. BRACE plants the shield: it can't move, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead.",
+	},
+	"arc_thrower": {
+		"tags": ["armored"],
+		"name": "Arc Thrower", "hp": 160, "armor": 1, "speed": 54, "cost": 150, "time": 22.0, "supply": 3,
+		"sight": 9, "range": 210, "damage": 28, "cooldown": 2.6, "aim": 0.4, "radius": 14, "from": "assembly_works",
+		"requires": "boiler", "anti_air": true, "faction": "clockwork",
+		"about": "Throws balls of lightning at one enemy, ground or air. Every throw takes a good bite of its own wind: it runs down fast in a long fight away from a field.",
 	},
 	"steam_walker": {
 		"tags": ["armored"],
-		"name": "Steam Walker", "hp": 380, "armor": 2, "speed": 44, "cost": 260, "time": 34.0, "supply": 5,
-		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "assembly_works",
-		"cone": true, "building_bonus": 2.0, "requires": "spring_tower", "faction": "clockwork",
-		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings.",
+		"name": "Steam Walker", "hp": 380, "armor": 2, "speed": 44, "cost": 240, "cost2": 3, "time": 34.0, "supply": 5,
+		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "engine_hall",
+		"cone": true, "building_bonus": 2.0, "wind_drain": 2.0, "faction": "clockwork",
+		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings. A battery junkie: it runs down fast away from a field.",
 	},
 	"stormcaller": {
 		"tags": ["light"],
-		"name": "Stormcaller", "hp": 90, "armor": 0, "speed": 56, "cost": 150, "time": 24.0, "supply": 2,
-		"sight": 9, "range": 120, "damage": 7, "cooldown": 1.3, "aim": 0.25, "radius": 12, "from": "assembly_works",
+		"name": "Stormcaller", "hp": 90, "armor": 0, "speed": 56, "cost": 150, "cost2": 2, "time": 24.0, "supply": 2,
+		"sight": 9, "range": 120, "damage": 7, "cooldown": 1.3, "aim": 0.25, "radius": 12, "from": "engine_hall",
 		"requires": "charging_pylon", "anti_air": true, "faction": "clockwork",
-		"about": "Fragile lightning caster. STORM stuns everything inside it, friends too. Its charge only fills inside a Clockwork field.",
+		"about": "Fragile lightning caster. STORM stuns everything inside it for 2.5 s, friends too, but does no damage; it burns 2 stored batteries. Its charge only fills inside a Clockwork field.",
 	},
 	"missionary": {
 		"tags": ["light"],
@@ -290,16 +348,16 @@ const UNITS := {
 	"ornithopter": {
 		"tags": ["light"],
 		"name": "Ornithopter", "hp": 110, "armor": 1, "speed": 112, "cost": 150, "time": 22.0, "supply": 2,
-		"sight": 9, "range": 140, "damage": 12, "cooldown": 1.4, "aim": 0.2, "radius": 13, "from": "assembly_works",
+		"sight": 9, "range": 140, "damage": 12, "cooldown": 1.4, "aim": 0.2, "radius": 13, "from": "engine_hall",
 		"air": true, "anti_air": true, "vs_air": 1.75, "requires": "charging_pylon", "faction": "clockwork",
 		"about": "Fast clockwork flyer with a lightning gun, deadliest against other flyers. On COURIER it fetches charged batteries and winds up stranded constructs; OVERLOAD dumps its battery into one construct (faster, harder hitting for 12 s). Like every construct it winds down away from a field.",
 	},
 	"tesla_cart": {
 		"tags": ["armored"],
-		"name": "Tesla Cart", "hp": 240, "armor": 2, "speed": 50, "cost": 190, "time": 28.0, "supply": 3,
-		"sight": 9, "range": 170, "damage": 14, "cooldown": 1.6, "aim": 0.2, "radius": 18, "from": "assembly_works",
+		"name": "Tesla Cart", "hp": 240, "armor": 2, "speed": 50, "cost": 180, "cost2": 2, "time": 28.0, "supply": 3,
+		"sight": 9, "range": 170, "damage": 14, "cooldown": 1.6, "aim": 0.2, "radius": 18, "from": "engine_hall",
 		"tesla": true, "anti_air": true, "requires": "charging_pylon", "faction": "clockwork",
-		"about": "Rolls packed; deploy it (3 s) to power nearby constructs and zap enemies in chains.",
+		"about": "Mobile power: rolls packed; deploy it (3 s) to wind up (and overcharge) the constructs around it. Its lightning hits flyers too and jumps to one more enemy. Costs 2 energy.",
 	},
 }
 
@@ -352,7 +410,7 @@ const BUILDINGS := {
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
 		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
-		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby. Its ground holds a reserve of ore for its crushers: once it's spent they pay a quarter. Expand to fresh ore.",
+		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby. Its ground holds a reserve of ore for its crushers (spent, they pay a quarter), and its Boilers share its coal (once that's burnt they fill batteries at a third). Expand to fresh coal and ore.",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -360,12 +418,18 @@ const BUILDINGS := {
 		"about": "10 more supply. Keeps nearby constructs wound up.",
 	},
 	"assembly_works": {
-		"name": "Assembly Works", "hp": 1300, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["gearknight", "bolt", "steam_walker", "tesla_cart", "stormcaller", "ornithopter"], "faction": "clockwork",
-		"about": "Assembles every combat construct. Faster with more energy on assembly.",
+		"name": "Assembly Works", "hp": 1400, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(5, 4),
+		"supply": 0, "sight": 7, "trains": ["windup_soldier", "thresher", "bulwark", "arc_thrower"], "faction": "clockwork",
+		"about": "Assembles the line: Wind-up Soldiers, Threshers, and (with a Boiler) Bulwarks and Arc Throwers. Faster with blue energy.",
+	},
+	"engine_hall": {
+		"name": "Engine Hall", "hp": 1500, "armor": 3, "cost": 250, "time": 50.0, "size": Vector2i(4, 4),
+		"supply": 0, "sight": 7, "trains": ["steam_walker", "tesla_cart", "stormcaller", "ornithopter"],
+		"requires": ["assembly_works", "boiler"], "faction": "clockwork",
+		"about": "Builds the big engines: Steam Walkers, and (with a Charging Pylon) Tesla Carts, Stormcallers and Ornithopters. They cost energy (stored batteries) too. Needs an Assembly Works and a Boiler.",
 	},
 	"farm": {
-		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(3, 3),
+		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(5, 4),
 		"supply": 0, "sight": 5, "trains": [], "crew": 8, "faction": "crown",
 		"about": "Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: tired soil pays a third.",
 	},
@@ -400,9 +464,9 @@ const BUILDINGS := {
 		"about": "Lets the Hive hatch Skywings. Needs a Warren.",
 	},
 	"boiler": {
-		"name": "Boiler", "hp": 800, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(3, 3),
+		"name": "Boiler", "hp": 900, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(4, 4),
 		"supply": 0, "sight": 6, "trains": [], "battery": [1.0, 8], "crew": 7, "faction": "clockwork",
-		"about": "Fills a battery every second by itself. Up to 7 Winders carry them to Ore Crushers. Unlocks Bolt Automatons.",
+		"about": "Fills a battery every second by itself, burning its Clocktower's coal (spent coal: a third as fast). Up to 7 Winders carry them to Ore Crushers. Constructs that stand by it a while get overcharged. Unlocks Bulwarks, Arc Throwers and the Engine Hall.",
 	},
 	"ore_crusher": {
 		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
@@ -417,7 +481,7 @@ const BUILDINGS := {
 	"charging_pylon": {
 		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "faction": "clockwork",
-		"about": "Winds up and slowly mends constructs nearby. Unlocks the Tesla Cart and the Stormcaller.",
+		"about": "Winds up and slowly mends constructs nearby (they get overcharged after a while in its field). Unlocks the Tesla Cart, the Stormcaller and the Ornithopter.",
 	},
 }
 
@@ -480,7 +544,9 @@ const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "
 ## Cuirassier: after galloping this long, his next blow is a charge.
 const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
 ## Stormcaller: a storm of lightning that stuns everything inside (friends too).
-const STORM := {"cost": 70.0, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 96.0, "time": 3.0, "dps": 4.0, "cast": 0.7}
+## A control spell, not a killer (the rework: was radius 96, 3 s, 8 damage a second to
+## enemies, charge only): it stuns, hurts almost nothing, and burns `cost2` stored batteries.
+const STORM := {"cost": 70.0, "cost2": 2, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 80.0, "time": 2.5, "dps": 0.0, "cast": 0.7}
 ## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
 ## inside it, up to a share of each unit's health per cloud; clouds don't stack.
 ## Bloater: its acid cloud
@@ -513,7 +579,7 @@ const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 2
 static func has_tag(kind: String, tag: String) -> bool:
 	return UNITS.has(kind) and (UNITS[kind].get("tags", []) as Array).has(tag)
 
-const ADVANCED := ["barracks", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "charging_pylon", "capacitor_works"]
+const ADVANCED := ["barracks", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works"]
 
 
 static func is_basic(kind: String) -> bool:

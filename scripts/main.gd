@@ -36,19 +36,19 @@ High ground: units below a cliff can't see up onto it, and ramps are the only wa
 Skirmish: up to four players. Each computer player has a PLAN (Balanced, Rush, Economy, Timing attack, Air rush for the Brood, or Random). Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
 	"CROWN": """THE CROWN: shot, shell and black powder.
 
-Labourers work Farms (up to 8 each): a farm ripens into a 380-gold harvest, about every 40 s with a full crew. The Powder Mill (up to 6 labourers) grinds saltpetre into black powder (musketeers, balloons and wagons cost some). Each Town Hall allows 2 Farms and 1 Powder Mill nearby.
+Labourers work Farms (up to 8 each, each hoeing his own stretch of the crop rows): a farm ripens into a 380-gold harvest, about every 40 s with a full crew. The Powder Mill (up to 6 labourers) grinds saltpetre into black powder (musketeers, balloons and wagons cost some). Each Town Hall allows 2 Farms and 1 Powder Mill nearby.
 
 Soil: each Town Hall's farmland holds 9,000 gold that its farms draw out harvest by harvest (shown as "Soil: %" on the hall and its farms). Spent soil turns the fields yellow-brown and they pay only a third: expand, and a new Town Hall brings fresh land.
 
 Saltpetre: each Town Hall's ground also holds 1,320 powder's worth of saltpetre for its Mill, about 11 minutes of a fully worked Mill (about 120 powder a minute; "saltpetre %" on the Mill and the hall); spent, the Mill grinds at a quarter. A new Town Hall brings fresh saltpetre: build a Mill there.
 
-Powder: each Musketeer carries 12 shots, each Cannon 8 and each Mortar 6 (the amber bar). A dry musketeer fights with the bayonet until it refills; a dry gun can't fire. They refill within 3 tiles of a Powder Mill, Barracks or Town Hall (paid from the powder bank: 6 for a full musketeer; an empty bank makes them wait), or of a Powder Wagon (Foundry): it carries 120 shots for the army, fills up near those buildings (1 powder per 2 shots), and on SUPPLY two labourers run 30-shot kegs to it from the Mill. A wagon that's destroyed explodes (friends too), and so does a labourer killed with a keg: guard them.
+Powder: each Musketeer carries 12 shots, each Cannon 8 and each Mortar 6 (the amber bar). A dry musketeer fights with the bayonet until it refills; a dry gun can't fire ("Out of powder!" over them). They refill within 3 tiles of a Powder Mill, Barracks or Town Hall (paid from the powder bank: 6 for a full musketeer; an empty bank makes them wait), or of a Powder Wagon (Foundry): it carries 120 shots for the army, fills up near those buildings (1 powder per 2 shots), and on SUPPLY two labourers run 30-shot kegs to it from the Mill. A wagon that's destroyed explodes (friends too), and so does a labourer killed with a keg: guard them.
 
 Walls and gates: lay them in a line across your ramp (every main base sits on high ground with one way up); gates open for your side only.
 
-Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. They shoot at range and stab with the bayonet by themselves when the enemy closes in (no button). Barracks: Musketeers and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. The Barracks also researches Armour (+1 armour, +20 health and breastplates for every Musketeer) and better locks, one after another: Matchlock, Flintlock, Caplock (reload 10%, 20%, 30% faster).
+Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. They shoot at range and stab with the bayonet by themselves when the enemy closes in (no button). Barracks: Musketeers and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. The Barracks also researches Armour (+1 armour, +20 health and breastplates for every Musketeer) and better locks, one after another: Matchlock, Flintlock, Caplock (reload 10%, 20%, 30% faster). Research goes into the production queue like a unit (CANCEL takes it back out, paid back); the next lock can be queued behind the one before.
 
-Foundry: Field Cannons, Mortars, Powder Wagons and Observation Balloons, which also carry 4 Musketeers or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Round shot ploughs through everyone in its line, your own men too: a selected cannon shows its line of fire, red over your men. The Mortar must DEPLOY to fire; it lobs shells over men and walls 5 to 11 tiles away that burst over a wide area (friends too).
+Foundry: Field Cannons, Mortars, Powder Wagons and Observation Balloons, which also carry 4 Musketeers or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Round shot flies over to where it's aimed, then ploughs through everyone in its line past that spot, your own men too: a selected cannon shows that stretch, red over your men (it holds fire on its own while they're there; canister never holds). The Mortar must DEPLOY to fire; it lobs shells over men and walls 5 to 11 tiles away that burst over a wide area (friends too).
 
 Church: one Missionary, who bandages wounded soldiers back to full health and raises fallen Musketeers and Cuirassiers from their bodies by himself (6 s): back at half health under the cross for 30 s; fall again under the cross and he's gone for good. The Missionary can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
@@ -62,18 +62,22 @@ Essence: the Brood Pen turns bodies that fall nearby into essence. SACRIFICE (K)
 Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, which hunt flyers in the air; LAND them (1.2 s) to bite ground units, but landed anything can hit them. Bloaters spit acid until their gas runs out, then deflate and slowly fill up again (faster on swamp). Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Army cap 160.""",
 	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.
 
-The Clocktower and its Boilers (2 per Clocktower) fill batteries by themselves; Winders carry them to Ore Crushers, where the charge becomes ore drawn from the nearest Clocktower's ore. The longer a battery travels the more it holds, but carried too long, or hit, it bursts. A Capacitor Works turns every battery blue (more charge). Winders also repair, which costs ore.
+The Clocktower and its Boilers (2 per Clocktower) fill batteries by themselves; Winders carry them to Ore Crushers, where the charge becomes ore drawn from the nearest Clocktower's ore. A battery slowly loses charge on a long road (after 6 s), so keep crushers close; a Winder hit while carrying one gets it burst on its back. A Capacitor Works turns every battery blue (more charge, slower to fade). Winders also repair and wind (repairs cost ore), and wind themselves now and then: away from a field they stop for a few seconds to crank their own spring.
 
-Ore: each Clocktower's ground holds 11,400 ore, about 11 minutes of a saturated base (about 1,000-1,100 ore a minute; "ore %" on the crusher and the Clocktower); spent, its crushers pay a quarter. A new Clocktower brings fresh ore: build crushers there. Spring Towers and Charging Pylons don't fill batteries.
+ENERGY: the batteries waiting at your Clocktowers and Boilers are your energy (top bar). Once you have an Engine Hall, Winders leave the last 6 for it. Steam Walkers (3), Tesla Carts (2), Stormcallers (2) and every STORM (2) spend it.
 
-Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Stormcallers cast a STORM that stuns everything inside it, your own units too; their charge only fills inside a field. Ornithopters on COURIER carry batteries to constructs that ran down; OVERLOAD dumps one into a construct for 12 s of extra speed and damage (then it's left at 25% charge). Army cap 80.""",
+Ore and coal: each Clocktower's ground holds 11,400 ore, about 10 minutes of a saturated base (about 1,150-1,200 ore a minute; "ore %" on the crushers and the Clocktower); spent, its crushers pay a quarter. Each Clocktower's Boilers burn its coal ("Coal: %"); burnt out, they fill batteries at a third. A new Clocktower brings fresh ore and coal. Spring Towers and Charging Pylons don't fill batteries.
+
+Assembly Works: Wind-up Soldiers (3 an order, cheap spears that run on a spring: about 50 s away from a field and they run down until a Winder cranks them up), Threshers (saws that SPIN UP over 3 s of cutting, up to 160% damage, biting the enemies round their target; they burn their battery fast), and with a Boiler Bulwarks (BRACE, E: the tower shield takes the shots aimed at your units behind it; braced it can't move) and Arc Throwers (lightning balls, hit flyers; each throw drains their battery). Engine Hall (needs an Assembly Works and a Boiler): Steam Walkers, and with a Charging Pylon Tesla Carts, Stormcallers and Ornithopters.
+
+Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. One that stays about 10 s by a Boiler or in a Pylon's or deployed Tesla Cart's field is OVERCHARGED (+15% damage) while it stays. Tesla Carts must deploy (3 s) to fire. Stormcallers cast a STORM that stuns everything inside it (no damage), your own units too; their charge only fills inside a field. Tesla Carts are mainly mobile power: their lightning jumps to one more enemy at 40%. The Steam Walker is the Clockwork's swarm-killer. Ornithopters on COURIER carry batteries to constructs that ran down; OVERLOAD dumps one into a construct for 12 s of extra speed and damage (then it's left at 25% charge). Army cap 100.""",
 	"CONTROLS": """COMPUTER
 Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen); left drag box-selects; right click commands (move, attack, work, rally). Mouse wheel zooms; screen edges, arrow keys or the middle button pan.
 Line move: hold the right button and drag a line; your units spread out along it (with A first, they attack-move). On a phone: tap MOVE or ATTACK, then drag.
-Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work. 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall, F4 all production buildings (MAKE), Space jumps to the selection, Esc cancels.
+Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work, E repair (right-click it: automatic repair, glowing). 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall (again: the next one), F4 all production buildings (MAKE), Space jumps to the selection, Esc cancels.
 
 MOBILE
-Tap to select, double-tap for every unit of that type on screen. DRAG: BOX / PAN (top right) switches what a one-finger drag does. Tap the ground to move, an enemy to attack. Long-press to move without fighting. Two fingers pan, pinch zooms, tap the minimap to jump. ARMY / IDLE / HALL / MAKE select quickly (MAKE: every production building, to train from all of them); groups 1-4: hold to save, tap to select. Tap a portrait in a group to keep only that kind.""",
+Tap to select, double-tap for every unit of that type on screen. DRAG: BOX / PAN (top right) switches what a one-finger drag does. Tap the ground to move, an enemy to attack. Long-press to move without fighting. Two fingers pan, pinch zooms, tap the minimap to jump. ARMY / IDLE / HALL / MAKE select quickly (HALL again: the next hall; MAKE: every production building, to train from all of them). Hold REPAIR for automatic repair (it glows); groups 1-4: hold to save, tap to select. Tap a portrait in a group to keep only that kind.""",
 }
 
 
@@ -671,8 +675,11 @@ func show_skirmish() -> void:
 	mrow.add_child(prev)
 	var mid: String = lobby["map"]
 	var mname := "RANDOM MAP" if mid == "random" else (mid.substr(7).to_upper() if mid.begins_with("custom:") else String(MapGen.MAPS[mid][0]).to_upper())
-	var ml := UiStyle.heading(mname, 22, UiStyle.TEXT)
-	ml.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var map_opts: Array = []
+	for mi in ids:
+		map_opts.append(["RANDOM MAP" if mi == "random" else (String(mi).substr(7).to_upper() if String(mi).begins_with("custom:") else String(MapGen.MAPS[mi][0]).to_upper()), mi, false])
+	var ml := _dropdown(mname, 160, map_opts, func(v) -> void: lobby["map"] = v)
+	ml.add_theme_font_size_override("font_size", 20)
 	mrow.add_child(ml)
 	var nxt := _button(">", func() -> void:
 		lobby["map"] = ids[(ids.find(lobby["map"]) + 1) % ids.size()]
@@ -732,15 +739,16 @@ func _slot_row(i: int) -> Control:
 	h.add_theme_constant_override("separation", 8)
 	var colour: Color = Defs.colour_of(int(sl["colour"]))
 	# who
-	var who := _cycle(WHO_LABEL[sl["who"]], 170, func(dir: int) -> void:
-		var list := WHO.duplicate()
+	var who_opts: Array = []
+	for w in WHO:
 		var taken := false
 		for j in lobby["slots"].size():
 			if j != i and lobby["slots"][j]["who"] == "you":
 				taken = true
-		if taken:
-			list.erase("you")
-		sl["who"] = list[(list.find(sl["who"]) + dir + list.size()) % list.size()])
+		if w == "you" and taken:
+			continue
+		who_opts.append([WHO_LABEL[w], w, false])
+	var who := _dropdown(WHO_LABEL[sl["who"]], 170, who_opts, func(v) -> void: sl["who"] = v)
 	if sl["who"] == "brutal":
 		who.add_theme_color_override("font_color", UiStyle.BAD)
 	elif sl["who"] == "you":
@@ -748,8 +756,10 @@ func _slot_row(i: int) -> Control:
 	h.add_child(who)
 	# faction
 	var f: String = sl["faction"]
-	var fb := _cycle("RANDOM" if f == "random" else Defs.FACTIONS[f]["name"].to_upper(), 190, func(dir: int) -> void:
-		sl["faction"] = FACS[(FACS.find(sl["faction"]) + dir + FACS.size()) % FACS.size()])
+	var fac_opts: Array = []
+	for ff in FACS:
+		fac_opts.append(["RANDOM" if ff == "random" else String(Defs.FACTIONS[ff]["name"]).to_upper(), ff, false])
+	var fb := _dropdown("RANDOM" if f == "random" else Defs.FACTIONS[f]["name"].to_upper(), 190, fac_opts, func(v) -> void: sl["faction"] = v)
 	if f != "random":
 		fb.icon = _faction_icon(f)
 		fb.expand_icon = false
@@ -757,15 +767,10 @@ func _slot_row(i: int) -> Control:
 		fb.add_theme_color_override("font_color", UiStyle.accent(f).lightened(0.4))
 	h.add_child(fb)
 	# colour
-	var cb := _cycle(Defs.colour_name(int(sl["colour"])).to_upper(), 110, func(dir: int) -> void:
-		# the palette, then RANDOM and FITS MAP (any colour / one that stands out on the map)
-		var opts: Array = [Defs.COLOUR_FITS_MAP, Defs.COLOUR_RANDOM] + range(Defs.PALETTE.size())
-		var k := opts.find(int(sl["colour"]))
-		for step in opts.size():
-			k = (k + dir + opts.size()) % opts.size()
-			if int(opts[k]) < 0 or not _colour_taken(int(opts[k]), i):
-				break
-		sl["colour"] = opts[k])
+	var col_opts: Array = []
+	for c in [Defs.COLOUR_FITS_MAP, Defs.COLOUR_RANDOM] + range(Defs.PALETTE.size()):
+		col_opts.append([Defs.colour_name(int(c)).to_upper(), int(c), int(c) >= 0 and _colour_taken(int(c), i)])
+	var cb := _dropdown(Defs.colour_name(int(sl["colour"])).to_upper(), 110, col_opts, func(v) -> void: sl["colour"] = v)
 	for st in ["normal", "hover", "pressed"]:
 		cb.add_theme_stylebox_override(st, UiStyle.box(colour.darkened(0.25 if st == "normal" else 0.1), Color(1, 1, 1, 0.5 if st == "normal" else 0.9), 2))
 	cb.add_theme_color_override("font_color", Color(1, 1, 1))
@@ -775,8 +780,10 @@ func _slot_row(i: int) -> Control:
 	if sl["who"] != "you":
 		var st: String = String(sl.get("strategy", "balanced"))
 		var opts: Array = ["random"] + AI.STRATEGIES.keys()
-		var sb := _cycle("RANDOM PLAN" if st == "random" else String(AI.STRATEGIES[st]["name"]).to_upper(), 150, func(dir: int) -> void:
-			sl["strategy"] = opts[(opts.find(String(sl.get("strategy", "balanced"))) + dir + opts.size()) % opts.size()])
+		var st_opts: Array = []
+		for o in opts:
+			st_opts.append(["RANDOM PLAN" if o == "random" else String(AI.STRATEGIES[o]["name"]).to_upper(), o, false])
+		var sb := _dropdown("RANDOM PLAN" if st == "random" else String(AI.STRATEGIES[st]["name"]).to_upper(), 150, st_opts, func(v) -> void: sl["strategy"] = v)
 		sb.tooltip_text = "How this computer player plays. Air rush is Brood only (others play Balanced)."
 		h.add_child(sb)
 	else:
@@ -786,8 +793,7 @@ func _slot_row(i: int) -> Control:
 		sp.size_flags_stretch_ratio = 1.5
 		h.add_child(sp)
 	# team
-	var tb := _cycle(str(int(sl["side"]) + 1), 80, func(dir: int) -> void:
-		sl["side"] = (int(sl["side"]) + dir + 4) % 4)
+	var tb := _dropdown(str(int(sl["side"]) + 1), 80, [["TEAM 1", 0, false], ["TEAM 2", 1, false], ["TEAM 3", 2, false], ["TEAM 4", 3, false]], func(v) -> void: sl["side"] = v)
 	tb.add_theme_font_override("font", UiStyle.title_font())
 	tb.add_theme_font_size_override("font_size", 24)
 	h.add_child(tb)
@@ -798,6 +804,42 @@ func _slot_row(i: int) -> Control:
 		x.custom_minimum_size = Vector2(46, 58)
 		h.add_child(x)
 	return h
+
+
+## A button that opens a list to pick from (big rows, easy to tap). items: [label, value, disabled].
+func _dropdown(text: String, w: float, items: Array, pick: Callable) -> Button:
+	var b := Button.new()
+	b.text = text + "  ▾"
+	b.custom_minimum_size = Vector2(w, 58)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_stretch_ratio = w / 100.0
+	b.add_theme_font_size_override("font_size", 18)
+	b.clip_text = true
+	b.pressed.connect(func() -> void:
+		_web_fullscreen()
+		Sfx.play_any(["ui/click", "click"])
+		var pm := PopupMenu.new()
+		pm.add_theme_font_size_override("font_size", 24)
+		pm.add_theme_constant_override("v_separation", 18)
+		pm.add_theme_constant_override("item_start_padding", 16)
+		pm.add_theme_constant_override("item_end_padding", 16)
+		for k in items.size():
+			var it: Array = items[k]
+			pm.add_item(String(it[0]), k)
+			pm.set_item_disabled(k, bool(it[2]))
+			if String(it[0]) == text:
+				pm.set_item_as_radio_checkable(k, true)
+				pm.set_item_checked(k, true)
+		pm.id_pressed.connect(func(id: int) -> void:
+			pick.call(items[id][1])
+			Sfx.play_any(["ui/click", "click"])
+			show_skirmish())
+		pm.popup_hide.connect(func() -> void: pm.queue_free())
+		add_child(pm)
+		var r := b.get_global_rect()
+		pm.min_size = Vector2i(int(maxf(r.size.x, 220.0)), 0)
+		pm.popup(Rect2i(Vector2i(r.position + Vector2(0, r.size.y)), Vector2i(int(maxf(r.size.x, 220.0)), 0))))
+	return b
 
 
 ## A button that steps through options: click/tap = next; right click = previous.

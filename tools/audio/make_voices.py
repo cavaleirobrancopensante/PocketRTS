@@ -10,7 +10,8 @@ Needs: pip install kokoro-onnx soundfile librosa pyworld numba scipy
 Crown: Kokoro British voices + warmth EQ and room reverb (herald/general: deeper, slower, bigger hall).
 Clockwork: Kokoro voice -> WORLD resynthesis with a flat monotone pitch, ring modulation, chorus and a
 metallic comb filter. Brood: units are synthesised creature calls (no words); the hive-mind lines are
-WORLD-whispered TTS layered at several pitch shifts with hiss.
+WORLD-whispered TTS (am_onyx, with a time-aligned bm_lewis whisper layer) at several pitch shifts with hiss.
+All TTS voices are male (bm_*/am_*); the robot() chain resynthesises at a fixed male f0.
 Output: mono 44.1 kHz 16-bit WAV, trimmed, peak -3 dBFS, under 2.5 s.
 """
 import os
@@ -139,9 +140,24 @@ def whisper(x):
     return fit(y, len(x) / SR + 1e-9)[:len(x)]
 
 
-def hive(x, rng):
-    """Layered whisper with downward pitch shifts and hiss: intelligible but inhuman."""
+HIVE_VOICE = "am_onyx"     # deep male lead (~90 Hz)
+HIVE_LAYER = "bm_lewis"    # second male voice, whispered under the lead
+
+
+def hive_tts(text, speed=0.85):
+    """Lead + layer TTS for the hive mind; the layer is time-stretched to the lead's length."""
     import librosa
+    x = tts(text, HIVE_VOICE, speed)
+    lay = tts(text, HIVE_LAYER, speed)
+    lay = librosa.effects.time_stretch(lay, rate=len(lay) / len(x))
+    return x, fit(lay, len(x) / SR)[:len(x)]
+
+
+def hive(src, rng, dry_semis=-3):
+    """Layered whisper with downward pitch shifts and hiss: intelligible but inhuman.
+    src: (lead, layer) from hive_tts(), or a single voice array."""
+    import librosa
+    x, lay = src if isinstance(src, tuple) else (src, None)
     w = whisper(x)
     w = w / (np.max(np.abs(w)) + 1e-9)
     layers = [(0, 0.6, 0.0), (-4, 0.75, 0.01), (-8, 0.5, 0.02), (-12, 0.25, 0.03)]
@@ -149,8 +165,12 @@ def hive(x, rng):
     for st, g, dly in layers:
         y = librosa.effects.pitch_shift(w, sr=SR, n_steps=st) if st else w
         out = place(out, y * g, dly)
-    # add a quiet dry voice an octave down for intelligibility
-    dry = librosa.effects.pitch_shift(x / (np.max(np.abs(x)) + 1e-9), sr=SR, n_steps=-7)
+    if lay is not None:     # second whispered male voice, slightly offset: a chorus of many throats
+        wl = whisper(lay)
+        wl = wl / (np.max(np.abs(wl)) + 1e-9)
+        out = place(out, librosa.effects.pitch_shift(wl, sr=SR, n_steps=-2) * 0.45, 0.015)
+    # add a quiet dry voice a few semitones down for intelligibility (lead is already ~90 Hz)
+    dry = librosa.effects.pitch_shift(x / (np.max(np.abs(x)) + 1e-9), sr=SR, n_steps=dry_semis)
     out = place(out, dry * 0.35, 0.004)
     env = np.convolve(np.abs(out), np.ones(1024) / 1024, mode="same")
     hiss = hp(noise(rng, len(out) / SR + 1e-9)[:len(out)], 3500) * env * 0.6
@@ -178,7 +198,7 @@ CROWN_UNITS = {
         "select": ["Gun crew ready.", "Where to, sir?", "Heavy, this."],
         "move": ["Push!", "Roll her out!", "Heave!"],
         "attack": ["Fire in the hole!", "Give them iron!"]}),
-    "missionary": ("bf_emma", 0.92, 0.0, {
+    "missionary": ("bm_george", 0.85, -1.5, {   # calm older priest
         "select": ["Peace be with you.", "Who is hurt?", "I am here."],
         "move": ["I will go.", "Lead me.", "With faith."]}),
 }
@@ -378,9 +398,9 @@ def main(filters):
             if fac == "crown":
                 x = herald(tts(text, "bm_george", 0.9, -1.0), rng)
             elif fac == "brood":
-                x = hive(tts(text, "bf_isabella", 0.85), rng)
+                x = hive(hive_tts(text, 0.85), rng)
             else:
-                x = robot(tts(text, "bf_alice", 0.95), rng, f0=180, ring=90, ring_mix=0.25, comb_g=0.35)
+                x = robot(tts(text, "am_adam", 0.95), rng, f0=110, ring=90, ring_mix=0.25, comb_g=0.35)
             out_write(rel, x)
     # Taunts
     for fac, texts in TAUNTS.items():
@@ -395,9 +415,9 @@ def main(filters):
                 if text.startswith("Hss"):
                     d = 1.3
                     x = bp(noise(rng, d), 2500, 8000) * adsr(d, 0.15, 0.2, 0.7, 0.6)
-                    x = mix(x, hive(tts("Hsss.", "bf_isabella", 0.7), rng) * 0.6)
+                    x = mix(x, hive(hive_tts("Hsss.", 0.7), rng) * 0.6)
                 else:
-                    x = hive(tts(text, "bf_isabella", 0.85), rng)
+                    x = hive(hive_tts(text, 0.85), rng)
             else:
                 x = robot(tts(text, "bm_george", 1.0), rng, f0=82, ring=65, ring_mix=0.35)
             out_write(rel, x)

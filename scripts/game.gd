@@ -63,7 +63,7 @@ var sandbox := false                     # the sandbox: spawn anything, any play
 var reveal := false                      # sandbox: no fog of war
 var rng := RandomNumberGenerator.new()
 
-var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building, 3 gate, 4 wall
+var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building, 3 gate, 4 wall, 5 farm field (walkable, not buildable)
 var water := PackedByteArray()
 var height := PackedByteArray()          # 1 = high ground
 var ramp := PackedByteArray()
@@ -314,7 +314,7 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 			if in_map(cc):
 				solid[idx(cc)] = v
 				if astar.region.size != Vector2i.ZERO:
-					astar.set_point_solid(cc, v != 0 and v != 3)
+					astar.set_point_solid(cc, v != 0 and v != 3 and v != 5)
 				if astar_siege.region.size != Vector2i.ZERO:
 					astar_siege.set_point_solid(cc, v == 1 or v == 2)
 
@@ -328,7 +328,7 @@ func passable(c: Vector2i, t: int) -> bool:
 	if not in_map(c):
 		return false
 	var v := solid[idx(c)]
-	if v == 0:
+	if v == 0 or v == 5:
 		return true
 	return v == 3 and t >= 0 and allied(int(gate_team.get(idx(c), -1)), t)
 
@@ -388,11 +388,11 @@ func _orient_gates(around: Vector2i) -> void:
 		var ew := 0
 		for dv in [Vector2i(0, -1), Vector2i(0, 1)]:
 			var cc: Vector2i = b.cell + dv
-			if in_map(cc) and solid[idx(cc)] != 0:
+			if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
 				ns += 2 if solid[idx(cc)] >= 3 else 1
 		for dv in [Vector2i(-1, 0), Vector2i(1, 0)]:
 			var cc: Vector2i = b.cell + dv
-			if in_map(cc) and solid[idx(cc)] != 0:
+			if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
 				ew += 2 if solid[idx(cc)] >= 3 else 1
 		b.set_vertical(ns > ew)
 
@@ -472,7 +472,7 @@ func _setup_astar() -> void:
 	for y in H:
 		for x in W:
 			var sv := solid[y * W + x]
-			if sv != 0 and sv != 3:
+			if sv != 0 and sv != 3 and sv != 5:
 				astar.set_point_solid(Vector2i(x, y), true)
 			if sv == 1 or sv == 2:
 				astar_siege.set_point_solid(Vector2i(x, y), true)
@@ -790,6 +790,16 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				# tucked behind the hall, away from the middle of the map (like minerals
 				# behind a command centre), and close to it
 				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
+			if kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0):
+				# Boilers and crushers close together (once there's a Boiler; the starting crusher
+				# goes behind the hall): a battery fades on a long road, and a Boiler's Winders
+				# must be back for the next one within a few seconds
+				var near := INF
+				for b in buildings:
+					if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
+						near = minf(near, b.center().distance_to(cc * T) / T)
+				if near < INF:
+					score += maxf(0.0, near - SOURCE_NEAR) * 3.0
 			if score < bs:
 				bs = score
 				best = cell
@@ -798,6 +808,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 
 
 var _spot_halls: Array = []
+const SOURCE_NEAR := 6.0               # tiles: a crusher further than this from a Boiler (or the reverse) scores worse in find_spot
 
 
 ## A free ring around a footprint (room to walk round it).
@@ -956,6 +967,15 @@ func _soil_check(h: Building) -> void:
 		return
 	h.soil_warned = level
 	var hive := h.kind == "hive"
+	if h.kind == "clocktower":
+		# Clockwork coal: the Boilers around this Clocktower
+		if mlog:
+			mlog.add("%s: the coal of a Clocktower's Boilers %s" % [mlog.who(h.team), "is spent (they fill batteries at a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		if h.team == human and not demo and hud:
+			hud.toast("Your Boilers' coal is spent: they fill batteries at a third. Build a Clocktower on fresh ground." if level == 2
+				else "Your Boilers' coal is running low (%d%% left): expand to fresh ground soon." % int(round(left * 100)), false)
+			Sfx.play("done", h.center())
+		return
 	if mlog:
 		if hive:
 			mlog.add("%s: the ground around a Hive %s" % [mlog.who(h.team), "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
@@ -980,9 +1000,8 @@ func _take_scar(h: Building) -> void:
 	for i in soil_scars.size():
 		var sc: Array = soil_scars[i]
 		if String(sc[2]) == h.kind and (sc[0] as Vector2).distance_to(h.center()) <= Defs.HALL_SPACING * T:
-			if h.kind != "clocktower":
-				h.soil = float(sc[1])
-				h.soil_warned = 2 if h.soil <= 0.0 else (1 if h.soil / h.reserve() < Defs.SOIL_LOW else 0)
+			h.soil = float(sc[1])
+			h.soil_warned = 2 if h.soil <= 0.0 else (1 if h.soil / h.reserve() < Defs.SOIL_LOW else 0)
 			if h.lode_full() > 0.0 and sc.size() > 3:
 				h.lode = float(sc[3])
 				h.lode_warned = 2 if h.lode <= 0.0 else (1 if h.lode / h.lode_full() < Defs.SOIL_LOW else 0)
@@ -1039,6 +1058,27 @@ func powder_short() -> void:
 		return
 	_short_ms = Time.get_ticks_msec()
 	notify("Powder bank empty: refills wait. Man your Powder Mills.")
+
+
+## A Musketeer, Cannon or Mortar has used up the powder it carries. Over it: "Out of powder!"
+## (once for a whole line running dry: not again within 150 px for 4 s); and now and then a
+## word to the player on where they refill.
+var _dry_floats: Array = []       # [where, when (ms)]
+var _dry_ms := -99999
+
+
+func out_of_powder(u: Unit) -> void:
+	if u.team != human or demo:
+		return
+	var now := Time.get_ticks_msec()
+	_dry_floats = _dry_floats.filter(func(f: Array) -> bool: return now - int(f[1]) < 4000)
+	if not _dry_floats.any(func(f: Array) -> bool: return (f[0] as Vector2).distance_to(u.position) < 150.0):
+		_dry_floats.append([u.position, now])
+		float_text(u.position + Vector2(0, -40), "Out of powder!", Color(1, 0.75, 0.4))
+	if now - _dry_ms > 25000 and now - _notify_t > 3000:
+		_dry_ms = now
+		var who: String = {"musketeer": "Musketeers", "cannon": "Cannons", "mortar": "Mortars"}.get(u.kind, "Men")
+		notify("%s out of powder: bring them to a Mill, Barracks, Hall or Powder Wagon." % who)
 
 
 var energy: Array = []            # Clockwork energy per second
@@ -1146,8 +1186,8 @@ func find_patient(m: Unit, r: float) -> Unit:
 	for o in units_near(m.position, r):
 		if o.team != m.team or o.dead or o.off_field or o.is_worker() or o.is_air() or o.d.get("medic", false):
 			continue
-		if o.cross_t > 0.0 or o.d["faction"] == "clockwork":
-			continue
+		if o.cross_t > 0.0 or o.d["faction"] == "clockwork" or Defs.CROWN_MACHINES.has(o.kind):
+			continue      # guns and wagons are mended by Labourers, not bandaged
 		var f: float = o.hp / o.max_hp
 		if f < bf:
 			var taken := false
@@ -1216,6 +1256,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 		gate_team[idx(c)] = t
 	else:
 		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
+	for fc in Building.field_cells(k):
+		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows: men walk them, nothing is built on them
 	if Defs.BUILDINGS[k].get("line", false):
 		_orient_gates(c)
 	_push_units_out(b.rect())
@@ -1376,9 +1418,9 @@ func _killer(e: Entity) -> int:
 
 
 func on_building_died(b: Building) -> void:
-	# the land stays tired (its saltpetre / ore drawn out) for the next hall here
-	if b.built and (((b.kind == "town_hall" or b.kind == "hive") and b.soil < b.reserve()) or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
-		soil_scars.append([b.center(), b.soil if b.kind != "clocktower" else 0.0, b.kind, b.lode])
+	# the land stays tired (its soil / ground / coal and its saltpetre / ore drawn out) for the next hall here
+	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
+		soil_scars.append([b.center(), b.soil, b.kind, b.lode])
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
 	selection.erase(b)
@@ -1420,7 +1462,8 @@ func supply_used(t: int) -> int:
 	for b in buildings:
 		if b.team == t:
 			for k in b.queue:
-				n += int(Defs.UNITS[k]["supply"]) * int(Defs.UNITS[k].get("spawn", 1))
+				if not Building.is_research(k):
+					n += int(Defs.UNITS[k]["supply"]) * int(Defs.UNITS[k].get("spawn", 1))
 	return n
 
 
@@ -1433,8 +1476,73 @@ func add_gold(t: int, n: int) -> void:
 
 
 func refund(t: int, k: String) -> void:
+	if Building.is_research(k):
+		var info: Dictionary = Defs.RESEARCH[k.substr(1)]
+		players[t]["gold"] += int(info["cost"])
+		add_res2(t, float(info.get("cost2", 0)))
+		stats[t]["spent"] -= int(info["cost"])
+		return
 	players[t]["gold"] += int(Defs.UNITS[k]["cost"])
-	add_res2(t, int(Defs.UNITS[k].get("cost2", 0)))
+	if faction_of(t) == "clockwork":
+		give_batteries(t, int(Defs.UNITS[k].get("cost2", 0)))
+	else:
+		add_res2(t, int(Defs.UNITS[k].get("cost2", 0)))
+
+
+## Clockwork ENERGY: the full batteries waiting at the player's Clocktowers and Boilers.
+func energy_stored(t: int) -> int:
+	var n := 0
+	for b in buildings:
+		if b.team == t and not b.dead and b.built:
+			n += b.batteries
+	return n
+
+
+## Spend stored batteries (from the fullest buildings first). False (nothing spent) if
+## there aren't enough.
+func spend_batteries(t: int, n: int) -> bool:
+	if n <= 0:
+		return true
+	if energy_stored(t) < n:
+		return false
+	var left := n
+	while left > 0:
+		var best: Building = null
+		for b in buildings:
+			if b.team == t and not b.dead and b.built and b.batteries > 0 and (best == null or b.batteries > best.batteries):
+				best = b
+		if best == null:
+			break
+		best.batteries -= 1
+		left -= 1
+	players[t]["res2"] = energy_stored(t)
+	stats[t]["energy_spent"] = int(stats[t].get("energy_spent", 0)) + n
+	return true
+
+
+## Winders leave the last few batteries in store as energy (Defs.ENERGY_KEEP; the
+## computer may ask for more while it saves up for big engines: players[t]["keep"]). A
+## source that is full is always emptied (so it never stops filling).
+func can_haul(t: int, src: Building = null) -> bool:
+	if src and src.d.has("battery") and src.batteries >= int(src.d["battery"][1]):
+		return true
+	# (nothing to spend energy on before an Engine Hall stands: no reserve kept until then)
+	var keep: int = int(players[t].get("keep", Defs.ENERGY_KEEP)) if _has_built(t, "engine_hall") else 0
+	return int(energy[t]) > keep
+
+
+## Batteries back into store (a cancelled order): to a Clocktower, or any energy building.
+func give_batteries(t: int, n: int) -> void:
+	if n <= 0:
+		return
+	var to: Building = nearest_hall(center_of_team(t), t)
+	if to == null:
+		for b in buildings:
+			if b.team == t and not b.dead and b.built and b.d.has("battery"):
+				to = b
+				break
+	if to:
+		to.batteries += n
 
 
 # ------------------------------------------------------------------ production & building
@@ -1501,10 +1609,10 @@ func has_tech(t: int, key: String) -> bool:
 	return players[t]["tech"].get(key, false) == true
 
 
-## Research going on anywhere for this player?
+## Research going on, or waiting in a production queue, anywhere for this player?
 func researching(t: int, key: String) -> bool:
 	for b in buildings:
-		if b.team == t and not b.dead and b.research == key:
+		if b.team == t and not b.dead and b.queue.has("@" + key):
 			return true
 	return false
 
@@ -1516,11 +1624,12 @@ func research_problem(b: Building, key: String) -> String:
 	if has_tech(b.team, key):
 		return "Already done."
 	if researching(b.team, key):
-		return "Already researching."
-	if b.research != "":
-		return "Busy with %s." % Defs.RESEARCH[b.research]["name"]
+		return "Already in the queue."
+	if b.queue.size() >= 5:
+		return "Queue is full."
+	# a chain (the musket locks): the next one may be queued behind the one before it
 	var req: String = info.get("requires", "")
-	if req != "" and not has_tech(b.team, req):
+	if req != "" and not has_tech(b.team, req) and not researching(b.team, req):
 		return "Research %s first." % Defs.RESEARCH[req]["name"]
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	if players[b.team]["gold"] < int(info["cost"]):
@@ -1530,6 +1639,8 @@ func research_problem(b: Building, key: String) -> String:
 	return ""
 
 
+## Research works like training: paid up front, it joins the building's production queue
+## (as "@key") and takes its turn there; CANCEL takes it back out, paid back.
 func start_research(b: Building, key: String) -> String:
 	var why := research_problem(b, key)
 	if why != "":
@@ -1537,23 +1648,28 @@ func start_research(b: Building, key: String) -> String:
 	players[b.team]["gold"] -= int(Defs.RESEARCH[key]["cost"])
 	add_res2(b.team, -float(Defs.RESEARCH[key].get("cost2", 0)))
 	stats[b.team]["spent"] += int(Defs.RESEARCH[key]["cost"])
-	b.research = key
-	b.research_t = 0.0
+	if b.queue.is_empty():
+		b.prod_t = 0.0
+	b.queue.append("@" + key)
 	if mlog:
-		mlog.add("%s started researching %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
+		mlog.add("%s queued research: %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
 	return ""
 
 
-## Stop the research going on at a building: everything paid comes back.
-func cancel_research(b: Building) -> void:
-	if b.research == "":
-		return
-	var info: Dictionary = Defs.RESEARCH[b.research]
-	players[b.team]["gold"] += int(info["cost"])
-	players[b.team]["res2"] = float(players[b.team]["res2"]) + float(info.get("cost2", 0))
-	stats[b.team]["spent"] -= int(info["cost"])
-	b.research = ""
-	b.research_t = 0.0
+## Research queued after the one taken out that needed it (the next musket lock) comes
+## out too, paid back.
+func _drop_dependent_research(t: int, key: String) -> void:
+	for b in buildings:
+		if b.team != t or b.dead:
+			continue
+		for i in range(b.queue.size() - 1, -1, -1):
+			var k: String = b.queue[i]
+			if Building.is_research(k) and String(Defs.RESEARCH[k.substr(1)].get("requires", "")) == key:
+				b.queue.remove_at(i)
+				if i == 0:
+					b.prod_t = 0.0
+				refund(t, k)
+				_drop_dependent_research(t, k.substr(1))
 
 
 func research_done(b: Building, key: String) -> void:
@@ -1576,7 +1692,10 @@ func train(b: Building, k: String) -> String:
 	if why != "":
 		return why
 	players[b.team]["gold"] -= int(Defs.UNITS[k]["cost"])
-	add_res2(b.team, -int(Defs.UNITS[k].get("cost2", 0)))
+	if faction_of(b.team) == "clockwork":
+		spend_batteries(b.team, int(Defs.UNITS[k].get("cost2", 0)))
+	else:
+		add_res2(b.team, -int(Defs.UNITS[k].get("cost2", 0)))
 	stats[b.team]["spent"] += int(Defs.UNITS[k]["cost"])
 	b.queue.append(k)
 	if b.uses_eggs():
@@ -1595,6 +1714,8 @@ func cancel_train(b: Building) -> void:
 	if b.queue.is_empty():
 		b.prod_t = 0.0
 	refund(b.team, k)
+	if Building.is_research(k):
+		_drop_dependent_research(b.team, k.substr(1))
 
 
 func spawn_trained(b: Building, k: String) -> void:
@@ -1645,13 +1766,17 @@ func spawn_trained(b: Building, k: String) -> void:
 
 
 func requirement_met(t: int, k: String) -> bool:
-	var req: String = Defs.BUILDINGS[k].get("requires", "")
-	if req == "":
-		return true
-	for b in buildings:
-		if b.team == t and b.kind == req and b.built:
-			return true
-	return false
+	return requirement_text(t, k) == ""
+
+
+## "" when every building this one needs stands (finished), else what's missing.
+func requirement_text(t: int, k: String) -> String:
+	var r = Defs.BUILDINGS[k].get("requires", "")
+	var reqs: Array = r if r is Array else ([r] if r != "" else [])
+	for req in reqs:
+		if not _has_built(t, req):
+			return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
+	return ""
 
 
 ## "" if the building can go at this cell, else the reason. ai: skip the fog check.
@@ -1660,6 +1785,8 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
+			if in_map(cc) and ramp.size() > idx(cc) and ramp[idx(cc)] == 1:
+				return "Can't build on a ramp: build at the top or the bottom of it."
 			if not in_map(cc) or solid[idx(cc)] != 0:
 				if k == "gate" and in_map(cc) and solid[idx(cc)] == 4 and _own_wall_at(t, cc) != null:
 					continue     # a gate can replace a piece of your own wall
@@ -1739,6 +1866,23 @@ static func in_ellipse(c: Vector2, p: Vector2, r: float) -> bool:
 	var d := p - c
 	d.y /= FIELD_Y
 	return d.length_squared() <= r * r
+
+
+## Overcharge ground: by a Boiler, inside a Charging Pylon's field or a deployed Tesla Cart's.
+func in_overcharge(t: int, p: Vector2) -> bool:
+	var m := field_mult(t)
+	for b in buildings:
+		if b.team != t or not b.built or b.dead:
+			continue
+		if b.kind == "boiler" and b.edge_distance(p) <= float(Defs.OVERCHARGE["boiler"]) * T:
+			return true
+		if b.kind == "charging_pylon" and b.field_on() and in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
+			return true
+	for u in units:
+		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
+				return true
+	return false
 
 
 func in_field(t: int, p: Vector2) -> bool:
@@ -2111,6 +2255,7 @@ func find_target(u: Unit, r: float) -> Entity:
 		for i in mini(picks.size(), 6):
 			if aoe_worth_it(u, picks[i][1]):
 				return picks[i][1]
+		u.held_t = maxf(u.held_t, 1.0)     # (set up, it waits for a clear shot: Unit "amove")
 		# nothing safe to shoot at: set up, it holds fire (a building may still do); on the
 		# move it goes for the nearest and holds fire there if it must
 		if not (u.order == "hold" or u.tesla_mode == "deployed"):
@@ -2194,7 +2339,50 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 
 # ------------------------------------------------------------------ combat helpers
 
+## A shot (musket ball, spit, arc ball, spines) at `e`: a braced Bulwark of e's side that
+## stands between the shooter and e (e inside the cone behind the shield, within reach, the
+## shooter in front of it) takes it instead. Returns who gets hit.
+func intercept(shooter: Entity, e: Entity) -> Entity:
+	if not (e is Unit) or e.is_air() or shooter == null or not is_instance_valid(shooter):
+		return e
+	var br: Dictionary = Defs.BRACE
+	var from: Vector2 = shooter.global_position
+	for o in units_near(e.global_position, float(br["reach"]) + 10.0):
+		if o.kind != "bulwark" or not o.braced or o.dead or o.off_field or o == e or o.team != e.team:
+			continue
+		if o.powered_down():
+			continue
+		var to_shooter: Vector2 = from - o.position
+		if to_shooter.length() < 1.0:
+			continue
+		var front: Vector2 = to_shooter.normalized()
+		if o.facing.dot(front) < float(br["front"]):
+			continue            # the shield faces the other way
+		var behind: Vector2 = e.global_position - o.position
+		if behind.length() > float(br["reach"]):
+			continue
+		if behind.length() < 6.0 or (-front).dot(behind.normalized()) >= float(br["cone"]):
+			o.shield_hit()
+			return o
+	return e
+
+
+## Arc Thrower: a ball of lightning thrown at one enemy (a braced Bulwark may catch it).
+func arc_shot(u: Unit, e: Entity, dmg: float) -> void:
+	e = intercept(u, e)
+	var from := u.center() + u.facing * 12.0 + Vector2(0, -6)
+	var to := e.center()
+	var s := Shot.new()
+	s.impact = "arc_impact" if ArtData.EFFECTS.has("arc_impact") else "hit"
+	s.impact_scale = 0.8
+	s.scale = Vector2(0.7, 0.7)
+	s.launch(self, "arc_ball" if ArtData.EFFECTS.has("arc_ball") else "acid_ball", from, to, float(Defs.ARC["speed"]))
+	e.take_damage(dmg, u)
+	Sfx.play_any(["combat/tesla_attack", "zap"], u.global_position)
+
+
 func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
+	e = intercept(u, e)
 	var muzzle := u.center() + u.facing * 20.0 + Vector2(0, -2)
 	if e.is_air():
 		muzzle = u.center() + u.facing * 13.0 + Vector2(0, -15)     # aiming up
@@ -2296,10 +2484,10 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 	e.take_damage(dmg, u)
 	_zap_visual(from, e.center(), false, true)
 	var last := e
-	for k in 2:
+	for k in int(Defs.TESLA_CHAIN["jumps"]):
 		var nxt: Entity = null
-		var bd := 80.0
-		for o in units_near(last.center(), 80.0):
+		var bd := float(Defs.TESLA_CHAIN["reach"])
+		for o in units_near(last.center(), float(Defs.TESLA_CHAIN["reach"])):
 			if not hostile(o.team, u.team) or o.dead or o.off_field or hit.has(o):
 				continue
 			var dd: float = o.center().distance_to(last.center())
@@ -2308,7 +2496,7 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 				nxt = o
 		if nxt == null:
 			break
-		nxt.take_damage(dmg * 0.6, u)
+		nxt.take_damage(dmg * float(Defs.TESLA_CHAIN["falloff"]), u)
 		_zap_visual(last.center(), nxt.center(), false)
 		hit.append(nxt)
 		last = nxt
@@ -2378,6 +2566,7 @@ func _bolt_line(a: Vector2, b: Vector2) -> void:
 
 
 func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
+	e = intercept(u, e)
 	var mouth := u.center() + u.facing * 14.0 + (Vector2(0, -8) if e.is_air() else Vector2.ZERO)
 	e.take_damage(dmg, u)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
@@ -2608,6 +2797,8 @@ func spell_problem(u: Unit, spell: String) -> String:
 	if spell == "storm":
 		if u.charge < float(Defs.STORM["cost"]):
 			return "Not enough charge: the Stormcaller recharges inside a Clockwork field."
+		if energy_stored(u.team) < int(Defs.STORM["cost2"]):
+			return "Not enough energy: a storm burns %d stored batteries." % int(Defs.STORM["cost2"])
 	elif spell == "miasma":
 		if u.spell_cd > 0.0:
 			return "Miasma isn't ready yet (%ds)." % int(ceil(u.spell_cd))
@@ -2743,6 +2934,7 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {}}
 	if spell == "storm":
 		u.charge -= float(Defs.STORM["cost"])
+		spend_batteries(u.team, int(Defs.STORM["cost2"]))
 		z["r"] = float(Defs.STORM["radius"])
 		z["t"] = float(Defs.STORM["time"])
 		Sfx.play_any(["combat/tesla_attack", "zap"], p)
@@ -2811,7 +3003,7 @@ func _tick_zones(delta: float) -> void:
 				u.stun_t = maxf(u.stun_t, 0.2)
 				u.phase = ""
 				var c = z["caster"]
-				if u != c:
+				if u != c and float(Defs.STORM["dps"]) > 0.0:
 					u.take_damage(float(Defs.STORM["dps"]) * delta, c if is_instance_valid(c) else null)
 			z["bolt_t"] = float(z.get("bolt_t", 0.0)) - delta
 			if z["bolt_t"] <= 0.0:
@@ -3584,5 +3776,7 @@ func _draw_overlay() -> void:
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
 		var t: Texture2D = tex("res://assets/buildings/%s_built.png" % k)
 		var r := Rect2(Vector2(c) * T, Vector2(size) * T)
-		var pos := Vector2(r.get_center().x, r.end.y) + Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
+		if k == "farm":
+			overlay.draw_texture(tex("res://assets/buildings/farm_field_young.png"), r.position, Color(1, 1, 1, 0.5) if ok else Color(1, 0.5, 0.5, 0.4))
+		var pos := Building.anchor(k, r) + Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
 		overlay.draw_texture(t, pos, Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))

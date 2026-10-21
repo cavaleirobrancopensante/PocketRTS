@@ -8,13 +8,11 @@ var cell := Vector2i.ZERO
 var size := Vector2i.ONE
 var built := false
 var progress := 0.0              # 0..1 while under construction
-var queue: Array = []            # unit kinds
+var queue: Array = []            # unit kinds, and research as "@key" (Defs.RESEARCH)
 var prod_t := 0.0
 var batteries := 0               # Clockwork: full batteries waiting to be carried off
 var _bat_t := 0.0
 var auto_train := ""             # keep training this unit (right-click / long press on its button)
-var research := ""               # research going on here (Defs.RESEARCH key)
-var research_t := 0.0
 var _auto_t := 0.0
 var rally := Vector2.INF
 var rally_target: Entity = null
@@ -33,6 +31,7 @@ var soil_warned := 0             # Town Hall: 1 = told the player it's low, 2 = 
 var lode := 0.0                  # Town Hall: saltpetre (in powder) for its Mill; Clocktower: ore for its Crushers (Defs.LODE)
 var lode_warned := 0             # 1 = told it's running low, 2 = spent
 var sprite: Sprite2D
+var field: Sprite2D = null       # Farm: its fields, on the ground under the units (they work in them)
 var fire: Effect = null
 var rubble_t := 0.0
 # Clockwork towers: anti-air lightning
@@ -63,6 +62,13 @@ const AMBIENT := {
 	"boiler": [["smoke", 0.32, 0.07, 0.7, 0.45, Color(1.2, 1.2, 1.2, 0.65)]],
 	"ore_crusher": [["dust", 0.6, 0.55, 1.0, 0.35, Color(0.8, 0.8, 0.8, 0.7)]],
 }
+## The Farm (5x4 tiles): the farmhouse stands at the back left, its base line this far down
+## from the top of the footprint; the fields (tools/make_farm_field.py) fill the rest, and
+## each of its labourers works a stretch of one crop row (see field_row).
+const FARM_HOUSE_BASE := 60.0
+const FARM_HOUSE_X := 56.0
+const FARM_ROW := 16.0
+
 ## The tip of each Clockwork tower, where its lightning lives.
 const TOWER_TOP := {"clocktower": Vector2(0.52, 0.03), "spring_tower": Vector2(0.6, 0.05), "charging_pylon": Vector2(0.52, 0.08)}
 
@@ -86,7 +92,7 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	hp = max_hp if complete else max_hp * 0.1
 	if d["faction"] == "clockwork":
 		seeded = complete
-	if k == "town_hall" or k == "hive":
+	if k == "town_hall" or k == "hive" or k == "clocktower":
 		soil = reserve()
 	lode = lode_full()
 	if d["faction"] == "brood":
@@ -95,16 +101,54 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 			swamp_r = float(d.get("swamp", 0))
 		if d.get("eggs", false):
 			eggs = Defs.EGGS_MAX if complete else 0
-	var r := rect()
-	position = Vector2(r.get_center().x, r.end.y)
+	position = anchor(k, rect())
+
+
+## Where a building of this kind on this footprint stands (its sprite's base line, which
+## also sorts it against the units): the middle of the bottom edge; a Farm's farmhouse at
+## the back, with its fields in front.
+static func anchor(k: String, r: Rect2) -> Vector2:
+	if k == "farm":
+		return Vector2(r.position.x + FARM_HOUSE_X, r.position.y + FARM_HOUSE_BASE)
+	return Vector2(r.get_center().x, r.end.y)
 
 
 func _ready() -> void:
+	if kind == "farm":
+		field = Sprite2D.new()
+		field.centered = false
+		field.z_index = -1          # on the ground: the labourers walk the rows on top of it
+		field.position = rect().position - position
+		add_child(field)
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
 	add_child(sprite)
 	_update_sprite()
+
+
+## The cells of a footprint (from its corner) that stay walkable: a Farm's fields, all but
+## the farmhouse's 4x2 block at the back left.
+static func field_cells(k: String) -> Array:
+	var out: Array = []
+	if k == "farm":
+		var sz: Vector2i = Defs.BUILDINGS[k]["size"]
+		for y in sz.y:
+			for x in sz.x:
+				if not (x < 4 and y < 2):
+					out.append(Vector2i(x, y))
+	return out
+
+
+## Farm: the stretch of crop row the crew member number i works (two to a row, four rows
+## across the front), as [from, to] in world space.
+func field_row(i: int) -> Array:
+	var r := rect()
+	var row := (i / 2) % 4
+	var y := r.position.y + FARM_HOUSE_BASE + 4.0 + FARM_ROW * (row + 1) - 3.0
+	var half := r.size.x * 0.5
+	var x0 := r.position.x + 14.0 + (i % 2) * half
+	return [Vector2(x0, y), Vector2(x0 + half - 26.0, y)]
 
 
 func rect() -> Rect2:
@@ -126,6 +170,18 @@ func add_progress(delta: float) -> void:
 		hp = maxf(hp, max_hp * 0.95)
 		game.on_building_complete(self)
 	_update_sprite()
+
+
+## A production queue entry that is research ("@armour") rather than a unit.
+static func is_research(k: String) -> bool:
+	return k.begins_with("@")
+
+
+## Seconds a queue entry takes (a unit's training or a research's time).
+static func entry_time(k: String) -> float:
+	if is_research(k):
+		return float(Defs.RESEARCH[k.substr(1)]["time"])
+	return float(Defs.UNITS[k]["time"])
 
 
 func can_train(k: String) -> bool:
@@ -158,15 +214,18 @@ func farm_speed() -> float:
 	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])
 
 
-## Town Hall / Hive: the full reserve of its land (Crown soil, Brood ground).
+## Town Hall / Hive / Clocktower: the full reserve of its land (Crown soil, Brood ground,
+## Clockwork coal for its Boilers).
 func reserve() -> float:
+	if kind == "clocktower":
+		return float(Defs.COAL_RESERVE)
 	return float(Defs.GROUND_RESERVE if kind == "hive" else Defs.SOIL_RESERVE)
 
 
 ## Farm / Feeding Pit: share of its hall's soil (ground) left (0..1); 0 with no hall.
 ## Town Hall / Hive: its own.
 func soil_left() -> float:
-	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "feeding_pit" else self
+	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "feeding_pit" or kind == "boiler" else self
 	return clampf(h.soil / h.reserve(), 0.0, 1.0) if h else 0.0
 
 
@@ -185,7 +244,7 @@ func lode_left() -> float:
 ## Economy buildings (and the Clocktower): production efficiency right now, as
 ## [efficiency 0..1, crew at work, full crew, reserve left 0..1, reserve name], or [] for
 ## anything else. Efficiency = staffing x the reserve's state: 100% fresh, falling to the
-## share it still pays once spent (a third for soil and Hive ground, a quarter for saltpetre
+## share it still pays once spent (a third for soil, Hive ground and coal, a quarter for saltpetre
 ## and ore). An Ore Crusher has no crew of its own: its staffing is its Clocktower's battery
 ## carriers (the Winders on the Clocktower and its Boilers) against their full crews.
 func efficiency() -> Array:
@@ -213,6 +272,11 @@ func efficiency() -> Array:
 		"farm", "feeding_pit":
 			left = soil_left()
 			res = "soil" if kind == "farm" else "ground"
+		"boiler":
+			# a Boiler burns its Clocktower's coal (a third once it's spent)
+			left = soil_left()
+			res = "coal"
+			trickle = Defs.COAL_SPENT
 		_:
 			left = lode_left()
 			res = "saltpetre" if kind == "powder_mill" else "ore"
@@ -275,9 +339,17 @@ func _physics_process(delta: float) -> void:
 			var bat: Array = d["battery"]
 			if batteries < int(bat[1]):
 				_bat_t += delta
-				if _bat_t >= float(bat[0]):
+				# a Boiler burns its Clocktower's coal; on spent coal it fills at a third
+				var every := float(bat[0])
+				var coal: Building = game.soil_hall(self) if kind == "boiler" else null
+				if kind == "boiler" and (coal == null or coal.soil < 1.0):
+					every /= Defs.COAL_SPENT
+				if _bat_t >= every:
 					_bat_t = 0.0
 					batteries += 1
+					if coal and coal.soil >= 1.0:
+						coal.soil -= 1.0
+						game._soil_check(coal)
 	if built and uses_eggs():
 		# Every egg morphs at the same time.
 		var i := 0
@@ -293,23 +365,19 @@ func _physics_process(delta: float) -> void:
 	elif built and not queue.is_empty():
 		prod_t += delta * (game.asm_mult[team] if d["faction"] == "clockwork" else 1.0)
 		var k: String = queue[0]
-		if prod_t >= float(Defs.UNITS[k]["time"]):
+		if prod_t >= entry_time(k):
 			prod_t = 0.0
 			queue.pop_front()
-			game.spawn_trained(self, k)
+			if is_research(k):
+				game.research_done(self, k.substr(1))
+			else:
+				game.spawn_trained(self, k)
 	if built and auto_train != "" and not dead:
 		_auto_t -= delta
 		if _auto_t <= 0.0:
 			_auto_t = 0.5
 			if (uses_eggs() and eggs > 0) or (not uses_eggs() and queue.is_empty()):
 				game.train(self, auto_train)
-	if built and research != "":
-		research_t += delta
-		if research_t >= float(Defs.RESEARCH[research]["time"]):
-			var key := research
-			research = ""
-			research_t = 0.0
-			game.research_done(self, key)
 	_update_fire()
 	# bars and labels change slowly: redraw 6 times a second, or at once when picked
 	_redraw_t -= delta
@@ -383,7 +451,7 @@ func _update_fire() -> void:
 		if big:
 			fire.scale = Vector2(0.75, 0.75)
 		fire.reparent(self, false)
-		fire.position = Vector2(randf_range(-12, 12), -rect().size.y * 0.75)
+		fire.position = Vector2(randf_range(-12, 12), -(50.0 if kind == "farm" else rect().size.y * 0.75))
 		fire.z_index = 1
 	elif not burning and fire:
 		fire.queue_free()
@@ -489,7 +557,20 @@ func _update_sprite() -> void:
 			# tired soil: the fields fade toward a dry yellow-brown
 			var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
 			sprite.modulate = Color.WHITE.lerp(Color(1.0, 0.78, 0.5), tired)
-		elif kind == "feeding_pit" and built and not dead and game:
+			if field:
+				field.modulate = sprite.modulate
+		if field:
+			# bare furrows while it's built (and once it's a ruin), green shoots after each
+			# harvest, gold before the next
+			var stage := "bare" if not built or dead or growth < 0.12 else ("young" if growth < 0.6 else "ripe")
+			var ft := Game.tex("res://assets/buildings/farm_field_%s.png" % stage)
+			if field.texture != ft:
+				field.texture = ft
+			if dead:
+				field.modulate = Color(0.55, 0.5, 0.45)
+			elif not built:
+				field.modulate = sprite.modulate
+		if kind == "feeding_pit" and built and not dead and game:
 			# spent ground: the pit dries out to a dead grey-brown
 			var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
 			sprite.modulate = Color.WHITE.lerp(Color(0.62, 0.56, 0.48), tired)
@@ -558,13 +639,9 @@ func _draw() -> void:
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * growth, 4), Color(0.95, 0.85, 0.3))
-	elif research != "" and team == game.human:
-		var w := r.size.x * 0.7
-		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(-w * 0.5, top + 7, w * research_t / float(Defs.RESEARCH[research]["time"]), 4), Color(0.75, 0.55, 1.0))
 	elif not queue.is_empty() and team == game.human:
 		var w := r.size.x * 0.7
 		var k: String = queue[0]
-		var f: float = (morph_t[0] if uses_eggs() else prod_t) / float(Defs.UNITS[k]["time"])
+		var f: float = (morph_t[0] if uses_eggs() else prod_t) / entry_time(k)
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(-w * 0.5, top + 7, w * f, 4), Color(0.4, 0.75, 1.0))
+		draw_rect(Rect2(-w * 0.5, top + 7, w * f, 4), Color(0.75, 0.55, 1.0) if is_research(k) else Color(0.4, 0.75, 1.0))

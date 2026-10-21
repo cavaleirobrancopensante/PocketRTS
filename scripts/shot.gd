@@ -18,6 +18,9 @@ var _dur := 0.1
 func launch(g: Game, kind: String, a: Vector2, b: Vector2, spd: float) -> Shot:
 	game = g
 	texture = Game.tex("res://assets/effects/%s.png" % kind)
+	# an animated missile (the Arc Thrower's ball): its frames cycle in flight
+	if ArtData.EFFECTS.has(kind) and int(ArtData.EFFECTS[kind]["frames"]) > 1:
+		hframes = int(ArtData.EFFECTS[kind]["frames"])
 	from = a
 	to = b
 	speed = spd
@@ -40,6 +43,8 @@ func _place(f: float) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if hframes > 1:
+		frame = int(_t * 12.0) % hframes
 	var f := clampf(_t / _dur, 0.0, 1.0)
 	_place(f)
 	if f >= 1.0:

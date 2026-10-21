@@ -362,11 +362,18 @@ func _group_pressed(i: int, held: float) -> void:
 			else:
 				game.set_selection([idle[0]])
 				game.camera.position = idle[0].position
-		2:   # town hall
-			var h := game._own_hall(game.human)
-			if h:
-				game.set_selection([h])
-				game.camera.position = h.global_position
+		2:   # town hall: each tap goes on to the next one (the main hall, then expansions)
+			var halls: Array = game.halls_of(game.human, false)
+			if halls.is_empty():
+				var h := game._own_hall(game.human)
+				if h:
+					game.set_selection([h])
+					game.camera.position = h.global_position
+				return
+			var cur: int = halls.find(game.selection[0]) if game.selection.size() == 1 else -1
+			var nh: Building = halls[(cur + 1) % halls.size()]
+			game.set_selection([nh])
+			game.camera.position = nh.center()
 		6:   # every production building: train from all of them at once
 			var pb := game.producers(game.human)
 			if pb.is_empty():
@@ -437,7 +444,7 @@ func _build_card() -> Array:
 				var d: Dictionary = Defs.BUILDINGS[k]
 				var why := ""
 				if not game.requirement_met(game.human, k):
-					why = "Needs a %s first." % Defs.BUILDINGS[d["requires"]]["name"]
+					why = game.requirement_text(game.human, k)
 				elif game.players[game.human]["gold"] < int(d["cost"]):
 					why = "Not enough %s." % _res()[0].to_lower()
 				elif Defs.is_econ(k) and game.econ_count(game.human, k) >= game.econ_limit(game.human, k):
@@ -464,8 +471,16 @@ func _build_card() -> Array:
 				page = "build"
 				build_page = 0, true, "", ""])
 			_balloon_buttons(list, units)     # labourers can ride too
-			if units.any(func(u: Unit) -> bool: return u.d.get("repairs", false) or u.kind == "labourer"):
-				list.append(["repair", "REPAIR", func() -> void:
+			var fixers := units.filter(func(u: Unit) -> bool: return u.d.get("repairs", false) or u.kind == "labourer")
+			if not fixers.is_empty():
+				# a tap: pick what to repair; right-click / long press: automatic repair (glows)
+				var auto_fix: bool = fixers.all(func(u: Unit) -> bool: return u.auto_repair)
+				_alt_for["REPAIR"] = func() -> void:
+					for u in game.selected_units():
+						if u.d.get("repairs", false) or u.kind == "labourer":
+							u.auto_repair = not auto_fix
+					toast("Automatic repair on: idle workers fix damaged buildings nearby by themselves, before going back to work." if not auto_fix else "Automatic repair off.")
+				list.append(["repair", ("~ " if auto_fix else "") + "REPAIR", func() -> void:
 					controls.mode = "repair"
 					toast("Tap a damaged building (or wall) to repair it."), true, "", ""])
 
@@ -548,26 +563,17 @@ func _build_card() -> Array:
 		for rk in Defs.RESEARCH:
 			var rkk: String = rk
 			var info: Dictionary = Defs.RESEARCH[rk]
-			if info["at"] != b.kind or game.has_tech(game.human, rk):
+			# done, or already in a queue (it shows there, with its progress): no button
+			if info["at"] != b.kind or game.has_tech(game.human, rk) or game.researching(game.human, rk):
 				continue
-			# a chain (the musket locks): only the next one shows
+			# a chain (the musket locks): only the next one shows, once the one before is
+			# done or queued
 			var rreq: String = info.get("requires", "")
-			if rreq != "" and not game.has_tech(game.human, rreq):
+			if rreq != "" and not game.has_tech(game.human, rreq) and not game.researching(game.human, rreq):
 				continue
 			var rwhy := game.research_problem(b, rk)
 			var lab: String = info["name"].to_upper()
-			if b.research == rk:
-				lab = "> " + lab
-				rwhy = ""
-			# the research icon (assets/icons/<icon>.png); without one, the unit it's for
-			var ric: String = info.get("icon", info.get("unlocks", "musketeer"))
-			if _icon(ric) == null:
-				ric = info.get("unlocks", "musketeer")
-			list.append([ric, lab, func() -> void:
-				if b.research == rkk:
-					game.cancel_research(b)
-					toast("%s research cancelled: paid back." % info["name"])
-					return
+			list.append([_research_icon(rk), lab, func() -> void:
 				var w := game.start_research(b, rkk)
 				if w != "":
 					toast(w), rwhy == "", rwhy, str(info["cost"])])
@@ -596,8 +602,21 @@ func _build_card() -> Array:
 		elif not b.d["trains"].is_empty():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
-			list.append(["stop", "CANCEL", func() -> void: game.cancel_train(b), true, "", ""])
+			list.append(["stop", "CANCEL", func() -> void:
+				var last: String = b.queue.back() if not b.queue.is_empty() else ""
+				game.cancel_train(b)
+				if Building.is_research(last):
+					toast("%s research cancelled: paid back." % Defs.RESEARCH[last.substr(1)]["name"]), true, "", ""])
 	return list
+
+
+## A research's icon (assets/icons/<icon>.png); without one, the unit it's for.
+func _research_icon(key: String) -> String:
+	var info: Dictionary = Defs.RESEARCH[key]
+	var ric: String = info.get("icon", info.get("unlocks", "musketeer"))
+	if _icon(ric) == null:
+		ric = info.get("unlocks", "musketeer")
+	return ric
 
 
 ## Observation Balloon: LOAD men into the basket (the infantry selected with it climb in
@@ -671,6 +690,14 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			toast("Courier: idle Ornithopters fetch batteries and wind up constructs that ran down." if not cour else "Courier off."), true, "", ""])
 		var has_bat: bool = topters.any(func(u: Unit) -> bool: return u.topter_bat != "")
 		list.append(["ab_overload", "OVERLOAD", func() -> void: controls.mode = "overload", has_bat, "No battery: an Ornithopter on COURIER fetches one from an energy building.", ""])
+	# Bulwark: BRACE plants the tower shield (it can't move; shots at the men behind hit it)
+	var shields := units.filter(func(u: Unit) -> bool: return u.kind == "bulwark")
+	if not shields.is_empty():
+		var up: bool = shields.any(func(u: Unit) -> bool: return not u.braced)
+		list.append(["ab_brace", "BRACE" if up else "~ BRACE", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "bulwark":
+					u.set_brace(up), true, "", ""])
 	# Skywing: LAND (ground fighter) / TAKE OFF (hunts flyers)
 	var wings := units.filter(func(u: Unit) -> bool: return u.kind == "skywing")
 	if not wings.is_empty():
@@ -705,7 +732,7 @@ const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "E", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
-	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
+	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "BRACE": "E", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -914,7 +941,7 @@ func _draw() -> void:
 	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
 	var r2 := "%d" % int(pl["res2"])
 	if fac == "clockwork":
-		r2 = "%d %s batteries ready" % [int(game.energy[game.human]), "blue" if game.blue_energy(game.human) else "yellow"]
+		r2 = "%d energy (%s batteries stored)" % [int(game.energy[game.human]), "blue" if game.blue_energy(game.human) else "yellow"]
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(game.human)
 	var cap: int = pl["cap"]
@@ -1118,6 +1145,18 @@ func _draw_panel(font: Font) -> void:
 				info = "Out of gas: deflated, slower and harmless. Gas %d / 100 (fills faster on swamp)." % int(uu.gas)
 			elif uu.kind == "ornithopter" and (uu.topter_bat != "" or uu.courier):
 				info = ("Carrying a %s battery: OVERLOAD a construct with it, or it winds one up on COURIER." % uu.topter_bat) if uu.topter_bat != "" else "Courier: fetching batteries for constructs that run down."
+			elif uu.kind == "windup_soldier" and uu.powered_down():
+				info = "RUN DOWN: frozen until a Winder cranks it up again (or a field reaches it)."
+			elif uu.kind == "windup_soldier":
+				info = "Spring %d%%%s: about 50 s away from a field and it runs down." % [int(uu.wind * 100), " (being cranked)" if uu.cranked_t > 0.0 else ""]
+			elif uu.kind == "bulwark" and uu.braced:
+				info = "BRACED: can't move; armour 7; shots at your units behind the shield hit it instead. Charge %d%%." % int(uu.wind * 100)
+			elif uu.kind == "thresher" and uu.spin > 0.05 and uu.overclock_t <= 0.0:
+				info = "Saws %d%% spun up (x%.1f damage) · Charge %d%%: spinning drains it fast." % [int(uu.spin * 100), lerpf(float(Defs.THRESHER["low"]), float(Defs.THRESHER["high"]), uu.spin), int(uu.wind * 100)]
+			elif uu.kind == "winder" and uu.self_wind_t > 0.0:
+				info = "Winding its own spring (%d s)." % int(ceil(uu.self_wind_t))
+			elif uu.overcharged() and uu.overclock_t <= 0.0:
+				info = "OVERCHARGED: +15%% damage while it stays here. Charge %d%%." % int(uu.wind * 100)
 			elif uu.overclock_t > 0.0:
 				info = "OVERLOADED for %d s: +50%% damage, +30%% speed. Burns out to 25%% charge." % int(ceil(uu.overclock_t))
 			elif uu.kind == "missionary":
@@ -1145,9 +1184,11 @@ func _draw_panel(font: Font) -> void:
 					" spent: farms pay a third" if soil <= 0.0 else (" running low" if soil < Defs.SOIL_LOW else ""),
 					int(round(salt * 100)), int(bb.lode), " spent: the Mill grinds at a quarter" if salt <= 0.0 else (" running low" if salt < Defs.SOIL_LOW else "")]
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
-				info = "%d/%d batteries ready (one every %.1f s) · Ore: %d ore left%s · allows 2 Boilers and 2 Ore Crushers nearby" % [
+				var coal := bb.soil_left()
+				info = "%d/%d batteries ready (one every %.1f s) · Ore: %d left%s · Coal: %d%%%s · allows 2 Boilers and 2 Ore Crushers nearby" % [
 					bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0]), int(bb.lode),
-					" (spent: its crushers pay a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else "")]
+					" (spent: its crushers pay a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
+					int(round(coal * 100)), " (spent: its Boilers fill at a third)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else "")]
 			elif bb.kind == "powder_mill":
 				var sl := bb.lode_left()
 				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
@@ -1156,13 +1197,16 @@ func _draw_panel(font: Font) -> void:
 				info = "Each load is worth %.1f%s" % [game.load_value(bb), " · spent ground: a third; grow a Hive on fresh ground" if gl <= 0.0 else ""]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
-				info = "%d/%d batteries ready (one every %.1f s)" % [bb.batteries, int(bat[1]), float(bat[0])]
+				var coal2 := bb.soil_left()
+				info = "%d/%d batteries ready (one every %.1f s)%s" % [bb.batteries, int(bat[1]),
+					float(bat[0]) / (1.0 if coal2 > 0.0 else Defs.COAL_SPENT), " · coal spent: a third as fast" if coal2 <= 0.0 else (" · coal running low" if coal2 < Defs.SOIL_LOW else "")]
 			elif bb.kind == "ore_crusher":
-				var bi: Dictionary = Defs.BATTERY["blue" if game.blue_energy(e.team) else "yellow"]
+				var blue := game.blue_energy(e.team)
+				var bi: Dictionary = Defs.BATTERY["blue" if blue else "yellow"]
 				var ol := bb.lode_left()
 				var q := 1.0 if ol > 0.0 else Defs.LODE_SPENT
-				info = "%s batteries: %d ore + %.1f per second on the road (they burst after %d s)%s" % ["Blue" if game.blue_energy(e.team) else "Yellow",
-					int(round(float(bi["base"]) * float(Defs.BATTERY["ore"]) * q)), float(bi["gain"]) * float(Defs.BATTERY["ore"]) * q, int(bi["overload"]),
+				info = "%s batteries: %d ore; after %d s on the road they lose %d%% a second%s" % ["Blue" if blue else "Yellow",
+					int(round(Defs.battery_charge(blue, 0.0) * float(Defs.BATTERY["ore"]) * q)), int(Defs.BATTERY["fresh"]), int(round(float(bi["decay"]) * 100)),
 					" · ore spent: a quarter" if ol <= 0.0 else (" · ore running low" if ol < Defs.SOIL_LOW else "")]
 			elif bb.kind == "brood_pen":
 				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
@@ -1223,14 +1267,16 @@ func _draw_panel(font: Font) -> void:
 		if e is Building and e.team == game.human and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
-				var ic := _icon(q[i])
+				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else q[i])
 				var qr := Rect2(r.end.x - 44 - (q.size() - 1 - i) * 40, r.position.y + 8, 36, 36)
 				if ic:
 					draw_texture_rect(ic, qr, false)
 				var eb := e as Building
 				if i == 0 or eb.uses_eggs():
-					var f: float = (eb.morph_t[i] if eb.uses_eggs() else eb.prod_t) / float(Defs.UNITS[q[i]]["time"])
-					draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.4, 0.75, 1))
+					var f: float = (eb.morph_t[i] if eb.uses_eggs() else eb.prod_t) / Building.entry_time(q[i])
+					draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.75, 0.55, 1.0) if Building.is_research(q[i]) else Color(0.4, 0.75, 1))
+				if Building.is_research(q[i]):
+					draw_rect(qr, Color(0.75, 0.55, 1.0, 0.9), false, 1.5)     # research: a violet frame
 	else:
 		var n := mini(sel.size(), 24)
 		var per_row := int((r.size.x - 20) / 38)
@@ -1379,7 +1425,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
 		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
 		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. One of the gun's 8 shots.",
-		"STORM": "Static storm: a ring of lightning on a spot for 3 s. Everything inside is stunned, your own units too, and enemies take damage. Costs 70 charge; the Stormcaller recharges only inside a Clockwork field.",
+		"STORM": "Static storm: a ring of lightning (2.5-tile radius) on a spot for 2.5 s. Everything inside is stunned, your own units too; it does no damage: hit them while they stand. Costs 70 charge and 2 stored batteries; the Stormcaller recharges only inside a Clockwork field.",
 		"HARVEST": "Harvest the fallen: the grubs stay here and wrap every body nearby (friend or foe) in a cocoon, carrying it to a Hive as essence. Veterans hold more. Bodies rot away after 2 minutes.",
 		"SACRIFICE": "Sacrifice: the selected Brood creatures (not grubs) go to the nearest Brood Pen and are offered up there, each for 12% of its biomass cost as essence (a Raptor 3, a Spitter 5, a Brute 18). Turn spare biomass into essence for Skywings, Bloaters, Brutes and Spore Mothers.",
 		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
@@ -1391,6 +1437,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"UNLOAD": "Unload: tap where to drop them. The balloon flies there and lets everyone off on the nearest open ground (over a cliff edge too). Tap the balloon, or DROP HERE, to let them off where it is.",
 		"DROP HERE": "Let everyone off right below the balloon.",
 		"COURIER": "Courier (automatic, glowing = on): idle Ornithopters fetch a charged battery from an energy building and wind up constructs that ran down (shut-down ones first). Click to switch on or off.",
+		"BRACE": "Brace (glowing = braced): the Bulwark plants its tower shield. It can't move (a move order lifts it), its armour goes up to 7, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead. Its lance still pokes at anything in reach.",
 		"OVERLOAD": "Overload: tap one of your constructs. The Ornithopter dumps its battery into it: +50% damage, +30% speed and faster attacks for 12 s, then it's left with 25% charge.",
 		"LAND": "Land (1.2 s): fight on the ground with a bite. Landed it walks, can't cross cliffs and anything can hit it; it can't attack flyers.",
 		"TAKE OFF": "Take off (1.2 s): fly again and hunt flyers with spines (it can't attack the ground while flying).",
@@ -1403,9 +1450,12 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 			if int(ri.get("cost2", 0)) > 0:
 				rc += " + %d %s" % [int(ri["cost2"]), _res()[1].to_lower()]
 			title = "%s   (%s, %d s)" % [ri["name"], rc, int(ri["time"])]
-			body = ri["about"] + ("  Press again to cancel (paid back)." if String(it[1]).begins_with("> ") else "")
+			body = ri["about"] + "  Queued like a unit; CANCEL takes the last thing in the queue back out (paid back)." 
 	if title == "WORK":
 		body = "Automatic work: idle workers go back to their posts on their own (glowing = on). Press to switch it off for the selected workers, to scout or keep a builder free."
+	if title == "REPAIR":
+		body = "Click, then click a damaged building or wall: they fix it (costs a quarter of its price for a full repair). Right-click: automatic repair (glowing = on): idle workers fix damaged buildings nearby by themselves, before going back to work." if Settings.pc() \
+			else "Tap, then tap a damaged building or wall to fix it. Hold: automatic repair (glowing = on): idle workers fix damaged buildings nearby by themselves, before going back to work."
 	if ABOUT.has(title):
 		body = ABOUT[title]
 	elif Defs.UNITS.has(k) and title == Defs.UNITS[k]["name"].to_upper():
