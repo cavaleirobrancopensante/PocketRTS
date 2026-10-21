@@ -212,8 +212,8 @@ const UNITS := {
 	"musketeer": {
 		"tags": ["light"],
 		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 2,
-		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks", "requires": "powder_mill",
-		"anti_air": true, "faction": "crown", "about": "Line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 12 shots run dry; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Needs a Powder Mill. The Barracks researches Armour and better locks for it.",
+		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks",
+		"anti_air": true, "faction": "crown", "about": "Line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 12 shots run dry; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Costs 10 powder: the Powder Mill grinds more. The Barracks researches Armour and better locks for it.",
 	},
 	"cannon": {
 		"tags": ["armored"],
@@ -445,7 +445,7 @@ const BUILDINGS := {
 		"about": "Builds the big engines: Steam Walkers, and (with a Charging Pylon) Tesla Carts, Stormcallers and Ornithopters. They cost energy (stored batteries) too. Needs an Assembly Works and a Boiler.",
 	},
 	"farm": {
-		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(5, 4),
+		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(6, 5),
 		"supply": 0, "sight": 5, "trains": [], "crew": 8, "faction": "crown",
 		"about": "Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: tired soil pays a third.",
 	},

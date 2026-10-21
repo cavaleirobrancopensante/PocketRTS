@@ -48,7 +48,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"saved_at": Time.get_datetime_string_from_system(false, true), "cfg": cfg, "clock": game.clock,
 		"players": game.players, "stats": game.stats, "eliminated": game.eliminated,
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
-		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true,
+		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true, "farm_size": _v2(Vector2(Defs.BUILDINGS["farm"]["size"])),
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
 		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]), "buildings": [], "units": []}
 	for ai in game.ais:
@@ -172,8 +172,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex
-	# (Farms last: in saves from before Farms grew to 5x4 tiles each may have to shift a little
-	# to fit between what stands round it)
+	# (Farms last: in saves from before Farms grew (to 5x4, then 6x5 tiles) each may have to
+	# shift a little to fit between what stands round it)
 	var blist: Array = Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) != "farm") \
 		+ Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) == "farm")
 	for bd in blist:
@@ -183,7 +183,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if not Defs.BUILDINGS.has(bk):
 			continue
 		var at := Vector2i(int(bd["c"][0]), int(bd["c"][1]))
-		if bk == "farm" and not bool(d.get("big_farms", false)):
+		if bk == "farm" and Array(d.get("farm_size", [])) != [float(Defs.BUILDINGS["farm"]["size"].x), float(Defs.BUILDINGS["farm"]["size"].y)]:
 			at = _fit(game, at, Defs.BUILDINGS[bk]["size"])
 		var b := game._add_building(bk, int(bd["t"]), at, bool(bd["built"]), bool(bd.get("ghost", false)))
 		b.progress = float(bd["progress"])

@@ -77,7 +77,7 @@ const AMBIENT := {
 	"boiler": [["smoke", 0.32, 0.07, 0.7, 0.45, Color(1.2, 1.2, 1.2, 0.65)]],
 	"ore_crusher": [["dust", 0.6, 0.55, 1.0, 0.35, Color(0.8, 0.8, 0.8, 0.7)]],
 }
-## The Farm (5x4 tiles): the farmhouse stands at the back left, its base line this far down
+## The Farm (6x5 tiles): the farmhouse stands at the back left, its base line this far down
 ## from the top of the footprint; the fields (tools/make_farm_field.py) fill the rest, and
 ## each of its labourers works a stretch of one crop row (see field_row).
 const FARM_HOUSE_BASE := 60.0
@@ -155,11 +155,12 @@ static func field_cells(k: String) -> Array:
 	return out
 
 
-## Farm: the stretch of crop row the crew member number i works (two to a row, four rows
-## across the front), as [from, to] in world space.
+## Farm: the stretch of crop row the crew member number i works (two to a row, on four of
+## the crop rows across the front, spread over them), as [from, to] in world space.
 func field_row(i: int) -> Array:
 	var r := rect()
-	var row := (i / 2) % 4
+	var rows := int((r.size.y - FARM_HOUSE_BASE - 4.0) / FARM_ROW)    # (6 on a 6x5 farm)
+	var row := int(round(float((i / 2) % 4) * float(rows - 1) / 3.0))
 	var y := r.position.y + FARM_HOUSE_BASE + 4.0 + FARM_ROW * (row + 1) - 3.0
 	var half := r.size.x * 0.5
 	var x0 := r.position.x + 14.0 + (i % 2) * half
@@ -473,8 +474,9 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 
 
-## Gate: swings open while a friendly unit is close and no enemy is (the open picture is
-## only for show: friends can always pass, enemies never can).
+## Gate: swings open while a friendly unit means to go through (its path crosses the gate,
+## or it's right at it and walking in) and no enemy is close (the open picture is only for
+## show: friends can always pass, enemies never can). Friends idling beside it don't hold it open.
 var gate_open := false
 var vertical := false            # a gate in a north-south wall: drawn side-on
 var dir_locked := false          # turned by hand: stays as it is
@@ -494,17 +496,49 @@ func _gate(delta: float) -> void:
 	_gate_t = 0.25
 	var friend := false
 	var foe := false
-	for u in game.units_near(rect().get_center(), 56.0):
+	var c := rect().get_center()
+	for u in game.units_near(c, 200.0):
 		if u.dead or u.is_air():
 			continue
-		if game.allied(u.team, team):
+		if not game.allied(u.team, team):
+			if u.position.distance_to(c) < 56.0:
+				foe = true
+		elif not friend and crossing(u):
 			friend = true
-		else:
-			foe = true
 	var want := friend and not foe
 	if want != gate_open:
 		gate_open = want
 		_update_sprite()
+
+
+## Gate: does this friendly unit mean to go through? Standing in the gateway, its path
+## (the next few legs) running through the gate cell, or within about half a cell of it
+## and walking toward it.
+func crossing(u: Unit) -> bool:
+	var r := rect()
+	if r.has_point(u.position):
+		return true
+	var c := r.get_center()
+	var to := c - u.position
+	if r.grow(Defs.TILE * 0.5).has_point(u.position) and u.velocity.length() > 8.0 and u.velocity.dot(to) > 0.0:
+		return true
+	var hit := r.grow(2.0)
+	var from := u.position
+	if u.path_pending:
+		return u.path_goal != Vector2.INF and _seg_hits(hit, from, u.path_goal)
+	for i in range(u.path_i, mini(u.path.size(), u.path_i + 3)):
+		if _seg_hits(hit, from, u.path[i]):
+			return true
+		from = u.path[i]
+	return false
+
+
+static func _seg_hits(r: Rect2, a: Vector2, b: Vector2) -> bool:
+	var n := int(a.distance_to(b) / 6.0) + 1
+	for k in n + 1:
+		if r.has_point(a.lerp(b, float(k) / float(n))):
+			return true
+	return false
 
 
 func _brood(delta: float) -> void:

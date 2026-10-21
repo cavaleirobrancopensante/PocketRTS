@@ -323,6 +323,7 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 			var cc := c + Vector2i(x, y)
 			if in_map(cc):
 				solid[idx(cc)] = v
+				_region_dirty = true
 				if astar.region.size != Vector2i.ZERO:
 					astar.set_point_solid(cc, v != 0 and v != 3 and v != 5)
 				if astar_siege.region.size != Vector2i.ZERO:
@@ -502,6 +503,7 @@ func _setup_astar() -> void:
 	astar_siege.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	astar_siege.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	astar_siege.update()
+	_region_dirty = true
 	for y in H:
 		for x in W:
 			var sv := solid[y * W + x]
@@ -1508,9 +1510,12 @@ func remove_ghost(b: Building) -> void:
 	_recount_supply(b.team)
 
 
+## The nearest free cell, preferring one on the open map (not a sealed pocket between
+## buildings, where a unit put there could never walk out); a pocket only if there's nothing else.
 func nearest_free(c: Vector2i, max_r := 10) -> Vector2i:
-	if is_free(c):
+	if is_free(c) and in_open_map(c):
 		return c
+	var pocket := Vector2i(-1, -1)
 	for r in range(1, max_r + 1):
 		var best := Vector2i(-1, -1)
 		var bd := INF
@@ -1520,13 +1525,109 @@ func nearest_free(c: Vector2i, max_r := 10) -> Vector2i:
 					continue
 				var cc := c + Vector2i(x, y)
 				if is_free(cc):
+					if not in_open_map(cc):
+						if pocket.x < 0:
+							pocket = cc
+						continue
 					var dd := Vector2(x, y).length()
 					if dd < bd:
 						bd = dd
 						best = cc
 		if best.x >= 0:
 			return best
-	return c
+	if is_free(c):
+		return c
+	return pocket if pocket.x >= 0 else c
+
+
+## Walkable for everyone: open ground or a Farm's crop rows (not gates).
+func open_cell(c: Vector2i) -> bool:
+	return in_map(c) and (solid[idx(c)] == 0 or solid[idx(c)] == 5)
+
+
+## Connected walkable areas (open ground, crop rows and gates, 4-way, as the pathfinder
+## goes: it never cuts a corner), worked out again whenever something is built or pulled
+## down. An area smaller than POCKET cells is a sealed pocket (say, a gap shut in by houses).
+const POCKET := 48
+var _region := PackedInt32Array()
+var _region_size: Array = []
+var _region_dirty := true
+
+
+func _update_regions() -> void:
+	_region_dirty = false
+	_region.resize(W * H)
+	_region.fill(-1)
+	_region_size.clear()
+	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for i in W * H:
+		if _region[i] >= 0:
+			continue
+		var v := solid[i]
+		if v != 0 and v != 3 and v != 5:
+			continue
+		var id := _region_size.size()
+		var n := 0
+		var q: Array = [Vector2i(i % W, i / W)]
+		_region[i] = id
+		while not q.is_empty():
+			var c: Vector2i = q.pop_back()
+			n += 1
+			for dd in dirs:
+				var nc: Vector2i = c + dd
+				if not in_map(nc):
+					continue
+				var j := nc.y * W + nc.x
+				if _region[j] >= 0:
+					continue
+				var vv := solid[j]
+				if vv == 0 or vv == 3 or vv == 5:
+					_region[j] = id
+					q.append(nc)
+		_region_size.append(n)
+
+
+## Which walkable area a cell belongs to (-1: not walkable).
+func region_of(c: Vector2i) -> int:
+	if _region_dirty:
+		_update_regions()
+	return _region[idx(c)] if in_map(c) else -1
+
+
+## On walkable ground that's part of the open map, not a sealed pocket.
+func in_open_map(c: Vector2i) -> bool:
+	var r := region_of(c)
+	return r >= 0 and int(_region_size[r]) >= POCKET
+
+
+## A ground unit at `p` shut in a sealed pocket (by buildings: it can walk out through
+## them as a last resort, see escape_point).
+func sealed_in(p: Vector2) -> bool:
+	var r := region_of(cell_of(p))
+	return r >= 0 and int(_region_size[r]) < POCKET
+
+
+## Last resort for a unit sealed in a pocket: the nearest cell of the open map it can reach
+## by walking through buildings (and walls) only, never through cliffs, trees or water.
+## Vector2.INF when there's none within reach (terrain shuts it in: it stays put).
+func escape_point(p: Vector2) -> Vector2:
+	var start := cell_of(p)
+	var seen := {start: true}
+	var q: Array = [start]
+	var qi := 0
+	while qi < q.size() and qi < 400:
+		var c: Vector2i = q[qi]
+		qi += 1
+		if c != start and open_cell(c) and in_open_map(c):
+			return cell_center(c)
+		for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nc: Vector2i = c + dd
+			if not in_map(nc) or seen.has(nc):
+				continue
+			seen[nc] = true
+			if solid[idx(nc)] != 1:
+				q.append(nc)
+	return Vector2.INF
 
 
 func on_unit_died(u: Unit) -> void:
@@ -1801,7 +1902,7 @@ func can_train(b: Building, k: String) -> String:
 	if rs != "" and not has_tech(b.team, rs):
 		var info: Dictionary = Defs.RESEARCH[rs]
 		return "Research %s at the %s first." % [info["name"], Defs.BUILDINGS[info["at"]]["name"]]
-	# the tech step: each faction's ranged unit needs its second economy building
+	# the tech step: the Brood's and the Clockwork's ranged units need their second economy building
 	var reqs: Array = u["requires"] if u.get("requires", "") is Array else ([u["requires"]] if u.get("requires", "") != "" else [])
 	for req in reqs:
 		if not _has_built(b.team, req):
@@ -1972,6 +2073,8 @@ func spawn_trained(b: Building, k: String) -> void:
 			var c := Vector2i(x, y)
 			if is_free(c):
 				var dd := cell_center(c).distance_to(toward)
+				if not in_open_map(c):
+					dd += 100000.0          # a sealed pocket only if nothing else is free
 				if dd < bd:
 					bd = dd
 					best = c
@@ -2393,8 +2496,9 @@ func queue_path(u: Unit) -> void:
 
 
 func find_path(from: Vector2, to: Vector2, siege := false) -> PackedVector2Array:
-	var a := nearest_free(cell_of(from), 6)
-	var b := nearest_free(cell_of(to), 8)
+	# (a Farm's crop rows are walkable: a unit on them starts, or ends, right there)
+	var a := cell_of(from) if open_cell(cell_of(from)) else nearest_free(cell_of(from), 6)
+	var b := cell_of(to) if open_cell(cell_of(to)) else nearest_free(cell_of(to), 8)
 	var pts := astar.get_point_path(a, b, true)
 	if pts.is_empty() and siege:
 		# walled out: walk up to the wall (the unit then breaks it down)
@@ -2402,7 +2506,7 @@ func find_path(from: Vector2, to: Vector2, siege := false) -> PackedVector2Array
 	if pts.is_empty():
 		return PackedVector2Array([to])
 	# Use the exact destination when it's on open ground.
-	if is_free(cell_of(to)) and cell_of(to) == b:
+	if open_cell(cell_of(to)) and cell_of(to) == b:
 		pts[pts.size() - 1] = to
 	return _smooth(from, pts)
 
@@ -2428,7 +2532,7 @@ func line_clear(a: Vector2, b: Vector2) -> bool:
 	for s in steps + 1:
 		var p := a.lerp(b, float(s) / float(steps))
 		for off in [Vector2(-7, -7), Vector2(7, 7), Vector2(-7, 7), Vector2(7, -7)]:
-			if not is_free(cell_of(p + off)):
+			if not open_cell(cell_of(p + off)):
 				return false
 	return true
 
@@ -2648,6 +2752,21 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
 		if b.visible and b.sprite and b.sprite.texture:
+			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
+			if sr.grow(-6).has_point(p):
+				return b
+	return null
+
+
+## The finished economy building of team t (a Farm with its fields, a Mill, Pit, Boiler...)
+## whose footprint or sprite is under p, or null.
+func crew_site_at(p: Vector2, t: int) -> Building:
+	for b in buildings:
+		if b.team != t or b.dead or not b.built or not b.visible or int(b.d.get("crew", 0)) <= 0:
+			continue
+		if b.rect().grow(4).has_point(p):
+			return b
+		if b.sprite and b.sprite.texture:
 			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
 			if sr.grow(-6).has_point(p):
 				return b
@@ -4257,6 +4376,13 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 		return
 	if cr and hostile(cr.team, us[0].team):
 		e = cr
+	# a right click on a Farm's fields (Pit, Boiler...) usually lands on one of the men
+	# working it: workers sent there go to work the farm, not to that man
+	if e is Unit and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_gather()) \
+			and not (e.hp < e.max_hp and us.any(func(u: Unit) -> bool: return u.can_repair(e))):
+		var site := crew_site_at(p, us[0].team)
+		if site:
+			e = site
 	# infantry sent to one of our balloons: they climb in
 	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
 		load_order(us, [e])
