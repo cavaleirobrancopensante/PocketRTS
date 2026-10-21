@@ -1402,7 +1402,9 @@ func _update_f11_hint() -> void:
 		if _f11_hint:
 			_f11_hint.visible = false
 		return
-	var full := bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.innerHeight >= screen.height - 2)", true))
+	# (Brave hides the real screen size from pages, so the size test alone never sees its
+	# F11: the display-mode query and "no browser frame around the page" catch it there)
+	var full := bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches || window.innerHeight >= screen.height - 2 || (window.outerHeight > 0 && window.outerHeight - window.innerHeight <= 1 && window.outerWidth - window.innerWidth <= 1 && window.innerHeight > 500))", true))
 	if _f11_hint == null:
 		var layer := CanvasLayer.new()
 		layer.layer = 30
