@@ -110,7 +110,9 @@ var gas := 100.0                # Bloater: what's left in the sac (spits use it,
 var gun_cd: Array = [0.0, 1.5]
 var gun_state: Array = ["idle", "idle"]
 var gun_t: Array = [0.0, 0.0]
-var _pilot_spr: Sprite2D        # (a balloon) its basket with the pilot in it (over the envelope and rigging)
+var _pilot_spr: Sprite2D        # (a balloon) its basket (over the envelope and rigging)
+var _pilot_fig: Sprite2D        # (a balloon) its pilot, on his own layer between the basket and the riders
+var _haul_node: Node2D          # (a balloon) the haul rope and keg, over the whole balloon
 var _pass_sprites: Array = []   # (a balloon) the men it carries, shoulder to shoulder in the basket
 var _front: Sprite2D
 var _hold_note := 0             # when this unit may next say it's holding fire           # workers: go back to work on their own when idle
@@ -872,9 +874,17 @@ const BASKET := {
 	"scale": 0.8,
 	"riders": [Vector2(-14.5, -1.0), Vector2(14.5, -1.0), Vector2(-6.5, 0.0), Vector2(6.5, 0.0)],
 }
+## With men in the middle two places the pilot steps up on a crate at the back of the
+## basket (px): his head and shoulders over theirs. Pulling the rope he stands tall anyway.
+const PILOT_LIFT := 6.0
 
 
-## The pilot's frame of the basket strips (basket_<dir>, basket_front_<dir>): 0 holding the
+## How high the pilot stands (px up): on his crate when the middle of the basket is full.
+func _pilot_lift() -> float:
+	return PILOT_LIFT if passengers.size() >= 3 and _pilot_frame() != 3 else 0.0
+
+
+## The pilot's frame of the basket strips (basket_, pilot_, basket_front_<dir>): 0 holding the
 ## rim, 1-2 looking about, 3 pulling the rope while a keg comes up.
 func _pilot_frame() -> int:
 	if haul_t >= 0.0:
@@ -895,6 +905,10 @@ func _update_basket() -> void:
 	_front.visible = not dead_anim
 	if _pilot_spr:
 		_pilot_spr.visible = not dead_anim
+	if _pilot_fig:
+		_pilot_fig.visible = not dead_anim
+	if _haul_node:
+		_haul_node.queue_redraw()
 	for g in _pass_sprites:
 		(g as Sprite2D).visible = false
 	if dead_anim:
@@ -902,14 +916,18 @@ func _update_basket() -> void:
 	# the basket with its pilot, and its front wall over the riders' legs: on the body's cell
 	var pf := _pilot_frame()
 	var nb := int(info.get("basket_frames", 1))
-	for pair in [[_pilot_spr, "basket"], [_front, "basket_front"]]:
+	for pair in [[_pilot_spr, "basket"], [_pilot_fig, "pilot"], [_front, "basket_front"]]:
 		var s: Sprite2D = pair[0]
 		if s == null:
 			continue
 		s.texture = _basket_tex(pair[1], anim_dir)
+		if s.texture == null:
+			continue
 		s.hframes = nb
 		s.frame = mini(pf, nb - 1)
 		s.offset = sprite.offset
+	if _pilot_fig:
+		_pilot_fig.offset.y -= _pilot_lift()
 	var slots: Array = info.get("gunners", {}).get(anim_dir, [Vector2.ZERO, Vector2.ZERO])
 	var mid: Vector2 = (Vector2(slots[0]) + Vector2(slots[slots.size() - 1])) * 0.5
 	var sc := float(BASKET["scale"])
@@ -1025,6 +1043,10 @@ func _ready() -> void:
 		_pilot_spr.centered = false
 		_pilot_spr.use_parent_material = true
 		sprite.add_child(_pilot_spr)
+		_pilot_fig = Sprite2D.new()
+		_pilot_fig.centered = false
+		_pilot_fig.use_parent_material = true
+		sprite.add_child(_pilot_fig)
 		for i in int(Defs.DROPSHIP["capacity"]):
 			var ps := Sprite2D.new()
 			ps.centered = false
@@ -1036,6 +1058,10 @@ func _ready() -> void:
 		_front.centered = false
 		_front.use_parent_material = true
 		sprite.add_child(_front)
+		# the haul rope runs from the pilot's hand over the front rim: drawn over all of it
+		_haul_node = Node2D.new()
+		_haul_node.draw.connect(_on_haul_draw)
+		add_child(_haul_node)
 	if is_air():
 		z_index = 3
 	_set_anim("idle", true)
@@ -4145,37 +4171,59 @@ func _draw_aim() -> void:
 const POWDER_BAR := Color(0.55, 0.78, 1.0)
 
 
-## (a balloon) the pilot's rope from the basket to the ground and the keg coming up it: the
-## rope drops (first 20%), its end coils on the ground (to 35%), then the barrel tied on
-## rises to the basket (assets/effects/haul_coil.png, haul_barrel.png).
-func _draw_haul() -> void:
+func _on_haul_draw() -> void:
+	if haul_t >= 0.0 and not dead and kind == "balloon":
+		_draw_haul(_haul_node)
+
+
+## (a balloon) the pilot's rope and the keg coming up it, drawn on `ci` (over the balloon,
+## in this unit's space). The rope runs from his hand in the pulling frame (ArtData
+## "pilot_hand" of the facing) down over the front rim of the basket, and from there it
+## drops (first 20%), its end coils on the ground (to 35%), then the barrel tied on rises to
+## the rim (assets/effects/haul_coil.png, haul_barrel.png).
+func _draw_haul(ci: CanvasItem) -> void:
 	var f := clampf(haul_t / float(Defs.BALLOON["haul"]), 0.0, 1.0)
-	var top := Vector2(0, sprite.position.y - 2.0)
-	var ground := haul_at
 	var info: Dictionary = ArtData.UNITS[kind]
+	var hand := Vector2(0, sprite.position.y - 12.0)
+	var rim := Vector2(0, sprite.position.y - 2.0)
+	var hp: Array = info.get("pilot_hand", {}).get(anim_dir, [])
+	if hp.size() == 2:
+		# cell px -> this unit's space, through the body sprite (offset, flip, scale)
+		var xf := sprite.transform
+		hand = xf * (sprite.offset + Vector2(hp[0]) - Vector2(0, _pilot_lift()))
+		rim = xf * (sprite.offset + Vector2(hp[1]) + Vector2(0.5, 0.5))
+	# the rope's end on the ground: under the rim, leaning toward where the keg comes from
+	var ground := Vector2(rim.x + clampf((haul_at.x - rim.x) * 0.5, -10.0, 10.0), maxf(haul_at.y, 4.0))
 	var rope := Color(0.62, 0.42, 0.22, 0.95)
+	var rope_dk := Color(0.36, 0.23, 0.12, 0.95)
+	# hand to rim: a slack loop over the basket's lip
+	ci.draw_line(hand, rim + Vector2(0.5, -1.0), rope, 1.0)
+	ci.draw_line(rim + Vector2(0.5, -1.0), rim + Vector2(1.0, 0.5), rope_dk, 1.0)
+	var lip := rim + Vector2(1.0, 0.5)
 	if f < 0.2:
-		draw_line(top, top.lerp(ground, f / 0.2), rope, 1.0)
+		ci.draw_line(lip, lip.lerp(ground, f / 0.2), rope, 1.0)
 		return
 	if f < 0.35:
-		draw_line(top, ground, rope, 1.0)
+		ci.draw_line(lip, ground, rope, 1.0)
 		var cc: Vector2i = info.get("haul_coil", Vector2i.ZERO)
 		var ct: Texture2D = Game.tex("res://assets/effects/haul_coil.png")
 		if ct and cc.x > 0:
-			var ci := clampi(int((f - 0.2) / 0.15 * 3.0), 0, 2)
-			draw_texture_rect_region(ct, Rect2(ground - Vector2(cc.x * 0.5, cc.y - 1), Vector2(cc)), Rect2(ci * cc.x, 0, cc.x, cc.y))
+			var cix := clampi(int((f - 0.2) / 0.15 * 3.0), 0, 2)
+			ci.draw_texture_rect_region(ct, Rect2(ground - Vector2(cc.x * 0.5, cc.y - 1), Vector2(cc)), Rect2(cix * cc.x, 0, cc.x, cc.y))
 		return
 	var k := (f - 0.35) / 0.65
-	var kp := ground.lerp(top, k) + Vector2(sin(haul_t * 5.0) * 0.8, 0)     # the barrel's bottom
 	var bc: Vector2i = info.get("haul_barrel", Vector2i.ZERO)
 	var bt: Texture2D = Game.tex("res://assets/effects/haul_barrel.png")
+	# the barrel's bottom: from the ground up to just under the lip (its top at the rim)
+	var top := lip + Vector2(0, float(bc.y) if bc.y > 0 else 10.0)
+	var kp := ground.lerp(top, k) + Vector2(sin(haul_t * 5.0) * 0.8 * (1.0 - k), 0)
 	if bt and bc.x > 0:
-		draw_line(top, kp - Vector2(0, bc.y - 1), rope, 1.0)
+		ci.draw_line(lip, kp - Vector2(0, bc.y - 1), rope, 1.0)
 		var bi := clampi(int(k * 4.0), 0, 3)
-		draw_texture_rect_region(bt, Rect2(kp - Vector2(bc.x * 0.5, bc.y), Vector2(bc)), Rect2(bi * bc.x, 0, bc.x, bc.y))
+		ci.draw_texture_rect_region(bt, Rect2(kp - Vector2(bc.x * 0.5, bc.y), Vector2(bc)), Rect2(bi * bc.x, 0, bc.x, bc.y))
 	else:
-		draw_line(top, kp - Vector2(0, 10), rope, 1.0)
-		draw_rect(Rect2(kp + Vector2(-4, -10), Vector2(8, 10)), Color(0.45, 0.28, 0.12))
+		ci.draw_line(lip, kp - Vector2(0, 10), rope, 1.0)
+		ci.draw_rect(Rect2(kp + Vector2(-4, -10), Vector2(8, 10)), Color(0.45, 0.28, 0.12))
 
 
 func _draw() -> void:
@@ -4191,8 +4239,8 @@ func _draw() -> void:
 	if selected:
 		draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
 	draw_set_transform(Vector2.ZERO)
-	if haul_t >= 0.0 and kind == "balloon":
-		_draw_haul()
+	if haul_t >= 0.0 and kind == "balloon" and _haul_node == null:
+		_draw_haul(self)
 	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0
 	if kind == "mortar":
 		top = -50.0

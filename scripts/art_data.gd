@@ -537,6 +537,12 @@ const UNITS := {
 		"idle_ne": 4,
 		"idle_s": 4,
 		"idle_se": 4,
+	}, "pilot_hand": {
+		"s": [Vector2(105.214, 159), Vector2(105.214, 178)],
+		"se": [Vector2(106.625, 159), Vector2(106.625, 178)],
+		"e": [Vector2(105.5, 157), Vector2(105.5, 180)],
+		"ne": [Vector2(106.654, 153), Vector2(106.654, 178)],
+		"n": [Vector2(105.722, 158), Vector2(105.722, 178)],
 	}, "basket_frames": 4, "haul_coil": Vector2i(9, 9), "haul_barrel": Vector2i(10, 19), "gunners": {
 		"s": [Vector2(89, 180), Vector2(89, 180)],
 		"se": [Vector2(89, 180), Vector2(89, 180)],
