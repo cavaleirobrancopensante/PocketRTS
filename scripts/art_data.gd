@@ -419,7 +419,7 @@ const UNITS := {
 		"idle_ne": 4,
 		"idle_s": 4,
 		"idle_se": 4,
-		"walk_e": 3,
+		"walk_e": 8,
 		"walk_n": 8,
 		"walk_ne": 8,
 		"walk_s": 8,

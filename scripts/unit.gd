@@ -4,6 +4,9 @@ extends Entity
 ## (move, attack-move, attack, hold, gather, build) and fights by type.
 
 const WALK_FPS := 8.0
+## The cuirassier's 8-frame gallop at full speed (8 frames / 14 fps = one stride in ~0.57 s;
+## at WALK_FPS the horse took a whole second per stride and looked to be trotting on the spot).
+const CUIRASSIER_GALLOP_FPS := 14.0
 ## Mist Toad: the frame of its tongue strip with the mouth wide open, the tongue not out yet.
 const TOAD_MOUTH_OPEN := 2
 ## Tesla Cart: the glowing sphere on top of the deployed coil, from the feet, per drawn
@@ -3805,6 +3808,8 @@ func _animate(delta: float) -> void:
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
+	if anim == "walk" and kind == "cuirassier":
+		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS     # 8-frame gallop: one stride ~0.57 s at full speed
 	var loop := true
 	match anim:
 		"idle":
