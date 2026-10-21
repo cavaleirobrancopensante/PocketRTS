@@ -5,7 +5,8 @@ extends Node
 ##   screen), left drag = box, right click = command, wheel = zoom, middle drag or the
 ##   screen edges or arrow keys = pan, letter hotkeys for everything on the command card,
 ##   1-9 groups (Ctrl+number saves), F1 idle worker, F2 army, F3 hall, Space = jump to
-##   the selection, Esc = cancel. Watching computers: 0 all vision, 1-4 follow that player.
+##   the selection, Esc = cancel. Shift with a command (right click, MOVE, ATTACK, REPAIR,
+##   placing buildings and walls) queues it after the units' current orders. Watching computers: 0 all vision, 1-4 follow that player.
 ## MOBILE:
 ## Touch:  tap = select / command,  drag = box select,  long-press = move only,
 ##         two fingers = pan and pinch-zoom,  double-tap a unit = all of that type.
@@ -48,6 +49,9 @@ var _mouse_inside := true
 var _exit_dir := Vector2.ZERO    # the edge the mouse left the window by (it keeps panning that way)
 var _last_click_t := 0
 var _last_click_kind := ""
+# Shift-queued orders (computer only): MOVE / ATTACK / REPAIR and building placement stay
+# open while Shift is held, and close when it's let go (as in StarCraft)
+var _shift_kept := false
 
 
 func to_world(screen: Vector2) -> Vector2:
@@ -74,17 +78,28 @@ func _line_len() -> float:
 
 
 ## Finish a line drag: true if it was long enough to be a line (units sent along it).
-func _line_end() -> bool:
+func _line_end(queued := false) -> bool:
 	var ok := line.size() >= 2 and _line_len() > 40.0
 	if ok:
-		game.line_move(game.selected_units(), line, line_attack)
+		game.line_move(game.selected_units(), line, line_attack, queued)
 		Sfx.play_any(["ui/click", "click"])
 	line = PackedVector2Array()
 	_line_btn = ""
 	return ok
 
 
+## Shift held on a computer: the order goes after the ones the units already have.
+static func _queued(shift: bool) -> bool:
+	return shift and Settings.pc()
+
+
+## A Shift-queued order was given in a mode: keep the mode open while Shift is held.
+func _keep_for_shift() -> void:
+	_shift_kept = true
+
+
 func cancel_mode() -> void:
+	_shift_kept = false
 	mode = ""
 	place_kind = ""
 	line_from = Vector2i(-1, -1)
@@ -125,6 +140,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				_box_to = mm.position
 	elif event is InputEventKey and event.pressed and not event.is_echo():
 		_key(event as InputEventKey)
+	elif event is InputEventKey and not event.pressed and (event as InputEventKey).keycode == KEY_SHIFT:
+		# Shift let go: a mode kept open for queueing closes (the next click would replace the queue)
+		if _shift_kept and mode in ["move", "attack", "repair", "place"]:
+			cancel_mode()
+		_shift_kept = false
 
 
 func _touch(e: InputEventScreenTouch) -> void:
@@ -245,23 +265,23 @@ func _mouse(e: InputEventMouseButton) -> void:
 		_line_add(e.position)
 	elif e.button_index == MOUSE_BUTTON_RIGHT and not e.pressed and _line_btn == "right":
 		_line_add(e.position)
-		if not _line_end():
-			_right_click(e.position)
+		if not _line_end(_queued(e.shift_pressed)):
+			_right_click(e.position, _queued(e.shift_pressed))
 	elif e.button_index == MOUSE_BUTTON_RIGHT and e.pressed:
 		if mode != "":
 			cancel_mode()
 			return
-		_right_click(e.position)
+		_right_click(e.position, _queued(e.shift_pressed))
 
 
-func _right_click(screen: Vector2) -> void:
+func _right_click(screen: Vector2, queued := false) -> void:
 	var p := to_world(screen)
 	var rb := game.rally_buildings()
 	if not rb.is_empty():
 		for sb in rb:
 			game.set_rally(sb, p)
 	else:
-		game.smart_command(game.selected_units(), p)
+		game.smart_command(game.selected_units(), p, false, queued)
 
 
 ## Computer: left button.
@@ -272,10 +292,11 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_move_ghost(e.position)
 				var kind := place_kind
 				if hud:
-					hud.confirm_place()
+					hud.confirm_place(e.shift_pressed)   # Shift: queued on the builders
 				if e.shift_pressed and kind != "" and mode == "":
 					begin_place(kind)        # Shift keeps placing
 					_move_ghost(e.position)
+					_keep_for_shift()
 				return
 			"move", "attack":
 				line = PackedVector2Array()
@@ -284,17 +305,20 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_line_add(e.position)
 				return
 			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair":
-				_tap(e.position, false)
+				_tap(e.position, false, e.shift_pressed)
 				return
 		_lmb_down = true
 		_lmb_from = e.position
 		_box_from = Vector2.INF
 		return
 	if _line_btn == "left":
-		if _line_end():
-			cancel_mode()
+		if _line_end(e.shift_pressed):
+			if e.shift_pressed:
+				_keep_for_shift()
+			else:
+				cancel_mode()
 		else:
-			_tap(e.position, false)
+			_tap(e.position, false, e.shift_pressed)
 		return
 	if not _lmb_down:
 		return
@@ -471,9 +495,11 @@ func _move_ghost(screen: Vector2) -> void:
 	ghost_cell = game.cell_of(p)
 
 
-func _tap(screen: Vector2, is_mouse: bool) -> void:
+## shift: a computer's Shift-click (MOVE, ATTACK and REPAIR queue the order); taps never.
+func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 	var p := to_world(screen)
 	var units := game.selected_units()
+	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair")
 	match mode:
 		"place":
 			var before := ghost_cell
@@ -486,12 +512,15 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 				var e := game.entity_at(p, false)
 				if e and game.hostile(e.team, game.human):
 					for u in units:
-						u.cmd_attack(e)
+						u.give({"o": "attack", "e": e}, queued)
 				else:
-					game.group_move(units, p, true)
+					game.group_move(units, p, true, queued)
 			else:
-				game.group_move(units, p, false)
-			cancel_mode()
+				game.group_move(units, p, false, queued)
+			if queued:
+				_keep_for_shift()
+			else:
+				cancel_mode()
 			Sfx.play_any(["ui/click", "click"])
 			return
 		"repair":
@@ -502,9 +531,12 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 			else:
 				for u in fixers:
 					if u.can_repair(target):
-						u.cmd_repair(target)
+						u.give({"o": "repair", "e": target}, queued)
 				Sfx.play_any(["ui/click", "click"])
-			cancel_mode()
+			if queued:
+				_keep_for_shift()
+			else:
+				cancel_mode()
 			return
 		"cast":
 			if cast_spell == "tongue":

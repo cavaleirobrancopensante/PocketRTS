@@ -17,6 +17,13 @@ var order := "idle"            # idle, move, amove, attack, hold, gather, build
 var order_point := Vector2.ZERO
 var target: Entity = null      # who we're fighting
 var order_target: Entity = null  # explicit attack target / mine / construction site
+## Shift-queued orders (computer, as in StarCraft): what this unit does after its current
+## order, oldest first. Each is {"o": move/amove/attack/build/repair/gather/wall, "p", "e",
+## "pieces"}. A plain order clears it; it isn't kept in saves (units come back without one).
+const QUEUE_MAX := 16
+var queue: Array = []
+var line_rest: Array = []        # a queued wall being built: the pieces still to do after this one
+var _keep_queue := false         # set while a queued order is being started (it mustn't clear the queue)
 var velocity := Vector2.ZERO
 var facing := Vector2.DOWN
 var radius := 10.0
@@ -1127,7 +1134,142 @@ func cmd_build(site: Building) -> void:
 	target = null
 
 
+# ------------------------------------------------------------------ Shift-queued orders
+
+## The orders that end by themselves: Shift-queued orders wait behind them. Behind anything
+## else (idle, hold, working at a post...) a queued order starts at once.
+const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair"]
+
+
+## Give an order ({"o": move/amove/attack/build/repair/gather/wall, "p", "e", "pieces"}): a
+## plain one now (it clears the queue), a queued one (Shift) after the orders before it.
+func give(o: Dictionary, queued := false) -> void:
+	if not queued:
+		queue.clear()
+		line_rest.clear()
+		_start(o)
+		return
+	if queue.size() >= QUEUE_MAX:
+		return
+	queue.append(o)
+	if not QUEUE_BUSY.has(order):
+		_next_order()
+
+
+## Start the next queued order that still makes sense (a dead target or a finished site is
+## skipped). False if there was none left.
+func _next_order() -> bool:
+	while not queue.is_empty():
+		var o: Dictionary = queue.pop_front()
+		_keep_queue = true
+		var ok := _start(o)
+		_keep_queue = false
+		if ok:
+			if o["o"] == "gather":
+				queue.clear()       # working at a post never ends: it's the last order
+			return true
+	return false
+
+
+## The next piece of a queued wall. False when the wall is done.
+func _continue_line() -> bool:
+	while not line_rest.is_empty():
+		var b = line_rest.pop_front()
+		if _site_open(b):
+			_keep_queue = true
+			cmd_build(b)
+			_keep_queue = false
+			return true
+	return false
+
+
+func _site_open(b) -> bool:
+	return b is Building and is_instance_valid(b) and not b.dead and not b.built \
+		and not (b.seeded and kind != "labourer")
+
+
+## Start an order. A queued one (_keep_queue) is skipped when it no longer makes sense; a
+## plain one is given as it always was.
+func _start(o: Dictionary) -> bool:
+	var e = o.get("e")
+	var plain := not _keep_queue
+	match String(o["o"]):
+		"move", "amove":
+			cmd_move(o["p"], o["o"] == "amove" and not is_worker())
+		"attack":
+			if e == null or not is_instance_valid(e) or not (plain or _valid_target(e)):
+				return false
+			cmd_attack(e)
+		"build":
+			if not (e is Building and is_instance_valid(e)) or not (plain or _site_open(e)):
+				return false
+			cmd_build(e)
+		"wall":
+			var pieces: Array = (o["pieces"] as Array).filter(func(b) -> bool: return _site_open(b))
+			if pieces.is_empty():
+				return false
+			cmd_build(pieces[0])
+			line_rest = pieces.slice(1)
+		"repair":
+			if e == null or not is_instance_valid(e) or not (plain or (not e.dead and can_repair(e))):
+				return false
+			cmd_repair(e)
+		"gather":
+			if e == null or not is_instance_valid(e) or not (plain or not e.dead):
+				return false
+			cmd_gather(e)
+	return order != "idle"
+
+
+static func _spot(e: Entity) -> Vector2:
+	return e.global_position if e is Unit else e.center()
+
+
+## Where this unit is going, in order: [kind, point] for its current order and everything
+## queued behind it (for the waypoint lines drawn for your selection).
+func plan_points() -> Array:
+	var pts: Array = []
+	if order == "move" or order == "amove":
+		pts.append([order, order_point])
+	elif (order == "attack" or order == "build" or order == "repair" or order == "gather") \
+			and order_target and is_instance_valid(order_target) and not order_target.dead:
+		pts.append([order, _spot(order_target)])
+	for b in line_rest:
+		if is_instance_valid(b) and not b.dead:
+			pts.append(["build", b.center()])
+	for o in queue:
+		var e = o.get("e")
+		match String(o["o"]):
+			"move", "amove":
+				pts.append([o["o"], o["p"]])
+			"wall":
+				for b in o["pieces"]:
+					if is_instance_valid(b) and not b.dead:
+						pts.append(["build", b.center()])
+			_:
+				if e != null and is_instance_valid(e) and not e.dead:
+					pts.append([o["o"], _spot(e)])
+	return pts
+
+
+## Has a building to go to, now or queued (a grub can only become one).
+func build_pending() -> bool:
+	return order == "build" or line_rest.size() > 0 \
+		or queue.any(func(o: Dictionary) -> bool: return o["o"] == "build" or o["o"] == "wall")
+
+
+## Where this unit will be once its queue is done (Shift-queued group moves form up from there).
+func plan_end() -> Vector2:
+	if queue.is_empty() and line_rest.is_empty() and not QUEUE_BUSY.has(order):
+		return position
+	var pts := plan_points()
+	return pts[pts.size() - 1][1] if not pts.is_empty() else position
+
+
 func _reset_work() -> void:
+	if not _keep_queue:
+		queue.clear()          # a new order (not Shift-queued) replaces the queue
+		line_rest.clear()
 	if tongue_stage == "windup":
 		_break_tongue()        # a new order: the Toad lets its mark go
 	if _corpse and is_instance_valid(_corpse):
@@ -1707,6 +1849,8 @@ func _physics_process(delta: float) -> void:
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
+	if order == "idle" and not queue.is_empty():
+		_next_order()
 	match order:
 		"idle":
 			if d.get("medic", false) and scan_t <= 0.0:
@@ -1789,7 +1933,8 @@ func _physics_process(delta: float) -> void:
 					_finish_move()
 		"attack":
 			if order_target == null or not _valid_target(order_target):
-				cmd_stop()
+				if not _next_order():
+					cmd_stop()
 			else:
 				target = order_target
 				want = _engage(target, delta, true)
@@ -1884,6 +2029,8 @@ func _finish_move() -> void:
 	order = "idle"
 	path = PackedVector2Array()
 	leash_from = position
+	if not queue.is_empty():
+		_next_order()
 
 
 func _valid_target(e: Entity) -> bool:
@@ -2231,7 +2378,10 @@ func _repair(delta: float) -> Vector2:
 	var e := order_target
 	if e == null or not is_instance_valid(e) or e.dead or e.team != team \
 			or (e.hp >= e.max_hp and not (e is Unit and (e as Unit).wind < 0.98)) or (e is Building and not e.built):
-		# done: carry on with the next damaged piece close by (a wall is many pieces)
+		# done: the next Shift-queued order, or else the next damaged piece close by (a wall
+		# is many pieces)
+		if _next_order():
+			return Vector2.ZERO
 		var next: Entity = null
 		if e is Building and is_instance_valid(e):
 			next = game.repair_target_near((e as Building).center(), team, e)
@@ -2253,7 +2403,8 @@ func _repair(delta: float) -> Vector2:
 		if game.players[team]["gold"] < 1:
 			if team == game.human:
 				game.notify("Not enough ore to repair.")
-			cmd_stop()
+			if not _next_order():
+				cmd_stop()
 			return Vector2.ZERO
 		game.players[team]["gold_f"] = float(game.players[team].get("gold_f", 0.0)) - cost
 		while float(game.players[team]["gold_f"]) <= -1.0:
@@ -2786,6 +2937,9 @@ func _build(delta: float) -> Vector2:
 			game.consume_unit(self)
 		return Vector2.ZERO
 	if site == null or not is_instance_valid(site) or site.dead or site.built or (site.seeded and kind != "labourer"):
+		# a queued wall's next piece, then the next Shift-queued order
+		if _continue_line() or _next_order():
+			return Vector2.ZERO
 		if kind == "labourer":
 			# on to the next piece of the wall (or any unfinished building close by)
 			var nxt := game.next_site(self)
@@ -2816,7 +2970,8 @@ func _build(delta: float) -> Vector2:
 				site.seeded = true
 				site._update_sprite()
 				Sfx.play("ratchet", position)
-			cmd_stop()
+			if not (_continue_line() or _next_order()):
+				cmd_stop()
 			return Vector2.ZERO
 		if kind == "grub":
 			# The grub becomes the building.
@@ -2840,7 +2995,8 @@ func _fetch_crate(site: Building, delta: float) -> Vector2:
 	if site.crate == "carried":
 		var c := site.crate_carrier
 		if c and is_instance_valid(c) and not c.dead and c != self and c.crate_site == site:
-			cmd_stop()
+			if not (_continue_line() or _next_order()):
+				cmd_stop()
 			return Vector2.ZERO
 		site.crate = "tower"         # (its carrier is gone without dropping it: fetch another)
 		site.crate_carrier = null
@@ -2937,6 +3093,8 @@ func die() -> void:
 	dead = true
 	selected = false
 	velocity = Vector2.ZERO
+	queue.clear()
+	line_rest.clear()
 	_leave_mine()
 	_release_patient()
 	_drop_body()

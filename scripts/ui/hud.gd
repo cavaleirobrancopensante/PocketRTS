@@ -270,7 +270,7 @@ func _input(event: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and mini_rect().has_point(mb.position) and not paused:
 			var m := mini_rect()
 			var w := ((mb.position - m.position) / m.size).clamp(Vector2.ZERO, Vector2.ONE) * Vector2(Game.W, Game.H) * Game.T
-			game.smart_command(game.selected_units(), w)
+			game.smart_command(game.selected_units(), w, false, mb.shift_pressed)
 			get_viewport().set_input_as_handled()
 		elif _hud_has(mb.position) and mb.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
 			if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and not paused:
@@ -356,8 +356,9 @@ func _minimap_to(p: Vector2) -> void:
 	var f := ((p - m.position) / m.size).clamp(Vector2.ZERO, Vector2.ONE)
 	var w := f * Vector2(Game.W, Game.H) * Game.T
 	if controls.mode in ["move", "attack"]:
-		game.group_move(game.selected_units(), w, controls.mode == "attack")
-		controls.cancel_mode()
+		var q := Settings.pc() and Input.is_key_pressed(KEY_SHIFT)
+		game.group_move(game.selected_units(), w, controls.mode == "attack", q)
+		controls.cancel_mode()     # (closed even with Shift: a drag on the minimap would queue a flood)
 		return
 	_jump(w)
 
@@ -1044,10 +1045,13 @@ func hotkey(code: int) -> bool:
 	return false
 
 
-func confirm_place() -> void:
+## queued (Shift on a computer): the site goes in the builders' order queue, after what
+## they already have to do (several Shift-placed buildings are built one after another).
+func confirm_place(queued := false) -> void:
+	queued = queued and Settings.pc()
 	var k := controls.place_kind
 	if Defs.BUILDINGS.has(k) and Defs.BUILDINGS[k].get("line", false):
-		_confirm_line(k)
+		_confirm_line(k, queued)
 		return
 	var why := game.placement_problem(game.human, k, controls.ghost_cell)
 	if why != "":
@@ -1057,20 +1061,29 @@ func confirm_place() -> void:
 		toast("Not enough gold.")
 		return
 	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker())
+	var brood := game.faction_of(game.human) == "brood"
+	if queued and brood:
+		# a grub becomes its building, so each queued site takes a grub that has none yet
+		builders = builders.filter(func(u: Unit) -> bool: return not u.build_pending())
+		if builders.is_empty() and not game.selected_units().is_empty():
+			toast("Each grub becomes one building: every selected grub already has one.")
+			return
 	# One builder unless several are selected on purpose.
-	if builders.size() > 3 or game.faction_of(game.human) == "brood":
+	if builders.size() > 3 or brood:
 		builders.sort_custom(func(a: Unit, c: Unit) -> bool:
 			var g := Vector2(controls.ghost_cell) * Defs.TILE
-			return a.position.distance_to(g) < c.position.distance_to(g))
+			var pa: Vector2 = a.plan_end() if queued else a.position
+			var pc: Vector2 = c.plan_end() if queued else c.position
+			return pa.distance_to(g) < pc.distance_to(g))
 		builders = builders.slice(0, 1)
-	var b := game.place_building(game.human, k, controls.ghost_cell, builders)
+	var b := game.place_building(game.human, k, controls.ghost_cell, builders, queued)
 	if b:
 		Sfx.play_any(["ui/click", "click"])
 	controls.cancel_mode()
 
 
 ## Walls and gates go down in a line: the first PLACE marks the start, the second the end.
-func _confirm_line(k: String) -> void:
+func _confirm_line(k: String, queued := false) -> void:
 	if controls.line_from.x < 0:
 		var why := game.placement_problem(game.human, k, controls.ghost_cell)
 		if why != "":
@@ -1080,7 +1093,7 @@ func _confirm_line(k: String) -> void:
 		toast("Now pick where it ends (the same spot for a single piece).")
 		return
 	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker())
-	var n := game.place_line(game.human, k, controls.line_from, controls.ghost_cell, builders)
+	var n := game.place_line(game.human, k, controls.line_from, controls.ghost_cell, builders, queued)
 	if n > 0:
 		Sfx.play_any(["ui/click", "click"])
 	else:
@@ -1213,7 +1226,7 @@ func _draw() -> void:
 		_text(font, Vector2(vs.x * 0.5, 66), t, 20, Color(1, 1, 0.7), 1)
 	elif controls.mode == "place":
 		var line_k: bool = Defs.BUILDINGS.has(controls.place_kind) and Defs.BUILDINGS[controls.place_kind].get("line", false)
-		var hint: String = "Click to build (Shift-click for more), right-click or Esc cancels" if Settings.pc() else "Drag to position, tap again or PLACE to build"
+		var hint: String = "Click to build (Shift-click: queue more), right-click or Esc cancels" if Settings.pc() else "Drag to position, tap again or PLACE to build"
 		if line_k:
 			hint = ("Click where the wall starts" if controls.line_from.x < 0 else "Click where it ends") if Settings.pc() else ("Drag to where the wall starts, then START" if controls.line_from.x < 0 else "Drag to where it ends, then END")
 		_text(font, Vector2(vs.x * 0.5, 66), hint, 20, Color(1, 1, 0.7), 1)
