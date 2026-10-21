@@ -48,7 +48,36 @@ func _s(key: String) -> Variant:
 func _ready() -> void:
 	if not strategies_for(game.faction_of(team)).has(strategy):
 		strategy = "balanced"
+	_opened = strategy
 	_attack_at = int(_s("wave"))
+
+
+## A wave goes out: remember what it's worth, to judge it when it's over.
+func _wave_start(army: Array) -> void:
+	_wave_value = 0.0
+	for u in army:
+		_wave_value += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
+	_wave_sup = _army_supply(army)
+	_wave_kill0 = int(game.stats[team]["value_killed"])
+
+
+## A wave is over (it died or fell back). One that killed less than it was worth failed:
+## the next must be bigger. A rush (or air rush) that fails doesn't keep trickling in: the
+## computer switches to a balanced game (workers, expansions, tech), gathers a real army
+## and only then attacks again, in force.
+func _wave_end() -> void:
+	var gained := int(game.stats[team]["value_killed"]) - _wave_kill0
+	if _wave_value <= 0.0 or gained >= _wave_value * 0.6:
+		_failed = 0
+		return
+	_failed += 1
+	_attack_at = maxi(_attack_at, int(ceil(_wave_sup * 1.4)))
+	if strategy in ["rush", "air"]:
+		strategy = "balanced"
+		_attack_at = maxi(_attack_at, 30 if _brood() else 24)
+		_regroup_until = game.clock + _lv([240.0, 180.0, 150.0])
+		if game.mlog:
+			game.mlog.add("%s's %s failed: it builds up (economy, tech) and comes back in force" % [game.mlog.who(team), String(STRATEGIES[_opened]["name"]).to_lower()])
 
 var _think := 0.0
 var _attack_at := 14            # army supply needed for the next wave
@@ -61,6 +90,13 @@ var _swarm: Array = []          # Brood: the groups of a wave, each [units, stag
 var _swarm_phase := ""          # "", "flank" (getting into position), "strike"
 var _swarm_t := 0.0
 var _no_room := {}              # economy kinds with no free spot, and when we looked
+# how the last wave went: what it was worth going out, and the enemy value killed before it
+var _wave_value := 0.0
+var _wave_sup := 0
+var _wave_kill0 := 0
+var _failed := 0                # waves in a row that died without paying for themselves
+var _regroup_until := 0.0       # after a failed rush: no attack before this (building up)
+var _opened := ""               # the strategy it started with (a failed rush switches it)
 
 
 func _physics_process(delta: float) -> void:
@@ -1022,13 +1058,17 @@ func _army() -> void:
 		_attack_at = 6
 	if peaceful:
 		_attack_at = 99999
+	# a failed rush: building up again; nothing goes out until the regroup is over (unless
+	# the army is already huge)
+	var regrouping := game.clock < _regroup_until and sup < 60
 	if _brood():
-		_swarm_army(army, sup)
+		_swarm_army(army, sup, regrouping)
 		return
-	if not _attacking and sup >= _attack_at:
+	if not _attacking and sup >= _attack_at and not regrouping:
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
+		_wave_start(army)
 		if not game.demo and _foe() == game.human and randf() < 0.5:
 			Sfx.taunt(game.faction_of(team))
 		for u in army:
@@ -1037,6 +1077,7 @@ func _army() -> void:
 		if sup < 6:
 			_attacking = false
 			_release_escort()
+			_wave_end()
 			return
 		_wave_target = _enemy_base()
 		var wagon := _wagon() if _crown() else null
@@ -1066,7 +1107,7 @@ func _army() -> void:
 ## that circle round to different sides of the target, wait until everyone is in place,
 ## and then all go in at once. Hatchlings that come out mid-attack wait at home for the
 ## next wave instead of trickling in one by one.
-func _swarm_army(army: Array, sup: int) -> void:
+func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 	var hall: Array = _halls()
 	var front: Vector2 = hall[0].center().lerp(_enemy_base(), 0.15) if not hall.is_empty() else game.center_of_team(team)
 	# don't throw a small swarm at a much bigger army: wait until it's worth as much
@@ -1079,10 +1120,11 @@ func _swarm_army(army: Array, sup: int) -> void:
 		for u in game.army(foe):
 			theirs += float(u.d["cost"])
 	var big_enough := mine >= theirs * 0.8 or sup >= 70 or strategy in ["rush", "air", "timing"]
-	if _swarm_phase == "" and sup >= _attack_at and big_enough:
+	if _swarm_phase == "" and sup >= _attack_at and big_enough and not regrouping:
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
+		_wave_start(army)
 		if not game.demo and _foe() == game.human and randf() < 0.5:
 			Sfx.taunt(game.faction_of(team))
 		_plan_swarm(army)
@@ -1098,6 +1140,7 @@ func _swarm_army(army: Array, sup: int) -> void:
 			_swarm_phase = ""
 			_swarm.clear()
 			_attacking = false
+			_wave_end()
 		elif _swarm_phase == "flank":
 			# everyone in place (or it's taking too long, or we were spotted and hit): go
 			var ready := true

@@ -80,6 +80,8 @@ var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
 var auto_work := true
+var held_t := 0.0               # a set-up gun holding fire for its own men: it stays set up meanwhile
+var auto_repair := false        # REPAIR autocast: idle, it fixes damaged buildings nearby first (Winders: on from the start)
 var _cold := false
 var slow_t := 0.0              # slowed (Bloater acid)
 var kills := 0                  # veterancy
@@ -280,8 +282,7 @@ func _pick_weapon(delta: float) -> void:
 	_melee_t = 0.2
 	if powder < 1.0 and not _auto_bayonet:
 		_auto_bayonet = true
-		if team == game.human and mode != "bayonet":
-			game.float_text(position + Vector2(0, -36), "out of powder: bayonets!", Color(1, 0.75, 0.4))
+		game.out_of_powder(self)       # (it fixes bayonets meanwhile)
 	elif _auto_bayonet and powder >= float(Defs.POWDER["rearm"]):
 		_auto_bayonet = false
 	# an enemy on top of us (an ordered target first, then whoever is closest)
@@ -619,6 +620,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 		charge = float(Defs.STORM["max"]) * 0.5
 	_pmax = max_powder()
 	powder = _pmax
+	auto_repair = k == "winder"      # (Winders always did; Labourers start with it off)
 	armor = d["armor"]
 	sight = d["sight"]
 	radius = d["radius"]
@@ -1349,6 +1351,7 @@ func _physics_process(delta: float) -> void:
 		elif phase == "":
 			run_t = maxf(run_t - delta * 3.0, 0.0)
 	stun_t = maxf(stun_t - delta, 0.0)
+	held_t = maxf(held_t - delta, 0.0)
 	scan_t -= delta
 	repath_t -= delta
 	sky_cd = maxf(sky_cd - delta, 0.0)
@@ -1438,11 +1441,15 @@ func _physics_process(delta: float) -> void:
 					var pt := game.find_patient(self, 9 * Defs.TILE)
 					if pt:
 						cmd_heal(pt)
-			if kind == "winder" and scan_t <= 0.0:
+			# REPAIR autocast: an idle worker fixes what's damaged nearby (before going back to
+			# work, when WORK is on too)
+			if auto_repair and scan_t <= 0.0 and (kind == "winder" or kind == "labourer"):
 				scan_t = 1.0
-				var hurt := game.find_repair(self, 6 * Defs.TILE)
-				if hurt:
+				var hurt := game.find_repair(self, float(Defs.AUTO_REPAIR) * Defs.TILE)
+				if hurt and can_repair(hurt) and game.players[team]["gold"] >= 1:
 					cmd_repair(hurt)
+				elif auto_work:
+					scan_t = 0.0      # nothing to fix: straight on to the WORK check below
 			# WORK is on by default: an idle worker goes back to its post by itself
 			if is_worker() and auto_work and order == "idle" and scan_t <= 0.0:
 				scan_t = 1.5
@@ -1486,6 +1493,11 @@ func _physics_process(delta: float) -> void:
 				want = _engage(target, delta, true)
 				if target == null or not _valid_target(target):
 					_request_path(order_point)
+			elif deploys() and tesla_mode == "deployed" and held_t > 0.0:
+				# a set-up gun with only targets it mustn't fire on (its own men where the
+				# shot lands) stays set up and waits for a clear shot, instead of limbering
+				# up, walking on into the fight and setting up again (and again)
+				want = Vector2.ZERO
 			else:
 				want = _follow(delta)
 				if _arrived():
@@ -1755,16 +1767,18 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		# out of powder: a gun can't fire (a dry Musketeer has fixed bayonets instead)
 		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
 			cooldown = 0.5
-			if team == game.human and Time.get_ticks_msec() > _hold_note:
+			if Time.get_ticks_msec() > _hold_note:
 				_hold_note = Time.get_ticks_msec() + 5000
-				game.float_text(position + Vector2(0, -40), "Out of powder!", Color(1, 0.75, 0.4))
+				game.out_of_powder(self)
 			return
-		# area attacks hurt friends too: hold fire on our own, unless ordered to shoot
-		if order != "attack" and not game.aoe_worth_it(self, e):
+		# area attacks hurt friends too: hold fire on our own, unless ordered to shoot (canister
+		# never holds: it's the gun's close-range answer, fired whoever is about)
+		if order != "attack" and mode != "canister" and not game.aoe_worth_it(self, e):
 			cooldown = 0.4
+			held_t = 2.0
 			if team == game.human and Time.get_ticks_msec() > _hold_note:
 				_hold_note = Time.get_ticks_msec() + 5000
-				game.float_text(position + Vector2(0, -40), "Holding fire: own men in the way", Color(1, 0.85, 0.4))
+				game.float_text(position + Vector2(0, -40), "Holding fire: own men where it lands" if kind == "cannon" else "Holding fire: own men in the blast", Color(1, 0.85, 0.4))
 			if order != "hold":
 				target = null
 			return
@@ -1802,6 +1816,8 @@ func _strike(e: Entity) -> void:
 		if powder < 1.0:
 			return    # no powder: the shot never goes off
 		powder -= 1.0
+		if powder < 1.0 and kind != "musketeer":
+			game.out_of_powder(self)     # that was the last one (a Musketeer says so as it fixes bayonets)
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
@@ -1942,6 +1958,10 @@ func _gather(delta: float) -> Vector2:
 		return _haul(site, delta)
 	if kind == "winder" and site.d.has("battery"):
 		return _haul_battery(site, delta)
+	if work == "manning" and auto_repair and _fix_nearby(delta):
+		return Vector2.ZERO
+	if kind == "labourer" and site.kind == "farm":
+		return _farm(site, delta)
 	if work == "manning":
 		facing = (site.center() - position).normalized()
 		return Vector2.ZERO
@@ -1953,6 +1973,68 @@ func _gather(delta: float) -> Vector2:
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
 		_request_path(game.approach_point(site, position))
 	return _follow(delta)
+
+
+## REPAIR autocast at work: now and then a worker at its post looks round for a damaged
+## building close by and goes to fix it (then WORK brings it back). True if it went.
+var _fix_t := 0.0
+
+
+func _fix_nearby(delta: float) -> bool:
+	_fix_t -= delta
+	if _fix_t > 0.0:
+		return false
+	_fix_t = 2.0
+	var hurt := game.find_repair(self, 5.0 * Defs.TILE)
+	if hurt and can_repair(hurt) and game.players[team]["gold"] >= 1:
+		cmd_repair(hurt)
+		return true
+	return false
+
+
+## Farm hands work in the fields, each on its own stretch of a crop row (Building.field_row):
+## they walk in, hoe a while, step along the row and hoe again, turning at the end.
+var _row_goal := Vector2.INF
+var _row_t := 0.0
+var _row_dir := 1.0
+
+
+func _farm(site: Building, delta: float) -> Vector2:
+	var seg: Array = site.field_row(maxi(site.crew.find(self), 0))
+	var a: Vector2 = seg[0]
+	var b: Vector2 = seg[1]
+	if work != "manning":
+		work = "to_site"
+		var goal: Vector2 = a if position.distance_to(a) < position.distance_to(b) else b
+		var done := (path.is_empty() or path_i >= path.size()) and not path_pending
+		if position.distance_to(goal) < 14.0 or (done and path_goal == goal and position.distance_to(goal) < 48.0):
+			work = "manning"
+			path = PackedVector2Array()
+			_row_goal = goal
+			_row_dir = 1.0 if goal == a else -1.0
+			_row_t = randf_range(1.0, 2.5)
+			return Vector2.ZERO
+		if done and path_goal != goal:
+			_request_path(goal)
+		elif done:
+			return (goal - position).normalized() * speed
+		return _follow(delta)
+	# a new stretch (the crew changed): walk over to it through the field
+	if _row_goal == Vector2.INF or absf(_row_goal.y - a.y) > 1.0 or _row_goal.x < a.x - 1.0 or _row_goal.x > b.x + 1.0:
+		_row_goal = a if position.distance_to(a) < position.distance_to(b) else b
+	if position.distance_to(_row_goal) > 3.0:
+		return (_row_goal - position).normalized() * speed * 0.45
+	# hoeing, facing along the row (a little toward the viewer)
+	facing = Vector2(_row_dir, 0.35).normalized()
+	_row_t -= delta
+	if _row_t <= 0.0:
+		_row_t = randf_range(2.0, 3.5)
+		var nx := _row_goal.x + _row_dir * randf_range(10.0, 18.0)
+		if nx > b.x or nx < a.x:
+			_row_dir = -_row_dir
+			nx = clampf(nx, a.x, b.x)
+		_row_goal = Vector2(nx, a.y)
+	return Vector2.ZERO
 
 
 ## Winder: take a full battery from an energy building and carry it to the nearest Ore
@@ -2526,7 +2608,9 @@ func _anim_name() -> String:
 				return "build"
 			if work == "manning":
 				var site := home_mine as Building
-				return "mine" if site and site.kind == "farm" else "build"
+				if site and site.kind == "farm":
+					return "walk" if moving else "mine"
+				return "build"
 			if work == "mining" or phase != "":
 				return "mine"
 			if work == "building":
@@ -2941,24 +3025,39 @@ func _draw_aim() -> void:
 			draw_circle(Vector2.ZERO, o.radius + 4.0, Color(red.r, red.g, red.b, 0.45))
 			draw_set_transform(Vector2.ZERO)
 		return
-	# round shot: a band along the ground from the muzzle out to its full range
+	# round shot: the ball flies over everything to where it's aimed, lands, and ploughs on
+	# through a line of men (Game.round_shot_land). A faint line for its flight out to full
+	# range; the stretch it ploughs (30 px short of the aim to ROUND_SHOT.line past it) as a
+	# band, red over our own men in it: the same stretch the gun checks before it fires
+	# (Game.aoe_worth_it). Men under the flight are safe.
 	var w := float(Defs.ROUND_SHOT["width"])
 	var length := float(d["range"]) + radius
 	var g0 := Vector2(0, 0) + dir * 28.0           # on the ground, under the muzzle
 	var g1 := dir * length
-	var n := dir.orthogonal() * w
-	draw_colored_polygon(PackedVector2Array([g0 + n, g1 + n, g1 - n, g0 - n]), Color(gold.r, gold.g, gold.b, a * 0.6))
-	draw_line(g0 + n, g1 + n, Color(gold.r, gold.g, gold.b, a + 0.1), 1.0)
-	draw_line(g0 - n, g1 - n, Color(gold.r, gold.g, gold.b, a + 0.1), 1.0)
-	# our own and allied men on that band: the stretch over each of them goes red
-	var mid := global_position + (g0 + g1) * 0.5
-	for o in game.units_near(mid, length * 0.5 + 40.0):
+	draw_line(g0, g1, Color(gold.r, gold.g, gold.b, a * 0.8), 1.0)
+	var aim := Vector2.INF                          # where the ball would land (local)
+	var c = game.controls
+	if c and c.get("mode") == "attack" and not game.demo and get_global_mouse_position().distance_to(global_position) <= length:
+		aim = get_global_mouse_position() - global_position
+	elif target and is_instance_valid(target) and not target.dead:
+		aim = target.center() - global_position
+	if aim == Vector2.INF:
+		return
+	var gd := (aim - (center() - global_position)).normalized()
+	var s0 := aim - gd * 30.0
+	var s1 := aim + gd * float(Defs.ROUND_SHOT["line"])
+	var n := gd.orthogonal() * w
+	draw_colored_polygon(PackedVector2Array([s0 + n, s1 + n, s1 - n, s0 - n]), Color(gold.r, gold.g, gold.b, a + 0.1))
+	draw_line(s0 + n, s1 + n, Color(gold.r, gold.g, gold.b, a + 0.25), 1.0)
+	draw_line(s0 - n, s1 - n, Color(gold.r, gold.g, gold.b, a + 0.25), 1.0)
+	# our own and allied men on that stretch: the bit over each of them goes red
+	for o in game.units_near(global_position + (s0 + s1) * 0.5, s0.distance_to(s1) * 0.5 + 40.0):
 		if o == self or o.dead or o.off_field or o.is_air() or game.hostile(o.team, team):
 			continue
 		var gp: Vector2 = o.position - global_position
-		var q := Geometry2D.get_closest_point_to_segment(gp, g0, g1)
-		if q.distance_to(gp) <= o.radius + w:
-			var s: Vector2 = dir * (float(o.radius) + 4.0)
+		var q := Geometry2D.get_closest_point_to_segment(gp, s0, s1)
+		if q.distance_to(gp) <= o.radius + w + 10.0:
+			var s: Vector2 = gd * (float(o.radius) + 4.0)
 			draw_colored_polygon(PackedVector2Array([q - s + n, q + s + n, q + s - n, q - s - n]), Color(red.r, red.g, red.b, 0.5))
 
 

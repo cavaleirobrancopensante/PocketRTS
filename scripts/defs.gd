@@ -8,6 +8,7 @@ const EGGS_MAX := 5
 const EGG_TIME := 6.0
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
+const AUTO_REPAIR := 8           # REPAIR autocast: how far (tiles) an idle worker looks for something to fix
 const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); faster when the thing builds quickly
 
 # ---- Economy: every faction makes its own resources from structures.
@@ -360,7 +361,7 @@ const BUILDINGS := {
 		"about": "Assembles every combat construct. Faster with more energy on assembly.",
 	},
 	"farm": {
-		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(3, 3),
+		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(5, 4),
 		"supply": 0, "sight": 5, "trains": [], "crew": 8, "faction": "crown",
 		"about": "Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: tired soil pays a third.",
 	},

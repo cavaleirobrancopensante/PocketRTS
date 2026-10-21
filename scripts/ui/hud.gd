@@ -362,11 +362,18 @@ func _group_pressed(i: int, held: float) -> void:
 			else:
 				game.set_selection([idle[0]])
 				game.camera.position = idle[0].position
-		2:   # town hall
-			var h := game._own_hall(game.human)
-			if h:
-				game.set_selection([h])
-				game.camera.position = h.global_position
+		2:   # town hall: each tap goes on to the next one (the main hall, then expansions)
+			var halls: Array = game.halls_of(game.human, false)
+			if halls.is_empty():
+				var h := game._own_hall(game.human)
+				if h:
+					game.set_selection([h])
+					game.camera.position = h.global_position
+				return
+			var cur: int = halls.find(game.selection[0]) if game.selection.size() == 1 else -1
+			var nh: Building = halls[(cur + 1) % halls.size()]
+			game.set_selection([nh])
+			game.camera.position = nh.center()
 		6:   # every production building: train from all of them at once
 			var pb := game.producers(game.human)
 			if pb.is_empty():
@@ -464,8 +471,16 @@ func _build_card() -> Array:
 				page = "build"
 				build_page = 0, true, "", ""])
 			_balloon_buttons(list, units)     # labourers can ride too
-			if units.any(func(u: Unit) -> bool: return u.d.get("repairs", false) or u.kind == "labourer"):
-				list.append(["repair", "REPAIR", func() -> void:
+			var fixers := units.filter(func(u: Unit) -> bool: return u.d.get("repairs", false) or u.kind == "labourer")
+			if not fixers.is_empty():
+				# a tap: pick what to repair; right-click / long press: automatic repair (glows)
+				var auto_fix: bool = fixers.all(func(u: Unit) -> bool: return u.auto_repair)
+				_alt_for["REPAIR"] = func() -> void:
+					for u in game.selected_units():
+						if u.d.get("repairs", false) or u.kind == "labourer":
+							u.auto_repair = not auto_fix
+					toast("Automatic repair on: idle workers fix damaged buildings nearby by themselves, before going back to work." if not auto_fix else "Automatic repair off.")
+				list.append(["repair", ("~ " if auto_fix else "") + "REPAIR", func() -> void:
 					controls.mode = "repair"
 					toast("Tap a damaged building (or wall) to repair it."), true, "", ""])
 
@@ -548,26 +563,17 @@ func _build_card() -> Array:
 		for rk in Defs.RESEARCH:
 			var rkk: String = rk
 			var info: Dictionary = Defs.RESEARCH[rk]
-			if info["at"] != b.kind or game.has_tech(game.human, rk):
+			# done, or already in a queue (it shows there, with its progress): no button
+			if info["at"] != b.kind or game.has_tech(game.human, rk) or game.researching(game.human, rk):
 				continue
-			# a chain (the musket locks): only the next one shows
+			# a chain (the musket locks): only the next one shows, once the one before is
+			# done or queued
 			var rreq: String = info.get("requires", "")
-			if rreq != "" and not game.has_tech(game.human, rreq):
+			if rreq != "" and not game.has_tech(game.human, rreq) and not game.researching(game.human, rreq):
 				continue
 			var rwhy := game.research_problem(b, rk)
 			var lab: String = info["name"].to_upper()
-			if b.research == rk:
-				lab = "> " + lab
-				rwhy = ""
-			# the research icon (assets/icons/<icon>.png); without one, the unit it's for
-			var ric: String = info.get("icon", info.get("unlocks", "musketeer"))
-			if _icon(ric) == null:
-				ric = info.get("unlocks", "musketeer")
-			list.append([ric, lab, func() -> void:
-				if b.research == rkk:
-					game.cancel_research(b)
-					toast("%s research cancelled: paid back." % info["name"])
-					return
+			list.append([_research_icon(rk), lab, func() -> void:
 				var w := game.start_research(b, rkk)
 				if w != "":
 					toast(w), rwhy == "", rwhy, str(info["cost"])])
@@ -596,8 +602,21 @@ func _build_card() -> Array:
 		elif not b.d["trains"].is_empty():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
-			list.append(["stop", "CANCEL", func() -> void: game.cancel_train(b), true, "", ""])
+			list.append(["stop", "CANCEL", func() -> void:
+				var last: String = b.queue.back() if not b.queue.is_empty() else ""
+				game.cancel_train(b)
+				if Building.is_research(last):
+					toast("%s research cancelled: paid back." % Defs.RESEARCH[last.substr(1)]["name"]), true, "", ""])
 	return list
+
+
+## A research's icon (assets/icons/<icon>.png); without one, the unit it's for.
+func _research_icon(key: String) -> String:
+	var info: Dictionary = Defs.RESEARCH[key]
+	var ric: String = info.get("icon", info.get("unlocks", "musketeer"))
+	if _icon(ric) == null:
+		ric = info.get("unlocks", "musketeer")
+	return ric
 
 
 ## Observation Balloon: LOAD men into the basket (the infantry selected with it climb in
@@ -1225,14 +1244,16 @@ func _draw_panel(font: Font) -> void:
 		if e is Building and e.team == game.human and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
-				var ic := _icon(q[i])
+				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else q[i])
 				var qr := Rect2(r.end.x - 44 - (q.size() - 1 - i) * 40, r.position.y + 8, 36, 36)
 				if ic:
 					draw_texture_rect(ic, qr, false)
 				var eb := e as Building
 				if i == 0 or eb.uses_eggs():
-					var f: float = (eb.morph_t[i] if eb.uses_eggs() else eb.prod_t) / float(Defs.UNITS[q[i]]["time"])
-					draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.4, 0.75, 1))
+					var f: float = (eb.morph_t[i] if eb.uses_eggs() else eb.prod_t) / Building.entry_time(q[i])
+					draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.75, 0.55, 1.0) if Building.is_research(q[i]) else Color(0.4, 0.75, 1))
+				if Building.is_research(q[i]):
+					draw_rect(qr, Color(0.75, 0.55, 1.0, 0.9), false, 1.5)     # research: a violet frame
 	else:
 		var n := mini(sel.size(), 24)
 		var per_row := int((r.size.x - 20) / 38)
@@ -1405,9 +1426,12 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 			if int(ri.get("cost2", 0)) > 0:
 				rc += " + %d %s" % [int(ri["cost2"]), _res()[1].to_lower()]
 			title = "%s   (%s, %d s)" % [ri["name"], rc, int(ri["time"])]
-			body = ri["about"] + ("  Press again to cancel (paid back)." if String(it[1]).begins_with("> ") else "")
+			body = ri["about"] + "  Queued like a unit; CANCEL takes the last thing in the queue back out (paid back)." 
 	if title == "WORK":
 		body = "Automatic work: idle workers go back to their posts on their own (glowing = on). Press to switch it off for the selected workers, to scout or keep a builder free."
+	if title == "REPAIR":
+		body = "Click, then click a damaged building or wall: they fix it (costs a quarter of its price for a full repair). Right-click: automatic repair (glowing = on): idle workers fix damaged buildings nearby by themselves, before going back to work." if Settings.pc() \
+			else "Tap, then tap a damaged building or wall to fix it. Hold: automatic repair (glowing = on): idle workers fix damaged buildings nearby by themselves, before going back to work."
 	if ABOUT.has(title):
 		body = ABOUT[title]
 	elif Defs.UNITS.has(k) and title == Defs.UNITS[k]["name"].to_upper():

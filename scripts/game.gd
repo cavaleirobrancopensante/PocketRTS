@@ -63,7 +63,7 @@ var sandbox := false                     # the sandbox: spawn anything, any play
 var reveal := false                      # sandbox: no fog of war
 var rng := RandomNumberGenerator.new()
 
-var solid := PackedByteArray()           # 0 free, 1 terrain or deposit, 2 building, 3 gate, 4 wall
+var solid := PackedByteArray()           # 0 free, 1 terrain or deposit, 2 building, 3 gate, 4 wall, 5 farm field (walkable, not buildable)
 var water := PackedByteArray()
 var height := PackedByteArray()          # 1 = high ground
 var ramp := PackedByteArray()
@@ -318,7 +318,7 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 			if in_map(cc):
 				solid[idx(cc)] = v
 				if astar.region.size != Vector2i.ZERO:
-					astar.set_point_solid(cc, v != 0 and v != 3)
+					astar.set_point_solid(cc, v != 0 and v != 3 and v != 5)
 				if astar_siege.region.size != Vector2i.ZERO:
 					astar_siege.set_point_solid(cc, v == 1 or v == 2)
 
@@ -332,7 +332,7 @@ func passable(c: Vector2i, t: int) -> bool:
 	if not in_map(c):
 		return false
 	var v := solid[idx(c)]
-	if v == 0:
+	if v == 0 or v == 5:
 		return true
 	return v == 3 and t >= 0 and allied(int(gate_team.get(idx(c), -1)), t)
 
@@ -392,11 +392,11 @@ func _orient_gates(around: Vector2i) -> void:
 		var ew := 0
 		for dv in [Vector2i(0, -1), Vector2i(0, 1)]:
 			var cc: Vector2i = b.cell + dv
-			if in_map(cc) and solid[idx(cc)] != 0:
+			if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
 				ns += 2 if solid[idx(cc)] >= 3 else 1
 		for dv in [Vector2i(-1, 0), Vector2i(1, 0)]:
 			var cc: Vector2i = b.cell + dv
-			if in_map(cc) and solid[idx(cc)] != 0:
+			if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
 				ew += 2 if solid[idx(cc)] >= 3 else 1
 		b.set_vertical(ns > ew)
 
@@ -476,7 +476,7 @@ func _setup_astar() -> void:
 	for y in H:
 		for x in W:
 			var sv := solid[y * W + x]
-			if sv != 0 and sv != 3:
+			if sv != 0 and sv != 3 and sv != 5:
 				astar.set_point_solid(Vector2i(x, y), true)
 			if sv == 1 or sv == 2:
 				astar_siege.set_point_solid(Vector2i(x, y), true)
@@ -1145,6 +1145,27 @@ func powder_short() -> void:
 	notify("Powder bank empty: refills wait. Man your Powder Mills.")
 
 
+## A Musketeer, Cannon or Mortar has used up the powder it carries. Over it: "Out of powder!"
+## (once for a whole line running dry: not again within 150 px for 4 s); and now and then a
+## word to the player on where they refill.
+var _dry_floats: Array = []       # [where, when (ms)]
+var _dry_ms := -99999
+
+
+func out_of_powder(u: Unit) -> void:
+	if u.team != human or demo:
+		return
+	var now := Time.get_ticks_msec()
+	_dry_floats = _dry_floats.filter(func(f: Array) -> bool: return now - int(f[1]) < 4000)
+	if not _dry_floats.any(func(f: Array) -> bool: return (f[0] as Vector2).distance_to(u.position) < 150.0):
+		_dry_floats.append([u.position, now])
+		float_text(u.position + Vector2(0, -40), "Out of powder!", Color(1, 0.75, 0.4))
+	if now - _dry_ms > 25000 and now - _notify_t > 3000:
+		_dry_ms = now
+		var who: String = {"musketeer": "Musketeers", "cannon": "Cannons", "mortar": "Mortars"}.get(u.kind, "Men")
+		notify("%s out of powder: bring them to a Mill, Barracks, Hall or Powder Wagon." % who)
+
+
 var energy: Array = []            # Clockwork energy per second
 var ore_rate: Array = []
 var asm_mult: Array = []          # production speed of Clockwork buildings
@@ -1320,6 +1341,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 		gate_team[idx(c)] = t
 	else:
 		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
+	for fc in Building.field_cells(k):
+		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows: men walk them, nothing is built on them
 	if Defs.BUILDINGS[k].get("line", false):
 		_orient_gates(c)
 	_push_units_out(b.rect())
@@ -1523,7 +1546,8 @@ func supply_used(t: int) -> int:
 	for b in buildings:
 		if b.team == t:
 			for k in b.queue:
-				n += int(Defs.UNITS[k]["supply"]) * int(Defs.UNITS[k].get("spawn", 1))
+				if not Building.is_research(k):
+					n += int(Defs.UNITS[k]["supply"]) * int(Defs.UNITS[k].get("spawn", 1))
 	return n
 
 
@@ -1536,6 +1560,12 @@ func add_gold(t: int, n: int) -> void:
 
 
 func refund(t: int, k: String) -> void:
+	if Building.is_research(k):
+		var info: Dictionary = Defs.RESEARCH[k.substr(1)]
+		players[t]["gold"] += int(info["cost"])
+		add_res2(t, float(info.get("cost2", 0)))
+		stats[t]["spent"] -= int(info["cost"])
+		return
 	players[t]["gold"] += int(Defs.UNITS[k]["cost"])
 	add_res2(t, int(Defs.UNITS[k].get("cost2", 0)))
 
@@ -1604,10 +1634,10 @@ func has_tech(t: int, key: String) -> bool:
 	return players[t]["tech"].get(key, false) == true
 
 
-## Research going on anywhere for this player?
+## Research going on, or waiting in a production queue, anywhere for this player?
 func researching(t: int, key: String) -> bool:
 	for b in buildings:
-		if b.team == t and not b.dead and b.research == key:
+		if b.team == t and not b.dead and b.queue.has("@" + key):
 			return true
 	return false
 
@@ -1619,11 +1649,12 @@ func research_problem(b: Building, key: String) -> String:
 	if has_tech(b.team, key):
 		return "Already done."
 	if researching(b.team, key):
-		return "Already researching."
-	if b.research != "":
-		return "Busy with %s." % Defs.RESEARCH[b.research]["name"]
+		return "Already in the queue."
+	if b.queue.size() >= 5:
+		return "Queue is full."
+	# a chain (the musket locks): the next one may be queued behind the one before it
 	var req: String = info.get("requires", "")
-	if req != "" and not has_tech(b.team, req):
+	if req != "" and not has_tech(b.team, req) and not researching(b.team, req):
 		return "Research %s first." % Defs.RESEARCH[req]["name"]
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	if players[b.team]["gold"] < int(info["cost"]):
@@ -1633,6 +1664,8 @@ func research_problem(b: Building, key: String) -> String:
 	return ""
 
 
+## Research works like training: paid up front, it joins the building's production queue
+## (as "@key") and takes its turn there; CANCEL takes it back out, paid back.
 func start_research(b: Building, key: String) -> String:
 	var why := research_problem(b, key)
 	if why != "":
@@ -1640,23 +1673,28 @@ func start_research(b: Building, key: String) -> String:
 	players[b.team]["gold"] -= int(Defs.RESEARCH[key]["cost"])
 	add_res2(b.team, -float(Defs.RESEARCH[key].get("cost2", 0)))
 	stats[b.team]["spent"] += int(Defs.RESEARCH[key]["cost"])
-	b.research = key
-	b.research_t = 0.0
+	if b.queue.is_empty():
+		b.prod_t = 0.0
+	b.queue.append("@" + key)
 	if mlog:
-		mlog.add("%s started researching %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
+		mlog.add("%s queued research: %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
 	return ""
 
 
-## Stop the research going on at a building: everything paid comes back.
-func cancel_research(b: Building) -> void:
-	if b.research == "":
-		return
-	var info: Dictionary = Defs.RESEARCH[b.research]
-	players[b.team]["gold"] += int(info["cost"])
-	players[b.team]["res2"] = float(players[b.team]["res2"]) + float(info.get("cost2", 0))
-	stats[b.team]["spent"] -= int(info["cost"])
-	b.research = ""
-	b.research_t = 0.0
+## Research queued after the one taken out that needed it (the next musket lock) comes
+## out too, paid back.
+func _drop_dependent_research(t: int, key: String) -> void:
+	for b in buildings:
+		if b.team != t or b.dead:
+			continue
+		for i in range(b.queue.size() - 1, -1, -1):
+			var k: String = b.queue[i]
+			if Building.is_research(k) and String(Defs.RESEARCH[k.substr(1)].get("requires", "")) == key:
+				b.queue.remove_at(i)
+				if i == 0:
+					b.prod_t = 0.0
+				refund(t, k)
+				_drop_dependent_research(t, k.substr(1))
 
 
 func research_done(b: Building, key: String) -> void:
@@ -1698,6 +1736,8 @@ func cancel_train(b: Building) -> void:
 	if b.queue.is_empty():
 		b.prod_t = 0.0
 	refund(b.team, k)
+	if Building.is_research(k):
+		_drop_dependent_research(b.team, k.substr(1))
 
 
 func spawn_trained(b: Building, k: String) -> void:
@@ -2217,6 +2257,7 @@ func find_target(u: Unit, r: float) -> Entity:
 		for i in mini(picks.size(), 6):
 			if aoe_worth_it(u, picks[i][1]):
 				return picks[i][1]
+		u.held_t = maxf(u.held_t, 1.0)     # (set up, it waits for a clear shot: Unit "amove")
 		# nothing safe to shoot at: set up, it holds fire (a building may still do); on the
 		# move it goes for the nearest and holds fire there if it must
 		if not (u.order == "hold" or u.tesla_mode == "deployed"):
@@ -3659,5 +3700,7 @@ func _draw_overlay() -> void:
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
 		var t: Texture2D = tex("res://assets/buildings/%s_built.png" % k)
 		var r := Rect2(Vector2(c) * T, Vector2(size) * T)
-		var pos := Vector2(r.get_center().x, r.end.y) + Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
+		if k == "farm":
+			overlay.draw_texture(tex("res://assets/buildings/farm_field_young.png"), r.position, Color(1, 1, 1, 0.5) if ok else Color(1, 0.5, 0.5, 0.4))
+		var pos := Building.anchor(k, r) + Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
 		overlay.draw_texture(t, pos, Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))
