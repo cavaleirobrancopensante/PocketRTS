@@ -3835,6 +3835,34 @@ func set_selection(list: Array) -> void:
 			selection.append(e)
 
 
+## APM (actions per minute) of the player at this screen: every click, tap and key press
+## during the match counts as one action, as in StarCraft.
+var actions: Array = []          # game-clock times of your actions in the last minute
+var actions_total := 0
+var actions_minute := 0          # actions since the last per-minute log line
+var apm_peak := 0
+
+func note_action() -> void:
+	actions.append(clock)
+	actions_total += 1
+	actions_minute += 1
+
+
+## Your APM over the last minute (scaled up while the match is younger than a minute).
+func apm() -> int:
+	while not actions.is_empty() and clock - float(actions[0]) > 60.0:
+		actions.pop_front()
+	var span := minf(maxf(clock, 10.0), 60.0)
+	var v := int(round(actions.size() * 60.0 / span))
+	apm_peak = maxi(apm_peak, v) if clock >= 60.0 else apm_peak
+	return v
+
+
+## Your average APM over the whole match.
+func apm_average() -> int:
+	return int(round(actions_total * 60.0 / maxf(clock, 1.0)))
+
+
 ## Watching computers play: the only time the spectator tools (VIEW, PRODUCTION, other
 ## players' resources, queues and rally points, their fog) exist. Never while you play a
 ## side, so they can never be used against an opponent.

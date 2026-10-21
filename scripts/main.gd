@@ -1662,6 +1662,12 @@ func _web_leave_fullscreen() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# APM: every click, tap and key press while you play (not while paused, watching or over)
+	if game and not game.over and not game.demo and not game.edit_mode and not get_tree().paused:
+		if (event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]) \
+				or (event is InputEventKey and event.pressed and not event.echo) \
+				or (event is InputEventScreenTouch and event.pressed):
+			game.note_action()
 	# the first click or tap anywhere: full screen (if it's on)
 	if not _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
 			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)):

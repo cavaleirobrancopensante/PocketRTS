@@ -1182,6 +1182,8 @@ func _draw() -> void:
 	var clock_r := Rect2(maxf(vs.x * 0.5 - 44, x), 4, 88, 30)
 	UiStyle.draw_panel(self, clock_r, acc, 0.8)
 	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
+	if not game.demo:
+		_text(UiStyle.bold_font(), Vector2(clock_r.end.x + 8, 25), "APM %d" % game.apm(), 14, Color(1, 1, 1, 0.65))
 	if not Settings.pc():
 		var dr := drag_rect()
 		UiStyle.draw_button(self, dr, false, Settings.drag_mode == "pan")

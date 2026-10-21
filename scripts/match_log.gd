@@ -105,6 +105,9 @@ func snapshot() -> void:
 			String(res[1]).to_lower(), game.supply_used(t), int(game.players[t]["cap"]), workers, halls, value,
 			", ".join(army) if not army.is_empty() else "none",
 			int(st["killed"]) - int(last["killed"]), int(st["killed"]), int(st["lost"]) - int(last["lost"]), int(st["lost"])])
+		if t == game.human and not game.demo:
+			lines[lines.size() - 1] += " | APM %d (this minute %d actions)" % [game.apm(), game.actions_minute]
+			game.actions_minute = 0
 		if game.faction_hall(t) == "town_hall" or game.faction_hall(t) == "hive":
 			var soil := PackedStringArray()
 			for h in game.halls_of(t):
@@ -144,6 +147,8 @@ func finish(winner: int) -> void:
 		lines.append("  %s: earned %d, spent %d, trained %d, built %d, killed %d, lost %d, razed %d, buildings lost %d, peak army %d. Kills by: %s" % [
 			who(t), int(st["gold"]), int(st["spent"]), int(st["trained"]), int(st["built"]), int(st["killed"]),
 			int(st["lost"]), int(st["razed"]), int(st["bld_lost"]), int(st["peak_army"]), ", ".join(kb) if not kb.is_empty() else "-"])
+		if t == game.human and not game.demo:
+			lines[lines.size() - 1] += " APM: average %d, peak %d, %d actions." % [game.apm_average(), maxi(game.apm_peak, game.apm()), game.actions_total]
 
 
 func text() -> String:
