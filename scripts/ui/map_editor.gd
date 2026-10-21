@@ -209,7 +209,7 @@ func _show_load() -> void:
 			load_from(MapGen.load_custom(nm)))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(b)
-		row.add_child(_btn("✕", 44, func() -> void:
+		row.add_child(_btn("×", 44, func() -> void:
 			MapGen.delete_custom(nm)
 			p.queue_free()
 			_show_load()))

@@ -58,7 +58,7 @@ func _build() -> void:
 	top.add_child(_btn("BACK", 86, func() -> void: done.emit()))
 	for p in UiLayout.BUILT_IN + UiLayout.CUSTOM:
 		var pp: String = p
-		var b := _btn(("★ " if UiLayout.active == p else "") + p, 0, func() -> void:
+		var b := _btn(("» " if UiLayout.active == p else "") + p, 0, func() -> void:
 			profile = pp
 			_build())
 		b.add_theme_font_size_override("font_size", 14)
@@ -69,7 +69,7 @@ func _build() -> void:
 	row2.position = Vector2(8, 58)
 	row2.add_theme_constant_override("separation", 5)
 	_ui.add_child(row2)
-	var use := _btn("USE THIS LAYOUT" if UiLayout.active != profile else "IN USE ★", 180, func() -> void:
+	var use := _btn("USE THIS LAYOUT" if UiLayout.active != profile else "» IN USE", 180, func() -> void:
 		UiLayout.active = profile
 		UiLayout.save_all()
 		_build())

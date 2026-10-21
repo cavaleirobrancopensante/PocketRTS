@@ -28,7 +28,7 @@ func _build() -> void:
 	for c in get_children():
 		c.queue_free()
 	_toggle = Button.new()
-	_toggle.text = "SANDBOX ◂" if open else "SANDBOX ▸"
+	_toggle.text = "SANDBOX <" if open else "SANDBOX >"
 	var right := get_viewport_rect().size.x - 8.0
 	_toggle.position = Vector2(right - 150, 44)
 	_toggle.custom_minimum_size = Vector2(150, 40)
@@ -55,7 +55,7 @@ func _build() -> void:
 	for t in game.n_players():
 		var tt: int = t
 		var b := Button.new()
-		b.text = ("★" if t == game.human else "") + str(t + 1)
+		b.text = ("» " if t == game.human else "") + str(t + 1)
 		b.custom_minimum_size = Vector2(40, 36)
 		var col := game.team_colour(t)
 		var sb := UiStyle.box(col.darkened(0.3), Color(1, 1, 1, 0.9) if t == acting else Color(1, 1, 1, 0.25), 3 if t == acting else 1, 6, 4.0)

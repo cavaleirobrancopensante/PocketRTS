@@ -205,7 +205,7 @@ const FACTIONS := {
 const UNITS := {
 	"labourer": {
 		"tags": ["light"],
-		"name": "Labourer", "hp": 45, "armor": 0, "speed": 74, "cost": 50, "time": 12.0, "supply": 1,
+		"name": "Labourer", "hp": 46, "armor": 0, "speed": 74, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 7, "cooldown": 1.0, "radius": 9, "from": "town_hall",
 		"faction": "crown", "worker": true, "about": "Mines gold and builds. Weak in a fight.",
 	},
@@ -252,7 +252,7 @@ const UNITS := {
 	},
 	"grub": {
 		"tags": ["light"],
-		"name": "Grub", "hp": 40, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
+		"name": "Grub", "hp": 46, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 6, "range": 18, "damage": 6, "cooldown": 1.0, "radius": 8, "from": "hive",
 		"faction": "brood", "worker": true,
 		"about": "Hauls food from Feeding Pits to a Hive (longer hauls pay more). Turns into buildings.",
