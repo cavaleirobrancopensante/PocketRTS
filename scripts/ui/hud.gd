@@ -728,16 +728,16 @@ func _ability_buttons(list: Array, units: Array) -> void:
 
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
-const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
-	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "F",
+const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
-	"LOAD": "F", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "U"}
-## Keys a left hand on the keyboard reaches easily (left side and the middle columns): names
-## only take letters from here, so nothing ends up far to the right (I, O, P, K, L).
-const NEAR_KEYS := "QWERTASDFGZXCVBYHNUJM"
+	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G"}
+## Keys the left hand reaches without leaving the group numbers: names only take letters
+## from here (H for HOLD is the one fixed key outside it).
+const NEAR_KEYS := "QWERTASDFGZXCVB"
 ## Command keys that never move: everything else gives way to them.
-const MUST_KEYS := ["MOVE", "ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
+const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
