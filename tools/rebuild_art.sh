@@ -11,9 +11,11 @@ python3 tools/import_round6.py           # Powder Wagon, labourer keg anims, keg
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
 python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
 python3 tools/recolour_grub_cocoon.py     # cocoon grubs to the olive grub colour
-python3 tools/fix_weapons.py             # straight pike and musket, held properly
+python3 tools/import_round10.py          # new musketeer (+ armoured), Mortar, Arc Thrower, their effects
+                                         # and icons (replaces import_art's musketeer: before the fixes)
+python3 tools/fix_weapons.py             # straight pike and muskets (both musketeers), held properly
 python3 tools/fix_pike.py                # full-length pike in the thrust frames
-PYTHONPATH=tools python3 tools/make_aim_up.py   # musketeer aiming up at flyers
+PYTHONPATH=tools python3 tools/make_aim_up.py   # both musketeers aiming up at flyers
 python3 tools/import_balloon.py          # Observation Balloon (gunners cut from the musketeer above)
 python3 tools/import_lightning.py        # lightning effects
 python3 tools/make_walls.py              # Crown walls and gates (drawn in code)

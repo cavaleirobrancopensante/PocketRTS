@@ -5,8 +5,15 @@ at a different size in almost every frame. This finds the weapon (the thin parts
 stick out of the body), removes it, and paints a clean, straight weapon of one fixed
 length, pixel by pixel, in the sprites' palette.
 
-    python3 tools/fix_weapons.py
+    python3 tools/fix_weapons.py [--only kind,kind]
+
+Kinds: pikeman, musketeer and musketeer_armoured (the round 10 musketeers, both drawn
+on the old musketeer's 90 px cell; tools/import_round10.py must run first). --only
+repairs just those kinds (each kind must be repaired exactly once after its import).
 """
+import os
+import sys
+
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
@@ -238,7 +245,14 @@ def clear_stray(f):
     b, x0, x1, y0, y1, head_bottom = figure(f)
     for k in range(1, n + 1):
         comp = lab == k
-        if comp.sum() <= 60 and np.argwhere(comp)[:, 0].min() > head_bottom:
+        pts = np.argwhere(comp)
+        size = len(pts)
+        length = float(np.hypot(*(pts.max(0) - pts.min(0))))
+        # a long thin piece is a musket even where it reaches past the head (the round
+        # 10 musketeers hold theirs up at the port); short bits by the head are brims
+        dy, dx = pts.max(0) - pts.min(0)
+        if (size <= 60 and pts[:, 0].min() > head_bottom) or (length >= 12 and size <= 3.2 * length) \
+                or (length >= 5 and size <= 3.0 * length and dy >= 0.8 * dx):
             f[comp] = 0
 
 
@@ -318,7 +332,20 @@ def fix_musket(f, anim, ref=None):
         musket(f, butt, d, keeper(f, b, head_bottom, hand))
 
 
+MUSKETEERS = ["musketeer", "musketeer_armoured"]
+
+
 def main():
+    kinds = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else ["pikeman"] + MUSKETEERS
+    if "pikeman" in kinds:
+        fix_pikeman()
+    for kind in MUSKETEERS:
+        if kind in kinds and os.path.isdir(f"assets/units/{kind}"):
+            fix_musketeer(kind)
+    print("weapons repaired:", ", ".join(kinds))
+
+
+def fix_pikeman():
     for anim in ["walk_e", "walk_se", "walk_ne", "walk_s", "walk_n"]:
         path, a, fs = frames("pikeman", anim, 68)
         ref = None
@@ -331,8 +358,11 @@ def main():
         for f in fs:
             fix_pike(f, ref)
         Image.fromarray(a).save(path)
+
+
+def fix_musketeer(kind):
     for anim in ["walk_e", "walk_se", "walk_ne", "walk_s", "walk_n", "idle_e", "idle_se", "idle_ne", "idle_s", "idle_n"]:
-        path, a, fs = frames("musketeer", anim, 90)
+        path, a, fs = frames(kind, anim, 90)
         ref = None
         # standing: keep the pose of the frame that drew the musket most fully
         # (south-east is drawn muzzle-down, so that one stands at order arms instead)
@@ -348,7 +378,6 @@ def main():
             _ORIG["f"] = f.copy()
             fix_musket(f, anim, ref)
         Image.fromarray(a).save(path)
-    print("weapons repaired")
 
 
 if __name__ == "__main__":

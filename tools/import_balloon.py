@@ -466,6 +466,16 @@ def turn_upper(f, deg, px, py):
     return out
 
 
+def shift(f, dx, dy):
+    """f moved by (dx, dy) on its own canvas; what leaves it is dropped (np.roll would
+    wrap the smoke at a frame's right edge round to its left edge)."""
+    out = np.zeros_like(f)
+    h, w = f.shape[:2]
+    out[max(0, dy):h + min(0, dy), max(0, dx):w + min(0, dx)] = \
+        f[max(0, -dy):h - max(0, dy), max(0, -dx):w - max(0, dx)]
+    return out
+
+
 class Gunners:
     """Waist-up musketeer frames for one direction, all on the musketeer's own cell
     (90 wide, the waist at row WAIST + top padding)."""
@@ -759,7 +769,7 @@ def main():
     gun = {}
     for d, g in G.items():
         for k, fs in g.anims.items():
-            gun[(k, d)] = [np.roll(np.roll(f, gw - g.waist, 0), gp - g.px, 1) for f in fs]
+            gun[(k, d)] = [shift(f, gp - g.px, gw - g.waist) for f in fs]
     gbox = union_box([f for v in gun.values() for f in v])
     gx0, gy0, gx1, gy1 = gbox
     gcell = (int(gx1 - gx0), int(gy1 - gy0))
