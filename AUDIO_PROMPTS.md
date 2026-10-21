@@ -65,9 +65,9 @@ Nine sounds per faction, 27 in total. Use the same file names in each faction fo
 Per unit: `<unit>_attack`, `<unit>_hit` (the impact on the target) and `<unit>_death`, with variants `_1`, `_2`, `_3` where marked ×3.
 
 **Crown**
-- `musketeer_attack` ×3: Flintlock musket shot, sharp crack with a puff of powder, outdoors.
+- `musketeer_attack` ×2, `cannon_attack`, `cannon_canister`, `mortar_attack`: recordings (tools/audio/import_shots.py).
 - `pikeman_attack` ×3: Steel pike thrust, metal scrape, grunt-free.
-- `cannon_attack` ×2: Black-powder field cannon firing, deep boom and a wooden carriage recoil.
+- `cuirassier_attack` ×3, `cuirassier_move` ×2, `cuirassier_death` ×2: sabre swing and hit, gallop, horse scream and fall (the horse itself, `horse/whinny`, is a recording).
 - `cannon_hit` ×2: Cannonball impact, dirt and splinters exploding.
 - `crown_death` ×3: Short soldier death cry, muffled, not gory.
 - `missionary_heal`: Soft choir "ahh" swell and a cloth bandage wrap, 2 seconds.

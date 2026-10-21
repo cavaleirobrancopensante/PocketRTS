@@ -3191,7 +3191,7 @@ func die() -> void:
 		tw.tween_property(b, "modulate:a", 0.0, 3.0)
 		tw.tween_callback(b.queue_free)
 	game.on_unit_died(self)
-	Sfx.play_any(["combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
+	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim(_death_anim(), true)
 	z_index = -1
 	# powder goes up: a keg on a labourer's back, or a whole Powder Wagon

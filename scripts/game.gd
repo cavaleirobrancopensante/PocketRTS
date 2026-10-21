@@ -2560,7 +2560,7 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 			o.take_damage(dmg * bonus * (1.3 if to.length() < reach * 0.5 else 1.0), u)
 	if e.is_building():
 		e.take_damage(dmg * 0.6, u)
-	Sfx.play_any(["combat/cannon_attack", "cannon"], u.global_position)
+	Sfx.play_any(["combat/cannon_canister", "combat/cannon_attack", "cannon"], u.global_position)
 	spawn_effect("smoke", from + dir * 12.0, 0.9)
 	spawn_effect("smoke", from + dir * 30.0, 1.2).modulate = Color(1, 1, 1, 0.6)
 	# a spray of musket balls fanning out of the muzzle
@@ -3829,10 +3829,13 @@ func _check_end() -> void:
 # ------------------------------------------------------------------ selection & commands (used by input and HUD)
 
 func set_selection(list: Array) -> void:
-	# a unit you pick answers you (once per new pick)
+	# a unit or building you pick answers you (once per new pick)
 	for e in list:
-		if is_instance_valid(e) and e is Unit and e.team == human and not e.dead and not selection.has(e):
-			Sfx.voice(e.kind, "select")
+		if is_instance_valid(e) and (e is Unit or e is Building) and e.team == human and not e.dead and not selection.has(e):
+			if e is Building:
+				Sfx.building_selected(e.kind, e.d["faction"])
+			else:
+				Sfx.voice(e.kind, "select")
 			break
 	for e in selection:
 		if is_instance_valid(e):
