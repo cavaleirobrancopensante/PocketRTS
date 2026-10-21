@@ -22,7 +22,7 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 ## edge), nearest first, and once those are spent works at `spent` of its rate. Amounts are in
 ## what they pay: powder for saltpetre, ore for ore. A site's 3 saltpetre outcrops last a fully
 ## worked Mill (~120 powder a minute) about 11 minutes; its 3 ore outcrops last a saturated
-## Clockwork base (~1,000-1,100 ore a minute) about 11 minutes. The Brood ignores them.
+## Clockwork base (~1,150-1,200 ore a minute) about 11 minutes. The Brood ignores them.
 const DEPOSIT := {"saltpetre": 440.0, "ore": 3800.0, "per_site": 6, "adjacent": 2, "reach": 6.0, "spent": 0.25}
 const DEPOSIT_FOR := {"powder_mill": "saltpetre", "ore_crusher": "ore"}
 # Crown: farms grow (faster with labourers working them) and pay out a whole harvest.
@@ -283,7 +283,7 @@ const UNITS := {
 	},
 	"windup_soldier": {
 		"tags": ["light"],
-		"name": "Wind-up Soldiers", "hp": 50, "armor": 2, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
+		"name": "Wind-up Soldiers", "hp": 55, "armor": 1, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
 		"sight": 7, "range": 24, "damage": 7, "cooldown": 1.1, "aim": 0.15, "radius": 8, "from": "assembly_works",
 		"spring": true, "faction": "clockwork",
 		"about": "Cheap tin spearmen, three to an order. They run on a spring, not a battery: about 50 s away from a field and they run down and freeze until a Winder cranks them up again (or a field reaches them).",

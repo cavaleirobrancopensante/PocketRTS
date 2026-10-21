@@ -66,7 +66,7 @@ The Clocktower and its Boilers (2 per Clocktower) fill batteries by themselves; 
 
 ENERGY: the batteries waiting at your Clocktowers and Boilers are your energy (top bar). Once you have an Engine Hall, Winders leave the last 6 for it. Steam Walkers (3), Tesla Carts (2), Stormcallers (2) and every STORM (2) spend it.
 
-Ore and coal: a base's ore keeps a saturated base (about 1,000-1,100 ore a minute) going for about 11 minutes ("Ore: %" on the crusher and the Clocktower); spent, its crushers pay a quarter. Each Clocktower's Boilers burn its coal ("Coal: %"); burnt out, they fill batteries at a third. Expand to fresh ground. Spring Towers and Charging Pylons don't fill batteries.
+Ore and coal: a base's ore keeps a saturated base (about 1,150-1,200 ore a minute) going for about 11 minutes ("Ore: %" on the crusher and the Clocktower); spent, its crushers pay a quarter. Each Clocktower's Boilers burn its coal ("Coal: %"); burnt out, they fill batteries at a third. Expand to fresh ground. Spring Towers and Charging Pylons don't fill batteries.
 
 Assembly Works: Wind-up Soldiers (3 an order, cheap spears that run on a spring: about 50 s away from a field and they run down until a Winder cranks them up), Threshers (saws that SPIN UP over 3 s of cutting, up to 160% damage, biting the enemies round their target; they burn their battery fast), and with a Boiler Bulwarks (BRACE, E: the tower shield takes the shots aimed at your units behind it; braced it can't move) and Arc Throwers (lightning balls, hit flyers; each throw drains their battery). Engine Hall (needs an Assembly Works and a Boiler): Steam Walkers, and with a Charging Pylon Tesla Carts, Stormcallers and Ornithopters.
 
