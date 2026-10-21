@@ -29,6 +29,11 @@ func _new_player(poly: int) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
 	p.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
 	p.max_polyphony = poly
+	# In the browser every sound goes through the engine's own mixer, like the music: played
+	# as separate Web Audio "samples" they were silent in some browsers (Brave), while the
+	# music, mixed by the engine, played fine.
+	if OS.has_feature("web"):
+		p.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(p)
 	return p
 
@@ -55,9 +60,7 @@ func _find(name: String) -> Array:
 ## sample when it's registered; a stream put on a player after start-up isn't, and stays
 ## silent. So everything we play goes through here first.
 static func prep(s: AudioStream) -> AudioStream:
-	if s and OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(s):
-		AudioServer.register_stream_as_sample(s)
-	return s
+	return s          # (sounds are mixed by the engine now: nothing to register)
 
 
 static func has(name: String) -> bool:

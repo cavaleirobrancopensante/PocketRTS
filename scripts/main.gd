@@ -470,7 +470,7 @@ func show_settings() -> void:
 	sh.add_child(szb)
 	v.add_child(sh)
 	v.add_child(dev)
-	if OS.has_feature("web"):
+	if OS.has_feature("web") and not Settings.pc():
 		v.add_child(_toggle_row("FULL SCREEN", func() -> bool: return Settings.fullscreen, func() -> void:
 			Settings.fullscreen = not Settings.fullscreen
 			Settings.save_all()
@@ -1613,8 +1613,10 @@ func _write_log(path: String, t: String) -> void:
 ## Web: go full screen on the first click or tap (browsers only allow it then), and on a
 ## computer ask the browser to give Esc to the game: Chrome and Edge then leave full screen
 ## only when Esc is HELD, so a quick Esc just closes a card. Settings > FULL SCREEN turns it off.
+## (Phones only: on a computer the browser's own full screen (F11) is used, which Esc never
+## leaves; the game's kind is left by Esc in some browsers, Brave among them.)
 func _web_fullscreen() -> void:
-	if _went_fullscreen or not OS.has_feature("web") or not Settings.fullscreen:
+	if _went_fullscreen or not OS.has_feature("web") or not Settings.fullscreen or Settings.pc():
 		return
 	_went_fullscreen = true
 	JavaScriptBridge.eval("""
@@ -1653,10 +1655,10 @@ func _input(event: InputEvent) -> void:
 			game.note_action()
 	# a click or tap while not in full screen (the first one, or after leaving it): full screen
 	# again, the kind where the game keeps Esc (if the setting is on)
-	if _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
+	if _went_fullscreen and OS.has_feature("web") and Settings.fullscreen and not Settings.pc() \
 			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)) \
 			and not bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.innerHeight >= screen.height - 2)", true)):
 		_went_fullscreen = false
-	if not _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
+	if not _went_fullscreen and OS.has_feature("web") and Settings.fullscreen and not Settings.pc() \
 			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)):
 		_web_fullscreen()
