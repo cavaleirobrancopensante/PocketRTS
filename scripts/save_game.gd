@@ -60,7 +60,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
-			"swamp_r": b.swamp_r, "seeded": b.seeded, "growth": b.growth, "gold_acc": b.gold_acc,
+			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
 			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
@@ -150,6 +150,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		c.queue_free()
 	game.crates.clear()
 	game.gate_team.clear()
+	game.ghost_cells.clear()
 	game.clock = float(d["clock"])
 	for t in game.players.size():
 		var p: Dictionary = d["players"][t]
@@ -184,7 +185,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		var at := Vector2i(int(bd["c"][0]), int(bd["c"][1]))
 		if bk == "farm" and not bool(d.get("big_farms", false)):
 			at = _fit(game, at, Defs.BUILDINGS[bk]["size"])
-		var b := game._add_building(bk, int(bd["t"]), at, bool(bd["built"]))
+		var b := game._add_building(bk, int(bd["t"]), at, bool(bd["built"]), bool(bd.get("ghost", false)))
 		b.progress = float(bd["progress"])
 		b.hp = float(bd["hp"])
 		# (research is in the queue as "@key")

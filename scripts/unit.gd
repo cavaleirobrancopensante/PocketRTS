@@ -1185,6 +1185,15 @@ func _continue_line() -> bool:
 	return false
 
 
+## The site this builder was going to is gone (a ghost that couldn't start, or cancelled):
+## on to the next Shift-queued order, or idle.
+func site_gone() -> void:
+	if crate_site and (not is_instance_valid(crate_site) or crate_site.dead):
+		crate_site = null
+	if not (_continue_line() or _next_order()):
+		cmd_stop()
+
+
 func _site_open(b) -> bool:
 	return b is Building and is_instance_valid(b) and not b.dead and not b.built \
 		and not (b.seeded and kind != "labourer")
@@ -3026,6 +3035,13 @@ func _build(delta: float) -> Vector2:
 	if site.edge_distance(position) < radius + 17.0:
 		path = PackedVector2Array()
 		facing = (site.center() - position).normalized()
+		if site.ghost:
+			# the site is a ghost until it starts: its footprint must be clear first
+			var st := game.try_start_site(site, self)
+			if st <= 0:
+				if st == 0:
+					work = "waiting"
+				return Vector2.ZERO
 		if kind == "winder":
 			if crate_site == site:
 				# sets the crate down: it unfolds and assembles itself from here

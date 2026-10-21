@@ -32,6 +32,8 @@ Efficiency: over each of your economy buildings a small bar shows how well it's 
 
 Area damage (canister, round shot, steam, spit blobs, storms, exploding powder) hurts your own units too: keep your men out of the blast.
 
+Ghost sites: a placed building is a see-through ghost until it starts (Labourers begin, the grub morphs, the crate lands). Anyone walks through it, it can't be attacked, and the enemy can't see it. When it starts, your units on it step aside; enemy units standing there block it, and after about 5 s it fails with all of its cost back ("Can't build there: the spot is blocked.").
+
 High ground: units below a cliff can't see up onto it, and ramps are the only way up. Rivers can only be crossed at the fords.
 
 Skirmish: up to four players. Each computer player has a PLAN (Balanced, Rush, Economy, Timing attack, Air rush for the Brood, or Random). Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
@@ -65,7 +67,7 @@ Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost
 
 The Clocktower and its Boilers (2 per Clocktower) fill batteries by themselves; Winders carry them to Ore Crushers, where the charge becomes ore drawn from the nearest Clocktower's ore. A battery slowly loses charge on a long road (after 6 s), so keep crushers close; a Winder hit while carrying one gets it burst on its back. A Capacitor Works turns every battery blue (more charge, slower to fade). Winders also repair and wind (repairs cost ore), and wind themselves now and then: away from a field they stop for a few seconds to crank their own spring.
 
-BUILDING: a Winder sent to build first fetches a crate from the nearest Clocktower and carries it to the site on his back (the site is a ghost until then). Set down, the crate unfolds into the frame and the building builds itself; its build time starts when the crate lands. If the Winder is killed or given another job on the way, he drops the crate: send any Winder onto it to carry it on (idle ones close by do it themselves). A crate on the ground can be smashed (40 hp), which cancels the building (three quarters of its cost back). With no Clocktower, the Winder starts it by hand.
+BUILDING: a Winder sent to build first fetches a crate from the nearest Clocktower and carries it to the site on his back (the site is a ghost until then). Set down, the crate unfolds into the frame and the building builds itself; its build time starts when the crate lands. If the Winder is killed or given another job on the way, he drops the crate: send any Winder onto it to carry it on (idle ones close by do it themselves). A crate on the ground can be smashed (40 hp), which cancels the building (all of its cost back). With no Clocktower, the Winder starts it by hand.
 
 ENERGY: the batteries waiting at your Clocktowers and Boilers are your energy (top bar). Once you have an Engine Hall, Winders leave the last 6 for it. Steam Walkers (3), Tesla Carts (2), Stormcallers (2) and every STORM (2) spend it.
 

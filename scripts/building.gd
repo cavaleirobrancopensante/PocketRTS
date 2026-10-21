@@ -23,6 +23,13 @@ var seeded := true               # Brood: a grub has turned into the site; Clock
 # fetch it from); "tower" waiting at a Clocktower for a Winder to fetch it; "carried" on
 # crate_carrier's back; "ground" dropped on the way (crate_obj). The site is a ghost until it lands.
 var crate := ""
+# A placed site is a ghost until its construction actually starts (Crown: the Labourers
+# begin; Brood: the grub morphs into it; Clockwork: the crate lands or the Winder starts it
+# by hand). A ghost isn't solid, can't be hurt or targeted, gives no sight and doesn't keep
+# its player alive; only its own side sees it (Game.try_start_site).
+var ghost := false
+var block_since := -1.0          # ghost: match clock when its start was first found blocked
+var asked := {}                  # ghost: unit instance id -> clock it was told to step out
 var crate_carrier: Unit = null
 var crate_obj: Crate = null
 var unfold_t := -1.0             # seconds since the crate landed, while it unfolds (-1: not unfolding)
@@ -161,6 +168,11 @@ func field_row(i: int) -> Array:
 
 func rect() -> Rect2:
 	return Rect2(Vector2(cell) * Defs.TILE, Vector2(size) * Defs.TILE)
+
+
+## A ghost can't be hurt, shot at or targeted.
+func untouchable() -> bool:
+	return ghost or super()
 
 
 func supply() -> int:
@@ -715,7 +727,8 @@ func _draw() -> void:
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), worker_rally - global_position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
 			draw_circle(worker_rally - global_position, 4, Color(1, 0.85, 0.3, 0.9))
 	var top := -sprite.texture.get_height() + 2.0 if sprite and sprite.texture else -r.size.y
-	draw_health(top, r.size.x * 0.7)
+	if not ghost:
+		draw_health(top, r.size.x * 0.7)
 	# full batteries waiting at an energy building
 	if built and batteries > 0 and (team == game.human or game.demo or game.reveal):
 		var bt: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % ("blue" if game.blue_energy(team) else "yellow"))

@@ -76,6 +76,7 @@ var astar_siege := AStarGrid2D.new()     # walls and gates counted as open: the 
 var units: Array = []
 var buildings: Array = []
 var crates: Array = []                   # Clockwork crates dropped on the way to their sites (Crate)
+var ghost_cells := {}                    # map index -> the ghost sites (Building.ghost) over that cell
 var base_sites: Array = []               # hall cells of every base site (all mains and expansions)
 var players: Array = []
 var starts: Array = []                   # town hall cells per team
@@ -385,8 +386,11 @@ func _own_gate_at(t: int, c: Vector2i) -> Building:
 
 ## Take a building off the map without a death (a wall piece a gate replaces).
 func _remove_quietly(b: Building) -> void:
-	_mark(b.cell, b.size, 0)
-	gate_team.erase(idx(b.cell))
+	if b.ghost:
+		_reserve_ghost(b, false)
+	else:
+		_mark(b.cell, b.size, 0)
+		gate_team.erase(idx(b.cell))
 	selection.erase(b)
 	buildings.erase(b)
 	b.dead = true
@@ -1232,7 +1236,7 @@ func find_patient(m: Unit, r: float) -> Unit:
 
 func near_enemy_building(t: int, p: Vector2, tiles: float) -> bool:
 	for b in buildings:
-		if hostile(t, b.team) and not b.dead and b.edge_distance(p) < tiles * T:
+		if hostile(t, b.team) and not b.dead and not b.ghost and b.edge_distance(p) < tiles * T:
 			return true
 	return false
 
@@ -1273,31 +1277,235 @@ func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 	return u
 
 
-func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
+## ghost: a placed site whose construction hasn't started (Building.ghost): it takes no
+## ground until it does (_solidify).
+func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := false) -> Building:
 	var b := Building.new()
 	b.setup(self, k, t, c, complete)
+	b.ghost = ghost and not complete
 	world.add_child(b)
 	buildings.append(b)
 	if k == "town_hall" or k == "hive" or k == "clocktower":
 		_take_scar(b)
+	if b.ghost:
+		_reserve_ghost(b, true)
+		if not sees_all() and hidden_ghost(b, fog_team()):
+			b.visible = false              # (another side's plan: never shown)
+		b._update_sprite()
+	else:
+		_solidify(b)
+	_recount_supply(t)
+	return b
+
+
+## The building takes its ground: its cells turn solid (a gate: passable for its side, a
+## Farm's crop rows walkable) and anyone left standing there is pushed out (but `keep`).
+func _solidify(b: Building, keep: Array = []) -> void:
+	var k := b.kind
+	var c := b.cell
+	if b.ghost:
+		_reserve_ghost(b, false)
+		b.ghost = false
+		b.block_since = -1.0
+		b.asked.clear()
 	if Defs.BUILDINGS[k].get("gate", false):
 		_mark(c, b.size, 3)
-		gate_team[idx(c)] = t
+		gate_team[idx(c)] = b.team
 	else:
 		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
 	for fc in Building.field_cells(k):
 		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows: men walk them, nothing is built on them
 	if Defs.BUILDINGS[k].get("line", false):
 		_orient_gates(c)
-	_push_units_out(b.rect())
-	_recount_supply(t)
-	return b
+	_push_units_out(b.rect(), keep)
+	_astar_dirty = true
+	b._update_sprite()
 
 
-func _push_units_out(r: Rect2) -> void:
+func _reserve_ghost(b: Building, on: bool) -> void:
+	for y in b.size.y:
+		for x in b.size.x:
+			var cc := b.cell + Vector2i(x, y)
+			if not in_map(cc):
+				continue
+			var i := idx(cc)
+			if on:
+				if not ghost_cells.has(i):
+					ghost_cells[i] = []
+				if not (ghost_cells[i] as Array).has(b):
+					ghost_cells[i].append(b)
+			elif ghost_cells.has(i):
+				ghost_cells[i].erase(b)
+				if (ghost_cells[i] as Array).is_empty():
+					ghost_cells.erase(i)
+
+
+## A ghost of `t`'s side (its own or an ally's) over this cell, if any.
+func side_ghost_at(t: int, c: Vector2i) -> Building:
+	if ghost_cells.is_empty() or not in_map(c):
+		return null
+	for g in ghost_cells.get(idx(c), []):
+		if not g.dead and allied(g.team, t):
+			return g
+	return null
+
+
+## Hidden from this player: a ghost site of another side.
+func hidden_ghost(b: Building, t: int) -> bool:
+	return b.ghost and t >= 0 and not allied(b.team, t)
+
+
+func _push_units_out(r: Rect2, keep: Array = []) -> void:
 	for u in units:
-		if not u.dead and r.grow(u.radius).has_point(u.position):
+		if not u.dead and not u.is_air() and not keep.has(u) and r.grow(u.radius).has_point(u.position) \
+				and not _clear_at(u.position, u.radius, u.team):
 			u.position = cell_center(nearest_free(cell_of(u.position), 8))
+
+
+# ------------------------------------------------------------------ ghost sites
+
+const GHOST_WAIT := 5.0                  # seconds a ghost waits for its footprint to clear
+
+
+## The units (not flyers, not the site's own builders) standing on a ghost's footprint.
+func site_blockers(b: Building) -> Array:
+	var out: Array = []
+	var r := b.rect()
+	for u in units_near(r.get_center(), r.size.length() * 0.5 + 24.0):
+		if u.dead or u.is_air() or u.aboard or u.off_field:
+			continue
+		if u.team == b.team and u.order == "build" and u.order_target == b:
+			continue
+		if r.grow(u.radius * 0.7).has_point(u.position):
+			out.append(u)
+	return out
+
+
+## A ghost's cells still free to build on (no terrain or building has come there since).
+func site_cells_free(b: Building) -> bool:
+	for y in b.size.y:
+		for x in b.size.x:
+			var cc := b.cell + Vector2i(x, y)
+			if not in_map(cc) or solid[idx(cc)] != 0:
+				return false
+	return true
+
+
+## The nearest free spot just outside a footprint, for a unit standing on it.
+func spot_outside(b: Building, u: Unit) -> Vector2:
+	var best := Vector2.INF
+	var bd := INF
+	for ring in range(1, 5):
+		for y in range(-ring, b.size.y + ring):
+			for x in range(-ring, b.size.x + ring):
+				if x > -ring and y > -ring and x < b.size.x + ring - 1 and y < b.size.y + ring - 1:
+					continue
+				var cc := b.cell + Vector2i(x, y)
+				if not passable(cc, u.team) or side_ghost_at(b.team, cc) != null:
+					continue
+				var p := cell_center(cc)
+				var dd := p.distance_to(u.position)
+				if dd < bd:
+					bd = dd
+					best = p
+		if best != Vector2.INF:
+			return best
+	return cell_center(nearest_free(cell_of(u.position), 8))
+
+
+## An allied unit on a ghost about to start steps out of the way, then carries on with
+## what it was doing (a move into the footprint itself is dropped).
+func step_aside(u: Unit, b: Building) -> void:
+	var r := b.rect()
+	var resume := {}
+	match u.order:
+		"move", "amove":
+			if not r.grow(8.0).has_point(u.order_point):
+				resume = {"o": u.order, "p": u.order_point}
+		"attack", "build", "repair":
+			if u.order_target and is_instance_valid(u.order_target) and not u.order_target.dead:
+				resume = {"o": u.order, "e": u.order_target}
+		"gather":
+			var m = u.home_mine if u.home_mine else u.order_target
+			if m and is_instance_valid(m) and not m.dead:
+				resume = {"o": "gather", "e": m}
+	var old_queue: Array = u.queue.duplicate()
+	var old_line: Array = u.line_rest.duplicate()
+	u.give({"o": "move", "p": spot_outside(b, u)})
+	if not resume.is_empty():
+		u.queue.append(resume)
+	u.queue.append_array(old_queue)
+	u.line_rest = old_line
+
+
+## A worker has come to start a ghost site: 1 it starts now (the cells turn solid), 0 wait
+## (units on it: allies are told to step out, enemies stay where they are), -1 it can't be
+## built (still blocked after GHOST_WAIT, or the ground is taken): the site is gone, its cost
+## refunded in full, and its builders go on to their next order.
+func try_start_site(b: Building, worker: Unit) -> int:
+	if b == null or b.dead or not b.ghost:
+		return 1
+	if not site_cells_free(b):
+		site_failed(b)
+		return -1
+	var blockers := site_blockers(b)
+	blockers.erase(worker)
+	if blockers.is_empty():
+		# (a grub is about to become it: it stays where it is)
+		_solidify(b, [worker] if worker and worker.kind == "grub" else [])
+		return 1
+	if b.block_since < 0.0:
+		b.block_since = clock
+	elif clock - b.block_since > GHOST_WAIT:
+		site_failed(b)
+		return -1
+	for u in blockers:
+		if allied(u.team, b.team):
+			var id: int = u.get_instance_id()
+			if clock - float(b.asked.get(id, -99.0)) > 1.5:
+				b.asked[id] = clock
+				step_aside(u, b)
+	return 0
+
+
+## A ghost that can't start: full refund (it never began), it goes, and the owner is told.
+func site_failed(b: Building) -> void:
+	if b.dead:
+		return
+	var t := b.team
+	var cost := int(b.d["cost"])
+	players[t]["gold"] += cost
+	stats[t]["spent"] -= cost
+	stats[t]["built"] = maxi(0, int(stats[t]["built"]) - 1)
+	if t == human and not demo and hud:
+		_notify_t = Time.get_ticks_msec()
+		hud.toast("Can't build there: the spot is blocked.", true)
+	if mlog:
+		mlog.add("%s couldn't start a %s: the spot was blocked (refunded)" % [mlog.who(t), b.d["name"]])
+	remove_ghost(b)
+	for u in units.duplicate():
+		if u.team == t and not u.dead and u.order == "build" and u.order_target == b:
+			u.site_gone()
+	for ai in ais:
+		if ai.team == t and ai.has_method("site_failed"):
+			ai.site_failed(b)
+
+
+## Take a ghost off the map (nothing was built: no rubble, no loss counted).
+func remove_ghost(b: Building) -> void:
+	if b.dead:
+		return
+	_reserve_ghost(b, false)
+	b.dead = true
+	b.selected = false
+	selection.erase(b)
+	buildings.erase(b)
+	if b.crate_obj and is_instance_valid(b.crate_obj):
+		b.crate_obj.remove()
+	b.crate_obj = null
+	b.visible = false
+	b.rubble_t = 25.0           # (freed a few seconds on, like a wrecked site)
+	_recount_supply(b.team)
 
 
 func nearest_free(c: Vector2i, max_r := 10) -> Vector2i:
@@ -1447,6 +1655,12 @@ func _killer(e: Entity) -> int:
 
 
 func on_building_died(b: Building) -> void:
+	if b.ghost:
+		_reserve_ghost(b, false)
+		selection.erase(b)
+		buildings.erase(b)
+		_recount_supply(b.team)
+		return
 	# the land stays tired (its soil / ground / coal and its saltpetre / ore drawn out) for the next hall here
 	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
 		soil_scars.append([b.center(), b.soil, b.kind, b.lode])
@@ -1822,6 +2036,9 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 				if k == "wall" and in_map(cc) and _own_gate_at(t, cc) != null:
 					continue     # and a wall piece a gate of yours (place_line: a single piece only)
 				return "Blocked."
+			var gh := side_ghost_at(t, cc)
+			if gh != null and not (gh.team == t and ((k == "gate" and gh.kind == "wall") or (k == "wall" and gh.kind == "gate"))):
+				return "Blocked: a building is planned there."
 			if not ai and t == human and not demo and explored[idx(cc)] == 0:
 				return "Unexplored."
 			if needs_swamp(k) and swamp[t][idx(cc)] == 0:
@@ -1876,8 +2093,7 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 	players[t]["gold"] -= int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["spent"] += int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["built"] += 1
-	var b := _add_building(k, t, c, false)
-	_astar_dirty = true
+	var b := _add_building(k, t, c, false, true)     # a ghost until its building starts
 	last_placed[t] = {"at": b.center(), "t": clock, "kind": k}
 	if Defs.BUILDINGS[k]["faction"] == "clockwork":
 		b.seeded = false
@@ -2364,7 +2580,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	if u.d.get("medic", false) or u.d.get("air_only", false):
 		return null
 	for b in buildings:
-		if not hostile(b.team, u.team) or b.dead:
+		if not hostile(b.team, u.team) or b.dead or b.ghost:
 			continue
 		var dd: float = b.edge_distance(u.position)
 		if dd >= r or (min_r > 0.0 and dd - u.radius < min_r):
@@ -2427,6 +2643,8 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 	if best:
 		return best
 	for b in buildings:
+		if hidden_ghost(b, controlled_team()):
+			continue
 		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
 		if b.visible and b.sprite and b.sprite.texture:
@@ -3609,7 +3827,7 @@ func _update_vis() -> void:
 			else:
 				_reveal(u.team, c, u.sight)
 	for b in buildings:
-		if not b.dead:
+		if not b.dead and not b.ghost:
 			_reveal(b.team, cell_of(b.rect().get_center()), b.sight)
 	var hv: PackedByteArray = vis[human].duplicate()
 	for o in n_players():
@@ -3625,7 +3843,7 @@ func _update_vis() -> void:
 	if demo:
 		# enemy buildings stay on screen once spotted: remember who has spotted each one
 		for b in buildings:
-			if not b.dead:
+			if not b.dead and not b.ghost:
 				var bi := idx(cell_of(b.rect().get_center()))
 				for t in n_players():
 					if vis[t][bi] == 1:
@@ -3678,6 +3896,9 @@ func _update_vis() -> void:
 			c.visible = true
 	for b in buildings:
 		if not allied(b.team, ft):
+			if b.ghost:
+				b.visible = false            # another side's planned site: unseen
+				continue
 			if demo:
 				b.visible = (b.seen_mask & side_mask) != 0
 				continue
@@ -3800,11 +4021,14 @@ func _check_end() -> void:
 	alive.resize(n_players())
 	alive.fill(0)
 	for b in buildings:
-		if not b.dead and b.team >= 0:
+		if not b.dead and not b.ghost and b.team >= 0:
 			alive[b.team] += 1
 	for t in n_players():
 		if alive[t] == 0 and not eliminated[t]:
 			eliminated[t] = true
+			for b in buildings.duplicate():
+				if b.team == t and b.ghost:
+					remove_ghost(b)
 			for u in units:
 				if u.team == t and not u.dead:
 					u.die()
@@ -3983,6 +4207,16 @@ func train_any(list: Array, k: String) -> String:
 ## Cancel a building that isn't finished: most of its cost comes back.
 func abandon(b: Building) -> void:
 	if b.built or b.dead:
+		return
+	if b.ghost:
+		# it never began: all of it comes back
+		players[b.team]["gold"] += int(b.d["cost"])
+		stats[b.team]["spent"] -= int(b.d["cost"])
+		stats[b.team]["built"] = maxi(0, int(stats[b.team]["built"]) - 1)
+		remove_ghost(b)
+		for u in units.duplicate():
+			if u.team == b.team and not u.dead and u.order == "build" and u.order_target == b:
+				u.site_gone()
 		return
 	players[b.team]["gold"] += int(int(b.d["cost"]) * 0.75)
 	b.take_damage(9999999.0, null)

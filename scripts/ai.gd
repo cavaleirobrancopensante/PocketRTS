@@ -745,7 +745,7 @@ func _raid() -> void:
 			best = o.position
 	if best == Vector2.INF:
 		for b in game.buildings:
-			if b.dead or not game.hostile(b.team, team) or not Defs.is_econ(b.kind):
+			if b.dead or b.ghost or not game.hostile(b.team, team) or not Defs.is_econ(b.kind):
 				continue
 			var s: float = b.center().distance_to(their_main) - b.center().distance_to(c) * 0.5
 			if s > score:
@@ -823,6 +823,14 @@ func _wall_off() -> void:
 				placed += 1
 		if game.mlog and placed > 0:
 			game.mlog.add("%s walled its ramp (%d pieces)" % [game.mlog.who(team), placed])
+
+
+## One of our ghost sites couldn't start (blocked): plan again. A wall piece: the ramp gets
+## walled again (only its gaps); anything else is simply missing and gets placed anew.
+func site_failed(b: Building) -> void:
+	if Defs.BUILDINGS[b.kind].get("line", false):
+		_walled = false
+	_no_room.erase(b.kind)
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
@@ -1470,7 +1478,7 @@ func _enemy_base() -> Vector2:
 	# go for the economy: the enemy's nearest hall (its workers and farms are around it);
 	# the army fights whatever is in the way on the walk there
 	for b in game.buildings:
-		if b.team == enemy and not b.dead and b.kind == game.faction_hall(enemy):
+		if b.team == enemy and not b.dead and not b.ghost and b.kind == game.faction_hall(enemy):
 			var dd: float = b.center().distance_to(me)
 			if dd < bd:
 				bd = dd
@@ -1478,7 +1486,7 @@ func _enemy_base() -> Vector2:
 	if best != Vector2.INF:
 		return best
 	for b in game.buildings:
-		if b.team == enemy and not b.dead:
+		if b.team == enemy and not b.dead and not b.ghost:
 			var dd: float = b.center().distance_to(me)
 			if dd < bd:
 				bd = dd
@@ -1837,7 +1845,7 @@ func _drop_spot() -> Vector2:
 	var best := Vector2.INF
 	var score := -INF
 	for b in game.buildings:
-		if b.team != foe or b.dead or not (Defs.is_econ(b.kind) or b.kind == game.faction_hall(foe)):
+		if b.team != foe or b.dead or b.ghost or not (Defs.is_econ(b.kind) or b.kind == game.faction_hall(foe)):
 			continue
 		var guard := 0
 		for o in foes_army:
