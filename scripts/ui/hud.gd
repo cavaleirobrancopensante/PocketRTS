@@ -1073,9 +1073,34 @@ func _draw_minimap() -> void:
 		var ph := fmod(game.alert_t * 2.0, 1.0)
 		draw_arc(ap, 4.0 + ph * 14.0, 0, TAU, 20, Color(1, 0.25, 0.2, 1.0 - ph), 2.0)
 		draw_circle(ap, 3.0, Color(1, 0.3, 0.2))
+	_draw_zoom(m)
 
 
 var _mini_tex: ImageTexture
+var _zoom_seen := 0.0
+var _zoom_t := 0.0          # time since the zoom last changed (the gauge lights up for a moment)
+const ZOOM_MIN := 0.55      # the camera's zoom limits (controls.gd)
+const ZOOM_MAX := 2.6
+
+
+## Zoom gauge in the minimap's bottom corner: a slim bar from widest view to closest,
+## with the zoom as a factor. It brightens for a couple of seconds after the zoom changes.
+func _draw_zoom(m: Rect2) -> void:
+	var z: float = game.camera.zoom.x
+	if absf(z - _zoom_seen) > 0.001:
+		_zoom_seen = z
+		_zoom_t = 0.0
+	else:
+		_zoom_t += get_process_delta_time()
+	var a := 1.0 if _zoom_t < 1.5 else lerpf(1.0, 0.55, clampf((_zoom_t - 1.5) / 0.8, 0.0, 1.0))
+	var box := Rect2(m.end - Vector2(96, 22), Vector2(92, 18))
+	draw_rect(box, Color(0, 0, 0, 0.55 * a))
+	var bar := Rect2(box.position + Vector2(40, 7), Vector2(46, 4))
+	draw_rect(bar, Color(1, 1, 1, 0.25 * a))
+	var f := clampf((z - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN), 0.0, 1.0)
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * f, bar.size.y)), Color(1, 0.86, 0.5, 0.9 * a))
+	draw_rect(Rect2(bar.position + Vector2(bar.size.x * f - 1.5, -3), Vector2(3, bar.size.y + 6)), Color(1, 1, 1, a))
+	_text(UiStyle.bold_font(), box.position + Vector2(5, 13), "x%.1f" % z, 12, Color(1, 1, 1, a))
 
 
 func _draw_groups(font: Font) -> void:
