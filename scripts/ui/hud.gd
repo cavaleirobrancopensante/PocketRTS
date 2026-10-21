@@ -503,7 +503,7 @@ func _build_card() -> Array:
 						u.cmd_sacrifice()
 						n += 1
 				toast("%d offered up: they go to the nearest Brood Pen (+%d essence)." % [n, ess]), has_pen, "Needs a Brood Pen.", "+%d" % ess])
-		for dk in ["cannon", "tesla_cart", "spore_mother"]:
+		for dk in ["cannon", "mortar", "tesla_cart", "spore_mother"]:
 			var kk: String = dk
 			if units.any(func(u: Unit) -> bool: return u.kind == kk):
 				var packed := units.any(func(u: Unit) -> bool: return u.kind == kk and u.tesla_mode == "packed")
@@ -546,11 +546,24 @@ func _build_card() -> Array:
 			var info: Dictionary = Defs.RESEARCH[rk]
 			if info["at"] != b.kind or game.has_tech(game.human, rk):
 				continue
+			# a chain (the musket locks): only the next one shows
+			var rreq: String = info.get("requires", "")
+			if rreq != "" and not game.has_tech(game.human, rreq):
+				continue
 			var rwhy := game.research_problem(b, rk)
 			var lab: String = info["name"].to_upper()
 			if b.research == rk:
 				lab = "> " + lab
-			list.append([info["unlocks"], lab, func() -> void:
+				rwhy = ""
+			# the research icon (assets/icons/<icon>.png); without one, the unit it's for
+			var ric: String = info.get("icon", info.get("unlocks", "musketeer"))
+			if _icon(ric) == null:
+				ric = info.get("unlocks", "musketeer")
+			list.append([ric, lab, func() -> void:
+				if b.research == rkk:
+					game.cancel_research(b)
+					toast("%s research cancelled: paid back." % info["name"])
+					return
 				var w := game.start_research(b, rkk)
 				if w != "":
 					toast(w), rwhy == "", rwhy, str(info["cost"])])
@@ -606,7 +619,7 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 			toast("Climbing in: the balloon comes down and holds still until they're aboard.")
 		else:
 			controls.mode = "load"
-			toast("Tap the Musketeers, Pikemen or Labourers to take aboard."), room, "The basket is full.", count])
+			toast("Tap the Musketeers or Labourers to take aboard."), room, "The basket is full.", count])
 	list.append(["ab_unload", "UNLOAD", func() -> void:
 		controls.mode = "unload"
 		toast("Tap where to let them off (or DROP HERE)."), aboard > 0, "Nobody aboard.", count])
@@ -615,20 +628,7 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 ## Crown abilities for the selected soldiers. Each button switches all of that kind.
 func _ability_buttons(list: Array, units: Array) -> void:
 	_balloon_buttons(list, units)
-	var muskets := units.filter(func(u: Unit) -> bool: return u.kind == "musketeer")
-	if not muskets.is_empty():
-		var bay: bool = muskets.any(func(u: Unit) -> bool: return u.mode != "bayonet")
-		list.append(["musketeer", "BAYONETS" if bay else "MUSKETS", func() -> void:
-			for u in game.selected_units():
-				if u.kind == "musketeer":
-					u.set_bayonet(bay), true, "", ""])
-	var pikes := units.filter(func(u: Unit) -> bool: return u.kind == "pikeman")
-	if not pikes.is_empty():
-		var on: bool = pikes.any(func(u: Unit) -> bool: return u.push_auto)
-		list.append(["pikeman", "~ PUSH" if on else "PUSH", func() -> void:
-			for u in game.selected_units():
-				if u.kind == "pikeman":
-					u.push_auto = not on, true, "", ""])
+	# (Musketeers pick musket or bayonet by themselves: no button)
 	# spells: pick the spot on the map; the nearest caster that can goes and does it
 	var callers := units.filter(func(u: Unit) -> bool: return u.kind == "stormcaller")
 	if not callers.is_empty():
@@ -699,7 +699,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
-	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
+	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
 	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
 
@@ -1045,6 +1045,8 @@ func _draw_panel(font: Font) -> void:
 	if sel.size() == 1:
 		var e: Entity = sel[0]
 		var icon := _icon(e.kind)
+		if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
+			icon = _icon((e as Unit).art)      # (an armoured Musketeer)
 		var pr := Rect2(r.position + Vector2(10, 10), Vector2(68, 68))
 		UiStyle.draw_button(self, pr.grow(2), false, false)
 		if icon:
@@ -1066,6 +1068,15 @@ func _draw_panel(font: Font) -> void:
 				info = "Feeding at the pit: takes half damage."
 			elif uu.work == "bandaging":
 				info = "Bandaging a soldier."
+			elif uu.order == "revive":
+				info = "Raising a fallen soldier..." if uu.work == "reviving" else "Going to raise a fallen soldier."
+			elif uu.cross_t > 0.0 and uu.d["faction"] == "crown":
+				info = "Under the cross for %d s: no bandage or raising meanwhile, and if he falls now he's gone for good." % int(ceil(uu.cross_t))
+			elif uu.kind == "mortar":
+				info = {"packed": "Packed: it rolls, can't fire. DEPLOY to fire.", "deploying": "Deploying...",
+					"deployed": "Set up: lobs shells 5 to 11 tiles (over walls) at anything your side can see.",
+					"packing": "Packing up..."}[uu.tesla_mode]
+				info += "  Shells %d/%d%s" % [int(uu.powder), int(uu._pmax), " (OUT: refill at a Mill, Barracks, Hall or Wagon)" if uu.powder < 1.0 else ""]
 			elif uu.kind == "cannon":
 				info = {"packed": "Limbered: the horse tows it. UNLIMBER to fire.", "deploying": "Unlimbering...",
 					"deployed": "Set up: %s loaded. Fires at anything your side can see." % ("canister" if uu.mode == "canister" else "round shot"),
@@ -1073,9 +1084,9 @@ func _draw_panel(font: Font) -> void:
 				info += "  Powder %d/%d%s" % [int(uu.powder), int(uu._pmax), " (OUT: refill at a Mill, Barracks, Hall or Wagon)" if uu.powder < 1.0 else ""]
 			elif uu.kind == "musketeer":
 				if uu.powder < 1.0:
-					info = "OUT OF POWDER: bayonets fixed. Refills at a Mill, Barracks, Hall or Wagon."
+					info = "OUT OF POWDER: fights with the bayonet. Refills at a Mill, Barracks, Hall or Wagon."
 				else:
-					info = "Powder %d/%d%s · refills at a Mill, Barracks, Hall or Wagon" % [int(uu.powder), int(uu._pmax), "  (bayonets fixed)" if uu.mode == "bayonet" else ""]
+					info = "Powder %d/%d%s · refills at a Mill, Barracks, Hall or Wagon" % [int(uu.powder), int(uu._pmax), "  (bayonet: the enemy is on him)" if uu.mode == "bayonet" else ""]
 			elif uu.kind == "powder_wagon":
 				var runs := game.units.filter(func(x: Unit) -> bool: return x.order == "keg" and x.order_target == uu).size()
 				info = "Powder %d/%d shots · SUPPLY %s%s · blows up when destroyed" % [int(uu.powder), int(uu._pmax), "on" if uu.supplying else "off",
@@ -1362,10 +1373,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 	var body := ""
 	var k: String = it[0]
 	const ABOUT := {
-		"BAYONETS": "Fix bayonets: fight hand to hand, no powder used. Can't hit flyers. A musketeer out of powder fixes them by itself.",
-		"MUSKETS": "Back to muskets: long-range volleys, one of the 12 shots each man carries per shot.",
 		"SUPPLY": "Keg runs (glowing = on): while the wagon has room, up to 2 labourers carry 30-shot kegs to it from the nearest Powder Mill (15 powder a keg). A labourer killed with a keg blows up.",
-		"PUSH": "Pike push (automatic when ready, every 7 s): the thrust shoves the enemy back and staggers it. Click to switch on or off.",
 		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
 		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
 		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. One of the gun's 8 shots.",
@@ -1377,19 +1385,23 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
 		"ROOT": "Root (2.5 s): she digs in, lobs big spit blobs that splash an area, and spreads swamp. She can't move until she uproots.",
 		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",
-		"LOAD": "Load the balloon: then tap Musketeers, Pikemen or Labourers (or right-click the balloon with them selected). They walk under it and climb in, 4 at most; it must hover over ground they can reach. Carried Musketeers shoot from the basket.",
+		"LOAD": "Load the balloon: then tap Musketeers or Labourers (or right-click the balloon with them selected). They walk under it and climb in, 4 at most; it must hover over ground they can reach. Carried Musketeers shoot from the basket.",
 		"UNLOAD": "Unload: tap where to drop them. The balloon flies there and lets everyone off on the nearest open ground (over a cliff edge too). Tap the balloon, or DROP HERE, to let them off where it is.",
 		"DROP HERE": "Let everyone off right below the balloon.",
 		"COURIER": "Courier (automatic, glowing = on): idle Ornithopters fetch a charged battery from an energy building and wind up constructs that ran down (shut-down ones first). Click to switch on or off.",
 		"OVERLOAD": "Overload: tap one of your constructs. The Ornithopter dumps its battery into it: +50% damage, +30% speed and faster attacks for 12 s, then it's left with 25% charge.",
 		"LAND": "Land (1.2 s): fight on the ground with a bite. Landed it walks, can't cross cliffs and anything can hit it; it can't attack flyers.",
 		"TAKE OFF": "Take off (1.2 s): fly again and hunt flyers with spines (it can't attack the ground while flying).",
-		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. Can't hit flyers. One of the gun's 8 shots.",
+		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men, YOUR OWN TOO (+75% against Armored), small splash, smashes buildings. Can't hit flyers. One of the gun's 8 shots.",
 	}
 	for rk in Defs.RESEARCH:
 		if title == String(Defs.RESEARCH[rk]["name"]).to_upper():
-			title = "%s   (%d %s, %d s)" % [Defs.RESEARCH[rk]["name"], int(Defs.RESEARCH[rk]["cost"]), _res()[0].to_lower(), int(Defs.RESEARCH[rk]["time"])]
-			body = Defs.RESEARCH[rk]["about"]
+			var ri: Dictionary = Defs.RESEARCH[rk]
+			var rc := "%d %s" % [int(ri["cost"]), _res()[0].to_lower()]
+			if int(ri.get("cost2", 0)) > 0:
+				rc += " + %d %s" % [int(ri["cost2"]), _res()[1].to_lower()]
+			title = "%s   (%s, %d s)" % [ri["name"], rc, int(ri["time"])]
+			body = ri["about"] + ("  Press again to cancel (paid back)." if String(it[1]).begins_with("> ") else "")
 	if title == "WORK":
 		body = "Automatic work: idle workers go back to their posts on their own (glowing = on). Press to switch it off for the selected workers, to scout or keep a builder free."
 	if ABOUT.has(title):

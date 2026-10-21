@@ -30,6 +30,11 @@ static func _v2(v: Vector2) -> Array:
 	return [v.x, v.y]
 
 
+## Units that are no more: a saved Pikeman comes back as a Musketeer.
+static func _kind(k: String) -> String:
+	return "musketeer" if k == "pikeman" else k
+
+
 static func _to_v2(a) -> Vector2:
 	return Vector2(float(a[0]), float(a[1])) if a is Array else Vector2.INF
 
@@ -63,7 +68,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			continue
 		var ud := {"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
 			"charge": u.charge, "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying, "lf": u.load_f,
-			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
+			"auto": u.auto_work, "cross": u.cross_t, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
 			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying}
@@ -72,7 +77,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			var ps: Array = []
 			for p in u.passengers:
 				if is_instance_valid(p) and not p.dead:
-					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "push": p.push_auto, "kills": p.kills})
+					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "kills": p.kills, "cross": p.cross_t})
 			ud["pass"] = ps
 		d["units"].append(ud)
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
@@ -128,14 +133,14 @@ static func restore(game: Game, d: Dictionary) -> void:
 		var b := game._add_building(bk, int(bd["t"]), Vector2i(int(bd["c"][0]), int(bd["c"][1])), bool(bd["built"]))
 		b.progress = float(bd["progress"])
 		b.hp = float(bd["hp"])
-		b.queue = Array(bd["queue"])
+		b.queue = Array(bd["queue"]).map(func(x) -> String: return _kind(String(x))).filter(func(x: String) -> bool: return Defs.UNITS.has(x))
 		b.prod_t = float(bd["prod_t"])
 		b.eggs = int(bd["eggs"])
 		b.egg_t = float(bd["egg_t"])
 		b.morph_t = Array(bd["morph_t"]).map(func(x) -> float: return float(x))
-		b.research = String(bd["research"])
+		b.research = String(bd["research"]) if Defs.RESEARCH.has(String(bd["research"])) else ""
 		b.research_t = float(bd["research_t"])
-		b.auto_train = String(bd.get("auto", ""))
+		b.auto_train = _kind(String(bd.get("auto", "")))
 		b.batteries = int(bd.get("bat", 0))
 		b.vertical = bool(bd.get("v", false))
 		b.dir_locked = bool(bd.get("vl", false))
@@ -162,8 +167,12 @@ static func restore(game: Game, d: Dictionary) -> void:
 			var left := game.deposit_left(b)
 			game._dep_warned["%d:%d" % [b.team, game.site_deposits(b)[0].get_instance_id()]] = 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
 	for ud in d["units"]:
-		var u := game._add_unit(String(ud["k"]), int(ud["t"]), _to_v2(ud["p"]))
-		u.hp = float(ud["hp"])
+		var uk := _kind(String(ud["k"]))
+		if not Defs.UNITS.has(uk):
+			continue
+		var u := game._add_unit(uk, int(ud["t"]), _to_v2(ud["p"]))
+		u.hp = minf(float(ud["hp"]), u.max_hp)
+		u.cross_t = float(ud.get("cross", 0.0))
 		u.wind = float(ud["wind"])
 		u.charge = float(ud["charge"])
 		u.mode = String(ud["mode"])
@@ -171,7 +180,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.carrying = int(ud["carry"])
 		u.load_f = float(ud.get("lf", 0.0))
 		u.auto_work = bool(ud["auto"])
-		u.push_auto = bool(ud["push"])
 		u.spell_cd = float(ud["spell_cd"])
 		u.gas = float(ud.get("gas", 100.0))
 		u.powder = float(ud.get("pw", u.powder))      # (older saves: full)
@@ -192,14 +200,15 @@ static func restore(game: Game, d: Dictionary) -> void:
 			if sky == "lifting":
 				u.cmd_take_off()
 		for pd in ud.get("pass", []):
-			if u.kind != "balloon" or not Defs.UNITS.has(String(pd.get("k", ""))):
+			var pk := _kind(String(pd.get("k", "")))
+			if u.kind != "balloon" or not Defs.UNITS.has(pk):
 				continue
-			var p := game._add_unit(String(pd["k"]), u.team, u.position)
-			p.hp = float(pd.get("hp", p.max_hp))
+			var p := game._add_unit(pk, u.team, u.position)
+			p.hp = minf(float(pd.get("hp", p.max_hp)), p.max_hp)
 			p.mode = String(pd.get("mode", ""))
 			p.auto_work = bool(pd.get("auto", true))
-			p.push_auto = bool(pd.get("push", true))
 			p.kills = int(pd.get("kills", 0))
+			p.cross_t = float(pd.get("cross", 0.0))
 			u.take_aboard(p)
 	for a in d.get("ai", []):
 		for ai in game.ais:
