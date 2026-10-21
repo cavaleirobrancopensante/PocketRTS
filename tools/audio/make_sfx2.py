@@ -1370,6 +1370,13 @@ def sel_farm(rng, v):           # a hoe in the soil and a rustle of wheat
     return place(place(np.zeros(N(0.4)), hoe, 0), rus, 0.08)
 
 
+@sfx("work/hoe", 3, peak=-4)
+def work_hoe(rng, v):            # a labourer's hoe biting the soil (farm work)
+    hoe = mix(lp(noise(rng, 0.08), 1100 + 150 * v) * expenv(0.08, 50), wood_hit(rng, 260 + 30 * v, 0.07, 60) * 0.5)
+    dirt = bp(noise(rng, 0.18), 600, 2500) * expenv(0.18, 22) * 0.25
+    return place(place(np.zeros(N(0.3)), hoe, 0), dirt, 0.02)
+
+
 @sel("powder_mill")
 def sel_powder_mill(rng, v):    # the mill's wooden creak
     return creak(rng, 0.42, 110, 75, 16)
