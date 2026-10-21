@@ -354,7 +354,10 @@ UNITS = {
                         norm=["walk", "idle", "attack", "cast"], borrow={"death": "idle"}),
     "cuirassier": dict(scale=0.48, target=51,                         # horse ~ the cannon's
                        norm=["idle", "walk", "slash"], borrow={"thrust": "slash", "death": "idle"},
-                       widen={2: 1.2, 1: 1.08}),     # E (side) and SE rows drew the horse squashed
+                       widen={2: 1.2, 1: 1.08},      # E (side) and SE rows drew the horse squashed
+                       # E gallop frames 1-2 turn toward the camera (narrower horse): stretch
+                       # them to the idle side view's width so the gallop doesn't pump in and out
+                       widen_frame={(2, "walk", 0): 1.07, (2, "walk", 1): 1.19, (2, "walk", 2): 1.26}),
     "spore_mother": dict(scale=0.6, glow="green", target=58,          # about the Brute
                          norm=["walk", "idle", "fire"], borrow={"death": "fire"},
                          last={"root": 54},           # the rooted pose: same size in every row
@@ -534,7 +537,8 @@ class Src:
 
     def raw(self, r, g, i, scale):
         img, gl = to_game(self.frames[(r, g)][i]["img"], scale, self.bgc, self.cfg.get("glow"),
-                          sx=self.cfg.get("widen", {}).get(r, 1.0))
+                          sx=self.cfg.get("widen", {}).get(r, 1.0)
+                          * self.cfg.get("widen_frame", {}).get((r, g, i), 1.0))
         return F(img, gl)
 
     def hs(self, r, g):
