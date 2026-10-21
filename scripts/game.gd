@@ -3843,11 +3843,17 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 	fx.scale = Vector2(sc, sc)
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
 	if big:
-		spawn_effect("explosion", p + Vector2(0, -10), 1.4).scale = Vector2(1.6, 1.6)
-		for i in 3:
-			var sm := spawn_effect("smoke_big", p + Vector2(randf_range(-r, r) * 0.4, randf_range(-20, 0)), 0.8)
-			sm.scale = Vector2(1.0, 1.0)
-			sm.modulate.a = 0.75
+		spawn_effect("explosion", p + Vector2(0, -10), 1.4).scale = Vector2(2.2, 2.2)
+		for i in 4:
+			var a := TAU * i / 4.0 + randf() * 0.6
+			spawn_effect("explosion", p + Vector2(cos(a), sin(a) * 0.6) * r * 0.45, randf_range(1.0, 1.3)).scale = Vector2(1.2, 1.2)
+		for i in 6:
+			var sm := spawn_effect("smoke_big", p + Vector2(randf_range(-r, r) * 0.6, randf_range(-30, 10)), 0.8)
+			sm.scale = Vector2(1.3, 1.3)
+			sm.modulate.a = 0.8
+		Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
+		if camera and camera.get_screen_center_position().distance_to(p) < 900.0:
+			_shake(9.0, 0.6)
 	Sfx.play_any(["combat/cannon_hit", "boom"], p)
 	for u in units_near(p, r + 24.0):
 		if u == src or u.dead or u.off_field or u.is_air():
@@ -3855,10 +3861,20 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 		var dd: float = u.position.distance_to(p)
 		if dd > r + u.radius:
 			continue
-		u.take_damage(dmg * (1.0 - 0.5 * clampf(dd / r, 0.0, 1.0)), src)
+		u.take_damage(dmg * (1.0 - (0.3 if big else 0.5) * clampf(dd / r, 0.0, 1.0)), src)
 	for b in buildings.duplicate():
 		if not allied(b.team, src.team) and not b.dead and b.edge_distance(p) < r * 0.5:
 			b.take_damage(dmg, src)
+
+
+## The view jolts (a Powder Wagon going up): `amp` px, dying out over `t` seconds.
+func _shake(amp: float, t: float) -> void:
+	var tw := create_tween()
+	var n := int(t / 0.04)
+	for i in n:
+		var k := amp * (1.0 - float(i) / n)
+		tw.tween_property(camera, "offset", Vector2(randf_range(-k, k), randf_range(-k, k)), 0.04)
+	tw.tween_property(camera, "offset", Vector2.ZERO, 0.04)
 
 
 ## A Powder Wagon on SUPPLY wants kegs: up to WAGON.runners labourers (idle or working,

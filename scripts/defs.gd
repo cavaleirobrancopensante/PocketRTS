@@ -63,7 +63,7 @@ const POWDER := {"musketeer": 12, "cannon": 8, "mortar": 6, "refill": 2.0, "rang
 ## same way: 30 shots = 15 powder). Destroyed, it blows up: up to `blast` damage (scaled by the
 ## powder left, never under `blast_min`) within `radius` px, friends included.
 const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_load": 1.5, "runners": 2,
-	"blast": 120.0, "blast_min": 20.0, "radius": 96.0}
+	"blast": 170.0, "blast_min": 70.0, "radius": 110.0}
 ## A labourer killed with a keg on his back: a small blast (friends included).
 ## (Step 3, keg mines, will reuse the keg carry and Game.powder_blast.)
 const KEG := {"blast": 40.0, "radius": 48.0}

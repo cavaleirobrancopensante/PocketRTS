@@ -3239,7 +3239,7 @@ func die() -> void:
 		if team == game.human:
 			game.notify("Your Powder Wagon blew up!", true)
 		powder = 0.0
-		game.powder_blast(self, position, dmg, float(Defs.WAGON["radius"]) * (0.7 + 0.3 * full), true)
+		game.powder_blast(self, position, dmg, float(Defs.WAGON["radius"]) * (0.85 + 0.15 * full), true)
 
 
 # ------------------------------------------------------------------ animation
