@@ -913,3 +913,12 @@ const PACKS := {
 		"walk_se": [[1, false, -7, -31, 0], [1, false, -7, -31, 0], [1, false, -6, -31, 0], [1, false, -8, -31, 0], [1, false, -6, -31, 0]],
 	}},
 }
+
+## The Winder's crate unfolding into a building frame (tools/import_crate.py - edit there,
+## not here): building kind -> [frame width, frame height, width of the closed crate in
+## frame 0, the frame held and cross-faded into the construction sprite (5, the gantry; 4,
+## the plates, where the gantry would tower over a low building)] of
+## assets/effects/crate_unfold_<kind>.png (6 frames in a row, centred,
+## feet on the bottom row). CRATE_GROUND: the crate's width in crate_ground.png.
+const CRATE := {"assembly_works": [176, 203, 84.5, 4], "boiler": [126, 144, 59.8, 5], "capacitor_works": [78, 90, 37.0, 5], "charging_pylon": [70, 78, 32.3, 5], "clocktower": [134, 154, 64.1, 5], "engine_hall": [142, 162, 67.4, 5], "ore_crusher": [112, 127, 52.7, 5], "spring_tower": [94, 107, 44.1, 5]}
+const CRATE_GROUND := 18

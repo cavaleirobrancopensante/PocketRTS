@@ -75,6 +75,7 @@ var astar := AStarGrid2D.new()
 var astar_siege := AStarGrid2D.new()     # walls and gates counted as open: the way to break in
 var units: Array = []
 var buildings: Array = []
+var crates: Array = []                   # Clockwork crates dropped on the way to their sites (Crate)
 var base_sites: Array = []               # hall cells of every base site (all mains and expansions)
 var players: Array = []
 var starts: Array = []                   # town hall cells per team
@@ -1844,6 +1845,8 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 	_astar_dirty = true
 	if Defs.BUILDINGS[k]["faction"] == "clockwork":
 		b.seeded = false
+		# the Winder fetches its crate from a Clocktower first (none: he starts it by hand)
+		b.crate = "tower" if crate_tower(t, b.center(), b) != null else ""
 		b._update_sprite()
 		builders = builders.slice(0, 1)   # one winder starts it, then it builds itself
 	if Defs.BUILDINGS[k]["faction"] == "brood":
@@ -1854,6 +1857,57 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 		if u is Unit and u.is_worker() and not u.dead:
 			u.cmd_build(b)
 	return b
+
+
+## Clockwork: the Clocktower a Winder at `from` fetches the crate for `site` from: the one
+## that makes the shortest trip (to it, then on to the site). null when there's none.
+func crate_tower(t: int, from: Vector2, site: Building) -> Building:
+	var best: Building = null
+	var bd := INF
+	for h in halls_of(t):
+		if h == site or h.kind != "clocktower":
+			continue
+		var dd: float = h.edge_distance(from) + h.edge_distance(site.center())
+		if dd < bd:
+			bd = dd
+			best = h
+	return best
+
+
+## A Winder carrying a crate let go of it (killed, or given another job): it lies at `p`
+## until another Winder carries it on.
+func drop_crate(site: Building, p: Vector2, hp := -1.0) -> Crate:
+	var c := Crate.new()
+	c.setup(self, site.team, resolve_terrain(p, p, 8.0), site)
+	if hp > 0.0:
+		c.hp = minf(hp, c.max_hp)
+	world.add_child(c)
+	crates.append(c)
+	site.crate = "ground"
+	site.crate_carrier = null
+	site.crate_obj = c
+	return c
+
+
+## The nearest crate of this side on the ground within r that no Winder is going for.
+func free_crate(t: int, p: Vector2, r: float) -> Crate:
+	var best: Crate = null
+	var bd := r
+	for c in crates:
+		if c.team == t and not c.dead and c.claimed == null and c.wanted():
+			var dd: float = c.position.distance_to(p)
+			if dd < bd:
+				bd = dd
+				best = c
+	return best
+
+
+## The crate on the ground under a tap.
+func crate_at(p: Vector2) -> Crate:
+	for c in crates:
+		if not c.dead and c.visible and c.rect().grow(6).has_point(p):
+			return c
+	return null
 
 
 ## Power fields lie flat on the ground, so seen at the map's angle they are ellipses:
@@ -2250,6 +2304,15 @@ func find_target(u: Unit, r: float) -> Entity:
 		elif dd < bd:
 			bd = dd
 			best = o
+	# a Clockwork crate on the ground: smash it (counted like a worker)
+	if not careful and not u.d.get("medic", false):
+		for c in crates:
+			if c.dead or not hostile(c.team, u.team) or not u.can_hit(c):
+				continue
+			var dc: float = c.position.distance_to(u.position)
+			if dc <= r and dc + 60.0 < bd and side_sees(u.team, c.position):
+				bd = dc + 60.0
+				best = c
 	if careful and not picks.is_empty():
 		picks.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		for i in mini(picks.size(), 6):
@@ -3235,6 +3298,8 @@ func _update_vis() -> void:
 			u.visible = not u.off_field
 		for b in buildings:
 			b.visible = true
+		for c in crates:
+			c.visible = true
 		return
 	fog_sprite.visible = true
 	if _fog_bytes.size() != W * H * 2:
@@ -3246,6 +3311,9 @@ func _update_vis() -> void:
 	for u in units:
 		if not allied(u.team, human):
 			u.visible = hv[idx(cell_of(u.position))] == 1 and not u.off_field
+	for c in crates:
+		if not allied(c.team, human):
+			c.visible = hv[idx(cell_of(c.position))] == 1
 	for b in buildings:
 		if not allied(b.team, human):
 			if not b.seen_by_human:
@@ -3496,6 +3564,22 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 	if us.is_empty():
 		return
 	var e := null if force_move else entity_at(p)
+	# a crate on the ground: Winders of its side carry it on (the nearest one), enemies smash it
+	var cr: Crate = null
+	if not force_move and not (e is Unit):
+		cr = crate_at(p)
+	if cr and cr.team == us[0].team and us.any(func(u: Unit) -> bool: return u.kind == "winder"):
+		var winders: Array = us.filter(func(u: Unit) -> bool: return u.kind == "winder")
+		winders.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(cr.position) < b.position.distance_squared_to(cr.position))
+		winders[0].cmd_build(cr.site)
+		cr.claimed = winders[0]
+		for u in us:
+			if u != winders[0]:
+				u.cmd_move(p)
+		_ping(p, Color(1, 0.85, 0.3))
+		return
+	if cr and hostile(cr.team, us[0].team):
+		e = cr
 	# infantry sent to one of our balloons: they climb in
 	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
 		load_order(us, [e])

@@ -935,7 +935,12 @@ func cmd_build(site: Building) -> void:
 		return      # riding in a balloon
 	if not is_worker():
 		return
+	# sent on to the site his crate is for: he keeps it on his back
+	var keep := crate_site if crate_site == site else null
+	if keep:
+		crate_site = null
 	_reset_work()
+	crate_site = keep
 	order = "build"
 	order_target = site
 	work = "to_site"
@@ -951,6 +956,7 @@ func _reset_work() -> void:
 	_release_patient()
 	_cancel_boarding()
 	_wind_target = null
+	drop_crate()
 	if sky == "to_land":
 		sky = "air"
 	if keg:
@@ -1532,6 +1538,13 @@ func _physics_process(delta: float) -> void:
 					cmd_repair(hurt)
 				elif auto_work:
 					scan_t = 0.0      # nothing to fix: straight on to the WORK check below
+			# an idle Winder carries a crate dropped close by on to its site
+			if kind == "winder" and order == "idle" and scan_t <= 0.0 and not game.crates.is_empty():
+				var cr := game.free_crate(team, position, float(Defs.CRATE["auto"]) * Defs.TILE)
+				if cr:
+					scan_t = 1.0
+					cmd_build(cr.site)
+					cr.claimed = self
 			# WORK is on by default: an idle worker goes back to its post by itself
 			if is_worker() and auto_work and order == "idle" and scan_t <= 0.0:
 				scan_t = 1.5
@@ -1631,6 +1644,8 @@ func _physics_process(delta: float) -> void:
 			want = Vector2.ZERO    # the shield is planted
 	_move(want, delta)
 	_animate(delta)
+	if kind == "winder" and (crate_site or _crate_spr):
+		_update_crate_spr()
 	# redraw the shadow, ring and bars only when something on them changed
 	var extra := 0
 	if topter_bat != "":
@@ -2164,6 +2179,8 @@ var carry_t := 0.0
 var carry_blue := false
 var carry_empty := false        # bringing the spent battery back to the source
 var crusher: Building = null    # the Ore Crusher the battery on its back is going to
+var crate_site: Building = null # Winder: the site the crate on his back is for (Defs.CRATE)
+var _crate_spr: Sprite2D = null
 
 
 func _haul_battery(src: Building, delta: float) -> Vector2:
@@ -2580,14 +2597,21 @@ func _build(delta: float) -> Vector2:
 		else:
 			cmd_stop()
 		return Vector2.ZERO
+	if kind == "winder" and site.crate != "" and crate_site != site:
+		return _fetch_crate(site, delta)
 	if site.edge_distance(position) < radius + 17.0:
 		path = PackedVector2Array()
 		facing = (site.center() - position).normalized()
 		if kind == "winder":
-			# Winds the frame up; it assembles itself from here.
-			site.seeded = true
-			site._update_sprite()
-			Sfx.play("ratchet", position)
+			if crate_site == site:
+				# sets the crate down: it unfolds and assembles itself from here
+				crate_site = null
+				site.land_crate()
+			else:
+				# (no Clocktower to fetch a crate from) winds the frame up himself
+				site.seeded = true
+				site._update_sprite()
+				Sfx.play("ratchet", position)
 			cmd_stop()
 			return Vector2.ZERO
 		if kind == "grub":
@@ -2606,6 +2630,101 @@ func _build(delta: float) -> Vector2:
 	return _follow(delta)
 
 
+## Winder: the crate for `site` isn't on his back yet. Fetch it from the nearest Clocktower,
+## or pick it up where it was dropped; somebody else carrying it: leave it to him.
+func _fetch_crate(site: Building, delta: float) -> Vector2:
+	if site.crate == "carried":
+		var c := site.crate_carrier
+		if c and is_instance_valid(c) and not c.dead and c != self and c.crate_site == site:
+			cmd_stop()
+			return Vector2.ZERO
+		site.crate = "tower"         # (its carrier is gone without dropping it: fetch another)
+		site.crate_carrier = null
+	var src: Entity = null
+	var reach := 0.0
+	var pause := 0.0
+	if site.crate == "ground":
+		var cr := site.crate_obj
+		if cr == null or not is_instance_valid(cr) or cr.dead:
+			site.crate = "tower"
+			site.crate_obj = null
+			return Vector2.ZERO
+		cr.claimed = self
+		src = cr
+		reach = radius + 10.0
+		pause = float(Defs.CRATE["lift"])
+	else:
+		src = game.crate_tower(team, position, site)
+		if src == null:
+			site.crate = ""          # no Clocktower left: he starts it by hand (Game.place_building)
+			return Vector2.ZERO
+		reach = radius + 17.0
+		pause = float(Defs.CRATE["pickup"])
+	if work == "crate_pickup":
+		facing = (src.center() - position).normalized() if src.center() != position else facing
+		work_t -= delta
+		if work_t <= 0.0:
+			if site.crate == "ground":
+				site.crate_obj.remove()
+			site.crate = "carried"
+			site.crate_carrier = self
+			site.crate_obj = null
+			crate_site = site
+			Sfx.play("ratchet", position, -6.0)
+			work = "to_site"
+			path = PackedVector2Array()
+		return Vector2.ZERO
+	if src.edge_distance(position) < reach:
+		path = PackedVector2Array()
+		work = "crate_pickup"
+		work_t = pause
+		return Vector2.ZERO
+	var goal := src.global_position if src is Crate else game.approach_point(src, position)
+	var w := "to_crate" if src is Crate else "to_tower"
+	if work != w or path_goal.distance_to(goal) > 24.0:
+		work = w
+		path = PackedVector2Array()
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		if src is Crate and position.distance_to(goal) < 140.0 and game.line_clear(position, goal):
+			return (goal - position).normalized() * speed
+		_request_path(goal)
+	return _follow(delta)
+
+
+## Winder: where the crate on his back sits for each view ([x, y from the feet, unflipped art
+## (facing east), drawn behind the body]): behind him when he faces us, in front of him when
+## he walks away. One picture for every view; it bobs with his steps.
+const CRATE_BACK := {"s": [0, -25, true], "se": [-4, -25, true], "e": [-7, -24, true], "ne": [-4, -23, false], "n": [0, -23, false]}
+
+
+func _update_crate_spr() -> void:
+	if crate_site == null or dead:
+		if _crate_spr:
+			_crate_spr.visible = false
+		return
+	if _crate_spr == null:
+		_crate_spr = Sprite2D.new()
+		_crate_spr.texture = Game.tex("res://assets/effects/crate_carried.png")
+		_crate_spr.use_parent_material = true
+		sprite.add_child(_crate_spr)
+	var e: Array = CRATE_BACK.get(anim_dir, [0, -24, true])
+	var bob := -1.0 if anim == "walk" and sprite.frame % 2 == 1 else 0.0
+	_crate_spr.visible = true
+	_crate_spr.position = Vector2(float(e[0]), float(e[1]) + bob)
+	_crate_spr.show_behind_parent = e[2]
+
+
+## Winder: let go of the crate on his back (killed, or given another job on the way): it
+## lies where he stood until another Winder carries it on.
+func drop_crate() -> void:
+	var s := crate_site
+	crate_site = null
+	if s and is_instance_valid(s) and not s.dead and not s.built and s.crate == "carried" and s.crate_carrier == self:
+		game.drop_crate(s, position)
+		if team == game.human and not dead:
+			game.float_text(position + Vector2(0, -36), "crate dropped", Color(1, 0.85, 0.4))
+
+
 # ------------------------------------------------------------------ death
 
 func die() -> void:
@@ -2618,6 +2737,9 @@ func die() -> void:
 	_release_patient()
 	_drop_body()
 	_cancel_boarding()
+	drop_crate()               # (a Winder) the crate on his back falls where he stood
+	if _crate_spr:
+		_crate_spr.visible = false
 	# fallen under the cross (just raised, or just bandaged): gone for good
 	final_death = cross_t > 0.0
 	died_at = game.clock

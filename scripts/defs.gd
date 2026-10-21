@@ -138,6 +138,15 @@ const BRACE := {"armor": 7, "reach": 120.0, "cone": 0.45, "front": 0.2, "switch"
 const SPRING := {"run": 50.0, "crank": 0.6}
 ## Winders wind themselves: `run` s away from a field, then they stop for `stop` s to crank.
 const WINDER_SELF := {"run": 90.0, "stop": 3.0, "low": 0.04}
+## The Winder's self-building crate: a new Clockwork building's Winder fetches it from the
+## nearest Clocktower (`pickup` s to shoulder it), carries it to the site and drops it; the
+## build time starts when it lands. Dropped on the way (he died or got another job), it lies
+## there with `hp` until a Winder carries it on (`lift` s to pick it up; idle Winders within
+## `auto` tiles do so by themselves); destroyed, the building is cancelled (Game.abandon's
+## refund). No Clocktower: the Winder starts the building as before. The unfold plays frames
+## 0-4 for `unfold` s each, holds frame 5 for `hold` s and cross-fades into the construction
+## sprite over `fade` s (a low building, the Assembly Works, holds frame 4 instead: ArtData.CRATE).
+const CRATE := {"hp": 40.0, "pickup": 0.8, "lift": 0.5, "auto": 10, "unfold": 0.4, "hold": 0.3, "fade": 0.5}
 
 
 ## A carried battery's charge after `t` seconds on the road.
@@ -287,7 +296,7 @@ const UNITS := {
 		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 5, "cooldown": 1.2, "radius": 12, "from": "clocktower",
 		"faction": "clockwork", "worker": true, "repairs": true,
-		"about": "Cranks Boilers for energy, starts buildings and repairs constructs and buildings.",
+		"about": "Cranks Boilers for energy and repairs constructs and buildings. To start a building he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on.",
 	},
 	"windup_soldier": {
 		"tags": ["light"],

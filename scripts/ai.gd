@@ -207,6 +207,30 @@ func _workers() -> void:
 				u.cmd_gather(site)
 	if _crown() or _brood():
 		_move_off_tired_soil(labs)
+	if _clock():
+		_tend_sites(labs)
+
+
+## Clockwork: a site nobody is starting (its Winder was killed or pulled away, dropping the
+## crate on the way): the nearest Winder that isn't building goes to fetch or carry its crate.
+func _tend_sites(labs: Array) -> void:
+	for b in game.buildings:
+		if b.team != team or b.dead or b.built or b.seeded or b.d["faction"] != "clockwork":
+			continue
+		if game.units.any(func(u: Unit) -> bool: return u.team == team and not u.dead and u.order == "build" and u.order_target == b):
+			continue
+		var at: Vector2 = b.crate_obj.position if b.crate == "ground" and b.crate_obj else b.center()
+		var best: Unit = null
+		var bd := INF
+		for u in labs:
+			if u.dead or u.order == "build" or _escort.has(u):
+				continue
+			var dd: float = u.position.distance_to(at)
+			if dd < bd:
+				bd = dd
+				best = u
+		if best:
+			best.cmd_build(b)
 
 
 ## Crown: farmers on spent soil walk over to fresh farms with room (a couple at a time);
@@ -815,10 +839,18 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	var best: Unit = null
 	var bd := INF
 	var target := Vector2(spot) * Defs.TILE
+	# Clockwork: the Winder fetches the crate from a Clocktower first, so the trip that
+	# counts is to the nearest Clocktower and on to the site (Defs.CRATE)
+	var towers: Array = _halls().filter(func(h: Building) -> bool: return h.built and h.kind == "clocktower") if _clock() else []
 	for u in game.workers(team):
 		if u.order == "build" or _escort.has(u):
 			continue
-		var dd: float = u.position.distance_to(target) + (0.0 if u.order == "idle" else 150.0) + (200.0 if u.carrying > 0 else 0.0)
+		var trip: float = u.position.distance_to(target)
+		if not towers.is_empty():
+			trip = INF
+			for h in towers:
+				trip = minf(trip, u.position.distance_to(h.center()) + h.center().distance_to(target))
+		var dd: float = trip + (0.0 if u.order == "idle" else 150.0) + (200.0 if u.carrying > 0 else 0.0)
 		if dd < bd:
 			bd = dd
 			best = u

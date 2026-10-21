@@ -62,6 +62,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "growth": b.growth, "gold_acc": b.gold_acc,
 			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
+			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
 	for u in game.units:
@@ -82,6 +83,16 @@ static func save(game: Game, cfg: Dictionary) -> void:
 					ps.append({"k": p.kind, "hp": p.hp, "mode": p.mode, "auto": p.auto_work, "kills": p.kills, "cross": p.cross_t})
 			ud["pass"] = ps
 		d["units"].append(ud)
+	# Clockwork crates on the ground, and the ones on a Winder's back (they come back lying
+	# where he stood): [x, y, team, site cell x, site cell y, hp]
+	d["crates"] = []
+	for c in game.crates:
+		if not c.dead and c.wanted():
+			d["crates"].append([c.position.x, c.position.y, c.team, c.site.cell.x, c.site.cell.y, c.hp])
+	for u in game.units:
+		var s: Building = u.crate_site
+		if not u.dead and s and is_instance_valid(s) and not s.dead and not s.built and s.crate == "carried" and s.crate_carrier == u:
+			d["crates"].append([u.position.x, u.position.y, u.team, s.cell.x, s.cell.y, float(Defs.CRATE["hp"])])
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -134,6 +145,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		game._mark(b.cell, b.size, 0)
 		b.queue_free()
 	game.buildings.clear()
+	for c in game.crates.duplicate():
+		c.queue_free()
+	game.crates.clear()
 	game.gate_team.clear()
 	game.clock = float(d["clock"])
 	for t in game.players.size():
@@ -190,6 +204,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.dir_locked = bool(bd.get("vl", false))
 		b.swamp_r = float(bd["swamp_r"])
 		b.seeded = bool(bd["seeded"])
+		b.crate = String(bd.get("crate", ""))        # (older saves: no crates)
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
 		if b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower":
@@ -214,6 +229,15 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for b in game.buildings:
 		if b.kind == "farm" or b.kind == "feeding_pit":
 			b._update_sprite()      # (its tired-soil tint needs the halls back first)
+	for cd in d.get("crates", []):
+		var cc := Vector2i(int(cd[3]), int(cd[4]))
+		for b in game.buildings:
+			if b.team == int(cd[2]) and b.cell == cc and not b.built and b.crate_obj == null:
+				game.drop_crate(b, Vector2(float(cd[0]), float(cd[1])), float(cd[5]))
+				break
+	for b in game.buildings:
+		if b.crate == "ground" and b.crate_obj == null:
+			b.crate = "tower"       # (its crate wasn't found: a Winder fetches another)
 	for ud in d["units"]:
 		var uk := _kind(String(ud["k"]))
 		if not Defs.UNITS.has(uk):

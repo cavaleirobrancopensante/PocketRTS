@@ -1169,7 +1169,11 @@ func _draw_panel(font: Font) -> void:
 			name = (e as Building).d["name"]
 			info = (e as Building).d["about"]
 			var bb := e as Building
-			if not bb.seeded:
+			if not bb.seeded and bb.crate != "":
+				info = {"tower": "Waiting for its crate: a Winder fetches it from a Clocktower.",
+					"carried": "Its crate is on the way, on a Winder's back.",
+					"ground": "Its crate was dropped on the way: send a Winder onto it (destroyed, the building is cancelled)."}.get(bb.crate, "")
+			elif not bb.seeded:
 				info = "Waiting for a %s." % ("Winder to start it" if bb.d["faction"] == "clockwork" else "grub to turn into it")
 			elif not bb.built:
 				info = "%s: %d%%" % ["Growing" if bb.d["faction"] == "brood" else "Under construction", int(bb.progress * 100)]

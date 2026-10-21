@@ -18,7 +18,15 @@ var rally := Vector2.INF
 var rally_target: Entity = null
 var worker_rally := Vector2.INF  # Hive: workers and army have separate rally points
 var worker_rally_target: Entity = null
-var seeded := true               # Brood: a grub has turned into the site
+var seeded := true               # Brood: a grub has turned into the site; Clockwork: the crate has landed (or a Winder started it)
+# Clockwork: the Winder's crate (Defs.CRATE). "" none (started by hand, or no Clocktower to
+# fetch it from); "tower" waiting at a Clocktower for a Winder to fetch it; "carried" on
+# crate_carrier's back; "ground" dropped on the way (crate_obj). The site is a ghost until it lands.
+var crate := ""
+var crate_carrier: Unit = null
+var crate_obj: Crate = null
+var unfold_t := -1.0             # seconds since the crate landed, while it unfolds (-1: not unfolding)
+var _unfold: Sprite2D = null
 var eggs := 0                    # Brood Hive
 var egg_t := 0.0
 var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
@@ -169,6 +177,70 @@ func add_progress(delta: float) -> void:
 		built = true
 		hp = maxf(hp, max_hp * 0.95)
 		game.on_building_complete(self)
+	_update_sprite()
+
+
+## Clockwork: the Winder has set the crate down on the site. It unfolds into the building's
+## frame (assets/effects/crate_unfold_<n>.png), and the building builds itself from now on.
+func land_crate() -> void:
+	crate = ""
+	crate_carrier = null
+	crate_obj = null
+	seeded = true
+	unfold_t = 0.0
+	Sfx.play("ratchet", center())
+	_update_sprite()
+
+
+## How long the unfold takes: frames 0-4, frame 5 held, then the cross-fade.
+static func unfold_time() -> float:
+	return 5.0 * float(Defs.CRATE["unfold"]) + float(Defs.CRATE["hold"]) + float(Defs.CRATE["fade"])
+
+
+## The crate unfolding (over the ghost of the site): the closed crate grows from its size on
+## the ground as the lid opens and lets out steam, the sides fold flat, the iron plates go
+## down, then the frame with its beam stands and fades into the construction sprite.
+func _unfold_tick(delta: float) -> void:
+	var per := float(Defs.CRATE["unfold"])
+	var prev := int(unfold_t / per)
+	var done := unfold_t < 0.0
+	unfold_t += delta
+	var info: Array = ArtData.CRATE.get(kind, [])
+	if done or dead or built or unfold_t >= unfold_time() or info.is_empty():
+		unfold_t = -1.0
+		if _unfold:
+			_unfold.queue_free()
+			_unfold = null
+		_update_sprite()
+		return
+	if _unfold == null:
+		_unfold = Sprite2D.new()
+		_unfold.centered = false
+		_unfold.texture = Game.tex("res://assets/effects/crate_unfold_%s.png" % kind)
+		_unfold.hframes = 6
+		_unfold.offset = Vector2(-float(info[0]) * 0.5, -float(info[1]) + 6.0)
+		_unfold.material = team_material()
+		add_child(_unfold)
+	# (a low building fades in from the iron plates: the gantry would tower over it)
+	var f := mini(int(unfold_t / per), int(info[3]))
+	_unfold.frame = f
+	var s0 := float(ArtData.CRATE_GROUND) / float(info[2])
+	_unfold.scale = Vector2.ONE * lerpf(s0, 1.0, ease(clampf(unfold_t / per, 0.0, 1.0), 0.4))
+	var fade_from := 5.0 * per + float(Defs.CRATE["hold"])
+	_unfold.modulate.a = 1.0 - clampf((unfold_t - fade_from) / float(Defs.CRATE["fade"]), 0.0, 1.0)
+	if f != prev and f <= 4 and visible and game.view_rect.has_point(global_position):
+		if f == 1:
+			# steam out of the open lid
+			for i in 3:
+				var fx := game.spawn_effect("smoke", global_position + Vector2(randf_range(-0.18, 0.18) * float(info[0]), -float(info[1]) * 0.55), 0.9)
+				fx.scale = Vector2(0.4, 0.4)
+				fx.modulate = Color(1.2, 1.2, 1.2, 0.7)
+				fx.z_index = 4
+		else:
+			Sfx.play("ratchet", center(), -8.0)
+		if f == 4:
+			var du := game.spawn_effect("dust", global_position + Vector2(0, -6), 1.4)
+			du.scale = Vector2.ONE * float(info[0]) / 110.0
 	_update_sprite()
 
 
@@ -335,6 +407,8 @@ func _physics_process(delta: float) -> void:
 	elif d["faction"] == "clockwork":
 		if not built and seeded:
 			add_progress(delta)
+		if unfold_t >= 0.0:
+			_unfold_tick(delta)
 		if built and d.has("battery"):
 			var bat: Array = d["battery"]
 			if batteries < int(bat[1]):
@@ -551,6 +625,11 @@ func _update_sprite() -> void:
 		sprite.offset = Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
 	if not seeded and not dead:
 		sprite.modulate = Color(1, 1, 1, 0.3)
+	elif unfold_t >= 0.0 and not dead:
+		# the crate unfolding on the ghost of the site; the scaffold fades in at the end
+		var fade_from := 5.0 * float(Defs.CRATE["unfold"]) + float(Defs.CRATE["hold"])
+		var k := clampf((unfold_t - fade_from) / float(Defs.CRATE["fade"]), 0.0, 1.0)
+		sprite.modulate = Color(1, 1, 1, lerpf(0.0, 0.55 + 0.45 * progress, k))
 	else:
 		sprite.modulate = Color(1, 1, 1, 0.55 + 0.45 * progress) if not built and not dead else Color.WHITE
 		if kind == "farm" and built and not dead and game:
@@ -591,6 +670,10 @@ func die() -> void:
 			u.cmd_stop()
 	crew.clear()
 	morph_t.clear()
+	unfold_t = -1.0
+	if _unfold:
+		_unfold.queue_free()
+		_unfold = null
 	swamp_r = 0.0
 	game.swamp_dirty = true
 	if fire:
