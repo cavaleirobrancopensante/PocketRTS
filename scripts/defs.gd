@@ -8,7 +8,7 @@ const EGGS_MAX := 5
 const EGG_TIME := 6.0
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
-const REPAIR_RATE := 14.0         # hp per second a Winder restores
+const REPAIR_RATE := 20.0         # hp per second a Winder restores
 
 # ---- Economy: every faction makes its own resources from structures.
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);

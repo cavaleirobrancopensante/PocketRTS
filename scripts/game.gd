@@ -744,6 +744,8 @@ func _start_positions() -> void:
 			var spot := find_spot(t, k, b, 4, 11, "behind")
 			if spot.x >= 0:
 				var eb := _add_building(k, t, spot, true)
+				if k == "farm":
+					eb.growth = 0.6     # the starting farm is already well grown: first harvest in seconds
 				sites.append(eb)
 				_update_swamp()
 		var hall_center := b.rect().get_center()
