@@ -77,7 +77,9 @@ func take_damage(amount: float, _from: Entity) -> void:
 	if dead or untouchable():
 		return
 	var arm := armor - (2.0 if acid_t > 0.0 else 0.0)
-	var dmg := minf(hp, maxf(1.0, amount - maxf(arm, 0.0)))
+	# a hit always does at least 1, but damage over time (storm, gas clouds: tiny amounts
+	# every tick) is applied as it is, or the 1-point floor turns it into 30 a second
+	var dmg := minf(hp, maxf(1.0, amount - maxf(arm, 0.0)) if amount >= 1.0 else amount)
 	hp -= dmg
 	if _from and is_instance_valid(_from) and game.hostile(_from.team, team):
 		last_hit_by = _from.kind

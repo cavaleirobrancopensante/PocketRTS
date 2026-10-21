@@ -800,7 +800,7 @@ const BUILDING_SIZE := {
 	"foundry": Vector2i(118, 171),
 	"capacitor_works": Vector2i(78, 96),
 	"brood_pen": Vector2i(134, 116),
-	"engine_hall": Vector2i(144, 176),
+	"engine_hall": Vector2i(158, 191),
 }
 
 const NATURE := ["tree_0", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "rock_0", "rock_1", "rock_2", "rock_3", "rock_4", "rock_5"]

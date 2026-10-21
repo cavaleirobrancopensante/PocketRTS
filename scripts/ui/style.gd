@@ -17,7 +17,7 @@ const ACCENT := {
 	"clockwork": Color("#4aa3d9"),
 }
 const FACTION_TAG := {
-	"crown": "Pike, shot and black powder",
+	"crown": "Shot, shell and black powder",
 	"brood": "Swarm, swamp and hunger",
 	"clockwork": "Gears, steam and lightning",
 }

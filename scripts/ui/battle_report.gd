@@ -176,7 +176,7 @@ func _mvp(t: int) -> String:
 	ks.sort_custom(func(a: String, b: String) -> bool: return kb[a] > kb[b])
 	var parts: Array = []
 	for k in ks.slice(0, 2):
-		parts.append("%s %d" % [Defs.UNITS[k]["name"] if Defs.UNITS.has(k) else Defs.BUILDINGS[k]["name"], kb[k]])
+		parts.append("%s %d" % [Defs.UNITS[k]["name"] if Defs.UNITS.has(k) else Defs.BUILDINGS.get(k, {"name": String(k).capitalize()})["name"], kb[k]])
 	return "\n".join(parts) if not parts.is_empty() else "-"
 
 

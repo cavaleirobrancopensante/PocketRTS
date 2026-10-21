@@ -610,15 +610,23 @@ func _more_halls(macro: bool) -> void:
 			return
 
 
-## The tech step to the first ranged unit, as soon as there's a little money for it.
+## Research once the army it's for is there and the money allows (Crown: the musket locks
+## from 4 Musketeers, Armour from 6, Flintlock from 8 and Caplock from 12; never with an
+## expansion to save for).
+const RESEARCH_AT := {"matchlock": 4, "armour": 6, "flintlock": 8, "caplock": 12}
+
+
 func _research() -> void:
 	if _hall_reserve:
 		return
+	var muskets := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "musketeer").size()
 	for key in Defs.RESEARCH:
 		var info: Dictionary = Defs.RESEARCH[key]
 		if info["faction"] != game.faction_of(team) or game.has_tech(team, key) or game.researching(team, key):
 			continue
-		if _gold() < int(info["cost"]) + _lv([150, 60, 20]):
+		if muskets < int(RESEARCH_AT.get(key, 0)) * (1.5 if difficulty == 0 else 1.0):
+			continue
+		if _gold() < int(info["cost"]) + _lv([150, 60, 20]) or _res2() < float(info.get("cost2", 0)) + 20.0:
 			continue
 		for b in _mine(info["at"]):
 			if game.research_problem(b, key) == "":
@@ -895,17 +903,30 @@ func _produce() -> void:
 					break
 		return
 	var cannons := army.filter(func(u: Unit) -> bool: return u.kind == "cannon").size()
+	var mortars := army.filter(func(u: Unit) -> bool: return u.kind == "mortar").size()
+	var muskets := army.filter(func(u: Unit) -> bool: return u.kind == "musketeer").size()
 	var short_powder := _res2() < 20.0
 	for b in _mine("barracks"):
+		# (a little room left for the research going on here)
 		if b.built and b.queue.size() < (3 if _gold() > 600 else 2):
-			# (more musketeers while powder piles up: it's what the powder is for)
-			var k := "musketeer" if randf() < (0.25 if short_powder else (0.75 if _res2() > 150.0 else 0.6)) and game.can_train(b, "musketeer") == "" else "pikeman"
+			# the line is Musketeers (they stab when the enemy closes); horsemen to raid and
+			# to run down guns
+			var k := "musketeer"
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
-			if (horse < 3 or horse * 6 < army.size()) and randf() < 0.45 and game.can_train(b, "cuirassier") == "":
+			if (horse < 3 or horse * 6 < army.size()) and randf() < (0.6 if short_powder else 0.3) and game.can_train(b, "cuirassier") == "":
 				k = "cuirassier"
-			game.train(b, k)
+			elif game.can_train(b, "musketeer") != "":
+				k = "cuirassier" if game.can_train(b, "cuirassier") == "" else ""
+			if k != "":
+				game.train(b, k)
 	for f in _mine("foundry"):
-		if f.built and f.queue.size() < (2 if _gold() > 600 else 1) and cannons * 4 < army.size() + 2 and not short_powder:
+		if not f.built or short_powder:
+			continue
+		# a Mortar or two behind the musketeers (one per 6 of them, 2 at most)
+		if f.queue.size() < 2 and mortars < mini(2, int(muskets / 6.0)) and not f.queue.has("mortar") and game.can_train(f, "mortar") == "":
+			game.train(f, "mortar")
+			mortars += 1
+		elif f.queue.size() < (2 if _gold() > 600 else 1) and cannons * 4 < army.size() + 2:
 			game.train(f, "cannon")
 	# one Powder Wagon once there's a real firing line (6+ musketeers) to keep in powder
 	if _wagon() == null and army.filter(func(u: Unit) -> bool: return u.kind == "musketeer").size() >= 6:
@@ -930,7 +951,7 @@ func _produce() -> void:
 ## Units busy with something of their own the army orders must leave alone: a balloon
 ## drop, an Ornithopter fetching or delivering a battery, a Bloater out of gas.
 func _on_errand(u: Unit) -> bool:
-	if u.order in ["courier", "overload", "board", "unload"]:
+	if u.order in ["courier", "overload", "board", "unload", "heal", "revive"]:
 		return true
 	if u.kind == "bloater" and u.deflate != "":
 		return true
@@ -1337,7 +1358,7 @@ func _enemy_base() -> Vector2:
 
 # ------------------------------------------------------------------ abilities (Normal and up)
 
-## Bayonets when the powder runs dry; canister when a crowd closes on a cannon.
+## Canister when a crowd closes on a cannon. (Musketeers pick musket or bayonet by themselves.)
 func _abilities() -> void:
 	_spells()
 	if _brood():
@@ -1349,16 +1370,7 @@ func _abilities() -> void:
 	if not _crown():
 		return
 	for u in game.army(team):
-		if u.kind == "musketeer":
-			# (out of powder they fix bayonets by themselves) fix them when the enemy is
-			# already on top of us
-			if difficulty >= 2:
-				var close := 0
-				for o in game.units_near(u.position, 40.0):
-					if game.hostile(o.team, team) and not o.dead and float(o.d["range"]) < 50.0 and float(o.d["damage"]) > 0.0:
-						close += 1
-				u.set_bayonet(close >= 2)
-		elif u.kind == "cannon":
+		if u.kind == "cannon":
 			var crowd := 0
 			var flyers := 0
 			for o in game.units_near(u.position, Defs.CANISTER["range"] + 20.0):
@@ -1693,7 +1705,8 @@ func _micro() -> void:
 				u.cmd_move(_wave_target if _attacking else u.position, true)
 			continue
 		var reach: float = float(u.d["range"]) + u.radius + 30.0
-		if brutal and float(u.d["range"]) >= 100.0 and u.cooldown > 0.4 and not u.is_air():
+		# (Musketeers stand and use the bayonet instead)
+		if brutal and float(u.d["range"]) >= 100.0 and u.cooldown > 0.4 and not u.is_air() and u.kind != "musketeer":
 			var close: Unit = null
 			var cd := 70.0
 			for o in game.units_near(u.position, 70.0):

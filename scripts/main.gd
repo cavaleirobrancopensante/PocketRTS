@@ -34,7 +34,7 @@ Area damage (canister, round shot, steam, spit blobs, storms, exploding powder) 
 High ground: units below a cliff can't see up onto it, and ramps are the only way up. Rivers can only be crossed at the fords.
 
 Skirmish: up to four players. Each computer player has a PLAN (Balanced, Rush, Economy, Timing attack, Air rush for the Brood, or Random). Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
-	"CROWN": """THE CROWN: pike, shot and black powder.
+	"CROWN": """THE CROWN: shot, shell and black powder.
 
 Labourers work Farms (up to 8 each): a farm ripens into a 380-gold harvest, about every 40 s with a full crew. The Powder Mill (up to 6 labourers) grinds saltpetre into black powder (musketeers, balloons and wagons cost some): build it next to the saltpetre outcrops at the back of a base. Each Town Hall allows 2 Farms and 1 Powder Mill nearby.
 
@@ -42,11 +42,15 @@ Soil: each Town Hall's farmland holds 9,000 gold that its farms draw out harvest
 
 Saltpetre: a base's saltpetre keeps a fully worked Mill (about 120 powder a minute) going for about 11 minutes ("Saltpetre: %" on the Mill); spent, the Mill grinds at a quarter. Take a base with fresh saltpetre and build a Mill there.
 
-Powder: each Musketeer carries 12 shots and each Cannon 8 (the amber bar). A dry musketeer fixes bayonets by itself until it refills; a dry cannon can't fire. They refill within 3 tiles of a Powder Mill, Barracks or Town Hall (paid from the powder bank: 6 for a full musketeer; an empty bank makes them wait), or of a Powder Wagon (Foundry): it carries 120 shots for the army, fills up near those buildings (1 powder per 2 shots), and on SUPPLY two labourers run 30-shot kegs to it from the Mill. A wagon that's destroyed explodes (friends too), and so does a labourer killed with a keg: guard them.
+Powder: each Musketeer carries 12 shots, each Cannon 8 and each Mortar 6 (the amber bar). A dry musketeer fights with the bayonet until it refills; a dry gun can't fire. They refill within 3 tiles of a Powder Mill, Barracks or Town Hall (paid from the powder bank: 6 for a full musketeer; an empty bank makes them wait), or of a Powder Wagon (Foundry): it carries 120 shots for the army, fills up near those buildings (1 powder per 2 shots), and on SUPPLY two labourers run 30-shot kegs to it from the Mill. A wagon that's destroyed explodes (friends too), and so does a labourer killed with a keg: guard them.
 
 Walls and gates: lay them in a line across your ramp (every main base sits on high ground with one way up); gates open for your side only.
 
-Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons, Powder Wagons and Observation Balloons, which also carry 4 Musketeers, Pikemen or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
+Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. They shoot at range and stab with the bayonet by themselves when the enemy closes in (no button). Barracks: Musketeers and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. The Barracks also researches Armour (+1 armour, +20 health and breastplates for every Musketeer) and better locks, one after another: Matchlock, Flintlock, Caplock (reload 10%, 20%, 30% faster).
+
+Foundry: Field Cannons, Mortars, Powder Wagons and Observation Balloons, which also carry 4 Musketeers or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Round shot ploughs through everyone in its line, your own men too: a selected cannon shows its line of fire, red over your men. The Mortar must DEPLOY to fire; it lobs shells over men and walls 5 to 11 tiles away that burst over a wide area (friends too).
+
+Church: one Missionary, who bandages wounded soldiers back to full health and raises fallen Musketeers and Cuirassiers from their bodies by himself (6 s): back at half health under the cross for 30 s; fall again under the cross and he's gone for good. The Missionary can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
 
 Grubs haul food from Feeding Pits to a Hive: a load pays for its trip, and a grub earns more the farther its pit is from the Hive (about 30% more from 18-22 tiles out than right beside it). Pits must grow on your swamp; Spore Vents spread it far. Each Hive allows 3 Feeding Pits and 1 Brood Pen.

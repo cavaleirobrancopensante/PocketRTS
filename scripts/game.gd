@@ -116,7 +116,7 @@ var _first_of := {}             # "team:kind" -> true once that player has had o
 
 static func _new_stats() -> Dictionary:
 	return {"lost": 0, "killed": 0, "gold": 0, "spent": 0, "trained": 0, "built": 0,
-		"razed": 0, "bld_lost": 0, "damage": 0.0, "peak_army": 0, "value_killed": 0, "res2_in": 0.0, "sacrificed": 0, "sacrifice_essence": 0,
+		"razed": 0, "bld_lost": 0, "damage": 0.0, "peak_army": 0, "value_killed": 0, "res2_in": 0.0, "sacrificed": 0, "sacrifice_essence": 0, "revived": 0,
 		"kills_by": {}, "army_tl": [0], "gold_tl": [0], "workers_tl": [0]}
 
 
@@ -1385,6 +1385,9 @@ func on_unit_died(u: Unit) -> void:
 					break
 	if not absorbed and brood_in_match() and not u.is_air():
 		corpses.append(u)
+	# a Crown soldier's body: a Missionary may raise him (not one who fell under the cross)
+	if not absorbed and not u.final_death and (Defs.REVIVE["kinds"] as Array).has(u.kind):
+		fallen.append(u)
 	var k := _killer(u)
 	if k >= 0:
 		var foe: Dictionary = stats[k]
@@ -1396,6 +1399,49 @@ func on_unit_died(u: Unit) -> void:
 
 ## Bodies on the field that a Brood grub can still harvest.
 var corpses: Array = []
+## Bodies of Crown soldiers a Missionary can still raise (Defs.REVIVE).
+var fallen: Array = []
+
+
+## Can this Missionary raise that body? (Not one a grub is already taking, nor one another
+## Missionary is going to raise: whoever claims a body first has it.)
+func can_revive(b, m: Unit) -> bool:
+	if b == null or not is_instance_valid(b) or not b.dead or b.final_death or not fallen.has(b) or b.team != m.team:
+		return false
+	if clock - b.died_at > float(Defs.REVIVE["window"]):
+		return false
+	var r = b.reviver
+	if r != null and r != m and is_instance_valid(r) and not r.dead and r.order == "revive" and r._body == b:
+		return false
+	var h = b.harvester
+	if h != null and is_instance_valid(h) and not h.dead and h.order == "harvest" and h._corpse == b:
+		return false
+	return true
+
+
+## The nearest body this Missionary could raise.
+func find_body(m: Unit, r: float) -> Unit:
+	var best: Unit = null
+	var bd := r
+	for b in fallen:
+		if not is_instance_valid(b) or not can_revive(b, m):
+			continue
+		var dd: float = b.position.distance_to(m.position)
+		if dd < bd:
+			bd = dd
+			best = b
+	return best
+
+
+## A soldier raised by a Missionary is back in the army.
+func on_unit_revived(u: Unit) -> void:
+	if not units.has(u):
+		units.append(u)
+	stats[u.team]["revived"] = int(stats[u.team].get("revived", 0)) + 1     # (older saves: no count)
+	var fx := spawn_effect("smoke", u.position + Vector2(0, -10), 0.8)
+	fx.modulate = Color(1, 1, 0.85, 0.6)
+	if mlog:
+		mlog.add("%s's Missionary raised a fallen %s" % [mlog.who(u.team), u.d["name"]])
 
 
 func brood_in_match() -> bool:
@@ -1418,6 +1464,10 @@ func find_corpse(g: Unit, r: float) -> Unit:
 			continue
 		var h = c.harvester
 		if h != null and h != g and is_instance_valid(h) and not h.dead and h.order == "harvest":
+			continue
+		# a Missionary on his way to raise him: the body is his
+		var rv = c.reviver
+		if rv != null and is_instance_valid(rv) and not rv.dead and rv.order == "revive" and rv._body == c:
 			continue
 		var dd: float = c.position.distance_to(g.position)
 		if dd < bd:
@@ -1634,10 +1684,18 @@ func research_problem(b: Building, key: String) -> String:
 		return "Can't research that here."
 	if has_tech(b.team, key):
 		return "Already done."
-	if researching(b.team, key) or b.research != "":
+	if researching(b.team, key):
 		return "Already researching."
+	if b.research != "":
+		return "Busy with %s." % Defs.RESEARCH[b.research]["name"]
+	var req: String = info.get("requires", "")
+	if req != "" and not has_tech(b.team, req):
+		return "Research %s first." % Defs.RESEARCH[req]["name"]
+	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	if players[b.team]["gold"] < int(info["cost"]):
-		return "Not enough %s." % String(Defs.FACTIONS[factions[b.team]]["res"][0]).to_lower()
+		return "Not enough %s." % String(res[0]).to_lower()
+	if float(players[b.team]["res2"]) < float(info.get("cost2", 0)):
+		return "Not enough %s." % String(res[1]).to_lower()
 	return ""
 
 
@@ -1646,18 +1704,40 @@ func start_research(b: Building, key: String) -> String:
 	if why != "":
 		return why
 	players[b.team]["gold"] -= int(Defs.RESEARCH[key]["cost"])
+	add_res2(b.team, -float(Defs.RESEARCH[key].get("cost2", 0)))
 	stats[b.team]["spent"] += int(Defs.RESEARCH[key]["cost"])
 	b.research = key
 	b.research_t = 0.0
+	if mlog:
+		mlog.add("%s started researching %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
 	return ""
+
+
+## Stop the research going on at a building: everything paid comes back.
+func cancel_research(b: Building) -> void:
+	if b.research == "":
+		return
+	var info: Dictionary = Defs.RESEARCH[b.research]
+	players[b.team]["gold"] += int(info["cost"])
+	players[b.team]["res2"] = float(players[b.team]["res2"]) + float(info.get("cost2", 0))
+	stats[b.team]["spent"] -= int(info["cost"])
+	b.research = ""
+	b.research_t = 0.0
 
 
 func research_done(b: Building, key: String) -> void:
 	players[b.team]["tech"][key] = true
+	var info: Dictionary = Defs.RESEARCH[key]
+	# what's already in the field gets it too (Armour; men in a balloon's basket are in
+	# `units` as well)
+	for u in units:
+		if u.team == b.team and not u.dead:
+			u.apply_tech()
 	if b.team == human:
-		notify("%s researched: %s unlocked." % [Defs.RESEARCH[key]["name"], Defs.UNITS[Defs.RESEARCH[key]["unlocks"]]["name"]], true)
+		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
+		notify("%s researched: %s" % [info["name"], what], true)
 	if mlog:
-		mlog.add("%s researched %s" % [mlog.who(b.team), Defs.RESEARCH[key]["name"]])
+		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
 
 func train(b: Building, k: String) -> String:
@@ -2197,6 +2277,13 @@ func find_target(u: Unit, r: float) -> Entity:
 		return null
 	var best: Entity = null
 	var bd := INF
+	# guns with a minimum range (set up) look past what's too close; area guns (round shot,
+	# mortar shells) pass over targets with their own men in the way, for another one
+	var min_r := 0.0
+	if u.deploys() and u.tesla_mode == "deployed" and u.mode != "canister":
+		min_r = float(u.d.get("min_range", 0.0))
+	var careful := (u.kind == "cannon" and u.mode != "canister") or u.kind == "mortar"
+	var picks: Array = []
 	for o in units_near(u.position, r):
 		if not hostile(o.team, u.team) or o.dead or not u.can_hit(o):
 			continue
@@ -2206,11 +2293,24 @@ func find_target(u: Unit, r: float) -> Entity:
 		if o.position.distance_to(u.position) > u.sight * T + 8.0 and not side_sees(u.team, o.position):
 			continue
 		var dd: float = o.position.distance_to(u.position)
+		if min_r > 0.0 and o.edge_distance(u.position) - u.radius < min_r:
+			continue
 		if o.is_worker():
 			dd += 60.0   # prefer fighters
-		if dd < bd:
+		if careful:
+			picks.append([dd, o])
+		elif dd < bd:
 			bd = dd
 			best = o
+	if careful and not picks.is_empty():
+		picks.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		for i in mini(picks.size(), 6):
+			if aoe_worth_it(u, picks[i][1]):
+				return picks[i][1]
+		# nothing safe to shoot at: set up, it holds fire (a building may still do); on the
+		# move it goes for the nearest and holds fire there if it must
+		if not (u.order == "hold" or u.tesla_mode == "deployed"):
+			return picks[0][1]
 	if best:
 		return best
 	if u.d.get("medic", false) or u.d.get("air_only", false):
@@ -2219,7 +2319,7 @@ func find_target(u: Unit, r: float) -> Entity:
 		if not hostile(b.team, u.team) or b.dead:
 			continue
 		var dd: float = b.edge_distance(u.position)
-		if dd >= r:
+		if dd >= r or (min_r > 0.0 and dd - u.radius < min_r):
 			continue
 		# walls and gates only when nothing else is in reach: once a swarm is through,
 		# it floods in and goes for the base, not for the rest of the wall
@@ -2586,14 +2686,27 @@ func aoe_worth_it(u: Unit, e: Entity) -> bool:
 	var reach := 0.0
 	var at := e.center()
 	var r := 0.0
+	var seg := false
+	var sa := Vector2.ZERO
+	var sb := Vector2.ZERO
 	match u.kind:
 		"cannon":
 			if u.mode == "canister":
 				cone = float(Defs.CANISTER["cone"])
 				reach = float(Defs.CANISTER["range"]) + 30.0
 			else:
-				r = float(Defs.ROUND_SHOT["line"]) * 0.6
-				at = e.center() + dir * r * 0.6
+				# the line the ball ploughs through (as in round_shot_land, a little wider:
+				# it lands within ~14 px of where it's aimed)
+				var p := e.center()
+				var gd := (p - u.center()).normalized()
+				sa = p - gd * 30.0
+				sb = p + gd * float(Defs.ROUND_SHOT["line"])
+				seg = true
+				r = float(Defs.ROUND_SHOT["width"]) + 10.0
+				at = (sa + sb) * 0.5
+		"mortar":
+			r = float(u.d["splash"]) + 10.0
+			at = e.position if e is Unit else e.center()
 		"steam_walker":
 			cone = 0.72
 			reach = float(u.d["range"]) + 24.0
@@ -2602,11 +2715,16 @@ func aoe_worth_it(u: Unit, e: Entity) -> bool:
 		_:
 			return true
 	var centre := from if cone > -2.0 else at
-	for o in units_near(centre, (reach if cone > -2.0 else r) + 24.0):
+	var look := (reach if cone > -2.0 else r) + 24.0
+	if seg:
+		look = sa.distance_to(sb) * 0.5 + r + 24.0
+	for o in units_near(centre, look):
 		if o == u or o.dead or o.off_field or o.untouchable():
 			continue
 		var inside := false
-		if cone > -2.0:
+		if seg:
+			inside = not o.is_air() and Geometry2D.get_closest_point_to_segment(o.position, sa, sb).distance_to(o.position) <= o.radius + r
+		elif cone > -2.0:
 			var to: Vector2 = o.center() - from
 			inside = to.length() <= reach + o.radius and dir.dot(to.normalized()) > cone and (u.mode == "canister" or not o.is_air())
 		else:
@@ -2661,6 +2779,47 @@ func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -
 	for b in buildings.duplicate():
 		if not allied(b.team, t) and not b.dead and b.edge_distance(p) < splash * 0.5:
 			b.take_damage(dmg, shooter)
+
+
+## Mortar: a shell lobbed high (over men and walls) onto a spot; it bursts where it lands.
+func mortar_shot(u: Unit, p: Vector2, dmg: float) -> void:
+	var muzzle := u.position + Vector2(0, -26) + u.facing * 10.0
+	var pr := Projectile.new()
+	pr.game = self
+	pr.from = muzzle
+	pr.to = p + Vector2(randf_range(-12, 12), randf_range(-8, 8))
+	pr.duration = clampf(muzzle.distance_to(pr.to) / float(Defs.MORTAR["speed"]), 0.8, 1.8)
+	pr.damage = dmg
+	pr.splash = float(u.d["splash"])
+	pr.shell = true
+	pr.team = u.team
+	pr.shooter = u
+	add_child(pr)
+	var sm := spawn_effect("smoke", muzzle + Vector2(0, -8), 0.9)
+	sm.modulate = Color(1, 1, 1, 0.8)
+	Sfx.play_any(["combat/mortar_attack", "combat/cannon_attack", "cannon"], u.global_position)
+
+
+## The shell bursts: every ground unit inside the blast is hurt, friend or foe (less at the
+## edge), and enemy buildings close by.
+func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
+	var name := "mortar_blast" if ArtData.EFFECTS.has("mortar_blast") else "blast"
+	var fx := spawn_effect(name, p, 1.0)
+	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
+	fx.scale = Vector2.ONE * (splash / 36.0)
+	Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
+	var edge := float(Defs.MORTAR["edge"])
+	for u in units_near(p, splash + 24.0):
+		if u.dead or u.off_field or u.is_air():
+			continue
+		var dd: float = u.position.distance_to(p)
+		if dd > splash + u.radius:
+			continue
+		u.take_damage(dmg * lerpf(1.0, edge, clampf(dd / splash, 0.0, 1.0)), shooter)
+	var bb := float(Defs.UNITS["mortar"].get("building_bonus", 1.0))
+	for b in buildings.duplicate():
+		if not allied(b.team, t) and not b.dead and b.edge_distance(p) < splash * 0.6:
+			b.take_damage(dmg * bb, shooter)
 
 
 ## Spells on the ground for a while: [{kind, pos, r, t, team, age, fx, healed}]
@@ -2731,7 +2890,7 @@ func load_order(riders: Array, balloons: Array) -> void:
 			u.cmd_board(best)
 		elif not (Defs.DROPSHIP["kinds"] as Array).has(u.kind):
 			if why == "" and u.team == human:
-				why = "Only Musketeers, Pikemen and Labourers fit in the basket."
+				why = "Only Musketeers and Labourers fit in the basket."
 		elif why == "" and bs.all(func(b: Unit) -> bool: return b.room() <= 0):
 			why = "The basket is full (%d men)." % int(Defs.DROPSHIP["capacity"])
 	if why != "" and not men.is_empty() and men[0].team == human:

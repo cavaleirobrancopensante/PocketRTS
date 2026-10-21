@@ -33,11 +33,12 @@ Each faction has 4 units and 4 structures in the first version, and nothing work
 | # | Unit | Role | Sprite |
 | --- | --- | --- | --- |
 | 1 | Labourer | Worker: mines gold, builds | ✅ `art/crown/labourer.png` |
-| 2 | Musketeer | Ranged line infantry | ✅ `art/crown/musketeer.png` |
-| 3 | Pikeman | Anti-cavalry, anti-charge, screens shooters | ✅ `art/crown/pikeman.png` |
+| 2 | Musketeer | Line infantry: shoots at range, stabs with the bayonet by itself up close (the Pikeman's old job); Barracks research Armour (+1 armour, +20 hp, armoured sprites) and Matchlock → Flintlock → Caplock (reload -10/-20/-30%) | ✅ `art/crown/musketeer.png`, `musketeer_armoured` |
+| 3 | ~~Pikeman~~ | Removed (after v0.7.32): the Musketeer's automatic bayonet holds the line; old saves turn Pikemen into Musketeers | (art kept) |
 | 4 | Grenadier | Splash damage against swarms | ⬜ |
 | 5 | Dragoon | Mounted raider, carbine and sabre | ⬜ |
-| 6 | Field cannon | Siege, long range, slow | ✅ `art/crown/cannon.png` (1 frame per row) |
+| 6 | Field cannon | Siege, long range, slow; round shot hits everyone in its line, friends too (a selected cannon shows its line of fire) | ✅ `art/crown/cannon.png` (1 frame per row) |
+| 6b | Mortar | Foundry; deploys to fire; arcing shell over men and walls, 5-11 tiles, 30 splash in 48 px (friends too), 6 shells of personal powder | ✅ `assets/units/mortar` |
 | 7 | Chaplain | Healer / support | ⬜ |
 | 8 | Captain | Hero with a banner, buffs nearby units | ⬜ |
 
@@ -249,7 +250,7 @@ Each faction makes its own resources from structures, and each hall allows a fix
 | Main resource | **Gold**: Farms ripen into a 380-gold harvest (~40 s with a full crew); up to 8 labourers make them grow faster. Soil fatigue: each Town Hall's farmland holds 9,000 gold; once its farms have drawn it out they pay a third, so the Crown must expand | **Biomass**: grubs haul food from Feeding Pits to a Hive; a load pays for its round trip (2 s + 0.8 s a tile of open ground) at 1.2 biomass a grub-second, +30% from 6 to 18 tiles out, flat to 22, slowly less beyond: ~1,000 a minute for a fully worked Hive (15 grubs) with pits 9-10 tiles out, ~1,150 at 12, ~1,300 from 15. Hive ground: each Hive's pits share a 10,500 reserve; spent, they yield a third, so the Brood must expand | **Ore**: only the Clocktower and its Boilers (2 per Clocktower) fill batteries; Winders carry them to Ore Crushers built next to ore outcrops (every point of charge pays 0.7 ore: yellow 7 + 0.7 a second on the road; ~1,000-1,100 a minute for a saturated base), drawn from the ore beside the crusher: a base's ore lasts ~11 minutes, then a quarter |
 | Second resource | **Powder** (Powder Mill next to saltpetre, 6 labourers, ~120 a minute while the base's saltpetre lasts, ~11 min; then a quarter): pays for musketeers, balloons and Powder Wagons; musketeers (12 shots) and cannons (8) carry their own and refill (paid from the bank) near a Mill, Barracks, Town Hall or Powder Wagon | **Essence**: bodies falling near a Brood Pen, and creatures SACRIFICEd there (12% of their biomass cost; a Raptor gives 3). Spitters, Bloaters, Brutes, Skywings, Spore Mothers and Miasma cost some | **Energy** itself: split between ore, assembly speed and wind (field size, slower run-down) |
 | Per hall | 2 Farms, 1 Powder Mill (start: Town Hall, 1 Farm, 4 Labourers) | 3 Feeding Pits, 1 Brood Pen | 2 Boilers, 2 Ore Crushers |
-| New units | Missionary (Church; 1 per church; bandages wounded soldiers; invulnerable away from enemy buildings) | Skywing (Roost; flyer, only ranged units can hit it) | Tesla Cart (Assembly Works, needs a Charging Pylon; deploys in 3 s; powers constructs; chain lightning) |
+| New units | Missionary (Church; 1 per church; bandages wounded soldiers and raises fallen Musketeers and Cuirassiers by himself: 6 s, back at half health under the cross for 30 s, a second death under the cross is final; invulnerable away from enemy buildings), Mortar (Foundry) | Skywing (Roost; flyer, only ranged units can hit it) | Tesla Cart (Assembly Works, needs a Charging Pylon; deploys in 3 s; powers constructs; chain lightning) |
 | Other new structures | Church | Spore Vent (spreads swamp far), Roost | Charging Pylon (field + mends constructs) |
 
 Still to come: maps with biomes, high ground and ramps; the Clockwork "husk" idea (constructs that run out of wind entirely); more units per tier.
@@ -409,7 +410,7 @@ through the ground: walking she can't attack, rooted she lobs big area-damage sp
 (and spreads swamp), and she casts the healing miasma.
 
 The factions so far:
-- **Crown** has modes (bayonets, limbered/unlimbered cannon, canister/round shot).
+- **Crown** has modes (limbered/unlimbered cannon, canister/round shot, deployed mortar; the musket/bayonet switch is now automatic) and research at the Barracks.
 - **Clockwork** has modes and fields (Tesla Cart, tower lightning).
 - **Brood** has only bodies. Its next unit should give it modes and spells, in the Brood way: living things that change shape.
 
@@ -432,7 +433,7 @@ Electric blue and white, flat solid slate background #34404F."
 Fast, armoured horseman with sabre and pistols: scouting, harassing workers, running down cannons.
 - **Mode, carbine / sabre:** at the gallop he charges with the sabre (bonus damage on the first hit after a run). Stopped, he fires pistols at short range.
 - **Charge (automatic):** after running 3+ seconds his next hit knocks the target back, like the pike push.
-- **Counters:** pikes (bonus vs cavalry), and spitter acid.
+- **Counters:** bayonets (+50% vs cavalry; pikes did this before the Pikeman was removed), and spitter acid.
 
 Prompt: "Pixel-art sprite sheet, 16-bit SNES style, of a 17th-century cuirassier: armoured horseman with a steel lobster-pot helmet and breastplate, red coat sleeves and saddle cloth (pure #FF0000), dark grey horse, sabre and two wheel-lock pistols. Rows:
 - walk: 4 frames;

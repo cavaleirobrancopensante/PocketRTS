@@ -1,5 +1,6 @@
-"""Round 12 art: the Clockwork rework - Thresher, Bulwark, Wind-up Soldier and the Engine
-Hall, plus the bigger Clockwork footprints (Assembly Works 5x4, Boiler 4x4).
+"""Round 12 art: the Clockwork rework - Thresher, Bulwark and Wind-up Soldier, plus the
+bigger Clockwork footprints (Assembly Works 5x4, Boiler 4x4). (The Engine Hall comes from
+tools/import_round11.py.)
 
 Sources (generated sheets on a flat dark slate background, header and row labels blanked):
   art/clockwork/thresher.png        1536x1024, rows s, se, e, ne, n; groups WALK 6 / IDLE 3 /
@@ -9,8 +10,6 @@ Sources (generated sheets on a flat dark slate background, header and row labels
         BRACED HIT 4 / ATTACK 3 / DEATH 5. The "back view (no battery)" strip is not used.
   art/clockwork/windup_soldier.png  1536x1024, rows s..n; groups WALK 6 / IDLE 3 / ATTACK 5 /
         RUN-DOWN 3 / WIND-UP 3 / DEATH 5. The key close-ups and death details are not used.
-  art/clockwork/engine_hall.png     1774x887, one row: built, construction, damaged,
-        destroyed.
 
 Cutting: each sheet's group brackets (the light lines under the header) give the groups'
 x ranges, split halfway between brackets. Inside a group the n frames are found from the
@@ -31,11 +30,10 @@ Output:
       thresher: walk, idle, spinup, attack, drained, death
       bulwark: walk, idle, brace, braced_hit, attack, death
       windup_soldier: walk, idle, attack, rundown, windup, death
-  assets/buildings/engine_hall_{built,construction,damaged,destroyed}.png
   assets/buildings/{assembly_works,boiler}_*.png re-cut at the bigger footprint's width
   their UNITS / BUILDING_SIZE entries in scripts/art_data.gd (added or replaced in place).
-  Icons are not made here (assets/icons/{thresher,bulwark,windup_soldier,engine_hall}.png
-  are drawn separately).
+  Icons are not made here (assets/icons/{thresher,bulwark,windup_soldier}.png are drawn
+  separately).
 
 Order (tools/rebuild_art.sh): after import_art.py and import_round10.py, before
 make_packs.py (none of these three carries a separate pack: their cells are drawn on).
@@ -276,65 +274,6 @@ def build_unit(kind):
 
 # ---------------------------------------------------------------- buildings
 
-ENGINE_HALL = dict(path="art/clockwork/engine_hall.png", kind="engine_hall",
-                   states=["built", "construction", "damaged", "destroyed"], width=136)
-
-
-def build_engine_hall():
-    px = ia.load(ENGINE_HALL["path"])
-    bg, bgc = bg_mask(px)
-    fg = ~bg
-    lab, n = ndimage.label(fg, structure=np.ones((3, 3)))
-    size = ndimage.sum(fg, lab, np.arange(1, n + 1))
-    fg &= ~((size < 6)[lab - 1] & (lab > 0))
-    # the four pictures: split at the widest empty column runs
-    cols = fg.sum(0)
-    xs = np.flatnonzero(cols > 0)
-    gaps = []
-    for a, b in zip(xs[:-1], xs[1:]):
-        if b - a > 8:
-            gaps.append((b - a, (a + b) // 2))
-    cutsx = sorted(c for _, c in sorted(gaps, reverse=True)[:3])
-    panels = [0] + cutsx + [px.shape[1]]
-    pics = []
-    for a, b in zip(panels[:-1], panels[1:]):
-        m = fg.copy()
-        m[:, :a] = False
-        m[:, b:] = False
-        ys, xs2 = np.nonzero(m)
-        y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs2.min(), xs2.max() + 1
-        img = px[y0:y1, x0:x1].copy()
-        img[~m[y0:y1, x0:x1]] = 0
-        img[..., 3] = np.where(m[y0:y1, x0:x1], 255, 0)
-        # the footing's middle: the median column of the lowest fifth of the picture
-        low = m[y0:y1, x0:x1].copy()
-        low[: int((y1 - y0) * 0.8)] = False
-        cx = float(np.median(np.nonzero(low)[1])) + 0.5
-        pics.append((img.astype(np.uint8), cx))
-    # one scale for all four: the built picture's base is the footprint's width
-    scale = ENGINE_HALL["width"] / pics[0][0].shape[1]
-    r4.glow_kind = smoke_kind
-    try:
-        for state, (img, cx) in zip(ENGINE_HALL["states"], pics):
-            small, _ = r4.to_game(img, scale, bgc, "smoke")
-            ys, xs3 = np.nonzero(small[..., 3] > 0)
-            small = small[:ys.max() + 1]
-            c = cx * scale
-            half = int(np.ceil(max(c - xs3.min(), xs3.max() + 1 - c)))
-            W = 2 * half
-            canvas = np.zeros((ys.max() + 1 - ys.min(), W, 4), np.uint8)
-            ox = int(round(half - c))
-            part = small[ys.min():]
-            canvas[:, max(0, ox):ox + part.shape[1]] = part[:, max(0, -ox):W - ox][:, :W - max(0, ox)]
-            canvas = clean(canvas, min_size=3, keep_near=1)
-            Image.fromarray(canvas, "RGBA").save(f"assets/buildings/engine_hall_{state}.png")
-            print(f"engine_hall_{state}: {canvas.shape[1]}x{canvas.shape[0]}")
-            if state == "built":
-                write_building_size("engine_hall", (canvas.shape[1], canvas.shape[0]))
-    finally:
-        r4.glow_kind = _glow4
-
-
 # The bigger Clockwork footprints: the same source pictures re-cut wider (tile widths:
 # Assembly Works 5 tiles, Boiler 4). import_art.py carries the same widths, so a full
 # rebuild agrees; here only these two are redone (and no icons).
@@ -403,8 +342,6 @@ def main():
         if not ONLY or kind in ONLY:
             entries.update(build_unit(kind))
     r4.write_units_data(entries)
-    if not ONLY or "engine" in ONLY:
-        build_engine_hall()
     if not ONLY or "wider" in ONLY:
         build_wider()
     if CONTACT and entries:
