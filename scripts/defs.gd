@@ -667,3 +667,61 @@ const PALETTE := [
 	["Blue", Color("#3a78e8")], ["Red", Color("#e03a32")], ["Green", Color("#3fae4a")],
 	["Yellow", Color("#e8c53a")], ["Purple", Color("#9a4fd6")], ["Orange", Color("#ec8a2c")],
 ]
+
+
+## Short texts for the hover / "?" tooltips (Crown and Brood; the Clockwork's come later).
+## Where a kind has none, the tooltip falls back to its "about" text.
+const TIPS := {
+	# Crown units
+	"labourer": "Works Farms and Powder Mills, builds and repairs. Weak in a fight.",
+	"musketeer": "Line infantry: a long reload, the bayonet up close. Hits flyers. Refills powder near a Mill, Barracks, Hall or Wagon.",
+	"cannon": "Long-range artillery. UNLIMBER to fire: round shot ploughs through lines, canister shreds light units and flyers. Needs spotters.",
+	"mortar": "Siege mortar: DEPLOY, then it lobs shells over walls 5 to 11 tiles away. The splash hurts friends too. Can't hit flyers.",
+	"powder_wagon": "Carries 120 shots of powder for the soldiers near it. No weapon, and it blows up when destroyed.",
+	"cuirassier": "Fast armoured horseman. After a gallop his first blow hits double and throws the enemy back. Bayonets hurt him.",
+	"balloon": "Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.",
+	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
+	# Brood units
+	"grub": "Hauls food from Feeding Pits to a Hive (longer hauls pay more) and turns into buildings.",
+	"raptor": "Fast, flimsy claws. Three hatch from each egg.",
+	"spitter": "Spits acid that burns and strips armour. Two hatch from each egg.",
+	"brute": "Huge horned tank: charges in and knocks enemies back.",
+	"spore_mother": "ROOT her to lob splashing spit blobs and spread swamp; MIASMA heals the Brood. Can't attack while walking.",
+	"bloater": "Floating acid sac: spits from afar until its gas runs out. On HOLD GAS it drifts in to burst as a huge acid bomb.",
+	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).",
+	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
+	# Crown buildings
+	"town_hall": "Trains Labourers. Allows 2 Farms and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
+	"cottage": "Houses 8 more supply.",
+	"wall": "Blocks the way. Lay it in a line: pick the start, then the end.",
+	"gate": "A wall piece that opens for your side only. Lay it onto your own wall to swap a piece.",
+	"barracks": "Trains Musketeers and Cuirassiers. Researches Armour and the musket locks, and refits Musketeers with them.",
+	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons. Lets the Barracks train Cuirassiers.",
+	"farm": "Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
+	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder. Soldiers and wagons nearby refill here.",
+	"church": "Sends out one Missionary.",
+	# Brood buildings
+	"hive": "Lays eggs: every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby.",
+	"clutch_mound": "12 more supply. Spreads swamp; each makes Hives lay eggs 10% faster (up to 3).",
+	"warren": "Lets the Hive hatch Raptors and Spitters.",
+	"gorge_pit": "Lets the Hive hatch Brutes, Spore Mothers and Mist Toads.",
+	"feeding_pit": "Up to 5 grubs haul food from here to the Hive. Farther from the Hive pays more (best 18 to 22 tiles).",
+	"brood_pen": "Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.",
+	"spore_vent": "Spreads swamp far around it.",
+	"roost": "Lets the Hive hatch Skywings and Bloaters.",
+	# Crown research
+	"armour": "Unlocks the ARMOUR refit: +1 armour, +20 health. New Musketeers come out armoured.",
+	"matchlock": "Unlocks the Matchlock refit: reload 10% faster. New Musketeers come out with it.",
+	"flintlock": "Unlocks the Flintlock refit: reload 20% faster than at the start.",
+	"caplock": "Unlocks the Caplock refit: reload 30% faster than at the start.",
+}
+
+
+## The short tooltip text for a unit, building or research ("about" when it has none).
+static func tip(kind: String) -> String:
+	if TIPS.has(kind):
+		return TIPS[kind]
+	for d in [UNITS, BUILDINGS, RESEARCH]:
+		if (d as Dictionary).has(kind):
+			return String(d[kind].get("about", ""))
+	return ""

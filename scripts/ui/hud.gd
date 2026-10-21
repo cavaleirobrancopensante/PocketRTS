@@ -5,7 +5,7 @@ extends Control
 
 signal quit_requested
 
-const CARD_BTN := 70.0           # mobile: 3 x 2 big buttons
+const CARD_BTN := 52.0           # mobile: 4 x 3 (x1.5 interface scale: 78 px, still a thumb's width)
 const CARD_BTN_PC := 60.0        # computer: 4 x 3 with letter hotkeys
 const MINI_W := 210.0
 
@@ -176,12 +176,13 @@ func mini_rect() -> Rect2:
 	return _layout()["mini"]
 
 
+## The command card is 4 x 3 everywhere (a phone used to have 3 x 2, and lost buttons).
 func _cols() -> int:
-	return 4 if Settings.pc() else 3
+	return 4
 
 
 func _rows() -> int:
-	return 3 if Settings.pc() else 2
+	return 3
 
 
 func _btn() -> float:
@@ -228,6 +229,8 @@ func _hud_has(p: Vector2) -> bool:
 		return true
 	if game.spectating() and (view_open or view_rect().has_point(p) or prod_rect().has_point(p)):
 		return true         # (an open list takes the next press anywhere: it closes it)
+	if _help_on() and help_rect().has_point(p):
+		return true
 	for r in [top_rect(), mini_rect(), panel_rect(), card_rect(), drag_rect()]:
 		if (r as Rect2).has_point(p):
 			return true
@@ -248,6 +251,13 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var e := event as InputEventScreenTouch
 		if e.pressed:
+			if not Settings.pc() and not _tip.is_empty() and not help_mode:
+				_tip = {}             # the next touch puts a tapped tooltip away (and does its job)
+			if help_mode and _help_on() and not paused and not help_rect().has_point(e.position):
+				_hud_touches[e.index] = true
+				_help_tap(e.position)
+				get_viewport().set_input_as_handled()
+				return
 			if _hud_has(e.position):
 				_hud_touches[e.index] = true
 				_press(e.position)
@@ -310,6 +320,11 @@ func _press(p: Vector2) -> void:
 		return
 	if mini_rect().has_point(p):
 		_minimap_to(p)
+		return
+	if _help_on() and help_rect().has_point(p):
+		help_mode = not help_mode
+		_tip = {}
+		Sfx.play_any(["ui/click", "click"])
 		return
 	if not Settings.pc() and drag_rect().has_point(p):
 		Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
@@ -1219,14 +1234,21 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	var fac := game.faction_of(t)
 	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.35, 0.33, 0.36)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
 		"clockwork": [Color(0.7, 0.72, 0.78), Color(0.45, 0.75, 1.0)]}[fac]
+	var x0 := x
 	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
 	var r2 := "%d" % int(pl["res2"])
 	if fac == "clockwork":
 		r2 = "%d energy (%s batteries stored)" % [int(game.energy[t]), "blue" if game.blue_energy(t) else "yellow"]
+	var x1 := x
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(t)
 	var cap: int = pl["cap"]
-	return _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
+	var x2 := x
+	x = _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
+	if t == game.human and not game.spectating():
+		# (for their tooltips)
+		_pill_rects = [[Rect2(x0, 4, x1 - 8 - x0, 30), 0], [Rect2(x1, 4, x2 - 8 - x1, 30), 1], [Rect2(x2, 4, x - 8 - x2, 30), 2]]
+	return x
 
 
 ## One player's resources in a short line (watching with all vision).
@@ -1243,6 +1265,8 @@ func _draw() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	var vs := _vs()
+	_tip_cand = {}
+	_pill_rects = []
 	if game.spectator and game.spectator.fade > 0.0:
 		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, game.spectator.fade))     # the follow camera's cut
 	# Top bar: resource pills, supply, clock and the menu button. Watching computers play:
@@ -1279,6 +1303,11 @@ func _draw() -> void:
 		var dr := drag_rect()
 		UiStyle.draw_button(self, dr, false, Settings.drag_mode == "pan")
 		_text(font, dr.get_center() + Vector2(0, 6), "DRAG: " + ("BOX" if Settings.drag_mode == "box" else "PAN"), 15, UiStyle.TEXT, 1)
+	if _help_on():
+		# "?": the next tap explains instead of acting (lit while armed)
+		var hr := help_rect()
+		UiStyle.draw_button(self, hr, false, help_mode)
+		_text(UiStyle.bold_font(), hr.get_center() + Vector2(0, 7), "?", 20, Color(1, 0.9, 0.55) if help_mode else UiStyle.TEXT, 1)
 	var mr := menu_rect()
 	UiStyle.draw_button(self, mr, mr.has_point(_mouse()) and Settings.pc())
 	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
@@ -1308,6 +1337,8 @@ func _draw() -> void:
 		if line_k:
 			hint = ("Click where the wall starts" if controls.line_from.x < 0 else "Click where it ends") if Settings.pc() else ("Drag to where the wall starts, then START" if controls.line_from.x < 0 else "Drag to where it ends, then END")
 		_text(font, Vector2(vs.x * 0.5, 66), hint, 20, Color(1, 1, 0.7), 1)
+	elif help_mode:
+		_text(font, Vector2(vs.x * 0.5, 66), "Tap anything to see what it is  (? again: cancel)", 20, Color(1, 1, 0.7), 1)
 	if _msg_t > 0.0:
 		var a := minf(_msg_t, 1.0)
 		var mw := font.get_string_size(_msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x + 36
@@ -1320,6 +1351,9 @@ func _draw() -> void:
 		_draw_production(font)
 	if not paused:
 		_draw_countdown()
+	_update_tip()
+	if not paused:
+		_draw_tip()
 	if paused:
 		# see-through: the match stays visible behind (for screenshots and a look at the field)
 		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.12))
@@ -1787,8 +1821,29 @@ func _portrait_pressed(e: Entity) -> void:
 var _buttons_extra: Array = []
 
 
+## More buttons than the card holds (a big mixed selection): pages, with MORE on each.
+var _card_page := 0
+var _card_sig := ""
+
+
+func _paged(all: Array) -> Array:
+	var slots := _cols() * _rows()
+	var sig := "%s|%d|%s" % [page, game.selection.size(), str(game.selection[0].get_instance_id()) if not game.selection.is_empty() and is_instance_valid(game.selection[0]) else ""]
+	if sig != _card_sig:
+		_card_sig = sig
+		_card_page = 0       # a new selection starts on the first page
+	if all.size() <= slots:
+		return all
+	var per := slots - 1
+	var pages := int(ceil(all.size() / float(per)))
+	_card_page = clampi(_card_page, 0, pages - 1)
+	var out: Array = all.slice(_card_page * per, _card_page * per + per)
+	out.append(["build", "MORE", func() -> void: _card_page = (_card_page + 1) % pages, true, "", "%d/%d" % [_card_page + 1, pages]])
+	return out
+
+
 func _draw_card(font: Font) -> void:
-	var items := _with_keys(_build_card())
+	var items := _with_keys(_paged(_build_card()))
 	_card_items = items
 	_buttons = _buttons_extra.duplicate()
 	_buttons.append({"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true})
@@ -1810,7 +1865,12 @@ func _draw_card(font: Font) -> void:
 		if ic:
 			draw_texture_rect(ic, br.grow(-3), false, Color.WHITE if enabled else Color(0.4, 0.4, 0.4, 0.8))
 		draw_rect(Rect2(br.position.x + 2, br.end.y - 17, br.size.x - 4, 15), Color(0, 0, 0, 0.62))
-		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), String(it[1]).trim_prefix("> ").trim_prefix("~ "), 11, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
+		# the label at 11, smaller only when it wouldn't fit the (phone's narrower) button
+		var lab := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
+		var lsz := 11
+		while lsz > 8 and UiStyle.bold_font().get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > br.size.x - 5:
+			lsz -= 1
+		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), lab, lsz, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
 		if it[5] != "":
 			var cw := font.get_string_size(it[5], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 8
 			var cbr := Rect2(br.end.x - cw - 2, br.position.y + 2, cw, 15)
@@ -1824,8 +1884,8 @@ func _draw_card(font: Font) -> void:
 		if auto_on:
 			_autocast_glow(br)
 		if hov:
-			_tooltip(font, it, cr)
-		var bt := {"rect": br, "cb": it[2], "enabled": enabled, "why": it[4]}
+			_tip_cand = {"id": "card:" + String(it[1]), "delay": TIP_CARD_DELAY, "item": it}
+		var bt := {"rect": br, "cb": it[2], "enabled": enabled, "why": it[4], "item": it}
 		var plain := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 		if _alt_for.has(plain):
 			bt["alt"] = _alt_for[plain]
@@ -1873,64 +1933,107 @@ func _res() -> Array:
 	return Defs.FACTIONS[game.faction_of(game.human)]["res"]
 
 
-func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
-	var title: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
-	var body := ""
+# ------------------------------------------------------------------ tooltips
+## Computer: rest the mouse on a card button (briefly), or on a unit, building, resource or
+## quick button (a little longer), and a tooltip opens by the cursor. Phone: the "?" button
+## in the top bar arms help mode; the next tap explains what it lands on instead of acting.
+## Settings > TOOLTIPS switches both off. Clockwork units and buildings in the world have
+## none yet. A tooltip is only drawn: it never takes a click.
+
+const TIP_CARD_DELAY := 0.35     # command card: almost at once (it always was)
+const TIP_HUD_DELAY := 0.8       # resources, quick buttons
+const TIP_WORLD_DELAY := 1.5     # units and buildings on the map
+const TIP_HIDE := 0.25           # it lingers this long after the mouse leaves
+const TIP_PIN := 7.0             # phone: a tapped tooltip stays this long (or until the next touch)
+const TIP_W := 320.0
+
+var help_mode := false           # phone: the next tap explains instead of acting
+var _tip := {}                   # shown: {title, key, stats, need, body, hint}
+var _tip_at := Vector2.ZERO      # where it hangs from (HUD coordinates)
+var _tip_cand := {}              # what the mouse is on this frame (the card fills it in)
+var _hover_id := ""
+var _hover_ms := 0
+var _tip_ms := 0                 # last time it was (re)shown
+var _pill_rects: Array = []      # top bar: [rect, 0 res / 1 res2 / 2 supply]
+
+const CMD_TIPS := {
+	"MOVE": "Then pick where to go: they walk there without stopping to fight.",
+	"ATTACK": "Then pick a target, or a place: they walk there fighting everything they meet.",
+	"STOP": "Drop every order and stand.",
+	"HOLD": "Stand here and fight whatever comes in reach, without chasing.",
+	"BUILD": "Every building this worker can put up.",
+	"RALLY": "Then pick where new units gather when they come out.",
+	"GRUBS": "Then pick a Feeding Pit (or a spot) for new grubs.",
+	"BACK": "Back to the orders.",
+	"MORE": "The next page of buttons.",
+	"DEMOLISH": "Pull the building down: press twice. Nothing comes back.",
+	"ABANDON": "Cancel the building: three quarters of its cost come back (all of it if work never began).",
+	"PLACE": "Build it at the marked spot.",
+	"START": "Mark where the wall starts.",
+	"END": "Mark where the wall ends (the same spot for a single piece).",
+	"ROTATE": "Turn the gate the other way. It stays that way.",
+	"SUPPLY": "Keg runs (glowing = on): while the wagon has room, up to 2 Labourers carry kegs to it from the nearest Powder Mill. A Labourer killed with a keg blows up.",
+	"UNLIMBER": "Set the gun up to fire (2.5 s). It can't move until it limbers again.",
+	"LIMBER": "Hitch the gun to the horse to move it (2.5 s). It can't fire while limbered.",
+	"DEPLOY": "Set it up to fire (3 s). It can't move until it packs up.",
+	"PACK": "Pack it up to move (3 s). It can't fire while packed.",
+	"CANISTER": "Short range, a cone of musket balls: big damage, +50% against Light units, and it hits flyers.",
+	"ROUND SHOT": "The longest range in the game. The ball ploughs through a line of men, YOUR OWN TOO, and smashes buildings. Can't hit flyers.",
+	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Hive as essence. Bodies rot after 2 minutes.",
+	"SACRIFICE": "The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as essence.",
+	"HOLD GAS": "Stop spitting and keep the sac full: the Bloater drifts in and bursts as a huge acid bomb.",
+	"SPIT": "Lob acid from range. Every glob uses gas, so the final burst gets smaller.",
+	"FOG": "50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.",
+	"TONGUE": "75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.",
+	"MIASMA": "30 essence: a green cloud for 8 s. Brood inside heal up to 30% of their health. Then 18 s to recover.",
+	"ROOT": "Dig in (2.5 s): she lobs splashing spit blobs and spreads swamp, but can't move.",
+	"UPROOT": "Walk again (2.5 s). Walking, she can't attack.",
+	"LAND": "Land (1.2 s) to bite ground units. Landed, anything can hit it, and it can't touch flyers.",
+	"TAKE OFF": "Fly again (1.2 s) and hunt flyers with spines.",
+	"LOAD": "Then tap Musketeers or Labourers (4 at most): they climb in. Men selected with the balloon climb in at once.",
+	"UNLOAD": "Then pick where to drop them: the balloon flies there and lets everyone off.",
+	"DROP HERE": "Let everyone off right below the balloon.",
+	"RESTOCK": "Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 48-shot store is full.",
+}
+
+## The quick buttons: [title, text] (groups 1-4 are worded in _tip_of).
+const GROUP_TIPS := [["Army", "Select every soldier you have."], ["Idle", "Select an idle worker and jump to it."],
+	["Hall", "Select your hall; again for the next one."], [], [], [],
+	["Make", "Select every building that trains an army, to train from all of them at once."], []]
+
+
+func _cost_text(a: int, b: int) -> String:
+	var r := _res()
+	var t := "%d %s" % [a, String(r[0]).to_lower()]
+	if b > 0:
+		t += " + %d %s" % [b, String(r[1]).to_lower()]
+	return t
+
+
+## The tooltip for a command card button (it: the card item, with its key at [6]).
+func _card_tip(it: Array) -> Dictionary:
+	var lab: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 	var k: String = it[0]
-	const ABOUT := {
-		"SUPPLY": "Keg runs (glowing = on): while the wagon has room, up to 2 labourers carry 30-shot kegs to it from the nearest Powder Mill (15 powder a keg). A labourer killed with a keg blows up.",
-		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
-		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
-		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. One of the gun's 8 shots.",
-		"STORM": "Static storm: a ring of lightning (2.5-tile radius) on a spot for 2.5 s. Everything inside is stunned, your own units too; it does no damage: hit them while they stand. Costs 70 charge and 2 stored batteries; the Stormcaller recharges only inside a Clockwork field.",
-		"HARVEST": "Harvest the fallen: the grubs stay here and wrap every body nearby (friend or foe) in a cocoon, carrying it to a Hive as essence. Veterans hold more. Bodies rot away after 2 minutes.",
-		"SACRIFICE": "Sacrifice: the selected Brood creatures (not grubs) go to the nearest Brood Pen and are offered up there, each for 12% of its biomass cost as essence (a Raptor 3, a Spitter 5, a Brute 18). Turn spare biomass into essence for Skywings, Bloaters, Brutes and Spore Mothers.",
-		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
-		"SPIT": "Spit: lob acid from range (160). Every glob uses up gas, so the final burst gets smaller.",
-		"FOG": "Swamp fog (50 energy): a fog bank, 3 tiles across each way, on a spot within 7 tiles for 12 s. Ranged attacks fired from inside it or into it miss half the time (yours too), and units inside see only 2 tiles. Black powder's own smoke, turned on the Crown.",
-		"TONGUE": "Tongue (75 energy): tap an enemy unit on the ground within 7 tiles. A crosshair marks it for 3 s (its owner sees it), then the tongue lashes out and drags it to the Toad's feet. The windup breaks if the Toad is stunned, killed or moved, or the target gets 1.5x the range away (the energy is lost). Steam Walkers and other heavy engines are only staggered (1 s). Not buildings or flyers.",
-		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
-		"ROOT": "Root (2.5 s): she digs in, lobs big spit blobs that splash an area, and spreads swamp. She can't move until she uproots.",
-		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",
-		"LOAD": "Load the balloon: then tap Musketeers or Labourers (or right-click the balloon with them selected). They walk under it and climb in, 4 at most; it must hover over ground they can reach. Carried Musketeers shoot from the basket.",
-		"UNLOAD": "Unload: tap where to drop them. The balloon flies there and lets everyone off on the nearest open ground (over a cliff edge too). Tap the balloon, or DROP HERE, to let them off where it is.",
-		"DROP HERE": "Let everyone off right below the balloon.",
-		"RESTOCK": "Restock the balloon's powder store (48 shots; the Musketeers aboard refill from it): it flies to the nearest Powder Wagon, Mill, Barracks or Town Hall and hovers there while the pilot hauls 12-shot kegs up on a rope (3 s each; 6 powder from the bank, or from the wagon's store). It also hauls by itself whenever it stops within 2 tiles of one.",
-		"COURIER": "Courier (automatic, glowing = on): idle Ornithopters fetch a charged battery from an energy building and wind up constructs that ran down (shut-down ones first). Click to switch on or off.",
-		"BRACE": "Brace (glowing = braced): the Bulwark plants its tower shield. It can't move (a move order lifts it), its armour goes up to 7, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead. Its lance still pokes at anything in reach.",
-		"OVERLOAD": "Overload: tap one of your constructs. The Ornithopter dumps its battery into it: +50% damage, +30% speed and faster attacks for 12 s, then it's left with 25% charge.",
-		"LAND": "Land (1.2 s): fight on the ground with a bite. Landed it walks, can't cross cliffs and anything can hit it; it can't attack flyers.",
-		"TAKE OFF": "Take off (1.2 s): fly again and hunt flyers with spines (it can't attack the ground while flying).",
-		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men, YOUR OWN TOO (+75% against Armored), small splash, smashes buildings. Can't hit flyers. One of the gun's 8 shots.",
-	}
-	for rk in Defs.RESEARCH:
-		if title == String(Defs.RESEARCH[rk]["name"]).to_upper():
-			var ri: Dictionary = Defs.RESEARCH[rk]
-			var rc := "%d %s" % [int(ri["cost"]), _res()[0].to_lower()]
-			if int(ri.get("cost2", 0)) > 0:
-				rc += " + %d %s" % [int(ri["cost2"]), _res()[1].to_lower()]
-			title = "%s   (%s, %d s)" % [ri["name"], rc, int(ri["time"])]
-			body = ri["about"] + "  Queued like a unit; CANCEL takes the last thing in the queue back out (paid back)."
-	if _tip_for.has(title):
-		var tf: Array = _tip_for[title]
-		title = tf[0]
-		body = tf[1]
-	if title == "WORK":
-		body = "Automatic work: idle workers go back to their posts on their own (glowing = on). Press to switch it off for the selected workers, to scout or keep a builder free."
-	if title == "REPAIR":
-		body = "Click, then click a damaged building or wall: they fix it (costs a quarter of its price for a full repair). Right-click: automatic repair (glowing = on): idle workers fix damaged buildings nearby by themselves, before going back to work." if Settings.pc() \
-			else "Tap, then tap a damaged building or wall to fix it. Hold: automatic repair (glowing = on): idle workers fix damaged buildings nearby by themselves, before going back to work."
-	if ABOUT.has(title):
-		body = ABOUT[title]
-	elif Defs.UNITS.has(k) and title == Defs.UNITS[k]["name"].to_upper():
+	var t := {"title": lab.capitalize(), "key": String(it[6]) if Settings.pc() and it.size() > 6 else ""}
+	var b := game.selected_building()
+	var rk := _research_of(lab)
+	if _tip_for.has(lab):
+		t["title"] = _tip_for[lab][0]
+		t["body"] = _tip_for[lab][1]
+	elif b and rk != "" and Defs.RESEARCH[rk]["at"] == b.kind:
+		var ri: Dictionary = Defs.RESEARCH[rk]
+		t["title"] = "Research: %s" % ri["name"]
+		t["stats"] = "%s  ·  %d s" % [_cost_text(int(ri["cost"]), int(ri.get("cost2", 0))), int(ri["time"])]
+		t["body"] = Defs.tip(rk)
+		t["hint"] = "Queued like a unit; CANCEL takes it back out (paid back)."
+	elif Defs.UNITS.has(k) and lab == String(Defs.UNITS[k]["name"]).to_upper():
 		var u: Dictionary = Defs.UNITS[k]
-		title = u["name"]
-		body = u["about"]
 		var price := game.unit_price(game.human, k)
-		var cost := "%d %s" % [price[0], _res()[0].to_lower()]
-		if price[1] > 0:
-			cost += " + %d %s" % [price[1], _res()[1].to_lower()]
-		title += "   (%s, supply %d)" % [cost, int(u["supply"]) * int(u.get("spawn", 1))]
+		var n := int(u.get("spawn", 1))
+		t["title"] = u["name"]
+		t["stats"] = "%s  ·  %d s  ·  %d supply%s" % [_cost_text(price[0], price[1]), int(u["time"]), int(u["supply"]) * n, ("  ·  %d an egg" % n) if n > 1 else ""]
+		var tg: Array = u.get("tags", [])
+		t["body"] = ("[%s] " % " ".join(tg.map(func(x: String) -> String: return x.capitalize())) if not tg.is_empty() else "") + Defs.tip(k)
 		if k == "musketeer":
 			var kt := game.kit_for_new(game.human)
 			var parts: Array = []
@@ -1939,25 +2042,228 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 			if kt["lock"] != "":
 				parts.append(Defs.RESEARCH[kt["lock"]]["name"])
 			if not parts.is_empty():
-				body += "  Comes out with %s (the refit fees are in the price)." % " and ".join(parts)
-		body += "  Right-click: train it automatically (glows while on)."
-		var tg: Array = u.get("tags", [])
-		if not tg.is_empty():
-			body = "[%s] " % " ".join(tg.map(func(x: String) -> String: return x.capitalize())) + body
+				t["body"] += "  Comes out with %s (the refit fees are in the price)." % " and ".join(parts)
+		t["hint"] = ("Right-click" if Settings.pc() else "Hold") + ": train it automatically (glows while on)."
 	elif Defs.BUILDINGS.has(k) and page in ["build", "advanced"]:
 		var bd: Dictionary = Defs.BUILDINGS[k]
-		title = "%s   (%d %s)" % [bd["name"], bd["cost"], _res()[0].to_lower()]
-		body = bd["about"]
-	if not it[3] and it[4] != "":
-		body = it[4]
-	if it.size() > 6 and it[6] != "":
-		title = "[%s] %s" % [it[6], title]
-	var w := maxf(font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, font.get_string_size(body, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x) + 16
-	w = minf(w, 520.0)
-	var r := Rect2(cr.end.x - w, cr.position.y - 58, w, 48)
-	UiStyle.draw_panel(self, r, Color(0, 0, 0, 0), 0.96)
-	_text(UiStyle.bold_font(), r.position + Vector2(8, 19), title, 15, Color(1, 0.9, 0.6))
-	_text(font, r.position + Vector2(8, 38), body, 14, UiStyle.TEXT)
+		t["title"] = bd["name"]
+		var st := "%s  ·  %d s" % [_cost_text(int(bd["cost"]), int(bd.get("cost2", 0))), int(bd["time"])]
+		if int(bd.get("supply", 0)) > 0 and k != game.faction_hall(game.human):
+			st += "  ·  +%d supply" % int(bd["supply"])
+		if Defs.is_econ(k):
+			st += "  ·  %d of %d here" % [game.econ_count(game.human, k), game.econ_limit(game.human, k)]
+		t["stats"] = st
+		t["body"] = Defs.tip(k)
+	elif lab == "WORK":
+		t["body"] = "Automatic work (glowing = on): idle workers go back to their posts by themselves. Press to switch it off, to scout or keep a builder free."
+	elif lab == "REPAIR":
+		t["body"] = "Then pick a damaged building or wall: they fix it (a full repair costs a quarter of its price)."
+		t["hint"] = ("Right-click" if Settings.pc() else "Hold") + ": automatic repair (glows while on)."
+	elif lab == "CANCEL" and controls.mode == "" and b:
+		t["body"] = "Take the last thing in the queue back out (paid back)."
+	elif lab == "CANCEL":
+		t["body"] = "Back out of this without doing it."
+	elif CMD_TIPS.has(lab):
+		t["body"] = CMD_TIPS[lab]
+	if not it[3] and String(it[4]) != "":
+		t["need"] = it[4]         # what's missing, in red
+	return t
+
+
+func _research_of(lab: String) -> String:
+	for rk in Defs.RESEARCH:
+		if String(Defs.RESEARCH[rk]["name"]).to_upper() == lab:
+			return rk
+	return ""
+
+
+## A unit or building in the world, yours or not: name, health and a line about it.
+func _entity_tip(e: Entity) -> Dictionary:
+	if not is_instance_valid(e) or e.dead or not (e is Unit or e is Building):
+		return {}
+	var d: Dictionary = e.d
+	if String(d.get("faction", "")) == "clockwork":
+		return {}                # (their tooltips come later)
+	var name := String(d["name"])
+	if int(d.get("spawn", 1)) > 1:
+		name = name.trim_suffix("s")      # one of the Raptors is a Raptor
+	var t := {"title": name + ("  (enemy)" if e.team >= 0 and e.team != game.human and not game.demo else "")}
+	var st := "%d / %d health" % [int(ceil(e.hp)), int(e.max_hp)]
+	if int(d.get("armor", 0)) > 0:
+		st += "  ·  armour %d" % int(d["armor"])
+	var tg: Array = d.get("tags", [])
+	if not tg.is_empty():
+		st += "  ·  " + " ".join(tg.map(func(x: String) -> String: return x.capitalize()))
+	if e is Building and not (e as Building).built:
+		st += "  ·  %d%% built" % int((e as Building).progress * 100)
+	t["stats"] = st
+	t["body"] = Defs.tip(e.kind)
+	return t
+
+
+## The top bar: the two resources and supply.
+func _res_tip(i: int) -> Dictionary:
+	var fac := game.faction_of(game.human)
+	var pl: Dictionary = game.players[game.human]
+	var r := _res()
+	if fac == "clockwork":
+		return {}
+	if i == 2:
+		var sup: String = Defs.BUILDINGS[Defs.FACTIONS[fac]["supply"]]["name"]
+		return {"title": "Supply: %d of %d used" % [game.supply_used(game.human), int(pl["cap"])],
+			"body": "Every unit takes supply. Each %s and %s raises the cap, up to %d." % [sup, Defs.BUILDINGS[game.faction_hall(game.human)]["name"], game.max_supply(game.human)]}
+	var body: String = {
+		"crown": ["Pays for everything. Labourers on Farms bring in the harvests; a Town Hall's soil runs out in time.",
+			"Black powder for muskets, cannons and mortars, and for refilling soldiers. Labourers grind it at the Powder Mill."],
+		"brood": ["Pays for everything. Grubs haul food from Feeding Pits to a Hive: longer hauls pay more.",
+			"Bodies falling near a Brood Pen, grubs on HARVEST, and SACRIFICE at the Pen. Pays for the big creatures."]}[fac][i]
+	return {"title": "%s: %d" % [r[i], int(pl["gold"]) if i == 0 else int(pl["res2"])], "body": body}
+
+
+## What sits at p (HUD coordinates): a candidate {id, delay, item / res / grp / e}, or {}.
+func _hover_at(p: Vector2) -> Dictionary:
+	for pr in _pill_rects:
+		if (pr[0] as Rect2).has_point(p):
+			return {"id": "res:%d" % pr[1], "delay": TIP_HUD_DELAY, "res": pr[1]}
+	for i in QUICK:
+		if group_rect(i).has_point(p):
+			return {"id": "grp:%d" % i, "delay": TIP_HUD_DELAY, "grp": i}
+	for b in _buttons:
+		if b.has("item") and (b["rect"] as Rect2).has_point(p):
+			return {"id": "card:" + String(b["item"][1]), "delay": TIP_CARD_DELAY, "item": b["item"]}
+	if _hud_has(p):
+		return {}
+	var e := game.entity_at(controls.to_world(p * ui_scale))
+	if e:
+		return {"id": "ent:%d" % e.get_instance_id(), "delay": TIP_WORLD_DELAY, "e": e}
+	return {}
+
+
+func _tip_of(c: Dictionary) -> Dictionary:
+	if c.has("item"):
+		return _card_tip(c["item"])
+	if c.has("res"):
+		return _res_tip(int(c["res"]))
+	if c.has("e"):
+		return _entity_tip(c["e"])
+	if c.has("grp"):
+		var i: int = c["grp"]
+		var g := _group_of(i)
+		if g >= 0:
+			return {"title": "Group %d" % (g + 1), "body": ("Click: select it (twice: jump to it). Hold, or Ctrl+%d: keep the selection here." % (g + 1)) if Settings.pc()
+				else "Tap: select it (twice: jump to it). Hold: keep the selection here."}
+		var gt: Array = GROUP_TIPS[i]
+		return {"title": gt[0], "body": gt[1]} if not gt.is_empty() else {}
+	return {}
+
+
+func help_rect() -> Rect2:
+	var d := drag_rect()
+	return Rect2(d.position.x - 46, 2, 40, 32)
+
+
+func _help_on() -> bool:
+	return not Settings.pc() and Settings.tooltips and not game.spectating()
+
+
+## Phone, help mode: explain what the tap landed on.
+func _help_tap(p: Vector2) -> void:
+	help_mode = false
+	var c := _hover_at(p)
+	var t := _tip_of(c) if not c.is_empty() else {}
+	if t.is_empty():
+		toast("Nothing to explain there.", false)
+		return
+	_tip = t
+	_tip_at = p
+	_tip_ms = Time.get_ticks_msec()
+
+
+## Each redraw: what the mouse rests on, and whether its tooltip is due (computer), or
+## whether a tapped one has had its time (phone).
+func _update_tip() -> void:
+	var now := Time.get_ticks_msec()
+	if not Settings.tooltips or paused or game.over or countdown > 0.0:
+		_tip = {}
+		_hover_id = ""
+		help_mode = false
+		return
+	if not Settings.pc():
+		if not _tip.is_empty() and now - _tip_ms > TIP_PIN * 1000.0:
+			_tip = {}
+		return
+	var m := _mouse()
+	var c := _tip_cand
+	if c.is_empty() and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and controls.box_rect().size == Vector2.ZERO:
+		c = _hover_at(m)
+	var id: String = c.get("id", "")
+	if id != _hover_id:
+		_hover_id = id
+		_hover_ms = now
+	if id != "" and now - _hover_ms >= float(c["delay"]) * 1000.0:
+		var t := _tip_of(c)
+		if not t.is_empty():
+			_tip = t
+			_tip_at = m
+			_tip_ms = now
+			return
+	if not _tip.is_empty() and now - _tip_ms > TIP_HIDE * 1000.0:
+		_tip = {}
+
+
+## The tooltip: a warm panel by the cursor (above the finger on a phone), kept on screen.
+func _draw_tip() -> void:
+	if _tip.is_empty():
+		return
+	var vs := _vs()
+	var bold := UiStyle.bold_font()
+	var body_f := UiStyle.body_font()
+	var title: String = _tip.get("title", "")
+	var key: String = _tip.get("key", "")
+	var rows: Array = []        # [text, font, size, colour]
+	for f in [["stats", bold, 14, UiStyle.TEXT], ["need", bold, 14, UiStyle.BAD], ["body", body_f, 14, Color(0.95, 0.91, 0.82)], ["hint", body_f, 13, UiStyle.MUTED]]:
+		if String(_tip.get(f[0], "")) != "":
+			rows.append([String(_tip[f[0]]), f[1], f[2], f[3]])
+	var key_w := 22.0 if key != "" else 0.0
+	var w := bold.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + key_w
+	for r in rows:
+		w = maxf(w, (r[1] as Font).get_string_size(r[0], HORIZONTAL_ALIGNMENT_LEFT, -1, r[2]).x)
+	w = clampf(w + 20.0, 150.0, TIP_W)
+	var tw := w - 20.0
+	var h := 30.0
+	var heights: Array = []
+	for r in rows:
+		var rh: float = (r[1] as Font).get_multiline_string_size(r[0], HORIZONTAL_ALIGNMENT_LEFT, tw, r[2]).y
+		heights.append(rh)
+		h += rh + 3.0
+	h += 6.0
+	var pos: Vector2
+	if Settings.pc():
+		pos = _tip_at + Vector2(16, 20)
+		if pos.x + w > vs.x - 6:
+			pos.x = _tip_at.x - w - 10
+		if pos.y + h > vs.y - 6:
+			pos.y = _tip_at.y - h - 10
+	else:
+		pos = Vector2(_tip_at.x - w * 0.5, _tip_at.y - h - 28)      # above the finger
+		if pos.y < top_rect().end.y + 4:
+			pos.y = _tip_at.y + 28
+	pos = pos.clamp(Vector2(6, 6), (vs - Vector2(w, h) - Vector2(6, 6)).max(Vector2(6, 6)))
+	var rect := Rect2(pos, Vector2(w, h))
+	UiStyle.draw_panel(self, rect, UiStyle.accent(game.faction_of(game.human)), 0.96)
+	var x := rect.position.x + 10
+	if key != "":
+		var kr := Rect2(x, rect.position.y + 8, 17, 17)
+		draw_rect(kr, Color(0.1, 0.08, 0.05, 0.9))
+		draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
+		_text(bold, kr.position + Vector2(8.5, 13.5), key, 12, Color(1, 0.92, 0.6), 1)
+	draw_string(bold, Vector2(x + key_w, rect.position.y + 22), title, HORIZONTAL_ALIGNMENT_LEFT, tw - key_w, 16, Color(1, 0.88, 0.55))
+	var y := rect.position.y + 30.0
+	for i in rows.size():
+		var r: Array = rows[i]
+		var f: Font = r[1]
+		draw_multiline_string(f, Vector2(x, y + f.get_ascent(r[2])), r[0], HORIZONTAL_ALIGNMENT_LEFT, tw, r[2], -1, r[3])
+		y += float(heights[i]) + 3.0
 
 
 func _icon(name: String) -> Texture2D:
