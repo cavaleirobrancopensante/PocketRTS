@@ -3981,35 +3981,20 @@ func _draw() -> void:
 	var bw := radius * 2.4
 	draw_health(top, bw, true)
 	if has_attack():
-		# under it, for every armed unit (friend or foe): the reload, full = ready to strike
+		# the reload, only while reloading (or setting up a gun): nothing when ready
 		var rf := reload_frac()
 		var rcol := Color(0.92, 0.92, 0.85)
-		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
-			rcol = Color(0.9, 0.25, 0.2)           # out of powder: can't fire
-			rf = 0.0
+		var show := rf < 1.0 and not (_pmax > 0.0 and mode != "bayonet" and powder < 1.0)
+		if deploys() and tesla_mode == "deploying":
+			rcol = Color(0.45, 0.7, 1.0)           # limbering / rooting / packing
+			rf = 1.0 - tesla_t / switch_time()
+			show = true
 		elif deploys() and tesla_mode != "deployed":
-			rcol = Color(0.45, 0.7, 1.0)           # limbered / rooted / packed: setting up
-			rf = 1.0 - tesla_t / switch_time() if tesla_mode == "deploying" else 0.0
-		elif rf >= 1.0:
-			rcol = Color(1.0, 0.85, 0.3)
-		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw * clampf(rf, 0.0, 1.0), 2), rcol)
-	if kind == "musketeer" and team == game.human and (armoured or lock != ""):
-		# his refits, on top of the health bar's left end (own men only): a little steel
-		# shield for Armour, then one gold pip per lock level (matchlock 1, flintlock 2,
-		# caplock 3)
-		var mx := -bw * 0.5
-		var my := top - 9.0
-		if armoured:
-			var sh := PackedVector2Array([Vector2(mx, my), Vector2(mx + 6, my), Vector2(mx + 6, my + 4), Vector2(mx + 3, my + 7), Vector2(mx, my + 4)])
-			draw_colored_polygon(sh, Color(0.8, 0.85, 0.93))
-			sh.append(sh[0])
-			draw_polyline(sh, Color(0.1, 0.1, 0.15, 0.9), 1.0)
-			mx += 8.5
-		for i in lock_level() + 1:
-			var pr := Rect2(mx + i * 4.0, my, 2.5, 6)
-			draw_rect(pr.grow(0.5), Color(0, 0, 0, 0.8))
-			draw_rect(pr, Color(1.0, 0.8, 0.3))
+			show = false
+		if show:
+			var ry := top + 5.0 if hp < max_hp else top + 1.0
+			draw_rect(Rect2(-bw * 0.5, ry, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(-bw * 0.5, ry, bw * clampf(rf, 0.0, 1.0), 2), rcol)
 	if work == "feeding":
 		return
 	if topter_bat != "":
@@ -4040,12 +4025,6 @@ func _draw() -> void:
 			pk.name = "Pack"
 			pk.set("unit", self)
 			sprite.add_child(pk)
-		if not ArtData.PACKS.has(kind):
-			# no pack drawn on (the new constructs carry their cells in their hands, on the
-			# body, or run on a spring): a thin wind bar under the reload bar instead
-			var ww := bw * 0.8
-			draw_rect(Rect2(-ww * 0.5, top + 8.5, ww, 1).grow(0.5), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(-ww * 0.5, top + 8.5, ww * clampf(wind, 0.0, 1.0), 1), Color(0.95, 0.75, 0.3) if runs_on_spring() else Color(1.0, 0.9, 0.35).lerp(Color(1, 0.35, 0.2), 1.0 - wind))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
 	if carry_empty and carrying == 0 and kind == "winder":
@@ -4059,11 +4038,7 @@ func _draw() -> void:
 		draw_texture_rect_region(bt, Rect2(-14, top + 10, 11, 22), Rect2(fr * 11, 0, 11, 22))
 		draw_rect(Rect2(-15, top + 33, 13, 3), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-14, top + 34, 11 * (1.0 - f), 1), Color(0.4, 1, 0.3).lerp(Color(1, 0.55, 0.1), f))
-	if kind == "bloater" and team == game.human:
-		var w := radius * 2.0
-		draw_rect(Rect2(-w * 0.5, top + 7.0, w, 2), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(-w * 0.5, top + 7.0, w * gas / 100.0, 2), Color(0.75, 0.95, 0.25))
-	if _pmax > 0.0 and team == game.human and (powder < _pmax or selected or kind == "powder_wagon"):
+	if kind == "powder_wagon" and team == game.human:
 		# the powder it carries: a little horn and a thin bar (amber; red when empty)
 		var pw := bw
 		var ph := 3.0 if kind == "powder_wagon" else 1.0
