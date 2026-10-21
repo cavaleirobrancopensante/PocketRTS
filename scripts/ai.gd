@@ -1178,7 +1178,7 @@ func _army() -> void:
 		_wave_target = _enemy_base()
 		var wagon := _wagon() if _crown() else null
 		for u in army:
-			if u.order == "idle" and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
+			if u.order == "idle" and u.wall_flee_t <= 0.0 and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
 				# a dry musketeer topping up at the wagon waits there until it can shoot again
 				if wagon and u.kind == "musketeer" and u.powder < float(Defs.POWDER["rearm"]) + 2.0 \
 						and wagon.powder >= 1.0 and u.position.distance_to(wagon.position) < 120.0 and u.target == null:
@@ -1278,7 +1278,7 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 					if u.deploys() and u.tesla_mode == "deployed" and u.target:
 						continue
 					var join: bool = fs != Vector2.INF and u.target == null and u.position.distance_to(fs) > 140.0
-					if u.order == "idle" or join:
+					if (u.order == "idle" or join) and u.wall_flee_t <= 0.0:
 						u.cmd_move(_wave_target + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), true)
 	# everyone not in the wave gathers at home
 	var in_wave := {}

@@ -34,6 +34,8 @@ var path_i := 0
 var path_goal := Vector2.INF
 var path_pending := false
 var stuck_t := 0.0
+var wall_flee_t := 0.0          # (computer) pulled back from a wall that shooters behind it cover
+var _wall_chk := 0.0
 var last_pos := Vector2.ZERO
 var repath_t := 0.0
 
@@ -1734,6 +1736,7 @@ func _physics_process(delta: float) -> void:
 	stun_t = maxf(stun_t - delta, 0.0)
 	held_t = maxf(held_t - delta, 0.0)
 	scan_t -= delta
+	_wall_watch(delta)
 	repath_t -= delta
 	sky_cd = maxf(sky_cd - delta, 0.0)
 	_courier_t -= delta
@@ -2156,6 +2159,37 @@ func _move(want: Vector2, delta: float) -> void:
 			stuck_t = 0.9
 			_request_path(path_goal)
 	last_pos = position
+
+
+## Computer players: melee units hacking at a wall keep at it while it's only being
+## repaired (that drains the defender), but pull back as soon as enemy shooters can hit
+## them over it: dying to men they can't reach is pointless.
+func _wall_watch(delta: float) -> void:
+	wall_flee_t = maxf(wall_flee_t - delta, 0.0)
+	_wall_chk -= delta
+	if _wall_chk > 0.0:
+		return
+	_wall_chk = 0.5
+	if target == null or not is_instance_valid(target) or not (target is Building) \
+			or not (target.kind == "wall" or target.kind == "gate") or float(d["range"]) > 40.0 or is_worker():
+		return
+	if not game.ais.any(func(a) -> bool: return a.team == team):
+		return
+	var shooter: Unit = null
+	for o in game.units_near(position, 320.0):
+		if o.dead or not game.hostile(o.team, team) or float(o.d["range"]) < 100.0:
+			continue
+		if o.edge_distance(position) <= float(o.d["range"]) + 10.0 and o.can_hit(self):
+			shooter = o
+			break
+	if shooter == null:
+		return
+	# back off out of its reach, the way it came
+	var away: Vector2 = (position - shooter.position).normalized()
+	var to: Vector2 = position + away * (float(shooter.d["range"]) + 90.0)
+	target = null
+	cmd_move(to, false)
+	wall_flee_t = 25.0
 
 
 ## Move toward and fight a target. Returns the desired velocity.
@@ -3221,8 +3255,8 @@ func _anim_name() -> String:
 				return "build"
 			if work == "mining" or phase != "":
 				return "mine"
-			if work == "building":
-				return "build"
+			if work == "building" or work == "repairing":
+				return "build"           # (repairing: the same hammering as building)
 			if moving and carrying > 0:
 				return "carry"
 		"grub":

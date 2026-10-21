@@ -100,32 +100,13 @@ func _ready() -> void:
 	Settings.load_all()
 	_load_lobby()
 	if OS.has_feature("web"):
-		# F11: the page toggles the same full screen the first click asks for, where the game
-		# keeps Esc (a quick Esc closes a card; Esc never leaves it), and F11 leaves it again.
-		# (Left to the engine F11 did nothing; left to the browser, its own full screen and
-		# this one fought, and Esc fell out of it.)
+		# F11 is the browser's: stop the engine swallowing it (it then did nothing in the game tab).
 		JavaScriptBridge.eval("""
-			window.addEventListener('keydown', function(e) {
-				if (!(e.key === 'F11' || e.keyCode === 122)) return;
-				e.preventDefault();
-				e.stopImmediatePropagation();
-				if (e.repeat) return;
-				if (document.fullscreenElement) {
-					if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
-					document.exitFullscreen();
-				} else {
-					var el = document.documentElement;
-					var req = el.requestFullscreen || el.webkitRequestFullscreen;
-					if (!req) return;
-					var p = req.call(el, {navigationUI: 'hide'});
-					if (p && p.then) p.then(function() {
-						if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(function(){});
-					}).catch(function(){});
-				}
-			}, true);
-			window.addEventListener('keyup', function(e) {
-				if (e.key === 'F11' || e.keyCode === 122) { e.preventDefault(); e.stopImmediatePropagation(); }
-			}, true);
+			['keydown', 'keyup'].forEach(function(t) {
+				window.addEventListener(t, function(e) {
+					if (e.key === 'F11' || e.keyCode === 122) e.stopImmediatePropagation();
+				}, true);
+			});
 		""", true)
 	var crash := _crash_report()
 	_mark_running("menu")
@@ -904,8 +885,7 @@ func _slot_row(i: int) -> Control:
 		h.add_child(sp)
 	# team
 	var tb := _dropdown(str(int(sl["side"]) + 1), 80, [["TEAM 1", 0, false], ["TEAM 2", 1, false], ["TEAM 3", 2, false], ["TEAM 4", 3, false]], func(v) -> void: sl["side"] = v)
-	tb.add_theme_font_override("font", UiStyle.title_font())
-	tb.add_theme_font_size_override("font_size", 24)
+	tb.add_theme_font_size_override("font_size", 22)      # (the bold font: it has the arrow)
 	h.add_child(tb)
 	if lobby["slots"].size() > 2:
 		var x := _button("✕", func() -> void:
@@ -1669,7 +1649,12 @@ func _input(event: InputEvent) -> void:
 				or (event is InputEventKey and event.pressed and not event.echo) \
 				or (event is InputEventScreenTouch and event.pressed):
 			game.note_action()
-	# the first click or tap anywhere: full screen (if it's on)
+	# a click or tap while not in full screen (the first one, or after leaving it): full screen
+	# again, the kind where the game keeps Esc (if the setting is on)
+	if _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
+			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)) \
+			and not bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.innerHeight >= screen.height - 2)", true)):
+		_went_fullscreen = false
 	if not _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
 			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)):
 		_web_fullscreen()

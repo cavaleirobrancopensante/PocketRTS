@@ -23,7 +23,7 @@ const MODE_NAMES := {"vanilla": "YOUR FACTION + A LITTLE OF THE ENEMY", "faction
 	"all": "EVERYTHING, SHUFFLED", "picked": "ONLY THE TICKED PIECES"}
 const ENEMY_CHANCE := 0.2
 const FADE := 2.5
-const VOL := -6.0
+const VOL := -12.0      # music sits under the battle (the guns must cut through)
 const HEAT_ON := 7.0      # combat heat that starts the battle music
 const HEAT_OFF := 1.5     # ...and the calm it takes to go back
 

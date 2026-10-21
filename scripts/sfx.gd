@@ -93,6 +93,15 @@ static func play_any(names: Array, pos := Vector2.INF, vol := 0.0) -> void:
 			return
 
 
+## Mixing: some sounds a touch louder or softer than their files (in dB), so the guns cut
+## through and a swarm's many small bites don't bury everything.
+const MIX := {"combat/musketeer_attack": 4.0, "combat/cannon_attack": 2.0, "combat/raptor_attack": -6.0,
+	"combat/spitter_attack": -3.0, "combat/grub_attack": -4.0}
+## The shortest gap (ms) before the same sound plays again (default 40).
+const GAP := {"combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/spitter_attack": 150,
+	"combat/windup_soldier_attack": 180, "combat/brood_death": 120, "combat/crown_death": 120}
+
+
 static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	if me == null:
 		return
@@ -100,15 +109,15 @@ static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	if list.is_empty():
 		return
 	var now := Time.get_ticks_msec()
-	if now - int(me._last.get(name, 0)) < 40:
-		return   # don't stack dozens of identical sounds in one frame
+	if now - int(me._last.get(name, 0)) < int(GAP.get(name, 40)):
+		return   # don't stack dozens of identical sounds (a swarm's bites) on top of each other
 	me._last[name] = now
-	var db := vol
+	var db := vol + float(MIX.get(name, 0.0))
 	if pos != Vector2.INF and me.camera and is_instance_valid(me.camera):
 		var dist := pos.distance_to(me.camera.get_screen_center_position()) * me.camera.zoom.x
 		if dist > 1100.0:
 			return
-		db += -3.0 - dist / 70.0
+		db += -2.0 - dist / 110.0
 	if not me._players.has(name):
 		me._players[name] = me._new_player(6)
 	var p: AudioStreamPlayer = me._players[name]
