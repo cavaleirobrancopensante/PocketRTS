@@ -478,7 +478,7 @@ func _tap(screen: Vector2, is_mouse: bool) -> void:
 					cancel_mode()
 			else:
 				if e is Unit and e.team == game.human:
-					game.notify("Only Musketeers, Pikemen and Labourers fit in the basket.")
+					game.notify("Only Musketeers and Labourers fit in the basket.")
 				cancel_mode()
 			return
 		"unload":

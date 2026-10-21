@@ -60,9 +60,15 @@ var _bob_t := 0.0
 var _draw_key := Vector4i(-1, -1, -1, -1)
 var _push := Vector2.ZERO
 # Crown abilities
-var mode := ""                  # musketeer "" (muskets) or "bayonet"; cannon "" (round shot) or "canister"
-var push_auto := true           # pikeman: shove enemies back with the pike when it's ready
-var push_cd := 0.0
+var mode := ""                  # musketeer "" (musket) or "bayonet" (chosen by itself); cannon "" (round shot) or "canister"
+var _melee_t := 0.0             # musketeer: when it next looks for an enemy close enough for the bayonet
+var art := ""                   # whose sprites it wears (an armoured Musketeer: "musketeer_armoured")
+var armoured := false           # Musketeer: its player has researched Armour
+# Missionary raising the fallen; a raised soldier's second life
+var _body: Unit = null          # (a Missionary) the body he's going to raise
+var reviver: Unit = null        # (a body) the Missionary coming to raise it
+var died_at := 0.0              # (a body) the game clock when it fell
+var final_death := false        # (a body) fell under the cross: it can't be raised again
 var knock := Vector2.ZERO       # being shoved back
 var stun_t := 0.0
 var _sep_tick := false
@@ -117,7 +123,7 @@ static var _sky_ground := {}
 var powder := 0.0               # Musketeer / Cannon: shots carried; Powder Wagon: shots in store
 var _pmax := 0.0                # how many it can hold (0: it doesn't use personal powder)
 var _powder_t := 0.0
-var _auto_bayonet := false      # Musketeer: fixed bayonets because it ran dry (muskets again once refilled)
+var _auto_bayonet := false      # Musketeer: on the bayonet because it ran dry (the musket again once refilled)
 var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs from the Powder Mill)
 var _supply_t := 0.0
 var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
@@ -142,16 +148,89 @@ func _draw_number(v: int, at: Vector2) -> void:
 		x += 8.0
 
 
+var _rip: Tween                  # (a body) lying there, then fading away
+
+
 func _rest_in_peace() -> void:
 	queue_redraw()
 	set_physics_process(false)
 	set_process(false)
-	var tw := create_tween()
-	# bodies the Brood can harvest lie there longer
-	tw.tween_interval(float(Defs.HARVEST["time"]) if game.corpses.has(self) else CORPSE_TIME)
-	tw.tween_callback(func() -> void: game.corpses.erase(self))
-	tw.tween_property(self, "modulate:a", 0.0, 3.0)
-	tw.tween_callback(queue_free)
+	# bodies the Brood can harvest, or a Missionary raise, lie there longer
+	var lie := float(Defs.HARVEST["time"]) if game.corpses.has(self) else CORPSE_TIME
+	if game.fallen.has(self):
+		lie = maxf(lie, float(Defs.REVIVE["window"]) - corpse_t)
+	_rip = create_tween()
+	_rip.tween_interval(lie)
+	_rip.tween_callback(func() -> void:
+		game.corpses.erase(self)
+		game.fallen.erase(self))
+	_rip.tween_property(self, "modulate:a", 0.0, 3.0)
+	_rip.tween_callback(queue_free)
+
+
+## (a body) raised by a Missionary: back on the field with part of its health, under the
+## cross for a while (fall again under it and it's for good).
+func revive() -> void:
+	if _rip and _rip.is_valid():
+		_rip.kill()
+	_rip = null
+	game.corpses.erase(self)
+	game.fallen.erase(self)
+	dead = false
+	reviver = null
+	harvester = null
+	hp = max_hp * float(Defs.REVIVE["hp"])
+	cross_t = float(Defs.REVIVE["cross"])
+	acid_t = 0.0
+	stun_t = 0.0
+	slow_t = 0.0
+	knock = Vector2.ZERO
+	velocity = Vector2.ZERO
+	corpse_t = 0.0
+	modulate.a = 1.0
+	z_index = 3 if is_air() else 0
+	target = null
+	phase = ""
+	cooldown = 0.0
+	_reload = 0.0
+	mode = ""
+	_auto_bayonet = false
+	set_physics_process(true)
+	set_process(true)
+	cmd_stop()
+	frame_i = 0
+	anim_t = 0.0
+	_set_anim("idle", true)
+	_draw_key = Vector4i(-1, -1, -1, -1)
+	queue_redraw()
+	game.on_unit_revived(self)
+
+
+## Research its player has done: a Musketeer gets Armour (+armour, +health, and the armoured
+## sprites). Called when it's made and when the research finishes.
+func apply_tech() -> void:
+	if kind != "musketeer" or armoured or game == null or team < 0 or not game.has_tech(team, "armour"):
+		return
+	var info: Dictionary = Defs.RESEARCH["armour"]
+	armoured = true
+	armor = float(d["armor"]) + float(info["armor"])
+	max_hp = float(d["hp"]) + float(info["hp"])
+	hp = minf(max_hp, hp + float(info["hp"]))
+	if ArtData.UNITS.has("musketeer_armoured"):
+		art = "musketeer_armoured"
+	if sprite and not dead:
+		_set_anim(anim if anim != "" else "idle", true)
+	queue_redraw()
+
+
+## Musketeer reload with the best lock its player has researched.
+func musket_cooldown() -> float:
+	var m := 1.0
+	if kind == "musketeer" and game and team >= 0:
+		for k in Defs.LOCKS:
+			if game.has_tech(team, k):
+				m = minf(m, float(Defs.RESEARCH[k]["reload"]))
+	return float(d["cooldown"]) * m
 
 
 ## A Clockwork construct with no charge left.
@@ -186,21 +265,55 @@ func can_hit(e: Entity) -> bool:
 	return true
 
 
-## Musketeer: fix bayonets (melee, no powder) or go back to muskets. Out of powder, it keeps
-## its bayonets and goes back to muskets by itself once it has refilled.
-func set_bayonet(on: bool) -> void:
-	if kind != "musketeer":
+## Musketeer: the musket at range, the bayonet on an enemy (on the ground) that comes
+## close, or on anything once its powder has run dry (the musket again once it has
+## POWDER.rearm shots). Chosen between blows, never in the middle of one. The musket keeps
+## reloading while it stabs.
+var _reload := 0.0              # Musketeer: what's left of the musket's reload
+
+
+func _pick_weapon(delta: float) -> void:
+	_reload = maxf(_reload - delta, 0.0)
+	_melee_t -= delta
+	if phase != "" or _melee_t > 0.0:
 		return
-	if on:
-		_auto_bayonet = false
-	elif powder < 1.0:
+	_melee_t = 0.2
+	if powder < 1.0 and not _auto_bayonet:
 		_auto_bayonet = true
-		return
-	if (mode == "bayonet") == on:
-		return
-	mode = "bayonet" if on else ""
-	phase = ""
-	target = null
+		if team == game.human and mode != "bayonet":
+			game.float_text(position + Vector2(0, -36), "out of powder: bayonets!", Color(1, 0.75, 0.4))
+	elif _auto_bayonet and powder >= float(Defs.POWDER["rearm"]):
+		_auto_bayonet = false
+	# an enemy on top of us (an ordered target first, then whoever is closest)
+	var close: Unit = null
+	var reach := float(Defs.BAYONET["close"])
+	var cd := INF
+	for o in game.units_near(position, reach + radius + 30.0):
+		if not game.hostile(o.team, team) or o.dead or o.off_field or o.is_air() or o.untouchable():
+			continue
+		var gap: float = o.position.distance_to(position) - o.radius - radius
+		if gap > reach:
+			continue
+		if o == order_target or o == target:
+			gap -= 100.0
+		if gap < cd:
+			cd = gap
+			close = o
+	# (ordered to shoot something else: it keeps shooting while it has powder)
+	if close and order == "attack" and close != order_target and not _auto_bayonet:
+		close = null
+	var want := "bayonet" if close != null or _auto_bayonet else ""
+	if want != mode:
+		if mode == "":
+			_reload = maxf(_reload, cooldown)
+			cooldown = minf(cooldown, float(Defs.BAYONET["cooldown"]))
+		else:
+			cooldown = maxf(cooldown, _reload)
+		mode = want
+		if target and not _valid_target(target):
+			target = null
+	if close and target != close and (target == null or not (target is Unit) or target.edge_distance(position) - radius > float(Defs.BAYONET["range"])):
+		target = close
 
 
 ## A fighting unit (it gets a reload bar over its head; workers, medics and wagons don't).
@@ -242,17 +355,6 @@ func _powder_building() -> Building:
 ## its store near a building (paid from the bank) and calls labourers to bring kegs.
 func _powder_tick(delta: float) -> void:
 	_dispense_t = maxf(_dispense_t - delta, 0.0)
-	if kind == "musketeer" and phase == "":
-		if powder < 1.0 and mode != "bayonet":
-			mode = "bayonet"
-			_auto_bayonet = true
-			target = null
-			if team == game.human:
-				game.float_text(position + Vector2(0, -36), "out of powder: bayonets!", Color(1, 0.75, 0.4))
-		elif _auto_bayonet and mode == "bayonet" and powder >= float(Defs.POWDER["rearm"]):
-			mode = ""
-			_auto_bayonet = false
-			target = null
 	if kind == "powder_wagon" and supplying:
 		_supply_t -= delta
 		if _supply_t <= 0.0:
@@ -334,6 +436,8 @@ func _cooldown() -> float:
 		return Defs.BAYONET["cooldown"]
 	if mode == "canister":
 		return Defs.CANISTER["cooldown"]
+	if kind == "musketeer":
+		return musket_cooldown()
 	if overclock_t > 0.0:
 		return float(d["cooldown"]) * float(Defs.OVERLOAD["cooldown"])
 	return float(d["cooldown"])
@@ -431,7 +535,7 @@ func _basket_fire(delta: float, taken: Entity) -> void:
 		if not game.use_powder(team, 1):       # from the bank, like the basket's own gunners
 			continue
 		taken = best
-		p.cooldown = float(p.d["cooldown"]) + randf_range(0.0, 0.3)
+		p.cooldown = p.musket_cooldown() + randf_range(0.0, 0.3)
 		p.gun_state[0] = "up" if best.is_air() else "down"
 		p.gun_t[0] = 0.0
 		var muzzle := center() + Vector2(randf_range(-4.0, 4.0), -4.0)
@@ -522,6 +626,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	position = pos
 	last_pos = pos
 	leash_from = pos
+	art = k
+	apply_tech()
 
 
 func _ready() -> void:
@@ -600,13 +706,15 @@ func cmd_attack(e: Entity) -> void:
 ## Units with two modes: moving (packed) and set up (deployed). The cannon limbers and
 ## unlimbers, the Tesla Cart packs and deploys, the Spore Mother uproots and roots.
 func deploys() -> bool:
-	return kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother"
+	return kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar"
 
 
 func switch_time() -> float:
 	match kind:
 		"cannon":
 			return Defs.CANNON_SWITCH
+		"mortar":
+			return Defs.MORTAR_SWITCH
 		"spore_mother":
 			return Defs.ROOT_SWITCH
 	return Defs.TESLA_SWITCH
@@ -692,6 +800,19 @@ func cmd_heal(e: Unit) -> void:
 	target = null
 
 
+## Missionary: go to a fallen soldier's body and raise him (the body is his to raise
+## meanwhile: grubs leave it alone).
+func cmd_revive(body: Unit) -> void:
+	if aboard or not d.get("medic", false) or not game.can_revive(body, self):
+		return
+	_reset_work()
+	order = "revive"
+	_body = body
+	body.reviver = self
+	target = null
+	order_target = null
+
+
 func cmd_stop() -> void:
 	_reset_work()
 	order = "idle"
@@ -772,6 +893,7 @@ func _reset_work() -> void:
 	if _corpse and is_instance_valid(_corpse):
 		_corpse.harvester = null
 	_corpse = null
+	_drop_body()
 	_leave_mine()
 	_release_patient()
 	_cancel_boarding()
@@ -1217,7 +1339,6 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	cooldown = maxf(cooldown - delta, 0.0)
-	push_cd = maxf(push_cd - delta, 0.0)
 	spell_cd = maxf(spell_cd - delta, 0.0)
 	if _pmax > 0.0:
 		_powder_tick(delta)
@@ -1300,16 +1421,23 @@ func _physics_process(delta: float) -> void:
 		_move(_sky_switch(delta), delta)
 		_animate(delta)
 		return
+	if kind == "musketeer":
+		_pick_weapon(delta)
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
 	match order:
 		"idle":
 			if d.get("medic", false) and scan_t <= 0.0:
+				# the fallen first (a soldier back), then the wounded
 				scan_t = 0.5
-				var pt := game.find_patient(self, 9 * Defs.TILE)
-				if pt:
-					cmd_heal(pt)
+				var body := game.find_body(self, float(Defs.REVIVE["scan"]) * Defs.TILE)
+				if body:
+					cmd_revive(body)
+				else:
+					var pt := game.find_patient(self, 9 * Defs.TILE)
+					if pt:
+						cmd_heal(pt)
 			if kind == "winder" and scan_t <= 0.0:
 				scan_t = 1.0
 				var hurt := game.find_repair(self, 6 * Defs.TILE)
@@ -1374,6 +1502,8 @@ func _physics_process(delta: float) -> void:
 			want = _repair(delta)
 		"heal":
 			want = _heal(delta)
+		"revive":
+			want = _revive(delta)
 		"build":
 			want = _build(delta)
 		"cast":
@@ -1414,6 +1544,12 @@ func _physics_process(delta: float) -> void:
 	if key != _draw_key:
 		_draw_key = key
 		queue_redraw()
+	elif selected and (kind == "cannon" or kind == "mortar") and team == game.human:
+		# its line of fire on the ground follows the aim and the men around: ten times a second
+		_aim_t -= delta
+		if _aim_t <= 0.0:
+			_aim_t = 0.1
+			queue_redraw()
 
 
 ## Tesla Cart: it only rolls when packed and only zaps when deployed; switching takes a while.
@@ -1447,7 +1583,7 @@ func _valid_target(e: Entity) -> bool:
 ## How far this unit looks for targets: its sight, or for a cannon its full range (it
 ## can shoot what any friendly unit sees).
 func _scan_range() -> float:
-	if kind == "cannon":
+	if kind == "cannon" or kind == "mortar":
 		return maxf(sight * Defs.TILE, _range())
 	return sight * Defs.TILE
 
@@ -1656,7 +1792,8 @@ func _strike(e: Entity) -> void:
 	if e.is_building():
 		dmg *= float(d.get("building_bonus", 1.0))
 	if mode == "bayonet":
-		e.take_damage(Defs.BAYONET["damage"] * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self)
+		var vet := 1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
+		e.take_damage(Defs.BAYONET["damage"] * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self)
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 		return
@@ -1673,6 +1810,8 @@ func _strike(e: Entity) -> void:
 				game.canister_shot(self, e, Defs.CANISTER["damage"])
 			else:
 				game.cannon_shot(self, e.center(), dmg)
+		"mortar":
+			game.mortar_shot(self, e.position if e is Unit else e.center(), dmg)
 		"tesla_cart":
 			game.tesla_zap(self, e, dmg)
 		"spitter":
@@ -1734,15 +1873,6 @@ func _strike(e: Entity) -> void:
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
 				e.position = game.resolve_terrain(e.position + push, e.position, e.radius, e.team)
-			# Pikeman: when the shove is ready, the thrust drives the enemy back and staggers it.
-			if kind == "pikeman" and push_auto and push_cd <= 0.0 and e is Unit and not e.dead and not e.is_air():
-				push_cd = Defs.PIKE_PUSH["cooldown"]
-				var heavy: float = 0.4 if int(e.d["supply"]) >= 3 else 1.0
-				e.knock = (e.position - position).normalized() * Defs.PIKE_PUSH["force"] * heavy
-				e.stun_t = Defs.PIKE_PUSH["stun"] * heavy
-				e.phase = ""
-				e.take_damage(Defs.PIKE_PUSH["damage"], self)
-				game.spawn_effect("smoke", e.position + Vector2(0, -4), 1.5).modulate = Color(0.85, 0.75, 0.6, 0.7)
 
 
 # ------------------------------------------------------------------ workers
@@ -1985,6 +2115,7 @@ func _harvest(delta: float) -> Vector2:
 		if work_t <= 0.0:
 			cocoon = game.corpse_value(_corpse)
 			game.corpses.erase(_corpse)
+			game.fallen.erase(_corpse)       # (wrapped up: no raising him now)
 			var body := _corpse
 			_corpse = null
 			work = ""
@@ -2158,6 +2289,48 @@ func _heal(delta: float) -> Vector2:
 	return _follow(delta)
 
 
+## Missionary: walk to the body and raise the soldier (kneeling over him as for a bandage).
+func _revive(delta: float) -> Vector2:
+	var b := _body
+	if not game.can_revive(b, self):
+		_drop_body()
+		cmd_stop()
+		return Vector2.ZERO
+	if work == "reviving":
+		facing = (b.position - position).normalized() if b.position != position else facing
+		work_t -= delta
+		if work_t <= 0.0:
+			_body = null
+			work = ""
+			b.revive()
+			if team == game.human:
+				game.float_text(b.position + Vector2(0, -34), "risen!", Color(1, 1, 0.85))
+			cmd_stop()
+		return Vector2.ZERO
+	if position.distance_to(b.position) < radius + b.radius + 8.0:
+		work = "reviving"
+		work_t = float(Defs.REVIVE["time"])
+		path = PackedVector2Array()
+		Sfx.play("combat/missionary_heal", position)
+		return Vector2.ZERO
+	if position.distance_to(b.position) < 140.0 and game.line_clear(position, b.position):
+		path = PackedVector2Array()
+		return (b.position - position).normalized() * speed
+	if repath_t <= 0.0 or (path.is_empty() and not path_pending):
+		repath_t = 1.0
+		_request_path(b.position)
+	return _follow(delta)
+
+
+## (a Missionary) let go of the body he was going to raise.
+func _drop_body() -> void:
+	if _body and is_instance_valid(_body) and _body.reviver == self:
+		_body.reviver = null
+	_body = null
+	if work == "reviving":
+		work = ""
+
+
 func _release_patient() -> void:
 	if _patient and is_instance_valid(_patient):
 		_patient.off_field = false
@@ -2229,7 +2402,12 @@ func die() -> void:
 	velocity = Vector2.ZERO
 	_leave_mine()
 	_release_patient()
+	_drop_body()
 	_cancel_boarding()
+	# fallen under the cross (just raised, or just bandaged): gone for good
+	final_death = cross_t > 0.0
+	died_at = game.clock
+	reviver = null
 	if not passengers.is_empty():
 		drop_passengers(position, true)     # shot down: the men in the basket fall out
 	if kind == "winder" and carry_empty:
@@ -2270,7 +2448,7 @@ func die() -> void:
 ## This unit's sheet has an animation `a` (in any direction)? Else use `fallback`: new art
 ## (a landed Skywing, a deflated Bloater) may not be in yet.
 func _anim_or(a: String, fallback: String) -> String:
-	var frames: Dictionary = ArtData.UNITS[kind]["frames"]
+	var frames: Dictionary = ArtData.UNITS[art]["frames"]
 	for dr in ["s", "se", "e", "ne", "n"]:
 		if frames.has(a + "_" + dr):
 			return a
@@ -2284,7 +2462,7 @@ func _death_anim() -> String:
 		return _anim_or("gdeath", "death")
 	if kind == "bloater" and deflate != "":
 		return _anim_or("ddeath", "death")
-	if keg and ArtData.UNITS[kind]["frames"].has("death_keg_e"):
+	if keg and ArtData.UNITS[art]["frames"].has("death_keg_e"):
 		return "death_keg"
 	return "death"
 
@@ -2296,8 +2474,10 @@ func _anim_name() -> String:
 	match kind:
 		"musketeer":
 			if mode == "bayonet":
-				# the bayonet thrust: the musket levelled as in its aim
-				return "aim" if phase != "" else ("walk" if moving else "idle")
+				# the bayonet thrust
+				if phase != "":
+					return _anim_or("melee", "aim")
+				return "walk" if moving else "idle"
 			var up := target != null and is_instance_valid(target) and target.is_air()
 			if phase == "aim":
 				return "aimup" if up else "aim"
@@ -2305,11 +2485,16 @@ func _anim_name() -> String:
 				return "fireup" if up else "fire"
 			if cooldown > 0.0 and not moving and target:
 				return "reload"
-		"pikeman":
+		"mortar":
+			if tesla_mode == "deploying" or tesla_mode == "packing":
+				return "deploy"
+			if tesla_mode == "packed":
+				return "walk" if moving else _anim_or("idle_packed", "idle")
 			if phase != "":
-				return "thrust"
-			if order == "hold" and not moving:
-				return "brace"
+				return "fire"
+			if cooldown > 0.0 and target:
+				return "reload"
+			return "idle"
 		"cannon":
 			var new_art: bool = ArtData.UNITS["cannon"]["frames"].has("walk_e")
 			if tesla_mode == "deploying" or tesla_mode == "packing":
@@ -2384,7 +2569,7 @@ func _anim_name() -> String:
 			if not moving and cooldown > 0.0 and target:
 				return "vent"
 		"missionary":
-			if work == "bandaging":
+			if work == "bandaging" or work == "reviving":
 				return "bandage"
 		"skywing":
 			if sky == "landing" or sky == "lifting":
@@ -2462,14 +2647,12 @@ func _animate(delta: float) -> void:
 		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE)
 	_set_anim(_anim_name(), false)
 	var key := anim + "_" + anim_dir
-	var n: int = ArtData.UNITS[kind]["frames"].get(key, 1)
+	var n: int = ArtData.UNITS[art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
 	var loop := true
 	match anim:
 		"idle":
 			fps = 2.0
-			if kind == "pikeman":
-				n = 1
 		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0
 			loop = false
@@ -2515,7 +2698,7 @@ func _animate(delta: float) -> void:
 		"mine", "build":
 			fps = 6.0
 		"reload":
-			fps = float(n) / maxf(float(d["cooldown"]) * 0.8, 0.5)
+			fps = float(n) / maxf(_cooldown() * 0.8, 0.5)
 		"deploy":
 			fps = float(n) / switch_time()
 			loop = false
@@ -2662,7 +2845,7 @@ func _set_anim(a: String, force: bool) -> void:
 	if a != anim:
 		frame_i = 0
 		anim_t = 0.0
-	var frames: Dictionary = ArtData.UNITS[kind]["frames"]
+	var frames: Dictionary = ArtData.UNITS[art]["frames"]
 	if not frames.has(a + "_" + dr):
 		# Closest drawn direction; side-only animations face the way we're heading.
 		var near: Dictionary = {"s": ["se", "e"], "se": ["s", "e"], "e": ["se", "ne"], "ne": ["n", "e"], "n": ["ne", "e"]}
@@ -2679,14 +2862,94 @@ func _set_anim(a: String, force: bool) -> void:
 	anim_dir = dr
 	anim_flip = flip
 	var key := a + "_" + dr
-	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, key])
+	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [art, key])
 	sprite.hframes = frames.get(key, 1)
-	var anchor: Vector2 = ArtData.UNITS[kind]["anchor"]
+	var anchor: Vector2 = ArtData.UNITS[art]["anchor"]
 	# some sheets (aiming up) have extra room on top: the feet stay where they were
-	var cell: Vector2i = ArtData.UNITS[kind]["cell"]
+	var cell: Vector2i = ArtData.UNITS[art]["cell"]
 	sprite.offset = -anchor - Vector2(0, sprite.texture.get_height() - cell.y)
 	sprite.scale = Vector2(-1.0 if flip else 1.0, 1.0) * float(d.get("art_scale", 1.0))
 	frame_i = mini(frame_i, sprite.hframes - 1)
+
+
+var _aim_t := 0.0
+
+
+## Where a selected gun of the player's is aiming: at its target, else where it faces; on a
+## computer, while an ATTACK order is being given, at the mouse.
+func _aim_dir() -> Vector2:
+	var c = game.controls
+	if c and c.get("mode") == "attack" and not game.demo:
+		var m := get_global_mouse_position()
+		if m.distance_to(global_position) > 8.0:
+			return (m - global_position).normalized()
+	if target and is_instance_valid(target) and not target.dead:
+		return (target.center() - center()).normalized()
+	return facing.normalized() if facing != Vector2.ZERO else Vector2.RIGHT
+
+
+## A selected Cannon's line of fire on the ground (round shot: the band the ball ploughs
+## along, out to full range; canister: its cone), red where it crosses your own or allied men,
+## who'd be hit too. Faint while limbered. A selected Mortar: its least and greatest range,
+## and the blast at its target.
+func _draw_aim() -> void:
+	var gold := Color(1.0, 0.9, 0.55)
+	var red := Color(1.0, 0.25, 0.2)
+	var a := 0.25 if tesla_mode in ["deployed", "deploying"] else 0.1
+	if kind == "mortar":
+		var lo := float(d["min_range"]) + radius
+		var hi := float(d["range"]) + radius
+		draw_arc(Vector2.ZERO, hi, 0.0, TAU, 96, Color(gold.r, gold.g, gold.b, a + 0.1), 1.5)
+		draw_arc(Vector2.ZERO, lo, 0.0, TAU, 64, Color(red.r, red.g, red.b, a), 1.0)
+		if target and is_instance_valid(target) and not target.dead:
+			var at: Vector2 = (target.position if target is Unit else target.center()) - global_position
+			var sp := float(d["splash"])
+			draw_circle(at, sp, Color(red.r, red.g, red.b, 0.12))
+			draw_arc(at, sp, 0.0, TAU, 32, Color(red.r, red.g, red.b, 0.5), 1.5)
+		return
+	var dir := _aim_dir()
+	var from := center() + dir * 28.0 - global_position
+	var friends: Array = []
+	if mode == "canister":
+		var reach := float(Defs.CANISTER["range"]) + 30.0
+		var half := acos(float(Defs.CANISTER["cone"]))
+		var pts := PackedVector2Array([from])
+		for i in 13:
+			pts.append(from + dir.rotated(lerpf(-half, half, i / 12.0)) * reach)
+		draw_colored_polygon(pts, Color(gold.r, gold.g, gold.b, a * 0.5))
+		pts.append(from)
+		draw_polyline(pts, Color(gold.r, gold.g, gold.b, a + 0.15), 1.0)
+		for o in game.units_near(global_position + from, reach + 20.0):
+			if o == self or o.dead or o.off_field or game.hostile(o.team, team):
+				continue
+			var to: Vector2 = o.center() - (global_position + from)
+			if to.length() <= reach + o.radius and dir.dot(to.normalized()) > float(Defs.CANISTER["cone"]):
+				friends.append(o)
+		for o in friends:
+			var p: Vector2 = o.position - global_position
+			draw_set_transform(p, 0.0, Vector2(1.0, 0.45))
+			draw_circle(Vector2.ZERO, o.radius + 4.0, Color(red.r, red.g, red.b, 0.45))
+			draw_set_transform(Vector2.ZERO)
+		return
+	# round shot: a band along the ground from the muzzle out to its full range
+	var w := float(Defs.ROUND_SHOT["width"])
+	var length := float(d["range"]) + radius
+	var g0 := Vector2(0, 0) + dir * 28.0           # on the ground, under the muzzle
+	var g1 := dir * length
+	var n := dir.orthogonal() * w
+	draw_colored_polygon(PackedVector2Array([g0 + n, g1 + n, g1 - n, g0 - n]), Color(gold.r, gold.g, gold.b, a * 0.6))
+	draw_line(g0 + n, g1 + n, Color(gold.r, gold.g, gold.b, a + 0.1), 1.0)
+	draw_line(g0 - n, g1 - n, Color(gold.r, gold.g, gold.b, a + 0.1), 1.0)
+	# our own and allied men on that band: the stretch over each of them goes red
+	var mid := global_position + (g0 + g1) * 0.5
+	for o in game.units_near(mid, length * 0.5 + 40.0):
+		if o == self or o.dead or o.off_field or o.is_air() or game.hostile(o.team, team):
+			continue
+		var gp: Vector2 = o.position - global_position
+		var q := Geometry2D.get_closest_point_to_segment(gp, g0, g1)
+		if q.distance_to(gp) <= o.radius + w:
+			var s: Vector2 = dir * (float(o.radius) + 4.0)
+			draw_colored_polygon(PackedVector2Array([q - s + n, q + s + n, q + s - n, q - s - n]), Color(red.r, red.g, red.b, 0.5))
 
 
 func _draw() -> void:
@@ -2695,14 +2958,16 @@ func _draw() -> void:
 		if kills > 0 and game.corpses.has(self):
 			_draw_number(game.corpse_value(self), Vector2(0, -26))
 		return
+	if selected and (kind == "cannon" or kind == "mortar") and team == game.human and aboard == null:
+		_draw_aim()
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, radius + 2.0, Color(0, 0, 0, 0.25))
 	if selected:
 		draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
 	draw_set_transform(Vector2.ZERO)
-	var top := -float(ArtData.UNITS[kind]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0
-	if kind == "pikeman":
-		top = -44.0
+	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0
+	if kind == "mortar":
+		top = -50.0
 	elif kind == "tesla_cart" and tesla_mode != "packed":
 		top = -70.0    # above the raised coil's sparks (the packed body: the anchor height)
 	elif kind == "cannon":

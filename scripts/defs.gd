@@ -40,16 +40,16 @@ const SOIL_TIRED := 1.0 / 3.0     # share of a harvest that tired soil still pay
 const SOIL_LOW := 0.25            # warn the player below this share of the reserve (Hive ground too)
 const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min) while its saltpetre lasts
 const START_POWDER := 80
-## Personal powder: Musketeers and Cannons carry their own, in shots (one per shot, round
-## shot or canister alike). A dry Musketeer fixes bayonets by itself until it has `rearm`
-## shots again. They refill by themselves (`refill` shots a second) within `range` tiles of
+## Personal powder: Musketeers, Cannons and Mortars carry their own, in shots (one per shot:
+## round shot, canister or shell alike). A dry Musketeer fights with the bayonet until it has
+## `rearm` shots again. They refill by themselves (`refill` shots a second) within `range` tiles of
 ## one of their side's finished `from` buildings, paid from the powder bank at `cost` powder
 ## a shot (a full musketeer: 6 powder; with the bank empty the refill waits), or of a Powder
 ## Wagon with powder left (drawn from the wagon's store, already paid for: a cannon shot takes
 ## 3 of the wagon's musket shots). Shots themselves don't touch the bank any more (the
 ## Balloon's gunners still burn 1 a shot).
-const POWDER := {"musketeer": 12, "cannon": 8, "refill": 2.0, "range": 3.0, "rearm": 4,
-	"cost": {"musketeer": 0.5, "cannon": 1.5}, "from": ["powder_mill", "barracks", "town_hall"]}
+const POWDER := {"musketeer": 12, "cannon": 8, "mortar": 6, "refill": 2.0, "range": 3.0, "rearm": 4,
+	"cost": {"musketeer": 0.5, "cannon": 1.5, "mortar": 1.5}, "from": ["powder_mill", "barracks", "town_hall"]}
 ## Powder Wagon: holds `store` musket shots. Parked within POWDER.range tiles of a Powder Mill,
 ## Barracks or Town Hall it fills `fill` shots a second, paid from the powder bank at
 ## 1 powder per `per_powder` shots (the musket rate). SUPPLY: up to `runners` labourers carry
@@ -126,7 +126,7 @@ const FACTIONS := {
 		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 100,
 		"res": ["Gold", "Powder"], "econ": {"farm": 2, "powder_mill": 1},
 		"start": ["farm"],
-		"about": "Musketeers and cannons. Farms ripen into big harvests; Powder Mills grind saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
+		"about": "Musketeers, cannons and mortars. Farms ripen into big harvests; Powder Mills grind saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
 	},
 	"brood": {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
@@ -157,13 +157,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 2,
 		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks", "requires": "powder_mill",
-		"anti_air": true, "faction": "crown", "about": "Ranged line infantry. Long reload. Needs a Powder Mill. Carries 12 shots; dry, it fixes bayonets until it refills near a Mill, Barracks, Town Hall or Powder Wagon.",
-	},
-	"pikeman": {
-		"tags": ["armored"],
-		"name": "Pikeman", "hp": 120, "armor": 2, "speed": 60, "cost": 50, "time": 13.0, "supply": 2,
-		"sight": 7, "range": 30, "damage": 13, "cooldown": 1.1, "radius": 11, "from": "barracks",
-		"bonus": {"cannon": 2.5, "brute": 1.6, "cuirassier": 2.0}, "faction": "crown", "about": "Tough melee. Wrecks cannons, brutes and cavalry up close.",
+		"anti_air": true, "faction": "crown", "about": "Line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 12 shots run dry; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Needs a Powder Mill. The Barracks researches Armour and better locks for it.",
 	},
 	"cannon": {
 		"tags": ["armored"],
@@ -171,6 +165,13 @@ const UNITS := {
 		"sight": 8, "range": 430, "min_range": 80, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
 		"radius": 22, "from": "foundry", "building_bonus": 2.5, "faction": "crown",
 		"about": "Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers. Carries 8 shots; refills near a Mill, Barracks, Town Hall or Powder Wagon.",
+	},
+	"mortar": {
+		"tags": ["armored"],
+		"name": "Mortar", "hp": 120, "armor": 1, "speed": 38, "cost": 175, "cost2": 20, "time": 30.0, "supply": 3,
+		"sight": 8, "range": 352, "min_range": 160, "damage": 30, "splash": 48, "cooldown": 5.0, "aim": 0.6,
+		"radius": 18, "from": "foundry", "building_bonus": 1.5, "ground_only": true, "faction": "crown",
+		"about": "Siege mortar. Packed it rolls; DEPLOY it (3 s) to fire. It lobs a shell high over men and walls (5 to 11 tiles away) that bursts where it lands: 30 damage over a wide area, friends too. Can't hit flyers. Carries 6 shells; refills near a Mill, Barracks, Town Hall or Powder Wagon.",
 	},
 	"powder_wagon": {
 		"tags": ["armored"],
@@ -184,14 +185,14 @@ const UNITS := {
 		"name": "Cuirassier", "hp": 170, "armor": 2, "speed": 108, "cost": 175, "time": 24.0, "supply": 3,
 		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
 		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "bolt": 1.3}, "charge": true, "faction": "crown",
-		"about": "Fast armoured horseman with a sabre. After a gallop his first blow hits double and throws the enemy back. Pikes beat him.",
+		"about": "Fast armoured horseman with a sabre. After a gallop his first blow hits double and throws the enemy back. Bayonets hurt him.",
 	},
 	"balloon": {
 		"tags": ["light"],
 		"name": "Observation Balloon", "hp": 180, "armor": 0, "speed": 46, "cost": 175, "cost2": 30, "time": 30.0, "supply": 4,
 		"sight": 12, "range": 220, "damage": 16, "cooldown": 3.0, "aim": 0.35, "radius": 19, "from": "foundry", "art_scale": 1.2,
 		"air": true, "anti_air": true, "gunners": 2, "faction": "crown",
-		"about": "A snipers' nest in the sky: two musketeers who each shoot at the ground or at flyers, and a long view for your cannons. LOAD up to 4 Musketeers, Pikemen or Labourers (carried Musketeers fire from the basket) and UNLOAD them anywhere, even over cliffs. Slow and fragile. Each shot burns powder.",
+		"about": "A snipers' nest in the sky: two musketeers who each shoot at the ground or at flyers, and a long view for your cannons. LOAD up to 4 Musketeers or Labourers (carried Musketeers fire from the basket) and UNLOAD them anywhere, even over cliffs. Slow and fragile. Each shot burns powder.",
 	},
 	"grub": {
 		"tags": ["light"],
@@ -272,7 +273,7 @@ const UNITS := {
 		"name": "Missionary", "hp": 60, "armor": 0, "speed": 62, "cost": 125, "time": 20.0, "supply": 1,
 		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 10, "from": "church",
 		"medic": true, "per": "church", "faction": "crown",
-		"about": "Bandages wounded soldiers back to full health. Can't be hurt unless near enemy buildings. One per Church.",
+		"about": "Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt unless near enemy buildings. One per Church.",
 	},
 	"skywing": {
 		"tags": ["light"],
@@ -319,11 +320,11 @@ const BUILDINGS := {
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "pikeman", "cuirassier"], "faction": "crown", "about": "Trains musketeers, pikemen and (with a Foundry) cuirassiers.",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains musketeers and (with a Foundry) cuirassiers. Researches Armour and better musket locks.",
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["cannon", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons, rigs observation balloons and builds powder wagons. Lets the Barracks train cuirassiers. Needs a Barracks.",
+		"supply": 0, "sight": 7, "trains": ["cannon", "mortar", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and mortars, rigs observation balloons and builds powder wagons. Lets the Barracks train cuirassiers. Needs a Barracks.",
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
@@ -417,9 +418,28 @@ const BUILDINGS := {
 
 
 
-## Tech step: each faction's first ranged unit needs one piece of research at the building
-## that makes its first fighters, so the opening is melee and the ranged unit comes a little later.
-const RESEARCH := {}   # (the tech step is now the second economy building: see "requires")
+## Research: done once per player at a building (`at`), paid in the first resource (`cost`)
+## and the second (`cost2`), taking `time` seconds; `requires` another research first.
+## (`icon`: assets/icons/<icon>.png.)
+## Crown, at the Barracks: Armour (+`armor` and +`hp` for every Musketeer, those in the
+## field too, and the armoured look) and the musket locks, one after the other: each sets
+## the Musketeers' reload to `reload` of the base (the totals, not on top of each other).
+const RESEARCH := {
+	"armour": {"name": "Armour", "at": "barracks", "faction": "crown", "cost": 150, "cost2": 50, "time": 45.0,
+		"icon": "research_armour", "armor": 1, "hp": 20,
+		"about": "Breastplates and helmets for every Musketeer, those already in the field too: +1 armour, +20 health."},
+	"matchlock": {"name": "Matchlock", "at": "barracks", "faction": "crown", "cost": 100, "cost2": 25, "time": 35.0,
+		"icon": "research_matchlock", "reload": 0.9,
+		"about": "Better matchlocks: Musketeers reload 10% faster (and burn their powder faster)."},
+	"flintlock": {"name": "Flintlock", "at": "barracks", "faction": "crown", "cost": 150, "cost2": 50, "time": 45.0,
+		"icon": "research_flintlock", "reload": 0.8, "requires": "matchlock",
+		"about": "Flintlocks: Musketeers reload 20% faster than at the start (and burn their powder faster)."},
+	"caplock": {"name": "Caplock", "at": "barracks", "faction": "crown", "cost": 200, "cost2": 75, "time": 55.0,
+		"icon": "research_caplock", "reload": 0.7, "requires": "flintlock",
+		"about": "Percussion caps: Musketeers reload 30% faster than at the start (and burn their powder faster)."},
+}
+## The musket locks, in order.
+const LOCKS := ["matchlock", "flintlock", "caplock"]
 
 
 ## Units whose art is still being finished: they can't be trained yet.
@@ -433,9 +453,23 @@ static func is_worker(kind: String) -> bool:
 ## Basic structures (halls, supply, economy) go on the BUILD page; production and tech
 ## buildings on ADVANCED.
 ## Crown abilities.
-const PIKE_PUSH := {"cooldown": 7.0, "force": 260.0, "stun": 0.7, "damage": 4.0}
-const BAYONET := {"range": 26.0, "damage": 11.0, "cooldown": 1.2, "aim": 0.2, "bonus": {"cannon": 2.0, "spitter": 1.3}}
+## Musketeer bayonet: used by itself on an enemy on the ground within `close` px (edge to
+## edge), and on anything once the powder has run dry. It can't reach flyers.
+const BAYONET := {"range": 26.0, "close": 30.0, "damage": 18.0, "cooldown": 1.0, "aim": 0.2,
+	"bonus": {"cannon": 2.0, "spitter": 1.3, "cuirassier": 1.5}}
 const CANNON_SWITCH := 2.5       # limber / unlimber
+const MORTAR_SWITCH := 3.0       # deploy / pack
+## Mortar shell: lobbed high (`arc`: the top of its flight as a share of the distance, at
+## `speed` px a second along the ground) and bursting where it lands: every ground unit
+## within the Mortar's splash is hurt, friends too, `edge` of the blow at the rim.
+const MORTAR := {"arc": 0.55, "speed": 240.0, "edge": 0.5}
+## Missionary raising the fallen: a Crown soldier's body can be raised for `window` s after
+## he falls; it takes `time` s and he comes back with `hp` of his health and the cross for
+## `cross` s (no bandaging or raising meanwhile). Falling again under the cross, he's gone
+## for good. Idle Missionaries look for bodies within `scan` tiles. Soldiers (`kinds`) only:
+## not labourers, guns, wagons or balloons.
+const REVIVE := {"time": 6.0, "hp": 0.5, "cross": 30.0, "window": 60.0, "scan": 10,
+	"kinds": ["musketeer", "cuirassier"]}
 ## Clockwork towers zap flyers with chain lightning; while they do, their field is off.
 const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "jump": 110.0, "falloff": 0.7, "off": 3.0}
 ## Cuirassier: after galloping this long, his next blow is a charge.
@@ -450,7 +484,7 @@ const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 6
 ## Bloater out of gas: it deflates (no spitting, no bursting, slower) and fills up again.
 const DEFLATE := {"refill": 4.0, "swamp": 2.0, "slow": 0.8, "anim": 0.8}
 ## Observation Balloon as a dropship: who can ride in the basket and what a fall costs.
-const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "pikeman", "labourer"], "fall": 0.5, "board": 26.0, "give_up": 30.0}
+const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "labourer"], "fall": 0.5, "board": 26.0, "give_up": 30.0}
 ## Skywing landed: a ground unit that bites (these replace its flying stats).
 const SKYWING_LANDED := {"air": false, "air_only": false, "ground_only": true, "anti_air": false,
 	"speed": 70, "range": 24, "damage": 14, "cooldown": 1.0, "aim": 0.15}
