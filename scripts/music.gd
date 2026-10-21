@@ -30,6 +30,8 @@ const HEAT_OFF := 1.5     # ...and the calm it takes to go back
 static var me: Music
 var music_on := true
 var sound_on := true
+var amb_on := true             # the landscape's background loop (wind, leaves, surf...)
+const AMB_VOL := -20.0
 var mode := "vanilla"
 var off_list: Array = []  # pieces left out in "picked" mode
 var _a: AudioStreamPlayer
@@ -68,6 +70,7 @@ func _ready() -> void:
 	if cfg.load("user://settings.cfg") == OK:
 		music_on = cfg.get_value("audio", "music", true)
 		sound_on = cfg.get_value("audio", "sound", true)
+		amb_on = cfg.get_value("audio", "ambience", true)
 		mode = cfg.get_value("audio", "music_mode", "vanilla")
 		off_list = cfg.get_value("audio", "music_off", [])
 	_apply()
@@ -100,12 +103,21 @@ func toggle_music() -> void:
 	music_on = not music_on
 	_apply()
 	_save()
+	MatchLog.sound("MUSIC " + ("ON" if music_on else "OFF"))
 
 
 func toggle_sound() -> void:
 	sound_on = not sound_on
 	_apply()
 	_save()
+	MatchLog.sound("SOUND " + ("ON" if sound_on else "OFF"))
+
+
+func toggle_ambience() -> void:
+	amb_on = not amb_on
+	_amb.volume_db = AMB_VOL if amb_on else -80.0
+	_save()
+	MatchLog.sound("AMBIENCE " + ("ON" if amb_on else "OFF"))
 
 
 func set_mode(m: String) -> void:
@@ -129,6 +141,7 @@ func _save() -> void:
 	cfg.load("user://settings.cfg")     # keep the other sections
 	cfg.set_value("audio", "music", music_on)
 	cfg.set_value("audio", "sound", sound_on)
+	cfg.set_value("audio", "ambience", amb_on)
 	cfg.set_value("audio", "music_mode", mode)
 	cfg.set_value("audio", "music_off", off_list)
 	cfg.save("user://settings.cfg")
@@ -241,6 +254,7 @@ func play(track: String, loop := false) -> void:
 	_a.stream = stream
 	_a.volume_db = -40.0
 	_a.play()
+	MatchLog.sound("MUSIC " + track)
 	_fade(_a, VOL)
 	_fade(_b, -80.0, true)
 
@@ -256,6 +270,7 @@ func _fade(p: AudioStreamPlayer, to: float, stop_after := false) -> void:
 func _on_finished(p: AudioStreamPlayer) -> void:
 	if p != _a or _preview:
 		return
+	MatchLog.sound("MUSIC ended " + _current)
 	if _in_menu:
 		_current = ""
 		play(_next_menu())
@@ -319,8 +334,9 @@ func ambience(biome: String) -> void:
 		s = (s as AudioStreamOggVorbis).duplicate()
 		(s as AudioStreamOggVorbis).loop = true
 	_amb.stream = s
-	_amb.volume_db = -10.0
+	_amb.volume_db = AMB_VOL if amb_on else -80.0
 	_amb.play()
+	MatchLog.sound("AMBIENCE " + biome)
 
 
 ## End of a match: fade the music and play the sting.

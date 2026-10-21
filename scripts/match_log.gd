@@ -10,8 +10,30 @@ var _snap_t := 0.0
 var _last := {}          # team -> {"killed", "lost"} at the last snapshot
 
 
+## The log of the match being played (for the sound log); null between matches.
+static var current: MatchLog = null
+var _snd := {}           # second -> {sound name: times}, kept apart and printed at the end
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
+	current = self
+
+
+func _exit_tree() -> void:
+	if current == self:
+		current = null
+
+
+## Every sound and music change during a match goes into the SOUND LOG at the end of the
+## log: per second, each name once with how many times it played.
+static func sound(name: String) -> void:
+	if current == null or not is_instance_valid(current) or current.game == null:
+		return
+	var sec := int(current.game.clock)
+	if not current._snd.has(sec):
+		current._snd[sec] = {}
+	current._snd[sec][name] = int(current._snd[sec].get(name, 0)) + 1
 
 
 func stamp() -> String:
@@ -125,4 +147,16 @@ func finish(winner: int) -> void:
 
 
 func text() -> String:
-	return "\n".join(lines)
+	var out := lines.duplicate()
+	if not _snd.is_empty():
+		out.append("")
+		out.append("--- SOUND LOG (every sound and music change, per second; x2 = played twice) ---")
+		var secs: Array = _snd.keys()
+		secs.sort()
+		for sec in secs:
+			var parts := PackedStringArray()
+			for n in _snd[sec]:
+				var c: int = _snd[sec][n]
+				parts.append(n if c == 1 else "%s x%d" % [n, c])
+			out.append("[%02d:%02d] %s" % [int(sec) / 60, int(sec) % 60, ", ".join(parts)])
+	return "\n".join(out)

@@ -3938,6 +3938,8 @@ func abandon(b: Building) -> void:
 		return
 	players[b.team]["gold"] += int(int(b.d["cost"]) * 0.75)
 	b.take_damage(9999999.0, null)
+	if b.crate_obj and is_instance_valid(b.crate_obj):
+		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)
 
 
 ## Pull down a finished building of your own (nothing comes back).

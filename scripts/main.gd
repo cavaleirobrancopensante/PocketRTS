@@ -98,6 +98,19 @@ func _ready() -> void:
 	_make_rotate_overlay()
 	Settings.load_all()
 	_load_lobby()
+	if OS.has_feature("web"):
+		# F11 belongs to the browser: the game page would swallow it (so it did nothing), and the
+		# game's own full screen (the Fullscreen API) is left by Esc in some browsers (Brave).
+		# Stopping the key before the engine sees it lets the browser's own full screen happen,
+		# which Esc never leaves.
+		JavaScriptBridge.eval("""
+			window.addEventListener('keydown', function(e) {
+				if (e.key === 'F11' || e.keyCode === 122) e.stopImmediatePropagation();
+			}, true);
+			window.addEventListener('keyup', function(e) {
+				if (e.key === 'F11' || e.keyCode === 122) e.stopImmediatePropagation();
+			}, true);
+		""", true)
 	var crash := _crash_report()
 	_mark_running("menu")
 	if Settings.device == "":
@@ -441,6 +454,7 @@ func show_settings() -> void:
 	v.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
 	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
 	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
+	v.add_child(_toggle_row("AMBIENCE", func() -> bool: return Music.me.amb_on, func() -> void: Music.me.toggle_ambience()))
 	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
 	v.add_child(_button("INTERFACE LAYOUT & HOTKEYS", func() -> void: show_layout()))
 	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
@@ -579,7 +593,7 @@ func _track_row(stem: String, title: String, mood: String) -> Control:
 	if Music.me.mode == "picked" and mood != "menu":
 		var tick := Button.new()
 		var on := Music.me.is_enabled(stem)
-		tick.text = "✓" if on else ""
+		tick.text = "√" if on else ""
 		tick.custom_minimum_size = Vector2(46, 46)
 		if on:
 			UiStyle.chosen(tick)
@@ -889,7 +903,8 @@ func _slot_row(i: int) -> Control:
 ## A button that opens a list to pick from (big rows, easy to tap). items: [label, value, disabled].
 func _dropdown(text: String, w: float, items: Array, pick: Callable) -> Button:
 	var b := Button.new()
-	b.text = text + "  ▾"
+	b.text = text + "  ▼"
+	b.add_theme_font_override("font", UiStyle.bold_font())     # (it has the arrow; the title font doesn't)
 	b.custom_minimum_size = Vector2(w, 58)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.size_flags_stretch_ratio = w / 100.0
@@ -929,7 +944,7 @@ func _open_list(b: Button, current: String, items: Array, pick: Callable) -> voi
 	scroll.add_child(v)
 	for it in items:
 		var row := Button.new()
-		row.text = ("\u2713  " if String(it[0]) == current else "     ") + String(it[0])
+		row.text = ("√  " if String(it[0]) == current else "     ") + String(it[0])
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.custom_minimum_size = Vector2(0, 52)
 		row.add_theme_font_size_override("font_size", 22)
@@ -1632,19 +1647,6 @@ func _web_leave_fullscreen() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# F11 (web): the game page swallows the key, so the game toggles full screen itself
-	if OS.has_feature("web") and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
-		get_viewport().set_input_as_handled()
-		var on := bool(JavaScriptBridge.eval("!!document.fullscreenElement", true))
-		if on:
-			_web_leave_fullscreen()
-		else:
-			_went_fullscreen = false
-			var keep := Settings.fullscreen
-			Settings.fullscreen = true
-			_web_fullscreen()
-			Settings.fullscreen = keep
-		return
 	# the first click or tap anywhere: full screen (if it's on)
 	if not _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
 			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)):

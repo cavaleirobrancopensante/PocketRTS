@@ -658,6 +658,7 @@ func _update_sprite() -> void:
 func die() -> void:
 	if dead:
 		return
+	var was_site := not built
 	dead = true
 	selected = false
 	if team == game.human and built and not game.over:
@@ -691,6 +692,13 @@ func die() -> void:
 			fx.scale = Vector2(0.9, 0.9)
 		var sm := game.spawn_effect("smoke_big", global_position + Vector2(0, -rect().size.y * 0.5), 0.9)
 		sm.modulate.a = 0.8
+	# a site that never got finished (abandoned or wrecked) leaves nothing behind
+	if was_site:
+		if sprite:
+			sprite.visible = false
+		if field:
+			field.visible = false
+		rubble_t = 27.5
 
 
 func _draw() -> void:

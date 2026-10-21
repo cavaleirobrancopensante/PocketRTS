@@ -386,7 +386,7 @@ func prod_rect() -> Rect2:
 func _draw_production(font: Font) -> void:
 	var pr := prod_rect()
 	UiStyle.draw_button(self, pr, pr.has_point(_mouse()) and Settings.pc(), prod_open)
-	_text(UiStyle.bold_font(), pr.get_center() + Vector2(0, 6), "PRODUCTION" + ("  ▴" if prod_open else "  ▾"), 15, UiStyle.TEXT, 1)
+	_text(UiStyle.bold_font(), pr.get_center() + Vector2(0, 6), "PRODUCTION" + ("  ▲" if prod_open else "  ▼"), 15, UiStyle.TEXT, 1)
 	if not prod_open or view_open:
 		return
 	var teams: Array = []
@@ -477,7 +477,7 @@ func _draw_view(font: Font) -> void:
 	UiStyle.draw_button(self, r, r.has_point(hv), view_open)
 	if sp.mode != "all":
 		draw_rect(Rect2(r.position + Vector2(10, 10), Vector2(14, 14)), game.team_colour(sp.team))
-	_text(UiStyle.bold_font(), r.get_center() + Vector2(6, 6), "VIEW: " + sp.label() + ("  ▴" if view_open else "  ▾"), 16, UiStyle.TEXT, 1)
+	_text(UiStyle.bold_font(), r.get_center() + Vector2(6, 6), "VIEW: " + sp.label() + ("  ▲" if view_open else "  ▼"), 16, UiStyle.TEXT, 1)
 	if not view_open:
 		return
 	var opts: Array = sp.options()
@@ -1096,6 +1096,7 @@ func _pause_buttons() -> Array:
 		{"label": "RESUME", "cb": func() -> void: set_paused(false)},
 		{"label": "MUSIC: " + ("ON" if Music.me.music_on else "OFF"), "cb": func() -> void: Music.me.toggle_music()},
 		{"label": "SOUND: " + ("ON" if Music.me.sound_on else "OFF"), "cb": func() -> void: Music.me.toggle_sound()},
+		{"label": "AMBIENCE: " + ("ON" if Music.me.amb_on else "OFF"), "cb": func() -> void: Music.me.toggle_ambience()},
 		{"label": "SURRENDER", "cb": func() -> void:
 			set_paused(false)
 			if game.mlog:
@@ -1108,7 +1109,7 @@ func _pause_buttons() -> Array:
 			quit_requested.emit()},
 	]
 	if game.demo:
-		list.remove_at(3)       # watching computers: nobody of yours to surrender
+		list = list.filter(func(b: Dictionary) -> bool: return b["label"] != "SURRENDER")    # watching computers: nobody of yours to surrender
 	for i in list.size():
 		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.5 - list.size() * 34 + 40 + i * 68, 320, 58)
 	return list

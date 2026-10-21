@@ -116,6 +116,7 @@ static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	p.volume_db = db
 	p.pitch_scale = randf_range(0.93, 1.07)
 	p.play()
+	MatchLog.sound(name)
 
 
 ## A unit answering you: "select", "move" or "attack". One voice at a time.
@@ -130,6 +131,7 @@ static func voice(kind: String, what: String) -> void:
 	me._voice.stream = prep(list[randi() % list.size()])
 	me._voice.volume_db = -2.0
 	me._voice.play()
+	MatchLog.sound("voice/%s/%s" % [kind, what])
 
 
 ## The faction announcer ("unit_ready", "under_attack" ...), not repeated within `gap` seconds.
@@ -152,6 +154,7 @@ static func announce(faction: String, line: String, gap := 4.0, fallback := "") 
 	me._announcer.stream = prep(list[randi() % list.size()])
 	me._announcer.volume_db = 0.0
 	me._announcer.play()
+	MatchLog.sound("announcer/%s/%s" % [s, line])
 
 
 ## An enemy AI commander's taunt.
