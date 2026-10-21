@@ -1090,7 +1090,7 @@ func _confirm_line(k: String) -> void:
 
 func _pause_buttons() -> Array:
 	var vs := _vs()
-	var list := [
+	var list: Array = [
 		{"label": "RESUME", "cb": func() -> void: set_paused(false)},
 		{"label": "MUSIC: " + ("ON" if Music.me.music_on else "OFF"), "cb": func() -> void: Music.me.toggle_music()},
 		{"label": "SOUND: " + ("ON" if Music.me.sound_on else "OFF"), "cb": func() -> void: Music.me.toggle_sound()},
@@ -1105,6 +1105,8 @@ func _pause_buttons() -> Array:
 			set_paused(false)
 			quit_requested.emit()},
 	]
+	if game.demo:
+		list.remove_at(3)       # watching computers: nobody of yours to surrender
 	for i in list.size():
 		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.5 - list.size() * 34 + 40 + i * 68, 320, 58)
 	return list

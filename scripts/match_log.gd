@@ -32,7 +32,7 @@ func add(text: String) -> void:
 
 func begin(levels: Dictionary) -> void:
 	lines.append("PocketRTS v%s match log  (%s)" % [ProjectSettings.get_setting("application/config/version", "dev"), Time.get_datetime_string_from_system(false, true)])
-	lines.append("Map: %s, %d players" % [game.map_name, game.n_players()])
+	lines.append("Map: %s, %d players  (seed %d)" % [game.map_name, game.n_players(), game.rng.seed])
 	for t in game.n_players():
 		var lv: String = levels.get(t, "")
 		lines.append("  %s  side %d  colour %s%s" % [who(t), int(game.sides[t]) + 1, game.team_name(t),
