@@ -76,6 +76,7 @@ Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or depl
 	"CONTROLS": """COMPUTER
 Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen); left drag box-selects; right click commands (move, attack, work, rally). Mouse wheel zooms; screen edges, arrow keys or the middle button pan.
 Line move: hold the right button and drag a line; your units spread out along it (with A first, they attack-move). On a phone: tap MOVE or ATTACK, then drag.
+Shift-queued orders: hold Shift while giving an order (right click, MOVE, ATTACK, REPAIR, placing buildings or walls) and it goes after what the units are already doing, up to 16 orders. MOVE, ATTACK, REPAIR and placement stay open while Shift is held. Shift-placed buildings are built one after another in click order (each Brood site takes its own grub). A plain order clears the queue. Selected units show their queue as faint lines: green move, red attack, yellow build or work.
 Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work, E repair (right-click it: automatic repair, glowing). 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall (again: the next one), F4 all production buildings (MAKE), Space jumps to the selection, Esc cancels.
 
 MOBILE

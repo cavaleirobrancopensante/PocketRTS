@@ -415,9 +415,12 @@ func _orient_gates(around: Vector2i) -> void:
 
 
 ## Lay a line of walls or gates; returns how many pieces went down.
-func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array) -> int:
+## queued (Shift): the builders do the whole line, piece after piece, after the orders they
+## already have (otherwise the first piece, then whatever is unfinished nearby).
+func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array, queued := false) -> int:
 	var n := 0
 	var first := true
+	var pieces: Array = []
 	for c in line_cells(a, b):
 		if placement_problem(t, k, c) != "":
 			continue
@@ -429,10 +432,15 @@ func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array) ->
 			if t == human:
 				notify("Not enough gold for the whole wall.")
 			break
-		var bl := place_building(t, k, c, builders if first else [])
+		var bl := place_building(t, k, c, builders if first and not queued else [])
 		if bl:
 			n += 1
 			first = false
+			pieces.append(bl)
+	if queued and not pieces.is_empty():
+		for u in builders:
+			if u is Unit and u.is_worker() and not u.dead:
+				u.give({"o": "wall", "pieces": pieces}, true)
 	if mlog and n > 0:
 		mlog.add("%s laid %d piece%s of %s" % [mlog.who(t), n, "" if n == 1 else "s", Defs.BUILDINGS[k]["name"]])
 	return n
@@ -1851,7 +1859,8 @@ func _near_ramp(c: Vector2i) -> bool:
 	return false
 
 
-func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building:
+## queued (Shift): the builders go to it after the orders they already have.
+func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := false) -> Building:
 	if placement_problem(t, k, c) != "" or players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		return null
 	if not requirement_met(t, k):
@@ -1882,7 +1891,7 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 		builders = builders.slice(0, 1)   # one grub becomes the building
 	for u in builders:
 		if u is Unit and u.is_worker() and not u.dead:
-			u.cmd_build(b)
+			u.give({"o": "build", "e": b}, queued)
 	return b
 
 
@@ -3428,16 +3437,16 @@ func line_spots(pts: PackedVector2Array, n: int) -> Array:
 
 ## Line move: every selected unit takes its own spot along the line. Units are matched to
 ## spots in order along the line, so their paths don't cross.
-func line_move(list: Array, pts: PackedVector2Array, attack: bool) -> void:
+func line_move(list: Array, pts: PackedVector2Array, attack: bool, queued := false) -> void:
 	var us: Array = list.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
 	if us.is_empty() or pts.size() < 2:
 		return
 	var spots := line_spots(pts, us.size())
 	var dir := (pts[pts.size() - 1] - pts[0]).normalized()
-	us.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.dot(dir) < b.position.dot(dir))
+	us.sort_custom(func(a: Unit, b: Unit) -> bool: return a.plan_end().dot(dir) < b.plan_end().dot(dir))
 	for i in us.size():
 		var u: Unit = us[i]
-		u.cmd_move(spots[i], attack)
+		u.give({"o": "amove" if attack else "move", "p": spots[i]}, queued)
 	_ping(pts[pts.size() - 1], Color(1, 0.4, 0.3) if attack else Color(0.4, 1, 0.4))
 
 
@@ -3948,7 +3957,8 @@ func demolish(b: Building) -> void:
 
 
 ## Tap/right-click on the map with units selected: do the obvious thing.
-func smart_command(list: Array, p: Vector2, force_move := false) -> void:
+## queued (Shift on a computer): after the orders they already have, not instead of them.
+func smart_command(list: Array, p: Vector2, force_move := false, queued := false) -> void:
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead)
 	if not us.is_empty() and us[0].team == human:
 		var tgt := entity_at(p)
@@ -3963,11 +3973,11 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 	if cr and cr.team == us[0].team and us.any(func(u: Unit) -> bool: return u.kind == "winder"):
 		var winders: Array = us.filter(func(u: Unit) -> bool: return u.kind == "winder")
 		winders.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(cr.position) < b.position.distance_squared_to(cr.position))
-		winders[0].cmd_build(cr.site)
+		winders[0].give({"o": "build", "e": cr.site}, queued)
 		cr.claimed = winders[0]
 		for u in us:
 			if u != winders[0]:
-				u.cmd_move(p)
+				u.give({"o": "move", "p": p}, queued)
 		_ping(p, Color(1, 0.85, 0.3))
 		return
 	if cr and hostile(cr.team, us[0].team):
@@ -3981,34 +3991,34 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 			and us.any(func(u: Unit) -> bool: return u.can_gather()):
 		for u in us:
 			if u.can_gather():
-				u.cmd_gather(e)
+				u.give({"o": "gather", "e": e}, queued)
 			else:
-				u.cmd_move(p)
+				u.give({"o": "move", "p": p}, queued)
 		_ping(p, Color(1, 0.85, 0.3))
 		return
 	if e and e.team == us[0].team and e.hp < e.max_hp and (e.is_unit() or e.built) \
 			and us.any(func(u: Unit) -> bool: return u.can_repair(e)):
 		for u in us:
 			if u.can_repair(e):
-				u.cmd_repair(e)
+				u.give({"o": "repair", "e": e}, queued)
 			else:
-				u.cmd_move(p)
+				u.give({"o": "move", "p": p}, queued)
 		_ping(p, Color(0.95, 0.7, 0.25))
 		return
 	if e is Building and e.team == us[0].team and not e.built:
 		for u in us:
 			if u.is_worker():
-				u.cmd_build(e)
+				u.give({"o": "build", "e": e}, queued)
 			else:
-				u.cmd_move(p)
+				u.give({"o": "move", "p": p}, queued)
 		_ping(p, Color(1, 0.85, 0.3))
 		return
 	if e and hostile(e.team, us[0].team):
 		for u in us:
-			u.cmd_attack(e)
+			u.give({"o": "attack", "e": e}, queued)
 		_ping(p, Color(1, 0.3, 0.3))
 		return
-	group_move(us, p, not force_move)
+	group_move(us, p, not force_move, queued)
 
 
 ## Spread a group around the destination so they don't fight for one spot.
@@ -4039,15 +4049,19 @@ func under_attack(e: Entity) -> void:
 		notify("Your forces are under attack!", true)
 
 
-func group_move(us: Array, p: Vector2, attack_move: bool) -> void:
+func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
 	if not us.is_empty() and us[0].team == human:
 		Sfx.voice(us[0].kind, "attack" if attack_move else "move")
 	var n := us.size()
 	var cols := int(ceil(sqrt(float(n))))
 	var spacing := 24.0
+	# (queued: they form up from where their queues end)
+	var from := {}
+	for u in us:
+		from[u] = u.plan_end() if queued else u.position
 	var c := Vector2.ZERO
 	for u in us:
-		c += u.position
+		c += from[u]
 	c /= n
 	var dir := (p - c).normalized()
 	if dir == Vector2.ZERO:
@@ -4064,7 +4078,7 @@ func group_move(us: Array, p: Vector2, attack_move: bool) -> void:
 		var best: Unit = null
 		var bd := INF
 		for u in left:
-			var dd: float = u.position.distance_to(s)
+			var dd: float = (from[u] as Vector2).distance_to(s)
 			if dd < bd:
 				bd = dd
 				best = u
@@ -4072,7 +4086,7 @@ func group_move(us: Array, p: Vector2, attack_move: bool) -> void:
 		var sp: Vector2 = s
 		if not is_free(cell_of(sp)):
 			sp = p
-		best.cmd_move(sp, attack_move and not best.is_worker())
+		best.give({"o": "amove" if attack_move and not best.is_worker() else "move", "p": sp}, queued)
 	_ping(p, Color(1, 0.3, 0.3) if attack_move else Color(0.4, 1, 0.4))
 
 
@@ -4213,8 +4227,37 @@ func _draw_mine_labels() -> void:
 		overlay.draw_string(font, fl[0] - Vector2(w2 * 0.5, 0), fl[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(fl[2], a))
 
 
+## Shift-queued orders of your selected units: a faint line from each unit through its
+## waypoints, with a small marker at each (green move, red attack, yellow build / work).
+const QUEUE_COLS := {"move": Color(0.4, 1.0, 0.4), "amove": Color(1.0, 0.35, 0.3), "attack": Color(1.0, 0.35, 0.3),
+	"build": Color(1.0, 0.85, 0.3), "repair": Color(1.0, 0.85, 0.3), "gather": Color(1.0, 0.85, 0.3)}
+
+
+func _draw_queues() -> void:
+	var me := controlled_team()
+	if me < 0:
+		return
+	for e in selection:
+		if not (e is Unit) or not is_instance_valid(e) or e.dead or e.team != me:
+			continue
+		var u := e as Unit
+		if u.queue.is_empty() and u.line_rest.is_empty():
+			continue
+		var pts := u.plan_points()
+		var from: Vector2 = u.global_position
+		for pt in pts:
+			var col: Color = QUEUE_COLS.get(pt[0], Color(1, 1, 1))
+			overlay.draw_line(from, pt[1], Color(col, 0.4), 1.5)
+			from = pt[1]
+		for pt in pts:
+			var col: Color = QUEUE_COLS.get(pt[0], Color(1, 1, 1))
+			overlay.draw_circle(pt[1], 4.0, Color(0, 0, 0, 0.45))
+			overlay.draw_circle(pt[1], 2.8, Color(col, 0.85))
+
+
 func _draw_overlay() -> void:
 	_draw_mine_labels()
+	_draw_queues()
 	if not tongues.is_empty():
 		_draw_tongues()
 	for tr in _tracers:
