@@ -34,6 +34,7 @@ var path_i := 0
 var path_goal := Vector2.INF
 var path_pending := false
 var stuck_t := 0.0
+var squeeze_t := 0.0            # > 0: walking out of a sealed pocket through a building's edge (last resort)
 var wall_flee_t := 0.0          # (computer) pulled back from a wall that shooters behind it cover
 var _wall_chk := 0.0
 var last_pos := Vector2.ZERO
@@ -2083,6 +2084,14 @@ func compute_path() -> void:
 	path = game.find_path(position, path_goal, not is_worker())
 	path_i = 0
 	stuck_t = 0.0
+	squeeze_t = 0.0
+	# shut in a pocket between buildings (nothing that walks can get out): as a last resort
+	# it squeezes out through the nearest building edge, then goes on its way
+	if game.sealed_in(position) and game.region_of(game.cell_of(path_goal)) != game.region_of(game.cell_of(position)):
+		var out := game.escape_point(position)
+		if out != Vector2.INF:
+			squeeze_t = 3.0
+			path = PackedVector2Array([out]) + game.find_path(out, path_goal, not is_worker())
 
 
 func _follow(_delta: float) -> Vector2:
@@ -2140,6 +2149,14 @@ func _move(want: Vector2, delta: float) -> void:
 	position += velocity * delta
 	if is_air():
 		position = position.clamp(Vector2(8, 8), Vector2(Game.W, Game.H) * Game.T - Vector2(8, 8))
+	elif squeeze_t > 0.0:
+		# squeezing out of a sealed pocket: buildings don't stop it, terrain still does
+		squeeze_t -= delta
+		var sc: Vector2i = game.cell_of(position)
+		if not game.in_map(sc) or game.solid[game.idx(sc)] == 1:
+			position = before
+		elif game.in_open_map(sc) and game._clear_at(position, radius, team):
+			squeeze_t = 0.0
 	else:
 		position = game.resolve_terrain(position, before, radius, team)
 	if want.length() > 5.0 and phase == "":

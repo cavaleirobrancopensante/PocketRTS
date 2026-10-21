@@ -266,8 +266,13 @@ func _econ_build() -> void:
 		# the second farm first (the start has one), then the mill; a new hall gets its two
 		# farms before its mill, and they go on the freshest soil (see _econ_spot)
 		order = ["farm", "powder_mill"]
-		if game.econ_count(team, "powder_mill") == 0 and game.workers(team).size() < 8 and game.clock < 120.0:
-			order.erase("powder_mill")      # (the first hands farm: gold for labourers first)
+		if game.econ_count(team, "powder_mill") == 0:
+			# (the first hands farm: gold for labourers first. Musketeers don't need the mill,
+			# only its powder: the 80 at the start pays for the first eight, so the first mill
+			# waits for the Barracks unless the bank runs low)
+			if (game.workers(team).size() < 8 and game.clock < 120.0) \
+					or (_mine("barracks").is_empty() and _res2() >= 60.0 and game.clock < 240.0):
+				order.erase("powder_mill")
 	elif _brood():
 		order = ["feeding_pit"]
 		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():

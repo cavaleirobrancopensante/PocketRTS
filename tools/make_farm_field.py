@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Farm's fields: the ground layer of the (5x4-tile) Farm, drawn under the units so the
+"""The Farm's fields: the ground layer of the (6x5-tile) Farm, drawn under the units so the
 labourers can be seen working the rows. Pixel art at 1:1 (no scaling), in the colours of the
 farmhouse sprite's own little wheat field, seeded so it comes out the same every time.
 
@@ -12,7 +12,7 @@ rows run across the front (ROW px apart) and down the right-hand side behind the
 import random
 from PIL import Image
 
-W, H = 160, 128            # 5 x 4 tiles of 32 px
+W, H = 192, 160            # 6 x 5 tiles of 32 px
 HOUSE_W, HOUSE_BASE = 112, 60
 ROW = 16
 OUT = "assets/buildings/farm_field_%s.png"
