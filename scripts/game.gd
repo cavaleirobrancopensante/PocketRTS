@@ -819,10 +819,21 @@ func use_powder(t: int, n: int) -> bool:
 		return true
 	if float(players[t]["res2"]) < n:
 		if t == human:
-			notify("Out of powder! Man your Powder Mill.")
+			notify("Powder bank empty: man your Powder Mills.")
 		return false
 	players[t]["res2"] = float(players[t]["res2"]) - n
 	return true
+
+
+var _short_ms := -99999
+
+
+## A refill is waiting on an empty powder bank (told now and then, not every tick).
+func powder_short() -> void:
+	if Time.get_ticks_msec() - _short_ms < 20000:
+		return
+	_short_ms = Time.get_ticks_msec()
+	notify("Powder bank empty: refills wait. Man your Powder Mills.")
 
 
 var energy: Array = []            # Clockwork energy per second
@@ -1743,6 +1754,8 @@ func separation(u: Unit) -> Vector2:
 
 
 func find_target(u: Unit, r: float) -> Entity:
+	if u.d.get("no_attack", false):
+		return null
 	var best: Entity = null
 	var bd := INF
 	for o in units_near(u.position, r):
@@ -2421,6 +2434,65 @@ func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> 
 	for b in buildings.duplicate():
 		if not allied(b.team, t) and not b.dead and b.edge_distance(p) < splash * 0.6:
 			b.take_damage(dmg * 2.5, shooter)
+
+
+## Black powder going up (a keg, a Powder Wagon; later keg mines): a blast that hurts every
+## ground unit inside it, friend or foe, less at the edge, and enemy buildings close by.
+func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -> void:
+	var name := "keg_mine_blast" if ArtData.EFFECTS.has("keg_mine_blast") else "blast"
+	var fx := spawn_effect(name, p, 1.0)
+	var sc := r / (40.0 if big else 30.0)
+	fx.scale = Vector2(sc, sc)
+	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
+	if big:
+		spawn_effect("explosion", p + Vector2(0, -10), 1.4).scale = Vector2(1.6, 1.6)
+		for i in 3:
+			var sm := spawn_effect("smoke_big", p + Vector2(randf_range(-r, r) * 0.4, randf_range(-20, 0)), 0.8)
+			sm.scale = Vector2(1.0, 1.0)
+			sm.modulate.a = 0.75
+	Sfx.play_any(["combat/cannon_hit", "boom"], p)
+	for u in units_near(p, r + 24.0):
+		if u == src or u.dead or u.off_field or u.is_air():
+			continue
+		var dd: float = u.position.distance_to(p)
+		if dd > r + u.radius:
+			continue
+		u.take_damage(dmg * (1.0 - 0.5 * clampf(dd / r, 0.0, 1.0)), src)
+	for b in buildings.duplicate():
+		if not allied(b.team, src.team) and not b.dead and b.edge_distance(p) < r * 0.5:
+			b.take_damage(dmg, src)
+
+
+## A Powder Wagon on SUPPLY wants kegs: up to WAGON.runners labourers (idle or working,
+## those grinding at the mill last) run them from the nearest Powder Mill.
+func call_runners(w: Unit) -> void:
+	if w.max_powder() - w.powder < float(Defs.WAGON["keg"]):
+		return
+	var have := 0
+	for u in units:
+		if u.team == w.team and not u.dead and u.order == "keg" and u.order_target == w:
+			have += 1
+	if have >= int(Defs.WAGON["runners"]):
+		return
+	var mill := nearest_of(w.position, w.team, "powder_mill")
+	if mill == null:
+		return
+	for i in int(Defs.WAGON["runners"]) - have:
+		var best: Unit = null
+		var bd := INF
+		for u in units:
+			if u.team != w.team or u.dead or u.off_field or u.kind != "labourer" or u.keg \
+					or not ((u.order == "idle" and u.auto_work) or u.order == "gather"):
+				continue
+			var dd: float = u.position.distance_to(mill.center())
+			if u.order == "gather" and u.home_mine is Building:
+				dd += 300.0 if (u.home_mine as Building).kind == "powder_mill" else 120.0
+			if dd < bd:
+				bd = dd
+				best = u
+		if best == null:
+			return
+		best.cmd_keg(w)
 
 
 func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> Effect:

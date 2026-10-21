@@ -118,8 +118,9 @@ func _process_flash(delta: float) -> void:
 			_mat.set_shader_parameter("flash", 0.7 if flash > 0.0 else 0.0)
 
 
-func draw_health(top: float, width: float) -> void:
-	if hp >= max_hp and not selected:
+## always: units show theirs all the time; buildings only when hurt or selected.
+func draw_health(top: float, width: float, always := false) -> void:
+	if hp >= max_hp and not selected and not always:
 		return
 	var w := width
 	var r := Rect2(-w * 0.5, top, w, 4)
@@ -128,4 +129,5 @@ func draw_health(top: float, width: float) -> void:
 	var col := Color(0.3, 0.9, 0.3) if f > 0.5 else (Color(0.95, 0.8, 0.2) if f > 0.25 else Color(0.95, 0.3, 0.2))
 	draw_rect(Rect2(r.position, Vector2(w * f, 4)), col)
 	if acid_t > 0.0:
-		draw_rect(Rect2(r.position + Vector2(0, 5), Vector2(w, 2)), Color(0.75, 0.95, 0.2))
+		# (above the bar: under it units show their reload)
+		draw_rect(Rect2(r.position + Vector2(0, -3), Vector2(w, 2)), Color(0.75, 0.95, 0.2))

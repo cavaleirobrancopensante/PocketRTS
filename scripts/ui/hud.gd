@@ -62,7 +62,7 @@ func toast(t: String, sound := true) -> void:
 		var low := t.to_lower()
 		if low.begins_with("not enough " + String(res[0]).to_lower()):
 			Sfx.announce(fac, "no_gold", 5.0)
-		elif low.begins_with("not enough " + String(res[1]).to_lower()) or low.begins_with("out of powder"):
+		elif low.begins_with("not enough " + String(res[1]).to_lower()) or low.begins_with("out of powder") or low.begins_with("powder bank empty"):
 			Sfx.announce(fac, "no_res2", 5.0)
 		elif low.begins_with("need more supply"):
 			Sfx.announce(fac, "no_supply", 5.0)
@@ -521,6 +521,14 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			for u in game.selected_units():
 				if u.kind == "bloater":
 					u.set_hold_gas(hold), true, "", ""])
+	var wagons := units.filter(func(u: Unit) -> bool: return u.kind == "powder_wagon")
+	if not wagons.is_empty():
+		var sup: bool = wagons.all(func(u: Unit) -> bool: return u.supplying)
+		list.append(["powder_mill", ("~ " if sup else "") + "SUPPLY", func() -> void:
+			for u in game.selected_units():
+				if u.kind == "powder_wagon":
+					u.set_supply(not sup)
+			toast("Labourers bring kegs from the Powder Mill while the wagon has room." if not sup else "Supply off: no more keg runs."), true, "", ""])
 	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	if not guns.is_empty():
 		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")
@@ -535,7 +543,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "START": "P", "END": "P"}
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "START": "P", "END": "P", "SUPPLY": "U"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -844,6 +852,18 @@ func _draw_panel(font: Font) -> void:
 				info = {"packed": "Limbered: the horse tows it. UNLIMBER to fire.", "deploying": "Unlimbering...",
 					"deployed": "Set up: %s loaded. Fires at anything your side can see." % ("canister" if uu.mode == "canister" else "round shot"),
 					"packing": "Limbering up..."}[uu.tesla_mode]
+				info += "  Powder %d/%d%s" % [int(uu.powder), int(uu._pmax), " (OUT: refill at a Mill, Barracks, Hall or Wagon)" if uu.powder < 1.0 else ""]
+			elif uu.kind == "musketeer":
+				if uu.powder < 1.0:
+					info = "OUT OF POWDER: bayonets fixed. Refills at a Mill, Barracks, Hall or Wagon."
+				else:
+					info = "Powder %d/%d%s · refills at a Mill, Barracks, Hall or Wagon" % [int(uu.powder), int(uu._pmax), "  (bayonets fixed)" if uu.mode == "bayonet" else ""]
+			elif uu.kind == "powder_wagon":
+				var runs := game.units.filter(func(x: Unit) -> bool: return x.order == "keg" and x.order_target == uu).size()
+				info = "Powder %d/%d shots · SUPPLY %s%s · blows up when destroyed" % [int(uu.powder), int(uu._pmax), "on" if uu.supplying else "off",
+					(" (%d running kegs)" % runs) if uu.supplying and runs > 0 else ""]
+			elif uu.kind == "labourer" and uu.order == "keg":
+				info = "Carrying a powder keg to the wagon: it blows up if he's killed!" if uu.keg else "Fetching a powder keg from the Powder Mill."
 			elif uu.kind == "spore_mother":
 				info = {"packed": "Walking: can't attack. ROOT her to lob spit blobs.", "deploying": "Rooting...",
 					"deployed": "Rooted: lobs spit blobs and spreads swamp.", "packing": "Uprooting..."}[uu.tesla_mode]
@@ -874,7 +894,7 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "farm":
 				info = "Harvest in %ds · %d/3 working · +%d gold" % [int(ceil((1.0 - bb.growth) * Defs.FARM_GROW / maxf(Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(bb.working_crew(), 3) / 3.0, 0.01))), bb.working_crew(), Defs.FARM_YIELD]
 			elif bb.kind == "powder_mill":
-				info = "%d/2 grinding · +%.1f powder/s" % [bb.working_crew(), Defs.MILL_RATE * bb.working_crew()]
+				info = "%d/%d grinding · +%.1f powder/s" % [bb.working_crew(), int(bb.d["crew"]), Defs.MILL_RATE * bb.working_crew()]
 			elif bb.kind == "feeding_pit":
 				info = "%d/5 grubs · each load is worth %d" % [bb.crew.size(), game.food_value(bb)]
 			elif bb.d.has("battery") and e.team == game.human:
@@ -898,7 +918,21 @@ func _draw_panel(font: Font) -> void:
 		draw_rect(hb, Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(hb.position, Vector2(hb.size.x * hf, hb.size.y)), UiStyle.GOOD if hf > 0.5 else (Color(0.95, 0.75, 0.25) if hf > 0.25 else UiStyle.BAD))
 		draw_rect(hb, UiStyle.TRIM_DIM, false, 1.0)
-		_text(font, hb.position + Vector2(hb.size.x + 8, 11), "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)], 15, Color(0.75, 1, 0.7))
+		var hpt := "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)]
+		_text(font, hb.position + Vector2(hb.size.x + 8, 11), hpt, 15, Color(0.75, 1, 0.7))
+		if e is Unit and (e as Unit).kills > 0:
+			# veterancy: kills and the damage they've earned
+			var ku := e as Unit
+			var bonus := minf(ku.kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
+			var vt := "%s%d kill%s · +%d%% damage" % ["Veteran · " if not ku.is_worker() else "", ku.kills, "" if ku.kills == 1 else "s", int(round(bonus * 100.0))]
+			var vx := hb.position.x + hb.size.x + 22 + font.get_string_size(hpt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+			var room := r.end.x - 36 - vx
+			if UiStyle.bold_font().get_string_size(vt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x > room:
+				vt = "%d kills +%d%%" % [ku.kills, int(round(bonus * 100.0))]
+			if UiStyle.bold_font().get_string_size(vt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x <= room:
+				_text(UiStyle.bold_font(), Vector2(vx, hb.position.y + 11), vt, 14, Color(1, 0.82, 0.3))
+			else:
+				info = vt + " · " + info
 		_text(font, r.position + Vector2(90, 72), info, 15, UiStyle.MUTED)
 		if e is Building and e.team == game.human and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
@@ -922,6 +956,8 @@ func _draw_panel(font: Font) -> void:
 				draw_texture_rect(ic, ir, false)
 			var f := e.hp / e.max_hp
 			draw_rect(Rect2(ir.position.x, ir.end.y, ir.size.x * f, 3), Color(0.3, 0.9, 0.3) if f > 0.5 else Color(0.95, 0.4, 0.2))
+			if e is Unit and (e as Unit).kills > 0:
+				_text(UiStyle.bold_font(), Vector2(ir.end.x - 1, ir.position.y + 11), str((e as Unit).kills), 12, Color(1, 0.82, 0.3), 2)
 		if sel.size() > n:
 			_text(font, r.end - Vector2(40, 10), "+%d" % (sel.size() - n), 16, Color.WHITE)
 	# Deselect button
@@ -1028,12 +1064,13 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 	var body := ""
 	var k: String = it[0]
 	const ABOUT := {
-		"BAYONETS": "Fix bayonets: fight hand to hand, no powder used. Can't hit flyers.",
-		"MUSKETS": "Back to muskets: long-range volleys (each shot burns powder).",
+		"BAYONETS": "Fix bayonets: fight hand to hand, no powder used. Can't hit flyers. A musketeer out of powder fixes them by itself.",
+		"MUSKETS": "Back to muskets: long-range volleys, one of the 12 shots each man carries per shot.",
+		"SUPPLY": "Keg runs (glowing = on): while the wagon has room, up to 2 labourers carry 30-shot kegs to it from the nearest Powder Mill (15 powder a keg). A labourer killed with a keg blows up.",
 		"PUSH": "Pike push (automatic when ready, every 7 s): the thrust shoves the enemy back and staggers it. Click to switch on or off.",
 		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
 		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
-		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. 2 powder a shot.",
+		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. One of the gun's 8 shots.",
 		"STORM": "Static storm: a ring of lightning on a spot for 3 s. Everything inside is stunned, your own units too, and enemies take damage. Costs 70 charge; the Stormcaller recharges only inside a Clockwork field.",
 		"HARVEST": "Harvest the fallen: the grubs stay here and wrap every body nearby (friend or foe) in a cocoon, carrying it to a Hive as essence. Veterans hold more. Bodies rot away after 2 minutes.",
 		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
@@ -1041,7 +1078,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
 		"ROOT": "Root (2.5 s): she digs in, lobs big spit blobs that splash an area, and spreads swamp. She can't move until she uproots.",
 		"UPROOT": "Uproot (2.5 s) to walk again. Walking, she can't attack.",
-		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. Can't hit flyers. 3 powder.",
+		"ROUND SHOT": "Load round shot: the longest range in the game; the ball ploughs through a line of men (+75% against Armored), small splash, smashes buildings. Can't hit flyers. One of the gun's 8 shots.",
 	}
 	for rk in Defs.RESEARCH:
 		if title == String(Defs.RESEARCH[rk]["name"]).to_upper():
