@@ -1806,8 +1806,8 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
-			if in_map(cc) and ramp.size() > idx(cc) and ramp[idx(cc)] == 1 and not Defs.BUILDINGS[k].get("line", false):
-				return "Can't build on a ramp: build at the top or the bottom of it (walls and gates can go on it)."
+			if in_map(cc) and ramp.size() > idx(cc) and ramp[idx(cc)] == 1:
+				return "Can't build on a ramp: build at the top or the bottom of it."
 			if not in_map(cc) or solid[idx(cc)] != 0:
 				if k == "gate" and in_map(cc) and solid[idx(cc)] == 4 and _own_wall_at(t, cc) != null:
 					continue     # a gate can replace a piece of your own wall

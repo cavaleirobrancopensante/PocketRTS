@@ -106,6 +106,7 @@ func generate(map_id: String) -> Array:
 				_crossroads()
 		if four():
 			_fold()
+		_square_ramps()
 		_cliffs()
 		var ok := true
 		for i in g.starts.size():
@@ -170,6 +171,7 @@ func apply_custom(data: Dictionary) -> void:
 	biome_a = parts[0]
 	biome_b = parts[1] if parts.size() > 1 else parts[0]
 	read_cells(String(data.get("cells", "")))
+	_square_ramps()
 	_cliffs()
 	g.height = height
 	g.ramp = ramp
@@ -426,39 +428,162 @@ func _plateau(c: Vector2, r: Vector2, ramps: Array, mirror: bool) -> void:
 			_ramp(cc, p)
 
 
-## A 3-wide ramp where the line from the plateau's middle toward `to` leaves it.
+## A 3-wide ramp where the line from the plateau's middle toward `to` leaves it. The ramp
+## is a clean rectangle on the grid that runs straight north-south or east-west, whichever
+## is nearer the line. It lies in a notch on the low ground below a straight stretch of
+## plateau edge, so the 3 high-ground cells just past its top (flanked by cliff) are its
+## only way up and can be walled straight across.
 func _ramp(from: Vector2, to: Vector2) -> void:
 	var dir := (to - from).normalized()
-	var side := Vector2(-dir.y, dir.x)
 	var p := from
 	for i in 60:
 		p += dir * 0.5
 		var cell := Vector2i(int(p.x), int(p.y))
 		if not g.in_map(cell) or height[g.idx(cell)] == 0:
 			break
-	# p is now just outside the plateau: the ramp runs across the edge
-	for k in range(-3, 3):
-		for w in range(-1, 2):
-			var q := p - dir * k * 0.7 + side * w
-			var cell := Vector2i(int(q.x), int(q.y))
+	# p is now just outside the plateau: the ramp runs across the edge, along the grid axis
+	var axis := Vector2i(0, 1 if dir.y > 0 else -1) if absf(dir.y) >= absf(dir.x) else Vector2i(1 if dir.x > 0 else -1, 0)
+	var side := Vector2i(absi(axis.y), absi(axis.x))
+	var pc := Vector2i(int(p.x), int(p.y))
+	# where the three lanes leave the high ground (steps downhill from pc; the plateau's
+	# edge can be slanted, so they may leave it a step or two apart): the first one sets
+	# the straight edge
+	var edge := 99
+	for w in range(-1, 2):
+		var lane := pc + side * w
+		var k := -8
+		while k < 8 and g.in_map(lane + axis * k) and height[g.idx(lane + axis * k)] == 0:
+			k += 1           # skip low ground behind (a plateau narrower than 8 cells)
+		if k >= 8:
+			continue         # this lane misses the plateau
+		while k < 8 and g.in_map(lane + axis * k) and height[g.idx(lane + axis * k)] == 1:
+			k += 1
+		edge = mini(edge, k)
+	if edge == 99:
+		return
+	# a straight edge five cells across: two rows of high ground above it, low ground below
+	for w in range(-2, 3):
+		for k in range(edge - 2, edge + 4):
+			var cell := pc + side * w + axis * k
 			if g.in_map(cell):
-				ramp[g.idx(cell)] = 1
-	# tidy the bottom: ramp cells on the low ground that stick out (one ramp neighbour or
-	# none) are just low ground, so the ramp ends in a clean edge
-	for pass_i in 2:
-		for k in range(-3, 3):
-			for w in range(-2, 3):
-				var q := p - dir * k * 0.7 + side * w
-				var cell := Vector2i(int(q.x), int(q.y))
-				if not g.in_map(cell) or ramp[g.idx(cell)] == 0 or height[g.idx(cell)] == 1:
+				height[g.idx(cell)] = 1 if k < edge else 0
+				if w >= -1 and w <= 1 and k >= edge:
+					ramp[g.idx(cell)] = 1
+
+
+## Every ramp a clean rectangle along its slope: an end row narrower than the ramp (a
+## single ramp tile straggling past the top or bottom) stops being ramp and becomes the
+## high or low ground of that end, and so does a ramp tile sticking out sideways. Then the
+## row just past either end can be walled straight across. Runs before _cliffs (ramp cells
+## still carry the height they were drawn on; a custom map's are all low).
+func _square_ramps() -> void:
+	var d4: Array = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var seen := PackedByteArray()
+	seen.resize(W * H)
+	for y in H:
+		for x in W:
+			var c0 := Vector2i(x, y)
+			if ramp[g.idx(c0)] != 1 or seen[g.idx(c0)] == 1:
+				continue
+			var cells: Array = []
+			var todo: Array = [c0]
+			seen[g.idx(c0)] = 1
+			while not todo.is_empty():
+				var c: Vector2i = todo.pop_back()
+				cells.append(c)
+				for d in d4:
+					var n: Vector2i = c + d
+					if g.in_map(n) and ramp[g.idx(n)] == 1 and seen[g.idx(n)] == 0:
+						seen[g.idx(n)] = 1
+						todo.append(n)
+			# downhill: from the high ground beside it toward the low ground beside it
+			var hi := Vector2.ZERO
+			var lo := Vector2.ZERO
+			var hn := 0
+			var ln := 0
+			for c in cells:
+				for d in d4:
+					var n: Vector2i = c + d
+					if not g.in_map(n) or ramp[g.idx(n)] == 1 or g.water[g.idx(n)] == 1:
+						continue
+					if height[g.idx(n)] == 1:
+						hi += Vector2(n)
+						hn += 1
+					else:
+						lo += Vector2(n)
+						ln += 1
+			if hn == 0 or ln == 0:
+				continue
+			var dv := lo / ln - hi / hn
+			var vertical := absf(dv.y) >= absf(dv.x)
+			var down := (1 if dv.y > 0 else -1) if vertical else (1 if dv.x > 0 else -1)
+			# rows across the slope, keyed by their place along it
+			var rows := {}
+			for c in cells:
+				var a: int = c.y if vertical else c.x
+				if not rows.has(a):
+					rows[a] = []
+				rows[a].append(c.x if vertical else c.y)
+			var keys: Array = rows.keys()
+			keys.sort()
+			if down < 0:
+				keys.reverse()       # keys[0] is the top row
+			# the ramp's width: the commonest row width (the wider on a tie)
+			var count := {}
+			for a in keys:
+				var wv: int = rows[a].size()
+				count[wv] = int(count.get(wv, 0)) + 1
+			var width := 0
+			for wv in count:
+				if int(count[wv]) > int(count.get(width, 0)) or (int(count[wv]) == int(count.get(width, 0)) and wv > width):
+					width = wv
+			var cut: Array = []      # [cell, height it becomes]
+			# narrow rows at either end
+			while keys.size() > 1 and rows[keys[0]].size() < width:
+				for s in rows[keys[0]]:
+					cut.append([_cell(vertical, keys[0], s), 1])
+				keys.pop_front()
+			while keys.size() > 1 and rows[keys[-1]].size() < width:
+				for s in rows[keys[-1]]:
+					cut.append([_cell(vertical, keys[-1], s), 0])
+				keys.pop_back()
+			# tiles sticking out sideways: a row wider than the ramp keeps the stretch that
+			# lines up best with the other rows
+			var lanes := {}
+			for a in keys:
+				if rows[a].size() == width:
+					for s in rows[a]:
+						lanes[s] = int(lanes.get(s, 0)) + 1
+			for a in keys:
+				var r: Array = rows[a]
+				if r.size() <= width:
 					continue
-				var n := 0
-				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-					var c2: Vector2i = cell + d
-					if g.in_map(c2) and ramp[g.idx(c2)] == 1:
-						n += 1
-				if n <= 1:
-					ramp[g.idx(cell)] = 0
+				r.sort()
+				var best: int = r[0]
+				var best_v := -1
+				for s0 in range(r[0], r[-1] - width + 2):
+					var v := 0
+					for s in range(s0, s0 + width):
+						v += int(lanes.get(s, 0)) * 4 + (1 if r.has(s) else -100)
+					if v > best_v:
+						best_v = v
+						best = s0
+				for s in r:
+					if s < best or s >= best + width:
+						# it takes the ground on its outer side
+						var out := _cell(vertical, a, s + (1 if s >= best + width else -1))
+						var hgt := 0
+						if g.in_map(out) and ramp[g.idx(out)] == 0:
+							hgt = height[g.idx(out)]
+						cut.append([_cell(vertical, a, s), hgt])
+			for ch in cut:
+				var i := g.idx(ch[0])
+				ramp[i] = 0
+				height[i] = ch[1]
+
+
+func _cell(vertical: bool, a: int, s: int) -> Vector2i:
+	return Vector2i(s, a) if vertical else Vector2i(a, s)
 
 
 func _lake(c: Vector2, r: Vector2) -> void:
@@ -493,7 +618,7 @@ func _woods(n: int, keep: Array) -> void:
 			cells.append([Vector2i(0, y), "tree" if rng.randf() < BIOMES[biome_at(0, y)]["trees"] else "rock"])
 	for hc in cells:
 		var c: Vector2i = hc[0]
-		if not g.in_map(c) or ramp[g.idx(c)] == 1 or ford[g.idx(c)] == 1:
+		if not g.in_map(c) or ramp[g.idx(c)] == 1 or ford[g.idx(c)] == 1 or _by_ramp(c) or _by_ramp(g._mirror(c, Vector2i.ONE)):
 			continue
 		var bad := false
 		for k in keep:
@@ -507,6 +632,16 @@ func _woods(n: int, keep: Array) -> void:
 				continue
 			g.solid[g.idx(cc)] = 1
 			g._terrain_kind[g.idx(cc)] = hc[1]
+
+
+## A ramp cell within two cells (trees and rocks keep off a ramp and the ground at its ends).
+func _by_ramp(c: Vector2i) -> bool:
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var n := c + Vector2i(dx, dy)
+			if g.in_map(n) and ramp[g.idx(n)] == 1:
+				return true
+	return false
 
 
 ## The edge ring of every plateau is a cliff (impassable), except across its ramps.
