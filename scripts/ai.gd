@@ -89,6 +89,7 @@ var _reserve := 0               # gold held back for the next economy structure
 var _swarm: Array = []          # Brood: the groups of a wave, each [units, staging point]
 var _swarm_phase := ""          # "", "flank" (getting into position), "strike"
 var _swarm_t := 0.0
+var _tight := false            # Brood: this wave packs tight (the enemy has little splash damage)
 var _no_room := {}              # economy kinds with no free spot, and when we looked
 # how the last wave went: what it was worth going out, and the enemy value killed before it
 var _wave_value := 0.0
@@ -1252,6 +1253,10 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 			if ready or hit or _swarm_t > 40.0:
 				_swarm_phase = "strike"
 				_wave_target = _enemy_base()
+				# caught a fight on the way: everyone goes there together, not on to the base
+				var fs := _fight_spot()
+				if fs != Vector2.INF:
+					_wave_target = fs
 				# a few grubs follow the swarm to harvest the fallen
 				var spare := game.workers(team).filter(func(u: Unit) -> bool: return u.kind == "grub" and u.order != "build" and u.cocoon == 0)
 				var want_h := 2 if spare.size() > 10 else (1 if spare.size() > 6 else 0)
@@ -1259,15 +1264,22 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 				for g2 in spare.slice(0, maxi(0, want_h - have)):
 					g2.cmd_harvest()
 					g2.harvest_home = (_swarm[0][1] as Vector2) if not _swarm.is_empty() else _wave_target
+				var sp := _spread()
 				for g in _swarm:
 					for u in g[0]:
-						u.cmd_move(_wave_target + Vector2(randf_range(-70, 70), randf_range(-70, 70)), true)
+						u.cmd_move(_wave_target + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), true)
 		else:
-			_wave_target = _enemy_base()
+			# strike: wherever part of the wave is fighting, the rest joins that fight
+			var fs := _fight_spot()
+			_wave_target = fs if fs != Vector2.INF else _enemy_base()
+			var sp := _spread()
 			for g in _swarm:
 				for u in g[0]:
-					if u.order == "idle" and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
-						u.cmd_move(_wave_target + Vector2(randf_range(-70, 70), randf_range(-70, 70)), true)
+					if u.deploys() and u.tesla_mode == "deployed" and u.target:
+						continue
+					var join: bool = fs != Vector2.INF and u.target == null and u.position.distance_to(fs) > 140.0
+					if u.order == "idle" or join:
+						u.cmd_move(_wave_target + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), true)
 	# everyone not in the wave gathers at home
 	var in_wave := {}
 	for g in _swarm:
@@ -1289,7 +1301,10 @@ func _plan_swarm(army: Array) -> void:
 	var target := _wave_target
 	var home := game.center_of_team(team)
 	var n := 1
-	if army.size() >= 24:
+	_tight = _splash_share() < 0.25
+	if _tight:
+		n = 1               # single-target shooters: one packed swarm hits all at once
+	elif army.size() >= 24:
 		n = 3
 	elif army.size() >= 10:
 		n = 2
@@ -1316,9 +1331,44 @@ func _plan_swarm(army: Array) -> void:
 			var gi := 0 if k == "spore_mother" else i % n
 			_swarm[gi][0].append(u)
 			i += 1
+	var sp := _spread()
 	for g in _swarm:
 		for u in g[0]:
-			u.cmd_move(g[1] + Vector2(randf_range(-50, 50), randf_range(-50, 50)), false)
+			u.cmd_move(g[1] + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), false)
+
+
+## How much of the enemy army (by cost) deals splash damage: against splash the swarm
+## spreads out and flanks; against single-target shooters it packs tight and goes in together.
+const SPLASH_KINDS := ["cannon", "mortar", "steam_walker", "spore_mother", "bloater", "stormcaller", "thresher", "tesla_cart"]
+
+func _splash_share() -> float:
+	var foe := _foe()
+	if foe < 0:
+		return 0.0
+	var all := 0.0
+	var splash := 0.0
+	for u in game.army(foe):
+		var c := float(u.d["cost"])
+		all += c
+		if SPLASH_KINDS.has(u.kind):
+			splash += c
+	return splash / all if all > 0.0 else 0.0
+
+
+func _spread() -> float:
+	return 22.0 if _tight else 60.0
+
+
+## Where the wave is fighting right now (the middle of its engaged units), or INF.
+func _fight_spot() -> Vector2:
+	var sum := Vector2.ZERO
+	var n := 0
+	for g in _swarm:
+		for u in g[0]:
+			if is_instance_valid(u) and not u.dead and u.target != null and is_instance_valid(u.target):
+				sum += u.position
+				n += 1
+	return sum / n if n > 0 else Vector2.INF
 
 
 ## Clockwork: two Winders walk behind the army and repair it (they repair whatever is
