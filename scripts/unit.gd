@@ -950,6 +950,27 @@ func _update_basket() -> void:
 		g.material = p.sprite.material if p.sprite else null
 
 
+## Workers at work can be heard (near the view; Sfx fades them with distance and GAP keeps
+## a crowd from piling up): hammering and sawing on a site, a hoe in a farm, a crank.
+const WORK_SOUNDS := {"building": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
+	"repairing": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
+	"morphing": {"grub": "work/brood_build"}, "winding": {"winder": "work/winder_crank"},
+	"manning": {"labourer": "work/hoe"}}
+var _work_snd_t := randf() * 2.0
+
+
+func _work_sound(delta: float) -> void:
+	_work_snd_t -= delta
+	if _work_snd_t > 0.0:
+		return
+	var name: String = WORK_SOUNDS.get(work, {}).get(kind, "")
+	if name == "" or (work == "manning" and (anim != "mine" or not (home_mine is Building and (home_mine as Building).kind == "farm"))):
+		_work_snd_t = 0.5
+		return
+	_work_snd_t = randf_range(2.2, 3.2) if work == "manning" else 2.0
+	Sfx.play(name, position, -6.0 if work == "manning" else -3.0)
+
+
 ## The battery on a Winder's back overloads (carried too long, or hit): it bursts.
 func _battery_blast() -> void:
 	carrying = 0
@@ -2008,6 +2029,8 @@ func _physics_process(delta: float) -> void:
 	_process_flash(delta)
 	if off_field:
 		return
+	if not dead and work != "":
+		_work_sound(delta)
 	cross_t = maxf(cross_t - delta, 0.0)
 	if dead:
 		corpse_t += delta
