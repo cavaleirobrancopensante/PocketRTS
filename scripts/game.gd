@@ -2062,6 +2062,25 @@ func cancel_train(b: Building) -> void:
 		_drop_dependent_research(b.team, k.substr(1))
 
 
+## Cancel one entry of the production line (a click on its picture in the unit card).
+func cancel_train_at(b: Building, i: int) -> void:
+	if i < 0 or i >= b.queue.size():
+		return
+	if i == b.queue.size() - 1:
+		cancel_train(b)
+		return
+	var k: String = b.queue[i]
+	b.queue.remove_at(i)
+	if b.uses_eggs():
+		b.morph_t.remove_at(i)
+		b.eggs += 1
+	elif i == 0:
+		b.prod_t = 0.0               # the next one starts from scratch
+	refund(b.team, k)
+	if Building.is_research(k):
+		_drop_dependent_research(b.team, k.substr(1))
+
+
 func spawn_trained(b: Building, k: String) -> void:
 	var r := b.rect()
 	var toward := b.rally if b.rally != Vector2.INF else r.get_center() + Vector2(0, r.size.y)

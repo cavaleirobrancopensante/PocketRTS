@@ -1341,6 +1341,7 @@ func _draw_groups(font: Font) -> void:
 
 
 func _draw_panel(font: Font) -> void:
+	_queue_rects = []
 	var r := panel_rect()
 	if game.selection.is_empty():
 		return
@@ -1556,6 +1557,10 @@ func _draw_panel(font: Font) -> void:
 			for i in q.size():
 				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else q[i])
 				var qr := Rect2(r.end.x - 44 - (q.size() - 1 - i) * 40, r.position.y + 8, 36, 36)
+				if e.team == game.human and not game.spectating():
+					_queue_rects.append({"rect": qr, "b": e, "i": i})
+					if Settings.pc() and qr.has_point(_mouse()):
+						draw_rect(qr.grow(2), UiStyle.BAD, false, 1.5)
 				if ic:
 					draw_texture_rect(ic, qr, false)
 				var eb := e as Building
@@ -1591,6 +1596,12 @@ func _draw_panel(font: Font) -> void:
 		_buttons_extra = [{"rect": x, "cb": func() -> void: game.set_selection([]), "enabled": true}]
 	else:
 		_buttons_extra = []
+	for qe in _queue_rects:
+		var qb: Building = qe["b"]
+		var qi: int = qe["i"]
+		_buttons_extra.append({"rect": qe["rect"], "enabled": true, "cb": func() -> void:
+			if is_instance_valid(qb) and not qb.dead:
+				game.cancel_train_at(qb, qi)})
 	if sel.size() > 1:
 		for pt in _portraits:
 			var pe: Entity = pt["e"]
@@ -1598,6 +1609,7 @@ func _draw_panel(font: Font) -> void:
 
 
 var _portraits: Array = []
+var _queue_rects: Array = []        # the production line's pictures in the card: click = cancel that one
 
 
 ## A portrait in a multiple selection: the first tap keeps only that kind, a tap when
