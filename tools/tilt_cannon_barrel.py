@@ -1,27 +1,38 @@
-# Tilts the limbered cannon barrel in the south-walk frames (it stood straight up like a chimney).
-# usage: python3 tools/tilt_cannon_barrel.py assets/units/cannon/walk_s.png out.png 15
+# Leans the towed cannon in the south-walk frames: the barrel stood straight up like a
+# chimney. The barrel is sheared (top 3-4 px to the right, base fixed, so no holes) and the
+# right wheel lifted a little so the carriage reads as turned.
+# usage: python3 tools/tilt_cannon_barrel.py original_walk_s.png out.png [k] [lift]
 import sys
 from PIL import Image
 import numpy as np
-src, dst, ang = sys.argv[1], sys.argv[2], float(sys.argv[3])
-im = Image.open(src).convert('RGBA')
+src, dst = sys.argv[1], sys.argv[2]
+k = float(sys.argv[3]) if len(sys.argv) > 3 else 0.16
+lift = int(sys.argv[4]) if len(sys.argv) > 4 else 2
+im = np.array(Image.open(src).convert('RGBA'))
 W = 165
-n = im.width // W
 out = im.copy()
-X0, X1, Y0, Y1 = 63, 88, 30, 61
-px, py = 75.5, 60
-for i in range(n):
-    fr = im.crop((i*W, 0, i*W+W, im.height))
-    reg = fr.crop((X0, Y0, X1, Y1))
-    big = Image.new('RGBA', (W, im.height), (0,0,0,0))
-    big.paste(reg, (X0, Y0))
-    rot = big.rotate(-ang, resample=Image.BICUBIC, center=(px, py)); ra = np.array(rot); ra[...,3] = np.where(ra[...,3] > 110, 255, 0); rot = Image.fromarray(ra)
-    base = np.array(fr)
-    base[Y0:Y1, X0:X1] = 0
-    b = Image.fromarray(base)
-    # rotated barrel goes under nothing: composite barrel then original lower parts on top
-    comp = Image.new('RGBA', b.size, (0,0,0,0))
-    comp.alpha_composite(rot)
-    comp.alpha_composite(b)
-    out.paste(comp, (i*W, 0))
-out.save(dst)
+for i in range(im.shape[1] // W):
+    f = im[:, i*W:(i+1)*W]
+    o = f.copy()
+    # barrel: rows 36..59, cols 66..82; shift each row right by k*(59-y)
+    X0, X1, Y0, Y1 = 66, 83, 36, 60
+    o[Y0:Y1, X0:X1+6] = f[Y0:Y1, X0:X1+6] * 0
+    o[Y0:Y1, X1:X1+6] = f[Y0:Y1, X1:X1+6]
+    for y in range(Y0, Y1):
+        s = int(round(k * (Y1 - 1 - y)))
+        row = f[y, X0:X1]
+        dst_row = o[y, X0+s:X1+s]
+        m = row[:, 3] > 0
+        dst_row[m] = row[m]
+    # right wheel: lift
+    if lift:
+        WX0, WX1, WY0, WY1 = 85, 94, 62, 97
+        blk = f[WY0:WY1, WX0:WX1].copy()
+        o[WY0:WY1, WX0:WX1] = 0
+        o[WY0-lift:WY1-lift, WX0:WX1][blk[..., 3] > 0] = blk[blk[..., 3] > 0]
+        # keep anything of the soldier that sat above the wheel block
+        keep = f[WY0-lift:WY0, WX0:WX1]
+        sub = o[WY0-lift:WY0, WX0:WX1]
+        sub[sub[..., 3] == 0] = keep[sub[..., 3] == 0]
+    out[:, i*W:(i+1)*W] = o
+Image.fromarray(out).save(dst)
