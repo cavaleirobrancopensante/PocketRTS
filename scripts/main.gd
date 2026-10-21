@@ -898,28 +898,62 @@ func _dropdown(text: String, w: float, items: Array, pick: Callable) -> Button:
 	b.pressed.connect(func() -> void:
 		_web_fullscreen()
 		Sfx.play_any(["ui/click", "click"])
-		var pm := PopupMenu.new()
-		pm.add_theme_font_size_override("font_size", 24)
-		pm.add_theme_constant_override("v_separation", 18)
-		pm.add_theme_constant_override("item_start_padding", 16)
-		pm.add_theme_constant_override("item_end_padding", 16)
-		for k in items.size():
-			var it: Array = items[k]
-			pm.add_item(String(it[0]), k)
-			pm.set_item_disabled(k, bool(it[2]))
-			if String(it[0]) == text:
-				pm.set_item_as_radio_checkable(k, true)
-				pm.set_item_checked(k, true)
-		pm.id_pressed.connect(func(id: int) -> void:
-			pick.call(items[id][1])
+		_open_list(b, text, items, pick)
+	)
+	return b
+
+
+## The list a dropdown opens: big rows in the menu's own layer (not a separate popup
+## window, which froze on some Android phones). A tap outside closes it.
+func _open_list(b: Button, current: String, items: Array, pick: Callable) -> void:
+	var shade := Control.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.35)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.add_child(bg)
+	shade.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
+			shade.queue_free())
+	var panel := PanelContainer.new()
+	panel.theme = UiStyle.theme()
+	panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.08, 0.07, 0.055, 0.97), UiStyle.TRIM, 2, 8, 8.0))
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(v)
+	for it in items:
+		var row := Button.new()
+		row.text = ("\u2713  " if String(it[0]) == current else "     ") + String(it[0])
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.custom_minimum_size = Vector2(0, 52)
+		row.add_theme_font_size_override("font_size", 22)
+		row.disabled = bool(it[2])
+		var val = it[1]
+		row.pressed.connect(func() -> void:
+			shade.queue_free()
+			pick.call(val)
 			Sfx.play_any(["ui/click", "click"])
 			show_skirmish())
-		pm.popup_hide.connect(func() -> void: pm.queue_free())
-		add_child(pm)
-		var r := b.get_global_rect()
-		pm.min_size = Vector2i(int(maxf(r.size.x, 220.0)), 0)
-		pm.popup(Rect2i(Vector2i(r.position + Vector2(0, r.size.y)), Vector2i(int(maxf(r.size.x, 220.0)), 0))))
-	return b
+		v.add_child(row)
+	shade.add_child(panel)
+	ui_layer.add_child(shade)
+	# below the button if it fits, else above; never off the screen
+	var vs := get_viewport().get_visible_rect().size
+	var r := b.get_global_rect()
+	var w := maxf(r.size.x, 240.0)
+	var h := minf(items.size() * 56.0 + 20.0, vs.y - 20.0)
+	var y := r.end.y + 4.0
+	if y + h > vs.y - 10.0:
+		y = maxf(10.0, r.position.y - h - 4.0) if r.position.y - h - 4.0 >= 10.0 else maxf(10.0, vs.y - 10.0 - h)
+	panel.position = Vector2(clampf(r.position.x, 10.0, vs.x - w - 10.0), y)
+	panel.size = Vector2(w, h)
+	scroll.custom_minimum_size = Vector2(w - 20.0, h - 20.0)
 
 
 ## A button that steps through options: click/tap = next; right click = previous.
