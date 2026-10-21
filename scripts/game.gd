@@ -4728,9 +4728,15 @@ func _draw_overlay() -> void:
 				var cc := c + Vector2i(x, y)
 				var free: bool = is_free(cc) and (demo or explored[idx(cc)] == 1) and (not needs_swamp(k) or swamp[human][idx(cc)] == 1) if in_map(cc) else false
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
-		var t: Texture2D = tex("res://assets/buildings/%s_built.png" % k)
+		var t: Texture2D = Building.farm_body("built") if k == "farm" else tex("res://assets/buildings/%s_built.png" % k)
 		var r := Rect2(Vector2(c) * T, Vector2(size) * T)
 		if k == "farm":
 			overlay.draw_texture(tex("res://assets/buildings/farm_field_young.png"), r.position, Color(1, 1, 1, 0.5) if ok else Color(1, 0.5, 0.5, 0.4))
-		var pos := Building.anchor(k, r) + Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
+		var pos := Building.anchor(k, r) + Building.body_offset(k, t)
 		overlay.draw_texture(t, pos, Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))
+		if k == "farm" and String(Building.FARM_ART["sails"]) != "":
+			# the windmill's sails, standing still
+			var st: Texture2D = tex(Building.FARM_ART["sails"])
+			var fw := st.get_width() / int(Building.FARM_ART["sail_frames"])
+			var hub: Vector2 = Building.anchor(k, r) + Vector2(Building.FARM_ART["hub"])
+			overlay.draw_texture_rect_region(st, Rect2(hub - Vector2(fw, st.get_height()) * 0.5, Vector2(fw, st.get_height())), Rect2(0, 0, fw, st.get_height()), Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))

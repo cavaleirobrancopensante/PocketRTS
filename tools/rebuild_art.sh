@@ -26,6 +26,9 @@ python3 tools/import_deposits.py         # saltpetre / ore deposits (4 states), 
 python3 tools/import_round11.py          # painted portraits, research + ability icons, Engine Hall,
                                          # musketeer bayonet strips (last: replaces earlier icons/melee)
 python3 tools/import_crate.py            # the Winder's self-building crate: unfold strips, carried / ground crate
-python3 tools/import_mist_toad.py        # Mist Toad (its own pass: black sheet, fog cloud keyed out),
+python3 tools/import_windmill.py         # the Farm's windmill (replaces import_art's farmhouse), sails,
+                                         # scarecrows and Farm icon
+python3 tools/make_farm_field.py         # the Farm's crop fields round the windmill
+python3 tools/import_mist_toad.py       # Mist Toad (its own pass: black sheet, fog cloud keyed out),
                                          # its portrait and the FOG / TONGUE ability icons
 echo "Now run: godot --headless --import"

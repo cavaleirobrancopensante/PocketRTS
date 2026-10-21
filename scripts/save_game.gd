@@ -301,6 +301,12 @@ static func restore(game: Game, d: Dictionary) -> void:
 					ai.strategy = String(a["strategy"])
 				ai._failed = int(a.get("failed", 0))
 				ai._regroup_until = float(a.get("regroup", 0.0))
+	# (saves from before the windmill stood in the middle of its Farm (v0.7.89): a farm hand
+	# left on an old crop row inside its block steps out onto the fields)
+	for b in game.buildings:
+		if b.kind == "farm" and not b.ghost and not b.dead:
+			var blk := Rect2(b.rect().position + Vector2(Building.FARM_BLOCK.position) * Defs.TILE, Vector2(Building.FARM_BLOCK.size) * Defs.TILE)
+			game._push_units_out(blk)
 	for t in game.n_players():
 		game._recount_supply(t)
 	game.swamp_dirty = true
