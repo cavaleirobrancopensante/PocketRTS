@@ -8,7 +8,8 @@ Sources (generated sheets on a flat slate background):
   art/world/storm_and_miasma.png  6 rows: storm in/loop/out, miasma in/loop/out
 
 The sheets only roughly follow the five directions (s, se, e, ne, n): several rows or
-groups are drawn facing the wrong way. The PLANS table below picks, for every animation
+groups are drawn facing the wrong way. widen (in UNITS): per-row horizontal stretch for
+rows drawn too narrow (the cuirassier's side-view horse). The PLANS table below picks, for every animation
 and direction, which source frames to use (row, group, index, mirrored) - see the notes
 there for what was dropped or rebuilt and why.
 
@@ -26,6 +27,7 @@ Output:
   else in the file is touched)
 
 Usage (from the repo root): python3 tools/import_round4.py [--debug DIR] [--contact DIR]
+       [--only cuirassier]   (rebuild only the listed units, no effects)
 (--contact writes x3 contact sheets on grass green; --debug also dumps the cut frames)
 Needs Pillow, NumPy and SciPy. Re-runnable.
 """
@@ -44,6 +46,8 @@ from import_cannon2 import bg_mask, clean, defringe, shrink, snap_team  # noqa: 
 DIRS = ["s", "se", "e", "ne", "n"]
 DEBUG = sys.argv[sys.argv.index("--debug") + 1] if "--debug" in sys.argv else None
 CONTACT = sys.argv[sys.argv.index("--contact") + 1] if "--contact" in sys.argv else None
+# --only KIND[,KIND]: rebuild just these units (no effects); art_data.gd keeps the others
+ONLY = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else None
 
 
 # ---------------------------------------------------------------- sheets
@@ -268,12 +272,13 @@ def deslate(img, bgc, iters=6, kmin=0.08):
     return out
 
 
-def to_game(img, scale, bgc, glow=None, glow_cut=0.2, mirror=False):
+def to_game(img, scale, bgc, glow=None, glow_cut=0.2, mirror=False, sx=1.0):
     """Source frame -> game-size RGBA uint8 plus its glow mask. The body gets a hard
-    alpha edge; painted light keeps three alpha steps (95/170/255)."""
+    alpha edge; painted light keeps three alpha steps (95/170/255). sx: extra horizontal
+    stretch, applied in the same box-filter downscale (so it stays crisp)."""
     f, gm = unblend(img, bgc, glow)
     h, w = f.shape[:2]
-    nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+    nw, nh = max(1, int(round(w * scale * sx))), max(1, int(round(h * scale)))
 
     def box(arr):
         return np.array(Image.fromarray(arr.astype(np.float32), "F").resize((nw, nh), Image.BOX))
@@ -348,7 +353,8 @@ UNITS = {
     "stormcaller": dict(scale=0.336, glow="blue", target=45,          # 1.3x a musketeer
                         norm=["walk", "idle", "attack", "cast"], borrow={"death": "idle"}),
     "cuirassier": dict(scale=0.48, target=51,                         # horse ~ the cannon's
-                       norm=["idle", "walk", "slash"], borrow={"thrust": "slash", "death": "idle"}),
+                       norm=["idle", "walk", "slash"], borrow={"thrust": "slash", "death": "idle"},
+                       widen={2: 1.2, 1: 1.08}),     # E (side) and SE rows drew the horse squashed
     "spore_mother": dict(scale=0.6, glow="green", target=58,          # about the Brute
                          norm=["walk", "idle", "fire"], borrow={"death": "fire"},
                          last={"root": 54},           # the rooted pose: same size in every row
@@ -527,7 +533,8 @@ class Src:
         self.heights = {}
 
     def raw(self, r, g, i, scale):
-        img, gl = to_game(self.frames[(r, g)][i]["img"], scale, self.bgc, self.cfg.get("glow"))
+        img, gl = to_game(self.frames[(r, g)][i]["img"], scale, self.bgc, self.cfg.get("glow"),
+                          sx=self.cfg.get("widen", {}).get(r, 1.0))
         return F(img, gl)
 
     def hs(self, r, g):
@@ -784,7 +791,8 @@ def build_unit(kind):
     for key, strip in sorted(strips.items()):
         Image.fromarray(strip).save(f"{out}/{key}.png")
         counts[key] = strip.shape[1] // cell[0]
-    make_unit_icon(S, kind)
+    if not ONLY:            # the icons have since been replaced by painted portraits
+        make_unit_icon(S, kind)
     if CONTACT:
         os.makedirs(CONTACT, exist_ok=True)
         unit_contact(kind, cell, anchor, counts)
@@ -1046,8 +1054,10 @@ def effects_contact(entries):
 def main():
     if DEBUG:
         os.makedirs(DEBUG, exist_ok=True)
-    entries = {kind: build_unit(kind) for kind in SHEETS}
+    entries = {kind: build_unit(kind) for kind in SHEETS if not ONLY or kind in ONLY}
     write_units_data(entries)
+    if ONLY:
+        return
     fx = build_effects()
     write_effects_data(fx)
     if CONTACT:
