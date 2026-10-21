@@ -2735,6 +2735,9 @@ func _farm(site: Building, delta: float) -> Vector2:
 	# a new stretch (the crew changed): walk over to it through the field
 	if _row_goal == Vector2.INF or absf(_row_goal.y - a.y) > 1.0 or _row_goal.x < a.x - 1.0 or _row_goal.x > b.x + 1.0:
 		_row_goal = a if position.distance_to(a) < position.distance_to(b) else b
+		if site.crosses_house(position, _row_goal):
+			work = "to_site"        # (the other side of the windmill: walk round it)
+			return Vector2.ZERO
 	if position.distance_to(_row_goal) > 3.0:
 		return (_row_goal - position).normalized() * speed * 0.45
 	# hoeing, facing along the row (a little toward the viewer)

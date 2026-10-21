@@ -3,8 +3,8 @@ extends SceneTree
 ##   godot --headless --fixed-fps 30 --script res://tools/test_stuck_gap.gd
 ## Builds each layout on open ground, puts a Labourer in the gap, orders it out to open
 ## ground and checks it gets there. Prints PASS / FAIL per case and "ALL PASS" at the end.
-##  1. "farm strip": two Farms side by side with a Cottage over the left farm's strip right
-##     of its farmhouse (the strip is crop rows, walkable, between the two farmhouses).
+##  1. "farm strip": two Farms side by side with Cottages over the left farm's top crop row
+##     (walkable, behind its windmill): the way out is round the windmill.
 ##  2. "cottage gap": a one-cell gap between two Cottages, a Powder Mill below it.
 ##  3. "sealed": the Labourer walled in on all sides by Cottages (a pocket that really is
 ##     closed): as a last resort it walks out through the nearest building edge.
@@ -78,9 +78,9 @@ func _setup_case(name: String) -> void:
 	var at := Vector2i.ZERO
 	match name:
 		"farm strip":
-			# farm A at (2,4), farm B right beside it; the strip right of A's farmhouse (4
-			# tiles wide) is columns 6.. (rows 4,5); Cottages sit right over it, so the strip
-			# only opens down into A's crop rows
+			# farm A at (2,4), farm B right beside it; the Labourer stands on A's top crop
+			# row (row 4, behind its windmill's block in rows 5-6); Cottages sit right over
+			# it, so the row only opens round the windmill, down A's side plots
 			var fw: int = Defs.BUILDINGS["farm"]["size"].x
 			_b("farm", Vector2i(2, 4))
 			_b("farm", Vector2i(2 + fw, 4))
