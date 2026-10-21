@@ -9,6 +9,8 @@ var size := Vector2i.ONE
 var built := false
 var progress := 0.0              # 0..1 while under construction
 var queue: Array = []            # unit kinds, and research as "@key" (Defs.RESEARCH)
+var kits: Array = []             # beside `queue`: what a queued Musketeer was paid to come out with ({} for the rest)
+var auto_refit := false          # Barracks: AUTO REFIT (idle Musketeers nearby get the upgrades researched)
 var prod_t := 0.0
 var batteries := 0               # Clockwork: full batteries waiting to be carried off
 var _bat_t := 0.0
@@ -47,6 +49,9 @@ var lode := 0.0                  # Town Hall: saltpetre (in powder) for its Mill
 var lode_warned := 0             # 1 = told it's running low, 2 = spent
 var sprite: Sprite2D
 var field: Sprite2D = null       # Farm: its fields, on the ground under the units (they work in them)
+var sails: Sprite2D = null       # Farm: the windmill's sails, turning over the body (FARM_ART)
+var _sail_t := 0.0
+var scarecrow_sprites: Array = []   # Farm: its scarecrows out in the crops
 var fire: Effect = null
 var rubble_t := 0.0
 # Clockwork towers: anti-air lightning
@@ -77,12 +82,38 @@ const AMBIENT := {
 	"boiler": [["smoke", 0.32, 0.07, 0.7, 0.45, Color(1.2, 1.2, 1.2, 0.65)]],
 	"ore_crusher": [["dust", 0.6, 0.55, 1.0, 0.35, Color(0.8, 0.8, 0.8, 0.7)]],
 }
-## The Farm (6x5 tiles): the farmhouse stands at the back left, its base line this far down
-## from the top of the footprint; the fields (tools/make_farm_field.py) fill the rest, and
-## each of its labourers works a stretch of one crop row (see field_row).
-const FARM_HOUSE_BASE := 60.0
-const FARM_HOUSE_X := 56.0
+## The Farm (6x5 tiles): a windmill on the 4x2-tile block in the middle (FARM_BLOCK, solid),
+## the crop fields (tools/make_farm_field.py) all round it: two rows behind, short plots at the
+## sides, four rows in front split by the path from its door. Each labourer works a stretch of
+## one crop row (FARM_ROWS). The windmill's door foot (its base line, which sorts it against the
+## units) is at FARM_HOUSE_X, FARM_HOUSE_BASE from the footprint's top left corner.
+const FARM_HOUSE_BASE := 72.0
+const FARM_HOUSE_X := 102.0          # (the tower stands a little left of its door: centred on the block)
+const FARM_BLOCK := Rect2i(1, 1, 4, 2)
 const FARM_ROW := 16.0
+## The labourers' stretches, in the order the crew fills them: [crop row, from x, to x] in px
+## of the footprint; row k's furrow is at 13 + 16k. Front rows first (either side of the path),
+## then behind the windmill (clear of its sails), then the side plots. None touches FARM_BLOCK.
+const FARM_ROWS := [[7, 10, 88], [7, 122, 182], [8, 10, 88], [8, 122, 182],
+	[0, 10, 54], [0, 152, 182], [4, 8, 24], [3, 168, 184]]
+## Where scarecrows may stand (their pole's foot, px of the footprint): on crop rows nobody
+## works (the side plots' far ends, the front row by the windmill), clear of the path. Each
+## Farm picks 2 or 3 (and their looks) by its cell.
+const FARM_SCARECROW_SPOTS := [Vector2(20, 47), Vector2(178, 95), Vector2(24, 111),
+	Vector2(62, 111), Vector2(140, 111), Vector2(174, 111)]
+## The farmhouse art, all of it in one place (tools/import_windmill.py makes it): the body,
+## body % state ("built", "construction", "damaged", "destroyed"), with its pixel `anchor` on
+## the building's base point; the sails, a strip of `sail_frames` frames turned about their
+## middle, drawn over the body at `hub` (from the base point) in the `sail_states`, one frame
+## every `sail_dt` s (slower as the soil tires; still once it's spent); the scarecrows, a strip
+## of `scarecrow_kinds` looks, the pole's foot at the bottom middle. `top`: where the health
+## bar goes. (A new farmhouse: new files and numbers here; sails "" for none.)
+const FARM_ART := {
+	"body": "res://assets/buildings/farm_%s.png", "anchor": Vector2(81, 121), "top": -108.0,
+	"sails": "res://assets/buildings/farm_sails.png", "sail_frames": 6, "sail_dt": 0.3,
+	"hub": Vector2(7, -54), "sail_states": ["built", "damaged"],
+	"scarecrows": "res://assets/buildings/farm_scarecrow.png", "scarecrow_kinds": 4,
+}
 
 ## The tip of each Clockwork tower, where its lightning lives.
 const TOWER_TOP := {"clocktower": Vector2(0.52, 0.03), "spring_tower": Vector2(0.6, 0.05), "charging_pylon": Vector2(0.52, 0.08)}
@@ -120,8 +151,8 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 
 
 ## Where a building of this kind on this footprint stands (its sprite's base line, which
-## also sorts it against the units): the middle of the bottom edge; a Farm's farmhouse at
-## the back, with its fields in front.
+## also sorts it against the units): the middle of the bottom edge; a Farm's windmill door,
+## in the middle of its fields.
 static func anchor(k: String, r: Rect2) -> Vector2:
 	if k == "farm":
 		return Vector2(r.position.x + FARM_HOUSE_X, r.position.y + FARM_HOUSE_BASE)
@@ -135,36 +166,106 @@ func _ready() -> void:
 		field.z_index = -1          # on the ground: the labourers walk the rows on top of it
 		field.position = rect().position - position
 		add_child(field)
+		y_sort_enabled = true       # its scarecrows stand among the labourers
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
 	add_child(sprite)
+	if kind == "farm":
+		_farm_art()
 	_update_sprite()
 
 
-## The cells of a footprint (from its corner) that stay walkable: a Farm's fields, all but
-## the farmhouse's 4x2 block at the back left.
+## The Farm's sails (over the body, drawn with it) and scarecrows (out in the crops, each
+## sorted by its own foot).
+func _farm_art() -> void:
+	if String(FARM_ART["sails"]) != "" and ResourceLoader.exists(FARM_ART["sails"]):
+		sails = Sprite2D.new()
+		sails.texture = Game.tex(FARM_ART["sails"])
+		sails.hframes = int(FARM_ART["sail_frames"])
+		sails.position = FARM_ART["hub"]
+		sails.material = sprite.material
+		sails.visible = false
+		sails.frame = randi() % sails.hframes      # (not every windmill in step)
+		_sail_t = randf() * float(FARM_ART["sail_dt"])
+		sprite.add_child(sails)
+	var st: Texture2D = Game.tex(FARM_ART["scarecrows"])
+	var n := int(FARM_ART["scarecrow_kinds"])
+	for sc in scarecrows(cell):
+		var s := Sprite2D.new()
+		s.texture = st
+		s.hframes = n
+		s.frame = int(sc[1]) % n
+		s.centered = false
+		s.offset = Vector2(-st.get_width() / n * 0.5, -st.get_height())
+		s.position = rect().position + Vector2(sc[0]) - position
+		s.material = sprite.material
+		s.visible = false
+		add_child(s)
+		scarecrow_sprites.append(s)
+
+
+## A Farm's scarecrows: 2 or 3 of FARM_SCARECROW_SPOTS, each [spot, look], picked by its cell
+## (the same every time), not two side by side.
+static func scarecrows(c: Vector2i) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(c)
+	var spots: Array = FARM_SCARECROW_SPOTS.duplicate()
+	var looks: Array = range(int(FARM_ART["scarecrow_kinds"]))
+	var out: Array = []
+	var want := 2 + rng.randi() % 2
+	while out.size() < want and not spots.is_empty():
+		var p: Vector2 = spots.pop_at(rng.randi() % spots.size())
+		if out.any(func(o: Array) -> bool: return Vector2(o[0]).distance_to(p) < 40.0):
+			continue
+		out.append([p, looks.pop_at(rng.randi() % looks.size())])
+	return out
+
+
+## The farmhouse body texture for a state, and where any building's body is drawn from its
+## base point.
+static func farm_body(state: String) -> Texture2D:
+	return Game.tex(String(FARM_ART["body"]) % state)
+
+
+static func body_offset(k: String, t: Texture2D) -> Vector2:
+	if k == "farm":
+		return -Vector2(FARM_ART["anchor"])
+	return Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
+
+
+## The cells of a footprint (from its corner) that stay walkable: a Farm's fields, all round
+## the windmill's 4x2 block in the middle.
 static func field_cells(k: String) -> Array:
 	var out: Array = []
 	if k == "farm":
 		var sz: Vector2i = Defs.BUILDINGS[k]["size"]
 		for y in sz.y:
 			for x in sz.x:
-				if not (x < 4 and y < 2):
+				if not FARM_BLOCK.has_point(Vector2i(x, y)):
 					out.append(Vector2i(x, y))
 	return out
 
 
-## Farm: the stretch of crop row the crew member number i works (two to a row, on four of
-## the crop rows across the front, spread over them), as [from, to] in world space.
+## Farm: the stretch of crop row the crew member number i works (FARM_ROWS), as [from, to]
+## in world space.
 func field_row(i: int) -> Array:
-	var r := rect()
-	var rows := int((r.size.y - FARM_HOUSE_BASE - 4.0) / FARM_ROW)    # (6 on a 6x5 farm)
-	var row := int(round(float((i / 2) % 4) * float(rows - 1) / 3.0))
-	var y := r.position.y + FARM_HOUSE_BASE + 4.0 + FARM_ROW * (row + 1) - 3.0
-	var half := r.size.x * 0.5
-	var x0 := r.position.x + 14.0 + (i % 2) * half
-	return [Vector2(x0, y), Vector2(x0 + half - 26.0, y)]
+	return row_stretch(rect(), i)
+
+
+static func row_stretch(r: Rect2, i: int) -> Array:
+	var row: Array = FARM_ROWS[i % FARM_ROWS.size()]
+	var y := r.position.y + 13.0 + FARM_ROW * float(row[0])
+	return [Vector2(r.position.x + float(row[1]), y), Vector2(r.position.x + float(row[2]), y)]
+
+
+## Farm: true if the straight walk from a to b would cross the windmill's block.
+func crosses_house(a: Vector2, b: Vector2) -> bool:
+	var hr := Rect2(rect().position + Vector2(FARM_BLOCK.position) * Defs.TILE, Vector2(FARM_BLOCK.size) * Defs.TILE).grow(6.0)
+	for k in 9:
+		if hr.has_point(a.lerp(b, k / 8.0)):
+			return true
+	return false
 
 
 func rect() -> Rect2:
@@ -267,6 +368,27 @@ static func entry_time(k: String) -> float:
 	if is_research(k):
 		return float(Defs.RESEARCH[k.substr(1)]["time"])
 	return float(Defs.UNITS[k]["time"])
+
+
+## What the queue entry at `i` was paid to come out with ({} if nothing: research, other units).
+func kit_at(i: int) -> Dictionary:
+	return kits[i] if i >= 0 and i < kits.size() and kits[i] is Dictionary else {}
+
+
+## Put an entry at the back of the queue, with its kit beside it.
+func add_entry(k: String, kit: Dictionary = {}) -> void:
+	kits.resize(queue.size())
+	queue.append(k)
+	kits.append(kit)
+
+
+## Take the queue entry at `i` out (and its kit beside it); returns the kit.
+func take_entry(i: int) -> Dictionary:
+	var kit := kit_at(i)
+	queue.remove_at(i)
+	if i < kits.size():
+		kits.remove_at(i)
+	return kit
 
 
 func can_train(k: String) -> bool:
@@ -410,6 +532,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if built and not dead and kind == "gate":
 		_gate(delta)
+	if sails and sails.visible:
+		_turn_sails(delta)
 	if built and not dead:
 		_econ(delta)
 		if d.has("field"):
@@ -444,9 +568,9 @@ func _physics_process(delta: float) -> void:
 			morph_t[i] += delta
 			if morph_t[i] >= float(Defs.UNITS[queue[i]]["time"]):
 				var k: String = queue[i]
-				queue.remove_at(i)
+				var kit := take_entry(i)
 				morph_t.remove_at(i)
-				game.spawn_trained(self, k)
+				game.spawn_trained(self, k, kit)
 			else:
 				i += 1
 	elif built and not queue.is_empty():
@@ -454,11 +578,11 @@ func _physics_process(delta: float) -> void:
 		var k: String = queue[0]
 		if prod_t >= entry_time(k):
 			prod_t = 0.0
-			queue.pop_front()
+			var kit := take_entry(0)
 			if is_research(k):
 				game.research_done(self, k.substr(1))
 			else:
-				game.spawn_trained(self, k)
+				game.spawn_trained(self, k, kit)
 	if built and auto_train != "" and not dead:
 		_auto_t -= delta
 		if _auto_t <= 0.0:
@@ -665,10 +789,12 @@ func _update_sprite() -> void:
 	var base := kind
 	if kind == "gate" and vertical and ResourceLoader.exists("res://assets/buildings/gate_v_%s.png" % state):
 		base = "gate_v"
-	var t := Game.tex("res://assets/buildings/%s_%s.png" % [base, state])
+	var t := farm_body(state) if kind == "farm" else Game.tex("res://assets/buildings/%s_%s.png" % [base, state])
 	if sprite.texture != t:
 		sprite.texture = t
-		sprite.offset = Vector2(-t.get_width() * 0.5, -t.get_height() + 6)
+		sprite.offset = body_offset(kind, t)
+	if sails:
+		sails.visible = seeded and Array(FARM_ART["sail_states"]).has(state)
 	if not seeded and not dead:
 		sprite.modulate = Color(1, 1, 1, 0.3)
 	elif unfold_t >= 0.0 and not dead:
@@ -695,6 +821,9 @@ func _update_sprite() -> void:
 				field.modulate = Color(0.55, 0.5, 0.45)
 			elif not built:
 				field.modulate = sprite.modulate
+			for s in scarecrow_sprites:
+				s.visible = built or dead
+				s.modulate = field.modulate
 		if kind == "feeding_pit" and built and not dead and game:
 			# spent ground: the pit dries out to a dead grey-brown
 			var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
@@ -709,9 +838,10 @@ func die() -> void:
 	selected = false
 	if team == game.human and built and not game.over:
 		Sfx.announce(d["faction"], "building_lost", 6.0)
-	for k in queue:
-		game.refund(team, k)
+	for i in queue.size():
+		game.refund(team, queue[i], kit_at(i))
 	queue.clear()
+	kits.clear()
 	for u in crew:
 		if is_instance_valid(u) and not u.dead:
 			u.cmd_stop()
@@ -747,6 +877,21 @@ func die() -> void:
 		rubble_t = 27.5
 
 
+## The windmill's sails: a frame every sail_dt s, slower as the soil tires, still once spent.
+func _turn_sails(delta: float) -> void:
+	_sail_t += delta
+	var dt := float(FARM_ART["sail_dt"])
+	if _sail_t < dt:
+		return
+	_sail_t -= dt
+	if not built or dead or not game:
+		return
+	var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
+	if tired >= 1.0 or randf() < tired * 0.75:
+		return
+	sails.frame = (sails.frame + 1) % sails.hframes
+
+
 func _draw() -> void:
 	if dead:
 		return
@@ -761,6 +906,8 @@ func _draw() -> void:
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), worker_rally - global_position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
 			draw_circle(worker_rally - global_position, 4, Color(1, 0.85, 0.3, 0.9))
 	var top := -sprite.texture.get_height() + 2.0 if sprite and sprite.texture else -r.size.y
+	if kind == "farm":
+		top = float(FARM_ART["top"])
 	if not ghost:
 		draw_health(top, r.size.x * 0.7)
 	# full batteries waiting at an energy building

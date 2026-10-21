@@ -78,7 +78,12 @@ var _push := Vector2.ZERO
 var mode := ""                  # musketeer "" (musket) or "bayonet" (chosen by itself); cannon "" (round shot) or "canister"
 var _melee_t := 0.0             # musketeer: when it next looks for an enemy close enough for the bayonet
 var art := ""                   # whose sprites it wears (an armoured Musketeer: "musketeer_armoured")
-var armoured := false           # Musketeer: its player has researched Armour
+var armoured := false           # Musketeer: refitted with Armour (or came out with it)
+var lock := ""                  # Musketeer: his musket lock ("", or one of Defs.LOCKS)
+var refit: Array = []           # Musketeer on a "refit" order: the upgrades he's going to get (paid)
+var refit_paid := [0, 0]        # what was paid for them (back if the refit is called off)
+var _refit_t := 0.0
+var auto_refit := false         # Powder Wagon: AUTO REFIT (idle Musketeers nearby get the upgrades researched)
 # Missionary raising the fallen; a raised soldier's second life
 var _body: Unit = null          # (a Missionary) the body he's going to raise
 var reviver: Unit = null        # (a body) the Missionary coming to raise it
@@ -103,12 +108,13 @@ var kills := 0                  # veterancy
 var harvester: Unit = null      # (a body) the grub coming to take it
 var cocoon := 0                 # (a grub) essence it carries home
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
-# Observation Balloon: two gunners, each with its own target, reload and pose
+# A Musketeer in a balloon's basket: its pose up there (gun_state[0], "idle"/"down"/"up") and
+# how long it has held it
 var gun_cd: Array = [0.0, 1.5]
 var gun_state: Array = ["idle", "idle"]
 var gun_t: Array = [0.0, 0.0]
-var _gun_sprites: Array = []
-var _pass_sprites: Array = []   # (a balloon) the men it carries, standing at the back of the basket
+var _pilot_spr: Sprite2D        # (a balloon) its basket with the pilot in it (over the envelope and rigging)
+var _pass_sprites: Array = []   # (a balloon) the men it carries, shoulder to shoulder in the basket
 var _front: Sprite2D
 var _hold_note := 0             # when this unit may next say it's holding fire           # workers: go back to work on their own when idle
 # Observation Balloon as a dropship
@@ -117,6 +123,10 @@ var incoming: Array = []        # (a balloon) men walking over to climb in
 var aboard: Unit = null         # (a passenger) the balloon it rides in
 var _board_t := 0.0
 var _descend := 0.0             # (a balloon) 1 = down low, taking men on or letting them off
+var haul_t := -1.0              # (a balloon) a powder keg on the rope: seconds hauled so far (-1: none)
+var haul_shots := 0.0           # (a balloon) shots in that keg (already paid for)
+var haul_at := Vector2.ZERO     # (a balloon) where the rope reaches the ground, from the balloon
+var haul_from: Entity = null    # (a balloon) the wagon or building the keg comes from
 # Skywing: "air" (hunts flyers), "to_land" (flying to a spot it can land on), "landing",
 # "ground" (walks and bites), "lifting"
 var sky := "air"
@@ -274,10 +284,9 @@ func revive() -> void:
 	game.on_unit_revived(self)
 
 
-## Research its player has done: a Musketeer gets Armour (+armour, +health, and the armoured
-## sprites). Called when it's made and when the research finishes.
-func apply_tech() -> void:
-	if kind != "musketeer" or armoured or game == null or team < 0 or not game.has_tech(team, "armour"):
+## A Musketeer refitted with Armour: +armour, +health, and the armoured sprites.
+func put_on_armour() -> void:
+	if kind != "musketeer" or armoured:
 		return
 	var info: Dictionary = Defs.RESEARCH["armour"]
 	armoured = true
@@ -291,13 +300,137 @@ func apply_tech() -> void:
 	queue_redraw()
 
 
-## Musketeer reload with the best lock its player has researched.
+## A Musketeer's kit ({"armour": bool, "lock": key}): a recruit's, or a saved one.
+func set_kit(kit: Dictionary) -> void:
+	if kind != "musketeer":
+		return
+	if kit.get("armour", false):
+		put_on_armour()
+	var lk := String(kit.get("lock", ""))
+	if Defs.LOCKS.has(lk) and Defs.LOCKS.find(lk) > lock_level():
+		lock = lk
+	queue_redraw()
+
+
+func get_kit() -> Dictionary:
+	return {"armour": armoured, "lock": lock}
+
+
+## His lock as a number: -1 none, 0 matchlock, 1 flintlock, 2 caplock (`pending`: counting
+## the one he's on his way to get).
+func lock_level(pending := false) -> int:
+	var lv := Defs.LOCKS.find(lock)
+	if pending:
+		for w in refit:
+			lv = maxi(lv, Defs.LOCKS.find(w))
+	return lv
+
+
+## The upgrades he has, for the unit card: "Armour · Flintlock" ("" for none).
+func kit_text() -> String:
+	var parts: Array = []
+	if armoured:
+		parts.append("Armour")
+	if lock != "":
+		parts.append(String(Defs.RESEARCH[lock]["name"]))
+	return " · ".join(parts)
+
+
+## Paid for `what` (Game.refit_order / AUTO REFIT): off to `place` to get it, or, already
+## on his way to a refit, it's added to that one (a later lock replaces the one he was
+## going for, which is paid back).
+func add_refit(place: Entity, what: String, fee: Array) -> void:
+	if order == "refit" and not refit.is_empty():
+		if Defs.LOCKS.has(what):
+			for w in refit.duplicate():
+				if Defs.LOCKS.has(w):
+					var back := Game.refit_fee(w)
+					refit.erase(w)
+					refit_paid = [int(refit_paid[0]) - back[0], int(refit_paid[1]) - back[1]]
+					game.refund_refit(team, back)
+		refit.append(what)
+		refit_paid = [int(refit_paid[0]) + int(fee[0]), int(refit_paid[1]) + int(fee[1])]
+		return
+	cmd_refit(place, [what], fee)
+
+
+func cmd_refit(place: Entity, what: Array, fee: Array) -> void:
+	if aboard:
+		game.refund_refit(team, fee)
+		return
+	_reset_work()
+	order = "refit"
+	order_target = place
+	target = null
+	refit = what.duplicate()
+	refit_paid = [int(fee[0]), int(fee[1])]
+	_refit_t = 0.0
+	work = "to_refit"
+	work_t = 0.0
+	repath_t = 0.0
+
+
+## The refit called off (another order, killed, the place gone): the fees back.
+func _cancel_refit() -> void:
+	if refit.is_empty():
+		return
+	game.refund_refit(team, refit_paid)
+	refit.clear()
+	refit_paid = [0, 0]
+	_refit_t = 0.0
+
+
+func _refit_run(delta: float) -> Vector2:
+	var p = order_target
+	if p == null or not is_instance_valid(p) or p.dead or (p is Building and not p.built) \
+			or (p is Unit and (p.off_field or p.aboard != null)) or refit.is_empty():
+		if team == game.human and not refit.is_empty():
+			game.notify("Refit called off: the place is gone. Paid back.")
+		cmd_stop()          # (the fee goes back)
+		return Vector2.ZERO
+	var at: Vector2 = p.position if p is Unit else p.center()
+	var gap: float = p.edge_distance(position) - radius - (p.radius if p is Unit else 0.0)
+	if gap < float(Defs.REFIT["reach"]) or (work == "refitting" and gap < float(Defs.REFIT["reach"]) + 30.0):
+		# there: a couple of seconds with the armourer
+		path = PackedVector2Array()
+		facing = (at - position).normalized() if at != position else facing
+		work = "refitting"
+		_refit_t += delta
+		if _refit_t >= float(Defs.REFIT["time"]):
+			var done := refit.duplicate()
+			for w in done:
+				if w == "armour":
+					put_on_armour()
+				elif Defs.LOCKS.find(w) > lock_level():
+					lock = w
+			refit.clear()
+			refit_paid = [0, 0]
+			game.refit_done(self, done)
+			queue_redraw()
+			cmd_stop()
+		return Vector2.ZERO
+	work = "to_refit"
+	work_t += delta
+	if work_t > float(Defs.REFIT["give_up"]):
+		if team == game.human:
+			game.notify("A Musketeer couldn't reach the place to be refitted. Paid back.")
+		cmd_stop()
+		return Vector2.ZERO
+	# a wagon may be on the move: head straight for it when close, else find the way there
+	if position.distance_to(at) < 140.0 and game.line_clear(position, at):
+		path = PackedVector2Array()
+		return (at - position).normalized() * speed
+	if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
+		repath_t = 1.5
+		_request_path(game.approach_point(p, position) if p is Building else at)
+	return _follow(delta)
+
+
+## Musketeer reload with his own lock.
 func musket_cooldown() -> float:
 	var m := 1.0
-	if kind == "musketeer" and game and team >= 0:
-		for k in Defs.LOCKS:
-			if game.has_tech(team, k):
-				m = minf(m, float(Defs.RESEARCH[k]["reload"]))
+	if kind == "musketeer" and Defs.RESEARCH.has(lock):
+		m = float(Defs.RESEARCH[lock]["reload"])
 	return float(d["cooldown"]) * m
 
 
@@ -390,11 +523,6 @@ func has_attack() -> bool:
 
 ## How far its weapon is through reloading: 0 just fired, 1 ready.
 func reload_frac() -> float:
-	if d.has("gunners"):
-		var least := INF
-		for c in gun_cd:
-			least = minf(least, float(c))
-		return 1.0 - clampf(least / float(d["cooldown"]), 0.0, 1.0)
 	if phase == "strike":
 		return 0.0
 	if phase != "":
@@ -406,6 +534,8 @@ func reload_frac() -> float:
 func max_powder() -> float:
 	if kind == "powder_wagon":
 		return float(Defs.WAGON["store"])
+	if kind == "balloon":
+		return float(Defs.BALLOON["store"])
 	return float(Defs.POWDER.get(kind, 0))
 
 
@@ -421,6 +551,9 @@ func _powder_building() -> Building:
 ## Personal powder: refill near a powder building or a stocked wagon; a Powder Wagon fills
 ## its store near a building (paid from the bank) and calls labourers to bring kegs.
 func _powder_tick(delta: float) -> void:
+	if kind == "balloon":
+		_basket_powder(delta)
+		return
 	_dispense_t = maxf(_dispense_t - delta, 0.0)
 	if kind == "powder_wagon" and supplying:
 		_supply_t -= delta
@@ -529,54 +662,14 @@ func take_damage(amount: float, from: Entity) -> void:
 		_battery_blast()
 
 
-## Balloon gunners: each picks its own target in range (the second prefers a different one,
-## and flyers if there are any), fires down or up, reloads on its own.
-func _gunners(delta: float) -> void:
+## Musketeers carried in the basket shoot: each with its own reload, range, damage and
+## powder (topped up from the balloon's store), spreading their fire.
+## A Musketeer firing from a balloon's basket reaches this much further than on the ground.
+const BASKET_RANGE := 1.35
+
+
+func _basket_fire(delta: float) -> void:
 	var taken: Entity = null
-	for i in gun_cd.size():
-		gun_cd[i] = float(gun_cd[i]) - delta
-		gun_t[i] = float(gun_t[i]) + delta
-		if gun_state[i] != "idle" and float(gun_t[i]) > 0.7:
-			gun_state[i] = "idle"
-		if float(gun_cd[i]) > 0.0 or stun_t > 0.0:
-			continue
-		var best: Entity = null
-		var bd := INF
-		for o in game.units_near(position, _range() + 40.0):
-			if not game.hostile(o.team, team) or o.dead or o.off_field or not can_hit(o) or not game.side_sees(team, o.position):
-				continue
-			var dd: float = o.center().distance_to(center())
-			if dd > _range():
-				continue
-			if i == 1 and o.is_air():
-				dd -= 150.0          # gunner B watches the sky
-			if o == taken:
-				dd += 120.0          # spread the fire
-			if dd < bd:
-				bd = dd
-				best = o
-		if best == null:
-			continue
-		if not game.use_powder(team, 1):
-			continue
-		if game.fog_blinds(self, best) and randf() < float(Defs.FOG["miss"]):
-			gun_cd[i] = float(d["cooldown"]) + randf_range(0.0, 0.4)
-			game.fog_miss(self, best)
-			continue
-		taken = best
-		gun_state[i] = "up" if best.is_air() else "down"
-		gun_t[i] = 0.0
-		gun_cd[i] = float(d["cooldown"]) + randf_range(0.0, 0.4)
-		var muzzle := center() + Vector2(-6.0 if i == 0 else 6.0, -4.0)
-		if _gun_sprites.size() > i:
-			muzzle = (_gun_sprites[i] as Sprite2D).global_position + Vector2(0, -4)
-		game.musket_shot(self, best, float(d["damage"]), muzzle)
-	_basket_fire(delta, taken)
-
-
-## Musketeers carried in the basket shoot too: their own reload, range and damage, from
-## between the two gunners.
-func _basket_fire(delta: float, taken: Entity) -> void:
 	for pi in passengers.size():
 		var p = passengers[pi]
 		if not is_instance_valid(p) or p.dead or p.kind != "musketeer":
@@ -585,13 +678,13 @@ func _basket_fire(delta: float, taken: Entity) -> void:
 		if p.gun_state[0] != "idle" and float(p.gun_t[0]) > 0.7:
 			p.gun_state[0] = "idle"
 		p.cooldown = maxf(p.cooldown - delta, 0.0)
-		if p.cooldown > 0.0 or stun_t > 0.0:
+		if p.cooldown > 0.0 or stun_t > 0.0 or p.powder < 1.0:
 			continue
-		var rng := float(p.d["range"])
+		var rng := float(p.d["range"]) * BASKET_RANGE      # shooting down from the sky reaches further
 		var best: Entity = null
 		var bd := INF
 		for o in game.units_near(position, rng + 40.0):
-			if not game.hostile(o.team, team) or o.dead or o.off_field or not can_hit(o) or not game.side_sees(team, o.position):
+			if not game.hostile(o.team, team) or o.dead or o.off_field or not p.can_hit(o) or not game.side_sees(team, o.position):
 				continue
 			var dd: float = o.center().distance_to(center())
 			if dd > rng:
@@ -603,8 +696,7 @@ func _basket_fire(delta: float, taken: Entity) -> void:
 				best = o
 		if best == null:
 			continue
-		if not game.use_powder(team, 1):       # from the bank, like the basket's own gunners
-			continue
+		p.powder -= 1.0          # his own powder, as on the ground
 		taken = best
 		p.cooldown = p.musket_cooldown() + randf_range(0.0, 0.3)
 		p.gun_state[0] = "up" if best.is_air() else "down"
@@ -613,40 +705,221 @@ func _basket_fire(delta: float, taken: Entity) -> void:
 		if _pass_sprites.size() > pi and (_pass_sprites[pi] as Sprite2D).visible:
 			muzzle = (_pass_sprites[pi] as Sprite2D).global_position + Vector2(0, -6)
 		p.facing = (best.center() - muzzle).normalized()
+		if game.fog_blinds(p, best) and randf() < float(Defs.FOG["miss"]):
+			game.fog_miss(p, best)
+			continue
 		var dmg := float(p.d["damage"]) * (1.0 + minf(p.kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
 		game.musket_shot(p, best, dmg, muzzle)
 
 
-func _update_gunners() -> void:
-	if _front == null or not ArtData.UNITS[kind].has("gunners"):
+## (a balloon) its powder store: the Musketeers aboard top up from it, and hovering still
+## near a Powder Wagon or a powder building the pilot hauls kegs up on a rope (Defs.BALLOON).
+func _basket_powder(delta: float) -> void:
+	var still := velocity.length() < 12.0
+	if haul_t >= 0.0:
+		if not still:
+			_haul_cancel()          # moving off: the rope comes in, the keg goes back
+		else:
+			haul_t += delta
+			if haul_t >= float(Defs.BALLOON["haul"]):
+				powder = minf(_pmax, powder + haul_shots)
+				if team == game.human and visible:
+					game.float_text(position + Vector2(0, -60), "+%d shots" % int(haul_shots), Color(1, 0.85, 0.5))
+				haul_t = -1.0
+				haul_shots = 0.0
+				haul_from = null
+	_powder_t -= delta
+	if _powder_t > 0.0:
+		return
+	_powder_t = 0.5
+	for p in passengers:
+		if is_instance_valid(p) and not p.dead and p._pmax > 0.0 and p.powder < p._pmax and powder > 0.0:
+			var take := minf(minf(float(Defs.POWDER["refill"]) * 0.5, p._pmax - p.powder), powder)
+			p.powder += take
+			powder -= take
+			if p.powder >= float(Defs.POWDER["rearm"]):
+				p._auto_bayonet = false
+	if haul_t < 0.0 and still and _pmax - powder >= 1.0:
+		_haul_start()
+
+
+## (a balloon) the wagon or building within reach it can haul powder up from (null: none).
+func haul_source() -> Entity:
+	var reach := float(Defs.BALLOON["reach"]) * Defs.TILE
+	var best: Entity = null
+	var bd := INF
+	for o in game.units_near(position, reach + 24.0):
+		if o.kind == "powder_wagon" and o.team == team and not o.dead and not o.off_field and o.powder >= 1.0:
+			var dd: float = o.position.distance_to(position)
+			if dd < reach + o.radius and dd < bd:
+				bd = dd
+				best = o
+	if best:
+		return best
+	for b in game.buildings:
+		if b.team == team and b.built and not b.dead and (Defs.POWDER["from"] as Array).has(b.kind):
+			var dd: float = b.edge_distance(position)
+			if dd < reach and dd < bd:
+				bd = dd
+				best = b
+	return best
+
+
+## (a balloon) the pilot lowers the rope: a keg is paid for (bank or wagon) and starts up.
+func _haul_start() -> void:
+	var src := haul_source()
+	if src == null:
+		return
+	var shots := minf(float(Defs.BALLOON["keg"]), _pmax - powder)
+	if src is Unit:
+		shots = minf(shots, (src as Unit).powder)
+		(src as Unit).powder -= shots
+		(src as Unit)._dispense_t = float(Defs.BALLOON["haul"])
+	else:
+		var bank := float(game.players[team]["res2"])
+		shots = minf(shots, bank * float(Defs.WAGON["per_powder"]))
+		if shots < 1.0:
+			if team == game.human:
+				game.powder_short()
+			return
+		game.players[team]["res2"] = bank - shots / float(Defs.WAGON["per_powder"])
+	haul_shots = shots
+	haul_from = src
+	haul_t = 0.0
+	# the rope comes down beside the basket, leaning toward where the keg comes from
+	var to: Vector2 = (src.position if src is Unit else src.center()) - position
+	haul_at = to.limit_length(26.0) + Vector2(0, 4)
+
+
+## (a balloon) the rope comes back in without its keg: it goes back where it came from.
+func _haul_cancel() -> void:
+	if haul_t < 0.0:
+		return
+	if haul_from is Unit and is_instance_valid(haul_from) and not haul_from.dead:
+		var w := haul_from as Unit
+		w.powder = minf(w.max_powder(), w.powder + haul_shots)
+	elif not dead:
+		game.add_res2(team, haul_shots / float(Defs.WAGON["per_powder"]))
+	haul_t = -1.0
+	haul_shots = 0.0
+	haul_from = null
+
+
+## (a balloon) RESTOCK: fly to the nearest Powder Wagon with powder or powder building and
+## hover there while the pilot hauls kegs up, until the store is full.
+func cmd_restock() -> bool:
+	if kind != "balloon":
+		return false
+	var best: Entity = null
+	var bd := INF
+	for o in game.units:
+		if o.kind == "powder_wagon" and o.team == team and not o.dead and not o.off_field and o.powder >= float(Defs.BALLOON["keg"]):
+			var dd: float = o.position.distance_to(position)
+			if dd < bd:
+				bd = dd
+				best = o
+	for b in game.buildings:
+		if b.team == team and b.built and not b.dead and (Defs.POWDER["from"] as Array).has(b.kind):
+			var dd: float = b.center().distance_to(position)
+			if dd < bd:
+				bd = dd
+				best = b
+	if best == null:
+		return false
+	_reset_work()
+	order = "restock"
+	order_target = best
+	target = null
+	order_point = best.position + Vector2(0, -18) if best is Unit else best.center()
+	repath_t = 1.5
+	if position.distance_to(order_point) > 8.0:
+		_request_path(order_point)
+	return true
+
+
+func _restock(delta: float) -> Vector2:
+	var src := order_target
+	if powder >= _pmax and haul_t < 0.0:
+		cmd_stop()
+		return Vector2.ZERO
+	if src == null or not is_instance_valid(src) or src.dead:
+		if haul_t < 0.0:
+			cmd_stop()
+		return Vector2.ZERO
+	if haul_source() != null or haul_t >= 0.0:
+		path = PackedVector2Array()
+		return Vector2.ZERO        # there: hover while the pilot hauls
+	if position.distance_to(order_point) < 10.0:
+		cmd_stop()                 # nothing to haul from here (an empty wagon)
+		return Vector2.ZERO
+	if src is Unit and repath_t <= 0.0:
+		order_point = src.position + Vector2(0, -18)      # a wagon may roll on: follow it
+		repath_t = 1.5
+		_request_path(order_point)
+	elif path.is_empty() and not path_pending:
+		repath_t = 1.5
+		_request_path(order_point)
+	return _follow(delta)
+
+
+## Where the men stand in the basket: offsets (body pixels) from the middle of the basket's
+## front rim (ArtData "gunners" point of each facing, from tools/import_balloon2.py), two
+## each side of the pilot, packed shoulder to shoulder inside the rim (the wicker is 44 px
+## across at the rim; a rider at this scale is about 13 px wide, so the outer two stay inside
+## it and the front rim hides their legs); drawn at `scale` of the gunner art, in this order
+## (1st man aboard first). New basket art: change these numbers (and the scale) only.
+## How far a rider's feet sit below the basket's floor line (px, before the basket scale):
+## his own full-body sprite, sunk so only his top half shows over the front wall.
+const RIDER_DROP := 13.0
+const BASKET := {
+	"scale": 0.8,
+	"riders": [Vector2(-14.5, -1.0), Vector2(14.5, -1.0), Vector2(-6.5, 0.0), Vector2(6.5, 0.0)],
+}
+
+
+## The pilot's frame of the basket strips (basket_<dir>, basket_front_<dir>): 0 holding the
+## rim, 1-2 looking about, 3 pulling the rope while a keg comes up.
+func _pilot_frame() -> int:
+	if haul_t >= 0.0:
+		return 3
+	return [0, 0, 1, 0, 0, 2][int(_bob_t / 1.1) % 6]
+
+
+func _basket_tex(layer: String, dir: String) -> Texture2D:
+	var path := "res://assets/units/%s/%s_%s.png" % [kind, layer, dir]
+	return Game.tex(path) if ResourceLoader.exists(path) else null
+
+
+func _update_basket() -> void:
+	if _front == null:
 		return
 	var info: Dictionary = ArtData.UNITS[kind]
 	var dead_anim := anim == "death"
 	_front.visible = not dead_anim
-	for g in _gun_sprites:
-		(g as Sprite2D).visible = not dead_anim
+	if _pilot_spr:
+		_pilot_spr.visible = not dead_anim
 	for g in _pass_sprites:
 		(g as Sprite2D).visible = false
 	if dead_anim:
 		return
-	var fk := "front_%s_%s" % [anim, anim_dir]
-	if ResourceLoader.exists("res://assets/units/%s/%s.png" % [kind, fk]):
-		_front.texture = Game.tex("res://assets/units/%s/%s.png" % [kind, fk])
-		_front.hframes = sprite.hframes
-		_front.frame = sprite.frame
-		_front.offset = sprite.offset
-	var slots: Array = info["gunners"].get(anim_dir, [Vector2(-6, 0), Vector2(6, 0)])
-	var gfr: Dictionary = info.get("gunner_frames", {"idle": 1, "down": 3, "up": 3})
-	for i in _gun_sprites.size():
-		var g: Sprite2D = _gun_sprites[i]
-		var st: String = gun_state[i]
-		g.texture = Game.tex("res://assets/units/%s/gunner_%s_%s.png" % [kind, st, anim_dir])
-		g.hframes = int(gfr.get(st, 1))
-		g.frame = clampi(int(float(gun_t[i]) / 0.7 * g.hframes), 0, g.hframes - 1) if st != "idle" else 0
-		g.offset = -Vector2(info.get("gunner_anchor", Vector2.ZERO))
-		g.position = sprite.offset + Vector2(slots[mini(i, slots.size() - 1)])
-	# the men it carries stand in a row behind the two gunners; Musketeers shoot from there
+	# the basket with its pilot, and its front wall over the riders' legs: on the body's cell
+	var pf := _pilot_frame()
+	var nb := int(info.get("basket_frames", 1))
+	for pair in [[_pilot_spr, "basket"], [_front, "basket_front"]]:
+		var s: Sprite2D = pair[0]
+		if s == null:
+			continue
+		s.texture = _basket_tex(pair[1], anim_dir)
+		s.hframes = nb
+		s.frame = mini(pf, nb - 1)
+		s.offset = sprite.offset
+	var slots: Array = info.get("gunners", {}).get(anim_dir, [Vector2.ZERO, Vector2.ZERO])
 	var mid: Vector2 = (Vector2(slots[0]) + Vector2(slots[slots.size() - 1])) * 0.5
+	var sc := float(BASKET["scale"])
+	var anchor := Vector2(info.get("gunner_anchor", Vector2.ZERO))
+	var gfr: Dictionary = info.get("gunner_frames", {"idle": 1, "down": 3, "up": 3})
+	# the men it carries; Musketeers shoot from there
+	var riders: Array = BASKET["riders"]
 	for i in mini(passengers.size(), _pass_sprites.size()):
 		var p = passengers[i]
 		if not is_instance_valid(p):
@@ -654,13 +927,27 @@ func _update_gunners() -> void:
 		var g: Sprite2D = _pass_sprites[i]
 		var st: String = p.gun_state[0]
 		g.visible = true
-		g.texture = Game.tex("res://assets/units/%s/gunner_%s_%s.png" % [kind, st, anim_dir])
-		g.hframes = int(gfr.get(st, 1))
+		# each man in his own clothes (an armoured Musketeer in his morion and breastplate),
+		# from the waist up: the basket's front wall hides his legs
+		var pa: String = p.art if p.art != "" else p.kind
+		var pinfo: Dictionary = ArtData.UNITS.get(pa, {})
+		var key: String = {"idle": "idle", "down": "fire", "up": "fireup"}.get(st, "idle") + "_" + anim_dir
+		var pframes: Dictionary = pinfo.get("frames", {})
+		if not pframes.has(key):
+			key = "idle_" + anim_dir
+		if pinfo.is_empty() or not pframes.has(key):
+			g.texture = Game.tex("res://assets/units/%s/gunner_%s_%s.png" % [kind, st, anim_dir])
+			g.hframes = int(gfr.get(st, 1))
+			g.offset = -anchor
+		else:
+			g.texture = Game.tex("res://assets/units/%s/%s.png" % [pa, key])
+			g.hframes = int(pframes[key])
+			g.offset = -Vector2(pinfo["anchor"]) + Vector2(0, RIDER_DROP)
 		g.frame = clampi(int(float(p.gun_t[0]) / 0.7 * g.hframes), 0, g.hframes - 1) if st != "idle" else 0
-		g.offset = -Vector2(info.get("gunner_anchor", Vector2.ZERO))
-		g.position = sprite.offset + mid + Vector2([-10.0, -3.5, 3.5, 10.0][i], -3.0 if i == 0 or i == 3 else -4.0)
-		# the others (pikes, picks) are just along for the ride: a little darker
-		g.self_modulate = Color.WHITE if p.kind == "musketeer" else Color(0.8, 0.8, 0.8)
+		g.scale = Vector2(sc, sc)
+		g.position = sprite.offset + mid + Vector2(riders[mini(i, riders.size() - 1)])
+		g.self_modulate = Color.WHITE
+		g.material = p.sprite.material if p.sprite else null
 
 
 ## The battery on a Winder's back overloads (carried too long, or hit): it bursts.
@@ -703,7 +990,6 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	last_pos = pos
 	leash_from = pos
 	art = k
-	apply_tech()
 
 
 func _ready() -> void:
@@ -714,23 +1000,20 @@ func _ready() -> void:
 	add_child(sprite)
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_make_wheel()
-	if ArtData.UNITS.has(kind) and ArtData.UNITS[kind].has("gunners"):
-		# layered: body, the men it carries (at the back), the two gunners, then the basket's
-		# front wall over their legs
-		if kind == "balloon":
-			for i in int(Defs.DROPSHIP["capacity"]):
-				var ps := Sprite2D.new()
-				ps.centered = false
-				ps.use_parent_material = true
-				ps.visible = false
-				sprite.add_child(ps)
-				_pass_sprites.append(ps)
-		for i in int(d.get("gunners", 2)):
-			var g := Sprite2D.new()
-			g.centered = false
-			g.use_parent_material = true
-			sprite.add_child(g)
-			_gun_sprites.append(g)
+	if kind == "balloon" and ArtData.UNITS.has(kind):
+		# layered: the envelope and rigging, the basket with its pilot, the men it carries,
+		# then the basket's front wall over their legs
+		_pilot_spr = Sprite2D.new()
+		_pilot_spr.centered = false
+		_pilot_spr.use_parent_material = true
+		sprite.add_child(_pilot_spr)
+		for i in int(Defs.DROPSHIP["capacity"]):
+			var ps := Sprite2D.new()
+			ps.centered = false
+			ps.use_parent_material = true
+			ps.visible = false
+			sprite.add_child(ps)
+			_pass_sprites.append(ps)
 		_front = Sprite2D.new()
 		_front.centered = false
 		_front.use_parent_material = true
@@ -1302,6 +1585,7 @@ func _reset_work() -> void:
 		# given another job on the way: the keg goes back into the stores
 		keg = false
 		game.add_res2(team, _keg_cost())
+	_cancel_refit()            # (a refit called off: paid back)
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
@@ -1780,9 +2064,8 @@ func _physics_process(delta: float) -> void:
 			Sfx.play_any(["combat/brute_attack", "roar"], position)
 	elif kind == "brute":
 		_charging = false
-	if d.has("gunners"):
-		_gunners(delta)
 	if kind == "balloon":
+		_basket_fire(delta)
 		# the men in the basket ride along; it comes down low while they climb in or out
 		for p in passengers:
 			if is_instance_valid(p):
@@ -1976,12 +2259,16 @@ func _physics_process(delta: float) -> void:
 			want = _board(delta)
 		"unload":
 			want = _unload(delta)
+		"restock":
+			want = _restock(delta)
 		"courier":
 			want = _courier(delta)
 		"overload":
 			want = _overload(delta)
 		"keg":
 			want = _keg_run(delta)
+		"refit":
+			want = _refit_run(delta)
 		"sacrifice":
 			want = _sacrifice(delta)
 	if deploys():
@@ -2010,7 +2297,7 @@ func _physics_process(delta: float) -> void:
 	if overclock_t > 0.0:
 		extra += int(overclock_t * 8.0) * 1000000
 	if kind == "balloon":
-		extra += passengers.size() * 100000
+		extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
 	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
 		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 		int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * ["packed", "deploying", "deployed", "packing"].find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
@@ -2445,9 +2732,6 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 
 
 func _attack_cycle(e: Entity, delta: float) -> void:
-	if d.has("gunners"):
-		facing = (e.center() - center()).normalized()
-		return          # its gunners do the shooting
 	if kind == "thresher" and stun_t <= 0.0:
 		# in reach and cutting: the saws spin up
 		spin = minf(1.0, spin + delta / float(Defs.THRESHER["time"]))
@@ -2754,6 +3038,9 @@ func _farm(site: Building, delta: float) -> Vector2:
 	# a new stretch (the crew changed): walk over to it through the field
 	if _row_goal == Vector2.INF or absf(_row_goal.y - a.y) > 1.0 or _row_goal.x < a.x - 1.0 or _row_goal.x > b.x + 1.0:
 		_row_goal = a if position.distance_to(a) < position.distance_to(b) else b
+		if site.crosses_house(position, _row_goal):
+			work = "to_site"        # (the other side of the windmill: walk round it)
+			return Vector2.ZERO
 	if position.distance_to(_row_goal) > 3.0:
 		return (_row_goal - position).normalized() * speed * 0.45
 	# hoeing, facing along the row (a little toward the viewer)
@@ -3347,6 +3634,7 @@ func die() -> void:
 	_release_patient()
 	_drop_body()
 	_cancel_boarding()
+	_cancel_refit()            # (killed on the way to a refit: the fee goes back)
 	drop_crate()               # (a Winder) the crate on his back falls where he stood
 	if tongue_stage != "":
 		_break_tongue("killed")    # (a Mist Toad) the mark goes, or the tongue lets go
@@ -3373,7 +3661,7 @@ func die() -> void:
 		tw.tween_property(b, "modulate:a", 0.0, 3.0)
 		tw.tween_callback(b.queue_free)
 	game.on_unit_died(self)
-	Sfx.play_any(["combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
+	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim(_death_anim(), true)
 	z_index = -1
 	# powder goes up: a keg on a labourer's back, or a whole Powder Wagon
@@ -3388,7 +3676,7 @@ func die() -> void:
 		if team == game.human:
 			game.notify("Your Powder Wagon blew up!", true)
 		powder = 0.0
-		game.powder_blast(self, position, dmg, float(Defs.WAGON["radius"]) * (0.7 + 0.3 * full), true)
+		game.powder_blast(self, position, dmg, float(Defs.WAGON["radius"]) * (0.85 + 0.15 * full), true)
 
 
 # ------------------------------------------------------------------ animation
@@ -3693,6 +3981,8 @@ func _animate(delta: float) -> void:
 			fps = 6.0
 		"reload":
 			fps = float(n) / maxf(_cooldown() * 0.8, 0.5)
+			if kind == "cannon" or kind == "mortar":
+				loop = false        # the crew loads once, then stands ready on the last frame
 		"deploy":
 			fps = float(n) / switch_time()
 			loop = false
@@ -3730,7 +4020,7 @@ func _animate(delta: float) -> void:
 		shown = mini(shown, TOAD_MOUTH_OPEN)   # the mouth gapes; the drawn tongue does the reaching
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
 	if _front:
-		_update_gunners()
+		_update_basket()
 	_bob_t += delta
 	if kind == "skywing" and (sky == "landing" or sky == "lifting") and not dead:
 		# coming down to (or rising from) the ground
@@ -3976,6 +4266,44 @@ func _draw_aim() -> void:
 			draw_colored_polygon(PackedVector2Array([q - s + n, q + s + n, q + s - n, q - s - n]), Color(red.r, red.g, red.b, 0.5))
 
 
+## The colour of powder bars on the unit card (its own, and its passengers'): a pale powder blue, apart from
+## the green health, the cream / gold reload and the amber Clockwork charge.
+const POWDER_BAR := Color(0.55, 0.78, 1.0)
+
+
+## (a balloon) the pilot's rope from the basket to the ground and the keg coming up it: the
+## rope drops (first 20%), its end coils on the ground (to 35%), then the barrel tied on
+## rises to the basket (assets/effects/haul_coil.png, haul_barrel.png).
+func _draw_haul() -> void:
+	var f := clampf(haul_t / float(Defs.BALLOON["haul"]), 0.0, 1.0)
+	var top := Vector2(0, sprite.position.y - 2.0)
+	var ground := haul_at
+	var info: Dictionary = ArtData.UNITS[kind]
+	var rope := Color(0.62, 0.42, 0.22, 0.95)
+	if f < 0.2:
+		draw_line(top, top.lerp(ground, f / 0.2), rope, 1.0)
+		return
+	if f < 0.35:
+		draw_line(top, ground, rope, 1.0)
+		var cc: Vector2i = info.get("haul_coil", Vector2i.ZERO)
+		var ct: Texture2D = Game.tex("res://assets/effects/haul_coil.png")
+		if ct and cc.x > 0:
+			var ci := clampi(int((f - 0.2) / 0.15 * 3.0), 0, 2)
+			draw_texture_rect_region(ct, Rect2(ground - Vector2(cc.x * 0.5, cc.y - 1), Vector2(cc)), Rect2(ci * cc.x, 0, cc.x, cc.y))
+		return
+	var k := (f - 0.35) / 0.65
+	var kp := ground.lerp(top, k) + Vector2(sin(haul_t * 5.0) * 0.8, 0)     # the barrel's bottom
+	var bc: Vector2i = info.get("haul_barrel", Vector2i.ZERO)
+	var bt: Texture2D = Game.tex("res://assets/effects/haul_barrel.png")
+	if bt and bc.x > 0:
+		draw_line(top, kp - Vector2(0, bc.y - 1), rope, 1.0)
+		var bi := clampi(int(k * 4.0), 0, 3)
+		draw_texture_rect_region(bt, Rect2(kp - Vector2(bc.x * 0.5, bc.y), Vector2(bc)), Rect2(bi * bc.x, 0, bc.x, bc.y))
+	else:
+		draw_line(top, kp - Vector2(0, 10), rope, 1.0)
+		draw_rect(Rect2(kp + Vector2(-4, -10), Vector2(8, 10)), Color(0.45, 0.28, 0.12))
+
+
 func _draw() -> void:
 	if dead:
 		# a veteran's body: how much essence it holds, for the Brood to see
@@ -3989,6 +4317,8 @@ func _draw() -> void:
 	if selected:
 		draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
 	draw_set_transform(Vector2.ZERO)
+	if haul_t >= 0.0 and kind == "balloon":
+		_draw_haul()
 	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0
 	if kind == "mortar":
 		top = -50.0
@@ -3999,19 +4329,20 @@ func _draw() -> void:
 	var bw := radius * 2.4
 	draw_health(top, bw, true)
 	if has_attack():
-		# under it, for every armed unit (friend or foe): the reload, full = ready to strike
+		# the reload, only while reloading (or setting up a gun): nothing when ready
 		var rf := reload_frac()
 		var rcol := Color(0.92, 0.92, 0.85)
-		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
-			rcol = Color(0.9, 0.25, 0.2)           # out of powder: can't fire
-			rf = 0.0
+		var show := rf < 1.0 and not (_pmax > 0.0 and mode != "bayonet" and powder < 1.0)
+		if deploys() and tesla_mode == "deploying":
+			rcol = Color(0.45, 0.7, 1.0)           # limbering / rooting / packing
+			rf = 1.0 - tesla_t / switch_time()
+			show = true
 		elif deploys() and tesla_mode != "deployed":
-			rcol = Color(0.45, 0.7, 1.0)           # limbered / rooted / packed: setting up
-			rf = 1.0 - tesla_t / switch_time() if tesla_mode == "deploying" else 0.0
-		elif rf >= 1.0:
-			rcol = Color(1.0, 0.85, 0.3)
-		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(-bw * 0.5, top + 5.0, bw * clampf(rf, 0.0, 1.0), 2), rcol)
+			show = false
+		if show:
+			var ry := top + 5.0 if hp < max_hp else top + 1.0
+			draw_rect(Rect2(-bw * 0.5, ry, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(-bw * 0.5, ry, bw * clampf(rf, 0.0, 1.0), 2), rcol)
 	if work == "feeding":
 		return
 	if topter_bat != "":
@@ -4026,13 +4357,6 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, radius + 7.0, 0, TAU, 28, Color(1.0, 0.85, 0.3, a), 2.5)
 		draw_arc(Vector2.ZERO, radius + 11.0, overclock_t * 3.0, overclock_t * 3.0 + 2.0, 10, Color(0.6, 0.85, 1.0, a), 1.5)
 		draw_set_transform(Vector2.ZERO)
-	if kind == "balloon" and not passengers.is_empty() and game.allied(team, game.human):
-		# one pip under the basket for every man aboard
-		var np := passengers.size()
-		for i in np:
-			var pr := Rect2(-np * 4.0 + i * 8.0 + 1.0, 8, 6, 6)
-			draw_rect(pr, Color(1, 0.85, 0.4))
-			draw_rect(pr, Color(0, 0, 0, 0.7), false, 1.0)
 	if d["faction"] == "clockwork" and not is_worker():
 		# the battery on its back, for everyone to see: how much charge is left. A cell
 		# strapped onto the body sprite (scripts/battery_pack.gd follows the frames and the
@@ -4042,12 +4366,6 @@ func _draw() -> void:
 			pk.name = "Pack"
 			pk.set("unit", self)
 			sprite.add_child(pk)
-		if not ArtData.PACKS.has(kind):
-			# no pack drawn on (the new constructs carry their cells in their hands, on the
-			# body, or run on a spring): a thin wind bar under the reload bar instead
-			var ww := bw * 0.8
-			draw_rect(Rect2(-ww * 0.5, top + 8.5, ww, 1).grow(0.5), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(-ww * 0.5, top + 8.5, ww * clampf(wind, 0.0, 1.0), 1), Color(0.95, 0.75, 0.3) if runs_on_spring() else Color(1.0, 0.9, 0.35).lerp(Color(1, 0.35, 0.2), 1.0 - wind))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
 	if carry_empty and carrying == 0 and kind == "winder":
@@ -4061,11 +4379,7 @@ func _draw() -> void:
 		draw_texture_rect_region(bt, Rect2(-14, top + 10, 11, 22), Rect2(fr * 11, 0, 11, 22))
 		draw_rect(Rect2(-15, top + 33, 13, 3), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-14, top + 34, 11 * (1.0 - f), 1), Color(0.4, 1, 0.3).lerp(Color(1, 0.55, 0.1), f))
-	if kind == "bloater" and team == game.human:
-		var w := radius * 2.0
-		draw_rect(Rect2(-w * 0.5, top + 7.0, w, 2), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(-w * 0.5, top + 7.0, w * gas / 100.0, 2), Color(0.75, 0.95, 0.25))
-	if _pmax > 0.0 and team == game.human and (powder < _pmax or selected or kind == "powder_wagon"):
+	if kind == "powder_wagon" and team == game.human:
 		# the powder it carries: a little horn and a thin bar (amber; red when empty)
 		var pw := bw
 		var ph := 3.0 if kind == "powder_wagon" else 1.0
