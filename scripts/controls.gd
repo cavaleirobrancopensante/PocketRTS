@@ -586,6 +586,17 @@ func _finish_box(add := false) -> void:
 	for u in game.units:
 		if u.team == game.human and not u.dead and not u.off_field and r.has_point(xf * (u.position + Vector2(0, -10))):
 			list.append(u)
+	# no units in the box: your buildings in it (walls and gates only if that's all there is)
+	if list.is_empty():
+		var main: Array = []
+		var lines: Array = []
+		for bb in game.buildings:
+			if bb.team != game.human or bb.dead:
+				continue
+			var br: Rect2 = bb.rect()
+			if r.intersects(Rect2(xf * br.position, br.size * xf.get_scale())):
+				(lines if Defs.BUILDINGS[bb.kind].get("line", false) else main).append(bb)
+		list = main if not main.is_empty() else lines
 	# Army in the box? Leave out the workers busy at the economy (farming, hauling, building);
 	# ones out with the army (repairing, winding, idle) come along.
 	if list.any(func(u: Unit) -> bool: return not u.is_worker()):

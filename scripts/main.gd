@@ -1632,6 +1632,19 @@ func _web_leave_fullscreen() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# F11 (web): the game page swallows the key, so the game toggles full screen itself
+	if OS.has_feature("web") and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+		get_viewport().set_input_as_handled()
+		var on := bool(JavaScriptBridge.eval("!!document.fullscreenElement", true))
+		if on:
+			_web_leave_fullscreen()
+		else:
+			_went_fullscreen = false
+			var keep := Settings.fullscreen
+			Settings.fullscreen = true
+			_web_fullscreen()
+			Settings.fullscreen = keep
+		return
 	# the first click or tap anywhere: full screen (if it's on)
 	if not _went_fullscreen and OS.has_feature("web") and Settings.fullscreen \
 			and ((event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)):

@@ -375,6 +375,14 @@ func _own_wall_at(t: int, c: Vector2i) -> Building:
 	return null
 
 
+## Your own gate (built or not) on this cell, if any.
+func _own_gate_at(t: int, c: Vector2i) -> Building:
+	for b in buildings:
+		if b.kind == "gate" and b.team == t and not b.dead and b.cell == c:
+			return b
+	return null
+
+
 ## Take a building off the map without a death (a wall piece a gate replaces).
 func _remove_quietly(b: Building) -> void:
 	_mark(b.cell, b.size, 0)
@@ -412,6 +420,10 @@ func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array) ->
 	var first := true
 	for c in line_cells(a, b):
 		if placement_problem(t, k, c) != "":
+			continue
+		# a wall over one of your gates: only when that one piece is placed on it (a wall
+		# dragged past your gates keeps them)
+		if k == "wall" and _own_gate_at(t, c) != null and a != b:
 			continue
 		if players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 			if t == human:
@@ -1794,11 +1806,13 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
-			if in_map(cc) and ramp.size() > idx(cc) and ramp[idx(cc)] == 1:
-				return "Can't build on a ramp: build at the top or the bottom of it."
+			if in_map(cc) and ramp.size() > idx(cc) and ramp[idx(cc)] == 1 and not Defs.BUILDINGS[k].get("line", false):
+				return "Can't build on a ramp: build at the top or the bottom of it (walls and gates can go on it)."
 			if not in_map(cc) or solid[idx(cc)] != 0:
 				if k == "gate" and in_map(cc) and solid[idx(cc)] == 4 and _own_wall_at(t, cc) != null:
 					continue     # a gate can replace a piece of your own wall
+				if k == "wall" and in_map(cc) and _own_gate_at(t, cc) != null:
+					continue     # and a wall piece a gate of yours (place_line: a single piece only)
 				return "Blocked."
 			if not ai and t == human and not demo and explored[idx(cc)] == 0:
 				return "Unexplored."
@@ -1846,6 +1860,10 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 		var old_wall := _own_wall_at(t, c)
 		if old_wall:
 			_remove_quietly(old_wall)
+	if k == "wall":
+		var old_gate := _own_gate_at(t, c)
+		if old_gate:
+			_remove_quietly(old_gate)
 	players[t]["gold"] -= int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["spent"] += int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["built"] += 1

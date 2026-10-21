@@ -901,6 +901,8 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
 ## Command keys that never move: everything else gives way to them.
+## Standard keys for some units on their building's card (workers S, Musketeers A).
+const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 
 
@@ -978,7 +980,7 @@ func _with_keys(items: Array) -> Array:
 	for i in items.size():
 		var own := UiLayout.key_for(key_id(items[i]))
 		var lab: String = lab_of.call(items[i])
-		var k: String = own if own != "" else (String(FIXED_KEYS[lab]) if MUST_KEYS.has(lab) else "")
+		var k: String = own if own != "" else (String(FIXED_KEYS[lab]) if MUST_KEYS.has(lab) else String(UNIT_KEYS.get(String(items[i][0]), "")))
 		if k != "" and not used.has(k):
 			used[k] = true
 			chosen[i] = k
