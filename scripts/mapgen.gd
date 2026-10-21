@@ -1,7 +1,8 @@
 class_name MapGen
 ## Map layouts and biomes. Every map is mirrored through its middle so both players get
-## the same ground; with 3-4 players it's mirrored both ways and everyone starts in a corner. The map holds no resources: it's geography (cliffs, ramps, rivers,
-## fords, woods) and town-hall spots.
+## the same ground; with 3-4 players it's mirrored both ways and everyone starts in a corner.
+## A map is geography (cliffs, ramps, rivers, fords, woods), town-hall spots, and at the back
+## of every base site a line of rock outcrops (saltpetre and ore, see plan_deposits).
 
 ## name, layout, biome (or "a+b" for a map that mixes two biomes)
 const MAPS := {
@@ -67,6 +68,8 @@ func generate(map_id: String) -> Array:
 		g.ramp = ramp
 		g.starts = []
 		g.expansions = []
+		g.base_sites = []
+		g.deposit_plan = []
 		return ["custom", "grass"]
 	if map_id.begins_with("custom:"):
 		var data := load_custom(map_id.substr(7))
@@ -111,6 +114,9 @@ func generate(map_id: String) -> Array:
 				ok = false
 		if ok:
 			break
+	# every base site (all four corners with 3-4 players, used or not) gets its deposit line
+	g.base_sites = g.starts + g.expansions
+	g.deposit_plan = plan_deposits(g.base_sites, "4-way" if four() else "2-way")
 	_assign_corners()
 	g.height = height
 	g.ramp = ramp
@@ -120,6 +126,8 @@ func generate(map_id: String) -> Array:
 # ------------------------------------------------------------------ custom maps (map editor)
 
 ## One letter per cell: . low, h high, r ramp, w water, f ford, t/T tree (low/high), k/K rock.
+## Deposits: a list of [x, y, kind] (the top-left cell of each 2x2 outcrop); a map saved
+## before deposits existed gets lines laid out behind its start and hall spots.
 const CELL_CODES := ".hrwftTkK"
 const MAP_DIR := "user://maps"
 
@@ -170,6 +178,15 @@ func apply_custom(data: Dictionary) -> void:
 	g.ramp = ramp
 	var st: Array = data.get("starts", [])
 	var halls: Array = data.get("halls", [])
+	g.base_sites = []
+	for hs in st + halls:
+		var hc := Vector2i(int(hs[0]), int(hs[1]))
+		if not g.base_sites.has(hc):
+			g.base_sites.append(hc)
+	if data.has("deposits"):
+		g.deposit_plan = (data["deposits"] as Array).map(func(dp: Array) -> Array: return [Vector2i(int(dp[0]), int(dp[1])), String(dp[2])])
+	else:
+		g.deposit_plan = plan_deposits(g.base_sites, String(data.get("mirror", "2-way")))
 	g.starts = []
 	g.expansions = []
 	for t in g.n_players():
@@ -520,3 +537,187 @@ func _cliffs() -> void:
 			g.water[i] = 0
 			g._terrain_kind.erase(i)
 			height[i] = 0
+
+
+# ------------------------------------------------------------------ deposits
+
+const HALL_SIZE := Vector2i(5, 4)
+const DEP_SIZE := Vector2i(2, 2)
+
+
+## The map's symmetries: 0 itself, 1 turned round its middle, 2 flipped left-right, 3 flipped
+## top-bottom. "2-way" maps (two players) have 0 and 1, "4-way" maps all four.
+static func symmetries(mode: String) -> Array:
+	if mode == "off":
+		return [0]
+	return [0, 1] if mode != "4-way" else [0, 1, 2, 3]
+
+
+## A footprint's top-left cell under symmetry t.
+static func xf(c: Vector2i, size: Vector2i, t: int) -> Vector2i:
+	match t:
+		1:
+			return Vector2i(Game.W - c.x - size.x, Game.H - c.y - size.y)
+		2:
+			return Vector2i(Game.W - c.x - size.x, c.y)
+		3:
+			return Vector2i(c.x, Game.H - c.y - size.y)
+	return c
+
+
+## A line of outcrops ([cell, kind]) behind every base site (hall cells). Sites that are mirror
+## images of each other (under the map's symmetry) get mirror-image lines, so every site has
+## the same deposits; each line must fit at every one of its images.
+func plan_deposits(sites: Array, mode: String) -> Array:
+	var plan: Array = []
+	var done := {}
+	for s in sites:
+		if done.has(s):
+			continue
+		var ts: Array = []
+		var imgs: Array = []
+		for t in symmetries(mode):
+			var s2 := xf(s, HALL_SIZE, t)
+			if (t == 0 or sites.has(s2)) and not done.has(s2) and not imgs.has(s2):
+				ts.append(t)
+				imgs.append(s2)
+		for s2 in imgs:
+			done[s2] = true
+		var line := deposit_line(s, ts, sites)
+		for t in ts:
+			for dp in line:
+				plan.append([xf(dp[0], DEP_SIZE, t), dp[1]])
+	return plan
+
+
+## The best line of `n` outcrops (saltpetre and ore alternating) behind the hall spot `s`: an
+## arc 6.5-9.5 tiles from the hall's middle (or a straight row, e.g. along a map edge), as near as it fits to straight behind it (away
+## from the ramps of a main on high ground, else away from the middle of the map), on open
+## flat ground at the hall's level, clear of ramps, with open ground between it and the hall
+## (room for the hall's economy buildings). Fewer outcrops if six don't fit anywhere.
+func deposit_line(s: Vector2i, ts: Array, sites: Array, n := 6) -> Array:
+	var hc := Vector2(s) + Vector2(HALL_SIZE) * 0.5
+	var h0 := _height_at(s + Vector2i(2, 2))
+	var back := _back_dir(hc, h0)
+	var best: Array = []
+	var bs := INF
+	for ri in 7:
+		var r := 6.5 + ri * 0.5
+		for k in range(-12, 13):
+			var th := back.angle() + deg_to_rad(7.5) * k
+			for v in 4:
+				# an arc round the hall (2.1 or 2.5 tiles apart), or a straight row (along a map edge)
+				var sp: float = [2.1, 2.5, 2.1, 2.5][v]
+				var line := _arc(hc, r, th, sp, n) if v < 2 else _row(hc, r - 1.0, th, sp, n)
+				if line.is_empty():
+					continue
+				var pen := 0.0
+				for t in ts:
+					var moved: Array = line.map(func(c: Vector2i) -> Vector2i: return xf(c, DEP_SIZE, t))
+					var pt := _line_penalty(moved, xf(s, HALL_SIZE, t), h0, sites)
+					if pt < 0.0:
+						pen = -1.0
+						break
+					pen += pt / ts.size()
+				if pen < 0.0:
+					continue
+				var score: float = absf(k) * 1.2 + absf(r - 8.0) + (sp - 2.1) * 3.0 + pen + (0.0 if v < 2 else 1.0)
+				if score < bs:
+					bs = score
+					best = line
+	if best.is_empty():
+		return deposit_line(s, ts, sites, n - 2) if n > 2 else []
+	var out: Array = []
+	for i in best.size():
+		out.append([best[i], "saltpetre" if i % 2 == 0 else "ore"])
+	return out
+
+
+func _height_at(c: Vector2i) -> int:
+	return height[g.idx(c)] if g.in_map(c) and height.size() == W * H else 0
+
+
+## Which way is the back of a base: away from the ramps of the plateau a main stands on, or
+## for a site on low ground, away from the middle of the map.
+func _back_dir(hc: Vector2, h0: int) -> Vector2:
+	var toward := Vector2.ZERO
+	if h0 == 1:
+		for y in range(int(hc.y) - 22, int(hc.y) + 23):
+			for x in range(int(hc.x) - 22, int(hc.x) + 23):
+				if x < 0 or y < 0 or x >= W or y >= H or ramp[y * W + x] == 0:
+					continue
+				var v := Vector2(x + 0.5, y + 0.5) - hc
+				if v.length() < 22.0:
+					toward += v.normalized()
+	if toward.length() < 0.01:
+		toward = Vector2(W, H) * 0.5 - hc
+	if toward.length() < 0.01:
+		toward = Vector2(0, 1)
+	return -toward.normalized()
+
+
+## n outcrops on an arc of radius r round hc, centred on angle th, sp tiles apart ([] if two
+## would overlap once snapped to cells).
+func _arc(hc: Vector2, r: float, th: float, sp: float, n: int) -> Array:
+	var cells: Array = []
+	for i in n:
+		var a := th + (i - (n - 1) * 0.5) * sp / r
+		var c := hc + Vector2(cos(a), sin(a)) * r
+		var cell := Vector2i(roundi(c.x - 1.0), roundi(c.y - 1.0))
+		for o in cells:
+			if Rect2i(o, DEP_SIZE).intersects(Rect2i(cell, DEP_SIZE)):
+				return []
+		cells.append(cell)
+	return cells
+
+
+## n outcrops in a straight row square to angle th, d tiles from hc, sp tiles apart.
+func _row(hc: Vector2, d: float, th: float, sp: float, n: int) -> Array:
+	var u := Vector2(cos(th), sin(th))
+	var side := Vector2(-u.y, u.x)
+	var cells: Array = []
+	for i in n:
+		var c := hc + u * d + side * (i - (n - 1) * 0.5) * sp
+		var cell := Vector2i(roundi(c.x - 1.0), roundi(c.y - 1.0))
+		for o in cells:
+			if Rect2i(o, DEP_SIZE).intersects(Rect2i(cell, DEP_SIZE)):
+				return []
+		cells.append(cell)
+	return cells
+
+
+## -1 if the line can't go there; otherwise how cramped it is (lower is better).
+func _line_penalty(line: Array, s: Vector2i, h0: int, sites: Array) -> float:
+	var hall := Rect2i(s, HALL_SIZE)
+	var hc := Vector2(s) + Vector2(HALL_SIZE) * 0.5
+	var pen := 0.0
+	for c in line:
+		var r := Rect2i(c, DEP_SIZE)
+		if c.x < 1 or c.y < 1 or c.x + 2 > W - 1 or c.y + 2 > H - 1:
+			return -1.0
+		for o in sites:
+			if Rect2i(o, HALL_SIZE).grow(2).intersects(r):
+				return -1.0
+		for y in range(c.y - 3, c.y + 5):
+			for x in range(c.x - 3, c.x + 5):
+				if x < 0 or y < 0 or x >= W or y >= H:
+					continue
+				var i := y * W + x
+				var inside := r.has_point(Vector2i(x, y))
+				if ramp[i] == 1:
+					return -1.0              # (ramps stay clear)
+				if inside and (g.solid[i] != 0 or g.water[i] == 1 or g.cliff[i] == 1 or height[i] != h0):
+					return -1.0
+				if not inside and x >= c.x - 1 and x <= c.x + 2 and y >= c.y - 1 and y <= c.y + 2 and (g.solid[i] != 0 or g.water[i] == 1):
+					pen += 0.15            # hemmed in (a cliff or trees right beside it)
+		# open ground between the hall and the outcrop: room for its Mill or Crusher
+		var gap := Vector2(Game.tile_gap(hall, r)).length()
+		if gap < 3.0:
+			return -1.0
+		var mid := Vector2(c) + Vector2(1, 1)
+		for k in range(1, 8):
+			var p := hc.lerp(mid, k / 8.0)
+			var q := Vector2i(int(p.x), int(p.y))
+			if g.in_map(q) and not hall.has_point(q) and not r.has_point(q) and (g.solid[g.idx(q)] != 0 or g.water[g.idx(q)] == 1):
+				pen += 1.0
+	return pen

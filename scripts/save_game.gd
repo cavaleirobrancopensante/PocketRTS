@@ -43,11 +43,11 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
 		"zoom": game.camera.zoom.x, "first_of": game._first_of,
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
-		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2]]), "buildings": [], "units": [], "mines": []}
+		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2]]), "buildings": [], "units": [], "deposits": []}
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at})
-	for m in game.mines:
-		d["mines"].append(m.gold)
+	for dp in game.deposits:
+		d["deposits"].append([dp.cell.x, dp.cell.y, dp.kind, snappedf(dp.amount, 0.01)])
 	for b in game.buildings:
 		if b.dead:
 			continue
@@ -113,8 +113,12 @@ static func restore(game: Game, d: Dictionary) -> void:
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex
-	for i in mini(game.mines.size(), d["mines"].size()):
-		game.mines[i].gold = int(d["mines"][i])
+	# deposits: the same map comes back from the seed; put back what was drawn from each outcrop
+	for sd in d.get("deposits", []):
+		var at := Vector2i(int(sd[0]), int(sd[1]))
+		var dp: Deposit = game.deposit_at.get(game.idx(at)) if game.in_map(at) else null
+		if dp and dp.cell == at and dp.kind == String(sd[2]):
+			dp.take(dp.amount - float(sd[3]))
 	for bd in d["buildings"]:
 		var bk := String(bd["k"])
 		if bk == "bone_midden":
@@ -153,6 +157,10 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for b in game.buildings:
 		if b.kind == "farm" or b.kind == "feeding_pit":
 			b._update_sprite()      # (its tired-soil tint needs the halls back first)
+		if Defs.DEPOSIT_FOR.has(b.kind) and not game.site_deposits(b).is_empty():
+			# (a warning already given about its saltpetre / ore isn't given again)
+			var left := game.deposit_left(b)
+			game._dep_warned["%d:%d" % [b.team, game.site_deposits(b)[0].get_instance_id()]] = 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
 	for ud in d["units"]:
 		var u := game._add_unit(String(ud["k"]), int(ud["t"]), _to_v2(ud["p"]))
 		u.hp = float(ud["hp"])

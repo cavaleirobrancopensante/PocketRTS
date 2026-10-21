@@ -1,7 +1,9 @@
 class_name MapEditor
 extends Control
 ## The map editor: paint ground, high ground, ramps, water, fords, trees and rocks, place
-## start spots and expansion hall spots, then save the map (user://maps/) and play it.
+## start spots and expansion hall spots and the deposits (saltpetre and ore outcrops) along
+## the back of each, then save the map (user://maps/) and play it. A new start or hall spot
+## gets a line of deposits laid out behind it; LINES lays them out again for every spot.
 ## Painting can be mirrored 2 ways (for 1v1) or 4 ways (for four corners) so maps stay fair.
 
 signal back_requested
@@ -13,10 +15,14 @@ const HALL := Vector2i(5, 4)
 const TOOLS := [
 	["low", "GROUND", "."], ["high", "HIGH GROUND", "h"], ["ramp", "RAMP", "r"], ["water", "WATER", "w"],
 	["ford", "FORD", "f"], ["tree", "TREES", "t"], ["rock", "ROCKS", "k"],
-	["start", "START SPOT", ""], ["hall", "HALL SPOT", ""], ["erase", "REMOVE SPOT", ""],
+	["start", "START SPOT", ""], ["hall", "HALL SPOT", ""], ["saltpetre", "SALTPETRE", ""], ["ore", "ORE", ""],
+	["erase", "REMOVE", ""],
 ]
+const MARKERS := ["start", "hall", "erase", "saltpetre", "ore"]
+const DEP := Vector2i(2, 2)
 const TOOL_COL := {"low": Color(0.45, 0.65, 0.3), "high": Color(0.85, 0.75, 0.45), "ramp": Color(0.75, 0.55, 0.3),
-	"water": Color(0.2, 0.45, 0.85), "ford": Color(0.5, 0.75, 0.9), "tree": Color(0.1, 0.4, 0.15), "rock": Color(0.55, 0.55, 0.55)}
+	"water": Color(0.2, 0.45, 0.85), "ford": Color(0.5, 0.75, 0.9), "tree": Color(0.1, 0.4, 0.15), "rock": Color(0.55, 0.55, 0.55),
+	"saltpetre": Color(0.9, 0.9, 0.82), "ore": Color(0.85, 0.45, 0.15)}
 const MIRRORS := ["off", "2-way", "4-way"]
 const BIOME_LIST := ["grass", "autumn", "desert", "snow", "marsh", "volcanic"]
 
@@ -25,6 +31,7 @@ var map_name := "My map"
 var cells := ""                 # one letter per cell, see MapGen.CELL_CODES
 var starts: Array = []          # Vector2i, hall top-left; up to 4
 var halls: Array = []           # expansion spots
+var deposits: Array = []        # [Vector2i top-left, "saltpetre" / "ore"]: 2x2 outcrops
 var biome_a := "grass"
 var biome_b := "grass"
 var tool := "high"
@@ -54,6 +61,7 @@ func load_from(data: Dictionary) -> void:
 		cells = ".".repeat(W * H)
 		starts = []
 		halls = []
+		deposits = []
 		map_name = _free_name()
 	else:
 		map_name = String(data.get("name", "My map"))
@@ -66,6 +74,9 @@ func load_from(data: Dictionary) -> void:
 		biome_a = parts[0]
 		biome_b = parts[1] if parts.size() > 1 else parts[0]
 		mirror = String(data.get("mirror", "2-way"))
+		# (a map saved before deposits existed: the game laid lines out behind its spots)
+		deposits = game.deposit_list() if not data.has("deposits") else (data["deposits"] as Array).map(
+			func(dp: Array) -> Array: return [Vector2i(int(dp[0]), int(dp[1])), String(dp[2])])
 	_rebuild()
 	_build_ui()
 
@@ -84,6 +95,7 @@ func to_data() -> Dictionary:
 		"biome": biome_a if biome_a == biome_b else "%s+%s" % [biome_a, biome_b],
 		"starts": starts.map(func(s: Vector2i) -> Array: return [s.x, s.y]),
 		"halls": halls.map(func(s: Vector2i) -> Array: return [s.x, s.y]),
+		"deposits": deposits.map(func(dp: Array) -> Array: return [dp[0].x, dp[0].y, dp[1]]),
 	}
 
 
@@ -91,9 +103,38 @@ func _rebuild() -> void:
 	game.mapgen.biome_a = biome_a
 	game.mapgen.biome_b = biome_b
 	game.starts = starts.duplicate()
-	game.rebuild_map(cells)
+	game.rebuild_map(cells, deposits)
+	deposits = game.deposit_list()       # (outcrops painted over with water, cliffs or ramps are gone)
 	_dirty.clear()
 	queue_redraw()
+
+
+## Put the outcrops down again (after placing or removing some): the ground stays as it is.
+func _respawn_deposits() -> void:
+	game.spawn_deposits(deposits)
+	deposits = game.deposit_list()
+	queue_redraw()
+
+
+## Lay a line of deposits behind each of these spots (and their mirror copies), as the
+## built-in maps have; `fresh`: drop every other outcrop first.
+func _lay_lines(spots: Array, fresh := false) -> void:
+	if fresh:
+		deposits = []
+		_respawn_deposits()
+	var sites: Array = []
+	for sp in starts + halls:
+		if not sites.has(sp):
+			sites.append(sp)
+	var todo: Array = []
+	for sp in spots:
+		for m in _mirrored(sp, HALL):
+			if sites.has(m) and not todo.has(m):
+				todo.append(m)
+	for line in game.mapgen.plan_deposits(todo, mirror):
+		if not deposits.any(func(dp: Array) -> bool: return Rect2i(dp[0], DEP).intersects(Rect2i(line[0], DEP))):
+			deposits.append(line)
+	_respawn_deposits()
 
 
 # ------------------------------------------------------------------ UI
@@ -131,6 +172,9 @@ func _build_ui() -> void:
 		_build_ui()))
 	top.add_child(_btn("NEW", 70, func() -> void:
 		load_from({})))
+	top.add_child(_btn("LINES", 80, func() -> void:
+		_lay_lines(starts + halls, true)
+		_say("Deposit lines laid out behind %d spots." % (starts.size() + halls.size()))))
 	top.add_child(_btn("LOAD", 76, func() -> void: _show_load()))
 	top.add_child(_btn("SAVE", 76, func() -> void: _save()))
 	var play := _btn("PLAY", 90, func() -> void:
@@ -233,7 +277,7 @@ func _save() -> bool:
 	if not MapGen.save_custom(to_data()):
 		_say("Couldn't save the map.")
 		return false
-	_say("Saved \"%s\" (%d start spots)." % [map_name, starts.size()])
+	_say("Saved \"%s\" (%d start spots, %d deposits)." % [map_name, starts.size(), deposits.size()])
 	return true
 
 
@@ -353,9 +397,9 @@ func _mirrored(c: Vector2i, size := Vector2i.ONE) -> Array:
 
 func _paint(screen: Vector2, first: bool) -> void:
 	var c := _cell_at(screen)
-	if tool in ["start", "hall", "erase"]:
+	if tool in MARKERS:
 		if first:
-			_place_marker(c)
+			_place_marker(c, _dep_cell_at(screen))
 		return
 	var code: String = TOOLS[TOOLS.map(func(t: Array) -> String: return t[0]).find(tool)][2]
 	var r := brush - 1
@@ -384,10 +428,17 @@ func _end_stroke() -> void:
 	_painting = false
 
 
-func _place_marker(c: Vector2i) -> void:
+## The top-left cell of the 2x2 outcrop centred nearest the pointer.
+func _dep_cell_at(screen: Vector2) -> Vector2i:
+	var w: Vector2 = game.get_viewport().get_canvas_transform().affine_inverse() * screen
+	return Vector2i(floori(w.x / Game.T - 0.5), floori(w.y / Game.T - 0.5))
+
+
+func _place_marker(c: Vector2i, dc := Vector2i.ZERO) -> void:
 	var at := c - Vector2i(2, 2)
 	at.x = clampi(at.x, 1, W - HALL.x - 1)
 	at.y = clampi(at.y, 1, H - HALL.y - 1)
+	var added: Array = []
 	match tool:
 		"start":
 			var copies := _mirrored(at, HALL)
@@ -398,16 +449,49 @@ func _place_marker(c: Vector2i) -> void:
 			else:
 				starts = copies.slice(0, 4)
 			_say("%d start spots." % starts.size())
+			added = [at]
 		"hall":
 			for m in _mirrored(at, HALL):
 				if not halls.has(m):
 					halls.append(m)
+			added = [at]
+		"saltpetre", "ore":
+			var copies := _mirrored(dc, DEP)
+			for m in copies:
+				var r := Rect2i(m, DEP)
+				if (starts + halls).any(func(sp: Vector2i) -> bool: return Rect2i(sp, HALL).intersects(r)):
+					_say("Deposits can't go on a start or hall spot.")
+					return
+			deposits = deposits.filter(func(dp: Array) -> bool:
+				return not copies.any(func(m: Vector2i) -> bool: return Rect2i(dp[0], DEP).intersects(Rect2i(m, DEP))))
+			for m in copies:
+				deposits.append([m, tool])
+			var before := deposits.size()
+			_respawn_deposits()
+			if deposits.size() < before:
+				_say("Deposits need open, flat, dry ground (no ramps, cliffs, water or trees).")
+			return
 		"erase":
+			var hit := false
 			for list in [starts, halls]:
 				for s in list.duplicate():
 					if Rect2i(s, HALL).grow(1).has_point(c):
 						list.erase(s)
+						hit = true
+			if not hit:
+				# an outcrop under the pointer goes, with its mirror copies
+				for dp in deposits.duplicate():
+					if Rect2i(dp[0], DEP).has_point(c):
+						for m in _mirrored(dp[0], DEP):
+							deposits = deposits.filter(func(o: Array) -> bool: return o[0] != m)
+						_respawn_deposits()
+						break
 	game.starts = starts.duplicate()
+	if not added.is_empty():
+		# a new spot gets its line of deposits (unless it has outcrops near it already)
+		var hc := Vector2(added[0]) + Vector2(HALL) * 0.5
+		if not deposits.any(func(dp: Array) -> bool: return (Vector2(dp[0]) + Vector2.ONE).distance_to(hc) < 11.0):
+			_lay_lines(added)
 	queue_redraw()
 
 
@@ -442,11 +526,17 @@ func _draw() -> void:
 		var mp := get_viewport().get_mouse_position()
 		if not _on_ui(mp):
 			var c := _cell_at(mp)
-			for m in _mirrored(c):
-				var r := Rect2(xf * (Vector2(m - Vector2i(brush - 1, brush - 1)) * t), Vector2(brush * 2 - 1, brush * 2 - 1) * t * xf.get_scale())
-				if tool in ["start", "hall", "erase"]:
-					r = Rect2(xf * (Vector2(m - Vector2i(2, 2)) * t), Vector2(HALL) * t * xf.get_scale())
-				draw_rect(r, Color(1, 1, 1, 0.6), false, 1.5)
+			if tool in ["saltpetre", "ore"]:
+				for dm in _mirrored(_dep_cell_at(mp), DEP):
+					var dr := Rect2(xf * (Vector2(dm) * t), Vector2(DEP) * t * xf.get_scale())
+					draw_rect(dr, Color(TOOL_COL[tool], 0.35))
+					draw_rect(dr, Color(1, 1, 1, 0.7), false, 1.5)
+			else:
+				for m in _mirrored(c):
+					var r := Rect2(xf * (Vector2(m - Vector2i(brush - 1, brush - 1)) * t), Vector2(brush * 2 - 1, brush * 2 - 1) * t * xf.get_scale())
+					if tool in ["start", "hall", "erase"]:
+						r = Rect2(xf * (Vector2(m - Vector2i(2, 2)) * t), Vector2(HALL) * t * xf.get_scale())
+					draw_rect(r, Color(1, 1, 1, 0.6), false, 1.5)
 	# help and status
 	var hint := "Left click paints · right drag or WASD moves · wheel zooms" if Settings.pc() else "Drag to paint · two fingers move and zoom"
 	var line := _status if _status != "" else hint

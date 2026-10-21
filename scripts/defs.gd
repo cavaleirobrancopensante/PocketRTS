@@ -4,24 +4,27 @@ class_name Defs
 
 const TILE := 32
 const START_GOLD := 250
-const MINE_GOLD := 5000
-const CARRY := 8                 # gold per trip
-const MINE_IDEAL := 12           # labourers a Crown mine can keep busy (the X/Y label)
-const MINE_TIME := 2.4           # seconds swinging the pick per trip
-const FEED_TIME := 0.65          # Brood: a feeding grub turns out 1 gold this often
-const FEEDERS_PER_MINE := 8
 const EGGS_MAX := 5
 const EGG_TIME := 6.0
-const RIG_RATE := 8.0             # Clockwork: gold per second from a Drill Rig
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
 const REPAIR_RATE := 14.0         # hp per second a Winder restores
 
-# ---- Economy: no resources on the map; every faction makes its own from structures.
+# ---- Economy: every faction makes its own resources from structures.
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
 const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
+## Deposits: every base site (each main and every expansion spot) has a line of rock outcrops
+## (2x2 tiles) along its back, saltpetre and ore alternating, like a mineral line. A Powder
+## Mill must stand next to saltpetre and an Ore Crusher next to ore (a gap of at most
+## `adjacent` tiles); each draws on every outcrop of its kind within `reach` tiles (edge to
+## edge), nearest first, and once those are spent works at `spent` of its rate. Amounts are in
+## what they pay: powder for saltpetre, ore for ore. A site's 3 saltpetre outcrops last a fully
+## worked Mill (~120 powder a minute) about 11 minutes; its 3 ore outcrops last a saturated
+## Clockwork base (~1,000-1,100 ore a minute) about 11 minutes. The Brood ignores them.
+const DEPOSIT := {"saltpetre": 440.0, "ore": 3800.0, "per_site": 6, "adjacent": 2, "reach": 6.0, "spent": 0.25}
+const DEPOSIT_FOR := {"powder_mill": "saltpetre", "ore_crusher": "ore"}
 # Crown: farms grow (faster with labourers working them) and pay out a whole harvest.
 # Each Town Hall allows 2 Farms (crew 8) and 1 Powder Mill (crew 6): a full base is 16
 # farmers + 6 millers, ~1,140 gold and ~120 powder a minute.
@@ -35,7 +38,7 @@ const FARM_YIELD := 380           # gold a harvest (fresh soil)
 const SOIL_RESERVE := 9000
 const SOIL_TIRED := 1.0 / 3.0     # share of a harvest that tired soil still pays
 const SOIL_LOW := 0.25            # warn the player below this share of the reserve (Hive ground too)
-const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min)
+const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min) while its saltpetre lasts
 const START_POWDER := 80
 ## Personal powder: Musketeers and Cannons carry their own, in shots (one per shot, round
 ## shot or canister alike). A dry Musketeer fixes bayonets by itself until it has `rearm`
@@ -87,10 +90,12 @@ const PEN_RANGE := 12             # tiles
 ## cost as essence (a Raptor, 25 biomass, gives 3).
 const SACRIFICE := 0.12
 # Clockwork: Winders crank Boilers for energy, split between ore, assembly and wind.
-## Clockwork economy: every energy building fills batteries by itself; Winders carry them to
-## an Ore Crusher. A battery gains charge the longer it's on the road (so far crushers pay
-## more), but past its limit, or if its carrier is hit, it blows up. Yellow batteries at
-## first; a Capacitor Works makes every source fill blue ones (more charge, more time).
+## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
+## Winders carry them to an Ore Crusher, which turns the charge into ore drawn from the ore
+## outcrops beside it (a quarter once they're spent). A battery gains charge the longer it's
+## on the road (so far crushers pay more), but past its limit, or if its carrier is hit, it
+## blows up. Yellow batteries at first; a Capacitor Works makes every source fill blue ones
+## (more charge, more time).
 const BATTERY := {
 	"yellow": {"base": 10.0, "gain": 1.0, "overload": 22.0},
 	"blue": {"base": 14.0, "gain": 1.6, "overload": 30.0},
@@ -121,7 +126,7 @@ const FACTIONS := {
 		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 100,
 		"res": ["Gold", "Powder"], "econ": {"farm": 2, "powder_mill": 1},
 		"start": ["farm"],
-		"about": "Musketeers and cannons. Farms ripen into big harvests; muskets and cannons burn powder. Slow and strong when dug in.",
+		"about": "Musketeers and cannons. Farms ripen into big harvests; Powder Mills grind saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
 	},
 	"brood": {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
@@ -137,7 +142,7 @@ const FACTIONS := {
 		"start_workers": 3, "ready": true, "max_supply": 80,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
 		"start": ["ore_crusher"],
-		"about": "Few, very tough constructs. Energy buildings fill batteries; Winders carry them to Ore Crushers (farther = more charge, but they can blow up). Army cap 80.",
+		"about": "Few, very tough constructs. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers beside the ore outcrops (farther = more charge, but they can blow up). Each base's ore runs out in time. Army cap 80.",
 	},
 }
 
@@ -295,7 +300,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 2 Farms and 1 Powder Mill nearby, and its farmland holds a reserve of gold: once the farms have drawn it out they pay a third. Expand to fresh land.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 2 Farms and 1 Powder Mill nearby (the mill goes next to saltpetre), and its farmland holds a reserve of gold: once the farms have drawn it out they pay a third. Expand to fresh land.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -341,17 +346,12 @@ const BUILDINGS := {
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
 		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
-		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby.",
+		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby (crushers go next to ore).",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
-		"supply": 10, "sight": 6, "trains": [], "field": 7, "battery": [6.0, 3], "crew": 1, "faction": "clockwork",
-		"about": "10 more supply. Keeps nearby constructs wound up, and slowly fills batteries.",
-	},
-	"drill_rig": {
-		"name": "Drill Rig", "hp": 700, "armor": 2, "cost": 175, "time": 30.0, "size": Vector2i(2, 2),
-		"supply": 0, "sight": 6, "trains": [], "rig": true, "faction": "clockwork",
-		"about": "Build it next to a gold mine: it drills gold by itself. One per mine.",
+		"supply": 10, "sight": 6, "trains": [], "field": 7, "faction": "clockwork",
+		"about": "10 more supply. Keeps nearby constructs wound up.",
 	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1300, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
@@ -366,7 +366,7 @@ const BUILDINGS := {
 	"powder_mill": {
 		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 100, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 5, "trains": [], "crew": 6, "faction": "crown",
-		"about": "Up to 6 labourers grind black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Soldiers and wagons nearby refill here.",
+		"about": "Build it next to saltpetre (the rock outcrops at the back of a base). Up to 6 labourers grind the saltpetre within 6 tiles into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds at a quarter. Soldiers and wagons nearby refill here.",
 	},
 	"church": {
 		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
@@ -401,7 +401,7 @@ const BUILDINGS := {
 	"ore_crusher": {
 		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
-		"about": "Winders bring batteries here and the charge becomes ore. The farther a battery travelled, the more it holds.",
+		"about": "Build it next to ore (the rock outcrops at the back of a base). Winders bring batteries here and the charge becomes ore, drawn from the ore within 6 tiles; once that's spent it pays a quarter. The farther a battery travelled, the more it holds.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
@@ -410,7 +410,7 @@ const BUILDINGS := {
 	},
 	"charging_pylon": {
 		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),
-		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "battery": [3.0, 4], "crew": 3, "faction": "clockwork",
+		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "faction": "clockwork",
 		"about": "Winds up and slowly mends constructs nearby. Unlocks the Tesla Cart and the Stormcaller.",
 	},
 }

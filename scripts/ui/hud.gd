@@ -985,6 +985,11 @@ func _draw_minimap() -> void:
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
 	if not game.demo:
 		draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95))
+	for dp in game.deposits:
+		if dp.visible:
+			var dr: Rect2 = dp.rect()
+			var dc := (Color(0.93, 0.93, 0.85) if dp.kind == "saltpetre" else Color(0.85, 0.45, 0.15)) if dp.amount > 0.0 else Color(0.42, 0.4, 0.38)
+			draw_rect(Rect2(m.position + dr.position * k, dr.size * k), dc)
 	for b in game.buildings:
 		if b.visible or b.team == game.human:
 			var r: Rect2 = b.rect()
@@ -1123,10 +1128,18 @@ func _draw_panel(font: Font) -> void:
 					bb.working_crew(), int(bb.d["crew"]), game.harvest_value(bb), int(round(soil * 100)), " (tired: expand)" if soil <= 0.0 else ""]
 			elif bb.kind == "town_hall" and (e.team == game.human or game.demo):
 				var soil := bb.soil_left()
-				info = "Soil: %d%% · %d gold left in the farmland%s · allows 2 Farms and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
-					" (spent: farms pay a third; expand to fresh land)" if soil <= 0.0 else (" (running low)" if soil < Defs.SOIL_LOW else "")]
+				var salt := game.site_left_at(bb.center(), "saltpetre")
+				info = "Soil: %d%% · %d gold left in the farmland%s · Saltpetre here: %s · allows 2 Farms and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
+					" (spent: farms pay a third; expand to fresh land)" if soil <= 0.0 else (" (running low)" if soil < Defs.SOIL_LOW else ""),
+					("%d%%" % int(round(salt * 100))) if salt >= 0.0 else "none"]
+			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
+				var ore := game.site_left_at(bb.center(), "ore")
+				info = "Ore here: %s · %d/%d batteries ready (one every %.1f s) · allows 2 Boilers and 2 Ore Crushers nearby (crushers next to ore)" % [("%d%%" % int(round(ore * 100))) if ore >= 0.0 else "none",
+					bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0])]
 			elif bb.kind == "powder_mill":
-				info = "%d/%d grinding · +%.1f powder/s" % [bb.working_crew(), int(bb.d["crew"]), Defs.MILL_RATE * bb.working_crew()]
+				var sl := game.deposit_left(bb)
+				info = "%d/%d grinding · +%.1f powder/s · Saltpetre: %d%% nearby%s" % [bb.working_crew(), int(bb.d["crew"]),
+					game.deposit_pay(bb, Defs.MILL_RATE * bb.working_crew()), int(round(sl * 100)), " (spent: a quarter; expand to fresh saltpetre)" if sl <= 0.0 else (" (running low)" if sl < Defs.SOIL_LOW else "")]
 			elif bb.kind == "feeding_pit":
 				var gl := bb.soil_left()
 				info = "%d/5 grubs · each load is worth %.1f · Ground: %d%%%s" % [bb.crew.size(), game.load_value(bb), int(round(gl * 100)),
@@ -1136,7 +1149,11 @@ func _draw_panel(font: Font) -> void:
 				info = "%d/%d batteries ready (one every %.1f s) · %d/%d Winders carrying" % [bb.batteries, int(bat[1]), float(bat[0]), bb.crew.size(), int(bb.d["crew"])]
 			elif bb.kind == "ore_crusher":
 				var bi: Dictionary = Defs.BATTERY["blue" if game.blue_energy(e.team) else "yellow"]
-				info = "%s batteries: %d ore + %.1f per second on the road (they burst after %d s)" % ["Blue" if game.blue_energy(e.team) else "Yellow", int(round(float(bi["base"]) * float(Defs.BATTERY["ore"]))), float(bi["gain"]) * float(Defs.BATTERY["ore"]), int(bi["overload"])]
+				var ol := game.deposit_left(bb)
+				var q := 1.0 if ol > 0.0 else float(Defs.DEPOSIT["spent"])
+				info = "Ore: %d%% nearby%s · %s batteries: %d ore + %.1f per second on the road (they burst after %d s)" % [int(round(ol * 100)),
+					" (spent: a quarter)" if ol <= 0.0 else (" (running low)" if ol < Defs.SOIL_LOW else ""), "Blue" if game.blue_energy(e.team) else "Yellow",
+					int(round(float(bi["base"]) * float(Defs.BATTERY["ore"]) * q)), float(bi["gain"]) * float(Defs.BATTERY["ore"]) * q, int(bi["overload"])]
 			elif bb.kind == "brood_pen":
 				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
@@ -1144,8 +1161,15 @@ func _draw_panel(font: Font) -> void:
 				var gl := bb.soil_left()
 				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, Defs.EGGS_MAX, nxt, int(round(gl * 100)), int(bb.soil),
 					" spent: pits yield a third, grow a Hive on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
-		elif e is GoldMine:
-			info = "%d gold left." % (e as GoldMine).gold
+		elif e is Deposit:
+			var dp := e as Deposit
+			name = "%s outcrop" % dp.name_text()
+			if dp.amount <= 0.0:
+				info = "Exhausted. A %s beside it now works at a quarter." % ("Powder Mill" if dp.kind == "saltpetre" else "Ore Crusher")
+			elif dp.kind == "saltpetre":
+				info = "%d powder's worth of saltpetre left (%d%%). A Powder Mill built beside it grinds it (Crown)." % [int(ceil(dp.amount)), int(round(dp.left() * 100))]
+			else:
+				info = "%d ore left (%d%%). An Ore Crusher built beside it turns battery charge into it (Clockwork)." % [int(ceil(dp.amount)), int(round(dp.left() * 100))]
 		if e.team >= 0 and e.team != game.human:
 			name += "  (enemy)"
 		_text(UiStyle.title_font(), r.position + Vector2(90, 28), name, 19, UiStyle.TEXT)

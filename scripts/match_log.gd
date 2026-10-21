@@ -89,6 +89,15 @@ func snapshot() -> void:
 				soil.append("%d%%" % int(round(h.soil_left() * 100)))
 			if not soil.is_empty():
 				lines[lines.size() - 1] += (" | soil " if game.faction_hall(t) == "town_hall" else " | ground ") + " ".join(soil)
+		if game.faction_hall(t) != "hive":
+			# the deposits each hall's site has left: saltpetre for the Crown, ore for the Clockwork
+			var dep := "saltpetre" if game.faction_hall(t) == "town_hall" else "ore"
+			var left := PackedStringArray()
+			for h in game.halls_of(t):
+				var f := game.site_left_at(h.center(), dep)
+				left.append(("%d%%" % int(round(f * 100))) if f >= 0.0 else "-")
+			if not left.is_empty():
+				lines[lines.size() - 1] += " | %s %s" % [dep, " ".join(left)]
 		if int(st.get("sacrificed", 0)) > 0:
 			lines[lines.size() - 1] += " | sacrificed %d (+%d essence)" % [int(st["sacrificed"]), int(st["sacrifice_essence"])]
 		_last[t] = {"killed": st["killed"], "lost": st["lost"]}

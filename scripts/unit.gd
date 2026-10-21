@@ -1785,8 +1785,6 @@ func _leave_mine() -> void:
 	if home_mine and is_instance_valid(home_mine):
 		if home_mine is Building:
 			(home_mine as Building).crew.erase(self)
-		elif home_mine is GoldMine:
-			home_mine.feeders.erase(self)
 
 
 ## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
@@ -1822,6 +1820,7 @@ func _gather(delta: float) -> Vector2:
 var carry_t := 0.0
 var carry_blue := false
 var carry_empty := false        # bringing the spent battery back to the source
+var crusher: Building = null    # the Ore Crusher the battery on its back is going to
 
 
 func _haul_battery(src: Building, delta: float) -> Vector2:
@@ -1831,11 +1830,12 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 			facing = (src.center() - position).normalized()
 			work_t -= delta
 			if work_t <= 0.0:
-				if src.batteries > 0 and game.nearest_of(position, team, "ore_crusher") != null:
+				if src.batteries > 0 and game.best_crusher(position, team) != null:
 					src.batteries -= 1
 					carrying = 1
 					carry_t = 0.0
 					carry_blue = game.blue_energy(team)
+					crusher = null
 					work = "to_crusher"
 				else:
 					work = "waiting"
@@ -1845,14 +1845,20 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 			if carry_t >= float(info["overload"]):
 				_battery_blast()
 				return Vector2.ZERO
-			var cr := game.nearest_of(position, team, "ore_crusher")
+			if crusher == null or not is_instance_valid(crusher) or crusher.dead:
+				# (as far as it can carry the battery before it bursts, roads not being straight)
+				crusher = game.best_crusher(position, team, (float(info["overload"]) - carry_t) * speed / 1.4)
+				path = PackedVector2Array()
+			var cr := crusher
 			if cr == null:
 				return Vector2.ZERO
 			if cr.edge_distance(position) < radius + 17.0:
-				var value := int(round((float(info["base"]) + float(info["gain"]) * carry_t) * float(Defs.BATTERY["ore"])))
-				game.add_gold(team, value)
+				# the charge becomes ore drawn from the ore beside the crusher (a quarter once it's spent)
+				var value := game.draw_deposits(cr, (float(info["base"]) + float(info["gain"]) * carry_t) * float(Defs.BATTERY["ore"]))
+				game.add_gold_f(team, value)
+				crusher = null
 				if team == game.human:
-					game.float_text(position + Vector2(0, -30), "+%d" % value, Color(0.5, 0.8, 1.0) if carry_blue else Color(1, 0.9, 0.35))
+					game.float_text(position + Vector2(0, -30), "+%d" % int(round(value)), Color(0.5, 0.8, 1.0) if carry_blue else Color(1, 0.9, 0.35))
 				carrying = 0
 				carry_t = 0.0
 				carry_empty = true          # swaps it for the spent one and takes that back

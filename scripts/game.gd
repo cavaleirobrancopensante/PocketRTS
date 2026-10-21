@@ -63,7 +63,7 @@ var sandbox := false                     # the sandbox: spawn anything, any play
 var reveal := false                      # sandbox: no fog of war
 var rng := RandomNumberGenerator.new()
 
-var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building/mine
+var solid := PackedByteArray()           # 0 free, 1 terrain or deposit, 2 building, 3 gate, 4 wall
 var water := PackedByteArray()
 var height := PackedByteArray()          # 1 = high ground
 var ramp := PackedByteArray()
@@ -75,7 +75,10 @@ var astar := AStarGrid2D.new()
 var astar_siege := AStarGrid2D.new()     # walls and gates counted as open: the way to break in
 var units: Array = []
 var buildings: Array = []
-var mines: Array = []
+var deposits: Array = []                 # Deposit outcrops (saltpetre and ore) along the back of every base site
+var deposit_at := {}                     # map index -> the Deposit on that cell
+var deposit_plan: Array = []             # [cell, kind(, amount)] from the map generator
+var base_sites: Array = []               # hall cells of every base site (all mains and expansions)
 var players: Array = []
 var starts: Array = []                   # town hall cells per team
 var expansions: Array = []               # free town hall spots
@@ -190,6 +193,7 @@ func _ready() -> void:
 	add_child(camera)
 	camera.make_current()
 	_generate_map()
+	spawn_deposits(deposit_plan)
 	_setup_astar()
 	_render_ground()
 	if edit_mode:
@@ -501,12 +505,14 @@ func _setup_astar() -> void:
 var _terrain_sprites: Array = []
 
 
-## Map editor: redo cliffs, pathing and the ground picture after painting.
-func rebuild_map(cells: String) -> void:
+## Map editor: redo cliffs, deposits, pathing and the ground picture after painting.
+func rebuild_map(cells: String, plan: Array = []) -> void:
+	_clear_deposits(false)
 	mapgen.read_cells(cells)
 	mapgen._cliffs()
 	height = mapgen.height
 	ramp = mapgen.ramp
+	spawn_deposits(plan)
 	astar = AStarGrid2D.new()
 	_setup_astar()
 	_render_ground()
@@ -758,6 +764,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 		return Vector2i(-1, -1)
 	_spot_halls = halls_of(t)
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var need: String = Defs.DEPOSIT_FOR.get(kind, "")
 	var c0: Vector2 = around.rect().get_center() / T
 	var mid := Vector2(W, H) * 0.5
 	var best := Vector2i(-1, -1)
@@ -772,6 +779,17 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			if placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
 				continue
 			var score := dd
+			if need != "":
+				# a Mill / Crusher: as much of its kind of rock within reach as it can get
+				for dp in deposits_near(Rect2i(cell, size), need, float(Defs.DEPOSIT["reach"])):
+					score -= 2.0 * dp.left() + 0.5
+			elif not deposits.is_empty() and kind != faction_hall(t):
+				# farms, boilers and the rest keep off the deposit line (it's for Mills and Crushers)
+				for dp in deposits:
+					var gp := tile_gap(Rect2i(cell, size), Rect2i(dp.cell, dp.size))
+					if maxi(gp.x, gp.y) <= 2:
+						score += 8.0
+						break
 			if prefer == "far":
 				score = -dd
 			elif prefer == "far_safe":
@@ -798,14 +816,195 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 var _spot_halls: Array = []
 
 
+## A free ring around a footprint (room to walk round it). Deposits may touch it: Mills and
+## Crushers stand right against their outcrops.
 func margin_free(cell: Vector2i, size: Vector2i) -> bool:
 	for y in range(-1, size.y + 1):
 		for x in range(-1, size.x + 1):
 			if x >= 0 and y >= 0 and x < size.x and y < size.y:
 				continue
-			if not is_free(cell + Vector2i(x, y)):
+			var c := cell + Vector2i(x, y)
+			if not is_free(c) and not (in_map(c) and deposit_at.has(idx(c))):
 				return false
 	return true
+
+
+# ------------------------------------------------------------------ deposits
+
+## Put the map's outcrops down (replacing any there were); each blocks its 2x2 cells. Ones
+## that don't fit (off the map, or on water, cliffs, ramps or anything solid) are left out.
+## plan: [cell, kind] or [cell, kind, amount].
+func spawn_deposits(plan: Array) -> void:
+	_clear_deposits(true)
+	for p in plan:
+		var c: Vector2i = p[0]
+		if not deposit_fits(c):
+			continue
+		var d := Deposit.new()
+		d.setup(self, String(p[1]), c, float(p[2]) if p.size() > 2 else -1.0)
+		d.visible = edit_mode or demo or reveal
+		world.add_child(d)
+		deposits.append(d)
+		_mark(c, d.size, 1)
+		for y in d.size.y:
+			for x in d.size.x:
+				deposit_at[idx(c + Vector2i(x, y))] = d
+
+
+func _clear_deposits(unmark: bool) -> void:
+	for d in deposits:
+		if unmark:
+			_mark(d.cell, d.size, 0)
+		d.queue_free()
+	deposits.clear()
+	deposit_at.clear()
+
+
+## Can a 2x2 outcrop go here: open, dry, flat ground (no ramp, cliff or water) on the map?
+func deposit_fits(c: Vector2i) -> bool:
+	for y in 2:
+		for x in 2:
+			var cc := c + Vector2i(x, y)
+			if not in_map(cc):
+				return false
+			var i := idx(cc)
+			if solid[i] != 0 or water[i] == 1 or cliff[i] == 1 or (ramp.size() == W * H and ramp[i] == 1):
+				return false
+	return true
+
+
+## The outcrops as a plan ([cell, kind]), e.g. for the map editor to save.
+func deposit_list() -> Array:
+	return deposits.map(func(d: Deposit) -> Array: return [d.cell, d.kind])
+
+
+## Tiles between two footprints along each axis (0 = touching or overlapping).
+static func tile_gap(a: Rect2i, b: Rect2i) -> Vector2i:
+	return Vector2i(maxi(0, maxi(a.position.x - b.end.x, b.position.x - a.end.x)),
+		maxi(0, maxi(a.position.y - b.end.y, b.position.y - a.end.y)))
+
+
+## Outcrops of a kind within `tiles` (edge to edge) of a footprint, nearest first.
+func deposits_near(r: Rect2i, kind: String, tiles: float) -> Array:
+	var found: Array = []
+	for d in deposits:
+		if d.kind != kind:
+			continue
+		var dist := Vector2(tile_gap(r, Rect2i(d.cell, d.size))).length()
+		if dist <= tiles:
+			found.append([dist, d])
+	found.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	return found.map(func(x: Array) -> Deposit: return x[1])
+
+
+## Is an outcrop of this kind right beside the footprint (a gap of at most DEPOSIT.adjacent)?
+func deposit_adjacent(r: Rect2i, kind: String) -> bool:
+	for d in deposits:
+		if d.kind == kind:
+			var gp := tile_gap(r, Rect2i(d.cell, d.size))
+			if maxi(gp.x, gp.y) <= int(Defs.DEPOSIT["adjacent"]):
+				return true
+	return false
+
+
+## A Powder Mill's saltpetre, an Ore Crusher's ore: its kind of outcrop within reach.
+func site_deposits(b: Building) -> Array:
+	if not b.deps_done:
+		b.deps_done = true
+		var kind: String = Defs.DEPOSIT_FOR.get(b.kind, "")
+		b.deps = deposits_near(Rect2i(b.cell, b.size), kind, float(Defs.DEPOSIT["reach"])) if kind != "" else []
+	return b.deps
+
+
+## Share (0..1) of a Mill's (Crusher's) saltpetre (ore) still in the rock.
+func deposit_left(b: Building) -> float:
+	var full := 0.0
+	var left := 0.0
+	for d in site_deposits(b):
+		full += d.full
+		left += d.amount
+	return left / full if full > 0.0 else 0.0
+
+
+## Share (0..1) of the outcrops of a kind still in the rock at the base site around a point
+## (within 13 tiles of it, e.g. a hall's middle); -1 if there are none of that kind.
+func site_left_at(c: Vector2, kind: String) -> float:
+	var full := 0.0
+	var left := 0.0
+	for d in deposits:
+		if d.kind == kind and d.center().distance_to(c) <= 13.0 * T:
+			full += d.full
+			left += d.amount
+	return left / full if full > 0.0 else -1.0
+
+
+## A hall's own site: share of its saltpetre (ore) left (0 if it has none).
+func site_left(h: Building, kind: String) -> float:
+	return maxf(0.0, site_left_at(h.center(), kind))
+
+
+## Draw `v` worth from a Mill's or Crusher's outcrops (nearest first): what the rock still
+## holds pays in full, the rest only DEPOSIT.spent. Returns what it pays.
+func draw_deposits(b: Building, v: float) -> float:
+	if v <= 0.0:
+		return 0.0
+	var need := v
+	for d in site_deposits(b):
+		if need <= 0.0:
+			break
+		need -= d.take(need)
+	_deposit_check(b)
+	return (v - need) + need * float(Defs.DEPOSIT["spent"])
+
+
+## What `v` worth would pay right now (no side effects).
+func deposit_pay(b: Building, v: float) -> float:
+	var left := 0.0
+	for d in site_deposits(b):
+		left += d.amount
+	var fresh := minf(left, v)
+	return fresh + (v - fresh) * float(Defs.DEPOSIT["spent"])
+
+
+var _dep_warned := {}             # "team:first outcrop" -> 1 running low told, 2 spent told
+
+
+## Running low / spent: once per site and team, a match-log line and (for you) a toast.
+func _deposit_check(b: Building) -> void:
+	var ds := site_deposits(b)
+	if ds.is_empty():
+		return
+	var left := deposit_left(b)
+	var level := 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
+	var key := "%d:%d" % [b.team, ds[0].get_instance_id()]
+	if level <= int(_dep_warned.get(key, 0)):
+		return
+	_dep_warned[key] = level
+	var what := "saltpetre" if b.kind == "powder_mill" else "ore"
+	if mlog:
+		mlog.add("%s: the %s by a %s %s" % [mlog.who(b.team), what, b.d["name"], "is spent (it works at a quarter)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+	if b.team == human and not demo and hud:
+		if level == 2:
+			hud.toast("The %s by your %s is spent: it works at a quarter. Expand to a base with fresh %s." % [what, b.d["name"], what], false)
+		else:
+			hud.toast("The %s by your %s is running low (%d%% left): expand to fresh %s soon." % [what, b.d["name"], int(round(left * 100)), what], false)
+		Sfx.play("done", b.center())
+
+
+## Clockwork: the Ore Crusher a Winder takes a battery to: the nearest, but one whose ore is
+## spent (it pays a quarter), or one farther than `reach` px (the battery would burst on the
+## way), counts as 40 tiles farther.
+func best_crusher(p: Vector2, t: int, reach := INF) -> Building:
+	var best: Building = null
+	var bs := INF
+	for b in buildings:
+		if b.team == t and b.kind == "ore_crusher" and b.built and not b.dead:
+			var dd: float = b.edge_distance(p)
+			var sc: float = dd + (0.0 if deposit_left(b) > 0.0 and dd <= reach else 40.0 * T)
+			if sc < bs:
+				bs = sc
+				best = b
+	return best
 
 
 # ------------------------------------------------------------------ economy
@@ -1110,11 +1309,6 @@ func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 	var b := Building.new()
 	b.setup(self, k, t, c, complete)
-	if Defs.BUILDINGS[k].get("rig", false):
-		var m := _rig_mine_at(b.rect())
-		if m:
-			m.rig = b
-			b.rig_mine = m
 	world.add_child(b)
 	buildings.append(b)
 	if k == "town_hall" or k == "hive":
@@ -1516,6 +1710,9 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 					break
 			if not near:
 				return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
+	var need: String = Defs.DEPOSIT_FOR.get(k, "")
+	if need != "" and not deposit_adjacent(Rect2i(c, size), need):
+		return "Must be built next to %s (the %s rocks along the back of a base)." % [need, "white crystal" if need == "saltpetre" else "rusty orange"]
 	return ""
 
 
@@ -1554,32 +1751,6 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 		if u is Unit and u.is_worker() and not u.dead:
 			u.cmd_build(b)
 	return b
-
-
-func _rig_mine_at(r: Rect2) -> GoldMine:
-	for m in mines:
-		if m.rig == null and m.gold > 0 and r.grow(T * 0.6).intersects(m.rect()):
-			return m
-	return null
-
-
-## A free spot for a Drill Rig beside this mine, or (-1, -1).
-func rig_spot(m: GoldMine, t: int) -> Vector2i:
-	if m.rig != null:
-		return Vector2i(-1, -1)
-	var best := Vector2i(-1, -1)
-	var bd := INF
-	var hall := _own_hall(t)
-	var toward: Vector2 = hall.center() if hall else m.center()
-	for y in range(m.cell.y - 2, m.cell.y + m.size.y + 1):
-		for x in range(m.cell.x - 2, m.cell.x + m.size.x + 1):
-			var c := Vector2i(x, y)
-			if placement_problem(t, "drill_rig", c) == "":
-				var dd := (Vector2(c) * T + Vector2(T, T)).distance_to(toward)
-				if dd < bd:
-					bd = dd
-					best = c
-	return best
 
 
 ## Power fields lie flat on the ground, so seen at the map's angle they are ellipses:
@@ -1677,17 +1848,6 @@ func notify(msg: String, quiet := false) -> void:
 
 func on_swamp(t: int, p: Vector2) -> bool:
 	return swamp[t][idx(cell_of(p))] == 1
-
-
-func mine_on_swamp(m: GoldMine, t: int) -> bool:
-	if faction_of(t) != "brood":
-		return true
-	for y in range(-1, m.size.y + 1):
-		for x in range(-1, m.size.x + 1):
-			var c := m.cell + Vector2i(x, y)
-			if in_map(c) and swamp[t][idx(c)] == 1:
-				return true
-	return false
 
 
 func _update_swamp() -> void:
@@ -1981,31 +2141,6 @@ func find_target(u: Unit, r: float) -> Entity:
 	return best
 
 
-## Best mine for a labourer: close to it, and above all close to one of
-## our town halls (so trips are short). Mines far from any hall are a last resort.
-func nearest_mine(p: Vector2, t: int) -> GoldMine:
-	var best: GoldMine = null
-	var bd := INF
-	var brood := faction_of(t) == "brood"
-	for m in mines:
-		if m.gold <= 0:
-			continue
-		var score: float
-		if brood:
-			# Grubs: mines on our swamp with room left, nearest first.
-			if not mine_on_swamp(m, t) or m.feeders.size() >= Defs.FEEDERS_PER_MINE:
-				continue
-			score = m.center().distance_to(p)
-		else:
-			var hall := nearest_hall(m.center(), t)
-			var trip := hall.edge_distance(m.center()) if hall else 3000.0
-			score = m.center().distance_to(p) * 0.5 + trip * 2.0
-		if score < bd:
-			bd = score
-			best = m
-	return best
-
-
 ## Clockwork: blue energy while a Capacitor Works stands.
 func blue_energy(t: int) -> bool:
 	for b in buildings:
@@ -2038,7 +2173,7 @@ func nearest_hall(p: Vector2, t: int) -> Building:
 	return best
 
 
-func entity_at(p: Vector2, include_mines := true) -> Entity:
+func entity_at(p: Vector2, include_deposits := true) -> Entity:
 	var best: Entity = null
 	var bd := 26.0
 	for u in units:
@@ -2057,10 +2192,10 @@ func entity_at(p: Vector2, include_mines := true) -> Entity:
 			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
 			if sr.grow(-6).has_point(p):
 				return b
-	if include_mines:
-		for m in mines:
-			if m.rect().grow(8).has_point(p):
-				return m
+	if include_deposits:
+		for d in deposits:
+			if d.visible and d.rect().grow(4).has_point(p + Vector2(0, 8)):
+				return d
 	return null
 
 
@@ -2850,6 +2985,10 @@ func _update_vis() -> void:
 	for i in W * H:
 		if hv[i] == 1:
 			explored[i] = 1
+	for d in deposits:
+		# outcrops are seen through the fog once their ground has been explored
+		if not d.visible:
+			d.visible = demo or reveal or explored[idx(d.cell)] == 1 or explored[idx(d.cell + Vector2i(1, 1))] == 1
 	if demo or reveal:
 		fog_sprite.visible = false
 		for u in units:
@@ -3111,14 +3250,6 @@ func smart_command(list: Array, p: Vector2, force_move := false) -> void:
 				u.cmd_move(p)
 		_ping(p, Color(1, 0.85, 0.3))
 		return
-	if e is GoldMine:
-		for u in us:
-			if u.can_gather():
-				u.cmd_gather(e)
-			else:
-				u.cmd_move(p, true)
-		_ping(p, Color(1, 0.85, 0.3))
-		return
 	if e and e.team == us[0].team and e.hp < e.max_hp and (e.is_unit() or e.built) \
 			and us.any(func(u: Unit) -> bool: return u.can_repair(e)):
 		for u in us:
@@ -3278,41 +3409,6 @@ func _sample_stats() -> void:
 		s["gold_tl"].append(s["gold"])
 		s["workers_tl"].append(workers(t).size())
 		s["peak_army"] = maxi(s["peak_army"], value)
-
-
-## Workers on a mine and how many it wants, as SC2 shows over resources.
-## Returns [team, have, want] or [] when no label should be shown.
-func mine_saturation(m: GoldMine) -> Array:
-	if m.gold <= 0:
-		return []
-	var teams := [human] if not demo else range(n_players())
-	for t in teams:
-		if t < 0:
-			continue
-		var f := faction_of(t)
-		if f == "clockwork":
-			if m.rig and is_instance_valid(m.rig) and m.rig.team == t:
-				return [t, 1 if m.rig.built else 0, 1]
-			if _hall_near(m, t):
-				return [t, 0, 1]
-			continue
-		var have := 0
-		for u in units:
-			if u.team == t and not u.dead and u.can_gather() and u.order == "gather" and u.home_mine == m:
-				have += 1
-		var want := Defs.FEEDERS_PER_MINE if f == "brood" else Defs.MINE_IDEAL
-		if have > 0 or _hall_near(m, t):
-			if f == "brood" and not mine_on_swamp(m, t) and have == 0:
-				continue
-			return [t, have, want]
-	return []
-
-
-func _hall_near(m: GoldMine, t: int) -> bool:
-	for b in buildings:
-		if b.team == t and b.built and not b.dead and b.kind == faction_hall(t) and b.center().distance_to(m.center()) < 430.0:
-			return true
-	return false
 
 
 func faction_hall(t: int) -> String:

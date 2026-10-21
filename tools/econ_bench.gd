@@ -237,11 +237,11 @@ func _ai_run(fac: String) -> void:
 	head += ["crew_slots", "supply_used", "supply_cap", "army_supply", "army_value"]
 	match fac:
 		"crown":
-			head += ["harvests", "farm_gold_incl_growth", "soil_pct_per_hall"]
+			head += ["harvests", "farm_gold_incl_growth", "soil_pct_per_hall", "saltpetre_pct_per_mill"]
 		"brood":
 			head += ["food_loads", "avg_load_value", "pit_dists_tiles", "pit_values", "ground_pct_per_hive", "sacrificed", "essence_from_sacrifice"]
 		"clockwork":
-			head += ["deliveries", "avg_trip_s", "avg_charge", "overloads", "battery_stall_s"]
+			head += ["deliveries", "avg_trip_s", "avg_charge", "overloads", "battery_stall_s", "ore_pct_per_crusher"]
 	var rows: Array = [head]
 	var last_gold := 0
 	var last_r2 := 0.0
@@ -284,7 +284,7 @@ func _ai_run(fac: String) -> void:
 				var soil: Array = []
 				for h in g.halls_of(0):
 					soil.append(int(round(h.soil_left() * 100)))
-				row += [tr.c["harvests"], int(tr.c["growth_gold"]), " ".join(soil.map(func(x): return str(x)))]
+				row += [tr.c["harvests"], int(tr.c["growth_gold"]), " ".join(soil.map(func(x): return str(x))), _dep_pcts(g, "powder_mill")]
 			"brood":
 				var ds: Array = []
 				var vs: Array = []
@@ -300,11 +300,16 @@ func _ai_run(fac: String) -> void:
 					" ".join(ground.map(func(x): return str(x))), int(g.stats[0].get("sacrificed", 0)), int(g.stats[0].get("sacrifice_essence", 0))]
 			"clockwork":
 				var n: int = tr.c["deliveries"]
-				row += [n, snappedf(tr.c["carry_t"] / maxf(1, n), 0.01), snappedf(tr.c["delivered"] / maxf(1, n), 0.01), tr.c["blasts"], snappedf(tr.c["stall_s"], 0.1)]
+				row += [n, snappedf(tr.c["carry_t"] / maxf(1, n), 0.01), snappedf(tr.c["delivered"] / maxf(1, n), 0.01), tr.c["blasts"], snappedf(tr.c["stall_s"], 0.1), _dep_pcts(g, "ore_crusher")]
 		rows.append(row)
 		print("  min %2d  %s=%d  %s=%.0f  bank=%d/%.0f  workers=%d (%d at work)  %s" % [m + 1, res[0], inc1, res[1], inc2,
 			g.players[0]["gold"], float(g.players[0]["res2"]), ws.size(), working, _speed_note(g)])
 	_write_csv("ai_%s.csv" % fac, rows)
+
+
+## Share of its deposits left (%) for each of team 0's Powder Mills (Ore Crushers).
+func _dep_pcts(g: Game, kind: String) -> String:
+	return " ".join(_built(g, 0, kind).map(func(b: Building) -> String: return str(int(round(g.deposit_left(b) * 100)))))
 
 
 # ------------------------------------------------------------------ mode: sat

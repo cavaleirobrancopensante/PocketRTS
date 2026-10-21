@@ -25,7 +25,9 @@ const FACS := ["crown", "brood", "clockwork", "random"]
 const HELP := {
 	"BASICS": """Destroy every enemy building to win.
 
-There are no resources on the map: each faction builds its own economy. Every Town Hall, Hive or Clocktower allows only so many economy structures nearby, so expanding to a new hall spot is how you grow, and the expansions are what you fight over.
+Each faction builds its own economy. Every Town Hall, Hive or Clocktower allows only so many economy structures nearby, and every faction's land runs out in time, so expanding to a new hall spot is how you grow, and the expansions are what you fight over.
+
+Deposits: along the back of every base (each main and each expansion spot) stands a line of rock outcrops, white saltpetre and rusty ore side by side. The Crown's Powder Mill must be built next to saltpetre and the Clockwork's Ore Crusher next to ore; each draws on the outcrops within 6 tiles, and once they're spent it works at a quarter. Tap an outcrop to see how much is left; they block the way and show on the minimap once explored. The Brood has no use for them.
 
 Area damage (canister, round shot, steam, spit blobs, storms, exploding powder) hurts your own units too: keep your men out of the blast.
 
@@ -34,9 +36,11 @@ High ground: units below a cliff can't see up onto it, and ramps are the only wa
 Skirmish: up to four players. Each computer player has a PLAN (Balanced, Rush, Economy, Timing attack, Air rush for the Brood, or Random). Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
 	"CROWN": """THE CROWN: pike, shot and black powder.
 
-Labourers work Farms (up to 8 each): a farm ripens into a 380-gold harvest, about every 40 s with a full crew. The Powder Mill (up to 6 labourers) makes black powder (musketeers, balloons and wagons cost some). Each Town Hall allows 2 Farms and 1 Powder Mill nearby.
+Labourers work Farms (up to 8 each): a farm ripens into a 380-gold harvest, about every 40 s with a full crew. The Powder Mill (up to 6 labourers) grinds saltpetre into black powder (musketeers, balloons and wagons cost some): build it next to the saltpetre outcrops at the back of a base. Each Town Hall allows 2 Farms and 1 Powder Mill nearby.
 
-Soil: each Town Hall's farmland holds 9,000 gold that its farms draw out harvest by harvest (shown as "Soil: %" on the hall and its farms). Spent soil turns the fields yellow-brown and they pay only a third: expand, and a new Town Hall brings fresh land. The Powder Mill never tires.
+Soil: each Town Hall's farmland holds 9,000 gold that its farms draw out harvest by harvest (shown as "Soil: %" on the hall and its farms). Spent soil turns the fields yellow-brown and they pay only a third: expand, and a new Town Hall brings fresh land.
+
+Saltpetre: a base's saltpetre keeps a fully worked Mill (about 120 powder a minute) going for about 11 minutes ("Saltpetre: %" on the Mill); spent, the Mill grinds at a quarter. Take a base with fresh saltpetre and build a Mill there.
 
 Powder: each Musketeer carries 12 shots and each Cannon 8 (the amber bar). A dry musketeer fixes bayonets by itself until it refills; a dry cannon can't fire. They refill within 3 tiles of a Powder Mill, Barracks or Town Hall (paid from the powder bank: 6 for a full musketeer; an empty bank makes them wait), or of a Powder Wagon (Foundry): it carries 120 shots for the army, fills up near those buildings (1 powder per 2 shots), and on SUPPLY two labourers run 30-shot kegs to it from the Mill. A wagon that's destroyed explodes (friends too), and so does a labourer killed with a keg: guard them.
 
@@ -54,7 +58,9 @@ Essence: the Brood Pen turns bodies that fall nearby into essence. SACRIFICE (K)
 Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, which hunt flyers in the air; LAND them (1.2 s) to bite ground units, but landed anything can hit them. Bloaters spit acid until their gas runs out, then deflate and slowly fill up again (faster on swamp). Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Army cap 160.""",
 	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.
 
-Every energy building (Clocktower, Boilers, Pylons, Spring Towers) fills batteries by itself; Winders carry them to Ore Crushers, where the charge becomes ore. The longer a battery travels the more it holds, but carried too long, or hit, it bursts. A Capacitor Works turns every battery blue (more charge). Winders also repair, which costs ore.
+The Clocktower and its Boilers (2 per Clocktower) fill batteries by themselves; Winders carry them to Ore Crushers, where the charge becomes ore drawn from the ore outcrops beside the crusher (build it next to the rusty ore rocks at the back of a base). The longer a battery travels the more it holds, but carried too long, or hit, it bursts. A Capacitor Works turns every battery blue (more charge). Winders also repair, which costs ore.
+
+Ore: a base's ore keeps a saturated base (about 1,000-1,100 ore a minute) going for about 11 minutes ("Ore: %" on the crusher and the Clocktower); spent, its crushers pay a quarter. Expand to a base with fresh ore and build crushers there. Spring Towers and Charging Pylons don't fill batteries.
 
 Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or deployed Tesla Cart. Tesla Carts must deploy (3 s) to fire. Stormcallers cast a STORM that stuns everything inside it, your own units too; their charge only fills inside a field. Ornithopters on COURIER carry batteries to constructs that ran down; OVERLOAD dumps one into a construct for 12 s of extra speed and damage (then it's left at 25% charge). Army cap 80.""",
 	"CONTROLS": """COMPUTER
@@ -297,7 +303,7 @@ func show_editor_menu() -> void:
 	for it in [["SANDBOX", "Set up any match, then spawn any unit or building for any player, hand out resources, lift the fog, take control of any side, switch AIs off and speed up time.", func() -> void:
 				sandbox_lobby = true
 				show_skirmish()],
-			["MAP EDITOR", "Paint ground, high ground, ramps, water, fords, trees and rocks; place start and hall spots; mirror it for fairness; save and play your maps in Skirmish.", func() -> void: show_map_editor()]]:
+			["MAP EDITOR", "Paint ground, high ground, ramps, water, fords, trees and rocks; place start and hall spots and their saltpetre and ore deposits; mirror it for fairness; save and play your maps in Skirmish.", func() -> void: show_map_editor()]]:
 		var b := _button(it[0], it[2])
 		b.custom_minimum_size.y = 64
 		b.add_theme_font_override("font", UiStyle.title_font())
@@ -1085,6 +1091,8 @@ class MapPreview extends Control:
 		for i in mini(cells.length(), Game.W * Game.H):
 			if cells[i] != ".":
 				draw_rect(Rect2(r.position + Vector2(i % Game.W, i / Game.W) * k, k + Vector2(0.5, 0.5)), cols.get(cells[i], low))
+		for dp in d.get("deposits", []):
+			draw_rect(Rect2(r.position + Vector2(float(dp[0]), float(dp[1])) * k, k * 2.0), Color(0.93, 0.93, 0.85) if String(dp[2]) == "saltpetre" else Color(0.85, 0.45, 0.15))
 		var st: Array = d.get("starts", [])
 		for i in mini(st.size(), slots.size()):
 			var p: Vector2 = r.position + (Vector2(st[i][0], st[i][1]) + Vector2(2.5, 2)) * k

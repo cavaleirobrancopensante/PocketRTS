@@ -25,7 +25,8 @@ var eggs := 0                    # Brood Hive
 var egg_t := 0.0
 var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
 var swamp_r := 0.0               # Brood: current swamp radius in tiles
-var rig_mine: GoldMine = null    # Clockwork Drill Rig: the mine it drills
+var deps: Array = []             # Powder Mill / Ore Crusher: its outcrops within reach (Game.site_deposits)
+var deps_done := false
 var gold_acc := 0.0
 var crew: Array = []             # workers assigned to this economy structure
 var growth := 0.0                # Farm: 0..1 until the harvest
@@ -182,7 +183,10 @@ func _econ(delta: float) -> void:
 					game.float_text(center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 					Sfx.play("done", center())
 		"powder_mill":
-			game.add_res2(team, Defs.MILL_RATE * working_crew() * delta)
+			# grinds the saltpetre beside it; once that's spent, a quarter
+			var n := working_crew()
+			if n > 0:
+				game.add_res2(team, game.draw_deposits(self, Defs.MILL_RATE * n * delta))
 
 
 func uses_eggs() -> bool:
@@ -222,23 +226,6 @@ func _physics_process(delta: float) -> void:
 				if _bat_t >= float(bat[0]):
 					_bat_t = 0.0
 					batteries += 1
-		if built:
-			var rate := 0.0
-			if d.get("rig", false) and rig_mine and is_instance_valid(rig_mine):
-				rate = Defs.RIG_RATE
-			rate += float(d.get("trickle", 0.0))
-			gold_acc += rate * delta
-			if gold_acc >= 1.0:
-				var n := int(gold_acc)
-				gold_acc -= n
-				if d.get("rig", false) and rig_mine:
-					var got := rig_mine.take(n)
-					game.add_gold(team, got)
-					n -= got
-					if rig_mine.gold <= 0:
-						rate = 0.0
-				if d.get("trickle", 0.0) > 0.0:
-					game.add_gold(team, n)
 	if built and uses_eggs():
 		# Every egg morphs at the same time.
 		var i := 0
@@ -471,8 +458,6 @@ func die() -> void:
 			u.cmd_stop()
 	crew.clear()
 	morph_t.clear()
-	if rig_mine and is_instance_valid(rig_mine) and rig_mine.rig == self:
-		rig_mine.rig = null
 	swamp_r = 0.0
 	game.swamp_dirty = true
 	if fire:
