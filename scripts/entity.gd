@@ -14,6 +14,8 @@ var sight := 7
 var dead := false
 var selected := false
 var seen_by_human := false     # enemy buildings stay on screen once spotted
+var seen_mask := 0             # demo: the players (bits) that have spotted this building
+var hit_clock := -99.0         # match clock of the last enemy hit (the spectator looks for fights)
 var flash := 0.0
 var last_hit_by := ""           # kind that last hurt us, for battle stats
 var last_hit_team := -1
@@ -81,6 +83,7 @@ func take_damage(amount: float, _from: Entity) -> void:
 		last_hit_by = _from.kind
 		last_hit_team = _from.team
 		last_hitter = _from
+		hit_clock = game.clock
 		game.stats[_from.team]["damage"] += dmg
 		if team == game.human:
 			game.under_attack(self)

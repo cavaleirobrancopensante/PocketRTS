@@ -88,6 +88,10 @@ var fog_img: Image
 var fog_tex: ImageTexture
 var vis: Array = []
 var explored := PackedByteArray()
+var explored_by: Array = []              # demo: what each player has explored (for the spectator's fog)
+var view_team := -1                      # demo: whose fog the spectator sees (-1 = all vision)
+var spectator: Node                      # demo: the spectator camera (spectator.gd)
+var last_placed: Array = []              # per player: {"at", "t", "kind"} of the last building placed
 var _vis_t := 0.0
 var _disk_cache := {}
 var minimap_img: Image
@@ -155,6 +159,10 @@ func _ready() -> void:
 		var sw := PackedByteArray()
 		sw.resize(W * H)
 		swamp.append(sw)
+		var ex := PackedByteArray()
+		ex.resize(W * H if demo else 0)
+		explored_by.append(ex)
+		last_placed.append({})
 		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t], "res2": 0.0,
 			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY", "gold_x": 0.0,
 			"tech": {}})
@@ -1843,6 +1851,7 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array) -> Building
 	stats[t]["built"] += 1
 	var b := _add_building(k, t, c, false)
 	_astar_dirty = true
+	last_placed[t] = {"at": b.center(), "t": clock, "kind": k}
 	if Defs.BUILDINGS[k]["faction"] == "clockwork":
 		b.seeded = false
 		# the Winder fetches its crate from a Clocktower first (none: he starts it by hand)
@@ -3260,6 +3269,22 @@ func _reveal(t: int, c: Vector2i, r: int) -> void:
 				continue     # can't see up onto high ground from below
 			v[i] = 1
 	vis[t] = v
+	if demo:
+		_explore(t, c, r, low)
+
+
+## Demo: what this player has explored, for when the spectator looks through its eyes
+## (the same cells _reveal / _reveal_air just lit).
+func _explore(t: int, c: Vector2i, r: int, low: bool) -> void:
+	var ex: PackedByteArray = explored_by[t]
+	for o in _disk(r):
+		var cc: Vector2i = c + o
+		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
+			var i := cc.y * W + cc.x
+			if low and height[i] == 1 and o.length_squared() > 2:
+				continue
+			ex[i] = 1
+	explored_by[t] = ex
 
 
 func _update_vis() -> void:
@@ -3292,7 +3317,15 @@ func _update_vis() -> void:
 	for i in W * H:
 		if hv[i] == 1:
 			explored[i] = 1
-	if demo or reveal:
+	if demo:
+		# enemy buildings stay on screen once spotted: remember who has spotted each one
+		for b in buildings:
+			if not b.dead:
+				var bi := idx(cell_of(b.rect().get_center()))
+				for t in n_players():
+					if vis[t][bi] == 1:
+						b.seen_mask |= 1 << t
+	if sees_all():
 		fog_sprite.visible = false
 		for u in units:
 			u.visible = not u.off_field
@@ -3302,25 +3335,71 @@ func _update_vis() -> void:
 			c.visible = true
 		return
 	fog_sprite.visible = true
+	# whose eyes: yours, or (watching computers) the player the spectator picked, with
+	# everything their side sees and has explored, exactly as you'd see it on that side
+	var ft := fog_team()
+	var ex := explored
+	if ft != human:
+		hv = vis[ft].duplicate()
+		ex = (explored_by[ft] as PackedByteArray).duplicate()
+		for o in n_players():
+			if o != ft and allied(o, ft):
+				var ov: PackedByteArray = vis[o]
+				var oe: PackedByteArray = explored_by[o]
+				for i in W * H:
+					if ov[i] == 1:
+						hv[i] = 1
+					if oe[i] == 1:
+						ex[i] = 1
 	if _fog_bytes.size() != W * H * 2:
 		_fog_bytes.resize(W * H * 2)
 	for i in W * H:
-		_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (140 if explored[i] == 1 else 250)
+		_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (140 if ex[i] == 1 else 250)
 	fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_bytes)
 	fog_tex.update(fog_img)
+	var side_mask := 0
+	for o in n_players():
+		if allied(o, ft):
+			side_mask |= 1 << o
 	for u in units:
-		if not allied(u.team, human):
+		if not allied(u.team, ft):
 			u.visible = hv[idx(cell_of(u.position))] == 1 and not u.off_field
+		elif demo:
+			u.visible = not u.off_field     # (the side looked through before may have been hidden)
 	for c in crates:
-		if not allied(c.team, human):
+		if not allied(c.team, ft):
 			c.visible = hv[idx(cell_of(c.position))] == 1
+		elif demo:
+			c.visible = true
 	for b in buildings:
-		if not allied(b.team, human):
+		if not allied(b.team, ft):
+			if demo:
+				b.visible = (b.seen_mask & side_mask) != 0
+				continue
 			if not b.seen_by_human:
 				var cc := cell_of(b.rect().get_center())
 				if hv[idx(cc)] == 1:
 					b.seen_by_human = true
 			b.visible = b.seen_by_human
+		elif demo:
+			b.visible = true
+
+
+## Whose fog of war is drawn: yours, or in a computers-only match the player the
+## spectator looks through (-1: none, all vision).
+func fog_team() -> int:
+	return view_team if demo else human
+
+
+## No fog drawn at all (the sandbox's FOG: OFF, or watching with all vision).
+func sees_all() -> bool:
+	return reveal or fog_team() < 0
+
+
+## Redraw the fog now (after the spectator switches whose eyes it uses).
+func refresh_fog() -> void:
+	_vis_t = 0.25
+	_update_vis()
 
 
 func _reveal_air(t: int, c: Vector2i, r: int) -> void:
@@ -3330,6 +3409,8 @@ func _reveal_air(t: int, c: Vector2i, r: int) -> void:
 		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
 			v[cc.y * W + cc.x] = 1
 	vis[t] = v
+	if demo:
+		_explore(t, c, r, false)
 
 
 func on_high(p: Vector2) -> bool:

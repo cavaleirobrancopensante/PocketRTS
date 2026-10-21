@@ -134,6 +134,8 @@ func _process(delta: float) -> void:
 		Sfx.play_any(["ui/click", "click"])
 	# the HUD changes slowly: redraw 20 times a second (and at once after a touch or click)
 	_redraw_t -= delta
+	if game and game.spectator and game.spectator.fade > 0.0:
+		_redraw_t = 0.0      # the cut's fade: every frame
 	if _redraw_t > 0.0:
 		return
 	_redraw_t = 0.05
@@ -224,6 +226,8 @@ func _hud_has(p: Vector2) -> bool:
 		return false        # the end screen takes the clicks
 	if paused:
 		return true
+	if game.spectator and (view_open or view_rect().has_point(p)):
+		return true         # (an open list takes the next press anywhere: it closes it)
 	for r in [top_rect(), mini_rect(), panel_rect(), card_rect(), drag_rect()]:
 		if (r as Rect2).has_point(p):
 			return true
@@ -297,6 +301,9 @@ func _press(p: Vector2) -> void:
 		return
 	if game.over:
 		return
+	if game.spectator and (view_open or view_rect().has_point(p)):
+		_view_press(p)
+		return
 	if mini_rect().has_point(p):
 		_minimap_to(p)
 		return
@@ -348,7 +355,77 @@ func _minimap_to(p: Vector2) -> void:
 		game.group_move(game.selected_units(), w, controls.mode == "attack")
 		controls.cancel_mode()
 		return
-	game.camera.position = w
+	_jump(w)
+
+
+## The camera jumps somewhere because you asked (minimap, a group, a hall...).
+func _jump(p: Vector2) -> void:
+	game.camera.position = p
+	if game.spectator:
+		game.spectator.user_moved()
+
+
+# ------------------------------------------------------------------ spectator VIEW dropdown
+
+var view_open := false
+
+
+## Watching computers: the VIEW button under the clock; its list opens below it.
+func view_rect() -> Rect2:
+	return Rect2(_vs().x * 0.5 - 170, 40, 340, 34)
+
+
+func _view_row(i: int) -> Rect2:
+	var r := view_rect()
+	# big rows, a little tighter when four players' worth must fit a short screen
+	var n: int = 1 + 2 * game.n_players()
+	var step := clampf((_vs().y - r.end.y - 14.0) / n, 34.0, 46.0)
+	return Rect2(r.position.x, r.end.y + 6 + i * step, r.size.x, step - 4.0)
+
+
+func _view_press(p: Vector2) -> void:
+	if not view_open:
+		view_open = true
+		Sfx.play_any(["ui/click", "click"])
+		return
+	view_open = false
+	var opts: Array = game.spectator.options()
+	for i in opts.size():
+		if _view_row(i).has_point(p) and opts[i][3]:
+			game.spectator.set_mode(opts[i][1], opts[i][2])
+			Sfx.play_any(["ui/click", "click"])
+			return
+
+
+func _draw_view(font: Font) -> void:
+	var sp: Spectator = game.spectator
+	var r := view_rect()
+	var hv := _mouse() if Settings.pc() else Vector2(-1, -1)
+	UiStyle.draw_button(self, r, r.has_point(hv), view_open)
+	if sp.mode != "all":
+		draw_rect(Rect2(r.position + Vector2(10, 10), Vector2(14, 14)), game.team_colour(sp.team))
+	_text(UiStyle.bold_font(), r.get_center() + Vector2(6, 6), "VIEW: " + sp.label() + ("  ▴" if view_open else "  ▾"), 16, UiStyle.TEXT, 1)
+	if not view_open:
+		return
+	var opts: Array = sp.options()
+	var last := _view_row(opts.size() - 1)
+	UiStyle.draw_panel(self, Rect2(r.position.x - 6, r.end.y + 1, r.size.x + 12, last.end.y - r.end.y + 6), UiStyle.accent(game.faction_of(game.human)), 0.96)
+	for i in opts.size():
+		var o: Array = opts[i]
+		var rr := _view_row(i)
+		var cur: bool = o[1] == sp.mode and (o[1] == "all" or int(o[2]) == sp.team)
+		UiStyle.draw_button(self, rr, rr.has_point(hv) and o[3], cur, o[3])
+		if o[1] != "all":
+			draw_rect(Rect2(rr.position + Vector2(14, rr.size.y * 0.5 - 8), Vector2(16, 16)), game.team_colour(int(o[2])) if o[3] else Color(0.4, 0.4, 0.4))
+		if cur:
+			draw_circle(Vector2(rr.end.x - 20, rr.get_center().y), 6.0, Color(1, 0.85, 0.45))
+		var key := ""
+		if Settings.pc() and o[1] == "all":
+			key = "[0] "
+		elif Settings.pc() and o[1] == "follow" and int(o[2]) < 4:
+			key = "[%d] " % (int(o[2]) + 1)
+		_text(UiStyle.bold_font(), Vector2(rr.position.x + 42, rr.get_center().y + 7), key + String(o[0]) + ("  (out)" if not o[3] else ""), 19,
+			(Color(1, 0.9, 0.55) if cur else UiStyle.TEXT) if o[3] else Color(1, 1, 1, 0.4))
 
 
 func _group_pressed(i: int, held: float) -> void:
@@ -361,19 +438,19 @@ func _group_pressed(i: int, held: float) -> void:
 				toast("No idle workers.")
 			else:
 				game.set_selection([idle[0]])
-				game.camera.position = idle[0].position
+				_jump(idle[0].position)
 		2:   # town hall: each tap goes on to the next one (the main hall, then expansions)
 			var halls: Array = game.halls_of(game.human, false)
 			if halls.is_empty():
 				var h := game._own_hall(game.human)
 				if h:
 					game.set_selection([h])
-					game.camera.position = h.global_position
+					_jump(h.global_position)
 				return
 			var cur: int = halls.find(game.selection[0]) if game.selection.size() == 1 else -1
 			var nh: Building = halls[(cur + 1) % halls.size()]
 			game.set_selection([nh])
-			game.camera.position = nh.center()
+			_jump(nh.center())
 		6:   # every production building: train from all of them at once
 			var pb := game.producers(game.human)
 			if pb.is_empty():
@@ -391,7 +468,7 @@ func _group_pressed(i: int, held: float) -> void:
 				game.groups[g] = alive
 				game.set_selection(alive)
 				if held < 0.3 and not alive.is_empty() and Time.get_ticks_msec() - _last_group_tap < 350 and _last_group == g:
-					game.camera.position = alive[0].position
+					_jump(alive[0].position)
 				_last_group = g
 				_last_group_tap = Time.get_ticks_msec()
 
@@ -858,6 +935,9 @@ func _with_keys(items: Array) -> Array:
 func hotkey(code: int) -> bool:
 	if paused or game.over:
 		return false
+	if code == KEY_ESCAPE and view_open:
+		view_open = false
+		return true
 	if (code == KEY_ESCAPE or code == KEY_BACKSPACE) and controls.mode == "" and page != "":
 		page = ""
 		return true
@@ -956,6 +1036,8 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var vs := _vs()
 	var pl: Dictionary = game.players[game.human]
+	if game.spectator and game.spectator.fade > 0.0:
+		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, game.spectator.fade))     # the follow camera's cut
 	# Top bar: resource pills, supply, clock and the menu button.
 	var fac := game.faction_of(game.human)
 	var acc := UiStyle.accent(fac)
@@ -982,7 +1064,7 @@ func _draw() -> void:
 	var mr := menu_rect()
 	UiStyle.draw_button(self, mr, mr.has_point(_mouse()) and Settings.pc())
 	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
-	if game.demo:
+	if game.demo and game.spectator == null:
 		_text(font, Vector2(vs.x * 0.5, 60), "AI vs AI", 18, Color(1, 1, 1, 0.6), 1)
 	_draw_minimap()
 	_draw_groups(font)
@@ -1014,6 +1096,8 @@ func _draw() -> void:
 		var sb := UiStyle.box(Color(0.1, 0.08, 0.06, 0.88 * a), Color(0.79, 0.64, 0.29, 0.6 * a), 2, 18, 0.0)
 		sb.draw(get_canvas_item(), mrr)
 		_text(UiStyle.bold_font(), Vector2(vs.x * 0.5, mrr.position.y + 25), _msg, 21, Color(1, 0.85, 0.65, a), 1)
+	if game.spectator:
+		_draw_view(font)
 	if not paused:
 		_draw_countdown()
 	if paused:
@@ -1039,10 +1123,10 @@ func _draw_minimap() -> void:
 	if game.swamp_tex:
 		draw_texture_rect(game.swamp_tex, m, false)
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
-	if not game.demo:
+	if not game.sees_all():
 		draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95))
 	for b in game.buildings:
-		if b.visible or b.team == game.human:
+		if b.visible or (b.team == game.human and not game.demo):
 			var r: Rect2 = b.rect()
 			draw_rect(Rect2(m.position + r.position * k, r.size * k), game.team_colour(b.team).lightened(0.2))
 	for u in game.units:
@@ -1353,7 +1437,7 @@ func _portrait_pressed(e: Entity) -> void:
 		game.set_selection(same)
 	else:
 		game.set_selection([e])
-		game.camera.position = e.global_position
+		_jump(e.global_position)
 
 
 var _buttons_extra: Array = []

@@ -85,6 +85,15 @@ Each faction builds its own economy, every Town Hall, Hive or Clocktower allows 
 - Old saves: Gearknights come back as Threshers and Bolt Automatons as Arc Throwers.
 - Army cap **100** (it was 80: the cheap Wind-up Soldiers need the room). The Clockwork starts with 4 Winders.
 
+### Watching the computers play
+With no "you" in the lobby the computers play and you watch, and the **VIEW** button under the clock picks how:
+
+- **Free · all vision** (the default): you move the camera, no fog of war.
+- **Free · P1 Crown vision** (one per player): you move the camera, under that player's fog of war: what its side sees and has explored, enemy buildings as it last spotted them, on the minimap too.
+- **Follow · P1 Crown** (one per player): the camera drives itself to show what that computer is doing, under its fog. Every second it looks for, in order: a fight its units are in (the biggest, but it stays with the one it's watching until it has been quiet for 3 s), its army on the attack (the front of the wave), raiders at its base, a building it has just placed (a new hall a little longer), its army, its hall. It pans smoothly, with a quick fade for a long jump across the map, and holds each sight at least 3 s (6 s before leaving for a quiet look home). Zoom stays as you set it.
+
+Moving the camera yourself while following (drag, edge or arrow pan, the minimap, a jump to a group or hall) switches to **Free** with the same player's vision, and says so; pick Follow again to resume. On a computer, **0** is all vision and **1-4** follow that player. The view you pick is kept for the next match you watch (until the game closes); it isn't saved with a match.
+
 ### Match log (for playtesting)
 Every match keeps a plain-text log: who played (and at what AI level), what each side built, lost and cast, the first of each unit type, the walls laid, a snapshot of every player each minute (income, resources, supply, workers, halls, army and its value, kills and losses) and the final result with kills by unit type. **COPY LOG** on the end screen copies it to the clipboard; the last 20 logs are also saved in `user://logs`.
 
@@ -160,6 +169,7 @@ On the first start the game asks where you are playing. The two control schemes 
 - **Hotkeys:** every command-card button shows its letter. Hover for cost and details. **B** build menu (then the building's letter, e.g. **F** Farm), **A** attack, **M** move, **S** stop, **H** hold, **G** work, **D** deploy or pack, **R** rally, **X** back or cancel, **N** more.
 - **1–9** select a group, **Ctrl+1–9** save one, **Shift+1–9** add it; press twice to jump to it. **F1** idle worker, **F2** army, **F3** hall (again: the next hall), **F4** every production building (MAKE: train from all of them at once), **Space** jumps to the selection.
 - **Camera:** mouse wheel zooms; pan with the screen edges, the arrow keys or a middle-button drag.
+- **Watching computers:** **0** all vision, **1-4** follow that player (see *Watching the computers play*).
 
 ### Mobile controls
 - Tap a unit to select it; double-tap to select all of that type on screen.
@@ -221,6 +231,7 @@ Repair passes fix mistakes in the generated art, pixel by pixel:
 | `scripts/building.gd` | Buildings (construction, production queue, damage states, reserves and efficiency) |
 | `scripts/ai.gd` | Computer opponent (Easy / Normal / Hard) |
 | `scripts/controls.gd`, `scripts/ui/hud.gd` | Touch and mouse input; resource bar, minimap, selection panel, command card |
+| `scripts/spectator.gd` | Watching computers play: whose fog you see and the follow camera's director |
 | `scripts/defs.gd` | Unit and building stats: tweak balance here |
 | `tools/simulate.gd` | AI-vs-AI test: `godot --headless --fixed-fps 30 --script res://tools/simulate.gd` |
 
