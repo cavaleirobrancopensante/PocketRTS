@@ -105,7 +105,7 @@ var over := false
 var winner := -1
 var clock := 0.0
 var stats: Array = []
-var soil_scars: Array = []               # [centre, soil left] where a Crown Town Hall fell
+var soil_scars: Array = []               # [centre, soil left, hall kind] where a Town Hall or Hive fell
 var _sample_t := 0.0
 var mlog: MatchLog              # the playtest log (copied from the end screen)
 var _first_of := {}             # "team:kind" -> true once that player has had one
@@ -113,7 +113,7 @@ var _first_of := {}             # "team:kind" -> true once that player has had o
 
 static func _new_stats() -> Dictionary:
 	return {"lost": 0, "killed": 0, "gold": 0, "spent": 0, "trained": 0, "built": 0,
-		"razed": 0, "bld_lost": 0, "damage": 0.0, "peak_army": 0, "value_killed": 0, "res2_in": 0.0,
+		"razed": 0, "bld_lost": 0, "damage": 0.0, "peak_army": 0, "value_killed": 0, "res2_in": 0.0, "sacrificed": 0, "sacrifice_essence": 0,
 		"kills_by": {}, "army_tl": [0], "gold_tl": [0], "workers_tl": [0]}
 
 
@@ -820,15 +820,16 @@ func free_site(t: int, p: Vector2) -> Building:
 		if b.crew.size() >= int(b.d["crew"]):
 			continue
 		var dd: float = b.center().distance_to(p) + b.crew.size() * 40.0
-		if b.kind == "farm" and b.soil_left() <= 0.0:
-			dd += 1500.0        # tired soil: new hands go to fresh fields first
+		if (b.kind == "farm" or b.kind == "feeding_pit") and b.soil_left() <= 0.0:
+			dd += 1500.0        # tired soil (spent ground): new hands go to fresh fields (pits) first
 		if dd < bd:
 			bd = dd
 			best = b
 	return best
 
 
-## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one).
+## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one);
+## for a Feeding Pit, the Hive whose ground it draws on.
 func soil_hall(farm: Building) -> Building:
 	return nearest_hall(farm.center(), farm.team)
 
@@ -856,29 +857,38 @@ func harvest_value(farm: Building) -> int:
 
 
 func _soil_check(h: Building) -> void:
-	var left := h.soil / Defs.SOIL_RESERVE
+	var left := h.soil / h.reserve()
 	var level := 2 if h.soil <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
 	if level <= h.soil_warned:
 		return
 	h.soil_warned = level
+	var hive := h.kind == "hive"
 	if mlog:
-		mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (its farms pay a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		if hive:
+			mlog.add("%s: the ground around a Hive %s" % [mlog.who(h.team), "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		else:
+			mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (its farms pay a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
-		hud.toast("The soil around your Town Hall is tired: expand to fresh land." if level == 2
-			else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
+		if hive:
+			hud.toast("The ground around your Hive is spent: its pits yield a third. Grow a Hive on fresh ground." if level == 2
+				else "The ground around your Hive is running low (%d%% left): grow a Hive on fresh ground soon." % int(round(left * 100)), false)
+		else:
+			hud.toast("The soil around your Town Hall is tired: expand to fresh land." if level == 2
+				else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
 		Sfx.play("done", h.center())
+	var site := "feeding_pit" if hive else "farm"
 	for b in buildings:
-		if b.kind == "farm" and b.team == h.team and not b.dead and b.built:
+		if b.kind == site and b.team == h.team and not b.dead and b.built:
 			b._update_sprite()
 
 
-## A Town Hall raised where one fell takes over that tired land.
+## A Town Hall raised (a Hive grown) where one fell takes over that tired land.
 func _take_scar(h: Building) -> void:
 	for i in soil_scars.size():
 		var sc: Array = soil_scars[i]
-		if (sc[0] as Vector2).distance_to(h.center()) <= Defs.HALL_SPACING * T:
+		if String(sc[2]) == h.kind and (sc[0] as Vector2).distance_to(h.center()) <= Defs.HALL_SPACING * T:
 			h.soil = float(sc[1])
-			h.soil_warned = 2 if h.soil <= 0.0 else (1 if h.soil / Defs.SOIL_RESERVE < Defs.SOIL_LOW else 0)
+			h.soil_warned = 2 if h.soil <= 0.0 else (1 if h.soil / h.reserve() < Defs.SOIL_LOW else 0)
 			soil_scars.remove_at(i)
 			return
 
@@ -985,13 +995,51 @@ func wind_decay_mult(t: int) -> float:
 	return maxf(0.25, 1.0 - wind_e[t] / 10.0)
 
 
-## Value of one load of food hauled from this pit to the nearest Hive.
-func food_value(pit: Building) -> int:
+## Value of one load of food hauled from this pit to the nearest Hive, on fresh ground: it
+## pays for the round trip's time at a rate that rises with the pit's distance from the Hive
+## (see Defs.FOOD_RATE).
+func food_value(pit: Building) -> float:
 	var hive := nearest_hall(pit.center(), pit.team)
 	if hive == null:
-		return 0
-	var d := hive.center().distance_to(pit.center()) / T
-	return int(minf(Defs.FOOD_BASE + Defs.FOOD_PER_TILE2 * d * d, Defs.FOOD_MAX))
+		return 0.0
+	var a := hive.rect()
+	var b := pit.rect()
+	var gx := maxf(0.0, maxf(a.position.x - b.end.x, b.position.x - a.end.x))
+	var gy := maxf(0.0, maxf(a.position.y - b.end.y, b.position.y - a.end.y))
+	return food_at(hive.center().distance_to(pit.center()) / T, Vector2(gx, gy).length() / T)
+
+
+## The fresh-ground value of a load from a pit `d` tiles (centre to centre) from its Hive,
+## with `gap` tiles of open ground between the two buildings: the rate (biomass per
+## grub-second) times the round trip's estimated seconds.
+static func food_at(d: float, gap: float) -> float:
+	d = minf(d, Defs.FOOD_MAX_D)
+	gap = minf(gap, Defs.FOOD_MAX_D)
+	var rate := Defs.FOOD_RATE * (1.0 + Defs.FOOD_BONUS * clampf((d - Defs.FOOD_NEAR) / (Defs.FOOD_FAR - Defs.FOOD_NEAR), 0.0, 1.0))
+	if d > Defs.FOOD_PEAK:
+		rate *= 1.0 - Defs.FOOD_FADE * (d - Defs.FOOD_PEAK)
+	return rate * (Defs.PIT_TIME + Defs.FOOD_TRIP * maxf(0.0, gap - Defs.FOOD_REACH))
+
+
+## A grub takes a load at a pit: it draws its value from the Hive's ground; spent ground
+## yields a third. Returns the load's value.
+func pit_load(pit: Building) -> float:
+	var v := food_value(pit)
+	var h := soil_hall(pit)
+	var fresh := 0.0
+	if h:
+		fresh = minf(h.soil, v)
+		h.soil -= fresh
+		_soil_check(h)
+	return fresh + (v - fresh) * Defs.SOIL_TIRED
+
+
+## What the next load from this pit is worth (no side effects).
+func load_value(pit: Building) -> float:
+	var v := food_value(pit)
+	var h := soil_hall(pit)
+	var fresh := minf(h.soil, v) if h else 0.0
+	return fresh + (v - fresh) * Defs.SOIL_TIRED
 
 
 ## The most wounded soldier nearby that a Missionary may bandage.
@@ -1069,7 +1117,7 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 			b.rig_mine = m
 	world.add_child(b)
 	buildings.append(b)
-	if k == "town_hall":
+	if k == "town_hall" or k == "hive":
 		_take_scar(b)
 	if Defs.BUILDINGS[k].get("gate", false):
 		_mark(c, b.size, 3)
@@ -1124,13 +1172,13 @@ func on_unit_died(u: Unit) -> void:
 	for t in n_players():
 		if faction_of(t) == "brood" and not absorbed:
 			for b in buildings:
-				if b.team == t and b.kind == "bone_midden" and b.built and not b.dead \
-						and b.center().distance_to(u.position) < Defs.MIDDEN_RANGE * T:
+				if b.team == t and b.kind == "brood_pen" and b.built and not b.dead \
+						and b.center().distance_to(u.position) < Defs.PEN_RANGE * T:
 					var ess := int(u.d["supply"]) * Defs.ESSENCE_PER_SUPPLY
 					add_res2(t, ess)
 					if t == human:
 						float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
-					absorbed = true          # the Midden took it: nothing left to harvest
+					absorbed = true          # the Pen took it: nothing left to harvest
 					break
 	if not absorbed and brood_in_match() and not u.is_air():
 		corpses.append(u)
@@ -1186,8 +1234,8 @@ func _killer(e: Entity) -> int:
 
 
 func on_building_died(b: Building) -> void:
-	if b.kind == "town_hall" and b.soil < Defs.SOIL_RESERVE:
-		soil_scars.append([b.center(), b.soil])     # the land stays tired for the next hall here
+	if (b.kind == "town_hall" or b.kind == "hive") and b.built and b.soil < b.reserve():
+		soil_scars.append([b.center(), b.soil, b.kind])     # the land stays tired for the next hall here
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
 	selection.erase(b)
@@ -1195,8 +1243,8 @@ func on_building_died(b: Building) -> void:
 	_recount_supply(b.team)
 	stats[b.team]["bld_lost"] += 1
 	var k := _killer(b)
-	if mlog and b.built:
-		mlog.add("%s lost a %s%s" % [mlog.who(b.team), b.d["name"], (" to " + mlog.who(k) + (" (" + b.last_hit_by + ")" if b.last_hit_by != "" else "")) if k >= 0 else ""])
+	if mlog and (b.built or k >= 0):
+		mlog.add("%s lost a %s%s%s" % [mlog.who(b.team), b.d["name"], "" if b.built else " (unfinished)", (" to " + mlog.who(k) + (" (" + b.last_hit_by + ")" if b.last_hit_by != "" else "")) if k >= 0 else ""])
 	if k >= 0 and b.built:
 		stats[k]["razed"] += 1
 		stats[k]["value_killed"] += int(b.d["cost"])
@@ -1589,6 +1637,33 @@ func consume_unit(u: Unit) -> void:
 		g.erase(u)
 	u.dead = true
 	u.queue_free()
+
+
+## Brood Pen SACRIFICE: essence a creature gives when it's offered up (0: it can't be).
+static func sacrifice_value(kind: String) -> int:
+	var d: Dictionary = Defs.UNITS[kind]
+	if d["faction"] != "brood" or d.get("worker", false):
+		return 0
+	return maxi(1, int(round(float(d["cost"]) / maxf(1.0, float(d.get("spawn", 1))) * Defs.SACRIFICE)))
+
+
+## A Brood creature that reached a Pen on SACRIFICE: offered up for essence.
+func sacrifice(u: Unit, pen: Building) -> void:
+	var ess := sacrifice_value(u.kind)
+	if ess <= 0 or u.dead:
+		return
+	add_res2(u.team, ess)
+	var st: Dictionary = stats[u.team]
+	st["sacrificed"] = int(st.get("sacrificed", 0)) + 1
+	st["sacrifice_essence"] = int(st.get("sacrifice_essence", 0)) + ess
+	if is_visible_to(human, pen.center()) or u.team == human or demo:
+		var fx := spawn_effect("acid_splash", pen.center() + Vector2(randf_range(-14, 14), randf_range(-8, 8)), 1.2)
+		fx.modulate = Color(0.8, 0.45, 1.0, 0.9)
+		fx.z_index = 4
+		Sfx.play("work/midden_essence", pen.center(), -4.0)
+	if u.team == human:
+		float_text(pen.center() + Vector2(0, -34), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
+	consume_unit(u)
 
 
 func notify(msg: String, quiet := false) -> void:

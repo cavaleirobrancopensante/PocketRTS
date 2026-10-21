@@ -6,6 +6,7 @@ extends SceneTree
 var main: Node
 var t := 0.0
 var next_report := 30.0
+var _earned9: Array = []        # gold earned by each team at 9:00 (for the minute-10 line)
 func _initialize() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -45,6 +46,16 @@ func _process(delta: float) -> bool:
 	var g = main.game
 	if g == null:
 		return false
+	if _earned9.is_empty() and g.clock >= 540.0:
+		for team in g.n_players():
+			_earned9.append(int(g.stats[team]["gold"]))
+	if _earned9.size() > 0 and _earned9[0] >= 0 and g.clock >= 600.0:
+		var m10 := "MIN10"
+		for team in g.n_players():
+			m10 += " | T%d %s halls=%d income(min 10)=%d bank=%d/%d workers=%d army=%d" % [team, g.faction_of(team), g.halls_of(team).size(),
+				int(g.stats[team]["gold"]) - int(_earned9[team]), g.players[team]["gold"], int(g.players[team]["res2"]), g.workers(team).size(), g.army(team).size()]
+		print(m10)
+		_earned9[0] = -1
 	if t >= next_report:
 		next_report += 30.0
 		var line := "t=%d " % int(g.clock)
@@ -72,5 +83,14 @@ func _process(delta: float) -> bool:
 			plans.append(ai.strategy)
 		print("PLANS ", plans)
 		print("WINNER team ", g.winner, " at ", int(g.clock), "s on ", g.map_name, "  ", short)
+		if g.mlog:
+			for l in g.mlog.lines:
+				print("LOG ", l)
 		return true
-	return g.clock > 1500.0
+	if g.clock > 1500.0:
+		print("TIMEOUT at ", int(g.clock), "s on ", g.map_name, " (no winner)")
+		if g.mlog:
+			for l in g.mlog.lines:
+				print("LOG ", l)
+		return true
+	return false

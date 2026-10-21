@@ -180,7 +180,7 @@ class Tracker:
 						var ct: float = prev[1] + dt
 						c["deliveries"] += 1
 						c["carry_t"] += ct
-						c["delivered"] += roundf(float(info["base"]) + float(info["gain"]) * ct)
+						c["delivered"] += roundf((float(info["base"]) + float(info["gain"]) * ct) * float(Defs.BATTERY["ore"]))
 					else:
 						c["blasts"] += 1
 				w_carry[u] = [u.carrying, u.carry_t, u.carry_blue, u.home_mine]
@@ -195,7 +195,7 @@ class Tracker:
 						bp["loads"] += 1
 						bp["food"] += prev[0]
 						c["by_pit"][key] = bp
-				w_carry[u] = [u.carrying, 0.0, false, u.home_mine]
+				w_carry[u] = [u.load_f if u.carrying > 0 else 0.0, 0.0, false, u.home_mine]
 		for b in g.buildings:
 			if b.team != t or b.dead or not b.built:
 				continue
@@ -239,7 +239,7 @@ func _ai_run(fac: String) -> void:
 		"crown":
 			head += ["harvests", "farm_gold_incl_growth", "soil_pct_per_hall"]
 		"brood":
-			head += ["food_loads", "avg_load_value", "pit_dists_tiles", "pit_values"]
+			head += ["food_loads", "avg_load_value", "pit_dists_tiles", "pit_values", "ground_pct_per_hive", "sacrificed", "essence_from_sacrifice"]
 		"clockwork":
 			head += ["deliveries", "avg_trip_s", "avg_charge", "overloads", "battery_stall_s"]
 	var rows: Array = [head]
@@ -292,8 +292,12 @@ func _ai_run(fac: String) -> void:
 					var hv := g.nearest_hall(p.center(), 0)
 					if hv:
 						ds.append(snappedf(hv.center().distance_to(p.center()) / Game.T, 0.1))
-						vs.append(g.food_value(p))
-				row += [tr.c["loads"], snappedf(tr.c["food"] / maxf(1, tr.c["loads"]), 0.1), " ".join(ds.map(func(x): return str(x))), " ".join(vs.map(func(x): return str(x)))]
+						vs.append(snappedf(g.load_value(p), 0.1))
+				var ground: Array = []
+				for h in g.halls_of(0):
+					ground.append(int(round(h.soil_left() * 100)))
+				row += [tr.c["loads"], snappedf(tr.c["food"] / maxf(1, tr.c["loads"]), 0.1), " ".join(ds.map(func(x): return str(x))), " ".join(vs.map(func(x): return str(x))),
+					" ".join(ground.map(func(x): return str(x))), int(g.stats[0].get("sacrificed", 0)), int(g.stats[0].get("sacrifice_essence", 0))]
 			"clockwork":
 				var n: int = tr.c["deliveries"]
 				row += [n, snappedf(tr.c["carry_t"] / maxf(1, n), 0.01), snappedf(tr.c["delivered"] / maxf(1, n), 0.01), tr.c["blasts"], snappedf(tr.c["stall_s"], 0.1)]
@@ -316,7 +320,7 @@ func _build_out(g: Game, t: int) -> void:
 		"crown":
 			order = ["farm", "farm", "powder_mill"]
 		"brood":
-			order = ["feeding_pit", "feeding_pit", "feeding_pit", "bone_midden"]
+			order = ["feeding_pit", "feeding_pit", "feeding_pit", "brood_pen"]
 		"clockwork":
 			order = ["boiler", "ore_crusher", "boiler", "ore_crusher"]
 	for k in order:
@@ -373,7 +377,7 @@ func _sat_run(fac: String) -> void:
 		"crown":
 			head += ["harvests", "farm_crews", "mill_crew"]
 		"brood":
-			head += ["loads_per_min", "avg_load_value", "pit_dists_tiles", "pit_values", "pit_crews", "essence_trickle_per_min"]
+			head += ["loads_per_min", "avg_load_value", "pit_dists_tiles", "pit_values", "pit_crews", "ground_drawn_per_min"]
 		"clockwork":
 			head += ["deliveries_per_min", "avg_trip_s", "avg_charge", "overloads", "batteries_filled_per_min", "battery_stall_s", "crews", "crusher_dists"]
 	var rows: Array = [head]
@@ -382,6 +386,8 @@ func _sat_run(fac: String) -> void:
 		var g := await _start(fac, "crown" if fac != "crown" else "brood", false)
 		_clear_workers(g, 0)
 		_build_out(g, 0)
+		if fac == "brood":
+			_hall(g, 0).soil = 1e9      # (steady state: the Hive's ground never runs out here)
 		_spawn_workers(g, 0, int(n))
 		var tr := Tracker.new(g, 0)
 		var t_end := g.clock + warm
@@ -425,11 +431,11 @@ func _sat_run(fac: String) -> void:
 				for p in _built(g, 0, "feeding_pit"):
 					var hv := g.nearest_hall(p.center(), 0)
 					ds.append(snappedf(hv.center().distance_to(p.center()) / Game.T, 0.1))
-					vs.append(g.food_value(p))
+					vs.append(snappedf(g.food_value(p), 0.1))
 					cs.append(p.crew.size())
 				row += [snappedf(tr.c["loads"] / mins, 0.1), snappedf(tr.c["food"] / maxf(1, tr.c["loads"]), 0.1),
 					" ".join(ds.map(func(x): return str(x))), " ".join(vs.map(func(x): return str(x))), " ".join(cs.map(func(x): return str(x))),
-					snappedf(_built(g, 0, "bone_midden").size() * Defs.MIDDEN_TRICKLE * 60.0, 0.1)]
+					int((1e9 - _hall(g, 0).soil) / ((g.clock - c0) / 60.0 + warm / 60.0))]
 				extra = "pits at %s tiles worth %s, crews %s" % [ds, vs, cs]
 			"clockwork":
 				var nd: int = tr.c["deliveries"]
@@ -524,6 +530,7 @@ func _pit_sweep() -> void:
 		if b.team == 0 and b.kind == "feeding_pit":
 			b.die()
 	var hive := _hall(g, 0)
+	hive.soil = 1e9                 # (fresh ground throughout)
 	var grubs := _spawn_workers(g, 0, 5, false)
 	var rows: Array = [["dist_tiles", "walk_tiles", "food_value", "swamp_at_midpoint", "loads_per_min", "food_per_min", "per_grub_per_min", "cycle_s", "theory_cycle_offswamp_s"]]
 	print("== pits: 5 grubs on one Feeding Pit at each distance from the Hive")
@@ -550,7 +557,7 @@ func _pit_sweep() -> void:
 			tr.tick(DT)
 		var mins := (g.clock - c0) / 60.0
 		var real_d := hive.center().distance_to(pit.center()) / Game.T
-		var val := g.food_value(pit)
+		var val := snappedf(g.food_value(pit), 0.1)
 		var lpm: float = tr.c["loads"] / mins
 		var fpm: float = tr.c["food"] / mins
 		# walk = centre distance less half of each building, at plain grub speed

@@ -43,7 +43,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
 		"zoom": game.camera.zoom.x, "first_of": game._first_of,
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
-		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1]]), "buildings": [], "units": [], "mines": []}
+		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2]]), "buildings": [], "units": [], "mines": []}
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at})
 	for m in game.mines:
@@ -62,7 +62,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		if u.dead or u.off_field:
 			continue
 		var ud := {"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
-			"charge": u.charge, "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying,
+			"charge": u.charge, "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying, "lf": u.load_f,
 			"auto": u.auto_work, "push": u.push_auto, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
@@ -116,7 +116,12 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for i in mini(game.mines.size(), d["mines"].size()):
 		game.mines[i].gold = int(d["mines"][i])
 	for bd in d["buildings"]:
-		var b := game._add_building(String(bd["k"]), int(bd["t"]), Vector2i(int(bd["c"][0]), int(bd["c"][1])), bool(bd["built"]))
+		var bk := String(bd["k"])
+		if bk == "bone_midden":
+			bk = "brood_pen"        # (older saves: the Bone Midden became the Brood Pen)
+		if not Defs.BUILDINGS.has(bk):
+			continue
+		var b := game._add_building(bk, int(bd["t"]), Vector2i(int(bd["c"][0]), int(bd["c"][1])), bool(bd["built"]))
 		b.progress = float(bd["progress"])
 		b.hp = float(bd["hp"])
 		b.queue = Array(bd["queue"])
@@ -134,8 +139,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.seeded = bool(bd["seeded"])
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
-		if b.kind == "town_hall":
-			b.soil = float(bd.get("soil", Defs.SOIL_RESERVE))     # (older saves: fresh soil)
+		if b.kind == "town_hall" or b.kind == "hive":
+			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground)
 			b.soil_warned = int(bd.get("sw", 0))
 		if bd["rally"] != null:
 			b.rally = _to_v2(bd["rally"])
@@ -144,9 +149,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b._update_sprite()
 	game.soil_scars.clear()
 	for sc in d.get("soil_scars", []):
-		game.soil_scars.append([_to_v2(sc[0]), float(sc[1])])
+		game.soil_scars.append([_to_v2(sc[0]), float(sc[1]), String(sc[2]) if sc.size() > 2 else "town_hall"])
 	for b in game.buildings:
-		if b.kind == "farm":
+		if b.kind == "farm" or b.kind == "feeding_pit":
 			b._update_sprite()      # (its tired-soil tint needs the halls back first)
 	for ud in d["units"]:
 		var u := game._add_unit(String(ud["k"]), int(ud["t"]), _to_v2(ud["p"]))
@@ -156,6 +161,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.mode = String(ud["mode"])
 		u.tesla_mode = String(ud["tm"])
 		u.carrying = int(ud["carry"])
+		u.load_f = float(ud.get("lf", 0.0))
 		u.auto_work = bool(ud["auto"])
 		u.push_auto = bool(ud["push"])
 		u.spell_cd = float(ud["spell_cd"])

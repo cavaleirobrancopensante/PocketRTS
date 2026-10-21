@@ -1,7 +1,3 @@
-workers,at_work,crew_slots,income_biomass_per_min,income_essence_per_min,per_worker_biomass,per_worker_essence,loads_per_min,avg_load_value,pit_dists_tiles,pit_values,pit_crews,essence_trickle_per_min
-4,4,15,535,9.0,133.9,2.25,45.7,11.7,"9.2 10.1 10.1","11 12 12","1 1 2",9.0
-8,8,15,1027,9.0,128.4,1.13,86.7,11.8,"9.2 10.1 10.1","11 12 12","1 4 3",9.0
-12,12,15,1485,9.0,123.8,0.75,127.0,11.7,"9.2 10.1 10.1","11 12 12","3 5 4",9.0
-16,15,15,1769,9.0,110.6,0.56,152.2,11.6,"9.2 10.1 10.1","11 12 12","5 5 5",9.0
-20,15,15,1772,9.0,88.6,0.45,152.5,11.6,"9.2 10.1 10.1","11 12 12","5 5 5",9.0
-24,15,15,1777,9.0,74.1,0.38,153.0,11.6,"9.2 10.1 10.1","11 12 12","5 5 5",9.0
+workers,at_work,crew_slots,income_biomass_per_min,income_essence_per_min,per_worker_biomass,per_worker_essence,loads_per_min,avg_load_value,pit_dists_tiles,pit_values,pit_crews,ground_drawn_per_min
+15,15,15,1017,0.0,67.8,0.0,154.0,6.6,"9.2 10.1 10.1","5.3 7.4 7.4","5 5 5",1007
+20,15,15,1014,0.0,50.7,0.0,153.2,6.6,"9.2 10.1 10.1","5.3 7.4 7.4","5 5 5",1002

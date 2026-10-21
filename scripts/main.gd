@@ -45,7 +45,11 @@ Walls and gates: lay them in a line across your ramp (every main base sits on hi
 Musketeers need a Powder Mill (you don't start with one) and cost 10 powder. Barracks: Musketeers, Pikemen and (once you have a Foundry) Cuirassiers, fast horsemen whose sabre charge after a gallop hits double and throws the enemy back. Foundry: Field Cannons, Powder Wagons and Observation Balloons, which also carry 4 Musketeers, Pikemen or Labourers: LOAD them (they walk under it and climb in; Musketeers shoot from the basket), then UNLOAD anywhere, over cliffs too. Church: one Missionary, who bandages wounded soldiers back to full health and can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
 
-Grubs haul food from Feeding Pits to a Hive: the farther the pit from the Hive, the richer each load. Pits must grow on your swamp; Spore Vents spread it far. Bone Middens turn the dead into essence (Brutes and Skywings cost some).
+Grubs haul food from Feeding Pits to a Hive: a load pays for its trip, and a grub earns more the farther its pit is from the Hive (about 30% more from 18-22 tiles out than right beside it). Pits must grow on your swamp; Spore Vents spread it far. Each Hive allows 3 Feeding Pits and 1 Brood Pen.
+
+Ground: each Hive's ground holds 10,500 biomass that its pits draw out load by load (shown as "Ground: %" on the Hive and its pits). Spent ground turns the pits grey-brown and they yield only a third: grow a new Hive on fresh ground.
+
+Essence: the Brood Pen turns bodies that fall nearby into essence. SACRIFICE (K) sends the selected creatures (not grubs) to the nearest Pen to be offered up: 12% of each one's biomass cost as essence (3 a Raptor). Spitters, Bloaters, Brutes, Skywings, Spore Mothers and Miasma cost essence.
 
 Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, which hunt flyers in the air; LAND them (1.2 s) to bite ground units, but landed anything can hit them. Bloaters spit acid until their gas runs out, then deflate and slowly fill up again (faster on swamp). Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Army cap 160.""",
 	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.

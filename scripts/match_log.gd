@@ -83,12 +83,14 @@ func snapshot() -> void:
 			String(res[1]).to_lower(), game.supply_used(t), int(game.players[t]["cap"]), workers, halls, value,
 			", ".join(army) if not army.is_empty() else "none",
 			int(st["killed"]) - int(last["killed"]), int(st["killed"]), int(st["lost"]) - int(last["lost"]), int(st["lost"])])
-		if game.faction_hall(t) == "town_hall":
+		if game.faction_hall(t) == "town_hall" or game.faction_hall(t) == "hive":
 			var soil := PackedStringArray()
 			for h in game.halls_of(t):
 				soil.append("%d%%" % int(round(h.soil_left() * 100)))
 			if not soil.is_empty():
-				lines[lines.size() - 1] += " | soil " + " ".join(soil)
+				lines[lines.size() - 1] += (" | soil " if game.faction_hall(t) == "town_hall" else " | ground ") + " ".join(soil)
+		if int(st.get("sacrificed", 0)) > 0:
+			lines[lines.size() - 1] += " | sacrificed %d (+%d essence)" % [int(st["sacrificed"]), int(st["sacrifice_essence"])]
 		_last[t] = {"killed": st["killed"], "lost": st["lost"]}
 
 

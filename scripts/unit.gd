@@ -37,6 +37,7 @@ var leash_from := Vector2.ZERO
 # workers
 var work := ""                 # to_mine, mining, to_hall, to_site, building
 var carrying := 0
+var load_f := 0.0                # (a grub) the exact value of the food it carries (`carrying` is it rounded)
 var work_t := 0.0
 var home_mine: Entity = null
 var wind := 1.0                # Clockwork: 1 = fully wound; runs down outside a field
@@ -1389,6 +1390,8 @@ func _physics_process(delta: float) -> void:
 			want = _overload(delta)
 		"keg":
 			want = _keg_run(delta)
+		"sacrifice":
+			want = _sacrifice(delta)
 	if deploys():
 		want = _tesla(want, delta)
 	if kind == "balloon" and not incoming.is_empty():
@@ -1846,7 +1849,7 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 			if cr == null:
 				return Vector2.ZERO
 			if cr.edge_distance(position) < radius + 17.0:
-				var value := int(round(float(info["base"]) + float(info["gain"]) * carry_t))
+				var value := int(round((float(info["base"]) + float(info["gain"]) * carry_t) * float(Defs.BATTERY["ore"])))
 				game.add_gold(team, value)
 				if team == game.human:
 					game.float_text(position + Vector2(0, -30), "+%d" % value, Color(0.5, 0.8, 1.0) if carry_blue else Color(1, 0.9, 0.35))
@@ -1874,6 +1877,48 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 		return Vector2.ZERO
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
 		_request_path(game.approach_point(src, position))
+	return _follow(delta)
+
+
+## Brood creature on SACRIFICE: walk (fly) to the nearest Brood Pen and be offered up there
+## for essence (Game.sacrifice). Grubs can't be: they're the workforce.
+func can_sacrifice() -> bool:
+	return Game.sacrifice_value(kind) > 0 and aboard == null and not off_field
+
+
+func cmd_sacrifice() -> void:
+	if not can_sacrifice():
+		return
+	_reset_work()
+	order = "sacrifice"
+	target = null
+	order_target = game.nearest_of(position, team, "brood_pen")
+	if order_target == null:
+		if team == game.human:
+			game.notify("No Brood Pen to offer them at.")
+		cmd_stop()
+
+
+func _sacrifice(delta: float) -> Vector2:
+	var pen := order_target as Building
+	if pen == null or not is_instance_valid(pen) or pen.dead:
+		pen = game.nearest_of(position, team, "brood_pen")
+		order_target = pen
+		path = PackedVector2Array()
+		if pen == null:
+			cmd_stop()
+			return Vector2.ZERO
+	if deploys() and tesla_mode != "packed":
+		if tesla_mode == "deployed":
+			cmd_pack()
+		return Vector2.ZERO
+	var gap := pen.edge_distance(position)
+	# (in a crowd at the Pen: close enough once the walk is done)
+	if gap < radius + 20.0 or (gap < radius + 64.0 and not path_pending and path_i >= path.size()):
+		game.sacrifice(self, pen)
+		return Vector2.ZERO
+	if (path.is_empty() or path_i >= path.size()) and not path_pending:
+		_request_path(game.approach_point(pen, position))
 	return _follow(delta)
 
 
@@ -1952,7 +1997,8 @@ func _haul(pit: Building, delta: float) -> Vector2:
 			facing = (pit.center() - position).normalized()
 			work_t -= delta
 			if work_t <= 0.0:
-				carrying = game.food_value(pit)
+				load_f = game.pit_load(pit)
+				carrying = maxi(1, int(round(load_f)))
 				work = "to_hall"
 				path = PackedVector2Array()
 			return Vector2.ZERO
@@ -1961,11 +2007,15 @@ func _haul(pit: Building, delta: float) -> Vector2:
 			if hive == null:
 				return Vector2.ZERO
 			if hive.edge_distance(position) < radius + 17.0:
-				game.add_gold(team, carrying)
+				if load_f > 0.0:
+					game.add_gold_f(team, load_f)
+				else:
+					game.add_gold(team, carrying)     # (a load from an older save)
 				if team == game.human and carrying > 0:
 					game.float_text(position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
 					Sfx.play("work/grub_deliver", position, -6.0)
 				carrying = 0
+				load_f = 0.0
 				work = "to_site"
 				path = PackedVector2Array()
 				return Vector2.ZERO

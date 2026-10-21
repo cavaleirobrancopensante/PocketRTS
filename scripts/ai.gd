@@ -164,13 +164,15 @@ func _workers() -> void:
 			var site := game.free_site(team, u.position)
 			if site:
 				u.cmd_gather(site)
-	if _crown():
+	if _crown() or _brood():
 		_move_off_tired_soil(labs)
 
 
-## Crown: farmers on spent soil walk over to fresh farms with room (a couple at a time).
+## Crown: farmers on spent soil walk over to fresh farms with room (a couple at a time);
+## Brood: grubs on pits whose Hive's ground is spent, to pits on fresh ground.
 func _move_off_tired_soil(labs: Array) -> void:
-	var fresh := _mine("farm").filter(func(f: Building) -> bool: return f.built and f.soil_left() > 0.0 and f.crew.size() < int(f.d["crew"]))
+	var site_kind := "farm" if _crown() else "feeding_pit"
+	var fresh := _mine(site_kind).filter(func(f: Building) -> bool: return f.built and f.soil_left() > 0.0 and f.crew.size() < int(f.d["crew"]))
 	if fresh.is_empty():
 		return
 	var moved := 0
@@ -178,7 +180,7 @@ func _move_off_tired_soil(labs: Array) -> void:
 		if moved >= 2 or fresh.is_empty():
 			break
 		var site = u.home_mine
-		if u.order != "gather" or not (site is Building) or (site as Building).kind != "farm" or (site as Building).soil_left() > 0.0:
+		if u.order != "gather" or not (site is Building) or (site as Building).kind != site_kind or (site as Building).soil_left() > 0.0:
 			continue
 		var to: Building = fresh[0]
 		u.cmd_gather(to)
@@ -188,6 +190,8 @@ func _move_off_tired_soil(labs: Array) -> void:
 
 
 func _econ_build() -> void:
+	if _hall_reserve:
+		return
 	if _halls().filter(func(h: Building) -> bool: return h.built).is_empty():
 		return
 	var order: Array = []
@@ -200,7 +204,7 @@ func _econ_build() -> void:
 	elif _brood():
 		order = ["feeding_pit"]
 		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
-			order.append("bone_midden")
+			order.append("brood_pen")
 	else:
 		# batteries need somewhere to go: a crusher first, then Boilers, a crusher per Boiler
 		var crushers := _mine("ore_crusher").size()
@@ -231,17 +235,17 @@ func _econ_build() -> void:
 
 func _econ_spot(kind: String) -> Vector2i:
 	var halls := _halls()
-	if kind == "farm":
-		# Crown: farms go where the soil is freshest (tired land pays a third)
-		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil > b.soil)
+	if kind == "farm" or kind == "feeding_pit":
+		# farms (pits) go where the soil (the Hive's ground) is freshest: tired land pays a third
+		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil_left() > b.soil_left())
 	for h in halls:
 		if not h.built:
 			continue
 		var spot: Vector2i
 		if kind == "feeding_pit":
-			# far from the Hive pays more; stay on our side of the map
-			spot = game.find_spot(team, kind, h, 7, 26, "far_safe")
-		elif kind == "bone_midden":
+			# far from the Hive pays more (best from ~18 to 22 tiles); stay on our side of the map
+			spot = game.find_spot(team, kind, h, 7, int(Defs.FOOD_PEAK), "far_safe")
+		elif kind == "brood_pen":
 			spot = game.find_spot(team, kind, h, 3, 12, "near")
 		else:
 			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind")
@@ -293,6 +297,8 @@ func _supply() -> void:
 
 
 func _build_up() -> void:
+	if not _clock() and _hall_first():
+		return
 	var labs := game.workers(team).size()
 	# tech comes sooner or later by strategy (and sooner with money in the bank)
 	var t := game.clock / float(_s("tech")) + (60.0 if _gold() > 500 else 0.0)
@@ -372,11 +378,145 @@ func _build_up() -> void:
 
 
 var _walled := false
+var _hall_reserve := false      # Crown: holding gold for a Town Hall on fresh land
+var _new_hall: Building = null  # Crown: the expansion the guards stand over
+var _guards: Array = []         # Crown: the part of the army guarding it
+const HALL_FIRST_SOIL := 0.65   # Crown/Brood: the next hall comes first from this share of soil left
+var _stage_spot := Vector2i(-1, -1)   # where the next hall goes (the escort walks there first)
+var _stage_t := 0.0
 
 
-## Crown: the share of soil left at our freshest Town Hall (1.0 for the other factions).
+## Crown (and Brood): once the freshest soil (ground) is under HALL_FIRST_SOIL and there's no second
+## fresh hall coming, a new hall comes before anything else: gold is held for it whatever
+## the army's size (training, tech and new buildings wait; the army keeps what it has), it
+## goes on the safest free ground and (Crown) part of the army walks over to guard it.
+## True while saving.
+func _hall_first() -> bool:
+	_hall_reserve = false
+	var hall: String = _f()["hall"]
+	if _halls().size() >= 7 or _best_soil() >= HALL_FIRST_SOIL:
+		return false
+	# halls with a fair share of soil left (one going up counts: it's fresh land)
+	var fresh := _halls().filter(func(h: Building) -> bool: return not h.built or h.soil_left() > 0.25).size()
+	if fresh >= 2 or _busy_building(hall):
+		return false
+	_hall_reserve = true
+	_saving = true
+	var cost := int(Defs.BUILDINGS[hall]["cost"])
+	if _stage_spot.x < 0 or game.placement_problem(team, hall, _stage_spot, true) != "":
+		_stage_spot = _safe_hall_spot()
+		_stage_t = game.clock
+		if _stage_spot.x < 0:
+			_hall_reserve = false
+			_saving = false
+			return false
+	if _gold() < cost:
+		return true
+	var spot := _stage_spot
+	if _crown():
+		# the escort walks over first; the hall goes down once it's there (or after a while)
+		var site := (Vector2(spot) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5) * Defs.TILE
+		var there := _guards.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.position.distance_to(site) < 300.0).size()
+		if there < _guards.size() * 0.6 and game.clock - _stage_t < 35.0:
+			return true
+		# three labourers build it together (faster: less time at 10% health)
+		var builders: Array = []
+		var labs := game.workers(team).filter(func(u: Unit) -> bool: return u.order != "build" and not u.dead)
+		labs.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(site) < b.position.distance_squared_to(site))
+		builders = labs.slice(0, 3)
+		if not builders.is_empty():
+			game.place_building(team, hall, spot, builders)
+	else:
+		_construct(hall, spot)
+	_stage_spot = Vector2i(-1, -1)
+	for b in _mine(hall):
+		if not b.built and b.cell == spot:
+			_new_hall = b
+			_guards.clear()
+			if game.mlog:
+				game.mlog.add("%s is expanding to fresh %s (left at its best hall: %d%%), %d tiles from its main" % [game.mlog.who(team), "land" if _crown() else "ground",
+					int(round(_best_soil() * 100)), int(b.center().distance_to(Vector2(game.starts[team]) * Defs.TILE) / Defs.TILE)])
+	return true
+
+
+## Where a new hall is safest: free ground near our main (the usual expansion
+## first), away from the enemy's side and from enemies in sight.
+func _safe_hall_spot() -> Vector2i:
+	var hall: String = _f()["hall"]
+	var cands: Array = []
+	var ex: Vector2i = game.expansions[team] if game.expansions.size() > team else Vector2i(-1, -1)
+	if ex.x >= 0 and game.placement_problem(team, hall, ex, true) == "":
+		cands.append(ex)
+	for h in _halls():
+		if not h.built:
+			continue
+		for pref in ["near", "far_safe"]:
+			var sp := game.find_spot(team, hall, h, Defs.HALL_SPACING, Defs.HALL_SPACING + 12, pref)
+			if sp.x >= 0 and not cands.has(sp):
+				cands.append(sp)
+	if cands.is_empty():
+		return Vector2i(-1, -1)
+	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
+	var best := Vector2i(-1, -1)
+	var bs := INF
+	for c in cands:
+		var cc := Vector2(c) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5
+		var score := cc.distance_to(home)
+		var foe_d := INF
+		for o in game.n_players():
+			if game.hostile(team, o):
+				foe_d = minf(foe_d, cc.distance_to(Vector2(game.starts[o]) + Vector2(2.5, 2.0)))
+		score += maxf(0.0, cc.distance_to(home) - foe_d * 0.8) * 3.0
+		for u in game.units_near(cc * Defs.TILE, 14.0 * Defs.TILE):
+			if game.hostile(u.team, team) and not u.dead and not u.is_worker() and game.is_visible_to(team, u.position):
+				score += float(u.d["supply"]) * 3.0
+		if c == ex:
+			score -= 4.0           # (the map's own expansion spot: open ground, near a ramp of ours)
+		if score < bs:
+			bs = score
+			best = c
+	return best
+
+
+## Crown: two thirds of the army (at least 4) escort a new Town Hall: they walk to its spot
+## before it's laid down and stand guard until it's been up a minute; then a third stays
+## there as its garrison while it stands. Returns the army without them.
+var _guard_until := 0.0
+
+
+func _guard_new_hall(army: Array) -> Array:
+	if _new_hall != null and (not is_instance_valid(_new_hall) or _new_hall.dead):
+		_new_hall = null
+	var staging := _new_hall == null and _hall_reserve and _stage_spot.x >= 0
+	if _new_hall == null and not staging:
+		_guards.clear()
+		return army
+	var site: Vector2 = _new_hall.center() if _new_hall else (Vector2(_stage_spot) + Vector2(Defs.BUILDINGS[_f()["hall"]]["size"]) * 0.5) * Defs.TILE
+	if staging:
+		_guard_until = 0.0
+	if _new_hall and _new_hall.built and _guard_until <= 0.0:
+		_guard_until = game.clock + 60.0
+	_guards = _guards.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	# two thirds while it goes up and for its first minute, then a third stays as its garrison
+	var want := maxi(4, army.size() * 2 / 3)
+	if _new_hall and _new_hall.built and game.clock > _guard_until:
+		want = maxi(3, army.size() / 3)
+		while _guards.size() > want:
+			_guards.pop_back()
+	if _guards.size() < want:
+		var pool := army.filter(func(u: Unit) -> bool: return not _guards.has(u) and u.kind != "powder_wagon" and not u.is_air())
+		pool.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(site) < b.position.distance_squared_to(site))
+		for u in pool.slice(0, want - _guards.size()):
+			_guards.append(u)
+	for u in _guards:
+		if u.position.distance_to(site) > 180.0 and (u.order == "idle" or (u.order != "attack" and u.target == null and u.order_point.distance_to(site) > 200.0)):
+			u.cmd_move(site + Vector2(randf_range(-70, 70), randf_range(-70, 70)), true)
+	return army.filter(func(u: Unit) -> bool: return not _guards.has(u))
+
+
+## Crown / Brood: the share of soil (ground) left at our freshest hall (1.0 for the Clockwork).
 func _best_soil() -> float:
-	if not _crown():
+	if _clock():
 		return 1.0
 	var best := 0.0
 	for h in _halls():
@@ -390,7 +530,7 @@ func _best_soil() -> float:
 func _more_halls(macro: bool) -> void:
 	var hall: String = _f()["hall"]
 	# (halls on spent soil don't count toward the strategy's limit: the land has run out)
-	var live := _halls().filter(func(h: Building) -> bool: return not _crown() or h.soil > 0.0).size()
+	var live := _halls().filter(func(h: Building) -> bool: return _clock() or h.soil > 0.0).size()
 	if live >= int(_s("halls")) + (1 if macro else 0) or _halls().size() >= 7 or _busy_building(hall):
 		return
 	if _gold() < int(Defs.BUILDINGS[hall]["cost"]):
@@ -406,6 +546,8 @@ func _more_halls(macro: bool) -> void:
 
 ## The tech step to the first ranged unit, as soon as there's a little money for it.
 func _research() -> void:
+	if _hall_reserve:
+		return
 	for key in Defs.RESEARCH:
 		var info: Dictionary = Defs.RESEARCH[key]
 		if info["faction"] != game.faction_of(team) or game.has_tech(team, key) or game.researching(team, key):
@@ -589,6 +731,8 @@ func _find_spot(kind: String) -> Vector2i:
 func _produce() -> void:
 	# Saving up only pauses the army once there is a minimum army to hold the line.
 	var minimum := mini(40, 6 + int(game.clock / 20.0))
+	if _hall_reserve and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 30:
+		return          # (Crown: the new Town Hall first, whatever the army)
 	if (_saving or (_reserve > 0 and _gold() < _reserve + 60)) and _army_supply(game.army(team)) >= minimum:
 		return
 	var army := game.army(team)
@@ -621,12 +765,15 @@ func _produce() -> void:
 				continue
 			while h.eggs > 0:
 				var k := "raptor" if randf() < 0.6 or game.can_train(h, "spitter") != "" else "spitter"
-				if game.can_train(h, "brute") == "" and brutes * 12 < army.size() + 6:
-					k = "brute"
-					brutes += 1
-				elif game.can_train(h, "skywing") == "" and wings * (2 if strategy == "air" else 6) < army.size() + (6 if strategy == "air" else 0):
+				# a Roost and too few Skywings: they come first whenever the essence is there
+				# (spare raptors are offered up at the Brood Pen for it: see _offer)
+				var want_wing: bool = game._has_built(team, "roost") and wings * (2 if strategy == "air" else 6) < army.size() + (6 if strategy == "air" else 0)
+				if want_wing and game.can_train(h, "skywing") == "":
 					k = "skywing"
 					wings += 1
+				elif game.can_train(h, "brute") == "" and brutes * 12 < army.size() + 6:
+					k = "brute"
+					brutes += 1
 				elif game.can_train(h, "bloater") == "" and army.filter(func(u: Unit) -> bool: return u.kind == "bloater").size() * 10 < army.size() and randf() < 0.3:
 					k = "bloater"
 				elif game.can_train(h, "spore_mother") == "" and mothers * 14 < army.size():
@@ -747,7 +894,9 @@ func _tend_wagon() -> void:
 
 
 func _army() -> void:
-	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon")
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon" and u.order != "sacrifice")
+	if _crown():
+		army = _guard_new_hall(army)
 	# Bloaters out of gas float home to fill up again (faster on the swamp)
 	for u in game.army(team):
 		if u.kind == "bloater" and u.deflate == "flat" and u.order != "move":
@@ -1068,6 +1217,7 @@ func _abilities() -> void:
 	_spells()
 	if _brood():
 		_skywings()
+		_offer()
 	if _clock():
 		_overloads()
 	if not _crown():
@@ -1154,6 +1304,55 @@ func _skywings() -> void:
 		elif u.sky == "ground" and (flyers > 0 or (ground == 0 and u.target == null)):
 			u.cmd_take_off()
 			u.sky_cd = 6.0
+
+
+## Brood: when it can hatch essence-costing creatures (Skywings, Bloaters, Brutes, Spore
+## Mothers; Spitters too) but lacks the essence and its biomass bank is high, spare Raptors
+## at home are offered up at the Brood Pen (3 essence each). With almost none left, a few
+## go whatever the bank (Spitters need 5 an egg).
+var _offer_next := 0.0
+
+
+func _offer() -> void:
+	if game.clock < _offer_next or _hall_reserve:
+		return
+	var pen := game.nearest_of(game.center_of_team(team), team, "brood_pen")
+	if pen == null:
+		return
+	var want := 0
+	for k in ["skywing", "bloater", "brute", "spore_mother", "spitter"]:
+		var u: Dictionary = Defs.UNITS[k]
+		var reqs: Array = u["requires"] if u.get("requires", "") is Array else [u["requires"]]
+		if reqs.all(func(r: String) -> bool: return game._has_built(team, r)):
+			want = maxi(want, int(u.get("cost2", 0)))
+	if want == 0:
+		return
+	var target := want
+	var pending := 0
+	for u in game.army(team):
+		if u.order == "sacrifice":
+			pending += Game.sacrifice_value(u.kind)
+	var have := _res2() + pending
+	# a little essence always (Spitters, 5 an egg, are the swarm's answer to armour and
+	# flyers): a few raptors whatever the bank; more only with biomass piling up
+	var small := have < 10.0
+	if have >= target or (not small and _gold() < _lv([700, 550, 450])):
+		return
+	if small and _gold() < 100:
+		return
+	var in_wave := {}
+	for g in _swarm:
+		for u in g[0]:
+			in_wave[u] = true
+	var raptors := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "raptor" and not in_wave.has(u) \
+		and u.order in ["idle", "move", "amove"] and u.target == null)
+	if raptors.size() <= 6:
+		return              # (keep a few at home)
+	raptors.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(pen.center()) < b.position.distance_squared_to(pen.center()))
+	var n := mini(mini(int(ceil((target - have) / 3.0)), 4 if small and _gold() < _lv([700, 550, 450]) else 9), raptors.size() - 6)
+	for u in raptors.slice(0, n):
+		u.cmd_sacrifice()
+	_offer_next = game.clock + _lv([40.0, 25.0, 15.0])
 
 
 ## Clockwork: an Ornithopter with a battery overloads a Gearknight (or a Steam Walker)

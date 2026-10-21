@@ -29,7 +29,7 @@ var rig_mine: GoldMine = null    # Clockwork Drill Rig: the mine it drills
 var gold_acc := 0.0
 var crew: Array = []             # workers assigned to this economy structure
 var growth := 0.0                # Farm: 0..1 until the harvest
-var soil := 0.0                  # Town Hall (Crown): gold left in its farmland (Defs.SOIL_RESERVE when fresh)
+var soil := 0.0                  # Town Hall: gold left in its farmland; Hive: biomass left in its ground (full when fresh: reserve())
 var soil_warned := 0             # Town Hall: 1 = told the player it's low, 2 = spent
 var sprite: Sprite2D
 var fire: Effect = null
@@ -55,7 +55,7 @@ const AMBIENT := {
 	"warren": [["smoke", 0.5, 0.74, 1.5, 0.35, Color(0.6, 1.0, 0.3, 0.5)]],
 	"gorge_pit": [["smoke", 0.5, 0.52, 0.9, 0.45, Color(0.6, 1.0, 0.3, 0.55)]],
 	"spore_vent": [["smoke", 0.42, 0.12, 0.8, 0.4, Color(0.75, 1.0, 0.4, 0.6)]],
-	"bone_midden": [["smoke", 0.5, 0.3, 1.6, 0.4, Color(0.75, 0.5, 1.0, 0.5)]],
+	"brood_pen": [["smoke", 0.5, 0.45, 1.6, 0.4, Color(0.75, 0.5, 1.0, 0.5)]],
 	"feeding_pit": [["acid_splash", 0.5, 0.55, 1.4, 0.5, Color(1, 0.6, 0.6, 0.8)]],
 	"clocktower": [["smoke", 0.2, 0.3, 1.1, 0.4, Color(1.2, 1.2, 1.2, 0.6)]],
 	"assembly_works": [["smoke", 0.3, 0.04, 0.9, 0.4, Color(1.2, 1.2, 1.2, 0.6)], ["smoke", 0.86, 0.05, 1.1, 0.4, Color(1.2, 1.2, 1.2, 0.6)]],
@@ -85,8 +85,8 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	hp = max_hp if complete else max_hp * 0.1
 	if d["faction"] == "clockwork":
 		seeded = complete
-	if k == "town_hall":
-		soil = float(Defs.SOIL_RESERVE)
+	if k == "town_hall" or k == "hive":
+		soil = reserve()
 	if d["faction"] == "brood":
 		seeded = complete
 		if complete:
@@ -156,10 +156,16 @@ func farm_speed() -> float:
 	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])
 
 
-## Farm: share of its Town Hall's soil left (0..1); 0 with no hall.
+## Town Hall / Hive: the full reserve of its land (Crown soil, Brood ground).
+func reserve() -> float:
+	return float(Defs.GROUND_RESERVE if kind == "hive" else Defs.SOIL_RESERVE)
+
+
+## Farm / Feeding Pit: share of its hall's soil (ground) left (0..1); 0 with no hall.
+## Town Hall / Hive: its own.
 func soil_left() -> float:
-	var h: Building = game.soil_hall(self) if kind == "farm" else self
-	return clampf(h.soil / Defs.SOIL_RESERVE, 0.0, 1.0) if h else 0.0
+	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "feeding_pit" else self
+	return clampf(h.soil / h.reserve(), 0.0, 1.0) if h else 0.0
 
 
 func _econ(delta: float) -> void:
@@ -177,8 +183,6 @@ func _econ(delta: float) -> void:
 					Sfx.play("done", center())
 		"powder_mill":
 			game.add_res2(team, Defs.MILL_RATE * working_crew() * delta)
-		"bone_midden":
-			game.add_res2(team, Defs.MIDDEN_TRICKLE * delta)
 
 
 func uses_eggs() -> bool:
@@ -446,6 +450,10 @@ func _update_sprite() -> void:
 			# tired soil: the fields fade toward a dry yellow-brown
 			var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
 			sprite.modulate = Color.WHITE.lerp(Color(1.0, 0.78, 0.5), tired)
+		elif kind == "feeding_pit" and built and not dead and game:
+			# spent ground: the pit dries out to a dead grey-brown
+			var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
+			sprite.modulate = Color.WHITE.lerp(Color(0.62, 0.56, 0.48), tired)
 
 
 func die() -> void:

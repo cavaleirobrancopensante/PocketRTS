@@ -34,7 +34,7 @@ const FARM_YIELD := 380           # gold a harvest (fresh soil)
 ## built where a hall fell takes over what was left there). Powder Mills don't tire.
 const SOIL_RESERVE := 9000
 const SOIL_TIRED := 1.0 / 3.0     # share of a harvest that tired soil still pays
-const SOIL_LOW := 0.25            # warn the player below this share of the reserve
+const SOIL_LOW := 0.25            # warn the player below this share of the reserve (Hive ground too)
 const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min)
 const START_POWDER := 80
 ## Personal powder: Musketeers and Cannons carry their own, in shots (one per shot, round
@@ -59,13 +59,33 @@ const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_lo
 ## (Step 3, keg mines, will reuse the keg carry and Game.powder_blast.)
 const KEG := {"blast": 40.0, "radius": 48.0}
 # Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
+## A load pays for the time its round trip takes, at a rate that rises with the pit's
+## distance from its Hive (centre to centre, in tiles): FOOD_RATE biomass per grub-second
+## from FOOD_NEAR tiles in, up to FOOD_BONUS more (+30%) at FOOD_FAR tiles, flat to
+## FOOD_PEAK, then a little less per tile beyond (FOOD_FADE). The trip is estimated as
+## PIT_TIME + FOOD_TRIP seconds a tile of open ground between the two buildings (less the
+## FOOD_REACH a grub needn't walk: it unloads beside each one). So a grub earns ~60-70 biomass
+## a minute within 9 tiles of the Hive and ~88 from 15-24 tiles out (tools/econ_bench.gd pits).
 const PIT_TIME := 2.0             # seconds a grub feeds at the pit before hauling
-const FOOD_BASE := 6.5
-const FOOD_PER_TILE2 := 0.06      # value grows with the square of the distance (in tiles)
-const FOOD_MAX := 40                # a load is worth most from about 23 tiles out; farther only takes longer
-const ESSENCE_PER_SUPPLY := 3     # a body falling near a Bone Midden
-const MIDDEN_RANGE := 12          # tiles
-const MIDDEN_TRICKLE := 0.15      # essence per second per midden
+const FOOD_RATE := 1.2            # biomass per grub-second of round trip (near pits)
+const FOOD_NEAR := 6.0
+const FOOD_FAR := 18.0
+const FOOD_PEAK := 22.0
+const FOOD_BONUS := 0.3
+const FOOD_FADE := 0.015          # share of the rate lost per tile beyond FOOD_PEAK
+const FOOD_TRIP := 0.8            # seconds of round trip per tile walked (mostly on swamp)
+const FOOD_REACH := 1.5           # tiles of the gap a grub doesn't walk
+const FOOD_MAX_D := 32.0          # a load is worth no more from farther out than this
+## Hive ground: the Feeding Pits around a Hive (a pit belongs to the nearest Hive) share one
+## reserve of biomass; every load hauled draws its value from it, and once it's spent those
+## pits yield a third. A new Hive has fresh ground (one grown where a Hive fell takes over
+## what was left there).
+const GROUND_RESERVE := 10500     # (a fully worked Hive draws ~1,000-1,150 a minute: ~10 minutes)
+const ESSENCE_PER_SUPPLY := 3     # a body falling near a Brood Pen
+const PEN_RANGE := 12             # tiles
+## Brood Pen SACRIFICE: a Brood creature offered up at a Pen gives this share of its biomass
+## cost as essence (a Raptor, 25 biomass, gives 3).
+const SACRIFICE := 0.12
 # Clockwork: Winders crank Boilers for energy, split between ore, assembly and wind.
 ## Clockwork economy: every energy building fills batteries by itself; Winders carry them to
 ## an Ore Crusher. A battery gains charge the longer it's on the road (so far crushers pay
@@ -75,6 +95,7 @@ const BATTERY := {
 	"yellow": {"base": 10.0, "gain": 1.0, "overload": 22.0},
 	"blue": {"base": 14.0, "gain": 1.6, "overload": 30.0},
 	"load": 1.0, "blast": 10.0, "splash": 8.0,
+	"ore": 0.7,     # ore per point of charge at the crusher (interim pace until the Clockwork rework; was 1.0)
 }
 const REPAIR_COST := 0.2          # ore per hit point a Winder repairs
 const ENERGY_PER_WINDER := 3.5
@@ -104,11 +125,11 @@ const FACTIONS := {
 	},
 	"brood": {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
-		"build": ["hive", "clutch_mound", "feeding_pit", "bone_midden", "spore_vent", "warren", "gorge_pit", "roost"],
+		"build": ["hive", "clutch_mound", "feeding_pit", "brood_pen", "spore_vent", "warren", "gorge_pit", "roost"],
 		"start_workers": 5, "ready": true, "max_supply": 160,
-		"res": ["Biomass", "Essence"], "econ": {"feeding_pit": 3, "bone_midden": 1},
+		"res": ["Biomass", "Essence"], "econ": {"feeding_pit": 3, "brood_pen": 1},
 		"start": ["feeding_pit"],
-		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Hive: the longer the haul, the richer the food. Essence comes from the fallen. Army cap 160.",
+		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Hive: the longer the haul, the richer the food, and each Hive's ground runs out in time. Essence comes from the fallen and from offerings at the Brood Pen. Army cap 160.",
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
@@ -184,7 +205,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Spitters", "hp": 45, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
 		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
-		"acid": 3.0, "requires": ["warren", "bone_midden"], "cost2": 5, "anti_air": true, "faction": "brood",
+		"acid": 3.0, "requires": ["warren", "brood_pen"], "cost2": 5, "anti_air": true, "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
 	},
 	"brute": {
@@ -302,7 +323,7 @@ const BUILDINGS := {
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
 		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits.",
+		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Its ground holds a reserve of biomass: once the pits have drawn it out they yield a third. Expand to fresh ground.",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
@@ -355,12 +376,12 @@ const BUILDINGS := {
 	"feeding_pit": {
 		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 5, "swamp": 4, "faction": "brood",
-		"about": "Up to 5 grubs haul food from here to the nearest Hive. Far from a Hive = richer food.",
+		"about": "Up to 5 grubs haul food from here to the nearest Hive. Farther from the Hive pays more per grub (best from about 18 to 22 tiles). Loads draw on that Hive's ground: spent ground yields a third.",
 	},
-	"bone_midden": {
-		"name": "Bone Midden", "hp": 500, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(3, 3),
+	"brood_pen": {
+		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 6, "trains": [], "swamp": 4, "faction": "brood",
-		"about": "Gathers essence from every body that falls nearby (and a little on its own).",
+		"about": "Turns every body that falls nearby (friend or foe) into essence. SACRIFICE: Brood creatures brought here are offered up for essence (12% of their biomass cost: 3 a Raptor).",
 	},
 	"spore_vent": {
 		"name": "Spore Vent", "hp": 300, "armor": 0, "cost": 90, "time": 16.0, "size": Vector2i(2, 2),

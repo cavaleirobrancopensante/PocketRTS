@@ -434,6 +434,20 @@ func _build_card() -> Array:
 						if u.kind == "grub":
 							u.cmd_harvest()
 					toast("Harvesting: these grubs gather the fallen around here and carry them home as essence."), true, "", ""])
+		# Brood: offer the selected creatures up at the nearest Brood Pen for essence
+		var offer := units.filter(func(u: Unit) -> bool: return u.can_sacrifice())
+		if not offer.is_empty():
+			var has_pen := game.nearest_of(offer[0].position, game.human, "brood_pen") != null
+			var ess := 0
+			for u in offer:
+				ess += Game.sacrifice_value(u.kind)
+			list.append(["brood_pen", "SACRIFICE", func() -> void:
+				var n := 0
+				for u in game.selected_units():
+					if u.can_sacrifice():
+						u.cmd_sacrifice()
+						n += 1
+				toast("%d offered up: they go to the nearest Brood Pen (+%d essence)." % [n, ess]), has_pen, "Needs a Brood Pen.", "+%d" % ess])
 		for dk in ["cannon", "tesla_cart", "spore_mother"]:
 			var kk: String = dk
 			if units.any(func(u: Unit) -> bool: return u.kind == kk):
@@ -631,7 +645,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "M", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "ROTATE": "R", "GRUBS": "Y", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "N", "PLACE": "P",
 	"BAYONETS": "F", "MUSKETS": "F", "PUSH": "E", "CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "START": "P", "END": "P",
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "K", "START": "P", "END": "P",
 	"LOAD": "L", "UNLOAD": "U", "DROP HERE": "U", "COURIER": "C", "OVERLOAD": "O", "LAND": "L", "TAKE OFF": "L", "SUPPLY": "U"}
 
 
@@ -1057,18 +1071,22 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "powder_mill":
 				info = "%d/%d grinding · +%.1f powder/s" % [bb.working_crew(), int(bb.d["crew"]), Defs.MILL_RATE * bb.working_crew()]
 			elif bb.kind == "feeding_pit":
-				info = "%d/5 grubs · each load is worth %d" % [bb.crew.size(), game.food_value(bb)]
+				var gl := bb.soil_left()
+				info = "%d/5 grubs · each load is worth %.1f · Ground: %d%%%s" % [bb.crew.size(), game.load_value(bb), int(round(gl * 100)),
+					" (spent: a third; grow a Hive on fresh ground)" if gl <= 0.0 else ""]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
 				info = "%d/%d batteries ready (one every %.1f s) · %d/%d Winders carrying" % [bb.batteries, int(bat[1]), float(bat[0]), bb.crew.size(), int(bb.d["crew"])]
 			elif bb.kind == "ore_crusher":
 				var bi: Dictionary = Defs.BATTERY["blue" if game.blue_energy(e.team) else "yellow"]
-				info = "%s batteries: %d ore + %.1f per second on the road (they burst after %d s)" % ["Blue" if game.blue_energy(e.team) else "Yellow", int(bi["base"]), float(bi["gain"]), int(bi["overload"])]
-			elif bb.kind == "bone_midden":
-				info = "Bodies falling within %d tiles give essence." % Defs.MIDDEN_RANGE
-			elif bb.uses_eggs() and e.team == game.human:
+				info = "%s batteries: %d ore + %.1f per second on the road (they burst after %d s)" % ["Blue" if game.blue_energy(e.team) else "Yellow", int(round(float(bi["base"]) * float(Defs.BATTERY["ore"]))), float(bi["gain"]) * float(Defs.BATTERY["ore"]), int(bi["overload"])]
+			elif bb.kind == "brood_pen":
+				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
+			elif bb.uses_eggs() and (e.team == game.human or game.demo):
 				var nxt := "" if bb.eggs + bb.queue.size() >= Defs.EGGS_MAX else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
-				info = "Eggs: %d / %d%s" % [bb.eggs, Defs.EGGS_MAX, nxt]
+				var gl := bb.soil_left()
+				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, Defs.EGGS_MAX, nxt, int(round(gl * 100)), int(bb.soil),
+					" spent: pits yield a third, grow a Hive on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
 		elif e is GoldMine:
 			info = "%d gold left." % (e as GoldMine).gold
 		if e.team >= 0 and e.team != game.human:
@@ -1272,6 +1290,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. One of the gun's 8 shots.",
 		"STORM": "Static storm: a ring of lightning on a spot for 3 s. Everything inside is stunned, your own units too, and enemies take damage. Costs 70 charge; the Stormcaller recharges only inside a Clockwork field.",
 		"HARVEST": "Harvest the fallen: the grubs stay here and wrap every body nearby (friend or foe) in a cocoon, carrying it to a Hive as essence. Veterans hold more. Bodies rot away after 2 minutes.",
+		"SACRIFICE": "Sacrifice: the selected Brood creatures (not grubs) go to the nearest Brood Pen and are offered up there, each for 12% of its biomass cost as essence (a Raptor 3, a Spitter 5, a Brute 18). Turn spare biomass into essence for Skywings, Bloaters, Brutes and Spore Mothers.",
 		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
 		"SPIT": "Spit: lob acid from range (160). Every glob uses up gas, so the final burst gets smaller.",
 		"MIASMA": "Mending miasma: a green cloud for 8 s. Brood inside heal up to 30% of their health. Clouds don't stack. 30 essence, then 18 s to recover.",
