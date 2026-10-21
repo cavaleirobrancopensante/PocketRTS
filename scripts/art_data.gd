@@ -403,7 +403,7 @@ const UNITS := {
 		"walk_s": 5,
 		"walk_se": 5,
 	}},
-	"cuirassier": {"cell": Vector2i(94, 70), "anchor": Vector2(47, 66), "frames": {
+	"cuirassier": {"cell": Vector2i(98, 70), "anchor": Vector2(49, 66), "frames": {
 		"attack_e": 4,
 		"attack_n": 4,
 		"attack_ne": 4,
