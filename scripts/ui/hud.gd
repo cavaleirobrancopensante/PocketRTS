@@ -1068,8 +1068,9 @@ func confirm_place(queued := false) -> void:
 		if builders.is_empty() and not game.selected_units().is_empty():
 			toast("Each grub becomes one building: every selected grub already has one.")
 			return
-	# One builder unless several are selected on purpose.
-	if builders.size() > 3 or brood:
+	# Crown: every selected labourer builds it together; a grub becomes the building, so
+	# one (and a Clockwork site takes one Winder: Game.place_building)
+	if brood:
 		builders.sort_custom(func(a: Unit, c: Unit) -> bool:
 			var g := Vector2(controls.ghost_cell) * Defs.TILE
 			var pa: Vector2 = a.plan_end() if queued else a.position
@@ -1586,7 +1587,7 @@ func _draw_panel(font: Font) -> void:
 	var x := Rect2(r.end.x - 30, r.position.y + 2, 28, 28)
 	if sel.size() != 1 or not (sel[0] is Building and sel[0].team == game.human and not (sel[0] as Building).queue.is_empty()):
 		UiStyle.draw_button(self, x, Settings.pc() and x.has_point(_mouse()))
-		_text(UiStyle.bold_font(), x.get_center() + Vector2(0, 6), "✕", 16, UiStyle.TEXT, 1)
+		_text(UiStyle.bold_font(), x.get_center() + Vector2(0, 6), "×", 16, UiStyle.TEXT, 1)
 		_buttons_extra = [{"rect": x, "cb": func() -> void: game.set_selection([]), "enabled": true}]
 	else:
 		_buttons_extra = []

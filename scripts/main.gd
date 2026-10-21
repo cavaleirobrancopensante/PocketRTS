@@ -573,7 +573,7 @@ func _track_row(stem: String, title: String, mood: String) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	var play := Button.new()
-	play.text = ("♪  " if Music.me._current == stem else "") + title
+	play.text = ("» " if Music.me._current == stem else "") + title
 	play.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	play.custom_minimum_size.y = 46
@@ -889,7 +889,7 @@ func _slot_row(i: int) -> Control:
 	tb.add_theme_font_size_override("font_size", 22)      # (the bold font: it has the arrow)
 	h.add_child(tb)
 	if lobby["slots"].size() > 2:
-		var x := _button("✕", func() -> void:
+		var x := _button("×", func() -> void:
 			lobby["slots"].remove_at(i)
 			show_skirmish())
 		x.custom_minimum_size = Vector2(46, 58)
