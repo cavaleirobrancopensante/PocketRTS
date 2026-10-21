@@ -1342,6 +1342,8 @@ var _rotate_paused := false
 
 
 var _save_t := 0.0
+var _f11_hint: PanelContainer
+var _f11_t := 0.0
 
 
 ## Autosave the match every 15 s (and the log with it), so closing the game loses nothing.
@@ -1373,6 +1375,10 @@ func _process(delta: float) -> void:
 		if _save_t >= 15.0:
 			_save_t = 0.0
 			_autosave()
+	_f11_t -= delta
+	if _f11_t <= 0.0:
+		_f11_t = 0.5
+		_update_f11_hint()
 	if _rotate == null:
 		return
 	var vs := get_viewport().get_visible_rect().size
@@ -1387,6 +1393,31 @@ func _process(delta: float) -> void:
 			elif not portrait and _rotate_paused:
 				get_tree().paused = false
 				_rotate_paused = false
+
+
+## Browser on a computer: "Press F11 for full screen" until the browser is full screen.
+## (A page can't make the browser go full screen itself in a way Esc won't undo.)
+func _update_f11_hint() -> void:
+	if not OS.has_feature("web") or not Settings.pc():
+		if _f11_hint:
+			_f11_hint.visible = false
+		return
+	var full := bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.innerHeight >= screen.height - 2)", true))
+	if _f11_hint == null:
+		var layer := CanvasLayer.new()
+		layer.layer = 30
+		add_child(layer)
+		_f11_hint = PanelContainer.new()
+		_f11_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_f11_hint.add_theme_stylebox_override("panel", UiStyle.box(Color(0.105, 0.09, 0.07, 0.85), UiStyle.TRIM, 2, 10, 16.0))
+		var l := UiStyle.text("Press F11 for full screen", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_CENTER, true)
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_f11_hint.add_child(l)
+		_f11_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		_f11_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_f11_hint.position.y = 74
+		layer.add_child(_f11_hint)
+	_f11_hint.visible = not full
 
 
 ## A phone outline with a turning arrow.
