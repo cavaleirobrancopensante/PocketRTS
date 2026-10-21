@@ -3544,6 +3544,8 @@ func _animate(delta: float) -> void:
 			fps = 6.0
 		"reload":
 			fps = float(n) / maxf(_cooldown() * 0.8, 0.5)
+			if kind == "cannon" or kind == "mortar":
+				loop = false        # the crew loads once, then stands ready on the last frame
 		"deploy":
 			fps = float(n) / switch_time()
 			loop = false
