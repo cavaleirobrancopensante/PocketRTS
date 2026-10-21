@@ -1044,29 +1044,62 @@ func set_paused(v: bool) -> void:
 
 # ------------------------------------------------------------------ drawing
 
+## One player's resources as top-bar pills; returns where the next pill goes.
+func _res_pills(font: Font, t: int, x: float) -> float:
+	var pl: Dictionary = game.players[t]
+	var fac := game.faction_of(t)
+	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.35, 0.33, 0.36)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
+		"clockwork": [Color(0.7, 0.72, 0.78), Color(0.45, 0.75, 1.0)]}[fac]
+	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
+	var r2 := "%d" % int(pl["res2"])
+	if fac == "clockwork":
+		r2 = "%d energy (%s batteries stored)" % [int(game.energy[t]), "blue" if game.blue_energy(t) else "yellow"]
+	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
+	var used := game.supply_used(t)
+	var cap: int = pl["cap"]
+	return _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
+
+
+## One player's resources in a short line (watching with all vision).
+func _res_line(t: int) -> String:
+	var pl: Dictionary = game.players[t]
+	var fac := game.faction_of(t)
+	var names: Array = {"crown": ["gold", "powder"], "brood": ["biomass", "essence"], "clockwork": ["ore", "energy"]}[fac]
+	var r2: int = int(game.energy[t]) if fac == "clockwork" else int(pl["res2"])
+	return "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
+
+
 func _draw() -> void:
 	if game == null:
 		return
 	var font := ThemeDB.fallback_font
 	var vs := _vs()
-	var pl: Dictionary = game.players[game.human]
 	if game.spectator and game.spectator.fade > 0.0:
 		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, game.spectator.fade))     # the follow camera's cut
-	# Top bar: resource pills, supply, clock and the menu button.
-	var fac := game.faction_of(game.human)
+	# Top bar: resource pills, supply, clock and the menu button. Watching computers play:
+	# the pills are the player whose eyes you're using; with all vision, a line per player.
+	var shown := game.human
+	if game.demo:
+		shown = game.view_team
+	var fac := game.faction_of(maxi(shown, 0))
 	var acc := UiStyle.accent(fac)
-	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.35, 0.33, 0.36)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
-		"clockwork": [Color(0.7, 0.72, 0.78), Color(0.45, 0.75, 1.0)]}[fac]
-	var res := _res()
 	var x := 8.0
-	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
-	var r2 := "%d" % int(pl["res2"])
-	if fac == "clockwork":
-		r2 = "%d energy (%s batteries stored)" % [int(game.energy[game.human]), "blue" if game.blue_energy(game.human) else "yellow"]
-	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
-	var used := game.supply_used(game.human)
-	var cap: int = pl["cap"]
-	x = _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
+	if shown >= 0:
+		x = _res_pills(font, shown, x)
+	else:
+		var lines: Array = []
+		for t in game.players.size():
+			if not game.eliminated[t]:
+				lines.append(t)
+		var wmax := 0.0
+		for t in lines:
+			wmax = maxf(wmax, UiStyle.bold_font().get_string_size(_res_line(t), HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x)
+		UiStyle.draw_panel(self, Rect2(4, 4, wmax + 34, lines.size() * 20 + 10), acc, 0.85)
+		for n in lines.size():
+			var t: int = lines[n]
+			draw_rect(Rect2(12, 11 + n * 20, 10, 12), game.team_colour(t))
+			_text(UiStyle.bold_font(), Vector2(28, 22 + n * 20), _res_line(t), 13, UiStyle.TEXT)
+		x = 8.0
 	var secs := int(game.clock)
 	var clock_r := Rect2(maxf(vs.x * 0.5 - 44, x), 4, 88, 30)
 	UiStyle.draw_panel(self, clock_r, acc, 0.8)
