@@ -430,7 +430,7 @@ const TOPTER := {"load": 0.8, "wind": 0.8, "low": 0.5, "reach": 22.0}
 const OVERLOAD := {"time": 12.0, "damage": 1.5, "speed": 1.3, "cooldown": 0.75, "after": 0.25, "reach": 30.0}
 ## Veterancy: every kill adds damage (to a cap); a fallen unit's body holds essence for the
 ## Brood: a little for its size, more for every kill it made.
-const VET := {"per_kill": 0.05, "max": 0.5}
+const VET := {"per_kill": 0.01, "max": 0.5}
 const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
