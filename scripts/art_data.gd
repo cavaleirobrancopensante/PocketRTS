@@ -279,7 +279,7 @@ const UNITS := {
 		"idle_se": 2,
 		"repair_e": 5,
 		"repair_n": 4,
-		"repair_ne": 4,
+		"repair_ne": 3,
 		"repair_s": 3,
 		"repair_se": 4,
 		"walk_e": 5,

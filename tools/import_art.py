@@ -58,7 +58,8 @@ UNITS = {
     # The Tesla Cart (the spider cart) is built by tools/import_round9.py from
     # art/clockwork/tesla_spider.png; the old art/clockwork/tesla_cart.png is no longer used.
     "winder": {"rows": ["idle", "wind", "walk", "repair", "attack", "death"], "dilate": 2,
-               "dir": "clockwork", "mask": "alpha", "scale": 0.27 * 1.5},
+               "dir": "clockwork", "mask": "alpha", "scale": 0.27 * 1.5,
+               "drop": [("repair", "ne", 1)]},        # sliced in half on the sheet
 }
 BUILDINGS = ["town_hall", "cottage", "barracks", "foundry"]
 BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]

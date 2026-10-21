@@ -1482,6 +1482,8 @@ func _physics_process(delta: float) -> void:
 			var drain := Defs.WIND_DECAY * game.wind_decay_mult(team) * float(d.get("wind_drain", 1.0))
 			if kind == "thresher":
 				drain += float(Defs.THRESHER["drain"]) * spin
+			if braced:
+				drain *= float(Defs.BRACE["drain"])
 			wind = maxf(0.0, wind - drain * delta)
 		if kind == "thresher":
 			# the saws spin up while it keeps cutting, and down a second after it stops

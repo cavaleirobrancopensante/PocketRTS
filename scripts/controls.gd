@@ -566,9 +566,10 @@ func _finish_box(add := false) -> void:
 	for u in game.units:
 		if u.team == game.human and not u.dead and not u.off_field and r.has_point(xf * (u.position + Vector2(0, -10))):
 			list.append(u)
-	# Army in the box? Leave the labourers out.
+	# Army in the box? Leave out the workers busy at the economy (farming, hauling, building);
+	# ones out with the army (repairing, winding, idle) come along.
 	if list.any(func(u: Unit) -> bool: return not u.is_worker()):
-		list = list.filter(func(u: Unit) -> bool: return not u.is_worker())
+		list = list.filter(func(u: Unit) -> bool: return not u.is_worker() or u.work == "")
 	if add:
 		for x in game.selection:
 			if is_instance_valid(x) and not list.has(x):

@@ -127,7 +127,7 @@ const ARC := {"drain": 0.05, "speed": 420.0}
 ## and shots (musket balls, spit, arc balls, spines) at friendly units up to `reach` px
 ## behind it, inside the `cone` (cosine) away from the shooter, hit the shield instead
 ## (the shooter must be in front of it: `front`).
-const BRACE := {"armor": 7, "reach": 120.0, "cone": 0.45, "front": 0.2, "switch": 0.6}
+const BRACE := {"armor": 7, "reach": 120.0, "cone": 0.45, "front": 0.2, "switch": 0.6, "drain": 2.5}   # drain: battery use while braced (x normal)
 ## Wind-up Soldiers run on a spring, not a battery: `run` s away from a field and they run
 ## down; a Winder cranks one back up at `crank` a second (or a field does).
 const SPRING := {"run": 50.0, "crank": 0.6}
@@ -303,7 +303,7 @@ const UNITS := {
 		"name": "Bulwark", "hp": 340, "armor": 4, "speed": 46, "cost": 175, "time": 26.0, "supply": 3,
 		"sight": 7, "range": 34, "damage": 9, "cooldown": 1.6, "aim": 0.3, "radius": 16, "from": "assembly_works",
 		"requires": "boiler", "faction": "clockwork",
-		"about": "A tower shield on legs, with a weak piston lance. BRACE plants the shield: it can't move, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead.",
+		"about": "A tower shield on legs, with a weak piston lance. BRACE plants the shield (holding it up burns its battery 2.5x as fast): it can't move, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead.",
 	},
 	"arc_thrower": {
 		"tags": ["armored"],
