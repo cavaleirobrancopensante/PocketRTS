@@ -29,6 +29,8 @@ var rig_mine: GoldMine = null    # Clockwork Drill Rig: the mine it drills
 var gold_acc := 0.0
 var crew: Array = []             # workers assigned to this economy structure
 var growth := 0.0                # Farm: 0..1 until the harvest
+var soil := 0.0                  # Town Hall (Crown): gold left in its farmland (Defs.SOIL_RESERVE when fresh)
+var soil_warned := 0             # Town Hall: 1 = told the player it's low, 2 = spent
 var sprite: Sprite2D
 var fire: Effect = null
 var rubble_t := 0.0
@@ -83,6 +85,8 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	hp = max_hp if complete else max_hp * 0.1
 	if d["faction"] == "clockwork":
 		seeded = complete
+	if k == "town_hall":
+		soil = float(Defs.SOIL_RESERVE)
 	if d["faction"] == "brood":
 		seeded = complete
 		if complete:
@@ -147,18 +151,29 @@ func working_crew() -> int:
 	return n
 
 
+## Farm: share of full growing speed (1.0 with a full crew of 8; every hand counts the same).
+func farm_speed() -> float:
+	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])
+
+
+## Farm: share of its Town Hall's soil left (0..1); 0 with no hall.
+func soil_left() -> float:
+	var h: Building = game.soil_hall(self) if kind == "farm" else self
+	return clampf(h.soil / Defs.SOIL_RESERVE, 0.0, 1.0) if h else 0.0
+
+
 func _econ(delta: float) -> void:
 	crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
 	match kind:
 		"farm":
-			var w := mini(working_crew(), 3)
-			growth += (Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * w / 3.0) / Defs.FARM_GROW * delta
+			growth += farm_speed() / Defs.FARM_GROW * delta
 			if growth >= 1.0:
 				growth = 0.0
-				game.add_gold(team, Defs.FARM_YIELD)
+				var pay := game.harvest(self)
+				_update_sprite()
 				Sfx.play("work/farm_harvest", center(), -4.0)
 				if team == game.human:
-					game.float_text(center() + Vector2(0, -30), "+%d harvest" % Defs.FARM_YIELD, Color(1, 0.9, 0.4))
+					game.float_text(center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 					Sfx.play("done", center())
 		"powder_mill":
 			game.add_res2(team, Defs.MILL_RATE * working_crew() * delta)
@@ -427,6 +442,10 @@ func _update_sprite() -> void:
 		sprite.modulate = Color(1, 1, 1, 0.3)
 	else:
 		sprite.modulate = Color(1, 1, 1, 0.55 + 0.45 * progress) if not built and not dead else Color.WHITE
+		if kind == "farm" and built and not dead and game:
+			# tired soil: the fields fade toward a dry yellow-brown
+			var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
+			sprite.modulate = Color.WHITE.lerp(Color(1.0, 0.78, 0.5), tired)
 
 
 func die() -> void:

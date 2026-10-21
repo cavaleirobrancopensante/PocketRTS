@@ -1047,7 +1047,13 @@ func _draw_panel(font: Font) -> void:
 			elif not bb.built:
 				info = "%s: %d%%" % ["Growing" if bb.d["faction"] == "brood" else "Under construction", int(bb.progress * 100)]
 			elif bb.kind == "farm":
-				info = "Harvest in %ds · %d/3 working · +%d gold" % [int(ceil((1.0 - bb.growth) * Defs.FARM_GROW / maxf(Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(bb.working_crew(), 3) / 3.0, 0.01))), bb.working_crew(), Defs.FARM_YIELD]
+				var soil := bb.soil_left()
+				info = "Harvest in %ds · %d/%d working · +%d gold · Soil: %d%%%s" % [int(ceil((1.0 - bb.growth) * Defs.FARM_GROW / maxf(bb.farm_speed(), 0.01))),
+					bb.working_crew(), int(bb.d["crew"]), game.harvest_value(bb), int(round(soil * 100)), " (tired: expand)" if soil <= 0.0 else ""]
+			elif bb.kind == "town_hall" and (e.team == game.human or game.demo):
+				var soil := bb.soil_left()
+				info = "Soil: %d%% · %d gold left in the farmland%s · allows 2 Farms and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
+					" (spent: farms pay a third; expand to fresh land)" if soil <= 0.0 else (" (running low)" if soil < Defs.SOIL_LOW else "")]
 			elif bb.kind == "powder_mill":
 				info = "%d/%d grinding · +%.1f powder/s" % [bb.working_crew(), int(bb.d["crew"]), Defs.MILL_RATE * bb.working_crew()]
 			elif bb.kind == "feeding_pit":

@@ -105,6 +105,7 @@ var over := false
 var winner := -1
 var clock := 0.0
 var stats: Array = []
+var soil_scars: Array = []               # [centre, soil left] where a Crown Town Hall fell
 var _sample_t := 0.0
 var mlog: MatchLog              # the playtest log (copied from the end screen)
 var _first_of := {}             # "team:kind" -> true once that player has had one
@@ -745,7 +746,7 @@ func _start_positions() -> void:
 			var site := free_site(t, u.position)
 			if site:
 				u.cmd_gather(site)
-		players[t]["gold"] = Defs.START_GOLD
+		players[t]["gold"] = int(f.get("start_gold", Defs.START_GOLD))
 	_update_swamp()
 
 
@@ -819,10 +820,67 @@ func free_site(t: int, p: Vector2) -> Building:
 		if b.crew.size() >= int(b.d["crew"]):
 			continue
 		var dd: float = b.center().distance_to(p) + b.crew.size() * 40.0
+		if b.kind == "farm" and b.soil_left() <= 0.0:
+			dd += 1500.0        # tired soil: new hands go to fresh fields first
 		if dd < bd:
 			bd = dd
 			best = b
 	return best
+
+
+## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one).
+func soil_hall(farm: Building) -> Building:
+	return nearest_hall(farm.center(), farm.team)
+
+
+## A Farm's harvest: draws its yield from its hall's soil; tired soil pays a third.
+## Adds the gold and returns what it paid.
+func harvest(farm: Building) -> int:
+	var h := soil_hall(farm)
+	var fresh := 0.0
+	if h:
+		fresh = minf(h.soil, float(Defs.FARM_YIELD))
+		h.soil -= fresh
+	var pay := int(round(fresh + (Defs.FARM_YIELD - fresh) * Defs.SOIL_TIRED))
+	add_gold(farm.team, pay)
+	if h:
+		_soil_check(h)
+	return pay
+
+
+## What a Farm's next harvest would pay (no side effects).
+func harvest_value(farm: Building) -> int:
+	var h := soil_hall(farm)
+	var fresh := minf(h.soil, float(Defs.FARM_YIELD)) if h else 0.0
+	return int(round(fresh + (Defs.FARM_YIELD - fresh) * Defs.SOIL_TIRED))
+
+
+func _soil_check(h: Building) -> void:
+	var left := h.soil / Defs.SOIL_RESERVE
+	var level := 2 if h.soil <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
+	if level <= h.soil_warned:
+		return
+	h.soil_warned = level
+	if mlog:
+		mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (its farms pay a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+	if h.team == human and not demo and hud:
+		hud.toast("The soil around your Town Hall is tired: expand to fresh land." if level == 2
+			else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
+		Sfx.play("done", h.center())
+	for b in buildings:
+		if b.kind == "farm" and b.team == h.team and not b.dead and b.built:
+			b._update_sprite()
+
+
+## A Town Hall raised where one fell takes over that tired land.
+func _take_scar(h: Building) -> void:
+	for i in soil_scars.size():
+		var sc: Array = soil_scars[i]
+		if (sc[0] as Vector2).distance_to(h.center()) <= Defs.HALL_SPACING * T:
+			h.soil = float(sc[1])
+			h.soil_warned = 2 if h.soil <= 0.0 else (1 if h.soil / Defs.SOIL_RESERVE < Defs.SOIL_LOW else 0)
+			soil_scars.remove_at(i)
+			return
 
 
 func halls_of(t: int, built_only := true) -> Array:
@@ -1011,6 +1069,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 			b.rig_mine = m
 	world.add_child(b)
 	buildings.append(b)
+	if k == "town_hall":
+		_take_scar(b)
 	if Defs.BUILDINGS[k].get("gate", false):
 		_mark(c, b.size, 3)
 		gate_team[idx(c)] = t
@@ -1126,6 +1186,8 @@ func _killer(e: Entity) -> int:
 
 
 func on_building_died(b: Building) -> void:
+	if b.kind == "town_hall" and b.soil < Defs.SOIL_RESERVE:
+		soil_scars.append([b.center(), b.soil])     # the land stays tired for the next hall here
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
 	selection.erase(b)

@@ -212,9 +212,9 @@ class Tracker:
 				var lg: float = farm_g.get(b, b.growth)
 				if b.growth < lg - 1e-6:
 					c["harvests"] += 1
-					c["growth_gold"] += (1.0 - lg + b.growth) * Defs.FARM_YIELD
+					c["growth_gold"] += (1.0 - lg + b.growth) * g.harvest_value(b)
 				else:
-					c["growth_gold"] += (b.growth - lg) * Defs.FARM_YIELD
+					c["growth_gold"] += (b.growth - lg) * g.harvest_value(b)
 				farm_g[b] = b.growth
 
 
@@ -237,7 +237,7 @@ func _ai_run(fac: String) -> void:
 	head += ["crew_slots", "supply_used", "supply_cap", "army_supply", "army_value"]
 	match fac:
 		"crown":
-			head += ["harvests", "farm_gold_incl_growth"]
+			head += ["harvests", "farm_gold_incl_growth", "soil_pct_per_hall"]
 		"brood":
 			head += ["food_loads", "avg_load_value", "pit_dists_tiles", "pit_values"]
 		"clockwork":
@@ -281,7 +281,10 @@ func _ai_run(fac: String) -> void:
 		row += [crew, g.supply_used(0), g.players[0]["cap"], asup, av]
 		match fac:
 			"crown":
-				row += [tr.c["harvests"], int(tr.c["growth_gold"])]
+				var soil: Array = []
+				for h in g.halls_of(0):
+					soil.append(int(round(h.soil_left() * 100)))
+				row += [tr.c["harvests"], int(tr.c["growth_gold"]), " ".join(soil.map(func(x): return str(x)))]
 			"brood":
 				var ds: Array = []
 				var vs: Array = []
@@ -311,7 +314,7 @@ func _build_out(g: Game, t: int) -> void:
 	var order: Array = []
 	match fac:
 		"crown":
-			order = ["farm", "farm", "farm", "farm", "powder_mill"]
+			order = ["farm", "farm", "powder_mill"]
 		"brood":
 			order = ["feeding_pit", "feeding_pit", "feeding_pit", "bone_midden"]
 		"clockwork":

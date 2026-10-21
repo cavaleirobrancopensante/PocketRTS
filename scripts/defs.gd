@@ -23,10 +23,19 @@ const REPAIR_RATE := 14.0         # hp per second a Winder restores
 const ECON_RANGE := 14            # tiles from a hall
 const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
 # Crown: farms grow (faster with labourers working them) and pay out a whole harvest.
+# Each Town Hall allows 2 Farms (crew 8) and 1 Powder Mill (crew 6): a full base is 16
+# farmers + 6 millers, ~1,140 gold and ~120 powder a minute.
 const FARM_GROW := 40.0           # seconds to ripen with a full crew
 const FARM_BASE := 0.15           # share of that speed with nobody working it
-const FARM_YIELD := 280
-const MILL_RATE := 0.35           # powder per second per labourer at a Powder Mill (2 mills x 3 per hall: 2.1/s)
+const FARM_YIELD := 380           # gold a harvest (fresh soil)
+## Soil fatigue: each Town Hall's farmland holds a fixed reserve of gold, shared by the farms
+## that belong to it (a farm belongs to the nearest hall). Every harvest draws its yield from
+## the reserve; once it's spent those farms pay a third. A new hall brings fresh soil (one
+## built where a hall fell takes over what was left there). Powder Mills don't tire.
+const SOIL_RESERVE := 9000
+const SOIL_TIRED := 1.0 / 3.0     # share of a harvest that tired soil still pays
+const SOIL_LOW := 0.25            # warn the player below this share of the reserve
+const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min)
 const START_POWDER := 80
 ## Personal powder: Musketeers and Cannons carry their own, in shots (one per shot, round
 ## shot or canister alike). A dry Musketeer fixes bayonets by itself until it has `rearm`
@@ -88,9 +97,9 @@ const FACTIONS := {
 	"crown": {
 		"name": "The Crown", "hall": "town_hall", "worker": "labourer", "supply": "cottage",
 		"build": ["town_hall", "cottage", "farm", "powder_mill", "wall", "gate", "barracks", "foundry", "church"],
-		"start_workers": 5, "ready": true, "max_supply": 100,
-		"res": ["Gold", "Powder"], "econ": {"farm": 4, "powder_mill": 2},
-		"start": ["farm", "farm"],
+		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 100,
+		"res": ["Gold", "Powder"], "econ": {"farm": 2, "powder_mill": 1},
+		"start": ["farm"],
 		"about": "Musketeers and cannons. Farms ripen into big harvests; muskets and cannons burn powder. Slow and strong when dug in.",
 	},
 	"brood": {
@@ -265,7 +274,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 4 Farms and 2 Powder Mills nearby.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 2 Farms and 1 Powder Mill nearby, and its farmland holds a reserve of gold: once the farms have drawn it out they pay a third. Expand to fresh land.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -330,13 +339,13 @@ const BUILDINGS := {
 	},
 	"farm": {
 		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 5, "trains": [], "crew": 3, "faction": "crown",
-		"about": "Ripens into a 350-gold harvest. Up to 3 labourers make it grow faster.",
+		"supply": 0, "sight": 5, "trains": [], "crew": 8, "faction": "crown",
+		"about": "Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: tired soil pays a third.",
 	},
 	"powder_mill": {
 		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 100, "time": 30.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 5, "trains": [], "crew": 3, "faction": "crown",
-		"about": "Up to 3 labourers grind black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Soldiers and wagons nearby refill here.",
+		"supply": 0, "sight": 5, "trains": [], "crew": 6, "faction": "crown",
+		"about": "Up to 6 labourers grind black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Soldiers and wagons nearby refill here.",
 	},
 	"church": {
 		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
@@ -430,7 +439,7 @@ const TOPTER := {"load": 0.8, "wind": 0.8, "low": 0.5, "reach": 22.0}
 const OVERLOAD := {"time": 12.0, "damage": 1.5, "speed": 1.3, "cooldown": 0.75, "after": 0.25, "reach": 30.0}
 ## Veterancy: every kill adds damage (to a cap); a fallen unit's body holds essence for the
 ## Brood: a little for its size, more for every kill it made.
-const VET := {"per_kill": 0.05, "max": 0.5}
+const VET := {"per_kill": 0.01, "max": 0.5}
 const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles

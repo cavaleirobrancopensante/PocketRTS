@@ -42,7 +42,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"players": game.players, "stats": game.stats, "eliminated": game.eliminated,
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
 		"zoom": game.camera.zoom.x, "first_of": game._first_of,
-		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [], "buildings": [], "units": [], "mines": []}
+		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
+		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1]]), "buildings": [], "units": [], "mines": []}
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at})
 	for m in game.mines:
@@ -54,6 +55,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "research": b.research, "research_t": b.research_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "growth": b.growth, "gold_acc": b.gold_acc,
+			"soil": b.soil, "sw": b.soil_warned,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
 	for u in game.units:
@@ -132,11 +134,20 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.seeded = bool(bd["seeded"])
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
+		if b.kind == "town_hall":
+			b.soil = float(bd.get("soil", Defs.SOIL_RESERVE))     # (older saves: fresh soil)
+			b.soil_warned = int(bd.get("sw", 0))
 		if bd["rally"] != null:
 			b.rally = _to_v2(bd["rally"])
 		if bd["wrally"] != null:
 			b.worker_rally = _to_v2(bd["wrally"])
 		b._update_sprite()
+	game.soil_scars.clear()
+	for sc in d.get("soil_scars", []):
+		game.soil_scars.append([_to_v2(sc[0]), float(sc[1])])
+	for b in game.buildings:
+		if b.kind == "farm":
+			b._update_sprite()      # (its tired-soil tint needs the halls back first)
 	for ud in d["units"]:
 		var u := game._add_unit(String(ud["k"]), int(ud["t"]), _to_v2(ud["p"]))
 		u.hp = float(ud["hp"])

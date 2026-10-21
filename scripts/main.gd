@@ -34,7 +34,9 @@ High ground: units below a cliff can't see up onto it, and ramps are the only wa
 Skirmish: up to four players. Each computer player has a PLAN (Balanced, Rush, Economy, Timing attack, Air rush for the Brood, or Random). Give players the same TEAM number to make them allies. BRUTAL AI never stops, micro-manages every fight and cheats (+50% income).""",
 	"CROWN": """THE CROWN: pike, shot and black powder.
 
-Labourers work Farms (up to 3 each): a farm ripens into a 350-gold harvest, faster with more hands. The Powder Mill makes black powder (musketeers, balloons and wagons cost some). Each Town Hall allows 4 Farms and 2 Powder Mills nearby.
+Labourers work Farms (up to 8 each): a farm ripens into a 380-gold harvest, about every 40 s with a full crew. The Powder Mill (up to 6 labourers) makes black powder (musketeers, balloons and wagons cost some). Each Town Hall allows 2 Farms and 1 Powder Mill nearby.
+
+Soil: each Town Hall's farmland holds 9,000 gold that its farms draw out harvest by harvest (shown as "Soil: %" on the hall and its farms). Spent soil turns the fields yellow-brown and they pay only a third: expand, and a new Town Hall brings fresh land. The Powder Mill never tires.
 
 Powder: each Musketeer carries 12 shots and each Cannon 8 (the amber bar). A dry musketeer fixes bayonets by itself until it refills; a dry cannon can't fire. They refill within 3 tiles of a Powder Mill, Barracks or Town Hall (paid from the powder bank: 6 for a full musketeer; an empty bank makes them wait), or of a Powder Wagon (Foundry): it carries 120 shots for the army, fills up near those buildings (1 powder per 2 shots), and on SUPPLY two labourers run 30-shot kegs to it from the Mill. A wagon that's destroyed explodes (friends too), and so does a labourer killed with a keg: guard them.
 

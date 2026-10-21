@@ -164,6 +164,27 @@ func _workers() -> void:
 			var site := game.free_site(team, u.position)
 			if site:
 				u.cmd_gather(site)
+	if _crown():
+		_move_off_tired_soil(labs)
+
+
+## Crown: farmers on spent soil walk over to fresh farms with room (a couple at a time).
+func _move_off_tired_soil(labs: Array) -> void:
+	var fresh := _mine("farm").filter(func(f: Building) -> bool: return f.built and f.soil_left() > 0.0 and f.crew.size() < int(f.d["crew"]))
+	if fresh.is_empty():
+		return
+	var moved := 0
+	for u in labs:
+		if moved >= 2 or fresh.is_empty():
+			break
+		var site = u.home_mine
+		if u.order != "gather" or not (site is Building) or (site as Building).kind != "farm" or (site as Building).soil_left() > 0.0:
+			continue
+		var to: Building = fresh[0]
+		u.cmd_gather(to)
+		moved += 1
+		if to.crew.size() >= int(to.d["crew"]):
+			fresh.erase(to)
 
 
 func _econ_build() -> void:
@@ -171,11 +192,11 @@ func _econ_build() -> void:
 		return
 	var order: Array = []
 	if _crown():
-		order = ["farm", "powder_mill"] if game.econ_count(team, "farm") >= 2 else ["farm"]
-		# a second mill per hall only later, and while powder runs short (early on the gold
-		# is for expanding, and its crew would rather farm)
-		if game.econ_count(team, "powder_mill") >= _halls().size() and (_res2() > 100.0 or game.clock < 420.0):
-			order.erase("powder_mill")
+		# the second farm first (the start has one), then the mill; a new hall gets its two
+		# farms before its mill, and they go on the freshest soil (see _econ_spot)
+		order = ["farm", "powder_mill"]
+		if game.econ_count(team, "powder_mill") == 0 and game.workers(team).size() < 8 and game.clock < 120.0:
+			order.erase("powder_mill")      # (the first hands farm: gold for labourers first)
 	elif _brood():
 		order = ["feeding_pit"]
 		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
@@ -209,7 +230,11 @@ func _econ_build() -> void:
 
 
 func _econ_spot(kind: String) -> Vector2i:
-	for h in _halls():
+	var halls := _halls()
+	if kind == "farm":
+		# Crown: farms go where the soil is freshest (tired land pays a third)
+		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil > b.soil)
+	for h in halls:
 		if not h.built:
 			continue
 		var spot: Vector2i
@@ -319,31 +344,54 @@ func _build_up() -> void:
 	var hall: String = _f()["hall"]
 	var full := true
 	for kind in _f()["econ"]:
-		if kind == "powder_mill" and game.econ_count(team, kind) >= _halls().size():
-			continue        # (the second mill per hall is optional)
 		if game.econ_count(team, kind) < game.econ_limit(team, kind):
 			full = false
 	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * (0.7 if _brood() else 1.0) * float(_s("expand"))
-	if _halls().size() >= 2 and game.clock > expand_t * 1.8 and gold > int(Defs.BUILDINGS[hall]["cost"]) + 150:
+	# Crown: tired soil makes expanding urgent (from ~40% of the best hall's reserve left
+	# the wait shrinks to nothing as it runs out)
+	var soil := _best_soil()
+	if soil < 0.4:
+		expand_t *= soil / 0.4
+	if _halls().size() >= 2 and (game.clock > expand_t * 1.8 or soil < 0.4) and gold > int(Defs.BUILDINGS[hall]["cost"]) + (150 if soil >= 0.4 else 0):
 		_more_halls(false)
 	_saving = false
+	# (with the soil nearly spent, the next hall is worth saving for even under attack)
+	var urgent := soil < 0.25 and not _busy_building(hall)
 	if _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
 		var spot: Vector2i = game.expansions[team]
 		if game.placement_problem(team, hall, spot, true) == "":
 			if gold >= int(Defs.BUILDINGS[hall]["cost"]) + 50:
 				_construct(hall, spot)
-			elif _threat() == Vector2.INF:
+			elif _threat() == Vector2.INF or urgent:
 				_saving = true
+		elif urgent:
+			_more_halls(false)          # our usual spot is taken: any free ground will do
+			_saving = gold < int(Defs.BUILDINGS[hall]["cost"])
+	elif _halls().size() >= 2 and urgent and gold < int(Defs.BUILDINGS[hall]["cost"]):
+		_saving = _halls().filter(func(h: Building) -> bool: return h.soil > 0.0).size() < int(_s("halls"))
 
 
 var _walled := false
+
+
+## Crown: the share of soil left at our freshest Town Hall (1.0 for the other factions).
+func _best_soil() -> float:
+	if not _crown():
+		return 1.0
+	var best := 0.0
+	for h in _halls():
+		if h.built:
+			best = maxf(best, h.soil_left())
+	return best if not _halls().is_empty() else 1.0
 
 
 ## Take more ground: a new hall at a free spot on our side of the map, 18-30 tiles from one
 ## of ours. `macro`: the Brood just needs more Hives to spend its food (eggs come from Hives).
 func _more_halls(macro: bool) -> void:
 	var hall: String = _f()["hall"]
-	if _halls().size() >= int(_s("halls")) + (1 if macro else 0) or _busy_building(hall):
+	# (halls on spent soil don't count toward the strategy's limit: the land has run out)
+	var live := _halls().filter(func(h: Building) -> bool: return not _crown() or h.soil > 0.0).size()
+	if live >= int(_s("halls")) + (1 if macro else 0) or _halls().size() >= 7 or _busy_building(hall):
 		return
 	if _gold() < int(Defs.BUILDINGS[hall]["cost"]):
 		return

@@ -235,9 +235,9 @@ The map holds no resources: it's about geography, chokes and town-hall spots. Ea
 
 | | Crown | Brood | Clockwork |
 | --- | --- | --- | --- |
-| Main resource | **Gold**: Farms ripen into a 280-gold harvest; up to 3 labourers make them grow faster | **Biomass**: grubs haul food from Feeding Pits to a Hive; a load is worth 6 + 0.07 × distance² (tiles), capped at 100 | **Ore**: Winders crank Boilers for energy; the share put on ore becomes ore at the Ore Crushers |
-| Second resource | **Powder** (Powder Mill, 3 labourers): pays for musketeers, balloons and Powder Wagons; musketeers (12 shots) and cannons (8) carry their own and refill (paid from the bank) near a Mill, Barracks, Town Hall or Powder Wagon | **Essence**: bodies falling near a Bone Midden (Brutes and Skywings cost some) | **Energy** itself: split between ore, assembly speed and wind (field size, slower run-down) |
-| Per hall | 4 Farms, 2 Powder Mills | 3 Feeding Pits, 1 Bone Midden | 2 Boilers, 2 Ore Crushers |
+| Main resource | **Gold**: Farms ripen into a 380-gold harvest (~40 s with a full crew); up to 8 labourers make them grow faster. Soil fatigue: each Town Hall's farmland holds 9,000 gold; once its farms have drawn it out they pay a third, so the Crown must expand | **Biomass**: grubs haul food from Feeding Pits to a Hive; a load is worth 6 + 0.07 × distance² (tiles), capped at 100 | **Ore**: Winders crank Boilers for energy; the share put on ore becomes ore at the Ore Crushers |
+| Second resource | **Powder** (Powder Mill, 6 labourers, ~120 a minute): pays for musketeers, balloons and Powder Wagons; musketeers (12 shots) and cannons (8) carry their own and refill (paid from the bank) near a Mill, Barracks, Town Hall or Powder Wagon | **Essence**: bodies falling near a Bone Midden (Brutes and Skywings cost some) | **Energy** itself: split between ore, assembly speed and wind (field size, slower run-down) |
+| Per hall | 2 Farms, 1 Powder Mill (start: Town Hall, 1 Farm, 4 Labourers) | 3 Feeding Pits, 1 Bone Midden | 2 Boilers, 2 Ore Crushers |
 | New units | Missionary (Church; 1 per church; bandages wounded soldiers; invulnerable away from enemy buildings) | Skywing (Roost; flyer, only ranged units can hit it) | Tesla Cart (Assembly Works, needs a Charging Pylon; deploys in 3 s; powers constructs; chain lightning) |
 | Other new structures | Church | Spore Vent (spreads swamp far), Roost | Charging Pylon (field + mends constructs) |
 
