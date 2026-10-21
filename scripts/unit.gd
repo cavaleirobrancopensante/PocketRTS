@@ -865,6 +865,9 @@ func _restock(delta: float) -> Vector2:
 ## across at the rim; a rider at this scale is about 13 px wide, so the outer two stay inside
 ## it and the front rim hides their legs); drawn at `scale` of the gunner art, in this order
 ## (1st man aboard first). New basket art: change these numbers (and the scale) only.
+## How far a rider's feet sit below the basket's floor line (px, before the basket scale):
+## his own full-body sprite, sunk so only his top half shows over the front wall.
+const RIDER_DROP := 13.0
 const BASKET := {
 	"scale": 0.8,
 	"riders": [Vector2(-14.5, -1.0), Vector2(14.5, -1.0), Vector2(-6.5, 0.0), Vector2(6.5, 0.0)],
@@ -921,14 +924,27 @@ func _update_basket() -> void:
 		var g: Sprite2D = _pass_sprites[i]
 		var st: String = p.gun_state[0]
 		g.visible = true
-		g.texture = Game.tex("res://assets/units/%s/gunner_%s_%s.png" % [kind, st, anim_dir])
-		g.hframes = int(gfr.get(st, 1))
+		# each man in his own clothes (an armoured Musketeer in his morion and breastplate),
+		# from the waist up: the basket's front wall hides his legs
+		var pa: String = p.art if p.art != "" else p.kind
+		var pinfo: Dictionary = ArtData.UNITS.get(pa, {})
+		var key: String = {"idle": "idle", "down": "fire", "up": "fireup"}.get(st, "idle") + "_" + anim_dir
+		var pframes: Dictionary = pinfo.get("frames", {})
+		if not pframes.has(key):
+			key = "idle_" + anim_dir
+		if pinfo.is_empty() or not pframes.has(key):
+			g.texture = Game.tex("res://assets/units/%s/gunner_%s_%s.png" % [kind, st, anim_dir])
+			g.hframes = int(gfr.get(st, 1))
+			g.offset = -anchor
+		else:
+			g.texture = Game.tex("res://assets/units/%s/%s.png" % [pa, key])
+			g.hframes = int(pframes[key])
+			g.offset = -Vector2(pinfo["anchor"]) + Vector2(0, RIDER_DROP)
 		g.frame = clampi(int(float(p.gun_t[0]) / 0.7 * g.hframes), 0, g.hframes - 1) if st != "idle" else 0
-		g.offset = -anchor
 		g.scale = Vector2(sc, sc)
 		g.position = sprite.offset + mid + Vector2(riders[mini(i, riders.size() - 1)])
-		# the others (pikes, picks) are just along for the ride: a little darker
-		g.self_modulate = Color.WHITE if p.kind == "musketeer" else Color(0.8, 0.8, 0.8)
+		g.self_modulate = Color.WHITE
+		g.material = p.sprite.material if p.sprite else null
 
 
 ## The battery on a Winder's back overloads (carried too long, or hit): it bursts.
@@ -4192,13 +4208,6 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, radius + 7.0, 0, TAU, 28, Color(1.0, 0.85, 0.3, a), 2.5)
 		draw_arc(Vector2.ZERO, radius + 11.0, overclock_t * 3.0, overclock_t * 3.0 + 2.0, 10, Color(0.6, 0.85, 1.0, a), 1.5)
 		draw_set_transform(Vector2.ZERO)
-	if kind == "balloon" and not passengers.is_empty() and game.allied(team, game.human):
-		# one pip under the basket for every man aboard
-		var np := passengers.size()
-		for i in np:
-			var pr := Rect2(-np * 4.0 + i * 8.0 + 1.0, 8, 6, 6)
-			draw_rect(pr, Color(1, 0.85, 0.4))
-			draw_rect(pr, Color(0, 0, 0, 0.7), false, 1.0)
 	if d["faction"] == "clockwork" and not is_worker():
 		# the battery on its back, for everyone to see: how much charge is left. A cell
 		# strapped onto the body sprite (scripts/battery_pack.gd follows the frames and the
