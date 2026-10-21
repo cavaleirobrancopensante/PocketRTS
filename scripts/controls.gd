@@ -5,7 +5,7 @@ extends Node
 ##   screen), left drag = box, right click = command, wheel = zoom, middle drag or the
 ##   screen edges or arrow keys = pan, letter hotkeys for everything on the command card,
 ##   1-9 groups (Ctrl+number saves), F1 idle worker, F2 army, F3 hall, Space = jump to
-##   the selection, Esc = cancel.
+##   the selection, Esc = cancel. Watching computers: 0 all vision, 1-4 follow that player.
 ## MOBILE:
 ## Touch:  tap = select / command,  drag = box select,  long-press = move only,
 ##         two fingers = pan and pinch-zoom,  double-tap a unit = all of that type.
@@ -112,6 +112,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var mm := event as InputEventMouseMotion
 		if _mid_pan:
 			game.camera.position -= mm.relative / game.camera.zoom
+			_user_cam()
 		elif Settings.pc():
 			if _line_btn != "":
 				_line_add(mm.position)
@@ -175,6 +176,8 @@ func _drag(e: InputEventScreenDrag) -> void:
 			game.camera.zoom = Vector2(z, z)
 		var c := (a + b) * 0.5
 		game.camera.position -= (c - _pan_c) / game.camera.zoom
+		if c.distance_to(_pan_c) > 1.0:
+			_user_cam()
 		_pan_c = c
 		return
 	var info: Dictionary = _press.get(e.index, {})
@@ -196,6 +199,7 @@ func _drag(e: InputEventScreenDrag) -> void:
 		return
 	if Settings.drag_mode == "pan" and mode != "place" and info["moved"]:
 		game.camera.position -= e.relative / game.camera.zoom
+		_user_cam()
 		return
 	if mode == "place" and info["moved"]:
 		_move_ghost(e.position)
@@ -322,6 +326,10 @@ func _zoom_at(screen: Vector2, f: float) -> void:
 
 func _key(e: InputEventKey) -> void:
 	var units := game.selected_units()
+	# watching computers: 0 all vision, 1-4 follow that player
+	if game.spectator and not e.ctrl_pressed and not e.shift_pressed and not e.meta_pressed \
+			and e.keycode >= KEY_0 and e.keycode <= KEY_4 and game.spectator.hotkey(int(e.keycode - KEY_0)):
+		return
 	if Settings.pc() and hud and not e.ctrl_pressed and hud.hotkey(e.keycode):
 		return
 	if Settings.pc():
@@ -345,6 +353,7 @@ func _key(e: InputEventKey) -> void:
 					for x in sel:
 						c += x.global_position
 					game.camera.position = c / sel.size()
+					_user_cam()
 				return
 		if e.keycode >= KEY_1 and e.keycode <= KEY_9:
 			var gi := int(e.keycode - KEY_1)
@@ -361,6 +370,7 @@ func _key(e: InputEventKey) -> void:
 				var alive: Array = game.groups[gi].filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
 				if not alive.is_empty() and game.selection == alive and Time.get_ticks_msec() - _last_click_t < 400:
 					game.camera.position = alive[0].global_position
+					_user_cam()
 				game.set_selection(alive)
 				_last_click_t = Time.get_ticks_msec()
 			return
@@ -411,6 +421,7 @@ func _process(delta: float) -> void:
 			if mp.y > vs.y - edge: k.y += 1
 	if k != Vector2.ZERO:
 		game.camera.position += k.normalized() * 700.0 * delta / game.camera.zoom.x
+		_user_cam()
 	# Long press = move without attacking (touch only)
 	if _touches.size() == 1 and not _long_done and _box_from == Vector2.INF and mode == "":
 		var idx: int = _touches.keys()[0]
@@ -423,6 +434,12 @@ func _process(delta: float) -> void:
 					game.smart_command(units, to_world(info["pos"]), true)
 					Sfx.play_any(["ui/click", "click"])
 	_clamp_camera()
+
+
+## The player moved the view: a spectator following a computer lets go (free, same vision).
+func _user_cam() -> void:
+	if game.spectator:
+		game.spectator.user_moved()
 
 
 func _clamp_camera() -> void:
