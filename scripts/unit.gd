@@ -1894,9 +1894,12 @@ func _repair(delta: float) -> Vector2:
 		work = "repairing"
 		path = PackedVector2Array()
 		facing = (e.center() - position).normalized()
-		# repairs cost ore
-		var heal := minf(Defs.REPAIR_RATE * delta, e.max_hp - e.hp)
-		var cost := heal * Defs.REPAIR_COST
+		# like StarCraft: a full repair takes about as long as building it (never slower than
+		# REPAIR_RATE hp/s) and costs a quarter of its price
+		var bt: float = maxf(1.0, float(e.d.get("time", 30.0)))
+		var rate := maxf(Defs.REPAIR_RATE, e.max_hp / bt)
+		var heal := minf(rate * delta, e.max_hp - e.hp)
+		var cost := heal * float(e.d.get("cost", 0)) * Defs.REPAIR_COST / maxf(e.max_hp, 1.0)
 		if game.players[team]["gold"] < 1:
 			if team == game.human:
 				game.notify("Not enough ore to repair.")

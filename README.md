@@ -55,7 +55,7 @@ Each faction builds its own economy, every Town Hall, Hive or Clocktower allows 
 - Only the **Clocktower** (one every 2 s) and its **Boilers** (every second; 2 per Clocktower) fill **batteries**; Spring Towers and Charging Pylons don't. A saturated base (Clocktower and 2 Boilers worked) makes about **1,000-1,100 ore a minute**.
 - **Winders** carry them to an **Ore Crusher**, where the charge becomes ore drawn from the **ore outcrops** beside it. A crusher must be built **next to ore** and draws on the ore within 6 tiles; a base's ore lasts a saturated base about 11 minutes ("Ore: 62% nearby" on the crusher, "Ore here" on the Clocktower), then its crushers pay a quarter, so the Clockwork must expand to fresh ore (Winders take their batteries to a crusher with fresh ore if one is within reach). A battery gains charge the longer it's on the road (yellow: 7 ore + 0.7 a second), so a crusher far from the source pays more per trip, but a battery that's carried too long (22 s) or whose Winder is hit **bursts**, hurting the Winder and anyone next to it. Hauling routes are worth raiding.
 - The **Capacitor Works** (after an Assembly Works) turns every source **blue**: 10 ore + 1.1 a second, 30 s before overloading, and slightly faster assembly and bigger fields.
-- Winders also repair constructs and buildings, which costs ore (0.2 per hit point).
+- Winders also repair constructs and buildings, which costs ore.
 - Each Clocktower allows 2 Boilers and 2 Ore Crushers nearby.
 - Winders also start buildings, which then assemble themselves.
 - Every construct carries a **battery on its back** (everyone can see it). Away from a field it drains (empty in about 2 minutes, slower with blue energy), making it a little slower and weaker; when it is empty the construct **shuts down** like a cold statue until a field reaches it (a tower, pylon or deployed Tesla Cart) or a Winder winds it up again.
@@ -83,7 +83,7 @@ The match is saved every 15 seconds (and whenever the app goes to the background
 ### Buildings
 - Every building is on the **BUILD** card (more pages if they don't fit).
 - **ABANDON** a building that isn't finished: 75% of its cost comes back. **DEMOLISH** (press twice) pulls down a finished one.
-- Labourers repair buildings, Winders repair constructs and buildings; repairs cost gold/ore.
+- Labourers repair buildings, Winders repair constructs and buildings (the REPAIR button, E). As in StarCraft, a full repair takes about as long as building the thing did (never slower than 20 hp a second per worker) and costs a quarter of its price: a wall piece is back in a few seconds for a couple of gold.
 - Select several buildings of the same kind (or a control group of them): training goes to whichever is least busy, and a rally point applies to all.
 - Enemies walled out with no gate break the wall down.
 

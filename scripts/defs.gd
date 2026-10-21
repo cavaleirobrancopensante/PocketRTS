@@ -8,7 +8,7 @@ const EGGS_MAX := 5
 const EGG_TIME := 6.0
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
-const REPAIR_RATE := 20.0         # hp per second a Winder restores
+const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); faster when the thing builds quickly
 
 # ---- Economy: every faction makes its own resources from structures.
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
@@ -102,7 +102,7 @@ const BATTERY := {
 	"load": 1.0, "blast": 10.0, "splash": 8.0,
 	"ore": 0.7,     # ore per point of charge at the crusher (interim pace until the Clockwork rework; was 1.0)
 }
-const REPAIR_COST := 0.2          # ore per hit point a Winder repairs
+const REPAIR_COST := 0.25        # a full repair costs this share of the price (StarCraft: 25%)
 const ENERGY_PER_WINDER := 3.5
 const ENERGY_HALL := 3.0
 const ORE_PER_ENERGY := 1.8
