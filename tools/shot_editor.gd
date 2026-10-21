@@ -79,9 +79,9 @@ func _run() -> void:
 			sb = c
 	var hall = g._own_hall(g.human)
 	var at: Vector2 = hall.center() + Vector2(200, 60)
-	for k in ["gearknight", "steam_walker", "bolt", "tesla_cart"]:
+	for k in ["thresher", "steam_walker", "arc_thrower", "tesla_cart"]:
 		for i in 3:
-			g._add_unit(k, g.human, at + Vector2(i * 30, ["gearknight", "steam_walker", "bolt", "tesla_cart"].find(k) * 40))
+			g._add_unit(k, g.human, at + Vector2(i * 30, ["thresher", "steam_walker", "arc_thrower", "tesla_cart"].find(k) * 40))
 	for k in ["raptor", "brute", "spitter"]:
 		for i in 4:
 			g._add_unit(k, 1, at + Vector2(260 + i * 25, ["raptor", "brute", "spitter"].find(k) * 40))

@@ -118,6 +118,51 @@ var _courier_t := 0.0
 var overclock_t := 0.0
 var _spark_t := 0.0
 var _hot := false
+# Clockwork rework
+var overcharge_t := 0.0         # seconds in overcharge ground (Boiler, Pylon, deployed Tesla Cart)
+var _in_ovc := false
+var spin := 0.0                 # Thresher: 0..1, how far its saws have spun up
+var _spin_idle := 0.0           # Thresher: seconds since its last blow
+var braced := false             # Bulwark: the tower shield planted
+var brace_t := 0.0              # Bulwark: planting / lifting the shield
+var _shield_t := 0.0            # Bulwark: a shot just hit the shield (braced_hit)
+var self_wind_t := 0.0          # Winder: stopped to wind itself
+var cranked_t := 0.0            # Wind-up Soldier: a Winder is cranking it (wind-up anim)
+
+
+## Overcharged: long enough in overcharge ground (and still there).
+func overcharged() -> bool:
+	return _in_ovc and overcharge_t >= float(Defs.OVERCHARGE["time"])
+
+
+## Bulwark: plant (or lift) the tower shield. Braced it can't move.
+func set_brace(on: bool) -> void:
+	if kind != "bulwark" or braced == on or aboard:
+		return
+	if on:
+		cmd_hold()         # it stands where it is and pokes at what comes in reach
+		var foe := game.find_target(self, sight * Defs.TILE)
+		if foe:
+			facing = (foe.center() - center()).normalized()
+		frame_i = 0
+		anim_t = 0.0
+	elif order == "hold":
+		order = "idle"
+	braced = on
+	brace_t = float(Defs.BRACE["switch"])
+	armor = float(Defs.BRACE["armor"]) if on else float(d["armor"])
+
+
+## Bulwark: a shot hit the planted shield.
+func shield_hit() -> void:
+	_shield_t = 0.4
+	if visible and game.view_rect.has_point(position):
+		game.spawn_effect("hit", center() + facing * 10.0 + Vector2(randf_range(-4, 4), randf_range(-8, 4)), 1.2)
+
+
+## Wind-up Soldiers (springs) run down; constructs drain their battery.
+func runs_on_spring() -> bool:
+	return d.get("spring", false)
 static var _sky_ground := {}
 # Crown powder logistics
 var powder := 0.0               # Musketeer / Cannon: shots carried; Powder Wagon: shots in store
@@ -617,6 +662,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	hp = max_hp
 	if k == "stormcaller":
 		charge = float(Defs.STORM["max"]) * 0.5
+	if Defs.is_worker(k) and d["faction"] == "clockwork":
+		wind = randf_range(0.6, 1.0)     # (Winders don't all stop to wind at once)
 	_pmax = max_powder()
 	powder = _pmax
 	armor = d["armor"]
@@ -686,6 +733,8 @@ func center() -> Vector2:
 func cmd_move(p: Vector2, attack_move := false) -> void:
 	if aboard:
 		return      # riding in a balloon
+	if braced:
+		set_brace(false)     # a Bulwark lifts its shield to walk
 	_reset_work()
 	order = "amove" if attack_move else "move"
 	order_point = p
@@ -697,6 +746,8 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 func cmd_attack(e: Entity) -> void:
 	if aboard:
 		return      # riding in a balloon
+	if braced and e.edge_distance(position) > _range() + radius:
+		set_brace(false)     # out of the lance's reach: it lifts the shield and goes
 	_reset_work()
 	order = "attack"
 	order_target = e
@@ -1400,13 +1451,42 @@ func _physics_process(delta: float) -> void:
 		if _field_t <= 0.0:
 			_field_t = 0.4
 			_in_field = game.in_field(team, position)
+			_in_ovc = not is_worker() and game.in_overcharge(team, position)
+		# overcharge: a while by a Boiler, in a Pylon's or a deployed Tesla Cart's field
+		if _in_ovc:
+			overcharge_t = minf(overcharge_t + delta, float(Defs.OVERCHARGE["time"]) + 1.0)
+		else:
+			overcharge_t = 0.0
+		cranked_t = maxf(cranked_t - delta, 0.0)
 		if _in_field:
 			wind = minf(1.0, wind + 0.3 * delta)
+			self_wind_t = 0.0
 			if kind == "stormcaller":
 				charge = minf(float(Defs.STORM["max"]), charge + float(Defs.STORM["fill"]) * delta)
-		elif not is_worker():
-			wind = maxf(0.0, wind - Defs.WIND_DECAY * game.wind_decay_mult(team) * delta)
-		speed *= lerpf(0.75, 1.0, wind)
+		elif is_worker():
+			# Winders wind themselves: when they run low they stop a few seconds to crank
+			if self_wind_t > 0.0:
+				self_wind_t -= delta
+				if self_wind_t <= 0.0:
+					wind = 1.0
+			else:
+				wind = maxf(0.0, wind - delta / float(Defs.WINDER_SELF["run"]))
+				if wind <= float(Defs.WINDER_SELF["low"]) and phase == "":
+					self_wind_t = float(Defs.WINDER_SELF["stop"])
+		elif runs_on_spring():
+			wind = maxf(0.0, wind - delta / float(Defs.SPRING["run"]))
+		else:
+			var drain := Defs.WIND_DECAY * game.wind_decay_mult(team) * float(d.get("wind_drain", 1.0))
+			if kind == "thresher":
+				drain += float(Defs.THRESHER["drain"]) * spin
+			wind = maxf(0.0, wind - drain * delta)
+		if kind == "thresher":
+			# the saws spin up while it keeps cutting, and down a second after it stops
+			_spin_idle += delta
+			if _spin_idle > float(Defs.THRESHER["reset"]):
+				spin = maxf(0.0, spin - delta / 0.6)
+		if not is_worker():
+			speed *= lerpf(0.75, 1.0, wind)
 		# out of charge: it shuts down where it stands, like a statue, until a field
 		# reaches it or a Winder winds it up again
 		if powered_down():
@@ -1528,6 +1608,13 @@ func _physics_process(delta: float) -> void:
 		want = Vector2.ZERO        # holds still while men climb in
 	if deflate == "deflating" or deflate == "refilling":
 		want = Vector2.ZERO
+	if self_wind_t > 0.0:
+		want = Vector2.ZERO        # a Winder cranking its own spring
+	if kind == "bulwark":
+		brace_t = maxf(brace_t - delta, 0.0)
+		_shield_t = maxf(_shield_t - delta, 0.0)
+		if braced:
+			want = Vector2.ZERO    # the shield is planted
 	_move(want, delta)
 	_animate(delta)
 	# redraw the shadow, ring and bars only when something on them changed
@@ -1665,7 +1752,7 @@ func _move(want: Vector2, delta: float) -> void:
 	var v := want + push
 	if want == Vector2.ZERO:
 		v = push
-	if stun_t > 0.0:
+	if stun_t > 0.0 or braced:
 		v = Vector2.ZERO
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0:
@@ -1703,6 +1790,8 @@ func _move(want: Vector2, delta: float) -> void:
 
 ## Move toward and fight a target. Returns the desired velocity.
 func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
+	if braced:
+		may_move = false           # a planted Bulwark only pokes at what comes in reach
 	var dist := e.edge_distance(position) - radius
 	var rng := _range()
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
@@ -1748,7 +1837,15 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 	if d.has("gunners"):
 		facing = (e.center() - center()).normalized()
 		return          # its gunners do the shooting
-	facing = (e.center() - center()).normalized()
+	if kind == "thresher" and stun_t <= 0.0:
+		# in reach and cutting: the saws spin up
+		spin = minf(1.0, spin + delta / float(Defs.THRESHER["time"]))
+		_spin_idle = 0.0
+	if braced:
+		# the planted shield turns only slowly toward what it fights
+		facing = facing.slerp((e.center() - center()).normalized(), clampf(delta * 2.0, 0.0, 1.0)).normalized()
+	else:
+		facing = (e.center() - center()).normalized()
 	if phase == "":
 		if cooldown > 0.0 or stun_t > 0.0:
 			return
@@ -1789,6 +1886,10 @@ func _strike(e: Entity) -> void:
 		dmg *= lerpf(0.7, 1.0, wind)
 	if overclock_t > 0.0:
 		dmg *= float(Defs.OVERLOAD["damage"])
+	elif overcharged():
+		dmg *= float(Defs.OVERCHARGE["damage"])
+	if kind == "thresher":
+		dmg *= lerpf(float(Defs.THRESHER["low"]), float(Defs.THRESHER["high"]), spin)
 	if e.is_building():
 		dmg *= float(d.get("building_bonus", 1.0))
 	if mode == "bayonet":
@@ -1820,7 +1921,8 @@ func _strike(e: Entity) -> void:
 			game.blob_shot(self, e.center() + Vector2(0, 12), dmg)
 		"skywing":
 			if sky == "air":
-				# a volley of spines at a flyer
+				# a volley of spines at a flyer (a braced Bulwark catches them for the men behind it)
+				e = game.intercept(self, e)
 				e.take_damage(dmg, self)
 				var s := Shot.new()
 				s.scale = Vector2(0.5, 0.6)
@@ -1850,8 +1952,11 @@ func _strike(e: Entity) -> void:
 			e.take_damage(dmg, self)
 			game._zap_visual(center() + facing * 14.0 + Vector2(0, -4), e.center(), false, true)
 			Sfx.play_any(["combat/tesla_attack", "zap"], position)
-		"bolt":
-			game.bolt_shot(self, e, dmg)
+		"arc_thrower":
+			# a ball of lightning: every throw takes a bite of its own wind
+			game.arc_shot(self, e, dmg)
+			if not _in_field and overclock_t <= 0.0:
+				wind = maxf(0.0, wind - float(Defs.ARC["drain"]))
 		"steam_walker":
 			game.steam_cone(self, e, dmg)
 		_:
@@ -1862,13 +1967,21 @@ func _strike(e: Entity) -> void:
 				dmg *= float(Defs.CHARGE["mult"])
 				run_t = 0.0
 			e.take_damage(dmg, self)
+			if kind == "thresher":
+				# the saws bite the enemies standing round its target too
+				var n := 0
+				for o in game.units_near(e.global_position, float(Defs.THRESHER["reach"]) + 10.0):
+					if n >= int(Defs.THRESHER["cleave"]) or o == e or o.dead or o.off_field or o.is_air() or not game.hostile(o.team, team):
+						continue
+					o.take_damage(dmg * float(Defs.THRESHER["cleave_dmg"]), self)
+					n += 1
 			if charged and e is Unit and not e.dead and not e.is_air():
 				var heavy: float = 0.4 if int(e.d["supply"]) >= 3 else 1.0
 				e.knock = (e.position - position).normalized() * float(Defs.CHARGE["force"]) * heavy
 				e.stun_t = float(Defs.CHARGE["stun"]) * heavy
 				e.phase = ""
 				game.spawn_effect("dust", e.position, 1.4).scale = Vector2(0.6, 0.6)
-			Sfx.play_any(["combat/%s_attack" % kind, {"raptor": "bite", "brute": "bite", "grub": "bite", "gearknight": "gear_hit", "winder": "gear_hit"}.get(kind, "clash")], position)
+			Sfx.play_any(["combat/%s_attack" % kind, {"raptor": "bite", "brute": "bite", "grub": "bite", "thresher": "gear_hit", "bulwark": "gear_hit", "windup_soldier": "clash", "winder": "gear_hit"}.get(kind, "clash")], position)
 			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
@@ -1911,7 +2024,13 @@ func _repair(delta: float) -> Vector2:
 			game.players[team]["gold"] -= 1
 		e.hp = minf(e.max_hp, e.hp + heal)
 		if e is Unit:
-			(e as Unit).wind = minf(1.0, (e as Unit).wind + 0.15 * delta)     # and winds it up
+			var eu := e as Unit
+			if eu.runs_on_spring():
+				# a Wind-up Soldier: the Winder cranks its key (it plays its wind-up)
+				eu.wind = minf(1.0, eu.wind + float(Defs.SPRING["crank"]) * delta)
+				eu.cranked_t = 0.3
+			else:
+				eu.wind = minf(1.0, eu.wind + 0.15 * delta)     # and winds it up
 		return Vector2.ZERO
 	work = ""
 	if e.is_unit() and position.distance_to(e.global_position) < 140.0:
@@ -1964,14 +2083,14 @@ var crusher: Building = null    # the Ore Crusher the battery on its back is goi
 
 
 func _haul_battery(src: Building, delta: float) -> Vector2:
-	var info: Dictionary = Defs.BATTERY["blue" if carry_blue else "yellow"]
 	match work:
 		"loading":
 			facing = (src.center() - position).normalized()
 			work_t -= delta
 			if work_t <= 0.0:
-				if src.batteries > 0 and game.best_crusher(position, team) != null:
+				if src.batteries > 0 and game.can_haul(team, src) and game.best_crusher(position, team) != null:
 					src.batteries -= 1
+					game.energy[team] = maxi(0, int(game.energy[team]) - 1)
 					carrying = 1
 					carry_t = 0.0
 					carry_blue = game.blue_energy(team)
@@ -1981,20 +2100,16 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 					work = "waiting"
 			return Vector2.ZERO
 		"to_crusher":
-			carry_t += delta
-			if carry_t >= float(info["overload"]):
-				_battery_blast()
-				return Vector2.ZERO
+			carry_t += delta       # (the charge fades on the road: Defs.battery_charge)
 			if crusher == null or not is_instance_valid(crusher) or crusher.dead:
-				# (as far as it can carry the battery before it bursts, roads not being straight)
-				crusher = game.best_crusher(position, team, (float(info["overload"]) - carry_t) * speed / 1.4)
+				crusher = game.best_crusher(position, team)
 				path = PackedVector2Array()
 			var cr := crusher
 			if cr == null:
 				return Vector2.ZERO
 			if cr.edge_distance(position) < radius + 17.0:
 				# the charge becomes ore drawn from the ore beside the crusher (a quarter once it's spent)
-				var value := game.draw_deposits(cr, (float(info["base"]) + float(info["gain"]) * carry_t) * float(Defs.BATTERY["ore"]))
+				var value := game.draw_deposits(cr, Defs.battery_charge(carry_blue, carry_t) * float(Defs.BATTERY["ore"]))
 				game.add_gold_f(team, value)
 				crusher = null
 				if team == game.human:
@@ -2010,7 +2125,7 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 			return _follow(delta)
 		"waiting":
 			facing = (src.center() - position).normalized()
-			if src.batteries > 0:
+			if src.batteries > 0 and game.can_haul(team, src):
 				work = "loading"
 				work_t = float(Defs.BATTERY["load"])
 			return Vector2.ZERO
@@ -2018,7 +2133,7 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 	if src.edge_distance(position) < radius + 16.0:
 		path = PackedVector2Array()
 		carry_empty = false
-		work = "loading" if src.batteries > 0 else "waiting"
+		work = "loading" if src.batteries > 0 and game.can_haul(team, src) else "waiting"
 		work_t = float(Defs.BATTERY["load"])
 		return Vector2.ZERO
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
@@ -2554,7 +2669,35 @@ func _anim_name() -> String:
 				return "attack"
 			if moving and target and target.edge_distance(position) < 170.0:
 				return "charge"
+		"thresher":
+			if powered_down():
+				return "drained"
+			if phase != "":
+				return "spinup" if spin < 0.35 else "attack"
+		"arc_thrower":
+			if powered_down():
+				return "drained"
+			if phase != "":
+				return "attack"
+		"bulwark":
+			if braced or brace_t > 0.0:
+				if _shield_t > 0.0 and braced:
+					return "braced_hit"
+				if phase == "strike":
+					return "attack"
+				return "brace"
+			if phase != "":
+				return "attack"
+		"windup_soldier":
+			if powered_down():
+				return "rundown"
+			if cranked_t > 0.0:
+				return "windup"
+			if phase != "":
+				return "attack"
 		"winder":
+			if self_wind_t > 0.0:
+				return "wind"
 			if work == "manning":
 				return "wind"
 			if work == "repairing":
@@ -2563,16 +2706,6 @@ func _anim_name() -> String:
 				return "attack"
 			if not moving and not _in_field:
 				return "wind"
-		"gearknight":
-			if phase != "":
-				return "attack"
-			if not moving and flash > 0.0:
-				return "block"
-		"bolt":
-			if phase == "aim":
-				return "crank"
-			if phase == "strike":
-				return "attack"
 		"steam_walker":
 			if phase != "":
 				return "attack"
@@ -2641,6 +2774,18 @@ func _animate(delta: float) -> void:
 	delta = _anim_dt
 	_anim_dt = 0.0
 	if powered_down() and not dead:
+		# the new constructs slump (drained / run down) first, then stand still
+		var dn := _anim_name()
+		if (dn == "drained" or dn == "rundown") and not _cold:
+			_set_anim(dn, false)
+			var nd: int = ArtData.UNITS[kind]["frames"].get(anim + "_" + anim_dir, 1)
+			anim_t += delta * 6.0
+			if anim_t >= 1.0:
+				anim_t -= 1.0
+				frame_i += 1
+			sprite.frame = clampi(mini(frame_i, nd - 1), 0, sprite.hframes - 1)
+			if frame_i < nd - 1:
+				return
 		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3(0.5, 0.52, 0.6))   # a cold statue: no frames move
 		_cold = true
 		return
@@ -2651,6 +2796,11 @@ func _animate(delta: float) -> void:
 		# overloaded: it glows hot, flickering
 		var g := 1.25 + 0.15 * sin(_bob_t * 18.0)
 		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3(g, g * 0.95, 0.85))
+		_hot = true
+	elif overcharged() and not dead:
+		# overcharged (a while by a Boiler or in a Pylon's / Tesla Cart's field): a softer glow
+		var g2 := 1.1 + 0.06 * sin(_bob_t * 9.0)
+		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3(g2, g2 * 0.97, 0.9))
 		_hot = true
 	elif _hot:
 		_hot = false
@@ -2712,6 +2862,14 @@ func _animate(delta: float) -> void:
 		"deploy":
 			fps = float(n) / switch_time()
 			loop = false
+		"brace":
+			fps = float(n) / float(Defs.BRACE["switch"])
+			loop = false
+		"spinup", "windup":
+			fps = 10.0
+		"braced_hit":
+			fps = 10.0
+			loop = false
 		"deployed":
 			fps = 6.0 if kind != "spore_mother" else 3.0
 		"cast":
@@ -2727,6 +2885,8 @@ func _animate(delta: float) -> void:
 	var shown := frame_i
 	if anim == "deploy" and tesla_mode == "packing":
 		shown = n - 1 - frame_i         # packing plays the deploy frames backwards
+	if anim == "brace" and not braced:
+		shown = n - 1 - frame_i         # lifting the shield plays the brace backwards
 	if anim == "land" and sky == "lifting":
 		shown = n - 1 - frame_i         # taking off plays the landing backwards
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
@@ -3028,20 +3188,25 @@ func _draw() -> void:
 			pk.name = "Pack"
 			pk.set("unit", self)
 			sprite.add_child(pk)
+		if not ArtData.PACKS.has(kind):
+			# no pack drawn on (the new constructs carry their cells in their hands, on the
+			# body, or run on a spring): a thin wind bar under the reload bar instead
+			var ww := bw * 0.8
+			draw_rect(Rect2(-ww * 0.5, top + 8.5, ww, 1).grow(0.5), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(-ww * 0.5, top + 8.5, ww * clampf(wind, 0.0, 1.0), 1), Color(0.95, 0.75, 0.3) if runs_on_spring() else Color(1.0, 0.9, 0.35).lerp(Color(1, 0.35, 0.2), 1.0 - wind))
 	if carrying > 0 and kind == "labourer" and anim != "carry":
 		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
 	if carry_empty and carrying == 0 and kind == "winder":
 		var et: Texture2D = Game.tex("res://assets/effects/battery_charge.png")
 		draw_texture_rect_region(et, Rect2(-14, top + 10, 10, 22), Rect2(0, 0, 10, 22))
 	if carrying > 0 and kind == "winder":
-		# the battery on its back, and how close it is to overloading
-		var info: Dictionary = Defs.BATTERY["blue" if carry_blue else "yellow"]
-		var f := clampf(carry_t / float(info["overload"]), 0.0, 1.0)
+		# the battery on its back, and how much charge it still holds (it fades on the road)
+		var f := clampf((1.0 - Defs.battery_charge(carry_blue, carry_t) / Defs.battery_charge(carry_blue, 0.0)) / (1.0 - float(Defs.BATTERY["floor"])), 0.0, 1.0)
 		var bt: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % ("blue" if carry_blue else "yellow"))
 		var fr := int(_bob_t * 10.0) % 13
 		draw_texture_rect_region(bt, Rect2(-14, top + 10, 11, 22), Rect2(fr * 11, 0, 11, 22))
 		draw_rect(Rect2(-15, top + 33, 13, 3), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(-14, top + 34, 11 * f, 1), Color(0.4, 1, 0.3).lerp(Color(1, 0.2, 0.1), f))
+		draw_rect(Rect2(-14, top + 34, 11 * (1.0 - f), 1), Color(0.4, 1, 0.3).lerp(Color(1, 0.55, 0.1), f))
 	if kind == "bloater" and team == game.human:
 		var w := radius * 2.0
 		draw_rect(Rect2(-w * 0.5, top + 7.0, w, 2), Color(0, 0, 0, 0.6))

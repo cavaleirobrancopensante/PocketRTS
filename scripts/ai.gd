@@ -149,6 +149,11 @@ func _workers() -> void:
 	elif _clock():
 		extra = 1 + (2 if game.army(team).size() >= 4 else 0)   # builder + escorts
 	var want := mini(int((cap * fill + extra) * float(_s("workers"))), 46 if difficulty >= 3 else _lv([16, 30, 40]))
+	if _clock():
+		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler): the rest of the
+		# 100 supply is for the army
+		want = mini(want, 14 * _halls().size() + extra + 2)
+		want = mini(want, 36 if difficulty >= 3 else _lv([16, 26, 32]))
 	var worker: String = _f()["worker"]
 	var queued := 0
 	for h in _halls():
@@ -297,7 +302,7 @@ func _supply() -> void:
 	var sup: String = _f()["supply"]
 	var prod := _halls().size() * 3 if _brood() else 3 * _mine("barracks").size() + 2 * _mine("foundry").size()
 	if _clock():
-		prod = 6 * _mine("assembly_works").size()
+		prod = 6 * _mine("assembly_works").size() + 5 * _mine("engine_hall").size()
 	var margin := 3 + prod
 	if cap - used <= margin and not _busy_building(sup):
 		_construct(sup)
@@ -316,6 +321,8 @@ func _build_up() -> void:
 			_construct("assembly_works")
 		elif works == 1 and t > _lv([600.0, 300.0, 220.0]) and gold > 300:
 			_construct("assembly_works")
+		if works > 0 and _mine("engine_hall").is_empty() and game.requirement_met(team, "engine_hall") and t > _lv([620.0, 340.0, 270.0]) and gold > 250:
+			_construct("engine_hall")
 		if works > 0 and _mine("charging_pylon").is_empty() and t > _lv([520.0, 280.0, 220.0]):
 			_construct("charging_pylon")
 		if works > 0 and _mine("capacitor_works").is_empty() and game.requirement_met(team, "capacitor_works") and (t > _lv([700.0, 400.0, 320.0]) or gold > 450):
@@ -465,6 +472,9 @@ func _safe_hall_spot() -> Vector2i:
 			var sp := game.find_spot(team, hall, h, Defs.HALL_SPACING, Defs.HALL_SPACING + 12, pref)
 			if sp.x >= 0 and not cands.has(sp):
 				cands.append(sp)
+	if _clock():
+		# the Clockwork lives on ore: a Clocktower with no fresh ore beside it is wasted
+		cands = cands.filter(func(c: Vector2i) -> bool: return _deposit_value(c) > 1.0)
 	if cands.is_empty():
 		return Vector2i(-1, -1)
 	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
@@ -538,7 +548,8 @@ func _best_soil() -> float:
 ## What's left of what a hall lives on: its soil (Crown), its ground (Brood), the ore at its
 ## base site (Clockwork: none there counts as spent).
 func _land(h: Building) -> float:
-	return game.site_left(h, "ore") if _clock() else h.soil_left()
+	# (Clockwork: its ore, or its Boilers' coal if that runs out first)
+	return minf(game.site_left(h, "ore"), h.soil_left()) if _clock() else h.soil_left()
 
 
 ## How much a hall spot is worth for the deposits beside it, in tiles of walking: the
@@ -800,24 +811,70 @@ func _produce() -> void:
 		return
 	var army := game.army(team)
 	if _clock():
-		var walkers := army.filter(func(u: Unit) -> bool: return u.kind == "steam_walker").size()
-		var carts := army.filter(func(u: Unit) -> bool: return u.kind == "tesla_cart").size()
-		var callers := army.filter(func(u: Unit) -> bool: return u.kind == "stormcaller").size()
+		var n_of := func(kind: String) -> int: return army.filter(func(u: Unit) -> bool: return u.kind == kind).size()
+		var walkers: int = n_of.call("steam_walker")
+		var carts: int = n_of.call("tesla_cart")
+		var callers: int = n_of.call("stormcaller")
+		var topters: int = n_of.call("ornithopter")
+		var threshers: int = n_of.call("thresher")
+		var shields: int = n_of.call("bulwark")
+		var arcs: int = n_of.call("arc_thrower")
+		var tins: int = n_of.call("windup_soldier")
+		var big := army.size() - tins
+		# the line: wind-ups early (cheap, three an order), then Threshers, Bulwarks and Arc
+		# Throwers; wind-ups stay a share of it all game
 		for w in _mine("assembly_works"):
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
-				var k := "gearknight" if randf() < 0.5 or game.can_train(w, "bolt") != "" else "bolt"
-				if walkers * 5 < army.size() + 2 and game.can_train(w, "steam_walker") == "":
+				var k := "windup_soldier"
+				# against a swarm the saws (Threshers cut crowds that stand); against
+				# musket lines Arc Throwers behind Bulwarks
+				var swarm := _foe() >= 0 and game.faction_of(_foe()) == "brood"
+				if game.clock > _lv([300.0, 200.0, 160.0]) or big >= 2:
+					var r := randf()
+					if tins < (3 + big / 2 if swarm else 3 + big / 3) or r < (0.12 if swarm else 0.06):
+						k = "windup_soldier"
+					elif arcs * (4 if swarm else 2) < big + 1 and game.can_train(w, "arc_thrower") == "":
+						k = "arc_thrower"
+					elif shields * (10 if swarm else 4) < big and game.can_train(w, "bulwark") == "":
+						k = "bulwark"
+					else:
+						k = "thresher"
+				var why := game.can_train(w, k)
+				if why.begins_with("Not enough") or why.begins_with("Need more supply") or why.begins_with("Supply"):
+					continue          # save up for it (don't spend it all on tin soldiers)
+				if why != "":
+					k = "thresher" if game.can_train(w, "thresher") == "" else "windup_soldier"
+				if game.train(w, k) == "":
+					match k:
+						"windup_soldier":
+							tins += 3
+						"thresher":
+							threshers += 1
+							big += 1
+						"bulwark":
+							shields += 1
+							big += 1
+						"arc_thrower":
+							arcs += 1
+							big += 1
+		# the big engines (they cost stored batteries too)
+		for w in _mine("engine_hall"):
+			if w.built and w.queue.size() < (2 if _gold() > 600 else 1):
+				var k := ""
+				if walkers * 5 < big + 2 and game.can_train(w, "steam_walker") == "":
 					k = "steam_walker"
 					walkers += 1
-				elif carts * 6 < army.size() and game.can_train(w, "tesla_cart") == "":
+				elif carts * 6 < big and game.can_train(w, "tesla_cart") == "":
 					k = "tesla_cart"
 					carts += 1
-				elif army.filter(func(u: Unit) -> bool: return u.kind == "ornithopter").size() * 6 < army.size() and game.can_train(w, "ornithopter") == "" and randf() < 0.4:
+				elif topters * 6 < big and game.can_train(w, "ornithopter") == "" and randf() < 0.4:
 					k = "ornithopter"
-				elif difficulty >= 1 and callers * 7 < army.size() and game.can_train(w, "stormcaller") == "":
+					topters += 1
+				elif difficulty >= 1 and callers * 8 < big and game.can_train(w, "stormcaller") == "":
 					k = "stormcaller"
 					callers += 1
-				game.train(w, k)
+				if k != "":
+					game.train(w, k)
 		return
 	if _brood():
 		var brutes := army.filter(func(u: Unit) -> bool: return u.kind == "brute").size()
@@ -1006,13 +1063,13 @@ func _army() -> void:
 	if _clock():
 		var fields: Array = game.buildings.filter(func(b: Building) -> bool: return b.team == team and not b.dead and b.built and b.d.has("field"))
 		for u in army:
-			if u.wind < 0.3 and not u._in_field and not u.powered_down() and u.order != "move" and not fields.is_empty():
+			if u.wind < 0.2 and not u.runs_on_spring() and not u._in_field and not u.powered_down() and u.order != "move" and not fields.is_empty():
 				var best: Building = fields[0]
 				for f in fields:
 					if f.center().distance_to(u.position) < best.center().distance_to(u.position):
 						best = f
 				u.cmd_move(best.center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
-		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.3 or u._in_field)
+		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field or u.runs_on_spring())   # (wind-ups fight on; the escort cranks them)
 	var sup := _army_supply(army)
 	var swarm_min := 10 if strategy in ["rush", "air"] else 30
 	if _brood() and _attack_at < swarm_min:
@@ -1192,7 +1249,8 @@ func _follow_with_escort(army: Array) -> void:
 	for u in army:
 		c += u.position
 	c /= army.size()
-	while _escort.size() < 2:
+	var tins := army.filter(func(o: Unit) -> bool: return o.runs_on_spring()).size()
+	while _escort.size() < 2 + mini(tins / 6, 3):
 		var pick: Unit = null
 		for u in game.workers(team):
 			if not _escort.has(u) and u.order != "build":
@@ -1202,8 +1260,21 @@ func _follow_with_escort(army: Array) -> void:
 		if pick == null:
 			break
 		_escort.append(pick)
+	# run-down Wind-up Soldiers first: the escort cranks them back up
+	var down: Array = game.units.filter(func(o: Unit) -> bool: return o.team == team and not o.dead and o.runs_on_spring() and o.powered_down())
 	for u in _escort:
 		if u.order == "repair":
+			continue
+		var crank: Unit = null
+		var cd := 700.0
+		for o in down:
+			var dd: float = o.position.distance_to(u.position)
+			if dd < cd and not game.units.any(func(x: Unit) -> bool: return x != u and x.order == "repair" and x.order_target == o):
+				cd = dd
+				crank = o
+		if crank:
+			u.cmd_repair(crank)
+			down.erase(crank)
 			continue
 		if u.position.distance_to(c) > 140.0:
 			u.cmd_move(c + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
@@ -1296,6 +1367,7 @@ func _abilities() -> void:
 		_offer()
 	if _clock():
 		_overloads()
+		_braces()
 	if not _crown():
 		return
 	for u in game.army(team):
@@ -1337,7 +1409,8 @@ func _spells() -> void:
 				if s > score:
 					score = s
 					best = e.position
-			if best != Vector2.INF:
+			# the storm only stuns: worth it when our own army is there to hit them meanwhile
+			if best != Vector2.INF and game.units_near(best, r + 160.0).any(func(f: Unit) -> bool: return f.team == team and not f.dead and not f.is_worker() and f.kind != "stormcaller" and f.position.distance_to(best) > r):
 				u.cmd_cast("storm", best)
 		elif u.kind == "spore_mother" and u.spell_cd <= 0.0 and _res2() >= float(Defs.MIASMA["cost2"]) + 10.0:
 			var hurt := 0
@@ -1422,13 +1495,43 @@ func _offer() -> void:
 	_offer_next = game.clock + _lv([40.0, 25.0, 15.0])
 
 
-## Clockwork: an Ornithopter with a battery overloads a Gearknight (or a Steam Walker)
+## Clockwork: Bulwarks BRACE when the army faces a firing line (musketeers, spitters and
+## the like shooting at it) with friends behind the shield to cover; they lift it again
+## when the shooting stops, the others have moved on, or melee is all over them.
+func _braces() -> void:
+	for u in game.army(team):
+		if u.kind != "bulwark" or u.powered_down() or u.brace_t > 0.0:
+			continue
+		var shooters := 0
+		var melee := 0
+		var at := Vector2.ZERO
+		for o in game.units_near(u.position, 340.0):
+			if not game.hostile(o.team, team) or o.dead or o.off_field or o.is_worker():
+				continue
+			if float(o.d["range"]) >= 100.0 and o.kind != "cannon" and o.kind != "spore_mother":
+				shooters += 1
+				at += o.position
+			elif o.position.distance_to(u.position) < 70.0:
+				melee += 1
+		var friends := 0
+		for f in game.units_near(u.position, float(Defs.BRACE["reach"])):
+			if f != u and f.team == team and not f.dead and not f.is_air() and f.kind != "bulwark":
+				friends += 1
+		if not u.braced:
+			if shooters >= 2 and friends >= 2 and melee < 3:
+				u.set_brace(true)
+				u.facing = (at / shooters - u.position).normalized()
+		elif shooters == 0 or friends < 1 or melee >= 4:
+			u.set_brace(false)
+
+
+## Clockwork: an Ornithopter with a battery overloads a Thresher (or a Steam Walker)
 ## that's just getting into a fight.
 func _overloads() -> void:
 	var topters: Array = game.army(team).filter(func(u: Unit) -> bool: return u.kind == "ornithopter" and u.topter_bat != "" and u.order != "overload" and u.work != "winding")
 	if topters.is_empty():
 		return
-	for k in ["gearknight", "steam_walker"]:
+	for k in ["thresher", "steam_walker"]:
 		for c in game.army(team):
 			if c.kind != k or c.overclock_t > 0.0 or c.powered_down() or c.target == null or not is_instance_valid(c.target):
 				continue

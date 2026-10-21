@@ -1064,6 +1064,15 @@ func _soil_check(h: Building) -> void:
 		return
 	h.soil_warned = level
 	var hive := h.kind == "hive"
+	if h.kind == "clocktower":
+		# Clockwork coal: the Boilers around this Clocktower
+		if mlog:
+			mlog.add("%s: the coal of a Clocktower's Boilers %s" % [mlog.who(h.team), "is spent (they fill batteries at a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		if h.team == human and not demo and hud:
+			hud.toast("Your Boilers' coal is spent: they fill batteries at a third. Build a Clocktower on fresh ground." if level == 2
+				else "Your Boilers' coal is running low (%d%% left): expand to fresh ground soon." % int(round(left * 100)), false)
+			Sfx.play("done", h.center())
+		return
 	if mlog:
 		if hive:
 			mlog.add("%s: the ground around a Hive %s" % [mlog.who(h.team), "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
@@ -1313,7 +1322,7 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool) -> Building:
 	b.setup(self, k, t, c, complete)
 	world.add_child(b)
 	buildings.append(b)
-	if k == "town_hall" or k == "hive":
+	if k == "town_hall" or k == "hive" or k == "clocktower":
 		_take_scar(b)
 	if Defs.BUILDINGS[k].get("gate", false):
 		_mark(c, b.size, 3)
@@ -1480,7 +1489,7 @@ func _killer(e: Entity) -> int:
 
 
 func on_building_died(b: Building) -> void:
-	if (b.kind == "town_hall" or b.kind == "hive") and b.built and b.soil < b.reserve():
+	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and b.soil < b.reserve():
 		soil_scars.append([b.center(), b.soil, b.kind])     # the land stays tired for the next hall here
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
@@ -1537,7 +1546,66 @@ func add_gold(t: int, n: int) -> void:
 
 func refund(t: int, k: String) -> void:
 	players[t]["gold"] += int(Defs.UNITS[k]["cost"])
-	add_res2(t, int(Defs.UNITS[k].get("cost2", 0)))
+	if faction_of(t) == "clockwork":
+		give_batteries(t, int(Defs.UNITS[k].get("cost2", 0)))
+	else:
+		add_res2(t, int(Defs.UNITS[k].get("cost2", 0)))
+
+
+## Clockwork ENERGY: the full batteries waiting at the player's Clocktowers and Boilers.
+func energy_stored(t: int) -> int:
+	var n := 0
+	for b in buildings:
+		if b.team == t and not b.dead and b.built:
+			n += b.batteries
+	return n
+
+
+## Spend stored batteries (from the fullest buildings first). False (nothing spent) if
+## there aren't enough.
+func spend_batteries(t: int, n: int) -> bool:
+	if n <= 0:
+		return true
+	if energy_stored(t) < n:
+		return false
+	var left := n
+	while left > 0:
+		var best: Building = null
+		for b in buildings:
+			if b.team == t and not b.dead and b.built and b.batteries > 0 and (best == null or b.batteries > best.batteries):
+				best = b
+		if best == null:
+			break
+		best.batteries -= 1
+		left -= 1
+	players[t]["res2"] = energy_stored(t)
+	stats[t]["energy_spent"] = int(stats[t].get("energy_spent", 0)) + n
+	return true
+
+
+## Winders leave the last few batteries in store as energy (Defs.ENERGY_KEEP; the
+## computer may ask for more while it saves up for big engines: players[t]["keep"]). A
+## source that is full is always emptied (so it never stops filling).
+func can_haul(t: int, src: Building = null) -> bool:
+	if src and src.d.has("battery") and src.batteries >= int(src.d["battery"][1]):
+		return true
+	# (nothing to spend energy on before an Engine Hall stands: no reserve kept until then)
+	var keep: int = int(players[t].get("keep", Defs.ENERGY_KEEP)) if _has_built(t, "engine_hall") else 0
+	return int(energy[t]) > keep
+
+
+## Batteries back into store (a cancelled order): to a Clocktower, or any energy building.
+func give_batteries(t: int, n: int) -> void:
+	if n <= 0:
+		return
+	var to: Building = nearest_hall(center_of_team(t), t)
+	if to == null:
+		for b in buildings:
+			if b.team == t and not b.dead and b.built and b.d.has("battery"):
+				to = b
+				break
+	if to:
+		to.batteries += n
 
 
 # ------------------------------------------------------------------ production & building
@@ -1679,7 +1747,10 @@ func train(b: Building, k: String) -> String:
 	if why != "":
 		return why
 	players[b.team]["gold"] -= int(Defs.UNITS[k]["cost"])
-	add_res2(b.team, -int(Defs.UNITS[k].get("cost2", 0)))
+	if faction_of(b.team) == "clockwork":
+		spend_batteries(b.team, int(Defs.UNITS[k].get("cost2", 0)))
+	else:
+		add_res2(b.team, -int(Defs.UNITS[k].get("cost2", 0)))
 	stats[b.team]["spent"] += int(Defs.UNITS[k]["cost"])
 	b.queue.append(k)
 	if b.uses_eggs():
@@ -1748,13 +1819,17 @@ func spawn_trained(b: Building, k: String) -> void:
 
 
 func requirement_met(t: int, k: String) -> bool:
-	var req: String = Defs.BUILDINGS[k].get("requires", "")
-	if req == "":
-		return true
-	for b in buildings:
-		if b.team == t and b.kind == req and b.built:
-			return true
-	return false
+	return requirement_text(t, k) == ""
+
+
+## "" when every building this one needs stands (finished), else what's missing.
+func requirement_text(t: int, k: String) -> String:
+	var r = Defs.BUILDINGS[k].get("requires", "")
+	var reqs: Array = r if r is Array else ([r] if r != "" else [])
+	for req in reqs:
+		if not _has_built(t, req):
+			return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
+	return ""
 
 
 ## "" if the building can go at this cell, else the reason. ai: skip the fog check.
@@ -1845,6 +1920,23 @@ static func in_ellipse(c: Vector2, p: Vector2, r: float) -> bool:
 	var d := p - c
 	d.y /= FIELD_Y
 	return d.length_squared() <= r * r
+
+
+## Overcharge ground: by a Boiler, inside a Charging Pylon's field or a deployed Tesla Cart's.
+func in_overcharge(t: int, p: Vector2) -> bool:
+	var m := field_mult(t)
+	for b in buildings:
+		if b.team != t or not b.built or b.dead:
+			continue
+		if b.kind == "boiler" and b.edge_distance(p) <= float(Defs.OVERCHARGE["boiler"]) * T:
+			return true
+		if b.kind == "charging_pylon" and b.field_on() and in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
+			return true
+	for u in units:
+		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
+				return true
+	return false
 
 
 func in_field(t: int, p: Vector2) -> bool:
@@ -2303,7 +2395,50 @@ func entity_at(p: Vector2, include_deposits := true) -> Entity:
 
 # ------------------------------------------------------------------ combat helpers
 
+## A shot (musket ball, spit, arc ball, spines) at `e`: a braced Bulwark of e's side that
+## stands between the shooter and e (e inside the cone behind the shield, within reach, the
+## shooter in front of it) takes it instead. Returns who gets hit.
+func intercept(shooter: Entity, e: Entity) -> Entity:
+	if not (e is Unit) or e.is_air() or shooter == null or not is_instance_valid(shooter):
+		return e
+	var br: Dictionary = Defs.BRACE
+	var from: Vector2 = shooter.global_position
+	for o in units_near(e.global_position, float(br["reach"]) + 10.0):
+		if o.kind != "bulwark" or not o.braced or o.dead or o.off_field or o == e or o.team != e.team:
+			continue
+		if o.powered_down():
+			continue
+		var to_shooter: Vector2 = from - o.position
+		if to_shooter.length() < 1.0:
+			continue
+		var front: Vector2 = to_shooter.normalized()
+		if o.facing.dot(front) < float(br["front"]):
+			continue            # the shield faces the other way
+		var behind: Vector2 = e.global_position - o.position
+		if behind.length() > float(br["reach"]):
+			continue
+		if behind.length() < 6.0 or (-front).dot(behind.normalized()) >= float(br["cone"]):
+			o.shield_hit()
+			return o
+	return e
+
+
+## Arc Thrower: a ball of lightning thrown at one enemy (a braced Bulwark may catch it).
+func arc_shot(u: Unit, e: Entity, dmg: float) -> void:
+	e = intercept(u, e)
+	var from := u.center() + u.facing * 12.0 + Vector2(0, -6)
+	var to := e.center()
+	var s := Shot.new()
+	s.impact = "arc_impact" if ArtData.EFFECTS.has("arc_impact") else "hit"
+	s.impact_scale = 0.8
+	s.scale = Vector2(0.7, 0.7)
+	s.launch(self, "arc_ball" if ArtData.EFFECTS.has("arc_ball") else "acid_ball", from, to, float(Defs.ARC["speed"]))
+	e.take_damage(dmg, u)
+	Sfx.play_any(["combat/tesla_attack", "zap"], u.global_position)
+
+
 func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
+	e = intercept(u, e)
 	var muzzle := u.center() + u.facing * 20.0 + Vector2(0, -2)
 	if e.is_air():
 		muzzle = u.center() + u.facing * 13.0 + Vector2(0, -15)     # aiming up
@@ -2405,10 +2540,10 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 	e.take_damage(dmg, u)
 	_zap_visual(from, e.center(), false, true)
 	var last := e
-	for k in 2:
+	for k in int(Defs.TESLA_CHAIN["jumps"]):
 		var nxt: Entity = null
-		var bd := 80.0
-		for o in units_near(last.center(), 80.0):
+		var bd := float(Defs.TESLA_CHAIN["reach"])
+		for o in units_near(last.center(), float(Defs.TESLA_CHAIN["reach"])):
 			if not hostile(o.team, u.team) or o.dead or o.off_field or hit.has(o):
 				continue
 			var dd: float = o.center().distance_to(last.center())
@@ -2417,7 +2552,7 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 				nxt = o
 		if nxt == null:
 			break
-		nxt.take_damage(dmg * 0.6, u)
+		nxt.take_damage(dmg * float(Defs.TESLA_CHAIN["falloff"]), u)
 		_zap_visual(last.center(), nxt.center(), false)
 		hit.append(nxt)
 		last = nxt
@@ -2487,6 +2622,7 @@ func _bolt_line(a: Vector2, b: Vector2) -> void:
 
 
 func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
+	e = intercept(u, e)
 	var mouth := u.center() + u.facing * 14.0 + (Vector2(0, -8) if e.is_air() else Vector2.ZERO)
 	e.take_damage(dmg, u)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
@@ -2717,6 +2853,8 @@ func spell_problem(u: Unit, spell: String) -> String:
 	if spell == "storm":
 		if u.charge < float(Defs.STORM["cost"]):
 			return "Not enough charge: the Stormcaller recharges inside a Clockwork field."
+		if energy_stored(u.team) < int(Defs.STORM["cost2"]):
+			return "Not enough energy: a storm burns %d stored batteries." % int(Defs.STORM["cost2"])
 	elif spell == "miasma":
 		if u.spell_cd > 0.0:
 			return "Miasma isn't ready yet (%ds)." % int(ceil(u.spell_cd))
@@ -2852,6 +2990,7 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {}}
 	if spell == "storm":
 		u.charge -= float(Defs.STORM["cost"])
+		spend_batteries(u.team, int(Defs.STORM["cost2"]))
 		z["r"] = float(Defs.STORM["radius"])
 		z["t"] = float(Defs.STORM["time"])
 		Sfx.play_any(["combat/tesla_attack", "zap"], p)
@@ -2920,7 +3059,7 @@ func _tick_zones(delta: float) -> void:
 				u.stun_t = maxf(u.stun_t, 0.2)
 				u.phase = ""
 				var c = z["caster"]
-				if u != c:
+				if u != c and float(Defs.STORM["dps"]) > 0.0:
 					u.take_damage(float(Defs.STORM["dps"]) * delta, c if is_instance_valid(c) else null)
 			z["bolt_t"] = float(z.get("bolt_t", 0.0)) - delta
 			if z["bolt_t"] <= 0.0:

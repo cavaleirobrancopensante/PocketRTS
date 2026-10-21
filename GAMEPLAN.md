@@ -179,13 +179,22 @@ What the prototype needs (Crown vs Crown, four units): **Town Hall, Cottage, Bar
 | # | Name | What it does |
 | --- | --- | --- |
 | U1 | Winder | Builder and repairer; never mines |
-| U2 | Gearknight | Heavily armoured melee; repairs itself slowly |
-| U3 | Bolt Automaton | Crossbow construct; bolts pierce through a line of enemies |
-| U4 | Steam Walker | Big two-legged walker; scalding steam cone, strong against swarms and buildings |
-| S1 | Clocktower | Main structure; builds Winders; Spring Tower field |
-| S2 | Drill Rig | Built on a gold mine; extracts gold by itself |
+| U2 | Thresher (replaced the Gearknight in the rework) | Saw-armed melee; saws spin up over 3 s of cutting (40% to 160% damage) and bite the enemies round the target; a battery junkie |
+| U3 | Arc Thrower (replaced the Bolt Automaton) | Throws single-target lightning balls, hits flyers; every throw drains its own battery |
+| U4 | Steam Walker | Big two-legged walker; scalding steam cone, strong against swarms and buildings (Engine Hall, costs energy) |
+| U5 | Bulwark | Tower shield; BRACE: can't move, shots at the units behind it hit the shield |
+| U6 | Wind-up Soldiers | Cheap spearmen, 3 an order; run on a spring (~50 s away from a field), Winders crank them back up |
+| S1 | Clocktower | Main structure; builds Winders; field; its Boilers share its coal |
+| S2 | Drill Rig | (old plan; replaced by Boilers and Ore Crushers on the ore outcrops) |
 | S3 | Spring Tower | Supply; wind-up field that keeps constructs at full strength |
-| S4 | Assembly Works | Builds every combat construct |
+| S4 | Assembly Works | The line: Wind-up Soldiers, Threshers, Bulwarks, Arc Throwers (5x4) |
+| S5 | Engine Hall | The big engines: Steam Walkers, Tesla Carts, Stormcallers, Ornithopters (4x4; needs Assembly Works + Boiler) |
+
+**Clockwork rework:** batteries no longer overload on the road, they fade; the
+batteries waiting at the energy buildings are the faction's Energy, spent on the top
+constructs and storms; constructs overcharge (+15%) after ~10 s by a Boiler, in a Pylon's
+or a deployed Tesla Cart's field; Winders wind themselves; each Clocktower's Boilers burn a
+coal reserve (then a third as fast). Art: `tools/import_round12.py`.
 
 **Shared part for Clockwork units (attach the Crown musketeer sheet as the style reference):**
 
@@ -307,7 +316,8 @@ The Brood has no static defence; instead, **Spine Mounds** grow on the swamp fro
 
 | Tier | Buildings | Units |
 | --- | --- | --- |
-| 1 | Clocktower, Spring Tower, Drill Rig, Boiler, Assembly Works | Winder, Gearknight, Bolt Automaton |
+| 1 | Clocktower, Spring Tower, Boiler, Ore Crusher, Assembly Works | Winder, Wind-up Soldiers, Thresher, Bulwark, Arc Thrower |
+| 1b | Engine Hall, Charging Pylon | Steam Walker, Tesla Cart, Stormcaller, Ornithopter |
 | 2 | Steamworks, Spring Gun (turret) | Steam Walker (steam), Tick (cheap spider scout that marks targets) |
 | 3 | Grand Orrery | Juggernaut (huge walking engine, steam), Orrery Seer (area rewind: heals and re-winds constructs; sees hidden units) |
 
