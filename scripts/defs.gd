@@ -92,14 +92,14 @@ const SACRIFICE := 0.12
 # Clockwork: Winders carry batteries from the energy buildings to the Ore Crushers.
 ## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
 ## Winders carry them to an Ore Crusher, which turns the charge into ore drawn from the ore
-## outcrops beside it (a quarter once they're spent). A carried battery slowly loses charge
-## on the road (`decay`: share of its charge a second, never below `floor`), so long hauls
-## pay less; if its carrier is hit, it bursts. Yellow batteries at first; a Capacitor Works
+## outcrops beside it (a quarter once they're spent). A carried battery keeps its charge
+## for `fresh` s, then slowly loses it on the road (`decay`: share of its charge a second,
+## never below `floor`), so long hauls pay less; if its carrier is hit, it bursts. Yellow batteries at first; a Capacitor Works
 ## makes every source fill blue ones (more charge, slower to fade).
 const BATTERY := {
-	"yellow": {"base": 12.0, "decay": 0.03},
-	"blue": {"base": 16.0, "decay": 0.02},
-	"floor": 0.4, "load": 1.0, "blast": 10.0, "splash": 8.0,
+	"yellow": {"base": 11.5, "decay": 0.03},
+	"blue": {"base": 15.5, "decay": 0.02},
+	"fresh": 6.0, "floor": 0.4, "load": 1.0, "blast": 10.0, "splash": 8.0,
 	"ore": 0.7,     # ore per point of charge at the crusher
 }
 ## ENERGY: the full batteries waiting at the Clocktowers and Boilers are the Clockwork's
@@ -137,7 +137,7 @@ const WINDER_SELF := {"run": 90.0, "stop": 3.0, "low": 0.04}
 ## A carried battery's charge after `t` seconds on the road.
 static func battery_charge(blue: bool, t: float) -> float:
 	var info: Dictionary = BATTERY["blue" if blue else "yellow"]
-	return float(info["base"]) * maxf(float(BATTERY["floor"]), 1.0 - float(info["decay"]) * t)
+	return float(info["base"]) * maxf(float(BATTERY["floor"]), 1.0 - float(info["decay"]) * maxf(0.0, t - float(BATTERY["fresh"])))
 const REPAIR_COST := 0.2          # ore per hit point a Winder repairs
 const ENERGY_PER_WINDER := 3.5
 const ENERGY_HALL := 3.0
@@ -154,6 +154,9 @@ const MISSIONARY_DANGER := 8      # tiles from an enemy building where he can be
 # Tesla Cart
 const TESLA_SWITCH := 3.0         # seconds to deploy or pack
 const TESLA_FIELD := 6            # tiles
+## Tesla Cart lightning: the bolt, then `jumps` more enemies within `reach` px at `falloff`
+## of it (the rework leans the cart toward powering constructs: was 2 jumps at 60%, 80 px).
+const TESLA_CHAIN := {"jumps": 1, "falloff": 0.4, "reach": 70.0}
 
 const FACTIONS := {
 	"crown": {
@@ -175,10 +178,10 @@ const FACTIONS := {
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
 		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works"],
-		"start_workers": 3, "ready": true, "max_supply": 80,
+		"start_workers": 4, "ready": true, "max_supply": 100,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
 		"start": ["ore_crusher"],
-		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers beside the ore outcrops (a battery fades on the road), and the batteries left waiting are your Energy. Each base's ore and coal run out in time. Army cap 80.",
+		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers beside the ore outcrops (a battery fades on the road), and the batteries left waiting are your Energy. Each base's ore and coal run out in time. Army cap 100.",
 	},
 }
 
@@ -288,7 +291,7 @@ const UNITS := {
 		"tags": ["armored"],
 		"name": "Thresher", "hp": 280, "armor": 3, "speed": 54, "cost": 165, "time": 24.0, "supply": 3,
 		"sight": 7, "range": 26, "damage": 20, "cooldown": 1.0, "aim": 0.2, "radius": 18, "from": "assembly_works",
-		"wind_drain": 2.5, "faction": "clockwork",
+		"wind_drain": 2.0, "faction": "clockwork",
 		"about": "Saw-armed brute. Its saws SPIN UP while it keeps cutting: from 40% to 160% damage over 3 s, and every blow bites the enemies round its target too. Strong against swarms that stand and fight, weak against anything that runs. A battery junkie: it runs down fast, faster still while spinning.",
 	},
 	"bulwark": {
@@ -309,7 +312,7 @@ const UNITS := {
 		"tags": ["armored"],
 		"name": "Steam Walker", "hp": 380, "armor": 2, "speed": 44, "cost": 240, "cost2": 3, "time": 34.0, "supply": 5,
 		"sight": 8, "range": 72, "damage": 15, "cooldown": 1.6, "aim": 0.3, "radius": 28, "from": "engine_hall",
-		"cone": true, "building_bonus": 2.0, "wind_drain": 2.5, "faction": "clockwork",
+		"cone": true, "building_bonus": 2.0, "wind_drain": 2.0, "faction": "clockwork",
 		"about": "Scalding steam hits everything in front of it. Melts swarms and buildings. A battery junkie: it runs down fast away from a field.",
 	},
 	"stormcaller": {
@@ -317,7 +320,7 @@ const UNITS := {
 		"name": "Stormcaller", "hp": 90, "armor": 0, "speed": 56, "cost": 150, "cost2": 2, "time": 24.0, "supply": 2,
 		"sight": 9, "range": 120, "damage": 7, "cooldown": 1.3, "aim": 0.25, "radius": 12, "from": "engine_hall",
 		"requires": "charging_pylon", "anti_air": true, "faction": "clockwork",
-		"about": "Fragile lightning caster. STORM stuns everything inside it, friends too, and burns 2 stored batteries. Its charge only fills inside a Clockwork field.",
+		"about": "Fragile lightning caster. STORM stuns everything inside it for 2.5 s, friends too, but does no damage; it burns 2 stored batteries. Its charge only fills inside a Clockwork field.",
 	},
 	"missionary": {
 		"tags": ["light"],
@@ -345,7 +348,7 @@ const UNITS := {
 		"name": "Tesla Cart", "hp": 240, "armor": 2, "speed": 50, "cost": 180, "cost2": 2, "time": 28.0, "supply": 3,
 		"sight": 9, "range": 170, "damage": 14, "cooldown": 1.6, "aim": 0.2, "radius": 18, "from": "engine_hall",
 		"tesla": true, "anti_air": true, "requires": "charging_pylon", "faction": "clockwork",
-		"about": "Rolls packed; deploy it (3 s) to power nearby constructs and zap enemies in chains.",
+		"about": "Mobile power: rolls packed; deploy it (3 s) to wind up (and overcharge) the constructs around it. Its lightning hits flyers too and jumps to one more enemy. Costs 2 energy.",
 	},
 }
 
@@ -499,7 +502,9 @@ const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "
 ## Cuirassier: after galloping this long, his next blow is a charge.
 const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
 ## Stormcaller: a storm of lightning that stuns everything inside (friends too).
-const STORM := {"cost": 70.0, "cost2": 2, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 96.0, "time": 3.0, "dps": 8.0, "cast": 0.7}
+## A control spell, not a killer (the rework: was radius 96, 3 s, 8 damage a second to
+## enemies, charge only): it stuns, hurts almost nothing, and burns `cost2` stored batteries.
+const STORM := {"cost": 70.0, "cost2": 2, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 80.0, "time": 2.5, "dps": 0.0, "cast": 0.7}
 ## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
 ## inside it, up to a share of each unit's health per cloud; clouds don't stack.
 ## Bloater: its acid cloud

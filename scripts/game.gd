@@ -2438,10 +2438,10 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 	e.take_damage(dmg, u)
 	_zap_visual(from, e.center(), false, true)
 	var last := e
-	for k in 2:
+	for k in int(Defs.TESLA_CHAIN["jumps"]):
 		var nxt: Entity = null
-		var bd := 80.0
-		for o in units_near(last.center(), 80.0):
+		var bd := float(Defs.TESLA_CHAIN["reach"])
+		for o in units_near(last.center(), float(Defs.TESLA_CHAIN["reach"])):
 			if not hostile(o.team, u.team) or o.dead or o.off_field or hit.has(o):
 				continue
 			var dd: float = o.center().distance_to(last.center())
@@ -2450,7 +2450,7 @@ func tesla_zap(u: Unit, e: Entity, dmg: float) -> void:
 				nxt = o
 		if nxt == null:
 			break
-		nxt.take_damage(dmg * 0.6, u)
+		nxt.take_damage(dmg * float(Defs.TESLA_CHAIN["falloff"]), u)
 		_zap_visual(last.center(), nxt.center(), false)
 		hit.append(nxt)
 		last = nxt
@@ -2898,7 +2898,7 @@ func _tick_zones(delta: float) -> void:
 				u.stun_t = maxf(u.stun_t, 0.2)
 				u.phase = ""
 				var c = z["caster"]
-				if u != c:
+				if u != c and float(Defs.STORM["dps"]) > 0.0:
 					u.take_damage(float(Defs.STORM["dps"]) * delta, c if is_instance_valid(c) else null)
 			z["bolt_t"] = float(z.get("bolt_t", 0.0)) - delta
 			if z["bolt_t"] <= 0.0:

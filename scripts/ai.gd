@@ -151,7 +151,7 @@ func _workers() -> void:
 	var want := mini(int((cap * fill + extra) * float(_s("workers"))), 46 if difficulty >= 3 else _lv([16, 30, 40]))
 	if _clock():
 		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler): the rest of the
-		# 80 supply is for the army
+		# 100 supply is for the army
 		want = mini(want, 14 * _halls().size() + extra + 2)
 		want = mini(want, 36 if difficulty >= 3 else _lv([16, 26, 32]))
 	var worker: String = _f()["worker"]
@@ -472,6 +472,9 @@ func _safe_hall_spot() -> Vector2i:
 			var sp := game.find_spot(team, hall, h, Defs.HALL_SPACING, Defs.HALL_SPACING + 12, pref)
 			if sp.x >= 0 and not cands.has(sp):
 				cands.append(sp)
+	if _clock():
+		# the Clockwork lives on ore: a Clocktower with no fresh ore beside it is wasted
+		cands = cands.filter(func(c: Vector2i) -> bool: return _deposit_value(c) > 1.0)
 	if cands.is_empty():
 		return Vector2i(-1, -1)
 	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
@@ -815,17 +818,23 @@ func _produce() -> void:
 		for w in _mine("assembly_works"):
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "windup_soldier"
+				# against a swarm the saws (Threshers cut crowds that stand); against
+				# musket lines Arc Throwers behind Bulwarks
+				var swarm := _foe() >= 0 and game.faction_of(_foe()) == "brood"
 				if game.clock > _lv([300.0, 200.0, 160.0]) or big >= 2:
 					var r := randf()
-					if tins < 6 + big or r < 0.15:
+					if tins < (4 if swarm else 6) + big or r < 0.12:
 						k = "windup_soldier"
-					elif arcs * 3 < big + 1 and game.can_train(w, "arc_thrower") == "":
+					elif arcs * (4 if swarm else 3) < big + 1 and game.can_train(w, "arc_thrower") == "":
 						k = "arc_thrower"
-					elif shields * 6 < big and game.can_train(w, "bulwark") == "":
+					elif shields * (10 if swarm else 5) < big and game.can_train(w, "bulwark") == "":
 						k = "bulwark"
 					else:
 						k = "thresher"
-				if game.can_train(w, k) != "":
+				var why := game.can_train(w, k)
+				if why.begins_with("Not enough") or why.begins_with("Need more supply") or why.begins_with("Supply"):
+					continue          # save up for it (don't spend it all on tin soldiers)
+				if why != "":
 					k = "thresher" if game.can_train(w, "thresher") == "" else "windup_soldier"
 				if game.train(w, k) == "":
 					match k:
@@ -1033,13 +1042,13 @@ func _army() -> void:
 	if _clock():
 		var fields: Array = game.buildings.filter(func(b: Building) -> bool: return b.team == team and not b.dead and b.built and b.d.has("field"))
 		for u in army:
-			if u.wind < 0.3 and not u._in_field and not u.powered_down() and u.order != "move" and not fields.is_empty():
+			if u.wind < 0.2 and not u._in_field and not u.powered_down() and u.order != "move" and not fields.is_empty():
 				var best: Building = fields[0]
 				for f in fields:
 					if f.center().distance_to(u.position) < best.center().distance_to(u.position):
 						best = f
 				u.cmd_move(best.center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
-		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.3 or u._in_field)
+		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field)
 	var sup := _army_supply(army)
 	var swarm_min := 10 if strategy in ["rush", "air"] else 30
 	if _brood() and _attack_at < swarm_min:
@@ -1387,7 +1396,8 @@ func _spells() -> void:
 				if s > score:
 					score = s
 					best = e.position
-			if best != Vector2.INF:
+			# the storm only stuns: worth it when our own army is there to hit them meanwhile
+			if best != Vector2.INF and game.units_near(best, r + 160.0).any(func(f: Unit) -> bool: return f.team == team and not f.dead and not f.is_worker() and f.kind != "stormcaller" and f.position.distance_to(best) > r):
 				u.cmd_cast("storm", best)
 		elif u.kind == "spore_mother" and u.spell_cd <= 0.0 and _res2() >= float(Defs.MIASMA["cost2"]) + 10.0:
 			var hurt := 0

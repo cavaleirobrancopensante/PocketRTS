@@ -1176,9 +1176,9 @@ func _draw_panel(font: Font) -> void:
 				var bi: Dictionary = Defs.BATTERY["blue" if blue else "yellow"]
 				var ol := game.deposit_left(bb)
 				var q := 1.0 if ol > 0.0 else float(Defs.DEPOSIT["spent"])
-				info = "Ore: %d%% nearby%s · %s batteries: %d ore fresh, %d%% less a second on the road" % [int(round(ol * 100)),
+				info = "Ore: %d%% nearby%s · %s batteries: %d ore; after %d s on the road they lose %d%% a second" % [int(round(ol * 100)),
 					" (spent: a quarter)" if ol <= 0.0 else (" (running low)" if ol < Defs.SOIL_LOW else ""), "Blue" if blue else "Yellow",
-					int(round(Defs.battery_charge(blue, 0.0) * float(Defs.BATTERY["ore"]) * q)), int(round(float(bi["decay"]) * 100))]
+					int(round(Defs.battery_charge(blue, 0.0) * float(Defs.BATTERY["ore"]) * q)), int(Defs.BATTERY["fresh"]), int(round(float(bi["decay"]) * 100))]
 			elif bb.kind == "brood_pen":
 				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
@@ -1394,7 +1394,7 @@ func _tooltip(font: Font, it: Array, cr: Rect2) -> void:
 		"UNLIMBER": "Unlimber (2.5 s): set the gun up to fire. It can't move until it limbers again.",
 		"LIMBER": "Limber up (2.5 s): hitch the gun to the horse to move it. It can't fire while limbered.",
 		"CANISTER": "Load canister: short range, a cone of musket balls; big damage, +50% against Light units, and it hits flyers. One of the gun's 8 shots.",
-		"STORM": "Static storm: a ring of lightning on a spot for 3 s. Everything inside is stunned, your own units too, and enemies take damage. Costs 70 charge; the Stormcaller recharges only inside a Clockwork field.",
+		"STORM": "Static storm: a ring of lightning (2.5-tile radius) on a spot for 2.5 s. Everything inside is stunned, your own units too; it does no damage: hit them while they stand. Costs 70 charge and 2 stored batteries; the Stormcaller recharges only inside a Clockwork field.",
 		"HARVEST": "Harvest the fallen: the grubs stay here and wrap every body nearby (friend or foe) in a cocoon, carrying it to a Hive as essence. Veterans hold more. Bodies rot away after 2 minutes.",
 		"SACRIFICE": "Sacrifice: the selected Brood creatures (not grubs) go to the nearest Brood Pen and are offered up there, each for 12% of its biomass cost as essence (a Raptor 3, a Spitter 5, a Brute 18). Turn spare biomass into essence for Skywings, Bloaters, Brutes and Spore Mothers.",
 		"HOLD GAS": "Hold gas: stop spitting and keep the sac full; the Bloater drifts in and bursts as a huge acid bomb (damage and cloud grow with the gas left).",
