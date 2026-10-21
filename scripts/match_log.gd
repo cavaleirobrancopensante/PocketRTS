@@ -107,6 +107,7 @@ func snapshot() -> void:
 			int(st["killed"]) - int(last["killed"]), int(st["killed"]), int(st["lost"]) - int(last["lost"]), int(st["lost"])])
 		if t == game.human and not game.demo:
 			lines[lines.size() - 1] += " | APM %d (this minute %d actions)" % [game.apm(), game.actions_minute]
+			game.apm_minutes.append(game.actions_minute)
 			game.actions_minute = 0
 		if game.faction_hall(t) == "town_hall" or game.faction_hall(t) == "hive":
 			var soil := PackedStringArray()
@@ -149,6 +150,21 @@ func finish(winner: int) -> void:
 			int(st["lost"]), int(st["razed"]), int(st["bld_lost"]), int(st["peak_army"]), ", ".join(kb) if not kb.is_empty() else "-"])
 		if t == game.human and not game.demo:
 			lines[lines.size() - 1] += " APM: average %d, peak %d, %d actions." % [game.apm_average(), maxi(game.apm_peak, game.apm()), game.actions_total]
+			# peaks and lows: whole minutes only (the last snapshot may be a part minute)
+			var mins: Array = game.apm_minutes
+			if mins.size() > 1 and fmod(game.clock, 60.0) > 2.0:
+				mins = mins.slice(0, mins.size() - 1)      # (the last one is only part of a minute)
+			if not mins.is_empty():
+				var hi := 0
+				var lo := 0
+				for i in mins.size():
+					if int(mins[i]) > int(mins[hi]):
+						hi = i
+					if int(mins[i]) < int(mins[lo]):
+						lo = i
+				lines.append("  APM peaks and lows: busiest minute %d (%d actions), quietest minute %d (%d actions); busiest 10 seconds: %d actions, ending at %02d:%02d (a pace of %d APM). Per minute: %s" % [
+					hi + 1, int(mins[hi]), lo + 1, int(mins[lo]), game.burst_best, int(game.burst_at) / 60, int(game.burst_at) % 60,
+					game.burst_best * 6, ", ".join(mins.map(func(x) -> String: return str(x)))])
 
 
 func text() -> String:

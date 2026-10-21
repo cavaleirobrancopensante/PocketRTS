@@ -3851,10 +3851,21 @@ var actions_total := 0
 var actions_minute := 0          # actions since the last per-minute log line
 var apm_peak := 0
 
+var apm_minutes: Array = []      # actions in each whole minute of the match, in order (the log's peaks and lows)
+var _burst: Array = []           # action times in the last 10 s
+var burst_best := 0              # most actions in any 10 s, and when that burst ended
+var burst_at := 0.0
+
 func note_action() -> void:
 	actions.append(clock)
 	actions_total += 1
 	actions_minute += 1
+	_burst.append(clock)
+	while not _burst.is_empty() and clock - float(_burst[0]) > 10.0:
+		_burst.pop_front()
+	if _burst.size() > burst_best:
+		burst_best = _burst.size()
+		burst_at = clock
 
 
 ## Your APM over the last minute (scaled up while the match is younger than a minute).
