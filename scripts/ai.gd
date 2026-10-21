@@ -236,15 +236,15 @@ func _econ_build() -> void:
 
 func _econ_spot(kind: String) -> Vector2i:
 	var halls := _halls()
-	var dep: String = Defs.DEPOSIT_FOR.get(kind, "")
+	var lodes := kind == "powder_mill" or kind == "ore_crusher"
 	if kind == "farm" or kind == "feeding_pit":
 		# farms (pits) go where the soil (the Hive's ground) is freshest: tired land pays a third
 		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil_left() > b.soil_left())
-	elif dep != "":
-		# a Mill (Crusher) goes by the freshest saltpetre (ore); by spent rock only if it's the first
-		halls.sort_custom(func(a: Building, b: Building) -> bool: return game.site_left(a, dep) > game.site_left(b, dep))
+	elif lodes:
+		# a Mill (Crusher) goes by the freshest saltpetre (ore); by a spent hall only if it's the first
+		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.lode_left() > b.lode_left())
 		if game.econ_count(team, kind) > 0:
-			halls = halls.filter(func(h: Building) -> bool: return game.site_left(h, dep) > 0.05)
+			halls = halls.filter(func(h: Building) -> bool: return h.lode_left() > 0.05)
 	for h in halls:
 		if not h.built:
 			continue
@@ -454,7 +454,7 @@ func _safe_hall_spot() -> Vector2i:
 	var ex: Vector2i = game.expansions[team] if game.expansions.size() > team else Vector2i(-1, -1)
 	if ex.x >= 0 and game.placement_problem(team, hall, ex, true) == "":
 		cands.append(ex)
-	# the map's base sites, with their deposit lines
+	# the map's base sites
 	for bs in game.base_sites:
 		if not cands.has(bs) and game.placement_problem(team, hall, bs, true) == "":
 			cands.append(bs)
@@ -483,7 +483,7 @@ func _safe_hall_spot() -> Vector2i:
 				score += float(u.d["supply"]) * 3.0
 		if c == ex:
 			score -= 4.0           # (the map's own expansion spot: open ground, near a ramp of ours)
-		score -= _deposit_value(c)
+		score -= _lode_value(c)
 		if score < bs:
 			bs = score
 			best = c
@@ -535,36 +535,34 @@ func _best_soil() -> float:
 	return best if not _halls().is_empty() else 1.0
 
 
-## What's left of what a hall lives on: its soil (Crown), its ground (Brood), the ore at its
-## base site (Clockwork: none there counts as spent).
+## What's left of what a hall lives on: its soil (Crown), its ground (Brood), its ore (Clockwork).
 func _land(h: Building) -> float:
-	return game.site_left(h, "ore") if _clock() else h.soil_left()
+	return h.lode_left() if _clock() else h.soil_left()
 
 
-## How much a hall spot is worth for the deposits beside it, in tiles of walking: the
-## Clockwork lives on ore, the Crown wants fresh saltpetre for powder, the Brood ignores them.
-func _deposit_value(c: Vector2i) -> float:
+## How much a hall spot is worth for the lode a hall there would find (fresh, unless a hall of
+## ours fell there), in tiles of walking: the Clockwork lives on ore, the Crown wants fresh
+## saltpetre for powder, the Brood has none.
+func _lode_value(c: Vector2i) -> float:
 	if _brood():
 		return 0.0
-	var mid := (Vector2(c) + Vector2(Defs.BUILDINGS[_f()["hall"]]["size"]) * 0.5) * Defs.TILE
-	var left := game.site_left_at(mid, "ore" if _clock() else "saltpetre")
-	return maxf(0.0, left) * (16.0 if _clock() else 6.0)
+	return game.lode_at_spot(c, _f()["hall"]) * (16.0 if _clock() else 6.0)
 
 
-## Crown / Clockwork: a Mill (Crusher) by spent rock is pulled down when the limit leaves no
-## room for one by a hall that still has fresh saltpetre (ore) and none working it.
+## Crown / Clockwork: a Mill (Crusher) on spent saltpetre (ore) is pulled down when the limit
+## leaves no room for one by a hall that still has fresh saltpetre (ore) and none working it.
 func _recycle_spent() -> void:
-	for kind in Defs.DEPOSIT_FOR:
+	for kind in ["powder_mill", "ore_crusher"]:
 		if Defs.BUILDINGS[kind]["faction"] != game.faction_of(team) or game.econ_count(team, kind) < game.econ_limit(team, kind):
 			continue
-		var dep: String = Defs.DEPOSIT_FOR[kind]
-		var spent: Array = _mine(kind).filter(func(b: Building) -> bool: return b.built and game.deposit_left(b) <= 0.0)
+		var dep: String = Defs.LODE_NAME[Defs.LODE_FOR[kind]]
+		var spent: Array = _mine(kind).filter(func(b: Building) -> bool: return b.built and b.lode_left() <= 0.0)
 		if spent.is_empty():
 			continue
 		for h in _halls():
-			if not h.built or game.site_left(h, dep) < 0.15:
+			if not h.built or h.lode_left() < 0.15:
 				continue
-			var worked := _mine(kind).any(func(b: Building) -> bool: return game.deposit_left(b) > 0.0 and b.center().distance_to(h.center()) < 16.0 * Defs.TILE)
+			var worked := _mine(kind).any(func(b: Building) -> bool: return game.lode_hall(b) == h)
 			if not worked:
 				game.demolish(spent[0])
 				if game.mlog:
@@ -583,9 +581,9 @@ func _more_halls(macro: bool) -> void:
 	if _gold() < int(Defs.BUILDINGS[hall]["cost"]):
 		return
 	if not macro and not _brood():
-		# a base site with fresh deposits first (the Clockwork lives on ore)
+		# a base site with a fresh lode first (the Clockwork lives on ore)
 		var sp := _safe_hall_spot()
-		if sp.x >= 0 and _deposit_value(sp) > 0.0:
+		if sp.x >= 0 and _lode_value(sp) > 0.0:
 			_construct(hall, sp)
 			return
 		if _clock():

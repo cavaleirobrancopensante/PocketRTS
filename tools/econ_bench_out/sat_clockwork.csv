@@ -1,7 +1,7 @@
 workers,at_work,crew_slots,income_ore_per_min,income_energy_per_min,per_worker_ore,per_worker_energy,deliveries_per_min,avg_trip_s,avg_charge,overloads,batteries_filled_per_min,battery_stall_s,crews,crusher_dists
-4,4,18,210,30.0,52.7,7.5,30.0,0.03,7.0,0,30.0,480.0,"clocktower:4 boiler:0 boiler:0","11.0 6.0 boiler->crusher 4.1 boiler->crusher 7.8"
-8,8,18,835,111.5,104.5,13.94,111.5,0.71,7.4,0,111.5,143.4,"clocktower:4 boiler:1 boiler:3","11.0 6.0 boiler->crusher 4.1 boiler->crusher 7.8"
-12,12,18,1086,143.7,90.6,11.98,144.0,0.78,7.41,0,143.7,9.0,"clocktower:4 boiler:4 boiler:4","11.0 6.0 boiler->crusher 4.1 boiler->crusher 7.8"
-16,16,18,1107,146.0,69.2,9.12,146.2,0.82,7.45,0,146.0,0.0,"clocktower:4 boiler:5 boiler:7","11.0 6.0 boiler->crusher 4.1 boiler->crusher 7.8"
-20,18,18,1107,146.0,55.4,7.3,146.5,0.8,7.44,0,146.0,0.0,"clocktower:4 boiler:7 boiler:7","11.0 6.0 boiler->crusher 4.1 boiler->crusher 7.8"
-24,18,18,1105,146.0,46.1,6.08,146.5,0.78,7.44,0,146.0,0.0,"clocktower:4 boiler:7 boiler:7","11.0 6.0 boiler->crusher 4.1 boiler->crusher 7.8"
+4,4,18,244,30.0,61.2,7.5,30.0,1.65,8.03,0,30.0,480.0,"clocktower:4 boiler:0 boiler:0","11.0 8.5 boiler->crusher 4.1 boiler->crusher 4.1"
+8,8,18,1034,142.5,129.3,17.81,142.5,0.37,7.22,0,142.5,14.5,"clocktower:4 boiler:1 boiler:3","11.0 8.5 boiler->crusher 4.1 boiler->crusher 4.1"
+12,12,18,1059,146.0,88.3,12.17,146.0,0.36,7.22,0,146.0,0.0,"clocktower:4 boiler:3 boiler:5","11.0 8.5 boiler->crusher 4.1 boiler->crusher 4.1"
+16,16,18,1060,146.0,66.3,9.12,146.2,0.36,7.22,0,146.0,0.0,"clocktower:4 boiler:5 boiler:7","11.0 8.5 boiler->crusher 4.1 boiler->crusher 4.1"
+20,18,18,1059,146.0,53.0,7.3,146.0,0.37,7.21,0,146.0,0.0,"clocktower:4 boiler:7 boiler:7","11.0 8.5 boiler->crusher 4.1 boiler->crusher 4.1"
+24,18,18,1059,146.0,44.1,6.08,146.0,0.36,7.22,0,146.0,0.0,"clocktower:4 boiler:7 boiler:7","11.0 8.5 boiler->crusher 4.1 boiler->crusher 4.1"

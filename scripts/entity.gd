@@ -1,6 +1,6 @@
 class_name Entity
 extends Node2D
-## Anything on the map: units, buildings and deposits (rock outcrops).
+## Anything on the map: units and buildings.
 
 const TEAM_SHADER := preload("res://shaders/team.gdshader")
 
@@ -32,10 +32,6 @@ func is_building() -> bool:
 	return false
 
 
-func is_deposit() -> bool:
-	return false
-
-
 func is_air() -> bool:
 	return false
 
@@ -49,7 +45,7 @@ func alive() -> bool:
 	return not dead and is_inside_tree()
 
 
-## Footprint for buildings and deposits; a small box for units.
+## Footprint for buildings; a small box for units.
 func rect() -> Rect2:
 	return Rect2(global_position - Vector2(8, 8), Vector2(16, 16))
 
