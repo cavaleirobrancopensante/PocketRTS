@@ -44,6 +44,9 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from import_horse_coats import fb_left  # noqa: E402
+
 UNITS_DIR = "assets/units"
 OUT = "assets/units/trim_masks"
 DIRS = ["s", "se", "e", "ne", "n"]
@@ -254,7 +257,8 @@ def strips(unit):
                 yield anim, d, p
 
 
-UPRIGHT = 0.8     # a death frame at least this tall (of the strip's tallest) still has him up
+FB_BESIDE = 2     # front / back mounting strips: frames where the man still stands beside the horse
+UPRIGHT = 0.8    # a death frame at least this tall (of the strip's tallest) still has him up
 
 
 def build_unit(unit, cell):
@@ -266,12 +270,22 @@ def build_unit(unit, cell):
         H, W = im.shape[:2]
         mask = np.zeros((H, W), bool)
         n = W // cw
+        # (a front / back mounting strip: in its first frames the man stands beside the horse,
+        # and its ears above the saddle cloth would pass for his helmet: only his side counts)
+        beside = fb_left(im, cw) + 1 if anim == "mount" and d in ("s", "n") else None
         tall = [np.ptp(np.nonzero(im[:, i * cw:(i + 1) * cw, 3].any(1))[0]) if im[:, i * cw:(i + 1) * cw, 3].any() else 0 for i in range(n)]
         for fi in range(n):
             # (falling: only while he is still up; lying down his head is anywhere)
             if anim == "death" and tall[fi] < UPRIGHT * max(tall):
                 continue
             drop = [b[:4] for b in CONFIG[unit].get("drop", {}).get(anim + "_" + d, []) if len(b) < 5 or fi in b[4]]
+            if beside is not None and fi < FB_BESIDE:
+                drop.append((beside, 0, cw, H))
+            elif beside is not None and style == "helmet":
+                # (on the horse, his helmet is the top of the picture: from behind, his back
+                # plate is a bigger piece of steel)
+                top = int(np.nonzero(im[:, fi * cw:(fi + 1) * cw, 3].any(1))[0].min())
+                drop.append((0, top + HELM_H + 2, cw, H))
             mask[:, fi * cw:(fi + 1) * cw] = frame_mask(style, im[:, fi * cw:(fi + 1) * cw], drop)
         out["%s_%s" % (anim, d)] = (im, mask)
     return out

@@ -341,7 +341,27 @@ def rider_head(px, pad, below):
     return m
 
 
-def frame_mask(cfg, anim, d, fi, px):
+FB_CLIMB = 4       # front / back mounting strips: frames before this one, the man is not yet seated
+
+
+def fb_left(strip, cw):
+    """(the front / back mounting strips: tools/import_mount.py) the left edge of the horse:
+    its legs are the rightmost run of columns in the first frame's lowest rows (the man stands
+    at its left), its body no wider than them on that side. Same in every frame (the strip
+    keeps the horse still)."""
+    a = strip[:, :cw, 3] > 0
+    ys = np.nonzero(a.any(1))[0]
+    band = a[ys.max() - 5:ys.max() + 1].any(0)
+    xs = np.nonzero(band)[0]
+    # (runs split by gaps of 2+ columns)
+    starts = [x for i, x in enumerate(xs) if i == 0 or x - xs[i - 1] > 2]
+    return int(starts[-1]) - 4
+
+
+def frame_mask(cfg, anim, d, fi, px, fb=None):
+    """`fb`: the horse's left edge in a front / back mounting strip (fb_left): nothing left of
+    it is the horse (the man beside it, his legs hanging), and before he is seated only a row
+    into his coat (and the saddle cloth) is kept out, not the horse's back above it."""
     if anim in cfg.get("alias", {}):
         anim, fi = cfg["alias"][anim]       # a strip that repeats another one's frame
     mid, dark = candidates(test_of(cfg, anim), px)
@@ -351,7 +371,12 @@ def frame_mask(cfg, anim, d, fi, px):
     skipped = ((anim, fi) in sk or (anim + "_" + d, fi) in sk) and (anim + "_" + d, -fi - 1) not in sk
     if rh and not skipped:
         below = rh["below"]
-        out |= rider_head(px, rh["pad"], below.get(d, 1) if isinstance(below, dict) else below)
+        bl = below.get(d, 1) if isinstance(below, dict) else below
+        if fb is not None and fi < FB_CLIMB:
+            bl = 1
+        out |= rider_head(px, rh["pad"], bl)
+    if fb is not None:
+        out[:, :max(fb, 0)] = True
     keep = box_list(cfg["keep"], anim, d, fi)
     if keep:
         out |= ~box_mask(mid.shape, keep)
@@ -407,9 +432,15 @@ def build_unit(unit, cell):
         mask = np.zeros((H, W), bool)
         spots = np.zeros((H, W), bool)
         pat = spot_pattern(cw, H, zlib.crc32(("%s/%s" % (unit, d)).encode()))
+        fb = fb_left(im, cw) if anim == "mount" and d in ("s", "n") else None
         for fi in range(W // cw):
             fr = im[:, fi * cw:(fi + 1) * cw]
-            mask[:, fi * cw:(fi + 1) * cw] = frame_mask(cfg, anim, d, fi, fr)
+            fm = frame_mask(cfg, anim, d, fi, fr, fb)
+            if fb is not None and fi > 0:
+                # (the horse stands still: no more of it than in the first frame, where the
+                # man is still beside it; a leg swung over its head, a knee on its back are his)
+                fm &= ndimage.binary_dilation(mask[:, :cw], structure=np.ones((3, 3)))
+            mask[:, fi * cw:(fi + 1) * cw] = fm
             spots[:, fi * cw:(fi + 1) * cw] = pat
         out["%s_%s" % (anim, d)] = (im, mask, spots)
     return out
