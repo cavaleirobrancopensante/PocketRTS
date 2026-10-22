@@ -261,7 +261,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Horse", "hp": 60, "armor": 0, "speed": 96, "cost": 0, "time": 1.0, "supply": 0,
 		"sight": 4, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 11, "from": "",
-		"no_attack": true, "horse": true, "faction": "crown",
+		"no_attack": true, "horse": true, "body": 1, "faction": "crown",   # body: what its carcass is worth to the Brood (as 1 supply)
 		"about": "Bred at a Horse Breeder. Lead it by the reins (LEAD), ride it (MOUNT), harness it to a gun or wagon, or bring it to a Barracks or Foundry for cavalry and guns. Left alone with an enemy man beside it, it's stolen.",
 	},
 	"messenger": {

@@ -2023,8 +2023,20 @@ func on_unit_died(u: Unit) -> void:
 	for g in groups:
 		g.erase(u)
 	if u.kind == "horse":
-		# (a horse isn't counted in the losses; the Brood can still harvest its body)
+		# (a horse isn't counted in the losses; the Brood still feeds on its body: a Pen
+		# close by takes it at once, else the grubs can harvest it like any other)
 		if brood_in_match():
+			for t in n_players():
+				if faction_of(t) != "brood":
+					continue
+				for b in buildings:
+					if b.team == t and b.kind == "brood_pen" and b.built and not b.dead \
+							and b.center().distance_to(u.position) < Defs.PEN_RANGE * T:
+						var ess := int(u.d.get("body", 1)) * Defs.ESSENCE_PER_SUPPLY
+						add_res2(t, ess)
+						if t == human:
+							float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
+						return
 			corpses.append(u)
 		return
 	stats[u.team]["lost"] += 1
@@ -2131,7 +2143,7 @@ func brood_in_match() -> bool:
 
 
 func corpse_value(u: Unit) -> int:
-	return int(u.d["supply"]) * int(Defs.HARVEST["per_supply"]) + u.kills
+	return int(u.d.get("body", u.d["supply"])) * int(Defs.HARVEST["per_supply"]) + u.kills
 
 
 ## The nearest unclaimed body within reach of a grub.
