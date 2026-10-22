@@ -730,8 +730,34 @@ var _tile_cache := {}
 var _tile_avg := {}
 
 
+## The variants of a ground set the painter uses (the calm and mid grass are toned copies of
+## the grass tiles, so they take its list; without one only variant 0 was used, and one
+## picture repeated every cell drew a regular grid). With the seams blended, a few more of the
+## plain variants of the commonest grounds join the generated lists (MORE_VARIANTS); the
+## desert's sand had only its two banded dune pictures, whose stripes broke off at every
+## cell edge, and takes the plainer ones instead (OWN_VARIANTS).
+const MORE_VARIANTS := {"grass": [0, 1], "moss": [0, 4]}
+const OWN_VARIANTS := {"sand": [5, 1, 8]}
+
+
+var _good_cache := {}
+
+
+func _good(set_name: String) -> Array:
+	if not _good_cache.has(set_name):
+		var base := set_name
+		if set_name == "grass_calm" or set_name == "grass_mid":
+			base = "grass"
+		var good: Array = TerrainData.GOOD.get(base, TerrainData2.GOOD.get(base, [0]))
+		if MORE_VARIANTS.has(base):
+			good = good + MORE_VARIANTS[base]
+		good = OWN_VARIANTS.get(base, good)
+		_good_cache[set_name] = good
+	return _good_cache[set_name]
+
+
 func _tile_key(set_name: String, rnd: int) -> String:
-	var good: Array = TerrainData.GOOD.get(set_name, TerrainData2.GOOD.get(set_name, [0]))
+	var good := _good(set_name)
 	return "%s_%d" % [set_name, good[rnd % good.size()]]
 
 
@@ -744,39 +770,209 @@ static func _is_macro(set_name: String) -> bool:
 func _tile(set_name: String, rnd: int) -> Image:
 	var key := _tile_key(set_name, rnd)
 	if not _tile_cache.has(key):
-		var im: Image = tex("res://assets/terrain/%s.png" % key).get_image()
+		_load_set(set_name)
+	return _tile_cache[key]
+
+
+## Loads every variant of a ground set at once: each picture's edges mended (_mend_edges) and
+## its brightness evened out to the set's mean, so neighbouring cells or blocks don't read as
+## a checkerboard of lighter and darker squares. Cliff faces, tops and ramps keep their art.
+func _load_set(set_name: String) -> void:
+	var good := _good(set_name)
+	var sz := T * 2 if _is_macro(set_name) else T
+	var ground := not (set_name.ends_with("_face") or set_name.ends_with("_top") or set_name.ends_with("_ramp"))
+	var ims := {}
+	var lums := {}
+	var total := 0.0
+	for v in good:
+		var key := "%s_%d" % [set_name, v]
+		if ims.has(key):
+			continue
+		var im: Image = tex("res://assets/terrain/%s.png" % key).get_image().duplicate()
 		im.convert(Image.FORMAT_RGBA8)
-		var sz := T * 2 if _is_macro(set_name) else T
 		if im.get_width() != sz or im.get_height() != sz:
 			im.resize(sz, sz, Image.INTERPOLATE_NEAREST)
+		if ground:
+			_mend_edges(im)
+			_flatten_edges(im)
+		var avg := _mean_colour(im)
+		ims[key] = im
+		lums[key] = avg.get_luminance()
+		total += lums[key]
+	var mean := total / maxf(ims.size(), 1)
+	for key in ims:
+		var im: Image = ims[key]
+		if ground and lums[key] > 0.01:
+			var gain := clampf(mean / lums[key], 0.8, 1.25)
+			if absf(gain - 1.0) > 0.005:
+				im.adjust_bcs(gain, 1.0, 1.0)
 		_tile_cache[key] = im
-		var small: Image = im.duplicate()
-		small.resize(1, 1, Image.INTERPOLATE_BILINEAR)
-		_tile_avg[key] = small.get_pixel(0, 0)
-	return _tile_cache[key]
+		_tile_avg[key] = _mean_colour(im)
+
+
+## Many pictures are lighter or darker along an edge (a band of glare on ice, a shadowed side):
+## side by side such bands lined up into stripes along the grid. Each line in the outer fifth
+## of the picture is brought toward the picture's mean brightness, fully at the edge and less
+## going in (a dark or light veil over the line, so it's native and quick).
+static func _flatten_edges(im: Image) -> void:
+	var s := im.get_width()
+	var r_n := s / 5
+	var mean := _mean_colour(im).get_luminance()
+	for e in 4:
+		for d in r_n:
+			var r: Rect2i
+			match e:
+				0: r = Rect2i(0, d, s, 1)
+				1: r = Rect2i(0, s - 1 - d, s, 1)
+				2: r = Rect2i(d, 0, 1, s)
+				_: r = Rect2i(s - 1 - d, 0, 1, s)
+			var l := _mean_colour(im.get_region(r)).get_luminance()
+			if l < 0.02 or l > 0.98:
+				continue
+			var g := clampf(lerpf(1.0, mean / l, 1.0 - float(d) / r_n), 0.7, 1.4)
+			var a := 0.0
+			var veil := Color(0, 0, 0)
+			if g < 0.995:
+				a = 1.0 - g                       # c * g
+			elif g > 1.005:
+				veil = Color(1, 1, 1)
+				a = clampf(l * (g - 1.0) / (1.0 - l), 0.0, 0.6)   # lifts the line's mean to l * g
+			else:
+				continue
+			var ov := Image.create(r.size.x, r.size.y, false, Image.FORMAT_RGBA8)
+			ov.fill(Color(veil.r, veil.g, veil.b, a))
+			im.blend_rect(ov, Rect2i(Vector2i.ZERO, r.size), r.position)
+
+
+## The true average colour of a picture (its smallest mipmap).
+static func _mean_colour(im: Image) -> Color:
+	var m: Image = im.duplicate()
+	m.generate_mipmaps()
+	var n := m.get_mipmap_count()
+	var off := m.get_mipmap_offset(n)
+	var d := m.get_data()
+	return Color8(d[off], d[off + 1], d[off + 2], 255)
+
+
+## Many ground pictures were cut from their atlas with a stray line along an edge (a dark or
+## bright row of the sheet's grid): laid side by side these drew straight lines across the
+## ground. An edge row or column that stands out from the picture just inside it is replaced
+## by its mirror image from inside (up to three deep).
+static func _mend_edges(im: Image) -> void:
+	var s := im.get_width()
+	var line := func(e: int, d: int) -> Rect2i:
+		match e:
+			0: return Rect2i(0, d, s, 1)
+			1: return Rect2i(0, s - 1 - d, s, 1)
+			2: return Rect2i(d, 0, 1, s)
+		return Rect2i(s - 1 - d, 0, 1, s)
+	var lum := func(r: Rect2i) -> float:
+		var sum := 0.0
+		for py in range(r.position.y, r.end.y):
+			for px in range(r.position.x, r.end.x):
+				sum += im.get_pixel(px, py).get_luminance()
+		return sum / (r.size.x * r.size.y)
+	var tmp := im.duplicate()
+	for e in 4:
+		var ref := 0.0
+		for d in range(3, 7):
+			ref += lum.call(line.call(e, d))
+		ref /= 4.0
+		var good := 0                      # the first line in from the edge past every stray one
+		for d in 3:
+			if absf(lum.call(line.call(e, d)) - ref) > 0.055:
+				good = d + 1
+		if good == 0:
+			continue
+		for d in good:
+			var src: Rect2i = line.call(e, 2 * good - d)
+			var dst: Rect2i = line.call(e, d)
+			im.blit_rect(tmp, src, dst.position)
 
 
 const FLIPS := ["heather", "heath", "leaves", "roots", "fern", "cinder", "steppe", "scrub", "pine", "tundra",
 	"reeds", "glow", "burnt", "shingle", "deep", "rubble", "slate"]
+## One-cell grounds whose pictures may be mirrored left to right (organic ones: more ways to
+## lay their few variants, so the same picture doesn't repeat in rows).
+const FLIPS1 := ["grass", "grass_calm", "grass_mid", "grass_dark", "moss", "swamp", "autumn", "forest",
+	"savanna", "sand", "desert", "snow", "dirt", "mud", "gravel"]
+## One-cell waters drawn to tile seamlessly: left as they are among themselves (mirrored or
+## blended, their sparse glints made a grid of mirror images).
+const NO_SEAM := ["water", "shallow"]
+
+
+static func _mirrors(set_name: String) -> int:
+	return 2 if FLIPS.has(set_name) or FLIPS1.has(set_name) else 1
 
 
 ## The picture for one cell of a ground set: its own tile, or for a 64 x 64 set the quarter
-## of the picture laid over its 2 x 2 block (each block picks a variant and maybe a mirror).
-func _cell_tile(set_name: String, x: int, y: int, rnd: int) -> Image:
+## of the picture laid over its 2 x 2 block. `pick` (_pick_variant) is the variant and,
+## for the organic grounds, whether it is mirrored (on cracked or layered ones it shows).
+func _cell_tile(set_name: String, x: int, y: int, pick: int) -> Image:
+	var m := _mirrors(set_name)
+	var v := pick / m
+	var flip := pick % m == 1
 	if not _is_macro(set_name):
-		return _tile(set_name, rnd / 7)
-	var brnd := int(abs(sin((x >> 1) * 12.9898 + (y >> 1) * 78.233) * 43758.5453))
-	var big := _tile(set_name, brnd / 7)
-	# organic grounds may be mirrored too (on cracked or layered ones it shows)
-	var flip := (brnd >> 4) & 1 == 1 and FLIPS.has(set_name)
-	var key := "%s#%d%d%d" % [_tile_key(set_name, brnd / 7), x & 1, y & 1, int(flip)]
+		var one := _tile(set_name, v)
+		if not flip:
+			return one
+		var fkey := _tile_key(set_name, v) + "#m"
+		if not _tile_cache.has(fkey):
+			var mi: Image = one.duplicate()
+			mi.flip_x()
+			_tile_cache[fkey] = mi
+		return _tile_cache[fkey]
+	var key := "%s#%d%d%d" % [_tile_key(set_name, v), x & 1, y & 1, int(flip)]
 	if not _tile_cache.has(key):
-		var src := big
+		var src := _tile(set_name, v)
 		if flip:
-			src = big.duplicate()
+			src = src.duplicate()
 			src.flip_x()
 		_tile_cache[key] = src.get_region(Rect2i((x & 1) * T, (y & 1) * T, T, T))
 	return _tile_cache[key]
+
+
+static func _hash2(x: int, y: int, salt: int) -> int:
+	var h := ((x * 73856093) ^ (y * 19349663) ^ (salt * 83492791)) & 0xfffffff
+	h = ((h ^ (h >> 13)) * 1274126177) & 0x7fffffff
+	return (h ^ (h >> 16)) & 0x7fffffff
+
+
+## Which picture a cell (one-cell grounds) or a 2 x 2 block (64 x 64 grounds) gets: a hashed
+## pick, but not the variant of the one left of it or above it (nor, when the set has enough,
+## of the two diagonally above): the same picture side by side showed as a repeat, mirrored
+## as a mirror line. `near` = the picks [left, up, up-left, up-right] of the same ground
+## (-1: none). Returns variant * mirrors + mirrored.
+func _pick_variant(set_name: String, h: int, near: Array) -> int:
+	var n := _good(set_name).size()
+	var m := _mirrors(set_name)
+	var vn: Array = []
+	for c in near:
+		vn.append(-1 if c < 0 else c / m)
+	var v0 := h % n
+	var flip := (h >> 9) % m
+	if n < 3:
+		return v0 * m + flip         # (with two, keeping them apart would lay a checkerboard)
+	for strict in [4, 2]:
+		for k in n:
+			var v := (v0 + k) % n
+			var clash := false
+			for q in mini(strict, vn.size()):
+				if vn[q] == v:
+					clash = true
+			if not clash:
+				return v * m + flip
+	# too few variants: not the left one's (beside it, mirrored or not, it shows), and not
+	# the very picture above it (the same one mirrored below it reads as another)
+	for k in n * m:
+		var c := (h + k) % (n * m)
+		if (vn.size() < 1 or c / m != vn[0]) and (near.size() < 2 or c != near[1]):
+			return c
+	for k in n * m:
+		var c := (h + k) % (n * m)
+		if (near.size() < 1 or c != near[0]) and (near.size() < 2 or c != near[1]):
+			return c
+	return h % (n * m)
 
 
 ## The ground is drawn in square pieces of CHUNK cells (one picture for a whole big map
@@ -818,6 +1014,190 @@ func _edge_masks() -> Array:
 	return _masks
 
 
+## The same for the borders between patches of plain ground (a biome's low sets, two biomes
+## meeting): deeper and meandering, so a patch's outline doesn't follow the cells' squares
+## (water and fords keep the shallow borders above). The meander follows the map, not the
+## cell: it runs on unbroken from one cell to the next along a border (a 4-cell wave, its
+## phase set by which grid line the border is on). [along % 4][line % 4][side 0-3], then
+## [4 + corner] for the corners.
+var _pmasks: Array = []
+
+
+func _patch_masks() -> Array:
+	if not _pmasks.is_empty():
+		return _pmasks
+	var reach_at := func(t: float, line: int, nz: float) -> float:
+		var a := t / (4.0 * T) * TAU
+		return 13.0 + sin(a + line * 1.9) * 6.5 + sin(3.0 * a + line * 2.7 + 1.0) * 3.0 + nz * 3.0
+	for along in 4:
+		var by_line: Array = []
+		for line in 4:
+			var sides: Array = []
+			for k in 4:
+				var m := Image.create(T, T, false, Image.FORMAT_LA8)
+				for py in T:
+					for px in T:
+						var nz := fposmod(sin((px + along * 37 + line * 5) * 12.9898 + (py + k * 11) * 78.233) * 43758.5453, 1.0)
+						var t := float(along * T + (px if k >= 2 else py))
+						var d := float([px, T - 1 - px, py, T - 1 - py][k])
+						m.set_pixel(px, py, Color(1, 1, 1, 1.0 if d < reach_at.call(t, line, nz) else 0.0))
+				sides.append(m)
+			by_line.append(sides)
+		_pmasks.append(by_line)
+	for k in range(4, 8):
+		var m := Image.create(T, T, false, Image.FORMAT_LA8)
+		for py in T:
+			for px in T:
+				var nz := fposmod(sin(px * 12.9898 + (py + k * 11) * 78.233) * 43758.5453, 1.0)
+				var cx := 0 if k == 4 or k == 6 else T - 1
+				var cyy := 0 if k == 4 or k == 5 else T - 1
+				var d := Vector2(px - cx, py - cyy).length()
+				m.set_pixel(px, py, Color(1, 1, 1, 1.0 if d < 14.0 + nz * 3.0 else 0.0))
+		_pmasks.append(m)
+	return _pmasks
+
+
+## The patch border mask for side or corner k of cell (x, y) (see _patch_masks).
+func _patch_mask(pm: Array, k: int, x: int, y: int) -> Image:
+	if k >= 4:
+		return pm[k]
+	var along := y if k < 2 else x
+	var line: int = [x, x + 1, y, y + 1][k]
+	return pm[posmod(along, 4)][posmod(line, 4)][k]
+
+
+## Seam blending between neighbouring cells of one level of ground (the same ground or two
+## different ones): no ground picture tiles seamlessly with its neighbours (different variants,
+## a 64 x 64 block next to another, a picture next to itself), and laid on a grid their edges
+## drew straight lines. Across each cell edge, a band SEAM_W pixels deep on each side is mixed:
+## each side shows the other side's picture mirrored over the edge (mirrored, the two meet
+## without a jump) past a wavy, dithered cut line, a different one for each edge, so no
+## straight line and no regular pattern is left. Done with masked blits (native, quick).
+const SEAM_W := 8
+var _seam_masks: Array = []      # 8 x [band across a vertical edge, the same turned]
+
+
+func _seam_mask_set() -> Array:
+	if not _seam_masks.is_empty():
+		return _seam_masks
+	var w := SEAM_W
+	var on := Color(1, 1, 1, 1)
+	var off := Color(1, 1, 1, 0)
+	for k in 8:
+		var p1 := k * 1.73 + 0.3
+		var p2 := k * 2.91 + 1.1
+		var f1 := 0.19 + 0.035 * (k % 3)
+		var f2 := 0.45 + 0.05 * (k % 4)
+		# one band 2 * SEAM_W across the edge: pixel u (0 = the farthest into side A)
+		var v := Image.create(2 * w, T, false, Image.FORMAT_LA8)
+		var h := Image.create(T, 2 * w, false, Image.FORMAT_LA8)
+		for t in T:
+			# where the cut runs, across the edge (negative: into side A)
+			var c := 4.5 * (0.62 * sin(t * f1 + p1) + 0.38 * sin(t * f2 + p2))
+			for u in 2 * w:
+				var j := (fposmod(sin((u + k * 13) * 12.9898 + (t + k * 7) * 78.233) * 43758.5453, 1.0) - 0.5) * 5.0
+				var d := u - w + 0.5             # signed distance from the edge
+				# on side A, B's mirror image past the cut; on side B, A's before it
+				var swap := (d + j >= c) if d < 0.0 else (d + j < c)
+				v.set_pixel(u, t, on if swap else off)
+				h.set_pixel(t, u, on if swap else off)
+		_seam_masks.append([v, h])
+	return _seam_masks
+
+
+## `sid`: each cell's ground set as a number; `macro`, `no_seam`: per set number.
+func _blend_seams(img: Image, er: Rect2i, sid: PackedInt32Array, zone: PackedInt32Array,
+		macro: PackedByteArray, no_seam: PackedByteArray) -> void:
+	var w := SEAM_W
+	var sm := _seam_mask_set()
+	var rv := Rect2i(0, 0, 2 * w, T)
+	var rh := Rect2i(0, 0, T, 2 * w)
+	for vert in [true, false]:
+		for y in range(er.position.y, er.end.y - (0 if vert else 1)):
+			for x in range(er.position.x, er.end.x - (1 if vert else 0)):
+				var i := y * W + x
+				var j: int = i + 1 if vert else i + W
+				var z := zone[i]
+				if z < 0 or zone[j] != z or (z == 2 and not vert):
+					continue
+				var s := sid[i]
+				if s == sid[j]:
+					# inside one 2 x 2 block the picture runs on
+					if macro[s] == 1 and ((x & 1 == 0) if vert else (y & 1 == 0)):
+						continue
+					if no_seam[s] == 1:
+						continue
+				var m: Array = sm[(x * 73856093 ^ y * 19349663 ^ (0 if vert else 83492791)) & 7]
+				var px := (x - er.position.x) * T
+				var py := (y - er.position.y) * T
+				# the band across the edge, mirrored over it: its A half now shows B's
+				# mirror image and its B half A's; blitted back where the mask says
+				if vert:
+					px += T - w
+					var band := img.get_region(Rect2i(px, py, 2 * w, T))
+					band.flip_x()
+					img.blit_rect_mask(band, m[0], rv, Vector2i(px, py))
+				else:
+					py += T - w
+					var band := img.get_region(Rect2i(px, py, T, 2 * w))
+					band.flip_y()
+					img.blit_rect_mask(band, m[1], rh, Vector2i(px, py))
+
+
+## A plateau's rim (its cliff cells that show no face) darkens smoothly toward the low ground
+## beside it: a soft gradient per open side, and round a corner where only the diagonal is open.
+var _rim_pieces: Array = []      # 4 sides (left, right, top, bottom), 4 corners (tl, tr, bl, br)
+
+
+func _shade_rims(img: Image, cr: Rect2i, zone: PackedInt32Array) -> void:
+	if _rim_pieces.is_empty():
+		var reach := 22.0
+		for k in 8:
+			var p := Image.create(T, T, false, Image.FORMAT_RGBA8)
+			for py in T:
+				for px in T:
+					var fx := px + 0.5
+					var fy := py + 0.5
+					var d := 0.0
+					match k:
+						0: d = fx
+						1: d = T - fx
+						2: d = fy
+						3: d = T - fy
+						4: d = Vector2(fx, fy).length()
+						5: d = Vector2(T - fx, fy).length()
+						6: d = Vector2(fx, T - fy).length()
+						7: d = Vector2(T - fx, T - fy).length()
+					var a := pow(clampf(1.0 - d / reach, 0.0, 1.0), 1.6) * 0.34
+					p.set_pixel(px, py, Color(0, 0, 0, a))
+			_rim_pieces.append(p)
+	var low := func(c: Vector2i) -> bool:
+		return in_map(c) and zone[idx(c)] == 0
+	var full := Rect2i(0, 0, T, T)
+	for y in range(cr.position.y, cr.end.y):
+		for x in range(cr.position.x, cr.end.x):
+			var i := y * W + x
+			if cliff[i] != 1 or zone[i] != 1:
+				continue
+			var at := Vector2i(x - cr.position.x, y - cr.position.y) * T
+			var l: bool = low.call(Vector2i(x - 1, y))
+			var r: bool = low.call(Vector2i(x + 1, y))
+			var u: bool = low.call(Vector2i(x, y - 1))
+			var dn: bool = low.call(Vector2i(x, y + 1))
+			var sides := [l, r, u, dn]
+			for k in 4:
+				if sides[k]:
+					img.blend_rect(_rim_pieces[k], full, at)
+			if not l and not u and low.call(Vector2i(x - 1, y - 1)):
+				img.blend_rect(_rim_pieces[4], full, at)
+			if not r and not u and low.call(Vector2i(x + 1, y - 1)):
+				img.blend_rect(_rim_pieces[5], full, at)
+			if not l and not dn and low.call(Vector2i(x - 1, y + 1)):
+				img.blend_rect(_rim_pieces[6], full, at)
+			if not r and not dn and low.call(Vector2i(x + 1, y + 1)):
+				img.blend_rect(_rim_pieces[7], full, at)
+
+
 func _render_ground() -> void:
 	minimap_img = Image.create(W, H, false, Image.FORMAT_RGBA8)
 	for old in ground.get_children():
@@ -835,8 +1215,6 @@ func _render_ground() -> void:
 	sets.resize(W * H)
 	var shades := PackedFloat32Array()
 	shades.resize(W * H)
-	var rnds := PackedInt32Array()
-	rnds.resize(W * H)
 	var layer := PackedInt32Array()
 	layer.resize(W * H)
 	for y in H:
@@ -866,7 +1244,9 @@ func _render_ground() -> void:
 					# (boulders, strata...): its own ground, darker, not blocks of them
 					var rim: Array = b["low"]
 					set_name = rim[int(_value_noise(x + 500, y, 4.0) * rim.size() * 0.999)] if b.get("patches", false) else rim[rnd % rim.size()]
-					shade = 0.78
+					# lit like the plateau; its outer edge is darkened smoothly (_shade_rims; a
+					# darker picture per cell drew a staircase of dark squares)
+					shade = 1.07
 			elif height[i] == 1:
 				# high ground: mostly the calm low-ground tiles, a touch brighter, with
 				# patches of the strong high-ground tile here and there (smooth noise, so
@@ -898,53 +1278,126 @@ func _render_ground() -> void:
 				lay = 10 + li + (0 if bn == mapgen.biome_a else 5)
 			sets[i] = set_name
 			shades[i] = shade
-			rnds[i] = rnd
 			layer[i] = lay
 			var key := _tile_key(set_name, rnd / 7)
 			_tile(set_name, rnd / 7)
 			var mc: Color = _tile_avg.get(key, Color(0.3, 0.5, 0.2)) * shade
+			if cliff[i] == 1 and set_name != b["face"]:
+				mc *= 0.73                # the minimap keeps the rim dark (0.78 overall)
 			if _terrain_kind.get(i, "") == "tree":
 				mc = mc.darkened(0.45)
 			elif _terrain_kind.get(i, "") in ["rock", "prop"]:
 				mc = Color(0.45, 0.45, 0.45)
 			minimap_img.set_pixel(x, y, Color(mc.r, mc.g, mc.b, 1.0))
 	var masks := _edge_masks()
+	var pmasks := _patch_masks()
 	var nb8: Array = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
 		Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]
+	# which cells' pictures are blended into each other at their shared edge (_blend_seams):
+	# the same level of plain ground (0 low, 1 high and its rim), cliff faces only side by side
+	# (2), ramps never (-1)
+	var zone := PackedInt32Array()
+	zone.resize(W * H)
+	for i in W * H:
+		if ramp[i] == 1:
+			zone[i] = -1
+		elif cliff[i] == 1:
+			var b: Dictionary = MapGen.BIOMES[mapgen.biome_at(i % W, i / W)]
+			zone[i] = 2 if sets[i] == b["face"] else 1
+		else:
+			zone[i] = 1 if height[i] == 1 else 0
+	# each cell's (or 2 x 2 block's) picture, unlike its neighbours' (_pick_variant)
+	var pick := PackedInt32Array()
+	pick.resize(W * H)
+	var sid := PackedInt32Array()          # each cell's ground set as a number
+	sid.resize(W * H)
+	var blocks := {}                       # Vector3i(block x, block y, set) -> pick
+	var set_ids := {}
+	var set_names: Array = []
+	var macro := PackedByteArray()         # per set number: laid in 2 x 2 blocks
+	var few := PackedByteArray()           # under 3 variants: a plain hashed pick
+	var no_seam := PackedByteArray()
+	for y in H:
+		for x in W:
+			var i := y * W + x
+			var s := sets[i]
+			if not set_ids.has(s):
+				set_ids[s] = set_names.size()
+				set_names.append(s)
+				macro.append(int(_is_macro(s)))
+				few.append(int(_good(s).size() < 3))
+				no_seam.append(int(NO_SEAM.has(s)))
+			var si: int = set_ids[s]
+			sid[i] = si
+			if macro[si] == 1:
+				var bk := Vector3i(x >> 1, y >> 1, si)
+				if not blocks.has(bk):
+					var near: Array = []
+					for d in [Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1), Vector2i(1, -1)]:
+						near.append(blocks.get(Vector3i(bk.x + d.x, bk.y + d.y, si), -1))
+					blocks[bk] = _pick_variant(s, _hash2(bk.x, bk.y, 7), near)
+				pick[i] = blocks[bk]
+			elif few[si] == 1:
+				pick[i] = _pick_variant(s, _hash2(x, y, 3), [])
+			else:
+				var near: Array = []
+				for d in [Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1), Vector2i(1, -1)]:
+					var n := Vector2i(x + d.x, y + d.y)
+					near.append(pick[idx(n)] if in_map(n) and sid[idx(n)] == si else -1)
+				pick[i] = _pick_variant(s, _hash2(x, y, 3), near)
+	# the pictures, shaded, by set, pick, quarter of the block and shade (one lookup a cell)
+	var pics := {}
+	var pic := func(si: int, x: int, y: int, p: int, shade: float) -> Image:
+		var q := ((x & 1) + 2 * (y & 1)) if macro[si] == 1 else 0
+		var key := Vector4i(si, p, q, int(shade * 1000.0))
+		if not pics.has(key):
+			pics[key] = _shaded(_cell_tile(set_names[si], x, y, p), shade)
+		return pics[key]
+	# a neighbour's ground spilling over a cell's edge: its picture at this cell's place
+	var spill_pick := func(si: int, x: int, y: int) -> int:
+		if macro[si] == 1:
+			var bk := Vector3i(x >> 1, y >> 1, si)
+			if blocks.has(bk):
+				return blocks[bk]
+			return _pick_variant(set_names[si], _hash2(x >> 1, y >> 1, 7), [])
+		return _pick_variant(set_names[si], _hash2(x, y, 5), [])
 	for cy in range(0, H, CHUNK):
 		for cx in range(0, W, CHUNK):
 			var cr := Rect2i(cx, cy, mini(CHUNK, W - cx), mini(CHUNK, H - cy))
-			var img := Image.create(cr.size.x * T, cr.size.y * T, false, Image.FORMAT_RGBA8)
-			for y in range(cr.position.y, cr.end.y):
-				for x in range(cr.position.x, cr.end.x):
+			# drawn with a margin of one cell all round (where the map goes on), so the seams on
+			# the chunk's own edges blend exactly as they do in the chunk next door
+			var er := cr.grow(1).intersection(Rect2i(0, 0, W, H))
+			var img := Image.create(er.size.x * T, er.size.y * T, false, Image.FORMAT_RGBA8)
+			for y in range(er.position.y, er.end.y):
+				for x in range(er.position.x, er.end.x):
 					var i := y * W + x
-					var at := Vector2i(x - cx, y - cy) * T
-					var t := _shaded(_cell_tile(sets[i], x, y, rnds[i]), shades[i])
-					img.blit_rect(t, Rect2i(0, 0, T, T), at)
+					var at := Vector2i(x - er.position.x, y - er.position.y) * T
+					img.blit_rect(pic.call(sid[i], x, y, pick[i], shades[i]), Rect2i(0, 0, T, T), at)
 					var lay := layer[i]
 					if lay == 0:
 						continue
 					# a ground ranked higher next door spills over this cell's edge
-					var done := {}
 					for k in 8:
 						var n: Vector2i = Vector2i(x, y) + nb8[k]
 						if not in_map(n):
 							continue
 						var j := idx(n)
 						var nl := layer[j]
-						if nl <= lay or sets[j] == sets[i]:
+						if nl <= lay or sid[j] == sid[i]:
 							continue
 						if k >= 4:
 							# a corner only where neither side next to it is the same ground
-							var a := idx(Vector2i(n.x, y))
-							var bb := idx(Vector2i(x, n.y))
-							if sets[a] == sets[j] or sets[bb] == sets[j]:
+							if sid[idx(Vector2i(n.x, y))] == sid[j] or sid[idx(Vector2i(x, n.y))] == sid[j]:
 								continue
 						if (height[i] == 1) != (height[j] == 1):
 							continue      # (high and low ground meet only at cliffs and ramps)
-						var over := _shaded(_cell_tile(sets[j], x, y, rnds[i]), shades[i])
-						img.blend_rect_mask(over, masks[(x * 7 + y * 3 + k) % 2][k], Rect2i(0, 0, T, T), at)
-						done[k] = true
+						var over: Image = pic.call(sid[j], x, y, spill_pick.call(sid[j], x, y), shades[i])
+						var mk: Image = masks[(x * 7 + y * 3 + k) % 2][k] if lay < 10 else _patch_mask(pmasks, k, x, y)
+						img.blend_rect_mask(over, mk, Rect2i(0, 0, T, T), at)
+			_blend_seams(img, er, sid, zone, macro, no_seam)
+			if er != cr:
+				img = img.get_region(Rect2i((cr.position - er.position) * T, cr.size * T))
+			_shade_rims(img, cr, zone)
 			_paint_ramps(img, cr)
 			# a soft shadow under each cliff face
 			for y in range(maxi(cr.position.y - 1, 0), mini(cr.end.y, H - 1)):
