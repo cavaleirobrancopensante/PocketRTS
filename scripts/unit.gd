@@ -4672,6 +4672,8 @@ func _animate(delta: float) -> void:
 	if kind == "mist_toad" and anim == "tongue" and tongue_stage != "":
 		shown = mini(shown, TOAD_MOUTH_OPEN)   # the mouth gapes; the drawn tongue does the reaching
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
+	if not team_horses.is_empty() or not _team_sprites.is_empty():
+		_update_team(delta, fps)
 	if _front:
 		_update_basket()
 	if _rein and (leader != null or _rein_on):
@@ -5036,13 +5038,6 @@ func _draw_unit() -> void:
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	var bw := radius * 2.4
 	draw_health(top, bw, true)
-	if team_horses.size() > 0 and visible:
-		# a gun's team: a little badge with the number of horses, right of the health bar
-		var bx := bw * 0.5 + 3.0
-		draw_rect(Rect2(bx, top - 5.0, 20.0, 12.0), Color(0.33, 0.22, 0.12, 0.9))
-		draw_rect(Rect2(bx, top - 5.0, 20.0, 12.0), Color(0.95, 0.85, 0.6, 0.9), false, 1.0)
-		draw_circle(Vector2(bx + 5.0, top + 1.0), 3.0, Color(0.95, 0.85, 0.6))    # (a horseshoe dot)
-		_draw_number(horse_count(), Vector2(bx + 14.0, top - 3.5))
 	if has_attack():
 		# the reload, only while reloading (or setting up a gun): nothing when ready
 		var rf := reload_frac()
@@ -5834,6 +5829,137 @@ func release_horse() -> Unit:
 	path = PackedVector2Array()
 	HorseCoat.apply(self)
 	return h
+
+
+## A gun's / wagon's extra team horses (team_horses) drawn as harnessed horses
+## (assets/units/horse_team: tools/import_horse_team.py), hitched in pairs: the vehicle's own
+## horse (in its sprite) is the left horse of the wheel pair; extra horse 1 walks at its right,
+## 2 and 3 are the leading pair one horse length ahead (with only 2 extras the one leader
+## walks in the middle, ahead of the pair). team_horses[i] is slot i: the front one (popped
+## first when it falls or is released) is the last. Each keeps its own coat (team shader +
+## the strip's coat mask). Hidden while a gun is set up (its own horse is led off then too).
+## Per vehicle: the team's size (its own horse is drawn smaller than the riderless horse), the
+## strip shown for each drawn direction (side-on cannon art for SE / NE), and where its own
+## horse's hooves stand per animation and direction (from its coat masks, unflipped; the
+## wagon's back view draws its horse below the wagon: its team goes ahead of the wagon's top).
+const TEAM_LOOK := {
+	"cannon": {"scale": 0.85, "view": {"se": "e", "ne": "e"},
+		"own": {"walk": {"s": Vector2(-2, 9), "e": Vector2(49, -7), "n": Vector2(-2, -36)}}},
+	"mortar": {"scale": 0.82, "view": {},
+		"own": {"walk": {"s": Vector2(0, 10), "se": Vector2(15, 10), "e": Vector2(24, -3), "ne": Vector2(15, -8), "n": Vector2(-2, 3)},
+			"idle_packed": {"s": Vector2(2, -2), "se": Vector2(-2, -3), "e": Vector2(6, -1), "ne": Vector2(6, -8), "n": Vector2(-2, -17)}}},
+	"powder_wagon": {"scale": 0.62, "view": {"ne": "e"},
+		"own": {"walk": {"s": Vector2(4, 7), "se": Vector2(6, 7), "e": Vector2(12, 5), "n": Vector2(-6, -50)}}},
+}
+## Per strip direction (unflipped, at the team horse's full size): one horse length ahead in
+## the direction of travel, and from a horse to its pair-mate on its right.
+const TEAM_STEP := {
+	"s": [Vector2(0, 34), Vector2(-22, 0)],
+	"se": [Vector2(38, 22), Vector2(-15, 9)],
+	"e": [Vector2(54, 0), Vector2(-10, 10)],
+	"ne": [Vector2(38, -22), Vector2(15, 9)],
+	"n": [Vector2(0, -30), Vector2(22, 0)],
+}
+var _team_sprites: Array[Sprite2D] = []
+var _team_shown: PackedStringArray = []     # the coat each team sprite was made with
+var _team_dir := ""                          # the layout the sprites stand in: direction,
+var _team_flip := false                      # mirrored,
+var _team_pose := ""                         # and which own-horse table (walk / idle_packed)
+var _team_t := 0.0
+
+
+func _update_team(delta: float, fps: float) -> void:
+	var look: Dictionary = TEAM_LOOK.get(kind, {})
+	var n := team_horses.size()
+	var show := not look.is_empty() and not dead and n > 0 \
+		and not ((kind == "cannon" or kind == "mortar") and tesla_mode != "packed")
+	if not show:
+		for s in _team_sprites:
+			s.visible = false
+		if n == 0 and not _team_sprites.is_empty():
+			_clear_team()
+		return
+	# the sprites, one per extra horse in its coat (remade when the team changes)
+	var changed := n != _team_sprites.size()
+	if not changed:
+		for i in n:
+			if String(team_horses[i].get("coat", "")) != _team_shown[i]:
+				changed = true
+				break
+	var pose := "idle_packed" if kind == "mortar" and anim != "walk" else "walk"
+	var view: String = look["view"].get(anim_dir, anim_dir)
+	if changed or view != _team_dir or anim_flip != _team_flip or pose != _team_pose:
+		_layout_team(look, view, pose, changed)
+	var moving := anim == "walk" and velocity.length() >= 10.0
+	if moving:
+		_team_t += delta * fps
+	for i in n:
+		var s := _team_sprites[i]
+		s.visible = true
+		s.frame = (int(_team_t) + i * 2) % s.hframes if moving else 0
+
+
+func _clear_team() -> void:
+	for s in _team_sprites:
+		s.queue_free()
+	_team_sprites.clear()
+	_team_shown.clear()
+	_team_dir = ""
+
+
+func _layout_team(look: Dictionary, view: String, pose: String, remake: bool) -> void:
+	if remake:
+		_clear_team()
+		for th in team_horses:
+			var s := Sprite2D.new()
+			s.centered = false
+			var m := ShaderMaterial.new()
+			m.shader = TEAM_SHADER
+			var c := String(th.get("coat", ""))
+			m.set_shader_parameter("coat", -1 if c == "dark" or not HorseCoat.COATS.has(c) else HorseCoat.COATS.find(c))
+			m.set_shader_parameter("coat_ramps", HorseCoat.RAMPS)
+			s.material = m
+			add_child(s)
+			_team_sprites.append(s)
+			_team_shown.append(c)
+	_team_dir = view
+	_team_flip = anim_flip
+	_team_pose = pose
+	var sc: float = look["scale"]
+	var own_tab: Dictionary = look["own"].get(pose, look["own"]["walk"])
+	var own: Vector2 = own_tab.get(view, own_tab.get(anim_dir, Vector2.ZERO))
+	var step: Array = TEAM_STEP[view]
+	var fwd: Vector2 = step[0] * sc
+	var side: Vector2 = step[1] * sc
+	var n := _team_sprites.size()
+	var tex := Game.tex("res://assets/units/horse_team/walk_%s.png" % view)
+	var anchor: Vector2 = ArtData.UNITS["horse_team"]["anchor"]
+	var nf: int = ArtData.UNITS["horse_team"]["frames"].get("walk_" + view, 1)
+	var mask := HorseCoat.mask_for(tex)
+	for i in n:
+		var p := own + side          # the wheel horse's pair-mate
+		if i == 1:
+			p = own + fwd + (side * 0.5 if n == 2 else Vector2.ZERO)    # a lone leader in the middle
+		elif i == 2:
+			p = own + fwd + side
+		if anim_flip:
+			p.x = -p.x
+		var s := _team_sprites[i]
+		s.texture = tex
+		s.hframes = nf
+		s.offset = -anchor
+		s.position = p
+		s.scale = Vector2(-sc if anim_flip else sc, sc)
+		(s.material as ShaderMaterial).set_shader_parameter("horse_mask", mask)
+	# draw order by depth (y), farther first: those standing farther back than the vehicle's
+	# feet (ahead of a gun facing north) behind its sprite, the others over it
+	var order: Array[Sprite2D] = _team_sprites.duplicate()
+	order.sort_custom(func(a: Sprite2D, b: Sprite2D) -> bool: return a.position.y < b.position.y)
+	for s in order:
+		move_child(s, get_child_count() - 1)
+	for s in order:
+		if s.position.y < -2.0:
+			move_child(s, sprite.get_index())
 
 
 ## A new Horseman, trained on foot: he goes to the horse kept for him (to its breeder while

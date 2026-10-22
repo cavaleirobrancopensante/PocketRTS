@@ -465,6 +465,18 @@ const UNITS := {
 		"walk_s": 10,
 		"walk_se": 8,
 	}},
+	"horse_team": {"cell": Vector2i(112, 70), "anchor": Vector2(56, 66), "frames": {
+		"idle_e": 1,
+		"idle_n": 1,
+		"idle_ne": 1,
+		"idle_s": 1,
+		"idle_se": 1,
+		"walk_e": 6,
+		"walk_n": 6,
+		"walk_ne": 6,
+		"walk_s": 6,
+		"walk_se": 6,
+	}},
 	"missionary_mounted": {"cell": Vector2i(98, 70), "anchor": Vector2(49, 66), "frames": {
 		"death_e": 4,
 		"death_n": 4,

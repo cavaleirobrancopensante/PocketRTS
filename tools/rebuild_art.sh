@@ -61,6 +61,8 @@ python3 tools/import_horse_icons.py         # the horse units' portraits and the
 python3 tools/import_mount.py            # the riders' mounting strips (mount_s / se / e / n) from
                                          # art/crown/mount/ (after the riders' own sheets: it lines
                                          # its last frame up with their idle; before the coat masks)
+python3 tools/import_horse_team.py      # a gun's / wagon's team horse in harness (art/crown/horse_team.png:
+                                         # the S row's stray traces erased; before the coat masks)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
