@@ -35,10 +35,15 @@ var _acc := {}                   # ... and during this minute (Prof itself is re
 var _acc_calls := {}
 var _worst_ms := 0.0
 var _worst_zones := ""
+var mouse := true                # a moving mouse and a changing selection, as a player has (HUD hover and panels)
+var _sel_t := 0.0
+var _sel_i := 0
+var _mouse_a := 0.0
 
 ## The parts (Prof keys) in the CSV; "a/b" is part of "a" (game/fog is inside game).
 const ZONES := ["units", "ai", "game", "game/fog", "game/paths", "game/pathfinder", "game/path smoothing", "game/unit grid", "game/refit",
 	"buildings", "effects", "projectiles", "unit draw", "building draw", "hud", "hud draw", "overlay draw", "autosave",
+	"hud/top", "hud/minimap", "hud/map view", "hud/groups", "hud/selection", "hud/command card", "hud/card build", "hud/glow", "hud/rest", "hud/tooltip", "hud/pause", "hud/look", "hud/hover", "hud/tip check",
 	"ai/workers", "ai/econ", "ai/build", "ai/produce", "ai/raid", "ai/army", "ai/horses", "ai/loose", "ai/abil", "ai/micro"]
 
 
@@ -95,6 +100,8 @@ func _start() -> void:
 			stop_at = float(a.substr(8)) * 60.0
 		elif a.begins_with("out:"):
 			out_name = a.substr(4)
+		elif a == "nomouse":
+			mouse = false
 		elif a in ["easy", "normal", "hard", "brutal"]:
 			level = a
 	if facs.size() < 2:
@@ -149,6 +156,8 @@ func _process(delta: float) -> bool:
 		_worst_zones = _diff_zones()
 	if ms > 100.0:
 		print("PERF spike %.0f ms at %d:%02d: %s" % [ms, int(g.clock) / 60, int(g.clock) % 60, _diff_zones()])
+	if mouse:
+		_player(g, delta)
 	_cam_t -= delta
 	if _cam_t <= 0.0:
 		_cam_t = 1.0
@@ -160,6 +169,33 @@ func _process(delta: float) -> bool:
 		_save()
 		return true
 	return false
+
+
+## A player's hand: the mouse wanders over the screen (map, minimap, command card) and the
+## selection changes every few seconds (army, hall, workers, a production building, nothing).
+func _player(g: Game, delta: float) -> void:
+	_mouse_a += delta * 0.9
+	var vs: Vector2 = main.get_viewport().get_visible_rect().size
+	var mm := InputEventMouseMotion.new()
+	mm.position = vs * 0.5 + Vector2(cos(_mouse_a) * vs.x * 0.42, sin(_mouse_a * 1.3) * vs.y * 0.42)
+	mm.global_position = mm.position
+	Input.parse_input_event(mm)
+	_sel_t -= delta
+	if _sel_t > 0.0:
+		return
+	_sel_t = 6.0
+	_sel_i += 1
+	var pick: Array = []
+	match _sel_i % 5:
+		0:
+			pick = g.army(0)
+		1:
+			pick = g.halls_of(0, false).slice(0, 1)
+		2:
+			pick = g.labourers(0).slice(0, 6)
+		3:
+			pick = g.producers(0).slice(0, 1)
+	g.set_selection(pick)
 
 
 ## The camera on player 1's army: where it fights, else its middle.

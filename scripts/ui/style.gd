@@ -150,7 +150,7 @@ static var _boxes := {}
 
 ## The same style box every frame instead of a new one (the HUD draws dozens a frame).
 static func cached_box(bg: Color, border: Color, bw: int, radius: int, shadow: int) -> StyleBoxFlat:
-	var key := "%s|%s|%d|%d|%d" % [bg.to_html(), border.to_html(), bw, radius, shadow]
+	var key := [bg, border, bw, radius, shadow]      # (no text to format: the HUD asks for dozens)
 	if not _boxes.has(key):
 		var sb := box(bg, border, bw, radius, 0.0)
 		sb.shadow_size = shadow
