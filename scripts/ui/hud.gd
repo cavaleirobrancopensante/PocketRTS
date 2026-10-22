@@ -850,7 +850,7 @@ func _build_card() -> Array:
 					toast("Gates now face %s." % way)
 				else:
 					toast("Gates face %s off the palisade; this one follows its line." % way), true, "", ""])
-		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
+		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if controls.mode != "":
 		if controls.mode == "unload":
@@ -858,7 +858,7 @@ func _build_card() -> Array:
 			list.append(["ab_unload", "DROP HERE", func() -> void:
 				game.unload_order(game.selected_units(), Vector2.ZERO, true)
 				controls.cancel_mode(), true, "", ""])
-		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
+		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if not units.is_empty():
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
@@ -997,7 +997,7 @@ func _build_card() -> Array:
 		var nl := b.next_level()
 		if b.upgrade_t >= 0.0:
 			_tip_for["STOP UPGRADE"] = ["Stop growing into a %s" % nl["name"], "Stop the upgrade: all of its price is paid back."]
-			list.append(["stop", "STOP UPGRADE", func() -> void:
+			list.append(["cancel", "STOP UPGRADE", func() -> void:
 				game.cancel_hall_upgrade(b)
 				toast("Upgrade to %s cancelled: paid back." % nl["name"]), true, "", ""])
 		else:
@@ -1052,7 +1052,7 @@ func _build_card() -> Array:
 		elif not b.d["trains"].is_empty():
 			list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
-			list.append(["stop", "CANCEL", func() -> void:
+			list.append(["cancel", "CANCEL", func() -> void:
 				var last: String = b.queue.back() if not b.queue.is_empty() else ""
 				game.cancel_train(b)
 				if Building.is_research(last):
