@@ -43,7 +43,7 @@ var _mouse_a := 0.0
 ## The parts (Prof keys) in the CSV; "a/b" is part of "a" (game/fog is inside game).
 const ZONES := ["units", "ai", "game", "game/fog", "game/paths", "game/pathfinder", "game/path smoothing", "game/unit grid", "game/refit",
 	"buildings", "effects", "projectiles", "unit draw", "building draw", "hud", "hud draw", "overlay draw", "autosave",
-	"hud/top", "hud/minimap", "hud/groups", "hud/selection", "hud/command card", "hud/card build", "hud/rest", "hud/tooltip",
+	"hud/top", "hud/minimap", "hud/map view", "hud/groups", "hud/selection", "hud/command card", "hud/card build", "hud/glow", "hud/rest", "hud/tooltip", "hud/pause", "hud/look", "hud/hover", "hud/tip check",
 	"ai/workers", "ai/econ", "ai/build", "ai/produce", "ai/raid", "ai/army", "ai/horses", "ai/loose", "ai/abil", "ai/micro"]
 
 
