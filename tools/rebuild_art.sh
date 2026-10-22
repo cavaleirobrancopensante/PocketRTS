@@ -63,5 +63,9 @@ python3 tools/import_mount.py            # the riders' mounting strips (mount_se
                                          # its last frame up with their idle; before the coat masks)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
+python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
+                                         # for the Crown's soldiers: after every strip they read,
+                                         # mount strips included
+python3 tools/import_vet_skin.py         # veterancy skin masks for the Brood's fighting creatures
 echo "Now run: godot --headless --import"
 python3 tools/make_calm_grass.py

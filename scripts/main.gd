@@ -31,6 +31,8 @@ Each faction builds its own economy. Every Town Hall, Hive or Clocktower allows 
 
 Efficiency: over each of your economy buildings a small bar shows how well it's working right now, as a %: its workers against its full crew, times what's left of its base's reserve (soil, saltpetre, ore or Hive ground: 100% fresh, down to what spent land still pays). Green is 80% or more, then yellow, then red. Select the building to see the breakdown.
 
+Veterancy: every kill gives a unit +1% damage (up to +50%), and it shows on the unit. A Crown soldier's hat or helmet trim is black, turns silver at 25 kills and gold at 50; a Brood creature's skin turns amber at 25 kills and obsidian black at 50.
+
 Area damage (canister, round shot, steam, spit blobs, storms, exploding powder) hurts your own units too: keep your men out of the blast.
 
 Ghost sites: a placed building is a see-through ghost until it starts (Labourers begin, the grub morphs, the crate lands). Anyone walks through it, it can't be attacked, and the enemy can't see it. When it starts, your units on it step aside; enemy units standing there block it, and after about 5 s it fails with all of its cost back ("Can't build there: the spot is blocked.").
