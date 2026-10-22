@@ -1588,8 +1588,9 @@ func _start_positions() -> void:
 
 ## A free cell for a building of this kind around a building: distance in tiles from
 ## its middle; "near" picks the closest, "far" the farthest, "toward_middle" the one
-## nearest the middle of the map.
-func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near") -> Vector2i:
+## nearest the middle of the map. `ground`: only on the building's own ground (its height:
+## the computer keeps its buildings up on its main's plateau, inside its walls).
+func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near", ground := false) -> Vector2i:
 	if Defs.is_econ(kind) and econ_count(t, kind) >= econ_limit(t, kind):
 		return Vector2i(-1, -1)
 	_spot_halls = halls_of(t)
@@ -1600,12 +1601,16 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	var mid := Vector2(W, H) * 0.5
 	var best := Vector2i(-1, -1)
 	var bs := INF
+	var hc := cell_of(around.rect().get_center())
+	var h0 := int(height[idx(hc)]) if in_map(hc) else -1
 	for y in range(int(c0.y) - max_d - 2, int(c0.y) + max_d + 2):
 		for x in range(int(c0.x) - max_d - 2, int(c0.x) + max_d + 2):
 			var cell := Vector2i(x, y)
 			var cc := Vector2(cell) + Vector2(size) * 0.5
 			var dd := cc.distance_to(c0)
 			if dd < min_d or dd > max_d:
+				continue
+			if ground and h0 >= 0 and not _on_ground(cell, size, h0):
 				continue
 			if not _footprint_open(cell, size) or placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
 				continue
@@ -1643,6 +1648,16 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	_spot_all_halls = []
 	_in_spot = false
 	return best
+
+
+## Every cell of a footprint at height h (no ramp): on one plateau (or the low ground).
+func _on_ground(cell: Vector2i, size: Vector2i, h: int) -> bool:
+	for y in range(cell.y, cell.y + size.y):
+		for x in range(cell.x, cell.x + size.x):
+			var c := Vector2i(x, y)
+			if not in_map(c) or int(height[idx(c)]) != h or ramp[idx(c)] != 0:
+				return false
+	return true
 
 
 var _spot_halls: Array = []
