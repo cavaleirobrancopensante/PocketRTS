@@ -81,9 +81,11 @@ Left click selects (Shift adds, Ctrl-click or double-click picks every unit of t
 Line move: hold the right button and drag a line; your units spread out along it (with A first, they attack-move). On a phone: tap MOVE or ATTACK, then drag.
 Shift-queued orders: hold Shift while giving an order (right click, MOVE, ATTACK, REPAIR, placing buildings or walls) and it goes after what the units are already doing, up to 16 orders. MOVE, ATTACK, REPAIR and placement stay open while Shift is held. Shift-placed buildings are built one after another in click order (each Brood site takes its own grub). A plain order clears the queue. Selected units show their queue as faint lines: green move, red attack, yellow build or work.
 Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work, E repair (right-click it: automatic repair, glowing). 1-9 select groups, Ctrl+number saves, Shift+number adds. F1 idle worker, F2 army, F3 hall (again: the next one), F4 all production buildings (MAKE), Space jumps to the selection, Esc cancels.
+Tooltips: rest the mouse on a command button for its cost, time, supply, what's still missing (in red) and what it does; on a unit or building (yours or the enemy's), a resource or a quick button a little longer. Settings > TOOLTIPS switches them off.
 
 MOBILE
 Tap to select, double-tap for every unit of that type on screen. DRAG: BOX / PAN (top right) switches what a one-finger drag does. Tap the ground to move, an enemy to attack. Long-press to move without fighting. Two fingers pan, pinch zooms, tap the minimap to jump. ARMY / IDLE / HALL / MAKE select quickly (HALL again: the next hall; MAKE: every production building, to train from all of them). Hold REPAIR for automatic repair (it glows); groups 1-4: hold to save, tap to select. Tap a portrait in a group to keep only that kind.
+The command card holds 12 buttons (a MORE button pages on when a big mixed selection needs more). Help: tap "?" (top right), then tap anything (a button, a unit or building, a resource) to see what it is instead of using it; the next touch puts the tooltip away. Settings > TOOLTIPS switches it off.
 
 WATCHING COMPUTERS
 With no "you" in the lobby the computers play and you watch. The VIEW button under the clock picks how: Free · all vision (you move the camera, no fog; the default), Free · a player's vision (you move the camera, under that player's fog of war), or Follow a player: the camera goes by itself to what that computer is doing (its fights first, staying with one until it's over, then its army on the attack, raiders at its base, a building it just placed, its army), under its fog, holding each sight a few seconds. Moving the camera yourself while following switches to Free with the same vision; pick Follow again to resume. On a computer, 0 is all vision and 1-4 follow that player. The view you pick stays for the next match you watch.""",
@@ -448,9 +450,17 @@ func show_settings() -> void:
 	var p := PanelContainer.new()
 	p.custom_minimum_size.x = 520
 	c.add_child(p)
+	# the list scrolls when it's taller than the screen (a phone in a browser: FULL SCREEN too)
+	var scr := ScrollContainer.new()
+	scr.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	p.add_child(scr)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
-	p.add_child(v)
+	v.add_theme_constant_override("separation", 7)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scr.add_child(v)
+	(func() -> void:
+		if is_instance_valid(scr):
+			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 60.0)).call_deferred()
 	v.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
 	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
 	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
@@ -485,6 +495,9 @@ func show_settings() -> void:
 		v.add_child(_toggle_row("COMMAND KEYS", func() -> bool: return Settings.grid_keys, func() -> void:
 			Settings.grid_keys = not Settings.grid_keys
 			Settings.save_all(), "GRID (QWER/ASDF/ZXCV)", "BY NAME"))
+	v.add_child(_toggle_row("TOOLTIPS", func() -> bool: return Settings.tooltips, func() -> void:
+		Settings.tooltips = not Settings.tooltips
+		Settings.save_all()))
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"

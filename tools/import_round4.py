@@ -354,10 +354,7 @@ UNITS = {
                         norm=["walk", "idle", "attack", "cast"], borrow={"death": "idle"}),
     "cuirassier": dict(scale=0.48, target=51,                         # horse ~ the cannon's
                        norm=["idle", "walk", "slash"], borrow={"thrust": "slash", "death": "idle"},
-                       widen={2: 1.2, 1: 1.08},      # E (side) and SE rows drew the horse squashed
-                       # E gallop frames 1-2 turn toward the camera (narrower horse): stretch
-                       # them to the idle side view's width so the gallop doesn't pump in and out
-                       widen_frame={(2, "walk", 0): 1.07, (2, "walk", 1): 1.19, (2, "walk", 2): 1.26}),
+                       widen={2: 1.2, 1: 1.08}),     # E (side) and SE rows drew the horse squashed
     "spore_mother": dict(scale=0.6, glow="green", target=58,          # about the Brute
                          norm=["walk", "idle", "fire"], borrow={"death": "fire"},
                          last={"root": 54},           # the rooted pose: same size in every row
@@ -537,8 +534,7 @@ class Src:
 
     def raw(self, r, g, i, scale):
         img, gl = to_game(self.frames[(r, g)][i]["img"], scale, self.bgc, self.cfg.get("glow"),
-                          sx=self.cfg.get("widen", {}).get(r, 1.0)
-                          * self.cfg.get("widen_frame", {}).get((r, g, i), 1.0))
+                          sx=self.cfg.get("widen", {}).get(r, 1.0))
         return F(img, gl)
 
     def hs(self, r, g):
@@ -625,9 +621,9 @@ def plan_stormcaller(S):
 def plan_cuirassier(S):
     """Rows: 0 = S, 1 = SE, 2 = E, 3 = N (rear view; meant as NE), 4 = N (rear).
     No NE was drawn: NE uses row 3's rear idle and row 4's rear gallop. Row 2 (E) turns
-    toward the camera from idle 1 and gallop 3 on (gallop 5-7 are front views, gallop 3
-    holds a carbine): E gallops on frames 0-2 only, and E idles on idle 0 with the rider
-    bobbing a pixel. Row 3's gallop mixes front and rear
+    toward the camera from idle 1 and gallop 0 on (gallop 5-7 are front views, gallop 3
+    holds a carbine): the E gallop comes from its own sheet (import_cuirassier_gallop.py),
+    and E idles on idle 0 with the rider bobbing a pixel. Row 3's gallop mixes front and rear
     views (not used). The sabre frames face right three-quarter in every
     row, also in the rear-view rows, and several "slash" frames show no sabre at all
     (E, N), or a pistol (S slash 1) or a carbine (SE slash 2, painted out), so each
@@ -641,7 +637,10 @@ def plan_cuirassier(S):
         if d == "e":
             i0 = S(2, "idle", 0)
             A["idle", d] = [i0, bob(i0)]
-            A["walk", d] = steady(S.seq(2, "walk", [0, 1, 2]), "high")
+            # the sheet's E gallop turns toward the camera: walk_e is the separate side-view
+            # gallop sheet, written by tools/import_cuirassier_gallop.py (run after this);
+            # here it only holds the idle frame as a stand-in
+            A["walk", d] = [i0.copy()]
         else:
             A["idle", d] = steady(S.seq(ri, "idle"))
             A["walk", d] = steady(S.seq(rw, "walk"), "high")
