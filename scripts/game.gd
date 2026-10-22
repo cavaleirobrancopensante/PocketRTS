@@ -573,10 +573,13 @@ var _terrain_sprites: Array = []
 var _deco_at := {}                         # map index -> the walk-through decorations standing there
 
 
-## Map editor: redo cliffs, pathing and the ground picture after painting.
-func rebuild_map(cells: String) -> void:
+## Map editor: redo ramps, cliffs, decorations, pathing and the ground picture after
+## painting, the same way a custom map is built for a match (MapGen.apply_custom).
+func rebuild_map(cells: String, props: Array = []) -> void:
 	mapgen.read_cells(cells)
+	mapgen._square_ramps()
 	mapgen._cliffs()
+	mapgen.place_props(props)
 	height = mapgen.height
 	ramp = mapgen.ramp
 	astar = AStarGrid2D.new()
