@@ -2,6 +2,7 @@
 prop by connected areas (small detached bits joined to their neighbour), scaled to the game
 (a Musketeer is ~36 px tall) -> assets/props/<name>.png, and scripts/prop_data.gd.
    python3 tools/import_props.py [contact_sheet.png]
+   python3 tools/import_props.py --kinds      (only the map editor's palette groups)
 
 Each prop is picked by a point inside it on the sheet. solid: how many cells wide its foot
 blocks (0 = purely decoration, walked through; solid ones are like rocks and trees)."""
@@ -70,6 +71,34 @@ PROPS = {
     "goose": (297, 604, 0.35, 0), "heron": (435, 622, 0.35, 0), "gull_b": (829, 641, 0.32, 0), "crows": (994, 640, 0.35, 0),
 }
 
+# The map editor's palette groups (scripts/prop_data.gd KIND): each section of PROPS above
+# starts a kind, and some props are moved to the kind they read as.
+SECTIONS = {"crate_a": "stores", "campfire_pot": "farm", "tent_white": "buildings", "oak": "trees",
+            "bush_berry": "plants", "rooster": "animals"}
+KIND_MOVE = {
+    "camp": ["campfire_pot", "campfire", "spit_roast", "table", "table_long", "stall_small", "flag", "signpost",
+             "banner_a", "banner_b", "banner_pole", "watch_frame", "drying_rack", "tripod", "boat", "anchor",
+             "tent_white", "tent_red", "tent_blue", "tent_round", "cannonballs"],
+    "ruins": ["ruin_wall", "arch", "arch_big", "ruin_tower", "ruin_pillar", "ruin_keep", "arch_ruin", "column",
+              "cross_stone", "cross_wood", "shrine", "vine_arch", "flower_arch"],
+    "rocks": ["boulder_moss", "stone_block", "snow_rocks_a", "snow_rocks_b", "snow_rocks_c", "snow_rocks_d",
+              "stones", "rocks_moss"],
+    "trees": ["sapling", "dead_trunk", "stump", "stump_big", "stump_moss", "stump_basket", "log", "log_branch",
+              "log_moss"],
+    "buildings": ["well", "forge", "oven"],
+}
+
+
+def kinds():
+    out, cur = {}, "stores"
+    for name in PROPS:
+        cur = SECTIONS.get(name, cur)
+        out[name] = cur
+    for k, names in KIND_MOVE.items():
+        for n in names:
+            out[n] = k
+    return out
+
 
 def components(a):
     bg = np.median(np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]]), 0)
@@ -137,11 +166,27 @@ def main():
         for name, (w, h, solid) in data.items():
             f.write(f'\t"{name}": [{w}, {h}, {solid}],\n')
         f.write("}\n")
+        write_kinds(f)
     print(len(data), "props")
     return sheet
 
 
+def write_kinds(f):
+    f.write("\n## The map editor's palette group of each decoration.\nconst KIND := {\n")
+    for name, k in kinds().items():
+        f.write(f'\t"{name}": "{k}",\n')
+    f.write("}\n")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--kinds"]:
+        # only (re)write the KIND table at the end of prop_data.gd (no sheet needed)
+        path = os.path.join(ROOT, "scripts", "prop_data.gd")
+        text = open(path).read().split("\n## The map editor's palette group")[0].rstrip("\n") + "\n"
+        with open(path, "w") as f:
+            f.write(text)
+            write_kinds(f)
+        sys.exit()
     sheet = main()
     if len(sys.argv) > 1:
         from PIL import ImageDraw
