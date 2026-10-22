@@ -185,6 +185,7 @@ func _control(t: int) -> void:
 	for e in game.units + game.buildings:
 		e.seen_by_human = false
 	game.explored.fill(0)
+	game.fog_base_dirty = true
 	var h := game._own_hall(t)
 	if h:
 		game.camera.position = h.global_position

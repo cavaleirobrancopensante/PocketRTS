@@ -550,7 +550,14 @@ func efficiency() -> Array:
 
 
 func _econ(delta: float) -> void:
-	crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
+	if not crew.is_empty():
+		var keep := true
+		for u in crew:
+			if not is_instance_valid(u) or u.dead or u.home_mine != self:
+				keep = false
+				break
+		if not keep:
+			crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
 	match kind:
 		"farm":
 			growth += farm_speed() / Defs.FARM_GROW * delta
@@ -588,7 +595,8 @@ var _was_selected := false
 func _physics_process(delta: float) -> void:
 	var _p0 := Time.get_ticks_usec()
 	_tick_building(delta)
-	Prof.add("buildings", _p0)
+	Prof.bld_us += Time.get_ticks_usec() - _p0
+	Prof.bld_n += 1
 
 
 func _tick_building(delta: float) -> void:
@@ -676,9 +684,12 @@ func _tick_building(delta: float) -> void:
 			if (uses_eggs() and eggs > 0) or (not uses_eggs() and queue.is_empty()):
 				game.train(self, auto_train)
 	_update_fire()
-	# bars and labels change slowly: redraw 6 times a second, or at once when picked
+	# bars and labels change slowly: redraw 6 times a second, or at once when picked (off
+	# screen not at all: at once when it comes into view)
 	_redraw_t -= delta
-	if _redraw_t <= 0.0 or selected != _was_selected:
+	if not selected and not _was_selected and not game.view_rect.intersects(rect()):
+		_redraw_t = 0.0
+	elif _redraw_t <= 0.0 or selected != _was_selected:
 		_redraw_t = 0.16
 		_was_selected = selected
 		queue_redraw()
@@ -831,7 +842,24 @@ func _update_fire() -> void:
 	elif not burning and fire:
 		fire.queue_free()
 		fire = null
-	_update_sprite()
+	# the picture only when something it shows changed (its state, a gate's swing, the
+	# construction's fade, a farm's crop and tired soil: the soil looked at once a second)
+	if kind == "farm" or kind == "feeding_pit":
+		_soil_key_t -= get_physics_process_delta_time()
+		if _soil_key_t <= 0.0:
+			_soil_key_t = 1.0
+			_soil_key = int(soil_left() * 200.0)
+	var sk := Vector4i(int(dead) + 2 * int(built) + 4 * int(hp < max_hp * 0.5) + 8 * int(seeded) + 16 * int(gate_open) + 32 * int(_swing_t > 0.0) + 64 * int(vertical),
+		links, int(progress * 400.0) + (int(unfold_t * 30.0) + 1) * 1000 if unfold_t >= 0.0 else int(progress * 400.0),
+		_soil_key + 1000 * (0 if growth < 0.12 else (1 if growth < 0.6 else 2)))
+	if sk != _sprite_key:
+		_sprite_key = sk
+		_update_sprite()
+
+
+var _sprite_key := Vector4i(-1, -1, -1, -1)
+var _soil_key := 0
+var _soil_key_t := 0.0
 
 
 ## A point on the sprite, given as fractions of its size, in world space.

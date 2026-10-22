@@ -2486,7 +2486,8 @@ func _courier(delta: float) -> Vector2:
 func _physics_process(delta: float) -> void:
 	var _p0 := Time.get_ticks_usec()
 	_tick_unit(delta)
-	Prof.add("units", _p0)
+	Prof.unit_us += Time.get_ticks_usec() - _p0
+	Prof.unit_n += 1
 
 
 func _tick_unit(delta: float) -> void:
@@ -2827,26 +2828,33 @@ func _tick_unit(delta: float) -> void:
 	_animate(delta)
 	if kind == "winder" and (crate_site or _crate_spr):
 		_update_crate_spr()
-	# redraw the shadow, ring and bars only when something on them changed
-	var extra := 0
-	if topter_bat != "":
-		extra += 500000 + (int(_bob_t * 10.0) % 13) * 1000
-	if overclock_t > 0.0:
-		extra += int(overclock_t * 8.0) * 1000000
-	if kind == "balloon":
-		extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
-	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
-		int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * ["packed", "deploying", "deployed", "packing"].find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
-	if key != _draw_key:
-		_draw_key = key
-		queue_redraw()
-	elif selected and (kind == "cannon" or kind == "mortar") and team == game.human:
-		# its line of fire on the ground follows the aim and the men around: ten times a second
-		_aim_t -= delta
-		if _aim_t <= 0.0:
-			_aim_t = 0.1
+	# redraw the shadow, ring and bars only when something on them changed (off screen: not
+	# looked at; it's drawn afresh when it comes into view)
+	if not visible or not game.view_rect.has_point(position):
+		_draw_key = Vector4i(-1, -1, -1, -1)
+	else:
+		var extra := 0
+		if topter_bat != "":
+			extra += 500000 + (int(_bob_t * 10.0) % 13) * 1000
+		if overclock_t > 0.0:
+			extra += int(overclock_t * 8.0) * 1000000
+		if kind == "balloon":
+			extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
+		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
+			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
+			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
+		if key != _draw_key:
+			_draw_key = key
 			queue_redraw()
+		elif selected and (kind == "cannon" or kind == "mortar") and team == game.human:
+			# its line of fire on the ground follows the aim and the men around: ten times a second
+			_aim_t -= delta
+			if _aim_t <= 0.0:
+				_aim_t = 0.1
+				queue_redraw()
+
+
+const TESLA_MODES := ["packed", "deploying", "deployed", "packing"]
 
 
 ## Tesla Cart: it only rolls when packed and only zaps when deployed; switching takes a while.
@@ -4521,6 +4529,9 @@ func _anim_name() -> String:
 	return "walk" if moving else "idle"
 
 
+const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]
+
+
 ## Animation runs at most 15 times a second, and not at all for units nobody can see.
 func _animate(delta: float) -> void:
 	_anim_dt += delta
@@ -4570,7 +4581,7 @@ func _animate(delta: float) -> void:
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[_anim_art if _anim_art != "" else art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
-	if anim == "walk" and art in ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]:
+	if anim == "walk" and GALLOPERS.has(art):
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
 		# frames, played so that his stride takes the same time
 		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
@@ -4703,7 +4714,7 @@ func _animate(delta: float) -> void:
 		sprite.frame = 0        # the horse stands still
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_animate_cannon(delta)   # the old one-frame sheet: rock, recoil and a spinning wheel
-	elif kind in ["spitter", "bolt"]:
+	elif kind == "spitter" or kind == "bolt":
 		# rear up / tilt the crossbow at a flyer
 		var at_air: bool = target != null and is_instance_valid(target) and target.is_air() and phase != ""
 		sprite.rotation = (-0.32 if not anim_flip else 0.32) if at_air else 0.0
@@ -4802,6 +4813,9 @@ func _strip_art(a: String) -> String:
 	return art
 
 
+const DIR_FLIP := [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]]
+
+
 func _set_anim(a: String, force: bool) -> void:
 	# getting on or off: the mounted kind's mount strip, the way the horse is turned (_mount_face)
 	var sa := mount_strip_art() if a == "mount" else ""
@@ -4813,7 +4827,7 @@ func _set_anim(a: String, force: bool) -> void:
 	var was_mount := anim == "mount"
 	var o := int(round(face.angle() / (PI / 4.0)))
 	o = posmod(o, 8)
-	var dir_flip: Array = [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]][o]
+	var dir_flip: Array = DIR_FLIP[o]
 	var dr: String = dir_flip[0]
 	var flip: bool = dir_flip[1]
 	if not force and a == anim and dr == anim_dir and flip == anim_flip and sa == _anim_art:
