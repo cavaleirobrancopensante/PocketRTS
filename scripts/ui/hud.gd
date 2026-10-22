@@ -678,6 +678,7 @@ func _build_card() -> Array:
 			_ability_buttons(list, units)
 			list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 			_refit_buttons(list, units)
+		_horse_buttons(list, units)
 		if has_lab:
 			var gatherers := units.filter(func(u: Unit) -> bool: return u.can_gather())
 			if not gatherers.is_empty():
@@ -791,7 +792,7 @@ func _build_card() -> Array:
 		if b.dual_rally():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
 			list.append(["feeding_pit", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
-		elif not b.d["trains"].is_empty():
+		elif not b.d["trains"].is_empty() or b.d.get("breeds", false):
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
 			list.append(["stop", "CANCEL", func() -> void:
@@ -834,6 +835,8 @@ func _refit_buttons(list: Array, units: Array) -> void:
 		whats.append(game.best_lock(game.human))
 	if game.has_tech(game.human, "bayonet"):
 		whats.append("bayonet")
+	if game.has_tech(game.human, "pouch"):
+		whats.append("pouch")
 	for w in whats:
 		var ww: String = w
 		var need := men.filter(func(u: Unit) -> bool: return game.refit_options(u).has(ww))
@@ -866,6 +869,8 @@ func _refit_buttons(list: Array, units: Array) -> void:
 				price = "by kind"
 		elif ww == "bayonet":
 			what = "the socket bayonet (+%d bayonet damage, thrusts %d%% faster)" % [int(info["damage"]), int(round((1.0 - float(info["cooldown"])) * 100.0))]
+		elif ww == "pouch":
+			what = "the shot pouch (%d shots instead of %d; he fills it at any powder source)" % [int(Defs.POWDER["pouch"]), int(Defs.POWDER["musketeer"])]
 		_tip_for[lab] = ["Refit: %s   (%s a man)" % [info["name"], price],
 			"%d of them lack it: each pays, walks to the nearest Barracks, Armoury or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back." % [need.size(), what, int(Defs.REFIT["time"])]]
 		list.append([_research_icon(ww), lab, func() -> void:
@@ -1035,7 +1040,8 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
-	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q"}
+	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
+	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q"}
 ## Keys the left hand reaches without leaving the group numbers: names only take letters
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
@@ -1295,9 +1301,14 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	var cap: int = pl["cap"]
 	var x2 := x
 	x = _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
+	var x3 := x
+	if fac == "crown":
+		x = _pill(font, x, Color(0.55, 0.42, 0.3), "Horses: %d" % game.horses_of(t).size(), UiStyle.TEXT)
 	if t == game.human and not game.spectating():
 		# (for their tooltips)
-		_pill_rects = [[Rect2(x0, 4, x1 - 8 - x0, 30), 0], [Rect2(x1, 4, x2 - 8 - x1, 30), 1], [Rect2(x2, 4, x - 8 - x2, 30), 2]]
+		_pill_rects = [[Rect2(x0, 4, x1 - 8 - x0, 30), 0], [Rect2(x1, 4, x2 - 8 - x1, 30), 1], [Rect2(x2, 4, x3 - 8 - x2, 30), 2]]
+		if x > x3:
+			_pill_rects.append([Rect2(x3, 4, x - 8 - x3, 30), 3])
 	return x
 
 
@@ -1510,9 +1521,7 @@ func _draw_panel(font: Font) -> void:
 	var sel: Array = game.selection.filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead)
 	if sel.size() == 1:
 		var e: Entity = sel[0]
-		var icon := _icon(e.kind)
-		if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
-			icon = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
+		var icon := _unit_icon(e)
 		var pr := Rect2(r.position + Vector2(10, 10), Vector2(68, 68))
 		UiStyle.draw_button(self, pr.grow(2), false, false)
 		if icon:
@@ -1550,8 +1559,26 @@ func _draw_panel(font: Font) -> void:
 					"deployed": "Set up: %s loaded. Fires at anything your side can see." % ("canister" if uu.mode == "canister" else "round shot"),
 					"packing": "Limbering up..."}[uu.tesla_mode]
 				info += "  Powder %d/%d%s" % [int(uu.powder), int(uu._pmax), " (OUT: refill at a Mill, Barracks, Hall or Wagon)" if uu.powder < 1.0 else ""]
-			elif uu.kind == "musketeer":
-				# "Powder 9/12 · Reload 3.0 s"; while he reloads "Reload 1.2/3.0 s", counting up
+			elif uu.kind == "horse":
+				if uu.leader and is_instance_valid(uu.leader):
+					info = "Led by a %s." % uu.leader.d["name"]
+				elif uu.into is Building:
+					info = "Walking into the %s." % uu.into.d["name"]
+				elif uu.into is Unit:
+					info = "Going to be harnessed to the %s." % uu.into.d["name"]
+				elif uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu:
+					info = "A %s is coming for it." % uu.claimed.d["name"]
+				else:
+					info = "Grazing, unattended: keep a man by it, or an enemy man can steal it."
+			elif Defs.HARNESSED.has(uu.kind) and not uu.harnessed:
+				info = "NO HORSE: it can't move (HARNESS one). " + ("Fires from where it stands." if uu.kind != "powder_wagon" else "It still supplies.")
+			elif uu.kind == "dragoon":
+				info = "Rides fast; dismounts to fire. Powder %d/%d · reload %s (waits while he rides)" % [int(uu.powder), int(uu._pmax),
+					"ready" if uu.cooldown <= 0.0 else "%.1f s left" % uu.cooldown]
+			elif uu.kind == "messenger":
+				info = "Unarmed scout: very fast, sees far."
+			elif Defs.MUSKETS.has(uu.kind):
+				# "Powder 9/10 · Reload 3.0 s"; while he reloads "Reload 1.2/3.0 s", counting up
 				# (and the thin bar under the powder bar fills with it)
 				var rl := uu.musket_cooldown()
 				var rtxt := "Reload %.1f s" % rl
@@ -1631,13 +1658,17 @@ func _draw_panel(font: Font) -> void:
 				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."
 			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99:
 				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
+			if not uu.led.is_empty():
+				info = "Leading %d horse%s · " % [uu.led.size(), "" if uu.led.size() == 1 else "s"] + info
+			if uu.auto_mount and uu.kind == "musketeer" and uu.steed and is_instance_valid(uu.steed):
+				info = "Dragoon on foot (remounts to move) · " + info
 			if Defs.ARMOURED.has(uu.kind) and e.team == game.human:
 				# his own refits first: "Armour · Flintlock"
 				var kt := uu.kit_text()
 				if uu.order == "refit" and not uu.refit.is_empty():
 					var names := " + ".join(uu.refit.map(func(w: String) -> String: return String(Defs.RESEARCH[w]["name"])))
 					kt = ("%s · " % kt if kt != "" else "") + ("refitting: %s..." % names if uu.work == "refitting" else "off to be refitted: %s" % names)
-				info = (kt if kt != "" else ("Plain musket" if uu.kind == "musketeer" else "No armour")) + "  ·  " + info
+				info = (kt if kt != "" else ("Plain musket" if Defs.MUSKETS.has(uu.kind) else "No armour")) + "  ·  " + info
 		elif e is Building:
 			name = (e as Building).d["name"]
 			info = (e as Building).d["about"]
@@ -1666,6 +1697,12 @@ func _draw_panel(font: Font) -> void:
 					bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0]), int(bb.lode),
 					" (spent: its crushers pay a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
 					int(round(coal * 100)), " (spent: its Boilers fill at a third)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else "")]
+			elif bb.kind == "horse_breeder" and (e.team == game.human or game.demo):
+				info = "Next foal in %ds · +%d gold a second · %d horses yours" % [int(ceil((1.0 - bb.growth) * float(Defs.HORSES["breed"]))), int(Defs.HORSES["gold"]), game.horses_of(bb.team).size()]
+				if not bb._breed_ok:
+					info = "Paddock full (%d round it): foals wait until horses are taken away · +%d gold a second" % [int(Defs.HORSES["graze_cap"]), int(Defs.HORSES["gold"])]
+			elif (bb.kind == "barracks" or bb.kind == "foundry") and bb.built and (e.team == game.human or game.demo):
+				info = "Horses here: %d (Horsemen, cannons, mortars and wagons need one each)  ·  " % game.horses_at(bb) + info
 			elif bb.kind == "powder_mill":
 				var sl := bb.lode_left()
 				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
@@ -1721,7 +1758,7 @@ func _draw_panel(font: Font) -> void:
 			var pb := Rect2(hb.position + Vector2(0, hb.size.y + 3), Vector2(hb.size.x, 4))
 			draw_rect(pb, Color(0, 0, 0, 0.6))
 			draw_rect(Rect2(pb.position, Vector2(pb.size.x * clampf(pu.powder / pu._pmax, 0.0, 1.0), pb.size.y)), Unit.POWDER_BAR if pu.powder >= 1.0 else UiStyle.BAD)
-			if pu.kind == "musketeer":
+			if pu.foot_musket():
 				var rb := Rect2(pb.position + Vector2(0, pb.size.y + 2), Vector2(hb.size.x, 2))
 				var rf := pu.reload_frac() if pu.powder >= 1.0 else 0.0
 				draw_rect(rb, Color(0, 0, 0, 0.6))
@@ -1797,6 +1834,10 @@ func _draw_panel(font: Font) -> void:
 			var bay: int = musk.filter(func(u: Unit) -> bool: return u.bayonet).size()
 			if game.has_tech(game.human, "bayonet") or bay > 0:
 				bits.append("Bayonet %d/%d" % [bay, musk.size()])
+			var pch: Array = men.filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind))
+			var pn: int = pch.filter(func(u: Unit) -> bool: return u.pouch).size()
+			if game.has_tech(game.human, "pouch") or pn > 0:
+				bits.append("Pouch %d/%d" % [pn, pch.size()])
 			for li in range(Defs.LOCKS.size() - 1, -1, -1):
 				var lk: String = Defs.LOCKS[li]
 				var c: int = men.filter(func(u: Unit) -> bool: return u.lock == lk).size()
@@ -1826,9 +1867,7 @@ func _draw_panel(font: Font) -> void:
 			_portraits.append({"rect": ir, "e": e})
 			if Settings.pc() and ir.has_point(_mouse()):
 				draw_rect(ir.grow(2), UiStyle.TRIM_DIM, false, 1.0)
-			var ic := _icon(e.kind)
-			if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
-				ic = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
+			var ic := _unit_icon(e)
 			if ic:
 				draw_texture_rect(ic, ir, false)
 			var f := e.hp / e.max_hp
@@ -1858,6 +1897,64 @@ func _draw_panel(font: Font) -> void:
 
 
 var _portraits: Array = []
+
+
+## A unit's (or building's) portrait: its own, its sprites' (a Guardsman, a Horseman), or the
+## one standing in for it (Defs.TEMP_ART, light or armoured).
+func _unit_icon(e: Entity) -> Texture2D:
+	if e is Unit and Defs.TEMP_ART.has(e.kind):
+		return _icon(Defs.icon_for(Defs.train_key(e.kind, (e as Unit).armoured)))
+	var icon := _icon(e.kind)
+	if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
+		icon = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
+	return icon
+
+
+## Horse commands for the men (LEAD, RELEASE, MOUNT, DISMOUNT) and for guns and wagons
+## (RELEASE HORSE, HARNESS) in the selection.
+func _horse_buttons(list: Array, units: Array) -> void:
+	var leaders := units.filter(func(u: Unit) -> bool: return u.can_lead())
+	if not leaders.is_empty():
+		var near := leaders.any(func(u: Unit) -> bool: return u.lead_count() < int(Defs.HORSES["lead_max"]) and u.nearest_free_horse(float(Defs.HORSES["fetch"]), u.led) != null)
+		list.append(["horse_lead", "LEAD", func() -> void:
+			var n := game.lead_order(game.selected_units())
+			toast("Fetching %d horse%s by the reins." % [n, "" if n == 1 else "s"] if n > 0 else "No free horse nearby."), near, "No free horse of yours within %d tiles." % int(Defs.HORSES["fetch"]), ""])
+		var held := 0
+		for u in leaders:
+			held += u.led.size()
+		if held > 0:
+			list.append(["horse_release", "RELEASE", func() -> void:
+				for u in game.selected_units():
+					u.release_horses()
+				toast("Released: the horses graze where they stand."), true, "", str(held)])
+	var riders := units.filter(func(u: Unit) -> bool: return u.can_mount())
+	if not riders.is_empty():
+		var any := riders.any(func(u: Unit) -> bool: return u.nearest_free_horse(float(Defs.HORSES["fetch"])) != null)
+		list.append(["horse_mount", "MOUNT", func() -> void:
+			var n := game.mount_order(game.selected_units())
+			if n == 0:
+				toast("No free horse nearby."), any, "No free horse of yours within %d tiles." % int(Defs.HORSES["fetch"]), ""])
+	var mounted := units.filter(func(u: Unit) -> bool: return u.is_mounted() and u.order != "dismount")
+	if not mounted.is_empty():
+		list.append(["horse_dismount", "DISMOUNT", func() -> void:
+			for u in game.selected_units():
+				if u.is_mounted():
+					u.cmd_dismount(), true, "", ""])
+	var guns := units.filter(func(u: Unit) -> bool: return Defs.HARNESSED.has(u.kind))
+	if not guns.is_empty():
+		var hitched := guns.filter(func(u: Unit) -> bool: return u.harnessed)
+		if not hitched.is_empty():
+			list.append(["horse_release", "RELEASE HORSE", func() -> void:
+				for u in game.selected_units():
+					if Defs.HARNESSED.has(u.kind):
+						u.release_horse(), true, "", ""])
+		if hitched.size() < guns.size():
+			var g0: Unit = guns.filter(func(u: Unit) -> bool: return not u.harnessed)[0]
+			var free := g0.nearest_free_horse(float(Defs.HORSES["fetch"])) != null
+			list.append(["horse_harness", "HARNESS", func() -> void:
+				var n := game.harness_order(game.selected_units())
+				if n == 0:
+					toast("No free horse nearby."), free, "No free horse of yours within %d tiles." % int(Defs.HORSES["fetch"]), ""])
 var _queue_rects: Array = []        # the production line's pictures in the card: click = cancel that one
 
 
@@ -2050,7 +2147,7 @@ const CMD_TIPS := {
 	"LOAD": "Then tap Musketeers or Labourers (4 at most): they climb in. Men selected with the balloon climb in at once.",
 	"UNLOAD": "Then pick where to drop them: the balloon flies there and lets everyone off.",
 	"DROP HERE": "Let everyone off right below the balloon.",
-	"RESTOCK": "Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 48-shot store is full.",
+	"RESTOCK": "Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 40-shot store is full.",
 }
 
 ## The quick buttons: [title, text] (groups 1-4 are worded in _tip_of).
@@ -2124,6 +2221,8 @@ func _card_tip(it: Array) -> Dictionary:
 		t["body"] = "Take the last thing in the queue back out (paid back)."
 	elif lab == "CANCEL":
 		t["body"] = "Back out of this without doing it."
+	elif Defs.TIPS.has(lab):
+		t["body"] = Defs.TIPS[lab]       # (the horse commands)
 	elif CMD_TIPS.has(lab):
 		t["body"] = CMD_TIPS[lab]
 	if not it[3] and String(it[4]) != "":
@@ -2169,6 +2268,11 @@ func _res_tip(i: int) -> Dictionary:
 	var r := _res()
 	if fac == "clockwork":
 		return {}
+	if i == 3:
+		var hs: Array = game.horses_of(game.human)
+		var led := hs.filter(func(h: Unit) -> bool: return h.leader != null).size()
+		return {"title": "Horses: %d (%d led)" % [hs.size(), led],
+			"body": "Your free horses (riders' and guns' horses aren't counted). Horse Breeders raise them; Horsemen, Cuirassiers, Field Cannons, Mortars and Powder Wagons each need one brought to their building, and any man can MOUNT one. Left alone near an enemy man, a horse is stolen."}
 	if i == 2:
 		var sup: String = Defs.BUILDINGS[Defs.FACTIONS[fac]["supply"]]["name"]
 		return {"title": "Supply: %d of %d used" % [game.supply_used(game.human), int(pl["cap"])],
@@ -2328,6 +2432,13 @@ func _draw_tip() -> void:
 
 
 func _icon(name: String) -> Texture2D:
+	var ic := _icon_file(name)
+	if ic == null and Defs.icon_for(name) != name:
+		ic = _icon_file(Defs.icon_for(name))       # (temporary art: Defs.TEMP_ART)
+	return ic
+
+
+func _icon_file(name: String) -> Texture2D:
 	# the Clockwork and the Brood have their own command icons
 	var fac := game.faction_of(game.human) if game else ""
 	if fac != "crown" and fac != "":

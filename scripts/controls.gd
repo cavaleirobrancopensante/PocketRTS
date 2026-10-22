@@ -651,6 +651,9 @@ func _finish_box(add := false) -> void:
 	# ones out with the army (repairing, winding, idle) come along.
 	if list.any(func(u: Unit) -> bool: return not u.is_worker()):
 		list = list.filter(func(u: Unit) -> bool: return not u.is_worker() or u.work == "")
+	# horses only when that's all there is (or with the men leading them: those come along anyway)
+	if list.any(func(u) -> bool: return u is Unit and u.kind != "horse"):
+		list = list.filter(func(u) -> bool: return not (u is Unit and u.kind == "horse"))
 	if add:
 		for x in game.selection:
 			if is_instance_valid(x) and not list.has(x):

@@ -654,6 +654,12 @@ const TEMP_ART := {
 	"dismounted": {"art": "musketeer", "armoured": "musketeer_armoured", "feather": true, "portrait": "horseman", "portrait_armoured": "cuirassier"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},   # tools/make_breeder_placeholder.py
 	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon
+	# the horse commands' card icons
+	"horse_lead": {"portrait": "labourer"},
+	"horse_release": {"portrait": "ab_unload"},
+	"horse_mount": {"portrait": "horseman"},
+	"horse_dismount": {"portrait": "ab_unload"},
+	"horse_harness": {"portrait": "ab_limber"},
 }
 
 

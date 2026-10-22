@@ -32,7 +32,7 @@ func _initialize() -> void:
 func _process(_delta: float) -> bool:
 	t += _delta
 	if t > 0.2 and main.game == null:
-		main.start({"map": "random", "seed": 4242, "slots": [
+		main.start({"map": "hollowfen", "seed": 4242, "slots": [
 			{"who": "you", "faction": "crown", "colour": 0, "side": 0},
 			{"who": "easy", "faction": "brood", "colour": 1, "side": 1}]})
 		return false
