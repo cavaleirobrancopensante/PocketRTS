@@ -1675,7 +1675,7 @@ func _siege_tick(wave: Array) -> bool:
 		# tough melee (armoured) go first when there are any: the light ones wait out of reach
 		# until the gun they're after has fired (at the tough ones), then rush it while it loads
 		var tanks := not guns.is_empty() and wave.any(func(u) -> bool: return is_instance_valid(u) and not u.dead and not u.is_air() \
-				and _melee(u) and u.has_attack() and not Defs.has_tag(u.kind, "light"))
+				and _melee(u) and u.has_attack() and not u.has_tag("light"))
 		for u in wave:
 			if is_instance_valid(u) and not u.dead:
 				u.wall_flee_t = 0.0
@@ -1692,7 +1692,7 @@ func _siege_tick(wave: Array) -> bool:
 					_hold_back[u] = game.clock + 6.0
 				else:
 					if not guns.is_empty() and u.has_attack() and u.can_hit(guns[gi % guns.size()]):
-						if tanks and Defs.has_tag(u.kind, "light"):
+						if tanks and u.has_tag("light"):
 							u.cmd_hold()
 							_dive_wait[u] = [game.clock + 5.0, guns[gi % guns.size()]]
 						else:
@@ -1952,7 +1952,7 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 		if _melee(u):
 			var side: float = u.radius * 2.0 + 4.0
 			# (canister shreds light troops: a tough one lasts longer at the face)
-			var lasts: float = u.hp / (float(Defs.CANISTER["vs_light"]) if Defs.has_tag(u.kind, "light") else 1.0)
+			var lasts: float = u.hp / (float(Defs.CANISTER["vs_light"]) if u.has_tag("light") else 1.0)
 			melee.append([u.hp, wd, side * side, lasts, maxf(1.0, float(u.d["damage"]) - their_armor) / _cycle(u)])
 		else:
 			ranged.append([u.hp, wd, maxf(float(u.d["range"]) * 0.85, float(u.d.get("min_range", 0.0)) + 24.0), maxf(1.0, float(u.d["damage"]) - their_armor) / _cycle(u)])
@@ -2204,7 +2204,7 @@ func _breaker_value(u: Unit, piece: Building, arm: float) -> float:
 	var dmg := float(u.d["damage"]) * float(u.d.get("building_bonus", 1.0))
 	var wd := maxf(1.0, dmg - arm) / _cycle(u)
 	var side: float = u.radius * 2.0 + 4.0
-	var lasts: float = u.hp / (float(Defs.CANISTER["vs_light"]) if Defs.has_tag(u.kind, "light") else 1.0)
+	var lasts: float = u.hp / (float(Defs.CANISTER["vs_light"]) if u.has_tag("light") else 1.0)
 	return wd * lasts / (side * side)
 
 

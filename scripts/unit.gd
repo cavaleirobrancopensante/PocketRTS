@@ -1261,7 +1261,7 @@ func can_tongue(e) -> bool:
 
 ## Heavy units can't be pulled, only staggered: supply TONGUE.heavy and up, or tagged massive.
 static func too_heavy(e: Unit) -> bool:
-	return int(e.d["supply"]) >= int(Defs.TONGUE["heavy"]) or Defs.has_tag(e.kind, "massive")
+	return int(e.d["supply"]) >= int(Defs.TONGUE["heavy"]) or e.has_tag("massive")
 
 
 ## TONGUE: walk into range of `e`, then mark it (the windup) and drag it in.
