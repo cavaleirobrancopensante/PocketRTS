@@ -4133,6 +4133,10 @@ func _anim_name() -> String:
 				return "attack"
 		"balloon":
 			return "drift" if moving else "idle"
+		"horse":
+			# a horse left to itself grazes (head down) most of the time it stands
+			if not moving and leader == null and into == null and (int(_bob_t / 3.0) + get_instance_id()) % 3 != 0:
+				return _anim_or("graze", "idle")
 		"bloater":
 			match deflate:
 				"deflating":
@@ -4196,7 +4200,7 @@ func _animate(delta: float) -> void:
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
-	if anim == "walk" and (art == "cuirassier" or art == "horseman"):
+	if anim == "walk" and art in ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]:
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
 		# frames, played so that his stride takes the same time
 		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
@@ -4225,6 +4229,8 @@ func _animate(delta: float) -> void:
 			loop = false
 		"idle_cocoon":
 			fps = 3.0
+		"graze":
+			fps = 2.0
 		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
 			if kind == "spore_mother":
 				fps = 6.0
@@ -5215,9 +5221,9 @@ func release_horse() -> Unit:
 
 # ---- drawing
 
-## (a horse) where its bridle is, from its feet, per drawn facing (temporary art: the GRAY
-## horse sheet; facing right, x mirrored when flipped).
-const BRIDLE := {"e": Vector2(17, -27), "se": Vector2(10, -28), "s": Vector2(2, -27), "ne": Vector2(14, -29), "n": Vector2(0, -30)}
+## (a horse) where its bridle is, from its feet, per drawn facing (art/crown/horse_riderless.png
+## as tools/import_horse_units.py places it; facing right, x mirrored when flipped).
+const BRIDLE := {"e": Vector2(19, -36), "se": Vector2(8, -37), "s": Vector2(0, -36), "ne": Vector2(5, -44), "n": Vector2(0, -44)}
 
 
 func _draw_rein() -> void:
@@ -5242,7 +5248,7 @@ func _draw_rein() -> void:
 ## (a dismounted horseman, TEMP_ART "feather") a plume on his hat, so he can be told from a
 ## Musketeer until his own sprites come.
 func _update_feather() -> void:
-	var want: bool = Defs.TEMP_ART.get(kind, {}).get("feather", false) and sprite != null
+	var want: bool = Defs.TEMP_ART.get(kind, {}).get("feather_armoured" if armoured else "feather", false) and sprite != null
 	if want and _feather == null:
 		_feather = Node2D.new()
 		_feather.draw.connect(func() -> void:

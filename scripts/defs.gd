@@ -502,7 +502,7 @@ const BUILDINGS := {
 		"about": "Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds at a quarter. Soldiers and wagons nearby refill here.",
 	},
 	"horse_breeder": {
-		"name": "Horse Breeder", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(3, 3),
+		"name": "Horse Breeder", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 6, "trains": [], "breeds": true, "faction": "crown",
 		"about": "Raises horses by itself, one about every 40 s, up to 6 grazing round it, and pays a little gold (about 5 a second). Horses are what cavalry, guns and wagons need. RALLY sends new foals somewhere (a Barracks or Foundry).",
 	},
@@ -641,18 +641,21 @@ const HARNESSED := ["cannon", "mortar", "powder_wagon"]
 ## Soldiers who carry a musket (locks, the shot pouch, the musket's powder).
 const MUSKETS := ["musketeer", "dragoon", "dismounted"]
 
-## TEMPORARY ART: every sprite choice for the horse system in one place, so the designer's
-## finished sheets drop in by changing this table only. "art": the ArtData.UNITS sprite set
-## a unit kind wears ("armoured": with Armour); "portrait" / "portrait_armoured": its icon
-## (assets/icons/<name>.png); "feather": a plume drawn on his hat (to tell the dismounted
-## horsemen from Musketeers); "building": the sprite name of a building
-## (assets/buildings/<name>_<state>.png).
+## The horse system's art table: every sprite choice in one place, so new sheets drop in by
+## changing this table only. "art": the ArtData.UNITS sprite set a unit kind wears
+## ("armoured": with Armour); "portrait" / "portrait_armoured": its icon
+## (assets/icons/<name>.png) while it has none of its own; "feather" / "feather_armoured": a
+## plume drawn on his hat (a stand-in sprite, to tell him from a Musketeer); "building": the
+## sprite name of a building (assets/buildings/<name>_<state>.png). The designer's sheets:
+## tools/import_horse_units.py (horse, messenger, dragoon, dragoon_armoured, dismounted) and
+## tools/import_horse_breeder.py. Still TEMPORARY: the Dismounted Cuirassier (the Guardsman's
+## sprites with a plume), the portraits and the research and command icons.
 const TEMP_ART := {
-	"horse": {"art": "horse", "portrait": "horseman"},          # tools/import_riderless_horse.py (GRAY section)
-	"messenger": {"art": "horseman", "portrait": "labourer"},
-	"dragoon": {"art": "horseman", "armoured": "cuirassier", "portrait": "musketeer", "portrait_armoured": "guardsman"},
-	"dismounted": {"art": "musketeer", "armoured": "musketeer_armoured", "feather": true, "portrait": "horseman", "portrait_armoured": "cuirassier"},
-	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},   # tools/make_breeder_placeholder.py
+	"horse": {"art": "horse", "portrait": "horseman"},
+	"messenger": {"art": "messenger", "portrait": "labourer"},
+	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "musketeer", "portrait_armoured": "guardsman"},
+	"dismounted": {"art": "dismounted", "armoured": "musketeer_armoured", "feather_armoured": true, "portrait": "horseman", "portrait_armoured": "cuirassier"},
+	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
 	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon
 	# the horse commands' card icons
 	"horse_lead": {"portrait": "labourer"},

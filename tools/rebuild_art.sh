@@ -50,6 +50,9 @@ python3 tools/fix_mortar_smoke.py         # no smoke puff over the right-hand gu
                                          # (after the reload, helmets and towed walk above)
 python3 tools/import_horseman.py         # the unarmoured Horseman's strips (cut like the Cuirassier's,
                                          # on his cell) and his art_data entry
+python3 tools/import_horse_units.py      # the horse system's units: riderless horse, Messenger, Dragoons
+                                         # (light and armoured), dismounted Horseman (slash fixed)
+python3 tools/import_horse_breeder.py    # the Horse Breeder's 4 states and its build icon
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 echo "Now run: godot --headless --import"

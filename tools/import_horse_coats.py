@@ -64,7 +64,8 @@ SHEET_BOXES = {
 # The coat each unit's sprites are painted in (left as painted when it gets that coat).
 # The Mortar has none: its towed walk shows a dark horse, its other strips a chestnut, so
 # every coat (bay too) is repainted, the same on both.
-NATIVE = {"cuirassier": "dark", "horseman": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "", "horse": ""}
+NATIVE = {"cuirassier": "dark", "horseman": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "",
+          "horse": "dark", "messenger": "dark", "dragoon": "dark", "dragoon_armoured": "dark"}
 NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 
 # Per unit: the colour test, the strips with a horse (anim names; every direction), and
@@ -105,11 +106,40 @@ CONFIG = {
         "keep": {},
         "drop": {},
     },
-    # the riderless horse (tools/import_riderless_horse.py, temporary art): the sheet's blue-grey
-    # horse alone, no rider; its grey has a blue cast, so no steel test
+    # the riderless saddled horse (tools/import_horse_units.py): a dark grey horse, no rider
     "horse": {
         "test": "horse_grey",
+        "anims": ["idle", "graze", "walk", "death"],
+        "keep": {},
+        "drop": {},
+    },
+    # the Messenger and the Dragoons (tools/import_horse_units.py): dark grey horses under a
+    # red-coated rider (his hat, face, satchel, musket and morion are kept out like the
+    # Horseman's); in the last death frames the rider lies beside his horse
+    "messenger": {
+        "test": "grey",
         "anims": ["idle", "walk", "death"],
+        "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
+                       "skip": [("death", 2), ("death", 3), ("death", 4)]},
+        "blade_v": 0.5,
+        "keep": {},
+        "drop": {},
+    },
+    "dragoon": {
+        "test": "grey",
+        "anims": ["idle", "walk", "death"],
+        "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
+                       "skip": [("death", 2), ("death", 3), ("death", 4)]},
+        "blade_v": 0.5,
+        "keep": {},
+        "drop": {},
+    },
+    "dragoon_armoured": {
+        "test": "grey",
+        "anims": ["idle", "walk", "death"],
+        "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
+                       "skip": [("death", 2), ("death", 3), ("death", 4)]},
+        "blade_v": 0.5,
         "keep": {},
         "drop": {},
     },

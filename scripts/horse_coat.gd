@@ -9,10 +9,10 @@ const COATS := ["dark", "bay", "grey", "white", "spotted"]
 const WEIGHTS := {"dark": 30, "bay": 30, "grey": 20, "white": 10, "spotted": 10}
 ## The coat each unit's sprites are painted in: that one is shown as painted. The Mortar has
 ## none (its walk's horse is dark, its other strips' chestnut): every coat is repainted.
-## The riderless horse (temporary art) and the mounted men (the Horseman's and Cuirassier's
-## sprites for now: Defs.TEMP_ART) too.
+## The riderless horse, the Messenger and both Dragoons (tools/import_horse_units.py) are
+## painted on dark grey horses too.
 const NATIVE := {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "",
-	"horse": "", "messenger": "dark", "dragoon": "dark"}
+	"horse": "dark", "messenger": "dark", "dragoon": "dark"}
 const MASKS := "res://assets/units/horse_masks/"
 const RAMPS := preload("res://assets/units/horse_masks/coat_ramps.png")
 
