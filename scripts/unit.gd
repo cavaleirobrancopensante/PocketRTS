@@ -5307,9 +5307,16 @@ func can_mount() -> bool:
 ## someone else.
 static func horse_free_for(h, u: Unit) -> bool:
 	return h != null and is_instance_valid(h) and h is Unit and h.kind == "horse" and not h.dead and not h.off_field \
-		and u.team >= 0 and (h.team == u.team or h.team < 0) and h.into == null and (h.claimed == null or h.claimed == u or not is_instance_valid(h.claimed)) \
+		and u.team >= 0 and (h.team == u.team or h.team < 0) and h.into == null and (h.claimed == null or h.claimed == u or not _claim_live(h)) \
 		and (h.leader == null or h.leader == u or not is_instance_valid(h.leader)) \
 		and (h.horse_rid == 0 or h.horse_rid == u.horse_rid)
+
+
+## Someone is still on his way to take horse h (a claim left behind by a man who died, or
+## who was given another order without letting go, doesn't hold it any more).
+static func _claim_live(h) -> bool:
+	var c = h.claimed
+	return c != null and is_instance_valid(c) and not c.dead and c.order_target == h
 
 
 ## Horses he leads or is going to fetch.

@@ -114,6 +114,7 @@ var _wave_kill0 := 0
 var _failed := 0                # waves in a row that died without paying for themselves
 var _regroup_until := 0.0       # after a failed rush: no attack before this (building up)
 var _opened := ""               # the strategy it started with (a failed rush switches it)
+var _first_wave := false        # (the match log notes the first attack)
 
 
 func _physics_process(delta: float) -> void:
@@ -424,7 +425,10 @@ func _econ_spot(kind: String) -> Vector2i:
 		elif kind == "brood_pen":
 			spot = game.find_spot(team, kind, h, 3, 12, "near")
 		else:
-			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind")
+			# (on the hall's own ground first: never down below the ramp while there's room up top)
+			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind", true)
+			if spot.x < 0:
+				spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind")
 		if spot.x >= 0:
 			return spot
 	return Vector2i(-1, -1)
@@ -468,7 +472,15 @@ func _supply() -> void:
 	if _clock():
 		prod = 6 * _mine("assembly_works").size() + 5 * _mine("engine_hall").size()
 	var margin := 3 + prod
-	if cap - used <= margin and not _busy_building(sup):
+	var building := _mine(sup).filter(func(b: Building) -> bool: return not b.built).size()
+	if _crown() and opening == "breeder" and game.clock < 600.0 and not _mine("barracks").is_empty():
+		# a Horseman rush: horsemen (3 supply each) and labourers come out together and every
+		# coin goes on them, so the Cottages go up ahead (a second one at once when it's tight)
+		margin += 3 + 3 * _mine("barracks").size()
+		if cap - used <= margin and building < (2 if cap - used <= 6 else 1):
+			_construct(sup)
+		return
+	if cap - used <= margin and building == 0:
 		_construct(sup)
 
 
@@ -934,14 +946,25 @@ func _raid() -> void:
 			if u.position.distance_to(home) > 200.0:
 				u.cmd_move(home + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
 		return
-	# the best prey: workers and economy buildings far from the enemy's main, few guards
-	var their_main: Vector2 = Vector2(game.starts[foe]) * Defs.TILE if game.starts.size() > foe else c
+	var best := _prey_spot(c)
+	for u in _raiders:
+		_hunt(u, best)
+
+
+## Where cavalry finds its prey: the enemy's workers we can see (the farther from its main
+## the better: grubs hauling from distant pits, labourers at outlying farms), else the
+## economy buildings they work at (Farms, Feeding Pits, Mills...), else its base.
+func _prey_spot(from: Vector2) -> Vector2:
+	var foe := _foe()
+	if foe < 0:
+		return _enemy_base()
+	var their_main: Vector2 = Vector2(game.starts[foe]) * Defs.TILE if game.starts.size() > foe else from
 	var best := Vector2.INF
 	var score := -INF
 	for o in game.units:
-		if o.dead or not game.hostile(o.team, team) or not o.is_worker() or not game.is_visible_to(team, o.position):
+		if o.dead or o.off_field or not game.hostile(o.team, team) or not o.is_worker() or not game.is_visible_to(team, o.position):
 			continue
-		var s: float = o.position.distance_to(their_main) - o.position.distance_to(c) * 0.5
+		var s: float = o.position.distance_to(their_main) - o.position.distance_to(from) * 0.5
 		if s > score:
 			score = s
 			best = o.position
@@ -949,15 +972,46 @@ func _raid() -> void:
 		for b in game.buildings:
 			if b.dead or b.ghost or not game.hostile(b.team, team) or not Defs.is_econ(b.kind):
 				continue
-			var s: float = b.center().distance_to(their_main) - b.center().distance_to(c) * 0.5
+			var s: float = b.center().distance_to(their_main) - b.center().distance_to(from) * 0.5
 			if s > score:
 				score = s
 				best = b.center()
 	if best == Vector2.INF:
 		best = _enemy_base()
-	for u in _raiders:
-		if u.order == "idle" or (u.order == "amove" and u.order_point.distance_to(best) > 160.0 and u.target == null):
-			u.cmd_move(best + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+	return best
+
+
+## Cavalry on a raid (or the Horseman rush) hunts workers first, then fights what fights
+## it, and goes for buildings only with no prey left: a worker it can see within 10 tiles is
+## ridden down; a fight with soldiers goes on; a building it set about on the way (a Hive,
+## a Town Hall) is left for the prey still farther on: it rides there (not an attack-move,
+## which would stop at every building) and only attack-moves once it's there.
+func _hunt(u: Unit, prey: Vector2) -> void:
+	if u.dead or u.off_field or u.order == "mount" or u.order == "dismount" or _on_errand(u):
+		return
+	var T := Defs.TILE
+	var w: Unit = null
+	var wd := 10.0 * T
+	for o in game.units_near(u.position, wd):
+		if o.dead or o.off_field or not o.is_worker() or not game.hostile(o.team, team) or not u.can_hit(o) or not game.is_visible_to(team, o.position):
+			continue
+		var dd: float = o.position.distance_to(u.position)
+		if dd < wd:
+			wd = dd
+			w = o
+	var tgt = u.target if u.target != null and is_instance_valid(u.target) and not u.target.dead else null
+	var fighting: bool = tgt is Unit and not (tgt as Unit).is_worker() and (tgt as Unit).kind != "horse"
+	if w and not fighting:
+		if u.order != "attack" or u.order_target == null or not is_instance_valid(u.order_target) or u.order_target.dead or not (u.order_target is Unit and (u.order_target as Unit).is_worker()):
+			u.cmd_attack(w)
+		return
+	if fighting or (u.order == "attack" and u.order_target is Unit):
+		return                           # (soldiers: the fight goes on; a worker: run him down)
+	var far := u.position.distance_to(prey) > 5.0 * T
+	if far and (tgt is Building or u.order == "idle" or u.order_point.distance_to(prey) > 160.0 or u.order == "attack"):
+		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+	elif not far and (u.order == "idle" or u.order == "move"):
+		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 
 
 ## Crown: wall the top of each ramp up to the main base, with a two-wide gate in the
@@ -1069,10 +1123,19 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 		game.place_building(team, kind, spot, [best])
 
 
+## Where a building goes: by the main hall, on its own ground (up on the main's plateau,
+## inside its walls), then by another hall on that hall's ground; anywhere by a hall (down
+## below the ramp) only when there's no room left on any of them.
 func _find_spot(kind: String) -> Vector2i:
-	for h in _halls():
-		if h.built:
-			var spot := game.find_spot(team, kind, h, 5, 18, "near")
+	var halls: Array = _halls().filter(func(h: Building) -> bool: return h.built)
+	if game.starts.size() > team:
+		var home := Vector2(game.starts[team]) * Defs.TILE
+		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.center().distance_to(home) < b.center().distance_to(home))
+	for ground in [true, false]:
+		for h in halls:
+			# (on the main's own plateau it looks a little farther: all of it is safe ground)
+			var far := 24 if ground and h == halls[0] else 18
+			var spot := game.find_spot(team, kind, h, 5, far, "near", ground)
 			if spot.x >= 0:
 				return spot
 	return Vector2i(-1, -1)
@@ -1427,12 +1490,21 @@ func _army() -> void:
 	if _brood():
 		_swarm_army(army, sup, regrouping)
 		return
-	if not _attacking and sup >= _attack_at and not regrouping:
+	# (riders still on foot, their horses on the way, don't count yet: they follow mounted)
+	var ready := army.filter(func(u: Unit) -> bool: return not _horse_coming(u))
+	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping:
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
-		_wave_start(army)
-		for u in army:
+		_wave_start(ready)
+		if game.mlog and not _first_wave:
+			_first_wave = true
+			game.mlog.add("%s's first attack goes out (%d supply, %d Horsemen)" % [game.mlog.who(team), _army_supply(ready), ready.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()])
+		var prey0 := _prey_spot(game.center_of_team(team)) if _cavalry_wave(ready) else Vector2.INF
+		for u in ready:
+			if prey0 != Vector2.INF and u.kind == "cuirassier":
+				_hunt(u, prey0)
+				continue
 			u.cmd_move(_wave_target + Vector2(randf_range(-50, 50), randf_range(-50, 50)), true)
 	elif _attacking:
 		if sup < 6:
@@ -1446,7 +1518,14 @@ func _army() -> void:
 		if not _attacking:
 			return
 		var wagon := _wagon() if _crown() else null
-		for u in army:
+		var cav := _cavalry_wave(ready)
+		var prey := Vector2.INF
+		for u in ready:
+			if cav and u.kind == "cuirassier" and u.siege_t <= 0.0 and u.wall_flee_t <= 0.0:
+				if prey == Vector2.INF:
+					prey = _prey_spot(u.position)
+				_hunt(u, prey)
+				continue
 			if u.order == "idle" and u.wall_flee_t <= 0.0 and u.siege_t <= 0.0 and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
 				# a dry musketeer topping up at the wagon waits there until it can shoot again
 				if wagon and u.kind == "musketeer" and u.powder < float(Defs.POWDER["rearm"]) + 2.0 \
@@ -1461,11 +1540,31 @@ func _army() -> void:
 		if hall.is_empty():
 			return
 		var front: Vector2 = _rally_front(hall[0])
-		for u in army:
+		for u in ready:
 			if u.order == "idle" and u.position.distance_to(front) > 160.0:
 				u.cmd_move(_home_spot(front), true)
 			elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 				u.cmd_deploy()
+
+
+## Crown: a wave that's mostly horsemen (the Horseman rush) raids the economy: its riders
+## hunt workers (_hunt) rather than ride at the enemy's hall.
+func _cavalry_wave(list: Array) -> bool:
+	if not _crown():
+		return false
+	var cav := 0
+	var all := 0
+	for u in list:
+		all += int(u.d["supply"])
+		if u.kind == "cuirassier":
+			cav += int(u.d["supply"])
+	return cav > 0 and cav * 2 >= all
+
+
+## A rider on foot whose horse is on its way: he's going to get on (or waits at the breeder
+## for the one kept for him). The army leaves him be until he's mounted.
+func _horse_coming(u: Unit) -> bool:
+	return Defs.RIDERS.values().has(u.kind) and (u.order == "mount" or u.horse_rid != 0) and (u.kind == "dismounted" or u.horse_rid != 0 or u.auto_mount)
 
 
 ## Where the army waits at home: a little in front of the hall toward the enemy, but on the
@@ -3064,11 +3163,120 @@ func _horses() -> void:
 				if b.center().distance_to(h.position) < hb.center().distance_to(h.position):
 					hb = b
 			h.cmd_move(game.approach_point(hb, h.position) + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+	_remount_riders(horses, keep)
+	_spares_home(horses, keep)
 	var teams := _team_up(horses, keep)
 	_buy_horses(horses, keep, need + teams)
 	_groom_tick(horses, short, need, keep)
 	if difficulty >= 1:
 		_mount_men(horses, keep, need + teams)
+
+
+## A man of ours on foot who should be on a horse: a Dismounted Horseman or Cuirassier, or
+## one of our Dragoons left on foot (auto_mount) once the fight is over.
+func _wants_horse(u: Unit) -> bool:
+	if u.kind == "dismounted":
+		return true
+	return u.kind == "musketeer" and (u.auto_mount or u.horse_rid != 0)    # (a Dragoon on foot, or one trained, his horse kept for him)
+
+
+## Fighting, or enemy fighters close by: not the moment to walk off for a horse.
+func _in_fight(u: Unit) -> bool:
+	if u.target != null and is_instance_valid(u.target) and not u.target.dead and game.hostile(u.target.team, team):
+		return true
+	for o in game.units_near(u.position, 7.0 * Defs.TILE):
+		if not o.dead and game.hostile(o.team, team) and not o.is_worker() and o.kind != "horse" and o.has_attack():
+			return true
+	return false
+
+
+var _mount_t := {}               # rider -> when he set off for his horse (_remount_riders)
+var _bad_horse := {}             # horse -> until when riders leave it be (they couldn't reach it)
+
+
+## Every rider of ours left on foot gets on a horse: his own reserved one (Unit._wait_horse
+## takes him there), or, when that isn't to be had (still at the breeder, killed, stolen,
+## taken by another; or he has none: he dismounted, was raised, his horse bolted), the
+## nearest free horse of ours (not kept for someone else, not led or hitched, not standing
+## ready at a Foundry), wherever it stands, out of a fight. Taking another horse frees his
+## reservation (Unit.do_mount): one still being bred comes out a spare.
+func _remount_riders(horses: Array, keep: Dictionary) -> void:
+	# (a man who has been walking to a horse for long without getting there can't reach it:
+	# he lets it go, and that horse is left out for a while)
+	for u in _mount_t.keys():
+		if not is_instance_valid(u) or u.dead or u.order != "mount":
+			_mount_t.erase(u)
+	for h in _bad_horse.keys():
+		if not is_instance_valid(h) or game.clock > float(_bad_horse[h]):
+			_bad_horse.erase(h)
+	for u in game.army(team):
+		if u.order == "mount" and u.work != "mounting" and u.order_target is Unit:
+			if not _mount_t.has(u):
+				_mount_t[u] = game.clock
+			elif game.clock - float(_mount_t[u]) > 35.0:
+				_bad_horse[u.order_target] = game.clock + 40.0
+				_mount_t.erase(u)
+				u.cmd_stop()
+	var free := horses.filter(func(h: Unit) -> bool: return not h.off_field and h.horse_rid == 0 and h.leader == null and h.into == null \
+		and not Unit._claim_live(h) and not keep.has(h) and not _bad_horse.has(h))
+	if free.is_empty():
+		return
+	for u in game.army(team):
+		if free.is_empty():
+			return
+		if not _wants_horse(u) or u.order == "mount" or u.work != "" or u.aboard or u.off_field or u._heal_remount or _on_errand(u) or u.order == "hold":
+			continue
+		if u.kind == "musketeer" and u.order != "idle" and u.horse_rid == 0:
+			continue                         # (a Dragoon on foot remounts by himself to move)
+		if u.horse_rid != 0:
+			var mine: Unit = game.reserved_horse(team, u.horse_rid)
+			if mine and Unit.horse_free_for(mine, u):
+				continue                     # (his own is there for him: Unit._wait_horse)
+		if _in_fight(u):
+			continue
+		var reach := (40.0 if u.kind == "dismounted" or u.horse_rid != 0 else 12.0) * Defs.TILE
+		var h: Unit = null
+		var bd := reach
+		for o in free:
+			var dd: float = o.position.distance_to(u.position)
+			if dd < bd and Unit.horse_free_for(o, u):
+				bd = dd
+				h = o
+		if h == null:
+			continue
+		var aft := {}
+		if u.order == "amove" or u.order == "move":
+			aft = {"o": u.order, "p": u.order_point}
+		if u.cmd_mount(h, aft):
+			free.erase(h)
+
+
+## Spare horses standing about away from home (where a rider left them, a loose one caught)
+## with nobody of ours by them: home to a breeder, where a new recruit takes one instead of a
+## new one being bought (Game.spare_horse). Horses at a Barracks stay: a recruit there takes
+## one straight away (Game.free_horse_at).
+func _spares_home(horses: Array, keep: Dictionary) -> void:
+	var brs: Array = _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built)
+	if brs.is_empty():
+		return
+	var near := float(Defs.HORSES["near_breeder"]) * Defs.TILE
+	var at := float(Defs.HORSES["at_building"]) * Defs.TILE
+	var bars: Array = _mine("barracks").filter(func(b: Building) -> bool: return b.built)
+	for h in horses:
+		if h.off_field or h.order != "idle" or h.horse_rid != 0 or h.leader != null or h.into != null or keep.has(h) or Unit._claim_live(h):
+			continue
+		if brs.any(func(b: Building) -> bool: return b.edge_distance(h.position) <= near + h.radius):
+			continue
+		if bars.any(func(b: Building) -> bool: return b.edge_distance(h.position) <= at + h.radius):
+			continue
+		# (a Dragoon's horse while he fights on foot, a rider of ours close by who'll take it: it stays)
+		if game.units_near(h.position, 6.0 * Defs.TILE).any(func(o: Unit) -> bool: return o.team == team and not o.dead and _wants_horse(o)):
+			continue
+		var hb: Building = brs[0]
+		for b in brs:
+			if b.center().distance_to(h.position) < hb.center().distance_to(h.position):
+				hb = b
+		h.cmd_move(game.approach_point(hb, h.position) + Vector2(randf_range(-24, 24), randf_range(-24, 24)))
 
 
 var _loose_at := 0.0
@@ -3186,7 +3394,11 @@ func _buy_horses(horses: Array, keep: Dictionary, need: int) -> void:
 	var breeders := _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built)
 	if breeders.is_empty() or (_mine("barracks").is_empty() and _mine("foundry").is_empty() and not _rushing()):
 		return
-	var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.horse_rid == 0 and h.order != "move").size()
+	# (unridden horses of ours standing about, or walking home to a breeder, are spares too:
+	# none is bought while they're there; one a rider is on his way to isn't)
+	var near := float(Defs.HORSES["near_breeder"]) * Defs.TILE
+	var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.horse_rid == 0 \
+		and not Unit._claim_live(h) and (h.order != "move" or breeders.any(func(b: Building) -> bool: return b.edge_distance(h.order_point) <= near))).size()
 	var coming := 0
 	for b in breeders:
 		for i in b.queue.size():
@@ -3282,12 +3494,8 @@ func _mount_men(horses: Array, keep: Dictionary, need: int) -> void:
 	var spare := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and h.claimed == null and h.horse_rid == 0 and not keep.has(h))
 	if spare.is_empty():
 		return
+	spare = spare.filter(func(h: Unit) -> bool: return not Unit._claim_live(h))   # (riders took theirs: _remount_riders)
 	var army := game.army(team)
-	for u in army:
-		if u.kind == "dismounted" and u.order == "idle" and u.target == null:
-			var h: Unit = u.nearest_free_horse(12.0)
-			if h and u.cmd_mount(h):
-				spare.erase(h)
 	if spare.size() <= need + 1:
 		return
 	var muskets := army.filter(func(u: Unit) -> bool: return u.kind == "musketeer").size()
