@@ -1662,27 +1662,59 @@ func _cycle(u: Unit) -> float:
 ## The cells reachable on foot from `cells` (4-way, as the pathfinder walks), with gates
 ## open only to team `t`'s side. 1 = reachable.
 func _flood_from(cells: Array, t: int) -> PackedByteArray:
+	# (cell indices and the grids read directly: a whole-map flood of Vector2i and calls
+	# took the computer's think 40-50 ms)
 	var w: int = game.W
+	var h: int = game.H
+	var solid: PackedByteArray = game.solid
 	var seen := PackedByteArray()
-	seen.resize(w * game.H)
-	var q: Array = []
+	seen.resize(w * h)
+	# the gates open to t's side (the only solid cells walkable here)
+	var open_gates := {}
+	if t >= 0:
+		for gi in game.gate_team:
+			if solid[int(gi)] == 3 and game.allied(int(game.gate_team[gi]), t):
+				open_gates[int(gi)] = true
+	var q := PackedInt32Array()
 	for c in cells:
 		if game.in_map(c) and seen[game.idx(c)] == 0 and _walkable(c, t):
 			seen[game.idx(c)] = 1
-			q.append(c)
+			q.append(game.idx(c))
 	var qi := 0
-	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 	while qi < q.size():
-		var c: Vector2i = q[qi]
+		var i: int = q[qi]
 		qi += 1
-		for dv in dirs:
-			var n: Vector2i = c + dv
-			if not game.in_map(n):
-				continue
-			var i: int = n.y * w + n.x
-			if seen[i] == 0 and _walkable(n, t):
-				seen[i] = 1
-				q.append(n)
+		var x := i % w
+		var n: int
+		var v: int
+		if x + 1 < w:
+			n = i + 1
+			if seen[n] == 0:
+				v = solid[n]
+				if v == 0 or v == 5 or (v == 3 and open_gates.has(n)):
+					seen[n] = 1
+					q.append(n)
+		if x > 0:
+			n = i - 1
+			if seen[n] == 0:
+				v = solid[n]
+				if v == 0 or v == 5 or (v == 3 and open_gates.has(n)):
+					seen[n] = 1
+					q.append(n)
+		if i + w < w * h:
+			n = i + w
+			if seen[n] == 0:
+				v = solid[n]
+				if v == 0 or v == 5 or (v == 3 and open_gates.has(n)):
+					seen[n] = 1
+					q.append(n)
+		if i >= w:
+			n = i - w
+			if seen[n] == 0:
+				v = solid[n]
+				if v == 0 or v == 5 or (v == 3 and open_gates.has(n)):
+					seen[n] = 1
+					q.append(n)
 	return seen
 
 

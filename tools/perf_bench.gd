@@ -189,6 +189,8 @@ func _minute_row(g: Game) -> void:
 		"wall_s": (Time.get_ticks_msec() - _wall0) / 1000.0}
 	for z in ZONES:
 		row[String(z)] = float(Perf.acc.get(z, 0)) / 1000.0 / arr.size()      # ms a frame
+	row["paths"] = int(Perf.calls.get(&"astar", 0))
+	row["ai_thinks"] = int(Perf.calls.get(&"ai", 0))
 	row["worst_frame_zones"] = "\"%s\"" % _worst_zones
 	Perf.reset()
 	_prev = {}
@@ -198,8 +200,8 @@ func _minute_row(g: Game) -> void:
 		zs.append("%s %.2f" % [z, row[String(z)]])
 	print("PERF worst frame %.0f ms: %s" % [_worst_ms, _worst_zones])
 	_worst_ms = 0.0
-	print("PERF min %2d | %5.1f fps avg, 1%% low %5.1f, worst %6.1f ms, >33ms %4d, >50ms %4d | units %d bodies %d fx %d proj %d nodes %d objs %d | ms/frame: %s" % [
-		row["min"], row["fps"], row["low1_fps"], row["worst_ms"], over33, over50, units, row["bodies"], row["effects"], row["projectiles"],
+	print("PERF min %2d | %5.1f fps avg, 1%% low %5.1f, worst %6.1f ms, >33ms %4d, >50ms %4d | paths %d | units %d bodies %d fx %d proj %d nodes %d objs %d | ms/frame: %s" % [
+		row["min"], row["fps"], row["low1_fps"], row["worst_ms"], over33, over50, row["paths"], units, row["bodies"], row["effects"], row["projectiles"],
 		row["nodes"], row["objects"], ", ".join(zs)])
 	_frames = PackedFloat32Array()
 
