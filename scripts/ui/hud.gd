@@ -1572,7 +1572,7 @@ func _draw_panel(font: Font) -> void:
 				info += "  Powder %d/%d%s" % [int(uu.powder), int(uu._pmax), " (OUT: refill at a Mill, Barracks, Hall or Wagon)" if uu.powder < 1.0 else ""]
 			elif uu.kind == "horse":
 				if uu.team < 0:
-					info = "Loose horse: belongs to nobody. Any man who can lead horses takes it by walking up; the Brood can kill it." \
+					info = "Loose: nobody's horse. A man who can lead horses takes it by walking up; the Brood can kill it." \
 						+ (" A %s is coming for it." % uu.claimed.d["name"] if uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu else "")
 				elif uu.leader and is_instance_valid(uu.leader):
 					info = "Led by a %s." % uu.leader.d["name"]
@@ -1586,7 +1586,7 @@ func _draw_panel(font: Font) -> void:
 					info = "Grazing, unattended: keep a man by it, or an enemy man can steal it."
 				var hr2 := Unit.horse_rank(uu.horse_miles)
 				if hr2 < int(Defs.HORSE_VET["max"]):
-					info += "  Seasoning: %d/%d tiles ridden or in harness (+%d%% health a rank, a richer carcass). Heals by itself." % [int(uu.horse_miles) % int(Defs.HORSE_VET["tiles"]), int(Defs.HORSE_VET["tiles"]), int(float(Defs.HORSE_VET["hp"]) * 100.0)]
+					info += "  Seasoning %d/%d tiles. Heals by itself." % [int(uu.horse_miles) % int(Defs.HORSE_VET["tiles"]), int(Defs.HORSE_VET["tiles"])]
 				else:
 					info += "  Fully seasoned. Heals by itself."
 			elif Defs.HARNESSED.has(uu.kind) and not uu.harnessed:
