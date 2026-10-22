@@ -16,15 +16,15 @@ reload -> fire. Broken drawings are replaced by a neighbour (M_SUB). The crewman
 short rammer leans into his strokes (his upper body and the rammer pushed down into the
 bore, M_LEAN) and rams three times.
 
-Cannon: the deployed idle frame of each facing (gun, carriage and crew unchanged; on the
-north view the left crewman makes room) with the lone rammer from reload_rammer standing at
-the muzzle, scaled to the gun crew's height. In his thrust frames the sheet's pole is cut
-off at his hands and a new one drawn into the muzzle; his whole body moves 2-4 px along the
+Cannon: the deployed idle frame of each facing, less the one crewman the rammer replaces
+(fix_cannon_crew.reload_room: the gun keeps its two men, as on the march), with the lone
+rammer from reload_rammer standing at the muzzle, scaled to the gun crew's height. In his
+thrust frames the sheet's pole is cut off at his hands and a new one drawn into the muzzle; his whole body moves 2-4 px along the
 bore between the pulls and the thrusts, three strokes per load.
 
 Reads the published idle frames (assets/units/{cannon,mortar}/idle_*.png), so it runs after
-import_cannon2.py and import_round10.py (tools/rebuild_art.sh). Writes reload_<dir>.png of
-both units and their reload frame counts in scripts/art_data.gd.
+import_cannon2.py, fix_cannon_crew.py and import_round10.py (tools/rebuild_art.sh). Writes
+reload_<dir>.png of both units and their reload frame counts in scripts/art_data.gd.
 
 Usage (from the repo root): python3 tools/import_reload.py [--out DIR]
 (--out writes the strips there and leaves the game alone). Needs Pillow, NumPy and SciPy.
@@ -40,6 +40,7 @@ from scipy import ndimage
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from import_art import load  # noqa: E402
 from import_cannon2 import Layer, bg_mask, clean, compose, defringe, shrink, snap_team  # noqa: E402
+from fix_cannon_crew import reload_room  # noqa: E402
 
 DIRS = ["s", "se", "e", "ne", "n"]
 SRC = {
@@ -359,6 +360,7 @@ def build_cannon():
         else:
             back = 1 if sp["mirror"] else -1        # which side his back (rear heel) is on
         gun = published("cannon", "idle", d)[0]
+        gun = Layer(reload_room(d, gun.img), gun.ax, gun.ay)    # the rammer takes a man's place
         figs, refs = {}, {}
         for c in {c for c, _, _ in seq}:
             n = int(str(c)[0])

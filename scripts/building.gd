@@ -83,8 +83,8 @@ const AMBIENT := {
 	"ore_crusher": [["dust", 0.6, 0.55, 1.0, 0.35, Color(0.8, 0.8, 0.8, 0.7)]],
 }
 ## The Farm (6x5 tiles): a windmill on the 4x2-tile block in the middle (FARM_BLOCK, solid),
-## the crop fields (tools/make_farm_field.py) all round it: two rows behind, short plots at the
-## sides, four rows in front split by the path from its door. Each labourer works a stretch of
+## the crop fields (tools/make_farm_field.py) all round it, right up to the tower: rows behind,
+## down both sides and in front (no yard, no path). Each labourer works a stretch of
 ## one crop row (FARM_ROWS). The windmill's door foot (its base line, which sorts it against the
 ## units) is at FARM_HOUSE_X, FARM_HOUSE_BASE from the footprint's top left corner.
 const FARM_HOUSE_BASE := 72.0
@@ -92,12 +92,12 @@ const FARM_HOUSE_X := 102.0          # (the tower stands a little left of its do
 const FARM_BLOCK := Rect2i(1, 1, 4, 2)
 const FARM_ROW := 16.0
 ## The labourers' stretches, in the order the crew fills them: [crop row, from x, to x] in px
-## of the footprint; row k's furrow is at 13 + 16k. Front rows first (either side of the path),
+## of the footprint; row k's furrow is at 13 + 16k. Front rows first (two men to a row),
 ## then behind the windmill (clear of its sails), then the side plots. None touches FARM_BLOCK.
-const FARM_ROWS := [[7, 10, 88], [7, 122, 182], [8, 10, 88], [8, 122, 182],
+const FARM_ROWS := [[7, 10, 94], [7, 110, 182], [8, 10, 94], [8, 110, 182],
 	[0, 10, 54], [0, 152, 182], [4, 8, 24], [3, 168, 184]]
 ## Where scarecrows may stand (their pole's foot, px of the footprint): on crop rows nobody
-## works (the side plots' far ends, the front row by the windmill), clear of the path. Each
+## works (the side plots' far ends, the front row by the windmill). Each
 ## Farm picks 2 or 3 (and their looks) by its cell.
 const FARM_SCARECROW_SPOTS := [Vector2(20, 47), Vector2(178, 95), Vector2(24, 111),
 	Vector2(62, 111), Vector2(140, 111), Vector2(174, 111)]
