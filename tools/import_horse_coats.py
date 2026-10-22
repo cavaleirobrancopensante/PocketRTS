@@ -74,7 +74,7 @@ NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 CONFIG = {
     "cuirassier": {
         "test": "grey",
-        "anims": ["idle", "walk", "attack", "death"],
+        "anims": ["idle", "walk", "attack", "death", "mount"],
         # (rows into his coat: side on, his arm reaches the reins over the horse's neck;
         # head on, the horse's head is in front of his chest)
         # (not once he falls: the horse rears and rolls over above the red; a negative
@@ -99,7 +99,7 @@ CONFIG = {
     # brown hat and boots fail the grey test by themselves. Thrown in the death frames 2-3.
     "horseman": {
         "test": "grey",
-        "anims": ["idle", "walk", "attack", "death"],
+        "anims": ["idle", "walk", "attack", "death", "mount"],
         "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
                        "skip": [("death", 1), ("death", 2), ("death", 3)]},
         "blade_v": 0.5,
@@ -118,7 +118,7 @@ CONFIG = {
     # Horseman's); in the last death frames the rider lies beside his horse
     "messenger": {
         "test": "grey",
-        "anims": ["idle", "walk", "death"],
+        "anims": ["idle", "walk", "death", "mount"],
         "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
                        "skip": [("death", 2), ("death", 3), ("death", 4)]},
         "blade_v": 0.5,
@@ -127,7 +127,7 @@ CONFIG = {
     },
     "dragoon": {
         "test": "grey",
-        "anims": ["idle", "walk", "death"],
+        "anims": ["idle", "walk", "death", "mount"],
         "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
                        "skip": [("death", 2), ("death", 3), ("death", 4)]},
         "blade_v": 0.5,
@@ -139,7 +139,7 @@ CONFIG = {
     # lies down and then he lies alone.
     "missionary_mounted": {
         "test": "grey",
-        "anims": ["idle", "walk", "death"],
+        "anims": ["idle", "walk", "death", "mount"],
         "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
                        "skip": [("death", 2), ("death", 3)]},
         "blade_v": 0.5,
@@ -148,7 +148,7 @@ CONFIG = {
     },
     "dragoon_armoured": {
         "test": "grey",
-        "anims": ["idle", "walk", "death"],
+        "anims": ["idle", "walk", "death", "mount"],
         "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
                        "skip": [("death", 2), ("death", 3), ("death", 4)]},
         "blade_v": 0.5,

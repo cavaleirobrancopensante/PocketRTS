@@ -70,6 +70,9 @@ var anim_flip := false
 var anim_t := 0.0
 var frame_i := 0
 var corpse_t := 0.0
+var _anim_art := ""             # whose sheet the sprite shows now (the mounted kind's while getting on)
+var _mount_len := 0.0           # (mounting / dismounting) how long it takes: the strip plays over it
+var _mount_face := Vector2.ZERO # (mounting / dismounting) the horse turned side on (E, SE, W, SW)
 
 
 var _charging := false
@@ -4121,6 +4124,8 @@ func _death_anim() -> String:
 func _anim_name() -> String:
 	if dead:
 		return _death_anim()
+	if (work == "mounting" or work == "dismounting") and mount_strip_art() != "":
+		return "mount"
 	var moving := velocity.length() > 10.0
 	match kind:
 		"musketeer", "dismounted":
@@ -4308,6 +4313,8 @@ func _animate(delta: float) -> void:
 	_anim_dt += delta
 	if _anim_dt < 0.066 and not dead:
 		return
+	if kind == "horse" and not dead:
+		modulate.a = 0.0 if _hidden_for_mount() else 1.0     # (the mounting strip draws it)
 	if not dead and (not visible or not game.view_rect.has_point(position)):
 		if _anim_dt > 0.5:
 			_anim_dt = 0.0     # (keeps the clock from running away)
@@ -4348,7 +4355,7 @@ func _animate(delta: float) -> void:
 		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE)
 	_set_anim(_anim_name(), false)
 	var key := anim + "_" + anim_dir
-	var n: int = ArtData.UNITS[art]["frames"].get(key, 1)
+	var n: int = ArtData.UNITS[_anim_art if _anim_art != "" else art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
 	if anim == "walk" and art in ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]:
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
@@ -4429,6 +4436,9 @@ func _animate(delta: float) -> void:
 			loop = false
 		"bandage":
 			fps = 4.0
+		"mount":
+			fps = 0.0           # (set from how far through getting on or off he is, below)
+			loop = false
 	anim_t += delta * fps
 	if anim_t >= 1.0:
 		anim_t -= 1.0
@@ -4441,6 +4451,11 @@ func _animate(delta: float) -> void:
 		shown = n - 1 - frame_i         # lifting the shield plays the brace backwards
 	if anim == "land" and sky == "lifting":
 		shown = n - 1 - frame_i         # taking off plays the landing backwards
+	if anim == "mount":
+		# getting on plays the strip over the mount time; getting off plays it backwards
+		var p := clampf(1.0 - work_t / maxf(_mount_len, 0.01), 0.0, 1.0)
+		frame_i = mini(int(p * n), n - 1)
+		shown = frame_i if work == "mounting" else n - 1 - frame_i
 	if kind == "mist_toad" and anim == "tongue" and tongue_stage != "":
 		shown = mini(shown, TOAD_MOUTH_OPEN)   # the mouth gapes; the drawn tongue does the reaching
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
@@ -4461,8 +4476,10 @@ func _animate(delta: float) -> void:
 			sprite.position.y += _descend * 14.0     # down low to take men on or let them off
 	elif anim == "bandage":
 		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
+	elif anim == "mount" and work == "mounting" and is_instance_valid(order_target):
+		sprite.position = order_target.position - position     # the strip's horse where the horse is
 	elif kind != "cannon":
-		sprite.position.y = 0.0
+		sprite.position = Vector2.ZERO
 	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
 	if kind == "grub" and anim == "burrow" and n > 3:
 		sprite.frame = clampi(2 + int(_bob_t * 6.0) % (n - 2), 0, sprite.hframes - 1)
@@ -4562,17 +4579,25 @@ var _last_gun_anim := ""
 
 
 func _set_anim(a: String, force: bool) -> void:
-	var o := int(round(facing.angle() / (PI / 4.0)))
+	# getting on or off: the mounted kind's mount strip, side on (_mount_face)
+	var sa := mount_strip_art() if a == "mount" else ""
+	if a == "mount" and sa == "":
+		a = "idle"
+	var face := _mount_face if sa != "" and _mount_face != Vector2.ZERO else facing
+	if sa == "":
+		sa = art
+	var was_mount := anim == "mount"
+	var o := int(round(face.angle() / (PI / 4.0)))
 	o = posmod(o, 8)
 	var dir_flip: Array = [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]][o]
 	var dr: String = dir_flip[0]
 	var flip: bool = dir_flip[1]
-	if not force and a == anim and dr == anim_dir and flip == anim_flip:
+	if not force and a == anim and dr == anim_dir and flip == anim_flip and sa == _anim_art:
 		return
 	if a != anim:
 		frame_i = 0
 		anim_t = 0.0
-	var frames: Dictionary = ArtData.UNITS[art]["frames"]
+	var frames: Dictionary = ArtData.UNITS[sa]["frames"]
 	if not frames.has(a + "_" + dr):
 		# Closest drawn direction; side-only animations face the way we're heading.
 		var near: Dictionary = {"s": ["se", "e"], "se": ["s", "e"], "e": ["se", "ne"], "ne": ["n", "e"], "n": ["ne", "e"]}
@@ -4584,19 +4609,22 @@ func _set_anim(a: String, force: bool) -> void:
 			a = "idle"
 			dr = "e" if frames.has("idle_e") else "s"
 		if dr == "e":
-			flip = facing.x < 0.0
+			flip = face.x < 0.0
 	anim = a
 	anim_dir = dr
 	anim_flip = flip
+	_anim_art = sa
 	var key := a + "_" + dr
-	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [art, key])
+	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [sa, key])
 	sprite.hframes = frames.get(key, 1)
-	var anchor: Vector2 = ArtData.UNITS[art]["anchor"]
+	var anchor: Vector2 = ArtData.UNITS[sa]["anchor"]
 	# some sheets (aiming up) have extra room on top: the feet stay where they were
-	var cell: Vector2i = ArtData.UNITS[art]["cell"]
+	var cell: Vector2i = ArtData.UNITS[sa]["cell"]
 	sprite.offset = -anchor - Vector2(0, sprite.texture.get_height() - cell.y)
 	sprite.scale = Vector2(-1.0 if flip else 1.0, 1.0) * float(d.get("art_scale", 1.0))
 	frame_i = mini(frame_i, sprite.hframes - 1)
+	if was_mount != (a == "mount"):
+		HorseCoat.apply(self)        # (getting on: the horse's coat on the strip, then his own)
 
 
 var _aim_t := 0.0
@@ -4997,6 +5025,39 @@ func _walk_to(p: Vector2, delta: float) -> Vector2:
 
 # ---- mounting
 
+## Where the man stands in the mounting strip's first frame (tools/import_mount.py): his
+## feet from the horse's (the anchor), the horse facing E or SE; x mirrored facing W or SW.
+## Per sprite set where it differs ("" for the rest): the light Dragoon's remade side view
+## has him at the horse's shoulder, on its near side.
+const MOUNT_MAN := {"": {"e": Vector2(-14, 1), "se": Vector2(-12, -1)},
+	"dragoon": {"e": Vector2(5, 3), "se": Vector2(-12, -1)}}
+
+
+## The nearest way side on (the mounting strips are drawn facing E and SE, mirrored for W
+## and SW): E or W by `f`'s x, the diagonal when it points well down.
+static func side_on(f: Vector2) -> Vector2:
+	var sx := 1.0 if f.x >= 0.0 else -1.0
+	return Vector2(sx, 1.0).normalized() if f.normalized().y > 0.38 else Vector2(sx, 0.0)
+
+
+## The sprite set whose mount strip plays now (the mounted kind's while a man gets on, his
+## own while he gets off), or "" (not getting on or off, or no strip drawn for it).
+func mount_strip_art() -> String:
+	var a := ""
+	if work == "mounting" and Defs.MOUNTS.has(kind):
+		a = Defs.art_for(String(Defs.MOUNTS[kind]), armoured)
+	elif work == "dismounting" and is_mounted():
+		a = art
+	return a if ArtData.UNITS.has(a) and ArtData.UNITS[a]["frames"].has("mount_e") else ""
+
+
+## (a horse) hidden while a man gets on it: the mounting strip draws it.
+func _hidden_for_mount() -> bool:
+	if claimed == null or not is_instance_valid(claimed):
+		return false
+	return not claimed.dead and claimed.work == "mounting" and claimed.order_target == self \
+		and claimed.mount_strip_art() != ""
+
 ## Walk to the horse and get on (Defs.HORSES mount s; a Dragoon's own remount is quick).
 ## `aft`: the order he goes on with once mounted.
 func cmd_mount(h, aft := {}) -> bool:
@@ -5030,8 +5091,13 @@ func _mount_run(delta: float) -> Vector2:
 	if position.distance_to(h.position) < radius + h.radius + 10.0:
 		work = "mounting"
 		work_t = float(Defs.HORSES["quick" if auto_mount else "mount"])
+		_mount_len = work_t
 		path = PackedVector2Array()
-		facing = (h.position - position).normalized() if h.position != position else facing
+		# he turns the horse side on, him at its near side (the strip draws him on its left
+		# facing E / SE, mirrored for W / SW): the side he came from
+		var hf: Vector2 = h.facing if h.facing != Vector2.ZERO else Vector2.RIGHT
+		_mount_face = side_on(Vector2(1.0 if position.x <= h.position.x else -1.0, hf.y))
+		facing = _mount_face
 		return Vector2.ZERO
 	return _walk_to(h.position, delta)
 
@@ -5050,7 +5116,11 @@ func do_mount(h: Unit) -> void:
 	_res_walk = false
 	var at := h.position
 	game.consume_unit(h)
-	position = position.lerp(at, 0.5)
+	# (in the saddle where the horse stood: the mounting strip is drawn there, its last frame
+	# on the mounted idle; without a strip, half way)
+	position = at if mount_strip_art() != "" else position.lerp(at, 0.5)
+	if _mount_face != Vector2.ZERO:
+		facing = _mount_face
 	var aft := after
 	after = {}
 	steed = null
@@ -5077,6 +5147,14 @@ func cmd_dismount(quick := false, aft := {}) -> void:
 	order = "dismount"
 	work = "dismounting"
 	work_t = float(Defs.HORSES["quick" if quick else "dismount"])
+	_mount_len = work_t
+	# he turns his horse side on to get off (the strip plays backwards): a Dragoon getting off
+	# to fire gets off on the side he's going to shoot at (where his strip has him behind
+	# the horse's middle, it turns its tail that way)
+	var f := facing if facing != Vector2.ZERO else Vector2.RIGHT
+	var behind: bool = MOUNT_MAN.get(art, MOUNT_MAN[""])["e"].x < 0.0
+	_mount_face = side_on(Vector2(-f.x, f.y) if quick and behind else f)
+	facing = _mount_face
 	after = aft
 	target = null
 	order_target = null
@@ -5095,10 +5173,20 @@ func do_dismount() -> void:
 	var side := Vector2(-facing.y, facing.x)
 	if side == Vector2.ZERO:
 		side = Vector2.RIGHT
-	# (the horse stands a step behind him, a little to one side: clear of his line of fire,
-	# and not drawn over him so he looks still mounted)
 	var f := facing if facing != Vector2.ZERO else Vector2.RIGHT
-	var spot := game.resolve_terrain(position - f * (radius + 16.0) - side * 6.0, position, 11.0, team)
+	var spot: Vector2
+	if mount_strip_art() != "":
+		# the horse stays where the strip drew it (under him) and he stands where its first
+		# frame has him, at its near side
+		spot = game.resolve_terrain(position, position, 11.0, team)
+		var man: Vector2 = MOUNT_MAN.get(art, MOUNT_MAN[""])["se" if absf(_mount_face.y) > 0.3 else "e"]
+		if _mount_face.x < 0.0:
+			man.x = -man.x
+		position = game.resolve_terrain(position + man, position, radius, team)
+	else:
+		# (the horse stands a step behind him, a little to one side: clear of his line of fire,
+		# and not drawn over him so he looks still mounted)
+		spot = game.resolve_terrain(position - f * (radius + 16.0) - side * 6.0, position, 11.0, team)
 	var h := game._add_unit("horse", team, spot)
 	h.coat = coat if coat != "" else HorseCoat.pick()
 	HorseCoat.apply(h)

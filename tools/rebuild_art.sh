@@ -54,6 +54,9 @@ python3 tools/import_horse_units.py      # the horse system's units: riderless h
                                          # (light and armoured), dismounted Horseman (slash fixed)
 python3 tools/import_horse_breeder.py    # the Horse Breeder's 4 states and its build icon
 python3 tools/import_horse_icons.py         # the horse units' portraits and the horse command icons
+python3 tools/import_mount.py            # the riders' mounting strips (mount_se / mount_e) from
+                                         # art/crown/mount/ (after the riders' own sheets: it lines
+                                         # its last frame up with their idle; before the coat masks)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 echo "Now run: godot --headless --import"

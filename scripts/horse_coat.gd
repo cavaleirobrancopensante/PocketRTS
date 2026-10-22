@@ -46,13 +46,19 @@ static func apply(u: Unit) -> void:
 	if m == null:
 		return
 	m.set_shader_parameter("hide_horse", u.kind == "powder_wagon" and not u.harnessed)
-	if not has_horse(u.kind) or u.coat == "":
+	# (a man getting on shows the mounted kind's mounting strip: the horse he gets on is his)
+	var kind := u.kind
+	var coat := u.coat
+	if u.anim == "mount" and u.work == "mounting" and Defs.MOUNTS.has(u.kind):
+		kind = String(Defs.MOUNTS[u.kind])
+		coat = (u.order_target as Unit).coat if is_instance_valid(u.order_target) and u.order_target is Unit else ""
+	if not has_horse(kind) or coat == "":
 		m.set_shader_parameter("coat", -1)
 		if u.kind == "powder_wagon":
 			update_mask(u)
 		return
-	var i := COATS.find(u.coat)
-	if u.coat == NATIVE[u.kind]:
+	var i := COATS.find(coat)
+	if coat == NATIVE[kind]:
 		i = -1
 	m.set_shader_parameter("coat", i)
 	m.set_shader_parameter("coat_ramps", RAMPS)
