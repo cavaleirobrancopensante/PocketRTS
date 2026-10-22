@@ -2865,7 +2865,7 @@ func _horses() -> void:
 	if game.requirement_met(team, "horse_breeder") and not _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built).is_empty():
 		places += _mine("barracks").filter(func(b: Building) -> bool: return b.built)   # (Horsemen need the breeder)
 	for b in places:
-		var want := 2 if b.kind == "foundry" and _gold() > 600 else 1
+		var want := 2 if (b.kind == "foundry" and _gold() > 600) or (b.kind == "barracks" and opening == "breeder" and game.clock < 600.0) else 1
 		var have: int = game.horses_at(b)
 		if _groom and is_instance_valid(_groom) and _groom_to == b:
 			have += _groom.led.size()
