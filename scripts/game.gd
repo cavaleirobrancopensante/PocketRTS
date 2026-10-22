@@ -50,6 +50,12 @@ func prey(t: int, e: Entity) -> bool:
 	return hostile(e.team, t) or (loose_horse(e) and t >= 0 and t < factions.size() and faction_of(t) == "brood")
 
 
+## A unit that can hurt you back (not a worker, a Missionary, a horse, a Powder Wagon...):
+## units on their own go for these first (find_target), then other units, then buildings.
+static func fights_back(e) -> bool:
+	return e is Unit and not e.dead and not e.is_worker() and not e.d.get("no_attack", false) and not e.d.get("medic", false)
+
+
 ## A horse belonging to nobody (its rider fell and it bolted: Unit._rider_falls).
 static func loose_horse(e) -> bool:
 	return e is Unit and e.team < 0 and e.kind == "horse" and not e.dead
@@ -2316,7 +2322,10 @@ func try_start_site(b: Building, worker: Unit) -> int:
 
 
 ## A ghost that can't start: full refund (it never began), it goes, and the owner is told.
-func site_failed(b: Building) -> void:
+## why: "blocked" (the footprint stayed blocked), "unreachable" (its grub or Winder can't
+## get there), "abandoned" (nobody is coming to start it any more: no toast, it's the
+## player's own doing or the worker died).
+func site_failed(b: Building, why := "blocked") -> void:
 	if b.dead:
 		return
 	var t := b.team
@@ -2324,13 +2333,19 @@ func site_failed(b: Building) -> void:
 	players[t]["gold"] += cost
 	stats[t]["spent"] -= cost
 	stats[t]["built"] = maxi(0, int(stats[t]["built"]) - 1)
-	if t == human and not demo and hud:
+	if t == human and not demo and hud and why != "abandoned":
 		_notify_t = Time.get_ticks_msec()
-		hud.toast("Can't build there: the spot is blocked.", true)
+		hud.toast("Can't build there: the spot is blocked." if why == "blocked" else "Can't build there: it can't be reached.", true)
 		Sfx.announce(faction_of(t), "bad_place", 4.0)
 	if mlog:
-		mlog.add("%s couldn't start a %s: the spot was blocked (refunded)" % [mlog.who(t), b.d["name"]])
-	remove_ghost(b)
+		var wl: String = {"blocked": "the spot was blocked", "unreachable": "it couldn't be reached", "abandoned": "nobody was coming to start it"}.get(why, why)
+		mlog.add("%s %s a %s: %s (refunded)" % [mlog.who(t), "dropped" if why == "abandoned" else "couldn't start", b.d["name"], wl])
+	if b.ghost:
+		remove_ghost(b)
+	else:
+		# (a Brood site its grub never finished turning into: it was already solid)
+		_remove_quietly(b)
+		_recount_supply(t)
 	for u in units.duplicate():
 		if u.team == t and not u.dead and u.order == "build" and u.order_target == b:
 			u.site_gone()
@@ -3367,6 +3382,65 @@ func requirement_met(t: int, k: String) -> bool:
 	return requirement_text(t, k) == ""
 
 
+var _sweep_pos := {}       # sweep_ghosts: a ghost's instance id -> where its worker was last time
+
+
+## Brood and Clockwork ghosts need their own worker to start them (a grub turns into it, a
+## Winder brings its crate); no other worker picks one up on its own (Crown ones are left:
+## any Labourer nearby takes up an unfinished Crown site, Game.next_site). So a Brood or
+## Clockwork ghost whose grub or Winder is no longer coming (re-ordered, stopped, killed)
+## goes, all of its cost back, as in StarCraft 2. A Clockwork crate dropped on the ground or
+## carried keeps its site (any Winder can carry it on). A worker that can't get to its site
+## (stuck in the same spot over two sweeps, and no walking path there) gives it up too.
+## Run about once a second (from the tick).
+func sweep_ghosts() -> void:
+	var sites: Array = []
+	if not _sweep_pos.is_empty():
+		for id in _sweep_pos.keys():
+			if not is_instance_id_valid(id):
+				_sweep_pos.erase(id)
+	for b in buildings:
+		if b.dead or b.built or b.team < 0 or not (b.ghost or not b.seeded):
+			continue
+		var f: String = b.d["faction"]
+		if f == "brood" or (f == "clockwork" and b.ghost and (b.crate == "" or b.crate == "tower")):
+			sites.append(b)
+	if sites.is_empty():
+		return
+	for b in sites:
+		var coming: Unit = null
+		for u in units:
+			if u.team != b.team or u.dead or not u.is_worker():
+				continue
+			if u.order == "build" and u.order_target == b:
+				coming = u
+				break
+			if u.line_rest.has(b):
+				coming = u
+				break
+			for o in u.queue:
+				if (o.get("e") == b and String(o["o"]) == "build") or (String(o["o"]) == "wall" and (o["pieces"] as Array).has(b)):
+					coming = u
+					break
+			if coming:
+				break
+		if coming == null:
+			if b.ghost or b.d["faction"] == "brood":
+				site_failed(b, "abandoned")
+			continue
+		var id: int = b.get_instance_id()
+		if not b.ghost or coming.order != "build" or coming.order_target != b or coming.work != "to_site":
+			_sweep_pos.erase(id)
+			continue
+		# its worker on the way: the same spot over two sweeps, far from the site: can it get there?
+		var last = _sweep_pos.get(id)
+		_sweep_pos[id] = coming.position
+		if last is Vector2 and (last as Vector2).distance_to(coming.position) < 6.0 \
+				and b.edge_distance(coming.position) > coming.radius + 24.0 \
+				and not coming._walk_reaches_point(approach_point(b, coming.position)):
+			site_failed(b, "unreachable")       # (its worker goes on to its next order)
+
+
 ## "" when every building this one needs stands (finished), else what's missing.
 func requirement_text(t: int, k: String) -> String:
 	var r = Defs.BUILDINGS[k].get("requires", "")
@@ -3955,10 +4029,10 @@ func find_target(u: Unit, r: float) -> Entity:
 		var dd: float = o.position.distance_to(u.position)
 		if min_r > 0.0 and o.edge_distance(u.position) - u.radius < min_r:
 			continue
-		if o.is_worker():
-			dd += 60.0   # prefer fighters
-		elif o.kind == "horse":
+		if o.kind == "horse":
 			dd += 150.0  # a horse only when there's nothing else (better stolen than shot)
+		elif not fights_back(o):
+			dd += 60.0   # prefer fighters (workers, Missionaries, wagons after them)
 		if careful:
 			picks.append([dd, o])
 		elif dd < bd:
@@ -5023,6 +5097,15 @@ func _tick_zones(delta: float) -> void:
 				u.acid_t = maxf(u.acid_t, 0.4)
 				u.slow_t = maxf(u.slow_t, 0.4)
 				u.take_damage(float(Defs.BLOAT["dps"]) * delta, null)
+			# enemy buildings in the cloud are eaten too, at a share of the rate (BLOAT.buildings)
+			var bdps := float(Defs.BLOAT["dps"]) * float(Defs.BLOAT["buildings"]) * delta
+			for b in buildings.duplicate():
+				if b.dead or b.ghost or not hostile(b.team, int(z["team"])):
+					continue
+				var r2: Rect2 = b.rect()
+				if not in_ellipse(p, p.clamp(r2.position, r2.end), r):
+					continue
+				b.take_damage(bdps, null)
 			continue
 		if z["kind"] == "storm":
 			for u in units_near(p, r + 20.0):
@@ -5614,6 +5697,7 @@ func _tick_game(delta: float) -> void:
 	if _end_t <= 0.0:
 		_end_t = 1.0
 		_check_end()
+		sweep_ghosts()
 	_refit_t -= delta
 	if _refit_t <= 0.0:
 		_refit_t = float(Defs.REFIT["scan"])

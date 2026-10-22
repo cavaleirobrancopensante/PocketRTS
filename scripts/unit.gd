@@ -2717,6 +2717,14 @@ func _tick_unit(delta: float) -> void:
 				var better := game.find_target(self, _scan_range())
 				if better and better != target and not (better is Building and (better.kind == "wall" or better.kind == "gate")) and _can_get_at(better):
 					target = better
+			# hitting a building (or a man who can't fight back): an enemy unit that comes in
+			# reach comes first (as in StarCraft 2: fighters, then other units, then buildings)
+			elif is_instance_valid(target) and scan_t <= 0.0 and phase == "" and (target is Building or not Game.fights_back(target)):
+				scan_t = 0.5
+				var better := game.find_target(self, _scan_range())
+				if better and better != target and better.is_unit() and Game.loose_horse(better) == false \
+						and (target is Building or Game.fights_back(better)) and _can_get_at(better):
+					target = better
 			if scan_t <= 0.0 and target == null and not is_worker():
 				scan_t = 0.3
 				target = _pick_target(_scan_range())
@@ -5041,10 +5049,17 @@ func _draw_unit() -> void:
 			show = true
 		elif deploys() and tesla_mode != "deployed":
 			show = false
+		var gy := top + 5.0 if hp < max_hp else top + 1.0
 		if show:
-			var ry := top + 5.0 if hp < max_hp else top + 1.0
+			var ry := gy
 			draw_rect(Rect2(-bw * 0.5, ry, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
 			draw_rect(Rect2(-bw * 0.5, ry, bw * clampf(rf, 0.0, 1.0), 2), rcol)
+			gy += 3.5
+		if kind == "bloater" and gas < 99.5:
+			# its gas, only while the sac isn't full (sickly yellow-green; dimmer while deflated)
+			draw_rect(Rect2(-bw * 0.5, gy, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(-bw * 0.5, gy, bw * clampf(gas / 100.0, 0.0, 1.0), 2),
+				Color(0.5, 0.56, 0.2) if deflate != "" else Color(0.72, 0.8, 0.2))
 	if work == "feeding":
 		return
 	if topter_bat != "":
