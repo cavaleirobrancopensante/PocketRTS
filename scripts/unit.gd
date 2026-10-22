@@ -876,7 +876,7 @@ const BASKET := {
 }
 ## With men in the middle two places the pilot steps up on a crate at the back of the
 ## basket (px): his head and shoulders over theirs. Pulling the rope he stands tall anyway.
-const PILOT_LIFT := 6.0
+const PILOT_LIFT := 0.0          # (tried raising him over a full basket: he looked outside it)
 
 
 ## How high the pilot stands (px up): on his crate when the middle of the basket is full.
