@@ -16,6 +16,9 @@ Output (assets/buildings/):
   farm_scarecrow.png    a strip of the four scarecrows, SCARE_CELL each, foot of the pole
         at the bottom middle
 The destroyed tower gets one broken sail lying on the ground beside it.
+The sheet draws each tower on a little island of packed earth and grass; that yard is cut
+away (trim_yard) so the Farm's crop fields (tools/make_farm_field.py) run right up to the
+tower, its fence, sacks and barrel: only a little dark ground among them stays as a shadow.
 assets/icons/farm.png (the build button) is remade from the windmill with its sails.
 Team colour: the cap and the coats are snapped to the two key reds (snap_cap).
 
@@ -100,6 +103,34 @@ def rotate_about(img, cx, cy, deg, size):
     return out
 
 
+def trim_yard(im, foot):
+    """Cut the drawing's yard away (sheet resolution, before scaling): the light earth, the
+    grass and the dark rim of the island it stands on, flooded in from the island's edge
+    (so ground seen only through the fence or between the props stays put), below the
+    tower's top (`foot`: the door's foot, sheet px of the cut). Then the specks of ground
+    the flood left on their own."""
+    a = im[..., 3] > 0
+    rgb = im[..., :3].astype(int)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    lum = (3 * r + 6 * g + b) / 10
+    earth = (r >= g) & (g >= b) & (r - b >= 55) & (r - b <= 135) & (g - b >= 28) & (lum >= 105) & (r - g <= 60)
+    grass = (g >= 0.78 * r) & (g > b + 10) & (lum < 170)
+    dist = ndimage.distance_transform_edt(a)
+    rim = (lum < 75) & (dist <= 5)
+    low = np.mgrid[0:a.shape[0], 0:a.shape[1]][0] >= foot - 50
+    ground = a & (earth | grass | rim) & low
+    lab, n = ndimage.label(ground)
+    seeds = np.unique(lab[ground & (dist <= 2)])
+    out = im.copy()
+    out[np.isin(lab, seeds[seeds > 0])] = 0
+    rest = out[..., 3] > 0
+    lab, n = ndimage.label(rest, structure=np.ones((3, 3)))
+    if n:
+        size = ndimage.sum(rest, lab, np.arange(1, n + 1))
+        out[(size < 400)[lab - 1] & (lab > 0) & low] = 0
+    return out
+
+
 def snap_cap(img):
     """snap_team, and the deep crimson shading round the team reds that it leaves (too dark
     for its test, it would stay red on every team): the darkest becomes a neutral outline,
@@ -132,7 +163,7 @@ def main():
     for (x0, x1), (ax, ay) in zip(TOWER_CELLS, TOWER_ANCHOR):
         labels = in_cell(ps, 0, x0, x1, 0.0005)
         y0, y1 = ROWS[0]
-        im = cut(px, lab, bgc, labels, (x0, y0, x1, y1))
+        im = trim_yard(cut(px, lab, bgc, labels, (x0, y0, x1, y1)), ay - y0)
         # pad so the anchor lands on a whole pixel after scaling
         imgs.append((im, (ax - x0) * SCALE, (ay - y0) * SCALE))
     small = [(clean(snap_cap(shrink(im, SCALE))), ax, ay) for im, ax, ay in imgs]
