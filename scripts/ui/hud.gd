@@ -926,7 +926,7 @@ func _build_card() -> Array:
 				# WORK is automatic: idle workers go back to work on their own. Press it to
 				# switch that off (to scout or to keep a builder free), and again to switch it on.
 				var auto: bool = gatherers.all(func(u: Unit) -> bool: return u.auto_work)
-				list.append(["gather", ("~ " if auto else "") + "WORK", func() -> void:
+				list.append(["work", ("~ " if auto else "") + "WORK", func() -> void:
 					for u in game.selected_units():
 						if u.can_gather():
 							u.auto_work = not auto
