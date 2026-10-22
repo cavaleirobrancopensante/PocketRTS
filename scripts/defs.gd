@@ -643,10 +643,24 @@ const LIGHT_ART := {"cuirassier": "horseman"}
 ## One click trains the rider and his horse: a unit that needs a horse takes one standing at
 ## its building, else a free one within `near_breeder` tiles of a Horse Breeder of ours
 ## (reserved for it), else the nearest breeder queues one for it (paying for it).
+## Loose horses: when a rider is killed his horse may live and bolt, belonging to nobody
+## (team -1), by the blow that killed him (Entity.last_blow): `bolt_ranged` for a single
+## shot at range (muskets, carbines, acid globs, single zaps), `bolt_melee` for a sabre,
+## bayonet or Clockwork blow; never for the Brood's jaws, splash or area (round shot,
+## canister, shells, blasts, chain lightning, clouds, spells), nor for a horse with no more
+## than `bolt_hp` of its health. It gallops (`bolt_speed` x its pace) `bolt_tiles` tiles
+## away from the killer, then grazes there; any man who can lead horses takes it by walking
+## up to it. A gun destroyed by a shot or a blow (not a blast) gives each horse of its team
+## the same chance. A raised rider walks back to his own loose horse within `bolt_back` tiles.
+## (Tests override the two chances with Unit.bolt_force: Defs are read-only.)
 const HORSES := {"wander": 34.0,
 	"at_building": 2.0, "lead_max": 3, "guard": 2.0, "steal": 26.0, "mount": 1.5, "dismount": 1.0,
 	"quick": 0.8, "dragoon_reload": 1.3, "scan": 0.5, "fetch": 8,
-	"team_max": 4, "team_speed": 0.12, "team_hit": 0.3, "near_breeder": 4.0}
+	"team_max": 4, "team_speed": 0.12, "team_hit": 0.3, "near_breeder": 4.0,
+	"bolt_ranged": 0.4, "bolt_melee": 0.25, "bolt_hp": 0.2, "bolt_tiles": [5.0, 7.0], "bolt_speed": 1.4,
+	"bolt_back": 8.0}
+## The saddle cloth of a loose horse (nobody's): plain undyed brown.
+const NEUTRAL_CLOTH := Color(0.55, 0.45, 0.33)
 ## Who rides what: the man on foot -> the mounted unit (and back with FOOT). Armour, his locks,
 ## bayonet, pouch, kills, powder, hp share and reload go across both ways.
 const MOUNTS := {"labourer": "messenger", "musketeer": "dragoon", "dismounted": "cuirassier", "missionary": "mounted_missionary"}

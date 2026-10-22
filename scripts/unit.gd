@@ -237,6 +237,12 @@ var rally_after := Vector2.INF   # (a new rider waiting for his horse) where he 
 var _res_t := 0.0
 var _res_walk := false
 var steed: Unit = null           # (a man who got off) the horse he rode
+var loose_horse: Unit = null     # (a fallen rider's body) his horse that lived and bolted, belonging to nobody
+var bolt_to := Vector2.INF       # (a loose horse) where it gallops off to, away from the fight
+var bolt_t := 0.0                # (a loose horse) bolting: seconds it still runs (0: calm, grazing)
+## Tests: >= 0 replaces both bolt chances (Defs.HORSES bolt_ranged / bolt_melee; Defs are
+## read-only). Blows that never leave a horse (area, the Brood) stay at 0.
+static var bolt_force := -1.0
 var auto_mount := false          # (on foot after a Dragoon's own dismount, or the computer's) remounts by himself to move
 var pouch := false               # (a musket soldier) refitted with the Shot Pouch: 20 shots
 var after: Dictionary = {}       # (mounting / dismounting) the order he goes on with afterwards
@@ -331,6 +337,109 @@ func revive() -> void:
 	_draw_key = Vector4i(-1, -1, -1, -1)
 	queue_redraw()
 	game.on_unit_revived(self)
+	# his horse bolted when he fell: still loose close by, he walks over and gets back on
+	var lh := loose_horse
+	loose_horse = null
+	if lh and is_instance_valid(lh) and not lh.dead and lh.team < 0 and can_mount() \
+			and lh.position.distance_to(position) <= float(Defs.HORSES["bolt_back"]) * Defs.TILE:
+		cmd_mount(lh)
+
+
+## The chance a rider's horse lives when he's killed by this kind of blow (Entity.BLOW_*).
+static func bolt_chance(blow: String) -> float:
+	if blow == BLOW_RANGED:
+		return bolt_force if bolt_force >= 0.0 else float(Defs.HORSES["bolt_ranged"])
+	if blow == BLOW_MELEE:
+		return bolt_force if bolt_force >= 0.0 else float(Defs.HORSES["bolt_melee"])
+	return 0.0            # the Brood's jaws, splash and area, unknown: it dies with him
+
+
+## (a rider, killed) his horse may live: it bolts, nobody's, and he lies there on foot (his
+## body is only the man now: the Brood gets no horse with him, a Missionary raises him on foot).
+func _rider_falls() -> void:
+	if horse_hp <= float(Defs.HORSES["bolt_hp"]) or randf() >= bolt_chance(last_blow):
+		return               # (a horse nearly dead already goes down with him)
+	loose_horse = _loose_horse(coat, horse_miles, horse_hp, position)
+	horse_miles = 0.0
+	horse_hp = 1.0
+	morph(String(Defs.FOOT[kind]))
+	coat = ""
+	hp = 0.0
+
+
+## (a cannon or mortar, destroyed) each horse of its team may live and bolt, by the blow
+## that did it (a Powder Wagon blows up: its horses never do).
+func _team_bolts() -> void:
+	var ch := bolt_chance(last_blow)
+	if ch <= 0.0:
+		return
+	if harnessed and horse_hp > float(Defs.HORSES["bolt_hp"]) and randf() < ch:
+		_loose_horse(coat, horse_miles, horse_hp, position + Vector2(-facing.y, facing.x) * (radius + 8.0))
+	for th in team_horses:
+		if float(th.get("hp", 1.0)) > float(Defs.HORSES["bolt_hp"]) and randf() < ch:
+			_loose_horse(String(th.get("coat", "")), float(th.get("m", 0.0)), float(th.get("hp", 1.0)),
+				position + facing * (radius + 10.0) + Vector2(randf_range(-8, 8), randf_range(-8, 8)))
+	team_horses.clear()
+
+
+## A horse that lived through its rider's (or gun's) end: nobody's, at `at`, bolting away
+## from whoever did it.
+func _loose_horse(c: String, miles: float, share: float, at: Vector2) -> Unit:
+	var spot := game.resolve_terrain(at, position, 11.0, -1)
+	var h := game._add_unit("horse", -1, spot)
+	h.coat = c if HorseCoat.COATS.has(c) else HorseCoat.pick()
+	HorseCoat.apply(h)
+	h.horse_miles = miles
+	h.apply_horse_vet()
+	h.hp = h.max_hp * clampf(share, 0.05, 1.0)
+	h.facing = facing if facing != Vector2.ZERO else Vector2.DOWN
+	h.visible = visible
+	h.bolt_from(_threat_point())
+	game.horse_bolted(h, team, kind)
+	return h
+
+
+## Where the blow came from: who dealt it, else the nearest enemy close by (INF: nobody).
+func _threat_point() -> Vector2:
+	if last_hitter and is_instance_valid(last_hitter) and not last_hitter.is_queued_for_deletion():
+		return last_hitter.global_position
+	var best := Vector2.INF
+	var bd := 10.0 * Defs.TILE
+	for o in game.units_near(position, bd):
+		if not o.dead and game.hostile(o.team, team):
+			var dd: float = o.position.distance_to(position)
+			if dd < bd:
+				bd = dd
+				best = o.position
+	return best
+
+
+## (a loose horse) gallop HORSES.bolt_tiles away from `from` (any way, if INF), then calm
+## down and graze where it stops.
+func bolt_from(from: Vector2) -> void:
+	var away := Vector2.from_angle(randf() * TAU)
+	if from != Vector2.INF and from.distance_to(position) > 1.0:
+		away = (position - from).normalized()
+	var tiles: Array = Defs.HORSES["bolt_tiles"]
+	var dist := randf_range(float(tiles[0]), float(tiles[1])) * Defs.TILE
+	var here := game.region_of(game.cell_of(position))
+	var goal := Vector2.INF
+	for a in [0.0, 0.35, -0.35, 0.7, -0.7, 1.1, -1.1, 1.6, -1.6]:
+		for f in [1.0, 0.75, 0.5]:
+			var q: Vector2 = position + away.rotated(a) * dist * f
+			var c: Vector2i = game.cell_of(q)
+			if game.in_open_map(c) and game._clear_at(q, radius, team) and game.region_of(c) == here:
+				goal = q
+				break
+		if goal != Vector2.INF:
+			break
+	bolt_to = goal if goal != Vector2.INF else position
+	bolt_t = 8.0
+	graze_at = Vector2.INF
+	_graze_goal = Vector2.INF
+	_steal_t = 0.0
+	facing = (bolt_to - position).normalized() if bolt_to.distance_to(position) > 1.0 else facing
+	repath_t = 0.0
 
 
 ## A rider raised from his body: his horse stays where it fell, a carcass for the Brood.
@@ -831,7 +940,7 @@ func can_gather() -> bool:
 	return kind == "labourer" or kind == "grub" or kind == "winder"
 
 
-func take_damage(amount: float, from: Entity) -> void:
+func take_damage(amount: float, from: Entity, blow := "") -> void:
 	if work == "feeding":
 		amount *= 0.5      # burrowed grubs are hard to hit
 	if not team_horses.is_empty() and amount > 0.0 and not dead:
@@ -845,7 +954,7 @@ func take_damage(amount: float, from: Entity) -> void:
 			queue_redraw()
 			if team == game.human:
 				game.float_text(position + Vector2(0, -44), "a horse fell", Color(1.0, 0.6, 0.5))
-	super.take_damage(amount, from)
+	super.take_damage(amount, from, blow)
 	# a Winder hit while carrying a battery: it blows up
 	if kind == "winder" and carrying > 0 and not dead and from != self:
 		_battery_blast()
@@ -2691,7 +2800,7 @@ func _finish_move() -> void:
 
 
 func _valid_target(e: Entity) -> bool:
-	return is_instance_valid(e) and not e.dead and e.is_inside_tree() and game.hostile(e.team, team) and can_hit(e)
+	return is_instance_valid(e) and not e.dead and e.is_inside_tree() and game.prey(team, e) and can_hit(e)
 
 
 ## How far this unit looks for targets: its sight, or for a cannon its full range (it
@@ -3181,7 +3290,7 @@ func _strike(e: Entity) -> void:
 		var bd := float(Defs.BAYONET["damage"]) + (float(Defs.RESEARCH["bayonet"]["damage"]) if bayonet else 0.0)
 		if d.has("sabre"):
 			bd = float(d["sabre"]["damage"])           # a dismounted horseman's sabre
-		e.take_damage(bd * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self)
+		e.take_damage(bd * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self, BLOW_MELEE)
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 		return
@@ -3222,20 +3331,20 @@ func _strike(e: Entity) -> void:
 			if sky == "air":
 				# a volley of spines at a flyer (a braced Bulwark catches them for the men behind it)
 				e = game.intercept(self, e)
-				e.take_damage(dmg, self)
+				e.take_damage(dmg, self, BLOW_RANGED)
 				var s := Shot.new()
 				s.scale = Vector2(0.5, 0.6)
 				s.impact = "hit"
 				s.impact_scale = 0.6
 				s.launch(game, "bolt" if ArtData.EFFECTS.has("bolt") else "acid_ball", center() + facing * 10.0, e.center(), 700.0)
 			else:
-				e.take_damage(dmg, self)
+				e.take_damage(dmg, self, BLOW_BROOD)      # (landed: its bite)
 				game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			Sfx.play_any(["combat/skywing_attack", "bite"], position)
 		"ornithopter":
 			if e.is_air():
 				dmg *= float(d.get("vs_air", 1.0))
-			e.take_damage(dmg, self)
+			e.take_damage(dmg, self, BLOW_RANGED)
 			game._zap_visual(center() + Vector2(0, 6), e.center(), false, true)
 			Sfx.play_any(["combat/tesla_attack", "zap"], position)
 		"bloater":
@@ -3247,8 +3356,8 @@ func _strike(e: Entity) -> void:
 				game.bloat_burst(self)
 				die()
 		"stormcaller":
-			# a short zap from the forked hands
-			e.take_damage(dmg, self)
+			# a short zap from the forked hands (one target: a shot, not a chain)
+			e.take_damage(dmg, self, BLOW_RANGED)
 			game._zap_visual(center() + facing * 14.0 + Vector2(0, -4), e.center(), false, true)
 			Sfx.play_any(["combat/tesla_attack", "zap"], position)
 		"arc_thrower":
@@ -3265,7 +3374,9 @@ func _strike(e: Entity) -> void:
 			if charged:
 				dmg *= float(Defs.CHARGE["mult"])
 				run_t = 0.0
-			e.take_damage(dmg, self)
+			# a single blow (the Brood's jaws and claws: nothing left of a horse; the
+			# Thresher's saws cleave, like area)
+			e.take_damage(dmg, self, "" if kind == "thresher" else (BLOW_BROOD if d["faction"] == "brood" else BLOW_MELEE))
 			if kind == "thresher":
 				# the saws bite the enemies standing round its target too
 				var n := 0
@@ -4083,6 +4194,11 @@ func die() -> void:
 		tw.tween_interval(CORPSE_TIME)
 		tw.tween_property(b, "modulate:a", 0.0, 3.0)
 		tw.tween_callback(b.queue_free)
+	# his horse may live and bolt, nobody's (a gun's team too): by the blow that did it
+	if is_mounted():
+		_rider_falls()
+	elif kind == "cannon" or kind == "mortar":
+		_team_bolts()
 	game.on_unit_died(self)
 	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim(_death_anim(), true)
@@ -4941,11 +5057,12 @@ func can_mount() -> bool:
 	return Defs.MOUNTS.has(kind) and aboard == null and not dead and not off_field
 
 
-## A horse of ours `u` may take: alive, of his side, nobody else coming for it, not walking
-## into a building or to a gun, and not led by someone else.
+## A horse `u` may take: alive, of his side or loose (nobody's: it's his once he has it),
+## nobody else coming for it, not walking into a building or to a gun, and not led by
+## someone else.
 static func horse_free_for(h, u: Unit) -> bool:
 	return h != null and is_instance_valid(h) and h is Unit and h.kind == "horse" and not h.dead and not h.off_field \
-		and h.team == u.team and h.into == null and (h.claimed == null or h.claimed == u or not is_instance_valid(h.claimed)) \
+		and u.team >= 0 and (h.team == u.team or h.team < 0) and h.into == null and (h.claimed == null or h.claimed == u or not is_instance_valid(h.claimed)) \
 		and (h.leader == null or h.leader == u or not is_instance_valid(h.leader)) \
 		and (h.horse_rid == 0 or h.horse_rid == u.horse_rid)
 
@@ -5002,6 +5119,8 @@ func _lead_run(delta: float) -> Vector2:
 
 ## The horse is his to lead from now on (at the end of his string).
 func take_reins(h: Unit) -> void:
+	if h.team < 0 and team >= 0:
+		game.steal_horse(h, self)        # a loose horse: his side's now
 	if h.leader and is_instance_valid(h.leader) and h.leader != self:
 		h.leader.led.erase(h)
 	h.leader = self
@@ -5118,6 +5237,8 @@ func _mount_run(delta: float) -> Vector2:
 
 ## On the horse: he becomes the mounted unit (Defs.MOUNTS), riding that horse's coat.
 func do_mount(h: Unit) -> void:
+	if h.team < 0 and team >= 0:
+		game.steal_horse(h, self)        # a loose horse: caught
 	if h.leader and is_instance_valid(h.leader):
 		h.leader.led.erase(h)
 	led.erase(h)
@@ -5335,6 +5456,20 @@ func _dragoon_tick(delta: float) -> Vector2:
 # ---- the horse itself
 
 func _horse_tick(delta: float, want: Vector2) -> Vector2:
+	if bolt_t > 0.0:
+		# bolting (its rider just fell): it gallops off, then calms down and grazes there
+		var held := leader != null or into != null or order == "move" \
+			or (claimed != null and is_instance_valid(claimed) and not claimed.dead and claimed.order_target == self)
+		bolt_t -= delta
+		if held or bolt_t <= 0.0 or position.distance_to(bolt_to) < 10.0:
+			bolt_t = 0.0
+			bolt_to = Vector2.INF
+			graze_at = position
+			_graze_t = randf_range(1.5, 3.0)
+			_steal_t = 0.0
+		else:
+			speed = float(d["speed"]) * float(Defs.HORSES["bolt_speed"])
+			return _walk_to(bolt_to, delta)
 	_steal_t -= delta
 	if _steal_t <= 0.0:
 		_steal_t = float(Defs.HORSES["scan"])
@@ -5434,6 +5569,8 @@ func _horse_into(delta: float) -> Vector2:
 
 ## Taken for a recruit at this building: it walks in and is gone (Game.train).
 func walk_into(e: Entity) -> void:
+	if team < 0 and e.team >= 0:
+		game.steal_horse(self, e)        # a loose horse sent for by a gun (HARNESS): its side's now
 	if leader and is_instance_valid(leader):
 		leader.led.erase(self)
 	leader = null
@@ -5459,6 +5596,20 @@ static func can_steal(o: Unit) -> bool:
 ## tiles) with an enemy man right beside it: it changes hands.
 func _steal_check() -> void:
 	if leader != null or into != null or (claimed and is_instance_valid(claimed) and not claimed.dead and claimed.order_target == self):
+		return
+	if team < 0:
+		# a loose horse (nobody's): the first man who can lead horses to walk up takes it
+		var near: Unit = null
+		var nd := INF
+		for o in game.units_near(position, float(Defs.HORSES["steal"]) + radius + 24.0):
+			if o == self or o.dead or o.off_field or o.team < 0 or o.is_air() or not can_steal(o):
+				continue
+			var dd: float = o.position.distance_to(position)
+			if dd <= float(Defs.HORSES["steal"]) + o.radius + radius and dd < nd:
+				nd = dd
+				near = o
+		if near:
+			game.steal_horse(self, near)
 		return
 	var guard := float(Defs.HORSES["guard"]) * Defs.TILE
 	var thief: Unit = null

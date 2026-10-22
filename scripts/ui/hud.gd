@@ -1447,7 +1447,7 @@ func _draw_minimap() -> void:
 			draw_rect(Rect2(m.position + r.position * k, r.size * k), game.team_colour(b.team).lightened(0.2))
 	for u in game.units:
 		if u.visible and not u.dead:
-			draw_rect(Rect2(m.position + u.position * k - Vector2(1.5, 1.5), Vector2(3, 3)), game.team_colour(u.team).lightened(0.35))
+			draw_rect(Rect2(m.position + u.position * k - Vector2(1.5, 1.5), Vector2(3, 3)), u.cloth_colour().lightened(0.35))     # (a loose horse: nobody's brown)
 	# Camera view
 	var vp := get_viewport().get_visible_rect().size / game.camera.zoom
 	var c := game.camera.get_screen_center_position()
@@ -1532,6 +1532,8 @@ func _draw_panel(font: Font) -> void:
 		var eff_col := UiStyle.MUTED
 		if e is Unit:
 			name = (e as Unit).d["name"]
+			if Game.loose_horse(e):
+				name += " (loose)"
 			var tags: Array = (e as Unit).d.get("tags", [])
 			if not tags.is_empty():
 				name += "  ·  " + " ".join(tags.map(func(x: String) -> String: return x.capitalize()))
@@ -1569,7 +1571,10 @@ func _draw_panel(font: Font) -> void:
 					"packing": "Limbering up..."}[uu.tesla_mode]
 				info += "  Powder %d/%d%s" % [int(uu.powder), int(uu._pmax), " (OUT: refill at a Mill, Barracks, Hall or Wagon)" if uu.powder < 1.0 else ""]
 			elif uu.kind == "horse":
-				if uu.leader and is_instance_valid(uu.leader):
+				if uu.team < 0:
+					info = "Loose horse: belongs to nobody. Any man who can lead horses takes it by walking up; the Brood can kill it." \
+						+ (" A %s is coming for it." % uu.claimed.d["name"] if uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu else "")
+				elif uu.leader and is_instance_valid(uu.leader):
 					info = "Led by a %s." % uu.leader.d["name"]
 				elif is_instance_valid(uu.into) and uu.into is Building:
 					info = "Walking into the %s." % uu.into.d["name"]

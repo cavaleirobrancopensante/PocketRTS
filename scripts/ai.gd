@@ -136,6 +136,7 @@ func _physics_process(delta: float) -> void:
 	if _crown():
 		_tend_wagon()
 		_horses()
+	_loose_horses()
 	if difficulty >= 1:
 		_abilities()
 	if difficulty >= 2:
@@ -2938,6 +2939,83 @@ func _horses() -> void:
 	_groom_tick(horses, short, need, keep)
 	if difficulty >= 1:
 		_mount_men(horses, keep, need + teams)
+
+
+var _loose_at := 0.0
+var _catchers: Array = []        # men sent to catch a loose horse (they let it go once it's ours)
+
+
+## Loose horses (nobody's: their riders fell, Unit._rider_falls). The Crown sends its
+## nearest free man who can lead horses (an idle Labourer or soldier, a Labourer at work; not
+## its groom) to catch one in its base or by its army, with no enemy close; a Clockwork
+## Winder close by takes one; the Brood kills one near its creatures (cheap essence) with
+## nobody to fight there, but doesn't chase them across the map.
+func _loose_horses() -> void:
+	# the ones caught: let go where they stand (strays are sent home: _horses)
+	for u in _catchers.duplicate():
+		if not is_instance_valid(u) or u.dead:
+			_catchers.erase(u)
+		elif u.order != "lead" and not u.queue.any(func(o: Dictionary) -> bool: return o["o"] == "lead"):
+			if not u.led.is_empty():
+				u.release_horses()
+			_catchers.erase(u)
+			if u.is_worker() and u.order == "idle":
+				u.auto_work = true
+	if game.clock < _loose_at:
+		return
+	_loose_at = game.clock + 2.0
+	var fac := game.faction_of(team)
+	if fac != "crown" and fac != "brood" and fac != "clockwork":
+		return
+	var T := Defs.TILE
+	for h in game.units:
+		if not Game.loose_horse(h) or h.off_field or h.bolt_t > 0.0:
+			continue
+		if h.claimed and is_instance_valid(h.claimed) and not h.claimed.dead and h.claimed.order_target == h:
+			continue                     # (someone's on his way to it)
+		var near: Array = game.units_near(h.position, 9.0 * T)
+		if near.any(func(o: Unit) -> bool: return not o.dead and game.hostile(o.team, team) and o.kind != "horse" \
+				and o.position.distance_to(h.position) < 6.0 * T):
+			continue                     # enemies there: not worth it
+		if fac == "brood":
+			var biter: Unit = null
+			var bd := 8.0 * T
+			for o in near:
+				if o.team != team or o.dead or o.is_worker() or not o.has_attack() or not o.can_hit(h) or o.target != null \
+						or not (o.order == "idle" or o.order == "hold") or _on_errand(o):
+					continue
+				var dd: float = o.position.distance_to(h.position)
+				if dd < bd:
+					bd = dd
+					biter = o
+			if biter:
+				biter.cmd_attack(h)
+			continue
+		# the Crown: in its base, or by its army; the Clockwork: a Winder close by
+		var reach := 6.0 * T
+		if fac == "crown":
+			reach = 16.0 * T
+			var home := game.buildings.any(func(b: Building) -> bool: return b.team == team and not b.dead and b.edge_distance(h.position) < 12.0 * T)
+			var by_army := near.any(func(o: Unit) -> bool: return o.team == team and not o.dead and not o.is_worker() and o.kind != "horse" \
+				and o.position.distance_to(h.position) < 8.0 * T)
+			if not home and not by_army:
+				continue
+		var best: Unit = null
+		var bd2 := reach
+		for o in game.units_near(h.position, reach):
+			if o.team != team or o.dead or not o.can_lead() or o == _groom or o.lead_count() > 0 or o.target != null \
+					or o.keg or o.order == "keg" or _on_errand(o) or _catchers.has(o) or not Unit.horse_free_for(h, o):
+				continue
+			if fac == "clockwork" and o.kind != "winder":
+				continue
+			if not (o.order == "idle" or (o.is_worker() and o.order == "gather")):
+				continue
+			var dd: float = o.position.distance_to(h.position)
+			if dd < bd2:
+				bd2 = dd
+				best = o
+		if best and best.cmd_lead(h):
+			_catchers.append(best)
 
 
 ## Guns and wagons at home with a single horse get a second one (from Normal up, with the

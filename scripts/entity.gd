@@ -20,6 +20,7 @@ var flash := 0.0
 var last_hit_by := ""           # kind that last hurt us, for battle stats
 var last_hit_team := -1
 var last_hitter: Entity = null  # who dealt the last blow (veterancy)
+var last_blow := ""             # the kind of the last blow (BLOW_*, "" area): a dying rider's horse may bolt
 var off_field := false             # a soldier being bandaged: off the field for a moment
 var cross_t := 0.0              # just bandaged: can't be bandaged again yet
 var acid_t := 0.0               # Spitter acid: burns and strips 2 armour while > 0
@@ -67,13 +68,32 @@ func team_material() -> ShaderMaterial:
 	if _mat == null:
 		_mat = ShaderMaterial.new()
 		_mat.shader = TEAM_SHADER
-		_mat.set_shader_parameter("team", game.team_colour(team) if team >= 0 else Color.RED)
+		_mat.set_shader_parameter("team", cloth_colour())
 	return _mat
 
 
-func take_damage(amount: float, _from: Entity) -> void:
+## The colour its team's reds are painted in: its side's, a loose horse's plain brown
+## (nobody's), else as painted.
+func cloth_colour() -> Color:
+	if team >= 0:
+		return game.team_colour(team)
+	return Defs.NEUTRAL_CLOTH if kind == "horse" else Color.RED
+
+
+## Kinds of blow (`take_damage`'s `blow`), for what a dying rider's horse does (Defs.HORSES
+## bolt_*): a single shot landing on one target at range, a single blow in melee (Crown or
+## Clockwork), the Brood's jaws and claws, or "" for anything with splash or area (round
+## shot, canister, shells, blasts, chain lightning, clouds, spells) and unknown sources.
+const BLOW_RANGED := "ranged"
+const BLOW_MELEE := "melee"
+const BLOW_BROOD := "brood"
+
+
+## `blow`: what kind of blow it is (BLOW_*; "" = area or unknown).
+func take_damage(amount: float, _from: Entity, blow := "") -> void:
 	if dead or untouchable():
 		return
+	last_blow = blow
 	var arm := armor - (2.0 if acid_t > 0.0 else 0.0)
 	# a hit always does at least 1, but damage over time (storm, gas clouds: tiny amounts
 	# every tick) is applied as it is, or the 1-point floor turns it into 30 a second
