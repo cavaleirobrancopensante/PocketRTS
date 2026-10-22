@@ -102,7 +102,7 @@ const GAP := {"combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/sp
 	# recorded gunfire: a volley of ten muskets is a few overlapping shots, not a wall of noise
 	"combat/musketeer_attack": 110, "combat/cannon_attack": 160, "combat/cannon_canister": 160,
 	"combat/mortar_attack": 200, "combat/cuirassier_attack": 120, "combat/cuirassier_move": 1500,
-	"combat/cuirassier_death": 150, "horse/whinny": 6000, "select/*": 250, "select/town_hall": 2000, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
+	"combat/cuirassier_death": 150, "horse/whinny": 6000, "select/*": 250, "select/town_hall": 400, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).
 const JITTER := {"combat/musketeer_attack": 0.04, "combat/cannon_attack": 0.04,
@@ -152,7 +152,8 @@ static func building_selected(kind: String, faction: String) -> void:
 	if now - int(me._last.get("select/*", -99999)) < int(GAP.get("select/*", 40)):
 		return
 	me._last["select/*"] = now
-	play_any(["select/" + kind, "%s/select_building" % SHORT.get(faction, "crown")])
+	# (the Town Hall is picked for every worker: its note sits a little under the rest)
+	play_any(["select/" + kind, "%s/select_building" % SHORT.get(faction, "crown")], Vector2.INF, -4.0 if kind == "town_hall" else 0.0)
 
 
 ## Sounds that come with a unit's answer: kind -> {what: [[sound, chance], ...]} (each sound's
