@@ -105,6 +105,12 @@ def _brim_y(x):
 
 
 def fix_icon(src=ICON, dst=ICON):
+    # the designer's repainted portrait (ChatGPT, with its frame) replaces the patch-up below
+    painted = os.path.join(ROOT, "art/crown/labourer_portrait.png")
+    if os.path.exists(painted):
+        Image.open(painted).convert("RGBA").resize((64, 64), Image.BOX).save(dst)
+        print("fix_labourer_hoe: icon: the painted portrait")
+        return
     import math
     from PIL import ImageDraw, ImageFilter
 
