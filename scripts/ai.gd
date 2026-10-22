@@ -564,6 +564,21 @@ func _grow_hall() -> void:
 		game.start_hall_upgrade(main)
 
 
+## Brood: a Warren that could grow into a Broodmound (a Gorge Pit, 300 biomass banked)
+## waits only for the essence: meanwhile the eggs go to creatures that cost none, and spare
+## Raptors are offered up for it (_offer).
+func _mound_saving() -> bool:
+	if not _brood() or _gold() < 300 or not game._has_built(team, "gorge_pit"):
+		return false
+	var top := 0
+	for h in _halls():
+		if h.built and not h.dead:
+			if h.upgrade_t >= 0.0:
+				return false
+			top = maxi(top, h.level)
+	return top == 2 and _res2() < float(Defs.HALL_LEVELS[2]["cost2"]) + 20.0
+
+
 var _walled := false
 var _hall_reserve := false      # Crown: holding gold for a Town Hall on fresh land
 var _new_hall: Building = null  # Crown: the expansion the guards stand over
@@ -1120,6 +1135,7 @@ func _produce() -> void:
 		var toads := army.filter(func(u: Unit) -> bool: return u.kind == "mist_toad").size()
 		for h in _halls():
 			toads += (h.queue as Array).count("mist_toad")     # (hatching ones too)
+		var saving_mound := _mound_saving()
 		for h in _halls():
 			if not h.built:
 				continue
@@ -1143,6 +1159,8 @@ func _produce() -> void:
 				elif game.can_train(h, "spore_mother") == "" and mothers * 14 < army.size():
 					k = "spore_mother"
 					mothers += 1
+				if saving_mound and int(Defs.UNITS[k].get("cost2", 0)) > 0:
+					k = "raptor"            # (the essence goes to the Broodmound first)
 				if game.train(h, k) != "":
 					break
 		return
@@ -2685,6 +2703,8 @@ func _offer() -> void:
 		var reqs: Array = u["requires"] if u.get("requires", "") is Array else [u["requires"]]
 		if reqs.all(func(r: String) -> bool: return game._has_built(team, r)):
 			want = maxi(want, int(u.get("cost2", 0)))
+	if _mound_saving():
+		want = maxi(want, int(Defs.HALL_LEVELS[2]["cost2"]) + 20)     # (for the Broodmound)
 	if want == 0:
 		return
 	var target := want
