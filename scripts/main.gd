@@ -1289,6 +1289,7 @@ class MapPreview extends Control:
 	var slots: Array = []
 	var mw := 84.0               # the map's size in cells
 	var mh := 60.0
+	var _pic: Texture2D
 
 	func _draw() -> void:
 		var msz := Vector2(84, 60) if MapGen.is_pool(map_id) or map_id.begins_with("custom:") else Vector2(MapGen.size_of(map_id))
@@ -1350,7 +1351,8 @@ class MapPreview extends Control:
 	func _named(r: Rect2) -> void:
 		var path := "res://assets/maps/%s.png" % map_id
 		if ResourceLoader.exists(path):
-			draw_texture_rect(load(path), r, false)
+			_pic = load(path)       # (kept: a texture let go right after drawing shows up white)
+			draw_texture_rect(_pic, r, false)
 		else:
 			draw_rect(r, _biome_col(MapGen.biome_of(map_id).split("+")[0]))
 		var k := r.size / Vector2(mw, mh)
