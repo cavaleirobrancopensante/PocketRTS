@@ -10,6 +10,8 @@ uniform vec3 tint = vec3(1.0);   // e.g. a powered-down construct goes cold grey
 uniform int coat = -1;           // 0 dark, 1 bay, 2 grey, 3 white, 4 spotted (white + patches)
 uniform sampler2D horse_mask : filter_nearest, repeat_disable, hint_default_black;
 uniform sampler2D coat_ramps : filter_linear, repeat_disable;
+// a Powder Wagon whose horse was released (RELEASE HORSE): its painted horse isn't drawn
+uniform bool hide_horse = false;
 
 vec3 coat_ramp(int row, float t) {
 	return texture(coat_ramps, vec2(t * (63.0 / 64.0) + 0.5 / 64.0, (float(row) + 0.5) / 5.0)).rgb;
@@ -30,5 +32,7 @@ void fragment() {
 		}
 	}
 	o = mix(o, vec3(1.0), flash);
-	COLOR = vec4(o * tint, c.a * COLOR.a);
+	float a = c.a;
+	if (hide_horse && texture(horse_mask, UV).r > 0.5) a = 0.0;
+	COLOR = vec4(o * tint, a * COLOR.a);
 }

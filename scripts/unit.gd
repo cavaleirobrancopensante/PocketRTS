@@ -214,6 +214,27 @@ var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs 
 var _supply_t := 0.0
 var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
 var keg := false                # Labourer: carrying a powder keg (it blows up if he's killed)
+# Horses (Defs.HORSES)
+var led: Array = []              # (a man) the horses he leads by the reins, in their string
+var leader: Unit = null          # (a horse) who leads it
+var claimed: Unit = null         # (a horse) the man walking over to mount or lead it
+var into: Entity = null          # (a horse) the building it walks into (training) or the gun it goes to
+var _into_t := 0.0
+var graze_at := Vector2.INF      # (a horse) where it was left: it grazes round here
+var _graze_goal := Vector2.INF
+var _graze_t := 0.0
+var _steal_t := 0.0
+var home: Building = null        # (a horse) the breeder that raised it
+var harnessed := true            # (a cannon, mortar, wagon) its horse is hitched
+var horse_hp := 1.0              # (a rider, a gun) his horse's health share, for when it steps off
+var steed: Unit = null           # (a man who got off) the horse he rode
+var auto_mount := false          # (on foot after a Dragoon's own dismount, or the computer's) remounts by himself to move
+var pouch := false               # (a musket soldier) refitted with the Shot Pouch: 20 shots
+var after: Dictionary = {}       # (mounting / dismounting) the order he goes on with afterwards
+var _lonely_t := 0.0
+var _rein: Node2D                # (a horse) the reins to its leader, drawn over the horse
+var _rein_on := false
+var _feather: Node2D             # (a dismounted horseman) the plume on his hat (TEMP_ART "feather")
 
 
 func is_unit() -> bool:
@@ -317,8 +338,8 @@ func put_on_armour() -> void:
 	max_hp = float(d["hp"])
 	hp = minf(max_hp, hp + float(info["hp"]))
 	speed = float(d["speed"])
-	if ArtData.UNITS.has(String(info["art"])):
-		art = String(info["art"])
+	if ArtData.UNITS.has(Defs.art_for(kind, true)):
+		art = Defs.art_for(kind, true)
 	if sprite and not dead:
 		_set_anim(anim if anim != "" else "idle", true)
 	queue_redraw()
@@ -331,19 +352,28 @@ func set_kit(kit: Dictionary) -> void:
 		return
 	if kit.get("armour", false):
 		put_on_armour()
-	if kind == "musketeer":
+	if Defs.MUSKETS.has(kind):
 		var lk := String(kit.get("lock", ""))
 		if Defs.LOCKS.has(lk) and Defs.LOCKS.find(lk) > lock_level():
 			lock = lk
 		if kit.get("bayonet", false):
 			bayonet = true
+		if kit.get("pouch", false):
+			set_pouch()
 	queue_redraw()
 
 
 func get_kit() -> Dictionary:
-	if kind == "musketeer":
-		return {"armour": armoured, "lock": lock, "bayonet": bayonet}
+	if Defs.MUSKETS.has(kind):
+		return {"armour": armoured, "lock": lock, "bayonet": bayonet, "pouch": pouch}
 	return {"armour": armoured}
+
+
+## The Shot Pouch: he can carry Defs.POWDER "pouch" shots (what he has stays; he fills up
+## at any powder source).
+func set_pouch() -> void:
+	pouch = true
+	_pmax = max_powder()
 
 
 ## Light or armoured, and the rest of its tags (a Guardsman or Cuirassier is "armored").
@@ -370,6 +400,8 @@ func kit_text() -> String:
 		parts.append(String(Defs.RESEARCH[lock]["name"]))
 	if bayonet:
 		parts.append("Socket Bayonet")
+	if pouch:
+		parts.append("Shot Pouch")
 	return " · ".join(parts)
 
 
@@ -440,6 +472,8 @@ func _refit_run(delta: float) -> Vector2:
 					put_on_armour()
 				elif w == "bayonet":
 					bayonet = true
+				elif w == "pouch":
+					set_pouch()
 				elif Defs.LOCKS.find(w) > lock_level():
 					lock = w
 			refit.clear()
@@ -468,9 +502,25 @@ func _refit_run(delta: float) -> Vector2:
 ## Musketeer reload with his own lock.
 func musket_cooldown() -> float:
 	var m := 1.0
-	if kind == "musketeer" and Defs.RESEARCH.has(lock):
+	if Defs.MUSKETS.has(kind) and Defs.RESEARCH.has(lock):
 		m = float(Defs.RESEARCH[lock]["reload"])
+	if kind == "musketeer" and auto_mount:
+		m *= float(Defs.HORSES["dragoon_reload"])     # a Dragoon fighting on foot
 	return float(d["cooldown"]) * m
+
+
+## A soldier on foot with a musket (or carbine) and a blade: picks musket or blade by himself.
+func foot_musket() -> bool:
+	return kind == "musketeer" or kind == "dismounted"
+
+
+## On a horse (the horse is part of him: DISMOUNT puts it beside him).
+func is_mounted() -> bool:
+	return Defs.FOOT.has(kind)
+
+
+func is_horse() -> bool:
+	return kind == "horse"
 
 
 ## A Clockwork construct with no charge left.
@@ -575,6 +625,8 @@ func max_powder() -> float:
 		return float(Defs.WAGON["store"])
 	if kind == "balloon":
 		return float(Defs.BALLOON["store"])
+	if Defs.MUSKETS.has(kind):
+		return float(Defs.POWDER["pouch"] if pouch else Defs.POWDER["musketeer"])
 	return float(Defs.POWDER.get(kind, 0))
 
 
@@ -671,11 +723,13 @@ func set_canister(on: bool) -> void:
 
 
 func _cooldown() -> float:
+	if mode == "bayonet" and d.has("sabre"):
+		return float(d["sabre"]["cooldown"])
 	if mode == "bayonet":
 		return float(Defs.BAYONET["cooldown"]) * (float(Defs.RESEARCH["bayonet"]["cooldown"]) if bayonet else 1.0)
 	if mode == "canister":
 		return float(Defs.CANISTER["cooldown"]) * float(d.get("drill_reload", 1.0))
-	if kind == "musketeer":
+	if Defs.MUSKETS.has(kind):
 		return musket_cooldown()
 	if overclock_t > 0.0:
 		return float(d["cooldown"]) * float(Defs.OVERLOAD["cooldown"])
@@ -1070,8 +1124,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	last_pos = pos
 	leash_from = pos
 	art = k
-	if Defs.LIGHT_ART.has(k) and ArtData.UNITS.has(String(Defs.LIGHT_ART[k])):
-		art = String(Defs.LIGHT_ART[k])      # (the Horseman: the Cuirassier's sprites once armoured)
+	if ArtData.UNITS.has(Defs.art_for(k, false)):
+		art = Defs.art_for(k, false)      # (the Horseman: the Cuirassier's sprites once armoured; TEMP_ART)
 	if HorseCoat.has_horse(k):
 		coat = HorseCoat.pick()
 
@@ -1082,10 +1136,15 @@ func _ready() -> void:
 	sprite.centered = false
 	sprite.material = team_material()
 	add_child(sprite)
-	if coat != "":
-		# each strip of the horse's sprites has its own coat mask
+	if d["faction"] == "crown" or coat != "":
+		# each strip of the horse's sprites has its own coat mask (any Crown man may get a horse)
 		sprite.texture_changed.connect(func() -> void: HorseCoat.update_mask(self))
 		HorseCoat.apply(self)
+	if kind == "horse":
+		_rein = Node2D.new()
+		_rein.draw.connect(_draw_rein)
+		add_child(_rein)
+	_update_feather()
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_make_wheel()
 	if kind == "balloon" and ArtData.UNITS.has(kind):
@@ -1143,10 +1202,21 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 		return      # riding in a balloon
 	if _ai_keeps_windup():
 		return
+	if not can_roll():
+		if team == game.human:
+			game.notify("No horse: HARNESS one to move it.")
+		return
+	# a Dragoon fighting on foot gets back on his horse to move (not with the enemy in range
+	# on an attack-move: he goes on shooting)
+	if auto_mount and Defs.MOUNTS.has(kind) and order != "mount" and (not attack_move or _musket_target(_range()) == null):
+		if _try_remount({"o": "amove" if attack_move else "move", "p": p}):
+			return
 	if braced:
 		set_brace(false)     # a Bulwark lifts its shield to walk
 	_reset_work()
 	order = "amove" if attack_move else "move"
+	if kind == "dragoon" and attack_move:
+		order = "d_amove"       # rides on, dismounting to shoot what comes in range
 	order_point = p
 	target = null
 	order_target = null
@@ -1160,8 +1230,16 @@ func cmd_attack(e: Entity) -> void:
 		return
 	if braced and e.edge_distance(position) > _range() + radius:
 		set_brace(false)     # out of the lance's reach: it lifts the shield and goes
+	if auto_mount and Defs.MOUNTS.has(kind) and order != "mount" and e.edge_distance(position) - radius > _range() + 60.0:
+		if _try_remount({"o": "attack", "e": e}):
+			return
 	_reset_work()
 	order = "attack"
+	if kind == "dragoon":
+		order = "d_attack"      # rides up to musket range, dismounts and fires
+		order_target = e
+		target = null
+		return
 	order_target = e
 	target = e
 	_detour = null
@@ -1413,6 +1491,10 @@ func _ai_keeps_windup() -> bool:
 
 
 func cmd_pack() -> void:
+	if not harnessed and Defs.HARNESSED.has(kind):
+		if team == game.human:
+			game.notify("No horse to limber up: HARNESS one first.")
+		return
 	if deploys() and tesla_mode == "deployed":
 		tesla_mode = "packing"
 		tesla_t = switch_time()
@@ -1452,6 +1534,9 @@ func cmd_stop() -> void:
 func cmd_hold() -> void:
 	if aboard:
 		return      # riding in a balloon
+	if kind == "dragoon":
+		cmd_dismount(true, {"o": "hold"})      # a Dragoon holds on foot
+		return
 	cmd_stop()
 	order = "hold"
 
@@ -1525,7 +1610,7 @@ func cmd_build(site: Building) -> void:
 
 ## The orders that end by themselves: Shift-queued orders wait behind them. Behind anything
 ## else (idle, hold, working at a post...) a queued order starts at once.
-const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair"]
+const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d_attack", "lead", "mount", "dismount"]
 
 
 ## Give an order ({"o": move/amove/attack/build/repair/gather/wall, "p", "e", "pieces"}): a
@@ -1614,6 +1699,14 @@ func _start(o: Dictionary) -> bool:
 			if e == null or not is_instance_valid(e) or not (plain or not e.dead):
 				return false
 			cmd_gather(e)
+		"hold":
+			cmd_hold()
+		"lead":
+			if e == null or not is_instance_valid(e) or not cmd_lead(e):
+				return false
+		"mount":
+			if e == null or not is_instance_valid(e) or not cmd_mount(e):
+				return false
 	return order != "idle"
 
 
@@ -1625,8 +1718,8 @@ static func _spot(e: Entity) -> Vector2:
 ## queued behind it (for the waypoint lines drawn for your selection).
 func plan_points() -> Array:
 	var pts: Array = []
-	if order == "move" or order == "amove":
-		pts.append([order, order_point])
+	if order == "move" or order == "amove" or order == "d_amove":
+		pts.append(["amove" if order == "d_amove" else order, order_point])
 	elif (order == "attack" or order == "build" or order == "repair" or order == "gather") \
 			and order_target and is_instance_valid(order_target) and not order_target.dead:
 		pts.append([order, _spot(order_target)])
@@ -1684,6 +1777,10 @@ func _reset_work() -> void:
 		keg = false
 		game.add_res2(team, _keg_cost())
 	_cancel_refit()            # (a refit called off: paid back)
+	if (order == "mount" or order == "lead") and order_target is Unit and is_instance_valid(order_target) and order_target.claimed == self:
+		order_target.claimed = null    # (he isn't coming for that horse any more)
+	if not _keep_queue:
+		after = {}
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
@@ -1747,6 +1844,7 @@ func take_aboard(u: Unit) -> void:
 	if dead or u.dead or u.aboard != null or passengers.size() >= int(Defs.DROPSHIP["capacity"]):
 		return
 	u.cmd_stop()
+	u.release_horses()
 	u.velocity = Vector2.ZERO
 	u.aboard = self
 	u.off_field = true
@@ -2120,7 +2218,8 @@ func _physics_process(delta: float) -> void:
 	_process_acid(delta)
 	if dead:
 		return
-	cooldown = maxf(cooldown - delta, 0.0)
+	if kind != "dragoon":
+		cooldown = maxf(cooldown - delta, 0.0)     # (a Dragoon's reload waits while he rides)
 	spell_cd = maxf(spell_cd - delta, 0.0)
 	if _pmax > 0.0:
 		_powder_tick(delta)
@@ -2243,13 +2342,17 @@ func _physics_process(delta: float) -> void:
 		_move(_sky_switch(delta), delta)
 		_animate(delta)
 		return
-	if kind == "musketeer":
+	if foot_musket():
 		_pick_weapon(delta)
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
 	if order == "idle" and not queue.is_empty():
 		_next_order()
+	if auto_mount and Defs.MOUNTS.has(kind):
+		_foot_dragoon(delta)
+	if not led.is_empty():
+		_prune_led()
 	match order:
 		"idle":
 			if d.get("medic", false) and scan_t <= 0.0:
@@ -2371,8 +2474,20 @@ func _physics_process(delta: float) -> void:
 			want = _refit_run(delta)
 		"sacrifice":
 			want = _sacrifice(delta)
+		"d_attack", "d_amove":
+			want = _dragoon_tick(delta)
+		"mount":
+			want = _mount_run(delta)
+		"dismount":
+			want = _dismount_run(delta)
+		"lead":
+			want = _lead_run(delta)
+	if kind == "horse":
+		want = _horse_tick(delta, want)
 	if deploys():
 		want = _tesla(want, delta)
+	if not can_roll():
+		want = Vector2.ZERO        # a gun or wagon without its horse stands where it is
 	if kind == "balloon" and not incoming.is_empty():
 		want = Vector2.ZERO        # holds still while men climb in
 	if deflate == "deflating" or deflate == "refilling":
@@ -2414,6 +2529,12 @@ func _physics_process(delta: float) -> void:
 
 ## Tesla Cart: it only rolls when packed and only zaps when deployed; switching takes a while.
 func _tesla(want: Vector2, delta: float) -> Vector2:
+	if not harnessed and Defs.HARNESSED.has(kind):
+		# no horse: straight to the set-up pose, and it stays set up
+		if tesla_mode != "deployed":
+			tesla_mode = "deployed"
+			tesla_t = 0.0
+		return Vector2.ZERO
 	match tesla_mode:
 		"deploying", "packing":
 			tesla_t -= delta
@@ -2927,6 +3048,8 @@ func _strike(e: Entity) -> void:
 	if mode == "bayonet":
 		var vet := 1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
 		var bd := float(Defs.BAYONET["damage"]) + (float(Defs.RESEARCH["bayonet"]["damage"]) if bayonet else 0.0)
+		if d.has("sabre"):
+			bd = float(d["sabre"]["damage"])           # a dismounted horseman's sabre
 		e.take_damage(bd * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self)
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
@@ -2949,7 +3072,7 @@ func _strike(e: Entity) -> void:
 			game.fog_miss(self, e)
 			return
 	match kind:
-		"musketeer":
+		"musketeer", "dismounted":
 			game.musket_shot(self, e, dmg)
 		"cannon":
 			if mode == "canister":
@@ -3517,7 +3640,7 @@ func _heal(delta: float) -> Vector2:
 		p.cmd_stop()
 		p.velocity = Vector2.ZERO
 		p.off_field = true
-		if p.kind == "cuirassier":
+		if p.is_mounted():
 			# a horseman is tended where he stands: horse and rider stay in view
 			position = p.position + Vector2(-14, 4)
 		else:
@@ -3772,6 +3895,12 @@ func die() -> void:
 	_cancel_boarding()
 	_cancel_refit()            # (killed on the way to a refit: the fee goes back)
 	drop_crate()               # (a Winder) the crate on his back falls where he stood
+	release_horses()           # (his horses stay where they are)
+	if claimed and is_instance_valid(claimed) and claimed.order_target == self:
+		claimed.cmd_stop()     # (a horse) the man coming for it stops
+	if leader and is_instance_valid(leader):
+		leader.led.erase(self)
+		leader = null
 	if tongue_stage != "":
 		_break_tongue("killed")    # (a Mist Toad) the mark goes, or the tongue lets go
 	if _crate_spr:
@@ -3844,7 +3973,7 @@ func _anim_name() -> String:
 		return _death_anim()
 	var moving := velocity.length() > 10.0
 	match kind:
-		"musketeer":
+		"musketeer", "dismounted":
 			if mode == "bayonet":
 				# the bayonet thrust
 				if phase != "":
@@ -4067,7 +4196,7 @@ func _animate(delta: float) -> void:
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
-	if anim == "walk" and kind == "cuirassier":
+	if anim == "walk" and (art == "cuirassier" or art == "horseman"):
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
 		# frames, played so that his stride takes the same time
 		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
@@ -4161,6 +4290,9 @@ func _animate(delta: float) -> void:
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
 	if _front:
 		_update_basket()
+	if _rein and (leader != null or _rein_on):
+		_rein_on = leader != null
+		_rein.queue_redraw()
 	_bob_t += delta
 	if kind == "skywing" and (sky == "landing" or sky == "lifting") and not dead:
 		# coming down to (or rising from) the ground
@@ -4572,3 +4704,549 @@ func _draw() -> void:
 		var y := top - 12.0
 		var a := minf(cross_t, 1.0)
 		draw_texture(Game.tex("res://assets/effects/cross.png"), Vector2(-6, y - 6), Color(1, 1, 1, a))
+
+
+# ------------------------------------------------------------------ horses (Defs.HORSES)
+
+## A gun or wagon can roll only with its horse hitched (everything else always can).
+func can_roll() -> bool:
+	return harnessed or not Defs.HARNESSED.has(kind)
+
+
+## Can this man lead horses by the reins (Labourers, musket soldiers on foot, Messengers,
+## Clockwork Winders)?
+func can_lead() -> bool:
+	return Defs.LEADERS.has(kind) and aboard == null and not dead and not off_field
+
+
+## Can this man get on a horse (Defs.MOUNTS)?
+func can_mount() -> bool:
+	return Defs.MOUNTS.has(kind) and aboard == null and not dead and not off_field
+
+
+## A horse of ours `u` may take: alive, of his side, nobody else coming for it, not walking
+## into a building or to a gun, and not led by someone else.
+static func horse_free_for(h, u: Unit) -> bool:
+	return h is Unit and is_instance_valid(h) and h.kind == "horse" and not h.dead and not h.off_field \
+		and h.team == u.team and h.into == null and (h.claimed == null or h.claimed == u or not is_instance_valid(h.claimed)) \
+		and (h.leader == null or h.leader == u or not is_instance_valid(h.leader))
+
+
+## Horses he leads or is going to fetch.
+func lead_count() -> int:
+	return led.size() + queue.filter(func(o: Dictionary) -> bool: return o["o"] == "lead").size() + (1 if order == "lead" else 0)
+
+
+## The nearest free horse of ours within `tiles` (not one of `skip`), or null.
+func nearest_free_horse(tiles: float, skip: Array = []) -> Unit:
+	var best: Unit = null
+	var bd := tiles * Defs.TILE
+	for o in game.units_near(position, bd):
+		if o.kind == "horse" and not skip.has(o) and horse_free_for(o, self) and (o.leader == null or o.leader == self):
+			var dd: float = o.position.distance_to(position)
+			if dd < bd:
+				bd = dd
+				best = o
+	return best
+
+
+# ---- leading
+
+## Walk over to a horse and take it by the reins (it then follows him).
+func cmd_lead(h) -> bool:
+	if not can_lead() or not horse_free_for(h, self) or (h as Unit).leader == self:
+		return false
+	if led.size() >= int(Defs.HORSES["lead_max"]):
+		return false
+	_reset_work()
+	order = "lead"
+	order_target = h
+	h.claimed = self
+	target = null
+	repath_t = 0.0
+	return true
+
+
+func _lead_run(delta: float) -> Vector2:
+	var h := order_target as Unit
+	if not horse_free_for(h, self) or led.size() >= int(Defs.HORSES["lead_max"]):
+		if not _next_order():
+			cmd_stop()
+		return Vector2.ZERO
+	if position.distance_to(h.position) < radius + h.radius + 14.0:
+		h.claimed = null
+		take_reins(h)
+		if not _next_order():
+			cmd_stop()
+		return Vector2.ZERO
+	return _walk_to(h.position, delta)
+
+
+## The horse is his to lead from now on (at the end of his string).
+func take_reins(h: Unit) -> void:
+	if h.leader and is_instance_valid(h.leader) and h.leader != self:
+		h.leader.led.erase(h)
+	h.leader = self
+	h.claimed = null
+	if not led.has(h):
+		led.append(h)
+	if h.order == "move":
+		h.cmd_stop()
+
+
+## RELEASE: let go of every horse he leads (they stay and graze where they stand).
+func release_horses() -> void:
+	for h in led:
+		if is_instance_valid(h) and not h.dead:
+			h.leader = null
+			h.graze_at = h.position
+			h._graze_goal = Vector2.INF
+	led.clear()
+
+
+func _prune_led() -> void:
+	led = led.filter(func(h) -> bool: return is_instance_valid(h) and not h.dead and h.leader == self and h.team == team)
+
+
+## Straight there when close and clear, else along a path.
+func _walk_to(p: Vector2, delta: float) -> Vector2:
+	if position.distance_to(p) < 140.0 and game.line_clear(position, p):
+		path = PackedVector2Array()
+		return (p - position).normalized() * speed
+	if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
+		repath_t = 1.5
+		_request_path(p)
+	return _follow(delta)
+
+
+# ---- mounting
+
+## Walk to the horse and get on (Defs.HORSES mount s; a Dragoon's own remount is quick).
+## `aft`: the order he goes on with once mounted.
+func cmd_mount(h, aft := {}) -> bool:
+	if not can_mount() or not horse_free_for(h, self):
+		return false
+	_reset_work()
+	order = "mount"
+	order_target = h
+	h.claimed = self
+	after = aft
+	target = null
+	repath_t = 0.0
+	return true
+
+
+func _mount_run(delta: float) -> Vector2:
+	var h := order_target as Unit
+	if not horse_free_for(h, self):
+		var aft := after
+		cmd_stop()
+		if not aft.is_empty():
+			auto_mount = false       # (no horse: he carries on on foot)
+			give(aft)
+		return Vector2.ZERO
+	if work == "mounting":
+		h.velocity = Vector2.ZERO
+		work_t -= delta
+		if work_t <= 0.0:
+			do_mount(h)
+		return Vector2.ZERO
+	if position.distance_to(h.position) < radius + h.radius + 10.0:
+		work = "mounting"
+		work_t = float(Defs.HORSES["quick" if auto_mount else "mount"])
+		path = PackedVector2Array()
+		facing = (h.position - position).normalized() if h.position != position else facing
+		return Vector2.ZERO
+	return _walk_to(h.position, delta)
+
+
+## On the horse: he becomes the mounted unit (Defs.MOUNTS), riding that horse's coat.
+func do_mount(h: Unit) -> void:
+	if h.leader and is_instance_valid(h.leader):
+		h.leader.led.erase(h)
+	led.erase(h)
+	horse_hp = clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)
+	coat = h.coat
+	var at := h.position
+	game.consume_unit(h)
+	position = position.lerp(at, 0.5)
+	var aft := after
+	after = {}
+	steed = null
+	if game.mlog and team >= 0 and not game._first_of.has("%d:mount_%s" % [team, kind]):
+		game._first_of["%d:mount_%s" % [team, kind]] = true
+		game.mlog.add("%s's first %s mounted (%s)" % [game.mlog.who(team), String(d["name"]), String(Defs.UNITS[Defs.MOUNTS[kind]]["name"])])
+	morph(String(Defs.MOUNTS[kind]))
+	order = "idle"
+	order_target = null
+	work = ""
+	leash_from = position
+	if team == game.human:
+		Sfx.play_any(["ui/click", "click"], position)
+	if not aft.is_empty():
+		give(aft)
+
+
+## DISMOUNT (Defs.HORSES dismount s; `quick`: a Dragoon's own, to fire). The horse stands
+## beside him, of his side, unled. `aft`: what he does once on foot.
+func cmd_dismount(quick := false, aft := {}) -> void:
+	if not is_mounted() or aboard:
+		return
+	_reset_work()
+	order = "dismount"
+	work = "dismounting"
+	work_t = float(Defs.HORSES["quick" if quick else "dismount"])
+	after = aft
+	target = null
+	order_target = null
+	# (the computer's men always get back on by themselves; yours only after a Dragoon's own dismount)
+	auto_mount = quick or game.ais.any(func(a) -> bool: return a.team == team)
+
+
+func _dismount_run(delta: float) -> Vector2:
+	work_t -= delta
+	if work_t <= 0.0:
+		do_dismount()
+	return Vector2.ZERO
+
+
+func do_dismount() -> void:
+	var side := Vector2(-facing.y, facing.x)
+	if side == Vector2.ZERO:
+		side = Vector2.RIGHT
+	var spot := game.resolve_terrain(position + side * (radius + 10.0), position, 11.0, team)
+	var h := game._add_unit("horse", team, spot)
+	h.coat = coat if coat != "" else HorseCoat.pick()
+	HorseCoat.apply(h)
+	h.hp = h.max_hp * horse_hp
+	h.facing = facing
+	h.graze_at = spot
+	h._graze_t = 4.0
+	h.visible = visible
+	var aft := after
+	after = {}
+	morph(String(Defs.FOOT[kind]))
+	steed = h
+	order = "idle"
+	work = ""
+	leash_from = position
+	if not aft.is_empty():
+		give(aft)
+
+
+## Become another kind in place (mounting, dismounting): he keeps his armour, kit, kills,
+## powder, hp share, reload and orders' bookkeeping; his stats and sprites change.
+func morph(k: String) -> void:
+	var frac := hp / maxf(max_hp, 1.0)
+	var arm := armoured
+	kind = k
+	d = Defs.UNITS[k].duplicate(true)
+	armoured = false
+	armor = float(d["armor"])
+	sight = int(d["sight"])
+	radius = float(d["radius"])
+	speed = float(d["speed"])
+	max_hp = float(d["hp"])
+	art = Defs.art_for(k, false) if ArtData.UNITS.has(Defs.art_for(k, false)) else k
+	if arm:
+		put_on_armour()
+	hp = maxf(1.0, max_hp * frac)
+	_pmax = max_powder()
+	powder = minf(powder, _pmax)
+	mode = ""
+	phase = ""
+	target = null
+	run_t = 0.0
+	if not HorseCoat.has_horse(k):
+		coat = ""
+	game.apply_drills(self)
+	_draw_key = Vector4i(-1, -1, -1, -1)
+	if sprite:
+		HorseCoat.apply(self)
+		_set_anim("idle", true)
+	_update_feather()
+	queue_redraw()
+
+
+## Back on his own horse (or another free one close by) to carry out `aft`. False: no horse.
+func _try_remount(aft: Dictionary) -> bool:
+	var h: Unit = steed if horse_free_for(steed, self) and steed.position.distance_to(position) < 5.0 * Defs.TILE else null
+	if h == null:
+		h = nearest_free_horse(3.0)
+	if h == null:
+		return false
+	return cmd_mount(h, aft)
+
+
+## A Dragoon on foot after his own dismount: back in the saddle when there's nothing to shoot
+## and somewhere to go, or when his target got away.
+func _foot_dragoon(delta: float) -> void:
+	if order == "amove":
+		_lonely_t = _lonely_t + delta if target == null else 0.0
+		if _lonely_t > 1.2 and position.distance_to(order_point) > 4.0 * Defs.TILE and _musket_target(_range()) == null:
+			_lonely_t = 0.0
+			_try_remount({"o": "amove", "p": order_point})
+	elif order == "attack":
+		var e = order_target
+		if e and is_instance_valid(e) and not e.dead and e.edge_distance(position) - radius > _range() + 60.0:
+			_try_remount({"o": "attack", "e": e})
+
+
+## The nearest enemy a musket could fire on from here (in range and seen), or null.
+func _musket_target(r: float) -> Entity:
+	var best: Entity = null
+	var bd := INF
+	for o in game.units_near(position, r + 60.0):
+		if o.dead or o.off_field or not game.hostile(o.team, team) or o.untouchable() or o.kind == "horse":
+			continue
+		var dd: float = o.edge_distance(position) - radius
+		if dd <= r and dd < bd and game.target_seen(team, o, position):
+			bd = dd
+			best = o
+	if best:
+		return best
+	for b in game.buildings:
+		if b.dead or b.ghost or not game.hostile(b.team, team) or b.kind == "wall" or b.kind == "gate":
+			continue
+		var dd: float = b.edge_distance(position) - radius
+		if dd <= r and dd < bd and game.target_seen(team, b, position):
+			bd = dd
+			best = b
+	return best
+
+
+## A mounted Dragoon on ATTACK or attack-move: rides to musket range, then dismounts (quick)
+## to fire on foot.
+func _dragoon_tick(delta: float) -> Vector2:
+	var rng := float(Defs.UNITS[Defs.FOOT[kind]]["range"])
+	if order == "d_attack":
+		var e = order_target
+		if e == null or not is_instance_valid(e) or e.dead or not game.hostile(e.team, team) or e.untouchable():
+			if not _next_order():
+				cmd_stop()
+			return Vector2.ZERO
+		if e.edge_distance(position) - radius <= rng - 8.0 and game.target_seen(team, e, position):
+			cmd_dismount(true, {"o": "attack", "e": e})
+			return Vector2.ZERO
+		return _walk_to(e.position if e is Unit else game.approach_point(e, position), delta)
+	if scan_t <= 0.0:
+		scan_t = 0.3
+		if _musket_target(rng - 8.0) != null:
+			cmd_dismount(true, {"o": "amove", "p": order_point})
+			return Vector2.ZERO
+	var want := _follow(delta)
+	if _arrived():
+		_finish_move()
+	return want
+
+
+# ---- the horse itself
+
+func _horse_tick(delta: float, want: Vector2) -> Vector2:
+	_steal_t -= delta
+	if _steal_t <= 0.0:
+		_steal_t = float(Defs.HORSES["scan"])
+		_steal_check()
+		if dead:
+			return Vector2.ZERO
+	if into != null:
+		return _horse_into(delta)
+	if leader != null:
+		if not is_instance_valid(leader) or leader.dead or leader.team != team or leader.aboard != null or not leader.led.has(self):
+			leader = null
+			graze_at = position
+		else:
+			return _follow_leader(delta)
+	if order == "move":
+		graze_at = order_point
+		_graze_goal = Vector2.INF
+		return want
+	if claimed != null and is_instance_valid(claimed) and not claimed.dead and claimed.order_target == self:
+		return Vector2.ZERO          # stands still for the man coming to take it
+	claimed = null
+	# grazing: a few steps now and then round where it was left
+	if graze_at == Vector2.INF:
+		graze_at = position
+	_graze_t -= delta
+	if _graze_t <= 0.0:
+		_graze_t = randf_range(3.0, 7.0)
+		var w := float(Defs.HORSES["wander"])
+		_graze_goal = graze_at + Vector2(randf_range(-w, w), randf_range(-w * 0.6, w * 0.6))
+		if not game._clear_at(_graze_goal, radius, team):
+			_graze_goal = Vector2.INF
+	if _graze_goal != Vector2.INF and position.distance_to(_graze_goal) > 4.0:
+		return (_graze_goal - position).normalized() * 26.0
+	return Vector2.ZERO
+
+
+## Led: the first horse walks at the man's side, the others in a string behind it.
+func _follow_leader(delta: float) -> Vector2:
+	var i := leader.led.find(self)
+	var goal: Vector2
+	var lf: Vector2 = leader.facing if leader.facing != Vector2.ZERO else Vector2.DOWN
+	if i <= 0:
+		goal = leader.position + Vector2(-lf.y, lf.x) * (leader.radius + radius + 4.0) - lf * 6.0
+	else:
+		var ahead: Unit = leader.led[i - 1]
+		var af: Vector2 = ahead.facing if ahead.facing != Vector2.ZERO else lf
+		goal = ahead.position - af * (radius * 2.0 + 4.0)
+	speed = maxf(float(d["speed"]), leader.speed * 1.35)
+	var to := goal - position
+	var dist := to.length()
+	if dist > 180.0:
+		# far behind (round a corner, past a crowd): find the way
+		if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
+			repath_t = 1.5
+			_request_path(leader.position)
+		return _follow(delta)
+	if dist < 3.0:
+		facing = facing.lerp(lf, clampf(delta * 4.0, 0.0, 1.0)).normalized()
+		return Vector2.ZERO
+	return to.normalized() * minf(speed, dist * 3.0 + 6.0)
+
+
+## Walking into a building (taken for a recruit or a gun) or to a gun (to be harnessed).
+func _horse_into(delta: float) -> Vector2:
+	var e := into
+	_into_t += delta
+	if e == null or not is_instance_valid(e) or e.dead or e.team != team:
+		into = null
+		graze_at = position
+		return Vector2.ZERO
+	if e is Building:
+		if e.edge_distance(position) < 4.0 or _into_t > 4.0:
+			game.consume_unit(self)
+			return Vector2.ZERO
+		speed = 60.0
+		return (e.center() - position).normalized() * speed
+	var g := e as Unit
+	if g.harnessed or not Defs.HARNESSED.has(g.kind):
+		into = null
+		graze_at = position
+		return Vector2.ZERO
+	if position.distance_to(g.position) < radius + g.radius + 12.0:
+		g.harness(self)
+		return Vector2.ZERO
+	return _walk_to(g.position, delta)
+
+
+## Taken for a recruit at this building: it walks in and is gone (Game.train).
+func walk_into(e: Entity) -> void:
+	if leader and is_instance_valid(leader):
+		leader.led.erase(self)
+	leader = null
+	claimed = null
+	into = e
+	_into_t = 0.0
+	order = "idle"
+	path = PackedVector2Array()
+	if selected:
+		game.selection.erase(self)
+		selected = false
+
+
+## Who can take a horse that's left alone: Crown men (on foot or riding; not guns, wagons
+## or balloons) and Clockwork Winders. Never the Brood.
+static func can_steal(o: Unit) -> bool:
+	if o.kind == "winder":
+		return true
+	return o.d["faction"] == "crown" and o.kind != "horse" and not Defs.HARNESSED.has(o.kind) and o.kind != "balloon"
+
+
+## Left alone (nobody leading it or coming for it, none of its side within HORSES.guard
+## tiles) with an enemy man right beside it: it changes hands.
+func _steal_check() -> void:
+	if leader != null or into != null or (claimed and is_instance_valid(claimed) and not claimed.dead and claimed.order_target == self):
+		return
+	var guard := float(Defs.HORSES["guard"]) * Defs.TILE
+	var thief: Unit = null
+	for o in game.units_near(position, guard + radius):
+		if o == self or o.dead or o.off_field or o.kind == "horse":
+			continue
+		if game.allied(o.team, team):
+			return                   # guarded
+		if thief == null and game.hostile(o.team, team) and can_steal(o) and not o.is_air() \
+				and o.position.distance_to(position) <= float(Defs.HORSES["steal"]) + o.radius + radius:
+			thief = o
+	if thief:
+		game.steal_horse(self, thief)
+
+
+# ---- guns and wagons
+
+## (a gun or wagon) a horse is hitched: it can move again.
+func harness(h: Unit) -> void:
+	if harnessed or dead:
+		return
+	harnessed = true
+	coat = h.coat
+	horse_hp = clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)
+	game.consume_unit(h)
+	HorseCoat.apply(self)
+	if team == game.human:
+		game.float_text(position + Vector2(0, -40), "harnessed", Color(0.9, 0.85, 0.6))
+
+
+## RELEASE HORSE: the horse is unhitched and stands beside it, free (for a rider). The gun
+## or wagon can't move without one; a gun goes straight to its set-up pose and still fires.
+func release_horse() -> Unit:
+	if not Defs.HARNESSED.has(kind) or not harnessed or dead or aboard:
+		return null
+	var side := Vector2(-facing.y, facing.x)
+	if side == Vector2.ZERO:
+		side = Vector2.DOWN
+	var spot := game.resolve_terrain(position + side * (radius + 14.0), position, 11.0, team)
+	var h := game._add_unit("horse", team, spot)
+	h.coat = coat if coat != "" else HorseCoat.pick()
+	HorseCoat.apply(h)
+	h.hp = h.max_hp * horse_hp
+	h.graze_at = spot
+	h.visible = visible
+	harnessed = false
+	if order in ["move", "amove"]:
+		cmd_stop()
+	path = PackedVector2Array()
+	HorseCoat.apply(self)
+	return h
+
+
+# ---- drawing
+
+## (a horse) where its bridle is, from its feet, per drawn facing (temporary art: the GRAY
+## horse sheet; facing right, x mirrored when flipped).
+const BRIDLE := {"e": Vector2(17, -27), "se": Vector2(10, -28), "s": Vector2(2, -27), "ne": Vector2(14, -29), "n": Vector2(0, -30)}
+
+
+func _draw_rein() -> void:
+	if leader == null or not is_instance_valid(leader) or dead or not visible:
+		return
+	var b: Vector2 = BRIDLE.get(anim_dir, Vector2(10, -27))
+	if anim_flip:
+		b.x = -b.x
+	var i := leader.led.find(self)
+	var hand: Vector2
+	if i <= 0:
+		var up := -34.0 if leader.is_mounted() else -15.0
+		hand = leader.position + Vector2(5.0 if leader.facing.x >= 0.0 else -5.0, up) - position
+	else:
+		var ahead: Unit = leader.led[i - 1]
+		hand = ahead.position + Vector2(0, -18) - position      # tied to the saddle of the one ahead
+	var mid := (b + hand) * 0.5 + Vector2(0, minf(6.0, b.distance_to(hand) * 0.12))
+	var col := Color(0.42, 0.27, 0.13, 0.95)
+	_rein.draw_polyline(PackedVector2Array([b, mid, hand]), col, 1.0)
+
+
+## (a dismounted horseman, TEMP_ART "feather") a plume on his hat, so he can be told from a
+## Musketeer until his own sprites come.
+func _update_feather() -> void:
+	var want: bool = Defs.TEMP_ART.get(kind, {}).get("feather", false) and sprite != null
+	if want and _feather == null:
+		_feather = Node2D.new()
+		_feather.draw.connect(func() -> void:
+			var top := -float(ArtData.UNITS[art]["anchor"].y) + 2.0
+			_feather.draw_line(Vector2(1, top + 3), Vector2(5, top - 3), Color(0.95, 0.95, 0.9), 2.0)
+			_feather.draw_line(Vector2(4, top - 2), Vector2(7, top - 5), Color(0.85, 0.15, 0.12), 2.0))
+		sprite.add_child(_feather)
+	if _feather:
+		_feather.visible = want
+		_feather.queue_redraw()

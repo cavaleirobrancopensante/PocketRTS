@@ -2004,6 +2004,11 @@ func on_unit_died(u: Unit) -> void:
 	selection.erase(u)
 	for g in groups:
 		g.erase(u)
+	if u.kind == "horse":
+		# (a horse isn't counted in the losses; the Brood can still harvest its body)
+		if brood_in_match():
+			corpses.append(u)
+		return
 	stats[u.team]["lost"] += 1
 	# veterancy: the unit that dealt the last blow gets the kill
 	var hitter = u.last_hitter
@@ -2193,8 +2198,11 @@ func add_gold(t: int, n: int) -> void:
 	stats[t]["gold"] += k
 
 
-## A queue entry paid back (`kit`: what a queued soldier was paid to come out with).
-func refund(t: int, k: String, kit: Dictionary = {}) -> void:
+## A queue entry paid back (`kit`: what a queued soldier was paid to come out with; its
+## horse, if it took one, comes back out of `at`).
+func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> void:
+	if kit.has("coat") and at != null:
+		horse_back(at, kit)
 	if Building.is_research(k):
 		var info: Dictionary = Defs.RESEARCH[k.substr(1)]
 		players[t]["gold"] += int(info["cost"])
@@ -2292,6 +2300,8 @@ func can_train(b: Building, key: String) -> String:
 			return "No eggs ready."
 	elif b.queue.size() >= 5:
 		return "Queue is full."
+	if u.get("needs_horse", false) and free_horse_at(b) == null:
+		return "Needs a horse at the %s." % b.d["name"]
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	var price := unit_price(b.team, key)
 	if players[b.team]["gold"] < price[0]:
@@ -2511,8 +2521,12 @@ func refit_options(u: Unit) -> Array:
 		return out
 	if has_tech(u.team, "armour") and not u.armoured and not u.refit.has("armour"):
 		out.append("armour")
-	if u.kind != "musketeer":
+	if not Defs.MUSKETS.has(u.kind):
 		return out
+	if has_tech(u.team, "pouch") and not u.pouch and not u.refit.has("pouch"):
+		out.append("pouch")
+	if u.kind == "dismounted":
+		return out                # (a carbine: no locks or bayonet for it)
 	var bl := best_lock(u.team)
 	if bl != "" and Defs.LOCKS.find(bl) > u.lock_level(true):
 		out.append(bl)
@@ -2523,7 +2537,7 @@ func refit_options(u: Unit) -> Array:
 
 ## Anything to refit with yet (the AUTO REFIT buttons show from then on)?
 func has_refits(t: int) -> bool:
-	return has_tech(t, "armour") or best_lock(t) != "" or has_tech(t, "bayonet")
+	return has_tech(t, "armour") or best_lock(t) != "" or has_tech(t, "bayonet") or has_tech(t, "pouch")
 
 
 func can_pay(t: int, fee: Array) -> bool:
@@ -2646,7 +2660,16 @@ func train(b: Building, key: String) -> String:
 	else:
 		add_res2(b.team, -price[1])
 	stats[b.team]["spent"] += price[0]
-	b.add_entry(k, kit_for_new(b.team, key))
+	var kit := kit_for_new(b.team, key)
+	if Defs.UNITS[k].get("needs_horse", false):
+		# the horse at the building is his: it walks in (its coat rides out with him)
+		var h := free_horse_at(b)
+		if h:
+			kit = kit.duplicate()
+			kit["coat"] = h.coat
+			kit["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
+			h.walk_into(b)
+	b.add_entry(k, kit)
 	if b.uses_eggs():
 		b.eggs -= 1
 		b.morph_t.append(0.0)
@@ -2665,7 +2688,7 @@ func cancel_train(b: Building) -> void:
 		b.eggs += 1
 	if b.queue.is_empty():
 		b.prod_t = 0.0
-	refund(b.team, k, kit)
+	refund(b.team, k, kit, b)
 	if Building.is_research(k):
 		_drop_dependent_research(b.team, k.substr(1))
 
@@ -2684,7 +2707,7 @@ func cancel_train_at(b: Building, i: int) -> void:
 		b.eggs += 1
 	elif i == 0:
 		b.prod_t = 0.0               # the next one starts from scratch
-	refund(b.team, k, kit)
+	refund(b.team, k, kit, b)
 	if Building.is_research(k):
 		_drop_dependent_research(b.team, k.substr(1))
 
@@ -2719,6 +2742,10 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
 		if not kit.is_empty():
 			u.set_kit(kit)          # (a soldier paid to come out armoured, a Musketeer with a better lock)
+		if kit.has("coat") and HorseCoat.COATS.has(String(kit["coat"])):
+			u.coat = String(kit["coat"])      # the horse that walked in
+			u.horse_hp = float(kit.get("hh", 1.0))
+			HorseCoat.apply(u)
 		if u.is_worker():
 			var site: Building = null
 			if b.dual_rally() and b.worker_rally_target is Building:
@@ -3290,6 +3317,8 @@ func find_target(u: Unit, r: float) -> Entity:
 			continue
 		if o.is_worker():
 			dd += 60.0   # prefer fighters
+		elif o.kind == "horse":
+			dd += 150.0  # a horse only when there's nothing else (better stolen than shot)
 		if careful:
 			picks.append([dd, o])
 		elif dd < bd:
@@ -5122,6 +5151,10 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 		var site := crew_site_at(p, us[0].team)
 		if site:
 			e = site
+	# horses: men right-clicking one of ours lead it (Labourers, Winders) or mount it
+	# (soldiers); a gun without its horse gets one hitched; horses sent to a building stand by it
+	if _horse_command(us, e, p, queued):
+		return
 	# infantry sent to one of our balloons: they climb in
 	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
 		load_order(us, [e])
@@ -5266,7 +5299,13 @@ func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 
 
 func army(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and not u.is_worker() and u.aboard == null)
+	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and not u.is_worker() and u.aboard == null \
+		and u.kind != "horse" and u.kind != "messenger")
+
+
+## A player's horses (bred, released, stolen; not the ones under riders or hitched to guns).
+func horses_of(t: int) -> Array:
+	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.kind == "horse")
 
 
 func labourers(t: int) -> Array:
@@ -5457,3 +5496,187 @@ func _draw_overlay() -> void:
 			var fw := st.get_width() / int(Building.FARM_ART["sail_frames"])
 			var hub: Vector2 = Building.anchor(k, r) + Vector2(Building.FARM_ART["hub"])
 			overlay.draw_texture_rect_region(st, Rect2(hub - Vector2(fw, st.get_height()) * 0.5, Vector2(fw, st.get_height())), Rect2(0, 0, fw, st.get_height()), Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))
+
+
+# ------------------------------------------------------------------ horses (Defs.HORSES)
+
+## A horse of this building's side standing within HORSES.at_building tiles of it that a
+## recruit can take (led ones too; not one walking in already or wanted by a rider), or null.
+func free_horse_at(b: Building) -> Unit:
+	var reach := float(Defs.HORSES["at_building"]) * T
+	var best: Unit = null
+	var bd := INF
+	for u in units_near(b.center(), maxf(b.rect().size.x, b.rect().size.y) * 0.75 + reach + 20.0):
+		if u.kind != "horse" or u.dead or u.off_field or u.team != b.team or u.into != null:
+			continue
+		if u.claimed != null and is_instance_valid(u.claimed) and not u.claimed.dead and u.claimed.order_target == u:
+			continue
+		var dd: float = b.edge_distance(u.position)
+		if dd <= reach + u.radius and dd < bd:
+			bd = dd
+			best = u
+	return best
+
+
+## The horses of a player standing within HORSES.at_building tiles of a building (for the card).
+func horses_at(b: Building) -> int:
+	var n := 0
+	var reach := float(Defs.HORSES["at_building"]) * T
+	for u in horses_of(b.team):
+		if u.into == null and b.edge_distance(u.position) <= reach + u.radius:
+			n += 1
+	return n
+
+
+## A cancelled recruit's horse (its coat and health in the queue entry's kit) walks back out.
+func horse_back(b: Building, kit: Dictionary) -> void:
+	var c := nearest_free(cell_of(b.rect().get_center() + Vector2(0, b.rect().size.y * 0.5 + 16.0)), 6)
+	var p := cell_center(c) if c.x >= 0 else b.center()
+	var h := _add_unit("horse", b.team, p + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+	if HorseCoat.COATS.has(String(kit.get("coat", ""))):
+		h.coat = String(kit["coat"])
+		HorseCoat.apply(h)
+	h.hp = h.max_hp * clampf(float(kit.get("hh", 1.0)), 0.05, 1.0)
+	h.graze_at = h.position
+
+
+## A Horse Breeder raises a foal: it stands at the edge of the paddock (or goes to the RALLY).
+func breed_horse(b: Building) -> Unit:
+	var r := b.rect()
+	var tries := 0
+	var p := Vector2.INF
+	while tries < 12 and p == Vector2.INF:
+		tries += 1
+		var ang := randf() * TAU
+		var q := r.get_center() + Vector2(cos(ang) * (r.size.x * 0.5 + 18.0), sin(ang) * (r.size.y * 0.5 + 18.0))
+		if _clear_at(q, 11.0, b.team):
+			p = q
+	if p == Vector2.INF:
+		var c := nearest_free(cell_of(r.get_center() + Vector2(0, r.size.y * 0.5 + 16.0)), 6)
+		if c.x < 0:
+			return null
+		p = cell_center(c)
+	var h := _add_unit("horse", b.team, p)
+	h.home = b
+	h.graze_at = p
+	if not sees_all() and not allied(b.team, fog_team()):
+		h.visible = is_visible_to(fog_team(), p)
+	if b.rally != Vector2.INF:
+		h.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)))
+	if mlog and not _first_of.has("%d:horse" % b.team):
+		_first_of["%d:horse" % b.team] = true
+		mlog.add("%s bred its first horse" % mlog.who(b.team))
+	return h
+
+
+## An unattended horse taken by an enemy man (Unit._steal_check): it's his side's now.
+func steal_horse(h: Unit, by: Unit) -> void:
+	var was := h.team
+	h.team = by.team
+	h.leader = null
+	h.claimed = null
+	h.into = null
+	h.home = null
+	h.cmd_stop()
+	h.graze_at = h.position
+	h._graze_goal = Vector2.INF
+	if h._mat:
+		h._mat.set_shader_parameter("team", team_colour(by.team))
+	selection.erase(h)
+	h.selected = false
+	for g in groups:
+		g.erase(h)
+	stats[by.team]["horses_stolen"] = int(stats[by.team].get("horses_stolen", 0)) + 1
+	if mlog:
+		mlog.add("%s stole a horse from %s" % [mlog.who(by.team), mlog.who(was)])
+	if was == human:
+		notify("A horse was stolen!")
+	if by.team == human:
+		float_text(h.position + Vector2(0, -34), "horse taken", Color(0.85, 1.0, 0.7))
+
+
+## Right-click with units on a horse, a gun or (horses only) a building. True if handled.
+func _horse_command(us: Array, e, p: Vector2, queued: bool) -> bool:
+	if e == null or e.team != us[0].team:
+		return false
+	if e is Unit and e.kind == "horse":
+		var mounts: Array = us.filter(func(u: Unit) -> bool: return u.can_mount() and not u.is_worker() and Unit.horse_free_for(e, u))
+		var leaders: Array = us.filter(func(u: Unit) -> bool: return u.can_lead() and (u.is_worker() or mounts.is_empty()) and u.lead_count() < int(Defs.HORSES["lead_max"]) and Unit.horse_free_for(e, u))
+		var who: Array = mounts if not mounts.is_empty() else leaders
+		if who.is_empty():
+			return false
+		who.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(e.position) < b.position.distance_squared_to(e.position))
+		var u: Unit = who[0]
+		u.give({"o": "mount" if not mounts.is_empty() else "lead", "e": e}, queued)
+		_ping(p, Color(0.9, 0.8, 0.5))
+		return true
+	if e is Unit and Defs.HARNESSED.has(e.kind) and not e.harnessed:
+		# a horse selected, or led by a man selected, goes and is hitched
+		var h: Unit = null
+		for u in us:
+			if u.kind == "horse" and u.into == null:
+				h = u
+				break
+			if not u.led.is_empty():
+				h = u.led[0]
+				break
+		if h == null:
+			return false
+		h.walk_into(e)
+		_ping(p, Color(0.9, 0.8, 0.5))
+		return true
+	if e is Building and us.all(func(u: Unit) -> bool: return u.kind == "horse"):
+		for u in us:
+			u.give({"o": "move", "p": approach_point(e, u.position) + Vector2(randf_range(-10, 10), randf_range(-10, 10))}, queued)
+		_ping(p, Color(0.4, 1, 0.4))
+		return true
+	return false
+
+
+## LEAD: each man takes up to HORSES.lead_max free horses of ours within HORSES.fetch tiles.
+## Returns how many horses are being fetched.
+func lead_order(list: Array) -> int:
+	var taken: Array = []
+	var n := 0
+	for u in list:
+		if not (u is Unit) or not u.can_lead():
+			continue
+		var first := true
+		while u.lead_count() < int(Defs.HORSES["lead_max"]):
+			var h: Unit = u.nearest_free_horse(float(Defs.HORSES["fetch"]), taken + u.led)
+			if h == null:
+				break
+			taken.append(h)
+			u.give({"o": "lead", "e": h}, not first)
+			first = false
+			n += 1
+	return n
+
+
+## MOUNT: each man walks to the nearest free horse of ours (a different one each).
+func mount_order(list: Array) -> int:
+	var taken: Array = []
+	var n := 0
+	for u in list:
+		if not (u is Unit) or not u.can_mount():
+			continue
+		var h: Unit = u.nearest_free_horse(float(Defs.HORSES["fetch"]), taken)
+		if h and u.cmd_mount(h):
+			taken.append(h)
+			n += 1
+	return n
+
+
+## HARNESS: each gun or wagon without a horse gets the nearest free one walking over.
+func harness_order(list: Array) -> int:
+	var taken: Array = []
+	var n := 0
+	for g in list:
+		if not (g is Unit) or not Defs.HARNESSED.has(g.kind) or g.harnessed:
+			continue
+		var h: Unit = g.nearest_free_horse(float(Defs.HORSES["fetch"]), taken)
+		if h:
+			taken.append(h)
+			h.walk_into(g)
+			n += 1
+	return n

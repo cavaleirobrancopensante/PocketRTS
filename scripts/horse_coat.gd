@@ -9,7 +9,10 @@ const COATS := ["dark", "bay", "grey", "white", "spotted"]
 const WEIGHTS := {"dark": 30, "bay": 30, "grey": 20, "white": 10, "spotted": 10}
 ## The coat each unit's sprites are painted in: that one is shown as painted. The Mortar has
 ## none (its walk's horse is dark, its other strips' chestnut): every coat is repainted.
-const NATIVE := {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": ""}
+## The riderless horse (temporary art) and the mounted men (the Horseman's and Cuirassier's
+## sprites for now: Defs.TEMP_ART) too.
+const NATIVE := {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "",
+	"horse": "", "messenger": "dark", "dragoon": "dark"}
 const MASKS := "res://assets/units/horse_masks/"
 const RAMPS := preload("res://assets/units/horse_masks/coat_ramps.png")
 
@@ -34,11 +37,19 @@ static func pick() -> String:
 
 
 ## Shows the unit's coat (after its coat changes, e.g. on loading a game).
+## (A man who got off his horse: no coat. A Powder Wagon whose horse was released: its
+## painted horse is hidden.)
 static func apply(u: Unit) -> void:
-	if u.sprite == null or not has_horse(u.kind):
+	if u.sprite == null:
 		return
 	var m := u.sprite.material as ShaderMaterial
 	if m == null:
+		return
+	m.set_shader_parameter("hide_horse", u.kind == "powder_wagon" and not u.harnessed)
+	if not has_horse(u.kind) or u.coat == "":
+		m.set_shader_parameter("coat", -1)
+		if u.kind == "powder_wagon":
+			update_mask(u)
 		return
 	var i := COATS.find(u.coat)
 	if u.coat == NATIVE[u.kind]:
