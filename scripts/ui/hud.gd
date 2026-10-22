@@ -661,6 +661,8 @@ func _build_card() -> Array:
 		list.append(["move", "MOVE", func() -> void: controls.mode = "move", true, "", ""])
 		list.append(["attack", "ATTACK", func() -> void: controls.mode = "attack", true, "", ""])
 		list.append(["stop", "STOP", func() -> void: game.command_all(game.selected_units(), "stop"), true, "", ""])
+		if not units.all(func(u: Unit) -> bool: return u.is_worker() or u.kind == "horse"):
+			list.append(["patrol", "PATROL", func() -> void: controls.mode = "patrol", true, "", ""])
 		if has_lab:
 			# workers don't need HOLD: two build pages instead, basic and advanced
 			list.append(["build", "BUILD", func() -> void:
@@ -1041,7 +1043,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
-const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
+const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATROL": "P", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
@@ -2152,6 +2154,7 @@ const CMD_TIPS := {
 	"ATTACK": "Then pick a target, or a place: they walk there fighting everything they meet.",
 	"STOP": "Drop every order and stand.",
 	"HOLD": "Stand here and fight whatever comes in reach, without chasing.",
+	"PATROL": "Then pick a place: they walk there and back, again and again, fighting whatever they meet on the way.",
 	"BUILD": "Every building this worker can put up.",
 	"RALLY": "Then pick where new units gather when they come out.",
 	"GRUBS": "Then pick a Feeding Pit (or a spot) for new grubs.",

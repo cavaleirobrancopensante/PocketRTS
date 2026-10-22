@@ -119,6 +119,8 @@ var kills := 0:                 # veterancy: enemy kills only (it shows on the s
 		kills = v
 		if sprite and VetLook.level(v) != was:
 			VetLook.apply(self)
+var patrol_a := Vector2.INF     # PATROL: the two ends he walks between (INF: not patrolling)
+var patrol_b := Vector2.INF
 var friendly_kills := 0         # our own men his blows finished off (splash): just for the card
 var harvester: Unit = null      # (a body) the grub coming to take it
 var cocoon := 0                 # (a grub) essence it carries home
@@ -1746,6 +1748,16 @@ func cmd_follow(e: Unit) -> void:
 	target = null
 
 
+## PATROL (as in StarCraft 2): attack-move to `p`, then back to where he started, and on
+## like that until given another order (fighting whatever comes on the way, then going on).
+func cmd_patrol(p: Vector2) -> void:
+	var from := plan_end() if not queue.is_empty() else position
+	cmd_move(p, not is_worker())
+	if order == "move" or order == "amove" or order == "d_amove":
+		patrol_a = from
+		patrol_b = p
+
+
 func cmd_heal(e: Unit) -> void:
 	if aboard:
 		return      # riding in a balloon
@@ -1873,6 +1885,8 @@ func give(o: Dictionary, queued := false) -> void:
 	if not queued:
 		queue.clear()
 		line_rest.clear()
+		if String(o.get("o", "")) != "patrol":
+			patrol_a = Vector2.INF       # a new order ends a patrol
 		_start(o)
 		return
 	if queue.size() >= QUEUE_MAX:
@@ -1931,6 +1945,8 @@ func _start(o: Dictionary) -> bool:
 	match String(o["o"]):
 		"move", "amove":
 			cmd_move(o["p"], o["o"] == "amove" and not is_worker())
+		"patrol":
+			cmd_patrol(o["p"])
 		"attack":
 			if e == null or not is_instance_valid(e) or not (plain or _valid_target(e)):
 				return false
@@ -2850,6 +2866,16 @@ func _tesla(want: Vector2, delta: float) -> Vector2:
 
 
 func _finish_move() -> void:
+	if patrol_a != Vector2.INF and queue.is_empty():
+		# patrolling: turn round and go back the other way
+		var back := patrol_a
+		patrol_a = patrol_b
+		patrol_b = back
+		var keep_a := patrol_a
+		cmd_move(back, not is_worker())
+		patrol_a = keep_a
+		patrol_b = back
+		return
 	order = "idle"
 	path = PackedVector2Array()
 	leash_from = position

@@ -304,7 +304,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_line_btn = "left"
 				_line_add(e.position)
 				return
-			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair":
+			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol":
 				_tap(e.position, false, e.shift_pressed)
 				return
 		_lmb_down = true
@@ -423,6 +423,9 @@ func _key(e: InputEventKey) -> void:
 		KEY_M:
 			if not units.is_empty():
 				mode = "move"
+		KEY_P:
+			if not units.is_empty():
+				mode = "patrol"
 		KEY_S:
 			game.command_all(units, "stop")
 		KEY_H:
@@ -517,6 +520,20 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 					game.group_move(units, p, true, queued)
 			else:
 				game.group_move(units, p, false, queued)
+			if queued:
+				_keep_for_shift()
+			else:
+				cancel_mode()
+			Sfx.play_any(["ui/click", "click"])
+			return
+		"patrol":
+			# each patrols from where he stands to his own spot of the bunch at the point
+			var ps := game.group_points(units, p, queued)
+			for u in units:
+				u.give({"o": "patrol", "p": ps[u]}, queued)
+			if not units.is_empty() and units[0].team == game.human:
+				Sfx.voice(units[0].kind, "attack")
+			game._ping(p, Color(1, 0.75, 0.3))
 			if queued:
 				_keep_for_shift()
 			else:

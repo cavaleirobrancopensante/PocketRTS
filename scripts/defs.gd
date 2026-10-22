@@ -682,6 +682,7 @@ const MUSKETS := ["musketeer", "dragoon", "dismounted"]
 ## dismounted_armoured, missionary_mounted) and tools/import_horse_breeder.py. Still TEMPORARY: the portraits of
 ## the new units and the Shot Pouch's and horse commands' icons.
 const TEMP_ART := {
+	"patrol": {"portrait": "move"},          # PATROL: borrows MOVE until its own icon comes
 	"horse": {"art": "horse", "portrait": "horse"},
 	"messenger": {"art": "messenger", "portrait": "messenger"},
 	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "dragoon", "portrait_armoured": "dragoon_armoured"},

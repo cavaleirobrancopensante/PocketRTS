@@ -120,6 +120,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 				ud["ra"] = _v2(u.rally_after)
 		if u.auto_mount:
 			ud["am"] = true
+		if u.patrol_a != Vector2.INF:
+			ud["pat"] = [_v2(u.patrol_a), _v2(u.patrol_b)]
 		if u.steed and ids.has(u.steed):
 			ud["steed"] = ids[u.steed]
 		if u.order == "mount" and u.order_target and ids.has(u.order_target):
@@ -410,6 +412,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if ud.get("ra") is Array:
 			u.rally_after = _to_v2(ud["ra"])
 		u.auto_mount = bool(ud.get("am", false))
+		if ud.get("pat") is Array and (ud["pat"] as Array).size() == 2:
+			u.patrol_a = _to_v2(ud["pat"][0])
+			u.patrol_b = _to_v2(ud["pat"][1])
 		if u.kind == "horse" and ud.get("graze") is Array:
 			u.graze_at = _to_v2(ud["graze"])
 	# the horses' ties: who leads which (in their string's order), a man's own horse, and a

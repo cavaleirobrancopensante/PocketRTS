@@ -5818,6 +5818,32 @@ func under_attack(e: Entity) -> void:
 		notify("Your forces are under attack!", true)
 
 
+## Where each unit of a group goes for a move to p (the bunch-up rule of group_move).
+func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
+	var out := {}
+	var n := us.size()
+	if n == 0:
+		return out
+	var from := {}
+	for u in us:
+		from[u] = u.plan_end() if queued else u.position
+	var c := Vector2.ZERO
+	for u in us:
+		c += from[u]
+	c /= n
+	var spread := 0.0
+	for u in us:
+		spread = maxf(spread, (from[u] as Vector2).distance_to(c))
+	var blob := 8.0 * sqrt(float(n)) + 4.0
+	var k := 1.0 if spread <= blob * 1.5 else blob / spread
+	for u in us:
+		var sp: Vector2 = p + ((from[u] as Vector2) - c) * k
+		if n == 1 or not is_free(cell_of(sp)) or not line_clear(p, sp):
+			sp = p
+		out[u] = sp
+	return out
+
+
 func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
 	if not us.is_empty() and us[0].team == human:
 		Sfx.voice(us[0].kind, "attack" if attack_move else "move")
@@ -5856,6 +5882,7 @@ func _ping(p: Vector2, col: Color) -> void:
 func command_all(list: Array, what: String) -> void:
 	for u in list:
 		if u is Unit and not u.dead:
+			u.patrol_a = Vector2.INF
 			if what == "stop":
 				u.cmd_stop()
 			elif what == "hold":
