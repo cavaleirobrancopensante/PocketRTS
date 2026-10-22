@@ -3664,8 +3664,12 @@ func _heal(delta: float) -> Vector2:
 		p.velocity = Vector2.ZERO
 		p.off_field = true
 		if p.is_mounted():
-			# a horseman is tended where he stands: horse and rider stay in view
-			position = p.position + Vector2(-14, 4)
+			# a horseman is tended where he stands: horse and rider stay in view, the
+			# Missionary at the horse's side (clear of it, so he doesn't hide it), facing it
+			var gap := p.radius + radius + (14.0 if is_mounted() else 4.0)
+			var sx := -1.0 if position.x <= p.position.x else 1.0
+			position = game.resolve_terrain(p.position + Vector2(sx * gap, 2), p.position, radius, team)
+			facing = Vector2(-sx, 0)
 		else:
 			p.visible = false
 			p.selected = false
@@ -4113,7 +4117,9 @@ func _anim_name() -> String:
 			if not moving and cooldown > 0.0 and target:
 				return "vent"
 		"missionary":
-			if work == "bandaging" or work == "reviving":
+			# (the bandage frames have the wounded man lying in his arms: a horseman is
+			# tended in the saddle, so the Missionary just stands at his horse's side)
+			if work == "reviving" or (work == "bandaging" and not (is_instance_valid(_patient) and _patient.is_mounted())):
 				return "bandage"
 		"skywing":
 			if sky == "landing" or sky == "lifting":
