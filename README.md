@@ -135,7 +135,16 @@ Canister, round shot, cannon splash, mortar shells, the Steam Walker's steam, th
 **EDITOR** on the main menu has two tools:
 
 - **Sandbox**: set up any match in the usual lobby, then use the SANDBOX panel in the match. You can spawn any unit or building of any faction for any player, delete things, add resources, lift the fog, switch AIs off, speed up time (x2, x4), or take **control** of another player.
-- **Map editor**: paint ground, high ground, ramps, water, fords, trees and rocks with brush sizes 1-5, and place start spots (2-4) and extra hall spots. **REMOVE** takes away spots. (Maps saved with the old rock deposits still load; the outcrops are ignored.) Mirroring (2-way or 4-way) keeps maps fair. Pick the land and an optional second biome to mix. Maps are saved on the device and show up in the Skirmish map list; PLAY takes you straight there.
+- **Map editor** (on a computer or a phone):
+  - **NEW** picks the size: presets from 48x48 (tiny 1v1) to 192x160 (4v4) and 192x192, or your own width and height in steps of 4, square, wide or tall. Pan and zoom as in a match (right drag, WASD and the wheel on a computer; two fingers on a phone, where **DRAG: PAINT / PAN** at the top makes one finger move the map too).
+  - **Terrain**: ground (also the eraser), high ground, ramps, water (lava in volcanic and ashland lands), fords, trees and rocks, with a **round or square brush of size 1-8** or **FILL** (floods an area of the same terrain). A ramp painted across a plateau's edge is squared into a clean rectangle; one that doesn't join high ground to low ground shows **red**.
+  - **LAND** and **MIX**: every biome, each with a swatch of its ground, and an optional second one blended in (diagonal, patches or middle).
+  - **PROPS**: all the decorations in a palette grouped by kind (trees, rocks, plants, ruins, buildings, camp, farm, stores, animals) with thumbnails, plus whole **groups** (farm, camp, ruins, village...) placed in one click. ERASE (or a right click) removes one. Big ones (red frame: tents, houses, arches) block like rocks; the rest are only for looks, in the editor and in the match.
+  - **Spots**: 2-8 **START** spots, each with a team (**TEAM** changes it): two even teams make a 1v1 to 4v4 map, everyone alone a free-for-all, and the map records its mode. **HALL** adds expansions, **REMOVE** takes spots away.
+  - **MIRROR** copies everything you paint and place, decorations too: TURN 180, LEFT | RIGHT, TOP | BOTTOM, 4-WAY, or TURN 90 on square maps, on any size.
+  - **CHECK** runs the named maps' own checks (`scripts/map_check.gd`): every spot reachable on foot, each main on high ground with one ramp narrow enough to wall, no decorations on ramps or on a hall's land, room for every start's economy (farms and mills), an expansion near each start, a mirror twin for everything. Problems and warnings are listed on the right; picking one outlines it on the map and moves there. A map with problems can still be saved (with a warning); one that passes also joins the random pools of its mode.
+  - **UNDO / REDO** (Ctrl+Z / Ctrl+Y), up to 40 steps. **HELP** explains it all.
+  - Maps are saved on the device (`user://maps/`, with a picture), show up in the Skirmish map list under **your own maps** with their mode and size, e.g. "Bridges (your map, 2v2, 120x100)", with their picture in the lobby; PLAY takes you straight there. (Maps saved with the old rock deposits still load; the outcrops are ignored.)
 
 ### Maps
 27 maps, chosen in Skirmish. The map list starts with six random choices: **Random 1v1 maps**, **Random 2v2 maps**, **Random 1v1+2v2 maps**, **Random 3v3 maps**, **Random 1v1+2v2+3v3 maps** and **Random all maps** (each picks, when the match starts, among its maps that hold all the players), then every map by name with its mode and size, e.g. "Ashford Crossing (1v1, 96x96)", then your own maps. Picking a map sets the players up for it (a 3v3 map: six players, three a side, keeping the first players' choices); a classic map takes up to four. If the players change afterwards (a preset, ADD PLAYER, ×) and the map no longer holds them, the choice falls back to the random pool for that many players; START stays off with a reason when nothing fits. The choice is saved with the lobby settings.
@@ -177,7 +186,7 @@ Every map is fair: it is turned through its middle, so every player has a twin s
 | Pinewall Marches | 3v3 | 144x168 | Pinewood | Walls of pine and a river with five fords |
 | The Sundered Realm | 4v4 | 192x160 | Old kingdom and ashland | Gigantic: a great river and a burnt heartland |
 
-The named maps are data in `scripts/map_data.gd` (hall spots, plateaus, rivers, ridges, woods, decoration groups) built by `scripts/mapgen.gd`. After changing one, run `tools/make_map_previews.gd` for the lobby's pictures (assets/maps).
+The named maps are data in `scripts/map_data.gd` (hall spots, plateaus, rivers, ridges, woods, decoration groups) built by `scripts/mapgen.gd`. After changing one, run `tools/make_map_previews.gd` for the lobby's pictures (assets/maps), and `tools/check_maps.gd` for the map editor's CHECK on every named map (or `custom:<name>` for one of yours; exits with 1 on a problem).
 
 ### Economy labels and the battle report
 - Each economy structure shows its crew as **X/Y** (green when full). Farms also show a harvest bar.

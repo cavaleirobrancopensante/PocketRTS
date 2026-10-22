@@ -63,7 +63,7 @@ MIRROR copies everything you do: TURN 180 (as the named maps), LEFT | RIGHT, TOP
 CHECK lists what's wrong and outlines it on the map: every start and hall spot reachable, each main on high ground with a ramp narrow enough to wall, no decorations on ramps or hall land, room for every start's economy, a mirror twin for everything. A map with problems can still be saved; one that passes also joins the random map pools of its mode.
 
 UNDO / REDO (Ctrl+Z / Ctrl+Y) go back up to 40 steps.
-Computer: left click paints, right drag or WASD moves, the wheel zooms, 1-8 set the brush. Phone: one finger paints (or pans: DRAG), two fingers move and zoom."""
+Computer: left click paints, right drag or WASD moves, the wheel zooms, 1-8 set the brush. Phone: one finger paints (or moves the map: DRAG at the top switches), two fingers move and zoom."""
 
 var game: Game
 var W := 84
@@ -303,7 +303,7 @@ func _build_ui() -> void:
 	_name_edit.add_theme_stylebox_override("normal", UiStyle.box(Color(0.08, 0.07, 0.05, 0.95), UiStyle.TRIM_DIM, 2, 7, 10.0))
 	_name_edit.text_changed.connect(func(t: String) -> void: map_name = t.strip_edges())
 	top.add_child(_name_edit)
-	var info := UiStyle.text("%s  %dx%d" % [mode(), W, H], 17, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_CENTER, true)
+	var info := UiStyle.text(("%dx%d" % [W, H]) if mode() == "-" else ("%s  %dx%d" % [mode(), W, H]), 17, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_CENTER, true)
 	info.custom_minimum_size = Vector2(104, 44)
 	info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	info.tooltip_text = "Mode (from the start spots' teams) and size in cells"
@@ -330,6 +330,14 @@ func _build_ui() -> void:
 	var play := _btn("PLAY", 80, func() -> void: _play(), "Save and play it in Skirmish")
 	UiStyle.primary(play)
 	top.add_child(play)
+	if _phone():
+		# what one finger does: paint, or move the map (kept up here, never scrolled away)
+		var pb := _btn("DRAG: " + ("PAN" if pan_mode else "PAINT"), 128, func() -> void:
+			pan_mode = not pan_mode
+			_build_ui(), "One finger paints, or moves the map")
+		if pan_mode:
+			UiStyle.chosen(pb)
+		top.add_child(pb)
 	# tools (scrolls when the screen is short)
 	var scroll := ScrollContainer.new()
 	scroll.name = "ToolScroll"
@@ -422,14 +430,6 @@ func _build_ui() -> void:
 			_build_ui(), "How the two biomes share the map")
 		bl.custom_minimum_size.y = 38
 		side.add_child(bl)
-	if _phone():
-		var pb := _btn("DRAG: " + ("PAN" if pan_mode else "PAINT"), 200, func() -> void:
-			pan_mode = not pan_mode
-			_build_ui())
-		pb.custom_minimum_size.y = 40
-		if pan_mode:
-			UiStyle.chosen(pb)
-		side.add_child(pb)
 	(func() -> void:
 		if is_instance_valid(scroll):
 			scroll.scroll_vertical = _left_scroll).call_deferred()
@@ -695,6 +695,7 @@ func _build_palette(vp: Vector2) -> void:
 	pl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pl.custom_minimum_size = Vector2(w - 28, 36)
 	v.add_child(pl)
+	v.add_child(_small_label("Red frame: blocks like a rock. Plain: looks only."))
 	var scroll := ScrollContainer.new()
 	scroll.name = "PropScroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -760,7 +761,7 @@ func _build_palette(vp: Vector2) -> void:
 
 ## CHECK's findings: each one outlined on the map; a click shows it.
 func _build_problems(vp: Vector2) -> void:
-	var w := 300.0
+	var w := 262.0
 	var p := _panel(w)
 	p.position = Vector2(vp.x - w - 8, 58)
 	p.size = Vector2(w, vp.y - 58 - 52)
@@ -1287,16 +1288,6 @@ func _draw() -> void:
 		var r: Rect2 = cell_rect.call(c)
 		draw_rect(r, Color(1, 0.15, 0.1, 0.35))
 		draw_rect(r, Color(1, 0.2, 0.15, 0.9), false, 1.5)
-	# CHECK's findings
-	if show_problems:
-		for i in problems.size():
-			var pr: Dictionary = problems[i]
-			var col := Color(1, 0.25, 0.2) if not pr["warn"] else Color(1, 0.8, 0.3)
-			var sel := i == problem_sel
-			for c in pr["cells"]:
-				var r: Rect2 = cell_rect.call(c)
-				draw_rect(r, Color(col, 0.45 if sel else 0.2))
-				draw_rect(r, Color(col, 1.0 if sel else 0.6), false, 2.0 if sel else 1.0)
 	# mirror lines
 	var mid := xf * (Vector2(W, H) * t * 0.5)
 	var tl := xf * Vector2.ZERO
@@ -1322,6 +1313,22 @@ func _draw() -> void:
 		draw_rect(r, Color(1, 0.85, 0.4, 0.15))
 		draw_rect(r, Color(1, 0.85, 0.4, 0.8), false, 2.0)
 		_text(r.get_center() + Vector2(0, 6), "HALL", clampi(int(16 * sc.x * 1.6), 10, 18), Color(1, 0.9, 0.6))
+	# CHECK's findings (over the spots: many of them are about a spot); the picked one
+	# also gets a frame round it, so it shows even zoomed far out
+	if show_problems:
+		for i in problems.size():
+			var pr: Dictionary = problems[i]
+			var col := Color(1, 0.25, 0.2) if not pr["warn"] else Color(1, 0.8, 0.3)
+			var sel := i == problem_sel
+			var box := Rect2()
+			for c in pr["cells"]:
+				var r: Rect2 = cell_rect.call(c)
+				box = r if box.size == Vector2.ZERO else box.merge(r)
+				draw_rect(r, Color(col, 0.5 if sel else 0.25))
+				draw_rect(r, Color(col, 1.0 if sel else 0.7), false, 2.0 if sel else 1.0)
+			if sel and box.size != Vector2.ZERO:
+				draw_rect(box.grow(8.0), Color(0, 0, 0, 0.6), false, 5.0)
+				draw_rect(box.grow(8.0), col, false, 3.0)
 	# map edge
 	draw_rect(Rect2(tl, br - tl), UiStyle.TRIM, false, 2.0)
 	# the brush (under the mouse, or where the finger last was)
