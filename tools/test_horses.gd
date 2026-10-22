@@ -504,12 +504,12 @@ func _pairs() -> void:
 	await _pair("dismounted", false, "cuirassier", "Horseman", "Dismounted Horseman")
 	await _pair("dismounted", true, "cuirassier", "Cuirassier", "Dismounted Cuirassier")
 	await _pair("missionary", false, "mounted_missionary", "Mounted Missionary", "Missionary")
-	# a Mounted Missionary bandages from the saddle, and gets off to raise the fallen
+	# a Mounted Missionary gets off to bandage (and back on after), and to raise the fallen
 	var mm := unit("mounted_missionary", at(300, 300))
 	var hurt := unit("musketeer", at(340, 300))
 	hurt.hp = hurt.max_hp * 0.4
-	await wait_for(func() -> bool: return hurt.hp >= hurt.max_hp, 20.0)
-	check(hurt.hp >= hurt.max_hp and mm.kind == "mounted_missionary", "a Mounted Missionary bandages from the saddle")
+	await wait_for(func() -> bool: return hurt.hp >= hurt.max_hp and mm.kind == "mounted_missionary", 30.0)
+	check(hurt.hp >= hurt.max_hp and mm.kind == "mounted_missionary", "a Mounted Missionary gets off to bandage, and back on after")
 	var fallen := unit("musketeer", at(360, 340))
 	fallen.take_damage(9999.0, null)
 	await wait_for(func() -> bool: return not fallen.dead, 25.0)

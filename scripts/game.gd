@@ -2032,7 +2032,7 @@ func on_unit_died(u: Unit) -> void:
 				for b in buildings:
 					if b.team == t and b.kind == "brood_pen" and b.built and not b.dead \
 							and b.center().distance_to(u.position) < Defs.PEN_RANGE * T:
-						var ess := int(u.d.get("body", 1)) * Defs.ESSENCE_PER_SUPPLY
+						var ess := body_supply(u) * Defs.ESSENCE_PER_SUPPLY
 						add_res2(t, ess)
 						if t == human:
 							float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
@@ -2050,7 +2050,7 @@ func on_unit_died(u: Unit) -> void:
 			for b in buildings:
 				if b.team == t and b.kind == "brood_pen" and b.built and not b.dead \
 						and b.center().distance_to(u.position) < Defs.PEN_RANGE * T:
-					var ess := int(u.d["supply"]) * Defs.ESSENCE_PER_SUPPLY
+					var ess := body_supply(u) * Defs.ESSENCE_PER_SUPPLY
 					add_res2(t, ess)
 					if t == human:
 						float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
@@ -2143,7 +2143,16 @@ func brood_in_match() -> bool:
 
 
 func corpse_value(u: Unit) -> int:
-	return int(u.d.get("body", u.d["supply"])) * int(Defs.HARVEST["per_supply"]) + u.kills
+	return body_supply(u) * int(Defs.HARVEST["per_supply"]) + u.kills
+
+
+## What a body is worth to the Brood, in supply: the unit's own, a horse's carcass 1 plus its
+## veterancy (Defs.HORSE_VET), and a rider's horse on top of him.
+static func body_supply(u: Unit) -> int:
+	var hb := 1 + int(Defs.HORSE_VET["body"]) * Unit.horse_rank(u.horse_miles)
+	if u.kind == "horse":
+		return hb
+	return int(u.d["supply"]) + (hb if u.is_mounted() else 0)
 
 
 ## The nearest unclaimed body within reach of a grub.
@@ -2726,6 +2735,7 @@ func train(b: Building, key: String) -> String:
 		if h:
 			kit["coat"] = h.coat
 			kit["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
+			kit["hm"] = snappedf(h.horse_miles, 0.1)
 			h.walk_into(b)
 		else:
 			# one click trains both: a free horse at a breeder is kept for him, or the
@@ -2818,6 +2828,10 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		if kit.has("coat") and HorseCoat.COATS.has(String(kit["coat"])):
 			u.coat = String(kit["coat"])      # the horse that walked in
 			u.horse_hp = float(kit.get("hh", 1.0))
+			u.horse_miles = float(kit.get("hm", 0.0))
+			if u.is_mounted():
+				u.max_hp += Unit.horse_bonus_hp(u.horse_miles)    # a seasoned horse under him
+				u.hp = u.max_hp
 			HorseCoat.apply(u)
 		if u.is_worker():
 			var site: Building = null
@@ -5754,6 +5768,7 @@ func horse_arrived(b: Building, h: Unit) -> void:
 			nk.erase("rid")
 			nk["coat"] = h.coat
 			nk["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
+			nk["hm"] = snappedf(h.horse_miles, 0.1)
 			b.kits[i] = nk
 			return
 
@@ -5800,6 +5815,8 @@ func horse_back(b: Building, kit: Dictionary) -> void:
 	if HorseCoat.COATS.has(String(kit.get("coat", ""))):
 		h.coat = String(kit["coat"])
 		HorseCoat.apply(h)
+	h.horse_miles = float(kit.get("hm", 0.0))
+	h.apply_horse_vet()
 	h.hp = h.max_hp * clampf(float(kit.get("hh", 1.0)), 0.05, 1.0)
 	h.graze_at = h.position
 

@@ -261,7 +261,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Horse", "hp": 60, "armor": 0, "speed": 96, "cost": 40, "time": 15.0, "supply": 0,
 		"sight": 4, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 11, "from": "horse_breeder",
-		"no_attack": true, "horse": true, "body": 1, "faction": "crown",   # body: what its carcass is worth to the Brood (as 1 supply)
+		"no_attack": true, "horse": true, "faction": "crown",
 		"about": "Bought at a Horse Breeder (40 gold). Lead it by the reins (LEAD), ride it (MOUNT), harness it to a gun or wagon, or bring it to a Barracks or Foundry for cavalry and guns. Left alone with an enemy man beside it, it's stolen.",
 	},
 	"messenger": {
@@ -397,7 +397,7 @@ const UNITS := {
 		"name": "Mounted Missionary", "hp": 60, "armor": 0, "speed": 124, "cost": 125, "time": 1.0, "supply": 1,
 		"sight": 9, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 13, "from": "",
 		"medic": true, "mounted": true, "faction": "crown",
-		"about": "A Missionary on a horse: as fast as a Messenger, unarmed. He bandages the wounded from the saddle; to raise the fallen he gets off by himself (and stays on foot). Can't be hurt unless near enemy buildings.",
+		"about": "A Missionary on a horse: as fast as a Messenger, unarmed. He gets off to bandage the wounded (and back on after); to raise the fallen he gets off by himself (and stays on foot). Can't be hurt unless near enemy buildings.",
 	},
 	"skywing": {
 		"tags": ["light"],
@@ -795,7 +795,7 @@ const CARE := {"per_kill": 20.0, "near_body": 300.0, "near_patient": 600.0, "hur
 ## for good. Idle Missionaries look for bodies within `scan` tiles. Soldiers (`kinds`) only:
 ## not labourers, guns, wagons or balloons.
 const REVIVE := {"time": 6.0, "hp": 0.5, "cross": 30.0, "window": 60.0, "scan": 10,
-	"kinds": ["musketeer", "cuirassier", "dismounted"]}
+	"kinds": ["musketeer", "cuirassier", "dismounted", "dragoon"]}
 ## Clockwork towers zap flyers with chain lightning; while they do, their field is off.
 const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "jump": 110.0, "falloff": 0.7, "off": 3.0}
 ## Horseman / Cuirassier, once the Cavalry Charge is researched: after galloping this long,
@@ -824,6 +824,11 @@ const OVERLOAD := {"time": 12.0, "damage": 1.5, "speed": 1.3, "cooldown": 0.75, 
 ## Veterancy: every kill adds damage (to a cap); a fallen unit's body holds essence for the
 ## Brood: a little for its size, more for every kill it made.
 const VET := {"per_kill": 0.01, "max": 0.5}
+## A horse's own veterancy: every `tiles` it travels under a rider or in harness (a gun's,
+## mortar's or wagon's team) it's a rank more seasoned, up to `max`: each rank +`hp` health
+## (its share of a rider's too) and +`body` supply's worth of essence in its carcass.
+const HORSE_VET := {"tiles": 100.0, "max": 3, "hp": 0.15, "body": 1}
+const HORSE_REGEN := 0.5          # hp a second: horses heal by themselves (they're never raised)
 const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
@@ -924,7 +929,7 @@ const TIPS := {
 	"cuirassier": "Fast armoured horseman (+1 armour, +30 health): a Horseman in helmet and cuirass. Needs Armour; his horse comes with him (one click). Bayonets hurt him.",
 	"horse": "Bought at a Horse Breeder (40 gold, 15 s). LEAD it, MOUNT it, harness it to a gun or wagon, or bring it to a Barracks or Foundry: cavalry and guns need one each. Left alone near an enemy man, it's stolen.",
 	"messenger": "A Labourer on a horse: very fast, unarmed, sees far. A scout. He can lead horses too.",
-	"mounted_missionary": "A Missionary on a horse: fast and unarmed. Bandages from the saddle; gets off by himself to raise the fallen.",
+	"mounted_missionary": "A Missionary on a horse: fast and unarmed. Gets off to bandage (and back on after) and to raise the fallen.",
 	"dragoon": "A Musketeer on a horse: rides fast, dismounts to fire (0.8 s), remounts to move. His reload waits while he rides.",
 	"armoured_dragoon": "A Guardsman on a horse: rides fast, dismounts to fire, remounts to move.",
 	"dismounted": "A Horseman on foot: a carbine a little weaker than a musket, and a sabre better than a bayonet. MOUNT to ride again.",

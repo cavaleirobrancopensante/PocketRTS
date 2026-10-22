@@ -226,6 +226,8 @@ var _graze_t := 0.0
 var _steal_t := 0.0
 var harnessed := true            # (a cannon, mortar, wagon) its horse is hitched
 var horse_hp := 1.0              # (a rider, a gun) his horse's health share, for when it steps off
+var horse_miles := 0.0           # (a horse) tiles travelled under a rider or in harness: its veterancy (Defs.HORSE_VET); (a rider, a gun) his horse's
+var _heal_remount := false       # (a Missionary, a patient) got off to bandage / be bandaged: back on after
 var team_horses: Array = []      # (a gun, wagon) the extra horses in its team beyond the first: {coat, hp share}
 var horse_rid := 0               # (a horse) the queue entry or rider it's reserved for; (a rider) the horse reserved for him
 var rally_after := Vector2.INF   # (a new rider waiting for his horse) where he goes once mounted
@@ -319,10 +321,33 @@ func revive() -> void:
 	cmd_stop()
 	frame_i = 0
 	anim_t = 0.0
+	if is_mounted():
+		_leave_dead_horse()
+		morph(String(Defs.FOOT[kind]))     # raised on foot: horses are never raised
 	_set_anim("idle", true)
 	_draw_key = Vector4i(-1, -1, -1, -1)
 	queue_redraw()
 	game.on_unit_revived(self)
+
+
+## A rider raised from his body: his horse stays where it fell, a carcass for the Brood.
+func _leave_dead_horse() -> void:
+	var f := facing if facing != Vector2.ZERO else Vector2.RIGHT
+	var spot := game.resolve_terrain(position - f * (radius + 10.0), position, 11.0, team)
+	var h := game._add_unit("horse", team, spot)
+	h.coat = coat if coat != "" else HorseCoat.pick()
+	HorseCoat.apply(h)
+	h.horse_miles = horse_miles
+	h.apply_horse_vet()
+	h.facing = facing
+	h.visible = visible
+	h.hp = 0.0
+	h.die()
+	h.frame_i = 99             # already down: the last frame of its fall
+	h.corpse_t = corpse_t
+	h.died_at = died_at
+	horse_miles = 0.0
+	coat = ""
 
 
 ## A soldier refitted with Armour (Defs.ARMOURED): the armoured version, with his own name,
@@ -522,6 +547,58 @@ func foot_musket() -> bool:
 ## On a horse (the horse is part of him: DISMOUNT puts it beside him).
 func is_mounted() -> bool:
 	return Defs.FOOT.has(kind)
+
+
+## A horse's rank of veterancy for `m` tiles travelled (Defs.HORSE_VET).
+static func horse_rank(m: float) -> int:
+	return mini(int(m / float(Defs.HORSE_VET["tiles"])), int(Defs.HORSE_VET["max"]))
+
+
+## The health a seasoned horse has over a green one.
+static func horse_bonus_hp(m: float) -> float:
+	return float(Defs.UNITS["horse"]["hp"]) * float(Defs.HORSE_VET["hp"]) * horse_rank(m)
+
+
+## (a horse) its health for its veterancy, keeping its share.
+func apply_horse_vet() -> void:
+	var frac := hp / maxf(max_hp, 1.0)
+	max_hp = float(d["hp"]) + horse_bonus_hp(horse_miles)
+	hp = max_hp * frac
+
+
+## Is a horse working under him (ridden, or drawing this gun or wagon)?
+func horse_working() -> bool:
+	return is_mounted() or (harnessed and Defs.HARNESSED.has(kind))
+
+
+## Horses heal by themselves; a working one gains veterancy with the ground it covers.
+func _horse_upkeep(delta: float) -> void:
+	var hmax := float(Defs.UNITS["horse"]["hp"])
+	if kind == "horse":
+		if hp < max_hp:
+			hp = minf(max_hp, hp + Defs.HORSE_REGEN * delta)
+		return
+	if not horse_working():
+		return
+	var heal := Defs.HORSE_REGEN * delta / hmax
+	horse_hp = minf(1.0, horse_hp + heal)
+	for th in team_horses:
+		th["hp"] = minf(1.0, float(th["hp"]) + heal)
+	var moved := velocity.length() * delta / Defs.TILE
+	if moved <= 0.0:
+		return
+	for th in team_horses:
+		th["m"] = float(th.get("m", 0.0)) + moved
+	var r0 := horse_rank(horse_miles)
+	horse_miles += moved
+	var r1 := horse_rank(horse_miles)
+	if r1 > r0:
+		if is_mounted():
+			var gain := horse_bonus_hp(horse_miles) - horse_bonus_hp(horse_miles - moved)
+			max_hp += gain
+			hp += gain
+		if team == game.human:
+			game.float_text(position + Vector2(0, -44), "seasoned horse (rank %d)" % r1, Color(0.95, 0.85, 0.55))
 
 
 func is_horse() -> bool:
@@ -1736,6 +1813,10 @@ func _start(o: Dictionary) -> bool:
 			if e == null or not is_instance_valid(e):
 				return false
 			cmd_revive(e)
+		"heal":
+			if e == null or not is_instance_valid(e) or not (e is Unit):
+				return false
+			cmd_heal(e)
 	return order != "idle"
 
 
@@ -2269,6 +2350,8 @@ func _physics_process(delta: float) -> void:
 	var want := Vector2.ZERO
 	# Brood on swamp: faster, and wounds close up.
 	speed = float(d["speed"])
+	if kind == "horse" or horse_working():
+		_horse_upkeep(delta)
 	if not team_horses.is_empty():
 		speed *= 1.0 + float(Defs.HORSES["team_speed"]) * team_horses.size()     # a bigger team pulls faster
 	if horse_rid != 0 and kind == "dismounted":
@@ -3666,37 +3749,46 @@ func _heal(delta: float) -> Vector2:
 		if _patient == null or not is_instance_valid(_patient) or _patient.dead:
 			_release_patient()
 			cmd_stop()
+			_heal_back_on()
 			return Vector2.ZERO
 		if work_t <= 0.0:
-			_patient.hp = _patient.max_hp
-			_patient.acid_t = 0.0
-			_patient.cross_t = Defs.CROSS_TIME
+			var pt := _patient
+			pt.hp = pt.max_hp
+			pt.acid_t = 0.0
+			pt.cross_t = Defs.CROSS_TIME
 			if team == game.human:
 				game.float_text(position + Vector2(0, -30), "healed", Color(1, 1, 1))
 			_release_patient()
 			cmd_stop()
+			pt._heal_back_on()
+			_heal_back_on()
 		return Vector2.ZERO
 	var p := order_target as Unit
 	if p == null or not is_instance_valid(p) or p.dead or p.off_field or p.cross_t > 0.0 or p.hp >= p.max_hp:
 		cmd_stop()
 		return Vector2.ZERO
 	if position.distance_to(p.position) < radius + p.radius + 10.0:
+		# bandaging is done on foot, beside the horses: a Mounted Missionary gets off first,
+		# a horseman too (and both get back on after)
+		if is_mounted():
+			_heal_remount = true
+			cmd_dismount(false, {"o": "heal", "e": p})
+			return Vector2.ZERO
+		if p.is_mounted():
+			if p.order != "dismount":
+				p._heal_remount = true
+				p.cmd_dismount(false, {})
+			return Vector2.ZERO          # (waits while he gets off)
+		if p.order == "dismount":
+			return Vector2.ZERO
 		_patient = p
 		p.cmd_stop()
 		p.velocity = Vector2.ZERO
 		p.off_field = true
-		if p.is_mounted():
-			# a horseman is tended where he stands: horse and rider stay in view, the
-			# Missionary at the horse's side (clear of it, so he doesn't hide it), facing it
-			var gap := p.radius + radius + (14.0 if is_mounted() else 4.0)
-			var sx := -1.0 if position.x <= p.position.x else 1.0
-			position = game.resolve_terrain(p.position + Vector2(sx * gap, 2), p.position, radius, team)
-			facing = Vector2(-sx, 0)
-		else:
-			p.visible = false
-			p.selected = false
-			game.selection.erase(p)
-			position = p.position
+		p.visible = false
+		p.selected = false
+		game.selection.erase(p)
+		position = p.position
 		work = "bandaging"
 		work_t = Defs.BANDAGE_TIME
 		Sfx.play("combat/missionary_heal", position)
@@ -3708,6 +3800,15 @@ func _heal(delta: float) -> Vector2:
 		repath_t = 0.8
 		_request_path(p.position)
 	return _follow(delta)
+
+
+## (a Missionary or his patient, after a bandage) back on the horse he got off for it.
+func _heal_back_on() -> void:
+	if not _heal_remount:
+		return
+	_heal_remount = false
+	if not is_mounted() and Defs.MOUNTS.has(kind):
+		_try_remount({})
 
 
 ## Missionary: walk to the body and raise the soldier (kneeling over him as for a bandage).
@@ -4139,9 +4240,7 @@ func _anim_name() -> String:
 			if not moving and cooldown > 0.0 and target:
 				return "vent"
 		"missionary":
-			# (the bandage frames have the wounded man lying in his arms: a horseman is
-			# tended in the saddle, so the Missionary just stands at his horse's side)
-			if work == "reviving" or (work == "bandaging" and not (is_instance_valid(_patient) and _patient.is_mounted())):
+			if work == "bandaging" or work == "reviving":
 				return "bandage"
 		"skywing":
 			if sky == "landing" or sky == "lifting":
@@ -4943,6 +5042,7 @@ func do_mount(h: Unit) -> void:
 		h.leader.led.erase(h)
 	led.erase(h)
 	horse_hp = clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)
+	horse_miles = h.horse_miles
 	coat = h.coat
 	if horse_rid != 0 and h.horse_rid != horse_rid:
 		game.release_rid(team, horse_rid)     # (another horse: the one kept for him is free again)
@@ -5002,6 +5102,8 @@ func do_dismount() -> void:
 	var h := game._add_unit("horse", team, spot)
 	h.coat = coat if coat != "" else HorseCoat.pick()
 	HorseCoat.apply(h)
+	h.horse_miles = horse_miles
+	h.apply_horse_vet()
 	h.hp = h.max_hp * horse_hp
 	h.facing = facing
 	h.graze_at = spot
@@ -5009,6 +5111,7 @@ func do_dismount() -> void:
 	h.visible = visible
 	var aft := after
 	after = {}
+	horse_miles = 0.0
 	morph(String(Defs.FOOT[kind]))
 	steed = h
 	order = "idle"
@@ -5031,6 +5134,8 @@ func morph(k: String) -> void:
 	radius = float(d["radius"])
 	speed = float(d["speed"])
 	max_hp = float(d["hp"])
+	if is_mounted():
+		max_hp += horse_bonus_hp(horse_miles)      # a seasoned horse under him
 	art = Defs.art_for(k, false) if ArtData.UNITS.has(Defs.art_for(k, false)) else k
 	if arm:
 		put_on_armour()
@@ -5275,7 +5380,7 @@ func harness(h: Unit) -> void:
 		return
 	if harnessed:
 		# another horse for the team (in front of the others)
-		team_horses.append({"coat": h.coat, "hp": clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)})
+		team_horses.append({"coat": h.coat, "hp": clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0), "m": h.horse_miles})
 		game.consume_unit(h)
 		if game.mlog and not game._first_of.has("%d:team" % team):
 			game._first_of["%d:team" % team] = true
@@ -5287,6 +5392,7 @@ func harness(h: Unit) -> void:
 	harnessed = true
 	coat = h.coat
 	horse_hp = clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)
+	horse_miles = h.horse_miles
 	game.consume_unit(h)
 	HorseCoat.apply(self)
 	if team == game.human:
@@ -5310,12 +5416,17 @@ func release_horse() -> Unit:
 		var th: Dictionary = team_horses.pop_back()
 		h.coat = String(th.get("coat", "")) if HorseCoat.COATS.has(String(th.get("coat", ""))) else HorseCoat.pick()
 		HorseCoat.apply(h)
+		h.horse_miles = float(th.get("m", 0.0))
+		h.apply_horse_vet()
 		h.hp = h.max_hp * clampf(float(th.get("hp", 1.0)), 0.05, 1.0)
 		queue_redraw()
 		return h
 	h.coat = coat if coat != "" else HorseCoat.pick()
 	HorseCoat.apply(h)
+	h.horse_miles = horse_miles
+	h.apply_horse_vet()
 	h.hp = h.max_hp * horse_hp
+	horse_miles = 0.0
 	harnessed = false
 	if order in ["move", "amove"]:
 		cmd_stop()

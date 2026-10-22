@@ -108,10 +108,12 @@ static func save(game: Game, cfg: Dictionary) -> void:
 				ud["graze"] = _v2(u.graze_at)
 		if u.is_mounted() or Defs.HARNESSED.has(u.kind):
 			ud["hh"] = snappedf(u.horse_hp, 0.01)
+		if u.horse_miles > 0.0:
+			ud["hm"] = snappedf(u.horse_miles, 0.1)
 		if Defs.HARNESSED.has(u.kind) and not u.harnessed:
 			ud["harn"] = false
 		if not u.team_horses.is_empty():
-			ud["team"] = u.team_horses.map(func(th: Dictionary) -> Array: return [String(th.get("coat", "")), snappedf(float(th.get("hp", 1.0)), 0.01)])
+			ud["team"] = u.team_horses.map(func(th: Dictionary) -> Array: return [String(th.get("coat", "")), snappedf(float(th.get("hp", 1.0)), 0.01), snappedf(float(th.get("m", 0.0)), 0.1)])
 		if u.horse_rid != 0:
 			ud["rid"] = u.horse_rid      # a horse kept for a recruit, or the new rider it's kept for
 			if u.rally_after != Vector2.INF:
@@ -391,13 +393,18 @@ static func restore(game: Game, d: Dictionary) -> void:
 			u.haul_shots = float(hl[1])
 			u.haul_at = Vector2(float(hl[2]), float(hl[3]))
 		u.horse_hp = float(ud.get("hh", 1.0))
+		u.horse_miles = float(ud.get("hm", 0.0))
+		if u.horse_miles > 0.0 and (u.kind == "horse" or u.is_mounted()):
+			# a seasoned horse's health (the saved hp was capped at a green one's)
+			u.max_hp += Unit.horse_bonus_hp(u.horse_miles)
+			u.hp = minf(float(ud.get("hp", u.hp)), u.max_hp)
 		if Defs.HARNESSED.has(u.kind) and not bool(ud.get("harn", true)):
 			u.harnessed = false
 			HorseCoat.apply(u)
 		if Defs.HARNESSED.has(u.kind) and ud.get("team") is Array:
 			for th in ud["team"]:
-				if th is Array and th.size() == 2 and u.horse_count() < int(Defs.HORSES["team_max"]):
-					u.team_horses.append({"coat": String(th[0]), "hp": float(th[1])})
+				if th is Array and th.size() >= 2 and u.horse_count() < int(Defs.HORSES["team_max"]):
+					u.team_horses.append({"coat": String(th[0]), "hp": float(th[1]), "m": float(th[2]) if th.size() > 2 else 0.0})
 		u.horse_rid = int(ud.get("rid", 0))
 		if ud.get("ra") is Array:
 			u.rally_after = _to_v2(ud["ra"])
