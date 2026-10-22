@@ -142,6 +142,8 @@ func _page() -> Control:
 	ui_layer.add_child(_backdrop)
 	menu = Control.new()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if OS.has_feature("web") and Settings.pc():
+		menu.offset_bottom = -30      # room under the buttons for the F11 line (_update_f11_hint)
 	menu.theme = UiStyle.theme()
 	ui_layer.add_child(menu)
 	return menu
@@ -1552,31 +1554,31 @@ func _process(delta: float) -> void:
 				_rotate_paused = false
 
 
-## Browser on a computer: "Press F11 for full screen" until the browser is full screen.
-## (A page can't make the browser go full screen itself in a way Esc won't undo.)
+## Browser on a computer: in the menus (never in a match) a line under the buttons says how
+## full screen works: F11 in, F11 again out. (A page can't put the browser in a full screen
+## that Esc won't undo, so it's the browser's own.)
 func _update_f11_hint() -> void:
-	if not OS.has_feature("web") or not Settings.pc():
+	var show := OS.has_feature("web") and Settings.pc() and game == null
+	if not show:
 		if _f11_hint:
 			_f11_hint.visible = false
 		return
-	# (Brave hides the real screen size from pages, so the size test alone never sees its
-	# F11: the display-mode query and "no browser frame around the page" catch it there)
-	var full := bool(JavaScriptBridge.eval("!!(document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches || window.innerHeight >= screen.height - 2 || (window.outerHeight > 0 && window.outerHeight - window.innerHeight <= 1 && window.outerWidth - window.innerWidth <= 1 && window.innerHeight > 500))", true))
 	if _f11_hint == null:
 		var layer := CanvasLayer.new()
 		layer.layer = 30
 		add_child(layer)
 		_f11_hint = PanelContainer.new()
 		_f11_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_f11_hint.add_theme_stylebox_override("panel", UiStyle.box(Color(0.105, 0.09, 0.07, 0.85), UiStyle.TRIM, 2, 10, 16.0))
-		var l := UiStyle.text("Press F11 for full screen", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_CENTER, true)
+		_f11_hint.add_theme_stylebox_override("panel", UiStyle.box(Color(0.105, 0.09, 0.07, 0.75), UiStyle.TRIM, 1, 8, 2.0))
+		var l := UiStyle.text("Press F11 to go full screen, and F11 again to leave it", 16, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_CENTER, true)
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_f11_hint.add_child(l)
-		_f11_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		_f11_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 		_f11_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
-		_f11_hint.position.y = 74
+		_f11_hint.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		_f11_hint.offset_bottom = -3
 		layer.add_child(_f11_hint)
-	_f11_hint.visible = not full
+	_f11_hint.visible = true
 
 
 ## A phone outline with a turning arrow.

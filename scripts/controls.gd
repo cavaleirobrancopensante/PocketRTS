@@ -658,6 +658,29 @@ func _finish_box(add := false) -> void:
 		for x in game.selection:
 			if is_instance_valid(x) and not list.has(x):
 				list.append(x)
+	if list.is_empty() and not add:
+		# nothing of yours in the box (as in StarCraft 2): one enemy (or loose) unit in it,
+		# the one nearest its middle, else one of their buildings, to look at, never to order
+		var mid := r.get_center()
+		var best: Entity = null
+		var bd := INF
+		for u in game.units:
+			if u.team == game.human or u.dead or u.off_field or not u.visible:
+				continue
+			var sp: Vector2 = xf * (u.position + Vector2(0, -10))
+			if r.has_point(sp) and sp.distance_to(mid) < bd:
+				bd = sp.distance_to(mid)
+				best = u
+		if best == null:
+			for bb in game.buildings:
+				if bb.team == game.human or bb.dead or not bb.visible or game.hidden_ghost(bb, game.controlled_team()):
+					continue
+				var br2: Rect2 = bb.rect()
+				if r.intersects(Rect2(xf * br2.position, br2.size * xf.get_scale())):
+					best = bb
+					break
+		if best:
+			list = [best]
 	if not list.is_empty():
 		game.set_selection(list)
 		Sfx.play_any(["ui/click", "click"])
