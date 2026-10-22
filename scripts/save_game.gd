@@ -76,7 +76,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 	# every saved unit's number (in this list's order), so horses can name who leads them
 	var ids := {}
 	for u in game.units:
-		if u.dead or u.off_field or (u.kind == "horse" and u.into is Building):
+		if u.dead or u.off_field or (u.kind == "horse" and is_instance_valid(u.into) and u.into is Building):
 			continue           # (a horse walking into a building is already in its queue entry)
 		ids[u] = ids.size()
 	for u in game.units:

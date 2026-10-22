@@ -4733,7 +4733,7 @@ func can_mount() -> bool:
 ## A horse of ours `u` may take: alive, of his side, nobody else coming for it, not walking
 ## into a building or to a gun, and not led by someone else.
 static func horse_free_for(h, u: Unit) -> bool:
-	return h is Unit and is_instance_valid(h) and h.kind == "horse" and not h.dead and not h.off_field \
+	return h != null and is_instance_valid(h) and h is Unit and h.kind == "horse" and not h.dead and not h.off_field \
 		and h.team == u.team and h.into == null and (h.claimed == null or h.claimed == u or not is_instance_valid(h.claimed)) \
 		and (h.leader == null or h.leader == u or not is_instance_valid(h.leader))
 

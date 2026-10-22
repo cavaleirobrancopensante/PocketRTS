@@ -1562,9 +1562,9 @@ func _draw_panel(font: Font) -> void:
 			elif uu.kind == "horse":
 				if uu.leader and is_instance_valid(uu.leader):
 					info = "Led by a %s." % uu.leader.d["name"]
-				elif uu.into is Building:
+				elif is_instance_valid(uu.into) and uu.into is Building:
 					info = "Walking into the %s." % uu.into.d["name"]
-				elif uu.into is Unit:
+				elif is_instance_valid(uu.into) and uu.into is Unit:
 					info = "Going to be harnessed to the %s." % uu.into.d["name"]
 				elif uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu:
 					info = "A %s is coming for it." % uu.claimed.d["name"]
