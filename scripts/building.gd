@@ -167,6 +167,8 @@ func _ready() -> void:
 		field.position = rect().position - position
 		add_child(field)
 		y_sort_enabled = true       # its scarecrows stand among the labourers
+	if kind == "gate":
+		y_sort_enabled = true       # its sprite sorts a pixel below it (_update_sprite)
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -611,9 +613,42 @@ func set_vertical(v: bool) -> void:
 		vertical = v
 		_update_sprite()
 var _gate_t := 0.0
+var _swing_t := 0.0              # the gate is swinging (opening or shutting): drawn half open
+const GATE_SWING := 0.3
+
+
+## Palisade (kind "wall"): which neighbours this piece joins (Game.wall_links: N 1, E 2,
+## S 4, W 8), and so which picture it shows, like Age of Empires 2's walls.
+var links := 2 | 8
+
+
+func set_links(m: int) -> void:
+	if links != m:
+		links = m
+		_update_sprite()
+
+
+## The picture of a palisade piece joined to these neighbours (assets/buildings, made by
+## tools/import_palisade.py): "wall_<links>_built", links in "nesw" order, "post" for none.
+static func wall_piece(m: int) -> String:
+	var out := ""
+	for i in 4:
+		if m & (1 << i):
+			out += "nesw"[i]
+	return "wall_%s" % (out if out != "" else "post")
+
+
+## A palisade piece's construction / damaged / destroyed picture: the straight's that runs
+## the piece's way (east-west when it joins east or west, else north-south).
+static func wall_axis(m: int) -> String:
+	return "wall_ew" if m & (2 | 8) else "wall_ns"
 
 
 func _gate(delta: float) -> void:
+	if _swing_t > 0.0:
+		_swing_t -= delta
+		if _swing_t <= 0.0:
+			_update_sprite()
 	_gate_t -= delta
 	if _gate_t > 0.0:
 		return
@@ -632,6 +667,7 @@ func _gate(delta: float) -> void:
 	var want := friend and not foe
 	if want != gate_open:
 		gate_open = want
+		_swing_t = GATE_SWING
 		_update_sprite()
 
 
@@ -784,15 +820,24 @@ func _update_sprite() -> void:
 		state = "construction"
 	elif hp < max_hp * 0.5:
 		state = "damaged"
-	if kind == "gate" and built and not dead and gate_open:
+	if kind == "gate" and built and not dead and _swing_t > 0.0:
+		state = "half"
+	elif kind == "gate" and built and not dead and gate_open:
 		state = "open_damaged" if state == "damaged" else "open"
 	var base := kind
 	if kind == "gate" and vertical and ResourceLoader.exists("res://assets/buildings/gate_v_%s.png" % state):
 		base = "gate_v"
+	if kind == "wall":
+		base = wall_piece(links) if state == "built" else wall_axis(links)
 	var t := farm_body(state) if kind == "farm" else Game.tex("res://assets/buildings/%s_%s.png" % [base, state])
 	if sprite.texture != t:
 		sprite.texture = t
 		sprite.offset = body_offset(kind, t)
+		if kind == "gate":
+			# a gate's posts overlap the palisade beside it: it sorts a pixel lower, so it's
+			# drawn over its neighbours on the same row (and still behind units in front)
+			sprite.position.y = 1.0
+			sprite.offset.y -= 1.0
 	if sails:
 		sails.visible = seeded and Array(FARM_ART["sail_states"]).has(state)
 	if not seeded and not dead:

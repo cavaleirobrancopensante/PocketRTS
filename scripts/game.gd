@@ -409,6 +409,7 @@ func _remove_quietly(b: Building) -> void:
 	b.dead = true
 	b.queue_free()
 	_astar_dirty = true
+	relink_walls(b.cell)
 
 
 ## Gates face the way their wall runs: drawn side-on in a north-south wall. Each gate
@@ -429,6 +430,73 @@ func _orient_gates(around: Vector2i) -> void:
 			if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
 				ew += 2 if solid[idx(cc)] >= 3 else 1
 		b.set_vertical(ns > ew)
+
+
+## Palisade auto-tiling (as in Age of Empires 2): each wall piece shows the picture for
+## which of its four neighbours (N, E, S, W: bits 1, 2, 4, 8) are its side's walls or
+## gates. A gate joins only east or west: north or south of a gate the line just ends (the
+## stakes would stand in its gateway or in front of its doors; its posts take their place). A
+## ghost site joins only in its own side's (and allies') eyes. plan: cells -> kind of
+## pieces about to be laid (the placement preview).
+const LINK_DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+
+
+func _links_from(c: Vector2i, kinds: Dictionary) -> int:
+	var m := 0
+	for i in 4:
+		var k: String = kinds.get(c + LINK_DIRS[i], "")
+		if k == "wall" or (k == "gate" and i % 2 == 1):
+			m |= 1 << i
+	return m
+
+
+## The kinds of side t's wall and gate pieces within `r` cells (Manhattan) of c, as seen
+## by whoever is watching.
+func _line_kinds(t: int, c: Vector2i, r: int) -> Dictionary:
+	var out := {}
+	var ft := fog_team()
+	for b in buildings:
+		if b.team != t or b.dead or not (b.kind == "wall" or b.kind == "gate"):
+			continue
+		var dc: Vector2i = b.cell - c
+		if absi(dc.x) + absi(dc.y) > r or (b.ghost and hidden_ghost(b, ft)):
+			continue
+		out[b.cell] = b.kind
+	return out
+
+
+func wall_links(t: int, c: Vector2i, plan: Dictionary = {}) -> int:
+	var kinds := _line_kinds(t, c, 1)
+	for pc in plan:
+		if not kinds.has(pc):
+			kinds[pc] = plan[pc]
+	return _links_from(c, kinds)
+
+
+## Re-pick the pictures of the wall pieces on and round a cell whose piece changed (built,
+## placed, lost, abandoned, swapped, or a ghost turned real).
+func relink_walls(c: Vector2i) -> void:
+	for t in players.size():
+		var kinds := _line_kinds(t, c, 2)
+		if kinds.is_empty():
+			continue
+		for b in buildings:
+			if b.kind == "wall" and b.team == t and not b.dead and absi(b.cell.x - c.x) + absi(b.cell.y - c.y) <= 1:
+				b.set_links(_links_from(b.cell, kinds))
+
+
+## The picture of a wall or gate about to be laid at c (the placement preview): the
+## palisade piece its neighbours (and the rest of the planned line) make; a gate turned
+## the way its line runs.
+func line_ghost_tex(k: String, c: Vector2i, plan: Dictionary) -> Texture2D:
+	if k == "wall":
+		return tex("res://assets/buildings/%s_built.png" % Building.wall_piece(wall_links(human, c, plan)))
+	var kinds := _line_kinds(human, c, 1)
+	for pc in plan:
+		kinds[pc] = plan[pc]
+	var ns := int(kinds.has(c + Vector2i(0, -1))) + int(kinds.has(c + Vector2i(0, 1)))
+	var ew := int(kinds.has(c + Vector2i(-1, 0))) + int(kinds.has(c + Vector2i(1, 0)))
+	return tex("res://assets/buildings/%s_built.png" % ("gate_v" if ns > ew else "gate"))
 
 
 ## Lay a line of walls or gates; returns how many pieces went down.
@@ -1512,6 +1580,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := fals
 		_reserve_ghost(b, true)
 		if not sees_all() and hidden_ghost(b, fog_team()):
 			b.visible = false              # (another side's plan: never shown)
+		if Defs.BUILDINGS[k].get("line", false):
+			relink_walls(c)
 		b._update_sprite()
 	else:
 		_solidify(b)
@@ -1538,6 +1608,7 @@ func _solidify(b: Building, keep: Array = []) -> void:
 		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows: men walk them, nothing is built on them
 	if Defs.BUILDINGS[k].get("line", false):
 		_orient_gates(c)
+		relink_walls(c)
 	_push_units_out(b.rect(), keep)
 	_astar_dirty = true
 	b._update_sprite()
@@ -1727,6 +1798,8 @@ func remove_ghost(b: Building) -> void:
 	b.visible = false
 	b.rubble_t = 25.0           # (freed a few seconds on, like a wrecked site)
 	_recount_supply(b.team)
+	if Defs.BUILDINGS[b.kind].get("line", false):
+		relink_walls(b.cell)
 
 
 ## The nearest free cell, preferring one on the open map (not a sealed pocket between
@@ -2002,11 +2075,14 @@ func _killer(e: Entity) -> int:
 
 
 func on_building_died(b: Building) -> void:
+	var line: bool = Defs.BUILDINGS[b.kind].get("line", false)
 	if b.ghost:
 		_reserve_ghost(b, false)
 		selection.erase(b)
 		buildings.erase(b)
 		_recount_supply(b.team)
+		if line:
+			relink_walls(b.cell)
 		return
 	# the land stays tired (its soil / ground / coal and its saltpetre / ore drawn out) for the next hall here
 	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
@@ -2016,6 +2092,8 @@ func on_building_died(b: Building) -> void:
 	selection.erase(b)
 	buildings.erase(b)
 	_recount_supply(b.team)
+	if line:
+		relink_walls(b.cell)          # (the ruin keeps the picture it had)
 	stats[b.team]["bld_lost"] += 1
 	var k := _killer(b)
 	if mlog and (b.built or k >= 0):
@@ -5182,12 +5260,20 @@ func _draw_overlay() -> void:
 	if controls and controls.mode == "place" and controls.line_from.x >= 0:
 		# laying a wall: every piece from the start to here
 		var lk: String = controls.place_kind
-		var lt: Texture2D = tex("res://assets/buildings/%s_built.png" % lk)
 		var gold := int(players[human]["gold"])
-		for lc in line_cells(controls.line_from, controls.ghost_cell):
+		var cells := line_cells(controls.line_from, controls.ghost_cell)
+		var plan := {}
+		var oks := []
+		for lc in cells:
 			var lok := placement_problem(human, lk, lc) == "" and gold >= int(Defs.BUILDINGS[lk]["cost"])
 			if lok:
 				gold -= int(Defs.BUILDINGS[lk]["cost"])
+				plan[lc] = lk
+			oks.append(lok)
+		for i in cells.size():
+			var lc: Vector2i = cells[i]
+			var lok: bool = oks[i]
+			var lt := line_ghost_tex(lk, lc, plan)
 			overlay.draw_rect(Rect2(Vector2(lc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if lok else Color(1, 0.3, 0.3, 0.4))
 			overlay.draw_texture(lt, Vector2(lc) * T + Vector2(T * 0.5, T) + Vector2(-lt.get_width() * 0.5, -lt.get_height() + 6), Color(1, 1, 1, 0.6) if lok else Color(1, 0.5, 0.5, 0.4))
 	elif controls and controls.mode == "place":
@@ -5201,6 +5287,8 @@ func _draw_overlay() -> void:
 				var free: bool = is_free(cc) and (demo or explored[idx(cc)] == 1) and (not needs_swamp(k) or swamp[human][idx(cc)] == 1) if in_map(cc) else false
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
 		var t: Texture2D = Building.farm_body("built") if k == "farm" else tex("res://assets/buildings/%s_built.png" % k)
+		if Defs.BUILDINGS[k].get("line", false):
+			t = line_ghost_tex(k, c, {c: k})
 		var r := Rect2(Vector2(c) * T, Vector2(size) * T)
 		if k == "farm":
 			overlay.draw_texture(tex("res://assets/buildings/farm_field_young.png"), r.position, Color(1, 1, 1, 0.5) if ok else Color(1, 0.5, 0.5, 0.4))

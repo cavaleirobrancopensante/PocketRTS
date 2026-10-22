@@ -394,14 +394,14 @@ const BUILDINGS := {
 	},
 	# Crown fortifications: one tile each, laid in a line (pick the start, then the end).
 	"wall": {
-		"name": "Stone Wall", "hp": 300, "armor": 2, "cost": 25, "time": 8.0, "size": Vector2i(1, 1),
+		"name": "Palisade", "hp": 300, "armor": 2, "cost": 25, "time": 8.0, "size": Vector2i(1, 1),
 		"supply": 0, "sight": 3, "trains": [], "line": true, "faction": "crown",
-		"about": "Blocks the way. Lay it in a line: pick where it starts, then where it ends. Wall off your ramp and keep a gate.",
+		"about": "A wooden palisade: blocks the way. Lay it in a line: pick where it starts, then where it ends; the stakes join up with your other palisade and gates. Wall off your ramp and keep a gate.",
 	},
 	"gate": {
 		"name": "Gate", "hp": 300, "armor": 2, "cost": 50, "time": 12.0, "size": Vector2i(1, 1),
 		"supply": 0, "sight": 4, "trains": [], "line": true, "gate": true, "faction": "crown",
-		"about": "A piece of wall that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own wall to swap a piece for a gate. It faces the way the wall runs; ROTATE turns it by hand.",
+		"about": "A piece of palisade that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own palisade to swap a piece for a gate. It faces the way the palisade runs; ROTATE turns it by hand.",
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
@@ -698,8 +698,8 @@ const TIPS := {
 	# Crown buildings
 	"town_hall": "Trains Labourers. Allows 2 Farms and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
 	"cottage": "Houses 8 more supply.",
-	"wall": "Blocks the way. Lay it in a line: pick the start, then the end.",
-	"gate": "A wall piece that opens for your side only. Lay it onto your own wall to swap a piece.",
+	"wall": "Palisade: blocks the way. Lay it in a line: pick the start, then the end.",
+	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece.",
 	"barracks": "Trains Musketeers and Cuirassiers. Researches Armour and the musket locks, and refits Musketeers with them.",
 	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons. Lets the Barracks train Cuirassiers.",
 	"farm": "Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
