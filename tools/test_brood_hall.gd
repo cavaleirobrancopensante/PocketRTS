@@ -123,8 +123,10 @@ func _run() -> void:
 	var spot := free_spot(h.cell, 4, 3)
 	g._add_building("gorge_pit", 0, spot, true)
 	await wait(0.2)
+	var gold0 := int(p["gold"])
+	var res0 := float(p["res2"])
 	why = g.start_hall_upgrade(h)
-	check(why == "" and int(p["gold"]) == 750 and absf(float(p["res2"]) - 150.0) < 0.01, "   BROODMOUND started: 250 biomass + 50 essence (%s, %d / %.0f)" % [why, int(p["gold"]), float(p["res2"])])
+	check(why == "" and gold0 - int(p["gold"]) == 250 and absf(res0 - float(p["res2"]) - 50.0) < 0.01, "   BROODMOUND started: 250 biomass + 50 essence (%s, %d / %.0f)" % [why, int(p["gold"]), float(p["res2"])])
 	await wait(10.0)
 	var ut: float = h.upgrade_t
 	SaveGame.save(g, {"map": "hollowfen", "seed": 4242})

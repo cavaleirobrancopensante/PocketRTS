@@ -33,6 +33,7 @@ python3 tools/make_packs.py              # Clockwork battery backpacks (after ev
 python3 tools/import_deposits.py         # saltpetre / ore deposits (4 states), chips, icons, sparkle
 python3 tools/import_round11.py          # painted portraits, research + ability icons, Engine Hall,
                                          # musketeer bayonet strips (last: replaces earlier icons/melee)
+python3 tools/import_command_icons.py     # command icons: hold fire / fire at will, hold, patrol, rally, demolish
 python3 tools/import_armoury.py          # the Crown Armoury (4 states, found by itself on the sheet), its
                                          # build icon, the Armoury research icons and the Horseman /
                                          # Guardsman portraits (after round 11: replaces research_armour

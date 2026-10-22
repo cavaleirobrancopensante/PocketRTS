@@ -239,6 +239,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex
+		game.fog_base_dirty = true
 	# (Farms last: in saves from before Farms grew (to 5x4, then 6x5 tiles) each may have to
 	# shift a little to fit between what stands round it)
 	var blist: Array = Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) != "farm") \

@@ -1605,7 +1605,16 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	var c0: Vector2 = around.rect().get_center() / T
 	var mid := Vector2(W, H) * 0.5
 	var best := Vector2i(-1, -1)
-	var bs := INF
+	# every open cell is scored first, then the full placement test runs from the best score
+	# down until one passes (it used to run on every cell: a hall's search took ~100 ms)
+	var keys := PackedInt64Array()
+	var cells: Array[Vector2i] = []
+	var pair := kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0)
+	var pair_at: Array[Vector2] = []
+	if pair:
+		for b in buildings:
+			if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
+				pair_at.append(b.center())
 	for y in range(int(c0.y) - max_d - 2, int(c0.y) + max_d + 2):
 		for x in range(int(c0.x) - max_d - 2, int(c0.x) + max_d + 2):
 			var cell := Vector2i(x, y)
@@ -1613,7 +1622,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			var dd := cc.distance_to(c0)
 			if dd < min_d or dd > max_d:
 				continue
-			if not _footprint_open(cell, size) or placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
+			if not _footprint_open(cell, size):
 				continue
 			var score := dd
 			if prefer == "far":
@@ -1632,19 +1641,24 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				# tucked behind the hall, away from the middle of the map (like minerals
 				# behind a command centre), and close to it
 				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
-			if kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0):
+			if pair:
 				# Boilers and crushers close together (once there's a Boiler; the starting crusher
 				# goes behind the hall): a battery fades on a long road, and a Boiler's Winders
 				# must be back for the next one within a few seconds
 				var near := INF
-				for b in buildings:
-					if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
-						near = minf(near, b.center().distance_to(cc * T) / T)
+				for pc in pair_at:
+					near = minf(near, pc.distance_to(cc * T) / T)
 				if near < INF:
 					score += maxf(0.0, near - SOURCE_NEAR) * 3.0
-			if score < bs:
-				bs = score
-				best = cell
+			# (sorted by score, then by the order the cells were looked at, as before)
+			keys.append(int(round((score + 100000.0) * 1000.0)) * 1048576 + cells.size())
+			cells.append(cell)
+	keys.sort()
+	for k in keys:
+		var cell: Vector2i = cells[k % 1048576]
+		if placement_problem(t, kind, cell, true, true) == "" and margin_free(cell, size):
+			best = cell
+			break
 	_spot_halls = []
 	_spot_all_halls = []
 	_in_spot = false
@@ -4019,10 +4033,39 @@ func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -
 	return before
 
 
+## (every moving unit asks this a few times a tick: the cells are worked out here, without
+## calling cell_of and passable for each of the five points)
 func _clear_at(p: Vector2, radius: float, team := -1) -> bool:
 	var r := radius * 0.6
-	return passable(cell_of(p), team) and passable(cell_of(p + Vector2(r, 0)), team) and passable(cell_of(p - Vector2(r, 0)), team) \
-		and passable(cell_of(p + Vector2(0, r * 0.6)), team) and passable(cell_of(p - Vector2(0, r * 0.6)), team)
+	var ry := r * 0.6
+	var cx := clampi(int(p.x / T), 0, W - 1)
+	var cy := clampi(int(p.y / T), 0, H - 1)
+	var row := cy * W
+	var v := solid[row + cx]
+	if v != 0 and v != 5 and not _gate_lets(row + cx, v, team):
+		return false
+	var c := clampi(int((p.x + r) / T), 0, W - 1)
+	v = solid[row + c]
+	if v != 0 and v != 5 and not _gate_lets(row + c, v, team):
+		return false
+	c = clampi(int((p.x - r) / T), 0, W - 1)
+	v = solid[row + c]
+	if v != 0 and v != 5 and not _gate_lets(row + c, v, team):
+		return false
+	c = clampi(int((p.y + ry) / T), 0, H - 1) * W + cx
+	v = solid[c]
+	if v != 0 and v != 5 and not _gate_lets(c, v, team):
+		return false
+	c = clampi(int((p.y - ry) / T), 0, H - 1) * W + cx
+	v = solid[c]
+	if v != 0 and v != 5 and not _gate_lets(c, v, team):
+		return false
+	return true
+
+
+## A solid cell (value v) a unit of team t may still walk through: its own side's gate.
+func _gate_lets(i: int, v: int, t: int) -> bool:
+	return v == 3 and t >= 0 and allied(int(gate_team.get(i, -1)), t)
 
 
 # ------------------------------------------------------------------ spatial queries
@@ -4042,17 +4085,35 @@ func units_near(p: Vector2, r: float) -> Array:
 	var c1 := Vector2i(int(p.x + r) / HASH, int(p.y + r) / HASH)
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
-			var lst: Array = _hash.get(Vector2i(x, y), [])
+			var lst = _hash.get(Vector2i(x, y))
+			if lst == null:
+				continue
 			for u in lst:
 				if is_instance_valid(u) and u.position.distance_to(p) <= r:
 					out.append(u)
 	return out
 
 
+## (as units_near(u.position, u.radius + 18), in the same order, without building the list)
 func separation(u: Unit) -> Vector2:
 	var push := Vector2.ZERO
-	for o in units_near(u.position, u.radius + 18.0):
-		if o == u or o.dead or o.off_field or o.is_air() != u.is_air():
+	var p := u.position
+	var rr := u.radius + 18.0
+	var air := u.is_air()
+	var c0 := Vector2i(int(p.x - rr) / HASH, int(p.y - rr) / HASH)
+	var c1 := Vector2i(int(p.x + rr) / HASH, int(p.y + rr) / HASH)
+	var near: Array = []
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			var lst = _hash.get(Vector2i(x, y))
+			if lst == null:
+				continue
+			for o in lst:
+				if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
+					continue
+				near.append(o)
+	for o in near:
+		if o.dead or o.off_field or o.is_air() != air:
 			continue
 		if o == u.steed or u == o.steed:
 			continue           # (a man beside his own horse: he got off there, close by it)
@@ -5464,6 +5525,8 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 	var k := 0
 	var w := W
 	var h := H
+	var fog_on := mine and _fog_base.size() == w * h * 2
+	var mode := _fog_mode if fog_on else 0
 	while k < n:
 		var x := c.x + d[k]
 		var y := c.y + d[k + 1]
@@ -5473,8 +5536,42 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 				v[i] = 1
 				sv[i] = 1
 				if mine:
-					explored[i] = 1
+					if explored[i] == 0:
+						explored[i] = 1
+						if fog_on:
+							_fog_base[i * 2 + 1] = FOG_EXPLORED
+							_fog_bld[i * 2 + 1] = FOG_EXPLORED
+					if mode == 1:
+						_fog_bld[i * 2 + 1] = 0
+					elif mode == 2:
+						_fog_w[i * 2 + 1] = 0
 		k += 3
+
+
+## Your fog picture (LA8: alpha 250 unexplored, 140 explored, 0 seen), kept up as it's seen
+## instead of worked out cell by cell four times a second: _fog_base is the explored map,
+## _fog_bld that with what the buildings see cut out (made again when they change), _fog_w
+## this update's (with what the units see cut out as they're stamped). Watching computers
+## play, the picture is still worked out cell by cell (it's whose eyes the spectator picks).
+const FOG_EXPLORED := 140
+const FOG_UNSEEN := 250
+var _fog_base := PackedByteArray()
+var _fog_bld := PackedByteArray()
+var _fog_w := PackedByteArray()
+var _fog_mode := 0                       # what _stamp also cuts the seen cells out of: 1 _fog_bld, 2 _fog_w
+var fog_base_dirty := true               # explored was changed outside _stamp (a load, the sandbox)
+
+
+func _rebuild_fog_base() -> void:
+	fog_base_dirty = false
+	var n := W * H
+	var fb := PackedByteArray()
+	fb.resize(n * 2)
+	for i in n:
+		fb[i * 2 + 1] = FOG_EXPLORED if explored[i] == 1 else FOG_UNSEEN
+	_fog_base = fb
+	_fog_bld = fb.duplicate()
+	_bvis_key = PackedInt64Array()        # (the buildings' sight is cut out again)
 
 
 var _EMPTY := PackedByteArray()          # (a stand-in while a grid is out being written)
@@ -5509,6 +5606,9 @@ func _building_vis() -> void:
 			var nb := PackedByteArray()
 			nb.resize(W * H)
 			_bside[sides[t]] = nb
+	if _fog_base.size() == W * H * 2:
+		_fog_bld = _fog_base.duplicate()
+		_fog_mode = 1
 	for b in buildings:
 		if not b.dead and not b.ghost:
 			var c := cell_of(b.rect().get_center())
@@ -5524,10 +5624,19 @@ func _building_vis() -> void:
 			_bside[sides[t]] = sv
 			if demo:
 				_explore(t, c, b.sight, in_map(c) and height[idx(c)] == 0)
+	_fog_mode = 0
 
 
 func _update_vis() -> void:
+	var _z := Time.get_ticks_usec()
+	var fast := not demo
+	if fast and (fog_base_dirty or _fog_base.size() != W * H * 2):
+		_rebuild_fog_base()
+	elif not fast:
+		_fog_base = PackedByteArray()
 	_building_vis()
+	Prof.add("game/fog/buildings", _z)
+	_z = Time.get_ticks_usec()
 	for t in n_players():
 		vis[t] = (_bvis[t] as PackedByteArray).duplicate()
 	for t in n_players():
@@ -5535,6 +5644,9 @@ func _update_vis() -> void:
 	for sd in _side_vis.keys():
 		if not _bside.has(sd):
 			_side_vis.erase(sd)
+	if fast:
+		_fog_w = _fog_bld.duplicate()
+		_fog_mode = 2
 	# units standing in the same cell see the same thing: stamp each spot once
 	var done := {}
 	for u in units:
@@ -5548,6 +5660,9 @@ func _update_vis() -> void:
 				_reveal_air(u.team, c, u.sight)
 			else:
 				_reveal(u.team, c, u.sight)
+	_fog_mode = 0
+	Prof.add("game/fog/units", _z)
+	_z = Time.get_ticks_usec()
 	# (the buildings' sight came in with _building_vis)
 	# what your side sees (the explored map was marked as it was seen)
 	var hv: PackedByteArray = (_side_vis[sides[human]] as PackedByteArray).duplicate()
@@ -5583,12 +5698,19 @@ func _update_vis() -> void:
 				for i in W * H:
 					if oe[i] == 1:
 						ex[i] = 1
-	if _fog_bytes.size() != W * H * 2:
-		_fog_bytes.resize(W * H * 2)
-	for i in W * H:
-		_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (140 if ex[i] == 1 else 250)
-	fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_bytes)
+	Prof.add("game/fog/copy", _z)
+	_z = Time.get_ticks_usec()
+	if fast and ft == human:
+		fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_w)
+	else:
+		if _fog_bytes.size() != W * H * 2:
+			_fog_bytes.resize(W * H * 2)
+		for i in W * H:
+			_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (FOG_EXPLORED if ex[i] == 1 else FOG_UNSEEN)
+		fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_bytes)
 	fog_tex.update(fog_img)
+	Prof.add("game/fog/picture", _z)
+	_z = Time.get_ticks_usec()
 	var side_mask := 0
 	for o in n_players():
 		if allied(o, ft):
@@ -5618,6 +5740,7 @@ func _update_vis() -> void:
 			b.visible = b.seen_by_human
 		elif demo:
 			b.visible = true
+	Prof.add("game/fog/shown", _z)
 
 
 ## Whose fog of war is drawn: yours, or in a computers-only match the player the
@@ -5743,8 +5866,10 @@ func _tick_game(delta: float) -> void:
 		_astar_dirty = false
 	# Path budget per frame
 	pt = Time.get_ticks_usec()
+	# (at most 24 a tick, and past the first 6 only while under 6 ms: a crowd ordered at once
+	# gets its paths over a few ticks instead of in one long frame)
 	var budget := 24
-	while budget > 0 and not _path_queue.is_empty():
+	while budget > 0 and not _path_queue.is_empty() and (budget > 18 or Time.get_ticks_usec() - pt < 6000):
 		var u = _path_queue.pop_front()
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()
@@ -5767,7 +5892,12 @@ func _tick_game(delta: float) -> void:
 	for tr in _tracers:
 		tr[2] -= delta
 	_tracers = _tracers.filter(func(tr: Array) -> bool: return tr[2] > 0.0)
-	overlay.queue_redraw()
+	# the overlay: every tick while something on it moves, else (the economy labels) 4 times a second
+	_overlay_t -= delta
+	if _overlay_t <= 0.0 or _overlay_moving() or view_rect.position.distance_to(_overlay_view) > 60.0:
+		_overlay_t = 0.25
+		_overlay_view = view_rect.position
+		overlay.queue_redraw()
 	field_layer.queue_redraw()
 	_end_t -= delta
 	if _end_t <= 0.0:
@@ -6294,6 +6424,8 @@ func _draw_mine_labels() -> void:
 	for b in buildings:
 		if b.dead or not b.built or not b.visible or (b.team != human and not demo):
 			continue
+		if not view_rect.has_point(b.global_position):
+			continue        # (off screen; the overlay is redrawn 4 times a second at least)
 		var crew_max := int(b.d.get("crew", 0))
 		var eff: Array = b.efficiency()
 		if crew_max == 0 and eff.is_empty():
@@ -6363,6 +6495,27 @@ func _draw_queues() -> void:
 			var col: Color = QUEUE_COLS.get(pt[0], Color(1, 1, 1))
 			overlay.draw_circle(pt[1], 4.0, Color(0, 0, 0, 0.45))
 			overlay.draw_circle(pt[1], 2.8, Color(col, 0.85))
+
+
+var _overlay_t := 0.0
+var _overlay_was := false
+var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn (labels on screen only)
+
+
+## Something on the overlay moves (floating numbers, pings, shots, tongues, a line or a
+## building being placed, the queued orders of the selected units) or just stopped.
+func _overlay_moving() -> bool:
+	var m := not _floats.is_empty() or not _pings.is_empty() or not _tracers.is_empty() or not tongues.is_empty()
+	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place"):
+		m = true
+	if not m:
+		for e in selection:
+			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty()):
+				m = true
+				break
+	var r := m or _overlay_was
+	_overlay_was = m
+	return r
 
 
 func _draw_overlay() -> void:
