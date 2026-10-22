@@ -5330,10 +5330,11 @@ func under_attack(e: Entity) -> void:
 func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
 	if not us.is_empty() and us[0].team == human:
 		Sfx.voice(us[0].kind, "attack" if attack_move else "move")
+	# No pre-made formation (StarCraft / Beyond All Reason style): a group already together
+	# keeps its shape and moves as one blob; a group spread out bunches up into a clump at
+	# the point (each man keeps his side of it, closed in to a blob about its size).
+	# (queued: from where their queues end)
 	var n := us.size()
-	var cols := int(ceil(sqrt(float(n))))
-	var spacing := 24.0
-	# (queued: they form up from where their queues end)
 	var from := {}
 	for u in us:
 		from[u] = u.plan_end() if queued else u.position
@@ -5341,30 +5342,16 @@ func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> vo
 	for u in us:
 		c += from[u]
 	c /= n
-	var dir := (p - c).normalized()
-	if dir == Vector2.ZERO:
-		dir = Vector2.RIGHT
-	var side := Vector2(-dir.y, dir.x)
-	var slots: Array = []
-	for i in n:
-		var row := i / cols
-		var col := i % cols
-		slots.append(p + side * (col - (cols - 1) * 0.5) * spacing - dir * row * spacing)
-	# Nearest unit takes the nearest slot (greedy).
-	var left := us.duplicate()
-	for s in slots:
-		var best: Unit = null
-		var bd := INF
-		for u in left:
-			var dd: float = (from[u] as Vector2).distance_to(s)
-			if dd < bd:
-				bd = dd
-				best = u
-		left.erase(best)
-		var sp: Vector2 = s
-		if not is_free(cell_of(sp)):
+	var spread := 0.0
+	for u in us:
+		spread = maxf(spread, (from[u] as Vector2).distance_to(c))
+	var blob := 8.0 * sqrt(float(n)) + 4.0            # the radius a bunched group takes (shoulder to shoulder)
+	var k := 1.0 if spread <= blob * 1.5 else blob / spread
+	for u in us:
+		var sp: Vector2 = p + ((from[u] as Vector2) - c) * k
+		if n == 1 or not is_free(cell_of(sp)) or not line_clear(p, sp):
 			sp = p
-		best.give({"o": "amove" if attack_move and not best.is_worker() else "move", "p": sp}, queued)
+		u.give({"o": "amove" if attack_move and not u.is_worker() else "move", "p": sp}, queued)
 	_ping(p, Color(1, 0.3, 0.3) if attack_move else Color(0.4, 1, 0.4))
 
 
