@@ -42,9 +42,7 @@ var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
 var swamp_r := 0.0               # Brood: current swamp radius in tiles
 var gold_acc := 0.0
 var crew: Array = []             # workers assigned to this economy structure
-var growth := 0.0                # Farm: 0..1 until the harvest; Horse Breeder: 0..1 until the next foal
-var _breed_ok := false           # Horse Breeder: room for another foal (counted once a second)
-var _breed_chk := 0.0
+var growth := 0.0                # Farm: 0..1 until the harvest
 var soil := 0.0                  # Town Hall: gold left in its farmland; Hive: biomass left in its ground (full when fresh: reserve())
 var soil_warned := 0             # Town Hall: 1 = told the player it's low, 2 = spent
 var lode := 0.0                  # Town Hall: saltpetre (in powder) for its Mill; Clocktower: ore for its Crushers (Defs.LODE)
@@ -294,8 +292,6 @@ func add_progress(delta: float) -> void:
 	if progress >= 1.0:
 		built = true
 		hp = maxf(hp, max_hp * 0.95)
-		if kind == "horse_breeder":
-			growth = 1.0               # the first foal is ready the moment it's finished
 		game.on_building_complete(self)
 	_update_sprite()
 
@@ -511,39 +507,11 @@ func _econ(delta: float) -> void:
 				if team == game.human:
 					game.float_text(center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 					Sfx.play("done", center())
-		"horse_breeder":
-			# a little gold all the time, and a foal now and then while there's room for it
-			game.add_gold_f(team, float(Defs.HORSES["gold"]) * delta)
-			_breed_chk -= delta
-			if _breed_chk <= 0.0:
-				_breed_chk = 1.0
-				_breed_ok = _room_for_foal()
-			if _breed_ok:
-				growth += delta / float(Defs.HORSES["breed"])
-				if growth >= 1.0:
-					growth = 0.0
-					_breed_chk = 0.0
-					game.breed_horse(self)
 		"powder_mill":
 			# grinds its Town Hall's saltpetre; once that's spent, a quarter
 			var n := working_crew()
 			if n > 0:
 				game.add_res2(team, game.draw_lode(self, Defs.MILL_RATE * n * delta))
-
-
-## Horse Breeder: fewer than HORSES.graze_cap of our horses round it, and fewer than
-## HORSES.cap a breeder in all.
-func _room_for_foal() -> bool:
-	var near := 0
-	var all := game.horses_of(team)
-	var breeders := game.buildings.filter(func(b: Building) -> bool: return b.team == team and b.kind == "horse_breeder" and b.built and not b.dead).size()
-	if all.size() >= int(Defs.HORSES["cap"]) * maxi(1, breeders):
-		return false
-	var r := float(Defs.HORSES["graze_r"]) * Defs.TILE
-	for h in all:
-		if edge_distance(h.position) <= r:
-			near += 1
-	return near < int(Defs.HORSES["graze_cap"])
 
 
 func uses_eggs() -> bool:
@@ -999,7 +967,7 @@ func _draw() -> void:
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * progress, 4), Color(0.95, 0.8, 0.3))
-	elif (kind == "farm" or kind == "horse_breeder") and (team == game.human or game.spectating()):
+	elif kind == "farm" and (team == game.human or game.spectating()):
 		var w := r.size.x * 0.7
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * growth, 4), Color(0.95, 0.85, 0.3))

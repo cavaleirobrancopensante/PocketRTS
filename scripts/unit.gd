@@ -224,7 +224,6 @@ var graze_at := Vector2.INF      # (a horse) where it was left: it grazes round 
 var _graze_goal := Vector2.INF
 var _graze_t := 0.0
 var _steal_t := 0.0
-var home: Building = null        # (a horse) the breeder that raised it
 var harnessed := true            # (a cannon, mortar, wagon) its horse is hitched
 var horse_hp := 1.0              # (a rider, a gun) his horse's health share, for when it steps off
 var steed: Unit = null           # (a man who got off) the horse he rode

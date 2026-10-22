@@ -2799,6 +2799,12 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 			if site:
 				u.cmd_gather(site)
 			continue
+		if u.kind == "horse":
+			# a bought horse grazes where it stands, or walks to the RALLY and grazes there
+			u.graze_at = u.position
+			if b.rally != Vector2.INF:
+				u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)))
+			continue
 		if b.rally != Vector2.INF:
 			u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)), true)
 
@@ -5576,35 +5582,6 @@ func horse_back(b: Building, kit: Dictionary) -> void:
 	h.graze_at = h.position
 
 
-## A Horse Breeder raises a foal: it stands at the edge of the paddock (or goes to the RALLY).
-func breed_horse(b: Building) -> Unit:
-	var r := b.rect()
-	var tries := 0
-	var p := Vector2.INF
-	while tries < 12 and p == Vector2.INF:
-		tries += 1
-		var ang := randf() * TAU
-		var q := r.get_center() + Vector2(cos(ang) * (r.size.x * 0.5 + 18.0), sin(ang) * (r.size.y * 0.5 + 18.0))
-		if _clear_at(q, 11.0, b.team):
-			p = q
-	if p == Vector2.INF:
-		var c := nearest_free(cell_of(r.get_center() + Vector2(0, r.size.y * 0.5 + 16.0)), 6)
-		if c.x < 0:
-			return null
-		p = cell_center(c)
-	var h := _add_unit("horse", b.team, p)
-	h.home = b
-	h.graze_at = p
-	if not sees_all() and not allied(b.team, fog_team()):
-		h.visible = is_visible_to(fog_team(), p)
-	if b.rally != Vector2.INF:
-		h.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)))
-	if mlog and not _first_of.has("%d:horse" % b.team):
-		_first_of["%d:horse" % b.team] = true
-		mlog.add("%s bred its first horse" % mlog.who(b.team))
-	return h
-
-
 ## An unattended horse taken by an enemy man (Unit._steal_check): it's his side's now.
 func steal_horse(h: Unit, by: Unit) -> void:
 	var was := h.team
@@ -5612,7 +5589,6 @@ func steal_horse(h: Unit, by: Unit) -> void:
 	h.leader = null
 	h.claimed = null
 	h.into = null
-	h.home = null
 	h.cmd_stop()
 	h.graze_at = h.position
 	h._graze_goal = Vector2.INF

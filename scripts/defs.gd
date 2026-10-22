@@ -32,12 +32,12 @@ const LODE_SPENT := 0.25
 const EFF_GOOD := 0.8             # green from here, through yellow, to red at EFF_POOR and below
 const EFF_POOR := 0.4
 # Crown: farms grow (faster with labourers working them) and pay out a whole harvest.
-# Each Town Hall allows 1 Farm (crew 8), 1 Horse Breeder and 1 Powder Mill (crew 6): a full
-# base is 8 farmers + 6 millers, ~675 gold from the farm + ~300 from the breeder (~975 a
-# minute, a bit less than the ~1,140 two farms paid) and ~120 powder a minute.
+# Each Town Hall allows 2 Farms (crew 8) and 1 Powder Mill (crew 6): a full base is 16
+# farmers + 6 millers, ~1,140 gold and ~120 powder a minute. (Horse Breeders are production
+# buildings: they sell horses for gold, as many breeders as you like.)
 const FARM_GROW := 40.0           # seconds to ripen with a full crew
 const FARM_BASE := 0.15           # share of that speed with nobody working it
-const FARM_YIELD := 450           # gold a harvest (fresh soil; was 380 when a hall allowed two farms)
+const FARM_YIELD := 380           # gold a harvest (fresh soil; was 450 while a hall allowed one farm)
 ## Soil fatigue: each Town Hall's farmland holds a fixed reserve of gold, shared by the farms
 ## that belong to it (a farm belongs to the nearest hall). Every harvest draws its yield from
 ## the reserve; once it's spent those farms pay a third. A new hall brings fresh soil (one
@@ -190,9 +190,9 @@ const FACTIONS := {
 		"name": "The Crown", "hall": "town_hall", "worker": "labourer", "supply": "cottage",
 		"build": ["town_hall", "cottage", "farm", "horse_breeder", "powder_mill", "wall", "gate", "barracks", "armoury", "foundry", "church"],
 		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 100,
-		"res": ["Gold", "Powder"], "econ": {"farm": 1, "horse_breeder": 1, "powder_mill": 1},
+		"res": ["Gold", "Powder"], "econ": {"farm": 2, "powder_mill": 1},
 		"start": ["farm"],
-		"about": "Musketeers, cannons and mortars, and horses for them. Farms ripen into big harvests; Horse Breeders raise the horses that cavalry and guns need; Powder Mills grind each Town Hall's saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
+		"about": "Musketeers, cannons and mortars, and horses for them. Farms ripen into big harvests; Horse Breeders sell the horses that cavalry and guns need; Powder Mills grind each Town Hall's saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
 	},
 	"brood": {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
@@ -227,21 +227,21 @@ const UNITS := {
 	},
 	"cannon": {
 		"tags": ["armored"],
-		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 38, "cost": 200, "time": 32.0, "supply": 4,
+		"name": "Field Cannon", "hp": 140, "armor": 1, "speed": 38, "cost": 170, "time": 32.0, "supply": 4,
 		"sight": 8, "range": 430, "min_range": 80, "damage": 32, "splash": 46, "cooldown": 4.5, "aim": 0.6,
 		"radius": 22, "from": "foundry", "building_bonus": 2.5, "faction": "crown", "needs_horse": true,
 		"about": "Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers. Carries 8 shots; refills near a Mill, Barracks, Town Hall or Powder Wagon.",
 	},
 	"mortar": {
 		"tags": ["armored"],
-		"name": "Mortar", "hp": 120, "armor": 1, "speed": 38, "cost": 175, "cost2": 20, "time": 30.0, "supply": 3,
+		"name": "Mortar", "hp": 120, "armor": 1, "speed": 38, "cost": 145, "cost2": 20, "time": 30.0, "supply": 3,
 		"sight": 8, "range": 352, "min_range": 160, "damage": 30, "splash": 48, "cooldown": 5.0, "aim": 0.6,
 		"radius": 18, "from": "foundry", "building_bonus": 1.5, "ground_only": true, "faction": "crown", "needs_horse": true,
 		"about": "Siege mortar. Packed it rolls; DEPLOY it (3 s) to fire. It lobs a shell high over men and walls (5 to 11 tiles away) that bursts where it lands: 30 damage over a wide area, friends too. Can't hit flyers. Carries 6 shells; refills near a Mill, Barracks, Town Hall or Powder Wagon.",
 	},
 	"powder_wagon": {
 		"tags": ["armored"],
-		"name": "Powder Wagon", "hp": 220, "armor": 1, "speed": 38, "cost": 100, "cost2": 30, "time": 25.0, "supply": 2,
+		"name": "Powder Wagon", "hp": 220, "armor": 1, "speed": 38, "cost": 70, "cost2": 30, "time": 25.0, "supply": 2,
 		"sight": 7, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 16, "from": "foundry",
 		"no_attack": true, "faction": "crown", "needs_horse": true,
 		"about": "Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY (on from the start; G turns it off) sends 2 labourers with kegs from the Powder Mill when it's out in the field: idle ones first, else men taken off the farms or the mills, whichever your side can best spare. No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.",
@@ -250,19 +250,19 @@ const UNITS := {
 	# Horseman, with Armour the Cuirassier: see ARMOURED)
 	"cuirassier": {
 		"tags": ["light"],
-		"name": "Horseman", "hp": 140, "armor": 1, "speed": 112, "cost": 145, "time": 22.0, "supply": 3,
+		"name": "Horseman", "hp": 140, "armor": 1, "speed": 112, "cost": 115, "time": 22.0, "supply": 3,
 		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
 		"requires": "horse_breeder", "bonus": {"cannon": 1.6, "spitter": 1.3, "arc_thrower": 1.3}, "charge": true, "faction": "crown", "needs_horse": true,
 		"about": "Fast light horseman with a sabre. Needs a horse at the Barracks. Once the Armoury has drilled the Cavalry Charge, his first blow after a gallop hits double and throws the enemy back. With Armour he becomes a Cuirassier. DISMOUNT and he fights on foot with carbine and sabre. Bayonets hurt him.",
 	},
-	# ---- horses (Defs.HORSES) and the men who ride them. None is trained: horses are bred at
-	# a Horse Breeder; the rest are a man on a horse (MOUNT) or off it (DISMOUNT): Defs.MOUNTS.
+	# ---- horses (Defs.HORSES) and the men who ride them. Horses are bought at a Horse Breeder
+	# (trained like soldiers); the rest are a man on a horse (MOUNT) or off it (DISMOUNT): Defs.MOUNTS.
 	"horse": {
 		"tags": ["light"],
-		"name": "Horse", "hp": 60, "armor": 0, "speed": 96, "cost": 0, "time": 1.0, "supply": 0,
-		"sight": 4, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 11, "from": "",
+		"name": "Horse", "hp": 60, "armor": 0, "speed": 96, "cost": 40, "time": 15.0, "supply": 0,
+		"sight": 4, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 11, "from": "horse_breeder",
 		"no_attack": true, "horse": true, "faction": "crown",
-		"about": "Bred at a Horse Breeder. Lead it by the reins (LEAD), ride it (MOUNT), harness it to a gun or wagon, or bring it to a Barracks or Foundry for cavalry and guns. Left alone with an enemy man beside it, it's stolen.",
+		"about": "Bought at a Horse Breeder (40 gold). Lead it by the reins (LEAD), ride it (MOUNT), harness it to a gun or wagon, or bring it to a Barracks or Foundry for cavalry and guns. Left alone with an enemy man beside it, it's stolen.",
 	},
 	"messenger": {
 		"tags": ["light"],
@@ -282,7 +282,7 @@ const UNITS := {
 	# a Horseman off his horse (with Armour: the Dismounted Cuirassier)
 	"dismounted": {
 		"tags": ["light"],
-		"name": "Dismounted Horseman", "hp": 80, "armor": 1, "speed": 64, "cost": 145, "time": 1.0, "supply": 3,
+		"name": "Dismounted Horseman", "hp": 80, "armor": 1, "speed": 64, "cost": 115, "time": 1.0, "supply": 3,
 		"sight": 8, "range": 175, "damage": 18, "cooldown": 3.0, "aim": 0.4, "radius": 10, "from": "",
 		"anti_air": true, "sabre": {"damage": 22.0, "cooldown": 0.9}, "faction": "crown",
 		"about": "A Horseman on foot: a carbine (a little shorter and weaker than a Musketeer's musket) and his sabre up close (better than a bayonet). MOUNT a horse to ride again.",
@@ -432,7 +432,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 1 Farm, 1 Horse Breeder and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay a third) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at a quarter). Expand to fresh land.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay a third) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at a quarter). Expand to fresh land.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -504,7 +504,7 @@ const BUILDINGS := {
 	"farm": {
 		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(6, 5),
 		"supply": 0, "sight": 5, "trains": [], "crew": 8, "faction": "crown",
-		"about": "Ripens into a 450-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: tired soil pays a third.",
+		"about": "Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: tired soil pays a third.",
 	},
 	"powder_mill": {
 		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 100, "time": 30.0, "size": Vector2i(3, 3),
@@ -513,8 +513,8 @@ const BUILDINGS := {
 	},
 	"horse_breeder": {
 		"name": "Horse Breeder", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 6, "trains": [], "breeds": true, "faction": "crown",
-		"about": "Raises horses by itself: the first as soon as it is finished, then one about every 30 s, up to 6 grazing round it, and pays a little gold (about 5 a second). Horses are what cavalry, guns and wagons need. RALLY sends new foals somewhere (a Barracks or Foundry).",
+		"supply": 0, "sight": 6, "trains": ["horse"], "faction": "crown",
+		"about": "Sells horses: HORSE trains one (40 gold, 15 s; no supply). Horses are what cavalry, guns and wagons need. RALLY sends new horses somewhere (a Barracks or Foundry). Unlocks Horsemen. Build as many as you like, anywhere.",
 	},
 	"church": {
 		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
@@ -626,9 +626,8 @@ const ARMOURED := {
 }
 const LIGHT_ART := {"cuirassier": "horseman"}
 
-## ---- Horses (the Crown). A Horse Breeder raises one every `breed` s while fewer than
-## `graze_cap` of its side's horses stand within `graze_r` tiles of it (and its side has fewer
-## than `cap` per breeder), and pays `gold` gold a second. Horses graze within `wander` px of
+## ---- Horses (the Crown). A Horse Breeder trains them for gold (UNITS.horse: cost, time);
+## nothing comes free and it pays no income. Horses graze within `wander` px of
 ## where they were left. Training a unit with "needs_horse" takes a horse of ours standing
 ## within `at_building` tiles of the building (led ones too). A man leads up to `lead_max`.
 ## A horse with nobody of its side leading it, coming to mount or harness it, and no unit of
@@ -637,7 +636,7 @@ const LIGHT_ART := {"cuirassier": "horseman"}
 ## `dismount` s, a Dragoon's own dismount-to-fire and remount `quick` s; on foot after that
 ## dismount he reloads at `dragoon_reload` x a Musketeer's time. LEAD / MOUNT / HARNESS look
 ## for free horses within `fetch` tiles.
-const HORSES := {"breed": 30.0, "graze_cap": 6, "graze_r": 6, "cap": 10, "gold": 5.0, "wander": 34.0,
+const HORSES := {"wander": 34.0,
 	"at_building": 2.0, "lead_max": 3, "guard": 2.0, "steal": 26.0, "mount": 1.5, "dismount": 1.0,
 	"quick": 0.8, "dragoon_reload": 1.3, "scan": 0.5, "fetch": 8}
 ## Who rides what: the man on foot -> the mounted unit (and back with FOOT). Armour, his locks,
@@ -845,7 +844,7 @@ const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 2
 static func has_tag(kind: String, tag: String) -> bool:
 	return UNITS.has(kind) and (UNITS[kind].get("tags", []) as Array).has(tag)
 
-const ADVANCED := ["barracks", "armoury", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works"]
+const ADVANCED := ["barracks", "horse_breeder", "armoury", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works"]
 
 
 static func is_basic(kind: String) -> bool:
@@ -915,7 +914,7 @@ const TIPS := {
 	"mortar": "Siege mortar: DEPLOY, then it lobs shells over walls 5 to 11 tiles away. The splash hurts friends too. Can't hit flyers.",
 	"powder_wagon": "Carries 120 shots of powder for the soldiers near it. No weapon, and it blows up when destroyed.",
 	"cuirassier": "Fast armoured horseman (+1 armour, +30 health): a Horseman in helmet and cuirass. Needs Armour and a horse at the Barracks. Bayonets hurt him.",
-	"horse": "Bred at a Horse Breeder. LEAD it, MOUNT it, harness it to a gun or wagon, or bring it to a Barracks or Foundry: cavalry and guns need one each. Left alone near an enemy man, it's stolen.",
+	"horse": "Bought at a Horse Breeder (40 gold, 15 s). LEAD it, MOUNT it, harness it to a gun or wagon, or bring it to a Barracks or Foundry: cavalry and guns need one each. Left alone near an enemy man, it's stolen.",
 	"messenger": "A Labourer on a horse: very fast, unarmed, sees far. A scout. He can lead horses too.",
 	"mounted_missionary": "A Missionary on a horse: fast and unarmed. Bandages from the saddle; gets off by himself to raise the fallen.",
 	"dragoon": "A Musketeer on a horse: rides fast, dismounts to fire (0.8 s), remounts to move. His reload waits while he rides.",
@@ -934,15 +933,15 @@ const TIPS := {
 	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).",
 	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
 	# Crown buildings
-	"town_hall": "Trains Labourers. Allows 1 Farm, 1 Horse Breeder and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
-	"horse_breeder": "Raises a horse when finished, then about every 30 s (up to 6 round it) and pays a little gold. Unlocks Horsemen; cavalry, guns and wagons need its horses. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
+	"town_hall": "Trains Labourers. Allows 2 Farms and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
+	"horse_breeder": "Trains horses: 40 gold and 15 s each, no supply; RALLY sends them on. Unlocks Horsemen; cavalry, guns and wagons need its horses. Build as many as you like, anywhere. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	"cottage": "Houses 8 more supply. The first one unlocks the Barracks and the palisade.",
 	"wall": "Palisade: blocks the way. Lay it in a line: pick the start, then the end. Needs a Cottage.",
 	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece. Needs a Cottage.",
 	"barracks": "Trains Musketeers (needs a Powder Mill) and Horsemen (needs a Horse Breeder), and with Armour Guardsmen and Cuirassiers. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	"armoury": "Researches Armour, the musket locks, the socket bayonet, the guns' drills and the Cavalry Charge. Refits soldiers too.",
 	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons (cannons, mortars and wagons need a horse brought to it).",
-	"farm": "Ripens into a 450-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
+	"farm": "Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
 	# Brood buildings

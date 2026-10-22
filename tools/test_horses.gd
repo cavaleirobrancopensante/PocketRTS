@@ -4,7 +4,8 @@ extends SceneTree
 ## A Crown player (you) against a Brood player whose AI is switched off; everything is set up
 ## by hand on open ground. Prints PASS / FAIL per check and "ALL PASS" at the end (exit 1 on
 ## a failure).
-##  1. breeding up to the cap round a Horse Breeder (and its gold)
+##  1. buying horses at a Horse Breeder (40 gold, 15 s; nothing free, no income); 2 Farms a
+##     Town Hall, breeders unlimited; the horse-needing units' prices
 ##  2. one man leading 3 horses (they follow him)
 ##  3. a Horseman at the Barracks: refused without a horse, the horse walks in, cancel gives
 ##     it back, the recruit rides that horse's coat
@@ -135,7 +136,7 @@ func _run() -> void:
 	for b in g.buildings:
 		if b.team == 0:
 			b.supply()
-	await _breeding()
+	await _buying()
 	await _leading()
 	await _training()
 	await _cannon()
@@ -150,26 +151,73 @@ func _run() -> void:
 	quit(0 if fails == 0 else 1)
 
 
-# ---------------------------------------------------------------- 1. breeding
+# ---------------------------------------------------------------- 1. buying horses
 
-func _breeding() -> void:
+func _buying() -> void:
+	# the economy: 2 Farms and 1 Mill a Town Hall; the breeder isn't an economy building
+	var hall: Building = null
+	for b in g.buildings:
+		if b.team == 0 and b.kind == "town_hall":
+			hall = b
+	check(g.econ_limit(0, "farm") == 2 * g.halls_of(0).size(), "2 Farms a Town Hall (%d)" % g.econ_limit(0, "farm"))
+	check(g.econ_limit(0, "powder_mill") == g.halls_of(0).size(), "1 Powder Mill a Town Hall")
+	check(Defs.FARM_YIELD == 380, "a harvest pays 380 (%d)" % Defs.FARM_YIELD)
+	var farms: int = g.econ_count(0, "farm")
+	if farms < 2 and hall:
+		var spot: Vector2i = g.find_spot(0, "farm", hall, 4, Defs.ECON_RANGE - 2, "behind")
+		check(spot.x >= 0 and g.placement_problem(0, "farm", spot, true) == "", "a second Farm can go by the hall ('%s')" % (g.placement_problem(0, "farm", spot, true) if spot.x >= 0 else "no spot"))
+	check(not Defs.is_econ("horse_breeder"), "the Horse Breeder is no economy building")
+	# prices: a unit and its horse cost about 10 more than before horses
+	check(int(Defs.UNITS["horse"]["cost"]) == 40 and absf(float(Defs.UNITS["horse"]["time"]) - 15.0) < 0.01 and int(Defs.UNITS["horse"]["supply"]) == 0, "a horse: 40 gold, 15 s, no supply")
+	check(int(Defs.UNITS["cuirassier"]["cost"]) == 115 and int(Defs.UNITS["cannon"]["cost"]) == 170 and int(Defs.UNITS["mortar"]["cost"]) == 145 and int(Defs.UNITS["powder_wagon"]["cost"]) == 70,
+		"Horseman 115, Field Cannon 170, Mortar 145, Powder Wagon 70")
 	var b: Building = g._add_building("horse_breeder", 0, origin + Vector2i(2, 2), true)
+	# breeders: as many as you like, anywhere (far from any hall)
+	var far_ok: bool = g.placement_problem(0, "horse_breeder", origin + Vector2i(2, 12), true) == ""
+	var b2: Building = g._add_building("horse_breeder", 0, origin + Vector2i(2, 12), true)
+	var b3: Building = g._add_building("horse_breeder", 0, origin + Vector2i(7, 12), true)
+	check(far_ok and g.placement_problem(0, "horse_breeder", origin + Vector2i(12, 14), true) == "", "breeders: any number, anywhere (3 built, a 4th allowed, far from a hall)")
+	# nothing comes free, no income (the farms are stopped meanwhile: only the breeders run)
+	var farmland: Array = g.buildings.filter(func(x: Building) -> bool: return x.team == 0 and Defs.is_econ(x.kind))
+	for x in farmland:
+		x.process_mode = Node.PROCESS_MODE_DISABLED
 	var gold0: int = g.players[0]["gold"]
-	await wait(10.0)
-	var earned: int = int(g.players[0]["gold"]) - gold0
-	check(earned >= 40 and earned <= 60, "the breeder pays about 5 gold a second (%d in 10 s)" % earned)
-	# speed the foals up: the cap must hold
-	for i in 12:
-		b.growth = 0.999
-		await wait(1.2)
-	var near: int = g.horses_of(0).filter(func(h: Unit) -> bool: return b.edge_distance(h.position) <= 6 * Defs.TILE).size()
-	check(near == int(Defs.HORSES["graze_cap"]), "breeding stops at %d round the breeder (%d)" % [Defs.HORSES["graze_cap"], near])
+	var n0: int = g.horses_of(0).size()
+	await wait(40.0)
+	check(g.horses_of(0).size() == n0, "no free horses in 40 s (%d -> %d)" % [n0, g.horses_of(0).size()])
+	check(int(g.players[0]["gold"]) == gold0, "the breeder pays no gold (%+d)" % (int(g.players[0]["gold"]) - gold0))
+	for x in farmland:
+		x.process_mode = Node.PROCESS_MODE_INHERIT
+	# HORSE: 40 gold, 15 s
+	check(g.can_train(b, "horse") == "", "the breeder trains horses")
+	gold0 = g.players[0]["gold"]
+	check(g.train(b, "horse") == "", "HORSE")
+	check(gold0 - int(g.players[0]["gold"]) == 40, "a horse costs 40 gold (%d)" % (gold0 - int(g.players[0]["gold"])))
+	var t0: float = g.clock
+	await wait_for(func() -> bool: return g.horses_of(0).size() > n0, 20.0)
+	var took: float = g.clock - t0
+	check(g.horses_of(0).size() == n0 + 1 and took > 14.5 and took < 15.6, "it comes out after 15 s (%.1f s)" % took)
+	# RALLY: new horses go there and graze
+	b2.rally = at(260, 200)
+	g.train(b2, "horse")
+	g.train(b2, "horse")
+	g.train(b3, "horse")
+	g.train(b3, "horse")
+	g.train(b, "horse")
+	await wait_for(func() -> bool: return g.horses_of(0).size() >= n0 + 6, 40.0)
+	check(g.horses_of(0).size() == n0 + 6, "6 horses bought (%d)" % (g.horses_of(0).size() - n0))
+	await wait(6.0)
+	var rallied: int = g.horses_of(0).filter(func(h: Unit) -> bool: return h.position.distance_to(at(260, 200)) < 70.0).size()
+	check(rallied == 2, "RALLY: the breeder's new horses went there (%d)" % rallied)
+	for x in [b2, b3]:
+		x.queue.clear()
 	var h0: Unit = g.horses_of(0)[0]
 	var p0: Vector2 = h0.position
 	await wait(12.0)
 	check(h0.position.distance_to(h0.graze_at) <= float(Defs.HORSES["wander"]) + 12.0, "a horse grazes where it was left")
 	check(h0.coat != "" and HorseCoat.COATS.has(h0.coat), "a horse has a coat (%s)" % h0.coat)
 	print("  (horse moved %.0f px while grazing)" % h0.position.distance_to(p0))
+	check(g.horses_of(0).size() == n0 + 6, "still no free ones")
 
 
 # ---------------------------------------------------------------- 2. leading
