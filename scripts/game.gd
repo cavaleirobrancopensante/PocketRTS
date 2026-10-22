@@ -719,7 +719,7 @@ func _render_ground() -> void:
 				var below := Vector2i(x, y + 1)
 				set_name = b["face"] if in_map(below) and height[idx(below)] == 0 else b["high"]
 				shade = 1.0 if set_name == b["face"] else 0.72
-				if set_name == b["high"] and _is_macro(b["high"]):
+				if set_name == b["high"]:
 					# the rim of a plateau in a biome whose high-ground patches are bold
 					# (boulders, strata...): its own ground, darker, not blocks of them
 					var rim: Array = b["low"]
@@ -729,7 +729,9 @@ func _render_ground() -> void:
 				# high ground: mostly the calm low-ground tiles, a touch brighter, with
 				# patches of the strong high-ground tile here and there (smooth noise, so
 				# they come in soft clumps, not a checkerboard)
-				if _value_noise(x, y, 3.0) > 0.72:
+				# (no blocks of the strong high-ground tile inside plateaus any more: its
+				# tiles have a dark edge stripe that showed as hard seams between them)
+				if false:
 					set_name = b["high"]
 					shade = 1.0
 					lay = 40
