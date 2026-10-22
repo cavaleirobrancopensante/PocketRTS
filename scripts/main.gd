@@ -12,7 +12,7 @@ var _backdrop: MenuBackdrop
 ## The skirmish setup, remembered between sessions. A first-time player gets everything
 ## random: faction, map, the computer's plan, and colours that fit the map.
 var lobby := {
-	"map": "random",
+	"map": "random_1v1",
 	"slots": [
 		{"who": "you", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "side": 0},
 		{"who": "hard", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "side": 1, "strategy": "random"},
@@ -727,6 +727,7 @@ func show_skirmish() -> void:
 		var pr: String = preset
 		var b := _button(pr, func() -> void:
 			_preset(pr)
+			_pool_for_preset(pr)
 			_fit_map_to_slots()
 			show_skirmish())
 		b.custom_minimum_size = Vector2(64, 44)
@@ -801,7 +802,7 @@ func show_skirmish() -> void:
 	for n in own:
 		ids.append("custom:" + n)
 	if not ids.has(lobby["map"]):
-		lobby["map"] = "random"
+		lobby["map"] = _preset_pool(_current_preset())
 	var mrow := HBoxContainer.new()
 	mrow.add_theme_constant_override("separation", 6)
 	mv.add_child(mrow)
@@ -1118,6 +1119,21 @@ func _preset(p: String) -> void:
 	lobby["slots"] = out
 
 
+## The random pool that goes with a preset: 1v1 -> random 1v1 maps, 2v2 -> 2v2 maps ... The
+## uneven ones and the free-for-all (3 or 4 players) take the 2v2 maps (four starts each).
+static func _preset_pool(p: String) -> String:
+	return {"1v1": "random_1v1", "2v2": "random_2v2", "3v3": "random_3v3", "4v4": "random_4v4",
+		"1v2": "random_2v2", "1v3": "random_2v2", "FFA": "random_2v2"}.get(p, "random_1v1")
+
+
+## Clicking a preset picks its random pool, unless a map of that very mode is already chosen.
+func _pool_for_preset(p: String) -> void:
+	var mid: String = lobby["map"]
+	if not MapGen.is_pool(mid) and MapGen.mode_of(mid) == p:
+		return
+	lobby["map"] = _preset_pool(p)
+
+
 func _current_preset() -> String:
 	var slots: Array = lobby["slots"]
 	var sides: Array = slots.map(func(s: Dictionary) -> int: return int(s["side"]))
@@ -1171,7 +1187,7 @@ func _fit_map_to_slots() -> void:
 	if MapGen.is_pool(mid) or MapGen.max_players(mid) >= n:
 		if not (MapGen.is_pool(mid) and MapGen.pool_maps(mid, n).is_empty()):
 			return
-	lobby["map"] = "random_1v1" if n <= 2 else ("random_2v2" if n <= 4 else ("random_3v3" if n <= 6 else "random"))
+	lobby["map"] = "random_1v1" if n <= 2 else ("random_2v2" if n <= 4 else ("random_3v3" if n <= 6 else "random_4v4"))
 
 
 func _lobby_problem() -> String:
@@ -1200,6 +1216,8 @@ func _load_lobby() -> void:
 		var l: Variant = cfg.get_value("lobby", "setup")
 		if l is Dictionary and l.has("slots") and (l["slots"] as Array).size() >= 2:
 			lobby = l
+			if String(lobby.get("map", "")) == "random":
+				lobby["map"] = _preset_pool(_current_preset())    # (the old default: all maps)
 
 
 func _save_lobby() -> void:

@@ -1710,6 +1710,7 @@ func _lode_check(h: Building) -> void:
 	if h.team == human and not demo and hud:
 		if level == 2:
 			hud.toast("The %s at your %s is spent: %s at a quarter. Expand to fresh %s." % [what, h.d["name"], user, what], false)
+			Sfx.announce(faction_of(h.team), "depleted", 10.0)
 		else:
 			hud.toast("The %s at your %s is running low (%d%% left): expand to fresh %s soon." % [what, h.d["name"], int(round(left * 100)), what], false)
 		Sfx.play("done", h.center())
@@ -2304,6 +2305,7 @@ func site_failed(b: Building) -> void:
 	if t == human and not demo and hud:
 		_notify_t = Time.get_ticks_msec()
 		hud.toast("Can't build there: the spot is blocked.", true)
+		Sfx.announce(faction_of(t), "bad_place", 4.0)
 	if mlog:
 		mlog.add("%s couldn't start a %s: the spot was blocked (refunded)" % [mlog.who(t), b.d["name"]])
 	remove_ghost(b)
@@ -2953,6 +2955,7 @@ func research_done(b: Building, key: String) -> void:
 	if b.team == human:
 		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		notify("%s researched: %s" % [info["name"], what], true)
+		Sfx.announce(faction_of(b.team), "research_done", 3.0)
 	if mlog:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
@@ -3329,7 +3332,9 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 			if b.rally != Vector2.INF:
 				u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)))
 			continue
-		if b.rally != Vector2.INF:
+		if b.rally_target is Unit and is_instance_valid(b.rally_target) and not b.rally_target.dead:
+			u.cmd_follow(b.rally_target)
+		elif b.rally != Vector2.INF:
 			u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)), true)
 
 
@@ -5798,9 +5803,16 @@ func under_attack(e: Entity) -> void:
 		return
 	_alert_ms = now
 	var fac := faction_of(human)
-	if e is Building:
+	if e.team != human:
+		# an ally's men or buildings (allies_hit: only when no fight of ours is on screen)
+		Sfx.announce(fac, "ally_attack", 25.0, "alert")
+		notify("Our allies are under attack!", true)
+	elif e is Building:
 		Sfx.announce(fac, "base_attack", 15.0, "base_alert")
 		notify("Your base is under attack!", true)
+	elif e is Unit and (e as Unit).is_worker():
+		Sfx.announce(fac, "workers_attack", 20.0, "alert")
+		notify("Your workers are under attack!", true)
 	else:
 		Sfx.announce(fac, "under_attack", 20.0, "alert")
 		notify("Your forces are under attack!", true)
@@ -5863,10 +5875,12 @@ func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 			b.worker_rally_target = e if site else null
 			return
 		b.rally = p
-		b.rally_target = null
+		b.rally_target = e if e is Unit and e.team == b.team and not e.dead and e.kind != "horse" else null
 		return
 	b.rally = p
 	b.rally_target = e if e is Building and e.team == b.team and int(e.d.get("crew", 0)) > 0 else null
+	if e is Unit and e.team == b.team and not e.dead and e.kind != "horse":
+		b.rally_target = e        # (a unit of ours: the rally follows it, new ones follow it)
 
 
 func army(t: int) -> Array:
@@ -5935,6 +5949,18 @@ static func eff_colour(f: float) -> Color:
 	return red.lerp(yellow, clampf((f - Defs.EFF_POOR) / (mid - Defs.EFF_POOR), 0.0, 1.0))
 
 
+var _tex_tops := {}
+
+
+## The first row of a texture with anything drawn in it (cached).
+func _tex_top(tex: Texture2D) -> float:
+	var k := tex.get_rid()
+	if not _tex_tops.has(k):
+		var img := tex.get_image()
+		_tex_tops[k] = float(img.get_used_rect().position.y) if img else 0.0
+	return _tex_tops[k]
+
+
 ## Over your economy buildings: the crew (X/Y) and the efficiency bar with its % (see
 ## Building.efficiency): one compact strip, readable on a phone.
 func _draw_mine_labels() -> void:
@@ -5946,7 +5972,8 @@ func _draw_mine_labels() -> void:
 		var eff: Array = b.efficiency()
 		if crew_max == 0 and eff.is_empty():
 			continue
-		var top: float = b.global_position.y - (b.sprite.texture.get_height() - 6.0 if b.sprite and b.sprite.texture else 60.0)
+		# just above its bars, which sit on top of the drawing itself (Building.bar_top)
+		var top: float = b.global_position.y + b.bar_top() - 3.0
 		var sz := 15
 		var txt := ""
 		var w1 := 0.0
@@ -6325,6 +6352,7 @@ func steal_horse(h: Unit, by: Entity) -> void:
 		mlog.add("%s stole a horse from %s" % [mlog.who(by.team), mlog.who(was)])
 	if was == human:
 		notify("A horse was stolen!")
+		Sfx.announce("crown", "horse_stolen", 8.0)
 	if by.team == human:
 		float_text(h.position + Vector2(0, -34), "horse taken", Color(0.85, 1.0, 0.7))
 

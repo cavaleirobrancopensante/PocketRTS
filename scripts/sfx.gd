@@ -23,6 +23,7 @@ func _ready() -> void:
 	me = self
 	_voice = _new_player(1)
 	_announcer = _new_player(1)
+	_announcer.process_mode = Node.PROCESS_MODE_ALWAYS     # ("Game paused." is said while paused)
 
 
 func _new_player(poly: int) -> AudioStreamPlayer:

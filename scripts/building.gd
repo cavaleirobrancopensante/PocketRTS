@@ -109,7 +109,7 @@ const FARM_SCARECROW_SPOTS := [Vector2(20, 47), Vector2(178, 95), Vector2(24, 11
 ## of `scarecrow_kinds` looks, the pole's foot at the bottom middle. `top`: where the health
 ## bar goes. (A new farmhouse: new files and numbers here; sails "" for none.)
 const FARM_ART := {
-	"body": "res://assets/buildings/farm_%s.png", "anchor": Vector2(81, 121), "top": -108.0,
+	"body": "res://assets/buildings/farm_%s.png", "anchor": Vector2(81, 121), "top": -96.0,
 	"sails": "res://assets/buildings/farm_sails.png", "sail_frames": 6, "sail_dt": 0.3,
 	"hub": Vector2(7, -54), "sail_states": ["built", "damaged"],
 	"scarecrows": "res://assets/buildings/farm_scarecrow.png", "scarecrow_kinds": 4,
@@ -539,6 +539,14 @@ func _physics_process(delta: float) -> void:
 func _tick_building(delta: float) -> void:
 	_process_flash(delta)
 	_process_acid(delta)
+	if rally_target is Unit:
+		# a rally on one of ours follows him (gone: it stays where he was last)
+		if is_instance_valid(rally_target) and not rally_target.dead:
+			if rally.distance_squared_to(rally_target.position) > 16.0:
+				rally = rally_target.position
+				queue_redraw()
+		else:
+			rally_target = null
 	if dead:
 		rubble_t += delta
 		if rubble_t > 25.0:
@@ -906,6 +914,8 @@ func die() -> void:
 	selected = false
 	if team == game.human and built and not game.over:
 		Sfx.announce(d["faction"], "building_lost", 6.0)
+	elif team == game.human and not built and not ghost and not game.over and hp <= 0.0:
+		Sfx.announce(d["faction"], "site_lost", 6.0)     # (destroyed, not cancelled)
 	for i in queue.size():
 		game.refund(team, queue[i], kit_at(i), self)
 	queue.clear()
@@ -966,6 +976,16 @@ func _draw() -> void:
 	Prof.add("building draw", _p0)
 
 
+## Where its bars go (local y): just above the top of the drawing itself, not the picture's
+## empty margin (the Farm: its windmill's top).
+func bar_top() -> float:
+	if kind == "farm":
+		return float(FARM_ART["top"])
+	if sprite and sprite.texture:
+		return sprite.position.y + sprite.offset.y + game._tex_top(sprite.texture) + 2.0
+	return -rect().size.y
+
+
 func _draw_building() -> void:
 	if dead:
 		return
@@ -979,9 +999,7 @@ func _draw_building() -> void:
 		if worker_rally != Vector2.INF and (team == game.human or game.spectating()):
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), worker_rally - global_position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
 			draw_circle(worker_rally - global_position, 4, Color(1, 0.85, 0.3, 0.9))
-	var top := -sprite.texture.get_height() + 2.0 if sprite and sprite.texture else -r.size.y
-	if kind == "farm":
-		top = float(FARM_ART["top"])
+	var top := bar_top()
 	if not ghost:
 		draw_health(top, r.size.x * 0.7)
 	# full batteries waiting at an energy building

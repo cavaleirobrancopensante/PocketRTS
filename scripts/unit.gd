@@ -1735,6 +1735,17 @@ func cmd_pack() -> void:
 		tesla_t = switch_time()
 
 
+## Follow one of ours (a rally on a unit, as in StarCraft 2): keeps a couple of steps behind
+## it wherever it goes; when it's gone he stops where he is.
+func cmd_follow(e: Unit) -> void:
+	if aboard or e == self:
+		return
+	_reset_work()
+	order = "follow"
+	order_target = e
+	target = null
+
+
 func cmd_heal(e: Unit) -> void:
 	if aboard:
 		return      # riding in a balloon
@@ -1958,6 +1969,10 @@ func _start(o: Dictionary) -> bool:
 			if e == null or not is_instance_valid(e) or not (e is Unit):
 				return false
 			cmd_heal(e)
+		"follow":
+			if e == null or not is_instance_valid(e) or not (e is Unit) or e.dead:
+				return false
+			cmd_follow(e)
 	return order != "idle"
 
 
@@ -2714,6 +2729,14 @@ func _tick_unit(delta: float) -> void:
 			want = _gather(delta)
 		"repair":
 			want = _repair(delta)
+		"follow":
+			var fe = order_target
+			if fe == null or not is_instance_valid(fe) or fe.dead or (fe as Unit).aboard != null:
+				cmd_stop()
+			elif position.distance_to(fe.position) > radius + fe.radius + 26.0:
+				want = _walk_to(fe.position, delta)
+			else:
+				path = PackedVector2Array()
 		"heal":
 			# on his way to a patient he looks again now and then: a body to raise comes first
 			if _care_auto and work != "bandaging" and scan_t <= 0.0:

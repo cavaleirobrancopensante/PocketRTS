@@ -300,11 +300,22 @@ ANN_BASE = {
 }
 ANN = {
     "crown": dict(ANN_BASE, no_gold="Not enough gold.", no_res2="Not enough powder.",
-                  no_supply="We require more housing."),
+                  no_supply="We require more housing.",
+                  # (round 2, after StarCraft 2's Adjutant)
+                  bad_place="We cannot build there.", site_lost="Construction interrupted.",
+                  workers_attack="Our labourers are under attack!", ally_attack="Our allies are under attack!",
+                  depleted="The soil is spent.", no_powder="Our men are out of powder.",
+                  horse_stolen="A horse has been stolen!", paused="Game paused.", resumed="Game resumed."),
     "brood": dict(ANN_BASE, no_gold="Not enough food.", no_res2="Not enough essence.",
-                  no_supply="More clutches needed."),
+                  no_supply="More clutches needed.",
+                  bad_place="The ground rejects us.", site_lost="The growth is torn.",
+                  workers_attack="Our grubs are attacked.", ally_attack="Our kin are attacked.",
+                  depleted="The ground is spent.", paused="We wait.", resumed="We wake."),
     "clock": dict(ANN_BASE, no_gold="Insufficient ore.", no_res2="Insufficient energy.",
-                  no_supply="More springs required."),
+                  no_supply="More springs required.",
+                  bad_place="Placement invalid.", site_lost="Assembly interrupted.",
+                  workers_attack="Winders under attack.", ally_attack="Allied units under attack.",
+                  depleted="Coal reserve exhausted.", paused="Time halted.", resumed="Time resumed."),
 }
 
 TAUNTS = {

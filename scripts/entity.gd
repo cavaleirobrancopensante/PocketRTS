@@ -105,8 +105,8 @@ func take_damage(amount: float, _from: Entity, blow := "") -> void:
 		last_hitter = _from
 		hit_clock = game.clock
 		game.stats[_from.team]["damage"] += dmg
-		if team == game.human:
-			game.under_attack(self)
+		if team == game.human or (team >= 0 and team != game.human and game.allied(team, game.human)):
+			game.under_attack(self)          # (an ally's too: "Our allies are under attack!")
 		if Music.me and (team == game.human or _from.team == game.human):
 			Music.me.add_heat(0.6 if is_unit() else 0.4)
 	flash = 0.12

@@ -1210,6 +1210,7 @@ func confirm_place(queued := false) -> void:
 	var why := game.placement_problem(game.human, k, controls.ghost_cell)
 	if why != "":
 		toast(why)
+		Sfx.announce(game.faction_of(game.human), "bad_place", 4.0)
 		return
 	if game.players[game.human]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		toast("Not enough gold.")
@@ -1284,6 +1285,8 @@ func _pause_buttons() -> Array:
 
 
 func set_paused(v: bool) -> void:
+	if v != paused and game and not game.demo:
+		Sfx.announce(game.faction_of(game.human), "paused" if v else "resumed", 1.0)
 	paused = v
 	get_tree().paused = v
 

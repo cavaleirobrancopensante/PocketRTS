@@ -196,6 +196,7 @@ const POOLS := [
 	["random_1v1_2v2", "Random 1v1+2v2 maps", ["1v1", "2v2"]],
 	["random_3v3", "Random 3v3 maps", ["3v3"]],
 	["random_1v1_2v2_3v3", "Random 1v1+2v2+3v3 maps", ["1v1", "2v2", "3v3"]],
+	["random_4v4", "Random 4v4 maps", ["4v4"]],
 	["random", "Random all maps", ["1v1", "2v2", "3v3", "4v4"]],
 ]
 
