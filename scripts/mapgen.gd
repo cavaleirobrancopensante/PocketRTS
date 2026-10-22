@@ -17,6 +17,10 @@ const MAPS := {
 	"red_coast": ["Red Coast", "highlands", "desert+marsh"],
 }
 
+## Hand-made maps: a fixed layout (seed and pieces), so each one always looks the same.
+## Filled in below (see _named).
+const NAMED := {}
+
 ## Tile sets per biome (names of assets/terrain/<set>_<n>.png).
 const BIOMES := {
 	"grass": {"low": ["grass"], "base": "dirt", "high": "grass_flat",
@@ -38,6 +42,14 @@ const BIOMES := {
 		"face": "lava_face", "ramp": "lava_ramp", "water": "lava", "ford": "basalt",
 		"trees": 0.0, "tint": Color(0.7, 0.6, 0.55)},
 }
+
+## The size in cells of a map (custom maps and the classic ones: 84 x 60).
+static func size_of(map_id: String) -> Vector2i:
+	if NAMED.has(map_id):
+		var sz: Array = NAMED[map_id]["size"]
+		return Vector2i(int(sz[0]), int(sz[1]))
+	return Vector2i(84, 60)
+
 
 var g: Game
 var rng: RandomNumberGenerator

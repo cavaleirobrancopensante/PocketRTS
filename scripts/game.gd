@@ -6,8 +6,10 @@ extends Node2D
 
 signal ended(winner: int)
 
-const W := 84
-const H := 60
+## The map's size in cells: set from the map before the match is built (MapGen.size_of);
+## 84 x 60 for the classic maps and custom ones.
+static var W := 84
+static var H := 60
 const T := Defs.TILE
 const HASH := 64
 
@@ -83,7 +85,7 @@ var starts: Array = []                   # town hall cells per team
 var expansions: Array = []               # free town hall spots
 
 var world: Node2D
-var ground: Sprite2D
+var ground: Node2D                       # the ground pictures (_render_ground)
 var fog_sprite: Sprite2D
 var fog_img: Image
 var fog_tex: ImageTexture
@@ -134,6 +136,9 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	var msz := MapGen.size_of(map_id)
+	W = msz.x
+	H = msz.y
 	solid.resize(W * H)
 	water.resize(W * H)
 	cliff.resize(W * H)
@@ -167,8 +172,7 @@ func _ready() -> void:
 		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t], "res2": 0.0,
 			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY", "gold_x": 0.0,
 			"tech": {}})
-	ground = Sprite2D.new()
-	ground.centered = false
+	ground = Node2D.new()
 	ground.z_index = -20
 	add_child(ground)
 	swamp_layer = Node2D.new()
@@ -570,14 +574,28 @@ func _tile(set_name: String, rnd: int) -> Image:
 	return _tile_cache[key]
 
 
+## The ground is drawn in square pieces of CHUNK cells (one picture for a whole big map
+## would be too large a texture for many phones).
+const CHUNK := 64
+
+
 func _render_ground() -> void:
-	var img := Image.create(W * T, H * T, false, Image.FORMAT_RGBA8)
 	minimap_img = Image.create(W, H, false, Image.FORMAT_RGBA8)
+	for old in ground.get_children():
+		ground.remove_child(old)
+		old.queue_free()
 	var near_base := func(c: Vector2i) -> bool:
 		for st in starts:
 			if (Vector2(c) - (Vector2(st) + Vector2(2.5, 2))).length() < 6.5:
 				return true
 		return false
+	# every cell's tile and shade, decided once
+	var sets := PackedStringArray()
+	sets.resize(W * H)
+	var shades := PackedFloat32Array()
+	shades.resize(W * H)
+	var rnds := PackedInt32Array()
+	rnds.resize(W * H)
 	for y in H:
 		for x in W:
 			var c := Vector2i(x, y)
@@ -611,33 +629,61 @@ func _render_ground() -> void:
 				set_name = b["base"]
 			else:
 				var low: Array = b["low"]
-				set_name = low[rnd % low.size()]
-			var t := _tile(set_name, rnd / 7)
-			if shade != 1.0:
-				t = t.duplicate()
-				for py in T:
-					for px in T:
-						var col := t.get_pixel(px, py)
-						t.set_pixel(px, py, Color(col.r * shade, col.g * shade, col.b * shade, col.a))
-			img.blit_rect(t, Rect2i(0, 0, T, T), Vector2i(x * T, y * T))
+				# a biome with several low sets lays them in soft patches
+				set_name = low[rnd % low.size()] if not b.get("patches", false) else low[int(_value_noise(x + 500, y, 4.0) * low.size() * 0.999)]
+			sets[i] = set_name
+			shades[i] = shade
+			rnds[i] = rnd
 			var key := _tile_key(set_name, rnd / 7)
+			_tile(set_name, rnd / 7)
 			var mc: Color = _tile_avg.get(key, Color(0.3, 0.5, 0.2)) * shade
 			if _terrain_kind.get(i, "") == "tree":
 				mc = mc.darkened(0.45)
 			elif _terrain_kind.get(i, "") == "rock":
 				mc = Color(0.45, 0.45, 0.45)
 			minimap_img.set_pixel(x, y, Color(mc.r, mc.g, mc.b, 1.0))
-	_paint_ramps(img)
-	# a soft shadow under each cliff face
-	for y in H - 1:
-		for x in W:
-			if cliff[y * W + x] == 1 and height[(y + 1) * W + x] == 0 and cliff[(y + 1) * W + x] == 0:
-				for py in 6:
-					for px in T:
-						var p := Vector2i(x * T + px, (y + 1) * T + py)
-						var col := img.get_pixelv(p)
-						img.set_pixelv(p, col.darkened(0.35 * (1.0 - py / 6.0)))
-	ground.texture = ImageTexture.create_from_image(img)
+	for cy in range(0, H, CHUNK):
+		for cx in range(0, W, CHUNK):
+			var cr := Rect2i(cx, cy, mini(CHUNK, W - cx), mini(CHUNK, H - cy))
+			var img := Image.create(cr.size.x * T, cr.size.y * T, false, Image.FORMAT_RGBA8)
+			for y in range(cr.position.y, cr.end.y):
+				for x in range(cr.position.x, cr.end.x):
+					var i := y * W + x
+					var t := _shaded_tile(sets[i], rnds[i] / 7, shades[i])
+					img.blit_rect(t, Rect2i(0, 0, T, T), Vector2i(x - cx, y - cy) * T)
+			_paint_ramps(img, cr)
+			# a soft shadow under each cliff face
+			for y in range(maxi(cr.position.y - 1, 0), mini(cr.end.y, H - 1)):
+				for x in range(cr.position.x, cr.end.x):
+					if y + 1 < cr.position.y or y + 1 >= cr.end.y:
+						continue
+					if cliff[y * W + x] == 1 and height[(y + 1) * W + x] == 0 and cliff[(y + 1) * W + x] == 0:
+						for py in 6:
+							for px in T:
+								var p := Vector2i((x - cx) * T + px, (y + 1 - cy) * T + py)
+								var col := img.get_pixelv(p)
+								img.set_pixelv(p, col.darkened(0.35 * (1.0 - py / 6.0)))
+			var spr := Sprite2D.new()
+			spr.centered = false
+			spr.position = Vector2(cx, cy) * T
+			spr.texture = ImageTexture.create_from_image(img)
+			ground.add_child(spr)
+
+
+## A tile darkened or brightened (cliff tops, high ground), made once.
+func _shaded_tile(set_name: String, rnd: int, shade: float) -> Image:
+	var t := _tile(set_name, rnd)
+	if shade == 1.0:
+		return t
+	var key := "%s@%.2f" % [_tile_key(set_name, rnd), shade]
+	if not _tile_cache.has(key):
+		var d: Image = t.duplicate()
+		for py in T:
+			for px in T:
+				var col := d.get_pixel(px, py)
+				d.set_pixel(px, py, Color(col.r * shade, col.g * shade, col.b * shade, col.a))
+		_tile_cache[key] = d
+	return _tile_cache[key]
 
 
 ## Smooth value noise in 0..1 (a random value every `cell` tiles, blended between them).
@@ -658,7 +704,7 @@ func _value_noise(x: int, y: int, cell: float) -> float:
 ## Ramps: each ramp is painted as one smooth slope, from the high ground's grass at the
 ## top to the low ground at the bottom, with faint contour steps across it and darker
 ## edges along its sides (one tile per cell made a saw-toothed staircase).
-func _paint_ramps(img: Image) -> void:
+func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 	var seen := {}
 	for y in H:
 		for x in W:
@@ -723,6 +769,8 @@ func _paint_ramps(img: Image) -> void:
 				neg_open[c] = in_map(nn) and ramp[idx(nn)] == 1
 				pos_open[c] = in_map(pp) and ramp[idx(pp)] == 1
 			for c in cells:
+				if not area.has_point(c):
+					continue
 				for py in T:
 					for px in T:
 						var p := Vector2(c.x * T + px, c.y * T + py) + Vector2(0.5, 0.5)
@@ -758,7 +806,7 @@ func _paint_ramps(img: Image) -> void:
 						elif sd < wedge + 4.0 and f < 0.92:
 							col = col.lightened(0.3)
 						col.a = 1.0
-						img.set_pixel(c.x * T + px, c.y * T + py, col)
+						img.set_pixel((c.x - area.position.x) * T + px, (c.y - area.position.y) * T + py, col)
 
 
 func _start_positions() -> void:
@@ -4141,7 +4189,7 @@ func _update_vis() -> void:
 	for u in units:
 		if not u.dead and not u.off_field:
 			var c := cell_of(u.position)
-			var key: int = ((u.team * 64 + u.sight) * 2 + int(u.is_air())) * 8192 + c.y * W + c.x
+			var key: int = ((u.team * 64 + u.sight) * 2 + int(u.is_air())) * 1048576 + c.y * W + c.x
 			if done.has(key):
 				continue
 			done[key] = true

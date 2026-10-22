@@ -7,8 +7,8 @@ extends Control
 signal back_requested
 signal play_requested(map_id: String, starts: int)
 
-const W := Game.W
-const H := Game.H
+const W := 84         # custom maps are the classic size
+const H := 60
 const HALL := Vector2i(5, 4)
 const TOOLS := [
 	["low", "GROUND", "."], ["high", "HIGH GROUND", "h"], ["ramp", "RAMP", "r"], ["water", "WATER", "w"],

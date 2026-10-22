@@ -165,11 +165,23 @@ func _layout() -> Dictionary:
 		_rects_frame = f
 		var b := _btn()
 		_rects = UiLayout.rects(_vs(), {
-			"mini": Vector2(MINI_W, MINI_W * float(Game.H) / float(Game.W)),
+			"mini": mini_size(),
 			"groups": Vector2(206, 90),
 			"card": Vector2(b * _cols() + 4, b * _rows() + 4),
 			"panel": Vector2(0, 88)})
 	return _rects
+
+
+## The minimap's size: MINI_W wide for a wide map; a square or tall map is at most
+## MINI_H tall and narrower.
+const MINI_H := 170.0
+
+
+static func mini_size() -> Vector2:
+	var h := MINI_W * float(Game.H) / float(Game.W)
+	if h <= MINI_H:
+		return Vector2(MINI_W, h)
+	return Vector2(MINI_H * float(Game.W) / float(Game.H), MINI_H)
 
 
 func mini_rect() -> Rect2:
