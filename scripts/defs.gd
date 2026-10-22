@@ -436,7 +436,7 @@ const BUILDINGS := {
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
-		"supply": 8, "sight": 5, "trains": [], "faction": "crown", "about": "Houses 8 more supply.",
+		"supply": 8, "sight": 5, "trains": [], "faction": "crown", "about": "Houses 8 more supply. The first one unlocks the Barracks and the palisade and gates.",
 	},
 	# Crown fortifications: one tile each, laid in a line (pick the start, then the end).
 	"wall": {
