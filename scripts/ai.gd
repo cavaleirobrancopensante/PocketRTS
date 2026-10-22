@@ -2848,6 +2848,9 @@ func _horses() -> void:
 		var have: int = game.horses_at(b)
 		if _groom and is_instance_valid(_groom) and _groom_to == b:
 			have += _groom.led.size()
+		for h in horses:
+			if h.order == "move" and b.edge_distance(h.order_point) < 40.0:
+				have += 1       # (on its way there)
 		if have < want:
 			short[b] = want - have
 			need += want - have
@@ -2886,7 +2889,7 @@ func _groom_tick(horses: Array, short: Dictionary, need: int, keep: Dictionary) 
 	if _groom == null:
 		if need <= 0:
 			return
-		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h))
+		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.order != "move")
 		if free.is_empty():
 			return
 		# the Labourer nearest the free horses (not building, not carrying a keg)
@@ -2927,7 +2930,12 @@ func _groom_tick(horses: Array, short: Dictionary, need: int, keep: Dictionary) 
 		if _groom_to.edge_distance(g.position) < 26.0:
 			_groom_t += 1.0
 			if _groom_t >= 2.0:
-				g.release_horses()       # they stand at the building, ready for a recruit
+				# they walk up to the building and stand there, ready for a recruit
+				var to := _groom_to
+				var hs: Array = g.led.duplicate()
+				g.release_horses()
+				for h in hs:
+					h.cmd_move(game.approach_point(to, h.position) + Vector2(randf_range(-8, 8), randf_range(-8, 8)))
 				_groom_to = null
 				_groom_t = 0.0
 		elif g.order != "move" or g.order_point.distance_to(game.approach_point(_groom_to, g.position)) > 40.0:
@@ -2937,7 +2945,7 @@ func _groom_tick(horses: Array, short: Dictionary, need: int, keep: Dictionary) 
 		return                       # fetching
 	if need > 0:
 		# fetch as many as are wanted (up to 3) from the horses at home
-		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and Unit.horse_free_for(h, g))
+		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.order != "move" and Unit.horse_free_for(h, g))
 		free.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(g.position) < b.position.distance_squared_to(g.position))
 		var n := mini(mini(need, int(Defs.HORSES["lead_max"])), free.size())
 		for i in n:
@@ -2962,7 +2970,7 @@ func _mount_men(horses: Array, keep: Dictionary, need: int) -> void:
 			var h: Unit = u.nearest_free_horse(12.0)
 			if h and u.cmd_mount(h):
 				spare.erase(h)
-	if spare.size() <= need + 1 or _attacking:
+	if spare.size() <= need + 1:
 		return
 	var muskets := army.filter(func(u: Unit) -> bool: return u.kind == "musketeer").size()
 	var dragoons := army.filter(func(u: Unit) -> bool: return u.kind == "dragoon" or (u.kind == "musketeer" and u.auto_mount)).size()
@@ -2970,7 +2978,7 @@ func _mount_men(horses: Array, keep: Dictionary, need: int) -> void:
 	for u in army:
 		if dragoons >= want or spare.size() <= need + 1:
 			break
-		if u.kind != "musketeer" or u.auto_mount or u.order != "idle" or u.target != null or _on_errand(u):
+		if u.kind != "musketeer" or u.auto_mount or u.order != "idle" or u.target != null or _on_errand(u) or game.nearest_hall(u.position, team) == null or game.nearest_hall(u.position, team).edge_distance(u.position) > 14.0 * Defs.TILE:
 			continue
 		var h: Unit = u.nearest_free_horse(10.0)
 		if h and spare.has(h) and u.cmd_mount(h):

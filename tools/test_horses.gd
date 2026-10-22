@@ -335,6 +335,14 @@ func _dragoon() -> void:
 	var p0: float = dg.powder
 	await wait_for(func() -> bool: return dg.powder < p0, 10.0)
 	check(dg.powder < p0, "he fires on foot")
+	var stayed := true
+	for i in 30:
+		await wait(0.1)
+		if dg.kind != "musketeer":
+			stayed = false
+			print("  remounted: order %s target %s dist %.0f" % [dg.order, dg.order_target, r.edge_distance(dg.position)])
+			break
+	check(stayed, "  and stays on foot while the target is in range")
 	check(absf(dg.musket_cooldown() - float(Defs.UNITS["musketeer"]["cooldown"]) * float(Defs.HORSES["dragoon_reload"])) < 0.01, "  reloading 1.3x slower (%.2f s)" % dg.musket_cooldown())
 	var steed: Unit = dg.steed
 	check(steed != null and steed.position.distance_to(dg.position) < 50.0, "  his horse beside him")

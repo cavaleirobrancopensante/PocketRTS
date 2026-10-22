@@ -4914,7 +4914,10 @@ func do_dismount() -> void:
 	var side := Vector2(-facing.y, facing.x)
 	if side == Vector2.ZERO:
 		side = Vector2.RIGHT
-	var spot := game.resolve_terrain(position + side * (radius + 10.0), position, 11.0, team)
+	# (the horse stands a step behind him, a little to one side: clear of his line of fire,
+	# and not drawn over him so he looks still mounted)
+	var f := facing if facing != Vector2.ZERO else Vector2.RIGHT
+	var spot := game.resolve_terrain(position - f * (radius + 16.0) - side * 6.0, position, 11.0, team)
 	var h := game._add_unit("horse", team, spot)
 	h.coat = coat if coat != "" else HorseCoat.pick()
 	HorseCoat.apply(h)
