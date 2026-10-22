@@ -401,7 +401,7 @@ const BUILDINGS := {
 	"gate": {
 		"name": "Gate", "hp": 300, "armor": 2, "cost": 50, "time": 12.0, "size": Vector2i(1, 1),
 		"supply": 0, "sight": 4, "trains": [], "line": true, "gate": true, "faction": "crown",
-		"about": "A piece of palisade that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own palisade to swap a piece for a gate. It faces the way the palisade runs; ROTATE turns it by hand.",
+		"about": "A piece of palisade that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own palisade to swap a piece for a gate. Gates turn to match the palisade they're placed in; R (ROTATE) turns one by hand: while placing, for where the palisade doesn't say; once built, for good.",
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),

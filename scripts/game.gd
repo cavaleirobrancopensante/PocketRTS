@@ -412,32 +412,76 @@ func _remove_quietly(b: Building) -> void:
 	relink_walls(b.cell)
 
 
-## Gates face the way their wall runs: drawn side-on in a north-south wall. Each gate
-## near a cell that changed looks at its neighbours (walls, gates, cliffs and
-## buildings) unless the player turned it by hand.
+## Gates turn to match the palisade they're placed in (drawn side-on, gate_v, in a
+## north-south line): a side's own walls and gates (built or planned sites) on the gate's
+## four sides decide. Only north and/or south: N-S; only east and/or west: E-W; both ways
+## or none: `fallback` (the player's last R choice, or for the computer the lie of the
+## land, see _terrain_facing). plan: cells -> kind of pieces about to be laid with it.
+var gate_pref_vertical := false     # the player's R choice while placing gates (remembered)
+var _gate_plan := {}                # place_line: the rest of the line being laid
+
+
+func gate_facing(t: int, c: Vector2i, plan: Dictionary = {}, fallback := false) -> bool:
+	var ns := false
+	var ew := false
+	for b in buildings:
+		if b.team != t or b.dead or not (b.kind == "wall" or b.kind == "gate"):
+			continue
+		var d: Vector2i = b.cell - c
+		if absi(d.x) + absi(d.y) == 1:
+			if d.x == 0:
+				ns = true
+			else:
+				ew = true
+	for pc in plan:
+		var d: Vector2i = pc - c
+		if absi(d.x) + absi(d.y) == 1:
+			if d.x == 0:
+				ns = true
+			else:
+				ew = true
+	if ns != ew:
+		return ns
+	return fallback
+
+
+## A gate with no line to follow: the side its blocked neighbours (cliffs, buildings) are
+## on, as a wall would run between them.
+func _terrain_facing(c: Vector2i) -> bool:
+	var ns := 0
+	var ew := 0
+	for dv in [Vector2i(0, -1), Vector2i(0, 1)]:
+		var cc: Vector2i = c + dv
+		if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
+			ns += 2 if solid[idx(cc)] >= 3 else 1
+	for dv in [Vector2i(-1, 0), Vector2i(1, 0)]:
+		var cc: Vector2i = c + dv
+		if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
+			ew += 2 if solid[idx(cc)] >= 3 else 1
+	return ns > ew
+
+
+## Which way a gate side t lays at c faces (see gate_facing).
+func new_gate_facing(t: int, c: Vector2i, plan: Dictionary = {}) -> bool:
+	return gate_facing(t, c, plan, gate_pref_vertical if t == human else _terrain_facing(c))
+
+
+## A gate still only planned or being built turns when the palisade beside it changes (its
+## first wall neighbour, say). A finished gate never flips by itself, nor one turned by hand.
 func _orient_gates(around: Vector2i) -> void:
 	for b in buildings:
-		if b.kind != "gate" or b.dead or b.dir_locked or (b.cell - around).abs().x > 1 or (b.cell - around).abs().y > 1:
+		if b.kind != "gate" or b.dead or b.built or b.dir_locked or (b.cell - around).abs().x > 1 or (b.cell - around).abs().y > 1:
 			continue
-		var ns := 0
-		var ew := 0
-		for dv in [Vector2i(0, -1), Vector2i(0, 1)]:
-			var cc: Vector2i = b.cell + dv
-			if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
-				ns += 2 if solid[idx(cc)] >= 3 else 1
-		for dv in [Vector2i(-1, 0), Vector2i(1, 0)]:
-			var cc: Vector2i = b.cell + dv
-			if in_map(cc) and solid[idx(cc)] != 0 and solid[idx(cc)] != 5:
-				ew += 2 if solid[idx(cc)] >= 3 else 1
-		b.set_vertical(ns > ew)
+		b.set_vertical(gate_facing(b.team, b.cell, {}, b.vertical))
 
 
 ## Palisade auto-tiling (as in Age of Empires 2): each wall piece shows the picture for
 ## which of its four neighbours (N, E, S, W: bits 1, 2, 4, 8) are its side's walls or
-## gates. A gate joins only east or west: north or south of a gate the line just ends (the
-## stakes would stand in its gateway or in front of its doors; its posts take their place). A
-## ghost site joins only in its own side's (and allies') eyes. plan: cells -> kind of
-## pieces about to be laid (the placement preview).
+## gates. A gate joins only along its own line: an E-W gate ("gate") on its east and west,
+## a N-S gate ("gate_v", drawn side-on) on its north and south (its far and near posts);
+## across a gate the line just ends (the stakes would stand in its gateway or in front of
+## its doors; its posts take their place). A ghost site joins only in its own side's (and
+## allies') eyes. plan: cells -> kind of pieces about to be laid (the placement preview).
 const LINK_DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 
 
@@ -445,7 +489,7 @@ func _links_from(c: Vector2i, kinds: Dictionary) -> int:
 	var m := 0
 	for i in 4:
 		var k: String = kinds.get(c + LINK_DIRS[i], "")
-		if k == "wall" or (k == "gate" and i % 2 == 1):
+		if k == "wall" or (k == "gate" and i % 2 == 1) or (k == "gate_v" and i % 2 == 0):
 			m |= 1 << i
 	return m
 
@@ -461,7 +505,7 @@ func _line_kinds(t: int, c: Vector2i, r: int) -> Dictionary:
 		var dc: Vector2i = b.cell - c
 		if absi(dc.x) + absi(dc.y) > r or (b.ghost and hidden_ghost(b, ft)):
 			continue
-		out[b.cell] = b.kind
+		out[b.cell] = "gate_v" if b.kind == "gate" and b.vertical else b.kind
 	return out
 
 
@@ -487,16 +531,11 @@ func relink_walls(c: Vector2i) -> void:
 
 ## The picture of a wall or gate about to be laid at c (the placement preview): the
 ## palisade piece its neighbours (and the rest of the planned line) make; a gate turned
-## the way its line runs.
+## the way its line runs (new_gate_facing: the R choice where that doesn't say).
 func line_ghost_tex(k: String, c: Vector2i, plan: Dictionary) -> Texture2D:
 	if k == "wall":
 		return tex("res://assets/buildings/%s_built.png" % Building.wall_piece(wall_links(human, c, plan)))
-	var kinds := _line_kinds(human, c, 1)
-	for pc in plan:
-		kinds[pc] = plan[pc]
-	var ns := int(kinds.has(c + Vector2i(0, -1))) + int(kinds.has(c + Vector2i(0, 1)))
-	var ew := int(kinds.has(c + Vector2i(-1, 0))) + int(kinds.has(c + Vector2i(1, 0)))
-	return tex("res://assets/buildings/%s_built.png" % ("gate_v" if ns > ew else "gate"))
+	return tex("res://assets/buildings/%s_built.png" % ("gate_v" if new_gate_facing(human, c, plan) else "gate"))
 
 
 ## Lay a line of walls or gates; returns how many pieces went down.
@@ -506,6 +545,12 @@ func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array, qu
 	var n := 0
 	var first := true
 	var pieces: Array = []
+	# gates laid as a line take the line's way (each one sees the whole line planned)
+	_gate_plan = {}
+	if k == "gate":
+		for c in line_cells(a, b):
+			if placement_problem(t, k, c) == "":
+				_gate_plan[c] = k
 	for c in line_cells(a, b):
 		if placement_problem(t, k, c) != "":
 			continue
@@ -522,6 +567,7 @@ func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array, qu
 			n += 1
 			first = false
 			pieces.append(bl)
+	_gate_plan = {}
 	if queued and not pieces.is_empty():
 		for u in builders:
 			if u is Unit and u.is_worker() and not u.dead:
@@ -1572,6 +1618,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := fals
 	var b := Building.new()
 	b.setup(self, k, t, c, complete)
 	b.ghost = ghost and not complete
+	if k == "gate":
+		b.vertical = new_gate_facing(t, c, _gate_plan)     # (a saved game sets its own after)
 	world.add_child(b)
 	buildings.append(b)
 	if k == "town_hall" or k == "hive" or k == "clocktower":
@@ -1581,6 +1629,7 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := fals
 		if not sees_all() and hidden_ghost(b, fog_team()):
 			b.visible = false              # (another side's plan: never shown)
 		if Defs.BUILDINGS[k].get("line", false):
+			_orient_gates(c)
 			relink_walls(c)
 		b._update_sprite()
 	else:

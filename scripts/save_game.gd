@@ -245,6 +245,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if bd["wrally"] != null:
 			b.worker_rally = _to_v2(bd["wrally"])
 		b._update_sprite()
+	for b in game.buildings:
+		if b.kind == "gate":
+			game.relink_walls(b.cell)     # (the palisade joins its gates the way they were saved)
 	game.soil_scars.clear()
 	for sc in d.get("soil_scars", []):
 		var sk := String(sc[2]) if sc.size() > 2 else "town_hall"

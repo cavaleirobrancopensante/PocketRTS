@@ -612,6 +612,8 @@ func set_vertical(v: bool) -> void:
 	if vertical != v:
 		vertical = v
 		_update_sprite()
+		if game and not dead:
+			game.relink_walls(cell)     # the palisade beside it joins it the other way now
 var _gate_t := 0.0
 var _swing_t := 0.0              # the gate is swinging (opening or shutting): drawn half open
 const GATE_SWING := 0.3
