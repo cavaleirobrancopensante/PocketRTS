@@ -294,7 +294,7 @@ func _econ_build() -> void:
 			if no_breeder and not early:
 				order.push_front("horse_breeder")
 			# no Mill until the rush is out: the first few Horsemen (or the rush is over)
-			if game.econ_count(team, "powder_mill") == 0 and (no_breeder or not barracks_up or (_horsemen() < RUSH_HORSEMEN and game.clock < 420.0 and strategy == _opened)):
+			if game.econ_count(team, "powder_mill") == 0 and (no_breeder or not barracks_up or _rushing()):
 				order.erase("powder_mill")
 	elif _brood():
 		order = ["feeding_pit"]
@@ -334,12 +334,15 @@ func _econ_build() -> void:
 const RUSH_HORSEMEN := 3
 
 
-## Horsemen we have (mounted or not, light or armoured) and in the Barracks queues.
+## Horsemen we have out (mounted or not, light or armoured).
 func _horsemen() -> int:
-	var n := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "cuirassier" or u.kind == "dismounted").size()
-	for b in _mine("barracks"):
-		n += b.queue.count("cuirassier")
-	return n
+	return game.army(team).filter(func(u: Unit) -> bool: return u.kind == "cuirassier" or u.kind == "dismounted").size()
+
+
+## Crown: the Horseman rush is on (the Breeder opening, until its first horsemen are out):
+## one Barracks, every spare coin on horses and horsemen.
+func _rushing() -> bool:
+	return _crown() and opening == "breeder" and strategy == _opened and _horsemen() < RUSH_HORSEMEN and game.clock < 420.0
 
 
 func _econ_spot(kind: String) -> Vector2i:
@@ -446,7 +449,7 @@ func _build_up() -> void:
 			_construct("cottage")
 		if barracks == 0 and labs >= _lv([9, 8, 7]):
 			_construct("barracks")
-		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150:
+		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150 and not _rushing():
 			_construct("barracks")
 		elif barracks == 2 and difficulty >= 2 and t > _lv([9999.0, 9999.0, 330.0]) and gold > 300:
 			_construct("barracks")
@@ -460,7 +463,7 @@ func _build_up() -> void:
 		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140 and game.requirement_met(team, "wall"):
 			_wall_off()
 	# Money in the bank: more production (and for the Brood, more Hives to lay eggs).
-	if gold > 400 and not _saving:
+	if gold > 400 and not _saving and not _rushing():
 		if _crown() and _mine("foundry").size() < 3 and gold > 700 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
 			_construct("foundry")
 		elif _crown() and _mine("barracks").size() < 9 and not _busy_building("barracks") and not _mine("barracks").is_empty():
@@ -2885,7 +2888,9 @@ func _horses() -> void:
 	var foundries := _mine("foundry").filter(func(b: Building) -> bool: return b.built)
 	var places: Array = foundries.duplicate()
 	if game.requirement_met(team, "horse_breeder") and not _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built).is_empty():
-		places += _mine("barracks").filter(func(b: Building) -> bool: return b.built)   # (Horsemen need the breeder)
+		# (Horsemen need the breeder; on the Breeder opening the horses wait at the Barracks
+		# while it goes up)
+		places += _mine("barracks").filter(func(b: Building) -> bool: return b.built or opening == "breeder")
 	for b in places:
 		var want := 2 if (b.kind == "foundry" and _gold() > 600) or (b.kind == "barracks" and opening == "breeder" and game.clock < 600.0) else 1
 		var have: int = game.horses_at(b)
