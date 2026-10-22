@@ -106,6 +106,9 @@ func _ready() -> void:
 	add_child(Music.new())
 	sfx = Sfx.new()
 	add_child(sfx)
+	var cursors := Cursors.new()       # the mouse cursor (computer only)
+	cursors.main = self
+	add_child(cursors)
 	ui_layer = CanvasLayer.new()
 	ui_layer.layer = 10
 	add_child(ui_layer)

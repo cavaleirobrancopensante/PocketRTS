@@ -67,5 +67,6 @@ python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included
 python3 tools/import_vet_skin.py         # veterancy skin masks for the Brood's fighting creatures
+python3 tools/import_cursors.py          # the mouse cursors (art/ui/cursors.png) and their hotspots
 echo "Now run: godot --headless --import"
 python3 tools/make_calm_grass.py
