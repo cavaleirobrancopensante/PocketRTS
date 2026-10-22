@@ -850,7 +850,7 @@ func _build_card() -> Array:
 					toast("Gates now face %s." % way)
 				else:
 					toast("Gates face %s off the palisade; this one follows its line." % way), true, "", ""])
-		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
+		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if controls.mode != "":
 		if controls.mode == "unload":
@@ -858,7 +858,7 @@ func _build_card() -> Array:
 			list.append(["ab_unload", "DROP HERE", func() -> void:
 				game.unload_order(game.selected_units(), Vector2.ZERO, true)
 				controls.cancel_mode(), true, "", ""])
-		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
+		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if not units.is_empty():
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
@@ -887,7 +887,7 @@ func _build_card() -> Array:
 					controls.begin_place(kk), why == "", why, str(d["cost"])])
 			if pages > 1:
 				list.append(["build", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
-			list.append(["stop", "BACK", func() -> void:
+			list.append(["back", "BACK", func() -> void:
 				page = ""
 				build_page = 0, true, "", ""])
 			return list
@@ -917,7 +917,7 @@ func _build_card() -> Array:
 
 		else:
 			_ability_buttons(list, units)
-			list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
+			list.append(["hold", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 			_refit_buttons(list, units)
 		_horse_buttons(list, units)
 		if has_lab:
@@ -926,7 +926,7 @@ func _build_card() -> Array:
 				# WORK is automatic: idle workers go back to work on their own. Press it to
 				# switch that off (to scout or to keep a builder free), and again to switch it on.
 				var auto: bool = gatherers.all(func(u: Unit) -> bool: return u.auto_work)
-				list.append(["gather", ("~ " if auto else "") + "WORK", func() -> void:
+				list.append(["work", ("~ " if auto else "") + "WORK", func() -> void:
 					for u in game.selected_units():
 						if u.can_gather():
 							u.auto_work = not auto
@@ -985,13 +985,29 @@ func _build_card() -> Array:
 				sb.set_vertical(v)
 			toast("Gate turned. It now stays this way."), true, "", ""])
 	if b and b.built and b.kind != game.faction_hall(game.human):
-		list.append(["stop", "DEMOLISH", func() -> void:
+		list.append(["demolish", "DEMOLISH", func() -> void:
 			if Time.get_ticks_msec() - _demolish_ms > 2500:
 				_demolish_ms = Time.get_ticks_msec()
 				toast("Press DEMOLISH again to pull it down.")
 				return
 			for sb in game.selected_buildings():
 				game.demolish(sb), true, "", ""])
+	if b and b.built and b.is_leveled() and not b.next_level().is_empty():
+		# the Brood's hall grows: Burrow -> Warren -> Broodmound (it keeps working meanwhile)
+		var nl := b.next_level()
+		if b.upgrade_t >= 0.0:
+			_tip_for["STOP UPGRADE"] = ["Stop growing into a %s" % nl["name"], "Stop the upgrade: all of its price is paid back."]
+			list.append(["cancel", "STOP UPGRADE", func() -> void:
+				game.cancel_hall_upgrade(b)
+				toast("Upgrade to %s cancelled: paid back." % nl["name"]), true, "", ""])
+		else:
+			var uwhy := game.hall_upgrade_problem(b)
+			var ulab := String(nl["label"])
+			_tip_for[ulab] = ["Upgrade to %s" % nl["name"], String(nl["about"]),
+				"%s  ·  %d s" % [_cost_text(int(nl["cost"]), int(nl.get("cost2", 0))), int(nl["time"])]]
+			list.append([String(nl["art"]) if _icon(String(nl["art"])) != null else "hive", ulab, func() -> void:
+				var w := game.start_hall_upgrade(b)
+				toast(w if w != "" else "Your %s is growing into a %s." % [b.d["name"], nl["name"]]), uwhy == "", uwhy, str(nl["cost"])])
 	if b and b.built:
 		for rk in Defs.RESEARCH:
 			var rkk: String = rk
@@ -1031,12 +1047,12 @@ func _build_card() -> Array:
 				if w != "":
 					toast(w), why == "", why, str(game.unit_price(game.human, k)[0])])
 		if b.dual_rally():
-			list.append(["move", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
+			list.append(["rally", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
 			list.append(["feeding_pit", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
 		elif not b.d["trains"].is_empty():
-			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
+			list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
-			list.append(["stop", "CANCEL", func() -> void:
+			list.append(["cancel", "CANCEL", func() -> void:
 				var last: String = b.queue.back() if not b.queue.is_empty() else ""
 				game.cancel_train(b)
 				if Building.is_research(last):
@@ -1217,6 +1233,14 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_tongue", "TONGUE", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "tongue", tongue_ok, "" if tongue_ok else "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]), str(int(Defs.TONGUE["cost"]))])
+	# the cavalry's pistol: HOLD FIRE (glowing = on: he never fires it by himself)
+	var pistols := units.filter(func(u: Unit) -> bool: return u.has_pistol())
+	if not pistols.is_empty():
+		var held: bool = pistols.all(func(u: Unit) -> bool: return u.hold_fire)
+		list.append(["hold_fire" if held else "fire_at_will", ("~ " if held else "") + "HOLD FIRE", func() -> void:
+			for u in game.selected_units():
+				u.set_hold_fire(not held)
+			toast("Hold fire: they keep their pistols loaded." if not held else "Pistols free: they fire by themselves."), true, "", ""])
 	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
 	if not sacs.is_empty():
 		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
@@ -1282,15 +1306,18 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATR
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
-	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q"}
+	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q",
+	"HOLD FIRE": "F"}
 ## Keys the left hand reaches without leaving the group numbers: names only take letters
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
 ## Command keys that never move: everything else gives way to them.
 ## Standard keys for some units on their building's card (workers S, Musketeers A; at the
-## Barracks the light and armoured pairs: Musketeer A, Guardsman S, Horseman D, Cuirassier C).
+## Barracks the light and armoured pairs: Musketeer A, Guardsman S, Horseman D, Cuirassier C,
+## Dragoon F, Armoured Dragoon V, Officer G, Armoured Officer B).
 const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A", "guardsman": "S",
-	"horseman": "D", "cuirassier": "C"}
+	"horseman": "D", "cuirassier": "C", "dragoon": "F", "armoured_dragoon": "V",
+	"dismounted": "G", "dismounted_cuirassier": "B"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 
 
@@ -1339,7 +1366,7 @@ func _production_card(pbs: Array) -> Array:
 				toast(w), why == "", why, str(game.unit_price(game.human, kk)[0])])
 	if pages > 1:
 		list.append(["build", "MORE", func() -> void: prod_page = (prod_page + 1) % pages, true, "", ""])
-	list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
+	list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 	return list
 
 
@@ -1840,7 +1867,8 @@ func _draw_panel(font: Font) -> void:
 			if uu.order == "gather" and uu.home_mine is Building:
 				info = "Working at the %s." % (uu.home_mine as Building).d["name"]
 			if uu.kind == "grub" and uu.carrying > 0:
-				info = "Hauling food worth %d to the Hive." % uu.carrying
+				var home := game.nearest_hall(uu.position, uu.team)
+				info = "Hauling food worth %d to the %s." % [uu.carrying, home.d["name"] if home else "Burrow"]
 			elif uu.work == "feeding":
 				info = "Feeding at the pit: takes half damage."
 			elif uu.work == "bandaging":
@@ -1920,6 +1948,9 @@ func _draw_panel(font: Font) -> void:
 					info = "No charge yet: the Armoury drills the Cavalry Charge."
 				else:
 					info = "Charge ready: the next blow hits double and throws the enemy back." if uu.run_t >= float(Defs.CHARGE["run"]) else "Gallop about 2 s and the next blow is a charge."
+				info = pistol_text(uu) + " · " + info
+			elif uu.kind == "dismounted":
+				info = pistol_text(uu) + " · Sabre up close. MOUNT a horse to ride."
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -2017,13 +2048,13 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "horse_breeder" and bb.built and (e.team == game.human or game.demo):
 				info = "%s  ·  " % game.horses_text(bb.team) + info
 			elif (bb.kind == "barracks" or bb.kind == "foundry") and bb.built and (e.team == game.human or game.demo):
-				info = "Horses here: %d (Horsemen, cannons, mortars and wagons need one each)  ·  " % game.horses_at(bb) + info
+				info = "Horses here: %d (Horsemen, Dragoons, cannons, mortars and wagons need one each)  ·  " % game.horses_at(bb) + info
 			elif bb.kind == "powder_mill":
 				var sl := bb.lode_left()
 				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
 			elif bb.kind == "feeding_pit":
 				var gl := bb.soil_left()
-				info = "Each load is worth %.1f%s" % [game.load_value(bb), " · spent ground: a third; grow a Hive on fresh ground" if gl <= 0.0 else ""]
+				info = "Each load is worth %.1f%s" % [game.load_value(bb), " · spent ground: a third; grow a Burrow on fresh ground" if gl <= 0.0 else ""]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
 				var coal2 := bb.soil_left()
@@ -2040,10 +2071,12 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "brood_pen":
 				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
-				var nxt := "" if bb.eggs + bb.queue.size() >= Defs.EGGS_MAX else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
+				var nxt := "" if bb.eggs >= bb.eggs_max() else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
 				var gl := bb.soil_left()
-				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, Defs.EGGS_MAX, nxt, int(round(gl * 100)), int(bb.soil),
-					" spent: pits yield a third, grow a Hive on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
+				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, bb.eggs_max(), nxt, int(round(gl * 100)), int(bb.soil),
+					" spent: pits yield a third, grow a Burrow on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
+				if bb.upgrade_t >= 0.0 and not bb.next_level().is_empty():
+					info += " · Growing into a %s: %d s left" % [bb.next_level()["name"], int(ceil(float(bb.next_level()["time"]) - bb.upgrade_t))]
 			if bb.built and (e.team == game.human or game.demo):
 				var ef: Array = bb.efficiency()
 				if not ef.is_empty():
@@ -2078,12 +2111,17 @@ func _draw_panel(font: Font) -> void:
 				var rf := pu.reload_frac() if pu.powder >= 1.0 else 0.0
 				_ci.draw_rect(rb, Color(0, 0, 0, 0.6))
 				_ci.draw_rect(Rect2(rb.position, Vector2(rb.size.x * rf, rb.size.y)), Color(1.0, 0.85, 0.3) if rf >= 1.0 else Color(0.92, 0.92, 0.85))
+		if e is Unit and (e as Unit).has_pistol() and (e.team == game.human or game.demo):
+			# the pistol: a little pistol after the health figures, bright loaded, dim and crossed empty
+			_draw_pistol(Vector2(hb.end.x + 16 + font.get_string_size(hpt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, hb.position.y), (e as Unit).pistol)
 		if e is Unit and (e as Unit).kills > 0:
 			# veterancy: kills and the damage they've earned
 			var ku := e as Unit
 			var bonus := minf(ku.kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
 			var vt := "%s%d kill%s · +%d%% damage" % ["Veteran · " if not ku.is_worker() else "", ku.kills, "" if ku.kills == 1 else "s", int(round(bonus * 100.0))]
 			var vx := hb.position.x + hb.size.x + 22 + font.get_string_size(hpt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+			if ku.has_pistol() and (e.team == game.human or game.demo):
+				vx += 30.0           # (after the pistol)
 			var room := r.end.x - 36 - vx
 			if UiStyle.bold_font().get_string_size(vt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x > room:
 				vt = "%d kills +%d%%" % [ku.kills, int(round(bonus * 100.0))]
@@ -2217,12 +2255,46 @@ func _draw_panel(font: Font) -> void:
 var _portraits: Array = []
 
 
+## The pistol on the unit card: "Pistol LOADED" / "Pistol EMPTY: reloading 2.1 s" ...
+static func pistol_text(u: Unit) -> String:
+	var t := "Pistol LOADED" if u.pistol else "Pistol EMPTY"
+	if not u.pistol:
+		if u.is_mounted():
+			t += ": reloads on foot"
+		elif u.powder < float(Defs.PISTOL["powder"]):
+			t += ": no powder to reload"
+		elif u.pistol_t > 0.0:
+			t += ": reloading %.1f s" % maxf(float(Defs.PISTOL["reload"]) - u.pistol_t, 0.0)
+		else:
+			t += ": reloads when out of the fight"
+	if u.hold_fire:
+		t += " (HOLD FIRE)"
+	return t
+
+
+## A small flintlock pistol (barrel, lock, grip) at p, about 24 x 12: bright when loaded,
+## grey with a red bar when empty.
+func _draw_pistol(p: Vector2, loaded: bool) -> void:
+	var steel := Color(0.85, 0.87, 0.9) if loaded else Color(0.45, 0.45, 0.48)
+	var wood := Color(0.62, 0.38, 0.18) if loaded else Color(0.35, 0.28, 0.22)
+	_ci.draw_rect(Rect2(p + Vector2(6, 1), Vector2(16, 3)), steel)                 # barrel
+	_ci.draw_rect(Rect2(p + Vector2(4, 0), Vector2(6, 5)), wood)                   # stock
+	_ci.draw_colored_polygon(PackedVector2Array([p + Vector2(4, 3), p + Vector2(9, 3), p + Vector2(5, 11), p + Vector2(0, 10)]), wood)   # grip
+	_ci.draw_rect(Rect2(p + Vector2(8, -1), Vector2(3, 2)), steel)                 # the cock
+	if loaded:
+		_ci.draw_circle(p + Vector2(23, 2.5), 1.5, Color(1.0, 0.8, 0.3))
+	else:
+		_ci.draw_line(p + Vector2(0, 11), p + Vector2(22, -2), UiStyle.BAD, 2.0)
+
+
 ## A unit's (or building's) portrait: its own, its sprites' (a Guardsman, a Horseman), or the
 ## one standing in for it (Defs.TEMP_ART, light or armoured).
 func _unit_icon(e: Entity) -> Texture2D:
 	if e is Unit and Defs.TEMP_ART.has(e.kind):
 		return _icon(Defs.icon_for(Defs.train_key(e.kind, (e as Unit).armoured)))
 	var icon := _icon(e.kind)
+	if e is Building and (e as Building).level > 1 and _icon(String((e as Building).level_info().get("art", ""))):
+		icon = _icon(String((e as Building).level_info()["art"]))     # (a Warren, a Broodmound)
 	if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
 		icon = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
 	return icon
@@ -2372,6 +2444,8 @@ func _draw_card(font: Font) -> void:
 		var lsz := 11
 		while lsz > 8 and UiStyle.bold_font().get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > br.size.x - 5:
 			lsz -= 1
+		if UiStyle.bold_font().get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > br.size.x - 5:
+			lab = lab.replace("ARMOURED ", "ARM. ")      # (Armoured Dragoon / Officer: still too long)
 		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), lab, lsz, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
 		if it[5] != "":
 			var cw := font.get_string_size(it[5], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 8
@@ -2472,9 +2546,10 @@ const CMD_TIPS := {
 	"PACK": "Pack it up to move (3 s). It can't fire while packed.",
 	"CANISTER": "Short range, a cone of musket balls: big damage, +50% against Light units, and it hits flyers.",
 	"ROUND SHOT": "The longest range in the game. The ball ploughs through a line of men, YOUR OWN TOO, and smashes buildings. Can't hit flyers.",
-	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Hive as essence. Bodies rot after 2 minutes.",
+	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as essence. Bodies rot after 2 minutes.",
 	"SACRIFICE": "The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as essence.",
 	"HOLD GAS": "Stop spitting and keep the sac full: the Bloater drifts in and bursts as a huge acid bomb.",
+	"HOLD FIRE": "Pistols (glowing = on): Horsemen, Cuirassiers and Officers keep their one pistol shot and fight with the sabre only, until you turn it off. (HOLD is still stand-ground.)",
 	"SPIT": "Lob acid from range. Every glob uses gas, so the final burst gets smaller.",
 	"FOG": "50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.",
 	"TONGUE": "75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.",
@@ -2513,6 +2588,8 @@ func _card_tip(it: Array) -> Dictionary:
 	if _tip_for.has(lab):
 		t["title"] = _tip_for[lab][0]
 		t["body"] = _tip_for[lab][1]
+		if (_tip_for[lab] as Array).size() > 2:
+			t["stats"] = _tip_for[lab][2]
 	elif b and rk != "" and Defs.RESEARCH[rk]["at"] == b.kind:
 		var ri: Dictionary = Defs.RESEARCH[rk]
 		t["title"] = "Research: %s" % ri["name"]
@@ -2619,7 +2696,7 @@ func _res_tip(i: int) -> Dictionary:
 	var body: String = {
 		"crown": ["Pays for everything. Labourers on Farms bring in the harvests; a Town Hall's soil runs out in time.",
 			"Black powder for muskets, cannons and mortars, and for refilling soldiers. Labourers grind it at the Powder Mill."],
-		"brood": ["Pays for everything. Grubs haul food from Feeding Pits to a Hive: longer hauls pay more.",
+		"brood": ["Pays for everything. Grubs haul food from Feeding Pits to a Burrow: longer hauls pay more.",
 			"Bodies falling near a Brood Pen, grubs on HARVEST, and SACRIFICE at the Pen. Pays for the big creatures."]}[fac][i]
 	return {"title": "%s: %d" % [r[i], int(pl["gold"]) if i == 0 else int(pl["res2"])], "body": body}
 

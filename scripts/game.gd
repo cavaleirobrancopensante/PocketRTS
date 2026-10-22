@@ -1594,8 +1594,9 @@ func _start_positions() -> void:
 
 ## A free cell for a building of this kind around a building: distance in tiles from
 ## its middle; "near" picks the closest, "far" the farthest, "toward_middle" the one
-## nearest the middle of the map.
-func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near") -> Vector2i:
+## nearest the middle of the map. `ground`: only on the building's own ground (its height:
+## the computer keeps its buildings up on its main's plateau, inside its walls).
+func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near", ground := false) -> Vector2i:
 	if Defs.is_econ(kind) and econ_count(t, kind) >= econ_limit(t, kind):
 		return Vector2i(-1, -1)
 	_spot_halls = halls_of(t)
@@ -1605,6 +1606,8 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	var c0: Vector2 = around.rect().get_center() / T
 	var mid := Vector2(W, H) * 0.5
 	var best := Vector2i(-1, -1)
+	var hc := cell_of(around.rect().get_center())
+	var h0 := int(height[idx(hc)]) if in_map(hc) else -1
 	# every open cell is scored first, then the full placement test runs from the best score
 	# down until one passes (it used to run on every cell: a hall's search took ~100 ms)
 	var keys := PackedInt64Array()
@@ -1621,6 +1624,8 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			var cc := Vector2(cell) + Vector2(size) * 0.5
 			var dd := cc.distance_to(c0)
 			if dd < min_d or dd > max_d:
+				continue
+			if ground and h0 >= 0 and not _on_ground(cell, size, h0):
 				continue
 			if not _footprint_open(cell, size):
 				continue
@@ -1663,6 +1668,16 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	_spot_all_halls = []
 	_in_spot = false
 	return best
+
+
+## Every cell of a footprint at height h (no ramp): on one plateau (or the low ground).
+func _on_ground(cell: Vector2i, size: Vector2i, h: int) -> bool:
+	for y in range(cell.y, cell.y + size.y):
+		for x in range(cell.x, cell.x + size.x):
+			var c := Vector2i(x, y)
+			if not in_map(c) or int(height[idx(c)]) != h or ramp[idx(c)] != 0:
+				return false
+	return true
 
 
 var _spot_halls: Array = []
@@ -1853,13 +1868,13 @@ func _soil_check(h: Building) -> void:
 		return
 	if mlog:
 		if hive:
-			mlog.add("%s: the ground around a Hive %s" % [mlog.who(h.team), "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+			mlog.add("%s: the ground around a %s %s" % [mlog.who(h.team), h.d["name"], "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 		else:
 			mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (its farms pay a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
 		if hive:
-			hud.toast("The ground around your Hive is spent: its pits yield a third. Grow a Hive on fresh ground." if level == 2
-				else "The ground around your Hive is running low (%d%% left): grow a Hive on fresh ground soon." % int(round(left * 100)), false)
+			hud.toast(("The ground around your %s is spent: its pits yield a third. Grow a Burrow on fresh ground." % h.d["name"]) if level == 2
+				else "The ground around your %s is running low (%d%% left): grow a Burrow on fresh ground soon." % [h.d["name"], int(round(left * 100))], false)
 		else:
 			hud.toast("The soil around your Town Hall is tired: expand to fresh land." if level == 2
 				else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
@@ -3011,6 +3026,72 @@ func research_done(b: Building, key: String) -> void:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
 
+# ------------------------------------------------------------------ Brood hall levels
+
+## "" if this hall can start growing into its next level (Defs.HALL_LEVELS), else why not.
+func hall_upgrade_problem(b: Building) -> String:
+	if not b.is_leveled() or not b.built or b.dead:
+		return "Can't upgrade that."
+	var nl := b.next_level()
+	if nl.is_empty():
+		return "Already a %s." % b.level_info()["name"]
+	if b.upgrade_t >= 0.0:
+		return "Already upgrading."
+	var needs := String(nl.get("needs", ""))
+	if needs != "" and not _has_built(b.team, needs):
+		return "Needs a %s first." % Defs.BUILDINGS[needs]["name"]
+	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
+	if players[b.team]["gold"] < int(nl["cost"]):
+		return "Not enough %s." % String(res[0]).to_lower()
+	if float(players[b.team]["res2"]) < float(nl.get("cost2", 0)):
+		return "Not enough %s." % String(res[1]).to_lower()
+	return ""
+
+
+## Start growing the hall into its next level: paid up front; it keeps laying, hatching and
+## taking food meanwhile. "" when started, else why not.
+func start_hall_upgrade(b: Building) -> String:
+	var why := hall_upgrade_problem(b)
+	if why != "":
+		return why
+	var nl := b.next_level()
+	players[b.team]["gold"] -= int(nl["cost"])
+	add_res2(b.team, -float(nl.get("cost2", 0)))
+	stats[b.team]["spent"] += int(nl["cost"])
+	b.upgrade_t = 0.0
+	b.queue_redraw()
+	if mlog:
+		mlog.add("%s started upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
+	return ""
+
+
+## Stop the hall's upgrade, paid back (`dying`: it was destroyed, nothing said).
+func cancel_hall_upgrade(b: Building, dying := false) -> void:
+	if b.upgrade_t < 0.0:
+		return
+	b.upgrade_t = -1.0
+	var nl := b.next_level()
+	if nl.is_empty():
+		return
+	players[b.team]["gold"] += int(nl["cost"])
+	add_res2(b.team, float(nl.get("cost2", 0)))
+	stats[b.team]["spent"] -= int(nl["cost"])
+	b.queue_redraw()
+	if mlog and not dying:
+		mlog.add("%s cancelled upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
+
+
+## The hall has grown into its next level.
+func hall_upgraded(b: Building) -> void:
+	var was := String(b.d["name"])
+	b.set_level(b.level + 1)
+	if b.team == human:
+		notify("Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
+		Sfx.announce(faction_of(b.team), "research_done", 3.0)
+	if mlog:
+		mlog.add("%s upgraded a %s to a %s" % [mlog.who(b.team), was, b.d["name"]])
+
+
 # ------------------------------------------------------------------ refits and drills
 
 var _refit_t := 0.0
@@ -3046,7 +3127,7 @@ func kit_for_new(t: int, key: String) -> Dictionary:
 	if not Defs.ARMOURED.has(k):
 		return {}
 	var kit := {"armour": Defs.train_armoured(key) and has_tech(t, "armour")}
-	if k == "musketeer":
+	if k == "musketeer" or k == "dragoon":
 		kit["lock"] = best_lock(t)
 		kit["bayonet"] = has_tech(t, "bayonet")
 	return kit
@@ -3331,11 +3412,11 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		Sfx.voice(k, "select")
 	var rid := int(kit.get("rid", 0))
 	var sk := k
-	if k == "cuirassier" and rid != 0:
-		sk = "dismounted"       # trained on foot: he goes and gets on the horse kept for him
+	if Defs.RIDERS.has(k) and rid != 0:
+		sk = String(Defs.RIDERS[k])    # trained on foot: he goes and gets on the horse kept for him
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(sk, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
-		if sk == "dismounted":
+		if sk != k:
 			u.set_kit(kit)
 			u.horse_rid = rid
 			u.rally_after = b.rally
@@ -4201,7 +4282,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
 		if b.visible and b.sprite and b.sprite.texture:
-			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
+			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null
@@ -4216,7 +4297,7 @@ func crew_site_at(p: Vector2, t: int) -> Building:
 		if b.rect().grow(4).has_point(p):
 			return b
 		if b.sprite and b.sprite.texture:
-			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
+			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null
@@ -4286,6 +4367,16 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 	s.impact_scale = 1.0 if hit else 0.35
 	s.launch(self, "ball", muzzle, aim, 950.0)
 	Sfx.play_any(["combat/musketeer_attack", "musket"], u.global_position)
+
+
+## The cavalry's pistol (Defs.PISTOL): one ball, a single ranged blow like a musket's (so a
+## rider it kills may leave his horse loose); from the saddle it leaves the rider's hand.
+func pistol_shot(u: Unit, e: Entity, dmg: float) -> void:
+	var muzzle := u.center() + u.facing * 18.0 + Vector2(0, -16.0 if u.is_mounted() else -2.0)
+	musket_shot(u, e, dmg, muzzle)
+	if mlog and not _first_of.has("%d:pistol" % u.team):
+		_first_of["%d:pistol" % u.team] = true
+		mlog.add("%s's first pistol shot (%s)" % [mlog.who(u.team), Defs.train_name(Defs.train_key(u.kind, u.armoured))])
 
 
 var _tracers: Array = []
@@ -6613,7 +6704,7 @@ func _reserve_horse(b: Building, k: String, rid: int, pay: bool) -> bool:
 	if h:
 		h.horse_rid = rid
 		h.cmd_stop()
-		if k != "cuirassier":
+		if not Defs.RIDERS.has(k):
 			h.walk_into(b)
 		return true
 	var br := breeder_with_room(b.team, b.center())

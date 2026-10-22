@@ -4,8 +4,24 @@ class_name Defs
 
 const TILE := 32
 const START_GOLD := 250
-const EGGS_MAX := 5
+const EGGS_MAX := 5               # a Burrow's eggs (an upgraded hall holds more: HALL_LEVELS)
 const EGG_TIME := 6.0
+## The Brood's main hall grows in three levels (its kind stays "hive" at every level; the
+## level is kept on the building and saved): name, health, armour and how many eggs it holds.
+## Levels 2 and 3 are upgrades on the hall's card (`label`), paid in biomass (`cost`) and
+## essence (`cost2`), taking `time` s, `needs` a finished building of that kind; the hall
+## keeps laying, hatching and taking food meanwhile, and CANCEL pays it back. `art`: its
+## sprite sheet (assets/buildings/<art>_<state>.png, tools/import_brood_halls.py); until it
+## exists the Burrow's is drawn `scale` times bigger (anchored at the bottom).
+const HALL_LEVELS := [
+	{"name": "Burrow", "hp": 1500, "armor": 1, "eggs": 5, "art": "hive", "scale": 1.0},
+	{"name": "Warren", "hp": 2000, "armor": 1, "eggs": 10, "art": "warren_hall", "scale": 1.15,
+		"label": "WARREN", "cost": 150, "cost2": 0, "time": 40.0,
+		"about": "Upgrade to Warren: up to 10 eggs, more health (2000). The hall keeps laying eggs and hatching meanwhile."},
+	{"name": "Broodmound", "hp": 2600, "armor": 2, "eggs": 15, "art": "broodmound", "scale": 1.3,
+		"label": "BROODMOUND", "cost": 250, "cost2": 50, "time": 60.0, "needs": "gorge_pit",
+		"about": "Upgrade to Broodmound: up to 15 eggs, more health (2600) and armour 2. The hall keeps laying eggs and hatching meanwhile."},
+]
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
 const AUTO_REPAIR := 8           # REPAIR autocast: how far (tiles) an idle worker looks for something to fix
@@ -58,7 +74,18 @@ const START_POWDER := 0
 ## 3 of the wagon's musket shots). Shots themselves don't touch the bank any more.
 ## A soldier refitted with the Shot Pouch (RESEARCH "pouch") carries `pouch` musket shots.
 const POWDER := {"musketeer": 10, "pouch": 20, "cannon": 8, "mortar": 6, "refill": 2.0, "range": 3.0, "rearm": 3,
-	"cost": {"musketeer": 0.5, "cannon": 1.5, "mortar": 1.5}, "from": ["powder_mill", "barracks", "town_hall"]}
+	"cuirassier": 4, "dismounted": 4,       # the pistol's charges (Defs.PISTOL): mounted and on foot alike
+	"cost": {"musketeer": 0.5, "cannon": 1.5, "mortar": 1.5, "cuirassier": 0.5, "dismounted": 0.5}, "from": ["powder_mill", "barracks", "town_hall"]}
+## The Horseman's flintlock pistol (Horseman, Cuirassier, Officer, Armoured Officer: `kinds`):
+## one loaded shot of `damage` at up to `range` px (a single ranged blow, like a musket ball;
+## ground targets only, never at buildings), aimed in `aim` s; `after` s later his sabre is
+## out and he fights with it as before. He fires it mounted or on foot, but reloads only on
+## foot (an Officer): `reload` s, by himself, spending `powder` of the charges he carries
+## (POWDER: refilled like a Musketeer's); with none left he can't reload. The reload waits
+## while he's in a sabre fight (an enemy within `busy` px). Trained loaded; mounting and
+## dismounting keep the pistol as it is. HOLD FIRE: he never fires it by himself.
+const PISTOL := {"damage": 30.0, "range": 110.0, "aim": 0.35, "after": 0.4, "reload": 4.0, "powder": 1.0,
+	"busy": 40.0, "kinds": ["cuirassier", "dismounted"]}
 ## Powder Wagon: holds `store` musket shots. Parked within POWDER.range tiles of a Powder Mill,
 ## Barracks or Town Hall it fills `fill` shots a second, paid from the powder bank at
 ## 1 powder per `per_powder` shots (the musket rate). SUPPLY: up to `runners` labourers carry
@@ -200,7 +227,7 @@ const FACTIONS := {
 		"start_workers": 5, "ready": true, "max_supply": 160,
 		"res": ["Biomass", "Essence"], "econ": {"feeding_pit": 3, "brood_pen": 1},
 		"start": ["feeding_pit"],
-		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Hive: the longer the haul, the richer the food, and each Hive's ground runs out in time. Essence comes from the fallen and from offerings at the Brood Pen. Army cap 160.",
+		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Army cap 160.",
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
@@ -253,7 +280,7 @@ const UNITS := {
 		"name": "Horseman", "hp": 140, "armor": 1, "speed": 112, "cost": 115, "time": 22.0, "supply": 3,
 		"sight": 8, "range": 26, "damage": 18, "cooldown": 1.1, "aim": 0.15, "radius": 15, "from": "barracks",
 		"requires": "horse_breeder", "bonus": {"cannon": 1.6, "spitter": 1.3, "arc_thrower": 1.3}, "charge": true, "faction": "crown", "needs_horse": true,
-		"about": "Fast light horseman with a sabre. Trained with his horse in one click (a free one at a breeder, else the breeder trains one: 40 more); he comes out on foot and rides off on it. Once the Armoury has drilled the Cavalry Charge, his first blow after a gallop hits double and throws the enemy back. With Armour he becomes a Cuirassier. DISMOUNT and he fights on foot with carbine and sabre. Bayonets hurt him.",
+		"about": "Fast light horseman with a pistol and a sabre. Trained with his horse in one click (a free one at a breeder, else the breeder trains one: 40 more); he comes out on foot and rides off on it. He opens with his one loaded pistol shot (30 damage, a little over half a musket's reach), then fights with the sabre; he can only reload on foot (DISMOUNT: he's an Officer then). Once the Armoury has drilled the Cavalry Charge, his first sabre blow after a gallop hits double and throws the enemy back. With Armour he becomes a Cuirassier. Bayonets hurt him.",
 	},
 	# ---- horses (Defs.HORSES) and the men who ride them. Horses are bought at a Horse Breeder
 	# (trained like soldiers); the rest are a man on a horse (MOUNT) or off it (DISMOUNT): Defs.MOUNTS.
@@ -274,18 +301,20 @@ const UNITS := {
 	# (light he is the Dragoon, with Armour the Armoured Dragoon: see ARMOURED)
 	"dragoon": {
 		"tags": ["light"],
-		"name": "Dragoon", "hp": 90, "armor": 0, "speed": 112, "cost": 60, "cost2": 10, "time": 1.0, "supply": 1,
-		"sight": 8, "range": 190, "damage": 0, "cooldown": 2.8, "radius": 14, "from": "",
+		"name": "Dragoon", "hp": 90, "armor": 0, "speed": 112, "cost": 60, "cost2": 10, "time": 15.0, "supply": 1,
+		"sight": 8, "range": 190, "damage": 0, "cooldown": 2.8, "radius": 14, "from": "barracks",
+		"requires": ["powder_mill", "horse_breeder"], "needs_horse": true,
 		"no_attack": true, "mounted": true, "anti_air": true, "faction": "crown",
-		"about": "A Musketeer on a horse: rides fast but can't fight in the saddle. Told to attack, he dismounts (0.8 s), fires as a Musketeer (reloading a third slower), and remounts by himself to move on. His reload waits while he rides.",
+		"about": "A Musketeer on a horse: rides fast but can't fight in the saddle. Trained at the Barracks with his horse in one click, for the Musketeer's price (a free horse at a breeder, else the breeder trains one: 40 more); he comes out on foot and rides off on it. Told to attack, he dismounts (0.8 s), fires as a Musketeer (reloading a third slower), and remounts by himself to move on. His reload waits while he rides.",
 	},
-	# a Horseman off his horse (with Armour: the Dismounted Cuirassier)
+	# the Officer: a Horseman off his horse (with Armour: the Armoured Officer). The Barracks
+	# trains him on foot too, for the Horseman's price less the horse's.
 	"dismounted": {
 		"tags": ["light"],
-		"name": "Dismounted Horseman", "hp": 80, "armor": 1, "speed": 64, "cost": 115, "time": 1.0, "supply": 3,
-		"sight": 8, "range": 175, "damage": 18, "cooldown": 3.0, "aim": 0.4, "radius": 10, "from": "",
-		"anti_air": true, "sabre": {"damage": 18.0, "cooldown": 1.1}, "faction": "crown",
-		"about": "A Horseman on foot: a carbine (a little shorter and weaker than a Musketeer's musket) and the same sabre as in the saddle up close (about a plain bayonet's match). MOUNT a horse to ride again.",
+		"name": "Officer", "hp": 80, "armor": 1, "speed": 64, "cost": 75, "time": 18.0, "supply": 3,
+		"sight": 8, "range": 110, "damage": 30, "cooldown": 1.1, "aim": 0.35, "radius": 10, "from": "barracks",
+		"requires": "horse_breeder", "sabre": {"damage": 18.0, "cooldown": 1.1}, "faction": "crown",
+		"about": "A Horseman on foot: his flintlock pistol (one shot, 30 damage, a little over half a musket's reach) and the same sabre as in the saddle up close (about a plain bayonet's match). On foot he reloads the pistol by himself (4 s, a little powder: his charges refill like a Musketeer's). MOUNT a horse and he rides as a Horseman.",
 	},
 	"balloon": {
 		"tags": ["light"],
@@ -299,7 +328,7 @@ const UNITS := {
 		"name": "Grub", "hp": 46, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 6, "range": 18, "damage": 6, "cooldown": 1.0, "radius": 8, "from": "hive",
 		"faction": "brood", "worker": true,
-		"about": "Hauls food from Feeding Pits to a Hive (longer hauls pay more). Turns into buildings.",
+		"about": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more). Turns into buildings.",
 	},
 	"raptor": {
 		"tags": ["light"],
@@ -451,7 +480,7 @@ const BUILDINGS := {
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "requires": "cottage", "faction": "crown", "about": "Trains Musketeers (with a Powder Mill) and Horsemen (with a Horse Breeder: one click buys or takes his horse too); with Armour, Guardsmen and Cuirassiers. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "dragoon", "cuirassier", "dismounted"], "requires": "cottage", "faction": "crown", "about": "Trains Musketeers (with a Powder Mill), Horsemen and Officers (with a Horse Breeder; a Horseman's horse comes in the same click) and Dragoons (both: a Musketeer and his horse); with Armour, the armoured ones too. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	},
 	"armoury": {
 		"name": "Armoury", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
@@ -463,22 +492,22 @@ const BUILDINGS := {
 		"supply": 0, "sight": 7, "trains": ["cannon", "mortar", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and mortars, rigs observation balloons and builds powder wagons (each cannon, mortar and wagon needs a horse: one at the Foundry, else a free one at a breeder walks over, else a breeder trains one; the gun waits for it). Needs a Barracks.",
 	},
 	"hive": {
-		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
+		"name": "Burrow", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
 		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Its ground holds a reserve of biomass: once the pits have drawn it out they yield a third. Expand to fresh ground.",
+		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Its ground holds a reserve of biomass: once the pits have drawn it out they yield a third. Expand to fresh ground. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
-		"supply": 12, "sight": 5, "trains": [], "swamp": 7, "faction": "brood", "about": "12 more supply. Spreads swamp. Each one makes your Hives lay eggs 10% faster (up to 3).",
+		"supply": 12, "sight": 5, "trains": [], "swamp": 7, "faction": "brood", "about": "12 more supply. Spreads swamp. Each one makes your Burrows lay eggs 10% faster (up to 3).",
 	},
 	"warren": {
-		"name": "Warren", "hp": 800, "armor": 1, "cost": 150, "time": 35.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "faction": "brood", "about": "Lets the Hive hatch Raptors and Spitters.",
+		"name": "Spawning Den", "hp": 800, "armor": 1, "cost": 150, "time": 35.0, "size": Vector2i(4, 3),
+		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "faction": "brood", "about": "Lets your Burrows hatch Raptors and Spitters.",
 	},
 	"gorge_pit": {
 		"name": "Gorge Pit", "hp": 800, "armor": 1, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "requires": "warren", "faction": "brood",
-		"about": "Lets the Hive hatch Brutes, Spore Mothers and Mist Toads. Needs a Warren.",
+		"about": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads, and a Warren grow into a Broodmound. Needs a Spawning Den.",
 	},
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
@@ -524,7 +553,7 @@ const BUILDINGS := {
 	"feeding_pit": {
 		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 5, "swamp": 4, "faction": "brood",
-		"about": "Up to 5 grubs haul food from here to the nearest Hive. Farther from the Hive pays more per grub (best from about 18 to 22 tiles). Loads draw on that Hive's ground: spent ground yields a third.",
+		"about": "Up to 5 grubs haul food from here to the nearest Burrow. Farther from the Burrow pays more per grub (best from about 18 to 22 tiles). Loads draw on that Burrow's ground: spent ground yields a third.",
 	},
 	"brood_pen": {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
@@ -539,7 +568,7 @@ const BUILDINGS := {
 	"roost": {
 		"name": "Roost", "hp": 700, "armor": 1, "cost": 175, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 8, "trains": [], "swamp": 4, "requires": "warren", "faction": "brood",
-		"about": "Lets the Hive hatch Skywings. Needs a Warren.",
+		"about": "Lets your Burrows hatch Skywings. Needs a Spawning Den.",
 	},
 	"boiler": {
 		"name": "Boiler", "hp": 900, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(4, 4),
@@ -597,7 +626,7 @@ const RESEARCH := {
 		"about": "A socket bayonet that leaves the muzzle free: unlocks the refit (bayonet +6 damage, thrusts 15% faster), 3 gold a man. New Musketeers come out with it."},
 	"pouch": {"name": "Shot Pouch", "label": "POUCH", "at": "armoury", "faction": "crown", "cost": 60, "cost2": 20, "time": 25.0,
 		"icon": "research_pouch", "fee": 5,
-		"about": "A bigger shot pouch: unlocks the refit (he carries 20 shots instead of 10), 5 gold a man. Every musket soldier: Musketeers, Guardsmen, Dragoons and dismounted horsemen. Recruits don't come with it."},
+		"about": "A bigger shot pouch: unlocks the refit (he carries 20 shots instead of 10), 5 gold a man. Every musket soldier: Musketeers, Guardsmen and Dragoons. Recruits don't come with it."},
 	"charges": {"name": "Prepared Charges", "label": "CHARGES", "at": "armoury", "faction": "crown", "cost": 100, "cost2": 40, "time": 40.0,
 		"icon": "research_charges", "needs": "foundry", "drill": true, "kinds": ["cannon", "mortar"], "reload": 0.8,
 		"about": "Powder in ready-made bags: every Field Cannon and Mortar reloads 20% faster."},
@@ -606,7 +635,7 @@ const RESEARCH := {
 		"about": "Laying the guns by the quadrant: every Field Cannon and Mortar reaches 1 tile further."},
 	"charge": {"name": "Cavalry Charge", "label": "CHARGE", "at": "armoury", "faction": "crown", "cost": 60, "cost2": 0, "time": 25.0,
 		"icon": "research_charge", "drill": true, "kinds": ["cuirassier"],
-		"about": "Drilled to charge: after about 2 s at the gallop a Horseman's or Cuirassier's next blow hits double and throws the enemy back."},
+		"about": "Drilled to charge: after about 2 s at the gallop a Horseman's or Cuirassier's next sabre blow hits double and throws the enemy back."},
 }
 ## The musket locks, in order.
 const LOCKS := ["matchlock", "flintlock", "caplock"]
@@ -618,11 +647,11 @@ const ARMOURED := {
 	"musketeer": {"name": "Guardsman", "key": "guardsman", "art": "musketeer_armoured", "armor": 1, "hp": 20, "speed": 0,
 		"about": "Armoured line infantry: a Musketeer in morion and breastplate (+1 armour, +20 health). Fires at range and stabs with the bayonet up close."},
 	"cuirassier": {"name": "Cuirassier", "key": "cuirassier", "art": "cuirassier", "armor": 1, "hp": 30, "speed": -4,
-		"about": "Fast armoured horseman with a sabre: a Horseman in helmet and cuirass (+1 armour, +30 health, a little slower). Bayonets hurt him."},
+		"about": "Fast armoured horseman with a pistol and a sabre: a Horseman in helmet and cuirass (+1 armour, +30 health, a little slower). Bayonets hurt him."},
 	"dragoon": {"name": "Armoured Dragoon", "key": "armoured_dragoon", "art": "cuirassier", "armor": 1, "hp": 20, "speed": -4,
 		"about": "A Guardsman on a horse: rides fast, dismounts to fire as a Guardsman and remounts to move on."},
-	"dismounted": {"name": "Dismounted Cuirassier", "key": "dismounted_cuirassier", "art": "musketeer_armoured", "armor": 1, "hp": 30, "speed": -2,
-		"about": "A Cuirassier on foot: carbine and sabre, in his cuirass. MOUNT a horse to ride again."},
+	"dismounted": {"name": "Armoured Officer", "key": "dismounted_cuirassier", "art": "musketeer_armoured", "armor": 1, "hp": 30, "speed": -2,
+		"about": "A Cuirassier on foot: pistol and sabre, in his cuirass; he reloads the pistol by himself on foot. MOUNT a horse and he rides as a Cuirassier."},
 }
 const LIGHT_ART := {"cuirassier": "horseman"}
 
@@ -669,8 +698,13 @@ const FOOT := {"messenger": "labourer", "dragoon": "musketeer", "cuirassier": "d
 const LEADERS := ["labourer", "musketeer", "dismounted", "messenger", "winder"]
 ## Units drawn by a horse: without one (RELEASE HORSE) they stand where they are.
 const HARNESSED := ["cannon", "mortar", "powder_wagon"]
-## Soldiers who carry a musket (locks, the shot pouch, the musket's powder).
-const MUSKETS := ["musketeer", "dragoon", "dismounted"]
+## Soldiers who carry a musket (locks, the shot pouch, the musket's powder). (The Officer
+## carries a pistol now: Defs.PISTOL.)
+const MUSKETS := ["musketeer", "dragoon"]
+## Riders the Barracks trains with their horse in one click: with a horse at the Barracks he
+## comes out mounted; with one kept for him at a breeder he comes out as the man on foot
+## (this kind) and walks to it.
+const RIDERS := {"cuirassier": "dismounted", "dragoon": "musketeer"}
 
 ## The horse system's art table: every sprite choice in one place, so new sheets drop in by
 ## changing this table only. "art": the ArtData.UNITS sprite set a unit kind wears
@@ -682,7 +716,6 @@ const MUSKETS := ["musketeer", "dragoon", "dismounted"]
 ## dismounted_armoured, missionary_mounted) and tools/import_horse_breeder.py. Still TEMPORARY: the portraits of
 ## the new units and the Shot Pouch's and horse commands' icons.
 const TEMP_ART := {
-	"patrol": {"portrait": "move"},          # PATROL: borrows MOVE until its own icon comes
 	"horse": {"art": "horse", "portrait": "horse"},
 	"messenger": {"art": "messenger", "portrait": "messenger"},
 	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "dragoon", "portrait_armoured": "dragoon_armoured"},
@@ -716,11 +749,14 @@ static func icon_for(name: String) -> String:
 			var info: Dictionary = TEMP_ART[k]
 			return String(info.get("portrait_armoured", info.get("portrait", name))) if name == akey else String(info.get("portrait", name))
 	return name
-## The Barracks' train buttons: key -> [unit kind, armoured]. The kinds stay "musketeer"
-## and "cuirassier" (saves, the AI, hotkeys); the armoured ones need Armour researched and
-## cost its fee on top. (The key "cuirassier" is the armoured horseman.)
+## The Barracks' train buttons: key -> [unit kind, armoured]. The kinds stay "musketeer",
+## "cuirassier", "dragoon" and "dismounted" (saves, the AI, hotkeys); the armoured ones need
+## Armour researched and cost its fee on top. (The key "cuirassier" is the armoured horseman,
+## "dismounted" the Officer, "dismounted_cuirassier" the Armoured Officer.)
 const TRAIN_AS := {"musketeer": ["musketeer", false], "guardsman": ["musketeer", true],
-	"horseman": ["cuirassier", false], "cuirassier": ["cuirassier", true]}
+	"horseman": ["cuirassier", false], "cuirassier": ["cuirassier", true],
+	"dragoon": ["dragoon", false], "armoured_dragoon": ["dragoon", true],
+	"dismounted": ["dismounted", false], "dismounted_cuirassier": ["dismounted", true]}
 
 
 ## A research's button label.
@@ -934,27 +970,27 @@ const TIPS := {
 	# horse commands (the command card's tooltips)
 	"LEAD": "Each man takes up to 3 of your free horses nearby by the reins; they follow at his side. (Right-click a horse with Labourers: they lead it.)",
 	"RELEASE": "Let go of the reins: the horses stay where they stand and graze. Unattended, an enemy man can steal them.",
-	"MOUNT": "Each man walks to the nearest free horse and gets on (1.5 s): Labourer to Messenger, Musketeer to Dragoon, Guardsman to Armoured Dragoon, Missionary to Mounted Missionary; a dismounted horseman rides again. (Right-click a horse with soldiers: they mount it.)",
+	"MOUNT": "Each man walks to the nearest free horse and gets on (1.5 s): Labourer to Messenger, Musketeer to Dragoon, Guardsman to Armoured Dragoon, Missionary to Mounted Missionary, Officer to Horseman (his pistol as it is). (Right-click a horse with soldiers: they mount it.)",
 	"DISMOUNT": "Get off (1 s): the horse stands beside him, unled. He can lead it or remount it; left alone, it can be stolen.",
 	"RELEASE HORSE": "Unhitch one horse (the front one of a team first): it stands free. With none left the gun or wagon can't move, but a gun still fires and a wagon still supplies.",
 	"HARNESS": "Your nearest free horse walks over and is hitched: one more each time, up to 4 in a team, each beyond the first +12% speed. (Or right-click the gun with a horse selected or led.)",
 	"guardsman": "Armoured line infantry (+1 armour, +20 health): a Musketeer in morion and breastplate. Needs Armour.",
-	"horseman": "Fast light horseman with a sabre. Needs a Horse Breeder; one click trains him and his horse (40 more without a spare). With the Cavalry Charge his first blow after a gallop hits double. Bayonets hurt him.",
+	"horseman": "Fast light horseman: one pistol shot (30 damage, 110 reach), then the sabre. Needs a Horse Breeder; one click trains him and his horse (40 more without a spare). He reloads only on foot. With the Cavalry Charge his first sabre blow after a gallop hits double. Bayonets hurt him.",
 	"cannon": "Long-range artillery (it needs a horse: one click finds or buys it). HARNESS up to 4 horses: +12% speed each. UNLIMBER to fire: round shot ploughs through lines, canister shreds light units and flyers. Needs spotters.",
 	"mortar": "Siege mortar: DEPLOY, then it lobs shells over walls 5 to 11 tiles away. The splash hurts friends too. Can't hit flyers.",
 	"powder_wagon": "Carries 120 shots of powder for the soldiers near it. No weapon, and it blows up when destroyed.",
-	"cuirassier": "Fast armoured horseman (+1 armour, +30 health): a Horseman in helmet and cuirass. Needs Armour; his horse comes with him (one click). Bayonets hurt him.",
+	"cuirassier": "Fast armoured horseman (+1 armour, +30 health): a Horseman in helmet and cuirass, pistol and sabre. Needs Armour; his horse comes with him (one click). Bayonets hurt him.",
 	"horse": "Bought at a Horse Breeder (40 gold, 15 s). LEAD it, MOUNT it, harness it to a gun or wagon, or bring it to a Barracks or Foundry: cavalry and guns need one each. Left alone near an enemy man, it's stolen.",
 	"messenger": "A Labourer on a horse: very fast, unarmed, sees far. A scout. He can lead horses too.",
 	"mounted_missionary": "A Missionary on a horse: fast and unarmed. Gets off to bandage (and back on after) and to raise the fallen.",
-	"dragoon": "A Musketeer on a horse: rides fast, dismounts to fire (0.8 s), remounts to move. His reload waits while he rides.",
-	"armoured_dragoon": "A Guardsman on a horse: rides fast, dismounts to fire, remounts to move.",
-	"dismounted": "A Horseman on foot: a carbine a little weaker than a musket, and the same sabre as in the saddle. MOUNT to ride again.",
-	"dismounted_cuirassier": "A Cuirassier on foot: carbine and sabre, in his cuirass. MOUNT to ride again.",
+	"dragoon": "A Musketeer on a horse: rides fast, dismounts to fire (0.8 s), remounts to move. His reload waits while he rides. Needs a Powder Mill and a Horse Breeder; one click trains him and his horse (40 more without a spare).",
+	"armoured_dragoon": "A Guardsman on a horse: rides fast, dismounts to fire, remounts to move. Needs Armour; his horse comes with him (one click).",
+	"dismounted": "Officer: a Horseman on foot. One pistol shot (30 damage, 110 reach), then the sabre; he reloads the pistol by himself on foot (4 s, a little powder). Needs a Horse Breeder. MOUNT a horse: a Horseman.",
+	"dismounted_cuirassier": "Armoured Officer: a Cuirassier on foot, pistol and sabre, in his cuirass; reloads on foot. Needs Armour. MOUNT a horse: a Cuirassier.",
 	"balloon": "Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.",
 	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
 	# Brood units
-	"grub": "Hauls food from Feeding Pits to a Hive (longer hauls pay more) and turns into buildings.",
+	"grub": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more) and turns into buildings.",
 	"raptor": "Fast, flimsy claws. Three hatch from each egg.",
 	"spitter": "Spits acid that burns and strips armour. Two hatch from each egg.",
 	"brute": "Huge horned tank: charges in and knocks enemies back.",
@@ -968,21 +1004,21 @@ const TIPS := {
 	"cottage": "Houses 8 more supply. The first one unlocks the Barracks and the palisade.",
 	"wall": "Palisade: blocks the way. Lay it in a line: pick the start, then the end. Needs a Cottage.",
 	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece. Needs a Cottage.",
-	"barracks": "Trains Musketeers (needs a Powder Mill) and Horsemen (needs a Horse Breeder), and with Armour Guardsmen and Cuirassiers. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
+	"barracks": "Trains Musketeers (needs a Powder Mill), Horsemen and Officers (need a Horse Breeder), Dragoons (both), and with Armour the armoured ones. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	"armoury": "Researches Armour, the musket locks, the socket bayonet, the guns' drills and the Cavalry Charge. Refits soldiers too.",
 	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons (each needs a horse: one standing here, else one from a breeder walks over by itself).",
 	"farm": "Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
 	# Brood buildings
-	"hive": "Lays eggs: every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby.",
-	"clutch_mound": "12 more supply. Spreads swamp; each makes Hives lay eggs 10% faster (up to 3).",
-	"warren": "Lets the Hive hatch Raptors and Spitters.",
-	"gorge_pit": "Lets the Hive hatch Brutes, Spore Mothers and Mist Toads.",
-	"feeding_pit": "Up to 5 grubs haul food from here to the Hive. Farther from the Hive pays more (best 18 to 22 tiles).",
+	"hive": "Lays eggs (up to 5): every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Upgrades to a Warren (10 eggs), then a Broodmound (15).",
+	"clutch_mound": "12 more supply. Spreads swamp; each makes Burrows lay eggs 10% faster (up to 3).",
+	"warren": "Lets your Burrows hatch Raptors and Spitters.",
+	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",
+	"feeding_pit": "Up to 5 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles).",
 	"brood_pen": "Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.",
 	"spore_vent": "Spreads swamp far around it.",
-	"roost": "Lets the Hive hatch Skywings and Bloaters.",
+	"roost": "Lets your Burrows hatch Skywings and Bloaters.",
 	# Crown research
 	"armour": "Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.",
 	"matchlock": "Unlocks the Matchlock refit: reload 10% faster. New Musketeers come out with it.",

@@ -9,6 +9,9 @@ from scipy import ndimage
 SRC = "art/ui/icons3/crown_horse_icons.png"
 TOP = ["horse", "messenger", "dragoon", "dragoon_armoured", "dismounted", "dismounted_armoured",
        "mounted_missionary"]
+# portraits of their own since (art/ui/icons2/portraits_officer.png / portraits_dragoon.png,
+# cut by tools/import_round11.py): not overwritten here
+OWN = ["dragoon", "dragoon_armoured", "dismounted", "dismounted_armoured"]
 BOTTOM = ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch",
           "horse_harness"]
 
@@ -26,6 +29,8 @@ def main():
     assert len(top) == 7 and len(bot) == 6, (len(top), len(bot))
     for names, row in [(TOP, top), (BOTTOM, bot)]:
         for name, b in zip(names, row):
+            if name in OWN:
+                continue          # (the designer's painted portrait: tools/import_round11.py)
             y0, y1, x0, x1 = b[0].start, b[0].stop, b[1].start, b[1].stop
             # the frame itself (portraits are a little taller than wide: squeezed square)
             crop = im.crop((x0, y0, x1, y1))
@@ -33,7 +38,7 @@ def main():
     # MOUNT / DISMOUNT: the stirrup picture with a bold red arrow, up to get on, down to get off
     for name, up in [("horse_mount", True), ("horse_dismount", False)]:
         arrow(os.path.join("assets/icons", name + ".png"), up)
-    print("horse icons: 13 written")
+    print("horse icons: %d written" % (13 - len(OWN)))
 
 
 def arrow(path, up):

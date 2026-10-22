@@ -475,7 +475,7 @@ func _pair(foot: String, armoured: bool, rides: String, rname: String, fname: St
 	m.kills = 3
 	m.hp = m.max_hp * 0.5
 	if m._pmax > 0.0:
-		m.powder = 7.0
+		m.powder = minf(7.0, m._pmax)
 	m.lock = "flintlock" if Defs.MUSKETS.has(foot) and foot != "dismounted" else ""
 	var h := unit("horse", at(440, 300))
 	var coat: String = h.coat
@@ -484,7 +484,7 @@ func _pair(foot: String, armoured: bool, rides: String, rname: String, fname: St
 	check(m.kind == rides and String(m.d["name"]) == rname and m.armoured == armoured, "%s -> %s (%s)" % [fname, rname, m.d["name"]])
 	check(m.coat == coat and m.kills == 3 and absf(m.hp / m.max_hp - 0.5) < 0.02, "  keeps kills, hp share, rides the horse's coat")
 	if m._pmax > 0.0:
-		check(absf(m.powder - 7.0) < 0.01 and m.lock == ("flintlock" if foot != "dismounted" else ""), "  keeps his powder and lock")
+		check(absf(m.powder - minf(7.0, m._pmax)) < 0.01 and m.lock == ("flintlock" if foot != "dismounted" else ""), "  keeps his powder and lock")
 	m.cmd_dismount()
 	await wait_for(func() -> bool: return m.kind == foot, 5.0)
 	check(m.kind == foot and String(m.d["name"]) == fname and m.armoured == armoured, "%s dismounts -> %s" % [rname, m.d["name"]])
@@ -501,8 +501,8 @@ func _pairs() -> void:
 	await _pair("labourer", false, "messenger", "Messenger", "Labourer")
 	await _pair("musketeer", false, "dragoon", "Dragoon", "Musketeer")
 	await _pair("musketeer", true, "dragoon", "Armoured Dragoon", "Guardsman")
-	await _pair("dismounted", false, "cuirassier", "Horseman", "Dismounted Horseman")
-	await _pair("dismounted", true, "cuirassier", "Cuirassier", "Dismounted Cuirassier")
+	await _pair("dismounted", false, "cuirassier", "Horseman", "Officer")
+	await _pair("dismounted", true, "cuirassier", "Cuirassier", "Armoured Officer")
 	await _pair("missionary", false, "mounted_missionary", "Mounted Missionary", "Missionary")
 	# a Mounted Missionary gets off to bandage (and back on after), and to raise the fallen
 	var mm := unit("mounted_missionary", at(300, 300))
@@ -521,7 +521,7 @@ func _pairs() -> void:
 	var c := unit("cuirassier", at(400, 300))
 	c.cmd_dismount()
 	await wait_for(func() -> bool: return c.kind == "dismounted", 4.0)
-	check(c.kind == "dismounted" and c.d.has("sabre"), "a Horseman dismounts with carbine and sabre")
+	check(c.kind == "dismounted" and c.d.has("sabre") and c.has_pistol(), "a Horseman dismounts with pistol and sabre")
 	g.consume_unit(c)
 	if c.steed:
 		g.consume_unit(c.steed)
@@ -668,7 +668,7 @@ func _pouch() -> void:
 func _save_load() -> void:
 	await _clear_units()
 	# a man leading 2 horses; a Musketeer on his way to mount; a Dragoon; a dismounted
-	# Cuirassier with a pouch; a wagon without its horse
+	# Cuirassier (Armoured Officer) with 3 charges; a wagon without its horse
 	var lab := unit("labourer", at(300, 300))
 	lab.auto_work = false
 	var a := unit("horse", at(330, 300))
@@ -683,8 +683,7 @@ func _save_load() -> void:
 	var dg_coat: String = dg.coat
 	var dc := unit("dismounted", at(60, 250))
 	dc.put_on_armour()
-	dc.set_pouch()
-	dc.powder = 17.0
+	dc.powder = 3.0
 	var w := unit("powder_wagon", at(250, 550))
 	w.release_horse()
 	# a cannon with a team of 3; a new rider and the horse kept for him
@@ -713,8 +712,8 @@ func _save_load() -> void:
 	var dgs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "dragoon")
 	check(dgs.size() == 1 and dgs[0].coat == dg_coat, "loaded: the Dragoon on the same coat")
 	var dcs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "dismounted" and u.horse_rid == 0)
-	check(dcs.size() == 1 and dcs[0].armoured and dcs[0].pouch and int(dcs[0]._pmax) == 20 and int(dcs[0].powder) == 17, "loaded: Dismounted Cuirassier with his pouch, 17/20 (%s)" % (
-		"%d units, armour %s pouch %s %d/%d" % [dcs.size(), dcs[0].armoured, dcs[0].pouch, int(dcs[0].powder), int(dcs[0]._pmax)] if dcs.size() > 0 else "none"))
+	check(dcs.size() == 1 and dcs[0].armoured and int(dcs[0]._pmax) == 4 and int(dcs[0].powder) == 3, "loaded: Armoured Officer with 3/4 charges (%s)" % (
+		"%d units, armour %s %d/%d" % [dcs.size(), dcs[0].armoured, int(dcs[0].powder), int(dcs[0]._pmax)] if dcs.size() > 0 else "none"))
 	var ws: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "powder_wagon")
 	check(ws.size() == 1 and not ws[0].harnessed, "loaded: the wagon still without its horse")
 	var tcs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
