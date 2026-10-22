@@ -14,7 +14,7 @@ var controls: Controls
 var page := ""                       # command card page: "", build
 var build_page := 0
 var paused := false
-var _buttons: Array = []             # {rect, cb, enabled}
+var _card_buttons: Array = []        # the command card's: {rect, cb, enabled, why, item, alt}
 var _hud_touches := {}               # touch index -> what it pressed
 var _msg := ""
 var _msg_t := 0.0
@@ -27,6 +27,12 @@ var _card_items: Array = []
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fit()
+	for n in LAYERS:
+		var l := HudLayer.new()
+		l.hud = self
+		l.fn = n
+		_layer[n] = l
+		add_child(l)
 
 
 ## The HUD is drawn at Settings.ui_scale (bigger on phones): it works in its own smaller
@@ -40,10 +46,20 @@ func _fit() -> void:
 	position = Vector2.ZERO
 	scale = Vector2(ui_scale, ui_scale)
 	size = get_viewport_rect().size / ui_scale
+	_sig.clear()          # (everything is drawn again)
 
 
+## (asked once a frame: on some platforms the system is asked where the pointer is)
 func _mouse() -> Vector2:
-	return get_viewport().get_mouse_position() / ui_scale
+	var f := Engine.get_process_frames()
+	if f != _mouse_frame:
+		_mouse_frame = f
+		_mouse_at = get_viewport().get_mouse_position()
+	return _mouse_at / ui_scale
+
+
+var _mouse_frame := -1
+var _mouse_at := Vector2.ZERO
 
 
 ## For callers working in screen pixels.
@@ -98,7 +114,6 @@ func _countdown(delta: float) -> void:
 		countdown = 0.0
 		_go_t = 0.6
 		get_tree().paused = false
-	queue_redraw()
 
 
 var _go_t := 0.0
@@ -114,7 +129,7 @@ func _draw_countdown() -> void:
 	var f: float = (countdown - floor(countdown)) if countdown > 0.0 else _go_t / 0.6
 	var sz := int(96 + 40 * f)
 	if countdown > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
+		_ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
 	var a := clampf(f * 1.6, 0.0, 1.0) if countdown > 0.0 else clampf(_go_t / 0.6, 0.0, 1.0)
 	_text(font, c + Vector2(3, 3), txt, sz, Color(0, 0, 0, 0.6 * a), 1)
 	_text(font, c, txt, sz, Color(1, 0.88, 0.45, a), 1)
@@ -133,21 +148,220 @@ func _tick_hud(delta: float) -> void:
 	_countdown(delta)
 	if _go_t > 0.0:
 		_go_t = maxf(_go_t - delta, 0.0)
-		queue_redraw()
 	if not _alt_press.is_empty() and not _alt_press["done"] and Time.get_ticks_msec() - int(_alt_press["t"]) > 450:
 		_alt_press["done"] = true
 		(_alt_press["b"]["alt"] as Callable).call()
 		Sfx.play_any(["ui/click", "click"])
-	# the HUD changes slowly: redraw 20 times a second (and at once after a touch or click)
-	_redraw_t -= delta
-	if game and game.spectator and game.spectator.fade > 0.0:
-		_redraw_t = 0.0      # the cut's fade: every frame
-	if _redraw_t > 0.0:
+	if game == null:
 		return
-	_redraw_t = 0.05
-	if not size.is_equal_approx(get_viewport_rect().size / ui_scale) or ui_scale != Settings.ui_scale_now():
-		_fit()
-	queue_redraw()
+	var fade: float = game.spectator.fade if game.spectator else 0.0
+	if fade != _fade_drawn:
+		_fade_drawn = fade
+		queue_redraw()       # the follow camera's cut (the HUD itself, under the layers)
+	# the minimap's picture: five times a second
+	_mini_t -= delta
+	if _mini_t <= 0.0:
+		_mini_t = 0.2
+		(_layer["minimap"] as CanvasItem).queue_redraw()
+	# what the HUD shows changes slowly: look 20 times a second (and at once after a touch,
+	# a click or a key) and redraw the layers whose signature changed; a moving mouse only
+	# moves the highlights (and the tooltip)
+	_redraw_t -= delta
+	_full_t -= delta
+	if _redraw_t <= 0.0:
+		_redraw_t = 0.05
+		_moved = false
+		if not size.is_equal_approx(get_viewport_rect().size / ui_scale) or ui_scale != Settings.ui_scale_now():
+			_fit()
+		if _full_t <= 0.0:
+			_full_t = 1.0
+			_sig.clear()      # once a second everything is drawn again, whatever it shows
+			(_layer["minimap"] as CanvasItem).queue_redraw()
+		_tick_n += 1
+		var q := Time.get_ticks_usec()
+		_refresh_counts()
+		_refresh_card()
+		var q2 := Time.get_ticks_usec()
+		_update_tip()
+		Prof.add("hud/tip check", q2)
+		_check(LAYERS)
+		Prof.add("hud/look", q)
+	elif _moved:
+		_moved = false
+		var q := Time.get_ticks_usec()
+		if not _tip.is_empty() and Settings.pc():
+			_tip_at = _mouse()      # (it follows the mouse; what's under it is looked at 20 times a second)
+		_moved_check = true
+		_check(["top", "map view", "groups", "selection", "command card", "rest", "tooltip", "pause"])
+		_moved_check = false
+		Prof.add("hud/hover", q)
+	else:
+		_check(["map view", "rest"])
+
+
+# ------------------------------------------------------------------ drawing in layers
+## The HUD is drawn on several canvas items, the layers below in drawing order. A canvas item
+## keeps what it drew until it's drawn again, so each layer is redrawn only when what it
+## shows has changed (its signature, _layer_sig): a HUD that sits still costs nothing.
+
+class HudLayer extends Node2D:
+	var hud: Control
+	var fn := ""
+
+	func _draw() -> void:
+		hud._draw_layer(self)
+
+
+const LAYERS := ["top", "minimap", "map view", "groups", "selection", "command card", "glow", "rest", "tooltip", "pause"]
+var _layer := {}                 # name -> HudLayer
+var _sig := {}                   # name -> its signature when it was last drawn
+var _ci: CanvasItem = self       # the canvas item being drawn on (a layer)
+var _moved := false              # the mouse moved since the last look
+var _full_t := 0.0
+var _mini_t := 0.0
+var _tick_n := 0                 # looks so far (layers that change all the time use it)
+var _fade_drawn := 0.0
+var _top_vals: Array = []        # the top bar's numbers at the last look
+var _moved_check := false        # checking only for the mouse's sake
+
+
+func _check(names: Array) -> void:
+	for n in names:
+		var s: Array = _layer_sig(n)
+		if not _sig.has(n) or _sig[n] != s:
+			_sig[n] = s
+			(_layer[n] as CanvasItem).queue_redraw()
+
+
+func _draw_layer(l: HudLayer) -> void:
+	if game == null:
+		return
+	var p0 := Time.get_ticks_usec()
+	_ci = l
+	var font := ThemeDB.fallback_font
+	match l.fn:
+		"top":
+			_draw_top(font)
+		"minimap":
+			_draw_minimap()
+		"map view":
+			_draw_map_view()
+		"groups":
+			_draw_groups(font)
+		"selection":
+			_draw_panel(font)
+		"command card":
+			_draw_card(font)
+		"glow":
+			for b in _card_buttons:
+				if String(b["item"][1]).begins_with("~ "):
+					_autocast_glow(b["rect"])
+		"rest":
+			_draw_rest(font)
+		"tooltip":
+			if not paused:
+				_draw_tip()
+		"pause":
+			if paused:
+				_draw_pause()
+	_ci = self
+	Prof.add("hud/" + l.fn, p0)
+	Prof.add("hud draw", p0)
+
+
+## What a layer shows, in short: when it changes, the layer is redrawn.
+func _layer_sig(n: String) -> Array:
+	var pc := Settings.pc()
+	var m := _mouse() if pc else Vector2(-1, -1)
+	match n:
+		"top":
+			if _moved_check and not _top_vals.is_empty():
+				return _top_vals + [menu_rect().has_point(m)]
+			var shown := game.view_team if game.spectating() else game.human
+			var vals: Array = [shown, _vs(), int(game.clock), game.demo, pc, Settings.drag_mode, _help_on(), help_mode, game.spectator == null]
+			if shown >= 0:
+				var pl: Dictionary = game.players[shown]
+				vals.append_array([int(pl["gold"]), int(pl["res2"]), int(pl["cap"]), game.supply_used(shown)])
+				if game.faction_of(shown) == "clockwork":
+					vals.append_array([int(game.energy[shown]), game.blue_energy(shown)])
+				if game.faction_of(shown) == "crown":
+					vals.append(game.horses_text(shown))
+			else:
+				for t in game.players.size():
+					if not game.eliminated[t]:
+						vals.append(_res_line(t))
+			if not game.demo:
+				vals.append(game.apm())
+			_top_vals = vals
+			return vals + [menu_rect().has_point(m)]
+		"map view":
+			var mr := mini_rect()
+			var k := mr.size / (Vector2(Game.W, Game.H) * Game.T)
+			var vp := get_viewport().get_visible_rect().size / game.camera.zoom
+			var c := game.camera.get_screen_center_position()
+			var al := []
+			if game.alert_t > 0.0 and game.alert_at != Vector2.INF:
+				al = [game.alert_at, int(game.alert_t * 40.0)]
+			return [mr, Vector2i(((c - vp * 0.5) * k * 4.0).round()), Vector2i((vp * k * 4.0).round()), al, snappedf(game.camera.zoom.x, 0.01), int(_zoom_alpha() * 40.0)]
+		"groups":
+			var hv := -1
+			if pc:
+				for i in QUICK:
+					if group_rect(i).has_point(m):
+						hv = i
+			return [_vs(), _counts, hv, _hold_t.keys()]
+		"selection":
+			if game.selection.is_empty():
+				return [_vs(), 0]
+			# (drawn again at every look while something is selected: its bars and lines move)
+			var hv := -1
+			if pc:
+				for i in _portraits.size():
+					if (_portraits[i]["rect"] as Rect2).has_point(m):
+						hv = i
+				for i in _queue_rects.size():
+					if (_queue_rects[i]["rect"] as Rect2).has_point(m):
+						hv = 100 + i
+				var x := panel_rect()
+				if Rect2(x.end.x - 30, x.position.y + 2, 28, 28).has_point(m):
+					hv = 200
+			return [_vs(), _tick_n, hv]
+		"command card":
+			var hv := -1
+			if pc:
+				for i in _card_buttons.size():
+					if (_card_buttons[i]["rect"] as Rect2).has_point(m):
+						hv = i
+			return [_vs(), _card_look, hv]
+		"glow":
+			for b in _card_buttons:
+				if String(b["item"][1]).begins_with("~ "):
+					return [_tick_n]       # it breathes: every look
+			return [_card_look]
+		"rest":
+			var br := controls.box_rect()
+			var vals: Array = [_vs(), br, controls.mode, controls.cast_spell, controls.place_kind, controls.line_from, help_mode, paused, game.demo and game.spectator == null]
+			if _msg_t > 0.0:
+				vals.append_array([_msg, int(minf(_msg_t, 1.0) * 60.0)])
+			if game.spectating():
+				vals.append_array([_tick_n, m, view_open, prod_open])
+			if countdown > 0.0 or _go_t > 0.0:
+				vals.append_array([countdown, _go_t])
+			return vals
+		"tooltip":
+			if _tip.is_empty() or paused:
+				return []
+			return [_vs(), _tip.hash(), _tip_at]
+		"pause":
+			if not paused:
+				return []
+			var hv := -1
+			var pbs := _pause_buttons()
+			for i in pbs.size():
+				if (pbs[i]["rect"] as Rect2).has_point(m):
+					hv = i
+			return [_vs(), hv, pbs.map(func(b: Dictionary) -> String: return b["label"])]
+	return []
 
 
 # ------------------------------------------------------------------ layout
@@ -163,12 +377,15 @@ func top_rect() -> Rect2:
 ## Where everything sits comes from the chosen layout profile (Settings > Interface layout).
 var _rects := {}
 var _rects_frame := -1
+var _rects_vs := Vector2.ZERO
 
 
 func _layout() -> Dictionary:
+	# (worked out again when the HUD's size changes, and twice a second for a changed setting)
 	var f := Engine.get_process_frames()
-	if f != _rects_frame:
+	if f - _rects_frame > 30 or f < _rects_frame or _rects.is_empty() or _rects_vs != _vs():
 		_rects_frame = f
+		_rects_vs = _vs()
 		var b := _btn()
 		_rects = UiLayout.rects(_vs(), {
 			"mini": mini_size(),
@@ -272,7 +489,10 @@ func _hud_has(p: Vector2) -> bool:
 func _input(event: InputEvent) -> void:
 	if game == null or game.over:
 		return
-	_redraw_t = 0.0
+	if event is InputEventMouseMotion or event is InputEventScreenDrag:
+		_moved = true            # (the highlights follow the mouse; the rest waits for its look)
+	else:
+		_redraw_t = 0.0          # a click, a key or a touch: look at once
 	# the sandbox panel lies over the HUD (the minimap, the top bar): its buttons take their
 	# clicks first
 	if (event is InputEventMouseButton or event is InputEventScreenTouch) and _over_sandbox():
@@ -315,7 +535,7 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif _hud_has(mb.position) and mb.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
 			if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and not paused:
-				for b in _buttons:
+				for b in _all_buttons():
 					if (b["rect"] as Rect2).has_point(mb.position) and b.has("alt"):
 						(b["alt"] as Callable).call()
 						Sfx.play_any(["ui/click", "click"])
@@ -366,7 +586,7 @@ func _press(p: Vector2) -> void:
 		if group_rect(i).has_point(p):
 			_hold_t[i] = Time.get_ticks_msec()
 			return
-	for b in _buttons:
+	for b in _all_buttons():
 		if (b["rect"] as Rect2).has_point(p):
 			if b.has("alt") and not Settings.pc():
 				# phone: a tap trains, a long press switches automatic training (on release / in _process)
@@ -432,7 +652,7 @@ func prod_rect() -> Rect2:
 ## progress with its bar), eggs morphing, and buildings going up.
 func _draw_production(font: Font) -> void:
 	var pr := prod_rect()
-	UiStyle.draw_button(self, pr, pr.has_point(_mouse()) and Settings.pc(), prod_open)
+	UiStyle.draw_button(_ci, pr, pr.has_point(_mouse()) and Settings.pc(), prod_open)
 	_text(UiStyle.bold_font(), pr.get_center() + Vector2(0, 6), "PRODUCTION" + ("  ▲" if prod_open else "  ▼"), 15, UiStyle.TEXT, 1)
 	if not prod_open or view_open:
 		return
@@ -469,24 +689,24 @@ func _draw_production(font: Font) -> void:
 		var rows := maxi(1, int(ceil(items.size() / float(PER))))
 		blocks.append([t, items])
 		h += 22 + rows * (SZ + 10)
-	UiStyle.draw_panel(self, Rect2(x0, y, w, h), UiStyle.accent(game.faction_of(maxi(game.view_team, 0))), 0.92)
+	UiStyle.draw_panel(_ci, Rect2(x0, y, w, h), UiStyle.accent(game.faction_of(maxi(game.view_team, 0))), 0.92)
 	y += 8
 	for bl in blocks:
 		var t: int = bl[0]
 		var items: Array = bl[1]
-		draw_rect(Rect2(x0 + 10, y + 3, 10, 12), game.team_colour(t))
+		_ci.draw_rect(Rect2(x0 + 10, y + 3, 10, 12), game.team_colour(t))
 		_text(UiStyle.bold_font(), Vector2(x0 + 26, y + 14), "P%d %s" % [t + 1, Defs.FACTIONS[game.faction_of(t)]["name"]] + ("   (nothing in production)" if items.is_empty() else ""), 13, UiStyle.TEXT)
 		y += 22
 		for i in items.size():
 			var it: Array = items[i]
 			var r := Rect2(x0 + 10 + (i % PER) * (SZ + 4), y + (i / PER) * (SZ + 10), SZ, SZ)
-			draw_rect(r, Color(0, 0, 0, 0.35))
+			_ci.draw_rect(r, Color(0, 0, 0, 0.35))
 			var ic := _icon(String(it[0]))
 			if ic:
-				draw_texture_rect(ic, r, false, Color.WHITE if float(it[1]) >= 0.0 else Color(1, 1, 1, 0.55))
+				_ci.draw_texture_rect(ic, r, false, Color.WHITE if float(it[1]) >= 0.0 else Color(1, 1, 1, 0.55))
 			if float(it[1]) >= 0.0:
-				draw_rect(Rect2(r.position.x, r.end.y + 2, SZ, 4), Color(0, 0, 0, 0.5))
-				draw_rect(Rect2(r.position.x, r.end.y + 2, SZ * clampf(float(it[1]), 0.0, 1.0), 4), it[2])
+				_ci.draw_rect(Rect2(r.position.x, r.end.y + 2, SZ, 4), Color(0, 0, 0, 0.5))
+				_ci.draw_rect(Rect2(r.position.x, r.end.y + 2, SZ * clampf(float(it[1]), 0.0, 1.0), 4), it[2])
 		y += maxi(1, int(ceil(items.size() / float(PER)))) * (SZ + 10)
 
 
@@ -521,24 +741,24 @@ func _draw_view(font: Font) -> void:
 	var sp: Spectator = game.spectator
 	var r := view_rect()
 	var hv := _mouse() if Settings.pc() else Vector2(-1, -1)
-	UiStyle.draw_button(self, r, r.has_point(hv), view_open)
+	UiStyle.draw_button(_ci, r, r.has_point(hv), view_open)
 	if sp.mode != "all":
-		draw_rect(Rect2(r.position + Vector2(10, 10), Vector2(14, 14)), game.team_colour(sp.team))
+		_ci.draw_rect(Rect2(r.position + Vector2(10, 10), Vector2(14, 14)), game.team_colour(sp.team))
 	_text(UiStyle.bold_font(), r.get_center() + Vector2(6, 6), "VIEW: " + sp.label() + ("  ▲" if view_open else "  ▼"), 16, UiStyle.TEXT, 1)
 	if not view_open:
 		return
 	var opts: Array = sp.options()
 	var last := _view_row(opts.size() - 1)
-	UiStyle.draw_panel(self, Rect2(r.position.x - 6, r.end.y + 1, r.size.x + 12, last.end.y - r.end.y + 6), UiStyle.accent(game.faction_of(game.human)), 0.96)
+	UiStyle.draw_panel(_ci, Rect2(r.position.x - 6, r.end.y + 1, r.size.x + 12, last.end.y - r.end.y + 6), UiStyle.accent(game.faction_of(game.human)), 0.96)
 	for i in opts.size():
 		var o: Array = opts[i]
 		var rr := _view_row(i)
 		var cur: bool = o[1] == sp.mode and (o[1] == "all" or int(o[2]) == sp.team)
-		UiStyle.draw_button(self, rr, rr.has_point(hv) and o[3], cur, o[3])
+		UiStyle.draw_button(_ci, rr, rr.has_point(hv) and o[3], cur, o[3])
 		if o[1] != "all":
-			draw_rect(Rect2(rr.position + Vector2(14, rr.size.y * 0.5 - 8), Vector2(16, 16)), game.team_colour(int(o[2])) if o[3] else Color(0.4, 0.4, 0.4))
+			_ci.draw_rect(Rect2(rr.position + Vector2(14, rr.size.y * 0.5 - 8), Vector2(16, 16)), game.team_colour(int(o[2])) if o[3] else Color(0.4, 0.4, 0.4))
 		if cur:
-			draw_circle(Vector2(rr.end.x - 20, rr.get_center().y), 6.0, Color(1, 0.85, 0.45))
+			_ci.draw_circle(Vector2(rr.end.x - 20, rr.get_center().y), 6.0, Color(1, 0.85, 0.45))
 		var key := ""
 		if Settings.pc() and o[1] == "all":
 			key = "[0] "
@@ -1363,21 +1583,15 @@ func _res_line(t: int) -> String:
 	return "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
 
 
+## The HUD's own canvas item: only the follow camera's cut (a black fade under the layers).
 func _draw() -> void:
-	var _p0 := Time.get_ticks_usec()
-	_draw_hud()
-	Prof.add("hud draw", _p0)
+	if game and game.spectator and game.spectator.fade > 0.0:
+		draw_rect(Rect2(Vector2.ZERO, _vs()), Color(0, 0, 0, game.spectator.fade))
 
 
-func _draw_hud() -> void:
-	if game == null:
-		return
-	var font := ThemeDB.fallback_font
+func _draw_top(font: Font) -> void:
 	var vs := _vs()
-	_tip_cand = {}
 	_pill_rects = []
-	if game.spectator and game.spectator.fade > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, game.spectator.fade))     # the follow camera's cut
 	# Top bar: resource pills, supply, clock and the menu button. Watching computers play:
 	# the pills are the player whose eyes you're using; with all vision, a line per player.
 	var shown := game.human
@@ -1396,42 +1610,44 @@ func _draw_hud() -> void:
 		var wmax := 0.0
 		for t in lines:
 			wmax = maxf(wmax, UiStyle.bold_font().get_string_size(_res_line(t), HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x)
-		UiStyle.draw_panel(self, Rect2(4, 4, wmax + 34, lines.size() * 20 + 10), acc, 0.85)
+		UiStyle.draw_panel(_ci, Rect2(4, 4, wmax + 34, lines.size() * 20 + 10), acc, 0.85)
 		for n in lines.size():
 			var t: int = lines[n]
-			draw_rect(Rect2(12, 11 + n * 20, 10, 12), game.team_colour(t))
+			_ci.draw_rect(Rect2(12, 11 + n * 20, 10, 12), game.team_colour(t))
 			_text(UiStyle.bold_font(), Vector2(28, 22 + n * 20), _res_line(t), 13, UiStyle.TEXT)
 		x = 8.0
 	var secs := int(game.clock)
 	var clock_r := Rect2(maxf(vs.x * 0.5 - 44, x), 4, 88, 30)
-	UiStyle.draw_panel(self, clock_r, acc, 0.8)
+	UiStyle.draw_panel(_ci, clock_r, acc, 0.8)
 	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
 	if not game.demo:
 		_text(UiStyle.bold_font(), Vector2(clock_r.end.x + 8, 25), "APM %d" % game.apm(), 14, Color(1, 1, 1, 0.65))
 	if not Settings.pc():
 		var dr := drag_rect()
-		UiStyle.draw_button(self, dr, false, Settings.drag_mode == "pan")
+		UiStyle.draw_button(_ci, dr, false, Settings.drag_mode == "pan")
 		_text(font, dr.get_center() + Vector2(0, 6), "DRAG: " + ("BOX" if Settings.drag_mode == "box" else "PAN"), 15, UiStyle.TEXT, 1)
 	if _help_on():
 		# "?": the next tap explains instead of acting (lit while armed)
 		var hr := help_rect()
-		UiStyle.draw_button(self, hr, false, help_mode)
+		UiStyle.draw_button(_ci, hr, false, help_mode)
 		_text(UiStyle.bold_font(), hr.get_center() + Vector2(0, 7), "?", 20, Color(1, 0.9, 0.55) if help_mode else UiStyle.TEXT, 1)
 	var mr := menu_rect()
-	UiStyle.draw_button(self, mr, mr.has_point(_mouse()) and Settings.pc())
+	UiStyle.draw_button(_ci, mr, mr.has_point(_mouse()) and Settings.pc())
 	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
 	if game.demo and game.spectator == null:
 		_text(font, Vector2(vs.x * 0.5, 60), "AI vs AI", 18, Color(1, 1, 1, 0.6), 1)
-	_draw_minimap()
-	_draw_groups(font)
-	_draw_panel(font)
-	_draw_card(font)
+
+
+## Over the panels: the selection box, what a chosen command waits for, the message, the
+## spectator's lists and the countdown.
+func _draw_rest(font: Font) -> void:
+	var vs := _vs()
 	# Selection box
 	var br := controls.box_rect()
 	br = Rect2(br.position / ui_scale, br.size / ui_scale)
 	if br.size != Vector2.ZERO:
-		draw_rect(br, Color(0.4, 1, 0.4, 0.12))
-		draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
+		_ci.draw_rect(br, Color(0.4, 1, 0.4, 0.12))
+		_ci.draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
 	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker", "cast"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
 			"cast": "Tap the enemy to lash with the tongue" if controls.cast_spell == "tongue" else "Tap where to cast the %s" % {"storm": "storm (it stuns your own units too)",
@@ -1453,108 +1669,149 @@ func _draw_hud() -> void:
 		var mw := font.get_string_size(_msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x + 36
 		var mrr := Rect2(vs.x * 0.5 - mw * 0.5, top_rect().end.y + 46, mw, 36)
 		var sb := UiStyle.box(Color(0.1, 0.08, 0.06, 0.88 * a), Color(0.79, 0.64, 0.29, 0.6 * a), 2, 18, 0.0)
-		sb.draw(get_canvas_item(), mrr)
+		sb.draw(_ci.get_canvas_item(), mrr)
 		_text(UiStyle.bold_font(), Vector2(vs.x * 0.5, mrr.position.y + 25), _msg, 21, Color(1, 0.85, 0.65, a), 1)
 	if game.spectating():
 		_draw_view(font)
 		_draw_production(font)
 	if not paused:
 		_draw_countdown()
-	_update_tip()
-	if not paused:
-		_draw_tip()
+
+
+func _draw_pause() -> void:
+	var vs := _vs()
 	if paused:
 		# see-through: the match stays visible behind (for screenshots and a look at the field)
-		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.12))
+		_ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.12))
 		var pbs := _pause_buttons()
 		var top_y: float = (pbs[0]["rect"] as Rect2).position.y
 		var last: Rect2 = pbs[pbs.size() - 1]["rect"]
-		UiStyle.draw_panel(self, Rect2(vs.x * 0.5 - 200, top_y - 96, 400, last.end.y - top_y + 120), UiStyle.accent(game.faction_of(game.human)), 0.3)
+		UiStyle.draw_panel(_ci, Rect2(vs.x * 0.5 - 200, top_y - 96, 400, last.end.y - top_y + 120), UiStyle.accent(game.faction_of(game.human)), 0.3)
 		_text(UiStyle.title_font(), Vector2(vs.x * 0.5, top_y - 34), "PAUSED", 44, UiStyle.TRIM, 1)
 		var hv := _mouse() if Settings.pc() else Vector2(-1, -1)
 		for b in pbs:
 			var r: Rect2 = b["rect"]
-			UiStyle.draw_button(self, r, r.has_point(hv), false, true, 0.45)
+			UiStyle.draw_button(_ci, r, r.has_point(hv), false, true, 0.45)
 			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 22, UiStyle.BAD if b["label"] == "SURRENDER" else UiStyle.TEXT, 1)
 
 
 func _draw_minimap() -> void:
 	var m := mini_rect()
-	UiStyle.draw_panel(self, m.grow(5), UiStyle.accent(game.faction_of(game.human)), 0.95)
+	UiStyle.draw_panel(_ci, m.grow(5), UiStyle.accent(game.faction_of(game.human)), 0.95)
 	if _mini_tex == null:
 		_mini_tex = ImageTexture.create_from_image(game.minimap_img)
-	draw_texture_rect(_mini_tex, m, false)
+	_ci.draw_texture_rect(_mini_tex, m, false)
 	if game.swamp_tex:
-		draw_texture_rect(game.swamp_tex, m, false)
+		_ci.draw_texture_rect(game.swamp_tex, m, false)
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
 	if not game.sees_all():
-		draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95))
+		_ci.draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95))
 	for b in game.buildings:
 		if b.visible or (b.team == game.human and not game.demo):
 			var r: Rect2 = b.rect()
-			draw_rect(Rect2(m.position + r.position * k, r.size * k), game.team_colour(b.team).lightened(0.2))
+			_ci.draw_rect(Rect2(m.position + r.position * k, r.size * k), game.team_colour(b.team).lightened(0.2))
 	for u in game.units:
 		if u.visible and not u.dead:
-			draw_rect(Rect2(m.position + u.position * k - Vector2(1.5, 1.5), Vector2(3, 3)), u.cloth_colour().lightened(0.35))     # (a loose horse: nobody's brown)
+			_ci.draw_rect(Rect2(m.position + u.position * k - Vector2(1.5, 1.5), Vector2(3, 3)), u.cloth_colour().lightened(0.35))     # (a loose horse: nobody's brown)
+
+
+## Over the minimap (its own layer, redrawn as the camera moves): the camera's view, where
+## you're being hit and the zoom gauge.
+func _draw_map_view() -> void:
+	var m := mini_rect()
+	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
 	# Camera view
 	var vp := get_viewport().get_visible_rect().size / game.camera.zoom
 	var c := game.camera.get_screen_center_position()
-	draw_rect(Rect2(m.position + (c - vp * 0.5) * k, vp * k), Color(1, 1, 1, 0.9), false, 1.0)
+	_ci.draw_rect(Rect2(m.position + (c - vp * 0.5) * k, vp * k), Color(1, 1, 1, 0.9), false, 1.0)
 	# where you're being hit
 	if game.alert_t > 0.0 and game.alert_at != Vector2.INF:
 		var ap: Vector2 = m.position + game.alert_at * k
 		var ph := fmod(game.alert_t * 2.0, 1.0)
-		draw_arc(ap, 4.0 + ph * 14.0, 0, TAU, 20, Color(1, 0.25, 0.2, 1.0 - ph), 2.0)
-		draw_circle(ap, 3.0, Color(1, 0.3, 0.2))
+		_ci.draw_arc(ap, 4.0 + ph * 14.0, 0, TAU, 20, Color(1, 0.25, 0.2, 1.0 - ph), 2.0)
+		_ci.draw_circle(ap, 3.0, Color(1, 0.3, 0.2))
 	_draw_zoom(m)
 
 
 var _mini_tex: ImageTexture
 var _zoom_seen := 0.0
-var _zoom_t := 0.0          # time since the zoom last changed (the gauge lights up for a moment)
+var _zoom_ms := 0           # when the zoom last changed (the gauge lights up for a moment)
 const ZOOM_MIN := 0.55      # the camera's zoom limits (controls.gd)
 const ZOOM_MAX := 2.6
+
+
+func _zoom_alpha() -> float:
+	var z: float = game.camera.zoom.x
+	if absf(z - _zoom_seen) > 0.001:
+		_zoom_seen = z
+		_zoom_ms = Time.get_ticks_msec()
+	var zt := (Time.get_ticks_msec() - _zoom_ms) / 1000.0
+	return 1.0 if zt < 1.5 else lerpf(1.0, 0.55, clampf((zt - 1.5) / 0.8, 0.0, 1.0))
 
 
 ## Zoom gauge in the minimap's bottom corner: a slim bar from widest view to closest,
 ## with the zoom as a factor. It brightens for a couple of seconds after the zoom changes.
 func _draw_zoom(m: Rect2) -> void:
 	var z: float = game.camera.zoom.x
-	if absf(z - _zoom_seen) > 0.001:
-		_zoom_seen = z
-		_zoom_t = 0.0
-	else:
-		_zoom_t += get_process_delta_time()
-	var a := 1.0 if _zoom_t < 1.5 else lerpf(1.0, 0.55, clampf((_zoom_t - 1.5) / 0.8, 0.0, 1.0))
+	var a := _zoom_alpha()
 	var box := Rect2(m.end - Vector2(96, 22), Vector2(92, 18))
-	draw_rect(box, Color(0, 0, 0, 0.55 * a))
+	_ci.draw_rect(box, Color(0, 0, 0, 0.55 * a))
 	var bar := Rect2(box.position + Vector2(40, 7), Vector2(46, 4))
-	draw_rect(bar, Color(1, 1, 1, 0.25 * a))
+	_ci.draw_rect(bar, Color(1, 1, 1, 0.25 * a))
 	var f := clampf((z - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN), 0.0, 1.0)
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * f, bar.size.y)), Color(1, 0.86, 0.5, 0.9 * a))
-	draw_rect(Rect2(bar.position + Vector2(bar.size.x * f - 1.5, -3), Vector2(3, bar.size.y + 6)), Color(1, 1, 1, a))
+	_ci.draw_rect(Rect2(bar.position, Vector2(bar.size.x * f, bar.size.y)), Color(1, 0.86, 0.5, 0.9 * a))
+	_ci.draw_rect(Rect2(bar.position + Vector2(bar.size.x * f - 1.5, -3), Vector2(3, bar.size.y + 6)), Color(1, 1, 1, a))
 	_text(UiStyle.bold_font(), box.position + Vector2(5, 13), "x%.1f" % z, 12, Color(1, 1, 1, a))
+
+
+## The quick buttons' numbers (army, idle workers, units in production, groups), counted at
+## each look in one pass over the units.
+var _counts: Array = []
+
+
+func _refresh_counts() -> void:
+	var army := 0
+	var idle := 0
+	var me := game.human
+	for u in game.units:
+		if u.team != me or u.dead or u.aboard != null:
+			continue
+		if u.is_worker():
+			if u.order == "idle":
+				idle += 1
+		elif u.kind != "horse" and u.kind != "messenger":
+			army += 1
+	var busy := 0
+	for pb in game.producers(me):
+		busy += (pb as Building).queue.size()
+	var c: Array = [army, idle, busy]
+	for g in game.groups.size():
+		var n := 0
+		for e in game.groups[g]:
+			if is_instance_valid(e) and not e.dead:
+				n += 1
+		c.append(n)
+	_counts = c
 
 
 func _draw_groups(font: Font) -> void:
 	var labels := ["ARMY", "IDLE", "HALL", "1", "2", "3", "MAKE", "4"]
+	if _counts.is_empty():
+		_refresh_counts()
 	for i in QUICK:
 		var r := group_rect(i)
-		UiStyle.draw_button(self, r, Settings.pc() and r.has_point(_mouse()), _hold_t.has(i))
+		UiStyle.draw_button(_ci, r, Settings.pc() and r.has_point(_mouse()), _hold_t.has(i))
 		var sub := ""
 		match i:
 			0:
-				sub = str(game.army(game.human).size())
+				sub = str(_counts[0])
 			1:
-				sub = str(game.labourers(game.human).filter(func(u: Unit) -> bool: return u.order == "idle").size())
+				sub = str(_counts[1])
 			6:
-				var busy := 0
-				for pb in game.producers(game.human):
-					busy += (pb as Building).queue.size()
-				sub = str(busy) if busy > 0 else ""
+				sub = str(_counts[2]) if int(_counts[2]) > 0 else ""
 			_:
 				if _group_of(i) >= 0:
-					sub = str(game.groups[_group_of(i)].filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead).size())
+					sub = str(_counts[3 + _group_of(i)])
 		_text(UiStyle.bold_font(), r.position + Vector2(r.size.x * 0.5, 18), labels[i], 14, UiStyle.TEXT, 1)
 		if sub != "":
 			_text(font, r.position + Vector2(r.size.x * 0.5, 36), sub, 13, Color(1, 1, 1, 0.6), 1)
@@ -1565,15 +1822,15 @@ func _draw_panel(font: Font) -> void:
 	var r := panel_rect()
 	if game.selection.is_empty():
 		return
-	UiStyle.draw_panel(self, r, UiStyle.accent(game.faction_of(game.human)))
+	UiStyle.draw_panel(_ci, r, UiStyle.accent(game.faction_of(game.human)))
 	var sel: Array = game.selection.filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead)
 	if sel.size() == 1:
 		var e: Entity = sel[0]
 		var icon := _unit_icon(e)
 		var pr := Rect2(r.position + Vector2(10, 10), Vector2(68, 68))
-		UiStyle.draw_button(self, pr.grow(2), false, false)
+		UiStyle.draw_button(_ci, pr.grow(2), false, false)
 		if icon:
-			draw_texture_rect(icon, pr, false)
+			_ci.draw_texture_rect(icon, pr, false)
 		var name := ""
 		var info := ""
 		var eff_txt := ""                # economy buildings: "Efficiency 62%: 5/8 workers · soil 78%" (in its colour)
@@ -1704,6 +1961,15 @@ func _draw_panel(font: Font) -> void:
 					"landing": "Landing...", "ground": "Landed: walks and bites ground units; anything can hit it. TAKE OFF to fly.", "lifting": "Taking off..."}.get(uu.sky, uu.d["about"])
 			elif uu.kind == "bloater" and uu.deflate != "":
 				info = "Out of gas: deflated, slower and harmless. Gas %d / 100 (fills faster on swamp)." % int(uu.gas)
+			elif uu.kind == "bloater":
+				# its gas: what a burst would do now (Game.bloat_burst) and the spits left
+				var full := clampf(uu.gas / 100.0, 0.15, 1.0)
+				var burst := "%d + %d s cloud" % [int(round(float(Defs.BLOAT["burst"]) * full)), int(round(float(Defs.BLOAT["time"]) * (0.4 + 0.6 * full)))]
+				if uu.mode == "hold":
+					info = "Gas %d/100 · HOLD GAS: bursts for %s" % [int(uu.gas), burst]
+				else:
+					var spits := int(floor(uu.gas / float(Defs.BLOAT["spit_cost"])))
+					info = "Gas %d/100 · burst %s · %d spit%s left" % [int(uu.gas), burst, spits, "" if spits == 1 else "s"]
 			elif uu.kind == "ornithopter" and (uu.topter_bat != "" or uu.courier):
 				info = ("Carrying a %s battery: OVERLOAD a construct with it, or it winds one up on COURIER." % uu.topter_bat) if uu.topter_bat != "" else "Courier: fetching batteries for constructs that run down."
 			elif uu.kind == "windup_soldier" and uu.powered_down():
@@ -1815,22 +2081,22 @@ func _draw_panel(font: Font) -> void:
 		_text(UiStyle.title_font(), r.position + Vector2(90, 28), name, nsz, UiStyle.TEXT)
 		var hf := clampf(e.hp / maxf(e.max_hp, 1.0), 0.0, 1.0)
 		var hb := Rect2(r.position + Vector2(90, 38), Vector2(170, 12))
-		draw_rect(hb, Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(hb.position, Vector2(hb.size.x * hf, hb.size.y)), UiStyle.GOOD if hf > 0.5 else (Color(0.95, 0.75, 0.25) if hf > 0.25 else UiStyle.BAD))
-		draw_rect(hb, UiStyle.TRIM_DIM, false, 1.0)
+		_ci.draw_rect(hb, Color(0, 0, 0, 0.6))
+		_ci.draw_rect(Rect2(hb.position, Vector2(hb.size.x * hf, hb.size.y)), UiStyle.GOOD if hf > 0.5 else (Color(0.95, 0.75, 0.25) if hf > 0.25 else UiStyle.BAD))
+		_ci.draw_rect(hb, UiStyle.TRIM_DIM, false, 1.0)
 		var hpt := "%d / %d" % [int(ceil(e.hp)), int(e.max_hp)]
 		_text(font, hb.position + Vector2(hb.size.x + 8, 11), hpt, 15, Color(0.75, 1, 0.7))
 		if e is Unit and (e as Unit)._pmax > 0.0 and (e.team == game.human or game.demo):
 			# the powder it carries (a balloon: its store), and a Musketeer's reload
 			var pu := e as Unit
 			var pb := Rect2(hb.position + Vector2(0, hb.size.y + 3), Vector2(hb.size.x, 4))
-			draw_rect(pb, Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(pb.position, Vector2(pb.size.x * clampf(pu.powder / pu._pmax, 0.0, 1.0), pb.size.y)), Unit.POWDER_BAR if pu.powder >= 1.0 else UiStyle.BAD)
+			_ci.draw_rect(pb, Color(0, 0, 0, 0.6))
+			_ci.draw_rect(Rect2(pb.position, Vector2(pb.size.x * clampf(pu.powder / pu._pmax, 0.0, 1.0), pb.size.y)), Unit.POWDER_BAR if pu.powder >= 1.0 else UiStyle.BAD)
 			if pu.foot_musket():
 				var rb := Rect2(pb.position + Vector2(0, pb.size.y + 2), Vector2(hb.size.x, 2))
 				var rf := pu.reload_frac() if pu.powder >= 1.0 else 0.0
-				draw_rect(rb, Color(0, 0, 0, 0.6))
-				draw_rect(Rect2(rb.position, Vector2(rb.size.x * rf, rb.size.y)), Color(1.0, 0.85, 0.3) if rf >= 1.0 else Color(0.92, 0.92, 0.85))
+				_ci.draw_rect(rb, Color(0, 0, 0, 0.6))
+				_ci.draw_rect(Rect2(rb.position, Vector2(rb.size.x * rf, rb.size.y)), Color(1.0, 0.85, 0.3) if rf >= 1.0 else Color(0.92, 0.92, 0.85))
 		if e is Unit and (e as Unit).kills > 0:
 			# veterancy: kills and the damage they've earned
 			var ku := e as Unit
@@ -1863,16 +2129,16 @@ func _draw_panel(font: Font) -> void:
 					continue
 				var pic := _icon(ps[i].kind)
 				var pqr := Rect2(_pass_icon_x(r, ps.size(), i), r.position.y + 6, 22, 22)
-				UiStyle.draw_button(self, pqr.grow(1), false, false)
+				UiStyle.draw_button(_ci, pqr.grow(1), false, false)
 				if pic:
-					draw_texture_rect(pic, pqr, false)
+					_ci.draw_texture_rect(pic, pqr, false)
 				var pf: float = ps[i].hp / maxf(ps[i].max_hp, 1.0)
-				draw_rect(Rect2(pqr.position.x, pqr.end.y + 1, pqr.size.x * pf, 2), Color(0.3, 0.9, 0.3) if pf > 0.5 else Color(0.95, 0.4, 0.2))
+				_ci.draw_rect(Rect2(pqr.position.x, pqr.end.y + 1, pqr.size.x * pf, 2), Color(0.3, 0.9, 0.3) if pf > 0.5 else Color(0.95, 0.4, 0.2))
 				if ps[i]._pmax > 0.0:
 					# his powder, under his health
 					var pp := Rect2(pqr.position.x, pqr.end.y + 4, pqr.size.x, 2)
-					draw_rect(pp, Color(0, 0, 0, 0.6))
-					draw_rect(Rect2(pp.position, Vector2(pp.size.x * clampf(ps[i].powder / ps[i]._pmax, 0.0, 1.0), pp.size.y)), Unit.POWDER_BAR if ps[i].powder >= 1.0 else UiStyle.BAD)
+					_ci.draw_rect(pp, Color(0, 0, 0, 0.6))
+					_ci.draw_rect(Rect2(pp.position, Vector2(pp.size.x * clampf(ps[i].powder / ps[i]._pmax, 0.0, 1.0), pp.size.y)), Unit.POWDER_BAR if ps[i].powder >= 1.0 else UiStyle.BAD)
 		if e is Building and (e.team == game.human or game.spectating()) and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
@@ -1881,15 +2147,15 @@ func _draw_panel(font: Font) -> void:
 				if e.team == game.human and not game.spectating():
 					_queue_rects.append({"rect": qr, "b": e, "i": i})
 					if Settings.pc() and qr.has_point(_mouse()):
-						draw_rect(qr.grow(2), UiStyle.BAD, false, 1.5)
+						_ci.draw_rect(qr.grow(2), UiStyle.BAD, false, 1.5)
 				if ic:
-					draw_texture_rect(ic, qr, false)
+					_ci.draw_texture_rect(ic, qr, false)
 				var eb := e as Building
 				if i == 0 or eb.uses_eggs():
 					var f: float = (eb.morph_t[i] if eb.uses_eggs() else eb.prod_t) / Building.entry_time(q[i])
-					draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.75, 0.55, 1.0) if Building.is_research(q[i]) else Color(0.4, 0.75, 1))
+					_ci.draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.75, 0.55, 1.0) if Building.is_research(q[i]) else Color(0.4, 0.75, 1))
 				if Building.is_research(q[i]):
-					draw_rect(qr, Color(0.75, 0.55, 1.0, 0.9), false, 1.5)     # research: a violet frame
+					_ci.draw_rect(qr, Color(0.75, 0.55, 1.0, 0.9), false, 1.5)     # research: a violet frame
 	else:
 		var n := mini(sel.size(), 24)
 		var per_row := int((r.size.x - 20) / 38)
@@ -1937,12 +2203,12 @@ func _draw_panel(font: Font) -> void:
 			var ir := Rect2(r.position + Vector2(10 + (i % per_row) * 38, 8 + (i / per_row) * 40), Vector2(34, 34))
 			_portraits.append({"rect": ir, "e": e})
 			if Settings.pc() and ir.has_point(_mouse()):
-				draw_rect(ir.grow(2), UiStyle.TRIM_DIM, false, 1.0)
+				_ci.draw_rect(ir.grow(2), UiStyle.TRIM_DIM, false, 1.0)
 			var ic := _unit_icon(e)
 			if ic:
-				draw_texture_rect(ic, ir, false)
+				_ci.draw_texture_rect(ic, ir, false)
 			var f := e.hp / e.max_hp
-			draw_rect(Rect2(ir.position.x, ir.end.y, ir.size.x * f, 3), Color(0.3, 0.9, 0.3) if f > 0.5 else Color(0.95, 0.4, 0.2))
+			_ci.draw_rect(Rect2(ir.position.x, ir.end.y, ir.size.x * f, 3), Color(0.3, 0.9, 0.3) if f > 0.5 else Color(0.95, 0.4, 0.2))
 			if e is Unit and (e as Unit).kills > 0:
 				_text(UiStyle.bold_font(), Vector2(ir.end.x - 1, ir.position.y + 11), str((e as Unit).kills), 12, Color(1, 0.82, 0.3), 2)
 		if sel.size() > n:
@@ -1950,7 +2216,7 @@ func _draw_panel(font: Font) -> void:
 	# Deselect button
 	var x := Rect2(r.end.x - 30, r.position.y + 2, 28, 28)
 	if sel.size() != 1 or not (sel[0] is Building and sel[0].team == game.human and not (sel[0] as Building).queue.is_empty()):
-		UiStyle.draw_button(self, x, Settings.pc() and x.has_point(_mouse()))
+		UiStyle.draw_button(_ci, x, Settings.pc() and x.has_point(_mouse()))
 		_text(UiStyle.bold_font(), x.get_center() + Vector2(0, 6), "×", 16, UiStyle.TEXT, 1)
 		_buttons_extra = [{"rect": x, "cb": func() -> void: game.set_selection([]), "enabled": true}]
 	else:
@@ -2071,29 +2337,57 @@ func _paged(all: Array) -> Array:
 	return out
 
 
-func _draw_card(font: Font) -> void:
+## At each look: the command card's buttons (what they are, where, what they do) and a short
+## text of how they look (the card is redrawn when it changes).
+var _card_look := ""
+
+
+func _refresh_card() -> void:
+	var _q := Time.get_ticks_usec()
 	var items := _with_keys(_paged(_build_card()))
 	_card_items = items
-	_buttons = _buttons_extra.duplicate()
-	_buttons.append({"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true})
-	if items.is_empty():
+	var buttons: Array = []
+	var look := PackedStringArray()
+	if not items.is_empty():
+		var cr := card_rect()
+		var bsz := _btn()
+		look.append(str(cr))
+		for i in mini(items.size(), _cols() * _rows()):
+			var it: Array = items[i]
+			var br := Rect2(cr.position + Vector2(2 + (i % _cols()) * bsz, 2 + (i / _cols()) * bsz), Vector2(bsz - 4, bsz - 4))
+			var bt := {"rect": br, "cb": it[2], "enabled": it[3], "why": it[4], "item": it}
+			var plain := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
+			if _alt_for.has(plain):
+				bt["alt"] = _alt_for[plain]
+			buttons.append(bt)
+			look.append("%s|%s|%s|%s|%s" % [it[0], it[1], it[3], it[5], it[6] if it.size() > 6 else ""])
+	_card_buttons = buttons
+	_card_look = ";".join(look)
+	Prof.add("hud/card build", _q)
+
+
+## Every button the HUD has besides the quick ones: the panel's, MENU and the card's.
+func _all_buttons() -> Array:
+	return _buttons_extra + [{"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true}] + _card_buttons
+
+
+func _draw_card(font: Font) -> void:
+	if _card_buttons.is_empty():
 		return
 	var cr := card_rect()
-	UiStyle.draw_panel(self, cr.grow(4), UiStyle.accent(game.faction_of(game.human)))
-	var bsz := _btn()
+	UiStyle.draw_panel(_ci, cr.grow(4), UiStyle.accent(game.faction_of(game.human)))
 	var hover := _mouse() if Settings.pc() else Vector2(-1, -1)
-	for i in mini(items.size(), _cols() * _rows()):
-		var it: Array = items[i]
-		var br := Rect2(cr.position + Vector2(2 + (i % _cols()) * bsz, 2 + (i / _cols()) * bsz), Vector2(bsz - 4, bsz - 4))
+	for bt in _card_buttons:
+		var it: Array = bt["item"]
+		var br: Rect2 = bt["rect"]
 		var enabled: bool = it[3]
 		var ic := _icon(it[0])
 		var hov := br.has_point(hover)
 		var on := String(it[1]).begins_with("> ")
-		UiStyle.draw_button(self, br, hov, on, enabled)
-		var auto_on := String(it[1]).begins_with("~ ")
+		UiStyle.draw_button(_ci, br, hov, on, enabled)
 		if ic:
-			draw_texture_rect(ic, br.grow(-3), false, Color.WHITE if enabled else Color(0.4, 0.4, 0.4, 0.8))
-		draw_rect(Rect2(br.position.x + 2, br.end.y - 17, br.size.x - 4, 15), Color(0, 0, 0, 0.62))
+			_ci.draw_texture_rect(ic, br.grow(-3), false, Color.WHITE if enabled else Color(0.4, 0.4, 0.4, 0.8))
+		_ci.draw_rect(Rect2(br.position.x + 2, br.end.y - 17, br.size.x - 4, 15), Color(0, 0, 0, 0.62))
 		# the label at 11, smaller only when it wouldn't fit the (phone's narrower) button
 		var lab := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 		var lsz := 11
@@ -2103,29 +2397,20 @@ func _draw_card(font: Font) -> void:
 		if it[5] != "":
 			var cw := font.get_string_size(it[5], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 8
 			var cbr := Rect2(br.end.x - cw - 2, br.position.y + 2, cw, 15)
-			draw_rect(cbr, Color(0, 0, 0, 0.7))
+			_ci.draw_rect(cbr, Color(0, 0, 0, 0.7))
 			_text(UiStyle.bold_font(), Vector2(cbr.get_center().x, cbr.end.y - 3), it[5], 12, Color(1, 0.86, 0.4) if enabled else Color(1, 0.86, 0.4, 0.5), 1)
 		if Settings.pc() and it.size() > 6 and it[6] != "":
 			var kr := Rect2(br.position + Vector2(2, 2), Vector2(16, 16))
-			draw_rect(kr, Color(0.1, 0.08, 0.05, 0.85))
-			draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
+			_ci.draw_rect(kr, Color(0.1, 0.08, 0.05, 0.85))
+			_ci.draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
 			_text(UiStyle.bold_font(), kr.position + Vector2(8, 13), it[6], 12, Color(1, 0.92, 0.6), 1)
-		if auto_on:
-			_autocast_glow(br)
-		if hov:
-			_tip_cand = {"id": "card:" + String(it[1]), "delay": TIP_CARD_DELAY, "item": it}
-		var bt := {"rect": br, "cb": it[2], "enabled": enabled, "why": it[4], "item": it}
-		var plain := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
-		if _alt_for.has(plain):
-			bt["alt"] = _alt_for[plain]
-		_buttons.append(bt)
 
 
 ## Autocast (WORK, PUSH): a golden outline that breathes, with sparks running round it.
 func _autocast_glow(br: Rect2) -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	var a := 0.55 + 0.35 * sin(t * 4.0)
-	draw_rect(br.grow(1), Color(1.0, 0.82, 0.3, a), false, 2.0)
+	_ci.draw_rect(br.grow(1), Color(1.0, 0.82, 0.3, a), false, 2.0)
 	var per := 2.0 * (br.size.x + br.size.y)
 	for k in 2:
 		var d := fmod(t * 90.0 + k * per * 0.5, per)
@@ -2138,8 +2423,8 @@ func _autocast_glow(br: Rect2) -> void:
 			p += Vector2(br.size.x - (d - br.size.x - br.size.y), br.size.y)
 		else:
 			p += Vector2(0, br.size.y - (d - 2.0 * br.size.x - br.size.y))
-		draw_circle(p, 3.5, Color(1, 0.95, 0.6, 0.95))
-		draw_circle(p, 6.0, Color(1, 0.8, 0.3, 0.3))
+		_ci.draw_circle(p, 3.5, Color(1, 0.95, 0.6, 0.95))
+		_ci.draw_circle(p, 6.0, Color(1, 0.8, 0.3, 0.3))
 
 
 ## A resource readout in the top bar; returns where the next one starts.
@@ -2147,13 +2432,13 @@ func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := f
 	var vw := font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
 	var w := 36.0 + vw + 14.0
 	var r := Rect2(x, 4, w, 30)
-	UiStyle.draw_panel(self, r, Color(0, 0, 0, 0), 0.8)
+	UiStyle.draw_panel(_ci, r, Color(0, 0, 0, 0), 0.8)
 	if box:
-		draw_rect(Rect2(x + 10, 11, 14, 16), dot)
-		draw_rect(Rect2(x + 10, 11, 14, 16), Color(0, 0, 0, 0.5), false, 1.0)
+		_ci.draw_rect(Rect2(x + 10, 11, 14, 16), dot)
+		_ci.draw_rect(Rect2(x + 10, 11, 14, 16), Color(0, 0, 0, 0.5), false, 1.0)
 	else:
-		draw_circle(Vector2(x + 18, 19), 8, dot)
-		draw_arc(Vector2(x + 18, 19), 8, 0, TAU, 18, Color(1, 1, 1, 0.45), 1.5)
+		_ci.draw_circle(Vector2(x + 18, 19), 8, dot)
+		_ci.draw_arc(Vector2(x + 18, 19), 8, 0, TAU, 18, Color(1, 1, 1, 0.45), 1.5)
 	_text(font, Vector2(x + 34, 26), value, 20, col)
 	return x + w + 8
 
@@ -2179,7 +2464,6 @@ const TIP_W := 320.0
 var help_mode := false           # phone: the next tap explains instead of acting
 var _tip := {}                   # shown: {title, key, stats, need, body, hint}
 var _tip_at := Vector2.ZERO      # where it hangs from (HUD coordinates)
-var _tip_cand := {}              # what the mouse is on this frame (the card fills it in)
 var _hover_id := ""
 var _hover_ms := 0
 var _tip_ms := 0                 # last time it was (re)shown
@@ -2371,8 +2655,8 @@ func _hover_at(p: Vector2) -> Dictionary:
 	for i in QUICK:
 		if group_rect(i).has_point(p):
 			return {"id": "grp:%d" % i, "delay": TIP_HUD_DELAY, "grp": i}
-	for b in _buttons:
-		if b.has("item") and (b["rect"] as Rect2).has_point(p):
+	for b in _card_buttons:
+		if (b["rect"] as Rect2).has_point(p):
 			return {"id": "card:" + String(b["item"][1]), "delay": TIP_CARD_DELAY, "item": b["item"]}
 	if _hud_has(p):
 		return {}
@@ -2436,7 +2720,11 @@ func _update_tip() -> void:
 			_tip = {}
 		return
 	var m := _mouse()
-	var c := _tip_cand
+	var c := {}
+	for b in _card_buttons:
+		if (b["rect"] as Rect2).has_point(m):
+			c = {"id": "card:" + String(b["item"][1]), "delay": TIP_CARD_DELAY, "item": b["item"]}
+			break
 	if c.is_empty() and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and controls.box_rect().size == Vector2.ZERO:
 		c = _hover_at(m)
 	var id: String = c.get("id", "")
@@ -2493,19 +2781,19 @@ func _draw_tip() -> void:
 			pos.y = _tip_at.y + 28
 	pos = pos.clamp(Vector2(6, 6), (vs - Vector2(w, h) - Vector2(6, 6)).max(Vector2(6, 6)))
 	var rect := Rect2(pos, Vector2(w, h))
-	UiStyle.draw_panel(self, rect, UiStyle.accent(game.faction_of(game.human)), 0.96)
+	UiStyle.draw_panel(_ci, rect, UiStyle.accent(game.faction_of(game.human)), 0.96)
 	var x := rect.position.x + 10
 	if key != "":
 		var kr := Rect2(x, rect.position.y + 8, 17, 17)
-		draw_rect(kr, Color(0.1, 0.08, 0.05, 0.9))
-		draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
+		_ci.draw_rect(kr, Color(0.1, 0.08, 0.05, 0.9))
+		_ci.draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
 		_text(bold, kr.position + Vector2(8.5, 13.5), key, 12, Color(1, 0.92, 0.6), 1)
-	draw_string(bold, Vector2(x + key_w, rect.position.y + 22), title, HORIZONTAL_ALIGNMENT_LEFT, tw - key_w, 16, Color(1, 0.88, 0.55))
+	_ci.draw_string(bold, Vector2(x + key_w, rect.position.y + 22), title, HORIZONTAL_ALIGNMENT_LEFT, tw - key_w, 16, Color(1, 0.88, 0.55))
 	var y := rect.position.y + 30.0
 	for i in rows.size():
 		var r: Array = rows[i]
 		var f: Font = r[1]
-		draw_multiline_string(f, Vector2(x, y + f.get_ascent(r[2])), r[0], HORIZONTAL_ALIGNMENT_LEFT, tw, r[2], -1, r[3])
+		_ci.draw_multiline_string(f, Vector2(x, y + f.get_ascent(r[2])), r[0], HORIZONTAL_ALIGNMENT_LEFT, tw, r[2], -1, r[3])
 		y += float(heights[i]) + 3.0
 
 
@@ -2532,5 +2820,5 @@ func _icon_file(name: String) -> Texture2D:
 func _text(font: Font, p: Vector2, s: String, sz: int, col: Color, align := 0) -> void:
 	var w := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
 	var x := p.x - (w * 0.5 if align == 1 else (w if align == 2 else 0.0))
-	draw_string_outline(font, Vector2(x, p.y), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, 4, Color(0, 0, 0, col.a * 0.8))
-	draw_string(font, Vector2(x, p.y), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+	_ci.draw_string_outline(font, Vector2(x, p.y), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, 4, Color(0, 0, 0, col.a * 0.8))
+	_ci.draw_string(font, Vector2(x, p.y), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
