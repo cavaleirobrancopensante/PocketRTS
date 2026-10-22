@@ -251,7 +251,7 @@ const UNITS := {
 	"cuirassier": {
 		"tags": ["light"],
 		"name": "Horseman", "hp": 140, "armor": 1, "speed": 112, "cost": 115, "time": 22.0, "supply": 3,
-		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
+		"sight": 8, "range": 26, "damage": 18, "cooldown": 1.1, "aim": 0.15, "radius": 15, "from": "barracks",
 		"requires": "horse_breeder", "bonus": {"cannon": 1.6, "spitter": 1.3, "arc_thrower": 1.3}, "charge": true, "faction": "crown", "needs_horse": true,
 		"about": "Fast light horseman with a sabre. Trained with his horse in one click (a free one at a breeder, else the breeder trains one: 40 more); he comes out on foot and rides off on it. Once the Armoury has drilled the Cavalry Charge, his first blow after a gallop hits double and throws the enemy back. With Armour he becomes a Cuirassier. DISMOUNT and he fights on foot with carbine and sabre. Bayonets hurt him.",
 	},
@@ -284,8 +284,8 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Dismounted Horseman", "hp": 80, "armor": 1, "speed": 64, "cost": 115, "time": 1.0, "supply": 3,
 		"sight": 8, "range": 175, "damage": 18, "cooldown": 3.0, "aim": 0.4, "radius": 10, "from": "",
-		"anti_air": true, "sabre": {"damage": 22.0, "cooldown": 0.9}, "faction": "crown",
-		"about": "A Horseman on foot: a carbine (a little shorter and weaker than a Musketeer's musket) and his sabre up close (better than a bayonet). MOUNT a horse to ride again.",
+		"anti_air": true, "sabre": {"damage": 18.0, "cooldown": 1.1}, "faction": "crown",
+		"about": "A Horseman on foot: a carbine (a little shorter and weaker than a Musketeer's musket) and the same sabre as in the saddle up close (about a plain bayonet's match). MOUNT a horse to ride again.",
 	},
 	"balloon": {
 		"tags": ["light"],
@@ -949,7 +949,7 @@ const TIPS := {
 	"mounted_missionary": "A Missionary on a horse: fast and unarmed. Gets off to bandage (and back on after) and to raise the fallen.",
 	"dragoon": "A Musketeer on a horse: rides fast, dismounts to fire (0.8 s), remounts to move. His reload waits while he rides.",
 	"armoured_dragoon": "A Guardsman on a horse: rides fast, dismounts to fire, remounts to move.",
-	"dismounted": "A Horseman on foot: a carbine a little weaker than a musket, and a sabre better than a bayonet. MOUNT to ride again.",
+	"dismounted": "A Horseman on foot: a carbine a little weaker than a musket, and the same sabre as in the saddle. MOUNT to ride again.",
 	"dismounted_cuirassier": "A Cuirassier on foot: carbine and sabre, in his cuirass. MOUNT to ride again.",
 	"balloon": "Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.",
 	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
