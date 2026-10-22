@@ -1191,7 +1191,7 @@ func _with_keys(items: Array) -> Array:
 
 
 ## A key pressed on the keyboard: run the card button with that letter. True if used.
-func hotkey(code: int) -> bool:
+func hotkey(code: int, repeat := false) -> bool:
 	if paused or game.over:
 		return false
 	if code == KEY_ESCAPE and view_open:
@@ -1205,6 +1205,8 @@ func hotkey(code: int) -> bool:
 		return false
 	for it in _card_items:
 		if it.size() > 6 and it[6] == letter:
+			if repeat and not Defs.UNITS.has(String(it[0])):
+				return false          # (only training repeats while a key is held)
 			if it[3]:
 				it[2].call()
 				Sfx.play_any(["ui/click", "click"])
