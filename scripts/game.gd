@@ -1074,7 +1074,7 @@ func _patch_mask(pm: Array, k: int, x: int, y: int) -> Image:
 ## without a jump) past a wavy, dithered cut line, a different one for each edge, so no
 ## straight line and no regular pattern is left. Done with masked blits (native, quick).
 const SEAM_W := 8
-var _seam_masks: Array = []      # 8 x [A side, B side] for vertical edges, then the same turned
+var _seam_masks: Array = []      # 8 x [band across a vertical edge, the same turned]
 
 
 func _seam_mask_set() -> Array:
@@ -1088,35 +1088,30 @@ func _seam_mask_set() -> Array:
 		var p2 := k * 2.91 + 1.1
 		var f1 := 0.19 + 0.035 * (k % 3)
 		var f2 := 0.45 + 0.05 * (k % 4)
-		var av := Image.create(w, T, false, Image.FORMAT_LA8)
-		var bv := Image.create(w, T, false, Image.FORMAT_LA8)
-		var ah := Image.create(T, w, false, Image.FORMAT_LA8)
-		var bh := Image.create(T, w, false, Image.FORMAT_LA8)
+		# one band 2 * SEAM_W across the edge: pixel u (0 = the farthest into side A)
+		var v := Image.create(2 * w, T, false, Image.FORMAT_LA8)
+		var h := Image.create(T, 2 * w, false, Image.FORMAT_LA8)
 		for t in T:
 			# where the cut runs, across the edge (negative: into side A)
 			var c := 4.5 * (0.62 * sin(t * f1 + p1) + 0.38 * sin(t * f2 + p2))
-			for a in w:
-				var ja := (fposmod(sin((a + k * 13) * 12.9898 + (t + k * 7) * 78.233) * 43758.5453, 1.0) - 0.5) * 5.0
-				var jb := (fposmod(sin((a + k * 17 + 40) * 12.9898 + (t + k * 5) * 78.233) * 43758.5453, 1.0) - 0.5) * 5.0
-				# side A, pixel a (0 = the farthest from the edge): B's mirror past the cut
-				var show_b := (a - w + 0.5) + ja >= c
-				av.set_pixel(a, t, on if show_b else off)
-				ah.set_pixel(t, a, on if show_b else off)
-				# side B, pixel a (0 = next to the edge): A's mirror before the cut
-				var show_a := (a + 0.5) + jb < c
-				# (side B's pixels count from the edge outward, so its band image is drawn as is)
-				bv.set_pixel(a, t, on if show_a else off)
-				bh.set_pixel(t, a, on if show_a else off)
-		_seam_masks.append([av, bv, ah, bh])
+			for u in 2 * w:
+				var j := (fposmod(sin((u + k * 13) * 12.9898 + (t + k * 7) * 78.233) * 43758.5453, 1.0) - 0.5) * 5.0
+				var d := u - w + 0.5             # signed distance from the edge
+				# on side A, B's mirror image past the cut; on side B, A's before it
+				var swap := (d + j >= c) if d < 0.0 else (d + j < c)
+				v.set_pixel(u, t, on if swap else off)
+				h.set_pixel(t, u, on if swap else off)
+		_seam_masks.append([v, h])
 	return _seam_masks
 
 
-func _blend_seams(img: Image, er: Rect2i, sets: PackedStringArray, zone: PackedInt32Array) -> void:
+## `sid`: each cell's ground set as a number; `macro`, `no_seam`: per set number.
+func _blend_seams(img: Image, er: Rect2i, sid: PackedInt32Array, zone: PackedInt32Array,
+		macro: PackedByteArray, no_seam: PackedByteArray) -> void:
 	var w := SEAM_W
 	var sm := _seam_mask_set()
-	var rv := Rect2i(0, 0, w, T)
-	var rh := Rect2i(0, 0, T, w)
-	var macro := {}
+	var rv := Rect2i(0, 0, 2 * w, T)
+	var rh := Rect2i(0, 0, T, 2 * w)
 	for vert in [true, false]:
 		for y in range(er.position.y, er.end.y - (0 if vert else 1)):
 			for x in range(er.position.x, er.end.x - (1 if vert else 0)):
@@ -1125,34 +1120,28 @@ func _blend_seams(img: Image, er: Rect2i, sets: PackedStringArray, zone: PackedI
 				var z := zone[i]
 				if z < 0 or zone[j] != z or (z == 2 and not vert):
 					continue
-				var s := sets[i]
-				if s == sets[j]:
-					if not macro.has(s):
-						macro[s] = _is_macro(s)
+				var s := sid[i]
+				if s == sid[j]:
 					# inside one 2 x 2 block the picture runs on
-					if macro[s] and ((x & 1 == 0) if vert else (y & 1 == 0)):
+					if macro[s] == 1 and ((x & 1 == 0) if vert else (y & 1 == 0)):
 						continue
-					if NO_SEAM.has(s):
+					if no_seam[s] == 1:
 						continue
 				var m: Array = sm[(x * 73856093 ^ y * 19349663 ^ (0 if vert else 83492791)) & 7]
 				var px := (x - er.position.x) * T
 				var py := (y - er.position.y) * T
+				# the band across the edge, mirrored over it: its A half now shows B's
+				# mirror image and its B half A's; blitted back where the mask says
 				if vert:
-					px += T
-					var a := img.get_region(Rect2i(px - w, py, w, T))
-					var b := img.get_region(Rect2i(px, py, w, T))
-					a.flip_x()
-					b.flip_x()
-					img.blit_rect_mask(b, m[0], rv, Vector2i(px - w, py))
-					img.blit_rect_mask(a, m[1], rv, Vector2i(px, py))
+					px += T - w
+					var band := img.get_region(Rect2i(px, py, 2 * w, T))
+					band.flip_x()
+					img.blit_rect_mask(band, m[0], rv, Vector2i(px, py))
 				else:
-					py += T
-					var a := img.get_region(Rect2i(px, py - w, T, w))
-					var b := img.get_region(Rect2i(px, py, T, w))
-					a.flip_y()
-					b.flip_y()
-					img.blit_rect_mask(b, m[2], rh, Vector2i(px, py - w))
-					img.blit_rect_mask(a, m[3], rh, Vector2i(px, py))
+					py += T - w
+					var band := img.get_region(Rect2i(px, py, T, 2 * w))
+					band.flip_y()
+					img.blit_rect_mask(band, m[1], rh, Vector2i(px, py))
 
 
 ## A plateau's rim (its cliff cells that show no face) darkens smoothly toward the low ground
@@ -1226,8 +1215,6 @@ func _render_ground() -> void:
 	sets.resize(W * H)
 	var shades := PackedFloat32Array()
 	shades.resize(W * H)
-	var rnds := PackedInt32Array()
-	rnds.resize(W * H)
 	var layer := PackedInt32Array()
 	layer.resize(W * H)
 	for y in H:
@@ -1291,7 +1278,6 @@ func _render_ground() -> void:
 				lay = 10 + li + (0 if bn == mapgen.biome_a else 5)
 			sets[i] = set_name
 			shades[i] = shade
-			rnds[i] = rnd
 			layer[i] = lay
 			var key := _tile_key(set_name, rnd / 7)
 			_tile(set_name, rnd / 7)
@@ -1323,34 +1309,58 @@ func _render_ground() -> void:
 	# each cell's (or 2 x 2 block's) picture, unlike its neighbours' (_pick_variant)
 	var pick := PackedInt32Array()
 	pick.resize(W * H)
+	var sid := PackedInt32Array()          # each cell's ground set as a number
+	sid.resize(W * H)
 	var blocks := {}                       # Vector3i(block x, block y, set) -> pick
 	var set_ids := {}
+	var set_names: Array = []
+	var macro := PackedByteArray()         # per set number: laid in 2 x 2 blocks
+	var few := PackedByteArray()           # under 3 variants: a plain hashed pick
+	var no_seam := PackedByteArray()
 	for y in H:
 		for x in W:
 			var i := y * W + x
 			var s := sets[i]
 			if not set_ids.has(s):
-				set_ids[s] = set_ids.size()
-			if _is_macro(s):
-				var sid: int = set_ids[s]
-				var bk := Vector3i(x >> 1, y >> 1, sid)
+				set_ids[s] = set_names.size()
+				set_names.append(s)
+				macro.append(int(_is_macro(s)))
+				few.append(int(_good(s).size() < 3))
+				no_seam.append(int(NO_SEAM.has(s)))
+			var si: int = set_ids[s]
+			sid[i] = si
+			if macro[si] == 1:
+				var bk := Vector3i(x >> 1, y >> 1, si)
 				if not blocks.has(bk):
 					var near: Array = []
 					for d in [Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1), Vector2i(1, -1)]:
-						near.append(blocks.get(Vector3i(bk.x + d.x, bk.y + d.y, sid), -1))
+						near.append(blocks.get(Vector3i(bk.x + d.x, bk.y + d.y, si), -1))
 					blocks[bk] = _pick_variant(s, _hash2(bk.x, bk.y, 7), near)
 				pick[i] = blocks[bk]
+			elif few[si] == 1:
+				pick[i] = _pick_variant(s, _hash2(x, y, 3), [])
 			else:
 				var near: Array = []
 				for d in [Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1), Vector2i(1, -1)]:
 					var n := Vector2i(x + d.x, y + d.y)
-					near.append(pick[idx(n)] if in_map(n) and sets[idx(n)] == s else -1)
+					near.append(pick[idx(n)] if in_map(n) and sid[idx(n)] == si else -1)
 				pick[i] = _pick_variant(s, _hash2(x, y, 3), near)
+	# the pictures, shaded, by set, pick, quarter of the block and shade (one lookup a cell)
+	var pics := {}
+	var pic := func(si: int, x: int, y: int, p: int, shade: float) -> Image:
+		var q := ((x & 1) + 2 * (y & 1)) if macro[si] == 1 else 0
+		var key := Vector4i(si, p, q, int(shade * 1000.0))
+		if not pics.has(key):
+			pics[key] = _shaded(_cell_tile(set_names[si], x, y, p), shade)
+		return pics[key]
 	# a neighbour's ground spilling over a cell's edge: its picture at this cell's place
-	var spill_pick := func(s: String, x: int, y: int) -> int:
-		if _is_macro(s):
-			return blocks.get(Vector3i(x >> 1, y >> 1, set_ids[s]), _pick_variant(s, _hash2(x >> 1, y >> 1, 7), []))
-		return _pick_variant(s, _hash2(x, y, 5), [])
+	var spill_pick := func(si: int, x: int, y: int) -> int:
+		if macro[si] == 1:
+			var bk := Vector3i(x >> 1, y >> 1, si)
+			if blocks.has(bk):
+				return blocks[bk]
+			return _pick_variant(set_names[si], _hash2(x >> 1, y >> 1, 7), [])
+		return _pick_variant(set_names[si], _hash2(x, y, 5), [])
 	for cy in range(0, H, CHUNK):
 		for cx in range(0, W, CHUNK):
 			var cr := Rect2i(cx, cy, mini(CHUNK, W - cx), mini(CHUNK, H - cy))
@@ -1362,34 +1372,29 @@ func _render_ground() -> void:
 				for x in range(er.position.x, er.end.x):
 					var i := y * W + x
 					var at := Vector2i(x - er.position.x, y - er.position.y) * T
-					var t := _shaded(_cell_tile(sets[i], x, y, pick[i]), shades[i])
-					img.blit_rect(t, Rect2i(0, 0, T, T), at)
+					img.blit_rect(pic.call(sid[i], x, y, pick[i], shades[i]), Rect2i(0, 0, T, T), at)
 					var lay := layer[i]
 					if lay == 0:
 						continue
 					# a ground ranked higher next door spills over this cell's edge
-					var done := {}
 					for k in 8:
 						var n: Vector2i = Vector2i(x, y) + nb8[k]
 						if not in_map(n):
 							continue
 						var j := idx(n)
 						var nl := layer[j]
-						if nl <= lay or sets[j] == sets[i]:
+						if nl <= lay or sid[j] == sid[i]:
 							continue
 						if k >= 4:
 							# a corner only where neither side next to it is the same ground
-							var a := idx(Vector2i(n.x, y))
-							var bb := idx(Vector2i(x, n.y))
-							if sets[a] == sets[j] or sets[bb] == sets[j]:
+							if sid[idx(Vector2i(n.x, y))] == sid[j] or sid[idx(Vector2i(x, n.y))] == sid[j]:
 								continue
 						if (height[i] == 1) != (height[j] == 1):
 							continue      # (high and low ground meet only at cliffs and ramps)
-						var over := _shaded(_cell_tile(sets[j], x, y, spill_pick.call(sets[j], x, y)), shades[i])
+						var over: Image = pic.call(sid[j], x, y, spill_pick.call(sid[j], x, y), shades[i])
 						var mk: Image = masks[(x * 7 + y * 3 + k) % 2][k] if lay < 10 else _patch_mask(pmasks, k, x, y)
 						img.blend_rect_mask(over, mk, Rect2i(0, 0, T, T), at)
-						done[k] = true
-			_blend_seams(img, er, sets, zone)
+			_blend_seams(img, er, sid, zone, macro, no_seam)
 			if er != cr:
 				img = img.get_region(Rect2i((cr.position - er.position) * T, cr.size * T))
 			_shade_rims(img, cr, zone)
