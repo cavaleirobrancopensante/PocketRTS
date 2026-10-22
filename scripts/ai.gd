@@ -287,6 +287,8 @@ func _econ_build() -> void:
 		var early := game.workers(team).size() < 7 and game.clock < 100.0     # (the first hands farm: gold for labourers first)
 		var barracks_up := not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty()
 		var no_breeder := _mine("horse_breeder").is_empty()
+		if opening == "breeder" and _mine("barracks").is_empty() and game.clock < 150.0 and game.econ_count(team, "farm") >= 1 and _halls().size() == 1:
+			order.erase("farm")      # (a Horseman rush: the second farm once the Barracks is going up)
 		if opening == "mill":
 			if game.econ_count(team, "powder_mill") == 0 and early:
 				order.erase("powder_mill")
