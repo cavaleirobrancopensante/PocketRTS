@@ -59,6 +59,8 @@ func _ready() -> void:
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
 	_attack_at = int(_s("wave"))
+	if opening == "breeder" and strategy == "rush":
+		_attack_at = maxi(_attack_at, RUSH_HORSEMEN * int(Defs.UNITS["cuirassier"]["supply"]))   # (the first 3 Horsemen ride out together)
 
 
 ## A wave goes out: remember what it's worth, to judge it when it's over.
@@ -456,7 +458,7 @@ func _build_up() -> void:
 		if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > _lv([480.0, 260.0, 200.0]):
 			_construct("foundry")
 		# the Armoury: all the Crown's research (and a second place to refit at)
-		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150:
+		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150 and not _rushing():
 			_construct("armoury")
 		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]):
 			_construct("church")
@@ -798,6 +800,9 @@ var _raid_home := 0.0
 ## undefended farms). They avoid armies and ride home to mend when badly hurt.
 func _raid() -> void:
 	_raiders = _raiders.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	if opening == "breeder" and strategy == "rush":
+		_raiders.clear()             # (a Horseman rush: they ride out together with the wave)
+		return
 	for u in game.army(team):
 		if _raiders.size() >= 4:
 			break
@@ -2969,7 +2974,7 @@ func _team_up(horses: Array, keep: Dictionary) -> int:
 ## the spares in the breeders' queues. (Recruits get theirs by themselves: Game.train.)
 func _buy_horses(horses: Array, keep: Dictionary, need: int) -> void:
 	var breeders := _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built)
-	if breeders.is_empty() or (_mine("barracks").is_empty() and _mine("foundry").is_empty()):
+	if breeders.is_empty() or (_mine("barracks").is_empty() and _mine("foundry").is_empty() and not _rushing()):
 		return
 	var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.horse_rid == 0 and h.order != "move").size()
 	var coming := 0

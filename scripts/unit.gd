@@ -5271,6 +5271,9 @@ func harness(h: Unit) -> void:
 		# another horse for the team (in front of the others)
 		team_horses.append({"coat": h.coat, "hp": clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)})
 		game.consume_unit(h)
+		if game.mlog and not game._first_of.has("%d:team" % team):
+			game._first_of["%d:team" % team] = true
+			game.mlog.add("%s's first %s with a team of %d horses" % [game.mlog.who(team), String(d["name"]), horse_count()])
 		queue_redraw()
 		if team == game.human:
 			game.float_text(position + Vector2(0, -40), "%d horses" % horse_count(), Color(0.9, 0.85, 0.6))
