@@ -329,11 +329,13 @@ func generate(map_id: String) -> Array:
 			break
 	# every base site (all four corners with 3-4 players, used or not)
 	g.base_sites = g.starts + g.expansions
+	var all_mains: Array = g.starts.duplicate()
 	_assign_corners()
 	# a light scatter of decorations (their own dice: the map's layout stays as it was)
 	var drng := RandomNumberGenerator.new()
 	drng.seed = hash(g.rng.seed) + 17
 	_decorate(drng, [], 0.6)
+	_clear_mains(all_mains)
 	g.height = height
 	g.ramp = ramp
 	return [m[1], m[2]]
@@ -1177,6 +1179,7 @@ func _named(map_id: String) -> Array:
 	g.base_sites = sites
 	_assign_named(mains, nats)
 	_decorate(rng, m.get("sites", []), float(m.get("decor", 1.0)))
+	_clear_mains(mains)
 	_open_ways(sites)
 	g.height = height
 	g.ramp = ramp
@@ -1473,6 +1476,56 @@ func _open_ways(sites: Array) -> void:
 				for cc in [Vector2i(i % W, i / W), _twin(Vector2i(i % W, i / W))]:
 					_clear_cell(g.idx(cc))
 			i = par[i]
+
+
+## Every main base is all buildable: no tree, rock or solid decoration anywhere on the
+## plateau a main hall spot stands on (the high ground joined to it, up to MAIN_REACH cells
+## from the hall; cliffs and ramps stay as they are), or within MAIN_REACH - 4 cells of a
+## main on low ground. Walk-through decorations (grass, animals...) may stay.
+const MAIN_REACH := 22.0
+
+
+func main_area(st: Vector2i) -> Array:
+	var c0 := st + Vector2i(2, 2)
+	var mid := Vector2(st) + Vector2(2.5, 2.0)
+	var out: Array = []
+	if not g.in_map(c0):
+		return out
+	if height[g.idx(c0)] == 1:
+		var seen := {g.idx(c0): true}
+		var todo: Array = [c0]
+		while not todo.is_empty():
+			var c: Vector2i = todo.pop_back()
+			out.append(c)
+			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n: Vector2i = c + dd
+				if not g.in_map(n) or seen.has(g.idx(n)) or height[g.idx(n)] != 1 or ramp[g.idx(n)] == 1:
+					continue
+				if (Vector2(n) + Vector2(0.5, 0.5)).distance_to(mid) > MAIN_REACH:
+					continue
+				seen[g.idx(n)] = true
+				todo.append(n)
+		return out
+	var r := MAIN_REACH - 4.0
+	for y in range(int(mid.y - r) - 1, int(mid.y + r) + 2):
+		for x in range(int(mid.x - r) - 1, int(mid.x + r) + 2):
+			var c := Vector2i(x, y)
+			if g.in_map(c) and (Vector2(c) + Vector2(0.5, 0.5)).distance_to(mid) <= r:
+				out.append(c)
+	return out
+
+
+var main_cleared := 0              # blocking cells _clear_mains took off the main bases (tests)
+
+
+func _clear_mains(mains: Array) -> void:
+	main_cleared = 0
+	for st in mains:
+		for c in main_area(st):
+			var i := g.idx(c)
+			if g._terrain_kind.has(i) and g.cliff[i] == 0 and g.water[i] == 0:
+				main_cleared += 1
+				_clear_cell(i)
 
 
 func _clear_cell(i: int) -> void:

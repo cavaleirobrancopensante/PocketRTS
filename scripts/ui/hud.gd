@@ -1233,14 +1233,21 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_tongue", "TONGUE", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "tongue", tongue_ok, "" if tongue_ok else "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]), str(int(Defs.TONGUE["cost"]))])
-	# the cavalry's pistol: HOLD FIRE (glowing = on: he never fires it by himself)
-	var pistols := units.filter(func(u: Unit) -> bool: return u.has_pistol())
-	if not pistols.is_empty():
-		var held: bool = pistols.all(func(u: Unit) -> bool: return u.hold_fire)
+	# HOLD FIRE for every Crown firearm (muskets, pistols, guns, the balloon's basket): glowing
+	# = on: they never open fire by themselves, only on what you order them to ATTACK (the
+	# cavalry keep their pistol shot even then); bayonets and sabres still fight. One button
+	# for the whole selection.
+	var firearms := units.filter(func(u: Unit) -> bool: return u.team == game.human and u.has_gun())
+	if not firearms.is_empty():
+		var held: bool = firearms.all(func(u: Unit) -> bool: return u.hold_fire)
+		var only_pistols: bool = firearms.all(func(u: Unit) -> bool: return u.has_pistol())
 		list.append(["hold_fire" if held else "fire_at_will", ("~ " if held else "") + "HOLD FIRE", func() -> void:
 			for u in game.selected_units():
 				u.set_hold_fire(not held)
-			toast("Hold fire: they keep their pistols loaded." if not held else "Pistols free: they fire by themselves."), true, "", ""])
+			if only_pistols:
+				toast("Hold fire: they keep their pistols loaded." if not held else "Pistols free: they fire by themselves.")
+			else:
+				toast("Hold fire: they shoot only at what you order them to attack." if not held else "Fire at will: they shoot by themselves."), true, "", ""])
 	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
 	if not sacs.is_empty():
 		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
@@ -2006,6 +2013,8 @@ func _draw_panel(font: Font) -> void:
 				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."
 			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99:
 				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
+			if uu.hold_fire and not uu.has_pistol():
+				info = "HOLD FIRE · " + info      # (the pistol's own line says it)
 			if not uu.led.is_empty():
 				info = "Leading %d horse%s · " % [uu.led.size(), "" if uu.led.size() == 1 else "s"] + info
 			if uu.auto_mount and uu.kind == "musketeer" and uu.steed and is_instance_valid(uu.steed):
