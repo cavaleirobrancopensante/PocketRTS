@@ -3329,9 +3329,12 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 			elif not b.dual_rally() and b.rally_target is Building:
 				site = b.rally_target
 			if site == null or site.dead or site.crew.size() >= int(site.d.get("crew", 0)):
+				var was_site := site != null and not site.dead
 				site = null
 				var rp: Vector2 = b.worker_rally if b.dual_rally() else b.rally
-				if rp == Vector2.INF:
+				if rp == Vector2.INF or was_site:
+					# (its rally's pit or farm is full: the next one with room instead of
+					# standing idle beside it)
 					site = free_site(b.team, u.position)
 				else:
 					u.cmd_move(rp + Vector2(randf_range(-12, 12), randf_range(-12, 12)))
