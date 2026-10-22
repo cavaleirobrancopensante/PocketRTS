@@ -33,6 +33,12 @@ var _prev_calls := {}
 var _frame := {}                 # Prof.us added during this frame
 var _acc := {}                   # ... and during this minute (Prof itself is reset by the match log)
 var _acc_calls := {}
+## The same parts per second of play (60 frames): each minute's MEDIAN second is in the CSV
+## as "med <part>" (other programs on the machine make a few seconds slow; the median
+## shrugs them off, the average doesn't).
+var _win := {}
+var _win_n := 0
+var _wins: Array = []
 var _worst_ms := 0.0
 var _worst_zones := ""
 var mouse := true                # a moving mouse and a changing selection, as a player has (HUD hover and panels)
@@ -40,6 +46,7 @@ var _sel_t := 0.0
 var _sel_i := 0
 var _mouse_a := 0.0
 
+const MED_ZONES := ["units", "buildings", "game", "game/fog", "ai", "hud", "hud draw", "overlay draw", "effects"]
 ## The parts (Prof keys) in the CSV; "a/b" is part of "a" (game/fog is inside game).
 const ZONES := ["units", "ai", "game", "game/fog", "game/fog/units", "game/fog/picture", "game/paths", "game/pathfinder", "game/path smoothing", "game/unit grid", "game/refit",
 	"buildings", "effects", "projectiles", "unit draw", "building draw", "hud", "hud draw", "overlay draw", "autosave",
@@ -61,6 +68,7 @@ func _take_frame() -> void:
 		if d > 0:
 			_frame[z] = d
 			_acc[z] = int(_acc.get(z, 0)) + d
+			_win[z] = int(_win.get(z, 0)) + d
 	if Prof.us.size() < _prev.size():
 		pass
 	_prev = Prof.us.duplicate()
@@ -152,6 +160,11 @@ func _process(delta: float) -> bool:
 	_last_us = now
 	_take_frame()
 	# what the slow frames spent their time on (zones are added up, so take the difference)
+	_win_n += 1
+	if _win_n >= 60:
+		_wins.append(_win)
+		_win = {}
+		_win_n = 0
 	if ms > _worst_ms:
 		_worst_ms = ms
 		_worst_zones = _diff_zones()
@@ -253,6 +266,11 @@ func _minute_row(g: Game) -> void:
 	for z in ZONES:
 		row[z] = float(_acc.get(z, 0)) / 1000.0 / arr.size()      # ms a frame
 	row["paths"] = int(_acc_calls.get("game/pathfinder", 0))
+	for z in MED_ZONES:
+		var vals: Array = _wins.map(func(w: Dictionary) -> float: return float(w.get(z, 0)) / 1000.0 / 60.0)
+		vals.sort()
+		row["med " + z] = float(vals[vals.size() / 2]) if not vals.is_empty() else 0.0
+	_wins.clear()
 	row["worst_frame_zones"] = "\"%s\"" % _worst_zones
 	_acc.clear()
 	_acc_calls.clear()

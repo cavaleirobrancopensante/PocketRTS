@@ -5608,6 +5608,16 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 	var h := H
 	var fog_on := mine and _fog_base.size() == w * h * 2
 	var mode := _fog_mode if fog_on else 0
+	# (the fog picture being cut is taken out of its member while it's written: see above)
+	var fw: PackedByteArray = _EMPTY
+	if mode == 1:
+		fw = _fog_bld
+		_fog_bld = _EMPTY
+	elif mode == 2:
+		fw = _fog_w
+		_fog_w = _EMPTY
+	var ex := explored
+	explored = _EMPTY
 	while k < n:
 		var x := c.x + d[k]
 		var y := c.y + d[k + 1]
@@ -5617,16 +5627,22 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 				v[i] = 1
 				sv[i] = 1
 				if mine:
-					if explored[i] == 0:
-						explored[i] = 1
+					if ex[i] == 0:
+						ex[i] = 1
 						if fog_on:
 							_fog_base[i * 2 + 1] = FOG_EXPLORED
-							_fog_bld[i * 2 + 1] = FOG_EXPLORED
-					if mode == 1:
-						_fog_bld[i * 2 + 1] = 0
-					elif mode == 2:
-						_fog_w[i * 2 + 1] = 0
+							if mode == 1:
+								fw[i * 2 + 1] = FOG_EXPLORED
+							else:
+								_fog_bld[i * 2 + 1] = FOG_EXPLORED
+					if mode != 0:
+						fw[i * 2 + 1] = 0
 		k += 3
+	explored = ex
+	if mode == 1:
+		_fog_bld = fw
+	elif mode == 2:
+		_fog_w = fw
 
 
 ## Your fog picture (LA8: alpha 250 unexplored, 140 explored, 0 seen), kept up as it's seen
