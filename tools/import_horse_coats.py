@@ -64,7 +64,7 @@ SHEET_BOXES = {
 # The coat each unit's sprites are painted in (left as painted when it gets that coat).
 # The Mortar has none: its towed walk shows a dark horse, its other strips a chestnut, so
 # every coat (bay too) is repainted, the same on both.
-NATIVE = {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": ""}
+NATIVE = {"cuirassier": "dark", "horseman": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": ""}
 NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 
 # Per unit: the colour test, the strips with a horse (anim names; every direction), and
@@ -93,6 +93,17 @@ CONFIG = {
             "death_ne": [(70, 50, 94, 70, [3])],
             "death_n": [(6, 55, 24, 70, [3])],
         },
+    },
+    # the unarmoured Horseman (tools/import_horseman.py): the same grey horse and red coat; his
+    # brown hat and boots fail the grey test by themselves. Thrown in the death frames 2-3.
+    "horseman": {
+        "test": "grey",
+        "anims": ["idle", "walk", "attack", "death"],
+        "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
+                       "skip": [("death", 1), ("death", 2), ("death", 3)]},
+        "blade_v": 0.5,
+        "keep": {},
+        "drop": {},
     },
     "cannon": {
         "test": "grey",

@@ -33,6 +33,10 @@ python3 tools/make_packs.py              # Clockwork battery backpacks (after ev
 python3 tools/import_deposits.py         # saltpetre / ore deposits (4 states), chips, icons, sparkle
 python3 tools/import_round11.py          # painted portraits, research + ability icons, Engine Hall,
                                          # musketeer bayonet strips (last: replaces earlier icons/melee)
+python3 tools/import_armoury.py          # the Crown Armoury (4 states, found by itself on the sheet), its
+                                         # build icon, the Armoury research icons and the Horseman /
+                                         # Guardsman portraits (after round 11: replaces research_armour
+                                         # and musketeer_armoured)
 python3 tools/import_crate.py            # the Winder's self-building crate: unfold strips, carried / ground crate
 python3 tools/import_windmill.py         # the Farm's windmill (replaces import_art's farmhouse), sails,
                                          # scarecrows and Farm icon
@@ -44,6 +48,8 @@ python3 tools/import_mortar_walk.py      # the Mortar's towed walk (replaces rou
 python3 tools/fix_mortar_crew.py         # the Mortar's crew: two men in every view, and no pennant
 python3 tools/fix_mortar_smoke.py         # no smoke puff over the right-hand gunner's helmet when it fires
                                          # (after the reload, helmets and towed walk above)
+python3 tools/import_horseman.py         # the unarmoured Horseman's strips (cut like the Cuirassier's,
+                                         # on his cell) and his art_data entry
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 echo "Now run: godot --headless --import"
