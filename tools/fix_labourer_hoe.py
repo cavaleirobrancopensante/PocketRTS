@@ -9,7 +9,10 @@ the idle stance where he holds it at his side.
 Each edit is a small box (frame-local pixels, x0, y0, x1, y1 inclusive) round that spike;
 inside it only iron-coloured pixels (grey or near-black outline) are cleared, so the hat,
 hands and handle are never touched. Clearing is idempotent: running this twice is the same
-as running it once. Run after import_art.py (tools/rebuild_art.sh does).
+as running it once. Run after import_art.py and import_round6.py (the keg strips), as
+tools/rebuild_art.sh does.
+
+It then sweeps the source's leftover pale backdrop from every strip (clean_all()).
 
 It also repaints the train-button portrait (assets/icons/labourer.png): see fix_icon().
 """
@@ -205,6 +208,102 @@ def fix_icon(src=ICON, dst=ICON):
     print("fix_labourer_hoe: icon: brown felt hat and a hoe")
 
 
+# ---------------------------------------------------------------- leftover backdrop
+# The source sheet's pale backdrop survives here and there in the cut frames: a fringe of
+# near-white pixels on the silhouette and specks in the gaps (between the legs, under the
+# arms, between handle and body) that flash white as he walks and works. Every strip in
+# the folder is swept: a pale, greyish pixel on the edge of the silhouette is darkened to
+# the outline (or dropped if it sticks out on its own), and one inside a gap is cleared.
+# The labourer has no white in his own colours; what is light grey on purpose (the iron
+# of his tools, the keg's hoops) sits inside the silhouette and is listed in KEEP.
+
+PALE_V, PALE_S = 0.55, 0.22             # brighter than his trousers, greyer than his skin
+GAP_V = 0.62                            # inside the silhouette only the clearly pale go
+OUTLINE = (26, 18, 12)
+N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
+N8 = N4 + ((1, 1), (1, -1), (-1, 1), (-1, -1))
+# strip -> {frame: [(x, y), ...]}: light pixels that are drawn, not backdrop
+KEEP = {}
+# the keg's iron hoops are pale grey runs across its middle: in the strips that show the
+# keg only the edge is swept, not the inside
+NO_GAPS = ("carry_keg", "idle_keg", "bury", "death_keg")
+
+
+def _hsv(p):
+    return colorsys.rgb_to_hsv(p[0] / 255, p[1] / 255, p[2] / 255)
+
+
+def clean_strip(path, keep=None, gaps=True):
+    """The backdrop left in one strip cleaned; returns (darkened, cleared)."""
+    im = Image.open(path).convert("RGBA")
+    px = im.load()
+    W, H = im.size
+    keep = {(f * CELL + x, y) for f, pts in (keep or {}).items() for x, y in pts}
+
+    def solid(x, y):
+        return 0 <= x < W and 0 <= y < H and px[x, y][3] >= 20 and (x // CELL) == (cx // CELL)
+
+    def pale(x, y, vmin):
+        p = px[x, y]
+        if p[3] < 20 or (x, y) in keep:
+            return False
+        h, s, v = _hsv(p)
+        if v >= vmin and s < PALE_S:
+            return True
+        # the backdrop blended into the red coat: pale pink (his skin is orange-hued)
+        if v >= vmin + 0.13 and s < 0.42 and (h < 0.035 or h > 0.85):
+            return True
+        # ... and into the straw-yellow of the source's lighting: lemon white
+        return v >= 0.88 and s < 0.36 and 0.13 < h < 0.2
+
+    darkened = cleared = 0
+    for _ in range(8):      # until nothing changes: a fringe two deep, a gap opened by the last
+        changes = []
+        # on the silhouette's edge: darkened to the outline, or dropped if it sticks out
+        for y in range(H):
+            for x in range(W):
+                cx = x
+                if not pale(x, y, PALE_V):
+                    continue
+                if all(solid(x + dx, y + dy) for dx, dy in N4):
+                    continue
+                around = [px[x + dx, y + dy] for dx, dy in N8 if solid(x + dx, y + dy)
+                          and not pale(x + dx, y + dy, PALE_V)]
+                if sum(1 for dx, dy in N4 if solid(x + dx, y + dy)) <= 1 or not around:
+                    changes.append((x, y, (0, 0, 0, 0)))
+                else:
+                    dark = min(around, key=lambda p: _hsv(p)[2])
+                    col = dark if _hsv(dark)[2] < 0.3 else OUTLINE + (255,)
+                    changes.append((x, y, col[:3] + (255,)))
+        # specks in the gaps (between the legs, under the arms): cleared
+        for y in range(H):
+            for x in range(W):
+                cx = x
+                if gaps and pale(x, y, GAP_V) and all(solid(x + dx, y + dy) for dx, dy in N4) \
+                        and sum(1 for dx, dy in N8 if _hsv(px[x + dx, y + dy])[2] < 0.35) >= 2:
+                    # (a gap is seen between dark edges; a pale glint on the sack is not one)
+                    changes.append((x, y, (0, 0, 0, 0)))
+        if not changes:
+            break
+        for x, y, c in changes:
+            px[x, y] = c
+            if c[3] == 0:
+                cleared += 1
+            else:
+                darkened += 1
+    im.save(path)
+    return darkened, cleared
+
+
+def clean_all(folder=DIR):
+    for f in sorted(os.listdir(folder)):
+        if f.endswith(".png"):
+            name = f[:-4]
+            d, c = clean_strip(os.path.join(folder, f), KEEP.get(name), not name.startswith(NO_GAPS))
+            if d or c:
+                print(f"fix_labourer_hoe: {name}: backdrop pixels {d} darkened, {c} cleared")
+
+
 def main():
     fix_icon()
     for anim, frames in EDITS.items():
@@ -222,6 +321,7 @@ def main():
                             n += 1
         im.save(path)
         print(f"fix_labourer_hoe: {anim}: {n} pick pixels cleared")
+    clean_all()
 
 
 if __name__ == "__main__":

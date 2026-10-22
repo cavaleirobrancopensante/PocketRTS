@@ -4,13 +4,14 @@
 set -e
 cd "$(dirname "$0")/.."
 python3 tools/import_art.py
-python3 tools/fix_labourer_hoe.py        # the labourer's pickaxe cut down to a hoe (he farms with
-                                         # it); his portrait gets his felt hat and a hoe
 python3 tools/import_cannon2.py          # the cannon from the new sheets (overwrites the old one)
 python3 tools/import_round4.py           # Stormcaller, Cuirassier, Spore Mother, storm/miasma effects
 python3 tools/import_cuirassier_gallop.py   # the Cuirassier's side-view gallop (replaces round 4's walk_e)
 python3 tools/import_round5.py           # Ornithopter, Bloater (+ bloat cloud), Capacitor Works
 python3 tools/import_round6.py           # Powder Wagon, labourer keg anims, keg mine, keg/cross/digits
+python3 tools/fix_labourer_hoe.py        # labourer (after import_art + round 6's keg anims): pickaxe cut
+                                         # to a hoe, leftover backdrop swept from every strip,
+                                         # portrait with his felt hat and a hoe
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
 python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
 python3 tools/recolour_grub_cocoon.py     # cocoon grubs to the olive grub colour
