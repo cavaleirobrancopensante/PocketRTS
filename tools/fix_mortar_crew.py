@@ -287,6 +287,12 @@ def main():
             for e in [e for e in todo if e[0] == "P"]:
                 apply(cell, e, before)
         Image.fromarray(strip).save(os.path.join(OUT, f"{name}.png"))
+    # deploy east, frame 1: a second pair stood apart to the left of the cart (4 men in
+    # all): only the two at the cart stay
+    p = os.path.join(OUT, "deploy_e.png")
+    im = np.array(Image.open(p).convert("RGBA"))
+    im[:, 158 + 20:158 + 67, 3] = 0
+    Image.fromarray(im).save(p)
     print("mortar crew: two men in every view, no pennant")
 
 
