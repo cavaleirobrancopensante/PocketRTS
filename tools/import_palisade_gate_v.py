@@ -19,10 +19,9 @@ picture is COMPOSED from parts cut from the sheet, on the game's own layout:
   - the near post with its pennant, its cap on the gateway's near edge (GAP_BOT) and its
     foot on the tile's bottom row, where the next tile's stakes stand in front of it
     exactly as stake stands in front of stake in a palisade line;
-  - open: the door boards of frame 3, each hinged on its post and standing out of the
-    line, the far door to the east (behind the line), the near door to the west (in front
-    of it); half open: frame 2's narrower boards, sheared to stand at about 45 degrees
-    (the far door's free edge comes toward the viewer, the near door's goes away);
+  - open: the door boards of frame 3, each hinged on its own post and swung out to the
+    east: the far leaf top right (behind the line), the near leaf bottom right (in front);
+    half open: frame 2's narrower boards, sheared to stand at about 45 degrees;
   - damaged: frame 4's posts and splintered doors; open damaged: its posts, frame 3's
     doors;
   - construction: two fresh-cut posts at half height (frame 5's scaffold posts) on dirt and
@@ -253,17 +252,19 @@ def shear(img, dy):
     return out
 
 
-# Open, both door leaves hang on the far post and stand square to the line, one each side
-# of it, framing the gateway (hung on the near post, a leaf would stand a whole tile lower,
-# down among the next tile's stakes, and read as a stray board): the east leaf is drawn
-# behind the posts, the west leaf in front of the far post (and behind the near one). Half
-# open, at about 45 degrees: narrower, and each leaf's free edge comes toward the viewer.
+# Open, the two leaves swing out to the east, each on its own post: the far leaf at the
+# top right (behind the line), the near leaf at the bottom right (in front of it). Half
+# open, at about 45 degrees: narrower, the free edge coming toward the viewer.
+NEAR_DOOR_FOOT = NEAR_FOOT - 2
+
+
 def open_doors(dst, behind):
-    """behind: the east leaf, drawn before the posts; else the west one."""
+    """behind: the far leaf, drawn before the posts; else the near one, after them."""
     if behind:
-        put(dst, leaf(F3_DOORS["e"], DOOR_W, DOOR_H), CX + 5, DOOR_FOOT + 1 - DOOR_H)
+        img = leaf(F3_DOORS["w"], DOOR_W, DOOR_H)[:, ::-1]
+        put(dst, img, CX + 5, DOOR_FOOT + 1 - DOOR_H)
     else:
-        put(dst, leaf(F3_DOORS["w"], DOOR_W, DOOR_H), CX - 5 - DOOR_W, DOOR_FOOT + 1 - DOOR_H)
+        put(dst, leaf(F3_DOORS["e"], DOOR_W, DOOR_H), CX + 5, NEAR_DOOR_FOOT + 1 - DOOR_H)
 
 
 SWING = 6                    # half open: a leaf's free edge this many rows below its hinge
@@ -272,9 +273,10 @@ SWING = 6                    # half open: a leaf's free edge this many rows belo
 def half_doors(dst, behind):
     w = round(DOOR_W * 0.72)
     if behind:
-        put(dst, shear(leaf(F2_DOORS["e"], w, DOOR_H), SWING), CX + 4, DOOR_FOOT + 1 - DOOR_H)
+        img = leaf(F2_DOORS["w"], w, DOOR_H)[:, ::-1]
+        put(dst, shear(img, SWING), CX + 4, DOOR_FOOT + 1 - DOOR_H)
     else:
-        put(dst, shear(leaf(F2_DOORS["w"], w, DOOR_H), -SWING), CX - 4 - w, DOOR_FOOT + 1 - DOOR_H)
+        put(dst, shear(leaf(F2_DOORS["e"], w, DOOR_H), SWING), CX + 4, NEAR_DOOR_FOOT + 1 - DOOR_H)
 
 
 def gate_closed(frame):
@@ -290,8 +292,8 @@ def gate_swung(frame, doors):
     doors(out, True)
     passage(out)
     far_post(out, frame)
-    doors(out, False)
     near_post(out, frame)
+    doors(out, False)
     return out
 
 
