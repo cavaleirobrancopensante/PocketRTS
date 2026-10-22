@@ -30,7 +30,31 @@ def main():
             # the frame itself (portraits are a little taller than wide: squeezed square)
             crop = im.crop((x0, y0, x1, y1))
             crop.resize((64, 64), Image.LANCZOS).save(os.path.join("assets/icons", name + ".png"))
+    # MOUNT / DISMOUNT: the stirrup picture with a bold red arrow, up to get on, down to get off
+    for name, up in [("horse_mount", True), ("horse_dismount", False)]:
+        arrow(os.path.join("assets/icons", name + ".png"), up)
     print("horse icons: 13 written")
+
+
+def arrow(path, up):
+    from PIL import ImageDraw
+    big = Image.open(path).convert("RGBA").resize((256, 256), Image.LANCZOS)
+    d = ImageDraw.Draw(big)
+    x, w = 186, 34                    # the shaft's centre and half the head's width
+    top, bot = 44, 210
+    if up:
+        head = [(x, top), (x - w * 1.5, top + 62), (x + w * 1.5, top + 62)]
+        shaft = (x - 15, top + 56, x + 15, bot)
+    else:
+        head = [(x, bot), (x - w * 1.5, bot - 62), (x + w * 1.5, bot - 62)]
+        shaft = (x - 15, top, x + 15, bot - 56)
+    for grow, col in [(9, (20, 10, 8, 255)), (0, (214, 32, 28, 255))]:
+        hx = [(px + (grow if px > x else -grow if px < x else 0), py + (-grow if (up and py == top) or (not up and py != bot) else grow)) for px, py in head]
+        d.polygon(hx, fill=col)
+        d.rectangle((shaft[0] - grow, shaft[1] - (0 if up else grow), shaft[2] + grow, shaft[3] + (grow if up else 0)), fill=col)
+    # a light edge on the red, so it reads at button size
+    d.line([head[1], head[0]], fill=(255, 120, 100, 255), width=4)
+    big.resize((64, 64), Image.LANCZOS).save(path)
 
 
 if __name__ == "__main__":
