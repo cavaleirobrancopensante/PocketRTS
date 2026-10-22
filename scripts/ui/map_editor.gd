@@ -18,7 +18,8 @@ const TOOLS := [
 const TOOL_COL := {"low": Color(0.45, 0.65, 0.3), "high": Color(0.85, 0.75, 0.45), "ramp": Color(0.75, 0.55, 0.3),
 	"water": Color(0.2, 0.45, 0.85), "ford": Color(0.5, 0.75, 0.9), "tree": Color(0.1, 0.4, 0.15), "rock": Color(0.55, 0.55, 0.55)}
 const MIRRORS := ["off", "2-way", "4-way"]
-const BIOME_LIST := ["grass", "autumn", "desert", "snow", "marsh", "volcanic"]
+const BIOME_LIST := ["grass", "autumn", "desert", "snow", "marsh", "volcanic", "heath", "jungle", "canyon", "tundra",
+	"ashland", "pinewood", "steppe", "coast", "oldkingdom", "bog", "glowwood", "fall", "badlands"]
 
 var game: Game
 var map_name := "My map"

@@ -646,6 +646,10 @@ const COLOUR_FITS_MAP := -2
 const BIOME_AVOID := {
 	"grass": ["Green"], "marsh": ["Green"], "autumn": ["Orange", "Yellow"], "desert": ["Yellow", "Orange"],
 	"snow": ["Blue"], "volcanic": ["Red", "Orange"],
+	"heath": ["Green", "Purple", "Pink"], "jungle": ["Green", "Teal"], "canyon": ["Orange", "Red"],
+	"tundra": ["Blue", "Teal"], "ashland": ["Red", "Orange"], "pinewood": ["Green", "Orange"],
+	"steppe": ["Yellow", "Orange"], "coast": ["Teal", "Yellow"], "oldkingdom": ["Green"], "bog": ["Green"],
+	"glowwood": ["Teal", "Blue"], "fall": ["Orange", "Yellow", "Red"], "badlands": ["Yellow"],
 }
 
 
@@ -666,6 +670,7 @@ static func colour_of(c: int) -> Color:
 const PALETTE := [
 	["Blue", Color("#3a78e8")], ["Red", Color("#e03a32")], ["Green", Color("#3fae4a")],
 	["Yellow", Color("#e8c53a")], ["Purple", Color("#9a4fd6")], ["Orange", Color("#ec8a2c")],
+	["Teal", Color("#22c4b4")], ["Pink", Color("#f07ac0")],
 ]
 
 

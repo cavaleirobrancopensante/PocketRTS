@@ -108,7 +108,7 @@ const BIOMES := {
 		"tree_art": ["birch", "dead_tree"], "bush_art": ["grass_reed", "shrub_b"],
 		"scatter": ["gull", "gull_b", "log", "stones", "grass_reed", "rocks_moss", "anchor"],
 		"kits": ["wreck", "market", "watch"]},
-	"oldkingdom": {"low": ["heath", "ruin"], "patches": true, "base": "ruin", "high": "rubble",
+	"oldkingdom": {"low": ["heath", "heath", "heath", "ruin"], "patches": true, "base": "ruin", "high": "rubble",
 		"face": "ruin_face", "ramp": "grass_ramp", "water": "deep", "ford": "shallow",
 		"trees": 0.55, "tint": Color(1.0, 1.0, 0.95), "amb": "grass",
 		"tree_art": ["oak", "blossom", "birch"], "bush_art": ["bush_red", "bush_lilac", "shrub"],
@@ -176,6 +176,44 @@ static func display_name(map_id: String) -> String:
 	return map_id
 
 
+## The lobby's random choices: [id, label, the modes it draws from].
+const POOLS := [
+	["random_1v1", "Random 1v1 maps", ["1v1"]],
+	["random_2v2", "Random 2v2 maps", ["2v2"]],
+	["random_1v1_2v2", "Random 1v1+2v2 maps", ["1v1", "2v2"]],
+	["random_3v3", "Random 3v3 maps", ["3v3"]],
+	["random_1v1_2v2_3v3", "Random 1v1+2v2+3v3 maps", ["1v1", "2v2", "3v3"]],
+	["random", "Random all maps", ["1v1", "2v2", "3v3", "4v4"]],
+]
+
+
+static func is_pool(map_id: String) -> bool:
+	for p in POOLS:
+		if p[0] == map_id:
+			return true
+	return false
+
+
+## The built-in maps of a random pool that hold `n` players.
+static func pool_maps(pool_id: String, n: int) -> Array:
+	var modes: Array = ["1v1", "2v2", "3v3", "4v4"]
+	for p in POOLS:
+		if p[0] == pool_id:
+			modes = p[2]
+	return all_ids().filter(func(id: String) -> bool: return modes.has(mode_of(id)) and max_players(id) >= n)
+
+
+## "Ashford Crossing (1v1, 96x96)"
+static func label(map_id: String) -> String:
+	for p in POOLS:
+		if p[0] == map_id:
+			return String(p[1])
+	if map_id.begins_with("custom:"):
+		return "%s (your map)" % map_id.substr(7)
+	var sz := size_of(map_id)
+	return "%s (%s, %dx%d)" % [display_name(map_id), mode_of(map_id), sz.x, sz.y]
+
+
 ## A built-in map's biome text ("heath", "snow+grass").
 static func biome_of(map_id: String) -> String:
 	if MapData.NAMED.has(map_id):
@@ -195,6 +233,8 @@ var ford := PackedByteArray()       # 1 = shallow crossing
 var biome_a := ""
 var biome_b := ""
 var mix := "diag"                   # how two biomes share the map: "diag", "patch", "middle"
+var water_set := ""                 # a named map's own water and ford tiles (the same all over)
+var ford_set := ""
 var props: Array = []               # decorations: {"name", "pos" (px, its foot), "cells" (solid ones), "dead"}
 var _prop_at := {}                  # map index -> the decoration whose foot blocks it
 
@@ -887,6 +927,8 @@ func _named(map_id: String) -> Array:
 	biome_a = parts[0]
 	biome_b = parts[1] if parts.size() > 1 else parts[0]
 	mix = String(m.get("mix", "patch"))
+	water_set = String(m.get("water", ""))
+	ford_set = String(m.get("ford", ""))
 	rng = RandomNumberGenerator.new()
 	rng.seed = int(m["seed"])
 	_noise_off = Vector2(rng.randf_range(0, 100), rng.randf_range(0, 100))
@@ -951,24 +993,22 @@ func _named(map_id: String) -> Array:
 ## Who starts where on a named map: side A's bases are one group, their twins the other.
 ## Each team (largest first) takes the group with the most room, so allies sit together
 ## and every player's twin spot goes to the other side; spots nobody takes stay free
-## (a main nobody starts in is an expansion on high ground).
-func _assign_named(mains: Array, nats: Array) -> void:
-	var k := mains.size() / 2
+## (a main nobody starts in is an expansion on high ground). Returns each player's spot
+## (0..k-1 side A, k..2k-1 their twins in the same order).
+static func spot_order(k: int, sides: Array) -> Array:
 	var free: Array = [range(k), range(k, 2 * k)]
 	var teams := {}
-	for t in g.n_players():
-		var sd: int = int(g.sides[t]) if t < g.sides.size() else t
+	for t in sides.size():
+		var sd: int = int(sides[t])
 		if not teams.has(sd):
 			teams[sd] = []
 		teams[sd].append(t)
 	var order: Array = teams.keys()
 	order.sort_custom(func(a: int, b: int) -> bool:
 		return teams[a].size() > teams[b].size() or (teams[a].size() == teams[b].size() and a < b))
-	g.starts = []
-	g.expansions = []
-	for t in g.n_players():
-		g.starts.append(mains[0])
-		g.expansions.append(nats[0])
+	var out: Array = []
+	out.resize(sides.size())
+	out.fill(0)
 	for sd in order:
 		var gi := 0 if (free[0] as Array).size() >= (free[1] as Array).size() else 1
 		for t in teams[sd]:
@@ -976,9 +1016,35 @@ func _assign_named(mains: Array, nats: Array) -> void:
 				gi = 1 - gi
 			if (free[gi] as Array).is_empty():
 				break         # more players than spots (the lobby doesn't allow it)
-			var spot: int = (free[gi] as Array).pop_front()
-			g.starts[t] = mains[spot]
-			g.expansions[t] = nats[spot]
+			out[t] = (free[gi] as Array).pop_front()
+	return out
+
+
+## Where each player's hall goes on a named map (for the lobby's preview).
+static func named_starts(map_id: String, sides: Array) -> Array:
+	var m: Dictionary = MapData.NAMED[map_id]
+	var sz := size_of(map_id)
+	var mains: Array = []
+	for b in m["bases"]:
+		mains.append(_v2i(b["hall"]))
+	var k := mains.size()
+	for i in k:
+		mains.append(Vector2i(sz.x - mains[i].x - HALL.x, sz.y - mains[i].y - HALL.y))
+	var out: Array = []
+	for spot in spot_order(k, sides):
+		out.append(mains[spot])
+	return out
+
+
+func _assign_named(mains: Array, nats: Array) -> void:
+	var sides: Array = []
+	for t in g.n_players():
+		sides.append(int(g.sides[t]) if t < g.sides.size() else t)
+	g.starts = []
+	g.expansions = []
+	for spot in spot_order(mains.size() / 2, sides):
+		g.starts.append(mains[spot])
+		g.expansions.append(nats[spot])
 
 
 ## One piece of a named map, drawn where it's listed and turned onto the other side.

@@ -17,13 +17,14 @@ class_name MapData
 ##     ["forest" | "rocks", cx, cy, rx, ry, density], ["treeline", [[x, y], ...], width,
 ##     [gap at 0..1, ...], gap length, "tree" | "rock"], ["clear", cx, cy, r]
 ##   woods: random tree / rock clumps; sites: [x, y, kit] decoration groups (MapGen.KITS);
-##   decor: how much small decoration (1 = normal).
+##   decor: how much small decoration (1 = normal); water / ford: the tiles for all its water
+##   and fords (when two biomes would draw them differently).
 
 const NAMED := {
 	# ---------------------------------------------------------------- 1v1
 	"ashford_crossing": {"name": "Ashford Crossing", "size": [96, 96], "mode": "1v1", "biome": "heath", "seed": 1101,
 		"about": "A broad river cuts the moor corner to corner; three fords.",
-		"bases": [{"hall": [9, 9], "hill": [11, 11, 13, 11], "ramp": [20, 30], "nat": [8, 35]}],
+		"bases": [{"hall": [9, 9], "hill": [11, 11, 14, 12], "ramp": [20, 30], "nat": [8, 35]}],
 		"thirds": [[40, 10], [36, 34]],
 		"pieces": [
 			["river", [[97, -2], [72, 23], [48, 48], [23, 72], [-2, 97]], 5, [0.2, 0.5, 0.8], 6],
@@ -35,7 +36,7 @@ const NAMED := {
 		"woods": 28, "sites": [[62, 6, "shrine"], [12, 66, "farm"]]},
 	"kestrel_rise": {"name": "Kestrel Rise", "size": [64, 64], "mode": "1v1", "biome": "steppe", "seed": 1102,
 		"about": "Small and quick: a hill in the middle with a ramp from each side.",
-		"bases": [{"hall": [6, 6], "hill": [8, 8, 11, 10], "ramp": [9, 24], "nat": [5, 26]}],
+		"bases": [{"hall": [6, 6], "hill": [8, 8, 14, 12], "ramp": [9, 24], "nat": [5, 26]}],
 		"thirds": [[28, 5]],
 		"pieces": [
 			["hill", 32, 32, 6, 5, [[22, 32]]],
@@ -46,7 +47,7 @@ const NAMED := {
 		"woods": 10, "sites": [[46, 6, "camp"]]},
 	"thornwood_maze": {"name": "Thornwood Maze", "size": [100, 76], "mode": "1v1", "biome": "pinewood", "seed": 1103,
 		"about": "Walls of pine with gaps: a maze of lanes, easy to ambush.",
-		"bases": [{"hall": [8, 8], "hill": [10, 10, 13, 11], "ramp": [30, 12], "nat": [31, 6]}],
+		"bases": [{"hall": [8, 8], "hill": [10, 10, 14, 12], "ramp": [30, 12], "nat": [31, 6]}],
 		"thirds": [[6, 56], [70, 4]],
 		"pieces": [
 			["treeline", [[44, 0], [44, 30]], 3, [0.55], 5],
@@ -60,7 +61,7 @@ const NAMED := {
 		"woods": 18, "sites": [[48, 62, "lumber"], [30, 40, "watch"]]},
 	"redrock_canyon": {"name": "Redrock Canyon", "size": [64, 104], "mode": "1v1", "biome": "canyon", "seed": 1104,
 		"about": "A tall canyon: cliff walls leave narrow passes across the middle.",
-		"bases": [{"hall": [29, 6], "hill": [31, 9, 14, 10], "ramp": [31, 26], "nat": [7, 24]}],
+		"bases": [{"hall": [29, 6], "hill": [31, 9, 14, 12], "ramp": [31, 26], "nat": [7, 24]}],
 		"thirds": [[49, 30]],
 		"pieces": [
 			["ridge", [[-1, 40], [21, 40]], 2],
@@ -72,7 +73,7 @@ const NAMED := {
 		"woods": 10, "sites": [[16, 34, "camp"]]},
 	"saltmarsh_isles": {"name": "Saltmarsh Isles", "size": [104, 80], "mode": "1v1", "biome": "coast", "seed": 1105,
 		"about": "Four islands joined by coral shallows; the far two hold expansions.",
-		"bases": [{"hall": [8, 7], "hill": [10, 9, 12, 10], "ramp": [26, 11], "nat": [28, 5]}],
+		"bases": [{"hall": [8, 7], "hill": [10, 9, 14, 12], "ramp": [26, 11], "nat": [28, 5]}],
 		"thirds": [[36, 25], [70, 10]],
 		"pieces": [
 			["river", [[-1, 42], [28, 42], [44, 38], [59, 41], [75, 37], [104, 37]], 7, [0.18, 0.5, 0.82], 5],
@@ -83,7 +84,7 @@ const NAMED := {
 		"woods": 16, "sites": [[88, 6, "wreck"], [44, 14, "market"]]},
 	"glimmerdeep": {"name": "Glimmerdeep", "size": [80, 80], "mode": "1v1", "biome": "glowwood", "seed": 1106,
 		"about": "A dark wood of glowing caps; ruins and still pools in the middle.",
-		"bases": [{"hall": [7, 7], "hill": [9, 9, 12, 10], "ramp": [12, 24], "nat": [6, 28]}],
+		"bases": [{"hall": [7, 7], "hill": [9, 9, 14, 12], "ramp": [12, 24], "nat": [6, 28]}],
 		"thirds": [[30, 5], [24, 26]],
 		"pieces": [
 			["hill", 40, 40, 5, 5, [[40, 30]]],
@@ -95,7 +96,7 @@ const NAMED := {
 		"woods": 22, "sites": [[58, 30, "ruins"]]},
 	"frostmere": {"name": "Frostmere", "size": [72, 112], "mode": "1v1", "biome": "tundra", "seed": 1107,
 		"about": "A frozen mere across the middle: three ice fords.",
-		"bases": [{"hall": [8, 6], "hill": [10, 8, 12, 10], "ramp": [12, 24], "nat": [6, 28]}],
+		"bases": [{"hall": [8, 6], "hill": [10, 8, 14, 12], "ramp": [12, 24], "nat": [6, 28]}],
 		"thirds": [[50, 20], [40, 38]],
 		"pieces": [
 			["river", [[-1, 54], [24, 50], [47, 61], [72, 57]], 8, [0.15, 0.5, 0.85], 6],
@@ -106,7 +107,7 @@ const NAMED := {
 		"woods": 20, "sites": [[54, 6, "snowcamp"], [22, 40, "watch"]]},
 	"cinder_steps": {"name": "Cinder Steps", "size": [70, 56], "mode": "1v1", "biome": "ashland", "seed": 1108,
 		"about": "Tiny and hot: a lava flow with three basalt crossings.",
-		"bases": [{"hall": [6, 8], "hill": [8, 10, 11, 10], "ramp": [9, 24], "nat": [5, 28]}],
+		"bases": [{"hall": [6, 8], "hill": [8, 10, 14, 12], "ramp": [9, 24], "nat": [5, 28]}],
 		"thirds": [[16, 42]],
 		"pieces": [
 			["river", [[40, -1], [38, 14], [34.5, 27.5], [31, 41], [29, 56]], 4, [0.2, 0.5, 0.8], 4],
@@ -114,9 +115,9 @@ const NAMED := {
 			["mesa", 52, 32, 3, 3],
 		],
 		"woods": 6, "sites": [[24, 32, "forge"]]},
-	"hollowfen": {"name": "Hollowfen", "size": [112, 84], "mode": "1v1", "biome": "bog+marsh", "seed": 1109,
+	"hollowfen": {"name": "Hollowfen", "size": [112, 84], "mode": "1v1", "biome": "bog+marsh", "water": "kelp", "ford": "reeds", "seed": 1109,
 		"about": "A wide fen: a reedy channel, pools and plenty of room to expand.",
-		"bases": [{"hall": [9, 8], "hill": [11, 10, 13, 11], "ramp": [27, 13], "nat": [30, 7]}],
+		"bases": [{"hall": [9, 8], "hill": [11, 10, 14, 12], "ramp": [27, 13], "nat": [30, 7]}],
 		"thirds": [[8, 40], [44, 30]],
 		"pieces": [
 			["river", [[30, 84], [40, 60], [55.5, 41.5], [71, 23], [81, -1]], 5, [0.15, 0.4, 0.6, 0.85], 5],
@@ -127,7 +128,7 @@ const NAMED := {
 		"woods": 24, "sites": [[24, 27, "shrine"], [46, 72, "lumber"]]},
 	"amberfall_vale": {"name": "Amberfall Vale", "size": [88, 120], "mode": "1v1", "biome": "fall", "seed": 1110,
 		"about": "A long valley in autumn: a stream, two lookout hills, many bases.",
-		"bases": [{"hall": [41, 6], "hill": [43.5, 9, 14, 10], "ramp": [43.5, 26], "nat": [26, 24]}],
+		"bases": [{"hall": [41, 6], "hill": [43.5, 9, 14, 12], "ramp": [43.5, 26], "nat": [26, 24]}],
 		"thirds": [[66, 26], [10, 44], [60, 50]],
 		"pieces": [
 			["hill", 20, 62, 6, 5, [[29, 62]]],
@@ -138,10 +139,10 @@ const NAMED := {
 		"woods": 28, "sites": [[64, 8, "farm"], [14, 78, "village"]]},
 
 	# ---------------------------------------------------------------- 2v2
-	"twin_crowns": {"name": "Twin Crowns", "size": [128, 96], "mode": "2v2", "biome": "heath+oldkingdom", "mix": "patch", "seed": 2201,
+	"twin_crowns": {"name": "Twin Crowns", "size": [128, 96], "mode": "2v2", "biome": "heath+oldkingdom", "mix": "patch", "water": "deep", "ford": "shallow", "seed": 2201,
 		"about": "Old kingdoms on a moor: allies side by side, a crowned hill between.",
-		"bases": [{"hall": [8, 8], "hill": [10, 10, 12, 10], "ramp": [26, 12], "nat": [30, 6]},
-			{"hall": [8, 40], "hill": [10, 42, 12, 10], "ramp": [26, 44], "nat": [30, 46]}],
+		"bases": [{"hall": [8, 8], "hill": [10, 10, 14, 12], "ramp": [26, 12], "nat": [30, 6]},
+			{"hall": [8, 40], "hill": [10, 42, 14, 12], "ramp": [26, 44], "nat": [30, 46]}],
 		"thirds": [[8, 74], [56, 6], [50, 32]],
 		"pieces": [
 			["hill", 64, 48, 7, 5, [[54, 48]]],
@@ -153,8 +154,8 @@ const NAMED := {
 		"woods": 30, "sites": [[30, 66, "ruins"], [74, 8, "village"]]},
 	"jade_wilds": {"name": "Jade Wilds", "size": [120, 120], "mode": "2v2", "biome": "jungle", "seed": 2202,
 		"about": "Thick jungle and a winding river with five fords.",
-		"bases": [{"hall": [8, 8], "hill": [10, 10, 12, 10], "ramp": [12, 26], "nat": [6, 30]},
-			{"hall": [44, 8], "hill": [46, 10, 12, 10], "ramp": [46, 26], "nat": [50, 30]}],
+		"bases": [{"hall": [8, 8], "hill": [10, 10, 14, 12], "ramp": [12, 26], "nat": [6, 30]},
+			{"hall": [44, 8], "hill": [46, 10, 14, 12], "ramp": [46, 26], "nat": [50, 30]}],
 		"thirds": [[92, 10], [24, 50], [74, 40]],
 		"pieces": [
 			["river", [[-1, 64], [30, 58], [59.5, 59.5], [89, 61], [120, 55]], 4, [0.12, 0.33, 0.5, 0.67, 0.88], 5],
@@ -166,8 +167,8 @@ const NAMED := {
 		"woods": 50, "sites": [[84, 24, "ruins"], [10, 58, "camp"]]},
 	"shattered_coast": {"name": "Shattered Coast", "size": [136, 100], "mode": "2v2", "biome": "coast", "seed": 2203,
 		"about": "A coast broken into islands; shallows link them.",
-		"bases": [{"hall": [8, 12], "hill": [10, 14, 12, 10], "ramp": [26, 16], "nat": [30, 10]},
-			{"hall": [8, 56], "hill": [10, 58, 12, 10], "ramp": [26, 60], "nat": [30, 62]}],
+		"bases": [{"hall": [8, 12], "hill": [10, 14, 14, 12], "ramp": [26, 16], "nat": [30, 10]},
+			{"hall": [8, 56], "hill": [10, 58, 14, 12], "ramp": [26, 60], "nat": [30, 62]}],
 		"thirds": [[40, 32], [42, 84], [44, 4]],
 		"pieces": [
 			["river", [[66, -1], [70, 30], [67.5, 49.5], [65, 69], [69, 100]], 8, [0.18, 0.5, 0.82], 5],
@@ -178,8 +179,8 @@ const NAMED := {
 		"woods": 26, "sites": [[54, 22, "wreck"], [20, 92, "market"]]},
 	"ember_reach": {"name": "Ember Reach", "size": [112, 136], "mode": "2v2", "biome": "ashland+volcanic", "mix": "middle", "seed": 2204,
 		"about": "Two lava flows make three lanes around a black mesa.",
-		"bases": [{"hall": [10, 8], "hill": [12, 10, 12, 10], "ramp": [12, 26], "nat": [8, 30]},
-			{"hall": [46, 8], "hill": [48, 10, 12, 10], "ramp": [48, 26], "nat": [52, 30]}],
+		"bases": [{"hall": [10, 8], "hill": [12, 10, 14, 12], "ramp": [12, 26], "nat": [8, 30]},
+			{"hall": [46, 8], "hill": [48, 10, 14, 12], "ramp": [48, 26], "nat": [52, 30]}],
 		"thirds": [[92, 8], [6, 54], [60, 44]],
 		"pieces": [
 			["river", [[30, 40], [36, 68], [30, 96]], 4, [0.25, 0.75], 4],
@@ -188,10 +189,10 @@ const NAMED := {
 			["rocks", 24, 70, 3, 3, 0.5],
 		],
 		"woods": 16, "sites": [[80, 52, "forge"], [16, 78, "ruins"]]},
-	"whitecap_pass": {"name": "Whitecap Pass", "size": [132, 104], "mode": "2v2", "biome": "tundra+snow", "mix": "middle", "seed": 2205,
+	"whitecap_pass": {"name": "Whitecap Pass", "size": [132, 104], "mode": "2v2", "biome": "tundra+snow", "mix": "middle", "water": "deep", "ford": "glacier", "seed": 2205,
 		"about": "A mountain wall down the middle: three passes, one of them narrow.",
-		"bases": [{"hall": [8, 8], "hill": [10, 10, 12, 10], "ramp": [26, 12], "nat": [30, 6]},
-			{"hall": [8, 40], "hill": [10, 42, 12, 10], "ramp": [26, 42], "nat": [30, 46]}],
+		"bases": [{"hall": [8, 8], "hill": [10, 10, 14, 12], "ramp": [26, 12], "nat": [30, 6]},
+			{"hall": [8, 40], "hill": [10, 42, 14, 12], "ramp": [26, 42], "nat": [30, 46]}],
 		"thirds": [[40, 22], [8, 76], [44, 64]],
 		"pieces": [
 			["ridge", [[65, -1], [63, 26]], 3],
@@ -203,11 +204,11 @@ const NAMED := {
 		"woods": 30, "sites": [[50, 8, "snowcamp"], [36, 90, "watch"]]},
 
 	# ---------------------------------------------------------------- 3v3
-	"kingsfield": {"name": "Kingsfield", "size": [160, 128], "mode": "3v3", "biome": "grass+oldkingdom", "mix": "patch", "seed": 3301,
+	"kingsfield": {"name": "Kingsfield", "size": [160, 128], "mode": "3v3", "biome": "grass+oldkingdom", "mix": "patch", "water": "deep", "ford": "shallow", "seed": 3301,
 		"about": "Farmland and hedgerows, villages and a hill in the middle.",
-		"bases": [{"hall": [8, 10], "hill": [10, 12, 12, 10], "ramp": [26, 14], "nat": [30, 8]},
-			{"hall": [8, 48], "hill": [10, 50, 12, 10], "ramp": [26, 50], "nat": [30, 54]},
-			{"hall": [8, 86], "hill": [10, 88, 12, 10], "ramp": [26, 88], "nat": [30, 92]}],
+		"bases": [{"hall": [8, 10], "hill": [10, 12, 14, 12], "ramp": [26, 14], "nat": [30, 8]},
+			{"hall": [8, 48], "hill": [10, 50, 14, 12], "ramp": [26, 50], "nat": [30, 54]},
+			{"hall": [8, 86], "hill": [10, 88, 14, 12], "ramp": [26, 88], "nat": [30, 92]}],
 		"thirds": [[56, 10], [50, 70], [56, 112]],
 		"pieces": [
 			["hill", 80, 64, 8, 6, [[68, 64]]],
@@ -221,9 +222,9 @@ const NAMED := {
 		"woods": 46, "sites": [[62, 44, "village"], [36, 118, "farm"], [86, 98, "farm"]]},
 	"pinewall_marches": {"name": "Pinewall Marches", "size": [144, 168], "mode": "3v3", "biome": "pinewood", "seed": 3302,
 		"about": "Three abreast against three: walls of pine and a river with five fords.",
-		"bases": [{"hall": [10, 8], "hill": [12, 10, 12, 10], "ramp": [12, 26], "nat": [8, 30]},
-			{"hall": [62, 8], "hill": [64, 10, 12, 10], "ramp": [64, 26], "nat": [58, 32]},
-			{"hall": [114, 8], "hill": [116, 10, 12, 10], "ramp": [116, 26], "nat": [120, 30]}],
+		"bases": [{"hall": [10, 8], "hill": [12, 10, 14, 12], "ramp": [12, 26], "nat": [8, 30]},
+			{"hall": [62, 8], "hill": [64, 10, 14, 12], "ramp": [64, 26], "nat": [58, 32]},
+			{"hall": [114, 8], "hill": [116, 10, 14, 12], "ramp": [116, 26], "nat": [120, 30]}],
 		"thirds": [[36, 34], [90, 34], [12, 62], [70, 62]],
 		"pieces": [
 			["treeline", [[-1, 50], [145, 50]], 4, [0.1, 0.3, 0.5, 0.7, 0.9], 7],
@@ -234,12 +235,12 @@ const NAMED := {
 		"woods": 60, "sites": [[38, 20, "lumber"], [128, 64, "watch"]]},
 
 	# ---------------------------------------------------------------- 4v4
-	"sundered_realm": {"name": "The Sundered Realm", "size": [192, 160], "mode": "4v4", "biome": "oldkingdom+ashland", "mix": "middle", "seed": 4401,
+	"sundered_realm": {"name": "The Sundered Realm", "size": [192, 160], "mode": "4v4", "biome": "oldkingdom+ashland", "mix": "middle", "water": "deep", "ford": "shallow", "seed": 4401,
 		"about": "Gigantic: two realms of four, a great river and a burnt heartland.",
-		"bases": [{"hall": [8, 8], "hill": [10, 10, 12, 10], "ramp": [26, 12], "nat": [30, 6]},
-			{"hall": [8, 46], "hill": [10, 48, 12, 10], "ramp": [26, 48], "nat": [30, 52]},
-			{"hall": [8, 84], "hill": [10, 86, 12, 10], "ramp": [26, 86], "nat": [30, 80]},
-			{"hall": [8, 122], "hill": [10, 124, 12, 10], "ramp": [26, 124], "nat": [30, 128]}],
+		"bases": [{"hall": [8, 8], "hill": [10, 10, 14, 12], "ramp": [26, 12], "nat": [30, 6]},
+			{"hall": [8, 46], "hill": [10, 48, 14, 12], "ramp": [26, 48], "nat": [30, 52]},
+			{"hall": [8, 84], "hill": [10, 86, 14, 12], "ramp": [26, 86], "nat": [30, 80]},
+			{"hall": [8, 122], "hill": [10, 124, 14, 12], "ramp": [26, 124], "nat": [30, 128]}],
 		"thirds": [[58, 10], [52, 64], [56, 104], [52, 146]],
 		"pieces": [
 			["river", [[90, -1], [100, 40], [95.5, 79.5], [91, 119], [101, 160]], 5, [0.1, 0.25, 0.4, 0.6, 0.75, 0.9], 6],

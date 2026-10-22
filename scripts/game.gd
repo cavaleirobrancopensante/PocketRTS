@@ -708,10 +708,10 @@ func _render_ground() -> void:
 			var shade := 1.0
 			var lay := 0
 			if water[i] == 1:
-				set_name = b["water"]
+				set_name = mapgen.water_set if mapgen.water_set != "" else b["water"]
 				lay = 1
 			elif mapgen.ford.size() > i and mapgen.ford[i] == 1:
-				set_name = b["ford"]
+				set_name = mapgen.ford_set if mapgen.ford_set != "" else b["ford"]
 				lay = 2
 			elif ramp[i] == 1:
 				set_name = b["high"]       # painted over as a slope below (_paint_ramps)

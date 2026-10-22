@@ -523,7 +523,7 @@ func _draw_view(font: Font) -> void:
 		var key := ""
 		if Settings.pc() and o[1] == "all":
 			key = "[0] "
-		elif Settings.pc() and o[1] == "follow" and int(o[2]) < 4:
+		elif Settings.pc() and o[1] == "follow" and int(o[2]) < 8:
 			key = "[%d] " % (int(o[2]) + 1)
 		_text(UiStyle.bold_font(), Vector2(rr.position.x + 42, rr.get_center().y + 7), key + String(o[0]) + ("  (out)" if not o[3] else ""), 19,
 			(Color(1, 0.9, 0.55) if cur else UiStyle.TEXT) if o[3] else Color(1, 1, 1, 0.4))

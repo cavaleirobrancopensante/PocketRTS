@@ -20,6 +20,7 @@ var lobby := {
 }
 
 const WHO := ["you", "easy", "normal", "hard", "brutal"]
+const MAX_SLOTS := 8          # players in a skirmish (the 4v4 maps)
 const WHO_LABEL := {"you": "YOU", "easy": "EASY AI", "normal": "NORMAL AI", "hard": "HARD AI", "brutal": "BRUTAL AI"}
 const FACS := ["crown", "brood", "clockwork", "random"]
 
@@ -706,12 +707,13 @@ func show_skirmish() -> void:
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(t)
-	for preset in ["1v1", "2v2", "1v2", "1v3", "FFA"]:
+	for preset in ["1v1", "2v2", "3v3", "4v4", "1v2", "1v3", "FFA"]:
 		var pr: String = preset
 		var b := _button(pr, func() -> void:
 			_preset(pr)
+			_fit_map_to_slots()
 			show_skirmish())
-		b.custom_minimum_size = Vector2(76, 44)
+		b.custom_minimum_size = Vector2(64, 44)
 		b.add_theme_font_size_override("font_size", 17)
 		if _current_preset() == pr:
 			UiStyle.chosen(b)
@@ -741,18 +743,25 @@ func show_skirmish() -> void:
 		hdr.add_child(gap)
 	pv.add_child(hdr)
 	var slots: Array = lobby["slots"]
+	# the rows scroll when there are more than fit (up to eight players)
+	var rows_scroll := ScrollContainer.new()
+	rows_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rows_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pv.add_child(rows_scroll)
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 8)
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows_scroll.add_child(rows)
 	for i in slots.size():
-		pv.add_child(_slot_row(i))
-	if slots.size() < 4:
+		rows.add_child(_slot_row(i))
+	if slots.size() < MAX_SLOTS:
 		var add := _button("+  ADD PLAYER", func() -> void:
 			_add_slot()
+			_fit_map_to_slots()
 			show_skirmish())
 		add.custom_minimum_size = Vector2(0, 46)
 		add.add_theme_font_size_override("font_size", 18)
-		pv.add_child(add)
-	var spc := Control.new()
-	spc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	pv.add_child(spc)
+		rows.add_child(add)
 	var who_txt := "Same TEAM number = allies.  BRUTAL AI cheats (+50% income) and never lets up."
 	if not slots.any(func(s: Dictionary) -> bool: return s["who"] == "you"):
 		who_txt = "No YOU in the match: the computer plays every side and you watch."
@@ -767,7 +776,11 @@ func show_skirmish() -> void:
 	mv.add_theme_constant_override("separation", 8)
 	mp.add_child(mv)
 	mv.add_child(UiStyle.text("MAP", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_CENTER, true))
-	var ids: Array = ["random"] + MapGen.MAPS.keys()
+	# the random pools, then every map by name (with its mode and size), then your own maps
+	var ids: Array = []
+	for p in MapGen.POOLS:
+		ids.append(p[0])
+	ids += MapGen.all_ids()
 	for n in MapGen.custom_names():
 		ids.append("custom:" + n)
 	if not ids.has(lobby["map"]):
@@ -776,20 +789,20 @@ func show_skirmish() -> void:
 	mrow.add_theme_constant_override("separation", 6)
 	mv.add_child(mrow)
 	var prev := _button("<", func() -> void:
-		lobby["map"] = ids[(ids.find(lobby["map"]) - 1 + ids.size()) % ids.size()]
+		_pick_map(ids[(ids.find(lobby["map"]) - 1 + ids.size()) % ids.size()])
 		show_skirmish())
 	prev.custom_minimum_size = Vector2(46, 46)
 	mrow.add_child(prev)
 	var mid: String = lobby["map"]
-	var mname := "RANDOM MAP" if mid == "random" else (mid.substr(7).to_upper() if mid.begins_with("custom:") else String(MapGen.MAPS[mid][0]).to_upper())
+	var mname := MapGen.label(mid) if MapGen.is_pool(mid) else (mid.substr(7) if mid.begins_with("custom:") else MapGen.display_name(mid))
 	var map_opts: Array = []
 	for mi in ids:
-		map_opts.append(["RANDOM MAP" if mi == "random" else (String(mi).substr(7).to_upper() if String(mi).begins_with("custom:") else String(MapGen.MAPS[mi][0]).to_upper()), mi, false])
-	var ml := _dropdown(mname, 160, map_opts, func(v) -> void: lobby["map"] = v)
-	ml.add_theme_font_size_override("font_size", 20)
+		map_opts.append([MapGen.label(mi), mi, false])
+	var ml := _dropdown(mname.to_upper(), 160, map_opts, func(v) -> void: _pick_map(v), 470.0, MapGen.label(mid))
+	ml.add_theme_font_size_override("font_size", 18)
 	mrow.add_child(ml)
 	var nxt := _button(">", func() -> void:
-		lobby["map"] = ids[(ids.find(lobby["map"]) + 1) % ids.size()]
+		_pick_map(ids[(ids.find(lobby["map"]) + 1) % ids.size()])
 		show_skirmish())
 	nxt.custom_minimum_size = Vector2(46, 46)
 	mrow.add_child(nxt)
@@ -799,13 +812,20 @@ func show_skirmish() -> void:
 	prv.custom_minimum_size = Vector2(270, 190)
 	prv.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mv.add_child(prv)
-	var desc := "Any map, picked when the match starts."
-	if mid.begins_with("custom:"):
+	var desc := ""
+	if MapGen.is_pool(mid):
+		var fit := MapGen.pool_maps(mid, slots.size())
+		desc = "One of %d maps that hold %d players, picked when the match starts." % [fit.size(), slots.size()]
+	elif mid.begins_with("custom:"):
 		desc = "Your map, %d start spots." % (MapGen.load_custom(mid.substr(7)).get("starts", []) as Array).size()
-	elif mid != "random":
+	elif MapData.NAMED.has(mid):
+		var sz := MapGen.size_of(mid)
+		desc = "%s, %dx%d, up to %d players. %s  %s." % [MapGen.mode_of(mid), sz.x, sz.y, MapGen.max_players(mid),
+			String(MapData.NAMED[mid].get("about", "")), MapGen.biome_of(mid).replace("+", " & ").capitalize()]
+	else:
 		desc = {"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
 			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]]
-		desc += "  " + String(MapGen.MAPS[mid][2]).replace("+", " & ").capitalize() + "."
+		desc += "  84x60, up to 4 players.  " + String(MapGen.MAPS[mid][2]).replace("+", " & ").capitalize() + "."
 	var dl := UiStyle.text(desc, 15, UiStyle.MUTED)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mv.add_child(dl)
@@ -900,12 +920,16 @@ func _slot_row(i: int) -> Control:
 		sp.size_flags_stretch_ratio = 1.5
 		h.add_child(sp)
 	# team
-	var tb := _dropdown(str(int(sl["side"]) + 1), 80, [["TEAM 1", 0, false], ["TEAM 2", 1, false], ["TEAM 3", 2, false], ["TEAM 4", 3, false]], func(v) -> void: sl["side"] = v)
+	var team_opts: Array = []
+	for k in MAX_SLOTS:
+		team_opts.append(["TEAM %d" % (k + 1), k, false])
+	var tb := _dropdown(str(int(sl["side"]) + 1), 80, team_opts, func(v) -> void: sl["side"] = v)
 	tb.add_theme_font_size_override("font_size", 22)      # (the bold font: it has the arrow)
 	h.add_child(tb)
 	if lobby["slots"].size() > 2:
 		var x := _button("×", func() -> void:
 			lobby["slots"].remove_at(i)
+			_fit_map_to_slots()
 			show_skirmish())
 		x.custom_minimum_size = Vector2(46, 58)
 		h.add_child(x)
@@ -913,7 +937,7 @@ func _slot_row(i: int) -> Control:
 
 
 ## A button that opens a list to pick from (big rows, easy to tap). items: [label, value, disabled].
-func _dropdown(text: String, w: float, items: Array, pick: Callable) -> Button:
+func _dropdown(text: String, w: float, items: Array, pick: Callable, list_w := 240.0, current := "") -> Button:
 	var b := Button.new()
 	b.text = text + "  ▼"
 	b.add_theme_font_override("font", UiStyle.bold_font())     # (it has the arrow; the title font doesn't)
@@ -925,14 +949,14 @@ func _dropdown(text: String, w: float, items: Array, pick: Callable) -> Button:
 	b.pressed.connect(func() -> void:
 		_web_fullscreen()
 		Sfx.play_any(["ui/click", "click"])
-		_open_list(b, text, items, pick)
+		_open_list(b, current if current != "" else text, items, pick, list_w)
 	)
 	return b
 
 
 ## The list a dropdown opens: big rows in the menu's own layer (not a separate popup
 ## window, which froze on some Android phones). A tap outside closes it.
-func _open_list(b: Button, current: String, items: Array, pick: Callable) -> void:
+func _open_list(b: Button, current: String, items: Array, pick: Callable, min_w := 240.0) -> void:
 	var shade := Control.new()
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -954,9 +978,12 @@ func _open_list(b: Button, current: String, items: Array, pick: Callable) -> voi
 	v.add_theme_constant_override("separation", 4)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(v)
+	var cur_row: Control = null
 	for it in items:
 		var row := Button.new()
-		row.text = ("√  " if String(it[0]) == current else "     ") + String(it[0])
+		if String(it[0]).to_upper() == current.to_upper():
+			cur_row = row
+		row.text = ("√  " if String(it[0]).to_upper() == current.to_upper() else "     ") + String(it[0])
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.custom_minimum_size = Vector2(0, 52)
 		row.add_theme_font_size_override("font_size", 22)
@@ -973,7 +1000,7 @@ func _open_list(b: Button, current: String, items: Array, pick: Callable) -> voi
 	# below the button if it fits, else above; never off the screen
 	var vs := get_viewport().get_visible_rect().size
 	var r := b.get_global_rect()
-	var w := maxf(r.size.x, 240.0)
+	var w := minf(maxf(r.size.x, min_w), vs.x - 20.0)
 	var h := minf(items.size() * 56.0 + 20.0, vs.y - 20.0)
 	var y := r.end.y + 4.0
 	if y + h > vs.y - 10.0:
@@ -981,6 +1008,12 @@ func _open_list(b: Button, current: String, items: Array, pick: Callable) -> voi
 	panel.position = Vector2(clampf(r.position.x, 10.0, vs.x - w - 10.0), y)
 	panel.size = Vector2(w, h)
 	scroll.custom_minimum_size = Vector2(w - 20.0, h - 20.0)
+	if cur_row:
+		# a long list (the maps) opens with the current choice in view
+		(func() -> void:
+			await get_tree().process_frame
+			if is_instance_valid(scroll) and is_instance_valid(cur_row):
+				scroll.ensure_control_visible(cur_row)).call()
 
 
 ## A button that steps through options: click/tap = next; right click = previous.
@@ -1035,7 +1068,7 @@ func _add_slot() -> void:
 func _preset(p: String) -> void:
 	var slots: Array = lobby["slots"]
 	var me: Dictionary = slots[0] if not slots.is_empty() else {"who": "you", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "side": 0}
-	var n: int = {"1v1": 2, "2v2": 4, "1v2": 3, "1v3": 4, "FFA": 4}[p]
+	var n: int = {"1v1": 2, "2v2": 4, "3v3": 6, "4v4": 8, "1v2": 3, "1v3": 4, "FFA": 4}[p]
 	var out: Array = [me]
 	for i in range(1, n):
 		var prev: Dictionary = slots[i] if i < slots.size() else {"who": "hard", "faction": "random", "colour": Defs.COLOUR_FITS_MAP, "strategy": "random"}
@@ -1053,8 +1086,8 @@ func _preset(p: String) -> void:
 			used[c] = true
 	for i in out.size():
 		match p:
-			"2v2":
-				out[i]["side"] = 0 if i < 2 else 1
+			"2v2", "3v3", "4v4":
+				out[i]["side"] = 0 if i < n / 2 else 1
 			"FFA":
 				out[i]["side"] = i
 			_:
@@ -1073,19 +1106,58 @@ func _current_preset() -> String:
 		return "1v1"
 	if n == 4 and distinct.size() == 4:
 		return "FFA"
-	if n == 4 and distinct.size() == 2 and sides.count(sides[0]) == 2:
-		return "2v2"
+	if n >= 4 and distinct.size() == 2 and sides.count(sides[0]) * 2 == n:
+		return "%dv%d" % [n / 2, n / 2]
 	if distinct.size() == 2 and sides.count(sides[0]) == 1:
 		return "1v%d" % (n - 1)
 	return ""
 
 
+## A map picked in the lobby: the players are fitted to it. A named map sets up its own
+## match (a 2v2 map: four players, two a side, keeping the first players' choices) unless
+## the lobby already has its number of players; a classic map takes up to four, a map of
+## your own as many as it has start spots. A random pool leaves the players as they are
+## and picks, when the match starts, among its maps that hold them all.
+func _pick_map(id: String) -> void:
+	lobby["map"] = id
+	var n: int = lobby["slots"].size()
+	if MapGen.is_pool(id):
+		return
+	if id.begins_with("custom:"):
+		var st := (MapGen.load_custom(id.substr(7)).get("starts", []) as Array).size()
+		while lobby["slots"].size() > maxi(st, 2):
+			lobby["slots"].pop_back()
+		return
+	if MapData.NAMED.has(id):
+		if n != MapGen.max_players(id):
+			_preset(MapGen.mode_of(id))
+	elif n > MapGen.max_players(id):
+		_preset("1v1")
+
+
+## The players changed (a preset, a player added or taken away): a map that no longer
+## holds them all gives way to the random pool for that many players.
+func _fit_map_to_slots() -> void:
+	var mid: String = lobby["map"]
+	var n: int = lobby["slots"].size()
+	if mid.begins_with("custom:") or MapGen.is_pool(mid) or MapGen.max_players(mid) >= n:
+		if not (MapGen.is_pool(mid) and MapGen.pool_maps(mid, n).is_empty()):
+			return
+	lobby["map"] = "random_1v1" if n <= 2 else ("random_2v2" if n <= 4 else ("random_3v3" if n <= 6 else "random"))
+
+
 func _lobby_problem() -> String:
 	var mid: String = lobby["map"]
+	var np: int = lobby["slots"].size()
 	if mid.begins_with("custom:"):
 		var n := (MapGen.load_custom(mid.substr(7)).get("starts", []) as Array).size()
-		if lobby["slots"].size() > n:
+		if np > n:
 			return "This map has %d start spots." % n
+	elif MapGen.is_pool(mid):
+		if MapGen.pool_maps(mid, np).is_empty():
+			return "No map in this pool holds %d players." % np
+	elif MapGen.max_players(mid) < np:
+		return "%s holds %d players." % [MapGen.display_name(mid), MapGen.max_players(mid)]
 	var distinct := {}
 	for s in lobby["slots"]:
 		distinct[int(s["side"])] = true
@@ -1215,10 +1287,15 @@ class MenuBackdrop extends Control:
 class MapPreview extends Control:
 	var map_id := "random"
 	var slots: Array = []
+	var mw := 84.0               # the map's size in cells
+	var mh := 60.0
 
 	func _draw() -> void:
+		var msz := Vector2(84, 60) if MapGen.is_pool(map_id) or map_id.begins_with("custom:") else Vector2(MapGen.size_of(map_id))
+		mw = msz.x
+		mh = msz.y
 		var r := Rect2(Vector2(4, 4), size - Vector2(8, 8))
-		var ratio := float(Game.W) / float(Game.H)
+		var ratio := float(mw) / float(mh)
 		if r.size.x / r.size.y > ratio:
 			var w := r.size.y * ratio
 			r = Rect2(r.position + Vector2((r.size.x - w) * 0.5, 0), Vector2(w, r.size.y))
@@ -1230,11 +1307,15 @@ class MapPreview extends Control:
 		if map_id.begins_with("custom:"):
 			_custom(r)
 			return
-		if map_id == "random" or not MapGen.MAPS.has(map_id):
+		if MapData.NAMED.has(map_id):
+			_named(r)
+			return
+		if not MapGen.MAPS.has(map_id):
 			draw_rect(r, Color(0.2, 0.18, 0.14))
 			var f := ThemeDB.fallback_font
 			draw_string(f, r.get_center() + Vector2(-12, 22), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 64, UiStyle.MUTED)
-			_starts(r)
+			if slots.size() <= 4:
+				_starts(r)
 			return
 		var m: Array = MapGen.MAPS[map_id]
 		var parts: PackedStringArray = String(m[2]).split("+")
@@ -1245,14 +1326,14 @@ class MapPreview extends Control:
 			var pts := PackedVector2Array([r.position + Vector2(0, r.size.y), r.position + Vector2(r.size.x, r.size.y), r.position + Vector2(0, 0)])
 			pts = PackedVector2Array([r.position, r.position + Vector2(0, r.size.y), r.end])
 			draw_colored_polygon(pts, cb)
-		var k := r.size / Vector2(Game.W, Game.H)
+		var k := r.size / Vector2(mw, mh)
 		var four := slots.size() > 2
 		var hill := ca.lightened(0.25)
 		match m[1]:
 			"crossroads":
 				draw_circle(r.position + Vector2(42, 30) * k, 5.5 * k.x, hill)
 			"highlands":
-				for c in ([Vector2(9, 8), Vector2(Game.W - 9, 8), Vector2(9, Game.H - 8), Vector2(Game.W - 9, Game.H - 8)] if four else [Vector2(9, 8), Vector2(Game.W - 9, Game.H - 8)]):
+				for c in ([Vector2(9, 8), Vector2(mw - 9, 8), Vector2(9, mh - 8), Vector2(mw - 9, mh - 8)] if four else [Vector2(9, 8), Vector2(mw - 9, mh - 8)]):
 					draw_circle(r.position + c * k, 12.0 * k.x, hill)
 				draw_circle(r.position + Vector2(42, 30) * k, 4.0 * k.x, hill)
 			"rivers":
@@ -1264,6 +1345,26 @@ class MapPreview extends Control:
 					draw_line(r.position + Vector2(r.size.x, 0), r.position + Vector2(0, r.size.y), water, 7.0)
 		_starts(r)
 
+	## A named map: its picture (assets/maps, made by tools/make_map_previews.gd) and where
+	## everyone starts, allies on the same side.
+	func _named(r: Rect2) -> void:
+		var path := "res://assets/maps/%s.png" % map_id
+		if ResourceLoader.exists(path):
+			draw_texture_rect(load(path), r, false)
+		else:
+			draw_rect(r, _biome_col(MapGen.biome_of(map_id).split("+")[0]))
+		var k := r.size / Vector2(mw, mh)
+		var sides: Array = slots.map(func(s: Dictionary) -> int: return int(s["side"]))
+		if sides.size() > MapGen.max_players(map_id):
+			return
+		var st := MapGen.named_starts(map_id, sides)
+		var f := ThemeDB.fallback_font
+		for i in st.size():
+			var p: Vector2 = r.position + (Vector2(st[i]) + Vector2(2.5, 2)) * k
+			draw_circle(p, 9.0, Color(0, 0, 0, 0.6))
+			draw_circle(p, 7.0, Defs.colour_of(int(slots[i]["colour"])))
+			draw_string(f, p + Vector2(-4, 5), str(int(slots[i]["side"]) + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+
 	func _custom(r: Rect2) -> void:
 		var d := MapGen.load_custom(map_id.substr(7))
 		var cells: String = d.get("cells", "")
@@ -1271,11 +1372,11 @@ class MapPreview extends Control:
 		var low := _biome_col(parts[0])
 		var cols := {".": low, "h": low.lightened(0.25), "r": low.lightened(0.12), "w": Color(0.15, 0.4, 0.7),
 			"f": Color(0.4, 0.6, 0.75), "t": low.darkened(0.45), "T": low.darkened(0.3), "k": Color(0.5, 0.5, 0.5), "K": Color(0.6, 0.6, 0.6)}
-		var k := r.size / Vector2(Game.W, Game.H)
+		var k := r.size / Vector2(mw, mh)
 		draw_rect(r, low)
-		for i in mini(cells.length(), Game.W * Game.H):
+		for i in mini(cells.length(), 84 * 60):
 			if cells[i] != ".":
-				draw_rect(Rect2(r.position + Vector2(i % Game.W, i / Game.W) * k, k + Vector2(0.5, 0.5)), cols.get(cells[i], low))
+				draw_rect(Rect2(r.position + Vector2(i % 84, i / 84) * k, k + Vector2(0.5, 0.5)), cols.get(cells[i], low))
 		var st: Array = d.get("starts", [])
 		for i in mini(st.size(), slots.size()):
 			var p: Vector2 = r.position + (Vector2(st[i][0], st[i][1]) + Vector2(2.5, 2)) * k
@@ -1283,10 +1384,10 @@ class MapPreview extends Control:
 			draw_circle(p, 7.0, Defs.colour_of(int(slots[i]["colour"])))
 
 	func _starts(r: Rect2) -> void:
-		var k := r.size / Vector2(Game.W, Game.H)
-		var corners: Array = [Vector2(8, 8), Vector2(Game.W - 8, Game.H - 8)]
+		var k := r.size / Vector2(mw, mh)
+		var corners: Array = [Vector2(8, 8), Vector2(mw - 8, mh - 8)]
 		if slots.size() > 2:
-			corners = [Vector2(8, 8), Vector2(8, Game.H - 8), Vector2(Game.W - 8, 8), Vector2(Game.W - 8, Game.H - 8)]
+			corners = [Vector2(8, 8), Vector2(8, mh - 8), Vector2(mw - 8, 8), Vector2(mw - 8, mh - 8)]
 		# allies share a side, like the real placement
 		var order: Array = range(slots.size())
 		order.sort_custom(func(a: int, b: int) -> bool:
@@ -1309,7 +1410,7 @@ class MapPreview extends Control:
 
 	func _biome_col(b: String) -> Color:
 		var low: Array = MapGen.BIOMES.get(b, MapGen.BIOMES["grass"])["low"]
-		var c: Color = TerrainData.COLOURS.get(low[0], Color(0.3, 0.45, 0.2))
+		var c: Color = TerrainData.COLOURS.get(low[0], TerrainData2.COLOURS.get(low[0], Color(0.3, 0.45, 0.2)))
 		return c.darkened(0.1)
 
 
@@ -1471,9 +1572,14 @@ func start(cfg: Dictionary = {}) -> void:
 	if not cfg.has("seed"):
 		cfg["seed"] = randi()
 	cfg = cfg.duplicate(true)
-	# a random built-in map is picked here, so colours can be chosen to suit its ground
-	if String(cfg.get("map", "random")) == "random":
-		cfg["map"] = MapGen.MAPS.keys()[randi() % MapGen.MAPS.size()]
+	# a random map is picked here (among the pool's maps that hold everyone), so colours can
+	# be chosen to suit its ground
+	var pool := String(cfg.get("map", "random"))
+	if MapGen.is_pool(pool):
+		var fit := MapGen.pool_maps(pool, (cfg["slots"] as Array).size())
+		if fit.is_empty():
+			fit = MapGen.pool_maps("random", (cfg["slots"] as Array).size())
+		cfg["map"] = fit[randi() % fit.size()]
 	_resolve_colours(cfg)
 	last_cfg = cfg.duplicate(true)
 	var slots: Array = cfg["slots"]
@@ -1565,7 +1671,8 @@ func start(cfg: Dictionary = {}) -> void:
 		if game.hostile(t, game.human):
 			foes.append(game.faction_of(t))
 	Music.me.match_started(game.faction_of(game.human), foes)
-	Music.me.ambience(game.mapgen.biome_a if game.mapgen else "")
+	var amb: String = game.mapgen.biome_a if game.mapgen else ""
+	Music.me.ambience(String(MapGen.BIOMES.get(amb, {}).get("amb", amb)))
 	if cfg.has("resume"):
 		SaveGame.restore(game, cfg["resume"])
 		last_cfg.erase("resume")
@@ -1621,8 +1728,8 @@ func _resolve_colours(cfg: Dictionary) -> void:
 			used[int(sl["colour"])] = true
 	var avoid: Array = []
 	var mid: String = String(cfg.get("map", ""))
-	if MapGen.MAPS.has(mid):
-		for biome in String(MapGen.MAPS[mid][2]).split("+"):
+	if MapGen.MAPS.has(mid) or MapData.NAMED.has(mid):
+		for biome in MapGen.biome_of(mid).split("+"):
 			avoid += Defs.BIOME_AVOID.get(biome, [])
 	for sl in slots:
 		var c := int(sl["colour"])
