@@ -1755,12 +1755,16 @@ var _region_dirty := true
 
 
 func _update_regions() -> void:
+	# (flat cell numbers and one preallocated stack: on a big map this runs after every
+	# building change, so it has to be quick)
 	_region_dirty = false
-	_region.resize(W * H)
+	var n_cells := W * H
+	_region.resize(n_cells)
 	_region.fill(-1)
 	_region_size.clear()
-	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
-	for i in W * H:
+	var stack := PackedInt32Array()
+	stack.resize(n_cells)
+	for i in n_cells:
 		if _region[i] >= 0:
 			continue
 		var v := solid[i]
@@ -1768,22 +1772,45 @@ func _update_regions() -> void:
 			continue
 		var id := _region_size.size()
 		var n := 0
-		var q: Array = [Vector2i(i % W, i / W)]
+		var top := 0
+		stack[0] = i
+		top = 1
 		_region[i] = id
-		while not q.is_empty():
-			var c: Vector2i = q.pop_back()
+		while top > 0:
+			top -= 1
+			var c := stack[top]
 			n += 1
-			for dd in dirs:
-				var nc: Vector2i = c + dd
-				if not in_map(nc):
-					continue
-				var j := nc.y * W + nc.x
-				if _region[j] >= 0:
-					continue
-				var vv := solid[j]
+			var x := c % W
+			var j := 0
+			var vv := 0
+			j = c - 1
+			if x > 0 and _region[j] < 0:
+				vv = solid[j]
 				if vv == 0 or vv == 3 or vv == 5:
 					_region[j] = id
-					q.append(nc)
+					stack[top] = j
+					top += 1
+			j = c + 1
+			if x < W - 1 and _region[j] < 0:
+				vv = solid[j]
+				if vv == 0 or vv == 3 or vv == 5:
+					_region[j] = id
+					stack[top] = j
+					top += 1
+			j = c - W
+			if j >= 0 and _region[j] < 0:
+				vv = solid[j]
+				if vv == 0 or vv == 3 or vv == 5:
+					_region[j] = id
+					stack[top] = j
+					top += 1
+			j = c + W
+			if j < n_cells and _region[j] < 0:
+				vv = solid[j]
+				if vv == 0 or vv == 3 or vv == 5:
+					_region[j] = id
+					stack[top] = j
+					top += 1
 		_region_size.append(n)
 
 
@@ -4304,8 +4331,15 @@ func _disk(r: int) -> Array:
 	return _disk_cache[r]
 
 
+## (Each grid is taken out of its list while it's written: a copy still held by the list
+## would make every write copy the whole grid first, and on a big map that adds up.)
 func _reveal(t: int, c: Vector2i, r: int) -> void:
 	var v: PackedByteArray = vis[t]
+	vis[t] = _EMPTY
+	var sd: int = sides[t]
+	var sv: PackedByteArray = _side_vis[sd]
+	_side_vis[sd] = _EMPTY
+	var mine := allied(t, human)
 	var low := in_map(c) and height[idx(c)] == 0
 	for o in _disk(r):
 		var cc: Vector2i = c + o
@@ -4314,7 +4348,11 @@ func _reveal(t: int, c: Vector2i, r: int) -> void:
 			if low and height[i] == 1 and o.length_squared() > 2:
 				continue     # can't see up onto high ground from below
 			v[i] = 1
+			sv[i] = 1
+			if mine:
+				explored[i] = 1
 	vis[t] = v
+	_side_vis[sd] = sv
 	if demo:
 		_explore(t, c, r, low)
 
@@ -4323,6 +4361,7 @@ func _reveal(t: int, c: Vector2i, r: int) -> void:
 ## (the same cells _reveal / _reveal_air just lit).
 func _explore(t: int, c: Vector2i, r: int, low: bool) -> void:
 	var ex: PackedByteArray = explored_by[t]
+	explored_by[t] = _EMPTY
 	for o in _disk(r):
 		var cc: Vector2i = c + o
 		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
@@ -4333,9 +4372,21 @@ func _explore(t: int, c: Vector2i, r: int, low: bool) -> void:
 	explored_by[t] = ex
 
 
+var _EMPTY := PackedByteArray()          # (a stand-in while a grid is out being written)
+var _side_vis := {}                      # side -> what all its players see (filled with vis)
+
+
 func _update_vis() -> void:
 	for t in n_players():
 		vis[t].fill(0)
+	for t in n_players():
+		var sd: int = sides[t]
+		if not _side_vis.has(sd) or (_side_vis[sd] as PackedByteArray).size() != W * H:
+			var nb := PackedByteArray()
+			nb.resize(W * H)
+			_side_vis[sd] = nb
+	for sd in _side_vis:
+		_side_vis[sd].fill(0)
 	# units standing in the same cell see the same thing: stamp each spot once
 	var done := {}
 	for u in units:
@@ -4352,17 +4403,9 @@ func _update_vis() -> void:
 	for b in buildings:
 		if not b.dead and not b.ghost:
 			_reveal(b.team, cell_of(b.rect().get_center()), b.sight)
-	var hv: PackedByteArray = vis[human].duplicate()
-	for o in n_players():
-		if o != human and allied(o, human):
-			var ov: PackedByteArray = vis[o]
-			for i in W * H:
-				if ov[i] == 1:
-					hv[i] = 1
+	# what your side sees (the explored map was marked as it was seen)
+	var hv: PackedByteArray = (_side_vis[sides[human]] as PackedByteArray).duplicate()
 	_human_vis = hv
-	for i in W * H:
-		if hv[i] == 1:
-			explored[i] = 1
 	if demo:
 		# enemy buildings stay on screen once spotted: remember who has spotted each one
 		for b in buildings:
@@ -4386,15 +4429,12 @@ func _update_vis() -> void:
 	var ft := fog_team()
 	var ex := explored
 	if ft != human:
-		hv = vis[ft].duplicate()
+		hv = (_side_vis[sides[ft]] as PackedByteArray).duplicate()
 		ex = (explored_by[ft] as PackedByteArray).duplicate()
 		for o in n_players():
 			if o != ft and allied(o, ft):
-				var ov: PackedByteArray = vis[o]
 				var oe: PackedByteArray = explored_by[o]
 				for i in W * H:
-					if ov[i] == 1:
-						hv[i] = 1
 					if oe[i] == 1:
 						ex[i] = 1
 	if _fog_bytes.size() != W * H * 2:
@@ -4453,11 +4493,21 @@ func refresh_fog() -> void:
 
 func _reveal_air(t: int, c: Vector2i, r: int) -> void:
 	var v: PackedByteArray = vis[t]
+	vis[t] = _EMPTY
+	var sd: int = sides[t]
+	var sv: PackedByteArray = _side_vis[sd]
+	_side_vis[sd] = _EMPTY
+	var mine := allied(t, human)
 	for o in _disk(r):
 		var cc: Vector2i = c + o
 		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
-			v[cc.y * W + cc.x] = 1
+			var i := cc.y * W + cc.x
+			v[i] = 1
+			sv[i] = 1
+			if mine:
+				explored[i] = 1
 	vis[t] = v
+	_side_vis[sd] = sv
 	if demo:
 		_explore(t, c, r, false)
 
