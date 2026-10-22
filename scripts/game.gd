@@ -186,6 +186,10 @@ func _ready() -> void:
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
+	body_bars = Node2D.new()
+	body_bars.z_index = 1
+	body_bars.draw.connect(_draw_body_bars)
+	add_child(body_bars)
 	overlay = Node2D.new()
 	overlay.z_index = 50
 	overlay.draw.connect(_draw_overlay)
@@ -4611,6 +4615,25 @@ func on_high(p: Vector2) -> bool:
 
 
 var _human_vis := PackedByteArray()
+var body_bars: Node2D
+var bodies: Array = []                   # the fallen still lying there (Unit._rest_in_peace)
+var _body_bar_t := 0.0
+
+
+## Over every body still lying on the field, a thin bar running down to the moment it
+## fades away (for everyone, where they can see).
+func _draw_body_bars() -> void:
+	var now := clock
+	for b in bodies:
+		if not is_instance_valid(b) or not b.visible or b.modulate.a < 0.99 or not view_rect.has_point(b.position):
+			continue
+		var f := clampf(1.0 - (now - float(b.rip_from)) / maxf(float(b.rip_len), 0.1), 0.0, 1.0)
+		var w := 12.0
+		var p: Vector2 = b.position + Vector2(-w * 0.5, -16.0)
+		body_bars.draw_rect(Rect2(p, Vector2(w, 1.5)).grow(0.5), Color(0, 0, 0, 0.45))
+		body_bars.draw_rect(Rect2(p, Vector2(w * f, 1.5)), Color(0.85, 0.82, 0.72, 0.6))
+
+
 var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
 
 
@@ -4636,6 +4659,11 @@ func _physics_process(delta: float) -> void:
 		return
 	clock += delta
 	alert_t = maxf(alert_t - delta, 0.0)
+	_body_bar_t -= delta
+	if _body_bar_t <= 0.0 and body_bars:
+		_body_bar_t = 0.2
+		bodies = bodies.filter(func(b) -> bool: return is_instance_valid(b) and b.dead)
+		body_bars.queue_redraw()
 	var vsz := get_viewport().get_visible_rect().size / camera.zoom
 	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 	_economy(delta)
