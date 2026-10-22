@@ -69,10 +69,19 @@ var _phys_ticks := 0                # physics steps since the last minute
 var _lag_minutes: Array = []        # [minute, avg fps, 1% low, worst ms]
 
 
-func _process(delta: float) -> void:
-	if game == null or game.over:
-		return
-	_ft.append(delta * 1000.0)
+var _last_us := 0
+var _last_frame := -1
+
+
+## Real frame times from the wall clock (not the physics step, and not `delta`, which the
+## engine evens out): only back-to-back frames count, not the gap over a pause.
+func _process(_delta: float) -> void:
+	var now := Time.get_ticks_usec()
+	var fr := Engine.get_process_frames()
+	if _last_frame == fr - 1 and game != null and not game.over:
+		_ft.append((now - _last_us) / 1000.0)
+	_last_us = now
+	_last_frame = fr
 
 
 ## "  Performance: 58 fps avg, 1% low 31 fps, worst frame 120 ms, 14 frames over 50 ms ..."

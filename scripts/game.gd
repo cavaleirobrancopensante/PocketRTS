@@ -265,6 +265,7 @@ func _mirror(c: Vector2i, size: Vector2i) -> Vector2i:
 func _generate_map() -> void:
 	mapgen = MapGen.new(self)
 	mapgen.generate(map_id)
+	_near_ramp_grid = PackedByteArray()
 
 
 func _scatter_obstacles(keep: Array) -> void:
@@ -711,6 +712,7 @@ func rebuild_map(cells: String, props: Array = []) -> void:
 	mapgen.place_props(props)
 	height = mapgen.height
 	ramp = mapgen.ramp
+	_near_ramp_grid = PackedByteArray()
 	astar = AStarGrid2D.new()
 	_setup_astar()
 	_render_ground()
@@ -1591,6 +1593,8 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	if Defs.is_econ(kind) and econ_count(t, kind) >= econ_limit(t, kind):
 		return Vector2i(-1, -1)
 	_spot_halls = halls_of(t)
+	_spot_all_halls = halls_of(t, false)
+	_in_spot = true
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var c0: Vector2 = around.rect().get_center() / T
 	var mid := Vector2(W, H) * 0.5
@@ -1603,7 +1607,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			var dd := cc.distance_to(c0)
 			if dd < min_d or dd > max_d:
 				continue
-			if placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
+			if not _footprint_open(cell, size) or placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
 				continue
 			var score := dd
 			if prefer == "far":
@@ -1636,10 +1640,28 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				bs = score
 				best = cell
 	_spot_halls = []
+	_spot_all_halls = []
+	_in_spot = false
 	return best
 
 
 var _spot_halls: Array = []
+var _spot_all_halls: Array = []      # (find_spot: the halls, unfinished ones too, looked up once)
+var _in_spot := false
+
+
+## find_spot's quick test before the full placement_problem: every cell of the footprint
+## and the ring round it on the map and free (placement_problem and margin_free would
+## turn the spot down anyway; this is only cheaper).
+func _footprint_open(cell: Vector2i, size: Vector2i) -> bool:
+	if cell.x < 1 or cell.y < 1 or cell.x + size.x >= W or cell.y + size.y >= H:
+		return in_map(cell)       # (at the map's edge: leave it to the full test)
+	for y in range(cell.y - 1, cell.y + size.y + 1):
+		var row := y * W
+		for x in range(cell.x - 1, cell.x + size.x + 1):
+			if solid[row + x] != 0:
+				return false
+	return true
 const SOURCE_NEAR := 6.0               # tiles: a crusher further than this from a Boiler (or the reverse) scores worse in find_spot
 
 
@@ -3378,7 +3400,7 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 				return "Keep the ramp clear."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
-		for h in halls_of(t, false):
+		for h in (_spot_all_halls if limits_checked and _in_spot else halls_of(t, false)):
 			if h.center().distance_to(mid0) < Defs.HALL_SPACING * T:
 				return "Too close to your other %s: it needs its own ground." % Defs.BUILDINGS[k]["name"]
 	if Defs.is_econ(k):
@@ -3398,6 +3420,21 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 
 
 func _near_ramp(c: Vector2i) -> bool:
+	if not in_map(c):
+		return _near_ramp_slow(c)
+	if _near_ramp_grid.size() != W * H:
+		# (worked out once per map: a ramp cell within 2 cells of each cell)
+		_near_ramp_grid.resize(W * H)
+		for y in H:
+			for x in W:
+				_near_ramp_grid[y * W + x] = 1 if _near_ramp_slow(Vector2i(x, y)) else 0
+	return _near_ramp_grid[c.y * W + c.x] == 1
+
+
+var _near_ramp_grid := PackedByteArray()     # cleared when the map's ground changes
+
+
+func _near_ramp_slow(c: Vector2i) -> bool:
 	for dy in range(-2, 3):
 		for dx in range(-2, 3):
 			var n := c + Vector2i(dx, dy)
@@ -3732,25 +3769,35 @@ func find_path(from: Vector2, to: Vector2, siege := false) -> PackedVector2Array
 	# (a Farm's crop rows are walkable: a unit on them starts, or ends, right there)
 	var a := cell_of(from) if open_cell(cell_of(from)) else nearest_free(cell_of(from), 6)
 	var b := cell_of(to) if open_cell(cell_of(to)) else nearest_free(cell_of(to), 8)
+	var pt := Time.get_ticks_usec()
 	var pts := astar.get_point_path(a, b, true)
 	if pts.is_empty() and siege:
 		# walled out: walk up to the wall (the unit then breaks it down)
 		pts = astar_siege.get_point_path(a, b, true)
+	Prof.add("game/pathfinder", pt)
 	if pts.is_empty():
 		return PackedVector2Array([to])
 	# Use the exact destination when it's on open ground.
 	if open_cell(cell_of(to)) and cell_of(to) == b:
 		pts[pts.size() - 1] = to
-	return _smooth(from, pts)
+	pt = Time.get_ticks_usec()
+	var sm := _smooth(from, pts)
+	Prof.add("game/path smoothing", pt)
+	return sm
 
 
-## Drop waypoints that can be skipped with a clear straight line.
+## Drop waypoints that can be skipped with a clear straight line. (It looks at most
+## SMOOTH_LOOK cells ahead: trying every later point of a long, winding path cost up to a
+## second and a half for one path; a straight run longer than that just keeps a waypoint.)
+const SMOOTH_LOOK := 40
+
+
 func _smooth(from: Vector2, pts: PackedVector2Array) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var cur := from
 	var i := 0
 	while i < pts.size():
-		var j := pts.size() - 1
+		var j := mini(pts.size() - 1, i + SMOOTH_LOOK)
 		while j > i and not line_clear(cur, pts[j]):
 			j -= 1
 		out.append(pts[j])
@@ -3759,14 +3806,31 @@ func _smooth(from: Vector2, pts: PackedVector2Array) -> PackedVector2Array:
 	return out
 
 
+## (The same test as open_cell(cell_of(p +- 7, 7)) at every sample, written out: the
+## path smoothing calls it thousands of times for a long path.)
 func line_clear(a: Vector2, b: Vector2) -> bool:
 	var dist := a.distance_to(b)
 	var steps := int(dist / 10.0) + 1
+	var w1 := W - 1
+	var h1 := H - 1
 	for s in steps + 1:
 		var p := a.lerp(b, float(s) / float(steps))
-		for off in [Vector2(-7, -7), Vector2(7, 7), Vector2(-7, 7), Vector2(7, -7)]:
-			if not open_cell(cell_of(p + off)):
-				return false
+		var x0 := clampi(int((p.x - 7.0) / T), 0, w1)
+		var x1 := clampi(int((p.x + 7.0) / T), 0, w1)
+		var y0 := clampi(int((p.y - 7.0) / T), 0, h1) * W
+		var y1 := clampi(int((p.y + 7.0) / T), 0, h1) * W
+		var v := solid[y0 + x0]
+		if v != 0 and v != 5:
+			return false
+		v = solid[y1 + x1]
+		if v != 0 and v != 5:
+			return false
+		v = solid[y1 + x0]
+		if v != 0 and v != 5:
+			return false
+		v = solid[y0 + x1]
+		if v != 0 and v != 5:
+			return false
 	return true
 
 
@@ -5193,16 +5257,7 @@ func _reveal(t: int, c: Vector2i, r: int) -> void:
 	_side_vis[sd] = _EMPTY
 	var mine := allied(t, human)
 	var low := in_map(c) and height[idx(c)] == 0
-	for o in _disk(r):
-		var cc: Vector2i = c + o
-		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
-			var i := cc.y * W + cc.x
-			if low and height[i] == 1 and o.length_squared() > 2:
-				continue     # can't see up onto high ground from below
-			v[i] = 1
-			sv[i] = 1
-			if mine:
-				explored[i] = 1
+	_stamp(v, sv, c, r, low, mine)
 	vis[t] = v
 	_side_vis[sd] = sv
 	if demo:
@@ -5224,21 +5279,100 @@ func _explore(t: int, c: Vector2i, r: int, low: bool) -> void:
 	explored_by[t] = ex
 
 
+## The cells of a disk of radius r as (dx, dy, far) triples; far = 1 beyond the cells
+## right next to the middle (those are seen even up a cliff).
+var _disk_ofs := {}
+
+
+## Mark a disk of cells seen in the team's and its side's grid (and explored, on your side).
+## Seen from low ground, high ground is hidden beyond the next cells. (The disk as flat
+## int offsets, and no bounds tests when it lies inside the map: this runs for every unit
+## and building four times a second.)
+func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: bool, mine: bool) -> void:
+	if not _disk_ofs.has(r):
+		var ofs := PackedInt32Array()
+		for o in _disk(r):
+			ofs.append(o.x)
+			ofs.append(o.y)
+			ofs.append(1 if o.length_squared() > 2 else 0)
+		_disk_ofs[r] = ofs
+	var d: PackedInt32Array = _disk_ofs[r]
+	var inside := c.x - r >= 0 and c.y - r >= 0 and c.x + r < W and c.y + r < H
+	var n := d.size()
+	var k := 0
+	var w := W
+	var h := H
+	while k < n:
+		var x := c.x + d[k]
+		var y := c.y + d[k + 1]
+		if inside or (x >= 0 and y >= 0 and x < w and y < h):
+			var i := y * w + x
+			if not (low and d[k + 2] == 1 and height[i] == 1):
+				v[i] = 1
+				sv[i] = 1
+				if mine:
+					explored[i] = 1
+		k += 3
+
+
 var _EMPTY := PackedByteArray()          # (a stand-in while a grid is out being written)
 var _side_vis := {}                      # side -> what all its players see (filled with vis)
 
 
-func _update_vis() -> void:
+## What the buildings see (they don't move): worked out again only when a building is
+## added, finished, lost or changes, and copied in at the start of every update.
+var _bvis: Array = []                    # per team
+var _bside := {}                         # per side
+var _bvis_key := PackedInt64Array()
+
+
+func _building_vis() -> void:
+	var key := PackedInt64Array()
+	for b in buildings:
+		if not b.dead and not b.ghost:
+			var c := cell_of(b.rect().get_center())
+			key.append(b.get_instance_id())
+			key.append(((b.team + 1) * 4096 + b.sight) * 1048576 + c.y * W + c.x)
+	if key == _bvis_key and _bvis.size() == n_players():
+		return
+	_bvis_key = key
+	_bvis.clear()
 	for t in n_players():
-		vis[t].fill(0)
+		var nb := PackedByteArray()
+		nb.resize(W * H)
+		_bvis.append(nb)
+	_bside.clear()
 	for t in n_players():
-		var sd: int = sides[t]
-		if not _side_vis.has(sd) or (_side_vis[sd] as PackedByteArray).size() != W * H:
+		if not _bside.has(sides[t]):
 			var nb := PackedByteArray()
 			nb.resize(W * H)
-			_side_vis[sd] = nb
-	for sd in _side_vis:
-		_side_vis[sd].fill(0)
+			_bside[sides[t]] = nb
+	for b in buildings:
+		if not b.dead and not b.ghost:
+			var c := cell_of(b.rect().get_center())
+			var t: int = b.team
+			if t < 0:
+				continue
+			var v: PackedByteArray = _bvis[t]
+			_bvis[t] = _EMPTY
+			var sv: PackedByteArray = _bside[sides[t]]
+			_bside[sides[t]] = _EMPTY
+			_stamp(v, sv, c, b.sight, in_map(c) and height[idx(c)] == 0, allied(t, human))
+			_bvis[t] = v
+			_bside[sides[t]] = sv
+			if demo:
+				_explore(t, c, b.sight, in_map(c) and height[idx(c)] == 0)
+
+
+func _update_vis() -> void:
+	_building_vis()
+	for t in n_players():
+		vis[t] = (_bvis[t] as PackedByteArray).duplicate()
+	for t in n_players():
+		_side_vis[sides[t]] = (_bside[sides[t]] as PackedByteArray).duplicate()
+	for sd in _side_vis.keys():
+		if not _bside.has(sd):
+			_side_vis.erase(sd)
 	# units standing in the same cell see the same thing: stamp each spot once
 	var done := {}
 	for u in units:
@@ -5252,9 +5386,7 @@ func _update_vis() -> void:
 				_reveal_air(u.team, c, u.sight)
 			else:
 				_reveal(u.team, c, u.sight)
-	for b in buildings:
-		if not b.dead and not b.ghost:
-			_reveal(b.team, cell_of(b.rect().get_center()), b.sight)
+	# (the buildings' sight came in with _building_vis)
 	# what your side sees (the explored map was marked as it was seen)
 	var hv: PackedByteArray = (_side_vis[sides[human]] as PackedByteArray).duplicate()
 	_human_vis = hv
@@ -5350,14 +5482,7 @@ func _reveal_air(t: int, c: Vector2i, r: int) -> void:
 	var sv: PackedByteArray = _side_vis[sd]
 	_side_vis[sd] = _EMPTY
 	var mine := allied(t, human)
-	for o in _disk(r):
-		var cc: Vector2i = c + o
-		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
-			var i := cc.y * W + cc.x
-			v[i] = 1
-			sv[i] = 1
-			if mine:
-				explored[i] = 1
+	_stamp(v, sv, c, r, false, mine)
 	vis[t] = v
 	_side_vis[sd] = sv
 	if demo:
@@ -5449,16 +5574,20 @@ func _tick_game(delta: float) -> void:
 	if _sample_t >= 5.0:
 		_sample_t = 0.0
 		_sample_stats()
+	var pt := Time.get_ticks_usec()
 	_rebuild_hash()
+	Prof.add("game/unit grid", pt)
 	if _astar_dirty:
 		_astar_dirty = false
 	# Path budget per frame
+	pt = Time.get_ticks_usec()
 	var budget := 24
 	while budget > 0 and not _path_queue.is_empty():
 		var u = _path_queue.pop_front()
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()
 			budget -= 1
+	Prof.add("game/paths", pt)
 	_tick_zones(delta)
 	_swamp_t -= delta
 	if swamp_dirty and _swamp_t <= 0.0:
@@ -5467,7 +5596,9 @@ func _tick_game(delta: float) -> void:
 	_vis_t -= delta
 	if _vis_t <= 0.0:
 		_vis_t = 0.25
+		pt = Time.get_ticks_usec()
 		_update_vis()
+		Prof.add("game/fog", pt)
 	for pg in _pings:
 		pg[2] -= delta
 	_pings = _pings.filter(func(pg: Array) -> bool: return pg[2] > 0.0)
@@ -5483,7 +5614,9 @@ func _tick_game(delta: float) -> void:
 	_refit_t -= delta
 	if _refit_t <= 0.0:
 		_refit_t = float(Defs.REFIT["scan"])
+		pt = Time.get_ticks_usec()
 		_auto_refit()
+		Prof.add("game/refit", pt)
 
 
 ## A player with no buildings left is out; the match ends when one side is left
@@ -6067,6 +6200,12 @@ func _draw_queues() -> void:
 
 
 func _draw_overlay() -> void:
+	var pt := Time.get_ticks_usec()
+	_draw_overlay_all()
+	Prof.add("overlay draw", pt)
+
+
+func _draw_overlay_all() -> void:
 	_draw_mine_labels()
 	_draw_queues()
 	if not tongues.is_empty():

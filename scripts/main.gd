@@ -1527,12 +1527,14 @@ var _f11_t := 0.0
 func _autosave() -> void:
 	if game == null or game.over or game.demo or game.edit_mode:
 		return
+	var pt := Time.get_ticks_usec()
 	var cfg := last_cfg.duplicate(true)
 	cfg.erase("resume")
 	print("[save] %d:%02d  %d units, %d buildings  mem %d MB" % [int(game.clock) / 60, int(game.clock) % 60, game.units.size(), game.buildings.size(), int(OS.get_static_memory_usage() / 1048576)])
 	SaveGame.save(game, cfg)
 	if game.mlog:
 		_write_log("user://logs/unfinished.txt", game.mlog.text())
+	Prof.add("autosave", pt)
 	print("[save] done")
 
 
