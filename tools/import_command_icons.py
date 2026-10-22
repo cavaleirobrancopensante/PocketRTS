@@ -11,6 +11,7 @@ import import_round11 as r
 SHEETS = {"commands_extra": ["hold_fire", "fire_at_will", "hold_old", "patrol", "rally", "demolish"],
           "command_stop": ["stop"],        # (replaces the stop hand from icons.png)
           "command_cancel": ["cancel"],
+          "command_back": ["back"],
           "command_hold": ["hold"]}       # (the bold shield; commands_extra's hold is unused)
 
 

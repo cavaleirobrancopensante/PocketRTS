@@ -887,7 +887,7 @@ func _build_card() -> Array:
 					controls.begin_place(kk), why == "", why, str(d["cost"])])
 			if pages > 1:
 				list.append(["build", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
-			list.append(["cancel", "BACK", func() -> void:
+			list.append(["back", "BACK", func() -> void:
 				page = ""
 				build_page = 0, true, "", ""])
 			return list
