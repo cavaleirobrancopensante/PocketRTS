@@ -100,7 +100,7 @@ var died_at := 0.0              # (a body) the game clock when it fell
 var final_death := false        # (a body) fell under the cross: it can't be raised again
 var knock := Vector2.ZERO       # being shoved back
 var stun_t := 0.0
-var _sep_tick := false
+var _sep_n := 0
 var _anim_dt := 0.0
 # New units
 var charge := 0.0               # Stormcaller: fills inside a Clockwork field, spent on storms
@@ -710,14 +710,47 @@ func _pistol_reload(delta: float) -> void:
 		powder -= float(Defs.PISTOL["powder"])
 
 
-## HOLD FIRE on or off (a pistol unit).
+## The Crown's firearms besides the cavalry pistol: the musket (a Musketeer or Guardsman, a
+## Dragoon in the saddle or on foot), the guns, and the balloon (its basket's muskets).
+const GUN_KINDS := ["musketeer", "dragoon", "cannon", "mortar", "balloon"]
+
+
+## Fires a gun of some kind (and so has HOLD FIRE).
+func has_gun() -> bool:
+	return has_pistol() or GUN_KINDS.has(kind)
+
+
+## The weapon in hand right now is a firearm (not the bayonet or the sabre).
+func _shooting() -> bool:
+	if has_pistol():
+		return mode == "pistol"
+	if foot_musket():
+		return mode != "bayonet"
+	return kind == "cannon" or kind == "mortar"
+
+
+## HOLD FIRE keeps this shot: he never opens fire by himself (no target of his own, nor firing
+## back), only on a target the player told him to attack (ATTACK; attack-move doesn't count).
+## The cavalry's pistol is kept even then (their one shot: they fight with the sabre). Blades
+## still fight.
+func _fire_held(e: Entity) -> bool:
+	if not hold_fire or not _shooting():
+		return false
+	if has_pistol():
+		return true
+	return not (order == "attack" and order_target == e)
+
+
+## HOLD FIRE on or off (any unit with a firearm).
 func set_hold_fire(on: bool) -> void:
-	if not has_pistol():
+	if not has_gun():
 		return
 	hold_fire = on
-	if on and mode == "pistol" and phase == "aim":
+	if on and phase == "aim" and _fire_held(target):
 		phase = ""              # (not yet fired: he holds it)
 		cooldown = maxf(cooldown, 0.2)
+	if on and target and not has_pistol() and _fire_held(target):
+		target = null           # (a target of his own: let it go)
 
 
 ## On a horse (the horse is part of him: DISMOUNT puts it beside him).
@@ -1044,7 +1077,8 @@ func _basket_fire(delta: float) -> void:
 		if p.gun_state[0] != "idle" and float(p.gun_t[0]) > 0.7:
 			p.gun_state[0] = "idle"
 		p.cooldown = maxf(p.cooldown - delta, 0.0)
-		if p.cooldown > 0.0 or stun_t > 0.0 or p.powder < 1.0:
+		# (HOLD FIRE on the balloon, or on the man himself: the basket keeps its fire)
+		if p.cooldown > 0.0 or stun_t > 0.0 or p.powder < 1.0 or hold_fire or p.hold_fire:
 			continue
 		var rng := float(p.d["range"]) * BASKET_RANGE      # shooting down from the sky reaches further
 		var best: Entity = null
@@ -1424,7 +1458,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 
 
 func _ready() -> void:
-	_sep_tick = get_instance_id() % 2 == 0
+	_sep_n = get_instance_id() % 3
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -3097,9 +3131,11 @@ func _move(want: Vector2, delta: float) -> void:
 	if work == "feeding" or work == "morphing":
 		velocity = Vector2.ZERO
 		return
-	# neighbours only nudge each other: half the units work it out on each tick
-	_sep_tick = not _sep_tick
-	if _sep_tick:
+	# neighbours only nudge each other: a unit on the move works it out every other tick, one
+	# standing still every third
+	_sep_n += 1
+	if _sep_n >= (2 if want != Vector2.ZERO or velocity != Vector2.ZERO else 3):
+		_sep_n = 0
 		_push = game.separation(self)
 	var push := _push
 	var v := want + push
@@ -3406,6 +3442,12 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 	if phase == "":
 		if cooldown > 0.0 or stun_t > 0.0:
 			return
+		# HOLD FIRE: no shot of his own (a target picked by himself is let go)
+		if _fire_held(e) and not has_pistol():
+			cooldown = 0.3
+			if target == e and order != "attack":
+				target = null
+			return
 		# out of powder: a gun can't fire (a dry Musketeer has fixed bayonets instead)
 		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0 and not has_pistol():
 			cooldown = 0.5
@@ -3430,6 +3472,10 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 	phase_t -= delta
 	if phase == "aim" and mode == "pistol" and (not pistol or hold_fire):
 		phase = ""               # (HOLD FIRE came on while he aimed: no shot)
+		return
+	if phase == "aim" and _fire_held(e):
+		phase = ""               # (HOLD FIRE: no shot)
+		cooldown = maxf(cooldown, 0.3)
 		return
 	if phase == "aim" and phase_t <= 0.0:
 		phase = "strike"
@@ -5656,6 +5702,8 @@ func _foot_dragoon(delta: float) -> void:
 
 ## The nearest enemy a musket could fire on from here (in range and seen), or null.
 func _musket_target(r: float) -> Entity:
+	if hold_fire:
+		return null              # HOLD FIRE: nothing to shoot at on his own
 	var best: Entity = null
 	var bd := INF
 	for o in game.units_near(position, r + 60.0):

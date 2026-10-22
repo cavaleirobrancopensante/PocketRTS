@@ -62,6 +62,8 @@ func _tick_projectile(delta: float) -> void:
 	else:
 		sprite.rotation = ((to - from) - Vector2(0, dh)).angle() + PI
 	if f >= 1.0:
+		if not is_instance_valid(shooter):
+			shooter = null       # (whoever fired it is gone from the game: removed, not just dead)
 		if blob:
 			game.blob_land(to, damage, splash, team, shooter)
 		elif shell:
