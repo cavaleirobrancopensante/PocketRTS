@@ -822,8 +822,9 @@ const STORM := {"cost": 70.0, "cost2": 2, "max": 100.0, "fill": 7.0, "range": 26
 ## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
 ## inside it, up to a share of each unit's health per cloud; clouds don't stack.
 ## Bloater: its acid cloud
-## (a full sac: burst damage and cloud at their biggest; each spit empties some of it)
-const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 60.0, "spit_cost": 15.0, "reach": 22.0}
+## (a full sac: burst damage and cloud at their biggest; each spit empties some of it).
+## `buildings`: the cloud eats enemy buildings inside it at this share of `dps`.
+const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 60.0, "spit_cost": 15.0, "reach": 22.0, "buildings": 0.5}
 ## Bloater out of gas: it deflates (no spitting, no bursting, slower) and fills up again.
 const DEFLATE := {"refill": 4.0, "swamp": 2.0, "slow": 0.8, "anim": 0.8}
 ## Observation Balloon as a dropship: who can ride in the basket and what a fall costs.
