@@ -1833,13 +1833,13 @@ func _soil_check(h: Building) -> void:
 		return
 	if mlog:
 		if hive:
-			mlog.add("%s: the ground around a Hive %s" % [mlog.who(h.team), "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+			mlog.add("%s: the ground around a %s %s" % [mlog.who(h.team), h.d["name"], "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 		else:
 			mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (its farms pay a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
 		if hive:
-			hud.toast("The ground around your Hive is spent: its pits yield a third. Grow a Hive on fresh ground." if level == 2
-				else "The ground around your Hive is running low (%d%% left): grow a Hive on fresh ground soon." % int(round(left * 100)), false)
+			hud.toast(("The ground around your %s is spent: its pits yield a third. Grow a Burrow on fresh ground." % h.d["name"]) if level == 2
+				else "The ground around your %s is running low (%d%% left): grow a Burrow on fresh ground soon." % [h.d["name"], int(round(left * 100))], false)
 		else:
 			hud.toast("The soil around your Town Hall is tired: expand to fresh land." if level == 2
 				else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
@@ -2982,6 +2982,72 @@ func research_done(b: Building, key: String) -> void:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
 
+# ------------------------------------------------------------------ Brood hall levels
+
+## "" if this hall can start growing into its next level (Defs.HALL_LEVELS), else why not.
+func hall_upgrade_problem(b: Building) -> String:
+	if not b.is_leveled() or not b.built or b.dead:
+		return "Can't upgrade that."
+	var nl := b.next_level()
+	if nl.is_empty():
+		return "Already a %s." % b.level_info()["name"]
+	if b.upgrade_t >= 0.0:
+		return "Already upgrading."
+	var needs := String(nl.get("needs", ""))
+	if needs != "" and not _has_built(b.team, needs):
+		return "Needs a %s first." % Defs.BUILDINGS[needs]["name"]
+	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
+	if players[b.team]["gold"] < int(nl["cost"]):
+		return "Not enough %s." % String(res[0]).to_lower()
+	if float(players[b.team]["res2"]) < float(nl.get("cost2", 0)):
+		return "Not enough %s." % String(res[1]).to_lower()
+	return ""
+
+
+## Start growing the hall into its next level: paid up front; it keeps laying, hatching and
+## taking food meanwhile. "" when started, else why not.
+func start_hall_upgrade(b: Building) -> String:
+	var why := hall_upgrade_problem(b)
+	if why != "":
+		return why
+	var nl := b.next_level()
+	players[b.team]["gold"] -= int(nl["cost"])
+	add_res2(b.team, -float(nl.get("cost2", 0)))
+	stats[b.team]["spent"] += int(nl["cost"])
+	b.upgrade_t = 0.0
+	b.queue_redraw()
+	if mlog:
+		mlog.add("%s started upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
+	return ""
+
+
+## Stop the hall's upgrade, paid back (`dying`: it was destroyed, nothing said).
+func cancel_hall_upgrade(b: Building, dying := false) -> void:
+	if b.upgrade_t < 0.0:
+		return
+	b.upgrade_t = -1.0
+	var nl := b.next_level()
+	if nl.is_empty():
+		return
+	players[b.team]["gold"] += int(nl["cost"])
+	add_res2(b.team, float(nl.get("cost2", 0)))
+	stats[b.team]["spent"] -= int(nl["cost"])
+	b.queue_redraw()
+	if mlog and not dying:
+		mlog.add("%s cancelled upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
+
+
+## The hall has grown into its next level.
+func hall_upgraded(b: Building) -> void:
+	var was := String(b.d["name"])
+	b.set_level(b.level + 1)
+	if b.team == human:
+		notify("Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
+		Sfx.announce(faction_of(b.team), "research_done", 3.0)
+	if mlog:
+		mlog.add("%s upgraded a %s to a %s" % [mlog.who(b.team), was, b.d["name"]])
+
+
 # ------------------------------------------------------------------ refits and drills
 
 var _refit_t := 0.0
@@ -4066,7 +4132,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
 		if b.visible and b.sprite and b.sprite.texture:
-			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
+			var sr := b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null
@@ -4081,7 +4147,7 @@ func crew_site_at(p: Vector2, t: int) -> Building:
 		if b.rect().grow(4).has_point(p):
 			return b
 		if b.sprite and b.sprite.texture:
-			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
+			var sr := b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null

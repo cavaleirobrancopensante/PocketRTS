@@ -772,6 +772,22 @@ func _build_card() -> Array:
 				return
 			for sb in game.selected_buildings():
 				game.demolish(sb), true, "", ""])
+	if b and b.built and b.is_leveled() and not b.next_level().is_empty():
+		# the Brood's hall grows: Burrow -> Warren -> Broodmound (it keeps working meanwhile)
+		var nl := b.next_level()
+		if b.upgrade_t >= 0.0:
+			_tip_for["STOP UPGRADE"] = ["Stop growing into a %s" % nl["name"], "Stop the upgrade: all of its price is paid back."]
+			list.append(["stop", "STOP UPGRADE", func() -> void:
+				game.cancel_hall_upgrade(b)
+				toast("Upgrade to %s cancelled: paid back." % nl["name"]), true, "", ""])
+		else:
+			var uwhy := game.hall_upgrade_problem(b)
+			var ulab := String(nl["label"])
+			_tip_for[ulab] = ["Upgrade to %s" % nl["name"], String(nl["about"]),
+				"%s  ·  %d s" % [_cost_text(int(nl["cost"]), int(nl.get("cost2", 0))), int(nl["time"])]]
+			list.append(["hive", ulab, func() -> void:
+				var w := game.start_hall_upgrade(b)
+				toast(w if w != "" else "Your %s is growing into a %s." % [b.d["name"], nl["name"]]), uwhy == "", uwhy, str(nl["cost"])])
 	if b and b.built:
 		for rk in Defs.RESEARCH:
 			var rkk: String = rk
@@ -1583,7 +1599,8 @@ func _draw_panel(font: Font) -> void:
 			if uu.order == "gather" and uu.home_mine is Building:
 				info = "Working at the %s." % (uu.home_mine as Building).d["name"]
 			if uu.kind == "grub" and uu.carrying > 0:
-				info = "Hauling food worth %d to the Hive." % uu.carrying
+				var home := game.nearest_hall(uu.position, uu.team)
+				info = "Hauling food worth %d to the %s." % [uu.carrying, home.d["name"] if home else "Burrow"]
 			elif uu.work == "feeding":
 				info = "Feeding at the pit: takes half damage."
 			elif uu.work == "bandaging":
@@ -1757,7 +1774,7 @@ func _draw_panel(font: Font) -> void:
 				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
 			elif bb.kind == "feeding_pit":
 				var gl := bb.soil_left()
-				info = "Each load is worth %.1f%s" % [game.load_value(bb), " · spent ground: a third; grow a Hive on fresh ground" if gl <= 0.0 else ""]
+				info = "Each load is worth %.1f%s" % [game.load_value(bb), " · spent ground: a third; grow a Burrow on fresh ground" if gl <= 0.0 else ""]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
 				var coal2 := bb.soil_left()
@@ -1774,10 +1791,12 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "brood_pen":
 				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
-				var nxt := "" if bb.eggs + bb.queue.size() >= Defs.EGGS_MAX else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
+				var nxt := "" if bb.eggs >= bb.eggs_max() else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
 				var gl := bb.soil_left()
-				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, Defs.EGGS_MAX, nxt, int(round(gl * 100)), int(bb.soil),
-					" spent: pits yield a third, grow a Hive on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
+				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, bb.eggs_max(), nxt, int(round(gl * 100)), int(bb.soil),
+					" spent: pits yield a third, grow a Burrow on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
+				if bb.upgrade_t >= 0.0 and not bb.next_level().is_empty():
+					info += " · Growing into a %s: %d s left" % [bb.next_level()["name"], int(ceil(float(bb.next_level()["time"]) - bb.upgrade_t))]
 			if bb.built and (e.team == game.human or game.demo):
 				var ef: Array = bb.efficiency()
 				if not ef.is_empty():
@@ -2188,7 +2207,7 @@ const CMD_TIPS := {
 	"PACK": "Pack it up to move (3 s). It can't fire while packed.",
 	"CANISTER": "Short range, a cone of musket balls: big damage, +50% against Light units, and it hits flyers.",
 	"ROUND SHOT": "The longest range in the game. The ball ploughs through a line of men, YOUR OWN TOO, and smashes buildings. Can't hit flyers.",
-	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Hive as essence. Bodies rot after 2 minutes.",
+	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as essence. Bodies rot after 2 minutes.",
 	"SACRIFICE": "The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as essence.",
 	"HOLD GAS": "Stop spitting and keep the sac full: the Bloater drifts in and bursts as a huge acid bomb.",
 	"SPIT": "Lob acid from range. Every glob uses gas, so the final burst gets smaller.",
@@ -2229,6 +2248,8 @@ func _card_tip(it: Array) -> Dictionary:
 	if _tip_for.has(lab):
 		t["title"] = _tip_for[lab][0]
 		t["body"] = _tip_for[lab][1]
+		if (_tip_for[lab] as Array).size() > 2:
+			t["stats"] = _tip_for[lab][2]
 	elif b and rk != "" and Defs.RESEARCH[rk]["at"] == b.kind:
 		var ri: Dictionary = Defs.RESEARCH[rk]
 		t["title"] = "Research: %s" % ri["name"]
@@ -2335,7 +2356,7 @@ func _res_tip(i: int) -> Dictionary:
 	var body: String = {
 		"crown": ["Pays for everything. Labourers on Farms bring in the harvests; a Town Hall's soil runs out in time.",
 			"Black powder for muskets, cannons and mortars, and for refilling soldiers. Labourers grind it at the Powder Mill."],
-		"brood": ["Pays for everything. Grubs haul food from Feeding Pits to a Hive: longer hauls pay more.",
+		"brood": ["Pays for everything. Grubs haul food from Feeding Pits to a Burrow: longer hauls pay more.",
 			"Bodies falling near a Brood Pen, grubs on HARVEST, and SACRIFICE at the Pen. Pays for the big creatures."]}[fac][i]
 	return {"title": "%s: %d" % [r[i], int(pl["gold"]) if i == 0 else int(pl["res2"])], "body": body}
 

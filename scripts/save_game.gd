@@ -69,7 +69,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
-			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
+			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
@@ -247,6 +247,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			at = _fit(game, at, Defs.BUILDINGS[bk]["size"])
 		var b := game._add_building(bk, int(bd["t"]), at, bool(bd["built"]), bool(bd.get("ghost", false)))
 		b.progress = float(bd["progress"])
+		b.set_level(int(bd.get("lv", 1)))      # (a Brood hall's level, before its health; older saves: a Burrow)
+		b.upgrade_t = float(bd.get("up", -1.0))
 		b.hp = float(bd["hp"])
 		# (research is in the queue as "@key")
 		# (and beside it what each queued Musketeer was paid to come out with; older saves: nothing)

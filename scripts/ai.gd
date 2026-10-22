@@ -474,6 +474,7 @@ func _build_up() -> void:
 			_construct("roost")
 		elif strategy == "air" and _mine("roost").is_empty() and game.requirement_met(team, "roost"):
 			_construct("roost")
+		_grow_hall()
 	else:
 		var barracks := _mine("barracks").size()
 		# the Barracks (and the palisade) need a Cottage
@@ -533,6 +534,34 @@ func _build_up() -> void:
 			_saving = gold < int(Defs.BUILDINGS[hall]["cost"])
 	elif _halls().size() >= 2 and urgent and gold < int(Defs.BUILDINGS[hall]["cost"]):
 		_saving = _halls().filter(func(h: Building) -> bool: return _land(h) > 0.0).size() < int(_s("halls"))
+
+
+## Brood: grow the main hall (the highest level, the oldest first) a level at a time: a
+## Warren once there's a Spawning Den and a first army out (with biomass to spare), a
+## Broodmound later (a Gorge Pit and 300 biomass in the bank). One upgrade at a time.
+func _grow_hall() -> void:
+	if _saving or _rushing() or game.over:
+		return
+	var main: Building = null
+	for h in _halls():
+		if not h.built or h.dead:
+			continue
+		if h.upgrade_t >= 0.0:
+			return                      # already growing
+		if main == null or h.level > main.level:
+			main = h
+	if main == null or main.next_level().is_empty():
+		return
+	var nl := main.next_level()
+	if main.level == 1:
+		var army_out := _wave_sup > 0 or _army_supply(game.army(team)) >= _lv([16, 12, 10])
+		if not army_out or _gold() < int(nl["cost"]) + _lv([200, 120, 60]):
+			return
+	elif main.level == 2:
+		if _gold() < 300 or _res2() < float(nl.get("cost2", 0)) + 20.0:
+			return
+	if game.hall_upgrade_problem(main) == "":
+		game.start_hall_upgrade(main)
 
 
 var _walled := false

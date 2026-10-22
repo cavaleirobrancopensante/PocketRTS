@@ -4,8 +4,24 @@ class_name Defs
 
 const TILE := 32
 const START_GOLD := 250
-const EGGS_MAX := 5
+const EGGS_MAX := 5               # a Burrow's eggs (an upgraded hall holds more: HALL_LEVELS)
 const EGG_TIME := 6.0
+## The Brood's main hall grows in three levels (its kind stays "hive" at every level; the
+## level is kept on the building and saved): name, health, armour and how many eggs it holds.
+## Levels 2 and 3 are upgrades on the hall's card (`label`), paid in biomass (`cost`) and
+## essence (`cost2`), taking `time` s, `needs` a finished building of that kind; the hall
+## keeps laying, hatching and taking food meanwhile, and CANCEL pays it back. `art`: its
+## sprite sheet (assets/buildings/<art>_<state>.png, tools/import_brood_halls.py); until it
+## exists the Burrow's is drawn `scale` times bigger (anchored at the bottom).
+const HALL_LEVELS := [
+	{"name": "Burrow", "hp": 1500, "armor": 1, "eggs": 5, "art": "hive", "scale": 1.0},
+	{"name": "Warren", "hp": 2000, "armor": 1, "eggs": 10, "art": "warren_hall", "scale": 1.15,
+		"label": "WARREN", "cost": 150, "cost2": 0, "time": 40.0,
+		"about": "Upgrade to Warren: up to 10 eggs, more health (2000). The hall keeps laying eggs and hatching meanwhile."},
+	{"name": "Broodmound", "hp": 2600, "armor": 2, "eggs": 15, "art": "broodmound", "scale": 1.3,
+		"label": "BROODMOUND", "cost": 250, "cost2": 50, "time": 60.0, "needs": "gorge_pit",
+		"about": "Upgrade to Broodmound: up to 15 eggs, more health (2600) and armour 2. The hall keeps laying eggs and hatching meanwhile."},
+]
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
 const AUTO_REPAIR := 8           # REPAIR autocast: how far (tiles) an idle worker looks for something to fix
@@ -200,7 +216,7 @@ const FACTIONS := {
 		"start_workers": 5, "ready": true, "max_supply": 160,
 		"res": ["Biomass", "Essence"], "econ": {"feeding_pit": 3, "brood_pen": 1},
 		"start": ["feeding_pit"],
-		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Hive: the longer the haul, the richer the food, and each Hive's ground runs out in time. Essence comes from the fallen and from offerings at the Brood Pen. Army cap 160.",
+		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Army cap 160.",
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
@@ -299,7 +315,7 @@ const UNITS := {
 		"name": "Grub", "hp": 46, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 6, "range": 18, "damage": 6, "cooldown": 1.0, "radius": 8, "from": "hive",
 		"faction": "brood", "worker": true,
-		"about": "Hauls food from Feeding Pits to a Hive (longer hauls pay more). Turns into buildings.",
+		"about": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more). Turns into buildings.",
 	},
 	"raptor": {
 		"tags": ["light"],
@@ -463,22 +479,22 @@ const BUILDINGS := {
 		"supply": 0, "sight": 7, "trains": ["cannon", "mortar", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and mortars, rigs observation balloons and builds powder wagons (each cannon, mortar and wagon needs a horse: one at the Foundry, else a free one at a breeder walks over, else a breeder trains one; the gun waits for it). Needs a Barracks.",
 	},
 	"hive": {
-		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
+		"name": "Burrow", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
 		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs; every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Its ground holds a reserve of biomass: once the pits have drawn it out they yield a third. Expand to fresh ground.",
+		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Its ground holds a reserve of biomass: once the pits have drawn it out they yield a third. Expand to fresh ground. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
-		"supply": 12, "sight": 5, "trains": [], "swamp": 7, "faction": "brood", "about": "12 more supply. Spreads swamp. Each one makes your Hives lay eggs 10% faster (up to 3).",
+		"supply": 12, "sight": 5, "trains": [], "swamp": 7, "faction": "brood", "about": "12 more supply. Spreads swamp. Each one makes your Burrows lay eggs 10% faster (up to 3).",
 	},
 	"warren": {
-		"name": "Warren", "hp": 800, "armor": 1, "cost": 150, "time": 35.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "faction": "brood", "about": "Lets the Hive hatch Raptors and Spitters.",
+		"name": "Spawning Den", "hp": 800, "armor": 1, "cost": 150, "time": 35.0, "size": Vector2i(4, 3),
+		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "faction": "brood", "about": "Lets your Burrows hatch Raptors and Spitters.",
 	},
 	"gorge_pit": {
 		"name": "Gorge Pit", "hp": 800, "armor": 1, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "requires": "warren", "faction": "brood",
-		"about": "Lets the Hive hatch Brutes, Spore Mothers and Mist Toads. Needs a Warren.",
+		"about": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads, and a Warren grow into a Broodmound. Needs a Spawning Den.",
 	},
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
@@ -524,7 +540,7 @@ const BUILDINGS := {
 	"feeding_pit": {
 		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 5, "swamp": 4, "faction": "brood",
-		"about": "Up to 5 grubs haul food from here to the nearest Hive. Farther from the Hive pays more per grub (best from about 18 to 22 tiles). Loads draw on that Hive's ground: spent ground yields a third.",
+		"about": "Up to 5 grubs haul food from here to the nearest Burrow. Farther from the Burrow pays more per grub (best from about 18 to 22 tiles). Loads draw on that Burrow's ground: spent ground yields a third.",
 	},
 	"brood_pen": {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
@@ -539,7 +555,7 @@ const BUILDINGS := {
 	"roost": {
 		"name": "Roost", "hp": 700, "armor": 1, "cost": 175, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 8, "trains": [], "swamp": 4, "requires": "warren", "faction": "brood",
-		"about": "Lets the Hive hatch Skywings. Needs a Warren.",
+		"about": "Lets your Burrows hatch Skywings. Needs a Spawning Den.",
 	},
 	"boiler": {
 		"name": "Boiler", "hp": 900, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(4, 4),
@@ -953,7 +969,7 @@ const TIPS := {
 	"balloon": "Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.",
 	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
 	# Brood units
-	"grub": "Hauls food from Feeding Pits to a Hive (longer hauls pay more) and turns into buildings.",
+	"grub": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more) and turns into buildings.",
 	"raptor": "Fast, flimsy claws. Three hatch from each egg.",
 	"spitter": "Spits acid that burns and strips armour. Two hatch from each egg.",
 	"brute": "Huge horned tank: charges in and knocks enemies back.",
@@ -974,14 +990,14 @@ const TIPS := {
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
 	# Brood buildings
-	"hive": "Lays eggs: every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby.",
-	"clutch_mound": "12 more supply. Spreads swamp; each makes Hives lay eggs 10% faster (up to 3).",
-	"warren": "Lets the Hive hatch Raptors and Spitters.",
-	"gorge_pit": "Lets the Hive hatch Brutes, Spore Mothers and Mist Toads.",
-	"feeding_pit": "Up to 5 grubs haul food from here to the Hive. Farther from the Hive pays more (best 18 to 22 tiles).",
+	"hive": "Lays eggs (up to 5): every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Upgrades to a Warren (10 eggs), then a Broodmound (15).",
+	"clutch_mound": "12 more supply. Spreads swamp; each makes Burrows lay eggs 10% faster (up to 3).",
+	"warren": "Lets your Burrows hatch Raptors and Spitters.",
+	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",
+	"feeding_pit": "Up to 5 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles).",
 	"brood_pen": "Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.",
 	"spore_vent": "Spreads swamp far around it.",
-	"roost": "Lets the Hive hatch Skywings and Bloaters.",
+	"roost": "Lets your Burrows hatch Skywings and Bloaters.",
 	# Crown research
 	"armour": "Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.",
 	"matchlock": "Unlocks the Matchlock refit: reload 10% faster. New Musketeers come out with it.",
