@@ -226,6 +226,11 @@ var _graze_t := 0.0
 var _steal_t := 0.0
 var harnessed := true            # (a cannon, mortar, wagon) its horse is hitched
 var horse_hp := 1.0              # (a rider, a gun) his horse's health share, for when it steps off
+var team_horses: Array = []      # (a gun, wagon) the extra horses in its team beyond the first: {coat, hp share}
+var horse_rid := 0               # (a horse) the queue entry or rider it's reserved for; (a rider) the horse reserved for him
+var rally_after := Vector2.INF   # (a new rider waiting for his horse) where he goes once mounted
+var _res_t := 0.0
+var _res_walk := false
 var steed: Unit = null           # (a man who got off) the horse he rode
 var auto_mount := false          # (on foot after a Dragoon's own dismount, or the computer's) remounts by himself to move
 var pouch := false               # (a musket soldier) refitted with the Shot Pouch: 20 shots
@@ -749,6 +754,17 @@ func can_gather() -> bool:
 func take_damage(amount: float, from: Entity) -> void:
 	if work == "feeding":
 		amount *= 0.5      # burrowed grubs are hard to hit
+	if not team_horses.is_empty() and amount > 0.0 and not dead:
+		# the extra horses of a gun's team take a share of the blow, the front one first
+		var share := amount * float(Defs.HORSES["team_hit"])
+		amount -= share
+		var front: Dictionary = team_horses.back()
+		front["hp"] = float(front["hp"]) - share / maxf(float(Defs.UNITS["horse"]["hp"]), 1.0)
+		if float(front["hp"]) <= 0.0:
+			team_horses.pop_back()
+			queue_redraw()
+			if team == game.human:
+				game.float_text(position + Vector2(0, -44), "a horse fell", Color(1.0, 0.6, 0.5))
 	super.take_damage(amount, from)
 	# a Winder hit while carrying a battery: it blows up
 	if kind == "winder" and carrying > 0 and not dead and from != self:
@@ -2253,6 +2269,13 @@ func _physics_process(delta: float) -> void:
 	var want := Vector2.ZERO
 	# Brood on swamp: faster, and wounds close up.
 	speed = float(d["speed"])
+	if not team_horses.is_empty():
+		speed *= 1.0 + float(Defs.HORSES["team_speed"]) * team_horses.size()     # a bigger team pulls faster
+	if horse_rid != 0 and kind == "dismounted":
+		_res_t -= delta
+		if _res_t <= 0.0:
+			_res_t = 0.5
+			_wait_horse()
 	if slow_t > 0.0:
 		slow_t -= delta
 		speed *= float(Defs.BLOAT["slow"])
@@ -4650,6 +4673,13 @@ func _draw() -> void:
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	var bw := radius * 2.4
 	draw_health(top, bw, true)
+	if team_horses.size() > 0 and visible:
+		# a gun's team: a little badge with the number of horses, right of the health bar
+		var bx := bw * 0.5 + 3.0
+		draw_rect(Rect2(bx, top - 5.0, 20.0, 12.0), Color(0.33, 0.22, 0.12, 0.9))
+		draw_rect(Rect2(bx, top - 5.0, 20.0, 12.0), Color(0.95, 0.85, 0.6, 0.9), false, 1.0)
+		draw_circle(Vector2(bx + 5.0, top + 1.0), 3.0, Color(0.95, 0.85, 0.6))    # (a horseshoe dot)
+		_draw_number(horse_count(), Vector2(bx + 14.0, top - 3.5))
 	if has_attack():
 		# the reload, only while reloading (or setting up a gun): nothing when ready
 		var rf := reload_frac()
@@ -4741,6 +4771,18 @@ func can_roll() -> bool:
 	return harnessed or not Defs.HARNESSED.has(kind)
 
 
+## (a gun or wagon) the horses in its team (0 to HORSES.team_max).
+func horse_count() -> int:
+	if not Defs.HARNESSED.has(kind):
+		return 0
+	return (1 if harnessed else 0) + team_horses.size()
+
+
+## (a gun or wagon) room for another horse in its team.
+func team_room() -> bool:
+	return Defs.HARNESSED.has(kind) and not dead and horse_count() < int(Defs.HORSES["team_max"])
+
+
 ## Can this man lead horses by the reins (Labourers, musket soldiers on foot, Messengers,
 ## Clockwork Winders)?
 func can_lead() -> bool:
@@ -4757,7 +4799,8 @@ func can_mount() -> bool:
 static func horse_free_for(h, u: Unit) -> bool:
 	return h != null and is_instance_valid(h) and h is Unit and h.kind == "horse" and not h.dead and not h.off_field \
 		and h.team == u.team and h.into == null and (h.claimed == null or h.claimed == u or not is_instance_valid(h.claimed)) \
-		and (h.leader == null or h.leader == u or not is_instance_valid(h.leader))
+		and (h.leader == null or h.leader == u or not is_instance_valid(h.leader)) \
+		and (h.horse_rid == 0 or h.horse_rid == u.horse_rid)
 
 
 ## Horses he leads or is going to fetch.
@@ -4895,6 +4938,10 @@ func do_mount(h: Unit) -> void:
 	led.erase(h)
 	horse_hp = clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)
 	coat = h.coat
+	if horse_rid != 0 and h.horse_rid != horse_rid:
+		game.release_rid(team, horse_rid)     # (another horse: the one kept for him is free again)
+	horse_rid = 0
+	_res_walk = false
 	var at := h.position
 	game.consume_unit(h)
 	position = position.lerp(at, 0.5)
@@ -5146,13 +5193,23 @@ func _horse_into(delta: float) -> Vector2:
 		graze_at = position
 		return Vector2.ZERO
 	if e is Building:
-		if e.edge_distance(position) < 4.0 or _into_t > 4.0:
+		if horse_rid != 0 and game.rid_owner(team, horse_rid) != e:
+			into = null              # (its recruit was cancelled: it stays where it is, free)
+			horse_rid = 0
+			graze_at = position
+			return Vector2.ZERO
+		var far: float = e.edge_distance(position)
+		if far < 4.0 or (_into_t > 4.0 and far < 40.0) or _into_t > 90.0:
+			if horse_rid != 0:
+				game.horse_arrived(e, self)
 			game.consume_unit(self)
 			return Vector2.ZERO
+		if far >= 40.0:
+			return _walk_to(game.approach_point(e, position), delta)    # (a reserved horse comes by itself from the breeder)
 		speed = 60.0
 		return (e.center() - position).normalized() * speed
 	var g := e as Unit
-	if g.harnessed or not Defs.HARNESSED.has(g.kind):
+	if not g.team_room():
 		into = null
 		graze_at = position
 		return Vector2.ZERO
@@ -5208,7 +5265,15 @@ func _steal_check() -> void:
 
 ## (a gun or wagon) a horse is hitched: it can move again.
 func harness(h: Unit) -> void:
-	if harnessed or dead:
+	if dead or not team_room():
+		return
+	if harnessed:
+		# another horse for the team (in front of the others)
+		team_horses.append({"coat": h.coat, "hp": clampf(h.hp / maxf(h.max_hp, 1.0), 0.05, 1.0)})
+		game.consume_unit(h)
+		queue_redraw()
+		if team == game.human:
+			game.float_text(position + Vector2(0, -40), "%d horses" % horse_count(), Color(0.9, 0.85, 0.6))
 		return
 	harnessed = true
 	coat = h.coat
@@ -5229,17 +5294,51 @@ func release_horse() -> Unit:
 		side = Vector2.DOWN
 	var spot := game.resolve_terrain(position + side * (radius + 30.0), position, 11.0, team)
 	var h := game._add_unit("horse", team, spot)
+	h.graze_at = spot
+	h.visible = visible
+	if not team_horses.is_empty():
+		# one of the extra horses first (the front one): it keeps rolling, a little slower
+		var th: Dictionary = team_horses.pop_back()
+		h.coat = String(th.get("coat", "")) if HorseCoat.COATS.has(String(th.get("coat", ""))) else HorseCoat.pick()
+		HorseCoat.apply(h)
+		h.hp = h.max_hp * clampf(float(th.get("hp", 1.0)), 0.05, 1.0)
+		queue_redraw()
+		return h
 	h.coat = coat if coat != "" else HorseCoat.pick()
 	HorseCoat.apply(h)
 	h.hp = h.max_hp * horse_hp
-	h.graze_at = spot
-	h.visible = visible
 	harnessed = false
 	if order in ["move", "amove"]:
 		cmd_stop()
 	path = PackedVector2Array()
 	HorseCoat.apply(self)
 	return h
+
+
+## A new Horseman, trained on foot: he goes to the horse kept for him (to its breeder while
+## it's still being trained), gets on and rides to his Barracks' rally point. With no horse
+## left for him (killed, stolen, its breeder lost) he stays on foot (MOUNT another).
+func _wait_horse() -> void:
+	if order == "mount" or work == "mounting":
+		return
+	var mine := game.ais.any(func(a) -> bool: return a.team == team)     # (the computer's always go)
+	if not (order == "idle" or (order == "move" and _res_walk) or mine):
+		return                           # (sent somewhere else meanwhile: he goes on when idle)
+	var h: Unit = game.reserved_horse(team, horse_rid)
+	if h:
+		if horse_free_for(h, self):
+			_res_walk = false
+			cmd_mount(h, {"o": "amove", "p": rally_after} if rally_after != Vector2.INF else {})
+		return
+	var br: Building = game.rid_breeder(team, horse_rid)
+	if br == null:
+		horse_rid = 0
+		_res_walk = false
+		return
+	var going := order == "move" and br.edge_distance(order_point) < 3.0 * Defs.TILE + 40.0
+	if (order == "idle" or mine) and not going and br.edge_distance(position) > 3.0 * Defs.TILE:
+		cmd_move(game.approach_point(br, position))
+		_res_walk = true
 
 
 # ---- drawing

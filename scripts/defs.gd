@@ -636,9 +636,17 @@ const LIGHT_ART := {"cuirassier": "horseman"}
 ## `dismount` s, a Dragoon's own dismount-to-fire and remount `quick` s; on foot after that
 ## dismount he reloads at `dragoon_reload` x a Musketeer's time. LEAD / MOUNT / HARNESS look
 ## for free horses within `fetch` tiles.
+## A gun or wagon draws a team of up to `team_max` horses: each beyond the first adds
+## `team_speed` of its speed (4 horses: +36%, a cannon 38 -> 52, still far slower than cavalry);
+## while it has extra horses they take `team_hit` of every blow it takes, front one first
+## (a horse's 60 health), and one killed drops the speed again.
+## One click trains the rider and his horse: a unit that needs a horse takes one standing at
+## its building, else a free one within `near_breeder` tiles of a Horse Breeder of ours
+## (reserved for it), else the nearest breeder queues one for it (paying for it).
 const HORSES := {"wander": 34.0,
 	"at_building": 2.0, "lead_max": 3, "guard": 2.0, "steal": 26.0, "mount": 1.5, "dismount": 1.0,
-	"quick": 0.8, "dragoon_reload": 1.3, "scan": 0.5, "fetch": 8}
+	"quick": 0.8, "dragoon_reload": 1.3, "scan": 0.5, "fetch": 8,
+	"team_max": 4, "team_speed": 0.12, "team_hit": 0.3, "near_breeder": 4.0}
 ## Who rides what: the man on foot -> the mounted unit (and back with FOOT). Armour, his locks,
 ## bayonet, pouch, kills, powder, hp share and reload go across both ways.
 const MOUNTS := {"labourer": "messenger", "musketeer": "dragoon", "dismounted": "cuirassier", "missionary": "mounted_missionary"}

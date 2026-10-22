@@ -514,6 +514,14 @@ func _econ(delta: float) -> void:
 				game.add_res2(team, game.draw_lode(self, Defs.MILL_RATE * n * delta))
 
 
+var _fetch_t := 0.0
+
+
+## The front entry is a gun or wagon whose reserved horse hasn't walked in yet.
+func _horse_pending(k: String) -> bool:
+	return not is_research(k) and k != "cuirassier" and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
+
+
 func uses_eggs() -> bool:
 	return d.get("eggs", false)
 
@@ -578,7 +586,14 @@ func _physics_process(delta: float) -> void:
 	elif built and not queue.is_empty():
 		prod_t += delta * (game.asm_mult[team] if d["faction"] == "clockwork" else 1.0)
 		var k: String = queue[0]
-		if prod_t >= entry_time(k):
+		if prod_t >= entry_time(k) and _horse_pending(k):
+			# a gun is ready, its horse isn't here yet: it comes out when the horse walks in
+			prod_t = entry_time(k)
+			_fetch_t -= delta
+			if _fetch_t <= 0.0:
+				_fetch_t = 1.0
+				game.fetch_reserved(self, 0)
+		elif prod_t >= entry_time(k):
 			prod_t = 0.0
 			var kit := take_entry(0)
 			if is_research(k):

@@ -2239,6 +2239,8 @@ func add_gold(t: int, n: int) -> void:
 func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> void:
 	if kit.has("coat") and at != null:
 		horse_back(at, kit)
+	if int(kit.get("rid", 0)) != 0 and k != "horse":
+		release_rid(t, int(kit["rid"]))     # (its horse is free again; one still at the breeder is kept)
 	if Building.is_research(k):
 		var info: Dictionary = Defs.RESEARCH[k.substr(1)]
 		players[t]["gold"] += int(info["cost"])
@@ -2336,11 +2338,19 @@ func can_train(b: Building, key: String) -> String:
 			return "No eggs ready."
 	elif b.queue.size() >= 5:
 		return "Queue is full."
-	if u.get("needs_horse", false) and free_horse_at(b) == null:
-		return "Needs a horse at the %s." % b.d["name"]
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	var price := unit_price(b.team, key)
-	if players[b.team]["gold"] < price[0]:
+	var horse_cost := 0
+	if u.get("needs_horse", false) and free_horse_at(b) == null and spare_horse(b.team, b) == null:
+		# no horse to hand: the nearest Horse Breeder trains one for him (paid now)
+		if breeder_with_room(b.team, b.center()) == null:
+			if breeders_of(b.team).is_empty():
+				return "Needs a horse: build a Horse Breeder."
+			return "The Horse Breeders' queues are full."
+		horse_cost = int(Defs.UNITS["horse"]["cost"])
+	if players[b.team]["gold"] < price[0] + horse_cost:
+		if horse_cost > 0 and players[b.team]["gold"] >= price[0]:
+			return "Not enough %s for its horse (%d more)." % [res[0].to_lower(), horse_cost]
 		return "Not enough %s." % res[0].to_lower()
 	if float(players[b.team]["res2"]) < price[1]:
 		return "Not enough %s." % res[1].to_lower()
@@ -2700,11 +2710,16 @@ func train(b: Building, key: String) -> String:
 	if Defs.UNITS[k].get("needs_horse", false):
 		# the horse at the building is his: it walks in (its coat rides out with him)
 		var h := free_horse_at(b)
+		kit = kit.duplicate()
 		if h:
-			kit = kit.duplicate()
 			kit["coat"] = h.coat
 			kit["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
 			h.walk_into(b)
+		else:
+			# one click trains both: a free horse at a breeder is kept for him, or the
+			# nearest breeder trains one (paid now); a gun's horse walks over by itself
+			kit["rid"] = new_rid()
+			_reserve_horse(b, k, int(kit["rid"]), true)
 	b.add_entry(k, kit)
 	if b.uses_eggs():
 		b.eggs -= 1
@@ -2774,8 +2789,18 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		else:
 			Sfx.play_f_once("ready", b.d["faction"], 6.0, -3.0)
 		Sfx.voice(k, "select")
+	var rid := int(kit.get("rid", 0))
+	var sk := k
+	if k == "cuirassier" and rid != 0:
+		sk = "dismounted"       # trained on foot: he goes and gets on the horse kept for him
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
-		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+		var u := _add_unit(sk, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+		if sk == "dismounted":
+			u.set_kit(kit)
+			u.horse_rid = rid
+			u.rally_after = b.rally
+			u._res_t = 0.0
+			continue
 		if not kit.is_empty():
 			u.set_kit(kit)          # (a soldier paid to come out armoured, a Musketeer with a better lock)
 		if kit.has("coat") and HorseCoat.COATS.has(String(kit["coat"])):
@@ -2800,8 +2825,17 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 				u.cmd_gather(site)
 			continue
 		if u.kind == "horse":
-			# a bought horse grazes where it stands, or walks to the RALLY and grazes there
+			# a bought horse grazes where it stands, or walks to the RALLY and grazes there;
+			# one bought for a recruit is kept for him (a gun's walks over to its Foundry)
 			u.graze_at = u.position
+			if rid != 0:
+				var owner: Object = rid_owner(b.team, rid)
+				if owner != null:
+					u.horse_rid = rid
+					if owner is Building:
+						if not (owner as Building).can_train("cuirassier"):
+							u.walk_into(owner)
+					continue
 			if b.rally != Vector2.INF:
 				u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)))
 			continue
@@ -4895,6 +4929,7 @@ func _physics_process(delta: float) -> void:
 	var vsz := get_viewport().get_visible_rect().size / camera.zoom
 	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 	_economy(delta)
+	_horse_res_tick(delta)
 	for fl in _floats:
 		fl[3] -= delta
 		fl[0] += Vector2(0, -18) * delta
@@ -5350,6 +5385,13 @@ func horses_of(t: int) -> Array:
 	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.kind == "horse")
 
 
+## "Horses: 3 (1 reserved)" for the top bar and the breeder's card.
+func horses_text(t: int) -> String:
+	var hs := horses_of(t)
+	var r := hs.filter(func(h: Unit) -> bool: return h.horse_rid != 0).size()
+	return "Horses: %d%s" % [hs.size(), (" (%d reserved)" % r) if r > 0 else ""]
+
+
 func labourers(t: int) -> Array:
 	return workers(t)
 
@@ -5549,7 +5591,7 @@ func free_horse_at(b: Building) -> Unit:
 	var best: Unit = null
 	var bd := INF
 	for u in units_near(b.center(), maxf(b.rect().size.x, b.rect().size.y) * 0.75 + reach + 20.0):
-		if u.kind != "horse" or u.dead or u.off_field or u.team != b.team or u.into != null:
+		if u.kind != "horse" or u.dead or u.off_field or u.team != b.team or u.into != null or u.horse_rid != 0:
 			continue
 		if u.claimed != null and is_instance_valid(u.claimed) and not u.claimed.dead and u.claimed.order_target == u:
 			continue
@@ -5568,6 +5610,174 @@ func horses_at(b: Building) -> int:
 		if u.into == null and b.edge_distance(u.position) <= reach + u.radius:
 			n += 1
 	return n
+
+
+## ---- one click trains the rider and his horse (Defs.HORSES near_breeder)
+
+## Our finished Horse Breeders.
+func breeders_of(t: int) -> Array:
+	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == "horse_breeder" and b.built and not b.dead)
+
+
+## The finished breeder nearest `p` with room in its queue, or null.
+func breeder_with_room(t: int, p: Vector2) -> Building:
+	var best: Building = null
+	for b in breeders_of(t):
+		if b.queue.size() < 5 and (best == null or b.center().distance_to(p) < best.center().distance_to(p)):
+			best = b
+	return best
+
+
+## A free horse of ours (not reserved, led, claimed or walking anywhere) standing within
+## HORSES.near_breeder tiles of one of our breeders, nearest `to`; or null.
+func spare_horse(t: int, to: Building) -> Unit:
+	var brs := breeders_of(t)
+	if brs.is_empty():
+		return null
+	var reach := float(Defs.HORSES["near_breeder"]) * T
+	var best: Unit = null
+	var bd := INF
+	for h in horses_of(t):
+		if h.off_field or h.into != null or h.horse_rid != 0 or h.leader != null or h.order == "move":
+			continue
+		if h.claimed != null and is_instance_valid(h.claimed) and not h.claimed.dead and h.claimed.order_target == h:
+			continue
+		if not brs.any(func(br: Building) -> bool: return br.edge_distance(h.position) <= reach + h.radius):
+			continue
+		var dd: float = h.position.distance_to(to.center())
+		if dd < bd:
+			bd = dd
+			best = h
+	return best
+
+
+var _rid_n := 0
+
+## A fresh horse reservation id (never 0).
+func new_rid() -> int:
+	_rid_n += 1
+	return int(Time.get_ticks_usec() % 1000000000) * 8 + (_rid_n % 8) + 1
+
+
+## Keep a horse for queue entry `rid` of building b (unit kind k): a spare one at a breeder,
+## else the nearest breeder queues one (`pay`: 40 gold now). A gun's horse walks over to
+## its Foundry by itself; a rider's waits at the breeder for him. False: none to be had.
+func _reserve_horse(b: Building, k: String, rid: int, pay: bool) -> bool:
+	var h := spare_horse(b.team, b)
+	if h:
+		h.horse_rid = rid
+		h.cmd_stop()
+		if k != "cuirassier":
+			h.walk_into(b)
+		return true
+	var br := breeder_with_room(b.team, b.center())
+	if br == null:
+		return false
+	if pay:
+		var c := int(Defs.UNITS["horse"]["cost"])
+		if int(players[b.team]["gold"]) < c:
+			return false
+		players[b.team]["gold"] -= c
+		stats[b.team]["spent"] += c
+	br.add_entry("horse", {"rid": rid})
+	return true
+
+
+## Who a horse reservation is for: the Barracks or Foundry whose queue entry holds it, or
+## the new rider waiting for it; null once that's gone (cancelled, dead, mounted).
+func rid_owner(t: int, rid: int) -> Object:
+	if rid == 0:
+		return null
+	for b in buildings:
+		if b.team == t and not b.dead and b.kind != "horse_breeder":
+			for kt in b.kits:
+				if kt is Dictionary and int(kt.get("rid", 0)) == rid:
+					return b
+	for u in units:
+		if u.team == t and not u.dead and u.kind != "horse" and u.horse_rid == rid:
+			return u
+	return null
+
+
+## The horse kept for reservation `rid`, or null.
+func reserved_horse(t: int, rid: int) -> Unit:
+	if rid == 0:
+		return null
+	for h in horses_of(t):
+		if h.horse_rid == rid and not h.off_field:
+			return h
+	return null
+
+
+## The breeder still training the horse for `rid`, or null.
+func rid_breeder(t: int, rid: int) -> Building:
+	for b in breeders_of(t):
+		for kt in b.kits:
+			if kt is Dictionary and int(kt.get("rid", 0)) == rid:
+				return b
+	return null
+
+
+## The reservation is over (its recruit cancelled): its horse is free again (one walking to
+## a Foundry stops where it is). A horse still in a breeder's queue comes out a spare.
+func release_rid(t: int, rid: int) -> void:
+	var h := reserved_horse(t, rid)
+	if h:
+		h.horse_rid = 0
+		if h.into is Building:
+			h.into = null
+			h.graze_at = h.position
+	for b in breeders_of(t):
+		for i in b.kits.size():
+			if b.kits[i] is Dictionary and int(b.kits[i].get("rid", 0)) == rid:
+				b.kits[i] = {}
+
+
+## A gun's reserved horse has walked into its Foundry: its queue entry gets that horse.
+func horse_arrived(b: Building, h: Unit) -> void:
+	for i in b.kits.size():
+		var kt = b.kits[i]
+		if kt is Dictionary and int(kt.get("rid", 0)) == h.horse_rid:
+			var nk: Dictionary = kt.duplicate()
+			nk.erase("rid")
+			nk["coat"] = h.coat
+			nk["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
+			b.kits[i] = nk
+			return
+
+
+## A Foundry's gun is ready but its horse isn't there yet: make sure one is coming (its own,
+## or a new spare one if it was killed or stolen, or a new one bought when there's gold).
+func fetch_reserved(b: Building, i: int) -> void:
+	var kt = b.kit_at(i)
+	var rid := int(kt.get("rid", 0)) if kt is Dictionary else 0
+	if rid == 0:
+		return
+	var h := reserved_horse(b.team, rid)
+	if h:
+		if h.into != b and h.leader == null:
+			h.walk_into(b)
+		return
+	if rid_breeder(b.team, rid) != null:
+		return
+	_reserve_horse(b, String(b.queue[i]), rid, true)
+
+
+var _res_chk := 0.0
+
+## Every 2 s: a horse kept for a recruit that's gone (cancelled, killed, mounted elsewhere)
+## is free again.
+func _horse_res_tick(delta: float) -> void:
+	_res_chk -= delta
+	if _res_chk > 0.0:
+		return
+	_res_chk = 2.0
+	for h in units:
+		if h.kind == "horse" and not h.dead and h.horse_rid != 0 and rid_owner(h.team, h.horse_rid) == null:
+			h.horse_rid = 0
+			if h.into is Building:
+				h.into = null
+				h.graze_at = h.position
 
 
 ## A cancelled recruit's horse (its coat and health in the queue entry's kit) walks back out.
@@ -5589,6 +5799,7 @@ func steal_horse(h: Unit, by: Unit) -> void:
 	h.leader = null
 	h.claimed = null
 	h.into = null
+	h.horse_rid = 0
 	h.cmd_stop()
 	h.graze_at = h.position
 	h._graze_goal = Vector2.INF
@@ -5622,7 +5833,7 @@ func _horse_command(us: Array, e, p: Vector2, queued: bool) -> bool:
 		u.give({"o": "mount" if not mounts.is_empty() else "lead", "e": e}, queued)
 		_ping(p, Color(0.9, 0.8, 0.5))
 		return true
-	if e is Unit and Defs.HARNESSED.has(e.kind) and not e.harnessed:
+	if e is Unit and Defs.HARNESSED.has(e.kind) and e.team_room():
 		# a horse selected, or led by a man selected, goes and is hitched
 		var h: Unit = null
 		for u in us:
@@ -5679,13 +5890,15 @@ func mount_order(list: Array) -> int:
 	return n
 
 
-## HARNESS: each gun or wagon without a horse gets the nearest free one walking over.
+## HARNESS: each gun or wagon with room in its team (those without a horse first) gets the
+## nearest free horse walking over: one more each time.
 func harness_order(list: Array) -> int:
 	var taken: Array = []
 	var n := 0
-	for g in list:
-		if not (g is Unit) or not Defs.HARNESSED.has(g.kind) or g.harnessed:
-			continue
+	var guns: Array = list.filter(func(g) -> bool: return g is Unit and Defs.HARNESSED.has(g.kind) and g.team_room() \
+		and not units.any(func(h: Unit) -> bool: return h.kind == "horse" and h.into == g))
+	guns.sort_custom(func(a: Unit, c: Unit) -> bool: return a.horse_count() < c.horse_count())
+	for g in guns:
 		var h: Unit = g.nearest_free_horse(float(Defs.HORSES["fetch"]), taken)
 		if h:
 			taken.append(h)
