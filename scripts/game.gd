@@ -587,6 +587,16 @@ func rebuild_map(cells: String, props: Array = []) -> void:
 	_render_ground()
 
 
+## Map editor: only the decorations changed (the ground picture stays).
+func refresh_props(props: Array) -> void:
+	for i in mapgen._prop_at:
+		solid[i] = 0
+		_terrain_kind.erase(i)
+	mapgen.place_props(props)
+	astar = AStarGrid2D.new()
+	_setup_astar()
+
+
 var _tile_cache := {}
 var _tile_avg := {}
 
