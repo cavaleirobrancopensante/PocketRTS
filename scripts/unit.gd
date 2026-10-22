@@ -100,7 +100,7 @@ var died_at := 0.0              # (a body) the game clock when it fell
 var final_death := false        # (a body) fell under the cross: it can't be raised again
 var knock := Vector2.ZERO       # being shoved back
 var stun_t := 0.0
-var _sep_tick := false
+var _sep_n := 0
 var _anim_dt := 0.0
 # New units
 var charge := 0.0               # Stormcaller: fills inside a Clockwork field, spent on storms
@@ -1363,7 +1363,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 
 
 func _ready() -> void:
-	_sep_tick = get_instance_id() % 2 == 0
+	_sep_n = get_instance_id() % 3
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -3031,9 +3031,11 @@ func _move(want: Vector2, delta: float) -> void:
 	if work == "feeding" or work == "morphing":
 		velocity = Vector2.ZERO
 		return
-	# neighbours only nudge each other: half the units work it out on each tick
-	_sep_tick = not _sep_tick
-	if _sep_tick:
+	# neighbours only nudge each other: a unit on the move works it out every other tick, one
+	# standing still every third
+	_sep_n += 1
+	if _sep_n >= (2 if want != Vector2.ZERO or velocity != Vector2.ZERO else 3):
+		_sep_n = 0
 		_push = game.separation(self)
 	var push := _push
 	var v := want + push
