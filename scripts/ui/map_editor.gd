@@ -103,6 +103,7 @@ var _redo: Array = []
 var _last_touch := Vector2.INF
 var _new_size := Vector2i(120, 100)
 var _left_scroll := 0
+var _drawn_xf := Transform2D()  # the view the overlay was last drawn for (phones redraw only on change)
 
 
 func _ready() -> void:
@@ -289,6 +290,15 @@ func _build_ui() -> void:
 	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_ui)
 	var vp := get_viewport_rect().size
+	# dark backing under the top bar and the tools, so they stay readable over a zoomed-in
+	# map (and nothing is painted by a click that just misses a button)
+	for r in [Rect2(0, 0, vp.x, 50), Rect2(0, 50, 236, vp.y - 50)]:
+		var bk := ColorRect.new()
+		bk.color = Color(0.06, 0.05, 0.04, 0.82)
+		bk.position = r.position
+		bk.size = r.size
+		bk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ui.add_child(bk)
 	# top bar
 	var top := HBoxContainer.new()
 	top.position = Vector2(8, 6)
@@ -771,12 +781,12 @@ func _build_problems(vp: Vector2) -> void:
 	p.add_child(v)
 	var faults := _faults()
 	var warns := problems.size() - faults
-	var head := "ALL GOOD" if problems.is_empty() else "%d PROBLEM%s" % [faults, "" if faults == 1 else "S"]
-	if warns > 0:
-		head += ", %d WARNING%s" % [warns, "" if warns == 1 else "S"] if faults > 0 else ("%d WARNING%s" % [warns, "" if warns == 1 else "S"])
-		if faults == 0:
-			head = "%d WARNING%s" % [warns, "" if warns == 1 else "S"]
+	# (two lines when there are both: one doesn't fit the panel)
+	var plural := func(n: int, what: String) -> String: return "%d %s%s" % [n, what, "" if n == 1 else "S"]
+	var head: String = "ALL GOOD" if problems.is_empty() else (plural.call(faults, "PROBLEM") if faults > 0 else plural.call(warns, "WARNING"))
 	v.add_child(UiStyle.heading(head, 20, UiStyle.BAD if faults > 0 else (UiStyle.TRIM if warns > 0 else UiStyle.GOOD)))
+	if faults > 0 and warns > 0:
+		v.add_child(UiStyle.heading("and " + String(plural.call(warns, "warning")).to_lower(), 15, UiStyle.TRIM))
 	if problems.is_empty():
 		var ok := UiStyle.text("Every start can reach the others, each main has a ramp to wall, no decorations in the way, room for every economy.", 15, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 		ok.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1288,6 +1298,16 @@ func _draw() -> void:
 		var r: Rect2 = cell_rect.call(c)
 		draw_rect(r, Color(1, 0.15, 0.1, 0.35))
 		draw_rect(r, Color(1, 0.2, 0.15, 0.9), false, 1.5)
+	# CHECK's findings
+	if show_problems:
+		for i in problems.size():
+			var pr: Dictionary = problems[i]
+			var col := Color(1, 0.25, 0.2) if not pr["warn"] else Color(1, 0.8, 0.3)
+			var sel := i == problem_sel
+			for c in pr["cells"]:
+				var r: Rect2 = cell_rect.call(c)
+				draw_rect(r, Color(col, 0.45 if sel else 0.2))
+				draw_rect(r, Color(col, 1.0 if sel else 0.6), false, 2.0 if sel else 1.0)
 	# mirror lines
 	var mid := xf * (Vector2(W, H) * t * 0.5)
 	var tl := xf * Vector2.ZERO
@@ -1313,22 +1333,18 @@ func _draw() -> void:
 		draw_rect(r, Color(1, 0.85, 0.4, 0.15))
 		draw_rect(r, Color(1, 0.85, 0.4, 0.8), false, 2.0)
 		_text(r.get_center() + Vector2(0, 6), "HALL", clampi(int(16 * sc.x * 1.6), 10, 18), Color(1, 0.9, 0.6))
-	# CHECK's findings (over the spots: many of them are about a spot); the picked one
-	# also gets a frame round it, so it shows even zoomed far out
-	if show_problems:
-		for i in problems.size():
-			var pr: Dictionary = problems[i]
-			var col := Color(1, 0.25, 0.2) if not pr["warn"] else Color(1, 0.8, 0.3)
-			var sel := i == problem_sel
-			var box := Rect2()
-			for c in pr["cells"]:
-				var r: Rect2 = cell_rect.call(c)
-				box = r if box.size == Vector2.ZERO else box.merge(r)
-				draw_rect(r, Color(col, 0.5 if sel else 0.25))
-				draw_rect(r, Color(col, 1.0 if sel else 0.7), false, 2.0 if sel else 1.0)
-			if sel and box.size != Vector2.ZERO:
-				draw_rect(box.grow(8.0), Color(0, 0, 0, 0.6), false, 5.0)
-				draw_rect(box.grow(8.0), col, false, 3.0)
+	# the picked CHECK finding gets a frame round it, over the spots (many findings are
+	# about a spot), so it shows even zoomed far out
+	if show_problems and problem_sel >= 0 and problem_sel < problems.size():
+		var pr: Dictionary = problems[problem_sel]
+		var col := Color(1, 0.25, 0.2) if not pr["warn"] else Color(1, 0.8, 0.3)
+		var box := Rect2()
+		for c in pr["cells"]:
+			var r: Rect2 = cell_rect.call(c)
+			box = r if box.size == Vector2.ZERO else box.merge(r)
+		if box.size != Vector2.ZERO:
+			draw_rect(box.grow(8.0), Color(0, 0, 0, 0.6), false, 5.0)
+			draw_rect(box.grow(8.0), col, false, 3.0)
 	# map edge
 	draw_rect(Rect2(tl, br - tl), UiStyle.TRIM, false, 2.0)
 	# the brush (under the mouse, or where the finger last was)
@@ -1400,3 +1416,10 @@ func _text(p: Vector2, s: String, sz: int, col: Color) -> void:
 func _process(_d: float) -> void:
 	if Settings.pc():
 		queue_redraw()
+	elif game:
+		# a phone has no mouse to follow, but the spots, outlines and brush must follow the
+		# view when it moves (two-finger pan and zoom, a jump to a CHECK finding, NEW, LOAD)
+		var xf := game.get_viewport().get_canvas_transform()
+		if xf != _drawn_xf:
+			_drawn_xf = xf
+			queue_redraw()
