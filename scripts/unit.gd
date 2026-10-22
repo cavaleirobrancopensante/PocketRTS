@@ -234,6 +234,8 @@ func _draw_number(v: int, at: Vector2) -> void:
 
 
 var _rip: Tween                  # (a body) lying there, then fading away
+var rip_from := 0.0              # (a body) when it settled, and how long it lies (its bar)
+var rip_len := 0.0
 
 
 func _rest_in_peace() -> void:
@@ -244,6 +246,10 @@ func _rest_in_peace() -> void:
 	var lie := float(Defs.HARVEST["time"]) if game.corpses.has(self) else CORPSE_TIME
 	if game.fallen.has(self):
 		lie = maxf(lie, float(Defs.REVIVE["window"]) - corpse_t)
+	rip_from = game.clock
+	rip_len = lie
+	if not game.bodies.has(self):
+		game.bodies.append(self)
 	_rip = create_tween()
 	_rip.tween_interval(lie)
 	_rip.tween_callback(func() -> void:
@@ -259,6 +265,7 @@ func revive() -> void:
 	if _rip and _rip.is_valid():
 		_rip.kill()
 	_rip = null
+	game.bodies.erase(self)
 	game.corpses.erase(self)
 	game.fallen.erase(self)
 	dead = false
