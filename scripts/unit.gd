@@ -3476,7 +3476,7 @@ func _strike(e: Entity) -> void:
 		game.pistol_shot(self, e, float(Defs.PISTOL["damage"]) * vet2)
 		return
 	# every musket or cannon shot uses one of the shots it carries
-	if _pmax > 0.0:
+	if _pmax > 0.0 and not has_pistol():
 		if powder < 1.0:
 			return    # no powder: the shot never goes off
 		powder -= 1.0

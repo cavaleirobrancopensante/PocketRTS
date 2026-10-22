@@ -2112,14 +2112,16 @@ func _draw_panel(font: Font) -> void:
 				_ci.draw_rect(rb, Color(0, 0, 0, 0.6))
 				_ci.draw_rect(Rect2(rb.position, Vector2(rb.size.x * rf, rb.size.y)), Color(1.0, 0.85, 0.3) if rf >= 1.0 else Color(0.92, 0.92, 0.85))
 		if e is Unit and (e as Unit).has_pistol() and (e.team == game.human or game.demo):
-			# the pistol: a little pistol by the health, bright loaded, dim and crossed empty
-			_draw_pistol(hb.position + Vector2(-26, -2), (e as Unit).pistol)
+			# the pistol: a little pistol after the health figures, bright loaded, dim and crossed empty
+			_draw_pistol(Vector2(hb.end.x + 16 + font.get_string_size(hpt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, hb.position.y), (e as Unit).pistol)
 		if e is Unit and (e as Unit).kills > 0:
 			# veterancy: kills and the damage they've earned
 			var ku := e as Unit
 			var bonus := minf(ku.kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
 			var vt := "%s%d kill%s · +%d%% damage" % ["Veteran · " if not ku.is_worker() else "", ku.kills, "" if ku.kills == 1 else "s", int(round(bonus * 100.0))]
 			var vx := hb.position.x + hb.size.x + 22 + font.get_string_size(hpt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+			if ku.has_pistol() and (e.team == game.human or game.demo):
+				vx += 30.0           # (after the pistol)
 			var room := r.end.x - 36 - vx
 			if UiStyle.bold_font().get_string_size(vt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x > room:
 				vt = "%d kills +%d%%" % [ku.kills, int(round(bonus * 100.0))]
@@ -2442,6 +2444,8 @@ func _draw_card(font: Font) -> void:
 		var lsz := 11
 		while lsz > 8 and UiStyle.bold_font().get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > br.size.x - 5:
 			lsz -= 1
+		if UiStyle.bold_font().get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > br.size.x - 5:
+			lab = lab.replace("ARMOURED ", "ARM. ")      # (Armoured Dragoon / Officer: still too long)
 		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), lab, lsz, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
 		if it[5] != "":
 			var cw := font.get_string_size(it[5], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 8

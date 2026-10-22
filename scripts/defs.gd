@@ -480,7 +480,7 @@ const BUILDINGS := {
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier", "dragoon", "dismounted"], "requires": "cottage", "faction": "crown", "about": "Trains Musketeers (with a Powder Mill), Horsemen and Officers (with a Horse Breeder; a Horseman's horse comes in the same click) and Dragoons (both: a Musketeer and his horse); with Armour, the armoured ones too. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "dragoon", "cuirassier", "dismounted"], "requires": "cottage", "faction": "crown", "about": "Trains Musketeers (with a Powder Mill), Horsemen and Officers (with a Horse Breeder; a Horseman's horse comes in the same click) and Dragoons (both: a Musketeer and his horse); with Armour, the armoured ones too. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	},
 	"armoury": {
 		"name": "Armoury", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
