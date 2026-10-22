@@ -1688,7 +1688,7 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "town_hall" and (e.team == game.human or game.demo):
 				var soil := bb.soil_left()
 				var salt := bb.lode_left()
-				info = "Soil: %d%% (%d gold)%s · Saltpetre: %d%% (%d powder)%s · allows 2 Farms and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
+				info = "Soil: %d%% (%d gold)%s · Saltpetre: %d%% (%d powder)%s · allows 1 Farm, 1 Horse Breeder and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
 					" spent: farms pay a third" if soil <= 0.0 else (" running low" if soil < Defs.SOIL_LOW else ""),
 					int(round(salt * 100)), int(bb.lode), " spent: the Mill grinds at a quarter" if salt <= 0.0 else (" running low" if salt < Defs.SOIL_LOW else "")]
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
