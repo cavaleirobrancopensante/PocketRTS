@@ -1042,13 +1042,14 @@ const BUILDING_SIZE := {
 	"clutch_mound": Vector2i(74, 70),
 	"warren": Vector2i(130, 110),
 	"gorge_pit": Vector2i(126, 124),
-	"town_hall": Vector2i(150, 199),
+	"town_hall": Vector2i(152, 194),
 	"cottage": Vector2i(72, 91),
-	"barracks": Vector2i(128, 140),
+	"barracks": Vector2i(140, 140),
 	"foundry": Vector2i(118, 171),
 	"capacitor_works": Vector2i(78, 96),
 	"brood_pen": Vector2i(134, 116),
 	"engine_hall": Vector2i(158, 191),
+	"horse_breeder": Vector2i(136, 136),
 }
 
 const NATURE := ["tree_0", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "rock_0", "rock_1", "rock_2", "rock_3", "rock_4", "rock_5"]

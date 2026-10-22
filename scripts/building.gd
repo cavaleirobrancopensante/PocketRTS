@@ -161,6 +161,48 @@ const MILL_ART := {
 	"arm": Color(0.56, 0.36, 0.17), "arm_edge": Color(0.17, 0.10, 0.05),
 }
 
+## The Town Hall's bell (tools/import_buildings_v2.py makes the art): it hangs in the belfry's
+## right-hand opening and swings while the hall trains Labourers (its queue isn't empty), one
+## frame every `dt` s (straight, tilted, straight, tilted the other way); idle it hangs still
+## (frame 0: a swing under way finishes first). Per state that keeps the belfry: where the
+## yoke's top middle (`pivot` in the strip's cell) hangs, from the base point. The belfry
+## round the opening (its pillars and roof: `belfry` % state) is drawn over it.
+const BELL_ART := {
+	"strip": "res://assets/buildings/town_hall_bell.png", "frames": 4, "pivot": Vector2(6, 0),
+	"belfry": "res://assets/buildings/town_hall_belfry_%s.png",
+	"states": {"built": Vector2(10.7, -148.1), "damaged": Vector2(7.1, -138.5)},
+	"dt": 0.25, "sound": "select/town_hall", "volume": -14.0,
+}
+
+## The Barracks' drill (tools/import_buildings_v2.py shrinks the Musketeer's strips to the
+## building): while it trains something a Musketeer of its side stands on the yard's empty patch
+## (`feet`, from the base point) facing the straw target (`target`: its middle) and shoots at
+## it every `every` s: he aims, fires (a little smoke at the `muzzle`, from his feet, and a puff
+## on the target; no damage, a very quiet shot), reloads and stands. Idle: he isn't there.
+## `anims`: [strip, seconds per frame] in the order he plays them; the frame counts are the
+## Musketeer's (ArtData).
+const DRILL_ART := {
+	"strip": "res://assets/buildings/drill_musketeer/%s.png", "anchor": Vector2(32.4, 24.5),
+	"states": {"built": {"feet": Vector2(15, -31), "target": Vector2(55, -51)},
+		"damaged": {"feet": Vector2(16, -31), "target": Vector2(53, -51)}},
+	"anims": [["aim_e", 0.25], ["fire_e", 0.15], ["reload_e", 0.2], ["idle_e", 0.35]],
+	"every": 3.0, "muzzle": Vector2(22, -15), "volume": -22.0,
+}
+
+## The Horse Breeder's paddock (tools/import_buildings_v2.py shrinks the riderless horse's strips
+## and coat masks to the building): while it trains (horses or anything in its queue) `busy`
+## horses walk slowly about inside the paddock (`centre`, `radius`: an ellipse on the ground
+## from the base point, behind the fences' top rails), stopping now and then to stand or graze;
+## idle, `idle` horse stands still. Loose horses, nobody's: team-neutral, each in a coat picked
+## by the building's cell. `anchor`: the hooves in the strip's cell.
+const PADDOCK_ART := {
+	"strip": "res://assets/buildings/paddock_horse/%s.png", "mask": "res://assets/buildings/paddock_horse/mask/%s.png",
+	"anchor": Vector2(20.6, 27.7),
+	"states": {"built": {"centre": Vector2(14.2, -35.1), "radius": Vector2(22.0, 5.3)},
+		"damaged": {"centre": Vector2(20.6, -34.0), "radius": Vector2(18.4, 5.0)}},
+	"busy": 2, "idle": 1, "speed": 6.0, "walk_fps": 5.0, "graze_fps": 1.2, "rest": Vector2(1.5, 4.5),
+}
+
 ## The tip of each Clockwork tower, where its lightning lives.
 const TOWER_TOP := {"clocktower": Vector2(0.52, 0.03), "spring_tower": Vector2(0.6, 0.05), "charging_pylon": Vector2(0.52, 0.08)}
 
