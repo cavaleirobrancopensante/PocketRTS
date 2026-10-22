@@ -1,8 +1,8 @@
 """The mortar's fire frames draw a puff of smoke over the right-hand gunner's helmet (left
 over from the source art): cut it, keeping the mortar's own smoke column and the helmet.
 For each fire frame: the right-hand man is found by his red coat; above the top of his
-helmet (TOP, read off the art) everything in his column, right of the mortar's smoke, goes,
-and in the dome's top rows only the dome itself stays.
+helmet (TOP, read off the art) the puff, a blob of its own right of the mortar's plume,
+goes, and in the dome's top rows only the dome itself stays.
 Re-runnable.  python3 tools/fix_mortar_smoke.py"""
 import os
 import numpy as np
@@ -30,19 +30,32 @@ def fix(path):
         coat = lab == (int(np.argmax(sizes)) + 1)
         ys, xs = np.nonzero(coat)
         top, x0, x1 = ys.min(), xs.min(), xs.max()
-        lo, hi = max(x0 - 8, 92 if k == 0 else 86), min(x1 + 10, W)   # (frame 0: the mortar's own smoke is close)
         t = TOP[os.path.basename(path)[5:-4]][k]
-        # the dome's middle: its dark outline in the rows just under its top
-        dome = f[t:t + 6, lo:hi]
+        # above the helmet: the gunner's puff is its own blob right of the mortar's plume
+        # (when the two touch, only its part right of the plume goes); the mortar's
+        # plume and the little wisps over its mouth stay
+        above = f[:t, :, 3] > 0
+        lab, n = ndimage.label(above, structure=np.ones((3, 3)))
+        for i, o in enumerate(ndimage.find_objects(lab)):
+            blob = lab[o] == i + 1
+            if o[1].start >= 87:
+                drop = blob
+            elif o[1].stop > 100:
+                drop = blob.copy()
+                drop[:, :max(0, 94 - o[1].start)] = False
+            else:
+                continue
+            region = f[o][..., 3]
+            cut += int((region[drop] > 0).sum())
+            region[drop] = 0
+        # the dome's top rows: only the dome stays (smoke hugging its sides goes)
+        dome = f[t:t + 6, 90:W]
         mx = dome[..., :3].max(-1)
         dy, dx = np.nonzero((dome[..., 3] > 0) & (mx < 75))
-        cx = lo + (int(round(dx.mean())) if dx.size else (hi - lo) // 2)
-        for y in range(0, t + 4):
-            for x in range(lo, hi):
-                if f[y, x, 3] == 0:
-                    continue
-                keep = y >= t and abs(x - cx) <= (3 if y == t else 4)
-                if not keep:
+        cx = 90 + (int(round(dx.mean())) if dx.size else (x0 + x1) // 2 - 90)
+        for y in range(t, t + 4):
+            for x in range(cx - 8, min(cx + 9, W)):
+                if f[y, x, 3] and abs(x - cx) > (3 if y == t else 4):
                     f[y, x, 3] = 0
                     cut += 1
     Image.fromarray(im).save(path)
