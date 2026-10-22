@@ -104,7 +104,7 @@ func _run() -> void:
 	check(b != null and b.ghost and _gold() == g0 - cost, "placed: a ghost, %d paid" % cost)
 	await wait(0.6)
 	lab.give({"o": "move", "p": home + Vector2(-260, 0)})
-	var gone := await wait_for(func() -> bool: return b.dead, 4.0)
+	var gone := await wait_for(func() -> bool: return b.dead, 0.5)
 	check(gone and _gold() == g0 and not g.buildings.has(b), "(a) Labourer ordered elsewhere: the ghost goes, all refunded (%d / %d)" % [_gold(), g0])
 
 	# b: the Labourer is killed on the way
@@ -112,7 +112,7 @@ func _run() -> void:
 	b = g.place_building(0, "cottage", spot, [lab])
 	await wait(0.4)
 	lab.take_damage(99999.0, null)
-	gone = await wait_for(func() -> bool: return b.dead, 4.0)
+	gone = await wait_for(func() -> bool: return b.dead, 0.5)
 	check(gone and _gold() == g0, "(b) Labourer killed: the ghost goes, all refunded (%d / %d)" % [_gold(), g0])
 
 	# c: the Labourer is stopped
@@ -121,13 +121,13 @@ func _run() -> void:
 	b = g.place_building(0, "cottage", spot, [lab])
 	await wait(0.4)
 	lab.cmd_stop()
-	gone = await wait_for(func() -> bool: return b.dead, 4.0)
+	gone = await wait_for(func() -> bool: return b.dead, 0.5)
 	check(gone and _gold() == g0, "(c) Labourer stopped: the ghost goes, all refunded (%d / %d)" % [_gold(), g0])
 
 	# d: nobody sent at all
 	g0 = _gold()
 	b = g.place_building(0, "cottage", spot, [])
-	gone = await wait_for(func() -> bool: return b.dead, 4.0)
+	gone = await wait_for(func() -> bool: return b.dead, 0.5)
 	check(gone and _gold() == g0, "(d) placed with no Labourer: the ghost goes, refunded")
 
 	# e: Shift-queued behind a long walk: it stays while queued
@@ -180,10 +180,10 @@ func _run() -> void:
 	g0 = _gold()
 	mason.give({"o": "move", "p": home + Vector2(-400, 0)})
 	await wait(4.0)
-	var ghosts_gone := pieces.filter(func(x: Building) -> bool: return x.dead).size()
-	var standing := pieces.filter(func(x: Building) -> bool: return not x.dead)
+	var ghosts_gone := pieces.filter(func(x) -> bool: return not is_instance_valid(x) or x.dead).size()
+	var standing := pieces.filter(func(x) -> bool: return is_instance_valid(x) and not x.dead)
 	var refunded := _gold() - g0
-	check(ghosts_gone > 0 and standing.all(func(x: Building) -> bool: return not x.ghost) \
+	check(ghosts_gone > 0 and standing.all(func(x) -> bool: return not x.ghost) \
 			and refunded == ghosts_gone * int(Defs.BUILDINGS["wall"]["cost"]),
 			"(i) Labourer sent away: the %d unstarted pieces go, %d refunded; %d begun or built stay" % [ghosts_gone, refunded, standing.size()])
 
@@ -195,7 +195,7 @@ func _run() -> void:
 	n = g.place_line(0, "wall", row[0], row[1], [mason], true)
 	pieces = g.buildings.filter(func(x: Building) -> bool: return x.kind == "wall" and x.team == 0 and not x.dead)
 	await wait(3.0)
-	alive = pieces.filter(func(x: Building) -> bool: return not x.dead).size()
+	alive = pieces.filter(func(x) -> bool: return is_instance_valid(x) and not x.dead).size()
 	check(n == 12 and alive == 12, "(j) Shift-queued wall: every piece stays while queued (%d / 12)" % alive)
 	_end()
 
