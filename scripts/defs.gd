@@ -394,12 +394,12 @@ const BUILDINGS := {
 	},
 	# Crown fortifications: one tile each, laid in a line (pick the start, then the end).
 	"wall": {
-		"name": "Stone Wall", "hp": 450, "armor": 4, "cost": 10, "time": 4.0, "size": Vector2i(1, 1),
+		"name": "Stone Wall", "hp": 300, "armor": 2, "cost": 25, "time": 8.0, "size": Vector2i(1, 1),
 		"supply": 0, "sight": 3, "trains": [], "line": true, "faction": "crown",
 		"about": "Blocks the way. Lay it in a line: pick where it starts, then where it ends. Wall off your ramp and keep a gate.",
 	},
 	"gate": {
-		"name": "Gate", "hp": 600, "armor": 4, "cost": 25, "time": 6.0, "size": Vector2i(1, 1),
+		"name": "Gate", "hp": 300, "armor": 2, "cost": 50, "time": 12.0, "size": Vector2i(1, 1),
 		"supply": 0, "sight": 4, "trains": [], "line": true, "gate": true, "faction": "crown",
 		"about": "A piece of wall that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own wall to swap a piece for a gate. It faces the way the wall runs; ROTATE turns it by hand.",
 	},

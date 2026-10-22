@@ -143,11 +143,18 @@ const BIOMES := {
 }
 
 
-## The size in cells of a map (custom maps and the classic ones: 84 x 60).
+## The size in cells of a map: a named map's own, a custom map's (saved with it; older
+## ones are 84 x 60), the editor's blank "blank:WxH", the classic maps 84 x 60.
 static func size_of(map_id: String) -> Vector2i:
 	if MapData.NAMED.has(map_id):
 		var sz: Array = MapData.NAMED[map_id]["size"]
 		return Vector2i(int(sz[0]), int(sz[1]))
+	if map_id.begins_with("custom:"):
+		return custom_size(load_custom(map_id.substr(7)))
+	if map_id.begins_with("blank:"):
+		var p := map_id.substr(6).split("x")
+		if p.size() == 2:
+			return Vector2i(clampi(int(p[0]), 16, MAX_SIZE.x), clampi(int(p[1]), 16, MAX_SIZE.y))
 	return Vector2i(84, 60)
 
 
@@ -161,12 +168,16 @@ static func all_ids() -> Array:
 static func mode_of(map_id: String) -> String:
 	if MapData.NAMED.has(map_id):
 		return String(MapData.NAMED[map_id]["mode"])
+	if map_id.begins_with("custom:"):
+		return custom_mode(load_custom(map_id.substr(7)))
 	return "1v1"
 
 
 static func max_players(map_id: String) -> int:
 	if MapData.NAMED.has(map_id):
 		return int(String(MapData.NAMED[map_id]["mode"]).substr(0, 1)) * 2
+	if map_id.begins_with("custom:"):
+		return (load_custom(map_id.substr(7)).get("starts", []) as Array).size()
 	return 4
 
 
@@ -196,22 +207,30 @@ static func is_pool(map_id: String) -> bool:
 	return false
 
 
-## The built-in maps of a random pool that hold `n` players.
+## The maps of a random pool that hold `n` players: the built-in ones, and your own maps
+## of those modes that passed the editor's CHECK when they were saved.
 static func pool_maps(pool_id: String, n: int) -> Array:
 	var modes: Array = ["1v1", "2v2", "3v3", "4v4"]
 	for p in POOLS:
 		if p[0] == pool_id:
 			modes = p[2]
-	return all_ids().filter(func(id: String) -> bool: return modes.has(mode_of(id)) and max_players(id) >= n)
+	var out: Array = all_ids().filter(func(id: String) -> bool: return modes.has(mode_of(id)) and max_players(id) >= n)
+	for nm in custom_names():
+		var d := load_custom(nm)
+		if bool(d.get("checked", false)) and modes.has(custom_mode(d)) and (d.get("starts", []) as Array).size() >= n:
+			out.append("custom:" + nm)
+	return out
 
 
-## "Ashford Crossing (1v1, 96x96)"
+## "Ashford Crossing (1v1, 96x96)", "My map (your map, 2v2, 120x100)"
 static func label(map_id: String) -> String:
 	for p in POOLS:
 		if p[0] == map_id:
 			return String(p[1])
 	if map_id.begins_with("custom:"):
-		return "%s (your map)" % map_id.substr(7)
+		var d := load_custom(map_id.substr(7))
+		var cs := custom_size(d)
+		return "%s (your map, %s, %dx%d)" % [map_id.substr(7), custom_mode(d), cs.x, cs.y]
 	var sz := size_of(map_id)
 	return "%s (%s, %dx%d)" % [display_name(map_id), mode_of(map_id), sz.x, sz.y]
 
@@ -250,7 +269,7 @@ func _init(game: Game) -> void:
 
 ## Fills the game's grids. Returns [layout, biome].
 func generate(map_id: String) -> Array:
-	if map_id == "blank":
+	if map_id == "blank" or map_id.begins_with("blank:"):
 		g.map_name = "New map"
 		biome_a = "grass"
 		biome_b = "grass"
@@ -321,10 +340,119 @@ func generate(map_id: String) -> Array:
 
 # ------------------------------------------------------------------ custom maps (map editor)
 
-## One letter per cell: . low, h high, r ramp, w water, f ford, t/T tree (low/high), k/K rock.
-## (Maps saved with "deposits", the rock outcrops brought in with v0.7.32, still load: they're ignored.)
+## One letter per cell: . low, h high, r ramp, w water (lava in a volcanic biome), f ford,
+## t/T tree (low/high), k/K rock. (Maps saved with "deposits", the rock outcrops brought in
+## with v0.7.32, still load: they're ignored.)
+## A custom map's file (user://maps/<name>.json): name, size [W, H] (older maps have none:
+## 84 x 60), cells, biome ("a" or "a+b"), mix, mirror (the editor's symmetry), starts
+## [[x, y], ...] (hall top-left cells), teams (each start's team: 0, 1, ...), mode ("2v2"...),
+## halls (more hall spots), props [[name, x, y, flip], ...] (decorations at their foot cell),
+## checked (it passed the editor's CHECK). A picture for the lobby sits beside it (<name>.png).
 const CELL_CODES := ".hrwftTkK"
 const MAP_DIR := "user://maps"
+const MAX_SIZE := Vector2i(192, 192)
+
+
+## A custom map's size (older maps were all 84 x 60).
+static func custom_size(d: Dictionary) -> Vector2i:
+	var sz: Array = d.get("size", [84, 60])
+	if sz.size() < 2:
+		return Vector2i(84, 60)
+	return Vector2i(clampi(int(sz[0]), 16, MAX_SIZE.x), clampi(int(sz[1]), 16, MAX_SIZE.y))
+
+
+## Each start's team on a custom map (older maps have none: two starts face each other,
+## more are everyone for themselves).
+static func custom_teams(d: Dictionary) -> Array:
+	var n := (d.get("starts", []) as Array).size()
+	var t: Array = d.get("teams", [])
+	var out: Array = []
+	for i in n:
+		if i < t.size():
+			out.append(int(t[i]))
+		else:
+			out.append(i % 2 if n == 2 else i)
+	return out
+
+
+## "1v1", "2v2"... when the starts make two even teams; "FFA" when everyone is alone,
+## otherwise e.g. "2v1".
+static func mode_from_teams(teams: Array) -> String:
+	if teams.size() < 2:
+		return "-"
+	var count := {}
+	for t in teams:
+		count[t] = int(count.get(t, 0)) + 1
+	var sizes: Array = count.values()
+	sizes.sort()
+	sizes.reverse()
+	if sizes.size() == 2:
+		return "%dv%d" % [sizes[0], sizes[1]]
+	if sizes[0] == 1:
+		return "FFA"
+	return "v".join(sizes.map(func(x: int) -> String: return str(x)))
+
+
+static func custom_mode(d: Dictionary) -> String:
+	return mode_from_teams(custom_teams(d))
+
+
+## Which start each player takes on a custom map: the starts are grouped by their team;
+## each lobby team (largest first) takes the group with the most room left, so allies sit
+## together. Returns a start index per player (-1: no start left).
+static func custom_spot_order(teams: Array, sides: Array) -> Array:
+	var groups := {}
+	for i in teams.size():
+		if not groups.has(teams[i]):
+			groups[teams[i]] = []
+		groups[teams[i]].append(i)
+	var by_side := {}
+	for t in sides.size():
+		var sd := int(sides[t])
+		if not by_side.has(sd):
+			by_side[sd] = []
+		by_side[sd].append(t)
+	var order: Array = by_side.keys()
+	order.sort_custom(func(a: int, b: int) -> bool:
+		return by_side[a].size() > by_side[b].size() or (by_side[a].size() == by_side[b].size() and a < b))
+	var out: Array = []
+	out.resize(sides.size())
+	out.fill(-1)
+	var used := {}
+	for sd in order:
+		# the group with the most free starts that no other side has taken yet
+		var best: Variant = null
+		for gk in groups:
+			if used.has(gk) or (groups[gk] as Array).is_empty():
+				continue
+			if best == null or (groups[gk] as Array).size() > (groups[best] as Array).size():
+				best = gk
+		if best != null:
+			used[best] = true
+		for t in by_side[sd]:
+			if best == null or (groups[best] as Array).is_empty():
+				# no room left with the allies: any free start
+				best = null
+				for gk in groups:
+					if not (groups[gk] as Array).is_empty():
+						best = gk
+						break
+				if best == null:
+					break
+			out[t] = (groups[best] as Array).pop_front()
+	return out
+
+
+## Where each player's hall goes on a custom map (the lobby's preview uses it too).
+static func custom_starts(d: Dictionary, sides: Array) -> Array:
+	var st: Array = d.get("starts", [])
+	var out: Array = []
+	for spot in custom_spot_order(custom_teams(d), sides):
+		if spot >= 0:
+			out.append(Vector2i(int(st[spot][0]), int(st[spot][1])))
+		else:
+			out.append(Vector2i(6, 6))
+	return out
 
 
 static func custom_names() -> Array:
@@ -358,42 +486,104 @@ static func save_custom(data: Dictionary) -> bool:
 
 static func delete_custom(name: String) -> void:
 	DirAccess.remove_absolute("%s/%s.json" % [MAP_DIR, name])
+	DirAccess.remove_absolute("%s/%s.png" % [MAP_DIR, name])
 
 
-## Read the grids of a custom map into the game. Starts are used in order; each player's
-## expansion is the free hall spot nearest their start.
+## A custom map's lobby picture (saved by the editor), or null.
+static func custom_picture(name: String) -> Texture2D:
+	var path := "%s/%s.png" % [MAP_DIR, name]
+	if not FileAccess.file_exists(path):
+		return null
+	var img := Image.load_from_file(path)
+	return ImageTexture.create_from_image(img) if img else null
+
+
+## Read the grids of a custom map into the game. The players take the starts by team
+## (allies together); a start nobody takes is an expansion. Each player's expansion is the
+## free hall spot nearest their start.
 func apply_custom(data: Dictionary) -> void:
 	g.map_name = String(data.get("name", "Custom"))
 	var parts: PackedStringArray = String(data.get("biome", "grass")).split("+")
-	biome_a = parts[0]
-	biome_b = parts[1] if parts.size() > 1 else parts[0]
+	biome_a = parts[0] if BIOMES.has(parts[0]) else "grass"
+	biome_b = parts[1] if parts.size() > 1 and BIOMES.has(parts[1]) else biome_a
+	mix = String(data.get("mix", "diag"))
 	read_cells(String(data.get("cells", "")))
 	_square_ramps()
 	_cliffs()
+	place_props(data.get("props", []))
 	g.height = height
 	g.ramp = ramp
 	var st: Array = data.get("starts", [])
 	var halls: Array = data.get("halls", [])
+	var sides: Array = []
+	for t in g.n_players():
+		sides.append(int(g.sides[t]) if t < g.sides.size() else t)
+	g.starts = custom_starts(data, sides) if not st.is_empty() else []
+	while g.starts.size() < g.n_players():
+		g.starts.append(Vector2i(6, 6))
+	var free: Array = []
 	g.base_sites = []
 	for hs in st + halls:
 		var hc := Vector2i(int(hs[0]), int(hs[1]))
 		if not g.base_sites.has(hc):
 			g.base_sites.append(hc)
-	g.starts = []
+		if not g.starts.has(hc):
+			free.append(hc)
 	g.expansions = []
-	for t in g.n_players():
-		var s: Array = st[t % maxi(st.size(), 1)] if not st.is_empty() else [6, 6]
-		g.starts.append(Vector2i(int(s[0]), int(s[1])))
 	for t in g.n_players():
 		var best: Vector2i = g.starts[t]
 		var bd := INF
-		for hspot in halls:
-			var c := Vector2i(int(hspot[0]), int(hspot[1]))
+		for c in free:
 			var dd: float = Vector2(c).distance_to(Vector2(g.starts[t]))
 			if dd < bd:
 				bd = dd
 				best = c
 		g.expansions.append(best)
+
+
+## The cells a decoration's foot blocks when it stands at `c` (none for one walked through).
+static func prop_foot(name: String, c: Vector2i) -> Array:
+	var w: int = PropData.PROPS[name][2] if PropData.PROPS.has(name) else 0
+	var foot: Array = []
+	for dx in range(-(w - 1) / 2, w - (w - 1) / 2):
+		foot.append(c + Vector2i(dx, 0))
+		if w >= 3:
+			foot.append(c + Vector2i(dx, -1))
+	return foot
+
+
+## The decorations of a custom map ([name, x, y, flip], placed in the editor): each where
+## it was put (not on water, nor a solid foot over a cliff, rock or another solid one).
+func place_props(list: Array) -> void:
+	props.clear()
+	_prop_at.clear()
+	for it in list:
+		if not (it is Array) or (it as Array).size() < 3 or not PropData.PROPS.has(String(it[0])):
+			continue
+		var name := String(it[0])
+		var c := Vector2i(int(it[1]), int(it[2]))
+		if not g.in_map(c) or g.water[g.idx(c)] == 1:
+			continue
+		var foot := prop_foot(name, c)
+		var ok := true
+		for fc in foot:
+			if not g.in_map(fc) or g.solid[g.idx(fc)] != 0 or ramp[g.idx(fc)] == 1:
+				ok = false
+		if not ok:
+			continue
+		var low := c.y
+		var sx := 0.0
+		for fc in foot:
+			sx += fc.x + 0.5
+		var px := sx / foot.size() if not foot.is_empty() else c.x + 0.5
+		var pos := Vector2(px, low + 1.0) * Defs.TILE + Vector2(0, -5)
+		var ix := props.size()
+		props.append({"name": name, "pos": pos, "cells": foot, "at": c, "dead": false,
+			"flip": it.size() > 3 and bool(it[3])})
+		for fc in foot:
+			g.solid[g.idx(fc)] = 1
+			g._terrain_kind[g.idx(fc)] = "prop"
+			_prop_at[g.idx(fc)] = ix
 
 
 func read_cells(cells: String) -> void:

@@ -90,6 +90,7 @@ The command card holds 12 buttons (a MORE button pages on when a big mixed selec
 
 WATCHING COMPUTERS
 With no "you" in the lobby the computers play and you watch. The VIEW button under the clock picks how: Free · all vision (you move the camera, no fog; the default), Free · a player's vision (you move the camera, under that player's fog of war), or Follow a player: the camera goes by itself to what that computer is doing (its fights first, staying with one until it's over, then its army on the attack, raiders at its base, a building it just placed, its army), under its fog, holding each sight a few seconds. Moving the camera yourself while following switches to Free with the same vision; pick Follow again to resume. On a computer, 0 is all vision and 1-4 follow that player. The view you pick stays for the next match you watch.""",
+	"MAP EDITOR": MapEditor.HELP_TEXT,
 }
 
 
@@ -400,7 +401,7 @@ func show_editor_menu() -> void:
 	for it in [["SANDBOX", "Set up any match, then spawn any unit or building for any player, hand out resources, lift the fog, take control of any side, switch AIs off and speed up time.", func() -> void:
 				sandbox_lobby = true
 				show_skirmish()],
-			["MAP EDITOR", "Paint ground, high ground, ramps, water, fords, trees and rocks; place start and hall spots; mirror it for fairness; save and play your maps in Skirmish.", func() -> void: show_map_editor()]]:
+			["MAP EDITOR", "Maps of any size, 1v1 to 4v4: paint high ground, ramps, water or lava, fords, trees and rocks in any biome, place decorations and start and hall spots with their teams, mirror it all for fairness, CHECK it, then save and play it in Skirmish.", func() -> void: show_map_editor()]]:
 		var b := _button(it[0], it[2])
 		b.custom_minimum_size.y = 64
 		b.add_theme_font_override("font", UiStyle.title_font())
@@ -417,19 +418,26 @@ var sandbox_lobby := false
 var _editor: MapEditor
 
 
-func show_map_editor(name := "") -> void:
+## The map editor on one of your maps (by name), on a map's data (a new map of a chosen
+## size, or one picked in the editor's LOAD), or on a blank classic-size map. The world is
+## built at the map's size (Game.W x Game.H follow it).
+func show_map_editor(name := "", data := {}) -> void:
 	_clear_ui()
 	if game:
 		game.queue_free()
+	if name != "":
+		data = MapGen.load_custom(name)
+	var sz := MapGen.custom_size(data)
 	game = Game.new()
 	game.edit_mode = true
-	game.map_id = ("custom:" + name) if name != "" else "blank"
+	game.map_id = "blank:%dx%d" % [sz.x, sz.y]
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(game)
 	_editor = MapEditor.new()
 	_editor.game = game
 	ui_layer.add_child(_editor)
-	_editor.load_from(MapGen.load_custom(name) if name != "" else {})
+	_editor.load_from(data)
+	_editor.reopen_requested.connect(func(d: Dictionary) -> void: show_map_editor.call_deferred("", d))
 	_editor.back_requested.connect(func() -> void:
 		game.queue_free()
 		game = null
@@ -781,7 +789,8 @@ func show_skirmish() -> void:
 	for p in MapGen.POOLS:
 		ids.append(p[0])
 	ids += MapGen.all_ids()
-	for n in MapGen.custom_names():
+	var own := MapGen.custom_names()
+	for n in own:
 		ids.append("custom:" + n)
 	if not ids.has(lobby["map"]):
 		lobby["map"] = "random"
@@ -797,6 +806,8 @@ func show_skirmish() -> void:
 	var mname := MapGen.label(mid) if MapGen.is_pool(mid) else (mid.substr(7) if mid.begins_with("custom:") else MapGen.display_name(mid))
 	var map_opts: Array = []
 	for mi in ids:
+		if String(mi) == "custom:" + String(own[0] if not own.is_empty() else ""):
+			map_opts.append(["- YOUR OWN MAPS -", "", true])
 		map_opts.append([MapGen.label(mi), mi, false])
 	var ml := _dropdown(mname.to_upper(), 160, map_opts, func(v) -> void: _pick_map(v), 470.0, MapGen.label(mid))
 	ml.add_theme_font_size_override("font_size", 18)
@@ -817,7 +828,11 @@ func show_skirmish() -> void:
 		var fit := MapGen.pool_maps(mid, slots.size())
 		desc = "One of %d maps that hold %d players, picked when the match starts." % [fit.size(), slots.size()]
 	elif mid.begins_with("custom:"):
-		desc = "Your map, %d start spots." % (MapGen.load_custom(mid.substr(7)).get("starts", []) as Array).size()
+		var cd := MapGen.load_custom(mid.substr(7))
+		var cs := MapGen.custom_size(cd)
+		desc = "Your map: %s, %dx%d, %d start spots.  %s.  %s" % [MapGen.custom_mode(cd), cs.x, cs.y,
+			(cd.get("starts", []) as Array).size(), String(cd.get("biome", "grass")).replace("+", " & ").capitalize(),
+			"Passed the editor's CHECK." if bool(cd.get("checked", false)) else "Not checked, or CHECK found problems."]
 	elif MapData.NAMED.has(mid):
 		var sz := MapGen.size_of(mid)
 		desc = "%s, %dx%d, up to %d players. %s  %s." % [MapGen.mode_of(mid), sz.x, sz.y, MapGen.max_players(mid),
@@ -1124,7 +1139,12 @@ func _pick_map(id: String) -> void:
 	if MapGen.is_pool(id):
 		return
 	if id.begins_with("custom:"):
-		var st := (MapGen.load_custom(id.substr(7)).get("starts", []) as Array).size()
+		# a map with two even teams sets up its match (a 2v2 map: four players, two a
+		# side); otherwise the players are trimmed to its start spots
+		var st := MapGen.max_players(id)
+		var md := MapGen.mode_of(id)
+		if n != st and md in ["1v1", "2v2", "3v3", "4v4"]:
+			_preset(md)
 		while lobby["slots"].size() > maxi(st, 2):
 			lobby["slots"].pop_back()
 		return
@@ -1140,7 +1160,7 @@ func _pick_map(id: String) -> void:
 func _fit_map_to_slots() -> void:
 	var mid: String = lobby["map"]
 	var n: int = lobby["slots"].size()
-	if mid.begins_with("custom:") or MapGen.is_pool(mid) or MapGen.max_players(mid) >= n:
+	if MapGen.is_pool(mid) or MapGen.max_players(mid) >= n:
 		if not (MapGen.is_pool(mid) and MapGen.pool_maps(mid, n).is_empty()):
 			return
 	lobby["map"] = "random_1v1" if n <= 2 else ("random_2v2" if n <= 4 else ("random_3v3" if n <= 6 else "random"))
@@ -1292,7 +1312,7 @@ class MapPreview extends Control:
 	var _pic: Texture2D
 
 	func _draw() -> void:
-		var msz := Vector2(84, 60) if MapGen.is_pool(map_id) or map_id.begins_with("custom:") else Vector2(MapGen.size_of(map_id))
+		var msz := Vector2(84, 60) if MapGen.is_pool(map_id) else Vector2(MapGen.size_of(map_id))
 		mw = msz.x
 		mh = msz.y
 		var r := Rect2(Vector2(4, 4), size - Vector2(8, 8))
@@ -1367,23 +1387,38 @@ class MapPreview extends Control:
 			draw_circle(p, 7.0, Defs.colour_of(int(slots[i]["colour"])))
 			draw_string(f, p + Vector2(-4, 5), str(int(slots[i]["side"]) + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
+	## One of your maps: the picture the editor saved with it (or a sketch of its cells),
+	## and where everyone starts, allies together as in the match.
 	func _custom(r: Rect2) -> void:
-		var d := MapGen.load_custom(map_id.substr(7))
-		var cells: String = d.get("cells", "")
-		var parts: PackedStringArray = String(d.get("biome", "grass")).split("+")
-		var low := _biome_col(parts[0])
-		var cols := {".": low, "h": low.lightened(0.25), "r": low.lightened(0.12), "w": Color(0.15, 0.4, 0.7),
-			"f": Color(0.4, 0.6, 0.75), "t": low.darkened(0.45), "T": low.darkened(0.3), "k": Color(0.5, 0.5, 0.5), "K": Color(0.6, 0.6, 0.6)}
+		var nm := map_id.substr(7)
+		var d := MapGen.load_custom(nm)
+		if _pic == null or not has_meta("pic") or get_meta("pic") != nm:
+			_pic = MapGen.custom_picture(nm)
+			set_meta("pic", nm)
 		var k := r.size / Vector2(mw, mh)
-		draw_rect(r, low)
-		for i in mini(cells.length(), 84 * 60):
-			if cells[i] != ".":
-				draw_rect(Rect2(r.position + Vector2(i % 84, i / 84) * k, k + Vector2(0.5, 0.5)), cols.get(cells[i], low))
-		var st: Array = d.get("starts", [])
-		for i in mini(st.size(), slots.size()):
-			var p: Vector2 = r.position + (Vector2(st[i][0], st[i][1]) + Vector2(2.5, 2)) * k
+		if _pic:
+			draw_texture_rect(_pic, r, false)
+		else:
+			var cells: String = d.get("cells", "")
+			var parts: PackedStringArray = String(d.get("biome", "grass")).split("+")
+			var low := _biome_col(parts[0])
+			var cols := {".": low, "h": low.lightened(0.25), "r": low.lightened(0.12), "w": Color(0.15, 0.4, 0.7),
+				"f": Color(0.4, 0.6, 0.75), "t": low.darkened(0.45), "T": low.darkened(0.3), "k": Color(0.5, 0.5, 0.5), "K": Color(0.6, 0.6, 0.6)}
+			draw_rect(r, low)
+			var cw := int(mw)
+			for i in mini(cells.length(), int(mw * mh)):
+				if cells[i] != ".":
+					draw_rect(Rect2(r.position + Vector2(i % cw, i / cw) * k, k + Vector2(0.5, 0.5)), cols.get(cells[i], low))
+		if slots.size() > (d.get("starts", []) as Array).size():
+			return
+		var sides: Array = slots.map(func(s: Dictionary) -> int: return int(s["side"]))
+		var st := MapGen.custom_starts(d, sides)
+		var f := ThemeDB.fallback_font
+		for i in st.size():
+			var p: Vector2 = r.position + (Vector2(st[i]) + Vector2(2.5, 2)) * k
 			draw_circle(p, 9.0, Color(0, 0, 0, 0.6))
 			draw_circle(p, 7.0, Defs.colour_of(int(slots[i]["colour"])))
+			draw_string(f, p + Vector2(-4, 5), str(int(slots[i]["side"]) + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
 	func _starts(r: Rect2) -> void:
 		var k := r.size / Vector2(mw, mh)
