@@ -3741,6 +3741,7 @@ func _keg_run(delta: float) -> Vector2:
 ## Missionary: walk to the wounded soldier, take him off the field, bandage him and send
 ## him back at full health.
 var _patient: Unit = null
+var _anim_art := ""             # whose strips the sprite shows (_strip_art: art, or the bandage pair's)
 
 
 func _heal(delta: float) -> Vector2:
@@ -3788,7 +3789,12 @@ func _heal(delta: float) -> Vector2:
 		p.visible = false
 		p.selected = false
 		game.selection.erase(p)
+		if p.position.distance_to(position) > 1.0:
+			facing = (p.position - position).normalized()     # (the patient on the side he came from)
 		position = p.position
+		if p.kind == "dismounted" and absf(facing.x) < absf(facing.y) * 0.42 and facing.y > 0.0:
+			# (no front view of the two of them: kneel to the SE / SW, the patient on that side)
+			facing = Vector2(-1.0 if facing.x < 0.0 else 1.0, 1.0).normalized()
 		work = "bandaging"
 		work_t = Defs.BANDAGE_TIME
 		Sfx.play("combat/missionary_heal", position)
@@ -4348,7 +4354,7 @@ func _animate(delta: float) -> void:
 		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE)
 	_set_anim(_anim_name(), false)
 	var key := anim + "_" + anim_dir
-	var n: int = ArtData.UNITS[art]["frames"].get(key, 1)
+	var n: int = ArtData.UNITS[_anim_art if _anim_art != "" else art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
 	if anim == "walk" and art in ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]:
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
@@ -4561,18 +4567,28 @@ func _animate_cannon(delta: float) -> void:
 var _last_gun_anim := ""
 
 
+## Whose strips animation `a` comes from: a Missionary bandaging a dismounted rider kneels
+## over the Horseman or the Cuirassier (their own art keys: two men need a wider cell).
+func _strip_art(a: String) -> String:
+	if a == "bandage" and work == "bandaging" and _patient != null and is_instance_valid(_patient) \
+			and _patient.kind == "dismounted":
+		return "missionary_bandage_c" if _patient.armoured else "missionary_bandage_h"
+	return art
+
+
 func _set_anim(a: String, force: bool) -> void:
 	var o := int(round(facing.angle() / (PI / 4.0)))
 	o = posmod(o, 8)
 	var dir_flip: Array = [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]][o]
 	var dr: String = dir_flip[0]
 	var flip: bool = dir_flip[1]
-	if not force and a == anim and dr == anim_dir and flip == anim_flip:
+	var sa := _strip_art(a)
+	if not force and a == anim and dr == anim_dir and flip == anim_flip and sa == _anim_art:
 		return
 	if a != anim:
 		frame_i = 0
 		anim_t = 0.0
-	var frames: Dictionary = ArtData.UNITS[art]["frames"]
+	var frames: Dictionary = ArtData.UNITS[sa]["frames"]
 	if not frames.has(a + "_" + dr):
 		# Closest drawn direction; side-only animations face the way we're heading.
 		var near: Dictionary = {"s": ["se", "e"], "se": ["s", "e"], "e": ["se", "ne"], "ne": ["n", "e"], "n": ["ne", "e"]}
@@ -4586,14 +4602,15 @@ func _set_anim(a: String, force: bool) -> void:
 		if dr == "e":
 			flip = facing.x < 0.0
 	anim = a
+	_anim_art = sa
 	anim_dir = dr
 	anim_flip = flip
 	var key := a + "_" + dr
-	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [art, key])
+	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [sa, key])
 	sprite.hframes = frames.get(key, 1)
-	var anchor: Vector2 = ArtData.UNITS[art]["anchor"]
+	var anchor: Vector2 = ArtData.UNITS[sa]["anchor"]
 	# some sheets (aiming up) have extra room on top: the feet stay where they were
-	var cell: Vector2i = ArtData.UNITS[art]["cell"]
+	var cell: Vector2i = ArtData.UNITS[sa]["cell"]
 	sprite.offset = -anchor - Vector2(0, sprite.texture.get_height() - cell.y)
 	sprite.scale = Vector2(-1.0 if flip else 1.0, 1.0) * float(d.get("art_scale", 1.0))
 	frame_i = mini(frame_i, sprite.hframes - 1)
