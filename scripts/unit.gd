@@ -40,6 +40,7 @@ var siege_t := 0.0              # (computer) its army is breaking in at a wall: 
 var _wall_chk := 0.0
 var _reach_t := 0.0             # (stuck chasing something) when it next asks whether it can get at it at all
 var _wall_look_t := 0.0         # (melee) when it next checks whether it's pressed against an enemy wall it must break
+var _detour: Building = null    # (melee, told to attack a man walled off from it) the wall piece it breaks first
 var last_pos := Vector2.ZERO
 var repath_t := 0.0
 
@@ -2260,7 +2261,7 @@ func _physics_process(delta: float) -> void:
 				if not _next_order():
 					cmd_stop()
 			else:
-				target = order_target
+				target = _attack_detour(delta)
 				want = _engage(target, delta, true)
 		"gather":
 			want = _gather(delta)
@@ -2658,6 +2659,24 @@ func _walled_check(delta: float) -> void:
 		target = w if w else near
 	elif order == "amove" and not _walk_reaches_point(order_point):
 		target = near
+
+
+## Told to attack a man it can't walk up to (behind an enemy wall or shut gate): once at the
+## wall it breaks the piece in the way, then goes on after him (the order stands).
+func _attack_detour(delta: float) -> Entity:
+	if is_air() or is_worker() or float(d["range"]) > 40.0 or not has_attack() or not order_target.is_unit():
+		return order_target
+	if is_instance_valid(_detour) and not _detour.dead:
+		return _detour
+	_detour = null
+	_wall_look_t -= delta
+	if _wall_look_t > 0.0:
+		return order_target
+	_wall_look_t = 0.5
+	if game.blocking_wall(self) == null or _can_get_at(order_target):
+		return order_target
+	_detour = _wall_toward(order_target)
+	return _detour if _detour else order_target
 
 
 ## Target search for units on their own (idle, attack-move): a melee unit that can't walk up
