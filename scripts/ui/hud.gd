@@ -240,6 +240,15 @@ func menu_rect() -> Rect2:
 	return Rect2(_vs().x - 96, 2, 90, 32)
 
 
+func _over_sandbox() -> bool:
+	var hov := get_viewport().gui_get_hovered_control()
+	while hov:
+		if hov is SandboxPanel:
+			return true
+		hov = hov.get_parent() as Control
+	return false
+
+
 func _hud_has(p: Vector2) -> bool:
 	if game.over:
 		return false        # the end screen takes the clicks
@@ -264,6 +273,10 @@ func _input(event: InputEvent) -> void:
 	if game == null or game.over:
 		return
 	_redraw_t = 0.0
+	# the sandbox panel lies over the HUD (the minimap, the top bar): its buttons take their
+	# clicks first
+	if (event is InputEventMouseButton or event is InputEventScreenTouch) and _over_sandbox():
+		return
 	if ui_scale != 1.0 and (event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouse):
 		event = event.xformed_by(Transform2D().scaled(Vector2.ONE / ui_scale))
 	if event is InputEventScreenTouch:

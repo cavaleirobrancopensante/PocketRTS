@@ -252,6 +252,7 @@ func show_crash(report: String) -> void:
 
 
 func show_menu() -> void:
+	sandbox_lobby = false        # (the main menu's SKIRMISH is never the sandbox)
 	if Music.me:
 		Music.me.menu()
 	var root := _page()

@@ -1359,8 +1359,6 @@ func _army() -> void:
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
 		_wave_start(army)
-		if not game.demo and _foe() == game.human and randf() < 0.5:
-			Sfx.taunt(game.faction_of(team))
 		for u in army:
 			u.cmd_move(_wave_target + Vector2(randf_range(-50, 50), randf_range(-50, 50)), true)
 	elif _attacking:
@@ -1447,8 +1445,6 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
 		_wave_start(army)
-		if not game.demo and _foe() == game.human and randf() < 0.5:
-			Sfx.taunt(game.faction_of(team))
 		_plan_swarm(army)
 		_swarm_phase = "flank"
 		_swarm_t = 0.0

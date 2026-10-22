@@ -5913,7 +5913,10 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 			u.give({"o": "attack", "e": e}, queued)
 		_ping(p, Color(1, 0.3, 0.3))
 		return
-	group_move(us, p, not force_move, queued)
+	# right-click on the ground (as in StarCraft 2): a plain move, they go where they're told
+	# and don't stop to fight on the way (A, then click, for an attack-move). (On a phone a tap
+	# on the ground stays an attack-move: there's no right button to tell them apart.)
+	group_move(us, p, not force_move and not Settings.pc(), queued)
 
 
 ## Spread a group around the destination so they don't fight for one spot.
