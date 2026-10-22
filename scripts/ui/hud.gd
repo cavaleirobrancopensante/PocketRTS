@@ -1356,6 +1356,7 @@ func _draw_hud() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	var vs := _vs()
+	var _q := Time.get_ticks_usec()
 	_tip_cand = {}
 	_pill_rects = []
 	if game.spectator and game.spectator.fade > 0.0:
@@ -1404,10 +1405,20 @@ func _draw_hud() -> void:
 	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
 	if game.demo and game.spectator == null:
 		_text(font, Vector2(vs.x * 0.5, 60), "AI vs AI", 18, Color(1, 1, 1, 0.6), 1)
+	Prof.add("hud/top", _q)
+	_q = Time.get_ticks_usec()
 	_draw_minimap()
+	Prof.add("hud/minimap", _q)
+	_q = Time.get_ticks_usec()
 	_draw_groups(font)
+	Prof.add("hud/groups", _q)
+	_q = Time.get_ticks_usec()
 	_draw_panel(font)
+	Prof.add("hud/selection", _q)
+	_q = Time.get_ticks_usec()
 	_draw_card(font)
+	Prof.add("hud/command card", _q)
+	_q = Time.get_ticks_usec()
 	# Selection box
 	var br := controls.box_rect()
 	br = Rect2(br.position / ui_scale, br.size / ui_scale)
@@ -1442,9 +1453,12 @@ func _draw_hud() -> void:
 		_draw_production(font)
 	if not paused:
 		_draw_countdown()
+	Prof.add("hud/rest", _q)
+	_q = Time.get_ticks_usec()
 	_update_tip()
 	if not paused:
 		_draw_tip()
+	Prof.add("hud/tooltip", _q)
 	if paused:
 		# see-through: the match stays visible behind (for screenshots and a look at the field)
 		draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.12))
@@ -2049,7 +2063,9 @@ func _paged(all: Array) -> Array:
 
 
 func _draw_card(font: Font) -> void:
+	var _q := Time.get_ticks_usec()
 	var items := _with_keys(_paged(_build_card()))
+	Prof.add("hud/card build", _q)
 	_card_items = items
 	_buttons = _buttons_extra.duplicate()
 	_buttons.append({"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true})
