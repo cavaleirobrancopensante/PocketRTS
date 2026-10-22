@@ -1025,7 +1025,7 @@ const UNITS := {
 
 const BUILDING_SIZE := {
 	"farm": Vector2i(112, 78),
-	"powder_mill": Vector2i(112, 87),
+	"powder_mill": Vector2i(124, 113),
 	"church": Vector2i(100, 101),
 	"feeding_pit": Vector2i(108, 71),
 	"bone_midden": Vector2i(104, 64),

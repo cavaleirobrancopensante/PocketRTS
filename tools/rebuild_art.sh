@@ -68,6 +68,10 @@ python3 tools/import_horse_team.py      # a gun's / wagon's team horse in harnes
                                          # the S row's stray traces erased; before the coat masks)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
+python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill (art/crown/powder_mill_horse.png:
+                                         # replaces structures2's water mill, which import_art skips), its
+                                         # millstone overlays, icon and the bay mill horse cut from the team
+                                         # horse's strips (after import_horse_team and the coat masks)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included

@@ -56,7 +56,23 @@ var sprite: Sprite2D
 var field: Sprite2D = null       # Farm: its fields, on the ground under the units (they work in them)
 var sails: Sprite2D = null       # Farm: the windmill's sails, turning over the body (FARM_ART)
 var _sail_t := 0.0
+var _sail_v := 1.0               # Farm: the sails' speed, 0 still .. 1 turning (eased: in_use)
 var scarecrow_sprites: Array = []   # Farm: its scarecrows out in the crops
+# Powder Mill: the horse walking its track (MILL_ART)
+var _mill_horse: Sprite2D = null
+var _mill_stone: Sprite2D = null      # the post and millstone, over the horse behind them
+var _mill_arm: Line2D = null          # the sweep: its dark edge
+var _mill_arm_in: Line2D = null       # and its wood
+var _mill_state := ""                 # the state whose track it walks ("": no horse)
+var _mill_a := 0.0                    # where it is on the track (angle)
+var _mill_v := 0.0                    # 0 standing .. 1 walking (eased)
+var _mill_f := 0.0                    # its walk frames' clock
+var _mill_dir := ""
+var _mill_far := -1                   # 1: on the far half (behind the post), 0 near, -1 not laid out
+# in_use, looked at twice a second
+var _use_t := 0.0
+var _in_use := true
+var _seen_now := true
 var fire: Effect = null
 var rubble_t := 0.0
 # Clockwork towers: anti-air lightning
@@ -68,13 +84,15 @@ var _amb_t := 0.0
 var _crackle: Effect = null
 
 ## Where each building puffs smoke, steams, sparks or drips spores: [effect, x, y (as
-## fractions of the sprite), seconds between puffs, size, tint]. Only drawn on screen.
+## fractions of the sprite), seconds between puffs, size, tint]. Only drawn on screen, and
+## only while the building is in use (in_use: a Foundry's smoke and forge while it works, a
+## Powder Mill's dust while it's manned...; halls, homes and the Brood's living buildings always).
 const AMBIENT := {
 	"town_hall": [["smoke", 0.26, 0.23, 1.6, 0.45, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.87, 0.21, 1.9, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
 	"cottage": [["smoke", 0.45, 0.1, 1.8, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
 	"barracks": [["smoke", 0.16, 0.3, 1.7, 0.4, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.83, 0.05, 2.1, 0.35, Color(0.85, 0.85, 0.85, 0.6)]],
 	"foundry": [["smoke", 0.25, 0.06, 0.7, 0.7, Color(0.45, 0.45, 0.45, 0.75)], ["fire", 0.72, 0.68, 1.1, 0.35, Color(1, 1, 1, 0.9)]],
-	"powder_mill": [["dust", 0.86, 0.86, 1.4, 0.3, Color(1, 1, 1, 0.6)]],
+	"powder_mill": [["dust", 0.75, 0.69, 1.4, 0.3, Color(1, 1, 1, 0.6)]],     # (off the millstone)
 	"church": [],
 	"hive": [["smoke", 0.5, 0.78, 1.3, 0.35, Color(0.6, 1.0, 0.3, 0.55)], ["smoke", 0.22, 0.82, 2.2, 0.3, Color(0.6, 1.0, 0.3, 0.5)], ["smoke", 0.78, 0.82, 2.4, 0.3, Color(0.6, 1.0, 0.3, 0.5)]],
 	"warren": [["smoke", 0.5, 0.74, 1.5, 0.35, Color(0.6, 1.0, 0.3, 0.5)]],
@@ -118,6 +136,29 @@ const FARM_ART := {
 	"sails": "res://assets/buildings/farm_sails.png", "sail_frames": 6, "sail_dt": 0.3,
 	"hub": Vector2(7, -54), "sail_states": ["built", "damaged"],
 	"scarecrows": "res://assets/buildings/farm_scarecrow.png", "scarecrow_kinds": 4,
+}
+
+## The Powder Mill is a horse mill (tools/import_powder_mill.py makes the art): while it is
+## worked (in_use) a harnessed horse walks round the dirt track at the front right, turning the
+## millstone by a wooden sweep from the centre post's top to the horse's chest. Per state that
+## shows the track (the others: no horse), from the base point: the track's `centre` (on the
+## ground) and `radius` (an ellipse), and the `post`'s top. The horse: a bay team horse shrunk to
+## the mill (walk_<dir>, `frames` a strip, its hooves at `anchor`), facing the way it walks
+## (Unit.DIR_FLIP, mirrored for the west); `chest`: where the sweep meets it, from its hooves,
+## facing right. On the far half of the track it walks behind the post and millstone (`stone`:
+## their pixels alone, drawn over it) with the sweep in front of it; on the near half in front
+## of them, the sweep behind it. One lap every `lap` s, walk frames at `fps`; it eases into its
+## walk and to a halt over `ease` s.
+const MILL_ART := {
+	"horse": "res://assets/buildings/mill_horse/walk_%s.png", "frames": 6, "anchor": Vector2(24, 29),
+	"stone": "res://assets/buildings/powder_mill_stone_%s.png",
+	"states": {
+		"built": {"centre": Vector2(31, -24), "radius": Vector2(18.5, 9.5), "post": Vector2(31, -33)},
+		"damaged": {"centre": Vector2(32, -22.5), "radius": Vector2(18.5, 9.5), "post": Vector2(32, -33)},
+	},
+	"chest": {"e": Vector2(10, -17), "se": Vector2(6, -19), "s": Vector2(0, -16), "ne": Vector2(8, -21), "n": Vector2(0, -20)},
+	"lap": 7.0, "fps": 7.0, "ease": 1.5,
+	"arm": Color(0.56, 0.36, 0.17), "arm_edge": Color(0.17, 0.10, 0.05),
 }
 
 ## The tip of each Clockwork tower, where its lightning lives.
@@ -223,6 +264,8 @@ func _ready() -> void:
 	add_child(sprite)
 	if kind == "farm":
 		_farm_art()
+	elif kind == "powder_mill":
+		_mill_art()
 	_update_sprite()
 
 
@@ -253,6 +296,135 @@ func _farm_art() -> void:
 		s.visible = false
 		add_child(s)
 		scarecrow_sprites.append(s)
+
+
+## The Powder Mill's horse, sweep and millstone overlay (MILL_ART), over its body; hidden
+## until a state with a track shows (_update_sprite).
+func _mill_art() -> void:
+	_mill_horse = Sprite2D.new()
+	_mill_horse.centered = false
+	_mill_horse.offset = -Vector2(MILL_ART["anchor"])
+	_mill_horse.hframes = int(MILL_ART["frames"])
+	_mill_stone = Sprite2D.new()
+	_mill_stone.centered = false
+	_mill_arm = _sweep(3.0, MILL_ART["arm_edge"])
+	_mill_arm_in = _sweep(1.0, MILL_ART["arm"])
+	for n: CanvasItem in [_mill_horse, _mill_stone, _mill_arm, _mill_arm_in]:
+		n.visible = false
+		add_child(n)
+	_mill_a = float(posmod(hash(cell), 360)) * PI / 180.0     # (not every mill in step)
+
+
+static func _sweep(w: float, c: Color) -> Line2D:
+	var l := Line2D.new()
+	l.width = w
+	l.default_color = c
+	l.antialiased = false
+	l.add_point(Vector2.ZERO)
+	l.add_point(Vector2.ZERO)
+	return l
+
+
+## Shows the horse for this state (or hides it).
+func _mill_show(state: String) -> void:
+	var ms := state if seeded and not dead and Dictionary(MILL_ART["states"]).has(state) else ""
+	if ms != _mill_state:
+		_mill_state = ms
+		_mill_far = -1
+		_mill_horse.visible = ms != ""
+		_mill_arm.visible = ms != ""
+		_mill_arm_in.visible = ms != ""
+		_mill_stone.visible = false
+		if ms != "":
+			_mill_stone.texture = Game.tex(String(MILL_ART["stone"]) % ms)
+			_place_mill_horse(false)
+	if ms != "":
+		_mill_stone.position = sprite.position
+		_mill_stone.offset = sprite.offset
+
+
+## Walks the horse on (only on screen, and while somebody sees it: a mill remembered under
+## the fog stands still): faster into its walk while the mill is in use, to a halt when not.
+func _turn_mill(delta: float) -> void:
+	if not _seen_now or not game.view_rect.intersects(rect()):
+		return
+	var target := 1.0 if _in_use else 0.0
+	if _mill_v == target and target == 0.0:
+		return
+	_mill_v = move_toward(_mill_v, target, delta / float(MILL_ART["ease"]))
+	var v := smoothstep(0.0, 1.0, _mill_v)
+	_mill_a = fmod(_mill_a + v * delta * TAU / float(MILL_ART["lap"]), TAU)
+	_mill_f += v * delta * float(MILL_ART["fps"])
+	_place_mill_horse(_mill_v > 0.05)
+
+
+## The horse where _mill_a puts it, facing along the track, its sweep from the post, and
+## the draw order for the half of the track it's on.
+func _place_mill_horse(walking: bool) -> void:
+	var st: Dictionary = MILL_ART["states"][_mill_state]
+	var r: Vector2 = st["radius"]
+	var p := (Vector2(st["centre"]) + Vector2(r.x * cos(_mill_a), r.y * sin(_mill_a))).round()
+	# its heading on the ground (the track is a circle there): the tangent of the circle
+	var o := posmod(int(round(Vector2(-sin(_mill_a), cos(_mill_a)).angle() / (PI / 4.0))), 8)
+	var df: Array = Unit.DIR_FLIP[o]
+	var dr: String = df[0]
+	if dr != _mill_dir:
+		_mill_dir = dr
+		_mill_horse.texture = Game.tex(String(MILL_ART["horse"]) % dr)
+	_mill_horse.flip_h = df[1]
+	_mill_horse.frame = int(_mill_f) % _mill_horse.hframes if walking else 0
+	_mill_horse.position = p
+	var chest: Vector2 = MILL_ART["chest"][dr]
+	if df[1]:
+		chest.x = -chest.x
+	var post: Vector2 = st["post"]
+	if dr == "s" or dr == "n":
+		chest.x = 4.0 * signf(post.x - p.x)     # (from the front or behind: its side towards the post)
+	_mill_arm.set_point_position(0, post)
+	_mill_arm.set_point_position(1, p + chest)
+	_mill_arm_in.set_point_position(0, post)
+	_mill_arm_in.set_point_position(1, p + chest)
+	var far := 1 if sin(_mill_a) < 0.0 else 0
+	if far != _mill_far:
+		_mill_far = far
+		_mill_stone.visible = far == 1
+		# far: the horse, the post and stone over it, the sweep in front; near: the sweep
+		# (meeting the horse's far side), the horse over it
+		var order: Array = [_mill_horse, _mill_stone, _mill_arm, _mill_arm_in] if far == 1 \
+			else [_mill_stone, _mill_arm, _mill_arm_in, _mill_horse]
+		var i0 := sprite.get_index()
+		for i in order.size():
+			move_child(order[i], i0 + 1 + i)
+
+
+## In use (its animations play): an economy building while it's worked, a workshop while it
+## trains or researches, a Boiler while it fills batteries. Others always.
+func in_use() -> bool:
+	match kind:
+		"farm", "powder_mill":
+			return working_crew() > 0
+		"feeding_pit":
+			return not crew.is_empty()
+		"ore_crusher":
+			var e := efficiency()
+			return not e.is_empty() and int(e[1]) > 0
+		"foundry", "barracks", "assembly_works", "engine_hall":
+			return not queue.is_empty()
+		"boiler":
+			return d.has("battery") and batteries < int(d["battery"][1])
+	return true
+
+
+## (twice a second) in_use, and whether the player's side sees it right now (not just
+## remembers it under the fog).
+func _check_use(delta: float) -> void:
+	_use_t -= delta
+	if _use_t > 0.0:
+		return
+	_use_t = 0.5
+	_in_use = built and not dead and in_use()
+	var ft := game.fog_team()
+	_seen_now = game.sees_all() or ft < 0 or game.allied(team, ft) or game.is_visible_to(ft, center())
 
 
 ## A Farm's scarecrows: 2 or 3 of FARM_SCARECROW_SPOTS, each [spot, look], picked by its cell
@@ -619,8 +791,11 @@ func _tick_building(delta: float) -> void:
 		return
 	if built and not dead and kind == "gate":
 		_gate(delta)
+	_check_use(delta)
 	if sails and sails.visible:
 		_turn_sails(delta)
+	if _mill_state != "":
+		_turn_mill(delta)
 	if built and not dead:
 		_econ(delta)
 		if d.has("field"):
@@ -914,8 +1089,8 @@ func _ambient(delta: float) -> void:
 		_crackle.global_position = top_point()
 		_crackle.visible = shown
 		_crackle.modulate = Color(1, 1, 1, 0.35) if not field_on() else Color.WHITE
-	if not shown:
-		return
+	if not shown or not _in_use:
+		return            # (a workshop's smoke, a mill's dust: only while it's in use)
 	var list: Array = AMBIENT.get(kind, [])
 	if list.is_empty():
 		return
@@ -990,6 +1165,8 @@ func _update_sprite() -> void:
 			sprite.offset.y -= 1.0
 	if sails:
 		sails.visible = seeded and Array(FARM_ART["sail_states"]).has(state)
+	if _mill_horse:
+		_mill_show(state)
 	if not seeded and not dead:
 		sprite.modulate = Color(1, 1, 1, 0.3)
 	elif unfold_t >= 0.0 and not dead:
@@ -1076,9 +1253,17 @@ func die() -> void:
 		rubble_t = 27.5
 
 
-## The windmill's sails: a frame every sail_dt s, slower as the soil tires, still once spent.
+## The windmill's sails: a frame every sail_dt s, slower as the soil tires, still once spent;
+## only while the Farm is worked (in_use): they ease to a stop over SAIL_EASE s when nobody
+## works its fields, and back up to speed when work starts again.
+const SAIL_EASE := 1.5
+
+
 func _turn_sails(delta: float) -> void:
-	_sail_t += delta
+	_sail_v = move_toward(_sail_v, 1.0 if _in_use else 0.0, delta / SAIL_EASE)
+	if _sail_v <= 0.0:
+		return
+	_sail_t += delta * smoothstep(0.0, 1.0, _sail_v)
 	var dt := float(FARM_ART["sail_dt"])
 	if _sail_t < dt:
 		return

@@ -974,9 +974,12 @@ def import_clockwork_structures(data):
 
 
 # Second structure sheets: one building per row, its four states across, flat background.
+# "skip": rows still cut (they part the sheet) but not written: the Crown's water-wheel Powder
+# Mill was replaced by the horse mill (tools/import_powder_mill.py).
 STRUCTURES2 = {
     "art/crown/structures2.png": {"names": ["farm", "powder_mill", "church"], "rows": [0, 345, 640, 1024],
-                                  "width": {"farm": 112, "powder_mill": 112, "church": 100}},
+                                  "width": {"farm": 112, "powder_mill": 112, "church": 100},
+                                  "skip": ["powder_mill"]},
     "art/brood/structures2.png": {"names": ["feeding_pit", "bone_midden", "spore_vent", "roost"],
                                   "rows": [0, 252, 458, 712, 1024],
                                   "width": {"feeding_pit": 108, "bone_midden": 104, "spore_vent": 70, "roost": 100}},
@@ -1008,6 +1011,8 @@ def import_structures2(data):
                     py, px_ = np.nonzero(part)
                     pieces.append({"mask": part, "cy": py.mean(), "cx": px_.mean()})
         for r, name in enumerate(cfg["names"]):
+            if name in cfg.get("skip", []):
+                continue
             imgs = []
             for c in range(4):
                 # whole pieces whose middle lies in this cell (plumes may cross the line)
