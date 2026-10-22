@@ -8,6 +8,14 @@
                                     5 death each. No NE row: the E strips are used for NE.
   art/crown/horseman_dismounted.png the Horseman on foot: 5 rows, 2 standing, 9 walking, aim and
                                     shot (with the muzzle flash), 5 sabre slashes, 5 death frames
+  art/crown/cuirassier_dismounted.png the Cuirassier on foot (morion, red plume: team colour):
+                                    5 rows, 2 standing, 7 walking, aim, aim, shot, 6 sabre poses,
+                                    2 death frames. Its sabre poses don't show a cut: only the 1st
+                                    (fist raised) and 2nd (sabre over his head) face the attack, the
+                                    rest face the viewer with no sabre. The attack (sabre_attack) is
+                                    4 frames: the 1st with a blade drawn in raised behind, the 2nd,
+                                    the 1st with the blade swept forward (and its swing's trail),
+                                    the 1st with it swept down.
 
 Frames are found by themselves: the foreground (not the slate) is split into rows by empty
 lines and into frames by empty columns; slivers (a sabre tip, a puff of smoke) join their
@@ -90,7 +98,87 @@ SHEETS = {
         "groups": [("idle", 0), ("walk", 175), ("fire2", 700), ("slash", 850), ("death", 1180)],
         "cell": FOOT, "ref_h": 33, "expect": {"fire2": 2, "slash": 5, "death": 5},
     },
+    # the Dismounted Cuirassier: 2 standing, 7 walking, aim, aim, shot (with the flash), 6 sabre
+    # poses (only the first two face the attack, and none shows the cut: see sabre_attack), 2 death
+    "cuirassier_dismounted": {
+        "rows": [("dismounted_armoured", d) for d in DIRS5],
+        "groups": [("idle", 0), ("walk", 180), ("fire3", 570), ("sabre", 845), ("death", 1285)],
+        "cell": FOOT, "ref_h": 35, "expect": {"fire3": 3, "sabre": 6, "death": 2},
+    },
 }
+
+# a blade drawn in at sheet resolution: steel, its edges, and the swing's trail
+BLADE = {"len": 46, "steel": (214, 220, 228), "edge": (52, 54, 62), "hilt": (196, 156, 64), "trail": (236, 240, 246)}
+
+
+def hand_of(img):
+    """(sheet resolution) where his sword hand is: the gold of the hilt he holds, else the
+    rightmost point of his upper half (the raised arm)."""
+    a = img[..., 3] > 0
+    rgb = img[..., :3].astype(int)
+    ya = np.nonzero(a.any(1))[0]
+    gold = a & (rgb[..., 0] > 150) & (rgb[..., 1] > 100) & (rgb[..., 2] < 90) & (rgb[..., 0] - rgb[..., 2] > 90)
+    gold[int(ya.min() + (ya.max() - ya.min()) * 0.45):] = False      # (not his belt buckle)
+    if gold.sum() >= 3:
+        ys, xs = np.nonzero(gold)
+        return float(np.median(ys)), float(np.median(xs))
+    ys, xs = np.nonzero(a)
+    up = ys < ys.min() + (ys.max() - ys.min()) * 0.45
+    i = int(np.argmax(np.where(up, xs, -1)))
+    return float(ys[i]), float(xs[i])
+
+
+def with_blade(img, deg, trail_from=None):
+    """The frame with a sabre drawn from his hand at `deg` (0 = straight ahead, + = down), and
+    a swing trail from `trail_from` degrees to it. The picture grows to fit the blade."""
+    L = BLADE["len"]
+    pad = L + 8
+    h, w = img.shape[:2]
+    out = np.zeros((h + 2 * pad, w + 2 * pad, 4), np.uint8)
+    out[pad:pad + h, pad:pad + w] = img
+    hy, hx = hand_of(img)
+    hy += pad
+    hx += pad
+
+    def put(y, x, col):
+        yi, xi = int(round(y)), int(round(x))
+        if 0 <= yi < out.shape[0] and 0 <= xi < out.shape[1]:
+            out[yi, xi, :3] = col
+            out[yi, xi, 3] = 255
+
+    if trail_from is not None:
+        for t in np.linspace(np.radians(trail_from), np.radians(deg), 60):
+            for r in (L - 3, L - 2, L - 1):
+                put(hy + np.sin(t) * r, hx + np.cos(t) * r, BLADE["trail"])
+    th = np.radians(deg)
+    d = np.array([np.sin(th), np.cos(th)])
+    n = np.array([d[1], -d[0]])
+    for s in np.linspace(4, L, int(L * 2)):
+        bend = 0.0025 * s * s            # a sabre's curve
+        p = np.array([hy, hx]) + d * s + n * bend
+        for o in (-2.0, 2.0):
+            put(*(p + n * o), BLADE["edge"])
+        for o in (-1.0, 0.0, 1.0):
+            put(*(p + n * o), BLADE["steel"])
+    for s in np.linspace(-3, 4, 12):
+        put(*(np.array([hy, hx]) + n * s), BLADE["hilt"])
+    return out, pad
+
+
+def sabre_attack(sab):
+    """The Dismounted Cuirassier's attack, 4 frames, from the sheet's sabre poses: only the
+    1st (fist raised, facing the attack) and 2nd (sabre over his head) look the right way and
+    no pose shows the cut. So: the 1st with the blade drawn raised behind, the 2nd as drawn,
+    the 1st with the blade swept forward (a trail behind it), and the 1st with it swept down."""
+    f0, f1 = sab[0], sab[1]
+    out = []
+    for deg, trail in ((-115, None), (None, None), (15, -100), (62, 0)):
+        if deg is None:
+            out.append(f1)
+            continue
+        img, pad = with_blade(f0[0], deg, trail)
+        out.append((img, f0[1] - pad, f0[2] + pad, -pad))     # (the picture grew by `pad` all round)
+    return out
 
 
 def runs(mask1d, min_gap):
@@ -160,15 +248,16 @@ def frames_in_band(fg, y0, y1, groups, expect, red=None):
     res = []
     for g in dict.fromkeys(o[0] for o in out):
         part = [o for o in out if o[0] == g]
-        if g == "fire2" and len(part) == 1 and red is not None:
+        if g in ("fire2", "fire3") and len(part) < int(expect.get(g, 0)) and red is not None:
             # aim and shot drawn touching: the aim's musket reaches the next man, so the cut
             # goes just left of the second man's red coat
-            o = part[0]
+            i = max(range(len(part)), key=lambda j: part[j][2] - part[j][1])
+            o = part[i]
             cols = np.nonzero(red[y0:y1, o[1]:o[2]].any(0))[0]
             gaps = np.nonzero(np.diff(cols) > 3)[0]
             if len(gaps):
                 cut = o[1] + int(cols[gaps[0] + 1]) - 4
-                part = [[g, o[1], cut], [g, cut, o[2]]]
+                part[i:i + 1] = [[g, o[1], cut], [g, cut, o[2]]]
         while len(part) < int(expect.get(g, 0)):
             i = max(range(len(part)), key=lambda j: part[j][2] - part[j][1])
             o = part[i]
@@ -290,13 +379,21 @@ def import_sheet(name, spec, strips):
         if "slash" in frames:
             sl = frames.pop("slash")
             frames["melee"] = [sl[0], sl[1], (turn_sabre(sl[1][0]), sl[1][1], sl[1][2])]
+        if "sabre" in frames:
+            frames["melee"] = sabre_attack(frames.pop("sabre"))
+        if "fire3" in frames:
+            f3 = frames.pop("fire3")
+            frames["aim"] = [f3[0]]
+            frames["fire"] = [f3[1], f3[-1]]
         if "fire2" in frames:
             f2 = frames.pop("fire2")
             frames["aim"] = [f2[0]]
             frames["fire"] = [f2[0], f2[-1]]
         for g, lst in frames.items():
             cells = []
-            for img, x0, x1 in lst:
+            for item in lst:
+                img, x0, x1 = item[0], item[1], item[2]
+                yoff = item[3] if len(item) > 3 else 0
                 a = img[..., 3] > 0
                 ys, xs = np.nonzero(a)
                 if len(xs) == 0:
@@ -311,7 +408,7 @@ def import_sheet(name, spec, strips):
                 top = ys.min()
                 crop = img[top:ys.max() + 1]
                 small = snap_team(clean(shrink(crop, scale)))
-                cells.append(place(cell, anchor, small, x0, y0 + top, cx, ground, scale))
+                cells.append(place(cell, anchor, small, x0, y0 + yoff + top, cx, ground, scale))
             strips[(art, g, d)] = cells
     # fixes: the horse's S grazing is drawn side on: the SE row's
     if name == "horse_riderless":

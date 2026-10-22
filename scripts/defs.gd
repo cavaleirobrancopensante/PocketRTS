@@ -649,14 +649,14 @@ const MUSKETS := ["musketeer", "dragoon", "dismounted"]
 ## (assets/icons/<name>.png) while it has none of its own; "feather" / "feather_armoured": a
 ## plume drawn on his hat (a stand-in sprite, to tell him from a Musketeer); "building": the
 ## sprite name of a building (assets/buildings/<name>_<state>.png). The designer's sheets:
-## tools/import_horse_units.py (horse, messenger, dragoon, dragoon_armoured, dismounted) and
-## tools/import_horse_breeder.py. Still TEMPORARY: the Dismounted Cuirassier (the Guardsman's
-## sprites with a plume), the portraits and the research and command icons.
+## tools/import_horse_units.py (horse, messenger, dragoon, dragoon_armoured, dismounted,
+## dismounted_armoured) and tools/import_horse_breeder.py. Still TEMPORARY: the portraits of
+## the new units and the Shot Pouch's and horse commands' icons.
 const TEMP_ART := {
 	"horse": {"art": "horse", "portrait": "horseman"},
 	"messenger": {"art": "messenger", "portrait": "labourer"},
 	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "musketeer", "portrait_armoured": "guardsman"},
-	"dismounted": {"art": "dismounted", "armoured": "musketeer_armoured", "feather_armoured": true, "portrait": "horseman", "portrait_armoured": "cuirassier"},
+	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "horseman", "portrait_armoured": "cuirassier"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
 	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon
 	# the horse commands' card icons
