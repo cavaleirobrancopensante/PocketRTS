@@ -29,7 +29,9 @@ const MAPS := {
 ## the small decorations strewn over open ground; "kits": the groups of decorations (farm,
 ## camp, ruins...) that suit it. "amb": its ambience sound (default: its own name).
 const BIOMES := {
-	"grass": {"low": ["grass"], "base": "dirt", "high": "grass_flat",
+	# (the bright grass is strong on the eye: a calmer copy of it is the ground and the
+	# bright one comes in soft patches, fading in through the mid tiles; make_calm_grass.py)
+	"grass": {"low": ["grass_calm", "grass_calm", "grass_calm", "grass_mid", "grass"], "patches": true, "base": "dirt", "high": "grass_flat",
 		"face": "grass_face", "ramp": "grass_ramp", "water": "water", "ford": "shallow",
 		"trees": 0.8, "tint": Color(1, 1, 1),
 		"scatter": ["flowers", "flowers_pink", "grass_flowers", "grass_a", "stump", "rabbit", "sheep", "bird", "shrub", "flowers_yellow"],

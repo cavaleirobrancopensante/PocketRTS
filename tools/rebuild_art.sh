@@ -43,3 +43,4 @@ python3 tools/import_mortar_walk.py      # the Mortar's towed walk (replaces rou
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 echo "Now run: godot --headless --import"
+python3 tools/make_calm_grass.py
