@@ -291,17 +291,32 @@ def clean_strip(path, keep=None, gaps=True):
                 cleared += 1
             else:
                 darkened += 1
+    # the backdrop blended into the coat: a pink the team shader leaves pink. Where it
+    # touches the coat's team red it becomes the coat's shadow red (tinted like the coat)
+    TEAM = ((255, 0, 0), (150, 0, 0))
+    recoloured = 0
+    for y in range(H):
+        for x in range(W):
+            p = px[x, y]
+            if p[3] < 20 or (x, y) in keep or p[:3] in TEAM:
+                continue
+            h, s, v = _hsv(p)
+            if v > 0.7 and 0.25 < s < 0.75 and (h > 0.9 or h < 0.02) and any(
+                    0 <= x + dx < W and px[x + dx, y + dy][:3] in TEAM and px[x + dx, y + dy][3] >= 20
+                    for dx, dy in N8 if 0 <= y + dy < H and (x + dx) // CELL == x // CELL):
+                px[x, y] = TEAM[1] + (255,)
+                recoloured += 1
     im.save(path)
-    return darkened, cleared
+    return darkened, cleared, recoloured
 
 
 def clean_all(folder=DIR):
     for f in sorted(os.listdir(folder)):
         if f.endswith(".png"):
             name = f[:-4]
-            d, c = clean_strip(os.path.join(folder, f), KEEP.get(name), not name.startswith(NO_GAPS))
-            if d or c:
-                print(f"fix_labourer_hoe: {name}: backdrop pixels {d} darkened, {c} cleared")
+            d, c, r = clean_strip(os.path.join(folder, f), KEEP.get(name), not name.startswith(NO_GAPS))
+            if d or c or r:
+                print(f"fix_labourer_hoe: {name}: backdrop pixels {d} darkened, {c} cleared, {r} pink to coat red")
 
 
 def main():
