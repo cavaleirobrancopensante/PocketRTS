@@ -917,7 +917,7 @@ func _build_card() -> Array:
 
 		else:
 			_ability_buttons(list, units)
-			list.append(["repair", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
+			list.append(["hold", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 			_refit_buttons(list, units)
 		_horse_buttons(list, units)
 		if has_lab:
@@ -985,7 +985,7 @@ func _build_card() -> Array:
 				sb.set_vertical(v)
 			toast("Gate turned. It now stays this way."), true, "", ""])
 	if b and b.built and b.kind != game.faction_hall(game.human):
-		list.append(["stop", "DEMOLISH", func() -> void:
+		list.append(["demolish", "DEMOLISH", func() -> void:
 			if Time.get_ticks_msec() - _demolish_ms > 2500:
 				_demolish_ms = Time.get_ticks_msec()
 				toast("Press DEMOLISH again to pull it down.")
@@ -1047,10 +1047,10 @@ func _build_card() -> Array:
 				if w != "":
 					toast(w), why == "", why, str(game.unit_price(game.human, k)[0])])
 		if b.dual_rally():
-			list.append(["move", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
+			list.append(["rally", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
 			list.append(["feeding_pit", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
 		elif not b.d["trains"].is_empty():
-			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
+			list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
 			list.append(["stop", "CANCEL", func() -> void:
 				var last: String = b.queue.back() if not b.queue.is_empty() else ""
@@ -1355,7 +1355,7 @@ func _production_card(pbs: Array) -> Array:
 				toast(w), why == "", why, str(game.unit_price(game.human, kk)[0])])
 	if pages > 1:
 		list.append(["build", "MORE", func() -> void: prod_page = (prod_page + 1) % pages, true, "", ""])
-	list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
+	list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 	return list
 
 
