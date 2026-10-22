@@ -2453,6 +2453,12 @@ func _courier(delta: float) -> Vector2:
 # ------------------------------------------------------------------ update
 
 func _physics_process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_unit(delta)
+	Prof.add("units", _p0)
+
+
+func _tick_unit(delta: float) -> void:
 	_process_flash(delta)
 	if off_field:
 		return
@@ -4942,6 +4948,12 @@ func _draw_haul(ci: CanvasItem) -> void:
 
 
 func _draw() -> void:
+	var _p0 := Time.get_ticks_usec()
+	_draw_unit()
+	Prof.add("unit draw", _p0)
+
+
+func _draw_unit() -> void:
 	if dead:
 		# a veteran's body (or a seasoned horse's carcass, or a rider's on one): how much
 		# essence it holds, for the Brood to see

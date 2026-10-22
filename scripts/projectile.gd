@@ -43,6 +43,12 @@ func _arc() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_projectile(delta)
+	Prof.add("projectiles", _p0)
+
+
+func _tick_projectile(delta: float) -> void:
 	t += delta
 	var f := clampf(t / duration, 0.0, 1.0)
 	var arc := _arc()

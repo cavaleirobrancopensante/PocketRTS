@@ -5415,6 +5415,12 @@ func is_visible_to(t: int, p: Vector2) -> bool:
 # ------------------------------------------------------------------ main loop
 
 func _physics_process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_game(delta)
+	Prof.add("game", _p0)
+
+
+func _tick_game(delta: float) -> void:
 	if over or edit_mode:
 		return
 	clock += delta

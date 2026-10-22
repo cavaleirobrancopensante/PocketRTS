@@ -21,6 +21,12 @@ func setup(name: String, speed := 1.0, looping := false) -> void:
 
 
 func _process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_effect(delta)
+	Prof.add("effects", _p0)
+
+
+func _tick_effect(delta: float) -> void:
 	t += delta * fps
 	var f := int(t)
 	if f >= n:

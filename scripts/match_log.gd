@@ -63,9 +63,71 @@ func begin(levels: Dictionary) -> void:
 	lines.append("")
 
 
+# ---- lag: real frame times this minute, and what the game was busy with (Prof)
+var _ft := PackedFloat32Array()     # frame times (ms) since the last minute
+var _phys_ticks := 0                # physics steps since the last minute
+var _lag_minutes: Array = []        # [minute, avg fps, 1% low, worst ms]
+
+
+func _process(delta: float) -> void:
+	if game == null or game.over:
+		return
+	_ft.append(delta * 1000.0)
+
+
+## "  Performance: 58 fps avg, 1% low 31 fps, worst frame 120 ms, 14 frames over 50 ms ..."
+## and where the time went (the busiest parts first), plus how much there is to run.
+func _lag_lines() -> void:
+	var n := _ft.size()
+	if n == 0:
+		return
+	var tot := 0.0
+	var worst := 0.0
+	var over33 := 0
+	var over50 := 0
+	for f in _ft:
+		tot += f
+		worst = maxf(worst, f)
+		if f > 33.4:
+			over33 += 1
+		if f > 50.0:
+			over50 += 1
+	var sorted := _ft.duplicate()
+	sorted.sort()
+	var k := maxi(1, n / 100)
+	var low_ms := 0.0
+	for i in k:
+		low_ms += sorted[n - 1 - i]
+	low_ms /= k
+	var avg_fps := 1000.0 * n / maxf(tot, 1.0)
+	var low_fps := 1000.0 / maxf(low_ms, 0.1)
+	_lag_minutes.append([int(round(game.clock / 60.0)), avg_fps, low_fps, worst])
+	var bodies := game.bodies.size()
+	var fx := 0
+	for c in game.get_children():
+		if c is Effect:
+			fx += 1
+	lines.append("  Performance: %d fps avg, 1%% low %d fps, worst frame %d ms, %d frames over 33 ms, %d over 50 ms, %.1f physics steps a frame | units %d, buildings %d, bodies %d, corpses %d, effects %d, nodes %d, objects %d" % [
+		int(round(avg_fps)), int(round(low_fps)), int(round(worst)), over33, over50, float(_phys_ticks) / maxf(n, 1),
+		game.units.size(), game.buildings.size(), bodies, game.corpses.size(), fx,
+		int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), int(Performance.get_monitor(Performance.OBJECT_COUNT))])
+	# where the time went: ms per second of play, busiest first
+	var secs := maxf(tot / 1000.0, 0.001)
+	var keys := Prof.us.keys()
+	keys.sort_custom(func(a, b) -> bool: return int(Prof.us[a]) > int(Prof.us[b]))
+	var parts := PackedStringArray()
+	for key in keys:
+		parts.append("%s %.1f ms/s (%d calls/s)" % [key, float(Prof.us[key]) / 1000.0 / secs, int(round(float(Prof.calls[key]) / secs))])
+	lines.append("    busy with: " + ", ".join(parts))
+	_ft.clear()
+	_phys_ticks = 0
+	Prof.reset()
+
+
 func _physics_process(delta: float) -> void:
 	if game == null or game.over:
 		return
+	_phys_ticks += 1
 	_snap_t += delta
 	if _snap_t >= 60.0:
 		_snap_t = 0.0
@@ -75,6 +137,7 @@ func _physics_process(delta: float) -> void:
 ## One line per player: what they have and what changed in the last minute.
 func snapshot() -> void:
 	lines.append("--- minute %d ---" % int(round(game.clock / 60.0)))
+	_lag_lines()
 	for t in game.n_players():
 		if game.eliminated[t]:
 			continue
@@ -141,6 +204,14 @@ func finish(winner: int) -> void:
 	snapshot()
 	lines.append("")
 	lines.append("RESULT at %s: %s" % [stamp(), ("winner " + who(winner)) if winner >= 0 else "no winner"])
+	if not _lag_minutes.is_empty():
+		var pm := PackedStringArray()
+		var worst_m: Array = _lag_minutes[0]
+		for m in _lag_minutes:
+			pm.append("m%d %d fps (1%% low %d)" % [m[0], int(round(m[1])), int(round(m[2]))])
+			if float(m[2]) < float(worst_m[2]):
+				worst_m = m
+		lines.append("  Performance per minute: " + ", ".join(pm) + ". Worst: minute %d (1%% low %d fps, worst frame %d ms)." % [worst_m[0], int(round(worst_m[2])), int(round(worst_m[3]))])
 	for t in game.n_players():
 		var st: Dictionary = game.stats[t]
 		var kb := PackedStringArray()

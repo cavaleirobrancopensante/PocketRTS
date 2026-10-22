@@ -117,6 +117,12 @@ var _opened := ""               # the strategy it started with (a failed rush sw
 
 
 func _physics_process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_ai(delta)
+	Prof.add("ai", _p0)
+
+
+func _tick_ai(delta: float) -> void:
 	if game == null or game.over:
 		return
 	_think -= delta
