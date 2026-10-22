@@ -259,24 +259,28 @@ NEAR_DOOR_FOOT = NEAR_FOOT - 2
 
 
 def open_doors(dst, behind):
-    """behind: the far leaf, drawn before the posts; else the near one, after them."""
+    """behind: the far leaf, drawn before the posts; else the near one, after them. The
+    two open out like a "<": the near leaf slopes down to the right, the far leaf is its
+    mirror and slopes up."""
+    img = shear(leaf(F3_DOORS["e"], DOOR_W, DOOR_H), OPEN_SWING)
     if behind:
-        img = leaf(F3_DOORS["w"], DOOR_W, DOOR_H)[:, ::-1]
-        put(dst, img, CX + 5, DOOR_FOOT + 1 - DOOR_H)
+        put(dst, img[::-1], CX + 5, DOOR_FOOT + 1 - DOOR_H - UP)
     else:
-        put(dst, leaf(F3_DOORS["e"], DOOR_W, DOOR_H), CX + 5, NEAR_DOOR_FOOT + 1 - DOOR_H)
+        put(dst, img, CX + 5, NEAR_DOOR_FOOT + 1 - DOOR_H)
 
 
 SWING = 6                    # half open: a leaf's free edge this many rows below its hinge
+UP = 4                       # the far leaf, sloping up, starts a little higher
+OPEN_SWING = 5               # open: the same slope, wider leaves
 
 
 def half_doors(dst, behind):
     w = round(DOOR_W * 0.72)
+    img = shear(leaf(F2_DOORS["e"], w, DOOR_H), SWING)
     if behind:
-        img = leaf(F2_DOORS["w"], w, DOOR_H)[:, ::-1]
-        put(dst, shear(img, SWING), CX + 4, DOOR_FOOT + 1 - DOOR_H)
+        put(dst, img[::-1], CX + 4, DOOR_FOOT + 1 - DOOR_H - UP)
     else:
-        put(dst, shear(leaf(F2_DOORS["e"], w, DOOR_H), SWING), CX + 4, NEAR_DOOR_FOOT + 1 - DOOR_H)
+        put(dst, img, CX + 4, NEAR_DOOR_FOOT + 1 - DOOR_H)
 
 
 def gate_closed(frame):
