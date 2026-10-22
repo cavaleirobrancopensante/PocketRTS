@@ -7,7 +7,9 @@ art/crown/palisade.png (1536x1024, flat navy background):
   row 4  the front-back piece in the same four states
   row 5  the gate in a left-right line: closed, half open, open, damaged, construction,
          destroyed
-  row 6  the same six gate states for a front-back line
+  row 6  the same six gate states for a front-back line: not used (a front-facing gate
+         squeezed narrow); the gate in a N-S line (gate_v_*) is drawn side-on by
+         tools/import_palisade_gate_v.py from its own sheet
 
 The pieces auto-tile like Age of Empires 2: every wall cell picks a picture by which of
 its four neighbours (N, E, S, W) are walls or gates of the same side. The sheet's corners
@@ -38,8 +40,8 @@ Output (assets/buildings):
                               "nesw", ...), "post" for none: 16 pieces
   wall_ew_<state>.png, wall_ns_<state>.png   construction / damaged / destroyed
   wall_<state>.png            the E-W pictures again (built = the straight): fallbacks
-  gate_<state>.png, gate_v_<state>.png       built (closed), half, open, open_damaged,
-                              damaged, construction, destroyed (v: in a N-S line)
+  gate_<state>.png            built (closed), half, open, open_damaged, damaged,
+                              construction, destroyed (gate_v_*: import_palisade_gate_v.py)
   assets/icons/wall.png, gate.png
 
 Usage (from the repo root): python3 tools/import_palisade.py [--contact DIR]
@@ -93,9 +95,6 @@ GATE_ROWS = {
     "gate": {"y": (640, 805), "foot": 786, "flag_bottom": 677, "poles": {
         "built": (107, 217), "half": (347, 465), "open": (597, 708), "damaged": (833, 944),
         "construction": (1089, 1203), "destroyed": (1371, 1461)}},
-    "gate_v": {"y": (808, 975), "foot": 950, "flag_bottom": 836, "poles": {
-        "built": (102, 212), "half": (362, 457), "open": (598, 706), "damaged": (837, 942),
-        "construction": (1089, 1198), "destroyed": (1349, 1455)}},
 }
 POST_HALF = 14       # sheet px from a pole to the outside of its post
 
@@ -385,12 +384,15 @@ def mock(pics, d):
             if ch == ".":
                 continue
             if ch == "#":
-                # (as Game.wall_links: walls join every way, gates only east or west)
+                # (as Game.wall_links: walls join every way, a gate along its line: E-W
+                # gates G, H east and west, N-S gates g north and south)
                 m = sum(DIRS[k] for k, (dx, dy) in zip("nesw", ((0, -1), (1, 0), (0, 1), (-1, 0)))
-                        if at(x + dx, y + dy) and (MOCK[y + dy][x + dx] == "#" or k in "ew"))
+                        if at(x + dx, y + dy) and (MOCK[y + dy][x + dx] == "#"
+                                                   or (k in "ew") == (MOCK[y + dy][x + dx] != "g")))
                 p = pics[f"wall_{links(m)}_built"]
             else:
-                p = pics["gate_v_built" if ch == "g" else ("gate_open" if ch == "H" else "gate_built")]
+                p = (np.array(Image.open(f"{OUT}/gate_v_built.png").convert("RGBA")) if ch == "g"
+                     else pics["gate_open" if ch == "H" else "gate_built"])
             h, w = p.shape[:2]
             bx = x * TILE + TILE // 2 - w // 2
             by = 40 + (y + 1) * TILE + FOOT - h

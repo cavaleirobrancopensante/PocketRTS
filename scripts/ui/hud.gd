@@ -601,6 +601,16 @@ func _build_card() -> Array:
 			if controls.line_from.x >= 0:
 				why = ""
 		list.append(["build", lab, func() -> void: confirm_place(), why == "", why, ""])
+		if Defs.BUILDINGS[k].get("gate", false):
+			# gates turn to match the palisade they're laid in; this is the way they face
+			# where it doesn't say (no line beside them, or lines both ways): remembered
+			list.append(["ab_rotate", "ROTATE", func() -> void:
+				game.gate_pref_vertical = not game.gate_pref_vertical
+				var way := "north-south" if game.gate_pref_vertical else "east-west"
+				if game.gate_facing(game.human, controls.ghost_cell, {}, game.gate_pref_vertical) == game.gate_pref_vertical:
+					toast("Gates now face %s." % way)
+				else:
+					toast("Gates face %s off the palisade; this one follows its line." % way), true, "", ""])
 		list.append(["stop", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if controls.mode != "":

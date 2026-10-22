@@ -27,6 +27,7 @@ PYTHONPATH=tools python3 tools/make_aim_up.py   # both musketeers aiming up at f
 python3 tools/import_balloon.py          # Observation Balloon (gunners cut from the musketeer above)
 python3 tools/import_lightning.py        # lightning effects
 python3 tools/import_palisade.py         # Crown palisade (auto-tiling pieces) and gates, from art/crown/palisade.png
+python3 tools/import_palisade_gate_v.py  # the gate in a N-S palisade line, side-on (art/crown/palisade_gate_v.png)
 python3 tools/import_round9.py           # Tesla Cart as a spider cart (all its strips + art_data entry)
 python3 tools/make_packs.py              # Clockwork battery backpacks (after every unit sheet)
 python3 tools/import_deposits.py         # saltpetre / ore deposits (4 states), chips, icons, sparkle
