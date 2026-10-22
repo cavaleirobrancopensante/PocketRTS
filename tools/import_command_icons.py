@@ -12,6 +12,7 @@ SHEETS = {"commands_extra": ["hold_fire", "fire_at_will", "hold_old", "patrol", 
           "command_stop": ["stop"],        # (replaces the stop hand from icons.png)
           "command_cancel": ["cancel"],
           "command_back": ["back"],
+          "command_work": ["work", "work_gear_old", "work_both_old"],  # (the bell; the designer chose it)
           "command_hold": ["hold"]}       # (the bold shield; commands_extra's hold is unused)
 
 
