@@ -8,9 +8,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import import_round11 as r
 
-SHEETS = {"commands_extra": ["hold_fire", "fire_at_will", "hold", "patrol", "rally", "demolish"],
+SHEETS = {"commands_extra": ["hold_fire", "fire_at_will", "hold_old", "patrol", "rally", "demolish"],
           "command_stop": ["stop"],        # (replaces the stop hand from icons.png)
-          "command_cancel": ["cancel"]}
+          "command_cancel": ["cancel"],
+          "command_hold": ["hold"]}       # (the bold shield; commands_extra's hold is unused)
 
 
 def main():
@@ -21,6 +22,8 @@ def main():
         oy0, oy1, ox0, ox1 = r.outer_edges(bg, sl)
         iy0, iy1, ix0, ix1 = r.inner_box(px, oy0, oy1, ox0, ox1)
         pic = px[iy0:iy1, ix0:ix1].copy()
+        if name.endswith("_old"):
+            continue
         r.save_icon(r.framed(r.shrink(r.square(pic, name), r.INNER)), name)
         print(f"icons/{name}.png: frame {ox1 - ox0}x{oy1 - oy0} at ({ox0}, {oy0})")
 
