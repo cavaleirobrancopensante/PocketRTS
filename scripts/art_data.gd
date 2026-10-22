@@ -447,6 +447,14 @@ const UNITS := {
 		"walk_s": 10,
 		"walk_se": 8,
 	}},
+	"horse": {"cell": Vector2i(64, 56), "anchor": Vector2(32, 52), "frames": {
+		"death_e": 3,
+		"idle_e": 2,
+		"idle_s": 2,
+		"idle_se": 1,
+		"walk_e": 8,
+		"walk_se": 8,
+	}},
 	"spore_mother": {"cell": Vector2i(68, 100), "anchor": Vector2(34, 97), "frames": {
 		"death_e": 3,
 		"death_n": 3,

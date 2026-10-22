@@ -64,7 +64,7 @@ SHEET_BOXES = {
 # The coat each unit's sprites are painted in (left as painted when it gets that coat).
 # The Mortar has none: its towed walk shows a dark horse, its other strips a chestnut, so
 # every coat (bay too) is repainted, the same on both.
-NATIVE = {"cuirassier": "dark", "horseman": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": ""}
+NATIVE = {"cuirassier": "dark", "horseman": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "", "horse": ""}
 NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 
 # Per unit: the colour test, the strips with a horse (anim names; every direction), and
@@ -102,6 +102,14 @@ CONFIG = {
         "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
                        "skip": [("death", 1), ("death", 2), ("death", 3)]},
         "blade_v": 0.5,
+        "keep": {},
+        "drop": {},
+    },
+    # the riderless horse (tools/import_riderless_horse.py, temporary art): the sheet's blue-grey
+    # horse alone, no rider; its grey has a blue cast, so no steel test
+    "horse": {
+        "test": "horse_grey",
+        "anims": ["idle", "walk", "death"],
         "keep": {},
         "drop": {},
     },
@@ -238,6 +246,8 @@ def candidates(test, px):
     if test == "grey":
         steel = (rgb[..., 2] - rgb[..., 0] >= 9 / 255.0)
         mid = ok & (v >= 0.16) & (s < 0.30) & ~steel
+    elif test == "horse_grey":
+        mid = ok & (v >= 0.16) & (s < 0.32)
     elif test == "dark_brown":
         # the Powder Wagon's near-black brown horse: dull warm darks (the wagon's wood is a
         # saturated orange-brown, its canvas a light beige)
