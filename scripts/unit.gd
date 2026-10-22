@@ -1119,6 +1119,8 @@ func cmd_attack(e: Entity) -> void:
 	order = "attack"
 	order_target = e
 	target = e
+	_detour = null
+	_wall_look_t = 0.0
 
 
 ## Units with two modes: moving (packed) and set up (deployed). The cannon limbers and
@@ -2701,11 +2703,22 @@ func _attack_detour(delta: float) -> Entity:
 	_wall_look_t -= delta
 	if _wall_look_t > 0.0:
 		return order_target
-	_wall_look_t = 0.5
-	if game.blocking_wall(self) == null or _can_get_at(order_target):
+	# (at a wall it asks twice a second; out in the open, on the way, once every 1.5 s)
+	var at_wall := game.blocking_wall(self) != null
+	_wall_look_t = 0.5 if at_wall else 1.5
+	if not at_wall and not _any_enemy_wall():
+		return order_target
+	if _can_get_at(order_target):
 		return order_target
 	_detour = _wall_toward(order_target)
 	return _detour if _detour else order_target
+
+
+func _any_enemy_wall() -> bool:
+	for b in game.buildings:
+		if not b.dead and b.built and (b.kind == "wall" or b.kind == "gate") and game.hostile(b.team, team):
+			return true
+	return false
 
 
 ## Target search for units on their own (idle, attack-move): a melee unit that can't walk up
