@@ -4914,8 +4914,10 @@ func _draw_haul(ci: CanvasItem) -> void:
 
 func _draw() -> void:
 	if dead:
-		# a veteran's body: how much essence it holds, for the Brood to see
-		if kills > 0 and game.corpses.has(self):
+		# a veteran's body (or a seasoned horse's carcass, or a rider's on one): how much
+		# essence it holds, for the Brood to see
+		var seasoned := (kind == "horse" or is_mounted()) and horse_rank(horse_miles) > 0
+		if (kills > 0 or seasoned) and game.corpses.has(self):
 			_draw_number(game.corpse_value(self), Vector2(0, -26))
 		return
 	if selected and (kind == "cannon" or kind == "mortar") and team == game.human and aboard == null:
