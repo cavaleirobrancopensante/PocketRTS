@@ -126,42 +126,68 @@ func _tick_ai(delta: float) -> void:
 	if game == null or game.over:
 		return
 	_think -= delta
+	if _stage < STAGES:
+		_think_stage(_stage)       # (a think goes on over the next ticks, a part each)
+		_stage += 1
+		return
 	if _think > 0.0:
 		return
-	_think = [2.2, 1.2, 0.7, 0.4][difficulty]
-	_think_all()
+	_think_dt = [2.2, 1.2, 0.7, 0.4][difficulty]
+	_think = _think_dt
+	_think_stage(0)
+	_stage = 1
 
 
-func _think_all() -> void:
+## A think, in parts on consecutive physics ticks (all in one tick, it made a long frame):
+## workers and economy, building, research and training, raids, the army, horses and the
+## rest. Each part sees what the parts before it did, as before.
+const STAGES := 5
+var _stage := STAGES
+var _think_dt := 0.0             # the time between thinks (what the parts that count time add)
+
+
+func _think_stage(i: int) -> void:
 	var pt := Time.get_ticks_usec()
-	_workers()
-	pt = _lap("ai/workers", pt)
-	_econ_build()
-	pt = _lap("ai/econ", pt)
-	_supply()
-	_build_up()
-	pt = _lap("ai/build", pt)
-	_research()
-	_produce()
-	pt = _lap("ai/produce", pt)
-	if difficulty >= 1 and _crown() and not peaceful:
-		_raid()
-		_balloon_drop()
-	pt = _lap("ai/raid", pt)
-	_army()
-	pt = _lap("ai/army", pt)
-	if _crown():
-		_tend_wagon()
-		_horses()
-	pt = _lap("ai/horses", pt)
-	_loose_horses()
-	pt = _lap("ai/loose", pt)
-	if difficulty >= 1:
-		_abilities()
-	pt = _lap("ai/abil", pt)
-	if difficulty >= 2:
-		_micro()
-	_lap("ai/micro", pt)
+	match i:
+		0:
+			_workers()
+			pt = _lap("ai/workers", pt)
+			_econ_build()
+			_lap("ai/econ", pt)
+		1:
+			_supply()
+			_build_up()
+			_lap("ai/build", pt)
+		2:
+			_research()
+			_produce()
+			pt = _lap("ai/produce", pt)
+			if difficulty >= 1 and _crown() and not peaceful:
+				_raid()
+				_balloon_drop()
+			_lap("ai/raid", pt)
+		3:
+			_army()
+			_lap("ai/army", pt)
+		4:
+			if _crown():
+				_tend_wagon()
+				_horses()
+			pt = _lap("ai/horses", pt)
+			_loose_horses()
+			pt = _lap("ai/loose", pt)
+			if difficulty >= 1:
+				_abilities()
+			pt = _lap("ai/abil", pt)
+			if difficulty >= 2:
+				_micro()
+			_lap("ai/micro", pt)
+
+
+## Everything at once (tests and tools that call it).
+func _think_all() -> void:
+	for i in STAGES:
+		_think_stage(i)
 
 
 ## (the match log's "busy with": each part of the computer's think on its own)
@@ -2780,7 +2806,7 @@ func _balloon_drop() -> void:
 		_drop = {"b": balloon, "men": men, "phase": "load", "at": at, "t": 0.0}
 		return
 	var b = _drop["b"]
-	_drop["t"] = float(_drop["t"]) + _think
+	_drop["t"] = float(_drop["t"]) + _think_dt
 	_drop["men"] = (_drop["men"] as Array).filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	if not is_instance_valid(b) or b.dead:
 		_end_drop()
@@ -2896,7 +2922,7 @@ func _micro() -> void:
 			u.cmd_move(home + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 			continue
 		if _kite.has(u):
-			_kite[u] = float(_kite[u]) - _think
+			_kite[u] = float(_kite[u]) - _think_dt
 			if float(_kite[u]) <= 0.0:
 				_kite.erase(u)
 				u.cmd_move(_wave_target if _attacking else u.position, true)

@@ -121,6 +121,7 @@ func _lag_lines() -> void:
 		game.units.size(), game.buildings.size(), bodies, game.corpses.size(), fx,
 		int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), int(Performance.get_monitor(Performance.OBJECT_COUNT))])
 	# where the time went: ms per second of play, busiest first
+	Prof.flush()
 	var secs := maxf(tot / 1000.0, 0.001)
 	var keys := Prof.us.keys()
 	keys.sort_custom(func(a, b) -> bool: return int(Prof.us[a]) > int(Prof.us[b]))
