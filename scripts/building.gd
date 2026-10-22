@@ -531,15 +531,12 @@ var _was_selected := false
 
 
 func _physics_process(delta: float) -> void:
-	if Perf.on:
-		var t0 := Perf.t0()
-		_tick(delta)
-		Perf.add(&"building", t0)
-	else:
-		_tick(delta)
+	var _p0 := Time.get_ticks_usec()
+	_tick_building(delta)
+	Prof.add("buildings", _p0)
 
 
-func _tick(delta: float) -> void:
+func _tick_building(delta: float) -> void:
 	_process_flash(delta)
 	_process_acid(delta)
 	if dead:
@@ -964,12 +961,12 @@ func _turn_sails(delta: float) -> void:
 
 
 func _draw() -> void:
-	var pt := Perf.t0()
-	_draw_all()
-	Perf.add(&"bld_draw", pt)
+	var _p0 := Time.get_ticks_usec()
+	_draw_building()
+	Prof.add("building draw", _p0)
 
 
-func _draw_all() -> void:
+func _draw_building() -> void:
 	if dead:
 		return
 	var r := rect()

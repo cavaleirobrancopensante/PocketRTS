@@ -6,15 +6,6 @@ var fps := 10.0
 var loop := false
 var t := 0.0
 var n := 1
-static var live := 0         # effects on the field now (the match log's Performance line)
-
-
-func _enter_tree() -> void:
-	live += 1
-
-
-func _exit_tree() -> void:
-	live -= 1
 
 
 func setup(name: String, speed := 1.0, looping := false) -> void:
@@ -30,6 +21,12 @@ func setup(name: String, speed := 1.0, looping := false) -> void:
 
 
 func _process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_effect(delta)
+	Prof.add("effects", _p0)
+
+
+func _tick_effect(delta: float) -> void:
 	t += delta * fps
 	var f := int(t)
 	if f >= n:

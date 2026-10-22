@@ -3764,20 +3764,20 @@ func find_path(from: Vector2, to: Vector2, siege := false) -> PackedVector2Array
 	# (a Farm's crop rows are walkable: a unit on them starts, or ends, right there)
 	var a := cell_of(from) if open_cell(cell_of(from)) else nearest_free(cell_of(from), 6)
 	var b := cell_of(to) if open_cell(cell_of(to)) else nearest_free(cell_of(to), 8)
-	var pt := Perf.t0()
+	var pt := Time.get_ticks_usec()
 	var pts := astar.get_point_path(a, b, true)
 	if pts.is_empty() and siege:
 		# walled out: walk up to the wall (the unit then breaks it down)
 		pts = astar_siege.get_point_path(a, b, true)
-	Perf.add(&"astar", pt)
+	Prof.add("game/pathfinder", pt)
 	if pts.is_empty():
 		return PackedVector2Array([to])
 	# Use the exact destination when it's on open ground.
 	if open_cell(cell_of(to)) and cell_of(to) == b:
 		pts[pts.size() - 1] = to
-	pt = Perf.t0()
+	pt = Time.get_ticks_usec()
 	var sm := _smooth(from, pts)
-	Perf.add(&"smooth", pt)
+	Prof.add("game/path smoothing", pt)
 	return sm
 
 
@@ -5540,14 +5540,14 @@ func is_visible_to(t: int, p: Vector2) -> bool:
 # ------------------------------------------------------------------ main loop
 
 func _physics_process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_game(delta)
+	Prof.add("game", _p0)
+
+
+func _tick_game(delta: float) -> void:
 	if over or edit_mode:
 		return
-	var pt := Perf.t0()
-	_tick(delta)
-	Perf.add(&"game", pt)
-
-
-func _tick(delta: float) -> void:
 	clock += delta
 	alert_t = maxf(alert_t - delta, 0.0)
 	_body_bar_t -= delta
@@ -5569,20 +5569,20 @@ func _tick(delta: float) -> void:
 	if _sample_t >= 5.0:
 		_sample_t = 0.0
 		_sample_stats()
-	var pt := Perf.t0()
+	var pt := Time.get_ticks_usec()
 	_rebuild_hash()
-	Perf.add(&"hash", pt)
+	Prof.add("game/unit grid", pt)
 	if _astar_dirty:
 		_astar_dirty = false
 	# Path budget per frame
-	pt = Perf.t0()
+	pt = Time.get_ticks_usec()
 	var budget := 24
 	while budget > 0 and not _path_queue.is_empty():
 		var u = _path_queue.pop_front()
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()
 			budget -= 1
-	Perf.add(&"path", pt)
+	Prof.add("game/paths", pt)
 	_tick_zones(delta)
 	_swamp_t -= delta
 	if swamp_dirty and _swamp_t <= 0.0:
@@ -5591,9 +5591,9 @@ func _tick(delta: float) -> void:
 	_vis_t -= delta
 	if _vis_t <= 0.0:
 		_vis_t = 0.25
-		pt = Perf.t0()
+		pt = Time.get_ticks_usec()
 		_update_vis()
-		Perf.add(&"vis", pt)
+		Prof.add("game/fog", pt)
 	for pg in _pings:
 		pg[2] -= delta
 	_pings = _pings.filter(func(pg: Array) -> bool: return pg[2] > 0.0)
@@ -5609,9 +5609,9 @@ func _tick(delta: float) -> void:
 	_refit_t -= delta
 	if _refit_t <= 0.0:
 		_refit_t = float(Defs.REFIT["scan"])
-		pt = Perf.t0()
+		pt = Time.get_ticks_usec()
 		_auto_refit()
-		Perf.add(&"refit", pt)
+		Prof.add("game/refit", pt)
 
 
 ## A player with no buildings left is out; the match ends when one side is left
@@ -6146,9 +6146,9 @@ func _draw_queues() -> void:
 
 
 func _draw_overlay() -> void:
-	var pt := Perf.t0()
+	var pt := Time.get_ticks_usec()
 	_draw_overlay_all()
-	Perf.add(&"overlay_draw", pt)
+	Prof.add("overlay draw", pt)
 
 
 func _draw_overlay_all() -> void:

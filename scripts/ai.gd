@@ -117,52 +117,57 @@ var _opened := ""               # the strategy it started with (a failed rush sw
 
 
 func _physics_process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_ai(delta)
+	Prof.add("ai", _p0)
+
+
+func _tick_ai(delta: float) -> void:
 	if game == null or game.over:
 		return
 	_think -= delta
 	if _think > 0.0:
 		return
 	_think = [2.2, 1.2, 0.7, 0.4][difficulty]
-	var t0 := Perf.t0()
 	_think_all()
-	Perf.add(&"ai", t0)
 
 
 func _think_all() -> void:
-	var pt := Perf.t0()
+	var pt := Time.get_ticks_usec()
 	_workers()
-	pt = _lap(&"ai_workers", pt)
+	pt = _lap("ai/workers", pt)
 	_econ_build()
-	pt = _lap(&"ai_econ", pt)
+	pt = _lap("ai/econ", pt)
 	_supply()
 	_build_up()
-	pt = _lap(&"ai_build", pt)
+	pt = _lap("ai/build", pt)
 	_research()
 	_produce()
-	pt = _lap(&"ai_produce", pt)
+	pt = _lap("ai/produce", pt)
 	if difficulty >= 1 and _crown() and not peaceful:
 		_raid()
 		_balloon_drop()
-	pt = _lap(&"ai_raid", pt)
+	pt = _lap("ai/raid", pt)
 	_army()
-	pt = _lap(&"ai_army", pt)
+	pt = _lap("ai/army", pt)
 	if _crown():
 		_tend_wagon()
 		_horses()
-	pt = _lap(&"ai_horses", pt)
+	pt = _lap("ai/horses", pt)
 	_loose_horses()
-	pt = _lap(&"ai_loose", pt)
+	pt = _lap("ai/loose", pt)
 	if difficulty >= 1:
 		_abilities()
-	pt = _lap(&"ai_abil", pt)
+	pt = _lap("ai/abil", pt)
 	if difficulty >= 2:
 		_micro()
-	_lap(&"ai_micro", pt)
+	_lap("ai/micro", pt)
 
 
-func _lap(zone: StringName, since: int) -> int:
-	Perf.add(zone, since)
-	return Perf.t0()
+## (the match log's "busy with": each part of the computer's think on its own)
+func _lap(zone: String, since: int) -> int:
+	Prof.add(zone, since)
+	return Time.get_ticks_usec()
 
 
 # ------------------------------------------------------------------ helpers

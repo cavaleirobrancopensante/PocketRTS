@@ -123,6 +123,12 @@ func _draw_countdown() -> void:
 
 
 func _process(delta: float) -> void:
+	var _p0 := Time.get_ticks_usec()
+	_tick_hud(delta)
+	Prof.add("hud", _p0)
+
+
+func _tick_hud(delta: float) -> void:
 	_msg_t = maxf(_msg_t - delta, 0.0)
 	_countdown(delta)
 	if _go_t > 0.0:
@@ -1322,12 +1328,12 @@ func _res_line(t: int) -> String:
 
 
 func _draw() -> void:
-	var pt := Perf.t0()
-	_draw_all()
-	Perf.add(&"hud_draw", pt)
+	var _p0 := Time.get_ticks_usec()
+	_draw_hud()
+	Prof.add("hud draw", _p0)
 
 
-func _draw_all() -> void:
+func _draw_hud() -> void:
 	if game == null:
 		return
 	var font := ThemeDB.fallback_font

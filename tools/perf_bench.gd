@@ -12,7 +12,7 @@ extends SceneTree
 ## game runs in real time and a slow frame runs several physics ticks (as when playing).
 ## Player 1 is set up as "you" (fog, HUD, log lines as in a real match) but played by a
 ## Hard computer; the camera follows player 1's army (the fight, when there is one).
-## Results: docs/perf/<out>.csv (and .md); the per-system breakdown comes from Perf zones.
+## Results: docs/perf/<out>.csv (and .md); the per-system breakdown comes from the Prof parts (scripts/prof.gd).
 
 var main: Node
 var t := 0.0
@@ -28,19 +28,44 @@ var _wall0 := 0
 var _phys_us := 0
 var _proc_us := 0
 var _cfg_text := ""
-var _prev := {}
+var _prev := {}                  # Prof.us at the end of the last frame
+var _prev_calls := {}
+var _frame := {}                 # Prof.us added during this frame
+var _acc := {}                   # ... and during this minute (Prof itself is reset by the match log)
+var _acc_calls := {}
 var _worst_ms := 0.0
 var _worst_zones := ""
 
-const ZONES := [&"unit", &"ai", &"game", &"vis", &"path", &"astar", &"smooth", &"hash", &"refit", &"building", &"unit_draw", &"bld_draw", &"hud_draw",
-	&"overlay_draw", &"autosave", &"ai_workers", &"ai_econ", &"ai_build", &"ai_produce", &"ai_raid", &"ai_army", &"ai_horses", &"ai_loose", &"ai_abil", &"ai_micro"]
+## The parts (Prof keys) in the CSV; "a/b" is part of "a" (game/fog is inside game).
+const ZONES := ["units", "ai", "game", "game/fog", "game/paths", "game/pathfinder", "game/path smoothing", "game/unit grid", "game/refit",
+	"buildings", "effects", "projectiles", "unit draw", "building draw", "hud", "hud draw", "overlay draw", "autosave",
+	"ai/workers", "ai/econ", "ai/build", "ai/produce", "ai/raid", "ai/army", "ai/horses", "ai/loose", "ai/abil", "ai/micro"]
 
 
-## Zones that ran since the last frame, slowest first: "path 80.1, ai 12.0, ..."
+## What Prof counted since the last frame (into _frame and the minute's totals).
+func _take_frame() -> void:
+	_frame.clear()
+	for z in Prof.us:
+		var cur := int(Prof.us[z])
+		var was := int(_prev.get(z, 0))
+		var d := cur - was if cur >= was else cur        # (the match log reset Prof)
+		var cc := int(Prof.calls.get(z, 0))
+		var wc := int(_prev_calls.get(z, 0))
+		_acc_calls[z] = int(_acc_calls.get(z, 0)) + (cc - wc if cc >= wc else cc)
+		if d > 0:
+			_frame[z] = d
+			_acc[z] = int(_acc.get(z, 0)) + d
+	if Prof.us.size() < _prev.size():
+		pass
+	_prev = Prof.us.duplicate()
+	_prev_calls = Prof.calls.duplicate()
+
+
+## This frame's parts, slowest first: "game/paths 80.1, ai 12.0, ..."
 func _diff_zones() -> String:
 	var d: Array = []
-	for z in Perf.acc:
-		var v := (int(Perf.acc[z]) - int(_prev.get(z, 0))) / 1000.0
+	for z in _frame:
+		var v := int(_frame[z]) / 1000.0
 		if v >= 1.0:
 			d.append([v, z])
 	d.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
@@ -93,8 +118,9 @@ func _start() -> void:
 	_cfg_text = "%s, %s, %s AI, %s, Godot %s, %s" % [map, " vs ".join(facs), level, "rendered %s" % RenderingServer.get_video_adapter_name() if render else "headless",
 		Engine.get_version_info()["string"], "%d physics ticks a second" % Engine.get_physics_ticks_per_second()]
 	print("PERF start: ", _cfg_text)
-	Perf.on = true
-	Perf.reset()
+	seed(4242)
+	_prev = Prof.us.duplicate()
+	_prev_calls = Prof.calls.duplicate()
 	_wall0 = Time.get_ticks_msec()
 
 
@@ -116,13 +142,13 @@ func _process(delta: float) -> bool:
 	var ms := (now - _last_us) / 1000.0
 	_frames.append(ms)
 	_last_us = now
+	_take_frame()
 	# what the slow frames spent their time on (zones are added up, so take the difference)
 	if ms > _worst_ms:
 		_worst_ms = ms
 		_worst_zones = _diff_zones()
 	if ms > 100.0:
 		print("PERF spike %.0f ms at %d:%02d: %s" % [ms, int(g.clock) / 60, int(g.clock) % 60, _diff_zones()])
-	_prev = Perf.acc.duplicate()
 	_cam_t -= delta
 	if _cam_t <= 0.0:
 		_cam_t = 1.0
@@ -180,28 +206,27 @@ func _minute_row(g: Game) -> void:
 	var counts := _count_nodes(g)
 	var row := {"min": int(g.clock / 60.0) if int(g.clock / 60.0) > _minute else _minute + 1, "frames": arr.size(), "avg_ms": avg, "fps": 1000.0 / avg,
 		"low1_fps": 1000.0 / slow, "worst_ms": arr[arr.size() - 1], "over33": over33, "over50": over50,
-		"units": units, "buildings": g.buildings.size(), "bodies": g.bodies.size(), "effects": counts["effects"],
-		"projectiles": counts["projectiles"], "floats": g._floats.size(), "pings": g._pings.size(),
+		"n_units": units, "n_buildings": g.buildings.size(), "n_bodies": g.bodies.size(), "n_effects": counts["effects"],
+		"n_projectiles": counts["projectiles"], "floats": g._floats.size(), "pings": g._pings.size(),
 		"nodes": int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), "objects": int(Performance.get_monitor(Performance.OBJECT_COUNT)),
 		"orphans": int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)),
 		"draw_calls": int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 		"mem_mb": OS.get_static_memory_usage() / 1048576.0, "log_lines": g.mlog.lines.size() if g.mlog else 0,
 		"wall_s": (Time.get_ticks_msec() - _wall0) / 1000.0}
 	for z in ZONES:
-		row[String(z)] = float(Perf.acc.get(z, 0)) / 1000.0 / arr.size()      # ms a frame
-	row["paths"] = int(Perf.calls.get(&"astar", 0))
-	row["ai_thinks"] = int(Perf.calls.get(&"ai", 0))
+		row[z] = float(_acc.get(z, 0)) / 1000.0 / arr.size()      # ms a frame
+	row["paths"] = int(_acc_calls.get("game/pathfinder", 0))
 	row["worst_frame_zones"] = "\"%s\"" % _worst_zones
-	Perf.reset()
-	_prev = {}
+	_acc.clear()
+	_acc_calls.clear()
 	_rows.append(row)
 	var zs := PackedStringArray()
 	for z in ZONES:
-		zs.append("%s %.2f" % [z, row[String(z)]])
+		zs.append("%s %.2f" % [z, row[z]])
 	print("PERF worst frame %.0f ms: %s" % [_worst_ms, _worst_zones])
 	_worst_ms = 0.0
 	print("PERF min %2d | %5.1f fps avg, 1%% low %5.1f, worst %6.1f ms, >33ms %4d, >50ms %4d | paths %d | units %d bodies %d fx %d proj %d nodes %d objs %d | ms/frame: %s" % [
-		row["min"], row["fps"], row["low1_fps"], row["worst_ms"], over33, over50, row["paths"], units, row["bodies"], row["effects"], row["projectiles"],
+		row["min"], row["fps"], row["low1_fps"], row["worst_ms"], over33, over50, row["paths"], units, row["n_bodies"], row["n_effects"], row["n_projectiles"],
 		row["nodes"], row["objects"], ", ".join(zs)])
 	_frames = PackedFloat32Array()
 
@@ -236,7 +261,7 @@ func _save() -> void:
 		"|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"])
 	for r in _rows:
 		md.append("| %d | %.1f | %.1f | %.1f | %d | %d | %d | %d | %d | %d | %.2f | %.2f | %.2f | %.2f | %.2f | %.2f |" % [r["min"], r["fps"], r["low1_fps"], r["worst_ms"],
-			r["over33"], r["over50"], r["units"], r["bodies"], r["effects"], r["nodes"], r["unit"], r["ai"], r["game"], r["vis"], r["unit_draw"], r["hud_draw"]])
+			r["over33"], r["over50"], r["n_units"], r["n_bodies"], r["n_effects"], r["nodes"], r["units"], r["ai"], r["game"], r["game/fog"], r["unit draw"], r["hud draw"]])
 	f = FileAccess.open("res://docs/perf/%s.md" % out_name, FileAccess.WRITE)
 	f.store_string("\n".join(md) + "\n")
 	f.close()
