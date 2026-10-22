@@ -140,7 +140,7 @@ const GAIN := {
 	"res://assets/audio/select/roost.wav": 2.8,
 	"res://assets/audio/select/spore_vent.wav": -0.9,
 	"res://assets/audio/select/spring_tower.wav": 2.5,
-	"res://assets/audio/select/town_hall.wav": -6.8,
+	"res://assets/audio/select/town_hall.wav": -7.5,
 	"res://assets/audio/select/wall.wav": 3.8,
 	"res://assets/audio/select/warren.wav": 2.0,
 	"res://assets/audio/steam.wav": -1.1,
