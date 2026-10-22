@@ -72,7 +72,7 @@ var frame_i := 0
 var corpse_t := 0.0
 var _anim_art := ""             # whose sheet the sprite shows now (the mounted kind's while getting on)
 var _mount_len := 0.0           # (mounting / dismounting) how long it takes: the strip plays over it
-var _mount_face := Vector2.ZERO # (mounting / dismounting) the horse turned side on (E, SE, W, SW)
+var _mount_face := Vector2.ZERO # (mounting / dismounting) the way the horse is turned (mount_face: S, SE, E, N, SW, W)
 
 
 var _charging := false
@@ -4738,7 +4738,7 @@ func _strip_art(a: String) -> String:
 
 
 func _set_anim(a: String, force: bool) -> void:
-	# getting on or off: the mounted kind's mount strip, side on (_mount_face)
+	# getting on or off: the mounted kind's mount strip, the way the horse is turned (_mount_face)
 	var sa := mount_strip_art() if a == "mount" else ""
 	if a == "mount" and sa == "":
 		a = "idle"
@@ -5190,18 +5190,52 @@ func _walk_to(p: Vector2, delta: float) -> Vector2:
 # ---- mounting
 
 ## Where the man stands in the mounting strip's first frame (tools/import_mount.py): his
-## feet from the horse's (the anchor), the horse facing E or SE; x mirrored facing W or SW.
-## Per sprite set where it differs ("" for the rest): the light Dragoon's remade side view
-## has him at the horse's shoulder, on its near side.
-const MOUNT_MAN := {"": {"e": Vector2(-14, 1), "se": Vector2(-12, -1)},
-	"dragoon": {"e": Vector2(5, 3), "se": Vector2(-12, -1)}}
+## feet from the horse's (the anchor), the horse facing E, SE, S or N; x mirrored facing W
+## or SW. Per sprite set where it differs ("" for the rest): the light Dragoon's remade side
+## view has him at the horse's shoulder, on its near side. From the front and from behind he
+## stands at the horse's side, on the left of the picture.
+const MOUNT_MAN := {"": {"e": Vector2(-14, 1), "se": Vector2(-12, -1), "s": Vector2(-16, -2), "n": Vector2(-16, -2)},
+	"dragoon": {"e": Vector2(5, 3)},
+	"cuirassier": {"s": Vector2(-12, -2), "n": Vector2(-14, -2)},
+	"horseman": {"s": Vector2(-15, -1), "n": Vector2(-14, -3)}}
 
 
-## The nearest way side on (the mounting strips are drawn facing E and SE, mirrored for W
-## and SW): E or W by `f`'s x, the diagonal when it points well down.
+## MOUNT_MAN of sprite set `a`, the strip facing `dr` ("e", "se", "s" or "n").
+static func mount_man(a: String, dr: String) -> Vector2:
+	var own: Dictionary = MOUNT_MAN.get(a, {})
+	return own.get(dr, MOUNT_MAN[""][dr])
+
+
+## The nearest way side on (the side-on mounting strips are drawn facing E and SE, mirrored
+## for W and SW): E or W by `f`'s x, the diagonal when it points well down.
 static func side_on(f: Vector2) -> Vector2:
 	var sx := 1.0 if f.x >= 0.0 else -1.0
 	return Vector2(sx, 1.0).normalized() if f.normalized().y > 0.38 else Vector2(sx, 0.0)
+
+
+## The way the horse is turned to get on or off: the nearest drawn mounting direction of
+## sprite set `a` (S, SE, E, N and the mirrored SW, W). NE and NW go side on (E, W): the
+## climb reads best from the side, and he still faces the way he was heading. Without front
+## and back strips: side_on.
+static func mount_face(a: String, f: Vector2) -> Vector2:
+	if f == Vector2.ZERO:
+		f = Vector2.RIGHT
+	var fr: Dictionary = ArtData.UNITS[a]["frames"] if ArtData.UNITS.has(a) else {}
+	var o := posmod(int(round(f.angle() / (PI / 4.0))), 8)
+	if o == 2 and fr.has("mount_s"):
+		return Vector2.DOWN
+	if o == 6 and fr.has("mount_n"):
+		return Vector2.UP
+	if o == 5 or o == 6 or o == 7:
+		return Vector2(1.0 if f.x >= 0.0 else -1.0, 0.0)
+	return side_on(f)
+
+
+## The mounting strip's direction for a horse turned `face` (mount_face): "e", "se", "s" or "n".
+static func mount_dir(face: Vector2) -> String:
+	if absf(face.x) < 0.3:
+		return "n" if face.y < 0.0 else "s"
+	return "se" if absf(face.y) > 0.3 else "e"
 
 
 ## The sprite set whose mount strip plays now (the mounted kind's while a man gets on, his
@@ -5257,10 +5291,15 @@ func _mount_run(delta: float) -> Vector2:
 		work_t = float(Defs.HORSES["quick" if auto_mount else "mount"])
 		_mount_len = work_t
 		path = PackedVector2Array()
-		# he turns the horse side on, him at its near side (the strip draws him on its left
-		# facing E / SE, mirrored for W / SW): the side he came from
+		# a horse facing (roughly) S or N stays so: he gets on at its side, seen from the
+		# front or from behind; else he turns it side on, him at its near side (the strip
+		# draws him on its left facing E / SE, mirrored for W / SW): the side he came from
 		var hf: Vector2 = h.facing if h.facing != Vector2.ZERO else Vector2.RIGHT
-		_mount_face = side_on(Vector2(1.0 if position.x <= h.position.x else -1.0, hf.y))
+		var sa := Defs.art_for(String(Defs.MOUNTS[kind]), armoured) if Defs.MOUNTS.has(kind) else art
+		_mount_face = mount_face(sa, hf)
+		var md := mount_dir(_mount_face)
+		if md != "s" and md != "n":
+			_mount_face = side_on(Vector2(1.0 if position.x <= h.position.x else -1.0, hf.y))
 		facing = _mount_face
 		return Vector2.ZERO
 	return _walk_to(h.position, delta)
@@ -5318,8 +5357,9 @@ func cmd_dismount(quick := false, aft := {}) -> void:
 	# to fire gets off on the side he's going to shoot at (where his strip has him behind
 	# the horse's middle, it turns its tail that way)
 	var f := facing if facing != Vector2.ZERO else Vector2.RIGHT
-	var behind: bool = MOUNT_MAN.get(art, MOUNT_MAN[""])["e"].x < 0.0
-	_mount_face = side_on(Vector2(-f.x, f.y) if quick and behind else f)
+	# (facing roughly S or N he gets off that way, seen from the front or behind)
+	var behind: bool = mount_man(art, "e").x < 0.0
+	_mount_face = mount_face(art, Vector2(-f.x, f.y) if quick and behind else f)
 	facing = _mount_face
 	after = aft
 	target = null
@@ -5345,7 +5385,7 @@ func do_dismount() -> void:
 		# the horse stays where the strip drew it (under him) and he stands where its first
 		# frame has him, at its near side
 		spot = game.resolve_terrain(position, position, 11.0, team)
-		var man: Vector2 = MOUNT_MAN.get(art, MOUNT_MAN[""])["se" if absf(_mount_face.y) > 0.3 else "e"]
+		var man: Vector2 = mount_man(art, mount_dir(_mount_face))
 		if _mount_face.x < 0.0:
 			man.x = -man.x
 		position = game.resolve_terrain(position + man, position, radius, team)

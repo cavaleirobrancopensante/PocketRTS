@@ -3,11 +3,12 @@ extends SceneTree
 ##   godot --headless --fixed-fps 30 --script res://tools/test_mount_anim.gd
 ##   (screenshots: xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1280x720
 ##    --fixed-fps 30 --script res://tools/test_mount_anim.gd -- --shots DIR)
-## Checks, for every man on foot -> mounted kind: the mount_se / mount_e strips and their
-## horse coat masks exist; while he gets on, he shows the mounted kind's strip played forwards
-## (side on, mirrored when he comes from the right), in the horse's coat, the horse beside him
-## hidden; he ends in the saddle where the horse stood; getting off plays it backwards and
-## leaves the horse where the strip drew it. Prints PASS / FAIL and "ALL PASS" (exit 1 on a
+## Checks, for every man on foot -> mounted kind: the mount_s / mount_se / mount_e / mount_n
+## strips and their horse coat masks exist; while he gets on, he shows the mounted kind's
+## strip played forwards (side on, mirrored when he comes from the right; from the front or
+## behind when the horse faces S or N, never mirrored; NE / NW side on), in the horse's coat,
+## the horse beside him hidden; he ends in the saddle where the horse stood; getting off plays
+## it backwards and leaves the horse where the strip drew it. Prints PASS / FAIL and "ALL PASS" (exit 1 on a
 ## failure).
 var main: Node
 var t := 0.0
@@ -131,25 +132,42 @@ func _run() -> void:
 	for p in PAIRS:
 		var art: String = p[3]
 		var fr: Dictionary = ArtData.UNITS[art]["frames"]
-		for dr in ["se", "e"]:
+		for dr in ["s", "se", "e", "n"]:
 			var ok: bool = fr.has("mount_" + dr) and int(fr["mount_" + dr]) >= 6 \
 				and ResourceLoader.exists("res://assets/units/%s/mount_%s.png" % [art, dr]) \
 				and ResourceLoader.exists("res://assets/units/horse_masks/%s/mount_%s.png" % [art, dr])
 			check(ok, "%s: mount_%s strip (%d frames) and its coat mask" % [art, dr, int(fr.get("mount_" + dr, 0))])
+	# the facing snap: the nearest drawn way (NE / NW side on)
+	for p in PAIRS:
+		var art: String = p[3]
+		var want := {Vector2(0, 1): "s", Vector2(0.3, 1): "s", Vector2(1, 1): "se", Vector2(-1, 1): "se",
+			Vector2(1, 0): "e", Vector2(-1, -0.2): "e", Vector2(1, -1): "e", Vector2(-1, -1): "e",
+			Vector2(0, -1): "n", Vector2(-0.3, -1): "n"}
+		var bad := []
+		for f in want:
+			var mf := Unit.mount_face(art, f)
+			var flip_ok: bool = Unit.mount_dir(mf) in ["s", "n"] or (mf.x < 0.0) == (f.x < 0.0)
+			if Unit.mount_dir(mf) != want[f] or not flip_ok:
+				bad.append("%s -> %s" % [str(f), str(mf)])
+		check(bad.is_empty(), "%s: facing snaps to the nearest drawn way %s" % [art, str(bad)])
 	var i := 0
 	for p in PAIRS:
-		for diag in [false, true]:
+		for dr in ["e", "se", "s", "n"]:
 			for side in [1.0, -1.0]:
-				await _mount(p, side, diag, i)
+				await _mount(p, side, dr, i)
 				i += 1
+		# a horse facing NE: side on
+		await _mount(p, 1.0, "ne", i)
+		i += 1
 	await _quick_dragoon()
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(0 if fails == 0 else 1)
 
 
-## One man gets on a horse and off again: side 1 he comes from the left (the horse faces E,
-## or SE with `diag`), -1 from the right (W / SW: the strip mirrored).
-func _mount(p: Array, side: float, diag: bool, i: int) -> void:
+## One man gets on a horse and off again: side 1 he comes from the left (the horse faces
+## `dr`: E, SE, S, N, or NE: shown side on), -1 from the right (W / SW: the strip mirrored;
+## S and N: not mirrored, he goes round to the horse's side).
+func _mount(p: Array, side: float, dr: String, i: int) -> void:
 	var foot: String = p[0]
 	var art: String = p[3]
 	var coat: String = p[4]
@@ -160,17 +178,20 @@ func _mount(p: Array, side: float, diag: bool, i: int) -> void:
 		m.put_on_armour()
 	var h: Unit = g._add_unit("horse", 0, hp)
 	h.coat = coat
-	h.facing = Vector2(side, 1.0).normalized() if diag else Vector2(side, 0)
+	h.facing = {"e": Vector2(side, 0), "se": Vector2(side, 1.0).normalized(), "s": Vector2(0, 1),
+		"n": Vector2(0, -1), "ne": Vector2(side, -1.0).normalized()}[dr]
 	HorseCoat.apply(h)
 	h.graze_at = hp
 	g.camera.position = hp + Vector2(0, -24)
 	g.camera.zoom = Vector2(2.6, 2.6)
-	var tag := "%s %s%s" % [art, "SE" if diag else "E", "" if side > 0 else " mirrored"]
+	var front := dr == "s" or dr == "n"
+	var flip := side < 0.0 and not front
+	var tag := "%s %s%s" % [art, dr.to_upper(), "" if side > 0 else (" from the right" if front else " mirrored")]
 	m.cmd_mount(h)
 	await wait_for(func() -> bool: return m.work == "mounting", 5.0)
 	await wait(0.15)
-	var want_dir := "se" if diag else "e"
-	check(m.anim == "mount" and m._anim_art == art and m.anim_dir == want_dir and m.anim_flip == (side < 0.0),
+	var want_dir := "e" if dr == "ne" else dr
+	check(m.anim == "mount" and m._anim_art == art and m.anim_dir == want_dir and m.anim_flip == flip,
 		"%s: getting on shows the %s strip (%s %s %s flip %s)" % [tag, art, m.anim, m._anim_art, m.anim_dir, m.anim_flip])
 	check(m.sprite.texture.resource_path.ends_with("%s/mount_%s.png" % [art, want_dir]), "  the strip's texture (%s)" % m.sprite.texture.resource_path)
 	var mat := m.sprite.material as ShaderMaterial
@@ -188,7 +209,7 @@ func _mount(p: Array, side: float, diag: bool, i: int) -> void:
 		var prog := 1.0 - m.work_t / m._mount_len
 		if not shot_at.is_empty() and prog >= shot_at[0]:
 			shot_at.pop_front()
-			await shot("%02d_%s_on_%d" % [i, art, 3 - shot_at.size()])
+			await shot("%02d_%s_%s_on_%d" % [i, art, dr, 3 - shot_at.size()])
 		await physics_frame
 	var rising := true
 	for k in range(1, frames.size()):
@@ -202,7 +223,7 @@ func _mount(p: Array, side: float, diag: bool, i: int) -> void:
 	var at0 := m.position
 	m.cmd_dismount()
 	await wait(0.1)
-	check(m.anim == "mount" and m._anim_art == art and m.anim_flip == (side < 0.0), "  getting off shows the strip (%s %s flip %s)" % [m.anim, m.anim_dir, m.anim_flip])
+	check(m.anim == "mount" and m._anim_art == art and m.anim_dir == want_dir and m.anim_flip == flip, "  getting off shows the strip (%s %s flip %s)" % [m.anim, m.anim_dir, m.anim_flip])
 	frames = []
 	var shot_off := true
 	while m.work == "dismounting":
@@ -210,7 +231,7 @@ func _mount(p: Array, side: float, diag: bool, i: int) -> void:
 			frames.append(m.sprite.frame)
 		if shot_off and 1.0 - m.work_t / m._mount_len >= 0.5:
 			shot_off = false
-			await shot("%02d_%s_off_1" % [i, art])
+			await shot("%02d_%s_%s_off_1" % [i, art, dr])
 		await physics_frame
 	var falling := true
 	for k in range(1, frames.size()):
@@ -220,10 +241,12 @@ func _mount(p: Array, side: float, diag: bool, i: int) -> void:
 	var st: Unit = m.steed
 	check(st != null and is_instance_valid(st) and st.position.distance_to(at0) < 4.0 and st.coat == coat,
 		"  his horse stands where the strip drew it (%.1f px), its coat" % (st.position.distance_to(at0) if st else -1.0))
-	var man: Vector2 = Unit.MOUNT_MAN.get(art, Unit.MOUNT_MAN[""])["se" if diag else "e"]
-	check(m.position.distance_to(at0 + Vector2(man.x * side, man.y)) < 3.0, "  he stands where the strip had him (%s)" % str(m.position - at0))
+	var man: Vector2 = Unit.mount_man(art, want_dir)
+	check(m.position.distance_to(at0 + Vector2(man.x * (-1.0 if flip else 1.0), man.y)) < 3.0, "  he stands where the strip had him (%s)" % str(m.position - at0))
+	check(st != null and is_instance_valid(st) and Unit.mount_dir(st.facing) == want_dir and (st.facing.x < -0.3) == flip,
+		"  the horse faces the strip's way (%s)" % (str(st.facing) if st else "-"))
 	await wait(0.2)
-	await shot("%02d_%s_off_done" % [i, art])
+	await shot("%02d_%s_%s_off_done" % [i, art, dr])
 	g.consume_unit(m)
 	if st and is_instance_valid(st):
 		g.consume_unit(st)

@@ -62,7 +62,7 @@ ROW = {"s": 0, "se": 1, "e": 2, "ne": 3, "n": 4}
 
 # sheet -> (mounted art, frames per row, {dir: frame indices used (0-based)})
 SHEETS = {
-    "messenger_mount": ("messenger", 6, {"se": range(6), "e": range(6)}),
+    "messenger_mount": ("messenger", 6, {"se": range(6), "e": range(6), "s": range(6), "n": range(6)}),
     "missionary_mount": ("missionary_mounted", 6, {"se": range(6), "e": range(6)}),
     "horseman_mount": ("horseman", 7, {"se": range(7), "e": range(7)}),
     "cuirassier_mount_b": ("cuirassier", 7, {"se": range(7), "e": range(7)}),
@@ -74,6 +74,18 @@ SHEETS = {
 E_STRIPS = {"dragoon": ("dragoon_mount_e", 6)}
 # no E strip of its own (yet): the SE strip serves
 E_FALLBACK = {"dragoon": "se"}
+# the front (S) and back (N) views, each a strip on its own sheet (6 frames, the man at the
+# horse's left in the picture): art -> {dir: file}. Each sheet is scaled by itself (fit_scale).
+# (The Messenger's come from the S and N rows of messenger_mount.png, at that sheet's scale.)
+FB_STRIPS = {
+    "dragoon": {"s": "dragoon_mount_s", "n": "dragoon_mount_n"},
+    "dragoon_armoured": {"s": "dragoon_armoured_mount_s", "n": "dragoon_armoured_mount_n"},
+    "horseman": {"s": "horseman_mount_s", "n": "horseman_mount_n"},
+    "cuirassier": {"s": "cuirassier_mount_s", "n": "cuirassier_mount_n"},
+    "missionary_mounted": {"s": "missionary_mount_s", "n": "missionary_mount_n"},
+}
+FB_COUNT = 6
+FRONT_BACK = ("s", "n")
 
 
 def find_frames(fg, y0, y1, count):
@@ -117,6 +129,31 @@ def horse_anchor(img):
     return float(np.percentile(xs[low], 97)), float(np.percentile(ys, 99.5))
 
 
+def hooves(img, low=0.12):
+    """(front / back view) (x0, x1, bottom) of the horse's legs: the rightmost run of columns
+    in the picture's lowest rows (the man stands at its left, his boots apart from its hooves)."""
+    a = img[..., 3] > 0
+    ys = np.nonzero(a.any(1))[0]
+    bot = ys.max()
+    band = a[bot - max(2, int((bot - ys.min() + 1) * low)):bot + 1].any(0)
+    x0, x1 = runs(band, max(2, int(img.shape[1] * 0.02)))[-1]
+    # (its own bottom: the man may stand a little nearer, lower in the picture)
+    return x0, x1, int(np.nonzero(a[:, x0:x1].any(1))[0].max())
+
+
+def legs_mask(img, hv):
+    """(front / back view) the horse's legs and belly: the lowest 45% of its height, over the
+    columns of its legs and half as much again each side (not the man's boots beside it)."""
+    x0, x1, bot = hv
+    a = img[..., 3] > 0
+    top = np.nonzero(a[:, x0:x1].any(1))[0].min()
+    m = np.zeros_like(a)
+    w = x1 - x0
+    y0 = int(bot - (bot - top) * 0.45)
+    m[y0:bot + 1, max(0, x0 - w // 2):x1 + w // 2] = True
+    return a & m
+
+
 def idle_frame(art, d):
     im = np.asarray(Image.open("assets/units/%s/idle_%s.png" % (art, d)).convert("RGBA"))
     return im[:, :CELL[0]]
@@ -148,19 +185,37 @@ def build_strip(frames, art, d, scale):
     """Cell frames from the sheet-resolution cuts, aligned by their horse: first by the
     front of its forelegs, then moved to where its grey body best overlaps the seated
     frame's."""
-    anchors = [horse_anchor(f) for f in frames]
+    front = d in FRONT_BACK
+    if front:
+        # (front / back: by the middle of its legs and its hooves)
+        hvs = [hooves(f) for f in frames]
+        anchors = [((x0 + x1) / 2.0, float(bot)) for x0, x1, bot in hvs]
+    else:
+        anchors = [horse_anchor(f) for f in frames]
     pad = 60
     W = max(f.shape[1] for f in frames) + 2 * pad
     H = max(f.shape[0] for f in frames) + 2 * pad
     CX, CY = W // 2, H - pad
     pos = [(int(round(CX - ax)), int(round(CY - ay))) for ax, ay in anchors]
-    ref = horse_mask(place_on(frames[-1], H, W, *pos[-1]))
     cans = []
-    for f, (x, y) in zip(frames, pos):
-        m = horse_mask(place_on(f, H, W, x, y))
-        dx, dy = iou_shift(m, ref, 24, 3)
-        ex, ey = iou_shift(np.roll(np.roll(m, dy, 0), dx, 1), ref, 2)
-        cans.append(place_on(f, H, W, x + dx + ex, y + dy + ey))
+    if front:
+        def legs(i, x, y):
+            x0, x1, bot = hvs[i]
+            return legs_mask(place_on(frames[i], H, W, x, y), (x0 + x, x1 + x, bot + y))
+        ref = legs(len(frames) - 1, *pos[-1])
+        # (sideways only: the hooves are on one line; the rider's boots at the belly would
+        # pull it up)
+        for i, (x, y) in enumerate(pos):
+            m = legs(i, x, y)
+            dx = max(range(-6, 7), key=lambda k: (np.roll(m, k, 1) & ref).sum() / float(max((np.roll(m, k, 1) | ref).sum(), 1)) - 1e-5 * abs(k))
+            cans.append(place_on(frames[i], H, W, x + dx, y))
+    else:
+        ref = horse_mask(place_on(frames[-1], H, W, *pos[-1]))
+        for f, (x, y) in zip(frames, pos):
+            m = horse_mask(place_on(f, H, W, x, y))
+            dx, dy = iou_shift(m, ref, 24, 3)
+            ex, ey = iou_shift(np.roll(np.roll(m, dy, 0), dx, 1), ref, 2)
+            cans.append(place_on(f, H, W, x + dx + ex, y + dy + ey))
     small = [snap_team(clean(shrink(c, scale))) for c in cans]
     sh, sw = small[0].shape[:2]
     # the canvas's hoof point lands at first on the anchor; then the seated frame is moved
@@ -181,7 +236,15 @@ def build_strip(frames, art, d, scale):
 
     last = put(small[-1], 0, 0)
     idle = idle_frame(art, d)
-    ox, oy = iou_shift(last[..., 3] > 0, idle[..., 3] > 0, 12)
+    if front:
+        # (front / back: hooves on the idle's hooves, then sideways only: the rider's hat or
+        # the horse's ears would pull it up or down)
+        la, ia = last[..., 3] > 0, idle[..., 3] > 0
+        oy = int(np.nonzero(ia.any(1))[0].max() - np.nonzero(la.any(1))[0].max())
+        la = np.roll(la, oy, 0)
+        ox = max(range(-12, 13), key=lambda dx: (np.roll(la, dx, 1) & ia).sum() / float((np.roll(la, dx, 1) | ia).sum()) - 1e-5 * abs(dx))
+    else:
+        ox, oy = iou_shift(last[..., 3] > 0, idle[..., 3] > 0, 12)
     cells = [put(s, ox, oy) for s in small]
     # what got cut off at the cell's edges (should be nothing)
     lost = 0
@@ -252,6 +315,31 @@ def tall_scale(cuts, art):
     return (ys.max() - ys.min() + 1) / float(cuts["se"][-1].shape[0])
 
 
+def fit_scale(seated, art, d):
+    """A front / back strip's scale: its seated frame best overlapping the unit's idle frame of
+    that direction (the same man on the same horse, so its horse is the game's): from the
+    scale matching their heights, +-15% in 1% steps, each at its best shift (bottoms and
+    middles lined up, then +-3 px). (scale, the height-matching scale, the best IoU)"""
+    idle = idle_frame(art, d)[..., 3] > 0
+    iy = np.nonzero(idle.any(1))[0]
+    ix = np.nonzero(idle.any(0))[0]
+    base = (iy.max() - iy.min() + 1) / float(seated.shape[0])
+    best, bs = -1.0, base
+    for k in np.arange(0.85, 1.1501, 0.01):
+        sm = shrink(seated, base * k)[..., 3] > 0
+        h, w = sm.shape
+        c = np.zeros_like(idle)
+        x = int(round((ix.min() + ix.max()) / 2.0 - w / 2.0))
+        y = iy.max() + 1 - h
+        c[max(y, 0):y + h, max(x, 0):x + w] = sm[max(-y, 0):, max(-x, 0):][:c.shape[0] - max(y, 0), :c.shape[1] - max(x, 0)]
+        dx, dy = iou_shift(c, idle, 3)
+        c = np.roll(np.roll(c, dy, 0), dx, 1)
+        score = (c & idle).sum() / float((c | idle).sum())
+        if score > best:
+            best, bs = score, base * k
+    return float(bs), base, best
+
+
 def write_counts(art, counts):
     """Adds (or replaces) the art's mount_* entries in scripts/art_data.gd."""
     src = open(ART_DATA).read()
@@ -290,9 +378,20 @@ def main():
         if scale is None:
             scale = tall_scale(cuts, art) * float(np.median(ratios))
         scales = {d: scale for d in cuts}
+        # (front and back rows of a 5-row sheet: their seated frame fitted to the idle too, as
+        # the other sheets' are; the sheet's side-on scale left them ~10% small)
+        for d in FRONT_BACK:
+            if d in cuts:
+                scales[d], tall, iou = fit_scale(cuts[d][-1], art, d)
+                print("%s %s: %s row, fit scale %.3f (by height %.3f), IoU with idle %.2f" % (art, d, name, scales[d], tall, iou))
         if extra:
             cuts.update(extra)
             scales["e"] = sheet_scale(extra)
+        for d, fb in FB_STRIPS.get(art, {}).items():
+            if os.path.exists("art/crown/mount/%s.png" % fb):
+                cuts.update(sheet_frames(fb, FB_COUNT, d=d))
+                scales[d], tall, iou = fit_scale(cuts[d][-1], art, d)
+                print("%s %s: %s, fit scale %.3f (by height %.3f), IoU with idle %.2f" % (art, d, fb, scales[d], tall, iou))
         strips = {}
         for d, fr in cuts.items():
             cells, lost = build_strip(fr, art, d, scales[d])
@@ -312,7 +411,9 @@ def main():
         os.makedirs(contact, exist_ok=True)
         for art, strips in results.items():
             rows = []
-            for d in ("se", "e"):
+            for d in ("s", "se", "e", "n"):
+                if d not in strips:
+                    continue
                 idle = idle_frame(art, d)
                 rows.append(np.concatenate(strips[d] + [idle], 1))
             w = max(r.shape[1] for r in rows)
