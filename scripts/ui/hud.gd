@@ -1652,7 +1652,7 @@ func _draw_panel(font: Font) -> void:
 				info = "OVERCHARGED: +15%% damage while it stays here. Charge %d%%." % int(uu.wind * 100)
 			elif uu.overclock_t > 0.0:
 				info = "OVERLOADED for %d s: +50%% damage, +30%% speed. Burns out to 25%% charge." % int(ceil(uu.overclock_t))
-			elif uu.kind == "missionary":
+			elif uu.kind == "missionary" or uu.kind == "mounted_missionary":
 				info = "In danger near enemy buildings!" if not uu.untouchable() else "Can't be hurt here. Bandages wounded soldiers."
 			elif (e as Unit).powered_down():
 				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."

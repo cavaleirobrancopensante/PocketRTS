@@ -389,7 +389,15 @@ const UNITS := {
 		"name": "Missionary", "hp": 60, "armor": 0, "speed": 62, "cost": 125, "time": 20.0, "supply": 1,
 		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 10, "from": "church",
 		"medic": true, "per": "church", "faction": "crown",
-		"about": "Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt unless near enemy buildings. One per Church.",
+		"about": "Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt unless near enemy buildings. One per Church. MOUNT a horse to ride as a Mounted Missionary.",
+	},
+	# the Missionary on a horse (MOUNT / DISMOUNT: Defs.MOUNTS)
+	"mounted_missionary": {
+		"tags": ["light"],
+		"name": "Mounted Missionary", "hp": 60, "armor": 0, "speed": 124, "cost": 125, "time": 1.0, "supply": 1,
+		"sight": 9, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 13, "from": "",
+		"medic": true, "mounted": true, "faction": "crown",
+		"about": "A Missionary on a horse: as fast as a Messenger, unarmed. He bandages the wounded from the saddle; to raise the fallen he gets off by himself (and stays on foot). Can't be hurt unless near enemy buildings.",
 	},
 	"skywing": {
 		"tags": ["light"],
@@ -634,8 +642,8 @@ const HORSES := {"breed": 40.0, "graze_cap": 6, "graze_r": 6, "cap": 10, "gold":
 	"quick": 0.8, "dragoon_reload": 1.3, "scan": 0.5, "fetch": 8}
 ## Who rides what: the man on foot -> the mounted unit (and back with FOOT). Armour, his locks,
 ## bayonet, pouch, kills, powder, hp share and reload go across both ways.
-const MOUNTS := {"labourer": "messenger", "musketeer": "dragoon", "dismounted": "cuirassier"}
-const FOOT := {"messenger": "labourer", "dragoon": "musketeer", "cuirassier": "dismounted"}
+const MOUNTS := {"labourer": "messenger", "musketeer": "dragoon", "dismounted": "cuirassier", "missionary": "mounted_missionary"}
+const FOOT := {"messenger": "labourer", "dragoon": "musketeer", "cuirassier": "dismounted", "mounted_missionary": "missionary"}
 ## Men who can lead horses by the reins (and the Clockwork's Winders).
 const LEADERS := ["labourer", "musketeer", "dismounted", "messenger", "winder"]
 ## Units drawn by a horse: without one (RELEASE HORSE) they stand where they are.
@@ -657,6 +665,8 @@ const TEMP_ART := {
 	"messenger": {"art": "messenger", "portrait": "labourer"},
 	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "musketeer", "portrait_armoured": "guardsman"},
 	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "horseman", "portrait_armoured": "cuirassier"},
+	# (TEMPORARY until the designer's art: the Messenger's sprites, darkened to a cassock)
+	"mounted_missionary": {"art": "messenger", "tint": Vector3(0.62, 0.6, 0.66), "portrait": "missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
 	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon
 	# the horse commands' card icons
@@ -887,7 +897,7 @@ const TIPS := {
 	# horse commands (the command card's tooltips)
 	"LEAD": "Each man takes up to 3 of your free horses nearby by the reins; they follow at his side. (Right-click a horse with Labourers: they lead it.)",
 	"RELEASE": "Let go of the reins: the horses stay where they stand and graze. Unattended, an enemy man can steal them.",
-	"MOUNT": "Each man walks to the nearest free horse and gets on (1.5 s): Labourer to Messenger, Musketeer to Dragoon, Guardsman to Armoured Dragoon; a dismounted horseman rides again. (Right-click a horse with soldiers: they mount it.)",
+	"MOUNT": "Each man walks to the nearest free horse and gets on (1.5 s): Labourer to Messenger, Musketeer to Dragoon, Guardsman to Armoured Dragoon, Missionary to Mounted Missionary; a dismounted horseman rides again. (Right-click a horse with soldiers: they mount it.)",
 	"DISMOUNT": "Get off (1 s): the horse stands beside him, unled. He can lead it or remount it; left alone, it can be stolen.",
 	"RELEASE HORSE": "Unhitch the horse: it stands free (for a rider). The gun or wagon can't move without one, but a gun still fires and a wagon still supplies.",
 	"HARNESS": "Your nearest free horse walks over and is hitched: it can move again. (Or right-click the gun with a horse selected or led.)",
@@ -899,6 +909,7 @@ const TIPS := {
 	"cuirassier": "Fast armoured horseman (+1 armour, +30 health): a Horseman in helmet and cuirass. Needs Armour and a horse at the Barracks. Bayonets hurt him.",
 	"horse": "Bred at a Horse Breeder. LEAD it, MOUNT it, harness it to a gun or wagon, or bring it to a Barracks or Foundry: cavalry and guns need one each. Left alone near an enemy man, it's stolen.",
 	"messenger": "A Labourer on a horse: very fast, unarmed, sees far. A scout. He can lead horses too.",
+	"mounted_missionary": "A Missionary on a horse: fast and unarmed. Bandages from the saddle; gets off by himself to raise the fallen.",
 	"dragoon": "A Musketeer on a horse: rides fast, dismounts to fire (0.8 s), remounts to move. His reload waits while he rides.",
 	"armoured_dragoon": "A Guardsman on a horse: rides fast, dismounts to fire, remounts to move.",
 	"dismounted": "A Horseman on foot: a carbine a little weaker than a musket, and a sabre better than a bayonet. MOUNT to ride again.",

@@ -2309,7 +2309,7 @@ func can_train(b: Building, key: String) -> String:
 	if float(players[b.team]["res2"]) < price[1]:
 		return "Not enough %s." % res[1].to_lower()
 	if u.has("per"):
-		var have := units.filter(func(x: Unit) -> bool: return x.team == b.team and not x.dead and x.kind == k).size()
+		var have := units.filter(func(x: Unit) -> bool: return x.team == b.team and not x.dead and (x.kind == k or String(Defs.FOOT.get(x.kind, "")) == k)).size()
 		for bb in buildings:
 			if bb.team == b.team and not bb.dead:
 				have += bb.queue.count(k)

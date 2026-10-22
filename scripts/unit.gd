@@ -1140,6 +1140,7 @@ func _ready() -> void:
 		# each strip of the horse's sprites has its own coat mask (any Crown man may get a horse)
 		sprite.texture_changed.connect(func() -> void: HorseCoat.update_mask(self))
 		HorseCoat.apply(self)
+	_apply_tint()
 	if kind == "horse":
 		_rein = Node2D.new()
 		_rein.draw.connect(_draw_rein)
@@ -1514,6 +1515,11 @@ func cmd_heal(e: Unit) -> void:
 func cmd_revive(body: Unit) -> void:
 	if aboard or not d.get("medic", false) or not game.can_revive(body, self):
 		return
+	if is_mounted():
+		# (a Mounted Missionary gets off to raise the fallen, and stays on foot)
+		if order != "dismount":
+			cmd_dismount(false, {"o": "revive", "e": body})
+		return
 	_reset_work()
 	order = "revive"
 	_body = body
@@ -1707,6 +1713,10 @@ func _start(o: Dictionary) -> bool:
 		"mount":
 			if e == null or not is_instance_valid(e) or not cmd_mount(e):
 				return false
+		"revive":
+			if e == null or not is_instance_valid(e):
+				return false
+			cmd_revive(e)
 	return order != "idle"
 
 
@@ -4879,7 +4889,7 @@ func do_mount(h: Unit) -> void:
 	var aft := after
 	after = {}
 	steed = null
-	if game.mlog and team >= 0 and not game._first_of.has("%d:mount_%s" % [team, kind]):
+	if game.mlog and team >= 0 and not game._first_of.has("%d:mount_%s" % [team, kind]) and Defs.MOUNTS.has(kind):
 		game._first_of["%d:mount_%s" % [team, kind]] = true
 		game.mlog.add("%s's first %s mounted (%s)" % [game.mlog.who(team), String(d["name"]), String(Defs.UNITS[Defs.MOUNTS[kind]]["name"])])
 	morph(String(Defs.MOUNTS[kind]))
@@ -4972,6 +4982,7 @@ func morph(k: String) -> void:
 	_draw_key = Vector4i(-1, -1, -1, -1)
 	if sprite:
 		HorseCoat.apply(self)
+		_apply_tint()
 		_set_anim("idle", true)
 	_update_feather()
 	queue_redraw()
@@ -5243,6 +5254,13 @@ func _draw_rein() -> void:
 	var mid := (b + hand) * 0.5 + Vector2(0, minf(6.0, b.distance_to(hand) * 0.12))
 	var col := Color(0.42, 0.27, 0.13, 0.95)
 	_rein.draw_polyline(PackedVector2Array([b, mid, hand]), col, 1.0)
+
+
+## A stand-in sprite's tint (Defs.TEMP_ART "tint": the Mounted Missionary on the Messenger's).
+func _apply_tint() -> void:
+	var m := sprite.material as ShaderMaterial if sprite else null
+	if m:
+		m.set_shader_parameter("tint", Defs.TEMP_ART.get(kind, {}).get("tint", Vector3.ONE))
 
 
 ## (a dismounted horseman, TEMP_ART "feather") a plume on his hat, so he can be told from a

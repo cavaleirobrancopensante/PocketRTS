@@ -40,7 +40,7 @@ func is_air() -> bool:
 
 ## Missionaries can't be hurt away from enemy buildings.
 func untouchable() -> bool:
-	return off_field or (kind == "missionary" and not game.near_enemy_building(team, global_position, Defs.MISSIONARY_DANGER))
+	return off_field or ((kind == "missionary" or kind == "mounted_missionary") and not game.near_enemy_building(team, global_position, Defs.MISSIONARY_DANGER))
 
 
 func alive() -> bool:

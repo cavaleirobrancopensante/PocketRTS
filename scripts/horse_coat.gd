@@ -12,7 +12,7 @@ const WEIGHTS := {"dark": 30, "bay": 30, "grey": 20, "white": 10, "spotted": 10}
 ## The riderless horse, the Messenger and both Dragoons (tools/import_horse_units.py) are
 ## painted on dark grey horses too.
 const NATIVE := {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "",
-	"horse": "dark", "messenger": "dark", "dragoon": "dark"}
+	"horse": "dark", "messenger": "dark", "dragoon": "dark", "mounted_missionary": "dark"}
 const MASKS := "res://assets/units/horse_masks/"
 const RAMPS := preload("res://assets/units/horse_masks/coat_ramps.png")
 
