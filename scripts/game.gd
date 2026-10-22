@@ -794,6 +794,7 @@ func _load_set(set_name: String) -> void:
 			im.resize(sz, sz, Image.INTERPOLATE_NEAREST)
 		if ground:
 			_mend_edges(im)
+			_flatten_edges(im)
 		var avg := _mean_colour(im)
 		ims[key] = im
 		lums[key] = avg.get_luminance()
@@ -807,6 +808,40 @@ func _load_set(set_name: String) -> void:
 				im.adjust_bcs(gain, 1.0, 1.0)
 		_tile_cache[key] = im
 		_tile_avg[key] = _mean_colour(im)
+
+
+## Many pictures are lighter or darker along an edge (a band of glare on ice, a shadowed side):
+## side by side such bands lined up into stripes along the grid. Each line in the outer fifth
+## of the picture is brought toward the picture's mean brightness, fully at the edge and less
+## going in (a dark or light veil over the line, so it's native and quick).
+static func _flatten_edges(im: Image) -> void:
+	var s := im.get_width()
+	var r_n := s / 5
+	var mean := _mean_colour(im).get_luminance()
+	for e in 4:
+		for d in r_n:
+			var r: Rect2i
+			match e:
+				0: r = Rect2i(0, d, s, 1)
+				1: r = Rect2i(0, s - 1 - d, s, 1)
+				2: r = Rect2i(d, 0, 1, s)
+				_: r = Rect2i(s - 1 - d, 0, 1, s)
+			var l := _mean_colour(im.get_region(r)).get_luminance()
+			if l < 0.02 or l > 0.98:
+				continue
+			var g := clampf(lerpf(1.0, mean / l, 1.0 - float(d) / r_n), 0.7, 1.4)
+			var a := 0.0
+			var veil := Color(0, 0, 0)
+			if g < 0.995:
+				a = 1.0 - g                       # c * g
+			elif g > 1.005:
+				veil = Color(1, 1, 1)
+				a = clampf(l * (g - 1.0) / (1.0 - l), 0.0, 0.6)   # lifts the line's mean to l * g
+			else:
+				continue
+			var ov := Image.create(r.size.x, r.size.y, false, Image.FORMAT_RGBA8)
+			ov.fill(Color(veil.r, veil.g, veil.b, a))
+			im.blend_rect(ov, Rect2i(Vector2i.ZERO, r.size), r.position)
 
 
 ## The true average colour of a picture (its smallest mipmap).
@@ -1038,7 +1073,7 @@ func _patch_mask(pm: Array, k: int, x: int, y: int) -> Image:
 ## each side shows the other side's picture mirrored over the edge (mirrored, the two meet
 ## without a jump) past a wavy, dithered cut line, a different one for each edge, so no
 ## straight line and no regular pattern is left. Done with masked blits (native, quick).
-const SEAM_W := 6
+const SEAM_W := 8
 var _seam_masks: Array = []      # 8 x [A side, B side] for vertical edges, then the same turned
 
 
@@ -1059,10 +1094,10 @@ func _seam_mask_set() -> Array:
 		var bh := Image.create(T, w, false, Image.FORMAT_LA8)
 		for t in T:
 			# where the cut runs, across the edge (negative: into side A)
-			var c := (w - 1.5) * (0.62 * sin(t * f1 + p1) + 0.38 * sin(t * f2 + p2))
+			var c := 4.5 * (0.62 * sin(t * f1 + p1) + 0.38 * sin(t * f2 + p2))
 			for a in w:
-				var ja := (fposmod(sin((a + k * 13) * 12.9898 + (t + k * 7) * 78.233) * 43758.5453, 1.0) - 0.5) * 2.0
-				var jb := (fposmod(sin((a + k * 17 + 40) * 12.9898 + (t + k * 5) * 78.233) * 43758.5453, 1.0) - 0.5) * 2.0
+				var ja := (fposmod(sin((a + k * 13) * 12.9898 + (t + k * 7) * 78.233) * 43758.5453, 1.0) - 0.5) * 5.0
+				var jb := (fposmod(sin((a + k * 17 + 40) * 12.9898 + (t + k * 5) * 78.233) * 43758.5453, 1.0) - 0.5) * 5.0
 				# side A, pixel a (0 = the farthest from the edge): B's mirror past the cut
 				var show_b := (a - w + 0.5) + ja >= c
 				av.set_pixel(a, t, on if show_b else off)
