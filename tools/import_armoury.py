@@ -6,8 +6,8 @@ replacement sheet with the same layout (four drawings in a row, any spacing or s
 by re-running this script:
   * the four drawings are split at the three widest empty column runs between them (like the
     Engine Hall in import_round11.py);
-  * one scale for all four, so the built Armoury's plinth (the solid extent of its lowest
-    fifth) is PLINTH px wide - about the Barracks (4x3 tiles, 128 px wide);
+  * one scale for all four, so the built Armoury drawing (yard and all) is WIDTH px wide -
+    about the Barracks (4x3 tiles, 128 px wide);
   * every state is centred on its own plinth (building.gd centres the texture and stands its
     bottom on the footprint), navy fringe and specks cleaned, banners snapped to the two team
     key reds (snap_team);
@@ -47,7 +47,7 @@ CONTACT = _argv[_argv.index("--contact") + 1] if "--contact" in _argv else None
 SRC = "art/crown/armoury.png"
 ICONS = "art/ui/icons3/crown_armoury_icons.png"
 STATES = ["built", "construction", "damaged", "destroyed"]
-PLINTH = 118          # px: the built Armoury's plinth (the Barracks drawing is 128 px wide)
+WIDTH = 136           # px: the built Armoury drawing, yard included (the Barracks drawing is 128 px wide)
 ICON_NAMES = ["research_bayonet", "research_charges", "research_quadrant", "research_charge",
               "research_armour", "horseman", "guardsman"]
 
@@ -97,8 +97,7 @@ def pictures():
 
 def build_armoury():
     pics, bgc = pictures()
-    l0, r0 = pics[0][1]
-    scale = PLINTH / (r0 - l0)
+    scale = WIDTH / pics[0][0].shape[1]
     out = {}
     for state, (img, (pl, pr)) in zip(STATES, pics):
         small, _ = r4.to_game(img, scale, bgc, None)
