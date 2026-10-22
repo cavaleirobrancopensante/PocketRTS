@@ -65,7 +65,8 @@ SHEET_BOXES = {
 # The Mortar has none: its towed walk shows a dark horse, its other strips a chestnut, so
 # every coat (bay too) is repainted, the same on both.
 NATIVE = {"cuirassier": "dark", "horseman": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "",
-          "horse": "dark", "messenger": "dark", "dragoon": "dark", "dragoon_armoured": "dark", "missionary_mounted": "dark"}
+          "horse": "dark", "messenger": "dark", "dragoon": "dark", "dragoon_armoured": "dark", "missionary_mounted": "dark",
+          "horse_team": "dark"}
 NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 
 # Per unit: the colour test, the strips with a horse (anim names; every direction), and
@@ -74,7 +75,7 @@ NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 CONFIG = {
     "cuirassier": {
         "test": "grey",
-        "anims": ["idle", "walk", "attack", "death", "mount"],
+        "anims": ["idle", "walk", "attack", "death", "mount", "pistol"],
         # (rows into his coat: side on, his arm reaches the reins over the horse's neck;
         # head on, the horse's head is in front of his chest)
         # (not once he falls: the horse rears and rolls over above the red; a negative
@@ -99,7 +100,7 @@ CONFIG = {
     # brown hat and boots fail the grey test by themselves. Thrown in the death frames 2-3.
     "horseman": {
         "test": "grey",
-        "anims": ["idle", "walk", "attack", "death", "mount"],
+        "anims": ["idle", "walk", "attack", "death", "mount", "pistol"],
         "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
                        "skip": [("death", 1), ("death", 2), ("death", 3)]},
         "blade_v": 0.5,
@@ -110,6 +111,14 @@ CONFIG = {
     "horse": {
         "test": "horse_grey",
         "anims": ["idle", "graze", "walk", "death"],
+        "keep": {},
+        "drop": {},
+    },
+    # a gun's team horse (tools/import_horse_team.py): the same dark grey, in harness (its
+    # collar, pad, traces and blinkers are leather: saturated browns and reds, kept out)
+    "horse_team": {
+        "test": "horse_grey",
+        "anims": ["idle", "walk"],
         "keep": {},
         "drop": {},
     },

@@ -127,42 +127,68 @@ func _tick_ai(delta: float) -> void:
 	if game == null or game.over:
 		return
 	_think -= delta
+	if _stage < STAGES:
+		_think_stage(_stage)       # (a think goes on over the next ticks, a part each)
+		_stage += 1
+		return
 	if _think > 0.0:
 		return
-	_think = [2.2, 1.2, 0.7, 0.4][difficulty]
-	_think_all()
+	_think_dt = [2.2, 1.2, 0.7, 0.4][difficulty]
+	_think = _think_dt
+	_think_stage(0)
+	_stage = 1
 
 
-func _think_all() -> void:
+## A think, in parts on consecutive physics ticks (all in one tick, it made a long frame):
+## workers and economy, building, research and training, raids, the army, horses and the
+## rest. Each part sees what the parts before it did, as before.
+const STAGES := 5
+var _stage := STAGES
+var _think_dt := 0.0             # the time between thinks (what the parts that count time add)
+
+
+func _think_stage(i: int) -> void:
 	var pt := Time.get_ticks_usec()
-	_workers()
-	pt = _lap("ai/workers", pt)
-	_econ_build()
-	pt = _lap("ai/econ", pt)
-	_supply()
-	_build_up()
-	pt = _lap("ai/build", pt)
-	_research()
-	_produce()
-	pt = _lap("ai/produce", pt)
-	if difficulty >= 1 and _crown() and not peaceful:
-		_raid()
-		_balloon_drop()
-	pt = _lap("ai/raid", pt)
-	_army()
-	pt = _lap("ai/army", pt)
-	if _crown():
-		_tend_wagon()
-		_horses()
-	pt = _lap("ai/horses", pt)
-	_loose_horses()
-	pt = _lap("ai/loose", pt)
-	if difficulty >= 1:
-		_abilities()
-	pt = _lap("ai/abil", pt)
-	if difficulty >= 2:
-		_micro()
-	_lap("ai/micro", pt)
+	match i:
+		0:
+			_workers()
+			pt = _lap("ai/workers", pt)
+			_econ_build()
+			_lap("ai/econ", pt)
+		1:
+			_supply()
+			_build_up()
+			_lap("ai/build", pt)
+		2:
+			_research()
+			_produce()
+			pt = _lap("ai/produce", pt)
+			if difficulty >= 1 and _crown() and not peaceful:
+				_raid()
+				_balloon_drop()
+			_lap("ai/raid", pt)
+		3:
+			_army()
+			_lap("ai/army", pt)
+		4:
+			if _crown():
+				_tend_wagon()
+				_horses()
+			pt = _lap("ai/horses", pt)
+			_loose_horses()
+			pt = _lap("ai/loose", pt)
+			if difficulty >= 1:
+				_abilities()
+			pt = _lap("ai/abil", pt)
+			if difficulty >= 2:
+				_micro()
+			_lap("ai/micro", pt)
+
+
+## Everything at once (tests and tools that call it).
+func _think_all() -> void:
+	for i in STAGES:
+		_think_stage(i)
 
 
 ## (the match log's "busy with": each part of the computer's think on its own)
@@ -486,6 +512,7 @@ func _build_up() -> void:
 			_construct("roost")
 		elif strategy == "air" and _mine("roost").is_empty() and game.requirement_met(team, "roost"):
 			_construct("roost")
+		_grow_hall()
 	else:
 		var barracks := _mine("barracks").size()
 		# the Barracks (and the palisade) need a Cottage
@@ -545,6 +572,49 @@ func _build_up() -> void:
 			_saving = gold < int(Defs.BUILDINGS[hall]["cost"])
 	elif _halls().size() >= 2 and urgent and gold < int(Defs.BUILDINGS[hall]["cost"]):
 		_saving = _halls().filter(func(h: Building) -> bool: return _land(h) > 0.0).size() < int(_s("halls"))
+
+
+## Brood: grow the main hall (the highest level, the oldest first) a level at a time: a
+## Warren once there's a Spawning Den and a first army out (with biomass to spare), a
+## Broodmound later (a Gorge Pit and 300 biomass in the bank). One upgrade at a time.
+func _grow_hall() -> void:
+	if _saving or _rushing() or game.over:
+		return
+	var main: Building = null
+	for h in _halls():
+		if not h.built or h.dead:
+			continue
+		if h.upgrade_t >= 0.0:
+			return                      # already growing
+		if main == null or h.level > main.level:
+			main = h
+	if main == null or main.next_level().is_empty():
+		return
+	var nl := main.next_level()
+	if main.level == 1:
+		var army_out: bool = _wave_sup > 0 or _army_supply(game.army(team)) >= _lv([16, 12, 10])
+		if not army_out or _gold() < int(nl["cost"]) + _lv([200, 120, 60]):
+			return
+	elif main.level == 2:
+		if _gold() < 300 or _res2() < float(nl.get("cost2", 0)) + 20.0:
+			return
+	if game.hall_upgrade_problem(main) == "":
+		game.start_hall_upgrade(main)
+
+
+## Brood: a Warren that could grow into a Broodmound (a Gorge Pit, 300 biomass banked)
+## waits only for the essence: meanwhile the eggs go to creatures that cost none, and spare
+## Raptors are offered up for it (_offer).
+func _mound_saving() -> bool:
+	if not _brood() or _gold() < 300 or not game._has_built(team, "gorge_pit"):
+		return false
+	var top := 0
+	for h in _halls():
+		if h.built and not h.dead:
+			if h.upgrade_t >= 0.0:
+				return false
+			top = maxi(top, h.level)
+	return top == 2 and _res2() < float(Defs.HALL_LEVELS[2]["cost2"]) + 20.0
 
 
 var _walled := false
@@ -1154,6 +1224,7 @@ func _produce() -> void:
 		var toads := army.filter(func(u: Unit) -> bool: return u.kind == "mist_toad").size()
 		for h in _halls():
 			toads += (h.queue as Array).count("mist_toad")     # (hatching ones too)
+		var saving_mound := _mound_saving()
 		for h in _halls():
 			if not h.built:
 				continue
@@ -1177,6 +1248,8 @@ func _produce() -> void:
 				elif game.can_train(h, "spore_mother") == "" and mothers * 14 < army.size():
 					k = "spore_mother"
 					mothers += 1
+				if saving_mound and int(Defs.UNITS[k].get("cost2", 0)) > 0:
+					k = "raptor"            # (the essence goes to the Broodmound first)
 				if game.train(h, k) != "":
 					break
 		return
@@ -1491,7 +1564,7 @@ func _cavalry_wave(list: Array) -> bool:
 ## A rider on foot whose horse is on its way: he's going to get on (or waits at the breeder
 ## for the one kept for him). The army leaves him be until he's mounted.
 func _horse_coming(u: Unit) -> bool:
-	return u.kind == "dismounted" and (u.order == "mount" or u.horse_rid != 0)
+	return Defs.RIDERS.values().has(u.kind) and (u.order == "mount" or u.horse_rid != 0) and (u.kind == "dismounted" or u.horse_rid != 0 or u.auto_mount)
 
 
 ## Where the army waits at home: a little in front of the hall toward the enemy, but on the
@@ -2755,6 +2828,8 @@ func _offer() -> void:
 		var reqs: Array = u["requires"] if u.get("requires", "") is Array else [u["requires"]]
 		if reqs.all(func(r: String) -> bool: return game._has_built(team, r)):
 			want = maxi(want, int(u.get("cost2", 0)))
+	if _mound_saving():
+		want = maxi(want, int(Defs.HALL_LEVELS[2]["cost2"]) + 20)     # (for the Broodmound)
 	if want == 0:
 		return
 	var target := want
@@ -2879,7 +2954,7 @@ func _balloon_drop() -> void:
 		_drop = {"b": balloon, "men": men, "phase": "load", "at": at, "t": 0.0}
 		return
 	var b = _drop["b"]
-	_drop["t"] = float(_drop["t"]) + _think
+	_drop["t"] = float(_drop["t"]) + _think_dt
 	_drop["men"] = (_drop["men"] as Array).filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	if not is_instance_valid(b) or b.dead:
 		_end_drop()
@@ -2995,7 +3070,7 @@ func _micro() -> void:
 			u.cmd_move(home + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 			continue
 		if _kite.has(u):
-			_kite[u] = float(_kite[u]) - _think
+			_kite[u] = float(_kite[u]) - _think_dt
 			if float(_kite[u]) <= 0.0:
 				_kite.erase(u)
 				u.cmd_move(_wave_target if _attacking else u.position, true)
@@ -3102,7 +3177,7 @@ func _horses() -> void:
 func _wants_horse(u: Unit) -> bool:
 	if u.kind == "dismounted":
 		return true
-	return u.kind == "musketeer" and u.auto_mount
+	return u.kind == "musketeer" and (u.auto_mount or u.horse_rid != 0)    # (a Dragoon on foot, or one trained, his horse kept for him)
 
 
 ## Fighting, or enemy fighters close by: not the moment to walk off for a horse.
@@ -3151,7 +3226,7 @@ func _remount_riders(horses: Array, keep: Dictionary) -> void:
 			return
 		if not _wants_horse(u) or u.order == "mount" or u.work != "" or u.aboard or u.off_field or u._heal_remount or _on_errand(u) or u.order == "hold":
 			continue
-		if u.kind == "musketeer" and u.order != "idle":
+		if u.kind == "musketeer" and u.order != "idle" and u.horse_rid == 0:
 			continue                         # (a Dragoon on foot remounts by himself to move)
 		if u.horse_rid != 0:
 			var mine: Unit = game.reserved_horse(team, u.horse_rid)
@@ -3159,7 +3234,7 @@ func _remount_riders(horses: Array, keep: Dictionary) -> void:
 				continue                     # (his own is there for him: Unit._wait_horse)
 		if _in_fight(u):
 			continue
-		var reach := (40.0 if u.kind == "dismounted" else 12.0) * Defs.TILE
+		var reach := (40.0 if u.kind == "dismounted" or u.horse_rid != 0 else 12.0) * Defs.TILE
 		var h: Unit = null
 		var bd := reach
 		for o in free:

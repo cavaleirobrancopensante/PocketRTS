@@ -225,6 +225,10 @@ var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs 
 var _supply_t := 0.0
 var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
 var keg := false                # Labourer: carrying a powder keg (it blows up if he's killed)
+# the cavalry's pistol (Defs.PISTOL: Horseman, Cuirassier, Officer, Armoured Officer)
+var pistol := false             # loaded (trained loaded; fired, it stays empty until he reloads on foot)
+var hold_fire := false          # HOLD FIRE: he never fires the pistol by himself
+var pistol_t := 0.0             # (an Officer) how far through reloading it, in seconds
 # Horses (Defs.HORSES)
 var led: Array = []              # (a man) the horses he leads by the reins, in their string
 var leader: Unit = null          # (a horse) who leads it
@@ -659,9 +663,61 @@ func musket_cooldown() -> float:
 	return float(d["cooldown"]) * m
 
 
-## A soldier on foot with a musket (or carbine) and a blade: picks musket or blade by himself.
+## A soldier on foot with a musket and a blade: picks musket or blade by himself.
 func foot_musket() -> bool:
-	return kind == "musketeer" or kind == "dismounted"
+	return kind == "musketeer"
+
+
+## Carries the cavalry's pistol (Defs.PISTOL): a Horseman, Cuirassier or Officer.
+func has_pistol() -> bool:
+	return (Defs.PISTOL["kinds"] as Array).has(kind)
+
+
+## His blade's mode: the Officer's sabre is his "bayonet" (d.sabre), the rider's his plain blow.
+func _sabre_mode() -> String:
+	return "bayonet" if kind == "dismounted" else ""
+
+
+## Pistol or sabre, chosen between blows: the loaded pistol at an enemy man (not a building),
+## unless HOLD FIRE; else the sabre.
+func _pick_pistol() -> void:
+	if phase != "":
+		return
+	var want := _sabre_mode()
+	if pistol and not hold_fire and not (target is Building) and not (order_target is Building and order == "attack"):
+		want = "pistol"
+	if want != mode:
+		mode = want
+		if target and not _valid_target(target):
+			target = null
+			phase = ""
+
+
+## (an Officer) reloading his pistol by himself: Defs.PISTOL reload s, out of a sabre fight,
+## spending a charge of his powder (none: he can't).
+func _pistol_reload(delta: float) -> void:
+	if pistol or kind != "dismounted":
+		pistol_t = 0.0
+		return
+	if powder < float(Defs.PISTOL["powder"]) or phase != "" or aboard:
+		return
+	if target and is_instance_valid(target) and target.edge_distance(position) - radius < float(Defs.PISTOL["busy"]):
+		return
+	pistol_t += delta
+	if pistol_t >= float(Defs.PISTOL["reload"]):
+		pistol_t = 0.0
+		pistol = true
+		powder -= float(Defs.PISTOL["powder"])
+
+
+## HOLD FIRE on or off (a pistol unit).
+func set_hold_fire(on: bool) -> void:
+	if not has_pistol():
+		return
+	hold_fire = on
+	if on and mode == "pistol" and phase == "aim":
+		phase = ""              # (not yet fired: he holds it)
+		cooldown = maxf(cooldown, 0.2)
 
 
 ## On a horse (the horse is part of him: DISMOUNT puts it beside him).
@@ -925,6 +981,8 @@ func set_canister(on: bool) -> void:
 
 
 func _cooldown() -> float:
+	if mode == "pistol":
+		return float(Defs.PISTOL["after"])
 	if mode == "bayonet" and d.has("sabre"):
 		return float(d["sabre"]["cooldown"])
 	if mode == "bayonet":
@@ -939,6 +997,8 @@ func _cooldown() -> float:
 
 
 func _aim() -> float:
+	if mode == "pistol":
+		return float(Defs.PISTOL["aim"])
 	if mode == "bayonet":
 		return Defs.BAYONET["aim"]
 	return float(d.get("aim", 0.25))
@@ -1347,6 +1407,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 		wind = randf_range(0.6, 1.0)     # (Winders don't all stop to wind at once)
 	_pmax = max_powder()
 	powder = _pmax
+	pistol = has_pistol()            # (trained loaded)
 	auto_repair = k == "winder"      # (Winders always did; Labourers start with it off)
 	armor = d["armor"]
 	sight = d["sight"]
@@ -2486,7 +2547,8 @@ func _courier(delta: float) -> Vector2:
 func _physics_process(delta: float) -> void:
 	var _p0 := Time.get_ticks_usec()
 	_tick_unit(delta)
-	Prof.add("units", _p0)
+	Prof.unit_us += Time.get_ticks_usec() - _p0
+	Prof.unit_n += 1
 
 
 func _tick_unit(delta: float) -> void:
@@ -2532,7 +2594,7 @@ func _tick_unit(delta: float) -> void:
 		_horse_upkeep(delta)
 	if not team_horses.is_empty():
 		speed *= 1.0 + float(Defs.HORSES["team_speed"]) * team_horses.size()     # a bigger team pulls faster
-	if horse_rid != 0 and kind == "dismounted":
+	if horse_rid != 0 and Defs.RIDERS.values().has(kind):
 		_res_t -= delta
 		if _res_t <= 0.0:
 			_res_t = 0.5
@@ -2642,6 +2704,9 @@ func _tick_unit(delta: float) -> void:
 		return
 	if foot_musket():
 		_pick_weapon(delta)
+	elif has_pistol():
+		_pistol_reload(delta)
+		_pick_pistol()
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
@@ -2716,6 +2781,14 @@ func _tick_unit(delta: float) -> void:
 				scan_t = 0.6
 				var better := game.find_target(self, _scan_range())
 				if better and better != target and not (better is Building and (better.kind == "wall" or better.kind == "gate")) and _can_get_at(better):
+					target = better
+			# hitting a building (or a man who can't fight back): an enemy unit that comes in
+			# reach comes first (as in StarCraft 2: fighters, then other units, then buildings)
+			elif is_instance_valid(target) and scan_t <= 0.0 and phase == "" and (target is Building or not Game.fights_back(target)):
+				scan_t = 0.5
+				var better := game.find_target(self, _scan_range())
+				if better and better != target and better.is_unit() and Game.loose_horse(better) == false \
+						and (target is Building or Game.fights_back(better)) and _can_get_at(better):
 					target = better
 			if scan_t <= 0.0 and target == null and not is_worker():
 				scan_t = 0.3
@@ -2819,26 +2892,33 @@ func _tick_unit(delta: float) -> void:
 	_animate(delta)
 	if kind == "winder" and (crate_site or _crate_spr):
 		_update_crate_spr()
-	# redraw the shadow, ring and bars only when something on them changed
-	var extra := 0
-	if topter_bat != "":
-		extra += 500000 + (int(_bob_t * 10.0) % 13) * 1000
-	if overclock_t > 0.0:
-		extra += int(overclock_t * 8.0) * 1000000
-	if kind == "balloon":
-		extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
-	var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-		int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
-		int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * ["packed", "deploying", "deployed", "packing"].find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
-	if key != _draw_key:
-		_draw_key = key
-		queue_redraw()
-	elif selected and (kind == "cannon" or kind == "mortar") and team == game.human:
-		# its line of fire on the ground follows the aim and the men around: ten times a second
-		_aim_t -= delta
-		if _aim_t <= 0.0:
-			_aim_t = 0.1
+	# redraw the shadow, ring and bars only when something on them changed (off screen: not
+	# looked at; it's drawn afresh when it comes into view)
+	if not visible or not game.view_rect.has_point(position):
+		_draw_key = Vector4i(-1, -1, -1, -1)
+	else:
+		var extra := 0
+		if topter_bat != "":
+			extra += 500000 + (int(_bob_t * 10.0) % 13) * 1000
+		if overclock_t > 0.0:
+			extra += int(overclock_t * 8.0) * 1000000
+		if kind == "balloon":
+			extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
+		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
+			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
+			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
+		if key != _draw_key:
+			_draw_key = key
 			queue_redraw()
+		elif selected and (kind == "cannon" or kind == "mortar") and team == game.human:
+			# its line of fire on the ground follows the aim and the men around: ten times a second
+			_aim_t -= delta
+			if _aim_t <= 0.0:
+				_aim_t = 0.1
+				queue_redraw()
+
+
+const TESLA_MODES := ["packed", "deploying", "deployed", "packing"]
 
 
 ## Tesla Cart: it only rolls when packed and only zaps when deployed; switching takes a while.
@@ -2905,6 +2985,8 @@ func _range() -> float:
 		return Defs.BAYONET["range"]
 	if mode == "canister":
 		return Defs.CANISTER["range"]
+	if mode == "pistol":
+		return float(Defs.PISTOL["range"])
 	return float(d["range"])
 
 
@@ -3325,7 +3407,7 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		if cooldown > 0.0 or stun_t > 0.0:
 			return
 		# out of powder: a gun can't fire (a dry Musketeer has fixed bayonets instead)
-		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
+		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0 and not has_pistol():
 			cooldown = 0.5
 			if Time.get_ticks_msec() > _hold_note:
 				_hold_note = Time.get_ticks_msec() + 5000
@@ -3346,6 +3428,9 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		phase_t = _aim()
 		return
 	phase_t -= delta
+	if phase == "aim" and mode == "pistol" and (not pistol or hold_fire):
+		phase = ""               # (HOLD FIRE came on while he aimed: no shot)
+		return
 	if phase == "aim" and phase_t <= 0.0:
 		phase = "strike"
 		phase_t = 0.35
@@ -3378,8 +3463,20 @@ func _strike(e: Entity) -> void:
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 		return
+	if mode == "pistol":
+		# the pistol's one shot (spent even if it flies wide in a fog)
+		if not pistol:
+			return
+		pistol = false
+		pistol_t = 0.0
+		var vet2 := 1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
+		if _range() >= 100.0 and game.fog_blinds(self, e) and randf() < float(Defs.FOG["miss"]):
+			game.fog_miss(self, e)
+			return
+		game.pistol_shot(self, e, float(Defs.PISTOL["damage"]) * vet2)
+		return
 	# every musket or cannon shot uses one of the shots it carries
-	if _pmax > 0.0:
+	if _pmax > 0.0 and not has_pistol():
 		if powder < 1.0:
 			return    # no powder: the shot never goes off
 		powder -= 1.0
@@ -3396,7 +3493,7 @@ func _strike(e: Entity) -> void:
 			game.fog_miss(self, e)
 			return
 	match kind:
-		"musketeer", "dismounted":
+		"musketeer":
 			game.musket_shot(self, e, dmg)
 		"cannon":
 			if mode == "canister":
@@ -4490,7 +4587,7 @@ func _anim_name() -> String:
 				return "attack"
 		"cuirassier":
 			if phase != "":
-				return "attack"
+				return _anim_or("pistol", "attack") if mode == "pistol" else "attack"
 		"balloon":
 			return "drift" if moving else "idle"
 		"horse":
@@ -4511,6 +4608,9 @@ func _anim_name() -> String:
 			if phase != "":
 				return "attack"
 	return "walk" if moving else "idle"
+
+
+const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]
 
 
 ## Animation runs at most 15 times a second, and not at all for units nobody can see.
@@ -4562,7 +4662,7 @@ func _animate(delta: float) -> void:
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[_anim_art if _anim_art != "" else art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
-	if anim == "walk" and art in ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]:
+	if anim == "walk" and GALLOPERS.has(art):
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
 		# frames, played so that his stride takes the same time
 		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
@@ -4593,6 +4693,10 @@ func _animate(delta: float) -> void:
 			fps = 3.0
 		"graze":
 			fps = 2.0
+		"pistol":
+			# draw, aim, fire, lower: over the aim and the shot (Defs.PISTOL)
+			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
+			loop = false
 		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
 			if kind == "spore_mother":
 				fps = 6.0
@@ -4664,6 +4768,8 @@ func _animate(delta: float) -> void:
 	if kind == "mist_toad" and anim == "tongue" and tongue_stage != "":
 		shown = mini(shown, TOAD_MOUTH_OPEN)   # the mouth gapes; the drawn tongue does the reaching
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
+	if not team_horses.is_empty() or not _team_sprites.is_empty():
+		_update_team(delta, fps)
 	if _front:
 		_update_basket()
 	if _rein and (leader != null or _rein_on):
@@ -4693,7 +4799,7 @@ func _animate(delta: float) -> void:
 		sprite.frame = 0        # the horse stands still
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_animate_cannon(delta)   # the old one-frame sheet: rock, recoil and a spinning wheel
-	elif kind in ["spitter", "bolt"]:
+	elif kind == "spitter" or kind == "bolt":
 		# rear up / tilt the crossbow at a flyer
 		var at_air: bool = target != null and is_instance_valid(target) and target.is_air() and phase != ""
 		sprite.rotation = (-0.32 if not anim_flip else 0.32) if at_air else 0.0
@@ -4792,6 +4898,9 @@ func _strip_art(a: String) -> String:
 	return art
 
 
+const DIR_FLIP := [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]]
+
+
 func _set_anim(a: String, force: bool) -> void:
 	# getting on or off: the mounted kind's mount strip, the way the horse is turned (_mount_face)
 	var sa := mount_strip_art() if a == "mount" else ""
@@ -4803,7 +4912,7 @@ func _set_anim(a: String, force: bool) -> void:
 	var was_mount := anim == "mount"
 	var o := int(round(face.angle() / (PI / 4.0)))
 	o = posmod(o, 8)
-	var dir_flip: Array = [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]][o]
+	var dir_flip: Array = DIR_FLIP[o]
 	var dr: String = dir_flip[0]
 	var flip: bool = dir_flip[1]
 	if not force and a == anim and dr == anim_dir and flip == anim_flip and sa == _anim_art:
@@ -5028,13 +5137,6 @@ func _draw_unit() -> void:
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	var bw := radius * 2.4
 	draw_health(top, bw, true)
-	if team_horses.size() > 0 and visible:
-		# a gun's team: a little badge with the number of horses, right of the health bar
-		var bx := bw * 0.5 + 3.0
-		draw_rect(Rect2(bx, top - 5.0, 20.0, 12.0), Color(0.33, 0.22, 0.12, 0.9))
-		draw_rect(Rect2(bx, top - 5.0, 20.0, 12.0), Color(0.95, 0.85, 0.6, 0.9), false, 1.0)
-		draw_circle(Vector2(bx + 5.0, top + 1.0), 3.0, Color(0.95, 0.85, 0.6))    # (a horseshoe dot)
-		_draw_number(horse_count(), Vector2(bx + 14.0, top - 3.5))
 	if has_attack():
 		# the reload, only while reloading (or setting up a gun): nothing when ready
 		var rf := reload_frac()
@@ -5046,10 +5148,17 @@ func _draw_unit() -> void:
 			show = true
 		elif deploys() and tesla_mode != "deployed":
 			show = false
+		var gy := top + 5.0 if hp < max_hp else top + 1.0
 		if show:
-			var ry := top + 5.0 if hp < max_hp else top + 1.0
+			var ry := gy
 			draw_rect(Rect2(-bw * 0.5, ry, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
 			draw_rect(Rect2(-bw * 0.5, ry, bw * clampf(rf, 0.0, 1.0), 2), rcol)
+			gy += 3.5
+		if kind == "bloater" and gas < 99.5:
+			# its gas, only while the sac isn't full (sickly yellow-green; dimmer while deflated)
+			draw_rect(Rect2(-bw * 0.5, gy, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(-bw * 0.5, gy, bw * clampf(gas / 100.0, 0.0, 1.0), 2),
+				Color(0.5, 0.56, 0.2) if deflate != "" else Color(0.72, 0.8, 0.2))
 	if work == "feeding":
 		return
 	if topter_bat != "":
@@ -5826,6 +5935,137 @@ func release_horse() -> Unit:
 	path = PackedVector2Array()
 	HorseCoat.apply(self)
 	return h
+
+
+## A gun's / wagon's extra team horses (team_horses) drawn as harnessed horses
+## (assets/units/horse_team: tools/import_horse_team.py), hitched in pairs: the vehicle's own
+## horse (in its sprite) is the left horse of the wheel pair; extra horse 1 walks at its right,
+## 2 and 3 are the leading pair one horse length ahead (with only 2 extras the one leader
+## walks in the middle, ahead of the pair). team_horses[i] is slot i: the front one (popped
+## first when it falls or is released) is the last. Each keeps its own coat (team shader +
+## the strip's coat mask). Hidden while a gun is set up (its own horse is led off then too).
+## Per vehicle: the team's size (its own horse is drawn smaller than the riderless horse), the
+## strip shown for each drawn direction (side-on cannon art for SE / NE), and where its own
+## horse's hooves stand per animation and direction (from its coat masks, unflipped; the
+## wagon's back view draws its horse below the wagon: its team goes ahead of the wagon's top).
+const TEAM_LOOK := {
+	"cannon": {"scale": 0.85, "view": {"se": "e", "ne": "e"},
+		"own": {"walk": {"s": Vector2(-2, 9), "e": Vector2(49, -7), "n": Vector2(-2, -36)}}},
+	"mortar": {"scale": 0.82, "view": {},
+		"own": {"walk": {"s": Vector2(0, 10), "se": Vector2(15, 10), "e": Vector2(24, -3), "ne": Vector2(15, -8), "n": Vector2(-2, 3)},
+			"idle_packed": {"s": Vector2(2, -2), "se": Vector2(-2, -3), "e": Vector2(6, -1), "ne": Vector2(6, -8), "n": Vector2(-2, -17)}}},
+	"powder_wagon": {"scale": 0.62, "view": {"ne": "e"},
+		"own": {"walk": {"s": Vector2(4, 7), "se": Vector2(6, 7), "e": Vector2(12, 5), "n": Vector2(-6, -50)}}},
+}
+## Per strip direction (unflipped, at the team horse's full size): one horse length ahead in
+## the direction of travel, and from a horse to its pair-mate on its right.
+const TEAM_STEP := {
+	"s": [Vector2(0, 34), Vector2(-22, 0)],
+	"se": [Vector2(38, 22), Vector2(-15, 9)],
+	"e": [Vector2(54, 0), Vector2(-10, 10)],
+	"ne": [Vector2(38, -22), Vector2(15, 9)],
+	"n": [Vector2(0, -30), Vector2(22, 0)],
+}
+var _team_sprites: Array[Sprite2D] = []
+var _team_shown: PackedStringArray = []     # the coat each team sprite was made with
+var _team_dir := ""                          # the layout the sprites stand in: direction,
+var _team_flip := false                      # mirrored,
+var _team_pose := ""                         # and which own-horse table (walk / idle_packed)
+var _team_t := 0.0
+
+
+func _update_team(delta: float, fps: float) -> void:
+	var look: Dictionary = TEAM_LOOK.get(kind, {})
+	var n := team_horses.size()
+	var show := not look.is_empty() and not dead and n > 0 \
+		and not ((kind == "cannon" or kind == "mortar") and tesla_mode != "packed")
+	if not show:
+		for s in _team_sprites:
+			s.visible = false
+		if n == 0 and not _team_sprites.is_empty():
+			_clear_team()
+		return
+	# the sprites, one per extra horse in its coat (remade when the team changes)
+	var changed := n != _team_sprites.size()
+	if not changed:
+		for i in n:
+			if String(team_horses[i].get("coat", "")) != _team_shown[i]:
+				changed = true
+				break
+	var pose := "idle_packed" if kind == "mortar" and anim != "walk" else "walk"
+	var view: String = look["view"].get(anim_dir, anim_dir)
+	if changed or view != _team_dir or anim_flip != _team_flip or pose != _team_pose:
+		_layout_team(look, view, pose, changed)
+	var moving := anim == "walk" and velocity.length() >= 10.0
+	if moving:
+		_team_t += delta * fps
+	for i in n:
+		var s := _team_sprites[i]
+		s.visible = true
+		s.frame = (int(_team_t) + i * 2) % s.hframes if moving else 0
+
+
+func _clear_team() -> void:
+	for s in _team_sprites:
+		s.queue_free()
+	_team_sprites.clear()
+	_team_shown.clear()
+	_team_dir = ""
+
+
+func _layout_team(look: Dictionary, view: String, pose: String, remake: bool) -> void:
+	if remake:
+		_clear_team()
+		for th in team_horses:
+			var s := Sprite2D.new()
+			s.centered = false
+			var m := ShaderMaterial.new()
+			m.shader = TEAM_SHADER
+			var c := String(th.get("coat", ""))
+			m.set_shader_parameter("coat", -1 if c == "dark" or not HorseCoat.COATS.has(c) else HorseCoat.COATS.find(c))
+			m.set_shader_parameter("coat_ramps", HorseCoat.RAMPS)
+			s.material = m
+			add_child(s)
+			_team_sprites.append(s)
+			_team_shown.append(c)
+	_team_dir = view
+	_team_flip = anim_flip
+	_team_pose = pose
+	var sc: float = look["scale"]
+	var own_tab: Dictionary = look["own"].get(pose, look["own"]["walk"])
+	var own: Vector2 = own_tab.get(view, own_tab.get(anim_dir, Vector2.ZERO))
+	var step: Array = TEAM_STEP[view]
+	var fwd: Vector2 = step[0] * sc
+	var side: Vector2 = step[1] * sc
+	var n := _team_sprites.size()
+	var tex := Game.tex("res://assets/units/horse_team/walk_%s.png" % view)
+	var anchor: Vector2 = ArtData.UNITS["horse_team"]["anchor"]
+	var nf: int = ArtData.UNITS["horse_team"]["frames"].get("walk_" + view, 1)
+	var mask := HorseCoat.mask_for(tex)
+	for i in n:
+		var p := own + side          # the wheel horse's pair-mate
+		if i == 1:
+			p = own + fwd + (side * 0.5 if n == 2 else Vector2.ZERO)    # a lone leader in the middle
+		elif i == 2:
+			p = own + fwd + side
+		if anim_flip:
+			p.x = -p.x
+		var s := _team_sprites[i]
+		s.texture = tex
+		s.hframes = nf
+		s.offset = -anchor
+		s.position = p
+		s.scale = Vector2(-sc if anim_flip else sc, sc)
+		(s.material as ShaderMaterial).set_shader_parameter("horse_mask", mask)
+	# draw order by depth (y), farther first: those standing farther back than the vehicle's
+	# feet (ahead of a gun facing north) behind its sprite, the others over it
+	var order: Array[Sprite2D] = _team_sprites.duplicate()
+	order.sort_custom(func(a: Sprite2D, b: Sprite2D) -> bool: return a.position.y < b.position.y)
+	for s in order:
+		move_child(s, get_child_count() - 1)
+	for s in order:
+		if s.position.y < -2.0:
+			move_child(s, sprite.get_index())
 
 
 ## A new Horseman, trained on foot: he goes to the horse kept for him (to its breeder while

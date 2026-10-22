@@ -33,6 +33,7 @@ python3 tools/make_packs.py              # Clockwork battery backpacks (after ev
 python3 tools/import_deposits.py         # saltpetre / ore deposits (4 states), chips, icons, sparkle
 python3 tools/import_round11.py          # painted portraits, research + ability icons, Engine Hall,
                                          # musketeer bayonet strips (last: replaces earlier icons/melee)
+python3 tools/import_command_icons.py     # command icons: hold fire / fire at will, hold, patrol, rally, demolish
 python3 tools/import_armoury.py          # the Crown Armoury (4 states, found by itself on the sheet), its
                                          # build icon, the Armoury research icons and the Horseman /
                                          # Guardsman portraits (after round 11: replaces research_armour
@@ -52,6 +53,8 @@ python3 tools/fix_mortar_smoke.py         # no smoke puff over the right-hand gu
                                          # (after the reload, helmets and towed walk above)
 python3 tools/import_horseman.py         # the unarmoured Horseman's strips (cut like the Cuirassier's,
                                          # on his cell) and his art_data entry
+python3 tools/import_pistol.py           # the Horseman / Cuirassier firing the pistol from the saddle
+                                         # (pistol_<dir> strips, on the Horseman's cell and anchor)
 python3 tools/import_horse_units.py      # the horse system's units: riderless horse, Messenger, Dragoons
                                          # (light and armoured), dismounted Horseman (slash fixed)
 python3 tools/import_bandage.py           # the Missionary bandaging a dismounted Horseman / Cuirassier
@@ -61,6 +64,8 @@ python3 tools/import_horse_icons.py         # the horse units' portraits and the
 python3 tools/import_mount.py            # the riders' mounting strips (mount_s / se / e / n) from
                                          # art/crown/mount/ (after the riders' own sheets: it lines
                                          # its last frame up with their idle; before the coat masks)
+python3 tools/import_horse_team.py      # a gun's / wagon's team horse in harness (art/crown/horse_team.png:
+                                         # the S row's stray traces erased; before the coat masks)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)

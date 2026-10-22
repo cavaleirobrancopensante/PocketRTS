@@ -69,7 +69,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
-			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
+			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
@@ -120,6 +120,13 @@ static func save(game: Game, cfg: Dictionary) -> void:
 				ud["ra"] = _v2(u.rally_after)
 		if u.auto_mount:
 			ud["am"] = true
+		if u.has_pistol():
+			# the cavalry's pistol: loaded or not, HOLD FIRE, an Officer's reload so far
+			ud["pl"] = u.pistol
+			if u.hold_fire:
+				ud["hf"] = true
+			if u.pistol_t > 0.0:
+				ud["plt"] = snappedf(u.pistol_t, 0.01)
 		if u.patrol_a != Vector2.INF:
 			ud["pat"] = [_v2(u.patrol_a), _v2(u.patrol_b)]
 		if u.steed and ids.has(u.steed):
@@ -232,6 +239,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex
+		game.fog_base_dirty = true
 	# (Farms last: in saves from before Farms grew (to 5x4, then 6x5 tiles) each may have to
 	# shift a little to fit between what stands round it)
 	var blist: Array = Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) != "farm") \
@@ -247,6 +255,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			at = _fit(game, at, Defs.BUILDINGS[bk]["size"])
 		var b := game._add_building(bk, int(bd["t"]), at, bool(bd["built"]), bool(bd.get("ghost", false)))
 		b.progress = float(bd["progress"])
+		b.set_level(int(bd.get("lv", 1)))      # (a Brood hall's level, before its health; older saves: a Burrow)
+		b.upgrade_t = float(bd.get("up", -1.0))
 		b.hp = float(bd["hp"])
 		# (research is in the queue as "@key")
 		# (and beside it what each queued Musketeer was paid to come out with; older saves: nothing)
@@ -412,6 +422,11 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if ud.get("ra") is Array:
 			u.rally_after = _to_v2(ud["ra"])
 		u.auto_mount = bool(ud.get("am", false))
+		if u.has_pistol():
+			u.pistol = bool(ud.get("pl", true))           # (older saves: loaded)
+			u.hold_fire = bool(ud.get("hf", false))
+			u.pistol_t = float(ud.get("plt", 0.0))
+			u.powder = minf(u.powder, u._pmax)            # (older saves: an Officer's 10 carbine shots)
 		if ud.get("pat") is Array and (ud["pat"] as Array).size() == 2:
 			u.patrol_a = _to_v2(ud["pat"][0])
 			u.patrol_b = _to_v2(ud["pat"][1])

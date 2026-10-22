@@ -50,6 +50,12 @@ func prey(t: int, e: Entity) -> bool:
 	return hostile(e.team, t) or (loose_horse(e) and t >= 0 and t < factions.size() and faction_of(t) == "brood")
 
 
+## A unit that can hurt you back (not a worker, a Missionary, a horse, a Powder Wagon...):
+## units on their own go for these first (find_target), then other units, then buildings.
+static func fights_back(e) -> bool:
+	return e is Unit and not e.dead and not e.is_worker() and not e.d.get("no_attack", false) and not e.d.get("medic", false)
+
+
 ## A horse belonging to nobody (its rider fell and it bolted: Unit._rider_falls).
 static func loose_horse(e) -> bool:
 	return e is Unit and e.team < 0 and e.kind == "horse" and not e.dead
@@ -1600,9 +1606,18 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	var c0: Vector2 = around.rect().get_center() / T
 	var mid := Vector2(W, H) * 0.5
 	var best := Vector2i(-1, -1)
-	var bs := INF
 	var hc := cell_of(around.rect().get_center())
 	var h0 := int(height[idx(hc)]) if in_map(hc) else -1
+	# every open cell is scored first, then the full placement test runs from the best score
+	# down until one passes (it used to run on every cell: a hall's search took ~100 ms)
+	var keys := PackedInt64Array()
+	var cells: Array[Vector2i] = []
+	var pair := kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0)
+	var pair_at: Array[Vector2] = []
+	if pair:
+		for b in buildings:
+			if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
+				pair_at.append(b.center())
 	for y in range(int(c0.y) - max_d - 2, int(c0.y) + max_d + 2):
 		for x in range(int(c0.x) - max_d - 2, int(c0.x) + max_d + 2):
 			var cell := Vector2i(x, y)
@@ -1612,7 +1627,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				continue
 			if ground and h0 >= 0 and not _on_ground(cell, size, h0):
 				continue
-			if not _footprint_open(cell, size) or placement_problem(t, kind, cell, true, true) != "" or not margin_free(cell, size):
+			if not _footprint_open(cell, size):
 				continue
 			var score := dd
 			if prefer == "far":
@@ -1631,19 +1646,24 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				# tucked behind the hall, away from the middle of the map (like minerals
 				# behind a command centre), and close to it
 				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
-			if kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0):
+			if pair:
 				# Boilers and crushers close together (once there's a Boiler; the starting crusher
 				# goes behind the hall): a battery fades on a long road, and a Boiler's Winders
 				# must be back for the next one within a few seconds
 				var near := INF
-				for b in buildings:
-					if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
-						near = minf(near, b.center().distance_to(cc * T) / T)
+				for pc in pair_at:
+					near = minf(near, pc.distance_to(cc * T) / T)
 				if near < INF:
 					score += maxf(0.0, near - SOURCE_NEAR) * 3.0
-			if score < bs:
-				bs = score
-				best = cell
+			# (sorted by score, then by the order the cells were looked at, as before)
+			keys.append(int(round((score + 100000.0) * 1000.0)) * 1048576 + cells.size())
+			cells.append(cell)
+	keys.sort()
+	for k in keys:
+		var cell: Vector2i = cells[k % 1048576]
+		if placement_problem(t, kind, cell, true, true) == "" and margin_free(cell, size):
+			best = cell
+			break
 	_spot_halls = []
 	_spot_all_halls = []
 	_in_spot = false
@@ -1848,13 +1868,13 @@ func _soil_check(h: Building) -> void:
 		return
 	if mlog:
 		if hive:
-			mlog.add("%s: the ground around a Hive %s" % [mlog.who(h.team), "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+			mlog.add("%s: the ground around a %s %s" % [mlog.who(h.team), h.d["name"], "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 		else:
 			mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (its farms pay a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
 		if hive:
-			hud.toast("The ground around your Hive is spent: its pits yield a third. Grow a Hive on fresh ground." if level == 2
-				else "The ground around your Hive is running low (%d%% left): grow a Hive on fresh ground soon." % int(round(left * 100)), false)
+			hud.toast(("The ground around your %s is spent: its pits yield a third. Grow a Burrow on fresh ground." % h.d["name"]) if level == 2
+				else "The ground around your %s is running low (%d%% left): grow a Burrow on fresh ground soon." % [h.d["name"], int(round(left * 100))], false)
 		else:
 			hud.toast("The soil around your Town Hall is tired: expand to fresh land." if level == 2
 				else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
@@ -2331,7 +2351,10 @@ func try_start_site(b: Building, worker: Unit) -> int:
 
 
 ## A ghost that can't start: full refund (it never began), it goes, and the owner is told.
-func site_failed(b: Building) -> void:
+## why: "blocked" (the footprint stayed blocked), "unreachable" (its grub or Winder can't
+## get there), "abandoned" (nobody is coming to start it any more: no toast, it's the
+## player's own doing or the worker died).
+func site_failed(b: Building, why := "blocked") -> void:
 	if b.dead:
 		return
 	var t := b.team
@@ -2339,13 +2362,19 @@ func site_failed(b: Building) -> void:
 	players[t]["gold"] += cost
 	stats[t]["spent"] -= cost
 	stats[t]["built"] = maxi(0, int(stats[t]["built"]) - 1)
-	if t == human and not demo and hud:
+	if t == human and not demo and hud and why != "abandoned":
 		_notify_t = Time.get_ticks_msec()
-		hud.toast("Can't build there: the spot is blocked.", true)
+		hud.toast("Can't build there: the spot is blocked." if why == "blocked" else "Can't build there: it can't be reached.", true)
 		Sfx.announce(faction_of(t), "bad_place", 4.0)
 	if mlog:
-		mlog.add("%s couldn't start a %s: the spot was blocked (refunded)" % [mlog.who(t), b.d["name"]])
-	remove_ghost(b)
+		var wl: String = {"blocked": "the spot was blocked", "unreachable": "it couldn't be reached", "abandoned": "nobody was coming to start it"}.get(why, why)
+		mlog.add("%s %s a %s: %s (refunded)" % [mlog.who(t), "dropped" if why == "abandoned" else "couldn't start", b.d["name"], wl])
+	if b.ghost:
+		remove_ghost(b)
+	else:
+		# (a Brood site its grub never finished turning into: it was already solid)
+		_remove_quietly(b)
+		_recount_supply(t)
 	for u in units.duplicate():
 		if u.team == t and not u.dead and u.order == "build" and u.order_target == b:
 			u.site_gone()
@@ -2997,6 +3026,72 @@ func research_done(b: Building, key: String) -> void:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
 
+# ------------------------------------------------------------------ Brood hall levels
+
+## "" if this hall can start growing into its next level (Defs.HALL_LEVELS), else why not.
+func hall_upgrade_problem(b: Building) -> String:
+	if not b.is_leveled() or not b.built or b.dead:
+		return "Can't upgrade that."
+	var nl := b.next_level()
+	if nl.is_empty():
+		return "Already a %s." % b.level_info()["name"]
+	if b.upgrade_t >= 0.0:
+		return "Already upgrading."
+	var needs := String(nl.get("needs", ""))
+	if needs != "" and not _has_built(b.team, needs):
+		return "Needs a %s first." % Defs.BUILDINGS[needs]["name"]
+	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
+	if players[b.team]["gold"] < int(nl["cost"]):
+		return "Not enough %s." % String(res[0]).to_lower()
+	if float(players[b.team]["res2"]) < float(nl.get("cost2", 0)):
+		return "Not enough %s." % String(res[1]).to_lower()
+	return ""
+
+
+## Start growing the hall into its next level: paid up front; it keeps laying, hatching and
+## taking food meanwhile. "" when started, else why not.
+func start_hall_upgrade(b: Building) -> String:
+	var why := hall_upgrade_problem(b)
+	if why != "":
+		return why
+	var nl := b.next_level()
+	players[b.team]["gold"] -= int(nl["cost"])
+	add_res2(b.team, -float(nl.get("cost2", 0)))
+	stats[b.team]["spent"] += int(nl["cost"])
+	b.upgrade_t = 0.0
+	b.queue_redraw()
+	if mlog:
+		mlog.add("%s started upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
+	return ""
+
+
+## Stop the hall's upgrade, paid back (`dying`: it was destroyed, nothing said).
+func cancel_hall_upgrade(b: Building, dying := false) -> void:
+	if b.upgrade_t < 0.0:
+		return
+	b.upgrade_t = -1.0
+	var nl := b.next_level()
+	if nl.is_empty():
+		return
+	players[b.team]["gold"] += int(nl["cost"])
+	add_res2(b.team, float(nl.get("cost2", 0)))
+	stats[b.team]["spent"] -= int(nl["cost"])
+	b.queue_redraw()
+	if mlog and not dying:
+		mlog.add("%s cancelled upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
+
+
+## The hall has grown into its next level.
+func hall_upgraded(b: Building) -> void:
+	var was := String(b.d["name"])
+	b.set_level(b.level + 1)
+	if b.team == human:
+		notify("Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
+		Sfx.announce(faction_of(b.team), "research_done", 3.0)
+	if mlog:
+		mlog.add("%s upgraded a %s to a %s" % [mlog.who(b.team), was, b.d["name"]])
+
+
 # ------------------------------------------------------------------ refits and drills
 
 var _refit_t := 0.0
@@ -3032,7 +3127,7 @@ func kit_for_new(t: int, key: String) -> Dictionary:
 	if not Defs.ARMOURED.has(k):
 		return {}
 	var kit := {"armour": Defs.train_armoured(key) and has_tech(t, "armour")}
-	if k == "musketeer":
+	if k == "musketeer" or k == "dragoon":
 		kit["lock"] = best_lock(t)
 		kit["bayonet"] = has_tech(t, "bayonet")
 	return kit
@@ -3317,11 +3412,11 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		Sfx.voice(k, "select")
 	var rid := int(kit.get("rid", 0))
 	var sk := k
-	if k == "cuirassier" and rid != 0:
-		sk = "dismounted"       # trained on foot: he goes and gets on the horse kept for him
+	if Defs.RIDERS.has(k) and rid != 0:
+		sk = String(Defs.RIDERS[k])    # trained on foot: he goes and gets on the horse kept for him
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(sk, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
-		if sk == "dismounted":
+		if sk != k:
 			u.set_kit(kit)
 			u.horse_rid = rid
 			u.rally_after = b.rally
@@ -3344,9 +3439,12 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 			elif not b.dual_rally() and b.rally_target is Building:
 				site = b.rally_target
 			if site == null or site.dead or site.crew.size() >= int(site.d.get("crew", 0)):
+				var was_site := site != null and not site.dead
 				site = null
 				var rp: Vector2 = b.worker_rally if b.dual_rally() else b.rally
-				if rp == Vector2.INF:
+				if rp == Vector2.INF or was_site:
+					# (its rally's pit or farm is full: the next one with room instead of
+					# standing idle beside it)
 					site = free_site(b.team, u.position)
 				else:
 					u.cmd_move(rp + Vector2(randf_range(-12, 12), randf_range(-12, 12)))
@@ -3377,6 +3475,65 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 
 func requirement_met(t: int, k: String) -> bool:
 	return requirement_text(t, k) == ""
+
+
+var _sweep_pos := {}       # sweep_ghosts: a ghost's instance id -> where its worker was last time
+
+
+## Brood and Clockwork ghosts need their own worker to start them (a grub turns into it, a
+## Winder brings its crate); no other worker picks one up on its own (Crown ones are left:
+## any Labourer nearby takes up an unfinished Crown site, Game.next_site). So a Brood or
+## Clockwork ghost whose grub or Winder is no longer coming (re-ordered, stopped, killed)
+## goes, all of its cost back, as in StarCraft 2. A Clockwork crate dropped on the ground or
+## carried keeps its site (any Winder can carry it on). A worker that can't get to its site
+## (stuck in the same spot over two sweeps, and no walking path there) gives it up too.
+## Run about once a second (from the tick).
+func sweep_ghosts() -> void:
+	var sites: Array = []
+	if not _sweep_pos.is_empty():
+		for id in _sweep_pos.keys():
+			if not is_instance_id_valid(id):
+				_sweep_pos.erase(id)
+	for b in buildings:
+		if b.dead or b.built or b.team < 0 or not (b.ghost or not b.seeded):
+			continue
+		var f: String = b.d["faction"]
+		if f == "brood" or (f == "clockwork" and b.ghost and (b.crate == "" or b.crate == "tower")):
+			sites.append(b)
+	if sites.is_empty():
+		return
+	for b in sites:
+		var coming: Unit = null
+		for u in units:
+			if u.team != b.team or u.dead or not u.is_worker():
+				continue
+			if u.order == "build" and u.order_target == b:
+				coming = u
+				break
+			if u.line_rest.has(b):
+				coming = u
+				break
+			for o in u.queue:
+				if (o.get("e") == b and String(o["o"]) == "build") or (String(o["o"]) == "wall" and (o["pieces"] as Array).has(b)):
+					coming = u
+					break
+			if coming:
+				break
+		if coming == null:
+			if b.ghost or b.d["faction"] == "brood":
+				site_failed(b, "abandoned")
+			continue
+		var id: int = b.get_instance_id()
+		if not b.ghost or coming.order != "build" or coming.order_target != b or coming.work != "to_site":
+			_sweep_pos.erase(id)
+			continue
+		# its worker on the way: the same spot over two sweeps, far from the site: can it get there?
+		var last = _sweep_pos.get(id)
+		_sweep_pos[id] = coming.position
+		if last is Vector2 and (last as Vector2).distance_to(coming.position) < 6.0 \
+				and b.edge_distance(coming.position) > coming.radius + 24.0 \
+				and not coming._walk_reaches_point(approach_point(b, coming.position)):
+			site_failed(b, "unreachable")       # (its worker goes on to its next order)
 
 
 ## "" when every building this one needs stands (finished), else what's missing.
@@ -3891,10 +4048,39 @@ func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -
 	return before
 
 
+## (every moving unit asks this a few times a tick: the cells are worked out here, without
+## calling cell_of and passable for each of the five points)
 func _clear_at(p: Vector2, radius: float, team := -1) -> bool:
 	var r := radius * 0.6
-	return passable(cell_of(p), team) and passable(cell_of(p + Vector2(r, 0)), team) and passable(cell_of(p - Vector2(r, 0)), team) \
-		and passable(cell_of(p + Vector2(0, r * 0.6)), team) and passable(cell_of(p - Vector2(0, r * 0.6)), team)
+	var ry := r * 0.6
+	var cx := clampi(int(p.x / T), 0, W - 1)
+	var cy := clampi(int(p.y / T), 0, H - 1)
+	var row := cy * W
+	var v := solid[row + cx]
+	if v != 0 and v != 5 and not _gate_lets(row + cx, v, team):
+		return false
+	var c := clampi(int((p.x + r) / T), 0, W - 1)
+	v = solid[row + c]
+	if v != 0 and v != 5 and not _gate_lets(row + c, v, team):
+		return false
+	c = clampi(int((p.x - r) / T), 0, W - 1)
+	v = solid[row + c]
+	if v != 0 and v != 5 and not _gate_lets(row + c, v, team):
+		return false
+	c = clampi(int((p.y + ry) / T), 0, H - 1) * W + cx
+	v = solid[c]
+	if v != 0 and v != 5 and not _gate_lets(c, v, team):
+		return false
+	c = clampi(int((p.y - ry) / T), 0, H - 1) * W + cx
+	v = solid[c]
+	if v != 0 and v != 5 and not _gate_lets(c, v, team):
+		return false
+	return true
+
+
+## A solid cell (value v) a unit of team t may still walk through: its own side's gate.
+func _gate_lets(i: int, v: int, t: int) -> bool:
+	return v == 3 and t >= 0 and allied(int(gate_team.get(i, -1)), t)
 
 
 # ------------------------------------------------------------------ spatial queries
@@ -3914,17 +4100,35 @@ func units_near(p: Vector2, r: float) -> Array:
 	var c1 := Vector2i(int(p.x + r) / HASH, int(p.y + r) / HASH)
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
-			var lst: Array = _hash.get(Vector2i(x, y), [])
+			var lst = _hash.get(Vector2i(x, y))
+			if lst == null:
+				continue
 			for u in lst:
 				if is_instance_valid(u) and u.position.distance_to(p) <= r:
 					out.append(u)
 	return out
 
 
+## (as units_near(u.position, u.radius + 18), in the same order, without building the list)
 func separation(u: Unit) -> Vector2:
 	var push := Vector2.ZERO
-	for o in units_near(u.position, u.radius + 18.0):
-		if o == u or o.dead or o.off_field or o.is_air() != u.is_air():
+	var p := u.position
+	var rr := u.radius + 18.0
+	var air := u.is_air()
+	var c0 := Vector2i(int(p.x - rr) / HASH, int(p.y - rr) / HASH)
+	var c1 := Vector2i(int(p.x + rr) / HASH, int(p.y + rr) / HASH)
+	var near: Array = []
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			var lst = _hash.get(Vector2i(x, y))
+			if lst == null:
+				continue
+			for o in lst:
+				if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
+					continue
+				near.append(o)
+	for o in near:
+		if o.dead or o.off_field or o.is_air() != air:
 			continue
 		if o == u.steed or u == o.steed:
 			continue           # (a man beside his own horse: he got off there, close by it)
@@ -3967,10 +4171,10 @@ func find_target(u: Unit, r: float) -> Entity:
 		var dd: float = o.position.distance_to(u.position)
 		if min_r > 0.0 and o.edge_distance(u.position) - u.radius < min_r:
 			continue
-		if o.is_worker():
-			dd += 60.0   # prefer fighters
-		elif o.kind == "horse":
+		if o.kind == "horse":
 			dd += 150.0  # a horse only when there's nothing else (better stolen than shot)
+		elif not fights_back(o):
+			dd += 60.0   # prefer fighters (workers, Missionaries, wagons after them)
 		if careful:
 			picks.append([dd, o])
 		elif dd < bd:
@@ -4078,7 +4282,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
 		if b.visible and b.sprite and b.sprite.texture:
-			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
+			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null
@@ -4093,7 +4297,7 @@ func crew_site_at(p: Vector2, t: int) -> Building:
 		if b.rect().grow(4).has_point(p):
 			return b
 		if b.sprite and b.sprite.texture:
-			var sr := Rect2(b.global_position + b.sprite.offset, b.sprite.texture.get_size())
+			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null
@@ -4163,6 +4367,16 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 	s.impact_scale = 1.0 if hit else 0.35
 	s.launch(self, "ball", muzzle, aim, 950.0)
 	Sfx.play_any(["combat/musketeer_attack", "musket"], u.global_position)
+
+
+## The cavalry's pistol (Defs.PISTOL): one ball, a single ranged blow like a musket's (so a
+## rider it kills may leave his horse loose); from the saddle it leaves the rider's hand.
+func pistol_shot(u: Unit, e: Entity, dmg: float) -> void:
+	var muzzle := u.center() + u.facing * 18.0 + Vector2(0, -16.0 if u.is_mounted() else -2.0)
+	musket_shot(u, e, dmg, muzzle)
+	if mlog and not _first_of.has("%d:pistol" % u.team):
+		_first_of["%d:pistol" % u.team] = true
+		mlog.add("%s's first pistol shot (%s)" % [mlog.who(u.team), Defs.train_name(Defs.train_key(u.kind, u.armoured))])
 
 
 var _tracers: Array = []
@@ -5035,6 +5249,15 @@ func _tick_zones(delta: float) -> void:
 				u.acid_t = maxf(u.acid_t, 0.4)
 				u.slow_t = maxf(u.slow_t, 0.4)
 				u.take_damage(float(Defs.BLOAT["dps"]) * delta, null)
+			# enemy buildings in the cloud are eaten too, at a share of the rate (BLOAT.buildings)
+			var bdps := float(Defs.BLOAT["dps"]) * float(Defs.BLOAT["buildings"]) * delta
+			for b in buildings.duplicate():
+				if b.dead or b.ghost or not hostile(b.team, int(z["team"])):
+					continue
+				var r2: Rect2 = b.rect()
+				if not in_ellipse(p, p.clamp(r2.position, r2.end), r):
+					continue
+				b.take_damage(bdps, null)
 			continue
 		if z["kind"] == "storm":
 			for u in units_near(p, r + 20.0):
@@ -5317,6 +5540,8 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 	var k := 0
 	var w := W
 	var h := H
+	var fog_on := mine and _fog_base.size() == w * h * 2
+	var mode := _fog_mode if fog_on else 0
 	while k < n:
 		var x := c.x + d[k]
 		var y := c.y + d[k + 1]
@@ -5326,8 +5551,42 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 				v[i] = 1
 				sv[i] = 1
 				if mine:
-					explored[i] = 1
+					if explored[i] == 0:
+						explored[i] = 1
+						if fog_on:
+							_fog_base[i * 2 + 1] = FOG_EXPLORED
+							_fog_bld[i * 2 + 1] = FOG_EXPLORED
+					if mode == 1:
+						_fog_bld[i * 2 + 1] = 0
+					elif mode == 2:
+						_fog_w[i * 2 + 1] = 0
 		k += 3
+
+
+## Your fog picture (LA8: alpha 250 unexplored, 140 explored, 0 seen), kept up as it's seen
+## instead of worked out cell by cell four times a second: _fog_base is the explored map,
+## _fog_bld that with what the buildings see cut out (made again when they change), _fog_w
+## this update's (with what the units see cut out as they're stamped). Watching computers
+## play, the picture is still worked out cell by cell (it's whose eyes the spectator picks).
+const FOG_EXPLORED := 140
+const FOG_UNSEEN := 250
+var _fog_base := PackedByteArray()
+var _fog_bld := PackedByteArray()
+var _fog_w := PackedByteArray()
+var _fog_mode := 0                       # what _stamp also cuts the seen cells out of: 1 _fog_bld, 2 _fog_w
+var fog_base_dirty := true               # explored was changed outside _stamp (a load, the sandbox)
+
+
+func _rebuild_fog_base() -> void:
+	fog_base_dirty = false
+	var n := W * H
+	var fb := PackedByteArray()
+	fb.resize(n * 2)
+	for i in n:
+		fb[i * 2 + 1] = FOG_EXPLORED if explored[i] == 1 else FOG_UNSEEN
+	_fog_base = fb
+	_fog_bld = fb.duplicate()
+	_bvis_key = PackedInt64Array()        # (the buildings' sight is cut out again)
 
 
 var _EMPTY := PackedByteArray()          # (a stand-in while a grid is out being written)
@@ -5362,6 +5621,9 @@ func _building_vis() -> void:
 			var nb := PackedByteArray()
 			nb.resize(W * H)
 			_bside[sides[t]] = nb
+	if _fog_base.size() == W * H * 2:
+		_fog_bld = _fog_base.duplicate()
+		_fog_mode = 1
 	for b in buildings:
 		if not b.dead and not b.ghost:
 			var c := cell_of(b.rect().get_center())
@@ -5377,10 +5639,19 @@ func _building_vis() -> void:
 			_bside[sides[t]] = sv
 			if demo:
 				_explore(t, c, b.sight, in_map(c) and height[idx(c)] == 0)
+	_fog_mode = 0
 
 
 func _update_vis() -> void:
+	var _z := Time.get_ticks_usec()
+	var fast := not demo
+	if fast and (fog_base_dirty or _fog_base.size() != W * H * 2):
+		_rebuild_fog_base()
+	elif not fast:
+		_fog_base = PackedByteArray()
 	_building_vis()
+	Prof.add("game/fog/buildings", _z)
+	_z = Time.get_ticks_usec()
 	for t in n_players():
 		vis[t] = (_bvis[t] as PackedByteArray).duplicate()
 	for t in n_players():
@@ -5388,6 +5659,9 @@ func _update_vis() -> void:
 	for sd in _side_vis.keys():
 		if not _bside.has(sd):
 			_side_vis.erase(sd)
+	if fast:
+		_fog_w = _fog_bld.duplicate()
+		_fog_mode = 2
 	# units standing in the same cell see the same thing: stamp each spot once
 	var done := {}
 	for u in units:
@@ -5401,6 +5675,9 @@ func _update_vis() -> void:
 				_reveal_air(u.team, c, u.sight)
 			else:
 				_reveal(u.team, c, u.sight)
+	_fog_mode = 0
+	Prof.add("game/fog/units", _z)
+	_z = Time.get_ticks_usec()
 	# (the buildings' sight came in with _building_vis)
 	# what your side sees (the explored map was marked as it was seen)
 	var hv: PackedByteArray = (_side_vis[sides[human]] as PackedByteArray).duplicate()
@@ -5436,12 +5713,19 @@ func _update_vis() -> void:
 				for i in W * H:
 					if oe[i] == 1:
 						ex[i] = 1
-	if _fog_bytes.size() != W * H * 2:
-		_fog_bytes.resize(W * H * 2)
-	for i in W * H:
-		_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (140 if ex[i] == 1 else 250)
-	fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_bytes)
+	Prof.add("game/fog/copy", _z)
+	_z = Time.get_ticks_usec()
+	if fast and ft == human:
+		fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_w)
+	else:
+		if _fog_bytes.size() != W * H * 2:
+			_fog_bytes.resize(W * H * 2)
+		for i in W * H:
+			_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (FOG_EXPLORED if ex[i] == 1 else FOG_UNSEEN)
+		fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_bytes)
 	fog_tex.update(fog_img)
+	Prof.add("game/fog/picture", _z)
+	_z = Time.get_ticks_usec()
 	var side_mask := 0
 	for o in n_players():
 		if allied(o, ft):
@@ -5471,6 +5755,7 @@ func _update_vis() -> void:
 			b.visible = b.seen_by_human
 		elif demo:
 			b.visible = true
+	Prof.add("game/fog/shown", _z)
 
 
 ## Whose fog of war is drawn: yours, or in a computers-only match the player the
@@ -5596,8 +5881,10 @@ func _tick_game(delta: float) -> void:
 		_astar_dirty = false
 	# Path budget per frame
 	pt = Time.get_ticks_usec()
+	# (at most 24 a tick, and past the first 6 only while under 6 ms: a crowd ordered at once
+	# gets its paths over a few ticks instead of in one long frame)
 	var budget := 24
-	while budget > 0 and not _path_queue.is_empty():
+	while budget > 0 and not _path_queue.is_empty() and (budget > 18 or Time.get_ticks_usec() - pt < 6000):
 		var u = _path_queue.pop_front()
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()
@@ -5620,12 +5907,18 @@ func _tick_game(delta: float) -> void:
 	for tr in _tracers:
 		tr[2] -= delta
 	_tracers = _tracers.filter(func(tr: Array) -> bool: return tr[2] > 0.0)
-	overlay.queue_redraw()
+	# the overlay: every tick while something on it moves, else (the economy labels) 4 times a second
+	_overlay_t -= delta
+	if _overlay_t <= 0.0 or _overlay_moving() or view_rect.position.distance_to(_overlay_view) > 60.0:
+		_overlay_t = 0.25
+		_overlay_view = view_rect.position
+		overlay.queue_redraw()
 	field_layer.queue_redraw()
 	_end_t -= delta
 	if _end_t <= 0.0:
 		_end_t = 1.0
 		_check_end()
+		sweep_ghosts()
 	_refit_t -= delta
 	if _refit_t <= 0.0:
 		_refit_t = float(Defs.REFIT["scan"])
@@ -6146,6 +6439,8 @@ func _draw_mine_labels() -> void:
 	for b in buildings:
 		if b.dead or not b.built or not b.visible or (b.team != human and not demo):
 			continue
+		if not view_rect.has_point(b.global_position):
+			continue        # (off screen; the overlay is redrawn 4 times a second at least)
 		var crew_max := int(b.d.get("crew", 0))
 		var eff: Array = b.efficiency()
 		if crew_max == 0 and eff.is_empty():
@@ -6215,6 +6510,27 @@ func _draw_queues() -> void:
 			var col: Color = QUEUE_COLS.get(pt[0], Color(1, 1, 1))
 			overlay.draw_circle(pt[1], 4.0, Color(0, 0, 0, 0.45))
 			overlay.draw_circle(pt[1], 2.8, Color(col, 0.85))
+
+
+var _overlay_t := 0.0
+var _overlay_was := false
+var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn (labels on screen only)
+
+
+## Something on the overlay moves (floating numbers, pings, shots, tongues, a line or a
+## building being placed, the queued orders of the selected units) or just stopped.
+func _overlay_moving() -> bool:
+	var m := not _floats.is_empty() or not _pings.is_empty() or not _tracers.is_empty() or not tongues.is_empty()
+	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place"):
+		m = true
+	if not m:
+		for e in selection:
+			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty()):
+				m = true
+				break
+	var r := m or _overlay_was
+	_overlay_was = m
+	return r
 
 
 func _draw_overlay() -> void:
@@ -6372,7 +6688,7 @@ func _reserve_horse(b: Building, k: String, rid: int, pay: bool) -> bool:
 	if h:
 		h.horse_rid = rid
 		h.cmd_stop()
-		if k != "cuirassier":
+		if not Defs.RIDERS.has(k):
 			h.walk_into(b)
 		return true
 	var br := breeder_with_room(b.team, b.center())

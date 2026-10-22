@@ -63,6 +63,11 @@ UNITS = {
 }
 BUILDINGS = ["town_hall", "cottage", "barracks", "foundry"]
 BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]
+# The Brood hall's upgraded levels (Defs.HALL_LEVELS: the Warren and the Broodmound), each a
+# sheet of 4 states left to right (built, construction, damaged, destroyed) like hive.png,
+# on black or real alpha. Skipped while the sheet isn't there (the game then draws the
+# Burrow bigger). tools/import_brood_halls.py imports just these two.
+BROOD_HALLS = ["warren_hall", "broodmound"]
 
 # Brood sheets: row 0 = idle facing each direction; every other row is drawn
 # side-on (facing right) and gets mirrored in game. Height = in-game pixels.
@@ -82,7 +87,9 @@ BROOD_UNITS = {
 # and a painted fog cloud to key out: tools/import_mist_toad.py imports it, using the helpers here.)
 # Width in game pixels of each finished building (ChatGPT drew each at its own zoom).
 BUILDING_WIDTH = {"town_hall": 150, "cottage": 72, "barracks": 128, "foundry": 118,
-                  "hive": 158, "clutch_mound": 74, "warren": 130, "gorge_pit": 126}
+                  "hive": 158, "clutch_mound": 74, "warren": 130, "gorge_pit": 126,
+                  # the Burrow's upgrades: as much bigger as the stand-ins (1.15x, 1.3x)
+                  "warren_hall": 182, "broodmound": 205}
 BUILDING_STATES = ["built", "construction", "damaged", "destroyed"]
 
 TEAM_LIGHT = (255, 0, 0)
@@ -1023,24 +1030,66 @@ def import_structures2(data):
             print(f"  {name}: {sizes2}")
 
 
+def dark_mask(px, level=90, rough=5.0):
+    """Foreground of a sheet on black: its real alpha if it has any; else the background is
+    the black and the soft glow painted round the drawings (dark, under `level`, and smooth:
+    its local spread under `rough`) reached from the sheet's border, and the rest is the
+    drawing (its dark shading is textured, so it stays)."""
+    if (px[..., 3] < 128).mean() > 0.05:
+        return alpha_mask(px, 200)
+    rgb = px[..., :3].astype(float)
+    v = rgb.max(-1)
+    mean = ndimage.uniform_filter(v, 3)
+    spread = np.sqrt(np.maximum(ndimage.uniform_filter(v * v, 3) - mean * mean, 0))
+    soft = (v < 22) | ((v < level) & (spread < rough))
+    lab, _ = ndimage.label(soft)
+    edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
+    bg = np.isin(lab, edge[edge > 0])
+    fg = ndimage.binary_opening(~bg, iterations=2)
+    fg = ndimage.binary_fill_holes(fg)
+    # the 4 states may still touch through the glow on the ground: part them where the
+    # columns are emptiest near each quarter line (they aren't drawn in exact quarters)
+    col = ndimage.uniform_filter1d(fg.sum(0).astype(float), 9)
+    w = fg.shape[1]
+    for k in (1, 2, 3):
+        lo, hi = int(w * (k / 4 - 0.1)), int(w * (k / 4 + 0.1))
+        c = lo + int(np.argmin(col[lo:hi]))
+        if col[c] > 0:
+            fg[:, c - 5:c + 6] = False      # (wide: frames_by_slot grows the pieces by 3)
+    return fg
+
+
+def import_brood_building(name, data):
+    """One Brood building sheet (4 states left to right) -> assets/buildings/<name>_<state>.png."""
+    px = load(f"art/brood/buildings/{name}.png")
+    if name == "hive":
+        fg = alpha_mask(px, 200)
+    elif name in BROOD_HALLS:
+        fg = dark_mask(px)
+    else:
+        fg = checker_mask(px)
+    imgs = frames_by_slot(px, fg, 4)
+    scale = BUILDING_WIDTH[name] / imgs[0].shape[1]
+    sizes = []
+    for state, im in zip(BUILDING_STATES, imgs):
+        sm = snap_team(shrink(im, scale))
+        save(sm, f"{OUT}/buildings/{name}_{state}.png")
+        sizes.append(sm.shape[1::-1])
+        if state == "built":
+            make_icon(sm, name)
+    data["buildings"][name] = sizes[0]
+    print(f"  {name}: {sizes}")
+
+
 def import_buildings(data):
     data["buildings"] = {}
     import_structures2(data)
     import_clockwork_structures(data)
     for name in BROOD_BUILDINGS:
-        px = load(f"art/brood/buildings/{name}.png")
-        fg = alpha_mask(px, 200) if name == "hive" else checker_mask(px)
-        imgs = frames_by_slot(px, fg, 4)
-        scale = BUILDING_WIDTH[name] / imgs[0].shape[1]
-        sizes = []
-        for state, im in zip(BUILDING_STATES, imgs):
-            sm = snap_team(shrink(im, scale))
-            save(sm, f"{OUT}/buildings/{name}_{state}.png")
-            sizes.append(sm.shape[1::-1])
-            if state == "built":
-                make_icon(sm, name)
-        data["buildings"][name] = sizes[0]
-        print(f"  {name}: {sizes}")
+        import_brood_building(name, data)
+    for name in BROOD_HALLS:
+        if os.path.exists(f"art/brood/buildings/{name}.png"):
+            import_brood_building(name, data)
     for name in BUILDINGS:
         px = load(f"art/crown/buildings/{name}.png")
         fg = checker_mask(px)

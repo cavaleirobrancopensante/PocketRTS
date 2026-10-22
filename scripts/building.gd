@@ -36,9 +36,14 @@ var crate_carrier: Unit = null
 var crate_obj: Crate = null
 var unfold_t := -1.0             # seconds since the crate landed, while it unfolds (-1: not unfolding)
 var _unfold: Sprite2D = null
-var eggs := 0                    # Brood Hive
+var eggs := 0:                   # Brood Hive (shown over it: redrawn when it changes)
+	set(v):
+		eggs = v
+		queue_redraw()
 var egg_t := 0.0
 var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
+var level := 1                   # Brood hall: 1 Burrow, 2 Warren, 3 Broodmound (Defs.HALL_LEVELS)
+var upgrade_t := -1.0            # Brood hall: seconds into its upgrade to the next level (-1: none)
 var swamp_r := 0.0               # Brood: current swamp radius in tiles
 var gold_acc := 0.0
 var crew: Array = []             # workers assigned to this economy structure
@@ -147,7 +152,50 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 			swamp_r = float(d.get("swamp", 0))
 		if d.get("eggs", false):
 			eggs = Defs.EGGS_MAX if complete else 0
+	if is_leveled():
+		d = d.duplicate()            # (its name changes with its level: set_level)
 	position = anchor(k, rect())
+
+
+## A hall with levels (the Brood's: Burrow, Warren, Broodmound).
+func is_leveled() -> bool:
+	return kind == "hive"
+
+
+## This hall's level entry (Defs.HALL_LEVELS); {} for other buildings.
+func level_info() -> Dictionary:
+	return Defs.HALL_LEVELS[clampi(level, 1, Defs.HALL_LEVELS.size()) - 1] if is_leveled() else {}
+
+
+## The next level's entry, or {} at the top (or for other buildings).
+func next_level() -> Dictionary:
+	return Defs.HALL_LEVELS[level] if is_leveled() and level < Defs.HALL_LEVELS.size() else {}
+
+
+## How many eggs it holds.
+func eggs_max() -> int:
+	return int(level_info().get("eggs", Defs.EGGS_MAX))
+
+
+## Set the hall's level: its name, health (the health it gains comes on top of what it has)
+## and armour.
+func set_level(n: int) -> void:
+	if not is_leveled():
+		return
+	level = clampi(n, 1, Defs.HALL_LEVELS.size())
+	var li := level_info()
+	d["name"] = li["name"]
+	d["hp"] = li["hp"]
+	d["armor"] = li["armor"]
+	var gain := float(li["hp"]) - max_hp
+	max_hp = float(li["hp"])
+	armor = int(li["armor"])
+	if built and not dead:
+		hp = clampf(hp + maxf(gain, 0.0), 1.0, max_hp)
+	else:
+		hp = minf(hp, max_hp)
+	_update_sprite()
+	queue_redraw()
 
 
 ## Where a building of this kind on this footprint stands (its sprite's base line, which
@@ -228,6 +276,13 @@ static func scarecrows(c: Vector2i) -> Array:
 ## base point.
 static func farm_body(state: String) -> Texture2D:
 	return Game.tex(String(FARM_ART["body"]) % state)
+
+
+## Where its body sprite covers the world (for clicks), its scale (an upgraded hall) counted.
+func sprite_rect() -> Rect2:
+	if sprite == null or sprite.texture == null:
+		return Rect2(global_position, Vector2.ZERO)
+	return Rect2(global_position + sprite.position + sprite.offset * sprite.scale, sprite.texture.get_size() * sprite.scale)
 
 
 static func body_offset(k: String, t: Texture2D) -> Vector2:
@@ -495,7 +550,14 @@ func efficiency() -> Array:
 
 
 func _econ(delta: float) -> void:
-	crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
+	if not crew.is_empty():
+		var keep := true
+		for u in crew:
+			if not is_instance_valid(u) or u.dead or u.home_mine != self:
+				keep = false
+				break
+		if not keep:
+			crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
 	match kind:
 		"farm":
 			growth += farm_speed() / Defs.FARM_GROW * delta
@@ -519,7 +581,7 @@ var _fetch_t := 0.0
 
 ## The front entry is a gun or wagon whose reserved horse hasn't walked in yet.
 func _horse_pending(k: String) -> bool:
-	return not is_research(k) and k != "cuirassier" and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
+	return not is_research(k) and not Defs.RIDERS.has(k) and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
 
 
 func uses_eggs() -> bool:
@@ -533,7 +595,8 @@ var _was_selected := false
 func _physics_process(delta: float) -> void:
 	var _p0 := Time.get_ticks_usec()
 	_tick_building(delta)
-	Prof.add("buildings", _p0)
+	Prof.bld_us += Time.get_ticks_usec() - _p0
+	Prof.bld_n += 1
 
 
 func _tick_building(delta: float) -> void:
@@ -621,9 +684,12 @@ func _tick_building(delta: float) -> void:
 			if (uses_eggs() and eggs > 0) or (not uses_eggs() and queue.is_empty()):
 				game.train(self, auto_train)
 	_update_fire()
-	# bars and labels change slowly: redraw 6 times a second, or at once when picked
+	# bars and labels change slowly: redraw 6 times a second, or at once when picked (off
+	# screen not at all: at once when it comes into view)
 	_redraw_t -= delta
-	if _redraw_t <= 0.0 or selected != _was_selected:
+	if not selected and not _was_selected and not game.view_rect.intersects(rect()):
+		_redraw_t = 0.0
+	elif _redraw_t <= 0.0 or selected != _was_selected:
 		_redraw_t = 0.16
 		_was_selected = selected
 		queue_redraw()
@@ -744,11 +810,20 @@ func _brood(delta: float) -> void:
 			game.swamp_dirty = true
 		# Eggs: the ones already hatching don't stop the Hive laying new ones, and every
 		# Clutch Mound makes it lay faster (a swarm's output grows with its economy).
-		if uses_eggs() and eggs < Defs.EGGS_MAX:
+		if uses_eggs() and eggs < eggs_max():
 			egg_t += delta * game.egg_rate(team)
 			if egg_t >= Defs.EGG_TIME:
 				egg_t = 0.0
 				eggs += 1
+		# growing into the next level (it goes on laying and hatching meanwhile)
+		if upgrade_t >= 0.0:
+			upgrade_t += delta
+			var nl := next_level()
+			if nl.is_empty():
+				upgrade_t = -1.0
+			elif upgrade_t >= float(nl["time"]):
+				upgrade_t = -1.0
+				game.hall_upgraded(self)
 	elif seeded and swamp_r < 2.0:
 		swamp_r = 2.0
 		game.swamp_dirty = true
@@ -767,7 +842,24 @@ func _update_fire() -> void:
 	elif not burning and fire:
 		fire.queue_free()
 		fire = null
-	_update_sprite()
+	# the picture only when something it shows changed (its state, a gate's swing, the
+	# construction's fade, a farm's crop and tired soil: the soil looked at once a second)
+	if kind == "farm" or kind == "feeding_pit":
+		_soil_key_t -= get_physics_process_delta_time()
+		if _soil_key_t <= 0.0:
+			_soil_key_t = 1.0
+			_soil_key = int(soil_left() * 200.0)
+	var sk := Vector4i(int(dead) + 2 * int(built) + 4 * int(hp < max_hp * 0.5) + 8 * int(seeded) + 16 * int(gate_open) + 32 * int(_swing_t > 0.0) + 64 * int(vertical),
+		links, int(progress * 400.0) + (int(unfold_t * 30.0) + 1) * 1000 if unfold_t >= 0.0 else int(progress * 400.0),
+		_soil_key + 1000 * (0 if growth < 0.12 else (1 if growth < 0.6 else 2)))
+	if sk != _sprite_key:
+		_sprite_key = sk
+		_update_sprite()
+
+
+var _sprite_key := Vector4i(-1, -1, -1, -1)
+var _soil_key := 0
+var _soil_key_t := 0.0
 
 
 ## A point on the sprite, given as fractions of its size, in world space.
@@ -841,6 +933,22 @@ func _ambient(delta: float) -> void:
 			fx.z_index = 4
 
 
+static var _hall_art := {}
+
+
+## A Brood hall level's sprites: [sheet name, scale]. Its own sheet once imported
+## (Defs.HALL_LEVELS "art": assets/buildings/<art>_built.png), else the Burrow's drawn bigger.
+static func hall_art(lv: int) -> Array:
+	if not _hall_art.has(lv):
+		var li: Dictionary = Defs.HALL_LEVELS[clampi(lv, 1, Defs.HALL_LEVELS.size()) - 1]
+		var own := String(li["art"])
+		if ResourceLoader.exists("res://assets/buildings/%s_built.png" % own):
+			_hall_art[lv] = [own, 1.0]
+		else:
+			_hall_art[lv] = ["hive", float(li["scale"])]
+	return _hall_art[lv]
+
+
 func _update_sprite() -> void:
 	if sprite == null:
 		return
@@ -860,8 +968,19 @@ func _update_sprite() -> void:
 		base = "gate_v"
 	if kind == "wall":
 		base = wall_piece(links) if state == "built" else wall_axis(links)
+	if is_leveled():
+		var art := hall_art(level)
+		base = String(art[0])
+		var sc := float(art[1])
+		if sprite.scale.x != sc:
+			# (bigger, standing on the same base line)
+			sprite.scale = Vector2(sc, sc)
+			sprite.position.y = 6.0 * (1.0 - sc)
 	var t := farm_body(state) if kind == "farm" else Game.tex("res://assets/buildings/%s_%s.png" % [base, state])
-	if sprite.texture != t:
+	if t == null and is_leveled():
+		# (a level's art not imported yet: draw the Burrow, scaled)
+		t = Game.tex("res://assets/buildings/%s_%s.png" % [kind, state])
+	if sprite.texture != t and t != null:
 		sprite.texture = t
 		sprite.offset = body_offset(kind, t)
 		if kind == "gate":
@@ -920,6 +1039,8 @@ func die() -> void:
 		game.refund(team, queue[i], kit_at(i), self)
 	queue.clear()
 	kits.clear()
+	if upgrade_t >= 0.0:
+		game.cancel_hall_upgrade(self, true)
 	for u in crew:
 		if is_instance_valid(u) and not u.dead:
 			u.cmd_stop()
@@ -982,7 +1103,7 @@ func bar_top() -> float:
 	if kind == "farm":
 		return float(FARM_ART["top"])
 	if sprite and sprite.texture:
-		return sprite.position.y + sprite.offset.y + game._tex_top(sprite.texture) + 2.0
+		return sprite.position.y + (sprite.offset.y + game._tex_top(sprite.texture)) * sprite.scale.y + 2.0
 	return -rect().size.y
 
 
@@ -1002,6 +1123,14 @@ func _draw_building() -> void:
 	var top := bar_top()
 	if not ghost:
 		draw_health(top, r.size.x * 0.7)
+	if built and uses_eggs() and (team == game.human or game.demo):
+		# its eggs ready, over it: "3/5" (the number every Brood unit hatches from)
+		var font := ThemeDB.fallback_font
+		var txt := "%d/%d" % [eggs, eggs_max()]
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		var p := Vector2(-w * 0.5, top - 6.0)
+		draw_rect(Rect2(p + Vector2(-4, -14), Vector2(w + 8, 18)), Color(0, 0, 0, 0.6))
+		draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if eggs > 0 else Color(1.0, 0.55, 0.45))
 	# full batteries waiting at an energy building
 	if built and batteries > 0 and (team == game.human or game.demo or game.reveal):
 		var bt: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % ("blue" if game.blue_energy(team) else "yellow"))
@@ -1022,3 +1151,9 @@ func _draw_building() -> void:
 		var f: float = (morph_t[0] if uses_eggs() else prod_t) / entry_time(k)
 		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-w * 0.5, top + 7, w * f, 4), Color(0.75, 0.55, 1.0) if is_research(k) else Color(0.4, 0.75, 1.0))
+	if built and upgrade_t >= 0.0 and not next_level().is_empty() and (team == game.human or game.spectating()):
+		# growing into the next level: a violet bar under the others
+		var w := r.size.x * 0.7
+		var f := clampf(upgrade_t / float(next_level()["time"]), 0.0, 1.0)
+		draw_rect(Rect2(-w * 0.5, top + 13, w, 4).grow(1), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-w * 0.5, top + 13, w * f, 4), Color(0.75, 0.55, 1.0))
