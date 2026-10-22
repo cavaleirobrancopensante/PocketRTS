@@ -3378,6 +3378,8 @@ func separation(u: Unit) -> Vector2:
 	for o in units_near(u.position, u.radius + 18.0):
 		if o == u or o.dead or o.off_field or o.is_air() != u.is_air():
 			continue
+		if o == u.steed or u == o.steed:
+			continue           # (a man beside his own horse: he got off there, close by it)
 		var dvec: Vector2 = u.position - o.position
 		var dist := dvec.length()
 		var min_d: float = (u.radius + o.radius) * 0.85

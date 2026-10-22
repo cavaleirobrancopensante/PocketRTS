@@ -5027,7 +5027,10 @@ func _walk_to(p: Vector2, delta: float) -> Vector2:
 
 ## Where the man stands in the mounting strip's first frame (tools/import_mount.py): his
 ## feet from the horse's (the anchor), the horse facing E or SE; x mirrored facing W or SW.
-const MOUNT_MAN := {"e": Vector2(-16, 1), "se": Vector2(-14, -1)}
+## Per sprite set where it differs ("" for the rest): the light Dragoon's remade side view
+## has him at the horse's shoulder, on its near side.
+const MOUNT_MAN := {"": {"e": Vector2(-14, 1), "se": Vector2(-12, -1)},
+	"dragoon": {"e": Vector2(5, 3), "se": Vector2(-12, -1)}}
 
 
 ## The nearest way side on (the mounting strips are drawn facing E and SE, mirrored for W
@@ -5146,9 +5149,11 @@ func cmd_dismount(quick := false, aft := {}) -> void:
 	work_t = float(Defs.HORSES["quick" if quick else "dismount"])
 	_mount_len = work_t
 	# he turns his horse side on to get off (the strip plays backwards): a Dragoon getting off
-	# to fire turns it away from where he's going, so he gets off on that side
+	# to fire gets off on the side he's going to shoot at (where his strip has him behind
+	# the horse's middle, it turns its tail that way)
 	var f := facing if facing != Vector2.ZERO else Vector2.RIGHT
-	_mount_face = side_on(Vector2(-f.x, f.y) if quick else f)
+	var behind: bool = MOUNT_MAN.get(art, MOUNT_MAN[""])["e"].x < 0.0
+	_mount_face = side_on(Vector2(-f.x, f.y) if quick and behind else f)
 	facing = _mount_face
 	after = aft
 	target = null
@@ -5174,7 +5179,7 @@ func do_dismount() -> void:
 		# the horse stays where the strip drew it (under him) and he stands where its first
 		# frame has him, at its near side
 		spot = game.resolve_terrain(position, position, 11.0, team)
-		var man: Vector2 = MOUNT_MAN["se" if absf(_mount_face.y) > 0.3 else "e"]
+		var man: Vector2 = MOUNT_MAN.get(art, MOUNT_MAN[""])["se" if absf(_mount_face.y) > 0.3 else "e"]
 		if _mount_face.x < 0.0:
 			man.x = -man.x
 		position = game.resolve_terrain(position + man, position, radius, team)

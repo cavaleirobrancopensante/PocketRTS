@@ -181,16 +181,19 @@ func _mount(p: Array, side: float, diag: bool, i: int) -> void:
 	check(m.sprite.position.distance_to(h.position - m.position) < 0.5, "  the strip is drawn where the horse stands")
 	var frames: Array = []
 	var n: int = m.sprite.hframes
-	for k in 4:
-		frames.append(m.sprite.frame)
-		if k > 0:
-			await shot("%02d_%s_on_%d" % [i, art, k])
-		await wait(float(m._mount_len) / 5.5)
-	frames.append(m.sprite.frame)
+	var shot_at := [0.3, 0.55, 0.8]
+	while m.work == "mounting":
+		if frames.is_empty() or frames[-1] != m.sprite.frame:
+			frames.append(m.sprite.frame)
+		var prog := 1.0 - m.work_t / m._mount_len
+		if not shot_at.is_empty() and prog >= shot_at[0]:
+			shot_at.pop_front()
+			await shot("%02d_%s_on_%d" % [i, art, 3 - shot_at.size()])
+		await physics_frame
 	var rising := true
 	for k in range(1, frames.size()):
 		rising = rising and frames[k] >= frames[k - 1]
-	check(rising and frames[0] <= 1 and frames[-1] >= n - 2, "  played forwards over the mount time (%s of %d)" % [str(frames), n])
+	check(rising and frames[0] <= 1 and frames[-1] >= n - 1 and frames.size() >= n - 1, "  played forwards over the mount time (%s of %d)" % [str(frames), n])
 	await wait_for(func() -> bool: return m.kind == p[2], 3.0)
 	await wait(0.1)
 	check(m.kind == p[2] and m.position.distance_to(hp) < 1.0 and m.anim != "mount" and m.sprite.position == Vector2.ZERO,
@@ -201,20 +204,24 @@ func _mount(p: Array, side: float, diag: bool, i: int) -> void:
 	await wait(0.1)
 	check(m.anim == "mount" and m._anim_art == art and m.anim_flip == (side < 0.0), "  getting off shows the strip (%s %s flip %s)" % [m.anim, m.anim_dir, m.anim_flip])
 	frames = []
-	for k in 3:
-		frames.append(m.sprite.frame)
-		if k == 1:
-			await shot("%02d_%s_off_%d" % [i, art, k])
-		await wait(float(m._mount_len) / 3.5)
+	var shot_off := true
+	while m.work == "dismounting":
+		if frames.is_empty() or frames[-1] != m.sprite.frame:
+			frames.append(m.sprite.frame)
+		if shot_off and 1.0 - m.work_t / m._mount_len >= 0.5:
+			shot_off = false
+			await shot("%02d_%s_off_1" % [i, art])
+		await physics_frame
 	var falling := true
 	for k in range(1, frames.size()):
 		falling = falling and frames[k] <= frames[k - 1]
-	check(falling and frames[0] >= n - 2, "  played backwards (%s)" % str(frames))
+	check(falling and frames[0] >= n - 2 and frames[-1] <= 1, "  played backwards (%s)" % str(frames))
 	await wait_for(func() -> bool: return m.kind == foot, 3.0)
 	var st: Unit = m.steed
 	check(st != null and is_instance_valid(st) and st.position.distance_to(at0) < 4.0 and st.coat == coat,
 		"  his horse stands where the strip drew it (%.1f px), its coat" % (st.position.distance_to(at0) if st else -1.0))
-	check(m.position.distance_to(at0) < 30.0 and signf(m.position.x - at0.x) == -side, "  he stands at its near side (%s)" % str(m.position - at0))
+	var man: Vector2 = Unit.MOUNT_MAN.get(art, Unit.MOUNT_MAN[""])["se" if diag else "e"]
+	check(m.position.distance_to(at0 + Vector2(man.x * side, man.y)) < 3.0, "  he stands where the strip had him (%s)" % str(m.position - at0))
 	await wait(0.2)
 	await shot("%02d_%s_off_done" % [i, art])
 	g.consume_unit(m)
@@ -233,7 +240,17 @@ func _quick_dragoon() -> void:
 	await wait(0.1)
 	check(dg.anim == "mount" and dg._anim_art == "dragoon" and is_equal_approx(dg._mount_len, float(Defs.HORSES["quick"])), "a Dragoon's quick dismount plays the strip (%.1f s)" % dg._mount_len)
 	await wait_for(func() -> bool: return dg.kind == "musketeer", 2.0)
-	check(dg.kind == "musketeer" and dg.steed and dg.position.x > dg.steed.position.x, "  he gets off on his target's side of the horse")
+	check(dg.kind == "musketeer" and dg.steed and dg.position.x > dg.steed.position.x, "  he gets off on his target's side of the horse (%s)" % str(dg.position - dg.steed.position))
+	# the Armoured Dragoon's strip has him by the horse's rump: the horse turned away
+	var ad: Unit = g._add_unit("dragoon", 0, at(200, 400))
+	ad.put_on_armour()
+	ad.facing = Vector2.RIGHT
+	ad.cmd_dismount(true)
+	await wait_for(func() -> bool: return ad.kind == "musketeer", 2.0)
+	check(ad.kind == "musketeer" and ad.steed and ad.position.x > ad.steed.position.x, "  an Armoured Dragoon too (%s)" % str(ad.position - ad.steed.position))
+	g.consume_unit(ad)
+	if ad.steed and is_instance_valid(ad.steed):
+		g.consume_unit(ad.steed)
 	g.consume_unit(dg)
 	if dg.steed and is_instance_valid(dg.steed):
 		g.consume_unit(dg.steed)

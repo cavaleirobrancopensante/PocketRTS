@@ -13,9 +13,10 @@ Many frames are hallucinated, so only these are used (the designer's choice):
   dragoon_armoured_mount.png Guardsman -> Armoured Dragoon    SE row, E row: frames 2-7 (frame 1
                              of SE has a ghost rider, of E two horses)
   dragoon_mount.png          Musketeer -> Dragoon             SE row: all 6 frames. Its E row is
-                             broken (two men): the SE strip serves for E as well until
-                             art/crown/mount/dragoon_mount_e.png comes (one horizontal strip of
-                             6 frames facing right), which this script then uses for E.
+                             broken (two men), so E comes from its remake:
+  dragoon_mount_e.png        the light Dragoon's E strip      one horizontal strip, all 6 frames
+                             facing right (drawn bigger: scaled by itself). Without it the SE
+                             strip would serve for E.
 
 Frames are found by their foreground: a row is split at empty column runs, and the pieces
 (a man standing apart from his horse is two) are merged, closest first, down to the row's
@@ -23,11 +24,12 @@ frame count. Each frame is aligned by its horse, so the horse stands still while
 climbs: the horse is the grey (low-saturation, mid-tone, not steel-blue) pixels; each frame
 is first placed by the front of the forelegs (the right edge of the horse's lowest third:
 the man always stands on its left) and its bottom, then moved to where its horse best
-overlaps the last (seated) frame's (IoU search). The sheet is scaled so its horse is as long
-(side on) as the game's riderless horse, which stands beside the man before he gets on and
-after he gets off (a sheet without an E row: its seated SE frame as tall as the unit's idle,
-times the other sheets' ratio between the two measures). The whole row is placed on the unit's cell (98x70, anchor 49,66) where its
-seated frame best overlaps the idle frame of that direction (so the last frame of the mount
+overlaps the last (seated) frame's (IoU search). The sheet is scaled so its horse is the size
+of the game's riderless horse (between matching its length and its height: sheet_scale),
+which stands beside the man before he gets on and after he gets off (a sheet without an E
+row: its seated SE frame as tall as the unit's idle, times the other sheets' ratio between
+the two measures; a separate E strip gets its own scale). The whole row is placed on the
+unit's cell (98x70, anchor 49,66) where its seated frame best overlaps the idle frame of that direction (so the last frame of the mount
 is the unit standing). Red coats and saddle cloths are snapped to the team reds.
 Where the man stands in the first frame (for the horse left beside him on dismounting) is
 scripts/unit.gd MOUNT_MAN.
@@ -214,15 +216,32 @@ def sheet_frames(name, count, d=None, rows=None):
     return out
 
 
+def head_height(img, frac=0.3):
+    """(side on, facing right) how tall the horse stands, ears to hooves: the height of the
+    picture's rightmost 30% (its head and forelegs: the man and his saddle are further back)."""
+    a = img[..., 3] > 0
+    xs = np.nonzero(a.any(0))[0]
+    x1 = xs.max()
+    ys = np.nonzero(a[:, x1 - int((x1 - xs.min() + 1) * frac):x1 + 1].any(1))[0]
+    return ys.max() - ys.min() + 1
+
+
 def sheet_scale(cuts):
-    """One scale per sheet: its horse as big as the game's riderless horse (the one standing
-    beside the man before he gets on and after he gets off), measured nose to tail on the
-    seated frame side on (E). None without an E row (see tall_scale)."""
+    """One scale per sheet, from its side-on (E) row: its horse the size of the game's
+    riderless horse (the one standing beside the man before he gets on and after he gets
+    off; the riders' horses are about its size). The sheets' horses are drawn longer for
+    their height than the game's, so it can't match both: the scale is between the one
+    matching its length (nose to tail, on the seated frame) and the one matching its height
+    (ears to hooves, the median over the row; at most 1.3 times the other: a sheet whose
+    horse holds its head low reads short), their geometric mean. None without an E row (see
+    tall_scale)."""
     if "e" not in cuts:
         return None
     ref = idle_frame("horse", "e")
     xs = np.nonzero((ref[..., 3] > 0).any(0))[0]
-    return (xs.max() - xs.min() + 1) / float(cuts["e"][-1].shape[1])
+    by_len = (xs.max() - xs.min() + 1) / float(cuts["e"][-1].shape[1])
+    by_height = head_height(ref) / float(np.median([head_height(f) for f in cuts["e"]]))
+    return float(np.sqrt(by_len * float(np.clip(by_height, by_len, 1.3 * by_len))))
 
 
 def tall_scale(cuts, art):
@@ -258,21 +277,27 @@ def main():
     ratios = []
     for name, (art, count, rows) in SHEETS.items():
         cuts = sheet_frames(name, count, rows=rows)
-        if art in E_STRIPS and os.path.exists("art/crown/mount/%s.png" % E_STRIPS[art][0]):
-            fe, ne = E_STRIPS[art]
-            cuts.update(sheet_frames(fe, ne, d="e"))
         scale = sheet_scale(cuts)
         if scale is not None:
             ratios.append(scale / tall_scale(cuts, art))
-        sheets[name] = (art, cuts, scale)
-    for name, (art, cuts, scale) in sheets.items():
+        # (a remade E row on its own sheet, drawn at its own size: its own scale)
+        extra = None
+        if art in E_STRIPS and os.path.exists("art/crown/mount/%s.png" % E_STRIPS[art][0]):
+            fe, ne = E_STRIPS[art]
+            extra = sheet_frames(fe, ne, d="e")
+        sheets[name] = (art, cuts, scale, extra)
+    for name, (art, cuts, scale, extra) in sheets.items():
         if scale is None:
             scale = tall_scale(cuts, art) * float(np.median(ratios))
+        scales = {d: scale for d in cuts}
+        if extra:
+            cuts.update(extra)
+            scales["e"] = sheet_scale(extra)
         strips = {}
         for d, fr in cuts.items():
-            cells, lost = build_strip(fr, art, d, scale)
+            cells, lost = build_strip(fr, art, d, scales[d])
             strips[d] = cells
-            print("%s %s: %d frames, scale %.3f%s" % (art, d, len(cells), scale,
+            print("%s %s: %d frames, scale %.3f%s" % (art, d, len(cells), scales[d],
                   ", %d px cut off" % lost if lost else ""))
         if "e" not in strips:
             strips["e"] = strips[E_FALLBACK[art]]

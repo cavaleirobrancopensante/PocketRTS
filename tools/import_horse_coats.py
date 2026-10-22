@@ -93,8 +93,6 @@ CONFIG = {
             "death_e": [(78, 50, 98, 70, [3]), (57, 38, 67, 52, [3])],
             "death_ne": [(70, 50, 94, 70, [3])],
             "death_n": [(6, 55, 24, 70, [3])],
-            # (tools/import_mount.py) the man's grey greaves beside the horse's rump
-            "mount_e": [(22, 30, 37, 70, [1])],
         },
     },
     # the unarmoured Horseman (tools/import_horseman.py): the same grey horse and red coat; his
@@ -146,9 +144,7 @@ CONFIG = {
                        "skip": [("death", 2), ("death", 3)]},
         "blade_v": 0.5,
         "keep": {},
-        "drop": {"death_*": [(0, 0, 98, 70, [3])],
-                 # (tools/import_mount.py) the man in black beside the horse's rump
-                 "mount_e": [(22, 0, 38, 70, [1])]},
+        "drop": {"death_*": [(0, 0, 98, 70, [3])]},
     },
     "dragoon_armoured": {
         "test": "grey",
