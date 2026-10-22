@@ -5215,7 +5215,7 @@ func release_horse() -> Unit:
 	var side := Vector2(-facing.y, facing.x)
 	if side == Vector2.ZERO:
 		side = Vector2.DOWN
-	var spot := game.resolve_terrain(position + side * (radius + 14.0), position, 11.0, team)
+	var spot := game.resolve_terrain(position + side * (radius + 30.0), position, 11.0, team)
 	var h := game._add_unit("horse", team, spot)
 	h.coat = coat if coat != "" else HorseCoat.pick()
 	HorseCoat.apply(h)
