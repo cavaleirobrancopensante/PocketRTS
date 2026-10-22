@@ -18,13 +18,13 @@ bore, M_LEAN) and rams three times.
 
 Cannon: the deployed idle frame of each facing, less the one crewman the rammer replaces
 (fix_cannon_crew.reload_room: the gun keeps its two men, as on the march), with the lone
-rammer from reload_rammer standing at the muzzle, scaled to the gun crew's height. In his thrust frames the sheet's pole is cut
-off at his hands and a new one drawn into the muzzle; his whole body moves 2-4 px along the
+rammer from reload_rammer standing at the muzzle, scaled to the gun crew's height. In his
+thrust frames the sheet's pole is cut off at his hands and a new one drawn into the muzzle; his whole body moves 2-4 px along the
 bore between the pulls and the thrusts, three strokes per load.
 
 Reads the published idle frames (assets/units/{cannon,mortar}/idle_*.png), so it runs after
-import_cannon2.py, fix_cannon_crew.py and import_round10.py (tools/rebuild_art.sh). Writes reload_<dir>.png of
-both units and their reload frame counts in scripts/art_data.gd.
+import_cannon2.py, fix_cannon_crew.py and import_round10.py (tools/rebuild_art.sh). Writes
+reload_<dir>.png of both units and their reload frame counts in scripts/art_data.gd.
 
 Usage (from the repo root): python3 tools/import_reload.py [--out DIR]
 (--out writes the strips there and leaves the game alone). Needs Pillow, NumPy and SciPy.
