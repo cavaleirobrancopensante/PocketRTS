@@ -1411,7 +1411,7 @@ func _with_keys(items: Array) -> Array:
 
 
 ## A key pressed on the keyboard: run the card button with that letter. True if used.
-func hotkey(code: int) -> bool:
+func hotkey(code: int, repeat := false) -> bool:
 	if paused or game.over:
 		return false
 	if code == KEY_ESCAPE and view_open:
@@ -1425,6 +1425,8 @@ func hotkey(code: int) -> bool:
 		return false
 	for it in _card_items:
 		if it.size() > 6 and it[6] == letter:
+			if repeat and not Defs.UNITS.has(String(it[0])):
+				return false          # (only training repeats while a key is held)
 			if it[3]:
 				it[2].call()
 				Sfx.play_any(["ui/click", "click"])
@@ -1942,6 +1944,15 @@ func _draw_panel(font: Font) -> void:
 					"landing": "Landing...", "ground": "Landed: walks and bites ground units; anything can hit it. TAKE OFF to fly.", "lifting": "Taking off..."}.get(uu.sky, uu.d["about"])
 			elif uu.kind == "bloater" and uu.deflate != "":
 				info = "Out of gas: deflated, slower and harmless. Gas %d / 100 (fills faster on swamp)." % int(uu.gas)
+			elif uu.kind == "bloater":
+				# its gas: what a burst would do now (Game.bloat_burst) and the spits left
+				var full := clampf(uu.gas / 100.0, 0.15, 1.0)
+				var burst := "%d + %d s cloud" % [int(round(float(Defs.BLOAT["burst"]) * full)), int(round(float(Defs.BLOAT["time"]) * (0.4 + 0.6 * full)))]
+				if uu.mode == "hold":
+					info = "Gas %d/100 · HOLD GAS: bursts for %s" % [int(uu.gas), burst]
+				else:
+					var spits := int(floor(uu.gas / float(Defs.BLOAT["spit_cost"])))
+					info = "Gas %d/100 · burst %s · %d spit%s left" % [int(uu.gas), burst, spits, "" if spits == 1 else "s"]
 			elif uu.kind == "ornithopter" and (uu.topter_bat != "" or uu.courier):
 				info = ("Carrying a %s battery: OVERLOAD a construct with it, or it winds one up on COURIER." % uu.topter_bat) if uu.topter_bat != "" else "Courier: fetching batteries for constructs that run down."
 			elif uu.kind == "windup_soldier" and uu.powered_down():

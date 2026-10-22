@@ -140,6 +140,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_box_to = mm.position
 	elif event is InputEventKey and event.pressed and not event.is_echo():
 		_key(event as InputEventKey)
+	elif event is InputEventKey and event.pressed and event.is_echo() and Settings.pc() and hud \
+			and not (event as InputEventKey).ctrl_pressed:
+		# a train key held down repeats (as in StarCraft 2): one more in the queue each repeat
+		hud.hotkey((event as InputEventKey).keycode, true)
 	elif event is InputEventKey and not event.pressed and (event as InputEventKey).keycode == KEY_SHIFT:
 		# Shift let go: a mode kept open for queueing closes (the next click would replace the queue)
 		if _shift_kept and mode in ["move", "attack", "repair", "place"]:

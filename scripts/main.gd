@@ -35,7 +35,9 @@ Veterancy: every kill gives a unit +1% damage (up to +50%), and it shows on the 
 
 Area damage (canister, round shot, steam, spit blobs, storms, exploding powder) hurts your own units too: keep your men out of the blast.
 
-Ghost sites: a placed building is a see-through ghost until it starts (Labourers begin, the grub morphs, the crate lands). Anyone walks through it, it can't be attacked, and the enemy can't see it. When it starts, your units on it step aside; enemy units standing there block it, and after about 5 s it fails with all of its cost back ("Can't build there: the spot is blocked.").
+Ghost sites: a placed building is a see-through ghost until it starts (Labourers begin, the grub morphs, the crate lands). Anyone walks through it, it can't be attacked, and the enemy can't see it. When it starts, your units on it step aside; enemy units standing there block it, and after about 5 s it fails with all of its cost back ("Can't build there: the spot is blocked."). A Brood or Clockwork ghost whose grub or Winder is no longer coming (sent elsewhere, stopped, killed, or it can't get there) goes too, all of its cost back; a Clockwork crate dropped on the way keeps its site.
+
+Targets: units on their own (idle, holding, or on an attack-move) go for enemy fighters first, then other units (workers, Missionaries, wagons), then buildings; one hitting a building turns on an enemy unit that comes in reach. Walls and gates only when they're in the way.
 
 High ground: units below a cliff can't see up onto it, and ramps are the only way up. Rivers can only be crossed at the fords.
 
@@ -69,7 +71,7 @@ Ground: each Hive's ground holds 10,500 biomass that its pits draw out load by l
 
 Essence: the Brood Pen turns bodies that fall nearby into essence. SACRIFICE (K) sends the selected creatures (not grubs) to the nearest Pen to be offered up: 12% of each one's biomass cost as essence (3 a Raptor). Spitters, Bloaters, Brutes, Skywings, Spore Mothers, Mist Toads and Miasma cost essence.
 
-Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, which hunt flyers in the air; LAND them (1.2 s) to bite ground units, but landed anything can hit them. Bloaters spit acid until their gas runs out, then deflate and slowly fill up again (faster on swamp). Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Also from the Gorge Pit: the Mist Toad, a slow, fragile caster whose energy (faster on swamp) pays for FOG (F: a fog bank for 12 s; shots fired from or into it miss half the time, and units inside see 2 tiles) and TONGUE (T: marks one enemy for 3 s, they see the crosshair, then drags it to the Toad's feet; heavy engines like the Steam Walker are only staggered). Army cap 160.""",
+Every unit hatches from the Hive's eggs. Swamp heals and speeds the Brood. Roost: Skywings, which hunt flyers in the air; LAND them (1.2 s) to bite ground units, but landed anything can hit them. Bloaters spit acid until their gas runs out, then deflate and slowly fill up again (faster on swamp); a yellow-green bar over one shows its gas while the sac isn't full, and its card what a burst would do now. Their acid cloud eats enemy buildings too, at half the rate. Gorge Pit: Brutes and Spore Mothers, who must ROOT to lob big spit blobs over an area (rooted, they spread swamp) and cast MIASMA, a cloud that heals the Brood. Also from the Gorge Pit: the Mist Toad, a slow, fragile caster whose energy (faster on swamp) pays for FOG (F: a fog bank for 12 s; shots fired from or into it miss half the time, and units inside see 2 tiles) and TONGUE (T: marks one enemy for 3 s, they see the crosshair, then drags it to the Toad's feet; heavy engines like the Steam Walker are only staggered). Army cap 160.""",
 	"CLOCKWORK": """THE CLOCKWORK: gears, steam and lightning.
 
 The Clocktower and its Boilers (2 per Clocktower) fill batteries by themselves; Winders carry them to Ore Crushers, where the charge becomes ore drawn from the nearest Clocktower's ore. A battery slowly loses charge on a long road (after 6 s), so keep crushers close; a Winder hit while carrying one gets it burst on its back. A Capacitor Works turns every battery blue (more charge, slower to fade). Winders also repair and wind (repairs cost ore), and wind themselves now and then: away from a field they stop for a few seconds to crank their own spring.
@@ -106,6 +108,9 @@ func _ready() -> void:
 	add_child(Music.new())
 	sfx = Sfx.new()
 	add_child(sfx)
+	var cursors := Cursors.new()       # the mouse cursor (computer only)
+	cursors.main = self
+	add_child(cursors)
 	ui_layer = CanvasLayer.new()
 	ui_layer.layer = 10
 	add_child(ui_layer)

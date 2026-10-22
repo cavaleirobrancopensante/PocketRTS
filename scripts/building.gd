@@ -36,7 +36,10 @@ var crate_carrier: Unit = null
 var crate_obj: Crate = null
 var unfold_t := -1.0             # seconds since the crate landed, while it unfolds (-1: not unfolding)
 var _unfold: Sprite2D = null
-var eggs := 0                    # Brood Hive
+var eggs := 0:                   # Brood Hive (shown over it: redrawn when it changes)
+	set(v):
+		eggs = v
+		queue_redraw()
 var egg_t := 0.0
 var morph_t: Array = []          # Brood Hive: time spent on each morphing egg
 var swamp_r := 0.0               # Brood: current swamp radius in tiles
@@ -1030,6 +1033,14 @@ func _draw_building() -> void:
 	var top := bar_top()
 	if not ghost:
 		draw_health(top, r.size.x * 0.7)
+	if built and uses_eggs() and (team == game.human or game.demo):
+		# its eggs ready, over it: "3/5" (the number every Brood unit hatches from)
+		var font := ThemeDB.fallback_font
+		var txt := "%d/%d" % [eggs, Defs.EGGS_MAX]
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		var p := Vector2(-w * 0.5, top - 6.0)
+		draw_rect(Rect2(p + Vector2(-4, -14), Vector2(w + 8, 18)), Color(0, 0, 0, 0.6))
+		draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if eggs > 0 else Color(1.0, 0.55, 0.45))
 	# full batteries waiting at an energy building
 	if built and batteries > 0 and (team == game.human or game.demo or game.reveal):
 		var bt: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % ("blue" if game.blue_energy(team) else "yellow"))
