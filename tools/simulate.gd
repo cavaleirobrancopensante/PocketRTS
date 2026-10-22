@@ -1,12 +1,17 @@
 extends SceneTree
 ## AI vs AI test:
 ##   godot --headless --fixed-fps 30 --script res://tools/simulate.gd -- crown brood [map] [2v2] [brutal]
-## Any number of factions (2-4); every player is on its own side unless "2v2" (or "1v2",
-## "1v3": the first player alone against the rest). "brutal" makes the first player Brutal.
+## Any number of factions (2-8); every player is on its own side unless "2v2", "3v3" or
+## "4v4" (half against half; or "1v2", "1v3": the first player alone against the rest).
+## "brutal" makes the first player Brutal. The map: any map id or a random pool
+## ("random_2v2", ...; see MapGen.POOLS). "minutes:N" stops after N game minutes.
 var main: Node
 var t := 0.0
 var next_report := 30.0
 var _earned9: Array = []        # gold earned by each team at 9:00 (for the minute-10 line)
+var stop_at := 1500.0           # game seconds before giving up (TIMEOUT)
+var _frames := 0
+var _wall0 := 0
 func _initialize() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -25,10 +30,12 @@ func _process(delta: float) -> bool:
 				continue
 			if a in ["crown", "brood", "clockwork", "random"]:
 				facs.append(a)
-			elif MapGen.MAPS.has(a):
+			elif MapGen.all_ids().has(a) or MapGen.is_pool(a):
 				map = a
-			elif a in ["2v2", "1v2", "1v3", "ffa"]:
+			elif a in ["2v2", "3v3", "4v4", "1v2", "1v3", "ffa"]:
 				mode = a
+			elif a.begins_with("minutes:"):
+				stop_at = float(a.substr(8)) * 60.0
 			elif a in ["easy", "normal", "hard", "brutal"]:
 				first = a
 		if facs.size() < 2:
@@ -36,8 +43,8 @@ func _process(delta: float) -> bool:
 		var slots: Array = []
 		for i in facs.size():
 			var side := i
-			if mode == "2v2":
-				side = 0 if i < 2 else 1
+			if mode in ["2v2", "3v3", "4v4"]:
+				side = 0 if i < facs.size() / 2 else 1
 			elif mode in ["1v2", "1v3"]:
 				side = 0 if i == 0 else 1
 			slots.append({"who": first if i == 0 else "hard", "faction": facs[i], "colour": i, "side": side,
@@ -56,9 +63,13 @@ func _process(delta: float) -> bool:
 				int(g.stats[team]["gold"]) - int(_earned9[team]), g.players[team]["gold"], int(g.players[team]["res2"]), g.workers(team).size(), g.army(team).size()]
 		print(m10)
 		_earned9[0] = -1
+	_frames += 1
 	if t >= next_report:
 		next_report += 30.0
-		var line := "t=%d " % int(g.clock)
+		var now := Time.get_ticks_msec()
+		var line := "t=%d (%.1f ms a frame, %d units) " % [int(g.clock), float(now - _wall0) / maxi(_frames, 1), g.units.size()]
+		_wall0 = now
+		_frames = 0
 		for team in g.n_players():
 			var counts := {}
 			for u in g.units:
@@ -87,7 +98,7 @@ func _process(delta: float) -> bool:
 			for l in g.mlog.lines:
 				print("LOG ", l)
 		return true
-	if g.clock > 1500.0:
+	if g.clock > stop_at:
 		print("TIMEOUT at ", int(g.clock), "s on ", g.map_name, " (no winner)")
 		if g.mlog:
 			for l in g.mlog.lines:

@@ -165,11 +165,23 @@ func _layout() -> Dictionary:
 		_rects_frame = f
 		var b := _btn()
 		_rects = UiLayout.rects(_vs(), {
-			"mini": Vector2(MINI_W, MINI_W * float(Game.H) / float(Game.W)),
+			"mini": mini_size(),
 			"groups": Vector2(206, 90),
 			"card": Vector2(b * _cols() + 4, b * _rows() + 4),
 			"panel": Vector2(0, 88)})
 	return _rects
+
+
+## The minimap's size: MINI_W wide for a wide map; a square or tall map is at most
+## MINI_H tall and narrower.
+const MINI_H := 170.0
+
+
+static func mini_size() -> Vector2:
+	var h := MINI_W * float(Game.H) / float(Game.W)
+	if h <= MINI_H:
+		return Vector2(MINI_W, h)
+	return Vector2(MINI_H * float(Game.W) / float(Game.H), MINI_H)
 
 
 func mini_rect() -> Rect2:
@@ -511,7 +523,7 @@ func _draw_view(font: Font) -> void:
 		var key := ""
 		if Settings.pc() and o[1] == "all":
 			key = "[0] "
-		elif Settings.pc() and o[1] == "follow" and int(o[2]) < 4:
+		elif Settings.pc() and o[1] == "follow" and int(o[2]) < 8:
 			key = "[%d] " % (int(o[2]) + 1)
 		_text(UiStyle.bold_font(), Vector2(rr.position.x + 42, rr.get_center().y + 7), key + String(o[0]) + ("  (out)" if not o[3] else ""), 19,
 			(Color(1, 0.9, 0.55) if cur else UiStyle.TEXT) if o[3] else Color(1, 1, 1, 0.4))

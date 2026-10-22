@@ -1,8 +1,12 @@
 class_name MapGen
-## Map layouts and biomes. Every map is mirrored through its middle so both players get
-## the same ground; with 3-4 players it's mirrored both ways and everyone starts in a corner.
-## A map holds no resources: it's geography (cliffs, ramps, rivers, fords, woods) and
-## town-hall spots (every hall's land holds its own reserves: soil, saltpetre, ore, ground).
+## Map layouts and biomes. Every map is mirrored through its middle so both sides get the
+## same ground. The classic maps (MAPS, 84 x 60) are generated anew each match from the
+## match's seed: with 3-4 players they're mirrored both ways and everyone starts in a corner.
+## The named maps (MapData.NAMED) are hand-made: any size, 1v1 to 4v4, a fixed layout
+## (their own seed and pieces) so each one always looks the same; they're turned through
+## their middle (180 degrees), so every player has a twin on the other side.
+## A map holds no resources: it's geography (cliffs, ramps, rivers, fords, woods),
+## decorations and town-hall spots (every hall's land holds its own reserves).
 
 ## name, layout, biome (or "a+b" for a map that mixes two biomes)
 const MAPS := {
@@ -17,27 +21,207 @@ const MAPS := {
 	"red_coast": ["Red Coast", "highlands", "desert+marsh"],
 }
 
-## Tile sets per biome (names of assets/terrain/<set>_<n>.png).
+## Tile sets per biome (names of assets/terrain/<set>_<n>.png): "low" ground (several sets
+## are laid in soft patches when "patches"), "base" (bare ground around the halls), "high"
+## (patches on high ground), "face" (cliff faces), "water" and "ford". "trees": the share
+## of tree clusters (the rest are rocks); "tint" colours the classic tree and rock art;
+## "tree_art" / "bush_art" use decorations for the trees instead (assets/props). "scatter":
+## the small decorations strewn over open ground; "kits": the groups of decorations (farm,
+## camp, ruins...) that suit it. "amb": its ambience sound (default: its own name).
 const BIOMES := {
 	"grass": {"low": ["grass"], "base": "dirt", "high": "grass_flat",
 		"face": "grass_face", "ramp": "grass_ramp", "water": "water", "ford": "shallow",
-		"trees": 0.8, "tint": Color(1, 1, 1)},
+		"trees": 0.8, "tint": Color(1, 1, 1),
+		"scatter": ["flowers", "flowers_pink", "grass_flowers", "grass_a", "stump", "rabbit", "sheep", "bird", "shrub", "flowers_yellow"],
+		"kits": ["farm", "village", "camp", "grove"]},
 	"autumn": {"low": ["autumn"], "base": "dirt", "high": "autumn_flat",
 		"face": "autumn_face", "ramp": "autumn_ramp", "water": "water", "ford": "shallow",
-		"trees": 0.75, "tint": Color(1.15, 0.85, 0.55)},
+		"trees": 0.75, "tint": Color(1.15, 0.85, 0.55),
+		"scatter": ["stump", "log_branch", "mushroom_red", "flowers_yellow", "stag", "rabbit", "shrub_berry", "sticks"],
+		"kits": ["farm", "lumber", "camp"]},
 	"desert": {"low": ["sand"], "base": "red", "high": "desert_flat",
 		"face": "desert_face", "ramp": "desert_ramp", "water": "water", "ford": "shallow",
-		"trees": 0.15, "tint": Color(1.05, 0.95, 0.7)},
+		"trees": 0.15, "tint": Color(1.05, 0.95, 0.7),
+		"scatter": ["stones", "branches", "antlers", "goat", "sticks", "crows"],
+		"kits": ["camp", "market", "ruins"]},
 	"snow": {"low": ["snow"], "base": "gravel", "high": "snow_rock_flat",
 		"face": "snow_rock_face", "ramp": "snow_rock_ramp", "water": "water", "ford": "ice",
-		"trees": 0.6, "tint": Color(0.85, 0.95, 1.1)},
+		"trees": 0.6, "tint": Color(0.85, 0.95, 1.1),
+		"scatter": ["stones", "branches", "stag", "crows", "sticks"],
+		"kits": ["snowcamp", "ruins"]},
 	"marsh": {"low": ["moss"], "base": "mud", "high": "moss_flat",
 		"face": "moss_face", "ramp": "moss_ramp", "water": "water", "ford": "mud",
-		"trees": 0.85, "tint": Color(0.8, 0.95, 0.7)},
+		"trees": 0.85, "tint": Color(0.8, 0.95, 0.7),
+		"scatter": ["reeds", "grass_reed", "heron", "goose", "log_moss", "mushroom", "stump_moss"],
+		"kits": ["lumber", "shrine"]},
 	"volcanic": {"low": ["basalt", "basalt", "basalt", "lava_crack"], "base": "gravel", "high": "lava_flat",
 		"face": "lava_face", "ramp": "lava_ramp", "water": "lava", "ford": "basalt",
-		"trees": 0.0, "tint": Color(0.7, 0.6, 0.55)},
+		"trees": 0.0, "tint": Color(0.7, 0.6, 0.55),
+		"scatter": ["branches", "antlers", "crows", "stones", "sticks"],
+		"kits": ["ruins", "forge"]},
+	# --- from the second atlas (tools/import_terrain2.py)
+	"heath": {"low": ["heath", "heath", "heather"], "patches": true, "base": "dirt", "high": "mossrock",
+		"face": "mossrock_face", "ramp": "grass_ramp", "water": "deep", "ford": "shallow",
+		"trees": 0.5, "tint": Color(0.95, 1.0, 0.9), "amb": "grass",
+		"tree_art": ["oak", "birch", "dead_tree"], "bush_art": ["bush_flower", "shrub_dark", "bush_lilac"],
+		"scatter": ["flowers_pink", "flowers", "grass_flowers", "stones", "rocks_moss", "sheep", "stump", "rabbit", "bird", "grass_d"],
+		"kits": ["farm", "shrine", "ruins", "camp"]},
+	"jungle": {"low": ["fern", "roots"], "patches": true, "base": "dirt", "high": "roots",
+		"face": "fern_face", "ramp": "forest_ramp", "water": "deep", "ford": "rapids",
+		"trees": 0.95, "tint": Color(0.8, 1.05, 0.8), "amb": "marsh",
+		"tree_art": ["oak", "oak", "blossom"], "bush_art": ["bush_berry", "shrub_b", "shrub_dark"],
+		"scatter": ["grass_tall", "grass_reed", "shrub_b", "mushroom_red", "mushroom", "log_moss", "stump_moss", "heron", "flowers_wild"],
+		"kits": ["ruins", "camp", "lumber"]},
+	"canyon": {"low": ["clay"], "base": "red", "high": "canyon",
+		"face": "canyon_face", "ramp": "desert_ramp", "water": "deep", "ford": "shingle",
+		"trees": 0.1, "tint": Color(1.1, 0.9, 0.75), "amb": "desert",
+		"tree_art": ["dead_tree"], "bush_art": ["thorns", "brambles"],
+		"scatter": ["stones", "branches", "antlers", "sticks", "crows", "goat"],
+		"kits": ["camp", "market", "forge"]},
+	"tundra": {"low": ["tundra"], "base": "gravel", "high": "tundra",
+		"face": "glacier_face", "ramp": "snow_rock_ramp", "water": "deep", "ford": "glacier",
+		"trees": 0.5, "tint": Color(0.85, 0.95, 1.1), "amb": "snow",
+		"tree_art": ["pine", "pine", "dead_tree"], "bush_art": ["shrub_dark", "thorns"],
+		"scatter": ["stones", "branches", "stag", "crows", "sticks", "grass_d"],
+		"kits": ["snowcamp", "ruins", "watch"]},
+	"ashland": {"low": ["cinder", "burnt"], "patches": true, "base": "slate", "high": "slate",
+		"face": "slate_face", "ramp": "lava_ramp", "water": "lava", "ford": "basalt",
+		"trees": 0.12, "tint": Color(0.55, 0.5, 0.5), "amb": "volcanic",
+		"tree_art": ["dead_tree"], "bush_art": ["thorns", "brambles"],
+		"scatter": ["branches", "antlers", "crows", "stones", "sticks", "log_branch"],
+		"kits": ["ruins", "forge", "watch"]},
+	"pinewood": {"low": ["pine"], "base": "dirt", "high": "mossrock",
+		"face": "mossrock_face", "ramp": "forest_ramp", "water": "deep", "ford": "rapids",
+		"trees": 0.9, "tint": Color(0.9, 1.0, 0.9), "amb": "autumn",
+		"tree_art": ["pine", "pine", "pine", "birch"], "bush_art": ["shrub_dark", "shrub_b"],
+		"scatter": ["stump", "log_moss", "mushroom", "mushroom_red", "stag", "rabbit", "grass_a", "shrub_dark", "nest", "sticks"],
+		"kits": ["lumber", "camp", "watch"]},
+	"steppe": {"low": ["steppe", "scrub"], "patches": true, "base": "dirt", "high": "scrub",
+		"face": "steppe_face", "ramp": "desert_ramp", "water": "water", "ford": "shingle",
+		"trees": 0.3, "tint": Color(1.1, 1.0, 0.75), "amb": "desert",
+		"tree_art": ["dead_tree", "gold_tree"], "bush_art": ["thorns", "brambles", "bush_yellow"],
+		"scatter": ["grass_c", "grass_reed", "stones", "goat", "cow", "branches", "sheaf", "flowers_yellow"],
+		"kits": ["camp", "farm", "market"]},
+	"coast": {"low": ["shingle", "bone"], "patches": true, "base": "bone", "high": "mossrock",
+		"face": "chalk_face", "ramp": "beach_ramp", "water": "deep", "ford": "coral",
+		"trees": 0.3, "tint": Color(1.0, 1.0, 0.95), "amb": "grass",
+		"tree_art": ["birch", "dead_tree"], "bush_art": ["grass_reed", "shrub_b"],
+		"scatter": ["gull", "gull_b", "log", "stones", "grass_reed", "rocks_moss", "anchor"],
+		"kits": ["wreck", "market", "watch"]},
+	"oldkingdom": {"low": ["heath", "heath", "heather"], "patches": true, "base": "ruin", "high": "mossrock",
+		"face": "ruin_face", "ramp": "grass_ramp", "water": "deep", "ford": "shallow",
+		"trees": 0.55, "tint": Color(1.0, 1.0, 0.95), "amb": "grass",
+		"tree_art": ["oak", "blossom", "birch"], "bush_art": ["bush_red", "bush_lilac", "shrub"],
+		"scatter": ["stones", "flowers", "rocks_moss", "grass_flowers", "crows", "flowers_mix", "stump"],
+		"kits": ["ruins", "village", "shrine", "grove"]},
+	"bog": {"low": ["bog", "reeds"], "patches": true, "base": "mud", "high": "mossrock",
+		"face": "bog_face", "ramp": "moss_ramp", "water": "kelp", "ford": "reeds",
+		"trees": 0.7, "tint": Color(0.8, 0.95, 0.7), "amb": "marsh",
+		"tree_art": ["dead_tree", "oak"], "bush_art": ["grass_tall", "shrub_dark"],
+		"scatter": ["reeds", "grass_reed", "heron", "goose", "log_moss", "mushroom", "stump_moss", "grass_tall"],
+		"kits": ["shrine", "lumber"]},
+	"glowwood": {"low": ["glow", "cinder"], "patches": true, "base": "bog", "high": "roots",
+		"face": "roots_face", "ramp": "forest_ramp", "water": "deep", "ford": "rapids",
+		"trees": 0.85, "tint": Color(0.6, 0.75, 0.85), "amb": "marsh",
+		"tree_art": ["dead_tree", "oak", "pine"], "bush_art": ["shrub_dark", "brambles"],
+		"scatter": ["mushroom", "mushroom_red", "log_moss", "stump_moss", "rocks_moss", "grass_b", "crows"],
+		"kits": ["ruins", "shrine"]},
+	"fall": {"low": ["leaves"], "base": "dirt", "high": "heath",
+		"face": "leaves_face", "ramp": "autumn_ramp", "water": "deep", "ford": "rapids",
+		"trees": 0.8, "tint": Color(1.15, 0.85, 0.55), "amb": "autumn",
+		"tree_art": ["red_tree", "gold_tree", "gold_tree", "oak"], "bush_art": ["bush_yellow", "bush_red", "shrub_berry"],
+		"scatter": ["flowers_yellow", "stump", "log_branch", "mushroom_red", "rabbit", "stag", "grass_flowers", "shrub_berry"],
+		"kits": ["farm", "lumber", "village"]},
+	"badlands": {"low": ["bone", "clay"], "patches": true, "base": "clay", "high": "chalk",
+		"face": "bone_face", "ramp": "sand_ramp", "water": "deep", "ford": "shingle",
+		"trees": 0.08, "tint": Color(1.05, 0.95, 0.8), "amb": "desert",
+		"tree_art": ["dead_tree"], "bush_art": ["thorns"],
+		"scatter": ["antlers", "branches", "stones", "crows", "sticks"],
+		"kits": ["ruins", "camp"]},
 }
+
+
+## The size in cells of a map (custom maps and the classic ones: 84 x 60).
+static func size_of(map_id: String) -> Vector2i:
+	if MapData.NAMED.has(map_id):
+		var sz: Array = MapData.NAMED[map_id]["size"]
+		return Vector2i(int(sz[0]), int(sz[1]))
+	return Vector2i(84, 60)
+
+
+## Every built-in map: the classic ones, then the named ones.
+static func all_ids() -> Array:
+	return MAPS.keys() + MapData.NAMED.keys()
+
+
+## A built-in map's mode ("1v1", "2v2", "3v3", "4v4") and how many players it holds.
+## The classic maps are 1v1 maps that also take 3-4 players in their four corners.
+static func mode_of(map_id: String) -> String:
+	if MapData.NAMED.has(map_id):
+		return String(MapData.NAMED[map_id]["mode"])
+	return "1v1"
+
+
+static func max_players(map_id: String) -> int:
+	if MapData.NAMED.has(map_id):
+		return int(String(MapData.NAMED[map_id]["mode"]).substr(0, 1)) * 2
+	return 4
+
+
+static func display_name(map_id: String) -> String:
+	if MapData.NAMED.has(map_id):
+		return String(MapData.NAMED[map_id]["name"])
+	if MAPS.has(map_id):
+		return String(MAPS[map_id][0])
+	return map_id
+
+
+## The lobby's random choices: [id, label, the modes it draws from].
+const POOLS := [
+	["random_1v1", "Random 1v1 maps", ["1v1"]],
+	["random_2v2", "Random 2v2 maps", ["2v2"]],
+	["random_1v1_2v2", "Random 1v1+2v2 maps", ["1v1", "2v2"]],
+	["random_3v3", "Random 3v3 maps", ["3v3"]],
+	["random_1v1_2v2_3v3", "Random 1v1+2v2+3v3 maps", ["1v1", "2v2", "3v3"]],
+	["random", "Random all maps", ["1v1", "2v2", "3v3", "4v4"]],
+]
+
+
+static func is_pool(map_id: String) -> bool:
+	for p in POOLS:
+		if p[0] == map_id:
+			return true
+	return false
+
+
+## The built-in maps of a random pool that hold `n` players.
+static func pool_maps(pool_id: String, n: int) -> Array:
+	var modes: Array = ["1v1", "2v2", "3v3", "4v4"]
+	for p in POOLS:
+		if p[0] == pool_id:
+			modes = p[2]
+	return all_ids().filter(func(id: String) -> bool: return modes.has(mode_of(id)) and max_players(id) >= n)
+
+
+## "Ashford Crossing (1v1, 96x96)"
+static func label(map_id: String) -> String:
+	for p in POOLS:
+		if p[0] == map_id:
+			return String(p[1])
+	if map_id.begins_with("custom:"):
+		return "%s (your map)" % map_id.substr(7)
+	var sz := size_of(map_id)
+	return "%s (%s, %dx%d)" % [display_name(map_id), mode_of(map_id), sz.x, sz.y]
+
+
+## A built-in map's biome text ("heath", "snow+grass").
+static func biome_of(map_id: String) -> String:
+	if MapData.NAMED.has(map_id):
+		return String(MapData.NAMED[map_id]["biome"])
+	if MAPS.has(map_id):
+		return String(MAPS[map_id][2])
+	return "grass"
+
 
 var g: Game
 var rng: RandomNumberGenerator
@@ -48,6 +232,11 @@ var ramp := PackedByteArray()       # 1 = ramp cell
 var ford := PackedByteArray()       # 1 = shallow crossing
 var biome_a := ""
 var biome_b := ""
+var mix := "diag"                   # how two biomes share the map: "diag", "patch", "middle"
+var water_set := ""                 # a named map's own water and ford tiles (the same all over)
+var ford_set := ""
+var props: Array = []               # decorations: {"name", "pos" (px, its foot), "cells" (solid ones), "dead"}
+var _prop_at := {}                  # map index -> the decoration whose foot blocks it
 
 
 func _init(game: Game) -> void:
@@ -76,6 +265,8 @@ func generate(map_id: String) -> Array:
 			apply_custom(data)
 			return ["custom", data.get("biome", "grass")]
 		map_id = "random"
+	if MapData.NAMED.has(map_id):
+		return _named(map_id)
 	if not MAPS.has(map_id):
 		map_id = MAPS.keys()[rng.randi() % MAPS.size()]
 	var m: Array = MAPS[map_id]
@@ -117,6 +308,10 @@ func generate(map_id: String) -> Array:
 	# every base site (all four corners with 3-4 players, used or not)
 	g.base_sites = g.starts + g.expansions
 	_assign_corners()
+	# a light scatter of decorations (their own dice: the map's layout stays as it was)
+	var drng := RandomNumberGenerator.new()
+	drng.seed = hash(g.rng.seed) + 17
+	_decorate(drng, [], 0.6)
 	g.height = height
 	g.ramp = ramp
 	return [m[1], m[2]]
@@ -230,6 +425,14 @@ func read_cells(cells: String) -> void:
 func biome_at(x: int, y: int) -> String:
 	if biome_a == biome_b:
 		return biome_a
+	if mix == "patch":
+		# soft patches of the second biome, the same on both sides
+		var n := _noise(x, y, 9.0) + _noise(W - 1 - x, H - 1 - y, 9.0)
+		return biome_b if n > 1.15 else biome_a
+	if mix == "middle":
+		# the second biome in the middle of the map
+		var q := Vector2((x + 0.5) / W - 0.5, (y + 0.5) / H - 0.5)
+		return biome_b if q.length() + (_noise(x, y, 5.0) + _noise(W - 1 - x, H - 1 - y, 5.0)) * 0.04 < 0.27 else biome_a
 	# split along the long diagonal: each player gets some of both biomes
 	var s := float(x) / W - float(y) / H + sin(float(x + y) * 0.35) * 0.04
 	return biome_a if s >= 0.0 else biome_b
@@ -665,3 +868,560 @@ func _cliffs() -> void:
 			g.water[i] = 0
 			g._terrain_kind.erase(i)
 			height[i] = 0
+
+
+# ------------------------------------------------------------------ named maps
+
+const HALL := Vector2i(5, 4)                 # a hall spot's size in cells
+var _noise_off := Vector2.ZERO
+
+
+static func _v2i(a: Array) -> Vector2i:
+	return Vector2i(int(a[0]), int(a[1]))
+
+
+func _reset() -> void:
+	height.resize(W * H)
+	ramp.resize(W * H)
+	ford.resize(W * H)
+	height.fill(0)
+	ramp.fill(0)
+	ford.fill(0)
+	g.solid.fill(0)
+	g.water.fill(0)
+	g.cliff.fill(0)
+	g._terrain_kind.clear()
+	props.clear()
+	_prop_at.clear()
+
+
+## Smooth value noise in 0..1 (a random value every `cell` cells, blended between them).
+func _noise(x: float, y: float, cell: float) -> float:
+	var fx := x / cell + _noise_off.x
+	var fy := y / cell + _noise_off.y
+	var ix := int(floor(fx))
+	var iy := int(floor(fy))
+	var tx := smoothstep(0.0, 1.0, fx - ix)
+	var ty := smoothstep(0.0, 1.0, fy - iy)
+	var top := lerpf(_hash01(ix, iy), _hash01(ix + 1, iy), tx)
+	var bot := lerpf(_hash01(ix, iy + 1), _hash01(ix + 1, iy + 1), tx)
+	return lerpf(top, bot, ty)
+
+
+static func _hash01(a: int, b: int) -> float:
+	return fposmod(sin(a * 127.1 + b * 311.7) * 43758.5453, 1.0)
+
+
+## The cell turned through the map's middle.
+func _twin(c: Vector2i) -> Vector2i:
+	return Vector2i(W - 1 - c.x, H - 1 - c.y)
+
+
+## Build a named map (MapData.NAMED) with its own dice, so it always comes out the same.
+## The pieces are drawn where they're listed and again turned through the middle; every
+## base listed (side A) has its twin on side B.
+func _named(map_id: String) -> Array:
+	var m: Dictionary = MapData.NAMED[map_id]
+	g.map_name = m["name"]
+	var parts: PackedStringArray = String(m["biome"]).split("+")
+	biome_a = parts[0]
+	biome_b = parts[1] if parts.size() > 1 else parts[0]
+	mix = String(m.get("mix", "patch"))
+	water_set = String(m.get("water", ""))
+	ford_set = String(m.get("ford", ""))
+	rng = RandomNumberGenerator.new()
+	rng.seed = int(m["seed"])
+	_noise_off = Vector2(rng.randf_range(0, 100), rng.randf_range(0, 100))
+	_reset()
+	# hall spots: side A's, then their twins (in the same order)
+	var mains: Array = []
+	var nats: Array = []
+	for b in m["bases"]:
+		mains.append(_v2i(b["hall"]))
+		nats.append(_v2i(b["nat"]))
+	var k := mains.size()
+	for i in k:
+		mains.append(g._mirror(mains[i], HALL))
+		nats.append(g._mirror(nats[i], HALL))
+	var sites: Array = mains + nats
+	for t in m.get("thirds", []):
+		sites.append(_v2i(t))
+		sites.append(g._mirror(_v2i(t), HALL))
+	var keep: Array = []
+	for st in sites:
+		keep.append([Vector2(st) + Vector2(2.5, 2), 9.0])
+	# high ground first (hills, mesas, ridges), then each main's plateau and its one ramp
+	for f in m.get("pieces", []):
+		_piece(f, keep, 0)
+	for b in m["bases"]:
+		var hall := _v2i(b["hall"])
+		var hill: Array = b.get("hill", [])
+		var c := Vector2(hall) + Vector2(2.5, 2.0)
+		if hill.size() >= 2:
+			c = Vector2(hill[0], hill[1])
+		var r := Vector2(13, 11)
+		if hill.size() >= 4:
+			r = Vector2(hill[2], hill[3])
+		var rp: Array = b["ramp"]
+		_plateau(c, r, [Vector2(rp[0], rp[1])], true)
+	# then water, woods and clearings
+	for f in m.get("pieces", []):
+		_piece(f, keep, 1)
+	_woods(int(m.get("woods", 0)), keep)
+	for f in m.get("pieces", []):
+		_piece(f, keep, 2)
+	_symmetrize()
+	_square_ramps()
+	_cliffs()
+	# the hall spots themselves are always open ground
+	for st in sites:
+		for y in range(st.y - 1, st.y + HALL.y + 1):
+			for x in range(st.x - 1, st.x + HALL.x + 1):
+				var c := Vector2i(x, y)
+				if g.in_map(c) and g._terrain_kind.has(g.idx(c)):
+					g.solid[g.idx(c)] = 0
+					g._terrain_kind.erase(g.idx(c))
+	g.base_sites = sites
+	_assign_named(mains, nats)
+	_decorate(rng, m.get("sites", []), float(m.get("decor", 1.0)))
+	_open_ways(sites)
+	g.height = height
+	g.ramp = ramp
+	return [String(m.get("layout", "named")), String(m["biome"])]
+
+
+## Who starts where on a named map: side A's bases are one group, their twins the other.
+## Each team (largest first) takes the group with the most room, so allies sit together
+## and every player's twin spot goes to the other side; spots nobody takes stay free
+## (a main nobody starts in is an expansion on high ground). Returns each player's spot
+## (0..k-1 side A, k..2k-1 their twins in the same order).
+static func spot_order(k: int, sides: Array) -> Array:
+	var free: Array = [range(k), range(k, 2 * k)]
+	var teams := {}
+	for t in sides.size():
+		var sd: int = int(sides[t])
+		if not teams.has(sd):
+			teams[sd] = []
+		teams[sd].append(t)
+	var order: Array = teams.keys()
+	order.sort_custom(func(a: int, b: int) -> bool:
+		return teams[a].size() > teams[b].size() or (teams[a].size() == teams[b].size() and a < b))
+	var out: Array = []
+	out.resize(sides.size())
+	out.fill(0)
+	for sd in order:
+		var gi := 0 if (free[0] as Array).size() >= (free[1] as Array).size() else 1
+		for t in teams[sd]:
+			if (free[gi] as Array).is_empty():
+				gi = 1 - gi
+			if (free[gi] as Array).is_empty():
+				break         # more players than spots (the lobby doesn't allow it)
+			out[t] = (free[gi] as Array).pop_front()
+	return out
+
+
+## Where each player's hall goes on a named map (for the lobby's preview).
+static func named_starts(map_id: String, sides: Array) -> Array:
+	var m: Dictionary = MapData.NAMED[map_id]
+	var sz := size_of(map_id)
+	var mains: Array = []
+	for b in m["bases"]:
+		mains.append(_v2i(b["hall"]))
+	var k := mains.size()
+	for i in k:
+		mains.append(Vector2i(sz.x - mains[i].x - HALL.x, sz.y - mains[i].y - HALL.y))
+	var out: Array = []
+	for spot in spot_order(k, sides):
+		out.append(mains[spot])
+	return out
+
+
+func _assign_named(mains: Array, nats: Array) -> void:
+	var sides: Array = []
+	for t in g.n_players():
+		sides.append(int(g.sides[t]) if t < g.sides.size() else t)
+	g.starts = []
+	g.expansions = []
+	for spot in spot_order(mains.size() / 2, sides):
+		g.starts.append(mains[spot])
+		g.expansions.append(nats[spot])
+
+
+## One piece of a named map, drawn where it's listed and turned onto the other side.
+## pass 0: high ground ("hill" with ramps, "mesa" without, "ridge": a cliff wall along a
+## line); pass 1: "lake", "river" (with fords), "forest" / "rocks" (clumps), "treeline";
+## pass 2 (after the random woods): "clear" (open ground).
+func _piece(f: Array, keep: Array, pass_no: int) -> void:
+	var kind: String = f[0]
+	match kind:
+		"hill":
+			if pass_no == 0:
+				var ramps: Array = []
+				for p in f[5]:
+					ramps.append(Vector2(p[0], p[1]))
+				_plateau(Vector2(f[1], f[2]), Vector2(f[3], f[4]), ramps, true)
+		"mesa":
+			if pass_no == 0:
+				_plateau(Vector2(f[1], f[2]), Vector2(f[3], f[4]), [], true)
+		"ridge":
+			if pass_no == 0:
+				for c in _along(f[1], float(f[2])):
+					for cc in [c, _twin(c)]:
+						height[g.idx(cc)] = 1
+		"lake":
+			if pass_no == 1:
+				_pond(Vector2(f[1], f[2]), Vector2(f[3], f[4]), keep)
+		"river":
+			if pass_no == 1:
+				_river(f[1], float(f[2]), f[3] if f.size() > 3 else [], float(f[4]) if f.size() > 4 else 3.0, keep)
+		"forest", "rocks":
+			if pass_no == 1:
+				_clump(Vector2(f[1], f[2]), Vector2(f[3], f[4]), float(f[5]) if f.size() > 5 else 0.5, "tree" if kind == "forest" else "rock", keep)
+		"treeline":
+			if pass_no == 1:
+				var gaps: Array = f[3] if f.size() > 3 else []
+				var gl: float = float(f[4]) if f.size() > 4 else 3.0
+				var tk: String = String(f[5]) if f.size() > 5 else "tree"
+				for c in _along(f[1], float(f[2]), gaps, gl):
+					_solid_at(c, tk, keep)
+		"clear":
+			if pass_no == 2:
+				var c0 := Vector2(f[1], f[2])
+				var r: float = f[3]
+				for y in range(int(c0.y - r) - 1, int(c0.y + r) + 2):
+					for x in range(int(c0.x - r) - 1, int(c0.x + r) + 2):
+						var c := Vector2i(x, y)
+						if g.in_map(c) and Vector2(c).distance_to(c0) <= r:
+							for cc in [c, _twin(c)]:
+								if g._terrain_kind.has(g.idx(cc)):
+									g.solid[g.idx(cc)] = 0
+									g._terrain_kind.erase(g.idx(cc))
+
+
+## The cells within half of `width` of a line through `pts`, but for the stretches around
+## each of `gaps` (fractions along its length, each `gap_len` cells long): a cell belongs to
+## the stretch of the line nearest to it, so a gap runs clean across.
+func _along(pts: Array, width: float, gaps: Array = [], gap_len := 3.0) -> Array:
+	var segs: Array = []
+	var total := 0.0
+	for i in pts.size() - 1:
+		var a := Vector2(pts[i][0], pts[i][1])
+		var b := Vector2(pts[i + 1][0], pts[i + 1][1])
+		segs.append([a, b, total])
+		total += a.distance_to(b)
+	var best := {}          # cell -> [distance to the line, how far along it]
+	var hw := width * 0.5
+	var d := 0.0
+	while d <= total:
+		var p := Vector2.ZERO
+		for sg in segs:
+			var sl: float = (sg[0] as Vector2).distance_to(sg[1])
+			if d >= float(sg[2]) - 0.001 and d <= float(sg[2]) + sl + 0.001:
+				p = (sg[0] as Vector2).lerp(sg[1], clampf((d - float(sg[2])) / maxf(sl, 0.001), 0.0, 1.0))
+				break
+		for y in range(int(p.y - hw) - 1, int(p.y + hw) + 2):
+			for x in range(int(p.x - hw) - 1, int(p.x + hw) + 2):
+				var c := Vector2i(x, y)
+				var dd := (Vector2(c) + Vector2(0.5, 0.5)).distance_to(p)
+				if g.in_map(c) and dd <= hw + 0.15 and (not best.has(c) or dd < float(best[c][0])):
+					best[c] = [dd, d]
+		d += 0.4
+	var out: Array = []
+	for c in best:
+		var skip := false
+		for gp in gaps:
+			if absf(float(best[c][1]) - float(gp) * total) < gap_len * 0.5:
+				skip = true
+		if not skip:
+			out.append(c)
+	return out
+
+
+func _in_keep(c: Vector2i, keep: Array) -> bool:
+	for k in keep:
+		if (Vector2(c) + Vector2(0.5, 0.5)).distance_to(k[0]) < k[1]:
+			return true
+	return false
+
+
+## A tree or rock on this cell and its twin (not on ramps, fords, water or by a hall).
+func _solid_at(c: Vector2i, kind: String, keep: Array) -> void:
+	if not g.in_map(c) or ramp[g.idx(c)] == 1 or ford[g.idx(c)] == 1 or _by_ramp(c) or _by_ramp(_twin(c)) or _in_keep(c, keep):
+		return
+	for cc in [c, _twin(c)]:
+		if g.water[g.idx(cc)] == 1:
+			continue
+		g.solid[g.idx(cc)] = 1
+		g._terrain_kind[g.idx(cc)] = kind
+
+
+## A lake with a ragged shore, on low ground away from the halls.
+func _pond(c: Vector2, r: Vector2, keep: Array) -> void:
+	for y in range(int(c.y - r.y) - 2, int(c.y + r.y) + 3):
+		for x in range(int(c.x - r.x) - 2, int(c.x + r.x) + 3):
+			var cell := Vector2i(x, y)
+			if not g.in_map(cell):
+				continue
+			var q := Vector2((x + 0.5 - c.x) / r.x, (y + 0.5 - c.y) / r.y)
+			if q.length() > 0.85 + _noise(x, y, 2.5) * 0.3:
+				continue
+			for m in [cell, _twin(cell)]:
+				if height[g.idx(m)] == 0 and ramp[g.idx(m)] == 0 and not _in_keep(m, keep):
+					g.water[g.idx(m)] = 1
+					g.solid[g.idx(m)] = 1
+
+
+## A river along `pts`, `width` across, with fords (fractions along it) `ford_len` long.
+func _river(pts: Array, width: float, fords: Array, ford_len: float, keep: Array) -> void:
+	var dry := {}
+	for c in _along(pts, width, fords, ford_len):
+		dry[c] = true
+	for c in _along(pts, width):
+		var is_ford := not dry.has(c)
+		for m in [c, _twin(c)]:
+			var i := g.idx(m)
+			if height[i] == 1 or ramp[i] == 1 or _in_keep(m, keep):
+				continue
+			if is_ford:
+				ford[i] = 1
+				g.water[i] = 0
+				g.solid[i] = 0
+			elif ford[i] == 0:
+				g.water[i] = 1
+				g.solid[i] = 1
+
+
+## A clump of trees (or rocks) filling part of an ellipse, in noisy blobs.
+func _clump(c: Vector2, r: Vector2, density: float, kind: String, keep: Array) -> void:
+	for y in range(int(c.y - r.y) - 1, int(c.y + r.y) + 2):
+		for x in range(int(c.x - r.x) - 1, int(c.x + r.x) + 2):
+			var cell := Vector2i(x, y)
+			if not g.in_map(cell):
+				continue
+			var q := Vector2((x + 0.5 - c.x) / r.x, (y + 0.5 - c.y) / r.y).length()
+			if q > 1.0:
+				continue
+			if _noise(x, y, 2.2) * (1.15 - q * 0.5) > 1.0 - density:
+				_solid_at(cell, kind, keep)
+
+
+## Every cell takes the value of its twin in the first half (the pieces were drawn on
+## both sides; this just makes the two halves match exactly).
+func _symmetrize() -> void:
+	var n := W * H
+	for i in n:
+		var j := n - 1 - i
+		if j >= i:
+			continue
+		height[i] = height[j]
+		ramp[i] = ramp[j]
+		ford[i] = ford[j]
+		g.water[i] = g.water[j]
+		g.solid[i] = g.solid[j]
+		if g._terrain_kind.has(j):
+			g._terrain_kind[i] = g._terrain_kind[j]
+		else:
+			g._terrain_kind.erase(i)
+
+
+## Every hall spot can be walked to from the first: where trees, rocks or decorations shut
+## a way (never water or cliffs), the fewest of them are cleared (and their twins).
+func _open_ways(sites: Array) -> void:
+	var from: Vector2i = sites[0] + Vector2i(2, 2)
+	for st in sites:
+		var to: Vector2i = st + Vector2i(2, 2)
+		# 0-1 search: open ground costs nothing, a removable obstacle costs one
+		var dist := PackedInt32Array()
+		dist.resize(W * H)
+		dist.fill(1 << 30)
+		var par := PackedInt32Array()
+		par.resize(W * H)
+		par.fill(-1)
+		var later: Array = [from]
+		var now: Array = []
+		dist[g.idx(from)] = 0
+		var head := 0
+		var found := false
+		while not found and (head < later.size() or not now.is_empty()):
+			var c: Vector2i
+			if not now.is_empty():
+				c = now.pop_back()
+			else:
+				c = later[head]
+				head += 1
+			if c == to:
+				found = true
+				break
+			var dc := dist[g.idx(c)]
+			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n: Vector2i = c + dd
+				if not g.in_map(n):
+					continue
+				var i := g.idx(n)
+				var cost := 0
+				if g.solid[i] != 0:
+					if g.water[i] == 1 or g.cliff[i] == 1 or not g._terrain_kind.has(i):
+						continue
+					cost = 1
+				if dc + cost < dist[i]:
+					dist[i] = dc + cost
+					par[i] = g.idx(c)
+					if cost == 0:
+						now.append(n)
+					else:
+						later.append(n)
+		var ti := g.idx(to)
+		if dist[ti] >= 1 << 30:
+			push_warning("%s: hall spot %s can't be reached" % [g.map_name, st])
+			continue
+		var i := ti
+		while i >= 0:
+			if g.solid[i] != 0 and g._terrain_kind.has(i):
+				for cc in [Vector2i(i % W, i / W), _twin(Vector2i(i % W, i / W))]:
+					_clear_cell(g.idx(cc))
+			i = par[i]
+
+
+func _clear_cell(i: int) -> void:
+	if _prop_at.has(i):
+		var pr: Dictionary = props[_prop_at[i]]
+		pr["dead"] = true
+		for c in pr["cells"]:
+			g.solid[g.idx(c)] = 0
+			g._terrain_kind.erase(g.idx(c))
+			_prop_at.erase(g.idx(c))
+		return
+	g.solid[i] = 0
+	g._terrain_kind.erase(i)
+
+
+# ------------------------------------------------------------------ decorations
+
+## Groups of decorations: [prop, dx, dy] in cells from the group's middle.
+const KITS := {
+	"farm": [["cottage", 0, 0], ["haystack", 3, 1], ["well", -3, 1], ["fence", -1, 2], ["fence_b", 1, 2], ["cart_a", 3, -2],
+		["scarecrow", 5, 2], ["sheep", -3, 3], ["cow", -5, 0], ["rooster", 1, 1], ["beehive", -2, -2], ["sacks", 2, 0], ["haybales", 4, 3]],
+	"village": [["chapel", 0, 0], ["cottage", 4, 1], ["windmill", -4, -1], ["well", 1, 3], ["stall", -3, 3], ["cart_b", 4, 4],
+		["sacks_pile", 6, 0], ["crates_pair", -1, 5], ["barrel_a", 2, 2], ["banner_a", -2, 1]],
+	"camp": [["tent_white", 0, 0], ["tent_red", 3, -1], ["tent_blue", -3, 1], ["campfire", 0, 2], ["spit_roast", 2, 2],
+		["crate_b", -2, -1], ["barrel_a", -2, 3], ["flag", 5, 1], ["wagon", 4, 3], ["table", -1, 4], ["cannonballs", 1, 4]],
+	"ruins": [["ruin_keep", 0, 0], ["arch", 4, 1], ["ruin_pillar", -3, 2], ["column", 2, 3], ["ruin_wall", -4, -1],
+		["stones", 1, 2], ["rocks_moss", -1, 3], ["cross_stone", 4, -2], ["crows", 0, 4], ["stone_block", -5, 2]],
+	"shrine": [["shrine", 0, 0], ["cross_stone", 2, 0], ["flowers", -1, 1], ["banner_b", -2, -1], ["stones", 1, 1],
+		["flowers_pink", 2, 2], ["column", -3, 1]],
+	"market": [["stall", 0, 0], ["stall_small", 3, 0], ["table_long", -3, 1], ["crate_apples", 1, 2], ["barrel_b", -1, 2],
+		["sacks", 4, 2], ["cart_c", -4, 3], ["crate_greens", 2, 3], ["jar", -2, 3], ["signpost", 5, -1]],
+	"snowcamp": [["snow_rocks_b", 0, 0], ["tent_white", 3, 1], ["campfire", 1, 2], ["barrel_a", -1, 2], ["crate_a", 4, 3],
+		["dead_trunk", -3, 1], ["snow_rocks_a", -4, 3], ["sticks", 2, 4]],
+	"wreck": [["boat", 0, 0], ["anchor", 2, 1], ["barrel_e", -1, 1], ["crate_e", 1, -1], ["drying_rack", -2, -1],
+		["log", 3, -1], ["gull", 1, 2], ["crate_long", -3, 2]],
+	"grove": [["flower_arch", 0, 0], ["bush_lilac", 2, 0], ["flowers_pink", -1, 1], ["bench", 1, 2], ["beehive", -2, 2],
+		["flowers_mix", 3, 2], ["bush_flower", -3, 0]],
+	"watch": [["watch_frame", 0, 0], ["banner_pole", 2, 0], ["campfire", 0, 2], ["crate_c", -2, 1], ["barrel_c", 2, 2], ["firewood", -1, 3]],
+	"lumber": [["stump_big", 0, 0], ["log", 2, 1], ["log_moss", -2, 1], ["firewood", 1, -1], ["sticks", -1, 2], ["cart_a", 3, 3],
+		["stump", -3, -1], ["stump_moss", 4, -1]],
+	"forge": [["forge", 0, 0], ["oven", 3, 0], ["cannonballs", -2, 1], ["barrel_tall", 1, 2], ["crate_d", -1, 3], ["chest", 3, 2]],
+}
+const HERDS := ["sheep", "cow", "goat", "stag", "rabbit", "goose", "gull"]
+
+
+## Can a decoration stand on this cell? Open ground only: not water, a ford, a cliff or a
+## ramp, nor next to a ramp, nor on any hall's land (solid ones keep further off).
+func _deco_ok(c: Vector2i, solid: bool) -> bool:
+	if c.x < 1 or c.y < 1 or c.x > W - 2 or c.y > H - 2:
+		return false
+	var i := g.idx(c)
+	if g.solid[i] != 0 or g.water[i] == 1 or ford[i] == 1 or ramp[i] == 1 or g.cliff[i] == 1:
+		return false
+	var rr := 3 if solid else 2
+	for dy in range(-rr, rr + 1):
+		for dx in range(-rr, rr + 1):
+			var n := c + Vector2i(dx, dy)
+			if g.in_map(n) and (ramp[g.idx(n)] == 1 or (solid and (ford[g.idx(n)] == 1 or g.cliff[g.idx(n)] == 1))):
+				return false
+	for st in g.base_sites:
+		if (Vector2(c) + Vector2(0.5, 0.5)).distance_to(Vector2(st) + Vector2(2.5, 2.0)) < (13.0 if solid else 12.0):
+			return false
+	return true
+
+
+## Put a decoration on this cell, and its twin on the twin cell. Solid ones block the
+## cells under their foot, like rocks.
+func _put(name: String, c: Vector2i, drng: RandomNumberGenerator) -> bool:
+	if not PropData.PROPS.has(name):
+		return false
+	var w: int = PropData.PROPS[name][2]
+	var foot: Array = []
+	if w > 0:
+		for dx in range(-(w - 1) / 2, w - (w - 1) / 2):
+			foot.append(c + Vector2i(dx, 0))
+			if w >= 3:
+				foot.append(c + Vector2i(dx, -1))
+	else:
+		foot = [c]
+	for fc in foot:
+		if not _deco_ok(fc, w > 0) or not _deco_ok(_twin(fc), w > 0):
+			return false
+	var jit := Vector2(drng.randf_range(-6, 6), drng.randf_range(-4, 4)) if w == 0 else Vector2.ZERO
+	var flip := drng.randf() < 0.5
+	for side in 2:
+		var cells: Array = []
+		var sx := 0.0
+		var low := -1
+		for fc in foot:
+			var cc: Vector2i = fc if side == 0 else _twin(fc)
+			cells.append(cc)
+			sx += cc.x + 0.5
+			low = maxi(low, cc.y)
+		var pos := Vector2(sx / foot.size(), low + 1.0) * Defs.TILE + Vector2(0, -5) + jit
+		var pr := {"name": name, "pos": pos, "cells": cells if w > 0 else [], "at": cells[0], "dead": false, "flip": flip != (side == 1)}
+		var ix := props.size()
+		props.append(pr)
+		if w > 0:
+			for cc in cells:
+				g.solid[g.idx(cc)] = 1
+				g._terrain_kind[g.idx(cc)] = "prop"
+				_prop_at[g.idx(cc)] = ix
+		if c == _twin(c):
+			break
+	return true
+
+
+## Decorate the map: the listed groups ([x, y, kit] on side A), a couple of the biome's
+## own groups when none are listed, and small things strewn over open ground (animals in
+## little herds); `density` 1 = normal.
+func _decorate(drng: RandomNumberGenerator, sites: Array, density: float) -> void:
+	if density <= 0.0:
+		return
+	var groups: Array = []
+	for s in sites:
+		groups.append([Vector2i(int(s[0]), int(s[1])), String(s[2])])
+	if sites.is_empty():
+		for n in 2:
+			for attempt in 40:
+				var c := Vector2i(drng.randi_range(6, W - 7), drng.randi_range(6, H - 7))
+				var kits: Array = BIOMES[biome_at(c.x, c.y)].get("kits", [])
+				if kits.is_empty() or not _deco_ok(c, true):
+					continue
+				var far := Vector2(c).distance_to(Vector2(_twin(c))) >= 12.0
+				for gp in groups:
+					if Vector2(gp[0]).distance_to(Vector2(c)) < 14.0 or Vector2(_twin(gp[0])).distance_to(Vector2(c)) < 14.0:
+						far = false
+				if far:
+					groups.append([c, kits[drng.randi() % kits.size()]])
+					break
+	for gp in groups:
+		for it in KITS.get(gp[1], []):
+			_put(String(it[0]), gp[0] + Vector2i(int(it[1]), int(it[2])), drng)
+	var n := int(W * H / 55.0 * density)
+	for k in n:
+		var c := Vector2i(drng.randi_range(1, W - 2), drng.randi_range(1, H - 2))
+		var sc: Array = BIOMES[biome_at(c.x, c.y)].get("scatter", [])
+		if sc.is_empty():
+			continue
+		var name: String = sc[drng.randi() % sc.size()]
+		if not _put(name, c, drng):
+			continue
+		if HERDS.has(name):
+			for h in drng.randi_range(0, 2):
+				_put(name, c + Vector2i(drng.randi_range(-2, 2), drng.randi_range(-2, 2)), drng)

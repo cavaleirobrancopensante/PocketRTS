@@ -70,7 +70,7 @@ func _ready() -> void:
 	var order := _order()
 	var grid := GridContainer.new()
 	grid.columns = 1 + order.size()
-	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("h_separation", 18 if order.size() <= 4 else 8)      # (8 players: tighter)
 	grid.add_theme_constant_override("v_separation", 4)
 	body.add_child(grid)
 	grid.add_child(UiStyle.text("", 16))
@@ -107,7 +107,7 @@ func _ready() -> void:
 		tabs.add_child(b)
 		_tab_buttons.append(b)
 	chart = Chart.new()
-	chart.custom_minimum_size = Vector2(400, 280)
+	chart.custom_minimum_size = Vector2(400 if order.size() <= 4 else 240, 280)
 	chart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chart.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	chart.colours = order.map(func(t: int) -> Color: return game.team_colour(t).lightened(0.2))

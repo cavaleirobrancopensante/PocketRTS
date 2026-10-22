@@ -6,7 +6,7 @@
 
 If the game ever closes on its own, the next start shows a crash report with a COPY button: the end of the engine log, with a line for every autosave, so the moment it died can be found.
 
-A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a **skirmish** with up to four players: 1v1, 2v2, you against two or three computers, or a free-for-all. Each slot picks a player (you or an Easy, Normal, Hard or **Brutal** AI), a faction, a colour and a team. If nobody is "you", the computers play and you watch. The Brutal AI micro-manages every fight and cheats (+50% income). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
+A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a **skirmish** with up to eight players: 1v1, 2v2, 3v3, 4v4, you against two or three computers, or a free-for-all. Each slot picks a player (you or an Easy, Normal, Hard or **Brutal** AI), a faction, a colour and a team. If nobody is "you", the computers play and you watch. The Brutal AI micro-manages every fight and cheats (+50% income). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
 
 See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and all the art prompts.
 
@@ -102,7 +102,7 @@ With no "you" in the lobby the computers play and you watch, and the **VIEW** bu
 - **Free · P1 Crown vision** (one per player): you move the camera, under that player's fog of war: what its side sees and has explored, enemy buildings as it last spotted them, on the minimap too.
 - **Follow · P1 Crown** (one per player): the camera drives itself to show what that computer is doing, under its fog. Every second it looks for, in order: a fight its units are in (the biggest, but it stays with the one it's watching until it has been quiet for 3 s), its army on the attack (the front of the wave), raiders at its base, a building it has just placed (a new hall a little longer), its army, its hall. It pans smoothly, with a quick fade for a long jump across the map, and holds each sight at least 3 s (6 s before leaving for a quiet look home). Zoom stays as you set it.
 
-Moving the camera yourself while following (drag, edge or arrow pan, the minimap, a jump to a group or hall) switches to **Free** with the same player's vision, and says so; pick Follow again to resume. On a computer, **0** is all vision and **1-4** follow that player. The view you pick is kept for the next match you watch (until the game closes); it isn't saved with a match.
+Moving the camera yourself while following (drag, edge or arrow pan, the minimap, a jump to a group or hall) switches to **Free** with the same player's vision, and says so; pick Follow again to resume. On a computer, **0** is all vision and **1-8** follow that player. The view you pick is kept for the next match you watch (until the game closes); it isn't saved with a match.
 
 ### Match log (for playtesting)
 Every match keeps a plain-text log: who played (and at what AI level), what each side built, lost and cast, the first of each unit type, the walls laid, a snapshot of every player each minute (income, resources, supply, workers, halls, army and its value, kills and losses) and the final result with kills by unit type. **COPY LOG** on the end screen copies it to the clipboard; the last 20 logs are also saved in `user://logs`.
@@ -138,28 +138,46 @@ Canister, round shot, cannon splash, mortar shells, the Steam Walker's steam, th
 - **Map editor**: paint ground, high ground, ramps, water, fords, trees and rocks with brush sizes 1-5, and place start spots (2-4) and extra hall spots. **REMOVE** takes away spots. (Maps saved with the old rock deposits still load; the outcrops are ignored.) Mirroring (2-way or 4-way) keeps maps fair. Pick the land and an optional second biome to mix. Maps are saved on the device and show up in the Skirmish map list; PLAY takes you straight there.
 
 ### Maps
-Nine maps, chosen in Skirmish (or at random). Every map is mirrored, so both sides get the same ground. With three or four players it is mirrored both ways and everyone starts in a corner, with allies on the same side. There are three layouts:
+27 maps, chosen in Skirmish. The map list starts with six random choices: **Random 1v1 maps**, **Random 2v2 maps**, **Random 1v1+2v2 maps**, **Random 3v3 maps**, **Random 1v1+2v2+3v3 maps** and **Random all maps** (each picks, when the match starts, among its maps that hold all the players), then every map by name with its mode and size, e.g. "Ashford Crossing (1v1, 96x96)", then your own maps. Picking a map sets the players up for it (a 3v3 map: six players, three a side, keeping the first players' choices); a classic map takes up to four. If the players change afterwards (a preset, ADD PLAYER, ×) and the map no longer holds them, the choice falls back to the random pool for that many players; START stays off with a reason when nothing fits. The choice is saved with the lobby settings.
 
-- **Crossroads**: open ground with a hill in the middle.
-- **Highlands**: each main base sits on high ground with a single ramp, so it's hard to rush.
-- **Rivers**: a river splits the map, and three fords are the only crossings.
-
-Six biomes: grass, autumn, desert, snow, marsh and volcanic (lava lakes). Two maps mix two biomes.
+Every map is fair: it is turned through its middle, so every player has a twin spot on the other side with the same ground. Each main base sits on high ground with one ramp that can be walled, has a natural expansion below it, and more hall spots (high-ground mains nobody starts in are expansions too). Allies start next to each other. The named maps always look the same (their own layout and dice); the classic ones are drawn anew from each match's seed.
 
 - **High ground:** units below can't see up a cliff unless one of their side is up there (or a flyer is overhead), and they can't shoot what they can't see.
 - **Cliffs and ramps:** cliffs block walking and ramps don't. Flyers ignore both.
+- **Decorations:** farms, camps, villages, ruins, shrines, wrecks, lumber yards and forges, and animals, flowers, logs and stones strewn by biome. Small ones are only for looks (a building or wall put over one clears it); big ones (cottages, tents, towers, arches, haystacks, snowy rocks) block like rocks. None stand on ramps, fords or a hall's land.
+- **Biomes:** grass, autumn, desert, snow, marsh and volcanic, and from the second tile set heath, jungle, canyon, tundra, ashland (lava), pinewood, steppe, coast, old kingdom, bog, glowwood, fall and badlands.
 
-| Map | Layout | Biome |
-| --- | --- | --- |
-| Greenhold | Crossroads | Grass |
-| Highmoor | Highlands | Autumn |
-| Dune Sea | Crossroads | Desert |
-| Frostfang | Highlands | Snow |
-| Twin Fords | Rivers | Grass |
-| Ashfall | Highlands | Volcanic |
-| Mirewood | Rivers | Marsh |
-| Border March | Rivers | Snow and grass |
-| Red Coast | Highlands | Desert and marsh |
+| Map | Players | Size | Biome | Layout |
+| --- | --- | --- | --- | --- |
+| Greenhold | 1v1 (up to 4) | 84x60 | Grass | Crossroads: open ground, a hill in the middle |
+| Highmoor | 1v1 (up to 4) | 84x60 | Autumn | Highlands: mains on high ground, one ramp |
+| Dune Sea | 1v1 (up to 4) | 84x60 | Desert | Crossroads |
+| Frostfang | 1v1 (up to 4) | 84x60 | Snow | Highlands |
+| Twin Fords | 1v1 (up to 4) | 84x60 | Grass | Rivers: three fords are the only crossings |
+| Ashfall | 1v1 (up to 4) | 84x60 | Volcanic | Highlands |
+| Mirewood | 1v1 (up to 4) | 84x60 | Marsh | Rivers |
+| Border March | 1v1 (up to 4) | 84x60 | Snow and grass | Rivers |
+| Red Coast | 1v1 (up to 4) | 84x60 | Desert and marsh | Highlands |
+| Kestrel Rise | 1v1 | 64x64 | Steppe | Small: a hill in the middle with a ramp from each side |
+| Cinder Steps | 1v1 | 70x56 | Ashland | Tiny: a lava flow with three basalt crossings |
+| Glimmerdeep | 1v1 | 80x80 | Glowwood | Ruins and pools in a dark wood, a lookout hill |
+| Ashford Crossing | 1v1 | 96x96 | Heath | A broad river corner to corner, three fords |
+| Thornwood Maze | 1v1 | 100x76 | Pinewood | Walls of pine with gaps: a maze of lanes |
+| Saltmarsh Isles | 1v1 | 104x80 | Coast | Four islands joined by coral shallows |
+| Hollowfen | 1v1 | 112x84 | Bog and marsh | A reedy channel with four fords, pools, many bases |
+| Redrock Canyon | 1v1 | 64x104 | Canyon | Tall: cliff walls leave narrow passes |
+| Frostmere | 1v1 | 72x112 | Tundra | Tall: a frozen mere with three ice fords |
+| Amberfall Vale | 1v1 | 88x120 | Fall | Tall: a stream, two lookout hills, many bases |
+| Twin Crowns | 2v2 | 128x96 | Heath and old kingdom | Allies side by side, a crowned hill between |
+| Jade Wilds | 2v2 | 120x120 | Jungle | Thick jungle, a winding river with five fords |
+| Shattered Coast | 2v2 | 136x100 | Coast | Islands linked by shallows |
+| Ember Reach | 2v2 | 112x136 | Ashland and volcanic | Two lava flows make three lanes around a mesa |
+| Whitecap Pass | 2v2 | 132x104 | Tundra and snow | A mountain wall with three passes |
+| Kingsfield | 3v3 | 160x128 | Grass and old kingdom | Farmland, hedgerows, villages, a central hill |
+| Pinewall Marches | 3v3 | 144x168 | Pinewood | Walls of pine and a river with five fords |
+| The Sundered Realm | 4v4 | 192x160 | Old kingdom and ashland | Gigantic: a great river and a burnt heartland |
+
+The named maps are data in `scripts/map_data.gd` (hall spots, plateaus, rivers, ridges, woods, decoration groups) built by `scripts/mapgen.gd`. After changing one, run `tools/make_map_previews.gd` for the lobby's pictures (assets/maps).
 
 ### Economy labels and the battle report
 - Each economy structure shows its crew as **X/Y** (green when full). Farms also show a harvest bar.
@@ -231,6 +249,8 @@ To add a unit: put its sheet in `art/crown/`, add it to `UNITS` in the script wi
 - `python3 tools/import_crate.py` cuts the Winder's self-building crate from `art/clockwork/crate_unfold.png` (6 frames on a painted checkerboard, keyed out; frame 1's painted steam is dropped, the game puffs its own): an unfold strip per Clockwork footprint width (`assets/effects/crate_unfold_<2..5>.png`, the iron plates as wide as the footprint), the crate on a Winder's back and on the ground (`--contact DIR` writes contact sheets).
 - `python3 tools/import_mist_toad.py` cuts the Mist Toad from `art/brood/mist_toad.png` (painted on black, with an idle loop per direction): it keys out the halos and the painted fog cloud (the game draws its own), drops broken frames, and makes its portrait and the FOG / TONGUE icons (`--contact DIR` writes a contact sheet).
 - `python3 tools/make_walls.py` draws the Crown's stone wall and gate pixel by pixel (no source sheet).
+- `python3 tools/import_terrain2.py` cuts the second terrain atlas (`art/world/terrain/tiles_c.png`, 29 biome sets on navy) into 64x64 ground tiles (the game lays each over 2x2 cells), cliff faces and tops, and writes `scripts/terrain_data2.gd` (`[sheet.png]` writes a contact sheet).
+- `python3 tools/import_props.py` cuts the map decorations from `art/world/props.png` (connected shapes on navy, small detached bits joined to their neighbour), scales each to the game (a Musketeer is ~36 px tall) into `assets/props/` and writes `scripts/prop_data.gd` (size, and how many cells a solid one's foot blocks; `[sheet.png]` writes a contact sheet with a Musketeer-sized bar).
 
 Repair passes fix mistakes in the generated art, pixel by pixel:
 
@@ -249,7 +269,9 @@ Repair passes fix mistakes in the generated art, pixel by pixel:
 | `scripts/controls.gd`, `scripts/ui/hud.gd` | Touch and mouse input; resource bar, minimap, selection panel, command card |
 | `scripts/spectator.gd` | Watching computers play: whose fog you see and the follow camera's director |
 | `scripts/defs.gd` | Unit and building stats: tweak balance here |
-| `tools/simulate.gd` | AI-vs-AI test: `godot --headless --fixed-fps 30 --script res://tools/simulate.gd` |
+| `scripts/mapgen.gd`, `scripts/map_data.gd` | Map generation, biomes and decorations; the named maps as data |
+| `tools/simulate.gd` | AI-vs-AI test: `godot --headless --fixed-fps 30 --script res://tools/simulate.gd -- crown brood [map or pool] [2v2/3v3/4v4] [minutes:N]` |
+| `tools/make_map_previews.gd` | The lobby's map pictures (`assets/maps`): `godot --headless --script res://tools/make_map_previews.gd` |
 
 ## Browser version
 

@@ -363,9 +363,9 @@ func _zoom_at(screen: Vector2, f: float) -> void:
 
 func _key(e: InputEventKey) -> void:
 	var units := game.selected_units()
-	# watching computers: 0 all vision, 1-4 follow that player
+	# watching computers: 0 all vision, 1-8 follow that player
 	if game.spectating() and not e.ctrl_pressed and not e.shift_pressed and not e.meta_pressed \
-			and e.keycode >= KEY_0 and e.keycode <= KEY_4 and game.spectator.hotkey(int(e.keycode - KEY_0)):
+			and e.keycode >= KEY_0 and e.keycode <= KEY_8 and game.spectator.hotkey(int(e.keycode - KEY_0)):
 		return
 	if Settings.pc() and hud and not e.ctrl_pressed and hud.hotkey(e.keycode):
 		return
