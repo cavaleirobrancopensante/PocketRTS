@@ -143,6 +143,7 @@ func _run() -> void:
 	await _dragoon()
 	await _stealing()
 	await _brood()
+	await _care()
 	await _pouch()
 	await _save_load()
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
@@ -523,3 +524,48 @@ func _save_load() -> void:
 		await wait_for(func() -> bool: return mm.kind == "dragoon", 10.0)
 		check(mm.kind == "dragoon", "  and he mounts")
 	SaveGame.clear()
+
+
+# ---------------------------------------------------------------- Missionary priorities
+
+func _care() -> void:
+	await _clear_units()
+	var window := float(Defs.REVIVE["window"])
+	var m := unit("missionary", at(400, 260))
+	m.cmd_hold()
+	# a cheap body about to expire, an expensive veteran with more time, one too late to reach
+	var cheap := unit("musketeer", at(520, 260))
+	var vet := unit("cuirassier", at(250, 300))
+	vet.kills = 5
+	var late := unit("musketeer", at(400, 420))
+	var hurt := unit("cuirassier", at(460, 330))
+	hurt.cmd_hold()
+	hurt.hp = hurt.max_hp * 0.3
+	for b in [cheap, vet, late]:
+		b.take_damage(99999.0, null)
+	await wait(1.6)
+	cheap.died_at = g.clock - (window - 12.0)
+	vet.died_at = g.clock - 20.0
+	late.died_at = g.clock - (window - 4.0)
+	var sc: float = g.body_score(m, cheap)
+	var sv: float = g.body_score(m, vet)
+	var sl: float = g.body_score(m, late)
+	print("  scores: cheap Musketeer (12 s left, %.0f px) %.0f · veteran Horseman (5 kills, 40 s left, %.0f px) %.0f · Musketeer 4 s left %.0f · wounded Horseman %.1f" % [
+		cheap.position.distance_to(m.position), sc, vet.position.distance_to(m.position), sv, sl, g.patient_score(m, hurt)])
+	check(sl == 0.0, "a body that would expire before he could raise it is skipped")
+	check(sv > sc, "the expensive veteran outscores the cheap body about to expire (%.0f > %.0f)" % [sv, sc])
+	check(g.find_body(m, float(Defs.REVIVE["scan"]) * Defs.TILE) == vet, "he picks the veteran's body first")
+	m.cmd_stop()
+	await wait_for(func() -> bool: return m.order == "revive", 3.0)
+	check(m.order == "revive" and m._body == vet, "idle, he goes to raise the veteran")
+	# a second Missionary leaves the claimed body alone and takes the next one
+	var m2 := unit("missionary", at(420, 250))
+	await wait(1.2)
+	check(not (m2.order == "revive" and m2._body == vet), "a second Missionary doesn't go for the same body (%s)" % m2.order)
+	await wait_for(func() -> bool: return not vet.dead, 20.0)
+	check(not vet.dead, "the veteran is raised")
+	await wait_for(func() -> bool: return hurt.hp >= hurt.max_hp, 30.0)
+	check(hurt.hp >= hurt.max_hp, "then the wounded Horseman is bandaged")
+	for x in [m, m2, cheap, vet, late, hurt]:
+		if is_instance_valid(x) and not x.dead:
+			g.consume_unit(x)

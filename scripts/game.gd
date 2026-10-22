@@ -1548,24 +1548,42 @@ func load_value(pit: Building) -> float:
 
 
 ## The most wounded soldier nearby that a Missionary may bandage.
+## Missionary priorities (Defs.CARE): bodies to raise come first, the wounded second.
+## A unit's worth to him: its price, and more for every kill it made (veterancy).
+static func care_value(u: Unit) -> float:
+	return float(u.d.get("cost", 50)) / maxf(1.0, float(u.d.get("spawn", 1))) + float(Defs.CARE["per_kill"]) * u.kills
+
+
+## How much a wounded unit is worth bandaging: its worth x the share of its health it lacks,
+## a little less the farther it is.
+func patient_score(m: Unit, o: Unit) -> float:
+	var missing := 1.0 - o.hp / maxf(o.max_hp, 1.0)
+	return care_value(o) * missing / (1.0 + o.position.distance_to(m.position) / float(Defs.CARE["near_patient"]))
+
+
+## The wounded soldier this Missionary should bandage: the best patient_score among ours
+## missing at least CARE.hurt of their health, not one another Missionary is going to.
 func find_patient(m: Unit, r: float) -> Unit:
 	var best: Unit = null
-	var bf := 0.75
+	var bs := 0.0
 	for o in units_near(m.position, r):
-		if o.team != m.team or o.dead or o.off_field or o.is_worker() or o.is_air() or o.d.get("medic", false):
+		if o.team != m.team or o.dead or o.off_field or o.is_worker() or o.is_air() or o.d.get("medic", false) or o.kind == "horse":
 			continue
 		if o.cross_t > 0.0 or o.d["faction"] == "clockwork" or Defs.CROWN_MACHINES.has(o.kind):
 			continue      # guns and wagons are mended by Labourers, not bandaged
-		var f: float = o.hp / o.max_hp
-		if f < bf:
-			var taken := false
-			for x in units:
-				if x != m and x.order == "heal" and x.order_target == o:
-					taken = true
-					break
-			if not taken:
-				bf = f
-				best = o
+		if 1.0 - o.hp / o.max_hp < float(Defs.CARE["hurt"]):
+			continue
+		var taken := false
+		for x in units:
+			if x != m and x.order == "heal" and x.order_target == o:
+				taken = true
+				break
+		if taken:
+			continue
+		var s := patient_score(m, o)
+		if s > bs:
+			bs = s
+			best = o
 	return best
 
 
@@ -2054,24 +2072,42 @@ func can_revive(b, m: Unit) -> bool:
 	if clock - b.died_at > float(Defs.REVIVE["window"]):
 		return false
 	var r = b.reviver
-	if r != null and r != m and is_instance_valid(r) and not r.dead and r.order == "revive" and r._body == b:
-		return false
+	if r != null and r != m and is_instance_valid(r) and not r.dead and (r.order == "revive" or r.order == "dismount") and r._body == b:
+		return false     # (another Missionary has claimed it, a mounted one getting off for it too)
 	var h = b.harvester
 	if h != null and is_instance_valid(h) and not h.dead and h.order == "harvest" and h._corpse == b:
 		return false
 	return true
 
 
-## The nearest body this Missionary could raise.
+## How urgent and worthwhile raising this body is for this Missionary: its worth, up to
+## three times as urgent as its window runs out, less the farther it lies:
+## value x (1 + 2 x (1 - time left / window)) / (1 + distance / CARE.near_body).
+## 0 when he couldn't get there and finish before the window closes (or it's out of reach).
+func body_score(m: Unit, b: Unit) -> float:
+	var window := float(Defs.REVIVE["window"])
+	var left := window - (clock - b.died_at)
+	var dist: float = b.position.distance_to(m.position)
+	var need := dist / maxf(m.speed, 1.0) + float(Defs.REVIVE["time"]) + (float(Defs.HORSES["dismount"]) if m.is_mounted() else 0.0)
+	if left <= need:
+		return 0.0
+	var ra := region_of(cell_of(m.position))
+	var rb := region_of(cell_of(b.position))
+	if ra >= 0 and rb >= 0 and ra != rb:
+		return 0.0       # (walled off, across water)
+	return care_value(b) * (1.0 + 2.0 * (1.0 - left / window)) / (1.0 + dist / float(Defs.CARE["near_body"]))
+
+
+## The body this Missionary should raise (the best body_score within r), or null.
 func find_body(m: Unit, r: float) -> Unit:
 	var best: Unit = null
-	var bd := r
+	var bs := 0.0
 	for b in fallen:
-		if not is_instance_valid(b) or not can_revive(b, m):
+		if not is_instance_valid(b) or not can_revive(b, m) or b.position.distance_to(m.position) > r:
 			continue
-		var dd: float = b.position.distance_to(m.position)
-		if dd < bd:
-			bd = dd
+		var s := body_score(m, b)
+		if s > bs:
+			bs = s
 			best = b
 	return best
 

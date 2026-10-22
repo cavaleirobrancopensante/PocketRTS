@@ -65,7 +65,7 @@ SHEET_BOXES = {
 # The Mortar has none: its towed walk shows a dark horse, its other strips a chestnut, so
 # every coat (bay too) is repainted, the same on both.
 NATIVE = {"cuirassier": "dark", "horseman": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "",
-          "horse": "dark", "messenger": "dark", "dragoon": "dark", "dragoon_armoured": "dark"}
+          "horse": "dark", "messenger": "dark", "dragoon": "dark", "dragoon_armoured": "dark", "missionary_mounted": "dark"}
 NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 
 # Per unit: the colour test, the strips with a horse (anim names; every direction), and
@@ -133,6 +133,18 @@ CONFIG = {
         "blade_v": 0.5,
         "keep": {},
         "drop": {},
+    },
+    # the Mounted Missionary (tools/import_horse_units.py): his black robe and the cross fail the
+    # grey test by themselves; above the saddle cloth is him. In the last death frames the horse
+    # lies down and then he lies alone.
+    "missionary_mounted": {
+        "test": "grey",
+        "anims": ["idle", "walk", "death"],
+        "rider_head": {"pad": 4, "below": {"s": 3, "se": 4, "e": 10, "ne": 10, "n": 10},
+                       "skip": [("death", 2), ("death", 3)]},
+        "blade_v": 0.5,
+        "keep": {},
+        "drop": {"death_*": [(0, 0, 98, 70, [3])]},
     },
     "dragoon_armoured": {
         "test": "grey",

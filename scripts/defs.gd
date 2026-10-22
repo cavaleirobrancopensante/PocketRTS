@@ -665,8 +665,8 @@ const TEMP_ART := {
 	"messenger": {"art": "messenger", "portrait": "labourer"},
 	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "musketeer", "portrait_armoured": "guardsman"},
 	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "horseman", "portrait_armoured": "cuirassier"},
-	# (TEMPORARY until the designer's art: the Messenger's sprites, darkened to a cassock)
-	"mounted_missionary": {"art": "messenger", "tint": Vector3(0.62, 0.6, 0.66), "portrait": "missionary"},
+	# (art/crown/missionary_mounted.png; the portrait is still the Missionary's)
+	"mounted_missionary": {"art": "missionary_mounted", "portrait": "missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
 	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon
 	# the horse commands' card icons
@@ -774,6 +774,14 @@ const MORTAR_SWITCH := 3.0       # deploy / pack
 ## `speed` px a second along the ground) and bursting where it lands: every ground unit
 ## within the Mortar's splash is hurt, friends too, `edge` of the blow at the rim.
 const MORTAR := {"arc": 0.55, "speed": 240.0, "edge": 0.5}
+## Missionary priorities (on foot or mounted, ordered or on his own): bodies first, scored
+## worth x urgency / distance (Game.body_score: worth = price + `per_kill` a kill; a body he
+## couldn't reach and raise before its window closes is skipped), then the wounded missing at
+## least `hurt` of their health, scored worth x health missing / (1 + distance / `near_patient`)
+## (Game.patient_score). Idle or walking to a patient, he looks again every `rescan` s; a raise
+## once begun is only given up if the body can't be raised any more. A target another
+## Missionary of his side has claimed is left to him.
+const CARE := {"per_kill": 20.0, "near_body": 300.0, "near_patient": 600.0, "hurt": 0.25, "rescan": 1.0}
 ## Missionary raising the fallen: a Crown soldier's body can be raised for `window` s after
 ## he falls; it takes `time` s and he comes back with `hp` of his health and the cross for
 ## `cross` s (no bandaging or raising meanwhile). Falling again under the cross, he's gone

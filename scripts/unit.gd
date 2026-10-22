@@ -232,6 +232,7 @@ var auto_mount := false          # (on foot after a Dragoon's own dismount, or t
 var pouch := false               # (a musket soldier) refitted with the Shot Pouch: 20 shots
 var after: Dictionary = {}       # (mounting / dismounting) the order he goes on with afterwards
 var _lonely_t := 0.0
+var _care_auto := false          # (a Missionary) the patient he walks to is his own pick (Defs.CARE)
 var _rein: Node2D                # (a horse) the reins to its leader, drawn over the horse
 var _rein_on := false
 var _feather: Node2D             # (a dismounted horseman) the plume on his hat (TEMP_ART "feather")
@@ -1516,9 +1517,12 @@ func cmd_revive(body: Unit) -> void:
 	if aboard or not d.get("medic", false) or not game.can_revive(body, self):
 		return
 	if is_mounted():
-		# (a Mounted Missionary gets off to raise the fallen, and stays on foot)
+		# (a Mounted Missionary gets off to raise the fallen, and stays on foot; the body is
+		# his meanwhile)
 		if order != "dismount":
 			cmd_dismount(false, {"o": "revive", "e": body})
+			_body = body
+			body.reviver = self
 		return
 	_reset_work()
 	order = "revive"
@@ -1791,6 +1795,7 @@ func _reset_work() -> void:
 		order_target.claimed = null    # (he isn't coming for that horse any more)
 	if not _keep_queue:
 		after = {}
+	_care_auto = false
 	work = ""
 	phase = ""
 	path = PackedVector2Array()
@@ -2366,8 +2371,8 @@ func _physics_process(delta: float) -> void:
 	match order:
 		"idle":
 			if d.get("medic", false) and scan_t <= 0.0:
-				# the fallen first (a soldier back), then the wounded
-				scan_t = 0.5
+				# the fallen first (a soldier back), then the wounded: Defs.CARE
+				scan_t = float(Defs.CARE["rescan"])
 				var body := game.find_body(self, float(Defs.REVIVE["scan"]) * Defs.TILE)
 				if body:
 					cmd_revive(body)
@@ -2375,6 +2380,7 @@ func _physics_process(delta: float) -> void:
 					var pt := game.find_patient(self, 9 * Defs.TILE)
 					if pt:
 						cmd_heal(pt)
+						_care_auto = true      # (his own choice: he may change his mind for a body)
 			# REPAIR autocast: an idle worker fixes what's damaged nearby (before going back to
 			# work, when WORK is on too)
 			if auto_repair and scan_t <= 0.0 and (kind == "winder" or kind == "labourer"):
@@ -2457,7 +2463,14 @@ func _physics_process(delta: float) -> void:
 		"repair":
 			want = _repair(delta)
 		"heal":
-			want = _heal(delta)
+			# on his way to a patient he looks again now and then: a body to raise comes first
+			if _care_auto and work != "bandaging" and scan_t <= 0.0:
+				scan_t = float(Defs.CARE["rescan"])
+				var body := game.find_body(self, float(Defs.REVIVE["scan"]) * Defs.TILE)
+				if body:
+					cmd_revive(body)
+			if order == "heal":
+				want = _heal(delta)
 		"revive":
 			want = _revive(delta)
 		"build":

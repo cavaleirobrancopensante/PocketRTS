@@ -98,6 +98,13 @@ SHEETS = {
         "groups": [("idle", 0), ("walk", 175), ("fire2", 700), ("slash", 850), ("death", 1180)],
         "cell": FOOT, "ref_h": 33, "expect": {"fire2": 2, "slash": 5, "death": 5},
     },
+    # the Mounted Missionary: 2 standing, 9 gallop, 4 death (rearing, falling, the horse down,
+    # him lying with his cross). His robe and cross aren't team colour; the saddle cloth is.
+    "missionary_mounted": {
+        "rows": [("missionary_mounted", d) for d in DIRS5],
+        "groups": [("idle", 0), ("walk", 205), ("death", 1045)], "expect": {"walk": 9, "death": 4},
+        "cell": CAV, "ref_h": 52,
+    },
     # the Dismounted Cuirassier: 2 standing, 7 walking, aim, aim, shot (with the flash), 6 sabre
     # poses (only the first two face the attack, and none shows the cut: see sabre_attack), 2 death
     "cuirassier_dismounted": {
