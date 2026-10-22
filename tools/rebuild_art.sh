@@ -41,6 +41,7 @@ python3 tools/import_mist_toad.py       # Mist Toad (its own pass: black sheet, 
 python3 tools/import_mortar_walk.py      # the Mortar's towed walk (replaces round 10's walk; its side-on
                                          # horse is the Field Cannon's limber horse)
 python3 tools/fix_mortar_crew.py         # the Mortar's crew: two men in every view, and no pennant
+python3 tools/fix_mortar_smoke.py         # no smoke puff over the right-hand gunner's helmet when it fires
                                          # (after the reload, helmets and towed walk above)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
