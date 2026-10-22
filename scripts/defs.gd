@@ -659,8 +659,8 @@ const HORSES := {"wander": 34.0,
 	"team_max": 4, "team_speed": 0.12, "team_hit": 0.3, "near_breeder": 4.0,
 	"bolt_ranged": 0.4, "bolt_melee": 0.25, "bolt_hp": 0.2, "bolt_tiles": [5.0, 7.0], "bolt_speed": 1.4,
 	"bolt_back": 8.0}
-## The saddle cloth of a loose horse (nobody's): plain undyed brown.
-const NEUTRAL_CLOTH := Color(0.55, 0.45, 0.33)
+## The saddle cloth of a loose horse (nobody's): a faded greyish white.
+const NEUTRAL_CLOTH := Color(0.86, 0.85, 0.80)
 ## Who rides what: the man on foot -> the mounted unit (and back with FOOT). Armour, his locks,
 ## bayonet, pouch, kills, powder, hp share and reload go across both ways.
 const MOUNTS := {"labourer": "messenger", "musketeer": "dragoon", "dismounted": "cuirassier", "missionary": "mounted_missionary"}
