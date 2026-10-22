@@ -40,6 +40,8 @@ python3 tools/import_mist_toad.py       # Mist Toad (its own pass: black sheet, 
                                          # its portrait and the FOG / TONGUE ability icons
 python3 tools/import_mortar_walk.py      # the Mortar's towed walk (replaces round 10's walk; its side-on
                                          # horse is the Field Cannon's limber horse)
+python3 tools/fix_mortar_crew.py         # the Mortar's crew: two men in every view, and no pennant
+                                         # (after the reload, helmets and towed walk above)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 echo "Now run: godot --headless --import"
