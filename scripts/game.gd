@@ -4420,15 +4420,20 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 func call_runners(w: Unit) -> void:
 	if w.max_powder() - w.powder < float(Defs.WAGON["keg"]):
 		return
+	if w._powder_building() != null:
+		return                         # (by a Mill, Barracks or Hall it fills by itself)
 	var have := 0
 	for u in units:
 		if u.team == w.team and not u.dead and u.order == "keg" and u.order_target == w:
 			have += 1
 	if have >= int(Defs.WAGON["runners"]):
 		return
-	var mill := nearest_of(w.position, w.team, "powder_mill")
-	if mill == null:
+	if nearest_of(w.position, w.team, "powder_mill") == null:
 		return
+	# who goes: idle labourers first, nearest the wagon; with none idle, men taken off the
+	# work the side can best spare: the farms or the mills, whichever resource is better
+	# off counting what's banked and what comes in a minute (powder worth 3 gold)
+	var spare := _spare_job(w.team)
 	for i in int(Defs.WAGON["runners"]) - have:
 		var best: Unit = null
 		var bd := INF
@@ -4436,15 +4441,42 @@ func call_runners(w: Unit) -> void:
 			if u.team != w.team or u.dead or u.off_field or u.kind != "labourer" or u.keg \
 					or not ((u.order == "idle" and u.auto_work) or u.order == "gather"):
 				continue
-			var dd: float = u.position.distance_to(mill.center())
-			if u.order == "gather" and u.home_mine is Building:
-				dd += 300.0 if (u.home_mine as Building).kind == "powder_mill" else 120.0
+			var dd: float = u.position.distance_to(w.position)
+			if u.order == "gather":
+				var job: String = (u.home_mine as Building).kind if u.home_mine is Building else ""
+				dd += 2000.0 if job == spare else 6000.0
 			if dd < bd:
 				bd = dd
 				best = u
 		if best == null:
 			return
 		best.cmd_keg(w)
+
+
+## Which labourers' work a side can best spare for a while: "farm" (gold) or
+## "powder_mill" (powder), whichever resource is better off, bank plus a minute's income.
+func _spare_job(t: int) -> String:
+	var r := income_rates(t)
+	var gold := float(players[t]["gold"]) + r.x * 60.0
+	var powder := (float(players[t]["res2"]) + r.y * 60.0) * 3.0
+	return "farm" if gold >= powder else "powder_mill"
+
+
+var _income_log := {}                    # team -> [[clock, gold earned, res2 earned], ...]
+
+
+## A side's income, gold and second resource a second, over about the last minute.
+func income_rates(t: int) -> Vector2:
+	var log: Array = _income_log.get(t, [])
+	var now := [clock, float(stats[t]["gold"]), float(stats[t]["res2_in"])]
+	if log.is_empty() or clock - float(log.back()[0]) >= 5.0:
+		log.append(now)
+		while log.size() > 13:
+			log.pop_front()
+		_income_log[t] = log
+	var first: Array = log[0]
+	var dt: float = maxf(clock - float(first[0]), 1.0)
+	return Vector2((float(now[1]) - float(first[1])) / dt, (float(now[2]) - float(first[2])) / dt)
 
 
 func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> Effect:
@@ -4725,6 +4757,8 @@ func _physics_process(delta: float) -> void:
 		_body_bar_t = 0.2
 		bodies = bodies.filter(func(b) -> bool: return is_instance_valid(b) and b.dead)
 		body_bars.queue_redraw()
+		for t in n_players():
+			income_rates(t)            # (keeps each side's income log going)
 	var vsz := get_viewport().get_visible_rect().size / camera.zoom
 	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 	_economy(delta)

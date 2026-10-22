@@ -240,7 +240,7 @@ const UNITS := {
 		"name": "Powder Wagon", "hp": 220, "armor": 1, "speed": 38, "cost": 100, "cost2": 30, "time": 25.0, "supply": 2,
 		"sight": 7, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 16, "from": "foundry",
 		"no_attack": true, "faction": "crown",
-		"about": "Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY sends 2 labourers with kegs from the Powder Mill. No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.",
+		"about": "Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY (on from the start; G turns it off) sends 2 labourers with kegs from the Powder Mill when it's out in the field: idle ones first, else men taken off the farms or the mills, whichever your side can best spare. No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.",
 	},
 	"cuirassier": {
 		"tags": ["armored"],

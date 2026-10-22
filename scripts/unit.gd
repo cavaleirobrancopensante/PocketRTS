@@ -1024,6 +1024,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	d = Defs.UNITS[k]
 	max_hp = d["hp"]
 	hp = max_hp
+	if k == "powder_wagon":
+		supplying = true               # SUPPLY is on from the start (G turns it off)
 	if k == "stormcaller":
 		charge = float(Defs.STORM["max"]) * 0.5
 	elif k == "mist_toad":
