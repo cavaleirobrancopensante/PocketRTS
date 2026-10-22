@@ -1322,6 +1322,12 @@ func _res_line(t: int) -> String:
 
 
 func _draw() -> void:
+	var pt := Perf.t0()
+	_draw_all()
+	Perf.add(&"hud_draw", pt)
+
+
+func _draw_all() -> void:
 	if game == null:
 		return
 	var font := ThemeDB.fallback_font

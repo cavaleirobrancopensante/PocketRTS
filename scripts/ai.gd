@@ -123,24 +123,46 @@ func _physics_process(delta: float) -> void:
 	if _think > 0.0:
 		return
 	_think = [2.2, 1.2, 0.7, 0.4][difficulty]
+	var t0 := Perf.t0()
+	_think_all()
+	Perf.add(&"ai", t0)
+
+
+func _think_all() -> void:
+	var pt := Perf.t0()
 	_workers()
+	pt = _lap(&"ai_workers", pt)
 	_econ_build()
+	pt = _lap(&"ai_econ", pt)
 	_supply()
 	_build_up()
+	pt = _lap(&"ai_build", pt)
 	_research()
 	_produce()
+	pt = _lap(&"ai_produce", pt)
 	if difficulty >= 1 and _crown() and not peaceful:
 		_raid()
 		_balloon_drop()
+	pt = _lap(&"ai_raid", pt)
 	_army()
+	pt = _lap(&"ai_army", pt)
 	if _crown():
 		_tend_wagon()
 		_horses()
+	pt = _lap(&"ai_horses", pt)
 	_loose_horses()
+	pt = _lap(&"ai_loose", pt)
 	if difficulty >= 1:
 		_abilities()
+	pt = _lap(&"ai_abil", pt)
 	if difficulty >= 2:
 		_micro()
+	_lap(&"ai_micro", pt)
+
+
+func _lap(zone: StringName, since: int) -> int:
+	Perf.add(zone, since)
+	return Perf.t0()
 
 
 # ------------------------------------------------------------------ helpers
