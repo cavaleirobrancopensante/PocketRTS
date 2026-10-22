@@ -1232,12 +1232,40 @@ func _army() -> void:
 		var hall: Array = _halls()
 		if hall.is_empty():
 			return
-		var front: Vector2 = hall[0].center().lerp(_enemy_base(), 0.15)
+		var front: Vector2 = _rally_front(hall[0])
 		for u in army:
 			if u.order == "idle" and u.position.distance_to(front) > 160.0:
-				u.cmd_move(front + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+				u.cmd_move(_home_spot(front), true)
 			elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 				u.cmd_deploy()
+
+
+## Where the army waits at home: a little in front of the hall toward the enemy, but on the
+## hall's own ground (same height, same walkable area): the straight line to the enemy can
+## cross a cliff, and the men then stood down the hill outside the main.
+func _rally_front(hall: Building) -> Vector2:
+	var home := hall.center()
+	var hc: Vector2i = game.cell_of(home + Vector2(0, hall.rect().size.y * 0.5 + 24.0))
+	var h: int = game.height[game.idx(hc)] if game.in_map(hc) else 0
+	var reg: int = game.region_of(hc)
+	var want: Vector2 = home.lerp(_enemy_base(), 0.15)
+	for k in 11:
+		var p: Vector2 = want.lerp(home, k / 10.0)
+		var c: Vector2i = game.cell_of(p)
+		if game.in_map(c) and game.open_cell(c) and game.height[game.idx(c)] == h and (reg < 0 or game.region_of(c) == reg):
+			return p
+	return game.cell_center(hc)
+
+
+## A spot near the rally point, scattered a little, but never over the edge of the plateau.
+func _home_spot(front: Vector2) -> Vector2:
+	var spot: Vector2 = front + Vector2(randf_range(-60, 60), randf_range(-60, 60))
+	var sc: Vector2i = game.cell_of(spot)
+	var fc: Vector2i = game.cell_of(front)
+	if not game.in_map(sc) or not game.in_map(fc) or game.height[game.idx(sc)] != game.height[game.idx(fc)] \
+			or game.region_of(sc) != game.region_of(fc):
+		return front
+	return spot
 
 
 ## Brood: a swarm never walks into the guns in one lump. Each wave splits into groups
@@ -1246,7 +1274,7 @@ func _army() -> void:
 ## next wave instead of trickling in one by one.
 func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 	var hall: Array = _halls()
-	var front: Vector2 = hall[0].center().lerp(_enemy_base(), 0.15) if not hall.is_empty() else game.center_of_team(team)
+	var front: Vector2 = _rally_front(hall[0]) if not hall.is_empty() else game.center_of_team(team)
 	# don't throw a small swarm at a much bigger army: wait until it's worth as much
 	var mine := 0.0
 	for u in army:
@@ -1330,7 +1358,7 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 		if in_wave.has(u):
 			continue
 		if u.order == "idle" and u.position.distance_to(front) > 160.0:
-			u.cmd_move(front + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+			u.cmd_move(_home_spot(front), true)
 		elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 			u.cmd_deploy()
 
