@@ -407,12 +407,12 @@ const BUILDINGS := {
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains Musketeers and (with a Foundry) Horsemen; once the Armoury has researched Armour, armoured Guardsmen and Cuirassiers too. Refits soldiers with what the Armoury researched (AUTO REFIT: idle ones nearby).",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains Musketeers and (with a Foundry) Horsemen; with Armour, Guardsmen and Cuirassiers. Refits soldiers.",
 	},
 	"armoury": {
 		"name": "Armoury", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": [], "requires": "barracks", "faction": "crown",
-		"about": "Researches the Crown's upgrades: Armour, the musket locks, the socket bayonet, Prepared Charges and the Gunner's Quadrant for the guns, and the Cavalry Charge. Refits soldiers like the Barracks (AUTO REFIT). Needs a Barracks.",
+		"about": "All the Crown's research: Armour, the musket locks, the bayonet, the guns' drills and the Cavalry Charge. Refits soldiers. Needs a Barracks.",
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
@@ -518,7 +518,8 @@ const BUILDINGS := {
 
 ## Research: done once per player at a building (`at`), paid in the first resource (`cost`)
 ## and the second (`cost2`), taking `time` seconds; `requires` another research first,
-## `needs` a finished building of that kind. (`icon`: assets/icons/<icon>.png.)
+## `needs` a finished building of that kind. (`icon`: assets/icons/<icon>.png; `label`: its
+## button's, when the name is too long for one.)
 ## Crown, all at the Armoury. EQUIPMENT (Armour, the musket locks, the socket bayonet) only
 ## UNLOCKS the upgrade: each soldier is then refitted one by one (REFIT): he walks to a
 ## Barracks, an Armoury or a Powder Wagon and pays `fee` gold (+ `fee2` powder) there
@@ -542,16 +543,16 @@ const RESEARCH := {
 	"caplock": {"name": "Caplock", "at": "armoury", "faction": "crown", "cost": 100, "cost2": 40, "time": 50.0,
 		"icon": "research_caplock", "reload": 0.7, "requires": "flintlock", "fee": 16,
 		"about": "Percussion caps: unlocks the refit (reload 30% faster than at the start), 16 gold a man. New Musketeers come out with it."},
-	"bayonet": {"name": "Socket Bayonet", "at": "armoury", "faction": "crown", "cost": 40, "cost2": 0, "time": 20.0,
+	"bayonet": {"name": "Socket Bayonet", "label": "BAYONET", "at": "armoury", "faction": "crown", "cost": 40, "cost2": 0, "time": 20.0,
 		"icon": "research_bayonet", "damage": 6.0, "cooldown": 0.85, "fee": 3,
 		"about": "A socket bayonet that leaves the muzzle free: unlocks the refit (bayonet +6 damage, thrusts 15% faster), 3 gold a man. New Musketeers come out with it."},
-	"charges": {"name": "Prepared Charges", "at": "armoury", "faction": "crown", "cost": 100, "cost2": 40, "time": 40.0,
+	"charges": {"name": "Prepared Charges", "label": "CHARGES", "at": "armoury", "faction": "crown", "cost": 100, "cost2": 40, "time": 40.0,
 		"icon": "research_charges", "needs": "foundry", "drill": true, "kinds": ["cannon", "mortar"], "reload": 0.8,
 		"about": "Powder in ready-made bags: every Field Cannon and Mortar reloads 20% faster."},
-	"quadrant": {"name": "Gunner's Quadrant", "at": "armoury", "faction": "crown", "cost": 125, "cost2": 30, "time": 45.0,
+	"quadrant": {"name": "Gunner's Quadrant", "label": "QUADRANT", "at": "armoury", "faction": "crown", "cost": 125, "cost2": 30, "time": 45.0,
 		"icon": "research_quadrant", "requires": "charges", "drill": true, "kinds": ["cannon", "mortar"], "range": 32,
 		"about": "Laying the guns by the quadrant: every Field Cannon and Mortar reaches 1 tile further."},
-	"charge": {"name": "Cavalry Charge", "at": "armoury", "faction": "crown", "cost": 60, "cost2": 0, "time": 25.0,
+	"charge": {"name": "Cavalry Charge", "label": "CHARGE", "at": "armoury", "faction": "crown", "cost": 60, "cost2": 0, "time": 25.0,
 		"icon": "research_charge", "drill": true, "kinds": ["cuirassier"],
 		"about": "Drilled to charge: after about 2 s at the gallop a Horseman's or Cuirassier's next blow hits double and throws the enemy back."},
 }
@@ -573,6 +574,11 @@ const LIGHT_ART := {"cuirassier": "horseman"}
 ## cost its fee on top. (The key "cuirassier" is the armoured horseman.)
 const TRAIN_AS := {"musketeer": ["musketeer", false], "guardsman": ["musketeer", true],
 	"horseman": ["cuirassier", false], "cuirassier": ["cuirassier", true]}
+
+
+## A research's button label.
+static func research_label(key: String) -> String:
+	return String(RESEARCH[key].get("label", String(RESEARCH[key]["name"]).to_upper()))
 
 
 static func train_kind(key: String) -> String:

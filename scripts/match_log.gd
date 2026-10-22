@@ -88,11 +88,12 @@ func snapshot() -> void:
 			if u.is_worker():
 				workers += 1
 			else:
-				counts[u.kind] = int(counts.get(u.kind, 0)) + 1
+				var ck := Defs.train_key(u.kind, u.armoured)     # (Guardsmen and Cuirassiers on their own)
+				counts[ck] = int(counts.get(ck, 0)) + 1
 				value += int(u.d["cost"]) / maxi(1, int(u.d.get("spawn", 1)))
 		var army := PackedStringArray()
 		for k in counts:
-			army.append("%d %s" % [counts[k], Defs.UNITS[k]["name"]])
+			army.append("%d %s" % [counts[k], Defs.train_name(k)])
 		var bl := {}
 		for b in game.buildings:
 			if b.team == t and not b.dead and b.built:

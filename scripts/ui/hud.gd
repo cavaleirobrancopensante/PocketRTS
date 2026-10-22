@@ -763,7 +763,7 @@ func _build_card() -> Array:
 			if rreq != "" and not game.has_tech(game.human, rreq) and not game.researching(game.human, rreq):
 				continue
 			var rwhy := game.research_problem(b, rk)
-			var lab: String = info["name"].to_upper()
+			var lab: String = Defs.research_label(rk)
 			list.append([_research_icon(rk), lab, func() -> void:
 				var w := game.start_research(b, rkk)
 				if w != "":
@@ -849,7 +849,7 @@ func _refit_buttons(list: Array, units: Array) -> void:
 		elif game.refit_place(game.human, need[0].position) == null:
 			why = "Needs a Barracks, an Armoury or a Powder Wagon to refit at."
 		var info: Dictionary = Defs.RESEARCH[ww]
-		var lab := String(info["name"]).to_upper()
+		var lab := Defs.research_label(ww)
 		var price := "%d %s" % [fee[0], String(res[0]).to_lower()] + (" + %d %s" % [fee[1], String(res[1]).to_lower()] if fee[1] > 0 else "")
 		var what := "reload %d%% faster than a plain musket" % int(round((1.0 - float(info.get("reload", 1.0))) * 100.0))
 		if ww == "armour":
@@ -1035,7 +1035,7 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
-	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "SOCKET BAYONET": "W", "AUTO REFIT": "Q"}
+	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q"}
 ## Keys the left hand reaches without leaving the group numbers: names only take letters
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
@@ -2133,7 +2133,7 @@ func _card_tip(it: Array) -> Dictionary:
 
 func _research_of(lab: String) -> String:
 	for rk in Defs.RESEARCH:
-		if String(Defs.RESEARCH[rk]["name"]).to_upper() == lab:
+		if Defs.research_label(rk) == lab:
 			return rk
 	return ""
 
