@@ -1030,12 +1030,33 @@ def import_structures2(data):
             print(f"  {name}: {sizes2}")
 
 
-def dark_mask(px):
-    """Foreground of a sheet on black: its real alpha if it has any, else everything that
-    isn't the flat black of the border (holes inside a building filled back in)."""
+def dark_mask(px, level=90, rough=5.0):
+    """Foreground of a sheet on black: its real alpha if it has any; else the background is
+    the black and the soft glow painted round the drawings (dark, under `level`, and smooth:
+    its local spread under `rough`) reached from the sheet's border, and the rest is the
+    drawing (its dark shading is textured, so it stays)."""
     if (px[..., 3] < 128).mean() > 0.05:
         return alpha_mask(px, 200)
-    return ndimage.binary_fill_holes(flat_mask(px, 40))
+    rgb = px[..., :3].astype(float)
+    v = rgb.max(-1)
+    mean = ndimage.uniform_filter(v, 3)
+    spread = np.sqrt(np.maximum(ndimage.uniform_filter(v * v, 3) - mean * mean, 0))
+    soft = (v < 22) | ((v < level) & (spread < rough))
+    lab, _ = ndimage.label(soft)
+    edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
+    bg = np.isin(lab, edge[edge > 0])
+    fg = ndimage.binary_opening(~bg, iterations=2)
+    fg = ndimage.binary_fill_holes(fg)
+    # the 4 states may still touch through the glow on the ground: part them where the
+    # columns are emptiest near each quarter line (they aren't drawn in exact quarters)
+    col = ndimage.uniform_filter1d(fg.sum(0).astype(float), 9)
+    w = fg.shape[1]
+    for k in (1, 2, 3):
+        lo, hi = int(w * (k / 4 - 0.1)), int(w * (k / 4 + 0.1))
+        c = lo + int(np.argmin(col[lo:hi]))
+        if col[c] > 0:
+            fg[:, c - 5:c + 6] = False      # (wide: frames_by_slot grows the pieces by 3)
+    return fg
 
 
 def import_brood_building(name, data):

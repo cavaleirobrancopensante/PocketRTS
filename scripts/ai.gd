@@ -554,7 +554,7 @@ func _grow_hall() -> void:
 		return
 	var nl := main.next_level()
 	if main.level == 1:
-		var army_out := _wave_sup > 0 or _army_supply(game.army(team)) >= _lv([16, 12, 10])
+		var army_out: bool = _wave_sup > 0 or _army_supply(game.army(team)) >= _lv([16, 12, 10])
 		if not army_out or _gold() < int(nl["cost"]) + _lv([200, 120, 60]):
 			return
 	elif main.level == 2:

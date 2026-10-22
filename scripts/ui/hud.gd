@@ -785,7 +785,7 @@ func _build_card() -> Array:
 			var ulab := String(nl["label"])
 			_tip_for[ulab] = ["Upgrade to %s" % nl["name"], String(nl["about"]),
 				"%s  ·  %d s" % [_cost_text(int(nl["cost"]), int(nl.get("cost2", 0))), int(nl["time"])]]
-			list.append(["hive", ulab, func() -> void:
+			list.append([String(nl["art"]) if _icon(String(nl["art"])) != null else "hive", ulab, func() -> void:
 				var w := game.start_hall_upgrade(b)
 				toast(w if w != "" else "Your %s is growing into a %s." % [b.d["name"], nl["name"]]), uwhy == "", uwhy, str(nl["cost"])])
 	if b and b.built:
@@ -1976,6 +1976,8 @@ func _unit_icon(e: Entity) -> Texture2D:
 	if e is Unit and Defs.TEMP_ART.has(e.kind):
 		return _icon(Defs.icon_for(Defs.train_key(e.kind, (e as Unit).armoured)))
 	var icon := _icon(e.kind)
+	if e is Building and (e as Building).level > 1 and _icon(String((e as Building).level_info().get("art", ""))):
+		icon = _icon(String((e as Building).level_info()["art"]))     # (a Warren, a Broodmound)
 	if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
 		icon = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
 	return icon

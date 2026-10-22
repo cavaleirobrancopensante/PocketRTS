@@ -4132,7 +4132,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
 		if b.visible and b.sprite and b.sprite.texture:
-			var sr := b.sprite_rect()
+			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null
@@ -4147,7 +4147,7 @@ func crew_site_at(p: Vector2, t: int) -> Building:
 		if b.rect().grow(4).has_point(p):
 			return b
 		if b.sprite and b.sprite.texture:
-			var sr := b.sprite_rect()
+			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
 	return null

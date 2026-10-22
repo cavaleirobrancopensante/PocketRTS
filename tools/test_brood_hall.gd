@@ -110,8 +110,8 @@ func _run() -> void:
 	var up: bool = await wait_for(func() -> bool: return h.level == 2, 45.0)
 	check(up and h.d["name"] == "Warren" and int(h.max_hp) == 2000 and h.eggs_max() == 10, "   a Warren after 40 s: 2000 health, 10 eggs (%s, %d hp)" % [h.d["name"], int(h.max_hp)])
 	check(h.hp >= hp0 + 400.0, "   it gained the health (%d -> %d)" % [int(hp0), int(h.hp)])
-	var tex_scale: float = h.sprite.scale.x
-	check(absf(tex_scale - 1.15) < 0.01 or Building.hall_art(2)[0] == "warren_hall", "   drawn bigger (scale %.2f)" % tex_scale)
+	var tex_w: float = h.sprite.texture.get_width() * h.sprite.scale.x
+	check(tex_w > 175.0, "   drawn bigger: %s, %d px wide (a Burrow: 158)" % [h.sprite.texture.resource_path.get_file(), int(tex_w)])
 	var ten: bool = await wait_for(func() -> bool: return h.eggs == 10, 60.0)
 	await wait(8.0)
 	check(ten and h.eggs == 10, "   its eggs fill to 10 and stop (%d)" % h.eggs)
