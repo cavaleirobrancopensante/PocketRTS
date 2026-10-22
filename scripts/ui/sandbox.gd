@@ -40,8 +40,8 @@ func _build() -> void:
 	if not open:
 		return
 	_panel = PanelContainer.new()
-	_panel.custom_minimum_size.x = 272
-	_panel.position = Vector2(right - 272, 88)
+	_panel.custom_minimum_size.x = 320
+	_panel.position = Vector2(right - 320, 88)
 	_panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.1, 0.085, 0.065, 0.93), UiStyle.TRIM_DIM, 2, 10, 10.0))
 	add_child(_panel)
 	var v := VBoxContainer.new()
@@ -96,11 +96,15 @@ func _build() -> void:
 			_build())
 		b.add_theme_color_override("font_color", UiStyle.accent(ff).lightened(0.4))
 		tabs.add_child(b)
-	var grid := GridContainer.new()
-	grid.columns = 6
-	grid.add_theme_constant_override("h_separation", 3)
-	grid.add_theme_constant_override("v_separation", 3)
-	v.add_child(grid)
+	# what to place: one big row per unit or building (picture and name), in a list that scrolls
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, clampf(get_viewport_rect().size.y - 470.0, 160.0, 520.0))
+	v.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 4)
+	scroll.add_child(list)
 	var kinds: Array = []
 	for k in Defs.UNITS:
 		if Defs.UNITS[k]["faction"] == _tab:
@@ -111,18 +115,20 @@ func _build() -> void:
 	for k in kinds:
 		var kk: String = k
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(40, 40)
+		b.custom_minimum_size = Vector2(0, 60)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.icon = load("res://assets/icons/%s.png" % k) if ResourceLoader.exists("res://assets/icons/%s.png" % k) else null
-		b.expand_icon = true
-		b.add_theme_constant_override("icon_max_width", 34)
-		b.tooltip_text = (Defs.UNITS[k]["name"] if Defs.UNITS.has(k) else Defs.BUILDINGS[k]["name"])
+		b.add_theme_constant_override("icon_max_width", 52)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.text = "  " + (Defs.UNITS[k]["name"] if Defs.UNITS.has(k) else Defs.BUILDINGS[k]["name"])
+		b.add_theme_font_size_override("font_size", 18)
 		if spawn == k:
 			UiStyle.chosen(b)
 		b.pressed.connect(func() -> void:
 			spawn = "" if spawn == kk else kk
 			deleting = false
 			_build())
-		grid.add_child(b)
+		list.add_child(b)
 	var row4 := HBoxContainer.new()
 	row4.add_theme_constant_override("separation", 4)
 	v.add_child(row4)
@@ -142,7 +148,7 @@ func _build() -> void:
 		hint = "Pick something to place."
 	var l := UiStyle.text(hint, 13, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size.x = 240
+	l.custom_minimum_size.x = 290
 	v.add_child(l)
 
 
