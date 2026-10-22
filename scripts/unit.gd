@@ -39,7 +39,11 @@ var path_pending := false
 var stuck_t := 0.0
 var squeeze_t := 0.0            # > 0: walking out of a sealed pocket through a building's edge (last resort)
 var wall_flee_t := 0.0          # (computer) pulled back from a wall that shooters behind it cover
+var siege_t := 0.0              # (computer) its army is breaking in at a wall: the AI's siege gives the orders
 var _wall_chk := 0.0
+var _reach_t := 0.0             # (stuck chasing something) when it next asks whether it can get at it at all
+var _wall_look_t := 0.0         # (melee) when it next checks whether it's pressed against an enemy wall it must break
+var _detour: Building = null    # (melee, told to attack a man walled off from it) the wall piece it breaks first
 var last_pos := Vector2.ZERO
 var repath_t := 0.0
 
@@ -1115,6 +1119,8 @@ func cmd_attack(e: Entity) -> void:
 	order = "attack"
 	order_target = e
 	target = e
+	_detour = null
+	_wall_look_t = 0.0
 
 
 ## Units with two modes: moving (packed) and set up (deployed). The cannon limbers and
@@ -2240,7 +2246,8 @@ func _physics_process(delta: float) -> void:
 					return
 			if not is_worker() and scan_t <= 0.0:
 				scan_t = 0.35
-				target = game.find_target(self, _scan_range())
+				target = _pick_target(_scan_range())
+			_walled_check(delta)
 			if target:
 				want = _engage(target, delta, true)
 				if position.distance_to(leash_from) > 320.0:
@@ -2261,11 +2268,12 @@ func _physics_process(delta: float) -> void:
 			if is_instance_valid(target) and target is Building and (target.kind == "wall" or target.kind == "gate") and scan_t <= 0.0 and stuck_t < 0.5:
 				scan_t = 0.6
 				var better := game.find_target(self, _scan_range())
-				if better and better != target and not (better is Building and (better.kind == "wall" or better.kind == "gate")):
+				if better and better != target and not (better is Building and (better.kind == "wall" or better.kind == "gate")) and _can_get_at(better):
 					target = better
 			if scan_t <= 0.0 and target == null and not is_worker():
 				scan_t = 0.3
-				target = game.find_target(self, _scan_range())
+				target = _pick_target(_scan_range())
+			_walled_check(delta)
 			if target:
 				want = _engage(target, delta, true)
 				if target == null or not _valid_target(target):
@@ -2284,7 +2292,7 @@ func _physics_process(delta: float) -> void:
 				if not _next_order():
 					cmd_stop()
 			else:
-				target = order_target
+				target = _attack_detour(delta)
 				want = _engage(target, delta, true)
 		"gather":
 			want = _gather(delta)
@@ -2429,6 +2437,9 @@ func compute_path() -> void:
 	path_pending = false
 	if path_goal == Vector2.INF:
 		return
+	# the enemy's gates are shut to us: the path goes round (or, walled out, up to the wall
+	# to break it), never into a gate it can't open
+	var shut := _shut_gates()
 	path = game.find_path(position, path_goal, not is_worker())
 	path_i = 0
 	stuck_t = 0.0
@@ -2440,6 +2451,46 @@ func compute_path() -> void:
 		if out != Vector2.INF:
 			squeeze_t = 3.0
 			path = PackedVector2Array([out]) + game.find_path(out, path_goal, not is_worker())
+	_open_gates(shut)
+
+
+## The pathfinder counts every gate as open (it opens for its own side): while it works out
+## this unit's way, the gates of its enemies are shut (then opened again).
+func _shut_gates() -> Array:
+	var out: Array = []
+	if is_air() or game.gate_team.is_empty():
+		return out
+	for i in game.gate_team:
+		if game.solid[i] == 3 and game.hostile(int(game.gate_team[i]), team):
+			var c := Vector2i(int(i) % Game.W, int(i) / Game.W)
+			game.astar.set_point_solid(c, true)
+			out.append(c)
+	return out
+
+
+func _open_gates(cells: Array) -> void:
+	for c in cells:
+		game.astar.set_point_solid(c, false)
+
+
+## Can it walk up to `e` (its enemies' gates shut)?
+func _walk_reaches(e: Entity) -> bool:
+	return _walk_reaches_point(e.position if e.is_unit() else e.center())
+
+
+func _walk_reaches_point(p: Vector2) -> bool:
+	var a: Vector2i = game.cell_of(position)
+	if not game.open_cell(a):
+		a = game.nearest_free(a, 4)
+	var b: Vector2i = game.cell_of(p)
+	if not game.open_cell(b):
+		b = game.nearest_free(b, 3)
+	if a.x < 0 or b.x < 0:
+		return false
+	var shut := _shut_gates()
+	var ok: bool = not game.astar.get_id_path(a, b).is_empty()
+	_open_gates(shut)
+	return ok
 
 
 func _follow(_delta: float) -> Vector2:
@@ -2516,7 +2567,10 @@ func _move(want: Vector2, delta: float) -> void:
 		else:
 			stuck_t = maxf(stuck_t - delta * 2.0, 0.0)
 		# Walled out: hack at the enemy wall or gate in the way.
-		if stuck_t > 1.2 and target == null and not is_worker() and order in ["amove", "idle", "attack"]:
+		# (or chasing a man it can't get at, on the far side of the wall)
+		_reach_t -= delta
+		if stuck_t > 1.2 and not is_worker() and order in ["amove", "idle", "attack"] and not (order == "attack" and target == order_target) \
+				and (target == null or (_reach_t <= 0.0 and not _can_get_at(target))):
 			var wall := game.blocking_wall(self)
 			if wall:
 				target = wall
@@ -2532,26 +2586,33 @@ func _move(want: Vector2, delta: float) -> void:
 ## clearly first, and pull back together when it doesn't.
 func _wall_watch(delta: float) -> void:
 	wall_flee_t = maxf(wall_flee_t - delta, 0.0)
+	siege_t = maxf(siege_t - delta, 0.0)
 	_wall_chk -= delta
-	if _wall_chk > 0.0:
-		return
+	if _wall_chk > 0.0 or siege_t > 0.0:
+		return                       # (in a siege the army decides together: ai.gd)
 	_wall_chk = 0.5
 	if target == null or not is_instance_valid(target) or not (target is Building) \
 			or not (target.kind == "wall" or target.kind == "gate") or float(d["range"]) > 40.0 or is_worker():
 		return
-	if not game.ais.any(func(a) -> bool: return a.team == team):
+	# (a unit out with an attacking wave leaves it to its army: AI._siege_tick weighs the wall
+	# up for all of them at once)
+	if not game.ais.any(func(a) -> bool: return a.team == team and not a.in_wave(self)):
 		return
 	var wall: Building = target
-	# the hackers: our melee units at this wall
+	# the hackers: our melee units going for this wall (any piece of it here), the ones still
+	# on their way too: the first two to arrive mustn't judge the breach by themselves alone
 	var hackers: Array = []
-	for o in game.units_near(wall.center(), 140.0):
-		if not o.dead and o.team == team and o.target == wall and float(o.d["range"]) <= 40.0:
+	for o in game.units_near(wall.center(), 420.0):
+		if not o.dead and o.team == team and float(o.d["range"]) <= 40.0 and is_instance_valid(o.target) and o.target is Building \
+				and (o.target.kind == "wall" or o.target.kind == "gate") and o.target.center().distance_to(wall.center()) < 100.0:
 			hackers.append(o)
 	if hackers.is_empty():
 		return
-	# the shooters that can reach any of them
+	# the shooters that can reach any of them (at the wall)
 	var shooters := {}
 	for h in hackers:
+		if wall.edge_distance(h.position) > 60.0:
+			continue
 		for o in game.units_near(h.position, 320.0):
 			if o.dead or not game.hostile(o.team, team) or float(o.d["range"]) < 100.0 or shooters.has(o):
 				continue
@@ -2562,7 +2623,7 @@ func _wall_watch(delta: float) -> void:
 	var hack_dps := 0.0
 	var hack_hp := 0.0
 	for h in hackers:
-		hack_dps += maxf(1.0, float(h.d["damage"]) - wall.armor) / maxf(float(h.d["cooldown"]), 0.1)
+		hack_dps += maxf(1.0, float(h.d["damage"]) * float(h.d.get("building_bonus", 1.0)) - wall.armor) / maxf(float(h.d["cooldown"]), 0.1)
 		hack_hp += h.hp
 	var shoot_dps := 0.0
 	for o in shooters:
@@ -2587,6 +2648,126 @@ func _wall_watch(delta: float) -> void:
 		h.cmd_move(h.position + away * 260.0, false)
 		h.wall_flee_t = 25.0
 		h._wall_chk = 0.5
+
+
+## Can it fight `e` from here, or walk up to it? A melee unit can't reach a man standing behind
+## a wall (it would only push at the wall: it hacks at the wall instead); a gun only
+## switches to a target it can already reach (not walking into the choke after it).
+func _can_get_at(e: Entity) -> bool:
+	if not is_instance_valid(e) or e.dead:
+		return false
+	if is_air():
+		return true
+	var gap := e.edge_distance(position) - radius
+	if gap <= _range() + 4.0:
+		return true
+	if float(d["range"]) > 40.0:
+		return false
+	_reach_t = 0.5
+	return game.line_clear(position, e.center()) or _walk_reaches(e)
+
+
+## A melee unit up against an enemy wall or gate (idle or on an attack-move) that can't get
+## at what it's after (the men behind it, or the point it was sent to) breaks the wall. It
+## doesn't wait to count as stuck: in a crowd pressed at a wall the shoving keeps every unit
+## jostling, so the stuck timer never fills and they'd stand there under fire for good.
+func _walled_check(delta: float) -> void:
+	_wall_look_t -= delta
+	if _wall_look_t > 0.0:
+		return
+	_wall_look_t = 0.5
+	if is_worker() or is_air() or float(d["range"]) > 40.0 or not has_attack() or siege_t > 0.0:
+		return                       # (in a siege its army decides which piece, and who hits it)
+	if is_instance_valid(target) and target is Building and (target.kind == "wall" or target.kind == "gate"):
+		return
+	var near := game.blocking_wall(self)
+	if near == null:
+		return
+	if is_instance_valid(target) and not target.dead:
+		if _can_get_at(target):
+			return
+		var w := _wall_toward(target)
+		target = w if w else near
+	elif order == "amove" and not _walk_reaches_point(order_point):
+		target = near
+
+
+## Told to attack a man it can't walk up to (behind an enemy wall or shut gate): once at the
+## wall it breaks the piece in the way, then goes on after him (the order stands).
+func _attack_detour(delta: float) -> Entity:
+	if is_air() or is_worker() or float(d["range"]) > 40.0 or not has_attack() or not order_target.is_unit():
+		return order_target
+	if is_instance_valid(_detour) and not _detour.dead:
+		return _detour
+	_detour = null
+	_wall_look_t -= delta
+	if _wall_look_t > 0.0:
+		return order_target
+	# (at a wall it asks twice a second; out in the open, on the way, once every 1.5 s)
+	var at_wall := game.blocking_wall(self) != null
+	_wall_look_t = 0.5 if at_wall else 1.5
+	if not at_wall and not _any_enemy_wall():
+		return order_target
+	if _can_get_at(order_target):
+		return order_target
+	_detour = _wall_toward(order_target)
+	return _detour if _detour else order_target
+
+
+func _any_enemy_wall() -> bool:
+	for b in game.buildings:
+		if not b.dead and b.built and (b.kind == "wall" or b.kind == "gate") and game.hostile(b.team, team):
+			return true
+	return false
+
+
+## Target search for units on their own (idle, attack-move): a melee unit that can't walk up
+## to what it sees (men standing behind a wall or a shut gate) goes for the wall or gate in
+## the way instead, rather than pushing at the wall trying to reach them.
+func _pick_target(r: float) -> Entity:
+	var e := game.find_target(self, r)
+	if e == null or is_air() or float(d["range"]) > 40.0 or not e.is_unit() or _can_get_at(e):
+		return e
+	if siege_t > 0.0:
+		return null                  # (waiting in a siege's reserve: the army sends it to the wall)
+	var w := _wall_toward(e)
+	return w if w else e
+
+
+## The enemy wall or gate piece to break to get at `e`: of the pieces in sight it can walk
+## up to, the one most on the way (it's beside the unit, or the shortest way round to e).
+func _wall_toward(e: Entity) -> Building:
+	var near := game.blocking_wall(self)
+	if near:
+		return near
+	var best: Building = null
+	var bd := INF
+	var reach := sight * Defs.TILE
+	var shut := _shut_gates()
+	var a: Vector2i = game.cell_of(position)
+	if not game.open_cell(a):
+		a = game.nearest_free(a, 4)
+	for b in game.buildings:
+		if b.dead or not b.built or not (b.kind == "wall" or b.kind == "gate") or not game.hostile(b.team, team):
+			continue
+		var dd: float = b.edge_distance(position)
+		if dd > reach or not can_hit(b):
+			continue
+		var score: float = dd + b.center().distance_to(e.position) * 1.5
+		if score >= bd:
+			continue
+		# it must be able to walk up to that piece (a free cell beside it it can reach)
+		var ok := false
+		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var c: Vector2i = b.cell + dv
+			if game.open_cell(c) and a.x >= 0 and not game.astar.get_id_path(a, c).is_empty():
+				ok = true
+				break
+		if ok:
+			bd = score
+			best = b
+	_open_gates(shut)
+	return best
 
 
 ## Move toward and fight a target. Returns the desired velocity.
