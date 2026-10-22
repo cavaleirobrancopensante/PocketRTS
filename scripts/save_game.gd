@@ -73,8 +73,14 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
+	# every saved unit's number (in this list's order), so horses can name who leads them
+	var ids := {}
 	for u in game.units:
-		if u.dead or u.off_field:
+		if u.dead or u.off_field or (u.kind == "horse" and u.into is Building):
+			continue           # (a horse walking into a building is already in its queue entry)
+		ids[u] = ids.size()
+	for u in game.units:
+		if not ids.has(u):
 			continue
 		var ud := {"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
 			# (a Mist Toad's TONGUE windup isn't kept: it comes back with that energy unspent)
@@ -93,6 +99,27 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["ar"] = true
 		if u.coat != "":
 			ud["coat"] = u.coat
+		# horses: who leads it, where it grazes; riders and guns: their horse's health, a gun's
+		# harness; a man getting on (or off) a horse, and a Dragoon fighting on foot
+		if u.kind == "horse":
+			if u.leader and ids.has(u.leader):
+				ud["lead"] = ids[u.leader]
+			if u.graze_at != Vector2.INF:
+				ud["graze"] = _v2(u.graze_at)
+		if u.is_mounted() or Defs.HARNESSED.has(u.kind):
+			ud["hh"] = snappedf(u.horse_hp, 0.01)
+		if Defs.HARNESSED.has(u.kind) and not u.harnessed:
+			ud["harn"] = false
+		if u.auto_mount:
+			ud["am"] = true
+		if u.steed and ids.has(u.steed):
+			ud["steed"] = ids[u.steed]
+		if u.order == "mount" and u.order_target and ids.has(u.order_target):
+			ud["mt"] = ids[u.order_target]
+		elif u.order == "dismount":
+			ud["dm"] = true
+		elif u.order == "lead" and u.order_target and ids.has(u.order_target):
+			ud["lt"] = ids[u.order_target]
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
@@ -277,11 +304,14 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for b in game.buildings:
 		if b.crate == "ground" and b.crate_obj == null:
 			b.crate = "tower"       # (its crate wasn't found: a Winder fetches another)
+	var made: Array = []      # the saved units in order (null where one couldn't be made)
 	for ud in d["units"]:
 		var uk := _kind(String(ud["k"]))
 		if not Defs.UNITS.has(uk):
+			made.append(null)
 			continue
 		var u := game._add_unit(uk, int(ud["t"]), _to_v2(ud["p"]))
+		made.append(u)
 		if Defs.ARMOURED.has(uk):
 			# his own refits (older saves: research applied to every Musketeer, so he has it
 			# all; and every Cuirassier was armoured)
@@ -354,6 +384,41 @@ static func restore(game: Game, d: Dictionary) -> void:
 			u.haul_t = float(hl[0])
 			u.haul_shots = float(hl[1])
 			u.haul_at = Vector2(float(hl[2]), float(hl[3]))
+		u.horse_hp = float(ud.get("hh", 1.0))
+		if Defs.HARNESSED.has(u.kind) and not bool(ud.get("harn", true)):
+			u.harnessed = false
+			HorseCoat.apply(u)
+		u.auto_mount = bool(ud.get("am", false))
+		if u.kind == "horse" and ud.get("graze") is Array:
+			u.graze_at = _to_v2(ud["graze"])
+	# the horses' ties: who leads which (in their string's order), a man's own horse, and a
+	# man on his way to mount or lead one goes on with it
+	var units_d: Array = d["units"]
+	for i in units_d.size():
+		var ud: Dictionary = units_d[i]
+		var u = made[i]
+		if u == null:
+			continue
+		var li := int(ud.get("lead", -1))
+		if li >= 0 and li < made.size() and made[li] != null:
+			made[li].take_reins(u)
+		var si := int(ud.get("steed", -1))
+		if si >= 0 and si < made.size() and made[si] != null:
+			u.steed = made[si]
+	for i in units_d.size():
+		var ud: Dictionary = units_d[i]
+		var u = made[i]
+		if u == null:
+			continue
+		var mi := int(ud.get("mt", -1))
+		var ti := int(ud.get("lt", -1))
+		if mi >= 0 and mi < made.size() and made[mi] != null:
+			u.cmd_mount(made[mi])
+		elif ti >= 0 and ti < made.size() and made[ti] != null:
+			u.cmd_lead(made[ti])
+		elif bool(ud.get("dm", false)):
+			var am: bool = u.auto_mount
+			u.cmd_dismount(am)
 	for a in d.get("ai", []):
 		for ai in game.ais:
 			if ai.team == int(a["team"]):
