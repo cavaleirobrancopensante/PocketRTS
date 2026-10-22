@@ -1793,6 +1793,9 @@ func _draw_panel(font: Font) -> void:
 				_text(UiStyle.bold_font(), Vector2(vx, hb.position.y + 11), vt, 14, Color(1, 0.82, 0.3))
 			else:
 				info = vt + " · " + info
+		if e is Unit and (e as Unit).friendly_kills > 0:
+			var fk := (e as Unit).friendly_kills
+			info = "Friendly fire: %d of ours killed. " % fk + info
 		if eff_txt != "":
 			# the efficiency breakdown first, in its bar's colour, then the rest
 			_text(font, r.position + Vector2(90, 72), eff_txt, 15, eff_col)

@@ -112,6 +112,10 @@ func take_damage(amount: float, _from: Entity, blow := "") -> void:
 	flash = 0.12
 	if hp <= 0.0:
 		hp = 0.0
+		# friendly fire (round shot, shells, blasts on one's own men): counted on the
+		# shooter's card for interest; it never counts toward veterancy
+		if self is Unit and _from is Unit and _from != self and is_instance_valid(_from) and game.allied(_from.team, team):
+			_from.friendly_kills += 1
 		die()
 
 

@@ -86,7 +86,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			# (a Mist Toad's TONGUE windup isn't kept: it comes back with that energy unspent)
 			"charge": u.charge + (float(Defs.TONGUE["cost"]) if u.tongue_stage == "windup" else 0.0), "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying, "lf": u.load_f,
 			"auto": u.auto_work, "cross": u.cross_t, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
-			"kills": u.kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
+			"kills": u.kills, "ff": u.friendly_kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
 			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying,
 			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
@@ -344,6 +344,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.supplying = bool(ud.get("sup", false))
 		u.facing = _to_v2(ud["f"])
 		u.kills = int(ud.get("kills", 0))
+		u.friendly_kills = int(ud.get("ff", 0))
 		u.courier = bool(ud.get("courier", false))
 		u.topter_bat = String(ud.get("bat", ""))
 		u.overclock_t = float(ud.get("oc", 0.0))
