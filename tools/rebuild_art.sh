@@ -37,6 +37,8 @@ python3 tools/import_armoury.py          # the Crown Armoury (4 states, found by
                                          # build icon, the Armoury research icons and the Horseman /
                                          # Guardsman portraits (after round 11: replaces research_armour
                                          # and musketeer_armoured)
+python3 tools/import_pouch_icon.py       # the Shot Pouch research icon (same steel bevel)
+python3 tools/fix_mount_heads.py         # both Dragoons' front-view mount strips: frame 4 gets frame 5's head
 python3 tools/import_crate.py            # the Winder's self-building crate: unfold strips, carried / ground crate
 python3 tools/import_windmill.py         # the Farm's windmill (replaces import_art's farmhouse), sails,
                                          # scarecrows and Farm icon

@@ -688,7 +688,6 @@ const TEMP_ART := {
 	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "dismounted", "portrait_armoured": "dismounted_armoured"},
 	"mounted_missionary": {"art": "missionary_mounted", "portrait": "mounted_missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
-	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon (art still to come)
 	# the horse commands' card icons (tools/import_horse_icons.py)
 	"horse_lead": {"portrait": "horse_lead"},
 	"horse_release": {"portrait": "horse_release"},
