@@ -204,6 +204,15 @@ def fix_icon(src=ICON, dst=ICON):
         for x in range(64):
             if x < 6 or x > 57 or y < 6 or y > 57:
                 o[x, y] = src_px[x, y]
+    # a solid iron socket joining the blade to the handle (a one-pixel neck looked wired on)
+    H = lambda c: tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
+    edge, hi, mid, dk = H("101113"), H("8a8d97"), H("6a6c72"), H("404144")
+    for x in range(10, 18):
+        o[x, 15] = edge
+        o[x, 16] = edge if x in (10, 17) else hi
+        o[x, 17] = edge if x in (10, 17) else mid
+    for x in range(13, 18):
+        o[x, 18] = dk if x < 17 else edge
     out.save(dst)
     print("fix_labourer_hoe: icon: brown felt hat and a hoe")
 
