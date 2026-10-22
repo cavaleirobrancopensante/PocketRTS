@@ -949,7 +949,10 @@ func _update_sprite() -> void:
 			sprite.scale = Vector2(sc, sc)
 			sprite.position.y = 6.0 * (1.0 - sc)
 	var t := farm_body(state) if kind == "farm" else Game.tex("res://assets/buildings/%s_%s.png" % [base, state])
-	if sprite.texture != t:
+	if t == null and is_leveled():
+		# (a level's art not imported yet: draw the Burrow, scaled)
+		t = Game.tex("res://assets/buildings/%s_%s.png" % [kind, state])
+	if sprite.texture != t and t != null:
 		sprite.texture = t
 		sprite.offset = body_offset(kind, t)
 		if kind == "gate":
