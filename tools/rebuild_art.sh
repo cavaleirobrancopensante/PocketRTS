@@ -17,6 +17,7 @@ python3 tools/import_round10.py          # new musketeer (+ armoured), Mortar, A
                                          # and icons (replaces import_art's musketeer: before the fixes)
 python3 tools/fix_cannon_crew.py         # the cannon's crew: two men in every view (before the reload)
 python3 tools/import_reload.py           # cannon + mortar reload (built on their idle frames above)
+python3 tools/fix_helmets.py             # gun crews' morions back to steel (the team snap reddened some)
 python3 tools/fix_weapons.py             # straight pike and muskets (both musketeers), held properly
 python3 tools/fix_pike.py                # full-length pike in the thrust frames
 PYTHONPATH=tools python3 tools/make_aim_up.py   # both musketeers aiming up at flyers
