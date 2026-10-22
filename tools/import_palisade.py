@@ -368,8 +368,8 @@ MOCK = [
 
 
 def mock(pics, d):
-    """A test layout on grass, drawn in y order like the game: # wall, G gate (E-W),
-    H gate in a ... E-W line too, g gate in a N-S line."""
+    """A test layout on grass, drawn in y order like the game: # wall, G closed gate,
+    H open gate (both drawn E-W), g gate in a N-S line."""
     rows, cols = len(MOCK), len(MOCK[0])
     W, H = cols * TILE, rows * TILE + 40
     img = np.zeros((H, W, 4), np.uint8)
@@ -385,7 +385,9 @@ def mock(pics, d):
             if ch == ".":
                 continue
             if ch == "#":
-                m = sum(DIRS[k] for k, (dx, dy) in zip("nesw", ((0, -1), (1, 0), (0, 1), (-1, 0))) if at(x + dx, y + dy))
+                # (as Game.wall_links: walls join every way, gates only east or west)
+                m = sum(DIRS[k] for k, (dx, dy) in zip("nesw", ((0, -1), (1, 0), (0, 1), (-1, 0)))
+                        if at(x + dx, y + dy) and (MOCK[y + dy][x + dx] == "#" or k in "ew"))
                 p = pics[f"wall_{links(m)}_built"]
             else:
                 p = pics["gate_v_built" if ch == "g" else ("gate_open" if ch == "H" else "gate_built")]
