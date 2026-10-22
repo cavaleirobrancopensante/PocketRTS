@@ -5269,7 +5269,7 @@ func _draw_rein() -> void:
 	_rein.draw_polyline(PackedVector2Array([b, mid, hand]), col, 1.0)
 
 
-## A stand-in sprite's tint (Defs.TEMP_ART "tint": the Mounted Missionary on the Messenger's).
+## A stand-in sprite's tint (Defs.TEMP_ART "tint", for a unit borrowing another's sprites).
 func _apply_tint() -> void:
 	var m := sprite.material as ShaderMaterial if sprite else null
 	if m:

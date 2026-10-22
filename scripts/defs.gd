@@ -658,7 +658,7 @@ const MUSKETS := ["musketeer", "dragoon", "dismounted"]
 ## plume drawn on his hat (a stand-in sprite, to tell him from a Musketeer); "building": the
 ## sprite name of a building (assets/buildings/<name>_<state>.png). The designer's sheets:
 ## tools/import_horse_units.py (horse, messenger, dragoon, dragoon_armoured, dismounted,
-## dismounted_armoured) and tools/import_horse_breeder.py. Still TEMPORARY: the portraits of
+## dismounted_armoured, missionary_mounted) and tools/import_horse_breeder.py. Still TEMPORARY: the portraits of
 ## the new units and the Shot Pouch's and horse commands' icons.
 const TEMP_ART := {
 	"horse": {"art": "horse", "portrait": "horseman"},

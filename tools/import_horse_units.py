@@ -16,6 +16,8 @@
                                     4 frames: the 1st with a blade drawn in raised behind, the 2nd,
                                     the 1st with the blade swept forward (and its swing's trail),
                                     the 1st with it swept down.
+  art/crown/missionary_mounted.png  the Missionary on horseback: 5 rows, 2 standing, 9 walking,
+                                    4 death frames (only the saddle cloth is team colour)
 
 Frames are found by themselves: the foreground (not the slate) is split into rows by empty
 lines and into frames by empty columns; slivers (a sabre tip, a puff of smoke) join their
