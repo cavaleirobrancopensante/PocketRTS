@@ -113,7 +113,12 @@ var held_t := 0.0               # a set-up gun holding fire for its own men: it 
 var auto_repair := false        # REPAIR autocast: idle, it fixes damaged buildings nearby first (Winders: on from the start)
 var _cold := false
 var slow_t := 0.0              # slowed (Bloater acid)
-var kills := 0                  # veterancy
+var kills := 0:                 # veterancy (it shows on the sprite: VetLook)
+	set(v):
+		var was := VetLook.level(kills)
+		kills = v
+		if sprite and VetLook.level(v) != was:
+			VetLook.apply(self)
 var harvester: Unit = null      # (a body) the grub coming to take it
 var cocoon := 0                 # (a grub) essence it carries home
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
@@ -1261,7 +1266,26 @@ func _update_basket() -> void:
 		g.scale = Vector2(sc, sc)
 		g.position = sprite.offset + mid + Vector2(riders[mini(i, riders.size() - 1)])
 		g.self_modulate = Color.WHITE
-		g.material = p.sprite.material if p.sprite else null
+		_gunner_material(g, p)
+
+
+## A man in the balloon's basket is drawn in his own colours and veterancy trim, but from
+## another strip than his own (hidden) sprite's: his own copy of its material, with the trim
+## mask of the strip he is drawn from.
+func _gunner_material(g: Sprite2D, p: Unit) -> void:
+	var src := p.sprite.material as ShaderMaterial if p.sprite else null
+	g.use_parent_material = src == null       # (else the balloon's material: no trim)
+	if src == null:
+		g.material = null
+		return
+	var gm := g.material as ShaderMaterial
+	if gm == null or gm == src:
+		gm = ShaderMaterial.new()
+		gm.shader = src.shader
+		g.material = gm
+	for k in ["team", "tint", "flash", "vet_style", "vet_level"]:
+		gm.set_shader_parameter(k, src.get_shader_parameter(k))
+	gm.set_shader_parameter("vet_mask", VetLook.mask_for(g.texture, VetLook.style_of(p)))
 
 
 ## Workers at work can be heard (near the view; Sfx fades them with distance and GAP keeps
@@ -1345,6 +1369,10 @@ func _ready() -> void:
 		# each strip of the horse's sprites has its own coat mask (any Crown man may get a horse)
 		sprite.texture_changed.connect(func() -> void: HorseCoat.update_mask(self))
 		HorseCoat.apply(self)
+	if VetLook.style_of(self) > 0:
+		# veterancy on the sprite: each strip has its own trim or skin mask
+		sprite.texture_changed.connect(func() -> void: VetLook.update_mask(self))
+		VetLook.apply(self)
 	_apply_tint()
 	if kind == "horse":
 		_rein = Node2D.new()

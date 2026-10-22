@@ -197,7 +197,12 @@ def frame_mask(style, px, drop=()):
             hat[:rows[0]] = False
             hat[rows[0] + HAT_H:] = False
             for x in np.nonzero(hat.any(0))[0]:
-                out[np.nonzero(hat[:, x])[0].max(), x] = True
+                ys = np.nonzero(hat[:, x])[0]
+                out[ys.max(), x] = True
+                y = ys.max()
+                over_face = y + 1 < px.shape[0] and skin_of(h[y + 1, x], s[y + 1, x], v[y + 1, x])
+                if len(ys) >= 3 and hat[y - 1, x] and not over_face:
+                    out[y - 1, x] = True     # (two rows where the felt is deep enough: a band; one over the face)
         skin = np.zeros_like(skin)     # (the felt's browns are the skin's)
     elif style == "helmet":
         box = (head_box(px, whole=True) | skyline_box(px)) & a & ~team_red(px)
