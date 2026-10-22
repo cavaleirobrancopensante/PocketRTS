@@ -7,8 +7,9 @@ class_name HorseCoat
 const COATS := ["dark", "bay", "grey", "white", "spotted"]
 ## How often each coat turns up (out of 100).
 const WEIGHTS := {"dark": 30, "bay": 30, "grey": 20, "white": 10, "spotted": 10}
-## The coat each unit's sprites are painted in: that one is shown as painted.
-const NATIVE := {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "bay"}
+## The coat each unit's sprites are painted in: that one is shown as painted. The Mortar has
+## none (its walk's horse is dark, its other strips' chestnut): every coat is repainted.
+const NATIVE := {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": ""}
 const MASKS := "res://assets/units/horse_masks/"
 const RAMPS := preload("res://assets/units/horse_masks/coat_ramps.png")
 

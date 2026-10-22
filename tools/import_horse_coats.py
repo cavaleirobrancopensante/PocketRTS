@@ -62,7 +62,9 @@ SHEET_BOXES = {
 }
 
 # The coat each unit's sprites are painted in (left as painted when it gets that coat).
-NATIVE = {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": "bay"}
+# The Mortar has none: its towed walk shows a dark horse, its other strips a chestnut, so
+# every coat (bay too) is repainted, the same on both.
+NATIVE = {"cuirassier": "dark", "cannon": "dark", "powder_wagon": "dark", "mortar": ""}
 NONE5 = (0, 0, 0, 0, [5])       # an empty keep box: no horse in frame 5
 
 # Per unit: the colour test, the strips with a horse (anim names; every direction), and
@@ -133,21 +135,27 @@ CONFIG = {
     },
     "mortar": {
         "test": "brown",
+        # The towed walk (tools/import_mortar_walk.py) has a dark grey horse; the rest the
+        # chestnut pack horse. Each test's strips get their own tone ranking (see tone_map).
+        "tests": {"walk": "grey"},
         "anims": ["walk", "idle_packed", "deploy"],
-        "alias": {"idle_packed": ("walk", 0)},     # (it is walk's first frame)
-        # The pack horse between its crew, frame by frame (they shuffle about), minus the
-        # pack and mortar on its back (the same browns as the horse). From the north-east and
-        # north it pulls the mortar's cart and shows little of itself.
         "keep": {
-            "walk_e": [(68, 50, 104, 79, [0]), (66, 48, 100, 80, [1]), (66, 48, 103, 80, [2]),
-                       (64, 46, 98, 79, [3]), (67, 46, 99, 79, [4]), (66, 46, 93, 82, [5])],
-            "walk_s": [(64, 47, 97, 79, [0]), (65, 45, 96, 80, [1]), (65, 44, 101, 80, [2]),
-                       (64, 45, 98, 80, [3]), (67, 44, 95, 80, [4]), (69, 45, 94, 80, [5])],
-            "walk_se": [(60, 40, 95, 77, [0]), (63, 42, 94, 78, [1]), (63, 41, 102, 78, [2]),
-                        (61, 43, 93, 77, [3]), (65, 42, 92, 78, [4]), (65, 42, 89, 78, [5])],
-            "walk_ne": [(78, 44, 94, 73, [0]), (79, 44, 92, 73, [1]), (77, 44, 86, 73, [2]),
-                        (76, 44, 92, 73, [3]), (79, 44, 86, 73, [4]), (80, 44, 85, 73, [5])],
-            "walk_n": [(71, 42, 84, 62)],
+            # walking: the horse pulling the cart, without the crewman at its head (his legs)
+            # nor the mortar on the cart (its iron is grey too: dropped below). From the north
+            # the sheet shows its ears over the mortar and its hind legs and tail under the cart.
+            "walk_s": [(72, 50, 89, 91)],
+            "walk_se": [(84, 49, 105, 64), (84, 64, 101, 90)],
+            "walk_e": [(86, 38, 114, 77), (114, 38, 121, 56)],
+            "walk_ne": [(85, 33, 102, 58), (85, 58, 99, 74)],
+            "walk_n": [(72, 30, 85, 37), (70, 57, 86, 85)],
+            # standing packed: the pack horse between its crew, minus the pack and mortar on
+            # its back (the same browns as the horse). From the north-east and north it pulls
+            # the mortar's cart and shows little of itself.
+            "idle_packed_e": [(68, 50, 104, 79)],
+            "idle_packed_s": [(64, 47, 97, 79)],
+            "idle_packed_se": [(60, 40, 95, 77)],
+            "idle_packed_ne": [(78, 44, 94, 73)],
+            "idle_packed_n": [(71, 42, 84, 62)],
             # setting up: unharnessed, the horse rears, is led off to the right past a crewman
             # (above his helmet only) and fades out; an empty box where it is out of sight
             "deploy_s": [(82, 38, 110, 70, [0]), (88, 36, 126, 72, [1]), (90, 36, 121, 72, [2]),
@@ -162,12 +170,11 @@ CONFIG = {
                          (128, 44, 150, 82, [3]), (118, 44, 128, 56, [3]), (110, 44, 150, 82, [4]), NONE5],
         },
         "drop": {
-            "walk_e": [(68, 49, 92, 57, [0]), (69, 47, 88, 58, [1]), (68, 47, 90, 57, [2]),
-                       (64, 45, 86, 60, [3]), (66, 46, 86, 58, [4]), (67, 45, 88, 56, [5])],
-            "walk_s": [(68, 46, 88, 55, [0]), (68, 44, 88, 57, [1]), (66, 43, 86, 56, [2]),
-                       (65, 44, 85, 57, [3]), (69, 44, 88, 56, [4]), (70, 45, 90, 55, [5])],
-            "walk_se": [(63, 39, 85, 50, [0]), (65, 41, 88, 52, [1]), (65, 40, 90, 52, [2]),
-                        (63, 43, 86, 53, [3]), (65, 42, 86, 52, [4]), (65, 42, 86, 52, [5])],
+            "walk_se": [(76, 40, 93, 55)],
+            "walk_ne": [(80, 44, 92, 62)],
+            "idle_packed_e": [(68, 49, 92, 57)],
+            "idle_packed_s": [(68, 46, 88, 55)],
+            "idle_packed_se": [(63, 39, 85, 50)],
             "deploy_e": [(86, 60, 100, 78, [1])],     # the cart's wheel
         },
     },
@@ -274,7 +281,7 @@ def rider_head(px, pad, below):
 def frame_mask(cfg, anim, d, fi, px):
     if anim in cfg.get("alias", {}):
         anim, fi = cfg["alias"][anim]       # a strip that repeats another one's frame
-    mid, dark = candidates(cfg["test"], px)
+    mid, dark = candidates(test_of(cfg, anim), px)
     out = np.zeros(mid.shape, bool)
     rh = cfg.get("rider_head")
     sk = rh.get("skip", []) if rh else []
@@ -346,6 +353,11 @@ def build_unit(unit, cell):
 
 
 BODY_L = 0.08     # below this a horse pixel is outline (kept as painted by the shader)
+
+
+def test_of(cfg, anim):
+    """The colour test for an animation's horse (a unit's strips can show two horses)."""
+    return cfg.get("tests", {}).get(anim, cfg["test"])
 
 
 def tone_map(data):
@@ -447,7 +459,7 @@ def contact(path, unit, results, rows, scale=2, mode="coats"):
     another team colour), or (mode "mask") as painted with the horse mask in magenta and
     the white and bay coats, the ones that show mistakes best."""
     from PIL import ImageDraw
-    native = COATS.index(NATIVE[unit])
+    native = COATS.index(NATIVE[unit]) if NATIVE[unit] in COATS else -1
     lines = []
     for key, (im, mrgb) in results.items():
         if mode == "mask":
@@ -495,7 +507,13 @@ def main():
         if only and unit != only:
             continue
         data = build_unit(unit, cs[unit])
-        rank = tone_map(data)
+        # one tone ranking per painted horse (per colour test): a dark horse ranked among a
+        # chestnut one's pixels would come out darker than it in every coat
+        cfg = CONFIG[unit]
+        groups = {}
+        for key, v in data.items():
+            groups.setdefault(test_of(cfg, key.rsplit("_", 1)[0]), {})[key] = v
+        ranks = {t: tone_map(g) for t, g in groups.items()}
         udir = os.path.join(OUT, unit)
         os.makedirs(udir, exist_ok=True)
         for f in os.listdir(udir):
@@ -505,6 +523,7 @@ def main():
         for key, (im, mask, spots) in data.items():
             if not mask.any():
                 continue
+            rank = ranks[test_of(cfg, key.rsplit("_", 1)[0])]
             tone = rank(lum(im[..., :3].astype(np.float32) / 255.0))
             mrgb = mask_image(mask, spots, tone)
             Image.fromarray(mrgb).save(os.path.join(udir, key + ".png"))
