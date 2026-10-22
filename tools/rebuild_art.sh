@@ -52,6 +52,8 @@ python3 tools/fix_mortar_smoke.py         # no smoke puff over the right-hand gu
                                          # (after the reload, helmets and towed walk above)
 python3 tools/import_horseman.py         # the unarmoured Horseman's strips (cut like the Cuirassier's,
                                          # on his cell) and his art_data entry
+python3 tools/import_pistol.py           # the Horseman / Cuirassier firing the pistol from the saddle
+                                         # (pistol_<dir> strips, on the Horseman's cell and anchor)
 python3 tools/import_horse_units.py      # the horse system's units: riderless horse, Messenger, Dragoons
                                          # (light and armoured), dismounted Horseman (slash fixed)
 python3 tools/import_bandage.py           # the Missionary bandaging a dismounted Horseman / Cuirassier

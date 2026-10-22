@@ -1233,6 +1233,14 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_tongue", "TONGUE", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "tongue", tongue_ok, "" if tongue_ok else "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]), str(int(Defs.TONGUE["cost"]))])
+	# the cavalry's pistol: HOLD FIRE (glowing = on: he never fires it by himself)
+	var pistols := units.filter(func(u: Unit) -> bool: return u.has_pistol())
+	if not pistols.is_empty():
+		var held: bool = pistols.all(func(u: Unit) -> bool: return u.hold_fire)
+		list.append(["hold_fire" if held else "fire_at_will", ("~ " if held else "") + "HOLD FIRE", func() -> void:
+			for u in game.selected_units():
+				u.set_hold_fire(not held)
+			toast("Hold fire: they keep their pistols loaded." if not held else "Pistols free: they fire by themselves."), true, "", ""])
 	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
 	if not sacs.is_empty():
 		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
@@ -1298,15 +1306,18 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATR
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
-	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q"}
+	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q",
+	"HOLD FIRE": "F"}
 ## Keys the left hand reaches without leaving the group numbers: names only take letters
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
 ## Command keys that never move: everything else gives way to them.
 ## Standard keys for some units on their building's card (workers S, Musketeers A; at the
-## Barracks the light and armoured pairs: Musketeer A, Guardsman S, Horseman D, Cuirassier C).
+## Barracks the light and armoured pairs: Musketeer A, Guardsman S, Horseman D, Cuirassier C,
+## Dragoon F, Armoured Dragoon V, Officer G, Armoured Officer B).
 const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A", "guardsman": "S",
-	"horseman": "D", "cuirassier": "C"}
+	"horseman": "D", "cuirassier": "C", "dragoon": "F", "armoured_dragoon": "V",
+	"dismounted": "G", "dismounted_cuirassier": "B"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 
 
@@ -1937,6 +1948,9 @@ func _draw_panel(font: Font) -> void:
 					info = "No charge yet: the Armoury drills the Cavalry Charge."
 				else:
 					info = "Charge ready: the next blow hits double and throws the enemy back." if uu.run_t >= float(Defs.CHARGE["run"]) else "Gallop about 2 s and the next blow is a charge."
+				info = pistol_text(uu) + " · " + info
+			elif uu.kind == "dismounted":
+				info = pistol_text(uu) + " · Sabre up close. MOUNT a horse to ride."
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -2034,7 +2048,7 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "horse_breeder" and bb.built and (e.team == game.human or game.demo):
 				info = "%s  ·  " % game.horses_text(bb.team) + info
 			elif (bb.kind == "barracks" or bb.kind == "foundry") and bb.built and (e.team == game.human or game.demo):
-				info = "Horses here: %d (Horsemen, cannons, mortars and wagons need one each)  ·  " % game.horses_at(bb) + info
+				info = "Horses here: %d (Horsemen, Dragoons, cannons, mortars and wagons need one each)  ·  " % game.horses_at(bb) + info
 			elif bb.kind == "powder_mill":
 				var sl := bb.lode_left()
 				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
@@ -2097,6 +2111,9 @@ func _draw_panel(font: Font) -> void:
 				var rf := pu.reload_frac() if pu.powder >= 1.0 else 0.0
 				_ci.draw_rect(rb, Color(0, 0, 0, 0.6))
 				_ci.draw_rect(Rect2(rb.position, Vector2(rb.size.x * rf, rb.size.y)), Color(1.0, 0.85, 0.3) if rf >= 1.0 else Color(0.92, 0.92, 0.85))
+		if e is Unit and (e as Unit).has_pistol() and (e.team == game.human or game.demo):
+			# the pistol: a little pistol by the health, bright loaded, dim and crossed empty
+			_draw_pistol(hb.position + Vector2(-26, -2), (e as Unit).pistol)
 		if e is Unit and (e as Unit).kills > 0:
 			# veterancy: kills and the damage they've earned
 			var ku := e as Unit
@@ -2234,6 +2251,38 @@ func _draw_panel(font: Font) -> void:
 
 
 var _portraits: Array = []
+
+
+## The pistol on the unit card: "Pistol LOADED" / "Pistol EMPTY: reloading 2.1 s" ...
+static func pistol_text(u: Unit) -> String:
+	var t := "Pistol LOADED" if u.pistol else "Pistol EMPTY"
+	if not u.pistol:
+		if u.is_mounted():
+			t += ": reloads on foot"
+		elif u.powder < float(Defs.PISTOL["powder"]):
+			t += ": no powder to reload"
+		elif u.pistol_t > 0.0:
+			t += ": reloading %.1f s" % maxf(float(Defs.PISTOL["reload"]) - u.pistol_t, 0.0)
+		else:
+			t += ": reloads when out of the fight"
+	if u.hold_fire:
+		t += " (HOLD FIRE)"
+	return t
+
+
+## A small flintlock pistol (barrel, lock, grip) at p, about 24 x 12: bright when loaded,
+## grey with a red bar when empty.
+func _draw_pistol(p: Vector2, loaded: bool) -> void:
+	var steel := Color(0.85, 0.87, 0.9) if loaded else Color(0.45, 0.45, 0.48)
+	var wood := Color(0.62, 0.38, 0.18) if loaded else Color(0.35, 0.28, 0.22)
+	_ci.draw_rect(Rect2(p + Vector2(6, 1), Vector2(16, 3)), steel)                 # barrel
+	_ci.draw_rect(Rect2(p + Vector2(4, 0), Vector2(6, 5)), wood)                   # stock
+	_ci.draw_colored_polygon(PackedVector2Array([p + Vector2(4, 3), p + Vector2(9, 3), p + Vector2(5, 11), p + Vector2(0, 10)]), wood)   # grip
+	_ci.draw_rect(Rect2(p + Vector2(8, -1), Vector2(3, 2)), steel)                 # the cock
+	if loaded:
+		_ci.draw_circle(p + Vector2(23, 2.5), 1.5, Color(1.0, 0.8, 0.3))
+	else:
+		_ci.draw_line(p + Vector2(0, 11), p + Vector2(22, -2), UiStyle.BAD, 2.0)
 
 
 ## A unit's (or building's) portrait: its own, its sprites' (a Guardsman, a Horseman), or the
@@ -2496,6 +2545,7 @@ const CMD_TIPS := {
 	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as essence. Bodies rot after 2 minutes.",
 	"SACRIFICE": "The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as essence.",
 	"HOLD GAS": "Stop spitting and keep the sac full: the Bloater drifts in and bursts as a huge acid bomb.",
+	"HOLD FIRE": "Pistols (glowing = on): Horsemen, Cuirassiers and Officers keep their one pistol shot and fight with the sabre only, until you turn it off. (HOLD is still stand-ground.)",
 	"SPIT": "Lob acid from range. Every glob uses gas, so the final burst gets smaller.",
 	"FOG": "50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.",
 	"TONGUE": "75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.",

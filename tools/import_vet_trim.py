@@ -62,12 +62,12 @@ CONFIG = {
     "dismounted_armoured": {"style": "helmet", "anims": FOOT},
     # (DROP boxes, frame coordinates, optionally the frames they're for: the raised sabre's
     # hilt and hand over his head, not his helmet)
-    "cuirassier": {"style": "helmet", "anims": RIDER,
+    "cuirassier": {"style": "helmet", "anims": RIDER + ["pistol"],
                    "drop": {"attack_s": [(40, 0, 52, 14, [0])], "attack_se": [(40, 0, 50, 19, [1])],
                             "attack_n": [(40, 0, 50, 20, [1])]}},
     "dragoon_armoured": {"style": "helmet", "anims": RIDER},
     "dismounted": {"style": "band", "anims": FOOT},
-    "horseman": {"style": "band", "anims": RIDER},
+    "horseman": {"style": "band", "anims": RIDER + ["pistol"]},
 }
 
 

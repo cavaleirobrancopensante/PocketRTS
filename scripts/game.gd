@@ -3098,7 +3098,7 @@ func kit_for_new(t: int, key: String) -> Dictionary:
 	if not Defs.ARMOURED.has(k):
 		return {}
 	var kit := {"armour": Defs.train_armoured(key) and has_tech(t, "armour")}
-	if k == "musketeer":
+	if k == "musketeer" or k == "dragoon":
 		kit["lock"] = best_lock(t)
 		kit["bayonet"] = has_tech(t, "bayonet")
 	return kit
@@ -3383,11 +3383,11 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		Sfx.voice(k, "select")
 	var rid := int(kit.get("rid", 0))
 	var sk := k
-	if k == "cuirassier" and rid != 0:
-		sk = "dismounted"       # trained on foot: he goes and gets on the horse kept for him
+	if Defs.RIDERS.has(k) and rid != 0:
+		sk = String(Defs.RIDERS[k])    # trained on foot: he goes and gets on the horse kept for him
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(sk, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
-		if sk == "dismounted":
+		if sk != k:
 			u.set_kit(kit)
 			u.horse_rid = rid
 			u.rally_after = b.rally
@@ -4291,6 +4291,16 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 	s.impact_scale = 1.0 if hit else 0.35
 	s.launch(self, "ball", muzzle, aim, 950.0)
 	Sfx.play_any(["combat/musketeer_attack", "musket"], u.global_position)
+
+
+## The cavalry's pistol (Defs.PISTOL): one ball, a single ranged blow like a musket's (so a
+## rider it kills may leave his horse loose); from the saddle it leaves the rider's hand.
+func pistol_shot(u: Unit, e: Entity, dmg: float) -> void:
+	var muzzle := u.center() + u.facing * 18.0 + Vector2(0, -16.0 if u.is_mounted() else -2.0)
+	musket_shot(u, e, dmg, muzzle)
+	if mlog and not _first_of.has("%d:pistol" % u.team):
+		_first_of["%d:pistol" % u.team] = true
+		mlog.add("%s's first pistol shot (%s)" % [mlog.who(u.team), Defs.train_name(Defs.train_key(u.kind, u.armoured))])
 
 
 var _tracers: Array = []
@@ -6510,7 +6520,7 @@ func _reserve_horse(b: Building, k: String, rid: int, pay: bool) -> bool:
 	if h:
 		h.horse_rid = rid
 		h.cmd_stop()
-		if k != "cuirassier":
+		if not Defs.RIDERS.has(k):
 			h.walk_into(b)
 		return true
 	var br := breeder_with_room(b.team, b.center())

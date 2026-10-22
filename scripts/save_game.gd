@@ -120,6 +120,13 @@ static func save(game: Game, cfg: Dictionary) -> void:
 				ud["ra"] = _v2(u.rally_after)
 		if u.auto_mount:
 			ud["am"] = true
+		if u.has_pistol():
+			# the cavalry's pistol: loaded or not, HOLD FIRE, an Officer's reload so far
+			ud["pl"] = u.pistol
+			if u.hold_fire:
+				ud["hf"] = true
+			if u.pistol_t > 0.0:
+				ud["plt"] = snappedf(u.pistol_t, 0.01)
 		if u.patrol_a != Vector2.INF:
 			ud["pat"] = [_v2(u.patrol_a), _v2(u.patrol_b)]
 		if u.steed and ids.has(u.steed):
@@ -414,6 +421,11 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if ud.get("ra") is Array:
 			u.rally_after = _to_v2(ud["ra"])
 		u.auto_mount = bool(ud.get("am", false))
+		if u.has_pistol():
+			u.pistol = bool(ud.get("pl", true))           # (older saves: loaded)
+			u.hold_fire = bool(ud.get("hf", false))
+			u.pistol_t = float(ud.get("plt", 0.0))
+			u.powder = minf(u.powder, u._pmax)            # (older saves: an Officer's 10 carbine shots)
 		if ud.get("pat") is Array and (ud["pat"] as Array).size() == 2:
 			u.patrol_a = _to_v2(ud["pat"][0])
 			u.patrol_b = _to_v2(ud["pat"][1])

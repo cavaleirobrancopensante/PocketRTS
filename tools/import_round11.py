@@ -5,6 +5,8 @@ Sources (generated sheets on a flat dark slate background, every icon in its own
   art/ui/icons2/portraits_crown_a.png   musketeer (tricorne), musketeer_armoured, cuirassier
   art/ui/icons2/portraits_crown_b.png   mortar, balloon, powder_wagon, missionary (frames
                                         drawn taller than wide: see FIT)
+  art/ui/icons2/portraits_officer.png   dismounted (the Officer), dismounted_armoured
+  art/ui/icons2/portraits_dragoon.png   dragoon, dragoon_armoured
   art/ui/icons2/portraits_brood_a.png   grub, raptor, spitter, brute
   art/ui/icons2/portraits_brood_b.png   skywing, spore_mother, bloater
   art/ui/icons2/portraits_clockwork.png top row winder, thresher, bulwark, windup_soldier;
@@ -60,8 +62,8 @@ already: tools/fix_weapons.py only repaints walk / idle and is not run on these.
 Order (tools/rebuild_art.sh): last - after import_round10.py (writes the old melee strips
 and some of the icons replaced here) and every other pass that writes icons.
 
-Usage (from the repo root): python3 tools/import_round11.py [--contact DIR]
-(--contact writes x3 contact sheets). Needs Pillow, NumPy and SciPy. Re-runnable.
+Usage (from the repo root): python3 tools/import_round11.py [--contact DIR] [--only SHEET,...]
+(--contact writes x3 contact sheets; --only rebuilds just those steel-framed sheets' icons). Needs Pillow, NumPy and SciPy. Re-runnable.
 """
 import os
 import re
@@ -89,6 +91,9 @@ SRC = "art/ui/icons2"
 PORTRAITS = {
     "portraits_crown_a": ["musketeer", "musketeer_armoured", "cuirassier"],
     "portraits_crown_b": ["mortar", "balloon", "powder_wagon", "missionary"],
+    # the Barracks' Officers and Dragoons (they replace import_horse_icons.py's stand-ins)
+    "portraits_officer": ["dismounted", "dismounted_armoured"],
+    "portraits_dragoon": ["dragoon", "dragoon_armoured"],
     "portraits_brood_a": ["grub", "raptor", "spitter", "brute"],
     "portraits_brood_b": ["skywing", "spore_mother", "bloater"],
     "portraits_clockwork": ["winder", "thresher", "bulwark", "windup_soldier",
@@ -257,9 +262,11 @@ def save_icon(icon, name):
     return icon
 
 
-def build_steel_icons():
+def build_steel_icons(only=None):
     made, pics = {}, {}
     for sheet, names in PORTRAITS.items():
+        if only and sheet not in only:
+            continue
         px = load(f"{SRC}/{sheet}.png")
         bg, _ = bg_mask(px)
         for name, sl in zip(names, frame_boxes(px, bg, len(names))):
@@ -662,6 +669,10 @@ def contacts(eh, bay):
 
 
 def main():
+    if "--only" in _argv:
+        # just these sheets' icons: python3 tools/import_round11.py --only portraits_officer,portraits_dragoon
+        build_steel_icons(_argv[_argv.index("--only") + 1].split(","))
+        return
     _, pics = build_steel_icons()
     _, crops = build_brass_icons()
     build_courier(crops, pics)

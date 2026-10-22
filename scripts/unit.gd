@@ -225,6 +225,10 @@ var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs 
 var _supply_t := 0.0
 var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
 var keg := false                # Labourer: carrying a powder keg (it blows up if he's killed)
+# the cavalry's pistol (Defs.PISTOL: Horseman, Cuirassier, Officer, Armoured Officer)
+var pistol := false             # loaded (trained loaded; fired, it stays empty until he reloads on foot)
+var hold_fire := false          # HOLD FIRE: he never fires the pistol by himself
+var pistol_t := 0.0             # (an Officer) how far through reloading it, in seconds
 # Horses (Defs.HORSES)
 var led: Array = []              # (a man) the horses he leads by the reins, in their string
 var leader: Unit = null          # (a horse) who leads it
@@ -659,9 +663,61 @@ func musket_cooldown() -> float:
 	return float(d["cooldown"]) * m
 
 
-## A soldier on foot with a musket (or carbine) and a blade: picks musket or blade by himself.
+## A soldier on foot with a musket and a blade: picks musket or blade by himself.
 func foot_musket() -> bool:
-	return kind == "musketeer" or kind == "dismounted"
+	return kind == "musketeer"
+
+
+## Carries the cavalry's pistol (Defs.PISTOL): a Horseman, Cuirassier or Officer.
+func has_pistol() -> bool:
+	return (Defs.PISTOL["kinds"] as Array).has(kind)
+
+
+## His blade's mode: the Officer's sabre is his "bayonet" (d.sabre), the rider's his plain blow.
+func _sabre_mode() -> String:
+	return "bayonet" if kind == "dismounted" else ""
+
+
+## Pistol or sabre, chosen between blows: the loaded pistol at an enemy man (not a building),
+## unless HOLD FIRE; else the sabre.
+func _pick_pistol() -> void:
+	if phase != "":
+		return
+	var want := _sabre_mode()
+	if pistol and not hold_fire and not (target is Building) and not (order_target is Building and order == "attack"):
+		want = "pistol"
+	if want != mode:
+		mode = want
+		if target and not _valid_target(target):
+			target = null
+			phase = ""
+
+
+## (an Officer) reloading his pistol by himself: Defs.PISTOL reload s, out of a sabre fight,
+## spending a charge of his powder (none: he can't).
+func _pistol_reload(delta: float) -> void:
+	if pistol or kind != "dismounted":
+		pistol_t = 0.0
+		return
+	if powder < float(Defs.PISTOL["powder"]) or phase != "" or aboard:
+		return
+	if target and is_instance_valid(target) and target.edge_distance(position) - radius < float(Defs.PISTOL["busy"]):
+		return
+	pistol_t += delta
+	if pistol_t >= float(Defs.PISTOL["reload"]):
+		pistol_t = 0.0
+		pistol = true
+		powder -= float(Defs.PISTOL["powder"])
+
+
+## HOLD FIRE on or off (a pistol unit).
+func set_hold_fire(on: bool) -> void:
+	if not has_pistol():
+		return
+	hold_fire = on
+	if on and mode == "pistol" and phase == "aim":
+		phase = ""              # (not yet fired: he holds it)
+		cooldown = maxf(cooldown, 0.2)
 
 
 ## On a horse (the horse is part of him: DISMOUNT puts it beside him).
@@ -925,6 +981,8 @@ func set_canister(on: bool) -> void:
 
 
 func _cooldown() -> float:
+	if mode == "pistol":
+		return float(Defs.PISTOL["after"])
 	if mode == "bayonet" and d.has("sabre"):
 		return float(d["sabre"]["cooldown"])
 	if mode == "bayonet":
@@ -939,6 +997,8 @@ func _cooldown() -> float:
 
 
 func _aim() -> float:
+	if mode == "pistol":
+		return float(Defs.PISTOL["aim"])
 	if mode == "bayonet":
 		return Defs.BAYONET["aim"]
 	return float(d.get("aim", 0.25))
@@ -1347,6 +1407,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 		wind = randf_range(0.6, 1.0)     # (Winders don't all stop to wind at once)
 	_pmax = max_powder()
 	powder = _pmax
+	pistol = has_pistol()            # (trained loaded)
 	auto_repair = k == "winder"      # (Winders always did; Labourers start with it off)
 	armor = d["armor"]
 	sight = d["sight"]
@@ -2532,7 +2593,7 @@ func _tick_unit(delta: float) -> void:
 		_horse_upkeep(delta)
 	if not team_horses.is_empty():
 		speed *= 1.0 + float(Defs.HORSES["team_speed"]) * team_horses.size()     # a bigger team pulls faster
-	if horse_rid != 0 and kind == "dismounted":
+	if horse_rid != 0 and Defs.RIDERS.values().has(kind):
 		_res_t -= delta
 		if _res_t <= 0.0:
 			_res_t = 0.5
@@ -2642,6 +2703,9 @@ func _tick_unit(delta: float) -> void:
 		return
 	if foot_musket():
 		_pick_weapon(delta)
+	elif has_pistol():
+		_pistol_reload(delta)
+		_pick_pistol()
 	if target and not _valid_target(target):
 		target = null
 		phase = ""
@@ -2913,6 +2977,8 @@ func _range() -> float:
 		return Defs.BAYONET["range"]
 	if mode == "canister":
 		return Defs.CANISTER["range"]
+	if mode == "pistol":
+		return float(Defs.PISTOL["range"])
 	return float(d["range"])
 
 
@@ -3333,7 +3399,7 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		if cooldown > 0.0 or stun_t > 0.0:
 			return
 		# out of powder: a gun can't fire (a dry Musketeer has fixed bayonets instead)
-		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
+		if _pmax > 0.0 and mode != "bayonet" and powder < 1.0 and not has_pistol():
 			cooldown = 0.5
 			if Time.get_ticks_msec() > _hold_note:
 				_hold_note = Time.get_ticks_msec() + 5000
@@ -3354,6 +3420,9 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		phase_t = _aim()
 		return
 	phase_t -= delta
+	if phase == "aim" and mode == "pistol" and (not pistol or hold_fire):
+		phase = ""               # (HOLD FIRE came on while he aimed: no shot)
+		return
 	if phase == "aim" and phase_t <= 0.0:
 		phase = "strike"
 		phase_t = 0.35
@@ -3386,6 +3455,18 @@ func _strike(e: Entity) -> void:
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 		return
+	if mode == "pistol":
+		# the pistol's one shot (spent even if it flies wide in a fog)
+		if not pistol:
+			return
+		pistol = false
+		pistol_t = 0.0
+		var vet2 := 1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
+		if _range() >= 100.0 and game.fog_blinds(self, e) and randf() < float(Defs.FOG["miss"]):
+			game.fog_miss(self, e)
+			return
+		game.pistol_shot(self, e, float(Defs.PISTOL["damage"]) * vet2)
+		return
 	# every musket or cannon shot uses one of the shots it carries
 	if _pmax > 0.0:
 		if powder < 1.0:
@@ -3404,7 +3485,7 @@ func _strike(e: Entity) -> void:
 			game.fog_miss(self, e)
 			return
 	match kind:
-		"musketeer", "dismounted":
+		"musketeer":
 			game.musket_shot(self, e, dmg)
 		"cannon":
 			if mode == "canister":
@@ -4498,7 +4579,7 @@ func _anim_name() -> String:
 				return "attack"
 		"cuirassier":
 			if phase != "":
-				return "attack"
+				return _anim_or("pistol", "attack") if mode == "pistol" else "attack"
 		"balloon":
 			return "drift" if moving else "idle"
 		"horse":
@@ -4601,6 +4682,10 @@ func _animate(delta: float) -> void:
 			fps = 3.0
 		"graze":
 			fps = 2.0
+		"pistol":
+			# draw, aim, fire, lower: over the aim and the shot (Defs.PISTOL)
+			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
+			loop = false
 		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
 			if kind == "spore_mother":
 				fps = 6.0

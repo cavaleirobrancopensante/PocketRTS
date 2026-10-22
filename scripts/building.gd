@@ -574,7 +574,7 @@ var _fetch_t := 0.0
 
 ## The front entry is a gun or wagon whose reserved horse hasn't walked in yet.
 func _horse_pending(k: String) -> bool:
-	return not is_research(k) and k != "cuirassier" and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
+	return not is_research(k) and not Defs.RIDERS.has(k) and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
 
 
 func uses_eggs() -> bool:
