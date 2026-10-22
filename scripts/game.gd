@@ -327,6 +327,10 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 			var cc := c + Vector2i(x, y)
 			if in_map(cc):
 				solid[idx(cc)] = v
+				if v != 0 and _deco_at.has(idx(cc)):
+					# a building (wall, field...) goes up over a decoration: it's gone
+					for s in _deco_at[idx(cc)]:
+						s.visible = false
 				_region_dirty = true
 				if astar.region.size != Vector2i.ZERO:
 					astar.set_point_solid(cc, v != 0 and v != 3 and v != 5)
@@ -519,15 +523,26 @@ func _setup_astar() -> void:
 	for sp in _terrain_sprites:
 		sp.queue_free()
 	_terrain_sprites.clear()
+	_deco_at.clear()
 	for i in _terrain_kind:
 		var c := Vector2i(i % W, i / W)
-		var s := Sprite2D.new()
 		var kind: String = _terrain_kind[i]
+		if kind == "prop":
+			continue                     # a decoration's foot (drawn below)
+		var s := Sprite2D.new()
+		var bi: Dictionary = MapGen.BIOMES[mapgen.biome_at(c.x, c.y)]
 		var n := rng.randi_range(0, 5)
-		if kind == "tree" and rng.randf() < 0.35:
+		var bush := kind == "tree" and rng.randf() < 0.35
+		if bush:
 			n = rng.randi_range(4, 5)    # bushes
-		s.texture = tex("res://assets/world/%s_%d.png" % [kind, n])
-		s.modulate = MapGen.BIOMES[mapgen.biome_at(c.x, c.y)]["tint"]
+		if kind == "tree" and bi.has("tree_art"):
+			# this biome's own trees and bushes (from the decorations)
+			var arts: Array = bi["bush_art"] if bush else bi["tree_art"]
+			s.texture = tex("res://assets/props/%s.png" % arts[rng.randi() % arts.size()])
+			s.flip_h = rng.randf() < 0.5
+		else:
+			s.texture = tex("res://assets/world/%s_%d.png" % [kind, n])
+			s.modulate = bi["tint"]
 		s.centered = false
 		s.offset = Vector2(-s.texture.get_width() * 0.5, -s.texture.get_height() + 4)
 		s.position = cell_center(c) + Vector2(rng.randf_range(-3, 3), 14)
@@ -535,9 +550,27 @@ func _setup_astar() -> void:
 			s.scale = Vector2(0.7, 0.7)
 		world.add_child(s)
 		_terrain_sprites.append(s)
+	# decorations: drawn among the units (sorted by their foot)
+	for pr in mapgen.props:
+		if pr["dead"]:
+			continue
+		var s := Sprite2D.new()
+		s.texture = tex("res://assets/props/%s.png" % pr["name"])
+		s.centered = false
+		s.offset = Vector2(-s.texture.get_width() * 0.5, -s.texture.get_height() + 3)
+		s.position = pr["pos"]
+		s.flip_h = pr["flip"]
+		world.add_child(s)
+		_terrain_sprites.append(s)
+		if (pr["cells"] as Array).is_empty():
+			var at: Vector2i = pr["at"]
+			if not _deco_at.has(idx(at)):
+				_deco_at[idx(at)] = []
+			_deco_at[idx(at)].append(s)
 
 
 var _terrain_sprites: Array = []
+var _deco_at := {}                         # map index -> the walk-through decorations standing there
 
 
 ## Map editor: redo cliffs, pathing and the ground picture after painting.
@@ -556,8 +589,14 @@ var _tile_avg := {}
 
 
 func _tile_key(set_name: String, rnd: int) -> String:
-	var good: Array = TerrainData.GOOD.get(set_name, [0])
+	var good: Array = TerrainData.GOOD.get(set_name, TerrainData2.GOOD.get(set_name, [0]))
 	return "%s_%d" % [set_name, good[rnd % good.size()]]
+
+
+## The second atlas's ground sets are 64 x 64 pictures, each laid over 2 x 2 cells (the
+## art's own scale: at one cell a tile its detail repeats too tightly).
+static func _is_macro(set_name: String) -> bool:
+	return TerrainData2.COUNTS.has(set_name) and not set_name.ends_with("_face") and not set_name.ends_with("_top")
 
 
 func _tile(set_name: String, rnd: int) -> Image:
@@ -565,18 +604,76 @@ func _tile(set_name: String, rnd: int) -> Image:
 	if not _tile_cache.has(key):
 		var im: Image = tex("res://assets/terrain/%s.png" % key).get_image()
 		im.convert(Image.FORMAT_RGBA8)
-		if im.get_width() != T or im.get_height() != T:
-			im.resize(T, T, Image.INTERPOLATE_NEAREST)
+		var sz := T * 2 if _is_macro(set_name) else T
+		if im.get_width() != sz or im.get_height() != sz:
+			im.resize(sz, sz, Image.INTERPOLATE_NEAREST)
 		_tile_cache[key] = im
-		var small := im.duplicate()
+		var small: Image = im.duplicate()
 		small.resize(1, 1, Image.INTERPOLATE_BILINEAR)
 		_tile_avg[key] = small.get_pixel(0, 0)
+	return _tile_cache[key]
+
+
+const FLIPS := ["heather", "heath", "leaves", "roots", "fern", "cinder", "steppe", "scrub", "pine", "tundra",
+	"reeds", "glow", "burnt", "shingle", "deep", "rubble", "slate"]
+
+
+## The picture for one cell of a ground set: its own tile, or for a 64 x 64 set the quarter
+## of the picture laid over its 2 x 2 block (each block picks a variant and maybe a mirror).
+func _cell_tile(set_name: String, x: int, y: int, rnd: int) -> Image:
+	if not _is_macro(set_name):
+		return _tile(set_name, rnd / 7)
+	var brnd := int(abs(sin((x >> 1) * 12.9898 + (y >> 1) * 78.233) * 43758.5453))
+	var big := _tile(set_name, brnd / 7)
+	# organic grounds may be mirrored too (on cracked or layered ones it shows)
+	var flip := (brnd >> 4) & 1 == 1 and FLIPS.has(set_name)
+	var key := "%s#%d%d%d" % [_tile_key(set_name, brnd / 7), x & 1, y & 1, int(flip)]
+	if not _tile_cache.has(key):
+		var src := big
+		if flip:
+			src = big.duplicate()
+			src.flip_x()
+		_tile_cache[key] = src.get_region(Rect2i((x & 1) * T, (y & 1) * T, T, T))
 	return _tile_cache[key]
 
 
 ## The ground is drawn in square pieces of CHUNK cells (one picture for a whole big map
 ## would be too large a texture for many phones).
 const CHUNK := 64
+
+
+## Masks for the soft borders between grounds: a ragged band along one side (0 left,
+## 1 right, 2 top, 3 bottom) or round one corner (4 top-left, 5 top-right, 6 bottom-left,
+## 7 bottom-right), two of each so the edges don't repeat.
+var _masks: Array = []
+
+
+func _edge_masks() -> Array:
+	if not _masks.is_empty():
+		return _masks
+	for v in 2:
+		var row: Array = []
+		for k in 8:
+			var m := Image.create(T, T, false, Image.FORMAT_LA8)
+			for py in T:
+				for px in T:
+					var nz := fposmod(sin((px + v * 37) * 12.9898 + (py + k * 11) * 78.233) * 43758.5453, 1.0)
+					var wob := sin((px if k >= 2 else py) * 0.55 + v * 2.0 + k) * 2.5
+					var d := 0.0
+					match k:
+						0: d = px
+						1: d = T - 1 - px
+						2: d = py
+						3: d = T - 1 - py
+						4: d = Vector2(px, py).length()
+						5: d = Vector2(T - 1 - px, py).length()
+						6: d = Vector2(px, T - 1 - py).length()
+						7: d = Vector2(T - 1 - px, T - 1 - py).length()
+					var reach := 8.0 + wob + nz * 4.0
+					m.set_pixel(px, py, Color(1, 1, 1, 1.0 if d < reach else 0.0))
+			row.append(m)
+		_masks.append(row)
+	return _masks
 
 
 func _render_ground() -> void:
@@ -589,25 +686,33 @@ func _render_ground() -> void:
 			if (Vector2(c) - (Vector2(st) + Vector2(2.5, 2))).length() < 6.5:
 				return true
 		return false
-	# every cell's tile and shade, decided once
+	# every cell's ground set and shade, decided once; `layer` ranks the plain grounds that
+	# blend into each other at their borders (water < ford < bare ground < the low sets;
+	# 0 = a cell that keeps clean edges: cliffs, high ground, ramps)
 	var sets := PackedStringArray()
 	sets.resize(W * H)
 	var shades := PackedFloat32Array()
 	shades.resize(W * H)
 	var rnds := PackedInt32Array()
 	rnds.resize(W * H)
+	var layer := PackedInt32Array()
+	layer.resize(W * H)
 	for y in H:
 		for x in W:
 			var c := Vector2i(x, y)
 			var i := idx(c)
-			var b: Dictionary = MapGen.BIOMES[mapgen.biome_at(x, y)]
+			var bn := mapgen.biome_at(x, y)
+			var b: Dictionary = MapGen.BIOMES[bn]
 			var rnd := int(abs(sin(x * 12.9898 + y * 78.233) * 43758.5453))
 			var set_name: String
 			var shade := 1.0
+			var lay := 0
 			if water[i] == 1:
 				set_name = b["water"]
+				lay = 1
 			elif mapgen.ford.size() > i and mapgen.ford[i] == 1:
 				set_name = b["ford"]
+				lay = 2
 			elif ramp[i] == 1:
 				set_name = b["high"]       # painted over as a slope below (_paint_ramps)
 			elif cliff[i] == 1:
@@ -621,27 +726,41 @@ func _render_ground() -> void:
 				if _value_noise(x, y, 3.0) > 0.72:
 					set_name = b["high"]
 					shade = 1.0
+					lay = 40
 				else:
 					var low_h: Array = b["low"]
-					set_name = low_h[rnd % low_h.size()]
+					var hi := rnd % low_h.size()
+					if b.get("patches", false):
+						hi = int(_value_noise(x + 500, y, 4.0) * low_h.size() * 0.999)
+					set_name = low_h[hi]
 					shade = 1.07
+					lay = 10 + hi + (0 if bn == mapgen.biome_a else 5)
 			elif near_base.call(c):
 				set_name = b["base"]
+				lay = 3
 			else:
 				var low: Array = b["low"]
 				# a biome with several low sets lays them in soft patches
-				set_name = low[rnd % low.size()] if not b.get("patches", false) else low[int(_value_noise(x + 500, y, 4.0) * low.size() * 0.999)]
+				var li := rnd % low.size()
+				if b.get("patches", false):
+					li = int(_value_noise(x + 500, y, 4.0) * low.size() * 0.999)
+				set_name = low[li]
+				lay = 10 + li + (0 if bn == mapgen.biome_a else 5)
 			sets[i] = set_name
 			shades[i] = shade
 			rnds[i] = rnd
+			layer[i] = lay
 			var key := _tile_key(set_name, rnd / 7)
 			_tile(set_name, rnd / 7)
 			var mc: Color = _tile_avg.get(key, Color(0.3, 0.5, 0.2)) * shade
 			if _terrain_kind.get(i, "") == "tree":
 				mc = mc.darkened(0.45)
-			elif _terrain_kind.get(i, "") == "rock":
+			elif _terrain_kind.get(i, "") in ["rock", "prop"]:
 				mc = Color(0.45, 0.45, 0.45)
 			minimap_img.set_pixel(x, y, Color(mc.r, mc.g, mc.b, 1.0))
+	var masks := _edge_masks()
+	var nb8: Array = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
+		Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]
 	for cy in range(0, H, CHUNK):
 		for cx in range(0, W, CHUNK):
 			var cr := Rect2i(cx, cy, mini(CHUNK, W - cx), mini(CHUNK, H - cy))
@@ -649,8 +768,33 @@ func _render_ground() -> void:
 			for y in range(cr.position.y, cr.end.y):
 				for x in range(cr.position.x, cr.end.x):
 					var i := y * W + x
-					var t := _shaded_tile(sets[i], rnds[i] / 7, shades[i])
-					img.blit_rect(t, Rect2i(0, 0, T, T), Vector2i(x - cx, y - cy) * T)
+					var at := Vector2i(x - cx, y - cy) * T
+					var t := _shaded(_cell_tile(sets[i], x, y, rnds[i]), shades[i])
+					img.blit_rect(t, Rect2i(0, 0, T, T), at)
+					var lay := layer[i]
+					if lay == 0:
+						continue
+					# a ground ranked higher next door spills over this cell's edge
+					var done := {}
+					for k in 8:
+						var n: Vector2i = Vector2i(x, y) + nb8[k]
+						if not in_map(n):
+							continue
+						var j := idx(n)
+						var nl := layer[j]
+						if nl <= lay or sets[j] == sets[i]:
+							continue
+						if k >= 4:
+							# a corner only where neither side next to it is the same ground
+							var a := idx(Vector2i(n.x, y))
+							var bb := idx(Vector2i(x, n.y))
+							if sets[a] == sets[j] or sets[bb] == sets[j]:
+								continue
+						if (height[i] == 1) != (height[j] == 1):
+							continue      # (high and low ground meet only at cliffs and ramps)
+						var over := _shaded(_cell_tile(sets[j], x, y, rnds[i]), shades[i])
+						img.blend_rect_mask(over, masks[(x * 7 + y * 3 + k) % 2][k], Rect2i(0, 0, T, T), at)
+						done[k] = true
 			_paint_ramps(img, cr)
 			# a soft shadow under each cliff face
 			for y in range(maxi(cr.position.y - 1, 0), mini(cr.end.y, H - 1)):
@@ -671,19 +815,21 @@ func _render_ground() -> void:
 
 
 ## A tile darkened or brightened (cliff tops, high ground), made once.
-func _shaded_tile(set_name: String, rnd: int, shade: float) -> Image:
-	var t := _tile(set_name, rnd)
+var _shade_cache := {}
+
+
+func _shaded(t: Image, shade: float) -> Image:
 	if shade == 1.0:
 		return t
-	var key := "%s@%.2f" % [_tile_key(set_name, rnd), shade]
-	if not _tile_cache.has(key):
+	var key := [t.get_instance_id(), shade]
+	if not _shade_cache.has(key):
 		var d: Image = t.duplicate()
-		for py in T:
-			for px in T:
+		for py in d.get_height():
+			for px in d.get_width():
 				var col := d.get_pixel(px, py)
 				d.set_pixel(px, py, Color(col.r * shade, col.g * shade, col.b * shade, col.a))
-		_tile_cache[key] = d
-	return _tile_cache[key]
+		_shade_cache[key] = d
+	return _shade_cache[key]
 
 
 ## Smooth value noise in 0..1 (a random value every `cell` tiles, blended between them).
