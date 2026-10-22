@@ -46,7 +46,9 @@ const SOIL_RESERVE := 9000
 const SOIL_TIRED := 1.0 / 3.0     # share of a harvest that tired soil still pays
 const SOIL_LOW := 0.25            # warn the player below this share of the reserve (Hive ground too)
 const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min) while its saltpetre lasts
-const START_POWDER := 80
+## The Crown starts with no powder: a Powder Mill comes before Musketeers (or a Horse Breeder
+## before Horsemen: the two openings).
+const START_POWDER := 0
 ## Personal powder: Musketeers, Cannons and Mortars carry their own, in shots (one per shot:
 ## round shot, canister or shell alike). A dry Musketeer fights with the bayonet until it has
 ## `rearm` shots again. They refill by themselves (`refill` shots a second) within `range` tiles of
@@ -220,7 +222,7 @@ const UNITS := {
 	"musketeer": {
 		"tags": ["light"],
 		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 1,
-		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks",
+		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks", "requires": "powder_mill",
 		"anti_air": true, "faction": "crown", "about": "Light line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 10 shots run dry, 20 with the Shot Pouch; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Costs 10 powder: the Powder Mill grinds more. The Armoury researches Armour (he becomes a Guardsman), better locks, the socket bayonet and the shot pouch for him. MOUNT a horse and he rides as a Dragoon.",
 	},
 	"cannon": {
@@ -250,7 +252,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Horseman", "hp": 140, "armor": 1, "speed": 112, "cost": 145, "time": 22.0, "supply": 3,
 		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
-		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "arc_thrower": 1.3}, "charge": true, "faction": "crown", "needs_horse": true,
+		"requires": "horse_breeder", "bonus": {"cannon": 1.6, "spitter": 1.3, "arc_thrower": 1.3}, "charge": true, "faction": "crown", "needs_horse": true,
 		"about": "Fast light horseman with a sabre. Needs a horse at the Barracks. Once the Armoury has drilled the Cavalry Charge, his first blow after a gallop hits double and throws the enemy back. With Armour he becomes a Cuirassier. DISMOUNT and he fights on foot with carbine and sabre. Bayonets hurt him.",
 	},
 	# ---- horses (Defs.HORSES) and the men who ride them. None is trained: horses are bred at
@@ -431,17 +433,17 @@ const BUILDINGS := {
 	# Crown fortifications: one tile each, laid in a line (pick the start, then the end).
 	"wall": {
 		"name": "Palisade", "hp": 300, "armor": 2, "cost": 25, "time": 8.0, "size": Vector2i(1, 1),
-		"supply": 0, "sight": 3, "trains": [], "line": true, "faction": "crown",
+		"supply": 0, "sight": 3, "trains": [], "line": true, "requires": "cottage", "faction": "crown",
 		"about": "A wooden palisade: blocks the way. Lay it in a line: pick where it starts, then where it ends; the stakes join up with your other palisade and gates. Wall off your ramp and keep a gate.",
 	},
 	"gate": {
 		"name": "Gate", "hp": 300, "armor": 2, "cost": 50, "time": 12.0, "size": Vector2i(1, 1),
-		"supply": 0, "sight": 4, "trains": [], "line": true, "gate": true, "faction": "crown",
+		"supply": 0, "sight": 4, "trains": [], "line": true, "gate": true, "requires": "cottage", "faction": "crown",
 		"about": "A piece of palisade that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own palisade to swap a piece for a gate. Gates turn to match the palisade they're placed in; R (ROTATE) turns one by hand: while placing, for where the palisade doesn't say; once built, for good.",
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains Musketeers and (with a Foundry and a horse brought to it) Horsemen; with Armour, Guardsmen and Cuirassiers. Refits soldiers.",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "requires": "cottage", "faction": "crown", "about": "Trains Musketeers (with a Powder Mill) and Horsemen (with a Horse Breeder, and a horse brought to it); with Armour, Guardsmen and Cuirassiers. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	},
 	"armoury": {
 		"name": "Armoury", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
@@ -450,7 +452,7 @@ const BUILDINGS := {
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["cannon", "mortar", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and mortars, rigs observation balloons and builds powder wagons (each cannon, mortar and wagon needs a horse brought to the Foundry). Lets the Barracks train cuirassiers. Needs a Barracks.",
+		"supply": 0, "sight": 7, "trains": ["cannon", "mortar", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and mortars, rigs observation balloons and builds powder wagons (each cannon, mortar and wagon needs a horse brought to the Foundry). Needs a Barracks.",
 	},
 	"hive": {
 		"name": "Hive", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
@@ -881,7 +883,7 @@ const PALETTE := [
 const TIPS := {
 	# Crown units
 	"labourer": "Works Farms and Powder Mills, builds and repairs. Weak in a fight.",
-	"musketeer": "Light line infantry: 10 shots, a long reload, the bayonet up close. Hits flyers. Refills powder near a Mill, Barracks, Hall or Wagon. MOUNT a horse: a Dragoon.",
+	"musketeer": "Light line infantry (needs a Powder Mill): 10 shots, a long reload, the bayonet up close. Hits flyers. Refills powder near a Mill, Barracks, Hall or Wagon. MOUNT a horse: a Dragoon.",
 	# horse commands (the command card's tooltips)
 	"LEAD": "Each man takes up to 3 of your free horses nearby by the reins; they follow at his side. (Right-click a horse with Labourers: they lead it.)",
 	"RELEASE": "Let go of the reins: the horses stay where they stand and graze. Unattended, an enemy man can steal them.",
@@ -890,7 +892,7 @@ const TIPS := {
 	"RELEASE HORSE": "Unhitch the horse: it stands free (for a rider). The gun or wagon can't move without one, but a gun still fires and a wagon still supplies.",
 	"HARNESS": "Your nearest free horse walks over and is hitched: it can move again. (Or right-click the gun with a horse selected or led.)",
 	"guardsman": "Armoured line infantry (+1 armour, +20 health): a Musketeer in morion and breastplate. Needs Armour.",
-	"horseman": "Fast light horseman with a sabre. Needs a horse at the Barracks. With the Cavalry Charge his first blow after a gallop hits double. Bayonets hurt him.",
+	"horseman": "Fast light horseman with a sabre. Needs a Horse Breeder, and a horse at the Barracks. With the Cavalry Charge his first blow after a gallop hits double. Bayonets hurt him.",
 	"cannon": "Long-range artillery (needs a horse at the Foundry). UNLIMBER to fire: round shot ploughs through lines, canister shreds light units and flyers. Needs spotters.",
 	"mortar": "Siege mortar: DEPLOY, then it lobs shells over walls 5 to 11 tiles away. The splash hurts friends too. Can't hit flyers.",
 	"powder_wagon": "Carries 120 shots of powder for the soldiers near it. No weapon, and it blows up when destroyed.",
@@ -914,15 +916,15 @@ const TIPS := {
 	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
 	# Crown buildings
 	"town_hall": "Trains Labourers. Allows 1 Farm, 1 Horse Breeder and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
-	"horse_breeder": "Raises a horse about every 40 s (up to 6 round it) and pays a little gold. Cavalry, guns and wagons need its horses.",
-	"cottage": "Houses 8 more supply.",
-	"wall": "Palisade: blocks the way. Lay it in a line: pick the start, then the end.",
-	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece.",
-	"barracks": "Trains Musketeers and Horsemen, and with Armour Guardsmen and Cuirassiers. Refits soldiers with what the Armoury researched.",
+	"horse_breeder": "Raises a horse about every 40 s (up to 6 round it) and pays a little gold. Unlocks Horsemen; cavalry, guns and wagons need its horses. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
+	"cottage": "Houses 8 more supply. The first one unlocks the Barracks and the palisade.",
+	"wall": "Palisade: blocks the way. Lay it in a line: pick the start, then the end. Needs a Cottage.",
+	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece. Needs a Cottage.",
+	"barracks": "Trains Musketeers (needs a Powder Mill) and Horsemen (needs a Horse Breeder), and with Armour Guardsmen and Cuirassiers. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	"armoury": "Researches Armour, the musket locks, the socket bayonet, the guns' drills and the Cavalry Charge. Refits soldiers too.",
-	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons. Lets the Barracks train Horsemen.",
+	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons (cannons, mortars and wagons need a horse brought to it).",
 	"farm": "Ripens into a 450-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
-	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder. Soldiers and wagons nearby refill here.",
+	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
 	# Brood buildings
 	"hive": "Lays eggs: every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby.",

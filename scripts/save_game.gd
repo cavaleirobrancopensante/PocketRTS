@@ -61,7 +61,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]), "buildings": [], "units": []}
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at, "strategy": ai.strategy,
-			"failed": ai._failed, "regroup": ai._regroup_until})
+			"failed": ai._failed, "regroup": ai._regroup_until, "opening": ai.opening})
 	for b in game.buildings:
 		if b.dead:
 			continue
@@ -429,6 +429,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 					ai.strategy = String(a["strategy"])
 				ai._failed = int(a.get("failed", 0))
 				ai._regroup_until = float(a.get("regroup", 0.0))
+				ai.opening = String(a.get("opening", ai.opening))
 	# (saves from before the windmill stood in the middle of its Farm (v0.7.89): a farm hand
 	# left on an old crop row inside its block steps out onto the fields)
 	for b in game.buildings:

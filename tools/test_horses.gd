@@ -123,6 +123,12 @@ func _run() -> void:
 		quit(1)
 		return
 	g.reveal = true
+	# the tech tree: no powder at the start; the Barracks and the palisade need a Cottage
+	check(float(g.players[0]["res2"]) == 0.0, "the Crown starts with no powder")
+	check(g.requirement_text(0, "barracks").contains("Cottage"), "the Barracks needs a Cottage ('%s')" % g.requirement_text(0, "barracks"))
+	check(g.requirement_text(0, "wall").contains("Cottage") and g.requirement_text(0, "gate").contains("Cottage"), "the palisade and gates need a Cottage")
+	var cot: Building = g._add_building("cottage", 0, origin + Vector2i(22, 16), true)
+	check(g.requirement_met(0, "barracks") and g.requirement_met(0, "wall"), "a Cottage unlocks them")
 	g.players[0]["gold"] = 20000
 	g.players[0]["res2"] = 5000.0
 	g.players[0]["cap"] = 100
@@ -192,6 +198,8 @@ func _training() -> void:
 	g.players[0]["tech"] = {}
 	var bar: Building = g._add_building("barracks", 0, origin + Vector2i(12, 2), true)
 	var fdy: Building = g._add_building("foundry", 0, origin + Vector2i(18, 2), true)
+	check(g.can_train(bar, "musketeer").contains("Powder Mill"), "Musketeers need a Powder Mill ('%s')" % g.can_train(bar, "musketeer"))
+	check(String(Defs.UNITS["cuirassier"]["requires"]) == "horse_breeder", "Horsemen need a Horse Breeder")
 	var why: String = g.can_train(bar, "horseman")
 	check(why.begins_with("Needs a horse"), "no horse: '%s'" % why)
 	var lab := unit("labourer", at(250, 220))
@@ -416,6 +424,7 @@ func _pouch() -> void:
 		if b.kind == "barracks" and b.team == 0:
 			bar = b
 	g.players[0]["tech"]["pouch"] = true
+	g._add_building("powder_mill", 0, origin + Vector2i(22, 13), true)     # (Musketeers need a Powder Mill)
 	var before: int = g.units.filter(func(u: Unit) -> bool: return u.kind == "musketeer" and u.team == 0).size()
 	g.train(bar, "musketeer")
 	await wait_for(func() -> bool: return g.units.filter(func(u: Unit) -> bool: return u.kind == "musketeer" and u.team == 0).size() > before, 25.0)

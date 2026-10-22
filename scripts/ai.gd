@@ -45,10 +45,19 @@ func _s(key: String) -> Variant:
 	return STRATEGIES.get(strategy, STRATEGIES["balanced"]).get(key, STRATEGIES["balanced"].get(key))
 
 
+## Crown: the opening this game: "mill" (Powder Mill first, a Musketeer line: the default) or
+## "breeder" (Horse Breeder first, a Horseman rush: on Rush, and else about 3 games in 10).
+var opening := "mill"
+
+
 func _ready() -> void:
 	if not strategies_for(game.faction_of(team)).has(strategy):
 		strategy = "balanced"
 	_opened = strategy
+	if game.faction_of(team) == "crown" and (strategy == "rush" or randf() < 0.3):
+		opening = "breeder"
+	if game.mlog and game.faction_of(team) == "crown":
+		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
 	_attack_at = int(_s("wave"))
 
 
@@ -271,14 +280,14 @@ func _econ_build() -> void:
 	if _crown():
 		# the Horse Breeder first (the start has the farm), then the mill; a new hall gets its
 		# farm and breeder before its mill, the farm on the freshest soil (see _econ_spot)
-		order = ["farm", "horse_breeder", "powder_mill"]
-		if game.econ_count(team, "powder_mill") == 0:
-			# (the first hands farm: gold for labourers first. Musketeers don't need the mill,
-			# only its powder: the 80 at the start pays for the first eight, so the first mill
-			# waits for the Barracks unless the bank runs low)
-			if (game.workers(team).size() < 8 and game.clock < 120.0) \
-					or (_mine("barracks").is_empty() and _res2() >= 60.0 and game.clock < 240.0):
-				order.erase("powder_mill")
+		# (the opening decides which comes first: the Mill for Musketeers, the Breeder for Horsemen)
+		order = ["farm", "powder_mill", "horse_breeder"] if opening == "mill" else ["farm", "horse_breeder", "powder_mill"]
+		var first := "powder_mill" if opening == "mill" else "horse_breeder"
+		var second := "horse_breeder" if opening == "mill" else "powder_mill"
+		if game.econ_count(team, first) == 0 and game.workers(team).size() < 7 and game.clock < 100.0:
+			order.erase(first)       # (the first hands farm: gold for labourers first)
+		if game.econ_count(team, second) == 0 and (_mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty() or game.econ_count(team, first) == 0):
+			order.erase(second)      # (the other one after the Barracks: the opening's soldiers first)
 	elif _brood():
 		order = ["feeding_pit"]
 		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
@@ -410,6 +419,9 @@ func _build_up() -> void:
 			_construct("roost")
 	else:
 		var barracks := _mine("barracks").size()
+		# the Barracks (and the palisade) need a Cottage
+		if barracks == 0 and labs >= _lv([7, 6, 5]) and _mine("cottage").is_empty():
+			_construct("cottage")
 		if barracks == 0 and labs >= _lv([9, 8, 7]):
 			_construct("barracks")
 		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150:
@@ -423,7 +435,7 @@ func _build_up() -> void:
 			_construct("armoury")
 		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]):
 			_construct("church")
-		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140:
+		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140 and game.requirement_met(team, "wall"):
 			_wall_off()
 	# Money in the bank: more production (and for the Brood, more Hives to lay eggs).
 	if gold > 400 and not _saving:
@@ -1049,7 +1061,15 @@ func _produce() -> void:
 	var mortars := army.filter(func(u: Unit) -> bool: return u.kind == "mortar").size()
 	var muskets := army.filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind)).size()
 	var short_powder := _res2() < 20.0
+	# a horse waits at a Foundry for a gun we want: the Barracks saves the gold for it
+	var gun_wait := false
+	if not short_powder and army.size() >= 6 and _gold() < int(Defs.UNITS["cannon"]["cost"]):
+		for f in _mine("foundry"):
+			if f.built and f.queue.is_empty() and game.horses_at(f) > 0 and (cannons * 4 < army.size() + 2 or mortars < mini(2, int(muskets / 6.0))):
+				gun_wait = true
 	for b in _mine("barracks"):
+		if gun_wait:
+			break
 		# (a little room left for the research going on here)
 		if b.built and b.queue.size() < (3 if _gold() > 600 else 2):
 			# the line is Musketeers (they stab when the enemy closes); horsemen to raid and
@@ -1058,7 +1078,8 @@ func _produce() -> void:
 			var k := _soldier_key(b, "musketeer")
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
 			var hk := _soldier_key(b, "cuirassier")
-			if (horse < 3 or horse * 6 < army.size()) and randf() < (0.6 if short_powder else 0.3) and hk != "":
+			var rush := opening == "breeder" and game.clock < 600.0
+			if (horse < 3 or horse * 6 < army.size() or rush) and randf() < (0.85 if rush else (0.6 if short_powder else 0.3)) and hk != "":
 				k = hk
 			elif k == "":
 				k = hk
@@ -2841,8 +2862,8 @@ func _horses() -> void:
 	var need := 0
 	var foundries := _mine("foundry").filter(func(b: Building) -> bool: return b.built)
 	var places: Array = foundries.duplicate()
-	if not foundries.is_empty():
-		places += _mine("barracks").filter(func(b: Building) -> bool: return b.built)
+	if game.requirement_met(team, "horse_breeder") and not _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built).is_empty():
+		places += _mine("barracks").filter(func(b: Building) -> bool: return b.built)   # (Horsemen need the breeder)
 	for b in places:
 		var want := 2 if b.kind == "foundry" and _gold() > 600 else 1
 		var have: int = game.horses_at(b)
