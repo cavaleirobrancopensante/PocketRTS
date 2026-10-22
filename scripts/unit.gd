@@ -78,6 +78,7 @@ var _push := Vector2.ZERO
 var mode := ""                  # musketeer "" (musket) or "bayonet" (chosen by itself); cannon "" (round shot) or "canister"
 var _melee_t := 0.0             # musketeer: when it next looks for an enemy close enough for the bayonet
 var art := ""                   # whose sprites it wears (an armoured Musketeer: "musketeer_armoured")
+var coat := ""                  # its horse's coat (HorseCoat), for the units that have one
 var armoured := false           # Musketeer: refitted with Armour (or came out with it)
 var lock := ""                  # Musketeer: his musket lock ("", or one of Defs.LOCKS)
 var refit: Array = []           # Musketeer on a "refit" order: the upgrades he's going to get (paid)
@@ -1029,6 +1030,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	last_pos = pos
 	leash_from = pos
 	art = k
+	if HorseCoat.has_horse(k):
+		coat = HorseCoat.pick()
 
 
 func _ready() -> void:
@@ -1037,6 +1040,10 @@ func _ready() -> void:
 	sprite.centered = false
 	sprite.material = team_material()
 	add_child(sprite)
+	if coat != "":
+		# each strip of the horse's sprites has its own coat mask
+		sprite.texture_changed.connect(func() -> void: HorseCoat.update_mask(self))
+		HorseCoat.apply(self)
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_make_wheel()
 	if kind == "balloon" and ArtData.UNITS.has(kind):

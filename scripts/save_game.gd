@@ -83,6 +83,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 				ud["rfp"] = u.refit_paid
 		if u.auto_refit:
 			ud["ar"] = true
+		if u.coat != "":
+			ud["coat"] = u.coat
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
@@ -268,6 +270,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 			# his own refits (older saves: research applied to every Musketeer, so he has it all)
 			u.set_kit(ud["kit"] if ud.get("kit") is Dictionary else game.kit_for_new(u.team))
 		u.auto_refit = bool(ud.get("ar", false))
+		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):
+			u.coat = String(ud["coat"])      # (older saves: the coat it was just given)
+			HorseCoat.apply(u)
 		u.hp = minf(float(ud["hp"]), u.max_hp)
 		u.cross_t = float(ud.get("cross", 0.0))
 		u.wind = float(ud["wind"])
