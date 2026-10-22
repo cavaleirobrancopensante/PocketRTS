@@ -3478,31 +3478,49 @@ func requirement_met(t: int, k: String) -> bool:
 
 
 var _sweep_pos := {}       # sweep_ghosts: a ghost's instance id -> where its worker was last time
+var _crown_orphan := {}    # sweep_ghosts: a Crown ghost's instance id -> sweeps in a row nobody was coming
 
 
-## Brood and Clockwork ghosts need their own worker to start them (a grub turns into it, a
-## Winder brings its crate); no other worker picks one up on its own (Crown ones are left:
-## any Labourer nearby takes up an unfinished Crown site, Game.next_site). So a Brood or
-## Clockwork ghost whose grub or Winder is no longer coming (re-ordered, stopped, killed)
-## goes, all of its cost back, as in StarCraft 2. A Clockwork crate dropped on the ground or
-## carried keeps its site (any Winder can carry it on). A worker that can't get to its site
-## (stuck in the same spot over two sweeps, and no walking path there) gives it up too.
-## Run about once a second (from the tick).
+## Ghosts need a worker to start them (a grub turns into it, a Winder brings its crate, the
+## Labourers begin it). So a ghost whose worker is no longer coming (re-ordered, stopped,
+## killed) goes, all of its cost back, as in StarCraft 2. A Clockwork crate dropped on the
+## ground or carried keeps its site (any Winder can carry it on). A worker that can't get to
+## its site (stuck in the same spot over two sweeps, and no walking path there) gives it up
+## too. Crown: a Labourer that finishes a site takes up the nearest unfinished Crown site
+## within 8 tiles (Game.next_site: how a wall laid without Shift gets built piece by piece),
+## so a Crown ghost is kept while it is in such a chain from a site a Labourer is coming to;
+## it goes after two sweeps in a row with nobody coming. Sites already begun (Crown: any
+## progress) are never swept. Run about once a second (from the tick).
 func sweep_ghosts() -> void:
 	var sites: Array = []
 	if not _sweep_pos.is_empty():
 		for id in _sweep_pos.keys():
 			if not is_instance_id_valid(id):
 				_sweep_pos.erase(id)
+	var any_crown := false
 	for b in buildings:
 		if b.dead or b.built or b.team < 0 or not (b.ghost or not b.seeded):
 			continue
 		var f: String = b.d["faction"]
-		if f == "brood" or (f == "clockwork" and b.ghost and (b.crate == "" or b.crate == "tower")):
+		if f == "brood" or (f == "clockwork" and b.ghost and (b.crate == "" or b.crate == "tower")) \
+				or (f == "crown" and b.ghost):
 			sites.append(b)
+			any_crown = any_crown or f == "crown"
 	if sites.is_empty():
+		_crown_orphan.clear()
 		return
+	var crown_kept := _crown_chain() if any_crown else {}
+	var orphans := {}
 	for b in sites:
+		if b.d["faction"] == "crown":
+			var cid: int = b.get_instance_id()
+			if crown_kept.has(b):
+				continue
+			orphans[cid] = int(_crown_orphan.get(cid, 0)) + 1
+			if int(orphans[cid]) >= 2:
+				orphans.erase(cid)
+				site_failed(b, "abandoned")
+			continue
 		var coming: Unit = null
 		for u in units:
 			if u.team != b.team or u.dead or not u.is_worker():
@@ -3534,6 +3552,45 @@ func sweep_ghosts() -> void:
 				and b.edge_distance(coming.position) > coming.radius + 24.0 \
 				and not coming._walk_reaches_point(approach_point(b, coming.position)):
 			site_failed(b, "unreachable")       # (its worker goes on to its next order)
+	_crown_orphan = orphans
+
+
+## The unfinished Crown sites (ghosts or begun) a Labourer is coming to: going there now,
+## with it next in his wall (line_rest) or Shift-queued; and every other unfinished Crown
+## site of that side within next_site's reach (8 tiles) of one of those, and so on (the
+## Labourers go on from one to the next). A set: site -> true.
+func _crown_chain() -> Dictionary:
+	var kept := {}
+	var todo: Array = []
+	for u in units:
+		if u.dead or u.kind != "labourer":
+			continue
+		var mine: Array = []
+		if u.order == "build" and u.order_target is Building:
+			mine.append(u.order_target)
+		mine.append_array(u.line_rest)
+		for o in u.queue:
+			if String(o["o"]) == "build" and o.get("e") is Building:
+				mine.append(o["e"])
+			elif String(o["o"]) == "wall":
+				mine.append_array(o["pieces"])
+		for b in mine:
+			if b is Building and is_instance_valid(b) and not b.dead and not b.built \
+					and b.d["faction"] == "crown" and not kept.has(b):
+				kept[b] = true
+				todo.append(b)
+	if todo.is_empty():
+		return kept
+	var open: Array = buildings.filter(func(b: Building) -> bool:
+		return not b.dead and not b.built and b.team >= 0 and b.d["faction"] == "crown")
+	var reach := 8.0 * T
+	while not todo.is_empty():
+		var a: Building = todo.pop_back()
+		for b in open:
+			if not kept.has(b) and b.team == a.team and b.center().distance_to(a.center()) < reach:
+				kept[b] = true
+				todo.append(b)
+	return kept
 
 
 ## "" when every building this one needs stands (finished), else what's missing.
@@ -4151,6 +4208,13 @@ func separation(u: Unit) -> Vector2:
 func find_target(u: Unit, r: float) -> Entity:
 	if u.d.get("no_attack", false):
 		return null
+	# HOLD FIRE (a gun other than the cavalry's pistol): nothing to shoot at on its own; a
+	# Musketeer still takes on a man right on top of him with the bayonet
+	var held := u.hold_fire and not u.has_pistol() and u.has_gun()
+	if held:
+		if not u.foot_musket():
+			return null
+		r = minf(r, float(Defs.BAYONET["close"]) + u.radius + 24.0)
 	var best: Entity = null
 	var bd := INF
 	# guns with a minimum range (set up) look past what's too close; area guns (round shot,
@@ -4161,7 +4225,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	var careful := (u.kind == "cannon" and u.mode != "canister") or u.kind == "mortar"
 	var picks: Array = []
 	for o in units_near(u.position, r):
-		if not hostile(o.team, u.team) or o.dead or not u.can_hit(o):
+		if not hostile(o.team, u.team) or o.dead or not u.can_hit(o) or (held and o.is_air()):
 			continue
 		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
 			continue
@@ -4180,6 +4244,8 @@ func find_target(u: Unit, r: float) -> Entity:
 		elif dd < bd:
 			bd = dd
 			best = o
+	if held:
+		return best              # (no crates or buildings: they'd be shot)
 	# a Clockwork crate on the ground: smash it (counted like a worker)
 	if not careful and not u.d.get("medic", false):
 		for c in crates:
