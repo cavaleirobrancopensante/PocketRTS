@@ -40,7 +40,7 @@ def arrow(path, up):
     from PIL import ImageDraw
     big = Image.open(path).convert("RGBA").resize((256, 256), Image.LANCZOS)
     d = ImageDraw.Draw(big)
-    x, w = 186, 34                    # the shaft's centre and half the head's width
+    x, w = 70, 34                     # the shaft's centre (left of the boot) and half the head's width
     top, bot = 44, 210
     if up:
         head = [(x, top), (x - w * 1.5, top + 62), (x + w * 1.5, top + 62)]

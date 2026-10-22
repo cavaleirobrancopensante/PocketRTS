@@ -294,6 +294,8 @@ func add_progress(delta: float) -> void:
 	if progress >= 1.0:
 		built = true
 		hp = maxf(hp, max_hp * 0.95)
+		if kind == "horse_breeder":
+			growth = 1.0               # the first foal is ready the moment it's finished
 		game.on_building_complete(self)
 	_update_sprite()
 

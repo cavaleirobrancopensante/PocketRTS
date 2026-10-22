@@ -514,7 +514,7 @@ const BUILDINGS := {
 	"horse_breeder": {
 		"name": "Horse Breeder", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 6, "trains": [], "breeds": true, "faction": "crown",
-		"about": "Raises horses by itself, one about every 40 s, up to 6 grazing round it, and pays a little gold (about 5 a second). Horses are what cavalry, guns and wagons need. RALLY sends new foals somewhere (a Barracks or Foundry).",
+		"about": "Raises horses by itself: the first as soon as it is finished, then one about every 30 s, up to 6 grazing round it, and pays a little gold (about 5 a second). Horses are what cavalry, guns and wagons need. RALLY sends new foals somewhere (a Barracks or Foundry).",
 	},
 	"church": {
 		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
@@ -637,7 +637,7 @@ const LIGHT_ART := {"cuirassier": "horseman"}
 ## `dismount` s, a Dragoon's own dismount-to-fire and remount `quick` s; on foot after that
 ## dismount he reloads at `dragoon_reload` x a Musketeer's time. LEAD / MOUNT / HARNESS look
 ## for free horses within `fetch` tiles.
-const HORSES := {"breed": 40.0, "graze_cap": 6, "graze_r": 6, "cap": 10, "gold": 5.0, "wander": 34.0,
+const HORSES := {"breed": 30.0, "graze_cap": 6, "graze_r": 6, "cap": 10, "gold": 5.0, "wander": 34.0,
 	"at_building": 2.0, "lead_max": 3, "guard": 2.0, "steal": 26.0, "mount": 1.5, "dismount": 1.0,
 	"quick": 0.8, "dragoon_reload": 1.3, "scan": 0.5, "fetch": 8}
 ## Who rides what: the man on foot -> the mounted unit (and back with FOOT). Armour, his locks,
@@ -935,7 +935,7 @@ const TIPS := {
 	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
 	# Crown buildings
 	"town_hall": "Trains Labourers. Allows 1 Farm, 1 Horse Breeder and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
-	"horse_breeder": "Raises a horse about every 40 s (up to 6 round it) and pays a little gold. Unlocks Horsemen; cavalry, guns and wagons need its horses. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
+	"horse_breeder": "Raises a horse when finished, then about every 30 s (up to 6 round it) and pays a little gold. Unlocks Horsemen; cavalry, guns and wagons need its horses. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	"cottage": "Houses 8 more supply. The first one unlocks the Barracks and the palisade.",
 	"wall": "Palisade: blocks the way. Lay it in a line: pick the start, then the end. Needs a Cottage.",
 	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece. Needs a Cottage.",
