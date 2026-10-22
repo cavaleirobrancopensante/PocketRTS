@@ -4,11 +4,18 @@ extends SceneTree
 ## A Crown player (you) against a Brood player whose AI is switched off; everything is set up
 ## by hand on open ground. Prints PASS / FAIL per check and "ALL PASS" at the end (exit 1 on
 ## a failure).
-##  1. breeding up to the cap round a Horse Breeder (and its gold)
+##  1. buying horses at a Horse Breeder (40 gold, 15 s; nothing free, no income); 2 Farms a
+##     Town Hall, breeders unlimited; the horse-needing units' prices
 ##  2. one man leading 3 horses (they follow him)
 ##  3. a Horseman at the Barracks: refused without a horse, the horse walks in, cancel gives
 ##     it back, the recruit rides that horse's coat
+##  3b. one click trains rider and horse: a spare at a breeder is reserved (only the unit
+##     paid), else the breeder trains one (40 more); no gold for the horse: refused; the
+##     Horseman comes out on foot, mounts his horse and rides to the rally; a gun's horse
+##     walks to the Foundry by itself; cancelling releases the reservation
 ##  4. a cannon's horse released (it stands, can't move, still fires) and harnessed again
+##  4b. a team of up to 4 horses on a gun: HARNESS adds, +12% speed each, RELEASE HORSE one at
+##     a time, a team horse killed slows it again
 ##  5. mounting and dismounting every pair, keeping armour, kit, kills, powder, hp share
 ##  6. the dragoon's loop: ride up, dismount, fire, remount to move (the reload waits mounted)
 ##  7. stealing an unattended horse (a Crown man, a Winder); a guarded one stays
@@ -135,10 +142,12 @@ func _run() -> void:
 	for b in g.buildings:
 		if b.team == 0:
 			b.supply()
-	await _breeding()
+	await _buying()
 	await _leading()
 	await _training()
+	await _one_click()
 	await _cannon()
+	await _teams()
 	await _pairs()
 	await _dragoon()
 	await _stealing()
@@ -150,26 +159,73 @@ func _run() -> void:
 	quit(0 if fails == 0 else 1)
 
 
-# ---------------------------------------------------------------- 1. breeding
+# ---------------------------------------------------------------- 1. buying horses
 
-func _breeding() -> void:
+func _buying() -> void:
+	# the economy: 2 Farms and 1 Mill a Town Hall; the breeder isn't an economy building
+	var hall: Building = null
+	for b in g.buildings:
+		if b.team == 0 and b.kind == "town_hall":
+			hall = b
+	check(g.econ_limit(0, "farm") == 2 * g.halls_of(0).size(), "2 Farms a Town Hall (%d)" % g.econ_limit(0, "farm"))
+	check(g.econ_limit(0, "powder_mill") == g.halls_of(0).size(), "1 Powder Mill a Town Hall")
+	check(Defs.FARM_YIELD == 380, "a harvest pays 380 (%d)" % Defs.FARM_YIELD)
+	var farms: int = g.econ_count(0, "farm")
+	if farms < 2 and hall:
+		var spot: Vector2i = g.find_spot(0, "farm", hall, 4, Defs.ECON_RANGE - 2, "behind")
+		check(spot.x >= 0 and g.placement_problem(0, "farm", spot, true) == "", "a second Farm can go by the hall ('%s')" % (g.placement_problem(0, "farm", spot, true) if spot.x >= 0 else "no spot"))
+	check(not Defs.is_econ("horse_breeder"), "the Horse Breeder is no economy building")
+	# prices: a unit and its horse cost about 10 more than before horses
+	check(int(Defs.UNITS["horse"]["cost"]) == 40 and absf(float(Defs.UNITS["horse"]["time"]) - 15.0) < 0.01 and int(Defs.UNITS["horse"]["supply"]) == 0, "a horse: 40 gold, 15 s, no supply")
+	check(int(Defs.UNITS["cuirassier"]["cost"]) == 115 and int(Defs.UNITS["cannon"]["cost"]) == 170 and int(Defs.UNITS["mortar"]["cost"]) == 145 and int(Defs.UNITS["powder_wagon"]["cost"]) == 70,
+		"Horseman 115, Field Cannon 170, Mortar 145, Powder Wagon 70")
 	var b: Building = g._add_building("horse_breeder", 0, origin + Vector2i(2, 2), true)
+	# breeders: as many as you like, anywhere (far from any hall)
+	var far_ok: bool = g.placement_problem(0, "horse_breeder", origin + Vector2i(2, 12), true) == ""
+	var b2: Building = g._add_building("horse_breeder", 0, origin + Vector2i(2, 12), true)
+	var b3: Building = g._add_building("horse_breeder", 0, origin + Vector2i(7, 12), true)
+	check(far_ok and g.placement_problem(0, "horse_breeder", origin + Vector2i(12, 14), true) == "", "breeders: any number, anywhere (3 built, a 4th allowed, far from a hall)")
+	# nothing comes free, no income (the farms are stopped meanwhile: only the breeders run)
+	var farmland: Array = g.buildings.filter(func(x: Building) -> bool: return x.team == 0 and Defs.is_econ(x.kind))
+	for x in farmland:
+		x.process_mode = Node.PROCESS_MODE_DISABLED
 	var gold0: int = g.players[0]["gold"]
-	await wait(10.0)
-	var earned: int = int(g.players[0]["gold"]) - gold0
-	check(earned >= 40 and earned <= 60, "the breeder pays about 5 gold a second (%d in 10 s)" % earned)
-	# speed the foals up: the cap must hold
-	for i in 12:
-		b.growth = 0.999
-		await wait(1.2)
-	var near: int = g.horses_of(0).filter(func(h: Unit) -> bool: return b.edge_distance(h.position) <= 6 * Defs.TILE).size()
-	check(near == int(Defs.HORSES["graze_cap"]), "breeding stops at %d round the breeder (%d)" % [Defs.HORSES["graze_cap"], near])
+	var n0: int = g.horses_of(0).size()
+	await wait(40.0)
+	check(g.horses_of(0).size() == n0, "no free horses in 40 s (%d -> %d)" % [n0, g.horses_of(0).size()])
+	check(int(g.players[0]["gold"]) == gold0, "the breeder pays no gold (%+d)" % (int(g.players[0]["gold"]) - gold0))
+	for x in farmland:
+		x.process_mode = Node.PROCESS_MODE_INHERIT
+	# HORSE: 40 gold, 15 s
+	check(g.can_train(b, "horse") == "", "the breeder trains horses")
+	gold0 = g.players[0]["gold"]
+	check(g.train(b, "horse") == "", "HORSE")
+	check(gold0 - int(g.players[0]["gold"]) == 40, "a horse costs 40 gold (%d)" % (gold0 - int(g.players[0]["gold"])))
+	var t0: float = g.clock
+	await wait_for(func() -> bool: return g.horses_of(0).size() > n0, 20.0)
+	var took: float = g.clock - t0
+	check(g.horses_of(0).size() == n0 + 1 and took > 14.5 and took < 15.6, "it comes out after 15 s (%.1f s)" % took)
+	# RALLY: new horses go there and graze
+	b2.rally = at(260, 200)
+	g.train(b2, "horse")
+	g.train(b2, "horse")
+	g.train(b3, "horse")
+	g.train(b3, "horse")
+	g.train(b, "horse")
+	await wait_for(func() -> bool: return g.horses_of(0).size() >= n0 + 6, 40.0)
+	check(g.horses_of(0).size() == n0 + 6, "6 horses bought (%d)" % (g.horses_of(0).size() - n0))
+	await wait(6.0)
+	var rallied: int = g.horses_of(0).filter(func(h: Unit) -> bool: return h.position.distance_to(at(260, 200)) < 70.0).size()
+	check(rallied == 2, "RALLY: the breeder's new horses went there (%d)" % rallied)
+	for x in [b2, b3]:
+		x.queue.clear()
 	var h0: Unit = g.horses_of(0)[0]
 	var p0: Vector2 = h0.position
 	await wait(12.0)
 	check(h0.position.distance_to(h0.graze_at) <= float(Defs.HORSES["wander"]) + 12.0, "a horse grazes where it was left")
 	check(h0.coat != "" and HorseCoat.COATS.has(h0.coat), "a horse has a coat (%s)" % h0.coat)
 	print("  (horse moved %.0f px while grazing)" % h0.position.distance_to(p0))
+	check(g.horses_of(0).size() == n0 + 6, "still no free ones")
 
 
 # ---------------------------------------------------------------- 2. leading
@@ -201,8 +257,7 @@ func _training() -> void:
 	var fdy: Building = g._add_building("foundry", 0, origin + Vector2i(18, 2), true)
 	check(g.can_train(bar, "musketeer").contains("Powder Mill"), "Musketeers need a Powder Mill ('%s')" % g.can_train(bar, "musketeer"))
 	check(String(Defs.UNITS["cuirassier"]["requires"]) == "horse_breeder", "Horsemen need a Horse Breeder")
-	var why: String = g.can_train(bar, "horseman")
-	check(why.begins_with("Needs a horse"), "no horse: '%s'" % why)
+	check(g.free_horse_at(bar) == null, "no horse at the Barracks yet")
 	var lab := unit("labourer", at(250, 220))
 	lab.auto_work = false
 	var free: Array = g.horses_of(0).filter(func(h: Unit) -> bool: return h.leader == null)
@@ -210,12 +265,12 @@ func _training() -> void:
 	await wait_for(func() -> bool: return lab.led.size() == 1, 15.0)
 	var coat: String = lab.led[0].coat
 	lab.cmd_move(g.approach_point(bar, lab.position))
-	await wait_for(func() -> bool: return g.can_train(bar, "horseman") == "", 25.0)
-	check(g.can_train(bar, "horseman") == "", "a horse led to the Barracks: it can train a Horseman")
+	await wait_for(func() -> bool: return g.free_horse_at(bar) != null, 25.0)
+	check(g.free_horse_at(bar) != null and g.can_train(bar, "horseman") == "", "a horse led to the Barracks: it can train a Horseman with it")
 	var horses0: int = g.horses_of(0).size()
 	check(g.train(bar, "horseman") == "", "trained")
 	check(bar.kits[0].get("coat", "") == coat, "the queue entry keeps that horse's coat")
-	check(g.can_train(bar, "horseman").begins_with("Needs a horse"), "the next one needs another horse")
+	check(g.free_horse_at(bar) == null, "that horse is taken (the next one gets his from a breeder)")
 	await wait(5.0)
 	check(g.horses_of(0).size() == horses0 - 1, "the horse walked in and is gone")
 	g.cancel_train(bar)
@@ -235,6 +290,140 @@ func _training() -> void:
 	if rider:
 		g.consume_unit(rider)
 	g.consume_unit(lab)
+
+
+# ---------------------------------------------------------------- 3b. one click
+
+func _one_click() -> void:
+	await _clear_units()
+	var bar: Building = null
+	var fdy: Building = null
+	for x in g.buildings:
+		if x.team == 0 and not x.dead and x.kind == "barracks":
+			bar = x
+		if x.team == 0 and not x.dead and x.kind == "foundry":
+			fdy = x
+	for x in g.breeders_of(0):
+		x.queue.clear()
+		x.kits.clear()
+		x.rally = Vector2.INF
+	var br: Building = g.breeders_of(0)[0]
+	bar.rally = at(640, 140)
+	check(g.horses_of(0).is_empty(), "no horses about")
+	# no gold for the horse: refused, and said why
+	g.players[0]["gold"] = 130
+	var why: String = g.can_train(bar, "horseman")
+	check(why.contains("horse"), "115 for him but not 40 for a horse: '%s'" % why)
+	g.players[0]["gold"] = 20000
+	# no spare horse: the nearest breeder trains one for him, paid with him
+	var gold0: int = g.players[0]["gold"]
+	check(g.train(bar, "horseman") == "", "one click: HORSEMAN")
+	check(gold0 - int(g.players[0]["gold"]) == 155, "paid 115 + 40 for his horse (%d)" % (gold0 - int(g.players[0]["gold"])))
+	var rid := int(bar.kit_at(bar.queue.size() - 1).get("rid", 0))
+	var brq: Building = g.rid_breeder(0, rid)
+	check(rid != 0 and brq != null, "a breeder trains his horse, kept for him")
+	# (his horse is ready before him: he comes out on foot and gets straight on)
+	var on_foot := func() -> Array: return g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == "dismounted" and u.horse_rid == rid)
+	await wait_for(func() -> bool: return not on_foot.call().is_empty(), 45.0)
+	var foot: Array = on_foot.call()
+	check(foot.size() == 1, "he comes out on foot, going for his horse")
+	var rider: Unit = foot[0] if foot.size() == 1 else null
+	if rider:
+		await wait_for(func() -> bool: return rider.kind == "cuirassier", 40.0)
+		check(rider.kind == "cuirassier" and rider.horse_rid == 0, "he walked to it and got on (%s)" % rider.kind)
+		await wait_for(func() -> bool: return rider.position.distance_to(at(640, 140)) < 90.0, 30.0)
+		check(rider.position.distance_to(at(640, 140)) < 90.0, "and rode to the Barracks' rally point (%.0f px off)" % rider.position.distance_to(at(640, 140)))
+		g.consume_unit(rider)
+	# a spare horse at a breeder is kept for him: only the Horseman is paid
+	g.train(br, "horse")
+	await wait_for(func() -> bool: return g.horses_of(0).size() == 1, 20.0)
+	var spare: Unit = g.horses_of(0)[0] if g.horses_of(0).size() == 1 else null
+	check(spare != null and spare.horse_rid == 0, "a spare horse at the breeder")
+	gold0 = g.players[0]["gold"]
+	g.train(bar, "horseman")
+	check(gold0 - int(g.players[0]["gold"]) == 115, "with a spare at the breeder only the Horseman is paid (%d)" % (gold0 - int(g.players[0]["gold"])))
+	var rid2 := int(bar.kit_at(bar.queue.size() - 1).get("rid", 0))
+	check(spare != null and spare.horse_rid == rid2 and rid2 != 0, "that horse is reserved for him")
+	check(g.horses_text(0) == "Horses: 1 (1 reserved)", "the card: '%s'" % g.horses_text(0))
+	var lab := unit("labourer", spare.position + Vector2(40, 0))
+	check(not Unit.horse_free_for(spare, lab), "nobody else can take a reserved horse")
+	g.consume_unit(lab)
+	# cancelling releases it (no horse comes back out of the Barracks)
+	gold0 = g.players[0]["gold"]
+	g.cancel_train(bar)
+	await physics_frame
+	check(spare.horse_rid == 0 and int(g.players[0]["gold"]) - gold0 == 115, "cancelling releases the horse and refunds the Horseman (%+d)" % (int(g.players[0]["gold"]) - gold0))
+	check(g.horses_of(0).size() == 1, "and hands no extra horse back")
+	# a gun: the spare walks to the Foundry by itself, and the gun rolls out with it
+	var coat: String = spare.coat
+	check(g.train(fdy, "cannon") == "", "one click: CANNON (%s)" % g.can_train(fdy, "cannon"))
+	check(spare.into == fdy, "the gun's horse walks to the Foundry by itself, led by nobody")
+	var cannons := func() -> Array: return g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == "cannon")
+	await wait_for(func() -> bool: return not cannons.call().is_empty(), 60.0)
+	var cn: Array = cannons.call()
+	check(cn.size() == 1 and cn[0].harnessed and cn[0].coat == coat, "the cannon comes out drawn by that horse (%s)" % coat)
+	for c in cn:
+		g.consume_unit(c)
+	# a gun whose horse the breeder trains: cancelled, the horse is kept (it comes out a spare)
+	gold0 = g.players[0]["gold"]
+	g.train(fdy, "cannon")
+	check(gold0 - int(g.players[0]["gold"]) == 210, "no spare: cannon 170 + horse 40 (%d)" % (gold0 - int(g.players[0]["gold"])))
+	var q0: int = 0
+	for x in g.breeders_of(0):
+		q0 += x.queue.count("horse")
+	g.cancel_train(fdy)
+	var q1: int = 0
+	for x in g.breeders_of(0):
+		q1 += x.queue.count("horse")
+	check(q0 == 1 and q1 == 1, "cancelled: the breeder keeps training that horse (paid for)")
+	await wait_for(func() -> bool: return g.horses_of(0).size() == 1, 20.0)
+	check(g.horses_of(0).size() == 1 and g.horses_of(0)[0].horse_rid == 0, "it comes out a free spare")
+	await _clear_units()
+
+
+# ---------------------------------------------------------------- 4b. a team of horses
+
+func _teams() -> void:
+	await _clear_units()
+	var c := unit("cannon", at(300, 520))
+	c.max_hp = 100000.0
+	c.hp = c.max_hp
+	await wait(0.3)
+	var base: float = c.speed
+	check(c.horse_count() == 1, "a cannon starts with one horse")
+	var coats: Array = []
+	for i in 4:
+		var h := unit("horse", at(360 + i * 30, 580))
+		coats.append(h.coat)
+	await wait(0.2)
+	for i in 3:
+		check(g.harness_order([c]) == 1, "HARNESS sends one more horse (%d)" % (i + 2))
+		await wait_for(func() -> bool: return c.horse_count() == i + 2, 15.0)
+	check(c.horse_count() == 4, "4 horses in the team")
+	check(not c.team_room() and g.harness_order([c]) == 0, "no room for a 5th")
+	await wait(0.3)
+	var cav := float(Defs.UNITS["cuirassier"]["speed"])
+	check(absf(c.speed - base * 1.36) < 0.6 and c.speed < cav, "4 horses: +36%% speed (%.1f -> %.1f), still slower than cavalry (%.0f)" % [base, c.speed, cav])
+	# a team horse killed: slower again
+	var n0: int = c.horse_count()
+	for i in 7:
+		c.take_damage(30.0, null)
+	await wait(0.3)
+	check(c.horse_count() < n0 and c.harnessed, "blows kill a team horse (%d left)" % c.horse_count())
+	check(c.speed < base * 1.36 - 1.0, "and it's slower (%.1f)" % c.speed)
+	# RELEASE HORSE: one at a time, coats kept
+	var n1: int = c.horse_count()
+	var front: String = String(c.team_horses.back()["coat"]) if not c.team_horses.is_empty() else ""
+	var h1: Unit = c.release_horse()
+	check(h1 != null and c.horse_count() == n1 - 1 and h1.coat == front and c.harnessed, "RELEASE HORSE lets one go (%d left, coat %s)" % [c.horse_count(), h1.coat if h1 else "-"])
+	while c.horse_count() > 1:
+		c.release_horse()
+	await wait(0.3)
+	check(absf(c.speed - base) < 0.6 and c.can_roll(), "one horse: back to its own speed (%.1f)" % c.speed)
+	c.release_horse()
+	check(c.horse_count() == 0 and not c.can_roll(), "the last one: stationary")
+	g.consume_unit(c)
+	await _clear_units()
 
 
 # ---------------------------------------------------------------- 4. cannon
@@ -498,6 +687,15 @@ func _save_load() -> void:
 	dc.powder = 17.0
 	var w := unit("powder_wagon", at(250, 550))
 	w.release_horse()
+	# a cannon with a team of 3; a new rider and the horse kept for him
+	var tc := unit("cannon", at(150, 450))
+	tc.team_horses = [{"coat": HorseCoat.pick(), "hp": 1.0}, {"coat": HorseCoat.pick(), "hp": 0.5}]
+	var team_coats: Array = tc.team_horses.map(func(th: Dictionary) -> String: return String(th["coat"]))
+	var kept := unit("horse", at(600, 520))
+	kept.horse_rid = 4242
+	var nr := unit("dismounted", at(450, 560))
+	nr.horse_rid = 4242
+	nr.cmd_hold()
 	await wait(0.5)
 	check(m.order == "mount", "a Musketeer on his way to mount")
 	SaveGame.save(g, {"map": "random", "seed": 4242})
@@ -514,11 +712,22 @@ func _save_load() -> void:
 	check(mounting.size() == 1, "loaded: the Musketeer goes on to mount his horse")
 	var dgs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "dragoon")
 	check(dgs.size() == 1 and dgs[0].coat == dg_coat, "loaded: the Dragoon on the same coat")
-	var dcs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "dismounted")
+	var dcs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "dismounted" and u.horse_rid == 0)
 	check(dcs.size() == 1 and dcs[0].armoured and dcs[0].pouch and int(dcs[0]._pmax) == 20 and int(dcs[0].powder) == 17, "loaded: Dismounted Cuirassier with his pouch, 17/20 (%s)" % (
 		"%d units, armour %s pouch %s %d/%d" % [dcs.size(), dcs[0].armoured, dcs[0].pouch, int(dcs[0].powder), int(dcs[0]._pmax)] if dcs.size() > 0 else "none"))
 	var ws: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "powder_wagon")
 	check(ws.size() == 1 and not ws[0].harnessed, "loaded: the wagon still without its horse")
+	var tcs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
+	check(tcs.size() == 1 and tcs[0].horse_count() == 3 and tcs[0].team_horses.map(func(th: Dictionary) -> String: return String(th["coat"])) == team_coats \
+		and absf(float(tcs[0].team_horses[1]["hp"]) - 0.5) < 0.02, "loaded: the cannon's team of 3, same coats and health")
+	var nrs: Array = g.units.filter(func(u: Unit) -> bool: return u.kind == "dismounted" and u.horse_rid == 4242)
+	var kps: Array = g.horses_of(0).filter(func(h: Unit) -> bool: return h.horse_rid == 4242)
+	check(nrs.size() == 1 and kps.size() == 1, "loaded: the new rider and the horse kept for him")
+	if nrs.size() == 1:
+		var r0: Unit = nrs[0]
+		r0.cmd_stop()
+		await wait_for(func() -> bool: return r0.kind == "cuirassier", 20.0)
+		check(r0.kind == "cuirassier", "  and he gets on it")
 	if mounting.size() == 1:
 		var mm: Unit = mounting[0]
 		await wait_for(func() -> bool: return mm.kind == "dragoon", 10.0)

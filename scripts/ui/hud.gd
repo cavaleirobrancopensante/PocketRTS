@@ -792,7 +792,7 @@ func _build_card() -> Array:
 		if b.dual_rally():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
 			list.append(["feeding_pit", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
-		elif not b.d["trains"].is_empty() or b.d.get("breeds", false):
+		elif not b.d["trains"].is_empty():
 			list.append(["move", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 		if not b.queue.is_empty():
 			list.append(["stop", "CANCEL", func() -> void:
@@ -1303,7 +1303,7 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	x = _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
 	var x3 := x
 	if fac == "crown":
-		x = _pill(font, x, Color(0.55, 0.42, 0.3), "Horses: %d" % game.horses_of(t).size(), UiStyle.TEXT)
+		x = _pill(font, x, Color(0.55, 0.42, 0.3), game.horses_text(t), UiStyle.TEXT)
 	if t == game.human and not game.spectating():
 		# (for their tooltips)
 		_pill_rects = [[Rect2(x0, 4, x1 - 8 - x0, 30), 0], [Rect2(x1, 4, x2 - 8 - x1, 30), 1], [Rect2(x2, 4, x3 - 8 - x2, 30), 2]]
@@ -1537,6 +1537,10 @@ func _draw_panel(font: Font) -> void:
 				name += "  ·  " + " ".join(tags.map(func(x: String) -> String: return x.capitalize()))
 			info = (e as Unit).d["about"]
 			var uu := e as Unit
+			if Defs.HARNESSED.has(uu.kind) and uu.harnessed:
+				# its team of horses (and what the extra ones add)
+				name += "  ·  %d/%d horse%s%s" % [uu.horse_count(), int(Defs.HORSES["team_max"]), "s" if uu.horse_count() > 1 else "",
+					(" +%d%% speed" % int(round(float(Defs.HORSES["team_speed"]) * uu.team_horses.size() * 100.0))) if uu.team_horses.size() > 0 else ""]
 			if uu.order == "gather" and uu.home_mine is Building:
 				info = "Working at the %s." % (uu.home_mine as Building).d["name"]
 			if uu.kind == "grub" and uu.carrying > 0:
@@ -1688,7 +1692,7 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "town_hall" and (e.team == game.human or game.demo):
 				var soil := bb.soil_left()
 				var salt := bb.lode_left()
-				info = "Soil: %d%% (%d gold)%s · Saltpetre: %d%% (%d powder)%s · allows 1 Farm, 1 Horse Breeder and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
+				info = "Soil: %d%% (%d gold)%s · Saltpetre: %d%% (%d powder)%s · allows 2 Farms and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
 					" spent: farms pay a third" if soil <= 0.0 else (" running low" if soil < Defs.SOIL_LOW else ""),
 					int(round(salt * 100)), int(bb.lode), " spent: the Mill grinds at a quarter" if salt <= 0.0 else (" running low" if salt < Defs.SOIL_LOW else "")]
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
@@ -1697,10 +1701,8 @@ func _draw_panel(font: Font) -> void:
 					bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0]), int(bb.lode),
 					" (spent: its crushers pay a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
 					int(round(coal * 100)), " (spent: its Boilers fill at a third)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else "")]
-			elif bb.kind == "horse_breeder" and (e.team == game.human or game.demo):
-				info = "Next foal in %ds · +%d gold a second · %d horses yours" % [int(ceil((1.0 - bb.growth) * float(Defs.HORSES["breed"]))), int(Defs.HORSES["gold"]), game.horses_of(bb.team).size()]
-				if not bb._breed_ok:
-					info = "Paddock full (%d round it): foals wait until horses are taken away · +%d gold a second" % [int(Defs.HORSES["graze_cap"]), int(Defs.HORSES["gold"])]
+			elif bb.kind == "horse_breeder" and bb.built and (e.team == game.human or game.demo):
+				info = "%s  ·  " % game.horses_text(bb.team) + info
 			elif (bb.kind == "barracks" or bb.kind == "foundry") and bb.built and (e.team == game.human or game.demo):
 				info = "Horses here: %d (Horsemen, cannons, mortars and wagons need one each)  ·  " % game.horses_at(bb) + info
 			elif bb.kind == "powder_mill":
@@ -1948,8 +1950,10 @@ func _horse_buttons(list: Array, units: Array) -> void:
 				for u in game.selected_units():
 					if Defs.HARNESSED.has(u.kind):
 						u.release_horse(), true, "", ""])
-		if hitched.size() < guns.size():
-			var g0: Unit = guns.filter(func(u: Unit) -> bool: return not u.harnessed)[0]
+		var roomy := guns.filter(func(u: Unit) -> bool: return u.team_room())
+		if not roomy.is_empty():
+			# (one more horse for each: up to Defs.HORSES team_max in a team)
+			var g0: Unit = roomy[0]
 			var free := g0.nearest_free_horse(float(Defs.HORSES["fetch"])) != null
 			list.append(["horse_harness", "HARNESS", func() -> void:
 				var n := game.harness_order(game.selected_units())
@@ -2271,8 +2275,8 @@ func _res_tip(i: int) -> Dictionary:
 	if i == 3:
 		var hs: Array = game.horses_of(game.human)
 		var led := hs.filter(func(h: Unit) -> bool: return h.leader != null).size()
-		return {"title": "Horses: %d (%d led)" % [hs.size(), led],
-			"body": "Your free horses (riders' and guns' horses aren't counted). Horse Breeders raise them; Horsemen, Cuirassiers, Field Cannons, Mortars and Powder Wagons each need one brought to their building, and any man can MOUNT one. Left alone near an enemy man, a horse is stolen."}
+		return {"title": "%s, %d led" % [game.horses_text(game.human), led],
+			"body": "Your free horses (riders' and guns' horses aren't counted); reserved ones are kept for a recruit in a queue. Horse Breeders sell them (40 gold each). Training a Horseman, Cuirassier, Field Cannon, Mortar or Powder Wagon takes a horse standing at its building, else a free one at a breeder, else a breeder trains one for it (40 gold more): one click does both. Any man can MOUNT a free horse. Left alone near an enemy man, a horse is stolen."}
 	if i == 2:
 		var sup: String = Defs.BUILDINGS[Defs.FACTIONS[fac]["supply"]]["name"]
 		return {"title": "Supply: %d of %d used" % [game.supply_used(game.human), int(pl["cap"])],

@@ -110,6 +110,12 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["hh"] = snappedf(u.horse_hp, 0.01)
 		if Defs.HARNESSED.has(u.kind) and not u.harnessed:
 			ud["harn"] = false
+		if not u.team_horses.is_empty():
+			ud["team"] = u.team_horses.map(func(th: Dictionary) -> Array: return [String(th.get("coat", "")), snappedf(float(th.get("hp", 1.0)), 0.01)])
+		if u.horse_rid != 0:
+			ud["rid"] = u.horse_rid      # a horse kept for a recruit, or the new rider it's kept for
+			if u.rally_after != Vector2.INF:
+				ud["ra"] = _v2(u.rally_after)
 		if u.auto_mount:
 			ud["am"] = true
 		if u.steed and ids.has(u.steed):
@@ -388,6 +394,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if Defs.HARNESSED.has(u.kind) and not bool(ud.get("harn", true)):
 			u.harnessed = false
 			HorseCoat.apply(u)
+		if Defs.HARNESSED.has(u.kind) and ud.get("team") is Array:
+			for th in ud["team"]:
+				if th is Array and th.size() == 2 and u.horse_count() < int(Defs.HORSES["team_max"]):
+					u.team_horses.append({"coat": String(th[0]), "hp": float(th[1])})
+		u.horse_rid = int(ud.get("rid", 0))
+		if ud.get("ra") is Array:
+			u.rally_after = _to_v2(ud["ra"])
 		u.auto_mount = bool(ud.get("am", false))
 		if u.kind == "horse" and ud.get("graze") is Array:
 			u.graze_at = _to_v2(ud["graze"])

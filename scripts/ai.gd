@@ -59,6 +59,8 @@ func _ready() -> void:
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
 	_attack_at = int(_s("wave"))
+	if opening == "breeder" and strategy == "rush":
+		_attack_at = maxi(_attack_at, RUSH_HORSEMEN * int(Defs.UNITS["cuirassier"]["supply"]))   # (the first 3 Horsemen ride out together)
 
 
 ## A wave goes out: remember what it's worth, to judge it when it's over.
@@ -278,16 +280,26 @@ func _econ_build() -> void:
 	_recycle_spent()
 	var order: Array = []
 	if _crown():
-		# the Horse Breeder first (the start has the farm), then the mill; a new hall gets its
-		# farm and breeder before its mill, the farm on the freshest soil (see _econ_spot)
-		# (the opening decides which comes first: the Mill for Musketeers, the Breeder for Horsemen)
-		order = ["farm", "powder_mill", "horse_breeder"] if opening == "mill" else ["farm", "horse_breeder", "powder_mill"]
-		var first := "powder_mill" if opening == "mill" else "horse_breeder"
-		var second := "horse_breeder" if opening == "mill" else "powder_mill"
-		if game.econ_count(team, first) == 0 and game.workers(team).size() < 7 and game.clock < 100.0:
-			order.erase(first)       # (the first hands farm: gold for labourers first)
-		if game.econ_count(team, second) == 0 and (_mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty() or game.econ_count(team, first) == 0):
-			order.erase(second)      # (the other one after the Barracks: the opening's soldiers first)
+		# the second farm, then the mill; a new hall gets its farms before its mill, the farm on
+		# the freshest soil (see _econ_spot). The opening decides what comes first: the Mill for
+		# Musketeers, or the Horse Breeder (a production building, one is enough) for Horsemen.
+		order = ["farm", "powder_mill"]
+		var early := game.workers(team).size() < 7 and game.clock < 100.0     # (the first hands farm: gold for labourers first)
+		var barracks_up := not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty()
+		var no_breeder := _mine("horse_breeder").is_empty()
+		if opening == "breeder" and _mine("barracks").is_empty() and game.clock < 150.0 and game.econ_count(team, "farm") >= 1 and _halls().size() == 1:
+			order.erase("farm")      # (a Horseman rush: the second farm once the Barracks is going up)
+		if opening == "mill":
+			if game.econ_count(team, "powder_mill") == 0 and early:
+				order.erase("powder_mill")
+			if no_breeder and barracks_up and game.econ_count(team, "powder_mill") > 0:
+				order.append("horse_breeder")      # (after the Barracks: the Musketeers first)
+		else:
+			if no_breeder and not early:
+				order.push_front("horse_breeder")
+			# no Mill until the rush is out: the first few Horsemen (or the rush is over)
+			if game.econ_count(team, "powder_mill") == 0 and (no_breeder or not barracks_up or _rushing()):
+				order.erase("powder_mill")
 	elif _brood():
 		order = ["feeding_pit"]
 		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
@@ -303,7 +315,9 @@ func _econ_build() -> void:
 	for kind in order:
 		if _no_room.has(kind):
 			continue
-		if game.econ_count(team, kind) >= game.econ_limit(team, kind) or _busy_building(kind):
+		if not Defs.is_econ(kind) and not _mine(kind).is_empty():
+			continue                 # (the Horse Breeder: one)
+		if (Defs.is_econ(kind) and game.econ_count(team, kind) >= game.econ_limit(team, kind)) or _busy_building(kind):
 			continue
 		if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 			if _threat() == Vector2.INF:
@@ -318,6 +332,21 @@ func _econ_build() -> void:
 			_spread_swamp()
 	if _brood() and _mine("spore_vent").size() < _halls().size() and game.clock > 120.0:
 		_spread_swamp()
+
+
+## Crown, a Horseman rush: the Mill waits until this many Horsemen are out.
+const RUSH_HORSEMEN := 3
+
+
+## Horsemen we have out (mounted or not, light or armoured).
+func _horsemen() -> int:
+	return game.army(team).filter(func(u: Unit) -> bool: return u.kind == "cuirassier" or u.kind == "dismounted").size()
+
+
+## Crown: the Horseman rush is on (the Breeder opening, until its first horsemen are out):
+## one Barracks, every spare coin on horses and horsemen.
+func _rushing() -> bool:
+	return _crown() and opening == "breeder" and strategy == _opened and _horsemen() < RUSH_HORSEMEN and game.clock < 420.0
 
 
 func _econ_spot(kind: String) -> Vector2i:
@@ -424,21 +453,21 @@ func _build_up() -> void:
 			_construct("cottage")
 		if barracks == 0 and labs >= _lv([9, 8, 7]):
 			_construct("barracks")
-		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150:
+		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150 and not _rushing():
 			_construct("barracks")
 		elif barracks == 2 and difficulty >= 2 and t > _lv([9999.0, 9999.0, 330.0]) and gold > 300:
 			_construct("barracks")
 		if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > _lv([480.0, 260.0, 200.0]):
 			_construct("foundry")
 		# the Armoury: all the Crown's research (and a second place to refit at)
-		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150:
+		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150 and not _rushing():
 			_construct("armoury")
 		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]):
 			_construct("church")
 		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140 and game.requirement_met(team, "wall"):
 			_wall_off()
 	# Money in the bank: more production (and for the Brood, more Hives to lay eggs).
-	if gold > 400 and not _saving:
+	if gold > 400 and not _saving and not _rushing():
 		if _crown() and _mine("foundry").size() < 3 and gold > 700 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
 			_construct("foundry")
 		elif _crown() and _mine("barracks").size() < 9 and not _busy_building("barracks") and not _mine("barracks").is_empty():
@@ -773,6 +802,9 @@ var _raid_home := 0.0
 ## undefended farms). They avoid armies and ride home to mend when badly hurt.
 func _raid() -> void:
 	_raiders = _raiders.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	if opening == "breeder" and strategy == "rush":
+		_raiders.clear()             # (a Horseman rush: they ride out together with the wave)
+		return
 	for u in game.army(team):
 		if _raiders.size() >= 4:
 			break
@@ -2848,10 +2880,12 @@ var _groom_to: Building = null  # where he's taking them
 var _groom_t := 0.0
 
 
-## Crown horses: a Labourer (the groom) leads horses from the breeders to the Barracks and
-## Foundries that want them (a Horseman, a cannon, a mortar or a wagon each needs one there);
-## stray horses are sent home; spare horses become Dragoons' mounts; dismounted cavalry gets
-## back on a horse.
+## Crown horses: a Horseman, cannon, mortar or wagon in a queue gets its own horse by
+## itself (Game.train: a free one at a breeder, else the breeder trains one), so the
+## computer only keeps a spare or two bought at its breeder (_buy_horses); a Labourer (the
+## groom) leads one to each Foundry so a gun can roll out at once; stray horses are sent
+## home; guns and wagons at home get a second horse (_team_up); spare horses become
+## Dragoons' mounts; dismounted cavalry gets back on a horse.
 func _horses() -> void:
 	var horses: Array = game.horses_of(team)
 	var halls := _halls()
@@ -2860,12 +2894,9 @@ func _horses() -> void:
 	# where horses are wanted, and how many short each place is
 	var short := {}
 	var need := 0
-	var foundries := _mine("foundry").filter(func(b: Building) -> bool: return b.built)
-	var places: Array = foundries.duplicate()
-	if game.requirement_met(team, "horse_breeder") and not _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built).is_empty():
-		places += _mine("barracks").filter(func(b: Building) -> bool: return b.built)   # (Horsemen need the breeder)
+	var places: Array = _mine("foundry").filter(func(b: Building) -> bool: return b.built)
 	for b in places:
-		var want := 2 if (b.kind == "foundry" and _gold() > 600) or (b.kind == "barracks" and opening == "breeder" and game.clock < 600.0) else 1
+		var want := 2 if _gold() > 600 else 1
 		var have: int = game.horses_at(b)
 		if _groom and is_instance_valid(_groom) and _groom_to == b:
 			have += _groom.led.size()
@@ -2875,9 +2906,12 @@ func _horses() -> void:
 		if have < want:
 			short[b] = want - have
 			need += want - have
-	# horses standing at those places stay there
+	# horses standing at those places stay there (and the ones kept for a recruit)
 	var keep := {}
 	for h in horses:
+		if h.horse_rid != 0:
+			keep[h] = true
+			continue
 		for b in places:
 			if b.edge_distance(h.position) <= float(Defs.HORSES["at_building"]) * Defs.TILE + h.radius:
 				keep[h] = true
@@ -2899,9 +2933,64 @@ func _horses() -> void:
 				if b.center().distance_to(h.position) < hb.center().distance_to(h.position):
 					hb = b
 			h.cmd_move(game.approach_point(hb, h.position) + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+	var teams := _team_up(horses, keep)
+	_buy_horses(horses, keep, need + teams)
 	_groom_tick(horses, short, need, keep)
 	if difficulty >= 1:
-		_mount_men(horses, keep, need)
+		_mount_men(horses, keep, need + teams)
+
+
+## Guns and wagons at home with a single horse get a second one (from Normal up, with the
+## gold for it): a free horse walks over and is hitched. Returns how many still want one.
+func _team_up(horses: Array, keep: Dictionary) -> int:
+	if difficulty < 1 or _gold() < 200:
+		return 0
+	var want := 0
+	for g in game.army(team):
+		if not Defs.HARNESSED.has(g.kind) or g.horse_count() != 1 or g.aboard:
+			continue
+		var hall: Building = game.nearest_hall(g.position, team)
+		if hall == null or hall.edge_distance(g.position) > 16.0 * Defs.TILE:
+			continue                       # (out in the field: not now)
+		if horses.any(func(h: Unit) -> bool: return h.into == g):
+			continue                       # one's on its way
+		var h: Unit = null
+		var bd := INF
+		for o in horses:
+			if keep.has(o) or o.leader != null or o.into != null or o.horse_rid != 0 or o.order == "move":
+				continue
+			var dd: float = o.position.distance_to(g.position)
+			if dd < bd and dd < 30.0 * Defs.TILE:
+				bd = dd
+				h = o
+		if h:
+			h.walk_into(g)
+			keep[h] = true
+		else:
+			want += 1
+	return mini(want, 2)
+
+
+## Horses are bought (Defs.UNITS.horse at a Horse Breeder): a spare (two during a Horseman
+## rush) beyond the ones the Foundries and the guns' teams want, counting the free ones and
+## the spares in the breeders' queues. (Recruits get theirs by themselves: Game.train.)
+func _buy_horses(horses: Array, keep: Dictionary, need: int) -> void:
+	var breeders := _mine("horse_breeder").filter(func(b: Building) -> bool: return b.built)
+	if breeders.is_empty() or (_mine("barracks").is_empty() and _mine("foundry").is_empty() and not _rushing()):
+		return
+	var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.horse_rid == 0 and h.order != "move").size()
+	var coming := 0
+	for b in breeders:
+		for i in b.queue.size():
+			if b.queue[i] == "horse" and int(b.kit_at(i).get("rid", 0)) == 0:
+				coming += 1
+	var spare := 2 if _rushing() else 1
+	if free + coming >= need + spare:
+		return
+	breeders.sort_custom(func(a: Building, b: Building) -> bool: return a.queue.size() < b.queue.size())
+	var b: Building = breeders[0]
+	if b.queue.size() < 2:
+		game.train(b, "horse")
 
 
 func _groom_tick(horses: Array, short: Dictionary, need: int, keep: Dictionary) -> void:
@@ -2910,7 +2999,7 @@ func _groom_tick(horses: Array, short: Dictionary, need: int, keep: Dictionary) 
 	if _groom == null:
 		if need <= 0:
 			return
-		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.order != "move")
+		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.horse_rid == 0 and h.order != "move")
 		if free.is_empty():
 			return
 		# the Labourer nearest the free horses (not building, not carrying a keg)
@@ -2982,7 +3071,7 @@ func _groom_tick(horses: Array, short: Dictionary, need: int, keep: Dictionary) 
 ## Spare horses at home (beyond what the buildings want): idle Musketeers there mount up as
 ## Dragoons (up to a quarter of the line), and dismounted cavalry rides again.
 func _mount_men(horses: Array, keep: Dictionary, need: int) -> void:
-	var spare := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and h.claimed == null and not keep.has(h))
+	var spare := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and h.claimed == null and h.horse_rid == 0 and not keep.has(h))
 	if spare.is_empty():
 		return
 	var army := game.army(team)
