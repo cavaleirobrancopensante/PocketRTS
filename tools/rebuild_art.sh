@@ -52,6 +52,8 @@ python3 tools/import_horseman.py         # the unarmoured Horseman's strips (cut
                                          # on his cell) and his art_data entry
 python3 tools/import_horse_units.py      # the horse system's units: riderless horse, Messenger, Dragoons
                                          # (light and armoured), dismounted Horseman (slash fixed)
+python3 tools/import_bandage.py           # the Missionary bandaging a dismounted Horseman / Cuirassier
+                                         # (their own art keys, a wider cell; after import_art's missionary)
 python3 tools/import_horse_breeder.py    # the Horse Breeder's 4 states and its build icon
 python3 tools/import_horse_icons.py         # the horse units' portraits and the horse command icons
 python3 tools/import_mount.py            # the riders' mounting strips (mount_se / mount_e) from

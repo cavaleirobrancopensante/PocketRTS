@@ -3791,7 +3791,12 @@ func _heal(delta: float) -> Vector2:
 		p.visible = false
 		p.selected = false
 		game.selection.erase(p)
+		if p.position.distance_to(position) > 1.0:
+			facing = (p.position - position).normalized()     # (the patient on the side he came from)
 		position = p.position
+		if p.kind == "dismounted" and absf(facing.x) < absf(facing.y) * 0.42 and facing.y > 0.0:
+			# (no front view of the two of them: kneel to the SE / SW, the patient on that side)
+			facing = Vector2(-1.0 if facing.x < 0.0 else 1.0, 1.0).normalized()
 		work = "bandaging"
 		work_t = Defs.BANDAGE_TIME
 		Sfx.play("combat/missionary_heal", position)
@@ -4578,6 +4583,15 @@ func _animate_cannon(delta: float) -> void:
 var _last_gun_anim := ""
 
 
+## Whose strips animation `a` comes from: a Missionary bandaging a dismounted rider kneels
+## over the Horseman or the Cuirassier (their own art keys: two men need a wider cell).
+func _strip_art(a: String) -> String:
+	if a == "bandage" and work == "bandaging" and _patient != null and is_instance_valid(_patient) \
+			and _patient.kind == "dismounted":
+		return "missionary_bandage_c" if _patient.armoured else "missionary_bandage_h"
+	return art
+
+
 func _set_anim(a: String, force: bool) -> void:
 	# getting on or off: the mounted kind's mount strip, side on (_mount_face)
 	var sa := mount_strip_art() if a == "mount" else ""
@@ -4585,7 +4599,7 @@ func _set_anim(a: String, force: bool) -> void:
 		a = "idle"
 	var face := _mount_face if sa != "" and _mount_face != Vector2.ZERO else facing
 	if sa == "":
-		sa = art
+		sa = _strip_art(a)       # (a Missionary bandaging a dismounted rider: his own strips)
 	var was_mount := anim == "mount"
 	var o := int(round(face.angle() / (PI / 4.0)))
 	o = posmod(o, 8)

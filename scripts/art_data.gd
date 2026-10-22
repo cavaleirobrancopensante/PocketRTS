@@ -182,6 +182,16 @@ const UNITS := {
 		"walk_s": 3,
 		"walk_se": 4,
 	}},
+	"missionary_bandage_c": {"cell": Vector2i(64, 44), "anchor": Vector2(32, 39), "frames": {
+		"bandage_e": 4,
+		"bandage_n": 4,
+		"bandage_se": 3,
+	}},
+	"missionary_bandage_h": {"cell": Vector2i(64, 44), "anchor": Vector2(32, 39), "frames": {
+		"bandage_e": 4,
+		"bandage_n": 3,
+		"bandage_se": 3,
+	}},
 	"skywing": {"cell": Vector2i(56, 45), "anchor": Vector2(28, 43), "frames": {
 		"attack_e": 3,
 		"attack_n": 3,
