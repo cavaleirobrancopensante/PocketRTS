@@ -3213,6 +3213,8 @@ func find_target(u: Unit, r: float) -> Entity:
 		var dd: float = b.edge_distance(u.position)
 		if dd >= r or (min_r > 0.0 and dd - u.radius < min_r):
 			continue
+		if dd > 24.0 and not target_seen(u.team, b, u.position):
+			continue                  # (in the fog, or up a cliff nobody of ours looks over)
 		# walls and gates only when nothing else is in reach: once a swarm is through,
 		# it floods in and goes for the base, not for the rest of the wall
 		if b.kind == "wall" or b.kind == "gate":
@@ -4635,6 +4637,16 @@ func _draw_body_bars() -> void:
 
 
 var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
+
+
+## Can side `t` see this target (to shoot at it from `from`)? A unit: where it stands. A
+## building: its centre or the part of it nearest the shooter.
+func target_seen(t: int, e: Entity, from: Vector2) -> bool:
+	if e is Building:
+		var r: Rect2 = (e as Building).rect()
+		var near := Vector2(clampf(from.x, r.position.x + 2.0, r.end.x - 2.0), clampf(from.y, r.position.y + 2.0, r.end.y - 2.0))
+		return side_sees(t, r.get_center()) or side_sees(t, near)
+	return side_sees(t, e.position)
 
 
 ## Anyone on this player's side sees it.

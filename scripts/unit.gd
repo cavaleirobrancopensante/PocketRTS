@@ -2792,7 +2792,7 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	var rng := _range()
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
 	if deploys() and tesla_mode != "deployed":
-		if tesla_mode == "packed" and dist <= rng and dist >= min_r:
+		if tesla_mode == "packed" and dist <= rng and dist >= min_r and game.target_seen(team, e, position):
 			tesla_mode = "deploying"
 			tesla_t = switch_time()
 			path = PackedVector2Array()
@@ -2805,9 +2805,15 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	if phase != "":
 		_attack_cycle(e, delta)
 		return Vector2.ZERO
-	if dist <= rng and dist >= min_r:
+	# no shooting into the dark: a target your side can't see (up a cliff, in the fog) is
+	# only fired on once someone sees it; until then the unit closes in (or waits, holding)
+	var seen := dist <= 24.0 or game.target_seen(team, e, position)
+	if dist <= rng and dist >= min_r and seen:
 		path = PackedVector2Array()
 		_attack_cycle(e, delta)
+		return Vector2.ZERO
+	if not seen and dist <= rng and target == e and order != "attack":
+		target = null                  # (picked on its own: let it go, look for another)
 		return Vector2.ZERO
 	if not may_move:
 		return Vector2.ZERO
