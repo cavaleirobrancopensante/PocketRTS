@@ -510,7 +510,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 		"move", "attack":
 			if mode == "attack":
 				var e := game.entity_at(p, false)
-				if e and game.hostile(e.team, game.human):
+				if e and game.prey(game.human, e):
 					for u in units:
 						u.give({"o": "attack", "e": e}, queued)
 				else:

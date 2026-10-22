@@ -44,6 +44,17 @@ func allied(a: int, b: int) -> bool:
 	return a == b or (a >= 0 and b >= 0 and sides[a] == sides[b])
 
 
+## Can side `t` go for `e`: an enemy, or (the Brood only) a loose horse, belonging to nobody,
+## for its essence.
+func prey(t: int, e: Entity) -> bool:
+	return hostile(e.team, t) or (loose_horse(e) and t >= 0 and t < factions.size() and faction_of(t) == "brood")
+
+
+## A horse belonging to nobody (its rider fell and it bolted: Unit._rider_falls).
+static func loose_horse(e) -> bool:
+	return e is Unit and e.team < 0 and e.kind == "horse" and not e.dead
+
+
 func enemies_of(t: int) -> Array:
 	var out: Array = []
 	for o in n_players():
@@ -122,7 +133,7 @@ var _first_of := {}             # "team:kind" -> true once that player has had o
 static func _new_stats() -> Dictionary:
 	return {"lost": 0, "killed": 0, "gold": 0, "spent": 0, "trained": 0, "built": 0,
 		"razed": 0, "bld_lost": 0, "damage": 0.0, "peak_army": 0, "value_killed": 0, "res2_in": 0.0, "sacrificed": 0, "sacrifice_essence": 0, "revived": 0,
-		"kills_by": {}, "army_tl": [0], "gold_tl": [0], "workers_tl": [0]}
+		"horses_bolted": 0, "horses_caught": 0, "kills_by": {}, "army_tl": [0], "gold_tl": [0], "workers_tl": [0]}
 
 
 static func tex(path: String) -> Texture2D:
@@ -3468,6 +3479,14 @@ func find_target(u: Unit, r: float) -> Entity:
 		if dd < bd:
 			bd = dd
 			best = b
+	if best == null and faction_of(u.team) == "brood":
+		# nothing else in reach: a loose horse (nobody's) is cheap essence
+		for o in units_near(u.position, r):
+			if loose_horse(o) and not o.off_field and u.can_hit(o) and side_sees(u.team, o.position):
+				var dh: float = o.position.distance_to(u.position)
+				if dh < bd:
+					bd = dh
+					best = o
 	return best
 
 
@@ -3583,7 +3602,7 @@ func arc_shot(u: Unit, e: Entity, dmg: float) -> void:
 	s.impact_scale = 0.8
 	s.scale = Vector2(0.7, 0.7)
 	s.launch(self, "arc_ball" if ArtData.EFFECTS.has("arc_ball") else "acid_ball", from, to, float(Defs.ARC["speed"]))
-	e.take_damage(dmg, u)
+	e.take_damage(dmg, u, Entity.BLOW_RANGED)
 	Sfx.play_any(["combat/tesla_attack", "zap"], u.global_position)
 
 
@@ -3597,7 +3616,7 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 	spawn_effect("smoke", muzzle + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
 	var hit := randf() < 0.85
 	if hit:
-		e.take_damage(dmg, u)
+		e.take_damage(dmg, u, Entity.BLOW_RANGED)
 	var aim := e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)) if hit \
 		else e.center() + Vector2(randf_range(-26, 26), randf_range(-20, 20))
 	var s := Shot.new()
@@ -3774,7 +3793,7 @@ func _bolt_line(a: Vector2, b: Vector2) -> void:
 func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	e = intercept(u, e)
 	var mouth := u.center() + u.facing * 14.0 + (Vector2(0, -8) if e.is_air() else Vector2.ZERO)
-	e.take_damage(dmg, u)
+	e.take_damage(dmg, u, Entity.BLOW_RANGED)      # (a glob on one target: a shot)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
 	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
 	var s := Shot.new()
@@ -4765,7 +4784,7 @@ func _update_vis() -> void:
 	# units standing in the same cell see the same thing: stamp each spot once
 	var done := {}
 	for u in units:
-		if not u.dead and not u.off_field:
+		if not u.dead and not u.off_field and u.team >= 0:      # (a loose horse is nobody's eyes)
 			var c := cell_of(u.position)
 			var key: int = ((u.team * 64 + u.sight) * 2 + int(u.is_air())) * 1048576 + c.y * W + c.x
 			if done.has(key):
@@ -5020,6 +5039,7 @@ func _check_end() -> void:
 					remove_ghost(b)
 			for u in units:
 				if u.team == t and not u.dead:
+					u.last_blow = ""         # (beaten: no horse bolts)
 					u.die()
 			if t != human and not demo and n_players() > 2:
 				notify("%s is defeated!" % team_name(t).capitalize(), true)
@@ -5291,7 +5311,7 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 				u.give({"o": "move", "p": p}, queued)
 		_ping(p, Color(1, 0.85, 0.3))
 		return
-	if e and hostile(e.team, us[0].team):
+	if e and prey(us[0].team, e):        # (an enemy; for the Brood a loose horse too)
 		for u in us:
 			u.give({"o": "attack", "e": e}, queued)
 		_ping(p, Color(1, 0.3, 0.3))
@@ -5810,23 +5830,37 @@ func horse_back(b: Building, kit: Dictionary) -> void:
 	h.graze_at = h.position
 
 
-## An unattended horse taken by an enemy man (Unit._steal_check): it's his side's now.
-func steal_horse(h: Unit, by: Unit) -> void:
+## An unattended horse taken by an enemy man (Unit._steal_check), or a loose one (nobody's)
+## caught by any man who can lead horses, or sent for by a gun (`by` a Unit, or the gun):
+## it's his side's now.
+func steal_horse(h: Unit, by: Entity) -> void:
 	var was := h.team
+	if by.team < 0 or by.team == was:
+		return
 	h.team = by.team
 	h.leader = null
 	h.claimed = null
 	h.into = null
 	h.horse_rid = 0
+	h.bolt_t = 0.0
+	h.bolt_to = Vector2.INF
 	h.cmd_stop()
 	h.graze_at = h.position
 	h._graze_goal = Vector2.INF
 	if h._mat:
-		h._mat.set_shader_parameter("team", team_colour(by.team))
+		h._mat.set_shader_parameter("team", h.cloth_colour())
 	selection.erase(h)
 	h.selected = false
 	for g in groups:
 		g.erase(h)
+	if was < 0:
+		stats[by.team]["horses_caught"] = int(stats[by.team].get("horses_caught", 0)) + 1
+		if mlog and not _first_of.has("%d:caught" % by.team):
+			_first_of["%d:caught" % by.team] = true
+			mlog.add("%s caught a loose horse (its first; by a %s)" % [mlog.who(by.team), String(by.d["name"]) if by is Unit else "gun"])
+		if by.team == human:
+			float_text(h.position + Vector2(0, -34), "loose horse caught", Color(0.85, 1.0, 0.7))
+		return
 	stats[by.team]["horses_stolen"] = int(stats[by.team].get("horses_stolen", 0)) + 1
 	if mlog:
 		mlog.add("%s stole a horse from %s" % [mlog.who(by.team), mlog.who(was)])
@@ -5836,9 +5870,21 @@ func steal_horse(h: Unit, by: Unit) -> void:
 		float_text(h.position + Vector2(0, -34), "horse taken", Color(0.85, 1.0, 0.7))
 
 
+## A rider (or a gun) of side `t` fell and his horse `h` lived: it bolted, nobody's now.
+func horse_bolted(h: Unit, t: int, k: String) -> void:
+	if t < 0 or t >= stats.size():
+		return
+	stats[t]["horses_bolted"] = int(stats[t].get("horses_bolted", 0)) + 1
+	if mlog and not _first_of.has("%d:bolted" % t):
+		_first_of["%d:bolted" % t] = true
+		mlog.add("%s's %s was killed and a horse bolted loose (the first: anyone's to catch)" %[mlog.who(t), String(Defs.UNITS[k]["name"]) if Defs.UNITS.has(k) else k])
+	if is_visible_to(human, h.position) and not demo:
+		float_text(h.position + Vector2(0, -34), "loose horse", Color(0.95, 0.85, 0.6))
+
+
 ## Right-click with units on a horse, a gun or (horses only) a building. True if handled.
 func _horse_command(us: Array, e, p: Vector2, queued: bool) -> bool:
-	if e == null or e.team != us[0].team:
+	if e == null or (e.team != us[0].team and not loose_horse(e)):
 		return false
 	if e is Unit and e.kind == "horse":
 		var mounts: Array = us.filter(func(u: Unit) -> bool: return u.can_mount() and not u.is_worker() and Unit.horse_free_for(e, u))

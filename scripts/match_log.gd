@@ -149,6 +149,8 @@ func finish(winner: int) -> void:
 		lines.append("  %s: earned %d, spent %d, trained %d, built %d, killed %d, lost %d, razed %d, buildings lost %d, peak army %d. Kills by: %s" % [
 			who(t), int(st["gold"]), int(st["spent"]), int(st["trained"]), int(st["built"]), int(st["killed"]),
 			int(st["lost"]), int(st["razed"]), int(st["bld_lost"]), int(st["peak_army"]), ", ".join(kb) if not kb.is_empty() else "-"])
+		if int(st.get("horses_bolted", 0)) + int(st.get("horses_caught", 0)) > 0:
+			lines[lines.size() - 1] += " Loose horses: %d of its own bolted, %d caught." % [int(st.get("horses_bolted", 0)), int(st.get("horses_caught", 0))]
 		if t == game.human and not game.demo:
 			lines[lines.size() - 1] += " APM: average %d, peak %d, %d actions." % [game.apm_average(), maxi(game.apm_peak, game.apm()), game.actions_total]
 			# peaks and lows: whole minutes only (the last snapshot may be a part minute)
