@@ -417,6 +417,9 @@ func _build_up() -> void:
 			_construct("barracks")
 		if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > _lv([480.0, 260.0, 200.0]):
 			_construct("foundry")
+		# the Armoury: all the Crown's research (and a second place to refit at)
+		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150:
+			_construct("armoury")
 		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]):
 			_construct("church")
 		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140:
@@ -680,22 +683,36 @@ func _more_halls(macro: bool) -> void:
 			return
 
 
-## Research once the army it's for is there and the money allows (Crown: the musket locks
-## from 4 Musketeers, Armour from 6, Flintlock from 8 and Caplock from 12; never with an
-## expansion to save for).
-const RESEARCH_AT := {"matchlock": 4, "armour": 6, "flintlock": 8, "caplock": 12}
+## Research once the army it's for is there and the money allows (never with an expansion
+## to save for). Crown, at the Armoury, roughly in this order: the Socket Bayonet from 3
+## Musketeers, the Matchlock from 4, the Cavalry Charge from 2 horsemen, Armour from 6
+## soldiers, Prepared Charges from 1 gun (cannon or mortar), Flintlock from 8 Musketeers,
+## the Gunner's Quadrant from 2 guns, Caplock from 12. [what's counted, how many]
+const RESEARCH_AT := {"bayonet": ["musket", 3], "matchlock": ["musket", 4], "charge": ["horse", 2],
+	"armour": ["soldier", 6], "charges": ["gun", 1], "flintlock": ["musket", 8], "quadrant": ["gun", 2],
+	"caplock": ["musket", 12]}
 
 
 func _research() -> void:
 	_refit_army()
 	if _hall_reserve:
 		return
-	var muskets :=game.army(team).filter(func(u: Unit) -> bool: return u.kind == "musketeer").size()
+	var army := game.army(team)
+	var n := {"musket": 0, "horse": 0, "soldier": 0, "gun": 0}
+	for u in army:
+		if u.kind == "musketeer":
+			n["musket"] += 1
+		elif u.kind == "cuirassier":
+			n["horse"] += 1
+		elif u.kind in ["cannon", "mortar"]:
+			n["gun"] += 1
+	n["soldier"] = n["musket"] + n["horse"]
 	for key in Defs.RESEARCH:
 		var info: Dictionary = Defs.RESEARCH[key]
 		if info["faction"] != game.faction_of(team) or game.has_tech(team, key) or game.researching(team, key):
 			continue
-		if muskets < int(RESEARCH_AT.get(key, 0)) * (1.5 if difficulty == 0 else 1.0):
+		var at: Array = RESEARCH_AT.get(key, ["musket", 0])
+		if int(n[at[0]]) < int(at[1]) * (1.5 if difficulty == 0 else 1.0):
 			continue
 		if _gold() < int(info["cost"]) + _lv([150, 60, 20]) or _res2() < float(info.get("cost2", 0)) + 20.0:
 			continue
@@ -705,31 +722,35 @@ func _research() -> void:
 				break
 
 
-## Crown: research only unlocks the Musketeers' upgrades; each man is refitted at a
-## Barracks or a Powder Wagon. AUTO REFIT stays on at our Barracks, and between attacks
-## (nothing on our base) idle Musketeers that lack an upgrade walk back to get it while
-## the money allows.
+## Crown: research only unlocks the soldiers' equipment; each man is refitted at a Barracks,
+## an Armoury or a Powder Wagon. AUTO REFIT stays on at our Barracks and Armouries, and
+## between attacks (nothing on our base) idle soldiers that lack an upgrade walk back to get
+## it while the money allows. (Light soldiers kept light on purpose, against an enemy strong
+## against armour, aren't sent for Armour: _want_armour.)
 func _refit_army() -> void:
 	if not _crown():
 		return
-	for b in _mine("barracks"):
-		b.auto_refit = true
+	for k in Defs.REFIT_AT:
+		for b in _mine(k):
+			b.auto_refit = true
 	if _attacking or _gold() < _lv([200, 120, 80]) or _threat() != Vector2.INF:
 		return
 	var sent := 0
 	for u in game.army(team):
 		if sent >= 6 or _gold() < _lv([200, 120, 80]):
 			break
-		if u.kind != "musketeer" or u.order != "idle" or u.target != null or _on_errand(u):
+		if not Defs.ARMOURED.has(u.kind) or u.order != "idle" or u.target != null or _on_errand(u):
 			continue
 		var went := false
 		for w in game.refit_options(u):
+			if w == "armour" and not _want_armour():
+				continue
 			if int(game.refit_order([u], w, true)[0]) > 0:
 				went = true
 		if went:
 			sent += 1
 	if sent > 0 and game.mlog:
-		game.mlog.add("%s sent %d Musketeer%s back to refit" % [game.mlog.who(team), sent, "" if sent == 1 else "s"])
+		game.mlog.add("%s sent %d soldier%s back to refit" % [game.mlog.who(team), sent, "" if sent == 1 else "s"])
 var _raiders: Array = []        # Crown: cuirassiers out hunting the enemy's workers
 var _raid_home := 0.0
 
@@ -1032,12 +1053,14 @@ func _produce() -> void:
 		if b.built and b.queue.size() < (3 if _gold() > 600 else 2):
 			# the line is Musketeers (they stab when the enemy closes); horsemen to raid and
 			# to run down guns
-			var k := "musketeer"
+			# (light or armoured: _soldier_key)
+			var k := _soldier_key(b, "musketeer")
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
-			if (horse < 3 or horse * 6 < army.size()) and randf() < (0.6 if short_powder else 0.3) and game.can_train(b, "cuirassier") == "":
-				k = "cuirassier"
-			elif game.can_train(b, "musketeer") != "":
-				k = "cuirassier" if game.can_train(b, "cuirassier") == "" else ""
+			var hk := _soldier_key(b, "cuirassier")
+			if (horse < 3 or horse * 6 < army.size()) and randf() < (0.6 if short_powder else 0.3) and hk != "":
+				k = hk
+			elif k == "":
+				k = hk
 			if k != "":
 				game.train(b, k)
 	for f in _mine("foundry"):
@@ -1067,6 +1090,49 @@ func _produce() -> void:
 	for c in _mine("church"):
 		if c.built and c.queue.is_empty() and game.can_train(c, "missionary") == "":
 			game.train(c, "missionary")
+
+
+## Crown: armoured recruits (Guardsmen, Cuirassiers) by default once Armour is researched
+## and the money is there; light ones when the enemy fields a lot that is strong against
+## armour (_anti_armour).
+func _want_armour() -> bool:
+	return game.has_tech(team, "armour") and _anti_armour() < 0.35
+
+
+var _aa_t := -100.0
+var _aa := 0.0
+
+
+## The share (by supply) of the enemy's army that does extra harm to armoured men: guns
+## whose round shot hits armour harder (Defs.ROUND_SHOT vs_armored), units whose bonus
+## names our soldiers, armour-stripping acid. Counted once every 10 s.
+func _anti_armour() -> float:
+	if game.clock - _aa_t < 10.0:
+		return _aa
+	_aa_t = game.clock
+	var all := 0.0
+	var anti := 0.0
+	for u in game.units:
+		if u.dead or u.team < 0 or not game.hostile(u.team, team) or u.is_worker() or not u.has_attack():
+			continue
+		var w := float(u.d["supply"])
+		all += w
+		var bonus: Dictionary = u.d.get("bonus", {})
+		if u.kind == "cannon" or u.d.has("acid") or bonus.has("musketeer") or bonus.has("cuirassier"):
+			anti += w
+	_aa = anti / all if all > 0.0 else 0.0
+	return _aa
+
+
+## The train button for a soldier of this kind: armoured when we want armour and can pay
+## for it, else light; "" if neither can be trained.
+func _soldier_key(b: Building, kind: String) -> String:
+	if _want_armour():
+		var ak := Defs.train_key(kind, true)
+		if game.can_train(b, ak) == "" and _gold() >= game.unit_price(team, ak)[0] + _lv([60, 30, 0]):
+			return ak
+	var lk := Defs.train_key(kind, false)
+	return lk if game.can_train(b, lk) == "" else ""
 
 
 ## Units busy with something of their own the army orders must leave alone: a balloon

@@ -446,7 +446,7 @@ func _draw_production(font: Font) -> void:
 				var f := -1.0
 				if i == 0 or b.uses_eggs():
 					f = (b.morph_t[i] if b.uses_eggs() and i < b.morph_t.size() else b.prod_t) / Building.entry_time(q[i])
-				items.append([_research_icon(String(q[i]).substr(1)) if res else String(q[i]), f, Color(0.75, 0.55, 1.0) if res else Color(0.4, 0.75, 1.0)])
+				items.append([_research_icon(String(q[i]).substr(1)) if res else _queue_icon(b, i), f, Color(0.75, 0.55, 1.0) if res else Color(0.4, 0.75, 1.0)])
 		var rows := maxi(1, int(ceil(items.size() / float(PER))))
 		blocks.append([t, items])
 		h += 22 + rows * (SZ + 10)
@@ -768,19 +768,20 @@ func _build_card() -> Array:
 				var w := game.start_research(b, rkk)
 				if w != "":
 					toast(w), rwhy == "", rwhy, str(info["cost"])])
-		for k in b.d["trains"]:
+		# (a soldier with a light and an armoured version: two buttons once Armour is researched)
+		for k in Defs.train_keys(b.d["trains"], game.has_tech(game.human, "armour")):
 			var kk: String = k
 			var why := game.can_train(b, k)
 			for sb in game.selected_buildings():
 				if game.can_train(sb, k) == "":
 					why = ""
-			var ulab: String = Defs.UNITS[k]["name"].to_upper()
+			var ulab: String = Defs.train_name(k).to_upper()
 			# right-click (computer) or a long press (phone): keep training it automatically
 			_alt_for[ulab] = func() -> void:
 				var on := b.auto_train != kk
 				for sb in game.selected_buildings():
 					sb.auto_train = kk if on else ""
-				toast(("Training %s automatically." % Defs.UNITS[kk]["name"]) if on else "Automatic training off.")
+				toast(("Training %s automatically." % Defs.train_name(kk)) if on else "Automatic training off.")
 			if b.auto_train == k:
 				ulab = "~ " + ulab
 			list.append([k, ulab, func() -> void:
@@ -798,10 +799,16 @@ func _build_card() -> Array:
 				game.cancel_train(b)
 				if Building.is_research(last):
 					toast("%s research cancelled: paid back." % Defs.RESEARCH[last.substr(1)]["name"]), true, "", ""])
-		if b.kind == "barracks" and (game.has_tech(game.human, "armour") or game.best_lock(game.human) != ""):
+		if Defs.REFIT_AT.has(b.kind) and game.has_refits(game.human):
 			# (once there's something to refit with)
-			_auto_refit_button(list, game.selected_buildings().filter(func(x: Building) -> bool: return x.kind == "barracks" and x.built))
+			_auto_refit_button(list, game.selected_buildings().filter(func(x: Building) -> bool: return Defs.REFIT_AT.has(x.kind) and x.built))
 	return list
+
+
+## The icon of a queued unit: a soldier's light or armoured picture, by what he was paid for.
+func _queue_icon(b: Building, i: int) -> String:
+	var k := String(b.queue[i])
+	return Defs.train_key(k, bool(b.kit_at(i).get("armour", false)))
 
 
 ## A research's icon (assets/icons/<icon>.png); without one, the unit it's for.
@@ -813,23 +820,26 @@ func _research_icon(key: String) -> String:
 	return ric
 
 
-## Musketeers selected: a REFIT button for each upgrade researched that some of them still
-## lack (ARMOUR, and the best lock researched: they skip the ones between). Each man who
-## needs it pays its fee and walks to the nearest Barracks or Powder Wagon to get it.
+## Soldiers selected (Musketeers, Horsemen): a REFIT button for each upgrade researched that
+## some of them still lack (ARMOUR; for Musketeers the best lock researched, which skips the
+## ones between, and the SOCKET BAYONET). Each man who needs it pays its fee and walks to the
+## nearest Barracks, Armoury or Powder Wagon to get it.
 ## Powder Wagons selected: their AUTO REFIT toggle.
 func _refit_buttons(list: Array, units: Array) -> void:
-	var men := units.filter(func(u: Unit) -> bool: return u.kind == "musketeer")
+	var men := units.filter(func(u: Unit) -> bool: return Defs.ARMOURED.has(u.kind))
 	var whats: Array = []
 	if game.has_tech(game.human, "armour"):
 		whats.append("armour")
 	if game.best_lock(game.human) != "":
 		whats.append(game.best_lock(game.human))
+	if game.has_tech(game.human, "bayonet"):
+		whats.append("bayonet")
 	for w in whats:
 		var ww: String = w
 		var need := men.filter(func(u: Unit) -> bool: return game.refit_options(u).has(ww))
 		if need.is_empty():
 			continue          # they all have it (or are on their way for it)
-		var fee := Game.refit_fee(ww)
+		var fee := Game.refit_fee(ww, need[0].kind)
 		var res := _res()
 		var why := ""
 		if int(game.players[game.human]["gold"]) < fee[0]:
@@ -837,17 +847,31 @@ func _refit_buttons(list: Array, units: Array) -> void:
 		elif float(game.players[game.human]["res2"]) < fee[1]:
 			why = "Not enough %s." % String(res[1]).to_lower()
 		elif game.refit_place(game.human, need[0].position) == null:
-			why = "Needs a Barracks or a Powder Wagon to refit at."
+			why = "Needs a Barracks, an Armoury or a Powder Wagon to refit at."
 		var info: Dictionary = Defs.RESEARCH[ww]
 		var lab := String(info["name"]).to_upper()
 		var price := "%d %s" % [fee[0], String(res[0]).to_lower()] + (" + %d %s" % [fee[1], String(res[1]).to_lower()] if fee[1] > 0 else "")
-		var what := "+1 armour and +20 health" if ww == "armour" else "reload %d%% faster than a plain musket" % int(round((1.0 - float(info["reload"])) * 100.0))
+		var what := "reload %d%% faster than a plain musket" % int(round((1.0 - float(info.get("reload", 1.0))) * 100.0))
+		if ww == "armour":
+			var kinds := {}
+			for u in need:
+				kinds[u.kind] = true
+			var parts: Array = []
+			for kd in kinds:
+				var ai: Dictionary = Defs.ARMOURED[kd]
+				var f := Game.refit_fee("armour", kd)
+				parts.append("%s: +%d armour, +%d health (%s)" % [ai["name"], int(ai["armor"]), int(ai["hp"]), _cost_text(f[0], f[1])])
+			what = "armour (" + "; ".join(parts) + ")"
+			if kinds.size() > 1:
+				price = "by kind"
+		elif ww == "bayonet":
+			what = "the socket bayonet (+%d bayonet damage, thrusts %d%% faster)" % [int(info["damage"]), int(round((1.0 - float(info["cooldown"])) * 100.0))]
 		_tip_for[lab] = ["Refit: %s   (%s a man)" % [info["name"], price],
-			"%d of them lack it: each pays, walks to the nearest Barracks or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back." % [need.size(), what, int(Defs.REFIT["time"])]]
+			"%d of them lack it: each pays, walks to the nearest Barracks, Armoury or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back." % [need.size(), what, int(Defs.REFIT["time"])]]
 		list.append([_research_icon(ww), lab, func() -> void:
 			var r := game.refit_order(game.selected_units(), ww)
 			if int(r[0]) > 0:
-				toast("%d Musketeer%s off to be refitted: %s." % [r[0], "" if r[0] == 1 else "s", info["name"]] + ("  " + String(r[1]) if r[1] != "" else ""))
+				toast("%d soldier%s off to be refitted: %s." % [r[0], "" if r[0] == 1 else "s", info["name"]] + ("  " + String(r[1]) if r[1] != "" else ""))
 			elif r[1] != "":
 				toast(r[1]), why == "", why, str(fee[0]) + ("+%d" % fee[1] if fee[1] > 0 else "")])
 	var wagons := units.filter(func(u: Unit) -> bool: return u.kind == "powder_wagon")
@@ -855,19 +879,19 @@ func _refit_buttons(list: Array, units: Array) -> void:
 		_auto_refit_button(list, wagons)     # (once there's something to refit with)
 
 
-## AUTO REFIT on Barracks or Powder Wagons (glowing = on): idle Musketeers within a few
-## tiles of one get the upgrades researched that they lack, paying the fees if they can.
+## AUTO REFIT on Barracks, Armouries or Powder Wagons (glowing = on): idle soldiers within a
+## few tiles of one get the upgrades researched that they lack, paying the fees if they can.
 func _auto_refit_button(list: Array, places: Array) -> void:
 	if places.is_empty():
 		return
 	var on: bool = places.all(func(p) -> bool: return p.auto_refit)
-	_tip_for["AUTO REFIT"] = ["Auto refit (glowing = on)", "Idle Musketeers within %d tiles of it get the upgrades researched that they lack, each paying the fee (if you can afford it)." % int(Defs.REFIT["auto"])]
+	_tip_for["AUTO REFIT"] = ["Auto refit (glowing = on)", "Idle soldiers within %d tiles of it get the upgrades researched that they lack, each paying the fee (if you can afford it)." % int(Defs.REFIT["auto"])]
 	var ic := "musketeer_armoured" if _icon("musketeer_armoured") else _research_icon("armour")
 	list.append([ic, ("~ " if on else "") + "AUTO REFIT", func() -> void:
 		for p in places:
 			if is_instance_valid(p) and not p.dead:
 				p.auto_refit = not on
-		toast("Auto refit on: idle Musketeers nearby get their upgrades here, paying the fees." if not on else "Auto refit off."), true, "", ""])
+		toast("Auto refit on: idle soldiers nearby get their upgrades here, paying the fees." if not on else "Auto refit off."), true, "", ""])
 
 
 ## Observation Balloon: LOAD men into the basket (the infantry selected with it climb in
@@ -1011,13 +1035,15 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "BUIL
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
-	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "AUTO REFIT": "Q"}
+	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "SOCKET BAYONET": "W", "AUTO REFIT": "Q"}
 ## Keys the left hand reaches without leaving the group numbers: names only take letters
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
 ## Command keys that never move: everything else gives way to them.
-## Standard keys for some units on their building's card (workers S, Musketeers A).
-const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A"}
+## Standard keys for some units on their building's card (workers S, Musketeers A; at the
+## Barracks the light and armoured pairs: Musketeer A, Guardsman S, Horseman D, Cuirassier C).
+const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A", "guardsman": "S",
+	"horseman": "D", "cuirassier": "C"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 
 
@@ -1032,8 +1058,8 @@ func _production_card(pbs: Array) -> Array:
 	var list: Array = []
 	var kinds: Array = []
 	for sb in pbs:
-		for k in sb.d["trains"]:
-			if not kinds.has(k) and not Defs.UNITS[k].get("worker", false):
+		for k in Defs.train_keys(sb.d["trains"], game.has_tech(game.human, "armour")):
+			if not kinds.has(k) and not Defs.UNITS[Defs.train_kind(k)].get("worker", false):
 				kinds.append(k)
 	var slots := _cols() * _rows()
 	var per := slots - 1 if kinds.size() <= slots - 1 else slots - 2     # room for RALLY (and MORE)
@@ -1044,20 +1070,20 @@ func _production_card(pbs: Array) -> Array:
 		var why := "Can't train that here."
 		var able: Array = []
 		for sb in pbs:
-			if (sb.d["trains"] as Array).has(kk):
+			if (sb.d["trains"] as Array).has(Defs.train_kind(kk)):
 				able.append(sb)
 				var w := game.can_train(sb, kk)
 				if w == "":
 					why = ""
 				elif why != "":
 					why = w
-		var ulab: String = Defs.UNITS[kk]["name"].to_upper()
+		var ulab: String = Defs.train_name(kk).to_upper()
 		var auto_all := able.all(func(x: Building) -> bool: return x.auto_train == kk)
 		_alt_for[ulab] = func() -> void:
 			for sb in able:
 				if is_instance_valid(sb):
 					sb.auto_train = "" if auto_all else kk
-			toast(("Training %s automatically in every %s." % [Defs.UNITS[kk]["name"], "building that can"]) if not auto_all else "Automatic training off.")
+			toast(("Training %s automatically in every %s." % [Defs.train_name(kk), "building that can"]) if not auto_all else "Automatic training off.")
 		if able.any(func(x: Building) -> bool: return x.auto_train == kk):
 			ulab = "~ " + ulab
 		list.append([kk, ulab, func() -> void:
@@ -1074,7 +1100,7 @@ static func key_id(it: Array) -> String:
 	var lab: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 	if FIXED_KEYS.has(lab):
 		return lab
-	if Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0]):
+	if Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0]) or Defs.TRAIN_AS.has(it[0]):
 		return it[0]
 	return lab
 
@@ -1090,7 +1116,7 @@ func _with_keys(items: Array) -> Array:
 	var used := {}
 	var chosen := {}
 	var lab_of := func(it: Array) -> String: return String(it[1]).trim_prefix("> ").trim_prefix("~ ")
-	var named := func(it: Array) -> bool: return Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0])
+	var named := func(it: Array) -> bool: return Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0]) or Defs.TRAIN_AS.has(it[0])
 	# 1. the player's own keys and the must-have command keys (A attack, S stop, H hold, ...)
 	for i in items.size():
 		var own := UiLayout.key_for(key_id(items[i]))
@@ -1113,7 +1139,9 @@ func _with_keys(items: Array) -> Array:
 					key = fk
 			elif (pass_i == 0) == bool(named.call(it)):
 				var name: String = lab_of.call(it)
-				if Defs.UNITS.has(it[0]):
+				if Defs.TRAIN_AS.has(it[0]):
+					name = Defs.train_name(it[0]).to_upper()
+				elif Defs.UNITS.has(it[0]):
 					name = Defs.UNITS[it[0]]["name"].to_upper()
 				elif Defs.BUILDINGS.has(it[0]):
 					name = Defs.BUILDINGS[it[0]]["name"].to_upper()
@@ -1484,7 +1512,7 @@ func _draw_panel(font: Font) -> void:
 		var e: Entity = sel[0]
 		var icon := _icon(e.kind)
 		if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
-			icon = _icon((e as Unit).art)      # (an armoured Musketeer)
+			icon = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
 		var pr := Rect2(r.position + Vector2(10, 10), Vector2(68, 68))
 		UiStyle.draw_button(self, pr.grow(2), false, false)
 		if icon:
@@ -1553,7 +1581,10 @@ func _draw_panel(font: Font) -> void:
 				info = "Charge %d / %d (a storm costs %d). %s" % [int(uu.charge), int(Defs.STORM["max"]), int(Defs.STORM["cost"]),
 					"Recharging in the field." if uu._in_field and uu.charge < float(Defs.STORM["max"]) else ("Full." if uu.charge >= float(Defs.STORM["max"]) else "Bring it into a Clockwork field to recharge.")]
 			elif uu.kind == "cuirassier":
-				info = "Charge ready: the next blow hits double and throws the enemy back." if uu.run_t >= float(Defs.CHARGE["run"]) else uu.d["about"]
+				if not game.has_tech(uu.team, "charge"):
+					info = "No charge yet: the Armoury drills the Cavalry Charge."
+				else:
+					info = "Charge ready: the next blow hits double and throws the enemy back." if uu.run_t >= float(Defs.CHARGE["run"]) else "Gallop about 2 s and the next blow is a charge."
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -1600,13 +1631,13 @@ func _draw_panel(font: Font) -> void:
 				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."
 			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99:
 				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
-			if uu.kind == "musketeer" and e.team == game.human:
+			if Defs.ARMOURED.has(uu.kind) and e.team == game.human:
 				# his own refits first: "Armour · Flintlock"
 				var kt := uu.kit_text()
 				if uu.order == "refit" and not uu.refit.is_empty():
 					var names := " + ".join(uu.refit.map(func(w: String) -> String: return String(Defs.RESEARCH[w]["name"])))
 					kt = ("%s · " % kt if kt != "" else "") + ("refitting: %s..." % names if uu.work == "refitting" else "off to be refitted: %s" % names)
-				info = (kt if kt != "" else "Plain musket") + "  ·  " + info
+				info = (kt if kt != "" else ("Plain musket" if uu.kind == "musketeer" else "No armour")) + "  ·  " + info
 		elif e is Building:
 			name = (e as Building).d["name"]
 			info = (e as Building).d["about"]
@@ -1737,7 +1768,7 @@ func _draw_panel(font: Font) -> void:
 		if e is Building and (e.team == game.human or game.spectating()) and not (e as Building).queue.is_empty():
 			var q: Array = (e as Building).queue
 			for i in q.size():
-				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else q[i])
+				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else _queue_icon(e as Building, i))
 				var qr := Rect2(r.end.x - 44 - (q.size() - 1 - i) * 40, r.position.y + 8, 36, 36)
 				if e.team == game.human and not game.spectating():
 					_queue_rects.append({"rect": qr, "b": e, "i": i})
@@ -1754,21 +1785,25 @@ func _draw_panel(font: Font) -> void:
 	else:
 		var n := mini(sel.size(), 24)
 		var per_row := int((r.size.x - 20) / 38)
-		var men: Array = sel.filter(func(x: Entity) -> bool: return x is Unit and x.kind == "musketeer" and x.team == game.human)
+		var men: Array = sel.filter(func(x: Entity) -> bool: return x is Unit and Defs.ARMOURED.has(x.kind) and x.team == game.human)
 		if not men.is_empty():
-			# the Musketeers' refits, counted, at the right (the portraits make room)
+			# the soldiers' refits, counted, at the right (the portraits make room)
 			var cw := 200.0
 			var bits: Array = []
 			var arm: int = men.filter(func(u: Unit) -> bool: return u.armoured).size()
 			if game.has_tech(game.human, "armour") or arm > 0:
 				bits.append("Armour %d/%d" % [arm, men.size()])
+			var musk: Array = men.filter(func(u: Unit) -> bool: return u.kind == "musketeer")
+			var bay: int = musk.filter(func(u: Unit) -> bool: return u.bayonet).size()
+			if game.has_tech(game.human, "bayonet") or bay > 0:
+				bits.append("Bayonet %d/%d" % [bay, musk.size()])
 			for li in range(Defs.LOCKS.size() - 1, -1, -1):
 				var lk: String = Defs.LOCKS[li]
 				var c: int = men.filter(func(u: Unit) -> bool: return u.lock == lk).size()
 				if c > 0:
 					bits.append("%s %d" % [Defs.RESEARCH[lk]["name"], c])
-			var plain: int = men.filter(func(u: Unit) -> bool: return u.lock == "").size()
-			if plain > 0 and (plain < men.size() or game.best_lock(game.human) != ""):
+			var plain: int = musk.filter(func(u: Unit) -> bool: return u.lock == "").size()
+			if plain > 0 and (plain < musk.size() or game.best_lock(game.human) != ""):
 				bits.append("no lock %d" % plain)
 			var going: int = men.filter(func(u: Unit) -> bool: return u.order == "refit").size()
 			if going > 0:
@@ -1793,7 +1828,7 @@ func _draw_panel(font: Font) -> void:
 				draw_rect(ir.grow(2), UiStyle.TRIM_DIM, false, 1.0)
 			var ic := _icon(e.kind)
 			if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
-				ic = _icon((e as Unit).art)      # (an armoured Musketeer)
+				ic = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
 			if ic:
 				draw_texture_rect(ic, ir, false)
 			var f := e.hp / e.max_hp
@@ -2048,23 +2083,27 @@ func _card_tip(it: Array) -> Dictionary:
 		t["stats"] = "%s  ·  %d s" % [_cost_text(int(ri["cost"]), int(ri.get("cost2", 0))), int(ri["time"])]
 		t["body"] = Defs.tip(rk)
 		t["hint"] = "Queued like a unit; CANCEL takes it back out (paid back)."
-	elif Defs.UNITS.has(k) and lab == String(Defs.UNITS[k]["name"]).to_upper():
-		var u: Dictionary = Defs.UNITS[k]
+	elif (Defs.UNITS.has(k) or Defs.TRAIN_AS.has(k)) and lab == Defs.train_name(k).to_upper():
+		var kd := Defs.train_kind(k)
+		var u: Dictionary = Defs.UNITS[kd]
 		var price := game.unit_price(game.human, k)
 		var n := int(u.get("spawn", 1))
-		t["title"] = u["name"]
+		var arm := Defs.train_armoured(k)
+		t["title"] = Defs.train_name(k)
 		t["stats"] = "%s  ·  %d s  ·  %d supply%s" % [_cost_text(price[0], price[1]), int(u["time"]), int(u["supply"]) * n, ("  ·  %d an egg" % n) if n > 1 else ""]
-		var tg: Array = u.get("tags", [])
+		var tg: Array = ["armored"] if arm else u.get("tags", [])
 		t["body"] = ("[%s] " % " ".join(tg.map(func(x: String) -> String: return x.capitalize())) if not tg.is_empty() else "") + Defs.tip(k)
-		if k == "musketeer":
-			var kt := game.kit_for_new(game.human)
+		if Defs.ARMOURED.has(kd):
+			var kt := game.kit_for_new(game.human, k)
 			var parts: Array = []
-			if kt["armour"]:
+			if kt.get("armour", false):
 				parts.append("Armour")
-			if kt["lock"] != "":
+			if String(kt.get("lock", "")) != "":
 				parts.append(Defs.RESEARCH[kt["lock"]]["name"])
+			if kt.get("bayonet", false):
+				parts.append("the Socket Bayonet")
 			if not parts.is_empty():
-				t["body"] += "  Comes out with %s (the refit fees are in the price)." % " and ".join(parts)
+				t["body"] += "  Comes out with %s (the refit fees are in the price)." % ", ".join(parts)
 		t["hint"] = ("Right-click" if Settings.pc() else "Hold") + ": train it automatically (glows while on)."
 	elif Defs.BUILDINGS.has(k) and page in ["build", "advanced"]:
 		var bd: Dictionary = Defs.BUILDINGS[k]
@@ -2119,7 +2158,7 @@ func _entity_tip(e: Entity) -> Dictionary:
 	if e is Building and not (e as Building).built:
 		st += "  ·  %d%% built" % int((e as Building).progress * 100)
 	t["stats"] = st
-	t["body"] = Defs.tip(e.kind)
+	t["body"] = Defs.tip(Defs.train_key(e.kind, (e as Unit).armoured) if e is Unit else e.kind)
 	return t
 
 

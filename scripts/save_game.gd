@@ -37,6 +37,14 @@ static func _kind(k: String) -> String:
 	return {"pikeman": "musketeer", "gearknight": "thresher", "bolt": "arc_thrower"}.get(k, k)
 
 
+## A soldier from a save without his kit: a Cuirassier was always armoured; a Musketeer had
+## everything researched.
+static func _old_kit(game: Game, t: int, k: String) -> Dictionary:
+	if k == "cuirassier":
+		return {"armour": true}
+	return game.kit_all(t, k)
+
+
 static func _to_v2(a) -> Vector2:
 	return Vector2(float(a[0]), float(a[1])) if a is Array else Vector2.INF
 
@@ -48,7 +56,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"saved_at": Time.get_datetime_string_from_system(false, true), "cfg": cfg, "clock": game.clock,
 		"players": game.players, "stats": game.stats, "eliminated": game.eliminated,
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
-		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true, "farm_size": _v2(Vector2(Defs.BUILDINGS["farm"]["size"])),
+		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true, "armoury": true, "farm_size": _v2(Vector2(Defs.BUILDINGS["farm"]["size"])),
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
 		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]), "buildings": [], "units": []}
 	for ai in game.ais:
@@ -76,7 +84,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"sky": u.sky if u.sky != "to_land" else "air",
 			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying,
 			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
-		if u.kind == "musketeer":
+		if Defs.ARMOURED.has(u.kind):
 			ud["kit"] = u.get_kit()
 			if not u.refit.is_empty():
 				ud["rf"] = u.refit       # on his way to a refit (paid): he goes again after loading
@@ -173,6 +181,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 				game.players[t][k] = p[k]
 		game.players[t]["gold"] = int(p["gold"])
 		game.players[t]["cap"] = int(p["cap"])
+		# (saves from before the Armoury: every Cuirassier charged, so the Crown has the drill)
+		if not d.get("armoury", false) and game.faction_of(t) == "crown":
+			game.players[t]["tech"]["charge"] = true
 	for t in game.stats.size():
 		if t < d["stats"].size():
 			var st: Dictionary = d["stats"][t]
@@ -222,6 +233,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			b.kits.push_front({})
 			b.prod_t = float(bd.get("research_t", 0.0))
 		b.auto_train = _kind(String(bd.get("auto", "")))
+		if not d.get("armoury", false) and b.auto_train == "cuirassier" and not game.has_tech(b.team, "armour"):
+			b.auto_train = "horseman"      # (before the Armoury, "cuirassier" was the one horseman)
 		b.batteries = int(bd.get("bat", 0))
 		b.vertical = bool(bd.get("v", false))
 		b.dir_locked = bool(bd.get("vl", false))
@@ -269,9 +282,10 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if not Defs.UNITS.has(uk):
 			continue
 		var u := game._add_unit(uk, int(ud["t"]), _to_v2(ud["p"]))
-		if uk == "musketeer":
-			# his own refits (older saves: research applied to every Musketeer, so he has it all)
-			u.set_kit(ud["kit"] if ud.get("kit") is Dictionary else game.kit_for_new(u.team))
+		if Defs.ARMOURED.has(uk):
+			# his own refits (older saves: research applied to every Musketeer, so he has it
+			# all; and every Cuirassier was armoured)
+			u.set_kit(ud["kit"] if ud.get("kit") is Dictionary else _old_kit(game, u.team, uk))
 		u.auto_refit = bool(ud.get("ar", false))
 		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):
 			u.coat = String(ud["coat"])      # (older saves: the coat it was just given)
@@ -326,8 +340,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			if u.kind != "balloon" or not Defs.UNITS.has(pk):
 				continue
 			var p := game._add_unit(pk, u.team, u.position)
-			if pk == "musketeer":
-				p.set_kit(pd["kit"] if pd.get("kit") is Dictionary else game.kit_for_new(u.team))
+			if Defs.ARMOURED.has(pk):
+				p.set_kit(pd["kit"] if pd.get("kit") is Dictionary else _old_kit(game, u.team, pk))
 			p.hp = minf(float(pd.get("hp", p.max_hp)), p.max_hp)
 			p.mode = String(pd.get("mode", ""))
 			p.auto_work = bool(pd.get("auto", true))

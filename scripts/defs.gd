@@ -184,7 +184,7 @@ const TESLA_CHAIN := {"jumps": 1, "falloff": 0.4, "reach": 70.0}
 const FACTIONS := {
 	"crown": {
 		"name": "The Crown", "hall": "town_hall", "worker": "labourer", "supply": "cottage",
-		"build": ["town_hall", "cottage", "farm", "powder_mill", "wall", "gate", "barracks", "foundry", "church"],
+		"build": ["town_hall", "cottage", "farm", "powder_mill", "wall", "gate", "barracks", "armoury", "foundry", "church"],
 		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 100,
 		"res": ["Gold", "Powder"], "econ": {"farm": 2, "powder_mill": 1},
 		"start": ["farm"],
@@ -219,7 +219,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Musketeer", "hp": 70, "armor": 0, "speed": 62, "cost": 60, "cost2": 10, "time": 15.0, "supply": 1,
 		"sight": 8, "range": 190, "damage": 20, "cooldown": 2.8, "aim": 0.4, "radius": 10, "from": "barracks",
-		"anti_air": true, "faction": "crown", "about": "Line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 12 shots run dry; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Costs 10 powder: the Powder Mill grinds more. The Barracks researches Armour and better locks for it.",
+		"anti_air": true, "faction": "crown", "about": "Light line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 12 shots run dry; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Costs 10 powder: the Powder Mill grinds more. The Armoury researches Armour (he becomes a Guardsman), better locks and the socket bayonet for him.",
 	},
 	"cannon": {
 		"tags": ["armored"],
@@ -242,12 +242,14 @@ const UNITS := {
 		"no_attack": true, "faction": "crown",
 		"about": "Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY (on from the start; G turns it off) sends 2 labourers with kegs from the Powder Mill when it's out in the field: idle ones first, else men taken off the farms or the mills, whichever your side can best spare. No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.",
 	},
+	# (the kind stays "cuirassier" for saves, the AI and hotkeys: unarmoured he is the
+	# Horseman, with Armour the Cuirassier: see ARMOURED)
 	"cuirassier": {
-		"tags": ["armored"],
-		"name": "Cuirassier", "hp": 170, "armor": 2, "speed": 108, "cost": 175, "time": 24.0, "supply": 3,
+		"tags": ["light"],
+		"name": "Horseman", "hp": 140, "armor": 1, "speed": 112, "cost": 145, "time": 22.0, "supply": 3,
 		"sight": 8, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.15, "radius": 15, "from": "barracks",
 		"requires": "foundry", "bonus": {"cannon": 1.6, "spitter": 1.3, "arc_thrower": 1.3}, "charge": true, "faction": "crown",
-		"about": "Fast armoured horseman with a sabre. After a gallop his first blow hits double and throws the enemy back. Bayonets hurt him.",
+		"about": "Fast light horseman with a sabre. Once the Armoury has drilled the Cavalry Charge, his first blow after a gallop hits double and throws the enemy back. With Armour he becomes a Cuirassier. Bayonets hurt him.",
 	},
 	"balloon": {
 		"tags": ["light"],
@@ -405,7 +407,12 @@ const BUILDINGS := {
 	},
 	"barracks": {
 		"name": "Barracks", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains musketeers and (with a Foundry) cuirassiers. Researches Armour and better musket locks, and refits Musketeers with them (AUTO REFIT: idle ones nearby).",
+		"supply": 0, "sight": 7, "trains": ["musketeer", "cuirassier"], "faction": "crown", "about": "Trains Musketeers and (with a Foundry) Horsemen; once the Armoury has researched Armour, armoured Guardsmen and Cuirassiers too. Refits soldiers with what the Armoury researched (AUTO REFIT: idle ones nearby).",
+	},
+	"armoury": {
+		"name": "Armoury", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
+		"supply": 0, "sight": 7, "trains": [], "requires": "barracks", "faction": "crown",
+		"about": "Researches the Crown's upgrades: Armour, the musket locks, the socket bayonet, Prepared Charges and the Gunner's Quadrant for the guns, and the Cavalry Charge. Refits soldiers like the Barracks (AUTO REFIT). Needs a Barracks.",
 	},
 	"foundry": {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
@@ -512,32 +519,106 @@ const BUILDINGS := {
 ## Research: done once per player at a building (`at`), paid in the first resource (`cost`)
 ## and the second (`cost2`), taking `time` seconds; `requires` another research first,
 ## `needs` a finished building of that kind. (`icon`: assets/icons/<icon>.png.)
-## Crown, at the Barracks: Armour and the musket locks only UNLOCK the upgrade. Each
-## Musketeer is then refitted one by one (REFIT): he walks to a Barracks or a Powder Wagon
-## and pays `fee` gold (+ `fee2` powder) there. Armour: +`armor` and +`hp` and the armoured
-## look. A lock sets his reload to `reload` of the base (the totals, not on top of each
+## Crown, all at the Armoury. EQUIPMENT (Armour, the musket locks, the socket bayonet) only
+## UNLOCKS the upgrade: each soldier is then refitted one by one (REFIT): he walks to a
+## Barracks, an Armoury or a Powder Wagon and pays `fee` gold (+ `fee2` powder) there
+## (Armour: `fees` per kind, [gold, powder]). New Musketeers come out with the locks and the
+## bayonet researched, their fees added to their price; Armour adds a second, armoured
+## recruit at the Barracks for each soldier (Guardsman, Cuirassier: ARMOURED), priced with
+## its fee. A lock sets his reload to `reload` of the base (the totals, not on top of each
 ## other); a soldier refitted to a later lock skips the ones between and pays only its fee.
-## New recruits come out with everything researched, the fees added to their price.
+## DRILLS (`drill`: Prepared Charges, the Gunner's Quadrant, the Cavalry Charge) are a
+## technique, not equipment: every unit of their `kinds` has them at once, for nothing.
 const RESEARCH := {
-	"armour": {"name": "Armour", "at": "barracks", "faction": "crown", "cost": 75, "cost2": 25, "time": 40.0,
-		"icon": "research_armour", "armor": 1, "hp": 20, "needs": "foundry", "fee": 12, "fee2": 4,
-		"about": "Breastplates and helmets: unlocks the ARMOUR refit (+1 armour, +20 health), 12 gold + 4 powder a man. New Musketeers come out armoured."},
-	"matchlock": {"name": "Matchlock", "at": "barracks", "faction": "crown", "cost": 50, "cost2": 10, "time": 30.0,
+	"armour": {"name": "Armour", "at": "armoury", "faction": "crown", "cost": 125, "cost2": 50, "time": 45.0,
+		"icon": "research_armour", "needs": "foundry", "fees": {"musketeer": [12, 4], "cuirassier": [30, 0]},
+		"about": "Breastplates, morions and cuirasses: unlocks the ARMOUR refit for Musketeers (they become Guardsmen: +1 armour, +20 health; 12 gold + 4 powder a man) and Horsemen (they become Cuirassiers: +1 armour, +30 health, a little slower; 30 gold). The Barracks can then train both armoured."},
+	"matchlock": {"name": "Matchlock", "at": "armoury", "faction": "crown", "cost": 50, "cost2": 10, "time": 30.0,
 		"icon": "research_matchlock", "reload": 0.9, "fee": 8,
 		"about": "Better matchlocks: unlocks the refit (reload 10% faster, powder burns faster), 8 gold a man. New Musketeers come out with it."},
-	"flintlock": {"name": "Flintlock", "at": "barracks", "faction": "crown", "cost": 75, "cost2": 25, "time": 40.0,
+	"flintlock": {"name": "Flintlock", "at": "armoury", "faction": "crown", "cost": 75, "cost2": 25, "time": 40.0,
 		"icon": "research_flintlock", "reload": 0.8, "requires": "matchlock", "needs": "foundry", "fee": 12,
 		"about": "Flintlocks: unlocks the refit (reload 20% faster than at the start), 12 gold a man. New Musketeers come out with it."},
-	"caplock": {"name": "Caplock", "at": "barracks", "faction": "crown", "cost": 100, "cost2": 40, "time": 50.0,
+	"caplock": {"name": "Caplock", "at": "armoury", "faction": "crown", "cost": 100, "cost2": 40, "time": 50.0,
 		"icon": "research_caplock", "reload": 0.7, "requires": "flintlock", "fee": 16,
 		"about": "Percussion caps: unlocks the refit (reload 30% faster than at the start), 16 gold a man. New Musketeers come out with it."},
+	"bayonet": {"name": "Socket Bayonet", "at": "armoury", "faction": "crown", "cost": 40, "cost2": 0, "time": 20.0,
+		"icon": "research_bayonet", "damage": 6.0, "cooldown": 0.85, "fee": 3,
+		"about": "A socket bayonet that leaves the muzzle free: unlocks the refit (bayonet +6 damage, thrusts 15% faster), 3 gold a man. New Musketeers come out with it."},
+	"charges": {"name": "Prepared Charges", "at": "armoury", "faction": "crown", "cost": 100, "cost2": 40, "time": 40.0,
+		"icon": "research_charges", "needs": "foundry", "drill": true, "kinds": ["cannon", "mortar"], "reload": 0.8,
+		"about": "Powder in ready-made bags: every Field Cannon and Mortar reloads 20% faster."},
+	"quadrant": {"name": "Gunner's Quadrant", "at": "armoury", "faction": "crown", "cost": 125, "cost2": 30, "time": 45.0,
+		"icon": "research_quadrant", "requires": "charges", "drill": true, "kinds": ["cannon", "mortar"], "range": 32,
+		"about": "Laying the guns by the quadrant: every Field Cannon and Mortar reaches 1 tile further."},
+	"charge": {"name": "Cavalry Charge", "at": "armoury", "faction": "crown", "cost": 60, "cost2": 0, "time": 25.0,
+		"icon": "research_charge", "drill": true, "kinds": ["cuirassier"],
+		"about": "Drilled to charge: after about 2 s at the gallop a Horseman's or Cuirassier's next blow hits double and throws the enemy back."},
 }
 ## The musket locks, in order.
 const LOCKS := ["matchlock", "flintlock", "caplock"]
-## Refitting a Musketeer: `time` s at a Barracks or a Powder Wagon (within `reach` px of
-## it). AUTO REFIT (a toggle on the Barracks and the Powder Wagon) sends idle Musketeers
-## within `auto` tiles of it, every `scan` s.
+## Light and armoured: a soldier of these kinds refitted with Armour (or trained armoured)
+## is the armoured version: his name, tag ("armored"), portrait and sprites (`art`) follow,
+## and his armour, health and speed change by these. Unarmoured (tag "light") he wears
+## LIGHT_ART (or his own kind's sprites).
+const ARMOURED := {
+	"musketeer": {"name": "Guardsman", "key": "guardsman", "art": "musketeer_armoured", "armor": 1, "hp": 20, "speed": 0,
+		"about": "Armoured line infantry: a Musketeer in morion and breastplate (+1 armour, +20 health). Fires at range and stabs with the bayonet up close."},
+	"cuirassier": {"name": "Cuirassier", "key": "cuirassier", "art": "cuirassier", "armor": 1, "hp": 30, "speed": -4,
+		"about": "Fast armoured horseman with a sabre: a Horseman in helmet and cuirass (+1 armour, +30 health, a little slower). Bayonets hurt him."},
+}
+const LIGHT_ART := {"cuirassier": "horseman"}
+## The Barracks' train buttons: key -> [unit kind, armoured]. The kinds stay "musketeer"
+## and "cuirassier" (saves, the AI, hotkeys); the armoured ones need Armour researched and
+## cost its fee on top. (The key "cuirassier" is the armoured horseman.)
+const TRAIN_AS := {"musketeer": ["musketeer", false], "guardsman": ["musketeer", true],
+	"horseman": ["cuirassier", false], "cuirassier": ["cuirassier", true]}
+
+
+static func train_kind(key: String) -> String:
+	return String(TRAIN_AS[key][0]) if TRAIN_AS.has(key) else key
+
+
+static func train_armoured(key: String) -> bool:
+	return TRAIN_AS.has(key) and bool(TRAIN_AS[key][1])
+
+
+## The train button for a soldier of this kind, light or armoured.
+static func train_key(kind: String, armoured: bool) -> String:
+	if ARMOURED.has(kind):
+		if armoured:
+			return String(ARMOURED[kind]["key"])
+		return "horseman" if kind == "cuirassier" else kind
+	return kind
+
+
+static func train_name(key: String) -> String:
+	var k := train_kind(key)
+	if train_armoured(key):
+		return String(ARMOURED[k]["name"])
+	return String(UNITS[k]["name"]) if UNITS.has(k) else key
+
+
+## The train buttons for a building's kinds: a light and an armoured one for each soldier
+## that has both (`armour`: Armour researched; without it only the light one).
+static func train_keys(kinds: Array, armour: bool) -> Array:
+	var out: Array = []
+	for k in kinds:
+		if ARMOURED.has(k):
+			out.append(train_key(k, false))
+			if armour:
+				out.append(train_key(k, true))
+		else:
+			out.append(k)
+	return out
+
+
+## Refitting a soldier: `time` s at a Barracks, an Armoury or a Powder Wagon (within `reach`
+## px of it). AUTO REFIT (a toggle on each of them) sends idle soldiers within `auto` tiles
+## of it, every `scan` s.
 const REFIT := {"time": 2.0, "reach": 20.0, "auto": 3, "scan": 1.0, "give_up": 40.0}
+## The buildings soldiers are refitted at (and every Powder Wagon).
+const REFIT_AT := ["barracks", "armoury"]
 
 
 ## Units whose art is still being finished: they can't be trained yet.
@@ -570,7 +651,8 @@ const REVIVE := {"time": 6.0, "hp": 0.5, "cross": 30.0, "window": 60.0, "scan": 
 	"kinds": ["musketeer", "cuirassier"]}
 ## Clockwork towers zap flyers with chain lightning; while they do, their field is off.
 const TOWER_ZAP := {"range": 8.0, "damage": 10.0, "cooldown": 1.6, "chain": 3, "jump": 110.0, "falloff": 0.7, "off": 3.0}
-## Cuirassier: after galloping this long, his next blow is a charge.
+## Horseman / Cuirassier, once the Cavalry Charge is researched: after galloping this long,
+## his next blow is a charge.
 const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
 ## Stormcaller: a storm of lightning that stuns everything inside (friends too).
 ## A control spell, not a killer (the rework: was radius 96, 3 s, 8 damage a second to
@@ -623,7 +705,7 @@ const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 2
 static func has_tag(kind: String, tag: String) -> bool:
 	return UNITS.has(kind) and (UNITS[kind].get("tags", []) as Array).has(tag)
 
-const ADVANCED := ["barracks", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works"]
+const ADVANCED := ["barracks", "armoury", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works"]
 
 
 static func is_basic(kind: String) -> bool:
@@ -679,11 +761,13 @@ const PALETTE := [
 const TIPS := {
 	# Crown units
 	"labourer": "Works Farms and Powder Mills, builds and repairs. Weak in a fight.",
-	"musketeer": "Line infantry: a long reload, the bayonet up close. Hits flyers. Refills powder near a Mill, Barracks, Hall or Wagon.",
+	"musketeer": "Light line infantry: a long reload, the bayonet up close. Hits flyers. Refills powder near a Mill, Barracks, Hall or Wagon.",
+	"guardsman": "Armoured line infantry (+1 armour, +20 health): a Musketeer in morion and breastplate. Needs Armour.",
+	"horseman": "Fast light horseman with a sabre. With the Cavalry Charge his first blow after a gallop hits double. Bayonets hurt him.",
 	"cannon": "Long-range artillery. UNLIMBER to fire: round shot ploughs through lines, canister shreds light units and flyers. Needs spotters.",
 	"mortar": "Siege mortar: DEPLOY, then it lobs shells over walls 5 to 11 tiles away. The splash hurts friends too. Can't hit flyers.",
 	"powder_wagon": "Carries 120 shots of powder for the soldiers near it. No weapon, and it blows up when destroyed.",
-	"cuirassier": "Fast armoured horseman. After a gallop his first blow hits double and throws the enemy back. Bayonets hurt him.",
+	"cuirassier": "Fast armoured horseman (+1 armour, +30 health): a Horseman in helmet and cuirass. Needs Armour. Bayonets hurt him.",
 	"balloon": "Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.",
 	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
 	# Brood units
@@ -700,8 +784,9 @@ const TIPS := {
 	"cottage": "Houses 8 more supply.",
 	"wall": "Palisade: blocks the way. Lay it in a line: pick the start, then the end.",
 	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece.",
-	"barracks": "Trains Musketeers and Cuirassiers. Researches Armour and the musket locks, and refits Musketeers with them.",
-	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons. Lets the Barracks train Cuirassiers.",
+	"barracks": "Trains Musketeers and Horsemen, and with Armour Guardsmen and Cuirassiers. Refits soldiers with what the Armoury researched.",
+	"armoury": "Researches Armour, the musket locks, the socket bayonet, the guns' drills and the Cavalry Charge. Refits soldiers too.",
+	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons. Lets the Barracks train Horsemen.",
 	"farm": "Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
@@ -715,10 +800,14 @@ const TIPS := {
 	"spore_vent": "Spreads swamp far around it.",
 	"roost": "Lets the Hive hatch Skywings and Bloaters.",
 	# Crown research
-	"armour": "Unlocks the ARMOUR refit: +1 armour, +20 health. New Musketeers come out armoured.",
+	"armour": "Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.",
 	"matchlock": "Unlocks the Matchlock refit: reload 10% faster. New Musketeers come out with it.",
 	"flintlock": "Unlocks the Flintlock refit: reload 20% faster than at the start.",
 	"caplock": "Unlocks the Caplock refit: reload 30% faster than at the start.",
+	"bayonet": "Unlocks the Socket Bayonet refit: bayonet +6 damage, thrusts 15% faster. New Musketeers come out with it.",
+	"charges": "Every Field Cannon and Mortar reloads 20% faster.",
+	"quadrant": "Every Field Cannon and Mortar reaches 1 tile further.",
+	"charge": "Horsemen and Cuirassiers charge: after a gallop the first blow hits double and throws the enemy back.",
 }
 
 
@@ -726,6 +815,8 @@ const TIPS := {
 static func tip(kind: String) -> String:
 	if TIPS.has(kind):
 		return TIPS[kind]
+	if train_armoured(kind):
+		return String(ARMOURED[train_kind(kind)]["about"])
 	for d in [UNITS, BUILDINGS, RESEARCH]:
 		if (d as Dictionary).has(kind):
 			return String(d[kind].get("about", ""))

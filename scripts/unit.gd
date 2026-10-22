@@ -81,11 +81,12 @@ var _push := Vector2.ZERO
 # Crown abilities
 var mode := ""                  # musketeer "" (musket) or "bayonet" (chosen by itself); cannon "" (round shot) or "canister"
 var _melee_t := 0.0             # musketeer: when it next looks for an enemy close enough for the bayonet
-var art := ""                   # whose sprites it wears (an armoured Musketeer: "musketeer_armoured")
+var art := ""                   # whose sprites it wears (a Guardsman: "musketeer_armoured"; a Horseman: "horseman")
 var coat := ""                  # its horse's coat (HorseCoat), for the units that have one
-var armoured := false           # Musketeer: refitted with Armour (or came out with it)
+var armoured := false           # Musketeer / Horseman: refitted with Armour (or came out with it): Guardsman / Cuirassier
 var lock := ""                  # Musketeer: his musket lock ("", or one of Defs.LOCKS)
-var refit: Array = []           # Musketeer on a "refit" order: the upgrades he's going to get (paid)
+var bayonet := false            # Musketeer: refitted with the socket bayonet
+var refit: Array = []           # soldier on a "refit" order: the upgrades he's going to get (paid)
 var refit_paid := [0, 0]        # what was paid for them (back if the refit is called off)
 var _refit_t := 0.0
 var auto_refit := false         # Powder Wagon: AUTO REFIT (idle Musketeers nearby get the upgrades researched)
@@ -298,36 +299,56 @@ func revive() -> void:
 	game.on_unit_revived(self)
 
 
-## A Musketeer refitted with Armour: +armour, +health, and the armoured sprites.
+## A soldier refitted with Armour (Defs.ARMOURED): the armoured version, with his own name,
+## tag, armour, health, speed and sprites. (His `d` is his own copy: everything that reads
+## d["armor"], d["hp"], d["tags"] or d["name"] sees it.)
 func put_on_armour() -> void:
-	if kind != "musketeer" or armoured:
+	if not Defs.ARMOURED.has(kind) or armoured:
 		return
-	var info: Dictionary = Defs.RESEARCH["armour"]
+	var info: Dictionary = Defs.ARMOURED[kind]
 	armoured = true
-	armor = float(d["armor"]) + float(info["armor"])
-	max_hp = float(d["hp"]) + float(info["hp"])
+	d["armor"] = float(Defs.UNITS[kind]["armor"]) + float(info["armor"])
+	d["hp"] = float(Defs.UNITS[kind]["hp"]) + float(info["hp"])
+	d["speed"] = float(Defs.UNITS[kind]["speed"]) + float(info.get("speed", 0))
+	d["tags"] = ["armored"]
+	d["name"] = String(info["name"])
+	d["about"] = String(info["about"])
+	armor = float(d["armor"])
+	max_hp = float(d["hp"])
 	hp = minf(max_hp, hp + float(info["hp"]))
-	if ArtData.UNITS.has("musketeer_armoured"):
-		art = "musketeer_armoured"
+	speed = float(d["speed"])
+	if ArtData.UNITS.has(String(info["art"])):
+		art = String(info["art"])
 	if sprite and not dead:
 		_set_anim(anim if anim != "" else "idle", true)
 	queue_redraw()
 
 
-## A Musketeer's kit ({"armour": bool, "lock": key}): a recruit's, or a saved one.
+## A soldier's kit ({"armour": bool, "lock": key, "bayonet": bool}): a recruit's, or a saved
+## one. (A Horseman's is only "armour".)
 func set_kit(kit: Dictionary) -> void:
-	if kind != "musketeer":
+	if not Defs.ARMOURED.has(kind):
 		return
 	if kit.get("armour", false):
 		put_on_armour()
-	var lk := String(kit.get("lock", ""))
-	if Defs.LOCKS.has(lk) and Defs.LOCKS.find(lk) > lock_level():
-		lock = lk
+	if kind == "musketeer":
+		var lk := String(kit.get("lock", ""))
+		if Defs.LOCKS.has(lk) and Defs.LOCKS.find(lk) > lock_level():
+			lock = lk
+		if kit.get("bayonet", false):
+			bayonet = true
 	queue_redraw()
 
 
 func get_kit() -> Dictionary:
-	return {"armour": armoured, "lock": lock}
+	if kind == "musketeer":
+		return {"armour": armoured, "lock": lock, "bayonet": bayonet}
+	return {"armour": armoured}
+
+
+## Light or armoured, and the rest of its tags (a Guardsman or Cuirassier is "armored").
+func has_tag(tag: String) -> bool:
+	return (d.get("tags", []) as Array).has(tag)
 
 
 ## His lock as a number: -1 none, 0 matchlock, 1 flintlock, 2 caplock (`pending`: counting
@@ -347,6 +368,8 @@ func kit_text() -> String:
 		parts.append("Armour")
 	if lock != "":
 		parts.append(String(Defs.RESEARCH[lock]["name"]))
+	if bayonet:
+		parts.append("Socket Bayonet")
 	return " · ".join(parts)
 
 
@@ -415,6 +438,8 @@ func _refit_run(delta: float) -> Vector2:
 			for w in done:
 				if w == "armour":
 					put_on_armour()
+				elif w == "bayonet":
+					bayonet = true
 				elif Defs.LOCKS.find(w) > lock_level():
 					lock = w
 			refit.clear()
@@ -427,7 +452,7 @@ func _refit_run(delta: float) -> Vector2:
 	work_t += delta
 	if work_t > float(Defs.REFIT["give_up"]):
 		if team == game.human:
-			game.notify("A Musketeer couldn't reach the place to be refitted. Paid back.")
+			game.notify("A %s couldn't reach the place to be refitted. Paid back." % String(d["name"]))
 		cmd_stop()
 		return Vector2.ZERO
 	# a wagon may be on the move: head straight for it when close, else find the way there
@@ -647,9 +672,9 @@ func set_canister(on: bool) -> void:
 
 func _cooldown() -> float:
 	if mode == "bayonet":
-		return Defs.BAYONET["cooldown"]
+		return float(Defs.BAYONET["cooldown"]) * (float(Defs.RESEARCH["bayonet"]["cooldown"]) if bayonet else 1.0)
 	if mode == "canister":
-		return Defs.CANISTER["cooldown"]
+		return float(Defs.CANISTER["cooldown"]) * float(d.get("drill_reload", 1.0))
 	if kind == "musketeer":
 		return musket_cooldown()
 	if overclock_t > 0.0:
@@ -1022,6 +1047,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	kind = k
 	team = t
 	d = Defs.UNITS[k]
+	if Defs.ARMOURED.has(k) or k in ["cannon", "mortar"]:
+		d = d.duplicate(true)        # his own: armour (put_on_armour) and drills (Game.apply_drills) change it
 	max_hp = d["hp"]
 	hp = max_hp
 	if k == "powder_wagon":
@@ -1043,6 +1070,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	last_pos = pos
 	leash_from = pos
 	art = k
+	if Defs.LIGHT_ART.has(k) and ArtData.UNITS.has(String(Defs.LIGHT_ART[k])):
+		art = String(Defs.LIGHT_ART[k])      # (the Horseman: the Cuirassier's sprites once armoured)
 	if HorseCoat.has_horse(k):
 		coat = HorseCoat.pick()
 
@@ -2095,8 +2124,8 @@ func _physics_process(delta: float) -> void:
 	spell_cd = maxf(spell_cd - delta, 0.0)
 	if _pmax > 0.0:
 		_powder_tick(delta)
-	if kind == "cuirassier":
-		# a gallop builds up to a charge; standing about loses it
+	if kind == "cuirassier" and game.has_tech(team, "charge"):
+		# (drilled: Cavalry Charge) a gallop builds up to a charge; standing about loses it
 		if velocity.length() > speed * 0.7:
 			run_t += delta
 		elif phase == "":
@@ -2897,7 +2926,8 @@ func _strike(e: Entity) -> void:
 		dmg *= float(d.get("building_bonus", 1.0))
 	if mode == "bayonet":
 		var vet := 1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
-		e.take_damage(Defs.BAYONET["damage"] * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self)
+		var bd := float(Defs.BAYONET["damage"]) + (float(Defs.RESEARCH["bayonet"]["damage"]) if bayonet else 0.0)
+		e.take_damage(bd * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self)
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 		return
@@ -2977,7 +3007,7 @@ func _strike(e: Entity) -> void:
 		_:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
-			var charged := kind == "cuirassier" and run_t >= float(Defs.CHARGE["run"])
+			var charged := kind == "cuirassier" and run_t >= float(Defs.CHARGE["run"]) and game.has_tech(team, "charge")
 			if charged:
 				dmg *= float(Defs.CHARGE["mult"])
 				run_t = 0.0
@@ -4038,7 +4068,9 @@ func _animate(delta: float) -> void:
 	var n: int = ArtData.UNITS[art]["frames"].get(key, 1)
 	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
 	if anim == "walk" and kind == "cuirassier":
-		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS     # 8-frame gallop: one stride ~0.57 s at full speed
+		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
+		# frames, played so that his stride takes the same time
+		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
 	var loop := true
 	match anim:
 		"idle":

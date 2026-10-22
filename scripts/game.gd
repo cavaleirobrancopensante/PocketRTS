@@ -1607,6 +1607,7 @@ func _own_hall(t: int) -> Building:
 func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 	var u := Unit.new()
 	u.setup(self, k, t, pos)
+	apply_drills(u)
 	world.add_child(u)
 	units.append(u)
 	return u
@@ -2192,7 +2193,7 @@ func add_gold(t: int, n: int) -> void:
 	stats[t]["gold"] += k
 
 
-## A queue entry paid back (`kit`: what a queued Musketeer was paid to come out with).
+## A queue entry paid back (`kit`: what a queued soldier was paid to come out with).
 func refund(t: int, k: String, kit: Dictionary = {}) -> void:
 	if Building.is_research(k):
 		var info: Dictionary = Defs.RESEARCH[k.substr(1)]
@@ -2200,7 +2201,7 @@ func refund(t: int, k: String, kit: Dictionary = {}) -> void:
 		add_res2(t, float(info.get("cost2", 0)))
 		stats[t]["spent"] -= int(info["cost"])
 		return
-	var fee := kit_fee(kit)
+	var fee := kit_fee(kit, k)
 	players[t]["gold"] += int(Defs.UNITS[k]["cost"]) + fee[0]
 	if faction_of(t) == "clockwork":
 		give_batteries(t, int(Defs.UNITS[k].get("cost2", 0)))
@@ -2266,10 +2267,14 @@ func give_batteries(t: int, n: int) -> void:
 
 # ------------------------------------------------------------------ production & building
 
-## "" if allowed, else the reason.
-func can_train(b: Building, k: String) -> String:
+## "" if allowed, else the reason. `key`: a unit kind, or a Barracks train button
+## (Defs.TRAIN_AS: "guardsman" and "cuirassier" are the armoured recruits).
+func can_train(b: Building, key: String) -> String:
+	var k := Defs.train_kind(key)
 	if not b.can_train(k):
 		return "Can't train that here."
+	if Defs.train_armoured(key) and not has_tech(b.team, "armour"):
+		return "Research Armour at the Armoury first."
 	if not ArtData.UNITS.has(k) or Defs.PENDING.has(k):
 		return "Coming soon."      # its sprites aren't in (or tested) yet
 	var u: Dictionary = Defs.UNITS[k]
@@ -2288,7 +2293,7 @@ func can_train(b: Building, k: String) -> String:
 	elif b.queue.size() >= 5:
 		return "Queue is full."
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
-	var price := unit_price(b.team, k)
+	var price := unit_price(b.team, key)
 	if players[b.team]["gold"] < price[0]:
 		return "Not enough %s." % res[0].to_lower()
 	if float(players[b.team]["res2"]) < price[1]:
@@ -2398,6 +2403,11 @@ func _drop_dependent_research(t: int, key: String) -> void:
 func research_done(b: Building, key: String) -> void:
 	players[b.team]["tech"][key] = true
 	var info: Dictionary = Defs.RESEARCH[key]
+	if info.get("drill", false):
+		# a drill, not equipment: every unit of its kinds has it at once
+		for u in units:
+			if u.team == b.team and not u.dead:
+				apply_drills(u)
 	# (only unlocked: the soldiers in the field are refitted one by one, REFIT)
 	if b.team == human:
 		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
@@ -2406,9 +2416,22 @@ func research_done(b: Building, key: String) -> void:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
 
-# ------------------------------------------------------------------ Musketeer refits
+# ------------------------------------------------------------------ refits and drills
 
 var _refit_t := 0.0
+
+
+## The drills this unit's side has researched (Defs.RESEARCH "drill"), on its own `d`: the
+## guns' reload (Prepared Charges) and range (Gunner's Quadrant). (The Cavalry Charge is
+## checked where the blow lands.) Run on every new unit and when a drill is researched.
+func apply_drills(u: Unit) -> void:
+	if not (u.kind in ["cannon", "mortar"]) or u.team < 0 or u.team >= players.size():
+		return
+	var base: Dictionary = Defs.UNITS[u.kind]
+	var rel := float(Defs.RESEARCH["charges"]["reload"]) if has_tech(u.team, "charges") else 1.0
+	u.d["cooldown"] = float(base["cooldown"]) * rel
+	u.d["drill_reload"] = rel
+	u.d["range"] = float(base["range"]) + (float(Defs.RESEARCH["quadrant"]["range"]) if has_tech(u.team, "quadrant") else 0.0)
 
 
 ## The best musket lock this player has researched ("" for none).
@@ -2420,56 +2443,87 @@ func best_lock(t: int) -> String:
 	return best
 
 
-## What a Musketeer trained now comes out with: everything researched.
-func kit_for_new(t: int) -> Dictionary:
-	return {"armour": has_tech(t, "armour"), "lock": best_lock(t)}
+## What a recruit from this train button (Defs.TRAIN_AS; or a plain kind) comes out with:
+## Armour if it's the armoured one, and a Musketeer the best lock and the bayonet
+## researched. {} for units without refits.
+func kit_for_new(t: int, key: String) -> Dictionary:
+	var k := Defs.train_kind(key)
+	if not Defs.ARMOURED.has(k):
+		return {}
+	var kit := {"armour": Defs.train_armoured(key) and has_tech(t, "armour")}
+	if k == "musketeer":
+		kit["lock"] = best_lock(t)
+		kit["bayonet"] = has_tech(t, "bayonet")
+	return kit
 
 
-## One refit's fee: [gold, powder].
-static func refit_fee(what: String) -> Array:
+## Everything this player has researched (a soldier from a save made before kits were kept).
+func kit_all(t: int, kind: String) -> Dictionary:
+	return kit_for_new(t, Defs.train_key(kind, true))
+
+
+## One refit's fee: [gold, powder] (Armour's depends on the soldier's kind).
+static func refit_fee(what: String, kind := "musketeer") -> Array:
 	var info: Dictionary = Defs.RESEARCH[what]
+	if info.has("fees"):
+		var f: Array = info["fees"].get(kind, [0, 0])
+		return [int(f[0]), int(f[1])]
 	return [int(info.get("fee", 0)), int(info.get("fee2", 0))]
 
 
-## The fees for a whole kit ({"armour": bool, "lock": key}); a lock costs only its own fee.
-static func kit_fee(kit: Dictionary) -> Array:
+## The fees for a whole kit ({"armour": bool, "lock": key, "bayonet": bool}) of a soldier
+## of this kind; a lock costs only its own fee.
+static func kit_fee(kit: Dictionary, kind := "musketeer") -> Array:
 	var f := [0, 0]
 	var parts: Array = []
 	if kit.get("armour", false):
 		parts.append("armour")
 	if Defs.RESEARCH.has(String(kit.get("lock", ""))):
 		parts.append(String(kit["lock"]))
+	if kit.get("bayonet", false):
+		parts.append("bayonet")
 	for w in parts:
-		var e := refit_fee(w)
+		var e := refit_fee(w, kind)
 		f[0] += e[0]
 		f[1] += e[1]
 	return f
 
 
-## A unit's price now: [first resource, second]. A Musketeer's includes the refit fees
-## for everything he comes out with.
-func unit_price(t: int, k: String) -> Array:
+## A unit's price now: [first resource, second], for a kind or a train button. A soldier's
+## includes the refit fees for everything he comes out with (an armoured recruit: Armour's).
+func unit_price(t: int, key: String) -> Array:
+	var k := Defs.train_kind(key)
 	var u: Dictionary = Defs.UNITS[k]
 	var p := [int(u["cost"]), int(u.get("cost2", 0))]
-	if k == "musketeer" and t >= 0:
-		var f := kit_fee(kit_for_new(t))
+	if Defs.ARMOURED.has(k) and t >= 0:
+		var f := kit_fee(kit_for_new(t, key), k)
 		p[0] += f[0]
 		p[1] += f[1]
 	return p
 
 
-## The refits this Musketeer can still get: "armour" and the best lock researched, when
-## he has neither it nor a later one (counting what he's already on his way to get).
+## The refits this soldier can still get: "armour", and a Musketeer the best lock
+## researched (when he has neither it nor a later one) and the bayonet, counting what he's
+## already on his way to get.
 func refit_options(u: Unit) -> Array:
 	var out: Array = []
-	if u == null or u.kind != "musketeer" or u.dead or u.team < 0:
+	if u == null or not Defs.ARMOURED.has(u.kind) or u.dead or u.team < 0:
 		return out
 	if has_tech(u.team, "armour") and not u.armoured and not u.refit.has("armour"):
 		out.append("armour")
+	if u.kind != "musketeer":
+		return out
 	var bl := best_lock(u.team)
 	if bl != "" and Defs.LOCKS.find(bl) > u.lock_level(true):
 		out.append(bl)
+	if has_tech(u.team, "bayonet") and not u.bayonet and not u.refit.has("bayonet"):
+		out.append("bayonet")
 	return out
+
+
+## Anything to refit with yet (the AUTO REFIT buttons show from then on)?
+func has_refits(t: int) -> bool:
+	return has_tech(t, "armour") or best_lock(t) != "" or has_tech(t, "bayonet")
 
 
 func can_pay(t: int, fee: Array) -> bool:
@@ -2491,10 +2545,15 @@ func refund_refit(t: int, fee: Array) -> void:
 	stats[t]["spent"] -= int(fee[0])
 
 
-## The nearest place to be refitted: a finished Barracks or a Powder Wagon of ours.
+## The nearest place to be refitted: a finished Barracks or Armoury, or a Powder Wagon of ours.
 func refit_place(t: int, p: Vector2) -> Entity:
-	var best: Entity = nearest_of(p, t, "barracks")
-	var bd := best.edge_distance(p) if best else INF
+	var best: Entity = null
+	var bd := INF
+	for k in Defs.REFIT_AT:
+		var b: Entity = nearest_of(p, t, k)
+		if b and b.edge_distance(p) < bd:
+			bd = b.edge_distance(p)
+			best = b
 	for u in units:
 		if u.team == t and u.kind == "powder_wagon" and not u.dead and not u.off_field and u.aboard == null:
 			var dd: float = u.position.distance_to(p)
@@ -2504,8 +2563,8 @@ func refit_place(t: int, p: Vector2) -> Entity:
 	return best
 
 
-## REFIT: these Musketeers pay `what`'s fee now and go to the nearest Barracks or Powder
-## Wagon to be fitted (those who have it already, or are on their way for it, are
+## REFIT: these soldiers pay `what`'s fee now and go to the nearest Barracks, Armoury or
+## Powder Wagon to be fitted (those who have it already, or are on their way for it, are
 ## skipped). Returns [how many went, why the others didn't ("" if none were held back)].
 func refit_order(list: Array, what: String, quiet := false) -> Array:
 	var n := 0
@@ -2516,9 +2575,9 @@ func refit_order(list: Array, what: String, quiet := false) -> Array:
 			continue
 		var place := refit_place(u.team, u.position)
 		if place == null:
-			why = "No Barracks or Powder Wagon to refit at."
+			why = "No Barracks, Armoury or Powder Wagon to refit at."
 			break
-		var fee := refit_fee(what)
+		var fee := refit_fee(what, u.kind)
 		if not can_pay(u.team, fee):
 			why = "Not enough %s." % ("gold" if int(players[u.team]["gold"]) < int(fee[0]) else "powder")
 			break
@@ -2527,16 +2586,16 @@ func refit_order(list: Array, what: String, quiet := false) -> Array:
 		u.add_refit(place, what, fee)
 		n += 1
 	if n > 0 and mlog and not quiet:
-		mlog.add("%s sent %d Musketeer%s to refit: %s" % [mlog.who(t), n, "" if n == 1 else "s", Defs.RESEARCH[what]["name"]])
+		mlog.add("%s sent %d soldier%s to refit: %s" % [mlog.who(t), n, "" if n == 1 else "s", Defs.RESEARCH[what]["name"]])
 	return [n, why]
 
 
-## AUTO REFIT (on a Barracks or a Powder Wagon): idle Musketeers of ours close to it that
-## lack an upgrade go and get it there, if the fee can be paid.
+## AUTO REFIT (on a Barracks, an Armoury or a Powder Wagon): idle soldiers of ours close to
+## it that lack an upgrade go and get it there, if the fee can be paid.
 func _auto_refit() -> void:
 	var places: Array = []
 	for b in buildings:
-		if b.auto_refit and b.kind == "barracks" and b.built and not b.dead:
+		if b.auto_refit and Defs.REFIT_AT.has(b.kind) and b.built and not b.dead:
 			places.append(b)
 	for u in units:
 		if u.auto_refit and u.kind == "powder_wagon" and not u.dead and not u.off_field and u.aboard == null:
@@ -2546,7 +2605,7 @@ func _auto_refit() -> void:
 	var reach := float(Defs.REFIT["auto"]) * Defs.TILE
 	var sent := {}
 	for u in units:
-		if u.kind != "musketeer" or u.dead or u.off_field or u.aboard != null or u.order != "idle" or u.target != null:
+		if not Defs.ARMOURED.has(u.kind) or u.dead or u.off_field or u.aboard != null or u.order != "idle" or u.target != null:
 			continue
 		var opts := refit_options(u)
 		if opts.is_empty():
@@ -2555,7 +2614,7 @@ func _auto_refit() -> void:
 			if pl.team != u.team or pl.edge_distance(u.position) > reach:
 				continue
 			for w in opts:
-				var fee := refit_fee(w)
+				var fee := refit_fee(w, u.kind)
 				if can_pay(u.team, fee):
 					pay_refit(u.team, fee)
 					u.add_refit(pl, w, fee)
@@ -2566,25 +2625,28 @@ func _auto_refit() -> void:
 			mlog.add("%s auto-refit: %d upgrade%s ordered" % [mlog.who(t), sent[t], "" if sent[t] == 1 else "s"])
 
 
-## (a Musketeer) refitted: a word over his head for the player.
+## (a soldier) refitted: a word over his head for the player.
 func refit_done(u: Unit, what: Array) -> void:
 	if u.team == human:
 		var names: Array = what.map(func(w: String) -> String: return "+" + String(Defs.RESEARCH[w]["name"]))
 		float_text(u.position + Vector2(0, -34), " ".join(names), Color(0.85, 0.9, 1.0))
 
 
-func train(b: Building, k: String) -> String:
-	var why := can_train(b, k)
+## Train a unit kind, or a Barracks train button (Defs.TRAIN_AS): the soldier goes in the
+## queue as his kind, with the kit he was paid to come out with beside it.
+func train(b: Building, key: String) -> String:
+	var why := can_train(b, key)
 	if why != "":
 		return why
-	var price := unit_price(b.team, k)
+	var k := Defs.train_kind(key)
+	var price := unit_price(b.team, key)
 	players[b.team]["gold"] -= price[0]
 	if faction_of(b.team) == "clockwork":
 		spend_batteries(b.team, price[1])
 	else:
 		add_res2(b.team, -price[1])
 	stats[b.team]["spent"] += price[0]
-	b.add_entry(k, kit_for_new(b.team) if k == "musketeer" else {})
+	b.add_entry(k, kit_for_new(b.team, key))
 	if b.uses_eggs():
 		b.eggs -= 1
 		b.morph_t.append(0.0)
@@ -2646,7 +2708,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 	stats[b.team]["trained"] += int(Defs.UNITS[k].get("spawn", 1))
 	if mlog and not _first_of.has("%d:%s" % [b.team, k]):
 		_first_of["%d:%s" % [b.team, k]] = true
-		mlog.add("%s got its first %s" % [mlog.who(b.team), Defs.UNITS[k]["name"]])
+		mlog.add("%s got its first %s" % [mlog.who(b.team), Defs.train_name(Defs.train_key(k, bool(kit.get("armour", false))))])
 	if b.team == human:
 		if b.uses_eggs():
 			Sfx.play("hatch", b.global_position)
@@ -2656,7 +2718,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
 		var u := _add_unit(k, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
 		if not kit.is_empty():
-			u.set_kit(kit)          # (a Musketeer paid to come out armoured, with a better lock)
+			u.set_kit(kit)          # (a soldier paid to come out armoured, a Musketeer with a better lock)
 		if u.is_worker():
 			var site: Building = null
 			if b.dual_rally() and b.worker_rally_target is Building:
@@ -3468,7 +3530,7 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 			continue
 		var to: Vector2 = o.center() - from
 		if to.length() <= reach + o.radius and dir.dot(to.normalized()) > float(Defs.CANISTER["cone"]):
-			var bonus: float = Defs.CANISTER["vs_light"] if Defs.has_tag(o.kind, "light") else 1.0
+			var bonus: float = Defs.CANISTER["vs_light"] if o.has_tag("light") else 1.0
 			o.take_damage(dmg * bonus * (1.3 if to.length() < reach * 0.5 else 1.0), u)
 	if e.is_building():
 		e.take_damage(dmg * 0.6, u)
@@ -3619,7 +3681,7 @@ func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Ent
 			continue
 		var q := Geometry2D.get_closest_point_to_segment(o.position, a, b)
 		if q.distance_to(o.position) <= o.radius + w:
-			var bonus: float = Defs.ROUND_SHOT["vs_armored"] if Defs.has_tag(o.kind, "armored") else 1.0
+			var bonus: float = Defs.ROUND_SHOT["vs_armored"] if o.has_tag("armored") else 1.0
 			o.take_damage(dmg * bonus, shooter)
 	# a building where it lands takes the whole ball
 	for bd in buildings.duplicate():
