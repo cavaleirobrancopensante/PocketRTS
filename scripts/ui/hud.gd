@@ -1944,7 +1944,7 @@ func _horse_buttons(list: Array, units: Array) -> void:
 	if not guns.is_empty():
 		var hitched := guns.filter(func(u: Unit) -> bool: return u.harnessed)
 		if not hitched.is_empty():
-			list.append(["horse_release", "RELEASE HORSE", func() -> void:
+			list.append(["horse_unhitch", "RELEASE HORSE", func() -> void:
 				for u in game.selected_units():
 					if Defs.HARNESSED.has(u.kind):
 						u.release_horse(), true, "", ""])

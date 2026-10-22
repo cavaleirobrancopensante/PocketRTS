@@ -661,20 +661,20 @@ const MUSKETS := ["musketeer", "dragoon", "dismounted"]
 ## dismounted_armoured, missionary_mounted) and tools/import_horse_breeder.py. Still TEMPORARY: the portraits of
 ## the new units and the Shot Pouch's and horse commands' icons.
 const TEMP_ART := {
-	"horse": {"art": "horse", "portrait": "horseman"},
-	"messenger": {"art": "messenger", "portrait": "labourer"},
-	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "musketeer", "portrait_armoured": "guardsman"},
-	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "horseman", "portrait_armoured": "cuirassier"},
-	# (art/crown/missionary_mounted.png; the portrait is still the Missionary's)
-	"mounted_missionary": {"art": "missionary_mounted", "portrait": "missionary"},
+	"horse": {"art": "horse", "portrait": "horse"},
+	"messenger": {"art": "messenger", "portrait": "messenger"},
+	"dragoon": {"art": "dragoon", "armoured": "dragoon_armoured", "portrait": "dragoon", "portrait_armoured": "dragoon_armoured"},
+	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "dismounted", "portrait_armoured": "dismounted_armoured"},
+	"mounted_missionary": {"art": "missionary_mounted", "portrait": "mounted_missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
-	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon
-	# the horse commands' card icons
-	"horse_lead": {"portrait": "labourer"},
-	"horse_release": {"portrait": "ab_unload"},
-	"horse_mount": {"portrait": "horseman"},
-	"horse_dismount": {"portrait": "ab_unload"},
-	"horse_harness": {"portrait": "ab_limber"},
+	"research_pouch": {"portrait": "research_bayonet"},          # the Shot Pouch's research icon (art still to come)
+	# the horse commands' card icons (tools/import_horse_icons.py)
+	"horse_lead": {"portrait": "horse_lead"},
+	"horse_release": {"portrait": "horse_release"},
+	"horse_mount": {"portrait": "horse_mount"},
+	"horse_dismount": {"portrait": "horse_dismount"},
+	"horse_harness": {"portrait": "horse_harness"},
+	"horse_unhitch": {"portrait": "horse_unhitch"},
 }
 
 
