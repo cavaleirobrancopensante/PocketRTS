@@ -225,19 +225,20 @@ func _mount(p: Array, side: float, dr: String, i: int) -> void:
 	await wait(0.1)
 	check(m.anim == "mount" and m._anim_art == art and m.anim_dir == want_dir and m.anim_flip == flip, "  getting off shows the strip (%s %s flip %s)" % [m.anim, m.anim_dir, m.anim_flip])
 	frames = []
-	var shot_off := true
+	var shot_off := [0.5, 0.93]
 	while m.work == "dismounting":
 		if frames.is_empty() or frames[-1] != m.sprite.frame:
 			frames.append(m.sprite.frame)
-		if shot_off and 1.0 - m.work_t / m._mount_len >= 0.5:
-			shot_off = false
-			await shot("%02d_%s_%s_off_1" % [i, art, dr])
+		if not shot_off.is_empty() and 1.0 - m.work_t / m._mount_len >= shot_off[0]:
+			shot_off.pop_front()
+			await shot("%02d_%s_%s_off_%d" % [i, art, dr, 2 - shot_off.size()])
 		await physics_frame
 	var falling := true
 	for k in range(1, frames.size()):
 		falling = falling and frames[k] <= frames[k - 1]
 	check(falling and frames[0] >= n - 2 and frames[-1] <= 1, "  played backwards (%s)" % str(frames))
 	await wait_for(func() -> bool: return m.kind == foot, 3.0)
+	await shot("%02d_%s_%s_off_now" % [i, art, dr])     # (the horse left: no pop from the strip's last frame)
 	var st: Unit = m.steed
 	check(st != null and is_instance_valid(st) and st.position.distance_to(at0) < 4.0 and st.coat == coat,
 		"  his horse stands where the strip drew it (%.1f px), its coat" % (st.position.distance_to(at0) if st else -1.0))

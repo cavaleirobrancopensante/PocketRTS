@@ -2,7 +2,8 @@
 sheets in art/crown/mount/ (1536x1024, dark navy, 5 rows top to bottom S, SE, E, NE, N; each
 row a man beside a horse getting on, the last frame seated). The game plays it forwards while
 a man gets on and backwards while he gets off (scripts/unit.gd, work "mounting" /
-"dismounting"), and only side on: the SE and E rows (mirrored for SW and W).
+"dismounting"): side on from the SE and E rows (mirrored for SW and W), from the front
+and from behind (S, N) by the strips below.
 
 Many frames are hallucinated, so only these are used (the designer's choice):
   messenger_mount.png        Labourer -> Messenger            SE row, E row: all 6 frames
@@ -17,6 +18,12 @@ Many frames are hallucinated, so only these are used (the designer's choice):
   dragoon_mount_e.png        the light Dragoon's E strip      one horizontal strip, all 6 frames
                              facing right (drawn bigger: scaled by itself). Without it the SE
                              strip would serve for E.
+  <set>_mount_s.png / _n.png the front (S) and back (N) views, one strip of 6 frames each
+                             (2000x667 or 2172x724, each drawn at its own size), the man
+                             climbing on from the left of the picture: dragoon_, dragoon_armoured_
+                             (both _s made from _raw by tools/fix_mount_heads.py), horseman_,
+                             cuirassier_, missionary_ (-> missionary_mounted); the Messenger's
+                             are the S and N rows of messenger_mount.png. All frames used.
 
 Frames are found by their foreground: a row is split at empty column runs, and the pieces
 (a man standing apart from his horse is two) are merged, closest first, down to the row's
@@ -29,14 +36,18 @@ of the game's riderless horse (between matching its length and its height: sheet
 which stands beside the man before he gets on and after he gets off (a sheet without an E
 row: its seated SE frame as tall as the unit's idle, times the other sheets' ratio between
 the two measures; a separate E strip gets its own scale). The whole row is placed on the
-unit's cell (98x70, anchor 49,66) where its seated frame best overlaps the idle frame of that direction (so the last frame of the mount
-is the unit standing). Red coats and saddle cloths are snapped to the team reds.
+unit's cell (98x70, anchor 49,66) where its seated frame best overlaps the idle frame of
+that direction (so the last frame of the mount is the unit standing). Front and back views
+(FB_STRIPS, the Messenger's S / N rows) are aligned by the middle of the horse's legs and its
+hooves instead (then sideways only), scaled by fb_scale (between the seated frame fitting the
+idle and the first frame's horse as tall as the riderless horse) and placed hooves on the
+idle's hooves. Red coats and saddle cloths are snapped to the team reds.
 Where the man stands in the first frame (for the horse left beside him on dismounting) is
 scripts/unit.gd MOUNT_MAN.
 
-Output: assets/units/<art>/mount_se.png and mount_e.png for the mounted units' arts (messenger,
-missionary_mounted, horseman, cuirassier, dragoon, dragoon_armoured), their "mount_se" /
-"mount_e" entries in scripts/art_data.gd (added to the art's block, nothing else touched).
+Output: assets/units/<art>/mount_s.png, mount_se.png, mount_e.png and mount_n.png for the
+mounted units' arts (messenger, missionary_mounted, horseman, cuirassier, dragoon,
+dragoon_armoured), their "mount_*" entries in scripts/art_data.gd (added to the art's block, nothing else touched).
 Run after the units' own importers and before tools/import_horse_coats.py (its "mount" anims
 give the strips' horses their coat masks).
 
@@ -340,6 +351,25 @@ def fit_scale(seated, art, d):
     return float(bs), base, best
 
 
+def fb_scale(cuts, art, d):
+    """A front / back strip's scale: between the one fitting its seated frame to the idle
+    (fit_scale) and the one making its horse (the first frame's, the man beside it) as tall as
+    the game's riderless horse, which is left standing there after he gets off: their
+    geometric mean, so neither the end of getting on nor of getting off pops much. (The
+    Horseman's and Cuirassier's idle horses are drawn smaller than the riderless one.)"""
+    fit, tall, iou = fit_scale(cuts[-1], art, d)
+    f0 = cuts[0]
+    x0, x1, bot = hooves(f0)
+    a = f0[..., 3] > 0
+    top = np.nonzero(a[:, max(0, x0 - (x1 - x0) // 5):].any(1))[0].min()
+    ref = idle_frame("horse", d)[..., 3] > 0
+    ry = np.nonzero(ref.any(1))[0]
+    by_horse = (ry.max() - ry.min() + 1) / float(bot - top + 1)
+    s = float(np.sqrt(fit * by_horse))
+    print("%s %s: fit to idle %.3f (IoU %.2f), horse as the riderless one %.3f -> %.3f" % (art, d, fit, iou, by_horse, s))
+    return s
+
+
 def write_counts(art, counts):
     """Adds (or replaces) the art's mount_* entries in scripts/art_data.gd."""
     src = open(ART_DATA).read()
@@ -378,20 +408,18 @@ def main():
         if scale is None:
             scale = tall_scale(cuts, art) * float(np.median(ratios))
         scales = {d: scale for d in cuts}
-        # (front and back rows of a 5-row sheet: their seated frame fitted to the idle too, as
-        # the other sheets' are; the sheet's side-on scale left them ~10% small)
+        # (front and back rows of a 5-row sheet: scaled like the separate front / back strips;
+        # the sheet's side-on scale left them ~10% small)
         for d in FRONT_BACK:
             if d in cuts:
-                scales[d], tall, iou = fit_scale(cuts[d][-1], art, d)
-                print("%s %s: %s row, fit scale %.3f (by height %.3f), IoU with idle %.2f" % (art, d, name, scales[d], tall, iou))
+                scales[d] = fb_scale(cuts[d], art, d)
         if extra:
             cuts.update(extra)
             scales["e"] = sheet_scale(extra)
         for d, fb in FB_STRIPS.get(art, {}).items():
             if os.path.exists("art/crown/mount/%s.png" % fb):
                 cuts.update(sheet_frames(fb, FB_COUNT, d=d))
-                scales[d], tall, iou = fit_scale(cuts[d][-1], art, d)
-                print("%s %s: %s, fit scale %.3f (by height %.3f), IoU with idle %.2f" % (art, d, fb, scales[d], tall, iou))
+                scales[d] = fb_scale(cuts[d], art, d)
         strips = {}
         for d, fr in cuts.items():
             cells, lost = build_strip(fr, art, d, scales[d])

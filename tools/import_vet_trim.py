@@ -64,9 +64,7 @@ CONFIG = {
     # hilt and hand over his head, not his helmet)
     "cuirassier": {"style": "helmet", "anims": RIDER,
                    "drop": {"attack_s": [(40, 0, 52, 14, [0])], "attack_se": [(40, 0, 50, 19, [1])],
-                            "attack_n": [(40, 0, 50, 20, [1])],
-                            # (sitting down from behind: his back plate, not his helmet)
-                            "mount_n": [(38, 23, 60, 40, [4])]}},
+                            "attack_n": [(40, 0, 50, 20, [1])]}},
     "dragoon_armoured": {"style": "helmet", "anims": RIDER},
     "dismounted": {"style": "band", "anims": FOOT},
     "horseman": {"style": "band", "anims": RIDER},
@@ -283,6 +281,11 @@ def build_unit(unit, cell):
             drop = [b[:4] for b in CONFIG[unit].get("drop", {}).get(anim + "_" + d, []) if len(b) < 5 or fi in b[4]]
             if beside is not None and fi < FB_BESIDE:
                 drop.append((beside, 0, cw, H))
+            elif beside is not None and style == "helmet":
+                # (on the horse, his helmet is the top of the picture: from behind, his back
+                # plate is a bigger piece of steel)
+                top = int(np.nonzero(im[:, fi * cw:(fi + 1) * cw, 3].any(1))[0].min())
+                drop.append((0, top + HELM_H + 2, cw, H))
             mask[:, fi * cw:(fi + 1) * cw] = frame_mask(style, im[:, fi * cw:(fi + 1) * cw], drop)
         out["%s_%s" % (anim, d)] = (im, mask)
     return out

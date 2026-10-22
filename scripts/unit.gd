@@ -5194,10 +5194,10 @@ func _walk_to(p: Vector2, delta: float) -> Vector2:
 ## or SW. Per sprite set where it differs ("" for the rest): the light Dragoon's remade side
 ## view has him at the horse's shoulder, on its near side. From the front and from behind he
 ## stands at the horse's side, on the left of the picture.
-const MOUNT_MAN := {"": {"e": Vector2(-14, 1), "se": Vector2(-12, -1), "s": Vector2(-16, -2), "n": Vector2(-16, -2)},
+const MOUNT_MAN := {"": {"e": Vector2(-14, 1), "se": Vector2(-12, -1), "s": Vector2(-16, -2), "n": Vector2(-17, -2)},
 	"dragoon": {"e": Vector2(5, 3)},
-	"cuirassier": {"s": Vector2(-12, -2), "n": Vector2(-14, -2)},
-	"horseman": {"s": Vector2(-15, -1), "n": Vector2(-14, -3)}}
+	"cuirassier": {"s": Vector2(-13, -1), "n": Vector2(-15, -2)},
+	"dragoon_armoured": {"s": Vector2(-14, -3)}}
 
 
 ## MOUNT_MAN of sprite set `a`, the strip facing `dr` ("e", "se", "s" or "n").
@@ -5400,6 +5400,7 @@ func do_dismount() -> void:
 	h.apply_horse_vet()
 	h.hp = h.max_hp * horse_hp
 	h.facing = facing
+	h._set_anim("idle", true)       # (turned the strip's way at once: not its first frames facing S)
 	h.graze_at = spot
 	h._graze_t = 4.0
 	h.visible = visible

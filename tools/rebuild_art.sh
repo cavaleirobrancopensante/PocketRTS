@@ -58,7 +58,7 @@ python3 tools/import_bandage.py           # the Missionary bandaging a dismounte
                                          # (their own art keys, a wider cell; after import_art's missionary)
 python3 tools/import_horse_breeder.py    # the Horse Breeder's 4 states and its build icon
 python3 tools/import_horse_icons.py         # the horse units' portraits and the horse command icons
-python3 tools/import_mount.py            # the riders' mounting strips (mount_se / mount_e) from
+python3 tools/import_mount.py            # the riders' mounting strips (mount_s / se / e / n) from
                                          # art/crown/mount/ (after the riders' own sheets: it lines
                                          # its last frame up with their idle; before the coat masks)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
