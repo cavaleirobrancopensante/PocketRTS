@@ -59,7 +59,10 @@ WIDTH = {"town_hall": 152, "barracks": 140, "horse_breeder": 136, "armoury": 138
 ONE_ROW = {"church"}       # (no bottom row: church_lit.png is its second sheet)
 # Strays on the sheet erased before cutting (sheet px: x0, y0, x1, y1): a thin line drawn from
 # the built Barracks' roof to the scaffolding beside it.
-ERASE = {"barracks": [(362, 280, 400, 302)]}
+ERASE = {"barracks": [(362, 280, 400, 302),
+                      # the painted straw target (built and damaged: the game stands the new dummy there;
+                      # the scaffolded and ruined states keep theirs)
+                      (335, 368, 380, 421), (1083, 368, 1127, 421)]}
 BANNER = 300         # sheet px: a red patch this big is a banner or flag (team-coloured)
 
 # Town Hall and Church: the belfry's two openings per state that keeps it (sheet px: x0, y0, x1, y1,

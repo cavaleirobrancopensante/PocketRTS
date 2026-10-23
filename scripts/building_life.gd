@@ -38,19 +38,57 @@ const BELL_DT := 0.25
 const BELL_SOUND := "select/town_hall"
 const BELL_VOLUME := -14.0
 
-## The Barracks' drill: a Musketeer of its side (his strips shrunk to the building) stands on
-## the yard's empty patch (`feet`, from the base point) facing the straw target (`target`: its
-## middle) and shoots at it every `every` s: he aims, fires (a little smoke at his `muzzle`, from
-## his feet, and a puff on the target; no damage, a very quiet shot), reloads and stands.
-## `anims`: [strip, seconds per frame] in the order he plays them (the last one fills the rest of
-## the round, looping); the frame counts are the Musketeer's (ArtData).
+## The Barracks' yard: a straw DUMMY stands where the painted target was (the intact art; it
+## flashes the ripped one for `flash` s when it is hit) and, while its side has a built Horse
+## Breeder, a wooden vaulting-horse PROP stands on the yard's patch (checked twice a second).
+## While it trains, the man being trained (the queue's first entry, his own sprites, team-coloured,
+## shrunk to the building) drills there, a round of `every` s at least, looping, and the drill
+## switches at once when the first entry changes (DRILL_MEN, _drill_plan):
+##  - "shoot" (Musketeer, Guardsman: musket; Officer, Armoured Officer: pistol): he stands on the
+##    patch facing the dummy (`feet`; `feet_prop` with the prop up, out of its way) and aims,
+##    fires (a little smoke at his `muzzle` from his feet, a puff on the dummy; no damage, a very
+##    quiet shot), reloads and stands;
+##  - "sabre" (Horseman, Cuirassier): he mounts the prop (the mount strip with the horse taken
+##    out: tools/import_barracks_props.py), swings his sabre at the dummy `swings` times (the
+##    dummy shows the ripped art on each hit) and dismounts (the strip backwards). With no prop
+##    (no breeder) he is the Officer on foot swinging his sabre at the dummy from `sabre`;
+##  - "mount" (Dragoon, Armoured Dragoon): he climbs on the prop and off again, then stands next
+##    to it (`side`) and shoots like a Musketeer (a Guardsman, armoured). With no prop he just shoots.
+## `strip`: (art, anim); the frame counts are the unit art's (ArtData). `states`: where things
+## stand per state, from the base point: `feet` / `feet_prop` / `side` / `sabre` the man's feet,
+## `prop` the prop's floor middle (the mounted man's cell is put there: `floor`), `dummy` its
+## foot, `target` what the shots hit. Only drawn while the building is on screen and seen,
+## nothing is allocated per frame.
 const DRILL_ART := {
-	"strip": "res://assets/buildings/drill_musketeer/%s.png", "anchor": Vector2(32.4, 24.5),
-	"states": {"built": {"feet": Vector2(15, -31), "target": Vector2(55, -51)},
-		"damaged": {"feet": Vector2(16, -31), "target": Vector2(53, -51)}},
-	"anims": [["aim_e", 0.25], ["fire_e", 0.15], ["reload_e", 0.2], ["idle_e", 0.35]],
-	"every": 3.0, "muzzle": Vector2(22, -15), "volume": -22.0,
+	"strip": "res://assets/buildings/drill_%s/%s.png", "anchor": Vector2(32.4, 24.5), "floor": Vector2(42, 56),
+	"prop": "res://assets/buildings/barracks_props/horse_prop.png",
+	"dummy": ["res://assets/buildings/barracks_props/dummy_intact.png", "res://assets/buildings/barracks_props/dummy_damaged.png"],
+	"states": {
+		"built": {"feet": Vector2(15, -31), "feet_prop": Vector2(14, -15), "side": Vector2(14, -15), "sabre": Vector2(40, -30),
+			"prop": Vector2(31, -22), "dummy": Vector2(54, -37), "target": Vector2(54, -50)},
+		"damaged": {"feet": Vector2(16, -31), "feet_prop": Vector2(15, -15), "side": Vector2(15, -15), "sabre": Vector2(40, -30),
+			"prop": Vector2(32, -22), "dummy": Vector2(53, -37), "target": Vector2(53, -50)},
+	},
+	"every": 3.0, "volume": -22.0, "flash": 0.35, "swings": 2,
 }
+## Who drills for what the Barracks trains (the queue's key; "art" / "foot" when armoured:
+## "art_a" / "foot_a"). "art": the strips of the man himself; "foot": the man on foot he is
+## with no prop.
+const DRILL_MEN := {
+	"musketeer": {"act": "shoot", "art": "musketeer", "art_a": "musketeer_armoured", "muzzle": Vector2(22, -15),
+		"anims": [["aim_e", 0.25], ["fire_e", 0.15], ["reload_e", 0.2], ["idle_e", 0.35]]},
+	"dismounted": {"act": "shoot", "art": "dismounted", "art_a": "dismounted_armoured", "muzzle": Vector2(9, -14), "muzzle_a": Vector2(17, -16),
+		"anims": [["aim_e", 0.55], ["fire_e", 0.15], ["idle_e", 0.35]]},
+	"cuirassier": {"act": "sabre", "art": "horseman", "art_a": "cuirassier", "foot": "dismounted", "foot_a": "dismounted_armoured"},
+	"dragoon": {"act": "mount", "art": "dragoon", "art_a": "dragoon_armoured", "foot": "musketeer", "foot_a": "musketeer_armoured"},
+}
+## where a round's events fall
+const EV_SHOT := 1
+const EV_HIT := 2
+const PLACE_FEET := 0       # on the patch (or out of the prop's way)
+const PLACE_MOUNT := 1      # the mounted man's cell on the prop
+const PLACE_SIDE := 2       # next to the prop
+const PLACE_SABRE := 3      # beside the dummy
 
 ## The Horse Breeder's paddock: `busy` horses walk slowly about it while it trains, stopping now
 ## and then to stand or graze (`rest` s, from .. to); idle, `idle` of them stands still. They
@@ -104,14 +142,26 @@ var bell_t := 0.0
 var bell_dx := 0.0            # how far it is swung out of the middle (px)
 var _bell: Dictionary = {}
 
-# the drilling Musketeer
+# the Barracks' yard: the drilling man, the dummy and the horse prop
 var man: Sprite2D = null
+var dummy: Sprite2D = null
+var prop: Sprite2D = null
 var man_state := ""
 var man_t := 0.0
-var _man_tex: Array[Texture2D] = []
-var _man_n := PackedInt32Array()
-var _man_dt := PackedFloat32Array()
-var _man_end := PackedFloat32Array()   # when each of his anims ends in the round
+var has_breeder := false      # (twice a second) its side has a built Horse Breeder
+var _prop_on := false         # the prop stands (a breeder, and a state that keeps the yard)
+var _dummy_t := 0.0           # (> 0) the dummy shows its ripped art for this many more seconds
+var _plan_head := "-"         # what the round was planned for: the queue's first entry,
+var _plan_armour := false     # whether it is armoured,
+var _plan_prop := false       # and whether the prop stood
+var _plan_muzzle := Vector2.ZERO
+var _seg_tex: Array[Texture2D] = []     # the round, an anim at a time:
+var _seg_n := PackedInt32Array()        #   its frames,
+var _seg_dt := PackedFloat32Array()     #   seconds per frame,
+var _seg_end := PackedFloat32Array()    #   when it ends in the round,
+var _seg_flag := PackedInt32Array()     #   where he stands (PLACE_*) + 8 if played backwards + 16 if it loops
+var _ev_t := PackedFloat32Array()       # when the round's events fall (EV_*)
+var _ev_k := PackedInt32Array()
 var _man_shown := -1
 
 # the paddock's horses
@@ -126,6 +176,8 @@ var _h_wait := PackedFloat32Array()
 var _h_f := PackedFloat32Array()
 var _h_key := PackedInt32Array()       # the strip shown: anim * 8 + direction (-1: none yet)
 var _h_flip: Array[bool] = []
+var _h_default := PackedStringArray()    # the coat each wears with nothing queued (the building's own)
+var _h_coat := PackedStringArray()       # the coat it wears now
 var _h_tex: Array = []                  # [anim][dir] -> Texture2D
 var _h_mask: Array = []
 var _h_n: Array = []                    # [anim][dir] -> frames
@@ -199,8 +251,14 @@ func show(state: String) -> void:
 		if ms != man_state:
 			man_state = ms
 			man.visible = false      # (shown by tick while it trains)
+			_man_shown = -1
+			_dummy_t = 0.0
+			dummy.visible = ms != ""
+			dummy.texture = Game.tex(DRILL_ART["dummy"][0])
 			if ms != "":
-				man.position = DRILL_ART["states"][ms]["feet"]
+				dummy.position = DRILL_ART["states"][ms]["dummy"]
+				prop.position = DRILL_ART["states"][ms]["prop"]
+			_show_prop()
 	if not horses.is_empty():
 		var ps := state if alive and Dictionary(PADDOCK_ART["states"]).has(state) else ""
 		if ps != pad_state:
@@ -215,6 +273,7 @@ func show(state: String) -> void:
 					_h_wait[i] = rng.randf_range(0.0, 2.0)
 					_place_horse(i, true)
 			_show_horses()
+			_paddock_coats()
 	if inv:
 		var s := state if alive and Dictionary(INVENTOR_ART["states"]).has(state) else ""
 		if s != inv_state:
@@ -246,8 +305,18 @@ func check() -> void:
 					and u.position.distance_squared_to(c) <= r2:
 				healing = true
 				break
+	if man:
+		var pv := false
+		for o: Building in b.game.buildings:
+			if o.team == b.team and o.kind == "horse_breeder" and o.built and not o.dead:
+				pv = true
+				break
+		if pv != has_breeder:
+			has_breeder = pv
+			_show_prop()
 	if not horses.is_empty():
 		_show_horses()
+		_paddock_coats()
 
 
 ## A unit came out of it.
@@ -292,17 +361,114 @@ func _swing_bell(delta: float) -> void:
 # ---------------------------------------------------------------- the drill
 
 func _drill_setup() -> void:
+	dummy = _sprite(Game.tex(DRILL_ART["dummy"][0]), 1, Vector2.ZERO)
+	dummy.offset = _foot_offset(dummy.texture)
+	prop = _sprite(Game.tex(DRILL_ART["prop"]), 1, Vector2.ZERO)
+	prop.offset = _foot_offset(prop.texture)
 	man = _sprite(null, 1, -Vector2(DRILL_ART["anchor"]))
-	man.material = b.sprite.material          # (his side's colours)
+	man.material = b.sprite.material          # (his side's colours; the props keep their own)
+
+
+## A prop's offset: its bottom middle on its position.
+func _foot_offset(t: Texture2D) -> Vector2:
+	return -Vector2(floorf(t.get_width() / 2.0), t.get_height())
+
+
+## The horse prop stands while the side has a breeder (and the yard is whole enough to keep it).
+func _show_prop() -> void:
+	var on := has_breeder and man_state != ""
+	if on != _prop_on:
+		_prop_on = on
+		_man_shown = -1
+	prop.visible = on
+
+
+## Adds an anim to the round (after `t`); returns when it ends. `hold`: s it stays on its last
+## frame; `fill`: it lasts to the end of the round (at least); `loop`: its frames repeat.
+func _seg(art: String, anim: String, dt: float, place: int, t: float, back := false, hold := 0.0, fill := false, loop := false) -> float:
+	var n := int(ArtData.UNITS[art]["frames"].get(anim, 1))
+	_seg_tex.append(Game.tex(String(DRILL_ART["strip"]) % [art, anim]))
+	_seg_n.append(n)
+	_seg_dt.append(dt)
+	var e := t + dt * n + hold
+	if fill:
+		e = maxf(e, float(DRILL_ART["every"]))
+	_seg_end.append(e)
+	_seg_flag.append(place + (8 if back else 0) + (16 if loop else 0))
+	return e
+
+
+func _ev(t: float, kind: int) -> void:
+	_ev_t.append(t)
+	_ev_k.append(kind)
+
+
+## The round for the man being trained (`key`: the queue's first entry), armoured or not, with
+## or without the prop: see DRILL_ART.
+func _drill_plan(key: String, armoured: bool) -> void:
+	_seg_tex.clear()
+	_seg_n.clear()
+	_seg_dt.clear()
+	_seg_end.clear()
+	_seg_flag.clear()
+	_ev_t.clear()
+	_ev_k.clear()
+	man_t = 0.0
+	_man_shown = -1
+	var info: Dictionary = DRILL_MEN.get(key, DRILL_MEN["musketeer"])
+	var act := String(info["act"])
+	var art := String(info["art_a"] if armoured else info["art"])
+	var foot := String(info.get("foot_a" if armoured else "foot", art))
 	var t := 0.0
-	var frames: Dictionary = ArtData.UNITS["musketeer"]["frames"]
-	for a: Array in DRILL_ART["anims"]:
-		_man_tex.append(Game.tex(String(DRILL_ART["strip"]) % a[0]))
-		_man_n.append(int(frames.get(a[0], 1)))
-		_man_dt.append(float(a[1]))
-		t += float(a[1]) * float(_man_n[_man_n.size() - 1])
-		_man_end.append(t)
-	_man_end[_man_end.size() - 1] = maxf(t, float(DRILL_ART["every"]))
+	if act == "sabre" and _prop_on:
+		t = _seg(art, "mount_e", 0.13, PLACE_MOUNT, t)
+		for k in int(DRILL_ART["swings"]):
+			t = _seg(art, "idle_e", 0.15, PLACE_MOUNT, t)
+			_ev(t + 0.22, EV_HIT)
+			t = _seg(art, "attack_e", 0.11, PLACE_MOUNT, t)
+		t = _seg(art, "idle_e", 0.15, PLACE_MOUNT, t)
+		t = _seg(art, "mount_e", 0.1, PLACE_MOUNT, t, true, 0.8, true)
+	elif act == "sabre":
+		# no prop to get on: the Officer on foot swings the sabre at the dummy
+		for k in int(DRILL_ART["swings"]):
+			t = _seg(foot, "idle_e", 0.2, PLACE_SABRE, t)
+			_ev(t + 0.12, EV_HIT)
+			t = _seg(foot, "melee_e", 0.12, PLACE_SABRE, t)
+		t = _seg(foot, "idle_e", 0.35, PLACE_SABRE, t, false, 0.0, true, true)
+	else:
+		var place := PLACE_FEET
+		var shoot: Dictionary = info
+		if act == "mount":
+			shoot = DRILL_MEN["musketeer"]
+			art = foot
+			if _prop_on:
+				t = _seg(String(info["art_a"] if armoured else info["art"]), "mount_e", 0.13, PLACE_MOUNT, t, false, 0.4)
+				t = _seg(String(info["art_a"] if armoured else info["art"]), "mount_e", 0.1, PLACE_MOUNT, t, true)
+				place = PLACE_SIDE
+		_plan_muzzle = shoot["muzzle_a"] if armoured and shoot.has("muzzle_a") else shoot["muzzle"]
+		var anims: Array = shoot["anims"]
+		for i in anims.size():
+			var last := i == anims.size() - 1
+			t = _seg(art, String(anims[i][0]), float(anims[i][1]), place, t, false, 0.0, last, last)
+			if i == 0:
+				_ev(t, EV_SHOT)
+	_seg_end[_seg_end.size() - 1] = maxf(t, float(DRILL_ART["every"]) if act != "sabre" else 0.0)
+
+
+## Is the planned round still the right one? (the queue's first entry, armour, the prop)
+func _drill_check_plan() -> void:
+	var head := ""
+	var armoured := false
+	if not b.queue.is_empty():
+		head = b.queue[0]
+		if not b.kits.is_empty() and b.kits[0] is Dictionary:
+			armoured = bool(b.kits[0].get("armour", false))
+	if head == _plan_head and armoured == _plan_armour and _prop_on == _plan_prop:
+		return
+	_plan_head = head
+	_plan_armour = armoured
+	_plan_prop = _prop_on
+	_drill_plan(head, armoured)
 
 
 func _drill(delta: float) -> void:
@@ -311,36 +477,76 @@ func _drill(delta: float) -> void:
 		if man.visible:
 			man.visible = false
 		man_t = 0.0
+		if _dummy_t > 0.0:
+			_dummy_t = 0.0
+			dummy.texture = Game.tex(DRILL_ART["dummy"][0])
 		return
 	if not _on:
 		return
+	_drill_check_plan()
+	if _dummy_t > 0.0:
+		_dummy_t -= delta
+		if _dummy_t <= 0.0:
+			dummy.texture = Game.tex(DRILL_ART["dummy"][0])
 	man.visible = true
 	var prev := man_t
-	man_t = fmod(man_t + delta, _man_end[_man_end.size() - 1])
+	var total: float = _seg_end[_seg_end.size() - 1]
+	man_t = fmod(man_t + delta, total)
+	for e in _ev_t.size():
+		var et := _ev_t[e]
+		if (et > prev and et <= man_t) or (man_t < prev and (et > prev or et <= man_t)):
+			_drill_event(_ev_k[e])
 	var i := 0
 	var start := 0.0
-	while i < _man_end.size() - 1 and man_t >= _man_end[i]:
-		start = _man_end[i]
+	while i < _seg_end.size() - 1 and man_t >= _seg_end[i]:
+		start = _seg_end[i]
 		i += 1
 	if i != _man_shown:
 		_man_shown = i
-		man.texture = _man_tex[i]
-		man.hframes = _man_n[i]
-	var f := int((man_t - start) / _man_dt[i])
-	man.frame = f % _man_n[i] if i == _man_end.size() - 1 else mini(f, _man_n[i] - 1)
-	if prev < _man_end[0] and man_t >= _man_end[0]:
-		_drill_shot()
+		_drill_place(i)
+	var fl := _seg_flag[i]
+	var n := _seg_n[i]
+	var f := int((man_t - start) / _seg_dt[i])
+	f = f % n if fl & 16 else mini(f, n - 1)
+	man.frame = n - 1 - f if fl & 8 else f
 
 
-func _drill_shot() -> void:
-	var p := b.global_position + man.position + Vector2(DRILL_ART["muzzle"])
-	var fx := b.game.spawn_effect("smoke", p + Vector2(4, 0), 1.2)
-	fx.scale = Vector2(0.35, 0.35)
-	fx.modulate = Color(1, 1, 1, 0.75)
-	var hit := b.game.spawn_effect("dust", b.global_position + Vector2(DRILL_ART["states"][man_state]["target"]) + Vector2(0, 4), 1.6)
+## The man's strip and where he stands for anim `i` of the round.
+func _drill_place(i: int) -> void:
+	var fl := _seg_flag[i]
+	var st: Dictionary = DRILL_ART["states"][man_state]
+	man.texture = _seg_tex[i]
+	man.hframes = _seg_n[i]
+	match fl & 7:
+		PLACE_MOUNT:
+			man.position = st["prop"]
+			man.offset = -Vector2(DRILL_ART["floor"])
+			return
+		PLACE_SIDE:
+			man.position = st["side"]
+		PLACE_SABRE:
+			man.position = st["sabre"]
+		_:
+			man.position = st["feet_prop"] if _prop_on else st["feet"]
+	man.offset = -Vector2(DRILL_ART["anchor"])
+
+
+func _drill_event(kind: int) -> void:
+	var st: Dictionary = DRILL_ART["states"][man_state]
+	var tp := b.global_position + Vector2(st["target"])
+	if kind == EV_SHOT:
+		var p := b.global_position + man.position + _plan_muzzle
+		var fx := b.game.spawn_effect("smoke", p + Vector2(4, 0), 1.2)
+		fx.scale = Vector2(0.35, 0.35)
+		fx.modulate = Color(1, 1, 1, 0.75)
+		Sfx.play_any(["combat/musketeer_attack", "musket"], p, float(DRILL_ART["volume"]))
+	else:
+		Sfx.play_any(["combat/cuirassier_attack", "combat/horseman_attack"], tp, float(DRILL_ART["volume"]) - 2.0)
+	var hit := b.game.spawn_effect("dust", tp + Vector2(0, 4), 1.6)
 	hit.scale = Vector2(0.22, 0.22)
 	hit.modulate = Color(1.0, 0.92, 0.6, 0.8)
-	Sfx.play_any(["combat/musketeer_attack", "musket"], p, float(DRILL_ART["volume"]))
+	_dummy_t = float(DRILL_ART["flash"])
+	dummy.texture = Game.tex(DRILL_ART["dummy"][1])
 
 
 # ---------------------------------------------------------------- the paddock
@@ -371,6 +577,8 @@ func _paddock_setup() -> void:
 		m.set_shader_parameter("coat", -1 if coat == HorseCoat.NATIVE["horse"] else HorseCoat.COATS.find(coat))
 		m.set_shader_parameter("coat_ramps", HorseCoat.RAMPS)
 		s.material = m
+		_h_default.append(coat)
+		_h_coat.append(coat)
 		horses.append(s)
 		_h_pos.append(Vector2.ZERO)
 		_h_goal.append(Vector2.ZERO)
@@ -386,6 +594,26 @@ func horses_shown() -> int:
 	if pad_state == "":
 		return 0
 	return int(PADDOCK_ART["busy"]) if b._in_use else int(PADDOCK_ART["idle"])
+
+
+## The paddock's busy horses wear the coats of the horses queued at the breeder (the first
+## queued horse's on the first one, ...; the rest, and idle ones, keep the building's own).
+func _paddock_coats() -> void:
+	for i in horses.size():
+		var coat := _h_default[i]
+		if b._in_use:
+			var k := 0
+			for q in b.queue.size():
+				if String(b.queue[q]) != "horse":
+					continue
+				if k == i:
+					if q < b.kits.size() and b.kits[q] is Dictionary and HorseCoat.COATS.has(String(b.kits[q].get("coat", ""))):
+						coat = String(b.kits[q]["coat"])
+					break
+				k += 1
+		if coat != _h_coat[i]:
+			_h_coat[i] = coat
+			(horses[i].material as ShaderMaterial).set_shader_parameter("coat", -1 if coat == HorseCoat.NATIVE["horse"] else HorseCoat.COATS.find(coat))
 
 
 func _show_horses() -> void:

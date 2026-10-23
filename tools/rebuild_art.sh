@@ -78,6 +78,9 @@ python3 tools/import_buildings_v2.py     # the new Town Hall (+ its bell), Barra
                                          # art/crown/buildings_v2/ (replaces import_art's, import_armoury's
                                          # and import_horse_breeder's; after the musketeer fixes, the horse
                                          # coat masks and import_armoury)
+python3 tools/import_barracks_props.py   # the Barracks yard's wooden horse prop and straw dummy (art/crown/barracks_props/)
+                                         # and the Officers' / Guardsman's / mounted men's drill strips (after the
+                                         # buildings above: it uses the unit strips and horse masks)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included
