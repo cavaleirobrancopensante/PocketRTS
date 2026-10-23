@@ -1,0 +1,505 @@
+class_name AIScout
+extends RefCounted
+## The computer's scouting and what it makes of it (design_principles.md section 3: buildings
+## reveal strategy fairly; scouting and counter-scouting).
+##
+## Unless its plan is a rush (or the air rush), which acts from the first second, a Normal or
+## Hard computer sends one worker to look at the enemy's base first, and plays a plain opening
+## (no early greed) until the scout reports. What it sees decides:
+##   rush      the enemy has an early army, or a minimal economy with several production
+##             buildings: a defensive game (army first, walls where the faction has them,
+##             hold, counter when the army is bigger)
+##   greedy    an expansion up early and little or no army, or a full economy with no
+##             military building at all: a TIMING ATTACK sized and timed from what was seen
+##   balanced  neither: carry on with the plan it was given
+##   uncertain the scout was denied (killed, walled out, no path) or saw too little: that is
+##             not proof of anything. It plays SAFE (an army and walls, expands without
+##             greed) and sends a scout again a minute or two later.
+## It only uses what its own side can see (Game.is_visible_to: the fog of war), remembers the
+## enemy buildings it has seen, and revises its decision from new sightings, but at most once
+## every REDECIDE seconds so it does not flip-flop. Its decisions go to the match log.
+
+const START_AT := 18.0          # (game seconds) the first scout leaves, once it has a few workers
+const MIN_WORKERS := 5
+const REDECIDE := 75.0          # the least time between two decisions
+const RECENT := 150.0           # an army sighting counts for this long
+const RESCOUT_DENIED := 85.0    # a denied scout: the next one goes after this long
+const RESCOUT_REFRESH := 170.0  # otherwise a fresh look (new hall, new tech) every so often
+const MAX_TRIPS := 5
+const DEFEND_FOR := 210.0       # how long a defensive game lasts before the verdict is looked at again
+## Production and tech buildings: seeing them says "this enemy builds an army".
+const MILITARY := ["barracks", "horse_breeder", "foundry", "armoury", "warren", "gorge_pit", "roost",
+	"assembly_works", "engine_hall", "capacitor_works"]
+## What a minute of a rush looks like, per faction: the army value seen before 6:00 that counts as a rush
+## (the Brood's cheap bodies come early whatever it plays: it takes much more).
+const RUSH_VALUE := {"crown": 300.0, "clockwork": 360.0, "brood": 800.0}
+## When a timing attack hits by default (game seconds), per faction: a Crown musket / horse
+## line, a Brood swarm (earlier: it hatches fast), a Clockwork power spike (later: its
+## Engine Hall and Pylon first).
+const TIMING_AT := {"crown": 330.0, "brood": 290.0, "clockwork": 400.0}
+const TIMING_MIN_SUP := {"crown": 14, "brood": 20, "clockwork": 12}
+## What a plain opening leaves out until the scout has reported.
+const PENDING_MOD := {"expand": 1.0, "halls": 3, "workers": 1.0}
+const SAFE_MOD := {"expand": 1.4, "halls": 3, "tech": 1.0, "workers": 1.0}
+const DEFEND_MOD := {"expand": 2.2, "halls": 2, "tech": 1.25, "workers": 0.85}
+
+var ai: AI
+var game: Game
+var enabled := false
+var state := "wait"             # wait, going, done
+var verdict := "pending"        # pending, balanced, rush, greedy, uncertain
+var reason := ""
+var decided_at := -999.0
+var unit: Unit = null           # the scout on the road
+var trips := 0
+var next_trip := START_AT
+var sent_at := 0.0
+var last_end := 0.0
+var mod := {}                   # overrides for AI._s()
+var want_wall := false
+var timing_target := 0          # supply a scouted timing attack waits for
+var defend_until := 0.0
+var log_lines: Array = []       # (what went to the match log; tests read it)
+
+var _foe := -1
+var _wps: Array = []
+var _wp_i := 0
+var _seen_b := {}               # enemy building -> true (alive when last looked)
+var _army_hist: Array = []      # [clock, value, supply] of what the enemy army looked like
+var _workers_seen := 0
+var _far_army_t := -1.0         # when part of its army was last seen out in the field
+var _plateau: Array = []
+var _cells_seen := {}
+var _hall_seen := false
+var _stuck := 0.0
+
+
+func _init(a: AI) -> void:
+	ai = a
+	game = a.game
+	enabled = a.difficulty >= 1 and not a.peaceful and not (a.strategy in ["rush", "air"])
+	if enabled:
+		mod = PENDING_MOD.duplicate() if a.strategy != "balanced" else {}
+
+
+func is_scout(u: Unit) -> bool:
+	return unit != null and u == unit
+
+
+func _say(msg: String) -> void:
+	var line := "%s %s" % [game.mlog.who(ai.team) if game.mlog else "P%d" % (ai.team + 1), msg]
+	log_lines.append(line)
+	if game.mlog:
+		game.mlog.add(line)
+
+
+func _faction() -> String:
+	return game.faction_of(ai.team)
+
+
+# ------------------------------------------------------------------ the think
+
+func tick() -> void:
+	if not enabled or game.over:
+		return
+	var foe := ai._foe()
+	if foe < 0:
+		return
+	if foe != _foe:
+		_foe = foe
+		_seen_b.clear()
+		_army_hist.clear()
+		_cells_seen.clear()
+		_plateau = []
+		_workers_seen = 0
+		_hall_seen = false
+	_observe()
+	if state == "going":
+		_follow()
+	elif state == "wait" or state == "done":
+		if verdict == "pending" and game.clock > 260.0 and trips == 0 and state == "wait":
+			_apply("uncertain", "no scout got out")
+		if trips < MAX_TRIPS and game.clock >= next_trip and not _busy_with_foe():
+			_send()
+	_redecide()
+	_defence()
+
+
+## The enemy is in our base right now (a scout would only be a waste).
+func _busy_with_foe() -> bool:
+	return ai._threat() != Vector2.INF
+
+
+# ------------------------------------------------------------------ the scout
+
+func _send() -> void:
+	var u := _pick()
+	if u == null:
+		next_trip = game.clock + 10.0
+		return
+	var home := game.center_of_team(ai.team)
+	_wps = _route(home)
+	if _wps.is_empty():
+		next_trip = game.clock + 30.0
+		return
+	unit = u
+	state = "going"
+	trips += 1
+	sent_at = game.clock
+	_wp_i = 0
+	_hall_seen = false
+	_stuck = 0.0
+	u.cmd_move(_wps[0])
+	var what: String = Defs.UNITS[u.kind]["name"]
+	_say("sends a %s to scout%s" % [what, "" if trips == 1 else " again (trip %d)" % trips])
+
+
+## The scout: from the second denied trip on, the first army unit that is fast; else a worker
+## that is not carrying anything (a farmer at the hall).
+func _pick() -> Unit:
+	if trips >= 2 and verdict == "uncertain":
+		var best: Unit = null
+		for u in game.army(ai.team):
+			if u.order == "idle" and not ai._raiders.has(u) and (best == null or float(u.d["speed"]) > float(best.d["speed"])):
+				best = u
+		if best:
+			return best
+	var labs: Array = game.workers(ai.team)
+	if labs.size() < MIN_WORKERS and game.clock < 200.0:
+		return null
+	var pick: Unit = null
+	for u in labs:
+		if u.order == "build" or u.carrying > 0 or ai._escort.has(u):
+			continue
+		if pick == null or (u.order == "idle" and pick.order != "idle"):
+			pick = u
+	return pick
+
+
+## Points to walk: a stand-off point toward us, the hall, then a loop round it.
+func _route(home: Vector2) -> Array:
+	var st := Vector2(game.starts[_foe]) + Vector2(2.5, 2.0)
+	var toward := (home / Defs.TILE - st).normalized()
+	if toward == Vector2.ZERO:
+		toward = Vector2.RIGHT
+	var pts: Array = [st + toward * 9.0]
+	if game.expansions.size() > _foe and game.expansions[_foe] is Vector2i:
+		pts.append(Vector2(game.expansions[_foe]) + Vector2(2.5, 2.0))      # (its natural expansion)
+	pts.append(st + toward * 3.0)
+	for off in [Vector2(-9, -8), Vector2(9, -8), Vector2(9, 8), Vector2(-9, 8)]:
+		pts.append(st + off)
+	var out: Array = []
+	for p in pts:
+		var c := _free_near(Vector2i(p.round()))
+		if c.x >= 0:
+			out.append((Vector2(c) + Vector2(0.5, 0.5)) * Defs.TILE)
+	return out
+
+
+func _free_near(c: Vector2i) -> Vector2i:
+	for r in range(0, 6):
+		for y in range(c.y - r, c.y + r + 1):
+			for x in range(c.x - r, c.x + r + 1):
+				var m := Vector2i(x, y)
+				if game.in_map(m) and game.solid[game.idx(m)] == 0:
+					return m
+	return Vector2i(-1, -1)
+
+
+func _follow() -> void:
+	if unit == null or not is_instance_valid(unit) or unit.dead:
+		_finish("killed")
+		return
+	if unit.order == "gather" or unit.order == "build":
+		_finish("pulled away")        # (another part of the computer used it)
+		return
+	var limit: float = 70.0 + 1.8 * game.center_of_team(ai.team).distance_to(Vector2(game.starts[_foe]) * Defs.TILE) / maxf(20.0, float(unit.d["speed"]))
+	if game.clock - sent_at > limit:
+		_finish("timeout")
+		return
+	var wp: Vector2 = _wps[_wp_i]
+	# on past a point before standing on it (it must never idle: the workers' code takes idlers)
+	if unit.position.distance_to(wp) < 110.0:
+		_wp_i += 1
+		_stuck = 0.0
+		if _wp_i >= _wps.size():
+			_finish("done")
+			return
+		unit.cmd_move(_wps[_wp_i])
+		return
+	if unit.order == "idle":
+		_stuck += 1.0
+		if _stuck > 2.0 and game.clock - sent_at > 8.0:
+			_finish("blocked")
+			return
+		unit.cmd_move(wp)
+
+
+func _finish(how: String) -> void:
+	state = "done"
+	last_end = game.clock
+	if unit != null and is_instance_valid(unit) and not unit.dead:
+		var home := game.center_of_team(ai.team)
+		unit.cmd_move(home)
+	unit = null
+	_observe()
+	var r := _evaluate()
+	# A scout that was stopped before it saw anything decisive proves nothing (a wall, a
+	# few guards): uncertainty, not a rush. What it did see before it fell still counts.
+	if how in ["killed", "blocked", "timeout", "pulled away"] and r["verdict"] == "balanced" and (not _hall_seen or _coverage() < 0.3):
+		r = {"verdict": "uncertain", "reason": "the scout was %s before it saw the base" % _how_text(how)}
+		_say("scout %s: playing safe, will look again" % _how_text(how))
+	next_trip = game.clock + (RESCOUT_DENIED if r["verdict"] == "uncertain" else RESCOUT_REFRESH)
+	# (at most one change of mind every REDECIDE seconds; the first report always counts)
+	if verdict == "pending" or game.clock - decided_at >= REDECIDE:
+		_apply(r["verdict"], r["reason"])
+
+
+func _how_text(how: String) -> String:
+	match how:
+		"killed":
+			return "killed"
+		"blocked":
+			return "blocked (walled out or no path)"
+		"timeout":
+			return "lost on the way"
+	return "turned back"
+
+
+# ------------------------------------------------------------------ what it sees
+
+func _observe() -> void:
+	if _foe < 0:
+		return
+	var t := ai.team
+	var hall_kind: String = game.faction_hall(_foe)
+	for b in game.buildings:
+		if b.team != _foe or b.dead or b.ghost:
+			continue
+		if game.is_visible_to(t, b.center()):
+			_seen_b[b] = true
+			if b.kind == hall_kind and b == _nearest_start_hall(b):
+				_hall_seen = true
+	for b in _seen_b.keys():
+		if not is_instance_valid(b) or b.dead:
+			_seen_b.erase(b)
+	var value := 0.0
+	var sup := 0
+	var workers := 0
+	var st := Vector2(game.starts[_foe]) * Defs.TILE
+	for u in game.units:
+		if u.team != _foe or u.dead or u.off_field or u.aboard != null:
+			continue
+		if not game.is_visible_to(t, u.position):
+			continue
+		if u.is_worker():
+			workers += 1
+			continue
+		if u.kind == "horse" or u.kind == "messenger":
+			continue
+		value += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
+		sup += int(u.d["supply"])
+		if u.position.distance_to(st) > 20.0 * Defs.TILE:
+			_far_army_t = game.clock
+	_workers_seen = maxi(_workers_seen, workers)
+	if sup > 0 or (_army_hist.is_empty() and _hall_seen):
+		_army_hist.append([game.clock, value, sup])
+		if _army_hist.size() > 60:
+			_army_hist.pop_front()
+	# how much of the enemy's main we have looked at
+	if _plateau.is_empty():
+		_plateau = game.mapgen.main_area(game.starts[_foe])
+	if state == "going" and unit != null and is_instance_valid(unit) and unit.position.distance_to(st) < 26.0 * Defs.TILE:
+		for c in _plateau:
+			if game.vis[t][game.idx(c)] == 1:
+				_cells_seen[c] = true
+
+
+func _nearest_start_hall(b: Building) -> Building:
+	return b if b.center().distance_to(Vector2(game.starts[_foe]) * Defs.TILE + Vector2(80, 64)) < 8.0 * Defs.TILE else null
+
+
+func _coverage() -> float:
+	if _plateau.is_empty():
+		return 0.0
+	return float(_cells_seen.size()) / float(_plateau.size())
+
+
+## The best army the enemy showed in the last RECENT seconds: [value, supply].
+func _recent_army() -> Array:
+	var v := 0.0
+	var s := 0
+	for h in _army_hist:
+		if game.clock - float(h[0]) <= RECENT:
+			v = maxf(v, float(h[1]))
+			s = maxi(s, int(h[2]))
+	return [v, s]
+
+
+## What the sightings say: {"verdict", "reason", "halls", "econ", "mil", "walls", "value", "sup"}.
+func _evaluate() -> Dictionary:
+	var halls := 0
+	var econ := 0
+	var mil := 0
+	var walls := 0
+	var hall_kind: String = game.faction_hall(_foe)
+	for b in _seen_b.keys():
+		if b.kind == hall_kind:
+			halls += 1
+		elif Defs.is_econ(b.kind):
+			econ += 1
+		elif MILITARY.has(b.kind):
+			mil += 1
+		elif b.kind == "wall" or b.kind == "gate":
+			walls += 1
+	var fac: String = game.faction_of(_foe)
+	var econ_cap := 0
+	for k in Defs.FACTIONS[fac]["econ"]:
+		econ_cap += int(Defs.FACTIONS[fac]["econ"][k])
+	var ra := _recent_army()
+	var value: float = ra[0]
+	var sup: int = ra[1]
+	var thr: float = RUSH_VALUE.get(fac, 400.0)
+	var clock := game.clock
+	var out := {"verdict": "balanced", "reason": "", "halls": halls, "econ": econ, "mil": mil, "walls": walls, "value": value, "sup": sup}
+	var cov := _coverage()
+	if clock < 400.0 and (value >= thr or (_far_army_t >= 0.0 and clock - _far_army_t < 60.0 and value >= thr * 0.4)):
+		out["verdict"] = "rush"
+		out["reason"] = "early army (%d supply) in or out of its base" % sup
+	elif mil >= 2 and econ <= econ_cap and halls <= 1 and clock < 240.0 and value > 0.0:
+		out["verdict"] = "rush"
+		out["reason"] = "%d production buildings, %d economy buildings, %d supply of army" % [mil, econ, sup]
+	elif mil >= 1 and halls <= 1 and econ < econ_cap - 1 and clock < 180.0 and _hall_seen and value >= thr * 0.5:
+		out["verdict"] = "rush"
+		out["reason"] = "a production building, a thin economy and %d supply of army" % sup
+	elif halls >= 2 and value < thr * 0.5 and mil <= 1:
+		out["verdict"] = "greedy"
+		out["reason"] = "%d halls, %d economy buildings, %d military buildings, %d supply of army" % [halls, econ, mil, sup]
+	elif clock >= 210.0 and econ >= econ_cap and mil == 0 and value <= 0.0 and cov >= 0.55 and _workers_seen >= 10:
+		out["verdict"] = "greedy"
+		out["reason"] = "a full economy (%d buildings, %d workers), no military building, no army" % [econ, _workers_seen]
+	elif not _hall_seen and cov < 0.35 and halls == 0:
+		out["verdict"] = "uncertain"
+		out["reason"] = "it saw too little of the base"
+	else:
+		out["reason"] = "%d halls, %d economy, %d military buildings, %d supply of army" % [halls, econ, mil, sup]
+	return out
+
+
+# ------------------------------------------------------------------ deciding
+
+## Later sightings can change the decision, but never twice within REDECIDE seconds.
+func _redecide() -> void:
+	if verdict == "pending" or game.clock - decided_at < REDECIDE:
+		return
+	if state == "going":
+		return
+	if verdict == "rush" and game.clock < defend_until:
+		return        # (a defence is held for its time; a smaller sighting is no reason to drop it)
+	var r := _evaluate()
+	if r["verdict"] != verdict and not (r["verdict"] == "balanced" and verdict == "uncertain" and _coverage() < 0.35 and not _hall_seen):
+		_apply(r["verdict"], r["reason"])
+
+
+func _apply(v: String, why: String) -> void:
+	var was := verdict
+	if v == was:
+		reason = why
+		return
+	verdict = v
+	reason = why
+	decided_at = game.clock
+	var fac := _faction()
+	# undo what the last decision changed
+	mod = {}
+	want_wall = false
+	if was == "greedy" and ai.strategy == "timing" and ai._opened != "timing" and not ai._attacking:
+		ai.strategy = ai._opened
+		ai._attack_at = maxi(int(ai._s("wave")), ai._army_supply(game.army(ai.team)) + 2) if ai._attack_at >= 999 else ai._attack_at
+	match v:
+		"balanced":
+			if ai.strategy != ai._opened and ai._opened != "timing":
+				ai.strategy = ai._opened
+			_say("scouted: %s (%s), carrying on with its %s plan" % [v, why, String(AI.STRATEGIES[ai.strategy]["name"]).to_lower()])
+		"rush":
+			mod = DEFEND_MOD.duplicate()
+			want_wall = true
+			defend_until = game.clock + DEFEND_FOR
+			var ra := _recent_army()
+			# hold at home until the army is a match for what was seen, then counter
+			ai._attack_at = maxi(maxi(ai._attack_at, 16), int(ceil(float(ra[1]) * 1.4)) + 6)
+			ai._regroup_until = maxf(ai._regroup_until, game.clock + float(ai._lv([200.0, 160.0, 130.0])))
+			_say("scouted: rush (%s), switching to a defensive build: army and %s first, then a counter-attack" % [why, "walls" if fac == "crown" else "production"])
+		"greedy":
+			var plan := _timing_plan(_evaluate())
+			timing_target = plan["target"]
+			mod = {"timing": plan["at"], "expand": 1.0 if fac == "brood" else 1.2, "halls": 3, "tech": 0.6 if fac == "clockwork" else 0.75, "workers": 1.0}
+			if not ai._attacking:
+				ai.strategy = "timing"
+				ai._attack_at = 999
+			_say("scouted: greedy economy (%s), switching to a timing attack at %d:%02d (%d supply)" % [why, int(plan["at"]) / 60, int(plan["at"]) % 60, timing_target])
+		"uncertain":
+			mod = SAFE_MOD.duplicate()
+			want_wall = true
+			ai._attack_at = maxi(ai._attack_at, 16) if ai._attack_at < 999 else ai._attack_at
+			_say("could not see the enemy (%s): playing safe (army and walls, no greedy economy), scouting again later" % why)
+
+
+## When a timing attack goes and how big it is: the more economy and the less army was seen
+## the earlier it hits (before the economy pays off), and the force is 1.6 times what was
+## seen (army and walls) plus a margin: never into a clearly stronger defence.
+func _timing_plan(r: Dictionary) -> Dictionary:
+	var fac := _faction()
+	var base: float = TIMING_AT.get(fac, 360.0)
+	var greed: float = clampf(0.35 * (int(r["halls"]) - 1) + 0.1 * maxf(0.0, float(int(r["econ"]) - 3)) + (0.3 if float(r["value"]) < 40.0 else 0.0), 0.0, 1.0)
+	var at: float = maxf(base * (1.0 - 0.35 * greed), game.clock + 30.0)
+	var seen: float = float(r["sup"]) + float(int(r["walls"])) / 6.0 * 1.5
+	var target: int = int(ceil(seen * 1.6)) + 4
+	target = clampi(target, int(TIMING_MIN_SUP.get(fac, 12)), 60)
+	return {"at": at, "target": target, "greed": greed}
+
+
+## The supply a timing attack goes out with (AI._army): what the scout worked out; it comes
+## down a little the longer the timing has passed, so it does go.
+func timing_wave() -> int:
+	if timing_target <= 0 or verdict != "greedy":
+		return 6
+	var late: float = maxf(0.0, game.clock - float(mod.get("timing", 0.0)) - 90.0)
+	var f: float = clampf(1.0 - late / 300.0, 0.6, 1.0)
+	return maxi(int(TIMING_MIN_SUP.get(_faction(), 12)) - 2, int(round(timing_target * f)))
+
+
+## A scouted timing attack holds if our army is not worth enough against what the enemy
+## showed lately (a clearly stronger defence is not attacked into).
+func timing_ok(value: float) -> bool:
+	if verdict != "greedy":
+		return true
+	var ra := _recent_army()
+	return value >= float(ra[0]) * 1.2
+
+
+# ------------------------------------------------------------------ acting on it
+
+## A defensive or a safe game builds production earlier and walls the ramp (Crown only: the
+## other factions have no walls).
+func _defence() -> void:
+	if verdict != "rush" and verdict != "uncertain":
+		return
+	if ai._hall_reserve or ai._saving:
+		return
+	var plan := {}
+	match _faction():
+		"crown":
+			plan = {"barracks": 2 if ai.difficulty < 2 else 3}
+		"brood":
+			plan = {"warren": 1}
+		"clockwork":
+			plan = {"assembly_works": 2}
+	for k in plan:
+		if ai._mine(k).size() < int(plan[k]) and not ai._busy_building(k) and game.requirement_met(ai.team, k) \
+				and ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) and (ai._mine(k).size() > 0 or ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) + 30):
+			ai._construct(k)
+			return
+	if want_wall and not ai._walled and _faction() == "crown" and game.requirement_met(ai.team, "wall") and ai._gold() >= 140 \
+			and not ai._mine("barracks").is_empty():
+		ai._wall_off()

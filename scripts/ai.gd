@@ -42,12 +42,15 @@ static func strategies_for(faction: String) -> Array:
 
 
 func _s(key: String) -> Variant:
+	if scout != null and scout.mod.has(key):
+		return scout.mod[key]       # (what the scout's report changed: AIScout)
 	return STRATEGIES.get(strategy, STRATEGIES["balanced"]).get(key, STRATEGIES["balanced"].get(key))
 
 
 ## Crown: the opening this game: "mill" (Powder Mill first, a Musketeer line: the default) or
 ## "breeder" (Horse Breeder first, a Horseman rush: on Rush, and else about 3 games in 10).
 var opening := "mill"
+var scout: AIScout = null       # scouts the enemy first and picks the plan from what it saw (unless rushing)
 
 
 func _ready() -> void:
@@ -58,6 +61,7 @@ func _ready() -> void:
 		opening = "breeder"
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
+	scout = AIScout.new(self)
 	_attack_at = int(_s("wave"))
 	if opening == "breeder" and strategy == "rush":
 		_attack_at = maxi(_attack_at, RUSH_HORSEMEN * int(Defs.UNITS["cuirassier"]["supply"]))   # (the first 3 Horsemen ride out together)
@@ -168,6 +172,7 @@ func _think_stage(i: int) -> void:
 				_balloon_drop()
 			_lap("ai/raid", pt)
 		3:
+			scout.tick()
 			_army()
 			_lap("ai/army", pt)
 		4:
@@ -1108,7 +1113,7 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	# counts is to the nearest Clocktower and on to the site (Defs.CRATE)
 	var towers: Array = _halls().filter(func(h: Building) -> bool: return h.built and h.kind == "clocktower") if _clock() else []
 	for u in game.workers(team):
-		if u.order == "build" or _escort.has(u):
+		if u.order == "build" or _escort.has(u) or (scout != null and scout.is_scout(u)):
 			continue
 		var trip: float = u.position.distance_to(target)
 		if not towers.is_empty():
@@ -1124,20 +1129,36 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 
 
 ## Where a building goes: by the main hall, on its own ground (up on the main's plateau,
-## inside its walls), then by another hall on that hall's ground; anywhere by a hall (down
-## below the ramp) only when there's no room left on any of them.
+## inside its walls: any room there, even close to the hall or along the cliff edge, beats
+## lower ground), then by another hall on that hall's ground. Only when no hall's plateau has
+## room does it go down, and then to the foot of the nearest ramp (a short walk from the hall,
+## never over a cliff, never in the ramp's way), else anywhere by a hall.
 func _find_spot(kind: String) -> Vector2i:
 	var halls: Array = _halls().filter(func(h: Building) -> bool: return h.built)
 	if game.starts.size() > team:
 		var home := Vector2(game.starts[team]) * Defs.TILE
 		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.center().distance_to(home) < b.center().distance_to(home))
-	for ground in [true, false]:
-		for h in halls:
-			# (on the main's own plateau it looks a little farther: all of it is safe ground)
-			var far := 24 if ground and h == halls[0] else 18
-			var spot := game.find_spot(team, kind, h, 5, far, "near", ground)
+	for h in halls:
+		# (on the main's own plateau it looks a little farther: all of it is safe ground)
+		var far := 26 if h == halls[0] else 20
+		# (supply buildings tuck in behind the hall, away from the middle of the map: the room
+		# close to the hall is for the production and tech buildings)
+		var spot := game.find_spot(team, kind, h, 3, far, "behind" if kind == String(_f()["supply"]) else "near", true)
+		if spot.x >= 0:
+			return spot
+	# the plateau is full: the foot of the nearest ramp, hall by hall
+	for h in halls:
+		var foot := game.ramp_foot(h)
+		if foot != Vector2.INF:
+			var spot := game.find_spot(team, kind, h, 3, 14, "near", false, foot)
+			if spot.x < 0:
+				spot = game.find_spot(team, kind, h, 3, 24, "near", false, foot)
 			if spot.x >= 0:
 				return spot
+	for h in halls:
+		var spot := game.find_spot(team, kind, h, 5, 18, "near")
+		if spot.x >= 0:
+			return spot
 	return Vector2i(-1, -1)
 
 
@@ -1476,12 +1497,12 @@ func _army() -> void:
 				u.cmd_move(best.center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field or u.runs_on_spring())   # (wind-ups fight on; the escort cranks them)
 	var sup := _army_supply(army)
-	var swarm_min := 10 if strategy in ["rush", "air"] else 30
+	var swarm_min := 10 if strategy in ["rush", "air"] or scout.verdict == "greedy" else 30
 	if _brood() and _attack_at < swarm_min:
 		_attack_at = swarm_min     # a swarm waits until it's a swarm
 	# timing attack: nothing goes out before the timing; then everything does, wave after wave
 	if strategy == "timing" and game.clock >= float(_s("timing")) * (1.0 if difficulty >= 2 else 1.25) and _attack_at >= 999:
-		_attack_at = 6
+		_attack_at = scout.timing_wave()    # (6 unless the scout sized the attack from what it saw)
 	if peaceful:
 		_attack_at = 99999
 	# a failed rush: building up again; nothing goes out until the regroup is over (unless
@@ -1492,7 +1513,7 @@ func _army() -> void:
 		return
 	# (riders still on foot, their horses on the way, don't count yet: they follow mounted)
 	var ready := army.filter(func(u: Unit) -> bool: return not _horse_coming(u))
-	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping:
+	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping and _timing_ok(ready):
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
@@ -1545,6 +1566,17 @@ func _army() -> void:
 				u.cmd_move(_home_spot(front), true)
 			elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 				u.cmd_deploy()
+
+
+## A timing attack the scout sized waits while the army is not worth enough against what
+## the enemy showed (never into a clearly stronger defence).
+func _timing_ok(list: Array) -> bool:
+	if strategy != "timing" or scout.verdict != "greedy":
+		return true
+	var v := 0.0
+	for u in list:
+		v += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
+	return scout.timing_ok(v)
 
 
 ## Crown: a wave that's mostly horsemen (the Horseman rush) raids the economy: its riders
@@ -1611,7 +1643,7 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 	if foe >= 0:
 		for u in game.army(foe):
 			theirs += float(u.d["cost"])
-	var big_enough := mine >= theirs * 0.8 or sup >= 70 or strategy in ["rush", "air", "timing"]
+	var big_enough := mine >= theirs * 0.8 or sup >= 70 or strategy in ["rush", "air"] or (strategy == "timing" and scout.timing_ok(mine))
 	if _swarm_phase == "" and sup >= _attack_at and big_enough and not regrouping:
 		_attacking = true
 		_wave_target = _enemy_base()
