@@ -1206,7 +1206,11 @@ func _shade_rims(img: Image, cr: Rect2i, zone: PackedInt32Array) -> void:
 				img.blend_rect(_rim_pieces[7], full, at)
 
 
+var _cliff_art: CliffArt
+
+
 func _render_ground() -> void:
+	_cliff_art = CliffArt.new(self)
 	minimap_img = Image.create(W, H, false, Image.FORMAT_RGBA8)
 	for old in ground.get_children():
 		ground.remove_child(old)
@@ -1245,7 +1249,8 @@ func _render_ground() -> void:
 				set_name = b["high"]       # painted over as a slope below (_paint_ramps)
 			elif cliff[i] == 1:
 				var below := Vector2i(x, y + 1)
-				set_name = b["face"] if in_map(below) and height[idx(below)] == 0 else b["high"]
+				# (a wall only over low ground, not over a ramp: CliffArt.is_wall)
+				set_name = b["face"] if in_map(below) and height[idx(below)] == 0 and ramp[idx(below)] == 0 else b["high"]
 				shade = 1.0 if set_name == b["face"] else 0.72
 				if set_name == b["high"]:
 					# the rim of a plateau in a biome whose high-ground patches are bold
@@ -1407,17 +1412,8 @@ func _render_ground() -> void:
 				img = img.get_region(Rect2i((cr.position - er.position) * T, cr.size * T))
 			_shade_rims(img, cr, zone)
 			_paint_ramps(img, cr)
-			# a soft shadow under each cliff face
-			for y in range(maxi(cr.position.y - 1, 0), mini(cr.end.y, H - 1)):
-				for x in range(cr.position.x, cr.end.x):
-					if y + 1 < cr.position.y or y + 1 >= cr.end.y:
-						continue
-					if cliff[y * W + x] == 1 and height[(y + 1) * W + x] == 0 and cliff[(y + 1) * W + x] == 0:
-						for py in 6:
-							for px in T:
-								var p := Vector2i((x - cx) * T + px, (y + 1 - cy) * T + py)
-								var col := img.get_pixelv(p)
-								img.set_pixelv(p, col.darkened(0.35 * (1.0 - py / 6.0)))
+			# cliffs: walls from the low ground, contours, lips and shadows at the rims (CliffArt)
+			_cliff_art.paint(img, cr)
 			var spr := Sprite2D.new()
 			spr.centered = false
 			spr.position = Vector2(cx, cy) * T
