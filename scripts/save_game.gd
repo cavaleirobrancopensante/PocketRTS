@@ -137,6 +137,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["dm"] = true
 		elif u.order == "lead" and u.order_target and ids.has(u.order_target):
 			ud["lt"] = ids[u.order_target]
+		elif u.is_hauler():
+			ud["hallc"] = [(u.home_mine as Building).cell.x, (u.home_mine as Building).cell.y]    # (a hauler: his Town Hall)
 		# the men in a balloon's basket go with it
 		if not u.passengers.is_empty():
 			var ps: Array = []
@@ -460,6 +462,10 @@ static func restore(game: Game, d: Dictionary) -> void:
 		elif bool(ud.get("dm", false)):
 			var am: bool = u.auto_mount
 			u.cmd_dismount(am)
+		elif ud.get("hallc") is Array:
+			for hb in game.buildings:
+				if hb.team == u.team and not hb.dead and hb.haul_cap() > 0 and hb.cell == Vector2i(int(ud["hallc"][0]), int(ud["hallc"][1])):
+					u.cmd_gather(hb)       # (back at his Town Hall: a hauler again, no job)
 	for a in d.get("ai", []):
 		for ai in game.ais:
 			if ai.team == int(a["team"]):

@@ -159,6 +159,7 @@ func _run() -> void:
 	await _interrupt()
 	await _kegs()
 	await _gun()
+	await _save_load()
 	await _fallback()
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(0 if fails == 0 else 1)
@@ -429,6 +430,29 @@ func _gun() -> void:
 		await wait_for(func() -> bool: return c.horse_count() == 2, 50.0)
 		check(c.horse_count() == 2, "team_want 2: a hauler brought the second horse (%d)" % c.horse_count())
 		g.consume_unit(c)
+
+
+# ---------------------------------------------------------------- 6b. save and load
+
+func _save_load() -> void:
+	await _clear_horses()
+	var n: int = haulers().size()
+	SaveGame.save(g, {"map": "random", "seed": 4242})
+	var d := SaveGame.peek()
+	SaveGame.restore(g, d)
+	await physics_frame
+	for b in g.buildings:
+		if b.team == 0 and b.kind == "town_hall" and not b.dead and b.cell == origin + Vector2i(1, 1):
+			hall = b
+		elif b.team == 0 and b.kind == "barracks" and not b.dead:
+			bar = b
+		elif b.team == 0 and b.kind == "foundry" and not b.dead:
+			fdy = b
+		elif b.team == 0 and b.kind == "horse_breeder" and not b.dead:
+			br = b
+	await physics_frame
+	check(n >= 1 and hall.haulers().size() == n, "saved and loaded: the Town Hall still has its %d haulers (%d)" % [n, hall.haulers().size()])
+	SaveGame.clear()
 
 
 # ---------------------------------------------------------------- 7. no hauler

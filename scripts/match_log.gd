@@ -230,6 +230,8 @@ func finish(winner: int) -> void:
 		lines.append("  %s: earned %d, spent %d, trained %d, built %d, killed %d, lost %d, razed %d, buildings lost %d, peak army %d. Kills by: %s" % [
 			who(t), int(st["gold"]), int(st["spent"]), int(st["trained"]), int(st["built"]), int(st["killed"]),
 			int(st["lost"]), int(st["razed"]), int(st["bld_lost"]), int(st["peak_army"]), ", ".join(kb) if not kb.is_empty() else "-"])
+		if int(st.get("hauled_horse", 0)) + int(st.get("hauled_keg", 0)) > 0:
+			lines[lines.size() - 1] += " Haulers brought %d horses and %d powder kegs." % [int(st.get("hauled_horse", 0)), int(st.get("hauled_keg", 0))]
 		if int(st.get("horses_bolted", 0)) + int(st.get("horses_caught", 0)) > 0:
 			lines[lines.size() - 1] += " Loose horses: %d of its own bolted, %d caught." % [int(st.get("horses_bolted", 0)), int(st.get("horses_caught", 0))]
 		if t == game.human and not game.demo:

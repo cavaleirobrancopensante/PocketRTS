@@ -3107,9 +3107,8 @@ func _micro() -> void:
 
 ## Crown horses: a Horseman, cannon, mortar or wagon in a queue gets its own horse by
 ## itself (Game.train: a free one at a breeder, else the breeder trains one), so the
-## computer only keeps a spare or two bought at its breeder (_buy_horses); a Labourer (the
-## groom) leads one to each Foundry so a gun can roll out at once; stray horses are sent
-## home; guns and wagons at home get a second horse (_team_up); spare horses become
+## computer only keeps a spare or two bought at its breeder (_buy_horses); the Town Hall's
+## haulers (_assign_haulers) bring them to the buildings; stray horses are sent home; guns and wagons at home get a second horse (_team_up); spare horses become
 ## Dragoons' mounts; dismounted cavalry gets back on a horse.
 func _horses() -> void:
 	var horses: Array = game.horses_of(team)
