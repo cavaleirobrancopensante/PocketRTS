@@ -7,6 +7,9 @@ extends SceneTree
 ##     and millstone on the far half of the track (the runner over it), in front on the near half
 ##  2. the Farm's sails: still while nobody works its fields, turning while somebody does
 ##  3. the Foundry's smoke: none while it's idle, puffs while it trains something
+##  4. BuildingLife: the Town Hall's bell swings only while it trains; the Barracks' drilling man,
+##     the Horse Breeder's paddock horses and the Armoury's inventor show only while they work;
+##     the Church's windows glow while a Missionary heals; nothing moves under the fog
 var main: Node
 var t := 0.0
 var g
@@ -229,3 +232,161 @@ func _foundry() -> void:
 		puffs = maxi(puffs, _smoke_near(f))
 		await physics_frame
 	check(f._in_use and puffs > 0, "training: it smokes (%d puffs)" % puffs)
+
+
+## Train `key` at `b` the plain way (paid, queued).
+func _train(b: Building, key: String) -> void:
+	var err: String = g.train(b, key)
+	if err != "":
+		print("  (train %s: %s)" % [key, err])
+
+
+func _bell(kind: String, unit: String, cell: Vector2i) -> void:
+	var h: Building = g._add_building(kind, 0, origin + cell, true)
+	g.camera.position = h.center()
+	await wait(1.5)
+	var L: BuildingLife = h.life
+	check(L != null and L.bell != null and L.bell.visible and L.belfry.visible, "%s: the bell hangs in its belfry" % kind)
+	var f0: int = L.bell.frame
+	await wait(1.5)
+	check(L.bell.frame == f0 and f0 == 0, "%s idle: the bell hangs still" % kind)
+	_train(h, unit)
+	var seen := {}
+	for i in 90:
+		seen[L.bell.frame] = true
+		await physics_frame
+	check(L.training and seen.size() >= 3, "%s training: the bell swings (%d frames in 3 s)" % [kind, seen.size()])
+	h.queue.clear()
+	h.kits.clear()
+	await wait(3.0)
+	check(not L.training and L.bell.frame == 0, "%s: the swing finishes and it hangs still" % kind)
+	h.hp = h.max_hp * 0.3
+	h._update_sprite()
+	check(L.bell_state == "damaged" and L.bell.visible, "%s damaged: the bell is still there" % kind)
+	h.die()
+	check(L.bell_state == "" and not L.bell.visible and not L.belfry.visible, "%s destroyed: no bell" % kind)
+
+
+func _drill() -> void:
+	g._add_building("powder_mill", 0, origin + Vector2i(24, 2), true)     # (the Musketeer needs one)
+	var br: Building = g._add_building("barracks", 0, origin + Vector2i(8, 2), true)
+	g.camera.position = br.center()
+	await wait(1.5)
+	var L: BuildingLife = br.life
+	check(L != null and L.man != null and not L.man.visible, "Barracks idle: nobody drills on the yard")
+	_train(br, "musketeer")
+	await wait(1.5)
+	check(L.man.visible, "Barracks training: a Musketeer drills")
+	var seen := {}
+	var shots := 0
+	var smoke0 := 0
+	for i in 150:
+		seen[L.man.frame + 100 * L._man_shown] = true
+		await physics_frame
+	check(seen.size() >= 4, "he plays aim, fire and reload (%d frames in 5 s)" % seen.size())
+	br.queue.clear()
+	br.kits.clear()
+	await wait(1.0)
+	check(not L.man.visible, "the queue empty: he leaves the yard")
+	br.die()
+	check(L.man_state == "" and not L.man.visible, "destroyed: nobody there")
+
+
+func _paddock() -> void:
+	var hb: Building = g._add_building("horse_breeder", 0, origin + Vector2i(16, 2), true)
+	g.camera.position = hb.center()
+	await wait(1.5)
+	var L: BuildingLife = hb.life
+	check(L != null and L.horses.size() >= 2, "the Horse Breeder has paddock horses")
+	check(L.horses_shown() == 1 and L.horses[0].visible and not L.horses[1].visible, "idle: one horse stands in the paddock")
+	var p0: Vector2 = L._h_pos[0]
+	await wait(2.0)
+	check(L._h_pos[0] == p0, "idle: it stands still")
+	_train(hb, "horse")
+	await wait(1.0)
+	check(L.horses_shown() == 2 and L.horses[1].visible, "training: two horses")
+	var moved := false
+	var inside := true
+	for i in 240:
+		var d0: Vector2 = L._h_pos[0] - L._pad_c
+		var d1: Vector2 = L._h_pos[1] - L._pad_c
+		for d in [d0, d1]:
+			if pow(d.x / (L._pad_r.x * 1.02), 2.0) + pow(d.y / (L._pad_r.y * 1.02), 2.0) > 1.0:
+				inside = false
+		moved = moved or L._h_pos[0] != p0
+		await physics_frame
+	check(moved, "training: a horse walks about")
+	check(inside, "they keep to the paddock")
+	hb.die()
+	check(L.pad_state == "" and L.horses_shown() == 0, "destroyed: no horses")
+
+
+func _inventor() -> void:
+	var ar: Building = g._add_building("armoury", 0, origin + Vector2i(2, 8), true)
+	g.camera.position = ar.center()
+	await wait(1.5)
+	var L: BuildingLife = ar.life
+	check(L != null and L.inv != null and not L.inv.visible, "Armoury idle: no inventor on the roof")
+	var key := ""
+	for k: String in Defs.RESEARCH:
+		if Defs.RESEARCH[k]["at"] == "armoury" and g.research_problem(ar, k) == "":
+			key = k
+			break
+	check(key != "", "an Armoury research to start")
+	if key == "":
+		return
+	g.start_research(ar, key)
+	await wait(1.5)
+	check(L.inv.visible, "researching: the inventor is at his bench")
+	var seen := {}
+	for i in 240:
+		seen[L.inv.frame] = true
+		await physics_frame
+	check(seen.size() >= 4 and seen.has(int(BuildingLife.INVENTOR_ART["bang"])), "he tinkers and the barrel goes off (%d frames in 8 s)" % seen.size())
+	ar.queue.clear()
+	ar.kits.clear()
+	await wait(1.0)
+	check(not L.inv.visible, "research over: he is gone")
+	ar.die()
+	check(L.inv_state == "", "destroyed: no inventor")
+
+
+func _church() -> void:
+	var c: Building = g._add_building("church", 0, origin + Vector2i(10, 8), true)
+	g.camera.position = c.center()
+	await wait(1.5)
+	var L: BuildingLife = c.life
+	check(L != null and L.lit != null and not L.lit.visible and L.bell.visible, "Church: dark windows, its bell in the belfry")
+	var m: Unit = g._add_unit("missionary", 0, c.center() + Vector2(0, c.rect().size.y * 0.5 + 30))
+	var w: Unit = g._add_unit("musketeer", 0, m.position + Vector2(24, 0))
+	w.hp = w.max_hp * 0.4
+	var lit := await wait_for(func() -> bool: return L.lit_v > 0.5 and L.lit.visible, 20.0)
+	check(lit, "a Missionary heals: the windows glow (%.2f)" % L.lit_v)
+	g.consume_unit(m)
+	g.consume_unit(w)
+	await wait(4.0)
+	check(L.lit_v == 0.0 and not L.lit.visible, "he stops: the glow fades out")
+	c.die()
+	check(L.lit_state == "" and not L.lit.visible and not L.bell.visible, "destroyed: no glow, no bell")
+
+
+func _fog() -> void:
+	# a building remembered under the fog stands still
+	var h: Building = g._add_building("town_hall", 0, origin + Vector2i(22, 8), true)
+	g.camera.position = h.center()
+	await wait(1.5)
+	_train(h, "labourer")
+	await wait(1.0)
+	var L: BuildingLife = h.life
+	h._use_t = 1.0e9          # (stop the twice-a-second look: pretend it isn't seen now)
+	h._seen_now = false
+	await physics_frame
+	var f0: int = L.bell.frame
+	await wait(2.0)
+	check(L.bell.frame == f0, "under the fog the bell stands still")
+	h._seen_now = true
+	var seen := {}
+	for i in 60:
+		seen[L.bell.frame] = true
+		await physics_frame
+	check(seen.size() >= 2, "seen again: it swings")
