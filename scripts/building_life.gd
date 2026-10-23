@@ -145,6 +145,12 @@ var _smoke_t := 0.0
 var _clock := 0.0
 
 
+## TODO(queen art): the Brood CAPITAL (Game.capital, the first Burrow) is where the Queen sits. When the
+## owner supplies a Queen sprite sheet (e.g. assets/buildings/brood_queen.png), show it here as a part
+## of the "hive" kind, only while `b.game.capital(b.team) == b` (and `has_life("hive")`), animated like
+## the others (see INVENTOR_ART / PADDOCK_ART). No Queen art exists yet, so the capital is marked
+## with a "CAPITAL" tag over it (Building._draw) instead.
+
 static func has_life(kind: String) -> bool:
 	return BELL_ART.has(kind) or kind == "barracks" or kind == "horse_breeder" or kind == "armoury"
 

@@ -1913,7 +1913,7 @@ func cmd_gather(site: Entity) -> void:
 	if b.team != team or int(b.d.get("crew", 0)) == 0:
 		cmd_move(site.center())
 		return
-	if not b.crew.has(self) and b.crew.size() >= int(b.d["crew"]):
+	if not b.crew.has(self) and b.crew.size() >= b.crew_max():
 		var alt := game.free_site(team, b.center())
 		if alt == null:
 			if team == game.human:
@@ -3913,7 +3913,7 @@ func cmd_harvest() -> void:
 
 func _harvest(delta: float) -> Vector2:
 	if cocoon > 0:
-		var hive := game.nearest_hall(position, team)
+		var hive := game.dropoff_hall(position, team)
 		if hive == null:
 			return Vector2.ZERO
 		if hive.edge_distance(position) < radius + 17.0:
@@ -3977,7 +3977,7 @@ func _haul(pit: Building, delta: float) -> Vector2:
 				path = PackedVector2Array()
 			return Vector2.ZERO
 		"to_hall":
-			var hive := game.nearest_hall(pit.center(), team)
+			var hive := game.dropoff_hall(pit.center(), team)
 			if hive == null:
 				return Vector2.ZERO
 			if hive.edge_distance(position) < radius + 17.0:

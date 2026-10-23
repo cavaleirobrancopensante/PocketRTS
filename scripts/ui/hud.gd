@@ -877,11 +877,14 @@ func _build_card() -> Array:
 				elif game.players[game.human]["gold"] < int(d["cost"]):
 					why = "Not enough %s." % _res()[0].to_lower()
 				elif Defs.is_econ(k) and game.econ_count(game.human, k) >= game.econ_limit(game.human, k):
-					why = "Limit reached: expand with another %s." % Defs.BUILDINGS[game.faction_hall(game.human)]["name"]
+					why = "Limit reached: one Brood Pen per Burrow; raise another Burrow." if game.faction_of(game.human) == "brood" else "Limit reached: expand with another %s." % Defs.BUILDINGS[game.faction_hall(game.human)]["name"]
 				var kk: String = k
 				var label: String = d["name"].to_upper()
 				if Defs.is_econ(k):
-					label = "%s %d/%d" % [label.split(" ")[0], game.econ_count(game.human, k), game.econ_limit(game.human, k)]
+					if k == "feeding_pit" and game.faction_of(game.human) == "brood":
+						label = "%s %d" % [label.split(" ")[0], game.econ_count(game.human, k)]      # (no count cap: the swamp's reach limits it)
+					else:
+						label = "%s %d/%d" % [label.split(" ")[0], game.econ_count(game.human, k), game.econ_limit(game.human, k)]
 				list.append([k, label, func() -> void:
 					page = ""
 					controls.begin_place(kk), why == "", why, str(d["cost"])])
@@ -2634,7 +2637,10 @@ func _card_tip(it: Array) -> Dictionary:
 		if int(bd.get("supply", 0)) > 0 and k != game.faction_hall(game.human):
 			st += "  ·  +%d supply" % int(bd["supply"])
 		if Defs.is_econ(k):
-			st += "  ·  %d of %d here" % [game.econ_count(game.human, k), game.econ_limit(game.human, k)]
+			if k == "feeding_pit" and game.faction_of(game.human) == "brood":
+				st += "  ·  %d built  ·  reach %d tiles from the capital" % [game.econ_count(game.human, k), int(game.swamp_reach[game.human])]
+			else:
+				st += "  ·  %d of %d here" % [game.econ_count(game.human, k), game.econ_limit(game.human, k)]
 		t["stats"] = st
 		t["body"] = Defs.tip(k)
 	elif lab == "WORK":

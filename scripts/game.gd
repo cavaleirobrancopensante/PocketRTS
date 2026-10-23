@@ -1811,7 +1811,7 @@ func free_site(t: int, p: Vector2) -> Building:
 	for b in buildings:
 		if b.team != t or b.dead or not b.built or int(b.d.get("crew", 0)) == 0:
 			continue
-		if b.crew.size() >= int(b.d["crew"]):
+		if b.crew.size() >= b.crew_max():
 			continue
 		var dd: float = b.center().distance_to(p) + b.crew.size() * 40.0
 		if (b.kind == "farm" or b.kind == "feeding_pit") and b.soil_left() <= 0.0:
@@ -1825,6 +1825,8 @@ func free_site(t: int, p: Vector2) -> Building:
 ## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one);
 ## for a Feeding Pit, the Hive whose ground it draws on.
 func soil_hall(farm: Building) -> Building:
+	if faction_of(farm.team) == "brood":
+		return capital(farm.team)
 	return nearest_hall(farm.center(), farm.team)
 
 
@@ -1904,11 +1906,123 @@ func halls_of(t: int, built_only := true) -> Array:
 	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == k and not b.dead and (b.built or not built_only))
 
 
+const BROOD_PIT_UNCAPPED := 999
+
+
+## The Brood's CAPITAL: its first Burrow, the oldest one standing (the starting hall; when it
+## falls the next oldest takes over). The only hall grubs unload at, and the only one with
+## ground. Null for other factions or with no finished Burrow.
+func capital(t: int) -> Building:
+	if faction_of(t) != "brood":
+		return null
+	var c: Building = _capital.get(t)
+	if c != null and is_instance_valid(c) and not c.dead and c.built:
+		_capital_soil[t] = c.soil
+		return c
+	_capital[t] = null
+	for b in buildings:        # (creation order: the oldest first)
+		if b.team == t and b.kind == "hive" and b.built and not b.dead:
+			_capital[t] = b
+			b.queue_redraw()
+			if c != null:
+				b.soil = float(_capital_soil.get(t, b.soil))      # (the ground is the capital's: it passes on as it was)
+				b.soil_warned = 2 if b.soil <= 0.0 else (1 if b.soil / b.reserve() < Defs.SOIL_LOW else 0)
+				if mlog:
+					mlog.add("%s: the capital fell; the next Burrow is the new capital" % mlog.who(t))
+				if hud and t == human:
+					notify("Your capital has fallen: the next Burrow is the new capital.")
+			return b
+	return null
+
+
+var _capital := {}
+var _capital_soil := {}
+
+
+## Where workers unload: the Brood's capital; for the others the nearest hall.
+func dropoff_hall(p: Vector2, t: int) -> Building:
+	if faction_of(t) == "brood":
+		return capital(t)
+	return nearest_hall(p, t)
+
+
+## Tiles from the capital (centre to centre) to a point; 0 when there's none.
+func capital_dist(t: int, p: Vector2) -> float:
+	var c := capital(t)
+	return c.center().distance_to(p) / T if c else 0.0
+
+
+## The Brood's resource reach: swamp joined to the capital's, as far from it as the swamp goes
+## (capped at Defs.BROOD_RESOURCE_MAX_D). Grows with Clutch Mounds, Spore Vents and any other swamp.
+var swamp_conn: Array = []        # per team: PackedByteArray, 1 = swamp joined to the capital's
+var swamp_reach: Array = []       # per team: farthest such cell from the capital, in tiles
+
+
+func _update_conn() -> void:
+	while swamp_conn.size() < n_players():
+		swamp_conn.append(PackedByteArray())
+		swamp_reach.append(0.0)
+	for t in n_players():
+		var conn := PackedByteArray()
+		conn.resize(W * H)
+		swamp_reach[t] = 0.0
+		var cap := capital(t)
+		if cap != null:
+			var c0 := cell_of(cap.center())
+			var g: PackedByteArray = swamp[t]
+			var cc := cap.center() / T
+			var stack: Array[int] = []
+			if in_map(c0) and g[idx(c0)] == 1:
+				stack.append(idx(c0))
+				conn[idx(c0)] = 1
+			var far := 0.0
+			while not stack.is_empty():
+				var i: int = stack.pop_back()
+				var x := i % W
+				var y := i / W
+				far = maxf(far, Vector2(x + 0.5, y + 0.5).distance_to(cc))
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nx: int = x + d.x
+					var ny: int = y + d.y
+					if nx < 0 or ny < 0 or nx >= W or ny >= H:
+						continue
+					var j := ny * W + nx
+					if g[j] == 1 and conn[j] == 0:
+						conn[j] = 1
+						stack.append(j)
+			swamp_reach[t] = minf(far, Defs.BROOD_RESOURCE_MAX_D)
+		swamp_conn[t] = conn
+
+
+## Why a Brood resource building (Feeding Pit, Brood Pen) can't stand at this spot, or "".
+func brood_reach_problem(t: int, k: String, c: Vector2i) -> String:
+	if faction_of(t) != "brood" or not Defs.is_econ(k):
+		return ""
+	var size: Vector2i = Defs.BUILDINGS[k]["size"]
+	var cap := capital(t)
+	if cap == null:
+		return "Needs a finished Burrow (your capital) first."
+	if swamp_conn.size() <= t or (swamp_conn[t] as PackedByteArray).size() != W * H:
+		_update_conn()
+	var mid := (Vector2(c) + Vector2(size) * 0.5)
+	var d := cap.center().distance_to(mid * T) / T
+	if d > Defs.BROOD_RESOURCE_MAX_D or d > float(swamp_reach[t]) + 0.01:
+		return "Too far from your capital (reach %d tiles): spread your swamp (Spore Vent, Clutch Mound) to reach farther." % int(swamp_reach[t])
+	for y in size.y:
+		for x in size.x:
+			var cc := c + Vector2i(x, y)
+			if in_map(cc) and (swamp_conn[t] as PackedByteArray)[idx(cc)] == 0:
+				return "Must stand on swamp joined to your capital's."
+	return ""
+
+
 func econ_count(t: int, kind: String) -> int:
 	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == kind and not b.dead).size()
 
 
 func econ_limit(t: int, kind: String) -> int:
+	if faction_of(t) == "brood" and kind == "feeding_pit":
+		return BROOD_PIT_UNCAPPED       # the Brood's pits are limited by swamp reach, not by halls (placement_problem)
 	return int(Defs.FACTIONS[faction_of(t)]["econ"].get(kind, 0)) * maxi(1, halls_of(t).size())
 
 
@@ -2026,7 +2140,7 @@ func wind_decay_mult(t: int) -> float:
 ## pays for the round trip's time at a rate that rises with the pit's distance from the Hive
 ## (see Defs.FOOD_RATE).
 func food_value(pit: Building) -> float:
-	var hive := nearest_hall(pit.center(), pit.team)
+	var hive := capital(pit.team)
 	if hive == null:
 		return 0.0
 	var a := hive.rect()
@@ -3356,8 +3470,7 @@ func cancel_train(b: Building) -> void:
 	if b.kits.size() > b.queue.size():
 		b.kits.resize(b.queue.size())
 	if b.uses_eggs():
-		b.morph_t.pop_back()
-		b.eggs += 1
+		b.morph_t.pop_back()        # (the egg is lost: cancelling gives back the cost, not the egg)
 	if b.queue.is_empty():
 		b.prod_t = 0.0
 	refund(b.team, k, kit, b)
@@ -3375,8 +3488,7 @@ func cancel_train_at(b: Building, i: int) -> void:
 	var k: String = b.queue[i]
 	var kit := b.take_entry(i)
 	if b.uses_eggs():
-		b.morph_t.remove_at(i)
-		b.eggs += 1
+		b.morph_t.remove_at(i)      # (the egg is lost)
 	elif i == 0:
 		b.prod_t = 0.0               # the next one starts from scratch
 	refund(b.team, k, kit, b)
@@ -3438,7 +3550,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 				site = b.worker_rally_target
 			elif not b.dual_rally() and b.rally_target is Building:
 				site = b.rally_target
-			if site == null or site.dead or site.crew.size() >= int(site.d.get("crew", 0)):
+			if site == null or site.dead or site.crew.size() >= site.crew_max():
 				var was_site := site != null and not site.dead
 				site = null
 				var rp: Vector2 = b.worker_rally if b.dual_rally() else b.rally
@@ -3631,11 +3743,17 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 				return "Keep the ramp clear."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
+		var spacing: int = Defs.BROOD_HALL_SPACING if faction_of(t) == "brood" else Defs.HALL_SPACING
 		for h in (_spot_all_halls if limits_checked and _in_spot else halls_of(t, false)):
-			if h.center().distance_to(mid0) < Defs.HALL_SPACING * T:
+			if h.center().distance_to(mid0) < spacing * T:
 				return "Too close to your other %s: it needs its own ground." % Defs.BUILDINGS[k]["name"]
 	if Defs.is_econ(k):
+		var rp := brood_reach_problem(t, k, c)
+		if rp != "":
+			return rp
 		if not limits_checked and econ_count(t, k) >= econ_limit(t, k):
+			if faction_of(t) == "brood":
+				return "Each Burrow allows one Brood Pen: raise another Burrow at home for more."
 			return "Each %s allows %d %s. Expand for more." % [Defs.BUILDINGS[faction_hall(t)]["name"],
 				int(Defs.FACTIONS[faction_of(t)]["econ"][k]), Defs.BUILDINGS[k]["name"] + ("s" if int(Defs.FACTIONS[faction_of(t)]["econ"][k]) > 1 else "")]
 		if faction_of(t) != "brood":
@@ -3908,6 +4026,7 @@ func _update_swamp() -> void:
 						if ddx * ddx + ddy * ddy <= ur * ur:
 							g[y * W + x] = 1
 		swamp[t] = g
+	_update_conn()
 	swamp_layer.queue_redraw()
 	_swamp_minimap()
 
@@ -6530,7 +6649,7 @@ func _draw_mine_labels() -> void:
 			continue
 		if not view_rect.has_point(b.global_position):
 			continue        # (off screen; the overlay is redrawn 4 times a second at least)
-		var crew_max := int(b.d.get("crew", 0))
+		var crew_max: int = b.crew_max()
 		var eff: Array = b.efficiency()
 		if crew_max == 0 and eff.is_empty():
 			continue
