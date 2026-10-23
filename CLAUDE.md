@@ -19,6 +19,7 @@
 - AI: Crown lost ALL workers at ~6:00 in a Greenhold game (supply 0/60, workers 0) after Raptors counterattacked: check the "workers pitch in when army < 3" defence and escort workers; real attackers still pull every worker.
 - AI: Crown rush AI does not wall its ramp before 4:18; Brood AI on Rush built no army by 4:30 after the capital/income nerf (all grubs): check rush AI under the halved income.
 - Crown late-game economy: soil runs out (~10 min), 1-2k unspent gold at the supply cap, saltpetre. Brood retest after the capital rework (Crown rush vs Brood economy; Hard Timing Attack on Amberfall Vale).
+- AI wall timing and scouting (owner's design, NOT yet: build orders wait until the economy tuning is done): Crown walls its ramp at a standard moment (like an SC2 wall-off) because of the faction asymmetry; walls EARLIER when it scouts an enemy rush; walls to DENY the enemy scout when it is rushing itself. Timings still unknown. A walled base cannot be read from the minimap (fog, high ground): a good player parks a grub/worker on PATROL at the foot of the ramp to spot units leaving: consider this for the Brood AI's scouting.
 - Queen animation; Armoury art polish (patch wobble, yellow specks, dummy target colour); wall balance check; optional player build grid; loosen the 24-tile limit in tools/test_ai_placement.gd.
 - Capital rework decisions to confirm: cancel gives no egg but biomass is refunded; one 10,500 ground reserve at the capital.
 
