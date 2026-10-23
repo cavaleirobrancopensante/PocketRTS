@@ -86,8 +86,8 @@ const DRILLS := [["musketeer", false, "musketeer"], ["musketeer", true, "guardsm
 
 
 func _drills(br: Building, hb: Building) -> void:
-	g.camera.zoom = Vector2(6.0, 6.0)
-	var yard: Vector2 = br.global_position + Vector2(30, -30)
+	g.camera.zoom = Vector2(5.0, 5.0)
+	var yard: Vector2 = br.global_position + Vector2(32, -28)
 	for d in DRILLS:
 		br.queue.clear()
 		br.kits.clear()

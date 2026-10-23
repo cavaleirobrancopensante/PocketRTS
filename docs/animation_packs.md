@@ -12,8 +12,8 @@ status lines below as work lands (one line per pack, newest state wins).
 | Pack | Art | Import script | In game |
 | --- | --- | --- | --- |
 | Armoury research experiments (9) | **delivered**, 6 sheets in `art/crown/armoury_anim/` | not written | not started |
-| Barracks (production: one animation per unit, 8 buttons) | not drawn yet | not written | not started |
-| Horse Breeder (production: HORSE) | not drawn yet | not written | not started |
+| Barracks (production: one animation per unit, 8 buttons) | no new drawing: existing unit strips + the user's horse prop / dummy sheets | `tools/import_barracks_props.py` | done in `building_life.gd` (drill per queue head, prop with a Horse Breeder); tests in `test_building_anim.gd` |
+| Horse Breeder (production: HORSE) | no new art: paddock horses wear the queued horses' coats | none | done (coat decided at queue time, `kit["coat"]`) |
 
 Buildings today only have four still states (`assets/buildings/<kind>_{built,construction,damaged,destroyed}.png`)
 plus code-drawn effects (`Building.IDLE_FX`, in use only). None of these packs exists in the game yet.
