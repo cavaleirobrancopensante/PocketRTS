@@ -1633,18 +1633,24 @@ func _start_positions() -> void:
 ## its middle; "near" picks the closest, "far" the farthest, "toward_middle" the one
 ## nearest the middle of the map. `ground`: only on the building's own ground (its height:
 ## the computer keeps its buildings up on its main's plateau, inside its walls).
-func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near", ground := false) -> Vector2i:
+func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, prefer := "near", ground := false, anchor := Vector2.INF) -> Vector2i:
 	if Defs.is_econ(kind) and econ_count(t, kind) >= econ_limit(t, kind):
 		return Vector2i(-1, -1)
 	_spot_halls = halls_of(t)
 	_spot_all_halls = halls_of(t, false)
 	_in_spot = true
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
-	var c0: Vector2 = around.rect().get_center() / T
+	var c0: Vector2 = around.rect().get_center() / T if anchor == Vector2.INF else anchor
 	var mid := Vector2(W, H) * 0.5
 	var best := Vector2i(-1, -1)
 	var hc := cell_of(around.rect().get_center())
 	var h0 := int(height[idx(hc)]) if in_map(hc) else -1
+	# (ground only: a footprint may also touch cliffs, trees and rocks with its ring, if that
+	# leaves every route on the plateau open: the plateau's edge is usable room too)
+	var tight_ok := ground and h0 >= 0 and not (kind == "wall" or kind == "gate")
+	var tight_flags := PackedByteArray()
+	var reach0 := -1
+	var reach_from := Vector2i(-1, -1)
 	# every open cell is scored first, then the full placement test runs from the best score
 	# down until one passes (it used to run on every cell: a hall's search took ~100 ms)
 	var keys := PackedInt64Array()
@@ -1664,9 +1670,12 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				continue
 			if ground and h0 >= 0 and not _on_ground(cell, size, h0):
 				continue
+			var tight := 0
 			if not _footprint_open(cell, size):
-				continue
-			var score := dd
+				if not tight_ok or not _footprint_open_tight(cell, size):
+					continue
+				tight = 1
+			var score := dd + (4.0 if tight == 1 else 0.0)
 			if prefer == "far":
 				score = -dd
 			elif prefer == "far_safe":
@@ -1695,12 +1704,24 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 			# (sorted by score, then by the order the cells were looked at, as before)
 			keys.append(int(round((score + 100000.0) * 1000.0)) * 1048576 + cells.size())
 			cells.append(cell)
+			tight_flags.append(tight)
 	keys.sort()
 	for k in keys:
-		var cell: Vector2i = cells[k % 1048576]
-		if placement_problem(t, kind, cell, true, true) == "" and margin_free(cell, size):
-			best = cell
-			break
+		var ci: int = k % 1048576
+		var cell: Vector2i = cells[ci]
+		if placement_problem(t, kind, cell, true, true) != "":
+			continue
+		if tight_flags[ci] == 0:
+			if margin_free(cell, size):
+				best = cell
+				break
+		elif margin_free_tight(cell, size):
+			if reach0 < 0:
+				reach_from = _free_next_to(hc, h0)
+				reach0 = _plateau_reach(reach_from, h0, Vector2i(-1, -1), Vector2i.ZERO)
+			if _plateau_reach(reach_from, h0, cell, size) >= reach0 - size.x * size.y - 2:
+				best = cell
+				break
 	_spot_halls = []
 	_spot_all_halls = []
 	_in_spot = false
@@ -1734,6 +1755,108 @@ func _footprint_open(cell: Vector2i, size: Vector2i) -> bool:
 			if solid[row + x] != 0:
 				return false
 	return true
+## The ring of a footprint may be terrain (cliff, tree, rock) but never a building.
+func _footprint_open_tight(cell: Vector2i, size: Vector2i) -> bool:
+	for y in range(cell.y - 1, cell.y + size.y + 1):
+		for x in range(cell.x - 1, cell.x + size.x + 1):
+			var c := Vector2i(x, y)
+			if not in_map(c):
+				continue
+			var v := int(solid[idx(c)])
+			if v != 0 and v != 1:
+				return false
+	return true
+
+
+func margin_free_tight(cell: Vector2i, size: Vector2i) -> bool:
+	for y in range(-1, size.y + 1):
+		for x in range(-1, size.x + 1):
+			if x >= 0 and y >= 0 and x < size.x and y < size.y:
+				continue
+			var c := cell + Vector2i(x, y)
+			if not in_map(c):
+				continue
+			var v := int(solid[idx(c)])
+			if v != 0 and v != 1:
+				return false
+	return true
+
+
+## The tile just below the ramp nearest to a building's plateau (where lower-ground
+## buildings go when the plateau is full), or INF if its ground has no ramp near.
+func ramp_foot(around: Building) -> Vector2:
+	var hc := cell_of(around.rect().get_center())
+	if not in_map(hc):
+		return Vector2.INF
+	var h0 := int(height[idx(hc)])
+	var best := Vector2.INF
+	var bd := INF
+	for y in range(hc.y - 30, hc.y + 31):
+		for x in range(hc.x - 30, hc.x + 31):
+			var r := Vector2i(x, y)
+			if not in_map(r) or ramp[idx(r)] != 1:
+				continue
+			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var p: Vector2i = r + dd
+				if not in_map(p) or ramp[idx(p)] != 0 or int(height[idx(p)]) != h0:
+					continue
+				# p is a plateau cell touching this ramp: walk on through the ramp to its foot
+				var f := r
+				var steps := 0
+				while in_map(f) and ramp[idx(f)] == 1 and steps < 12:
+					f += -dd
+					steps += 1
+				if not in_map(f) or int(height[idx(f)]) == h0:
+					continue
+				var d := Vector2(p).distance_to(Vector2(hc))
+				if d < bd:
+					bd = d
+					best = Vector2(f) + Vector2(0.5, 0.5)
+	return best
+
+
+## A free cell of height h near a cell (the nearest, looking outward).
+func _free_next_to(c: Vector2i, h: int) -> Vector2i:
+	for r in range(1, 12):
+		for y in range(c.y - r, c.y + r + 1):
+			for x in range(c.x - r, c.x + r + 1):
+				if absi(x - c.x) != r and absi(y - c.y) != r:
+					continue
+				var m := Vector2i(x, y)
+				if in_map(m) and solid[idx(m)] == 0 and ramp[idx(m)] == 0 and int(height[idx(m)]) == h:
+					return m
+	return c
+
+
+## How many cells of a plateau (height h, plus its ramps) can be walked to from a cell, within
+## 30 tiles, with a footprint (cell, size) taken out: a spot that cuts this much more than its
+## own area has shut a route.
+func _plateau_reach(start: Vector2i, h: int, cell: Vector2i, size: Vector2i) -> int:
+	var seen := {}
+	var todo: Array = [start]
+	seen[idx(start)] = true
+	var n := 0
+	while not todo.is_empty():
+		var c: Vector2i = todo.pop_back()
+		n += 1
+		for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var m: Vector2i = c + dd
+			if not in_map(m) or seen.has(idx(m)):
+				continue
+			if absi(m.x - start.x) > 30 or absi(m.y - start.y) > 30:
+				continue
+			var v := int(solid[idx(m)])
+			if v != 0 and v != 5:
+				continue
+			if ramp[idx(m)] == 0 and int(height[idx(m)]) != h:
+				continue
+			if size != Vector2i.ZERO and m.x >= cell.x and m.y >= cell.y and m.x < cell.x + size.x and m.y < cell.y + size.y:
+				continue
+			seen[idx(m)] = true
+			todo.append(m)
+	return n
+
+
 const SOURCE_NEAR := 6.0               # tiles: a crusher further than this from a Boiler (or the reverse) scores worse in find_spot
 
 
