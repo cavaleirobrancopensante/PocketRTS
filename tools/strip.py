@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 
 d = sys.argv[1]
 cols = int(sys.argv[2]) if len(sys.argv) > 2 else 4
-CROP = (350, 120, 930, 660)
+CROP = tuple(int(v) for v in os.environ.get("CROP", "350,120,930,660").split(","))
 SCALE = 0.6
 names = sorted({os.path.basename(f).rsplit("_", 1)[0] for f in glob.glob(d + "/*_[0-9][0-9].png")})
 for n in names:

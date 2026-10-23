@@ -2790,7 +2790,7 @@ func add_gold(t: int, n: int) -> void:
 ## A queue entry paid back (`kit`: what a queued soldier was paid to come out with; its
 ## horse, if it took one, comes back out of `at`).
 func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> void:
-	if kit.has("coat") and at != null:
+	if kit.has("coat") and at != null and k != "horse":      # (a queued horse's coat is its own: no second horse)
 		horse_back(at, kit)
 	if int(kit.get("rid", 0)) != 0 and k != "horse":
 		release_rid(t, int(kit["rid"]))     # (its horse is free again; one still at the breeder is kept)
@@ -3341,6 +3341,9 @@ func train(b: Building, key: String) -> String:
 			# nearest breeder trains one (paid now); a gun's horse walks over by itself
 			kit["rid"] = new_rid()
 			_reserve_horse(b, k, int(kit["rid"]), true)
+	if k == "horse":
+		kit = kit.duplicate()
+		kit["coat"] = HorseCoat.pick()      # (decided now: the paddock shows it, the horse comes out in it)
 	b.add_entry(k, kit)
 	if b.uses_eggs():
 		b.eggs -= 1
@@ -6789,7 +6792,7 @@ func _reserve_horse(b: Building, k: String, rid: int, pay: bool) -> bool:
 			return false
 		players[b.team]["gold"] -= c
 		stats[b.team]["spent"] += c
-	br.add_entry("horse", {"rid": rid})
+	br.add_entry("horse", {"rid": rid, "coat": HorseCoat.pick()})
 	return true
 
 
