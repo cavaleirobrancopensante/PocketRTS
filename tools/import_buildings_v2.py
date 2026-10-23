@@ -72,9 +72,13 @@ OPENING = {"town_hall": {"built": (214, 213, 236, 245), "damaged": (967, 238, 99
            "church": {"built": (121, 297, 132, 332)}}
 OPENING_L = {"town_hall": {"built": (179, 214, 195, 245), "damaged": (930, 238, 947, 268)},
              "church": {"built": (89, 298, 104, 332)}}
-BELL_UP = 1.3         # the yoke this many times the central pillar's width plus YOKE_OVER
-BELL_TALL = 1.2       # the bell no taller than this times the opening (the rest hides under the floor)
-SWING = 0.62          # how far the bell swings out of the pillar's middle (game px: of the pillar's width)
+BELL_UP = 2.0         # the yoke this many times the central pillar's width plus YOKE_OVER: the bell's body a
+                      # little wider than the pillar, so both sides of it show at rest
+BELL_TALL = 1.2       # the bell's lower end no lower than this times the opening (the rest hides under the floor)
+BELL_RAISE = 14       # sheet px: the pivot hung this far above the openings' top (behind the arches), the bell
+                      # that much taller
+SWING = 0.3           # how far the bell swings out of the pillar's middle (of the pillar's width): some of
+                      # it stays behind the pillar
 BELFRY = {"town_hall": {"built": (150, 190, 262, 252), "damaged": (905, 215, 1015, 275)},
           "church": {"built": (62, 262, 160, 342)}}
 YOKE_OVER = 4         # sheet px: the yoke a little wider than the opening (its ends behind the pillars)
@@ -274,8 +278,9 @@ def hang_bell(name, info, contact):
     pillar = rx0 - lx1
     s = (pillar * BELL_UP + YOKE_OVER) * st_scale / yoke_w
     oh = (ry1 - ry0) * st_scale
-    if hgt * s > oh * BELL_TALL:
-        s = oh * BELL_TALL / hgt
+    raise_g = BELL_RAISE * st_scale
+    if hgt * s > oh * BELL_TALL + raise_g:
+        s = (oh * BELL_TALL + raise_g) / hgt
     small = [unteam(shrink(c, s, 0.4)) for c in cell]
     strip = join(small)
     Image.fromarray(strip).save("assets/buildings/%s_bell.png" % name)
@@ -291,7 +296,7 @@ def hang_bell(name, info, contact):
         lx0, ly0, lx1, ly1 = OPENING_L[name][st]
         rx0, ry0, rx1, ry1 = OPENING[name][st]
         p = game_xy(info[st], (lx1 + rx0) / 2.0, min(ly0, ry0))
-        print('  "%s": Vector2(%.1f, %.1f),' % (st, p[0], p[1] + 1))
+        print('  "%s": Vector2(%.1f, %.1f),' % (st, p[0], p[1] + 1 - BELL_RAISE * info[st][2]))
         body = np.asarray(Image.open("assets/buildings/%s_%s.png" % (name, st)).convert("RGBA"))
         h, w = body.shape[:2]
         bx0, by0, bx1, by1 = BELFRY[name][st]

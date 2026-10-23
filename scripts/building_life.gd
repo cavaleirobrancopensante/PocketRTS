@@ -23,12 +23,12 @@ extends RefCounted
 ## every BELL_DT s; idle it hangs still (frame 0: a swing under way finishes first). When a unit
 ## comes out, the hall's bell rings once, softly (the Town Hall's select sound).
 const BELL_ART := {
-	"town_hall": {"strip": "res://assets/buildings/town_hall_bell.png", "pivot": Vector2(7, 0),
-		"belfry": "res://assets/buildings/town_hall_belfry_%s.png", "swing": 4.8, "lean": -1,
-		"states": {"built": Vector2(2.4, -148.1), "damaged": Vector2(-1.8, -138.5)}},
-	"church": {"strip": "res://assets/buildings/church_bell.png", "pivot": Vector2(4, 0),
-		"belfry": "res://assets/buildings/church_belfry_%s.png", "swing": 2.6, "lean": -1,
-		"states": {"built": Vector2(-26.3, -82.4)}},
+	"town_hall": {"strip": "res://assets/buildings/town_hall_bell.png", "pivot": Vector2(10, 0),
+		"belfry": "res://assets/buildings/town_hall_belfry_%s.png", "swing": 2.3, "lean": -1,
+		"states": {"built": Vector2(2.4, -153.8), "damaged": Vector2(-1.8, -144.2)}},
+	"church": {"strip": "res://assets/buildings/church_bell.png", "pivot": Vector2(5.5, 0),
+		"belfry": "res://assets/buildings/church_belfry_%s.png", "swing": 1.3, "lean": -1,
+		"states": {"built": Vector2(-26.3, -85.9)}},
 }
 ## How far the bell is swung out of the middle in each of its 4 frames (of `swing`, towards the
 ## side frame 1 leans: `lean`): straight, out, straight, out the other way.
