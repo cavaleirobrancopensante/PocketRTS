@@ -67,7 +67,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			continue
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
-			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked,
+			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
 			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
 			"crate": "ground" if b.crate == "carried" else b.crate,
@@ -285,6 +285,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.batteries = int(bd.get("bat", 0))
 		b.vertical = bool(bd.get("v", false))
 		b.dir_locked = bool(bd.get("vl", false))
+		b.locked = bool(bd.get("gl", false))
 		b.swamp_r = float(bd["swamp_r"])
 		b.seeded = bool(bd["seeded"])
 		b.crate = String(bd.get("crate", ""))        # (older saves: no crates)
@@ -308,6 +309,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for b in game.buildings:
 		if b.kind == "gate":
 			game.relink_walls(b.cell)     # (the palisade joins its gates the way they were saved)
+			if b.locked:
+				b.locked = false
+				game.set_gate_locked(b, true, true)
 	game.soil_scars.clear()
 	for sc in d.get("soil_scars", []):
 		var sk := String(sc[2]) if sc.size() > 2 else "town_hall"

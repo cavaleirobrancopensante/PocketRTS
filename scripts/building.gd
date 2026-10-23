@@ -894,6 +894,7 @@ func _tick_building(delta: float) -> void:
 var gate_open := false
 var vertical := false            # a gate in a north-south wall: drawn side-on
 var dir_locked := false          # turned by hand: stays as it is
+var locked := false              # Gate: locked shut by its owner (Game.set_gate_locked): nobody passes, friends included
 
 
 func set_vertical(v: bool) -> void:
@@ -954,7 +955,7 @@ func _gate(delta: float) -> void:
 				foe = true
 		elif not friend and crossing(u):
 			friend = true
-	var want := friend and not foe
+	var want := friend and not foe and not locked
 	if want != gate_open:
 		gate_open = want
 		_swing_t = GATE_SWING
@@ -1312,6 +1313,26 @@ func bar_top() -> float:
 	return -rect().size.y
 
 
+## A gate locked shut: a little padlock on it (drawn here, no picture): a gold body with a keyhole
+## under a steel shackle, on a dark outline so it reads on any ground.
+func _draw_lock(top: float) -> void:
+	var c := Vector2(0.0, top * 0.5 + 6.0)
+	var dark := Color(0.08, 0.06, 0.05, 0.95)
+	# the outline
+	draw_arc(c + Vector2(0, -5), 5.6, PI, TAU, 14, dark, 5.0)
+	draw_rect(Rect2(c + Vector2(-8, -4), Vector2(16, 13)), dark)
+	# the shackle
+	draw_arc(c + Vector2(0, -5), 4.6, PI, TAU, 14, Color(0.72, 0.76, 0.80), 2.4)
+	draw_line(c + Vector2(-4.6, -5), c + Vector2(-4.6, -3), Color(0.72, 0.76, 0.80), 2.4)
+	draw_line(c + Vector2(4.6, -5), c + Vector2(4.6, -3), Color(0.72, 0.76, 0.80), 2.4)
+	# the body and keyhole
+	draw_rect(Rect2(c + Vector2(-6.5, -2.5), Vector2(13, 10)), Color(0.93, 0.74, 0.22))
+	draw_rect(Rect2(c + Vector2(-6.5, -2.5), Vector2(13, 3)), Color(1.0, 0.88, 0.42))
+	draw_rect(Rect2(c + Vector2(-6.5, 4.5), Vector2(13, 3)), Color(0.72, 0.52, 0.12))
+	draw_circle(c + Vector2(0, 2.0), 1.7, dark)
+	draw_rect(Rect2(c + Vector2(-0.8, 2.5), Vector2(1.6, 3.2)), dark)
+
+
 func _draw_building() -> void:
 	if dead:
 		return
@@ -1328,6 +1349,8 @@ func _draw_building() -> void:
 	var top := bar_top()
 	if not ghost:
 		draw_health(top, r.size.x * 0.7)
+	if kind == "gate" and locked and built:
+		_draw_lock(top)
 	if built and uses_eggs() and (team == game.human or game.demo):
 		# its eggs ready, over it: "3/5" (the number every Brood unit hatches from)
 		var font := ThemeDB.fallback_font
