@@ -26,7 +26,16 @@ off (the sweep replaces them), shrunk to the mill's scale (HORSE_SCALE of the te
 the game draws it 1:1 without a coat shader and it stays team-neutral. Run after
 tools/import_horse_team.py and tools/import_horse_coats.py.
 
+The runner (art/crown/mill_runner_top.png, a strict top-down picture of the turning millstone
+with its iron hub and the timber arm ending in the swingle-bar and two chains) is keyed out and
+written 2x oversampled (assets/buildings/mill_runner.png: the game draws it at half size, turned
+and squashed like the track, so turning stays crisp). Its stone is RUNNER_R px in the game (a
+little under the painted bed stone's), and the plain middle of the arm is cut out so the hub to
+the swingle-bar is the track's radius (TRACK_R): the stone keeps its size. The hub's centre
+(the pivot, in texture px) is printed for Building.MILL_ART.
+
 Output: assets/buildings/powder_mill_{built,construction,damaged,destroyed}.png,
+assets/buildings/mill_runner.png,
 assets/buildings/powder_mill_stone_{built,damaged}.png, assets/buildings/mill_horse/walk_<dir>.png,
 assets/icons/powder_mill.png and the "powder_mill" entry of BUILDING_SIZE in scripts/art_data.gd.
 Usage (from the repo root): python3 tools/import_powder_mill.py
@@ -144,6 +153,41 @@ def stone_mask(shape, origin, st):
     return face | low | band | post
 
 
+# the runner sheet (px): the hub's centre, the stone's radius, the swingle-bar's centre, and a
+# stretch of plain timber (between the hub plate and the iron collar) that is cut out
+RUNNER_HUB = (584.0, 602.5)
+RUNNER_STONE_R = 195.0
+RUNNER_BAR_X = 1128.0
+RUNNER_CUT_FROM = 790
+RUNNER_R = 10.5      # the stone's radius in the game (the painted bed stone's is 12.2)
+TRACK_R = 18.5       # the arm's length, hub to swingle-bar: the track's half width
+
+
+def runner():
+    """The turning millstone and its arm (see the module doc): mill_runner.png, 2x."""
+    px = np.asarray(Image.open("art/crown/mill_runner_top.png").convert("RGB"))
+    border = np.concatenate([px[0], px[-1], px[:, 0], px[:, -1]]).astype(float)
+    bg = np.median(border, 0)
+    fg = np.abs(px.astype(float) - bg).max(-1) > 24
+    lab, n = ndimage.label(fg, structure=np.ones((3, 3)))
+    sizes = ndimage.sum(fg, lab, range(1, n + 1))
+    fg = ndimage.binary_fill_holes(lab == int(np.argmax(sizes)) + 1)
+    ys, xs = np.nonzero(fg)
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    img = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)
+    img[..., :3] = px[y0:y1, x0:x1]
+    img[..., 3] = np.where(fg[y0:y1, x0:x1], 255, 0)
+    img = defringe(img, bg)
+    s2 = 2.0 * RUNNER_R / RUNNER_STONE_R             # texture px per sheet px (2x oversampled)
+    cut = int(round((RUNNER_BAR_X - RUNNER_HUB[0]) - 2.0 * TRACK_R / s2))
+    c0 = RUNNER_CUT_FROM - x0
+    img = np.concatenate([img[:, :c0], img[:, c0 + cut:]], 1)
+    small = shrink(img, s2, 0.45)
+    Image.fromarray(small).save("assets/buildings/mill_runner.png")
+    hub = ((RUNNER_HUB[0] - x0) * s2, (RUNNER_HUB[1] - y0) * s2)
+    print("runner %d x %d (2x), hub (%.1f, %.1f), cut %d sheet px" % (small.shape[1], small.shape[0], hub[0], hub[1], cut))
+
+
 def horse_strips():
     ramps = np.asarray(Image.open("assets/units/horse_masks/coat_ramps.png").convert("RGB")).astype(float)
     os.makedirs("assets/buildings/mill_horse", exist_ok=True)
@@ -220,6 +264,7 @@ def main():
     icon[oy:oy + h, ox:ox + w][m] = pic[m]
     Image.fromarray(icon).save("assets/icons/powder_mill.png")
     horse_strips()
+    runner()
 
 
 if __name__ == "__main__":
