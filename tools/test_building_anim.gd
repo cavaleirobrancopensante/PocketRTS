@@ -2,9 +2,9 @@ extends SceneTree
 ## Buildings animate only while they're in use (Building.in_use):
 ##   godot --headless --fixed-fps 30 --script res://tools/test_building_anim.gd
 ##  1. the Powder Mill's horse: none while it's built up, none on the ruin; it stands still on
-##     its track while nobody works the mill, walks round it (the sweep from the post to it)
+##     its track while nobody works the mill, walks round it (the runner stone and arm turning with it)
 ##     while a Labourer works there, and comes to a halt again when he leaves; behind the post
-##     and millstone on the far half of the track, in front of them on the near half
+##     and millstone on the far half of the track (the runner over it), in front on the near half
 ##  2. the Farm's sails: still while nobody works its fields, turning while somebody does
 ##  3. the Foundry's smoke: none while it's idle, puffs while it trains something
 var main: Node
@@ -129,11 +129,11 @@ func _labourer(b: Building) -> Unit:
 func _mill() -> void:
 	var site: Building = g._add_building("powder_mill", 0, origin + Vector2i(14, 2), false)
 	await wait(0.6)
-	check(site._mill_state == "" and not site._mill_horse.visible, "no horse while the mill is built up")
+	check(site._mill_state == "" and not site._mill_horse.visible and not site._mill_run.visible, "no horse or runner while the mill is built up")
 	site.die()
 	var m: Building = g._add_building("powder_mill", 0, origin + Vector2i(2, 2), true)
 	await wait(2.0)
-	check(m._mill_state == "built" and m._mill_horse.visible and m._mill_arm.visible, "the built mill shows its horse and sweep")
+	check(m._mill_state == "built" and m._mill_horse.visible and m._mill_run.visible, "the built mill shows its horse and runner")
 	var a0: float = m._mill_a
 	await wait(1.0)
 	check(m._mill_v == 0.0 and m._mill_a == a0 and m._mill_horse.frame == 0, "nobody working it: the horse stands still")
@@ -150,28 +150,42 @@ func _mill() -> void:
 		frames[m._mill_horse.frame] = true
 		await physics_frame
 	check(frames.size() >= 3, "its walk frames play (%d seen)" % frames.size())
+	# the runner turns with the horse: its angle is the horse's, continuously (no snapping)
+	var r_ok := true
+	var r_seen := {}
+	for i in 20:
+		r_ok = r_ok and is_equal_approx(fposmod(m._mill_run_top.rotation, TAU), fposmod(m._mill_a, TAU)) \
+			and m._mill_run_under.rotation == m._mill_run_top.rotation
+		r_seen[snappedf(m._mill_run_top.rotation, 0.001)] = true
+		await physics_frame
+	check(r_ok and r_seen.size() >= 15, "worked: the runner's angle is the horse's, continuous (%d angles in 20 frames)" % r_seen.size())
+	check(is_equal_approx(m._mill_run.scale.y, 9.5 / 18.5) and m._mill_run_top.scale.y > 0.0 and m._mill_run_under.position.y > 0.0,
+		"the runner is squashed like the track, its darker copy lower")
 	# the far half: behind the post and stone, the sweep in front; the near half: in front
 	m._mill_a = PI * 1.5
 	m._place_mill_horse(true)
 	var hi: int = m._mill_horse.get_index()
-	check(m._mill_stone.visible and hi < m._mill_stone.get_index() and m._mill_stone.get_index() < m._mill_arm.get_index(),
-		"far half: the millstone over the horse, the sweep over both")
+	check(m._mill_stone.visible and hi < m._mill_stone.get_index() and m._mill_stone.get_index() < m._mill_run.get_index(),
+		"far half: the millstone over the horse, the runner over both")
 	m._mill_a = PI * 0.5
 	m._place_mill_horse(true)
-	check(not m._mill_stone.visible and m._mill_arm.get_index() < m._mill_horse.get_index(), "near half: the horse over the sweep")
-	check(m._mill_arm.get_point_position(0) == Vector2(Building.MILL_ART["states"]["built"]["post"]), "the sweep starts at the post")
+	check(not m._mill_stone.visible and m._mill_run.get_index() < m._mill_horse.get_index(), "near half: the horse over the runner")
+	check(is_equal_approx(m._mill_run_top.rotation, PI * 0.5), "the runner follows the horse to the near half (pointing at it)")
 	u.cmd_stop()
 	await wait(0.6)
 	check(m.working_crew() == 0, "the Labourer leaves")
 	await wait(2.0)
 	var a2: float = m._mill_a
 	await wait(0.5)
+	var rot2: float = m._mill_run_top.rotation
+	await wait(0.5)
 	check(m._mill_v == 0.0 and m._mill_a == a2 and m._mill_horse.frame == 0, "nobody working it: the horse halts")
+	check(m._mill_run_top.rotation == rot2 and is_equal_approx(fposmod(rot2, TAU), fposmod(a2, TAU)), "and the runner halts with it at its angle")
 	m.hp = m.max_hp * 0.3
 	m._update_sprite()
-	check(m._mill_state == "damaged" and m._mill_horse.visible, "damaged: the horse still there")
+	check(m._mill_state == "damaged" and m._mill_horse.visible and m._mill_run.visible, "damaged: the horse and runner still there")
 	m.die()
-	check(m._mill_state == "" and not m._mill_horse.visible, "destroyed: no horse")
+	check(m._mill_state == "" and not m._mill_horse.visible and not m._mill_run.visible, "destroyed: no horse or runner")
 
 
 func _farm() -> void:

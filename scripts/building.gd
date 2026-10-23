@@ -61,8 +61,9 @@ var scarecrow_sprites: Array = []   # Farm: its scarecrows out in the crops
 # Powder Mill: the horse walking its track (MILL_ART)
 var _mill_horse: Sprite2D = null
 var _mill_stone: Sprite2D = null      # the post and millstone, over the horse behind them
-var _mill_arm: Line2D = null          # the sweep: its dark edge
-var _mill_arm_in: Line2D = null       # and its wood
+var _mill_run: Node2D = null          # the runner stone and arm: turned by _mill_a, squashed like the track
+var _mill_run_top: Sprite2D = null    # (its two sprites: the main one, and its darker copy under it)
+var _mill_run_under: Sprite2D = null
 var _mill_state := ""                 # the state whose track it walks ("": no horse)
 var _mill_a := 0.0                    # where it is on the track (angle)
 var _mill_v := 0.0                    # 0 standing .. 1 walking (eased)
@@ -143,15 +144,18 @@ const FARM_ART := {
 
 ## The Powder Mill is a horse mill (tools/import_powder_mill.py makes the art): while it is
 ## worked (in_use) a harnessed horse walks round the dirt track at the front right, turning the
-## millstone by a wooden sweep from the centre post's top to the horse's chest. Per state that
+## runner stone by a timber arm from the hub to the horse's harness. Per state that
 ## shows the track (the others: no horse), from the base point: the track's `centre` (on the
 ## ground) and `radius` (an ellipse), and the `post`'s top. The horse: a bay team horse shrunk to
 ## the mill (walk_<dir>, `frames` a strip, its hooves at `anchor`), facing the way it walks
-## (Unit.DIR_FLIP, mirrored for the west); `chest`: where the sweep meets it, from its hooves,
-## facing right. On the far half of the track it walks behind the post and millstone (`stone`:
-## their pixels alone, drawn over it) with the sweep in front of it; on the near half in front
-## of them, the sweep behind it. One lap every `lap` s, walk frames at `fps`; it eases into its
-## walk and to a halt over `ease` s.
+## (Unit.DIR_FLIP, mirrored for the west). The `runner` (a top-down picture, 2x oversampled, its
+## `hub` the pivot in texture px, the swingle-bar a track radius from it) is one sprite turned by
+## the horse's angle on the track, inside a node squashed like the track (so: turned first,
+## squashed after), over its own darker copy `depth` px lower; per state it is `lift` px above
+## the track's centre, at harness height. On the far half of the track the horse walks behind
+## the post and millstone (`stone`: their pixels alone, drawn over it) and the runner is over it;
+## on the near half the horse is in front of both. One lap every `lap` s, walk frames at `fps`;
+## it eases into its walk and to a halt over `ease` s.
 const MILL_ART := {
 	"horse": "res://assets/buildings/mill_horse/walk_%s.png", "frames": 6, "anchor": Vector2(24, 29),
 	"stone": "res://assets/buildings/powder_mill_stone_%s.png",
@@ -159,9 +163,8 @@ const MILL_ART := {
 		"built": {"centre": Vector2(31, -24), "radius": Vector2(18.5, 9.5), "post": Vector2(31, -33)},
 		"damaged": {"centre": Vector2(32, -22.5), "radius": Vector2(18.5, 9.5), "post": Vector2(32, -33)},
 	},
-	"chest": {"e": Vector2(10, -17), "se": Vector2(6, -19), "s": Vector2(0, -16), "ne": Vector2(8, -21), "n": Vector2(0, -20)},
+	"runner": "res://assets/buildings/mill_runner.png", "hub": Vector2(21.6, 21.9), "depth": 3.5, "lift": 8.0,
 	"lap": 7.0, "fps": 7.0, "ease": 1.5,
-	"arm": Color(0.56, 0.36, 0.17), "arm_edge": Color(0.17, 0.10, 0.05),
 }
 
 ## The tip of each Clockwork tower, where its lightning lives.
@@ -304,7 +307,7 @@ func _farm_art() -> void:
 		scarecrow_sprites.append(s)
 
 
-## The Powder Mill's horse, sweep and millstone overlay (MILL_ART), over its body; hidden
+## The Powder Mill's horse, runner and millstone overlay (MILL_ART), over its body; hidden
 ## until a state with a track shows (_update_sprite).
 func _mill_art() -> void:
 	_mill_horse = Sprite2D.new()
@@ -313,22 +316,31 @@ func _mill_art() -> void:
 	_mill_horse.hframes = int(MILL_ART["frames"])
 	_mill_stone = Sprite2D.new()
 	_mill_stone.centered = false
-	_mill_arm = _sweep(3.0, MILL_ART["arm_edge"])
-	_mill_arm_in = _sweep(1.0, MILL_ART["arm"])
-	for n: CanvasItem in [_mill_horse, _mill_stone, _mill_arm, _mill_arm_in]:
+	_mill_runner()
+	for n: CanvasItem in [_mill_horse, _mill_stone, _mill_run]:
 		n.visible = false
 		add_child(n)
 	_mill_a = float(posmod(hash(cell), 360)) * PI / 180.0     # (not every mill in step)
 
 
-static func _sweep(w: float, c: Color) -> Line2D:
-	var l := Line2D.new()
-	l.width = w
-	l.default_color = c
-	l.antialiased = false
-	l.add_point(Vector2.ZERO)
-	l.add_point(Vector2.ZERO)
-	return l
+## The runner stone and arm: a node squashed like the track, its sprites turned inside it (so
+## the squash comes after the turn), the hub at the node's origin, the darker copy under.
+func _mill_runner() -> void:
+	_mill_run = Node2D.new()
+	_mill_run.scale.y = float(MILL_ART["states"]["built"]["radius"].y) / float(MILL_ART["states"]["built"]["radius"].x)
+	var tex := Game.tex(String(MILL_ART["runner"]))
+	for i in 2:
+		var sp := Sprite2D.new()
+		sp.texture = tex
+		sp.centered = false
+		sp.offset = -Vector2(MILL_ART["hub"])
+		sp.scale = Vector2(0.5, 0.5)
+		if i == 0:
+			sp.modulate = Color(0.55, 0.55, 0.55)
+			sp.position.y = float(MILL_ART["depth"]) / _mill_run.scale.y
+		_mill_run.add_child(sp)
+	_mill_run_under = _mill_run.get_child(0)
+	_mill_run_top = _mill_run.get_child(1)
 
 
 ## Shows the horse for this state (or hides it).
@@ -338,8 +350,7 @@ func _mill_show(state: String) -> void:
 		_mill_state = ms
 		_mill_far = -1
 		_mill_horse.visible = ms != ""
-		_mill_arm.visible = ms != ""
-		_mill_arm_in.visible = ms != ""
+		_mill_run.visible = ms != ""
 		_mill_stone.visible = false
 		if ms != "":
 			_mill_stone.texture = Game.tex(String(MILL_ART["stone"]) % ms)
@@ -364,7 +375,7 @@ func _turn_mill(delta: float) -> void:
 	_place_mill_horse(_mill_v > 0.05)
 
 
-## The horse where _mill_a puts it, facing along the track, its sweep from the post, and
+## The horse where _mill_a puts it, facing along the track, the runner turned with it, and
 ## the draw order for the half of the track it's on.
 func _place_mill_horse(walking: bool) -> void:
 	var st: Dictionary = MILL_ART["states"][_mill_state]
@@ -380,24 +391,17 @@ func _place_mill_horse(walking: bool) -> void:
 	_mill_horse.flip_h = df[1]
 	_mill_horse.frame = int(_mill_f) % _mill_horse.hframes if walking else 0
 	_mill_horse.position = p
-	var chest: Vector2 = MILL_ART["chest"][dr]
-	if df[1]:
-		chest.x = -chest.x
-	var post: Vector2 = st["post"]
-	if dr == "s" or dr == "n":
-		chest.x = 4.0 * signf(post.x - p.x)     # (from the front or behind: its side towards the post)
-	_mill_arm.set_point_position(0, post)
-	_mill_arm.set_point_position(1, p + chest)
-	_mill_arm_in.set_point_position(0, post)
-	_mill_arm_in.set_point_position(1, p + chest)
+	_mill_run.position = Vector2(st["centre"]) - Vector2(0, float(MILL_ART["lift"]))
+	_mill_run_top.rotation = _mill_a
+	_mill_run_under.rotation = _mill_a
 	var far := 1 if sin(_mill_a) < 0.0 else 0
 	if far != _mill_far:
 		_mill_far = far
 		_mill_stone.visible = far == 1
-		# far: the horse, the post and stone over it, the sweep in front; near: the sweep
-		# (meeting the horse's far side), the horse over it
-		var order: Array = [_mill_horse, _mill_stone, _mill_arm, _mill_arm_in] if far == 1 \
-			else [_mill_stone, _mill_arm, _mill_arm_in, _mill_horse]
+		# far: the horse, the post and stone over it, the runner in front; near: the runner
+		# (its arm meeting the horse's far side), the horse over it
+		var order: Array = [_mill_horse, _mill_stone, _mill_run] if far == 1 \
+			else [_mill_stone, _mill_run, _mill_horse]
 		var i0 := sprite.get_index()
 		for i in order.size():
 			move_child(order[i], i0 + 1 + i)

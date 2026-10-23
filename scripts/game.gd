@@ -3478,6 +3478,7 @@ func requirement_met(t: int, k: String) -> bool:
 
 
 var _sweep_pos := {}       # sweep_ghosts: a ghost's instance id -> where its worker was last time
+var _ghost_t := 0.2
 var _crown_orphan := {}    # sweep_ghosts: a Crown ghost's instance id -> sweeps in a row nobody was coming
 
 
@@ -3491,7 +3492,7 @@ var _crown_orphan := {}    # sweep_ghosts: a Crown ghost's instance id -> sweeps
 ## so a Crown ghost is kept while it is in such a chain from a site a Labourer is coming to;
 ## it goes after two sweeps in a row with nobody coming. Sites already begun (Crown: any
 ## progress) are never swept. Run about once a second (from the tick).
-func sweep_ghosts() -> void:
+func sweep_ghosts(quick := false) -> void:
 	var sites: Array = []
 	if not _sweep_pos.is_empty():
 		for id in _sweep_pos.keys():
@@ -3516,10 +3517,9 @@ func sweep_ghosts() -> void:
 			var cid: int = b.get_instance_id()
 			if crown_kept.has(b):
 				continue
-			orphans[cid] = int(_crown_orphan.get(cid, 0)) + 1
-			if int(orphans[cid]) >= 2:
-				orphans.erase(cid)
-				site_failed(b, "abandoned")
+			# a Crown ghost only exists while a Labourer is on his way to it (or has it
+			# queued): nobody coming, it's gone at once (refunded)
+			site_failed(b, "abandoned")
 			continue
 		var coming: Unit = null
 		for u in units:
@@ -3540,6 +3540,8 @@ func sweep_ghosts() -> void:
 		if coming == null:
 			if b.ghost or b.d["faction"] == "brood":
 				site_failed(b, "abandoned")
+			continue
+		if quick:
 			continue
 		var id: int = b.get_instance_id()
 		if not b.ghost or coming.order != "build" or coming.order_target != b or coming.work != "to_site":
@@ -6001,6 +6003,11 @@ func _tick_game(delta: float) -> void:
 		_end_t = 1.0
 		_check_end()
 		sweep_ghosts()
+		_ghost_t = 0.2
+	_ghost_t -= delta
+	if _ghost_t <= 0.0:
+		_ghost_t = 0.2
+		sweep_ghosts(true)       # (between the full sweeps: orphaned ghosts go at once)
 	_refit_t -= delta
 	if _refit_t <= 0.0:
 		_refit_t = float(Defs.REFIT["scan"])
