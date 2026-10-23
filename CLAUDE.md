@@ -9,6 +9,7 @@
 
 - **Finishing the Barracks, Horse Breeder and Armoury animation packs.** The Armoury's nine
   research experiments (inventor on the rooftop) are drawn and in `art/crown/armoury_anim/`; the
-  importer and the in-game playback are not written yet. The Barracks and Horse Breeder lists
-  are still to come from the user. Plan, frame lists, prompts and status: `docs/animation_packs.md`.
+  importer and the in-game playback are not written yet. The Barracks (8 units) and Horse Breeder (horse) animations
+  are not drawn yet. The rule: a building's animation matches what it is producing or researching
+  right now. Plan, frame lists, prompts and status: `docs/animation_packs.md`.
   Update that file's status table when you land a piece, so other agents can tell what is done.

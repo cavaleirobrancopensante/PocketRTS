@@ -1,14 +1,19 @@
 # Animation packs: Armoury, Barracks, Horse Breeder
 
 **Status (2026-10-23): in progress. Goal: finish the Barracks, Horse Breeder and Armoury animation packs.**
+
+**Design rule (from the user): a building's animation matches what it is doing.** A production
+building (Barracks, Horse Breeder) shows an animation for the thing it is producing right now;
+a research building (Armoury) shows the experiment for the research it is working on. Idle, it
+shows its plain built picture. The animation is driven by the production queue's head item.
 Other agents: read this before touching building art or `building.gd` animation, and update the
 status lines below as work lands (one line per pack, newest state wins).
 
 | Pack | Art | Import script | In game |
 | --- | --- | --- | --- |
 | Armoury research experiments (9) | **delivered**, 6 sheets in `art/crown/armoury_anim/` | not written | not started |
-| Barracks | not specified yet (the user will add the list) | not written | not started |
-| Horse Breeder | not specified yet (the user will add the list) | not written | not started |
+| Barracks (production: one animation per unit, 8 buttons) | not drawn yet | not written | not started |
+| Horse Breeder (production: HORSE) | not drawn yet | not written | not started |
 
 Buildings today only have four still states (`assets/buildings/<kind>_{built,construction,damaged,destroyed}.png`)
 plus code-drawn effects (`Building.IDLE_FX`, in use only). None of these packs exists in the game yet.
@@ -56,16 +61,43 @@ Prompt 1 (armour) is the model; the others reuse its opening paragraph and chang
 
 For the Cavalry Charge, add: "Reference 3 is a wooden vaulting horse on a frame, which the scientist will ride."
 
-### Plan (proposed: confirm with the user before building the in-game part)
+### Plan
 
 1. `tools/import_armoury_anims.py` (re-runnable, like `import_armoury.py`): cut each sheet into its rows and 6 frames, key out the navy, one scale for every frame, the man's feet at the same anchor, snap team reds with `snap_team`. Output `assets/buildings/armoury_anim_<research id>_<1..6>.png`.
-2. `building.gd`: while the Armoury has a research at the head of its production queue (and `in_use()`), draw that research's 6 frames over the research time (frame = progress x 6); idle or empty queue shows the plain built Armoury. Frames are not saved; they follow the queue's progress.
+2. `building.gd`: while the Armoury has a research at the head of its production queue (and `in_use()`), draw that research's 6 frames over the research time (frame = progress x 6); idle or empty queue shows the plain built Armoury. Frames are not saved; they follow the queue's progress. The Barracks and Horse Breeder will reuse the same hook, keyed by the unit in production.
 3. A test in the style of the existing ones (`test_brood_hall`), then bump the version (`tools/bump_version.sh`) and update the README's Armoury paragraph.
 
 ## Barracks and Horse Breeder
 
-Not specified yet. When the user gives the lists, add them here in the same form (file, frames,
-what each frame shows, which building state or order plays it) and fill in the table at the top.
+Same rule as the Armoury: while the head of the queue is being trained, the building plays the
+animation for that product. Nothing is drawn for either yet.
+
+**Barracks** trains eight things (`Defs` kinds `musketeer`, `dragoon`, `cuirassier`, `dismounted`;
+light and armoured versions share a kind, so the armoured flag picks the picture). One animation each:
+
+| Product | Button |
+| --- | --- |
+| Musketeer | A |
+| Guardsman (armoured Musketeer) | S |
+| Horseman | D |
+| Cuirassier (armoured Horseman) | C |
+| Dragoon | F |
+| Armoured Dragoon | V |
+| Officer | G |
+| Armoured Officer | B |
+
+Art to draw: 8 short animations on the Barracks' own drill yard (the yard row of
+`art/crown/buildings_v2/barracks.png`: pike racks, straw target, fence). Frame counts and what
+each shows are still to be decided with the user.
+
+**Horse Breeder** trains one thing, a **horse** (40 gold, 15 s). Art to draw: one animation of a
+horse being trained in the paddock (yard row of `art/crown/buildings_v2/horse_breeder.png`:
+trough, hay, saddle, fence). Open question: one animation for every coat, or the coat of the
+horse in production.
+
+Note: `art/crown/buildings_v2/` (Barracks, Horse Breeder, Armoury, Church, Town Hall) holds the new
+building sheets, with the four states on top and the bare yard in the same four states below. No
+importer reads them yet; the game still shows the older pictures in `assets/buildings/`.
 
 ## Conventions for this work
 
