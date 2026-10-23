@@ -1952,8 +1952,12 @@ const BROOD_PIT_UNCAPPED := 999
 func capital(t: int) -> Building:
 	if faction_of(t) != "brood":
 		return null
-	var c: Building = _capital.get(t)
-	if c != null and is_instance_valid(c) and not c.dead and c.built:
+	var c = _capital.get(t)      # (untyped: a freed Burrow, after a load, can't be held in a typed variable)
+	var had: bool = c != null
+	if had and not is_instance_valid(c):
+		c = null
+		had = _capital_soil.has(t)
+	if c != null and not c.dead and c.built:
 		_capital_soil[t] = c.soil
 		return c
 	_capital[t] = null
@@ -1961,7 +1965,7 @@ func capital(t: int) -> Building:
 		if b.team == t and b.kind == "hive" and b.built and not b.dead:
 			_capital[t] = b
 			b.queue_redraw()
-			if c != null:
+			if had and _capital_soil.has(t):
 				b.soil = float(_capital_soil.get(t, b.soil))      # (the ground is the capital's: it passes on as it was)
 				b.soil_warned = 2 if b.soil <= 0.0 else (1 if b.soil / b.reserve() < Defs.SOIL_LOW else 0)
 				if mlog:

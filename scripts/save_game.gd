@@ -483,6 +483,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			game._push_units_out(blk)
 	for t in game.n_players():
 		game._recount_supply(t)
+	game._capital.clear()          # (the capital is found again from the loaded Burrows)
+	game._capital_soil.clear()
 	game.swamp_dirty = true
 	game._update_swamp()
 	game._astar_dirty = true
