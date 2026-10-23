@@ -3438,7 +3438,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 				site = b.worker_rally_target
 			elif not b.dual_rally() and b.rally_target is Building:
 				site = b.rally_target
-			if site == null or site.dead or site.crew.size() >= int(site.d.get("crew", 0)):
+			if site == null or site.dead or site.crew.size() >= Defs.crew_cap(site.d):
 				var was_site := site != null and not site.dead
 				site = null
 				var rp: Vector2 = b.worker_rally if b.dual_rally() else b.rally
@@ -3461,7 +3461,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 				if owner != null:
 					u.horse_rid = rid
 					if owner is Building:
-						if not (owner as Building).can_train("cuirassier"):
+						if not (owner as Building).can_train("cuirassier") and not hauler_serves_rid(b.team, rid):
 							u.walk_into(owner)
 					continue
 			if b.rally != Vector2.INF:
@@ -5457,51 +5457,217 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 			b.take_damage(dmg, src)
 
 
-## A Powder Wagon on SUPPLY wants kegs: up to WAGON.runners labourers (idle or working,
-## those grinding at the mill last) run them from the nearest Powder Mill.
-func call_runners(w: Unit) -> void:
-	if w.max_powder() - w.powder < float(Defs.WAGON["keg"]):
-		return
-	if w._powder_building() != null:
-		return                         # (by a Mill, Barracks or Hall it fills by itself)
-	var have := 0
+# ------------------------------------------------------------------ haulers (Defs.HAUL)
+## Workers assigned to a Town Hall carry what the base asks for. A request exists as long as
+## its demand does (a queue entry holding a horse reservation, a Powder Wagon on SUPPLY with
+## room for a keg, a gun with fewer horses than its team_want) and is served in order, oldest
+## first, by the nearest hauler who is free. A horse is claimed (Unit.claimed, kept by the
+## hauler's haul_job) and a keg counted against the wagon's room the moment it is given out, so
+## two haulers never take the same one; whatever cuts a job short (the hauler killed or ordered
+## elsewhere, the building gone) lifts the claim: the request is simply served again.
+
+## A side's Town Halls (finished, standing) that take haulers.
+func haul_halls(t: int) -> Array:
+	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.built and not b.dead and b.haul_cap() > 0)
+
+
+## A side's haulers (assigned to its Town Halls, alive).
+func haulers_of(t: int) -> Array:
+	var out: Array = []
+	for b in haul_halls(t):
+		out.append_array(b.haulers())
+	return out
+
+
+## Has this side a hauler at all?
+func hauler_serves(t: int) -> bool:
+	for b in buildings:
+		if b.team == t and b.built and not b.dead and b.haul_cap() > 0 and not b.haulers().is_empty():
+			return true
+	return false
+
+
+var _rid_wait := {}                 # horse reservation -> seconds its horse stood ready with no hauler coming
+
+
+## Is the horse kept for `rid` brought by a hauler (the side has some, and this horse hasn't
+## waited longer than Defs.HAUL.stale for one)? If not, its recruit or gun fetches it itself.
+func hauler_serves_rid(t: int, rid: int) -> bool:
+	return hauler_serves(t) and float(_rid_wait.get(rid, 0.0)) < float(Defs.HAUL["stale"])
+
+
+## A horse nobody has a hold of.
+func horse_unclaimed(h: Unit) -> bool:
+	return h.into == null and h.leader == null and h.bolt_t <= 0.0 and not h.off_field and not Unit._claim_live(h)
+
+
+## Where a led horse goes: the building holding its reservation, the new rider waiting on foot
+## for it, or (a team job) the gun; null once nobody wants it.
+func haul_dest(u: Unit, h: Unit) -> Entity:
+	if String(u.haul_job.get("k", "")) == "team":
+		var g = u.haul_job.get("gun")
+		if g != null and is_instance_valid(g) and not g.dead and g.team_room():
+			return g
+		return null
+	return rid_owner(h.team, h.horse_rid) as Entity
+
+
+## The horses asked for by reservations: [{key, k: "horse", rid, dest, horse (or null: still
+## being trained), ready}].
+func horse_requests(t: int) -> Array:
+	var out: Array = []
+	for b in buildings:
+		if b.team != t or b.dead or not b.built or b.kind == "horse_breeder":
+			continue
+		for kt in b.kits:
+			if kt is Dictionary and int(kt.get("rid", 0)) != 0:
+				var rid := int(kt["rid"])
+				var h := reserved_horse(t, rid)
+				out.append({"key": "h%d" % rid, "k": "horse", "rid": rid, "dest": b, "horse": h, "ready": h != null and horse_unclaimed(h)})
 	for u in units:
-		if u.team == w.team and not u.dead and u.order == "keg" and u.order_target == w:
-			have += 1
-	if have >= int(Defs.WAGON["runners"]):
+		if u.team == t and not u.dead and u.horse_rid != 0 and u.kind != "horse" and Defs.RIDERS.values().has(u.kind):
+			var h2 := reserved_horse(t, u.horse_rid)
+			out.append({"key": "h%d" % u.horse_rid, "k": "horse", "rid": u.horse_rid, "dest": u, "horse": h2, "ready": h2 != null and horse_unclaimed(h2)})
+	return out
+
+
+## Guns and wagons with fewer horses (and none on the way) than their team_want.
+func team_requests(t: int) -> Array:
+	var out: Array = []
+	for g in units:
+		if g.team != t or g.dead or g.team_want <= 0 or not Defs.HARNESSED.has(g.kind) or g.off_field or g.aboard != null:
+			continue
+		var home := nearest_hall(g.position, t)
+		if home == null or home.edge_distance(g.position) > 16.0 * T:
+			continue                 # (out in the field: not worth the walk)
+		var coming := units.filter(func(h: Unit) -> bool: return h.kind == "horse" and not h.dead and h.into == g).size()
+		for u in haulers_of(t):
+			if String(u.haul_job.get("k", "")) == "team" and u.haul_job.get("gun") == g:
+				coming += (u.haul_job.get("want", []) as Array).size() + u.led.size()
+		var missing: int = g.team_want - g.horse_count() - coming
+		if missing > 0:
+			out.append({"key": "t%d" % g.get_instance_id(), "k": "team", "gun": g, "n": missing})
+	return out
+
+
+## Powder Wagons on SUPPLY (out of reach of a filling building) with room for more kegs than
+## are already on the way; the powder bank must have a keg's worth.
+func keg_requests(t: int) -> Array:
+	var out: Array = []
+	var shots := float(Defs.WAGON["keg"])
+	if float(players[t]["res2"]) < shots / float(Defs.WAGON["per_powder"]):
+		return out
+	var mills := buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == "powder_mill" and b.built and not b.dead)
+	if mills.is_empty():
+		return out
+	var hs := haulers_of(t)
+	for w in units:
+		if w.team != t or w.kind != "powder_wagon" or w.dead or w.off_field or not w.supplying or w._powder_building() != null:
+			continue
+		var flying := hs.filter(func(u: Unit) -> bool: return String(u.haul_job.get("k", "")) == "keg" and u.haul_job.get("wagon") == w).size()
+		var n := mini(int(Defs.HAUL["kegs"]) - flying, int((w.max_powder() - w.powder) / shots) - flying)
+		if n > 0:
+			out.append({"key": "k%d" % w.get_instance_id(), "k": "keg", "wagon": w, "n": n})
+	return out
+
+
+var _haul_t := 0.0
+var _haul_seen := {}                # request key -> clock it first appeared (oldest is served first)
+
+
+## Every Defs.HAUL.scan s: give the free haulers of each side the requests of its base.
+func haul_dispatch(delta: float) -> void:
+	_haul_t -= delta
+	if _haul_t > 0.0:
 		return
-	if nearest_of(w.position, w.team, "powder_mill") == null:
-		return
-	# who goes: idle labourers first, nearest the wagon; with none idle, men taken off the
-	# work the side can best spare: the farms or the mills, whichever resource is better
-	# off counting what's banked and what comes in a minute (powder worth 3 gold)
-	var spare := _spare_job(w.team)
-	for i in int(Defs.WAGON["runners"]) - have:
-		var best: Unit = null
-		var bd := INF
-		for u in units:
-			if u.team != w.team or u.dead or u.off_field or u.kind != "labourer" or u.keg \
-					or not ((u.order == "idle" and u.auto_work) or u.order == "gather"):
+	_haul_t = float(Defs.HAUL["scan"])
+	var live := {}
+	for t in n_players():
+		var free: Array = haulers_of(t).filter(func(u: Unit) -> bool: return u.haul_job.is_empty() \
+			or (String(u.haul_job.get("ph", "")) == "home" and u.led.is_empty() and not u.keg))
+		if haulers_of(t).is_empty():
+			continue
+		var reqs: Array = horse_requests(t) + team_requests(t) + keg_requests(t)
+		for r in reqs:
+			live[r["key"]] = true
+			if not _haul_seen.has(r["key"]):
+				_haul_seen[r["key"]] = clock
+			r["age"] = _haul_seen[r["key"]]
+		if free.is_empty():
+			continue
+		reqs.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["age"]) < float(b["age"]))
+		var taken := {}
+		for r in reqs:
+			if free.is_empty():
+				break
+			if taken.has(r["key"]):
 				continue
-			var dd: float = u.position.distance_to(w.position)
-			if u.order == "gather":
-				var job: String = (u.home_mine as Building).kind if u.home_mine is Building else ""
-				dd += 2000.0 if job == spare else 6000.0
-			if dd < bd:
-				bd = dd
-				best = u
-		if best == null:
-			return
-		best.cmd_keg(w)
+			match String(r["k"]):
+				"horse":
+					if not r["ready"]:
+						continue
+					var h: Unit = r["horse"]
+					var u := _nearest_free_hauler(free, h.position)
+					free.erase(u)
+					var want: Array = [h]
+					taken[r["key"]] = true
+					for r2 in reqs:
+						if want.size() >= int(Defs.HAUL["horses"]):
+							break
+						if r2["k"] == "horse" and r2["ready"] and not taken.has(r2["key"]) \
+								and (r2["horse"] as Unit).position.distance_to(h.position) < float(Defs.HAUL["batch"]) * T:
+							want.append(r2["horse"])
+							taken[r2["key"]] = true
+					u.begin_haul({"k": "horse", "ph": "fetch", "want": want})
+					for x in want:
+						x.claimed = u
+				"team":
+					var g: Unit = r["gun"]
+					var sp := spare_horse(t, g)
+					if sp == null:
+						continue
+					var u2 := _nearest_free_hauler(free, sp.position)
+					free.erase(u2)
+					var want2: Array = [sp]
+					u2.begin_haul({"k": "team", "ph": "fetch", "want": want2, "gun": g})
+					sp.claimed = u2
+					while want2.size() < mini(int(r["n"]), int(Defs.HAUL["horses"])):
+						var more := spare_horse(t, g)
+						if more == null:
+							break
+						want2.append(more)
+						more.claimed = u2
+				"keg":
+					for i in int(r["n"]):
+						if free.is_empty():
+							break
+						var u3 := _nearest_free_hauler(free, (r["wagon"] as Unit).position)
+						free.erase(u3)
+						u3.begin_haul({"k": "keg", "ph": "to_mill", "wagon": r["wagon"]})
+	for k in _haul_seen.keys():
+		if not live.has(k):
+			_haul_seen.erase(k)
 
 
-## Which labourers' work a side can best spare for a while: "farm" (gold) or
-## "powder_mill" (powder), whichever resource is better off, bank plus a minute's income.
-func _spare_job(t: int) -> String:
-	var r := income_rates(t)
-	var gold := float(players[t]["gold"]) + r.x * 60.0
-	var powder := (float(players[t]["res2"]) + r.y * 60.0) * 3.0
-	return "farm" if gold >= powder else "powder_mill"
+func _nearest_free_hauler(free: Array, p: Vector2) -> Unit:
+	var best: Unit = free[0]
+	var bd := INF
+	for u in free:
+		var dd: float = u.position.distance_squared_to(p)
+		if dd < bd:
+			bd = dd
+			best = u
+	return best
+
+
+## A hauler has delivered something (a statistic and the match log's first of each).
+func haul_done(t: int, what: String) -> void:
+	if t < 0 or t >= stats.size():
+		return
+	stats[t]["hauled_" + what] = int(stats[t].get("hauled_" + what, 0)) + 1
+	if mlog and not _first_of.has("%d:hauled_%s" % [t, what]):
+		_first_of["%d:hauled_%s" % [t, what]] = true
+		mlog.add("%s's first %s hauled by a hauler" % [mlog.who(t), what])
 
 
 var _income_log := {}                    # team -> [[clock, gold earned, res2 earned], ...]
@@ -6279,7 +6445,7 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 		load_order(us, [e])
 		_ping(p, Color(0.4, 1, 0.4))
 		return
-	if e is Building and e.team == us[0].team and e.built and int(e.d.get("crew", 0)) > 0 \
+	if e is Building and e.team == us[0].team and e.built and Defs.crew_cap(e.d) > 0 \
 			and us.any(func(u: Unit) -> bool: return u.can_gather()):
 		for u in us:
 			if u.can_gather():
@@ -6427,7 +6593,7 @@ func command_all(list: Array, what: String) -> void:
 func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 	var e := entity_at(p)
 	if b.dual_rally():
-		var site: bool = e is Building and e.team == b.team and int(e.d.get("crew", 0)) > 0
+		var site: bool = e is Building and e.team == b.team and Defs.crew_cap(e.d) > 0
 		if which == "auto":
 			which = "worker" if site else "army"
 		if which == "worker":
@@ -6438,7 +6604,7 @@ func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 		b.rally_target = e if e is Unit and e.team == b.team and not e.dead and e.kind != "horse" else null
 		return
 	b.rally = p
-	b.rally_target = e if e is Building and e.team == b.team and int(e.d.get("crew", 0)) > 0 else null
+	b.rally_target = e if e is Building and e.team == b.team and Defs.crew_cap(e.d) > 0 else null
 	if e is Unit and e.team == b.team and not e.dead and e.kind != "horse":
 		b.rally_target = e        # (a unit of ours: the rally follows it, new ones follow it)
 
@@ -6464,8 +6630,9 @@ func labourers(t: int) -> Array:
 	return workers(t)
 
 
+## Workers not tied to a Town Hall (the haulers are counted by their hall: Building.haulers).
 func workers(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.is_worker() and u.aboard == null)
+	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.is_worker() and u.aboard == null and not u.is_hauler())
 
 
 func center_of_team(t: int) -> Vector2:
@@ -6521,6 +6688,20 @@ func _tex_top(tex: Texture2D) -> float:
 	return _tex_tops[k]
 
 
+## Over your Town Hall: its haulers, free / assigned ("1/2": two assigned, one out on a job;
+## "0/0": none yet). White when all are free, amber when some are out, grey with none.
+func _draw_hauler_label(font: Font, b: Building) -> void:
+	var hs := b.haulers()
+	var free := b.haulers_free()
+	var txt := "%d/%d" % [free, hs.size()]
+	var sz := 15
+	var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+	var p := Vector2(b.global_position.x - w * 0.5, b.global_position.y + b.bar_top() - 7.0)
+	overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.6))
+	var col := Color(0.6, 0.6, 0.6) if hs.is_empty() else (Color(1, 1, 1) if free == hs.size() else Color(1.0, 0.75, 0.3))
+	overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+
+
 ## Over your economy buildings: the crew (X/Y) and the efficiency bar with its % (see
 ## Building.efficiency): one compact strip, readable on a phone.
 func _draw_mine_labels() -> void:
@@ -6530,6 +6711,9 @@ func _draw_mine_labels() -> void:
 			continue
 		if not view_rect.has_point(b.global_position):
 			continue        # (off screen; the overlay is redrawn 4 times a second at least)
+		if b.haul_cap() > 0:
+			_draw_hauler_label(font, b)
+			continue
 		var crew_max := int(b.d.get("crew", 0))
 		var eff: Array = b.efficiency()
 		if crew_max == 0 and eff.is_empty():
@@ -6703,7 +6887,7 @@ func free_horse_at(b: Building) -> Unit:
 	for u in units_near(b.center(), maxf(b.rect().size.x, b.rect().size.y) * 0.75 + reach + 20.0):
 		if u.kind != "horse" or u.dead or u.off_field or u.team != b.team or u.into != null or u.horse_rid != 0:
 			continue
-		if u.claimed != null and is_instance_valid(u.claimed) and not u.claimed.dead and u.claimed.order_target == u:
+		if u.claimed != null and is_instance_valid(u.claimed) and not u.claimed.dead and u.claimed.is_coming_for(u):
 			continue
 		var dd: float = b.edge_distance(u.position)
 		if dd <= reach + u.radius and dd < bd:
@@ -6740,7 +6924,7 @@ func breeder_with_room(t: int, p: Vector2) -> Building:
 
 ## A free horse of ours (not reserved, led, claimed or walking anywhere) standing within
 ## HORSES.near_breeder tiles of one of our breeders, nearest `to`; or null.
-func spare_horse(t: int, to: Building) -> Unit:
+func spare_horse(t: int, to: Entity) -> Unit:
 	var brs := breeders_of(t)
 	if brs.is_empty():
 		return null
@@ -6750,7 +6934,7 @@ func spare_horse(t: int, to: Building) -> Unit:
 	for h in horses_of(t):
 		if h.off_field or h.into != null or h.horse_rid != 0 or h.leader != null or h.order == "move":
 			continue
-		if h.claimed != null and is_instance_valid(h.claimed) and not h.claimed.dead and h.claimed.order_target == h:
+		if h.claimed != null and is_instance_valid(h.claimed) and not h.claimed.dead and h.claimed.is_coming_for(h):
 			continue
 		if not brs.any(func(br: Building) -> bool: return br.edge_distance(h.position) <= reach + h.radius):
 			continue
@@ -6777,8 +6961,8 @@ func _reserve_horse(b: Building, k: String, rid: int, pay: bool) -> bool:
 	if h:
 		h.horse_rid = rid
 		h.cmd_stop()
-		if not Defs.RIDERS.has(k):
-			h.walk_into(b)
+		if not Defs.RIDERS.has(k) and not hauler_serves_rid(b.team, rid):
+			h.walk_into(b)           # (with haulers about, one fetches it: haul_dispatch)
 		return true
 	var br := breeder_with_room(b.team, b.center())
 	if br == null:
@@ -6866,8 +7050,8 @@ func fetch_reserved(b: Building, i: int) -> void:
 		return
 	var h := reserved_horse(b.team, rid)
 	if h:
-		if h.into != b and h.leader == null:
-			h.walk_into(b)
+		if h.into != b and h.leader == null and not Unit._claim_live(h) and not hauler_serves_rid(b.team, rid):
+			h.walk_into(b)           # (no hauler to bring it, or none came in time: it walks by itself)
 		return
 	if rid_breeder(b.team, rid) != null:
 		return
@@ -6879,10 +7063,23 @@ var _res_chk := 0.0
 ## Every 2 s: a horse kept for a recruit that's gone (cancelled, killed, mounted elsewhere)
 ## is free again.
 func _horse_res_tick(delta: float) -> void:
+	haul_dispatch(delta)
 	_res_chk -= delta
 	if _res_chk > 0.0:
 		return
 	_res_chk = 2.0
+	# how long each kept horse has stood ready with no hauler on its way (Defs.HAUL.stale
+	# seconds: then its recruit or gun fetches it by itself)
+	var seen := {}
+	for t in n_players():
+		if not hauler_serves(t):
+			continue
+		for r in horse_requests(t):
+			seen[r["rid"]] = true
+			_rid_wait[r["rid"]] = (float(_rid_wait.get(r["rid"], 0.0)) + 2.0) if r["ready"] else 0.0
+	for k in _rid_wait.keys():
+		if not seen.has(k):
+			_rid_wait.erase(k)
 	for h in units:
 		if h.kind == "horse" and not h.dead and h.horse_rid != 0 and rid_owner(h.team, h.horse_rid) == null:
 			h.horse_rid = 0

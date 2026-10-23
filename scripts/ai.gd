@@ -3105,11 +3105,6 @@ func _micro() -> void:
 
 # ------------------------------------------------------------------ horses (Crown)
 
-var _groom: Unit = null         # Crown: the Labourer leading horses to the Barracks and Foundries
-var _groom_to: Building = null  # where he's taking them
-var _groom_t := 0.0
-
-
 ## Crown horses: a Horseman, cannon, mortar or wagon in a queue gets its own horse by
 ## itself (Game.train: a free one at a breeder, else the breeder trains one), so the
 ## computer only keeps a spare or two bought at its breeder (_buy_horses); a Labourer (the
@@ -3128,8 +3123,6 @@ func _horses() -> void:
 	for b in places:
 		var want := 2 if _gold() > 600 else 1
 		var have: int = game.horses_at(b)
-		if _groom and is_instance_valid(_groom) and _groom_to == b:
-			have += _groom.led.size()
 		for h in horses:
 			if h.order == "move" and b.edge_distance(h.order_point) < 40.0:
 				have += 1       # (on its way there)
@@ -3167,9 +3160,41 @@ func _horses() -> void:
 	_spares_home(horses, keep)
 	var teams := _team_up(horses, keep)
 	_buy_horses(horses, keep, need + teams)
-	_groom_tick(horses, short, need, keep)
+	_assign_haulers()
 	if difficulty >= 1:
 		_mount_men(horses, keep, need + teams)
+
+
+## Crown: workers assigned to the Town Hall as haulers (Game.haul_dispatch: they lead the
+## horses to the Barracks and Foundries and carry kegs to the wagons). One once there is a
+## Horse Breeder, a gun or a wagon, two from 6 horse-using units, three from 12. The man comes
+## from the idle ones first, else a farm hand (never the Mill, never a builder); the farm is
+## refilled by the next hire, as haulers aren't counted among game.workers.
+func _assign_haulers() -> void:
+	var halls: Array = _halls().filter(func(h: Building) -> bool: return h.built and h.haul_cap() > 0)
+	if halls.is_empty():
+		return
+	var users := game.army(team).filter(func(u: Unit) -> bool: return Defs.RIDERS.has(u.kind) or Defs.HARNESSED.has(u.kind)).size()
+	var want := 0
+	if users > 0 or not _mine("horse_breeder").is_empty():
+		want = 1 + (1 if users >= 6 else 0) + (1 if users >= 12 else 0)
+	if game.haulers_of(team).size() >= want:
+		return
+	var hall: Building = halls[0]
+	var best: Unit = null
+	var bd := INF
+	for u in game.workers(team):
+		if u.kind != "labourer" or u.order == "build" or u.keg or _escort.has(u):
+			continue
+		var farm: bool = u.order == "gather" and u.home_mine is Building and (u.home_mine as Building).kind == "farm"
+		if u.order != "idle" and not farm:
+			continue
+		var dd: float = u.position.distance_to(hall.center()) + (0.0 if u.order == "idle" else 3000.0)
+		if dd < bd:
+			bd = dd
+			best = u
+	if best:
+		best.cmd_gather(hall)
 
 
 ## A man of ours on foot who should be on a horse: a Dismounted Horseman or Cuirassier, or
@@ -3230,8 +3255,8 @@ func _remount_riders(horses: Array, keep: Dictionary) -> void:
 			continue                         # (a Dragoon on foot remounts by himself to move)
 		if u.horse_rid != 0:
 			var mine: Unit = game.reserved_horse(team, u.horse_rid)
-			if mine and Unit.horse_free_for(mine, u):
-				continue                     # (his own is there for him: Unit._wait_horse)
+			if (mine and Unit.horse_free_for(mine, u)) or game.hauler_serves_rid(team, u.horse_rid):
+				continue                     # (his own is there for him, or a hauler brings it: Unit._wait_horse)
 		if _in_fight(u):
 			continue
 		var reach := (40.0 if u.kind == "dismounted" or u.horse_rid != 0 else 12.0) * Defs.TILE
@@ -3309,7 +3334,7 @@ func _loose_horses() -> void:
 	for h in game.units:
 		if not Game.loose_horse(h) or h.off_field or h.bolt_t > 0.0:
 			continue
-		if h.claimed and is_instance_valid(h.claimed) and not h.claimed.dead and h.claimed.order_target == h:
+		if h.claimed and is_instance_valid(h.claimed) and not h.claimed.dead and h.claimed.is_coming_for(h):
 			continue                     # (someone's on his way to it)
 		var near: Array = game.units_near(h.position, 9.0 * T)
 		if near.any(func(o: Unit) -> bool: return not o.dead and game.hostile(o.team, team) and o.kind != "horse" \
@@ -3341,7 +3366,7 @@ func _loose_horses() -> void:
 		var best: Unit = null
 		var bd2 := reach
 		for o in game.units_near(h.position, reach):
-			if o.team != team or o.dead or not o.can_lead() or o == _groom or o.lead_count() > 0 or o.target != null \
+			if o.team != team or o.dead or not o.can_lead() or o.is_hauler() or o.lead_count() > 0 or o.target != null \
 					or o.keg or o.order == "keg" or _on_errand(o) or _catchers.has(o) or not Unit.horse_free_for(h, o):
 				continue
 			if fac == "clockwork" and o.kind != "winder":
@@ -3379,7 +3404,9 @@ func _team_up(horses: Array, keep: Dictionary) -> int:
 			if dd < bd and dd < 30.0 * Defs.TILE:
 				bd = dd
 				h = o
-		if h:
+		if h and game.hauler_serves(team):
+			g.team_want = 2                  # (a hauler brings a spare: Game.haul_dispatch)
+		elif h:
 			h.walk_into(g)
 			keep[h] = true
 		else:
@@ -3411,81 +3438,6 @@ func _buy_horses(horses: Array, keep: Dictionary, need: int) -> void:
 	var b: Building = breeders[0]
 	if b.queue.size() < 2:
 		game.train(b, "horse")
-
-
-func _groom_tick(horses: Array, short: Dictionary, need: int, keep: Dictionary) -> void:
-	if _groom and (not is_instance_valid(_groom) or _groom.dead or _groom.kind != "labourer" or _groom.team != team):
-		_groom = null
-	if _groom == null:
-		if need <= 0:
-			return
-		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.horse_rid == 0 and h.order != "move")
-		if free.is_empty():
-			return
-		# the Labourer nearest the free horses (not building, not carrying a keg)
-		var best: Unit = null
-		var bd := INF
-		for u in game.workers(team):
-			if u.kind != "labourer" or u.order == "build" or u.keg or u.order == "keg":
-				continue
-			var dd: float = u.position.distance_to(free[0].position)
-			if dd < bd:
-				bd = dd
-				best = u
-		if best == null:
-			return
-		_groom = best
-		_groom.auto_work = false
-		_groom.cmd_stop()
-		_groom_to = null
-		_groom_t = 0.0
-	var g := _groom
-	if not g.led.is_empty():
-		# take them to the place most short of horses
-		if _groom_to == null or not is_instance_valid(_groom_to) or _groom_to.dead:
-			_groom_to = null
-			var most := 0
-			for b in short:
-				if int(short[b]) > most:
-					most = int(short[b])
-					_groom_to = b
-			if _groom_to == null:
-				for b in _mine("barracks") + _mine("foundry"):
-					if b.built:
-						_groom_to = b
-						break
-		if _groom_to == null:
-			g.release_horses()
-			return
-		if _groom_to.edge_distance(g.position) < 26.0:
-			_groom_t += 1.0
-			if _groom_t >= 2.0:
-				# they walk up to the building and stand there, ready for a recruit
-				var to := _groom_to
-				var hs: Array = g.led.duplicate()
-				g.release_horses()
-				for h in hs:
-					h.cmd_move(game.approach_point(to, h.position) + Vector2(randf_range(-8, 8), randf_range(-8, 8)))
-				_groom_to = null
-				_groom_t = 0.0
-		elif g.order != "move" or g.order_point.distance_to(game.approach_point(_groom_to, g.position)) > 40.0:
-			g.cmd_move(game.approach_point(_groom_to, g.position))
-		return
-	if g.order == "lead":
-		return                       # fetching
-	if need > 0:
-		# fetch as many as are wanted (up to 3) from the horses at home
-		var free := horses.filter(func(h: Unit) -> bool: return h.leader == null and h.into == null and not keep.has(h) and h.order != "move" and Unit.horse_free_for(h, g))
-		free.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(g.position) < b.position.distance_squared_to(g.position))
-		var n := mini(mini(need, int(Defs.HORSES["lead_max"])), free.size())
-		for i in n:
-			g.give({"o": "lead", "e": free[i]}, i > 0)
-		if n > 0:
-			return
-	# nothing to do: back to work
-	g.auto_work = true
-	g.cmd_stop()
-	_groom = null
 
 
 ## Spare horses at home (beyond what the buildings want): idle Musketeers there mount up as
