@@ -970,23 +970,39 @@ func _build_card() -> Array:
 								u.cmd_deploy()
 							else:
 								u.cmd_pack(), true, "", ""])
+		_shift_queueable(list)
 		return list
 	if b == null:
 		var pbs := game.selected_producers()
 		if not pbs.is_empty():
 			return _production_card(pbs)
+	if b and b.built and b.kind == "gate":
+		var was_locked: bool = b.locked
+		list.append(["unlock" if was_locked else "lock", "UNLOCK" if was_locked else "LOCK", func() -> void:
+			var why := ""
+			for sb in game.selected_buildings():
+				if sb.kind == "gate" and sb.built and not sb.dead:
+					var w: String = game.set_gate_locked(sb, not was_locked)
+					if w != "":
+						why = w
+			if why != "":
+				toast(why)
+			else:
+				toast("Gate unlocked: your units pass again." if was_locked else "Gate locked: nobody can pass, yours included, until you unlock it."), true, "", ""])
 	if b and not b.built:
+		# a gate can be turned only while it is not built yet (a ghost or a site); once built it stays
+		if b.kind == "gate":
+			list.append(["ab_rotate", "ROTATE", func() -> void:
+				var v := not b.vertical
+				for sb in game.selected_buildings():
+					if sb.kind == "gate" and not sb.built and not sb.dead:
+						sb.dir_locked = true
+						sb.set_vertical(v)
+				toast("Gate turned. It stays this way."), true, "", ""])
 		list.append(["stop", "ABANDON", func() -> void:
 			for sb in game.selected_buildings():
 				game.abandon(sb), true, "", ""])
 		return list
-	if b and b.built and b.kind == "gate":
-		list.append(["ab_rotate", "ROTATE", func() -> void:
-			var v := not b.vertical
-			for sb in game.selected_buildings():
-				sb.dir_locked = true
-				sb.set_vertical(v)
-			toast("Gate turned. It now stays this way."), true, "", ""])
 	if b and b.built and b.kind != game.faction_hall(game.human):
 		list.append(["demolish", "DEMOLISH", func() -> void:
 			if Time.get_ticks_msec() - _demolish_ms > 2500:
@@ -2310,6 +2326,31 @@ func _unit_icon(e: Entity) -> Texture2D:
 	if e is Unit and (e as Unit).art != e.kind and _icon((e as Unit).art):
 		icon = _icon((e as Unit).art)      # (a Guardsman, a Horseman)
 	return icon
+
+
+## The instant buttons of a unit card that wait their turn when Shift is held: each man
+## gets the button as an order behind his move or attack, and runs it when he gets there
+## (the button works on the selection, so it runs with just that man selected).
+const SHIFT_QUEUE := ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch", "horse_harness",
+	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
+	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_supply", "ab_sacrifice"]
+
+
+func _shift_queueable(list: Array) -> void:
+	for entry in list:
+		if not SHIFT_QUEUE.has(String(entry[0])) or not entry[3]:
+			continue
+		var cb: Callable = entry[2]
+		entry[2] = func() -> void:
+			if not (Settings.pc() and Input.is_key_pressed(KEY_SHIFT)):
+				cb.call()
+				return
+			for u in game.selected_units():
+				u.give({"o": "act", "fn": func(m: Unit) -> void:
+					var keep: Array = game.selection
+					game.selection = [m]
+					cb.call()
+					game.selection = keep}, true)
 
 
 ## Horse commands for the men (LEAD, RELEASE, MOUNT, DISMOUNT) and for guns and wagons

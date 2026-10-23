@@ -364,6 +364,43 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 var gate_team := {}
 
 
+## Lock a built gate shut (or unlock it): a locked gate is a plain closed wall to everybody, its
+## owner's units included (it leaves `gate_team`, so no side passes it, and the pathfinder's cell is
+## solid), and shows a padlock. Returns why it can't be done ("" when it is): nothing may
+## stand in the gateway. `force` skips that check (loading a saved game).
+func set_gate_locked(b: Building, on: bool, force := false) -> String:
+	if b == null or b.kind != "gate" or not b.built or b.dead:
+		return "Only a built gate can be locked."
+	if b.locked == on:
+		return ""
+	var i := idx(b.cell)
+	if on:
+		if not force:
+			for u in units_near(b.center(), 90.0):
+				if not u.dead and not u.is_air() and b.rect().grow(6.0).has_point(u.position):
+					return "Something is in the gateway."
+		b.locked = true
+		gate_team.erase(i)
+		b.gate_open = false
+		if astar.region.size != Vector2i.ZERO:
+			astar.set_point_solid(b.cell, true)
+		# whoever meant to go through it finds another way
+		for u in units_near(b.center(), 600.0):
+			if not u.dead and not u.is_air() and b.crossing(u):
+				u.path = PackedVector2Array()
+				u.path_i = 0
+				u.repath_t = 0.0
+	else:
+		b.locked = false
+		gate_team[i] = b.team
+		if astar.region.size != Vector2i.ZERO:
+			astar.set_point_solid(b.cell, false)
+	_region_dirty = true
+	b._update_sprite()
+	b.queue_redraw()
+	return ""
+
+
 ## Can a unit of team `t` stand on this cell? (t = -1: nobody may pass gates.)
 func passable(c: Vector2i, t: int) -> bool:
 	if not in_map(c):
@@ -2904,7 +2941,7 @@ func add_gold(t: int, n: int) -> void:
 ## A queue entry paid back (`kit`: what a queued soldier was paid to come out with; its
 ## horse, if it took one, comes back out of `at`).
 func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> void:
-	if kit.has("coat") and at != null:
+	if kit.has("coat") and at != null and k != "horse":      # (a queued horse's coat is its own: no second horse)
 		horse_back(at, kit)
 	if int(kit.get("rid", 0)) != 0 and k != "horse":
 		release_rid(t, int(kit["rid"]))     # (its horse is free again; one still at the breeder is kept)
@@ -3455,6 +3492,9 @@ func train(b: Building, key: String) -> String:
 			# nearest breeder trains one (paid now); a gun's horse walks over by itself
 			kit["rid"] = new_rid()
 			_reserve_horse(b, k, int(kit["rid"]), true)
+	if k == "horse":
+		kit = kit.duplicate()
+		kit["coat"] = HorseCoat.pick()      # (decided now: the paddock shows it, the horse comes out in it)
 	b.add_entry(k, kit)
 	if b.uses_eggs():
 		b.eggs -= 1
@@ -4208,6 +4248,29 @@ func approach_point(e: Entity, from: Vector2) -> Vector2:
 					bd = dd
 					best = p
 	return best if best != Vector2.INF else r.get_center()
+
+
+## The height level (the map's height array) of the ground at a point.
+func level_of(p: Vector2) -> int:
+	return int(height[idx(cell_of(p))])
+
+
+## A spot for something let go beside `from` (a horse unhitched from a gun): `want` if it is free,
+## on the SAME height level as `from` and reachable in a straight line (not across a cliff
+## edge down to the low ground), else the nearest of a few other spots round `from` that are,
+## else `from` itself.
+func level_spot(from: Vector2, want: Vector2, radius: float, team := -1) -> Vector2:
+	var lv := level_of(from)
+	var d := want - from
+	var cands: Array = [want, from + d * 0.6, from - d, from - d * 0.6, from + d.orthogonal() * 0.8,
+			from - d.orthogonal() * 0.8, from + d * 0.3, from - d * 0.3]
+	var lo := Vector2(radius, radius)
+	var hi := Vector2(W * T, H * T) - lo
+	for c: Vector2 in cands:
+		var p := c.clamp(lo, hi)
+		if _clear_at(p, radius, team) and level_of(p) == lv and line_clear(from, p):
+			return p
+	return resolve_terrain(from, from, radius, team)
 
 
 func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -> Vector2:
@@ -6908,7 +6971,7 @@ func _reserve_horse(b: Building, k: String, rid: int, pay: bool) -> bool:
 			return false
 		players[b.team]["gold"] -= c
 		stats[b.team]["spent"] += c
-	br.add_entry("horse", {"rid": rid})
+	br.add_entry("horse", {"rid": rid, "coat": HorseCoat.pick()})
 	return true
 
 

@@ -4,6 +4,8 @@
   (patch number, e.g. 0.7.3 -> 0.7.4) before committing; bigger features may bump the minor
   number by hand. The version shows in the main menu and on the first line of every match log.
 - Match logs (playtest reports pasted by the user) start with `PocketRTS vX.Y.Z match log`.
+- **Design:** read `docs/design_principles.md` (fairness, anti-snowball, meaningful base building)
+  before balance, economy, AI or building changes; the owner wants these followed.
 
 ## Current work
 

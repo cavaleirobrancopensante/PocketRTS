@@ -72,6 +72,61 @@ func snap(b: Building, name: String, n: int, dt: float) -> void:
 		root.get_viewport().get_texture().get_image().save_png("%s/%s_%02d.png" % [out, name, i])
 
 
+func snap_at(pos: Vector2, name: String, n: int, dt: float) -> void:
+	g.camera.position = pos
+	for i in n:
+		await create_timer(dt).timeout
+		root.get_viewport().get_texture().get_image().save_png("%s/%s_%02d.png" % [out, name, i])
+
+
+## Barracks drills, one strip per man trained (zoomed on the yard, the Horse Breeder standing: the prop is up).
+const DRILLS := [["musketeer", false, "musketeer"], ["musketeer", true, "guardsman"], ["dismounted", false, "officer"],
+	["dismounted", true, "armoured_officer"], ["cuirassier", false, "horseman"], ["cuirassier", true, "cuirassier"],
+	["dragoon", false, "dragoon"], ["dragoon", true, "armoured_dragoon"]]
+
+
+func _drills(br: Building, hb: Building) -> void:
+	g.camera.zoom = Vector2(5.0, 5.0)
+	var yard: Vector2 = br.global_position + Vector2(32, -28)
+	for d in DRILLS:
+		br.queue.clear()
+		br.kits.clear()
+		br.prod_t = 0.0
+		br.add_entry(String(d[0]), {"armour": d[1]})
+		await create_timer(0.3).timeout
+		await snap_at(yard, "drill_" + String(d[2]), 12, 0.4)
+	br.queue.clear()
+	br.kits.clear()
+	# no Horse Breeder: no prop (the Horseman swings the Officer's sabre, the Dragoon just shoots)
+	var team := hb.team
+	hb.team = 1
+	await create_timer(0.8).timeout
+	for d in [DRILLS[4], DRILLS[6]]:
+		br.add_entry(String(d[0]), {"armour": false})
+		await create_timer(0.8).timeout
+		await snap_at(yard, "drill_noprop_" + String(d[2]), 10, 0.3)
+		br.queue.clear()
+		br.kits.clear()
+	hb.team = team
+	await create_timer(0.8).timeout
+	# the paddock's coats
+	g.camera.zoom = Vector2(5.0, 5.0)
+	hb.queue.clear()
+	hb.kits.clear()
+	hb.add_entry("horse", {"coat": "spotted"})
+	hb.add_entry("horse", {"coat": "white"})
+	await create_timer(1.0).timeout
+	await snap_at(hb.global_position + Vector2(15, -35), "coats_spotted_white", 4, 1.0)
+	hb.kits[0] = {"coat": "bay"}
+	hb.kits[1] = {"coat": "grey"}
+	await create_timer(1.0).timeout
+	await snap_at(hb.global_position + Vector2(15, -35), "coats_bay_grey", 4, 1.0)
+	hb.queue.clear()
+	hb.kits.clear()
+	await create_timer(1.0).timeout
+	await snap_at(hb.global_position + Vector2(15, -35), "coats_idle", 2, 1.0)
+
+
 func _run() -> void:
 	origin = _open_area(32, 14)
 	g.reveal = true
@@ -99,15 +154,18 @@ func _run() -> void:
 	g.train(ch, "missionary")
 	await create_timer(1.0).timeout
 	await snap(hb, "horse_breeder", 8, 1.0)
-	for k: String in Defs.RESEARCH:
-		if Defs.RESEARCH[k]["at"] == "armoury" and g.research_problem(ar, k) == "":
-			g.start_research(ar, k)
-			break
-	await create_timer(0.5).timeout
-	await snap(ar, "armoury", 10, 0.6)
+	# the Armoury's nine experiments, one research at a time (a head of the queue each)
+	for id: String in ["armour", "matchlock", "flintlock", "caplock", "bayonet", "pouch", "charges", "quadrant", "charge"]:
+		ar.queue.clear()
+		ar.kits.clear()
+		ar.prod_t = 0.0
+		ar.add_entry("@" + id)
+		await create_timer(0.8).timeout
+		await snap(ar, "armoury_" + id, 12, 0.45)
 	var m: Unit = g._add_unit("missionary", 0, ch.center() + Vector2(0, ch.rect().size.y * 0.5 + 30))
 	var w: Unit = g._add_unit("musketeer", 0, m.position + Vector2(24, 0))
 	w.hp = w.max_hp * 0.3
 	await create_timer(2.0).timeout
 	await snap(ch, "church", 8, 0.6)
+	await _drills(br, hb)
 	quit()

@@ -92,6 +92,7 @@ var bayonet := false            # Musketeer: refitted with the socket bayonet
 var refit: Array = []           # soldier on a "refit" order: the upgrades he's going to get (paid)
 var refit_paid := [0, 0]        # what was paid for them (back if the refit is called off)
 var _refit_t := 0.0
+var refit_home := Vector2.INF   # where he was when sent: he walks back there when fitted
 var auto_refit := false         # Powder Wagon: AUTO REFIT (idle Musketeers nearby get the upgrades researched)
 # Missionary raising the fallen; a raised soldier's second life
 var _body: Unit = null          # (a Missionary) the body he's going to raise
@@ -582,6 +583,7 @@ func cmd_refit(place: Entity, what: Array, fee: Array) -> void:
 		game.refund_refit(team, fee)
 		return
 	_reset_work()
+	refit_home = position
 	order = "refit"
 	order_target = place
 	target = null
@@ -634,7 +636,14 @@ func _refit_run(delta: float) -> Vector2:
 			refit_paid = [0, 0]
 			game.refit_done(self, done)
 			queue_redraw()
-			cmd_stop()
+			var home := refit_home
+			refit_home = Vector2.INF
+			if _next_order():
+				pass                        # (a Shift-queued order is next)
+			elif home != Vector2.INF and home.distance_to(position) > 40.0:
+				cmd_move(home, false)       # (back to where he was sent from)
+			else:
+				cmd_stop()
 		return Vector2.ZERO
 	work = "to_refit"
 	work_t += delta
@@ -2066,6 +2075,10 @@ func _start(o: Dictionary) -> bool:
 			cmd_gather(e)
 		"hold":
 			cmd_hold()
+		"act":
+			# an instant command card button queued with Shift (release horse, harness...)
+			(o["fn"] as Callable).call(self)
+			return order != "idle"      # (a command that leaves him idle: on to the next queued order)
 		"lead":
 			if e == null or not is_instance_valid(e) or not cmd_lead(e):
 				return false
@@ -5957,7 +5970,7 @@ func release_horse() -> Unit:
 	var side := Vector2(-facing.y, facing.x)
 	if side == Vector2.ZERO:
 		side = Vector2.DOWN
-	var spot := game.resolve_terrain(position + side * (radius + 30.0), position, 11.0, team)
+	var spot := game.level_spot(position, position + side * (radius + 30.0), 11.0, team)   # (never down a cliff)
 	var h := game._add_unit("horse", team, spot)
 	h.graze_at = spot
 	h.visible = visible

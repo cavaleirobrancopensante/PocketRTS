@@ -65,6 +65,9 @@ func box_rect() -> Rect2:
 
 
 func _line_add(screen: Vector2) -> void:
+	# (the mouse can be outside the window while the button is held: its position is far off the
+	# screen, and the camera may be scrolling: the line follows the edge of the screen instead)
+	screen = screen.clamp(Vector2.ZERO, game.get_viewport().get_visible_rect().size)
 	var w := to_world(screen)
 	if line.is_empty() or line[line.size() - 1].distance_to(w) > 6.0:
 		line.append(w)
@@ -468,6 +471,8 @@ func _process(delta: float) -> void:
 	if k != Vector2.ZERO:
 		game.camera.position += k.normalized() * 700.0 * delta / game.camera.zoom.x
 		_user_cam()
+		if _line_btn != "" and Settings.pc():
+			_line_add(game.get_viewport().get_mouse_position())      # (a line drawn while the view scrolls follows it)
 	# Long press = move without attacking (touch only)
 	if _touches.size() == 1 and not _long_done and _box_from == Vector2.INF and mode == "":
 		var idx: int = _touches.keys()[0]

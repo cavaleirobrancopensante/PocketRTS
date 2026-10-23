@@ -114,6 +114,8 @@ func _run() -> void:
 		await _bell("town_hall", "labourer", Vector2i(1, 2))
 		await _drill()
 		await _paddock()
+		await _yard()
+		await _coats()
 		await _inventor()
 		await _church()
 		await _fog()
@@ -321,6 +323,149 @@ func _paddock() -> void:
 	check(L.pad_state == "" and L.horses_shown() == 0, "destroyed: no horses")
 
 
+## The Barracks' yard: the dummy, the horse prop (with a breeder), and a drill per man trained.
+func _yard() -> void:
+	var br: Building = g._add_building("barracks", 0, origin + Vector2i(8, 8), true)
+	g.camera.position = br.center()
+	await wait(1.0)
+	var L: BuildingLife = br.life
+	check(L.dummy.visible and not L.prop.visible, "the yard: the dummy stands, no prop without a Horse Breeder")
+	var path := func(i: int) -> String: return L._seg_tex[i].resource_path
+	var cases := [["musketeer", false, "drill_musketeer/aim_e"], ["musketeer", true, "drill_musketeer_armoured/aim_e"],
+		["dismounted", false, "drill_dismounted/aim_e"], ["dismounted", true, "drill_dismounted_armoured/aim_e"],
+		["cuirassier", false, "drill_dismounted/idle_e"], ["cuirassier", true, "drill_dismounted_armoured/idle_e"],
+		["dragoon", false, "drill_musketeer/aim_e"], ["dragoon", true, "drill_musketeer_armoured/aim_e"]]
+	for c in cases:
+		br.queue.clear()
+		br.kits.clear()
+		br.add_entry(c[0], {"armour": c[1]})
+		await wait(0.7)
+		check(L.man.visible and String(path.call(0)).contains(c[2]), "no prop: %s%s drills with %s" % ["armoured " if c[1] else "", c[0], c[2]])
+	# a Horse Breeder: the prop stands (twice-a-second check), and goes with the last one
+	var hb: Building = g._add_building("horse_breeder", 0, origin + Vector2i(18, 8), true)
+	await wait(1.2)
+	check(L.prop.visible and L.has_breeder, "a Horse Breeder built: the prop stands in the yard")
+	cases = [["musketeer", false, "drill_musketeer/aim_e"], ["musketeer", true, "drill_musketeer_armoured/aim_e"],
+		["dismounted", false, "drill_dismounted/aim_e"], ["dismounted", true, "drill_dismounted_armoured/aim_e"],
+		["cuirassier", false, "drill_horseman/mount_e"], ["cuirassier", true, "drill_cuirassier/mount_e"],
+		["dragoon", false, "drill_dragoon/mount_e"], ["dragoon", true, "drill_dragoon_armoured/mount_e"]]
+	for c in cases:
+		br.queue.clear()
+		br.kits.clear()
+		br.add_entry(c[0], {"armour": c[1]})
+		await wait(0.4)
+		check(L.man.visible and String(path.call(0)).contains(c[2]), "prop: %s%s drills with %s" % ["armoured " if c[1] else "", c[0], c[2]])
+	# the horseman climbs on and gets off again (strip played backwards), swinging at the dummy between
+	br.queue.clear()
+	br.kits.clear()
+	br.add_entry("cuirassier", {"armour": false})
+	await wait(0.3)
+	var back := false
+	var hits := false
+	var mounted_at_prop := false
+	var flashed := false
+	var intact := true
+	for i in 200:
+		for s in L._seg_flag.size():
+			back = back or (L._seg_flag[s] & 8) != 0
+		mounted_at_prop = mounted_at_prop or (L.man.position == Vector2(DRILL_ART_STATE(L)["prop"]))
+		if L._dummy_t > 0.0:
+			flashed = true
+			hits = hits or L.dummy.texture.resource_path.ends_with("dummy_damaged.png")
+		elif flashed:
+			intact = intact and L.dummy.texture.resource_path.ends_with("dummy_intact.png")
+		await physics_frame
+	check(back and mounted_at_prop, "Horseman: mounts the prop and dismounts (backwards)")
+	check(hits and intact, "the dummy shows the ripped art on a hit and the intact one after")
+	# the Dragoon stands next to the prop to shoot
+	br.queue.clear()
+	br.kits.clear()
+	br.add_entry("dragoon", {"armour": false})
+	await wait(0.3)
+	var side := false
+	var shots := 0
+	for i in 200:
+		side = side or L.man.position == Vector2(DRILL_ART_STATE(L)["side"])
+		await physics_frame
+	check(side, "Dragoon: climbs off and stands next to the prop to shoot")
+	# the first unit changes: the drill switches at once
+	br.queue.clear()
+	br.kits.clear()
+	br.add_entry("musketeer", {})
+	br.add_entry("dragoon", {})
+	await wait(0.2)
+	check(String(path.call(0)).contains("drill_musketeer/aim_e"), "queue: Musketeer first")
+	br.take_entry(0)
+	await wait(0.2)
+	check(String(path.call(0)).contains("drill_dragoon/mount_e"), "the first one trained: the drill switches to the Dragoon's")
+	# idle and fogged: nobody on the yard, the dummy and prop stay
+	br.queue.clear()
+	br.kits.clear()
+	await wait(1.0)
+	check(not L.man.visible and L.dummy.visible and L.prop.visible, "idle: nobody drills, the dummy and prop stand")
+	hb.die()
+	await wait(1.2)
+	check(not L.prop.visible and not L.has_breeder, "the last Horse Breeder lost: the prop is gone")
+	br.die()
+	check(not L.dummy.visible and not L.prop.visible and not L.man.visible, "destroyed: no dummy, no prop")
+
+
+func DRILL_ART_STATE(L: BuildingLife) -> Dictionary:
+	return BuildingLife.DRILL_ART["states"][L.man_state]
+
+
+## The Horse Breeder's queued horses: their coats are decided when queued, the paddock shows
+## them, the horse comes out in the same one, a cancelled one gives no horse back.
+func _coats() -> void:
+	var hb: Building = g._add_building("horse_breeder", 0, origin + Vector2i(18, 8), true)
+	g.camera.position = hb.center()
+	await wait(1.2)
+	var L: BuildingLife = hb.life
+	var gold0: int = g.players[0]["gold"]
+	_train(hb, "horse")
+	_train(hb, "horse")
+	var ok := hb.queue.size() == 2
+	for i in 2:
+		ok = ok and HorseCoat.COATS.has(String(hb.kit_at(i).get("coat", "")))
+	check(ok, "a queued horse has its coat decided at queue time")
+	hb.kits[0] = {"coat": "white"}
+	hb.kits[1] = {"coat": "spotted"}
+	await wait(1.0)
+	check(L._h_coat[0] == "white" and L._h_coat[1] == "spotted", "the busy paddock horses wear the queued horses' coats (%s, %s)" % [L._h_coat[0], L._h_coat[1]])
+	var m0: ShaderMaterial = L.horses[0].material
+	check(int(m0.get_shader_parameter("coat")) == HorseCoat.COATS.find("white"), "the first paddock horse's shader shows white")
+	# it comes out in the same coat
+	var n0: int = g.units.size()
+	g.spawn_trained(hb, "horse", hb.kit_at(0))
+	var u: Unit = g.units.back()
+	check(g.units.size() == n0 + 1 and u.kind == "horse" and u.coat == "white", "the horse comes out white, as queued")
+	# a cancelled one: refund, no horse walks out
+	var horses0 := 0
+	for x in g.units:
+		if x.kind == "horse":
+			horses0 += 1
+	var gold1: int = g.players[0]["gold"]
+	g.cancel_train(hb)
+	var horses1 := 0
+	for x in g.units:
+		if x.kind == "horse":
+			horses1 += 1
+	check(horses1 == horses0 and int(g.players[0]["gold"]) == gold1 + int(Defs.UNITS["horse"]["cost"]), "cancelling a queued horse refunds it and spawns no horse")
+	# idle again: the building's own coats
+	hb.queue.clear()
+	hb.kits.clear()
+	await wait(1.0)
+	check(L._h_coat[0] == L._h_default[0] and L._h_coat[1] == L._h_default[1], "idle: the paddock keeps its own coats")
+	# the odds are the same
+	var n := {}
+	for i in 4000:
+		var c := HorseCoat.pick()
+		n[c] = int(n.get(c, 0)) + 1
+	check(absi(int(n["dark"]) - 1200) < 150 and absi(int(n["white"]) - 400) < 100, "HorseCoat.pick keeps its odds")
+	gold0 = gold0
+	hb.die()
+
+
 func _inventor() -> void:
 	var ar: Building = g._add_building("armoury", 0, origin + Vector2i(2, 8), true)
 	g.camera.position = ar.center()
@@ -338,15 +483,63 @@ func _inventor() -> void:
 	g.start_research(ar, key)
 	await wait(1.5)
 	check(L.inv.visible, "researching: the inventor is at his bench")
-	var seen := {}
-	for i in 240:
-		seen[L.inv.frame] = true
-		await physics_frame
-	check(seen.size() >= 4 and seen.has(int(BuildingLife.INVENTOR_ART["bang"])), "he tinkers and the barrel goes off (%d frames in 8 s)" % seen.size())
+	check(L.inv_key == key, "he plays the experiment of the research at the head of the queue (%s)" % key)
 	ar.queue.clear()
 	ar.kits.clear()
 	await wait(1.0)
 	check(not L.inv.visible, "research over: he is gone")
+	# each of the nine researches: its own strip, all frames playing
+	var ids := ["armour", "matchlock", "flintlock", "caplock", "bayonet", "pouch", "charges", "quadrant", "charge"]
+	for id: String in ids:
+		check(Defs.RESEARCH.has(id) and BuildingLife.ARMOURY_ART["anims"].has(id), "%s: a research with an experiment" % id)
+		ar.queue.clear()
+		ar.kits.clear()
+		ar.prod_t = 0.0
+		ar.add_entry("@" + id)
+		await wait(1.2)
+		var tex: Texture2D = L.inv.texture
+		check(L.inv.visible and L.inv_key == id and tex != null and tex.resource_path.ends_with("armoury_anim_%s.png" % id),
+			"%s: his strip is shown" % id)
+		var seen := {}
+		for i in 200:
+			seen[L.inv.frame] = true
+			await physics_frame
+		check(seen.size() == 6, "%s: all six frames play (%d seen in 6.7 s)" % [id, seen.size()])
+	# the head switches cleanly: finishing the first hands the bench to the next
+	ar.queue.clear()
+	ar.kits.clear()
+	ar.add_entry("@armour")
+	ar.add_entry("@charge")
+	await wait(2.0)
+	check(L.inv_key == "armour", "two queued: the head's experiment plays")
+	ar.take_entry(0)
+	await wait(1.0)
+	check(L.inv.visible and L.inv_key == "charge" and L.inv_head == "@charge", "the head went: he switches to the next research's experiment")
+	check(L.inv.texture.resource_path.ends_with("armoury_anim_charge.png"), "  and its strip is shown")
+	# a unit at the head (never queued at an Armoury, but): he is not there
+	ar.queue.clear()
+	ar.kits.clear()
+	ar.add_entry("musketeer")
+	await wait(1.0)
+	check(not L.inv.visible, "a non-research at the head: he is gone")
+	# a research with no strip falls back to the old cannon experiment
+	var saved = L._inv_tex["armour"]
+	L._inv_tex.erase("armour")
+	ar.queue.clear()
+	ar.kits.clear()
+	ar.add_entry("@armour")
+	await wait(1.2)
+	check(L.inv.visible and L.inv_key == "" and L.inv.texture.resource_path.ends_with("armoury_inventor.png"), "no strip: the old cannon test")
+	var seen2 := {}
+	for i in 240:
+		seen2[L.inv.frame] = true
+		await physics_frame
+	check(seen2.size() >= 4 and seen2.has(int(BuildingLife.INVENTOR_ART["bang"])), "  it still plays and goes off (%d frames in 8 s)" % seen2.size())
+	L._inv_tex["armour"] = saved
+	ar.queue.clear()
+	ar.kits.clear()
+	await wait(1.0)
+	check(not L.inv.visible, "queue empty: he is gone")
 	ar.die()
 	check(L.inv_state == "", "destroyed: no inventor")
 
