@@ -69,6 +69,9 @@ var _mill_v := 0.0                    # 0 standing .. 1 walking (eased)
 var _mill_f := 0.0                    # its walk frames' clock
 var _mill_dir := ""
 var _mill_far := -1                   # 1: on the far half (behind the post), 0 near, -1 not laid out
+# the second-generation buildings' parts: a bell, a drilling man, paddock horses, the inventor,
+# lit windows (BuildingLife)
+var life: BuildingLife = null
 # in_use, looked at twice a second
 var _use_t := 0.0
 var _in_use := true
@@ -88,9 +91,9 @@ var _crackle: Effect = null
 ## only while the building is in use (in_use: a Foundry's smoke and forge while it works, a
 ## Powder Mill's dust while it's manned...; halls, homes and the Brood's living buildings always).
 const AMBIENT := {
-	"town_hall": [["smoke", 0.26, 0.23, 1.6, 0.45, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.87, 0.21, 1.9, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
+	"town_hall": [["smoke", 0.29, 0.22, 1.6, 0.45, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.72, 0.28, 1.9, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
 	"cottage": [["smoke", 0.45, 0.1, 1.8, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
-	"barracks": [["smoke", 0.16, 0.3, 1.7, 0.4, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.83, 0.05, 2.1, 0.35, Color(0.85, 0.85, 0.85, 0.6)]],
+	"barracks": [["smoke", 0.21, 0.25, 1.7, 0.4, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.65, 0.06, 2.1, 0.35, Color(0.85, 0.85, 0.85, 0.6)]],
 	"foundry": [["smoke", 0.25, 0.06, 0.7, 0.7, Color(0.45, 0.45, 0.45, 0.75)], ["fire", 0.72, 0.68, 1.1, 0.35, Color(1, 1, 1, 0.9)]],
 	"powder_mill": [["dust", 0.75, 0.69, 1.4, 0.3, Color(1, 1, 1, 0.6)]],     # (off the millstone)
 	"church": [],
@@ -159,48 +162,6 @@ const MILL_ART := {
 	"chest": {"e": Vector2(10, -17), "se": Vector2(6, -19), "s": Vector2(0, -16), "ne": Vector2(8, -21), "n": Vector2(0, -20)},
 	"lap": 7.0, "fps": 7.0, "ease": 1.5,
 	"arm": Color(0.56, 0.36, 0.17), "arm_edge": Color(0.17, 0.10, 0.05),
-}
-
-## The Town Hall's bell (tools/import_buildings_v2.py makes the art): it hangs in the belfry's
-## right-hand opening and swings while the hall trains Labourers (its queue isn't empty), one
-## frame every `dt` s (straight, tilted, straight, tilted the other way); idle it hangs still
-## (frame 0: a swing under way finishes first). Per state that keeps the belfry: where the
-## yoke's top middle (`pivot` in the strip's cell) hangs, from the base point. The belfry
-## round the opening (its pillars and roof: `belfry` % state) is drawn over it.
-const BELL_ART := {
-	"strip": "res://assets/buildings/town_hall_bell.png", "frames": 4, "pivot": Vector2(6, 0),
-	"belfry": "res://assets/buildings/town_hall_belfry_%s.png",
-	"states": {"built": Vector2(10.7, -148.1), "damaged": Vector2(7.1, -138.5)},
-	"dt": 0.25, "sound": "select/town_hall", "volume": -14.0,
-}
-
-## The Barracks' drill (tools/import_buildings_v2.py shrinks the Musketeer's strips to the
-## building): while it trains something a Musketeer of its side stands on the yard's empty patch
-## (`feet`, from the base point) facing the straw target (`target`: its middle) and shoots at
-## it every `every` s: he aims, fires (a little smoke at the `muzzle`, from his feet, and a puff
-## on the target; no damage, a very quiet shot), reloads and stands. Idle: he isn't there.
-## `anims`: [strip, seconds per frame] in the order he plays them; the frame counts are the
-## Musketeer's (ArtData).
-const DRILL_ART := {
-	"strip": "res://assets/buildings/drill_musketeer/%s.png", "anchor": Vector2(32.4, 24.5),
-	"states": {"built": {"feet": Vector2(15, -31), "target": Vector2(55, -51)},
-		"damaged": {"feet": Vector2(16, -31), "target": Vector2(53, -51)}},
-	"anims": [["aim_e", 0.25], ["fire_e", 0.15], ["reload_e", 0.2], ["idle_e", 0.35]],
-	"every": 3.0, "muzzle": Vector2(22, -15), "volume": -22.0,
-}
-
-## The Horse Breeder's paddock (tools/import_buildings_v2.py shrinks the riderless horse's strips
-## and coat masks to the building): while it trains (horses or anything in its queue) `busy`
-## horses walk slowly about inside the paddock (`centre`, `radius`: an ellipse on the ground
-## from the base point, behind the fences' top rails), stopping now and then to stand or graze;
-## idle, `idle` horse stands still. Loose horses, nobody's: team-neutral, each in a coat picked
-## by the building's cell. `anchor`: the hooves in the strip's cell.
-const PADDOCK_ART := {
-	"strip": "res://assets/buildings/paddock_horse/%s.png", "mask": "res://assets/buildings/paddock_horse/mask/%s.png",
-	"anchor": Vector2(20.6, 27.7),
-	"states": {"built": {"centre": Vector2(14.2, -35.1), "radius": Vector2(22.0, 5.3)},
-		"damaged": {"centre": Vector2(20.6, -34.0), "radius": Vector2(18.4, 5.0)}},
-	"busy": 2, "idle": 1, "speed": 6.0, "walk_fps": 5.0, "graze_fps": 1.2, "rest": Vector2(1.5, 4.5),
 }
 
 ## The tip of each Clockwork tower, where its lightning lives.
@@ -308,6 +269,9 @@ func _ready() -> void:
 		_farm_art()
 	elif kind == "powder_mill":
 		_mill_art()
+	elif BuildingLife.has_life(kind):
+		life = BuildingLife.new()
+		life.setup(self)
 	_update_sprite()
 
 
@@ -440,7 +404,9 @@ func _place_mill_horse(walking: bool) -> void:
 
 
 ## In use (its animations play): an economy building while it's worked, a workshop while it
-## trains or researches, a Boiler while it fills batteries. Others always.
+## trains or researches (a Horse Breeder its horses, an Armoury its research), a Boiler while it
+## fills batteries. Others always. (A Town Hall's or Church's bell swings only while it trains:
+## BuildingLife.training.)
 func in_use() -> bool:
 	match kind:
 		"farm", "powder_mill":
@@ -450,7 +416,7 @@ func in_use() -> bool:
 		"ore_crusher":
 			var e := efficiency()
 			return not e.is_empty() and int(e[1]) > 0
-		"foundry", "barracks", "assembly_works", "engine_hall":
+		"foundry", "barracks", "assembly_works", "engine_hall", "horse_breeder", "armoury":
 			return not queue.is_empty()
 		"boiler":
 			return d.has("battery") and batteries < int(d["battery"][1])
@@ -467,6 +433,8 @@ func _check_use(delta: float) -> void:
 	_in_use = built and not dead and in_use()
 	var ft := game.fog_team()
 	_seen_now = game.sees_all() or ft < 0 or game.allied(team, ft) or game.is_visible_to(ft, center())
+	if life:
+		life.check()
 
 
 ## A Farm's scarecrows: 2 or 3 of FARM_SCARECROW_SPOTS, each [spot, look], picked by its cell
@@ -838,6 +806,8 @@ func _tick_building(delta: float) -> void:
 		_turn_sails(delta)
 	if _mill_state != "":
 		_turn_mill(delta)
+	if life:
+		life.tick(delta)
 	if built and not dead:
 		_econ(delta)
 		if d.has("field"):
@@ -894,6 +864,8 @@ func _tick_building(delta: float) -> void:
 				game.research_done(self, k.substr(1))
 			else:
 				game.spawn_trained(self, k, kit)
+				if life:
+					life.trained()       # (a hall's bell rings)
 	if built and auto_train != "" and not dead:
 		_auto_t -= delta
 		if _auto_t <= 0.0:
@@ -1209,6 +1181,8 @@ func _update_sprite() -> void:
 		sails.visible = seeded and Array(FARM_ART["sail_states"]).has(state)
 	if _mill_horse:
 		_mill_show(state)
+	if life:
+		life.show(state)
 	if not seeded and not dead:
 		sprite.modulate = Color(1, 1, 1, 0.3)
 	elif unfold_t >= 0.0 and not dead:

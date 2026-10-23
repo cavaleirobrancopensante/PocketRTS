@@ -1,6 +1,7 @@
 """The Crown Armoury (building, its build icon) and the Armoury's research icons and new portraits.
 
-Building source: art/crown/armoury.png - the four states left to right (built, construction,
+Building source (no longer imported here: tools/import_buildings_v2.py cuts the new
+art/crown/buildings_v2/armoury.png; build_armoury() is kept but not run): art/crown/armoury.png - the four states left to right (built, construction,
 damaged, destroyed) on a flat navy background. Nothing on the sheet is placed by hand, so a
 replacement sheet with the same layout (four drawings in a row, any spacing or size) imports
 by re-running this script:
@@ -149,7 +150,10 @@ def build_icons():
 
 
 def main():
-    b = build_armoury()
+    # The building and its build icon now come from art/crown/buildings_v2/armoury.png
+    # (tools/import_buildings_v2.py, run after this): build_armoury() is no longer called, so
+    # a rebuild doesn't overwrite them with the old sheet's.
+    b = {s: np.array(Image.open(f"assets/buildings/armoury_{s}.png").convert("RGBA")) for s in STATES}
     ic = build_icons()
     if CONTACT:
         os.makedirs(CONTACT, exist_ok=True)

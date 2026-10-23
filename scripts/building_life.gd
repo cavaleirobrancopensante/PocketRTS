@@ -1,0 +1,547 @@
+class_name BuildingLife
+extends RefCounted
+## The little lives of the second-generation Crown buildings (tools/import_buildings_v2.py
+## makes their art), each shown only while the building is in use, like the Powder Mill's
+## horse (Building.MILL_ART):
+##  - the Town Hall's and the Church's bell swings in the belfry while it trains (BELL_ART);
+##  - a Musketeer drills on the Barracks' yard while it trains (DRILL_ART);
+##  - horses walk about the Horse Breeder's paddock while it trains, one stands idle (PADDOCK_ART);
+##  - the inventor tests a barrel on the Armoury's roof while it researches (INVENTOR_ART);
+##  - the Church's windows glow while one of its side's Missionaries heals nearby (CHURCH_ART).
+## Each part is a child of the building over its body (hidden with it under the fog), shown in
+## the states that keep it (`states`: none while it's built up or a ruin), and only moves while
+## the building is on screen and its side or the player sees it now (a building remembered
+## under the fog stands still: its drilling man and its glow aren't shown). Nothing is
+## allocated per frame.
+
+## The bell (the Town Hall sheet's 4 frames: straight, tilted, straight, tilted the other way),
+## per building scaled to its belfry's right-hand opening: where the yoke's top middle (`pivot`
+## in the strip's cell) hangs per state, from the base point; the belfry round the opening
+## (its pillars and roof: `belfry` % state) is drawn over it. While the building trains, a frame
+## every BELL_DT s; idle it hangs still (frame 0: a swing under way finishes first). When a unit
+## comes out, the hall's bell rings once, softly (the Town Hall's select sound).
+const BELL_ART := {
+	"town_hall": {"strip": "res://assets/buildings/town_hall_bell.png", "pivot": Vector2(6, 0),
+		"belfry": "res://assets/buildings/town_hall_belfry_%s.png",
+		"states": {"built": Vector2(10.7, -148.1), "damaged": Vector2(7.1, -138.5)}},
+	"church": {"strip": "res://assets/buildings/church_bell.png", "pivot": Vector2(3, 0),
+		"belfry": "res://assets/buildings/church_belfry_%s.png",
+		"states": {"built": Vector2(-19.9, -82.4)}},
+}
+const BELL_FRAMES := 4
+const BELL_DT := 0.25
+const BELL_SOUND := "select/town_hall"
+const BELL_VOLUME := -14.0
+
+## The Barracks' drill: a Musketeer of its side (his strips shrunk to the building) stands on
+## the yard's empty patch (`feet`, from the base point) facing the straw target (`target`: its
+## middle) and shoots at it every `every` s: he aims, fires (a little smoke at his `muzzle`, from
+## his feet, and a puff on the target; no damage, a very quiet shot), reloads and stands.
+## `anims`: [strip, seconds per frame] in the order he plays them (the last one fills the rest of
+## the round, looping); the frame counts are the Musketeer's (ArtData).
+const DRILL_ART := {
+	"strip": "res://assets/buildings/drill_musketeer/%s.png", "anchor": Vector2(32.4, 24.5),
+	"states": {"built": {"feet": Vector2(15, -31), "target": Vector2(55, -51)},
+		"damaged": {"feet": Vector2(16, -31), "target": Vector2(53, -51)}},
+	"anims": [["aim_e", 0.25], ["fire_e", 0.15], ["reload_e", 0.2], ["idle_e", 0.35]],
+	"every": 3.0, "muzzle": Vector2(22, -15), "volume": -22.0,
+}
+
+## The Horse Breeder's paddock: `busy` horses walk slowly about it while it trains, stopping now
+## and then to stand or graze (`rest` s, from .. to); idle, `idle` of them stands still. They
+## keep to an ellipse on the ground (`centre`, `radius`, from the base point) behind the fences'
+## top rails, so nothing of the stable is in front of them. Loose horses, nobody's: the riderless
+## horse's strips and coat masks shrunk to the building, team-neutral (Defs.NEUTRAL_CLOTH), each
+## in a coat picked by the building's cell. `anchor`: the hooves in the strip's cell.
+const PADDOCK_ART := {
+	"strip": "res://assets/buildings/paddock_horse/%s_%s.png", "mask": "res://assets/buildings/paddock_horse/mask/%s_%s.png",
+	"anchor": Vector2(20.6, 27.7),
+	"states": {"built": {"centre": Vector2(14.2, -35.1), "radius": Vector2(22.0, 5.3)},
+		"damaged": {"centre": Vector2(20.6, -34.0), "radius": Vector2(18.4, 5.0)}},
+	"busy": 2, "idle": 1, "speed": 6.0, "walk_fps": 5.0, "graze_fps": 1.5, "rest": Vector2(1.5, 4.5),
+}
+const HORSE_ANIMS := ["idle", "walk", "graze"]
+const HORSE_DIRS := ["s", "se", "e", "ne", "n"]
+
+## The Armoury's inventor on its flat roof by the bench and the test stand (6 frames: tinkering,
+## inspecting a part, lighting the fuse, the bang, stunned and sooty, scratching his head), one
+## every `dt` s while it researches; on the bang a little flash and smoke at the test barrel's
+## `muzzle` (from his feet) and a very quiet shot. Every `clean_every`th round the shot goes off
+## cleanly: he isn't stunned (frame 5 skipped). Idle he isn't there. `feet`: where the
+## bottom middle of his frame stands per state, from the base point.
+const INVENTOR_ART := {
+	"strip": "res://assets/buildings/armoury_inventor.png", "frames": 6, "anchor": Vector2(25.3, 53.3),
+	"states": {"built": Vector2(8, -81), "damaged": Vector2(11, -81)},
+	"dt": 0.6, "bang": 3, "stunned": 4, "clean_every": 3, "muzzle": Vector2(11.5, -31.2), "volume": -20.0,
+}
+
+## The Church's windows (the lit sheet's glow, `lit` % state, drawn over the body) light up while
+## one of its side's Missionaries bandages or raises somebody within `radius` tiles of it:
+## fading in and out over `fade` s, flickering a little like candles, and a thin wisp of smoke
+## rises from the nave's chimney (`chimney`, from the base point) every `smoke_every` s.
+const CHURCH_ART := {
+	"lit": "res://assets/buildings/church_lit_%s.png",
+	"states": {"built": Vector2(12, -88), "damaged": Vector2(14, -85)},
+	"radius": 20.0, "fade": 0.8, "smoke_every": 1.1,
+}
+
+var b: Building
+var rng := RandomNumberGenerator.new()
+var _on := false              # on screen, and seen now (looked at every tick)
+var training := false         # (twice a second) its queue isn't empty
+var healing := false          # (twice a second) Church: a Missionary of its side heals nearby
+
+# the bell
+var bell: Sprite2D = null
+var belfry: Sprite2D = null
+var bell_state := ""
+var bell_t := 0.0
+var _bell: Dictionary = {}
+
+# the drilling Musketeer
+var man: Sprite2D = null
+var man_state := ""
+var man_t := 0.0
+var _man_tex: Array[Texture2D] = []
+var _man_n := PackedInt32Array()
+var _man_dt := PackedFloat32Array()
+var _man_end := PackedFloat32Array()   # when each of his anims ends in the round
+var _man_shown := -1
+
+# the paddock's horses
+var horses: Array[Sprite2D] = []
+var pad_state := ""
+var _pad_c := Vector2.ZERO
+var _pad_r := Vector2.ONE
+var _h_pos := PackedVector2Array()
+var _h_goal := PackedVector2Array()
+var _h_mode := PackedInt32Array()      # 0 standing, 1 walking, 2 grazing
+var _h_wait := PackedFloat32Array()
+var _h_f := PackedFloat32Array()
+var _h_key := PackedInt32Array()       # the strip shown: anim * 8 + direction (-1: none yet)
+var _h_flip: Array[bool] = []
+var _h_tex: Array = []                  # [anim][dir] -> Texture2D
+var _h_mask: Array = []
+var _h_n: Array = []                    # [anim][dir] -> frames
+
+# the inventor
+var inv: Sprite2D = null
+var inv_state := ""
+var inv_t := 0.0
+var inv_round := 0
+var inv_frame := 0
+
+# the Church's glow
+var lit: Sprite2D = null
+var lit_state := ""
+var lit_v := 0.0
+var _smoke_t := 0.0
+var _clock := 0.0
+
+
+static func has_life(kind: String) -> bool:
+	return BELL_ART.has(kind) or kind == "barracks" or kind == "horse_breeder" or kind == "armoury"
+
+
+func setup(building: Building) -> void:
+	b = building
+	rng.seed = hash(b.cell) + 77
+	if BELL_ART.has(b.kind):
+		_bell = BELL_ART[b.kind]
+		bell = _sprite(Game.tex(_bell["strip"]), BELL_FRAMES, -Vector2(_bell["pivot"]))
+		belfry = _sprite(null, 1, Vector2.ZERO)
+	match b.kind:
+		"barracks":
+			_drill_setup()
+		"horse_breeder":
+			_paddock_setup()
+		"armoury":
+			inv = _sprite(Game.tex(INVENTOR_ART["strip"]), int(INVENTOR_ART["frames"]), -Vector2(INVENTOR_ART["anchor"]))
+		"church":
+			lit = _sprite(null, 1, Vector2.ZERO)
+
+
+func _sprite(t: Texture2D, frames: int, offset: Vector2) -> Sprite2D:
+	var s := Sprite2D.new()
+	s.centered = false
+	s.texture = t
+	s.hframes = frames
+	s.offset = offset
+	s.visible = false
+	b.add_child(s)
+	return s
+
+
+## The building's picture changed (its state): which parts it shows.
+func show(state: String) -> void:
+	var alive := b.seeded and not b.dead
+	if bell:
+		var bs := state if alive and Dictionary(_bell["states"]).has(state) else ""
+		if bs != bell_state:
+			bell_state = bs
+			bell.visible = bs != ""
+			belfry.visible = bs != ""
+			if bs != "":
+				bell.position = _bell["states"][bs]
+				belfry.texture = Game.tex(String(_bell["belfry"]) % bs)
+		if bs != "":
+			belfry.position = b.sprite.position
+			belfry.offset = b.sprite.offset
+	if man:
+		var ms := state if alive and Dictionary(DRILL_ART["states"]).has(state) else ""
+		if ms != man_state:
+			man_state = ms
+			man.visible = false      # (shown by tick while it trains)
+			if ms != "":
+				man.position = DRILL_ART["states"][ms]["feet"]
+	if not horses.is_empty():
+		var ps := state if alive and Dictionary(PADDOCK_ART["states"]).has(state) else ""
+		if ps != pad_state:
+			pad_state = ps
+			if ps != "":
+				_pad_c = PADDOCK_ART["states"][ps]["centre"]
+				_pad_r = PADDOCK_ART["states"][ps]["radius"]
+				for i in horses.size():
+					_h_pos[i] = _in_paddock(0.8)
+					_h_goal[i] = _h_pos[i]
+					_h_mode[i] = 0
+					_h_wait[i] = rng.randf_range(0.0, 2.0)
+					_place_horse(i, true)
+			_show_horses()
+	if inv:
+		var s := state if alive and Dictionary(INVENTOR_ART["states"]).has(state) else ""
+		if s != inv_state:
+			inv_state = s
+			inv.visible = false
+			if s != "":
+				inv.position = INVENTOR_ART["states"][s]
+	if lit:
+		var s := state if alive and Dictionary(CHURCH_ART["states"]).has(state) else ""
+		if s != lit_state:
+			lit_state = s
+			if s != "":
+				lit.texture = Game.tex(String(CHURCH_ART["lit"]) % s)
+			lit.visible = s != "" and lit_v > 0.0
+		if s != "":
+			lit.position = b.sprite.position
+			lit.offset = b.sprite.offset
+
+
+## (twice a second, after Building._check_use) what drives the parts.
+func check() -> void:
+	training = b.built and not b.dead and not b.queue.is_empty()
+	if lit and lit_state != "":
+		healing = false
+		var r2 := pow(float(CHURCH_ART["radius"]) * Defs.TILE, 2.0)
+		var c := b.center()
+		for u in b.game.units:
+			if u.team == b.team and not u.dead and (u.work == "bandaging" or u.work == "reviving") \
+					and u.position.distance_squared_to(c) <= r2:
+				healing = true
+				break
+	if not horses.is_empty():
+		_show_horses()
+
+
+## A unit came out of it.
+func trained() -> void:
+	if bell and bell_state != "" and b.visible and b._seen_now and b.game.view_rect.has_point(b.global_position):
+		Sfx.play(BELL_SOUND, b.center(), BELL_VOLUME)
+
+
+func tick(delta: float) -> void:
+	_on = b._seen_now and b.game.view_rect.intersects(b.sprite_rect())
+	if bell and bell_state != "":
+		_swing_bell(delta)
+	if man:
+		_drill(delta)
+	if pad_state != "":
+		_paddock(delta)
+	if inv:
+		_invent(delta)
+	if lit:
+		_glow(delta)
+
+
+# ---------------------------------------------------------------- the bell
+
+func _swing_bell(delta: float) -> void:
+	if not _on:
+		return
+	if not training and bell.frame == 0:
+		bell_t = 0.0
+		return
+	bell_t += delta
+	if bell_t >= BELL_DT:
+		bell_t -= BELL_DT
+		bell.frame = (bell.frame + 1) % BELL_FRAMES
+
+
+# ---------------------------------------------------------------- the drill
+
+func _drill_setup() -> void:
+	man = _sprite(null, 1, -Vector2(DRILL_ART["anchor"]))
+	man.material = b.sprite.material          # (his side's colours)
+	var t := 0.0
+	var frames: Dictionary = ArtData.UNITS["musketeer"]["frames"]
+	for a: Array in DRILL_ART["anims"]:
+		_man_tex.append(Game.tex(String(DRILL_ART["strip"]) % a[0]))
+		_man_n.append(int(frames.get(a[0], 1)))
+		_man_dt.append(float(a[1]))
+		t += float(a[1]) * float(_man_n[_man_n.size() - 1])
+		_man_end.append(t)
+	_man_end[_man_end.size() - 1] = maxf(t, float(DRILL_ART["every"]))
+
+
+func _drill(delta: float) -> void:
+	var want := man_state != "" and b._in_use and b._seen_now
+	if not want:
+		if man.visible:
+			man.visible = false
+		man_t = 0.0
+		return
+	if not _on:
+		return
+	man.visible = true
+	var prev := man_t
+	man_t = fmod(man_t + delta, _man_end[_man_end.size() - 1])
+	var i := 0
+	var start := 0.0
+	while i < _man_end.size() - 1 and man_t >= _man_end[i]:
+		start = _man_end[i]
+		i += 1
+	if i != _man_shown:
+		_man_shown = i
+		man.texture = _man_tex[i]
+		man.hframes = _man_n[i]
+	var f := int((man_t - start) / _man_dt[i])
+	man.frame = f % _man_n[i] if i == _man_end.size() - 1 else mini(f, _man_n[i] - 1)
+	if prev < _man_end[0] and man_t >= _man_end[0]:
+		_drill_shot()
+
+
+func _drill_shot() -> void:
+	var p := b.global_position + man.position + Vector2(DRILL_ART["muzzle"])
+	var fx := b.game.spawn_effect("smoke", p + Vector2(4, 0), 1.2)
+	fx.scale = Vector2(0.35, 0.35)
+	fx.modulate = Color(1, 1, 1, 0.75)
+	var hit := b.game.spawn_effect("dust", b.global_position + Vector2(DRILL_ART["states"][man_state]["target"]) + Vector2(0, 4), 1.6)
+	hit.scale = Vector2(0.22, 0.22)
+	hit.modulate = Color(1.0, 0.92, 0.6, 0.8)
+	Sfx.play_any(["combat/musketeer_attack", "musket"], p, float(DRILL_ART["volume"]))
+
+
+# ---------------------------------------------------------------- the paddock
+
+func _paddock_setup() -> void:
+	var frames: Dictionary = ArtData.UNITS["horse"]["frames"]
+	for a in HORSE_ANIMS:
+		var tr: Array[Texture2D] = []
+		var mr: Array[Texture2D] = []
+		var nr := PackedInt32Array()
+		for d in HORSE_DIRS:
+			tr.append(Game.tex(String(PADDOCK_ART["strip"]) % [a, d]))
+			mr.append(Game.tex(String(PADDOCK_ART["mask"]) % [a, d]))
+			nr.append(int(frames.get("%s_%s" % [a, d], 1)))
+		_h_tex.append(tr)
+		_h_mask.append(mr)
+		_h_n.append(nr)
+	var n := maxi(int(PADDOCK_ART["busy"]), int(PADDOCK_ART["idle"]))
+	var shader: Shader = (b.sprite.material as ShaderMaterial).shader
+	# two different coats, by the cell (the same every time)
+	var first := posmod(hash(b.cell), HorseCoat.COATS.size())
+	for i in n:
+		var s := _sprite(null, 1, -Vector2(PADDOCK_ART["anchor"]))
+		var m := ShaderMaterial.new()
+		m.shader = shader
+		m.set_shader_parameter("team", Defs.NEUTRAL_CLOTH)
+		var coat: String = HorseCoat.COATS[(first + i * 2) % HorseCoat.COATS.size()]
+		m.set_shader_parameter("coat", -1 if coat == HorseCoat.NATIVE["horse"] else HorseCoat.COATS.find(coat))
+		m.set_shader_parameter("coat_ramps", HorseCoat.RAMPS)
+		s.material = m
+		horses.append(s)
+		_h_pos.append(Vector2.ZERO)
+		_h_goal.append(Vector2.ZERO)
+		_h_mode.append(0)
+		_h_wait.append(0.0)
+		_h_f.append(0.0)
+		_h_key.append(-1)
+		_h_flip.append(false)
+
+
+## How many horses stand in it now: `busy` while it trains, else `idle`.
+func horses_shown() -> int:
+	if pad_state == "":
+		return 0
+	return int(PADDOCK_ART["busy"]) if b._in_use else int(PADDOCK_ART["idle"])
+
+
+func _show_horses() -> void:
+	var n := horses_shown()
+	for i in horses.size():
+		var v := i < n
+		if horses[i].visible != v:
+			horses[i].visible = v
+			if not v:
+				_h_mode[i] = 0
+
+
+## A point inside the paddock's ellipse (`k` of its size).
+func _in_paddock(k: float) -> Vector2:
+	var a := rng.randf() * TAU
+	var r := sqrt(rng.randf()) * k
+	return _pad_c + Vector2(_pad_r.x * cos(a), _pad_r.y * sin(a)) * r
+
+
+func _paddock(delta: float) -> void:
+	if not _on:
+		return
+	var busy := b._in_use
+	var spd := float(PADDOCK_ART["speed"])
+	for i in horses.size():
+		if not horses[i].visible:
+			continue
+		if not busy:
+			# idle: it stands still where it is
+			if _h_mode[i] != 0:
+				_h_mode[i] = 0
+				_place_horse(i, true)
+			continue
+		match _h_mode[i]:
+			1:
+				var to := _h_goal[i] - _h_pos[i]
+				var step := spd * delta
+				if to.length() <= step:
+					_h_pos[i] = _h_goal[i]
+					_h_mode[i] = 2 if rng.randf() < 0.5 else 0
+					_h_wait[i] = rng.randf_range(PADDOCK_ART["rest"].x, PADDOCK_ART["rest"].y)
+					_h_f[i] = 0.0
+				else:
+					_h_pos[i] += to / to.length() * step
+					_h_f[i] += delta * float(PADDOCK_ART["walk_fps"])
+			_:
+				_h_wait[i] -= delta
+				if _h_mode[i] == 2:
+					_h_f[i] += delta * float(PADDOCK_ART["graze_fps"])
+				if _h_wait[i] <= 0.0:
+					_h_goal[i] = _goal_for(i)
+					_h_mode[i] = 1
+		_place_horse(i, false)
+	# the nearer horse over the farther one
+	if horses.size() >= 2 and horses[0].visible and horses[1].visible:
+		var front0 := _h_pos[0].y > _h_pos[1].y
+		if front0 != (horses[0].get_index() > horses[1].get_index()):
+			var i0 := horses[0].get_index()
+			var i1 := horses[1].get_index()
+			b.move_child(horses[0], i1)
+			b.move_child(horses[1], i0)
+
+
+## Somewhere to walk to: inside the paddock, not where the other horse is going.
+func _goal_for(i: int) -> Vector2:
+	var p := _in_paddock(0.9)
+	for k in 6:
+		var ok := true
+		for j in horses.size():
+			if j != i and horses[j].visible and (p.distance_to(_h_goal[j]) < 12.0 or p.distance_to(_h_pos[j]) < 10.0):
+				ok = false
+		if ok and p.distance_to(_h_pos[i]) > 6.0:
+			break
+		p = _in_paddock(0.9)
+	return p
+
+
+## The horse's strip for what it's doing and where it faces, and its frame.
+func _place_horse(i: int, still: bool) -> void:
+	var s := horses[i]
+	var mode := _h_mode[i]
+	var anim := 1 if mode == 1 else (2 if mode == 2 else 0)
+	var key := _h_key[i]
+	var o := key % 8 if key >= 0 else (2 if rng.randf() < 0.5 else 6)      # (first: side on)
+	if mode == 1:
+		var v := _h_goal[i] - _h_pos[i]
+		if v.length_squared() > 0.01:
+			o = posmod(int(round(v.angle() / (PI / 4.0))), 8)
+	var nk := anim * 8 + o
+	if nk != key:
+		_h_key[i] = nk
+		var df: Array = Unit.DIR_FLIP[o]
+		var di := HORSE_DIRS.find(String(df[0]))
+		s.texture = _h_tex[anim][di]
+		s.hframes = int(_h_n[anim][di])
+		s.flip_h = df[1]
+		(s.material as ShaderMaterial).set_shader_parameter("horse_mask", _h_mask[anim][di])
+		if df[1]:
+			s.offset.x = -(float(s.texture.get_width()) / s.hframes - Vector2(PADDOCK_ART["anchor"]).x)
+		else:
+			s.offset.x = -Vector2(PADDOCK_ART["anchor"]).x
+	s.frame = 0 if still or mode == 0 else int(_h_f[i]) % s.hframes
+	s.position = _h_pos[i].round()
+
+
+# ---------------------------------------------------------------- the inventor
+
+func _invent(delta: float) -> void:
+	var want := inv_state != "" and b._in_use and b._seen_now
+	if not want:
+		if inv.visible:
+			inv.visible = false
+		inv_t = 0.0
+		inv_frame = 0
+		return
+	if not _on:
+		return
+	if not inv.visible:
+		inv.visible = true
+		inv.frame = inv_frame
+	inv_t += delta
+	var dt := float(INVENTOR_ART["dt"])
+	if inv_t < dt:
+		return
+	inv_t -= dt
+	var f := inv_frame + 1
+	if f == int(INVENTOR_ART["stunned"]) and inv_round % int(INVENTOR_ART["clean_every"]) == int(INVENTOR_ART["clean_every"]) - 1:
+		f += 1                    # a clean shot: not stunned this time
+	if f >= int(INVENTOR_ART["frames"]):
+		f = 0
+		inv_round += 1
+	inv_frame = f
+	inv.frame = f
+	if f == int(INVENTOR_ART["bang"]):
+		var p := b.global_position + inv.position + Vector2(INVENTOR_ART["muzzle"])
+		var fl := b.game.spawn_effect("blast", p, 1.6)
+		fl.scale = Vector2(0.3, 0.3)
+		var sm := b.game.spawn_effect("smoke", p + Vector2(3, -2), 1.0)
+		sm.scale = Vector2(0.4, 0.4)
+		sm.modulate = Color(1, 1, 1, 0.8)
+		Sfx.play_any(["combat/musketeer_attack", "musket"], p, float(INVENTOR_ART["volume"]))
+
+
+# ---------------------------------------------------------------- the Church's glow
+
+func _glow(delta: float) -> void:
+	var want := lit_state != "" and healing and b._seen_now
+	if not b._seen_now:
+		lit_v = 0.0          # (remembered under the fog: dark)
+	if not _on:
+		if lit.visible != (lit_v > 0.0 and lit_state != ""):
+			lit.visible = lit_v > 0.0 and lit_state != ""
+		return
+	_clock += delta
+	lit_v = move_toward(lit_v, 1.0 if want else 0.0, delta / float(CHURCH_ART["fade"]))
+	var show := lit_v > 0.0 and lit_state != ""
+	if lit.visible != show:
+		lit.visible = show
+	if not show:
+		return
+	# candles: a slow wavering and a quicker flutter
+	var fl := 0.88 + 0.07 * sin(_clock * 5.3) + 0.05 * sin(_clock * 13.7 + 1.3)
+	lit.modulate.a = smoothstep(0.0, 1.0, lit_v) * fl
+	if lit_v >= 0.5:
+		_smoke_t -= delta
+		if _smoke_t <= 0.0:
+			_smoke_t = float(CHURCH_ART["smoke_every"])
+			var p := b.global_position + Vector2(CHURCH_ART["states"][lit_state]) + Vector2(rng.randf_range(-1, 1), 0)
+			var sm := b.game.spawn_effect("smoke", p, 0.6)
+			sm.scale = Vector2(0.22, 0.3)
+			sm.modulate = Color(0.85, 0.85, 0.85, 0.45)

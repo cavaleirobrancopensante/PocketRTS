@@ -34,8 +34,8 @@ python3 tools/import_deposits.py         # saltpetre / ore deposits (4 states), 
 python3 tools/import_round11.py          # painted portraits, research + ability icons, Engine Hall,
                                          # musketeer bayonet strips (last: replaces earlier icons/melee)
 python3 tools/import_command_icons.py     # command icons: hold fire / fire at will, hold, patrol, rally, demolish
-python3 tools/import_armoury.py          # the Crown Armoury (4 states, found by itself on the sheet), its
-                                         # build icon, the Armoury research icons and the Horseman /
+python3 tools/import_armoury.py          # the Armoury research icons (the building and its icon now come
+                                         # from import_buildings_v2.py below) and the Horseman /
                                          # Guardsman portraits (after round 11: replaces research_armour
                                          # and musketeer_armoured)
 python3 tools/import_pouch_icon.py       # the Shot Pouch research icon (same steel bevel)
@@ -59,7 +59,7 @@ python3 tools/import_horse_units.py      # the horse system's units: riderless h
                                          # (light and armoured), dismounted Horseman (slash fixed)
 python3 tools/import_bandage.py           # the Missionary bandaging a dismounted Horseman / Cuirassier
                                          # (their own art keys, a wider cell; after import_art's missionary)
-python3 tools/import_horse_breeder.py    # the Horse Breeder's 4 states and its build icon
+# (tools/import_horse_breeder.py, the old Horse Breeder sheet, is no longer run: import_buildings_v2.py)
 python3 tools/import_horse_icons.py         # the horse units' portraits and the horse command icons
 python3 tools/import_mount.py            # the riders' mounting strips (mount_s / se / e / n) from
                                          # art/crown/mount/ (after the riders' own sheets: it lines
@@ -72,6 +72,12 @@ python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill
                                          # replaces structures2's water mill, which import_art skips), its
                                          # millstone overlays, icon and the bay mill horse cut from the team
                                          # horse's strips (after import_horse_team and the coat masks)
+python3 tools/import_buildings_v2.py     # the new Town Hall (+ its bell), Barracks (+ the drilling Musketeer),
+                                         # Horse Breeder (+ its paddock horses), Armoury (+ the rooftop
+                                         # inventor, emblem repainted) and Church (+ lit windows) from
+                                         # art/crown/buildings_v2/ (replaces import_art's, import_armoury's
+                                         # and import_horse_breeder's; after the musketeer fixes, the horse
+                                         # coat masks and import_armoury)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included

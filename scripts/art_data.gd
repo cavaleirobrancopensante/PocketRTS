@@ -1026,7 +1026,7 @@ const UNITS := {
 const BUILDING_SIZE := {
 	"farm": Vector2i(112, 78),
 	"powder_mill": Vector2i(124, 113),
-	"church": Vector2i(100, 101),
+	"church": Vector2i(104, 115),
 	"feeding_pit": Vector2i(108, 71),
 	"bone_midden": Vector2i(104, 64),
 	"spore_vent": Vector2i(70, 67),
@@ -1050,6 +1050,7 @@ const BUILDING_SIZE := {
 	"brood_pen": Vector2i(134, 116),
 	"engine_hall": Vector2i(158, 191),
 	"horse_breeder": Vector2i(136, 136),
+	"armoury": Vector2i(138, 156),
 }
 
 const NATURE := ["tree_0", "tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "rock_0", "rock_1", "rock_2", "rock_3", "rock_4", "rock_5"]

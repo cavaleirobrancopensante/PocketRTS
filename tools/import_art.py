@@ -62,6 +62,9 @@ UNITS = {
                "drop": [("repair", "ne", 1)]},        # sliced in half on the sheet
 }
 BUILDINGS = ["town_hall", "cottage", "barracks", "foundry"]
+# Replaced by the second-generation sheets in art/crown/buildings_v2/ (tools/import_buildings_v2.py,
+# run near the end of tools/rebuild_art.sh): not written here any more.
+BUILDINGS_V2 = ["town_hall", "barracks"]
 BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]
 # The Brood hall's upgraded levels (Defs.HALL_LEVELS: the Warren and the Broodmound), each a
 # sheet of 4 states left to right (built, construction, damaged, destroyed) like hive.png,
@@ -975,11 +978,12 @@ def import_clockwork_structures(data):
 
 # Second structure sheets: one building per row, its four states across, flat background.
 # "skip": rows still cut (they part the sheet) but not written: the Crown's water-wheel Powder
-# Mill was replaced by the horse mill (tools/import_powder_mill.py).
+# Mill was replaced by the horse mill (tools/import_powder_mill.py), the Church by the new one
+# (art/crown/buildings_v2/church.png: tools/import_buildings_v2.py).
 STRUCTURES2 = {
     "art/crown/structures2.png": {"names": ["farm", "powder_mill", "church"], "rows": [0, 345, 640, 1024],
                                   "width": {"farm": 112, "powder_mill": 112, "church": 100},
-                                  "skip": ["powder_mill"]},
+                                  "skip": ["powder_mill", "church"]},
     "art/brood/structures2.png": {"names": ["feeding_pit", "bone_midden", "spore_vent", "roost"],
                                   "rows": [0, 252, 458, 712, 1024],
                                   "width": {"feeding_pit": 108, "bone_midden": 104, "spore_vent": 70, "roost": 100}},
@@ -1096,6 +1100,8 @@ def import_buildings(data):
         if os.path.exists(f"art/brood/buildings/{name}.png"):
             import_brood_building(name, data)
     for name in BUILDINGS:
+        if name in BUILDINGS_V2:
+            continue          # (tools/import_buildings_v2.py cuts the new sheets)
         px = load(f"art/crown/buildings/{name}.png")
         fg = checker_mask(px)
         imgs = frames_by_slot(px, fg, 4)

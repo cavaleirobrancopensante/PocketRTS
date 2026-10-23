@@ -103,6 +103,17 @@ func _run() -> void:
 	await _mill()
 	await _farm()
 	await _foundry()
+	# the second-generation buildings (BuildingLife), on fresh ground
+	origin = _open_area(30, 14)
+	if origin.x < 0:
+		check(false, "open ground for the new buildings")
+	else:
+		await _bell("town_hall", "labourer", Vector2i(1, 2))
+		await _drill()
+		await _paddock()
+		await _inventor()
+		await _church()
+		await _fog()
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(0 if fails == 0 else 1)
 

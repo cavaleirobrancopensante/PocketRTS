@@ -1,4 +1,7 @@
-"""The Horse Breeder from art/crown/horse_breeder.png: four building states left to right
+"""(No longer run by tools/rebuild_art.sh: the new Horse Breeder is cut from
+art/crown/buildings_v2/horse_breeder.png by tools/import_buildings_v2.py.)
+
+The Horse Breeder from art/crown/horse_breeder.png: four building states left to right
 (built, construction, damaged, destroyed), a stable with a fenced paddock, a trough and horses
 inside, on a flat slate background.
 

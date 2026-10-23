@@ -55,17 +55,21 @@ from import_powder_mill import slate_to_shadow  # noqa: E402
 from import_round12 import write_building_size  # noqa: E402
 
 STATES = ["built", "construction", "damaged", "destroyed"]
-WIDTH = {"town_hall": 152, "barracks": 140, "horse_breeder": 136}
+WIDTH = {"town_hall": 152, "barracks": 140, "horse_breeder": 136, "armoury": 138, "church": 104}
+ONE_ROW = {"church"}       # (no bottom row: church_lit.png is its second sheet)
 # Strays on the sheet erased before cutting (sheet px: x0, y0, x1, y1): a thin line drawn from
 # the built Barracks' roof to the scaffolding beside it.
 ERASE = {"barracks": [(362, 280, 400, 302)]}
 BANNER = 300         # sheet px: a red patch this big is a banner or flag (team-coloured)
 
-# Town Hall: the belfry's right-hand opening per state that keeps it (sheet px: x0, y0, x1, y1,
-# between the front and right pillars, from the roof's underside to the parapet), and the box
-# round the belfry the overlay is cut from.
-OPENING = {"built": (214, 213, 236, 245), "damaged": (967, 238, 991, 268)}
-BELFRY = {"built": (150, 190, 262, 252), "damaged": (905, 215, 1015, 275)}
+# Town Hall and Church: the belfry's right-hand opening per state that keeps it (sheet px: x0,
+# y0, x1, y1, between the front and right pillars, from the roof's (arch's) underside to the
+# parapet), and the box round the belfry the overlay is cut from. (The Church's damaged belfry
+# is broken: no bell there.)
+OPENING = {"town_hall": {"built": (214, 213, 236, 245), "damaged": (967, 238, 991, 268)},
+           "church": {"built": (130, 297, 147, 332)}}
+BELFRY = {"town_hall": {"built": (150, 190, 262, 252), "damaged": (905, 215, 1015, 275)},
+          "church": {"built": (62, 262, 160, 342)}}
 YOKE_OVER = 4         # sheet px: the yoke a little wider than the opening (its ends behind the pillars)
 
 # Barracks: where the drilling Musketeer's feet stand and the target's middle (sheet px)
@@ -80,6 +84,29 @@ PADDOCK = {"built": ((243, 466), (62, 15)), "damaged": ((1022, 466), (52, 14))}
 HORSE_SCALE = 0.42    # of the riderless horse (98x70 cell)
 HORSE_ANIMS = ["idle", "walk", "graze"]
 DIRS = ["s", "se", "e", "ne", "n"]
+
+# Armoury: the emblem over the door (a shield on two crossed muskets) in the built, construction
+# and damaged states, sheet px: the shield's left and right edges, its top and its tip. The
+# right musket's stock is painted over the shield: where it crosses (EMBLEM_FIX), inside the
+# shield's outline (and the outline itself), each column is repainted from the clean steel just
+# above and below the stock, so both muskets pass behind it and only their ends stick out.
+EMBLEM = [(245, 277, 360, (262, 407)), (626, 657, 353, (642, 401)), (1005, 1036, 357, (1020, 405))]
+# where the stock crosses the shield (sheet px: x0, y0, x1, y1): only this part is repainted
+EMBLEM_FIX = [(256, 375, 280, 391), (637, 369, 660, 390), (1017, 371, 1040, 392)]
+# The inventor on the roof (bottom row: 6 frames of a little diorama, the man at his bench and
+# test stand): drawn INV_SCALE of the building's sheet scale (its bench as big as the roof's), the
+# bottom middle of his frame's ground patch (its grass taken out) at INV_FEET (sheet px) per state
+# that keeps the roof; the test barrel's muzzle in frame 4 (sheet px, bottom row).
+INV_SCALE = 0.62
+INV_FEET = {"built": (222, 332), "damaged": (990, 336)}
+INV_MUZZLE = (935, 737)
+# Church: the bell painted into the belfry's left opening (sheet px: it's left as a dark
+# opening; the game hangs its own in the right one), the nave chimney's top per state, and the
+# lit sheet's windows (warm glow) taken in the built and damaged states, the belfry left out.
+CHURCH_PAINTED_BELL = (84, 296, 101, 338)
+CHURCH_CHIMNEY = {"built": (267, 278), "damaged": (1157, 290)}
+LIT_STATES = ["built", "damaged"]
+LIT_SKIP = [(60, 250, 165, 345), (940, 250, 1045, 345)]
 
 
 def quarters(fg, n=4):
@@ -191,7 +218,12 @@ def join(frames):
 
 # ---------------------------------------------------------------- Town Hall's bell
 
-def bell(px, fg, bg, row, info, contact):
+_BELL = {}
+
+
+def bell_cells(px, fg, bg, row):
+    """The Town Hall sheet's bell frames (sheet scale), each on one cell with the yoke's middle
+    on its centre line and its top on the top row; and the yoke's width."""
     y0, y1 = row
     f = fg[y0:y1]
     lab, n = ndimage.label(ndimage.binary_closing(f, iterations=2) | f, structure=np.ones((3, 3)))
@@ -207,7 +239,6 @@ def bell(px, fg, bg, row, info, contact):
         xs = np.nonzero(beam.any(0))[0]
         frames.append((unteam(img), (xs.min() + xs.max()) / 2.0, top, xs.max() - xs.min() + 1))
     yoke_w = max(f[3] for f in frames)
-    # one cell, every frame's yoke middle on its centre line and its top on the top row
     half = int(max(max(c, f[0].shape[1] - c) for f in frames for c in [f[1]])) + 1
     hgt = max(f[0].shape[0] - f[2] for f in frames)
     cell = []
@@ -217,26 +248,33 @@ def bell(px, fg, bg, row, info, contact):
         sub = img[top:]
         c[:sub.shape[0], ox:ox + sub.shape[1]] = sub
         cell.append(c)
-    ox0, oy0, ox1, oy1 = OPENING["built"]
-    st_scale = info["built"][2]
-    want = (ox1 - ox0 + YOKE_OVER) * st_scale            # the yoke's width in the game
-    s = want / yoke_w
+    _BELL["cells"], _BELL["yoke"] = cell, yoke_w
+
+
+def hang_bell(name, info, contact):
+    """The bell strip scaled to this building's belfry opening (OPENING[name]: the yoke a
+    little wider than it, the bell no taller), where its pivot hangs per state, and the belfry
+    round the opening per state, drawn over the bell (the opening itself left out)."""
+    cell, yoke_w = _BELL["cells"], _BELL["yoke"]
+    hgt = cell[0].shape[0]
+    first = next(iter(OPENING[name]))
+    ox0, oy0, ox1, oy1 = OPENING[name][first]
+    st_scale = info[first][2]
+    s = (ox1 - ox0 + YOKE_OVER) * st_scale / yoke_w
     oh = (oy1 - oy0) * st_scale
     if hgt * s > oh - 1:
         s = (oh - 1) / hgt
     small = [unteam(shrink(c, s, 0.4)) for c in cell]
     strip = join(small)
-    Image.fromarray(strip).save("assets/buildings/town_hall_bell.png")
+    Image.fromarray(strip).save("assets/buildings/%s_bell.png" % name)
     bw, bh = small[0].shape[1], small[0].shape[0]
-    print("bell cell %d x %d (4 frames), its pivot (the yoke's top middle) at (%.1f, 0)" % (bw, bh, bw / 2.0))
-    for st in ("built", "damaged"):
-        ox0, oy0, ox1, oy1 = OPENING[st]
+    print("%s bell cell %d x %d (4 frames), its pivot (the yoke's top middle) at (%.1f, 0)" % (name, bw, bh, bw / 2.0))
+    for st, (ox0, oy0, ox1, oy1) in OPENING[name].items():
         p = game_xy(info[st], (ox0 + ox1) / 2.0, oy0)
         print('  "%s": Vector2(%.1f, %.1f),' % (st, p[0], p[1] + 1))
-        # the belfry round the opening, drawn over the bell (the opening itself left out)
-        body = np.asarray(Image.open("assets/buildings/town_hall_%s.png" % st).convert("RGBA"))
+        body = np.asarray(Image.open("assets/buildings/%s_%s.png" % (name, st)).convert("RGBA"))
         h, w = body.shape[:2]
-        bx0, by0, bx1, by1 = BELFRY[st]
+        bx0, by0, bx1, by1 = BELFRY[name][st]
         gx0, gy0 = game_xy(info[st], bx0, by0)
         gx1, gy1 = game_xy(info[st], bx1, by1)
         qx0, qy0 = game_xy(info[st], ox0, oy0)
@@ -247,10 +285,10 @@ def bell(px, fg, bg, row, info, contact):
         keep[int(gy0 + ty):int(np.ceil(gy1 + ty)), int(gx0 + tx):int(np.ceil(gx1 + tx))] = True
         keep[int(round(qy0 + ty)):int(round(qy1 + ty)), int(round(qx0 + tx)):int(round(qx1 + tx))] = False
         ov = np.where((keep & (body[..., 3] > 0))[..., None], body, 0).astype(np.uint8)
-        Image.fromarray(ov).save("assets/buildings/town_hall_belfry_%s.png" % st)
+        Image.fromarray(ov).save("assets/buildings/%s_belfry_%s.png" % (name, st))
     if contact:
         big = np.array(Image.fromarray(strip).resize((strip.shape[1] * 6, strip.shape[0] * 6), Image.NEAREST))
-        Image.fromarray(big).save(os.path.join(contact, "town_hall_bell.png"))
+        Image.fromarray(big).save(os.path.join(contact, "%s_bell.png" % name))
 
 
 # ---------------------------------------------------------------- Barracks' drilling Musketeer
@@ -307,12 +345,215 @@ def paddock_horses(info):
 
 # ---------------------------------------------------------------- main
 
+# ---------------------------------------------------------------- Armoury
+
+def shield_mask(shape, left, right, top, tip):
+    """A heater shield: straight sides for the upper 55%, then curving in to the tip."""
+    h, w = shape
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    cx = (left + right) / 2.0
+    hw = (right - left) / 2.0
+    t = (yy - top) / float(tip[1] - top)
+    k = np.where(t < 0.55, 1.0, np.sqrt(np.clip(1 - ((t - 0.55) / 0.45) ** 2, 0, 1)))
+    return (t >= 0) & (t <= 1) & (np.abs(xx - cx) <= hw * k + 0.5)
+
+
+def fix_emblems(px, contact):
+    before = [px[t - 14:tip[1] + 14, l - 22:r + 22].copy() for l, r, t, tip in EMBLEM]
+    for (left, right, top, tip), (bx0, by0, bx1, by1) in zip(EMBLEM, EMBLEM_FIX):
+        y0, y1, x0, x1 = top - 2, tip[1] + 2, left - 2, right + 3
+        reg = px[y0:y1, x0:x1].astype(float)
+        sh = shield_mask(reg.shape[:2], left - x0, right - x0, top - y0, (tip[0] - x0, tip[1] - y0))
+        sh = ndimage.binary_dilation(sh, iterations=2)       # (its outline too)
+        box = np.zeros_like(sh)
+        box[by0 - y0:by1 - y0, bx0 - x0:bx1 - x0] = True
+        fix = sh & box
+        out = reg.copy()
+        # the stock crosses where the shield's sides are straight and its steel is shaded in
+        # upright streaks: each column is blended down from the clean rows just above and below
+        # the stock (the outline's columns carry the outline on)
+        ya, yb = by0 - y0 - 1, by1 - y0
+        for y, x in zip(*np.nonzero(fix)):
+            k = (y - ya) / float(yb - ya)
+            out[y, x] = reg[ya, x] * (1 - k) + reg[yb, x] * k
+        px[y0:y1, x0:x1] = out.clip(0, 255).astype(np.uint8)
+    if contact:
+        for i, ((l, r, t, tip), b) in enumerate(zip(EMBLEM, before)):
+            a = px[t - 14:tip[1] + 14, l - 22:r + 22]
+            pair = np.concatenate([b, np.full((b.shape[0], 4, 3), 255, np.uint8), a], 1)
+            Image.fromarray(pair).resize((pair.shape[1] * 8, pair.shape[0] * 8), Image.NEAREST).save(
+                os.path.join(contact, "armoury_emblem_%s_before_after.png" % STATES[[0, 1, 2][i]]))
+
+
+def inventor(px, fg, bg, row, info, contact):
+    y0, y1 = row
+    f = fg[y0:y1]
+    lab, n = ndimage.label(ndimage.binary_closing(f, iterations=3) | f, structure=np.ones((3, 3)))
+    sizes = ndimage.sum(f, lab, range(1, n + 1))
+    objs = sorted([ndimage.find_objects(lab)[i] for i in np.argsort(-sizes)[:6]], key=lambda s: s[1].start)
+    frames = []
+    for sl in objs:
+        img, org = cut(px, fg, bg, y0 + max(sl[0].start - 30, 0), y0 + sl[0].stop + 2, sl[1].start - 2, sl[1].stop + 2)
+        h, w = img.shape[:2]
+        foot = (org[0] + w / 2.0, org[1] + h)          # the ground patch's bottom middle
+        c = img[..., :3].astype(int)
+        grass = (c[..., 1] > c[..., 0] + 6) & (c[..., 1] > c[..., 2] + 6)
+        img[grass] = 0
+        # specks left of the ground: only what's joined to a big piece stays
+        a = img[..., 3] > 0
+        lab2, n2 = ndimage.label(a, structure=np.ones((3, 3)))
+        if n2:
+            sz = ndimage.sum(a, lab2, range(1, n2 + 1))
+            img[~((sz >= 40)[lab2 - 1] & (lab2 > 0))] = 0
+        frames.append((unteam(img), org, foot))
+    # one cell: every frame's foot on the same point
+    left = max(f[2][0] - f[1][0] for f in frames)
+    right = max(f[1][0] + f[0].shape[1] - f[2][0] for f in frames)
+    up = max(f[2][1] - f[1][1] for f in frames)
+    cw, ch = int(np.ceil(left + right)) + 1, int(np.ceil(up)) + 1
+    cells = []
+    for img, org, foot in frames:
+        c = np.zeros((ch, cw, 4), np.uint8)
+        ox, oy = int(round(left - (foot[0] - org[0]))), int(round(up - (foot[1] - org[1])))
+        sub = img[:ch - oy, :cw - ox]
+        c[oy:oy + sub.shape[0], ox:ox + sub.shape[1]] = sub
+        cells.append(c)
+    s = info["built"][2] * INV_SCALE
+    small = [unteam(shrink(c, s, 0.4)) for c in cells]
+    strip = join(small)
+    Image.fromarray(strip).save("assets/buildings/armoury_inventor.png")
+    sw, sh = small[0].shape[1], small[0].shape[0]
+    print("inventor cell %d x %d (6 frames), feet at (%.1f, %.1f)" % (sw, sh, left * s, up * s))
+    m = INV_MUZZLE
+    fo = frames[3][2]
+    print("  muzzle in frame 4 from his feet: (%.1f, %.1f)" % ((m[0] - fo[0]) * s, (m[1] - fo[1]) * s))
+    for st, p in INV_FEET.items():
+        g = game_xy(info[st], *p)
+        print('  "%s": Vector2(%.0f, %.0f),' % (st, g[0], g[1]))
+    if contact:
+        Image.fromarray(strip).resize((strip.shape[1] * 4, strip.shape[0] * 4), Image.NEAREST).save(
+            os.path.join(contact, "armoury_inventor.png"))
+
+
+# ---------------------------------------------------------------- Church
+
+def unpaint_bell(px):
+    """The bell painted in the belfry's left opening becomes the opening's dark."""
+    x0, y0, x1, y1 = CHURCH_PAINTED_BELL
+    reg = px[y0:y1, x0:x1].astype(float)
+    mx, mn = reg.max(-1), reg.min(-1)
+    sat = (mx - mn) / np.maximum(mx, 1)
+    bell = ndimage.binary_dilation((sat > 0.42) & (mx > 40), iterations=1)
+    lum = (reg @ np.array([0.299, 0.587, 0.114])) / 255.0
+    shade = np.array([46.0, 39.0, 33.0]) * (0.55 + 0.3 * lum[..., None])
+    reg[bell] = shade[bell]
+    px[y0:y1, x0:x1] = reg.clip(0, 255).astype(np.uint8)
+
+
+def edges(g):
+    return np.hypot(ndimage.sobel(g, 0), ndimage.sobel(g, 1))
+
+
+def lit_windows(px, imgs, info, contact):
+    """The lit sheet's window glow, each window moved onto the dark sheet's (the two sheets
+    were drawn separately: a little shifted and scaled), as overlays the size of the bodies."""
+    lp, lfg, lbg = load("buildings_v2/church_lit")
+    c = lp.astype(int)
+    r, g, b = c[..., 0], c[..., 1], c[..., 2]
+    glow = (r >= 170) & (g >= 95) & (b <= 125) & (r - b >= 80)
+    for x0, y0, x1, y1 in LIT_SKIP:
+        glow[y0:y1, x0:x1] = False
+    glow = ndimage.binary_closing(glow, iterations=1)
+    lab, n = ndimage.label(glow, structure=np.ones((3, 3)))
+    sizes = ndimage.sum(glow, lab, range(1, n + 1))
+    wts = np.array([0.299, 0.587, 0.114])
+    lg = edges(lp.astype(float) @ wts)
+    dg = edges(px.astype(float) @ wts)
+    H, W = glow.shape
+    ov = np.zeros((H, W, 4), np.uint8)
+    for k, sl in enumerate(ndimage.find_objects(lab)):
+        if sizes[k] < 60:             # (a window; not a lit flower or leaf)
+            continue
+        m = lab == k + 1
+        y0, y1 = max(sl[0].start - 6, 16), min(sl[0].stop + 6, H - 16)
+        x0, x1 = max(sl[1].start - 6, 16), min(sl[1].stop + 6, W - 16)
+        L = lg[y0:y1, x0:x1]
+        keep = ~ndimage.binary_dilation(m[y0:y1, x0:x1], iterations=1)
+        best, bo = None, (0, 0)
+        for dy in range(-14, 15):
+            for dx in range(-14, 15):
+                D = dg[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
+                e = np.abs(L - D)[keep].mean()
+                if best is None or e < best:
+                    best, bo = e, (dx, dy)
+        mm = ndimage.binary_dilation(m, iterations=1)
+        ys, xs = np.nonzero(mm)
+        ty, tx = ys + bo[1], xs + bo[0]
+        if (px[ty, tx].astype(float) @ wts).mean() > 95:
+            continue        # bright in the dark sheet too: a warm beam or plank, not a window
+        ov[ty, tx, :3] = lp[ys, xs]
+        ov[ty, tx, 3] = 255
+    for i, st in enumerate(STATES):
+        if st not in LIT_STATES:
+            continue
+        img, org = imgs[i]
+        h, w = img.shape[:2]
+        crop = ov[org[1]:org[1] + h, org[0]:org[0] + w].copy()
+        crop[img[..., 3] == 0] = 0
+        small = unteam(shrink(crop, info[st][2], 0.35))
+        Image.fromarray(small).save("assets/buildings/church_lit_%s.png" % st)
+        if contact:
+            body = np.asarray(Image.open("assets/buildings/church_%s.png" % st).convert("RGBA")).copy()
+            a = small[..., 3:4] / 255.0
+            lit = body.copy()
+            lit[..., :3] = (small[..., :3] * a + body[..., :3] * (1 - a)).astype(np.uint8)
+            pair = np.concatenate([body, lit], 1)
+            Image.fromarray(pair).resize((pair.shape[1] * 4, pair.shape[0] * 4), Image.NEAREST).save(
+                os.path.join(contact, "church_lit_%s.png" % st))
+
+
+def build_icon(img, name):
+    """A build icon from the built state's sheet picture, on the Cottage icon's frame (like the
+    Horse Breeder's and Powder Mill's)."""
+    icon = np.asarray(Image.open("assets/icons/cottage.png").convert("RGBA")).copy()
+    icon[4:60, 4:60] = icon[6, 6].copy()
+    pic = to_game(img, 54.0 / max(img.shape[0], img.shape[1]))
+    h, w = pic.shape[:2]
+    oy, ox = 5 + (54 - h) // 2, 5 + (54 - w) // 2
+    m = pic[..., 3] > 0
+    icon[oy:oy + h, ox:ox + w][m] = pic[m]
+    Image.fromarray(icon).save("assets/icons/%s.png" % name)
+
+
+def save_contact(contact, name, smalls):
+    h = max(s.shape[0] for s in smalls)
+    sheet = np.zeros((h, sum(s.shape[1] + 8 for s in smalls), 4), np.uint8)
+    sheet[...] = (70, 100, 60, 255)
+    x = 0
+    for s in smalls:
+        a = s[..., 3:4] / 255.0
+        reg = sheet[h - s.shape[0]:, x:x + s.shape[1]]
+        reg[..., :3] = (s[..., :3] * a + reg[..., :3] * (1 - a)).astype(np.uint8)
+        x += s.shape[1] + 8
+    big = Image.fromarray(sheet).resize((sheet.shape[1] * 3, sheet.shape[0] * 3), Image.NEAREST)
+    big.save(os.path.join(contact, "%s.png" % name))
+
+
 def building(name, contact):
     px, fg, bg = load("buildings_v2/" + name)
+    px = px.copy()
     for x0, y0, x1, y1 in ERASE.get(name, []):
         fg[y0:y1, x0:x1] = False
-    top, bottom = rows_of(fg)
-    imgs = [cut(px, fg, bg, top[0], top[1], x0, x1) for x0, x1 in quarters(fg[top[0]:top[1]])]
+    if name == "armoury":
+        fix_emblems(px, contact)
+    if name == "church":
+        unpaint_bell(px)
+    if name in ONE_ROW:
+        top, bottom = (0, fg.shape[0]), None
+    else:
+        top, bottom = rows_of(fg)
+    slabs = quarters(fg[top[0]:top[1]])
+    imgs = [cut(px, fg, bg, top[0], top[1], x0, x1) for x0, x1 in slabs]
     scale = WIDTH[name] / float(imgs[0][0].shape[1])
     info, sizes, smalls = {}, [], []
     for st, (img, org) in zip(STATES, imgs):
@@ -324,33 +565,25 @@ def building(name, contact):
         print("%s %s: %d x %d" % (name, st, small.shape[1], small.shape[0]))
     write_building_size(name, tuple(sizes[0]))
     if name == "town_hall":
-        bell(px, fg, bg, bottom, info, contact)
+        bell_cells(px, fg, bg, bottom)
+        hang_bell(name, info, contact)
     elif name == "barracks":
         drill(info)
     elif name == "horse_breeder":
         paddock_horses(info)
-        # the build icon: the built stable on the Cottage icon's frame
-        icon = np.asarray(Image.open("assets/icons/cottage.png").convert("RGBA")).copy()
-        icon[4:60, 4:60] = icon[6, 6].copy()
-        b = imgs[0][0]
-        pic = to_game(b, 54.0 / max(b.shape[0], b.shape[1]))
-        h, w = pic.shape[:2]
-        oy, ox = 5 + (54 - h) // 2, 5 + (54 - w) // 2
-        m = pic[..., 3] > 0
-        icon[oy:oy + h, ox:ox + w][m] = pic[m]
-        Image.fromarray(icon).save("assets/icons/horse_breeder.png")
+        build_icon(imgs[0][0], name)
+    elif name == "armoury":
+        inventor(px, fg, bg, bottom, info, contact)
+        build_icon(imgs[0][0], name)
+    elif name == "church":
+        hang_bell(name, info, contact)
+        lit_windows(px, imgs, info, contact)
+        build_icon(imgs[0][0], name)
+        for st in ("built", "damaged"):
+            c = game_xy(info[st], *CHURCH_CHIMNEY[st])
+            print('church chimney "%s": Vector2(%.0f, %.0f)' % (st, c[0], c[1]))
     if contact:
-        h = max(s.shape[0] for s in smalls)
-        sheet = np.zeros((h, sum(s.shape[1] + 8 for s in smalls), 4), np.uint8)
-        sheet[...] = (70, 100, 60, 255)
-        x = 0
-        for s in smalls:
-            a = s[..., 3:4] / 255.0
-            reg = sheet[h - s.shape[0]:, x:x + s.shape[1]]
-            reg[..., :3] = (s[..., :3] * a + reg[..., :3] * (1 - a)).astype(np.uint8)
-            x += s.shape[1] + 8
-        big = Image.fromarray(sheet).resize((sheet.shape[1] * 3, sheet.shape[0] * 3), Image.NEAREST)
-        big.save(os.path.join(contact, "%s.png" % name))
+        save_contact(contact, name, smalls)
 
 
 def main():
@@ -358,7 +591,8 @@ def main():
     if "--contact" in sys.argv:
         contact = sys.argv[sys.argv.index("--contact") + 1]
         os.makedirs(contact, exist_ok=True)
-    for name in ("town_hall", "barracks", "horse_breeder"):
+    # (the Town Hall first: the Church hangs its bell)
+    for name in ("town_hall", "barracks", "horse_breeder", "armoury", "church"):
         building(name, contact)
 
 
