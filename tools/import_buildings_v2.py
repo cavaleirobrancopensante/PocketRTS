@@ -62,12 +62,19 @@ ONE_ROW = {"church"}       # (no bottom row: church_lit.png is its second sheet)
 ERASE = {"barracks": [(362, 280, 400, 302)]}
 BANNER = 300         # sheet px: a red patch this big is a banner or flag (team-coloured)
 
-# Town Hall: the belfry's right-hand opening, Church: its left-hand one (where the sheet's artist
-# painted the bell) per state that keeps it (sheet px: x0, y0, x1, y1, between the pillars, from
-# the roof's (arch's) underside to the parapet), and the box round the belfry the overlay is cut
-# from. (The Church's damaged belfry is broken: no bell there.)
+# Town Hall and Church: the belfry's two openings per state that keeps it (sheet px: x0, y0, x1, y1,
+# between the pillars, from the roof's (arch's) underside to the parapet): OPENING the right-hand
+# one, OPENING_L the left-hand one; the central pillar stands between them. The bell hangs behind
+# that pillar, in the middle, a little wider than it, and swings out into both openings; and the
+# box round the belfry the overlay is cut from (the pillars and roof over the bell, the openings
+# cut out of it). (The Church's damaged belfry is broken: no bell there.)
 OPENING = {"town_hall": {"built": (214, 213, 236, 245), "damaged": (967, 238, 991, 268)},
-           "church": {"built": (89, 298, 104, 332)}}
+           "church": {"built": (121, 297, 132, 332)}}
+OPENING_L = {"town_hall": {"built": (179, 214, 195, 245), "damaged": (930, 238, 947, 268)},
+             "church": {"built": (89, 298, 104, 332)}}
+BELL_UP = 1.3         # the yoke this many times the central pillar's width plus YOKE_OVER
+BELL_TALL = 1.2       # the bell no taller than this times the opening (the rest hides under the floor)
+SWING = 0.62          # how far the bell swings out of the pillar's middle (game px: of the pillar's width)
 BELFRY = {"town_hall": {"built": (150, 190, 262, 252), "damaged": (905, 215, 1015, 275)},
           "church": {"built": (62, 262, 160, 342)}}
 YOKE_OVER = 4         # sheet px: the yoke a little wider than the opening (its ends behind the pillars)
@@ -252,38 +259,52 @@ def bell_cells(px, fg, bg, row):
 
 
 def hang_bell(name, info, contact):
-    """The bell strip scaled to this building's belfry opening (OPENING[name]: the yoke a
-    little wider than it, the bell no taller), where its pivot hangs per state, and the belfry
-    round the opening per state, drawn over the bell (the opening itself left out)."""
+    """The bell strip scaled to this building's belfry: the yoke BELL_UP times the central
+    pillar's width (plus YOKE_OVER), the bell no taller than BELL_TALL times the openings, hung
+    behind the pillar in the middle. Prints where its pivot hangs per state, how far it swings
+    out (SWING of the pillar's width, game px) and which way its second frame leans; and writes the
+    belfry round the openings per state, drawn over the bell (the two openings themselves cut out
+    of it, so the bell shows through both)."""
     cell, yoke_w = _BELL["cells"], _BELL["yoke"]
     hgt = cell[0].shape[0]
     first = next(iter(OPENING[name]))
-    ox0, oy0, ox1, oy1 = OPENING[name][first]
+    lx0, ly0, lx1, ly1 = OPENING_L[name][first]
+    rx0, ry0, rx1, ry1 = OPENING[name][first]
     st_scale = info[first][2]
-    s = (ox1 - ox0 + YOKE_OVER) * st_scale / yoke_w
-    oh = (oy1 - oy0) * st_scale
-    if hgt * s > oh - 1:
-        s = (oh - 1) / hgt
+    pillar = rx0 - lx1
+    s = (pillar * BELL_UP + YOKE_OVER) * st_scale / yoke_w
+    oh = (ry1 - ry0) * st_scale
+    if hgt * s > oh * BELL_TALL:
+        s = oh * BELL_TALL / hgt
     small = [unteam(shrink(c, s, 0.4)) for c in cell]
     strip = join(small)
     Image.fromarray(strip).save("assets/buildings/%s_bell.png" % name)
     bw, bh = small[0].shape[1], small[0].shape[0]
-    print("%s bell cell %d x %d (4 frames), its pivot (the yoke's top middle) at (%.1f, 0)" % (name, bw, bh, bw / 2.0))
-    for st, (ox0, oy0, ox1, oy1) in OPENING[name].items():
-        p = game_xy(info[st], (ox0 + ox1) / 2.0, oy0)
+    # which way frame 1 leans: its lower half's middle against the yoke's (the cell's centre line)
+    lower = small[1][bh // 2:, :, 3] > 0
+    xs = np.nonzero(lower.any(0))[0]
+    lean = 1 if xs.mean() + 0.5 > bw / 2.0 else -1
+    print("%s bell cell %d x %d (4 frames), its pivot (the yoke's top middle) at (%.1f, 0), frame 1 leans %s" % (
+        name, bw, bh, bw / 2.0, "right" if lean > 0 else "left"))
+    print("  swing out %.1f px" % (SWING * pillar * st_scale))
+    for st in OPENING[name]:
+        lx0, ly0, lx1, ly1 = OPENING_L[name][st]
+        rx0, ry0, rx1, ry1 = OPENING[name][st]
+        p = game_xy(info[st], (lx1 + rx0) / 2.0, min(ly0, ry0))
         print('  "%s": Vector2(%.1f, %.1f),' % (st, p[0], p[1] + 1))
         body = np.asarray(Image.open("assets/buildings/%s_%s.png" % (name, st)).convert("RGBA"))
         h, w = body.shape[:2]
         bx0, by0, bx1, by1 = BELFRY[name][st]
         gx0, gy0 = game_xy(info[st], bx0, by0)
         gx1, gy1 = game_xy(info[st], bx1, by1)
-        qx0, qy0 = game_xy(info[st], ox0, oy0)
-        qx1, qy1 = game_xy(info[st], ox1, oy1)
         # game px from the base point -> the sprite's pixels
         tx, ty = w / 2.0, h - 6.0
         keep = np.zeros((h, w), bool)
         keep[int(gy0 + ty):int(np.ceil(gy1 + ty)), int(gx0 + tx):int(np.ceil(gx1 + tx))] = True
-        keep[int(round(qy0 + ty)):int(round(qy1 + ty)), int(round(qx0 + tx)):int(round(qx1 + tx))] = False
+        for ox0, oy0, ox1, oy1 in (OPENING_L[name][st], OPENING[name][st]):
+            qx0, qy0 = game_xy(info[st], ox0, oy0)
+            qx1, qy1 = game_xy(info[st], ox1, oy1)
+            keep[int(round(qy0 + ty)):int(round(qy1 + ty)), int(round(qx0 + tx)):int(round(qx1 + tx))] = False
         ov = np.where((keep & (body[..., 3] > 0))[..., None], body, 0).astype(np.uint8)
         Image.fromarray(ov).save("assets/buildings/%s_belfry_%s.png" % (name, st))
     if contact:

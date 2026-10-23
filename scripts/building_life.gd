@@ -15,19 +15,24 @@ extends RefCounted
 ## allocated per frame.
 
 ## The bell (the Town Hall sheet's 4 frames: straight, tilted, straight, tilted the other way),
-## per building scaled to its belfry opening (the Town Hall's right one, the Church's left): where the yoke's top middle (`pivot`
-## in the strip's cell) hangs per state, from the base point; the belfry round the opening
-## (its pillars and roof: `belfry` % state) is drawn over it. While the building trains, a frame
+## per building scaled to its belfry: it hangs in the middle, behind the central pillar (where the
+## yoke's top middle, `pivot` in the strip's cell, hangs per state, from the base point), and
+## swings `swing` px out to both sides, into both of the belfry's openings; the belfry round the
+## openings (its pillars and roof: `belfry` % state) is drawn over it, so at rest it is mostly
+## hidden. While the building trains, a frame
 ## every BELL_DT s; idle it hangs still (frame 0: a swing under way finishes first). When a unit
 ## comes out, the hall's bell rings once, softly (the Town Hall's select sound).
 const BELL_ART := {
-	"town_hall": {"strip": "res://assets/buildings/town_hall_bell.png", "pivot": Vector2(6, 0),
-		"belfry": "res://assets/buildings/town_hall_belfry_%s.png",
-		"states": {"built": Vector2(10.7, -148.1), "damaged": Vector2(7.1, -138.5)}},
-	"church": {"strip": "res://assets/buildings/church_bell.png", "pivot": Vector2(3, 0),
-		"belfry": "res://assets/buildings/church_belfry_%s.png",
-		"states": {"built": Vector2(-30.2, -82.2)}},
+	"town_hall": {"strip": "res://assets/buildings/town_hall_bell.png", "pivot": Vector2(7, 0),
+		"belfry": "res://assets/buildings/town_hall_belfry_%s.png", "swing": 4.8, "lean": -1,
+		"states": {"built": Vector2(2.4, -148.1), "damaged": Vector2(-1.8, -138.5)}},
+	"church": {"strip": "res://assets/buildings/church_bell.png", "pivot": Vector2(4, 0),
+		"belfry": "res://assets/buildings/church_belfry_%s.png", "swing": 2.6, "lean": -1,
+		"states": {"built": Vector2(-26.3, -82.4)}},
 }
+## How far the bell is swung out of the middle in each of its 4 frames (of `swing`, towards the
+## side frame 1 leans: `lean`): straight, out, straight, out the other way.
+const BELL_SHIFT := [0.0, 1.0, 0.0, -1.0]
 const BELL_FRAMES := 4
 const BELL_DT := 0.25
 const BELL_SOUND := "select/town_hall"
@@ -96,6 +101,7 @@ var bell: Sprite2D = null
 var belfry: Sprite2D = null
 var bell_state := ""
 var bell_t := 0.0
+var bell_dx := 0.0            # how far it is swung out of the middle (px)
 var _bell: Dictionary = {}
 
 # the drilling Musketeer
@@ -181,6 +187,7 @@ func show(state: String) -> void:
 			bell_state = bs
 			bell.visible = bs != ""
 			belfry.visible = bs != ""
+			bell_dx = 0.0
 			if bs != "":
 				bell.position = _bell["states"][bs]
 				belfry.texture = Game.tex(String(_bell["belfry"]) % bs)
@@ -268,13 +275,18 @@ func tick(delta: float) -> void:
 func _swing_bell(delta: float) -> void:
 	if not _on:
 		return
-	if not training and bell.frame == 0:
+	if training or bell.frame != 0:
+		bell_t += delta
+		if bell_t >= BELL_DT:
+			bell_t -= BELL_DT
+			bell.frame = (bell.frame + 1) % BELL_FRAMES
+	else:
 		bell_t = 0.0
-		return
-	bell_t += delta
-	if bell_t >= BELL_DT:
-		bell_t -= BELL_DT
-		bell.frame = (bell.frame + 1) % BELL_FRAMES
+	# (it swings out and back with the frames, at a steady pace: a frame's time to cross over)
+	var swing: float = float(_bell["swing"])
+	var goal: float = swing * float(_bell["lean"]) * float(BELL_SHIFT[bell.frame])
+	bell_dx = move_toward(bell_dx, goal, swing / BELL_DT * delta)
+	bell.position.x = Vector2(_bell["states"][bell_state]).x + bell_dx
 
 
 # ---------------------------------------------------------------- the drill
