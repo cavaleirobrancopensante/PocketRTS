@@ -101,6 +101,8 @@ func _run() -> void:
 	check(g.nearest_hall(pit.center(), 0) != null, "   (second Burrow stands)")
 	check(g.dropoff_hall(pit.center(), 0) == cap and g.dropoff_hall(h2.center(), 0) == cap, "1. the drop-off is the capital for every pit and spot")
 	g.ais.clear()
+	await wait(1.0)
+	check(cap.life != null and cap.life.queen != null and cap.life.queen.visible and not h2.life.queen.visible, "   the Queen sits at the capital only (still sprite)")
 	var soil_cap0: float = cap.soil
 	var soil_h2_0: float = h2.soil
 	p["gold"] = 0
@@ -163,6 +165,8 @@ func _run() -> void:
 	check(nc == h2 and nc != cap, "2. the capital died: the next oldest Burrow is the capital")
 	check(nc != null and absf(nc.soil - soil_before) < 80.0, "   and it inherits the ground (%d vs %d)" % [int(nc.soil) if nc else -1, int(soil_before)])
 	check(g.dropoff_hall(pit.center(), 0) == h2, "   grubs now unload there")
+	await wait(1.0)
+	check(h2.life.queen.visible, "   and the Queen is at the new capital")
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(1 if fails > 0 else 0)
 
