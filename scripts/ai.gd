@@ -1521,9 +1521,18 @@ func _army() -> void:
 				u.cmd_move(best + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 		# Workers pitch in when the base is being overrun and there's no army.
 		if army.size() < 3:
-			for u in game.workers(team):
-				if u.position.distance_to(threat) < 260.0 and u.order == "gather":
-					u.cmd_move(threat, true)
+			# (a lone worker scout is no invasion: two hands deal with it, the rest keep working)
+			var foes: Array = game.units_near(threat, 260.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field and game.is_visible_to(team, o.position))
+			var scouts_only: bool = foes.all(func(o: Unit) -> bool: return o.is_worker() or not o.has_attack())
+			var cap: int = 2 if scouts_only else 999
+			var hands: Array = game.workers(team).filter(func(u: Unit) -> bool: return u.position.distance_to(threat) < 260.0 and (u.order == "gather" or (u.order == "move" and u.order_point.distance_to(threat) < 40.0)))
+			hands.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_to(threat) < b.position.distance_to(threat))
+			for i in hands.size():
+				if i < cap:
+					if hands[i].order == "gather":
+						hands[i].cmd_move(threat, true)
+				elif hands[i].order == "move" and hands[i].order_point.distance_to(threat) < 40.0:
+					hands[i].cmd_gather(hands[i].home_mine) if hands[i].home_mine != null and is_instance_valid(hands[i].home_mine) else hands[i].cmd_stop()
 		return
 	# Clockwork: constructs running low on charge go back into a field first
 	if _clock():
