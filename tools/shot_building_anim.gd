@@ -86,6 +86,8 @@ func _run() -> void:
 	var ar: Building = g._add_building("armoury", 0, origin + Vector2i(2, 8), true)
 	var ch: Building = g._add_building("church", 0, origin + Vector2i(12, 8), true)
 	await create_timer(1.5).timeout
+	if OS.get_cmdline_user_args().size() > 1:
+		ch.life.belfry.visible = false        # (debug: the bell without the pillars over it)
 	g.train(th, "labourer")
 	g.train(th, "labourer")
 	await snap(th, "town_hall", 8, 0.25)
@@ -94,6 +96,7 @@ func _run() -> void:
 	await snap(br, "barracks", 10, 0.3)
 	g.train(hb, "horse")
 	g.train(hb, "horse")
+	g.train(ch, "missionary")
 	await create_timer(1.0).timeout
 	await snap(hb, "horse_breeder", 8, 1.0)
 	for k: String in Defs.RESEARCH:

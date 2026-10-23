@@ -15,7 +15,7 @@ extends RefCounted
 ## allocated per frame.
 
 ## The bell (the Town Hall sheet's 4 frames: straight, tilted, straight, tilted the other way),
-## per building scaled to its belfry's right-hand opening: where the yoke's top middle (`pivot`
+## per building scaled to its belfry opening (the Town Hall's right one, the Church's left): where the yoke's top middle (`pivot`
 ## in the strip's cell) hangs per state, from the base point; the belfry round the opening
 ## (its pillars and roof: `belfry` % state) is drawn over it. While the building trains, a frame
 ## every BELL_DT s; idle it hangs still (frame 0: a swing under way finishes first). When a unit
@@ -26,7 +26,7 @@ const BELL_ART := {
 		"states": {"built": Vector2(10.7, -148.1), "damaged": Vector2(7.1, -138.5)}},
 	"church": {"strip": "res://assets/buildings/church_bell.png", "pivot": Vector2(3, 0),
 		"belfry": "res://assets/buildings/church_belfry_%s.png",
-		"states": {"built": Vector2(-19.9, -82.4)}},
+		"states": {"built": Vector2(-30.2, -82.2)}},
 }
 const BELL_FRAMES := 4
 const BELL_DT := 0.25

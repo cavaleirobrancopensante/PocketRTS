@@ -62,12 +62,12 @@ ONE_ROW = {"church"}       # (no bottom row: church_lit.png is its second sheet)
 ERASE = {"barracks": [(362, 280, 400, 302)]}
 BANNER = 300         # sheet px: a red patch this big is a banner or flag (team-coloured)
 
-# Town Hall and Church: the belfry's right-hand opening per state that keeps it (sheet px: x0,
-# y0, x1, y1, between the front and right pillars, from the roof's (arch's) underside to the
-# parapet), and the box round the belfry the overlay is cut from. (The Church's damaged belfry
-# is broken: no bell there.)
+# Town Hall: the belfry's right-hand opening, Church: its left-hand one (where the sheet's artist
+# painted the bell) per state that keeps it (sheet px: x0, y0, x1, y1, between the pillars, from
+# the roof's (arch's) underside to the parapet), and the box round the belfry the overlay is cut
+# from. (The Church's damaged belfry is broken: no bell there.)
 OPENING = {"town_hall": {"built": (214, 213, 236, 245), "damaged": (967, 238, 991, 268)},
-           "church": {"built": (130, 297, 147, 332)}}
+           "church": {"built": (89, 298, 104, 332)}}
 BELFRY = {"town_hall": {"built": (150, 190, 262, 252), "damaged": (905, 215, 1015, 275)},
           "church": {"built": (62, 262, 160, 342)}}
 YOKE_OVER = 4         # sheet px: the yoke a little wider than the opening (its ends behind the pillars)
@@ -101,7 +101,7 @@ INV_SCALE = 0.62
 INV_FEET = {"built": (222, 332), "damaged": (990, 336)}
 INV_MUZZLE = (935, 737)
 # Church: the bell painted into the belfry's left opening (sheet px: it's left as a dark
-# opening; the game hangs its own in the right one), the nave chimney's top per state, and the
+# opening and the game hangs its own there, swinging), the nave chimney's top per state, and the
 # lit sheet's windows (warm glow) taken in the built and damaged states, the belfry left out.
 CHURCH_PAINTED_BELL = (84, 296, 101, 338)
 CHURCH_CHIMNEY = {"built": (267, 278), "damaged": (1157, 290)}
