@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Farm's fields: the ground layer of the (6x5-tile) Farm, drawn under the units so the
+"""The Farm's fields: the ground layer of the (6x6-tile) Farm, drawn under the units so the
 labourers can be seen working the rows. Pixel art at 1:1 (no scaling), in the colours of the
 farmhouse sprite's own little wheat field, seeded so it comes out the same every time.
 
@@ -8,12 +8,12 @@ farmhouse sprite's own little wheat field, seeded so it comes out the same every
 The windmill (assets/buildings/farm_*.png, tools/import_windmill.py) stands on the 4x2-tile
 block in the middle (Building.FARM_BLOCK); its sprite has no yard of its own, so the crop rows
 (ROW px apart) cover the whole fenced footprint, furrows running right up to the tower's foot:
-no yard, no path, no verge. The fence is closed all round.
+no yard, no path, no verge. The fence runs down both sides and along the back; none along the front.
 """
 import random
 from PIL import Image
 
-W, H = 192, 160            # 6 x 5 tiles of 32 px
+W, H = 192, 192            # 6 x 6 tiles of 32 px: a true square
 ROW = 16
 OUT = "assets/buildings/farm_field_%s.png"
 
@@ -31,7 +31,7 @@ OUTLINE = (40, 26, 14)
 
 def in_crops(x, y):
     """Cropped ground: everywhere inside the fence."""
-    return 2 <= x < W - 2 and 2 <= y < H - 1
+    return 2 <= x < W - 2 and 2 <= y < H
 
 
 def make(stage, seed=7):
@@ -39,7 +39,7 @@ def make(stage, seed=7):
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     px = im.load()
     # ground: tilled soil all over, furrow and ridge every ROW px
-    for y in range(2, H - 1):
+    for y in range(2, H):
         for x in range(2, W - 2):
             c = rnd.choice(SOIL)
             ry = (y - 2) % ROW
@@ -91,14 +91,8 @@ def make(stage, seed=7):
         if 0 <= y - 7 < H:
             px[x, y - 7] = OUTLINE + (255,)
             px[x + 1, y - 7] = OUTLINE + (255,)
-    # front, closed (no gate: there's no path)
-    rail(1, H - 5, W - 2, H - 5)
-    rail(1, H - 3, W - 2, H - 3)
-    for x in range(1, W - 1):
-        px[x, H - 6] = RAIL_HI + (255,)
-        px[x, H - 1] = OUTLINE + (200,)
     # sides
-    for y in range(3, H - 2):
+    for y in range(3, H):
         px[1, y] = RAIL + (255,)
         px[W - 2, y] = RAIL + (255,)
         px[0, y] = OUTLINE + (200,)
@@ -107,8 +101,6 @@ def make(stage, seed=7):
     for x in range(1, W - 1):
         px[x, 3] = RAIL + (255,)
         px[x, 2] = RAIL_HI + (255,)
-    for x in list(range(1, W - 2, 16)) + [W - 3]:
-        post(x, H - 2)
     for y in range(3 + 16, H - 2, 16):
         post(0, y)
         post(W - 2, y)
