@@ -11,7 +11,7 @@ status lines below as work lands (one line per pack, newest state wins).
 
 | Pack | Art | Import script | In game |
 | --- | --- | --- | --- |
-| Armoury research experiments (9) | **delivered**, 6 sheets in `art/crown/armoury_anim/` | not written | not started |
+| Armoury research experiments (9) | **delivered**, 6 sheets in `art/crown/armoury_anim/` | **written** (`tools/import_armoury_anims.py`, in `rebuild_art.sh`; one 6-frame strip per research, `assets/buildings/armoury_anim_<id>.png`) | **in game** (`BuildingLife.ARMOURY_ART`: the head of the Armoury queue picks the experiment, 0.7 s a frame; fallback: the old cannon test) |
 | Barracks (production: one animation per unit, 8 buttons) | no new drawing: existing unit strips + the user's horse prop / dummy sheets | `tools/import_barracks_props.py` | done in `building_life.gd` (drill per queue head, prop with a Horse Breeder); tests in `test_building_anim.gd` |
 | Horse Breeder (production: HORSE) | no new art: paddock horses wear the queued horses' coats | none | done (coat decided at queue time, `kit["coat"]`) |
 

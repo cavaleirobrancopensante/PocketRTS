@@ -483,15 +483,63 @@ func _inventor() -> void:
 	g.start_research(ar, key)
 	await wait(1.5)
 	check(L.inv.visible, "researching: the inventor is at his bench")
-	var seen := {}
-	for i in 240:
-		seen[L.inv.frame] = true
-		await physics_frame
-	check(seen.size() >= 4 and seen.has(int(BuildingLife.INVENTOR_ART["bang"])), "he tinkers and the barrel goes off (%d frames in 8 s)" % seen.size())
+	check(L.inv_key == key, "he plays the experiment of the research at the head of the queue (%s)" % key)
 	ar.queue.clear()
 	ar.kits.clear()
 	await wait(1.0)
 	check(not L.inv.visible, "research over: he is gone")
+	# each of the nine researches: its own strip, all frames playing
+	var ids := ["armour", "matchlock", "flintlock", "caplock", "bayonet", "pouch", "charges", "quadrant", "charge"]
+	for id: String in ids:
+		check(Defs.RESEARCH.has(id) and BuildingLife.ARMOURY_ART["anims"].has(id), "%s: a research with an experiment" % id)
+		ar.queue.clear()
+		ar.kits.clear()
+		ar.prod_t = 0.0
+		ar.add_entry("@" + id)
+		await wait(1.2)
+		var tex: Texture2D = L.inv.texture
+		check(L.inv.visible and L.inv_key == id and tex != null and tex.resource_path.ends_with("armoury_anim_%s.png" % id),
+			"%s: his strip is shown" % id)
+		var seen := {}
+		for i in 200:
+			seen[L.inv.frame] = true
+			await physics_frame
+		check(seen.size() == 6, "%s: all six frames play (%d seen in 6.7 s)" % [id, seen.size()])
+	# the head switches cleanly: finishing the first hands the bench to the next
+	ar.queue.clear()
+	ar.kits.clear()
+	ar.add_entry("@armour")
+	ar.add_entry("@charge")
+	await wait(2.0)
+	check(L.inv_key == "armour", "two queued: the head's experiment plays")
+	ar.take_entry(0)
+	await wait(1.0)
+	check(L.inv.visible and L.inv_key == "charge" and L.inv_head == "@charge", "the head went: he switches to the next research's experiment")
+	check(L.inv.texture.resource_path.ends_with("armoury_anim_charge.png"), "  and its strip is shown")
+	# a unit at the head (never queued at an Armoury, but): he is not there
+	ar.queue.clear()
+	ar.kits.clear()
+	ar.add_entry("musketeer")
+	await wait(1.0)
+	check(not L.inv.visible, "a non-research at the head: he is gone")
+	# a research with no strip falls back to the old cannon experiment
+	var saved = L._inv_tex["armour"]
+	L._inv_tex.erase("armour")
+	ar.queue.clear()
+	ar.kits.clear()
+	ar.add_entry("@armour")
+	await wait(1.2)
+	check(L.inv.visible and L.inv_key == "" and L.inv.texture.resource_path.ends_with("armoury_inventor.png"), "no strip: the old cannon test")
+	var seen2 := {}
+	for i in 240:
+		seen2[L.inv.frame] = true
+		await physics_frame
+	check(seen2.size() >= 4 and seen2.has(int(BuildingLife.INVENTOR_ART["bang"])), "  it still plays and goes off (%d frames in 8 s)" % seen2.size())
+	L._inv_tex["armour"] = saved
+	ar.queue.clear()
+	ar.kits.clear()
+	await wait(1.0)
+	check(not L.inv.visible, "queue empty: he is gone")
 	ar.die()
 	check(L.inv_state == "", "destroyed: no inventor")
 

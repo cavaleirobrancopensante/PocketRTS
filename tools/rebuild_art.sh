@@ -81,6 +81,9 @@ python3 tools/import_buildings_v2.py     # the new Town Hall (+ its bell), Barra
 python3 tools/import_barracks_props.py   # the Barracks yard's wooden horse prop and straw dummy (art/crown/barracks_props/)
                                          # and the Officers' / Guardsman's / mounted men's drill strips (after the
                                          # buildings above: it uses the unit strips and horse masks)
+python3 tools/import_armoury_anims.py    # the Armoury's nine research experiments (the inventor's 6-frame
+                                         # strips, assets/buildings/armoury_anim_<research>.png) from
+                                         # art/crown/armoury_anim/ (after import_buildings_v2: same roof patch)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included

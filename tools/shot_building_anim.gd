@@ -154,12 +154,14 @@ func _run() -> void:
 	g.train(ch, "missionary")
 	await create_timer(1.0).timeout
 	await snap(hb, "horse_breeder", 8, 1.0)
-	for k: String in Defs.RESEARCH:
-		if Defs.RESEARCH[k]["at"] == "armoury" and g.research_problem(ar, k) == "":
-			g.start_research(ar, k)
-			break
-	await create_timer(0.5).timeout
-	await snap(ar, "armoury", 10, 0.6)
+	# the Armoury's nine experiments, one research at a time (a head of the queue each)
+	for id: String in ["armour", "matchlock", "flintlock", "caplock", "bayonet", "pouch", "charges", "quadrant", "charge"]:
+		ar.queue.clear()
+		ar.kits.clear()
+		ar.prod_t = 0.0
+		ar.add_entry("@" + id)
+		await create_timer(0.8).timeout
+		await snap(ar, "armoury_" + id, 12, 0.45)
 	var m: Unit = g._add_unit("missionary", 0, ch.center() + Vector2(0, ch.rect().size.y * 0.5 + 30))
 	var w: Unit = g._add_unit("musketeer", 0, m.position + Vector2(24, 0))
 	w.hp = w.max_hp * 0.3
