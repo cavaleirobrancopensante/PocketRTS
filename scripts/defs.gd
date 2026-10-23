@@ -5,7 +5,9 @@ class_name Defs
 const TILE := 32
 const START_GOLD := 250
 const EGGS_MAX := 5               # a Burrow's eggs (an upgraded hall holds more: HALL_LEVELS)
-const EGG_TIME := 6.0
+## Seconds for a Burrow to lay one egg (a Clutch Mound still speeds it up). Was 6.0: +50% so each
+## hatched unit is a bigger commitment; cancelling a hatching egg no longer gives the egg back.
+const EGG_TIME := 9.0
 ## The Brood's main hall grows in three levels (its kind stays "hive" at every level; the
 ## level is kept on the building and saved): name, health, armour and how many eggs it holds.
 ## Levels 2 and 3 are upgrades on the hall's card (`label`), paid in biomass (`cost`) and
@@ -31,6 +33,9 @@ const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); fast
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
+## Brood Burrows have no ground of their own (only the capital has), so extra ones may stand
+## close round it: the least distance between two of them (centre to centre, tiles).
+const BROOD_HALL_SPACING := 8
 const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
 ## Lodes: every Town Hall's ground holds a reserve of saltpetre for its Powder Mill, every
 ## Clocktower's a reserve of ore for its Ore Crushers (a Mill / Crusher draws on the nearest
@@ -119,10 +124,10 @@ const KEG := {"blast": 40.0, "radius": 48.0}
 ## from FOOD_NEAR tiles in, up to FOOD_BONUS more (+30%) at FOOD_FAR tiles, flat to
 ## FOOD_PEAK, then a little less per tile beyond (FOOD_FADE). The trip is estimated as
 ## PIT_TIME + FOOD_TRIP seconds a tile of open ground between the two buildings (less the
-## FOOD_REACH a grub needn't walk: it unloads beside each one). So a grub earns ~60-70 biomass
-## a minute within 9 tiles of the Hive and ~88 from 15-24 tiles out (tools/econ_bench.gd pits).
+## FOOD_REACH a grub needn't walk: it unloads beside each one). So a grub earns ~30-35 biomass
+## a minute within 9 tiles of the capital and ~44 from 15-24 tiles out (half of what it was; tools/econ_bench.gd pits).
 const PIT_TIME := 2.0             # seconds a grub feeds at the pit before hauling
-const FOOD_RATE := 1.2            # biomass per grub-second of round trip (near pits)
+const FOOD_RATE := 0.6            # biomass per grub-second of round trip (near pits; was 1.2: halved, same distance curve)
 const FOOD_NEAR := 6.0
 const FOOD_FAR := 18.0
 const FOOD_PEAK := 22.0
@@ -135,6 +140,15 @@ const FOOD_MAX_D := 32.0          # a load is worth no more from farther out tha
 ## reserve of biomass; every load hauled draws its value from it, and once it's spent those
 ## pits yield a third. A new Hive has fresh ground (one grown where a Hive fell takes over
 ## what was left there).
+## THE CAPITAL: a Brood player's FIRST Burrow (the oldest one standing; if it falls the next oldest takes
+## over) is the only hall grubs unload at (food and cocoons), and the only one with ground (the reserve
+## below). The other Burrows only lay eggs, give supply and spread swamp. Where the Queen sits.
+## A Feeding Pit's crew (its `crew` is the base) grows with its distance from the capital: +1 grub per
+## PIT_CREW_STEP tiles beyond FOOD_NEAR, up to PIT_CREW_MAX, so far pits can take more hands.
+const PIT_CREW_STEP := 4.0
+const PIT_CREW_MAX := 12
+## Brood resource buildings (Feeding Pit, Brood Pen) need swamp joined to the capital's, no farther than this.
+const BROOD_RESOURCE_MAX_D := 40.0
 const GROUND_RESERVE := 10500     # (a fully worked Hive draws ~1,000-1,150 a minute: ~10 minutes)
 const ESSENCE_PER_SUPPLY := 3     # a body falling near a Brood Pen
 const PEN_RANGE := 12             # tiles
@@ -503,7 +517,7 @@ const BUILDINGS := {
 	"hive": {
 		"name": "Burrow", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
 		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Its ground holds a reserve of biomass: once the pits have drawn it out they yield a third. Expand to fresh ground. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
+		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield a third). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
@@ -562,7 +576,7 @@ const BUILDINGS := {
 	"feeding_pit": {
 		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 5, "swamp": 4, "faction": "brood",
-		"about": "Up to 5 grubs haul food from here to the nearest Burrow. Farther from the Burrow pays more per grub (best from about 18 to 22 tiles). Loads draw on that Burrow's ground: spent ground yields a third.",
+		"about": "Grubs haul food from here to the capital (5, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Loads draw on the capital's ground: spent ground yields a third. Needs swamp joined to the capital's.",
 	},
 	"brood_pen": {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
@@ -1025,7 +1039,7 @@ const TIPS := {
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
 	# Brood buildings
-	"hive": "Lays eggs (up to 5): every Brood unit hatches here. Grubs bring food here. Allows 3 Feeding Pits and 1 Brood Pen nearby. Upgrades to a Warren (10 eggs), then a Broodmound (15).",
+	"hive": "Lays eggs (up to 5): every Brood unit hatches here. The first Burrow is the capital: the only one grubs unload at. Allows 1 Brood Pen each. Upgrades to a Warren (10 eggs), then a Broodmound (15).",
 	"clutch_mound": "12 more supply. Spreads swamp; each makes Burrows lay eggs 10% faster (up to 3).",
 	"warren": "Lets your Burrows hatch Raptors and Spitters.",
 	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",

@@ -224,9 +224,19 @@ var lit_v := 0.0
 var _smoke_t := 0.0
 var _clock := 0.0
 
+# the Queen (Brood Burrows: shown at the capital only)
+var queen: Sprite2D = null
+var queen_state := ""
+
+
+## The Brood Queen (tools/import_queen.py) sits at the front corner of the CAPITAL Burrow
+## (Game.capital: the first one; if it falls she is at the next), whatever its level, while it
+## is built (or damaged): a still sprite for now (no animation yet). `feet`: where her bottom
+## middle stands, from the base point (x towards the right), scaled with the hall's level.
+const QUEEN_ART := {"tex": "res://assets/buildings/brood_queen.png", "feet": Vector2(46, 6)}
 
 static func has_life(kind: String) -> bool:
-	return BELL_ART.has(kind) or kind == "barracks" or kind == "horse_breeder" or kind == "armoury"
+	return BELL_ART.has(kind) or kind == "hive" or kind == "barracks" or kind == "horse_breeder" or kind == "armoury"
 
 
 func setup(building: Building) -> void:
@@ -250,6 +260,10 @@ func setup(building: Building) -> void:
 					_inv_tex[k] = Game.tex(path)
 		"church":
 			lit = _sprite(null, 1, Vector2.ZERO)
+		"hive":
+			var qt := Game.tex(QUEEN_ART["tex"])
+			if qt:
+				queen = _sprite(qt, 1, -Vector2(qt.get_width() * 0.5, qt.get_height()))
 
 
 func _sprite(t: Texture2D, frames: int, offset: Vector2) -> Sprite2D:
@@ -314,6 +328,9 @@ func show(state: String) -> void:
 			inv.visible = false
 			if s != "":
 				inv.position = INVENTOR_ART["states"][s]
+	if queen:
+		queen_state = state if alive and b.built and (state == "built" or state == "damaged") else ""
+		_show_queen()
 	if lit:
 		var s := state if alive and Dictionary(CHURCH_ART["states"]).has(state) else ""
 		if s != lit_state:
@@ -326,9 +343,21 @@ func show(state: String) -> void:
 			lit.offset = b.sprite.offset
 
 
+## The Queen is shown while this is the capital and built; at the hall's level scale.
+func _show_queen() -> void:
+	var on := queen_state != "" and b.game.capital(b.team) == b
+	queen.visible = on
+	if on:
+		var k := float(b.level_info().get("scale", 1.0))
+		queen.scale = Vector2(k, k)
+		queen.position = Vector2(QUEEN_ART["feet"]) * k
+
+
 ## (twice a second, after Building._check_use) what drives the parts.
 func check() -> void:
 	training = b.built and not b.dead and not b.queue.is_empty()
+	if queen:
+		_show_queen()
 	if lit and lit_state != "":
 		healing = false
 		var r2 := pow(float(CHURCH_ART["radius"]) * Defs.TILE, 2.0)

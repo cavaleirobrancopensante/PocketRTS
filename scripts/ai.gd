@@ -255,7 +255,7 @@ func _workers() -> void:
 	var cap := 0
 	for b in game.buildings:
 		if b.team == team and not b.dead and int(b.d.get("crew", 0)) > 0:
-			cap += int(b.d["crew"])
+			cap += b.crew_max()
 	var fill: float = 0.75 if difficulty == 0 else 1.0
 	var extra := 2
 	if _brood():
@@ -315,7 +315,7 @@ func _tend_sites(labs: Array) -> void:
 ## Brood: grubs on pits whose Hive's ground is spent, to pits on fresh ground.
 func _move_off_tired_soil(labs: Array) -> void:
 	var site_kind := "farm" if _crown() else "feeding_pit"
-	var fresh := _mine(site_kind).filter(func(f: Building) -> bool: return f.built and f.soil_left() > 0.0 and f.crew.size() < int(f.d["crew"]))
+	var fresh := _mine(site_kind).filter(func(f: Building) -> bool: return f.built and f.soil_left() > 0.0 and f.crew.size() < f.crew_max())
 	if fresh.is_empty():
 		return
 	var moved := 0
@@ -328,7 +328,7 @@ func _move_off_tired_soil(labs: Array) -> void:
 		var to: Building = fresh[0]
 		u.cmd_gather(to)
 		moved += 1
-		if to.crew.size() >= int(to.d["crew"]):
+		if to.crew.size() >= to.crew_max():
 			fresh.erase(to)
 
 
@@ -379,6 +379,8 @@ func _econ_build() -> void:
 			continue                 # (the Horse Breeder: one)
 		if (Defs.is_econ(kind) and game.econ_count(team, kind) >= game.econ_limit(team, kind)) or _busy_building(kind):
 			continue
+		if _brood() and kind == "feeding_pit" and not _pit_wanted():
+			continue
 		if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 			if _threat() == Vector2.INF:
 				_reserve = int(Defs.BUILDINGS[kind]["cost"])    # save up for it first
@@ -392,6 +394,19 @@ func _econ_build() -> void:
 			_spread_swamp()
 	if _brood() and _mine("spore_vent").size() < _halls().size() and game.clock > 120.0:
 		_spread_swamp()
+
+
+## Brood: another Feeding Pit is wanted when the ones we have are nearly full (fewer than 3 free
+## places) and the grub limit isn't reached; pits have no count cap, only the swamp's reach.
+func _pit_wanted() -> bool:
+	var room := 0
+	for p in _mine("feeding_pit"):
+		room += p.crew_max() - p.crew.size() if p.built else p.crew_max()
+	var limit: int = 46 if difficulty >= 3 else _lv([16, 30, 40])
+	var total := 0
+	for p in _mine("feeding_pit"):
+		total += p.crew_max()
+	return room < 3 and total < limit + 6
 
 
 ## Crown, a Horseman rush: the Mill waits until this many Horsemen are out.
@@ -412,7 +427,13 @@ func _rushing() -> bool:
 func _econ_spot(kind: String) -> Vector2i:
 	var halls := _halls()
 	var lodes := kind == "powder_mill" or kind == "ore_crusher"
-	if kind == "farm" or kind == "feeding_pit":
+	if kind == "feeding_pit":
+		# Brood: the pit hauls to the capital and must stand on swamp joined to it, as far out as pays most
+		var cap := game.capital(team)
+		if cap == null or not cap.built:
+			return Vector2i(-1, -1)
+		return game.find_spot(team, kind, cap, 7, mini(int(Defs.FOOD_PEAK), int(game.swamp_reach[team])), "far_safe")
+	if kind == "farm":
 		# farms (pits) go where the soil (the Hive's ground) is freshest: tired land pays a third
 		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil_left() > b.soil_left())
 	elif lodes:
@@ -450,6 +471,8 @@ func _spread_swamp() -> void:
 		return
 	for h in _halls():
 		if h.built:
+			if game.capital(team) != h:
+				continue          # (swamp joined to the capital's is what extends the reach)
 			var spot := game.find_spot(team, "spore_vent", h, 6, 22, "far_safe")
 			if spot.x >= 0:
 				_construct("spore_vent", spot)
@@ -565,7 +588,11 @@ func _build_up() -> void:
 	_saving = false
 	# (with the soil nearly spent, the next hall is worth saving for even under attack)
 	var urgent := soil < 0.25 and not _busy_building(hall)
-	if _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
+	if _brood():
+		# no far expansions: more Burrows at home for more eggs
+		if t > expand_t and gold > int(Defs.BUILDINGS[hall]["cost"]) + 150:
+			_more_halls(true)
+	elif _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
 		var spot: Vector2i = game.expansions[team]
 		if game.placement_problem(team, hall, spot, true) == "":
 			if gold >= int(Defs.BUILDINGS[hall]["cost"]) + 50:
@@ -769,6 +796,8 @@ func _guard_new_hall(army: Array) -> Array:
 
 ## The share of soil (Crown), ground (Brood) or ore (Clockwork) left at our freshest hall.
 func _best_soil() -> float:
+	if _brood():
+		return 1.0          # (the Brood's ground is the capital's alone: no fresh ground to expand to)
 	var best := 0.0
 	for h in _halls():
 		if h.built:
@@ -818,10 +847,21 @@ func _recycle_spent() -> void:
 func _more_halls(macro: bool) -> void:
 	var hall: String = _f()["hall"]
 	# (halls on spent soil don't count toward the strategy's limit: the land has run out)
-	var live := _halls().filter(func(h: Building) -> bool: return _land(h) > 0.0).size()
+	var live := _halls().filter(func(h: Building) -> bool: return _brood() or _land(h) > 0.0).size()
 	if live >= int(_s("halls")) + (1 if macro else 0) or _halls().size() >= 7 or _busy_building(hall):
 		return
 	if _gold() < int(Defs.BUILDINGS[hall]["cost"]):
+		return
+	if _brood():
+		# Burrows only lay eggs: they go close round the capital (no ground of their own to find)
+		var cap := game.capital(team)
+		if cap == null or not cap.built:
+			return
+		var home := game.find_spot(team, hall, cap, Defs.BROOD_HALL_SPACING, Defs.BROOD_HALL_SPACING + 8, "near", true)
+		if home.x < 0:
+			home = game.find_spot(team, hall, cap, Defs.BROOD_HALL_SPACING, Defs.BROOD_HALL_SPACING + 12, "near")
+		if home.x >= 0:
+			_construct(hall, home)
 		return
 	if not macro and not _brood():
 		# a base site with a fresh lode first (the Clockwork lives on ore)

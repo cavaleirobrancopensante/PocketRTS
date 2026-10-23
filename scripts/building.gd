@@ -675,6 +675,16 @@ func haulers_free() -> int:
 	return haulers().filter(func(u) -> bool: return u.haul_job.is_empty() or String(u.haul_job.get("ph", "")) == "home").size()
 
 
+## How many workers it takes. A Brood Feeding Pit takes more the farther it is from the capital
+## (Defs.PIT_CREW_STEP); everything else its `crew`.
+func crew_max() -> int:
+	var base := Defs.crew_cap(d)
+	if kind == "feeding_pit" and game != null and game.capital(team) != null:
+		var far := game.capital_dist(team, center())
+		return mini(base + maxi(0, int((far - Defs.FOOD_NEAR) / Defs.PIT_CREW_STEP)), Defs.PIT_CREW_MAX)
+	return base
+
+
 ## Farm: share of full growing speed (1.0 with a full crew of 8; every hand counts the same).
 func farm_speed() -> float:
 	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])
@@ -725,7 +735,7 @@ func efficiency() -> Array:
 			want = int(d["crew"])
 		"feeding_pit", "boiler", "clocktower":
 			have = crew.size()
-			want = int(d["crew"])
+			want = crew_max()
 		"ore_crusher":
 			var h := game.lode_hall(self)
 			if h:
@@ -1375,6 +1385,13 @@ func _draw_building() -> void:
 		var p := Vector2(-w * 0.5, top - 6.0)
 		draw_rect(Rect2(p + Vector2(-4, -14), Vector2(w + 8, 18)), Color(0, 0, 0, 0.6))
 		draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if eggs > 0 else Color(1.0, 0.55, 0.45))
+		if game.capital(team) == self:
+			# the CAPITAL (the only Burrow grubs unload at; where the Queen sits)
+			var cap_txt := "CAPITAL"
+			var cw := font.get_string_size(cap_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+			var cp := Vector2(-cw * 0.5, top - 28.0)
+			draw_rect(Rect2(cp + Vector2(-4, -12), Vector2(cw + 8, 16)), Color(0.35, 0.2, 0.0, 0.75))
+			draw_string(font, cp, cap_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.85, 0.3))
 	# full batteries waiting at an energy building
 	if built and batteries > 0 and (team == game.human or game.demo or game.reveal):
 		var bt: Texture2D = Game.tex("res://assets/effects/battery_%s.png" % ("blue" if game.blue_energy(team) else "yellow"))
