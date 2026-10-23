@@ -12,6 +12,8 @@ python3 tools/import_round6.py           # Powder Wagon, labourer keg anims, keg
 python3 tools/fix_labourer_hoe.py        # labourer (after import_art + round 6's keg anims): pickaxe cut
                                          # to a hoe, leftover backdrop swept from every strip,
                                          # portrait with his felt hat and a hoe
+python3 tools/import_build_still.py      # labourer hammering (build_*): one still body, only the arm and
+                                         # tool move (after fix_labourer_hoe; safe to run twice)
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
 python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
 python3 tools/recolour_grub_cocoon.py     # cocoon grubs to the olive grub colour
