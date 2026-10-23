@@ -6,7 +6,7 @@ extends RefCounted
 ##  - the Town Hall's and the Church's bell swings in the belfry while it trains (BELL_ART);
 ##  - a Musketeer drills on the Barracks' yard while it trains (DRILL_ART);
 ##  - horses walk about the Horse Breeder's paddock while it trains, one stands idle (PADDOCK_ART);
-##  - the inventor tests a barrel on the Armoury's roof while it researches (INVENTOR_ART);
+##  - the inventor plays the experiment of the research at the head of the Armoury queue on its roof (ARMOURY_ART; the old cannon test INVENTOR_ART is the fallback);
 ##  - the Church's windows glow while one of its side's Missionaries heals nearby (CHURCH_ART).
 ## Each part is a child of the building over its body (hidden with it under the fog), shown in
 ## the states that keep it (`states`: none while it's built up or a ruin), and only moves while
@@ -80,6 +80,31 @@ const INVENTOR_ART := {
 	"dt": 0.6, "bang": 3, "stunned": 4, "clean_every": 3, "muzzle": Vector2(11.5, -31.2), "volume": -20.0,
 }
 
+## The Armoury's research experiments (tools/import_armoury_anims.py): while the research at the
+## head of its queue ("@id") is worked on, the inventor plays that research's own 6-frame
+## experiment (`strip` % id), one frame every `dt` s (the last, his gag, held `last_hold` x as long),
+## round and round (a research takes 20-50 s, the loop about 5 s). `anchor`: his patch's bottom
+## middle in the cell (every strip's patch is the old inventor's size, so it sits on the roof patch
+## at INVENTOR_ART's `states` just like the old one). `fx`: effects on arriving at a frame, `at`
+## from his feet; `shot` and `boom` are very quiet sounds, `splash` a small puff (the art draws
+## the smoke, flashes and sparks itself). A research with no entry plays the old cannon test.
+const ARMOURY_ART := {
+	"strip": "res://assets/buildings/armoury_anim_%s.png", "frames": 6, "dt": 0.7, "last_hold": 1.6,
+	"anims": {
+		"armour": {"anchor": Vector2(24.7, 49.5), "fx": [{"f": 2, "kind": "shot", "vol": -22.0}]},
+		"matchlock": {"anchor": Vector2(28.0, 58.9), "fx": [{"f": 3, "kind": "shot", "vol": -28.0}]},
+		"flintlock": {"anchor": Vector2(24.6, 44.9), "fx": [{"f": 3, "kind": "shot", "vol": -22.0}]},
+		"caplock": {"anchor": Vector2(24.6, 47.5), "fx": [{"f": 3, "kind": "shot", "vol": -22.0}]},
+		"bayonet": {"anchor": Vector2(29.8, 41.1),
+			"fx": [{"f": 3, "kind": "splash", "at": Vector2(14, -24), "tint": Color(1.0, 0.7, 0.2, 0.7)}]},
+		"pouch": {"anchor": Vector2(25.2, 42.5), "fx": []},
+		"charges": {"anchor": Vector2(26.7, 69.9), "fx": [{"f": 3, "kind": "boom", "vol": -22.0}]},
+		"quadrant": {"anchor": Vector2(25.4, 72.5), "fx": [{"f": 3, "kind": "boom", "vol": -22.0},
+			{"f": 4, "kind": "splash", "at": Vector2(12, -26), "tint": Color(0.7, 0.85, 1.0, 0.7)}]},
+		"charge": {"anchor": Vector2(32.0, 51.8), "fx": []},
+	},
+}
+
 ## The Church's windows (the lit sheet's glow, `lit` % state, drawn over the body) light up while
 ## one of its side's Missionaries bandages or raises somebody within `radius` tiles of it:
 ## fading in and out over `fade` s, flickering a little like candles, and a thin wisp of smoke
@@ -136,6 +161,9 @@ var inv_state := ""
 var inv_t := 0.0
 var inv_round := 0
 var inv_frame := 0
+var inv_head := ""            # the queue entry he is playing ("@id"); "" none
+var inv_key := ""             # its experiment ("" the old cannon test)
+var _inv_tex := {}            # research id -> its strip
 
 # the Church's glow
 var lit: Sprite2D = null
@@ -163,6 +191,11 @@ func setup(building: Building) -> void:
 			_paddock_setup()
 		"armoury":
 			inv = _sprite(Game.tex(INVENTOR_ART["strip"]), int(INVENTOR_ART["frames"]), -Vector2(INVENTOR_ART["anchor"]))
+			inv.material = b.team_material()
+			for k: String in ARMOURY_ART["anims"]:
+				var path: String = String(ARMOURY_ART["strip"]) % k
+				if ResourceLoader.exists(path):
+					_inv_tex[k] = Game.tex(path)
 		"church":
 			lit = _sprite(null, 1, Vector2.ZERO)
 
@@ -494,13 +527,18 @@ func _place_horse(i: int, still: bool) -> void:
 # ---------------------------------------------------------------- the inventor
 
 func _invent(delta: float) -> void:
-	var want := inv_state != "" and b._in_use and b._seen_now
+	var want := inv_state != "" and b._in_use and b._seen_now and not b.queue.is_empty() \
+			and Building.is_research(String(b.queue[0]))
 	if not want:
 		if inv.visible:
 			inv.visible = false
 		inv_t = 0.0
 		inv_frame = 0
+		inv_head = ""
 		return
+	var head: String = b.queue[0]
+	if head != inv_head:
+		_invent_switch(head)
 	if not _on:
 		return
 	if not inv.visible:
@@ -508,18 +546,25 @@ func _invent(delta: float) -> void:
 		inv.frame = inv_frame
 	inv_t += delta
 	var dt := float(INVENTOR_ART["dt"])
+	var n := int(INVENTOR_ART["frames"])
+	if inv_key != "":
+		dt = float(ARMOURY_ART["dt"])
+		if inv_frame == n - 1:
+			dt *= float(ARMOURY_ART["last_hold"])
 	if inv_t < dt:
 		return
 	inv_t -= dt
 	var f := inv_frame + 1
-	if f == int(INVENTOR_ART["stunned"]) and inv_round % int(INVENTOR_ART["clean_every"]) == int(INVENTOR_ART["clean_every"]) - 1:
+	if inv_key == "" and f == int(INVENTOR_ART["stunned"]) and inv_round % int(INVENTOR_ART["clean_every"]) == int(INVENTOR_ART["clean_every"]) - 1:
 		f += 1                    # a clean shot: not stunned this time
-	if f >= int(INVENTOR_ART["frames"]):
+	if f >= n:
 		f = 0
 		inv_round += 1
 	inv_frame = f
 	inv.frame = f
-	if f == int(INVENTOR_ART["bang"]):
+	if inv_key != "":
+		_invent_fx(f)
+	elif f == int(INVENTOR_ART["bang"]):
 		var p := b.global_position + inv.position + Vector2(INVENTOR_ART["muzzle"])
 		var fl := b.game.spawn_effect("blast", p, 1.6)
 		fl.scale = Vector2(0.3, 0.3)
@@ -527,6 +572,40 @@ func _invent(delta: float) -> void:
 		sm.scale = Vector2(0.4, 0.4)
 		sm.modulate = Color(1, 1, 1, 0.8)
 		Sfx.play_any(["combat/musketeer_attack", "musket"], p, float(INVENTOR_ART["volume"]))
+
+
+## The head of the queue changed: his experiment is that research's (or the old cannon test).
+func _invent_switch(head: String) -> void:
+	inv_head = head
+	var id := head.substr(1)
+	inv_t = 0.0
+	inv_frame = 0
+	inv_round = 0
+	if _inv_tex.has(id):
+		inv_key = id
+		inv.texture = _inv_tex[id]
+		inv.offset = -Vector2(ARMOURY_ART["anims"][id]["anchor"])
+	else:
+		inv_key = ""
+		inv.texture = Game.tex(INVENTOR_ART["strip"])
+		inv.offset = -Vector2(INVENTOR_ART["anchor"])
+	inv.frame = 0
+
+
+func _invent_fx(f: int) -> void:
+	for e: Dictionary in ARMOURY_ART["anims"][inv_key]["fx"]:
+		if int(e["f"]) != f:
+			continue
+		var p: Vector2 = b.global_position + inv.position + Vector2(e.get("at", Vector2.ZERO))
+		match String(e["kind"]):
+			"shot":
+				Sfx.play_any(["combat/musketeer_attack", "musket"], p, float(e["vol"]))
+			"boom":
+				Sfx.play_any(["combat/mortar_attack", "boom"], p, float(e["vol"]))
+			"splash":
+				var d := b.game.spawn_effect("dust", p, 1.4)
+				d.scale = Vector2(0.3, 0.3)
+				d.modulate = e["tint"]
 
 
 # ---------------------------------------------------------------- the Church's glow
