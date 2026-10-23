@@ -659,6 +659,22 @@ func working_crew() -> int:
 	return n
 
 
+## Town Hall: how many haulers it takes (0: this building has none).
+func haul_cap() -> int:
+	return int(d.get("haulers", 0))
+
+
+## Town Hall: the workers assigned to it as haulers (alive, on the field).
+func haulers() -> Array:
+	return crew.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and not u.off_field and u.home_mine == self)
+
+
+## Town Hall: haulers free to take a job now (the counter's first number; a hauler walking
+## home with nothing in hand counts: he takes the next request on the way).
+func haulers_free() -> int:
+	return haulers().filter(func(u) -> bool: return u.haul_job.is_empty() or String(u.haul_job.get("ph", "")) == "home").size()
+
+
 ## Farm: share of full growing speed (1.0 with a full crew of 8; every hand counts the same).
 func farm_speed() -> float:
 	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])

@@ -226,6 +226,12 @@ var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs 
 var _supply_t := 0.0
 var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
 var keg := false                # Labourer: carrying a powder keg (it blows up if he's killed)
+## (a hauler: a Labourer assigned to a Town Hall, order "gather" with home_mine the hall) his
+## job from Game.haul_dispatch, or {} (waiting by the hall): {"k": "horse" | "team" | "keg",
+## "ph": "fetch" | "deliver" | "home" | "to_mill" | "to_wagon", "want": [horses claimed, not yet
+## on the leash], "wagon" / "gun": the keg's / the team horses' destination}
+var haul_job: Dictionary = {}
+var team_want := 0              # (a gun, wagon) horses it should draw: haulers bring spares up to this
 # the cavalry's pistol (Defs.PISTOL: Horseman, Cuirassier, Officer, Armoured Officer)
 var pistol := false             # loaded (trained loaded; fired, it stays empty until he reloads on foot)
 var hold_fire := false          # HOLD FIRE: he never fires the pistol by himself
@@ -946,11 +952,6 @@ func _powder_tick(delta: float) -> void:
 		_basket_powder(delta)
 		return
 	_dispense_t = maxf(_dispense_t - delta, 0.0)
-	if kind == "powder_wagon" and supplying:
-		_supply_t -= delta
-		if _supply_t <= 0.0:
-			_supply_t = 1.0
-			game.call_runners(self)
 	_powder_t -= delta
 	if _powder_t > 0.0:
 		return
@@ -1919,10 +1920,16 @@ func cmd_gather(site: Entity) -> void:
 		cmd_move(site.center())
 		return
 	var b := site as Building
-	if b.team != team or int(b.d.get("crew", 0)) == 0:
+	if b.team != team or Defs.crew_cap(b.d) == 0 or (b.haul_cap() > 0 and not can_haul()):
 		cmd_move(site.center())
 		return
-	if not b.crew.has(self) and b.crew.size() >= int(b.d["crew"]):
+	if b.haul_cap() > 0 and not b.crew.has(self) and b.haulers().size() >= b.haul_cap():
+		# (a Town Hall with all its haulers: the worker stands by it)
+		if team == game.human:
+			game.notify("That Town Hall has all its haulers.")
+		cmd_move(b.center())
+		return
+	if not b.crew.has(self) and b.crew.size() >= Defs.crew_cap(b.d):
 		var alt := game.free_site(team, b.center())
 		if alt == null:
 			if team == game.human:
@@ -2155,6 +2162,7 @@ func _reset_work() -> void:
 		_corpse.harvester = null
 	_corpse = null
 	_drop_body()
+	_haul_abort()
 	_leave_mine()
 	_release_patient()
 	_cancel_boarding()
@@ -2902,8 +2910,6 @@ func _tick_unit(delta: float) -> void:
 			want = _courier(delta)
 		"overload":
 			want = _overload(delta)
-		"keg":
-			want = _keg_run(delta)
 		"refit":
 			want = _refit_run(delta)
 		"sacrifice":
@@ -3711,6 +3717,8 @@ func _gather(delta: float) -> Vector2:
 		else:
 			cmd_stop()
 		return Vector2.ZERO
+	if site.haul_cap() > 0:
+		return _hauler(site, delta)
 	if kind == "grub":
 		return _haul(site, delta)
 	if kind == "winder" and site.d.has("battery"):
@@ -4020,76 +4028,223 @@ func _haul(pit: Building, delta: float) -> Vector2:
 	return _follow(delta)
 
 
-## Labourer on a keg run for a Powder Wagon with SUPPLY on: take a keg at the nearest Powder
-## Mill (paid from the powder bank), carry it to the wagon, and again while it has room.
-## (Step 3's keg mines will start from the same keg carry.)
-func cmd_keg(wagon: Unit) -> void:
-	if kind != "labourer":
+# ------------------------------------------------------------------ haulers (Defs.HAUL)
+## A hauler is a Labourer assigned to a Town Hall (order "gather", home_mine the hall: the same
+## right-click as a Farm). Game.haul_dispatch gives him jobs (haul_job); he does nothing else
+## (no farming, no building) until the player orders him, which unassigns him and lets go of
+## whatever he was doing: horses claimed or on his leash are free again (they keep their
+## reservation and are fetched anew), a keg goes back into the stores.
+
+## Can this man be assigned to a Town Hall?
+func can_haul() -> bool:
+	return kind == "labourer" and aboard == null and not dead and not off_field
+
+
+## Assigned to a Town Hall as a hauler.
+func is_hauler() -> bool:
+	return order == "gather" and is_instance_valid(home_mine) and home_mine is Building and (home_mine as Building).haul_cap() > 0
+
+
+## (a man) on his way to this horse: to mount it, to lead it, or sent for it as a hauler.
+func is_coming_for(h) -> bool:
+	return order_target == h or (not haul_job.is_empty() and (haul_job.get("want", []) as Array).has(h))
+
+
+## What a hauler is doing, for his card.
+func hauler_text() -> String:
+	if haul_job.is_empty():
+		return "Hauler: waiting at the Town Hall for a horse or a keg to fetch."
+	match String(haul_job["k"]):
+		"keg":
+			return "Hauler: carrying a powder keg to the wagon (it blows up if he's killed!)" if keg else "Hauler: fetching a powder keg from the Powder Mill."
+		"team":
+			return "Hauler: bringing horses to a gun."
+	return "Hauler: leading %d horse%s to the buildings that need them." % [led.size(), "" if led.size() == 1 else "s"] if not led.is_empty() \
+		else "Hauler: going for a horse."
+
+
+## Start a job (Game.haul_dispatch).
+func begin_haul(job: Dictionary) -> void:
+	haul_job = job
+	path = PackedVector2Array()
+	repath_t = 0.0
+	work = "hauling"
+
+
+## The job is over or cut short (a new order, killed, the hall gone): the horses he was sent
+## for can be claimed again and those on his leash stay where he stands, still kept for their
+## recruits. (The keg is dealt with by _reset_work: back into the stores.)
+func _haul_abort() -> void:
+	if haul_job.is_empty():
 		return
-	_reset_work()
-	order = "keg"
-	order_target = wagon
-	work = "to_mill"
-	target = null
+	for h in (haul_job.get("want", []) as Array):
+		if is_instance_valid(h) and h.claimed == self:
+			h.claimed = null
+	if String(haul_job.get("k", "")) != "keg":
+		release_horses()
+	haul_job = {}
+
+
+func _hauler(site: Building, delta: float) -> Vector2:
+	if haul_job.is_empty():
+		# waiting for the next request, by the hall
+		work = "waiting"
+		if site.edge_distance(position) < radius + Defs.HAUL["reach"] + 10.0:
+			path = PackedVector2Array()
+			return Vector2.ZERO
+		return _walk_to(game.approach_point(site, position), delta)
+	if String(haul_job["k"]) == "keg":
+		return _haul_keg(site, delta)
+	return _haul_horses(site, delta)
+
+
+## Fetch the horses claimed for him (the Horse Breeder's, spare ones), lead them to the
+## buildings (or the gun) that need them and hitch them, then back to the hall.
+func _haul_horses(site: Building, delta: float) -> Vector2:
+	var j := haul_job
+	work = "hauling"
+	_prune_led()
+	var want: Array = (j.get("want", []) as Array).filter(func(h) -> bool: return is_instance_valid(h) and not h.dead and not h.off_field \
+		and h.team == team and h.into == null and (h.leader == null or h.leader == self))
+	j["want"] = want
+	match String(j["ph"]):
+		"fetch":
+			if want.is_empty():
+				j["ph"] = "deliver" if not led.is_empty() else "home"
+				return Vector2.ZERO
+			var h: Unit = want[0]
+			var bd := INF
+			for o in want:
+				var dd: float = position.distance_to(o.position)
+				if dd < bd:
+					bd = dd
+					h = o
+			if bd < radius + h.radius + 14.0:
+				h.claimed = self
+				take_reins(h)               # (the leash: he now leads it; the claim is lifted)
+				want.erase(h)
+				return Vector2.ZERO
+			return _walk_to(h.position, delta)
+		"deliver":
+			var goal_e: Entity = null
+			var pick: Unit = null
+			var bd := INF
+			for h in led.duplicate():
+				var e := game.haul_dest(self, h)
+				if e == null:
+					# nobody wants it any more (the recruit was cancelled, the gun gone): let it go
+					led.erase(h)
+					h.leader = null
+					h.graze_at = h.position
+					h._graze_goal = Vector2.INF
+					continue
+				var dd: float = e.edge_distance(position)
+				if dd < bd:
+					bd = dd
+					pick = h
+					goal_e = e
+			if pick == null:
+				j["ph"] = "home"
+				return Vector2.ZERO
+			if bd < float(Defs.HAUL["reach"]):
+				_hitch(pick, goal_e)
+				return Vector2.ZERO
+			return _walk_to(game.approach_point(goal_e, position), delta)
+		_:
+			if site.edge_distance(position) < radius + float(Defs.HAUL["reach"]):
+				haul_job = {}
+				work = "waiting"
+				path = PackedVector2Array()
+				return Vector2.ZERO
+			return _walk_to(game.approach_point(site, position), delta)
+
+
+## Let the leash go at the destination: a building takes the horse in (for its recruit or
+## gun: Game.horse_arrived), a gun or wagon harnesses it, a new rider waiting on foot finds it
+## beside him and mounts.
+func _hitch(h: Unit, dest: Entity) -> void:
+	led.erase(h)
+	h.leader = null
+	game.haul_done(team, "horse")
+	if dest is Building or (dest is Unit and Defs.HARNESSED.has((dest as Unit).kind)):
+		h.walk_into(dest)
+	else:
+		h.graze_at = h.position
+		h._graze_goal = Vector2.INF
+		h.claimed = null
+
+
+## A keg for a Powder Wagon: from the nearest Powder Mill (paid from the powder bank when it's
+## loaded) to the wagon, wherever it has got to; back to the hall.
+func _haul_keg(site: Building, delta: float) -> Vector2:
+	var j := haul_job
+	var w = j.get("wagon")
+	var shots := float(Defs.WAGON["keg"])
+	if w == null or not is_instance_valid(w) or w.dead or w.off_field:
+		if keg:
+			keg = false                 # (back into the stores)
+			game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost()
+		j["ph"] = "home"
+	match String(j["ph"]):
+		"to_mill":
+			var mill := game.nearest_of(position, team, "powder_mill")
+			if mill == null:
+				haul_job = {}
+				return Vector2.ZERO
+			if mill.edge_distance(position) < radius + 18.0:
+				path = PackedVector2Array()
+				facing = (mill.center() - position).normalized()
+				if work != "loading":
+					work = "loading"
+					work_t = float(Defs.WAGON["keg_load"])
+					j["wait"] = 0.0
+				work_t -= delta
+				if work_t <= 0.0:
+					if float(game.players[team]["res2"]) >= _keg_cost():
+						game.players[team]["res2"] = float(game.players[team]["res2"]) - _keg_cost()
+						keg = true
+						work = "hauling"
+						j["ph"] = "to_wagon"
+					else:
+						work_t = 1.0              # wait for the mill to grind enough
+						j["wait"] = float(j.get("wait", 0.0)) + 1.0
+						if float(j["wait"]) > 30.0:
+							j["ph"] = "home"
+				return Vector2.ZERO
+			work = "hauling"
+			return _walk_to(game.approach_point(mill, position), delta)
+		"to_wagon":
+			work = "hauling"
+			if position.distance_to(w.position) < radius + w.radius + 16.0:
+				var put := minf(w.max_powder() - w.powder, shots)
+				w.powder += put
+				w._dispense_t = 0.8
+				if put < shots:
+					game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost() * (1.0 - put / shots)
+				keg = false
+				game.haul_done(team, "keg")
+				if team == game.human and put > 0.0:
+					game.float_text(position + Vector2(0, -30), "+%d shots" % int(put), Color(1, 0.85, 0.5))
+				path = PackedVector2Array()
+				j["ph"] = "home"
+				return Vector2.ZERO
+			# the wagon may be on the move: head straight for it when close, else path there
+			return _walk_to(w.position, delta)
+		_:
+			if keg:
+				keg = false
+				game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost()
+			work = "hauling"
+			if site.edge_distance(position) < radius + float(Defs.HAUL["reach"]):
+				haul_job = {}
+				work = "waiting"
+				path = PackedVector2Array()
+				return Vector2.ZERO
+			return _walk_to(game.approach_point(site, position), delta)
 
 
 func _keg_cost() -> float:
 	return float(Defs.WAGON["keg"]) / float(Defs.WAGON["per_powder"])
-
-
-func _keg_run(delta: float) -> Vector2:
-	var w := order_target as Unit
-	if w == null or not is_instance_valid(w) or w.dead:
-		cmd_stop()          # (a keg on his back goes back into the stores)
-		return Vector2.ZERO
-	var room := w.max_powder() - w.powder
-	if keg:
-		work = "to_wagon"
-		if position.distance_to(w.position) < radius + w.radius + 16.0:
-			keg = false
-			w.powder = minf(w.max_powder(), w.powder + float(Defs.WAGON["keg"]))
-			w._dispense_t = 0.8
-			if team == game.human:
-				game.float_text(position + Vector2(0, -30), "+%d shots" % int(Defs.WAGON["keg"]), Color(1, 0.85, 0.5))
-			path = PackedVector2Array()
-			work = "to_mill"
-			if not w.supplying or w.max_powder() - w.powder < float(Defs.WAGON["keg"]):
-				cmd_stop()
-			return Vector2.ZERO
-		# the wagon may be on the move: head straight for it when close, else path there
-		if position.distance_to(w.position) < 140.0 and game.line_clear(position, w.position):
-			path = PackedVector2Array()
-			return (w.position - position).normalized() * speed
-		if repath_t <= 0.0 or (path.is_empty() and not path_pending):
-			repath_t = 1.5
-			_request_path(w.position)
-		return _follow(delta)
-	if not w.supplying or room < float(Defs.WAGON["keg"]):
-		cmd_stop()
-		return Vector2.ZERO
-	var mill := game.nearest_of(position, team, "powder_mill")
-	if mill == null:
-		cmd_stop()
-		return Vector2.ZERO
-	if mill.edge_distance(position) < radius + 18.0:
-		path = PackedVector2Array()
-		facing = (mill.center() - position).normalized()
-		if work != "loading":
-			work = "loading"
-			work_t = float(Defs.WAGON["keg_load"])
-		work_t -= delta
-		if work_t <= 0.0:
-			if float(game.players[team]["res2"]) >= _keg_cost():
-				game.players[team]["res2"] = float(game.players[team]["res2"]) - _keg_cost()
-				keg = true
-				work = "to_wagon"
-			else:
-				work_t = 1.0      # wait for the mill to grind enough
-		return Vector2.ZERO
-	work = "to_mill"
-	if (path.is_empty() or path_i >= path.size()) and not path_pending:
-		_request_path(game.approach_point(mill, position))
-	return _follow(delta)
 
 
 ## Missionary: walk to the wounded soldier, take him off the field, bandage him and send
@@ -4398,6 +4553,7 @@ func die() -> void:
 	velocity = Vector2.ZERO
 	queue.clear()
 	line_rest.clear()
+	_haul_abort()              # (a hauler: his claims on horses are let go; the keg still blows)
 	_leave_mine()
 	_release_patient()
 	_drop_body()
@@ -5331,7 +5487,7 @@ static func horse_free_for(h, u: Unit) -> bool:
 ## who was given another order without letting go, doesn't hold it any more).
 static func _claim_live(h) -> bool:
 	var c = h.claimed
-	return c != null and is_instance_valid(c) and not c.dead and c.order_target == h
+	return c != null and is_instance_valid(c) and not c.dead and c.is_coming_for(h)
 
 
 ## Horses he leads or is going to fetch.
@@ -5769,7 +5925,7 @@ func _horse_tick(delta: float, want: Vector2) -> Vector2:
 	if bolt_t > 0.0:
 		# bolting (its rider just fell): it gallops off, then calms down and grazes there
 		var held := leader != null or into != null or order == "move" \
-			or (claimed != null and is_instance_valid(claimed) and not claimed.dead and claimed.order_target == self)
+			or (claimed != null and is_instance_valid(claimed) and not claimed.dead and claimed.is_coming_for(self))
 		bolt_t -= delta
 		if held or bolt_t <= 0.0 or position.distance_to(bolt_to) < 10.0:
 			bolt_t = 0.0
@@ -5798,7 +5954,7 @@ func _horse_tick(delta: float, want: Vector2) -> Vector2:
 		graze_at = order_point
 		_graze_goal = Vector2.INF
 		return want
-	if claimed != null and is_instance_valid(claimed) and not claimed.dead and claimed.order_target == self:
+	if claimed != null and is_instance_valid(claimed) and not claimed.dead and claimed.is_coming_for(self):
 		return Vector2.ZERO          # stands still for the man coming to take it
 	claimed = null
 	# grazing: a few steps now and then round where it was left
@@ -5852,9 +6008,10 @@ func _horse_into(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if e is Building:
 		if horse_rid != 0 and game.rid_owner(team, horse_rid) != e:
-			into = null              # (its recruit was cancelled: it stays where it is, free)
-			horse_rid = 0
-			graze_at = position
+			into = null              # (its recruit was cancelled: it stays where it is, free; or he came out
+			graze_at = position      # on foot meanwhile: it stays kept for him, he mounts it)
+			if game.rid_owner(team, horse_rid) == null:
+				horse_rid = 0
 			return Vector2.ZERO
 		var far: float = e.edge_distance(position)
 		if far < 4.0 or (_into_t > 4.0 and far < 40.0) or _into_t > 90.0:
@@ -5905,7 +6062,7 @@ static func can_steal(o: Unit) -> bool:
 ## Left alone (nobody leading it or coming for it, none of its side within HORSES.guard
 ## tiles) with an enemy man right beside it: it changes hands.
 func _steal_check() -> void:
-	if leader != null or into != null or (claimed and is_instance_valid(claimed) and not claimed.dead and claimed.order_target == self):
+	if leader != null or into != null or (claimed and is_instance_valid(claimed) and not claimed.dead and claimed.is_coming_for(self)):
 		return
 	if team < 0:
 		# a loose horse (nobody's): the first man who can lead horses to walk up takes it
@@ -6140,7 +6297,8 @@ func _wait_horse() -> void:
 		return                           # (sent somewhere else meanwhile: he goes on when idle)
 	var h: Unit = game.reserved_horse(team, horse_rid)
 	if h:
-		if horse_free_for(h, self):
+		# (with haulers about the horse is brought to him: he gets on once it stands beside him)
+		if horse_free_for(h, self) and (h.position.distance_to(position) < 100.0 or not game.hauler_serves_rid(team, horse_rid)):
 			_res_walk = false
 			cmd_mount(h, {"o": "amove", "p": rally_after} if rally_after != Vector2.INF else {})
 		return
@@ -6149,6 +6307,8 @@ func _wait_horse() -> void:
 		horse_rid = 0
 		_res_walk = false
 		return
+	if game.hauler_serves_rid(team, horse_rid):
+		return                           # (a hauler fetches it from the breeder when it's trained)
 	var going := order == "move" and br.edge_distance(order_point) < 3.0 * Defs.TILE + 40.0
 	if (order == "idle" or mine) and not going and br.edge_distance(position) > 3.0 * Defs.TILE:
 		cmd_move(game.approach_point(br, position))

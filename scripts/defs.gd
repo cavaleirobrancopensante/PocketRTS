@@ -88,12 +88,21 @@ const PISTOL := {"damage": 30.0, "range": 110.0, "aim": 0.35, "after": 0.4, "rel
 	"busy": 40.0, "kinds": ["cuirassier", "dismounted"]}
 ## Powder Wagon: holds `store` musket shots. Parked within POWDER.range tiles of a Powder Mill,
 ## Barracks or Town Hall it fills `fill` shots a second, paid from the powder bank at
-## 1 powder per `per_powder` shots (the musket rate). SUPPLY: up to `runners` labourers carry
-## kegs from the nearest Powder Mill to it (`keg` shots a keg, loaded in `keg_load` s, paid the
-## same way: 30 shots = 15 powder). Destroyed, it blows up: up to `blast` damage (scaled by the
+## 1 powder per `per_powder` shots (the musket rate). SUPPLY: the Town Hall's haulers (HAUL)
+## carry kegs from the nearest Powder Mill to it (`keg` shots a keg, loaded in `keg_load` s, paid
+## the same way: 30 shots = 15 powder). Destroyed, it blows up: up to `blast` damage (scaled by the
 ## powder left, never under `blast_min`) within `radius` px, friends included.
-const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_load": 1.5, "runners": 2,
+const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_load": 1.5,
 	"blast": 170.0, "blast_min": 70.0, "radius": 110.0}
+## HAULERS: Labourers assigned to a Town Hall (up to its "haulers"; the same right-click as a
+## Farm). They carry what the base asks for, instead of anyone being pulled off a Farm or
+## Mill: a horse queued for a Barracks / Foundry entry is led (up to `horses` on leashes) from
+## where the Horse Breeder spawns it to that building and hitched; a Powder Wagon on SUPPLY
+## gets kegs from a Powder Mill; a gun or wagon with `team_want` horses gets spare ones.
+## `scan` s between dispatches; `batch` tiles: other ready horses that close to the first one
+## are led along; `stale` s a ready horse waits for a hauler before its recruit / gun fetches
+## it by itself (the fallback); `reach` px to count as arrived; `kegs` kegs on the way to one wagon at a time.
+const HAUL := {"horses": 4, "scan": 0.5, "batch": 8.0, "stale": 25.0, "reach": 30.0, "kegs": 2}
 ## Observation Balloon's powder store: `store` musket shots (full when it's rigged). The
 ## Musketeers in its basket top up from it (POWDER.refill shots a second). Hovering still within
 ## `reach` tiles of a Powder Wagon with powder left, or of a finished POWDER.from building, with
@@ -271,7 +280,7 @@ const UNITS := {
 		"name": "Powder Wagon", "hp": 220, "armor": 1, "speed": 38, "cost": 70, "cost2": 30, "time": 25.0, "supply": 2,
 		"sight": 7, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 16, "from": "foundry",
 		"no_attack": true, "faction": "crown", "needs_horse": true,
-		"about": "Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY (on from the start; G turns it off) sends 2 labourers with kegs from the Powder Mill when it's out in the field: idle ones first, else men taken off the farms or the mills, whichever your side can best spare. No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.",
+		"about": "Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY (on from the start; G turns it off) has your Town Hall's haulers bring kegs from the Powder Mill when it's out in the field (assign Labourers to the Town Hall; nobody is taken off a farm or mill). No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.",
 	},
 	# (the kind stays "cuirassier" for saves, the AI and hotkeys: unarmoured he is the
 	# Horseman, with Armour the Cuirassier: see ARMOURED)
@@ -461,7 +470,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "faction": "crown", "about": "Trains labourers. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay a third) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at a quarter). Expand to fresh land.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "haulers": 6, "faction": "crown", "about": "Trains labourers. Right-click Labourers onto it to make them haulers: they lead horses to the Barracks and Foundry and carry powder kegs to the Wagons. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay a third) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at a quarter). Expand to fresh land.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -814,6 +823,11 @@ const REFIT_AT := ["barracks", "armoury"]
 const PENDING := []
 
 
+## How many workers an economy building takes: its crew, or a Town Hall's haulers.
+static func crew_cap(d: Dictionary) -> int:
+	return int(d.get("crew", d.get("haulers", 0)))
+
+
 static func is_worker(kind: String) -> bool:
 	return Defs.UNITS.has(kind) and Defs.UNITS[kind].get("worker", false)
 
@@ -1006,7 +1020,7 @@ const TIPS := {
 	"gate": "A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece. Needs a Cottage.",
 	"barracks": "Trains Musketeers (needs a Powder Mill), Horsemen and Officers (need a Horse Breeder), Dragoons (both), and with Armour the armoured ones. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",
 	"armoury": "Researches Armour, the musket locks, the socket bayonet, the guns' drills and the Cavalry Charge. Refits soldiers too.",
-	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons (each needs a horse: one standing here, else one from a breeder walks over by itself).",
+	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons (each needs a horse: one standing here, else a Town Hall hauler leads one over from the Horse Breeder, or it walks over by itself when you have no haulers).",
 	"farm": "Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",

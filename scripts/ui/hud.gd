@@ -1311,7 +1311,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			for u in game.selected_units():
 				if u.kind == "powder_wagon":
 					u.set_supply(not sup)
-			toast("Labourers bring kegs from the Powder Mill while the wagon has room." if not sup else "Supply off: no more keg runs."), true, "", ""])
+			toast("The Town Hall's haulers bring kegs from the Powder Mill while the wagon has room." if not sup else "Supply off: no more keg runs."), true, "", ""])
 	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	if not guns.is_empty():
 		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")
@@ -1948,11 +1948,11 @@ func _draw_panel(font: Font) -> void:
 				else:
 					info = "Powder %d/%d · %s" % [int(uu.powder), int(uu._pmax), rtxt]
 			elif uu.kind == "powder_wagon":
-				var runs := game.units.filter(func(x: Unit) -> bool: return x.order == "keg" and x.order_target == uu).size()
+				var runs := game.units.filter(func(x: Unit) -> bool: return String(x.haul_job.get("k", "")) == "keg" and x.haul_job.get("wagon") == uu).size()
 				info = "Powder %d/%d shots · SUPPLY %s%s · blows up when destroyed" % [int(uu.powder), int(uu._pmax), "on" if uu.supplying else "off",
-					(" (%d running kegs)" % runs) if uu.supplying and runs > 0 else ""]
-			elif uu.kind == "labourer" and uu.order == "keg":
-				info = "Carrying a powder keg to the wagon: it blows up if he's killed!" if uu.keg else "Fetching a powder keg from the Powder Mill."
+					(" (%d kegs on the way)" % runs) if uu.supplying and runs > 0 else ""]
+			elif uu.kind == "labourer" and uu.is_hauler():
+				info = uu.hauler_text()
 			elif uu.kind == "spore_mother":
 				info = {"packed": "Walking: can't attack. ROOT her to lob spit blobs.", "deploying": "Rooting...",
 					"deployed": "Rooted: lobs spit blobs and spreads swamp.", "packing": "Uprooting..."}[uu.tesla_mode]
@@ -2061,7 +2061,7 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "town_hall" and (e.team == game.human or game.demo):
 				var soil := bb.soil_left()
 				var salt := bb.lode_left()
-				info = "Soil: %d%% (%d gold)%s · Saltpetre: %d%% (%d powder)%s · allows 2 Farms and 1 Powder Mill nearby" % [int(round(soil * 100)), int(bb.soil),
+				info = "Haulers %d/%d · Soil: %d%% (%d gold)%s · Saltpetre: %d%% (%d powder)%s · allows 2 Farms and 1 Powder Mill nearby" % [bb.haulers_free(), bb.haulers().size(), int(round(soil * 100)), int(bb.soil),
 					" spent: farms pay a third" if soil <= 0.0 else (" running low" if soil < Defs.SOIL_LOW else ""),
 					int(round(salt * 100)), int(bb.lode), " spent: the Mill grinds at a quarter" if salt <= 0.0 else (" running low" if salt < Defs.SOIL_LOW else "")]
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
@@ -2589,7 +2589,7 @@ const CMD_TIPS := {
 	"START": "Mark where the wall starts.",
 	"END": "Mark where the wall ends (the same spot for a single piece).",
 	"ROTATE": "Turn the gate the other way. It stays that way.",
-	"SUPPLY": "Keg runs (glowing = on): while the wagon has room, up to 2 Labourers carry kegs to it from the nearest Powder Mill. A Labourer killed with a keg blows up.",
+	"SUPPLY": "Keg runs (glowing = on): while the wagon has room, the Town Hall's haulers (right-click Labourers onto the Town Hall) carry kegs to it from the nearest Powder Mill. A Labourer killed with a keg blows up.",
 	"UNLIMBER": "Set the gun up to fire (2.5 s). It can't move until it limbers again.",
 	"LIMBER": "Hitch the gun to the horse to move it (2.5 s). It can't fire while limbered.",
 	"DEPLOY": "Set it up to fire (3 s). It can't move until it packs up.",
