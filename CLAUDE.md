@@ -7,11 +7,21 @@
 - **Design:** read `docs/design_principles.md` (fairness, anti-snowball, meaningful base building)
   before balance, economy, AI or building changes; the owner wants these followed.
 
+## Backlog (owner's list, easiest first; jobs marked "branch" were stopped half done: their worktrees are in .claude/worktrees/, resume with their agent or merge the branch)
+
+- Animals (deer): remove from the game entirely. Also thin trees/rocks from base and expansion spots (rule in map generation), keeping a few scattered. (branch worktree-agent-a43b7a34bd60e1ebb)
+- UI: move the zoom bar off the minimap into a small UI; small music player (next track, list of all songs to pick). (branch worktree-agent-afc321a811e072d5a)
+- Haulers follow-ups: kegs to dry Field Cannons/Mortars that cannot limber (on hold or no horse); no 25 s wait for horses (fetch at once); player control to keep a gun at N horses. (branch worktree-agent-a308bbae3031e3623)
+- BUG: a labourer leading a horse from the Breeder to the recruit gets stuck / has pathfinding trouble (seen in 0.12.9 playtests).
+- Starting resource buildings hugging the plateau edge, fairly mirrored; balloon destruction kills all passengers and leaves corpses. (branch worktree-agent-a196928da4db82c4b)
+- Farm: true 6x6 square, no bottom fence, mill centred; builder hammer animation (arm only); cliff readability from both heights. (branch worktree-agent-a7cbf06f1b14d4af1)
+- Lag: units ~360 ms/s late game, hud/selection 45-110 ms/s and hud draw ~120 ms/s on the tablet profile, command card rebuilt 18x/s, fog/units, one 12 s frame in a long match. (branch worktree-agent-a4e52e95e6eea66eb)
+- AI: Crown lost ALL workers at ~6:00 in a Greenhold game (supply 0/60, workers 0) after Raptors counterattacked: check the "workers pitch in when army < 3" defence and escort workers; real attackers still pull every worker.
+- AI: Crown rush AI does not wall its ramp before 4:18; Brood AI on Rush built no army by 4:30 after the capital/income nerf (all grubs): check rush AI under the halved income.
+- Crown late-game economy: soil runs out (~10 min), 1-2k unspent gold at the supply cap, saltpetre. Brood retest after the capital rework (Crown rush vs Brood economy; Hard Timing Attack on Amberfall Vale).
+- Queen animation; Armoury art polish (patch wobble, yellow specks, dummy target colour); wall balance check; optional player build grid; loosen the 24-tile limit in tools/test_ai_placement.gd.
+- Capital rework decisions to confirm: cancel gives no egg but biomass is refunded; one 10,500 ground reserve at the capital.
+
 ## Current work
 
-- **Finishing the Barracks, Horse Breeder and Armoury animation packs.** The Armoury's nine
-  research experiments (inventor on the rooftop) are drawn and in `art/crown/armoury_anim/`; the
-  importer and the in-game playback are not written yet. The Barracks (8 units) and Horse Breeder (horse) animations
-  are not drawn yet. The rule: a building's animation matches what it is producing or researching
-  right now. Plan, frame lists, prompts and status: `docs/animation_packs.md`.
-  Update that file's status table when you land a piece, so other agents can tell what is done.
+- Animation packs are done (Barracks drills, Breeder coats, Armoury experiments in game); the Queen is a still sprite at the Brood capital. Status table: `docs/animation_packs.md`.
