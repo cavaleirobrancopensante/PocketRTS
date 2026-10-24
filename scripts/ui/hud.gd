@@ -531,6 +531,12 @@ func _input(event: InputEvent) -> void:
 				_help_tap(e.position)
 				get_viewport().set_input_as_handled()
 				return
+			if not Settings.pc() and Settings.tooltips and not paused and not game.spectating():
+				for pr in _pill_rects:          # phone: a tap on the supply pill shows the workers / army split
+					if int(pr[1]) == 2 and (pr[0] as Rect2).has_point(e.position):
+						_help_tap(e.position)
+						get_viewport().set_input_as_handled()
+						return
 			if _hud_has(e.position):
 				_hud_touches[e.index] = true
 				_press(e.position)
@@ -3064,8 +3070,9 @@ func _res_tip(i: int) -> Dictionary:
 			"body": "Your free horses (riders' and guns' horses aren't counted); reserved ones are kept for a recruit in a queue. Horse Breeders sell them (40 gold each). Training a Horseman, Cuirassier, Field Cannon, Mortar or Powder Wagon takes a horse standing at its building, else a free one at a breeder, else a breeder trains one for it (40 gold more): one click does both. Any man can MOUNT a free horse. Left alone near an enemy man, a horse is stolen."}
 	if i == 2:
 		var sup: String = Defs.BUILDINGS[Defs.FACTIONS[fac]["supply"]]["name"]
+		var sp := _supply_split(game.human)
 		return {"title": "Supply: %d of %d used" % [game.supply_used(game.human), int(pl["cap"])],
-			"body": "Every unit takes supply. Each %s and %s raises the cap, up to %d." % [sup, Defs.BUILDINGS[game.faction_hall(game.human)]["name"], game.max_supply(game.human)]}
+			"body": "Workers %d · Army %d · In production %d.\nEvery unit takes supply. Each %s and %s raises the cap, up to %d." % [sp["workers"], sp["army"], sp["queued"], sup, Defs.BUILDINGS[game.faction_hall(game.human)]["name"], game.max_supply(game.human)]}
 	var body: String = {
 		"crown": ["Pays for everything. Labourers on Farms bring in the harvests; a Town Hall's soil runs out in time.",
 			"Black powder for muskets, cannons and mortars, and for refilling soldiers. Labourers grind it at the Powder Mill."],
@@ -3135,6 +3142,20 @@ func _help_tap(p: Vector2) -> void:
 
 ## Each redraw: what the mouse rests on, and whether its tooltip is due (computer), or
 ## whether a tapped one has had its time (phone).
+## Supply used by workers, by the army, and still in a production queue.
+func _supply_split(t: int) -> Dictionary:
+	var w := 0
+	var a := 0
+	for u in game.units:
+		if u.team == t and not u.dead:
+			if u.is_worker():
+				w += int(u.d["supply"])
+			else:
+				a += int(u.d["supply"])
+	var q: int = game.supply_used(t) - w - a
+	return {"workers": w, "army": a, "queued": q}
+
+
 func _update_tip() -> void:
 	var now := Time.get_ticks_msec()
 	if not Settings.tooltips or paused or game.over or countdown > 0.0:
