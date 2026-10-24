@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.70", "items": [
+		"Labourers carrying a sack or keg bob up and down as they walk again (the body rises at the passing steps).",
+	]},
 	{"v": "0.12.69", "items": [
 		"Labourers walk at a calmer pace (12 frames a second at full speed, was about 20): the new legs no longer look like running, with or without a sack or keg.",
 	]},

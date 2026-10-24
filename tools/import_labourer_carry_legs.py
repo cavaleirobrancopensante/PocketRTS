@@ -41,7 +41,9 @@ def run():
             if not os.path.exists(src):
                 shutil.copy(os.path.join(OUT, f"{p}_{d}.png"), src)
             body, walk = strip(src), strip(os.path.join(OUT, f"walk_{d}.png"))
-            res[(p, d)] = [R.compose(b, w) for b, w in zip(body, walk)]
+            # the body rises 1 row at the two passing frames (2 and 5), as the walk's does: the carry bodies
+            # are one still pose, and compose stretches the thighs so the boots stay on the ground line
+            res[(p, d)] = [R.compose(R.shift(b, 0, -1) if k in (2, 5) else b, w) for k, (b, w) in enumerate(zip(body, walk))]
     for (p, d), fr in res.items():
         Image.fromarray(np.concatenate(fr, 1)).save(os.path.join(OUT, f"{p}_{d}.png"))
     return res
