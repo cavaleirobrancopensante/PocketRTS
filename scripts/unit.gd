@@ -3707,6 +3707,11 @@ func _leave_mine() -> void:
 
 
 ## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
+var _barren_t := 0.0
+var _barren_seen := false
+var _barren_site: Building = null
+
+
 func _gather(delta: float) -> Vector2:
 	var site := home_mine as Building
 	if site == null or not is_instance_valid(site) or site.dead or not site.built:
@@ -3717,7 +3722,13 @@ func _gather(delta: float) -> Vector2:
 		else:
 			cmd_stop()
 		return Vector2.ZERO
-	if carrying == 0 and not keg and site.barren() and (kind == "labourer" or kind == "grub" or kind == "winder"):
+	# (barren() looks up the site's hall; ask twice a second, not at every tick)
+	_barren_t -= delta
+	if _barren_t <= 0.0 or _barren_site != site:
+		_barren_site = site
+		_barren_t = 0.5
+		_barren_seen = carrying == 0 and not keg and site.barren() and (kind == "labourer" or kind == "grub" or kind == "winder")
+	if _barren_seen and carrying == 0 and not keg:
 		# barren land (design_principles 2): let the crew go; WORK sends them to fresh land
 		cmd_stop()
 		var fresh := game.free_site(team, position) if auto_work else null

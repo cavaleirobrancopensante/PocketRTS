@@ -179,8 +179,14 @@ func _tick_hud(delta: float) -> void:
 			(_layer["minimap"] as CanvasItem).queue_redraw()
 		_tick_n += 1
 		var q := Time.get_ticks_usec()
+		_card_wait -= 1
+		if _card_fresh or _card_wait <= 0:
+			# (the command card is rebuilt at once after a click, a key or a touch and otherwise
+			# four times a second: it was 20 times, and each build asks the game a lot)
+			_card_fresh = false
+			_card_wait = 5
+			_refresh_card()
 		_refresh_counts()
-		_refresh_card()
 		var q2 := Time.get_ticks_usec()
 		_update_tip()
 		Prof.add("hud/tip check", q2)
@@ -493,6 +499,7 @@ func _input(event: InputEvent) -> void:
 		_moved = true            # (the highlights follow the mouse; the rest waits for its look)
 	else:
 		_redraw_t = 0.0          # a click, a key or a touch: look at once
+		_card_fresh = true
 	# the sandbox panel lies over the HUD (the minimap, the top bar): its buttons take their
 	# clicks first
 	if (event is InputEventMouseButton or event is InputEventScreenTouch) and _over_sandbox():
@@ -2465,6 +2472,8 @@ func _paged(all: Array) -> Array:
 ## At each look: the command card's buttons (what they are, where, what they do) and a short
 ## text of how they look (the card is redrawn when it changes).
 var _card_look := ""
+var _card_fresh := true
+var _card_wait := 0
 
 
 func _refresh_card() -> void:
