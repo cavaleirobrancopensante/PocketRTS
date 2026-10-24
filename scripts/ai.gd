@@ -1512,12 +1512,20 @@ func _army() -> void:
 	if threat != Vector2.INF:
 		# attacked from several sides at once: each soldier goes to the nearest raid
 		var spots := _threats()
+		# (a raid of flyers only is answered by the men who can hit flyers: grubs, pikes and the
+		# rest would just run after something out of their reach)
+		var air_spot := {}
+		for sp in spots + [threat]:
+			var near: Array = game.units_near(sp, 300.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field)
+			air_spot[sp] = not near.is_empty() and near.all(func(o: Unit) -> bool: return o.is_air())
 		for u in army:
 			if u.order != "attack" and (u.target == null or u.order == "idle"):
 				var best: Vector2 = threat
 				for sp in spots:
 					if u.position.distance_to(sp) < u.position.distance_to(best):
 						best = sp
+				if air_spot.get(best, false) and not _hits_air(u):
+					continue
 				u.cmd_move(best + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 		# Workers pitch in when the base is being overrun and there's no army.
 		if army.size() < 3:
@@ -1525,6 +1533,8 @@ func _army() -> void:
 			var foes: Array = game.units_near(threat, 260.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field and game.is_visible_to(team, o.position))
 			var scouts_only: bool = foes.all(func(o: Unit) -> bool: return o.is_worker() or not o.has_attack())
 			var cap: int = 2 if scouts_only else 999
+			if not foes.is_empty() and foes.all(func(o: Unit) -> bool: return o.is_air()):
+				cap = 0                  # flyers only: labourers can't hit them, they keep working
 			var hands: Array = game.workers(team).filter(func(u: Unit) -> bool: return u.position.distance_to(threat) < 260.0 and (u.order == "gather" or (u.order == "move" and u.order_point.distance_to(threat) < 40.0)))
 			hands.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_to(threat) < b.position.distance_to(threat))
 			for i in hands.size():
@@ -2652,6 +2662,11 @@ func _release_escort() -> void:
 
 
 ## Every place our buildings are under attack (one spot per raid, at least 300 px apart).
+## Can this soldier hit a flyer at all (anti-air men, the cannon's canister)?
+func _hits_air(u: Unit) -> bool:
+	return bool(u.d.get("anti_air", false)) or u.kind == "cannon"
+
+
 func _threats() -> Array:
 	var out: Array = []
 	for b in game.buildings:
