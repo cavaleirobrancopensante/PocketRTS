@@ -1061,7 +1061,7 @@ func _slot_row(i: int) -> Control:
 		for o in opts:
 			st_opts.append(["RANDOM PLAN" if o == "random" else String(AI.STRATEGIES[o]["name"]).to_upper(), o, false])
 		var sb := _dropdown("RANDOM PLAN" if st == "random" else String(AI.STRATEGIES[st]["name"]).to_upper(), 150, st_opts, func(v) -> void: sl["strategy"] = v)
-		sb.tooltip_text = "How this computer player plays. Air rush is Brood only (others play Balanced)."
+		sb.tooltip_text = "How this computer player plays. Air rush and Extreme rush are Brood only (others play Balanced)."
 		h.add_child(sb)
 	else:
 		var sp := Control.new()

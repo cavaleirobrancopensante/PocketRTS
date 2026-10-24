@@ -1,0 +1,14 @@
+     GDScript backtrace (most recent call first):
+Brood rush vs Crown rush, ashford_crossing, seed 99
+1:00  brood: army 0 supply 7/16 workers 6 gold 32 | crown: army 0 workers 7
+1:30  brood: army 0 supply 10/16 workers 9 gold 15 | crown: army 0 workers 7
+2:00  brood: army 0 supply 12/16 workers 9 gold 35 | crown: army 0 workers 8
+2:30  brood: army 75 supply 12/28 workers 9 gold 61 | crown: army 115 workers 9
+3:00  brood: army 225 supply 19/28 workers 9 gold 21 | crown: army 230 workers 11
+3:30  brood: army 300 supply 23/28 workers 11 gold 4 | crown: army 345 workers 13
+4:00  brood: army 300 supply 24/40 workers 9 gold 7 | crown: army 460 workers 13
+PASS  reached 3:30
+PASS  Brood army value at 3:30 >= 150 (300)
+first Brood loss/damage at 3:56, crown peak army 575, end: brood: army 225 supply 10/40 workers 1 gold 25 | crown: army 230 workers 14
+PASS  Brood survives to 4:30 (over false)
+ALL PASS

@@ -102,7 +102,7 @@ var _ramp_pt := Vector2.INF     # the ramp up to the enemy's main nearest to us 
 func _init(a: AI) -> void:
 	ai = a
 	game = a.game
-	enabled = a.difficulty >= 1 and not a.peaceful and not (a.strategy in ["rush", "air"])
+	enabled = a.difficulty >= 1 and not a.peaceful and not (a.strategy in ["rush", "air", "xrush"])
 	if enabled:
 		mod = PENDING_MOD.duplicate() if a.strategy != "balanced" else {}
 
