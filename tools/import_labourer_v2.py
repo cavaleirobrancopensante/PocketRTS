@@ -260,6 +260,20 @@ def walk_frames():
     return raw, out
 
 
+V3 = {"s": "labourer_walk_s_v3.png", "se": "labourer_walk_se_v3.png", "e": "labourer_walk_east_test.png",
+      "ne": "labourer_walk_ne_v3.png", "n": "labourer_walk_n_v3.png"}
+
+
+def walk_frames_v3():
+    """walk_<d> from the owner's ChatGPT sheets of 2026-10-24 (one row of 6 per view, prompts 30-34): the
+    legs are drawn in the body's own style, so nothing is rebuilt in code. One scale for all five sheets
+    (the median figure height over every frame makes the man TARGET_H rows tall)."""
+    g = {d: grid(n, 6, 1)[0] for d, n in V3.items()}
+    hs = [s["h"] for row in g.values() for s in row]
+    sc = TARGET_H["walk"] / float(np.median(hs))
+    return {d: [R.drop_bright(make(s, sc, "coat")) for s in row] for d, row in g.items()}
+
+
 # ---------------------------------------------------------------- candidates (never installed)
 
 def cand_frames(name, key):
@@ -349,7 +363,7 @@ def all_frames():
     idle, pick = idle_frames()
     for d, v in idle.items():
         fr[("idle", d)] = v
-    raw, walk = walk_frames()
+    walk = walk_frames_v3()
     for d, v in walk.items():
         fr[("walk", d)] = v
     return fr, pick

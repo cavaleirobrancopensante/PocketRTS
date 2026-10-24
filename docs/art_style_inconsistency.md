@@ -11,8 +11,8 @@ Source snapshots of the pristine strips are in `art/redraws/gait_src/`.
 
 | unit | strips / views | script (tools/) | notes |
 | --- | --- | --- | --- |
-| Labourer | walk, carry (gold sack), carry_keg: e, se, ne (west mirrored), 6 frames each | import_labourer_gait.py | stride built from contact / down / passing, near leg light, far leg dark |
-| Labourer | walk: s and n (synthetic legs in n: the sheet drew the left boot raised in every frame), also the e/se/ne rebuild after the second ChatGPT round | import_labourer_v2.py (walk_frames) | runs LAST of the labourer passes |
+| Labourer | carry (gold sack), carry_keg (walk is now ChatGPT, see below): e, se, ne (west mirrored), 6 frames each | import_labourer_gait.py | stride built from contact / down / passing, near leg light, far leg dark |
+| Labourer walk, all five views | DONE 2026-10-24: ChatGPT sheets (prompts 30-34: labourer_walk_east_test, _s_v3, _se_v3, _ne_v3, _n_v3), no code legs left | import_labourer_v2.py (walk_frames_v3) | the old walk_frames() code legs are unused; carry and carry_keg still have code legs (prompts 08, 09 next, same technique) |
 | Missionary | walk, all five views | import_gait_missionary.py | robe-black wide trousers + boots under the hem |
 | Windup Soldier (Clockwork) | walk, all five views | import_gait_windup_soldier.py | |
 | Winder (Clockwork) | walk, all five views | import_gait_winder.py | |
