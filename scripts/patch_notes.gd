@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.62", "items": [
+		"Art work files only: an experiment tool that previews the labourer's new legs on other Crown units (nothing changed in game).",
+	]},
 	{"v": "0.12.61", "items": [
 		"Labourers carrying a sack or a keg walk with the same new legs as the empty-handed walk, in all directions.",
 	]},
