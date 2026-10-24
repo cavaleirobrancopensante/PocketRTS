@@ -118,6 +118,7 @@ var _disk_cache := {}
 var minimap_img: Image
 var camera: Camera2D
 var overlay: Node2D
+var build_grid := BuildGrid.new()      # the planning grid while placing (BuildGrid)
 var controls: Node
 var hud: Control
 var ais: Array = []
@@ -7441,6 +7442,10 @@ func _draw_overlay_all() -> void:
 		if n > 0:
 			for sp in line_spots(controls.line, n):
 				overlay.draw_circle(sp, 4.0, lc)
+	if controls and controls.mode == "place" and Settings.build_grid and controls.ghost_cell.x >= 0 and Defs.BUILDINGS.has(controls.place_kind):
+		build_grid.update(self, controls.place_kind, controls.ghost_cell, clock)
+		var half := get_viewport().get_visible_rect().size * 0.5 / camera.zoom
+		build_grid.draw(overlay, self, Rect2(camera.get_screen_center_position() - half, half * 2.0))
 	if controls and controls.mode == "place" and controls.line_from.x >= 0:
 		# laying a wall: every piece from the start to here
 		var lk: String = controls.place_kind
