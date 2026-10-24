@@ -20,6 +20,7 @@ var rally := Vector2.INF
 var rally_target: Entity = null
 var worker_rally := Vector2.INF  # Hive: workers and army have separate rally points
 var worker_rally_target: Entity = null
+var seeding = null              # Brood capital / Spore Vent: the Spore Vent it is growing now (SEED VENT), one at a time
 var seeded := true               # Brood: a grub has turned into the site; Clockwork: the crate has landed (or a Winder started it)
 # Clockwork: the Winder's crate (Defs.CRATE). "" none (started by hand, or no Clocktower to
 # fetch it from); "tower" waiting at a Clocktower for a Winder to fetch it; "carried" on

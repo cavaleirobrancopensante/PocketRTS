@@ -49,7 +49,7 @@ Runs vary a little from game to game (random choices): read the numbers to +-20 
 - **Air rush / Balanced / Economy / Timing attack**: the Den as soon as 6-8 hands are up (the grubs wait for
   its 150 biomass), then the army follows an army-value curve (`ARMY_CURVE` in ai.gd, per plan: start
   second, full second, value) and any enemy army the Brood can SEE (x1.2). Under the curve workers stop
-  at 9-10 until the eggs have caught up, the Brood Pen and Spore Vent wait. Balanced and Timing want 225+
+  at 9-10 until the eggs have caught up, the Brood Pen and Spore Vent wait (the Spore Vent is seeded by the capital or another vent, no grub: Game.seed_vent). Balanced and Timing want 225+
   by 3:00 to meet a Crown Horseman rush at ~3:30; Economy is a little later but still reacts to what it
   sees. Timing attack starts at 4:30 (was 6:40) and only goes when the foe it scouted is not clearly
   stronger.

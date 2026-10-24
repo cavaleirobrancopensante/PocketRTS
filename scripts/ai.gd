@@ -1016,14 +1016,22 @@ func _spread_swamp() -> void:
 	_no_room["spore_vent"] = game.clock
 	if _gold() < int(Defs.BUILDINGS["spore_vent"]["cost"]) + 40:
 		return
-	for h in _halls():
-		if h.built:
-			if game.capital(team) != h:
-				continue          # (swamp joined to the capital's is what extends the reach)
-			var spot := game.find_spot(team, "spore_vent", h, 6, 22, "far_safe")
-			if spot.x >= 0:
-				_construct("spore_vent", spot)
-				return
+	# SEED VENT (no grub): from the capital or a finished vent, the one farthest out first (a chain)
+	var cap := game.capital(team)
+	if cap == null:
+		return
+	var srcs: Array = [cap]
+	for v in _mine("spore_vent"):
+		if v.built:
+			srcs.append(v)
+	srcs.sort_custom(func(a: Building, b: Building) -> bool: return a.center().distance_to(cap.center()) > b.center().distance_to(cap.center()))
+	for s in srcs:
+		if game.seed_source_problem(team, s) != "":
+			continue
+		var spot := game.find_seed_spot(team, s, 6, 22, "far_safe")
+		if spot.x >= 0:
+			game.seed_vent(team, s, spot, true)
+			return
 
 
 func _energy_split() -> void:

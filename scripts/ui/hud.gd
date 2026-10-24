@@ -1067,6 +1067,13 @@ func _build_card() -> Array:
 			list.append([String(nl["art"]) if _icon(String(nl["art"])) != null else "hive", ulab, func() -> void:
 				var w := game.start_hall_upgrade(b)
 				toast(w if w != "" else "Your %s is growing into a %s." % [b.d["name"], nl["name"]]), uwhy == "", uwhy, str(nl["cost"])])
+	if b and b.built and game.can_seed(game.human, b):
+		# Brood: the capital and every Spore Vent grow a Spore Vent (no grub); tap a spot like placing a building
+		var vcost := int(Defs.BUILDINGS["spore_vent"]["cost"])
+		var swhy := game.seed_source_problem(game.human, b)
+		_tip_for["SEED VENT"] = ["Seed a Spore Vent", "Grow a Spore Vent on swamp joined to this one's, up to %d tiles away (no grub is used). One at a time from each source; vents can chain to spread the swamp far. Cancel from the growing vent pays it all back." % int(Defs.SEED_REACH),
+			"%s  ·  %d s" % [_cost_text(vcost, 0), int(Defs.BUILDINGS["spore_vent"]["time"])]]
+		list.append(["spore_vent", "SEED VENT", func() -> void: controls.begin_seed(b), swhy == "", swhy, str(vcost)])
 	if b and b.built:
 		for rk in Defs.RESEARCH:
 			var rkk: String = rk
@@ -1383,7 +1390,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## Letter hotkeys for the command card (computer). Common commands keep fixed letters,
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATROL": "P", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
-	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
+	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "SEED VENT": "E", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
@@ -1552,6 +1559,18 @@ func confirm_place(queued := false) -> void:
 	var k := controls.place_kind
 	if Defs.BUILDINGS.has(k) and Defs.BUILDINGS[k].get("line", false):
 		_confirm_line(k, queued)
+		return
+	if k == "spore_vent":
+		# SEED VENT: grown by the capital or another vent, no grub
+		var src = game.seed_src
+		var swhy: String = "Pick SEED VENT on your capital or a Spore Vent." if src == null else game.seed_problem(game.human, src, controls.ghost_cell)
+		if swhy != "":
+			toast(swhy)
+			Sfx.announce(game.faction_of(game.human), "bad_place", 4.0)
+			return
+		if game.seed_vent(game.human, src, controls.ghost_cell):
+			Sfx.play_any(["ui/click", "click"])
+		controls.cancel_mode()
 		return
 	var why := game.placement_problem(game.human, k, controls.ghost_cell)
 	if why != "":
@@ -2910,7 +2929,7 @@ const CMD_TIPS := {
 	"BACK": "Back to the orders.",
 	"MORE": "The next page of buttons.",
 	"DEMOLISH": "Pull the building down: press twice. Nothing comes back.",
-	"ABANDON": "Cancel the building: three quarters of its cost come back (all of it if work never began).",
+	"ABANDON": "Cancel the building: three quarters of its cost come back (all of it if work never began, and for a seeded Spore Vent).",
 	"PLACE": "Build it at the marked spot.",
 	"START": "Mark where the wall starts.",
 	"END": "Mark where the wall ends (the same spot for a single piece).",
