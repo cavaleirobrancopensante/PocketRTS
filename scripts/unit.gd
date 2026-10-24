@@ -5337,8 +5337,9 @@ const BUILD_SEQ := {"seq": [[0, 0.12], [1, 0.06], [2, 0.12], [3, 0.10]], "hit": 
 const BUILD_SWING := {"s": BUILD_SEQ, "se": BUILD_SEQ, "e": BUILD_SEQ, "ne": BUILD_SEQ, "n": BUILD_SEQ}
 ## Walking: one full stride (every frame of the strip, 6 of them: contact, passing, contact
 ## with the other foot...) per this many pixels covered, so a foot on the ground stays on the
-## ground at any speed (the redrawn step is about 10 px, so two steps are about 20).
-const LAB_STRIDE := {"walk": 22.0, "carry": 22.0, "carry_keg": 22.0}
+## ground at any speed. 37 px = 12 frames a second at the labourer's speed 74 (the fastest legs that
+## still read as walking, see WALK_FPS_ART); the first value, 22 px, made him look to be running.
+const LAB_STRIDE := {"walk": 37.0, "carry": 37.0, "carry_keg": 37.0}
 var _lab_build_t := 0.0
 var _lab_dist := 0.0
 var _lab_prev := Vector2.ZERO
