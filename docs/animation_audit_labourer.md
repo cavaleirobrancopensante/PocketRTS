@@ -115,3 +115,15 @@ strike frames in SE, E and NE; mid and strike are similar in pose (the blade is 
 5. **`idle_s / se / e / n`** (hoe at his side) are the old art; they have not been redrawn with the
    new pickaxe or sack style, so the idle and carry-idle differ slightly in line weight.
 6. Mirroring swaps hands in the west views (see the top).
+
+## The side gait (tools/import_labourer_gait.py)
+
+Measured on the redraw's strips (boot span = x extent of rows 30..33, per frame): walk_e 14..15, then
+within 1-2 px every frame (the AI legs sat at one spread and the feet barely moved), the same in
+carry and carry_keg, in se and ne even less (6 to 12 px with no alternation). The script keeps each
+frame's torso above the trouser line and rebuilds the legs: contact (near heel ahead, far foot on its
+toe behind), down (far leg lifting), passing (far foot swung ahead and lifted, body 1 px up), then the
+same with the legs swapped. Boot span now 15 / 9 / 12 / 15 / 9 / 12 in e (12 / 5 / 10 in se, 12 / 7 / 10
+in ne); the stance foot slides back 3.7 px a frame = LAB_STRIDE 22 / 6, so no foot sliding and no change
+to unit.gd. Sources in `art/redraws/gait_src/` (refresh with `--snapshot`); tests in
+`tools/test_labourer_anim.gd` (`_gait`). The arms are the redraw's own (no arm swing was added).

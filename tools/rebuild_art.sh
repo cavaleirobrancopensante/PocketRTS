@@ -17,6 +17,7 @@ python3 tools/import_build_still.py      # labourer hammering (build_*): one sti
 python3 tools/import_labourer_redraw.py  # labourer redraws (art/redraws/labourer_*.png): walk, carry, keg,
                                          # idle_carry, mine, build (replaces the strips above; also edits art_data.gd)
 python3 tools/import_labourer_hoe.py   # labourer farm swing: the redraw's pickaxe becomes a hoe (after import_labourer_redraw)
+python3 tools/import_labourer_gait.py   # labourer side/diagonal gait (e, se, ne walk / carry / keg): legs rebuilt per frame (after the hoe)
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
 python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
 python3 tools/recolour_grub_cocoon.py     # cocoon grubs to the olive grub colour
