@@ -891,6 +891,9 @@ const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 6
 ## Bloater out of gas: it deflates (no spitting, no bursting, slower) and fills up again.
 const DEFLATE := {"refill": 4.0, "swamp": 2.0, "slow": 0.8, "anim": 0.8}
 ## Observation Balloon as a dropship: who can ride in the basket (all of them die with it).
+## A balloon shot down: each man in the basket rolls his fall. [chance, share of his health left]
+## (hp share 0 = he dies): bruised, hurt (yellow health), crippled (red health) or killed.
+const FALL_ODDS := [[0.20, [0.8, 1.0]], [0.25, [0.45, 0.65]], [0.20, [0.08, 0.2]], [0.35, [0.0, 0.0]]]
 const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "labourer"], "board": 26.0, "give_up": 30.0}
 ## Skywing landed: a ground unit that bites (these replace its flying stats).
 const SKYWING_LANDED := {"air": false, "air_only": false, "ground_only": true, "anti_air": false,

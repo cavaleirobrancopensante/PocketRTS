@@ -2300,13 +2300,14 @@ func _unload(delta: float) -> Vector2:
 
 
 ## Every man in the basket gets off onto open ground near `at`. `fall`: the balloon was shot
-## down, so nobody gets off: each dies where he lands, a body on the nearest open ground,
+## down, so nobody gets off: each rolls his fall (Defs.FALL_ODDS: bruised, hurt, crippled or dead; a body on the nearest open ground,
 ## spread round the wreck (the Brood can harvest it, a Missionary raise a Crown soldier).
 func drop_passengers(at: Vector2, fall := false) -> void:
 	var list := passengers.duplicate()
 	passengers.clear()
 	var spots := game.drop_spots(at, list.size(), team)
 	var n := 0
+	var survived := 0
 	for i in list.size():
 		var u = list[i]
 		if not is_instance_valid(u) or u.dead:
@@ -2320,18 +2321,32 @@ func drop_passengers(at: Vector2, fall := false) -> void:
 		u.velocity = Vector2.ZERO
 		u.facing = Vector2.DOWN
 		if fall:
-			# (die() clears what he was doing; the kill is credited to whoever shot the balloon)
-			u.last_hit_by = last_hit_by
-			u.last_hit_team = last_hit_team
-			u.last_hitter = last_hitter
-			u.hp = 0.0
-			u.die()
+			# the fall is a roll: unhurt-ish, yellow health, red health, or dead (the kill is credited
+			# to whoever shot the balloon; die() clears what he was doing)
+			var roll := randf()
+			var left := 0.0
+			for o in Defs.FALL_ODDS:
+				roll -= float(o[0])
+				if roll <= 0.0:
+					left = randf_range(float(o[1][0]), float(o[1][1]))
+					break
+			if left <= 0.0:
+				u.last_hit_by = last_hit_by
+				u.last_hit_team = last_hit_team
+				u.last_hitter = last_hitter
+				u.hp = 0.0
+				u.die()
+			else:
+				u.hp = maxf(1.0, u.max_hp * left)
+				u.cmd_stop()
+				survived += 1
+				game.float_text(u.position + Vector2(0, -24), "survived the fall", Color(1, 0.85, 0.5))
 			continue
 		u.cmd_stop()
 		var fx := game.spawn_effect("dust", u.position, 1.6)
 		fx.scale = Vector2(0.4, 0.4)
 	if fall and n > 0 and game.mlog:
-		game.mlog.add("%s's balloon was shot down: %d men died with it" % [game.mlog.who(team), n])
+		game.mlog.add("%s's balloon was shot down: %d fell, %d survived the fall" % [game.mlog.who(team), n, survived])
 	if n > 0 and team == game.human and not fall:
 		Sfx.play_any(["ui/click", "click"], at)
 

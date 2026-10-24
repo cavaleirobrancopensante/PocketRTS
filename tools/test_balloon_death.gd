@@ -104,30 +104,54 @@ func _run() -> void:
 	shoot_down(b, foe)
 	await wait(0.2)
 	check(b.dead and b.passengers.is_empty(), "   the balloon is dead and its basket empty")
-	check(men.all(func(u: Unit) -> bool: return u.dead and u.aboard == null), "   all 3 men are dead (%s)" % str(men.map(func(u: Unit) -> bool: return u.dead)))
-	check(men.all(func(u: Unit) -> bool: return g.corpses.has(u) and u.visible and not u.off_field), "   each left a body on the ground")
-	check(g.corpses.size() == corpses0 + 3, "   3 bodies, no more (%d)" % (g.corpses.size() - corpses0))
-	var spread := true
-	for i in 3:
-		for j in range(i + 1, 3):
-			if men[i].position.distance_to(men[j].position) < 6.0:
-				spread = false
-	check(spread, "   the bodies are spread out, not stacked")
-	check(men.all(func(u: Unit) -> bool: return u.position.distance_to(b.position) < 120.0), "   and lie round the wreck")
-	check(g.supply_used(0) == sup0, "   supply is back to what it was (%d vs %d)" % [g.supply_used(0), sup0])
-	check(g.stats[0]["lost"] == lost0 + 4, "   losses: balloon + 3 men (%d)" % (g.stats[0]["lost"] - lost0))
-	check(g.stats[1]["killed"] == killed0 + 4, "   kills credited to the Brood: 4 (%d)" % (g.stats[1]["killed"] - killed0))
-	check(g.units.all(func(u: Unit) -> bool: return not men.has(u)), "   none left in the army list")
-	var lost1: int = g.stats[0]["lost"]
+	var dead_men: Array = men.filter(func(u: Unit) -> bool: return u.dead)
+	var live_men: Array = men.filter(func(u: Unit) -> bool: return not u.dead)
+	check(men.all(func(u: Unit) -> bool: return u.aboard == null and not u.off_field), "   nobody is left aboard")
+	check(dead_men.all(func(u: Unit) -> bool: return g.corpses.has(u) and u.visible), "   each who died left a body")
+	check(live_men.all(func(u: Unit) -> bool: return u.hp > 0.0 and u.hp <= u.max_hp and not g.corpses.has(u)), "   each who lived has some health left")
+	check(g.corpses.size() == corpses0 + dead_men.size(), "   bodies = the dead (%d)" % dead_men.size())
+	check(g.supply_used(0) == sup0 + live_men.size() * mus_supply, "   supply: the survivors still count (%d vs %d)" % [g.supply_used(0), sup0])
+	check(g.stats[0]["lost"] == lost0 + 1 + dead_men.size(), "   losses: balloon + the dead (%d)" % (g.stats[0]["lost"] - lost0))
+	# the fall is a roll: over many men all four fates turn up
+	var died := 0
+	var bruised := 0
+	var hurt := 0
+	var crippled := 0
+	for k in 12:
+		var bb := balloon_with(4, open_spot(10 + k))
+		var mm: Array = bb.passengers.duplicate()
+		shoot_down(bb, foe)
+		await wait(0.1)
+		for u in mm:
+			if u.dead:
+				died += 1
+			elif u.hp >= u.max_hp * 0.75:
+				bruised += 1
+			elif u.hp >= u.max_hp * 0.4:
+				hurt += 1
+			else:
+				crippled += 1
+	check(died > 0 and bruised > 0 and hurt > 0 and crippled > 0, "   the fall is a roll: died %d, bruised %d, hurt %d, crippled %d of 48" % [died, bruised, hurt, crippled])
+	# (the dead of this batch are used below)
+	for u in g.corpses:
+		if is_instance_valid(u) and u.kind == "musketeer":
+			dead_men.append(u)
+	men = dead_men
 	b.die()
+	live_men.clear()
+	var lost1: int = g.stats[0]["lost"]
 	men[0].die()
 	check(g.stats[0]["lost"] == lost1, "   dying again counts nothing more")
-	# 2. a grub harvests one of the bodies
+	# 2. a grub harvests one of the bodies (the men who lived would shoot it: they are cleared first)
+	for u in g.units.duplicate():
+		if u.team == 0 and u.kind == "musketeer" and not u.dead:
+			u.die()
 	var body: Unit = men[0]
 	var grub: Unit = g._add_unit("grub", 1, body.position + Vector2(30, 0))
 	var res0: float = float(g.players[1]["res2"])
 	grub.cmd_harvest()
-	var done: bool = await wait_for(func() -> bool: return not g.corpses.has(body), 40.0)
+	var n_bodies: int = g.corpses.size()
+	var done: bool = await wait_for(func() -> bool: return g.corpses.size() < n_bodies, 40.0)
 	await wait(1.0)
 	check(done, "2. a grub took a body to harvest")
 	var got: bool = await wait_for(func() -> bool: return float(g.players[1]["res2"]) > res0 or grub.cocoon > 0, 40.0)
@@ -160,7 +184,7 @@ func _run() -> void:
 	shoot_down(b4, foe)
 	await wait(0.3)
 	check(not walker.dead and walker.aboard == null and walker.order != "board", "   the man still walking over lives and stops")
-	check(aboard_first.dead, "   the one aboard dies")
+	check(aboard_first.aboard == null and (aboard_first.dead or aboard_first.hp < aboard_first.max_hp), "   the one aboard fell (died or hurt)")
 	# 5. an empty balloon
 	var lost2: int = g.stats[0]["lost"]
 	var cs: int = g.corpses.size()
