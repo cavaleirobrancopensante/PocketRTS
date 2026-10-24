@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.46", "items": [
+		"Led horses no longer get stuck in a gateway: they follow behind the leader or path around the wall.",
+		"Horse delivery from the Breeder has stuck recovery (repath, then place the horse beside the recruit).",
+	]},
 	{"v": "0.12.45", "items": [
 		"Labourer side and diagonal walk, carry and keg-carry: legs now step one foot after the other.",
 	]},
