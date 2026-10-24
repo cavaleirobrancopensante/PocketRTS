@@ -10,6 +10,7 @@ static var fullscreen := true         # web: play full screen (Esc no longer lea
 static var ui_size := 0               # 0 = automatic, else a percentage (100-200)
 static var grid_keys := false         # computer: command card keys by position (QWER / ASDF / ZXCV) instead of by name
 static var tooltips := true           # hover tooltips (computer) and the "?" help button (phone)
+static var build_grid := true         # show the planning grid while placing a building
 static var _loaded := false
 
 
@@ -25,6 +26,7 @@ static func load_all() -> void:
 		fullscreen = cfg.get_value("input", "fullscreen", true)
 		grid_keys = cfg.get_value("input", "grid_keys", false)
 		tooltips = cfg.get_value("input", "tooltips", true)
+		build_grid = cfg.get_value("input", "build_grid", true)
 	apply()
 
 
@@ -37,6 +39,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "fullscreen", fullscreen)
 	cfg.set_value("input", "grid_keys", grid_keys)
 	cfg.set_value("input", "tooltips", tooltips)
+	cfg.set_value("input", "build_grid", build_grid)
 	cfg.save(PATH)
 
 
