@@ -11,6 +11,9 @@ import import_labourer_redraw as R
 U = os.path.join(ROOT, "assets/units/musketeer")
 CW, CH, AX, AY = 90, 36, 45, 34
 WHITE = [(236, 232, 224), (200, 196, 188), (150, 146, 140)]    # light, mid, shadow
+CREAM = [(226, 212, 176), (198, 182, 144), (158, 140, 106), (112, 96, 72)]   # warm off-white, four tones (light .. deep shadow)
+TONES = CREAM if "--cream" in sys.argv else WHITE
+PREFIX = "cream" if "--cream" in sys.argv else "white"
 
 
 def whiten(fr, y0=None):
@@ -21,11 +24,14 @@ def whiten(fr, y0=None):
     r, g, b = [seg[..., i].astype(int) for i in range(3)]
     lum = (r + g + b) // 3
     spread = np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)
-    m = (seg[..., 3] > 0) & (spread < 22) & (lum >= 55) & (lum <= 175)
-    tone = np.where(lum >= 112, 0, np.where(lum >= 80, 1, 2))
-    for t in range(3):
+    m = (seg[..., 3] > 0) & (spread < 22) & (lum >= 50) & (lum <= 175)
+    if len(TONES) == 4:
+        tone = np.where(lum >= 118, 0, np.where(lum >= 95, 1, np.where(lum >= 72, 2, 3)))
+    else:
+        tone = np.where(lum >= 112, 0, np.where(lum >= 80, 1, 2))
+    for t in range(len(TONES)):
         sel = m & (tone == t)
-        seg[sel, 0], seg[sel, 1], seg[sel, 2] = WHITE[t]
+        seg[sel, 0], seg[sel, 1], seg[sel, 2] = TONES[t]
     return out
 
 
@@ -49,7 +55,7 @@ def main():
         n = len(old)
         new = [whiten(E.swap(old[k], lab[int(round(k * 6.0 / n)) % 6], AX, AY)) for k in range(n)]
         rows += [old, new]; labels += [d + " now", d + " new"]
-    sheet("/tmp/white_pants_walk.png", rows, labels)
+    sheet(f"/tmp/{PREFIX}_pants_walk.png", rows, labels)
     rows, labels = [], []
     anims = sorted({f.rsplit("_", 1)[0] for f in os.listdir(U) if f.endswith(".png")} - {"death", "walk"})
     for a in anims:
@@ -59,7 +65,7 @@ def main():
                 continue
             fr = E.frames(p, CW)
             rows += [fr, [whiten(f) for f in fr]]; labels += [f"{a} {d}", "white"]
-    sheet("/tmp/white_pants_other.png", rows, labels, Z=2)
+    sheet(f"/tmp/{PREFIX}_pants_other.png", rows, labels, Z=2)
 
 
 if __name__ == "__main__":
