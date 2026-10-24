@@ -22,6 +22,15 @@ const MODES := ["vanilla", "faction", "all", "picked"]
 const MODE_NAMES := {"vanilla": "YOUR FACTION + A LITTLE OF THE ENEMY", "faction": "YOUR FACTION ONLY",
 	"all": "EVERYTHING, SHUFFLED", "picked": "ONLY THE TICKED PIECES"}
 const ENEMY_CHANCE := 0.2
+const HEAT_HIGH := 14.0   # a fight this hot gets the full battle pieces; a milder one a skirmish piece
+## Pieces with a job of their own, whatever their name says: "open" starts a match (with the calm
+## pieces in OPEN_CALM), "skirmish" is the lighter fighting music. Everything else follows its name:
+## <faction>_peace* for calm, <faction>_battle* for the full battle.
+const ROLES := {"crown_battle_6": "open", "crown_battle_7": "skirmish", "crown_battle_9": "skirmish",
+	"crown_battle_11": "skirmish"}
+const OPEN_CALM := ["crown_peace", "crown_peace_4"]
+var _skirmish := false    # the battle piece playing is a skirmish piece, to be raised when the fight heats up
+var _piece_t := 0.0
 const FADE := 2.5
 const VOL := -8.0       # (the game sounds are levelled to this: tools/audio/make_mix.py)
 const HEAT_ON := 7.0      # combat heat that starts the battle music
@@ -160,14 +169,36 @@ static func titles() -> Dictionary:
 	return BASE_TITLES
 
 
-## Pieces for a faction key ("crown", "brood", "clock") and mood ("peace", "battle").
-static func pieces(fkey: String, mood: String) -> Array:
+## Every piece of a faction (calm and battle, whatever its job), in catalogue order.
+static func all_pieces(fkey: String) -> Array:
 	var out: Array = []
 	for stem in titles():
 		var s: String = stem
-		if s == "%s_%s" % [fkey, mood] or s.begins_with("%s_%s_" % [fkey, mood]):
-			if ResourceLoader.exists("res://assets/music/%s.ogg" % s):
-				out.append(s)
+		if (s.begins_with(fkey + "_peace") or s.begins_with(fkey + "_battle")) and ResourceLoader.exists("res://assets/music/%s.ogg" % s):
+			out.append(s)
+	return out
+
+
+## Pieces for a faction key ("crown", "brood", "clock") and a mood: "peace", "battle" (the full
+## fight), "skirmish" (a lighter fight) or "open" (the start of a match).
+static func pieces(fkey: String, mood: String) -> Array:
+	var out: Array = []
+	for stem in all_pieces(fkey):
+		var s: String = stem
+		var r: String = ROLES.get(s, "")
+		match mood:
+			"open":
+				if r == "open" or OPEN_CALM.has(s):
+					out.append(s)
+			"skirmish":
+				if r == "skirmish":
+					out.append(s)
+			"battle":
+				if s.contains("_battle") and r == "":
+					out.append(s)
+			"peace":
+				if s.contains("_peace"):
+					out.append(s)
 	return out
 
 
@@ -222,6 +253,12 @@ func _pool(mood: String) -> Array:
 
 func _next(mood: String) -> String:
 	var pool := _pool(mood)
+	if pool.is_empty() and mood == "open":
+		mood = "peace"
+		pool = _pool(mood)
+	if pool.is_empty() and mood == "skirmish":
+		mood = "battle"
+		pool = _pool(mood)
 	if pool.is_empty():
 		return ""
 	var fresh := pool.filter(func(s: String) -> bool: return not _recent.has(s))
@@ -243,6 +280,7 @@ func play(track: String, loop := false) -> void:
 	if track == _current or track == "":
 		return
 	_current = track
+	_piece_t = 0.0
 	_sting.stop()
 	var stream: AudioStream = load("res://assets/music/%s.ogg" % track)
 	if stream is AudioStreamOggVorbis:
@@ -278,7 +316,7 @@ func _on_finished(p: AudioStreamPlayer) -> void:
 	if _faction == "":
 		return
 	_current = ""
-	play(_next("battle" if _battle else "peace"))
+	play(_next(("skirmish" if _skirmish else "battle") if _battle else "peace"))
 
 
 ## The main menu: keep the overture that is playing (coming back from a sub-page), or start the
@@ -349,7 +387,8 @@ func match_started(faction: String, enemies: Array = []) -> void:
 	heat = 0.0
 	_current = ""
 	_recent.clear()
-	play(_next("peace"))
+	_skirmish = false
+	play(_next("open"))
 
 
 ## The land's background sound (wind, frogs, lava) under the music, quietly.
@@ -389,8 +428,13 @@ func _process(delta: float) -> void:
 	if _faction == "":
 		return
 	heat *= exp(-delta / 5.0)
+	_piece_t += delta
 	if not _battle and heat > HEAT_ON:
 		_battle = true
+		_skirmish = heat < HEAT_HIGH and not pieces(_faction, "skirmish").is_empty()
+		play(_next("skirmish" if _skirmish else "battle"))
+	elif _battle and _skirmish and heat > HEAT_HIGH and _piece_t > 20.0:
+		_skirmish = false              # the fight has grown: the full battle music
 		play(_next("battle"))
 	elif _battle:
 		_calm_t = _calm_t + delta if heat < HEAT_OFF else 0.0

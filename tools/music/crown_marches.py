@@ -258,7 +258,7 @@ def register(C):
     AT = ["Anthem of the Drumline", "Banners and Drums", "Roll of the Regiment", "The Long Parade", "Drums for the King"]
     KEYS = [("D", "aeolian"), ("A", "harmonic"), ("G", "ionian"), ("E", "aeolian"), ("C", "ionian")]
     AKEYS = [("F", "ionian"), ("D", "ionian"), ("A", "aeolian"), ("G", "ionian"), ("E", "aeolian")]
-    for k in range(5):
+    for k in range(1, 5):          # (solo 1 is left out: the Fifes and the old anthem replaced its pieces)
         solo = k + 1
         _, _, nb = solo_bars(C, solo)
         nsec = max(2, min(4, (nb - 6) // 8))
@@ -269,17 +269,3 @@ def register(C):
         add("menu_%d" % (6 + k), AT[k],
             lambda k=k, solo=solo, nsec=nsec, bpm=bpm: generated("menu_%d" % (6 + k), AT[k], 820 + k,
                 AKEYS[k][0], AKEYS[k][1], bpm, 4, "anthem", (solo, 0.5, max(2, nsec - 1), None)))
-    G = [("crown_battle_11", "Column Advancing", 701, "D", "aeolian", 132, 4, "battle"),
-         ("crown_battle_12", "The Regiment Wheels", 702, "E", "aeolian", 150, 3, "battle"),
-         ("crown_battle_13", "Colours Forward", 703, "G", "ionian", 138, 4, "battle"),
-         ("crown_battle_14", "Halberds and Smoke", 704, "A", "harmonic", 126, 4, "battle"),
-         ("crown_peace_6", "The King's Garden", 711, "F", "ionian", 72, 4, "peace"),
-         ("crown_peace_7", "Quarters by the River", 712, "D", "dorian", 66, 3, "peace"),
-         ("crown_peace_8", "Vespers on the Wall", 713, "A", "aeolian", 60, 4, "peace"),
-         ("crown_peace_9", "Harvest Home", 714, "C", "ionian", 80, 3, "peace"),
-         ("menu_11", "The Crown Ascendant", 721, "C", "ionian", 96, 4, "anthem"),
-         ("menu_12", "Hymn of the Standard", 722, "D", "ionian", 84, 3, "anthem"),
-         ("menu_13", "Long Live the Realm", 723, "G", "ionian", 100, 4, "anthem"),
-         ("menu_14", "The Gates Open", 724, "E", "aeolian", 90, 4, "anthem")]
-    for g in G:
-        add(g[0], g[1], lambda g=g: generated(*g))

@@ -592,9 +592,8 @@ func show_music() -> void:
 		cols.add_child(col)
 		var fac := "clockwork" if f[0] == "clock" else String(f[0])
 		col.add_child(UiStyle.heading(f[1], 18, UiStyle.accent(fac).lightened(0.35)))
-		for mood in ["peace", "battle"]:
-			for stem in Music.pieces(f[0], mood):
-				col.add_child(_track_row(stem, titles.get(stem, stem), mood))
+		for stem in Music.all_pieces(f[0]):
+			col.add_child(_track_row(stem, titles.get(stem, stem), "battle" if String(stem).contains("_battle") else "peace"))
 	var ov := VBoxContainer.new()
 	ov.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ov.add_theme_constant_override("separation", 6)

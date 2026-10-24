@@ -2913,6 +2913,8 @@ def write_tracks():
 
 import crown_marches  # noqa: E402
 crown_marches.register(sys.modules[__name__])
+import crown_court  # noqa: E402
+crown_court.register(sys.modules[__name__])
 
 
 if __name__ == "__main__":
