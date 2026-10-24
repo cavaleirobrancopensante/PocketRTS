@@ -57,6 +57,7 @@ func check(ok: bool, what: String) -> void:
 
 func _run() -> void:
 	_strips()
+	_gait()
 	_swing()
 	await _walk()
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
@@ -100,6 +101,60 @@ func _strips() -> void:
 					off.append("%s[%d] low %d" % [key, i, low])
 	check(wrong.is_empty(), "redrawn poses have their frame counts %s" % str(wrong))
 	check(off.is_empty(), "every redrawn frame stands on the ground line, inside the cell %s" % str(off))
+
+
+## The gait (tools/import_labourer_gait.py): in the side and diagonal views the legs must move
+## from one frame to the next: the leg rows (24..33) differ by at least GAIT_MIN_DIFF pixels between
+## every pair of consecutive frames (the strip loops), the boot span (rows 30..33) swings between a
+## wide contact stance (>= 10 px) and a narrow passing one (<= 9 px, at least GAIT_MIN_SWING px
+## narrower), the widest stances are half a strip apart (contact A, contact B), and the body bobs.
+const GAIT_MIN_DIFF := 22
+const GAIT_MIN_SWING := 4
+
+
+func _gait() -> void:
+	var bad := []
+	for p in ["walk", "carry", "carry_keg"]:
+		for d in ["e", "se", "ne"]:
+			var im: Image = (load("res://assets/units/labourer/%s_%s.png" % [p, d]) as Texture2D).get_image()
+			var n := im.get_width() / 42
+			var spans := []
+			var tops := []
+			for i in n:
+				var lo := 99
+				var hi := -1
+				var top := 99
+				for y in 35:
+					for x in 42:
+						if im.get_pixel(i * 42 + x, y).a > 0.0:
+							top = mini(top, y)
+							if y >= 30:
+								lo = mini(lo, x)
+								hi = maxi(hi, x)
+				spans.append(hi - lo + 1)
+				tops.append(top)
+			for i in n:
+				var j := (i + 1) % n
+				var diff := 0
+				for y in range(24, 34):
+					for x in 42:
+						if (im.get_pixel(i * 42 + x, y).a > 0.0) != (im.get_pixel(j * 42 + x, y).a > 0.0):
+							diff += 1
+				if diff < GAIT_MIN_DIFF:
+					bad.append("%s_%s %d->%d legs differ by %d px" % [p, d, i, j, diff])
+			var mx: int = spans.max()
+			var mn: int = spans.min()
+			if mx < 10 or mn > 9 or mx - mn < GAIT_MIN_SWING:
+				bad.append("%s_%s boot span %s" % [p, d, str(spans)])
+			var wide := []
+			for i in n:
+				if spans[i] == mx:
+					wide.append(i)
+			if wide.size() != 2 or (wide[1] - wide[0]) != n / 2:
+				bad.append("%s_%s contacts %s not half a strip apart" % [p, d, str(wide)])
+			if (tops.max() - tops.min()) < 1:
+				bad.append("%s_%s no body bob %s" % [p, d, str(tops)])
+	check(bad.is_empty(), "walk / carry / keg in e, se, ne: legs change every frame, contact and passing stances alternate, body bobs %s" % str(bad))
 
 
 func _swing() -> void:
