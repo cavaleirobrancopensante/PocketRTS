@@ -3717,6 +3717,13 @@ func _gather(delta: float) -> Vector2:
 		else:
 			cmd_stop()
 		return Vector2.ZERO
+	if carrying == 0 and not keg and site.barren() and (kind == "labourer" or kind == "grub" or kind == "winder"):
+		# barren land (design_principles 2): let the crew go; WORK sends them to fresh land
+		cmd_stop()
+		var fresh := game.free_site(team, position) if auto_work else null
+		if fresh:
+			cmd_gather(fresh)
+		return Vector2.ZERO
 	if site.haul_cap() > 0:
 		return _hauler(site, delta)
 	if kind == "grub":

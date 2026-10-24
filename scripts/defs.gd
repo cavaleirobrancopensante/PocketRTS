@@ -42,12 +42,12 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 ## hall of its own). Amounts are in what they pay: powder for saltpetre, ore for ore. A hall's
 ## saltpetre lasts a fully worked Mill (~120 powder a minute) about 11 minutes; a Clocktower's
 ## ore lasts a saturated Clockwork base (~1,150-1,200 ore a minute) about 10 minutes. Once
-## spent, its Mill / Crushers work at LODE_SPENT. Like soil, a hall raised where one fell takes
+## spent, its Mill / Crushers yield NOTHING (LODE_SPENT = 0: barren, no efficiency trickle). Like soil, a hall raised where one fell takes
 ## over what was left there. The Brood has no lode (its Hive ground is GROUND_RESERVE).
 const LODE := {"town_hall": 1320.0, "clocktower": 11400.0}     # 3 x 440 powder, 3 x 3,800 ore
 const LODE_NAME := {"town_hall": "saltpetre", "clocktower": "ore"}
 const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "boiler": "clocktower"}
-const LODE_SPENT := 0.25
+const LODE_SPENT := 0.0
 ## Efficiency bars (economy buildings): staffing (crew at work / full crew) x the state of the
 ## base's reserve, from 100% fresh down to its trickle share once spent (Building.efficiency).
 const EFF_GOOD := 0.8             # green from here, through yellow, to red at EFF_POOR and below
@@ -61,10 +61,10 @@ const FARM_BASE := 0.15           # share of that speed with nobody working it
 const FARM_YIELD := 380           # gold a harvest (fresh soil; was 450 while a hall allowed one farm)
 ## Soil fatigue: each Town Hall's farmland holds a fixed reserve of gold, shared by the farms
 ## that belong to it (a farm belongs to the nearest hall). Every harvest draws its yield from
-## the reserve; once it's spent those farms pay a third. A new hall brings fresh soil (one
+## the reserve; once it's spent those farms pay NOTHING (total exhaustion: barren land, their crews are released). A new hall brings fresh soil (one
 ## built where a hall fell takes over what was left there). Powder Mills draw on its saltpetre (LODE).
 const SOIL_RESERVE := 9000
-const SOIL_TIRED := 1.0 / 3.0     # share of a harvest that tired soil still pays
+const SOIL_TIRED := 0.0           # share of a harvest that spent soil still pays (none: barren; was 1/3)
 const SOIL_LOW := 0.25            # warn the player below this share of the reserve (Hive ground too)
 const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min) while its saltpetre lasts
 ## The Crown starts with no powder: a Powder Mill comes before Musketeers (or a Horse Breeder
@@ -138,7 +138,7 @@ const FOOD_REACH := 1.5           # tiles of the gap a grub doesn't walk
 const FOOD_MAX_D := 32.0          # a load is worth no more from farther out than this
 ## Hive ground: the Feeding Pits around a Hive (a pit belongs to the nearest Hive) share one
 ## reserve of biomass; every load hauled draws its value from it, and once it's spent those
-## pits yield a third. A new Hive has fresh ground (one grown where a Hive fell takes over
+## pits yield NOTHING (barren; was a third). A new Hive has fresh ground (one grown where a Hive fell takes over
 ## what was left there).
 ## THE CAPITAL: a Brood player's FIRST Burrow (the oldest one standing; if it falls the next oldest takes
 ## over) is the only hall grubs unload at (food and cocoons), and the only one with ground (the reserve
@@ -158,7 +158,7 @@ const SACRIFICE := 0.12
 # Clockwork: Winders carry batteries from the energy buildings to the Ore Crushers.
 ## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
 ## Winders carry them to an Ore Crusher, which turns the charge into ore drawn from its
-## Clocktower's ore (LODE; a quarter once it's spent). A carried battery keeps its charge
+## Clocktower's ore (LODE; nothing once it's spent). A carried battery keeps its charge
 ## for `fresh` s, then slowly loses it on the road (`decay`: share of its charge a second,
 ## never below `floor`), so long hauls pay less; if its carrier is hit, it bursts. Yellow batteries at first; a Capacitor Works
 ## makes every source fill blue ones (more charge, slower to fade).
@@ -173,10 +173,10 @@ const BATTERY := {
 ## and the like spend them.
 const ENERGY_KEEP := 6
 ## Coal: each Clocktower's Boilers (a Boiler belongs to the nearest Clocktower) share a
-## reserve of coal, one unit a battery; once it's spent they fill batteries at a third.
+## reserve of coal, one unit a battery; once it's spent they fill NO batteries (barren; was a third).
 ## (A saturated base's 2 Boilers burn ~110 a minute: ~11 minutes.)
 const COAL_RESERVE := 1200
-const COAL_SPENT := 1.0 / 3.0
+const COAL_SPENT := 0.0          # share of its speed a Boiler keeps on spent coal (none; was 1/3)
 ## Overcharged: a construct that stays inside a Boiler's glow (`boiler` tiles), a Charging
 ## Pylon's or a deployed Tesla Cart's field for `time` s hits `damage` harder while it
 ## stays. (The Ornithopter's OVERLOAD is the strong version.)
@@ -484,7 +484,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "haulers": 6, "faction": "crown", "about": "Trains labourers. Right-click Labourers onto it to make them haulers: they lead horses to the Barracks and Foundry and carry powder kegs to the Wagons. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay a third) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at a quarter). Expand to fresh land.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "haulers": 6, "faction": "crown", "about": "Trains labourers. Right-click Labourers onto it to make them haulers: they lead horses to the Barracks and Foundry and carry powder kegs to the Wagons. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay nothing) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds nothing). Expand to fresh land.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -517,7 +517,7 @@ const BUILDINGS := {
 	"hive": {
 		"name": "Burrow", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
 		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield a third). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
+		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield nothing). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
@@ -535,7 +535,7 @@ const BUILDINGS := {
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
 		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
-		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby. Its ground holds a reserve of ore for its crushers (spent, they pay a quarter), and its Boilers share its coal (once that's burnt they fill batteries at a third). Expand to fresh coal and ore.",
+		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby. Its ground holds a reserve of ore for its crushers (spent, they pay nothing), and its Boilers share its coal (once that's burnt they fill no batteries). Expand to fresh coal and ore.",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -556,12 +556,12 @@ const BUILDINGS := {
 	"farm": {
 		"name": "Farm", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(6, 5),
 		"supply": 0, "sight": 5, "trains": [], "crew": 8, "faction": "crown",
-		"about": "Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: tired soil pays a third.",
+		"about": "Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: spent soil pays nothing (barren).",
 	},
 	"powder_mill": {
 		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 100, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 5, "trains": [], "crew": 6, "faction": "crown",
-		"about": "Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds at a quarter. Soldiers and wagons nearby refill here.",
+		"about": "Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds nothing. Soldiers and wagons nearby refill here.",
 	},
 	"horse_breeder": {
 		"name": "Horse Breeder", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(4, 3),
@@ -576,7 +576,7 @@ const BUILDINGS := {
 	"feeding_pit": {
 		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 5, "swamp": 4, "faction": "brood",
-		"about": "Grubs haul food from here to the capital (5, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Loads draw on the capital's ground: spent ground yields a third. Needs swamp joined to the capital's.",
+		"about": "Grubs haul food from here to the capital (5, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Loads draw on the capital's ground: spent ground yields nothing. Needs swamp joined to the capital's.",
 	},
 	"brood_pen": {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
@@ -596,12 +596,12 @@ const BUILDINGS := {
 	"boiler": {
 		"name": "Boiler", "hp": 900, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(4, 4),
 		"supply": 0, "sight": 6, "trains": [], "battery": [1.0, 8], "crew": 7, "faction": "clockwork",
-		"about": "Fills a battery every second by itself, burning its Clocktower's coal (spent coal: a third as fast). Up to 7 Winders carry them to Ore Crushers. Constructs that stand by it a while get overcharged. Unlocks Bulwarks, Arc Throwers and the Engine Hall.",
+		"about": "Fills a battery every second by itself, burning its Clocktower's coal (spent coal: it stops). Up to 7 Winders carry them to Ore Crushers. Constructs that stand by it a while get overcharged. Unlocks Bulwarks, Arc Throwers and the Engine Hall.",
 	},
 	"ore_crusher": {
 		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
-		"about": "Winders bring batteries here and the charge becomes ore, drawn from its Clocktower's ore; once that's spent it pays a quarter. The farther a battery travelled, the more it holds.",
+		"about": "Winders bring batteries here and the charge becomes ore, drawn from its Clocktower's ore; once that's spent it pays nothing. The farther a battery travelled, the more it holds.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),

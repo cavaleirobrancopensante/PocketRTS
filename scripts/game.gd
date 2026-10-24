@@ -1974,8 +1974,8 @@ func free_site(t: int, p: Vector2) -> Building:
 		if b.crew.size() >= b.crew_max():
 			continue
 		var dd: float = b.center().distance_to(p) + b.crew.size() * 40.0
-		if (b.kind == "farm" or b.kind == "feeding_pit") and b.soil_left() <= 0.0:
-			dd += 1500.0        # tired soil (spent ground): new hands go to fresh fields (pits) first
+		if b.barren():
+			continue            # spent land: nobody works a Farm, Pit, Mill or Boiler on it any more
 		if dd < bd:
 			bd = dd
 			best = b
@@ -1990,7 +1990,7 @@ func soil_hall(farm: Building) -> Building:
 	return nearest_hall(farm.center(), farm.team)
 
 
-## A Farm's harvest: draws its yield from its hall's soil; tired soil pays a third.
+## A Farm's harvest: draws its yield from its hall's soil; spent soil pays nothing (barren).
 ## Adds the gold and returns what it paid.
 func harvest(farm: Building) -> int:
 	var h := soil_hall(farm)
@@ -1999,7 +1999,8 @@ func harvest(farm: Building) -> int:
 		fresh = minf(h.soil, float(Defs.FARM_YIELD))
 		h.soil -= fresh
 	var pay := int(round(fresh + (Defs.FARM_YIELD - fresh) * Defs.SOIL_TIRED))
-	add_gold(farm.team, pay)
+	if pay > 0:
+		add_gold(farm.team, pay)
 	if h:
 		_soil_check(h)
 	return pay
@@ -2022,23 +2023,23 @@ func _soil_check(h: Building) -> void:
 	if h.kind == "clocktower":
 		# Clockwork coal: the Boilers around this Clocktower
 		if mlog:
-			mlog.add("%s: the coal of a Clocktower's Boilers %s" % [mlog.who(h.team), "is spent (they fill batteries at a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+			mlog.add("%s: the coal of a Clocktower's Boilers %s" % [mlog.who(h.team), "is spent (they fill no more batteries)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 		if h.team == human and not demo and hud:
-			hud.toast("Your Boilers' coal is spent: they fill batteries at a third. Build a Clocktower on fresh ground." if level == 2
+			hud.toast("Your Boilers' coal is spent: they fill no more batteries. Build a Clocktower on fresh ground." if level == 2
 				else "Your Boilers' coal is running low (%d%% left): expand to fresh ground soon." % int(round(left * 100)), false)
 			Sfx.play("done", h.center())
 		return
 	if mlog:
 		if hive:
-			mlog.add("%s: the ground around a %s %s" % [mlog.who(h.team), h.d["name"], "is spent (its pits yield a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+			mlog.add("%s: the ground around a %s %s" % [mlog.who(h.team), h.d["name"], "is spent (barren: its pits yield nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 		else:
-			mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (its farms pay a third)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+			mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (barren: its farms pay nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
 		if hive:
-			hud.toast(("The ground around your %s is spent: its pits yield a third. Grow a Burrow on fresh ground." % h.d["name"]) if level == 2
+			hud.toast(("The ground around your %s is spent: barren, its pits yield nothing. Grow a Burrow on fresh ground." % h.d["name"]) if level == 2
 				else "The ground around your %s is running low (%d%% left): grow a Burrow on fresh ground soon." % [h.d["name"], int(round(left * 100))], false)
 		else:
-			hud.toast("The soil around your Town Hall is tired: expand to fresh land." if level == 2
+			hud.toast("The soil around your Town Hall is barren: its farms pay nothing. Expand to fresh land." if level == 2
 				else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
 		Sfx.play("done", h.center())
 	var site := "feeding_pit" if hive else "farm"
@@ -2327,7 +2328,7 @@ static func food_at(d: float, gap: float) -> float:
 
 
 ## A grub takes a load at a pit: it draws its value from the Hive's ground; spent ground
-## yields a third. Returns the load's value.
+## yields nothing. Returns the load's value.
 func pit_load(pit: Building) -> float:
 	var v := food_value(pit)
 	var h := soil_hall(pit)

@@ -717,11 +717,22 @@ func lode_left() -> float:
 	return clampf(h.lode / h.lode_full(), 0.0, 1.0) if h else 0.0
 
 
+## TOTAL EXHAUSTION (design_principles 2: economy forces expansion and is depletable): a Farm,
+## Feeding Pit, Powder Mill, Ore Crusher or Boiler whose land is fully spent yields nothing and
+## its crew is let go (Unit._gather) to find fresh land. The Clocktower itself is never barren.
+func barren() -> bool:
+	match kind:
+		"farm", "feeding_pit", "boiler":
+			return soil_left() <= 0.0
+		"powder_mill", "ore_crusher":
+			return lode_left() <= 0.0
+	return false
+
+
 ## Economy buildings (and the Clocktower): production efficiency right now, as
 ## [efficiency 0..1, crew at work, full crew, reserve left 0..1, reserve name], or [] for
 ## anything else. Efficiency = staffing x the reserve's state: 100% fresh, falling to the
-## share it still pays once spent (a third for soil, Hive ground and coal, a quarter for saltpetre
-## and ore). An Ore Crusher has no crew of its own: its staffing is its Clocktower's battery
+## share it still pays once spent (none: spent land is barren). An Ore Crusher has no crew of its own: its staffing is its Clocktower's battery
 ## carriers (the Winders on the Clocktower and its Boilers) against their full crews.
 func efficiency() -> Array:
 	var have := 0
@@ -749,7 +760,7 @@ func efficiency() -> Array:
 			left = soil_left()
 			res = "soil" if kind == "farm" else "ground"
 		"boiler":
-			# a Boiler burns its Clocktower's coal (a third once it's spent)
+			# a Boiler burns its Clocktower's coal (nothing once it's spent)
 			left = soil_left()
 			res = "coal"
 			trickle = Defs.COAL_SPENT
@@ -772,6 +783,8 @@ func _econ(delta: float) -> void:
 			crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
 	match kind:
 		"farm":
+			if barren():
+				return          # barren soil: nothing grows
 			growth += farm_speed() / Defs.FARM_GROW * delta
 			if growth >= 1.0:
 				growth = 0.0
@@ -782,7 +795,7 @@ func _econ(delta: float) -> void:
 					game.float_text(center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 					Sfx.play("done", center())
 		"powder_mill":
-			# grinds its Town Hall's saltpetre; once that's spent, a quarter
+			# grinds its Town Hall's saltpetre; once that's spent, nothing
 			var n := working_crew()
 			if n > 0:
 				game.add_res2(team, game.draw_lode(self, Defs.MILL_RATE * n * delta))
@@ -854,11 +867,12 @@ func _tick_building(delta: float) -> void:
 			var bat: Array = d["battery"]
 			if batteries < int(bat[1]):
 				_bat_t += delta
-				# a Boiler burns its Clocktower's coal; on spent coal it fills at a third
+				# a Boiler burns its Clocktower's coal; on spent coal it stops
 				var every := float(bat[0])
 				var coal: Building = game.soil_hall(self) if kind == "boiler" else null
 				if kind == "boiler" and (coal == null or coal.soil < 1.0):
-					every /= Defs.COAL_SPENT
+					_bat_t = 0.0        # barren coal: no more batteries
+					every = INF
 				if _bat_t >= every:
 					_bat_t = 0.0
 					batteries += 1
