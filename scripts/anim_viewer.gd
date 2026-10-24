@@ -1,0 +1,467 @@
+class_name AnimViewer
+extends Control
+## ANIMATION VIEWER (Settings): every strip of ArtData.UNITS, looped at the game's frame rate,
+## for reviewing art without playing a match. Reads ArtData/Defs/Unit directly so it cannot drift.
+## Strips are "<anim>_<dir>" with dirs s/se/e/ne/n; sw/w/nw are the mirrored views the game draws.
+
+signal back_pressed
+
+const SHOW_DIRS := ["s", "se", "e", "ne", "n", "sw", "w", "nw"]
+const MIRROR := {"sw": "se", "w": "e", "nw": "ne"}
+const ZOOMS := [1, 4, 8]
+const FACTION_ORDER := ["crown", "clockwork", "brood", "other"]
+
+var art := ""
+var anim := ""
+var dir := "e"
+var zoom_i := 1
+var grid_mode := false
+var paused := false
+var frame := 0
+var flagged: Array[String] = []
+
+var _t := 0.0
+var _last_shown := -1
+var _groups := {}               # faction -> Array of art names
+var _faction := "crown"
+var _art_kind := {}
+var _unit_box: VBoxContainer
+var _anim_box: VBoxContainer
+var _dir_row: HFlowContainer
+var _preview: Control
+var _info: Label
+var _frame_lbl: Label
+var _note: LineEdit
+var _flag_lbl: Label
+var _pause_btn: Button
+var _grid_btn: Button
+var _zoom_btn: Button
+var _faction_btns := {}
+
+
+## Animation names of an art with the directions each has: {"walk": ["s","se",...]}.
+static func anims_of(a: String) -> Dictionary:
+	var out := {}
+	var frames: Dictionary = ArtData.UNITS[a]["frames"]
+	for key in frames:
+		for d in ArtData.DIRS:
+			if String(key).ends_with("_" + d):
+				var nm := String(key).substr(0, String(key).length() - d.length() - 1)
+				if not out.has(nm):
+					out[nm] = []
+				out[nm].append(d)
+				break
+	return out
+
+
+## Frames in the strip, or 0 when it does not exist.
+static func strip_frames(a: String, an: String, d: String) -> int:
+	return int(ArtData.UNITS[a]["frames"].get(an + "_" + MIRROR.get(d, d), 0))
+
+
+## Frames a second the game plays animation `an` of art `a` at (mirrors Unit._animate).
+static func fps_for(a: String, an: String, n: int) -> float:
+	var kind: String = _kind_of(a)
+	var fps := Unit.walk_fps_for(a)
+	if an == "walk" and Unit.GALLOPERS.has(a):
+		fps *= Unit.CUIRASSIER_GALLOP_FPS / Unit.WALK_FPS * n / 8.0
+	match an:
+		"idle", "idle_carry", "gidle", "idle_cocoon", "graze":
+			fps = 2.0 if an != "gidle" and an != "idle_cocoon" else 3.0
+		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
+			fps = 7.0
+		"gattack":
+			fps = 9.0
+		"land":
+			fps = float(n) / Defs.SKYWING_SWITCH
+		"deflate", "refill":
+			fps = float(n) / float(Defs.DEFLATE["anim"])
+		"idle_keg":
+			fps = 0.75 * float(n)
+		"wrap":
+			fps = 5.0 / float(Defs.HARVEST["take"])
+		"pistol":
+			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
+		"aim", "fire", "aimup", "fireup", "thrust", "attack", "melee":
+			fps = 6.0 if kind == "spore_mother" else 9.0
+		"burrow", "dig":
+			fps = 7.0
+		"morph":
+			fps = 3.2
+		"leap", "charge", "spinup", "windup", "braced_hit":
+			fps = 10.0
+		"crank":
+			fps = 6.0
+		"repair", "wind", "vent":
+			fps = 5.0
+		"block":
+			fps = 12.0
+		"mine", "build":
+			fps = 6.0
+		"reload":
+			var cd := float(Defs.UNITS.get(kind, {}).get("cooldown", 2.0))
+			fps = float(n) / maxf(cd * 0.8, 0.5)
+		"deploy":
+			fps = float(n) / maxf(float(Defs.UNITS.get(kind, {}).get("switch", 1.5)), 0.3)
+		"brace":
+			fps = float(n) / float(Defs.BRACE["switch"])
+		"deployed":
+			fps = 6.0 if kind != "spore_mother" else 3.0
+		"cast", "fog":
+			fps = 8.0
+		"tongue":
+			fps = 14.0
+		"bandage":
+			fps = 4.0
+		"mount":
+			fps = float(n) / 1.0
+	return maxf(fps, 0.5)
+
+
+static var _kind_cache := {}
+
+
+## The unit kind an art belongs to (for its faction and scale): exact art match, else longest prefix.
+static func _kind_of(a: String) -> String:
+	if _kind_cache.has(a):
+		return _kind_cache[a]
+	var best := ""
+	for k in Defs.UNITS:
+		if Defs.art_for(k, false) == a or Defs.art_for(k, true) == a:
+			best = k
+			break
+	if best == "":
+		for k in Defs.UNITS:
+			if a.begins_with(k) and k.length() > best.length():
+				best = k
+	_kind_cache[a] = best
+	return best
+
+
+static func faction_of(a: String) -> String:
+	var k := _kind_of(a)
+	return String(Defs.UNITS[k].get("faction", "other")) if k != "" else "other"
+
+
+static func art_scale(a: String) -> float:
+	var k := _kind_of(a)
+	return float(Defs.UNITS[k].get("art_scale", 1.0)) if k != "" else 1.0
+
+
+func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for a in ArtData.UNITS:
+		var f := faction_of(a)
+		if not _groups.has(f):
+			_groups[f] = []
+		_groups[f].append(a)
+	for f in _groups:
+		_groups[f].sort()
+	_build()
+	var first := ""
+	for f in FACTION_ORDER:
+		if _groups.has(f) and first == "":
+			first = _groups[f][0]
+			_faction = f
+	select_art(first)
+
+
+func _btn(t: String, cb: Callable, h := 44.0) -> Button:
+	var b := Button.new()
+	b.text = t
+	b.custom_minimum_size = Vector2(0, h)
+	b.add_theme_font_size_override("font_size", 16)
+	b.pressed.connect(func() -> void:
+		Sfx.play_any(["ui/click", "click"])
+		cb.call())
+	return b
+
+
+func _scroll(box: VBoxContainer, w: float) -> ScrollContainer:
+	var s := ScrollContainer.new()
+	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	s.custom_minimum_size.x = w
+	s.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	s.add_child(box)
+	return s
+
+
+func _build() -> void:
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 14)
+	add_child(m)
+	var p := PanelContainer.new()
+	m.add_child(p)
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 8)
+	p.add_child(root)
+	var top := HBoxContainer.new()
+	root.add_child(top)
+	var t := UiStyle.heading("ANIMATION VIEWER", 28, UiStyle.TRIM)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(t)
+	var bk := _btn("BACK", func() -> void: back_pressed.emit())
+	bk.custom_minimum_size.x = 140
+	top.add_child(bk)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 10)
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(cols)
+	# left: units by faction
+	var left := VBoxContainer.new()
+	left.custom_minimum_size.x = 190
+	cols.add_child(left)
+	var fr := HFlowContainer.new()
+	left.add_child(fr)
+	for f in FACTION_ORDER:
+		if not _groups.has(f):
+			continue
+		var b := _btn(f.to_upper(), func() -> void:
+			_faction = f
+			_fill_units()
+			select_art(_groups[f][0]), 38.0)
+		b.add_theme_font_size_override("font_size", 13)
+		fr.add_child(b)
+		_faction_btns[f] = b
+	_unit_box = VBoxContainer.new()
+	left.add_child(_scroll(_unit_box, 190))
+	# centre: preview and controls
+	var mid := VBoxContainer.new()
+	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mid.add_theme_constant_override("separation", 6)
+	cols.add_child(mid)
+	_info = UiStyle.text("", 16, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	mid.add_child(_info)
+	_preview = Preview.new()
+	_preview.viewer = self
+	_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preview.custom_minimum_size = Vector2(240, 200)
+	_preview.clip_contents = true
+	_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	mid.add_child(_preview)
+	var ctl := HFlowContainer.new()
+	mid.add_child(ctl)
+	_pause_btn = _btn("PAUSE", func() -> void: set_paused(not paused))
+	ctl.add_child(_pause_btn)
+	ctl.add_child(_btn("< FRAME", func() -> void: step(-1)))
+	_frame_lbl = UiStyle.text("", 18, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_CENTER, true)
+	_frame_lbl.custom_minimum_size.x = 120
+	ctl.add_child(_frame_lbl)
+	ctl.add_child(_btn("FRAME >", func() -> void: step(1)))
+	_zoom_btn = _btn("", func() -> void:
+		zoom_i = (zoom_i + 1) % ZOOMS.size()
+		_refresh())
+	ctl.add_child(_zoom_btn)
+	_grid_btn = _btn("", func() -> void:
+		grid_mode = not grid_mode
+		_refresh())
+	ctl.add_child(_grid_btn)
+	# right: animations, directions, flags
+	var right := VBoxContainer.new()
+	right.custom_minimum_size.x = 250
+	right.add_theme_constant_override("separation", 6)
+	cols.add_child(right)
+	right.add_child(UiStyle.text("ANIMATION", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true))
+	_anim_box = VBoxContainer.new()
+	var asc := _scroll(_anim_box, 250)
+	asc.custom_minimum_size.y = 200
+	right.add_child(asc)
+	right.add_child(UiStyle.text("DIRECTION", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true))
+	_dir_row = HFlowContainer.new()
+	right.add_child(_dir_row)
+	_note = LineEdit.new()
+	_note.placeholder_text = "note for the flagged frame"
+	_note.custom_minimum_size.y = 40
+	right.add_child(_note)
+	var fl := HBoxContainer.new()
+	right.add_child(fl)
+	var fb := _btn("FLAG FRAME", flag_frame)
+	fb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UiStyle.primary(fb)
+	fl.add_child(fb)
+	var cp := _btn("COPY", func() -> void: DisplayServer.clipboard_set("\n".join(flagged)))
+	fl.add_child(cp)
+	var cl := _btn("CLEAR", func() -> void:
+		flagged.clear()
+		_refresh())
+	fl.add_child(cl)
+	var fv := VBoxContainer.new()
+	_flag_lbl = UiStyle.text("", 13, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, false)
+	_flag_lbl.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	_flag_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fv.add_child(_flag_lbl)
+	var fs := _scroll(fv, 250)
+	fs.custom_minimum_size.y = 60
+	right.add_child(fs)
+	_fill_units()
+
+
+func _fill_units() -> void:
+	for c in _unit_box.get_children():
+		c.queue_free()
+	for f in _faction_btns:
+		if f == _faction:
+			UiStyle.chosen(_faction_btns[f], UiStyle.ACCENT.get(f, UiStyle.TRIM))
+		else:
+			_faction_btns[f].remove_theme_stylebox_override("normal")
+	for a in _groups.get(_faction, []):
+		var b := _btn(a, func() -> void: select_art(a), 38.0)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 14)
+		_unit_box.add_child(b)
+
+
+func select_art(a: String) -> void:
+	art = a
+	_faction = faction_of(a)
+	_fill_units()
+	for c in _anim_box.get_children():
+		c.queue_free()
+	var an := anims_of(a)
+	var names: Array = an.keys()
+	names.sort()
+	# walk first when there is one, as it is what most reviews start with
+	if names.has("walk"):
+		names.erase("walk")
+		names.push_front("walk")
+	for nm in names:
+		var b := _btn("%s  (%d)" % [nm, strip_frames(a, nm, an[nm][0])], func() -> void: select_anim(nm), 38.0)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 14)
+		_anim_box.add_child(b)
+	select_anim(names[0] if not names.is_empty() else "")
+
+
+func select_anim(nm: String) -> void:
+	anim = nm
+	var an := anims_of(art)
+	var have: Array = an.get(nm, [])
+	if not _dir_ok(dir):
+		dir = "e" if have.has("e") else (have[0] if not have.is_empty() else "e")
+	frame = 0
+	_t = 0.0
+	_last_shown = -1
+	for c in _dir_row.get_children():
+		c.queue_free()
+	for d in SHOW_DIRS:
+		var b := _btn(d.to_upper() + (" *" if MIRROR.has(d) else ""), func() -> void: select_dir(d), 40.0)
+		b.custom_minimum_size.x = 56
+		b.disabled = strip_frames(art, nm, d) == 0
+		_dir_row.add_child(b)
+	_refresh()
+
+
+func select_dir(d: String) -> void:
+	dir = d
+	_refresh()
+
+
+func _dir_ok(d: String) -> bool:
+	return strip_frames(art, anim, d) > 0
+
+
+func frame_count() -> int:
+	return strip_frames(art, anim, dir)
+
+
+func set_paused(p: bool) -> void:
+	paused = p
+	_refresh()
+
+
+func step(delta: int) -> void:
+	var n := frame_count()
+	if n == 0:
+		return
+	paused = true
+	frame = posmod(frame + delta, n)
+	_refresh()
+
+
+func flag_frame() -> void:
+	flagged.append("%s / %s / %s / frame %d of %d%s" % [art, anim, dir, frame + 1, frame_count(),
+			(" - " + _note.text.strip_edges()) if _note.text.strip_edges() != "" else ""])
+	_note.text = ""
+	_refresh()
+
+
+func _refresh() -> void:
+	if _info == null:
+		return
+	var n := frame_count()
+	var fps := fps_for(art, anim, n)
+	_info.text = "%s  /  %s  /  %s   ·   %d frames at %.1f fps   ·   scale %.2f" % [art, anim, dir, n, fps, art_scale(art)]
+	_frame_lbl.text = "%d / %d" % [mini(frame + 1, maxi(n, 1)), n]
+	_pause_btn.text = "PLAY" if paused else "PAUSE"
+	_zoom_btn.text = "ZOOM %dx" % ZOOMS[zoom_i]
+	_grid_btn.text = "ONE VIEW" if grid_mode else "ALL DIRECTIONS"
+	_flag_lbl.text = "\n".join(flagged) if not flagged.is_empty() else "No frames flagged yet."
+	_preview.queue_redraw()
+
+
+func _process(delta: float) -> void:
+	var n := frame_count()
+	if n == 0 or paused:
+		return
+	_t += delta * fps_for(art, anim, n)
+	frame = int(_t) % n
+	if frame != _last_shown:
+		_last_shown = frame
+		_frame_lbl.text = "%d / %d" % [frame + 1, n]
+		_preview.queue_redraw()
+
+
+## Draws the current frame (or all directions) straight from the strip: a region of the texture.
+class Preview extends Control:
+	var viewer: AnimViewer
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.2, 0.26, 0.17))
+		if viewer == null or viewer.art == "":
+			return
+		if viewer.grid_mode:
+			var cols := 4
+			var cw := size.x / cols
+			var ch := size.y / 2.0
+			for i in AnimViewer.SHOW_DIRS.size():
+				var d: String = AnimViewer.SHOW_DIRS[i]
+				var r := Rect2(Vector2(i % cols * cw, i / cols * ch), Vector2(cw, ch))
+				_cell(d, r, true)
+				draw_rect(r, Color(1, 1, 1, 0.12), false)
+		else:
+			_cell(viewer.dir, Rect2(Vector2.ZERO, size), false)
+
+	func _cell(d: String, r: Rect2, label: bool) -> void:
+		var n := AnimViewer.strip_frames(viewer.art, viewer.anim, d)
+		if label:
+			draw_string(ThemeDB.fallback_font, r.position + Vector2(6, 16), d.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.7))
+		if n == 0:
+			return
+		var src: String = AnimViewer.MIRROR.get(d, d)
+		var tex := Game.tex("res://assets/units/%s/%s_%s.png" % [viewer.art, viewer.anim, src]) as Texture2D
+		if tex == null:
+			return
+		var fw := tex.get_width() / n
+		var fh := tex.get_height()
+		var sc := float(AnimViewer.ZOOMS[viewer.zoom_i]) * AnimViewer.art_scale(viewer.art)
+		var dw := fw * sc
+		var dh := fh * sc
+		# feet (the anchor) near the bottom centre of the cell
+		var anchor := Vector2(ArtData.UNITS[viewer.art]["anchor"])
+		var cell := Vector2i(ArtData.UNITS[viewer.art]["cell"])
+		var base := Vector2(r.position.x + r.size.x * 0.5, r.position.y + r.size.y * 0.82)
+		var x0 := base.x - anchor.x * sc
+		if MIRROR.has(d):
+			x0 = base.x - (fw - anchor.x) * sc
+		var y0 := base.y - (anchor.y + (fh - cell.y)) * sc
+		var f := mini(viewer.frame, n - 1)
+		var dst := Rect2(x0, y0, dw, dh)
+		var srcr := Rect2(f * fw, 0, fw, fh)
+		if MIRROR.has(d):
+			dst = Rect2(x0 + dw, y0, -dw, dh)
+		draw_texture_rect_region(tex, dst, srcr)
