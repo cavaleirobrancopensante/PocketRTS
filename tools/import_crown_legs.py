@@ -2,7 +2,7 @@
 other Crown foot units whose own legs were code-built or barely lift in some views:
 
   musketeer_armoured : all five views (its legs were rebuilt in code by import_gait_musketeer_armoured.py)
-  musketeer          : s and n only (front / back lift 1-3 px; its side views already step well)
+  (the Musketeer was tried too and left out: his own walk, with the tricorne and the musket in his hands, stays)
 
 Not touched: the officers (dismounted, dismounted_armoured: the owner likes their gait), the Missionary (his
 long cassock hides legs: the trousers would poke out under it), mounted units, the Brood and Clockwork.
@@ -22,7 +22,7 @@ import experiment_crown_legs as E  # noqa: E402  (its main() only runs as a scri
 
 U = os.path.join(ROOT, "assets/units")
 SRC = os.path.join(ROOT, "art/redraws/gait_src")
-TARGETS = {"musketeer_armoured": ["s", "se", "e", "ne", "n"], "musketeer": ["s", "n"]}
+TARGETS = {"musketeer_armoured": ["s", "se", "e", "ne", "n"]}
 
 
 def run():

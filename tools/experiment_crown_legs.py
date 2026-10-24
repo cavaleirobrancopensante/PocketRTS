@@ -19,12 +19,31 @@ Z = 4
 def frames(path, cw):
     im = np.array(Image.open(path).convert("RGBA")); return [im[:, i*cw:(i+1)*cw].copy() for i in range(im.shape[1]//cw)]
 
+GUN_ROWS = 3            # rows under the coat hem in which the musket's butt and the hands are kept
+
+
+def keep_gun(body, new):
+    """R.compose drops everything under the coat hem that is not red or skin: the musket's stock and the hands that
+    hold it. Put those back (coloured pixels only: wood, gold, skin; grey trousers and outlines stay out) over the
+    new legs, as a musket held in front of the body should be."""
+    cut = R.hem_row(body) + 1
+    out = new.copy()
+    seg = body[cut:cut + GUN_ROWS]
+    r, g, b = [seg[..., i].astype(int) for i in range(3)]
+    spread = np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)
+    m = (seg[..., 3] > 0) & (spread > 22)
+    tgt = out[cut:cut + GUN_ROWS]
+    tgt[m] = seg[m]
+    return out
+
+
 def swap(fr, leg, ax, ay):
     x0, y0 = ax - 21, ay - 33          # the window's top-left in the unit's cell
     win = np.zeros((35, 42, 4), np.uint8)
     sx0, sy0 = max(0, x0), max(0, y0)
     sub = fr[sy0:y0+35, sx0:x0+42]; win[sy0-y0:sy0-y0+sub.shape[0], sx0-x0:sx0-x0+sub.shape[1]] = sub
     new = R.compose(win, leg)
+    new = keep_gun(win, new)
     out = fr.copy()
     out[sy0:y0+35, sx0:x0+42][:sub.shape[0], :sub.shape[1]] = new[sy0-y0:sy0-y0+sub.shape[0], sx0-x0:sx0-x0+sub.shape[1]]
     return out

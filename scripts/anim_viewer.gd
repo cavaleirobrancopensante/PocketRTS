@@ -40,6 +40,9 @@ var art := ""
 var anim := ""
 var dir := "e"
 var zoom_i := 1
+var zoom_f := 4.0                # continuous: pinch with two fingers, wheel, or the ZOOM button (presets)
+var _pinch := {}                 # touch index -> position, while fingers are down
+var _pinch_prev := 0.0
 var grid_mode := false
 var paused := false
 var frame := 0
@@ -306,7 +309,12 @@ func _build() -> void:
 	ctl.add_child(_frame_lbl)
 	ctl.add_child(_btn("FRAME >", func() -> void: step(1)))
 	_zoom_btn = _btn("", func() -> void:
-		zoom_i = (zoom_i + 1) % ZOOMS.size()
+		var nxt := 0.0
+		for z in ZOOMS:
+			if float(z) > zoom_f + 0.01:
+				nxt = float(z)
+				break
+		zoom_f = nxt if nxt > 0.0 else float(ZOOMS[0])
 		_refresh())
 	ctl.add_child(_zoom_btn)
 	_grid_btn = _btn("", func() -> void:
@@ -336,7 +344,15 @@ func _build() -> void:
 	right.add_child(_dir_row)
 	_note = LineEdit.new()
 	_note.placeholder_text = "note for the flagged frame"
-	_note.custom_minimum_size.y = 40
+	_note.custom_minimum_size.y = 44
+	_note.focus_mode = Control.FOCUS_ALL
+	_note.mouse_filter = Control.MOUSE_FILTER_STOP
+	_note.virtual_keyboard_enabled = true
+	_note.gui_input.connect(func(ev: InputEvent) -> void:
+		if (ev is InputEventScreenTouch and ev.pressed) or (ev is InputEventMouseButton and ev.pressed):
+			_note.grab_focus()
+			if DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+				DisplayServer.virtual_keyboard_show(_note.text, Rect2(_note.get_global_rect()), DisplayServer.KEYBOARD_TYPE_DEFAULT))
 	right.add_child(_note)
 	var fl := HBoxContainer.new()
 	right.add_child(fl)
@@ -413,6 +429,16 @@ func _touch(e: InputEvent) -> void:
 		return
 	if e is InputEventScreenTouch:
 		if e.pressed:
+			_pinch[e.index] = e.position
+			if _pinch.size() == 2:
+				_pinch_prev = _pinch_dist()
+				_touch_target = null
+				_touch_id = -1
+				return
+		else:
+			_pinch.erase(e.index)
+			_pinch_prev = 0.0
+		if e.pressed:
 			_touch_id = e.index
 			_touch_start = e.position
 			_touch_drag = false
@@ -424,6 +450,15 @@ func _touch(e: InputEvent) -> void:
 			_touch_target = null
 			_touch_drag = false
 		return
+	_pinch[e.index] = e.position
+	if _pinch.size() == 2 and _pinch_prev > 0.0:
+		var d := _pinch_dist()
+		if _preview != null and _preview.get_global_rect().has_point(_pinch.values()[0]):
+			zoom_f = clampf(zoom_f * d / _pinch_prev, 1.0, 16.0)
+			_refresh()
+		_pinch_prev = d
+		_block_until = Time.get_ticks_msec() + 250
+		return
 	if e.index != _touch_id or _touch_target == null:
 		return
 	if not _touch_drag and e.position.distance_to(_touch_start) < 12.0:
@@ -434,6 +469,11 @@ func _touch(e: InputEvent) -> void:
 	elif _touch_target == _preview:
 		pan += e.relative
 		_preview.queue_redraw()
+
+
+func _pinch_dist() -> float:
+	var v: Array = _pinch.values()
+	return maxf((v[0] as Vector2).distance_to(v[1] as Vector2), 1.0)
 
 
 func _target_at(p: Vector2) -> Object:
@@ -458,6 +498,12 @@ func _anim_names(a: String) -> Array:
 func _input(e: InputEvent) -> void:
 	if e is InputEventScreenTouch or e is InputEventScreenDrag:
 		_touch(e)
+		return
+	if e is InputEventMouseButton and e.pressed and is_visible_in_tree() and _preview != null \
+			and _preview.get_global_rect().has_point(e.position) and (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		zoom_f = clampf(zoom_f * (1.15 if e.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.15), 1.0, 16.0)
+		_refresh()
+		get_viewport().set_input_as_handled()
 		return
 	if not (e is InputEventKey) or not e.pressed or e.echo or not is_visible_in_tree():
 		return
@@ -599,7 +645,7 @@ func _refresh() -> void:
 		_needs_btn.text = "ALL UNITS" if needs_only else "NEEDS ART ONLY (!)"
 	_frame_lbl.text = "%d / %d" % [mini(frame + 1, maxi(n, 1)), n]
 	_pause_btn.text = "PLAY" if paused else "PAUSE"
-	_zoom_btn.text = "ZOOM %dx" % ZOOMS[zoom_i]
+	_zoom_btn.text = "ZOOM %.1fx" % zoom_f
 	_grid_btn.text = "ONE VIEW" if grid_mode else "ALL DIRECTIONS"
 	_flag_lbl.text = "\n".join(flagged) if not flagged.is_empty() else "No frames flagged yet."
 	_preview.queue_redraw()
@@ -649,7 +695,7 @@ class Preview extends Control:
 			return
 		var fw := tex.get_width() / n
 		var fh := tex.get_height()
-		var sc := float(AnimViewer.ZOOMS[viewer.zoom_i]) * AnimViewer.art_scale(viewer.art)
+		var sc := viewer.zoom_f * AnimViewer.art_scale(viewer.art)
 		var dw := fw * sc
 		var dh := fh * sc
 		# feet (the anchor) near the bottom centre of the cell

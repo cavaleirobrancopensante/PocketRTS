@@ -117,6 +117,32 @@ func _run() -> void:
 	t = InputEventScreenTouch.new()
 	t.pressed = false
 	av._touch(t)
+	# pinch: two fingers apart over the picture zoom in, together zoom out
+	var z0: float = av.zoom_f
+	var a := InputEventScreenTouch.new()
+	a.index = 0
+	a.pressed = true
+	a.position = pc + Vector2(-20, 0)
+	av._touch(a)
+	var b := InputEventScreenTouch.new()
+	b.index = 1
+	b.pressed = true
+	b.position = pc + Vector2(20, 0)
+	av._touch(b)
+	var da := InputEventScreenDrag.new()
+	da.index = 0
+	da.position = pc + Vector2(-60, 0)
+	av._touch(da)
+	check(av.zoom_f > z0 * 1.5, "pinching out zooms in (%.2f -> %.2f)" % [z0, av.zoom_f])
+	var z1: float = av.zoom_f
+	da.position = pc + Vector2(-10, 0)
+	av._touch(da)
+	check(av.zoom_f < z1, "pinching in zooms out")
+	for i in 2:
+		var up := InputEventScreenTouch.new()
+		up.index = i
+		up.pressed = false
+		av._touch(up)
 	av.copy_name()
 	check(av._copied_lbl.text.begins_with("Copied: musketeer / "), "copy name label: %s" % av._copied_lbl.text)
 	av.pan = Vector2.ZERO

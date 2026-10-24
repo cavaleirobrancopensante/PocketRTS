@@ -157,7 +157,9 @@ func _initialize() -> void:
 		for d in ["s", "se", "e", "ne", "n"]:
 			check(ArtData.UNITS[art]["frames"]["walk_" + d] == 8, "%s walks in 8 frames (%s)" % [art, d])
 	for d in ["s", "se", "e", "ne", "n"]:
-		check(ArtData.UNITS["musketeer"]["frames"]["walk_" + d] == 6, "Musketeer walk_%s has 6 frames" % d)
+		# (the Musketeer's ChatGPT walk was dropped for the tricorne walk with the musket in his hands: 3/4/6/5/7 frames)
+		var mn: int = ArtData.UNITS["musketeer"]["frames"]["walk_" + d]
+		check(mn > 0 and strip("musketeer", "walk", d).get_width() == mn * cell.x, "Musketeer walk_%s: %d frames, width fits" % [d, mn])
 	for art in ["raptor", "grub"]:
 		for d in ["s", "se", "e", "ne", "n"]:
 			var n: int = ArtData.UNITS[art]["frames"]["walk_" + d]
