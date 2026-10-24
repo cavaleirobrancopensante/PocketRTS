@@ -6457,6 +6457,7 @@ func _update_vis() -> void:
 				_reveal_air(u.team, c, u.sight)
 			else:
 				_reveal(u.team, c, u.sight)
+	_stamp_shot_reveals()
 	_fog_mode = 0
 	Prof.add("game/fog/units", _z)
 	_z = Time.get_ticks_usec()
@@ -6555,6 +6556,38 @@ func sees_all() -> bool:
 func refresh_fog() -> void:
 	_vis_t = 0.25
 	_update_vis()
+
+
+## A ranged unit on HIGH ground that fires at a target on LOW ground shows itself to the side
+## shot at: a small spot of sight (SHOT_REVEAL_R cells) around the shooter only, for
+## SHOT_REVEAL_T seconds after each shot. Goes through the normal vis grids, so the AI sees it too.
+const SHOT_REVEAL_T := 2.0
+const SHOT_REVEAL_R := 2
+var _shot_reveals := {}                  # shooter id * 16 + victim team -> [shooter, until, victim team]
+
+
+func note_shot(shooter: Unit, e: Entity) -> void:
+	if shooter == null or e == null or e.team < 0 or shooter.team < 0 or allied(shooter.team, e.team):
+		return
+	var sc := cell_of(shooter.position)
+	var tc := cell_of(e.position if e is Unit else (e as Building).rect().get_center())
+	if not in_map(sc) or not in_map(tc) or height[idx(sc)] != 1 or ramp[idx(sc)] != 0 or height[idx(tc)] != 0:
+		return
+	var key: int = shooter.get_instance_id() * 16 + e.team
+	var fresh := not _shot_reveals.has(key)
+	_shot_reveals[key] = [shooter, clock + SHOT_REVEAL_T, e.team]
+	if fresh:
+		_vis_t = 0.0     # show the shooter at the next tick
+
+
+func _stamp_shot_reveals() -> void:
+	for key in _shot_reveals.keys():
+		var r: Array = _shot_reveals[key]
+		var u = r[0]
+		if not is_instance_valid(u) or u.dead or clock >= float(r[1]):
+			_shot_reveals.erase(key)
+			continue
+		_reveal_air(int(r[2]), cell_of(u.position), SHOT_REVEAL_R)
 
 
 func _reveal_air(t: int, c: Vector2i, r: int) -> void:
