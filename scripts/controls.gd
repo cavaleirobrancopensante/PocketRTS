@@ -548,6 +548,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 				u.give({"o": "patrol", "p": ps[u]}, queued)
 			if not units.is_empty() and units[0].team == game.human:
 				Sfx.voice(units[0].kind, "attack")
+				Sfx.bugle(game.faction_of(game.human), "patrol")
 			game._ping(p, Color(1, 0.75, 0.3))
 			if queued:
 				_keep_for_shift()

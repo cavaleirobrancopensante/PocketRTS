@@ -3891,6 +3891,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		else:
 			Sfx.play_f_once("ready", b.d["faction"], 6.0, -3.0)
 		Sfx.voice(k, "select")
+		Sfx.bugle(b.d["faction"], "trained")
 	var rid := int(kit.get("rid", 0))
 	var sk := k
 	if Defs.RIDERS.has(k) and rid != 0:
@@ -6946,7 +6947,9 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead)
 	if not us.is_empty() and us[0].team == human:
 		var tgt := entity_at(p)
-		Sfx.voice(us[0].kind, "attack" if tgt and hostile(tgt.team, human) and not force_move else "move")
+		var atk: bool = tgt != null and hostile(tgt.team, human) and not force_move
+		Sfx.voice(us[0].kind, "attack" if atk else "move")
+		Sfx.bugle(faction_of(human), "charge" if atk else "move")
 	if us.is_empty():
 		return
 	var e := null if force_move else entity_at(p)
@@ -7083,6 +7086,7 @@ func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
 func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
 	if not us.is_empty() and us[0].team == human:
 		Sfx.voice(us[0].kind, "attack" if attack_move else "move")
+		Sfx.bugle(faction_of(human), "amove" if attack_move else "move")
 	# No pre-made formation (StarCraft / Beyond All Reason style): a group already together
 	# keeps its shape and moves as one blob; a group spread out bunches up into a clump at
 	# the point (each man keeps his side of it, closed in to a blob about its size).
@@ -7116,9 +7120,13 @@ func _ping(p: Vector2, col: Color) -> void:
 
 
 func command_all(list: Array, what: String) -> void:
+	var belled := false
 	for u in list:
 		if u is Unit and not u.dead:
 			u.patrol_a = Vector2.INF
+			if u.team == human and not belled:
+				belled = true
+				Sfx.bugle(faction_of(human), what)
 			if what == "stop":
 				u.cmd_stop()
 			elif what == "hold":

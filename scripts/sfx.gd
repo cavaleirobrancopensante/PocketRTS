@@ -103,7 +103,9 @@ const GAP := {"combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/sp
 	# recorded gunfire: a volley of ten muskets is a few overlapping shots, not a wall of noise
 	"combat/musketeer_attack": 110, "combat/cannon_attack": 160, "combat/cannon_canister": 160,
 	"combat/mortar_attack": 200, "combat/cuirassier_attack": 120, "combat/cuirassier_move": 1500,
-	"combat/cuirassier_death": 150, "horse/whinny": 6000, "select/*": 250, "select/town_hall": 400, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
+	"combat/cuirassier_death": 150, "horse/whinny": 6000, "voice/crown_bugle/move": 9000, "voice/crown_bugle/amove": 7000,
+	"voice/crown_bugle/charge": 7000, "voice/crown_bugle/patrol": 9000, "voice/crown_bugle/trained": 6000,
+	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).
 const JITTER := {"combat/musketeer_attack": 0.04, "combat/cannon_attack": 0.04,
@@ -162,6 +164,13 @@ static func building_selected(kind: String, faction: String) -> void:
 const VOICE_EXTRA := {"cuirassier": {
 	"move": [["combat/cuirassier_move", 1.0], ["horse/whinny", 0.33]],
 	"attack": [["combat/cuirassier_move", 1.0], ["horse/whinny", 0.33]]}}
+
+
+## The Crown's bugle (Brazilian Army Manual de Toques calls, tools/audio/make_bugle.py): "move",
+## "amove", "charge", "patrol" or "trained". Crown only, and rarely (each call has its own GAP).
+static func bugle(faction: String, what: String) -> void:
+	if faction == "crown":
+		play("voice/crown_bugle/" + what, Vector2.INF, -8.0)
 
 
 ## A unit answering you: "select", "move" or "attack". One voice at a time.
