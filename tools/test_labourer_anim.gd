@@ -20,7 +20,8 @@ const DIRS := ["s", "se", "e", "ne", "n"]
 ## redrawn strips are in swing order (raise, drop, strike, lift)
 const STRIKE_FRAME := {"s": 2, "se": 2, "e": 2, "ne": 2, "n": 2}
 ## poses redrawn from art/redraws (tools/import_labourer_redraw.py) and their frame counts
-const REDRAWN := {"walk": 6, "carry": 6, "carry_keg": 6, "idle_keg": 4, "idle_carry": 2, "mine": 4, "build": 4}
+const REDRAWN := {"walk": 6, "carry": 6, "carry_keg": 6, "idle_keg": 4, "idle_carry": 2, "mine": 4, "build": 4,
+	"idle": 2, "death": 3, "death_keg": 6, "bury": 6}
 
 
 func _initialize() -> void:
@@ -58,6 +59,7 @@ func check(ok: bool, what: String) -> void:
 func _run() -> void:
 	_strips()
 	_gait()
+	_v2()
 	_swing()
 	await _walk()
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
@@ -155,6 +157,69 @@ func _gait() -> void:
 			if (tops.max() - tops.min()) < 1:
 				bad.append("%s_%s no body bob %s" % [p, d, str(tops)])
 	check(bad.is_empty(), "walk / carry / keg in e, se, ne: legs change every frame, contact and passing stances alternate, body bobs %s" % str(bad))
+
+
+## Round 2 (tools/import_labourer_v2.py): death, keg death, bury, idle and walk from the second ChatGPT sheets.
+## No two frames of a strip may be identical (a repeated frame is a ChatGPT row that was not repaired),
+## the idle pair must differ (the breath), the front / back walk (s, n) must move its legs
+## (>= V2_MIN_LEG_DIFF px between consecutive frames, the strip loops) and swap the lifted foot.
+const V2_MIN_LEG_DIFF := 8
+
+
+func _v2() -> void:
+	var bad := []
+	for p in ["death", "death_keg", "bury", "idle", "walk"]:
+		for d in DIRS:
+			var im: Image = (load("res://assets/units/labourer/%s_%s.png" % [p, d]) as Texture2D).get_image()
+			var n := im.get_width() / 42
+			for i in n:
+				for j in range(i + 1, n):
+					var same := true
+					for y in 35:
+						for x in 42:
+							if im.get_pixel(i * 42 + x, y) != im.get_pixel(j * 42 + x, y):
+								same = false
+								break
+						if not same:
+							break
+					if same:
+						bad.append("%s_%s frames %d and %d identical" % [p, d, i, j])
+	check(bad.is_empty(), "round 2 strips: no two frames of a strip are identical %s" % str(bad))
+	bad = []
+	for d in ["s", "n"]:
+		var im: Image = (load("res://assets/units/labourer/walk_%s.png" % d) as Texture2D).get_image()
+		var lift := []
+		for i in 6:
+			var j := (i + 1) % 6
+			var diff := 0
+			for y in range(24, 34):
+				for x in 42:
+					if (im.get_pixel(i * 42 + x, y).a > 0.0) != (im.get_pixel(j * 42 + x, y).a > 0.0):
+						diff += 1
+			if diff < V2_MIN_LEG_DIFF:
+				bad.append("walk_%s %d->%d legs differ by %d px" % [d, i, j, diff])
+			# the outer four columns of the boots, left and right: the raised boot ends higher
+			var cmin := 99
+			var cmax := -1
+			for y in range(28, 34):
+				for x in 42:
+					if im.get_pixel(i * 42 + x, y).a > 0.0:
+						cmin = mini(cmin, x)
+						cmax = maxi(cmax, x)
+			var lows := [0, 0]
+			for y in range(24, 34):
+				for x in 42:
+					if im.get_pixel(i * 42 + x, y).a > 0.0:
+						if x < cmin + 4:
+							lows[0] = maxi(lows[0], y)
+						elif x > cmax - 4:
+							lows[1] = maxi(lows[1], y)
+			lift.append(lows[0] - lows[1])
+		var lefts := lift.filter(func(v: int) -> bool: return v < 0).size()
+		var rights := lift.filter(func(v: int) -> bool: return v > 0).size()
+		if lefts == 0 or rights == 0:
+			bad.append("walk_%s the lifted foot never swaps sides %s" % [d, str(lift)])
+	check(bad.is_empty(), "walk s / n: legs change every frame and the lifted foot swaps sides %s" % str(bad))
 
 
 func _swing() -> void:
