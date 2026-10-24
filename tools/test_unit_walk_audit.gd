@@ -58,6 +58,73 @@ func body_height(img: Image, cell: Vector2i, i: int) -> int:
 	return bot - top + 1
 
 
+## Gait thresholds, the same as tools/audit_walk_gait.py (docs/animation_gait_audit.md): in the bottom 30% of
+## the sprite the silhouette changes by LEG_MIN between consecutive frames (side / diagonal views) or LEG_MIN_FB
+## (front / back), and the feet's spread (width of the lowest 5 rows) ranges over at least RNG_MIN px (side views).
+const LEG_MIN := 0.30
+const LEG_MIN_FB := 0.12
+const RNG_MIN := 3
+const GAIT_UNITS := ["missionary", "windup_soldier", "winder", "musketeer_armoured", "raptor", "labourer"]
+
+
+func solid(img: Image, x: int, y: int) -> bool:
+	return img.get_pixel(x, y).a * 255.0 > 40.0
+
+
+## [leg change, spread range] of one walk strip
+func gait_numbers(img: Image, cw: int, n: int) -> Array:
+	var tops: Array = []
+	var bots: Array = []
+	for i in n:
+		var t := 999
+		var b := -1
+		for y in img.get_height():
+			for x in cw:
+				if solid(img, i * cw + x, y):
+					t = mini(t, y)
+					b = maxi(b, y)
+		tops.append(t)
+		bots.append(b)
+	tops.sort()
+	bots.sort()
+	var top: int = tops[n / 2]
+	var bot: int = bots[n / 2]
+	var y0: int = bot - int(0.3 * float(bot - top + 1)) + 1
+	var chg := 0.0
+	for i in n:
+		var j := (i + 1) % n
+		var diff := 0
+		var used := 0
+		for y in range(y0, img.get_height()):
+			for x in cw:
+				var a := solid(img, i * cw + x, y)
+				var b2 := solid(img, j * cw + x, y)
+				if a or b2:
+					used += 1
+				if a != b2:
+					diff += 1
+		chg += float(diff) / float(maxi(1, used))
+	var lo := 999
+	var hi := 0
+	for i in n:
+		var last := -1
+		for y in img.get_height():
+			for x in cw:
+				if solid(img, i * cw + x, y):
+					last = y
+					break
+		var x0 := 999
+		var x1 := -1
+		for y in range(maxi(0, last - 4), last + 1):
+			for x in cw:
+				if solid(img, i * cw + x, y):
+					x0 = mini(x0, x)
+					x1 = maxi(x1, x)
+		lo = mini(lo, x1 - x0 + 1)
+		hi = maxi(hi, x1 - x0 + 1)
+	return [chg / float(n), hi - lo]
+
+
 func _initialize() -> void:
 	var cell := Vector2i(90, 36)
 	var mcell := Vector2i(90, 48)
@@ -100,5 +167,14 @@ func _initialize() -> void:
 		check(Unit.walk_fps_for(art) == 12.0, "%s walks at 12 fps" % art)
 	check(Unit.walk_fps_for("pikeman") == Unit.WALK_FPS, "the Pikeman keeps WALK_FPS")
 	check(Unit.walk_fps_for("labourer") == Unit.WALK_FPS, "the Labourer keeps WALK_FPS")
+	for art in GAIT_UNITS:
+		var c2: Vector2i = ArtData.UNITS[art]["cell"]
+		for d in ["s", "se", "e", "ne", "n"]:
+			var n2: int = ArtData.UNITS[art]["frames"]["walk_" + d]
+			var gn: Array = gait_numbers(strip(art, "walk", d), c2.x, n2)
+			var side: bool = d != "s" and d != "n"
+			check(gn[0] >= (LEG_MIN if side else LEG_MIN_FB), "%s walk_%s: legs move frame to frame (%.2f)" % [art, d, gn[0]])
+			if side and not (art == "raptor" and d == "e"):
+				check(gn[1] >= RNG_MIN, "%s walk_%s: feet spread %d px over the cycle" % [art, d, gn[1]])
 	print("ALL PASS" if fails == 0 else "FAILED: %d" % fails)
 	quit(1 if fails else 0)

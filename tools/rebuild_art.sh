@@ -101,6 +101,13 @@ python3 tools/import_armoury_anims.py    # the Armoury's nine research experimen
                                          # strips, assets/buildings/armoury_anim_<research>.png) from
                                          # art/crown/armoury_anim/ (after import_buildings_v2: same roof patch)
 python3 tools/import_queen.py           # the Brood Queen at the capital Burrow (art/brood/queen.png: still, backdrop keyed out)
+# Gait passes (tools/gait_lib.py, docs/animation_gait_audit.md): legs rebuilt per frame, one foot after the other;
+# each strip's torso / head / gear kept, pristine sources snapshotted in art/redraws/gait_src/<unit>/ (idempotent)
+python3 tools/import_gait_missionary.py
+python3 tools/import_gait_windup_soldier.py
+python3 tools/import_gait_winder.py
+python3 tools/import_gait_musketeer_armoured.py
+python3 tools/import_gait_raptor.py
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included
