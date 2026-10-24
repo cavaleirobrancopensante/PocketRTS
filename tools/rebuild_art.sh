@@ -68,6 +68,12 @@ python3 tools/import_mount.py            # the riders' mounting strips (mount_s 
                                          # its last frame up with their idle; before the coat masks)
 python3 tools/import_horse_team.py      # a gun's / wagon's team horse in harness (art/crown/horse_team.png:
                                          # the S row's stray traces erased; before the coat masks)
+# The owner's image-AI redraw sheets (art/redraws/, docs/animation_audit_units.md): each replaces
+# strips written by the importers above, so they run after them and before the masks / drill strips
+python3 tools/import_redraw_officers.py   # Officer + Armoured Officer: 4-frame sabre melee, 8-frame walk
+python3 tools/import_redraw_musketeer.py  # Musketeer: 6-frame walk in all 5 directions
+python3 tools/import_redraw_creatures.py  # Raptor + Grub: walk_s / se / ne / n (E kept)
+python3 tools/import_redraw_mounted.py    # Dragoon: walk_ne / se / e / n (Cuirassier kept)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
 python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill (art/crown/powder_mill_horse.png:

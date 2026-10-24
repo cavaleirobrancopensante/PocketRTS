@@ -1,8 +1,8 @@
 extends SceneTree
 ## The Officer's sabre and the foot soldiers' walk cadence (docs/animation_audit_units.md):
 ##   godot --headless --fixed-fps 30 --script res://tools/test_unit_walk_audit.gd
-##  1. the Officer's melee strips (light 3 frames, armoured 4, every view) carry a long sabre:
-##     in every frame a steel blade at least 12 px across (the sheet's was 8 to 10 px; the armoured cocked frame has it behind the helm)
+##  1. the Officer's melee strips (4 frames each, every view, strips 48 px tall) carry a long sabre:
+##     in every frame a steel blade at least 12 px across (the wind-up frame (1) may hide it behind the helm)
 ##  2. the Officer's walk strip has no oversized frame (head to boots within 2 px of the
 ##     median height in every view) and every strip's width divides by its frame count
 ##  3. men on foot walk at their own cadence (Unit.walk_fps_for), everything else at WALK_FPS
@@ -36,7 +36,7 @@ func blade_span(img: Image, cell: Vector2i, i: int) -> int:
 	for y in cell.y:
 		for x in range(red_x + 1, cell.x):
 			var c := img.get_pixel(i * cell.x + x, y)
-			if c.a > 0.5 and c.get_luminance() > 0.7 and absf(c.r - c.b) < 0.12:
+			if c.a > 0.5 and c.get_luminance() > 0.6 and absf(c.r - c.b) < 0.25:
 				x0 = mini(x0, x)
 				x1 = maxi(x1, x)
 				y0 = mini(y0, y)
@@ -60,16 +60,17 @@ func body_height(img: Image, cell: Vector2i, i: int) -> int:
 
 func _initialize() -> void:
 	var cell := Vector2i(90, 36)
+	var mcell := Vector2i(90, 48)
 	for art in ["dismounted", "dismounted_armoured"]:
-		var want: int = 3 if art == "dismounted" else 4
+		var want: int = 4
 		for d in ["s", "se", "e", "ne", "n"]:
 			var key: String = "melee_" + d
 			var n: int = ArtData.UNITS[art]["frames"][key]
 			var img := strip(art, "melee", d)
-			check(n == want and img.get_width() == n * cell.x, "%s %s: %d frames, width fits" % [art, key, n])
+			check(n == want and img.get_width() == n * mcell.x and img.get_height() == mcell.y, "%s %s: %d frames, width fits" % [art, key, n])
 			var short := 0
 			for i in n:
-				if blade_span(img, cell, i) < (0 if i == 0 and art == "dismounted_armoured" else 12):
+				if blade_span(img, mcell, i) < (0 if i == 0 else 12):
 					short += 1
 			check(short == 0, "%s %s: a long sabre in every frame (%d short)" % [art, key, short])
 			var wn: int = ArtData.UNITS[art]["frames"]["walk_" + d]
@@ -85,7 +86,16 @@ func _initialize() -> void:
 			for h in hs:
 				worst = maxi(worst, absi(int(h) - med))
 			check(worst <= 2, "%s walk_%s: no oversized frame (worst %d px off the median)" % [art, d, worst])
-	check(ArtData.UNITS["dismounted"]["frames"]["walk_e"] == 8, "Officer walks in 8 frames")
+	for art in ["dismounted", "dismounted_armoured"]:
+		for d in ["s", "se", "e", "ne", "n"]:
+			check(ArtData.UNITS[art]["frames"]["walk_" + d] == 8, "%s walks in 8 frames (%s)" % [art, d])
+	for d in ["s", "se", "e", "ne", "n"]:
+		check(ArtData.UNITS["musketeer"]["frames"]["walk_" + d] == 6, "Musketeer walk_%s has 6 frames" % d)
+	for art in ["raptor", "grub"]:
+		for d in ["s", "se", "e", "ne", "n"]:
+			var n: int = ArtData.UNITS[art]["frames"]["walk_" + d]
+			var c: Vector2i = ArtData.UNITS[art]["cell"]
+			check(n == 6 and strip(art, "walk", d).get_width() == n * c.x, "%s walk_%s: 6 frames, width fits" % [art, d])
 	for art in ["musketeer", "musketeer_armoured", "dismounted", "dismounted_armoured"]:
 		check(Unit.walk_fps_for(art) == 12.0, "%s walks at 12 fps" % art)
 	check(Unit.walk_fps_for("pikeman") == Unit.WALK_FPS, "the Pikeman keeps WALK_FPS")

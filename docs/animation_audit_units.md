@@ -60,3 +60,42 @@ Frame numbers are 1-based, left to right.
 
 Gallopers (Horseman, Cuirassier, Messenger, Dragoons) keep their frame-count-scaled gallop fps; the E
 view matches ground speed (0.5-1.0x). Labourer untouched.
+
+## Image-AI redraw sheets imported (art/redraws/)
+
+Importers (documented in their headers, run from tools/rebuild_art.sh after import_horse_units and
+before the coat / trim / skin masks): tools/redraw_lib.py (cutting, shrinking, placing),
+tools/redraw_rig.py (leg rig: the sheets' contact poses are all one wide stride, so torsos are
+used frame by frame and the legs are posed again as a real gait), import_redraw_officers.py,
+import_redraw_musketeer.py, import_redraw_creatures.py, import_redraw_mounted.py.
+
+Replaced
+- Officer and Armoured Officer melee: 4 frames in every direction (wind-up, swing, cut with the
+  bright arc, follow-through), strips 90x48; the sabre is cut from the sheet and redrawn at game
+  scale (2 px blade with outline) so it is long and clean. (Officer melee was 3 frames.)
+- Officer and Armoured Officer walk: 8 frames (contact, down, passing, contact other foot),
+  composed from sheets A and B: torsos per frame from A, front/back leg poses from B, side
+  views with the rig. The Armoured walk was 7 frames.
+- Musketeer walk: 6 frames in all five directions (front set for s/se/e, back set for ne/n), red
+  coat, black hat; the south row's grey-green plume is repainted red.
+- Raptor and Grub walk_s / se / ne / n (new, 6 frames; the game only had E and flipped it).
+  Palette matched to the old E strip, same height as the old E.
+- Dragoon walk_ne / se / e / n (attempt C, 6 frames, a true side-view E and a real NE; the old NE
+  was a copy of E and the old E was a three-quarter view).
+
+Kept
+- Raptor and Grub walk_e: the sheet's E rows barely move; the old gait is better.
+- Cuirassier walk_*: the sheets draw a brown horse trotting nearly in place; all other Cuirassier
+  strips have the dark horse and the old gallop is a real one.
+- Dragoon walk_s (no S row on the sheets); Armoured Dragoon walk_* (the sheets have no armoured
+  Dragoon; its NE is still a copy of E); Horseman.
+
+Still needs redrawing / known flaws
+- Officer idle / aim / fire / death still show the old man (white plume, narrower); the new walk
+  and melee man is broader. The Musketeer's S plume repaint leaves a few grey pixels on the
+  barrel tip in one frame. Officer walk stride is about 10 px a step at 12 fps (feet still slide).
+- Raptor / Grub new directions have only subtle leg motion (the sheets' frames differ little).
+- Trim masks (vet lace / helmet) found nothing on Armoured Officer walk_e and Musketeer walk_n,
+  so a veteran shows no trim in those two strips.
+- Raptor E tail / head contact on the sheet means the E row was not used; if it is redrawn,
+  import_redraw_creatures.py splits touching figures at the column with the fewest pixels.
