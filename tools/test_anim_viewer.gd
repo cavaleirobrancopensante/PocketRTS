@@ -51,6 +51,31 @@ func _run() -> void:
 	check(av.frame == av.frame_count() - 1, "step back wraps")
 	av.flag_frame()
 	check(av.flagged.size() == 1 and av.flagged[0].begins_with("musketeer / walk / e / frame"), "flag line: %s" % str(av.flagged))
+	# quick switching: direction around the compass, pose list, unit list, needs-art filter
+	av.select_art("labourer")
+	av.select_anim("walk")
+	av.select_dir("e")
+	av.cycle_dir(1)
+	check(av.dir == "ne", "dir right of e is ne (got %s)" % av.dir)
+	av.cycle_dir(-2)
+	check(av.dir == "se", "dir two left of ne is se (got %s)" % av.dir)
+	var names := AnimViewer.anims_of("labourer").keys()
+	av.cycle_anim(1)
+	check(av.anim != "walk" and names.has(av.anim), "pose down from walk: %s" % av.anim)
+	av.cycle_anim(-1)
+	check(av.anim == "walk", "pose up returns to walk")
+	var a0 := av.art
+	av.cycle_art(1)
+	check(av.art != a0, "unit next changes the unit")
+	av.cycle_art(-1)
+	check(av.art == a0, "unit previous returns")
+	av.needs_only = true
+	av._fill_units()
+	av.cycle_art(1)
+	check(AnimViewer.NEEDS_ART.has(av.art), "filtered unit cycling stays in the needs-art list: %s" % av.art)
+	for k in AnimViewer.NEEDS_ART:
+		check(ArtData.UNITS.has(k), "needs-art key %s is a real art" % k)
+	av.needs_only = false
 	av.grid_mode = true
 	av._refresh()
 	await process_frame

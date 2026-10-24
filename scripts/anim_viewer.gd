@@ -11,6 +11,31 @@ const MIRROR := {"sw": "se", "w": "e", "nw": "ne"}
 const ZOOMS := [1, 4, 8]
 const FACTION_ORDER := ["crown", "clockwork", "brood", "other"]
 
+## Strips that still need ChatGPT art, and why (docs/art_style_inconsistency.md has the detail).
+const NEEDS_ART := {
+	"labourer": "carry and keg-carry have pasted legs (prompts 08, 09); build, hoe, death, bury redraws",
+	"musketeer": "front and back walks barely step",
+	"musketeer_armoured": "pasted legs, mixed style (prompt 16)",
+	"dismounted": "officer idle / aim / fire / death poses are code-made (prompts 10-13)",
+	"dismounted_armoured": "armoured officer poses are code-made (prompts 12, 13)",
+	"missionary": "cassock hides the legs: whole-figure walk redraw",
+	"windup_soldier": "walk legs are code-built, tiny sprite",
+	"winder": "walk legs are code-built",
+	"raptor": "front and back stride is small (prompt 18)",
+	"spore_mother": "north-east walk is a copy of east; legs painted into the body",
+	"horse": "riderless horse walk (prompts 20-25)",
+	"horseman": "horse legs painted into the strip",
+	"cuirassier": "horse legs painted into the strip",
+	"dragoon": "horse legs painted into the strip",
+	"dragoon_armoured": "horse legs painted into the strip",
+	"messenger": "horse legs painted into the strip",
+	"missionary_mounted": "horse legs painted into the strip",
+	"horse_team": "harness horse barely lifts a hoof front/back",
+	"mortar": "harness horse legs",
+	"cannon": "harness horse legs",
+	"powder_wagon": "harness horse legs",
+}
+
 var art := ""
 var anim := ""
 var dir := "e"
@@ -37,6 +62,8 @@ var _pause_btn: Button
 var _grid_btn: Button
 var _zoom_btn: Button
 var _faction_btns := {}
+var needs_only := false
+var _needs_btn: Button
 
 
 ## Animation names of an art with the directions each has: {"walk": ["s","se",...]}.
@@ -227,6 +254,19 @@ func _build() -> void:
 		b.add_theme_font_size_override("font_size", 13)
 		fr.add_child(b)
 		_faction_btns[f] = b
+	_needs_btn = _btn("", func() -> void:
+		needs_only = not needs_only
+		_fill_units()
+		_refresh(), 38.0)
+	_needs_btn.add_theme_font_size_override("font_size", 13)
+	left.add_child(_needs_btn)
+	var uc := HBoxContainer.new()
+	left.add_child(uc)
+	for pair in [["< UNIT", -1], ["UNIT >", 1]]:
+		var ub := _btn(pair[0], func() -> void: cycle_art(pair[1]), 38.0)
+		ub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ub.add_theme_font_size_override("font_size", 13)
+		uc.add_child(ub)
 	_unit_box = VBoxContainer.new()
 	left.add_child(_scroll(_unit_box, 190))
 	# centre: preview and controls
@@ -266,12 +306,14 @@ func _build() -> void:
 	right.custom_minimum_size.x = 250
 	right.add_theme_constant_override("separation", 6)
 	cols.add_child(right)
-	right.add_child(UiStyle.text("ANIMATION", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true))
+	right.add_child(UiStyle.text("POSE  (keys: Up / Down)", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true))
+	right.add_child(_pair_row("< POSE", "POSE >", func(d: int) -> void: cycle_anim(d)))
 	_anim_box = VBoxContainer.new()
 	var asc := _scroll(_anim_box, 250)
 	asc.custom_minimum_size.y = 200
 	right.add_child(asc)
-	right.add_child(UiStyle.text("DIRECTION", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true))
+	right.add_child(UiStyle.text("DIRECTION  (keys: Left / Right)", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true))
+	right.add_child(_pair_row("< DIR", "DIR >", func(d: int) -> void: cycle_dir(d)))
 	_dir_row = HFlowContainer.new()
 	right.add_child(_dir_row)
 	_note = LineEdit.new()
@@ -301,6 +343,90 @@ func _build() -> void:
 	_fill_units()
 
 
+func _pair_row(l: String, r: String, cb: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	for pair in [[l, -1], [r, 1]]:
+		var b := _btn(pair[0], func() -> void: cb.call(pair[1]), 40.0)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+	return row
+
+
+## Every art in list order (factions in FACTION_ORDER), honouring the needs-art filter.
+func _art_order() -> Array:
+	var out := []
+	for f in FACTION_ORDER:
+		for a in _groups.get(f, []):
+			if not needs_only or NEEDS_ART.has(a):
+				out.append(a)
+	return out
+
+
+func cycle_art(delta: int) -> void:
+	var order := _art_order()
+	if order.is_empty():
+		return
+	var i := order.find(art)
+	select_art(order[posmod(i + delta, order.size())] if i >= 0 else order[0])
+
+
+## Next / previous pose of the current unit (walk first, as in the list); keeps the direction when it exists.
+func cycle_anim(delta: int) -> void:
+	var names := _anim_names(art)
+	if names.is_empty():
+		return
+	var i := names.find(anim)
+	select_anim(names[posmod(i + delta, names.size())])
+
+
+## Next / previous direction that exists for the current pose, around the compass.
+func cycle_dir(delta: int) -> void:
+	var i := SHOW_DIRS.find(dir)
+	for k in range(1, SHOW_DIRS.size() + 1):
+		var d: String = SHOW_DIRS[posmod(i + delta * k, SHOW_DIRS.size())]
+		if strip_frames(art, anim, d) > 0:
+			select_dir(d)
+			return
+
+
+func _anim_names(a: String) -> Array:
+	var names: Array = anims_of(a).keys()
+	names.sort()
+	if names.has("walk"):
+		names.erase("walk")
+		names.push_front("walk")
+	return names
+
+
+func _input(e: InputEvent) -> void:
+	if not (e is InputEventKey) or not e.pressed or e.echo or not is_visible_in_tree():
+		return
+	if get_viewport().gui_get_focus_owner() is LineEdit:
+		return          # typing a note
+	match e.keycode:
+		KEY_LEFT:
+			cycle_dir(-1)
+		KEY_RIGHT:
+			cycle_dir(1)
+		KEY_UP:
+			cycle_anim(-1)
+		KEY_DOWN:
+			cycle_anim(1)
+		KEY_PAGEUP, KEY_Q:
+			cycle_art(-1)
+		KEY_PAGEDOWN, KEY_E:
+			cycle_art(1)
+		KEY_SPACE:
+			set_paused(not paused)
+		KEY_COMMA:
+			step(-1)
+		KEY_PERIOD:
+			step(1)
+		_:
+			return
+	get_viewport().set_input_as_handled()
+
+
 func _fill_units() -> void:
 	for c in _unit_box.get_children():
 		c.queue_free()
@@ -310,7 +436,11 @@ func _fill_units() -> void:
 		else:
 			_faction_btns[f].remove_theme_stylebox_override("normal")
 	for a in _groups.get(_faction, []):
-		var b := _btn(a, func() -> void: select_art(a), 38.0)
+		if needs_only and not NEEDS_ART.has(a):
+			continue
+		var b := _btn(a + (" !" if NEEDS_ART.has(a) else ""), func() -> void: select_art(a), 38.0)
+		if NEEDS_ART.has(a):
+			b.tooltip_text = String(NEEDS_ART[a])
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.add_theme_font_size_override("font_size", 14)
 		_unit_box.add_child(b)
@@ -323,12 +453,7 @@ func select_art(a: String) -> void:
 	for c in _anim_box.get_children():
 		c.queue_free()
 	var an := anims_of(a)
-	var names: Array = an.keys()
-	names.sort()
-	# walk first when there is one, as it is what most reviews start with
-	if names.has("walk"):
-		names.erase("walk")
-		names.push_front("walk")
+	var names := _anim_names(a)
 	for nm in names:
 		var b := _btn("%s  (%d)" % [nm, strip_frames(a, nm, an[nm][0])], func() -> void: select_anim(nm), 38.0)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -396,6 +521,10 @@ func _refresh() -> void:
 	var n := frame_count()
 	var fps := fps_for(art, anim, n)
 	_info.text = "%s  /  %s  /  %s   ·   %d frames at %.1f fps   ·   scale %.2f" % [art, anim, dir, n, fps, art_scale(art)]
+	if NEEDS_ART.has(art):
+		_info.text += "\nNEEDS ART: " + String(NEEDS_ART[art])
+	if _needs_btn != null:
+		_needs_btn.text = "ALL UNITS" if needs_only else "NEEDS ART ONLY (!)"
 	_frame_lbl.text = "%d / %d" % [mini(frame + 1, maxi(n, 1)), n]
 	_pause_btn.text = "PLAY" if paused else "PAUSE"
 	_zoom_btn.text = "ZOOM %dx" % ZOOMS[zoom_i]
