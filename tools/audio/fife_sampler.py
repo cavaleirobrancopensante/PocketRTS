@@ -65,13 +65,15 @@ def phrase(notes, bpm):
 
 # a short march in B flat (original): pickup, two bars of tune, answer, close
 B, C, D, E, F, G, A = 70, 72, 74, 75, 77, 79, 81
-TUNE = [(F, .5), (B, .5), (B, .5), (C, .5), (D, 1), (B, 1), (D, .5), (E, .5), (F, .5), (F, .5), (F, 1), (D, 1),
-        (E, .5), (F, .5), (E, .5), (D, .5), (C, 1), (B, 1), (C, .5), (D, .5), (C, .5), (A - 1, .5), (B, 2)]
+TUNE = [(F, 1), (B, 1), (C, 1), (D, 2), (B, 1), (D, 1), (E, 1), (F, 3), (E, 1), (D, 1), (C, 1), (B, 2), (C, 1), (D, 1), (C, 1), (B, 3)]
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         cut(sys.argv[1])
-    x = phrase(TUNE, 112)
+    x = phrase(TUNE, 88)
+    from scipy.signal import butter, lfilter
+    b, a = butter(2, 3200 / (SR / 2))
+    x = lfilter(b, a, x) * 0.9
     p = os.path.join(ROOT, "art", "audio_src", "fife", "fife_demo.wav")
     subprocess.run(["ffmpeg", "-y", "-v", "quiet", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-", "-ac", "2", p],
                    input=x.astype(np.float32).tobytes(), check=True)

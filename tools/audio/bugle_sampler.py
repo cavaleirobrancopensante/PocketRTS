@@ -49,7 +49,7 @@ def note(k, dur, vel):
         s = np.array(x)
     out = s[: n + int(0.12 * SR)].copy()
     out[n:] *= np.linspace(1, 0, len(out) - n) if len(out) > n else 1
-    out[:int(0.004 * SR)] *= np.linspace(0, 1, int(0.004 * SR))
+    out[:int(0.025 * SR)] *= np.linspace(0, 1, int(0.025 * SR))
     return out * vel
 
 
@@ -71,11 +71,35 @@ def play(notes, bpm):
     return out
 
 
+# gentler than the manual's full calls: fewer notes, slower, the held note carries the call
+S, E, Q = 0.25, 0.5, 1.0
+G4, C5, E5, G3 = MB.G4, MB.C5, MB.E5, MB.G3
+SOFT = {
+    "move_1": ([(G4, E), (C5, E), (E5, E), (C5, 2.0)], 84),                 # Ordinario
+    "amove_1": ([(G4, E), (G4, E), (G4, E), (C5, 2.2)], 88),                 # Avancar
+    "charge_1": ([(G4, E), (C5, E), (C5, E), (E5, 2.4)], 92),                # Marche-marche
+    "patrol_1": ([(C5, E), (E5, E), (C5, 1.5), (G4, E), (C5, 2.0)], 80),     # Patrulha
+    "trained_1": ([(E5, E), (C5, 1.0), (G4, E), (C5, 2.0)], 84),             # Reunir
+    "stop_1": ([(E5, Q), (C5, 2.0)], 80),
+    "hold_1": ([(C5, E), (C5, E), (G4, 2.0)], 80),
+}
+
+
+def soften(x):
+    from scipy.signal import butter, lfilter
+    b, a = butter(2, 1500 / (SR / 2))
+    y = lfilter(b, a, x) * 0.8 + x * 0.0
+    n = int(0.03 * SR)                       # a rounder start
+    y[:n] *= np.linspace(0, 1, n) ** 1.5
+    return y
+
+
 def main():
     if len(sys.argv) > 1:
         cut(sys.argv[1])
-    for name, (notes, bpm) in MB.CALLS.items():
-        x = play(notes, bpm)
+    for name, (notes, bpm) in SOFT.items():
+        x = soften(play(notes, bpm))
+        x = x / (np.abs(x).max() + 1e-9) * 0.7
         p = os.path.join(MB.OUT, name + ".wav")
         subprocess.run(["ffmpeg", "-y", "-v", "quiet", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-", "-ac", "2", p],
                        input=x.astype(np.float32).tobytes(), check=True)
