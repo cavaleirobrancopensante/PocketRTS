@@ -113,14 +113,14 @@ func _run() -> void:
 	g.players[0]["gold"] = 5000
 	var hive: Building = g.halls_of(0)[0]
 	var home: Vector2 = hive.center() + Vector2(0, hive.rect().size.y * 0.5 + 40.0)
-	var spot: Vector2i = g.find_spot(0, "spore_vent", hive, 4, 10, "near")
+	var spot: Vector2i = g.find_spot(0, "feeding_pit", hive, 4, 10, "near")
 	check(spot.x >= 0, "a spot for a Spore Vent on the swamp")
-	var cost := int(Defs.BUILDINGS["spore_vent"]["cost"])
+	var cost := int(Defs.BUILDINGS["feeding_pit"]["cost"])
 
 	# 1a: the grub is ordered elsewhere
 	var gr := unit("grub", home)
 	var g0 := _gold()
-	var b: Building = g.place_building(0, "spore_vent", spot, [gr])
+	var b: Building = g.place_building(0, "feeding_pit", spot, [gr])
 	check(b != null and b.ghost and _gold() == g0 - cost, "placed: a ghost, %d paid" % cost)
 	await wait(0.6)
 	gr.give({"o": "move", "p": home + Vector2(-120, 0)})
@@ -130,7 +130,7 @@ func _run() -> void:
 
 	# 1b: the grub is killed
 	g0 = _gold()
-	b = g.place_building(0, "spore_vent", spot, [gr])
+	b = g.place_building(0, "feeding_pit", spot, [gr])
 	await wait(0.6)
 	gr.take_damage(99999.0, null)
 	gone = await wait_for(func() -> bool: return b.dead, 3.0)
@@ -139,7 +139,7 @@ func _run() -> void:
 	# 1c: the grub is stopped
 	gr = unit("grub", home)
 	g0 = _gold()
-	b = g.place_building(0, "spore_vent", spot, [gr])
+	b = g.place_building(0, "feeding_pit", spot, [gr])
 	await wait(0.6)
 	gr.cmd_stop()
 	gone = await wait_for(func() -> bool: return b.dead, 3.0)
@@ -148,7 +148,7 @@ func _run() -> void:
 	# 1d: Shift-queued behind a move: the ghost stays while it's in the grub's queue
 	g0 = _gold()
 	gr.give({"o": "move", "p": home + Vector2(-900, 300)})
-	b = g.place_building(0, "spore_vent", spot, [gr], true)
+	b = g.place_building(0, "feeding_pit", spot, [gr], true)
 	await wait(1.5)
 	check(b != null and not b.dead and b.ghost, "(d) Shift-queued site: the ghost stays while the grub has it queued")
 	gr.give({"o": "move", "p": home})
@@ -157,7 +157,7 @@ func _run() -> void:
 
 	# 1e: the grub gets there: it becomes the building
 	g0 = _gold()
-	b = g.place_building(0, "spore_vent", spot, [gr])
+	b = g.place_building(0, "feeding_pit", spot, [gr])
 	var started_ok := await wait_for(func() -> bool: return not b.ghost and b.seeded, 25.0)
 	await wait(2.0)
 	check(started_ok and not b.dead and _gold() == g0 - cost, "(e) the grub reaches it: it grows (ghost %s, seeded %s, dead %s)" % [b.ghost, b.seeded, b.dead])
@@ -174,9 +174,9 @@ func _run() -> void:
 	g._astar_dirty = true
 	await wait(0.2)
 	var shut := unit("grub", g.cell_center(c0))
-	var spot2: Vector2i = g.find_spot(0, "spore_vent", hive, 4, 12, "near")
+	var spot2: Vector2i = g.find_spot(0, "feeding_pit", hive, 4, 12, "near")
 	g0 = _gold()
-	b = g.place_building(0, "spore_vent", spot2, [shut])
+	b = g.place_building(0, "feeding_pit", spot2, [shut])
 	check(b != null and shut.order == "build", "(f) placed for a shut-in grub (%s)" % shut.order)
 	gone = await wait_for(func() -> bool: return b.dead, 8.0)
 	check(gone and _gold() == g0 and shut.order != "build", "(f) the grub can't get there: the ghost goes, refunded, the grub stops (%s)" % shut.order)

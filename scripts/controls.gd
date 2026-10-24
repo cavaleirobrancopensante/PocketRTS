@@ -105,11 +105,21 @@ func cancel_mode() -> void:
 	_shift_kept = false
 	mode = ""
 	place_kind = ""
+	game.seed_src = null
 	line_from = Vector2i(-1, -1)
 	ghost_cell = Vector2i(-1, -1)
 
 
+## SEED VENT: pick the spot of a Spore Vent grown by `src` (the capital or a Spore Vent).
+func begin_seed(src: Building) -> void:
+	begin_place("spore_vent")
+	game.seed_src = src
+	var size: Vector2i = Defs.BUILDINGS["spore_vent"]["size"]
+	ghost_cell = game.cell_of(src.center()) - size / 2 + Vector2i(0, int(src.size.y * 0.5) + 2)
+
+
 func begin_place(kind: String) -> void:
+	game.seed_src = null
 	mode = "place"
 	place_kind = kind
 	line_from = Vector2i(-1, -1)
