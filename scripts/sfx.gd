@@ -105,6 +105,7 @@ const GAP := {"combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/sp
 	"combat/mortar_attack": 200, "combat/cuirassier_attack": 120, "combat/cuirassier_move": 1500,
 	"combat/cuirassier_death": 150, "horse/whinny": 6000, "voice/crown_bugle/move": 9000, "voice/crown_bugle/amove": 7000,
 	"voice/crown_bugle/charge": 7000, "voice/crown_bugle/patrol": 9000, "voice/crown_bugle/trained": 6000,
+	"voice/crown_recruit/town_hall": 2500, "voice/crown_recruit/barracks": 2500, "voice/crown_recruit/foundry": 2500,
 	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).
@@ -171,6 +172,15 @@ const VOICE_EXTRA := {"cuirassier": {
 static func bugle(faction: String, what: String) -> void:
 	if faction == "crown":
 		play("voice/crown_bugle/" + what, Vector2.INF, -8.0)
+
+
+## What the Crown plays when a building finishes a recruit: its own voice per building (the town
+## hall the bugle, the Barracks a fife, the Foundry kettledrums). False for any other building.
+static func recruit(b_kind: String, faction: String) -> bool:
+	if faction != "crown" or me == null or me._find("voice/crown_recruit/" + b_kind).is_empty():
+		return false
+	play("voice/crown_recruit/" + b_kind, Vector2.INF, -6.0)
+	return true
 
 
 ## A unit answering you: "select", "move" or "attack". One voice at a time.

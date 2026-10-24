@@ -1535,14 +1535,21 @@ func _army() -> void:
 			var cap: int = 2 if scouts_only else 999
 			if not foes.is_empty() and foes.all(func(o: Unit) -> bool: return o.is_air()):
 				cap = 0                  # flyers only: labourers can't hit them, they keep working
-			var hands: Array = game.workers(team).filter(func(u: Unit) -> bool: return u.position.distance_to(threat) < 260.0 and (u.order == "gather" or (u.order == "move" and u.order_point.distance_to(threat) < 40.0)))
+			# the hands already sent count against the cap (the intruder moves, so "the two nearest
+			# gatherers" changes every tick and used to draft the whole mine, one pair at a time)
+			var guards: Array = game.workers(team).filter(func(u: Unit) -> bool: return bool(u.get_meta("guard", false)) and not u.dead and u.order in ["move", "attack", "amove"])
+			var hands: Array = game.workers(team).filter(func(u: Unit) -> bool: return u.position.distance_to(threat) < 260.0 and u.order == "gather" and not guards.has(u))
 			hands.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_to(threat) < b.position.distance_to(threat))
-			for i in hands.size():
-				if i < cap:
-					if hands[i].order == "gather":
-						hands[i].cmd_move(threat, true)
-				elif hands[i].order == "move" and hands[i].order_point.distance_to(threat) < 40.0:
-					hands[i].cmd_gather(hands[i].home_mine) if hands[i].home_mine != null and is_instance_valid(hands[i].home_mine) else hands[i].cmd_stop()
+			for g in guards:
+				if guards.find(g) >= cap:
+					g.set_meta("guard", false)
+					g.cmd_gather(g.home_mine) if g.home_mine != null and is_instance_valid(g.home_mine) else g.cmd_stop()
+				elif g.order == "move":
+					g.cmd_move(threat, true)
+			var free := cap - mini(guards.size(), cap)
+			for i in mini(free, hands.size()):
+				hands[i].set_meta("guard", true)
+				hands[i].cmd_move(threat, true)
 		return
 	# Clockwork: constructs running low on charge go back into a field first
 	if _clock():

@@ -550,13 +550,17 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and Settings.pc() and _mouse_hud:
 		var mm := event as InputEventMouseMotion
-		if mini_rect().has_point(mm.position) and not paused:
+		if paused:
+			_slide_drag(mm.position)
+		elif mini_rect().has_point(mm.position):
 			_minimap_to(mm.position)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag:
 		var e := event as InputEventScreenDrag
 		if _hud_touches.has(e.index):
-			if mini_rect().has_point(e.position) and not paused:
+			if paused:
+				_slide_drag(e.position)
+			elif mini_rect().has_point(e.position):
 				_minimap_to(e.position)
 			get_viewport().set_input_as_handled()
 
@@ -565,7 +569,10 @@ func _press(p: Vector2) -> void:
 	if paused:
 		for b in _pause_buttons():
 			if (b["rect"] as Rect2).has_point(p):
-				b["cb"].call()
+				if b.has("slider"):
+					_slide(b, p)
+				else:
+					b["cb"].call()
 		return
 	if game.over:
 		return
@@ -1576,9 +1583,9 @@ func _pause_buttons() -> Array:
 	var vs := _vs()
 	var list: Array = [
 		{"label": "RESUME", "cb": func() -> void: set_paused(false)},
-		{"label": "MUSIC: " + ("ON" if Music.me.music_on else "OFF"), "cb": func() -> void: Music.me.toggle_music()},
-		{"label": "SOUND: " + ("ON" if Music.me.sound_on else "OFF"), "cb": func() -> void: Music.me.toggle_sound()},
-		{"label": "AMBIENCE: " + ("ON" if Music.me.amb_on else "OFF"), "cb": func() -> void: Music.me.toggle_ambience()},
+		{"label": "MUSIC", "slider": "music", "cb": func() -> void: pass},
+		{"label": "SOUND", "slider": "sound", "cb": func() -> void: pass},
+		{"label": "AMBIENCE", "slider": "ambience", "cb": func() -> void: pass},
 		{"label": "SURRENDER", "cb": func() -> void:
 			set_paused(false)
 			if game.mlog:
@@ -1592,9 +1599,25 @@ func _pause_buttons() -> Array:
 	]
 	if game.demo:
 		list = list.filter(func(b: Dictionary) -> bool: return b["label"] != "SURRENDER")    # watching computers: nobody of yours to surrender
+	for b in list:
+		if b.has("slider"):
+			b["label"] = "%s  %d%%" % [String(b["label"]).split("  ")[0], int(round(Music.me.get_volume(b["slider"]) * 100.0))]
 	for i in list.size():
 		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.5 - list.size() * 34 + 40 + i * 68, 320, 58)
 	return list
+
+
+## A pause-menu volume bar: where you press along it is the level (drag to slide).
+func _slide(b: Dictionary, p: Vector2) -> void:
+	var r: Rect2 = b["rect"]
+	Music.me.set_volume(b["slider"], snappedf((p.x - r.position.x - 14.0) / (r.size.x - 28.0), 0.05))
+	_redraw_t = 0.0
+
+
+func _slide_drag(p: Vector2) -> void:
+	for b in _pause_buttons():
+		if b.has("slider") and (b["rect"] as Rect2).grow_individual(0, 6, 0, 6).has_point(p):
+			_slide(b, p)
 
 
 func set_paused(v: bool) -> void:
@@ -1752,6 +1775,10 @@ func _draw_pause() -> void:
 		for b in pbs:
 			var r: Rect2 = b["rect"]
 			UiStyle.draw_button(_ci, r, r.has_point(hv), false, true, 0.45)
+			if b.has("slider"):
+				var vv: float = Music.me.get_volume(b["slider"])
+				_ci.draw_rect(Rect2(r.position.x + 14, r.end.y - 11, (r.size.x - 28) * vv, 4), UiStyle.TRIM)
+				_ci.draw_rect(Rect2(r.position.x + 14 + (r.size.x - 28) * vv - 2, r.end.y - 14, 4, 10), UiStyle.TEXT)
 			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 22, UiStyle.BAD if b["label"] == "SURRENDER" else UiStyle.TEXT, 1)
 
 

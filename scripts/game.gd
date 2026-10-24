@@ -381,6 +381,7 @@ func set_gate_locked(b: Building, on: bool, force := false) -> String:
 				if not u.dead and not u.is_air() and b.rect().grow(6.0).has_point(u.position):
 					return "Something is in the gateway."
 		b.locked = true
+		b.queue_redraw()
 		gate_team.erase(i)
 		b.gate_open = false
 		if astar.region.size != Vector2i.ZERO:
@@ -393,6 +394,7 @@ func set_gate_locked(b: Building, on: bool, force := false) -> String:
 				u.repath_t = 0.0
 	else:
 		b.locked = false
+		b.queue_redraw()
 		gate_team[i] = b.team
 		if astar.region.size != Vector2i.ZERO:
 			astar.set_point_solid(b.cell, false)
@@ -3888,10 +3890,9 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 	if b.team == human:
 		if b.uses_eggs():
 			Sfx.play("hatch", b.global_position)
-		else:
+		elif not Sfx.recruit(b.kind, b.d["faction"]):
 			Sfx.play_f_once("ready", b.d["faction"], 6.0, -3.0)
 		Sfx.voice(k, "select")
-		Sfx.bugle(b.d["faction"], "trained")
 	var rid := int(kit.get("rid", 0))
 	var sk := k
 	if Defs.RIDERS.has(k) and rid != 0:

@@ -488,8 +488,11 @@ func show_settings() -> void:
 			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 60.0)).call_deferred()
 	v.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
 	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
+	v.add_child(_volume_row("MUSIC LEVEL", "music"))
 	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
+	v.add_child(_volume_row("SOUND LEVEL", "sound"))
 	v.add_child(_toggle_row("AMBIENCE", func() -> bool: return Music.me.amb_on, func() -> void: Music.me.toggle_ambience()))
+	v.add_child(_volume_row("AMBIENCE LEVEL", "ambience"))
 	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
 	v.add_child(_button("INTERFACE LAYOUT & HOTKEYS", func() -> void: show_layout()))
 	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
@@ -687,6 +690,23 @@ func _track_row(stem: String, title: String, mood: String) -> Control:
 			Music.me.set_enabled(stem, not Music.me.is_enabled(stem))
 			show_music())
 		h.add_child(tick)
+	return h
+
+
+func _volume_row(title: String, which: String) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	var l := UiStyle.text(title, 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(l)
+	var sl := HSlider.new()
+	sl.min_value = 0.0
+	sl.max_value = 1.0
+	sl.step = 0.05
+	sl.value = Music.me.get_volume(which)
+	sl.custom_minimum_size = Vector2(190, 50)
+	sl.value_changed.connect(func(v: float) -> void: Music.me.set_volume(which, v))
+	h.add_child(sl)
 	return h
 
 

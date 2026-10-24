@@ -41,6 +41,9 @@ var music_on := true
 var sound_on := true
 var amb_on := true             # the landscape's background loop (wind, leaves, surf...)
 const AMB_VOL := -20.0
+var music_vol := 0.5           # the sliders (0 to 1): music sat too loud over the game sounds, so it starts at half
+var sound_vol := 1.0
+var amb_vol := 1.0
 var mode := "vanilla"
 var off_list: Array = []  # pieces left out in "picked" mode
 var _a: AudioStreamPlayer
@@ -80,6 +83,9 @@ func _ready() -> void:
 		music_on = cfg.get_value("audio", "music", true)
 		sound_on = cfg.get_value("audio", "sound", true)
 		amb_on = cfg.get_value("audio", "ambience", true)
+		music_vol = cfg.get_value("audio", "music_vol", 0.5)
+		sound_vol = cfg.get_value("audio", "sound_vol", 1.0)
+		amb_vol = cfg.get_value("audio", "amb_vol", 1.0)
 		mode = cfg.get_value("audio", "music_mode", "vanilla")
 		off_list = cfg.get_value("audio", "music_off", [])
 	_apply()
@@ -106,6 +112,37 @@ func _player() -> AudioStreamPlayer:
 func _apply() -> void:
 	AudioServer.set_bus_mute(AudioServer.get_bus_index("Music"), not music_on)
 	AudioServer.set_bus_mute(AudioServer.get_bus_index("SFX"), not sound_on)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), linear_to_db(maxf(music_vol, 0.0001)))
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), linear_to_db(maxf(sound_vol, 0.0001)))
+	if _amb:
+		_amb.volume_db = _amb_db()
+
+
+func _amb_db() -> float:
+	return AMB_VOL + linear_to_db(maxf(amb_vol, 0.0001)) if amb_on and amb_vol > 0.0 else -80.0
+
+
+## Which of "music", "sound", "ambience", set from 0 to 1.
+func set_volume(which: String, v: float) -> void:
+	v = clampf(v, 0.0, 1.0)
+	match which:
+		"music": music_vol = v
+		"sound": sound_vol = v
+		_: amb_vol = v
+	_apply()
+	_save_soon()
+
+
+func get_volume(which: String) -> float:
+	return music_vol if which == "music" else (sound_vol if which == "sound" else amb_vol)
+
+
+var _save_t := 0.0
+
+
+func _save_soon() -> void:
+	if _save_t <= 0.0:
+		_save_t = 0.6
 
 
 func toggle_music() -> void:
@@ -124,7 +161,7 @@ func toggle_sound() -> void:
 
 func toggle_ambience() -> void:
 	amb_on = not amb_on
-	_amb.volume_db = AMB_VOL if amb_on else -80.0
+	_amb.volume_db = _amb_db()
 	_save()
 	MatchLog.sound("AMBIENCE " + ("ON" if amb_on else "OFF"))
 
@@ -151,6 +188,9 @@ func _save() -> void:
 	cfg.set_value("audio", "music", music_on)
 	cfg.set_value("audio", "sound", sound_on)
 	cfg.set_value("audio", "ambience", amb_on)
+	cfg.set_value("audio", "music_vol", music_vol)
+	cfg.set_value("audio", "sound_vol", sound_vol)
+	cfg.set_value("audio", "amb_vol", amb_vol)
 	cfg.set_value("audio", "music_mode", mode)
 	cfg.set_value("audio", "music_off", off_list)
 	cfg.save("user://settings.cfg")
@@ -402,7 +442,7 @@ func ambience(biome: String) -> void:
 		s = (s as AudioStreamOggVorbis).duplicate()
 		(s as AudioStreamOggVorbis).loop = true
 	_amb.stream = s
-	_amb.volume_db = AMB_VOL if amb_on else -80.0
+	_amb.volume_db = _amb_db()
 	_amb.play()
 	MatchLog.sound("AMBIENCE " + biome)
 
@@ -425,6 +465,10 @@ func add_heat(v: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _save_t > 0.0:
+		_save_t -= delta
+		if _save_t <= 0.0:
+			_save()
 	if _faction == "":
 		return
 	heat *= exp(-delta / 5.0)
