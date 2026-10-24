@@ -4755,8 +4755,8 @@ func _anim_name() -> String:
 				return "mine"
 			if work == "building" or work == "repairing":
 				return "build"           # (repairing: the same hammering as building)
-			if moving and carrying > 0:
-				return "carry"
+			if carrying > 0:
+				return "carry" if moving else "idle_carry"      # (the gold sack on his back, walking or standing)
 		"grub":
 			if work == "wrapping":
 				return "wrap"
@@ -4958,7 +4958,7 @@ func _animate(delta: float) -> void:
 		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
 	var loop := true
 	match anim:
-		"idle":
+		"idle", "idle_carry":
 			fps = 2.0
 		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0
@@ -5189,25 +5189,22 @@ func _strip_art(a: String) -> String:
 	return art
 
 
-## The Labourer's hammering. His build strips are drawn with the arm lifting only 2-3 px (NE: a
-## real overhead swing), so what can be made right is the TIMING: a held raise, a quick drop, a
-## held strike and a slower recovery, one swing per BUILD_CYCLE seconds. 5 swings fit exactly in
-## the 2.0 s hammering clip (assets/audio/work/crown_build.wav, big blows at 0.46, 0.87 and
-## 1.30 s), and each time the clip starts the swing is phased so that its first big blow lands
-## on a strike (lab_build_lock). Per view: [frame, seconds] steps in swing order starting at the
-## raised hammer, and the step that is the strike (the frame where the hammer is lowest).
+## The Labourer's hammering. Every build strip is four frames drawn in swing order (the redrawn
+## art, tools/import_labourer_redraw.py): 0 the hammer raised high, 1 halfway down, 2 on the
+## stake with a spark (the strike), 3 lifting. The swing is timed as a held raise, a quick
+## drop, a held strike and a slower lift, one swing per BUILD_CYCLE seconds. 5 swings fit
+## exactly in the 2.0 s hammering clip (assets/audio/work/crown_build.wav, big blows at 0.46,
+## 0.87 and 1.30 s), and each time the clip starts the swing is phased so that its first big
+## blow lands on a strike (lab_build_lock). [frame, seconds] steps in swing order starting at
+## the raised hammer, and the step that is the strike (the frame where the hammer is lowest).
 const BUILD_CYCLE := 0.40
 const BUILD_CLIP_BLOW := 0.46
-const BUILD_SWING := {
-	"s": {"seq": [[2, 0.12], [3, 0.10], [0, 0.08], [1, 0.10]], "hit": 1},
-	"se": {"seq": [[2, 0.12], [3, 0.06], [0, 0.10], [1, 0.12]], "hit": 2},
-	"e": {"seq": [[1, 0.12], [2, 0.06], [3, 0.10], [0, 0.12]], "hit": 2},
-	"ne": {"seq": [[0, 0.12], [1, 0.06], [2, 0.12], [1, 0.10]], "hit": 2},
-	"n": {"seq": [[2, 0.12], [3, 0.10], [0, 0.08], [1, 0.10]], "hit": 1},
-}
-## Walking: one full stride (every frame of the strip) per this many pixels covered, so a foot
-## on the ground stays on the ground at any speed (the art's step is ~13 px).
-const LAB_STRIDE := {"walk": 26.0, "carry": 24.0, "carry_keg": 24.0}
+const BUILD_SEQ := {"seq": [[0, 0.12], [1, 0.06], [2, 0.12], [3, 0.10]], "hit": 2}
+const BUILD_SWING := {"s": BUILD_SEQ, "se": BUILD_SEQ, "e": BUILD_SEQ, "ne": BUILD_SEQ, "n": BUILD_SEQ}
+## Walking: one full stride (every frame of the strip, 6 of them: contact, passing, contact
+## with the other foot...) per this many pixels covered, so a foot on the ground stays on the
+## ground at any speed (the redrawn step is about 10 px, so two steps are about 20).
+const LAB_STRIDE := {"walk": 22.0, "carry": 22.0, "carry_keg": 22.0}
 var _lab_build_t := 0.0
 var _lab_dist := 0.0
 var _lab_prev := Vector2.ZERO
@@ -5547,8 +5544,8 @@ func _draw_unit() -> void:
 			pk.name = "Pack"
 			pk.set("unit", self)
 			sprite.add_child(pk)
-	if carrying > 0 and kind == "labourer" and anim != "carry":
-		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))
+	if carrying > 0 and kind == "labourer" and anim != "carry" and anim != "idle_carry":
+		draw_circle(Vector2(6, -14), 3, Color(1, 0.85, 0.2))      # (a gold dot where no strip shows the sack)
 	if carry_empty and carrying == 0 and kind == "winder":
 		var et: Texture2D = Game.tex("res://assets/effects/battery_charge.png")
 		draw_texture_rect_region(et, Rect2(-14, top + 10, 10, 22), Rect2(0, 0, 10, 22))
