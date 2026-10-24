@@ -26,6 +26,11 @@ const RECENT := 150.0           # an army sighting counts for this long
 const RESCOUT_DENIED := 85.0    # a denied scout: the next one goes after this long
 const RESCOUT_REFRESH := 170.0  # otherwise a fresh look (new hall, new tech) every so often
 const MAX_TRIPS := 5
+const SHOOTER_MARGIN := 80.0    # (pixels) how far outside a shooter's range the scout stands off
+const MELEE_MARGIN := 70.0      # ... and outside an armed melee soldier's reach
+const WATCH_FOR := 50.0         # how long it watches the ramp from its stand-off spot
+const MAX_FLEES := 3            # driven back this often: it goes home
+const DANGER_FOR := 30.0        # a shooter seen this long ago still counts when picking a stand-off spot
 const DEFEND_FOR := 210.0       # how long a defensive game lasts before the verdict is looked at again
 ## Production and tech buildings: seeing them says "this enemy builds an army".
 const MILITARY := ["barracks", "horse_breeder", "foundry", "armoury", "warren", "gorge_pit", "roost",
@@ -59,7 +64,14 @@ var mod := {}                   # overrides for AI._s()
 var want_wall := false
 var timing_target := 0          # supply a scouted timing attack waits for
 var defend_until := 0.0
-var log_lines: Array = []       # (what went to the match log; tests read it)
+var log_lines: Array = []
+## What the scout has learned about the enemy's army (kept across trips; read by the build and
+## defence logic: AIScout.proof_not_horse_rush(), enemy_has_ranged()).
+var foe_kinds_seen := {}        # armed unit kind -> true
+var foe_ranged_seen := false    # a shooter (range beyond a bayonet's reach) was seen
+var foe_max_range := 0.0        # the longest weapon range seen (pixels)
+var foe_nonhorse_seen := false  # an armed soldier that is not a horseman: it is not a horse rush
+var standoff_log: Array = []    # (the stand-off spots chosen; tests read it)       # (what went to the match log; tests read it)
 
 var _foe := -1
 var _wps: Array = []
@@ -72,6 +84,13 @@ var _plateau: Array = []
 var _cells_seen := {}
 var _hall_seen := false
 var _stuck := 0.0
+var _mode := "route"            # route, flee (backing out of shooters' range), watch (standing off)
+var _flees := 0
+var _flee_t := 0.0
+var _watch_pt := Vector2.ZERO
+var _watch_until := 0.0
+var _danger := {}               # armed enemy unit -> [position, clock] (seen lately)
+var _ramp_pt := Vector2.INF     # the ramp up to the enemy's main nearest to us (pixels)
 
 
 func _init(a: AI) -> void:
@@ -80,6 +99,10 @@ func _init(a: AI) -> void:
 	enabled = a.difficulty >= 1 and not a.peaceful and not (a.strategy in ["rush", "air"])
 	if enabled:
 		mod = PENDING_MOD.duplicate() if a.strategy != "balanced" else {}
+
+
+func _log_has_text(text: String) -> bool:
+	return log_lines.any(func(l) -> bool: return String(l).contains(text))
 
 
 func is_scout(u: Unit) -> bool:
@@ -113,6 +136,12 @@ func tick() -> void:
 		_plateau = []
 		_workers_seen = 0
 		_hall_seen = false
+		_danger.clear()
+		_ramp_pt = Vector2.INF
+		foe_kinds_seen.clear()
+		foe_ranged_seen = false
+		foe_max_range = 0.0
+		foe_nonhorse_seen = false
 	_observe()
 	if state == "going":
 		_follow()
@@ -149,6 +178,8 @@ func _send() -> void:
 	_wp_i = 0
 	_hall_seen = false
 	_stuck = 0.0
+	_mode = "route"
+	_flees = 0
 	u.cmd_move(_wps[0])
 	var what: String = Defs.UNITS[u.kind]["name"]
 	_say("sends a %s to scout%s" % [what, "" if trips == 1 else " again (trip %d)" % trips])
@@ -217,6 +248,8 @@ func _follow() -> void:
 	if game.clock - sent_at > limit:
 		_finish("timeout")
 		return
+	if _avoid():
+		return
 	# Held up at a gate or wall on the ramp: a scout is no fighter, but it may break at the
 	# structure in its way (the timeout still ends the trip). It does not turn on units.
 	if unit.order == "attack" and unit.target is Building and not unit.target.dead:
@@ -246,12 +279,14 @@ func _follow() -> void:
 
 ## The nearest wall or gate of the enemy's right by the scout (what holds it up).
 func _blocker() -> Building:
-	if not unit.has_attack():
+	# (NOT unit.has_attack(): that is false for every worker, and a worker is the scout; it hurts
+	# a wall all the same, if slowly: damage less armour, at least 1 a blow)
+	if float(unit.d["damage"]) <= 0.0 or unit.d.get("no_attack", false):
 		return null
 	var best: Building = null
 	var bd := 170.0
 	for b in game.buildings:
-		if b.team != _foe or b.dead or not b.built or not (b.kind in ["gate", "palisade", "wall", "stone_wall"] or b.d.get("wall", false)):
+		if b.team != _foe or b.dead or not b.built or not unit.can_hit(b) or not (b.kind in ["gate", "palisade", "wall", "stone_wall"] or b.d.get("wall", false)):
 			continue
 		var dd: float = b.center().distance_to(unit.position)
 		if dd < bd:
@@ -271,7 +306,7 @@ func _finish(how: String) -> void:
 	var r := _evaluate()
 	# A scout that was stopped before it saw anything decisive proves nothing (a wall, a
 	# few guards): uncertainty, not a rush. What it did see before it fell still counts.
-	if how in ["killed", "blocked", "timeout", "pulled away"] and r["verdict"] == "balanced" and (not _hall_seen or _coverage() < 0.3):
+	if how in ["killed", "blocked", "timeout", "pulled away", "driven off"] and r["verdict"] == "balanced" and (not _hall_seen or _coverage() < 0.3):
 		r = {"verdict": "uncertain", "reason": "the scout was %s before it saw the base" % _how_text(how)}
 		_say("scout %s: playing safe, will look again" % _how_text(how))
 	next_trip = game.clock + (RESCOUT_DENIED if r["verdict"] == "uncertain" else RESCOUT_REFRESH)
@@ -288,6 +323,8 @@ func _how_text(how: String) -> String:
 			return "blocked (walled out or no path)"
 		"timeout":
 			return "lost on the way"
+		"driven off":
+			return "driven off by the enemy's guns"
 	return "turned back"
 
 
@@ -320,6 +357,7 @@ func _observe() -> void:
 		if u.is_worker():
 			workers += 1
 			continue
+		_learn(u)
 		if u.kind == "horse" or u.kind == "messenger":
 			continue
 		value += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
@@ -338,6 +376,166 @@ func _observe() -> void:
 		for c in _plateau:
 			if game.vis[t][game.idx(c)] == 1:
 				_cells_seen[c] = true
+
+
+# ------------------------------------------------------------------ danger and stand-off
+
+static func _is_horseman(u: Unit) -> bool:
+	return u.kind in ["horse", "messenger", "dragoon", "cuirassier", "mounted_missionary"] or u.d.get("mounted", false)
+
+
+## True once the scout has seen an armed soldier that is no horseman (so the enemy's early
+## army is not a horse rush).
+func proof_not_horse_rush() -> bool:
+	return foe_nonhorse_seen
+
+
+func enemy_has_ranged() -> bool:
+	return foe_ranged_seen
+
+
+## Remember an armed enemy unit in sight: what it is, and where the guns are.
+func _learn(u: Unit) -> void:
+	if not u.has_attack() or u.kind == "horse":
+		return
+	var rng := float(u.d["range"])
+	if not foe_kinds_seen.has(u.kind):
+		foe_kinds_seen[u.kind] = true
+		if not _is_horseman(u) and not foe_nonhorse_seen:
+			foe_nonhorse_seen = true
+			_say("saw an enemy %s: the enemy has foot soldiers, so its early army is not a horse rush" % String(Defs.UNITS[u.kind]["name"]))
+	if rng > 40.0:
+		foe_ranged_seen = true
+	foe_max_range = maxf(foe_max_range, rng)
+	_danger[u] = [u.position, game.clock]
+
+
+## Armed enemy units that cover the scout right now (its position is within their weapon
+## range plus a margin), seen or the ones that just hit it.
+func _threats() -> Array:
+	var out: Array = []
+	if unit == null or not is_instance_valid(unit) or unit.dead:
+		return out
+	var cands: Array = game.units_near(unit.position, 520.0)
+	if unit.last_hitter is Unit and is_instance_valid(unit.last_hitter) and game.clock - unit.hit_clock < 3.0 and not cands.has(unit.last_hitter):
+		cands.append(unit.last_hitter)
+	for e in cands:
+		if not (e is Unit) or e.dead or e.off_field or e.aboard != null or not game.hostile(e.team, ai.team):
+			continue
+		if not e.has_attack() or e.kind == "horse" or not e.can_hit(unit):
+			continue
+		if e != unit.last_hitter and not game.is_visible_to(ai.team, e.position):
+			continue
+		var rng := float(e.d["range"])
+		var reach: float = rng + e.radius + unit.radius + (SHOOTER_MARGIN if rng > 40.0 else MELEE_MARGIN)
+		if e.position.distance_to(unit.position) <= reach:
+			out.append(e)
+			_learn(e)
+	return out
+
+
+func _reach_of(e: Unit) -> float:
+	var rng := float(e.d["range"])
+	return rng + e.radius + unit.radius + (SHOOTER_MARGIN if rng > 40.0 else MELEE_MARGIN)
+
+
+## Where to stand off: outside every known shooter's reach (the ones in sight and the ones
+## seen lately), as close as it can be to the foot of the enemy's ramp while still seeing it
+## (a ring at its own sight radius round the ramp), off the enemy's high ground, near us.
+## Else straight back from the shooters.
+func _standoff_point(thr: Array) -> Vector2:
+	var guns: Array = []
+	for e in _danger.keys():
+		if not is_instance_valid(e) or e.dead or game.clock - float(_danger[e][1]) > DANGER_FOR:
+			_danger.erase(e)
+			continue
+		guns.append([e.position if game.is_visible_to(ai.team, e.position) else _danger[e][0], _reach_of(e)])
+	for e in thr:
+		if not guns.any(func(g: Array) -> bool: return g[0] == e.position):
+			guns.append([e.position, _reach_of(e)])
+	var home := game.center_of_team(ai.team)
+	if _ramp_pt == Vector2.INF:
+		_ramp_pt = _find_ramp(home)
+	var best := Vector2.INF
+	var bs := INF
+	if _ramp_pt != Vector2.INF:
+		var ring: float = maxf(2.0, float(unit.d["sight"]) - 1.0) * Defs.TILE
+		var st := Vector2(game.starts[_foe])
+		var h0 := int(game.height[game.idx(Vector2i(st + Vector2(2.5, 2.0)))])
+		for k in 16:
+			var c := _free_near(Vector2i((_ramp_pt + Vector2.from_angle(TAU * k / 16.0) * ring) / Defs.TILE))
+			if c.x < 0:
+				continue
+			var p := (Vector2(c) + Vector2(0.5, 0.5)) * Defs.TILE
+			if guns.any(func(g: Array) -> bool: return p.distance_to(g[0]) <= float(g[1]) + 8.0):
+				continue
+			var score := p.distance_to(home) + (0.0 if int(game.height[game.idx(c)]) != h0 else 4000.0)
+			if score < bs:
+				bs = score
+				best = p
+	if best == Vector2.INF:
+		var from := Vector2.ZERO
+		var need := 0.0
+		for g in guns:
+			from += g[0]
+			need = maxf(need, float(g[1]))
+		from /= maxf(1.0, float(guns.size()))
+		var away := (unit.position - from).normalized()
+		if away == Vector2.ZERO:
+			away = (home - unit.position).normalized()
+		var c := _free_near(Vector2i((from + away * (need + 40.0)) / Defs.TILE))
+		best = (Vector2(c) + Vector2(0.5, 0.5)) * Defs.TILE if c.x >= 0 else home
+	return best
+
+
+## The ramp cell up to the enemy's main that is nearest to us (pixels), or INF.
+func _find_ramp(home: Vector2) -> Vector2:
+	var st := Vector2i(Vector2(game.starts[_foe]) + Vector2(2.5, 2.0))
+	var best := Vector2.INF
+	var bd := INF
+	for y in range(st.y - 30, st.y + 31):
+		for x in range(st.x - 30, st.x + 31):
+			var c := Vector2i(x, y)
+			if game.in_map(c) and game.ramp[game.idx(c)] == 1:
+				var p := (Vector2(c) + Vector2(0.5, 0.5)) * Defs.TILE
+				if p.distance_to(home) < bd:
+					bd = p.distance_to(home)
+					best = p
+	return best
+
+
+## Shooters (or any armed soldier) cover the scout: back out of their range, stand off where
+## it still sees the ramp, and watch. Driven back again after it has proof of foot soldiers,
+## or too often, it goes home. True while this is handling the scout.
+func _avoid() -> bool:
+	var thr := _threats()
+	if not thr.is_empty():
+		if _mode != "flee":
+			if _flees >= MAX_FLEES or (foe_nonhorse_seen and _flees >= 1):
+				_finish("driven off")
+				return true
+			_flees += 1
+			_flee_t = -1.0
+			_say("scout under guard (%s), backing out of range" % String(Defs.UNITS[thr[0].kind]["name"]))
+		_mode = "flee"
+		if game.clock - _flee_t >= 1.0:
+			_flee_t = game.clock
+			_watch_pt = _standoff_point(thr)
+			standoff_log.append(_watch_pt)
+			unit.cmd_move(_watch_pt)
+		return true
+	if _mode == "flee":
+		# (hold a little short of the spot, before it arrives: an idle worker is taken for work)
+		if unit.position.distance_to(_watch_pt) < 70.0 or unit.order == "idle":
+			_mode = "watch"
+			_watch_until = game.clock + WATCH_FOR
+			unit.cmd_hold()
+		return true
+	if _mode == "watch":
+		if game.clock >= _watch_until:
+			_finish("done")
+		return true
+	return false
 
 
 func _nearest_start_hall(b: Building) -> Building:
