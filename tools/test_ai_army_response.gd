@@ -111,6 +111,7 @@ func _case(ai_faction: String) -> void:
 		f.max_hp = 600.0
 		f.hp = 600.0
 		foes.append(f)
+	var alive0 := army.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead).size()    # (the 9000-hp horseman of phases 1 and 2 may have eaten a detachment)
 	var sent := 0
 	for i in 150:
 		await physics_frame
@@ -119,7 +120,7 @@ func _case(ai_faction: String) -> void:
 			if is_instance_valid(u) and not u.dead and (ai._det.has(u) or u.position.distance_to(spot) < 450.0):
 				near += 1
 		sent = maxi(sent, near)
-	check(sent >= int(army.size() * 0.6), "a real army (10 musketeers) gets most of ours (%d of %d)%s" % [sent, army.size(), tag])
+	check(sent >= int(alive0 * 0.6), "a real army (10 musketeers) gets most of ours (%d of %d)%s" % [sent, alive0, tag])
 	main.queue_free()
 	await process_frame
 

@@ -114,6 +114,7 @@ var _no_room := {}              # economy kinds with no free spot, and when we l
 # how the last wave went: what it was worth going out, and the enemy value killed before it
 var _wave_value := 0.0
 var _wave_sup := 0
+var _fled: Dictionary = {}       # workers pulled out of a raid: Unit -> {"since": clock}
 var _wave_kill0 := 0
 var _failed := 0                # waves in a row that died without paying for themselves
 var _regroup_until := 0.0       # after a failed rush: no attack before this (building up)
@@ -278,15 +279,267 @@ func _workers() -> void:
 				queued += 1
 	# Everyone idle goes to a post with room (escorts excepted).
 	_escort = _escort.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	_worker_safety()
 	for u in labs:
-		if u.order == "idle" and u.can_gather() and not _escort.has(u):
-			var site := game.free_site(team, u.position)
+		if u.order == "idle" and u.can_gather() and not _escort.has(u) and not _fled.has(u):
+			var site := _safe_site(u)
 			if site:
 				u.cmd_gather(site)
 	if _crown() or _brood():
 		_move_off_tired_soil(labs)
 	if _clock():
 		_tend_sites(labs)
+
+
+# ---- worker safety (a good player keeps mining, pulls the hands out of reach of what they
+# cannot beat, fights only with a clear majority, and sends everybody back afterwards) ----
+const FLEE_R := 250.0           # a worker this close to armed enemies he cannot beat runs
+const SAFE_R := 380.0           # ... and goes back when nothing armed is this near him or his post
+const FLEE_MAX := 60.0          # a post still unsafe after this long: the hands look for another
+const FIGHT_RATIO := 3.0        # the hands fight only with this much more strength than the raiders
+const CLUSTER_R := 300.0        # armed enemies this close together are one raid
+
+var _danger_pts: Array = []     # [position, reach] of the armed enemies (and known guns) near the economy
+var _fighters: Dictionary = {}  # Unit -> true: the workers sent to fight
+
+
+func _dps(u: Unit, armor: float) -> float:
+	var dmg := float(u.d.get("damage", 0))
+	if dmg <= 0.0:
+		return 0.0
+	return maxf(dmg - armor, 1.0) / maxf(float(u.d.get("cooldown", 1.0)), 0.3)
+
+
+## Lanchester strength of a group: total hit points x total damage per second.
+func _power(list: Array, armor: float) -> float:
+	var hp := 0.0
+	var dps := 0.0
+	for u in list:
+		hp += maxf(u.hp, 1.0)
+		dps += _dps(u, armor)
+	return hp * dps
+
+
+## Is this ground (or the walk to it from `from`) under the armed enemies seen near the economy?
+func _unsafe(p: Vector2, from := Vector2.INF) -> bool:
+	for d in _danger_pts:
+		var q: Vector2 = d[0]
+		if p.distance_to(q) < SAFE_R:
+			return true
+		if from != Vector2.INF:
+			var seg := Geometry2D.get_closest_point_to_segment(q, from, p)
+			if seg.distance_to(q) < FLEE_R * 0.7:
+				return true
+	return false
+
+
+func _safe_site(u: Unit) -> Building:
+	var site := game.free_site(team, u.position)
+	if site and not _unsafe(site.center(), u.position):
+		return site
+	return null
+
+
+func _worker_safety() -> void:
+	_note_guns()
+	for id in _known_foes.keys():
+		if game.clock - float(_known_foes[id]) > 60.0:
+			_known_foes.erase(id)
+	for w in _fled.keys():
+		if not is_instance_valid(w) or w.dead:
+			_fled.erase(w)
+	for w in _fighters.keys():
+		if not is_instance_valid(w) or w.dead:
+			_fighters.erase(w)
+	var labs: Array = game.workers(team)
+	var foes := {}
+	for w in labs:
+		for o in game.units_near(w.position, FLEE_R + 100.0):
+			if not foes.has(o) and game.hostile(o.team, team) and not o.dead and not o.off_field and _armed(o) and _sighted(o):
+				foes[o] = true
+	_danger_pts = []
+	var clusters: Array = []        # each {"foes": [], "c": centre}
+	for o in foes:
+		_danger_pts.append([o.position, FLEE_R])
+		var placed := false
+		for c in clusters:
+			if (c["c"] as Vector2).distance_to(o.position) < CLUSTER_R:
+				c["foes"].append(o)
+				var n: int = c["foes"].size()
+				c["c"] = (c["c"] as Vector2) * float(n - 1) / float(n) + o.position / float(n)
+				placed = true
+				break
+		if not placed:
+			clusters.append({"foes": [o], "c": o.position})
+	for id in _known_guns:
+		var e: Dictionary = _known_guns[id]
+		_danger_pts.append([e["p"], float(e["u"].d.get("range", 200)) + 40.0])
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and u.kind != "powder_wagon")
+	var stand: Dictionary = {}      # workers kept out of the flee list because they fight
+	for c in clusters:
+		_raid_workers(c, labs, army, stand)
+	# an unarmed intruder (a scout, a worker) with no soldiers about: two hands deal with it, the rest keep working
+	if clusters.is_empty() and game.army(team).size() < 3:
+		var spot := _threat()
+		if spot != Vector2.INF:
+			var intr: Array = game.units_near(spot, 260.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field and not o.is_air() and game.is_visible_to(team, o.position))
+			if not intr.is_empty():
+				var hands: Array = labs.filter(func(w: Unit) -> bool: return (_fighters.has(w) or w.order == "gather") and w.position.distance_to(spot) < 260.0 and not w.keg)
+				hands.sort_custom(func(a: Unit, b: Unit) -> bool: return (not _fighters.has(a) and _fighters.has(b)) if _fighters.has(a) != _fighters.has(b) else a.position.distance_to(spot) < b.position.distance_to(spot))
+				for w in hands.slice(0, 2):
+					stand[w] = true
+					_fighters[w] = true
+					w.set_meta("guard", true)
+					if w.order != "attack" or w.target == null or w.target.dead:
+						var best: Unit = null
+						for o in intr:
+							if best == null or o.position.distance_to(w.position) < best.position.distance_to(w.position):
+								best = o
+						w.cmd_attack(best)
+	# fighters whose raid is over (or who are no longer picked) go back to work
+	for w in _fighters.keys():
+		if not stand.has(w):
+			_fighters.erase(w)
+			w.set_meta("guard", false)
+			_resume(w)
+	_fled_back()
+
+
+## One raid: fight with a clear majority, else run (to the army, or away from the raiders).
+func _raid_workers(c: Dictionary, labs: Array, army: Array, stand: Dictionary) -> void:
+	var foes: Array = c["foes"]
+	var centre: Vector2 = c["c"]
+	var near: Array = labs.filter(func(w: Unit) -> bool: return foes.any(func(o: Unit) -> bool: return o.position.distance_to(w.position) < FLEE_R))
+	if near.is_empty():
+		return
+	var armor := 0.0
+	var fast := 0.0
+	var ground := 0
+	for o in foes:
+		armor += float(o.d.get("armor", 0))
+		fast = maxf(fast, float(o.d.get("speed", 60)))
+		if not o.is_air():
+			ground += 1
+	armor /= foes.size()
+	var strength := _power(foes, 0.0)
+	for o in foes:
+		if float(o.d.get("range", 0)) > 60.0:
+			strength += _power([o], 0.0) * 0.5      # shooters hit hands that cannot close in
+	var fighters := near.filter(func(w: Unit) -> bool: return float(w.d.get("damage", 0)) > 0.0 and not w.keg)
+	var mine := _power(fighters, armor) if ground > 0 else 0.0
+	var ratio := mine / maxf(strength, 1.0)
+	var help := 0
+	for u in army:
+		if u.position.distance_to(centre) < 550.0 or _det.has(u):
+			help += 1
+	var fight: Array = []
+	if ratio >= FIGHT_RATIO and (game.army(team).size() < 3 or help == 0):
+		# only as many hands as it takes (two at least); the rest keep working
+		fighters.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_to(centre) < b.position.distance_to(centre))
+		for w in fighters:
+			fight.append(w)
+			if fight.size() >= 2 and _power(fight, armor) >= FIGHT_RATIO * strength:
+				break
+	elif ratio >= 1.0 and fast > 74.0 and help == 0:
+		fight = fighters          # cannot outrun them and nobody is coming: stand together
+	if not fight.is_empty():
+		var targets: Array = foes.filter(func(o: Unit) -> bool: return not o.is_air())
+		for w in fight:
+			stand[w] = true
+			_fighters[w] = true
+			w.set_meta("guard", true)
+			_fled.erase(w)
+			if w.order != "attack" or w.target == null or w.target.dead:
+				var best: Unit = null
+				for o in targets:
+					if best == null or o.position.distance_to(w.position) < best.position.distance_to(w.position):
+						best = o
+				if best:
+					w.cmd_attack(best)
+		near = near.filter(func(w: Unit) -> bool: return not stand.has(w) and foes.any(func(o: Unit) -> bool: return o.position.distance_to(w.position) < 110.0))
+	# the rest run (a worker at the edge of a fight he is not in is hit anyway)
+	if fight.is_empty() or not near.is_empty():
+		var halls: Array = _halls().filter(func(h: Building) -> bool: return h.built)
+		for w in near:
+			if stand.has(w):
+				continue
+			var near_foe := INF
+			for o in foes:
+				near_foe = minf(near_foe, o.position.distance_to(w.position))
+			if not _fled.has(w):
+				_fled[w] = {"since": game.clock, "site": w.home_mine if w.order == "gather" else null, "build": w.order_target if w.order == "build" else null}
+				w.set_meta("guard", false)
+				w.cmd_move(_flee_spot(w, centre, army, halls, help))
+			elif w.order != "move" or near_foe < FLEE_R * 0.8:
+				w.cmd_move(_flee_spot(w, centre, army, halls, help))
+
+
+## Where a worker runs: out of reach of the raiders (a hall or open ground), never towards the fight.
+func _flee_spot(w: Unit, centre: Vector2, army: Array, halls: Array, help: int) -> Vector2:
+	# else: the safest of the halls and eight points round him (open ground, far from the raiders)
+	var cands: Array = []
+	for h in halls:
+		cands.append(h.center() + (h.center() - centre).normalized() * 90.0)
+	for k in 8:
+		cands.append(w.position + Vector2.RIGHT.rotated(k * TAU / 8.0) * 320.0)
+	var best := Vector2.INF
+	var bs := -INF
+	for p in cands:
+		if not game.passable(Vector2i(p / float(Game.T)), team):
+			continue
+		var score: float = minf(p.distance_to(centre), 500.0) - 0.35 * p.distance_to(w.position)
+		for d in _danger_pts:
+			if p.distance_to(d[0]) < FLEE_R:
+				score -= 300.0
+			if Geometry2D.get_closest_point_to_segment(d[0], w.position, p).distance_to(d[0]) < 130.0:
+				score -= 400.0        # (the way out must not run past them)
+		if score > bs:
+			bs = score
+			best = p
+	if best == Vector2.INF:
+		return w.position + (w.position - centre).normalized() * 200.0
+	return best + Vector2(randf_range(-25, 25), randf_range(-25, 25))
+
+
+## Back to work once nothing armed is near the post, or somewhere else if the post stays unsafe.
+func _fled_back() -> void:
+	for w in _fled.keys():
+		var e: Dictionary = _fled[w]
+		var nearest := INF
+		for d in _danger_pts:
+			nearest = minf(nearest, (d[0] as Vector2).distance_to(w.position))
+		var site = e["site"]
+		var post: Vector2 = w.position
+		if is_instance_valid(site) and site is Building and not site.dead:
+			post = site.center()
+		elif is_instance_valid(e["build"]) and e["build"] is Building:
+			post = (e["build"] as Building).center()
+		var calm := not _unsafe(post, w.position) and nearest >= SAFE_R
+		if calm:
+			_fled.erase(w)
+			_resume(w, e)
+		elif game.clock - float(e["since"]) > FLEE_MAX and nearest >= FLEE_R:
+			var alt := _safe_site(w)
+			_fled.erase(w)
+			if alt:
+				w.cmd_gather(alt)
+			else:
+				w.cmd_stop()
+
+
+func _resume(w: Unit, e := {}) -> void:
+	var site = e.get("site", w.home_mine)
+	var build = e.get("build", null)
+	if is_instance_valid(build) and build is Building and not build.dead and not build.built:
+		w.cmd_build(build)
+	elif is_instance_valid(site) and site is Building and not site.dead and site.built and not site.barren():
+		w.cmd_gather(site)
+	else:
+		var alt := game.free_site(team, w.position)
+		if alt:
+			w.cmd_gather(alt)
+		else:
+			w.cmd_stop()
 
 
 ## Clockwork: a site nobody is starting (its Winder was killed or pulled away, dropping the
@@ -1512,43 +1765,7 @@ func _army() -> void:
 	if threat != Vector2.INF:
 		# (sized response: only as many soldiers as the visible enemy needs, see _defend)
 		_defend(army, threat, _threats())
-		# Workers pitch in when the base is being overrun and there's no army.
-		if army.size() < 3:
-			# (a lone worker scout is no invasion: two hands deal with it, the rest keep working)
-			var foes: Array = game.units_near(threat, 260.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field and game.is_visible_to(team, o.position))
-			var scouts_only: bool = foes.all(func(o: Unit) -> bool: return o.is_worker() or not o.has_attack())
-			var cap: int = 2 if scouts_only else 999
-			if not foes.is_empty() and foes.all(func(o: Unit) -> bool: return o.is_air()):
-				cap = 0                  # flyers only: labourers can't hit them, they keep working
-			# the hands already sent count against the cap (the intruder moves, so "the two nearest
-			# gatherers" changes every tick and used to draft the whole mine, one pair at a time)
-			var guards: Array = game.workers(team).filter(func(u: Unit) -> bool: return bool(u.get_meta("guard", false)) and not u.dead and u.order in ["move", "attack", "amove"])
-			var hands: Array = game.workers(team).filter(func(u: Unit) -> bool: return u.position.distance_to(threat) < 260.0 and u.order == "gather" and not guards.has(u))
-			hands.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_to(threat) < b.position.distance_to(threat))
-			# (an ATTACK order: a worker sent with a move order only walks up to the intruder and
-			# pushes him, workers never fight on their own)
-			var foe_for := func(w: Unit) -> Unit:
-				var best: Unit = null
-				for o in foes:
-					if o.is_air():
-						continue
-					if best == null or o.position.distance_to(w.position) < best.position.distance_to(w.position):
-						best = o
-				return best
-			for g in guards:
-				if guards.find(g) >= cap:
-					g.set_meta("guard", false)
-					g.cmd_gather(g.home_mine) if g.home_mine != null and is_instance_valid(g.home_mine) else g.cmd_stop()
-				elif g.order != "attack" or g.target == null or g.target.dead:
-					var f: Unit = foe_for.call(g)
-					if f:
-						g.cmd_attack(f)
-			var free := cap - mini(guards.size(), cap)
-			for i in mini(free, hands.size()):
-				var f2: Unit = foe_for.call(hands[i])
-				if f2:
-					hands[i].set_meta("guard", true)
-					hands[i].cmd_attack(f2)
+		# (workers: _worker_safety, from the economy think, pulls them out of reach or sends the hands)
 		return
 	if not _det.is_empty():
 		_end_defence()
@@ -2693,6 +2910,7 @@ const FAST_SPEED := 95.0        # an enemy this quick (horseman, scout, raptor) 
 
 var _det: Dictionary = {}       # Unit -> {"spot": Vector2, "t0": float, "lone": bool}: the detachments out
 var _lone_cool := 0.0
+var _known_foes: Dictionary = {}   # enemy unit id -> clock it was last seen (the hands that pulled back no longer watch it)
 var _known_guns: Dictionary = {}   # enemy artillery seen (instance id -> {"u": Unit, "p": Vector2, "t": float})
 
 
@@ -2712,7 +2930,7 @@ func _is_gun(u: Unit) -> bool:
 ## The visible enemies around a raid spot, as numbers.
 func _assess(spot: Vector2) -> Dictionary:
 	var foes: Array = game.units_near(spot, 300.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field)
-	var seen: Array = foes.filter(func(o: Unit) -> bool: return game.is_visible_to(team, o.position))
+	var seen: Array = foes.filter(func(o: Unit) -> bool: return _sighted(o))
 	var armed: Array = seen.filter(func(o: Unit) -> bool: return _armed(o))
 	var a := {"spot": spot, "value": 0.0, "count": armed.size(), "lone": false, "speed": 0.0, "guns": false,
 		"air_only": not foes.is_empty() and foes.all(func(o: Unit) -> bool: return o.is_air()), "unarmed": false}
@@ -2731,6 +2949,15 @@ func _assess(spot: Vector2) -> Dictionary:
 	a["unarmed"] = armed.is_empty()
 	a["lone"] = armed.size() <= 2 and armed.all(func(o: Unit) -> bool: return float(o.d.get("speed", 60)) >= FAST_SPEED)
 	return a
+
+
+## Seen right now, or a moment ago (out of sight is not gone: the hands that ran from a raid
+## no longer watch it, which must not make an army look like nothing, or a scout like an army).
+func _sighted(o: Unit) -> bool:
+	if game.is_visible_to(team, o.position):
+		_known_foes[o.get_instance_id()] = game.clock
+		return true
+	return game.clock - float(_known_foes.get(o.get_instance_id(), -100.0)) < 20.0
 
 
 func _home_dist(p: Vector2) -> float:
