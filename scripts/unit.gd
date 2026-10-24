@@ -1414,6 +1414,8 @@ func _work_sound(delta: float) -> void:
 		return
 	_work_snd_t = randf_range(2.2, 3.2) if work == "manning" else 2.0
 	Sfx.play(name, position, -6.0 if work == "manning" else -3.0)
+	if kind == "labourer" and name == "work/crown_build" and BUILD_SWING.has(anim_dir):
+		_lab_build_t = lab_build_lock(anim_dir)      # (the clip's first big blow lands on a strike)
 
 
 ## The battery on a Winder's back overloads (carried too long, or hit): it bursts.
@@ -4693,6 +4695,14 @@ func _anim_name() -> String:
 	if (work == "mounting" or work == "dismounting") and mount_strip_art() != "":
 		return "mount"
 	var moving := velocity.length() > 10.0
+	if kind == "labourer":
+		# a crowd shoves him around the 10 px/s line: stay in the walk for a moment instead of
+		# flicking walk <-> idle (every switch restarts the pose)
+		var now: float = game.clock
+		if moving:
+			_lab_moved_t = now
+		elif now - _lab_moved_t < 0.18:
+			moving = true
 	match kind:
 		"musketeer", "dismounted":
 			if mode == "bayonet":
@@ -4880,7 +4890,10 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## Animation runs at most 15 times a second, and not at all for units nobody can see.
 func _animate(delta: float) -> void:
 	_anim_dt += delta
-	if _anim_dt < 0.066 and not dead:
+	# (a walking or hammering Labourer steps at 30 Hz: his frames follow the ground he covers
+	# and the hammer beat, which 15 Hz ticks would make uneven)
+	var tick := 0.033 if kind == "labourer" and (anim == "build" or velocity.length() > 10.0) else 0.066
+	if _anim_dt < tick and not dead:
 		return
 	if kind == "horse" and not dead:
 		modulate.a = 0.0 if _hidden_for_mount() else 1.0     # (the mounting strip draws it)
@@ -4949,7 +4962,7 @@ func _animate(delta: float) -> void:
 			fps = float(n) / float(Defs.DEFLATE["anim"])
 			loop = false
 		"idle_keg":
-			fps = 3.0
+			fps = 0.75 * float(n)     # (one breath takes 1.3 s whether the view has 4 frames or 2)
 		"wrap":
 			fps = 5.0 / float(Defs.HARVEST["take"])
 			loop = false
@@ -5012,10 +5025,13 @@ func _animate(delta: float) -> void:
 		"mount":
 			fps = 0.0           # (set from how far through getting on or off he is, below)
 			loop = false
-	anim_t += delta * fps
-	if anim_t >= 1.0:
-		anim_t -= 1.0
-		frame_i += 1
+	if kind == "labourer" and not dead and _drive_labourer(delta, n):
+		pass
+	else:
+		anim_t += delta * fps
+		if anim_t >= 1.0:
+			anim_t -= 1.0
+			frame_i += 1
 	frame_i = posmod(frame_i, n) if loop else mini(frame_i, n - 1)
 	var shown := frame_i
 	if anim == "deploy" and tesla_mode == "packing":
@@ -5162,6 +5178,74 @@ func _strip_art(a: String) -> String:
 	return art
 
 
+## The Labourer's hammering. His build strips are drawn with the arm lifting only 2-3 px (NE: a
+## real overhead swing), so what can be made right is the TIMING: a held raise, a quick drop, a
+## held strike and a slower recovery, one swing per BUILD_CYCLE seconds. 5 swings fit exactly in
+## the 2.0 s hammering clip (assets/audio/work/crown_build.wav, big blows at 0.46, 0.87 and
+## 1.30 s), and each time the clip starts the swing is phased so that its first big blow lands
+## on a strike (lab_build_lock). Per view: [frame, seconds] steps in swing order starting at the
+## raised hammer, and the step that is the strike (the frame where the hammer is lowest).
+const BUILD_CYCLE := 0.40
+const BUILD_CLIP_BLOW := 0.46
+const BUILD_SWING := {
+	"s": {"seq": [[2, 0.12], [3, 0.10], [0, 0.08], [1, 0.10]], "hit": 1},
+	"se": {"seq": [[2, 0.12], [3, 0.06], [0, 0.10], [1, 0.12]], "hit": 2},
+	"e": {"seq": [[1, 0.12], [2, 0.06], [3, 0.10], [0, 0.12]], "hit": 2},
+	"ne": {"seq": [[0, 0.12], [1, 0.06], [2, 0.12], [1, 0.10]], "hit": 2},
+	"n": {"seq": [[2, 0.12], [3, 0.10], [0, 0.08], [1, 0.10]], "hit": 1},
+}
+## Walking: one full stride (every frame of the strip) per this many pixels covered, so a foot
+## on the ground stays on the ground at any speed (the art's step is ~13 px).
+const LAB_STRIDE := {"walk": 26.0, "carry": 24.0, "carry_keg": 24.0}
+var _lab_build_t := 0.0
+var _lab_dist := 0.0
+var _lab_prev := Vector2.ZERO
+var _lab_moved_t := -10.0
+var _lab_view := -1
+
+
+## Seconds into the swing at which the strike begins (view `dir`).
+static func lab_build_hit_at(dir: String) -> float:
+	var sw: Dictionary = BUILD_SWING[dir]
+	var t := 0.0
+	for i in range(int(sw["hit"])):
+		t += float((sw["seq"] as Array)[i][1])
+	return t
+
+
+## The swing clock to set when the hammering clip starts, so its first big blow is a strike.
+static func lab_build_lock(dir: String) -> float:
+	return fposmod(lab_build_hit_at(dir) - BUILD_CLIP_BLOW, BUILD_CYCLE)
+
+
+## Frame of the build strip `dir` at swing clock `t`.
+static func lab_build_frame(dir: String, t: float) -> int:
+	var seq: Array = BUILD_SWING[dir]["seq"]
+	var k := fposmod(t, BUILD_CYCLE)
+	for st in seq:
+		k -= float(st[1])
+		if k < 0.0:
+			return int(st[0])
+	return int(seq[seq.size() - 1][0])
+
+
+## Frames that follow the work: the stride from the distance walked, the hammer from the beat.
+## Returns false for everything else (the usual frame rate).
+func _drive_labourer(delta: float, n: int) -> bool:
+	var moved := position.distance_to(_lab_prev)
+	_lab_prev = position
+	if LAB_STRIDE.has(anim):
+		if moved < 40.0:      # (a jump, e.g. a teleport or the first tick, is not a stride)
+			_lab_dist += moved
+		frame_i = int(_lab_dist / (float(LAB_STRIDE[anim]) / float(n))) % n
+		return true
+	if anim == "build" and BUILD_SWING.has(anim_dir):
+		_lab_build_t += delta
+		frame_i = mini(lab_build_frame(anim_dir, _lab_build_t), n - 1)
+		return true
+	return false
+
+
 const DIR_FLIP := [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]]
 
 
@@ -5176,6 +5260,12 @@ func _set_anim(a: String, force: bool) -> void:
 	var was_mount := anim == "mount"
 	var o := int(round(face.angle() / (PI / 4.0)))
 	o = posmod(o, 8)
+	if kind == "labourer":
+		# the view only changes once he has turned clearly past the edge (his path wobbles around
+		# the 22.5 degree lines and the drawings of two views never line up frame for frame)
+		if _lab_view >= 0 and o != _lab_view and absf(wrapf(face.angle() - float(_lab_view) * PI / 4.0, -PI, PI)) < PI / 4.0 * 0.5 + 0.14:
+			o = _lab_view
+		_lab_view = o
 	var dir_flip: Array = DIR_FLIP[o]
 	var dr: String = dir_flip[0]
 	var flip: bool = dir_flip[1]
