@@ -85,7 +85,7 @@ func _one(id: String, fac: String) -> void:
 				# lower ground only at the foot of the nearest ramp (a short walk, not across a cliff)
 				var foot := g.ramp_foot(hall)
 				var mid := Vector2(spot) + Vector2(sz) * 0.5
-				if foot != Vector2.INF and mid.distance_to(foot) > 24.0:
+				if foot != Vector2.INF and mid.distance_to(foot) > 36.0:
 					far.append(k)
 			g._add_building(k, 0, spot, true)
 			n += 1

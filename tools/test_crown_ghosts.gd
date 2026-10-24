@@ -171,8 +171,6 @@ func _run() -> void:
 	check(n == 12 and pieces.size() == 12, "(h) 12 pieces laid (%d)" % n)
 	for k in 8:
 		await wait(1.5)
-		var ns = g.next_site(mason)
-		print("DBG t", k, " order ", mason.order, " work ", mason.work, " next ", ns.cell if ns else null, " pos ", mason.position, " busy-near ", g.units_near(pieces[1].center(), 60.0).size(), " p1 ", pieces[1].cell, pieces[1].center(), pieces[1].built, pieces[1].dead, pieces[1].d["faction"])
 	var alive := pieces.filter(func(x: Building) -> bool: return not x.dead).size()
 	check(alive == 12, "(h) one Labourer on the wall: no piece swept while he works through it (%d / 12)" % alive)
 	var done := await wait_for(func() -> bool:
