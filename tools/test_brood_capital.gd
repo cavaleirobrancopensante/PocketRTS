@@ -140,13 +140,34 @@ func _run() -> void:
 	var why: String = g.placement_problem(0, "feeding_pit", far_cell, true)
 	check(why != "", "   a pit beyond the swamp is refused (%s)" % why)
 	# a vent at the swamp's edge pushes the reach out
-	var edge := _cell_at(cap, reach0 - 3.0)
-	var vent: Building = g._add_building("spore_vent", 0, edge, true)
-	g._update_swamp()
-	await wait(0.3)
-	var reach1: float = g.swamp_reach[0]
+	# (the vent goes at the swamp's edge on a side with room to grow: not into a corner or a cliff)
+	var vent: Building = null
+	var fc2 := Vector2i(-1, -1)
+	var reach1 := reach0
+	var c0: Vector2 = cap.center() / Defs.TILE
+	var cands: Array = []
+	for y in range(int(c0.y - reach0), int(c0.y + reach0)):
+		for x in range(int(c0.x - reach0), int(c0.x + reach0)):
+			var cell := Vector2i(x, y)
+			if not g.in_map(cell) or not g._footprint_open(cell, Vector2i(4, 3)) or not g.margin_free(cell, Vector2i(4, 3)):
+				continue
+			var dd := (Vector2(cell) + Vector2(2, 1.5)).distance_to(c0)
+			if absf(dd - (reach0 - 3.0)) < 1.5 and g.placement_problem(0, "spore_vent", cell, true) == "":
+				cands.append(cell)
+	for edge in cands:
+		vent = g._add_building("spore_vent", 0, edge, true)
+		g._update_swamp()
+		await wait(0.3)
+		reach1 = g.swamp_reach[0]
+		fc2 = _placeable(cap, reach0 + 0.5)
+		if fc2.x >= 0:
+			break
+		g._remove_quietly(vent)
+		vent = null
+		g._update_swamp()
+		await wait(0.1)
+	check(vent != null, "   (found a side with room for a Spore Vent: %d tried)" % cands.size())
 	check(reach1 > reach0 + 3.0, "   a Spore Vent at the edge: reach %.1f -> %.1f tiles" % [reach0, reach1])
-	var fc2 := _placeable(cap, reach0 + 0.5)
 	check(fc2.x >= 0, "   a pit farther than the old reach (%.1f) is now allowed (cell %s)" % [reach0, str(fc2)])
 	if fc2.x < 0:
 		fc2 = _cell_at(cap, reach0)

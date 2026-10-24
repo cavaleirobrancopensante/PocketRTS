@@ -4054,11 +4054,17 @@ func sweep_ghosts(quick := false) -> void:
 func _crown_chain() -> Dictionary:
 	var kept := {}
 	var todo: Array = []
+	var anchors: Array = []
 	for u in units:
 		if u.dead or u.kind != "labourer":
 			continue
 		var mine: Array = []
 		if u.order == "build" and u.order_target is Building:
+			var cur: Building = u.order_target
+			if cur.built and not cur.dead and cur.d["faction"] == "crown":
+				# just finished, not yet moved on (the sweep can run between the two):
+				# the chain goes on from here, as next_site will take him to the next piece
+				anchors.append(cur)
 			mine.append(u.order_target)
 		mine.append_array(u.line_rest)
 		for o in u.queue:
@@ -4071,11 +4077,16 @@ func _crown_chain() -> Dictionary:
 					and b.d["faction"] == "crown" and not kept.has(b):
 				kept[b] = true
 				todo.append(b)
-	if todo.is_empty():
+	if todo.is_empty() and anchors.is_empty():
 		return kept
 	var open: Array = buildings.filter(func(b: Building) -> bool:
 		return not b.dead and not b.built and b.team >= 0 and b.d["faction"] == "crown")
 	var reach := 8.0 * T
+	for a in anchors:
+		for b in open:
+			if not kept.has(b) and b.team == a.team and b.center().distance_to(a.center()) < reach:
+				kept[b] = true
+				todo.append(b)
 	while not todo.is_empty():
 		var a: Building = todo.pop_back()
 		for b in open:
