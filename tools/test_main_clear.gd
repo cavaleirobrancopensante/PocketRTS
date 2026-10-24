@@ -51,7 +51,7 @@ func _run(ids: Array) -> void:
 			var woods := g._terrain_kind.size()
 			if woods < 10:
 				bad.append("only %d trees/rocks left on the whole map" % woods)
-			print("%-22s %d players  main cells %4d  cleared %3d  trees/rocks %4d  %s" % [id, n, area_cells, g.mapgen.main_cleared, woods, "ok" if bad.is_empty() else "FAIL"])
+			print("%-22s %d players  main cells %4d  cleared %3d  thinned %4d  trees/rocks %4d  %s" % [id, n, area_cells, g.mapgen.main_cleared, g.mapgen.thinned, woods, "ok" if bad.is_empty() else "FAIL"])
 			for b in bad.slice(0, 8):
 				print("    ", b)
 			if not bad.is_empty():

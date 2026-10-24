@@ -34,111 +34,111 @@ const BIOMES := {
 	"grass": {"low": ["grass_calm", "grass_calm", "grass_calm", "grass_mid", "grass"], "patches": true, "base": "dirt", "high": "grass_flat",
 		"face": "grass_face", "ramp": "grass_ramp", "water": "water", "ford": "shallow",
 		"trees": 0.8, "tint": Color(1, 1, 1),
-		"scatter": ["flowers", "flowers_pink", "grass_flowers", "grass_a", "stump", "rabbit", "sheep", "bird", "shrub", "flowers_yellow"],
+		"scatter": ["flowers", "flowers_pink", "grass_flowers", "grass_a", "stump", "shrub", "flowers_yellow"],
 		"kits": ["farm", "village", "camp", "grove"]},
 	"autumn": {"low": ["autumn"], "base": "dirt", "high": "autumn_flat",
 		"face": "autumn_face", "ramp": "autumn_ramp", "water": "water", "ford": "shallow",
 		"trees": 0.75, "tint": Color(1.15, 0.85, 0.55),
-		"scatter": ["stump", "log_branch", "mushroom_red", "flowers_yellow", "stag", "rabbit", "shrub_berry", "sticks"],
+		"scatter": ["stump", "log_branch", "mushroom_red", "flowers_yellow", "shrub_berry", "sticks"],
 		"kits": ["farm", "lumber", "camp"]},
 	"desert": {"low": ["sand"], "base": "red", "high": "desert_flat",
 		"face": "desert_face", "ramp": "desert_ramp", "water": "water", "ford": "shallow",
 		"trees": 0.15, "tint": Color(1.05, 0.95, 0.7),
-		"scatter": ["stones", "branches", "antlers", "goat", "sticks", "crows"],
+		"scatter": ["stones", "branches", "antlers", "sticks"],
 		"kits": ["camp", "market", "ruins"]},
 	"snow": {"low": ["snow"], "base": "gravel", "high": "snow_rock_flat",
 		"face": "snow_rock_face", "ramp": "snow_rock_ramp", "water": "water", "ford": "ice",
 		"trees": 0.6, "tint": Color(0.85, 0.95, 1.1),
-		"scatter": ["stones", "branches", "stag", "crows", "sticks"],
+		"scatter": ["stones", "branches", "sticks"],
 		"kits": ["snowcamp", "ruins"]},
 	"marsh": {"low": ["moss"], "base": "mud", "high": "moss_flat",
 		"face": "moss_face", "ramp": "moss_ramp", "water": "water", "ford": "mud",
 		"trees": 0.85, "tint": Color(0.8, 0.95, 0.7),
-		"scatter": ["reeds", "grass_reed", "heron", "goose", "log_moss", "mushroom", "stump_moss"],
+		"scatter": ["reeds", "grass_reed", "log_moss", "mushroom", "stump_moss"],
 		"kits": ["lumber", "shrine"]},
 	"volcanic": {"low": ["basalt", "basalt", "basalt", "lava_crack"], "base": "gravel", "high": "lava_flat",
 		"face": "lava_face", "ramp": "lava_ramp", "water": "lava", "ford": "basalt",
 		"trees": 0.0, "tint": Color(0.7, 0.6, 0.55),
-		"scatter": ["branches", "antlers", "crows", "stones", "sticks"],
+		"scatter": ["branches", "antlers", "stones", "sticks"],
 		"kits": ["ruins", "forge"]},
 	# --- from the second atlas (tools/import_terrain2.py)
 	"heath": {"low": ["heath", "heath", "heather"], "patches": true, "base": "dirt", "high": "mossrock",
 		"face": "mossrock_face", "ramp": "grass_ramp", "water": "deep", "ford": "shallow",
 		"trees": 0.5, "tint": Color(0.95, 1.0, 0.9), "amb": "grass",
 		"tree_art": ["oak", "birch", "dead_tree"], "bush_art": ["bush_flower", "shrub_dark", "bush_lilac"],
-		"scatter": ["flowers_pink", "flowers", "grass_flowers", "stones", "rocks_moss", "sheep", "stump", "rabbit", "bird", "grass_d"],
+		"scatter": ["flowers_pink", "flowers", "grass_flowers", "stones", "rocks_moss", "stump", "grass_d"],
 		"kits": ["farm", "shrine", "ruins", "camp"]},
 	"jungle": {"low": ["fern", "roots"], "patches": true, "base": "dirt", "high": "roots",
 		"face": "fern_face", "ramp": "forest_ramp", "water": "deep", "ford": "rapids",
 		"trees": 0.95, "tint": Color(0.8, 1.05, 0.8), "amb": "marsh",
 		"tree_art": ["oak", "oak", "blossom"], "bush_art": ["bush_berry", "shrub_b", "shrub_dark"],
-		"scatter": ["grass_tall", "grass_reed", "shrub_b", "mushroom_red", "mushroom", "log_moss", "stump_moss", "heron", "flowers_wild"],
+		"scatter": ["grass_tall", "grass_reed", "shrub_b", "mushroom_red", "mushroom", "log_moss", "stump_moss", "flowers_wild"],
 		"kits": ["ruins", "camp", "lumber"]},
 	"canyon": {"low": ["clay"], "base": "red", "high": "canyon",
 		"face": "canyon_face", "ramp": "desert_ramp", "water": "deep", "ford": "shingle",
 		"trees": 0.1, "tint": Color(1.1, 0.9, 0.75), "amb": "desert",
 		"tree_art": ["dead_tree"], "bush_art": ["thorns", "brambles"],
-		"scatter": ["stones", "branches", "antlers", "sticks", "crows", "goat"],
+		"scatter": ["stones", "branches", "antlers", "sticks"],
 		"kits": ["camp", "market", "forge"]},
 	"tundra": {"low": ["tundra"], "base": "gravel", "high": "tundra",
 		"face": "glacier_face", "ramp": "snow_rock_ramp", "water": "deep", "ford": "glacier",
 		"trees": 0.5, "tint": Color(0.85, 0.95, 1.1), "amb": "snow",
 		"tree_art": ["pine", "pine", "dead_tree"], "bush_art": ["shrub_dark", "thorns"],
-		"scatter": ["stones", "branches", "stag", "crows", "sticks", "grass_d"],
+		"scatter": ["stones", "branches", "sticks", "grass_d"],
 		"kits": ["snowcamp", "ruins", "watch"]},
 	"ashland": {"low": ["cinder", "burnt"], "patches": true, "base": "slate", "high": "slate",
 		"face": "slate_face", "ramp": "lava_ramp", "water": "lava", "ford": "basalt",
 		"trees": 0.12, "tint": Color(0.55, 0.5, 0.5), "amb": "volcanic",
 		"tree_art": ["dead_tree"], "bush_art": ["thorns", "brambles"],
-		"scatter": ["branches", "antlers", "crows", "stones", "sticks", "log_branch"],
+		"scatter": ["branches", "antlers", "stones", "sticks", "log_branch"],
 		"kits": ["ruins", "forge", "watch"]},
 	"pinewood": {"low": ["pine"], "base": "dirt", "high": "mossrock",
 		"face": "mossrock_face", "ramp": "forest_ramp", "water": "deep", "ford": "rapids",
 		"trees": 0.9, "tint": Color(0.9, 1.0, 0.9), "amb": "autumn",
 		"tree_art": ["pine", "pine", "pine", "birch"], "bush_art": ["shrub_dark", "shrub_b"],
-		"scatter": ["stump", "log_moss", "mushroom", "mushroom_red", "stag", "rabbit", "grass_a", "shrub_dark", "nest", "sticks"],
+		"scatter": ["stump", "log_moss", "mushroom", "mushroom_red", "grass_a", "shrub_dark", "nest", "sticks"],
 		"kits": ["lumber", "camp", "watch"]},
 	"steppe": {"low": ["steppe", "scrub"], "patches": true, "base": "dirt", "high": "scrub",
 		"face": "steppe_face", "ramp": "desert_ramp", "water": "water", "ford": "shingle",
 		"trees": 0.3, "tint": Color(1.1, 1.0, 0.75), "amb": "desert",
 		"tree_art": ["dead_tree", "gold_tree"], "bush_art": ["thorns", "brambles", "bush_yellow"],
-		"scatter": ["grass_c", "grass_reed", "stones", "goat", "cow", "branches", "sheaf", "flowers_yellow"],
+		"scatter": ["grass_c", "grass_reed", "stones", "branches", "sheaf", "flowers_yellow"],
 		"kits": ["camp", "farm", "market"]},
 	"coast": {"low": ["shingle", "bone"], "patches": true, "base": "bone", "high": "mossrock",
 		"face": "chalk_face", "ramp": "beach_ramp", "water": "deep", "ford": "coral",
 		"trees": 0.3, "tint": Color(1.0, 1.0, 0.95), "amb": "grass",
 		"tree_art": ["birch", "dead_tree"], "bush_art": ["grass_reed", "shrub_b"],
-		"scatter": ["gull", "gull_b", "log", "stones", "grass_reed", "rocks_moss", "anchor"],
+		"scatter": ["log", "stones", "grass_reed", "rocks_moss", "anchor"],
 		"kits": ["wreck", "market", "watch"]},
 	"oldkingdom": {"low": ["heath", "heath", "heather"], "patches": true, "base": "ruin", "high": "mossrock",
 		"face": "ruin_face", "ramp": "grass_ramp", "water": "deep", "ford": "shallow",
 		"trees": 0.55, "tint": Color(1.0, 1.0, 0.95), "amb": "grass",
 		"tree_art": ["oak", "blossom", "birch"], "bush_art": ["bush_red", "bush_lilac", "shrub"],
-		"scatter": ["stones", "flowers", "rocks_moss", "grass_flowers", "crows", "flowers_mix", "stump"],
+		"scatter": ["stones", "flowers", "rocks_moss", "grass_flowers", "flowers_mix", "stump"],
 		"kits": ["ruins", "village", "shrine", "grove"]},
 	"bog": {"low": ["bog", "reeds"], "patches": true, "base": "mud", "high": "mossrock",
 		"face": "bog_face", "ramp": "moss_ramp", "water": "kelp", "ford": "reeds",
 		"trees": 0.7, "tint": Color(0.8, 0.95, 0.7), "amb": "marsh",
 		"tree_art": ["dead_tree", "oak"], "bush_art": ["grass_tall", "shrub_dark"],
-		"scatter": ["reeds", "grass_reed", "heron", "goose", "log_moss", "mushroom", "stump_moss", "grass_tall"],
+		"scatter": ["reeds", "grass_reed", "log_moss", "mushroom", "stump_moss", "grass_tall"],
 		"kits": ["shrine", "lumber"]},
 	"glowwood": {"low": ["glow", "cinder"], "patches": true, "base": "bog", "high": "roots",
 		"face": "roots_face", "ramp": "forest_ramp", "water": "deep", "ford": "rapids",
 		"trees": 0.85, "tint": Color(0.6, 0.75, 0.85), "amb": "marsh",
 		"tree_art": ["dead_tree", "oak", "pine"], "bush_art": ["shrub_dark", "brambles"],
-		"scatter": ["mushroom", "mushroom_red", "log_moss", "stump_moss", "rocks_moss", "grass_b", "crows"],
+		"scatter": ["mushroom", "mushroom_red", "log_moss", "stump_moss", "rocks_moss", "grass_b"],
 		"kits": ["ruins", "shrine"]},
 	"fall": {"low": ["leaves"], "base": "dirt", "high": "heath",
 		"face": "leaves_face", "ramp": "autumn_ramp", "water": "deep", "ford": "rapids",
 		"trees": 0.8, "tint": Color(1.15, 0.85, 0.55), "amb": "autumn",
 		"tree_art": ["red_tree", "gold_tree", "gold_tree", "oak"], "bush_art": ["bush_yellow", "bush_red", "shrub_berry"],
-		"scatter": ["flowers_yellow", "stump", "log_branch", "mushroom_red", "rabbit", "stag", "grass_flowers", "shrub_berry"],
+		"scatter": ["flowers_yellow", "stump", "log_branch", "mushroom_red", "grass_flowers", "shrub_berry"],
 		"kits": ["farm", "lumber", "village"]},
 	"badlands": {"low": ["bone", "clay"], "patches": true, "base": "clay", "high": "chalk",
 		"face": "bone_face", "ramp": "sand_ramp", "water": "deep", "ford": "shingle",
 		"trees": 0.08, "tint": Color(1.05, 0.95, 0.8), "amb": "desert",
 		"tree_art": ["dead_tree"], "bush_art": ["thorns"],
-		"scatter": ["antlers", "branches", "stones", "crows", "sticks"],
+		"scatter": ["antlers", "branches", "stones", "sticks"],
 		"kits": ["ruins", "camp"]},
 }
 
@@ -336,6 +336,7 @@ func generate(map_id: String) -> Array:
 	drng.seed = hash(g.rng.seed) + 17
 	_decorate(drng, [], 0.6)
 	_clear_mains(all_mains)
+	_thin_sites(g.base_sites)
 	g.height = height
 	g.ramp = ramp
 	return [m[1], m[2]]
@@ -1180,6 +1181,7 @@ func _named(map_id: String) -> Array:
 	_assign_named(mains, nats)
 	_decorate(rng, m.get("sites", []), float(m.get("decor", 1.0)))
 	_clear_mains(mains)
+	_thin_sites(sites)
 	_open_ways(sites)
 	g.height = height
 	g.ramp = ramp
@@ -1481,7 +1483,7 @@ func _open_ways(sites: Array) -> void:
 ## Every main base is all buildable: no tree, rock or solid decoration anywhere on the
 ## plateau a main hall spot stands on (the high ground joined to it, up to MAIN_REACH cells
 ## from the hall; cliffs and ramps stay as they are), or within MAIN_REACH - 4 cells of a
-## main on low ground. Walk-through decorations (grass, animals...) may stay.
+## main on low ground. Walk-through decorations (grass...) may stay.
 const MAIN_REACH := 22.0
 
 
@@ -1528,6 +1530,35 @@ func _clear_mains(mains: Array) -> void:
 				_clear_cell(i)
 
 
+## Around every base and expansion spot the woods are thinned: within THIN_REACH cells of a
+## hall spot only about one tree or rock in THIN_KEEP stays (picked by a hash of the cell and
+## its twin, so both sides keep the same ones), scattered, so the ground is open to build on.
+const THIN_REACH := 15.0
+const THIN_KEEP := 5
+var thinned := 0                   # blocking cells _thin_sites took off (tests)
+
+
+func _thin_sites(sites: Array) -> void:
+	thinned = 0
+	for st in sites:
+		var mid := Vector2(st) + Vector2(2.5, 2.0)
+		var r := int(THIN_REACH) + 1
+		for y in range(int(mid.y) - r, int(mid.y) + r + 1):
+			for x in range(int(mid.x) - r, int(mid.x) + r + 1):
+				var c := Vector2i(x, y)
+				if not g.in_map(c) or (Vector2(c) + Vector2(0.5, 0.5)).distance_to(mid) > THIN_REACH:
+					continue
+				var i := g.idx(c)
+				if not g._terrain_kind.has(i) or g.cliff[i] != 0 or g.water[i] != 0:
+					continue
+				var t := _twin(c)
+				var key := mini(i, g.idx(t)) if g.in_map(t) else i
+				if hash(key * 7919 + 13) % THIN_KEEP == 0:
+					continue
+				thinned += 1
+				_clear_cell(i)
+
+
 func _clear_cell(i: int) -> void:
 	if _prop_at.has(i):
 		var pr: Dictionary = props[_prop_at[i]]
@@ -1546,13 +1577,13 @@ func _clear_cell(i: int) -> void:
 ## Groups of decorations: [prop, dx, dy] in cells from the group's middle.
 const KITS := {
 	"farm": [["cottage", 0, 0], ["haystack", 3, 1], ["well", -3, 1], ["fence", -1, 2], ["fence_b", 1, 2], ["cart_a", 3, -2],
-		["scarecrow", 5, 2], ["sheep", -3, 3], ["cow", -5, 0], ["rooster", 1, 1], ["beehive", -2, -2], ["sacks", 2, 0], ["haybales", 4, 3]],
+		["scarecrow", 5, 2], ["beehive", -2, -2], ["sacks", 2, 0], ["haybales", 4, 3]],
 	"village": [["chapel", 0, 0], ["cottage", 4, 1], ["windmill", -4, -1], ["well", 1, 3], ["stall", -3, 3], ["cart_b", 4, 4],
 		["sacks_pile", 6, 0], ["crates_pair", -1, 5], ["barrel_a", 2, 2], ["banner_a", -2, 1]],
 	"camp": [["tent_white", 0, 0], ["tent_red", 3, -1], ["tent_blue", -3, 1], ["campfire", 0, 2], ["spit_roast", 2, 2],
 		["crate_b", -2, -1], ["barrel_a", -2, 3], ["flag", 5, 1], ["wagon", 4, 3], ["table", -1, 4], ["cannonballs", 1, 4]],
 	"ruins": [["ruin_keep", 0, 0], ["arch", 4, 1], ["ruin_pillar", -3, 2], ["column", 2, 3], ["ruin_wall", -4, -1],
-		["stones", 1, 2], ["rocks_moss", -1, 3], ["cross_stone", 4, -2], ["crows", 0, 4], ["stone_block", -5, 2]],
+		["stones", 1, 2], ["rocks_moss", -1, 3], ["cross_stone", 4, -2], ["stone_block", -5, 2]],
 	"shrine": [["shrine", 0, 0], ["cross_stone", 2, 0], ["flowers", -1, 1], ["banner_b", -2, -1], ["stones", 1, 1],
 		["flowers_pink", 2, 2], ["column", -3, 1]],
 	"market": [["stall", 0, 0], ["stall_small", 3, 0], ["table_long", -3, 1], ["crate_apples", 1, 2], ["barrel_b", -1, 2],
@@ -1560,7 +1591,7 @@ const KITS := {
 	"snowcamp": [["snow_rocks_b", 0, 0], ["tent_white", 3, 1], ["campfire", 1, 2], ["barrel_a", -1, 2], ["crate_a", 4, 3],
 		["dead_trunk", -3, 1], ["snow_rocks_a", -4, 3], ["sticks", 2, 4]],
 	"wreck": [["boat", 0, 0], ["anchor", 2, 1], ["barrel_e", -1, 1], ["crate_e", 1, -1], ["drying_rack", -2, -1],
-		["log", 3, -1], ["gull", 1, 2], ["crate_long", -3, 2]],
+		["log", 3, -1], ["crate_long", -3, 2]],
 	"grove": [["flower_arch", 0, 0], ["bush_lilac", 2, 0], ["flowers_pink", -1, 1], ["bench", 1, 2], ["beehive", -2, 2],
 		["flowers_mix", 3, 2], ["bush_flower", -3, 0]],
 	"watch": [["watch_frame", 0, 0], ["banner_pole", 2, 0], ["campfire", 0, 2], ["crate_c", -2, 1], ["barrel_c", 2, 2], ["firewood", -1, 3]],
@@ -1568,7 +1599,6 @@ const KITS := {
 		["stump", -3, -1], ["stump_moss", 4, -1]],
 	"forge": [["forge", 0, 0], ["oven", 3, 0], ["cannonballs", -2, 1], ["barrel_tall", 1, 2], ["crate_d", -1, 3], ["chest", 3, 2]],
 }
-const HERDS := ["sheep", "cow", "goat", "stag", "rabbit", "goose", "gull"]
 
 
 ## Can a decoration stand on this cell? Open ground only: not water, a ford, a cliff or a
@@ -1634,8 +1664,8 @@ func _put(name: String, c: Vector2i, drng: RandomNumberGenerator) -> bool:
 
 
 ## Decorate the map: the listed groups ([x, y, kit] on side A), a couple of the biome's
-## own groups when none are listed, and small things strewn over open ground (animals in
-## little herds); `density` 1 = normal.
+## own groups when none are listed, and small things strewn over open ground;
+## `density` 1 = normal.
 func _decorate(drng: RandomNumberGenerator, sites: Array, density: float) -> void:
 	if density <= 0.0:
 		return
@@ -1666,8 +1696,4 @@ func _decorate(drng: RandomNumberGenerator, sites: Array, density: float) -> voi
 		if sc.is_empty():
 			continue
 		var name: String = sc[drng.randi() % sc.size()]
-		if not _put(name, c, drng):
-			continue
-		if HERDS.has(name):
-			for h in drng.randi_range(0, 2):
-				_put(name, c + Vector2i(drng.randi_range(-2, 2), drng.randi_range(-2, 2)), drng)
+		_put(name, c, drng)
