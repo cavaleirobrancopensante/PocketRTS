@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.44", "items": [
+		"Build mode shows a tile grid around the ghost: blocked tiles tinted, narrow paths in amber, and a warning if the building would cut off or narrow a route. BUILD GRID on/off in Settings.",
+	]},
 	{"v": "0.12.43", "items": [
 		"A ranged unit on high ground that fires at the low ground is revealed for about 2 seconds as a small spot of fog.",
 	]},
