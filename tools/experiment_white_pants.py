@@ -12,8 +12,10 @@ U = os.path.join(ROOT, "assets/units/musketeer")
 CW, CH, AX, AY = 90, 36, 45, 34
 WHITE = [(236, 232, 224), (200, 196, 188), (150, 146, 140)]    # light, mid, shadow
 CREAM = [(226, 212, 176), (198, 182, 144), (158, 140, 106), (112, 96, 72)]   # warm off-white, four tones (light .. deep shadow)
-TONES = CREAM if "--cream" in sys.argv else WHITE
-PREFIX = "cream" if "--cream" in sys.argv else "white"
+# the Musketeer's own breeches in his current south walk (sampled from the strip): a cool silvery grey
+SILVER = [(214, 214, 210), (182, 182, 178), (152, 148, 146), (112, 108, 106)]
+TONES = SILVER if "--silver" in sys.argv else (CREAM if "--cream" in sys.argv else WHITE)
+PREFIX = "silver" if "--silver" in sys.argv else ("cream" if "--cream" in sys.argv else "white")
 
 
 def whiten(fr, y0=None):
