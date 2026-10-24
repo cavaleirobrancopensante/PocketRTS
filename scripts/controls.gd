@@ -459,10 +459,11 @@ func _process(delta: float) -> void:
 		return
 	# Keyboard panning
 	var k := Vector2.ZERO
-	if Input.is_key_pressed(KEY_LEFT): k.x -= 1
-	if Input.is_key_pressed(KEY_RIGHT): k.x += 1
-	if Input.is_key_pressed(KEY_UP): k.y -= 1
-	if Input.is_key_pressed(KEY_DOWN): k.y += 1
+	if not (hud and hud.chat_typing):          # (typing in the chat box: the arrow keys are not for panning)
+		if Input.is_key_pressed(KEY_LEFT): k.x -= 1
+		if Input.is_key_pressed(KEY_RIGHT): k.x += 1
+		if Input.is_key_pressed(KEY_UP): k.y -= 1
+		if Input.is_key_pressed(KEY_DOWN): k.y += 1
 	if Settings.pc() and _mouse_inside and DisplayServer.window_is_focused() and not _lmb_down and mode != "place_drag":
 		var mp := game.get_viewport().get_mouse_position()
 		var vs := game.get_viewport().get_visible_rect().size

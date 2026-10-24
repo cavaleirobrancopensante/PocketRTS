@@ -100,7 +100,7 @@ static func play_any(names: Array, pos := Vector2.INF, vol := 0.0) -> void:
 
 
 ## The shortest gap (ms) before the same sound plays again (default 40).
-const GAP := {"combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/spitter_attack": 150,
+const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/spitter_attack": 150,
 	"combat/windup_soldier_attack": 180, "combat/brood_death": 120, "combat/raptor_death": 150, "combat/crown_death": 120,
 	# recorded gunfire: a volley of ten muskets is a few overlapping shots, not a wall of noise
 	"combat/musketeer_attack": 110, "combat/cannon_attack": 160, "combat/cannon_canister": 160,
@@ -123,6 +123,8 @@ static func gain(st: AudioStream) -> float:
 
 ## 3: the announcer and the interface; 2: unit voices, bugle, horse and recruit calls; 1: the rest.
 static func _tier(name: String) -> int:
+	if name == "ui/chat":
+		return 1          # (the chat tick: the lowest tier, it never hushes the fight)
 	if name.begins_with("ui/") or name.begins_with("voice/announcer") or name == "click":
 		return 3
 	if name.begins_with("voice/") or name.begins_with("horse/") or name.begins_with("select/"):

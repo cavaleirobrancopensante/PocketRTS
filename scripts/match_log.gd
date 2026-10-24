@@ -213,7 +213,12 @@ func snapshot() -> void:
 func finish(winner: int) -> void:
 	snapshot()
 	lines.append("")
-	lines.append("RESULT at %s: %s" % [stamp(), ("winner " + who(winner)) if winner >= 0 else "no winner"])
+	var how := ""
+	if game.end_note == "ai_resigned" and winner >= 0 and game.allied(winner, game.human):
+		how = " - AI resigned after gg"
+	elif game.end_note == "player_surrender":
+		how = " - ended by surrender (player was %s)" % game.end_ahead
+	lines.append("RESULT at %s: %s%s" % [stamp(), ("winner " + who(winner)) if winner >= 0 else "no winner", how])
 	if not _lag_minutes.is_empty():
 		var pm := PackedStringArray()
 		var worst_m: Array = _lag_minutes[0]

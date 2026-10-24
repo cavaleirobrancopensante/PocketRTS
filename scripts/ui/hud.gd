@@ -198,7 +198,7 @@ func _tick_hud(delta: float) -> void:
 		if not _tip.is_empty() and Settings.pc():
 			_tip_at = _mouse()      # (it follows the mouse; what's under it is looked at 20 times a second)
 		_moved_check = true
-		_check(["top", "map view", "groups", "selection", "command card", "rest", "tooltip", "pause"])
+		_check(["top", "map view", "groups", "selection", "command card", "rest", "chat", "tooltip", "pause"])
 		_moved_check = false
 		Prof.add("hud/hover", q)
 	else:
@@ -218,7 +218,7 @@ class HudLayer extends Node2D:
 		hud._draw_layer(self)
 
 
-const LAYERS := ["top", "minimap", "map view", "groups", "selection", "command card", "glow", "rest", "tooltip", "pause"]
+const LAYERS := ["top", "minimap", "map view", "groups", "selection", "command card", "glow", "rest", "chat", "tooltip", "pause"]
 var _layer := {}                 # name -> HudLayer
 var _sig := {}                   # name -> its signature when it was last drawn
 var _ci: CanvasItem = self       # the canvas item being drawn on (a layer)
@@ -264,6 +264,8 @@ func _draw_layer(l: HudLayer) -> void:
 					_autocast_glow(b["rect"])
 		"rest":
 			_draw_rest(font)
+		"chat":
+			_draw_chat()
 		"tooltip":
 			if not paused:
 				_draw_tip()
@@ -354,6 +356,16 @@ func _layer_sig(n: String) -> Array:
 			if countdown > 0.0 or _go_t > 0.0:
 				vals.append_array([countdown, _go_t])
 			return vals
+		"chat":
+			if game.chat == null or game.demo:
+				return []
+			var now := Time.get_ticks_msec()
+			var vl: Array = game.chat.visible(now)
+			var ban := 0
+			if now < _banner_until:
+				ban = 1 + int(clampf(float(_banner_until - now) / 2000.0, 0.0, 1.0) * 10.0)
+			return [_vs(), chat_typing, chat_buf, (now / 500) % 2 if chat_typing else 0, quick_open, ban, _banner,
+				vl.map(func(x: Array) -> Array: return [x[0]["text"], int(float(x[1]) * 10.0)]), chat_log_rect(), paused]
 		"tooltip":
 			if _tip.is_empty() or paused:
 				return []
@@ -475,7 +487,7 @@ func _over_sandbox() -> bool:
 func _hud_has(p: Vector2) -> bool:
 	if game.over:
 		return false        # the end screen takes the clicks
-	if paused:
+	if paused or quick_open:
 		return true
 	if game.spectating() and (view_open or view_rect().has_point(p) or prod_rect().has_point(p)):
 		return true         # (an open list takes the next press anywhere: it closes it)
@@ -494,6 +506,9 @@ func _hud_has(p: Vector2) -> bool:
 
 func _input(event: InputEvent) -> void:
 	if game == null or game.over:
+		return
+	if event is InputEventKey and _chat_input(event as InputEventKey):
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
 		_moved = true            # (the highlights follow the mouse; the rest waits for its look)
@@ -575,6 +590,9 @@ func _press(p: Vector2) -> void:
 					b["cb"].call()
 		return
 	if game.over:
+		return
+	if quick_open:
+		_quick_press(p)
 		return
 	if game.spectating() and not view_open and prod_rect().has_point(p):
 		prod_open = not prod_open
@@ -1590,11 +1608,7 @@ func _pause_buttons() -> Array:
 		{"label": "AMBIENCE", "slider": "ambience", "cb": func() -> void: pass},
 		{"label": "SURRENDER", "cb": func() -> void:
 			set_paused(false)
-			if game.mlog:
-				game.mlog.add("%s surrendered" % game.mlog.who(game.human))
-			for b in game.buildings.duplicate():
-				if b.team == game.human:
-					b.take_damage(99999, null)},
+			game.player_surrender()},
 		{"label": "QUIT TO MENU", "cb": func() -> void:
 			set_paused(false)
 			quit_requested.emit()},
@@ -1620,6 +1634,232 @@ func _slide_drag(p: Vector2) -> void:
 	for b in _pause_buttons():
 		if b.has("slider") and (b["rect"] as Rect2).grow_individual(0, 6, 0, 6).has_point(p):
 			_slide(b, p)
+
+
+# ------------------------------------------------------------------ chat
+
+var chat_typing := false         # computer: the one-line box is open (every key goes to it)
+var chat_buf := ""
+var quick_open := false          # phone: the quick-chat panel
+var _banner := ""
+var _banner_until := 0
+
+
+const BANNER_SECS := 15.0
+
+
+## A small banner under the top bar ("P1 Crown says gg: reply gg to end the match").
+func chat_banner(text: String) -> void:
+	_banner = text
+	_banner_until = Time.get_ticks_msec() + int(BANNER_SECS * 1000.0)
+
+
+func _chat_button_on() -> bool:
+	return not Settings.pc() and not game.demo and not game.spectating()
+
+
+## The speech-bubble button of the phone, left of the DRAG / ? buttons (next to the menu).
+func chat_btn_rect() -> Rect2:
+	var x := help_rect().position.x if _help_on() else drag_rect().position.x
+	return Rect2(x - 46, 2, 40, 32)
+
+
+func _draw_bubble(c: Vector2, col: Color) -> void:
+	var pts := PackedVector2Array([c + Vector2(-12, -9), c + Vector2(12, -9), c + Vector2(12, 5), c + Vector2(2, 5), c + Vector2(-6, 11), c + Vector2(-5, 5), c + Vector2(-12, 5)])
+	_ci.draw_colored_polygon(pts, col)
+	for i in 3:
+		_ci.draw_circle(c + Vector2(-6 + i * 6, -2), 1.8, Color(0.1, 0.08, 0.06))
+
+
+func chat_row_h() -> float:
+	return 20.0 if Settings.pc() else 24.0
+
+
+func chat_font_size() -> int:
+	return 15 if Settings.pc() else 17
+
+
+## Where the log sits: at the bottom left of the screen if that is free, else just above the
+## parts of the HUD that stand there (the minimap, the quick buttons ...), else under the top
+## bar; it never covers the HUD's own parts (the owner's layout decides where those are).
+## The last row is the typing box.
+func chat_log_rect() -> Rect2:
+	var w := 340.0 if Settings.pc() else 380.0
+	var h := chat_row_h() * Chat.VISIBLE_LINES + chat_row_h() + 10.0
+	var vs := _vs()
+	var l := _layout()
+	var parts: Array = []
+	for k in ["mini", "groups", "panel", "card"]:
+		parts.append((l[k] as Rect2).grow(4))
+	var m := UiLayout.M
+	var cands: Array = [Rect2(m, vs.y - m - h, w, h)]
+	var top := vs.y - m
+	for r in parts:
+		if (r as Rect2).position.x < m + w and (r as Rect2).end.x > m:
+			top = minf(top, (r as Rect2).position.y)
+	cands.append(Rect2(m, top - 4 - h, w, h))
+	cands.append(Rect2(m, UiLayout.TOP, w, h))
+	for c in cands:
+		var r: Rect2 = c
+		if r.position.y < UiLayout.TOP - 0.5:
+			continue
+		if parts.any(func(p: Rect2) -> bool: return p.intersects(r)):
+			continue
+		return r
+	return cands[1]
+
+
+func _open_chat() -> void:
+	chat_typing = true
+	chat_buf = ""
+	game.chat.reveal()
+	_redraw_t = 0.0
+
+
+func close_chat() -> void:
+	chat_typing = false
+	chat_buf = ""
+	_redraw_t = 0.0
+
+
+## A key while the HUD may be typing. True if it was used (a typing box swallows every key, so
+## no hotkey fires and the letters do not select anything).
+func _chat_input(ke: InputEventKey) -> bool:
+	if not Settings.pc() or game.demo or game.chat == null:
+		return false
+	if not chat_typing:
+		if ke.pressed and not ke.echo and (ke.keycode == KEY_ENTER or ke.keycode == KEY_KP_ENTER) \
+				and not ke.alt_pressed and not ke.ctrl_pressed and not ke.meta_pressed \
+				and not paused and countdown <= 0.0 and not game.spectating():
+			_open_chat()
+			return true
+		return false
+	if not ke.pressed:
+		return true
+	if paused:
+		close_chat()
+		return false
+	match ke.keycode:
+		KEY_ESCAPE:
+			close_chat()
+		KEY_ENTER, KEY_KP_ENTER:
+			var text := chat_buf
+			close_chat()
+			if text.strip_edges() != "":
+				game.chat.player_say(text)
+			game.chat.reveal()
+		KEY_BACKSPACE:
+			chat_buf = chat_buf.substr(0, chat_buf.length() - 1)
+		_:
+			if (ke.ctrl_pressed or ke.meta_pressed) and ke.keycode == KEY_V:
+				chat_buf = (chat_buf + DisplayServer.clipboard_get().split("\n")[0]).substr(0, Chat.MAX_LEN)
+			elif ke.unicode >= 32 and ke.unicode != 127 and not ke.ctrl_pressed and not ke.meta_pressed and chat_buf.length() < Chat.MAX_LEN:
+				chat_buf += String.chr(ke.unicode)
+	_redraw_t = 0.0
+	return true
+
+
+## The phone's quick-chat panel: 3 x 2 big buttons in the middle of the screen.
+func quick_rects() -> Array:
+	var bw := 128.0
+	var bh := 62.0
+	var gap := 8.0
+	var vs := _vs()
+	var origin := Vector2(vs.x * 0.5 - (bw * 3 + gap * 2) * 0.5, vs.y * 0.5 - (bh * 2 + gap) * 0.5 + 6)
+	var out: Array = []
+	for i in Chat.QUICK.size():
+		out.append(Rect2(origin + Vector2((i % 3) * (bw + gap), (i / 3) * (bh + gap)), Vector2(bw, bh)))
+	return out
+
+
+func quick_panel_rect() -> Rect2:
+	var rs := quick_rects()
+	return (rs[0] as Rect2).merge(rs[rs.size() - 1]).grow_individual(14, 44, 14, 14)
+
+
+func _quick_press(p: Vector2) -> void:
+	var rs := quick_rects()
+	for i in rs.size():
+		if (rs[i] as Rect2).has_point(p):
+			quick_open = false
+			game.chat.player_say(String(Chat.QUICK[i][1]))
+			game.chat.reveal()
+			Sfx.play_any(["ui/click", "click"])
+			return
+	if not quick_panel_rect().has_point(p) or chat_btn_rect().has_point(p):
+		quick_open = false
+		Sfx.play_any(["ui/back", "click"])
+
+
+func _draw_chat() -> void:
+	if game.chat == null or game.demo:
+		return
+	var font := UiStyle.bold_font()
+	var now := Time.get_ticks_msec()
+	var fs := chat_font_size()
+	var rh := chat_row_h()
+	var box := chat_log_rect()
+	# the log: the newest line at the bottom, just above the typing row
+	var vl: Array = game.chat.visible(now)
+	var bottom := box.end.y - rh - 6.0
+	if not vl.is_empty():
+		var top := bottom - rh * vl.size() - 2.0
+		var wmax := 0.0
+		for e in vl:
+			var l: Dictionary = e[0]
+			wmax = maxf(wmax, font.get_string_size("%s: %s" % [l["name"], l["text"]], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+		var panel := Rect2(box.position.x, top, minf(box.size.x, wmax + 20.0), bottom - top + 4.0)
+		var amax := 0.0
+		for e in vl:
+			amax = maxf(amax, float(e[1]))
+		_ci.draw_rect(panel, Color(0.04, 0.035, 0.03, 0.55 * amax))
+		for i in vl.size():
+			var l: Dictionary = vl[i][0]
+			var a: float = vl[i][1]
+			var y := top + rh * (i + 1) - 4.0
+			var nm := "%s: " % l["name"]
+			var col: Color = game.team_colour(int(l["team"])).lightened(0.25)
+			col.a = a
+			_text(font, Vector2(panel.position.x + 10 + 1, y + 1), nm, fs, Color(0, 0, 0, 0.7 * a))
+			_text(font, Vector2(panel.position.x + 10, y), nm, fs, col)
+			var nw := font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			_text(font, Vector2(panel.position.x + 10 + nw + 1, y + 1), l["text"], fs, Color(0, 0, 0, 0.7 * a))
+			_text(font, Vector2(panel.position.x + 10 + nw, y), l["text"], fs, Color(1, 0.97, 0.9, a))
+	# the typing box (computer)
+	if chat_typing:
+		var r := Rect2(box.position.x, box.end.y - rh - 2.0, box.size.x, rh + 2.0)
+		var sb := UiStyle.box(Color(0.09, 0.075, 0.06, 0.92), UiStyle.TRIM, 2, 6, 0.0)
+		sb.draw(_ci.get_canvas_item(), r)
+		var mine: Color = game.team_colour(game.human).lightened(0.25)
+		_text(font, r.position + Vector2(8, rh - 4), "YOU:", fs, mine)
+		var pre := font.get_string_size("YOU: ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		if chat_buf == "":
+			_text(font, r.position + Vector2(8 + pre, rh - 4), "type, Enter sends, Esc cancels", fs - 2, Color(1, 1, 1, 0.4))
+		else:
+			_text(font, r.position + Vector2(8 + pre, rh - 4), chat_buf, fs, Color(1, 0.97, 0.9))
+		if (now / 500) % 2 == 0:
+			var cw := font.get_string_size(chat_buf, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			_ci.draw_rect(Rect2(r.position.x + 8 + pre + cw + 1, r.position.y + 4, 2, rh - 6), Color(1, 0.97, 0.9))
+	# the banner for a computer's gg
+	if now < _banner_until:
+		var a := clampf(float(_banner_until - now) / 2000.0, 0.0, 1.0)
+		var vs := _vs()
+		var bw := font.get_string_size(_banner, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 28
+		var br := Rect2(vs.x * 0.5 - bw * 0.5, 124.0, bw, 28.0)
+		var bsb := UiStyle.box(Color(0.1, 0.08, 0.06, 0.8 * a), Color(0.79, 0.64, 0.29, 0.5 * a), 1, 14, 0.0)
+		bsb.draw(_ci.get_canvas_item(), br)
+		_text(font, Vector2(vs.x * 0.5, br.position.y + 19), _banner, 16, Color(1, 0.88, 0.6, a), 1)
+	# the phone's quick-chat panel
+	if quick_open:
+		var vs := _vs()
+		_ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
+		var pr := quick_panel_rect()
+		UiStyle.draw_panel(_ci, pr, UiStyle.accent(game.faction_of(game.human)), 0.95)
+		_text(UiStyle.title_font(), Vector2(pr.get_center().x, pr.position.y + 30), "QUICK CHAT", 22, UiStyle.TRIM, 1)
+		var rs := quick_rects()
+		for i in rs.size():
+			UiStyle.draw_button(_ci, rs[i], false)
+			_text(UiStyle.bold_font(), (rs[i] as Rect2).get_center() + Vector2(0, 8), String(Chat.QUICK[i][0]), 23, UiStyle.TEXT, 1)
 
 
 func set_paused(v: bool) -> void:
@@ -1706,7 +1946,15 @@ func _draw_top(font: Font) -> void:
 	UiStyle.draw_panel(_ci, clock_r, acc, 0.8)
 	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
 	if not game.demo:
-		_text(UiStyle.bold_font(), Vector2(clock_r.end.x + 8, 25), "APM %d" % game.apm(), 14, Color(1, 1, 1, 0.65))
+		var apm_t := "APM %d" % game.apm()
+		var apm_w := UiStyle.bold_font().get_string_size(apm_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var left_btn := vs.x
+		if not Settings.pc():
+			left_btn = help_rect().position.x if _help_on() else drag_rect().position.x
+			if _chat_button_on():
+				left_btn = minf(left_btn, chat_btn_rect().position.x)
+		if clock_r.end.x + 8 + apm_w < left_btn - 4:      # (a phone's buttons may need the room)
+			_text(UiStyle.bold_font(), Vector2(clock_r.end.x + 8, 25), apm_t, 14, Color(1, 1, 1, 0.65))
 	if not Settings.pc():
 		var dr := drag_rect()
 		UiStyle.draw_button(_ci, dr, false, Settings.drag_mode == "pan")
@@ -1716,6 +1964,10 @@ func _draw_top(font: Font) -> void:
 		var hr := help_rect()
 		UiStyle.draw_button(_ci, hr, false, help_mode)
 		_text(UiStyle.bold_font(), hr.get_center() + Vector2(0, 7), "?", 20, Color(1, 0.9, 0.55) if help_mode else UiStyle.TEXT, 1)
+	if _chat_button_on():
+		var cr := chat_btn_rect()
+		UiStyle.draw_button(_ci, cr, false, quick_open)
+		_draw_bubble(cr.get_center(), UiStyle.TEXT)
 	var mr := menu_rect()
 	UiStyle.draw_button(_ci, mr, mr.has_point(_mouse()) and Settings.pc())
 	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
@@ -1840,7 +2092,10 @@ func _zoom_alpha() -> float:
 
 ## The small zoom gauge, in the top bar left of the menu buttons (not on the minimap).
 func zoom_rect() -> Rect2:
-	return Rect2(_vs().x - 96 - 128 - 100, 9, 92, 18)
+	var x := _vs().x - 96 - 128
+	if _chat_button_on():
+		x = chat_btn_rect().position.x + 2       # (left of the phone's chat button, which is left of ? and DRAG)
+	return Rect2(x - 100, 9, 92, 18)
 
 
 ## Zoom gauge: a slim bar from widest view to closest, with the zoom as a factor. It
@@ -2531,7 +2786,10 @@ func _refresh_card() -> void:
 
 ## Every button the HUD has besides the quick ones: the panel's, MENU and the card's.
 func _all_buttons() -> Array:
-	return _buttons_extra + [{"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true}] + _card_buttons
+	var extra: Array = [{"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true}]
+	if _chat_button_on():
+		extra.append({"rect": chat_btn_rect(), "cb": func() -> void: quick_open = not quick_open, "enabled": true})
+	return _buttons_extra + extra + _card_buttons
 
 
 func _draw_card(font: Font) -> void:

@@ -135,6 +135,10 @@ var stats: Array = []
 var soil_scars: Array = []               # [centre, soil left, hall kind, lode left] where a Town Hall, Hive or Clocktower fell
 var _sample_t := 0.0
 var mlog: MatchLog              # the playtest log (copied from the end screen)
+var chat: Chat                  # the in-game chat (YOU and the computers; the log lines go to mlog)
+var end_note := ""              # how the match ended, for the log: "", "player_surrender", "ai_resigned"
+var end_ahead := ""             # on a player surrender: "ahead", "behind" or "about even" (worked out at that moment)
+var resigned: Array = []        # computers that resigned after a gg
 var _first_of := {}             # "team:kind" -> true once that player has had one
 
 
@@ -239,6 +243,9 @@ func _ready() -> void:
 	mlog = MatchLog.new()
 	mlog.game = self
 	add_child(mlog)
+	chat = Chat.new()
+	chat.game = self
+	add_child(chat)
 	var me: Building = _own_hall(human)
 	camera.position = me.global_position + Vector2(160, 40)
 	camera.zoom = Vector2(1.5, 1.5)
@@ -7283,6 +7290,91 @@ func _sample_stats() -> void:
 
 func faction_hall(t: int) -> String:
 	return Defs.FACTIONS[faction_of(t)]["hall"]
+
+
+# ------------------------------------------------------------------ standing (surrender, resign, chat)
+
+## What a soldier is worth in an army tally: its cost per unit made (a pair counts once each).
+static func unit_value(u: Unit) -> int:
+	return int(u.d["cost"]) / maxi(1, int(u.d.get("spawn", 1)))
+
+
+## The value of everything a player has that is not a worker (the match log's "army value").
+func army_value(t: int) -> int:
+	var v := 0
+	for u in units:
+		if u.team == t and not u.dead and not u.is_worker():
+			v += unit_value(u)
+	return v
+
+
+func worker_count(t: int) -> int:
+	var n := 0
+	for u in units:
+		if u.team == t and not u.dead and u.is_worker():
+			n += 1
+	return n
+
+
+## Finished buildings standing (walls and gates do not count).
+func building_count(t: int) -> int:
+	var n := 0
+	for b in buildings:
+		if b.team == t and not b.dead and not b.ghost and b.built and not Defs.BUILDINGS[b.kind].get("line", false):
+			n += 1
+	return n
+
+
+## A player's army, workers and buildings as a dictionary (the truth, for the log).
+func standing(t: int) -> Dictionary:
+	return {"army": army_value(t), "workers": worker_count(t), "buildings": building_count(t)}
+
+
+## `t` against every enemy still in the game, summed: {me: standing, foe: standing}.
+func standing_vs(t: int) -> Dictionary:
+	var foe := {"army": 0, "workers": 0, "buildings": 0}
+	for o in n_players():
+		if hostile(o, t) and not eliminated[o]:
+			var s := standing(o)
+			for k in foe:
+				foe[k] += int(s[k])
+	return {"me": standing(t), "foe": foe}
+
+
+## One number for how strong a position is (for "ahead / behind" in the log only).
+static func power(s: Dictionary) -> int:
+	return int(s["army"]) + 50 * int(s["workers"]) + 30 * int(s["buildings"])
+
+
+## "ahead", "behind" or "about even" (within 10%) for `t` against its enemies.
+func lead_of(t: int) -> String:
+	var sv := standing_vs(t)
+	var a := float(power(sv["me"]))
+	var b := float(power(sv["foe"]))
+	if a > b * 1.1:
+		return "ahead"
+	if a < b * 0.9:
+		return "behind"
+	return "about even"
+
+
+## "army 250 vs 0, workers 6 vs 7, buildings 4 vs 11" (t first).
+func standing_text(t: int) -> String:
+	var sv := standing_vs(t)
+	var m: Dictionary = sv["me"]
+	var f: Dictionary = sv["foe"]
+	return "army %d vs %d, workers %d vs %d, buildings %d vs %d" % [m["army"], f["army"], m["workers"], f["workers"], m["buildings"], f["buildings"]]
+
+
+## The player gives up (the pause menu): every building falls, the log says who was ahead.
+func player_surrender() -> void:
+	end_ahead = lead_of(human)
+	end_note = "player_surrender"
+	if mlog:
+		mlog.add("%s surrendered while %s (%s)" % [mlog.who(human), end_ahead, standing_text(human)])
+	for b in buildings.duplicate():
+		if b.team == human:
+			b.take_damage(99999, null)
 
 
 ## Efficiency colour: green from Defs.EFF_GOOD, through yellow, to red at Defs.EFF_POOR.
