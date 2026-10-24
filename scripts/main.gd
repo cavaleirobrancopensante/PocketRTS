@@ -494,6 +494,7 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("AMBIENCE", func() -> bool: return Music.me.amb_on, func() -> void: Music.me.toggle_ambience()))
 	v.add_child(_volume_row("AMBIENCE LEVEL", "ambience"))
 	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
+	v.add_child(_button("PATCH NOTES", func() -> void: show_patch_notes()))
 	v.add_child(_button("INTERFACE LAYOUT & HOTKEYS", func() -> void: show_layout()))
 	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
 	var sizes := [0, 100, 125, 150, 175, 200]
@@ -544,6 +545,42 @@ func show_layout() -> void:
 
 
 ## The music player: how the match playlist is chosen, and every piece to listen to.
+func show_patch_notes() -> void:
+	var root := _page()
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(c)
+	var p := PanelContainer.new()
+	p.custom_minimum_size.x = 620
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	p.add_child(v)
+	v.add_child(UiStyle.heading("PATCH NOTES", 36, UiStyle.TRIM))
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size.y = 380
+	v.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	var cur := PatchNotes.current()
+	var entries: Array = [cur]
+	for n in PatchNotes.NOTES:
+		if n != cur:
+			entries.append(n)
+	for e in entries:
+		var head := "VERSION %s%s" % [e["v"], "  (THIS VERSION)" if e == cur else ""]
+		list.add_child(UiStyle.text(head, 22, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_LEFT))
+		for it in e["items"]:
+			var t := UiStyle.text("•  " + it, 17, UiStyle.TEXT if e == cur else UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true)
+			t.custom_minimum_size.x = 560
+			list.add_child(t)
+	var back := _button("BACK", func() -> void: show_settings())
+	v.add_child(back)
+
+
 func show_music() -> void:
 	var root := _page()
 	var m := MarginContainer.new()

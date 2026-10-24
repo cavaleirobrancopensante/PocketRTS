@@ -5,4 +5,5 @@ cd "$(dirname "$0")/.."
 v=$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)
 new=$(echo "$v" | awk -F. '{ if (NF < 3) print $1"."$2".1"; else print $1"."$2"."$3+1 }')
 sed -i "s/^config\/version=\".*\"/config\/version=\"$new\"/" project.godot
+sed -i "s/^\*\*Play in your browser (version [^)]*)/**Play in your browser (version $new)/" README.md
 echo "$new"

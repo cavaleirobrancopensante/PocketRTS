@@ -227,9 +227,10 @@ func _wall(wall: Color, lip: Color, dark: Color, v: int) -> Image:
 ## a lighter single line where it steps against the plateau.
 static func _cap(dark: Color, left: bool, open: bool) -> Image:
 	var im := _blank()
-	var widths := 4 if open else 1
+	var widths := 5 if open else 6
 	for k in widths:
-		var a := (0.95 if k == 0 else 0.5 if k == 1 else 0.25 if k == 2 else 0.12) if open else 0.6
+		var a := (0.95 if k == 0 else 0.5 if k == 1 else 0.25 if k == 2 else 0.12 if k == 3 else 0.05) if open \
+			else 0.55 * pow(1.0 - float(k) / widths, 1.4)
 		for y in T:
 			var x := k if left else T - 1 - k
 			im.set_pixel(x, y, Color(dark.r, dark.g, dark.b, a))
