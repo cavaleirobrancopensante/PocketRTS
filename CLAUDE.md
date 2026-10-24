@@ -21,6 +21,7 @@
 - Crown late-game economy: soil runs out (~10 min), 1-2k unspent gold at the supply cap, saltpetre. Brood retest after the capital rework (Crown rush vs Brood economy; Hard Timing Attack on Amberfall Vale).
 - AI wall timing and scouting (owner's design, NOT yet: build orders wait until the economy tuning is done): Crown walls its ramp at a standard moment (like an SC2 wall-off) because of the faction asymmetry; walls EARLIER when it scouts an enemy rush; walls to DENY the enemy scout when it is rushing itself. Timings still unknown. A walled base cannot be read from the minimap (fog, high ground): a good player parks a grub/worker on PATROL at the foot of the ramp to spot units leaving: consider this for the Brood AI's scouting.
 - Queen animation; Armoury art polish (patch wobble, yellow specks, dummy target colour); wall balance check; optional player build grid; loosen the 24-tile limit in tools/test_ai_placement.gd.
+- MUSIC: the Crown now has 22 more battle/peace/anthem pieces more than the others (tools/music/crown_marches.py: 5 snare-solo cuts as battle, 5 as anthem, 12 generated; Crown totals: 14 battle, 9 peace, 14 anthems). The Brood and Clockwork need the same number of battle, peace and anthem pieces (the menu anthems are shared, so add Brood/Clockwork anthems too); the Crown army-select sound exists, the Brood and Clockwork need an "army" select sound (voice/<faction>_army) for mixed selections.
 - Capital rework decisions to confirm: cancel gives no egg but biomass is refunded; one 10,500 ground reserve at the capital.
 
 ## Current work

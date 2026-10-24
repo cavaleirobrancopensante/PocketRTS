@@ -6531,6 +6531,23 @@ func _check_end() -> void:
 
 # ------------------------------------------------------------------ selection & commands (used by input and HUD)
 
+## Which voice answers a pick: a Crown army of two or more kinds of fighting men (musketeers,
+## cannons, pikes ...) answers with the marching column ("crown_army"); one kind answers with its own.
+func _select_voice_kind(list: Array, first: Unit) -> String:
+	var kinds := {}
+	for e in list:
+		if is_instance_valid(e) and e is Unit and e.team == human and not e.dead and not e.is_worker():
+			kinds[e.kind] = true
+	if kinds.size() >= 2:
+		var crown := true
+		for k in kinds:
+			if String(Defs.UNITS[k].get("faction", "")) != "crown":
+				crown = false
+		if crown:
+			return "crown_army"
+	return first.kind
+
+
 func set_selection(list: Array) -> void:
 	# a unit or building you pick answers you (once per new pick)
 	for e in list:
@@ -6538,7 +6555,7 @@ func set_selection(list: Array) -> void:
 			if e is Building:
 				Sfx.building_selected(e.kind, e.d["faction"])
 			else:
-				Sfx.voice(e.kind, "select")
+				Sfx.voice(_select_voice_kind(list, e), "select")
 			break
 	for e in selection:
 		if is_instance_valid(e):

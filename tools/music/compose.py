@@ -2911,6 +2911,10 @@ def write_tracks():
     with open(os.path.join(ROOT, "scripts", "music_tracks.gd"), "w") as f:
         f.write("\n".join(lines) + "\n")
 
+import crown_marches  # noqa: E402
+crown_marches.register(sys.modules[__name__])
+
+
 if __name__ == "__main__":
     names = [a for a in sys.argv[1:] if a != "--tracks"]
     if not names and "--tracks" not in sys.argv:
