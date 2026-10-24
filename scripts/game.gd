@@ -3921,6 +3921,12 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 				site = b.worker_rally_target
 			elif not b.dual_rally() and b.rally_target is Building:
 				site = b.rally_target
+			if site != null and not site.dead and site.haul_cap() > 0:
+				# A rally point on the Town Hall is no order to haul: a real post (farm, mine,
+				# pit) comes first; he hauls only when every other job is taken and the hall has room.
+				var post := free_site(b.team, u.position)
+				if post != null:
+					site = post
 			if site == null or site.dead or site.crew.size() >= site.crew_max():
 				var was_site := site != null and not site.dead
 				site = null
@@ -4716,7 +4722,11 @@ func separation(u: Unit) -> Vector2:
 			# Idle units step aside for friends on the move.
 			if o.team == u.team and o.velocity.length() > 15.0 and u.velocity.length() < 15.0:
 				k = 260.0
-			push += dvec / dist * strength * k
+			# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
+			# anything light that bumps it gives way); equal masses push each other as before
+			var mu := 12.0 if u.kind in ["cannon", "mortar"] else 1.0
+			var mo := 12.0 if o.kind in ["cannon", "mortar"] else 1.0
+			push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
 
 
