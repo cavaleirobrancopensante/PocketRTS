@@ -111,6 +111,28 @@ func _run() -> void:
 	for st in ["built", "damaged", "construction", "destroyed"]:
 		var t := load("res://assets/buildings/powder_mill_%s.png" % st) as Texture2D
 		check(t != null and t.get_height() >= 95 and t.get_width() >= 120 and t.get_width() <= 126, "powder_mill_%s.png exists (%s)" % [st, t.get_size() if t else "missing"])
+	# the new art (tools/import_mill_chatgpt.py): the three heaps stand under the shed at the
+	# stations' columns (white, yellow, black in that order) and the hopper is up at column 72
+	var bt := (load("res://assets/buildings/powder_mill_built.png") as Texture2D).get_image()
+	var pile_cols := [Color8(205, 212, 224), Color8(232, 188, 38), Color8(48, 52, 60)]
+	for k in 3:
+		var px := 62 + int(Unit.MILL_PILE_DX[k])
+		var hit := 0
+		for y in range(78, 94):
+			for x in range(px - 4, px + 5):
+				var c := bt.get_pixel(x, y)
+				if c.a > 0.0 and absf(c.r - pile_cols[k].r) + absf(c.g - pile_cols[k].g) + absf(c.b - pile_cols[k].b) < (0.45 if k < 2 else 0.2):
+					hit += 1
+		check(hit >= 12, "heap %d is in the art at its station column %d (%d px of its colour)" % [k, px, hit])
+	var wood := 0
+	for y in range(60, 70):
+		for x in range(64, 82):
+			var c := bt.get_pixel(x, y)
+			if c.a > 0.0 and c.r > c.b + 0.12 and c.r < 0.75:
+				wood += 1
+	check(wood >= 40, "the hopper's timber rim is in the art at column 72, row 65 (%d px)" % wood)
+	var dm := (load("res://assets/buildings/powder_mill_damaged.png") as Texture2D).get_image()
+	check(dm.get_width() == 125 and dm.get_height() == 113 and bt.get_width() == 124 and bt.get_height() == 113, "built is 124x113, damaged 125x113")
 	# strips
 	var fr: Dictionary = ArtData.UNITS["labourer"]["frames"]
 	var cols := [Color8(205, 212, 224), Color8(232, 188, 38), Color8(48, 48, 56)]

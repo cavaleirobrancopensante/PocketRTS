@@ -3800,12 +3800,12 @@ func _gather(delta: float) -> Vector2:
 
 
 ## The Powder Mill: a labourer stands in front of one of the three heaps (saltpetre, sulphur,
-## charcoal: the picture's PILE_X in tools/import_mill_shed.py, as pixels from the footprint's
-## bottom centre), shovels from it into the hopper (shovel strips: dig, lift, swing, tip; 4
+## charcoal: the heap centres in art/redraws/powder_mill_shed.png as imported by
+## tools/import_mill_chatgpt.py: sprite columns 20, 31, 47 less the base column 62), shovels from it into the hopper (shovel strips: dig, lift, swing, tip; 4
 ## frames a load, a load per heap) and after each shovelful steps along to the next heap. His
 ## station is just outside the footprint's front edge, facing the heap (back to the camera).
-const MILL_PILE_DX := [-44.0, -31.0, -11.0]
-const MILL_STAND_DY := 4.0
+const MILL_PILE_DX := [-42.0, -31.0, -15.0]     # (the hopper's mouth is at column 72, row 65: +10, -42 from the base point)
+const MILL_STAND_DY := 2.0
 const MILL_CYCLE := 2.0
 const MILL_STEP_ENDS := [0.7, 1.05, 1.35]      # dig, lift, swing end here; tip to MILL_CYCLE
 var _mill_k := -1

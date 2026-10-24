@@ -87,7 +87,7 @@ python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill
                                          # replaces structures2's water mill, which import_art skips), its
                                          # millstone overlays, icon and the bay mill horse cut from the team
                                          # horse's strips (after import_horse_team and the coat masks)
-python3 tools/import_mill_shed.py       # the mill's lean-to over the three heaps and its hopper (from art/crown/mill_base, after import_powder_mill)
+python3 tools/import_mill_chatgpt.py     # the owner's ChatGPT powder mill (art/redraws/powder_mill_shed.png: lean-to over the heaps, hopper); fitted onto the old built sprite, damaged = old roof holes + rubble + a damaged shed (after import_powder_mill; art/crown/mill_base holds the old sprites)
 python3 tools/import_buildings_v2.py     # the new Town Hall (+ its bell), Barracks (+ the drilling Musketeer),
                                          # Horse Breeder (+ its paddock horses), Armoury (+ the rooftop
                                          # inventor, emblem repainted) and Church (+ lit windows) from

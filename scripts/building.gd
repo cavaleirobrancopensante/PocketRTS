@@ -96,7 +96,7 @@ const AMBIENT := {
 	"cottage": [["smoke", 0.45, 0.1, 1.8, 0.4, Color(0.85, 0.85, 0.85, 0.6)]],
 	"barracks": [["smoke", 0.21, 0.25, 1.7, 0.4, Color(0.85, 0.85, 0.85, 0.6)], ["smoke", 0.65, 0.06, 2.1, 0.35, Color(0.85, 0.85, 0.85, 0.6)]],
 	"foundry": [["smoke", 0.25, 0.06, 0.7, 0.7, Color(0.45, 0.45, 0.45, 0.75)], ["fire", 0.72, 0.68, 1.1, 0.35, Color(1, 1, 1, 0.9)]],
-	"powder_mill": [["dust", 0.75, 0.69, 1.4, 0.3, Color(1, 1, 1, 0.6)], ["dust", 0.52, 0.76, 1.0, 0.22, Color(0.85, 0.85, 0.8, 0.5)]],     # (off the millstone, and the hopper)
+	"powder_mill": [["dust", 0.75, 0.69, 1.4, 0.3, Color(1, 1, 1, 0.6)], ["dust", 0.58, 0.55, 1.0, 0.22, Color(0.85, 0.85, 0.8, 0.5)]],     # (off the millstone, and the hopper's mouth at sprite px 72,65)
 	"church": [],
 	"hive": [["smoke", 0.5, 0.78, 1.3, 0.35, Color(0.6, 1.0, 0.3, 0.55)], ["smoke", 0.22, 0.82, 2.2, 0.3, Color(0.6, 1.0, 0.3, 0.5)], ["smoke", 0.78, 0.82, 2.4, 0.3, Color(0.6, 1.0, 0.3, 0.5)]],
 	"warren": [["smoke", 0.5, 0.74, 1.5, 0.35, Color(0.6, 1.0, 0.3, 0.5)]],
