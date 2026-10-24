@@ -23,6 +23,7 @@ python3 tools/import_labourer_v2.py     # labourer round 2 (death, keg death, bu
 python3 tools/import_labourer_stride.py       # labourer s / se walk: the east walk's stride squeezed under their bodies (after v2, before the carry / Crown legs)
 python3 tools/import_labourer_carry_legs.py   # carry / carry_keg: the new walk's legs under the sack / keg bodies (after v2)
 python3 tools/import_labourer_shovel.py   # labourer at the Powder Mill: shovel_<dir> strips (3 loads x 4 frames; after the hoe: same body)
+python3 tools/import_labourer_shovel_walk.py   # labourer walking with a loaded shovel: walk_shovel_<dir> (3 loads x 6 frames: the shovel lift body on the new walk's legs; after the shovel and the walk passes)
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
 python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
 python3 tools/recolour_grub_cocoon.py     # cocoon grubs to the olive grub colour
@@ -91,6 +92,7 @@ python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill
                                          # millstone overlays, icon and the bay mill horse cut from the team
                                          # horse's strips (after import_horse_team and the coat masks)
 python3 tools/import_mill_chatgpt.py     # the owner's ChatGPT powder mill (art/redraws/powder_mill_shed.png: lean-to over the heaps, hopper); fitted onto the old built sprite, damaged = old roof holes + rubble + a damaged shed (after import_powder_mill; art/crown/mill_base holds the old sprites)
+python3 tools/split_mill_ground.py        # the mill's four sprites split into a standing structure and a ground layer (z -1, under the units): powder_mill_<state>_ground.png (after import_mill_chatgpt)
 python3 tools/import_buildings_v2.py     # the new Town Hall (+ its bell), Barracks (+ the drilling Musketeer),
                                          # Horse Breeder (+ its paddock horses), Armoury (+ the rooftop
                                          # inventor, emblem repainted) and Church (+ lit windows) from

@@ -3799,18 +3799,33 @@ func _gather(delta: float) -> Vector2:
 	return _follow(delta)
 
 
-## The Powder Mill: a labourer stands in front of one of the three heaps (saltpetre, sulphur,
-## charcoal: the heap centres in art/redraws/powder_mill_shed.png as imported by
-## tools/import_mill_chatgpt.py: sprite columns 20, 31, 47 less the base column 62), shovels from it into the hopper (shovel strips: dig, lift, swing, tip; 4
-## frames a load, a load per heap) and after each shovelful steps along to the next heap. His
-## station is just outside the footprint's front edge, facing the heap (back to the camera).
+## The Powder Mill: a real workflow. Each labourer walks to one of the three heaps (saltpetre,
+## sulphur, charcoal: the heap centres in art/redraws/powder_mill_shed.png as imported by
+## tools/import_mill_chatgpt.py: sprite columns 20, 31, 47 less the base column 62) under the
+## lean-to, DIGS and LIFTS a shovelful (shovel strips: dig, lift, swing, tip; 4 frames a load, a
+## load per heap), WALKS carrying the loaded shovel (walk_shovel strips) along the strip of
+## ground in front of the shed to the hopper on the right, TIPS it in (swing, tip) and walks back
+## (a lane further out) to the next heap, forever. All of it is manning: the powder the mill
+## grinds only counts the crew at work (Building.working_crew), not where they stand, so the
+## output is the same however they walk. The six are staggered (a different start phase, two
+## lanes per heap and per tipping spot, a slightly different dig time, a lane out and a lane
+## back) and soft separation does the rest.
 const MILL_PILE_DX := [-42.0, -31.0, -15.0]     # (the hopper's mouth is at column 72, row 65: +10, -42 from the base point)
+const MILL_HOPPER_DX := [2.0, 14.0, 26.0]       # three tipping spots in front of the hopper, from the footprint's middle (mouth: +10)
 const MILL_STAND_DY := 2.0
-const MILL_CYCLE := 2.0
+const MILL_TIP_DY := 6.0                        # (the tipping spots stand a little further out than the heaps' stations)
+const MILL_LANE_OUT := 14.0                     # the carry lane's distance below the footprint's front edge
+const MILL_LANE_BACK := 26.0                    # the way back, further out
+const MILL_CYCLE := 2.0                         # dig + tip time (the walks come on top)
 const MILL_STEP_ENDS := [0.7, 1.05, 1.35]      # dig, lift, swing end here; tip to MILL_CYCLE
-var _mill_k := -1
-var _mill_t := 0.0
+var _mill_k := -1                               # the heap he works (the load's colour)
+var _mill_t := 0.0                              # 0..1.05 digging and lifting, 1.05..MILL_CYCLE swinging and tipping
 var _mill_walking := false
+var _mill_ph := 3                               # 0 dig at the heap, 1 carry to the hopper, 2 tip, 3 back to a heap
+var _mill_route: Array = []                     # the waypoints still to walk
+var _mill_site: Building = null
+var _mill_leg_t := 0.0                          # time on this leg (no leg lasts for ever)
+var _mill_first := true
 
 
 static func mill_step(t: float) -> int:
@@ -3820,43 +3835,105 @@ static func mill_step(t: float) -> int:
 	return MILL_STEP_ENDS.size()
 
 
+func _mill_lane(site: Building) -> float:
+	return 3.0 if site.crew.find(self) % 2 == 1 else -3.0
+
+
 func mill_station(site: Building, k: int) -> Vector2:
 	var r := site.rect()
-	var lane := 3.0 if site.crew.find(self) % 2 == 1 else -3.0
-	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_PILE_DX[k]) + lane, r.end.y + MILL_STAND_DY)
+	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_PILE_DX[k]) + _mill_lane(site), r.end.y + MILL_STAND_DY)
+
+
+## Where he stands to tip into the hopper (one of three spots, by his place in the crew).
+func mill_hopper_station(site: Building) -> Vector2:
+	var r := site.rect()
+	var i := maxi(site.crew.find(self), 0) % 3
+	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_HOPPER_DX[i]) + _mill_lane(site), r.end.y + MILL_TIP_DY)
+
+
+## The legs of the round: out from heap k to the hopper along the near lane, back from the
+## hopper to heap k along the far one (a waypoint on blocked ground is left out).
+func _mill_walk_route(site: Building, out: bool) -> Array:
+	var r := site.rect()
+	var heap := mill_station(site, _mill_k)
+	var hop := mill_hopper_station(site)
+	var ly := r.end.y + (MILL_LANE_OUT if out else MILL_LANE_BACK)
+	var pts: Array = [Vector2(heap.x if out else hop.x, ly), Vector2(hop.x if out else heap.x, ly), hop if out else heap]
+	return pts.filter(func(p: Vector2) -> bool: return game.is_free(game.cell_of(p)))
+
+
+func _mill_snd() -> void:
+	_work_snd_t = 0.05            # (the bite, or the tip: a sound as the work begins)
 
 
 func _mill_work(site: Building, delta: float) -> Vector2:
-	if _mill_k < 0:
-		_mill_k = maxi(site.crew.find(self), 0) % 3
-	var goal := mill_station(site, _mill_k)
-	var d := goal - position
-	if d.length() > 70.0 or not game.is_free(game.cell_of(goal)):
+	var idx := maxi(site.crew.find(self), 0)
+	if _mill_site != site or _mill_k < 0:
+		_mill_site = site
+		_mill_k = idx % 3
+		_mill_ph = 3
+		_mill_route = []
+		_mill_first = true
+		_mill_leg_t = 0.0
+	var heap := mill_station(site, _mill_k)
+	var hop := mill_hopper_station(site)
+	if (_mill_first and position.distance_to(heap) > 90.0) or not game.is_free(game.cell_of(heap)) or not game.is_free(game.cell_of(hop)):
 		# no way to his heap (blocked, or pushed far away): shovel where he stands, facing the mill
 		_mill_walking = false
+		_mill_ph = 0
+		_mill_route = []
 		facing = (site.center() - position).normalized()
-		_advance_mill(delta)
+		_mill_t += delta
+		if _mill_t >= MILL_CYCLE:
+			_mill_t = 0.0
+			_mill_k = (_mill_k + 1) % 3
 		return Vector2.ZERO
-	if d.length() > 2.5:
-		if not _mill_walking:
+	if _mill_ph == 3 and _mill_route.is_empty() and position.distance_to(heap) > 6.0 and _mill_leg_t == 0.0:
+		_mill_route = [heap] if _mill_first else _mill_walk_route(site, false)
+	if _mill_ph == 1 and _mill_route.is_empty() and _mill_leg_t == 0.0:
+		_mill_route = _mill_walk_route(site, true)
+	if not _mill_route.is_empty():
+		var wp: Vector2 = _mill_route[0]
+		var final := _mill_route.size() == 1
+		var d := wp - position
+		_mill_leg_t += delta
+		if d.length() > (6.0 if final else 9.0) and _mill_leg_t < 9.0:
 			_mill_walking = true
-		_mill_t = 0.0
-		facing = d.normalized()
-		return d.normalized() * minf(speed, d.length() / maxf(delta, 0.001))
-	if _mill_walking:
-		_mill_walking = false
-		_work_snd_t = 0.05            # (the first bite of the new shovelful)
+			facing = d.normalized()
+			return d.normalized() * minf(speed, d.length() / maxf(delta, 0.001))
+		_mill_route.remove_at(0)
+		if not _mill_route.is_empty():
+			return Vector2.ZERO
+	_mill_leg_t = 0.0
+	_mill_walking = false
 	facing = Vector2(0.0, -1.0)
-	_advance_mill(delta)
+	match _mill_ph:
+		3:      # at a heap: dig (the six start at different points of the dig, then drift apart)
+			_mill_ph = 0
+			_mill_t = 0.0
+			if _mill_first:
+				_mill_t = [0.0, 0.5, 0.9][(idx + idx / 3) % 3]
+				_mill_first = false
+			_mill_snd()
+		0:
+			_mill_t += delta
+			if _mill_t >= float(MILL_STEP_ENDS[1]) + 0.12 * float(idx % 3):
+				_mill_ph = 1
+				_mill_t = float(MILL_STEP_ENDS[1]) - 0.001       # (the lifted load stays on the blade)
+				_mill_walking = true
+		1:      # at the hopper
+			_mill_ph = 2
+			_mill_t = float(MILL_STEP_ENDS[1])
+			_mill_snd()
+		2:
+			_mill_t += delta
+			if _mill_t >= MILL_CYCLE:
+				_mill_k = (_mill_k + 1) % 3
+				_mill_ph = 3
+				_mill_t = 0.0
+				_mill_walking = true
+				_mill_route = _mill_walk_route(site, false)
 	return Vector2.ZERO
-
-
-func _advance_mill(delta: float) -> void:
-	_mill_t += delta
-	if _mill_t >= MILL_CYCLE:
-		_mill_t = 0.0
-		_mill_k = (_mill_k + 1) % 3
-		_mill_walking = true      # (stepping along to the next heap)
 
 
 ## REPAIR autocast at work: now and then a worker at its post looks round for a damaged
@@ -4883,7 +4960,9 @@ func _anim_name() -> String:
 				if site and site.kind == "farm":
 					return "walk" if moving else "mine"
 				if site and site.kind == "powder_mill":
-					return "walk" if moving else "shovel"      # (the Mill: shovels the heaps into the hopper)
+					if _mill_walking:      # (the Mill: shovels the heaps into the hopper: a loaded shovel on the way there)
+						return "walk_shovel" if _mill_ph == 1 else "walk"
+					return "shovel"
 				return "build"
 			if work == "mining" or phase != "":
 				return "mine"
@@ -5339,7 +5418,7 @@ const BUILD_SWING := {"s": BUILD_SEQ, "se": BUILD_SEQ, "e": BUILD_SEQ, "ne": BUI
 ## with the other foot...) per this many pixels covered, so a foot on the ground stays on the
 ## ground at any speed. 37 px = 12 frames a second at the labourer's speed 74 (the fastest legs that
 ## still read as walking, see WALK_FPS_ART); the first value, 22 px, made him look to be running.
-const LAB_STRIDE := {"walk": 37.0, "carry": 37.0, "carry_keg": 37.0}
+const LAB_STRIDE := {"walk": 37.0, "carry": 37.0, "carry_keg": 37.0, "walk_shovel": 37.0}
 var _lab_build_t := 0.0
 var _lab_dist := 0.0
 var _lab_prev := Vector2.ZERO
@@ -5380,7 +5459,9 @@ func _drive_labourer(delta: float, n: int) -> bool:
 	if LAB_STRIDE.has(anim):
 		if moved < 40.0:      # (a jump, e.g. a teleport or the first tick, is not a stride)
 			_lab_dist += moved
-		frame_i = int(_lab_dist / (float(LAB_STRIDE[anim]) / float(n))) % n
+		var loads := 3 if anim == "walk_shovel" else 1      # (walk_shovel: 6 frames a load, the load from his heap)
+		var per := n / loads
+		frame_i = int(_lab_dist / (float(LAB_STRIDE[anim]) / float(per))) % per + (clampi(_mill_k, 0, 2) * per if loads == 3 else 0)
 		return true
 	if anim == "shovel":
 		frame_i = mini(maxi(_mill_k, 0) * 4 + mill_step(_mill_t), n - 1)

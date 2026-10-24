@@ -60,6 +60,7 @@ var _sail_v := 1.0               # Farm: the sails' speed, 0 still .. 1 turning 
 var scarecrow_sprites: Array = []   # Farm: its scarecrows out in the crops
 # Powder Mill: the horse walking its track (MILL_ART)
 var _mill_horse: Sprite2D = null
+var _mill_ground: Sprite2D = null     # the mill's dirt track and grass edge, on the ground under every unit (z_index -1; tools/split_mill_ground.py)
 var _mill_stone: Sprite2D = null      # the post and millstone, over the horse behind them
 var _mill_run: Node2D = null          # the runner stone and arm: turned by _mill_a, squashed like the track
 var _mill_run_top: Sprite2D = null    # (its two sprites: the main one, and its darker copy under it)
@@ -310,6 +311,11 @@ func _farm_art() -> void:
 ## The Powder Mill's horse, runner and millstone overlay (MILL_ART), over its body; hidden
 ## until a state with a track shows (_update_sprite).
 func _mill_art() -> void:
+	_mill_ground = Sprite2D.new()
+	_mill_ground.centered = false
+	_mill_ground.z_index = -1          # labourers walk the dirt on top of it, behind the shed still hidden by the structure
+	add_child(_mill_ground)
+	move_child(_mill_ground, 0)
 	_mill_horse = Sprite2D.new()
 	_mill_horse.centered = false
 	_mill_horse.offset = -Vector2(MILL_ART["anchor"])
@@ -1227,6 +1233,12 @@ func _update_sprite() -> void:
 		sails.visible = seeded and Array(FARM_ART["sail_states"]).has(state)
 	if _mill_horse:
 		_mill_show(state)
+	if _mill_ground and sprite.texture != null:
+		var gt := Game.tex("res://assets/buildings/%s_%s_ground.png" % [base, state])
+		if _mill_ground.texture != gt:
+			_mill_ground.texture = gt
+		_mill_ground.position = sprite.position
+		_mill_ground.offset = sprite.offset
 	if life:
 		life.show(state)
 	if not seeded and not dead:
@@ -1262,6 +1274,8 @@ func _update_sprite() -> void:
 			# spent ground: the pit dries out to a dead grey-brown
 			var tired := clampf(1.0 - soil_left() / Defs.SOIL_LOW, 0.0, 1.0)
 			sprite.modulate = Color.WHITE.lerp(Color(0.62, 0.56, 0.48), tired)
+	if _mill_ground:
+		_mill_ground.modulate = sprite.modulate
 
 
 func die() -> void:
@@ -1312,6 +1326,8 @@ func die() -> void:
 			sprite.visible = false
 		if field:
 			field.visible = false
+		if _mill_ground:
+			_mill_ground.visible = false
 		rubble_t = 27.5
 
 

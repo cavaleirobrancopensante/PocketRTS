@@ -29,6 +29,7 @@ Shared code: tools/gait_lib.py. Audit and ranking: docs/animation_gait_audit.md 
 | --- | --- | --- | --- |
 | Labourer farm hoe (the pickaxe replaced by a hoe, soil debris, weight shift) | mine_s/se/e/ne/n, 4 frames | import_labourer_hoe.py | the owner liked it; ChatGPT candidate labourer_hoe_v2.png exists (not installed) |
 | Labourer shovel at the Powder Mill (3 loads x 4 frames) | shovel_s/se/e/ne/n | import_labourer_shovel.py | shovel and loads drawn on the hoe bodies |
+| Labourer walking with a loaded shovel at the Powder Mill (3 loads x 6 frames): the shovel strip's lift body on the new walk's legs (import_labourer_redraw.compose) | walk_shovel_s/se/e/ne/n | import_labourer_shovel_walk.py | code composite, no ChatGPT source: ask for a hand-drawn loaded-shovel walk when the labourer is redrawn |
 | Labourer bury, north row (repaired in code: the sheet repeated the standing back view) | bury_n | import_labourer_v2.py (REPAIRS) | crouch + soil pile, no shovel |
 | Labourer walk/idle/death repairs listed in docs/animation_audit_labourer.md | various | import_labourer_redraw.py / import_labourer_v2.py | |
 | Officer and Armoured Officer idle / aim / fire / death (rotated standing body, pistol drawn in code) | branch wt-officer-pose, NOT merged yet | import_officer_poses.py | owner has not approved; prompts 10-13 exist |
