@@ -1409,10 +1409,14 @@ func _work_sound(delta: float) -> void:
 	if _work_snd_t > 0.0:
 		return
 	var name: String = WORK_SOUNDS.get(work, {}).get(kind, "")
-	if name == "" or (work == "manning" and (anim != "mine" or not (home_mine is Building and (home_mine as Building).kind == "farm"))):
+	if work == "manning" and _mill_walking and home_mine is Building and (home_mine as Building).kind == "powder_mill":
+		_work_snd_t = 0.1       # (the bite comes when he is at his heap again)
+		return
+	if name == "" or (work == "manning" and not ((anim == "mine" and home_mine is Building and (home_mine as Building).kind == "farm") \
+			or (anim == "shovel" and home_mine is Building and (home_mine as Building).kind == "powder_mill"))):
 		_work_snd_t = 0.5
 		return
-	_work_snd_t = randf_range(2.2, 3.2) if work == "manning" else 2.0
+	_work_snd_t = MILL_CYCLE if anim == "shovel" else randf_range(2.2, 3.2) if work == "manning" else 2.0
 	Sfx.play(name, position, -6.0 if work == "manning" else -3.0)
 	if kind == "labourer" and name == "work/crown_build" and BUILD_SWING.has(anim_dir):
 		_lab_build_t = lab_build_lock(anim_dir)      # (the clip's first big blow lands on a strike)
@@ -3781,6 +3785,8 @@ func _gather(delta: float) -> Vector2:
 	if kind == "labourer" and site.kind == "farm":
 		return _farm(site, delta)
 	if work == "manning":
+		if kind == "labourer" and site.kind == "powder_mill":
+			return _mill_work(site, delta)
 		facing = (site.center() - position).normalized()
 		return Vector2.ZERO
 	work = "to_site"
@@ -3791,6 +3797,66 @@ func _gather(delta: float) -> Vector2:
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
 		_request_path(game.approach_point(site, position))
 	return _follow(delta)
+
+
+## The Powder Mill: a labourer stands in front of one of the three heaps (saltpetre, sulphur,
+## charcoal: the picture's PILE_X in tools/import_mill_shed.py, as pixels from the footprint's
+## bottom centre), shovels from it into the hopper (shovel strips: dig, lift, swing, tip; 4
+## frames a load, a load per heap) and after each shovelful steps along to the next heap. His
+## station is just outside the footprint's front edge, facing the heap (back to the camera).
+const MILL_PILE_DX := [-44.0, -31.0, -11.0]
+const MILL_STAND_DY := 4.0
+const MILL_CYCLE := 2.0
+const MILL_STEP_ENDS := [0.7, 1.05, 1.35]      # dig, lift, swing end here; tip to MILL_CYCLE
+var _mill_k := -1
+var _mill_t := 0.0
+var _mill_walking := false
+
+
+static func mill_step(t: float) -> int:
+	for i in MILL_STEP_ENDS.size():
+		if t < float(MILL_STEP_ENDS[i]):
+			return i
+	return MILL_STEP_ENDS.size()
+
+
+func mill_station(site: Building, k: int) -> Vector2:
+	var r := site.rect()
+	var lane := 3.0 if site.crew.find(self) % 2 == 1 else -3.0
+	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_PILE_DX[k]) + lane, r.end.y + MILL_STAND_DY)
+
+
+func _mill_work(site: Building, delta: float) -> Vector2:
+	if _mill_k < 0:
+		_mill_k = maxi(site.crew.find(self), 0) % 3
+	var goal := mill_station(site, _mill_k)
+	var d := goal - position
+	if d.length() > 70.0 or not game.is_free(game.cell_of(goal)):
+		# no way to his heap (blocked, or pushed far away): shovel where he stands, facing the mill
+		_mill_walking = false
+		facing = (site.center() - position).normalized()
+		_advance_mill(delta)
+		return Vector2.ZERO
+	if d.length() > 2.5:
+		if not _mill_walking:
+			_mill_walking = true
+		_mill_t = 0.0
+		facing = d.normalized()
+		return d.normalized() * minf(speed, d.length() / maxf(delta, 0.001))
+	if _mill_walking:
+		_mill_walking = false
+		_work_snd_t = 0.05            # (the first bite of the new shovelful)
+	facing = Vector2(0.0, -1.0)
+	_advance_mill(delta)
+	return Vector2.ZERO
+
+
+func _advance_mill(delta: float) -> void:
+	_mill_t += delta
+	if _mill_t >= MILL_CYCLE:
+		_mill_t = 0.0
+		_mill_k = (_mill_k + 1) % 3
+		_mill_walking = true      # (stepping along to the next heap)
 
 
 ## REPAIR autocast at work: now and then a worker at its post looks round for a damaged
@@ -4816,6 +4882,8 @@ func _anim_name() -> String:
 				var site := home_mine as Building
 				if site and site.kind == "farm":
 					return "walk" if moving else "mine"
+				if site and site.kind == "powder_mill":
+					return "walk" if moving else "shovel"      # (the Mill: shovels the heaps into the hopper)
 				return "build"
 			if work == "mining" or phase != "":
 				return "mine"
@@ -5312,6 +5380,9 @@ func _drive_labourer(delta: float, n: int) -> bool:
 		if moved < 40.0:      # (a jump, e.g. a teleport or the first tick, is not a stride)
 			_lab_dist += moved
 		frame_i = int(_lab_dist / (float(LAB_STRIDE[anim]) / float(n))) % n
+		return true
+	if anim == "shovel":
+		frame_i = mini(maxi(_mill_k, 0) * 4 + mill_step(_mill_t), n - 1)
 		return true
 	if anim == "build" and BUILD_SWING.has(anim_dir):
 		_lab_build_t += delta

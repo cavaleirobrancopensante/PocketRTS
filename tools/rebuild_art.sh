@@ -18,6 +18,7 @@ python3 tools/import_labourer_redraw.py  # labourer redraws (art/redraws/laboure
                                          # idle_carry, mine, build (replaces the strips above; also edits art_data.gd)
 python3 tools/import_labourer_hoe.py   # labourer farm swing: the redraw's pickaxe becomes a hoe (after import_labourer_redraw)
 python3 tools/import_labourer_gait.py   # labourer side/diagonal gait (e, se, ne walk / carry / keg): legs rebuilt per frame (after the hoe)
+python3 tools/import_labourer_shovel.py   # labourer at the Powder Mill: shovel_<dir> strips (3 loads x 4 frames; after the hoe: same body)
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
 python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
 python3 tools/recolour_grub_cocoon.py     # cocoon grubs to the olive grub colour
@@ -84,6 +85,7 @@ python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill
                                          # replaces structures2's water mill, which import_art skips), its
                                          # millstone overlays, icon and the bay mill horse cut from the team
                                          # horse's strips (after import_horse_team and the coat masks)
+python3 tools/import_mill_shed.py       # the mill's lean-to over the three heaps and its hopper (from art/crown/mill_base, after import_powder_mill)
 python3 tools/import_buildings_v2.py     # the new Town Hall (+ its bell), Barracks (+ the drilling Musketeer),
                                          # Horse Breeder (+ its paddock horses), Armoury (+ the rooftop
                                          # inventor, emblem repainted) and Church (+ lit windows) from
