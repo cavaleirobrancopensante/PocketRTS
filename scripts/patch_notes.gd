@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.58", "items": [
+		"Art work files only: labourer south-east and north-east walk sheets saved for the coming walk redraw.",
+	]},
 	{"v": "0.12.57", "items": [
 		"Art work files only: new labourer south walk sheet saved for the coming walk redraw.",
 	]},
