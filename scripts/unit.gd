@@ -4174,6 +4174,9 @@ func _haul_horses(site: Building, delta: float) -> Vector2:
 				take_reins(h)               # (the leash: he now leads it; the claim is lifted)
 				want.erase(h)
 				return Vector2.ZERO
+			if _haul_stuck(bd, delta) == 2:
+				h._snap_to_leader(position)  # (cannot get to it: the horse is brought to his side)
+				return Vector2.ZERO
 			return _walk_to(h.position, delta)
 		"deliver":
 			var goal_e: Entity = null
@@ -4199,6 +4202,12 @@ func _haul_horses(site: Building, delta: float) -> Vector2:
 			if bd < float(Defs.HAUL["reach"]):
 				_hitch(pick, goal_e)
 				return Vector2.ZERO
+			if _haul_stuck(bd, delta) == 2:
+				# no headway for a long while (a locked gate, a crowd, a pocket between buildings):
+				# the horse is put beside its destination and goes in from there
+				pick._snap_to_leader(game.approach_point(goal_e, position))
+				_hitch(pick, goal_e)
+				return Vector2.ZERO
 			return _walk_to(game.approach_point(goal_e, position), delta)
 		_:
 			if site.edge_distance(position) < radius + float(Defs.HAUL["reach"]):
@@ -4206,7 +4215,48 @@ func _haul_horses(site: Building, delta: float) -> Vector2:
 				work = "waiting"
 				path = PackedVector2Array()
 				return Vector2.ZERO
+			if _haul_stuck(site.edge_distance(position), delta) == 2:
+				haul_job = {}              # (cannot get home: free for the next job where he stands)
+				work = "waiting"
+				path = PackedVector2Array()
+				return Vector2.ZERO
 			return _walk_to(game.approach_point(site, position), delta)
+
+
+const HAUL_REPATH_AFTER := 6.0     # s without headway: a new path
+const HAUL_GIVE_UP_AFTER := 16.0   # s without headway: the fallback (the caller's)
+var _hs_best := INF
+var _hs_t := 0.0
+var _hs_ph := ""
+
+
+## (a hauler) Stuck-recovery for one leg of a trip, `ref` being the distance still to go. Without
+## 8 px of headway for HAUL_REPATH_AFTER s the way is worked out again; for HAUL_GIVE_UP_AFTER s
+## this returns 2 (once, then it starts over) and the caller takes its fallback.
+func _haul_stuck(ref: float, delta: float) -> int:
+	var key := String(haul_job.get("ph", ""))
+	if key != _hs_ph:
+		_hs_ph = key
+		_hs_best = INF
+		_hs_t = 0.0
+	if ref < _hs_best - 8.0:
+		_hs_best = ref
+		_hs_t = 0.0
+		return 0
+	var before := _hs_t
+	_hs_t += delta
+	if before < HAUL_REPATH_AFTER and _hs_t >= HAUL_REPATH_AFTER:
+		path = PackedVector2Array()
+		path_i = 0
+		repath_t = 0.0
+		for h in led:
+			if is_instance_valid(h):
+				h._lead_stuck = 3.0     # (a led horse jammed behind him is put back beside him now)
+	if _hs_t >= HAUL_GIVE_UP_AFTER:
+		_hs_best = INF
+		_hs_t = 0.0
+		return 2
+	return 0
 
 
 ## Let the leash go at the destination: a building takes the horse in (for its recruit or
@@ -6144,6 +6194,12 @@ func _follow_leader(delta: float) -> Vector2:
 		var af: Vector2 = ahead.facing if ahead.facing != Vector2.ZERO else lf
 		goal = ahead.position - af * (radius * 2.0 + 4.0)
 	speed = maxf(float(d["speed"]), leader.speed * 1.35)
+	# the spot beside him may lie inside a wall or a gate post (he is in a gateway one tile wide,
+	# the horse at his side is not): take the spot behind him, else his own
+	if not game._clear_at(goal, radius, team):
+		goal = leader.position - lf * (leader.radius + radius + 6.0)
+		if not game._clear_at(goal, radius, team):
+			goal = leader.position
 	var to := goal - position
 	var dist := to.length()
 	# the leash has a length: a horse that is too far, or has made no headway for a while (jammed
@@ -6157,16 +6213,32 @@ func _follow_leader(delta: float) -> Vector2:
 		_lead_stuck = 0.0
 		_snap_to_leader(goal)
 		return Vector2.ZERO
-	if dist > 180.0:
-		# far behind (round a corner, past a crowd): find the way
+	if dist > 180.0 or not _walk_straight(goal):
+		# far behind, or a wall corner or gate post between it and its leader (a gate is a gap one
+		# tile wide: a straight line from the side of the road runs into the wall): find the way
 		if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
-			repath_t = 1.5
-			_request_path(leader.position)
+			repath_t = 0.4 if dist <= 180.0 else 1.5
+			_request_path(leader.position if dist > 40.0 else goal)
+		if path_pending and dist <= 180.0:
+			return Vector2.ZERO
 		return _follow(delta)
+	if not path.is_empty():
+		path = PackedVector2Array()
+		path_i = 0
 	if dist < 3.0:
 		facing = facing.lerp(lf, clampf(delta * 4.0, 0.0, 1.0)).normalized()
 		return Vector2.ZERO
 	return to.normalized() * minf(speed, dist * 3.0 + 6.0)
+
+
+## Can it walk the straight line to `p` (its own side's gates open to it, walls and cliffs not)?
+func _walk_straight(p: Vector2) -> bool:
+	var dist := position.distance_to(p)
+	var steps := int(dist / 8.0) + 1
+	for s in steps + 1:
+		if not game._clear_at(position.lerp(p, float(s) / float(steps)), radius, team):
+			return false
+	return true
 
 
 const LEASH_MAX := 170.0
