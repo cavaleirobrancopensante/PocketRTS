@@ -40,7 +40,7 @@ const MIXES := ["diag", "patch", "middle"]
 const MIX_NAMES := {"diag": "DIAGONAL", "patch": "PATCHES", "middle": "MIDDLE"}
 const BIOME_LIST := ["grass", "autumn", "desert", "snow", "marsh", "volcanic", "heath", "jungle", "canyon", "tundra",
 	"ashland", "pinewood", "steppe", "coast", "oldkingdom", "bog", "glowwood", "fall", "badlands"]
-const KIND_ORDER := ["trees", "rocks", "plants", "ruins", "buildings", "camp", "farm", "stores", "animals"]
+const KIND_ORDER := ["trees", "rocks", "plants", "ruins", "buildings", "camp", "farm", "stores"]
 ## New map sizes: [w, h, what it suits]
 const SIZES := [[48, 48, "tiny 1v1"], [64, 64, "small 1v1"], [84, 60, "classic"], [80, 80, "1v1"],
 	[96, 96, "1v1"], [112, 84, "wide 1v1"], [64, 104, "tall 1v1"], [88, 120, "tall 1v1"],
