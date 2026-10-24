@@ -100,10 +100,10 @@ func _run() -> void:
 	check(min_d > 190.0 + mus.radius + u.radius, "it never came into musket range (closest %.0f px)" % min_d)
 	check(sc._flees >= 1 and not sc.standoff_log.is_empty(), "it backed out and chose a stand-off spot")
 	check(sc.foe_ranged_seen and sc.foe_kinds_seen.has("musketeer"), "it remembers the enemy has musketeers")
-	check(sc.proof_not_horse_rush(), "it knows the enemy has foot soldiers: not a horse rush")
+	check(sc.proof_not_horse_rush(), "it knows the enemy (Crown) has slow foot soldiers: not a horse rush")
 	var spot: Vector2 = sc.standoff_log[0]
 	check(spot.distance_to(mus.position) > 190.0 + 10.0 + 80.0, "the stand-off spot is outside the musket's range plus a margin (%.0f px)" % spot.distance_to(mus.position))
-	check(sc._log_has_text("not a horse rush"), "what it learned is in the match log")
+	check(sc._log_has_text("standard opening"), "what it learned is in the match log")
 	var n := 0
 	while sc._mode != "watch" and sc.state == "going" and n < 1500:
 		await physics_frame

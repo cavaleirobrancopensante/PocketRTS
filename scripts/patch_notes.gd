@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.64", "items": [
+		"Crown AI scouts for a rush, walls its ramp in time (about 2:00) and trains Musketeers behind it; against a Brood extreme rush it now holds with almost no workers lost.",
+		"The AI scout knows the Brood's Raptors are a rush: foot-soldier proof is only used against the Crown.",
+	]},
 	{"v": "0.12.63", "items": [
 		"Armoured Musketeers (all directions) and Musketeers (front and back) now walk with the new labourer legs: a proper alternating step.",
 		"The Pikeman's files moved to a folder of obsolete units (he is not in the game).",

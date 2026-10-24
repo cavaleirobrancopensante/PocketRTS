@@ -70,7 +70,13 @@ var log_lines: Array = []
 var foe_kinds_seen := {}        # armed unit kind -> true
 var foe_ranged_seen := false    # a shooter (range beyond a bayonet's reach) was seen
 var foe_max_range := 0.0        # the longest weapon range seen (pixels)
-var foe_nonhorse_seen := false  # an armed soldier that is not a horseman: it is not a horse rush
+var foe_nonhorse_seen := false  # a SLOW armed soldier of a faction whose rush is mounted (the Crown): not a horse rush
+var foe_rush_seen := {}         # fast rush unit kind -> {"count" (most seen at once), "first" (clock), "last", "speed", "pos"}
+var foe_first_military := -1.0  # when an armed soldier or a military building was first seen
+var foe_rush_logged := false
+var foe_early_prod := {}        # military building kind -> clock it was first seen
+## Production buildings that this early (game seconds) are an opening that goes for units at once.
+const EARLY_PROD := {"warren": 140.0, "assembly_works": 100.0}
 var standoff_log: Array = []    # (the stand-off spots chosen; tests read it)       # (what went to the match log; tests read it)
 
 var _foe := -1
@@ -142,7 +148,12 @@ func tick() -> void:
 		foe_ranged_seen = false
 		foe_max_range = 0.0
 		foe_nonhorse_seen = false
+		foe_rush_seen.clear()
+		foe_first_military = -1.0
+		foe_rush_logged = false
+		foe_early_prod.clear()
 	_observe()
+	_check_rush_units()
 	if state == "going":
 		_follow()
 	elif state == "wait" or state == "done":
@@ -340,6 +351,8 @@ func _observe() -> void:
 			continue
 		if game.is_visible_to(t, b.center()):
 			_seen_b[b] = true
+			if EARLY_PROD.has(b.kind) and not foe_early_prod.has(b.kind):
+				foe_early_prod[b.kind] = game.clock
 			if b.kind == hall_kind and b == _nearest_start_hall(b):
 				_hall_seen = true
 	for b in _seen_b.keys():
@@ -349,6 +362,7 @@ func _observe() -> void:
 	var sup := 0
 	var workers := 0
 	var st := Vector2(game.starts[_foe]) * Defs.TILE
+	var rush_now := {}
 	for u in game.units:
 		if u.team != _foe or u.dead or u.off_field or u.aboard != null:
 			continue
@@ -358,12 +372,20 @@ func _observe() -> void:
 			workers += 1
 			continue
 		_learn(u)
+		if _is_rush_unit(u):
+			rush_now[u.kind] = int(rush_now.get(u.kind, 0)) + 1
+			var e: Dictionary = foe_rush_seen.get(u.kind, {"count": 0, "first": game.clock, "last": game.clock, "speed": float(u.d["speed"]), "pos": u.position})
+			e["last"] = game.clock
+			e["pos"] = u.position
+			foe_rush_seen[u.kind] = e
 		if u.kind == "horse" or u.kind == "messenger":
 			continue
 		value += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
 		sup += int(u.d["supply"])
 		if u.position.distance_to(st) > 20.0 * Defs.TILE:
 			_far_army_t = game.clock
+	for k in rush_now:
+		foe_rush_seen[k]["count"] = maxi(int(foe_rush_seen[k]["count"]), int(rush_now[k]))
 	_workers_seen = maxi(_workers_seen, workers)
 	if sup > 0 or (_army_hist.is_empty() and _hall_seen):
 		_army_hist.append([game.clock, value, sup])
@@ -384,8 +406,35 @@ static func _is_horseman(u: Unit) -> bool:
 	return u.kind in ["horse", "messenger", "dragoon", "cuirassier", "mounted_missionary"] or u.d.get("mounted", false)
 
 
-## True once the scout has seen an armed soldier that is no horseman (so the enemy's early
-## army is not a horse rush).
+## What each faction rushes with (fast units that arrive long before an army would). Anything
+## else armed and quick (Defs speed >= RUSH_SPEED) counts too.
+const RUSH_KINDS := {
+	"brood": ["raptor", "skywing"],
+	"crown": ["cuirassier", "dragoon"],
+	"clockwork": ["ornithopter"],
+}
+const RUSH_SPEED := 95.0
+## Before this (game seconds) fast soldiers in numbers are the enemy's opening, not a raid.
+const EARLY_RUSH_BY := 270.0
+
+
+func _foe_faction() -> String:
+	return game.faction_of(_foe) if _foe >= 0 else ""
+
+
+## Is this a rush unit of the enemy's faction (fast, armed, and not a lone horse or messenger)?
+func _is_rush_unit(u: Unit) -> bool:
+	if u.kind == "horse" or u.kind == "messenger" or u.is_worker() or not u.has_attack():
+		return false
+	if RUSH_KINDS.get(_foe_faction(), []).has(u.kind):
+		return true
+	return float(u.d.get("speed", 0)) >= RUSH_SPEED
+
+
+## True once the scout has seen a SLOW armed foot soldier of a faction whose rush is mounted
+## (only the Crown: its Horsemen and Dragoons are the rush, a Musketeer line is the standard
+## opening). Never set against the Brood or Clockwork: their quick units (Raptors, Skywings,
+## Ornithopters) are the rush itself, see rush_units_seen().
 func proof_not_horse_rush() -> bool:
 	return foe_nonhorse_seen
 
@@ -394,16 +443,91 @@ func enemy_has_ranged() -> bool:
 	return foe_ranged_seen
 
 
+## The most fast rush soldiers of the enemy seen at once so far.
+func rush_units_seen() -> int:
+	var n := 0
+	for k in foe_rush_seen:
+		n += int(foe_rush_seen[k]["count"])
+	return n
+
+
+## Evidence of a rush from what was seen: fast units in numbers (or any, very early), or a
+## great deal of army very early. "rush", or "" when there is none.
+func rush_evidence() -> String:
+	for k in foe_early_prod:
+		if float(foe_early_prod[k]) <= float(EARLY_PROD[k]):
+			return "a %s already up at %d:%02d" % [String(Defs.BUILDINGS[k]["name"]), int(foe_early_prod[k]) / 60, int(foe_early_prod[k]) % 60]
+	var n := 0
+	var first := INF
+	for k in foe_rush_seen:
+		if game.clock - float(foe_rush_seen[k]["last"]) > 240.0:
+			continue          # (old news: the verdict may be looked at again)
+		n += int(foe_rush_seen[k]["count"])
+		first = minf(first, float(foe_rush_seen[k]["first"]))
+	if n <= 0:
+		return ""
+	if first <= EARLY_RUSH_BY and (n >= 2 or first <= 150.0):
+		return "%d fast %s seen at %d:%02d" % [n, _rush_names(), int(first) / 60, int(first) % 60]
+	return ""
+
+
+func _rush_names() -> String:
+	var names: Array = []
+	for k in foe_rush_seen:
+		names.append(String(Defs.UNITS[k]["name"]))
+	return " and ".join(names)
+
+
+## How the enemy opened, from what was seen: "rush" (fast units or a big early army), "standard"
+## (the base and its army seen, nothing fast), "unknown" (too little seen).
+func foe_opening() -> String:
+	if rush_evidence() != "":
+		return "rush"
+	if verdict == "rush":
+		return "rush"
+	if _hall_seen and (_coverage() >= 0.35 or foe_nonhorse_seen) and game.clock >= 90.0:
+		return "standard"
+	return "unknown"
+
+
+## When the enemy's seen rush units could reach our base (game seconds), or INF when none was
+## seen lately. From the nearest one to our hall at its own speed (a straight line: the path is
+## no shorter).
+func rush_eta() -> float:
+	var best := INF
+	var home := game.center_of_team(ai.team)
+	for k in foe_rush_seen:
+		var e: Dictionary = foe_rush_seen[k]
+		if game.clock - float(e["last"]) > 40.0:
+			continue
+		var d := home.distance_to(e["pos"] as Vector2)
+		best = minf(best, float(e["last"]) + d / maxf(40.0, float(e["speed"])))
+	return best
+
+
+## A rush seen is a rush: defend at once (escalation never waits for REDECIDE).
+func _check_rush_units() -> void:
+	var ev := rush_evidence()
+	if ev == "" or verdict == "rush":
+		return
+	_apply("rush", ev)
+
+
 ## Remember an armed enemy unit in sight: what it is, and where the guns are.
 func _learn(u: Unit) -> void:
 	if not u.has_attack() or u.kind == "horse":
 		return
 	var rng := float(u.d["range"])
+	if foe_first_military < 0.0:
+		foe_first_military = game.clock
 	if not foe_kinds_seen.has(u.kind):
 		foe_kinds_seen[u.kind] = true
-		if not _is_horseman(u) and not foe_nonhorse_seen:
+		var fac := _foe_faction()
+		if _is_rush_unit(u):
+			_say("saw an enemy %s (fast, a %s rush unit): evidence of a rush" % [String(Defs.UNITS[u.kind]["name"]), fac.capitalize()])
+		elif fac == "crown" and not _is_horseman(u) and not foe_nonhorse_seen:
 			foe_nonhorse_seen = true
-			_say("saw an enemy %s: the enemy has foot soldiers, so its early army is not a horse rush" % String(Defs.UNITS[u.kind]["name"]))
+			_say("saw an enemy %s: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)" % String(Defs.UNITS[u.kind]["name"]))
 	if rng > 40.0:
 		foe_ranged_seen = true
 	foe_max_range = maxf(foe_max_range, rng)
@@ -586,7 +710,11 @@ func _evaluate() -> Dictionary:
 	var clock := game.clock
 	var out := {"verdict": "balanced", "reason": "", "halls": halls, "econ": econ, "mil": mil, "walls": walls, "value": value, "sup": sup}
 	var cov := _coverage()
-	if clock < 400.0 and (value >= thr or (_far_army_t >= 0.0 and clock - _far_army_t < 60.0 and value >= thr * 0.4)):
+	var ev := rush_evidence()
+	if ev != "":
+		out["verdict"] = "rush"
+		out["reason"] = ev
+	elif clock < 400.0 and (value >= thr or (_far_army_t >= 0.0 and clock - _far_army_t < 60.0 and value >= thr * 0.4)):
 		out["verdict"] = "rush"
 		out["reason"] = "early army (%d supply) in or out of its base" % sup
 	elif mil >= 2 and econ <= econ_cap and halls <= 1 and clock < 240.0 and value > 0.0:
@@ -710,10 +838,15 @@ func _defence() -> void:
 		return
 	if ai._hall_reserve or ai._saving:
 		return
+	# (the wall first, it is cheap and must stand before the enemy is here)
+	if want_wall and not ai._walled and _faction() == "crown" and ai._wall_wanted():
+		ai._wall_off()
+		if not ai._walled:
+			return          # (saving for it)
 	var plan := {}
 	match _faction():
 		"crown":
-			plan = {"barracks": 2 if ai.difficulty < 2 else 3}
+			plan = {"barracks": 1 if game.clock < 200.0 else (2 if ai.difficulty < 2 else 3)}
 		"brood":
 			plan = {"warren": 1}
 		"clockwork":
@@ -723,6 +856,3 @@ func _defence() -> void:
 				and ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) and (ai._mine(k).size() > 0 or ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) + 30):
 			ai._construct(k)
 			return
-	if want_wall and not ai._walled and _faction() == "crown" and game.requirement_met(ai.team, "wall") and ai._gold() >= 140 \
-			and not ai._mine("barracks").is_empty():
-		ai._wall_off()

@@ -4015,8 +4015,16 @@ func sweep_ghosts(quick := false) -> void:
 			if crown_kept.has(b):
 				continue
 			# a Crown ghost only exists while a Labourer is on his way to it (or has it
-			# queued): nobody coming, it's gone at once (refunded)
-			site_failed(b, "abandoned")
+			# queued): nobody coming, it's gone at once (refunded). A computer's wall piece
+			# first finds a labourer (AI.adopt_site): a builder killed or pulled off must not
+			# cost it the wall.
+			var adopted := false
+			for ai in ais:
+				if ai.team == b.team and ai.has_method("adopt_site") and ai.adopt_site(b):
+					adopted = true
+					break
+			if not adopted:
+				site_failed(b, "abandoned")
 			continue
 		var coming: Unit = null
 		for u in units:
