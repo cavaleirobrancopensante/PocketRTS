@@ -4223,11 +4223,13 @@ func _haul_keg(site: Building, delta: float) -> Vector2:
 		"to_wagon":
 			work = "hauling"
 			if position.distance_to(w.position) < radius + w.radius + 16.0:
-				var put := minf(w.max_powder() - w.powder, shots)
+				# (a gun counts its powder in its own shots: a cannon shot takes 3 musket shots)
+				var per := 1.0 if w.kind == "powder_wagon" else float(Defs.POWDER["cost"].get(w.kind, 0.5)) / float(Defs.POWDER["cost"]["musketeer"])
+				var put := minf(w.max_powder() - w.powder, shots / per)
 				w.powder += put
 				w._dispense_t = 0.8
-				if put < shots:
-					game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost() * (1.0 - put / shots)
+				if put * per < shots:
+					game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost() * (1.0 - put * per / shots)
 				keg = false
 				game.haul_done(team, "keg")
 				if team == game.human and put > 0.0:
@@ -4248,6 +4250,16 @@ func _haul_keg(site: Building, delta: float) -> Vector2:
 				path = PackedVector2Array()
 				return Vector2.ZERO
 			return _walk_to(game.approach_point(site, position), delta)
+
+
+## (a Field Cannon or Mortar) dry, cannot limber to go and refill (on HOLD, or without a
+## horse), and out of reach of a powder building: a hauler brings it a keg.
+func needs_keg() -> bool:
+	if not (kind == "cannon" or kind == "mortar") or dead or off_field or aboard != null:
+		return false
+	if powder >= 1.0 or (harnessed and order != "hold"):
+		return false
+	return _powder_building() == null
 
 
 func _keg_cost() -> float:

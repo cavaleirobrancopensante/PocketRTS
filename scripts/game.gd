@@ -5793,13 +5793,16 @@ func hauler_serves(t: int) -> bool:
 	return false
 
 
-var _rid_wait := {}                 # horse reservation -> seconds its horse stood ready with no hauler coming
-
-
-## Is the horse kept for `rid` brought by a hauler (the side has some, and this horse hasn't
-## waited longer than Defs.HAUL.stale for one)? If not, its recruit or gun fetches it itself.
+## Is the horse kept for `rid` brought by a hauler (one is free to come, or already has a hold
+## of the horse)? If not, its recruit or gun fetches it itself at once.
 func hauler_serves_rid(t: int, rid: int) -> bool:
-	return hauler_serves(t) and float(_rid_wait.get(rid, 0.0)) < float(Defs.HAUL["stale"])
+	if not hauler_serves(t):
+		return false
+	var h := reserved_horse(t, rid)
+	if h != null and Unit._claim_live(h):
+		return true
+	return haulers_of(t).any(func(u: Unit) -> bool: return u.haul_job.is_empty() \
+		or (String(u.haul_job.get("ph", "")) == "home" and u.led.is_empty() and not u.keg))
 
 
 ## A horse nobody has a hold of.
@@ -5857,7 +5860,8 @@ func team_requests(t: int) -> Array:
 
 
 ## Powder Wagons on SUPPLY (out of reach of a filling building) with room for more kegs than
-## are already on the way; the powder bank must have a keg's worth.
+## are already on the way, and dry Field Cannons / Mortars that cannot limber (on HOLD, or no
+## horse) and so cannot drive to a refill; the powder bank must have a keg's worth.
 func keg_requests(t: int) -> Array:
 	var out: Array = []
 	var shots := float(Defs.WAGON["keg"])
@@ -5868,12 +5872,17 @@ func keg_requests(t: int) -> Array:
 		return out
 	var hs := haulers_of(t)
 	for w in units:
-		if w.team != t or w.kind != "powder_wagon" or w.dead or w.off_field or not w.supplying or w._powder_building() != null:
+		if w.team != t or w.dead or w.off_field:
 			continue
 		var flying := hs.filter(func(u: Unit) -> bool: return String(u.haul_job.get("k", "")) == "keg" and u.haul_job.get("wagon") == w).size()
-		var n := mini(int(Defs.HAUL["kegs"]) - flying, int((w.max_powder() - w.powder) / shots) - flying)
-		if n > 0:
-			out.append({"key": "k%d" % w.get_instance_id(), "k": "keg", "wagon": w, "n": n})
+		if w.kind == "powder_wagon":
+			if not w.supplying or w._powder_building() != null:
+				continue
+			var n := mini(int(Defs.HAUL["kegs"]) - flying, int((w.max_powder() - w.powder) / shots) - flying)
+			if n > 0:
+				out.append({"key": "k%d" % w.get_instance_id(), "k": "keg", "wagon": w, "n": n})
+		elif w.needs_keg() and flying == 0:
+			out.append({"key": "k%d" % w.get_instance_id(), "k": "keg", "wagon": w, "n": 1})
 	return out
 
 
@@ -7391,18 +7400,6 @@ func _horse_res_tick(delta: float) -> void:
 	if _res_chk > 0.0:
 		return
 	_res_chk = 2.0
-	# how long each kept horse has stood ready with no hauler on its way (Defs.HAUL.stale
-	# seconds: then its recruit or gun fetches it by itself)
-	var seen := {}
-	for t in n_players():
-		if not hauler_serves(t):
-			continue
-		for r in horse_requests(t):
-			seen[r["rid"]] = true
-			_rid_wait[r["rid"]] = (float(_rid_wait.get(r["rid"], 0.0)) + 2.0) if r["ready"] else 0.0
-	for k in _rid_wait.keys():
-		if not seen.has(k):
-			_rid_wait.erase(k)
 	for h in units:
 		if h.kind == "horse" and not h.dead and h.horse_rid != 0 and rid_owner(h.team, h.horse_rid) == null:
 			h.horse_rid = 0
