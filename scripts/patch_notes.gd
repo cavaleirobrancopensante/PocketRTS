@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.41", "items": [
+		"Cliff walls: the same soft shade on the low ground beside a wall's end.",
+	]},
 	{"v": "0.12.40", "items": [
 		"Cliff walls: where walls step diagonally, the high ground beside the wall's end gets a soft shade, so the step is less abrupt.",
 	]},

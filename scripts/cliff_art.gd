@@ -78,13 +78,11 @@ func paint(img: Image, cr: Rect2i) -> void:
 				var wr := is_wall(x + 1, y)
 				if not wl:
 					img.blend_rect(p["cap_l_open"] if w else p["cap_l_step"], full, at)
-					if not w:
-						# the high ground beside a step: a soft shade falling off the wall's end
-						img.blend_rect(p["hi_r"], full, at + Vector2i(-T, 0))
+					# the ground beside the wall's end, high or low: a soft shade falling off it
+					img.blend_rect(p["hi_r"], full, at + Vector2i(-T, 0))
 				if not wr:
 					img.blend_rect(p["cap_r_open"] if e else p["cap_r_step"], full, at)
-					if not e:
-						img.blend_rect(p["hi_l"], full, at + Vector2i(T, 0))
+					img.blend_rect(p["hi_l"], full, at + Vector2i(T, 0))
 			if n:
 				img.blend_rect(p["rim_n"], full, at)
 			if w and not s:
