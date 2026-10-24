@@ -41,7 +41,14 @@ def run():
             lab = E.frames(f"{U}/labourer/walk_{d}.png", 42)
             n = len(fr)
             out = [E.swap(fr[k], lab[int(round(k * 6.0 / n)) % 6], ax, ay) for k in range(n)]
-            if u in SILVER_LEGS:
+            if u == "musketeer_armoured":      # (his steel tassets are grey too: recolour only under the coat hem, the donor legs)
+                res = []
+                for k in range(n):
+                    win = np.zeros((35, 42, 4), np.uint8); x0, y0 = ax - 21, ay - 33
+                    sub = fr[k][max(0, y0):y0 + 35, max(0, x0):x0 + 42]; win[:sub.shape[0], :sub.shape[1]] = sub
+                    res.append(W.whiten(out[k], y0=y0 + E.R.hem_row(win) + 1 + 1, tones=W.SILVER))
+                out = res
+            elif u in SILVER_LEGS:
                 out = [W.whiten(f, tones=W.SILVER) for f in out]
             Image.fromarray(np.concatenate(out, 1)).save(cur)
             print("legs:", u, d, n, "frames")
