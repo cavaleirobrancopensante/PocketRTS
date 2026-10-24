@@ -891,8 +891,8 @@ const STORM := {"cost": 70.0, "cost2": 2, "max": 100.0, "fill": 7.0, "range": 26
 const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 60.0, "spit_cost": 15.0, "reach": 22.0, "buildings": 0.5}
 ## Bloater out of gas: it deflates (no spitting, no bursting, slower) and fills up again.
 const DEFLATE := {"refill": 4.0, "swamp": 2.0, "slow": 0.8, "anim": 0.8}
-## Observation Balloon as a dropship: who can ride in the basket and what a fall costs.
-const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "labourer"], "fall": 0.5, "board": 26.0, "give_up": 30.0}
+## Observation Balloon as a dropship: who can ride in the basket (all of them die with it).
+const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "labourer"], "board": 26.0, "give_up": 30.0}
 ## Skywing landed: a ground unit that bites (these replace its flying stats).
 const SKYWING_LANDED := {"air": false, "air_only": false, "ground_only": true, "anti_air": false,
 	"speed": 70, "range": 24, "damage": 14, "cooldown": 1.0, "aim": 0.15}
