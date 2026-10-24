@@ -1364,7 +1364,7 @@ func _draw_lock(top: float) -> void:
 	var lite := body.lightened(0.35)
 	var shade := body.darkened(0.35)
 	var steel := Color(0.8, 0.84, 0.88)
-	var s := 1.6
+	var s := 0.8
 	# the shackle
 	if locked:
 		draw_arc(c + Vector2(0, -6) * s, 6.4 * s, PI, TAU, 16, dark, 6.0 * s)
