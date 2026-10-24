@@ -303,6 +303,35 @@ func preview(track: String) -> void:
 	play(track, true)
 
 
+## The music player's controls: where the playing piece is, how long it is, seek, pause.
+func track_length() -> float:
+	return _a.stream.get_length() if _a.stream else 0.0
+
+
+func track_pos() -> float:
+	return _a.get_playback_position() if _a.playing or _a.stream_paused else 0.0
+
+
+func is_paused() -> bool:
+	return _a.stream_paused
+
+
+func set_paused(on: bool) -> void:
+	if _a.stream == null:
+		return
+	if not on and not _a.playing:
+		_a.play()
+	_a.stream_paused = on
+
+
+func seek_to(t: float) -> void:
+	if _a.stream == null:
+		return
+	if not _a.playing:
+		_a.play()
+	_a.seek(clampf(t, 0.0, maxf(track_length() - 0.5, 0.0)))
+
+
 func now_playing() -> String:
 	return titles().get(_current, "")
 

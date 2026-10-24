@@ -1,7 +1,8 @@
 """More Crown music (registered into compose.py):
 
-  crown_battle_6..10   the five marching snare solos (art/audio_src/marching/drums1..5.mp3), best 50 s cut
-  menu_6..10           the same five, a second cut of each, as anthem pieces
+  crown_battle_6..10   orchestral marches composed ON the five marching snare solos (art/audio_src/marching/
+                       drums1..5.mp3): the solo is the rhythm section, laid on the tempo grid it was played to
+  menu_6..10           the same five solos under five anthems (another cut of each, grander, drums lower)
   crown_battle_11..14  generated marches: brass, strings, timpani and snare over a seeded melody
   crown_peace_6..9     generated calm pieces (lute, recorder, harp, strings; no drums)
   menu_11..14          generated anthems (slower, grander)
@@ -48,8 +49,68 @@ class DrumPiece:
         return L, R
 
 
+SOLO_BPM = {1: 120, 2: 110, 3: 110, 4: 120, 5: 120}      # (found with librosa; solos 2 and 3 are dead steady)
+
+
+def load_solo(C, solo):
+    raw = subprocess.run(["ffmpeg", "-v", "quiet", "-i", os.path.join(SRC, "drums%d.mp3" % solo),
+                          "-f", "f32le", "-ac", "2", "-ar", str(C.SR), "-"], capture_output=True).stdout
+    return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2).astype(float)
+
+
+def solo_bars(C, solo):
+    x = load_solo(C, solo)
+    bar = 4 * 60.0 / SOLO_BPM[solo]
+    return x, bar, int((len(x) / C.SR - 2) / bar)
+
+
+def align(C, x, bpm, nbars, avoid=None):
+    """Start time (s) in the solo where a grid of `bpm` fits its hits best (bar lines weigh more)."""
+    import librosa
+    hop = 64
+    y = x.mean(1).astype(np.float32)
+    y = librosa.resample(y, orig_sr=C.SR, target_sr=22050)
+    env = librosa.onset.onset_strength(y=y, sr=22050, hop_length=hop)
+    fps = 22050 / hop
+    beat = 60.0 / bpm
+    need = nbars * 4 * beat
+    best, bs = 0.0, -1.0
+    top = len(y) / 22050 - need - 0.5
+    for s0 in np.arange(0.0, max(top, 0.01), 0.02):
+        if avoid is not None and abs(s0 - avoid) < 8.0 and top > avoid + 8.0 or (avoid is not None and abs(s0 - avoid) < 8.0 and top <= 8.0 and False):
+            continue
+        k = np.arange(0, nbars * 4)
+        idx = np.clip(((s0 + k * beat) * fps).astype(int), 0, len(env) - 1)
+        e = env[idx]
+        sc = e.sum() + 1.5 * e[::4].sum()
+        if sc > bs:
+            bs, best = sc, s0
+    return best
+
+
 def register(C):
     NAMES = C.orchestra.NAMES
+
+    class BedSong(C.Song):
+        """A Song whose rhythm section is one of the snare solos, laid on the song's own tempo grid."""
+        bed_x = None
+        bed_t0 = 0.0
+        bed_ratio = 0.9
+
+        def render(self):
+            L, R = super().render()
+            n = len(L)
+            i0 = int(self.bed_t0 * C.SR)
+            seg = self.bed_x[i0: i0 + n]
+            seg = np.pad(seg, ((0, n - len(seg)), (0, 0)))
+            f = int(0.5 * C.SR)
+            seg[-int(3.0 * C.SR):] *= np.linspace(1, 0, int(3.0 * C.SR))[:, None]
+            seg[:f] *= np.linspace(0.4, 1, f)[:, None]
+            def lvl(a):
+                m = np.abs(a) > 1e-4
+                return float(np.sqrt(np.mean(a[m] ** 2))) if m.any() else 1e-6
+            g = self.bed_ratio * lvl(L) / lvl(seg[:, 0])
+            return C.master(L + seg[:, 0] * g, R + seg[:, 1] * g, 0.15, 0.89)
     notes = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 
     def tok(i):
@@ -101,7 +162,7 @@ def register(C):
             bars.append(" ".join(toks))
         return bars
 
-    def generated(name, title, seed, key, mode, bpm, meter, kind):
+    def generated(name, title, seed, key, mode, bpm, meter, kind, bed=None):
         rng = np.random.default_rng(seed)
         tpc = tonic_of(key)
         pool = MINOR if mode in ("aeolian", "dorian", "harmonic") else MAJOR
@@ -112,9 +173,16 @@ def register(C):
         Ac = [chord_name(tpc, mode, d) for d in pa]
         Bc = [chord_name(tpc, mode, d) for d in pb]
         big = kind == "battle" or kind == "anthem"
-        s = C.Song(name, title, bpm, meter, C.n(key[0] + ("#" if "#" in key else ""), 4), mode,
+        cls = BedSong if bed else C.Song
+        s = cls(name, title, bpm, meter, C.n(key[0] + ("#" if "#" in key else ""), 4), mode,
                    reverb=(2.4 if kind != "battle" else 1.7, 0.45), seed=seed, q=1.5, mastering="epic",
                    predelay=0.02, target=0.15 if big else 0.13)
+        nsec = 4
+        if bed:
+            solo, ratio, nsec, avoid = bed
+            s.bed_x, bar_s, _ = solo_bars(C, solo)
+            s.bed_ratio = ratio
+            s.bed_t0 = align(C, s.bed_x, bpm, 2 + 8 * nsec + 4, avoid)
         if meter == 4:
             ost, step, bass = "01210121", 0.5, "1:1 5,:1 1:1 5,:1"
             w1 = {"S.s.S.s.": 0.12, "K...K...": 0.0}
@@ -147,11 +215,13 @@ def register(C):
         s.note("lowstr", 0, s.meter * 2, C.n(key[0], 2), 0.4, 0.3, 0.3, "swell")
         C.o_timp_roll(s, s.bar(1), meter, Ac[0], 0.2, 0.8)
         b = 2
-        for rep in range(2):
-            for mel, ch in ((A, Ac), (B, Bc)):
+        for si in range(nsec):
+            rep = 0 if si < nsec // 2 else 1
+            for mel, ch in (((A, Ac), (B, Bc))[si % 2],):
                 o_ost(s, "spicc", b, ch, ost, step, 0.36 + 0.05 * rep, 52, 3, -0.25, 0.15)
                 o_bass(s, "lowstr", b, ch, bass, 0.42 + 0.05 * rep, 36, 0.3, 0.15)
-                s.drums(b, 8, w1 if rep == 0 else w2, 0.4 + 0.1 * rep, fill=fill)
+                if not bed:
+                    s.drums(b, 8, w1 if rep == 0 else w2, 0.4 + 0.1 * rep, fill=fill)
                 timps(b, ch, 0.5 + 0.12 * rep)
                 if kind == "anthem":
                     o_pad(s, "strings", b, ch, 0.3, 55, 3, -0.3, 0.6, 0.5, shape="arc")
@@ -171,7 +241,8 @@ def register(C):
         # the build and the close
         C.o_timp_roll(s, s.bar(b), meter * 2, Ac[0], 0.3, 0.95)
         C.o_swell(s, s.bar(b), meter * 2, 0.7)
-        s.roll("s", s.bar(b), meter * 2, 0.25, 0.15, 0.8, 0.12)
+        if not bed:
+            s.roll("s", s.bar(b), meter * 2, 0.25, 0.15, 0.8, 0.12)
         b += 2
         C.o_final(s, b, C.orchestra.NAMES[tpc] + ("m" if mode in ("aeolian", "dorian", "harmonic") else ""),
                   0.85, [("horns", 4, 0), ("strings", 4, 7), ("tpts", 3, 12), ("chorus", 3, 5)], 52, 2, 33)
@@ -182,11 +253,22 @@ def register(C):
         if name not in C.TRACK_ORDER:
             C.TRACK_ORDER.append(name)
 
+    RN = "I II III IV V".split()
+    BT = ["The Drummer's Road", "Tattoo at Dusk", "Over the Parapet", "Beating to Quarters", "Columns on the March"]
+    AT = ["Anthem of the Drumline", "Banners and Drums", "Roll of the Regiment", "The Long Parade", "Drums for the King"]
+    KEYS = [("D", "aeolian"), ("A", "harmonic"), ("G", "ionian"), ("E", "aeolian"), ("C", "ionian")]
+    AKEYS = [("F", "ionian"), ("D", "ionian"), ("A", "aeolian"), ("G", "ionian"), ("E", "aeolian")]
     for k in range(5):
-        add("crown_battle_%d" % (6 + k), "Marching Drums %s" % "I II III IV V".split()[k],
-            lambda k=k: DrumPiece(C, "crown_battle_%d" % (6 + k), "Marching Drums %s" % "I II III IV V".split()[k], k + 1, 0))
-        add("menu_%d" % (6 + k), "Drums of the Crown %s" % "I II III IV V".split()[k],
-            lambda k=k: DrumPiece(C, "menu_%d" % (6 + k), "Drums of the Crown %s" % "I II III IV V".split()[k], k + 1, 1, 42.0))
+        solo = k + 1
+        _, _, nb = solo_bars(C, solo)
+        nsec = max(2, min(4, (nb - 6) // 8))
+        bpm = SOLO_BPM[solo]
+        add("crown_battle_%d" % (6 + k), BT[k],
+            lambda k=k, solo=solo, nsec=nsec, bpm=bpm: generated("crown_battle_%d" % (6 + k), BT[k], 800 + k,
+                KEYS[k][0], KEYS[k][1], bpm, 4, "battle", (solo, 0.95, nsec, None)))
+        add("menu_%d" % (6 + k), AT[k],
+            lambda k=k, solo=solo, nsec=nsec, bpm=bpm: generated("menu_%d" % (6 + k), AT[k], 820 + k,
+                AKEYS[k][0], AKEYS[k][1], bpm, 4, "anthem", (solo, 0.5, max(2, nsec - 1), None)))
     G = [("crown_battle_11", "Column Advancing", 701, "D", "aeolian", 132, 4, "battle"),
          ("crown_battle_12", "The Regiment Wheels", 702, "E", "aeolian", 150, 3, "battle"),
          ("crown_battle_13", "Colours Forward", 703, "G", "ionian", 138, 4, "battle"),

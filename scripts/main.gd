@@ -575,6 +575,7 @@ func show_music() -> void:
 	top.add_child(mb)
 	var now := Music.me.now_playing()
 	v.add_child(UiStyle.text(("Now playing: " + now) if now != "" else "Tap a piece to listen.", 16, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	v.add_child(_player_bar())
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -607,6 +608,54 @@ func show_music() -> void:
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.custom_minimum_size.x = 220
 	v.add_child(back)
+
+
+## Play / pause and a bar to scrub through the piece that is playing.
+func _player_bar() -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	var pp := Button.new()
+	pp.custom_minimum_size = Vector2(110, 44)
+	pp.add_theme_font_size_override("font_size", 16)
+	h.add_child(pp)
+	var bar := HSlider.new()
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.custom_minimum_size.y = 32
+	bar.min_value = 0.0
+	bar.step = 0.1
+	h.add_child(bar)
+	var tl := UiStyle.text("0:00 / 0:00", 16, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_RIGHT, true)
+	tl.custom_minimum_size.x = 120
+	h.add_child(tl)
+	var drag := [false]
+	var fmt := func(t: float) -> String: return "%d:%02d" % [int(t) / 60, int(t) % 60]
+	var refresh := func() -> void:
+		if not is_instance_valid(Music.me):
+			return
+		var len := Music.me.track_length()
+		bar.max_value = maxf(len, 1.0)
+		bar.editable = len > 0.0
+		if not drag[0]:
+			bar.set_value_no_signal(Music.me.track_pos())
+		tl.text = "%s / %s" % [fmt.call(bar.value), fmt.call(len)]
+		pp.text = "PLAY" if (Music.me.is_paused() or len == 0.0 or not Music.me._a.playing) else "PAUSE"
+	pp.pressed.connect(func() -> void:
+		if Music.me._a.stream == null:
+			return
+		Music.me.set_paused(not Music.me.is_paused() if Music.me._a.playing else false)
+		refresh.call())
+	bar.drag_started.connect(func() -> void: drag[0] = true)
+	bar.drag_ended.connect(func(_changed: bool) -> void:
+		drag[0] = false
+		Music.me.seek_to(bar.value))
+	var tm := Timer.new()
+	tm.wait_time = 0.25
+	tm.autostart = true
+	tm.timeout.connect(refresh)
+	h.add_child(tm)
+	refresh.call()
+	return h
 
 
 func _track_row(stem: String, title: String, mood: String) -> Control:
