@@ -26,6 +26,16 @@ static func peek() -> Dictionary:
 	return d if d is Dictionary else {}
 
 
+## A queue entry's kit as saved: the id of the horse waiting for it means nothing next session
+## (the horse is folded into the kit: Game.spawn_trained gives the rider its coat).
+static func _kit_save(kt):
+	if kt is Dictionary and kt.has("hid"):
+		var c: Dictionary = kt.duplicate()
+		c.erase("hid")
+		return c
+	return kt
+
+
 static func _v2(v: Vector2) -> Array:
 	return [v.x, v.y]
 
@@ -66,7 +76,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		if b.dead:
 			continue
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
-			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
+			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits.map(func(kt): return _kit_save(kt)), "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
 			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,

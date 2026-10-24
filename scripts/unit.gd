@@ -242,6 +242,8 @@ var leader: Unit = null          # (a horse) who leads it
 var claimed: Unit = null         # (a horse) the man walking over to mount or lead it
 var into: Entity = null          # (a horse) the building it walks into (training) or the gun it goes to
 var _into_t := 0.0
+var hitch_p := Vector2.INF       # (a horse) the spot beside the building where it stands hitched for its recruit or gun (INF: not hitched)
+var _hitch_t := 0.0
 var graze_at := Vector2.INF      # (a horse) where it was left: it grazes round here
 var _graze_goal := Vector2.INF
 var _graze_t := 0.0
@@ -6337,26 +6339,44 @@ func _snap_to_leader(goal: Vector2) -> void:
 		path_i = 0
 
 
-## Walking into a building (taken for a recruit or a gun) or to a gun (to be harnessed).
+## Walking to a building (taken for a recruit or a gun) and standing hitched beside it until
+## the recruit comes out (he mounts it: Game.spawn_trained) or is cancelled (it is free again).
+## A horse never vanishes on the way: whatever happens, it is hitched or free.
 func _horse_into(delta: float) -> Vector2:
 	var e := into
 	_into_t += delta
 	if e == null or not is_instance_valid(e) or e.dead or e.team != team:
-		into = null
-		graze_at = position
+		_unhitch()
 		return Vector2.ZERO
 	if e is Building:
+		if hitch_p != Vector2.INF:
+			if not game.entry_holds(e as Building, self):
+				_unhitch()           # (its recruit was cancelled or came out without it: free again)
+				return Vector2.ZERO
+			_hitch_t += delta
+			var hd := position.distance_to(hitch_p)
+			if hd > 3.0:
+				if _hitch_t > 20.0 and game._clear_at(hitch_p, radius, team):
+					position = hitch_p          # (could not get there: it stands there all the same)
+					path = PackedVector2Array()
+					return Vector2.ZERO
+				return _walk_to(hitch_p, delta)
+			var to_b: Vector2 = (e as Building).center() - position
+			if to_b.length() > 1.0:
+				facing = to_b.normalized()
+			return Vector2.ZERO
 		if horse_rid != 0 and game.rid_owner(team, horse_rid) != e:
 			into = null              # (its recruit was cancelled: it stays where it is, free; or he came out
 			graze_at = position      # on foot meanwhile: it stays kept for him, he mounts it)
 			if game.rid_owner(team, horse_rid) == null:
 				horse_rid = 0
 			return Vector2.ZERO
+		if horse_rid == 0 and not game.entry_holds(e as Building, self):
+			_unhitch()               # (the recruit it was walking to is gone)
+			return Vector2.ZERO
 		var far: float = e.edge_distance(position)
 		if far < 4.0 or (_into_t > 4.0 and far < 40.0) or _into_t > 90.0:
-			if horse_rid != 0:
-				game.horse_arrived(e, self)
-			game.consume_unit(self)
+			game.hitch_horse(e as Building, self)
 			return Vector2.ZERO
 		if far >= 40.0:
 			return _walk_to(game.approach_point(e, position), delta)    # (a reserved horse comes by itself from the breeder)
@@ -6373,7 +6393,21 @@ func _horse_into(delta: float) -> Vector2:
 	return _walk_to(g.position, delta)
 
 
-## Taken for a recruit at this building: it walks in and is gone (Game.train).
+## Free again: not walking to a building nor hitched at one; it stays where it is.
+func _unhitch() -> void:
+	into = null
+	hitch_p = Vector2.INF
+	_hitch_t = 0.0
+	graze_at = position
+	_graze_goal = Vector2.INF
+
+
+## A horse hitched for a recruit can't be hurt or taken.
+func untouchable() -> bool:
+	return hitch_p != Vector2.INF or super()
+
+
+## Taken for a recruit at this building: it walks over and stands hitched there (Game.train).
 func walk_into(e: Entity) -> void:
 	if team < 0 and e.team >= 0:
 		game.steal_horse(self, e)        # a loose horse sent for by a gun (HARNESS): its side's now
@@ -6383,6 +6417,8 @@ func walk_into(e: Entity) -> void:
 	claimed = null
 	into = e
 	_into_t = 0.0
+	hitch_p = Vector2.INF
+	_hitch_t = 0.0
 	order = "idle"
 	path = PackedVector2Array()
 	if selected:

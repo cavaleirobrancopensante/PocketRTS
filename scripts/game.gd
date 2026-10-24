@@ -3274,7 +3274,12 @@ func add_gold(t: int, n: int) -> void:
 ## horse, if it took one, comes back out of `at`).
 func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> void:
 	if kit.has("coat") and at != null and k != "horse":      # (a queued horse's coat is its own: no second horse)
-		horse_back(at, kit)
+		var hh := _kit_horse(kit, at)
+		if hh != null:
+			hh._unhitch()           # (the horse waiting beside the building is free again, where it stands)
+			hh.horse_rid = 0
+		else:
+			horse_back(at, kit)
 	if int(kit.get("rid", 0)) != 0 and k != "horse":
 		release_rid(t, int(kit["rid"]))     # (its horse is free again; one still at the breeder is kept)
 	if Building.is_research(k):
@@ -3818,6 +3823,7 @@ func train(b: Building, key: String) -> String:
 			kit["coat"] = h.coat
 			kit["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
 			kit["hm"] = snappedf(h.horse_miles, 0.1)
+			kit["hid"] = h.get_instance_id()
 			h.walk_into(b)
 		else:
 			# one click trains both: a free horse at a breeder is kept for him, or the
@@ -3896,10 +3902,22 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		Sfx.voice(k, "select")
 	var rid := int(kit.get("rid", 0))
 	var sk := k
+	var spawn_at := cell_center(best)
+	var hh := _kit_horse(kit, b)
+	if hh != null:
+		# the horse waiting hitched beside the building: the rider comes out in its place, on its
+		# coat and health as they are now; a gun is hitched to it
+		kit = kit.duplicate()
+		kit["coat"] = hh.coat
+		kit["hh"] = snappedf(hh.hp / maxf(hh.max_hp, 1.0), 0.01)
+		kit["hm"] = snappedf(hh.horse_miles, 0.1)
+		if hh.hitch_p != Vector2.INF and Defs.FOOT.has(k) and hh.position.distance_to(hh.hitch_p) < 8.0:
+			spawn_at = hh.position
+		consume_unit(hh)
 	if Defs.RIDERS.has(k) and rid != 0:
 		sk = String(Defs.RIDERS[k])    # trained on foot: he goes and gets on the horse kept for him
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
-		var u := _add_unit(sk, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+		var u := _add_unit(sk, b.team, spawn_at + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
 		if sk != k:
 			u.set_kit(kit)
 			u.horse_rid = rid
@@ -7660,11 +7678,89 @@ func horse_arrived(b: Building, h: Unit) -> void:
 		if kt is Dictionary and int(kt.get("rid", 0)) == h.horse_rid:
 			var nk: Dictionary = kt.duplicate()
 			nk.erase("rid")
+			nk["hid"] = h.get_instance_id()
 			nk["coat"] = h.coat
 			nk["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
 			nk["hm"] = snappedf(h.horse_miles, 0.1)
 			b.kits[i] = nk
 			return
+
+
+## The live horse a queue entry's kit holds for `b` (walking to it or hitched beside it), or null.
+func _kit_horse(kit: Dictionary, b: Building) -> Unit:
+	var id := int(kit.get("hid", 0))
+	if id == 0 or not is_instance_id_valid(id):
+		return null
+	var h = instance_from_id(id)
+	if is_instance_valid(h) and h is Unit and (h as Unit).kind == "horse" and not (h as Unit).dead and (h as Unit).into == b:
+		return h
+	return null
+
+
+## Does a queue entry of `b` hold this horse (so it is still wanted there)?
+func entry_holds(b: Building, h: Unit) -> bool:
+	var id := h.get_instance_id()
+	for kt in b.kits:
+		if kt is Dictionary and int(kt.get("hid", 0)) == id:
+			return true
+	return false
+
+
+## The horse reaches the building: its kit entry takes its data (a gun's reserved one) and it
+## stands hitched on a spot beside the building until the recruit comes out.
+func hitch_horse(b: Building, h: Unit) -> void:
+	if h.horse_rid != 0:
+		horse_arrived(b, h)
+		h.horse_rid = 0
+	h.hitch_p = hitch_spot(b, h)
+	h._hitch_t = 0.0
+	h.velocity = Vector2.ZERO
+	h.path = PackedVector2Array()
+	h.order = "idle"
+
+
+## A spot beside the building for a hitched horse: round its rim, on the side away from the
+## rally (where the recruit comes out), clear ground, a body's width from the others hitched there.
+func hitch_spot(b: Building, h: Unit) -> Vector2:
+	var r := b.rect()
+	var out := r.grow(22.0)
+	var toward: Vector2 = b.rally if b.rally != Vector2.INF else r.get_center() + Vector2(0, r.size.y)
+	var taken: Array = []
+	for u in units:
+		if u != h and u.kind == "horse" and not u.dead and u.hitch_p != Vector2.INF and u.into == b:
+			taken.append(u.hitch_p)
+	var cands: Array = []
+	var step := 26.0
+	var x := out.position.x
+	while x <= out.end.x:
+		cands.append(Vector2(x, out.position.y))
+		cands.append(Vector2(x, out.end.y))
+		x += step
+	var y := out.position.y + step
+	while y < out.end.y:
+		cands.append(Vector2(out.position.x, y))
+		cands.append(Vector2(out.end.x, y))
+		y += step
+	var best := Vector2.INF
+	var bs := -INF
+	for p in cands:
+		var c := cell_of(p)
+		if not in_map(c) or not open_cell(c) or not _clear_at(p, h.radius, h.team):
+			continue
+		var clash := false
+		for q in taken:
+			if (q as Vector2).distance_to(p) < 24.0:
+				clash = true
+				break
+		if clash:
+			continue
+		var sc: float = p.distance_to(toward) - 0.5 * p.distance_to(h.position)
+		if sc > bs:
+			bs = sc
+			best = p
+	if best == Vector2.INF:
+		return h.position
+	return best
 
 
 ## A Foundry's gun is ready but its horse isn't there yet: make sure one is coming (its own,

@@ -272,10 +272,10 @@ func _training() -> void:
 	check(bar.kits[0].get("coat", "") == coat, "the queue entry keeps that horse's coat")
 	check(g.free_horse_at(bar) == null, "that horse is taken (the next one gets his from a breeder)")
 	await wait(5.0)
-	check(g.horses_of(0).size() == horses0 - 1, "the horse walked in and is gone")
+	check(g.horses_of(0).size() == horses0, "the horse walked over and stands hitched beside the Barracks (it does not vanish)")
 	g.cancel_train(bar)
 	await physics_frame
-	check(g.horses_of(0).size() == horses0, "cancelling gives the horse back")
+	check(g.horses_of(0).size() == horses0, "cancelling frees the horse where it stands")
 	# again, and let him come out
 	var back: Unit = g.free_horse_at(bar)
 	check(back != null, "the horse stands at the Barracks again")
