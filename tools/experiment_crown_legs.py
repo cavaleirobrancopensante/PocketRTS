@@ -45,4 +45,5 @@ def main():
             for k, f in enumerate(fr):
                 sheet.alpha_composite(Image.fromarray(f).resize((cw*Z, ch*Z), Image.NEAREST), (k*cw*Z, r*ch*Z))
         sheet.save(f"/tmp/crown_legs_{u}.png"); print(u, sheet.size)
-main()
+if __name__ == "__main__":
+    main()

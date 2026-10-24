@@ -109,6 +109,7 @@ python3 tools/import_gait_windup_soldier.py
 python3 tools/import_gait_winder.py
 python3 tools/import_gait_musketeer_armoured.py
 python3 tools/import_gait_raptor.py
+python3 tools/import_crown_legs.py        # labourer's new walk legs under the Armoured Musketeer (all views) and the Musketeer (s, n)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included
