@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.54", "items": [
+		"Walk cycles rebuilt with a real stride for the Missionary, Windup Soldier, Winder and Armoured Musketeer; Raptor improved.",
+	]},
 	{"v": "0.12.53", "items": [
 		"Powder mill redrawn: a lean-to roof over the three ingredient piles and a wooden hopper by the millstone.",
 	]},

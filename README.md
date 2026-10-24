@@ -1,6 +1,6 @@
 # Pocket RTS
 
-**Play in your browser (version 0.12.53): https://cavaleirobrancopensante.github.io/PocketRTS/**
+**Play in your browser (version 0.12.54): https://cavaleirobrancopensante.github.io/PocketRTS/**
 
 **Android app: https://cavaleirobrancopensante.github.io/PocketRTS/PocketRTS.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
