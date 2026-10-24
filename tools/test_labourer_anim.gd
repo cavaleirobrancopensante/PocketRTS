@@ -14,10 +14,13 @@ var g
 var started := false
 var fails := 0
 
-const POSES := ["walk", "carry", "carry_keg", "idle", "idle_keg", "mine", "build", "bury", "death", "death_keg"]
+const POSES := ["walk", "carry", "carry_keg", "idle", "idle_keg", "idle_carry", "mine", "build", "bury", "death", "death_keg"]
 const DIRS := ["s", "se", "e", "ne", "n"]
-## the frame where the drawn hammer is lowest (measured on the strips, see the audit)
-const STRIKE_FRAME := {"s": 3, "se": 0, "e": 3, "ne": 2, "n": 3}
+## the strike (hammer on the stake, spark) is the third frame of every build strip: the
+## redrawn strips are in swing order (raise, drop, strike, lift)
+const STRIKE_FRAME := {"s": 2, "se": 2, "e": 2, "ne": 2, "n": 2}
+## poses redrawn from art/redraws (tools/import_labourer_redraw.py) and their frame counts
+const REDRAWN := {"walk": 6, "carry": 6, "carry_keg": 6, "idle_keg": 4, "idle_carry": 2, "mine": 4, "build": 4}
 
 
 func _initialize() -> void:
@@ -73,6 +76,30 @@ func _strips() -> void:
 			if tex == null or tex.get_width() != int(fr[key]) * 42 or tex.get_height() != 35:
 				bad.append(key + " size")
 	check(bad.is_empty(), "all %d strips exist, %d x 35 per frame count %s" % [POSES.size() * DIRS.size(), 42, str(bad)])
+	# the redrawn poses: the frame counts the importer makes, and every frame of every strip stands
+	# on the ground line (its lowest opaque row is 33, the anchor row) and inside the cell
+	var off := []
+	var wrong := []
+	for p in REDRAWN:
+		for d in DIRS:
+			var key: String = p + "_" + d
+			if int(fr.get(key, 0)) != int(REDRAWN[p]):
+				wrong.append(key)
+				continue
+			var im: Image = (load("res://assets/units/labourer/%s.png" % key) as Texture2D).get_image()
+			for i in int(REDRAWN[p]):
+				var low := -1
+				var edge := false
+				for y in 35:
+					for x in 42:
+						if im.get_pixel(i * 42 + x, y).a > 0.0:
+							low = y
+							if x == 0 or x == 41:
+								edge = true
+				if low != 33 or edge:
+					off.append("%s[%d] low %d" % [key, i, low])
+	check(wrong.is_empty(), "redrawn poses have their frame counts %s" % str(wrong))
+	check(off.is_empty(), "every redrawn frame stands on the ground line, inside the cell %s" % str(off))
 
 
 func _swing() -> void:
@@ -157,6 +184,19 @@ func _walk() -> void:
 	for i in 45:
 		await physics_frame
 	check(u.anim == "idle", "he stands idle after the walk (%s, speed %.1f)" % [u.anim, u.velocity.length()])
+	# standing with the gold on his back plays the sack idle (no yellow dot), walking the carry
+	u.carrying = 60
+	for i in 12:
+		await physics_frame
+	check(u.anim == "idle_carry" and u.sprite.hframes == 2, "standing with gold plays idle_carry (%s, %d frames)" % [u.anim, u.sprite.hframes])
+	u.cmd_move(u.position + Vector2(120.0, 0.0))
+	for i in 20:
+		await physics_frame
+	check(u.anim == "carry" and u.sprite.hframes == 6, "walking with gold plays carry (%s, %d frames)" % [u.anim, u.sprite.hframes])
+	u.cmd_stop()
+	u.carrying = 0
+	for i in 45:
+		await physics_frame
 	# the view hysteresis: a facing just past the octant edge keeps the old view
 	u._lab_view = 1                      # SE
 	var edge := Vector2.from_angle(PI / 4.0 + PI / 8.0 + 0.05)        # 5 deg past the S/SE edge
