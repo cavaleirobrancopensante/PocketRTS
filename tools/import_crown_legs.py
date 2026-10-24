@@ -28,6 +28,31 @@ TARGETS = {"musketeer_armoured": ["s", "se", "e", "ne", "n"], "musketeer": ["s",
 SILVER_LEGS = {"musketeer", "musketeer_armoured"}      # (the Musketeer's breeches are silver-grey: the labourer's grey legs are recoloured to his ramp)
 
 
+PLATE_ROWS = (11, 22)      # (the steel back plate sits between the helmet and the hips: rows of the 36-high cell)
+PLATE_COLS = (41, 56)      # (and right of the musket barrel)
+
+
+def back_plate(frames):
+    """The dismounted cuirassier's steel back plate (walk_n) pasted on the armoured musketeer's back view:
+    only the grey low-colour pixels of the plate, same cell position (both units share the head and shoulder rows)."""
+    donor = E.frames(f"{U}/dismounted_armoured/walk_n.png", 90)
+    n, m = len(frames), len(donor)
+    out = []
+    for k, f in enumerate(frames):
+        dn = donor[int(round(k * m / float(n))) % m]
+        f = f.copy()
+        r0, r1 = PLATE_ROWS; c0, c1 = PLATE_COLS
+        seg = dn[r0:r1, c0:c1].astype(int)
+        spread = seg[..., :3].max(2) - seg[..., :3].min(2)
+        lum = seg[..., :3].sum(2) // 3
+        mask = (seg[..., 3] > 0) & (spread < 40) & (lum >= 60)
+        tgt = f[r0:r1, c0:c1]
+        mask &= tgt[..., 3] > 0                     # (stay inside the musketeer's own silhouette)
+        tgt[mask] = dn[r0:r1, c0:c1][mask]
+        out.append(f)
+    return out
+
+
 def run():
     os.makedirs(SRC, exist_ok=True)
     for u, dirs in TARGETS.items():
@@ -50,6 +75,8 @@ def run():
                 out = res
             elif u in SILVER_LEGS:
                 out = [W.whiten(f, tones=W.SILVER) for f in out]
+            if u == "musketeer_armoured" and d == "n":
+                out = back_plate(out)
             Image.fromarray(np.concatenate(out, 1)).save(cur)
             print("legs:", u, d, n, "frames")
 
