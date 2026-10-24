@@ -495,6 +495,7 @@ func show_settings() -> void:
 	v.add_child(_volume_row("AMBIENCE LEVEL", "ambience"))
 	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
 	v.add_child(_button("PATCH NOTES", func() -> void: show_patch_notes()))
+	v.add_child(_button("ANIMATION VIEWER", func() -> void: show_anim_viewer()))
 	v.add_child(_button("INTERFACE LAYOUT & HOTKEYS", func() -> void: show_layout()))
 	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
 	var sizes := [0, 100, 125, 150, 175, 200]
@@ -537,6 +538,15 @@ func show_settings() -> void:
 	v.add_child(_gap(4))
 	var back := _button("BACK", func() -> void: show_menu())
 	v.add_child(back)
+
+
+## Every unit animation, looped at the game's frame rate (Settings).
+func show_anim_viewer() -> AnimViewer:
+	var root := _page()
+	var av := AnimViewer.new()
+	av.back_pressed.connect(func() -> void: show_settings())
+	root.add_child(av)
+	return av
 
 
 ## Interface layout profiles and hotkeys.
