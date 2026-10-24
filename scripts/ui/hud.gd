@@ -908,6 +908,8 @@ func _build_card() -> Array:
 				page = ""
 				build_page = 0, true, "", ""])
 			return list
+		if units.all(func(u: Unit) -> bool: return u.kind == "horse"):
+			return list          # (a horse takes no orders: a leash or a rider moves it)
 		list.append(["move", "MOVE", func() -> void: controls.mode = "move", true, "", ""])
 		list.append(["attack", "ATTACK", func() -> void: controls.mode = "attack", true, "", ""])
 		list.append(["stop", "STOP", func() -> void: game.command_all(game.selected_units(), "stop"), true, "", ""])

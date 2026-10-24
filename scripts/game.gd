@@ -6955,7 +6955,8 @@ func demolish(b: Building) -> void:
 ## Tap/right-click on the map with units selected: do the obvious thing.
 ## queued (Shift on a computer): after the orders they already have, not instead of them.
 func smart_command(list: Array, p: Vector2, force_move := false, queued := false) -> void:
-	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead)
+	# (a horse takes no orders: only a leash or a rider moves it)
+	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.kind != "horse")
 	if not us.is_empty() and us[0].team == human:
 		var tgt := entity_at(p)
 		var atk: bool = tgt != null and hostile(tgt.team, human) and not force_move
@@ -7113,6 +7114,9 @@ func command_sound(us: Array, what: String, call: String) -> void:
 
 
 func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
+	us = us.filter(func(u) -> bool: return not (u is Unit and u.kind == "horse"))
+	if us.is_empty():
+		return
 	if not us.is_empty() and us[0].team == human:
 		command_sound(us, "attack" if attack_move else "move", "amove" if attack_move else "move")
 	# No pre-made formation (StarCraft / Beyond All Reason style): a group already together
@@ -7150,7 +7154,7 @@ func _ping(p: Vector2, col: Color) -> void:
 func command_all(list: Array, what: String) -> void:
 	var belled := false
 	for u in list:
-		if u is Unit and not u.dead:
+		if u is Unit and not u.dead and u.kind != "horse":
 			u.patrol_a = Vector2.INF
 			if u.team == human and not belled:
 				belled = true

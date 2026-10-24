@@ -530,7 +530,8 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 				var e := game.entity_at(p, false)
 				if e and game.prey(game.human, e):
 					for u in units:
-						u.give({"o": "attack", "e": e}, queued)
+						if u.kind != "horse":
+							u.give({"o": "attack", "e": e}, queued)
 				else:
 					game.group_move(units, p, true, queued)
 			else:
@@ -543,6 +544,10 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 			return
 		"patrol":
 			# each patrols from where he stands to his own spot of the bunch at the point
+			units = units.filter(func(u) -> bool: return u.kind != "horse")
+			if units.is_empty():
+				cancel_mode()
+				return
 			var ps := game.group_points(units, p, queued)
 			for u in units:
 				u.give({"o": "patrol", "p": ps[u]}, queued)

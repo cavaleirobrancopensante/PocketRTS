@@ -51,5 +51,12 @@ func _run() -> void:
 	var made := g.workers(0).filter(func(u: Unit) -> bool: return u.is_hauler())
 	check(g.workers(0).size() > workers_before, "a labourer was trained (%d workers, were %d)" % [g.workers(0).size(), workers_before])
 	check(made.size() == before, "a rally on the Town Hall makes no hauler (%d haulers, were %d)" % [made.size(), before])
+	# a horse takes no orders
+	var horse: Unit = g._add_unit("horse", 0, hall.center() + Vector2(0, 300))
+	var at := horse.position
+	g.smart_command([horse], at + Vector2(400, 0))
+	g.group_move([horse], at + Vector2(400, 0), false)
+	g.command_all([horse], "stop")
+	check(horse.order == "idle", "a horse ignores move orders (%s)" % horse.order)
 	print("ALL PASS" if fails == 0 else "FAILS: %d" % fails)
 	quit()
