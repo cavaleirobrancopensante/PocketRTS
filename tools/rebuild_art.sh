@@ -18,6 +18,8 @@ python3 tools/import_labourer_redraw.py  # labourer redraws (art/redraws/laboure
                                          # idle_carry, mine, build (replaces the strips above; also edits art_data.gd)
 python3 tools/import_labourer_hoe.py   # labourer farm swing: the redraw's pickaxe becomes a hoe (after import_labourer_redraw)
 python3 tools/import_labourer_gait.py   # labourer side/diagonal gait (e, se, ne walk / carry / keg): legs rebuilt per frame (after the hoe)
+python3 tools/import_labourer_v2.py     # labourer round 2 (death, keg death, bury, idle, walk): LAST of the labourer passes, the gait
+                                         # pass above rewrites walk e/se/ne from its snapshot and this one rebuilds them on the new body
 python3 tools/import_labourer_shovel.py   # labourer at the Powder Mill: shovel_<dir> strips (3 loads x 4 frames; after the hoe: same body)
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
 python3 tools/import_round8.py           # grounded Skywing anims, deflated Bloater anims
