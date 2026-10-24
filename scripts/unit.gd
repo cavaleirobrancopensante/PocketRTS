@@ -3570,6 +3570,7 @@ func _strike(e: Entity) -> void:
 		if _range() >= 100.0 and game.fog_blinds(self, e) and randf() < float(Defs.FOG["miss"]):
 			game.fog_miss(self, e)
 			return
+		game.note_shot(self, e)
 		game.pistol_shot(self, e, float(Defs.PISTOL["damage"]) * vet2)
 		return
 	# every musket or cannon shot uses one of the shots it carries
@@ -3589,6 +3590,8 @@ func _strike(e: Entity) -> void:
 		else:
 			game.fog_miss(self, e)
 			return
+	if mode != "bayonet" and _range() >= 100.0:
+		game.note_shot(self, e)
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
