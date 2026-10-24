@@ -17,6 +17,7 @@ Source snapshots of the pristine strips are in `art/redraws/gait_src/`.
 | Windup Soldier (Clockwork) | walk, all five views | import_gait_windup_soldier.py | |
 | Winder (Clockwork) | walk, all five views | import_gait_winder.py | |
 | Armoured Musketeer (Guardsman) | walk, all five views | import_gait_musketeer_armoured.py | prompt 16 (guardsman_walk) also covers a redraw |
+| Labourer (walk s, se; so also sw, carry, keg-carry, Musketeers) | 2026-10-24: the ChatGPT s / se walk sheets barely moved the feet, so the legs are the east walk's stride squeezed sideways under the body (import_labourer_stride.py): a code placeholder; ask ChatGPT for a stronger s / se stride to match | import_labourer_stride.py | the legs in these views are east-walk legs squeezed, not drawn for the view |
 | Armoured Musketeer, Musketeer | 2026-10-24: legs replaced by the labourer's ChatGPT walk legs (both Musketeers' are recoloured silver-grey; his ChatGPT walk with the red plumed hat was dropped) by the labourer's ChatGPT-drawn walk legs (import_crown_legs.py, runs after the code gait pass, which is now superseded; the musket's stock and hands are kept; the north walk also gets the dismounted Cuirassier's steel back plate pasted on) | import_crown_legs.py | the armoured musketeer's code legs are gone; mixed boot style until a ChatGPT redraw |
 | Raptor (Brood) | walk: s, se, ne, n (walk_e kept: a real run already) | import_gait_raptor.py | stride is small in front/back views; prompt 18 |
 

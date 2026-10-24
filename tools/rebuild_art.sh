@@ -20,6 +20,7 @@ python3 tools/import_labourer_hoe.py   # labourer farm swing: the redraw's picka
 python3 tools/import_labourer_gait.py   # labourer side/diagonal gait (e, se, ne walk / carry / keg): legs rebuilt per frame (after the hoe)
 python3 tools/import_labourer_v2.py     # labourer round 2 (death, keg death, bury, idle, walk): LAST of the labourer passes, the gait
                                          # pass above rewrites walk e/se/ne from its snapshot and this one rebuilds them on the new body
+python3 tools/import_labourer_stride.py       # labourer s / se walk: the east walk's stride squeezed under their bodies (after v2, before the carry / Crown legs)
 python3 tools/import_labourer_carry_legs.py   # carry / carry_keg: the new walk's legs under the sack / keg bodies (after v2)
 python3 tools/import_labourer_shovel.py   # labourer at the Powder Mill: shovel_<dir> strips (3 loads x 4 frames; after the hoe: same body)
 python3 tools/import_round7.py           # Brood Pen, grub cocoon anims, Clockwork/Brood command icons
