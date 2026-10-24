@@ -163,6 +163,28 @@ RUNNER_R = 10.5      # the stone's radius in the game (the painted bed stone's i
 TRACK_R = 18.5       # the arm's length, hub to swingle-bar: the track's half width
 
 
+def soften_runner(a):
+    """The painted millstone came out too crisp and detailed next to the game's soft, painted
+    pixel art: its face (not the arm) is blurred a little, its contrast pulled in (the radial
+    grooves go quiet) and its colours cut to a few, as the rest of the buildings are."""
+    w = a.shape[1]
+    face = int(w * 0.64)
+    rgb = a[..., :3].astype(float)
+    al = a[..., 3:4].astype(float) / 255.0
+    pre = rgb * al
+    pre = np.stack([ndimage.gaussian_filter(pre[..., i], 0.9) for i in range(3)], -1)
+    wt = ndimage.gaussian_filter(al[..., 0], 0.9)[..., None]
+    soft = pre / np.maximum(wt, 1e-3)
+    m = al[:, :face]
+    mean = (soft[:, :face] * m).sum((0, 1)) / max(m.sum(), 1.0)
+    soft[:, :face] = mean + (soft[:, :face] - mean) * 0.7
+    out = a.copy()
+    out[:, face:, :3] = np.where(al[:, face:] > 0.5, np.clip(0.5 * soft[:, face:] + 0.5 * rgb[:, face:], 0, 255), rgb[:, face:]).astype(np.uint8)
+    q = Image.fromarray(np.clip(soft[:, :face], 0, 255).astype(np.uint8)).quantize(colors=8, method=Image.MEDIANCUT, dither=Image.NONE).convert("RGB")
+    out[:, :face, :3] = np.asarray(q)
+    return out
+
+
 def runner():
     """The turning millstone and its arm (see the module doc): mill_runner.png, 2x."""
     px = np.asarray(Image.open("art/crown/mill_runner_top.png").convert("RGB"))
@@ -182,7 +204,7 @@ def runner():
     cut = int(round((RUNNER_BAR_X - RUNNER_HUB[0]) - 2.0 * TRACK_R / s2))
     c0 = RUNNER_CUT_FROM - x0
     img = np.concatenate([img[:, :c0], img[:, c0 + cut:]], 1)
-    small = shrink(img, s2, 0.45)
+    small = soften_runner(shrink(img, s2, 0.45))
     Image.fromarray(small).save("assets/buildings/mill_runner.png")
     hub = ((RUNNER_HUB[0] - x0) * s2, (RUNNER_HUB[1] - y0) * s2)
     print("runner %d x %d (2x), hub (%.1f, %.1f), cut %d sheet px" % (small.shape[1], small.shape[0], hub[0], hub[1], cut))
