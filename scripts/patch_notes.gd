@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.45", "items": [
+		"Labourer side and diagonal walk, carry and keg-carry: legs now step one foot after the other.",
+	]},
 	{"v": "0.12.44", "items": [
 		"Build mode shows a tile grid around the ghost: blocked tiles tinted, narrow paths in amber, and a warning if the building would cut off or narrow a route. BUILD GRID on/off in Settings.",
 	]},
