@@ -188,6 +188,103 @@ func _think_stage(i: int) -> void:
 			if difficulty >= 2:
 				_micro()
 			_lap("ai/micro", pt)
+			_gg_tick()
+			_lap("ai/gg", pt)
+
+
+# ------------------------------------------------------------------ gg (ai_resign.gd)
+## Like a human giving up: when the position is hopeless (AIResign.verdict) for long enough it
+## says "gg" in the chat. If the player answers gg within AIResign.REPLY_WINDOW it says "gg wp" and
+## resigns (every building falls: a win for the player); if not, it plays on and may say gg once more.
+
+var gg_since := -1.0            # clock when the position first looked hopeless (without a break), -1 = not
+var gg_reason := ""
+var gg_said := 0                # gg's said so far
+var gg_last := -9999.0          # clock of the last one
+var _gg_check := 0.0            # clock of the last look
+var _halls_peak := 0
+var _workers_peak := 0
+var _enemy_mem := 0.0           # the biggest enemy army seen lately, fading when it is out of sight
+var resigned := false
+
+
+## What the computer knows and has now (the input of AIResign.verdict).
+func gg_view(dt := 0.0) -> Dictionary:
+	var halls := game.halls_of(team).size()
+	var workers := game.worker_count(team)
+	_halls_peak = maxi(_halls_peak, halls)
+	_workers_peak = maxi(_workers_peak, workers)
+	# the enemy army it can see right now (its own fog of war), remembered while out of sight
+	var seen := 0.0
+	for u in game.units:
+		if u.dead or u.off_field or u.is_worker() or not game.hostile(u.team, team):
+			continue
+		if game.is_visible_to(team, u.position):
+			seen += Game.unit_value(u)
+	_enemy_mem = maxf(seen, _enemy_mem - _enemy_mem * dt / AIResign.MEMORY_SECS)
+	var production := 0
+	for b in game.buildings:
+		if b.team == team and b.built and not b.dead and not b.ghost:
+			for k in Defs.BUILDINGS[b.kind].get("trains", []):
+				if not Defs.is_worker(String(k)):
+					production += 1
+					break
+	return {"clock": game.clock, "halls": halls, "halls_peak": _halls_peak, "workers": workers, "workers_peak": _workers_peak,
+		"army": game.army_value(team), "enemy_army": _enemy_mem, "production": production,
+		"gold": int(game.players[team]["gold"]), "hall_cost": int(Defs.BUILDINGS[game.faction_hall(team)]["cost"])}
+
+
+## Does the computer talk to this player at all (a computer against the player, in a real match)?
+func _gg_talks() -> bool:
+	return not peaceful and not game.demo and game.chat != null and not game.eliminated[team] and game.hostile(team, game.human)
+
+
+func _gg_tick() -> void:
+	if resigned or not _gg_talks() or game.clock - _gg_check < AIResign.CHECK_EVERY:
+		return
+	var dt := minf(game.clock - _gg_check, 30.0)
+	_gg_check = game.clock
+	var why := AIResign.verdict(gg_view(dt))
+	if why == "":
+		gg_since = -1.0
+		gg_reason = ""
+		return
+	if gg_since < 0.0:
+		gg_since = game.clock
+	gg_reason = why
+	if game.clock - gg_since < AIResign.sustain_for(why):
+		return
+	if gg_said >= AIResign.MAX_SAYS:
+		return
+	if gg_said >= 1 and game.clock - gg_last < AIResign.REPEAT_AFTER:
+		return
+	gg_said += 1
+	gg_last = game.clock
+	game.chat.post(team, "gg")
+	if game.hud:
+		game.hud.chat_banner("%s says gg: reply gg to end the match" % game.chat.name_of(team))
+	if game.mlog:
+		game.mlog.add("%s thinks it is hopeless (%s: %s)" % [game.mlog.who(team), why, game.standing_text(team)])
+
+
+## Its gg is waiting for an answer.
+func gg_pending() -> bool:
+	return not resigned and gg_said > 0 and game.clock - gg_last <= AIResign.REPLY_WINDOW
+
+
+## The player said gg while one was pending: gg wp, and every building falls.
+func gg_reply() -> void:
+	if resigned:
+		return
+	resigned = true
+	game.resigned.append(team)
+	game.end_note = "ai_resigned"
+	game.chat.post(team, "gg wp")
+	if game.mlog:
+		game.mlog.add("%s resigned after gg (%s)" % [game.mlog.who(team), game.standing_text(team)])
+	for b in game.buildings.duplicate():
+		if b.team == team:
+			b.take_damage(99999, null)
 
 
 ## Everything at once (tests and tools that call it).

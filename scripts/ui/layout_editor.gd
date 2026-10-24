@@ -274,6 +274,7 @@ func _draw() -> void:
 		var w := f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
 		draw_string(f, sr.get_center() + Vector2(-w * 0.5, 6), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UiStyle.TEXT)
 	var hint := "Drag the boxes to move them. Saved as you go." if editable else "Built-in layout. Pick a CUSTOM slot to make your own."
+	hint += "   (Enter: chat)"
 	var f2 := UiStyle.bold_font()
 	var w2 := f2.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
 	draw_string(f2, Vector2(size.x * 0.5 - w2 * 0.5, size.y * 0.5), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, UiStyle.MUTED)
