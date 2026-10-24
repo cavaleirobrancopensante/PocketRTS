@@ -1431,8 +1431,9 @@ func _draw_building() -> void:
 		draw_rect(Rect2(-w * 0.5, top + 7, w * progress, 4), Color(0.95, 0.8, 0.3))
 	elif kind == "farm" and (team == game.human or game.spectating()):
 		var w := r.size.x * 0.7
-		draw_rect(Rect2(-w * 0.5, top + 7, w, 4).grow(1), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(-w * 0.5, top + 7, w * growth, 4), Color(0.95, 0.85, 0.3))
+		# (just under the crew label and above the windmill's top: lower it hid behind the mill)
+		draw_rect(Rect2(-w * 0.5, top - 1, w, 4).grow(1), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-w * 0.5, top - 1, w * growth, 4), Color(0.95, 0.85, 0.3))
 	elif not queue.is_empty() and team == game.human:
 		var w := r.size.x * 0.7
 		var k: String = queue[0]
