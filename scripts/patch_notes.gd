@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.47", "items": [
+		"AI scout now really attacks a gate or wall that blocks it.",
+		"AI scout steps out of musketeer range and watches the ramp from a safe spot; it goes home if it keeps being shot, and remembers that the enemy has foot soldiers.",
+	]},
 	{"v": "0.12.46", "items": [
 		"Led horses no longer get stuck in a gateway: they follow behind the leader or path around the wall.",
 		"Horse delivery from the Breeder has stuck recovery (repath, then place the horse beside the recruit).",
