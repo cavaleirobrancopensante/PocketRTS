@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.53", "items": [
+		"Powder mill redrawn: a lean-to roof over the three ingredient piles and a wooden hopper by the millstone.",
+	]},
 	{"v": "0.12.52", "items": [
 		"New labourer art: death, keg explosion death, bury, idle and walk redrawn in the new outfit; the side-view walk has a real stride.",
 	]},
