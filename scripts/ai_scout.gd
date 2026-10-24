@@ -217,6 +217,10 @@ func _follow() -> void:
 	if game.clock - sent_at > limit:
 		_finish("timeout")
 		return
+	# Held up at a gate or wall on the ramp: a scout is no fighter, but it may break at the
+	# structure in its way (the timeout still ends the trip). It does not turn on units.
+	if unit.order == "attack" and unit.target is Building and not unit.target.dead:
+		return
 	var wp: Vector2 = _wps[_wp_i]
 	# on past a point before standing on it (it must never idle: the workers' code takes idlers)
 	if unit.position.distance_to(wp) < 110.0:
@@ -230,9 +234,30 @@ func _follow() -> void:
 	if unit.order == "idle":
 		_stuck += 1.0
 		if _stuck > 2.0 and game.clock - sent_at > 8.0:
+			var wall := _blocker()
+			if wall != null:
+				unit.cmd_attack(wall)
+				_stuck = 0.0
+				return
 			_finish("blocked")
 			return
 		unit.cmd_move(wp)
+
+
+## The nearest wall or gate of the enemy's right by the scout (what holds it up).
+func _blocker() -> Building:
+	if not unit.has_attack():
+		return null
+	var best: Building = null
+	var bd := 170.0
+	for b in game.buildings:
+		if b.team != _foe or b.dead or not b.built or not (b.kind in ["gate", "palisade", "wall", "stone_wall"] or b.d.get("wall", false)):
+			continue
+		var dd: float = b.center().distance_to(unit.position)
+		if dd < bd:
+			bd = dd
+			best = b
+	return best
 
 
 func _finish(how: String) -> void:
