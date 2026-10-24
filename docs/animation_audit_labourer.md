@@ -50,14 +50,54 @@ now, as the other views).
   so the body stays still and only the head, arm and hammer move (the hammer must read: 0 high,
   1 mid, 2 strike with spark, 3 lifting). The raised-hammer frames (s 0, n 0, n 3) were taller than
   the cell and have their handle shortened to fit the 34 rows.
-- Mine E and N: E plays 0, 1, 2, 1 (the drawn 4th frame did not match); N frames 0 and 3 are
-  grafted from NE.
+- Mine: superseded by the hoe pass below (E and N are no longer special-cased).
 - Walk carry SE frame 1 had a reddish glow (removed); carry SE frame 0 had a smudged hem (hem row
   forced); a lone red pixel in the face of keg SE frame 5 and pink / blue / maroon strays are
   recoloured.
 
 **Kept from the old art:** nothing of the redrawn poses. `idle_s / se / e / n`, `bury_*`,
 `death_*` and `death_keg_*` are untouched.
+
+## The farm swing is a hoe (tools/import_labourer_hoe.py)
+
+The game has no mining, only farms and the powder mill, and `mine_*` is what he plays hoeing a
+farm (`_anim_name`: work "manning" on a farm), so the image-AI's pickaxe had to go. The script
+runs after `import_labourer_redraw.py` and rewrites `mine_<s|se|e|ne|n>.png` (4 frames: raise,
+mid, strike with soil, recover; strike = frame 2 as before, so `ArtData` and the tests are
+unchanged) from `art/redraws/new_mine/` (the redraw's strips, pristine; refresh with `--snapshot`)
+and keeps the original 3-frame art in `art/redraws/old_mine/` (git 37bb869) for reference.
+
+Evaluation, every frame at 6x, old (3 frames, slimmer man, smaller head) against new (4 frames):
+
+| | old | new |
+| --- | --- | --- |
+| Man | hunched in every frame, head about 10 % smaller, scaled up 1.09 it still differs in hat and shading from the walk / idle strips | bulkier, the walk / idle man |
+| Raise | tool half hidden behind the head, body already stooped, so no real raise | tool up over the shoulder, clear in s, se, ne, n; E frame 0 has no raised arm and N 0 / 3 only a stub of tool |
+| Mid | S, SE, NE hold the tool high behind the head (big arc); NE a long tool forward; N turned 3/4, not a back view | tool low and small (E, NE, S, SE), none at all in N |
+| Strike | deep crouch (hat 6-12 rows lower than the raise: real weight), but the tool is lost in grey debris and the face is hidden | readable tool and face, soil chips, but nearly upright in E, NE and N |
+| Recover | none | repeats the raise (S, SE, NE, N); E repeats the mid |
+
+Verdict: the NEW bodies are the only ones that match the rest of the labourer set (head, coat,
+trousers, line weight), and a mixed strip showed the old head and hat as a visible change of man
+(the old N mid is even a different view), so no old pixel is used. What the old art did better is
+reproduced instead: the **weight** (strike frames: two rows are cut out of the thighs so the body
+drops with the boots staying on row 33, plus a 1 px lean in the E-facing views) and the **arc**
+(redrawn tool: apex about 45 degrees up on the raise, handle sloping down with the blade leading on
+the mid, long handle into the soil on the strike, rising again on the recover). The tool is erased
+from each frame (hand-set boxes, coat / face / hands untouched) and redrawn.
+
+The hoe: a 2 px wooden handle (labourer wood colours, light top, dark underside), a 1 px dark iron
+neck and a flat plate about 5 px wide and 3 deep set at 80 degrees to the handle, pointing down
+on the raise / mid and biting the soil on the strike (hard pixels, iron grey, a bright cutting edge,
+dark outline on the outer side). The strike throws brown soil clods (the old grey stone chips are
+gone). Nothing touches row 33 or column 41 (the ground-line test). The farm hoe sound
+(`work/hoe`, every 2.2-3.2 s from `_work_sound`) is on a timer, not tied to a frame, so it does not
+depend on the strike frame.
+
+Not perfect: the plate is a flat shape at game scale, not seen edge-on; in the west views the
+mirror puts the hoe in the left hand; E frame 0 and 3 keep the AI's hanging near arm, so the tool
+comes out of one hand low at the hip; the coat hem makes a small flap at the back on the crouched
+strike frames in SE, E and NE; mid and strike are similar in pose (the blade is higher in the mid).
 
 ## Still needs redrawing (code cannot fix it)
 
@@ -67,8 +107,8 @@ now, as the other views).
 2. **Raised-hammer frames (build s 0, n 0, n 3) and mine s 0** reach the top row of the cell
    (their handles were shortened); the hammer is smaller than the drawn proportion. The crouching
    head is about 20 % smaller than the walking head.
-3. **`mine_n` swing frame shows no pick** (the AI hid it behind his back); `mine` is now a pickaxe
-   where the old game art was a hoe (the idle poses `idle_s / se / e / n` still hold a hoe).
+3. ~~`mine_n` swing frame shows no pick; `mine` is a pickaxe~~ Fixed: see "The farm swing is a hoe"
+   below (the idle poses `idle_s / se / e / n` still hold the old hoe, a slightly different drawing).
 4. **`bury_*` and `death_keg_*`** still use the old keg man (red cap, brown shirt and trousers, red
    sash) against the felt-hat man in a red coat everywhere else. Frame 5 of bury is also a 4 px hop.
    Redraw them in the labourer's outfit.
