@@ -63,6 +63,14 @@ var _grid_btn: Button
 var _zoom_btn: Button
 var _faction_btns := {}
 var needs_only := false
+var pan := Vector2.ZERO          # the preview's offset: drag it to centre the unit
+var _scrolls: Array[ScrollContainer] = []
+var _touch_id := -1
+var _touch_target: Object = null  # a ScrollContainer or the preview
+var _touch_start := Vector2.ZERO
+var _touch_drag := false
+var _block_until := 0
+var _copied_lbl: Label
 var _needs_btn: Button
 
 
@@ -199,6 +207,8 @@ func _btn(t: String, cb: Callable, h := 44.0) -> Button:
 	b.custom_minimum_size = Vector2(0, h)
 	b.add_theme_font_size_override("font_size", 16)
 	b.pressed.connect(func() -> void:
+		if Time.get_ticks_msec() < _block_until:
+			return                  # the finger lifted at the end of a drag, not a tap
 		Sfx.play_any(["ui/click", "click"])
 		cb.call())
 	return b
@@ -208,6 +218,8 @@ func _scroll(box: VBoxContainer, w: float) -> ScrollContainer:
 	var s := ScrollContainer.new()
 	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	s.custom_minimum_size.x = w
+	s.scroll_deadzone = 100000       # touch dragging is handled by _input below (works over buttons too)
+	_scrolls.append(s)
 	s.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.add_child(box)
@@ -301,11 +313,17 @@ func _build() -> void:
 		grid_mode = not grid_mode
 		_refresh())
 	ctl.add_child(_grid_btn)
+	ctl.add_child(_btn("CENTER", func() -> void:
+		pan = Vector2.ZERO
+		_preview.queue_redraw()))
+	ctl.add_child(_btn("COPY NAME", copy_name))
+	_copied_lbl = UiStyle.text("", 14, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_LEFT, true)
+	mid.add_child(_copied_lbl)
 	# right: animations, directions, flags
 	var right := VBoxContainer.new()
 	right.custom_minimum_size.x = 250
 	right.add_theme_constant_override("separation", 6)
-	cols.add_child(right)
+	cols.add_child(_scroll(right, 262))      # the whole column scrolls on a short phone screen
 	right.add_child(UiStyle.text("POSE  (keys: Up / Down)", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true))
 	right.add_child(_pair_row("< POSE", "POSE >", func(d: int) -> void: cycle_anim(d)))
 	_anim_box = VBoxContainer.new()
@@ -389,6 +407,45 @@ func cycle_dir(delta: int) -> void:
 			return
 
 
+## Dragging a finger (or the mouse) over a list scrolls it; over the picture it moves the picture.
+func _touch(e: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
+	if e is InputEventScreenTouch:
+		if e.pressed:
+			_touch_id = e.index
+			_touch_start = e.position
+			_touch_drag = false
+			_touch_target = _target_at(e.position)
+		elif e.index == _touch_id:
+			if _touch_drag:
+				_block_until = Time.get_ticks_msec() + 250
+			_touch_id = -1
+			_touch_target = null
+			_touch_drag = false
+		return
+	if e.index != _touch_id or _touch_target == null:
+		return
+	if not _touch_drag and e.position.distance_to(_touch_start) < 12.0:
+		return
+	_touch_drag = true
+	if _touch_target is ScrollContainer:
+		_touch_target.scroll_vertical -= int(e.relative.y)
+	elif _touch_target == _preview:
+		pan += e.relative
+		_preview.queue_redraw()
+
+
+func _target_at(p: Vector2) -> Object:
+	if _preview != null and _preview.get_global_rect().has_point(p):
+		return _preview
+	for i in range(_scrolls.size() - 1, -1, -1):        # the inner lists were added after their columns
+		var sc := _scrolls[i]
+		if is_instance_valid(sc) and sc.is_visible_in_tree() and sc.get_global_rect().has_point(p):
+			return sc
+	return null
+
+
 func _anim_names(a: String) -> Array:
 	var names: Array = anims_of(a).keys()
 	names.sort()
@@ -399,6 +456,9 @@ func _anim_names(a: String) -> Array:
 
 
 func _input(e: InputEvent) -> void:
+	if e is InputEventScreenTouch or e is InputEventScreenDrag:
+		_touch(e)
+		return
 	if not (e is InputEventKey) or not e.pressed or e.echo or not is_visible_in_tree():
 		return
 	if get_viewport().gui_get_focus_owner() is LineEdit:
@@ -508,6 +568,18 @@ func step(delta: int) -> void:
 	_refresh()
 
 
+## "unit / pose / direction / frame n of m" to the clipboard, to tell Claude later which animation bothers you.
+func copy_name() -> void:
+	var line := "%s / %s / %s / frame %d of %d" % [art, anim, dir, frame + 1, frame_count()]
+	DisplayServer.clipboard_set(line)
+	_copied_lbl.text = "Copied: " + line
+	var stamp := Time.get_ticks_msec()
+	_copied_lbl.set_meta("stamp", stamp)
+	get_tree().create_timer(4.0).timeout.connect(func() -> void:
+		if is_instance_valid(_copied_lbl) and int(_copied_lbl.get_meta("stamp", 0)) == stamp:
+			_copied_lbl.text = "")
+
+
 func flag_frame() -> void:
 	flagged.append("%s / %s / %s / frame %d of %d%s" % [art, anim, dir, frame + 1, frame_count(),
 			(" - " + _note.text.strip_edges()) if _note.text.strip_edges() != "" else ""])
@@ -559,11 +631,11 @@ class Preview extends Control:
 			var ch := size.y / 2.0
 			for i in AnimViewer.SHOW_DIRS.size():
 				var d: String = AnimViewer.SHOW_DIRS[i]
-				var r := Rect2(Vector2(i % cols * cw, i / cols * ch), Vector2(cw, ch))
+				var r := Rect2(Vector2(i % cols * cw, i / cols * ch) + viewer.pan, Vector2(cw, ch))
 				_cell(d, r, true)
 				draw_rect(r, Color(1, 1, 1, 0.12), false)
 		else:
-			_cell(viewer.dir, Rect2(Vector2.ZERO, size), false)
+			_cell(viewer.dir, Rect2(viewer.pan, size), false)
 
 	func _cell(d: String, r: Rect2, label: bool) -> void:
 		var n := AnimViewer.strip_frames(viewer.art, viewer.anim, d)

@@ -76,6 +76,50 @@ func _run() -> void:
 	for k in AnimViewer.NEEDS_ART:
 		check(ArtData.UNITS.has(k), "needs-art key %s is a real art" % k)
 	av.needs_only = false
+	av.select_art("musketeer")
+	# touch: drag the picture to pan it, drag a list to scroll it, copy the name
+	var pc: Vector2 = av._preview.get_global_rect().get_center()
+	var t := InputEventScreenTouch.new()
+	t.index = 0
+	t.pressed = true
+	t.position = pc
+	av._touch(t)
+	var dr := InputEventScreenDrag.new()
+	dr.index = 0
+	dr.position = pc + Vector2(40, 10)
+	dr.relative = Vector2(40, 10)
+	av._touch(dr)
+	t = InputEventScreenTouch.new()
+	t.index = 0
+	t.pressed = false
+	t.position = dr.position
+	av._touch(t)
+	check(av.pan == Vector2(40, 10), "dragging the picture pans it (%s)" % str(av.pan))
+	check(Time.get_ticks_msec() < av._block_until, "the lift after a drag does not click a button")
+	await process_frame
+	av._preview.queue_redraw()
+	var sc: ScrollContainer = av._scrolls[0]
+	sc.size_flags_vertical = Control.SIZE_SHRINK_BEGIN      # a short box, like a phone screen
+	sc.custom_minimum_size.y = 120
+	await process_frame
+	await process_frame
+	check(sc.get_v_scroll_bar().max_value > sc.size.y or sc.get_v_scroll_bar().max_value > 0.0, "the unit list is longer than its box")
+	var lp: Vector2 = sc.get_global_rect().get_center()
+	t = InputEventScreenTouch.new()
+	t.pressed = true
+	t.position = lp
+	av._touch(t)
+	dr = InputEventScreenDrag.new()
+	dr.position = lp + Vector2(0, -80)
+	dr.relative = Vector2(0, -80)
+	av._touch(dr)
+	check(sc.scroll_vertical > 0, "dragging up scrolls the list down (%d)" % sc.scroll_vertical)
+	t = InputEventScreenTouch.new()
+	t.pressed = false
+	av._touch(t)
+	av.copy_name()
+	check(av._copied_lbl.text.begins_with("Copied: musketeer / "), "copy name label: %s" % av._copied_lbl.text)
+	av.pan = Vector2.ZERO
 	av.grid_mode = true
 	av._refresh()
 	await process_frame
