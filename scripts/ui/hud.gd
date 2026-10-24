@@ -302,7 +302,7 @@ func _layer_sig(n: String) -> Array:
 			var al := []
 			if game.alert_t > 0.0 and game.alert_at != Vector2.INF:
 				al = [game.alert_at, int(game.alert_t * 40.0)]
-			return [mr, Vector2i(((c - vp * 0.5) * k * 4.0).round()), Vector2i((vp * k * 4.0).round()), al, snappedf(game.camera.zoom.x, 0.01), int(_zoom_alpha() * 40.0)]
+			return [mr, zoom_rect(), Vector2i(((c - vp * 0.5) * k * 4.0).round()), Vector2i((vp * k * 4.0).round()), al, snappedf(game.camera.zoom.x, 0.01), int(_zoom_alpha() * 40.0)]
 		"groups":
 			var hv := -1
 			if pc:
@@ -1760,7 +1760,7 @@ func _draw_minimap() -> void:
 
 
 ## Over the minimap (its own layer, redrawn as the camera moves): the camera's view, where
-## you're being hit and the zoom gauge.
+## you're being hit, and the zoom gauge (top bar).
 func _draw_map_view() -> void:
 	var m := mini_rect()
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
@@ -1774,7 +1774,7 @@ func _draw_map_view() -> void:
 		var ph := fmod(game.alert_t * 2.0, 1.0)
 		_ci.draw_arc(ap, 4.0 + ph * 14.0, 0, TAU, 20, Color(1, 0.25, 0.2, 1.0 - ph), 2.0)
 		_ci.draw_circle(ap, 3.0, Color(1, 0.3, 0.2))
-	_draw_zoom(m)
+	_draw_zoom()
 
 
 var _mini_tex: ImageTexture
@@ -1793,12 +1793,17 @@ func _zoom_alpha() -> float:
 	return 1.0 if zt < 1.5 else lerpf(1.0, 0.55, clampf((zt - 1.5) / 0.8, 0.0, 1.0))
 
 
-## Zoom gauge in the minimap's bottom corner: a slim bar from widest view to closest,
-## with the zoom as a factor. It brightens for a couple of seconds after the zoom changes.
-func _draw_zoom(m: Rect2) -> void:
+## The small zoom gauge, in the top bar left of the menu buttons (not on the minimap).
+func zoom_rect() -> Rect2:
+	return Rect2(_vs().x - 96 - 128 - 100, 9, 92, 18)
+
+
+## Zoom gauge: a slim bar from widest view to closest, with the zoom as a factor. It
+## brightens for a couple of seconds after the zoom changes.
+func _draw_zoom() -> void:
 	var z: float = game.camera.zoom.x
 	var a := _zoom_alpha()
-	var box := Rect2(m.end - Vector2(96, 22), Vector2(92, 18))
+	var box := zoom_rect()
 	_ci.draw_rect(box, Color(0, 0, 0, 0.55 * a))
 	var bar := Rect2(box.position + Vector2(40, 7), Vector2(46, 4))
 	_ci.draw_rect(bar, Color(1, 1, 1, 0.25 * a))
