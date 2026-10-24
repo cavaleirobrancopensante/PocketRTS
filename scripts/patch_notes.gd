@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.57", "items": [
+		"Art work files only: new labourer south walk sheet saved for the coming walk redraw.",
+	]},
 	{"v": "0.12.56", "items": [
 		"AI worker safety: workers no longer all rush a small raid and die. They fight only when clearly stronger, otherwise they flee to a hall or open ground and go back to work once it is safe.",
 	]},
