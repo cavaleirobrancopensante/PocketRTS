@@ -293,6 +293,12 @@ func _right_click(screen: Vector2, queued := false) -> void:
 
 ## Computer: left button.
 func _left_pc(e: InputEventMouseButton) -> void:
+	if e.pressed and _line_btn == "right":
+		# a left click in the middle of a right-button line drag calls the drag off: the line
+		# must go too (it used to stay drawn and keep growing with the mouse)
+		line = PackedVector2Array()
+		_line_btn = ""
+		return
 	if e.pressed:
 		match mode:
 			"place":

@@ -1150,6 +1150,13 @@ func _refit_buttons(list: Array, units: Array) -> void:
 		_tip_for[lab] = ["Refit: %s   (%s a man)" % [info["name"], price],
 			"%d of them lack it: each pays, walks to the nearest Barracks, Armoury or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back." % [need.size(), what, int(Defs.REFIT["time"])]]
 		list.append([_research_icon(ww), lab, func() -> void:
+			if Settings.pc() and Input.is_key_pressed(KEY_SHIFT):
+				# Shift: each man goes for it after the orders he has now (the fee is paid then)
+				for m in game.selected_units():
+					if Defs.ARMOURED.has(m.kind):
+						m.give({"o": "act", "fn": func(u: Unit) -> void: game.refit_order([u], ww, true)}, true)
+				toast("Queued: they get refitted after their current orders (%s)." % info["name"])
+				return
 			var r := game.refit_order(game.selected_units(), ww)
 			if int(r[0]) > 0:
 				toast("%d soldier%s off to be refitted: %s." % [r[0], "" if r[0] == 1 else "s", info["name"]] + ("  " + String(r[1]) if r[1] != "" else ""))
