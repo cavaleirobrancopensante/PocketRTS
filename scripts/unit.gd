@@ -6016,6 +6016,17 @@ func _follow_leader(delta: float) -> Vector2:
 	speed = maxf(float(d["speed"]), leader.speed * 1.35)
 	var to := goal - position
 	var dist := to.length()
+	# the leash has a length: a horse that is too far, or has made no headway for a while (jammed
+	# behind a crowd or a building), is brought back beside its leader instead of stretching the rope
+	if dist > LEASH_MAX or (dist > 40.0 and position.distance_to(_lead_last) < 6.0 * delta + 1.0):
+		_lead_stuck += delta
+	else:
+		_lead_stuck = 0.0
+	_lead_last = position if _lead_stuck == 0.0 or position.distance_to(_lead_last) > 6.0 else _lead_last
+	if dist > LEASH_MAX * 1.5 or _lead_stuck > 2.5:
+		_lead_stuck = 0.0
+		_snap_to_leader(goal)
+		return Vector2.ZERO
 	if dist > 180.0:
 		# far behind (round a corner, past a crowd): find the way
 		if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
@@ -6026,6 +6037,28 @@ func _follow_leader(delta: float) -> Vector2:
 		facing = facing.lerp(lf, clampf(delta * 4.0, 0.0, 1.0)).normalized()
 		return Vector2.ZERO
 	return to.normalized() * minf(speed, dist * 3.0 + 6.0)
+
+
+const LEASH_MAX := 170.0
+var _lead_stuck := 0.0
+var _lead_last := Vector2.ZERO
+
+
+## Put a led horse back beside its leader on the nearest clear spot.
+func _snap_to_leader(goal: Vector2) -> void:
+	var best := Vector2.INF
+	for r in [0.0, 20.0, 36.0, 52.0, 72.0]:
+		for k in 8:
+			var p: Vector2 = goal + Vector2.RIGHT.rotated(k * TAU / 8.0) * r
+			if game._clear_at(p, radius, team):
+				best = p
+				break
+		if best != Vector2.INF:
+			break
+	if best != Vector2.INF:
+		position = best
+		path.clear()
+		path_i = 0
 
 
 ## Walking into a building (taken for a recruit or a gun) or to a gun (to be harnessed).
@@ -6366,6 +6399,8 @@ func _draw_rein() -> void:
 	else:
 		var ahead: Unit = leader.led[i - 1]
 		hand = ahead.position + Vector2(0, -18) - position      # tied to the saddle of the one ahead
+	if b.distance_to(hand) > 70.0:
+		hand = b + (hand - b).normalized() * 70.0      # (the rope has a length: never a huge line across the map)
 	var mid := (b + hand) * 0.5 + Vector2(0, minf(6.0, b.distance_to(hand) * 0.12))
 	var col := Color(0.42, 0.27, 0.13, 0.95)
 	_rein.draw_polyline(PackedVector2Array([b, mid, hand]), col, 1.0)
