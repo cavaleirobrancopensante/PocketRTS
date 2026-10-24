@@ -18,7 +18,8 @@ TONES = SILVER if "--silver" in sys.argv else (CREAM if "--cream" in sys.argv el
 PREFIX = "silver" if "--silver" in sys.argv else ("cream" if "--cream" in sys.argv else "white")
 
 
-def whiten(fr, y0=None):
+def whiten(fr, y0=None, tones=None):
+    TONES_ = tones or TONES
     """grey trouser pixels (low colour spread, mid brightness) from row y0 down become white tones."""
     out = fr.copy()
     y0 = AY - 10 if y0 is None else y0
@@ -27,13 +28,13 @@ def whiten(fr, y0=None):
     lum = (r + g + b) // 3
     spread = np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)
     m = (seg[..., 3] > 0) & (spread < 22) & (lum >= 50) & (lum <= 175)
-    if len(TONES) == 4:
+    if len(TONES_) == 4:
         tone = np.where(lum >= 118, 0, np.where(lum >= 95, 1, np.where(lum >= 72, 2, 3)))
     else:
         tone = np.where(lum >= 112, 0, np.where(lum >= 80, 1, 2))
-    for t in range(len(TONES)):
+    for t in range(len(TONES_)):
         sel = m & (tone == t)
-        seg[sel, 0], seg[sel, 1], seg[sel, 2] = TONES[t]
+        seg[sel, 0], seg[sel, 1], seg[sel, 2] = TONES_[t]
     return out
 
 

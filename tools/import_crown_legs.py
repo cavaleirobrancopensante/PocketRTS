@@ -2,7 +2,8 @@
 other Crown foot units whose own legs were code-built or barely lift in some views:
 
   musketeer_armoured : all five views (its legs were rebuilt in code by import_gait_musketeer_armoured.py)
-  (the Musketeer was tried too and left out: his own walk, with the tricorne and the musket in his hands, stays)
+  musketeer          : walk, all five views, with his silver-grey breeches (owner approved 2026-10-24); his other poses already
+                       have silver breeches and are left alone. His own walk (tricorne, musket in his hands) is the body.
 
 Not touched: the officers (dismounted, dismounted_armoured: the owner likes their gait), the Missionary (his
 long cassock hides legs: the trousers would poke out under it), mounted units, the Brood and Clockwork.
@@ -19,10 +20,12 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import experiment_crown_legs as E  # noqa: E402  (its main() only runs as a script)
+import experiment_white_pants as W  # noqa: E402
 
 U = os.path.join(ROOT, "assets/units")
 SRC = os.path.join(ROOT, "art/redraws/gait_src")
-TARGETS = {"musketeer_armoured": ["s", "se", "e", "ne", "n"]}
+TARGETS = {"musketeer_armoured": ["s", "se", "e", "ne", "n"], "musketeer": ["s", "se", "e", "ne", "n"]}
+SILVER_LEGS = {"musketeer"}      # (the Musketeer's breeches are silver-grey: the labourer's grey legs are recoloured to his ramp)
 
 
 def run():
@@ -38,6 +41,8 @@ def run():
             lab = E.frames(f"{U}/labourer/walk_{d}.png", 42)
             n = len(fr)
             out = [E.swap(fr[k], lab[int(round(k * 6.0 / n)) % 6], ax, ay) for k in range(n)]
+            if u in SILVER_LEGS:
+                out = [W.whiten(f, tones=W.SILVER) for f in out]
             Image.fromarray(np.concatenate(out, 1)).save(cur)
             print("legs:", u, d, n, "frames")
 
