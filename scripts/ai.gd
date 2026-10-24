@@ -272,21 +272,135 @@ func _workers() -> void:
 	var queued := 0
 	for h in _halls():
 		queued += h.queue.filter(func(k: String) -> bool: return k == worker).size()
+	# (the wall and the first Barracks are paid for before the crew grows further)
+	# (the Barracks and the Mill first, then the wall, before the crew grows further)
+	var hold_gold: bool = _crown() and difficulty > 0 and labs.size() + queued >= 6 and not _mine("cottage").is_empty() and game.clock < 200.0 and \
+			((opening == "mill" and (_mine("barracks").is_empty() or _mine("powder_mill").is_empty())) or (not _walled and _wall_wanted()))
+	# (a feared rush with a Barracks standing: the first Musketeers before more labourers)
+	if _army_first() and labs.size() >= 8 and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
+		hold_gold = true
 	for h in _halls():
-		if h.built and labs.size() + queued < want and (h.uses_eggs() or h.queue.size() < 2):
+		if h.built and not hold_gold and labs.size() + queued < want and (h.uses_eggs() or h.queue.size() < 2):
 			if game.train(h, worker) == "":
 				queued += 1
 	# Everyone idle goes to a post with room (escorts excepted).
 	_escort = _escort.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
 	for u in labs:
 		if u.order == "idle" and u.can_gather() and not _escort.has(u):
-			var site := game.free_site(team, u.position)
+			var site := _farm_first(u) if _crown() else null
+			if site == null:
+				site = game.free_site(team, u.position)
 			if site:
 				u.cmd_gather(site)
+	if _crown():
+		_balance_mill(labs)
+		_fill_farm(labs)
 	if _crown() or _brood():
 		_move_off_tired_soil(labs)
 	if _clock():
 		_tend_sites(labs)
+
+
+## Crown, the first minutes: gold (the farms' harvests: 380 each, faster with every hand on
+## them) pays for the wall, the Barracks and every Musketeer; the Powder Mill only has to
+## grind the 10 powder a Musketeer costs. So the Mill gets a small crew while the bank of powder
+## is healthy, and the rest tend the farms (a farm with 1-2 hands ripens in two minutes).
+func _mill_cap() -> int:
+	if game.clock > 300.0 or difficulty == 0:
+		return 99
+	if _mine("barracks").is_empty():
+		return 0
+	return 3 if _res2() < 50.0 else 1        # (powder for the first Musketeers: 10 each)
+
+
+func _farm_first(u: Unit) -> Building:
+	var best: Building = null
+	var bd := INF
+	for f in _mine("farm"):
+		if not f.built or f.barren() or f.crew.size() >= f.crew_max():
+			continue
+		# (fill one farm before the next: a full crew ripens it in 40 s, the gold comes in sooner)
+		var dd: float = f.center().distance_to(u.position) - f.crew.size() * 120.0
+		if dd < bd:
+			bd = dd
+			best = f
+	if best == null:
+		return null
+	var mills := _mine("powder_mill").filter(func(m: Building) -> bool: return m.built and not m.barren())
+	var mill_crew := 0
+	for m in mills:
+		mill_crew += m.crew.size()
+	# (the Mill takes its small share first)
+	if mill_crew < _mill_cap() and not mills.is_empty():
+		return null
+	return best
+
+
+## Crown, the first minutes (one hall): the hands of a young farm go to the farm that is nearest
+## its harvest until that one has its full crew of 8 (two at a time): the crew ripens one farm
+## in 40 s, so the gold comes in sooner (a lump the wall and the Barracks are waiting for).
+func _fill_farm(labs: Array) -> void:
+	if difficulty == 0 or game.clock > 360.0 or _halls().size() > 1:
+		return
+	var farms := _mine("farm").filter(func(f: Building) -> bool: return f.built and not f.barren())
+	if farms.size() < 2:
+		return
+	farms.sort_custom(func(a: Building, b: Building) -> bool: return a.growth > b.growth)
+	var to: Building = farms[0]
+	if to.crew.size() >= to.crew_max() or to.growth > 0.97:
+		return
+	var moved := 0
+	for u in labs:
+		if moved >= 2 or to.crew.size() + moved >= to.crew_max():
+			break
+		var site = u.home_mine
+		if u.order != "gather" or not (site is Building) or site == to or (site as Building).kind != "farm" or u.carrying > 0:
+			continue
+		if (site as Building).growth > to.growth - 0.2:
+			continue          # (only from a farm clearly farther from its harvest)
+		u.cmd_gather(to)
+		moved += 1
+
+
+## Hands on the Mill beyond its cap go to the farms (one or two at a time, never one carrying).
+func _balance_mill(labs: Array) -> void:
+	var cap := _mill_cap()
+	var mills := _mine("powder_mill").filter(func(m: Building) -> bool: return m.built)
+	if mills.is_empty() or cap >= 99:
+		return
+	var crew := 0
+	var room := 0
+	for m in mills:
+		crew += m.crew.size()
+		room += m.crew_max() - m.crew.size()
+	if crew < cap and room > 0:
+		# the first Musketeers need powder: farm hands walk over to the Mill (two at a time)
+		var sent := 0
+		for u in labs:
+			if sent >= 2 or crew + sent >= cap:
+				break
+			var farm = u.home_mine
+			if u.order != "gather" or not (farm is Building) or (farm as Building).kind != "farm" or u.carrying > 0:
+				continue
+			var m: Building = mills[0]
+			if m.crew.size() < m.crew_max():
+				u.cmd_gather(m)
+				sent += 1
+		return
+	if crew <= cap:
+		return
+	var moved := 0
+	for u in labs:
+		if moved >= 2 or crew - moved <= cap:
+			break
+		var site = u.home_mine
+		if u.order != "gather" or not (site is Building) or (site as Building).kind != "powder_mill" or u.carrying > 0:
+			continue
+		var to := _farm_first(u)
+		if to == null:
+			break
+		u.cmd_gather(to)
+		moved += 1
 
 
 ## Clockwork: a site nobody is starting (its Winder was killed or pulled away, dropping the
@@ -335,6 +449,9 @@ func _move_off_tired_soil(labs: Array) -> void:
 func _econ_build() -> void:
 	if _hall_reserve:
 		return
+	# (a feared rush: the wall and the Barracks first, once the first farm and Mill stand)
+	if _turtling() and game.econ_count(team, "farm") >= 1 and game.econ_count(team, "powder_mill") >= 1:
+		return
 	if _halls().filter(func(h: Building) -> bool: return h.built).is_empty():
 		return
 	_recycle_spent()
@@ -350,9 +467,9 @@ func _econ_build() -> void:
 		if opening == "breeder" and _mine("barracks").is_empty() and game.clock < 150.0 and game.econ_count(team, "farm") >= 1 and _halls().size() == 1:
 			order.erase("farm")      # (a Horseman rush: the second farm once the Barracks is going up)
 		if opening == "mill":
-			if game.econ_count(team, "powder_mill") == 0 and early:
-				order.erase("powder_mill")
-			if no_breeder and barracks_up and game.econ_count(team, "powder_mill") > 0:
+			if game.econ_count(team, "powder_mill") == 0 and (early or (difficulty > 0 and _mine("barracks").is_empty() and game.clock < 200.0)):
+				order.erase("powder_mill")      # (the Mill right after the Barracks: it grinds for Musketeers)
+			if no_breeder and barracks_up and game.econ_count(team, "powder_mill") > 0 and not _tech_wait():
 				order.append("horse_breeder")      # (after the Barracks: the Musketeers first)
 		else:
 			if no_breeder and not early:
@@ -542,30 +659,38 @@ func _build_up() -> void:
 			_construct("roost")
 		_grow_hall()
 	else:
+		# the wall comes before anything else is paid for (a standard moment, or at once when a
+		# rush is feared); the rest waits for its gold
+		if _wall_wanted():
+			_wall_off()
+			if not _walled:
+				_tend_wall()
+				return
 		var barracks := _mine("barracks").size()
 		# the Barracks (and the palisade) need a Cottage
 		if barracks == 0 and labs >= _lv([7, 6, 5]) and _mine("cottage").is_empty():
 			_construct("cottage")
-		if barracks == 0 and labs >= _lv([9, 8, 7]):
+		if barracks == 0 and (labs >= _lv([9, 8, 7]) or (difficulty > 0 and labs >= 5 and _walled and opening == "mill")):
 			_construct("barracks")
-		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150 and not _rushing():
+		elif barracks == 1 and (t > _lv([420.0, 200.0, 150.0]) or strategy == "rush") and gold > 150 and not _rushing() and not _tech_wait():
 			_construct("barracks")
 		elif barracks == 2 and difficulty >= 2 and t > _lv([9999.0, 9999.0, 330.0]) and gold > 300:
 			_construct("barracks")
-		if _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > _lv([480.0, 260.0, 200.0]):
+		if _tech_wait():
+			pass          # (soldiers before tech: the Musketeers' gold is not spent on buildings)
+		elif _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > _lv([480.0, 260.0, 200.0]):
 			_construct("foundry")
 		# the Armoury: all the Crown's research (and a second place to refit at)
-		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150 and not _rushing():
+		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150 and not _rushing() and not _tech_wait():
 			_construct("armoury")
-		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]):
+		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]) and not _tech_wait():
 			_construct("church")
-		if not _walled and t > _lv([300.0, 170.0, 120.0]) and gold >= 140 and game.requirement_met(team, "wall"):
-			_wall_off()
+		_tend_wall()
 	# Money in the bank: more production (and for the Brood, more Hives to lay eggs).
 	if gold > 400 and not _saving and not _rushing():
 		if _crown() and _mine("foundry").size() < 3 and gold > 700 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
 			_construct("foundry")
-		elif _crown() and _mine("barracks").size() < 9 and not _busy_building("barracks") and not _mine("barracks").is_empty():
+		elif _crown() and _mine("barracks").size() < 9 and not _busy_building("barracks") and not _mine("barracks").is_empty() and not _tech_wait():
 			_construct("barracks")
 		elif _clock() and _mine("assembly_works").size() < 5 and not _busy_building("assembly_works") and not _mine("assembly_works").is_empty():
 			_construct("assembly_works")
@@ -1061,10 +1186,14 @@ func _hunt(u: Unit, prey: Vector2) -> void:
 
 ## Crown: wall the top of each ramp up to the main base, with a two-wide gate in the
 ## middle. The wall is every free high-ground cell touching the ramp, so nothing slips by.
-func _wall_off() -> void:
-	_walled = true
+## Like an SC2 wall-off it is laid in one go and built by a CREW (2, or 3 when a rush is
+## feared) pulled off the farms, each with its own share of the pieces, so it stands before
+## the enemy can arrive; _tend_wall keeps it going. Waits (returns false) until the gold for
+## the whole line is in the bank: half a wall is no wall.
+func _wall_off() -> bool:
 	if game.starts.size() <= team:
-		return
+		_walled = true
+		return false
 	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
 	var left := {}
 	for y in range(int(home.y) - 22, int(home.y) + 23):
@@ -1072,16 +1201,8 @@ func _wall_off() -> void:
 			var c := Vector2i(x, y)
 			if game.in_map(c) and game.ramp[game.idx(c)] == 1:
 				left[c] = true
-	var builder: Unit = null
-	var bd := INF
-	for u in game.workers(team):
-		if u.order == "build":
-			continue
-		var dd: float = u.position.distance_to(home * Defs.TILE)
-		if dd < bd:
-			bd = dd
-			builder = u
-	var first := true
+	var plan: Array = []         # [kind, cell]
+	var mids: Array = []
 	while not left.is_empty():
 		# one ramp: the cells joined to the first one left
 		var start: Vector2i = left.keys()[0]
@@ -1109,21 +1230,185 @@ func _wall_off() -> void:
 		for rc in ramp_cells:
 			mid += Vector2(rc)
 		mid /= ramp_cells.size()
+		mids.append(mid)
 		var cells: Array = band.keys()
 		cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_to(mid) < Vector2(b).distance_to(mid))
+		# (a two-wide gate: the army files out to meet a raid without jamming; test_ai_army_response
+		# fails with a one-tile gate)
 		var gates: Array = [cells[0]]
 		for c in cells.slice(1):
 			if (c - cells[0]).length() <= 1.01:
 				gates.append(c)
 				break
-		var placed := 0
 		for c in cells:
-			var k := "gate" if gates.has(c) else "wall"
-			if game.place_building(team, k, c, [builder] if first and builder else []):
-				first = false
-				placed += 1
-		if game.mlog and placed > 0:
-			game.mlog.add("%s walled its ramp (%d pieces)" % [game.mlog.who(team), placed])
+			plan.append(["gate" if gates.has(c) else "wall", c])
+	if plan.is_empty():
+		_walled = true
+		return false
+	var cost := 0
+	for e in plan:
+		cost += int(Defs.BUILDINGS[e[0]]["cost"])
+	if _gold() < cost:
+		_wall_cost = cost
+		return false
+	# the crew: the labourers nearest the ramp (a farmer who is not carrying first)
+	var at: Vector2 = Vector2(mids[0]) * Defs.TILE
+	var crew_n := (4 if scout != null and scout.rush_units_seen() > 0 else 3) if _wall_urgent() else 2
+	var labs: Array = game.workers(team).filter(func(u: Unit) -> bool:
+		return not u.dead and u.order != "build" and not _escort.has(u) and not (scout != null and scout.is_scout(u)))
+	labs.sort_custom(func(a: Unit, b: Unit) -> bool:
+		return a.position.distance_to(at) + (150.0 if a.carrying > 0 else 0.0) < b.position.distance_to(at) + (150.0 if b.carrying > 0 else 0.0))
+	var crew: Array = labs.slice(0, crew_n)
+	if crew.is_empty():
+		return false
+	var made: Array = []
+	for e in plan:
+		var nb: Building = game.place_building(team, e[0], e[1], [])
+		if nb != null:
+			made.append(nb)
+	if made.is_empty():
+		return false
+	_walled = true
+	_wall_pieces = made
+	_wall_start_t = game.clock
+	_wall_done_t = -1.0
+	_assign_wall(crew, made)
+	if game.mlog:
+		game.mlog.add("%s walled its ramp (%d pieces, %d labourers on it%s)" % [game.mlog.who(team), made.size(), crew.size(), ", feared rush" if _wall_urgent() else ""])
+	return true
+
+
+## Split the pieces over the crew (nearest first, taking turns); each labourer gets his own
+## line to build, one after the other.
+func _assign_wall(crew: Array, pieces: Array) -> void:
+	if crew.is_empty() or pieces.is_empty():
+		return
+	var mine: Array = []
+	for _i in crew.size():
+		mine.append([])
+	var from: Vector2 = (crew[0] as Unit).position
+	var rest := pieces.duplicate()
+	rest.sort_custom(func(a: Building, b: Building) -> bool: return a.center().distance_to(from) < b.center().distance_to(from))
+	for i in rest.size():
+		mine[i % crew.size()].append(rest[i])
+	for i in crew.size():
+		if not (mine[i] as Array).is_empty():
+			(crew[i] as Unit).give({"o": "wall", "pieces": mine[i]})
+
+
+var _wall_cost := 0
+var _wall_pieces: Array = []
+var _wall_start_t := -1.0
+var _wall_done_t := -1.0
+var _adopted := {}              # wall site (instance id) -> times a labourer was found for it
+
+
+## A feared rush (scouted or unseen enemy): the wall and the first soldiers come before the economy grows.
+func _wall_urgent() -> bool:
+	if scout != null and scout.enabled and (scout.verdict == "rush" or scout.verdict == "uncertain"):
+		return true
+	return strategy == "rush" and _crown()
+
+
+## Crown: is it time to wall the ramp? At a standard moment even unscouted (right after the first
+## Cottage opens the palisade, about a minute in on Hard), at once when a rush is feared.
+func _wall_wanted() -> bool:
+	if _walled or not _crown() or not game.requirement_met(team, "wall") or _hall_reserve:
+		return false
+	if difficulty == 0:
+		return game.clock / float(_s("tech")) > 300.0 and _gold() >= 140
+	if opening == "breeder":
+		return game.clock >= _lv([9999.0, 75.0, 50.0])      # (the Horseman rush walls early too: it keeps the enemy's scout out)
+	# The Musketeer opening: the Barracks and the Mill come first (the farms pay in big lumps,
+	# and a wall alone cannot hold: the first Musketeers must be ready when the next harvest
+	# is in, see docs and tools/test_ai_wall_vs_rush.gd), the wall with the first gold after
+	# them: the very next harvest at the latest, and at once if a rush is feared.
+	var armed := not _mine("barracks").is_empty() and not _mine("powder_mill").is_empty()
+	return armed or game.clock >= _lv([9999.0, 170.0, 150.0])
+
+
+## Crown: a feared rush (scouted, or the enemy not seen) early on: the first Musketeers come before
+## tech buildings, a Horse Breeder or a second Barracks are paid for.
+func _army_first() -> bool:
+	if not _crown() or difficulty == 0 or game.clock > 420.0 or scout == null or not scout.enabled:
+		return false
+	if not (scout.verdict == "rush" or scout.verdict == "uncertain"):
+		return false
+	var muskets := game.army(team).filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind)).size()
+	for b in _mine("barracks"):
+		muskets += b.queue.size()
+	return muskets < 6
+
+
+## Crown: a scout report with nothing to fear, early on: labourers (a hand on a farm pays its
+## own price back in under a minute) before the tech and extra production buildings.
+func _eco_first() -> bool:
+	if not _crown() or difficulty == 0 or game.clock > 330.0 or scout == null or not scout.enabled or strategy == "rush":
+		return false
+	if not (scout.verdict == "balanced" or scout.verdict == "greedy"):
+		return false
+	return game.workers(team).size() < 14
+
+
+func _tech_wait() -> bool:
+	return _army_first() or _eco_first()
+
+
+## The wall is the first thing to pay for (and the first soldiers): the economy structures wait.
+func _turtling() -> bool:
+	if not _crown() or difficulty == 0 or _hall_reserve:
+		return false
+	if not (_wall_urgent() or (scout != null and scout.enabled and scout.foe_opening() == "unknown" and game.clock > 75.0)):
+		return false
+	return not _walled or _mine("barracks").is_empty()
+
+
+## A labourer for a wall site nobody is coming to (Game.sweep_ghosts asks before it drops a
+## ghost): the nearest free one takes it up. True if one did.
+func adopt_site(b: Building) -> bool:
+	if not Defs.BUILDINGS[b.kind].get("line", false) or peaceful:
+		return false
+	var id := b.get_instance_id()
+	if int(_adopted.get(id, 0)) >= 8:
+		return false
+	var best: Unit = null
+	var bd := INF
+	for u in game.workers(team):
+		if u.dead or u.order == "build" or _escort.has(u) or (scout != null and scout.is_scout(u)):
+			continue
+		var dd: float = u.position.distance_to(b.center()) + (150.0 if u.carrying > 0 else 0.0)
+		if dd < bd:
+			bd = dd
+			best = u
+	if best == null:
+		return false
+	_adopted[id] = int(_adopted.get(id, 0)) + 1
+	best.give({"o": "build", "e": b})
+	return true
+
+
+## Every think: note when the wall stands; the pieces nobody is coming to (a builder killed,
+## re-ordered) go to the nearest free labourer. The farm hands do the wall; once it stands
+## they go back to the fields (the idle ones are sent by _workers).
+func _tend_wall() -> void:
+	if _wall_pieces.is_empty() or _wall_done_t >= 0.0:
+		return
+	var open := 0
+	var alive := 0
+	for b in _wall_pieces:
+		if not is_instance_valid(b) or b.dead:
+			continue
+		alive += 1
+		if not b.built:
+			open += 1
+			var served := game.units.any(func(u: Unit) -> bool:
+				return u.team == team and not u.dead and ((u.order == "build" and u.order_target == b) or u.line_rest.has(b)))
+			if not served:
+				adopt_site(b)
+	if alive > 0 and open == 0:
+		_wall_done_t = game.clock
+		if game.mlog:
+			game.mlog.add("%s's ramp wall stands (%d pieces, %d s after it was laid)" % [game.mlog.who(team), alive, int(game.clock - _wall_start_t)])
 
 
 ## One of our ghost sites couldn't start (blocked): plan again. A wall piece: the ramp gets
