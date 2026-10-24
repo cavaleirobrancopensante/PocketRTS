@@ -6949,8 +6949,7 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	if not us.is_empty() and us[0].team == human:
 		var tgt := entity_at(p)
 		var atk: bool = tgt != null and hostile(tgt.team, human) and not force_move
-		Sfx.voice(us[0].kind, "attack" if atk else "move")
-		Sfx.bugle(faction_of(human), "charge" if atk else "move")
+		command_sound(us, "attack" if atk else "move", "charge" if atk else "move")
 	if us.is_empty():
 		return
 	var e := null if force_move else entity_at(p)
@@ -7084,10 +7083,28 @@ func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
 	return out
 
 
+## The sound of an order, one thing speaks (StarCraft style): one kind of unit answers with its own
+## voice (the Crown's bugle only now and then, for the calls that mean something: attack, patrol);
+## a mixed Crown group is answered by the bugle alone; whatever has no voice falls back to the bugle.
+func command_sound(us: Array, what: String, call: String) -> void:
+	if us.is_empty():
+		return
+	var kinds := {}
+	for u in us:
+		if u is Unit and not u.is_worker():
+			kinds[u.kind] = true
+	var crown := faction_of(human) == "crown"
+	if crown and kinds.size() >= 2:
+		Sfx.bugle("crown", call)
+		return
+	Sfx.voice(us[0].kind, what)
+	if crown and call != "move" and randf() < 0.4:
+		Sfx.bugle("crown", call)
+
+
 func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
 	if not us.is_empty() and us[0].team == human:
-		Sfx.voice(us[0].kind, "attack" if attack_move else "move")
-		Sfx.bugle(faction_of(human), "amove" if attack_move else "move")
+		command_sound(us, "attack" if attack_move else "move", "amove" if attack_move else "move")
 	# No pre-made formation (StarCraft / Beyond All Reason style): a group already together
 	# keeps its shape and moves as one blob; a group spread out bunches up into a clump at
 	# the point (each man keeps his side of it, closed in to a blob about its size).

@@ -16,6 +16,8 @@ var _players := {}
 var _last := {}
 var _voice: AudioStreamPlayer
 var _announcer: AudioStreamPlayer
+var _starts: Array = []        # when the latest sounds began (the cap on the din)
+var _duck_until := 0
 var _said := {}             # announcer line -> time last said
 
 
@@ -103,7 +105,7 @@ const GAP := {"combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/sp
 	# recorded gunfire: a volley of ten muskets is a few overlapping shots, not a wall of noise
 	"combat/musketeer_attack": 110, "combat/cannon_attack": 160, "combat/cannon_canister": 160,
 	"combat/mortar_attack": 200, "combat/cuirassier_attack": 120, "combat/cuirassier_move": 1500,
-	"combat/cuirassier_death": 150, "horse/whinny": 6000, "voice/crown_bugle/move": 9000, "voice/crown_bugle/amove": 7000,
+	"combat/cuirassier_death": 150, "horse/whinny": 6000, "horse/neigh": 2500, "voice/crown_recruit/horse_breeder": 2500, "voice/crown_bugle/move": 9000, "voice/crown_bugle/amove": 7000,
 	"voice/crown_bugle/charge": 7000, "voice/crown_bugle/patrol": 9000, "voice/crown_bugle/trained": 6000,
 	"voice/crown_recruit/town_hall": 2500, "voice/crown_recruit/barracks": 2500, "voice/crown_recruit/foundry": 2500,
 	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
@@ -119,6 +121,15 @@ static func gain(st: AudioStream) -> float:
 	return float(SoundMix.GAIN.get(st.resource_path, 0.0)) if st else 0.0
 
 
+## 3: the announcer and the interface; 2: unit voices, bugle, horse and recruit calls; 1: the rest.
+static func _tier(name: String) -> int:
+	if name.begins_with("ui/") or name.begins_with("voice/announcer") or name == "click":
+		return 3
+	if name.begins_with("voice/") or name.begins_with("horse/") or name.begins_with("select/"):
+		return 2
+	return 1
+
+
 static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	if me == null:
 		return
@@ -128,8 +139,21 @@ static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	var now := Time.get_ticks_msec()
 	if now - int(me._last.get(name, 0)) < int(GAP.get(name, 40)):
 		return   # don't stack dozens of identical sounds (a swarm's bites) on top of each other
+	# PRIORITIES (so a big fight is not a wall of noise, as in StarCraft II): voices, the
+	# announcer, bugle and horse calls (tier 2/3) always sound and hush the fight for a moment;
+	# the din of the fight (tier 1) is capped at a few new sounds per instant, and sits lower
+	# while something more important speaks.
+	var tier := _tier(name)
+	me._starts = me._starts.filter(func(t: int) -> bool: return now - t < 250)
+	if tier == 1 and me._starts.size() >= 6:
+		return
 	me._last[name] = now
+	me._starts.append(now)
 	var db := vol
+	if tier == 1 and now < me._duck_until:
+		db -= 5.0
+	elif tier >= 2:
+		me._duck_until = now + (1800 if tier == 3 else 1200)
 	if pos != Vector2.INF and me.camera and is_instance_valid(me.camera):
 		var dist := pos.distance_to(me.camera.get_screen_center_position()) * me.camera.zoom.x
 		if dist > 1100.0:
@@ -162,7 +186,11 @@ static func building_selected(kind: String, faction: String) -> void:
 
 ## Sounds that come with a unit's answer: kind -> {what: [[sound, chance], ...]} (each sound's
 ## GAP keeps it from repeating: the horse at most every 6 s).
-const VOICE_EXTRA := {"cuirassier": {
+const VOICE_EXTRA := {"dragoon": {"select": [["horse/neigh", 0.7]], "move": [["horse/neigh", 0.25]]},
+	"horseman": {"select": [["horse/neigh", 0.7]], "move": [["horse/neigh", 0.25]]},
+	"horse": {"select": [["horse/neigh", 0.8]]},
+	"cuirassier": {
+	"select": [["horse/neigh", 0.7]],
 	"move": [["combat/cuirassier_move", 1.0], ["horse/whinny", 0.33]],
 	"attack": [["combat/cuirassier_move", 1.0], ["horse/whinny", 0.33]]}}
 
@@ -170,7 +198,7 @@ const VOICE_EXTRA := {"cuirassier": {
 ## The Crown's bugle (Brazilian Army Manual de Toques calls, tools/audio/make_bugle.py): "move",
 ## "amove", "charge", "patrol" or "trained". Crown only, and rarely (each call has its own GAP).
 static func bugle(faction: String, what: String) -> void:
-	if faction == "crown":
+	if faction == "crown" and not me._voice.playing:        # (a unit's voice has priority over the bugle)
 		play("voice/crown_bugle/" + what, Vector2.INF, -8.0)
 
 
@@ -199,6 +227,7 @@ static func voice(kind: String, what: String) -> void:
 		list = me._find("voice/%s/move" % kind)
 	if list.is_empty():
 		return
+	me._duck_until = Time.get_ticks_msec() + 1200
 	var vs: AudioStream = list[randi() % list.size()]
 	me._voice.stream = prep(vs)
 	me._voice.volume_db = gain(vs)
