@@ -1510,23 +1510,8 @@ func _army() -> void:
 	# Defend: enemies near our buildings get everyone's attention.
 	var threat := _threat()
 	if threat != Vector2.INF:
-		# attacked from several sides at once: each soldier goes to the nearest raid
-		var spots := _threats()
-		# (a raid of flyers only is answered by the men who can hit flyers: grubs, pikes and the
-		# rest would just run after something out of their reach)
-		var air_spot := {}
-		for sp in spots + [threat]:
-			var near: Array = game.units_near(sp, 300.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field)
-			air_spot[sp] = not near.is_empty() and near.all(func(o: Unit) -> bool: return o.is_air())
-		for u in army:
-			if u.order != "attack" and (u.target == null or u.order == "idle"):
-				var best: Vector2 = threat
-				for sp in spots:
-					if u.position.distance_to(sp) < u.position.distance_to(best):
-						best = sp
-				if air_spot.get(best, false) and not _hits_air(u):
-					continue
-				u.cmd_move(best + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+		# (sized response: only as many soldiers as the visible enemy needs, see _defend)
+		_defend(army, threat, _threats())
 		# Workers pitch in when the base is being overrun and there's no army.
 		if army.size() < 3:
 			# (a lone worker scout is no invasion: two hands deal with it, the rest keep working)
@@ -1565,6 +1550,8 @@ func _army() -> void:
 					hands[i].set_meta("guard", true)
 					hands[i].cmd_attack(f2)
 		return
+	if not _det.is_empty():
+		_end_defence()
 	# Clockwork: constructs running low on charge go back into a field first
 	if _clock():
 		var fields: Array = game.buildings.filter(func(b: Building) -> bool: return b.team == team and not b.dead and b.built and b.d.has("field"))
@@ -2686,6 +2673,201 @@ func _release_escort() -> void:
 ## Can this soldier hit a flyer at all (anti-air men, the cannon's canister)?
 func _hits_air(u: Unit) -> bool:
 	return bool(u.d.get("anti_air", false)) or u.kind == "cannon"
+
+
+# ---- sized defence: commit only what beats the enemy at the spot, with a leash ----
+## Margins and limits (design principles 1 and 2: a decoy must not cost the whole army, a lost
+## fight is reinforced, a real attack gets a full answer in proportion to what is seen).
+const DEF_MARGIN := 1.5         # real attack: send this much value per value seen
+const DEF_MARGIN_GUNS := 1.2    # ... times this more when the enemy brought artillery
+const DEF_UNSEEN := 300.0       # a threat we cannot see (guns shelling from the dark) counts as this much
+const LONE_CAP := 4             # the most soldiers a lone fast raider ever draws
+const LONE_CAP_SCOUT := 2       # ... and an unarmed scout
+const LONE_MIN := 0.5           # the catchers must be worth this share of the raider, else it is ignored
+const LONE_LEASH := 380.0       # a detachment gives up this far from our nearest building
+const LONE_TIME := 25.0         # ... or after this many seconds
+const LONE_COOL := 30.0         # then the same kind of raider is ignored for this long
+const REAL_LEASH := 700.0
+const HOME_AREA := 260.0        # within this of one of our buildings is "our own area"
+const FAST_SPEED := 95.0        # an enemy this quick (horseman, scout, raptor) is a raider, not an army
+
+var _det: Dictionary = {}       # Unit -> {"spot": Vector2, "t0": float, "lone": bool}: the detachments out
+var _lone_cool := 0.0
+var _known_guns: Dictionary = {}   # enemy artillery seen (instance id -> {"u": Unit, "p": Vector2, "t": float})
+
+
+func _unit_value(u: Unit) -> float:
+	var v: float = float(u.d.get("cost", 50)) / maxf(1.0, float(u.d.get("spawn", 1))) + float(u.d.get("cost2", 0)) * 0.5
+	return v * (0.4 + 0.6 * clampf(u.hp / maxf(1.0, u.max_hp), 0.0, 1.0))
+
+
+func _armed(u: Unit) -> bool:
+	return not u.is_worker() and (u.has_attack() or Defs.MUSKETS.has(u.kind))
+
+
+func _is_gun(u: Unit) -> bool:
+	return u.kind in ["cannon", "mortar", "spore_mother"] or (u.kind == "tesla_cart" and u.tesla_mode == "deployed")
+
+
+## The visible enemies around a raid spot, as numbers.
+func _assess(spot: Vector2) -> Dictionary:
+	var foes: Array = game.units_near(spot, 300.0).filter(func(o: Unit) -> bool: return game.hostile(o.team, team) and not o.dead and not o.off_field)
+	var seen: Array = foes.filter(func(o: Unit) -> bool: return game.is_visible_to(team, o.position))
+	var armed: Array = seen.filter(func(o: Unit) -> bool: return _armed(o))
+	var a := {"spot": spot, "value": 0.0, "count": armed.size(), "lone": false, "speed": 0.0, "guns": false,
+		"air_only": not foes.is_empty() and foes.all(func(o: Unit) -> bool: return o.is_air()), "unarmed": false}
+	if seen.is_empty():
+		a["value"] = DEF_UNSEEN
+		a["count"] = 3
+		return a
+	for o in armed:
+		a["value"] += _unit_value(o)
+		a["speed"] = maxf(a["speed"], float(o.d.get("speed", 60)))
+		if _is_gun(o):
+			a["guns"] = true
+	for o in seen:
+		if not _armed(o):
+			a["speed"] = maxf(a["speed"], float(o.d.get("speed", 60)))
+	a["unarmed"] = armed.is_empty()
+	a["lone"] = armed.size() <= 2 and armed.all(func(o: Unit) -> bool: return float(o.d.get("speed", 60)) >= FAST_SPEED)
+	return a
+
+
+func _home_dist(p: Vector2) -> float:
+	var best := INF
+	for b in game.buildings:
+		if b.team == team and not b.dead and not b.ghost:
+			best = minf(best, b.center().distance_to(p))
+	return best
+
+
+## Enemy artillery we have seen lately (a limbered gun on the move does not count).
+func _note_guns() -> void:
+	for id in _known_guns.keys():
+		var e: Dictionary = _known_guns[id]
+		if not is_instance_valid(e["u"]) or e["u"].dead or game.clock - float(e["t"]) > 90.0:
+			_known_guns.erase(id)
+	for o in game.units:
+		if o.team != team and game.hostile(o.team, team) and not o.dead and _is_gun(o) and o.order == "idle" and game.is_visible_to(team, o.position):
+			_known_guns[o.get_instance_id()] = {"u": o, "p": o.position, "t": game.clock}
+
+
+## Is this ground, outside our own area, under a known enemy gun?
+func _gun_danger(p: Vector2) -> bool:
+	if _home_dist(p) <= HOME_AREA:
+		return false
+	for id in _known_guns:
+		var e: Dictionary = _known_guns[id]
+		if p.distance_to(e["p"]) < float(e["u"].d.get("range", 200)) + 40.0:
+			return true
+	return false
+
+
+func _post_spot() -> Vector2:
+	var hall: Array = _halls()
+	if hall.is_empty():
+		return Vector2.INF
+	return _home_spot(_rally_front(hall[0]))
+
+
+func _release(u: Unit, lone: bool) -> void:
+	_det.erase(u)
+	if lone:
+		_lone_cool = game.clock + LONE_COOL
+	if is_instance_valid(u) and not u.dead and not _attacking:
+		var post := _post_spot()
+		if post != Vector2.INF:
+			u.cmd_move(post, true)
+
+
+## The threat is over: the detachments walk home.
+func _end_defence() -> void:
+	for u in _det.keys():
+		_release(u, false)
+	_det.clear()
+
+
+## Answer each raid in proportion: commit enough soldiers to beat what is visible there (more
+## when the fight turns), keep the rest at the post. A lone fast raider draws a few catchers
+## on a leash (or nobody); nothing is chased into known guns outside our own area.
+func _defend(army: Array, threat: Vector2, spots: Array) -> void:
+	_note_guns()
+	if spots.is_empty():
+		spots = [threat]
+	var asses: Array = []
+	for sp in spots:
+		asses.append(_assess(sp))
+	asses.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["value"] > b["value"])
+	# detachments already out: follow the raid they were sent to, or give up
+	for u in _det.keys():
+		var e: Dictionary = _det[u]
+		if not is_instance_valid(u) or u.dead:
+			if e["lone"]:
+				_lone_cool = game.clock + LONE_COOL    # the raider eats detachments: stop feeding it
+			_det.erase(u)
+			continue
+		var a: Dictionary = {}
+		for x in asses:
+			if (x["spot"] as Vector2).distance_to(e["spot"]) < 350.0:
+				a = x
+				break
+		var lone: bool = e["lone"]
+		if a.is_empty():
+			_release(u, false)
+			continue
+		var far: float = _home_dist(u.position)
+		if lone and (far > LONE_LEASH or game.clock - float(e["t0"]) > LONE_TIME) or far > REAL_LEASH or _gun_danger(u.position):
+			_release(u, lone)
+			continue
+		e["spot"] = a["spot"]
+		if u.order == "idle" and u.target == null:
+			u.cmd_move(a["spot"] + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+	for a in asses:
+		var spot: Vector2 = a["spot"]
+		if _gun_danger(spot):
+			continue
+		var lone: bool = a["lone"]
+		if lone and game.clock < _lone_cool:
+			continue
+		var committed := 0.0
+		var committed_n := 0
+		var mine: Dictionary = {}
+		for u in army:
+			if _det.has(u) and (_det[u]["spot"] as Vector2).distance_to(spot) < 350.0 or u.position.distance_to(spot) < 350.0 and u.order == "attack":
+				mine[u] = true
+				committed += _unit_value(u)
+				committed_n += 1
+		var need: float = float(a["value"]) * (1.0 if lone else DEF_MARGIN * (DEF_MARGIN_GUNS if a["guns"] else 1.0))
+		var cap := 999
+		if lone:
+			cap = LONE_CAP_SCOUT if a["unarmed"] else LONE_CAP
+			if a["unarmed"]:
+				need = 1.0
+		if committed >= need and committed_n > 0 or committed_n >= cap:
+			continue
+		var pool: Array = []
+		for u in army:
+			if mine.has(u) or _det.has(u) or u.order == "attack" or not (u.target == null or u.order == "idle"):
+				continue
+			if a["air_only"] and not _hits_air(u):
+				continue
+			if lone and float(u.d.get("speed", 60)) < float(a["speed"]) * 0.85 and not (a["air_only"] and float(u.d.get("range", 0)) >= 130.0):
+				continue     # only men who can catch it (or shoot a flyer from where they stand)
+			pool.append(u)
+		pool.sort_custom(func(x: Unit, y: Unit) -> bool: return x.position.distance_to(spot) < y.position.distance_to(spot))
+		var picks: Array = []
+		var got := committed
+		for u in pool:
+			if got >= need and (committed_n + picks.size()) > 0 or committed_n + picks.size() >= cap:
+				break
+			picks.append(u)
+			got += _unit_value(u)
+		if lone and not a["unarmed"] and committed_n + picks.size() > 0 and got < float(a["value"]) * LONE_MIN:
+			continue     # nobody fast enough that is worth sending: it is ignored
+		for u in picks:
+			_det[u] = {"spot": spot, "t0": game.clock, "lone": lone}
+			u.cmd_move(spot + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+
 
 
 func _threats() -> Array:
