@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.40", "items": [
+		"Cliff walls: where walls step diagonally, the high ground beside the wall's end gets a soft shade, so the step is less abrupt.",
+	]},
 	{"v": "0.12.39", "items": [
 		"Settings has a PATCH NOTES button (this page).",
 		"Cliff walls: the ends where a wall steps are shaded softly instead of ending in a hard edge.",

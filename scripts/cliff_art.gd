@@ -19,6 +19,7 @@ extends RefCounted
 const T := Defs.TILE
 const VARIANTS := 6
 const SHADOW_FACE := 15       # px of shadow under a wall
+const HI := 20                # px of shade on the high ground beside a wall's end
 const SHADOW_AO := 9          # px of shadow beside the other rims
 
 var g: Game
@@ -77,8 +78,13 @@ func paint(img: Image, cr: Rect2i) -> void:
 				var wr := is_wall(x + 1, y)
 				if not wl:
 					img.blend_rect(p["cap_l_open"] if w else p["cap_l_step"], full, at)
+					if not w:
+						# the high ground beside a step: a soft shade falling off the wall's end
+						img.blend_rect(p["hi_r"], full, at + Vector2i(-T, 0))
 				if not wr:
 					img.blend_rect(p["cap_r_open"] if e else p["cap_r_step"], full, at)
+					if not e:
+						img.blend_rect(p["hi_l"], full, at + Vector2i(T, 0))
 			if n:
 				img.blend_rect(p["rim_n"], full, at)
 			if w and not s:
@@ -133,6 +139,8 @@ func _pieces(bn: String) -> Dictionary:
 	p["dot_tr"] = _dot(dark, 1)
 	p["dot_bl"] = _dot(dark, 2)
 	p["dot_br"] = _dot(dark, 3)
+	p["hi_r"] = _hi(true)
+	p["hi_l"] = _hi(false)
 	p["shadow_s"] = _shadow_s()
 	p["ao_n"] = _ao(0)
 	p["ao_e"] = _ao(1)
@@ -266,6 +274,18 @@ static func _dot(dark: Color, corner: int) -> Image:
 			var x := dx if corner % 2 == 0 else T - 1 - dx
 			var y := dy if corner < 2 else T - 1 - dy
 			im.set_pixel(x, y, Color(dark.r, dark.g, dark.b, a))
+	return im
+
+
+## A shade on the high ground beside the end of a wall (a diagonal step): `right` puts it on the
+## right edge of the cell (the cell west of the wall), else on the left edge. It fades over HI px.
+static func _hi(right: bool) -> Image:
+	var im := _blank()
+	for d in HI:
+		var a := 0.62 * pow(1.0 - float(d) / HI, 1.3)
+		var x := T - 1 - d if right else d
+		for y in T:
+			im.set_pixel(x, y, Color(0.02, 0.02, 0.04, a))
 	return im
 
 
