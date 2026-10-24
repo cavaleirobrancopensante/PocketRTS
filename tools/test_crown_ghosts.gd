@@ -75,7 +75,8 @@ func _row(n: int, hall: Building) -> Array:
 			var c0: Vector2i = g.cell_of(hall.center()) + Vector2i(dx, dy)
 			var ok := true
 			for i in n:
-				if g.placement_problem(0, "wall", c0 + Vector2i(i, 0)) != "":
+				# (on the main's own level with open ground on both sides: not along a cliff)
+				if g.placement_problem(0, "wall", c0 + Vector2i(i, 0)) != "" or not g._on_ground(c0 + Vector2i(i, -1), Vector2i(1, 3), int(g.height[g.idx(g.cell_of(hall.center()))])):
 					ok = false
 					break
 			if ok:
@@ -168,7 +169,10 @@ func _run() -> void:
 	var n: int = g.place_line(0, "wall", row[0], row[1], [mason])
 	var pieces: Array = g.buildings.filter(func(x: Building) -> bool: return x.kind == "wall" and x.team == 0)
 	check(n == 12 and pieces.size() == 12, "(h) 12 pieces laid (%d)" % n)
-	await wait(6.0)
+	for k in 8:
+		await wait(1.5)
+		var ns = g.next_site(mason)
+		print("DBG t", k, " order ", mason.order, " work ", mason.work, " next ", ns.cell if ns else null, " pos ", mason.position, " busy-near ", g.units_near(pieces[1].center(), 60.0).size(), " p1 ", pieces[1].cell, pieces[1].center(), pieces[1].built, pieces[1].dead, pieces[1].d["faction"])
 	var alive := pieces.filter(func(x: Building) -> bool: return not x.dead).size()
 	check(alive == 12, "(h) one Labourer on the wall: no piece swept while he works through it (%d / 12)" % alive)
 	var done := await wait_for(func() -> bool:

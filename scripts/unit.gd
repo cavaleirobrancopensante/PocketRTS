@@ -2299,8 +2299,9 @@ func _unload(delta: float) -> Vector2:
 	return _follow(delta)
 
 
-## Every man in the basket gets off onto open ground near `at`; a fall (the balloon shot
-## down) costs each of them half his health.
+## Every man in the basket gets off onto open ground near `at`. `fall`: the balloon was shot
+## down, so nobody gets off: each dies where he lands, a body on the nearest open ground,
+## spread round the wreck (the Brood can harvest it, a Missionary raise a Crown soldier).
 func drop_passengers(at: Vector2, fall := false) -> void:
 	var list := passengers.duplicate()
 	passengers.clear()
@@ -2317,19 +2318,20 @@ func drop_passengers(at: Vector2, fall := false) -> void:
 		u.position = spots[i] + Vector2(randf_range(-5, 5), randf_range(-5, 5))
 		u.last_pos = u.position
 		u.velocity = Vector2.ZERO
-		u.cmd_stop()
 		u.facing = Vector2.DOWN
-		var fx := game.spawn_effect("dust", u.position, 1.6)
-		fx.scale = Vector2(0.4, 0.4)
 		if fall:
+			# (die() clears what he was doing; the kill is credited to whoever shot the balloon)
 			u.last_hit_by = last_hit_by
 			u.last_hit_team = last_hit_team
 			u.last_hitter = last_hitter
-			u.flash = 0.12
-			u.hp -= u.max_hp * float(Defs.DROPSHIP["fall"])
-			if u.hp <= 0.0:
-				u.hp = 0.0
-				u.die()
+			u.hp = 0.0
+			u.die()
+			continue
+		u.cmd_stop()
+		var fx := game.spawn_effect("dust", u.position, 1.6)
+		fx.scale = Vector2(0.4, 0.4)
+	if fall and n > 0 and game.mlog:
+		game.mlog.add("%s's balloon was shot down: %d men died with it" % [game.mlog.who(team), n])
 	if n > 0 and team == game.human and not fall:
 		Sfx.play_any(["ui/click", "click"], at)
 
@@ -4605,7 +4607,9 @@ func die() -> void:
 	died_at = game.clock
 	reviver = null
 	if not passengers.is_empty():
-		drop_passengers(position, true)     # shot down: the men in the basket fall out
+		# shot down: the men in the basket die with it and lie where it falls. (Mid-drop, with the
+		# balloon down and the men climbing out, they are already off: they get out alive.)
+		drop_passengers(position, work != "dropping")
 	if kind == "winder" and carry_empty:
 		# the spent battery drops and lies there for a while
 		var b := Sprite2D.new()

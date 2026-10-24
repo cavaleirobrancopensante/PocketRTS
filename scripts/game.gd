@@ -77,6 +77,7 @@ var _swamp_t := 0.0
 var _notify_t := 0
 var difficulty := 1
 var demo := false                        # AI controls both sides
+var start_edge_layout := true            # the starting economy buildings hug the edge of the main (false: the old "behind the hall" spot; tests compare)
 var edit_mode := false                   # the map editor: just the ground, no players
 var sandbox := false                     # the sandbox: spawn anything, any player
 var reveal := false                      # sandbox: no fog of war
@@ -1608,7 +1609,9 @@ func _start_positions() -> void:
 		# Starting economy structures, already standing.
 		var sites: Array = []
 		for k in f["start"]:
-			var spot := find_spot(t, k, b, 4, 11, "behind")
+			var spot := find_start_spot(t, k, b, sites) if start_edge_layout else Vector2i(-1, -1)
+			if spot.x < 0:
+				spot = find_spot(t, k, b, 4, 11, "behind")
 			if spot.x >= 0:
 				var eb := _add_building(k, t, spot, true)
 				if k == "farm":
@@ -1623,6 +1626,208 @@ func _start_positions() -> void:
 				u.cmd_gather(site)
 		players[t]["gold"] = int(f.get("start_gold", Defs.START_GOLD))
 	_update_swamp()
+
+
+# ------------------------------------------------------------------ start layout
+
+const START_REACH := 13.0         # tiles from the hall's middle: no starting economy building is put farther
+const START_SIDE_CLEAR := 2       # free cells kept between a starting building and the hall (workers walk in)
+const START_RAMP_CLEAR := 4       # and between it and a ramp
+const START_HUG_SCAN := 8         # how far a side looks for the edge it hugs
+
+
+## Ground a man can walk on (not terrain, buildings, walls, cliffs).
+func _walkable(c: Vector2i) -> bool:
+	if not in_map(c):
+		return false
+	var i := idx(c)
+	return (solid[i] == 0 or solid[i] == 5) and cliff[i] == 0
+
+
+## How many free cells lie between a footprint and the nearest edge of the ground it stands on
+## (a cliff, the map's rim, a rock or tree, water: anything that isn't level walkable ground).
+## 0 = it touches the edge. The tightest of its four sides.
+func edge_gap(cell: Vector2i, size: Vector2i, h: int) -> int:
+	var best := START_HUG_SCAN
+	for side in 4:
+		var d := Vector2i.ZERO
+		var n := size.x if side < 2 else size.y
+		match side:
+			0: d = Vector2i(0, -1)
+			1: d = Vector2i(0, 1)
+			2: d = Vector2i(-1, 0)
+			_: d = Vector2i(1, 0)
+		for k in n:
+			var c: Vector2i
+			match side:
+				0: c = Vector2i(cell.x + k, cell.y - 1)
+				1: c = Vector2i(cell.x + k, cell.y + size.y)
+				2: c = Vector2i(cell.x - 1, cell.y + k)
+				_: c = Vector2i(cell.x + size.x, cell.y + k)
+			var g := 0
+			while g < best and _walkable(c) and int(height[idx(c)]) == h and ramp[idx(c)] == 0:
+				c += d
+				g += 1
+			best = mini(best, g)
+	return best
+
+
+## Walkable cells reachable from the cells round a hall (not through `block`, a footprint),
+## within START_REACH + 12 tiles of it: [count, ring cells found, whether a ramp was reached].
+func _start_flood(hall: Building, block: Rect2i, ring: Dictionary) -> Array:
+	var hr := Rect2i(Vector2i(hall.cell), hall.size)
+	var hc := hall.rect().get_center() / T
+	var seen := {}
+	var todo: Array = []
+	for y in range(hr.position.y - 1, hr.end.y + 1):
+		for x in range(hr.position.x - 1, hr.end.x + 1):
+			var c := Vector2i(x, y)
+			if not hr.has_point(c) and _walkable(c) and not block.has_point(c):
+				seen[c] = true
+				todo.append(c)
+	var found := 0
+	var ramp_seen := false
+	while not todo.is_empty():
+		var c: Vector2i = todo.pop_back()
+		if ring.has(c):
+			found += 1
+		if ramp[idx(c)] == 1:
+			ramp_seen = true
+		for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + dd
+			if seen.has(n) or not _walkable(n) or block.has_point(n) or hr.has_point(n):
+				continue
+			if (Vector2(n) + Vector2(0.5, 0.5)).distance_to(hc) > START_REACH + 12.0:
+				continue
+			seen[n] = true
+			todo.append(n)
+	return [seen.size(), found, ramp_seen]
+
+
+## Where a starting economy building (farm, pit, crusher...) goes: hugging the edge of the main
+## base's ground, on the side away from the enemy and the ramp, as near the hall as such a spot
+## gets, with its own room to walk and the hall's room kept clear. (-1, -1): no such spot.
+## `placed`: the starting buildings already standing, which the next one packs up against.
+func find_start_spot(t: int, kind: String, hall: Building, placed: Array) -> Vector2i:
+	if Defs.is_econ(kind) and econ_count(t, kind) >= econ_limit(t, kind):
+		return Vector2i(-1, -1)
+	_spot_halls = halls_of(t)
+	_spot_all_halls = halls_of(t, false)
+	_in_spot = true
+	var best := _find_start_spot(t, kind, hall, placed)
+	_spot_halls = []
+	_spot_all_halls = []
+	_in_spot = false
+	return best
+
+
+func _find_start_spot(t: int, kind: String, hall: Building, placed: Array) -> Vector2i:
+	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var hr := Rect2i(Vector2i(hall.cell), hall.size)
+	var hc: Vector2 = hall.rect().get_center() / T
+	var hcell := cell_of(hall.rect().get_center())
+	if not in_map(hcell):
+		return Vector2i(-1, -1)
+	var h0 := int(height[idx(hcell)])
+	var reach := START_REACH
+	if kind == "feeding_pit":
+		reach = minf(reach, float(Defs.BUILDINGS["hive"]["swamp"]) + 2.0)    # (the pit must stand on the Burrow's swamp)
+	# the enemy is the front: the direction the base looks
+	var front := Vector2.ZERO
+	for o in n_players():
+		if hostile(t, o):
+			front += Vector2(starts[o]) - Vector2(starts[t])
+	front = front.normalized() if front.length() > 0.01 else Vector2.ZERO
+	var cands: Array = []
+	var keys := PackedInt64Array()
+	var r := int(reach) + 2
+	for y in range(int(hc.y) - r, int(hc.y) + r + 1):
+		for x in range(int(hc.x) - r, int(hc.x) + r + 1):
+			var cell := Vector2i(x, y)
+			var cc := Vector2(cell) + Vector2(size) * 0.5
+			var dd := cc.distance_to(hc)
+			if dd > reach or dd < 4.0:
+				continue
+			if not _on_ground(cell, size, h0):
+				continue
+			var fp := Rect2i(cell, size)
+			if fp.grow(START_SIDE_CLEAR).intersects(hr):
+				continue
+			if not _footprint_inside_free(cell, size):
+				continue
+			var gap := edge_gap(cell, size, h0)
+			var score := dd + gap * 4.0
+			if front != Vector2.ZERO:
+				score += maxf(0.0, (cc - hc).dot(front)) * 1.0
+			for pb in placed:
+				var pc: Vector2 = pb.rect().get_center() / T
+				score += maxf(0.0, pc.distance_to(cc) - (Vector2(size) + Vector2(pb.size)).length() * 0.5 - 1.0) * 0.5
+			keys.append(int(round((score + 1000.0) * 1000.0)) * 1048576 + cands.size())
+			cands.append(cell)
+	keys.sort()
+	var base := _start_flood(hall, Rect2i(), {})
+	var tried := 0
+	for k in keys:
+		var cell: Vector2i = cands[k % 1048576]
+		tried += 1
+		if tried > 400:
+			break
+		if placement_problem(t, kind, cell, true, true) != "":
+			continue
+		if not _start_room(cell, size):
+			continue
+		var fp := Rect2i(cell, size)
+		var ring := {}
+		for y in range(cell.y - 1, cell.y + size.y + 1):
+			for x in range(cell.x - 1, cell.x + size.x + 1):
+				var c := Vector2i(x, y)
+				if not fp.has_point(c) and _walkable(c):
+					ring[c] = true
+		var fl := _start_flood(hall, fp, ring)
+		if int(fl[1]) < 2:
+			continue
+		if int(base[0]) - int(fl[0]) > size.x * size.y + maxi(4, int(base[0]) / 50):
+			continue
+		if bool(base[2]) and not bool(fl[2]):
+			continue
+		return cell
+	return Vector2i(-1, -1)
+
+
+## Every cell of the footprint is bare, free ground (the quick test).
+func _footprint_inside_free(cell: Vector2i, size: Vector2i) -> bool:
+	for y in range(cell.y, cell.y + size.y):
+		for x in range(cell.x, cell.x + size.x):
+			if not in_map(Vector2i(x, y)) or solid[y * W + x] != 0:
+				return false
+	return true
+
+
+## Room to work round a starting building: no ramp near it, and three of its four sides have a
+## free lane (the side on the edge it hugs may be shut).
+func _start_room(cell: Vector2i, size: Vector2i) -> bool:
+	for y in range(cell.y - START_RAMP_CLEAR, cell.y + size.y + START_RAMP_CLEAR):
+		for x in range(cell.x - START_RAMP_CLEAR, cell.x + size.x + START_RAMP_CLEAR):
+			var c := Vector2i(x, y)
+			if in_map(c) and ramp[idx(c)] == 1:
+				return false
+	var open := 0
+	for side in 4:
+		var ok := true
+		var n := size.y if side >= 2 else size.x
+		for k in n:
+			var c: Vector2i
+			match side:
+				0: c = Vector2i(cell.x + k, cell.y - 1)
+				1: c = Vector2i(cell.x + k, cell.y + size.y)
+				2: c = Vector2i(cell.x - 1, cell.y + k)
+				_: c = Vector2i(cell.x + size.x, cell.y + k)
+			if not _walkable(c):
+				ok = false
+				break
+		if ok:
+			open += 1
+	return open >= 3
 
 
 ## A free cell for a building of this kind around a building: distance in tiles from
