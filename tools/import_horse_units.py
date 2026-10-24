@@ -174,6 +174,81 @@ def with_blade(img, deg, trail_from=None):
     return out, pad
 
 
+# The Officers' sabre is drawn at the unit's own pixel size (the designer's sabres were tiny
+# slivers, and a blade drawn at sheet size shrank to a thin broken line): a long curved
+# blade, two pixels of steel (bright back, shaded edge) in a dark outline, a gold guard.
+SABRE = {"len": 22, "back": (236, 240, 248), "edge": (150, 158, 174), "line": (44, 46, 56),
+         "guard": (214, 170, 66), "trail": (232, 236, 244), "trail2": (170, 176, 190)}
+
+
+def find_blade(cell):
+    """(cell without the old sabre, grip (y, x), direction in degrees (0 = right, + = down)):
+    the grey blade pixels right of the red coat, their dark outline, and the end nearest him."""
+    a = cell[..., 3] > 0
+    rgb = cell[..., :3].astype(int)
+    red = a & (rgb[..., 0] > 120) & (rgb[..., 1] < 70) & (rgb[..., 2] < 70)
+    rx = int(np.nonzero(red)[1].max())
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    g = a & ((mx - mn) < 45) & (mx > 60)
+    g[:, :rx] = False
+    lab, n = ndimage.label(g, structure=np.ones((3, 3)))
+    if n == 0:
+        return cell, None, None
+    sizes = ndimage.sum(g, lab, range(1, n + 1))
+    main = lab == int(np.argmax(sizes)) + 1
+    blade = g & ndimage.binary_dilation(main, iterations=3)
+    edge = ndimage.binary_dilation(blade, iterations=1) & a & (mx < 70)
+    edge[:, :rx] = False
+    ys, xs = np.nonzero(main)
+    i = int(np.argmin(xs))
+    j = int(np.argmax(xs))
+    grip = (float(ys[i]), float(xs[i]))
+    ang = float(np.degrees(np.arctan2(ys[j] - ys[i], max(xs[j] - xs[i], 1))))
+    out = cell.copy()
+    out[blade | edge] = 0
+    return out, grip, ang
+
+
+def draw_sabre(cell, grip, deg, trail=None, length=None):
+    """The sabre drawn on a placed frame: from `grip` (y, x) at `deg` (0 = right, + = down),
+    curving a little towards its back, with a short swing trail behind the tip when `trail`
+    is the angle it swung from."""
+    L = length or SABRE["len"]
+    out = cell.copy()
+    h, w = out.shape[:2]
+
+    def put(y, x, col, over=True):
+        yi, xi = int(round(y)), int(round(x))
+        if 0 <= yi < h and 0 <= xi < w and (over or out[yi, xi, 3] == 0):
+            out[yi, xi, :3] = col
+            out[yi, xi, 3] = 255
+
+    th = np.radians(deg)
+    d = np.array([np.sin(th), np.cos(th)])          # (dy, dx)
+    n = np.array([-d[1], d[0]])                     # 90 degrees round: the sabre's back is at -n
+    n = n if n[0] <= 0 else -n                      # the upper side
+    g = np.array(grip, float)
+    if trail is not None:
+        # a crescent of air behind the tip: two pixels thick, fading in from its start
+        for k, t in enumerate(np.linspace(np.radians(trail), th - np.radians(7.0), 40)):
+            for r, col in ((L + 0.5, SABRE["trail"] if k > 14 else SABRE["trail2"]),
+                           (L - 0.5, SABRE["trail2"])):
+                if k > 8 or r > L:
+                    put(g[0] + np.sin(t) * r, g[1] + np.cos(t) * r, col, over=False)
+    pts = [g + d * s + n * 0.004 * s * s for s in np.linspace(0, L, int(L * 4))]
+    for p in pts:
+        for o in (1.6, -1.6):
+            put(*(p + n * o), SABRE["line"], over=False)
+    for p in pts[6:]:
+        put(*(p + n * 0.0), SABRE["back"])
+        put(*(p - n * 1.0), SABRE["edge"])
+    tip = pts[-1] + d * 1.0
+    put(*tip, SABRE["line"], over=False)
+    for o in (-1.5, -0.5, 0.5, 1.5):                # the guard
+        put(*(g + d * 1.5 + n * o), SABRE["guard"])
+    return out
+
+
 def sabre_attack(sab):
     """The Dismounted Cuirassier's attack, 4 frames, from the sheet's sabre poses: only the
     1st (fist raised, facing the attack) and 2nd (sabre over his head) look the right way and
@@ -188,6 +263,28 @@ def sabre_attack(sab):
         img, pad = with_blade(f0[0], deg, trail)
         out.append((img, f0[1] - pad, f0[2] + pad, -pad))     # (the picture grew by `pad` all round)
     return out
+
+
+def finish_melee(art, cells):
+    """The Officers' sabre strips, with the sabre drawn long at the unit's own pixel size.
+    Officer (3 frames): the sheet's raised and ready poses with their own blades taken off and
+    redrawn long, then the ready pose cutting down. Armoured Officer (4 frames): the sheet's
+    one pose facing the attack (fist raised) with the blade cocked, forward, cutting (trail
+    behind it) and following through; the sheet's overhead pose is cut off by the cell's top."""
+    if art == "dismounted":
+        c0, g0, a0 = find_blade(cells[0])
+        c1, g1, a1 = find_blade(cells[1])
+        if g0 is None or g1 is None:
+            return cells
+        return [draw_sabre(c0, g0, max(-62.0, min(-38.0, a0))),
+                draw_sabre(c1, g1, max(-30.0, min(-12.0, a1))),
+                draw_sabre(c1, (g1[0] + 1, g1[1]), 40.0, trail=-12.0)]
+    hy, hx = hand_of(cells[0])
+    g = (hy, hx - 1)
+    return [draw_sabre(cells[0], g, -40.0),
+            draw_sabre(cells[1], g, -8.0),
+            draw_sabre(cells[2], g, 28.0, trail=-8.0),
+            draw_sabre(cells[3], g, 62.0, trail=28.0)]
 
 
 def runs(mask1d, min_gap):
@@ -387,9 +484,9 @@ def import_sheet(name, spec, strips):
             frames.setdefault(g, []).append((img, x0, x1))
         if "slash" in frames:
             sl = frames.pop("slash")
-            frames["melee"] = [sl[0], sl[1], (turn_sabre(sl[1][0]), sl[1][1], sl[1][2])]
+            frames["melee"] = [sl[0], sl[1], sl[1]]       # (the sabre is redrawn: finish_melee)
         if "sabre" in frames:
-            frames["melee"] = sabre_attack(frames.pop("sabre"))
+            frames["melee"] = [frames.pop("sabre")[0]] * 4
         if "fire3" in frames:
             f3 = frames.pop("fire3")
             frames["aim"] = [f3[0]]
@@ -398,6 +495,10 @@ def import_sheet(name, spec, strips):
             f2 = frames.pop("fire2")
             frames["aim"] = [f2[0]]
             frames["fire"] = [f2[0], f2[-1]]
+        if art == "dismounted" and "walk" in frames:
+            # the sheet's first walking frame is drawn bigger than the other eight (head, coat
+            # and boots 10 percent larger, in every view): a pop once a stride. Dropped.
+            frames["walk"] = frames["walk"][1:]
         for g, lst in frames.items():
             cells = []
             for item in lst:
@@ -418,6 +519,8 @@ def import_sheet(name, spec, strips):
                 crop = img[top:ys.max() + 1]
                 small = snap_team(clean(shrink(crop, scale)))
                 cells.append(place(cell, anchor, small, x0, y0 + yoff + top, cx, ground, scale))
+            if g == "melee":
+                cells = finish_melee(art, cells)
             strips[(art, g, d)] = cells
     # fixes: the horse's S grazing is drawn side on: the SE row's
     if name == "horse_riderless":

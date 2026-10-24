@@ -4886,6 +4886,19 @@ func _anim_name() -> String:
 
 const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]
 
+## Walk cycles of the men on foot at full speed, in frames a second (docs/animation_audit_units.md).
+## Their strips draw a step about 10 to 14 px long, and at 62 to 66 px/s the feet slid 2 to 4 times
+## that far in a stride at WALK_FPS; 12 fps is the fastest legs that still read as walking (the
+## strips' frame counts are as drawn, so the cadence is the only thing code can change).
+const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
+		"dismounted_armoured": 12.0, "winder": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
+		"thresher": 10.0}
+
+
+## Frames a second of art `a`'s walk strip at full speed.
+static func walk_fps_for(a: String) -> float:
+	return float(WALK_FPS_ART.get(a, WALK_FPS))
+
 
 ## Animation runs at most 15 times a second, and not at all for units nobody can see.
 func _animate(delta: float) -> void:
@@ -4938,7 +4951,7 @@ func _animate(delta: float) -> void:
 	_set_anim(_anim_name(), false)
 	var key := anim + "_" + anim_dir
 	var n: int = ArtData.UNITS[_anim_art if _anim_art != "" else art]["frames"].get(key, 1)
-	var fps := WALK_FPS * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
+	var fps := walk_fps_for(_anim_art if _anim_art != "" else art) * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
 	if anim == "walk" and GALLOPERS.has(art):
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
 		# frames, played so that his stride takes the same time
@@ -4975,9 +4988,7 @@ func _animate(delta: float) -> void:
 			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
 			loop = false
 		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
-			if kind == "spore_mother":
-				fps = 6.0
-			fps = 9.0
+			fps = 6.0 if kind == "spore_mother" else 9.0
 			loop = false
 		"burrow":
 			fps = 7.0
