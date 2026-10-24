@@ -1540,16 +1540,30 @@ func _army() -> void:
 			var guards: Array = game.workers(team).filter(func(u: Unit) -> bool: return bool(u.get_meta("guard", false)) and not u.dead and u.order in ["move", "attack", "amove"])
 			var hands: Array = game.workers(team).filter(func(u: Unit) -> bool: return u.position.distance_to(threat) < 260.0 and u.order == "gather" and not guards.has(u))
 			hands.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_to(threat) < b.position.distance_to(threat))
+			# (an ATTACK order: a worker sent with a move order only walks up to the intruder and
+			# pushes him, workers never fight on their own)
+			var foe_for := func(w: Unit) -> Unit:
+				var best: Unit = null
+				for o in foes:
+					if o.is_air():
+						continue
+					if best == null or o.position.distance_to(w.position) < best.position.distance_to(w.position):
+						best = o
+				return best
 			for g in guards:
 				if guards.find(g) >= cap:
 					g.set_meta("guard", false)
 					g.cmd_gather(g.home_mine) if g.home_mine != null and is_instance_valid(g.home_mine) else g.cmd_stop()
-				elif g.order == "move":
-					g.cmd_move(threat, true)
+				elif g.order != "attack" or g.target == null or g.target.dead:
+					var f: Unit = foe_for.call(g)
+					if f:
+						g.cmd_attack(f)
 			var free := cap - mini(guards.size(), cap)
 			for i in mini(free, hands.size()):
-				hands[i].set_meta("guard", true)
-				hands[i].cmd_move(threat, true)
+				var f2: Unit = foe_for.call(hands[i])
+				if f2:
+					hands[i].set_meta("guard", true)
+					hands[i].cmd_attack(f2)
 		return
 	# Clockwork: constructs running low on charge go back into a field first
 	if _clock():
