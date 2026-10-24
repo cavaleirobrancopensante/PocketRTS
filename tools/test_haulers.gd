@@ -484,19 +484,30 @@ func _fallback() -> void:
 	var cn := func() -> Array: return g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == "cannon" and not u.dead)
 	await wait_for(func() -> bool: return not cn.call().is_empty(), 80.0)
 	check(not cn.call().is_empty(), "…and the gun rolls out")
-	# a hauler that never comes (all busy / unreachable) is waited for only so long
+	# no hauler is free: nobody waits, the horse is fetched by itself at once
 	var late := labourer(hall.center() + Vector2(0, 120))
 	assign([late])
-	late.begin_haul({"k": "keg", "ph": "to_mill", "wagon": null})   # (busy with something else for good)
-	late.haul_job["ph"] = "to_mill"
-	late.haul_job["wagon"] = unit("powder_wagon", at(700, 100))
+	late.begin_haul({"k": "keg", "ph": "to_mill", "wagon": unit("powder_wagon", at(700, 100))})   # (busy for good)
 	await _clear_horses()
 	var sp3 := unit("horse", br.center() + Vector2(-120, 130))
 	sp3.graze_at = sp3.position
 	await physics_frame
 	g.train(fdy, "cannon")
-	check(sp3.into == null, "a busy hauler is about: the horse waits for him at first")
-	g._rid_wait[sp3.horse_rid] = 99.0
-	check(not g.hauler_serves_rid(0, sp3.horse_rid), "…but not for ever (after %d s it goes by itself)" % int(Defs.HAUL["stale"]))
-	g.fetch_reserved(fdy, 0)
-	check(sp3.into == fdy, "the stale reservation is fetched by the horse itself")
+	check(not g.hauler_serves_rid(0, sp3.horse_rid) and sp3.into == fdy, "every hauler busy: the horse walks to the Foundry at once")
+	# a dry gun that cannot limber gets a keg; a team setting keeps horses on a gun
+	late.haul_job = {}
+	await _clear_horses()
+	g.players[0]["res2"] = 500.0
+	var gun := unit("cannon", at(700, 450))
+	gun.powder = 0.0
+	gun.harnessed = false
+	check(gun.needs_keg() and not gun.harnessed, "a dry gun with no horse needs a keg")
+	await wait_for(func() -> bool: return gun.powder >= 1.0, 60.0)
+	check(gun.powder >= 1.0, "a hauler brought the dry gun a keg (%.1f shots)" % gun.powder)
+	gun.powder = 0.0
+	gun.harnessed = true
+	check(not gun.needs_keg(), "a dry gun that can limber drives to its refill instead")
+	gun.order = "hold"
+	check(gun.needs_keg(), "…unless it is on hold")
+	gun.team_want = 3
+	check(gun.team_want == 3, "the player's TEAM setting is kept on the gun")

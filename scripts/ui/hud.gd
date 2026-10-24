@@ -1322,6 +1322,15 @@ func _ability_buttons(list: Array, units: Array) -> void:
 				if u.kind == "powder_wagon":
 					u.set_supply(not sup)
 			toast("The Town Hall's haulers bring kegs from the Powder Mill while the wagon has room." if not sup else "Supply off: no more keg runs."), true, "", ""])
+	# TEAM: how many horses a gun or wagon keeps (0 to 4; haulers bring the spares), one press more
+	var teamed := units.filter(func(u: Unit) -> bool: return Defs.HARNESSED.has(u.kind))
+	if not teamed.is_empty():
+		var nxt: int = (int(teamed[0].team_want) + 1) % (int(Defs.HORSES["team_max"]) + 1)
+		list.append(["horse_team", "TEAM", func() -> void:
+			for u in game.selected_units():
+				if Defs.HARNESSED.has(u.kind):
+					u.team_want = nxt
+			toast("Keeps %d horse%s: the Town Hall's haulers bring spares." % [nxt, "" if nxt == 1 else "s"] if nxt > 0 else "Keeps no spare horses."), true, "", ""])
 	var guns := units.filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	if not guns.is_empty():
 		var can: bool = guns.any(func(u: Unit) -> bool: return u.mode != "canister")

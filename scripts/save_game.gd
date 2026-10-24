@@ -88,7 +88,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"auto": u.auto_work, "cross": u.cross_t, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
 			"kills": u.kills, "ff": u.friendly_kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
-			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying,
+			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying, "tw": u.team_want,
 			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
 		if Defs.ARMOURED.has(u.kind):
 			ud["kit"] = u.get_kit()
@@ -360,6 +360,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.powder = float(ud.get("pw", u.powder))      # (older saves: full)
 		u._auto_bayonet = bool(ud.get("ab", false))
 		u.supplying = bool(ud.get("sup", false))
+		u.team_want = int(ud.get("tw", 0))
 		u.facing = _to_v2(ud["f"])
 		u.kills = int(ud.get("kills", 0))
 		u.friendly_kills = int(ud.get("ff", 0))

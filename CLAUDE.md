@@ -11,7 +11,6 @@
 
 - Animals (deer): remove from the game entirely. Also thin trees/rocks from base and expansion spots (rule in map generation), keeping a few scattered. (branch worktree-agent-a43b7a34bd60e1ebb)
 - UI: move the zoom bar off the minimap into a small UI; small music player (next track, list of all songs to pick). (branch worktree-agent-afc321a811e072d5a)
-- Haulers follow-ups: kegs to dry Field Cannons/Mortars that cannot limber (on hold or no horse); no 25 s wait for horses (fetch at once); player control to keep a gun at N horses. (branch worktree-agent-a308bbae3031e3623)
 - BUG: a labourer leading a horse from the Breeder to the recruit gets stuck / has pathfinding trouble (seen in 0.12.9 playtests).
 - Starting resource buildings hugging the plateau edge, fairly mirrored; balloon destruction kills all passengers and leaves corpses. (branch worktree-agent-a196928da4db82c4b)
 - Farm: true 6x6 square, no bottom fence, mill centred; builder hammer animation (arm only); cliff readability from both heights. (branch worktree-agent-a7cbf06f1b14d4af1)
