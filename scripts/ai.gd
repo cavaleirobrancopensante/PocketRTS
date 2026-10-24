@@ -26,8 +26,12 @@ const STRATEGIES := {
 	"balanced": {"name": "Balanced", "wave": 14, "step": 8, "expand": 1.0, "halls": 3, "tech": 1.0, "workers": 1.0},
 	"rush": {"name": "Rush", "wave": 6, "step": 2, "expand": 2.5, "halls": 2, "tech": 2.0, "workers": 0.75},
 	"economy": {"name": "Economy", "wave": 34, "step": 10, "expand": 0.45, "halls": 4, "tech": 1.1, "workers": 1.25},
-	"timing": {"name": "Timing attack", "wave": 999, "step": 6, "expand": 0.9, "halls": 3, "tech": 0.75, "workers": 1.0, "timing": 400.0},
+	"timing": {"name": "Timing attack", "wave": 999, "step": 6, "expand": 0.9, "halls": 3, "tech": 0.75, "workers": 1.0, "timing": 270.0},
 	"air": {"name": "Air rush", "wave": 10, "step": 4, "expand": 1.6, "halls": 2, "tech": 0.5, "workers": 0.9, "brood_only": true},
+	# a "six-pool": a Spawning Den first, about 8 workers, every coin on Raptors, the first wave of 6 as
+	# soon as it hatches. A gamble: a wall, a few Musketeers and the workers stop it (then it
+	# falls back to a normal game).
+	"xrush": {"name": "Extreme rush", "wave": 6, "step": 2, "expand": 99.0, "halls": 1, "tech": 99.0, "workers": 0.4, "brood_only": true},
 }
 
 
@@ -92,6 +96,9 @@ func _wave_end() -> void:
 		return
 	_failed += 1
 	_attack_at = maxi(_attack_at, int(ceil(_wave_sup * 1.4)))
+	if _brood() and strategy in ["xrush", "rush"]:
+		_xrush_over("its first wave failed")
+		return
 	if strategy in ["rush", "air"]:
 		strategy = "balanced"
 		_attack_at = maxi(_attack_at, 30 if _brood() else 24)
@@ -250,6 +257,64 @@ func _res2() -> float:
 
 # ------------------------------------------------------------------ economy
 
+## Brood: the Spawning Den is due (no Den yet, enough hands to spare): the grubs wait for its
+## 150 biomass instead of eating every coin (the Den is the only door to Raptors).
+func _warren_due() -> bool:
+	if not _brood() or not _mine("warren").is_empty():
+		return false
+	return game.workers(team).size() >= _warren_hands()
+
+
+## Hands the Brood wants before the Den goes down (the rushing plans open with it sooner).
+func _warren_hands() -> int:
+	if strategy in ["xrush", "rush"]:
+		return 4          # (the pit takes one grub: the Den goes down with the rest, as soon as 150 is there)
+	var n: int = _lv([8, 7, 6])
+	if strategy in ["rush", "air"]:
+		n = mini(n, 5)
+	return n
+
+
+## Brood: the army value the plan wants by now (a curve per plan: start second, full second,
+## value), or more when we SEE a bigger enemy army (1.2x its value; only what our eyes show).
+## Under it, the eggs come before grubs beyond a working minimum. No cheating: unseen
+## enemies count for nothing.
+const ARMY_CURVE := {
+	"rush": [40.0, 120.0, 300.0], "xrush": [30.0, 110.0, 400.0], "air": [100.0, 260.0, 330.0], "timing": [70.0, 200.0, 300.0],
+	"balanced": [70.0, 200.0, 260.0], "economy": [100.0, 260.0, 200.0],
+}
+
+
+func _army_value() -> float:
+	var v := 0.0
+	for u in game.army(team):
+		if not u.dead:
+			v += float(u.d.get("cost", 50)) / maxf(1.0, float(u.d.get("spawn", 1))) + float(u.d.get("cost2", 0)) * 0.5
+	for h in _halls():
+		for k in h.queue:
+			if Defs.UNITS.has(k) and not bool(Defs.UNITS[k].get("worker", false)):
+				v += float(Defs.UNITS[k]["cost"]) / maxf(1.0, float(Defs.UNITS[k].get("spawn", 1)))
+	return v
+
+
+func _army_want() -> float:
+	var c: Array = ARMY_CURVE.get(strategy, ARMY_CURVE["balanced"])
+	var want := clampf((game.clock - float(c[0])) / (float(c[1]) - float(c[0])), 0.0, 1.0) * float(c[2])
+	var foe := _foe()
+	if foe >= 0:
+		var seen := 0.0
+		for u in game.army(foe):
+			if not u.dead and game.is_visible_to(team, u.position):
+				seen += float(u.d.get("cost", 50)) / maxf(1.0, float(u.d.get("spawn", 1)))
+		want = maxf(want, seen * 1.2)
+	return want
+
+
+## Brood: the army is under its curve and the Den stands: eggs before more grubs.
+func _army_behind() -> bool:
+	return _brood() and game._has_built(team, "warren") and _army_value() < _army_want()
+
+
 func _workers() -> void:
 	var labs := game.workers(team)
 	var cap := 0
@@ -268,12 +333,24 @@ func _workers() -> void:
 		# 100 supply is for the army
 		want = mini(want, 14 * _halls().size() + extra + 2)
 		want = mini(want, 36 if difficulty >= 3 else _lv([16, 26, 32]))
+	if strategy == "xrush":
+		want = mini(want, 8)       # (a six-pool: about eight hands, everything else is Raptors)
 	var worker: String = _f()["worker"]
 	var queued := 0
 	for h in _halls():
 		queued += h.queue.filter(func(k: String) -> bool: return k == worker).size()
+	var hold := false
+	if _clock() and _mine("assembly_works").is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
+			and _gold() < int(Defs.BUILDINGS["assembly_works"]["cost"]) + 20:
+		hold = true                 # (the Winders wait for the Works' 200)
+	if _brood():
+		# the Den first (save its 150), then the army before more grubs than a working minimum
+		if _warren_due() and _gold() < int(Defs.BUILDINGS["warren"]["cost"]) + 25:
+			hold = true
+		elif _army_behind() and labs.size() + queued >= (5 if strategy == "xrush" else ((6 if not _first_wave else 10) if strategy == "rush" else (9 if strategy != "economy" else 10))):
+			hold = true
 	for h in _halls():
-		if h.built and labs.size() + queued < want and (h.uses_eggs() or h.queue.size() < 2):
+		if not hold and h.built and labs.size() + queued < want and (h.uses_eggs() or h.queue.size() < 2):
 			if game.train(h, worker) == "":
 				queued += 1
 	# Everyone idle goes to a post with room (escorts excepted).
@@ -362,8 +439,13 @@ func _econ_build() -> void:
 				order.erase("powder_mill")
 	elif _brood():
 		order = ["feeding_pit"]
-		if game.clock > _lv([300.0, 200.0, 150.0]) or not _mine("warren").is_empty():
+		# (the Pen turns the fallen into essence: after the Den and a first army, not before)
+		if _mine("warren").is_empty() or _army_behind():
+			pass
+		else:
 			order.append("brood_pen")
+		if _warren_due() and _mine("feeding_pit").size() >= 2:
+			order.erase("feeding_pit")
 	else:
 		# batteries need somewhere to go: a crusher first, then Boilers, a crusher per Boiler
 		var crushers := _mine("ore_crusher").size()
@@ -379,7 +461,7 @@ func _econ_build() -> void:
 			continue                 # (the Horse Breeder: one)
 		if (Defs.is_econ(kind) and game.econ_count(team, kind) >= game.econ_limit(team, kind)) or _busy_building(kind):
 			continue
-		if _brood() and kind == "feeding_pit" and not _pit_wanted():
+		if _brood() and kind == "feeding_pit" and (not _pit_wanted() or (strategy == "xrush" and _mine("feeding_pit").size() >= 2)):
 			continue
 		if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 			if _threat() == Vector2.INF:
@@ -392,7 +474,7 @@ func _econ_build() -> void:
 		_no_room[kind] = game.clock      # nowhere to put it right now; look again later
 		if kind == "feeding_pit":
 			_spread_swamp()
-	if _brood() and _mine("spore_vent").size() < _halls().size() and game.clock > 120.0:
+	if _brood() and _mine("spore_vent").size() < _halls().size() and game.clock > 120.0 and not _warren_due() and not _army_behind():
 		_spread_swamp()
 
 
@@ -521,7 +603,8 @@ func _build_up() -> void:
 	var gold := _gold()
 	if _clock():
 		var works := _mine("assembly_works").size()
-		if works == 0 and t > _lv([110.0, 70.0, 50.0]):
+		# (the first Works comes by the clock, not the plan's tech factor: every plan needs a line by ~2:00)
+		if works == 0 and game.clock > _lv([90.0, 60.0, 40.0]) and labs >= 7:
 			_construct("assembly_works")
 		elif works == 1 and t > _lv([600.0, 300.0, 220.0]) and gold > 300:
 			_construct("assembly_works")
@@ -532,7 +615,7 @@ func _build_up() -> void:
 		if works > 0 and _mine("capacitor_works").is_empty() and game.requirement_met(team, "capacitor_works") and (t > _lv([700.0, 400.0, 320.0]) or gold > 450):
 			_construct("capacitor_works")
 	elif _brood():
-		if _mine("warren").is_empty() and labs >= _lv([8, 7, 6]):
+		if _mine("warren").is_empty() and labs >= _warren_hands():
 			_construct("warren")
 		if _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > _lv([480.0, 250.0, 190.0]):
 			_construct("gorge_pit")
@@ -610,7 +693,7 @@ func _build_up() -> void:
 ## Warren once there's a Spawning Den and a first army out (with biomass to spare), a
 ## Broodmound later (a Gorge Pit and 300 biomass in the bank). One upgrade at a time.
 func _grow_hall() -> void:
-	if _saving or _rushing() or game.over:
+	if _saving or _rushing() or game.over or strategy == "xrush":
 		return
 	var main: Building = null
 	for h in _halls():
@@ -1290,6 +1373,10 @@ func _produce() -> void:
 			if not h.built:
 				continue
 			while h.eggs > 0:
+				if strategy == "xrush":
+					if game.train(h, "raptor") != "":      # (only Raptors, all the income)
+						break
+					continue
 				var k := "raptor" if randf() < 0.6 or game.can_train(h, "spitter") != "" else "spitter"
 				# a Roost and too few Skywings: they come first whenever the essence is there
 				# (spare raptors are offered up at the Brood Pen for it: see _offer)
@@ -1564,8 +1651,8 @@ func _army() -> void:
 				u.cmd_move(best.center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field or u.runs_on_spring())   # (wind-ups fight on; the escort cranks them)
 	var sup := _army_supply(army)
-	var swarm_min := 10 if strategy in ["rush", "air"] or scout.verdict == "greedy" else 30
-	if _brood() and _attack_at < swarm_min:
+	var swarm_min := 7 if strategy == "rush" else (10 if strategy in ["rush", "air"] or scout.verdict == "greedy" else 30)
+	if _brood() and _attack_at < swarm_min and strategy != "xrush":
 		_attack_at = swarm_min     # a swarm waits until it's a swarm
 	# timing attack: nothing goes out before the timing; then everything does, wave after wave
 	if strategy == "timing" and game.clock >= float(_s("timing")) * (1.0 if difficulty >= 2 else 1.25) and _attack_at >= 999:
@@ -1576,7 +1663,10 @@ func _army() -> void:
 	# the army is already huge)
 	var regrouping := game.clock < _regroup_until and sup < 60
 	if _brood():
-		_swarm_army(army, sup, regrouping)
+		if strategy in ["xrush", "rush"]:
+			_xrush_army(army, sup)
+		else:
+			_swarm_army(army, sup, regrouping)
 		return
 	# (riders still on foot, their horses on the way, don't count yet: they follow mounted)
 	var ready := army.filter(func(u: Unit) -> bool: return not _horse_coming(u))
@@ -1709,7 +1799,8 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 	var foe := _foe()
 	if foe >= 0:
 		for u in game.army(foe):
-			theirs += float(u.d["cost"])
+			if game.is_visible_to(team, u.position):      # (only what our eyes show)
+				theirs += float(u.d["cost"])
 	var big_enough := mine >= theirs * 0.8 or sup >= 70 or strategy in ["rush", "air"] or (strategy == "timing" and scout.timing_ok(mine))
 	if _swarm_phase == "" and sup >= _attack_at and big_enough and not regrouping:
 		_attacking = true
@@ -1754,7 +1845,7 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 						hit = true
 				if there < (g[0] as Array).size() * 0.6:
 					ready = false
-			if ready or hit or _swarm_t > 40.0:
+			if ready or hit or _swarm_t > (8.0 if strategy == "rush" else 40.0):
 				_swarm_phase = "strike"
 				_wave_target = _enemy_base()
 				# caught a fight on the way: everyone goes there together, not on to the base
@@ -1798,6 +1889,92 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 			u.cmd_move(_home_spot(front), true)
 		elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 			u.cmd_deploy()
+
+
+# ---- Brood EXTREME RUSH (the "six-pool")
+var _xr_t0 := 0.0
+var _xr_wave: Array = []
+
+
+## The rush is over (it failed, was beaten back, or ran out of time): a normal Brood game
+## from here (workers, Pen, tech, expansions) and a bigger army before the next attack.
+func _xrush_over(why: String) -> void:
+	strategy = "balanced"
+	_attack_at = maxi(_attack_at, 30)
+	_regroup_until = game.clock + _lv([150.0, 120.0, 90.0])
+	_xr_wave.clear()
+	if game.mlog:
+		game.mlog.add("%s's extreme rush is over (%s): it builds up (workers, tech) and comes back in force" % [game.mlog.who(team), why])
+
+
+## The first wave is 6 Raptors straight at the enemy's workers (no flanking: speed is the
+## point), every new Raptor follows, the fight is left only when it is clearly lost (the enemy
+## there is worth over 1.6x the wave and 150+) or when it has made no headway after 75 s.
+func _xrush_army(army: Array, sup: int) -> void:
+	var hall: Array = _halls()
+	var front: Vector2 = _rally_front(hall[0]) if not hall.is_empty() else game.center_of_team(team)
+	if not _attacking:
+		if sup >= int(_s("wave")) and not peaceful:
+			_attacking = true
+			_xr_t0 = game.clock
+			_wave_target = _enemy_base()
+			_wave_start(army)
+			_xr_wave = army.duplicate()
+			if game.mlog and not _first_wave:
+				_first_wave = true
+				game.mlog.add("%s's first attack goes out (%d supply of Raptors)" % [game.mlog.who(team), sup])
+		else:
+			for u in army:
+				if u.order == "idle" and u.position.distance_to(front) > 160.0:
+					u.cmd_move(_home_spot(front), true)
+			return
+	_xr_wave = _xr_wave.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	for u in army:
+		if not _xr_wave.has(u):
+			_xr_wave.append(u)          # (reinforcements follow at once)
+	var alive := _army_supply(_xr_wave)
+	var c := Vector2.ZERO
+	var mine := 0.0
+	for u in _xr_wave:
+		c += u.position
+		mine += _unit_value(u)
+	if not _xr_wave.is_empty():
+		c /= _xr_wave.size()
+	var gained := int(game.stats[team]["value_killed"]) - _wave_kill0
+	var losing := false
+	if not _xr_wave.is_empty():
+		var a := _assess(c)
+		losing = a["value"] >= 100.0 and a["value"] > mine * 1.15 and game.clock - _xr_t0 > 6.0 and a["value"] != DEF_UNSEEN
+	var stale: bool = game.clock - _xr_t0 > 75.0 and gained < _wave_value * 0.3
+	if alive < 2 or losing or stale:
+		for u in _xr_wave:
+			if is_instance_valid(u) and not u.dead and losing:
+				u.cmd_move(front + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
+		_attacking = false
+		var why := "wiped out" if alive < 2 else ("clearly outgunned" if losing else "no headway")
+		_wave_end()
+		if strategy in ["xrush", "rush"]:
+			_xrush_over(why)
+		return
+	# armed defenders in sight: fight them together (an attack-move; a plain move would run the
+	# Raptors past the guns to the workers and they would die without a bite), else hunt workers
+	var guard: Unit = null
+	var gd := 340.0
+	for o in game.units_near(c, 340.0):
+		if o.dead or o.off_field or not game.hostile(o.team, team) or not _armed(o) or not game.is_visible_to(team, o.position):
+			continue
+		var dd: float = o.position.distance_to(c)
+		if dd < gd:
+			gd = dd
+			guard = o
+	for u in _xr_wave:
+		if u.siege_t > 0.0:
+			continue
+		if guard != null:
+			if u.target == null and (u.order == "idle" or u.order == "move" or u.position.distance_to(guard.position) > 200.0):
+				u.cmd_move(guard.position + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+		else:
+			_hunt(u, _prey_spot(u.position))
 
 
 ## Split the army into groups (two or three, mixed: every group gets its share of
