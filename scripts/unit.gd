@@ -3204,6 +3204,19 @@ func _move(want: Vector2, delta: float) -> void:
 			squeeze_t = 0.0
 	else:
 		position = game.resolve_terrain(position, before, radius, team)
+		# A limbered gun: the horses stand a length ahead of the barrel, so their spot must
+		# be clear too (they clipped through walls and palisades): slide along it instead
+		if (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and position != before:
+			var lead := facing * (radius + 14.0)
+			if not game._clear_at(position + lead, radius * 0.9, team):
+				var alt_a := Vector2(position.x, before.y)
+				var alt_b := Vector2(before.x, position.y)
+				if game._clear_at(alt_a + lead, radius * 0.9, team) and game._clear_at(alt_a, radius, team):
+					position = alt_a
+				elif game._clear_at(alt_b + lead, radius * 0.9, team) and game._clear_at(alt_b, radius, team):
+					position = alt_b
+				else:
+					position = before
 	if want.length() > 5.0 and phase == "":
 		facing = facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
 	# Stuck detection while trying to move

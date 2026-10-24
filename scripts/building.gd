@@ -1354,36 +1354,37 @@ func bar_top() -> float:
 	return -rect().size.y
 
 
-## A gate locked shut: a little padlock on it (drawn here, no picture): a gold body with a keyhole
-## under a steel shackle, on a dark outline so it reads on any ground.
+## A gate's state, as a padlock ABOVE the gate (drawn here, no picture, big enough to read at
+## once): a RED closed lock when it is locked shut, a YELLOW open lock (the shackle swung up
+## and out to the side) when it is unlocked. No words.
 func _draw_lock(top: float) -> void:
-	var c := Vector2(0.0, top * 0.5 + 6.0)
-	var dark := Color(0.08, 0.06, 0.05, 0.95)
-	# state: locked shut / unlocked and shut (waits for a friend) / unlocked and OPEN (a friend is
-	# passing: an enemy who gets there now can walk in too)
-	var shut := locked
-	var lift := 0.0 if shut else 5.0
-	# the outline
-	draw_arc(c + Vector2(0, -5 - lift), 5.6, PI, TAU, 14, dark, 5.0)
-	draw_rect(Rect2(c + Vector2(-8, -4), Vector2(16, 13)), dark)
-	# the shackle (raised when unlocked)
-	draw_arc(c + Vector2(0, -5 - lift), 4.6, PI, TAU, 14, Color(0.72, 0.76, 0.80), 2.4)
-	draw_line(c + Vector2(-4.6, -5 - lift), c + Vector2(-4.6, -3), Color(0.72, 0.76, 0.80), 2.4)
-	if shut:
-		draw_line(c + Vector2(4.6, -5), c + Vector2(4.6, -3), Color(0.72, 0.76, 0.80), 2.4)
-	# the word under it
-	var word := "LOCKED" if shut else ("OPEN" if gate_open else "SHUT")
-	var col := Color(1.0, 0.45, 0.4) if shut else (Color(1.0, 0.8, 0.3) if gate_open else Color(0.6, 1.0, 0.6))
-	var font := ThemeDB.fallback_font
-	var w := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	draw_rect(Rect2(c + Vector2(-w * 0.5 - 3, 10), Vector2(w + 6, 13)), Color(0, 0, 0, 0.65))
-	draw_string(font, c + Vector2(-w * 0.5, 20), word, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, col)
-	# the body and keyhole
-	draw_rect(Rect2(c + Vector2(-6.5, -2.5), Vector2(13, 10)), Color(0.93, 0.74, 0.22))
-	draw_rect(Rect2(c + Vector2(-6.5, -2.5), Vector2(13, 3)), Color(1.0, 0.88, 0.42))
-	draw_rect(Rect2(c + Vector2(-6.5, 4.5), Vector2(13, 3)), Color(0.72, 0.52, 0.12))
-	draw_circle(c + Vector2(0, 2.0), 1.7, dark)
-	draw_rect(Rect2(c + Vector2(-0.8, 2.5), Vector2(1.6, 3.2)), dark)
+	var c := Vector2(0.0, top - 16.0)
+	var dark := Color(0.06, 0.04, 0.04, 0.95)
+	var body := Color(0.88, 0.16, 0.14) if locked else Color(1.0, 0.82, 0.18)
+	var lite := body.lightened(0.35)
+	var shade := body.darkened(0.35)
+	var steel := Color(0.8, 0.84, 0.88)
+	var s := 1.6
+	# the shackle
+	if locked:
+		draw_arc(c + Vector2(0, -6) * s, 6.4 * s, PI, TAU, 16, dark, 6.0 * s)
+		draw_arc(c + Vector2(0, -6) * s, 6.4 * s, PI, TAU, 16, steel, 3.0 * s)
+		draw_line(c + Vector2(-6.4, -6) * s, c + Vector2(-6.4, -1) * s, steel, 3.0 * s)
+		draw_line(c + Vector2(6.4, -6) * s, c + Vector2(6.4, -1) * s, steel, 3.0 * s)
+	else:
+		# open: the right leg lifted clear of the body, the whole bar swung up and to the side
+		var o := Vector2(9.0, -6.0) * s
+		draw_arc(c + o, 6.4 * s, PI, TAU, 16, dark, 6.0 * s)
+		draw_arc(c + o, 6.4 * s, PI, TAU, 16, steel, 3.0 * s)
+		draw_line(c + o + Vector2(-6.4, 0) * s, c + o + Vector2(-6.4, 5) * s, steel, 3.0 * s)
+		draw_line(c + o + Vector2(-6.4, 5) * s, c + Vector2(-6.4, -1) * s, steel, 3.0 * s)
+	# the body, with its keyhole
+	draw_rect(Rect2(c + Vector2(-9.5, -1.5) * s, Vector2(19, 15) * s).grow(1.5), dark)
+	draw_rect(Rect2(c + Vector2(-9.5, -1.5) * s, Vector2(19, 15) * s), body)
+	draw_rect(Rect2(c + Vector2(-9.5, -1.5) * s, Vector2(19, 4) * s), lite)
+	draw_rect(Rect2(c + Vector2(-9.5, 10.0) * s, Vector2(19, 3.5) * s), shade)
+	draw_circle(c + Vector2(0, 5.0) * s, 2.3 * s, dark)
+	draw_rect(Rect2(c + Vector2(-1.1, 5.5) * s, Vector2(2.2, 5.0) * s), dark)
 
 
 func _draw_building() -> void:
