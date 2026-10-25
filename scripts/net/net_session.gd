@@ -39,6 +39,7 @@ var fx: Array = []                # host: effects and shots since the last snaps
 var lost_peers := {}              # host: relay ids of guests who left
 var count_diff_max := 0           # guest (tests): the most entities a snapshot left different from the host's list
 var count_diff_snaps := 0
+var line_fp := -1                 # host: fingerprint of the Line in the last snapshot that carried it
 var _last_snap_ms := 0
 
 

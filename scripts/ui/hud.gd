@@ -344,7 +344,8 @@ func _layer_sig(n: String) -> Array:
 			return [_card_look]
 		"rest":
 			var br := controls.box_rect()
-			var vals: Array = [_vs(), br, controls.mode, controls.cast_spell, controls.place_kind, controls.line_from, help_mode, paused, game.demo and game.spectator == null]
+			var vals: Array = [_vs(), br, controls.mode, controls.cast_spell, controls.place_kind, controls.line_from, help_mode, paused, game.demo and game.spectator == null,
+				game.line_net.overlay_on, controls.line_tool.end if controls.line_tool != null else null, controls.line_tool.start if controls.line_tool != null else null]
 			if _msg_t > 0.0:
 				vals.append_array([_msg, int(minf(_msg_t, 1.0) * 60.0)])
 			if game.spectating():
@@ -813,6 +814,11 @@ func _build_card() -> Array:
 					toast("Gates face %s off the palisade; this one follows its line." % way), true, "", ""])
 		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
+	if controls.mode == "lay_line" and controls.line_tool != null:
+		var lt := controls.line_tool
+		list.append(["build", "LAY", func() -> void: lt.confirm(), lt.can_confirm(), lt.why_not(), lt.cost_text()])
+		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
+		return list
 	if controls.mode != "":
 		if controls.mode == "unload":
 			# let them off right below the balloon, wherever it is
@@ -868,6 +874,11 @@ func _build_card() -> Array:
 				page = "build"
 				build_page = 0, true, "", ""])
 			_balloon_buttons(list, units)     # labourers can ride too
+			if units.any(func(u: Unit) -> bool: return u.kind == "winder"):
+				list.append(["build", "LINE", func() -> void: controls.begin_line(), true, "", str(int(Defs.LINE["pipe"]["cost"])) + "/seg"])
+				list.append(["gauge", ("~ " if game.line_net.overlay_on else "") + "PRESSURE", func() -> void:
+					game.line_net.overlay_on = not game.line_net.overlay_on
+					game.line_net.redraw(), true, "", ""])
 			var fixers := units.filter(func(u: Unit) -> bool: return u.d.get("repairs", false) or u.kind == "labourer")
 			if not fixers.is_empty():
 				# a tap: pick what to repair; right-click / long press: automatic repair (glows)

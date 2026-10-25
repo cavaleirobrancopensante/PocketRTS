@@ -1977,7 +1977,7 @@ func cmd_gather(site: Entity) -> void:
 ## Winders fix constructs and Clockwork buildings; Labourers fix buildings. It costs gold/ore.
 func can_repair(e: Entity) -> bool:
 	if kind == "winder":
-		return e.is_unit() and (e as Unit).d["faction"] == "clockwork" or e.is_building()
+		return e.is_unit() and (e as Unit).d["faction"] == "clockwork" or e.is_building() or e is PipeSeg
 	if kind == "labourer":
 		return e.is_building() or (e is Unit and Defs.CROWN_MACHINES.has(e.kind))
 	return false
@@ -1988,6 +1988,8 @@ func cmd_repair(e: Entity) -> void:
 		return      # riding in a balloon
 	if not can_repair(e):
 		return
+	if e is PipeSeg and not e.built:
+		return LineWork.cmd_lay(self, e)
 	_reset_work()
 	order = "repair"
 	order_target = e
@@ -2947,6 +2949,8 @@ func _tick_unit(delta: float) -> void:
 			want = _revive(delta)
 		"build":
 			want = _build(delta)
+		"lay":
+			want = LineWork.tick(self, delta)
 		"cast":
 			want = _cast(delta)
 		"tongue":
@@ -4069,7 +4073,7 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 				return Vector2.ZERO
 			if cr.edge_distance(position) < radius + 17.0:
 				# the charge becomes ore drawn from its Clocktower's ore (a quarter once that's spent)
-				var value := game.draw_lode(cr, Defs.battery_charge(carry_blue, carry_t) * float(Defs.BATTERY["ore"]))
+				var value := game.draw_lode(cr, Defs.battery_charge(carry_blue, carry_t) * float(Defs.BATTERY["ore"]) * game.line_net.speed_mult(cr))
 				game.add_gold_f(team, value)
 				crusher = null
 				if team == game.human:

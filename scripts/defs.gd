@@ -210,6 +210,43 @@ const WINDER_SELF := {"run": 90.0, "stop": 3.0, "low": 0.04}
 ## sprite over `fade` s (a low building, the Assembly Works, holds frame 4 instead: ArtData.CRATE).
 const CRATE := {"hp": 40.0, "pickup": 0.8, "lift": 0.5, "auto": 10, "unfold": 0.4, "hold": 0.3, "fade": 0.5}
 
+## THE LINE (Clockwork, docs/clockwork_rework_plan.md, phase 1): pipe segments on the grid carry
+## PRESSURE (0..1) from the Clocktower and Boilers to the buildings that touch them (scripts/line.gd).
+##  pipe: one segment (a map cell; pipe and rail are laid together). `hp`/`armor`; `cost` ore to lay (also the price base of a repair, so
+##   a repair is nearly free); `time` seconds a Winder needs to lay it (and the repair-speed base:
+##   hp/time, so a mend is quick); units walk over pipes, enemies can shoot them.
+##  supply: flow a finished source adds to the Line it touches. A Clocktower 40, a Boiler 30: a hall
+##   with its two Boilers gives 100.
+##  draw: flow a consumer takes. If a Line's total draw is above its total supply, EVERY point on it
+##   loses the same share (supply / draw): the load is shared, so a fourth workshop on a thin Line
+##   slows the other three. A building that touches two separate Lines draws from the stronger one.
+##  fall: pressure lost per segment of pipe from the nearest source (0.025: a 20-segment run ends at 50%).
+##  relay: a Pressure Relay that has input >= `min_in` (before its own boost) pushes out
+##   min(`max_out`, input + `boost`) on every pipe it touches; the fall runs on from there (both ways).
+##  speed: a building at pressure p works at 0 below `off`, then from `floor` (at `off`) up to 1.0 (at
+##   `full`); linear in between. A building with no pipe beside it works at 0 ("unpowered").
+##  tint: pressure colours: low (red) through mid (amber) to high (steam white-blue).
+const LINE := {
+	"pipe": {"name": "Line segment", "hp": 140.0, "armor": 1, "cost": 8, "time": 2.5, "faction": "clockwork"},
+	"supply": {"clocktower": 40.0, "boiler": 30.0},
+	"draw": {"ore_crusher": 12.0, "assembly_works": 16.0, "engine_hall": 20.0, "capacitor_works": 10.0,
+		"charging_pylon": 8.0, "pressure_relay": 4.0},
+	"fall": 0.025,
+	"relay": {"min_in": 0.25, "boost": 0.5, "max_out": 0.9},
+	"speed": {"off": 0.1, "floor": 0.25, "full": 0.8},
+	"solve": 0.5,                 # seconds between pressure solves
+	"max_run": 60,                # the longest run (segments) one Line order can lay
+	"tint": [Color("#d8473a"), Color("#e8b43c"), Color("#bfe7f0")],
+}
+
+## Pressure -> work speed for a Clockwork building (1.0 at full; 0 with none; see LINE "speed").
+static func line_speed(p: float) -> float:
+	var s: Dictionary = LINE["speed"]
+	if p < float(s["off"]):
+		return 0.0
+	var k := clampf((p - float(s["off"])) / (float(s["full"]) - float(s["off"])), 0.0, 1.0)
+	return lerpf(float(s["floor"]), 1.0, k)
+
 
 ## A carried battery's charge after `t` seconds on the road.
 static func battery_charge(blue: bool, t: float) -> float:
@@ -256,7 +293,7 @@ const FACTIONS := {
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
-		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works"],
+		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works", "pressure_relay"],
 		"start_workers": 4, "ready": true, "max_supply": 200,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
 		"start": ["ore_crusher"],
@@ -605,6 +642,11 @@ const BUILDINGS := {
 		"supply": 0, "sight": 7, "trains": [], "requires": "assembly_works", "faction": "clockwork",
 		"about": "Blue energy: every source fills blue batteries, with more charge and more time before they overload. Needs an Assembly Works.",
 	},
+	"pressure_relay": {
+		"name": "Pressure Relay", "hp": 350, "armor": 2, "cost": 75, "time": 20.0, "size": Vector2i(2, 2),
+		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
+		"about": "Stands beside the Line and boosts its pressure back up for the stretch beyond it (it needs at least a quarter of pressure coming in). Place it where the Line is thinning.",
+	},
 	"charging_pylon": {
 		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 7, "trains": [], "field": 7, "mends": 3.0, "faction": "clockwork",
@@ -742,6 +784,7 @@ const TEMP_ART := {
 	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "dismounted", "portrait_armoured": "dismounted_armoured"},
 	"mounted_missionary": {"art": "missionary_mounted", "portrait": "mounted_missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
+	"pressure_relay": {"building": "charging_pylon", "portrait": "charging_pylon"},     # (phase 1 of the Line: the Pylon's picture, plus a gauge drawn in code: docs/art_style_inconsistency.md)
 	# the horse commands' card icons (tools/import_horse_icons.py)
 	"horse_lead": {"portrait": "horse_lead"},
 	"horse_release": {"portrait": "horse_release"},

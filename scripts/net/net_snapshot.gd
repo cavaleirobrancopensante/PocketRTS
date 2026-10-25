@@ -93,6 +93,10 @@ static func build(s: NetSession) -> Dictionary:
 	var m := {"t": "snap", "n": s.snap_n, "clk": snappedf(g.clock, 0.01), "ack": s.acks.duplicate(), "u": urows, "b": brows,
 		"gone": gone, "pl": pl, "en": g.energy, "ore": g.ore_rate, "asm": g.asm_mult, "wind": g.wind_e,
 		"elim": g.eliminated, "over": g.over, "win": g.winner, "cnt": [urows.size(), brows.size()]}
+	var fp := g.line_net.fingerprint()
+	if fp != s.line_fp or s.snap_n % 20 == 0:
+		s.line_fp = fp
+		m["ln"] = g.line_net.save()            # the Clockwork Line (pipe segments), sent when it changes
 	if not s.fx.is_empty():
 		m["fx"] = s.fx
 		s.fx = []
@@ -158,6 +162,8 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 		s.count_diff_max = maxi(s.count_diff_max, diff)
 		if diff > 0:
 			s.count_diff_snaps += 1
+	if m.has("ln"):
+		g.line_net.load_rows(m["ln"])
 	if m.has("stats"):
 		g.stats = m["stats"]
 	if m.has("fx"):

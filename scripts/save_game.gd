@@ -173,6 +173,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		var s: Building = u.crate_site
 		if not u.dead and s and is_instance_valid(s) and not s.dead and not s.built and s.crate == "carried" and s.crate_carrier == u:
 			d["crates"].append([u.position.x, u.position.y, u.team, s.cell.x, s.cell.y, float(Defs.CRATE["hp"])])
+	d["line"] = game.line_net.save()           # the Clockwork Line: [x, y, team, hp, progress, built]
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -356,6 +357,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for b in game.buildings:
 		if b.kind == "farm" or b.kind == "feeding_pit":
 			b._update_sprite()      # (its tired-soil tint needs the halls back first)
+	game.line_net.clear()
+	if d.has("line"):
+		game.line_net.load_rows(d["line"])
+	else:
+		for t in game.n_players():
+			if game.factions[t] == "clockwork":
+				game.line_net.lay_start(t)        # (a save from before the Line: a main to the first buildings)
 	for cd in d.get("crates", []):
 		var cc := Vector2i(int(cd[3]), int(cd[4]))
 		for b in game.buildings:

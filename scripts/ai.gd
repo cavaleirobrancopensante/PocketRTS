@@ -390,6 +390,8 @@ func _think_stage(i: int) -> void:
 		0:
 			_cottage_wall()
 			_workers()
+			if _clock():
+				LineAI.tick(self)           # the Clockwork Line (scripts/line_ai.gd)
 			pt = _lap("ai/workers", pt)
 			_econ_build()
 			_lap("ai/econ", pt)

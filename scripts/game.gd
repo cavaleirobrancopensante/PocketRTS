@@ -74,6 +74,7 @@ var swamp_dirty := true
 var swamp_layer: Node2D
 var swamp_layer_b: Node2D      # (the second player's swamp: its own layer so its shimmer takes that player's colour)
 var field_layer: Node2D                  # Clockwork fields of the selected / placed building
+var line_net: LineNetwork                # the Clockwork Line: pipe segments and pressure (scripts/line.gd)
 var swamp_img: Image                     # the swamp of every Brood player, for the minimap
 var swamp_tex: ImageTexture
 var _swamp_t := 0.0
@@ -216,6 +217,9 @@ func _ready() -> void:
 	field_layer.z_index = -18
 	field_layer.draw.connect(_draw_fields)
 	add_child(field_layer)
+	line_net = LineNetwork.new()
+	line_net.game = self
+	add_child(line_net)
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
@@ -1648,6 +1652,8 @@ func _start_positions() -> void:
 			if site:
 				u.cmd_gather(site)
 		players[t]["gold"] = int(f.get("start_gold", Defs.START_GOLD))
+		if factions[t] == "clockwork":
+			line_net.lay_start(t)       # a finished main from the Clocktower to its first buildings
 	_update_swamp()
 
 
@@ -1971,6 +1977,8 @@ var _in_spot := false
 ## and the ring round it on the map and free (placement_problem and margin_free would
 ## turn the spot down anyway; this is only cheaper).
 func _footprint_open(cell: Vector2i, size: Vector2i) -> bool:
+	if line_net.blocks(cell, size):
+		return false
 	if cell.x < 1 or cell.y < 1 or cell.x + size.x >= W or cell.y + size.y >= H:
 		return in_map(cell)       # (at the map's edge: leave it to the full test)
 	for y in range(cell.y - 1, cell.y + size.y + 1):
@@ -2591,7 +2599,7 @@ func _economy(delta: float) -> void:
 			var fr := float(b.d["field"]) * T * field_mult(b.team)
 			for u in units_near(b.center(), fr):
 				if u.team == b.team and not u.dead and u.hp < u.max_hp and in_ellipse(b.center(), u.position, fr):
-					u.hp = minf(u.max_hp, u.hp + float(b.d["mends"]) * 0.5)
+					u.hp = minf(u.max_hp, u.hp + float(b.d["mends"]) * 0.5 * line_net.speed_mult(b))
 
 
 ## Clockwork fields grow with the energy put on wind.
@@ -4236,6 +4244,8 @@ func requirement_text(t: int, k: String) -> String:
 ## "" if the building can go at this cell, else the reason. ai: skip the fog check.
 func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_checked := false) -> String:
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
+	if line_net.blocks(c, size):
+		return "A pipe is in the way."
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
@@ -4350,6 +4360,16 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 	return b
 
 
+func _redraw_line() -> void:
+	line_net.redraw()
+
+
+## Lay the Clockwork Line along `cells` (routed by LineNetwork.plan) with these Winders.
+func lay_line(t: int, cells: Array, builders: Array, queued := false) -> void:
+	if net_forward(self, "lay_line", [t, cells, builders, queued]): return
+	line_net.lay(t, cells, builders, queued)
+
+
 ## Clockwork: the Clocktower a Winder at `from` fetches the crate for `site` from: the one
 ## that makes the shortest trip (to it, then on to the site). null when there's none.
 func crate_tower(t: int, from: Vector2, site: Building) -> Building:
@@ -4457,7 +4477,7 @@ func find_repair(u: Unit, r: float) -> Entity:
 	for b in buildings:
 		if b.team == u.team and b.built and not b.dead and b.hp < b.max_hp * 0.95 and b.edge_distance(u.position) < r:
 			return b
-	return null
+	return line_net.damaged_near(u.team, u.position, r)
 
 
 func needs_swamp(k: String) -> bool:
@@ -4999,6 +5019,8 @@ func find_target(u: Unit, r: float) -> Entity:
 		if dd < bd:
 			bd = dd
 			best = b
+	if best == null:
+		best = line_net.pipe_target(u, r)       # the Clockwork Line: the lowest priority
 	if best == null and faction_of(u.team) == "brood":
 		# nothing else in reach: a loose horse (nobody's) is cheap essence
 		for o in units_near(u.position, r):
@@ -5013,7 +5035,7 @@ func find_target(u: Unit, r: float) -> Entity:
 ## Clockwork: blue energy while a Capacitor Works stands.
 func blue_energy(t: int) -> bool:
 	for b in buildings:
-		if b.team == t and b.kind == "capacitor_works" and b.built and not b.dead:
+		if b.team == t and b.kind == "capacitor_works" and b.built and not b.dead and line_net.speed_mult(b) > 0.0:
 			return true
 	return false
 
@@ -6766,7 +6788,7 @@ func note_shot(shooter: Unit, e: Entity) -> void:
 	if shooter == null or e == null or e.team < 0 or shooter.team < 0 or allied(shooter.team, e.team):
 		return
 	var sc := cell_of(shooter.position)
-	var tc := cell_of(e.position if e is Unit else (e as Building).rect().get_center())
+	var tc := cell_of(e.position if e is Unit else e.center())
 	if not in_map(sc) or not in_map(tc) or height[idx(sc)] != 1 or ramp[idx(sc)] != 0 or height[idx(tc)] != 0:
 		return
 	var key: int = shooter.get_instance_id() * 16 + e.team
@@ -6878,6 +6900,7 @@ func _tick_game(delta: float) -> void:
 	var vsz := get_viewport().get_visible_rect().size / camera.zoom
 	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 	_economy(delta)
+	line_net.tick(delta)
 	_horse_res_tick(delta)
 	for fl in _floats:
 		fl[3] -= delta

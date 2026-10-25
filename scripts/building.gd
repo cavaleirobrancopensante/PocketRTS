@@ -900,7 +900,7 @@ func _tick_building(delta: float) -> void:
 			else:
 				i += 1
 	elif built and not queue.is_empty():
-		prod_t += delta * (game.asm_mult[team] if d["faction"] == "clockwork" else 1.0)
+		prod_t += delta * (game.asm_mult[team] * game.line_net.speed_mult(self) if d["faction"] == "clockwork" else 1.0)
 		var k: String = queue[0]
 		if prod_t >= entry_time(k) and _horse_pending(k):
 			# a gun is ready, its horse isn't here yet: it comes out when the horse walks in
@@ -1219,6 +1219,8 @@ func _update_sprite() -> void:
 	elif kind == "gate" and built and not dead and gate_open:
 		state = "open_damaged" if state == "damaged" else "open"
 	var base := String(Defs.TEMP_ART.get(kind, {}).get("building", kind))    # (temporary art: Defs.TEMP_ART)
+	if base != kind and LineArt.has_building(kind):
+		base = kind        # (the real picture has been imported: tools/import_line_art.py)
 	if kind == "gate" and vertical and ResourceLoader.exists("res://assets/buildings/gate_v_%s.png" % state):
 		base = "gate_v"
 	if kind == "wall":

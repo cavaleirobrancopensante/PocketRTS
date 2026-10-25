@@ -9,6 +9,7 @@ static func tick_game(g: Game, delta: float) -> void:
 	if g.edit_mode:
 		return
 	g.clock += delta
+	g.line_net.tick_view(delta)
 	g.alert_t = maxf(g.alert_t - delta, 0.0)
 	var vsz := g.get_viewport().get_visible_rect().size / g.camera.zoom
 	g.view_rect = Rect2(g.camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)

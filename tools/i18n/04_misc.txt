@@ -199,3 +199,91 @@ es Te has unido a la sala %s. Esperando al anfitrión...
 > Your friend left. Waiting for someone to join.
 pt Seu amigo saiu. Esperando alguém entrar.
 es Tu amigo se ha ido. Esperando a que alguien se una.
+
+> Pressure Relay
+pt Relé de Pressão
+es Relé de Presión
+
+> Stands beside the Line and boosts its pressure back up for the stretch beyond it (it needs at least a quarter of pressure coming in). Place it where the Line is thinning.
+pt Fica ao lado da Linha e devolve pressão ao trecho seguinte (precisa de pelo menos um quarto de pressão na entrada). Coloque-o onde a Linha enfraquece.
+es Se coloca junto a la Línea y devuelve presión al tramo siguiente (necesita al menos un cuarto de presión de entrada). Ponlo donde la Línea se debilita.
+
+> Stands beside the Line and boosts its pressure back up for the stretch
+pt Fica ao lado da Linha e devolve pressão ao trecho
+es Se coloca junto a la Línea y devuelve presión al tramo
+
+> LINE: tap the start, then the end of the run.
+pt LINHA: toque no início e depois no fim do trecho.
+es LÍNEA: toca el inicio y luego el final del tramo.
+
+> A pipe is in the way.
+pt Há um cano no caminho.
+es Hay una tubería en medio.
+
+> LAY
+pt ASSENTAR
+es TENDER
+
+> LINE
+pt LINHA
+es LÍNEA
+
+> PRESSURE
+pt PRESSÃO
+es PRESIÓN
+
+> Pipes need free ground at both ends.
+pt Os canos precisam de chão livre nas duas pontas.
+es Las tuberías necesitan suelo libre en ambos extremos.
+
+> Pick a second point.
+pt Escolha um segundo ponto.
+es Elige un segundo punto.
+
+> No free route.
+pt Sem rota livre.
+es Sin ruta libre.
+
+> Too long: lay it in runs of %d.
+pt Longo demais: assente em trechos de %d.
+es Demasiado largo: tiéndela en tramos de %d.
+
+> Not enough ore for the pipe.
+pt Minério insuficiente para o cano.
+es Mineral insuficiente para la tubería.
+
+> The %s has no Line beside it: it will not work. Lay pipe to it (LINE).
+pt %s não tem Linha ao lado: não vai funcionar. Assente canos até ele (LINHA).
+es %s no tiene Línea al lado: no funcionará. Tiende tuberías hasta él (LÍNEA).
+
+> Pipes need free ground there.
+pt Os canos precisam de chão livre ali.
+es Las tuberías necesitan suelo libre ahí.
+
+> Pick the end.
+pt Escolha o fim.
+es Elige el final.
+
+> Pick the start.
+pt Escolha o início.
+es Elige el inicio.
+
+> Not enough ore.
+pt Minério insuficiente.
+es Mineral insuficiente.
+
+> NO LINE
+pt SEM LINHA
+es SIN LÍNEA
+
+> NO PRESSURE
+pt SEM PRESSÃO
+es SIN PRESIÓN
+
+> new
+pt novos
+es nuevos
+
+> pressure there
+pt pressão ali
+es presión ahí

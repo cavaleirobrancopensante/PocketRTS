@@ -25,6 +25,7 @@ var place_kind := ""
 var cast_spell := ""            # "cast" mode: storm, miasma, fog (a spot) or tongue (an enemy unit)
 var line_from := Vector2i(-1, -1)  # laying a wall: where it starts
 var ghost_cell := Vector2i(-1, -1)
+var line_tool: LineTool = null     # "lay_line" mode: the Clockwork Line tool (scripts/line_tool.gd)
 
 var _touches := {}              # index -> position
 var _press := {}                # index -> {pos, t, moved, mouse}
@@ -103,10 +104,20 @@ func _keep_for_shift() -> void:
 
 func cancel_mode() -> void:
 	_shift_kept = false
+	if line_tool != null:
+		line_tool.stop()
+		line_tool = null
 	mode = ""
 	place_kind = ""
 	line_from = Vector2i(-1, -1)
 	ghost_cell = Vector2i(-1, -1)
+
+
+func begin_line() -> void:
+	cancel_mode()
+	mode = "lay_line"
+	line_tool = LineTool.new(self)
+	game.notify("LINE: tap the start, then the end of the run.", true)
 
 
 func begin_place(kind: String) -> void:
@@ -137,6 +148,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_line_add(mm.position)
 			if mode == "place":
 				_move_ghost(mm.position)
+			if mode == "lay_line" and line_tool != null:
+				line_tool.hover(mm.position)
 			if _lmb_down and _box_from == Vector2.INF and mm.position.distance_to(_lmb_from) > 6.0:
 				_box_from = _lmb_from
 			if _box_from != Vector2.INF:
@@ -218,7 +231,7 @@ func _drag(e: InputEventScreenDrag) -> void:
 			line_attack = mode == "attack"
 			_line_btn = "touch"
 			_line_add(info["pos"])
-		elif mode == "place" or Settings.drag_mode == "pan":
+		elif mode == "place" or mode == "lay_line" or Settings.drag_mode == "pan":
 			pass
 		else:
 			_box_from = info["pos"]
@@ -311,6 +324,10 @@ func _left_pc(e: InputEventMouseButton) -> void:
 					_move_ghost(e.position)
 					_keep_for_shift()
 				return
+			"lay_line":
+				if line_tool != null:
+					line_tool.press(e.position, e.shift_pressed)
+				return
 			"move", "attack":
 				line = PackedVector2Array()
 				line_attack = mode == "attack"
@@ -323,6 +340,10 @@ func _left_pc(e: InputEventMouseButton) -> void:
 		_lmb_down = true
 		_lmb_from = e.position
 		_box_from = Vector2.INF
+		return
+	if mode == "lay_line":
+		if line_tool != null:
+			line_tool.release(e.position, e.shift_pressed)
 		return
 	if _line_btn == "left":
 		if _line_end(e.shift_pressed):
@@ -416,6 +437,9 @@ func _key(e: InputEventKey) -> void:
 			game.command_all(units, "stop")
 		KEY_H:
 			game.command_all(units, "hold")
+		KEY_QUOTELEFT:
+			game.line_net.overlay_on = not game.line_net.overlay_on
+			game.line_net.redraw()
 		KEY_B:
 			if hud and units.any(func(u: Unit) -> bool: return u.is_worker()):
 				hud.page = "build"
@@ -487,6 +511,10 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 	var units := game.selected_units()
 	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair")
 	match mode:
+		"lay_line":
+			if line_tool != null:
+				line_tool.tap(screen)
+			return
 		"place":
 			var before := ghost_cell
 			_move_ghost(screen)
