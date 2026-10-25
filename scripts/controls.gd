@@ -4,7 +4,7 @@ extends Node
 ## COMPUTER: left click selects (Shift adds, Ctrl or double-click = all of that type on
 ##   screen), left drag = box, right click = command, wheel = zoom, middle drag or the
 ##   screen edges or arrow keys = pan, letter hotkeys for everything on the command card,
-##   1-9 and 0 groups (Shift+number adds, Ctrl+number removes, Alt+number sets), F1 idle workers, F2 army, F3 make, F4-F12 camera views (Shift+F saves), Space = jump to
+##   1-9 and 0 groups (Shift+number adds, Ctrl+number sets, Ctrl+Shift+number removes), F1 idle workers, F2 army, F3 make, F4-F12 camera views (Shift+F saves), Space = jump to
 ##   the selection, Esc = cancel. Shift with a command (right click, MOVE, ATTACK, REPAIR,
 ##   placing buildings and walls) queues it after the units' current orders. Watching computers: 0 all vision, 1-4 follow that player.
 ## MOBILE:
@@ -380,7 +380,7 @@ func _key(e: InputEventKey) -> void:
 	if game.spectating() and not e.ctrl_pressed and not e.shift_pressed and not e.meta_pressed \
 			and e.keycode >= KEY_0 and e.keycode <= KEY_8 and game.spectator.hotkey(int(e.keycode - KEY_0)):
 		return
-	# the hotkey bar: 1-9 and 0 groups (Shift adds, Ctrl removes, Alt sets), F1 idle, F2 army,
+	# the hotkey bar: 1-9 and 0 groups (Shift adds, Ctrl sets, Ctrl+Shift removes), F1 idle, F2 army,
 	# F3 make, F4-F12 camera views (Shift+F saves)
 	if Settings.pc() and hud and hud.bar.key(e):
 		return

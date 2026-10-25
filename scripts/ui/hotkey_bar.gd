@@ -5,11 +5,11 @@ extends RefCounted
 ## the bar, nine camera tabs F4-F12.
 ##
 ## Groups (computer): number = select (twice: jump to it), Shift+number = ADD the selection to
-## the group, Ctrl+number = REMOVE the selection from it, Alt+number = SET it (replace).
-## The same with the mouse on the buttons (Shift/Ctrl/Alt+click), and on a phone: tap selects,
+## the group, Ctrl+number = SET it (replace), Ctrl+Shift+number = REMOVE the selection from it.
+## The same with the mouse on the buttons (Shift/Ctrl+click), and on a phone: tap selects,
 ## hold sets. Camera tabs: F4-F12 jump, Shift+F4-F12 (or Ctrl+) save the view; a tap on a tab
 ## jumps (an empty one saves), a long press saves.
-## (Browsers: Ctrl+1-8 and Alt+1-8 switch tabs, F5/F11/F12 reload, full-screen and dev tools; use the buttons then.)
+## (Browsers: Ctrl+1-8 switches tabs, F5/F11/F12 reload, full-screen and dev tools; use the buttons then.)
 ## The groups and views live in the Game (game.groups, game.cam_slots) and are in the autosave.
 
 const IDLE := 0
@@ -107,11 +107,13 @@ func release(p: Vector2) -> void:
 		if held > HOLD_S:
 			mode = "set"
 		elif Settings.pc():
-			if Input.is_key_pressed(KEY_ALT):
-				mode = "set"
-			elif Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META):
+			var ctrl := Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
+			var shift := Input.is_key_pressed(KEY_SHIFT)
+			if ctrl and shift:
 				mode = "remove"
-			elif Input.is_key_pressed(KEY_SHIFT):
+			elif ctrl:
+				mode = "set"
+			elif shift:
 				mode = "add"
 		activate(id, mode, held)
 
@@ -162,10 +164,11 @@ func key(e: InputEventKey) -> bool:
 		g = 9
 	if g >= 0:
 		var mode := ""
-		if e.alt_pressed:
-			mode = "set"
-		elif e.ctrl_pressed or e.meta_pressed:
+		var ctrl: bool = e.ctrl_pressed or e.meta_pressed
+		if ctrl and e.shift_pressed:
 			mode = "remove"
+		elif ctrl:
+			mode = "set"
 		elif e.shift_pressed:
 			mode = "add"
 		_flash[GROUP0 + g] = Time.get_ticks_msec()
@@ -182,7 +185,7 @@ func key(e: InputEventKey) -> bool:
 			activate(MAKE)
 			return true
 	var j := FKEYS.find(kc)
-	if j >= 0 and not e.alt_pressed:
+	if j >= 0:
 		activate(CAM0 + j, "set" if (e.shift_pressed or e.ctrl_pressed or e.meta_pressed) else "go")
 		return true
 	return false
@@ -227,7 +230,7 @@ func group_do(g: int, mode: String, can_jump := true) -> void:
 			var alive: Array = _alive(gm.groups[g])
 			gm.groups[g] = alive
 			if alive.is_empty():
-				hud.toast("Group %d is empty: Alt+%d sets it from the selection." % [n, n] if Settings.pc() else "Group %d is empty: select something and hold the button." % n)
+				hud.toast("Group %d is empty: Ctrl+%d sets it from the selection." % [n, n] if Settings.pc() else "Group %d is empty: select something and hold the button." % n)
 				return
 			var again: bool = can_jump and _last_g == g and Time.get_ticks_msec() - _last_t < 400 and gm.selection == alive
 			gm.set_selection(alive)
@@ -336,7 +339,7 @@ func tip(id: int) -> Dictionary:
 			return {"title": "Make" + (" (F3)" if pc else ""), "body": "Select every building that makes something (the Town Hall too), to train from all of them at once."}
 	var g := group_of(id)
 	var n := g + 1 if g < 9 else 0
-	return {"title": "Group %d" % n, "body": ("%d: select it (twice: jump to it). Shift+%d: add the selection to it. Ctrl+%d: remove the selection from it. Alt+%d: set it to the selection. Shift/Ctrl/Alt+click work too." % [n, n, n, n]) if pc
+	return {"title": "Group %d" % n, "body": ("%d: select it (twice: jump to it). Shift+%d: add the selection to it. Ctrl+%d: set it to the selection. Ctrl+Shift+%d: remove the selection from it. Shift/Ctrl+click work too." % [n, n, n, n]) if pc
 		else "Tap: select it (twice: jump to it). Hold: keep the selection here."}
 
 
