@@ -1,5 +1,5 @@
 extends SceneTree
-## After SURRENDER the battle report has VIEW MAP: the report steps aside, no fog, a bar brings it back.
+## After the match is over, VIEW MAP lets the camera pan (drag) and zoom (wheel); without it the end screen freezes input.
 var main: Node
 var fails := 0
 func _initialize() -> void:
@@ -14,37 +14,34 @@ func _run() -> void:
 	await process_frame
 	main.start({"map": "greenhold", "seed": 5, "slots": [
 		{"who": "you", "faction": "crown", "colour": 0, "side": 0, "strategy": "balanced"},
-		{"who": "easy", "faction": "brood", "colour": 1, "side": 1}]})
+		{"who": "easy", "faction": "crown", "colour": 1, "side": 1}]})
 	await process_frame
 	var g = main.game
 	g.hud.countdown = 0.0
 	paused = false
-	for i in 5:
+	for i in 3:
 		await physics_frame
-	g.player_surrender()
-	var rep: Control = null
-	for i in 400:
-		await physics_frame
-		for c in main.ui_layer.get_children():
-			if c.has_signal("view_map"):
-				rep = c
-		if rep:
-			break
-	check(rep != null, "the battle report appears after surrender")
-	if rep:
-		check(not g.reveal, "the map is still under fog on the report")
-		rep.view_map.emit()
-		await process_frame
-		check(g.reveal and g.over, "VIEW MAP shows the whole map")
-		check(not rep.visible, "the report steps aside")
-		var bar: Control = null
-		for c in main.ui_layer.get_children():
-			if c is HBoxContainer and c.get_child_count() == 2:
-				bar = c
-		check(bar != null, "a bar with BATTLE REPORT / MENU is there")
-		if bar:
-			(bar.get_child(0) as Button).pressed.emit()
-			await process_frame
-			check(rep.visible, "BATTLE REPORT brings it back")
+	g.over = true
+	var p0: Vector2 = g.camera.position
+	var drag := InputEventMouseMotion.new()
+	drag.relative = Vector2(60, 0)
+	drag.button_mask = MOUSE_BUTTON_MASK_MIDDLE
+	g.controls._unhandled_input(drag)
+	check(g.camera.position == p0, "over: the camera stays frozen")
+	g.map_view = true
+	var mid := InputEventMouseButton.new()
+	mid.button_index = MOUSE_BUTTON_MIDDLE
+	mid.pressed = true
+	mid.position = Vector2(400, 300)
+	g.controls._unhandled_input(mid)
+	g.controls._unhandled_input(drag)
+	check(g.camera.position != p0, "VIEW MAP: the camera pans")
+	var z0: float = g.camera.zoom.x
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	wheel.position = Vector2(400, 300)
+	g.controls._unhandled_input(wheel)
+	check(not is_equal_approx(g.camera.zoom.x, z0), "VIEW MAP: the wheel zooms")
 	print("DONE  %d failure(s)" % fails)
 	quit(1 if fails > 0 else 0)

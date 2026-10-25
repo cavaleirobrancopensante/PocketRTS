@@ -465,7 +465,7 @@ func _over_sandbox() -> bool:
 
 
 func _hud_has(p: Vector2) -> bool:
-	if game.over:
+	if game.over and not game.map_view:
 		return false        # the end screen takes the clicks
 	if paused or quick_open:
 		return true
@@ -482,7 +482,7 @@ func _hud_has(p: Vector2) -> bool:
 # ------------------------------------------------------------------ input
 
 func _input(event: InputEvent) -> void:
-	if game == null or game.over:
+	if game == null or (game.over and not game.map_view):
 		return
 	if event is InputEventKey and _chat_input(event as InputEventKey):
 		get_viewport().set_input_as_handled()
@@ -572,7 +572,7 @@ func _press(p: Vector2) -> void:
 				else:
 					b["cb"].call()
 		return
-	if game.over:
+	if game.over and not game.map_view:
 		return
 	if quick_open:
 		_quick_press(p)

@@ -134,6 +134,7 @@ var _hash := {}
 var _path_queue: Array = []
 var _end_t := 0.0
 var over := false
+var map_view := false                   # VIEW MAP on the battle report: the match is over but the camera and selection work
 var winner := -1
 var clock := 0.0
 var stats: Array = []

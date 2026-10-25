@@ -2053,6 +2053,7 @@ func _view_map(report: Control) -> void:
 	if game == null:
 		return
 	game.reveal = true
+	game.map_view = true
 	game.refresh_fog()
 	report.visible = false
 	var bar := HBoxContainer.new()
@@ -2068,6 +2069,7 @@ func _view_map(report: Control) -> void:
 			if bt[1] == "menu":
 				_to_menu()
 			else:
+				game.map_view = false
 				report.visible = true
 				bar.queue_free())
 		bar.add_child(b)

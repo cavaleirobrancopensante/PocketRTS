@@ -130,7 +130,7 @@ func begin_place(kind: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if game.over:
+	if game.over and not game.map_view:
 		return
 	if event is InputEventScreenTouch:
 		_touch(event as InputEventScreenTouch)
@@ -446,7 +446,7 @@ func _key(e: InputEventKey) -> void:
 
 
 func _process(delta: float) -> void:
-	if game == null or game.over:
+	if game == null or (game.over and not game.map_view):
 		return
 	# Keyboard panning
 	var k := Vector2.ZERO
