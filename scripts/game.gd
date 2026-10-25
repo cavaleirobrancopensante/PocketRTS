@@ -70,6 +70,7 @@ func enemies_of(t: int) -> Array:
 var swamp: Array = []
 var swamp_dirty := true
 var swamp_layer: Node2D
+var swamp_layer_b: Node2D      # (the second player's swamp: its own layer so its shimmer takes that player's colour)
 var field_layer: Node2D                  # Clockwork fields of the selected / placed building
 var swamp_img: Image                     # the swamp of every Brood player, for the minimap
 var swamp_tex: ImageTexture
@@ -200,9 +201,14 @@ func _ready() -> void:
 	add_child(ground)
 	swamp_layer = Node2D.new()
 	swamp_layer.z_index = -19
-	swamp_layer.draw.connect(_draw_swamp)
+	swamp_layer.draw.connect(_draw_swamp.bind(0))
 	swamp_layer.material = _swamp_material()
 	add_child(swamp_layer)
+	swamp_layer_b = Node2D.new()
+	swamp_layer_b.z_index = -19
+	swamp_layer_b.draw.connect(_draw_swamp.bind(1))
+	swamp_layer_b.material = _swamp_material()
+	add_child(swamp_layer_b)
 	field_layer = Node2D.new()
 	field_layer.z_index = -18
 	field_layer.draw.connect(_draw_fields)
@@ -4572,6 +4578,7 @@ func _update_swamp() -> void:
 		swamp[t] = g
 	_update_conn()
 	swamp_layer.queue_redraw()
+	swamp_layer_b.queue_redraw()
 	_swamp_minimap()
 
 
@@ -4635,6 +4642,7 @@ func _draw_fields() -> void:
 ## reads as alive and never as a flat dark patch next to green ground.
 const SWAMP_SHADER := """
 shader_type canvas_item;
+uniform vec3 team_col = vec3(0.3, 0.8, 0.4);
 varying vec2 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy; }
 void fragment() {
@@ -4643,8 +4651,9 @@ void fragment() {
 	float b = sin((wpos.x + wpos.y) * 0.03 - TIME * 0.3);
 	float w = 0.6 * a + 0.4 * b;
 	c.rgb *= 0.94 + 0.13 * w;
-	c.g += 0.03 * max(w, 0.0);
-	c.b += 0.012 * max(w, 0.0);
+	float lum = dot(c.rgb, vec3(0.3, 0.55, 0.15));
+	float k = 0.10 + 0.34 * max(w, 0.0);
+	c.rgb = mix(c.rgb, team_col * (0.25 + 1.6 * lum), k);       // (the player's colour rides the waves)
 	COLOR = c;
 }
 """
@@ -4658,23 +4667,24 @@ func _swamp_material() -> ShaderMaterial:
 	return m
 
 
-func _draw_swamp() -> void:
+func _draw_swamp(team: int) -> void:
+	var layer: Node2D = swamp_layer if team == 0 else swamp_layer_b
+	(layer.material as ShaderMaterial).set_shader_parameter("team_col", Vector3(team_colour(team).r, team_colour(team).g, team_colour(team).b))
 	var t: Texture2D = tex("res://assets/tiles/swamp.png")
-	for team in 2:
-		var g: PackedByteArray = swamp[team]
-		# not on cliffs or ramps: the swamp hid the hillsides and slopes (the ground there
-		# still counts as swamp; it just isn't painted over)
-		var sh := PackedByteArray()
-		sh.resize(W * H)
-		for j in W * H:
-			sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 else 0
-		for i in W * H:
-			if sh[i] == 1:
-				var x := i % W
-				var y := i / W
-				var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
-					or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
-				swamp_layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
+	var g: PackedByteArray = swamp[team]
+	# not on cliffs or ramps: the swamp hid the hillsides and slopes (the ground there
+	# still counts as swamp; it just isn't painted over)
+	var sh := PackedByteArray()
+	sh.resize(W * H)
+	for j in W * H:
+		sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 else 0
+	for i in W * H:
+		if sh[i] == 1:
+			var x := i % W
+			var y := i / W
+			var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
+				or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
+			layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
 
 
 var _astar_dirty := false

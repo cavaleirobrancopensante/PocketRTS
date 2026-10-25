@@ -8,7 +8,7 @@ func _initialize() -> void:
 func _run(a: Array) -> void:
 	await process_frame
 	main.start({"map": a[1], "seed": 5, "slots": [
-		{"who": "human", "faction": "brood", "colour": 0, "side": 0, "strategy": "balanced"},
+		{"who": "human", "faction": "brood", "colour": (int(a[2]) if a.size() > 2 else 0), "side": 0, "strategy": "balanced"},
 		{"who": "hard", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
 	var g = main.game
 	Engine.time_scale = 8.0
