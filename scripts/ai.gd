@@ -163,6 +163,7 @@ func _think_stage(i: int) -> void:
 	var pt := Time.get_ticks_usec()
 	match i:
 		0:
+			_cottage_wall()
 			_workers()
 			pt = _lap("ai/workers", pt)
 			_econ_build()
@@ -439,9 +440,9 @@ func _workers() -> void:
 		queued += h.queue.filter(func(k: String) -> bool: return k == worker).size()
 	# (the Barracks and the Mill first, then the wall, before the crew grows further)
 	var hold_gold: bool = _crown() and difficulty > 0 and labs.size() + queued >= 6 and not _mine("cottage").is_empty() and game.clock < 200.0 and \
-			((opening == "mill" and (_mine("barracks").is_empty() or _mine("powder_mill").is_empty())) or (not _walled and _wall_wanted()))
+			((opening == "mill" and (_mine("barracks").is_empty() or _mine("powder_mill").is_empty())) or (not _walled and (_wall_wanted() or _cw_active())))
 	# (a feared rush with a Barracks standing: the first Musketeers before more labourers)
-	if _army_first() and labs.size() >= 8 and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
+	if _army_first() and labs.size() >= (6 if safe_opening else 8) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
 		hold_gold = true
 	if _clock() and _mine("assembly_works").is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
 			and _gold() < int(Defs.BUILDINGS["assembly_works"]["cost"]) + 20:
@@ -458,6 +459,7 @@ func _workers() -> void:
 				queued += 1
 	# Everyone idle goes to a post with room (escorts excepted).
 	_escort = _escort.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	_repair_wall()
 	_worker_safety()
 	for u in labs:
 		if u.order == "idle" and u.can_gather() and not _escort.has(u) and not _fled.has(u):
@@ -594,6 +596,8 @@ func _raid_workers(c: Dictionary, labs: Array, army: Array, stand: Dictionary) -
 	var foes: Array = c["foes"]
 	var centre: Vector2 = c["c"]
 	var near: Array = labs.filter(func(w: Unit) -> bool: return foes.any(func(o: Unit) -> bool: return o.position.distance_to(w.position) < FLEE_R))
+	# (a labourer mending the ramp wall behind it stays while _repair_wall finds him safe there)
+	near = near.filter(func(w: Unit) -> bool: return not (_repairers.has(w) and w.order == "repair"))
 	if near.is_empty():
 		return
 	var armor := 0.0
@@ -735,7 +739,7 @@ func _mill_cap() -> int:
 		return 99
 	if _mine("barracks").is_empty():
 		return 0
-	return 3 if _res2() < 50.0 else 1        # (powder for the first Musketeers: 10 each)
+	return 3 if _res2() < (20.0 if safe_opening else 50.0) else 1        # (powder for the first two Musketeers: 10 each; more hands belong on the farms)
 
 
 func _farm_first(u: Unit) -> Building:
@@ -889,10 +893,12 @@ func _econ_build() -> void:
 		var early := game.workers(team).size() < 7 and game.clock < 100.0     # (the first hands farm: gold for labourers first)
 		var barracks_up := not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty()
 		var no_breeder := _mine("horse_breeder").is_empty()
+		if safe_opening and difficulty > 0 and game.econ_count(team, "farm") >= 1 and game.workers(team).size() < 8 and game.clock < 150.0:
+			order.erase("farm")      # (one farm takes eight hands: the second comes with the ninth labourer; its 50 gold is a hand now)
 		if opening == "breeder" and _mine("barracks").is_empty() and game.clock < 150.0 and game.econ_count(team, "farm") >= 1 and _halls().size() == 1:
 			order.erase("farm")      # (a Horseman rush: the second farm once the Barracks is going up)
 		if opening == "mill":
-			if game.econ_count(team, "powder_mill") == 0 and (early or (difficulty > 0 and _mine("barracks").is_empty() and game.clock < 200.0)):
+			if game.econ_count(team, "powder_mill") == 0 and (((early and _mine("barracks").is_empty()) or (not safe_opening and early)) or (difficulty > 0 and _mine("barracks").is_empty() and game.clock < 200.0)):
 				order.erase("powder_mill")      # (the Mill right after the Barracks: it grinds for Musketeers)
 			if no_breeder and barracks_up and game.econ_count(team, "powder_mill") > 0 and not _tech_wait():
 				order.append("horse_breeder")      # (after the Barracks: the Musketeers first)
@@ -1154,6 +1160,8 @@ func _build_up() -> void:
 	else:
 		# the wall comes before anything else is paid for (a standard moment, or at once when a
 		# rush is feared); the rest waits for its gold
+		if _cw_active() and not _walled:
+			return          # (the ramp Cottage and its gate come before anything else: _cottage_wall)
 		if _wall_wanted():
 			_wall_off()
 			if not _walled:
@@ -1677,6 +1685,384 @@ func _hunt(u: Unit, prey: Vector2) -> void:
 		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 
 
+
+# ---- the ramp wall costs the defender something while a rush lasts (docs/design_principles.md, 5):
+# a labourer mends a damaged palisade piece, gate or the ramp Cottage when it is safe where he
+# stands (see _repair_safe), the nearest free one first; a full repair costs a quarter of the price
+# (Defs.REPAIR_COST), so a Gate is 12 gold. Never at the price of the hands: they stop and flee
+# (_worker_safety) the moment the spot is not safe.
+const REPAIR_BELOW := 0.85       # a piece below this share of its hit points is mended
+const REPAIR_HANDS := 2          # at most this many labourers at it at once
+var _repairers: Dictionary = {}  # Unit -> the piece he was sent to
+
+
+func _wall_piece(b: Building) -> bool:
+	return b.kind == "wall" or b.kind == "gate" or (b.kind == "cottage" and not _cw_plan.is_empty() and b.cell == _cw_plan["cottage"])
+
+
+## Is it safe for a labourer to stand behind this piece? No ranged enemy that reaches the spot
+## (unless our soldiers stand near the piece: they cover him), and no melee enemy right at it
+## (a palisade between them keeps the claws off; one inside or at the foot of the gate does not).
+func _repair_safe(b: Building) -> bool:
+	var home := Vector2(game.starts[team]) * Defs.TILE + Vector2(2.5, 2.0) * Defs.TILE
+	var spot := b.center() + (home - b.center()).normalized() * 40.0
+	var cover := 0
+	for u in game.army(team):
+		if not u.dead and u.position.distance_to(b.center()) < 300.0:
+			cover += 1
+	for o in game.units_near(b.center(), 320.0):
+		if not game.hostile(o.team, team) or o.dead or o.off_field or not _armed(o):
+			continue
+		var rng := float(o.d.get("range", 0))
+		if rng > 60.0:
+			if cover < 2 and o.position.distance_to(spot) < rng + 60.0:
+				return false
+		elif o.position.distance_to(spot) < 50.0 or (o.position.distance_to(b.center()) > 50.0 and o.position.distance_to(spot) < o.position.distance_to(b.center())):
+			return false          # (past the piece, on our side of it)
+	return true
+
+
+func _repair_wall() -> void:
+	if not _crown() or difficulty == 0:
+		return
+	for w in _repairers.keys():
+		var piece = _repairers[w]
+		if not is_instance_valid(w) or w.dead or w.order != "repair":
+			_repairers.erase(w)
+		elif not is_instance_valid(piece) or piece.dead or not _repair_safe(piece):
+			_repairers.erase(w)
+			w.cmd_stop()          # (the flight logic of _worker_safety takes him from here)
+	if _gold() < 2:
+		return
+	var hurt: Array = game.buildings.filter(func(b: Building) -> bool:
+		return b.team == team and b.built and not b.dead and _wall_piece(b) and b.hp < b.max_hp * REPAIR_BELOW)
+	if hurt.is_empty() or _repairers.size() >= REPAIR_HANDS:
+		return
+	hurt.sort_custom(func(a: Building, b: Building) -> bool: return a.hp / a.max_hp < b.hp / b.max_hp)
+	var b: Building = hurt[0]
+	if not _repair_safe(b):
+		return
+	var home_h: int = int(game.height[game.idx(game.cell_of(Vector2(game.starts[team]) * Defs.TILE))])
+	var best: Unit = null
+	var bd := 700.0
+	for u in game.workers(team):
+		if u.dead or u.order == "build" or u.order == "repair" or u.keg or _escort.has(u) or _fled.has(u) or _fighters.has(u) or (scout != null and scout.is_scout(u)):
+			continue
+		if u.carrying > 0 or int(game.height[game.idx(game.cell_of(u.position))]) != home_h:
+			continue          # (a hand on the plateau with his hands free)
+		var dd: float = u.position.distance_to(b.center())
+		if dd < bd:
+			bd = dd
+			best = u
+	if best != null:
+		best.cmd_repair(b)
+		_repairers[best] = b
+		repair_orders += 1
+
+
+var repair_orders := 0           # (measured by the tests)
+
+
+# ---------------------------------------------------------------- Crown safe opening
+# The first Cottage goes up AT THE RAMP and is part of the wall; one Gate next to it (and a
+# palisade piece only for a band cell still open) seals the mouth. A good human Crown does
+# this (the owner's log: Cottage 0:35, Gate 0:40, Mill and Barracks 0:53): it is far cheaper
+# and earlier than a palisade line over every band cell. docs/ai_build_timelines.md.
+var _cw_plan := {}              # plan_cottage_wall(): {"cottage": cell, "pieces": [[kind, cell]...], "cost", "band", "covered"}
+var _cw_off := false            # no Cottage plan on this map (or it failed): the palisade wall of old
+var _cw_built_t := -1.0         # when the ramp Cottage stood (a gate that cannot be laid for long gives the plan up)
+const LINE_GATE_WIDTH := 2      # gate cells of a palisade-line wall (one place to widen the gate for limbered cannons)
+const CW_GATE_WIDTH := 1        # gate cells beside the ramp Cottage (the Cottage covers the rest of the mouth)
+var _cw_gate_width := CW_GATE_WIDTH         # gate pieces in the mouth: one (a Cottage covers the rest), more on a wide mouth
+var safe_opening := true        # false: the opening before the Cottage wall (tests of other systems that need the old layout)
+
+
+func _cw_active() -> bool:
+	return safe_opening and _crown() and difficulty >= 1 and not _cw_off
+
+
+## Every ramp near the home hall: its cells, the high-ground cells that touch it (the "band"
+## the wall has to cover: nothing may slip past) and its middle. Nearest ramp first.
+func _ramp_bands() -> Array:
+	var out: Array = []
+	if game.starts.size() <= team:
+		return out
+	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
+	var left := {}
+	for y in range(int(home.y) - 22, int(home.y) + 23):
+		for x in range(int(home.x) - 22, int(home.x) + 23):
+			var c := Vector2i(x, y)
+			if game.in_map(c) and game.ramp[game.idx(c)] == 1:
+				left[c] = true
+	while not left.is_empty():
+		var start: Vector2i = left.keys()[0]
+		var ramp_cells: Array = []
+		var todo: Array = [start]
+		left.erase(start)
+		while not todo.is_empty():
+			var c: Vector2i = todo.pop_back()
+			ramp_cells.append(c)
+			for dd2 in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n: Vector2i = c + dd2
+				if left.has(n):
+					left.erase(n)
+					todo.append(n)
+		var band := {}
+		for rc in ramp_cells:
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var c: Vector2i = rc + Vector2i(dx, dy)
+					if game.in_map(c) and game.height[game.idx(c)] == 1 and game.ramp[game.idx(c)] == 0 and game.is_free(c):
+						band[c] = true
+		if band.size() < 2:
+			continue
+		var mid := Vector2.ZERO
+		for rc in ramp_cells:
+			mid += Vector2(rc)
+		mid /= ramp_cells.size()
+		out.append({"ramp": ramp_cells, "band": band.keys(), "mid": mid})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["mid"] as Vector2).distance_to(home) < (b["mid"] as Vector2).distance_to(home))
+	return out
+
+
+## Flood fill over the walkable cells (8 ways, no corner cutting, a gate counts as open when `gates_open`) from
+## the ramp's cells: the high-ground cells it reaches. Used to prove a plan seals the ramp.
+func cw_reach(ramp_cells: Array, blocked: Dictionary, gates: Array, gates_open: bool) -> Dictionary:
+	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
+	var seen := {}
+	var todo: Array = []
+	for rc in ramp_cells:
+		seen[rc] = true
+		todo.append(rc)
+	var open := func(n: Vector2i) -> bool:
+		if not game.in_map(n) or absi(n.x - int(home.x)) > 26 or absi(n.y - int(home.y)) > 26:
+			return false
+		if not game.is_free(n) or blocked.has(n) or (not gates_open and gates.has(n)):
+			return false
+		return game.ramp[game.idx(n)] != 1 or ramp_cells.has(n)
+	while not todo.is_empty():
+		var c: Vector2i = todo.pop_back()
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if dx == 0 and dy == 0:
+					continue
+				var n: Vector2i = c + Vector2i(dx, dy)
+				if seen.has(n) or not open.call(n):
+					continue
+				# (no cutting a corner: both cells beside a diagonal step are open too)
+				if dx != 0 and dy != 0 and not (open.call(c + Vector2i(dx, 0)) and open.call(c + Vector2i(0, dy))):
+					continue
+				seen[n] = true
+				todo.append(n)
+	return seen
+
+
+## The cheapest complete seal of the nearest ramp that is built round a Cottage: the Cottage
+## footprint (2x2, legal, on the high ground) covers as many band cells as it can, a Gate
+## goes in the first cell left next to it (the army files out through it), and a palisade
+## piece fills any other band cell still open. Proven with a flood fill: nothing walks from the
+## ramp to the hall except through the gate. Other ramps (if the hall has more) get the old
+## line (gate and palisade). {} if no Cottage site seals it.
+func plan_cottage_wall() -> Dictionary:
+	var bands := _ramp_bands()
+	if bands.is_empty():
+		return {}
+	var b0: Dictionary = bands[0]
+	var band: Array = b0["band"]
+	var band_set := {}
+	for c in band:
+		band_set[c] = true
+	var mid: Vector2 = b0["mid"]
+	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
+	var csize: Vector2i = Defs.BUILDINGS["cottage"]["size"]
+	var minc: Vector2i = band[0]
+	var maxc: Vector2i = band[0]
+	for c in band:
+		minc = Vector2i(mini(minc.x, c.x), mini(minc.y, c.y))
+		maxc = Vector2i(maxi(maxc.x, c.x), maxi(maxc.y, c.y))
+	var best := {}
+	var best_score := INF
+	for ty in range(minc.y - csize.y + 1, maxc.y + 1):
+		for tx in range(minc.x - csize.x + 1, maxc.x + 1):
+			var tl := Vector2i(tx, ty)
+			var fp: Dictionary = {}
+			var covered := 0
+			var ok := true
+			for dy in csize.y:
+				for dx in csize.x:
+					var c := tl + Vector2i(dx, dy)
+					if not game.in_map(c) or not game.is_free(c) or game.ramp[game.idx(c)] != 0 or game.height[game.idx(c)] != 1:
+						ok = false
+					fp[c] = true
+					if band_set.has(c):
+						covered += 1
+			if not ok or covered == 0 or game.placement_problem(team, "cottage", tl) != "":
+				continue
+			var rest: Array = band.filter(func(c: Vector2i) -> bool: return not fp.has(c))
+			if rest.is_empty():
+				continue          # (no way out: the gate needs a cell)
+			# the gate: the left-over cells touching the Cottage, nearest the ramp's middle first
+			rest.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+				var ta := _cw_touches(a, fp)
+				var tb := _cw_touches(b, fp)
+				if ta != tb:
+					return ta
+				return Vector2(a).distance_to(mid) < Vector2(b).distance_to(mid))
+			var n_gate := mini(_cw_gate_width, rest.size())
+			if rest.size() >= 4:
+				n_gate = maxi(n_gate, 2)
+			var gates: Array = []
+			var walls: Array = []
+			for i in rest.size():
+				if i < n_gate:
+					gates.append(rest[i])
+				else:
+					walls.append(rest[i])
+			var blocked := fp.duplicate()
+			for c in walls:
+				blocked[c] = true
+			var shut := cw_reach(b0["ramp"], blocked, gates, false)
+			var leak := false
+			for c in shut:
+				if game.height[game.idx(c)] == 1 and game.ramp[game.idx(c)] == 0 and Vector2(c).distance_to(home) < 24.0:
+					leak = true
+					break
+			if leak:
+				continue
+			var opened := cw_reach(b0["ramp"], blocked, gates, true)
+			var gets_home := false
+			for c in opened:
+				if game.ramp[game.idx(c)] == 0 and game.height[game.idx(c)] == 1 and Vector2(c).distance_to(home) < 9.0:
+					gets_home = true
+					break
+			if not gets_home:
+				continue
+			var score := float(rest.size()) * 100.0 + (0.0 if _cw_touches(gates[0], fp) else 50.0) + (Vector2(tl) + Vector2(csize) * 0.5).distance_to(mid) + float(tx + ty * 1000) * 0.00001
+			if score < best_score:
+				best_score = score
+				var pieces: Array = []
+				for c in gates:
+					pieces.append(["gate", c])
+				for c in walls:
+					pieces.append(["wall", c])
+				best = {"cottage": tl, "pieces": pieces, "band": band.size(), "covered": covered}
+	if best.is_empty():
+		return {}
+	var cost := 0
+	for e in best["pieces"]:
+		cost += int(Defs.BUILDINGS[e[0]]["cost"])
+	best["cost"] = cost
+	# any other ramp of the home plateau: the line of old (a gate and palisade over the band)
+	var extra: Array = []
+	for i in range(1, bands.size()):
+		var cells: Array = bands[i]["band"]
+		var m: Vector2 = bands[i]["mid"]
+		cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_to(m) < Vector2(b).distance_to(m))
+		var gates2: Array = _gate_cells(cells)
+		for c in cells:
+			extra.append(["gate" if gates2.has(c) else "wall", c])
+	for e in extra:
+		best["pieces"].append(e)
+		best["cost"] = int(best["cost"]) + int(Defs.BUILDINGS[e[0]]["cost"])
+	return best
+
+
+## The gate cells of a palisade line: LINE_GATE_WIDTH cells in a row, from the one nearest the
+## ramp's middle (`cells` is sorted nearest first).
+func _gate_cells(cells: Array) -> Array:
+	var gates: Array = [cells[0]]
+	for c in cells.slice(1):
+		if gates.size() >= LINE_GATE_WIDTH:
+			break
+		if (c - gates[gates.size() - 1]).length() <= 1.01:
+			gates.append(c)
+	return gates
+
+
+func _cw_touches(c: Vector2i, fp: Dictionary) -> bool:
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if fp.has(c + d):
+			return true
+	return false
+
+
+## The ramp Cottage, if it stands (or is going up) on its planned cell.
+func _cw_cottage() -> Building:
+	for b in _mine("cottage"):
+		if b.cell == _cw_plan["cottage"]:
+			return b
+	return null
+
+
+## Every think from the first second: the Cottage at the ramp as soon as its 100 gold is there,
+## then (the Gate needs a finished Cottage) the Gate and any palisade piece, laid together by a
+## short crew. Nothing else is paid for until it stands (the Barracks and the Mill come next).
+func _cottage_wall() -> void:
+	if not _cw_active() or _walled or _hall_reserve:
+		return
+	if _cw_plan.is_empty():
+		_cw_plan = plan_cottage_wall()
+		if _cw_plan.is_empty():
+			_cw_off = true
+			if game.mlog:
+				game.mlog.add("%s has no Cottage wall plan here: the palisade wall" % game.mlog.who(team))
+			return
+	var cot := _cw_cottage()
+	if cot == null:
+		if _gold() < int(Defs.BUILDINGS["cottage"]["cost"]):
+			return
+		if game.placement_problem(team, "cottage", _cw_plan["cottage"]) != "":
+			_cw_plan = plan_cottage_wall()          # (something stands there now: plan again)
+			if _cw_plan.is_empty():
+				_cw_off = true
+			return
+		_construct("cottage", _cw_plan["cottage"])
+		return
+	if not cot.built:
+		return
+	if _cw_built_t < 0.0:
+		_cw_built_t = game.clock
+	var todo: Array = []
+	var cost := 0
+	for e in _cw_plan["pieces"]:
+		if game._own_gate_at(team, e[1]) == null and game._own_wall_at(team, e[1]) == null:
+			todo.append(e)
+			cost += int(Defs.BUILDINGS[e[0]]["cost"])
+	if todo.is_empty():
+		_walled = true
+		return
+	if _gold() < cost:
+		_wall_cost = cost
+		if game.clock - _cw_built_t > 90.0:
+			_cw_off = true          # (it never comes: the old line, which waits for its gold the same way, takes over)
+		return
+	var at: Vector2 = Vector2((todo[0][1] as Vector2i)) * Defs.TILE
+	var crew_n := 2 if (todo.size() >= 2 or _wall_urgent()) else 1
+	var labs: Array = game.workers(team).filter(func(u: Unit) -> bool:
+		return not u.dead and u.order != "build" and not _escort.has(u) and not (scout != null and scout.is_scout(u)) and not _fled.has(u))
+	labs.sort_custom(func(a: Unit, b: Unit) -> bool:
+		return a.position.distance_to(at) + (150.0 if a.carrying > 0 else 0.0) < b.position.distance_to(at) + (150.0 if b.carrying > 0 else 0.0))
+	var crew: Array = labs.slice(0, crew_n)
+	if crew.is_empty():
+		return
+	var made: Array = []
+	for e in todo:
+		var nb: Building = game.place_building(team, e[0], e[1], [])
+		if nb != null:
+			made.append(nb)
+	if made.is_empty():
+		if game.clock - _cw_built_t > 40.0:
+			_cw_off = true
+		return
+	_walled = true
+	_wall_pieces = made
+	_wall_start_t = game.clock
+	_wall_done_t = -1.0
+	_assign_wall(crew, made)
+	if game.mlog:
+		game.mlog.add("%s walled its ramp with a Cottage (%d pieces, %d labourers on it%s)" % [game.mlog.who(team), made.size(), crew.size(), ", feared rush" if _wall_urgent() else ""])
+
+
 ## Crown: wall the top of each ramp up to the main base, with a two-wide gate in the
 ## middle. The wall is every free high-ground cell touching the ramp, so nothing slips by.
 ## Like an SC2 wall-off it is laid in one go and built by a CREW (2, or 3 when a rush is
@@ -1728,11 +2114,7 @@ func _wall_off() -> bool:
 		cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_to(mid) < Vector2(b).distance_to(mid))
 		# (a two-wide gate: the army files out to meet a raid without jamming; test_ai_army_response
 		# fails with a one-tile gate)
-		var gates: Array = [cells[0]]
-		for c in cells.slice(1):
-			if (c - cells[0]).length() <= 1.01:
-				gates.append(c)
-				break
+		var gates: Array = _gate_cells(cells)
 		for c in cells:
 			plan.append(["gate" if gates.has(c) else "wall", c])
 	if plan.is_empty():
@@ -1808,6 +2190,8 @@ func _wall_urgent() -> bool:
 func _wall_wanted() -> bool:
 	if _walled or not _crown() or not game.requirement_met(team, "wall") or _hall_reserve:
 		return false
+	if _cw_active():
+		return false          # (the Cottage wall is laid by _cottage_wall, from the first seconds)
 	if difficulty == 0:
 		return game.clock / float(_s("tech")) > 300.0 and _gold() >= 140
 	if opening == "breeder":
@@ -2615,6 +2999,17 @@ func _xrush_army(army: Array, sup: int) -> void:
 		if strategy in ["xrush", "rush"]:
 			_xrush_over(why)
 		return
+	# a sealed ramp (a Cottage and a Gate, a palisade): the wave breaks the piece in its way, instead of
+	# milling about at the foot of the ramp until the wave is called off. The defender pays repairs
+	# until its Musketeers are out (docs/design_principles.md, 5).
+	var brk := _piece_to_break(_xr_wave, c)
+	if brk != null:
+		for u in _xr_wave:
+			if u.siege_t > 0.0 or u.dead or u.off_field:
+				continue
+			if u.target != brk or u.order != "attack":
+				u.cmd_attack(brk)
+		return
 	# armed defenders in sight: fight them together (an attack-move; a plain move would run the
 	# Raptors past the guns to the workers and they would die without a bite), else hunt workers
 	var guard: Unit = null
@@ -2634,6 +3029,40 @@ func _xrush_army(army: Array, sup: int) -> void:
 				u.cmd_move(guard.position + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 		else:
 			_hunt(u, _prey_spot(u.position))
+
+
+## The enemy wall or gate piece nearest the wave that it can walk up to, when the prey (the
+## workers) cannot be reached on foot because of the enemy's walls and gates; else null.
+func _piece_to_break(wave: Array, c: Vector2) -> Building:
+	var rep: Unit = null
+	for u in wave:
+		if is_instance_valid(u) and not u.dead and not u.off_field and not u.is_air() and float(u.d.get("range", 0)) <= 40.0:
+			rep = u
+			break
+	if rep == null:
+		return null
+	if rep._walk_reaches_point(_prey_spot(rep.position)):
+		return null
+	var a: Vector2i = game.cell_of(rep.position)
+	if not game.open_cell(a):
+		a = game.nearest_free(a, 4)
+	if a.x < 0:
+		return null
+	var best: Building = null
+	var bd := 1800.0
+	for b in game.buildings:
+		if b.dead or not b.built or not (b.kind == "wall" or b.kind == "gate") or not game.hostile(b.team, team):
+			continue
+		var dd: float = b.center().distance_to(c)
+		if dd >= bd or not rep.can_hit(b):
+			continue
+		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nb: Vector2i = b.cell + dv
+			if game.open_cell(nb) and not game.astar.get_id_path(a, nb).is_empty():
+				bd = dd
+				best = b
+				break
+	return best
 
 
 ## Split the army into groups (two or three, mixed: every group gets its share of
