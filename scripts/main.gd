@@ -1143,7 +1143,7 @@ func _slot_row(i: int) -> Control:
 
 
 ## A button that opens a list to pick from (big rows, easy to tap). items: [label, value, disabled].
-func _dropdown(text: String, w: float, items: Array, pick: Callable, list_w := 240.0, current := "") -> Button:
+func _dropdown(text: String, w: float, items: Array, pick: Callable, list_w := 240.0, current := "", after := Callable()) -> Button:
 	var b := Button.new()
 	b.text = text + "  ▼"
 	b.add_theme_font_override("font", UiStyle.bold_font())     # (it has the arrow; the title font doesn't)
@@ -1155,14 +1155,14 @@ func _dropdown(text: String, w: float, items: Array, pick: Callable, list_w := 2
 	b.pressed.connect(func() -> void:
 		_web_fullscreen()
 		Sfx.play_any(["ui/click", "click"])
-		_open_list(b, current if current != "" else text, items, pick, list_w)
+		_open_list(b, current if current != "" else text, items, pick, list_w, after)
 	)
 	return b
 
 
 ## The list a dropdown opens: big rows in the menu's own layer (not a separate popup
 ## window, which froze on some Android phones). A tap outside closes it.
-func _open_list(b: Button, current: String, items: Array, pick: Callable, min_w := 240.0) -> void:
+func _open_list(b: Button, current: String, items: Array, pick: Callable, min_w := 240.0, after := Callable()) -> void:
 	var shade := Control.new()
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1199,7 +1199,10 @@ func _open_list(b: Button, current: String, items: Array, pick: Callable, min_w 
 			shade.queue_free()
 			pick.call(val)
 			Sfx.play_any(["ui/click", "click"])
-			show_skirmish())
+			if after.is_valid():
+				after.call()      # (the online room redraws itself)
+			else:
+				show_skirmish())
 		v.add_child(row)
 	shade.add_child(panel)
 	ui_layer.add_child(shade)
@@ -1242,6 +1245,14 @@ func _cycle(text: String, w: float, step: Callable) -> Button:
 			Sfx.play_any(["ui/back", "ui/click", "click"])
 			show_skirmish())
 	return b
+
+
+## The map picture with the start spots (the online room uses it too).
+func make_map_preview(id: String, slots: Array) -> Control:
+	var prv := MapPreview.new()
+	prv.map_id = id
+	prv.slots = slots
+	return prv
 
 
 func _faction_icon(f: String) -> Texture2D:

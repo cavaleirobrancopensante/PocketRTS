@@ -1,6 +1,6 @@
 # Holdfast
 
-**Play in your browser (version 0.14.4): https://cavaleirobrancopensante.github.io/Holdfast/**
+**Play in your browser (version 0.14.5): https://cavaleirobrancopensante.github.io/Holdfast/**
 
 **Android app: https://cavaleirobrancopensante.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 

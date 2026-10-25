@@ -11,7 +11,9 @@ signal start_now(cfg: Dictionary)        # guest: the host started: hand cfg to 
 signal failed(why: String)               # could not connect / refused / the host left
 
 const MODES := ["1v1", "coop"]
-const MODE_LABEL := {"1v1": "1 VS 1", "coop": "2 VS COMPUTER (CO-OP)"}
+const MODE_LABEL := {"1v1": "1 VS 1", "coop": "2 VS COMPUTER (CO-OP)", "custom": "CUSTOM TEAMS"}
+const FACTIONS := ["random", "crown", "brood", "clockwork"]
+const LEVELS := ["easy", "normal", "hard", "brutal"]     # the computer's difficulty (the host picks it)
 
 var link: NetLink
 var is_host := false
@@ -25,6 +27,7 @@ var online := false                       # connected and (guest) seated
 var refused := ""
 var version: String = ProjectSettings.get_setting("application/config/version", "dev")
 var strategy_ai := "hard"
+var denied := 0                          # host: how many colour / team picks were refused
 
 
 ## Host a game: `relay` is the relay's address, `room` a code (NetLink.new_code()).
@@ -76,11 +79,15 @@ func _preset(m: String) -> void:
 	slots = [_slot("you", 0), _slot("remote", 0 if m == "coop" else 1)]
 	if m == "coop":
 		slots.append(_slot(strategy_ai, 1))
-	# keep what was chosen and who sits where
+	# keep what was chosen (faction, colour, the computer's level) and who sits where
 	for i in mini(old.size(), slots.size()):
-		if old[i]["who"] == slots[i]["who"]:
+		var same: bool = old[i]["who"] == slots[i]["who"] or (_is_computer(old[i]) and _is_computer(slots[i]))
+		if same:
 			slots[i]["faction"] = old[i]["faction"]
+			slots[i]["colour"] = int(old[i].get("colour", Defs.COLOUR_FITS_MAP))
 			slots[i]["peer"] = old[i].get("peer", -1)
+			if _is_computer(old[i]):
+				slots[i]["who"] = old[i]["who"]
 	changed.emit()
 	_send_lobby()
 
@@ -111,11 +118,85 @@ func set_map(id: String) -> void:
 		_send_lobby()
 
 
+static func _is_computer(s: Dictionary) -> bool:
+	return s["who"] != "you" and s["who"] != "remote"
+
+
 func set_faction(i: int, f: String) -> void:
-	if i >= 0 and i < slots.size():
+	if i >= 0 and i < slots.size() and FACTIONS.has(f):
 		slots[i]["faction"] = f
 		changed.emit()
 		_send_lobby()
+
+
+## Is this palette colour already worn by another slot? (RANDOM and FITS MAP may repeat: they are
+## made different when the match starts.)
+func colour_taken(c: int, except: int) -> bool:
+	if c < 0:
+		return false
+	for j in slots.size():
+		if j != except and int(slots[j].get("colour", Defs.COLOUR_FITS_MAP)) == c:
+			return true
+	return false
+
+
+## Give slot `i` a colour. Refused (false) when another player already has it or it is no colour.
+func set_colour(i: int, c: int) -> bool:
+	if i < 0 or i >= slots.size() or c < Defs.COLOUR_FITS_MAP or c >= Defs.PALETTE.size() or colour_taken(c, i):
+		denied += 1
+		return false
+	slots[i]["colour"] = c
+	changed.emit()
+	_send_lobby()
+	return true
+
+
+## The host puts slot `i` on team `side` (0-based). At least two teams are needed to start.
+func set_side(i: int, side: int) -> void:
+	if not is_host or i < 0 or i >= slots.size() or side < 0 or side >= slots.size():
+		return
+	slots[i]["side"] = side
+	mode = _mode_of_sides()
+	changed.emit()
+	_send_lobby()
+
+
+func _mode_of_sides() -> String:
+	var sides: Array = slots.map(func(s: Dictionary) -> int: return int(s["side"]))
+	if sides == [0, 1]:
+		return "1v1"
+	if sides == [0, 0, 1]:
+		return "coop"
+	return "custom"
+
+
+## The host sets the difficulty of the computer in slot `i`.
+func set_level(i: int, lvl: String) -> void:
+	if is_host and i >= 0 and i < slots.size() and _is_computer(slots[i]) and LEVELS.has(lvl):
+		slots[i]["who"] = lvl
+		strategy_ai = lvl
+		changed.emit()
+		_send_lobby()
+
+
+## The host sets the plan (strategy) of the computer in slot `i`; it travels in the slots to the guest and in make_cfg to the match.
+func set_strategy(i: int, st: String) -> void:
+	if is_host and i >= 0 and i < slots.size() and _is_computer(slots[i]) and (st == "random" or AI.STRATEGIES.has(st)):
+		slots[i]["strategy"] = st
+		changed.emit()
+		_send_lobby()
+
+
+## What stops the host from starting ("" = nothing).
+func problem() -> String:
+	var sides := {}
+	for s in slots:
+		sides[int(s["side"])] = true
+	if sides.size() < 2:
+		return "Everyone is on one team."
+	if not all_seated():
+		return "Waiting for your friend to join."
+	return ""
 
 
 ## Everyone who is going to play has arrived.
@@ -237,11 +318,30 @@ func _on_message(from: int, m: Dictionary) -> void:
 		"set":
 			if not is_host:
 				return
-			for s in slots:
-				if s["who"] == "remote" and int(s.get("peer", -1)) == from and ["crown", "brood", "clockwork", "random"].has(String(m.get("faction", ""))):
-					s["faction"] = String(m["faction"])
+			var seat := -1
+			for i in slots.size():
+				if slots[i]["who"] == "remote" and int(slots[i].get("peer", -1)) == from:
+					seat = i
+			if seat < 0:
+				return
+			if m.has("faction") and FACTIONS.has(String(m["faction"])):
+				slots[seat]["faction"] = String(m["faction"])
+			var bad := false
+			if m.has("colour"):
+				var c := int(m["colour"])
+				if c < Defs.COLOUR_FITS_MAP or c >= Defs.PALETTE.size() or colour_taken(c, seat):
+					denied += 1
+					bad = true
+				else:
+					slots[seat]["colour"] = c
 			changed.emit()
 			_send_lobby()
+			if bad:
+				link.send({"t": "deny", "m": "That colour is already taken."}, from)
+		"deny":
+			if not is_host:
+				status = String(m.get("m", "Refused."))
+				changed.emit()
 		"lobby":
 			if is_host:
 				return
@@ -269,3 +369,9 @@ func _on_message(from: int, m: Dictionary) -> void:
 func choose_faction(f: String) -> void:
 	if not is_host:
 		link.send({"t": "set", "faction": f})
+
+
+## Guest: choose my colour (the host refuses one somebody else has).
+func choose_colour(c: int) -> void:
+	if not is_host:
+		link.send({"t": "set", "colour": c})
