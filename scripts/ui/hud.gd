@@ -2043,17 +2043,22 @@ func _draw_pause() -> void:
 			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 22, UiStyle.BAD if b["label"] == "SURRENDER" else UiStyle.TEXT, 1)
 
 
+## The minimap is see-through (MINI_ALPHA) so the battlefield behind it shows.
+const MINI_ALPHA := 0.6
+
+
 func _draw_minimap() -> void:
 	var m := mini_rect()
-	UiStyle.draw_panel(_ci, m.grow(5), UiStyle.accent(game.faction_of(game.human)), 0.95)
+	UiStyle.draw_panel(_ci, m.grow(5), UiStyle.accent(game.faction_of(game.human)), 0.5)
 	if _mini_tex == null:
 		_mini_tex = ImageTexture.create_from_image(game.minimap_img)
-	_ci.draw_texture_rect(_mini_tex, m, false)
+	var wash := Color(1, 1, 1, MINI_ALPHA)
+	_ci.draw_texture_rect(_mini_tex, m, false, wash)
 	if game.swamp_tex:
-		_ci.draw_texture_rect(game.swamp_tex, m, false)
+		_ci.draw_texture_rect(game.swamp_tex, m, false, wash)
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
 	if not game.sees_all():
-		_ci.draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95))
+		_ci.draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95 * MINI_ALPHA))
 	for b in game.buildings:
 		if b.visible or (b.team == game.human and not game.demo):
 			var r: Rect2 = b.rect()
