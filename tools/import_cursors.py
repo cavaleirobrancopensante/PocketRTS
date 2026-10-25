@@ -97,6 +97,8 @@ def hotspot(name, rgb, fg):
 	if name == "move":  # the ring's centre, where the arrow points: middle of the ring's hole
 		holes = nd.binary_fill_holes(fg) & ~fg
 		hy, hx = np.nonzero(holes)
+		if len(hy) == 0:       # an open ring (no closed hole): its middle is a little above the bottom
+			return (xs.min() + xs.max()) / 2, ys.max() - 0.14 * (ys.max() - ys.min())
 		return (xs.min() + xs.max()) / 2, hy.mean()
 	if name == "build":  # the hammer head's striking corner (its leftmost point)
 		x0 = xs.min()

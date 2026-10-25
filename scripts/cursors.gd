@@ -12,6 +12,11 @@ extends Node
 ## (scripts/cursor_hotspots.gd).
 
 const HOT := preload("res://scripts/cursor_hotspots.gd")
+const HOTS := {
+	"crown": {"32": HOT.HOTSPOT_32, "48": HOT.HOTSPOT_48},
+	"brood": {"32": HOT.HOTSPOT_BROOD_32, "48": HOT.HOTSPOT_BROOD_48},
+	"clockwork": {"32": HOT.HOTSPOT_CLOCKWORK_32, "48": HOT.HOTSPOT_CLOCKWORK_48},
+}
 const NAMES := ["pointer", "attack", "attack_enemy", "move", "select", "build", "rally", "forbidden", "patrol"]
 const HOVER_EVERY := 0.1        # seconds between looks at what's under the mouse (entity_at loops all units)
 
@@ -35,10 +40,9 @@ func _ready() -> void:
 	var big := not OS.has_feature("web") and DisplayServer.screen_get_scale() >= 1.5
 	var sz := "48" if big else "32"
 	for fac in ["crown", "brood", "clockwork"]:
-		var dir := "res://assets/ui/cursors/" + ("" if fac == "crown" else fac + "/")
-		var hot: Dictionary = HOT.get_script_constant_map()["HOTSPOT_%s%s" % ["" if fac == "crown" else fac.to_upper() + "_", sz]]
+		var dir: String = "res://assets/ui/cursors/" + ("" if fac == "crown" else fac + "/")
 		_tex[fac] = {}
-		_hot[fac] = hot
+		_hot[fac] = HOTS[fac][sz]
 		for n in NAMES:
 			_tex[fac][n] = load("%s%s%s.png" % [dir, n, "_48" if big else ""])
 
@@ -57,11 +61,15 @@ func _process(delta: float) -> void:
 		return
 	var game: Game = main.get("game") if main else null
 	if game == null or not is_instance_valid(game) or game.controls == null or game.over:
+		if game != null and is_instance_valid(game):
+			game.hover_target = null
 		_use("crown")
 		_show("pointer")
 		return
 	_use(game.faction_of(game.human) if _tex.has(game.faction_of(game.human)) else "crown")
-	_show(choose(game.controls, game, _hovered(game, delta)))
+	var hov := _hovered(game, delta)
+	game.hover_target = hov
+	_show(choose(game.controls, game, hov))
 
 
 ## Switch to a faction's set (the cursor on show is redrawn from it).

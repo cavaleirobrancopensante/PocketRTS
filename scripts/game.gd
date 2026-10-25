@@ -7673,6 +7673,40 @@ func _draw_queues() -> void:
 
 const PATROL_COL := Color(0.45, 0.85, 1.0)
 
+var hover_target: Entity = null          # what the mouse is over (set by the cursor, computer only)
+
+
+## Hover feedback: a ring round the unit under the mouse (red an enemy, green yours or an ally's,
+## yellow a loose horse), a corner frame round a building, so you see what an order will hit.
+func _draw_hover() -> void:
+	var e := hover_target
+	if e == null or not is_instance_valid(e) or e.dead or not e.visible:
+		return
+	var col := Color(1.0, 0.85, 0.3)
+	if e.team >= 0:
+		col = Color(1.0, 0.3, 0.25) if hostile(human, e.team) else Color(0.4, 1.0, 0.4)
+	var pulse := 0.75 + 0.25 * sin(clock * 8.0)
+	if e is Unit:
+		var r: float = (e as Unit).radius
+		overlay.draw_set_transform(e.position, 0.0, Vector2(1.0, 0.45))
+		overlay.draw_circle(Vector2.ZERO, r + 9.0, Color(col, 0.18 * pulse))
+		overlay.draw_arc(Vector2.ZERO, r + 9.0, 0, TAU, 32, Color(0, 0, 0, 0.7), 6.0)
+		overlay.draw_arc(Vector2.ZERO, r + 9.0, 0, TAU, 32, Color(col, pulse), 3.4)
+		overlay.draw_set_transform(Vector2.ZERO)
+		# a small marker over its head
+		var top: Vector2 = e.position + Vector2(0, -(r * 2.0 + 10.0))
+		top.y -= 4.0 + 3.0 * sin(clock * 8.0)       # (the marker bobs)
+		overlay.draw_colored_polygon(PackedVector2Array([top, top + Vector2(-8, -13), top + Vector2(8, -13)]), Color(0, 0, 0, 0.8))
+		overlay.draw_colored_polygon(PackedVector2Array([top + Vector2(0, -2.5), top + Vector2(-5.2, -11), top + Vector2(5.2, -11)]), Color(col, 1.0))
+	elif e is Building:
+		var rc: Rect2 = (e as Building).rect().grow(4)
+		var L := 12.0
+		for c in [[rc.position, Vector2(1, 0), Vector2(0, 1)], [rc.position + Vector2(rc.size.x, 0), Vector2(-1, 0), Vector2(0, 1)],
+				[rc.position + Vector2(0, rc.size.y), Vector2(1, 0), Vector2(0, -1)], [rc.end, Vector2(-1, 0), Vector2(0, -1)]]:
+			var p0: Vector2 = c[0]
+			overlay.draw_polyline(PackedVector2Array([p0 + c[1] * L, p0, p0 + c[2] * L]), Color(0, 0, 0, 0.6), 5.0)
+			overlay.draw_polyline(PackedVector2Array([p0 + c[1] * L, p0, p0 + c[2] * L]), Color(col, pulse), 2.5)
+
 
 ## A patrol path: a dashed line between its two ends with an arrowhead pointing in at each,
 ## and a ring on the end the unit is walking to (the other end is where he came from).
@@ -7697,6 +7731,7 @@ func _draw_patrol(a: Vector2, b: Vector2, from: Vector2, alpha := 0.75) -> void:
 
 var _overlay_t := 0.0
 var _overlay_was := false
+var _hover_was := false
 var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn (labels on screen only)
 
 
@@ -7704,6 +7739,9 @@ var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn
 ## building being placed, the queued orders of the selected units) or just stopped.
 func _overlay_moving() -> bool:
 	var m := not _floats.is_empty() or not _pings.is_empty() or not _tracers.is_empty() or not tongues.is_empty()
+	if not m and (hover_target != null or _hover_was):
+		m = true
+	_hover_was = hover_target != null
 	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol"):
 		m = true
 	if not m:
@@ -7725,6 +7763,7 @@ func _draw_overlay() -> void:
 func _draw_overlay_all() -> void:
 	_draw_mine_labels()
 	_draw_queues()
+	_draw_hover()
 	if controls and controls.mode == "patrol":
 		# choosing the patrol point: show the walk there and back from each selected unit
 		var mp := overlay.get_global_mouse_position()
