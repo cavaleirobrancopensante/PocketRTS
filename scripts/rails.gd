@@ -29,39 +29,104 @@ func access_cells(t: int, b: Building) -> Array:
 		var s: PipeSeg = net.segs.get(c)
 		if s != null and s.team == t and s.built and not s.dead:
 			out.append(c)
+	# a building with a loop is served on the loop (the train drives round it, it does not stop on the stub)
+	if out.size() > 1 and Defs.RAIL["loop_kinds"].has(b.kind):
+		var cyc := net.loop_cells(t, true)
+		var on_loop: Array = out.filter(func(c: Vector2i) -> bool: return cyc.has(c))
+		if not on_loop.is_empty():
+			return on_loop
 	return out
 
 
 ## Shortest run over finished segments of team t from `from` to the nearest of `goals` (a Dictionary or
 ## Array of cells): the cells in order, both ends included; [] when the Line does not connect them.
-func route(t: int, from: Vector2i, goals) -> Array:
+## A train does not back up: `heading` (the way it faces, ZERO when free) forbids the 180 degree turn, except at a
+## dead end (a cell with one neighbour), where it stands a moment and backs out (the path then returns over the cell
+## it came from: [.., a, end, a, ..]; Defs.RAIL.reverse). So it turns round on a loop of rail (Line.find_loop) when there
+## is one. When no such run exists it may turn anywhere (a longer wait), so nothing deadlocks.
+func route(t: int, from: Vector2i, goals, heading := Vector2i.ZERO) -> Array:
 	var goal: Dictionary = {}
 	for g in goals:
 		goal[g] = true
 	if goal.has(from):
 		return [from]
-	var prev := {from: from}
-	var q: Array = [from]
-	var i := 0
-	while i < q.size():
-		var cur: Vector2i = q[i]
-		i += 1
-		for d in LineNetwork.DIRS:
-			var n: Vector2i = cur + d
-			if prev.has(n):
+	if _cache_version != net.version:
+		_cache_version = net.version
+		_route_cache.clear()
+	var key := "%d|%d,%d|%d,%d|%d" % [t, from.x, from.y, heading.x, heading.y, goal.keys().hash()]
+	if _route_cache.has(key):
+		return _route_cache[key]
+	var p := _route_dir(t, from, goal, heading, false)
+	if p.is_empty():
+		p = _route_dir(t, from, goal, heading, true)
+	_route_cache[key] = p
+	return p
+
+
+func _ok(t: int, c: Vector2i) -> bool:
+	var s: PipeSeg = net.segs.get(c)
+	return s != null and s.team == t and s.built and not s.dead
+
+
+func _degree(t: int, c: Vector2i) -> int:
+	var n := 0
+	for d in LineNetwork.DIRS:
+		if _ok(t, c + d):
+			n += 1
+	return n
+
+
+func _route_dir(t: int, from: Vector2i, goal: Dictionary, heading: Vector2i, anywhere: bool) -> Array:
+	var D: Array = LineNetwork.DIRS
+	var start_d := D.find(heading) if heading != Vector2i.ZERO else 4
+	var turn_cost := 6.0 if anywhere else 3.0
+	var best := {}
+	var prev := {}
+	var heap: Array = []
+	var s0 := net._st(from, start_d)
+	best[s0] = 0.0
+	net._heap_push(heap, [0.0, 0.0, from, start_d])
+	var guard := 0
+	var end_state := -1
+	while not heap.is_empty() and guard < 60000:
+		guard += 1
+		var cur: Array = net._heap_pop(heap)
+		var c: Vector2i = cur[2]
+		var di: int = cur[3]
+		var g: float = cur[1]
+		var cs := net._st(c, di)
+		if g > float(best.get(cs, INF)) + 0.0001:
+			continue
+		if goal.has(c) and cs != s0:
+			end_state = cs
+			break
+		var dead_end := _degree(t, c) <= 1
+		for nd in 4:
+			if di != 4 and nd == (di + 2) % 4 and not (dead_end or anywhere):
 				continue
-			var s: PipeSeg = net.segs.get(n)
-			if s == null or s.team != t or not s.built or s.dead:
+			var n: Vector2i = c + D[nd]
+			if not _ok(t, n):
 				continue
-			prev[n] = cur
-			if goal.has(n):
-				var path: Array = [n]
-				while path[path.size() - 1] != from:
-					path.append(prev[path[path.size() - 1]])
-				path.reverse()
-				return path
-			q.append(n)
-	return []
+			var step := 1.0
+			if di != 4 and nd == (di + 2) % 4:
+				step += turn_cost
+			var ng := g + step
+			var ns := net._st(n, nd)
+			if ng < float(best.get(ns, INF)):
+				best[ns] = ng
+				prev[ns] = cs
+				net._heap_push(heap, [ng, ng, n, nd])
+	if end_state < 0:
+		return []
+	var path: Array = []
+	var st := end_state
+	while true:
+		path.append(net._unst(st))
+		if st == s0:
+			break
+		st = prev[st]
+	path.reverse()
+	return path
 
 
 ## The finished segment of team t nearest to a world point (within `max_cells`), or (-1, -1).

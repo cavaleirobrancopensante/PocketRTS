@@ -25,6 +25,11 @@ var frac := 0.0               # 0..1 of the way to the next cell
 var cell := Vector2i.ZERO
 var dir := Vector2i.ZERO      # the way it is going now (ZERO: standing)
 var last_dir := Vector2i(1, 0)
+var heading := Vector2i.ZERO  # the way it last ran (ZERO: not yet): it does not turn straight back (Rails.route), only at a dead end
+var trail: Array = []         # where the locomotive has been (world points, oldest first): the wagons follow it
+var _turn_t := 0.0
+var turns := 0                # times it has backed out of a dead end (a stat for the tests and the match log)
+var _look_dir := Vector2i(1, 0)
 var speed_now := 0.0          # cells a second this moment (HUD, tests)
 var timer := 0.0
 var wait_t := 0.0
@@ -62,7 +67,7 @@ func setup(n: LineNetwork, id: int, k: String, t: int, c: Vector2i) -> void:
 
 
 func rect() -> Rect2:
-	return Rect2(global_position - Vector2(14, 12), Vector2(28, 20))
+	return Rect2(global_position + Vector2(-30, -34), Vector2(60, 44))
 
 
 func center() -> Vector2:
@@ -84,6 +89,7 @@ func step(delta: float) -> void:
 	anim_t += delta
 	if game.puppet:
 		position = position.lerp(_target_pos, minf(1.0, delta * 12.0))
+		_trail_push(position)
 		queue_redraw()
 		return
 	speed_now = 0.0
@@ -122,7 +128,7 @@ func _hall() -> Building:
 ## Run to one of `goals` over the Line; stranded (and trying again) when there is no way.
 func _go(goals: Array, moving: String) -> void:
 	_goal = goals
-	var p := rails.route(team, cell, goals)
+	var p := rails.route(team, cell, _free_goals(goals), heading)
 	if p.is_empty():
 		_prev_state = moving
 		state = "stranded"
@@ -137,6 +143,23 @@ func _go(goals: Array, moving: String) -> void:
 	state = moving
 	if p.size() == 1:
 		_arrive()
+
+
+## Goal cells without the ones where another train of the team stands working (when others remain): a Drill or the
+## hall has a whole ring of cells to stop at.
+func _free_goals(goals: Array) -> Array:
+	if goals.size() < 2:
+		return goals
+	var out: Array = []
+	for g in goals:
+		var taken := false
+		for o in rails.trains:
+			if o != self and not o.dead and o.team == team and o.cell == g and o.state in ["loading", "unloading", "boarding"]:
+				taken = true
+				break
+		if not taken:
+			out.append(g)
+	return out if not out.is_empty() else goals
 
 
 func _replan() -> void:
@@ -191,7 +214,7 @@ func _pick_drill() -> Building:
 			if o != self and o.tkind == "ore" and o.drill == b and o.state in ["to_drill", "loading"]:
 				claims += 1
 		var sc: float = b.stock - claims * float(Defs.TRAINS["ore"]["cargo"]) * 0.9 - Vector2(cell - acc[0]).length() * 0.4
-		if sc > bs and not rails.route(team, cell, acc).is_empty():
+		if sc > bs and not rails.route(team, cell, acc, heading).is_empty():
 			bs = sc
 			best = b
 	return best
@@ -211,8 +234,18 @@ func _move(delta: float) -> void:
 		_go(_goal, state)
 		return
 	var d: Vector2i = nxt - path[idx]
+	if frac <= 0.0 and heading != Vector2i.ZERO and d == -heading:
+		# a dead end: stand a moment, then back out (the wagons swing in behind)
+		dir = Vector2i.ZERO
+		_turn_t += delta
+		if _turn_t < float(Defs.RAIL["reverse"]):
+			return
+		_turn_t = 0.0
+		turns += 1
+		trail.clear()
 	dir = d
 	last_dir = d
+	heading = d
 	if frac <= 0.0 and _blocked(d):
 		return
 	var mult := 1.0
@@ -235,8 +268,12 @@ func _move(delta: float) -> void:
 				break
 			var d2: Vector2i = nn - path[idx]
 			if d2 != dir:
+				if d2 == -dir:
+					frac = 0.0          # (a turn round: the pause and the swing are done on the next tick)
+					break
 				dir = d2
 				last_dir = d2
+				heading = d2
 				if _blocked(d2):
 					frac = 0.0
 					break
@@ -245,14 +282,25 @@ func _move(delta: float) -> void:
 		cell = path[path.size() - 1]
 		_arrive()
 	position = _pos_at(float(idx) + frac)
+	_trail_push(position)
 
 
-## Is the track ahead taken: a train going the same way within `headway` cells, or one standing within 2?
+## Remember where the locomotive was (the wagons are drawn along this trail).
+func _trail_push(p: Vector2) -> void:
+	if trail.is_empty() or (trail[trail.size() - 1] as Vector2).distance_squared_to(p) >= 2.0:
+		trail.append(p)
+		if trail.size() > 300:
+			trail = trail.slice(60)
+
+
+## Is the track ahead taken: a train going the same way within `headway` cells, or one standing within `stand_clear`
+## (its wagons stand behind it, toward us; a parked idle one: 2)?
 func _blocked(d: Vector2i) -> bool:
 	var head := int(Defs.RAIL["headway"])
 	for o in rails.trains:
 		if o == self or o.dead or o.team != team:
 			continue
+		var clear := 2 if o.state == "idle" else int(Defs.RAIL["stand_clear"])
 		for k in range(1, head + 1):
 			if idx + k >= path.size():
 				break
@@ -260,7 +308,8 @@ func _blocked(d: Vector2i) -> bool:
 			if not o.occupies(c):
 				continue
 			if o.dir == Vector2i.ZERO:
-				if k <= 2:
+				# a standing train is in ITS lane (the one for the way it faces): trains going the other way pass it
+				if k <= clear and (o.heading == d or o.heading == Vector2i.ZERO):
 					return true
 			elif o.dir == d:
 				return true
@@ -273,16 +322,43 @@ func occupies(c: Vector2i) -> bool:
 	return frac > 0.0 and idx + 1 < path.size() and c == path[idx + 1]
 
 
-## A point `s` cells along the path (before the start: back along the way it came).
+## Two tracks: a train keeps to the right of the way it goes (Defs.RAIL.lane px off the centre line), so trains
+## going opposite ways never share a lane. The shift at path cell i: the right-hand offset of the way in plus the way
+## out, which is the corner of the inner/outer lane on a bend, zero at a dead end (where it changes lanes).
+static func lane_of(d: Vector2i) -> Vector2:
+	return Vector2(-d.y, d.x) * float(Defs.RAIL["lane"])
+
+
+func _lane_shift(i: int) -> Vector2:
+	var d_out := Vector2i.ZERO
+	var d_in := Vector2i.ZERO
+	if i + 1 < path.size():
+		d_out = path[i + 1] - path[i]
+	if i > 0:
+		d_in = path[i] - path[i - 1]
+	elif heading != Vector2i.ZERO:
+		d_in = heading
+	if d_in == Vector2i.ZERO:
+		d_in = d_out
+	if d_out == Vector2i.ZERO:
+		d_out = d_in
+	if d_in == Vector2i.ZERO:
+		return Vector2.ZERO
+	if d_in == d_out:
+		return lane_of(d_in)
+	return lane_of(d_in) + lane_of(d_out)
+
+
+## A point `s` cells along the path (before the start: back along the way it came), in the train's lane.
 func _pos_at(s: float) -> Vector2:
 	if path.is_empty():
 		return position
 	if s <= 0.0:
-		return game.cell_center(path[0]) + Vector2(last_dir) * s * T
+		return game.cell_center(path[0]) + Vector2(last_dir) * s * T + _lane_shift(0)
 	var i := int(floor(s))
 	if i >= path.size() - 1:
-		return game.cell_center(path[path.size() - 1])
-	return game.cell_center(path[i]).lerp(game.cell_center(path[i + 1]), s - i)
+		return game.cell_center(path[path.size() - 1]) + _lane_shift(path.size() - 1)
+	return (game.cell_center(path[i]) + _lane_shift(i)).lerp(game.cell_center(path[i + 1]) + _lane_shift(i + 1), s - i)
 
 
 func _arrive() -> void:
@@ -494,30 +570,114 @@ func load_view_row(r: Array) -> void:
 
 # ------------------------------------------------------------------ drawing
 
+## Sprite lengths along the track in sprite pixels, per view ("h": seen from the side, "v": end on, where only the
+## depth shows) and the part of the buffers that overlaps at a coupling.
+const LEN := {"loco": {"h": 52.0, "v": 30.0}, "car": {"h": 45.0, "v": 19.0}}
+const HOOK := {"h": 4.0, "v": 1.0}
+const FOOT := 4.0              # where the wheels stand: px below the cell centre (the rail deck)
+
+
+## Distance between the centres of two coupled vehicles (world px), `front` in front of `back`.
+static func coupling(front: String, back: String, horiz: bool) -> float:
+	var v := "h" if horiz else "v"
+	return ((float(LEN[front][v]) + float(LEN[back][v])) * 0.5 - float(HOOK[v])) * float(Defs.LINE["scale"])
+
+
+## The parts of the train, locomotive first: [offset from the train's position, the way it faces, "loco" / "car"].
+## The wagons are strung along the locomotive's trail at the coupling distance (a rigid link: the straight-line
+## distance holds on bends too, so they follow the track round corners and the hooks stay together).
+func layout() -> Array:
+	var out: Array = [[Vector2.ZERO, last_dir, "loco"]]
+	var cars := int(Defs.TRAINS[tkind]["cars"])
+	if cars <= 0:
+		return out
+	var pts: Array = [position]
+	for i in range(trail.size() - 1, -1, -1):
+		if (trail[i] as Vector2).distance_squared_to(pts[pts.size() - 1]) > 0.04:
+			pts.append(trail[i])
+	var back := -Vector2(last_dir)
+	if pts.size() >= 2:
+		var tail: Vector2 = pts[pts.size() - 1] - pts[pts.size() - 2]
+		if tail.length() > 0.01:
+			back = tail.normalized()
+	pts.append(pts[pts.size() - 1] + back * 600.0)
+	var prev_pt: Vector2 = position
+	var prev_kind := "loco"
+	var j := 0
+	var q: Vector2 = position
+	for n in cars:
+		var sd: Vector2 = pts[j + 1] - pts[j]
+		var dd := coupling(prev_kind, "car", absf(sd.x) >= absf(sd.y))
+		var placed := false
+		while j < pts.size() - 1:
+			var b: Vector2 = pts[j + 1]
+			if b.distance_squared_to(prev_pt) >= dd * dd:
+				var v := b - q
+				var a2 := v.length_squared()
+				if a2 > 0.0001:
+					var w := q - prev_pt
+					var bb := 2.0 * v.dot(w)
+					var cc := w.length_squared() - dd * dd
+					var disc := maxf(0.0, bb * bb - 4.0 * a2 * cc)
+					var t := clampf((-bb + sqrt(disc)) / (2.0 * a2), 0.0, 1.0)
+					q = q + v * t
+				else:
+					q = b
+				placed = true
+				break
+			q = b
+			j += 1
+		if not placed:
+			q = pts[pts.size() - 1]
+		var ch := prev_pt - q
+		var cd := Vector2i(int(signf(ch.x)), 0) if absf(ch.x) >= absf(ch.y) else Vector2i(0, int(signf(ch.y)))
+		if cd == Vector2i.ZERO:
+			cd = last_dir
+		out.append([q - position, cd, "car"])
+		prev_pt = q
+		prev_kind = "car"
+	return out
+
+
 func _draw() -> void:
 	if dead:
 		return
 	var moving := speed_now > 0.05
-	var d := last_dir
-	var cars := int(Defs.TRAINS[tkind]["cars"])
-	var s := float(idx) + frac
-	var parts: Array = []        # [world offset, kind] back to front
-	parts.append([Vector2.ZERO, "loco"])
-	for i in cars:
-		var gap := 1.5 + 1.4 * float(i)       # (cells behind the locomotive: the art's cars are 45 px, it is 52)
-		var back := _pos_at(s - gap) - global_position
-		if game.puppet:
-			back = -Vector2(d) * gap * T
-		parts.append([back, "car"])
-	parts.sort_custom(func(a, b) -> bool: return a[0].y < b[0].y)
-	for p in parts:
-		if p[1] == "loco":
-			_draw_loco(p[0], d, moving)
+	var parts := layout()
+	var order: Array = parts.duplicate()
+	order.sort_custom(func(a, b) -> bool: return a[0].y < b[0].y)
+	for p in order:
+		if p[2] == "loco":
+			_draw_loco(p[0], p[1], moving)
 		else:
-			_draw_car(p[0], d)
-	draw_health(-34.0, 36.0)
+			_draw_car(p[0], p[1])
+	# the couplings: a drawn link between the buffers, over the sprites so it reads at a glance
+	for i in range(parts.size() - 1):
+		_draw_link(parts[i][0], parts[i + 1][0], parts[i][1])
+	var k := float(Defs.LINE["scale"])
+	draw_health(-34.0 * k, 36.0 * k)
 	if flash > 0.0:
 		flash = maxf(0.0, flash - 0.05)
+
+
+## The coupling between two vehicles (code art, docs/art_style_inconsistency.md): two buffers' worth of steel bar with a
+## pin ring, at buffer height, along the line from one centre to the next.
+func _draw_link(a: Vector2, b: Vector2, d: Vector2i) -> void:
+	var k := float(Defs.LINE["scale"])
+	var diff := b - a
+	var horiz := absf(diff.x) >= absf(diff.y)
+	if not horiz:
+		return                       # end on the hooks are hidden behind the vehicle in front
+	var mid := (a + b) * 0.5 + Vector2(0, FOOT - 5.0 * k)
+	var u := diff.normalized()
+	var perp := Vector2(-u.y, u.x)
+	var half := 4.0 * k
+	draw_line(mid - u * half, mid + u * half, Color(0.08, 0.07, 0.07), 3.6)
+	draw_line(mid - u * half, mid + u * half, Color(0.72, 0.74, 0.78), 2.0)
+	draw_circle(mid, 2.6, Color(0.08, 0.07, 0.07))
+	draw_circle(mid, 1.5, Color(0.95, 0.75, 0.25))
+	draw_line(mid + perp * 3.0 - u * half, mid - perp * 3.0 - u * half, Color(0.15, 0.15, 0.17), 1.5)
+	draw_line(mid + perp * 3.0 + u * half, mid - perp * 3.0 + u * half, Color(0.15, 0.15, 0.17), 1.5)
 
 
 func _view_of(d: Vector2i) -> String:
@@ -529,6 +689,7 @@ func _view_of(d: Vector2i) -> String:
 
 
 func _draw_loco(off: Vector2, d: Vector2i, moving: bool) -> void:
+	var k := float(Defs.LINE["scale"])
 	var v := _view_of(d)
 	var flip := d.x < 0
 	var tex: Texture2D = LineArt.tex("units/ore_locomotive/%s_%s.png" % ["run" if moving else "idle", v])
@@ -539,13 +700,14 @@ func _draw_loco(off: Vector2, d: Vector2i, moving: bool) -> void:
 	var fw := tex.get_width() / frames
 	var fh := tex.get_height()
 	var f := int(anim_t * 8.0) % frames if moving else 0
-	var base := Vector2(0, 8) + off
-	draw_set_transform(base, 0.0, Vector2(-1 if flip else 1, 1))
+	var base := Vector2(0, FOOT) + off
+	draw_set_transform(base, 0.0, Vector2(-k if flip else k, k))
 	draw_texture_rect_region(tex, Rect2(Vector2(-fw * 0.5, -fh + 2), Vector2(fw, fh)), Rect2(f * fw, 0, fw, fh), Color.WHITE if flash <= 0.0 else Color(1.6, 1.6, 1.6))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_car(off: Vector2, d: Vector2i) -> void:
+	var k := float(Defs.LINE["scale"])
 	var v := _view_of(d)
 	var flip := d.x < 0
 	var rel := "units/troop_car/idle_%s.png" % v if tkind == "troop" else "units/ore_car/%s_%s.png" % ["full" if cargo > 0.0 else "empty", v]
@@ -555,7 +717,7 @@ func _draw_car(off: Vector2, d: Vector2i) -> void:
 		return
 	var w := tex.get_width()
 	var h := tex.get_height()
-	draw_set_transform(Vector2(0, 8) + off, 0.0, Vector2(-1 if flip else 1, 1))
+	draw_set_transform(Vector2(0, FOOT) + off, 0.0, Vector2(-k if flip else k, k))
 	draw_texture_rect(tex, Rect2(Vector2(-w * 0.5, -h + 2), Vector2(w, h)), false, Color.WHITE if flash <= 0.0 else Color(1.6, 1.6, 1.6))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -563,22 +725,28 @@ func _draw_car(off: Vector2, d: Vector2i) -> void:
 # code-drawn stand-ins (docs/art_style_inconsistency.md)
 
 func _code_loco(off: Vector2, v: String) -> void:
-	var c := Vector2(0, 0) + off
+	var k := float(Defs.LINE["scale"])
+	draw_set_transform(Vector2(0, FOOT) + off, 0.0, Vector2(k, k))
+	var c := Vector2.ZERO
 	var body := Color(0.65, 0.16, 0.12)
-	var w := 30.0 if v == "e" else 16.0
-	var h := 14.0 if v == "e" else 20.0
+	var w := 46.0 if v == "e" else 24.0
+	var h := 22.0 if v == "e" else 28.0
 	draw_rect(Rect2(c - Vector2(w * 0.5, h), Vector2(w, h)), body)
-	draw_rect(Rect2(c - Vector2(w * 0.5, h), Vector2(w, 4)), Color(0.15, 0.15, 0.17))
-	draw_rect(Rect2(c + Vector2(w * 0.25, -h - 6), Vector2(4, 8)), Color(0.12, 0.12, 0.13))
+	draw_rect(Rect2(c - Vector2(w * 0.5, h), Vector2(w, 5)), Color(0.15, 0.15, 0.17))
+	draw_rect(Rect2(c + Vector2(w * 0.25, -h - 8), Vector2(5, 10)), Color(0.12, 0.12, 0.13))
 	draw_rect(Rect2(c - Vector2(w * 0.5, 1), Vector2(w, 3)), Color(0.2, 0.2, 0.22))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _code_car(off: Vector2, v: String) -> void:
-	var c := Vector2(0, 0) + off
-	var w := 26.0 if v == "e" else 14.0
-	var h := 9.0 if v == "e" else 11.0
+	var k := float(Defs.LINE["scale"])
+	draw_set_transform(Vector2(0, FOOT) + off, 0.0, Vector2(k, k))
+	var c := Vector2.ZERO
+	var w := 40.0 if v == "e" else 20.0
+	var h := 14.0 if v == "e" else 17.0
 	var col := Color(0.45, 0.2, 0.15) if tkind == "ore" else Color(0.3, 0.3, 0.34)
 	draw_rect(Rect2(c - Vector2(w * 0.5, h), Vector2(w, h)), col)
 	if tkind == "ore" and cargo > 0.0:
-		draw_rect(Rect2(c - Vector2(w * 0.5 - 2, h + 2), Vector2(w - 4, 3)), Color(0.85, 0.55, 0.2))
+		draw_rect(Rect2(c - Vector2(w * 0.5 - 2, h + 3), Vector2(w - 4, 4)), Color(0.85, 0.55, 0.2))
 	draw_rect(Rect2(c - Vector2(w * 0.5, 1), Vector2(w, 3)), Color(0.2, 0.2, 0.22))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

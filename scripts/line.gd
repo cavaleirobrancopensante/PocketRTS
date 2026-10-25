@@ -127,7 +127,7 @@ func add_built(t: int, c: Vector2i) -> PipeSeg:
 ## pressure (estimated at b once laid)}. 4-way A* over free ground; existing pipes of the team are
 ## nearly free to reuse, a turn costs a little, so runs are straight where they can be.
 func plan(t: int, a: Vector2i, b: Vector2i) -> Dictionary:
-	var out := {"ok": false, "why": "", "cells": [], "new": 0, "cost": 0, "pressure": 0.0}
+	var out := {"ok": false, "why": "", "cells": [], "new": 0, "cost": 0, "pressure": 0.0, "run": [], "loop": [], "loop_new": 0, "missing": []}
 	if not pipeable(t, a) or not pipeable(t, b):
 		out["why"] = "Pipes need free ground at both ends."
 		return out
@@ -184,16 +184,213 @@ func plan(t: int, a: Vector2i, b: Vector2i) -> Dictionary:
 		out["why"] = Loc.t("Too long: lay it in runs of %d.") % int(Defs.LINE["max_run"])
 		out["cells"] = cells
 		return out
+	out["cells"] = cells
+	_add_loops(t, out)
+	cells = out["cells"]
 	var fresh := 0
 	for c in cells:
 		if not segs.has(c):
 			fresh += 1
+	var loop_new := 0
+	for c in out["loop"]:
+		if not segs.has(c):
+			loop_new += 1
 	out["ok"] = true
-	out["cells"] = cells
 	out["new"] = fresh
+	out["loop_new"] = loop_new
 	out["cost"] = fresh * int(Defs.LINE["pipe"]["cost"])
 	out["pressure"] = estimate_at(t, cells, b)
 	return out
+
+
+# ------------------------------------------------------------------ loops (turnarounds)
+
+## Cells of `nodes` (cell -> anything) that lie on a cycle of the 4-neighbour graph (the endpoints of every edge that
+## is not a bridge). A train can turn round on a cycle without backing up.
+static func cycle_cells_of(nodes: Dictionary) -> Dictionary:
+	var disc := {}
+	var low := {}
+	var out := {}
+	var clock := 0
+	for root in nodes:
+		if disc.has(root):
+			continue
+		disc[root] = clock
+		low[root] = clock
+		clock += 1
+		var stack: Array = [[root, Vector2i(-99999, -99999), 0]]
+		while not stack.is_empty():
+			var fr: Array = stack[stack.size() - 1]
+			var u: Vector2i = fr[0]
+			if fr[2] < 4:
+				var v: Vector2i = u + DIRS[fr[2]]
+				fr[2] += 1
+				if not nodes.has(v) or v == fr[1]:
+					continue
+				if disc.has(v):
+					low[u] = mini(int(low[u]), int(disc[v]))
+					if int(disc[v]) < int(disc[u]):
+						out[u] = true
+						out[v] = true
+				else:
+					disc[v] = clock
+					low[v] = clock
+					clock += 1
+					stack.append([v, u, 0])
+			else:
+				stack.pop_back()
+				if not stack.is_empty():
+					var pu: Vector2i = stack[stack.size() - 1][0]
+					low[pu] = mini(int(low[pu]), int(low[u]))
+					if int(low[u]) <= int(disc[pu]):
+						out[pu] = true
+						out[u] = true
+	return out
+
+
+var _cyc_cache := {}
+var _cyc_ver := -1
+
+## The cells of team t's Line (built ones only when `built_only`) that lie on a loop (cached per Line version).
+func loop_cells(t: int, built_only := true) -> Dictionary:
+	if _cyc_ver != version:
+		_cyc_ver = version
+		_cyc_cache.clear()
+	var key := t * 2 + (1 if built_only else 0)
+	if not _cyc_cache.has(key):
+		var nodes := {}
+		for c in segs:
+			var s: PipeSeg = segs[c]
+			if s.team == t and not s.dead and (s.built or not built_only):
+				nodes[c] = true
+		_cyc_cache[key] = cycle_cells_of(nodes)
+	return _cyc_cache[key]
+
+
+## Is a loop of rail touching building b (a cell beside it that lies on a cycle)?
+func has_loop(t: int, b: Building, built_only := true) -> bool:
+	var cyc := loop_cells(t, built_only)
+	for c in ring(b):
+		if cyc.has(c):
+			return true
+	return false
+
+
+static func perimeter(r: Rect2i) -> Array:
+	var out: Array = []
+	var x1 := r.position.x + r.size.x - 1
+	var y1 := r.position.y + r.size.y - 1
+	for x in range(r.position.x, x1 + 1):
+		out.append(Vector2i(x, r.position.y))
+		out.append(Vector2i(x, y1))
+	for y in range(r.position.y + 1, y1):
+		out.append(Vector2i(r.position.x, y))
+		out.append(Vector2i(x1, y))
+	return out
+
+
+## Can team t have rail on all of `cells` (own pipe, planned in `have`, or free ground)?
+func _loop_fits(t: int, cells: Array, have: Dictionary) -> int:
+	var fresh := 0
+	for c in cells:
+		if have.has(c):
+			continue
+		if not pipeable(t, c):
+			return -1
+		fresh += 1
+	return fresh
+
+
+## A loop for trains to turn round on, at building b whose ring holds the stub's end cell e: the ring of rail round
+## the whole footprint when it all fits, else the smallest rectangle of rail (loop_min cells or more on a side) that
+## has e on its edge and fits on free ground. All the loop's cells, laid or not; [] when nothing fits (the train
+## then backs out of the dead end). `have`: cells that count as rail already (the team's pipes and the planned run).
+func find_loop(t: int, e: Vector2i, b: Building, have: Dictionary, run: Array = []) -> Array:
+	var ringc := perimeter(Rect2i(b.cell - Vector2i.ONE, b.size + Vector2i(2, 2)))
+	if _loop_fits(t, ringc, have) >= 0:
+		return ringc
+	var lo := int(Defs.RAIL["loop_min"])
+	var hi := int(Defs.RAIL["loop_max"])
+	var on_run := {e: true}
+	for c in run:
+		on_run[c] = true
+	var rc: Array = ring(b)
+	var best: Array = []
+	var best_new := 99999
+	for w in range(lo, hi + 1):
+		for h in range(lo, hi + 1):
+			for x0 in range(b.cell.x - w, b.cell.x + b.size.x + 1):
+				for y0 in range(b.cell.y - h, b.cell.y + b.size.y + 1):
+					var cells := perimeter(Rect2i(x0, y0, w, h))
+					var touches_b := false
+					var on_stub := false
+					for c in cells:
+						if rc.has(c):
+							touches_b = true
+						if on_run.has(c):
+							on_stub = true
+					if not touches_b or not on_stub:
+						continue
+					var nw := _loop_fits(t, cells, have)
+					if nw < 0:
+						continue
+					if nw < best_new or (nw == best_new and cells.size() < best.size()):
+						best_new = nw
+						best = cells
+	return best
+
+
+## Add to a plan {cells, ...} the loops its two ends need: every building a train stops at (Defs.RAIL.loop_kinds) whose
+## ring holds the first or the last cell, and that has no loop yet, gets one (find_loop). Sets out.run (the run
+## alone), out.loop (all cells of the loops added) and out.missing (kinds of buildings that found no room).
+func _add_loops(t: int, out: Dictionary) -> void:
+	var cells: Array = out["cells"]
+	out["run"] = cells.duplicate()
+	out["loop"] = []
+	out["missing"] = []
+	if cells.is_empty():
+		return
+	var ends := [cells[0], cells[cells.size() - 1]]
+	var have := {}
+	for c in segs:
+		var s: PipeSeg = segs[c]
+		if s.team == t and not s.dead:
+			have[c] = true
+	for c in cells:
+		have[c] = true
+	var kinds: Array = Defs.RAIL["loop_kinds"]
+	var loop_all: Array = []
+	for b in game.buildings:
+		if b.team != t or b.dead or not kinds.has(b.kind):
+			continue
+		var rc: Array = ring(b)
+		var e := Vector2i(-1, -1)
+		for en in ends:
+			if rc.has(en):
+				e = en
+				break
+		if e.x < 0:
+			continue
+		var cyc := cycle_cells_of(have)
+		var looped := false
+		for c in rc:
+			if cyc.has(c):
+				looped = true
+				break
+		if looped:
+			continue
+		var lp := find_loop(t, e, b, have, out["run"])
+		if lp.is_empty():
+			out["missing"].append(b.kind)
+			continue
+		for c in lp:
+			have[c] = true
+			if not loop_all.has(c):
+				loop_all.append(c)
+			if not cells.has(c):
+				cells.append(c)
+	out["loop"] = loop_all
+	out["cells"] = cells
 
 
 func _st(c: Vector2i, dir: int) -> int:
@@ -756,7 +953,7 @@ func connect_building(t: int, from_b: Building, to_b: Building, complete := fals
 		if tried >= 4:
 			break
 		tried += 1
-		var p := plan(t, pr[0], pr[1]) if pr[0] != pr[1] else {"ok": true, "cells": [pr[0]], "new": 1, "cost": 0}
+		var p := plan(t, pr[0], pr[1]) if pr[0] != pr[1] else _single_plan(t, pr[0])
 		if p["ok"] and p["cells"].size() > 0:
 			var score := float(p["new"])
 			if score < bd:
@@ -771,6 +968,19 @@ func connect_building(t: int, from_b: Building, to_b: Building, complete := fals
 		lay(t, best["cells"], builders)
 	best["laid"] = true
 	return best
+
+
+## A plan of one cell (the start touches the goal building as well), with the loops its buildings need.
+func _single_plan(t: int, c: Vector2i) -> Dictionary:
+	var p := {"ok": true, "cells": [c], "new": 0 if segs.has(c) else 1, "cost": 0}
+	_add_loops(t, p)
+	var fresh := 0
+	for q in p["cells"]:
+		if not segs.has(q):
+			fresh += 1
+	p["new"] = fresh
+	p["cost"] = fresh * int(Defs.LINE["pipe"]["cost"])
+	return p
 
 
 ## Finished pipe cells of team t that are part of the Line `b` touches (empty if it touches none).
@@ -832,10 +1042,14 @@ func _mask(s: PipeSeg) -> int:
 ## Bits for the sides of this cell that face a Clockwork building which uses the Line.
 func _building_mask(s: PipeSeg) -> int:
 	var m := 0
+	var cyc: Dictionary = loop_cells(s.team, false)
+	var kinds: Array = Defs.RAIL["loop_kinds"]
 	for i in 4:
 		var n: Vector2i = s.cell + DIRS[i]
 		var occ: Building = _occ.get(n)
 		if occ != null and is_instance_valid(occ) and occ.team == s.team:
+			if cyc.has(s.cell) and kinds.has(occ.kind):
+				continue         # a loop round the building: a plain ring, no stub into the wall
 			m |= 1 << i
 	return m
 
@@ -851,24 +1065,42 @@ func redraw() -> void:
 
 
 func _draw_ground() -> void:
-	if segs.is_empty():
+	if segs.is_empty() and not (tool_on and not tool_path.is_empty()):
 		return
-	var view: Rect2 = game.view_rect
+	var view: Rect2 = game.view_rect.grow(T * float(Defs.LINE["scale"]))
 	var steam_n := 0
+	var list: Array = []
 	for c in segs:
 		var s: PipeSeg = segs[c]
 		if s.dead or not view.intersects(s.rect()) or not _visible_seg(s):
 			continue
+		list.append(s)
+	# rows from the top down, so a tile that is drawn larger than its cell overlaps its upper neighbour the same way everywhere
+	list.sort_custom(func(a: PipeSeg, b: PipeSeg) -> bool: return a.cell.y < b.cell.y or (a.cell.y == b.cell.y and a.cell.x < b.cell.x))
+	var k := float(Defs.LINE["scale"])
+	for s in list:
 		var m := _mask(s) | _building_mask(s)
 		steam_n += _draw_pipe(_ground, s, m, steam_n)
-		if sidings.has(c):
-			CwRail.draw_siding(_ground, s.global_position, sidings[c], s.built)
+		if sidings.has(s.cell):
+			_ground.draw_set_transform(s.global_position, 0.0, Vector2(k, k))
+			CwRail.draw_siding(_ground, Vector2.ZERO, sidings[s.cell], s.built)
+			_ground.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if tool_on and not tool_path.is_empty():
 		_draw_tool(_ground)
 
 
+## One tile, drawn Defs.LINE.scale times larger than its 32 px cell about the cell's centre (so the main reads as a
+## thick pipe beside the big buildings; the cell grid, the routing and the pressure are unchanged).
 func _draw_pipe(cv: Node2D, s: PipeSeg, mask: int, steam_n: int) -> int:
-	var o := s.global_position
+	var k := float(Defs.LINE["scale"])
+	cv.draw_set_transform(s.global_position, 0.0, Vector2(k, k))
+	var r := _draw_pipe_local(cv, s, mask, steam_n)
+	cv.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return r
+
+
+func _draw_pipe_local(cv: Node2D, s: PipeSeg, mask: int, steam_n: int) -> int:
+	var o := Vector2.ZERO
 	var ghost := not s.built
 	var p := s.pressure if s.built else 0.0
 	var steel := Color(0.34, 0.36, 0.40) if not ghost else Color(0.55, 0.62, 0.70, 0.45)
@@ -882,6 +1114,7 @@ func _draw_pipe(cv: Node2D, s: PipeSeg, mask: int, steam_n: int) -> int:
 		if straight != "" and s.built and s.hp < s.max_hp * 0.5:
 			dmg = LineArt.damage(straight, "damaged")
 		cv.draw_texture(dmg if dmg != null else tx, tl, Color(0.6, 0.8, 1.0, 0.5) if ghost else Color.WHITE)
+		draw_lanes(cv, mask, 0.45 if ghost else 1.0, dmg == null)
 		if s.built:
 			# the pressure lamp (the art has no tint layer): a small coloured bar on the top deck
 			var gc := pressure_colour(p)
@@ -921,17 +1154,8 @@ func _draw_pipe(cv: Node2D, s: PipeSeg, mask: int, steam_n: int) -> int:
 			cv.draw_line(o, o + a * s.progress, Color(0.7, 0.85, 1.0, 0.6), 4.0, true)
 	for a in arms:
 		cv.draw_line(o + Vector2(0, -w * 0.32), o + a + Vector2(0, -w * 0.32), hi, 1.5) if absf(a.y) < 1.0 else cv.draw_line(o + Vector2(-w * 0.32, 0), o + a + Vector2(-w * 0.32, 0), hi, 1.5)
-	# the rail on the top deck: two steel rails and sleepers along every arm
-	if s.built:
-		for a in arms:
-			var dir: Vector2 = a.normalized()
-			var perp := Vector2(-dir.y, dir.x)
-			var n := int(a.length() / 7.0)
-			for k in range(1, n + 1):
-				var q: Vector2 = o + dir * (7.0 * k - 3.0)
-				cv.draw_line(q + perp * 4.5, q - perp * 4.5, Color(0.28, 0.17, 0.09), 2.0)
-			cv.draw_line(o + perp * 2.6, o + a + perp * 2.6, Color(0.75, 0.77, 0.8), 1.2)
-			cv.draw_line(o - perp * 2.6, o + a - perp * 2.6, Color(0.75, 0.77, 0.8), 1.2)
+	# the two tracks on the top deck (one per direction)
+	draw_lanes(cv, mask, 0.45 if ghost else 1.0, true)
 	var deg := 0
 	for i in 4:
 		if mask & (1 << i):
@@ -955,6 +1179,63 @@ func _draw_pipe(cv: Node2D, s: PipeSeg, mask: int, steam_n: int) -> int:
 			var ang := PI * 0.25 + k * PI * 0.5
 			cv.draw_circle(o + Vector2(cos(ang), sin(ang)) * (w * 0.5 - 0.5), 1.2, dark)
 	return _draw_damage(cv, s, o)
+
+
+## The two tracks on a tile's top deck, in tile pixels about the cell centre (the caller scales): one lane for each
+## direction, driving on the right (Train.lane_of). A straight piece has two parallel tracks, a bend an inner and an
+## outer one, a dead end a U where the lanes join (the train changes lane there), a T or cross a hub with a stub from every arm.
+## `deck`: paint the deck under them first (hides the single rail the sprite has; not over a damaged picture).
+func draw_lanes(cv: Node2D, mask: int, a: float, deck := true) -> void:
+	var lo := float(Defs.RAIL["lane"]) / float(Defs.LINE["scale"])
+	var arms: Array = []
+	for i in 4:
+		if mask & (1 << i):
+			arms.append(Vector2(DIRS[i]))
+	if arms.is_empty():
+		return
+	var e := T * 0.5 - 1.5
+	var bed := Color(0.17, 0.12, 0.09, a)
+	var steel := Color(0.78, 0.8, 0.84, a)
+	if deck:
+		var dk := Color(0.2, 0.21, 0.24, a)
+		var hw := lo + 2.4
+		for ar in arms:
+			var pr := Vector2(-ar.y, ar.x)
+			cv.draw_colored_polygon(PackedVector2Array([pr * hw, pr * -hw, pr * -hw + ar * e, pr * hw + ar * e]), dk)
+		cv.draw_rect(Rect2(Vector2(-hw, -hw), Vector2(hw * 2, hw * 2)), dk)
+	var lines: Array = []       # polylines
+	if arms.size() == 2 and (arms[0] + arms[1]) == Vector2.ZERO:
+		var ar: Vector2 = arms[0]
+		var pr := Vector2(-ar.y, ar.x)
+		for sg in [-1.0, 1.0]:
+			lines.append([ar * e + pr * lo * sg, -ar * e + pr * lo * sg])
+	elif arms.size() == 2:
+		for k in 2:
+			var a1: Vector2 = arms[k]
+			var a2: Vector2 = arms[1 - k]
+			var p1 := -Vector2(-a1.y, a1.x) * lo          # in along arm 1: the right-hand side of the way toward the centre
+			var p2 := Vector2(-a2.y, a2.x) * lo           # out along arm 2
+			lines.append([a1 * e + p1, p1 + p2, a2 * e + p2])
+	elif arms.size() == 1:
+		var ar: Vector2 = arms[0]
+		var pr := Vector2(-ar.y, ar.x)
+		lines.append([ar * e + pr * lo, pr * lo - ar * 2.0, -pr * lo - ar * 2.0, ar * e - pr * lo])
+	else:
+		for ar in arms:
+			var pr := Vector2(-ar.y, ar.x)
+			for sg in [-1.0, 1.0]:
+				lines.append([ar * e + pr * lo * sg, pr * lo * sg * 0.6])
+	for ln in lines:
+		for i in range(ln.size() - 1):
+			var p: Vector2 = ln[i]
+			var q: Vector2 = ln[i + 1]
+			if p.distance_squared_to(q) < 0.01:
+				continue
+			var u := (q - p).normalized()
+			var pr := Vector2(-u.y, u.x)
+			cv.draw_line(p, q, bed, 3.6)
+			cv.draw_line(p + pr * 1.3, q + pr * 1.3, steel, 0.8)
+			cv.draw_line(p - pr * 1.3, q - pr * 1.3, steel, 0.8)
 
 
 func _draw_damage(cv: Node2D, s: PipeSeg, o: Vector2, art_done := false) -> int:
@@ -993,7 +1274,8 @@ func _draw_top() -> void:
 		var leaking := s.hp < s.max_hp * 0.5
 		if s.pressure > 0.15 and ((h & 7) == 0 or leaking):
 			var ph := fposmod(_clock * (0.45 if not leaking else 0.9) + float(h & 255) / 255.0, 1.0)
-			_puff(_top, s.global_position + Vector2(4, -4), ph, 1.6 if leaking else 1.0, s.pressure)
+			var pk := float(Defs.LINE["scale"])
+			_puff(_top, s.global_position + Vector2(4, -4) * pk, ph, (1.6 if leaking else 1.0) * pk, s.pressure)
 			n_puff += 1
 	# gauges and warnings over the Clockwork buildings that use the Line
 	var me := game.controlled_team()
@@ -1042,21 +1324,47 @@ func _badge(font: Font, p: Vector2, txt: String, col: Color, alarm: bool) -> voi
 func _draw_tool(cv: Node2D) -> void:
 	var ok: bool = tool_info.get("ok", false)
 	var col := Color(0.6, 0.9, 1.0, 0.55) if ok else Color(1.0, 0.4, 0.3, 0.5)
+	var lcol := Color(1.0, 0.8, 0.35, 0.6) if ok else col
+	var loop: Array = tool_info.get("loop", [])
+	var kk := float(Defs.LINE["scale"])
+	var th := T * kk * 0.5          # the ghost is as thick as the pipe it will become
 	for c in tool_path:
-		var r := Rect2(Vector2(c) * T + Vector2(8, 8), Vector2(T - 16, T - 16))
+		var r := Rect2(Vector2(c) * T + Vector2(T, T) * 0.5 - Vector2(th, th) * 0.5, Vector2(th, th))
 		var have: bool = segs.has(c)
-		cv.draw_rect(r, Color(col.r, col.g, col.b, 0.25 if have else 0.55))
-		cv.draw_rect(r, col, false, 1.5)
+		var cc := lcol if loop.has(c) else col
+		cv.draw_rect(r, Color(cc.r, cc.g, cc.b, 0.25 if have else 0.55))
+		cv.draw_rect(r, cc, false, 1.5)
+		if not have:
+			# the two tracks it will carry, from the cells before and after it on the plan
+			var gm := 0
+			var pi := tool_path.find(c)
+			for q in [pi - 1, pi + 1]:
+				if q >= 0 and q < tool_path.size():
+					var di := DIRS.find(tool_path[q] - c)
+					if di >= 0:
+						gm |= 1 << di
+			if loop.has(c):
+				for di in 4:
+					if loop.has(c + DIRS[di]):
+						gm |= 1 << di
+			cv.draw_set_transform(Vector2(c) * T + Vector2(T, T) * 0.5, 0.0, Vector2(kk, kk))
+			draw_lanes(cv, gm, 0.7, false)
+			cv.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if tool_from.x >= 0:
 		cv.draw_rect(Rect2(Vector2(tool_from) * T + Vector2(3, 3), Vector2(T - 6, T - 6)), Color(1, 1, 1, 0.9), false, 2.0)
 
 
 func _draw_tool_text(font: Font) -> void:
-	var last: Vector2i = tool_path[tool_path.size() - 1]
+	var run: Array = tool_info.get("run", [])
+	var last: Vector2i = run[run.size() - 1] if not run.is_empty() else tool_path[tool_path.size() - 1]
 	var p := Vector2(last) * T + Vector2(T * 0.5, -10.0)
 	var lines: Array = []
 	if tool_info.get("ok", false):
 		lines.append("%d %s · %d %s" % [int(tool_info["cost"]), Loc.t("ore"), int(tool_info["new"]), Loc.t("new")])
+		if int(tool_info.get("loop_new", 0)) > 0:
+			lines.append("%s: %d" % [Loc.t("incl. loop (trains turn round)"), int(tool_info["loop_new"])])
+		elif not (tool_info.get("missing", []) as Array).is_empty():
+			lines.append(Loc.t("no room for a loop: trains back out"))
 		lines.append(Loc.t("pressure there") + " ~%d%%" % int(round(float(tool_info["pressure"]) * 100.0)))
 	else:
 		lines.append(String(tool_info.get("why", "")))

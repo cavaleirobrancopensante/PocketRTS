@@ -110,3 +110,11 @@ components and writes the game files; every picture falls back to code art when 
 Make the field follow the Line (wind-down by distance from any powered segment/Relay), give the Drill the
 map's ore patches, add train selection with a RECALL/RIDE-from-station button, and let the AI use relays,
 loops and Troop Trains. Then run the balance study (rail cap 24 ore/s and drill rate 7 are the dials).
+
+
+## Update 0.14.11 (branch wt-rail2): two tracks, loops, couplings, size
+- Drawn size: pipes, rails and trains are 1.5x (Defs.LINE.scale), the grid cell is still 32 px (tiles overlap their neighbours, drawn top row first).
+- TWO TRACKS: every Line segment has one lane per direction, right-hand drive (`Train.lane_of`, Defs.RAIL.lane px off the centre). A train queues only behind a train going the SAME way (a standing train blocks only the lane it faces); head-on trains pass. Rail vehicles (Units, scripts/cw_rail.gd) snap to their lane, follow a slower vehicle ahead in the same lane, and a slow or standing one steps into a SIDING when a faster one comes up behind it (or queues behind it); a queue gives up after 6 s with no siding near.
+- LOOPS: `LineNetwork.plan` adds a loop to a run that begins or ends at a Drill or the Clocktower (Defs.RAIL.loop_kinds): the full ring round the footprint when it fits, else the smallest rectangle of rail (4..9 a side) that touches the building and the run (`find_loop`). It is part of the plan's cells (cost, ghost in amber, AI and start Line get it through connect_building). Trains route over (cell, heading) states: no U-turn except at a dead end (a pause, then they back out and swap lanes; the wagons swing in), and a building that has a loop is served on the loop cells.
+- COUPLING: wagons are strung along the locomotive's trail at a fixed straight-line distance (`Train.layout`, `coupling`), per view (side / end on), a drawn hook in side views.
+- Not done: loops for the Rail Yard and Boiler (trains do not stop there); a loop is skipped when no free rectangle exists (the dead-end reversal then applies); trains still ignore rail Units in their lane.

@@ -359,3 +359,11 @@ es Toca un punto junto a la Línea.
 > No idle Troop Train (buy one at the Clocktower).
 pt Nenhum Trem de Tropas livre (compre um na Torre do Relógio).
 es Ningún Tren de Tropas libre (compra uno en la Torre del Reloj).
+
+> incl. loop (trains turn round)
+pt inclui laço (os trens dão a volta)
+es incluye bucle (los trenes dan la vuelta)
+
+> no room for a loop: trains back out
+pt sem espaço para um laço: os trens dão ré
+es sin espacio para un bucle: los trenes dan marcha atrás

@@ -83,11 +83,12 @@ func _run() -> void:
 	await _step(g, 70.0)
 	check("the Winders lay the whole run (2.5 s a segment)", net.unbuilt_count(0) == 0 and net.count(0) == int(plan["new"]), "%d built, %d left" % [net.count(0), net.unbuilt_count(0)])
 	net.solve()
-	var last: Vector2i = plan["cells"][plan["cells"].size() - 1]
+	var last: Vector2i = plan["run"][plan["run"].size() - 1]
 	check("pressure runs down the finished run", net.seg_at(last).pressure > 0.4, "%.2f" % net.seg_at(last).pressure)
 	check("the Winders are free again", winders[0].order != "lay" and winders[1].order != "lay")
 	# a ghost cancelled gives its ore back
 	var more := net.plan(0, last, last + Vector2i(0, 5) if net.pipeable(0, last + Vector2i(0, 5)) else last + Vector2i(0, -5))
+	g.players[0]["gold"] += 300       # (the loop at the hall took most of the ore)
 	var gold1: int = int(g.players[0]["gold"])
 	var made := net.lay(0, more["cells"], [])
 	var spent := gold1 - int(g.players[0]["gold"])
@@ -100,7 +101,7 @@ func _run() -> void:
 	# units walk over the pipe (it is not solid)
 	check("pipe does not block movement", g.solid[g.idx(on_pipe)] == 0 and g.is_free(on_pipe))
 	var enemy_at := Vector2.INF
-	var endc: Vector2i = plan["cells"][plan["cells"].size() - 1]
+	var endc: Vector2i = plan["run"][plan["run"].size() - 1]
 	for off in [Vector2i(-4, 0), Vector2i(4, 0), Vector2i(0, 4), Vector2i(0, -4), Vector2i(-3, -3), Vector2i(3, 3), Vector2i(3, -3), Vector2i(-3, 3)]:
 		var cc: Vector2i = endc + off
 		if g.is_free(cc) and not net.has_cell(cc) and g.height[g.idx(cc)] == g.height[g.idx(endc)]:
