@@ -237,6 +237,7 @@ const LINE := {
 	"solve": 0.5,                 # seconds between pressure solves
 	"max_run": 60,                # the longest run (segments) one Line order can lay
 	"tint": [Color("#d8473a"), Color("#e8b43c"), Color("#bfe7f0")],
+	"scale": 1.5,                 # drawn size of a pipe/rail tile and of trains against the 32 px cell (they overlap the neighbours)
 }
 
 ## RAILS AND ORE TRAINS (phase 2 of the Line, docs/clockwork_rework_plan.md). The rail runs on top of every Line
@@ -255,6 +256,12 @@ const RAIL := {
 	"headway": 8, "load": 1.5, "unload": 1.2, "wait_stock": 25.0, "wait_max": 7.0, "board_max": 12.0,
 	"drill": {"rate": 7.0, "stock": 160.0},
 	"stranded_retry": 1.0,
+	"lane": 5.0,                  # px a train keeps to the right of the track's centre line (two tracks, one per direction)
+	"reverse": 1.2,               # seconds a train stands at a dead end before it backs out (the fallback when there is no loop)
+	"stand_clear": 6,             # cells a train keeps behind one that stands loading / unloading (its wagons are in the way)
+	"loop_kinds": ["clocktower", "ore_drill"],   # buildings trains stop at: a rail stub that ends at one gets a loop round it (Line.plan)
+	"loop_min": 4,                # the smallest loop (a rectangle of rail) is this many cells on a side
+	"loop_max": 9,
 }
 const TRAIN_MAX := 10            # trains a team may own
 

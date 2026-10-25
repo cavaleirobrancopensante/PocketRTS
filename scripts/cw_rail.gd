@@ -105,7 +105,12 @@ static func snap(u: Unit) -> void:
 				bd = dq
 				best = qp
 	if bd < INF and bd < 96.0 * 96.0:
-		u.position = best
+		# two tracks: drive on the right of the way it goes (Train.lane_of)
+		var vd: Vector2i = u.cw.get("lane_d", Vector2i.ZERO)
+		if u.velocity.length() > 8.0:
+			vd = Vector2i(int(signf(u.velocity.x)), 0) if absf(u.velocity.x) >= absf(u.velocity.y) else Vector2i(0, int(signf(u.velocity.y)))
+			u.cw["lane_d"] = vd
+		u.position = best + (Train.lane_of(vd) if vd != Vector2i.ZERO else Vector2.ZERO)
 
 
 ## The pressure's share of its speed under a rail unit (1.0 with enforcement off).
@@ -254,24 +259,70 @@ static func _siding_free(game: Game, t: int, c: Vector2i, me: Unit) -> bool:
 	return true
 
 
-## Called every tick for a rail unit with the movement it wants; returns the movement it will make. The siding rule:
-## when another vehicle of the team comes at it head-on on the track (or it is standing in the way), it goes into a free siding
-## within `reach` cells, waits there until the other has passed, and rejoins; with no siding near it just passes through
-## (the track is treated as double: nobody waits for ever, nobody blocks).
+## The vehicle ahead of `u` in its own lane (same way, within `follow` px, not a lane over), or null: [thing, speed, gap].
+static func _leader(game: Game, u: Unit, wdir: Vector2) -> Array:
+	var follow := float(Defs.CW["siding"].get("follow", 34.0))
+	var best: Array = []
+	var bg := follow
+	for v in vehicles(game, u.team):
+		var o = v[3]
+		if o == u:
+			continue
+		var od: Vector2 = v[1]
+		var vel: Vector2 = o.velocity if o is Unit else od * float(Defs.TRAINS[o.tkind]["speed"]) * T
+		var standing: bool = od == Vector2.ZERO
+		if standing and not (o is Unit):
+			continue                           # (a train waiting at a stop does not block a rail unit)
+		var rel: Vector2 = v[0] - u.position
+		var ahead := rel.dot(wdir)
+		if ahead <= 0.0 or ahead > follow:
+			continue
+		if absf(rel.dot(Vector2(-wdir.y, wdir.x))) > 6.5:
+			continue                           # the other lane
+		if not standing and od.dot(wdir) < 0.5:
+			continue
+		if ahead < bg:
+			bg = ahead
+			best = [o, vel.length(), ahead]
+	return best
+
+
+## Called every tick for a rail unit with the movement it wants; returns the movement it will make. Two tracks, one
+## per direction (drive on the right): vehicles going opposite ways pass; one queues only behind a vehicle ahead going the
+## SAME way in its own lane (it keeps the leader's speed and stops a few px behind it). The siding rule: a slow
+## vehicle (or a standing one) that a faster one comes up behind in its lane, or that has a queue behind it, goes into
+## a free siding within `reach` cells, waits there until the others have passed, and rejoins; with no siding near it
+## the queue gives up after a few seconds and passes through (nobody waits for ever).
 static func steer(u: Unit, want: Vector2, delta: float) -> Vector2:
 	var game := u.game
 	var net := game.line_net
 	var sid: Dictionary = u.cw.get("sid", {})
 	var cfg: Dictionary = Defs.CW["siding"]
 	if sid.is_empty():
+		var out := want
+		u.cw.erase("q_for")
+		if want.length() > 1.0:
+			var ld := _leader(game, u, want.normalized())
+			if not ld.is_empty():
+				u.cw["q_t"] = float(u.cw.get("q_t", 0.0)) + delta
+				if float(u.cw["q_t"]) < 6.0:
+					u.cw["q_for"] = ld[0]
+					if float(ld[2]) < float(cfg.get("stop_gap", 24.0)):
+						out = Vector2.ZERO
+					else:
+						out = want.normalized() * minf(want.length(), maxf(float(ld[1]), 14.0))
+				elif float(u.cw["q_t"]) > 9.0:
+					u.cw["q_t"] = 0.0           # (gave up waiting: passed through for a few seconds, then looks again)
+			else:
+				u.cw["q_t"] = maxf(0.0, float(u.cw.get("q_t", 0.0)) - delta * 2.0)
 		if net.sidings.is_empty():
-			return want
+			return out
 		u.cw["sid_scan"] = float(u.cw.get("sid_scan", 0.0)) - delta
 		if float(u.cw["sid_scan"]) > 0.0:
-			return want
+			return out
 		u.cw["sid_scan"] = 0.3
 		_look_for_meeting(u)
-		return want
+		return out
 	var c: Vector2i = sid["cell"]
 	if not net.sidings.has(c) or not _seg_ok(net, u.team, c):
 		u.cw.erase("sid")
@@ -327,6 +378,7 @@ static func _look_for_meeting(u: Unit) -> void:
 	var game := u.game
 	var meet := float(Defs.CW["siding"]["meet"]) * T
 	var mine: Vector2 = u.velocity.normalized() if u.velocity.length() > 8.0 else Vector2.ZERO
+	var go := false
 	for v in vehicles(game, u.team):
 		var o = v[3]
 		if o == u:
@@ -336,29 +388,32 @@ static func _look_for_meeting(u: Unit) -> void:
 		if dist > meet or dist < 4.0:
 			continue
 		var od: Vector2 = v[1]
-		var coming := od != Vector2.ZERO and (u.position - p).normalized().dot(od) > 0.6      # it is heading for me
-		if not coming:
+		var queued: bool = o is Unit and o.cw.get("q_for") == u        # waiting right behind me
+		if od == Vector2.ZERO and not queued:
 			continue
-		var head_on: bool = mine == Vector2.ZERO or mine.dot(od) < -0.3
-		if not head_on:
+		var back := (u.position - p).normalized()
+		var same_lane: bool = absf((u.position - p).dot(Vector2(-back.y, back.x))) < 7.0
+		if not same_lane:
+			continue                                   # the other track: it passes me
+		var same_way: bool = mine == Vector2.ZERO or mine.dot(od if od != Vector2.ZERO else back) > 0.3
+		if not same_way:
 			continue
-		# who yields: a unit gives way to a train; two units: the lighter id (a standing one first)
-		var yields := true
-		if o is Unit:
-			var ou: Unit = o
-			var o_stand: bool = (v[1] as Vector2) == Vector2.ZERO
-			yields = mine == Vector2.ZERO or (not o_stand and u.get_instance_id() < ou.get_instance_id())
-		if not yields:
-			continue
-		var from := cell_near(u)
-		if from.x < 0:
-			return
-		var site := find_siding(game, u.team, from, u)
-		if site.x < 0:
-			return                                  # no siding near: pass through
-		var cells := route_toward(game.line_net, u.team, from, game.cell_center(site))
-		var pts := PackedVector2Array()
-		for c in cells:
-			pts.append(game.cell_center(c))
-		u.cw["sid"] = {"cell": site, "phase": "to", "t": 0.0, "path": pts}
+		var o_speed: float = o.speed if o is Unit else float(Defs.TRAINS[o.tkind]["speed"]) * T
+		var faster: bool = o_speed > u.speed * 1.15 + 4.0
+		var coming: bool = queued or (back.dot(od) > 0.6)       # it is coming up behind me
+		if coming and (faster or mine == Vector2.ZERO):
+			go = true
+			break
+	if not go:
 		return
+	var from := cell_near(u)
+	if from.x < 0:
+		return
+	var site := find_siding(game, u.team, from, u)
+	if site.x < 0:
+		return                                         # no siding near: the queue passes through in time
+	var cells := route_toward(game.line_net, u.team, from, game.cell_center(site))
+	var pts := PackedVector2Array()
+	for c in cells:
+		pts.append(game.cell_center(c))
+	u.cw["sid"] = {"cell": site, "phase": "to", "t": 0.0, "path": pts}

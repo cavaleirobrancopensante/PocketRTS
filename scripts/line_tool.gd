@@ -117,7 +117,8 @@ func confirm(keep := false) -> void:
 	game.lay_line(_team(), cells, builders(), keep)
 	Sfx.play_any(["ui/click", "click"])
 	if keep:
-		var last: Vector2i = cells[cells.size() - 1]
+		var run: Array = plan.get("run", cells)
+		var last: Vector2i = run[run.size() - 1] if not run.is_empty() else cells[cells.size() - 1]
 		_set_start(last)
 	else:
 		controls.cancel_mode()
