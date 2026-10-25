@@ -2,7 +2,7 @@
 Variant "horn": a low war horn calling twice (a rising fifth) over deep war-drum hits, warm and
 round (the harmonics are low-passed and the horn swells in), with a short room tail.
 Variant "toll": a deep bell struck three times, falling, with a drum under each.
-usage: make_alert_all.py out.wav [horn|toll]"""
+usage: make_alert_all.py out.wav [horn|toll|toll3]"""
 import numpy as np, wave, sys
 from scipy import signal
 sr = 44100
@@ -49,6 +49,10 @@ if variant == "horn":
     place(buf, horn(98.0, 0.55), 0.02)          # G2
     place(buf, drum(65, 0.5, 1.1), 0.62)
     place(buf, horn(146.83, 0.95), 0.64)        # D3, a rising fifth, held
+elif variant == "toll3":
+    for at in (0.0, 0.3, 0.6):                 # the first bell note, struck three times quickly
+        place(buf, bell(196.0, 0.9), at)
+        place(buf, drum(60, 0.35, 0.85), at)
 else:
     for i, (f, at) in enumerate([(196.0, 0.0), (174.6, 0.55), (146.8, 1.1)]):    # G3, F3, D3: falling
         place(buf, bell(f, 1.1), at)
