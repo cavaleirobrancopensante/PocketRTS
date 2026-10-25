@@ -1,0 +1,1836 @@
+id,t,kind,who,text
+brood-brood_000,49,rush,P1,"P1 Brood scouted: rush (a Spawning Den already up at 0:49), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_000,77,rush,P2,"P2 Brood scouted: rush (a Spawning Den already up at 1:17), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_000,291,rush,P1,"P1 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_000,306,rush,P2,"P2 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_000,635,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,636,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,638,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,638,lost_building,P1,P1 Brood lost a Clutch Mound (unfinished) to P2 Brood (raptor)
+brood-brood_000,640,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,641,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,642,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,644,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,645,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,646,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,646,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,647,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (spitter)
+brood-brood_000,648,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,652,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,653,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,656,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,657,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,658,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,660,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,677,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (raptor)
+brood-brood_000,680,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (spitter)
+brood-brood_000,688,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,691,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,693,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (spitter)
+brood-brood_000,693,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,694,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,696,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,697,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,699,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,699,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,700,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,700,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,701,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,702,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,703,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,704,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,704,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,705,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,706,expand,P2,P2 Brood finished a Burrow (expansion)
+brood-brood_000,707,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,709,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,709,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,710,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,712,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,713,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,715,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,716,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,717,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,720,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,721,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,723,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,724,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,724,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (spitter)
+brood-brood_000,725,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,726,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,730,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,732,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,733,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,734,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,740,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,770,soil,P2,P2 Brood: the ground around a Warren is running low (under 25%)
+brood-brood_000,788,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,791,soil,P1,P1 Brood: the ground around a Warren is running low (under 25%)
+brood-brood_000,808,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,810,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,811,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,812,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_000,835,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (raptor)
+brood-brood_000,841,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,842,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_000,849,lost_building,P2,P2 Brood lost a Spawning Den to P1 Brood (spitter)
+brood-brood_000,862,lost_building,P2,P2 Brood lost a Brood Pen to P1 Brood (raptor)
+brood-brood_000,870,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (raptor)
+brood-brood_000,879,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (brute)
+brood-brood_000,900,lost_building,P2,P2 Brood lost a Gorge Pit to P1 Brood (raptor)
+brood-brood_000,919,lost_building,P2,P2 Brood lost a Warren to P1 Brood (brute)
+brood-brood_000,919,capital,P2,P2 Brood: the capital fell; the next Burrow is the new capital
+brood-brood_000,931,lost_building,P2,P2 Brood lost a Brood Pen to P1 Brood (raptor)
+brood-brood_000,943,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (raptor)
+brood-brood_000,951,expand,P1,P1 Brood finished a Burrow (expansion)
+brood-brood_000,960,lost_building,P2,P2 Brood lost a Burrow to P1 Brood (brute)
+brood-brood_001,64,rush,P1,"P1 Brood scouted: rush (a Spawning Den already up at 1:04), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_001,75,rush,P2,"P2 Brood scouted: rush (a Spawning Den already up at 1:15), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_001,310,rush,P1,"P1 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_001,311,rush,P2,"P2 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_001,508,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,509,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,511,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,512,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,515,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,516,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,517,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,518,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,520,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,520,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,676,rush,P2,"P2 Brood saw an enemy Skywing (fast, a Brood rush unit): evidence of a rush"
+brood-brood_001,681,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (spitter)
+brood-brood_001,685,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (raptor)
+brood-brood_001,690,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (raptor)
+brood-brood_001,692,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,693,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,695,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,696,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,697,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,699,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,699,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (raptor)
+brood-brood_001,700,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,703,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,706,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (raptor)
+brood-brood_001,708,expand,P1,P1 Brood finished a Burrow (expansion)
+brood-brood_001,708,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_001,715,expand,P2,P2 Brood finished a Burrow (expansion)
+brood-brood_001,722,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (raptor)
+brood-brood_001,725,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_001,734,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (spitter)
+brood-brood_001,769,soil,P2,P2 Brood: the ground around a Warren is running low (under 25%)
+brood-brood_001,802,lost_building,P1,P1 Brood lost a Spawning Den to P2 Brood (spitter)
+brood-brood_001,850,lost_building,P1,P1 Brood lost a Burrow to P2 Brood (spitter)
+brood-brood_001,925,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (spitter)
+brood-brood_001,943,soil,P2,P2 Brood: the ground around a Warren is spent (barren: its pits yield nothing)
+brood-brood_001,972,lost_building,P1,P1 Brood lost a Brood Pen to P2 Brood (spitter)
+brood-brood_001,998,lost_building,P1,P1 Brood lost a Warren to P2 Brood (spitter)
+brood-brood_002,77,rush,P1,"P1 Brood scouted: rush (a Spawning Den already up at 1:17), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_002,85,rush,P2,"P2 Brood scouted: rush (a Spawning Den already up at 1:25), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_002,297,rush,P2,"P2 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_002,307,rush,P1,"P1 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_002,617,expand,P2,P2 Brood finished a Burrow (expansion)
+brood-brood_002,617,expand,P1,P1 Brood finished a Burrow (expansion)
+brood-brood_002,624,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_002,625,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_002,675,soil,P1,P1 Brood: the ground around a Broodmound is running low (under 25%)
+brood-brood_002,676,soil,P2,P2 Brood: the ground around a Broodmound is running low (under 25%)
+brood-brood_002,705,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (raptor)
+brood-brood_002,745,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (spitter)
+brood-brood_002,769,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (spitter)
+brood-brood_002,792,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_002,793,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_002,819,soil,P1,P1 Brood: the ground around a Broodmound is spent (barren: its pits yield nothing)
+brood-brood_002,823,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (raptor)
+brood-brood_002,824,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (raptor)
+brood-brood_002,827,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (raptor)
+brood-brood_002,829,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (raptor)
+brood-brood_002,830,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_002,843,soil,P2,P2 Brood: the ground around a Broodmound is spent (barren: its pits yield nothing)
+brood-brood_002,843,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (raptor)
+brood-brood_002,864,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Brood (raptor)
+brood-brood_002,864,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (raptor)
+brood-brood_002,870,lost_building,P2,P2 Brood lost a Brood Pen to P1 Brood (raptor)
+brood-brood_002,878,lost_building,P2,P2 Brood lost a Spawning Den to P1 Brood (raptor)
+brood-brood_002,882,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Brood (raptor)
+brood-brood_002,908,lost_building,P2,P2 Brood lost a Gorge Pit to P1 Brood (raptor)
+brood-brood_002,912,lost_building,P2,P2 Brood lost a Broodmound to P1 Brood (raptor)
+brood-brood_002,912,capital,P2,P2 Brood: the capital fell; the next Burrow is the new capital
+brood-brood_002,921,lost_building,P2,P2 Brood lost a Burrow to P1 Brood (raptor)
+brood-brood_002,922,lost_building,P2,P2 Brood lost a Brood Pen to P1 Brood (raptor)
+brood-brood_002,923,lost_building,P2,P2 Brood lost a Roost to P1 Brood (raptor)
+brood-brood_002,923,out,P2,P2 Brood is out
+brood-brood_003,74,rush,P1,"P1 Brood scouted: rush (a Spawning Den already up at 1:14), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_003,76,rush,P2,"P2 Brood scouted: rush (a Spawning Den already up at 1:16), switching to a defensive build: army and production first, then a counter-attack"
+brood-brood_003,300,rush,P1,"P1 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_003,334,rush,P2,"P2 Brood saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-brood_003,515,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,516,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,517,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,518,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,523,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,525,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,526,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,528,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-brood_003,666,expand,P2,P2 Brood finished a Burrow (expansion)
+brood-brood_003,673,expand,P1,P1 Brood finished a Burrow (expansion)
+brood-brood_003,719,soil,P2,P2 Brood: the ground around a Warren is running low (under 25%)
+brood-brood_003,743,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (raptor)
+brood-brood_003,746,soil,P1,P1 Brood: the ground around a Warren is running low (under 25%)
+brood-brood_003,763,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (spitter)
+brood-brood_003,785,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (spitter)
+brood-brood_003,795,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (raptor)
+brood-brood_003,799,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (raptor)
+brood-brood_003,800,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-brood_003,870,soil,P2,P2 Brood: the ground around a Warren is spent (barren: its pits yield nothing)
+brood-brood_003,904,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (raptor)
+brood-brood_003,927,lost_building,P1,P1 Brood lost a Spawning Den to P2 Brood (raptor)
+brood-brood_003,939,lost_building,P1,P1 Brood lost a Warren to P2 Brood (raptor)
+brood-brood_003,939,capital,P1,P1 Brood: the capital fell; the next Burrow is the new capital
+brood-brood_003,943,lost_building,P1,P1 Brood lost a Burrow to P2 Brood (raptor)
+brood-brood_003,946,lost_building,P1,P1 Brood lost a Roost to P2 Brood (raptor)
+brood-brood_003,948,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (spitter)
+brood-brood_003,950,lost_building,P1,P1 Brood lost a Brood Pen to P2 Brood (raptor)
+brood-brood_003,953,lost_building,P1,P1 Brood lost a Brood Pen to P2 Brood (spitter)
+brood-brood_003,957,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (raptor)
+brood-brood_003,957,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (raptor)
+brood-brood_003,960,lost_building,P1,P1 Brood lost a Gorge Pit to P2 Brood (raptor)
+brood-brood_003,972,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (raptor)
+brood-brood_003,976,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Brood (raptor)
+brood-brood_003,986,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Brood (raptor)
+brood-brood_003,986,out,P1,P1 Brood is out
+brood-clockwork_000,80,rush,P2,"P2 Clockwork scouted: rush (a Spawning Den already up at 1:20), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_000,93,rush,P2,P2 Clockwork finished a Ore Crusher
+brood-clockwork_000,96,rush,P1,"P1 Brood scouted: rush (a Assembly Works already up at 1:36), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_000,220,attack,P2,"P2 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+brood-clockwork_000,252,rush,P2,"P2 Clockwork saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-clockwork_000,283,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 63%), 24 tiles from its main"
+brood-clockwork_000,301,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Clockwork (windup_soldier)
+brood-clockwork_000,358,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+brood-clockwork_000,413,rush,P2,P2 Clockwork finished a Ore Crusher
+brood-clockwork_000,440,lost_building,P1,P1 Brood lost a Burrow to P2 Clockwork (windup_soldier)
+brood-clockwork_000,454,rush,P2,P2 Clockwork finished a Ore Crusher
+brood-clockwork_000,459,lost_building,P1,P1 Brood lost a Spawning Den to P2 Clockwork (windup_soldier)
+brood-clockwork_000,466,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Clockwork (windup_soldier)
+brood-clockwork_000,477,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Clockwork (windup_soldier)
+brood-clockwork_000,480,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+brood-clockwork_000,482,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Clockwork (windup_soldier)
+brood-clockwork_000,483,out,P1,P1 Brood is out
+brood-clockwork_001,67,rush,P1,"P1 Clockwork scouted: rush (a Spawning Den already up at 1:07), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_001,91,rush,P1,P1 Clockwork finished a Ore Crusher
+brood-clockwork_001,220,attack,P1,"P1 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+brood-clockwork_001,269,rush,P1,"P1 Clockwork saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-clockwork_001,271,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 24 tiles from its main"
+brood-clockwork_001,271,rush,P2,"P2 Brood scouted: rush (early army (8 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_001,296,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Clockwork (windup_soldier)
+brood-clockwork_001,308,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,309,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,311,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,312,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,314,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,315,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,316,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,317,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,320,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_001,343,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+brood-clockwork_001,354,lost_building,P2,P2 Brood lost a Spawning Den to P1 Clockwork (thresher)
+brood-clockwork_001,384,rush,P1,P1 Clockwork finished a Ore Crusher
+brood-clockwork_001,399,lost_building,P2,P2 Brood lost a Burrow to P1 Clockwork (arc_thrower)
+brood-clockwork_001,407,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Clockwork (windup_soldier)
+brood-clockwork_001,412,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Clockwork (windup_soldier)
+brood-clockwork_001,421,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Clockwork (windup_soldier)
+brood-clockwork_001,421,out,P2,P2 Brood is out
+brood-clockwork_002,88,rush,P2,"P2 Clockwork scouted: rush (a Spawning Den already up at 1:28), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_002,93,rush,P2,P2 Clockwork finished a Ore Crusher
+brood-clockwork_002,130,rush,P2,"P2 Clockwork saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-clockwork_002,222,attack,P2,"P2 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+brood-clockwork_002,269,rush,P1,"P1 Brood scouted: rush (early army (5 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_002,281,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 62%), 24 tiles from its main"
+brood-clockwork_002,298,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,299,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,300,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,309,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,311,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,356,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+brood-clockwork_002,399,rush,P2,P2 Clockwork finished a Ore Crusher
+brood-clockwork_002,437,rush,P2,P2 Clockwork finished a Ore Crusher
+brood-clockwork_002,464,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Clockwork (arc_thrower)
+brood-clockwork_002,481,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+brood-clockwork_002,495,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Clockwork (windup_soldier)
+brood-clockwork_002,497,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_002,498,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+brood-clockwork_002,508,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_002,536,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_002,537,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_002,539,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_002,540,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Clockwork (arc_thrower)
+brood-clockwork_002,541,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_002,542,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,542,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,544,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+brood-clockwork_002,576,rush,P2,P2 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+brood-clockwork_002,631,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+brood-clockwork_002,645,lost_building,P1,P1 Brood lost a Burrow to P2 Clockwork (windup_soldier)
+brood-clockwork_002,651,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Clockwork (windup_soldier)
+brood-clockwork_002,661,lost_building,P1,P1 Brood lost a Spawning Den to P2 Clockwork (windup_soldier)
+brood-clockwork_002,669,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Clockwork (arc_thrower)
+brood-clockwork_002,669,out,P1,P1 Brood is out
+brood-clockwork_003,63,rush,P1,"P1 Clockwork scouted: rush (a Spawning Den already up at 1:03), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_003,90,rush,P2,"P2 Brood scouted: rush (a Assembly Works already up at 1:30), switching to a defensive build: army and production first, then a counter-attack"
+brood-clockwork_003,90,rush,P1,P1 Clockwork finished a Ore Crusher
+brood-clockwork_003,134,rush,P1,"P1 Clockwork saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+brood-clockwork_003,218,attack,P1,"P1 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+brood-clockwork_003,278,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 62%), 23 tiles from its main"
+brood-clockwork_003,354,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Clockwork (windup_soldier)
+brood-clockwork_003,355,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+brood-clockwork_003,355,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,356,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,358,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,359,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,360,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,369,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,371,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,372,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,374,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,374,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Clockwork (windup_soldier)
+brood-clockwork_003,381,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,383,dropped_site,P2,P2 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+brood-clockwork_003,395,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Clockwork (windup_soldier)
+brood-clockwork_003,405,rush,P1,P1 Clockwork finished a Ore Crusher
+brood-clockwork_003,434,lost_building,P2,P2 Brood lost a Spawning Den to P1 Clockwork (windup_soldier)
+brood-clockwork_003,441,rush,P1,P1 Clockwork finished a Ore Crusher
+brood-clockwork_003,450,lost_building,P2,P2 Brood lost a Burrow to P1 Clockwork (windup_soldier)
+brood-clockwork_003,463,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Clockwork (arc_thrower)
+brood-clockwork_003,471,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Clockwork (windup_soldier)
+brood-clockwork_003,472,out,P2,P2 Brood is out
+clockwork-clockwork_000,92,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_000,95,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_000,97,rush,P2,"P2 Clockwork scouted: rush (a Assembly Works already up at 1:37), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_000,226,attack,P1,"P1 Clockwork's first attack goes out (15 supply, 0 Horsemen)"
+clockwork-clockwork_000,228,attack,P2,"P2 Clockwork's first attack goes out (21 supply, 0 Horsemen)"
+clockwork-clockwork_000,247,rush,P1,"P1 Clockwork scouted: rush (early army (4 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_000,289,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 28 tiles from its main"
+clockwork-clockwork_000,289,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 62%), 24 tiles from its main"
+clockwork-clockwork_000,365,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_000,366,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_000,419,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_000,420,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_000,458,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_000,460,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_000,477,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_000,490,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_000,495,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_000,508,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_000,559,rush,P2,"P2 Clockwork saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+clockwork-clockwork_000,566,rush,P2,P2 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_000,579,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_000,619,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_000,625,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_000,750,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (arc_thrower)
+clockwork-clockwork_000,916,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,937,lost_building,P2,P2 Clockwork lost a Engine Hall to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,944,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,959,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,983,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1006,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1056,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1062,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1098,lost_building,P2,P2 Clockwork lost a Charging Pylon to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1108,lost_building,P2,P2 Clockwork lost a Capacitor Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1119,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1125,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 61%), 66 tiles from its main"
+clockwork-clockwork_000,1135,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1148,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1151,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1159,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1173,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1174,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1179,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1187,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_000,1196,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,90,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,91,rush,P2,"P2 Clockwork scouted: rush (a Assembly Works already up at 1:31), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_001,91,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,220,attack,P1,"P1 Clockwork's first attack goes out (15 supply, 0 Horsemen)"
+clockwork-clockwork_001,221,attack,P2,"P2 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+clockwork-clockwork_001,245,rush,P1,"P1 Clockwork scouted: rush (early army (8 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_001,280,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 24 tiles from its main"
+clockwork-clockwork_001,283,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 63%), 20 tiles from its main"
+clockwork-clockwork_001,352,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_001,356,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_001,396,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,400,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,434,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,450,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,495,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_001,498,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_001,528,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_001,543,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_001,591,dropped_site,P1,P1 Clockwork couldn't start a Assembly Works: the spot was blocked (refunded)
+clockwork-clockwork_001,602,rush,P2,P2 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_001,608,dropped_site,P2,P2 Clockwork couldn't start a Assembly Works: the spot was blocked (refunded)
+clockwork-clockwork_001,610,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_001,680,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_001,690,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 62%), 41 tiles from its main"
+clockwork-clockwork_001,725,rush,P2,"P2 Clockwork saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+clockwork-clockwork_001,733,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,743,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_001,747,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_001,749,rush,P1,"P1 Clockwork saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+clockwork-clockwork_001,765,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,779,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_001,784,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,786,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,796,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,825,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 37%), 41 tiles from its main"
+clockwork-clockwork_001,829,rush,P2,P2 Clockwork lost the crate for a Ore Crusher: cancelled
+clockwork-clockwork_001,833,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_001,875,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,876,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_001,886,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_001,889,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,903,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_001,917,lost_building,P2,P2 Clockwork lost a Engine Hall to P1 Clockwork (stormcaller)
+clockwork-clockwork_001,941,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,953,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,963,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,966,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,972,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,973,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (bulwark)
+clockwork-clockwork_001,979,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_001,982,lost_building,P2,P2 Clockwork lost a Capacitor Works to P1 Clockwork (thresher)
+clockwork-clockwork_001,985,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,986,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,992,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,993,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_001,999,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1002,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1003,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1005,lost_building,P2,P2 Clockwork lost a Charging Pylon to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1008,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1010,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1020,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (tesla_cart)
+clockwork-clockwork_001,1021,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1023,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1023,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,1027,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1030,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (stormcaller)
+clockwork-clockwork_001,1031,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1032,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (arc_thrower)
+clockwork-clockwork_001,1037,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1038,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_001,1038,out,P2,P2 Clockwork is out
+clockwork-clockwork_002,93,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,94,rush,P2,"P2 Clockwork scouted: rush (a Assembly Works already up at 1:34), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_002,96,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,218,attack,P1,"P1 Clockwork's first attack goes out (15 supply, 0 Horsemen)"
+clockwork-clockwork_002,225,attack,P2,"P2 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+clockwork-clockwork_002,247,rush,P1,"P1 Clockwork scouted: rush (early army (3 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_002,275,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 65%), 28 tiles from its main"
+clockwork-clockwork_002,289,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 62%), 24 tiles from its main"
+clockwork-clockwork_002,349,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_002,367,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_002,396,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,411,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,441,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,443,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_002,451,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,482,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_002,497,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_002,520,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_002,521,dropped_site,P2,P2 Clockwork dropped a Assembly Works: nobody was coming to start it (refunded)
+clockwork-clockwork_002,538,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_002,564,rush,P2,P2 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_002,619,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_002,674,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 33 tiles from its main"
+clockwork-clockwork_002,741,rush,P2,"P2 Clockwork saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+clockwork-clockwork_002,755,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_002,827,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,871,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,872,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_002,898,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (arc_thrower)
+clockwork-clockwork_002,917,lost_building,P2,P2 Clockwork lost a Engine Hall to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,932,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_002,936,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,947,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,960,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,968,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_002,983,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,989,lost_building,P2,P2 Clockwork lost a Capacitor Works to P1 Clockwork (arc_thrower)
+clockwork-clockwork_002,1009,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (arc_thrower)
+clockwork-clockwork_002,1010,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_002,1020,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1030,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1033,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (arc_thrower)
+clockwork-clockwork_002,1042,lost_building,P2,P2 Clockwork lost a Charging Pylon to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1045,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (bulwark)
+clockwork-clockwork_002,1053,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,1061,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1064,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1072,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1075,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (arc_thrower)
+clockwork-clockwork_002,1083,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1085,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1090,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_002,1092,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1094,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (ornithopter)
+clockwork-clockwork_002,1096,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1101,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_002,1101,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1106,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_002,1106,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (arc_thrower)
+clockwork-clockwork_002,1110,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (bulwark)
+clockwork-clockwork_002,1110,out,P2,P2 Clockwork is out
+clockwork-clockwork_003,89,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,90,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,91,rush,P1,"P1 Clockwork scouted: rush (a Assembly Works already up at 1:31), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_003,93,rush,P2,"P2 Clockwork scouted: rush (a Assembly Works already up at 1:33), switching to a defensive build: army and production first, then a counter-attack"
+clockwork-clockwork_003,222,attack,P1,"P1 Clockwork's first attack goes out (24 supply, 0 Horsemen)"
+clockwork-clockwork_003,240,attack,P2,"P2 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+clockwork-clockwork_003,278,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 23 tiles from its main"
+clockwork-clockwork_003,289,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 63%), 23 tiles from its main"
+clockwork-clockwork_003,352,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_003,365,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_003,397,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,414,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,432,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,449,rush,P2,P2 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,480,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_003,496,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+clockwork-clockwork_003,500,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_003,521,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+clockwork-clockwork_003,570,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_003,595,rush,P2,P2 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+clockwork-clockwork_003,620,rush,P1,"P1 Clockwork saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+clockwork-clockwork_003,644,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_003,682,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+clockwork-clockwork_003,729,lost_building,P2,P2 Clockwork lost a Engine Hall to P1 Clockwork (bulwark)
+clockwork-clockwork_003,783,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,814,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (thresher)
+clockwork-clockwork_003,820,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,827,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,854,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (thresher)
+clockwork-clockwork_003,893,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,895,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (thresher)
+clockwork-clockwork_003,900,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,921,lost_building,P2,P2 Clockwork lost a Capacitor Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,922,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1016,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 60%), 35 tiles from its main"
+clockwork-clockwork_003,1074,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1080,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1096,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+clockwork-clockwork_003,1119,lost_building,P2,P2 Clockwork lost a Charging Pylon to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1121,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1123,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1135,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1137,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1141,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1143,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1150,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,1159,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1165,lost_building,P2,P2 Clockwork lost a Boiler to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1177,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1183,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1187,rush,P1,P1 Clockwork finished a Ore Crusher
+clockwork-clockwork_003,1192,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+clockwork-clockwork_003,1196,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Clockwork (windup_soldier)
+crown-brood_000,0,rush,P1,P1 Crown opens with a Horse Breeder (Horseman rush)
+crown-brood_000,22,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-brood_000,36,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-brood_000,51,rush,P1,"P1 Crown scouted: rush (a Spawning Den already up at 0:51), switching to a defensive build: army and walls first, then a counter-attack"
+crown-brood_000,170,rush,P1,P1 Crown's rush: goes out (2 Horsemen together)
+crown-brood_000,184,rush,P2,"P2 Brood saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-brood_000,184,rush,P2,"P2 Brood saw Horsemen: Raptors do little against them, so it keeps its army at home and builds Spitters and Brutes"
+crown-brood_000,186,rush,P2,"P2 Brood scouted: rush (2 fast Horseman seen at 3:04), switching to a defensive build: army and production first, then a counter-attack"
+crown-brood_000,192,rush,P1,"P1 Crown saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+crown-brood_000,203,rush,P1,"P1 Crown's rush: SUCCEEDED, mop-up: the riders regroup at home; a force of 12+ supply goes out as one group"
+crown-brood_000,236,attack,P1,"P1 Crown's first attack goes out (12 supply, 4 Horsemen)"
+crown-brood_000,301,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (cuirassier)
+crown-brood_000,336,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (cuirassier)
+crown-brood_000,344,rush,P2,"P2 Brood saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-brood_000,348,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (cuirassier)
+crown-brood_000,381,lost_building,P2,P2 Brood lost a Burrow to P1 Crown (cuirassier)
+crown-brood_000,388,lost_building,P2,P2 Brood lost a Spawning Den to P1 Crown (musketeer)
+crown-brood_001,23,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-brood_001,37,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-brood_001,65,rush,P2,"P2 Crown scouted: rush (a Spawning Den already up at 1:05), switching to a defensive build: army and walls first, then a counter-attack"
+crown-brood_001,121,rush,P1,"P1 Brood saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-brood_001,264,rush,P1,"P1 Brood scouted: rush (early army (7 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+crown-brood_001,316,rush,P2,"P2 Crown saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+crown-brood_001,413,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-brood_001,414,refit,P2,P2 Crown auto-refit: 5 upgrades ordered
+crown-brood_001,414,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-brood_001,418,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,424,refit,P2,P2 Crown auto-refit: 6 upgrades ordered
+crown-brood_001,449,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-brood_001,453,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,454,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-brood_001,454,refit,P2,P2 Crown sent 4 soldiers back to refit
+crown-brood_001,464,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 49%), 20 tiles from its main"
+crown-brood_001,494,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-brood_001,505,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-brood_001,509,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-brood_001,509,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,511,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-brood_001,527,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,555,attack,P2,"P2 Crown's first attack goes out (16 supply, 1 Horsemen)"
+crown-brood_001,563,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,572,rush,P1,"P1 Brood saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-brood_001,573,rush,P1,"P1 Brood saw Horsemen: Raptors do little against them, so it keeps its army at home and builds Spitters and Brutes"
+crown-brood_001,575,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,598,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,600,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_001,612,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-brood_001,612,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_001,613,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-brood_001,620,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_001,626,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,652,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_001,653,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,654,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,655,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,655,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,656,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,657,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,658,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,660,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,660,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,661,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,663,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,664,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,665,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,666,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,668,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,669,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,670,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,671,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,672,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,673,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,674,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,676,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,681,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,682,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,684,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,685,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,686,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_001,687,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,688,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,689,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,690,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,692,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,694,expand,P1,P1 Brood finished a Burrow (expansion)
+crown-brood_001,695,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,706,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,713,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_001,719,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,723,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_001,734,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-brood_001,734,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_001,736,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_001,738,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_001,753,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_001,757,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_001,768,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_001,773,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_001,784,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,792,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_001,797,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-brood_001,798,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,800,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (cuirassier)
+crown-brood_001,804,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_001,814,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,820,lost_building,P1,P1 Brood lost a Spawning Den to P2 Crown (musketeer)
+crown-brood_001,823,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,830,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,831,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-brood_001,838,lost_building,P1,P1 Brood lost a Warren to P2 Crown (musketeer)
+crown-brood_001,838,capital,P1,P1 Brood: the capital fell; the next Burrow is the new capital
+crown-brood_001,839,lost_building,P1,P1 Brood lost a Brood Pen to P2 Crown (musketeer)
+crown-brood_001,844,lost_building,P1,P1 Brood lost a Burrow to P2 Crown (musketeer)
+crown-brood_001,849,lost_building,P1,P1 Brood lost a Roost to P2 Crown (musketeer)
+crown-brood_001,856,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_001,857,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_001,858,lost_building,P1,P1 Brood lost a Brood Pen to P2 Crown (cuirassier)
+crown-brood_001,860,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (cuirassier)
+crown-brood_001,864,lost_building,P1,P1 Brood lost a Gorge Pit to P2 Crown (musketeer)
+crown-brood_001,864,out,P1,P1 Brood is out
+crown-brood_002,0,rush,P1,P1 Crown opens with a Horse Breeder (Horseman rush)
+crown-brood_002,23,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-brood_002,37,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-brood_002,63,rush,P1,"P1 Crown scouted: rush (a Spawning Den already up at 1:03), switching to a defensive build: army and walls first, then a counter-attack"
+crown-brood_002,120,rush,P2,"P2 Brood saw an enemy Officer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-brood_002,167,rush,P2,"P2 Brood saw Horsemen: Raptors do little against them, so it keeps its army at home and builds Spitters and Brutes"
+crown-brood_002,167,rush,P2,"P2 Brood saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-brood_002,170,rush,P1,P1 Crown's rush: goes out (2 Horsemen together)
+crown-brood_002,190,rush,P1,"P1 Crown saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+crown-brood_002,212,rush,P1,"P1 Crown's rush: FAILED (the raiding party was cut down): the riders ride home, no more go out alone; it builds up and attacks only with a proper force"
+crown-brood_002,253,rush,P2,"P2 Brood scouted: rush (3 fast Horseman seen at 2:47), switching to a defensive build: army and production first, then a counter-attack"
+crown-brood_002,304,attack,P1,"P1 Crown's first attack goes out (18 supply, 6 Horsemen)"
+crown-brood_002,331,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_002,333,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_002,334,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_002,437,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 62%), 28 tiles from its main"
+crown-brood_002,472,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-brood_002,508,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (cuirassier)
+crown-brood_002,537,dropped_site,P2,P2 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_002,709,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,734,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-brood_002,734,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-brood_002,759,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-brood_002,761,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,793,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,796,refit,P1,P1 Crown auto-refit: 6 upgrades ordered
+crown-brood_002,797,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-brood_002,798,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-brood_002,799,refit,P1,P1 Crown auto-refit: 6 upgrades ordered
+crown-brood_002,808,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-brood_002,809,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,813,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,824,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,857,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-brood_002,857,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-brood_002,857,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-brood_002,861,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-brood_002,863,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,866,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-brood_002,868,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-brood_002,872,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-brood_002,877,refit,P1,P1 Crown auto-refit: 4 upgrades ordered
+crown-brood_002,882,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,891,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-brood_002,894,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,896,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,913,refit,P1,P1 Crown auto-refit: 4 upgrades ordered
+crown-brood_002,915,expand,P2,P2 Brood finished a Burrow (expansion)
+crown-brood_002,928,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,953,soil,P2,P2 Brood: the ground around a Warren is running low (under 25%)
+crown-brood_002,957,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,958,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-brood_002,959,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,968,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,973,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,977,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-brood_002,978,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Crown (musketeer)
+crown-brood_002,984,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Crown (musketeer)
+crown-brood_002,987,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,995,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,1000,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Crown (musketeer)
+crown-brood_002,1002,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-brood_002,1006,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (musketeer)
+crown-brood_002,1012,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,1013,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Crown (musketeer)
+crown-brood_002,1020,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (musketeer)
+crown-brood_002,1024,refit,P1,P1 Crown auto-refit: 4 upgrades ordered
+crown-brood_002,1030,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Crown (musketeer)
+crown-brood_002,1037,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,1038,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,1042,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (musketeer)
+crown-brood_002,1046,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 58%), 20 tiles from its main"
+crown-brood_002,1052,lost_building,P2,P2 Brood lost a Spawning Den to P1 Crown (musketeer)
+crown-brood_002,1052,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (musketeer)
+crown-brood_002,1055,lost_building,P2,P2 Brood lost a Brood Pen to P1 Crown (musketeer)
+crown-brood_002,1068,lost_building,P2,P2 Brood lost a Warren to P1 Crown (musketeer)
+crown-brood_002,1068,capital,P2,P2 Brood: the capital fell; the next Burrow is the new capital
+crown-brood_002,1069,lost_building,P2,P2 Brood lost a Feeding Pit to P1 Crown (musketeer)
+crown-brood_002,1070,lost_building,P2,P2 Brood lost a Gorge Pit to P1 Crown (musketeer)
+crown-brood_002,1070,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,1075,lost_building,P2,P2 Brood lost a Roost to P1 Crown (musketeer)
+crown-brood_002,1078,lost_building,P2,P2 Brood lost a Brood Pen to P1 Crown (musketeer)
+crown-brood_002,1081,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-brood_002,1083,lost_building,P2,P2 Brood lost a Burrow to P1 Crown (musketeer)
+crown-brood_002,1091,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,1101,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-brood_002,1105,lost_building,P2,P2 Brood lost a Clutch Mound to P1 Crown (cuirassier)
+crown-brood_002,1105,out,P2,P2 Brood is out
+crown-brood_003,23,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-brood_003,36,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-brood_003,62,rush,P2,"P2 Crown scouted: rush (a Spawning Den already up at 1:02), switching to a defensive build: army and walls first, then a counter-attack"
+crown-brood_003,198,rush,P1,"P1 Brood saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-brood_003,200,rush,P1,"P1 Brood scouted: rush (early army (5 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+crown-brood_003,324,rush,P1,"P1 Brood saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-brood_003,324,rush,P1,"P1 Brood saw Horsemen: Raptors do little against them, so it keeps its army at home and builds Spitters and Brutes"
+crown-brood_003,327,rush,P2,"P2 Crown saw an enemy Raptors (fast, a Brood rush unit): evidence of a rush"
+crown-brood_003,354,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-brood_003,363,refit,P2,P2 Crown sent 5 soldiers back to refit
+crown-brood_003,374,refit,P2,P2 Crown auto-refit: 9 upgrades ordered
+crown-brood_003,378,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,413,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-brood_003,414,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_003,434,refit,P2,P2 Crown sent 5 soldiers back to refit
+crown-brood_003,510,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 45%), 23 tiles from its main"
+crown-brood_003,542,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-brood_003,557,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_003,571,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,580,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_003,602,attack,P2,"P2 Crown's first attack goes out (18 supply, 1 Horsemen)"
+crown-brood_003,621,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,623,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,625,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,626,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,630,expand,P1,P1 Brood finished a Burrow (expansion)
+crown-brood_003,635,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,635,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-brood_003,635,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-brood_003,653,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_003,659,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_003,667,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_003,668,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_003,669,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,669,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_003,671,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,673,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,674,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,676,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,677,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,679,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,679,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,680,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_003,681,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,681,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,682,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,682,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,683,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,684,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,685,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,685,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,685,dropped_site,P1,P1 Brood dropped a Clutch Mound: nobody was coming to start it (refunded)
+crown-brood_003,687,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_003,688,expand,P1,P1 Brood finished a Burrow (expansion)
+crown-brood_003,688,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,691,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,692,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,700,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_003,708,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,716,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-brood_003,720,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,723,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,727,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,727,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,730,lost_building,P1,P1 Brood lost a Clutch Mound to P2 Crown (musketeer)
+crown-brood_003,731,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,731,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,755,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-brood_003,760,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,765,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,767,dropped_site,P1,P1 Brood dropped a Feeding Pit: nobody was coming to start it (refunded)
+crown-brood_003,777,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-brood_003,787,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,795,soil,P1,P1 Brood: the ground around a Warren is running low (under 25%)
+crown-brood_003,809,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-brood_003,814,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,820,lost_building,P1,P1 Brood lost a Burrow to P2 Crown (musketeer)
+crown-brood_003,832,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-brood_003,834,lost_building,P1,P1 Brood lost a Brood Pen to P2 Crown (cuirassier)
+crown-brood_003,841,lost_building,P1,P1 Brood lost a Burrow to P2 Crown (musketeer)
+crown-brood_003,847,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_003,849,lost_building,P1,P1 Brood lost a Spawning Den to P2 Crown (musketeer)
+crown-brood_003,857,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-brood_003,858,lost_building,P1,P1 Brood lost a Warren to P2 Crown (musketeer)
+crown-brood_003,859,lost_building,P1,P1 Brood lost a Brood Pen to P2 Crown (musketeer)
+crown-brood_003,864,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_003,868,refit,P2,P2 Crown auto-refit: 13 upgrades ordered
+crown-brood_003,871,lost_building,P1,P1 Brood lost a Roost to P2 Crown (musketeer)
+crown-brood_003,872,lost_building,P1,P1 Brood lost a Gorge Pit to P2 Crown (musketeer)
+crown-brood_003,873,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-brood_003,874,lost_building,P1,P1 Brood lost a Brood Pen to P2 Crown (cuirassier)
+crown-brood_003,875,lost_building,P1,P1 Brood lost a Feeding Pit to P2 Crown (musketeer)
+crown-brood_003,876,out,P1,P1 Brood is out
+crown-clockwork_000,0,rush,P1,P1 Crown opens with a Horse Breeder (Horseman rush)
+crown-clockwork_000,22,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-clockwork_000,36,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-clockwork_000,92,rush,P2,P2 Clockwork finished a Ore Crusher
+crown-clockwork_000,99,rush,P1,"P1 Crown scouted: rush (a Assembly Works already up at 1:39), switching to a defensive build: army and walls first, then a counter-attack"
+crown-clockwork_000,120,rush,P2,"P2 Clockwork saw an enemy Officer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-clockwork_000,195,rush,P1,P1 Crown's rush: goes out (2 Horsemen together)
+crown-clockwork_000,212,rush,P2,"P2 Clockwork saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-clockwork_000,213,rush,P1,"P1 Crown's rush: FAILED (the defenders are worth more than the riders): the riders ride home, no more go out alone; it builds up and attacks only with a proper force"
+crown-clockwork_000,221,attack,P2,"P2 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+crown-clockwork_000,255,rush,P2,"P2 Clockwork scouted: rush (4 fast Horseman seen at 3:32), switching to a defensive build: army and production first, then a counter-attack"
+crown-clockwork_000,279,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 63%), 24 tiles from its main"
+crown-clockwork_000,303,attack,P1,"P1 Crown's first attack goes out (19 supply, 6 Horsemen)"
+crown-clockwork_000,360,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+crown-clockwork_000,401,rush,P2,P2 Clockwork finished a Ore Crusher
+crown-clockwork_000,443,rush,P2,P2 Clockwork finished a Ore Crusher
+crown-clockwork_000,462,dropped_site,P2,P2 Clockwork couldn't start a Engine Hall: the spot was blocked (refunded)
+crown-clockwork_000,475,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 58%), 28 tiles from its main"
+crown-clockwork_000,491,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+crown-clockwork_000,507,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+crown-clockwork_000,508,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-clockwork_000,574,rush,P2,P2 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+crown-clockwork_000,612,lost_building,P1,P1 Crown lost a Town Hall to P2 Clockwork (windup_soldier)
+crown-clockwork_000,627,rush,P1,"P1 Crown saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+crown-clockwork_000,643,lost_building,P1,P1 Crown lost a Gate to P2 Clockwork (arc_thrower)
+crown-clockwork_000,654,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+crown-clockwork_000,657,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 32%), 20 tiles from its main"
+crown-clockwork_000,658,dropped_site,P1,P1 Crown dropped a Town Hall: nobody was coming to start it (refunded)
+crown-clockwork_000,659,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 32%), 28 tiles from its main"
+crown-clockwork_000,671,lost_building,P1,P1 Crown lost a Cottage to P2 Clockwork (thresher)
+crown-clockwork_000,715,lost_building,P1,P1 Crown lost a Town Hall (unfinished) to P2 Clockwork (windup_soldier)
+crown-clockwork_000,721,lost_building,P1,P1 Crown lost a Farm to P2 Clockwork (bulwark)
+crown-clockwork_000,737,lost_building,P1,P1 Crown lost a Horse Breeder to P2 Clockwork (windup_soldier)
+crown-clockwork_000,742,lost_building,P1,P1 Crown lost a Farm (unfinished) to P2 Clockwork (arc_thrower)
+crown-clockwork_000,752,lost_building,P1,P1 Crown lost a Powder Mill (unfinished) to P2 Clockwork (windup_soldier)
+crown-clockwork_000,766,lost_building,P1,P1 Crown lost a Farm to P2 Clockwork (windup_soldier)
+crown-clockwork_000,775,lost_building,P1,P1 Crown lost a Town Hall to P2 Clockwork (windup_soldier)
+crown-clockwork_000,780,lost_building,P1,P1 Crown lost a Powder Mill to P2 Clockwork (windup_soldier)
+crown-clockwork_000,783,lost_building,P1,P1 Crown lost a Armoury to P2 Clockwork (bulwark)
+crown-clockwork_000,786,lost_building,P1,P1 Crown lost a Barracks to P2 Clockwork (windup_soldier)
+crown-clockwork_000,790,lost_building,P1,P1 Crown lost a Barracks to P2 Clockwork (windup_soldier)
+crown-clockwork_000,791,lost_building,P1,P1 Crown lost a Cottage to P2 Clockwork (windup_soldier)
+crown-clockwork_000,800,lost_building,P1,P1 Crown lost a Cottage to P2 Clockwork (arc_thrower)
+crown-clockwork_000,802,lost_building,P1,P1 Crown lost a Barracks to P2 Clockwork (arc_thrower)
+crown-clockwork_000,807,lost_building,P1,P1 Crown lost a Cottage to P2 Clockwork (windup_soldier)
+crown-clockwork_000,815,lost_building,P1,P1 Crown lost a Church to P2 Clockwork (windup_soldier)
+crown-clockwork_000,819,lost_building,P1,P1 Crown lost a Foundry to P2 Clockwork (windup_soldier)
+crown-clockwork_000,823,lost_building,P1,P1 Crown lost a Cottage to P2 Clockwork (bulwark)
+crown-clockwork_000,831,lost_building,P1,P1 Crown lost a Cottage to P2 Clockwork (arc_thrower)
+crown-clockwork_000,832,out,P1,P1 Crown is out
+crown-clockwork_001,23,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-clockwork_001,37,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-clockwork_001,92,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_001,96,rush,P2,"P2 Crown scouted: rush (a Assembly Works already up at 1:36), switching to a defensive build: army and walls first, then a counter-attack"
+crown-clockwork_001,121,rush,P1,"P1 Clockwork saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-clockwork_001,217,attack,P1,"P1 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+crown-clockwork_001,269,rush,P1,"P1 Clockwork scouted: rush (early army (8 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+crown-clockwork_001,286,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 62%), 24 tiles from its main"
+crown-clockwork_001,357,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+crown-clockwork_001,396,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_001,405,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,410,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-clockwork_001,411,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_001,432,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_001,443,rush,P1,"P1 Clockwork saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-clockwork_001,451,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,464,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_001,466,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_001,468,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_001,470,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-clockwork_001,471,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_001,477,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 49%), 20 tiles from its main"
+crown-clockwork_001,486,rush,P2,"P2 Crown saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+crown-clockwork_001,502,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+crown-clockwork_001,507,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-clockwork_001,514,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-clockwork_001,528,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-clockwork_001,544,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+crown-clockwork_001,551,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,566,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-clockwork_001,567,refit,P2,P2 Crown auto-refit: 5 upgrades ordered
+crown-clockwork_001,575,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_001,584,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,610,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-clockwork_001,611,attack,P2,"P2 Crown's first attack goes out (16 supply, 1 Horsemen)"
+crown-clockwork_001,615,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-clockwork_001,616,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 65%), 47 tiles from its main"
+crown-clockwork_001,619,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+crown-clockwork_001,622,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,637,lost_building,P2,P2 Crown lost a Farm to P1 Clockwork (arc_thrower)
+crown-clockwork_001,687,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,693,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,703,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+crown-clockwork_001,720,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_001,728,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,735,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-clockwork_001,737,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,741,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,742,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,745,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,761,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,762,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+crown-clockwork_001,765,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,765,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_001,789,lost_building,P2,P2 Crown lost a Farm to P1 Clockwork (arc_thrower)
+crown-clockwork_001,801,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-clockwork_001,805,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,808,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,809,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,811,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,812,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,814,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,815,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,816,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,817,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,819,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,820,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-clockwork_001,821,lost_building,P2,P2 Crown lost a Barracks to P1 Clockwork (arc_thrower)
+crown-clockwork_001,824,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_001,826,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,835,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_001,849,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+crown-clockwork_001,880,lost_building,P2,P2 Crown lost a Town Hall to P1 Clockwork (stormcaller)
+crown-clockwork_001,891,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+crown-clockwork_001,892,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+crown-clockwork_001,899,lost_building,P2,P2 Crown lost a Gate to P1 Clockwork (arc_thrower)
+crown-clockwork_001,912,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (arc_thrower)
+crown-clockwork_001,916,lost_building,P2,P2 Crown lost a Farm to P1 Clockwork (steam_walker)
+crown-clockwork_001,919,lost_building,P2,P2 Crown lost a Powder Mill to P1 Clockwork (arc_thrower)
+crown-clockwork_001,936,lost_building,P2,P2 Crown lost a Church to P1 Clockwork (arc_thrower)
+crown-clockwork_001,943,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (thresher)
+crown-clockwork_001,968,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-clockwork_001,990,lost_building,P2,P2 Crown lost a Armoury to P1 Clockwork (windup_soldier)
+crown-clockwork_001,992,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (arc_thrower)
+crown-clockwork_001,995,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1005,lost_building,P2,P2 Crown lost a Barracks to P1 Clockwork (ornithopter)
+crown-clockwork_001,1030,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+crown-clockwork_001,1098,lost_building,P2,P2 Crown lost a Foundry to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1105,lost_building,P2,P2 Crown lost a Town Hall to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1108,lost_building,P2,P2 Crown lost a Farm to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1118,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1126,lost_building,P2,P2 Crown lost a Farm to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1128,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1139,lost_building,P2,P2 Crown lost a Barracks to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1146,lost_building,P2,P2 Crown lost a Horse Breeder to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1154,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1159,lost_building,P2,P2 Crown lost a Powder Mill to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1165,lost_building,P2,P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+crown-clockwork_001,1166,out,P2,P2 Crown is out
+crown-clockwork_002,23,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-clockwork_002,37,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-clockwork_002,93,rush,P2,P2 Clockwork finished a Ore Crusher
+crown-clockwork_002,121,rush,P2,"P2 Clockwork saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-clockwork_002,220,attack,P2,"P2 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+crown-clockwork_002,261,rush,P2,"P2 Clockwork scouted: rush (early army (6 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+crown-clockwork_002,285,expand,P2,"P2 Clockwork is expanding to fresh ore (left at its best hall: 62%), 24 tiles from its main"
+crown-clockwork_002,294,rush,P1,"P1 Crown scouted: rush (early army (11 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack"
+crown-clockwork_002,305,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_002,305,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-clockwork_002,319,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 62%), 28 tiles from its main"
+crown-clockwork_002,349,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-clockwork_002,361,expand,P2,P2 Clockwork finished a Clocktower (expansion)
+crown-clockwork_002,402,rush,P2,P2 Clockwork finished a Ore Crusher
+crown-clockwork_002,438,refit,P1,P1 Crown auto-refit: 4 upgrades ordered
+crown-clockwork_002,440,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-clockwork_002,441,rush,P2,P2 Clockwork finished a Ore Crusher
+crown-clockwork_002,448,rush,P2,"P2 Clockwork saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-clockwork_002,478,dropped_site,P2,P2 Clockwork couldn't start a Engine Hall: the spot was blocked (refunded)
+crown-clockwork_002,481,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-clockwork_002,484,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,486,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,487,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-clockwork_002,487,soil,P2,P2 Clockwork: the ore at a Clocktower is running low (under 25%)
+crown-clockwork_002,490,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,501,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+crown-clockwork_002,509,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,513,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-clockwork_002,513,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,522,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,524,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-clockwork_002,527,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,534,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,537,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,540,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,548,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_002,554,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-clockwork_002,565,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,565,refit,P1,P1 Crown sent 4 soldiers back to refit
+crown-clockwork_002,581,rush,P2,P2 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+crown-clockwork_002,596,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,600,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-clockwork_002,602,attack,P1,"P1 Crown's first attack goes out (22 supply, 1 Horsemen)"
+crown-clockwork_002,615,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,617,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,638,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,641,soil,P2,P2 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+crown-clockwork_002,645,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,648,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-clockwork_002,692,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_002,706,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,731,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_002,735,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,751,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,758,rush,P1,"P1 Crown saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+crown-clockwork_002,775,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 49%), 20 tiles from its main"
+crown-clockwork_002,797,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,808,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-clockwork_002,810,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-clockwork_002,811,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-clockwork_002,815,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-clockwork_002,831,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,841,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,851,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-clockwork_002,855,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,888,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,891,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-clockwork_002,895,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-clockwork_002,895,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,946,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-clockwork_002,970,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-clockwork_002,974,soil,P1,P1 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-clockwork_002,975,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Crown (musketeer)
+crown-clockwork_002,981,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,984,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Crown (cuirassier)
+crown-clockwork_002,986,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-clockwork_002,995,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Crown (musketeer)
+crown-clockwork_002,1000,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Crown (musketeer)
+crown-clockwork_002,1001,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Crown (musketeer)
+crown-clockwork_002,1003,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_002,1015,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-clockwork_002,1021,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1021,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,1025,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1033,lost_building,P2,P2 Clockwork lost a Boiler to P1 Crown (musketeer)
+crown-clockwork_002,1034,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_002,1037,lost_building,P2,P2 Clockwork lost a Capacitor Works to P1 Crown (musketeer)
+crown-clockwork_002,1040,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Crown (musketeer)
+crown-clockwork_002,1048,lost_building,P2,P2 Clockwork lost a Engine Hall to P1 Crown (musketeer)
+crown-clockwork_002,1048,lost_building,P2,P2 Clockwork lost a Clocktower to P1 Crown (musketeer)
+crown-clockwork_002,1049,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-clockwork_002,1050,lost_building,P2,P2 Clockwork lost a Boiler to P1 Crown (musketeer)
+crown-clockwork_002,1052,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (cuirassier)
+crown-clockwork_002,1060,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1060,lost_building,P2,P2 Clockwork lost a Assembly Works to P1 Crown (musketeer)
+crown-clockwork_002,1061,lost_building,P2,P2 Clockwork lost a Boiler to P1 Crown (cuirassier)
+crown-clockwork_002,1065,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_002,1066,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1068,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1069,lost_building,P2,P2 Clockwork lost a Boiler to P1 Crown (musketeer)
+crown-clockwork_002,1072,lost_building,P2,P2 Clockwork lost a Charging Pylon to P1 Crown (musketeer)
+crown-clockwork_002,1072,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Crown (musketeer)
+crown-clockwork_002,1073,rush,P2,P2 Clockwork lost a Ore Crusher to P1 Crown (musketeer)
+crown-clockwork_002,1074,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1076,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1080,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (cuirassier)
+crown-clockwork_002,1082,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1083,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1085,lost_building,P2,P2 Clockwork lost a Spring Tower to P1 Crown (musketeer)
+crown-clockwork_002,1086,out,P2,P2 Clockwork is out
+crown-clockwork_003,23,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-clockwork_003,36,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-clockwork_003,89,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_003,123,rush,P1,"P1 Clockwork saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-clockwork_003,213,attack,P1,"P1 Clockwork's first attack goes out (18 supply, 0 Horsemen)"
+crown-clockwork_003,255,rush,P1,"P1 Clockwork saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-clockwork_003,257,rush,P2,"P2 Crown scouted: rush (early army (10 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack"
+crown-clockwork_003,268,rush,P1,"P1 Clockwork scouted: rush (early army (7 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack"
+crown-clockwork_003,275,expand,P1,"P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 23 tiles from its main"
+crown-clockwork_003,313,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_003,333,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-clockwork_003,340,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_003,341,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_003,344,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-clockwork_003,346,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_003,348,expand,P1,P1 Clockwork finished a Clocktower (expansion)
+crown-clockwork_003,349,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_003,351,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-clockwork_003,389,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_003,402,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 49%), 23 tiles from its main"
+crown-clockwork_003,428,rush,P1,P1 Clockwork finished a Ore Crusher
+crown-clockwork_003,436,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-clockwork_003,459,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-clockwork_003,470,soil,P1,P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+crown-clockwork_003,482,refit,P2,P2 Crown sent 4 soldiers back to refit
+crown-clockwork_003,487,dropped_site,P2,P2 Crown couldn't start a Barracks: the spot was blocked (refunded)
+crown-clockwork_003,490,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+crown-clockwork_003,522,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-clockwork_003,560,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-clockwork_003,561,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_003,561,rush,P1,P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+crown-clockwork_003,628,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,630,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,634,soil,P1,P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+crown-clockwork_003,647,dropped_site,P2,P2 Crown dropped a Barracks: nobody was coming to start it (refunded)
+crown-clockwork_003,655,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,660,refit,P2,P2 Crown auto-refit: 6 upgrades ordered
+crown-clockwork_003,682,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-clockwork_003,717,attack,P2,"P2 Crown's first attack goes out (21 supply, 1 Horsemen)"
+crown-clockwork_003,769,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,772,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-clockwork_003,787,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-clockwork_003,815,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,827,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-clockwork_003,892,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 49%), 15 tiles from its main"
+crown-clockwork_003,910,rush,P2,"P2 Crown saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush"
+crown-clockwork_003,918,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-clockwork_003,939,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-clockwork_003,947,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_003,987,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,991,lost_building,P1,P1 Clockwork lost a Engine Hall to P2 Crown (musketeer)
+crown-clockwork_003,1009,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1012,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-clockwork_003,1013,lost_building,P2,P2 Crown lost a Powder Mill to P1 Clockwork
+crown-clockwork_003,1013,pulled_down,P2,P2 Crown pulled down a Powder Mill by spent saltpetre (fresh saltpetre by another hall)
+crown-clockwork_003,1020,rush,P1,P1 Clockwork lost a Ore Crusher to P2 Crown (musketeer)
+crown-clockwork_003,1028,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1035,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1038,lost_building,P1,P1 Clockwork lost a Clocktower to P2 Crown (musketeer)
+crown-clockwork_003,1046,lost_building,P1,P1 Clockwork lost a Assembly Works to P2 Crown (musketeer)
+crown-clockwork_003,1049,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1053,rush,P1,P1 Clockwork lost a Ore Crusher to P2 Crown (musketeer)
+crown-clockwork_003,1060,lost_building,P1,P1 Clockwork lost a Assembly Works to P2 Crown (cuirassier)
+crown-clockwork_003,1064,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-clockwork_003,1070,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1074,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1075,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1084,lost_building,P1,P1 Clockwork lost a Capacitor Works to P2 Crown (cuirassier)
+crown-clockwork_003,1084,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (cuirassier)
+crown-clockwork_003,1087,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1092,lost_building,P1,P1 Clockwork lost a Boiler to P2 Crown (musketeer)
+crown-clockwork_003,1096,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1100,lost_building,P1,P1 Clockwork lost a Assembly Works to P2 Crown (musketeer)
+crown-clockwork_003,1101,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_003,1104,lost_building,P1,P1 Clockwork lost a Boiler to P2 Crown (musketeer)
+crown-clockwork_003,1111,lost_building,P1,P1 Clockwork lost a Charging Pylon to P2 Crown (musketeer)
+crown-clockwork_003,1112,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1113,lost_building,P1,P1 Clockwork lost a Clocktower to P2 Crown (musketeer)
+crown-clockwork_003,1121,rush,P1,P1 Clockwork lost a Ore Crusher to P2 Crown (musketeer)
+crown-clockwork_003,1121,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1128,lost_building,P1,P1 Clockwork lost a Assembly Works to P2 Crown (musketeer)
+crown-clockwork_003,1129,lost_building,P1,P1 Clockwork lost a Boiler to P2 Crown (cuirassier)
+crown-clockwork_003,1131,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1132,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-clockwork_003,1132,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-clockwork_003,1137,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1138,rush,P1,P1 Clockwork lost a Ore Crusher to P2 Crown (cuirassier)
+crown-clockwork_003,1139,lost_building,P1,P1 Clockwork lost a Boiler to P2 Crown (musketeer)
+crown-clockwork_003,1140,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1142,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1142,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-clockwork_003,1148,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1148,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1149,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (cuirassier)
+crown-clockwork_003,1154,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1154,lost_building,P1,P1 Clockwork lost a Spring Tower to P2 Crown (musketeer)
+crown-clockwork_003,1155,out,P1,P1 Clockwork is out
+crown-crown_000,0,rush,P1,P1 Crown opens with a Horse Breeder (Horseman rush)
+crown-crown_000,22,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_000,22,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_000,36,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_000,36,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_000,168,rush,P1,P1 Crown's rush: goes out (2 Horsemen together)
+crown-crown_000,183,rush,P2,"P2 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_000,183,rush,P2,"P2 Crown scouted: rush (2 fast Horseman seen at 3:03), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_000,184,rush,P1,"P1 Crown's rush: FAILED (the defenders are worth more than the riders): the riders ride home, no more go out alone; it builds up and attacks only with a proper force"
+crown-crown_000,184,rush,P1,"P1 Crown saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_000,208,rush,P1,"P1 Crown scouted: rush (early army (6 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_000,376,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,392,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,395,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,397,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,410,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,412,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_000,415,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_000,420,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,421,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_000,425,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,467,refit,P2,P2 Crown sent 4 soldiers back to refit
+crown-crown_000,481,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 54%), 24 tiles from its main"
+crown-crown_000,509,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_000,515,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_000,546,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_000,566,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 54%), 28 tiles from its main"
+crown-crown_000,575,attack,P2,"P2 Crown's first attack goes out (21 supply, 3 Horsemen)"
+crown-crown_000,591,rush,P1,"P1 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_000,592,rush,P2,"P2 Crown saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_000,610,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,613,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,636,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,640,lost_building,P1,P1 Crown lost a Town Hall (unfinished) to P2 Crown (musketeer)
+crown-crown_000,642,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_000,645,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,655,lost_building,P1,P1 Crown lost a Gate to P2 Crown (cuirassier)
+crown-crown_000,688,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_000,720,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-crown_000,723,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown (musketeer)
+crown-crown_000,734,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_000,746,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_000,750,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_000,753,lost_building,P1,P1 Crown lost a Horse Breeder to P2 Crown (musketeer)
+crown-crown_000,759,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_000,763,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-crown_000,764,lost_building,P1,P1 Crown lost a Church to P2 Crown (musketeer)
+crown-crown_000,765,refit,P2,P2 Crown auto-refit: 7 upgrades ordered
+crown-crown_000,765,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_000,766,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,770,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_000,772,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_000,776,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_000,778,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_000,781,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_000,783,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_000,784,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_000,795,lost_building,P1,P1 Crown lost a Foundry to P2 Crown (musketeer)
+crown-crown_000,798,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_000,799,lost_building,P1,P1 Crown lost a Armoury to P2 Crown (musketeer)
+crown-crown_000,802,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_000,803,out,P1,P1 Crown is out
+crown-crown_001,23,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_001,23,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_001,36,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_001,37,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_001,198,rush,P1,"P1 Crown saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_001,267,rush,P2,"P2 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_001,267,rush,P2,"P2 Crown scouted: rush (2 fast Horseman seen at 4:27), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_001,297,rush,P1,"P1 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_001,298,rush,P1,"P1 Crown scouted: rush (early army (9 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_001,307,dropped_site,P2,P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+crown-crown_001,336,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-crown_001,347,rush,P2,"P2 Crown saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_001,352,refit,P2,P2 Crown sent 4 soldiers back to refit
+crown-crown_001,357,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,378,refit,P2,P2 Crown auto-refit: 7 upgrades ordered
+crown-crown_001,402,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,418,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 54%), 24 tiles from its main"
+crown-crown_001,421,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_001,422,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_001,441,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 54%), 15 tiles from its main"
+crown-crown_001,450,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_001,480,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_001,482,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,505,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,505,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-crown_001,511,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_001,511,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_001,517,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,518,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,524,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_001,524,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,526,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,533,refit,P1,P1 Crown auto-refit: 6 upgrades ordered
+crown-crown_001,533,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_001,546,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,556,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_001,557,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,558,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,559,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,563,refit,P2,P2 Crown auto-refit: 9 upgrades ordered
+crown-crown_001,571,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,575,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-crown_001,577,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-crown_001,578,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,596,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,601,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_001,601,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_001,601,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_001,607,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,616,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_001,617,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_001,631,attack,P1,"P1 Crown's first attack goes out (19 supply, 1 Horsemen)"
+crown-crown_001,645,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,647,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,650,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,652,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_001,663,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,697,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,701,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,703,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,725,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,727,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_001,730,lost_building,P2,P2 Crown lost a Farm to P1 Crown (musketeer)
+crown-crown_001,732,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,733,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-crown_001,734,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-crown_001,737,attack,P2,"P2 Crown's first attack goes out (16 supply, 2 Horsemen)"
+crown-crown_001,740,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_001,740,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,742,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-crown_001,743,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-crown_001,747,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,752,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,755,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,755,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,759,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,763,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,765,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,769,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,772,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,777,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,778,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,780,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,781,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_001,793,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,797,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,824,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,841,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,842,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,854,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,854,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,857,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,859,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,876,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,880,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,881,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 54%), 20 tiles from its main"
+crown-crown_001,905,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_001,916,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_001,921,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,921,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_001,927,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,931,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,933,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_001,933,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_001,934,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,937,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,944,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,948,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_001,949,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,955,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,959,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,970,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,973,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_001,977,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,981,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,989,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1000,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1023,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1024,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_001,1024,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_001,1052,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,1055,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1059,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1065,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1081,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1084,lost_building,P2,P2 Crown lost a Farm to P1 Crown (musketeer)
+crown-crown_001,1095,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,1099,soil,P1,P1 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_001,1123,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1148,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1150,lost_building,P2,P2 Crown lost a Farm to P1 Crown (musketeer)
+crown-crown_001,1151,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_001,1154,lost_building,P2,P2 Crown lost a Town Hall to P1 Crown (musketeer)
+crown-crown_001,1154,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_001,1165,lost_building,P2,P2 Crown lost a Powder Mill to P1 Crown (musketeer)
+crown-crown_001,1173,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_001,1184,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1185,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1193,lost_building,P2,P2 Crown lost a Gate to P1 Crown (cuirassier)
+crown-crown_001,1220,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1223,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1224,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1224,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1229,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1231,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1233,lost_building,P2,P2 Crown lost a Church to P1 Crown (musketeer)
+crown-crown_001,1237,lost_building,P2,P2 Crown lost a Barracks to P1 Crown (musketeer)
+crown-crown_001,1238,lost_building,P2,P2 Crown lost a Barracks to P1 Crown (musketeer)
+crown-crown_001,1240,lost_building,P2,P2 Crown lost a Armoury to P1 Crown (musketeer)
+crown-crown_001,1245,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1252,lost_building,P2,P2 Crown lost a Powder Mill to P1 Crown (cuirassier)
+crown-crown_001,1253,lost_building,P2,P2 Crown lost a Town Hall to P1 Crown (musketeer)
+crown-crown_001,1254,lost_building,P2,P2 Crown lost a Foundry to P1 Crown (musketeer)
+crown-crown_001,1258,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_001,1260,lost_building,P2,P2 Crown lost a Farm to P1 Crown (musketeer)
+crown-crown_001,1261,lost_building,P2,P2 Crown lost a Barracks to P1 Crown (musketeer)
+crown-crown_001,1263,lost_building,P2,P2 Crown lost a Farm to P1 Crown (musketeer)
+crown-crown_001,1267,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1267,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 58%), 29 tiles from its main"
+crown-crown_001,1267,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (cuirassier)
+crown-crown_001,1269,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1270,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1271,lost_building,P2,P2 Crown lost a Horse Breeder to P1 Crown (musketeer)
+crown-crown_001,1272,lost_building,P2,P2 Crown lost a Barracks to P1 Crown (musketeer)
+crown-crown_001,1275,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1278,lost_building,P2,P2 Crown lost a Cottage to P1 Crown (musketeer)
+crown-crown_001,1279,out,P2,P2 Crown is out
+crown-crown_002,23,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_002,23,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_002,36,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_002,37,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_002,121,rush,P2,"P2 Crown saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_002,201,rush,P1,"P1 Crown saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_002,269,rush,P2,"P2 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_002,293,rush,P1,"P1 Crown scouted: rush (early army (3 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_002,318,rush,P2,"P2 Crown scouted: rush (early army (4 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_002,348,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_002,379,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-crown_002,388,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,414,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 58%), 28 tiles from its main"
+crown-crown_002,428,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,442,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 54%), 24 tiles from its main"
+crown-crown_002,445,refit,P1,P1 Crown auto-refit: 4 upgrades ordered
+crown-crown_002,450,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_002,464,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-crown_002,466,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_002,469,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,476,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_002,498,refit,P1,P1 Crown sent 5 soldiers back to refit
+crown-crown_002,510,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,514,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,533,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,537,attack,P2,"P2 Crown's first attack goes out (18 supply, 1 Horsemen)"
+crown-crown_002,543,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-crown_002,555,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_002,556,rush,P1,"P1 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_002,568,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,586,refit,P1,P1 Crown sent 4 soldiers back to refit
+crown-crown_002,588,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,595,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_002,597,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_002,600,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,608,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,627,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,633,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,642,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_002,647,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,668,refit,P1,P1 Crown sent 5 soldiers back to refit
+crown-crown_002,676,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,688,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,701,attack,P1,"P1 Crown's first attack goes out (16 supply, 1 Horsemen)"
+crown-crown_002,715,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_002,719,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,719,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_002,720,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,726,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,729,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-crown_002,729,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_002,745,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,763,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,763,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-crown_002,773,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_002,785,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,788,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-crown_002,812,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_002,818,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-crown_002,819,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,827,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,844,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,852,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_002,858,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-crown_002,858,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_002,865,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,868,refit,P2,P2 Crown auto-refit: 3 upgrades ordered
+crown-crown_002,881,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_002,881,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_002,883,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_002,890,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 49%), 20 tiles from its main"
+crown-crown_002,898,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 54%), 15 tiles from its main"
+crown-crown_002,923,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_002,924,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_002,932,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_002,934,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_002,939,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,963,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_002,979,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,987,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,994,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,995,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1009,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1025,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1028,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1047,soil,P1,P1 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_002,1048,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_002,1052,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_002,1052,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1065,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1068,refit,P2,P2 Crown auto-refit: 4 upgrades ordered
+crown-crown_002,1069,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1090,refit,P1,P1 Crown auto-refit: 4 upgrades ordered
+crown-crown_002,1098,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1105,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1114,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_002,1122,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1123,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1128,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1130,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1145,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1148,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1152,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1156,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_002,1160,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1172,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_002,1175,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1177,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_002,1180,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_002,1180,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_002,1195,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1201,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1203,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1204,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1207,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1209,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1214,dropped_site,P1,P1 Crown dropped a Cottage: nobody was coming to start it (refunded)
+crown-crown_002,1227,dropped_site,P1,P1 Crown couldn't start a Cottage: the spot was blocked (refunded)
+crown-crown_002,1229,refit,P1,P1 Crown sent 4 soldiers back to refit
+crown-crown_002,1239,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_002,1245,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1245,refit,P1,P1 Crown auto-refit: 4 upgrades ordered
+crown-crown_002,1254,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1262,refit,P2,P2 Crown auto-refit: 5 upgrades ordered
+crown-crown_002,1287,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 49%), 21 tiles from its main"
+crown-crown_002,1287,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 58%), 21 tiles from its main"
+crown-crown_002,1309,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1312,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_002,1316,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_002,1321,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1324,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_002,1325,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1327,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1328,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_002,1328,lost_building,P2,P2 Crown lost a Powder Mill to P1 Crown
+crown-crown_002,1328,pulled_down,P2,P2 Crown pulled down a Powder Mill by spent saltpetre (fresh saltpetre by another hall)
+crown-crown_002,1341,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_002,1347,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_002,1348,refit,P1,P1 Crown auto-refit: 5 upgrades ordered
+crown-crown_002,1364,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_002,1368,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 41%), 31 tiles from its main"
+crown-crown_002,1381,dropped_site,P1,P1 Crown couldn't start a Town Hall: the spot was blocked (refunded)
+crown-crown_002,1381,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 37%), 31 tiles from its main"
+crown-crown_002,1383,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1401,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_002,1402,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_002,1404,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_002,1407,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_002,1413,soil,P1,P1 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_002,1416,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1419,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown
+crown-crown_002,1419,pulled_down,P1,P1 Crown pulled down a Powder Mill by spent saltpetre (fresh saltpetre by another hall)
+crown-crown_002,1419,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1432,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1454,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_002,1459,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown
+crown-crown_002,1459,pulled_down,P1,P1 Crown pulled down a Powder Mill by spent saltpetre (fresh saltpetre by another hall)
+crown-crown_002,1460,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1470,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1473,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_002,1474,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1475,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1491,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1492,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_002,1501,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1505,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1515,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_002,1529,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_002,1534,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_002,1550,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_002,1552,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_002,1555,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_002,1560,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_002,1560,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown
+crown-crown_002,1560,pulled_down,P1,P1 Crown pulled down a Powder Mill by spent saltpetre (fresh saltpetre by another hall)
+crown-crown_002,1560,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_002,1581,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1583,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_002,1590,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_002,1611,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown (musketeer)
+crown-crown_002,1618,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_002,1621,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_002,1622,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1624,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown (musketeer)
+crown-crown_002,1628,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1638,lost_building,P1,P1 Crown lost a Farm to P2 Crown (cuirassier)
+crown-crown_002,1641,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1646,soil,P1,P1 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_002,1649,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_002,1650,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_002,1666,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1669,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_002,1670,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1674,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown (cuirassier)
+crown-crown_002,1674,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1675,lost_building,P1,P1 Crown lost a Gate to P2 Crown (musketeer)
+crown-crown_002,1680,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1683,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1684,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_002,1693,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1697,lost_building,P1,P1 Crown lost a Foundry to P2 Crown (musketeer)
+crown-crown_002,1708,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1709,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1712,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_002,1718,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1718,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1722,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_002,1723,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1724,lost_building,P1,P1 Crown lost a Farm to P2 Crown (musketeer)
+crown-crown_002,1724,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1725,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1730,lost_building,P1,P1 Crown lost a Church to P2 Crown (musketeer)
+crown-crown_002,1732,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1734,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1735,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1740,lost_building,P1,P1 Crown lost a Horse Breeder to P2 Crown (musketeer)
+crown-crown_002,1744,lost_building,P1,P1 Crown lost a Armoury to P2 Crown (musketeer)
+crown-crown_002,1748,lost_building,P1,P1 Crown lost a Cottage to P2 Crown (musketeer)
+crown-crown_002,1753,lost_building,P1,P1 Crown lost a Barracks to P2 Crown (musketeer)
+crown-crown_002,1754,out,P1,P1 Crown is out
+crown-crown_003,0,rush,P1,P1 Crown opens with a Horse Breeder (Horseman rush)
+crown-crown_003,23,wall,P1,"P1 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_003,23,wall,P2,"P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)"
+crown-crown_003,36,wall,P1,"P1 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_003,36,wall,P2,"P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)"
+crown-crown_003,119,rush,P2,"P2 Crown saw an enemy Officer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_003,165,rush,P1,P1 Crown's rush: goes out (2 Horsemen together)
+crown-crown_003,193,rush,P2,"P2 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_003,195,rush,P1,"P1 Crown saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)"
+crown-crown_003,197,rush,P2,"P2 Crown scouted: rush (2 fast Horseman seen at 3:13), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_003,198,rush,P1,"P1 Crown saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush"
+crown-crown_003,214,rush,P1,"P1 Crown scouted: rush (early army (4 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_003,255,lost_building,P2,P2 Crown lost a Farm to P1 Crown (cuirassier)
+crown-crown_003,256,rush,P1,"P1 Crown's rush: SUCCEEDED, 0 workers left and no defenders: a small cavalry group may finish them"
+crown-crown_003,294,rush,P1,"P1 Crown's rush: SUCCEEDED, mop-up: the riders regroup at home; a force of 12+ supply goes out as one group"
+crown-crown_003,294,attack,P1,"P1 Crown's first attack goes out (16 supply, 5 Horsemen)"
+crown-crown_003,499,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 58%), 23 tiles from its main"
+crown-crown_003,533,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_003,549,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 58%), 23 tiles from its main"
+crown-crown_003,580,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_003,621,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,621,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_003,639,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-crown_003,649,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,656,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_003,667,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_003,668,rush,P1,"P1 Crown scouted: rush (2 fast Horseman seen at 3:18), switching to a defensive build: army and walls first, then a counter-attack"
+crown-crown_003,671,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,672,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_003,687,refit,P1,P1 Crown auto-refit: 9 upgrades ordered
+crown-crown_003,687,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_003,695,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,697,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,708,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,708,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_003,717,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_003,741,attack,P2,"P2 Crown's first attack goes out (16 supply, 2 Horsemen)"
+crown-crown_003,748,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_003,761,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_003,761,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-crown_003,761,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,766,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,771,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,773,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-crown_003,773,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_003,794,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,802,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,804,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_003,805,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_003,806,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_003,807,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_003,816,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,817,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,817,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,817,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,820,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,828,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_003,829,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,831,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,847,refit,P2,P2 Crown sent 6 soldiers back to refit
+crown-crown_003,849,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,850,refit,P1,P1 Crown sent 6 soldiers back to refit
+crown-crown_003,851,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,856,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_003,859,refit,P2,P2 Crown sent 5 soldiers back to refit
+crown-crown_003,867,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_003,868,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_003,869,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_003,877,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,884,refit,P2,P2 Crown sent 4 soldiers back to refit
+crown-crown_003,890,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_003,890,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,893,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,902,refit,P2,P2 Crown sent 4 soldiers back to refit
+crown-crown_003,911,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,913,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,919,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,926,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_003,928,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-crown_003,944,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,946,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,957,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,958,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,967,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_003,972,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_003,982,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1004,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1009,refit,P1,P1 Crown auto-refit: 3 upgrades ordered
+crown-crown_003,1025,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1027,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1036,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 58%), 15 tiles from its main"
+crown-crown_003,1050,dropped_site,P1,P1 Crown dropped a Barracks: nobody was coming to start it (refunded)
+crown-crown_003,1051,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 49%), 15 tiles from its main"
+crown-crown_003,1052,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1058,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_003,1068,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_003,1068,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1078,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,1078,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1080,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_003,1082,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1087,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_003,1091,refit,P2,P2 Crown sent 3 soldiers back to refit
+crown-crown_003,1103,refit,P2,P2 Crown sent 4 soldiers back to refit
+crown-crown_003,1106,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1120,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1121,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1128,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1131,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_003,1133,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1147,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1163,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_003,1171,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_003,1171,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_003,1179,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1180,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,1193,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1213,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1222,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1228,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1233,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1235,soil,P1,P1 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_003,1235,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown
+crown-crown_003,1235,pulled_down,P1,P1 Crown pulled down a Powder Mill by spent saltpetre (fresh saltpetre by another hall)
+crown-crown_003,1246,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1260,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1274,soil,P2,P2 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_003,1276,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1281,lost_building,P1,P1 Crown lost a Town Hall to P2 Crown (musketeer)
+crown-crown_003,1288,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1291,soil,P2,P2 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_003,1291,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1292,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1294,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1312,lost_building,P1,P1 Crown lost a Gate to P2 Crown (cuirassier)
+crown-crown_003,1314,refit,P1,P1 Crown sent 3 soldiers back to refit
+crown-crown_003,1324,expand,P1,"P1 Crown is expanding to fresh land (left at its best hall: 49%), 21 tiles from its main"
+crown-crown_003,1326,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1347,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,1360,soil,P1,P1 Crown: the saltpetre at a Town Hall is running low (under 25%)
+crown-crown_003,1365,expand,P1,P1 Crown finished a Town Hall (expansion)
+crown-crown_003,1371,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1376,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1380,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1380,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1399,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1411,soil,P1,P1 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_003,1411,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,1419,expand,P2,"P2 Crown is expanding to fresh land (left at its best hall: 54%), 17 tiles from its main"
+crown-crown_003,1424,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1427,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1434,soil,P1,P1 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_003,1434,lost_building,P1,P1 Crown lost a Powder Mill to P2 Crown
+crown-crown_003,1434,pulled_down,P1,P1 Crown pulled down a Powder Mill by spent saltpetre (fresh saltpetre by another hall)
+crown-crown_003,1439,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1441,soil,P2,P2 Crown: the saltpetre at a Town Hall is spent (its Mill grinds at a quarter)
+crown-crown_003,1442,expand,P2,P2 Crown finished a Town Hall (expansion)
+crown-crown_003,1444,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1444,refit,P1,P1 Crown sent 1 soldier back to refit
+crown-crown_003,1452,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_003,1458,refit,P1,P1 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1461,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1469,soil,P1,P1 Crown: the soil around a Town Hall is spent (barren: its farms pay nothing)
+crown-crown_003,1469,refit,P1,P1 Crown sent 2 soldiers back to refit
+crown-crown_003,1481,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1482,dropped_site,P2,P2 Crown dropped a Powder Mill: nobody was coming to start it (refunded)
+crown-crown_003,1488,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1491,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1491,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1497,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1504,refit,P1,P1 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1544,lost_building,P2,P2 Crown lost a Barracks to P1 Crown (musketeer)
+crown-crown_003,1563,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1567,lost_building,P2,P2 Crown lost a Barracks to P1 Crown (musketeer)
+crown-crown_003,1590,lost_building,P2,P2 Crown lost a Barracks (unfinished) to P1 Crown (musketeer)
+crown-crown_003,1623,lost_building,P2,P2 Crown lost a Farm to P1 Crown (musketeer)
+crown-crown_003,1642,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-crown_003,1645,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-crown_003,1647,dropped_site,P2,P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+crown-crown_003,1652,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1653,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1686,refit,P2,P2 Crown auto-refit: 5 upgrades ordered
+crown-crown_003,1704,soil,P2,P2 Crown: the soil around a Town Hall is running low (under 25%)
+crown-crown_003,1720,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1726,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1730,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1742,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1743,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_003,1768,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1776,refit,P2,P2 Crown sent 2 soldiers back to refit
+crown-crown_003,1777,refit,P2,P2 Crown sent 1 soldier back to refit
+crown-crown_003,1784,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
+crown-crown_003,1787,refit,P2,P2 Crown auto-refit: 2 upgrades ordered
+crown-crown_003,1799,refit,P2,P2 Crown auto-refit: 1 upgrade ordered
