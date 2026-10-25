@@ -1,6 +1,6 @@
 # Pocket RTS
 
-**Play in your browser (version 0.12.83): https://cavaleirobrancopensante.github.io/PocketRTS/**
+**Play in your browser (version 0.12.84): https://cavaleirobrancopensante.github.io/PocketRTS/**
 
 **Android app: https://cavaleirobrancopensante.github.io/PocketRTS/PocketRTS.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
@@ -102,7 +102,7 @@ Each faction builds its own economy, every Town Hall, Burrow or Clocktower allow
   - **TONGUE** (T, 75 energy): tap one enemy unit on the ground within 7 tiles. A **crosshair marks it for 3 s** (its owner sees it and is warned: that's the counterplay), then the tongue lashes out and **drags it to the Toad's feet** in 0.6 s, stunned, into the swarm ("Tongue!"). The windup **breaks** (energy lost) if the Toad is stunned, killed, ordered elsewhere or knocked away, or the target gets 1.5x the range away. **Heavy** units (supply 5+ or massive: the Steam Walker) can't be pulled, only **staggered** (1 s). Not buildings or flyers.
   - The computer hatches one Toad from an army of 12 (two from 24); it tongues guns and casters (Cannon, Mortar, Stormcaller, Tesla Cart, Arc Thrower, Spore Mother, a Missionary) once its army is close, and fogs enemy firing lines while its army engages them.
   - Energy is kept in saves; a TONGUE windup isn't (the Toad comes back with that energy unspent).
-- Swamp heals the Brood and makes it faster. Army cap 160.
+- Swamp heals the Brood and makes it faster. Supply cap 200.
 
 ### The Clockwork: batteries and wind
 - Only the **Clocktower** (one every 2 s) and its **Boilers** (every second; 2 per Clocktower) fill **batteries**; Spring Towers and Charging Pylons don't. A saturated base (Clocktower and 2 Boilers worked by ~13 Winders) makes about **1,150-1,200 ore a minute**.
@@ -130,7 +130,7 @@ Each faction builds its own economy, every Town Hall, Burrow or Clocktower allow
   - **Stormcallers** (150 + 2, need a Charging Pylon) are fragile casters with a weak zap. **STORM** throws a ring of lightning on a spot (2.5-tile radius, 2.5 s): everything inside is **stunned** (your own units too). It is a control spell: no damage (it was 3 tiles, 3 s and 8 damage a second), so strike while they stand. A storm costs 70 of the Stormcaller's 100 charge plus **2 stored batteries**, and the charge only fills inside a Clockwork field.
 - The computer builds Wind-up Soldiers first, Threshers, Bulwarks and Arc Throwers in the middle game and an Engine Hall later; it braces its Bulwarks when its army faces musket lines or spitters, and the Winders that follow its army crank run-down Wind-ups.
 - Old saves: Gearknights come back as Threshers and Bolt Automatons as Arc Throwers.
-- Army cap **100** (it was 80: the cheap Wind-up Soldiers need the room). The Clockwork starts with 4 Winders.
+- Supply cap **200** for every faction (it was 100, 160 for the Brood, 80 for the Clockwork: the owner raised it to 200 on 2026-10-25). The Clockwork starts with 4 Winders.
 
 ### Watching the computers play
 With no "you" in the lobby the computers play and you watch, and the **VIEW** button under the clock picks how:

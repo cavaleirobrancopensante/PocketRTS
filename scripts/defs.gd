@@ -241,7 +241,7 @@ const FACTIONS := {
 	"crown": {
 		"name": "The Crown", "hall": "town_hall", "worker": "labourer", "supply": "cottage",
 		"build": ["town_hall", "cottage", "farm", "horse_breeder", "powder_mill", "wall", "gate", "barracks", "armoury", "foundry", "church"],
-		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 100,
+		"start_workers": 4, "start_gold": 300, "ready": true, "max_supply": 200,
 		"res": ["Gold", "Powder"], "econ": {"farm": 2, "powder_mill": 1},
 		"start": ["farm"],
 		"about": "Musketeers, cannons and mortars, and horses for them. Farms ripen into big harvests; Horse Breeders sell the horses that cavalry and guns need; Powder Mills grind each Town Hall's saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
@@ -249,18 +249,18 @@ const FACTIONS := {
 	"brood": {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
 		"build": ["hive", "clutch_mound", "feeding_pit", "brood_pen", "warren", "gorge_pit", "roost"],
-		"start_workers": 5, "ready": true, "max_supply": 160,
+		"start_workers": 5, "ready": true, "max_supply": 200,
 		"res": ["Biomass", "Essence"], "econ": {"feeding_pit": 3, "brood_pen": 1},
 		"start": ["feeding_pit"],
-		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Army cap 160.",
+		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Supply cap 200.",
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
 		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works"],
-		"start_workers": 4, "ready": true, "max_supply": 100,
+		"start_workers": 4, "ready": true, "max_supply": 200,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
 		"start": ["ore_crusher"],
-		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (a battery fades on the road), and the batteries left waiting are your Energy. Each Clocktower's ore and coal run out in time. Army cap 100.",
+		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (a battery fades on the road), and the batteries left waiting are your Energy. Each Clocktower's ore and coal run out in time. Supply cap 200.",
 	},
 }
 

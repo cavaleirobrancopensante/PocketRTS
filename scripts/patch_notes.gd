@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.84", "items": [
+		"Supply cap is 200 for every faction (was 100; 160 for the Brood). Bigger armies are possible, but each side still needs the supply buildings to get there.",
+	]},
 	{"v": "0.12.83", "items": [
 		"Settings on a phone: the BACK button is pinned under the heading, so it is always on screen (the list below it scrolls).",
 	]},
