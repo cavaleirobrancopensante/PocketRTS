@@ -521,6 +521,34 @@ def main():
                                  "Crown workers lost (mean)": sub.workers_lost.mean(), "game length (median)": mmss(sub.end_t.median())})
         T["wall_vs_rush"] = md(pd.DataFrame(rows))
 
+    # ------------------------------------------------------------------ scouting: the last verdict against what the foe really was
+    oplan = sides.set_index(["id", "team"]).plan_start
+    sv = sides.copy()
+    sv["opp_plan"] = [oplan.get((r.id, 1 - r.team), "") for r in sv.itertuples()]
+    sv["verdict"] = sv.scout_verdict.fillna("")
+    sv["verdict"] = sv.verdict.str.split().str[0].replace("", "(none)")
+    rows = []
+    for f in FACS:
+        for op in ["balanced", "rush", "xrush", "timing"]:
+            x = sv[(sv.faction == f) & (sv.opp_plan == op)]
+            if len(x) < 2:
+                continue
+            vc = x.verdict.value_counts()
+            rows.append({"scouting side": f, "foe's real plan": op, "side-games": len(x), "verdicts": ", ".join("%s %d" % (k, v) for k, v in vc.items())})
+    T["scout"] = md(pd.DataFrame(rows))
+
+    if not events.empty:
+        sc = events[events.kind == "scouted"].copy()
+        sc = sc[sc.text.str.contains("scouted: rush")]
+        if len(sc):
+            sc["reason"] = sc.text.str.extract(r"scouted: rush \((.*?)\)")[0].str.replace(r"\d+(\.\d+)?", "N", regex=True)
+            sc["reason"] = sc.reason.str.replace(r"N:N", "T", regex=True)
+            first = sc.sort_values("t").groupby(["id", "who"]).first().reset_index()
+            first["foe_plan"] = [oplan.get((r.id, 1 - int(r.who[1]) + 1 - 1), "") if False else "" for r in first.itertuples()]
+            vc = first.reason.str.replace(r"at N.*", "", regex=True).value_counts().head(8)
+            T["scout_reasons"] = "\n".join("- %d x \"%s\"" % (v, k) for k, v in vc.items())
+            T["scout_first_rush_t"] = "median %s (10th-90th pct %s - %s), %d first verdicts" % (mmss(first.t.median()), mmss(first.t.quantile(0.1)), mmss(first.t.quantile(0.9)), len(first))
+
     # ------------------------------------------------------------------ no-gg when hopeless
     sd3 = sides.copy()
     rows = []

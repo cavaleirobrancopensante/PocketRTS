@@ -1,13 +1,13 @@
 {
- "games_done": 96,
+ "games_done": 192,
  "per_matchup": {
-  "crown-crown": 16,
-  "clockwork-clockwork": 16,
-  "brood-brood": 16,
-  "crown-brood": 16,
-  "crown-clockwork": 16,
-  "brood-clockwork": 16
+  "crown-clockwork": 32,
+  "crown-brood": 32,
+  "crown-crown": 32,
+  "clockwork-clockwork": 32,
+  "brood-brood": 32,
+  "brood-clockwork": 32
  },
  "failure_records": 0,
- "updated": "2026-10-25 20:32:40"
+ "updated": "2026-10-25 22:59:20"
 }

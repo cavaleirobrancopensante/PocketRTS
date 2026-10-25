@@ -20,6 +20,7 @@ BUILD_KEYS = ["barracks", "powder_mill", "horse_breeder", "armoury", "foundry", 
               "warren", "brood_pen", "gorge_pit", "roost", "feeding_pit", "clutch_mound",
               "assembly_works", "engine_hall", "capacitor_works", "ore_crusher", "boiler", "spring_tower", "charging_pylon"]
 EVENT_PATTERNS = [
+    ("scouted", re.compile(r"scouted:|could not see the enemy")),
     ("wall", re.compile(r"walled its ramp|ramp wall stands|Cottage wall plan")),
     ("expand", re.compile(r"is expanding to fresh|\(expansion\)")),
     ("attack", re.compile(r"first attack goes out")),
