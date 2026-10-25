@@ -838,6 +838,12 @@ func is_worker() -> bool:
 	return Defs.is_worker(kind)
 
 
+## Grubs fight when told to ATTACK (an attack-move engages what it meets, like a Raptor's);
+## Labourers and the like still just walk. (Idle grubs never pick fights by themselves.)
+func fights_on_command() -> bool:
+	return not is_worker() or kind == "grub"
+
+
 func is_air() -> bool:
 	return d.get("air", false)
 
@@ -1863,7 +1869,7 @@ func cmd_follow(e: Unit) -> void:
 ## like that until given another order (fighting whatever comes on the way, then going on).
 func cmd_patrol(p: Vector2) -> void:
 	var from := plan_end() if not queue.is_empty() else position
-	cmd_move(p, not is_worker())
+	cmd_move(p, fights_on_command())
 	if order == "move" or order == "amove" or order == "d_amove":
 		patrol_a = from
 		patrol_b = p
@@ -2061,7 +2067,7 @@ func _start(o: Dictionary) -> bool:
 	var plain := not _keep_queue
 	match String(o["o"]):
 		"move", "amove":
-			cmd_move(o["p"], o["o"] == "amove" and not is_worker())
+			cmd_move(o["p"], o["o"] == "amove" and fights_on_command())
 		"patrol":
 			cmd_patrol(o["p"])
 		"attack":
@@ -2868,7 +2874,7 @@ func _tick_unit(delta: float) -> void:
 				if better and better != target and better.is_unit() and Game.loose_horse(better) == false \
 						and (target is Building or Game.fights_back(better)) and _can_get_at(better):
 					target = better
-			if scan_t <= 0.0 and target == null and not is_worker():
+			if scan_t <= 0.0 and target == null and fights_on_command():
 				scan_t = 0.3
 				target = _pick_target(_scan_range())
 			_walled_check(delta)
@@ -3028,7 +3034,7 @@ func _finish_move() -> void:
 		patrol_a = patrol_b
 		patrol_b = back
 		var keep_a := patrol_a
-		cmd_move(back, not is_worker())
+		cmd_move(back, fights_on_command())
 		patrol_a = keep_a
 		patrol_b = back
 		return

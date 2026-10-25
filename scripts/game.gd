@@ -7352,7 +7352,7 @@ func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> vo
 		var sp: Vector2 = p + ((from[u] as Vector2) - c) * k
 		if n == 1 or not is_free(cell_of(sp)) or not line_clear(p, sp):
 			sp = p
-		u.give({"o": "amove" if attack_move and not u.is_worker() else "move", "p": sp}, queued)
+		u.give({"o": "amove" if attack_move and u.fights_on_command() else "move", "p": sp}, queued)
 	_ping(p, Color(1, 0.3, 0.3) if attack_move else Color(0.4, 1, 0.4))
 
 
