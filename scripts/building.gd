@@ -1443,7 +1443,7 @@ func _draw_building() -> void:
 		draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if eggs > 0 else Color(1.0, 0.55, 0.45))
 		if game.capital(team) == self:
 			# the CAPITAL (the only Burrow grubs unload at; where the Queen sits)
-			var cap_txt := "CAPITAL"
+			var cap_txt := Loc.t("CAPITAL")
 			var cw := font.get_string_size(cap_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 			var cp := Vector2(-cw * 0.5, top - 28.0)
 			draw_rect(Rect2(cp + Vector2(-4, -12), Vector2(cw + 8, 16)), Color(0.35, 0.2, 0.0, 0.75))

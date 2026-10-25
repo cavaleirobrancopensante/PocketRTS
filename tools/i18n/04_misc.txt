@@ -1,0 +1,21 @@
+# Small words and extra sentences
+> Light
+pt Leve
+es Ligero
+
+> Armored
+pt Blindado
+es Acorazado
+
+> Massive
+pt Maciço
+es Masivo
+
+> %s says gg: reply gg to end the match
+pt %s disse gg: responda gg para encerrar a partida
+es %s ha dicho gg: responde gg para terminar la partida
+
+
+> Unhitch one horse (the front one of a team first): it stands free. With none left the gun or wagon can't move, but a gun still fires and a wagon still supplies.
+pt Solta um cavalo (primeiro o da frente da parelha): ele fica livre. Sem nenhum, o canhão ou a carroça não anda, mas o canhão ainda atira e a carroça ainda abastece.
+es Suelta un caballo (primero el delantero del tiro): queda libre. Sin ninguno, el cañón o el carro no puede moverse, pero el cañón aún dispara y el carro aún abastece.

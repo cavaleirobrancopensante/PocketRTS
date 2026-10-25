@@ -526,7 +526,7 @@ func _show_help() -> void:
 	scroll.custom_minimum_size = Vector2(700, minf(470, vp.y - 160))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(scroll)
-	var l := UiStyle.text(HELP_TEXT, 16, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+	var l := UiStyle.text(Loc.paras(HELP_TEXT), 16, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size.x = 680
 	scroll.add_child(l)

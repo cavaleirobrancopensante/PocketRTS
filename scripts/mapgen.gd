@@ -231,7 +231,7 @@ static func label(map_id: String) -> String:
 	if map_id.begins_with("custom:"):
 		var d := load_custom(map_id.substr(7))
 		var cs := custom_size(d)
-		return "%s (your map, %s, %dx%d)" % [map_id.substr(7), custom_mode(d), cs.x, cs.y]
+		return Loc.t("%s (your map, %s, %dx%d)") % [map_id.substr(7), custom_mode(d), cs.x, cs.y]
 	var sz := size_of(map_id)
 	return "%s (%s, %dx%d)" % [display_name(map_id), mode_of(map_id), sz.x, sz.y]
 

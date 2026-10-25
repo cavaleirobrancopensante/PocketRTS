@@ -1,0 +1,2679 @@
+> Get ready
+pt Preparar
+es Preparados
+
+> map view
+pt vista do mapa
+es vista del mapa
+
+> command card
+pt cartão de comandos
+es tarjeta de órdenes
+
+> One-finger drag now %s.
+pt Arrastar com um dedo agora %s.
+es El arrastre con un dedo ahora %s.
+
+> moves the view
+pt move a vista
+es mueve la vista
+
+> PRODUCTION
+pt PRODUÇÃO
+es PRODUCCIÓN
+
+> (nothing in production)
+pt (nada em produção)
+es (nada en producción)
+
+> VIEW
+pt VISTA
+es VISTA
+
+> (out)
+pt (fora)
+es (fuera)
+
+> PLACE
+pt POSICIONAR
+es COLOCAR
+
+> END
+pt FIM
+es FIN
+
+> ROTATE
+pt GIRAR
+es GIRAR
+
+> Gates now face %s.
+pt Os portões agora ficam virados para %s.
+es Las puertas ahora miran al %s.
+
+> Gates face %s off the palisade; this one follows its line.
+pt Os portões ficam virados para %s fora da paliçada; este segue a sua linha.
+es Las puertas miran al %s fuera de la empalizada; esta sigue su línea.
+
+> CANCEL
+pt CANCELAR
+es CANCELAR
+
+> DROP HERE
+pt SOLTAR AQUI
+es SOLTAR AQUÍ
+
+> Not enough %s.
+pt %s insuficiente.
+es No hay suficiente %s.
+
+> Limit reached: one Brood Pen per Burrow; raise another Burrow.
+pt Limite atingido: um Cercado da Ninhada por Toca; erga outra Toca.
+es Límite alcanzado: un Corral de la Nidada por Madriguera; levanta otra Madriguera.
+
+> Limit reached: expand with another %s.
+pt Limite atingido: expanda-se com outro(a) %s.
+es Límite alcanzado: expándete con otro %s.
+
+> MORE
+pt MAIS
+es MÁS
+
+> MOVE
+pt MOVER
+es MOVER
+
+> ATTACK
+pt ATACAR
+es ATACAR
+
+> STOP
+pt PARAR
+es PARAR
+
+> PATROL
+pt PATRULHAR
+es PATRULLAR
+
+> BUILD
+pt CONSTRUIR
+es CONSTRUIR
+
+> REPAIR
+pt REPARAR
+es REPARAR
+
+> Automatic repair on: idle workers fix damaged buildings nearby by themselves, before going back to work.
+pt Reparo automático ligado: trabalhadores ociosos consertam sozinhos os prédios danificados por perto, antes de voltar ao trabalho.
+es Reparación automática activada: los trabajadores libres arreglan solos los edificios dañados cercanos antes de volver al trabajo.
+
+> Automatic repair off.
+pt Reparo automático desligado.
+es Reparación automática desactivada.
+
+> Tap a damaged building (or wall) to repair it.
+pt Toque num prédio (ou muralha) danificado para repará-lo.
+es Toca un edificio (o muro) dañado para repararlo.
+
+> HOLD
+pt FIRME
+es MANTENER
+
+> WORK
+pt TRABALHAR
+es TRABAJAR
+
+> Workers go back to work on their own.
+pt Os trabalhadores voltam ao trabalho por conta própria.
+es Los trabajadores vuelven al trabajo por su cuenta.
+
+> Automatic work off: these workers wait for orders.
+pt Trabalho automático desligado: estes trabalhadores esperam ordens.
+es Trabajo automático desactivado: estos trabajadores esperan órdenes.
+
+> HARVEST
+pt COLHER
+es RECOGER
+
+> Harvesting: these grubs gather the fallen around here and carry them home as essence.
+pt Colheita: estas larvas recolhem os caídos por aqui e os levam para casa como essência.
+es Recolección: estas larvas reúnen a los caídos de la zona y los llevan a casa como esencia.
+
+> SACRIFICE
+pt SACRIFICAR
+es SACRIFICAR
+
+> %d offered up: they go to the nearest Brood Pen (+%d essence).
+pt %d oferecidos: vão ao Cercado da Ninhada mais próximo (+%d de essência).
+es %d ofrecidos: van al Corral de la Nidada más cercano (+%d de esencia).
+
+> Needs a Brood Pen.
+pt Precisa de um Cercado da Ninhada.
+es Necesita un Corral de la Nidada.
+
+> UNLIMBER
+pt DESENGATAR
+es DESENGANCHAR
+
+> LIMBER
+pt ENGATAR
+es ENGANCHAR
+
+> ROOT
+pt ENRAIZAR
+es ARRAIGAR
+
+> UPROOT
+pt DESENRAIZAR
+es DESARRAIGAR
+
+> DEPLOY
+pt INSTALAR
+es DESPLEGAR
+
+> PACK
+pt RECOLHER
+es RECOGER
+
+> UNLOCK
+pt DESTRANCAR
+es DESBLOQUEAR
+
+> LOCK
+pt TRANCAR
+es BLOQUEAR
+
+> Gate unlocked: your units pass again.
+pt Portão destrancado: suas unidades voltam a passar.
+es Puerta desbloqueada: tus unidades vuelven a pasar.
+
+> Gate locked: nobody can pass, yours included, until you unlock it.
+pt Portão trancado: ninguém passa, nem as suas unidades, até você destrancar.
+es Puerta bloqueada: nadie pasa, ni siquiera las tuyas, hasta que la desbloquees.
+
+> Gate turned. It stays this way.
+pt Portão girado. Fica assim.
+es Puerta girada. Se queda así.
+
+> ABANDON
+pt ABANDONAR
+es ABANDONAR
+
+> DEMOLISH
+pt DEMOLIR
+es DEMOLER
+
+> Press DEMOLISH again to pull it down.
+pt Pressione DEMOLIR de novo para derrubá-lo.
+es Pulsa DEMOLER otra vez para derribarlo.
+
+> STOP UPGRADE
+pt PARAR MELHORIA
+es PARAR MEJORA
+
+> Stop growing into a %s
+pt Parar de crescer para %s
+es Dejar de crecer hacia %s
+
+> Stop the upgrade: all of its price is paid back.
+pt Para a melhoria: todo o preço é devolvido.
+es Detiene la mejora: se devuelve todo el precio.
+
+> Upgrade to %s cancelled: paid back.
+pt Melhoria para %s cancelada: reembolsada.
+es Mejora a %s cancelada: reembolsada.
+
+> Upgrade to %s
+pt Melhorar para %s
+es Mejorar a %s
+
+> Your %s is growing into a %s.
+pt Seu(sua) %s está crescendo para %s.
+es Tu %s está creciendo hasta %s.
+
+> Training %s automatically.
+pt Treinando %s automaticamente.
+es Entrenando %s automáticamente.
+
+> Automatic training off.
+pt Treino automático desligado.
+es Entrenamiento automático desactivado.
+
+> RALLY
+pt REUNIR
+es REUNIR
+
+> GRUBS
+pt LARVAS
+es LARVAS
+
+> %s research cancelled: paid back.
+pt Pesquisa de %s cancelada: reembolsada.
+es Investigación de %s cancelada: reembolsada.
+
+> Needs a Barracks, an Armoury or a Powder Wagon to refit at.
+pt Precisa de um Quartel, um Arsenal ou uma Carroça de Pólvora para reequipar.
+es Necesita un Cuartel, una Armería o un Carro de pólvora donde reequiparse.
+
+> reload %d%% faster than a plain musket
+pt recarrega %d%% mais rápido que um mosquete comum
+es recarga un %d%% más rápido que un mosquete normal
+
+> %s: +%d armour, +%d health (%s)
+pt %s: +%d de armadura, +%d de vida (%s)
+es %s: +%d de armadura, +%d de salud (%s)
+
+> armour (
+pt armadura (
+es armadura (
+
+> by kind
+pt por tipo
+es según el tipo
+
+> the socket bayonet (+%d bayonet damage, thrusts %d%% faster)
+pt a baioneta de encaixe (+%d de dano com a baioneta, estocadas %d%% mais rápidas)
+es la bayoneta de cubo (+%d de daño de bayoneta, estocadas un %d%% más rápidas)
+
+> the shot pouch (%d shots instead of %d; he fills it at any powder source)
+pt a cartucheira (%d tiros em vez de %d; ele a enche em qualquer fonte de pólvora)
+es la cartuchera (%d disparos en vez de %d; la rellena en cualquier fuente de pólvora)
+
+> Refit: %s   (%s a man)
+pt Reequipar: %s   (%s por homem)
+es Reequipar: %s   (%s por hombre)
+
+> %d of them lack it: each pays, walks to the nearest Barracks, Armoury or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back.
+pt %d deles não a têm: cada um paga, anda até o Quartel, Arsenal ou Carroça de Pólvora mais próximo e recebe %s lá (%d s). Outra ordem cancela, reembolsado.
+es A %d de ellos les falta: cada uno paga, camina hasta el Cuartel, Armería o Carro de pólvora más cercano y recibe %s allí (%d s). Otra orden lo cancela, reembolsado.
+
+> Queued: they get refitted after their current orders (%s).
+pt Na fila: serão reequipados depois das ordens atuais (%s).
+es En cola: se reequiparán tras sus órdenes actuales (%s).
+
+> %d soldier%s off to be refitted: %s.
+pt %d soldado%s a caminho de serem reequipados: %s.
+es %d soldado%s en camino de ser reequipados: %s.
+
+> AUTO REFIT
+pt AUTO-REEQUIPAR
+es AUTOEQUIPAR
+
+> Auto refit (glowing = on)
+pt Reequipar automático (brilhando = ligado)
+es Reequipo automático (brillante = activado)
+
+> Idle soldiers within %d tiles of it get the upgrades researched that they lack, each paying the fee (if you can afford it).
+pt Soldados ociosos a até %d casas dele recebem as melhorias pesquisadas que lhes faltam, pagando a taxa (se você puder).
+es Los soldados libres a menos de %d casillas reciben las mejoras investigadas que les faltan, pagando la tasa (si puedes permitírtelo).
+
+> Auto refit on: idle soldiers nearby get their upgrades here, paying the fees.
+pt Reequipar automático ligado: soldados ociosos por perto recebem aqui suas melhorias, pagando as taxas.
+es Reequipo automático activado: los soldados libres cercanos reciben aquí sus mejoras, pagando las tasas.
+
+> Auto refit off.
+pt Reequipar automático desligado.
+es Reequipo automático desactivado.
+
+> LOAD
+pt EMBARCAR
+es SUBIR
+
+> Climbing in: the balloon comes down and holds still until they're aboard.
+pt Subindo: o balão desce e fica parado até eles embarcarem.
+es Subiendo: el globo baja y se queda quieto hasta que estén a bordo.
+
+> Tap the Musketeers or Labourers to take aboard.
+pt Toque nos Mosqueteiros ou Operários para embarcar.
+es Toca a los Mosqueteros o Peones para subirlos.
+
+> The basket is full.
+pt A cesta está cheia.
+es La cesta está llena.
+
+> UNLOAD
+pt DESEMBARCAR
+es BAJAR
+
+> Tap where to let them off (or DROP HERE).
+pt Toque onde deixá-los (ou SOLTAR AQUI).
+es Toca dónde dejarlos (o SOLTAR AQUÍ).
+
+> Nobody aboard.
+pt Ninguém a bordo.
+es Nadie a bordo.
+
+> RESTOCK
+pt REABASTECER
+es REABASTECER
+
+> Flying to the nearest powder: the pilot hauls kegs up on a rope until the store is full.
+pt Voando até a pólvora mais próxima: o piloto iça barris numa corda até o estoque encher.
+es Volando hacia la pólvora más cercana: el piloto sube barriles con una cuerda hasta llenar la reserva.
+
+> No Powder Wagon, Mill, Barracks or Town Hall to restock from.
+pt Sem Carroça de Pólvora, Moinho, Quartel ou Prefeitura para reabastecer.
+es No hay Carro de pólvora, Molino, Cuartel ni Ayuntamiento donde reabastecerse.
+
+> The powder store is full.
+pt O estoque de pólvora está cheio.
+es La reserva de pólvora está llena.
+
+> STORM
+pt TEMPESTADE
+es TORMENTA
+
+> Not enough charge: recharge inside a Clockwork field.
+pt Carga insuficiente: recarregue dentro de um campo do Mecanismo.
+es Carga insuficiente: recarga dentro de un campo del Mecanismo.
+
+> Miasma isn't ready yet.
+pt O Miasma ainda não está pronto.
+es El Miasma aún no está listo.
+
+> Not enough essence.
+pt Essência insuficiente.
+es No hay suficiente esencia.
+
+> MIASMA
+pt MIASMA
+es MIASMA
+
+> FOG
+pt NEBLINA
+es NIEBLA
+
+> Not enough energy: FOG needs %d.
+pt Energia insuficiente: NEBLINA custa %d.
+es Energía insuficiente: NIEBLA cuesta %d.
+
+> TONGUE
+pt LÍNGUA
+es LENGUA
+
+> Not enough energy: TONGUE needs %d.
+pt Energia insuficiente: LÍNGUA custa %d.
+es Energía insuficiente: LENGUA cuesta %d.
+
+> HOLD FIRE
+pt SEGURAR FOGO
+es NO DISPARAR
+
+> Hold fire: they keep their pistols loaded.
+pt Segurar fogo: mantêm as pistolas carregadas.
+es No disparar: mantienen las pistolas cargadas.
+
+> Pistols free: they fire by themselves.
+pt Pistolas livres: atiram por conta própria.
+es Pistolas libres: disparan por su cuenta.
+
+> Hold fire: they shoot only at what you order them to attack.
+pt Segurar fogo: só atiram no que você mandar atacar.
+es No disparar: solo disparan a lo que les ordenes atacar.
+
+> Fire at will: they shoot by themselves.
+pt Fogo à vontade: atiram por conta própria.
+es Fuego a discreción: disparan por su cuenta.
+
+> HOLD GAS
+pt SEGURAR GÁS
+es RETENER GAS
+
+> SPIT
+pt CUSPIR
+es ESCUPIR
+
+> COURIER
+pt MENSAGEIRO
+es CORREO
+
+> Courier: idle Ornithopters fetch batteries and wind up constructs that ran down.
+pt Mensageiro: Ornitópteros ociosos buscam baterias e dão corda em construtos que pararam.
+es Correo: los Ornitópteros libres traen baterías y dan cuerda a los constructos que se han parado.
+
+> Courier off.
+pt Mensageiro desligado.
+es Correo desactivado.
+
+> OVERLOAD
+pt SOBRECARGA
+es SOBRECARGA
+
+> No battery: an Ornithopter on COURIER fetches one from an energy building.
+pt Sem bateria: um Ornitóptero em MENSAGEIRO busca uma num prédio de energia.
+es Sin batería: un Ornitóptero en CORREO trae una desde un edificio de energía.
+
+> BRACE
+pt FIRMAR
+es AFIRMAR
+
+> ~ BRACE
+pt ~ FIRMAR
+es ~ AFIRMAR
+
+> LAND
+pt POUSAR
+es ATERRIZAR
+
+> TAKE OFF
+pt DECOLAR
+es DESPEGAR
+
+> SUPPLY
+pt ABASTECER
+es ABASTECER
+
+> The Town Hall's haulers bring kegs from the Powder Mill while the wagon has room.
+pt Os carregadores da Prefeitura trazem barris do Moinho de Pólvora enquanto a carroça tiver espaço.
+es Los porteadores del Ayuntamiento traen barriles del Molino de pólvora mientras el carro tenga sitio.
+
+> Supply off: no more keg runs.
+pt Abastecimento desligado: sem mais viagens de barris.
+es Abastecimiento desactivado: no hay más viajes de barriles.
+
+> Keeps %d horse%s: the Town Hall's haulers bring spares.
+pt Mantém %d cavalo%s: os carregadores da Prefeitura trazem reservas.
+es Mantiene %d caballo%s: los porteadores del Ayuntamiento traen repuestos.
+
+> Keeps no spare horses.
+pt Não mantém cavalos de reserva.
+es No mantiene caballos de repuesto.
+
+> CANISTER
+pt METRALHA
+es METRALLA
+
+> ROUND SHOT
+pt BALA
+es BALA
+
+> ADVANCED
+pt AVANÇADO
+es AVANZADO
+
+> ARMOUR
+pt ARMADURA
+es ARMADURA
+
+> MATCHLOCK
+pt MECHA
+es MECHA
+
+> FLINTLOCK
+pt PEDERNEIRA
+es PEDERNAL
+
+> CAPLOCK
+pt PERCUSSÃO
+es PERCUSIÓN
+
+> BAYONET
+pt BAIONETA
+es BAYONETA
+
+> POUCH
+pt CARTUCHEIRA
+es CARTUCHERA
+
+> LEAD
+pt GUIAR
+es GUIAR
+
+> RELEASE
+pt SOLTAR
+es SOLTAR
+
+> MOUNT
+pt MONTAR
+es MONTAR
+
+> DISMOUNT
+pt DESMONTAR
+es APEARSE
+
+> RELEASE HORSE
+pt SOLTAR CAVALO
+es SOLTAR CABALLO
+
+> HARNESS
+pt ATRELAR
+es UNCIR
+
+> Can't train that here.
+pt Não é possível treinar isso aqui.
+es No se puede entrenar eso aquí.
+
+> Training %s automatically in every building that can.
+pt Treinando %s automaticamente em todo prédio que puder.
+es Entrenando %s automáticamente en todos los edificios que puedan.
+
+> Not enough gold.
+pt Ouro insuficiente.
+es No hay suficiente oro.
+
+> Each grub becomes one building: every selected grub already has one.
+pt Cada larva vira um prédio: todas as larvas selecionadas já têm um.
+es Cada larva se convierte en un edificio: todas las larvas seleccionadas ya tienen uno.
+
+> Now pick where it ends (the same spot for a single piece).
+pt Agora escolha onde termina (o mesmo ponto para uma peça só).
+es Ahora elige dónde termina (el mismo punto para una sola pieza).
+
+> Nothing could be placed there.
+pt Nada pôde ser colocado ali.
+es No se pudo colocar nada allí.
+
+> RESUME
+pt CONTINUAR
+es REANUDAR
+
+> MINIMAP
+pt MINIMAPA
+es MINIMAPA
+
+> SURRENDER
+pt RENDER-SE
+es RENDIRSE
+
+> QUIT TO MENU
+pt SAIR PARA O MENU
+es SALIR AL MENÚ
+
+> YOU
+pt VOCÊ
+es TÚ
+
+> type, Enter sends, Esc cancels
+pt digite, Enter envia, Esc cancela
+es escribe, Intro envía, Esc cancela
+
+> QUICK CHAT
+pt CHAT RÁPIDO
+es CHAT RÁPIDO
+
+> %d energy (%s batteries stored)
+pt %d de energia (baterias %s armazenadas)
+es %d de energía (baterías %s almacenadas)
+
+> P%d %s   %d %s · %d %s · %d/%d supply
+pt J%d %s   %d %s · %d %s · %d/%d de suprimento
+es J%d %s   %d %s · %d %s · %d/%d de suministro
+
+> APM %d
+pt APM %d
+es APM %d
+
+> DRAG
+pt ARRASTAR
+es ARRASTRE
+
+> BOX
+pt CAIXA
+es CAJA
+
+> PAN
+pt VISTA
+es VISTA
+
+> Tap where to move
+pt Toque onde mover
+es Toca dónde mover
+
+> Tap a target or place to attack-move
+pt Toque num alvo ou lugar para atacar-mover
+es Toca un objetivo o lugar para atacar avanzando
+
+> Tap the rally point
+pt Toque no ponto de reunião
+es Toca el punto de reunión
+
+> Tap the enemy to lash with the tongue
+pt Toque no inimigo para chicotear com a língua
+es Toca al enemigo para azotarlo con la lengua
+
+> Tap where to cast the %s
+pt Toque onde lançar %s
+es Toca dónde lanzar %s
+
+> storm (it stuns your own units too)
+pt a tempestade (ela atordoa também as suas unidades)
+es la tormenta (aturde también a tus unidades)
+
+> fog (shots from or into it miss half the time, yours too)
+pt a neblina (tiros vindos de ou para dentro dela erram metade das vezes, os seus também)
+es la niebla (los disparos desde o hacia ella fallan la mitad de las veces, también los tuyos)
+
+> healing miasma
+pt o miasma curativo
+es el miasma curativo
+
+> Tap where new soldiers gather
+pt Toque onde os novos soldados se reúnem
+es Toca dónde se reúnen los nuevos soldados
+
+> Tap a Feeding Pit (or a spot) for new grubs
+pt Toque num Poço de Alimentação (ou um lugar) para as novas larvas
+es Toca un Foso de Alimentación (o un lugar) para las nuevas larvas
+
+> Tap
+pt Toque
+es Toca
+
+> Click
+pt Clique
+es Haz clic
+
+> (right-click or Esc cancels)
+pt (botão direito ou Esc cancela)
+es (clic derecho o Esc cancela)
+
+> Click to build (Shift-click: queue more), right-click or Esc cancels
+pt Clique para construir (Shift+clique: enfileirar mais), botão direito ou Esc cancela
+es Haz clic para construir (Mayús+clic: poner más en cola), clic derecho o Esc cancela
+
+> Drag to position, tap again or PLACE to build
+pt Arraste para posicionar, toque de novo ou POSICIONAR para construir
+es Arrastra para colocar, toca otra vez o COLOCAR para construir
+
+> Click where the wall starts
+pt Clique onde a muralha começa
+es Haz clic donde empieza el muro
+
+> Click where it ends
+pt Clique onde ela termina
+es Haz clic donde termina
+
+> Drag to where the wall starts, then START
+pt Arraste até onde a muralha começa, depois INÍCIO
+es Arrastra hasta donde empieza el muro y pulsa INICIO
+
+> Drag to where it ends, then END
+pt Arraste até onde ela termina, depois FIM
+es Arrastra hasta donde termina y pulsa FIN
+
+> Tap anything to see what it is  (? again: cancel)
+pt Toque em qualquer coisa para ver o que é  (? de novo: cancela)
+es Toca cualquier cosa para ver qué es  (? otra vez: cancela)
+
+> PAUSED
+pt PAUSADO
+es EN PAUSA
+
+> (loose)
+pt (solto)
+es (suelto)
+
+> %d/%d horse%s%s
+pt %d/%d cavalo%s%s
+es %d/%d caballo%s%s
+
+> +%d%% speed
+pt +%d%% de velocidade
+es +%d%% de velocidad
+
+> Seasoned horse (rank %d)
+pt Cavalo experiente (nível %d)
+es Caballo curtido (rango %d)
+
+> Working at the %s.
+pt Trabalhando em %s.
+es Trabajando en %s.
+
+> Hauling food worth %d to the %s.
+pt Carregando comida no valor de %d para %s.
+es Llevando comida por valor de %d a %s.
+
+> Burrow
+pt Toca
+es Madriguera
+
+> Feeding at the pit: takes half damage.
+pt Alimentando-se no poço: recebe metade do dano.
+es Alimentándose en el foso: recibe la mitad del daño.
+
+> Bandaging a soldier.
+pt Enfaixando um soldado.
+es Vendando a un soldado.
+
+> Raising a fallen soldier...
+pt Reerguendo um soldado caído...
+es Levantando a un soldado caído...
+
+> Going to raise a fallen soldier.
+pt Indo reerguer um soldado caído.
+es Yendo a levantar a un soldado caído.
+
+> Under the cross for %d s: no bandage or raising meanwhile, and if he falls now he's gone for good.
+pt Sob a cruz por %d s: sem curativo nem reerguer nesse tempo, e se ele cair agora, está perdido para sempre.
+es Bajo la cruz durante %d s: sin vendas ni resurrección mientras tanto, y si cae ahora se pierde para siempre.
+
+> Packed: it rolls, can't fire. DEPLOY to fire.
+pt Recolhido: rola, não pode atirar. INSTALAR para atirar.
+es Plegado: rueda, no puede disparar. DESPLEGAR para disparar.
+
+> Deploying...
+pt Instalando...
+es Desplegando...
+
+> Set up: lobs shells 5 to 11 tiles (over walls) at anything your side can see.
+pt Pronto: lança granadas de 5 a 11 casas (sobre muralhas) em qualquer coisa que seu lado veja.
+es Desplegado: lanza bombas de 5 a 11 casillas (por encima de muros) a cualquier cosa que tu bando vea.
+
+> Packing up...
+pt Recolhendo...
+es Recogiendo...
+
+> Shells %d/%d%s
+pt Granadas %d/%d%s
+es Bombas %d/%d%s
+
+> (OUT: refill at a Mill, Barracks, Hall or Wagon)
+pt (SEM MUNIÇÃO: reabasteça num Moinho, Quartel, Prefeitura ou Carroça)
+es (SIN MUNICIÓN: recarga en un Molino, Cuartel, Ayuntamiento o Carro)
+
+> Limbered: the horse tows it. UNLIMBER to fire.
+pt Atrelado: o cavalo a puxa. DESENGATAR para atirar.
+es Enganchado: el caballo lo arrastra. DESENGANCHAR para disparar.
+
+> Unlimbering...
+pt Desengatando...
+es Desenganchando...
+
+> Set up: %s loaded. Fires at anything your side can see.
+pt Pronto: %s carregada. Atira em qualquer coisa que seu lado veja.
+es Desplegado: %s cargada. Dispara a cualquier cosa que tu bando vea.
+
+> round shot
+pt bala
+es bala
+
+> Limbering up...
+pt Engatando...
+es Enganchando...
+
+> Powder %d/%d%s
+pt Pólvora %d/%d%s
+es Pólvora %d/%d%s
+
+> Loose: nobody's horse. A man who can lead horses takes it by walking up; the Brood can kill it.
+pt Solto: cavalo sem dono. Um homem que sabe guiar cavalos o leva ao se aproximar; a Ninhada pode matá-lo.
+es Suelto: caballo sin dueño. Un hombre que sepa guiar caballos se lo lleva al acercarse; la Nidada puede matarlo.
+
+> A %s is coming for it.
+pt Um(a) %s está indo buscá-lo.
+es Un %s viene a por él.
+
+> Led by a %s.
+pt Guiado por um(a) %s.
+es Guiado por un %s.
+
+> Walking into the %s.
+pt Entrando em %s.
+es Entrando en %s.
+
+> Going to be harnessed to the %s.
+pt Indo ser atrelado a %s.
+es Yendo a ser uncido a %s.
+
+> Grazing, unattended: keep a man by it, or an enemy man can steal it.
+pt Pastando sem vigia: deixe um homem por perto, ou um inimigo pode roubá-lo.
+es Pastando sin vigilancia: deja a un hombre a su lado, o un enemigo podrá robarlo.
+
+> Seasoning %d/%d tiles. Heals by itself.
+pt Experiência %d/%d casas. Cura-se sozinho.
+es Curtido %d/%d casillas. Se cura solo.
+
+> Fully seasoned. Heals by itself.
+pt Totalmente experiente. Cura-se sozinho.
+es Totalmente curtido. Se cura solo.
+
+> NO HORSE: it can't move (HARNESS one).
+pt SEM CAVALO: não pode se mover (ATRELAR um).
+es SIN CABALLO: no puede moverse (UNCIR uno).
+
+> Fires from where it stands.
+pt Atira de onde está.
+es Dispara desde donde está.
+
+> It still supplies.
+pt Ainda abastece.
+es Aún abastece.
+
+> Rides fast; dismounts to fire. Powder %d/%d · reload %s (waits while he rides)
+pt Cavalga rápido; desmonta para atirar. Pólvora %d/%d · recarga %s (espera enquanto cavalga)
+es Cabalga rápido; se apea para disparar. Pólvora %d/%d · recarga %s (espera mientras cabalga)
+
+> %.1f s left
+pt faltam %.1f s
+es faltan %.1f s
+
+> Unarmed scout: very fast, sees far.
+pt Batedor desarmado: muito rápido, enxerga longe.
+es Explorador desarmado: muy rápido, ve muy lejos.
+
+> Reload %.1f s
+pt Recarga %.1f s
+es Recarga %.1f s
+
+> Reload %.1f/%.1f s
+pt Recarga %.1f/%.1f s
+es Recarga %.1f/%.1f s
+
+> Powder 0/%d OUT: bayonet only · %s
+pt Pólvora 0/%d ACABOU: só baioneta · %s
+es Pólvora 0/%d AGOTADA: solo bayoneta · %s
+
+> Powder %d/%d · %s
+pt Pólvora %d/%d · %s
+es Pólvora %d/%d · %s
+
+> Powder %d/%d shots · SUPPLY %s%s · blows up when destroyed
+pt Pólvora %d/%d tiros · ABASTECER %s%s · explode quando destruída
+es Pólvora %d/%d disparos · ABASTECER %s%s · explota al ser destruido
+
+> (%d kegs on the way)
+pt (%d barris a caminho)
+es (%d barriles en camino)
+
+> Walking: can't attack. ROOT her to lob spit blobs.
+pt Andando: não pode atacar. ENRAIZAR para lançar bolas de cuspe.
+es Andando: no puede atacar. ARRAIGAR para lanzar bolas de saliva.
+
+> Rooting...
+pt Enraizando...
+es Arraigando...
+
+> Rooted: lobs spit blobs and spreads swamp.
+pt Enraizada: lança bolas de cuspe e espalha pântano.
+es Arraigada: lanza bolas de saliva y extiende el pantano.
+
+> Uprooting...
+pt Desenraizando...
+es Desarraigando...
+
+> Miasma ready in %ds.
+pt Miasma pronto em %ds.
+es Miasma listo en %ds.
+
+> Energy %d / %d (FOG %d, TONGUE %d) · fills %s
+pt Energia %d / %d (NEBLINA %d, LÍNGUA %d) · enche %s
+es Energía %d / %d (NIEBLA %d, LENGUA %d) · se llena %s
+
+> twice as fast on swamp (now)
+pt duas vezes mais rápido no pântano (agora)
+es el doble de rápido en el pantano (ahora)
+
+> faster on swamp
+pt mais rápido no pântano
+es más rápido en el pantano
+
+> Aiming its tongue: %.1f s (don't move it!)
+pt Mirando a língua: %.1f s (não a mova!)
+es Apuntando la lengua: %.1f s (¡no lo muevas!)
+
+> Charge %d / %d (a storm costs %d). %s
+pt Carga %d / %d (uma tempestade custa %d). %s
+es Carga %d / %d (una tormenta cuesta %d). %s
+
+> Recharging in the field.
+pt Recarregando no campo.
+es Recargando en el campo.
+
+> Full.
+pt Cheio.
+es Lleno.
+
+> Bring it into a Clockwork field to recharge.
+pt Leve-o a um campo do Mecanismo para recarregar.
+es Llévalo a un campo del Mecanismo para recargar.
+
+> No charge yet: the Armoury drills the Cavalry Charge.
+pt Ainda sem carga: o Arsenal treina a Carga de Cavalaria.
+es Aún sin carga: la Armería adiestra la Carga de caballería.
+
+> Charge ready: the next blow hits double and throws the enemy back.
+pt Carga pronta: o próximo golpe causa dano dobrado e arremessa o inimigo para trás.
+es Carga lista: el próximo golpe hace doble daño y empuja al enemigo hacia atrás.
+
+> Gallop about 2 s and the next blow is a charge.
+pt Galope por cerca de 2 s e o próximo golpe é uma carga.
+es Galopa unos 2 s y el próximo golpe será una carga.
+
+> Sabre up close. MOUNT a horse to ride.
+pt Sabre de perto. MONTAR um cavalo para cavalgar.
+es Sable de cerca. MONTAR un caballo para cabalgar.
+
+> Packed: rolls, can't fire. DEPLOY to fight.
+pt Recolhido: rola, não pode atirar. INSTALAR para lutar.
+es Plegado: rueda, no puede disparar. DESPLEGAR para combatir.
+
+> Deployed: powers constructs nearby and zaps enemies.
+pt Instalado: alimenta construtos por perto e eletrocuta inimigos.
+es Desplegado: da energía a los constructos cercanos y electrocuta a los enemigos.
+
+> Powder store %d/%d
+pt Reserva de pólvora %d/%d
+es Reserva de pólvora %d/%d
+
+> coming down: %d climbing in
+pt descendo: %d subindo a bordo
+es bajando: %d subiendo a bordo
+
+> hauling a keg up (%.1f s)
+pt içando um barril (%.1f s)
+es subiendo un barril (%.1f s)
+
+> off to restock
+pt indo reabastecer
+es yendo a reabastecerse
+
+> pilot only: LOAD Musketeers to fight
+pt só o piloto: EMBARCAR Mosqueteiros para lutar
+es solo el piloto: SUBIR Mosqueteros para combatir
+
+> low: RESTOCK at a Wagon, Mill, Barracks or Hall
+pt pouco: REABASTECER numa Carroça, Moinho, Quartel ou Prefeitura
+es poco: REABASTECER en un Carro, Molino, Cuartel o Ayuntamiento
+
+> %d/%d aboard
+pt %d/%d a bordo
+es %d/%d a bordo
+
+> Flying: hunts flyers with spines. LAND to fight on the ground.
+pt Voando: caça voadores com espinhos. POUSAR para lutar no chão.
+es Volando: caza voladores con púas. ATERRIZAR para luchar en el suelo.
+
+> Looking for open ground to land on...
+pt Procurando terreno aberto para pousar...
+es Buscando terreno abierto donde aterrizar...
+
+> Landing...
+pt Pousando...
+es Aterrizando...
+
+> Landed: walks and bites ground units; anything can hit it. TAKE OFF to fly.
+pt Pousado: anda e morde unidades terrestres; qualquer coisa pode atingi-lo. DECOLAR para voar.
+es Aterrizado: camina y muerde a unidades terrestres; cualquier cosa puede golpearlo. DESPEGAR para volar.
+
+> Taking off...
+pt Decolando...
+es Despegando...
+
+> Out of gas: deflated, slower and harmless. Gas %d / 100 (fills faster on swamp).
+pt Sem gás: murcho, mais lento e inofensivo. Gás %d / 100 (enche mais rápido no pântano).
+es Sin gas: desinflado, más lento e inofensivo. Gas %d / 100 (se llena más rápido en el pantano).
+
+> %d + %d s cloud
+pt nuvem de %d + %d s
+es nube de %d + %d s
+
+> Gas %d/100 · HOLD GAS: bursts for %s
+pt Gás %d/100 · SEGURAR GÁS: explode com %s
+es Gas %d/100 · RETENER GAS: estalla con %s
+
+> Gas %d/100 · burst %s · %d spit%s left
+pt Gás %d/100 · explosão %s · restam %d cuspe%s
+es Gas %d/100 · estallido %s · quedan %d escupitajo%s
+
+> Carrying a %s battery: OVERLOAD a construct with it, or it winds one up on COURIER.
+pt Carregando uma bateria %s: SOBRECARGA num construto com ela, ou ele dá corda em um no MENSAGEIRO.
+es Lleva una batería %s: SOBRECARGA a un constructo con ella, o da cuerda a uno en CORREO.
+
+> Courier: fetching batteries for constructs that run down.
+pt Mensageiro: buscando baterias para construtos que pararam.
+es Correo: trayendo baterías para los constructos que se han parado.
+
+> RUN DOWN: frozen until a Winder cranks it up again (or a field reaches it).
+pt DESCARREGADO: parado até um Enrolador dar corda de novo (ou um campo alcançá-lo).
+es AGOTADO: parado hasta que un Dador de cuerda le dé cuerda (o un campo lo alcance).
+
+> Spring %d%%%s: about 50 s away from a field and it runs down.
+pt Mola %d%%%s: cerca de 50 s longe de um campo e ele para.
+es Muelle %d%%%s: unos 50 s lejos de un campo y se para.
+
+> (being cranked)
+pt (recebendo corda)
+es (recibiendo cuerda)
+
+> BRACED: can't move; armour 7; shots at your units behind the shield hit it instead. Charge %d%%.
+pt FIRMADO: não pode se mover; armadura 7; tiros contra suas unidades atrás do escudo o atingem em vez delas. Carga %d%%.
+es AFIRMADO: no puede moverse; armadura 7; los disparos contra tus unidades detrás del escudo lo golpean a él. Carga %d%%.
+
+> Saws %d%% spun up (x%.1f damage) · Charge %d%%: spinning drains it fast.
+pt Serras %d%% aceleradas (x%.1f de dano) · Carga %d%%: girar a drena rápido.
+es Sierras al %d%% (x%.1f de daño) · Carga %d%%: girar la drena rápido.
+
+> Winding its own spring (%d s).
+pt Dando corda na própria mola (%d s).
+es Dándose cuerda a sí mismo (%d s).
+
+> OVERCHARGED: +15%% damage while it stays here. Charge %d%%.
+pt SUPERCARREGADO: +15%% de dano enquanto ficar aqui. Carga %d%%.
+es SOBRECARGADO: +15%% de daño mientras siga aquí. Carga %d%%.
+
+> OVERLOADED for %d s: +50%% damage, +30%% speed. Burns out to 25%% charge.
+pt SOBRECARREGADO por %d s: +50%% de dano, +30%% de velocidade. Esgota-se até 25%% de carga.
+es SOBRECARGADO durante %d s: +50%% de daño, +30%% de velocidad. Se agota hasta el 25%% de carga.
+
+> In danger near enemy buildings!
+pt Em perigo perto de prédios inimigos!
+es ¡En peligro cerca de edificios enemigos!
+
+> Can't be hurt here. Bandages wounded soldiers.
+pt Não pode ser ferido aqui. Enfaixa soldados feridos.
+es No puede ser herido aquí. Venda a los soldados heridos.
+
+> OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back.
+pt SEM CARGA: desligado. Um campo (torre, pilão, Carro Tesla instalado) ou um Enrolador o traz de volta.
+es SIN CARGA: apagado. Un campo (torre, pilón, Carro Tesla desplegado) o un Dador de cuerda lo recupera.
+
+> Charge %d%%: it runs down away from a field and shuts down when empty.
+pt Carga %d%%: para longe de um campo e desliga ao esvaziar.
+es Carga %d%%: se agota lejos de un campo y se apaga al vaciarse.
+
+> HOLD FIRE
+pt SEGURAR FOGO
+es NO DISPARAR
+
+> Leading %d horse%s
+pt Guiando %d cavalo%s
+es Guiando %d caballo%s
+
+> Dragoon on foot (remounts to move)
+pt Dragão a pé (volta a montar para se mover)
+es Dragón a pie (vuelve a montar para moverse)
+
+> refitting: %s...
+pt reequipando: %s...
+es reequipando: %s...
+
+> off to be refitted: %s
+pt indo ser reequipado: %s
+es yendo a reequiparse: %s
+
+> Plain musket
+pt Mosquete comum
+es Mosquete normal
+
+> No armour
+pt Sem armadura
+es Sin armadura
+
+> Waiting for its crate: a Winder fetches it from a Clocktower.
+pt Esperando seu caixote: um Enrolador o busca numa Torre do Relógio.
+es Esperando su caja: un Dador de cuerda la trae desde una Torre del Reloj.
+
+> Its crate is on the way, on a Winder's back.
+pt Seu caixote está a caminho, nas costas de um Enrolador.
+es Su caja está en camino, a la espalda de un Dador de cuerda.
+
+> Its crate was dropped on the way: send a Winder onto it (destroyed, the building is cancelled).
+pt Seu caixote foi largado no caminho: mande um Enrolador até ele (se destruído, a construção é cancelada).
+es Su caja se dejó por el camino: envía a un Dador de cuerda hasta ella (si se destruye, el edificio se cancela).
+
+> Waiting for a %s.
+pt Esperando %s.
+es Esperando %s.
+
+> Winder to start it
+pt um Enrolador para iniciá-lo
+es un Dador de cuerda que lo empiece
+
+> grub to turn into it
+pt uma larva para se transformar nele
+es una larva que se transforme en él
+
+> Growing
+pt Crescendo
+es Creciendo
+
+> Under construction
+pt Em construção
+es En construcción
+
+> tired soil: expand
+pt solo cansado: expanda
+es suelo agotado: expándete
+
+> spent: farms pay a third
+pt esgotado: as fazendas pagam um terço
+es agotado: las granjas pagan un tercio
+
+> running low
+pt acabando
+es agotándose
+
+> spent: the Mill grinds at a quarter
+pt esgotado: o Moinho mói a um quarto
+es agotado: el Molino muele a un cuarto
+
+> (spent: its crushers pay a quarter; expand)
+pt (esgotado: seus britadores pagam um quarto; expanda)
+es (agotado: sus trituradoras pagan un cuarto; expándete)
+
+> (running low)
+pt (acabando)
+es (agotándose)
+
+> (spent: its Boilers fill at a third)
+pt (esgotado: suas Caldeiras enchem a um terço)
+es (agotado: sus Calderas llenan a un tercio)
+
+> +%.1f powder/s%s
+pt +%.1f de pólvora/s%s
+es +%.1f de pólvora/s%s
+
+> saltpetre spent: a quarter; expand to a new Town Hall
+pt salitre esgotado: um quarto; expanda para uma nova Prefeitura
+es salitre agotado: un cuarto; expándete a un nuevo Ayuntamiento
+
+> saltpetre running low
+pt salitre acabando
+es salitre agotándose
+
+> Each load is worth %.1f%s
+pt Cada carga vale %.1f%s
+es Cada carga vale %.1f%s
+
+> spent ground: a third; grow a Burrow on fresh ground
+pt chão esgotado: um terço; crie uma Toca em terra fresca
+es suelo agotado: un tercio; levanta una Madriguera en tierra fresca
+
+> %d/%d batteries ready (one every %.1f s)%s
+pt %d/%d baterias prontas (uma a cada %.1f s)%s
+es %d/%d baterías listas (una cada %.1f s)%s
+
+> coal spent: a third as fast
+pt carvão esgotado: um terço da velocidade
+es carbón agotado: un tercio de la velocidad
+
+> coal running low
+pt carvão acabando
+es carbón agotándose
+
+> %s batteries: %d ore; after %d s on the road they lose %d%% a second%s
+pt Baterias %s: %d de minério; após %d s na estrada perdem %d%% por segundo%s
+es Baterías %s: %d de mineral; tras %d s en el camino pierden un %d%% por segundo%s
+
+> ore spent: a quarter
+pt minério esgotado: um quarto
+es mineral agotado: un cuarto
+
+> ore running low
+pt minério acabando
+es mineral agotándose
+
+> Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3).
+pt Corpos que caem a até %d casas dão essência. SACRIFICAR criaturas da Ninhada aqui: 12%% do seu custo em biomassa como essência (um Raptor: 3).
+es Los cuerpos que caen a menos de %d casillas dan esencia. SACRIFICA aquí criaturas de la Nidada: el 12%% de su coste en biomasa como esencia (un Raptor: 3).
+
+> (next in %ds)
+pt (próximo em %ds)
+es (siguiente en %ds)
+
+> spent: pits yield a third, grow a Burrow on fresh ground
+pt esgotado: os poços rendem um terço, crie uma Toca em terra fresca
+es agotado: los fosos rinden un tercio, levanta una Madriguera en tierra fresca
+
+> Growing into a %s: %d s left
+pt Crescendo para %s: faltam %d s
+es Creciendo hasta %s: faltan %d s
+
+> base Winders
+pt Enroladores da base
+es Dadores de cuerda de la base
+
+> Winders
+pt Enroladores
+es Dadores de cuerda
+
+> (enemy)
+pt (inimigo)
+es (enemigo)
+
+> Veteran
+pt Veterano
+es Veterano
+
+> %d kills +%d%%
+pt %d mortes +%d%%
+es %d bajas +%d%%
+
+> Friendly fire: %d of ours killed.
+pt Fogo amigo: %d dos nossos mortos.
+es Fuego amigo: %d de los nuestros muertos.
+
+> Armour %d/%d
+pt Armadura %d/%d
+es Armadura %d/%d
+
+> Bayonet %d/%d
+pt Baioneta %d/%d
+es Bayoneta %d/%d
+
+> Pouch %d/%d
+pt Cartucheira %d/%d
+es Cartuchera %d/%d
+
+> no lock %d
+pt sem fecho %d
+es sin llave %d
+
+> refitting %d
+pt reequipando %d
+es reequipando %d
+
+> Pistol LOADED
+pt Pistola CARREGADA
+es Pistola CARGADA
+
+> Pistol EMPTY
+pt Pistola VAZIA
+es Pistola VACÍA
+
+> reloads on foot
+pt recarrega a pé
+es recarga a pie
+
+> no powder to reload
+pt sem pólvora para recarregar
+es sin pólvora para recargar
+
+> reloading %.1f s
+pt recarregando %.1f s
+es recargando %.1f s
+
+> reloads when out of the fight
+pt recarrega ao sair da luta
+es recarga al salir del combate
+
+> (HOLD FIRE)
+pt (SEGURAR FOGO)
+es (NO DISPARAR)
+
+> Fetching %d horse%s by the reins.
+pt Buscando %d cavalo%s pelas rédeas.
+es Trayendo %d caballo%s por las riendas.
+
+> No free horse nearby.
+pt Nenhum cavalo livre por perto.
+es Ningún caballo libre cerca.
+
+> No free horse of yours within %d tiles.
+pt Nenhum cavalo livre seu a até %d casas.
+es Ningún caballo libre tuyo a menos de %d casillas.
+
+> Released: the horses graze where they stand.
+pt Soltos: os cavalos pastam onde estão.
+es Soltados: los caballos pastan donde están.
+
+> ARMOURED
+pt BLINDADO
+es ACORAZADO
+
+> ARM.
+pt BLIND.
+es ACOR.
+
+> Then pick where to go: they walk there without stopping to fight.
+pt Depois escolha para onde ir: andam até lá sem parar para lutar.
+es Luego elige adónde ir: caminan hasta allí sin detenerse a combatir.
+
+> Then pick a target, or a place: they walk there fighting everything they meet.
+pt Depois escolha um alvo ou lugar: andam até lá lutando contra tudo que encontrarem.
+es Luego elige un objetivo o lugar: caminan hasta allí luchando contra todo lo que encuentren.
+
+> Drop every order and stand.
+pt Larga todas as ordens e para.
+es Abandona todas las órdenes y se detiene.
+
+> Stand here and fight whatever comes in reach, without chasing.
+pt Fica aqui e luta contra o que chegar ao alcance, sem perseguir.
+es Se queda aquí y lucha contra lo que llegue a su alcance, sin perseguir.
+
+> Then pick a place: they walk there and back, again and again, fighting whatever they meet on the way.
+pt Depois escolha um lugar: andam até lá e voltam, várias vezes, lutando contra tudo que encontrarem no caminho.
+es Luego elige un lugar: van hasta allí y vuelven una y otra vez, luchando contra todo lo que encuentren.
+
+> Every building this worker can put up.
+pt Todos os prédios que este trabalhador pode erguer.
+es Todos los edificios que este trabajador puede levantar.
+
+> Then pick where new units gather when they come out.
+pt Depois escolha onde as novas unidades se reúnem ao sair.
+es Luego elige dónde se reúnen las nuevas unidades al salir.
+
+> Then pick a Feeding Pit (or a spot) for new grubs.
+pt Depois escolha um Poço de Alimentação (ou um lugar) para as novas larvas.
+es Luego elige un Foso de Alimentación (o un lugar) para las nuevas larvas.
+
+> Back to the orders.
+pt Volta às ordens.
+es Vuelve a las órdenes.
+
+> The next page of buttons.
+pt A próxima página de botões.
+es La siguiente página de botones.
+
+> Pull the building down: press twice. Nothing comes back.
+pt Derruba o prédio: pressione duas vezes. Nada volta.
+es Derriba el edificio: pulsa dos veces. No se devuelve nada.
+
+> Cancel the building: three quarters of its cost come back (all of it if work never began).
+pt Cancela o prédio: três quartos do custo voltam (tudo, se o trabalho nem começou).
+es Cancela el edificio: vuelven tres cuartas partes del coste (todo, si la obra no había empezado).
+
+> Build it at the marked spot.
+pt Constrói no ponto marcado.
+es Lo construye en el punto marcado.
+
+> Mark where the wall starts.
+pt Marca onde a muralha começa.
+es Marca dónde empieza el muro.
+
+> Mark where the wall ends (the same spot for a single piece).
+pt Marca onde a muralha termina (o mesmo ponto para uma peça só).
+es Marca dónde termina el muro (el mismo punto para una sola pieza).
+
+> Turn the gate the other way. It stays that way.
+pt Vira o portão para o outro lado. Ele fica assim.
+es Gira la puerta hacia el otro lado. Se queda así.
+
+> Keg runs (glowing = on): while the wagon has room, the Town Hall's haulers (right-click Labourers onto the Town Hall) carry kegs to it from the nearest Powder Mill. A Labourer killed with a keg blows up.
+pt Viagens de barris (brilhando = ligado): enquanto a carroça tiver espaço, os carregadores da Prefeitura (clique direito em Operários sobre a Prefeitura) levam barris do Moinho de Pólvora mais próximo. Um Operário morto com um barril explode.
+es Viajes de barriles (brillante = activado): mientras el carro tenga sitio, los porteadores del Ayuntamiento (clic derecho de Peones sobre el Ayuntamiento) llevan barriles desde el Molino de pólvora más cercano. Un Peón muerto con un barril explota.
+
+> Set the gun up to fire (2.5 s). It can't move until it limbers again.
+pt Põe o canhão em posição de tiro (2,5 s). Ele não se move até ser engatado de novo.
+es Pone el cañón a punto de disparar (2,5 s). No puede moverse hasta engancharlo otra vez.
+
+> Hitch the gun to the horse to move it (2.5 s). It can't fire while limbered.
+pt Atrela o canhão ao cavalo para movê-lo (2,5 s). Atrelado, não pode atirar.
+es Engancha el cañón al caballo para moverlo (2,5 s). Enganchado, no puede disparar.
+
+> Set it up to fire (3 s). It can't move until it packs up.
+pt Instala-o para atirar (3 s). Não se move até ser recolhido.
+es Lo despliega para disparar (3 s). No se mueve hasta que se recoja.
+
+> Pack it up to move (3 s). It can't fire while packed.
+pt Recolhe-o para mover (3 s). Recolhido, não pode atirar.
+es Lo recoge para moverlo (3 s). Recogido, no puede disparar.
+
+> Short range, a cone of musket balls: big damage, +50% against Light units, and it hits flyers.
+pt Curto alcance, um cone de balas de mosquete: muito dano, +50% contra unidades Leves, e acerta voadores.
+es Corto alcance, un cono de balas de mosquete: mucho daño, +50% contra unidades Ligeras, y alcanza a los voladores.
+
+> The longest range in the game. The ball ploughs through a line of men, YOUR OWN TOO, and smashes buildings. Can't hit flyers.
+pt O maior alcance do jogo. A bala atravessa uma fila de homens, OS SEUS TAMBÉM, e destrói prédios. Não acerta voadores.
+es El mayor alcance del juego. La bala atraviesa una fila de hombres, LOS TUYOS TAMBIÉN, y destroza edificios. No alcanza a voladores.
+
+> The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as essence. Bodies rot after 2 minutes.
+pt As larvas envolvem todo corpo por perto (amigo ou inimigo) num casulo e o levam a uma Toca (ou Galeria, Montículo da Ninhada) como essência. Corpos apodrecem após 2 minutos.
+es Las larvas envuelven en un capullo todo cuerpo cercano (amigo o enemigo) y lo llevan a una Madriguera (o Conejera, Montículo de la Nidada) como esencia. Los cuerpos se pudren tras 2 minutos.
+
+> The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as essence.
+pt As criaturas selecionadas (menos larvas) vão ao Cercado da Ninhada mais próximo e são oferecidas: 12% do custo em biomassa como essência.
+es Las criaturas seleccionadas (menos las larvas) van al Corral de la Nidada más cercano y son ofrecidas: el 12% de su coste en biomasa como esencia.
+
+> Stop spitting and keep the sac full: the Bloater drifts in and bursts as a huge acid bomb.
+pt Para de cuspir e mantém o saco cheio: o Inchador flutua até lá e explode como uma enorme bomba de ácido.
+es Deja de escupir y mantiene el saco lleno: el Hinchador se acerca flotando y estalla como una enorme bomba de ácido.
+
+> Pistols (glowing = on): Horsemen, Cuirassiers and Officers keep their one pistol shot and fight with the sabre only, until you turn it off. (HOLD is still stand-ground.)
+pt Pistolas (brilhando = ligado): Cavaleiros, Couraceiros e Oficiais guardam o único tiro da pistola e lutam só com o sabre, até você desligar. (FIRME continua sendo manter posição.)
+es Pistolas (brillante = activado): los Jinetes, Coraceros y Oficiales guardan su único disparo de pistola y luchan solo con el sable, hasta que lo desactives. (MANTENER sigue siendo aguantar la posición.)
+
+> Lob acid from range. Every glob uses gas, so the final burst gets smaller.
+pt Lança ácido à distância. Cada glóbulo gasta gás, então a explosão final fica menor.
+es Lanza ácido a distancia. Cada gota gasta gas, así que el estallido final es menor.
+
+> 50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.
+pt 50 de energia: um banco de neblina num ponto por 12 s. Tiros disparados de ou para dentro dele erram metade das vezes (os seus também); unidades dentro enxergam 2 casas.
+es 50 de energía: un banco de niebla en un punto durante 12 s. Los disparos desde o hacia ella fallan la mitad de las veces (los tuyos también); las unidades dentro ven 2 casillas.
+
+> 75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.
+pt 75 de energia: marca um inimigo no chão por 3 s e depois o arrasta até os pés do Sapo. Máquinas pesadas só cambaleiam.
+es 75 de energía: marca a un enemigo en tierra durante 3 s y luego lo arrastra hasta los pies del Sapo. Las máquinas pesadas solo se tambalean.
+
+> 30 essence: a green cloud for 8 s. Brood inside heal up to 30% of their health. Then 18 s to recover.
+pt 30 de essência: uma nuvem verde por 8 s. A Ninhada dentro cura até 30% da vida. Depois, 18 s para se recuperar.
+es 30 de esencia: una nube verde durante 8 s. La Nidada dentro cura hasta el 30% de su salud. Luego 18 s para recuperarse.
+
+> Dig in (2.5 s): she lobs splashing spit blobs and spreads swamp, but can't move.
+pt Cava-se (2,5 s): lança bolas de cuspe com dano em área e espalha pântano, mas não pode se mover.
+es Se atrinchera (2,5 s): lanza bolas de saliva con daño en área y extiende el pantano, pero no puede moverse.
+
+> Walk again (2.5 s). Walking, she can't attack.
+pt Anda de novo (2,5 s). Andando, ela não ataca.
+es Vuelve a caminar (2,5 s). Caminando, no puede atacar.
+
+> Land (1.2 s) to bite ground units. Landed, anything can hit it, and it can't touch flyers.
+pt Pousa (1,2 s) para morder unidades terrestres. Pousado, qualquer coisa o atinge, e ele não alcança voadores.
+es Aterriza (1,2 s) para morder a unidades terrestres. Aterrizado, cualquier cosa puede golpearlo y no alcanza a los voladores.
+
+> Fly again (1.2 s) and hunt flyers with spines.
+pt Voa de novo (1,2 s) e caça voadores com espinhos.
+es Vuelve a volar (1,2 s) y caza voladores con púas.
+
+> Then tap Musketeers or Labourers (4 at most): they climb in. Men selected with the balloon climb in at once.
+pt Depois toque em Mosqueteiros ou Operários (4 no máximo): eles sobem. Homens selecionados com o balão sobem de uma vez.
+es Luego toca a Mosqueteros o Peones (4 como máximo): suben a bordo. Los hombres seleccionados con el globo suben de inmediato.
+
+> Then pick where to drop them: the balloon flies there and lets everyone off.
+pt Depois escolha onde largá-los: o balão voa até lá e deixa todos descerem.
+es Luego elige dónde dejarlos: el globo vuela hasta allí y baja a todos.
+
+> Let everyone off right below the balloon.
+pt Deixa todos descerem logo abaixo do balão.
+es Baja a todos justo debajo del globo.
+
+> Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 40-shot store is full.
+pt Voa até a pólvora mais próxima (Carroça, Moinho, Quartel ou Prefeitura) e iça barris até o estoque de 40 tiros encher.
+es Vuela hasta la pólvora más cercana (Carro, Molino, Cuartel o Ayuntamiento) y sube barriles hasta llenar la reserva de 40 disparos.
+
+> Research: %s
+pt Pesquisa: %s
+es Investigación: %s
+
+> Queued like a unit; CANCEL takes it back out (paid back).
+pt Entra na fila como uma unidade; CANCELAR a tira de volta (reembolsado).
+es Entra en cola como una unidad; CANCELAR la saca de nuevo (reembolsado).
+
+> %s  ·  %d s  ·  %d supply%s
+pt %s  ·  %d s  ·  %d de suprimento%s
+es %s  ·  %d s  ·  %d de suministro%s
+
+> %d an egg
+pt %d por ovo
+es %d por huevo
+
+> Armour
+pt Armadura
+es Armadura
+
+> the Socket Bayonet
+pt a Baioneta de Encaixe
+es la Bayoneta de Cubo
+
+> Comes out with %s (the refit fees are in the price).
+pt Sai com %s (as taxas de reequipamento estão no preço).
+es Sale con %s (las tasas de reequipo están en el precio).
+
+> Right-click
+pt Clique direito
+es Clic derecho
+
+> Hold
+pt Segure
+es Mantén pulsado
+
+> train it automatically (glows while on).
+pt treina automaticamente (brilha quando ligado).
+es lo entrena automáticamente (brilla cuando está activado).
+
+> +%d supply
+pt +%d de suprimento
+es +%d de suministro
+
+> %d built  ·  reach %d tiles from the capital
+pt %d construídos  ·  alcance de %d casas a partir da capital
+es %d construidos  ·  alcance de %d casillas desde la capital
+
+> %d of %d here
+pt %d de %d aqui
+es %d de %d aquí
+
+> Automatic work (glowing = on): idle workers go back to their posts by themselves. Press to switch it off, to scout or keep a builder free.
+pt Trabalho automático (brilhando = ligado): trabalhadores ociosos voltam sozinhos aos seus postos. Desligue para explorar ou manter um construtor livre.
+es Trabajo automático (brillante = activado): los trabajadores libres vuelven solos a sus puestos. Desactívalo para explorar o dejar libre a un constructor.
+
+> Then pick a damaged building or wall: they fix it (a full repair costs a quarter of its price).
+pt Depois escolha um prédio ou muralha danificado: eles o consertam (um conserto completo custa um quarto do preço).
+es Luego elige un edificio o muro dañado: lo arreglan (una reparación completa cuesta un cuarto de su precio).
+
+> automatic repair (glows while on).
+pt reparo automático (brilha quando ligado).
+es reparación automática (brilla cuando está activada).
+
+> Take the last thing in the queue back out (paid back).
+pt Tira de volta a última coisa da fila (reembolsado).
+es Saca de nuevo lo último de la cola (reembolsado).
+
+> Back out of this without doing it.
+pt Desiste disto sem fazê-lo.
+es Renuncia a esto sin hacerlo.
+
+> %d / %d health
+pt %d / %d de vida
+es %d / %d de salud
+
+> armour %d
+pt armadura %d
+es armadura %d
+
+> %d%% built
+pt %d%% construído
+es %d%% construido
+
+> %s, %d led
+pt %s, %d guiados
+es %s, %d guiados
+
+> Your free horses (riders' and guns' horses aren't counted); reserved ones are kept for a recruit in a queue. Horse Breeders sell them (40 gold each). Training a Horseman, Cuirassier, Field Cannon, Mortar or Powder Wagon takes a horse standing at its building, else a free one at a breeder, else a breeder trains one for it (40 gold more): one click does both. Any man can MOUNT a free horse. Left alone near an enemy man, a horse is stolen.
+pt Seus cavalos livres (os de cavaleiros e canhões não contam); os reservados são guardados para um recruta na fila. Criadores de Cavalos os vendem (40 de ouro cada). Treinar um Cavaleiro, Couraceiro, Canhão de Campanha, Morteiro ou Carroça de Pólvora usa um cavalo parado no prédio, senão um livre num criador, senão um criador treina um para ele (40 de ouro a mais): um clique faz os dois. Qualquer homem pode MONTAR um cavalo livre. Sozinho perto de um inimigo, o cavalo é roubado.
+es Tus caballos libres (los de jinetes y cañones no cuentan); los reservados se guardan para un recluta en cola. Los Criadores de caballos los venden (40 de oro cada uno). Entrenar un Jinete, Coracero, Cañón de campaña, Mortero o Carro de pólvora usa un caballo parado en su edificio, si no uno libre en un criador, si no un criador entrena uno para él (40 de oro más): un clic hace ambas cosas. Cualquier hombre puede MONTAR un caballo libre. Si queda solo cerca de un enemigo, se lo roban.
+
+> Supply: %d of %d used
+pt Suprimento: %d de %d usados
+es Suministro: %d de %d usados
+
+> Workers %d · Army %d · In production %d.\nEvery unit takes supply. Each %s and %s raises the cap, up to %d.
+pt Trabalhadores %d · Exército %d · Em produção %d.\nTodo unidade ocupa suprimento. Cada %s e %s eleva o limite, até %d.
+es Trabajadores %d · Ejército %d · En producción %d.\nCada unidad ocupa suministro. Cada %s y %s aumenta el límite, hasta %d.
+
+> Pays for everything. Labourers on Farms bring in the harvests; a Town Hall's soil runs out in time.
+pt Paga tudo. Operários nas Fazendas trazem as colheitas; o solo de uma Prefeitura acaba com o tempo.
+es Lo paga todo. Los Peones de las Granjas traen las cosechas; el suelo de un Ayuntamiento se agota con el tiempo.
+
+> Black powder for muskets, cannons and mortars, and for refilling soldiers. Labourers grind it at the Powder Mill.
+pt Pólvora negra para mosquetes, canhões e morteiros, e para reabastecer soldados. Operários a moem no Moinho de Pólvora.
+es Pólvora negra para mosquetes, cañones y morteros, y para reabastecer a los soldados. Los Peones la muelen en el Molino de pólvora.
+
+> Pays for everything. Grubs haul food from Feeding Pits to a Burrow: longer hauls pay more.
+pt Paga tudo. Larvas levam comida dos Poços de Alimentação a uma Toca: quanto mais longe, mais paga.
+es Lo paga todo. Las larvas llevan comida de los Fosos de Alimentación a una Madriguera: cuanto más lejos, más paga.
+
+> Bodies falling near a Brood Pen, grubs on HARVEST, and SACRIFICE at the Pen. Pays for the big creatures.
+pt Corpos que caem perto de um Cercado da Ninhada, larvas em COLHER e SACRIFICAR no Cercado. Paga as criaturas grandes.
+es Cuerpos que caen cerca de un Corral de la Nidada, larvas en RECOGER y SACRIFICAR en el Corral. Paga las criaturas grandes.
+
+> Nothing to explain there.
+pt Nada para explicar ali.
+es Nada que explicar ahí.
+
+> behind the hall
+pt atrás do salão
+es detrás del ayuntamiento
+
+> about even
+pt quase igual
+es casi igual
+
+> ECONOMY
+pt ECONOMIA
+es ECONOMÍA
+
+> Only a built gate can be locked.
+pt Só um portão construído pode ser trancado.
+es Solo se puede bloquear una puerta ya construida.
+
+> Something is in the gateway.
+pt Há algo na passagem do portão.
+es Hay algo en el hueco de la puerta.
+
+> Not enough gold for the whole wall.
+pt Ouro insuficiente para a muralha toda.
+es No hay suficiente oro para todo el muro.
+
+> its Mill grinds
+pt seu Moinho mói
+es su Molino muele
+
+> its crushers pay
+pt seus britadores pagam
+es sus trituradoras pagan
+
+> The %s at your %s is spent: %s at a quarter. Expand to fresh %s.
+pt O %s em sua %s está esgotado: %s a um quarto. Expanda para %s novo.
+es El %s de tu %s está agotado: %s a un cuarto. Expándete a %s nuevo.
+
+> The %s at your %s is running low (%d%% left): expand to fresh %s soon.
+pt O %s em sua %s está acabando (%d%% restante): expanda logo para %s novo.
+es El %s de tu %s se está agotando (queda el %d%%): expándete pronto a %s nuevo.
+
+> Harvest in %ds
+pt Colheita em %ds
+es Cosecha en %ds
+
+> +%d gold%s
+pt +%d de ouro%s
+es +%d de oro%s
+
+> Haulers %d/%d
+pt Carregadores %d/%d
+es Porteadores %d/%d
+
+> Soil: %d%% (%d gold)%s
+pt Solo: %d%% (%d de ouro)%s
+es Suelo: %d%% (%d de oro)%s
+
+> Saltpetre: %d%% (%d powder)%s
+pt Salitre: %d%% (%d de pólvora)%s
+es Salitre: %d%% (%d de pólvora)%s
+
+> allows 2 Farms and 1 Powder Mill nearby
+pt permite 2 Fazendas e 1 Moinho de Pólvora por perto
+es permite 2 Granjas y 1 Molino de pólvora cerca
+
+> Ore: %d left%s
+pt Minério: restam %d%s
+es Mineral: quedan %d%s
+
+> Coal: %d%%%s
+pt Carvão: %d%%%s
+es Carbón: %d%%%s
+
+> allows 2 Boilers and 2 Ore Crushers nearby
+pt permite 2 Caldeiras e 2 Britadores de Minério por perto
+es permite 2 Calderas y 2 Trituradoras de mineral cerca
+
+> Horses here: %d (Horsemen, Dragoons, cannons, mortars and wagons need one each)
+pt Cavalos aqui: %d (Cavaleiros, Dragões, canhões, morteiros e carroças precisam de um cada)
+es Caballos aquí: %d (los Jinetes, Dragones, cañones, morteros y carros necesitan uno cada uno)
+
+> Eggs: %d / %d%s
+pt Ovos: %d / %d%s
+es Huevos: %d / %d%s
+
+> Ground: %d%% (%d biomass)%s
+pt Chão: %d%% (%d de biomassa)%s
+es Suelo: %d%% (%d de biomasa)%s
+
+> Efficiency %d%%: %d/%d %s
+pt Eficiência %d%%: %d/%d %s
+es Eficiencia %d%%: %d/%d %s
+
+> %s %d%%
+pt %s %d%%
+es %s %d%%
+
+> %s%d kill%s
+pt %s%d morte%s
+es %s%d baja%s
+
+> +%d%% damage
+pt +%d%% de dano
+es +%d%% de daño
+
+> soil
+pt solo
+es suelo
+
+> saltpetre
+pt salitre
+es salitre
+
+> ore
+pt minério
+es mineral
+
+> coal
+pt carvão
+es carbón
+
+> ground
+pt chão
+es suelo
+
+> gold
+pt ouro
+es oro
+
+> powder
+pt pólvora
+es pólvora
+
+> essence
+pt essência
+es esencia
+
+> biomass
+pt biomassa
+es biomasa
+
+> energy
+pt energia
+es energía
+
+> %d gold
+pt %d de ouro
+es %d de oro
+
+> %d powder
+pt %d de pólvora
+es %d de pólvora
+
+> %d essence
+pt %d de essência
+es %d de esencia
+
+> %d biomass
+pt %d de biomassa
+es %d de biomasa
+
+> %d ore
+pt %d de minério
+es %d de mineral
+
+> %d energy
+pt %d de energia
+es %d de energía
+
+> Your Boilers' coal is spent: they fill no more batteries. Build a Clocktower on fresh ground.
+pt O carvão das suas Caldeiras acabou: elas não enchem mais baterias. Construa uma Torre do Relógio em terra fresca.
+es El carbón de tus Calderas se ha agotado: ya no llenan baterías. Construye una Torre del Reloj en terreno nuevo.
+
+> Your Boilers' coal is running low (%d%% left): expand to fresh ground soon.
+pt O carvão das suas Caldeiras está acabando (%d%% restante): expanda logo para terra fresca.
+es El carbón de tus Calderas se está agotando (queda el %d%%): expándete pronto a terreno nuevo.
+
+> The ground around your %s is spent: barren, its pits yield nothing. Grow a Burrow on fresh ground.
+pt O chão em volta da sua %s está esgotado: estéril, seus poços não rendem nada. Crie uma Toca em terra fresca.
+es El suelo alrededor de tu %s está agotado: estéril, sus fosos no rinden nada. Levanta una Madriguera en terreno nuevo.
+
+> The ground around your %s is running low (%d%% left): grow a Burrow on fresh ground soon.
+pt O chão em volta da sua %s está acabando (%d%% restante): crie logo uma Toca em terra fresca.
+es El suelo alrededor de tu %s se está agotando (queda el %d%%): levanta pronto una Madriguera en terreno nuevo.
+
+> The soil around your Town Hall is barren: its farms pay nothing. Expand to fresh land.
+pt O solo em volta da sua Prefeitura está estéril: as fazendas não pagam nada. Expanda para terra fresca.
+es El suelo alrededor de tu Ayuntamiento está estéril: sus granjas no pagan nada. Expándete a tierra nueva.
+
+> The soil around your Town Hall is running low (%d%% left): expand to fresh land soon.
+pt O solo em volta da sua Prefeitura está acabando (%d%% restante): expanda logo para terra fresca.
+es El suelo alrededor de tu Ayuntamiento se está agotando (queda el %d%%): expándete pronto a tierra nueva.
+
+> Your capital has fallen: the next Burrow is the new capital.
+pt Sua capital caiu: a próxima Toca é a nova capital.
+es Tu capital ha caído: la siguiente Madriguera es la nueva capital.
+
+> Must stand on swamp joined to a Burrow's swamp.
+pt Deve ficar sobre um pântano ligado ao pântano de uma Toca.
+es Debe estar sobre un pantano conectado al pantano de una Madriguera.
+
+> Needs a finished Burrow (your capital) first.
+pt Precisa antes de uma Toca pronta (sua capital).
+es Necesita antes una Madriguera terminada (tu capital).
+
+> Too far from your capital (reach %d tiles): spread your swamp (plant a Clutch Mound) to reach farther.
+pt Longe demais da sua capital (alcance de %d casas): espalhe seu pântano (plante um Montículo de Ovos) para alcançar mais longe.
+es Demasiado lejos de tu capital (alcance de %d casillas): extiende tu pantano (planta un Montículo de Huevos) para llegar más lejos.
+
+> Must stand on swamp joined to your capital's.
+pt Deve ficar sobre um pântano ligado ao da sua capital.
+es Debe estar sobre un pantano conectado al de tu capital.
+
+> Powder bank empty: man your Powder Mills.
+pt Reserva de pólvora vazia: ponha gente nos seus Moinhos de Pólvora.
+es Reserva de pólvora vacía: pon gente en tus Molinos de pólvora.
+
+> Powder bank empty: refills wait. Man your Powder Mills.
+pt Reserva de pólvora vazia: as recargas esperam. Ponha gente nos seus Moinhos de Pólvora.
+es Reserva de pólvora vacía: las recargas esperan. Pon gente en tus Molinos de pólvora.
+
+> Out of powder!
+pt Sem pólvora!
+es ¡Sin pólvora!
+
+> Musketeers
+pt Mosqueteiros
+es Mosqueteros
+
+> Cannons
+pt Canhões
+es Cañones
+
+> Mortars
+pt Morteiros
+es Morteros
+
+> Men
+pt Homens
+es Hombres
+
+> %s out of powder: bring them to a Mill, Barracks, Hall or Powder Wagon.
+pt %s sem pólvora: leve-os a um Moinho, Quartel, Prefeitura ou Carroça de Pólvora.
+es %s sin pólvora: llévalos a un Molino, Cuartel, Ayuntamiento o Carro de pólvora.
+
+> Can't build there: the spot is blocked.
+pt Não dá para construir ali: o lugar está bloqueado.
+es No se puede construir ahí: el lugar está bloqueado.
+
+> Can't build there: it can't be reached.
+pt Não dá para construir ali: não dá para chegar.
+es No se puede construir ahí: no se puede llegar.
+
+> the spot was blocked
+pt o lugar estava bloqueado
+es el lugar estaba bloqueado
+
+> it couldn't be reached
+pt não deu para chegar
+es no se pudo llegar
+
+> nobody was coming to start it
+pt ninguém vinha iniciá-lo
+es nadie venía a empezarlo
+
+> +%d essence
+pt +%d de essência
+es +%d de esencia
+
+> Research Armour at the Armoury first.
+pt Pesquise Armadura no Arsenal primeiro.
+es Investiga Armadura en la Armería primero.
+
+> Coming soon.
+pt Em breve.
+es Próximamente.
+
+> Research %s at the %s first.
+pt Pesquise %s primeiro em: %s.
+es Investiga %s primero en: %s.
+
+> Needs a %s first.
+pt Requer %s primeiro.
+es Requiere %s primero.
+
+> No eggs ready.
+pt Nenhum ovo pronto.
+es No hay huevos listos.
+
+> Queue is full.
+pt A fila está cheia.
+es La cola está llena.
+
+> Needs a horse: build a Horse Breeder.
+pt Precisa de um cavalo: construa um Criador de Cavalos.
+es Necesita un caballo: construye un Criador de caballos.
+
+> The Horse Breeders' queues are full.
+pt As filas dos Criadores de Cavalos estão cheias.
+es Las colas de los Criadores de caballos están llenas.
+
+> Not enough %s for its horse (%d more).
+pt %s insuficiente para o cavalo (faltam %d).
+es No hay suficiente %s para su caballo (faltan %d).
+
+> Only one %s per %s.
+pt Só um(a) %s por %s.
+es Solo un %s por %s.
+
+> Supply is maxed out.
+pt O suprimento está no limite.
+es El suministro está al máximo.
+
+> Need more supply: build a %s.
+pt Precisa de mais suprimento: construa %s.
+es Necesitas más suministro: construye %s.
+
+> Can't research that here.
+pt Não dá para pesquisar isso aqui.
+es No se puede investigar eso aquí.
+
+> Already done.
+pt Já feito.
+es Ya hecho.
+
+> Already in the queue.
+pt Já está na fila.
+es Ya está en cola.
+
+> Research %s first.
+pt Pesquise %s primeiro.
+es Investiga %s primero.
+
+> %s unlocked.
+pt %s liberado.
+es %s desbloqueado.
+
+> %s researched: %s
+pt %s pesquisado: %s
+es %s investigado: %s
+
+> Can't upgrade that.
+pt Não dá para melhorar isso.
+es No se puede mejorar eso.
+
+> Already a %s.
+pt Já é: %s.
+es Ya es: %s.
+
+> Already upgrading.
+pt Já está melhorando.
+es Ya se está mejorando.
+
+> Your %s has grown into a %s: up to %d eggs.
+pt %s evoluiu para %s: até %d ovos.
+es %s ha evolucionado a %s: hasta %d huevos.
+
+> No Barracks, Armoury or Powder Wagon to refit at.
+pt Sem Quartel, Arsenal ou Carroça de Pólvora para reequipar.
+es No hay Cuartel, Armería ni Carro de pólvora donde reequiparse.
+
+> Can't build on a ramp: build at the top or the bottom of it.
+pt Não dá para construir numa rampa: construa no topo ou na base.
+es No se puede construir en una rampa: construye en lo alto o en la base.
+
+> Blocked.
+pt Bloqueado.
+es Bloqueado.
+
+> Blocked: a building is planned there.
+pt Bloqueado: há um prédio planejado ali.
+es Bloqueado: hay un edificio planeado ahí.
+
+> Unexplored.
+pt Inexplorado.
+es Inexplorado.
+
+> Brood structures must grow on your swamp.
+pt Estruturas da Ninhada devem crescer no seu pântano.
+es Las estructuras de la Nidada deben crecer en tu pantano.
+
+> Keep the ramp clear.
+pt Deixe a rampa livre.
+es Deja libre la rampa.
+
+> Too close to your other %s: it needs its own ground.
+pt Perto demais de outro de seus %s: precisa de terreno próprio.
+es Demasiado cerca de otro de tus %s: necesita su propio terreno.
+
+> Each Burrow allows one Brood Pen: raise another Burrow at home for more.
+pt Cada Toca permite um Cercado da Ninhada: erga outra Toca em casa para ter mais.
+es Cada Madriguera permite un Corral de la Nidada: levanta otra Madriguera en casa para tener más.
+
+> Each %s allows %d %s. Expand for more.
+pt Cada %s permite %d %s. Expanda para ter mais.
+es Cada %s permite %d %s. Expándete para tener más.
+
+> Must be near your %s.
+pt Deve ficar perto de %s.
+es Debe estar cerca de %s.
+
+> Not enough energy: FOG needs %d (it fills over time, faster on swamp).
+pt Energia insuficiente: NEBLINA custa %d (enche com o tempo, mais rápido no pântano).
+es Energía insuficiente: NIEBLA cuesta %d (se llena con el tiempo, más rápido en el pantano).
+
+> Not enough charge: the Stormcaller recharges inside a Clockwork field.
+pt Carga insuficiente: o Evocador de Tempestades recarrega dentro de um campo do Mecanismo.
+es Carga insuficiente: el Invocador de Tormentas recarga dentro de un campo del Mecanismo.
+
+> Not enough energy: a storm burns %d stored batteries.
+pt Energia insuficiente: uma tempestade gasta %d baterias armazenadas.
+es Energía insuficiente: una tormenta gasta %d baterías almacenadas.
+
+> Miasma isn't ready yet (%ds).
+pt O Miasma ainda não está pronto (%ds).
+es El Miasma aún no está listo (%ds).
+
+> The balloon must hover over open ground to take men aboard.
+pt O balão deve pairar sobre terreno aberto para receber homens a bordo.
+es El globo debe flotar sobre terreno abierto para recibir hombres a bordo.
+
+> Only Musketeers and Labourers fit in the basket.
+pt Só Mosqueteiros e Operários cabem na cesta.
+es Solo caben Mosqueteros y Peones en la cesta.
+
+> The basket is full (%d men).
+pt A cesta está cheia (%d homens).
+es La cesta está llena (%d hombres).
+
+> Pick one of your constructs to overload.
+pt Escolha um dos seus construtos para sobrecarregar.
+es Elige uno de tus constructos para sobrecargarlo.
+
+> No Ornithopter here carries a battery.
+pt Nenhum Ornitóptero aqui leva uma bateria.
+es Ningún Ornitóptero de aquí lleva una batería.
+
+> Nobody here can cast that.
+pt Ninguém aqui pode lançar isso.
+es Nadie de aquí puede lanzar eso.
+
+> Pick an enemy unit on the ground (not a building or a flyer).
+pt Escolha uma unidade inimiga no chão (não um prédio nem um voador).
+es Elige una unidad enemiga en tierra (no un edificio ni un volador).
+
+> A Mist Toad is aiming its tongue at your %s: move it away or stun the Toad!
+pt Um Sapo da Névoa está mirando a língua em seu(sua) %s: afaste-o ou atordoe o Sapo!
+es ¡Un Sapo de la Niebla apunta su lengua a tu %s: aléjalo o aturde al Sapo!
+
+> Tongue!
+pt Língua!
+es ¡Lengua!
+
+> Tongue! (staggered)
+pt Língua! (cambaleando)
+es ¡Lengua! (tambaleándose)
+
+> %s is defeated!
+pt %s foi derrotado!
+es ¡%s ha sido derrotado!
+
+> Your forces are under attack!
+pt Suas forças estão sob ataque!
+es ¡Tus fuerzas están bajo ataque!
+
+> Our allies are under attack!
+pt Nossos aliados estão sob ataque!
+es ¡Nuestros aliados están bajo ataque!
+
+> Your base is under attack!
+pt Sua base está sob ataque!
+es ¡Tu base está bajo ataque!
+
+> Your workers are under attack!
+pt Seus trabalhadores estão sob ataque!
+es ¡Tus trabajadores están bajo ataque!
+
+> Horses: %d%s
+pt Cavalos: %d%s
+es Caballos: %d%s
+
+> (%d reserved)
+pt (%d reservados)
+es (%d reservados)
+
+> loose horse caught
+pt cavalo solto capturado
+es caballo suelto capturado
+
+> A horse was stolen!
+pt Um cavalo foi roubado!
+es ¡Han robado un caballo!
+
+> horse taken
+pt cavalo levado
+es caballo llevado
+
+> loose horse
+pt cavalo solto
+es caballo suelto
+
+> Socket Bayonet
+pt Baioneta de Encaixe
+es Bayoneta de Cubo
+
+> Shot Pouch
+pt Cartucheira
+es Cartuchera
+
+> Refit called off: the place is gone. Paid back.
+pt Reequipamento cancelado: o lugar sumiu. Reembolsado.
+es Reequipo cancelado: el lugar ya no existe. Reembolsado.
+
+> A %s couldn't reach the place to be refitted. Paid back.
+pt %s não conseguiu chegar ao lugar de reequipamento. Reembolsado.
+es %s no pudo llegar al lugar de reequipo. Reembolsado.
+
+> seasoned horse (rank %d)
+pt cavalo experiente (nível %d)
+es caballo curtido (rango %d)
+
+> a horse fell
+pt um cavalo caiu
+es cayó un caballo
+
+> +%d shots
+pt +%d tiros
+es +%d disparos
+
+> battery burst!
+pt bateria estourou!
+es ¡la batería estalló!
+
+> No horse: HARNESS one to move it.
+pt Sem cavalo: ATRELAR um para mover.
+es Sin caballo: UNCIR uno para moverlo.
+
+> out of reach
+pt fora de alcance
+es fuera de alcance
+
+> tongue broken
+pt língua rompida
+es lengua rota
+
+> No horse to limber up: HARNESS one first.
+pt Sem cavalo para engatar: ATRELAR um primeiro.
+es Sin caballo que enganchar: UNCIR uno primero.
+
+> That Town Hall has all its haulers.
+pt Essa Prefeitura já tem todos os carregadores.
+es Ese Ayuntamiento ya tiene todos sus porteadores.
+
+> That %s is fully crewed.
+pt Esse(a) %s já está com a equipe completa.
+es Ese %s ya tiene la dotación completa.
+
+> They can't reach the balloon: it must hover over ground they can walk to.
+pt Eles não alcançam o balão: ele deve pairar sobre chão onde possam andar.
+es No alcanzan el globo: debe flotar sobre suelo por el que puedan caminar.
+
+> survived the fall
+pt sobreviveu à queda
+es sobrevivió a la caída
+
+> out of gas
+pt sem gás
+es sin gas
+
+> OVERLOAD!
+pt SOBRECARGA!
+es ¡SOBRECARGA!
+
+> wound up
+pt com corda
+es con cuerda
+
+> burnt out
+pt esgotou
+es agotado
+
+> Holding fire: own men where it lands
+pt Segurando fogo: homens próprios onde cai
+es Reteniendo fuego: hombres propios donde cae
+
+> Holding fire: own men in the blast
+pt Segurando fogo: homens próprios na explosão
+es Reteniendo fuego: hombres propios en la explosión
+
+> Not enough ore to repair.
+pt Minério insuficiente para reparar.
+es No hay suficiente mineral para reparar.
+
+> No Brood Pen to offer them at.
+pt Sem Cercado da Ninhada para oferecê-los.
+es No hay Corral de la Nidada donde ofrecerlos.
+
+> Hauler: waiting at the Town Hall for a horse or a keg to fetch.
+pt Carregador: esperando na Prefeitura por um cavalo ou barril para buscar.
+es Porteador: esperando en el Ayuntamiento un caballo o barril que traer.
+
+> Hauler: carrying a powder keg to the wagon (it blows up if he's killed!)
+pt Carregador: levando um barril de pólvora à carroça (explode se for morto!)
+es Porteador: llevando un barril de pólvora al carro (¡explota si lo matan!)
+
+> Hauler: fetching a powder keg from the Powder Mill.
+pt Carregador: buscando um barril de pólvora no Moinho de Pólvora.
+es Porteador: trayendo un barril de pólvora del Molino de pólvora.
+
+> Hauler: bringing horses to a gun.
+pt Carregador: levando cavalos a um canhão.
+es Porteador: llevando caballos a un cañón.
+
+> Hauler: leading %d horse%s to the buildings that need them.
+pt Carregador: guiando %d cavalo%s aos prédios que precisam deles.
+es Porteador: guiando %d caballo%s a los edificios que los necesitan.
+
+> Hauler: going for a horse.
+pt Carregador: indo buscar um cavalo.
+es Porteador: yendo a por un caballo.
+
+> risen!
+pt reergueu-se!
+es ¡se alzó!
+
+> crate dropped
+pt caixote largado
+es caja soltada
+
+> Your Powder Wagon blew up!
+pt Sua Carroça de Pólvora explodiu!
+es ¡Tu Carro de pólvora ha explotado!
+
+> Pack
+pt Recolher
+es Recoger
+
+> %d horses
+pt %d cavalos
+es %d caballos
+
+> +%d harvest
+pt +%d de colheita
+es +%d de cosecha
+
+> CAPITAL
+pt CAPITAL
+es CAPITAL
+
+> THANKS
+pt OBRIGADO
+es GRACIAS
+
+> OOPS
+pt OPS
+es UPS
+
+> WAIT
+pt ESPERE
+es ESPERA
+
+> ATTACK?
+pt ATACAR?
+es ¿ATACAR?
+
+> Nothing damaged there to repair.
+pt Nada danificado ali para reparar.
+es No hay nada dañado ahí que reparar.
+
+> crate lost
+pt caixote perdido
+es caja perdida
+
+> IDLE
+pt OCIOSOS
+es LIBRES
+
+> ARMY
+pt EXÉRCITO
+es EJÉRCITO
+
+> MAKE
+pt PRODUZIR
+es PRODUCIR
+
+> Group %d set (%d).
+pt Grupo %d definido (%d).
+es Grupo %d definido (%d).
+
+> Group %d cleared.
+pt Grupo %d apagado.
+es Grupo %d borrado.
+
+> Select something to add to group %d.
+pt Selecione algo para adicionar ao grupo %d.
+es Selecciona algo para añadir al grupo %d.
+
+> Added %d to group %d (now %d).
+pt %d adicionados ao grupo %d (agora %d).
+es %d añadidos al grupo %d (ahora %d).
+
+> Group %d is empty.
+pt O grupo %d está vazio.
+es El grupo %d está vacío.
+
+> Group %d is empty: Ctrl+%d sets it from the selection.
+pt O grupo %d está vazio: Ctrl+%d o define a partir da seleção.
+es El grupo %d está vacío: Ctrl+%d lo define con la selección.
+
+> Group %d is empty: select something and hold the button.
+pt O grupo %d está vazio: selecione algo e segure o botão.
+es El grupo %d está vacío: selecciona algo y mantén pulsado el botón.
+
+> No idle workers.
+pt Nenhum trabalhador ocioso.
+es No hay trabajadores libres.
+
+> No army yet.
+pt Ainda não há exército.
+es Aún no hay ejército.
+
+> No buildings that make anything yet.
+pt Ainda não há prédios que produzam algo.
+es Aún no hay edificios que produzcan algo.
+
+> View F%d saved.
+pt Vista F%d salva.
+es Vista F%d guardada.
+
+> View F%d is empty: %s saves this view.
+pt A vista F%d está vazia: %s salva esta vista.
+es La vista F%d está vacía: %s guarda esta vista.
+
+> Shift+F%d
+pt Shift+F%d
+es Mayús+F%d
+
+> hold the tab
+pt segurar a aba
+es mantener pulsada la pestaña
+
+> View F%d
+pt Vista F%d
+es Vista F%d
+
+> F%d: jump to the saved view. Shift+F%d: save this view here.
+pt F%d: vai para a vista salva. Shift+F%d: salva esta vista aqui.
+es F%d: salta a la vista guardada. Mayús+F%d: guarda aquí esta vista.
+
+> Tap: jump to the saved view (an empty one saves this view). Hold: save this view here.
+pt Toque: vai para a vista salva (uma vazia salva esta vista). Segure: salva esta vista aqui.
+es Toca: salta a la vista guardada (una vacía guarda esta vista). Mantén pulsado: guarda aquí esta vista.
+
+> Idle workers
+pt Trabalhadores ociosos
+es Trabajadores libres
+
+> Select every idle worker and jump to the first.
+pt Seleciona todos os trabalhadores ociosos e vai ao primeiro.
+es Selecciona a todos los trabajadores libres y salta al primero.
+
+> Army
+pt Exército
+es Ejército
+
+> Select every soldier you have.
+pt Seleciona todos os soldados que você tem.
+es Selecciona a todos los soldados que tienes.
+
+> Make
+pt Produzir
+es Producir
+
+> Select every building that makes something (the Town Hall too), to train from all of them at once.
+pt Seleciona todo prédio que produz algo (a Prefeitura também), para treinar em todos de uma vez.
+es Selecciona todos los edificios que producen algo (el Ayuntamiento también), para entrenar en todos a la vez.
+
+> Group %d
+pt Grupo %d
+es Grupo %d
+
+> %d: select it (twice: jump to it). Shift+%d: add it to your selection. Ctrl+%d: set it to the selection. Ctrl+Shift+%d: add the selection to it. To drop a unit: select the group, Shift+click the unit off, Ctrl+%d.
+pt %d: seleciona (duas vezes: vai até ele). Shift+%d: adiciona à seleção. Ctrl+%d: define como a seleção. Ctrl+Shift+%d: adiciona a seleção a ele. Para tirar uma unidade: selecione o grupo, Shift+clique na unidade, Ctrl+%d.
+es %d: lo selecciona (dos veces: salta a él). Mayús+%d: lo añade a tu selección. Ctrl+%d: lo define con la selección. Ctrl+Mayús+%d: le añade la selección. Para quitar una unidad: selecciona el grupo, Mayús+clic en la unidad, Ctrl+%d.
+
+> Tap: select it (twice: jump to it). Hold: keep the selection here.
+pt Toque: seleciona (duas vezes: vai até ele). Segure: guarda a seleção aqui.
+es Toca: lo selecciona (dos veces: salta a él). Mantén pulsado: guarda aquí la selección.
+
+> Income
+pt Renda
+es Ingresos
+
+> Gold spent
+pt Ouro gasto
+es Oro gastado
+
+> Units trained
+pt Unidades treinadas
+es Unidades entrenadas
+
+> Structures built
+pt Estruturas construídas
+es Estructuras construidas
+
+> Units killed
+pt Unidades mortas
+es Unidades eliminadas
+
+> Units lost
+pt Unidades perdidas
+es Unidades perdidas
+
+> Structures razed
+pt Estruturas arrasadas
+es Estructuras arrasadas
+
+> Structures lost
+pt Estruturas perdidas
+es Estructuras perdidas
+
+> Damage dealt
+pt Dano causado
+es Daño infligido
+
+> Value destroyed
+pt Valor destruído
+es Valor destruido
+
+> Peak army value
+pt Pico de valor do exército
+es Valor máximo del ejército
+
+> %s WINS
+pt %s VENCE
+es %s GANA
+
+> DRAW
+pt EMPATE
+es EMPATE
+
+> VICTORY
+pt VITÓRIA
+es VICTORIA
+
+> DEFEAT
+pt DERROTA
+es DERROTA
+
+> Easy
+pt Fácil
+es Fácil
+
+> Normal
+pt Normal
+es Normal
+
+> Hard
+pt Difícil
+es Difícil
+
+> Brutal
+pt Brutal
+es Brutal
+
+> %s   ·   %d:%02d   ·   %s AI   ·   %d players
+pt %s   ·   %d:%02d   ·   IA %s   ·   %d jogadores
+es %s   ·   %d:%02d   ·   IA %s   ·   %d jugadores
+
+> Top killers
+pt Maiores matadores
+es Mayores verdugos
+
+> INCOME
+pt RENDA
+es INGRESOS
+
+> WORKERS
+pt TRABALHADORES
+es TRABAJADORES
+
+> PLAY AGAIN
+pt JOGAR DE NOVO
+es JUGAR OTRA VEZ
+
+> VIEW MAP
+pt VER MAPA
+es VER MAPA
+
+> COPY LOG
+pt COPIAR REGISTRO
+es COPIAR REGISTRO
+
+> You (%s)
+pt Você (%s)
+es Tú (%s)
+
+> The
+pt O
+es El
+
+> YOU
+pt VOCÊ
+es TÚ
+
+> SANDBOX <
+pt CAIXA DE AREIA <
+es MODO LIBRE <
+
+> SANDBOX >
+pt CAIXA DE AREIA >
+es MODO LIBRE >
+
+> CONTROL
+pt CONTROLAR
+es CONTROLAR
+
+> AI: OFF
+pt IA: DESLIGADA
+es IA: APAGADA
+
+> FOG: OFF
+pt NÉVOA: DESLIGADA
+es NIEBLA: NO
+
+> FOG: ON
+pt NÉVOA: LIGADA
+es NIEBLA: SÍ
+
+> SPEED x%d
+pt VELOCIDADE x%d
+es VELOCIDAD x%d
+
+> CLOCK
+pt RELÓGIO
+es RELOJ
+
+> DELETE
+pt APAGAR
+es BORRAR
+
+> KILL ALL OF P%d
+pt MATAR TODOS DO J%d
+es ELIMINAR A TODOS DE J%d
+
+> Click the map to place it (Shift: keep placing).
+pt Clique no mapa para colocar (Shift: continuar colocando).
+es Haz clic en el mapa para colocarlo (Mayús: seguir colocando).
+
+> Tap the map to place it.
+pt Toque no mapa para colocar.
+es Toca el mapa para colocarlo.
+
+> %s for player %d: %s
+pt %s para o jogador %d: %s
+es %s para el jugador %d: %s
+
+> Click anything to remove it.
+pt Clique em qualquer coisa para removê-la.
+es Haz clic en cualquier cosa para quitarla.
+
+> Tap anything to remove it.
+pt Toque em qualquer coisa para removê-la.
+es Toca cualquier cosa para quitarla.
+
+> Pick something to place.
+pt Escolha algo para colocar.
+es Elige algo para colocar.
+
+> No room there.
+pt Sem espaço ali.
+es No hay espacio ahí.
+
+> Free · all vision
+pt Livre · toda a visão
+es Libre · toda la visión
+
+> Follow
+pt Seguir
+es Seguir
+
+> Free · %s vision
+pt Livre · visão de %s
+es Libre · visión de %s
+
+> P%d is out.
+pt J%d saiu.
+es J%d ha salido.
+
+> Free camera · P%d's vision (pick Follow again to resume)
+pt Câmera livre · visão do J%d (escolha Seguir de novo para retomar)
+es Cámara libre · visión del J%d (elige Seguir otra vez para reanudar)
+
+> P%d is out: back to all vision.
+pt J%d saiu: de volta a toda a visão.
+es J%d ha salido: de vuelta a toda la visión.
+
+> STANDARD
+pt PADRÃO
+es ESTÁNDAR
+
+> MINIMAP TOP RIGHT
+pt MINIMAPA NO CANTO SUPERIOR DIREITO
+es MINIMAPA ARRIBA A LA DERECHA
+
+> CUSTOM 1
+pt PERSONALIZADO 1
+es PERSONALIZADO 1
+
+> CUSTOM 2
+pt PERSONALIZADO 2
+es PERSONALIZADO 2
+
+> CUSTOM 3
+pt PERSONALIZADO 3
+es PERSONALIZADO 3
+
+> HOTKEY BAR
+pt BARRA DE ATALHOS
+es BARRA DE ATAJOS
+
+> SELECTION
+pt SELEÇÃO
+es SELECCIÓN
+
+> COMMANDS
+pt COMANDOS
+es ÓRDENES
+
+> USE THIS LAYOUT
+pt USAR ESTE LAYOUT
+es USAR ESTA DISPOSICIÓN
+
+> » IN USE
+pt » EM USO
+es » EN USO
+
+> POSITIONS
+pt POSIÇÕES
+es POSICIONES
+
+> HOTKEYS
+pt ATALHOS
+es ATAJOS
+
+> START FROM
+pt PARTIR DE
+es EMPEZAR DE
+
+> SELECTION −
+pt SELEÇÃO −
+es SELECCIÓN −
+
+> SELECTION +
+pt SELEÇÃO +
+es SELECCIÓN +
+
+> RESET
+pt REDEFINIR
+es RESTABLECER
+
+> press a key…
+pt pressione uma tecla…
+es pulsa una tecla…
+
+> Built-in layouts can't be changed: pick a CUSTOM slot.
+pt Layouts embutidos não podem ser alterados: escolha um slot PERSONALIZADO.
+es Las disposiciones integradas no se pueden cambiar: elige una ranura PERSONALIZADA.
+
+> Drag the boxes to move them. Saved as you go.
+pt Arraste as caixas para movê-las. Salvo automaticamente.
+es Arrastra las cajas para moverlas. Se guarda solo.
+
+> Built-in layout. Pick a CUSTOM slot to make your own.
+pt Layout embutido. Escolha um slot PERSONALIZADO para criar o seu.
+es Disposición integrada. Elige una ranura PERSONALIZADA para crear la tuya.
+
+> (Enter: chat)
+pt (Enter: chat)
+es (Intro: chat)
+
+> Cuts off a route
+pt Corta uma rota
+es Corta una ruta
+
+> Narrows a path
+pt Estreita um caminho
+es Estrecha un camino

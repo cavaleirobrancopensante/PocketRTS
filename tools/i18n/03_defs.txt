@@ -1,0 +1,923 @@
+> Labourer
+pt Operário
+es Peón
+
+> Mines gold and builds. Weak in a fight.
+pt Extrai ouro e constrói. Fraco em combate.
+es Extrae oro y construye. Débil en combate.
+
+> Musketeer
+pt Mosqueteiro
+es Mosquetero
+
+> Light line infantry: fires at range and, by itself, stabs with the bayonet when the enemy closes in (or when its 10 shots run dry, 20 with the Shot Pouch; it refills near a Mill, Barracks, Town Hall or Powder Wagon). Long reload. Costs 10 powder: the Powder Mill grinds more. The Armoury researches Armour (he becomes a Guardsman), better locks, the socket bayonet and the shot pouch for him. MOUNT a horse and he rides as a Dragoon.
+pt Infantaria de linha leve: atira à distância e, por conta própria, usa a baioneta quando o inimigo se aproxima (ou quando seus 10 tiros acabam, 20 com a Cartucheira; recarrega perto de um Moinho, Quartel, Prefeitura ou Carroça de Pólvora). Recarga longa. Custa 10 de pólvora: o Moinho de Pólvora moe mais. O Arsenal pesquisa para ele Armadura (ele vira Guarda), fechos melhores, a baioneta de encaixe e a cartucheira. MONTAR um cavalo e ele cavalga como Dragão.
+es Infantería de línea ligera: dispara a distancia y, por sí mismo, usa la bayoneta cuando el enemigo se acerca (o cuando se le acaban los 10 disparos, 20 con la Cartuchera; se rellena cerca de un Molino, Cuartel, Ayuntamiento o Carro de pólvora). Recarga larga. Cuesta 10 de pólvora: el Molino de pólvora muele más. La Armería investiga para él Armadura (se convierte en Guardia), mejores llaves, la bayoneta de cubo y la cartuchera. MONTA un caballo y cabalga como Dragón.
+
+> Field Cannon
+pt Canhão de Campanha
+es Cañón de Campaña
+
+> Artillery. Limbered, the horse tows it; unlimber (2.5 s) to fire. Round shot reaches further than it can see: other units must spot for it. Canister also hits flyers. Carries 8 shots; refills near a Mill, Barracks, Town Hall or Powder Wagon.
+pt Artilharia. Engatado, o cavalo o puxa; desengate (2,5 s) para atirar. A bala alcança mais longe do que enxerga: outras unidades precisam indicar o alvo. A metralha também acerta voadores. Leva 8 tiros; recarrega perto de um Moinho, Quartel, Prefeitura ou Carroça de Pólvora.
+es Artillería. Enganchado, el caballo lo arrastra; desengánchalo (2,5 s) para disparar. La bala llega más lejos de lo que ve: otras unidades deben señalar el objetivo. La metralla también alcanza a los voladores. Lleva 8 disparos; se rellena cerca de un Molino, Cuartel, Ayuntamiento o Carro de pólvora.
+
+> Mortar
+pt Morteiro
+es Mortero
+
+> Siege mortar. Packed it rolls; DEPLOY it (3 s) to fire. It lobs a shell high over men and walls (5 to 11 tiles away) that bursts where it lands: 30 damage over a wide area, friends too. Can't hit flyers. Carries 6 shells; refills near a Mill, Barracks, Town Hall or Powder Wagon.
+pt Morteiro de cerco. Recolhido, rola; INSTALE-o (3 s) para atirar. Lança uma granada alto por cima de homens e muralhas (a 5 a 11 casas) que explode onde cai: 30 de dano numa grande área, nos amigos também. Não acerta voadores. Leva 6 granadas; recarrega perto de um Moinho, Quartel, Prefeitura ou Carroça de Pólvora.
+es Mortero de asedio. Plegado, rueda; DESPLIÉGALO (3 s) para disparar. Lanza una bomba muy alto por encima de hombres y muros (a 5 a 11 casillas) que estalla donde cae: 30 de daño en un área amplia, también a los amigos. No alcanza a los voladores. Lleva 6 bombas; se rellena cerca de un Molino, Cuartel, Ayuntamiento o Carro de pólvora.
+
+> Powder Wagon
+pt Carroça de Pólvora
+es Carro de Pólvora
+
+> Carries 120 shots of powder for the army: musketeers and cannons within 3 tiles refill from it. Fills up near a Mill, Barracks or Town Hall (1 powder per 2 shots); SUPPLY (on from the start; G turns it off) has your Town Hall's haulers bring kegs from the Powder Mill when it's out in the field (assign Labourers to the Town Hall; nobody is taken off a farm or mill). No weapon, and when it's destroyed it blows up (more powder, bigger blast; friends too): guard it.
+pt Leva 120 tiros de pólvora para o exército: mosqueteiros e canhões a até 3 casas se reabastecem nela. Enche perto de um Moinho, Quartel ou Prefeitura (1 de pólvora por 2 tiros); ABASTECER (ligado desde o início; G desliga) faz os carregadores da sua Prefeitura trazerem barris do Moinho de Pólvora quando ela está em campo (designe Operários à Prefeitura; ninguém é tirado de uma fazenda ou moinho). Sem arma, e quando destruída explode (mais pólvora, explosão maior; nos amigos também): proteja-a.
+es Lleva 120 disparos de pólvora para el ejército: los mosqueteros y cañones a menos de 3 casillas se rellenan en él. Se llena cerca de un Molino, Cuartel o Ayuntamiento (1 de pólvora por 2 disparos); ABASTECER (activado desde el principio; G lo desactiva) hace que los porteadores de tu Ayuntamiento traigan barriles del Molino de pólvora cuando está en campaña (asigna Peones al Ayuntamiento; no se quita a nadie de una granja o molino). Sin arma, y al ser destruido explota (más pólvora, mayor explosión; también a los amigos): protégelo.
+
+> Horseman
+pt Cavaleiro
+es Jinete
+
+> Fast light horseman with a pistol and a sabre. Trained with his horse in one click (a free one at a breeder, else the breeder trains one: 40 more); he comes out on foot and rides off on it. He opens with his one loaded pistol shot (30 damage, a little over half a musket's reach), then fights with the sabre; he can only reload on foot (DISMOUNT: he's an Officer then). Once the Armoury has drilled the Cavalry Charge, his first sabre blow after a gallop hits double and throws the enemy back. With Armour he becomes a Cuirassier. Bayonets hurt him.
+pt Cavaleiro leve e rápido com pistola e sabre. Treinado com seu cavalo num clique (um livre num criador, senão o criador treina um: 40 a mais); sai a pé e parte nele. Abre com o único tiro da pistola carregada (30 de dano, um pouco mais da metade do alcance de um mosquete), depois luta com o sabre; só recarrega a pé (APEAR: aí ele é um Oficial). Depois que o Arsenal treina a Carga de Cavalaria, seu primeiro golpe de sabre após um galope causa dano dobrado e arremessa o inimigo para trás. Com Armadura vira Couraceiro. Baionetas o ferem.
+es Jinete ligero y rápido con pistola y sable. Se entrena con su caballo en un clic (uno libre en un criador, si no el criador entrena uno: 40 más); sale a pie y se marcha en él. Abre con su único disparo de pistola cargada (30 de daño, algo más de la mitad del alcance de un mosquete), luego lucha con el sable; solo puede recargar a pie (APEARSE: entonces es un Oficial). Una vez que la Armería ha adiestrado la Carga de caballería, su primer sablazo tras un galope hace doble daño y empuja al enemigo hacia atrás. Con Armadura se convierte en Coracero. Las bayonetas le hacen daño.
+
+> Horse
+pt Cavalo
+es Caballo
+
+> Bought at a Horse Breeder (40 gold). Lead it by the reins (LEAD), ride it (MOUNT), harness it to a gun or wagon, or bring it to a Barracks or Foundry for cavalry and guns. Left alone with an enemy man beside it, it's stolen.
+pt Comprado num Criador de Cavalos (40 de ouro). Guie-o pelas rédeas (GUIAR), monte-o (MONTAR), atrele-o a um canhão ou carroça, ou leve-o a um Quartel ou Fundição para cavalaria e canhões. Sozinho com um inimigo ao lado, é roubado.
+es Se compra en un Criador de caballos (40 de oro). Guíalo por las riendas (GUIAR), móntalo (MONTAR), úncelo a un cañón o carro, o llévalo a un Cuartel o Fundición para caballería y cañones. Si queda solo con un enemigo al lado, se lo roban.
+
+> Messenger
+pt Mensageiro
+es Mensajero
+
+> A Labourer on a horse: the fastest thing on the ground, unarmed, a scout. He can still lead horses. DISMOUNT to work again.
+pt Um Operário a cavalo: a coisa mais rápida do chão, desarmado, um batedor. Ainda pode guiar cavalos. APEAR para trabalhar de novo.
+es Un Peón a caballo: lo más rápido sobre el suelo, desarmado, un explorador. Aún puede guiar caballos. APEARSE para volver a trabajar.
+
+> Dragoon
+pt Dragão
+es Dragón
+
+> A Musketeer on a horse: rides fast but can't fight in the saddle. Trained at the Barracks with his horse in one click, for the Musketeer's price (a free horse at a breeder, else the breeder trains one: 40 more); he comes out on foot and rides off on it. Told to attack, he dismounts (0.8 s), fires as a Musketeer (reloading a third slower), and remounts by himself to move on. His reload waits while he rides.
+pt Um Mosqueteiro a cavalo: cavalga rápido mas não luta na sela. Treinado no Quartel com seu cavalo num clique, pelo preço do Mosqueteiro (um cavalo livre num criador, senão o criador treina um: 40 a mais); sai a pé e parte nele. Ao receber ordem de atacar, desmonta (0,8 s), atira como Mosqueteiro (recarregando um terço mais devagar) e volta a montar sozinho para seguir. A recarga espera enquanto cavalga.
+es Un Mosquetero a caballo: cabalga rápido pero no combate en la silla. Se entrena en el Cuartel con su caballo en un clic, por el precio del Mosquetero (un caballo libre en un criador, si no el criador entrena uno: 40 más); sale a pie y se marcha en él. Cuando se le ordena atacar, se apea (0,8 s), dispara como Mosquetero (recargando un tercio más lento) y vuelve a montar solo para seguir. La recarga espera mientras cabalga.
+
+> Officer
+pt Oficial
+es Oficial
+
+> A Horseman on foot: his flintlock pistol (one shot, 30 damage, a little over half a musket's reach) and the same sabre as in the saddle up close (about a plain bayonet's match). On foot he reloads the pistol by himself (4 s, a little powder: his charges refill like a Musketeer's). MOUNT a horse and he rides as a Horseman.
+pt Um Cavaleiro a pé: sua pistola de pederneira (um tiro, 30 de dano, um pouco mais da metade do alcance de um mosquete) e o mesmo sabre da sela de perto (cerca de uma baioneta comum). A pé, recarrega a pistola sozinho (4 s, um pouco de pólvora: suas cargas se reabastecem como as de um Mosqueteiro). MONTAR um cavalo e ele cavalga como Cavaleiro.
+es Un Jinete a pie: su pistola de pedernal (un disparo, 30 de daño, algo más de la mitad del alcance de un mosquete) y el mismo sable que en la silla de cerca (más o menos como una bayoneta normal). A pie, recarga la pistola por sí mismo (4 s, algo de pólvora: sus cargas se rellenan como las de un Mosquetero). MONTA un caballo y cabalga como Jinete.
+
+> Observation Balloon
+pt Balão de Observação
+es Globo de Observación
+
+> A pilot and a basket for 4 Musketeers or Labourers: LOAD them and UNLOAD them anywhere, even over cliffs. Musketeers aboard shoot from the basket (at the ground or at flyers) and reach 35% further from up there, and refill from its 48-shot powder store; hover it within 2 tiles of a Powder Wagon, Mill, Barracks or Town Hall and the pilot hauls up kegs (RESTOCK). Sees 14 tiles. Slow and fragile; the pilot doesn't fight.
+pt Um piloto e uma cesta para 4 Mosqueteiros ou Operários: EMBARQUE-os e DESEMBARQUE-os em qualquer lugar, até sobre penhascos. Mosqueteiros a bordo atiram da cesta (no chão ou em voadores), alcançam 35% mais longe de lá e se reabastecem no estoque de 48 tiros de pólvora; paire a até 2 casas de uma Carroça de Pólvora, Moinho, Quartel ou Prefeitura e o piloto iça barris (REABASTECER). Enxerga 14 casas. Lento e frágil; o piloto não luta.
+es Un piloto y una cesta para 4 Mosqueteros o Peones: SÚBELOS y BÁJALOS en cualquier sitio, incluso sobre acantilados. Los Mosqueteros a bordo disparan desde la cesta (al suelo o a voladores), alcanzan un 35% más lejos desde allí y se rellenan de su reserva de 48 disparos de pólvora; sitúalo a menos de 2 casillas de un Carro de pólvora, Molino, Cuartel o Ayuntamiento y el piloto sube barriles (REABASTECER). Ve 14 casillas. Lento y frágil; el piloto no combate.
+
+> Grub
+pt Larva
+es Larva
+
+> Hauls food from Feeding Pits to a Burrow (longer hauls pay more). Turns into buildings.
+pt Leva comida dos Poços de Alimentação a uma Toca (quanto mais longe, mais paga). Transforma-se em prédios.
+es Lleva comida de los Fosos de Alimentación a una Madriguera (cuanto más lejos, más paga). Se transforma en edificios.
+
+> Raptors
+pt Raptores
+es Raptores
+
+> Fast, flimsy claws. Three hatch from each egg.
+pt Garras rápidas e frágeis. Três nascem de cada ovo.
+es Garras rápidas y frágiles. Nacen tres de cada huevo.
+
+> Spitters
+pt Cuspidores
+es Escupidores
+
+> Spit acid that burns and strips armour. Two hatch from each egg.
+pt Cospem ácido que queima e corrói a armadura. Dois nascem de cada ovo.
+es Escupen ácido que quema y corroe la armadura. Nacen dos de cada huevo.
+
+> Brute
+pt Brutamontes
+es Bruto
+
+> Huge horned tank. Charges in and knocks enemies back.
+pt Enorme tanque com chifres. Avança e arremessa os inimigos para trás.
+es Enorme tanque con cuernos. Embiste y empuja a los enemigos hacia atrás.
+
+> Spore Mother
+pt Mãe de Esporos
+es Madre de Esporas
+
+> Walking, she can't attack. ROOT her (2.5 s): she lobs big spit blobs that splash a whole area, and spreads swamp. Casts MIASMA, a cloud that heals the Brood.
+pt Andando, não ataca. ENRAIZAR-a (2,5 s): ela lança grandes bolas de cuspe que atingem uma área inteira, e espalha pântano. Lança MIASMA, uma nuvem que cura a Ninhada.
+es Caminando, no puede atacar. ARRÁIGALA (2,5 s): lanza grandes bolas de saliva que salpican un área entera, y extiende el pantano. Lanza MIASMA, una nube que cura a la Nidada.
+
+> Bloater
+pt Inchador
+es Hinchador
+
+> A floating gas sac full of acid. It spits acid from afar, but every glob uses up gas; out of gas it deflates (slower, harmless) and slowly fills up again, faster on swamp. On HOLD GAS it keeps it all and drifts in to burst as a huge acid bomb. Used up when it bursts.
+pt Um saco de gás flutuante cheio de ácido. Cospe ácido de longe, mas cada glóbulo gasta gás; sem gás ele murcha (mais lento, inofensivo) e enche de novo devagar, mais rápido no pântano. Com SEGURAR GÁS guarda tudo e flutua até o alvo para explodir como uma enorme bomba de ácido. Consome-se ao explodir.
+es Un saco de gas flotante lleno de ácido. Escupe ácido desde lejos, pero cada gota gasta gas; sin gas se desinfla (más lento, inofensivo) y se vuelve a llenar despacio, más rápido en el pantano. Con RETENER GAS lo guarda todo y se acerca flotando para estallar como una enorme bomba de ácido. Se consume al estallar.
+
+> Winder
+pt Enrolador
+es Dador de cuerda
+
+> Cranks Boilers for energy and repairs constructs and buildings. To start a building he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on.
+pt Dá corda nas Caldeiras para obter energia e repara construtos e prédios. Para iniciar um prédio, busca um caixote na Torre do Relógio mais próxima e o leva ao local, onde ele se desdobra e se constrói sozinho; se morrer ou for mandado a outro lugar no caminho, larga o caixote para outro Enrolador continuar.
+es Da cuerda a las Calderas para obtener energía y repara constructos y edificios. Para empezar un edificio, trae una caja de la Torre del Reloj más cercana y la lleva al lugar, donde se despliega y se construye sola; si muere o lo envían a otra parte por el camino, suelta la caja para que otro Dador de cuerda siga.
+
+> Wind-up Soldiers
+pt Soldados de Corda
+es Soldados de Cuerda
+
+> Cheap tin spearmen, three to an order. They run on a spring, not a battery: about 50 s away from a field and they run down and freeze until a Winder cranks them up again (or a field reaches them).
+pt Lanceiros de lata baratos, três por ordem. Funcionam a mola, não a bateria: cerca de 50 s longe de um campo e param e congelam até um Enrolador dar corda de novo (ou um campo os alcançar).
+es Lanceros de hojalata baratos, tres por orden. Funcionan con un muelle, no con batería: unos 50 s lejos de un campo y se paran y quedan inmóviles hasta que un Dador de cuerda les da cuerda otra vez (o un campo los alcanza).
+
+> Thresher
+pt Debulhadora
+es Trilladora
+
+> Saw-armed brute. Its saws SPIN UP while it keeps cutting: from 40% to 160% damage over 3 s, and every blow bites the enemies round its target too. Strong against swarms that stand and fight, weak against anything that runs. A battery junkie: it runs down fast, faster still while spinning.
+pt Brutamontes armado de serras. Suas serras ACELERAM enquanto continua cortando: de 40% a 160% de dano em 3 s, e cada golpe morde também os inimigos em volta do alvo. Forte contra enxames que ficam e lutam, fraco contra qualquer coisa que corre. Viciado em bateria: descarrega rápido, ainda mais rápido enquanto gira.
+es Bruto armado de sierras. Sus sierras SE ACELERAN mientras sigue cortando: del 40% al 160% de daño en 3 s, y cada golpe muerde también a los enemigos alrededor del objetivo. Fuerte contra enjambres que se quedan a luchar, débil contra cualquier cosa que corra. Adicto a la batería: se agota rápido, aún más rápido mientras gira.
+
+> Bulwark
+pt Baluarte
+es Baluarte
+
+> A tower shield on legs, with a weak piston lance. BRACE plants the shield (holding it up burns its battery 2.5x as fast): it can't move, and musket balls, spit, arc balls and spines aimed at your units behind it hit the shield instead.
+pt Um escudo de torre com pernas, com uma lança de pistão fraca. FIRMAR finca o escudo (mantê-lo erguido gasta a bateria 2,5 vezes mais rápido): não pode se mover, e balas de mosquete, cuspe, bolas de arco e espinhos mirados em suas unidades atrás dele atingem o escudo.
+es Un escudo de torre con patas, con una lanza de pistón débil. AFIRMAR clava el escudo (mantenerlo en alto gasta su batería 2,5 veces más rápido): no puede moverse, y las balas de mosquete, la saliva, las bolas de arco y las púas dirigidas a tus unidades detrás de él golpean el escudo.
+
+> Arc Thrower
+pt Lançador de Arcos
+es Lanzador de Arcos
+
+> Throws balls of lightning at one enemy, ground or air. Every throw takes a good bite of its own wind: it runs down fast in a long fight away from a field.
+pt Lança bolas de raio num inimigo, em terra ou no ar. Cada lançamento consome bastante da sua própria carga: descarrega rápido numa luta longa longe de um campo.
+es Lanza bolas de rayo a un enemigo, en tierra o en el aire. Cada lanzamiento consume buena parte de su propia carga: se agota rápido en un combate largo lejos de un campo.
+
+> Steam Walker
+pt Caminhante a Vapor
+es Caminante de Vapor
+
+> Scalding steam hits everything in front of it. Melts swarms and buildings. A battery junkie: it runs down fast away from a field.
+pt Vapor escaldante atinge tudo à sua frente. Derrete enxames e prédios. Viciado em bateria: descarrega rápido longe de um campo.
+es El vapor abrasador alcanza todo lo que tiene delante. Derrite enjambres y edificios. Adicto a la batería: se agota rápido lejos de un campo.
+
+> Stormcaller
+pt Evocador de Tempestades
+es Invocador de Tormentas
+
+> Fragile lightning caster. STORM stuns everything inside it for 2.5 s, friends too, but does no damage; it burns 2 stored batteries. Its charge only fills inside a Clockwork field.
+pt Conjurador de raios frágil. TEMPESTADE atordoa tudo dentro dela por 2,5 s, os amigos também, mas não causa dano; gasta 2 baterias armazenadas. Sua carga só enche dentro de um campo do Mecanismo.
+es Lanzador de rayos frágil. TORMENTA aturde todo lo que hay dentro durante 2,5 s, a los amigos también, pero no hace daño; gasta 2 baterías almacenadas. Su carga solo se llena dentro de un campo del Mecanismo.
+
+> Missionary
+pt Missionário
+es Misionero
+
+> Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt unless near enemy buildings. One per Church. MOUNT a horse to ride as a Mounted Missionary.
+pt Enfaixa soldados feridos até a vida cheia e, sozinho, reergue soldados da Coroa caídos a partir de seus corpos (6 s): voltam com metade da vida, sob a cruz por 30 s. Quem cai de novo sob a cruz está perdido para sempre. Não pode ser ferido, a menos que esteja perto de prédios inimigos. Um por Igreja. MONTAR um cavalo para cavalgar como Missionário Montado.
+es Venda a los soldados heridos hasta la salud completa y, por sí mismo, levanta a soldados caídos de la Corona a partir de sus cuerpos (6 s): vuelven con la mitad de salud, bajo la cruz durante 30 s. El que cae de nuevo bajo la cruz se pierde para siempre. No puede ser herido salvo cerca de edificios enemigos. Uno por Iglesia. MONTA un caballo para cabalgar como Misionero Montado.
+
+> Mounted Missionary
+pt Missionário Montado
+es Misionero Montado
+
+> A Missionary on a horse: as fast as a Messenger, unarmed. He gets off to bandage the wounded (and back on after); to raise the fallen he gets off by himself (and stays on foot). Can't be hurt unless near enemy buildings.
+pt Um Missionário a cavalo: tão rápido quanto um Mensageiro, desarmado. Desmonta para enfaixar os feridos (e monta de novo depois); para reerguer os caídos desmonta sozinho (e fica a pé). Não pode ser ferido, a menos que esteja perto de prédios inimigos.
+es Un Misionero a caballo: tan rápido como un Mensajero, desarmado. Se apea para vendar a los heridos (y vuelve a montar después); para levantar a los caídos se apea solo (y se queda a pie). No puede ser herido salvo cerca de edificios enemigos.
+
+> Skywing
+pt Asa-do-Céu
+es Ala del Cielo
+
+> Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs essence.
+pt Voando, caça outros voadores com salvas de espinhos (não alcança o chão). POUSE-o (1,2 s) para lutar no chão com a mordida: aí ele anda, não cruza penhascos, e qualquer coisa pode atingi-lo. Custa essência.
+es Volando, caza a otros voladores con salvas de púas (no alcanza el suelo). ATERRÍZALO (1,2 s) para luchar en tierra con su mordisco: entonces camina, no cruza acantilados y cualquier cosa puede golpearlo. Cuesta esencia.
+
+> Mist Toad
+pt Sapo da Névoa
+es Sapo de la Niebla
+
+> Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet; heavy engines are only staggered.
+pt Conjurador de pântano lento e frágil, com só uma lambida fraca. Sua energia (enche com o tempo, mais rápido no pântano) paga dois feitiços. NEBLINA cria um banco de névoa de pântano: tiros disparados de ou para dentro dele erram metade das vezes, e unidades dentro enxergam só 2 casas. LÍNGUA marca um inimigo por 3 s (ele vê a mira) e depois o arrasta até os pés do Sapo; máquinas pesadas só cambaleiam.
+es Lanzador de pantano lento y frágil, con solo un lametón débil. Su energía (se llena con el tiempo, más rápido en el pantano) paga dos hechizos. NIEBLA crea un banco de niebla de pantano: los disparos desde o hacia ella fallan la mitad de las veces, y las unidades dentro ven solo 2 casillas. LENGUA marca a un enemigo durante 3 s (ve la mira) y luego lo arrastra hasta los pies del Sapo; las máquinas pesadas solo se tambalean.
+
+> Ornithopter
+pt Ornitóptero
+es Ornitóptero
+
+> Fast clockwork flyer with a lightning gun, deadliest against other flyers. On COURIER it fetches charged batteries and winds up stranded constructs; OVERLOAD dumps its battery into one construct (faster, harder hitting for 12 s). Like every construct it winds down away from a field.
+pt Voador mecânico rápido com uma arma de raios, mais letal contra outros voadores. Em MENSAGEIRO busca baterias carregadas e dá corda em construtos parados; SOBRECARGA despeja sua bateria num construto (mais rápido e mais forte por 12 s). Como todo construto, para longe de um campo.
+es Volador mecánico rápido con un arma de rayos, el más letal contra otros voladores. En CORREO trae baterías cargadas y da cuerda a constructos varados; SOBRECARGA vuelca su batería en un constructo (más rápido y más fuerte durante 12 s). Como todo constructo, se apaga lejos de un campo.
+
+> Tesla Cart
+pt Carro Tesla
+es Carro Tesla
+
+> Mobile power: rolls packed; deploy it (3 s) to wind up (and overcharge) the constructs around it. Its lightning hits flyers too and jumps to one more enemy. Costs 2 energy.
+pt Energia móvel: rola recolhido; INSTALE-o (3 s) para dar corda (e supercarregar) os construtos ao redor. Seus raios acertam voadores também e saltam para mais um inimigo. Custa 2 de energia.
+es Energía móvil: rueda plegado; DESPLIÉGALO (3 s) para dar cuerda (y sobrecargar) a los constructos de alrededor. Sus rayos alcanzan también a voladores y saltan a un enemigo más. Cuesta 2 de energía.
+
+> Town Hall
+pt Prefeitura
+es Ayuntamiento
+
+> Trains labourers. Right-click Labourers onto it to make them haulers: they lead horses to the Barracks and Foundry and carry powder kegs to the Wagons. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay nothing) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds nothing). Expand to fresh land.
+pt Treina operários. Clique direito em Operários sobre ela para fazê-los carregadores: eles guiam cavalos até o Quartel e a Fundição e levam barris de pólvora às Carroças. Cada Prefeitura permite 2 Fazendas e 1 Moinho de Pólvora por perto. Suas terras de cultivo guardam uma reserva de ouro (esgotada pelas fazendas, não pagam nada) e seu solo uma reserva de salitre para o Moinho (esgotado, o Moinho não mói nada). Expanda para terra fresca.
+es Entrena peones. Haz clic derecho con Peones sobre él para convertirlos en porteadores: guían caballos hasta el Cuartel y la Fundición y llevan barriles de pólvora a los Carros. Cada Ayuntamiento permite 2 Granjas y 1 Molino de pólvora cerca. Sus tierras de cultivo guardan una reserva de oro (agotada por las granjas, no pagan nada) y su suelo una reserva de salitre para el Molino (agotado, el Molino no muele nada). Expándete a tierra nueva.
+
+> Cottage
+pt Casebre
+es Cabaña
+
+> Houses 8 more supply. The first one unlocks the Barracks and the palisade and gates.
+pt Abriga mais 8 de suprimento. O primeiro libera o Quartel, a paliçada e os portões.
+es Aloja 8 de suministro más. La primera desbloquea el Cuartel, la empalizada y las puertas.
+
+> Palisade
+pt Paliçada
+es Empalizada
+
+> A wooden palisade: blocks the way. Lay it in a line: pick where it starts, then where it ends; the stakes join up with your other palisade and gates. Wall off your ramp and keep a gate.
+pt Uma paliçada de madeira: bloqueia o caminho. Coloque-a em linha: escolha onde começa e onde termina; as estacas se unem à sua outra paliçada e aos portões. Feche sua rampa com muro e deixe um portão.
+es Una empalizada de madera: bloquea el paso. Colócala en línea: elige dónde empieza y dónde termina; las estacas se unen a tu otra empalizada y a las puertas. Cierra tu rampa con un muro y deja una puerta.
+
+> Gate
+pt Portão
+es Puerta
+
+> A piece of palisade that opens for your own side and your allies, and stays shut to the enemy. Lay it straight onto your own palisade to swap a piece for a gate. Gates turn to match the palisade they're placed in; R (ROTATE) turns one by hand: while placing, for where the palisade doesn't say; once built, for good.
+pt Um trecho de paliçada que abre para o seu lado e seus aliados e fica fechado para o inimigo. Coloque-o direto sobre sua paliçada para trocar um trecho por um portão. Os portões giram para combinar com a paliçada onde são postos; R (GIRAR) gira um à mão: ao posicionar, onde a paliçada não indica; depois de construído, para sempre.
+es Un tramo de empalizada que se abre para tu bando y tus aliados y permanece cerrado para el enemigo. Colócala directamente sobre tu empalizada para cambiar un tramo por una puerta. Las puertas giran para coincidir con la empalizada donde se ponen; R (GIRAR) gira una a mano: al colocarla, donde la empalizada no lo indica; una vez construida, para siempre.
+
+> Barracks
+pt Quartel
+es Cuartel
+
+> Trains Musketeers (with a Powder Mill), Horsemen and Officers (with a Horse Breeder; a Horseman's horse comes in the same click) and Dragoons (both: a Musketeer and his horse); with Armour, the armoured ones too. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.
+pt Treina Mosqueteiros (com um Moinho de Pólvora), Cavaleiros e Oficiais (com um Criador de Cavalos; o cavalo do Cavaleiro vem no mesmo clique) e Dragões (ambos: um Mosqueteiro e seu cavalo); com Armadura, os blindados também. Reequipa soldados. Precisa de um Casebre. Duas aberturas: Moinho de Pólvora primeiro para Mosqueteiros, ou Criador de Cavalos primeiro para um ataque de Cavaleiros.
+es Entrena Mosqueteros (con un Molino de pólvora), Jinetes y Oficiales (con un Criador de caballos; el caballo del Jinete viene en el mismo clic) y Dragones (ambos: un Mosquetero y su caballo); con Armadura, también los acorazados. Reequipa soldados. Necesita una Cabaña. Dos aperturas: Molino de pólvora primero para Mosqueteros, o Criador de caballos primero para un ataque de Jinetes.
+
+> Armoury
+pt Arsenal
+es Armería
+
+> All the Crown's research: Armour, the musket locks, the bayonet, the guns' drills and the Cavalry Charge. Refits soldiers. Needs a Barracks.
+pt Toda a pesquisa da Coroa: Armadura, os fechos de mosquete, a baioneta, os treinos dos canhões e a Carga de Cavalaria. Reequipa soldados. Precisa de um Quartel.
+es Toda la investigación de la Corona: Armadura, las llaves de mosquete, la bayoneta, los adiestramientos de los cañones y la Carga de caballería. Reequipa soldados. Necesita un Cuartel.
+
+> Foundry
+pt Fundição
+es Fundición
+
+> Casts field cannons and mortars, rigs observation balloons and builds powder wagons (each cannon, mortar and wagon needs a horse: one at the Foundry, else a free one at a breeder walks over, else a breeder trains one; the gun waits for it). Needs a Barracks.
+pt Funde canhões de campanha e morteiros, monta balões de observação e constrói carroças de pólvora (cada canhão, morteiro e carroça precisa de um cavalo: um na Fundição, senão um livre num criador vem até lá, senão um criador treina um; a peça espera por ele). Precisa de um Quartel.
+es Funde cañones de campaña y morteros, monta globos de observación y construye carros de pólvora (cada cañón, mortero y carro necesita un caballo: uno en la Fundición, si no uno libre de un criador viene hasta allí, si no un criador entrena uno; la pieza lo espera). Necesita un Cuartel.
+
+> Burrow
+pt Toca
+es Madriguera
+
+> Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield nothing). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; plant Clutch Mounds forward to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).
+pt Põe ovos (até 5); toda unidade da Ninhada nasce aqui. Sua PRIMEIRA Toca é a capital (o trono da Rainha): a única onde as larvas descarregam e a única com chão, uma reserva de biomassa (esgotada pelos poços, não rende nada). As outras só põem ovos. Se a capital cair, a mais antiga seguinte assume. Permite 1 Cercado da Ninhada cada; Poços de Alimentação ficam no seu pântano, até onde a capital alcança; plante Montículos de Ovos à frente para empurrar o pântano. Melhora para Galeria (10 ovos), depois Montículo da Ninhada (15 ovos).
+es Pone huevos (hasta 5); toda unidad de la Nidada nace aquí. Tu PRIMERA Madriguera es la capital (el trono de la Reina): la única donde las larvas descargan y la única con suelo, una reserva de biomasa (agotada por los fosos, no rinde nada). Las demás solo ponen huevos. Si cae la capital, la siguiente más antigua toma el relevo. Permite 1 Corral de la Nidada cada una; los Fosos de Alimentación van en tu pantano, hasta donde alcance la capital; planta Montículos de Huevos adelantados para extender el pantano. Se mejora a Conejera (10 huevos) y luego a Montículo de la Nidada (15 huevos).
+
+> Clutch Mound
+pt Montículo de Ovos
+es Montículo de Huevos
+
+> 12 more supply. Its swamp spreads far around it (10 tiles), so plant it forward and guard it: it must stand on swamp joined to a Burrow's. If it falls, the swamp only it held shrinks back. Each one makes your Burrows lay eggs 10% faster (up to 3).
+pt 12 de suprimento a mais. Seu pântano se espalha longe em volta (10 casas), então plante-o à frente e proteja-o: deve ficar sobre pântano ligado ao de uma Toca. Se cair, o pântano que só ele mantinha encolhe. Cada um faz suas Tocas porem ovos 10% mais rápido (até 3).
+es 12 de suministro más. Su pantano se extiende lejos a su alrededor (10 casillas), así que plántalo adelantado y protégelo: debe estar sobre un pantano conectado al de una Madriguera. Si cae, el pantano que solo él mantenía se encoge. Cada uno hace que tus Madrigueras pongan huevos un 10% más rápido (hasta 3).
+
+> Spawning Den
+pt Covil de Desova
+es Guarida de Desove
+
+> Lets your Burrows hatch Raptors and Spitters.
+pt Permite que suas Tocas chocem Raptores e Cuspidores.
+es Permite que tus Madrigueras incuben Raptores y Escupidores.
+
+> Gorge Pit
+pt Fosso Voraz
+es Foso Voraz
+
+> Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads, and a Warren grow into a Broodmound. Needs a Spawning Den.
+pt Permite que suas Tocas chocem Brutamontes, Mães de Esporos e Sapos da Névoa, e que uma Galeria vire um Montículo da Ninhada. Precisa de um Covil de Desova.
+es Permite que tus Madrigueras incuben Brutos, Madres de Esporas y Sapos de la Niebla, y que una Conejera se convierta en un Montículo de la Nidada. Necesita una Guarida de Desove.
+
+> Clocktower
+pt Torre do Relógio
+es Torre del Reloj
+
+> Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby. Its ground holds a reserve of ore for its crushers (spent, they pay nothing), and its Boilers share its coal (once that's burnt they fill no batteries). Expand to fresh coal and ore.
+pt Constrói Enroladores e enche uma bateria a cada 2 s. Permite 2 Caldeiras e 2 Britadores de Minério por perto. Seu chão guarda uma reserva de minério para os britadores (esgotada, não pagam nada), e suas Caldeiras dividem o carvão dela (queimado, não enchem baterias). Expanda para carvão e minério frescos.
+es Construye Dadores de cuerda y llena una batería cada 2 s. Permite 2 Calderas y 2 Trituradoras de mineral cerca. Su suelo guarda una reserva de mineral para sus trituradoras (agotada, no pagan nada), y sus Calderas comparten su carbón (quemado, no llenan baterías). Expándete a carbón y mineral nuevos.
+
+> Spring Tower
+pt Torre de Mola
+es Torre de Resorte
+
+> 10 more supply. Keeps nearby constructs wound up.
+pt 10 de suprimento a mais. Mantém os construtos por perto com corda.
+es 10 de suministro más. Mantiene con cuerda a los constructos cercanos.
+
+> Assembly Works
+pt Oficina de Montagem
+es Taller de Montaje
+
+> Assembles the line: Wind-up Soldiers, Threshers, and (with a Boiler) Bulwarks and Arc Throwers. Faster with blue energy.
+pt Monta a linha: Soldados de Corda, Debulhadoras e (com uma Caldeira) Baluartes e Lançadores de Arcos. Mais rápida com energia azul.
+es Monta la línea: Soldados de Cuerda, Trilladoras y (con una Caldera) Baluartes y Lanzadores de Arcos. Más rápido con energía azul.
+
+> Engine Hall
+pt Salão de Máquinas
+es Sala de Máquinas
+
+> Builds the big engines: Steam Walkers, and (with a Charging Pylon) Tesla Carts, Stormcallers and Ornithopters. They cost energy (stored batteries) too. Needs an Assembly Works and a Boiler.
+pt Constrói as grandes máquinas: Caminhantes a Vapor e (com um Pilone de Carga) Carros Tesla, Evocadores de Tempestades e Ornitópteros. Também custam energia (baterias armazenadas). Precisa de uma Oficina de Montagem e uma Caldeira.
+es Construye las grandes máquinas: Caminantes de Vapor y (con un Pilón de Carga) Carros Tesla, Invocadores de Tormentas y Ornitópteros. También cuestan energía (baterías almacenadas). Necesita un Taller de Montaje y una Caldera.
+
+> Farm
+pt Fazenda
+es Granja
+
+> Ripens into a 380-gold harvest about every 40 s with a full crew. Up to 8 labourers make it grow faster, each as much as the next. Harvests draw on its Town Hall's soil: spent soil pays nothing (barren).
+pt Amadurece numa colheita de 380 de ouro a cada 40 s com a equipe completa. Até 8 operários a fazem crescer mais rápido, cada um tanto quanto o seguinte. As colheitas tiram do solo da sua Prefeitura: solo esgotado não paga nada (estéril).
+es Madura en una cosecha de 380 de oro cada 40 s con la dotación completa. Hasta 8 peones la hacen crecer más rápido, cada uno tanto como el siguiente. Las cosechas salen del suelo de su Ayuntamiento: el suelo agotado no paga nada (estéril).
+
+> Powder Mill
+pt Moinho de Pólvora
+es Molino de Pólvora
+
+> Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds nothing. Soldiers and wagons nearby refill here.
+pt Até 6 operários moem o salitre da sua Prefeitura em pólvora negra para o banco: ela compra mosqueteiros e carroças e paga o reabastecimento de pólvora dos soldados. Quando o salitre acaba, não mói nada. Soldados e carroças por perto se reabastecem aqui.
+es Hasta 6 peones muelen el salitre de su Ayuntamiento en pólvora negra para el banco: compra mosqueteros y carros y paga el relleno de pólvora de los soldados. Cuando el salitre se agota, no muele nada. Los soldados y carros cercanos se rellenan aquí.
+
+> Horse Breeder
+pt Criador de Cavalos
+es Criador de Caballos
+
+> Sells horses: HORSE trains one (40 gold, 15 s; no supply). Horses are what cavalry, guns and wagons need. RALLY sends new horses somewhere (a Barracks or Foundry). Unlocks Horsemen. Build as many as you like, anywhere.
+pt Vende cavalos: CAVALO treina um (40 de ouro, 15 s; sem suprimento). Cavalos são o que cavalaria, canhões e carroças precisam. REUNIR envia os novos cavalos a um lugar (um Quartel ou Fundição). Libera Cavaleiros. Construa quantos quiser, onde quiser.
+es Vende caballos: CABALLO entrena uno (40 de oro, 15 s; sin suministro). Los caballos son lo que necesitan la caballería, los cañones y los carros. REUNIR envía los caballos nuevos a un lugar (un Cuartel o Fundición). Desbloquea Jinetes. Construye todos los que quieras, donde quieras.
+
+> Church
+pt Igreja
+es Iglesia
+
+> Sends out one Missionary. Needs a Barracks.
+pt Envia um Missionário. Precisa de um Quartel.
+es Envía a un Misionero. Necesita un Cuartel.
+
+> Feeding Pit
+pt Poço de Alimentação
+es Foso de Alimentación
+
+> Grubs haul food from here to the capital (5, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Loads draw on the capital's ground: spent ground yields nothing. Needs swamp joined to the capital's.
+pt As larvas levam comida daqui à capital (5, e mais uma a cada 4 casas além de 6, até 12). Quanto mais longe da capital, mais paga por larva (melhor entre cerca de 18 e 22 casas). As cargas saem do chão da capital: chão esgotado não rende nada. Precisa de pântano ligado ao da capital.
+es Las larvas llevan comida de aquí a la capital (5, y una más por cada 4 casillas más allá de 6, hasta 12). Cuanto más lejos de la capital, más paga por larva (lo mejor, de unas 18 a 22 casillas). Las cargas salen del suelo de la capital: el suelo agotado no rinde nada. Necesita pantano conectado al de la capital.
+
+> Brood Pen
+pt Cercado da Ninhada
+es Corral de la Nidada
+
+> Turns every body that falls nearby (friend or foe) into essence. SACRIFICE: Brood creatures brought here are offered up for essence (12% of their biomass cost: 3 a Raptor).
+pt Transforma todo corpo que cai por perto (amigo ou inimigo) em essência. SACRIFICAR: criaturas da Ninhada trazidas aqui são oferecidas por essência (12% do custo em biomassa: 3 por Raptor).
+es Convierte en esencia todo cuerpo que cae cerca (amigo o enemigo). SACRIFICAR: las criaturas de la Nidada traídas aquí se ofrecen a cambio de esencia (12% de su coste en biomasa: 3 por Raptor).
+
+> Roost
+pt Poleiro
+es Dormidero
+
+> Lets your Burrows hatch Skywings. Needs a Spawning Den.
+pt Permite que suas Tocas chocem Asas-do-Céu. Precisa de um Covil de Desova.
+es Permite que tus Madrigueras incuben Alas del Cielo. Necesita una Guarida de Desove.
+
+> Boiler
+pt Caldeira
+es Caldera
+
+> Fills a battery every second by itself, burning its Clocktower's coal (spent coal: it stops). Up to 7 Winders carry them to Ore Crushers. Constructs that stand by it a while get overcharged. Unlocks Bulwarks, Arc Throwers and the Engine Hall.
+pt Enche uma bateria por segundo sozinha, queimando o carvão da sua Torre do Relógio (carvão esgotado: para). Até 7 Enroladores as levam aos Britadores de Minério. Construtos que ficam perto dela por um tempo ficam supercarregados. Libera Baluartes, Lançadores de Arcos e o Salão de Máquinas.
+es Llena una batería por segundo por sí sola, quemando el carbón de su Torre del Reloj (carbón agotado: se detiene). Hasta 7 Dadores de cuerda las llevan a las Trituradoras de mineral. Los constructos que están junto a ella un rato se sobrecargan. Desbloquea Baluartes, Lanzadores de Arcos y la Sala de Máquinas.
+
+> Ore Crusher
+pt Britador de Minério
+es Trituradora de Mineral
+
+> Winders bring batteries here and the charge becomes ore, drawn from its Clocktower's ore; once that's spent it pays nothing. The farther a battery travelled, the more it holds.
+pt Os Enroladores trazem baterias aqui e a carga vira minério, tirado do minério da sua Torre do Relógio; esgotado, não paga nada. Quanto mais longe a bateria viajou, mais ela guarda.
+es Los Dadores de cuerda traen baterías aquí y la carga se convierte en mineral, sacado del mineral de su Torre del Reloj; una vez agotado, no paga nada. Cuanto más lejos ha viajado una batería, más contiene.
+
+> Capacitor Works
+pt Fábrica de Capacitores
+es Fábrica de Condensadores
+
+> Blue energy: every source fills blue batteries, with more charge and more time before they overload. Needs an Assembly Works.
+pt Energia azul: toda fonte enche baterias azuis, com mais carga e mais tempo antes de sobrecarregarem. Precisa de uma Oficina de Montagem.
+es Energía azul: todas las fuentes llenan baterías azules, con más carga y más tiempo antes de sobrecargarse. Necesita un Taller de Montaje.
+
+> Charging Pylon
+pt Pilone de Carga
+es Pilón de Carga
+
+> Winds up and slowly mends constructs nearby (they get overcharged after a while in its field). Unlocks the Tesla Cart, the Stormcaller and the Ornithopter.
+pt Dá corda e conserta devagar os construtos por perto (eles ficam supercarregados depois de um tempo em seu campo). Libera o Carro Tesla, o Evocador de Tempestades e o Ornitóptero.
+es Da cuerda y repara despacio a los constructos cercanos (se sobrecargan tras un rato en su campo). Desbloquea el Carro Tesla, el Invocador de Tormentas y el Ornitóptero.
+
+> Armour
+pt Armadura
+es Armadura
+
+> Breastplates, morions and cuirasses: unlocks the ARMOUR refit for Musketeers (they become Guardsmen: +1 armour, +20 health; 12 gold + 4 powder a man) and Horsemen (they become Cuirassiers: +1 armour, +30 health, a little slower; 30 gold). The Barracks can then train both armoured.
+pt Peitorais, morriões e couraças: libera o reequipamento de ARMADURA para Mosqueteiros (viram Guardas: +1 de armadura, +20 de vida; 12 de ouro + 4 de pólvora por homem) e Cavaleiros (viram Couraceiros: +1 de armadura, +30 de vida, um pouco mais lentos; 30 de ouro). O Quartel passa a treinar ambos blindados.
+es Petos, morriones y corazas: desbloquea el reequipo de ARMADURA para Mosqueteros (se convierten en Guardias: +1 de armadura, +20 de salud; 12 de oro + 4 de pólvora por hombre) y Jinetes (se convierten en Coraceros: +1 de armadura, +30 de salud, algo más lentos; 30 de oro). El Cuartel podrá entrenar a ambos acorazados.
+
+> Matchlock
+pt Mecha
+es Mecha
+
+> Better matchlocks: unlocks the refit (reload 10% faster, powder burns faster), 8 gold a man. New Musketeers come out with it.
+pt Fechos de mecha melhores: libera o reequipamento (recarga 10% mais rápida, a pólvora queima mais rápido), 8 de ouro por homem. Novos Mosqueteiros já saem com ele.
+es Mejores llaves de mecha: desbloquea el reequipo (recarga un 10% más rápida, la pólvora se quema más rápido), 8 de oro por hombre. Los nuevos Mosqueteros salen con ella.
+
+> Flintlock
+pt Pederneira
+es Pedernal
+
+> Flintlocks: unlocks the refit (reload 20% faster than at the start), 12 gold a man. New Musketeers come out with it.
+pt Fechos de pederneira: libera o reequipamento (recarga 20% mais rápida que no início), 12 de ouro por homem. Novos Mosqueteiros já saem com ele.
+es Llaves de pedernal: desbloquea el reequipo (recarga un 20% más rápida que al principio), 12 de oro por hombre. Los nuevos Mosqueteros salen con ella.
+
+> Caplock
+pt Percussão
+es Percusión
+
+> Percussion caps: unlocks the refit (reload 30% faster than at the start), 16 gold a man. New Musketeers come out with it.
+pt Espoletas de percussão: libera o reequipamento (recarga 30% mais rápida que no início), 16 de ouro por homem. Novos Mosqueteiros já saem com ele.
+es Pistones de percusión: desbloquea el reequipo (recarga un 30% más rápida que al principio), 16 de oro por hombre. Los nuevos Mosqueteros salen con ella.
+
+> Socket Bayonet
+pt Baioneta de Encaixe
+es Bayoneta de Cubo
+
+> BAYONET
+pt BAIONETA
+es BAYONETA
+
+> A socket bayonet that leaves the muzzle free: unlocks the refit (bayonet +6 damage, thrusts 15% faster), 3 gold a man. New Musketeers come out with it.
+pt Uma baioneta de encaixe que deixa a boca do cano livre: libera o reequipamento (baioneta +6 de dano, estocadas 15% mais rápidas), 3 de ouro por homem. Novos Mosqueteiros já saem com ela.
+es Una bayoneta de cubo que deja libre la boca del cañón: desbloquea el reequipo (bayoneta +6 de daño, estocadas un 15% más rápidas), 3 de oro por hombre. Los nuevos Mosqueteros salen con ella.
+
+> Shot Pouch
+pt Cartucheira
+es Cartuchera
+
+> POUCH
+pt CARTUCHEIRA
+es CARTUCHERA
+
+> A bigger shot pouch: unlocks the refit (he carries 20 shots instead of 10), 5 gold a man. Every musket soldier: Musketeers, Guardsmen and Dragoons. Recruits don't come with it.
+pt Uma cartucheira maior: libera o reequipamento (leva 20 tiros em vez de 10), 5 de ouro por homem. Todo soldado de mosquete: Mosqueteiros, Guardas e Dragões. Recrutas não vêm com ela.
+es Una cartuchera mayor: desbloquea el reequipo (lleva 20 disparos en vez de 10), 5 de oro por hombre. Todo soldado de mosquete: Mosqueteros, Guardias y Dragones. Los reclutas no vienen con ella.
+
+> Prepared Charges
+pt Cargas Preparadas
+es Cargas Preparadas
+
+> CHARGES
+pt CARGAS
+es CARGAS
+
+> Powder in ready-made bags: every Field Cannon and Mortar reloads 20% faster.
+pt Pólvora em sacos prontos: todo Canhão de Campanha e Morteiro recarrega 20% mais rápido.
+es Pólvora en saquitos ya hechos: todo Cañón de Campaña y Mortero recarga un 20% más rápido.
+
+> Gunner's Quadrant
+pt Quadrante do Artilheiro
+es Cuadrante del Artillero
+
+> QUADRANT
+pt QUADRANTE
+es CUADRANTE
+
+> Laying the guns by the quadrant: every Field Cannon and Mortar reaches 1 tile further.
+pt Apontar os canhões pelo quadrante: todo Canhão de Campanha e Morteiro alcança 1 casa a mais.
+es Apuntar los cañones con el cuadrante: todo Cañón de Campaña y Mortero llega 1 casilla más lejos.
+
+> Cavalry Charge
+pt Carga de Cavalaria
+es Carga de Caballería
+
+> CHARGE
+pt CARGA
+es CARGA
+
+> Drilled to charge: after about 2 s at the gallop a Horseman's or Cuirassier's next sabre blow hits double and throws the enemy back.
+pt Treinados para a carga: após cerca de 2 s a galope, o próximo golpe de sabre de um Cavaleiro ou Couraceiro causa dano dobrado e arremessa o inimigo para trás.
+es Adiestrados para la carga: tras unos 2 s al galope, el siguiente sablazo de un Jinete o Coracero hace doble daño y empuja al enemigo hacia atrás.
+
+> The Crown
+pt A Coroa
+es La Corona
+
+> Musketeers, cannons and mortars, and horses for them. Farms ripen into big harvests; Horse Breeders sell the horses that cavalry and guns need; Powder Mills grind each Town Hall's saltpetre into powder for muskets and cannons. Slow and strong when dug in.
+pt Mosqueteiros, canhões e morteiros, e cavalos para eles. Fazendas amadurecem em grandes colheitas; Criadores de Cavalos vendem os cavalos que cavalaria e canhões precisam; Moinhos de Pólvora moem o salitre de cada Prefeitura em pólvora para mosquetes e canhões. Lenta e forte quando entrincheirada.
+es Mosqueteros, cañones y morteros, y caballos para ellos. Las Granjas maduran en grandes cosechas; los Criadores de caballos venden los caballos que necesitan la caballería y los cañones; los Molinos de pólvora muelen el salitre de cada Ayuntamiento en pólvora para mosquetes y cañones. Lenta y fuerte cuando está atrincherada.
+
+> The Brood
+pt A Ninhada
+es La Nidada
+
+> A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Supply cap 200.
+pt Um enxame de lagartos baratos. Larvas levam comida dos poços à Toca: quanto mais longa a viagem, mais rica a comida, e o chão de cada Toca acaba com o tempo. Melhore-a para Galeria, depois Montículo da Ninhada, para ter mais ovos. A essência vem dos caídos e de oferendas no Cercado da Ninhada. Limite de suprimento 200.
+es Un enjambre de lagartos baratos. Las larvas llevan comida de los fosos a la Madriguera: cuanto más largo el viaje, más rica la comida, y el suelo de cada Madriguera se agota con el tiempo. Mejórala a Conejera y luego a Montículo de la Nidada para tener más huevos. La esencia viene de los caídos y de ofrendas en el Corral de la Nidada. Límite de suministro 200.
+
+> The Clockwork
+pt O Mecanismo
+es El Mecanismo
+
+> Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (a battery fades on the road), and the batteries left waiting are your Energy. Each Clocktower's ore and coal run out in time. Supply cap 200.
+pt Construtos que funcionam a vento e baterias. A Torre do Relógio e as Caldeiras enchem baterias; Enroladores as levam aos Britadores de Minério (a bateria enfraquece na estrada), e as baterias que ficam esperando são sua Energia. O minério e o carvão de cada Torre do Relógio acabam com o tempo. Limite de suprimento 200.
+es Constructos que funcionan con viento y baterías. La Torre del Reloj y las Calderas llenan baterías; los Dadores de cuerda las llevan a las Trituradoras de mineral (la batería se debilita por el camino), y las baterías que quedan esperando son tu Energía. El mineral y el carbón de cada Torre del Reloj se agotan con el tiempo. Límite de suministro 200.
+
+> Warren
+pt Galeria
+es Conejera
+
+> WARREN
+pt GALERIA
+es CONEJERA
+
+> Upgrade to Warren: up to 10 eggs, more health (2000). The hall keeps laying eggs and hatching meanwhile.
+pt Melhorar para Galeria: até 10 ovos, mais vida (2000). A sede continua pondo ovos e chocando enquanto isso.
+es Mejorar a Conejera: hasta 10 huevos, más salud (2000). El edificio sigue poniendo huevos e incubando mientras tanto.
+
+> Broodmound
+pt Montículo da Ninhada
+es Montículo de la Nidada
+
+> BROODMOUND
+pt MONTÍCULO
+es MONTÍCULO
+
+> Upgrade to Broodmound: up to 15 eggs, more health (2600) and armour 2. The hall keeps laying eggs and hatching meanwhile.
+pt Melhorar para Montículo da Ninhada: até 15 ovos, mais vida (2600) e armadura 2. A sede continua pondo ovos e chocando enquanto isso.
+es Mejorar a Montículo de la Nidada: hasta 15 huevos, más salud (2600) y armadura 2. El edificio sigue poniendo huevos e incubando mientras tanto.
+
+> Guardsman
+pt Guarda
+es Guardia
+
+> Armoured line infantry: a Musketeer in morion and breastplate (+1 armour, +20 health). Fires at range and stabs with the bayonet up close.
+pt Infantaria de linha blindada: um Mosqueteiro de morrião e peitoral (+1 de armadura, +20 de vida). Atira à distância e usa a baioneta de perto.
+es Infantería de línea acorazada: un Mosquetero con morrión y peto (+1 de armadura, +20 de salud). Dispara a distancia y usa la bayoneta de cerca.
+
+> Cuirassier
+pt Couraceiro
+es Coracero
+
+> Fast armoured horseman with a pistol and a sabre: a Horseman in helmet and cuirass (+1 armour, +30 health, a little slower). Bayonets hurt him.
+pt Cavaleiro blindado rápido com pistola e sabre: um Cavaleiro de elmo e couraça (+1 de armadura, +30 de vida, um pouco mais lento). Baionetas o ferem.
+es Jinete acorazado rápido con pistola y sable: un Jinete con yelmo y coraza (+1 de armadura, +30 de salud, algo más lento). Las bayonetas le hacen daño.
+
+> Armoured Dragoon
+pt Dragão Blindado
+es Dragón Acorazado
+
+> A Guardsman on a horse: rides fast, dismounts to fire as a Guardsman and remounts to move on.
+pt Um Guarda a cavalo: cavalga rápido, desmonta para atirar como Guarda e volta a montar para seguir.
+es Un Guardia a caballo: cabalga rápido, se apea para disparar como Guardia y vuelve a montar para seguir.
+
+> Armoured Officer
+pt Oficial Blindado
+es Oficial Acorazado
+
+> A Cuirassier on foot: pistol and sabre, in his cuirass; he reloads the pistol by himself on foot. MOUNT a horse and he rides as a Cuirassier.
+pt Um Couraceiro a pé: pistola e sabre, com sua couraça; recarrega a pistola sozinho a pé. MONTAR um cavalo e ele cavalga como Couraceiro.
+es Un Coracero a pie: pistola y sable, con su coraza; recarga la pistola por sí mismo a pie. MONTA un caballo y cabalga como Coracero.
+
+> Works Farms and Powder Mills, builds and repairs. Weak in a fight.
+pt Trabalha nas Fazendas e Moinhos de Pólvora, constrói e repara. Fraco em combate.
+es Trabaja en las Granjas y Molinos de pólvora, construye y repara. Débil en combate.
+
+> Light line infantry (needs a Powder Mill): 10 shots, a long reload, the bayonet up close. Hits flyers. Refills powder near a Mill, Barracks, Hall or Wagon. MOUNT a horse: a Dragoon.
+pt Infantaria de linha leve (precisa de um Moinho de Pólvora): 10 tiros, recarga longa, baioneta de perto. Acerta voadores. Reabastece pólvora perto de um Moinho, Quartel, Prefeitura ou Carroça. MONTAR um cavalo: um Dragão.
+es Infantería de línea ligera (necesita un Molino de pólvora): 10 disparos, recarga larga, bayoneta de cerca. Alcanza a voladores. Se rellena de pólvora cerca de un Molino, Cuartel, Ayuntamiento o Carro. MONTA un caballo: un Dragón.
+
+> Each man takes up to 3 of your free horses nearby by the reins; they follow at his side. (Right-click a horse with Labourers: they lead it.)
+pt Cada homem leva até 3 dos seus cavalos livres por perto pelas rédeas; eles o seguem ao lado. (Clique direito num cavalo com Operários: eles o guiam.)
+es Cada hombre lleva hasta 3 de tus caballos libres cercanos por las riendas; lo siguen a su lado. (Clic derecho en un caballo con Peones: lo guían.)
+
+> Let go of the reins: the horses stay where they stand and graze. Unattended, an enemy man can steal them.
+pt Larga as rédeas: os cavalos ficam onde estão e pastam. Sem vigia, um inimigo pode roubá-los.
+es Suelta las riendas: los caballos se quedan donde están y pastan. Sin vigilancia, un enemigo puede robarlos.
+
+> Each man walks to the nearest free horse and gets on (1.5 s): Labourer to Messenger, Musketeer to Dragoon, Guardsman to Armoured Dragoon, Missionary to Mounted Missionary, Officer to Horseman (his pistol as it is). (Right-click a horse with soldiers: they mount it.)
+pt Cada homem anda até o cavalo livre mais próximo e monta (1,5 s): Operário vira Mensageiro, Mosqueteiro vira Dragão, Guarda vira Dragão Blindado, Missionário vira Missionário Montado, Oficial vira Cavaleiro (com a pistola como está). (Clique direito num cavalo com soldados: eles montam.)
+es Cada hombre camina hasta el caballo libre más cercano y monta (1,5 s): Peón pasa a Mensajero, Mosquetero a Dragón, Guardia a Dragón Acorazado, Misionero a Misionero Montado, Oficial a Jinete (con la pistola como esté). (Clic derecho en un caballo con soldados: lo montan.)
+
+> Get off (1 s): the horse stands beside him, unled. He can lead it or remount it; left alone, it can be stolen.
+pt Desce (1 s): o cavalo fica ao lado dele, sem guia. Ele pode guiá-lo ou montar de novo; sozinho, pode ser roubado.
+es Se apea (1 s): el caballo se queda a su lado, sin guía. Puede guiarlo o volver a montarlo; solo, puede ser robado.
+
+> Your nearest free horse walks over and is hitched: one more each time, up to 4 in a team, each beyond the first +12% speed. (Or right-click the gun with a horse selected or led.)
+pt Seu cavalo livre mais próximo vem e é atrelado: mais um a cada vez, até 4 numa parelha, cada um além do primeiro +12% de velocidade. (Ou clique direito no canhão com um cavalo selecionado ou guiado.)
+es Tu caballo libre más cercano viene y es uncido: uno más cada vez, hasta 4 en un tiro, cada uno más allá del primero +12% de velocidad. (O clic derecho en el cañón con un caballo seleccionado o guiado.)
+
+> Armoured line infantry (+1 armour, +20 health): a Musketeer in morion and breastplate. Needs Armour.
+pt Infantaria de linha blindada (+1 de armadura, +20 de vida): um Mosqueteiro de morrião e peitoral. Precisa de Armadura.
+es Infantería de línea acorazada (+1 de armadura, +20 de salud): un Mosquetero con morrión y peto. Necesita Armadura.
+
+> Fast light horseman: one pistol shot (30 damage, 110 reach), then the sabre. Needs a Horse Breeder; one click trains him and his horse (40 more without a spare). He reloads only on foot. With the Cavalry Charge his first sabre blow after a gallop hits double. Bayonets hurt him.
+pt Cavaleiro leve e rápido: um tiro de pistola (30 de dano, alcance 110), depois o sabre. Precisa de um Criador de Cavalos; um clique treina ele e seu cavalo (40 a mais sem reserva). Só recarrega a pé. Com a Carga de Cavalaria, o primeiro golpe de sabre após um galope causa dano dobrado. Baionetas o ferem.
+es Jinete ligero y rápido: un disparo de pistola (30 de daño, alcance 110), luego el sable. Necesita un Criador de caballos; un clic lo entrena a él y a su caballo (40 más sin repuesto). Solo recarga a pie. Con la Carga de caballería, su primer sablazo tras un galope hace doble daño. Las bayonetas le hacen daño.
+
+> Long-range artillery (it needs a horse: one click finds or buys it). HARNESS up to 4 horses: +12% speed each. UNLIMBER to fire: round shot ploughs through lines, canister shreds light units and flyers. Needs spotters.
+pt Artilharia de longo alcance (precisa de um cavalo: um clique acha ou compra). ATRELAR até 4 cavalos: +12% de velocidade cada. DESENGATAR para atirar: a bala atravessa fileiras, a metralha rasga unidades leves e voadores. Precisa de observadores.
+es Artillería de largo alcance (necesita un caballo: un clic lo encuentra o lo compra). UNCIR hasta 4 caballos: +12% de velocidad cada uno. DESENGANCHAR para disparar: la bala atraviesa filas, la metralla destroza unidades ligeras y voladores. Necesita observadores.
+
+> Siege mortar: DEPLOY, then it lobs shells over walls 5 to 11 tiles away. The splash hurts friends too. Can't hit flyers.
+pt Morteiro de cerco: INSTALAR, depois lança granadas sobre muralhas a 5 a 11 casas. A explosão fere os amigos também. Não acerta voadores.
+es Mortero de asedio: DESPLEGAR, luego lanza bombas por encima de muros a 5 a 11 casillas. La explosión hiere también a los amigos. No alcanza a voladores.
+
+> Carries 120 shots of powder for the soldiers near it. No weapon, and it blows up when destroyed.
+pt Leva 120 tiros de pólvora para os soldados perto dela. Sem arma, e explode quando destruída.
+es Lleva 120 disparos de pólvora para los soldados cercanos. Sin arma, y explota al ser destruido.
+
+> Fast armoured horseman (+1 armour, +30 health): a Horseman in helmet and cuirass, pistol and sabre. Needs Armour; his horse comes with him (one click). Bayonets hurt him.
+pt Cavaleiro blindado rápido (+1 de armadura, +30 de vida): um Cavaleiro de elmo e couraça, pistola e sabre. Precisa de Armadura; o cavalo vem junto (um clique). Baionetas o ferem.
+es Jinete acorazado rápido (+1 de armadura, +30 de salud): un Jinete con yelmo y coraza, pistola y sable. Necesita Armadura; su caballo viene con él (un clic). Las bayonetas le hacen daño.
+
+> Bought at a Horse Breeder (40 gold, 15 s). LEAD it, MOUNT it, harness it to a gun or wagon, or bring it to a Barracks or Foundry: cavalry and guns need one each. Left alone near an enemy man, it's stolen.
+pt Comprado num Criador de Cavalos (40 de ouro, 15 s). GUIAR, MONTAR, atrelar a um canhão ou carroça, ou levar a um Quartel ou Fundição: cavalaria e canhões precisam de um cada. Sozinho perto de um inimigo, é roubado.
+es Se compra en un Criador de caballos (40 de oro, 15 s). GUIAR, MONTAR, uncir a un cañón o carro, o llevar a un Cuartel o Fundición: la caballería y los cañones necesitan uno cada uno. Si queda solo cerca de un enemigo, se lo roban.
+
+> A Labourer on a horse: very fast, unarmed, sees far. A scout. He can lead horses too.
+pt Um Operário a cavalo: muito rápido, desarmado, enxerga longe. Um batedor. Também pode guiar cavalos.
+es Un Peón a caballo: muy rápido, desarmado, ve lejos. Un explorador. También puede guiar caballos.
+
+> A Missionary on a horse: fast and unarmed. Gets off to bandage (and back on after) and to raise the fallen.
+pt Um Missionário a cavalo: rápido e desarmado. Desmonta para enfaixar (e monta de novo depois) e para reerguer os caídos.
+es Un Misionero a caballo: rápido y desarmado. Se apea para vendar (y vuelve a montar después) y para levantar a los caídos.
+
+> A Musketeer on a horse: rides fast, dismounts to fire (0.8 s), remounts to move. His reload waits while he rides. Needs a Powder Mill and a Horse Breeder; one click trains him and his horse (40 more without a spare).
+pt Um Mosqueteiro a cavalo: cavalga rápido, desmonta para atirar (0,8 s), monta de novo para se mover. A recarga espera enquanto cavalga. Precisa de um Moinho de Pólvora e um Criador de Cavalos; um clique treina ele e seu cavalo (40 a mais sem reserva).
+es Un Mosquetero a caballo: cabalga rápido, se apea para disparar (0,8 s), vuelve a montar para moverse. La recarga espera mientras cabalga. Necesita un Molino de pólvora y un Criador de caballos; un clic lo entrena a él y a su caballo (40 más sin repuesto).
+
+> A Guardsman on a horse: rides fast, dismounts to fire, remounts to move. Needs Armour; his horse comes with him (one click).
+pt Um Guarda a cavalo: cavalga rápido, desmonta para atirar, monta de novo para se mover. Precisa de Armadura; o cavalo vem junto (um clique).
+es Un Guardia a caballo: cabalga rápido, se apea para disparar, vuelve a montar para moverse. Necesita Armadura; su caballo viene con él (un clic).
+
+> Officer: a Horseman on foot. One pistol shot (30 damage, 110 reach), then the sabre; he reloads the pistol by himself on foot (4 s, a little powder). Needs a Horse Breeder. MOUNT a horse: a Horseman.
+pt Oficial: um Cavaleiro a pé. Um tiro de pistola (30 de dano, alcance 110), depois o sabre; recarrega a pistola sozinho a pé (4 s, um pouco de pólvora). Precisa de um Criador de Cavalos. MONTAR um cavalo: um Cavaleiro.
+es Oficial: un Jinete a pie. Un disparo de pistola (30 de daño, alcance 110), luego el sable; recarga la pistola por sí mismo a pie (4 s, algo de pólvora). Necesita un Criador de caballos. MONTA un caballo: un Jinete.
+
+> Armoured Officer: a Cuirassier on foot, pistol and sabre, in his cuirass; reloads on foot. Needs Armour. MOUNT a horse: a Cuirassier.
+pt Oficial Blindado: um Couraceiro a pé, pistola e sabre, com sua couraça; recarrega a pé. Precisa de Armadura. MONTAR um cavalo: um Couraceiro.
+es Oficial Acorazado: un Coracero a pie, pistola y sable, con su coraza; recarga a pie. Necesita Armadura. MONTA un caballo: un Coracero.
+
+> Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.
+pt Leva 4 Mosqueteiros ou Operários a qualquer lugar, até sobre penhascos. Mosqueteiros a bordo atiram 35% mais longe. Lento e frágil.
+es Lleva a 4 Mosqueteros o Peones a cualquier sitio, incluso sobre acantilados. Los Mosqueteros a bordo disparan un 35% más lejos. Lento y frágil.
+
+> Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.
+pt Enfaixa os feridos e reergue soldados da Coroa caídos. Não pode ser ferido longe de prédios inimigos. Um por Igreja.
+es Venda a los heridos y levanta a soldados caídos de la Corona. No puede ser herido lejos de edificios enemigos. Uno por Iglesia.
+
+> Hauls food from Feeding Pits to a Burrow (longer hauls pay more) and turns into buildings.
+pt Leva comida dos Poços de Alimentação a uma Toca (quanto mais longe, mais paga) e se transforma em prédios.
+es Lleva comida de los Fosos de Alimentación a una Madriguera (cuanto más lejos, más paga) y se transforma en edificios.
+
+> Spits acid that burns and strips armour. Two hatch from each egg.
+pt Cospe ácido que queima e corrói a armadura. Dois nascem de cada ovo.
+es Escupe ácido que quema y corroe la armadura. Nacen dos de cada huevo.
+
+> Huge horned tank: charges in and knocks enemies back.
+pt Enorme tanque com chifres: avança e arremessa os inimigos para trás.
+es Enorme tanque con cuernos: embiste y empuja a los enemigos hacia atrás.
+
+> ROOT her to lob splashing spit blobs and spread swamp; MIASMA heals the Brood. Can't attack while walking.
+pt ENRAIZAR-a para lançar bolas de cuspe em área e espalhar pântano; MIASMA cura a Ninhada. Não ataca enquanto anda.
+es ARRÁIGALA para lanzar bolas de saliva en área y extender el pantano; MIASMA cura a la Nidada. No puede atacar mientras camina.
+
+> Floating acid sac: spits from afar until its gas runs out. On HOLD GAS it drifts in to burst as a huge acid bomb.
+pt Saco de ácido flutuante: cospe de longe até o gás acabar. Com SEGURAR GÁS flutua até o alvo para explodir como uma enorme bomba de ácido.
+es Saco de ácido flotante: escupe desde lejos hasta que se acaba el gas. Con RETENER GAS se acerca flotando para estallar como una enorme bomba de ácido.
+
+> Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).
+pt Voando, caça voadores com espinhos. POUSE-a para morder unidades terrestres (aí qualquer coisa pode atingi-la).
+es Volando, caza voladores con púas. ATERRÍZALA para morder a unidades terrestres (entonces cualquier cosa puede golpearla).
+
+> Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.
+pt Conjurador de pântano. NEBLINA faz os tiros errarem metade das vezes; LÍNGUA arrasta um inimigo até seus pés. Fraco em combate.
+es Lanzador de pantano. NIEBLA hace que los disparos fallen la mitad de las veces; LENGUA arrastra a un enemigo hasta sus pies. Débil en combate.
+
+> Trains Labourers. Allows 2 Farms and 1 Powder Mill nearby; its soil and saltpetre run out in time.
+pt Treina Operários. Permite 2 Fazendas e 1 Moinho de Pólvora por perto; seu solo e salitre acabam com o tempo.
+es Entrena Peones. Permite 2 Granjas y 1 Molino de pólvora cerca; su suelo y salitre se agotan con el tiempo.
+
+> Trains horses: 40 gold and 15 s each, no supply; RALLY sends them on. Unlocks Horsemen; cavalry, guns and wagons need its horses. Build as many as you like, anywhere. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.
+pt Treina cavalos: 40 de ouro e 15 s cada, sem suprimento; REUNIR os envia adiante. Libera Cavaleiros; cavalaria, canhões e carroças precisam dos seus cavalos. Construa quantos quiser, onde quiser. Duas aberturas: Moinho de Pólvora primeiro para Mosqueteiros, ou Criador de Cavalos primeiro para um ataque de Cavaleiros.
+es Entrena caballos: 40 de oro y 15 s cada uno, sin suministro; REUNIR los envía adelante. Desbloquea Jinetes; la caballería, los cañones y los carros necesitan sus caballos. Construye todos los que quieras, donde quieras. Dos aperturas: Molino de pólvora primero para Mosqueteros, o Criador de caballos primero para un ataque de Jinetes.
+
+> Houses 8 more supply. The first one unlocks the Barracks and the palisade.
+pt Abriga mais 8 de suprimento. O primeiro libera o Quartel e a paliçada.
+es Aloja 8 de suministro más. La primera desbloquea el Cuartel y la empalizada.
+
+> Palisade: blocks the way. Lay it in a line: pick the start, then the end. Needs a Cottage.
+pt Paliçada: bloqueia o caminho. Coloque-a em linha: escolha o início, depois o fim. Precisa de um Casebre.
+es Empalizada: bloquea el paso. Colócala en línea: elige el inicio y luego el final. Necesita una Cabaña.
+
+> A palisade piece that opens for your side only. Lay it onto your own palisade to swap a piece. Needs a Cottage.
+pt Um trecho de paliçada que abre só para o seu lado. Coloque-o sobre sua paliçada para trocar um trecho. Precisa de um Casebre.
+es Un tramo de empalizada que se abre solo para tu bando. Colócala sobre tu empalizada para cambiar un tramo. Necesita una Cabaña.
+
+> Trains Musketeers (needs a Powder Mill), Horsemen and Officers (need a Horse Breeder), Dragoons (both), and with Armour the armoured ones. Refits soldiers. Needs a Cottage. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.
+pt Treina Mosqueteiros (precisa de um Moinho de Pólvora), Cavaleiros e Oficiais (precisam de um Criador de Cavalos), Dragões (ambos), e com Armadura os blindados. Reequipa soldados. Precisa de um Casebre. Duas aberturas: Moinho de Pólvora primeiro para Mosqueteiros, ou Criador de Cavalos primeiro para um ataque de Cavaleiros.
+es Entrena Mosqueteros (necesita un Molino de pólvora), Jinetes y Oficiales (necesitan un Criador de caballos), Dragones (ambos), y con Armadura los acorazados. Reequipa soldados. Necesita una Cabaña. Dos aperturas: Molino de pólvora primero para Mosqueteros, o Criador de caballos primero para un ataque de Jinetes.
+
+> Researches Armour, the musket locks, the socket bayonet, the guns' drills and the Cavalry Charge. Refits soldiers too.
+pt Pesquisa Armadura, os fechos de mosquete, a baioneta de encaixe, os treinos dos canhões e a Carga de Cavalaria. Também reequipa soldados.
+es Investiga Armadura, las llaves de mosquete, la bayoneta de cubo, los adiestramientos de los cañones y la Carga de caballería. También reequipa soldados.
+
+> Casts cannons and mortars, rigs balloons, builds powder wagons (each needs a horse: one standing here, else a Town Hall hauler leads one over from the Horse Breeder, or it walks over by itself when you have no haulers).
+pt Funde canhões e morteiros, monta balões, constrói carroças de pólvora (cada um precisa de um cavalo: um parado aqui, senão um carregador da Prefeitura traz um do Criador de Cavalos, ou ele vai sozinho se você não tem carregadores).
+es Funde cañones y morteros, monta globos, construye carros de pólvora (cada uno necesita un caballo: uno parado aquí, si no un porteador del Ayuntamiento trae uno del Criador de caballos, o va solo si no tienes porteadores).
+
+> Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).
+pt Amadurece numa colheita de 380 de ouro a cada 40 s com a equipe completa (até 8 Operários).
+es Madura en una cosecha de 380 de oro cada 40 s con la dotación completa (hasta 8 Peones).
+
+> Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.
+pt Até 6 Operários moem o salitre da Prefeitura em pólvora (você começa sem nenhuma). Libera Mosqueteiros. Soldados e carroças por perto se reabastecem aqui.
+es Hasta 6 Peones muelen el salitre del Ayuntamiento en pólvora (empiezas sin nada). Desbloquea Mosqueteros. Los soldados y carros cercanos se rellenan aquí.
+
+> Sends out one Missionary.
+pt Envia um Missionário.
+es Envía a un Misionero.
+
+> Lays eggs (up to 5): every Brood unit hatches here. The first Burrow is the capital: the only one grubs unload at. Allows 1 Brood Pen each. Upgrades to a Warren (10 eggs), then a Broodmound (15).
+pt Põe ovos (até 5): toda unidade da Ninhada nasce aqui. A primeira Toca é a capital: a única onde as larvas descarregam. Permite 1 Cercado da Ninhada cada. Melhora para Galeria (10 ovos), depois Montículo da Ninhada (15).
+es Pone huevos (hasta 5): toda unidad de la Nidada nace aquí. La primera Madriguera es la capital: la única donde descargan las larvas. Permite 1 Corral de la Nidada cada una. Se mejora a Conejera (10 huevos) y luego a Montículo de la Nidada (15).
+
+> 12 more supply. Spreads swamp far around it (10 tiles; plant it forward, on swamp joined to a Burrow's); if it falls, the swamp only it held shrinks back. Each makes Burrows lay eggs 10% faster (up to 3).
+pt 12 de suprimento a mais. Espalha pântano longe em volta (10 casas; plante-o à frente, sobre pântano ligado ao de uma Toca); se cair, o pântano que só ele mantinha encolhe. Cada um faz as Tocas porem ovos 10% mais rápido (até 3).
+es 12 de suministro más. Extiende pantano lejos a su alrededor (10 casillas; plántalo adelantado, sobre pantano conectado al de una Madriguera); si cae, el pantano que solo él mantenía se encoge. Cada uno hace que las Madrigueras pongan huevos un 10% más rápido (hasta 3).
+
+> Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.
+pt Permite que suas Tocas chocem Brutamontes, Mães de Esporos e Sapos da Névoa; uma Galeria pode virar um Montículo da Ninhada.
+es Permite que tus Madrigueras incuben Brutos, Madres de Esporas y Sapos de la Niebla; una Conejera puede convertirse en un Montículo de la Nidada.
+
+> Up to 5 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles).
+pt Até 5 larvas levam comida daqui à Toca. Quanto mais longe da Toca, mais paga (melhor entre 18 e 22 casas).
+es Hasta 5 larvas llevan comida de aquí a la Madriguera. Cuanto más lejos de la Madriguera, más paga (lo mejor, de 18 a 22 casillas).
+
+> Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.
+pt Corpos que caem por perto dão essência. SACRIFICAR criaturas da Ninhada aqui por essência.
+es Los cuerpos que caen cerca dan esencia. SACRIFICA aquí criaturas de la Nidada a cambio de esencia.
+
+> Lets your Burrows hatch Skywings and Bloaters.
+pt Permite que suas Tocas chocem Asas-do-Céu e Inchadores.
+es Permite que tus Madrigueras incuben Alas del Cielo y Hinchadores.
+
+> Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.
+pt Libera o reequipamento de ARMADURA (Guarda: +1 de armadura, +20 de vida; Couraceiro: +1 de armadura, +30 de vida) e os recrutas blindados.
+es Desbloquea el reequipo de ARMADURA (Guardia: +1 de armadura, +20 de salud; Coracero: +1 de armadura, +30 de salud) y los reclutas acorazados.
+
+> Unlocks the Matchlock refit: reload 10% faster. New Musketeers come out with it.
+pt Libera o reequipamento de Mecha: recarga 10% mais rápida. Novos Mosqueteiros já saem com ele.
+es Desbloquea el reequipo de Mecha: recarga un 10% más rápida. Los nuevos Mosqueteros salen con ella.
+
+> Unlocks the Flintlock refit: reload 20% faster than at the start.
+pt Libera o reequipamento de Pederneira: recarga 20% mais rápida que no início.
+es Desbloquea el reequipo de Pedernal: recarga un 20% más rápida que al principio.
+
+> Unlocks the Caplock refit: reload 30% faster than at the start.
+pt Libera o reequipamento de Percussão: recarga 30% mais rápida que no início.
+es Desbloquea el reequipo de Percusión: recarga un 30% más rápida que al principio.
+
+> Unlocks the Socket Bayonet refit: bayonet +6 damage, thrusts 15% faster. New Musketeers come out with it.
+pt Libera o reequipamento da Baioneta de Encaixe: baioneta +6 de dano, estocadas 15% mais rápidas. Novos Mosqueteiros já saem com ela.
+es Desbloquea el reequipo de Bayoneta de Cubo: bayoneta +6 de daño, estocadas un 15% más rápidas. Los nuevos Mosqueteros salen con ella.
+
+> Unlocks the Shot Pouch refit: a musket soldier carries 20 shots instead of 10. Recruits don't come with it.
+pt Libera o reequipamento da Cartucheira: um soldado de mosquete leva 20 tiros em vez de 10. Recrutas não vêm com ela.
+es Desbloquea el reequipo de Cartuchera: un soldado de mosquete lleva 20 disparos en vez de 10. Los reclutas no vienen con ella.
+
+> Every Field Cannon and Mortar reloads 20% faster.
+pt Todo Canhão de Campanha e Morteiro recarrega 20% mais rápido.
+es Todo Cañón de Campaña y Mortero recarga un 20% más rápido.
+
+> Every Field Cannon and Mortar reaches 1 tile further.
+pt Todo Canhão de Campanha e Morteiro alcança 1 casa a mais.
+es Todo Cañón de Campaña y Mortero llega 1 casilla más lejos.
+
+> Horsemen and Cuirassiers charge: after a gallop the first blow hits double and throws the enemy back.
+pt Cavaleiros e Couraceiros investem: após um galope, o primeiro golpe causa dano dobrado e arremessa o inimigo para trás.
+es Los Jinetes y Coraceros cargan: tras un galope, el primer golpe hace doble daño y empuja al enemigo hacia atrás.
+
+> Shot, shell and black powder
+pt Tiros, granadas e pólvora negra
+es Disparos, bombas y pólvora negra
+
+> Swarm, swamp and hunger
+pt Enxame, pântano e fome
+es Enjambre, pantano y hambre
+
+> Gears, steam and lightning
+pt Engrenagens, vapor e raios
+es Engranajes, vapor y rayos
+
+> A broad river cuts the moor corner to corner; three fords.
+pt Um rio largo corta a charneca de canto a canto; três vaus.
+es Un río ancho corta el páramo de esquina a esquina; tres vados.
+
+> Small and quick: a hill in the middle with a ramp from each side.
+pt Pequeno e rápido: uma colina no meio com uma rampa de cada lado.
+es Pequeño y rápido: una colina en el centro con una rampa en cada lado.
+
+> Walls of pine with gaps: a maze of lanes, easy to ambush.
+pt Muros de pinheiros com vãos: um labirinto de corredores, fácil de emboscar.
+es Muros de pinos con huecos: un laberinto de pasillos, fácil de emboscar.
+
+> A tall canyon: cliff walls leave narrow passes across the middle.
+pt Um alto desfiladeiro: paredões de rocha deixam passagens estreitas no meio.
+es Un cañón profundo: las paredes de roca dejan pasos estrechos en el centro.
+
+> Four islands joined by coral shallows; the far two hold expansions.
+pt Quatro ilhas ligadas por águas rasas de coral; as duas mais distantes têm expansões.
+es Cuatro islas unidas por aguas someras de coral; las dos más lejanas tienen expansiones.
+
+> A dark wood of glowing caps; ruins and still pools in the middle.
+pt Um bosque escuro de cogumelos brilhantes; ruínas e poças calmas no meio.
+es Un bosque oscuro de setas brillantes; ruinas y charcas tranquilas en el centro.
+
+> A frozen mere across the middle: three ice fords.
+pt Um lago congelado no meio: três vaus de gelo.
+es Un lago helado en el centro: tres vados de hielo.
+
+> Tiny and hot: a lava flow with three basalt crossings.
+pt Minúsculo e quente: um rio de lava com três travessias de basalto.
+es Diminuto y caluroso: un río de lava con tres cruces de basalto.
+
+> A wide fen: a reedy channel, pools and plenty of room to expand.
+pt Um pântano largo: um canal de juncos, poças e muito espaço para expandir.
+es Un amplio fangal: un canal de juncos, charcas y mucho espacio para expandirse.
+
+> A long valley in autumn: a stream, two lookout hills, many bases.
+pt Um vale longo no outono: um riacho, duas colinas de observação, muitas bases.
+es Un valle largo en otoño: un arroyo, dos colinas de vigilancia, muchas bases.
+
+> Old kingdoms on a moor: allies side by side, a crowned hill between.
+pt Reinos antigos numa charneca: aliados lado a lado, uma colina coroada no meio.
+es Antiguos reinos en un páramo: aliados lado a lado, una colina coronada en el centro.
+
+> Thick jungle and a winding river with five fords.
+pt Selva densa e um rio sinuoso com cinco vaus.
+es Selva densa y un río sinuoso con cinco vados.
+
+> A coast broken into islands; shallows link them.
+pt Uma costa partida em ilhas; águas rasas as ligam.
+es Una costa rota en islas; aguas someras las unen.
+
+> Two lava flows make three lanes around a black mesa.
+pt Dois rios de lava formam três faixas em volta de uma mesa negra.
+es Dos ríos de lava forman tres carriles alrededor de una meseta negra.
+
+> A mountain wall down the middle: three passes, one of them narrow.
+pt Uma muralha de montanhas no meio: três passagens, uma delas estreita.
+es Un muro de montañas en el centro: tres pasos, uno de ellos estrecho.
+
+> Farmland and hedgerows, villages and a hill in the middle.
+pt Terras de cultivo e sebes, vilarejos e uma colina no meio.
+es Tierras de cultivo y setos, aldeas y una colina en el centro.
+
+> Three abreast against three: walls of pine and a river with five fords.
+pt Três lado a lado contra três: muros de pinheiros e um rio com cinco vaus.
+es Tres codo con codo contra tres: muros de pinos y un río con cinco vados.
+
+> Gigantic: two realms of four, a great river and a burnt heartland.
+pt Gigantesco: dois reinos de quatro, um grande rio e um coração queimado.
+es Gigantesco: dos reinos de cuatro, un gran río y un corazón calcinado.

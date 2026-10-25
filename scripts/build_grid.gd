@@ -213,7 +213,7 @@ func draw(ci: CanvasItem, g, view: Rect2) -> void:
 			_lines.append(Vector2(x, hi.y) * T)
 	ci.draw_multiline(_lines, Color(1, 1, 1, 0.10), 1.0)
 	if sealed or narrowed > 0:
-		var txt := "Cuts off a route" if sealed else "Narrows a path"
+		var txt := Loc.t("Cuts off a route") if sealed else Loc.t("Narrows a path")
 		var col2 := Color(1.0, 0.35, 0.3, 0.95) if sealed else Color(1.0, 0.75, 0.25, 0.95)
 		var font := ThemeDB.fallback_font
 		var pos := Vector2(fp.position.x + fp.size.x * 0.5, fp.position.y) * T + Vector2(-60, -8)
