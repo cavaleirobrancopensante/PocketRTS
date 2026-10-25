@@ -7645,6 +7645,8 @@ func _draw_queues() -> void:
 		if not (e is Unit) or not is_instance_valid(e) or e.dead or e.team != me:
 			continue
 		var u := e as Unit
+		if u.patrol_a != Vector2.INF:
+			_draw_patrol(u.patrol_a, u.patrol_b, u.global_position)
 		if u.queue.is_empty() and u.line_rest.is_empty():
 			continue
 		var pts := u.plan_points()
@@ -7659,6 +7661,30 @@ func _draw_queues() -> void:
 			overlay.draw_circle(pt[1], 2.8, Color(col, 0.85))
 
 
+const PATROL_COL := Color(0.45, 0.85, 1.0)
+
+
+## A patrol path: a dashed line between its two ends with an arrowhead pointing in at each,
+## and a ring on the end the unit is walking to (the other end is where he came from).
+func _draw_patrol(a: Vector2, b: Vector2, from: Vector2, alpha := 0.75) -> void:
+	var c := Color(PATROL_COL, alpha)
+	overlay.draw_dashed_line(a, b, Color(0, 0, 0, alpha * 0.5), 4.0, 10.0)
+	overlay.draw_dashed_line(a, b, c, 2.2, 10.0)
+	var d := (b - a)
+	if d.length() < 4.0:
+		return
+	d = d.normalized()
+	for end in [[a, -d], [b, d]]:
+		var tip: Vector2 = end[0]
+		var dir: Vector2 = end[1]
+		var side := dir.orthogonal()
+		var tri := PackedVector2Array([tip + dir * 7.0, tip - dir * 5.0 + side * 6.0, tip - dir * 5.0 - side * 6.0])
+		overlay.draw_colored_polygon(tri, Color(0, 0, 0, alpha * 0.6))
+		var tri2 := PackedVector2Array([tip + dir * 5.0, tip - dir * 4.0 + side * 4.4, tip - dir * 4.0 - side * 4.4])
+		overlay.draw_colored_polygon(tri2, c)
+	overlay.draw_arc(a if a.distance_to(from) > b.distance_to(from) else b, 9.0, 0, TAU, 20, c, 1.6)
+
+
 var _overlay_t := 0.0
 var _overlay_was := false
 var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn (labels on screen only)
@@ -7668,11 +7694,11 @@ var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn
 ## building being placed, the queued orders of the selected units) or just stopped.
 func _overlay_moving() -> bool:
 	var m := not _floats.is_empty() or not _pings.is_empty() or not _tracers.is_empty() or not tongues.is_empty()
-	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place"):
+	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol"):
 		m = true
 	if not m:
 		for e in selection:
-			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty()):
+			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty() or (e as Unit).patrol_a != Vector2.INF):
 				m = true
 				break
 	var r := m or _overlay_was
@@ -7689,6 +7715,12 @@ func _draw_overlay() -> void:
 func _draw_overlay_all() -> void:
 	_draw_mine_labels()
 	_draw_queues()
+	if controls and controls.mode == "patrol":
+		# choosing the patrol point: show the walk there and back from each selected unit
+		var mp := overlay.get_global_mouse_position()
+		for e in selection:
+			if e is Unit and is_instance_valid(e) and not e.dead and e.team == controlled_team():
+				_draw_patrol(e.global_position, mp, e.global_position, 0.55)
 	if not tongues.is_empty():
 		_draw_tongues()
 	for tr in _tracers:
