@@ -7,6 +7,8 @@ import numpy as np
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 MUSIC_VOL = -8.0       # music.gd VOL
 LIMIT = 12.0           # never push a file more than this up or down
+# gentler on purpose (dB, added to the levelled gain): the grub is selected and sent off all game long
+OFFSET = {"voice/grub/select": -6.0, "voice/grub/move": -4.0, "voice/spitter/move": -2.0, "combat/grub_death": -3.0}
 
 def load(p):
     raw = subprocess.run(["ffmpeg", "-v", "quiet", "-i", p, "-f", "f32le", "-ac", "1", "-ar", "22050", "-"],
@@ -29,6 +31,7 @@ files = [f for f in glob.glob(os.path.join(ROOT, "assets/audio/**/*.*"), recursi
 lines = []
 for f in sorted(files):
     g = max(-LIMIT, min(LIMIT, target - loud(load(f))))
+    g += sum(v for k, v in OFFSET.items() if k in f.replace(os.sep, "/"))
     rel = "res://" + os.path.relpath(f, ROOT).replace(os.sep, "/")
     lines.append('\t"%s": %.1f,' % (rel, g))
 out = os.path.join(ROOT, "scripts/sound_mix.gd")
