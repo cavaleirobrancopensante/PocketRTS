@@ -5,7 +5,7 @@ extends RefCounted
 ## the bar, nine camera tabs F4-F12.
 ##
 ## Groups (computer): number = select (twice: jump to it), Shift+number = ADD the selection to
-## the group, Ctrl+number = SET it (replace), Ctrl+Shift+number = REMOVE the selection from it.
+## the group, Ctrl+number = SET it (replace), Ctrl+Shift+number = ADD the selection to it, Shift+number = add the group to the selection (as in StarCraft 2; to drop a unit: select the group, Shift+click the unit off, Ctrl+number again).
 ## The same with the mouse on the buttons (Shift/Ctrl+click), and on a phone: tap selects,
 ## hold sets. Camera tabs: F4-F12 jump, Shift+F4-F12 (or Ctrl+) save the view; a tap on a tab
 ## jumps (an empty one saves), a long press saves.
@@ -110,11 +110,11 @@ func release(p: Vector2) -> void:
 			var ctrl := Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
 			var shift := Input.is_key_pressed(KEY_SHIFT)
 			if ctrl and shift:
-				mode = "remove"
+				mode = "add"
 			elif ctrl:
 				mode = "set"
 			elif shift:
-				mode = "add"
+				mode = "join"
 		activate(id, mode, held)
 
 
@@ -122,7 +122,7 @@ func pressing() -> Array:
 	return _down.keys()
 
 
-## Do what button / tab `id` stands for. mode: "" (the plain press), "add", "remove", "set".
+## Do what button / tab `id` stands for. mode: "" (the plain press), "add" (selection into the group), "join" (group into the selection), "set".
 func activate(id: int, mode := "", held := 0.0) -> void:
 	_flash[id] = Time.get_ticks_msec()
 	if id >= CAM0:
@@ -166,11 +166,11 @@ func key(e: InputEventKey) -> bool:
 		var mode := ""
 		var ctrl: bool = e.ctrl_pressed or e.meta_pressed
 		if ctrl and e.shift_pressed:
-			mode = "remove"
+			mode = "add"
 		elif ctrl:
 			mode = "set"
 		elif e.shift_pressed:
-			mode = "add"
+			mode = "join"
 		_flash[GROUP0 + g] = Time.get_ticks_msec()
 		group_do(g, mode, true)
 		return true
@@ -197,7 +197,7 @@ func _alive(list: Array) -> Array:
 	return list.filter(func(x) -> bool: return is_instance_valid(x) and not x.dead)
 
 
-## Group g (0-based): mode "" select (twice: jump), "add", "remove", "set".
+## Group g (0-based): mode "" select (twice: jump), "add" (selection into the group), "join" (group into the selection), "set".
 func group_do(g: int, mode: String, can_jump := true) -> void:
 	var gm := game()
 	var n := g + 1 if g < 9 else 0
@@ -218,14 +218,16 @@ func group_do(g: int, mode: String, can_jump := true) -> void:
 					added += 1
 			gm.groups[g] = cur
 			hud.toast("Added %d to group %d (now %d)." % [added, n, cur.size()], false)
-		"remove":
-			var cur2: Array = _alive(gm.groups[g])
-			var keep: Array = cur2.filter(func(x) -> bool: return not sel.has(x))
-			if keep.size() == cur2.size():
-				hud.toast("None of the selected are in group %d." % n)
+		"join":
+			var al: Array = _alive(gm.groups[g])
+			if al.is_empty():
+				hud.toast("Group %d is empty." % n)
 				return
-			gm.groups[g] = keep
-			hud.toast("Removed %d from group %d (now %d)." % [cur2.size() - keep.size(), n, keep.size()], false)
+			var both: Array = sel.duplicate()
+			for x in al:
+				if not both.has(x):
+					both.append(x)
+			gm.set_selection(both)
 		_:
 			var alive: Array = _alive(gm.groups[g])
 			gm.groups[g] = alive
@@ -339,7 +341,7 @@ func tip(id: int) -> Dictionary:
 			return {"title": "Make" + (" (F3)" if pc else ""), "body": "Select every building that makes something (the Town Hall too), to train from all of them at once."}
 	var g := group_of(id)
 	var n := g + 1 if g < 9 else 0
-	return {"title": "Group %d" % n, "body": ("%d: select it (twice: jump to it). Shift+%d: add the selection to it. Ctrl+%d: set it to the selection. Ctrl+Shift+%d: remove the selection from it. Shift/Ctrl+click work too." % [n, n, n, n]) if pc
+	return {"title": "Group %d" % n, "body": ("%d: select it (twice: jump to it). Shift+%d: add it to your selection. Ctrl+%d: set it to the selection. Ctrl+Shift+%d: add the selection to it. To drop a unit: select the group, Shift+click the unit off, Ctrl+%d." % [n, n, n, n, n]) if pc
 		else "Tap: select it (twice: jump to it). Hold: keep the selection here."}
 
 

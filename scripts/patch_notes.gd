@@ -4,8 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.91", "items": [
+		"Group keys work as in StarCraft 2, with Ctrl and Shift only: Ctrl+number sets the group, Ctrl+Shift+number adds the selection to it, Shift+number adds the group to your selection. To drop a unit: select the group, Shift+click the unit off, Ctrl+number again. Alt is not used.",
+	]},
 	{"v": "0.12.90", "items": [
-		"Group keys use only Ctrl and Shift: Shift+number adds the selection to the group, Ctrl+number sets it (replaces it), Ctrl+Shift+number removes the selected units from it. Alt is no longer used.",
+		"Group keys were briefly Shift adds, Ctrl sets, Ctrl+Shift removes (replaced in 0.12.91).",
 	]},
 	{"v": "0.12.89", "items": [
 		"New hotkey bar above the selection card: IDLE (F1), ARMY (F2), MAKE (F3) and groups 1 2 3 4 5 6 7 8 9 0 in one row. The old quick buttons (and HALL) are gone from the bottom left; the room is given back.",
