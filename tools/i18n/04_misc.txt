@@ -287,3 +287,75 @@ es nuevos
 > pressure there
 pt pressão ali
 es presión ahí
+
+> Ore Drill
+pt Broca de Minério
+es Taladro de Mineral
+
+> Digs its Clocktower's ore into a stock (it must stand beside the Line, and works at the Line's pressure). Ore Trains carry the stock to the Clocktower along the rails; once the ore is spent it digs a quarter. Buy trains at the Clocktower.
+pt Cava o minério da sua Torre do Relógio para um estoque (precisa ficar ao lado da Linha e trabalha na pressão da Linha). Trens de Minério levam o estoque até a Torre do Relógio pelos trilhos; com o minério esgotado, cava um quarto. Compre trens na Torre do Relógio.
+es Cava el mineral de su Torre del Reloj en un depósito (debe estar junto a la Línea y trabaja con la presión de la Línea). Los Trenes de Mineral llevan el depósito a la Torre del Reloj por los raíles; con el mineral agotado cava un cuarto. Compra trenes en la Torre del Reloj.
+
+> Ore Train
+pt Trem de Minério
+es Tren de Mineral
+
+> Troop Train
+pt Trem de Tropas
+es Tren de Tropas
+
+> ORE TRAIN
+pt TREM DE MINÉRIO
+es TREN DE MINERAL
+
+> TROOP TRAIN
+pt TREM DE TROPAS
+es TREN DE TROPAS
+
+> RIDE
+pt EMBARCAR
+es VIAJAR
+
+> Runs on the Line's rails: carries ore from the Drills to the Clocktower; it follows the pressure and is a target for the enemy.
+pt Corre nos trilhos da Linha: leva minério das Brocas à Torre do Relógio; segue a pressão e é um alvo para o inimigo.
+es Corre por los raíles de la Línea: lleva mineral de los Taladros a la Torre del Reloj; sigue la presión y es un blanco para el enemigo.
+
+> Runs on the Line's rails: RIDE soldiers along the Line, fast; it is a target, and they climb out hurt if it is lost.
+pt Corre nos trilhos da Linha: leve soldados pela Linha, rápido (EMBARCAR); é um alvo, e eles saem feridos se for perdido.
+es Corre por los raíles de la Línea: lleva soldados por la Línea, rápido (VIAJAR); es un blanco, y salen heridos si se pierde.
+
+> Tap a spot beside the Line: a Troop Train picks them up and takes them there.
+pt Toque num ponto ao lado da Linha: um Trem de Tropas os pega e os leva até lá.
+es Toca un punto junto a la Línea: un Tren de Tropas los recoge y los lleva allí.
+
+> No such train.
+pt Esse trem não existe.
+es Ese tren no existe.
+
+> Needs a Clocktower.
+pt Precisa de uma Torre do Relógio.
+es Necesita una Torre del Reloj.
+
+> Lay the Line to the Clocktower first.
+pt Assente a Linha até a Torre do Relógio primeiro.
+es Tiende la Línea hasta la Torre del Reloj primero.
+
+> Limit reached: %d trains.
+pt Limite atingido: %d trens.
+es Límite alcanzado: %d trenes.
+
+> Only soldiers can ride a train.
+pt Só soldados podem andar de trem.
+es Solo los soldados pueden viajar en tren.
+
+> No Line near these soldiers.
+pt Nenhuma Linha perto destes soldados.
+es Ninguna Línea cerca de estos soldados.
+
+> Tap a spot beside the Line.
+pt Toque num ponto ao lado da Linha.
+es Toca un punto junto a la Línea.
+
+> No idle Troop Train (buy one at the Clocktower).
+pt Nenhum Trem de Tropas livre (compre um na Torre do Relógio).
+es Ningún Tren de Tropas libre (compra uno en la Torre del Reloj).

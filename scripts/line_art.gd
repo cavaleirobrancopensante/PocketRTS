@@ -6,6 +6,7 @@ extends RefCounted
 
 const SIDES := ["n", "e", "s", "w"]
 static var _cache := {}
+static var disabled := false     # screenshots of the code-drawn fallback (tools/shot_line.gd code)
 
 
 ## The file stem for a 4-bit side mask (N 1, E 2, S 4, W 8): "ns", "nesw", "none"...
@@ -21,6 +22,8 @@ static func mask_name(mask: int) -> String:
 
 ## The picture at res://assets/<rel> or null (cached).
 static func tex(rel: String) -> Texture2D:
+	if disabled:
+		return null
 	if _cache.has(rel):
 		return _cache[rel]
 	var path := "res://assets/" + rel

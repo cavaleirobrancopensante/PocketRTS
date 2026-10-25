@@ -334,7 +334,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_line_btn = "left"
 				_line_add(e.position)
 				return
-			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol":
+			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol", "ride":
 				_tap(e.position, false, e.shift_pressed)
 				return
 		_lmb_down = true
@@ -578,6 +578,15 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 				game.cast_order(units, cast_spell, p)
 			cancel_mode()
 			Sfx.play_any(["ui/click", "click"])
+			return
+		"ride":
+			var why := game.ride_order(units, p)
+			if why != "":
+				game.notify(why)
+			else:
+				game._ping(p, Color(0.5, 0.8, 1.0))
+				Sfx.play_any(["ui/click", "click"])
+			cancel_mode()
 			return
 		"load":
 			# pick men to climb into the selected balloons (it stays on until they're full)

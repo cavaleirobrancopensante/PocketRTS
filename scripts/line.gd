@@ -34,9 +34,11 @@ var tool_on := false
 var tool_from := Vector2i(-1, -1)
 var tool_path: Array = []
 var tool_info := {}
+var rails: Rails                  # the trains (scripts/rails.gd)
 
 
 func _ready() -> void:
+	rails = Rails.new(self)
 	_ground = Node2D.new()
 	_ground.z_index = -17
 	_ground.draw.connect(_draw_ground)
@@ -315,6 +317,9 @@ func count(t: int, built_only := true) -> int:
 
 ## Enemy pipes in reach of a unit (the lowest priority: nothing else to shoot).
 func pipe_target(u: Unit, r: float) -> Entity:
+	var tr := rails.target(u, r)        # a train is the Line's most exposed target
+	if tr != null:
+		return tr
 	if segs.is_empty():
 		return null
 	var uc := game.cell_of(u.position)
@@ -620,6 +625,7 @@ func _warn_players() -> void:
 
 func tick(delta: float) -> void:
 	_clock += delta
+	rails.tick(delta)
 	_solve_t -= delta
 	if _solve_t <= 0.0:
 		_solve_t = float(Defs.LINE["solve"])
@@ -677,6 +683,12 @@ func clear() -> void:
 		var s: PipeSeg = segs[c]
 		segs.erase(c)
 		s.queue_free()
+	for tr in rails.trains.duplicate():
+		if is_instance_valid(tr):
+			tr.drop_riders(false)
+			tr.dead = true
+			tr.queue_free()
+	rails.trains.clear()
 	changed()
 
 
@@ -703,6 +715,8 @@ func lay_start(t: int) -> void:
 	for b in game.buildings:
 		if b.team == t and b != hall and (is_consumer(b) or is_source(b)) and not touches(b):
 			connect_building(t, hall, b, true)
+	if Defs.rail_econ and rails.count(t, "ore") == 0:
+		rails.add_train(t, "ore")
 
 
 ## Route a pipe from whatever Line the team has beside `from_b` to a cell touching `to_b`. Returns the plan.

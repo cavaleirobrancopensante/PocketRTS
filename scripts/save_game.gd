@@ -69,7 +69,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
-			"soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
+			"stock": snappedf(b.stock, 0.1), "soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
@@ -173,6 +173,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		var s: Building = u.crate_site
 		if not u.dead and s and is_instance_valid(s) and not s.dead and not s.built and s.crate == "carried" and s.crate_carrier == u:
 			d["crates"].append([u.position.x, u.position.y, u.team, s.cell.x, s.cell.y, float(Defs.CRATE["hp"])])
+	d["trains"] = game.line_net.rails.save()    # the Clockwork's trains (and the soldiers riding them)
 	d["line"] = game.line_net.save()           # the Clockwork Line: [x, y, team, hp, progress, built]
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
@@ -321,6 +322,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if not d.get("armoury", false) and b.auto_train == "cuirassier" and not game.has_tech(b.team, "armour"):
 			b.auto_train = "horseman"      # (before the Armoury, "cuirassier" was the one horseman)
 		b.batteries = int(bd.get("bat", 0))
+		b.stock = float(bd.get("stock", 0.0))
 		b.vertical = bool(bd.get("v", false))
 		b.dir_locked = bool(bd.get("vl", false))
 		b.locked = bool(bd.get("gl", false))
@@ -540,6 +542,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 	game._astar_dirty = true
 	game.camera.position = _to_v2(d["camera"])
 	game.camera.zoom = Vector2.ONE * float(d.get("zoom", 1.5))
+	if d.has("trains"):
+		game.line_net.rails.load_rows(d["trains"])
 	_restore_groups(game, d, made)
 	if game.mlog:
 		game.mlog.lines = PackedStringArray(d.get("log", []))

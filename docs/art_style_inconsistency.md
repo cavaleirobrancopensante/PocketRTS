@@ -38,6 +38,8 @@ Shared code: tools/gait_lib.py. Audit and ranking: docs/animation_gait_audit.md 
 
 - Language flags (0.13.8, scripts/ui/flags.gd, class FlagIcon): the United States, Brazil and Spain flags on the main menu and in Settings are drawn in code with simple shapes (stripes, a star field, the Brazilian rhombus and globe, Spain's bands with a simplified shield). They are flat vector shapes, not pixel art like the rest of the menu; ask for hand-drawn flag icons in the game's style when the menu art is redone.
 
+- Clockwork Line (0.14.7, scripts/line.gd, scripts/train.gd, scripts/line_art.gd): everything is loaded from sprites when the file exists (tools/import_line_art.py writes assets/world/line/tile_*.png, dmg_*, steam_*, assets/buildings/pressure_relay_* and ore_drill_*, assets/units/ore_locomotive|ore_car|troop_car/*) and DRAWN IN CODE when it does not: the pipe pieces with their rails (straight, corners, T, cross, caps, flanges), damaged / destroyed pipe, the steam puffs, the Line tool's ghost path and cost text, the pressure overlay tint and gauge badges (NO LINE / NO PRESSURE / percent), the Pressure Relay's gauge on the Charging Pylon stand-in, and the locomotive and wagons as coloured boxes. With the ChatGPT sheets imported none of these is used except the badges, the overlay and the tool ghost (UI, not art). Tiles are warped to 32x32 by the importer, so their pixel density is a little different from the buildings'.
+
 ## C. Still to prompt (new ids when the art rework resumes)
 
 - Missionary walk (new prompt), Windup Soldier walk, Winder walk (new prompts; Armoured Musketeer = 16, Raptor = 18, Labourer walk/carry/keg = 07, 08, 09).

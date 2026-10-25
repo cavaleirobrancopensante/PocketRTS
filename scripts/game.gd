@@ -1635,7 +1635,7 @@ func _start_positions() -> void:
 		_update_swamp()
 		# Starting economy structures, already standing.
 		var sites: Array = []
-		for k in f["start"]:
+		for k in Defs.start_list(factions[t]):
 			var spot := find_start_spot(t, k, b, sites) if start_edge_layout else Vector2i(-1, -1)
 			if spot.x < 0:
 				spot = find_spot(t, k, b, 4, 11, "behind")
@@ -4368,6 +4368,45 @@ func _redraw_line() -> void:
 func lay_line(t: int, cells: Array, builders: Array, queued := false) -> void:
 	if net_forward(self, "lay_line", [t, cells, builders, queued]): return
 	line_net.lay(t, cells, builders, queued)
+
+
+## Buy a train at the team's Clocktower ("ore" or "troop"). Returns "" or the reason it was refused.
+func buy_train(t: int, kind: String) -> String:
+	if net_forward(self, "buy_train", [t, kind]): return ""
+	return line_net.rails.buy(t, kind)
+
+
+## RIDE: these soldiers board a Troop Train (the nearest idle one of their team) at the Line cell nearest
+## to the first of them and are set down at the Line cell nearest `to`. Returns "" or the reason it was refused.
+func ride_order(units_in: Array, to: Vector2) -> String:
+	if net_forward(self, "ride_order", [units_in, to]): return ""
+	var men: Array = units_in.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.is_unit() and Defs.UNITS.has(u.kind) and not u.is_worker() and u.kind != "horse" and not u.is_air() and not Defs.CROWN_MACHINES.has(u.kind) and not u.d.get("needs_horse", false) and u.aboard == null and not u.is_mounted())
+	if men.is_empty():
+		return "Only soldiers can ride a train."
+	var t: int = men[0].team
+	var rails := line_net.rails
+	var pick := rails.nearest_cell(t, men[0].position, 14)
+	var drop := rails.nearest_cell(t, to, 8)
+	if pick.x < 0:
+		return "No Line near these soldiers."
+	if drop.x < 0:
+		return "Tap a spot beside the Line."
+	var best: Train = null
+	var bd := INF
+	for tr in rails.trains:
+		if tr.team != t or tr.tkind != "troop" or tr.dead or not (tr.state in ["idle", "returning"]):
+			continue
+		var dd: float = tr.global_position.distance_to(men[0].position)
+		if dd < bd:
+			bd = dd
+			best = tr
+	if best == null:
+		return "No idle Troop Train (buy one at the Clocktower)."
+	men = men.slice(0, best.seats())
+	for u in men:
+		u.give({"o": "move", "p": cell_center(pick) + Vector2(randf_range(-10, 10), randf_range(-8, 8))}, false)
+	best.send_for(men, pick, drop)
+	return ""
 
 
 ## Clockwork: the Clocktower a Winder at `from` fetches the crate for `site` from: the one

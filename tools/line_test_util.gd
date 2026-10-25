@@ -64,8 +64,8 @@ static func run_from_hall(g: Game, t: int, n: int) -> Array:
 static func building_beside(g: Game, t: int, kind: String, c: Vector2i) -> Building:
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	for d in LineNetwork.DIRS:
-		for off in range(-size.x + 1, size.x):
-			for off2 in range(-size.y + 1, size.y):
+		for off in range(-size.x + 1, 1):
+			for off2 in range(-size.y + 1, 1):
 				var cell: Vector2i = c + d * 1 + Vector2i(off if d.y != 0 else 0, off2 if d.x != 0 else 0)
 				# the footprint must contain the cell next to c on side d
 				var origin := cell

@@ -1146,8 +1146,9 @@ func _econ_build() -> void:
 			order.erase("feeding_pit")
 	else:
 		# batteries need somewhere to go: a crusher first, then Boilers, a crusher per Boiler
-		var crushers := _mine("ore_crusher").size()
-		order = ["ore_crusher", "boiler"] if crushers <= _mine("boiler").size() else ["boiler", "ore_crusher"]
+		var mill := "ore_drill" if Defs.rail_econ else "ore_crusher"      # (rails: Drills dig, trains haul)
+		var crushers := _mine(mill).size()
+		order = [mill, "boiler"] if crushers <= _mine("boiler").size() else ["boiler", mill]
 	_reserve = 0
 	for k in _no_room.keys():
 		if game.clock - float(_no_room[k]) > 20.0:
@@ -1206,7 +1207,7 @@ func _rushing() -> bool:
 
 func _econ_spot(kind: String) -> Vector2i:
 	var halls := _halls()
-	var lodes := kind == "powder_mill" or kind == "ore_crusher"
+	var lodes := kind == "powder_mill" or kind == "ore_crusher" or kind == "ore_drill"
 	if kind == "feeding_pit":
 		# Brood: the pit hauls to the capital and must stand on swamp joined to it, as far out as pays most
 		var cap := game.capital(team)
@@ -1680,7 +1681,7 @@ func _lode_value(c: Vector2i) -> float:
 ## Crown / Clockwork: a Mill (Crusher) on spent saltpetre (ore) is pulled down when the limit
 ## leaves no room for one by a hall that still has fresh saltpetre (ore) and none working it.
 func _recycle_spent() -> void:
-	for kind in ["powder_mill", "ore_crusher"]:
+	for kind in ["powder_mill", "ore_crusher", "ore_drill"]:
 		if Defs.BUILDINGS[kind]["faction"] != game.faction_of(team) or game.econ_count(team, kind) < game.econ_limit(team, kind):
 			continue
 		var dep: String = Defs.LODE_NAME[Defs.LODE_FOR[kind]]

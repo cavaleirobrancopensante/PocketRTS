@@ -12,6 +12,9 @@ var queue: Array = []            # unit kinds, and research as "@key" (Defs.RESE
 var kits: Array = []             # beside `queue`: what a queued Musketeer was paid to come out with ({} for the rest)
 var auto_refit := false          # Barracks: AUTO REFIT (idle Musketeers nearby get the upgrades researched)
 var prod_t := 0.0
+var stock := 0.0                # Ore Drill: ore dug and waiting for a train
+var drill_on := false           # Ore Drill: digging this moment
+var drill_anim := false         # Ore Drill: showing the working loop
 var batteries := 0               # Clockwork: full batteries waiting to be carried off
 var _bat_t := 0.0
 var auto_train := ""             # keep training this unit (right-click / long press on its button)
@@ -430,6 +433,8 @@ func in_use() -> bool:
 			return not queue.is_empty()
 		"boiler":
 			return d.has("battery") and batteries < int(d["battery"][1])
+		"ore_drill":
+			return OreDrill.working(self)
 	return true
 
 
@@ -730,7 +735,7 @@ func barren() -> bool:
 	match kind:
 		"farm", "feeding_pit", "boiler":
 			return soil_left() <= 0.0
-		"powder_mill", "ore_crusher":
+		"powder_mill", "ore_crusher", "ore_drill":
 			return lode_left() <= 0.0
 	return false
 
@@ -759,6 +764,9 @@ func efficiency() -> Array:
 				for b in game.battery_sources(h):
 					have += b.crew.size()
 					want += int(b.d.get("crew", 0))
+		"ore_drill":
+			have = 1 if game.line_net.speed_mult(self) > 0.0 else 0       # (the Line's pressure is its staff)
+			want = 1
 		_:
 			return []
 	match kind:
@@ -800,6 +808,8 @@ func _econ(delta: float) -> void:
 				if team == game.human:
 					game.float_text(center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 					Sfx.play("done", center())
+		"ore_drill":
+			OreDrill.tick(self, delta)
 		"powder_mill":
 			# grinds its Town Hall's saltpetre; once that's spent, nothing
 			var n := working_crew()

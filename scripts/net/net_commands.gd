@@ -17,7 +17,7 @@ const GAME := {
 	"mount_order": {"own": [0]}, "lead_order": {"own": [0]}, "harness_order": {"own": [0]},
 	"unload_order": {"own": [0]}, "load_order": {"own": [0, 1]}, "overload_order": {"own": [0]},
 	"cast_order": {"own": [0]}, "tongue_order": {"own": [0]}, "line_move": {"own": [0]},
-	"lay_line": {"team": 0, "own": [2]}, "set_split": {"team": 0}, "player_surrender": {},
+	"lay_line": {"team": 0, "own": [2]}, "buy_train": {"team": 0}, "ride_order": {"own": [0]}, "set_split": {"team": 0}, "player_surrender": {},
 }
 
 ## UNIT / BUILDING: methods of an entity the guest owns (the receiver must be theirs).

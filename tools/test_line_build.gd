@@ -54,8 +54,8 @@ func _run() -> void:
 	check("every starting building touches the Line", g.buildings.filter(func(b: Building) -> bool: return b.team == 0 and (net.is_consumer(b) and b.built)).all(func(b: Building) -> bool: return net.touches(b)))
 	net.solve()
 	for b in g.buildings:
-		if b.team == 0 and b.kind == "ore_crusher":
-			check("the starting Ore Crusher is powered", net.state_of(b) != "off" and net.speed_mult(b) > 0.9, "%.2f" % net.speed_mult(b))
+		if b.team == 0 and b.kind in ["ore_crusher", "ore_drill"]:
+			check("the starting Ore Drill is powered", net.state_of(b) != "off" and net.speed_mult(b) > 0.9, "%.2f" % net.speed_mult(b))
 	# plan a run away from the hall
 	net.clear()
 	var from := Vector2i(-1, -1)

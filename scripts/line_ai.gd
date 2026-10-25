@@ -6,7 +6,8 @@ extends RefCounted
 ##    one main laid from the Line it can reach (the Clocktower's) to a cell touching it, once at a time;
 ##  - the unfinished segments are laid by the nearest idle Winders (one or two at a time);
 ##  - repair needs nothing here: Winders repair damaged pipes by themselves (Game.find_repair).
-## LEFT FOR PHASE 4: choosing building spots by where the Line goes (find_spot ignores it), branch routes
+##  - (phase 2) buys Ore Trains for its Drills.
+## LEFT FOR PHASE 4: Troop Trains (the RIDE order), choosing building spots by where the Line goes (find_spot ignores it), branch routes
 ## to expansions and ore, a second route so that one cut does not starve the base, defending the Line,
 ## relays where the pressure thins, rebuilding a cut Line first when under attack.
 
@@ -28,6 +29,15 @@ static func tick(ai: AI) -> void:
 	if halls.is_empty():
 		return
 	var pending := net.unbuilt_count(t)
+	# 0. trains for the Drills (phase 2): about one and a half Ore Trains a Drill; Troop Trains are left to phase 4
+	if Defs.rail_econ:
+		var drills := 0
+		for b in game.buildings:
+			if b.team == t and b.kind == "ore_drill" and b.built and not b.dead and net.touches(b):
+				drills += 1
+		var want := mini(int(Defs.TRAIN_MAX), int(ceil(float(drills) * 1.5)))
+		if net.rails.count(t, "ore") < want and int(game.players[t]["gold"]) >= int(Defs.TRAINS["ore"]["cost"]) + 40:
+			net.rails.buy(t, "ore", halls[0])
 	# 1. one new main at a time
 	if pending == 0:
 		for b in game.buildings:

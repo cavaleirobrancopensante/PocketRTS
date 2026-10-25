@@ -831,7 +831,7 @@ func _build_card() -> Array:
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
 		if page in ["build", "advanced"] and has_lab:
 			# every building on one card (more pages if they don't fit)
-			var all: Array = Defs.FACTIONS[game.faction_of(game.human)]["build"].duplicate()
+			var all: Array = Defs.build_list(game.faction_of(game.human))
 			var slots := _cols() * _rows()
 			var per := slots - 1 if all.size() <= slots - 1 else slots - 2
 			var pages := int(ceil(all.size() / float(per)))
@@ -894,6 +894,11 @@ func _build_card() -> Array:
 
 		else:
 			_ability_buttons(list, units)
+			if Defs.rail_econ and game.faction_of(game.human) == "clockwork" and game.line_net.rails.count(game.human, "troop") > 0 \
+					and units.any(func(u: Unit) -> bool: return not u.is_air() and u.kind != "horse"):
+				list.append(["build", "RIDE", func() -> void:
+					controls.mode = "ride"
+					toast("Tap a spot beside the Line: a Troop Train picks them up and takes them there."), true, "", ""])
 			list.append(["hold", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 			_refit_buttons(list, units)
 		_horse_buttons(list, units)
@@ -1003,6 +1008,15 @@ func _build_card() -> Array:
 				toast(w if w != "" else "Your %s is growing into a %s." % [b.d["name"], nl["name"]]), uwhy == "", uwhy, str(nl["cost"])])
 	if b and b.built:
 		_research_buttons(list, b)
+		if b.kind == game.faction_hall(game.human) and Defs.rail_econ and game.faction_of(game.human) == "clockwork":
+			for tk in ["ore", "troop"]:
+				var tkk: String = tk
+				var twhy: String = game.line_net.rails.buy_problem(game.human, tkk, b)
+				_tip_for[String(Defs.TRAINS[tk]["name"]).to_upper()] = [String(Defs.TRAINS[tk]["name"]), "Runs on the Line's rails: " + ("carries ore from the Drills to the Clocktower; it follows the pressure and is a target for the enemy." if tk == "ore" else "RIDE soldiers along the Line, fast; it is a target, and they climb out hurt if it is lost."), "%d  ·  %d/%d" % [int(Defs.TRAINS[tk]["cost"]), game.line_net.rails.count(game.human, tkk), game.line_net.rails.count(game.human)]]
+				list.append(["build", String(Defs.TRAINS[tk]["name"]).to_upper(), func() -> void:
+					var w: String = game.buy_train(game.human, tkk)
+					if w != "":
+						toast(w), twhy == "", twhy, str(Defs.TRAINS[tk]["cost"])])
 		# (a soldier with a light and an armoured version: two buttons once Armour is researched)
 		for k in Defs.train_keys(b.d["trains"], game.has_tech(game.human, "armour")):
 			var kk: String = k
@@ -2418,6 +2432,12 @@ func _draw_panel(font: Font) -> void:
 				var coal2 := bb.soil_left()
 				info = "%d/%d batteries ready (one every %.1f s)%s" % [bb.batteries, int(bat[1]),
 					float(bat[0]) / (1.0 if coal2 > 0.0 else Defs.COAL_SPENT), " · coal spent: a third as fast" if coal2 <= 0.0 else (" · coal running low" if coal2 < Defs.SOIL_LOW else "")]
+			elif bb.kind == "ore_drill":
+				var ol2 := bb.lode_left()
+				var q2 := 1.0 if ol2 > 0.0 else Defs.LODE_SPENT
+				info = "%d/%d ore waiting for a train · digs %.1f ore/s at this pressure (%s)%s" % [int(bb.stock), int(Defs.RAIL["drill"]["stock"]),
+					float(Defs.RAIL["drill"]["rate"]) * game.line_net.speed_mult(bb) * q2, game.line_net.state_of(bb),
+					" · ore spent: a quarter" if ol2 <= 0.0 else (" · ore running low" if ol2 < Defs.SOIL_LOW else "")]
 			elif bb.kind == "ore_crusher":
 				var blue := game.blue_energy(e.team)
 				var bi: Dictionary = Defs.BATTERY["blue" if blue else "yellow"]

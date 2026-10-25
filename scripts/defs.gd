@@ -47,7 +47,7 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 ## over what was left there. The Brood has no lode (its Hive ground is GROUND_RESERVE).
 const LODE := {"town_hall": 1320.0, "clocktower": 11400.0}     # 3 x 440 powder, 3 x 3,800 ore
 const LODE_NAME := {"town_hall": "saltpetre", "clocktower": "ore"}
-const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "boiler": "clocktower"}
+const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "ore_drill": "clocktower", "boiler": "clocktower"}
 const LODE_SPENT := 0.0
 ## Efficiency bars (economy buildings): staffing (crew at work / full crew) x the state of the
 ## base's reserve, from 100% fresh down to its trickle share once spent (Building.efficiency).
@@ -229,7 +229,7 @@ const CRATE := {"hp": 40.0, "pickup": 0.8, "lift": 0.5, "auto": 10, "unfold": 0.
 const LINE := {
 	"pipe": {"name": "Line segment", "hp": 140.0, "armor": 1, "cost": 8, "time": 2.5, "faction": "clockwork"},
 	"supply": {"clocktower": 40.0, "boiler": 30.0},
-	"draw": {"ore_crusher": 12.0, "assembly_works": 16.0, "engine_hall": 20.0, "capacitor_works": 10.0,
+	"draw": {"ore_crusher": 12.0, "ore_drill": 12.0, "assembly_works": 16.0, "engine_hall": 20.0, "capacitor_works": 10.0,
 		"charging_pylon": 8.0, "pressure_relay": 4.0},
 	"fall": 0.025,
 	"relay": {"min_in": 0.25, "boost": 0.5, "max_out": 0.9},
@@ -238,6 +238,45 @@ const LINE := {
 	"max_run": 60,                # the longest run (segments) one Line order can lay
 	"tint": [Color("#d8473a"), Color("#e8b43c"), Color("#bfe7f0")],
 }
+
+## RAILS AND ORE TRAINS (phase 2 of the Line, docs/clockwork_rework_plan.md). The rail runs on top of every Line
+## segment. An Ore Drill digs its Clocktower's ore into a stock; Ore Trains carry it along the Line to the Clocktower
+## (income = what the trains deliver). A train is slow, exposed, and only as fast as the pressure under it.
+##  speed: cells a second at full speed (it follows the pressure: Defs.line_speed, so a starved Line crawls).
+##  cargo: ore a train carries. headway: cells of free track a train wants ahead of it on its own track (a train
+##   cannot stop quickly): flow of ONE rail = speed / headway trains a second x cargo = 24 ore/s at full pressure.
+##  drill: ore a second the Drill digs at full pressure; stock: the most it holds until a train takes it.
+##  riders: a Troop Train carries this many soldiers (not horses or machines).
+const TRAINS := {
+	"ore": {"name": "Ore Train", "hp": 420.0, "armor": 2, "cost": 110, "cargo": 80.0, "speed": 2.4, "cars": 2},
+	"troop": {"name": "Troop Train", "hp": 420.0, "armor": 2, "cost": 150, "riders": 8, "speed": 3.0, "cars": 1},
+}
+const RAIL := {
+	"headway": 8, "load": 1.5, "unload": 1.2, "wait_stock": 25.0, "wait_max": 7.0, "board_max": 12.0,
+	"drill": {"rate": 7.0, "stock": 160.0},
+	"stranded_retry": 1.0,
+}
+const TRAIN_MAX := 10            # trains a team may own
+
+## The old economy (Winders hauling batteries to Ore Crushers) stays in the game behind this switch until the
+## rails are proven: false puts the Ore Crusher back in the Clockwork's build list and start.
+static var rail_econ := true
+
+
+## What a faction may build / starts with (the Clockwork's Ore Crusher is the Ore Drill while rail_econ is on).
+static func build_list(faction: String) -> Array:
+	var l: Array = FACTIONS[faction]["build"].duplicate()
+	if faction == "clockwork" and rail_econ:
+		l[l.find("ore_crusher")] = "ore_drill"
+	return l
+
+
+static func start_list(faction: String) -> Array:
+	var l: Array = FACTIONS[faction]["start"].duplicate()
+	if faction == "clockwork" and rail_econ and l.has("ore_crusher"):
+		l[l.find("ore_crusher")] = "ore_drill"
+	return l
+
 
 ## Pressure -> work speed for a Clockwork building (1.0 at full; 0 with none; see LINE "speed").
 static func line_speed(p: float) -> float:
@@ -295,7 +334,7 @@ const FACTIONS := {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
 		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works", "pressure_relay"],
 		"start_workers": 4, "ready": true, "max_supply": 200,
-		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2},
+		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2, "ore_drill": 2},
 		"start": ["ore_crusher"],
 		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (a battery fades on the road), and the batteries left waiting are your Energy. Each Clocktower's ore and coal run out in time. Supply cap 200.",
 	},
@@ -637,6 +676,11 @@ const BUILDINGS := {
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
 		"about": "Winders bring batteries here and the charge becomes ore, drawn from its Clocktower's ore; once that's spent it pays nothing. The farther a battery travelled, the more it holds.",
 	},
+	"ore_drill": {
+		"name": "Ore Drill", "hp": 900, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
+		"about": "Digs its Clocktower's ore into a stock (it must stand beside the Line, and works at the Line's pressure). Ore Trains carry the stock to the Clocktower along the rails; once the ore is spent it digs a quarter. Buy trains at the Clocktower.",
+	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 7, "trains": [], "requires": "assembly_works", "faction": "clockwork",
@@ -784,6 +828,7 @@ const TEMP_ART := {
 	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "dismounted", "portrait_armoured": "dismounted_armoured"},
 	"mounted_missionary": {"art": "missionary_mounted", "portrait": "mounted_missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
+	"ore_drill": {"building": "ore_crusher", "portrait": "ore_crusher"},     # (until the Drill sheet is imported)
 	"pressure_relay": {"building": "charging_pylon", "portrait": "charging_pylon"},     # (phase 1 of the Line: the Pylon's picture, plus a gauge drawn in code: docs/art_style_inconsistency.md)
 	# the horse commands' card icons (tools/import_horse_icons.py)
 	"horse_lead": {"portrait": "horse_lead"},

@@ -12,7 +12,7 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target"]
 const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "prod_t", "eggs", "upgrade_t", "growth",
 	"soil", "lode", "swamp_r", "batteries", "auto_train", "auto_refit", "gate_open", "locked", "vertical", "seeded",
-	"crate", "unfold_t", "max_hp", "rally", "worker_rally"]
+	"crate", "unfold_t", "max_hp", "rally", "worker_rally", "stock"]
 const BLD_REFS := ["rally_target", "worker_rally_target"]
 const U_FIXED := 6      # id, kind, team, position, hp, facing angle
 const B_FIXED := 6      # id, kind, team, cell, hp, (spare)
@@ -97,6 +97,8 @@ static func build(s: NetSession) -> Dictionary:
 	if fp != s.line_fp or s.snap_n % 20 == 0:
 		s.line_fp = fp
 		m["ln"] = g.line_net.save()            # the Clockwork Line (pipe segments), sent when it changes
+	if not g.line_net.rails.trains.is_empty() or s.snap_n % 10 == 0:
+		m["tr"] = g.line_net.rails.view_rows()  # the trains (they move every snapshot)
 	if not s.fx.is_empty():
 		m["fx"] = s.fx
 		s.fx = []
@@ -164,6 +166,8 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 			s.count_diff_snaps += 1
 	if m.has("ln"):
 		g.line_net.load_rows(m["ln"])
+	if m.has("tr"):
+		g.line_net.rails.load_view(m["tr"])
 	if m.has("stats"):
 		g.stats = m["stats"]
 	if m.has("fx"):
