@@ -1025,17 +1025,66 @@ func _spread_swamp() -> void:
 		_construct(sup, spot)
 
 
-## Brood: where a Clutch Mound goes to spread the swamp: out from the capital as far as the pits can use
-## (the joined-swamp rule applies), on the safe side. (-1, -1): no room.
+## Brood: where a Clutch Mound goes. The swamp only reaches the low ground joined to the Burrow's if
+## a mound stands by the ramp, so: the FIRST mound goes on the plateau close to the top of the ramp;
+## the next ones go down on the low ground, at the swamp's edge nearest the enemy, so the swamp keeps
+## walking toward them. Falls back to the old rule (out from the capital, safe side) when the map
+## has no ramp or no room. (-1, -1): no room.
 func _mound_spot() -> Vector2i:
 	var cap := game.capital(team)
 	if cap == null or not cap.built:
 		return Vector2i(-1, -1)
+	var sup: String = _f()["supply"]
+	var spot := Vector2i(-1, -1)
+	var h0 := int(game.height[game.idx(game.cell_of(cap.center()))])
+	if _mine(sup).is_empty() or not _swamp_on_low_ground(h0):
+		var top := game.ramp_top(cap)
+		if top != Vector2.INF:
+			spot = game.find_spot(team, sup, cap, 3, 10, "near", true, top)
+	else:
+		spot = _forward_low_spot(cap, h0, sup)
+	if spot.x >= 0:
+		return spot
 	var reach := int(game.swamp_reach[team])
-	var spot := game.find_spot(team, "clutch_mound", cap, maxi(8, reach - 4), reach, "far_safe")
+	spot = game.find_spot(team, sup, cap, maxi(8, reach - 4), reach, "far_safe")
 	if spot.x < 0:
-		spot = game.find_spot(team, "clutch_mound", cap, 8, reach, "far_safe")
+		spot = game.find_spot(team, sup, cap, 8, reach, "far_safe")
 	return spot
+
+
+## Brood: does our swamp already cover a stretch of low ground (not the capital's height) joined to the Burrow?
+func _swamp_on_low_ground(h0: int) -> bool:
+	var join: PackedByteArray = game.swamp_hall_conn[team] if game.swamp_hall_conn.size() > team else PackedByteArray()
+	if join.size() != game.W * game.H:
+		return false
+	var n := 0
+	for i in join.size():
+		if join[i] == 1 and int(game.height[i]) != h0 and game.ramp[i] == 0 and game.cliff[i] == 0:
+			n += 1
+			if n >= 12:
+				return true
+	return false
+
+
+## Brood: a spot on the low ground at the edge of the joined swamp, as near the enemy as the swamp goes.
+func _forward_low_spot(cap: Building, h0: int, sup: String) -> Vector2i:
+	var join: PackedByteArray = game.swamp_hall_conn[team]
+	var foe := _enemy_base() / float(Defs.TILE)
+	var cands: Array[Vector2i] = []
+	for i in join.size():
+		if join[i] == 1 and int(game.height[i]) != h0 and game.ramp[i] == 0 and game.cliff[i] == 0:
+			cands.append(Vector2i(i % game.W, i / game.W))
+	cands.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(foe) < Vector2(b).distance_squared_to(foe))
+	var tried := 0
+	var i := 0
+	while i < cands.size() and tried < 8:
+		var c := cands[i]
+		tried += 1
+		var spot := game.find_spot(team, sup, cap, 0, 14, "near", false, Vector2(c) + Vector2(0.5, 0.5))
+		if spot.x >= 0:
+			return spot
+		i += maxi(1, cands.size() / 40)     # (try a few well-spread cells, not 8 neighbours)
+	return Vector2i(-1, -1)
 
 
 func _energy_split() -> void:
@@ -1068,8 +1117,8 @@ func _supply() -> void:
 			_construct(sup)
 		return
 	if cap - used <= margin and building == 0:
-		# Brood: the first mound tucks in at home; later ones (or any, when the pits have no room) go out to the swamp's edge to spread it
-		_construct(sup, _mound_spot() if _brood() and (_no_room.has("feeding_pit") or not _mine(sup).is_empty()) else Vector2i(-1, -1))
+		# Brood: the first mound goes by the ramp, later ones on the low ground toward the enemy (_mound_spot)
+		_construct(sup, _mound_spot() if _brood() else Vector2i(-1, -1))
 
 
 func _build_up() -> void:

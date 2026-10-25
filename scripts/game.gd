@@ -2033,6 +2033,31 @@ func ramp_foot(around: Building) -> Vector2:
 	return best
 
 
+## The plateau cell (tile coordinates, centre) where the nearest ramp meets the plateau of a building:
+## the top of the ramp. Vector2.INF when there is none within 30 tiles.
+func ramp_top(around: Building) -> Vector2:
+	var hc := cell_of(around.rect().get_center())
+	if not in_map(hc):
+		return Vector2.INF
+	var h0 := int(height[idx(hc)])
+	var best := Vector2.INF
+	var bd := INF
+	for y in range(hc.y - 30, hc.y + 31):
+		for x in range(hc.x - 30, hc.x + 31):
+			var r := Vector2i(x, y)
+			if not in_map(r) or ramp[idx(r)] != 1:
+				continue
+			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var p: Vector2i = r + dd
+				if not in_map(p) or ramp[idx(p)] != 0 or int(height[idx(p)]) != h0:
+					continue
+				var d := Vector2(p).distance_to(Vector2(hc))
+				if d < bd:
+					bd = d
+					best = Vector2(p) + Vector2(0.5, 0.5)
+	return best
+
+
 ## A free cell of height h near a cell (the nearest, looking outward).
 func _free_next_to(c: Vector2i, h: int) -> Vector2i:
 	for r in range(1, 12):
@@ -4464,6 +4489,7 @@ func on_swamp(t: int, p: Vector2) -> bool:
 func _update_swamp() -> void:
 	swamp_dirty = false
 	for t in n_players():
+		var old: PackedByteArray = (swamp[t] as PackedByteArray).duplicate()
 		var g: PackedByteArray = swamp[t]
 		g.fill(0)
 		if faction_of(t) == "brood":
@@ -4494,6 +4520,15 @@ func _update_swamp() -> void:
 						var ddy: float = (y + 0.5 - uc.y) * 1.15
 						if ddx * ddx + ddy * ddy <= ur * ur:
 							g[y * W + x] = 1
+		# Swamp that lost its building does not vanish at once: it retreats one ring of tiles every swamp
+		# update (every half second), the outermost unsupported tiles first
+		for i in W * H:
+			if old[i] == 1 and g[i] == 0:
+				var x := i % W
+				var y := i / W
+				if x > 0 and x < W - 1 and y > 0 and y < H - 1 and old[i - 1] == 1 and old[i + 1] == 1 and old[i - W] == 1 and old[i + W] == 1:
+					g[i] = 1
+					swamp_dirty = true
 		swamp[t] = g
 	_update_conn()
 	swamp_layer.queue_redraw()

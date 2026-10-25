@@ -158,8 +158,12 @@ func _run_rules() -> void:
 	var spot2 := _spot(cap, reach1 - 2.0)
 	check(spot2.x >= 0 and spot2 != spot, "   a second mound can be planted on the new swamp (chain) %s" % str(spot2))
 	# 3. it dies: the swamp only it held retracts
+	var peak := swamp_cells(0)
 	m.take_damage(9999999.0, null)
-	await wait(2.0)
+	await wait(0.8)
+	var mid := swamp_cells(0)
+	check(m.dead and mid < peak and mid > cells0 + 4, "   it retreats gradually, not at once (%d cells after 0.8 s, from %d)" % [mid, peak])
+	await wait(9.0)
 	check(m.dead and swamp_cells(0) <= cells0 + 4, "3. the mound is destroyed: its swamp retracts (%d cells, was %d)" % [swamp_cells(0), cells0])
 	check(absf(float(g.swamp_reach[0]) - reach0) < 1.0, "   the pits' reach is back (%.1f)" % float(g.swamp_reach[0]))
 	check(g.placement_problem(0, "clutch_mound", spot2, true) != "" , "   and the far spot is refused again")
