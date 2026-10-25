@@ -2480,13 +2480,19 @@ func _draw_panel(font: Font) -> void:
 			info = "Friendly fire: %d of ours killed. " % fk + info
 		info = Loc.t(info)
 		eff_txt = Loc.t(eff_txt)
+		var ifs := 15          # (a longer translation shrinks to fit the card)
+		while ifs > 10 and font.get_string_size(eff_txt + ("  ·  " if eff_txt != "" else "") + info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > r.size.x - 130:
+			ifs -= 1
+		var iroom: float = r.size.x - 110 - (font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x if eff_txt != "" else 0.0)
+		while info.length() > 12 and font.get_string_size(info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > iroom:
+			info = info.left(info.length() - 2).strip_edges() + "…"      # (still too long for the card: cut it)
 		if eff_txt != "":
 			# the efficiency breakdown first, in its bar's colour, then the rest
-			_text(font, r.position + Vector2(90, 72), eff_txt, 15, eff_col)
-			var ew := font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-			_text(font, r.position + Vector2(90 + ew, 72), info, 15, UiStyle.MUTED)
+			_text(font, r.position + Vector2(90, 72), eff_txt, ifs, eff_col)
+			var ew := font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x
+			_text(font, r.position + Vector2(90 + ew, 72), info, ifs, UiStyle.MUTED)
 		else:
-			_text(font, r.position + Vector2(90, 72), info, 15, UiStyle.MUTED)
+			_text(font, r.position + Vector2(90, 72), info, ifs, UiStyle.MUTED)
 		if e is Unit and (e as Unit).kind == "balloon" and e.team == game.human:
 			# who's in the basket: small icons in the top right corner, each with his health
 			# and his powder under it (the name shrinks to make room)
@@ -3193,7 +3199,7 @@ func _draw_tip() -> void:
 	var vs := _vs()
 	var bold := UiStyle.bold_font()
 	var body_f := UiStyle.body_font()
-	var title: String = Loc.t(String(_tip.get("title", "")))
+	var title: String = Loc.title(String(_tip.get("title", "")))
 	var key: String = _tip.get("key", "")
 	var rows: Array = []        # [text, font, size, colour]
 	for f in [["stats", bold, 14, UiStyle.TEXT], ["need", bold, 14, UiStyle.BAD], ["body", body_f, 14, Color(0.95, 0.91, 0.82)], ["hint", body_f, 13, UiStyle.MUTED]]:

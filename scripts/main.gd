@@ -618,7 +618,7 @@ func show_patch_notes() -> void:
 	for e in entries:
 		var head := Loc.t("VERSION %s%s") % [e["v"], Loc.t("  (THIS VERSION)") if e == cur else ""]
 		list.add_child(UiStyle.text(head, 22, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_LEFT))
-		for it in e["items"]:
+		for it in PatchNotes.items(e):
 			var t := UiStyle.text("•  " + it, 17, UiStyle.TEXT if e == cur else UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true)
 			t.custom_minimum_size.x = 560
 			list.add_child(t)

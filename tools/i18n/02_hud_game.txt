@@ -591,8 +591,8 @@ pt CHAT RÁPIDO
 es CHAT RÁPIDO
 
 > %d energy (%s batteries stored)
-pt %d de energia (baterias %s armazenadas)
-es %d de energía (baterías %s almacenadas)
+pt %d de energia (baterias %s)
+es %d de energía (baterías %s)
 
 > P%d %s   %d %s · %d %s · %d/%d supply
 pt J%d %s   %d %s · %d %s · %d/%d de suprimento
@@ -1191,8 +1191,8 @@ pt carvão acabando
 es carbón agotándose
 
 > %s batteries: %d ore; after %d s on the road they lose %d%% a second%s
-pt Baterias %s: %d de minério; após %d s na estrada perdem %d%% por segundo%s
-es Baterías %s: %d de mineral; tras %d s en el camino pierden un %d%% por segundo%s
+pt Baterias (%s): %d de minério; após %d s na estrada perdem %d%% por segundo%s
+es Baterías (%s): %d de mineral; tras %d s en el camino pierden un %d%% por segundo%s
 
 > ore spent: a quarter
 pt minério esgotado: um quarto
@@ -2677,3 +2677,11 @@ es Corta una ruta
 > Narrows a path
 pt Estreita um caminho
 es Estrecha un camino
+
+> blue
+pt azuis
+es azules
+
+> yellow
+pt amarelas
+es amarillas

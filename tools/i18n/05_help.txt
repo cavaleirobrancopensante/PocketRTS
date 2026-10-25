@@ -147,8 +147,8 @@ pt EDITOR DE MAPAS
 es EDITOR DE MAPAS
 
 > NEW picks the size (presets from 48x48 to 192x192, or your own width and height in steps of 4). LOAD opens one of your maps, SAVE keeps it (with a picture for the lobby), PLAY saves it and takes you to Skirmish with it.
-pt NOVO escolhe o tamanho (predefinições de 48x48 a 192x192, ou sua própria largura e altura em passos de 4). CARREGAR abre um dos seus mapas, SALVAR o guarda (com uma imagem para o salão), JOGAR o salva e leva você à Escaramuça com ele.
-es NUEVO elige el tamaño (preajustes de 48x48 a 192x192, o tu propio ancho y alto en pasos de 4). CARGAR abre uno de tus mapas, GUARDAR lo conserva (con una imagen para la sala), JUGAR lo guarda y te lleva a Escaramuza con él.
+pt NOVO escolhe o tamanho (predefinições de 48x48 a 192x192, ou sua própria largura e altura em passos de 4). ABRIR abre um dos seus mapas, SALVAR o guarda (com uma imagem para o salão), JOGAR o salva e leva você à Escaramuça com ele.
+es NUEVO elige el tamaño (preajustes de 48x48 a 192x192, o tu propio ancho y alto en pasos de 4). ABRIR abre uno de tus mapas, GUARDAR lo conserva (con una imagen para la sala), JUGAR lo guarda y te lleva a Escaramuza con él.
 
 > TERRAIN: GROUND (also the eraser), HIGH ground, RAMP, WATER (lava in volcanic and ashland), FORD, TREES and ROCKS. Brush sizes 1-8, ROUND or SQUARE; FILL floods a whole area of the same terrain. Plateaus get their cliffs as in the game. Paint a ramp across the edge of high ground: it is squared into a clean rectangle; a ramp that doesn't join high ground to low ground shows red.
 pt TERRENO: CHÃO (também a borracha), terreno ALTO, RAMPA, ÁGUA (lava em vulcânico e cinzas), VAU, ÁRVORES e ROCHAS. Pincéis de tamanho 1-8, REDONDO ou QUADRADO; PREENCHER inunda toda uma área do mesmo terreno. Os planaltos ganham seus penhascos como no jogo. Pinte uma rampa atravessando a borda do terreno alto: ela é ajustada num retângulo limpo; uma rampa que não une terreno alto a terreno baixo fica vermelha.

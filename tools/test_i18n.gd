@@ -67,6 +67,22 @@ func _initialize() -> void:
 		if n > 0:
 			_fail("%s has untranslated data texts" % code)
 
+	# patch notes: every version has a translated item for every English item, in both languages
+	for n in PatchNotes.NOTES:
+		for code in ["pt", "es"]:
+			var tr: Dictionary = PatchPt.N if code == "pt" else PatchEs.N
+			if not tr.has(n["v"]) or tr[n["v"]].size() != n["items"].size() or tr[n["v"]].has(""):
+				_fail("patch notes %s not fully translated to %s" % [n["v"], code])
+	Loc.set_lang("pt")
+	var shown: Array = PatchNotes.items(PatchNotes.NOTES[0])
+	if shown == PatchNotes.NOTES[0]["items"]:
+		_fail("PatchNotes.items did not translate")
+	Loc.set_lang("en")
+	# voices: each translated line folder has the same file names as the English one where it speaks
+	for code in ["pt", "es"]:
+		for unit in ["labourer", "musketeer", "cannon", "cuirassier", "missionary", "winder", "gearknight", "bolt", "steam_walker", "tesla_cart"]:
+			if DirAccess.get_files_at("res://assets/voice_%s/%s" % [code, unit]).is_empty():
+				_fail("no %s voice files for %s" % [code, unit])
 	# switching changes text, including a Label through the TranslationServer
 	var lab := Label.new()
 	lab.text = "SETTINGS"

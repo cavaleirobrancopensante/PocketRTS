@@ -68,8 +68,8 @@ pt Aleatório
 es Aleatorio
 
 > Fits map
-pt Combina com o mapa
-es Encaja con el mapa
+pt Do mapa
+es Del mapa
 
 >  vs 
 pt  contra 
@@ -408,8 +408,8 @@ pt ALEATÓRIO
 es ALEATORIO
 
 > RANDOM PLAN
-pt PLANO ALEATÓRIO
-es PLAN ALEATORIO
+pt ALEATÓRIO
+es ALEATORIO
 
 > How this computer player plays. Air rush and Extreme rush are Brood only (others play Balanced).
 pt Como este jogador do computador joga. Ataque aéreo e Ataque extremo são só da Ninhada (as outras jogam Equilibrado).
@@ -600,32 +600,32 @@ pt Todos estão na mesma equipe.
 es Todos están en el mismo equipo.
 
 > Random 1v1 maps
-pt Mapas 1v1 aleatórios
-es Mapas 1v1 aleatorios
+pt Aleatório 1v1
+es Aleatorio 1v1
 
 > Random 2v2 maps
-pt Mapas 2v2 aleatórios
-es Mapas 2v2 aleatorios
+pt Aleatório 2v2
+es Aleatorio 2v2
 
 > Random 1v1+2v2 maps
-pt Mapas 1v1+2v2 aleatórios
-es Mapas 1v1+2v2 aleatorios
+pt Aleatório 1v1+2v2
+es Aleatorio 1v1+2v2
 
 > Random 3v3 maps
-pt Mapas 3v3 aleatórios
-es Mapas 3v3 aleatorios
+pt Aleatório 3v3
+es Aleatorio 3v3
 
 > Random 1v1+2v2+3v3 maps
-pt Mapas 1v1+2v2+3v3 aleatórios
-es Mapas 1v1+2v2+3v3 aleatorios
+pt Aleatório 1v1+2v2+3v3
+es Aleatorio 1v1+2v2+3v3
 
 > Random 4v4 maps
-pt Mapas 4v4 aleatórios
-es Mapas 4v4 aleatorios
+pt Aleatório 4v4
+es Aleatorio 4v4
 
 > Random all maps
-pt Todos os mapas, aleatório
-es Todos los mapas, aleatorio
+pt Aleatório, todos
+es Aleatorio, todos
 
 > %s (your map, %s, %dx%d)
 pt %s (seu mapa, %s, %dx%d)

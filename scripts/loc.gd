@@ -26,6 +26,9 @@ static var _pats := {}        # first letters of the literal start -> [[regex, k
 static var _pats_any: Array = []   # patterns that start with a placeholder
 static var _cache := {}
 static var _trans: LocTranslation = null
+## tools/i18n_misses.gd sets track = true to collect the English texts that found no translation.
+static var track := false
+static var misses := {}
 
 
 ## The translation table of one language ({} for English or an unknown code).
@@ -106,6 +109,16 @@ static func _esc(s: String) -> String:
 	return out
 
 
+## A tooltip title: it is made with capitalize() ("Hold Fire"), the table has the upper-case button name.
+static func title(s: String) -> String:
+	var r := t(s)
+	if r == s:
+		var u := t(s.to_upper())
+		if u != s.to_upper():
+			return u.capitalize() if not " " in u or u.length() < 24 else u.substr(0, 1) + u.substr(1).to_lower()
+	return r
+
+
 ## English text in, the chosen language out.
 static func t(s: String) -> String:
 	if _dict.is_empty() or s.length() < 2:
@@ -122,6 +135,8 @@ static func t(s: String) -> String:
 			var r2 := t(st)
 			if r2 != st:
 				r = s.substr(0, s.find(st)) + r2 + s.substr(s.find(st) + st.length())
+	if track and r == s and s.length() >= 3 and RegEx.create_from_string("[A-Za-z]{3}").search(s) != null:
+		misses[s] = true
 	if _cache.size() > 6000:
 		_cache.clear()
 	_cache[s] = r
@@ -141,6 +156,21 @@ static func _pattern(s: String) -> String:
 			if m == null:
 				continue
 			return _fill(_dict[e[1]], e[2], m)
+	# the unit tags alone ("Armored Massive")
+	var tw: Array = Array(s.split(" "))
+	if tw.size() > 1 and tw.size() <= 3 and tw.all(func(w: String) -> bool: return w in ["Light", "Armored", "Massive"]):
+		return " ".join(tw.map(func(w: String) -> String: return t(w)))
+	# "[Light Armored] The text": the tags, then the text
+	if s.begins_with("["):
+		var e := s.find("] ")
+		if e > 1:
+			var ws: PackedStringArray = []
+			for w in s.substr(1, e - 1).split(" "):
+				ws.append(t(w))
+			var rest := t(s.substr(e + 2))
+			var tagged := "[" + " ".join(ws) + "] " + rest
+			if tagged != s:
+				return tagged
 	# a text made of several pieces (lines, "a · b", "a.  b"): translate each piece by itself
 	for sep in ["\n", "  ·  ", " · ", "  ", ": ", " + "]:
 		if sep in s:

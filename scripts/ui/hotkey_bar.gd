@@ -379,7 +379,7 @@ func draw(font: Font, counts: Array) -> void:
 		UiStyle.draw_button(ci, vr, pc and hit(mouse) == i, push > 0.0)
 		if push > 0.0:
 			ci.draw_rect(vr, Color(0, 0, 0, 0.25 * push))
-		var label: String = NAMES[i] if i < GROUP0 else ("%d" % (g + 1 if g < 9 else 0))
+		var label: String = Loc.t(NAMES[i]) if i < GROUP0 else ("%d" % (g + 1 if g < 9 else 0))
 		var lit := i < GROUP0 or count > 0
 		var col := UiStyle.TEXT if lit else Color(1, 1, 1, 0.5)
 		var lsz := 15 if i < GROUP0 else 20
