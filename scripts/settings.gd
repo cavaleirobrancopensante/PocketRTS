@@ -11,6 +11,7 @@ static var ui_size := 0               # 0 = automatic, else a percentage (100-20
 static var grid_keys := false         # computer: command card keys by position (QWER / ASDF / ZXCV) instead of by name
 static var tooltips := true           # hover tooltips (computer) and the "?" help button (phone)
 static var build_grid := true         # show the planning grid while placing a building
+static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
 static var _loaded := false
 
 
@@ -27,6 +28,7 @@ static func load_all() -> void:
 		grid_keys = cfg.get_value("input", "grid_keys", false)
 		tooltips = cfg.get_value("input", "tooltips", true)
 		build_grid = cfg.get_value("input", "build_grid", true)
+		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
 	apply()
 
 
@@ -40,6 +42,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "grid_keys", grid_keys)
 	cfg.set_value("input", "tooltips", tooltips)
 	cfg.set_value("input", "build_grid", build_grid)
+	cfg.set_value("input", "mini_alpha", mini_alpha)
 	cfg.save(PATH)
 
 

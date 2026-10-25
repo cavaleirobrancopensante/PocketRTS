@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.13.7", "items": [
+		"MINIMAP SOLIDITY slider in Settings and in the pause menu: from nearly see-through to fully solid (starts at 60%).",
+	]},
 	{"v": "0.13.6", "items": [
 		"The minimap is see-through now (about 60% opaque), so you can see the battlefield behind it.",
 	]},

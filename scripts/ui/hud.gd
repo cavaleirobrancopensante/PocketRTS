@@ -1613,6 +1613,7 @@ func _pause_buttons() -> Array:
 		{"label": "MUSIC", "slider": "music", "cb": func() -> void: pass},
 		{"label": "SOUND", "slider": "sound", "cb": func() -> void: pass},
 		{"label": "AMBIENCE", "slider": "ambience", "cb": func() -> void: pass},
+		{"label": "MINIMAP", "slider": "minimap", "cb": func() -> void: pass},
 		{"label": "SURRENDER", "cb": func() -> void:
 			set_paused(false)
 			game.player_surrender()},
@@ -1624,16 +1625,28 @@ func _pause_buttons() -> Array:
 		list = list.filter(func(b: Dictionary) -> bool: return b["label"] != "SURRENDER")    # watching computers: nobody of yours to surrender
 	for b in list:
 		if b.has("slider"):
-			b["label"] = "%s  %d%%" % [String(b["label"]).split("  ")[0], int(round(Music.me.get_volume(b["slider"]) * 100.0))]
+			b["label"] = "%s  %d%%" % [String(b["label"]).split("  ")[0], int(round(_slider_value(b["slider"]) * 100.0))]
 	for i in list.size():
 		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.5 - list.size() * 34 + 40 + i * 68, 320, 58)
 	return list
 
 
+func _slider_value(which: String) -> float:
+	return Settings.mini_alpha if which == "minimap" else Music.me.get_volume(which)
+
+
+func _slider_set(which: String, v: float) -> void:
+	if which == "minimap":
+		Settings.mini_alpha = clampf(v, 0.2, 1.0)
+		Settings.save_all()
+	else:
+		Music.me.set_volume(which, v)
+
+
 ## A pause-menu volume bar: where you press along it is the level (drag to slide).
 func _slide(b: Dictionary, p: Vector2) -> void:
 	var r: Rect2 = b["rect"]
-	Music.me.set_volume(b["slider"], snappedf((p.x - r.position.x - 14.0) / (r.size.x - 28.0), 0.05))
+	_slider_set(b["slider"], snappedf((p.x - r.position.x - 14.0) / (r.size.x - 28.0), 0.05))
 	_redraw_t = 0.0
 
 
@@ -2037,28 +2050,24 @@ func _draw_pause() -> void:
 			var r: Rect2 = b["rect"]
 			UiStyle.draw_button(_ci, r, r.has_point(hv), false, true, 0.45)
 			if b.has("slider"):
-				var vv: float = Music.me.get_volume(b["slider"])
+				var vv: float = _slider_value(b["slider"])
 				_ci.draw_rect(Rect2(r.position.x + 14, r.end.y - 11, (r.size.x - 28) * vv, 4), UiStyle.TRIM)
 				_ci.draw_rect(Rect2(r.position.x + 14 + (r.size.x - 28) * vv - 2, r.end.y - 14, 4, 10), UiStyle.TEXT)
 			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 22, UiStyle.BAD if b["label"] == "SURRENDER" else UiStyle.TEXT, 1)
 
 
-## The minimap is see-through (MINI_ALPHA) so the battlefield behind it shows.
-const MINI_ALPHA := 0.6
-
-
 func _draw_minimap() -> void:
 	var m := mini_rect()
-	UiStyle.draw_panel(_ci, m.grow(5), UiStyle.accent(game.faction_of(game.human)), 0.5)
+	UiStyle.draw_panel(_ci, m.grow(5), UiStyle.accent(game.faction_of(game.human)), clampf(Settings.mini_alpha * 0.85, 0.15, 0.9))
 	if _mini_tex == null:
 		_mini_tex = ImageTexture.create_from_image(game.minimap_img)
-	var wash := Color(1, 1, 1, MINI_ALPHA)
+	var wash := Color(1, 1, 1, Settings.mini_alpha)
 	_ci.draw_texture_rect(_mini_tex, m, false, wash)
 	if game.swamp_tex:
 		_ci.draw_texture_rect(game.swamp_tex, m, false, wash)
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
 	if not game.sees_all():
-		_ci.draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95 * MINI_ALPHA))
+		_ci.draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95 * Settings.mini_alpha))
 	for b in game.buildings:
 		if b.visible or (b.team == game.human and not game.demo):
 			var r: Rect2 = b.rect()

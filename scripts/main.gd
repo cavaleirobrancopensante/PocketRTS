@@ -500,6 +500,22 @@ func show_settings() -> void:
 	v.add_child(_volume_row("SOUND LEVEL", "sound"))
 	v.add_child(_toggle_row("AMBIENCE", func() -> bool: return Music.me.amb_on, func() -> void: Music.me.toggle_ambience()))
 	v.add_child(_volume_row("AMBIENCE LEVEL", "ambience"))
+	var mm := HBoxContainer.new()
+	mm.add_theme_constant_override("separation", 12)
+	var mml := UiStyle.text("MINIMAP SOLIDITY", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	mml.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mm.add_child(mml)
+	var mms := HSlider.new()
+	mms.min_value = 0.2
+	mms.max_value = 1.0
+	mms.step = 0.05
+	mms.value = Settings.mini_alpha
+	mms.custom_minimum_size = Vector2(190, 50)
+	mms.value_changed.connect(func(x: float) -> void:
+		Settings.mini_alpha = x
+		Settings.save_all())
+	mm.add_child(mms)
+	v.add_child(mm)
 	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
 	v.add_child(_button("PATCH NOTES", func() -> void: show_patch_notes()))
 	v.add_child(_button("ANIMATION VIEWER", func() -> void: show_anim_viewer()))
