@@ -1,0 +1,145 @@
+# Small words and extra sentences
+> Light
+pt Leve
+es Ligero
+
+> Armored
+pt Blindado
+es Acorazado
+
+> Massive
+pt Maciço
+es Masivo
+
+> %s says gg: reply gg to end the match
+pt %s disse gg: responda gg para encerrar a partida
+es %s ha dicho gg: responde gg para terminar la partida
+
+
+> Unhitch one horse (the front one of a team first): it stands free. With none left the gun or wagon can't move, but a gun still fires and a wagon still supplies.
+pt Solta um cavalo (primeiro o da frente da parelha): ele fica livre. Sem nenhum, o canhão ou a carroça não anda, mas o canhão ainda atira e a carroça ainda abastece.
+es Suelta un caballo (primero el delantero del tiro): queda libre. Sin ninguno, el cañón o el carro no puede moverse, pero el cañón aún dispara y el carro aún abastece.
+
+> Spitter
+pt Cuspidor
+es Escupidor
+
+> workers
+pt trabalhadores
+es trabajadores
+
+> Workers
+pt Trabalhadores
+es Trabajadores
+
+> grubs
+pt larvas
+es larvas
+
+> Grubs
+pt Larvas
+es Larvas
+
+> Powder %d/%d shots
+pt Pólvora %d/%d tiros
+es Pólvora %d/%d disparos
+
+> SUPPLY on
+pt ABASTECER ligado
+es ABASTECER activado
+
+> SUPPLY off
+pt ABASTECER desligado
+es ABASTECER desactivado
+
+> SUPPLY on (%d kegs on the way)
+pt ABASTECER ligado (%d barris a caminho)
+es ABASTECER activado (%d barriles en camino)
+
+> blows up when destroyed
+pt explode ao ser destruída
+es explota al ser destruido
+
+> Play a friend over the internet: web and Android can play together. One of you hosts and tells the other the room code. The host's device runs the match, so the host has no delay; the guest feels the internet's delay.
+pt Jogue com um amigo pela internet: web e Android jogam juntos. Um de vocês cria a partida e passa o código da sala ao outro. O aparelho de quem cria roda a partida, então ele não tem atraso; o convidado sente o atraso da internet.
+es Juega con un amigo por internet: web y Android pueden jugar juntos. Uno de vosotros crea la partida y le da el código de sala al otro. El dispositivo del anfitrión ejecuta la partida, así que él no tiene retraso; el invitado nota el retraso de internet.
+
+> RELAY ADDRESS
+pt ENDEREÇO DO RELAY
+es DIRECCIÓN DEL RELAY
+
+> Set the relay address first (the one `wrangler deploy` printed, see tools/relay/README.md).
+pt Defina primeiro o endereço do relay (o que o `wrangler deploy` mostrou, veja tools/relay/README.md).
+es Define primero la dirección del relay (la que mostró `wrangler deploy`, mira tools/relay/README.md).
+
+> HOST A GAME
+pt CRIAR PARTIDA
+es CREAR PARTIDA
+
+> ROOM CODE
+pt CÓDIGO DA SALA
+es CÓDIGO DE SALA
+
+> JOIN
+pt ENTRAR
+es UNIRSE
+
+> MODE
+pt MODO
+es MODO
+
+> LEAVE
+pt SAIR
+es SALIR
+
+> Waiting for your friend to join.
+pt Esperando seu amigo entrar.
+es Esperando a que tu amigo se una.
+
+> YOU (HOST)
+pt VOCÊ (ANFITRIÃO)
+es TÚ (ANFITRIÓN)
+
+> HOST
+pt ANFITRIÃO
+es ANFITRIÓN
+
+> FRIEND
+pt AMIGO
+es AMIGO
+
+> waiting...
+pt esperando...
+es esperando...
+
+> %s COMPUTER
+pt COMPUTADOR %s
+es ORDENADOR %s
+
+> 1 VS 1
+pt 1 CONTRA 1
+es 1 CONTRA 1
+
+> 2 VS COMPUTER (CO-OP)
+pt 2 CONTRA O COMPUTADOR (COOP)
+es 2 CONTRA EL ORDENADOR (COOP)
+
+> Could not reach the relay (timed out). Check its address in SETTINGS.
+pt Não foi possível alcançar o relay (tempo esgotado). Confira o endereço nas CONFIGURAÇÕES.
+es No se pudo contactar con el relay (tiempo agotado). Revisa su dirección en AJUSTES.
+
+> Could not reach the relay. Check its address in SETTINGS.
+pt Não foi possível alcançar o relay. Confira o endereço nas CONFIGURAÇÕES.
+es No se pudo contactar con el relay. Revisa su dirección en AJUSTES.
+
+> The connection to the other player was lost.
+pt A conexão com o outro jogador foi perdida.
+es Se perdió la conexión con el otro jugador.
+
+> The relay refused the connection.
+pt O relay recusou a conexão.
+es El relay rechazó la conexión.
+
+> The host left the game.
+pt O anfitrião saiu da partida.
+es El anfitrión salió de la partida.

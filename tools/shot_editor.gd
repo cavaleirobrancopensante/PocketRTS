@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshots of the editor menu, the map editor (painting, spots, save) and a sandbox
-## match on the saved map:  godot --script res://tools/shot_editor.gd -- <outdir> [pc|mobile]
+## match on the saved map:  godot --script res://tools/shot_editor.gd -- <outdir> [pc|mobile] [en|pt|es]
 var main
 var out := ""
 
@@ -10,6 +10,9 @@ func _initialize() -> void:
 	out = a[0]
 	Settings.load_all()
 	Settings.device = a[1] if a.size() > 1 else "pc"
+	if a.size() > 2:
+		Settings.language = a[2]
+		Loc.set_lang(a[2])
 	Settings.apply()
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)

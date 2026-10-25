@@ -2703,7 +2703,7 @@ var _floats: Array = []           # [position, text, colour, time left]
 
 
 func float_text(p: Vector2, txt: String, col: Color) -> void:
-	_floats.append([p, txt, col, 1.4])
+	_floats.append([p, Loc.t(txt), col, 1.4])
 
 
 func faction_of(t: int) -> String:

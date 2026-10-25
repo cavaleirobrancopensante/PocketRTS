@@ -320,7 +320,7 @@ func _build_ui() -> void:
 	info.mouse_filter = Control.MOUSE_FILTER_PASS
 	top.add_child(info)
 	top.add_child(_btn("NEW", 62, func() -> void: _show_new(), "A new map: pick its size"))
-	top.add_child(_btn("LOAD", 66, func() -> void: _show_load(), "Open one of your maps"))
+	top.add_child(_btn("LOAD" if Loc.lang == "en" else Loc.t("LOAD MAP"), 66, func() -> void: _show_load(), "Open one of your maps"))
 	top.add_child(_btn("SAVE", 66, func() -> void: _save(), "Save the map (it shows up in Skirmish)"))
 	var chk := _btn("CHECK", 76, func() -> void:
 		_run_check()
@@ -337,7 +337,7 @@ func _build_ui() -> void:
 	rb.disabled = _redo.is_empty()
 	top.add_child(rb)
 	top.add_child(_btn("HELP", 66, func() -> void: _show_help()))
-	var play := _btn("PLAY", 80, func() -> void: _play(), "Save and play it in Skirmish")
+	var play := _btn("PLAY" if Loc.lang == "en" else Loc.t("PLAY MAP"), 80, func() -> void: _play(), "Save and play it in Skirmish")
 	UiStyle.primary(play)
 	top.add_child(play)
 	if _phone():
@@ -368,6 +368,8 @@ func _build_ui() -> void:
 		var label: String = t[1]
 		if id == "water" and _lava():
 			label = "LAVA"
+		if id == "start" and Loc.lang != "en":
+			label = Loc.t("START SPOT")      # (the lobby's START button is another word)
 		var b := _btn(label, 98, func() -> void:
 			tool = id
 			_build_ui(), TOOL_TIPS.get(id, ""))
@@ -418,7 +420,7 @@ func _build_ui() -> void:
 		_build_ui(), "What you paint and place is copied for the other players")
 	mb.custom_minimum_size.y = 38
 	side.add_child(mb)
-	side.add_child(_small_label("LAND"))
+	side.add_child(_small_label("LAND" if Loc.lang == "en" else Loc.t("BIOME LAND")))
 	var lb := _btn(MapEditor.biome_title(biome_a), 200, func() -> void: _show_biomes(false), "The map's biome")
 	lb.icon = _swatch(biome_a)
 	lb.expand_icon = false
@@ -526,7 +528,7 @@ func _show_help() -> void:
 	scroll.custom_minimum_size = Vector2(700, minf(470, vp.y - 160))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(scroll)
-	var l := UiStyle.text(HELP_TEXT, 16, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+	var l := UiStyle.text(Loc.paras(HELP_TEXT), 16, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size.x = 680
 	scroll.add_child(l)
@@ -631,7 +633,7 @@ func _show_biomes(second: bool) -> void:
 	var d := _dialog(660)
 	var p: Control = d[0]
 	var v: VBoxContainer = d[1]
-	v.add_child(UiStyle.heading("MIX WITH" if second else "LAND", 26, UiStyle.TRIM))
+	v.add_child(UiStyle.heading("MIX WITH" if second else ("LAND" if Loc.lang == "en" else Loc.t("BIOME LAND")), 26, UiStyle.TRIM))
 	var vp := get_viewport_rect().size
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(640, minf(420, vp.y - 170))
@@ -803,7 +805,7 @@ func _build_problems(vp: Vector2) -> void:
 		var k: int = i
 		var pr: Dictionary = problems[i]
 		var b := Button.new()
-		b.text = ("! " if not pr["warn"] else "") + String(pr["text"])
+		b.text = ("! " if not pr["warn"] else "") + Loc.t(String(pr["text"]))
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.custom_minimum_size = Vector2(w - 34, 44)
@@ -1406,7 +1408,8 @@ func _draw() -> void:
 	_text(sr.get_center() + Vector2(0, 6), line, 17, Color(1, 0.9, 0.65) if _status != "" else (Color(1, 0.6, 0.5) if tip != "" else UiStyle.TEXT))
 
 
-func _text(p: Vector2, s: String, sz: int, col: Color) -> void:
+func _text(p: Vector2, text: String, sz: int, col: Color) -> void:
+	var s := Loc.t(text)
 	var f := UiStyle.bold_font()
 	var w := f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
 	draw_string_outline(f, p - Vector2(w * 0.5, 0), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, 4, Color(0, 0, 0, 0.8))

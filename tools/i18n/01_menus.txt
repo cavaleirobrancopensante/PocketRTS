@@ -1,0 +1,652 @@
+# Main menu, device page, settings, logs, editor menu, skirmish lobby, music player
+> Where are you playing?
+pt Onde você está jogando?
+es ¿Dónde estás jugando?
+
+> COMPUTER
+pt COMPUTADOR
+es ORDENADOR
+
+> MOBILE
+pt CELULAR
+es MÓVIL
+
+> Mouse and keyboard.\nClick, drag to select, right-click\nto command, letter hotkeys.
+pt Mouse e teclado.\nClique, arraste para selecionar,\nbotão direito para comandar, atalhos por letra.
+es Ratón y teclado.\nHaz clic, arrastra para seleccionar,\nclic derecho para ordenar, atajos de letra.
+
+> Touch.\nTap, drag, pinch to zoom.\nPlayed with the phone sideways.
+pt Toque.\nToque, arraste, pinça para dar zoom.\nJoga-se com o celular deitado.
+es Táctil.\nToca, arrastra, pellizca para hacer zoom.\nSe juega con el móvil en horizontal.
+
+> You can change this later in Settings.
+pt Você pode mudar isso depois em Configurações.
+es Puedes cambiarlo más tarde en Ajustes.
+
+> THE GAME CLOSED UNEXPECTEDLY
+pt O JOGO FECHOU INESPERADAMENTE
+es EL JUEGO SE CERRÓ INESPERADAMENTE
+
+> Last time the game didn't close normally (a crash, or the phone shut it). COPY the report and paste it to the developer. Your match was autosaved: CONTINUE is on the menu.
+pt Da última vez o jogo não fechou normalmente (uma falha, ou o celular o fechou). COPIE o relatório e cole para o desenvolvedor. Sua partida foi salva automaticamente: CONTINUAR está no menu.
+es La última vez el juego no se cerró con normalidad (un fallo, o el móvil lo cerró). COPIA el informe y pégaselo al desarrollador. Tu partida se guardó sola: CONTINUAR está en el menú.
+
+> COPY REPORT
+pt COPIAR RELATÓRIO
+es COPIAR INFORME
+
+> COPIED!
+pt COPIADO!
+es ¡COPIADO!
+
+> COPY
+pt COPIAR
+es COPIAR
+
+> MENU
+pt MENU
+es MENÚ
+
+> CONTINUE  (%s, %d:%02d)
+pt CONTINUAR  (%s, %d:%02d)
+es CONTINUAR  (%s, %d:%02d)
+
+> Crown
+pt Coroa
+es Corona
+
+> Brood
+pt Ninhada
+es Nidada
+
+> Clockwork
+pt Mecanismo
+es Mecanismo
+
+> Random
+pt Aleatório
+es Aleatorio
+
+> Fits map
+pt Do mapa
+es Del mapa
+
+>  vs 
+pt  contra 
+es  contra 
+
+> EDITOR
+pt EDITOR
+es EDITOR
+
+> HOW TO PLAY
+pt COMO JOGAR
+es CÓMO JUGAR
+
+> SKIRMISH
+pt ESCARAMUÇA
+es ESCARAMUZA
+
+> SETTINGS
+pt CONFIGURAÇÕES
+es AJUSTES
+
+> MATCH LOGS
+pt REGISTROS DE PARTIDAS
+es REGISTROS DE PARTIDAS
+
+> playing on computer
+pt jogando no computador
+es jugando en ordenador
+
+> playing on mobile
+pt jogando no celular
+es jugando en móvil
+
+> COPY puts a match's log on the clipboard, ready to paste.
+pt COPIAR coloca o registro de uma partida na área de transferência, pronto para colar.
+es COPIAR pone el registro de una partida en el portapapeles, listo para pegar.
+
+> No logs yet: play a match.
+pt Ainda não há registros: jogue uma partida.
+es Aún no hay registros: juega una partida.
+
+> Unfinished or closed match
+pt Partida inacabada ou fechada
+es Partida sin terminar o cerrada
+
+> BACK
+pt VOLTAR
+es VOLVER
+
+> SANDBOX
+pt CAIXA DE AREIA
+es MODO LIBRE
+
+> Set up any match, then spawn any unit or building for any player, hand out resources, lift the fog, take control of any side, switch AIs off and speed up time.
+pt Monte qualquer partida e crie qualquer unidade ou construção para qualquer jogador, distribua recursos, remova a névoa, assuma o controle de qualquer lado, desligue as IAs e acelere o tempo.
+es Prepara cualquier partida y crea cualquier unidad o edificio para cualquier jugador, reparte recursos, quita la niebla, toma el control de cualquier bando, apaga las IA y acelera el tiempo.
+
+> MAP EDITOR
+pt EDITOR DE MAPAS
+es EDITOR DE MAPAS
+
+> Maps of any size, 1v1 to 4v4: paint high ground, ramps, water or lava, fords, trees and rocks in any biome, place decorations and start and hall spots with their teams, mirror it all for fairness, CHECK it, then save and play it in Skirmish.
+pt Mapas de qualquer tamanho, de 1v1 a 4v4: pinte terreno alto, rampas, água ou lava, vaus, árvores e pedras em qualquer bioma, coloque decorações e pontos de início e de salão com suas equipes, espelhe tudo por justiça, VERIFIQUE, depois salve e jogue na Escaramuça.
+es Mapas de cualquier tamaño, de 1v1 a 4v4: pinta terreno alto, rampas, agua o lava, vados, árboles y rocas en cualquier bioma, coloca decoraciones y puntos de inicio y de sala con sus equipos, refléjalo todo por justicia, COMPRUÉBALO, y luego guárdalo y juégalo en Escaramuza.
+
+> LANGUAGE
+pt IDIOMA
+es IDIOMA
+
+> MUSIC
+pt MÚSICA
+es MÚSICA
+
+> MUSIC LEVEL
+pt VOLUME DA MÚSICA
+es VOLUMEN DE LA MÚSICA
+
+> SOUND
+pt SOM
+es SONIDO
+
+> SOUND LEVEL
+pt VOLUME DO SOM
+es VOLUMEN DEL SONIDO
+
+> AMBIENCE
+pt AMBIENTE
+es AMBIENTE
+
+> AMBIENCE LEVEL
+pt VOLUME DO AMBIENTE
+es VOLUMEN DEL AMBIENTE
+
+> MINIMAP SOLIDITY
+pt OPACIDADE DO MINIMAPA
+es OPACIDAD DEL MINIMAPA
+
+> MUSIC PLAYER
+pt TOCADOR DE MÚSICA
+es REPRODUCTOR DE MÚSICA
+
+> PATCH NOTES
+pt NOTAS DA VERSÃO
+es NOTAS DE LA VERSIÓN
+
+> ANIMATION VIEWER
+pt VISUALIZADOR DE ANIMAÇÕES
+es VISOR DE ANIMACIONES
+
+> INTERFACE LAYOUT & HOTKEYS
+pt LAYOUT DA INTERFACE E ATALHOS
+es DISPOSICIÓN DE LA INTERFAZ Y ATAJOS
+
+> PLAYING ON: %s
+pt JOGANDO NO: %s
+es JUGANDO EN: %s
+
+> IN-GAME INTERFACE SIZE
+pt TAMANHO DA INTERFACE NO JOGO
+es TAMAÑO DE LA INTERFAZ EN EL JUEGO
+
+> AUTO (%d%%)
+pt AUTO (%d%%)
+es AUTO (%d%%)
+
+> FULL SCREEN
+pt TELA CHEIA
+es PANTALLA COMPLETA
+
+> ON
+pt LIGADO
+es SÍ
+
+> OFF
+pt DESLIGADO
+es NO
+
+> COMMAND KEYS
+pt TECLAS DE COMANDO
+es TECLAS DE ORDEN
+
+> GRID (QWER/ASDF/ZXCV)
+pt GRADE (QWER/ASDF/ZXCV)
+es REJILLA (QWER/ASDF/ZXCV)
+
+> BY NAME
+pt PELO NOME
+es POR NOMBRE
+
+> TOOLTIPS
+pt DICAS
+es AYUDAS
+
+> BUILD GRID
+pt GRADE DE CONSTRUÇÃO
+es REJILLA DE CONSTRUCCIÓN
+
+> ONE-FINGER DRAG
+pt ARRASTE COM UM DEDO
+es ARRASTRE CON UN DEDO
+
+> BOX-SELECTS
+pt SELECIONA EM CAIXA
+es SELECCIONA EN CAJA
+
+> MOVES THE VIEW
+pt MOVE A VISTA
+es MUEVE LA VISTA
+
+> VERSION %s%s
+pt VERSÃO %s%s
+es VERSIÓN %s%s
+
+>   (THIS VERSION)
+pt   (ESTA VERSÃO)
+es   (ESTA VERSIÓN)
+
+> IN A MATCH PLAY
+pt NA PARTIDA TOCAR
+es EN PARTIDA REPRODUCIR
+
+> YOUR FACTION + A LITTLE OF THE ENEMY
+pt SUA FACÇÃO + UM POUCO DA INIMIGA
+es TU FACCIÓN + UN POCO DE LA ENEMIGA
+
+> YOUR FACTION ONLY
+pt SÓ A SUA FACÇÃO
+es SOLO TU FACCIÓN
+
+> EVERYTHING, SHUFFLED
+pt TUDO, EMBARALHADO
+es TODO, MEZCLADO
+
+> ONLY THE TICKED PIECES
+pt SÓ AS PEÇAS MARCADAS
+es SOLO LAS PIEZAS MARCADAS
+
+> Now playing: 
+pt Tocando agora: 
+es Sonando ahora: 
+
+> Tap a piece to listen.
+pt Toque numa peça para ouvir.
+es Toca una pieza para escucharla.
+
+> THE CROWN
+pt A COROA
+es LA CORONA
+
+> THE BROOD
+pt A NINHADA
+es LA NIDADA
+
+> THE CLOCKWORK
+pt O MECANISMO
+es EL MECANISMO
+
+> OVERTURES
+pt ABERTURAS
+es OBERTURAS
+
+> PLAY
+pt TOCAR
+es REPRODUCIR
+
+> PAUSE
+pt PAUSAR
+es PAUSA
+
+> Battle
+pt Batalha
+es Batalla
+
+> Main menu
+pt Menu principal
+es Menú principal
+
+> Calm
+pt Calma
+es Calma
+
+> BASICS
+pt BÁSICO
+es BÁSICO
+
+> CROWN
+pt COROA
+es CORONA
+
+> BROOD
+pt NINHADA
+es NIDADA
+
+> CLOCKWORK
+pt MECANISMO
+es MECANISMO
+
+> CONTROLS
+pt CONTROLES
+es CONTROLES
+
+> PLAYER
+pt JOGADOR
+es JUGADOR
+
+> FACTION
+pt FACÇÃO
+es FACCIÓN
+
+> COLOUR
+pt COR
+es COLOR
+
+> PLAN
+pt PLANO
+es PLAN
+
+> TEAM
+pt EQUIPE
+es EQUIPO
+
+> TEAM %d
+pt EQUIPE %d
+es EQUIPO %d
+
+> +  ADD PLAYER
+pt +  ADICIONAR JOGADOR
+es +  AÑADIR JUGADOR
+
+> Same TEAM number = allies.  BRUTAL AI cheats (+50% income) and never lets up.
+pt Mesmo número de EQUIPE = aliados.  A IA BRUTAL trapaceia (+50% de renda) e nunca alivia.
+es Mismo número de EQUIPO = aliados.  La IA BRUTAL hace trampas (+50% de ingresos) y nunca da tregua.
+
+> No YOU in the match: the computer plays every side and you watch.
+pt Sem VOCÊ na partida: o computador joga todos os lados e você assiste.
+es Sin TÚ en la partida: el ordenador juega todos los bandos y tú observas.
+
+> MAP
+pt MAPA
+es MAPA
+
+> - YOUR OWN MAPS -
+pt - SEUS PRÓPRIOS MAPAS -
+es - TUS PROPIOS MAPAS -
+
+> START
+pt INICIAR
+es EMPEZAR
+
+> WATCH
+pt ASSISTIR
+es OBSERVAR
+
+> YOU
+pt VOCÊ
+es TÚ
+
+> EASY AI
+pt IA FÁCIL
+es IA FÁCIL
+
+> NORMAL AI
+pt IA NORMAL
+es IA NORMAL
+
+> HARD AI
+pt IA DIFÍCIL
+es IA DIFÍCIL
+
+> BRUTAL AI
+pt IA BRUTAL
+es IA BRUTAL
+
+> RANDOM
+pt ALEATÓRIO
+es ALEATORIO
+
+> RANDOM PLAN
+pt ALEATÓRIO
+es ALEATORIO
+
+> How this computer player plays. Air rush and Extreme rush are Brood only (others play Balanced).
+pt Como este jogador do computador joga. Ataque aéreo e Ataque extremo são só da Ninhada (as outras jogam Equilibrado).
+es Cómo juega este jugador del ordenador. Ataque aéreo y Ataque extremo son solo de la Nidada (las demás juegan Equilibrado).
+
+> Balanced
+pt Equilibrado
+es Equilibrado
+
+> Rush
+pt Ataque rápido
+es Ataque rápido
+
+> Economy
+pt Economia
+es Economía
+
+> Timing attack
+pt Ataque cronometrado
+es Ataque programado
+
+> Air rush
+pt Ataque aéreo
+es Ataque aéreo
+
+> Extreme rush
+pt Ataque extremo
+es Ataque extremo
+
+> Blue
+pt Azul
+es Azul
+
+> Red
+pt Vermelho
+es Rojo
+
+> Green
+pt Verde
+es Verde
+
+> Yellow
+pt Amarelo
+es Amarillo
+
+> Purple
+pt Roxo
+es Morado
+
+> Orange
+pt Laranja
+es Naranja
+
+> Teal
+pt Turquesa
+es Turquesa
+
+> Pink
+pt Rosa
+es Rosa
+
+> One of %d maps that hold %d players, picked when the match starts.
+pt Um dos %d mapas que comportam %d jogadores, escolhido quando a partida começa.
+es Uno de los %d mapas que admiten %d jugadores, elegido al empezar la partida.
+
+> Your map: %s, %dx%d, %d start spots.  %s.  %s
+pt Seu mapa: %s, %dx%d, %d pontos de início.  %s.  %s
+es Tu mapa: %s, %dx%d, %d puntos de inicio.  %s.  %s
+
+> Passed the editor's CHECK.
+pt Passou na VERIFICAÇÃO do editor.
+es Pasó la COMPROBACIÓN del editor.
+
+> Not checked, or CHECK found problems.
+pt Não verificado, ou a VERIFICAÇÃO achou problemas.
+es Sin comprobar, o la COMPROBACIÓN encontró problemas.
+
+> %s, %dx%d, up to %d players. %s  %s.
+pt %s, %dx%d, até %d jogadores. %s  %s.
+es %s, %dx%d, hasta %d jugadores. %s  %s.
+
+> Open ground around a central hill.
+pt Terreno aberto em volta de uma colina central.
+es Terreno abierto alrededor de una colina central.
+
+> Main bases on high ground, one ramp down.
+pt Bases principais em terreno alto, com uma rampa para descer.
+es Bases principales en terreno alto, con una sola rampa de bajada.
+
+> Rivers you can only cross at the fords.
+pt Rios que só se atravessam pelos vaus.
+es Ríos que solo se cruzan por los vados.
+
+>   84x60, up to 4 players.  
+pt   84x60, até 4 jogadores.  
+es   84x60, hasta 4 jugadores.  
+
+> Grass
+pt Grama
+es Hierba
+
+> Autumn
+pt Outono
+es Otoño
+
+> Desert
+pt Deserto
+es Desierto
+
+> Snow
+pt Neve
+es Nieve
+
+> Volcanic
+pt Vulcânico
+es Volcánico
+
+> Marsh
+pt Pântano
+es Pantano
+
+> Heath
+pt Charneca
+es Brezal
+
+> Jungle
+pt Selva
+es Selva
+
+> Canyon
+pt Desfiladeiro
+es Cañón
+
+> Tundra
+pt Tundra
+es Tundra
+
+> Ashland
+pt Terra de cinzas
+es Tierra de cenizas
+
+> Pinewood
+pt Pinhal
+es Pinar
+
+> Steppe
+pt Estepe
+es Estepa
+
+> Coast
+pt Costa
+es Costa
+
+> Oldkingdom
+pt Reino antigo
+es Reino antiguo
+
+> Bog
+pt Brejo
+es Ciénaga
+
+> Glowwood
+pt Bosque luminoso
+es Bosque luminoso
+
+> Fall
+pt Queda
+es Caída
+
+> Badlands
+pt Terras áridas
+es Tierras baldías
+
+> This map has %d start spots.
+pt Este mapa tem %d pontos de início.
+es Este mapa tiene %d puntos de inicio.
+
+> No map in this pool holds %d players.
+pt Nenhum mapa deste grupo comporta %d jogadores.
+es Ningún mapa de este grupo admite %d jugadores.
+
+> %s holds %d players.
+pt %s comporta %d jogadores.
+es %s admite %d jugadores.
+
+> Everyone is on one team.
+pt Todos estão na mesma equipe.
+es Todos están en el mismo equipo.
+
+> Random 1v1 maps
+pt Aleatório 1v1
+es Aleatorio 1v1
+
+> Random 2v2 maps
+pt Aleatório 2v2
+es Aleatorio 2v2
+
+> Random 1v1+2v2 maps
+pt Aleatório 1v1+2v2
+es Aleatorio 1v1+2v2
+
+> Random 3v3 maps
+pt Aleatório 3v3
+es Aleatorio 3v3
+
+> Random 1v1+2v2+3v3 maps
+pt Aleatório 1v1+2v2+3v3
+es Aleatorio 1v1+2v2+3v3
+
+> Random 4v4 maps
+pt Aleatório 4v4
+es Aleatorio 4v4
+
+> Random all maps
+pt Aleatório, todos
+es Aleatorio, todos
+
+> %s (your map, %s, %dx%d)
+pt %s (seu mapa, %s, %dx%d)
+es %s (tu mapa, %s, %dx%d)
+
+> Turn your phone sideways
+pt Vire o celular de lado
+es Gira el móvil en horizontal
+
+> Pocket RTS plays in landscape.
+pt O Pocket RTS joga-se na horizontal.
+es Pocket RTS se juega en horizontal.
+
+> Press F11 to go full screen, and F11 again to leave it
+pt Pressione F11 para tela cheia, e F11 de novo para sair
+es Pulsa F11 para pantalla completa, y F11 otra vez para salir
+
+> BATTLE REPORT
+pt RELATÓRIO DA BATALHA
+es INFORME DE BATALLA
+
+> HOW TO PLAY
+pt COMO JOGAR
+es CÓMO JUGAR

@@ -30,7 +30,36 @@ from dsp import *  # noqa: E402,F401,F403
 import make_sfx2 as fx  # noqa: E402  (creature/screech/chitter building blocks)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-OUT = os.path.join(ROOT, "assets", "voice")
+# --lang pt|es: the same lines in Brazilian Portuguese / neutral Spanish (voice_lines.py), with Kokoro's
+# pt-br / es voices (pm_*, em_*), through the same gruff / robot / whisper chains -> assets/voice_<lang>/
+LANG = "en"
+if "--lang" in sys.argv:
+    LANG = sys.argv[sys.argv.index("--lang") + 1]
+    del sys.argv[sys.argv.index("--lang"):sys.argv.index("--lang") + 2]
+OUT = os.path.join(ROOT, "assets", "voice" if LANG == "en" else "voice_" + LANG)
+SKIP_UNITS = {"pikeman"} if LANG != "en" else set()      # (not in the game)
+# English voice -> pt/es voice: deep / mid / high tier of the two male voices Kokoro has per language
+_PFX = {"pt": "pm", "es": "em"}
+_TIER = {"bm_lewis*0.5+bm_george*0.5": "deep", "bm_george*0.5+am_onyx*0.5": "deep", "bm_george": "deep", "am_onyx": "deep",
+         "bm_daniel*0.4+am_michael*0.6": "hi", "bm_fable": "hi", "am_puck": "hi", "bm_lewis": "hi"}
+
+
+def lv(voice):
+    """The voice to use for `voice` in the chosen language (unchanged for English)."""
+    if LANG == "en":
+        return voice
+    p = _PFX[LANG]
+    return {"deep": p + "_santa", "hi": p + "_alex"}.get(_TIER.get(voice, "mid"), f"{p}_alex*0.5+{p}_santa*0.5")
+
+
+def line(text):
+    """The line in the chosen language (the English text itself for English or sound-only lines)."""
+    if LANG == "en" or text is None or text not in LINES_TR:
+        return text
+    return LINES_TR[text][LANG]
+
+
+from voice_lines import LINES as LINES_TR  # noqa: E402
 MAX_LEN = 2.4
 PEAK = -3.0
 
@@ -80,7 +109,7 @@ def kvoice(voice):
 def tts(text, voice, speed=1.0, semis=0.0):
     """Kokoro -> 44.1 kHz, trimmed. Raises speed automatically if the line gets too long.
     A blend speaks with the accent of its first voice (bm_* British, am_* American)."""
-    lang = "en-gb" if voice[0] == "b" else "en-us"
+    lang = {"b": "en-gb", "p": "pt-br", "e": "es"}.get(voice[0], "en-us")
     for sp in [speed, speed * 1.12, speed * 1.25, speed * 1.4]:
         y, sr = kokoro().create(text, voice=kvoice(voice), speed=min(sp, 1.6), lang=lang)
         y = resample_poly(np.asarray(y, dtype=np.float64), 147, 80)  # 24k -> 44.1k
@@ -101,7 +130,7 @@ def out_write(rel, x, peak=PEAK, max_len=MAX_LEN):
         x[-f:] *= np.linspace(1, 0, f) ** 2
     x = finish(x, peak, fade_in=0.003, fade_out=0.03, trim=False)
     # the longer announcer/taunt lines go out as Ogg Vorbis to keep the build small (game loads .wav or .ogg)
-    ext = ".ogg" if rel.startswith(("announcer/", "taunt/")) else ".wav"
+    ext = ".ogg" if rel.startswith(("announcer/", "taunt/")) or LANG != "en" else ".wav"
     path = os.path.join(OUT, rel + ext)
     other = os.path.join(OUT, rel + (".wav" if ext == ".ogg" else ".ogg"))
     if os.path.exists(other):
@@ -198,6 +227,9 @@ def whisper(x):
 
 HIVE_VOICE = "am_onyx"     # deep male lead (~90 Hz)
 HIVE_LAYER = "bm_lewis"    # second male voice, whispered under the lead
+if LANG != "en":
+    HIVE_VOICE = _PFX[LANG] + "_santa"
+    HIVE_LAYER = _PFX[LANG] + "_alex"
 
 
 def hive_tts(text, speed=0.85):
@@ -423,8 +455,12 @@ def want(rel, filters):
 def main(filters):
     # Crown units
     for unit, (voice, speed, semis, lines) in CROWN_UNITS.items():
+        if unit in SKIP_UNITS:
+            continue
+        voice = lv(voice)
         for kind, texts in lines.items():
             for i, text in enumerate(texts):
+                text = line(text)
                 rel = f"{unit}/{kind}_{i + 1}"
                 if not want(rel, filters):
                     continue
@@ -437,8 +473,10 @@ def main(filters):
                 out_write(rel, x)
     # Clockwork units
     for unit, (voice, speed, f0, ring, lines) in CLOCK_UNITS.items():
+        voice = lv(voice)
         for kind, texts in lines.items():
             for i, text in enumerate(texts):
+                text = line(text)
                 rel = f"{unit}/{kind}_{i + 1}"
                 if not want(rel, filters):
                     continue
@@ -453,8 +491,8 @@ def main(filters):
                     if unit == "steam_walker":
                         x = mix(x, fx.steam_hiss(rng, len(x) / SR, 0.05, 2.0) * 0.06)
                 out_write(rel, x)
-    # Brood units (non-verbal)
-    for unit, kinds in BROOD_UNITS.items():
+    # Brood units (non-verbal: the same in every language, so none are made for pt / es)
+    for unit, kinds in (BROOD_UNITS.items() if LANG == "en" else []):
         for kind in kinds:
             for i in range(2 if kind == "attack" else 3):
                 rel = f"{unit}/{kind}_{i + 1}"
@@ -463,35 +501,38 @@ def main(filters):
     # Announcers
     for fac, lines in ANN.items():
         for key, text in lines.items():
+            text = line(text)
             rel = f"announcer/{fac}/{key}"
             if not want(rel, filters):
                 continue
             rng = seed(rel)
             if fac == "crown":
-                x = herald(gruff(tts(text, "bm_george", 0.9), rng, -4.0, grit=0.12), rng)
+                x = herald(gruff(tts(text, lv("bm_george"), 0.9), rng, -4.0, grit=0.12), rng)
             elif fac == "brood":
                 x = hive(hive_tts(text, 0.85), rng)
             else:
-                x = robot(tts(text, "am_adam", 0.95), rng, f0=110, ring=90, ring_mix=0.25, comb_g=0.35)
+                x = robot(tts(text, lv("am_adam"), 0.95), rng, f0=110, ring=90, ring_mix=0.25, comb_g=0.35)
             out_write(rel, x)
     # Taunts
     for fac, texts in TAUNTS.items():
         for i, text in enumerate(texts):
+            hiss = text.startswith("Hss")
+            text = line(text)
             rel = f"taunt/{fac}/taunt_{i + 1}"
             if not want(rel, filters):
                 continue
             rng = seed(rel)
             if fac == "crown":
-                x = warm_room(gruff(tts(text, "bm_daniel", 0.95), rng, -3.0), rng, rt=0.5, wet=0.14, warmth=0.45)
+                x = warm_room(gruff(tts(text, lv("bm_daniel"), 0.95), rng, -3.0), rng, rt=0.5, wet=0.14, warmth=0.45)
             elif fac == "brood":
-                if text.startswith("Hss"):
+                if hiss:
                     d = 1.3
                     x = bp(noise(rng, d), 2500, 8000) * adsr(d, 0.15, 0.2, 0.7, 0.6)
                     x = mix(x, hive(hive_tts("Hsss.", 0.7), rng) * 0.6)
                 else:
                     x = hive(hive_tts(text, 0.85), rng)
             else:
-                x = robot(tts(text, "bm_george", 1.0), rng, f0=82, ring=65, ring_mix=0.35)
+                x = robot(tts(text, lv("bm_george"), 1.0), rng, f0=82, ring=65, ring_mix=0.35)
             out_write(rel, x)
 
 

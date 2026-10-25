@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.1", "items": [
+		"The game speaks three languages: English, Brazilian Portuguese and Spanish. Click a flag (US, Brazil, Spain) at the top right of the main menu, or pick LANGUAGE in Settings; it changes at once and is remembered. Menus, the match screen, unit and building names and descriptions, tips, the help pages and these patch notes are translated; the spoken unit, announcer and taunt voices have Portuguese and Spanish recordings too (the creature sounds and the music are the same in every language).",
+		"Map names, music titles and the match log stay in English. How to add a language: docs/localisation.md.",
+	]},
 	{"v": "0.14.0", "items": [
 		"ONLINE (first playable): one of you opens ONLINE, presses HOST A GAME and tells a friend the 4-letter room code; the friend presses JOIN. Web and Android play together. Modes: 1 vs 1, or you both against a computer (co-op). The host's device runs the match; the guest sees and plays it with about 0.1 to 0.2 s of delay.",
 		"The relay that connects you is a free Cloudflare Worker (tools/relay/README.md has the steps). Paste its address under ONLINE or in SETTINGS.",
@@ -265,3 +269,22 @@ static func current() -> Dictionary:
 		if n["v"] == ver:
 			return n
 	return NOTES[0]
+
+
+## The items of one entry in the chosen language (the English item where there is no translation:
+## translations live in scripts/lang/patch_<code>.gd, built by tools/i18n_patch_build.py).
+static func items(entry: Dictionary) -> Array:
+	var en: Array = entry["items"]
+	var tr: Dictionary = {}
+	match Loc.lang:
+		"pt":
+			tr = PatchPt.N
+		"es":
+			tr = PatchEs.N
+	if not tr.has(entry["v"]):
+		return en
+	var out: Array = []
+	var t: Array = tr[entry["v"]]
+	for i in en.size():
+		out.append(t[i] if i < t.size() and t[i] != "" else en[i])
+	return out

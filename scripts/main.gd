@@ -190,6 +190,7 @@ func show_device() -> void:
 		col.add_child(UiStyle.text(opt[2], 16, UiStyle.MUTED))
 		row.add_child(col)
 	v.add_child(UiStyle.text("You can change this later in Settings.", 15, Color(1, 1, 1, 0.4)))
+	_corner_flags(root, show_device)
 
 
 # ------------------------------------------------------------------ crash report
@@ -288,9 +289,9 @@ func show_menu() -> void:
 	if not save.is_empty() and save.get("version", "") == version:
 		var facs: Array = []
 		for sl in save["cfg"]["slots"]:
-			facs.append(String(sl["faction"]).capitalize())
+			facs.append(Loc.t(String(sl["faction"]).capitalize()))
 		var secs := int(save["clock"])
-		var cont := _button("CONTINUE  (%s, %d:%02d)" % [" vs ".join(facs), secs / 60, secs % 60], func() -> void:
+		var cont := _button(Loc.t("CONTINUE  (%s, %d:%02d)") % [Loc.t(" vs ").join(facs), secs / 60, secs % 60], func() -> void:
 			var cfg: Dictionary = save["cfg"].duplicate(true)
 			cfg["resume"] = save
 			start(cfg))
@@ -315,7 +316,8 @@ func show_menu() -> void:
 		else:
 			b.custom_minimum_size = Vector2(160, 54)
 		row.add_child(b)
-	var ver := UiStyle.text("v%s  ·  playing on %s" % [version, "computer" if Settings.pc() else "mobile"], 22, Color(1, 0.96, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	_corner_flags(root, show_menu)
+	var ver := UiStyle.text("v%s  ·  %s" % [version, Loc.t("playing on computer") if Settings.pc() else Loc.t("playing on mobile")], 22, Color(1, 0.96, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	ver.add_theme_constant_override("outline_size", 5)
 	v.add_child(ver)
@@ -373,7 +375,7 @@ func show_logs() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		list.add_child(row)
-		var name: String = "Unfinished or closed match" if fn == "unfinished.txt" else fn.trim_prefix("match_").trim_suffix(".txt").replace("_", "  ").replace("T", " ")
+		var name: String = Loc.t("Unfinished or closed match") if fn == "unfinished.txt" else fn.trim_prefix("match_").trim_suffix(".txt").replace("_", "  ").replace("T", " ")
 		var l := UiStyle.text("%s   ·   %s%s" % [name, what, ("   ·   " + result) if result != "" else ""], 17, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		l.clip_text = true
@@ -504,6 +506,13 @@ func show_settings() -> void:
 	(func() -> void:
 		if is_instance_valid(scr):
 			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 190.0)).call_deferred()
+	var lh := HBoxContainer.new()
+	lh.add_theme_constant_override("separation", 12)
+	var ll := UiStyle.text("LANGUAGE", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lh.add_child(ll)
+	lh.add_child(_flag_row(Vector2(46, 31), show_settings))
+	v.add_child(lh)
 	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
 	v.add_child(_volume_row("MUSIC LEVEL", "music"))
 	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
@@ -530,9 +539,9 @@ func show_settings() -> void:
 	v.add_child(_button("PATCH NOTES", func() -> void: show_patch_notes()))
 	v.add_child(_button("ANIMATION VIEWER", func() -> void: show_anim_viewer()))
 	v.add_child(_button("INTERFACE LAYOUT & HOTKEYS", func() -> void: show_layout()))
-	var dev := _button("PLAYING ON: %s" % ("COMPUTER" if Settings.pc() else "MOBILE"), func() -> void: show_device())
+	var dev := _button(Loc.t("PLAYING ON: %s") % (Loc.t("COMPUTER") if Settings.pc() else Loc.t("MOBILE")), func() -> void: show_device())
 	var sizes := [0, 100, 125, 150, 175, 200]
-	var sz_text := "AUTO (%d%%)" % int(Settings.ui_scale_now() * 100) if Settings.ui_size == 0 else "%d%%" % Settings.ui_size
+	var sz_text := Loc.t("AUTO (%d%%)") % int(Settings.ui_scale_now() * 100) if Settings.ui_size == 0 else "%d%%" % Settings.ui_size
 	var sh := HBoxContainer.new()
 	var sl := UiStyle.text("IN-GAME INTERFACE SIZE", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
 	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -631,9 +640,9 @@ func show_patch_notes() -> void:
 		if n != cur:
 			entries.append(n)
 	for e in entries:
-		var head := "VERSION %s%s" % [e["v"], "  (THIS VERSION)" if e == cur else ""]
+		var head := Loc.t("VERSION %s%s") % [e["v"], Loc.t("  (THIS VERSION)") if e == cur else ""]
 		list.add_child(UiStyle.text(head, 22, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_LEFT))
-		for it in e["items"]:
+		for it in PatchNotes.items(e):
 			var t := UiStyle.text("•  " + it, 17, UiStyle.TEXT if e == cur else UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true)
 			t.custom_minimum_size.x = 560
 			list.add_child(t)
@@ -674,7 +683,7 @@ func show_music() -> void:
 		show_music())
 	top.add_child(mb)
 	var now := Music.me.now_playing()
-	v.add_child(UiStyle.text(("Now playing: " + now) if now != "" else "Tap a piece to listen.", 16, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	v.add_child(UiStyle.text((Loc.t("Now playing: ") + now) if now != "" else Loc.t("Tap a piece to listen."), 16, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT))
 	v.add_child(_player_bar())
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -864,7 +873,7 @@ func show_help(section := "BASICS") -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(scroll)
-	var l := UiStyle.text(HELP[section], 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+	var l := UiStyle.text(Loc.paras(HELP[section]), 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(l)
@@ -1008,21 +1017,21 @@ func show_skirmish() -> void:
 	var desc := ""
 	if MapGen.is_pool(mid):
 		var fit := MapGen.pool_maps(mid, slots.size())
-		desc = "One of %d maps that hold %d players, picked when the match starts." % [fit.size(), slots.size()]
+		desc = Loc.t("One of %d maps that hold %d players, picked when the match starts.") % [fit.size(), slots.size()]
 	elif mid.begins_with("custom:"):
 		var cd := MapGen.load_custom(mid.substr(7))
 		var cs := MapGen.custom_size(cd)
-		desc = "Your map: %s, %dx%d, %d start spots.  %s.  %s" % [MapGen.custom_mode(cd), cs.x, cs.y,
-			(cd.get("starts", []) as Array).size(), String(cd.get("biome", "grass")).replace("+", " & ").capitalize(),
-			"Passed the editor's CHECK." if bool(cd.get("checked", false)) else "Not checked, or CHECK found problems."]
+		desc = Loc.t("Your map: %s, %dx%d, %d start spots.  %s.  %s") % [MapGen.custom_mode(cd), cs.x, cs.y,
+			(cd.get("starts", []) as Array).size(), _biome(String(cd.get("biome", "grass"))),
+			Loc.t("Passed the editor's CHECK.") if bool(cd.get("checked", false)) else Loc.t("Not checked, or CHECK found problems.")]
 	elif MapData.NAMED.has(mid):
 		var sz := MapGen.size_of(mid)
-		desc = "%s, %dx%d, up to %d players. %s  %s." % [MapGen.mode_of(mid), sz.x, sz.y, MapGen.max_players(mid),
-			String(MapData.NAMED[mid].get("about", "")), MapGen.biome_of(mid).replace("+", " & ").capitalize()]
+		desc = Loc.t("%s, %dx%d, up to %d players. %s  %s.") % [MapGen.mode_of(mid), sz.x, sz.y, MapGen.max_players(mid),
+			Loc.t(String(MapData.NAMED[mid].get("about", ""))), _biome(MapGen.biome_of(mid))]
 	else:
-		desc = {"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
-			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]]
-		desc += "  84x60, up to 4 players.  " + String(MapGen.MAPS[mid][2]).replace("+", " & ").capitalize() + "."
+		desc = Loc.t({"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
+			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]])
+		desc += Loc.t("  84x60, up to 4 players.  ") + _biome(String(MapGen.MAPS[mid][2])) + "."
 	var dl := UiStyle.text(desc, 15, UiStyle.MUTED)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mv.add_child(dl)
@@ -1119,7 +1128,7 @@ func _slot_row(i: int) -> Control:
 	# team
 	var team_opts: Array = []
 	for k in MAX_SLOTS:
-		team_opts.append(["TEAM %d" % (k + 1), k, false])
+		team_opts.append([Loc.t("TEAM %d") % (k + 1), k, false])
 	var tb := _dropdown(str(int(sl["side"]) + 1), 80, team_opts, func(v) -> void: sl["side"] = v)
 	tb.add_theme_font_size_override("font_size", 22)      # (the bold font: it has the arrow)
 	h.add_child(tb)
@@ -1369,12 +1378,12 @@ func _lobby_problem() -> String:
 	if mid.begins_with("custom:"):
 		var n := (MapGen.load_custom(mid.substr(7)).get("starts", []) as Array).size()
 		if np > n:
-			return "This map has %d start spots." % n
+			return Loc.t("This map has %d start spots.") % n
 	elif MapGen.is_pool(mid):
 		if MapGen.pool_maps(mid, np).is_empty():
-			return "No map in this pool holds %d players." % np
+			return Loc.t("No map in this pool holds %d players.") % np
 	elif MapGen.max_players(mid) < np:
-		return "%s holds %d players." % [MapGen.display_name(mid), MapGen.max_players(mid)]
+		return Loc.t("%s holds %d players.") % [MapGen.display_name(mid), MapGen.max_players(mid)]
 	var distinct := {}
 	for s in lobby["slots"]:
 		distinct[int(s["side"])] = true
@@ -1428,10 +1437,51 @@ func _button(t: String, cb: Callable) -> Button:
 	return b
 
 
+## "desert+marsh" -> "Desert & Marsh" in the game language.
+func _biome(b: String) -> String:
+	var parts: PackedStringArray = []
+	for x in b.split("+"):
+		parts.append(Loc.t(x.capitalize()))
+	return " & ".join(parts)
+
+
 func _gap(h: float) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(0, h)
 	return c
+
+
+## One flag button per language (US English, Brazilian Portuguese, Spain's Spanish): a click
+## switches the game language at once and runs `reload` to rebuild the open page.
+func _flag_button(code: String, sz: Vector2, reload: Callable) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = sz + Vector2(14, 14)
+	b.tooltip_text = Loc.NATIVE[code]
+	var fl := FlagIcon.make(code, sz)
+	fl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 7)
+	b.add_child(fl)
+	if Settings.language == code:
+		UiStyle.chosen(b)
+	b.pressed.connect(func() -> void:
+		Sfx.play_any(["ui/click", "click"])
+		Settings.set_language(code)
+		reload.call())
+	return b
+
+
+func _flag_row(sz: Vector2, reload: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	for c in Loc.LANGS:
+		row.add_child(_flag_button(c, sz, reload))
+	return row
+
+
+## The three flags in the top-right corner of a menu page.
+func _corner_flags(root: Control, reload: Callable) -> void:
+	var row := _flag_row(Vector2(66, 44), reload)
+	row.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 14)
+	root.add_child(row)
 
 
 # ------------------------------------------------------------------ backdrop and map preview

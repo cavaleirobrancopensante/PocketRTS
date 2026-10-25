@@ -36,6 +36,8 @@ Shared code: tools/gait_lib.py. Audit and ranking: docs/animation_gait_audit.md 
 
 - Clutch Mound (0.12.84, tools/import_mound_chatgpt.py): BUILT is the owner's ChatGPT drawing (art/redraws/clutch_mound_vent_chatgpt.png: dome with two vent chimneys, crystals, spore plume), cut off the navy and box-scaled to 74 px wide. The other three states are derived from it IN CODE and need their own ChatGPT redraw: construction (chimneys, crystals and plume cut off, washed pale and grey, 90% size), damaged (small chimney and plume knocked off, drawn dark cracks, three dark burst-sac patches, a thin green ooze), destroyed (dome squashed to about half height, darkened and browned, the big chimney lying toppled, burst sacs, bone shards). The plain mound sheets and the old Spore Vent art are archived in `old units obsolete for now/`.
 
+- Language flags (0.13.8, scripts/ui/flags.gd, class FlagIcon): the United States, Brazil and Spain flags on the main menu and in Settings are drawn in code with simple shapes (stripes, a star field, the Brazilian rhombus and globe, Spain's bands with a simplified shield). They are flat vector shapes, not pixel art like the rest of the menu; ask for hand-drawn flag icons in the game's style when the menu art is redone.
+
 ## C. Still to prompt (new ids when the art rework resumes)
 
 - Missionary walk (new prompt), Windup Soldier walk, Winder walk (new prompts; Armoured Musketeer = 16, Raptor = 18, Labourer walk/carry/keg = 07, 08, 09).

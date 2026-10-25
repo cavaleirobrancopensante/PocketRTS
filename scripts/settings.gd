@@ -13,6 +13,7 @@ static var tooltips := true           # hover tooltips (computer) and the "?" he
 static var build_grid := true         # show the planning grid while placing a building
 static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
 static var relay_url := "wss://pocketrts-relay.YOURNAME.workers.dev"   # online: the relay (tools/relay/README.md)
+static var language := "en"           # "en", "pt" or "es" (Loc)
 static var _loaded := false
 
 
@@ -31,6 +32,8 @@ static func load_all() -> void:
 		build_grid = cfg.get_value("input", "build_grid", true)
 		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
 		relay_url = String(cfg.get_value("online", "relay_url", relay_url))
+		language = str(cfg.get_value("ui", "language", "en"))
+	Loc.set_lang(language)
 	apply()
 
 
@@ -46,6 +49,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "build_grid", build_grid)
 	cfg.set_value("input", "mini_alpha", mini_alpha)
 	cfg.set_value("online", "relay_url", relay_url)
+	cfg.set_value("ui", "language", language)
 	cfg.save(PATH)
 
 
@@ -70,3 +74,10 @@ static func pc() -> bool:
 ## if any, pretends to be a finger so the phone controls can be tried on a desktop).
 static func apply() -> void:
 	Input.emulate_touch_from_mouse = not pc()
+
+
+## The game language ("en", "pt", "es"): switches the text at once and is remembered.
+static func set_language(code: String) -> void:
+	language = code if Loc.LANGS.has(code) else "en"
+	Loc.set_lang(language)
+	save_all()

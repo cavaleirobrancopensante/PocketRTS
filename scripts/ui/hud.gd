@@ -69,7 +69,7 @@ func hud_has_screen(p: Vector2) -> bool:
 
 
 func toast(t: String, sound := true) -> void:
-	_msg = t
+	_msg = Loc.t(t)
 	_msg_t = 2.2
 	if sound:
 		Sfx.play_any(["ui/error", "error"])
@@ -2432,10 +2432,11 @@ func _draw_panel(font: Font) -> void:
 					eff_col = game.eff_colour(float(ef[0]))
 		if e.team >= 0 and e.team != game.human:
 			name += "  (enemy)"
+		name = Loc.t(name)
 		var nsz := 19
 		if e is Unit and (e as Unit).kind == "balloon" and not (e as Unit).passengers.is_empty():
 			# its passengers' icons take the top right: the plain name, shrunk to fit before them
-			name = (e as Unit).d["name"] + ("  (enemy)" if e.team >= 0 and e.team != game.human else "")
+			name = Loc.t((e as Unit).d["name"] + ("  (enemy)" if e.team >= 0 and e.team != game.human else ""))
 			var room := _pass_icon_x(r, (e as Unit).passengers.size(), 0) - 6.0 - (r.position.x + 90.0)
 			while nsz > 12 and UiStyle.title_font().get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, nsz).x > room:
 				nsz -= 1
@@ -2466,12 +2467,13 @@ func _draw_panel(font: Font) -> void:
 			var ku := e as Unit
 			var bonus := minf(ku.kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
 			var vt := "%s%d kill%s · +%d%% damage" % ["Veteran · " if not ku.is_worker() else "", ku.kills, "" if ku.kills == 1 else "s", int(round(bonus * 100.0))]
+			vt = Loc.t(vt)
 			var vx := hb.position.x + hb.size.x + 22 + font.get_string_size(hpt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
 			if ku.has_pistol() and (e.team == game.human or game.demo):
 				vx += 30.0           # (after the pistol)
 			var room := r.end.x - 36 - vx
 			if UiStyle.bold_font().get_string_size(vt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x > room:
-				vt = "%d kills +%d%%" % [ku.kills, int(round(bonus * 100.0))]
+				vt = Loc.t("%d kills +%d%%") % [ku.kills, int(round(bonus * 100.0))]
 			if UiStyle.bold_font().get_string_size(vt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x <= room:
 				_text(UiStyle.bold_font(), Vector2(vx, hb.position.y + 11), vt, 14, Color(1, 0.82, 0.3))
 			else:
@@ -2479,13 +2481,21 @@ func _draw_panel(font: Font) -> void:
 		if e is Unit and (e as Unit).friendly_kills > 0:
 			var fk := (e as Unit).friendly_kills
 			info = "Friendly fire: %d of ours killed. " % fk + info
+		info = Loc.t(info)
+		eff_txt = Loc.t(eff_txt)
+		var ifs := 15          # (a longer translation shrinks to fit the card)
+		while ifs > 10 and font.get_string_size(eff_txt + ("  ·  " if eff_txt != "" else "") + info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > r.size.x - 130:
+			ifs -= 1
+		var iroom: float = r.size.x - 110 - (font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x if eff_txt != "" else 0.0)
+		while info.length() > 12 and font.get_string_size(info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > iroom:
+			info = info.left(info.length() - 2).strip_edges() + "…"      # (still too long for the card: cut it)
 		if eff_txt != "":
 			# the efficiency breakdown first, in its bar's colour, then the rest
-			_text(font, r.position + Vector2(90, 72), eff_txt, 15, eff_col)
-			var ew := font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-			_text(font, r.position + Vector2(90 + ew, 72), info, 15, UiStyle.MUTED)
+			_text(font, r.position + Vector2(90, 72), eff_txt, ifs, eff_col)
+			var ew := font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x
+			_text(font, r.position + Vector2(90 + ew, 72), info, ifs, UiStyle.MUTED)
 		else:
-			_text(font, r.position + Vector2(90, 72), info, 15, UiStyle.MUTED)
+			_text(font, r.position + Vector2(90, 72), info, ifs, UiStyle.MUTED)
 		if e is Unit and (e as Unit).kind == "balloon" and e.team == game.human:
 			# who's in the basket: small icons in the top right corner, each with his health
 			# and his powder under it (the name shrinks to make room)
@@ -2555,6 +2565,7 @@ func _draw_panel(font: Font) -> void:
 			if not bits.is_empty():
 				per_row = maxi(4, int((r.size.x - 20 - cw) / 38))
 			var lines: Array = [""]
+			bits = bits.map(func(x: String) -> String: return Loc.t(x))
 			for bt in bits:
 				var tryl: String = (lines[-1] + " · " + bt) if lines[-1] != "" else bt
 				if font.get_string_size(tryl, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x > cw - 8 and lines[-1] != "":
@@ -2822,12 +2833,12 @@ func _draw_card(font: Font) -> void:
 			_ci.draw_texture_rect(ic, br.grow(-3), false, Color.WHITE if enabled else Color(0.4, 0.4, 0.4, 0.8))
 		_ci.draw_rect(Rect2(br.position.x + 2, br.end.y - 17, br.size.x - 4, 15), Color(0, 0, 0, 0.62))
 		# the label at 11, smaller only when it wouldn't fit the (phone's narrower) button
-		var lab := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
+		var lab := Loc.t(String(it[1]).trim_prefix("> ").trim_prefix("~ "))
 		var lsz := 11
 		while lsz > 8 and UiStyle.bold_font().get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > br.size.x - 5:
 			lsz -= 1
 		if UiStyle.bold_font().get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > br.size.x - 5:
-			lab = lab.replace("ARMOURED ", "ARM. ")      # (Armoured Dragoon / Officer: still too long)
+			lab = lab.replace(Loc.t("ARMOURED ").strip_edges() + " ", Loc.t("ARM. ").strip_edges() + " ")      # (Armoured Dragoon / Officer: still too long)
 		_text(UiStyle.bold_font(), Vector2(br.get_center().x, br.end.y - 5), lab, lsz, (Color(1, 0.9, 0.55) if on else UiStyle.TEXT) if enabled else Color(1, 1, 1, 0.45), 1)
 		if it[5] != "":
 			var cw := font.get_string_size(it[5], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 8
@@ -3191,12 +3202,12 @@ func _draw_tip() -> void:
 	var vs := _vs()
 	var bold := UiStyle.bold_font()
 	var body_f := UiStyle.body_font()
-	var title: String = _tip.get("title", "")
+	var title: String = Loc.title(String(_tip.get("title", "")))
 	var key: String = _tip.get("key", "")
 	var rows: Array = []        # [text, font, size, colour]
 	for f in [["stats", bold, 14, UiStyle.TEXT], ["need", bold, 14, UiStyle.BAD], ["body", body_f, 14, Color(0.95, 0.91, 0.82)], ["hint", body_f, 13, UiStyle.MUTED]]:
 		if String(_tip.get(f[0], "")) != "":
-			rows.append([String(_tip[f[0]]), f[1], f[2], f[3]])
+			rows.append([Loc.t(String(_tip[f[0]])), f[1], f[2], f[3]])
 	var key_w := 22.0 if key != "" else 0.0
 	var w := bold.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + key_w
 	for r in rows:
@@ -3260,6 +3271,7 @@ func _icon_file(name: String) -> Texture2D:
 
 
 func _text(font: Font, p: Vector2, s: String, sz: int, col: Color, align := 0) -> void:
+	s = Loc.t(s)
 	var w := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
 	var x := p.x - (w * 0.5 if align == 1 else (w if align == 2 else 0.0))
 	_ci.draw_string_outline(font, Vector2(x, p.y), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, 4, Color(0, 0, 0, col.a * 0.8))

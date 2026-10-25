@@ -1,0 +1,593 @@
+# Map editor
+> GROUND
+pt CHÃO
+es SUELO
+
+> HIGH
+pt ALTO
+es ALTO
+
+> RAMP
+pt RAMPA
+es RAMPA
+
+> WATER
+pt ÁGUA
+es AGUA
+
+> FORD
+pt VAU
+es VADO
+
+> TREES
+pt ÁRVORES
+es ÁRBOLES
+
+> ROCKS
+pt ROCHAS
+es ROCAS
+
+> PROPS
+pt ADEREÇOS
+es ATREZZO
+
+> HALL
+pt SALÃO
+es SALA
+
+> REMOVE
+pt REMOVER
+es QUITAR
+
+> Low ground (paints over anything: also the eraser for terrain and decorations)
+pt Terreno baixo (pinta sobre tudo: também é a borracha de terreno e decorações)
+es Terreno bajo (pinta sobre todo: también es la goma de terreno y decoraciones)
+
+> High ground: plateaus get cliffs all round, except where a ramp leads down
+pt Terreno alto: os planaltos ganham penhascos em volta, menos onde uma rampa desce
+es Terreno alto: las mesetas reciben acantilados alrededor, salvo donde baja una rampa
+
+> Ramp: paint across the edge of high ground; it's squared into a clean rectangle
+pt Rampa: pinte atravessando a borda do terreno alto; ela é ajustada num retângulo limpo
+es Rampa: pinta atravesando el borde del terreno alto; se ajusta a un rectángulo limpio
+
+> Water (lava in volcanic lands): impassable
+pt Água (lava em terras vulcânicas): intransponível
+es Agua (lava en tierras volcánicas): infranqueable
+
+> Ford: shallow water units can cross
+pt Vau: água rasa que as unidades atravessam
+es Vado: agua poco profunda que las unidades cruzan
+
+> Trees: impassable (they keep the height they're painted on)
+pt Árvores: intransponíveis (mantêm a altura em que foram pintadas)
+es Árboles: infranqueables (conservan la altura en que se pintan)
+
+> Rocks: impassable
+pt Rochas: intransponíveis
+es Rocas: infranqueables
+
+> Decorations: pick one (or a whole group) on the right, click to place
+pt Decorações: escolha uma (ou um grupo inteiro) à direita, clique para pôr
+es Decoraciones: elige una (o un grupo entero) a la derecha, haz clic para colocar
+
+> Start spot: where a player's Town Hall stands (2-8)
+pt Ponto de início: onde fica a Prefeitura de um jogador (2-8)
+es Punto de inicio: donde se alza el Ayuntamiento de un jugador (2-8)
+
+> Hall spot: a place to expand to
+pt Ponto de salão: um lugar para expandir
+es Punto de sala: un lugar al que expandirse
+
+> Click a start spot to change its team
+pt Clique num ponto de início para mudar sua equipe
+es Haz clic en un punto de inicio para cambiar su equipo
+
+> Remove start and hall spots
+pt Remove pontos de início e de salão
+es Quita puntos de inicio y de sala
+
+> TURN 180
+pt GIRAR 180
+es GIRAR 180
+
+> LEFT | RIGHT
+pt ESQUERDA | DIREITA
+es IZQUIERDA | DERECHA
+
+> TOP | BOTTOM
+pt CIMA | BAIXO
+es ARRIBA | ABAJO
+
+> 4-WAY
+pt 4 VIAS
+es 4 VÍAS
+
+> TURN 90
+pt GIRAR 90
+es GIRAR 90
+
+> DIAGONAL
+pt DIAGONAL
+es DIAGONAL
+
+> PATCHES
+pt MANCHAS
+es MANCHAS
+
+> MIDDLE
+pt MEIO
+es CENTRO
+
+> tiny 1v1
+pt 1v1 minúsculo
+es 1v1 diminuto
+
+> small 1v1
+pt 1v1 pequeno
+es 1v1 pequeño
+
+> wide 1v1
+pt 1v1 largo
+es 1v1 ancho
+
+> tall 1v1
+pt 1v1 alto
+es 1v1 alto
+
+> tall 2v2
+pt 2v2 alto
+es 2v2 alto
+
+> tall 3v3
+pt 3v3 alto
+es 3v3 alto
+
+> Nothing to undo.
+pt Nada para desfazer.
+es Nada que deshacer.
+
+> Undone (%d more).
+pt Desfeito (mais %d).
+es Deshecho (%d más).
+
+> Nothing to redo.
+pt Nada para refazer.
+es Nada que rehacer.
+
+> Redone.
+pt Refeito.
+es Rehecho.
+
+> The map's name
+pt O nome do mapa
+es El nombre del mapa
+
+> Mode (from the start spots' teams) and size in cells
+pt Modo (pelas equipes dos pontos de início) e tamanho em casas
+es Modo (según los equipos de los puntos de inicio) y tamaño en casillas
+
+> NEW
+pt NOVO
+es NUEVO
+
+> A new map: pick its size
+pt Um mapa novo: escolha o tamanho
+es Un mapa nuevo: elige su tamaño
+
+> Open one of your maps
+pt Abre um dos seus mapas
+es Abre uno de tus mapas
+
+> SAVE
+pt SALVAR
+es GUARDAR
+
+> Save the map (it shows up in Skirmish)
+pt Salva o mapa (ele aparece na Escaramuça)
+es Guarda el mapa (aparece en Escaramuza)
+
+> CHECK
+pt VERIFICAR
+es COMPROBAR
+
+> Check the map for problems and outline them
+pt Verifica o mapa em busca de problemas e os contorna
+es Comprueba el mapa en busca de problemas y los rodea
+
+> UNDO
+pt DESFAZER
+es DESHACER
+
+> Undo (Ctrl+Z)
+pt Desfazer (Ctrl+Z)
+es Deshacer (Ctrl+Z)
+
+> REDO
+pt REFAZER
+es REHACER
+
+> Redo (Ctrl+Y)
+pt Refazer (Ctrl+Y)
+es Rehacer (Ctrl+Y)
+
+> HELP
+pt AJUDA
+es AYUDA
+
+> Save and play it in Skirmish
+pt Salva e joga na Escaramuça
+es Guarda y juega en Escaramuza
+
+> DRAG: 
+pt ARRASTAR: 
+es ARRASTRAR: 
+
+> PAINT
+pt PINTAR
+es PINTAR
+
+> One finger paints, or moves the map
+pt Um dedo pinta, ou move o mapa
+es Un dedo pinta, o mueve el mapa
+
+> LAVA
+pt LAVA
+es LAVA
+
+> BRUSH
+pt PINCEL
+es PINCEL
+
+> Brush size %d (%d cells across)
+pt Tamanho do pincel %d (%d casas de largura)
+es Tamaño del pincel %d (%d casillas de ancho)
+
+> ROUND
+pt REDONDO
+es REDONDO
+
+> SQUARE
+pt QUADRADO
+es CUADRADO
+
+> FILL
+pt PREENCHER
+es RELLENAR
+
+> Round brush
+pt Pincel redondo
+es Pincel redondo
+
+> Square brush
+pt Pincel quadrado
+es Pincel cuadrado
+
+> Fill: floods the area of the same terrain you click
+pt Preencher: inunda a área do mesmo terreno em que você clica
+es Rellenar: inunda el área del mismo terreno en que haces clic
+
+> MIRROR
+pt ESPELHO
+es ESPEJO
+
+> What you paint and place is copied for the other players
+pt O que você pinta e põe é copiado para os outros jogadores
+es Lo que pintas y colocas se copia para los demás jugadores
+
+> The map's biome
+pt O bioma do mapa
+es El bioma del mapa
+
+> MIX: 
+pt MISTURA: 
+es MEZCLA: 
+
+> NONE
+pt NENHUM
+es NINGUNO
+
+> A second biome blended in
+pt Um segundo bioma misturado
+es Un segundo bioma mezclado
+
+> BLEND: 
+pt FUSÃO: 
+es FUSIÓN: 
+
+> How the two biomes share the map
+pt Como os dois biomas dividem o mapa
+es Cómo se reparten el mapa los dos biomas
+
+> OLD KINGDOM
+pt ANTIGO REINO
+es ANTIGUO REINO
+
+> CLOSE
+pt FECHAR
+es CERRAR
+
+> NEW MAP
+pt NOVO MAPA
+es NUEVO MAPA
+
+> Pick a size (cells across x down), or set your own below.
+pt Escolha um tamanho (casas de largura x altura), ou defina o seu abaixo.
+es Elige un tamaño (casillas de ancho x alto), o define el tuyo abajo.
+
+> WIDTH
+pt LARGURA
+es ANCHO
+
+>    HEIGHT
+pt    ALTURA
+es    ALTO
+
+> About 64-112 across suits 1v1, 112-136 2v2, 144-168 3v3, 192x160 4v4.
+pt Cerca de 64-112 de largura serve para 1v1, 112-136 para 2v2, 144-168 para 3v3, 192x160 para 4v4.
+es Unos 64-112 de ancho sirven para 1v1, 112-136 para 2v2, 144-168 para 3v3, 192x160 para 4v4.
+
+> CREATE %dx%d
+pt CRIAR %dx%d
+es CREAR %dx%d
+
+> YOUR MAPS
+pt SEUS MAPAS
+es TUS MAPAS
+
+> No saved maps yet.
+pt Nenhum mapa salvo ainda.
+es Aún no hay mapas guardados.
+
+> Delete this map
+pt Apagar este mapa
+es Borrar este mapa
+
+> MIX WITH
+pt MISTURAR COM
+es MEZCLAR CON
+
+> Its water is lava
+pt A água dele é lava
+es Su agua es lava
+
+> Click the map to place the picked decoration
+pt Clique no mapa para pôr a decoração escolhida
+es Haz clic en el mapa para colocar la decoración elegida
+
+> ERASE
+pt APAGAR
+es BORRAR
+
+> Click a decoration to remove it (a right click does it too)
+pt Clique numa decoração para removê-la (o clique direito também faz isso)
+es Haz clic en una decoración para quitarla (el clic derecho también lo hace)
+
+> Group: %s (%d pieces)
+pt Grupo: %s (%d peças)
+es Grupo: %s (%d piezas)
+
+> blocks like a rock
+pt bloqueia como uma rocha
+es bloquea como una roca
+
+> walked through
+pt atravessável
+es se puede atravesar
+
+> Red frame: blocks like a rock. Plain: looks only.
+pt Moldura vermelha: bloqueia como uma rocha. Simples: só enfeite.
+es Marco rojo: bloquea como una roca. Simple: solo adorno.
+
+> GROUPS
+pt GRUPOS
+es GRUPOS
+
+> Place the whole group (as the named maps do)
+pt Põe o grupo inteiro (como fazem os mapas nomeados)
+es Coloca el grupo entero (como hacen los mapas con nombre)
+
+> ALL GOOD
+pt TUDO CERTO
+es TODO BIEN
+
+> PROBLEM
+pt PROBLEMA
+es PROBLEMA
+
+> WARNING
+pt AVISO
+es AVISO
+
+> and 
+pt e 
+es y 
+
+> Every start can reach the others, each main has a ramp to wall, no decorations in the way, room for every economy.
+pt Todo início alcança os outros, cada base principal tem uma rampa para murar, nenhuma decoração no caminho, espaço para cada economia.
+es Todo inicio llega a los demás, cada base principal tiene una rampa que amurallar, ninguna decoración estorba, espacio para cada economía.
+
+> Give the map a name first.
+pt Dê um nome ao mapa primeiro.
+es Ponle nombre al mapa primero.
+
+> Couldn't save the map.
+pt Não foi possível salvar o mapa.
+es No se pudo guardar el mapa.
+
+> Saved "%s", but CHECK found %d problem%s (listed on the right).
+pt "%s" salvo, mas VERIFICAR achou %d problema%s (listados à direita).
+es "%s" guardado, pero COMPROBAR halló %d problema%s (enumerados a la derecha).
+
+> Saved "%s" (%s, %dx%d).
+pt "%s" salvo (%s, %dx%d).
+es "%s" guardado (%s, %dx%d).
+
+> Place at least two START spots to play.
+pt Ponha pelo menos dois pontos de INÍCIO para jogar.
+es Coloca al menos dos puntos de INICIO para jugar.
+
+> Every start must be reachable from start 1 before you can play it.
+pt Todo início deve ser alcançável a partir do início 1 antes de jogar.
+es Todo inicio debe ser alcanzable desde el inicio 1 antes de poder jugar.
+
+> No room there (not on water, cliffs, ramps, trees or other solid things).
+pt Não há espaço ali (nem sobre água, penhascos, rampas, árvores ou outras coisas sólidas).
+es No hay sitio ahí (ni sobre agua, acantilados, rampas, árboles u otras cosas sólidas).
+
+> There's a spot there already.
+pt Já há um ponto ali.
+es Ya hay un punto ahí.
+
+> At most 8 start spots.
+pt No máximo 8 pontos de início.
+es Como máximo 8 puntos de inicio.
+
+> %d start spots: %s.
+pt %d pontos de início: %s.
+es %d puntos de inicio: %s.
+
+> Click a start spot to change its team.
+pt Clique num ponto de início para mudar sua equipe.
+es Haz clic en un punto de inicio para cambiar su equipo.
+
+> Start %d: team %s. The map is %s.
+pt Início %d: equipe %s. O mapa é %s.
+es Inicio %d: equipo %s. El mapa es %s.
+
+> TEAM 
+pt EQUIPE 
+es EQUIPO 
+
+> This ramp doesn't join high ground to low ground: paint it across a plateau's edge.
+pt Esta rampa não une terreno alto a terreno baixo: pinte-a atravessando a borda de um planalto.
+es Esta rampa no une terreno alto con terreno bajo: píntala atravesando el borde de una meseta.
+
+> Left click paints · right drag or WASD moves · wheel zooms · 1-8 brush · Ctrl+Z undo
+pt Clique esquerdo pinta · arrastar com o direito ou WASD move · roda dá zoom · 1-8 pincel · Ctrl+Z desfaz
+es Clic izquierdo pinta · arrastrar con el derecho o WASD mueve · la rueda hace zoom · 1-8 pincel · Ctrl+Z deshace
+
+> Drag to paint · two fingers move and zoom
+pt Arraste para pintar · dois dedos movem e dão zoom
+es Arrastra para pintar · dos dedos mueven y hacen zoom
+
+> Click a decoration to remove it
+pt Clique numa decoração para removê-la
+es Haz clic en una decoración para quitarla
+
+> Click to place · right click removes
+pt Clique para pôr · clique direito remove
+es Clic para colocar · clic derecho quita
+
+> Tap a decoration to remove it
+pt Toque numa decoração para removê-la
+es Toca una decoración para quitarla
+
+> Tap to place
+pt Toque para pôr
+es Toca para colocar
+
+# Map editor CHECK messages (the %s pieces are translated by themselves)
+> Start %d
+pt Início %d
+es Inicio %d
+
+> Hall spot %d
+pt Ponto de salão %d
+es Punto de sala %d
+
+> TEAM %s
+pt EQUIPE %s
+es EQUIPO %s
+
+> Place at least two start spots (there are %d).
+pt Ponha pelo menos dois pontos de início (há %d).
+es Coloca al menos dos puntos de inicio (hay %d).
+
+> At most eight start spots (there are %d).
+pt No máximo oito pontos de início (há %d).
+es Como máximo ocho puntos de inicio (hay %d).
+
+> %s stands on blocked ground (trees, rocks, water, a ramp or a cliff).
+pt %s está em terreno bloqueado (árvores, rochas, água, rampa ou penhasco).
+es %s está sobre terreno bloqueado (árboles, rocas, agua, rampa o acantilado).
+
+> %s sits across the edge of high ground.
+pt %s fica sobre a borda do terreno alto.
+es %s queda a caballo del borde del terreno alto.
+
+> %s and %s overlap.
+pt %s e %s se sobrepõem.
+es %s y %s se solapan.
+
+> %s can't be reached on foot from start 1.
+pt %s não pode ser alcançado a pé desde o início 1.
+es No se puede llegar a pie a %s desde el inicio 1.
+
+> Start %d isn't on high ground closed by cliffs, so it has no ramp to wall.
+pt O início %d não está em terreno alto fechado por penhascos, então não tem rampa para murar.
+es El inicio %d no está en terreno alto cerrado por acantilados, así que no tiene rampa que amurallar.
+
+> Start %d's high ground has no ramp down.
+pt O terreno alto do início %d não tem rampa de descida.
+es El terreno alto del inicio %d no tiene rampa de bajada.
+
+> Start %d's ramp is %d cells wide at the top: too wide to wall (at most %d).
+pt A rampa do início %d tem %d casas de largura no topo: larga demais para murar (no máximo %d).
+es La rampa del inicio %d tiene %d casillas de ancho arriba: demasiado ancha para amurallar (como máximo %d).
+
+> Start %d's main has %d ramps (one or two are easier to hold).
+pt A base principal do início %d tem %d rampas (uma ou duas são mais fáceis de segurar).
+es La base principal del inicio %d tiene %d rampas (una o dos son más fáciles de defender).
+
+> A ramp must join high ground to low ground (%d ramp cells don't).
+pt Uma rampa deve unir terreno alto a terreno baixo (%d casas de rampa não unem).
+es Una rampa debe unir terreno alto con terreno bajo (%d casillas de rampa no unen).
+
+> The %s stands on or beside a ramp.
+pt O(A) %s está sobre ou ao lado de uma rampa.
+es El/la %s está sobre o junto a una rampa.
+
+> The %s stands on %s's land.
+pt O(A) %s está na terra de %s.
+es El/la %s está en la tierra de %s.
+
+> Start %d has little open ground for its farms and mills (%d cells, about %d needed).
+pt O início %d tem pouco terreno livre para suas fazendas e moinhos (%d casas, cerca de %d necessárias).
+es El inicio %d tiene poco terreno libre para sus granjas y molinos (%d casillas, unas %d necesarias).
+
+> Start %d has no hall spot nearby for an expansion.
+pt O início %d não tem ponto de salão por perto para uma expansão.
+es El inicio %d no tiene punto de sala cerca para una expansión.
+
+> %d cells don't match their mirror copies.
+pt %d casas não combinam com suas cópias espelhadas.
+es %d casillas no coinciden con sus copias espejo.
+
+> Some hall spots have no mirror twin (the outlined places).
+pt Alguns pontos de salão não têm gêmeo espelhado (os lugares contornados).
+es Algunos puntos de sala no tienen gemelo espejo (los lugares rodeados).
+
+> START SPOT
+pt INÍCIO
+es INICIO
+
+> LOAD MAP
+pt ABRIR
+es ABRIR
+
+> PLAY MAP
+pt JOGAR
+es JUGAR
+
+> BIOME LAND
+pt TERRA
+es TIERRA
+
+> MIX
+pt MISTURA
+es MEZCLA
+
+> BLEND
+pt FUSÃO
+es FUSIÓN
