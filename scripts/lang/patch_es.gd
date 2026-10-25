@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.6": ["Nueva dirección del juego: holdfastrts.github.io/Holdfast/ (la app de Android es Holdfast.apk en el mismo sitio). Las direcciones antiguas dejan de funcionar con el tiempo."],
 	"0.14.5": ["La sala de ONLINE ahora se parece a la pantalla de ESCARAMUZA: las mismas filas de jugador (JUGADOR, FACCIÓN, COLOR, PLAN, EQUIPO), los botones 1v1 y COOP arriba y el mismo panel de mapa con selector, vista previa y sorteos. Cada uno elige su facción y color (un color que otro jugador ya tiene se rechaza); el anfitrión también fija el nivel y el plan del ordenador, los equipos y el mapa. El invitado ve la misma pantalla con los controles del anfitrión atenuados."],
 	"0.14.4": ["El juego ahora se llama HOLDFAST. Nueva dirección web (cavaleirobrancopensante.github.io/Holdfast/) y la app de Android es el archivo Holdfast.apk. Tus ajustes, partidas guardadas y atajos en ordenador o móvil se mantienen; en la versión web empiezan de cero porque la dirección cambió."],
 	"0.14.3": ["ONLINE: un botón COPIAR junto al código de sala, para que el anfitrión se lo pegue a un amigo."],

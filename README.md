@@ -1,8 +1,8 @@
 # Holdfast
 
-**Play in your browser (version 0.14.5): https://cavaleirobrancopensante.github.io/Holdfast/**
+**Play in your browser (version 0.14.6): https://holdfastrts.github.io/Holdfast/**
 
-**Android app: https://cavaleirobrancopensante.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
+**Android app: https://holdfastrts.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
 If the game ever closes on its own, the next start shows a crash report with a COPY button: the end of the engine log, with a line for every autosave, so the moment it died can be found.
 
