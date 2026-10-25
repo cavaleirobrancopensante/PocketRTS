@@ -875,7 +875,7 @@ func _build_card() -> Array:
 				_alt_for["REPAIR"] = func() -> void:
 					for u in game.selected_units():
 						if u.d.get("repairs", false) or u.kind == "labourer":
-							u.auto_repair = not auto_fix
+							game.net_set(u, "auto_repair", not auto_fix)
 					toast("Automatic repair on: idle workers fix damaged buildings nearby by themselves, before going back to work." if not auto_fix else "Automatic repair off.")
 				list.append(["repair", ("~ " if auto_fix else "") + "REPAIR", func() -> void:
 					controls.mode = "repair"
@@ -1004,7 +1004,7 @@ func _build_card() -> Array:
 			_alt_for[ulab] = func() -> void:
 				var on := b.auto_train != kk
 				for sb in game.selected_buildings():
-					sb.auto_train = kk if on else ""
+					game.net_set(sb, "auto_train", kk if on else "")
 				toast(("Training %s automatically." % Defs.train_name(kk)) if on else "Automatic training off.")
 			if b.auto_train == k:
 				ulab = "~ " + ulab
@@ -1155,7 +1155,7 @@ func _auto_refit_button(list: Array, places: Array) -> void:
 	list.append([ic, ("~ " if on else "") + "AUTO REFIT", func() -> void:
 		for p in places:
 			if is_instance_valid(p) and not p.dead:
-				p.auto_refit = not on
+				game.net_set(p, "auto_refit", not on)
 		toast("Auto refit on: idle soldiers nearby get their upgrades here, paying the fees." if not on else "Auto refit off."), true, "", ""])
 
 
@@ -1265,7 +1265,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_courier", ("~ " if cour else "") + "COURIER", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "ornithopter":
-					u.courier = not cour
+					game.net_set(u, "courier", not cour)
 					u._courier_t = 0.0
 					if cour and u.order == "courier":
 						u.cmd_stop()
@@ -1376,7 +1376,7 @@ func _mixed_card(bs: Array) -> Array:
 		_alt_for[ulab] = func() -> void:
 			for sb in able:
 				if is_instance_valid(sb):
-					sb.auto_train = "" if auto_all else kk
+					game.net_set(sb, "auto_train", "" if auto_all else kk)
 			toast(("Training %s automatically in every building that can." % Defs.train_name(kk)) if not auto_all else "Automatic training off.")
 		if able.any(func(x: Building) -> bool: return x.auto_train == kk):
 			ulab = "~ " + ulab
@@ -1883,6 +1883,9 @@ func _draw_chat() -> void:
 
 
 func set_paused(v: bool) -> void:
+	if game and game.net and v:
+		toast("An online match can't be paused.")
+		return
 	if v != paused and game and not game.demo:
 		Sfx.announce(game.faction_of(game.human), "paused" if v else "resumed", 1.0)
 	paused = v

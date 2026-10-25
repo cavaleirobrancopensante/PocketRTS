@@ -8,6 +8,7 @@ var ui_layer: CanvasLayer
 var menu: Control
 var _went_fullscreen := false
 var _backdrop: MenuBackdrop
+var net_lobby: NetLobby                 # online: the room being set up or played (net/net_lobby.gd)
 
 ## The skirmish setup, remembered between sessions. A first-time player gets everything
 ## random: faction, map, the computer's plan, and colours that fit the map.
@@ -304,7 +305,7 @@ func show_menu() -> void:
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
 	var items := [["EDITOR", func() -> void: show_editor_menu()], ["HOW TO PLAY", func() -> void: show_help()],
-		["SKIRMISH", func() -> void: show_skirmish()], ["SETTINGS", func() -> void: show_settings()], ["MATCH LOGS", func() -> void: show_logs()]]
+		["SKIRMISH", func() -> void: show_skirmish()], ["ONLINE", func() -> void: show_online()], ["SETTINGS", func() -> void: show_settings()], ["MATCH LOGS", func() -> void: show_logs()]]
 	for it in items:
 		var b := _button(it[0], it[1])
 		if it[0] == "SKIRMISH":
@@ -312,12 +313,21 @@ func show_menu() -> void:
 			b.custom_minimum_size = Vector2(260, 64)
 			b.add_theme_font_size_override("font_size", 28)
 		else:
-			b.custom_minimum_size = Vector2(196, 54)
+			b.custom_minimum_size = Vector2(160, 54)
 		row.add_child(b)
 	var ver := UiStyle.text("v%s  ·  playing on %s" % [version, "computer" if Settings.pc() else "mobile"], 22, Color(1, 0.96, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	ver.add_theme_constant_override("outline_size", 5)
 	v.add_child(ver)
+
+
+## ONLINE: host a game or join one by room code (ui/multiplayer_menu.gd).
+func show_online() -> void:
+	var root := _page()
+	var mm := MultiplayerMenu.new()
+	mm.main = self
+	root.add_child(mm)
+	mm.build()
 
 
 ## Match logs: every finished match (and the one still going) with a COPY button, to
@@ -558,6 +568,20 @@ func show_settings() -> void:
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
 			Settings.save_all(), "BOX-SELECTS", "MOVES THE VIEW"))
+	var rh := HBoxContainer.new()
+	rh.add_theme_constant_override("separation", 12)
+	var rhl := UiStyle.text("ONLINE RELAY ADDRESS", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	rhl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rh.add_child(rhl)
+	var rhe := LineEdit.new()
+	rhe.text = Settings.relay_url
+	rhe.placeholder_text = "wss://pocketrts-relay.YOURNAME.workers.dev"
+	rhe.custom_minimum_size = Vector2(250, 50)
+	rhe.text_changed.connect(func(x: String) -> void:
+		Settings.relay_url = x.strip_edges()
+		Settings.save_all())
+	rh.add_child(rhe)
+	v.add_child(rh)
 	v.add_child(_gap(4))
 	var back := _button("BACK", func() -> void: show_menu())
 	v.add_child(back)
@@ -1674,8 +1698,8 @@ var _f11_t := 0.0
 
 ## Autosave the match every 15 s (and the log with it), so closing the game loses nothing.
 func _autosave() -> void:
-	if game == null or game.over or game.demo or game.edit_mode:
-		return
+	if game == null or game.over or game.demo or game.edit_mode or game.net:
+		return           # (an online match can't be continued: no save)
 	var pt := Time.get_ticks_usec()
 	var cfg := last_cfg.duplicate(true)
 	cfg.erase("resume")
@@ -1796,6 +1820,7 @@ func start(cfg: Dictionary = {}) -> void:
 		cfg["map"] = fit[randi() % fit.size()]
 	_resolve_colours(cfg)
 	last_cfg = cfg.duplicate(true)
+	last_cfg.erase("net")
 	var slots: Array = cfg["slots"]
 	var facs: Array = []
 	var cols: Array = []
@@ -1825,6 +1850,7 @@ func start(cfg: Dictionary = {}) -> void:
 	game.income_mult = mult
 	game.map_id = cfg.get("map", "random")
 	game.sandbox = cfg.get("sandbox", false)
+	game.puppet = cfg.has("net") and cfg["net"].get("role", "") == "guest"      # online guest: the host runs the match
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	game.rng.seed = int(cfg["seed"])
 	_mark_running("match on %s: %s (seed %d)%s" % [game.map_id, " vs ".join(facs), int(cfg["seed"]), " (continued)" if cfg.has("resume") else ""])
@@ -1832,8 +1858,8 @@ func start(cfg: Dictionary = {}) -> void:
 	print("[match] map ready")
 	sfx.camera = game.camera
 	for t in slots.size():
-		if t == human:
-			continue
+		if t == human or game.puppet or slots[t]["who"] == "remote":
+			continue         # (a friend online plays that side; a guest's game runs no computers)
 		var ai := AI.new()
 		ai.game = game
 		ai.team = t
@@ -1857,6 +1883,8 @@ func start(cfg: Dictionary = {}) -> void:
 		game.mlog.begin(lv)
 		if game.sandbox:
 			game.mlog.add("(sandbox match)")
+	if cfg.has("net"):
+		cfg["net"]["lobby"].begin(game, last_cfg)      # online: tell the guests, open the session
 	var c := Controls.new()
 	c.game = game
 	game.controls = c
@@ -1891,7 +1919,7 @@ func start(cfg: Dictionary = {}) -> void:
 		SaveGame.restore(game, cfg["resume"])
 		last_cfg.erase("resume")
 	_save_t = 0.0
-	if not game.demo:
+	if not game.demo and not cfg.has("net"):
 		hud.start_countdown(3.0)
 
 
@@ -1908,6 +1936,9 @@ func _to_menu() -> void:
 			_save_log(game.mlog.text())
 		game.queue_free()
 		game = null
+	if net_lobby:
+		net_lobby.dispose()
+		net_lobby = null
 	show_menu()
 
 
@@ -1929,7 +1960,11 @@ func _on_end(winner: int) -> void:
 	o.winner = winner
 	o.theme = _theme()
 	o.process_mode = Node.PROCESS_MODE_ALWAYS
-	o.play_again.connect(func() -> void: start())
+	o.play_again.connect(func() -> void:
+		if net_lobby:
+			_to_menu()          # (an online match is not played again from here: the room is closed)
+		else:
+			start())
 	o.to_menu.connect(func() -> void: _to_menu())
 	o.view_map.connect(func() -> void: _view_map(o))
 	ui_layer.add_child(o)

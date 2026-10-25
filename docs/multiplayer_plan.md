@@ -121,3 +121,26 @@ Step 3 (build the online command layer) was **not started**, because lockstep is
 would be built and it is not feasible with modest changes (section 1). What is delivered:
 this plan and `tools/test_determinism.gd` (also the tool to prove determinism if lockstep is ever
 retried). Awaiting the owner's go-ahead on option B (phase 0 to 2 first).
+
+## 6. Status: phases 0 to 2 built (v0.14.0, branch wt-online)
+
+Built, host-authoritative as recommended in section 2B:
+- `tools/relay/`: `worker.js` (Cloudflare Worker + Durable Object, hibernation API, about 70 lines), `wrangler.toml`,
+  `README.md` (the owner's steps), `local_relay.mjs` (the same relay in node, no packages, for tests).
+- `scripts/net/net_link.gd` (WebSocketPeer wrapper: room code, ping, text notices + binary frames),
+  `net_codec.gd` (var_to_bytes + deflate, entity ids in arguments), `net_lobby.gd` (slots, 1v1 and co-op presets,
+  version check, host/guest messages), `ui/multiplayer_menu.gd` (ONLINE page; the relay address is also in SETTINGS).
+- Command funnel (`net_commands.gd`): 26 `Game` functions and 14 `Unit` methods start with
+  `if game.net_forward(self, "name", [args]): return`; on a guest that sends the call to the host, which checks that every
+  unit and building in it belongs to that guest, then runs the real function. The command card's settings (auto repair,
+  auto train, auto refit, courier) go through `Game.net_set`. Orders holding a Callable (the queued refit) are refused online.
+- Snapshots (`net_snapshot.gd`): host sends every unit, building, per-team resources/tech/energy, the ids that vanished
+  (and whether they died), and effects and musket/bolt shots seen, 10 times a second, deflated. Entities get a `net_id`
+  when first listed. The guest runs the real `Unit`/`Building` nodes as puppets (`net_puppet.gd`: no simulation, position
+  interpolated over one snapshot interval, animation from the synced order/phase/work/target), and its own fog from its own
+  side's entities. Measured: about 7 to 25 KB/s per guest (a Hard AI vs Hard AI game of several minutes, 40 units).
+- Tests: `tools/test_online.sh` (relay + host + guest processes; command round trip, training, placing a building, a refused
+  foreign order, entity counts equal on both sides after every snapshot; options `coop`, `ai`, `stay:`).
+
+Left: phase 3 (sounds of fights, cannon/mortar projectiles, alerts such as "under attack", pings, chat), pause, reconnecting,
+delta snapshots, interpolation tuning on real internet connections, a spectator, and testing on real phones.

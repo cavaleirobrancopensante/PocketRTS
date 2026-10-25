@@ -824,6 +824,8 @@ var _was_selected := false
 
 
 func _physics_process(delta: float) -> void:
+	if game.puppet:
+		return NetPuppet.tick_building(self, delta)      # (online guest: shown from snapshots, not simulated)
 	var _p0 := Time.get_ticks_usec()
 	_tick_building(delta)
 	Prof.bld_us += Time.get_ticks_usec() - _p0

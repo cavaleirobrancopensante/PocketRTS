@@ -1,0 +1,326 @@
+extends SceneTree
+## Online play, end to end on one computer: a HOST and a GUEST process through a relay.
+##   node tools/relay/local_relay.mjs 8799 &
+##   godot --headless --script res://tools/test_online.gd -- role:host  relay:ws://127.0.0.1:8799 code:TEST
+##   godot --headless --script res://tools/test_online.gd -- role:guest relay:ws://127.0.0.1:8799 code:TEST
+## (tools/test_online.sh runs all three and checks the CHECK lines.) The guest joins by code, the host
+## starts, and then the guest plays: it moves a worker, trains a unit, places a building and tries to
+## order one of the host's units (refused). Snapshots must show every effect on the guest.
+## Extra args: coop (two humans vs a computer), fac_host:<faction>, fac_guest:<faction>, map:<id>, secs:<n>.
+var main: Node
+var role := "host"
+var relay := "ws://127.0.0.1:8799"
+var code := "TEST"
+var coop := false
+var fac_host := "crown"
+var fac_guest := "crown"
+var map := "hollowfen"
+var limit := 150.0
+var t := 0.0
+var lobby: NetLobby
+var g: Game
+var step := 0
+var step_t := 0.0
+var base := {}
+var results := {}
+var done_t := -1.0
+var _last_print := -1
+var autoplay := false
+var speed := 1.0
+var watch := 50.0
+var stay := 0.0
+var shot_path := ""
+var left_t := -1.0
+
+
+func _initialize() -> void:
+	Engine.max_fps = 60
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("role:"):
+			role = a.substr(5)
+		elif a.begins_with("relay:"):
+			relay = a.substr(6)
+		elif a.begins_with("code:"):
+			code = a.substr(5)
+		elif a.begins_with("fac_host:"):
+			fac_host = a.substr(9)
+		elif a.begins_with("fac_guest:"):
+			fac_guest = a.substr(10)
+		elif a.begins_with("map:"):
+			map = a.substr(4)
+		elif a.begins_with("secs:"):
+			limit = float(a.substr(5))
+		elif a == "coop":
+			coop = true
+		elif a == "ai":
+			autoplay = true           # the host runs a computer for each human side too: a real fight to watch
+		elif a.begins_with("shot:"):
+			shot_path = a.substr(5)
+		elif a.begins_with("stay:"):
+			stay = float(a.substr(5))
+		elif a.begins_with("watch:"):
+			watch = float(a.substr(6))
+		elif a.begins_with("speed:"):
+			speed = float(a.substr(6))
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+
+
+func check(name: String, ok: bool, extra := "") -> void:
+	results[name] = ok
+	print("CHECK %s %s %s %s" % [role.to_upper(), name, "OK" if ok else "FAIL", extra])
+
+
+func _terrain_hash() -> int:
+	return hash([g.height, g.water, g.cliff, g.ramp, g.W, g.H])
+
+
+func _mine(kind_filter := "") -> Array:
+	return g.units.filter(func(u: Unit) -> bool: return u.team == g.human and not u.dead)
+
+
+func _process(delta: float) -> bool:
+	var real := delta / maxf(Engine.time_scale, 0.01)
+	t += real
+	step_t += real
+	if t < 0.5 or main.game == null and lobby == null:
+		if t >= 0.5 and lobby == null:
+			_begin()
+		return false
+	if t > limit:
+		print("TIMEOUT in step %d" % step)
+		_finish()
+		return false
+	if role == "host":
+		_host_tick()
+	else:
+		_guest_tick()
+	return false
+
+
+func _begin() -> void:
+	lobby = NetLobby.new()
+	main.add_child(lobby)
+	main.net_lobby = lobby
+	lobby.failed.connect(func(why: String) -> void: print("LOBBY FAILED: ", why))
+	if role == "host":
+		lobby.host(relay, code)
+		if coop:
+			lobby.set_mode("coop")
+		lobby.map = map
+		lobby.slots[0]["faction"] = fac_host
+		lobby.slots[1]["faction"] = fac_guest
+		if coop:
+			lobby.slots[2]["faction"] = "brood"
+	else:
+		lobby.start_now.connect(func(cfg: Dictionary) -> void:
+			print("GUEST got start: map=%s slots=%d" % [cfg["map"], cfg["slots"].size()])
+			main.start(cfg))
+		lobby.join(relay, code)
+
+
+# ------------------------------------------------------------------ host
+
+func _host_tick() -> void:
+	if g == null:
+		if lobby.all_seated() and step_t > 1.0:
+			print("HOST: guest seated, starting")
+			main.start(lobby.make_cfg())
+			g = main.game
+			g.net.trace = true
+			if autoplay:
+				for tm in [0, 1]:
+					var ai := AI.new()
+					ai.game = g
+					ai.team = tm
+					ai.difficulty = 2
+					ai.strategy = "balanced"
+					g.add_child(ai)
+					g.ais.append(ai)
+				Engine.time_scale = speed
+			step = 1
+			step_t = 0.0
+			print("HOST terrain hash %d" % _terrain_hash())
+		return
+	var s := g.net
+	if step == 1 and step_t > 1.0:
+		var gt := 1
+		base["units"] = g.units.filter(func(u: Unit) -> bool: return u.team == gt).size()
+		base["bld"] = g.buildings.filter(func(b: Building) -> bool: return b.team == gt).size()
+		step = 2
+	if step_t > 3.0 and int(step_t * 10) % 50 == 0:
+		pass
+	if int(step_t * 30) % 150 == 0 and int(step_t * 30) != _last_print:
+		_last_print = int(step_t * 30)
+		print("HOST t=%.0f clock=%.1f units=%d bld=%d snaps=%d applied=%d rejected=%d sent=%dKB" % [step_t, g.clock, g.units.size(), g.buildings.size(), s.snap_n, s.cmds_applied, s.cmds_rejected, s.link.sent_bytes / 1024])
+	# the guest has left: a computer takes the seat; with stay:<secs> the host plays on a while to show it
+	if not s.link.connected or (lobby.link and not lobby.all_seated()):
+		if stay > 0.0:
+			if left_t < 0.0:
+				left_t = t
+				print("HOST: guest left, staying %.0fs" % stay)
+			elif t - left_t > stay:
+				check("host_computer_took_the_seat", g.ais.any(func(a) -> bool: return a.team == 1), "ais=%d" % g.ais.size())
+				_finish()
+		else:
+			_finish()
+
+
+func _host_report() -> void:
+	var s := g.net
+	var gt := 1
+	var units := g.units.filter(func(u: Unit) -> bool: return u.team == gt).size()
+	var bld := g.buildings.filter(func(b: Building) -> bool: return b.team == gt).size()
+	print("HOST guest team: units %d -> %d, buildings %d -> %d" % [base.get("units", 0), units, base.get("bld", 0), bld])
+	if not autoplay:
+		check("host_applied_commands", s.cmds_applied >= 3, "applied=%d" % s.cmds_applied)
+		check("host_refused_foreign_order", s.cmds_rejected >= 1, "rejected=%d (%s)" % [s.cmds_rejected, s.last_reject])
+		check("host_guest_trained_unit", units > int(base.get("units", 99)))
+		check("host_guest_placed_building", bld > int(base.get("bld", 99)))
+	print("HOST_RESULT snapshots=%d bytes_sent=%d (%.1f KB/s)" % [s.snap_n, s.link.sent_bytes, s.link.sent_bytes / 1024.0 / maxf(step_t, 1.0)])
+
+
+# ------------------------------------------------------------------ guest
+
+func _guest_tick() -> void:
+	if g == null:
+		if main.game != null:
+			g = main.game
+			print("GUEST game up. puppet=%s human=%d terrain hash %d" % [g.puppet, g.human, _terrain_hash()])
+			step = 1
+			step_t = 0.0
+		return
+	var s := g.net
+	if s == null:
+		return
+	match step:
+		1:
+			if s.snaps_got >= 10 and not _mine().is_empty():
+				print("GUEST first snapshots: units=%d buildings=%d (own units %d)" % [g.units.size(), g.buildings.size(), _mine().size()])
+				check("guest_got_snapshots", s.snaps_got >= 10 and g.units.size() >= 4 and g.buildings.size() >= 2)
+				var hall: Building = null
+				for b in g.buildings:
+					if b.team == g.human and b.kind == Defs.FACTIONS[g.faction_of(g.human)]["hall"]:
+						hall = b
+				check("guest_has_own_hall", hall != null)
+				base["hall"] = hall
+				base["own_units"] = _mine().size()
+				base["own_bld"] = g.buildings.filter(func(b: Building) -> bool: return b.team == g.human).size()
+				var w: Unit = null
+				for u in _mine():
+					if u.is_worker():
+						w = u
+						break
+				base["w"] = w
+				base["w_from"] = w.position
+				base["w_to"] = w.position + Vector2(260, 40)
+				base["seq"] = s.cmd_seq
+				if autoplay:
+					step = 8
+					step_t = 0.0
+					return
+				g.smart_command([w], base["w_to"])
+				print("GUEST ordered worker %d to move" % w.net_id)
+				step = 2
+				step_t = 0.0
+		2:
+			var w: Unit = base["w"]
+			if is_instance_valid(w) and w.position.distance_to(base["w_to"]) < 50.0:
+				check("guest_move_command_round_trip", true, "took %.1fs, command rtt %.0f ms" % [step_t, s.cmd_rtt_ms])
+				_start_train(s)
+			elif step_t > 12.0:
+				check("guest_move_command_round_trip", false, "worker at %s wanted %s" % [str(w.position), str(base["w_to"])])
+				_start_train(s)
+		3:
+			if shot_path != "" and step_t > 6.0 and not base.has("shot"):
+				base["shot"] = true
+				var img := root.get_viewport().get_texture().get_image()
+				if img:
+					img.save_png(shot_path)
+					print("GUEST screenshot saved ", shot_path, " ", img.get_size())
+			if _mine().size() > int(base["own_units"]):
+				check("guest_train_command", true, "new unit after %.1fs" % step_t)
+				_start_build(s)
+			elif step_t > 25.0:
+				check("guest_train_command", false)
+				_start_build(s)
+		4:
+			var n := g.buildings.filter(func(b: Building) -> bool: return b.team == g.human).size()
+			if n > int(base["own_bld"]):
+				check("guest_place_building_command", true, "after %.1fs" % step_t)
+				_start_foreign(s)
+			elif step_t > 12.0:
+				check("guest_place_building_command", false)
+				_start_foreign(s)
+		5:
+			if step_t > 2.5:
+				check("guest_entity_counts_match_host", s.count_diff_max == 0, "worst difference %d, snapshots off by any: %d of %d" % [s.count_diff_max, s.count_diff_snaps, s.snaps_got])
+				print("GUEST_RESULT snaps=%d interval=%.3f cmds=%d cmd_rtt=%.0f ms ping=%.0f ms recv=%d bytes (%.1f KB/s)" % [s.snaps_got, s.interval, s.cmd_seq, s.cmd_rtt_ms, s.link.rtt_ms, s.link.recv_bytes, s.link.recv_bytes / 1024.0 / maxf(t, 1.0)])
+				var all_ok := true
+				for k in results:
+					all_ok = all_ok and results[k]
+				print("GUEST %s" % ("ALL OK" if all_ok else "SOME FAILED"))
+				step = 6
+				done_t = t
+	if step == 8 and step_t > watch:
+		step = 5
+		step_t = 10.0
+	if step == 6 and t - done_t > 1.0:
+		lobby.dispose()
+		quit(0)
+
+
+func _start_train(s: NetSession) -> void:
+	var hall: Building = base["hall"]
+	var worker: String = Defs.FACTIONS[g.faction_of(g.human)]["worker"]
+	base["own_units"] = _mine().size()
+	var r := g.train_any([hall], worker)
+	print("GUEST asked the hall to train a %s (local answer '%s')" % [worker, r])
+	step = 3
+	step_t = 0.0
+
+
+func _start_build(s: NetSession) -> void:
+	var f := g.faction_of(g.human)
+	var k: String = Defs.FACTIONS[f]["supply"]
+	var hall: Building = base["hall"]
+	var spot := Vector2i(-1, -1)
+	for r in range(5, 14):
+		for a in 24:
+			var c := hall.cell + Vector2i(Vector2.from_angle(TAU * a / 24.0) * r)
+			if g.in_map(c) and g.placement_problem(g.human, k, c) == "":
+				spot = c
+				break
+		if spot.x >= 0:
+			break
+	base["own_bld"] = g.buildings.filter(func(b: Building) -> bool: return b.team == g.human).size()
+	var builders: Array = _mine().filter(func(u: Unit) -> bool: return u.is_worker()).slice(0, 2)
+	print("GUEST places %s at %s" % [k, str(spot)])
+	g.place_building(g.human, k, spot, builders, false)
+	step = 4
+	step_t = 0.0
+
+
+func _start_foreign(s: NetSession) -> void:
+	var foe: Unit = null
+	for u in g.units:
+		if u.team == 0 and not u.dead:
+			foe = u
+			break
+	if foe:
+		print("GUEST tries to stop the host's unit %d (must be refused)" % foe.net_id)
+		foe.cmd_stop()
+	step = 5
+	step_t = 0.0
+
+
+func _finish() -> void:
+	if role == "host" and g != null:
+		_host_report()
+		var all_ok := true
+		for k in results:
+			all_ok = all_ok and results[k]
+		print("HOST %s" % ("ALL OK" if all_ok else "SOME FAILED"))
+	if lobby:
+		lobby.dispose()
+	quit(0)

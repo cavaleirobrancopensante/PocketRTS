@@ -16,6 +16,8 @@ const HASH := 64
 static var _tex_cache := {}
 
 var human := 0
+var puppet := false                  # online guest: the host plays the match, this game only shows it (NetPuppet)
+var net: NetSession = null           # online: the session (host or guest), else null
 var factions: Array = ["crown", "crown"]
 var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE
 var sides: Array = [0, 1]                   # players on the same side are allies
@@ -246,7 +248,8 @@ func _ready() -> void:
 		camera.position = Vector2(W, H) * T * 0.5
 		camera.zoom = Vector2(0.6, 0.6)
 		return
-	_start_positions()
+	if not puppet:
+		_start_positions()          # (an online guest gets everything standing from the host's snapshots)
 	_init_fog()
 	mlog = MatchLog.new()
 	mlog.game = self
@@ -255,7 +258,7 @@ func _ready() -> void:
 	chat.game = self
 	add_child(chat)
 	var me: Building = _own_hall(human)
-	camera.position = me.global_position + Vector2(160, 40)
+	camera.position = me.global_position + Vector2(160, 40) if me else cell_center(starts[human]) + Vector2(160, 40)
 	camera.zoom = Vector2(1.5, 1.5)
 
 
@@ -386,6 +389,7 @@ var gate_team := {}
 ## solid), and shows a padlock. Returns why it can't be done ("" when it is): nothing may
 ## stand in the gateway. `force` skips that check (loading a saved game).
 func set_gate_locked(b: Building, on: bool, force := false) -> String:
+	if net_forward(self, "set_gate_locked", [b, on, force]): return ""
 	if b == null or b.kind != "gate" or not b.built or b.dead:
 		return "Only a built gate can be locked."
 	if b.locked == on:
@@ -616,6 +620,7 @@ func line_ghost_tex(k: String, c: Vector2i, plan: Dictionary) -> Texture2D:
 ## queued (Shift): the builders do the whole line, piece after piece, after the orders they
 ## already have (otherwise the first piece, then whatever is unfinished nearby).
 func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array, queued := false) -> int:
+	if net_forward(self, "place_line", [t, k, a, b, builders, queued]): return 0
 	var n := 0
 	var first := true
 	var pieces: Array = []
@@ -2556,6 +2561,7 @@ var _econ_t := 0.0
 
 
 func set_split(t: int, name: String) -> void:
+	if net_forward(self, "set_split", [t, name]): return
 	players[t]["split"] = Defs.SPLITS[name].duplicate()
 	players[t]["split_name"] = name
 
@@ -2720,6 +2726,20 @@ func _own_hall(t: int) -> Building:
 
 
 # ------------------------------------------------------------------ entities
+
+## Online guest: send this call to the host instead of running it (true: it was sent, the caller
+## returns). Everywhere else (the host, single player) false and the call runs as always.
+func net_forward(who: Object, fn: String, args: Array) -> bool:
+	return puppet and net != null and NetCommands.forward(net, who, fn, args)
+
+
+## Set a command-card setting (auto repair, auto training ...) on something of yours; an online
+## guest asks the host too.
+func net_set(e: Object, prop: String, v) -> void:
+	e.set(prop, v)
+	if puppet and net != null:
+		NetCommands.forward(net, e, "@" + prop, [v])
+
 
 func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 	var u := Unit.new()
@@ -3556,6 +3576,7 @@ func research_problem(b: Building, key: String) -> String:
 ## Research works like training: paid up front, it joins the building's production queue
 ## (as "@key") and takes its turn there; CANCEL takes it back out, paid back.
 func start_research(b: Building, key: String) -> String:
+	if net_forward(self, "start_research", [b, key]): return ""
 	var why := research_problem(b, key)
 	if why != "":
 		return why
@@ -3628,6 +3649,7 @@ func hall_upgrade_problem(b: Building) -> String:
 ## Start growing the hall into its next level: paid up front; it keeps laying, hatching and
 ## taking food meanwhile. "" when started, else why not.
 func start_hall_upgrade(b: Building) -> String:
+	if net_forward(self, "start_hall_upgrade", [b]): return ""
 	var why := hall_upgrade_problem(b)
 	if why != "":
 		return why
@@ -3824,6 +3846,7 @@ func refit_place(t: int, p: Vector2) -> Entity:
 ## Powder Wagon to be fitted (those who have it already, or are on their way for it, are
 ## skipped). Returns [how many went, why the others didn't ("" if none were held back)].
 func refit_order(list: Array, what: String, quiet := false) -> Array:
+	if net_forward(self, "refit_order", [list, what, quiet]): return []
 	var n := 0
 	var why := ""
 	var t := -1
@@ -3929,6 +3952,7 @@ func train(b: Building, key: String) -> String:
 
 
 func cancel_train(b: Building) -> void:
+	if net_forward(self, "cancel_train", [b]): return
 	if b.queue.is_empty():
 		return
 	var kit := b.kit_at(b.queue.size() - 1)
@@ -3946,6 +3970,7 @@ func cancel_train(b: Building) -> void:
 
 ## Cancel one entry of the production line (a click on its picture in the unit card).
 func cancel_train_at(b: Building, i: int) -> void:
+	if net_forward(self, "cancel_train_at", [b, i]): return
 	if i < 0 or i >= b.queue.size():
 		return
 	if i == b.queue.size() - 1:
@@ -4291,6 +4316,7 @@ func _near_ramp_slow(c: Vector2i) -> bool:
 
 ## queued (Shift): the builders go to it after the orders they already have.
 func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := false) -> Building:
+	if net_forward(self, "place_building", [t, k, c, builders, queued]): return null
 	if placement_problem(t, k, c) != "" or players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		return null
 	if not requirement_met(t, k):
@@ -5551,6 +5577,7 @@ func spell_problem(u: Unit, spell: String) -> String:
 ## must hover over ground they can walk to; it stops and comes down while they board.
 ## Units that can't ride just walk over.
 func load_order(riders: Array, balloons: Array) -> void:
+	if net_forward(self, "load_order", [riders, balloons]): return
 	var bs: Array = balloons.filter(func(b) -> bool: return b is Unit and is_instance_valid(b) and not b.dead and b.kind == "balloon")
 	if bs.is_empty():
 		return
@@ -5585,6 +5612,7 @@ func load_order(riders: Array, balloons: Array) -> void:
 
 ## The selected balloons with men aboard fly to `p` and let them off (here: right below).
 func unload_order(list: Array, p: Vector2, here := false) -> void:
+	if net_forward(self, "unload_order", [list, p, here]): return
 	var any := false
 	for b in list:
 		if b is Unit and not b.dead and b.kind == "balloon" and not b.passengers.is_empty():
@@ -5596,6 +5624,7 @@ func unload_order(list: Array, p: Vector2, here := false) -> void:
 
 ## The nearest selected Ornithopter carrying a battery flies over and overloads `e`.
 func overload_order(list: Array, e: Entity) -> void:
+	if net_forward(self, "overload_order", [list, e]): return
 	if not (e is Unit) or e.dead or e.team != human or e.d["faction"] != "clockwork" or e.is_worker():
 		notify("Pick one of your constructs to overload.")
 		return
@@ -5642,6 +5671,7 @@ func drop_spots(at: Vector2, n: int, t: int) -> Array:
 
 ## The selected casters: the nearest one that can cast goes and does it.
 func cast_order(list: Array, spell: String, p: Vector2) -> void:
+	if net_forward(self, "cast_order", [list, spell, p]): return
 	var kind: String = CASTERS.get(spell, "spore_mother")
 	var best: Unit = null
 	var bd := INF
@@ -5872,6 +5902,7 @@ var tongues: Array = []
 
 ## The selected Toads: the nearest one with the energy goes for `e`.
 func tongue_order(list: Array, e) -> void:
+	if net_forward(self, "tongue_order", [list, e]): return
 	var toads := list.filter(func(u) -> bool: return u is Unit and not u.dead and u.kind == "mist_toad")
 	if toads.is_empty():
 		return
@@ -6077,6 +6108,7 @@ func line_spots(pts: PackedVector2Array, n: int) -> Array:
 ## Line move: every selected unit takes its own spot along the line. Units are matched to
 ## spots in order along the line, so their paths don't cross.
 func line_move(list: Array, pts: PackedVector2Array, attack: bool, queued := false) -> void:
+	if net_forward(self, "line_move", [list, pts, attack, queued]): return
 	var us: Array = list.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
 	if us.is_empty() or pts.size() < 2:
 		return
@@ -6382,6 +6414,8 @@ func income_rates(t: int) -> Vector2:
 
 
 func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> Effect:
+	if net != null and not puppet:
+		net.note_effect(name, p, speed, looping)         # (online host: the guest sees it too)
 	var e := Effect.new()
 	e.setup(name, speed, looping)
 	e.position = p
@@ -6830,6 +6864,8 @@ func _physics_process(delta: float) -> void:
 func _tick_game(delta: float) -> void:
 	if over or edit_mode:
 		return
+	if puppet:
+		return NetPuppet.tick_game(self, delta)
 	clock += delta
 	alert_t = maxf(alert_t - delta, 0.0)
 	_body_bar_t -= delta
@@ -6936,7 +6972,7 @@ func _check_end() -> void:
 	for t in n_players():
 		if not eliminated[t]:
 			sides_left[sides[t]] = t
-	var human_out: bool = not demo and eliminated[human]
+	var human_out: bool = not demo and eliminated[human] and (net == null or net.humans_out())     # (online: while a friend still plays, the match goes on)
 	if sides_left.size() <= 1 or human_out:
 		over = true
 		winner = -1
@@ -7123,6 +7159,7 @@ func rally_buildings() -> Array:
 
 ## Train at the least busy of several buildings (or the only one).
 func train_any(list: Array, k: String) -> String:
+	if net_forward(self, "train_any", [list, k]): return ""
 	var best: Building = null
 	var why := "Can't train that here."
 	for b in list:
@@ -7141,6 +7178,7 @@ func train_any(list: Array, k: String) -> String:
 
 ## Cancel a building that isn't finished: most of its cost comes back.
 func abandon(b: Building) -> void:
+	if net_forward(self, "abandon", [b]): return
 	if b.built or b.dead:
 		return
 	if b.ghost:
@@ -7161,6 +7199,7 @@ func abandon(b: Building) -> void:
 
 ## Pull down a finished building of your own (nothing comes back).
 func demolish(b: Building) -> void:
+	if net_forward(self, "demolish", [b]): return
 	if b.dead:
 		return
 	b.take_damage(9999999.0, null)
@@ -7169,6 +7208,7 @@ func demolish(b: Building) -> void:
 ## Tap/right-click on the map with units selected: do the obvious thing.
 ## queued (Shift on a computer): after the orders they already have, not instead of them.
 func smart_command(list: Array, p: Vector2, force_move := false, queued := false) -> void:
+	if net_forward(self, "smart_command", [list, p, force_move, queued]): return
 	# (a horse takes no orders: only a leash or a rider moves it)
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.kind != "horse")
 	if not us.is_empty() and us[0].team == human:
@@ -7336,6 +7376,7 @@ func command_sound(us: Array, what: String, call: String) -> void:
 
 
 func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
+	if net_forward(self, "group_move", [us, p, attack_move, queued]): return
 	us = us.filter(func(u) -> bool: return not (u is Unit and u.kind == "horse"))
 	if us.is_empty():
 		return
@@ -7374,6 +7415,7 @@ func _ping(p: Vector2, col: Color) -> void:
 
 
 func command_all(list: Array, what: String) -> void:
+	if net_forward(self, "command_all", [list, what]): return
 	var belled := false
 	for u in list:
 		if u is Unit and not u.dead and u.kind != "horse":
@@ -7390,6 +7432,7 @@ func command_all(list: Array, what: String) -> void:
 ## which: "auto" (a Hive sends workers to a tapped mine, the army anywhere else),
 ## "army" or "worker".
 func set_rally(b: Building, p: Vector2, which := "auto") -> void:
+	if net_forward(self, "set_rally", [b, p, which]): return
 	var e := entity_at(p)
 	if b.dual_rally():
 		var site: bool = e is Building and e.team == b.team and Defs.crew_cap(e.d) > 0
@@ -7538,6 +7581,7 @@ func standing_text(t: int) -> String:
 
 ## The player gives up (the pause menu): every building falls, the log says who was ahead.
 func player_surrender() -> void:
+	if net_forward(self, "player_surrender", []): return
 	end_ahead = lead_of(human)
 	end_note = "player_surrender"
 	if mlog:
@@ -8143,6 +8187,7 @@ func _horse_command(us: Array, e, p: Vector2, queued: bool) -> bool:
 ## LEAD: each man takes up to HORSES.lead_max free horses of ours within HORSES.fetch tiles.
 ## Returns how many horses are being fetched.
 func lead_order(list: Array) -> int:
+	if net_forward(self, "lead_order", [list]): return 0
 	var taken: Array = []
 	var n := 0
 	for u in list:
@@ -8162,6 +8207,7 @@ func lead_order(list: Array) -> int:
 
 ## MOUNT: each man walks to the nearest free horse of ours (a different one each).
 func mount_order(list: Array) -> int:
+	if net_forward(self, "mount_order", [list]): return 0
 	var taken: Array = []
 	var n := 0
 	for u in list:
@@ -8177,6 +8223,7 @@ func mount_order(list: Array) -> int:
 ## HARNESS: each gun or wagon with room in its team (those without a horse first) gets the
 ## nearest free horse walking over: one more each time.
 func harness_order(list: Array) -> int:
+	if net_forward(self, "harness_order", [list]): return 0
 	var taken: Array = []
 	var n := 0
 	var guns: Array = list.filter(func(g) -> bool: return g is Unit and Defs.HARNESSED.has(g.kind) and g.team_room() \

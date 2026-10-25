@@ -7,6 +7,7 @@ const TEAM_SHADER := preload("res://shaders/team.gdshader")
 var game: Game
 var team := -1
 var kind := ""
+var net_id := 0                # online: the id both players know it by (0: none yet)
 var hp := 1.0
 var max_hp := 1.0
 var armor := 0.0

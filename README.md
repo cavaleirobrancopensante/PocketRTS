@@ -1,12 +1,14 @@
 # Pocket RTS
 
-**Play in your browser (version 0.13.7): https://cavaleirobrancopensante.github.io/PocketRTS/**
+**Play in your browser (version 0.14.0): https://cavaleirobrancopensante.github.io/PocketRTS/**
 
 **Android app: https://cavaleirobrancopensante.github.io/PocketRTS/PocketRTS.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
 If the game ever closes on its own, the next start shows a crash report with a COPY button: the end of the engine log, with a line for every autosave, so the moment it died can be found.
 
 A StarCraft / Beyond All Reason style real-time strategy game for phones and the browser, made in Godot 4.7 with NES-style pixel art. Play a **skirmish** with up to eight players: 1v1, 2v2, 3v3, 4v4, you against two or three computers, or a free-for-all. Each slot picks a player (you or an Easy, Normal, Hard or **Brutal** AI), a faction, a colour and a team. If nobody is "you", the computers play and you watch. The Brutal AI micro-manages every fight and cheats (+50% income). All three factions are playable: **the Crown**, **the Brood** and **the Clockwork**.
+
+**Online (first version):** ONLINE in the main menu hosts or joins a game by room code, 1v1 or two friends against a computer, web and Android together. It needs a free relay once: see [tools/relay/README.md](tools/relay/README.md) and [docs/multiplayer_plan.md](docs/multiplayer_plan.md).
 
 See [GAMEPLAN.md](GAMEPLAN.md) for the design, the three planned factions and all the art prompts.
 

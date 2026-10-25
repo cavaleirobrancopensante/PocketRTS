@@ -190,6 +190,7 @@ func overcharged() -> bool:
 
 ## Bulwark: plant (or lift) the tower shield. Braced it can't move.
 func set_brace(on: bool) -> void:
+	if game.net_forward(self, "set_brace", [on]): return
 	if kind != "bulwark" or braced == on or aboard:
 		return
 	if on:
@@ -758,6 +759,7 @@ func _fire_held(e: Entity) -> bool:
 
 ## HOLD FIRE on or off (any unit with a firearm).
 func set_hold_fire(on: bool) -> void:
+	if game.net_forward(self, "set_hold_fire", [on]): return
 	if not has_gun():
 		return
 	hold_fire = on
@@ -1021,6 +1023,7 @@ func set_hold_gas(on: bool) -> void:
 ## Powder Wagon: SUPPLY on: up to two labourers bring it kegs from the Powder Mill while it
 ## has room for one. (Runners already carrying a keg still deliver it when it goes off.)
 func set_supply(on: bool) -> void:
+	if game.net_forward(self, "set_supply", [on]): return
 	if kind != "powder_wagon":
 		return
 	supplying = on
@@ -1230,6 +1233,7 @@ func _haul_cancel() -> void:
 ## (a balloon) RESTOCK: fly to the nearest Powder Wagon with powder or powder building and
 ## hover there while the pilot hauls kegs up, until the store is full.
 func cmd_restock() -> bool:
+	if game.net_forward(self, "cmd_restock", []): return false
 	if kind != "balloon":
 		return false
 	var best: Entity = null
@@ -1626,6 +1630,7 @@ func switch_time() -> float:
 
 
 func cmd_deploy() -> void:
+	if game.net_forward(self, "cmd_deploy", []): return
 	if aboard:
 		return      # riding in a balloon
 	if not deploys() or tesla_mode != "packed":
@@ -1853,6 +1858,7 @@ func _ai_keeps_windup() -> bool:
 
 
 func cmd_pack() -> void:
+	if game.net_forward(self, "cmd_pack", []): return
 	if not harnessed and Defs.HARNESSED.has(kind):
 		if team == game.human:
 			game.notify("No horse to limber up: HARNESS one first.")
@@ -1914,6 +1920,7 @@ func cmd_revive(body: Unit) -> void:
 
 
 func cmd_stop() -> void:
+	if game.net_forward(self, "cmd_stop", []): return
 	_reset_work()
 	order = "idle"
 	target = null
@@ -1934,6 +1941,7 @@ func cmd_hold() -> void:
 
 ## Go and work at an economy structure (Farm, Powder Mill, Feeding Pit, Boiler).
 func cmd_gather(site: Entity) -> void:
+	if game.net_forward(self, "cmd_gather", [site]): return
 	if aboard:
 		return      # riding in a balloon
 	if not can_gather() or not (site is Building):
@@ -2013,6 +2021,7 @@ const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d
 ## Give an order ({"o": move/amove/attack/build/repair/gather/wall, "p", "e", "pieces"}): a
 ## plain one now (it clears the queue), a queued one (Shift) after the orders before it.
 func give(o: Dictionary, queued := false) -> void:
+	if game.net_forward(self, "give", [o, queued]): return
 	if not queued:
 		queue.clear()
 		line_rest.clear()
@@ -2388,6 +2397,7 @@ func _sky_stats() -> void:
 
 ## Skywing: come down (on the nearest open ground) and fight on foot.
 func cmd_land() -> void:
+	if game.net_forward(self, "cmd_land", []): return
 	if kind != "skywing" or sky != "air":
 		return
 	_reset_work()
@@ -2404,6 +2414,7 @@ func cmd_land() -> void:
 
 
 func cmd_take_off() -> void:
+	if game.net_forward(self, "cmd_take_off", []): return
 	if kind != "skywing" or sky != "ground":
 		return
 	_reset_work()
@@ -2638,6 +2649,8 @@ func _courier(delta: float) -> Vector2:
 # ------------------------------------------------------------------ update
 
 func _physics_process(delta: float) -> void:
+	if game.puppet:
+		return NetPuppet.tick_unit(self, delta)      # (online guest: shown from snapshots, not simulated)
 	var _p0 := Time.get_ticks_usec()
 	_tick_unit(delta)
 	Prof.unit_us += Time.get_ticks_usec() - _p0
@@ -4095,6 +4108,7 @@ func can_sacrifice() -> bool:
 
 
 func cmd_sacrifice() -> void:
+	if game.net_forward(self, "cmd_sacrifice", []): return
 	if not can_sacrifice():
 		return
 	_reset_work()
@@ -4137,6 +4151,7 @@ var _corpse: Unit = null
 
 
 func cmd_harvest() -> void:
+	if game.net_forward(self, "cmd_harvest", []): return
 	if aboard:
 		return      # riding in a balloon
 	_reset_work()
@@ -6122,6 +6137,7 @@ func do_mount(h: Unit) -> void:
 ## DISMOUNT (Defs.HORSES dismount s; `quick`: a Dragoon's own, to fire). The horse stands
 ## beside him, of his side, unled. `aft`: what he does once on foot.
 func cmd_dismount(quick := false, aft := {}) -> void:
+	if game.net_forward(self, "cmd_dismount", [quick, aft]): return
 	if not is_mounted() or aboard:
 		return
 	_reset_work()
