@@ -4509,6 +4509,23 @@ func _update_swamp() -> void:
 						var dy: float = (y + 0.5 - c.y) * 1.15
 						if dx * dx + dy * dy <= r * r:
 							g[y * W + x] = 1
+			# the capital's swamp also covers every high-ground tile of its main plateau
+			var cap := capital(t)
+			if cap != null and not cap.dead and cap.swamp_r > 0.0:
+				var start := cell_of(cap.rect().get_center())
+				if in_map(start) and height[idx(start)] == 1:
+					var todo: Array = [start]
+					var seen := {}
+					seen[idx(start)] = true
+					while not todo.is_empty():
+						var q: Vector2i = todo.pop_back()
+						if water[q.y * W + q.x] != 1:
+							g[q.y * W + q.x] = 1
+						for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+							var n: Vector2i = q + d
+							if in_map(n) and height[idx(n)] == 1 and not seen.has(idx(n)):
+								seen[idx(n)] = true
+								todo.append(n)
 			# a rooted Spore Mother spreads swamp around her
 			for u in units:
 				if u.team != t or u.dead or u.kind != "spore_mother" or u.tesla_mode != "deployed":
