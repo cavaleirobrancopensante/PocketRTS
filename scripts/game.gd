@@ -7267,7 +7267,7 @@ func under_attack(e: Entity) -> void:
 		return
 	_alert_ms = now
 	var fac := faction_of(human)
-	# the same alarm for every faction and every kind of attack, then the faction's voice says what
+	# the same alarm for every faction and every kind of attack, then (once it has rung) the faction's voice says what
 	Sfx.play_any(["ui/alert_all"])
 	var line := "under_attack"
 	var gap := 20.0
@@ -7285,7 +7285,7 @@ func under_attack(e: Entity) -> void:
 		line = "workers_attack"
 		text = "Your workers are under attack!"
 	notify(text, true)
-	await get_tree().create_timer(1.3).timeout
+	await get_tree().create_timer(3.1).timeout
 	if is_inside_tree():
 		Sfx.announce(fac, line, gap)
 
