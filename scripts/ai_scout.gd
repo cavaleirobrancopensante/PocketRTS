@@ -97,6 +97,16 @@ var _watch_pt := Vector2.ZERO
 var _watch_until := 0.0
 var _danger := {}               # armed enemy unit -> [position, clock] (seen lately)
 var _ramp_pt := Vector2.INF     # the ramp up to the enemy's main nearest to us (pixels)
+## The sentry: one cheap worker that keeps watch at the foot of a walled ramp (see _sentry_tick).
+var sentry: Unit = null
+var sentry_posts := 0           # how many sentries were posted (a lost one is replaced, a few times)
+var sentry_flees := 0
+var sentry_losses := 0
+var denied_trips := 0           # trips that ended blocked / driven off / lost before the enemy's hall was seen
+var sentry_log: Array = []      # ([clock, text] of what it did; tests read it)
+var _sentry_next := 0.0
+var _sentry_pt := Vector2.INF
+var _sentry_fleeing := false
 
 
 func _init(a: AI) -> void:
@@ -112,7 +122,7 @@ func _log_has_text(text: String) -> bool:
 
 
 func is_scout(u: Unit) -> bool:
-	return unit != null and u == unit
+	return (unit != null and u == unit) or (sentry != null and u == sentry)
 
 
 func _say(msg: String) -> void:
@@ -129,7 +139,10 @@ func _faction() -> String:
 # ------------------------------------------------------------------ the think
 
 func tick() -> void:
-	if not enabled or game.over:
+	if game.over:
+		return
+	if not enabled:
+		_sentry_alone()
 		return
 	var foe := ai._foe()
 	if foe < 0:
@@ -163,6 +176,7 @@ func tick() -> void:
 			_send()
 	_redecide()
 	_defence()
+	_sentry_tick()
 
 
 ## The enemy is in our base right now (a scout would only be a waste).
@@ -211,7 +225,7 @@ func _pick() -> Unit:
 		return null
 	var pick: Unit = null
 	for u in labs:
-		if u.order == "build" or u.carrying > 0 or ai._escort.has(u):
+		if u.order == "build" or u.carrying > 0 or ai._escort.has(u) or u == sentry:
 			continue
 		if pick == null or (u.order == "idle" and pick.order != "idle"):
 			pick = u
@@ -314,6 +328,8 @@ func _finish(how: String) -> void:
 		unit.cmd_move(home)
 	unit = null
 	_observe()
+	if how in ["blocked", "driven off", "timeout"] and not _hall_seen:
+		denied_trips += 1        # (shut out: the sentry's reason to watch the ramp)
 	var r := _evaluate()
 	# A scout that was stopped before it saw anything decisive proves nothing (a wall, a
 	# few guards): uncertainty, not a rush. What it did see before it fell still counts.
@@ -856,3 +872,172 @@ func _defence() -> void:
 				and ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) and (ai._mine(k).size() > 0 or ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) + 30):
 			ai._construct(k)
 			return
+
+
+# ------------------------------------------------------------------ the sentry at a walled ramp
+
+const SENTRY_FROM := 100.0      # (game seconds) the earliest a sentry is posted
+const SENTRY_WALLS := 2         # wall pieces seen by the ramp that make it "walled"
+const SENTRY_MAX_POSTS := 4
+const SENTRY_RETRY := 60.0      # a lost sentry is replaced after this long
+const SENTRY_MIN_WORKERS := 7
+const SENTRY_MARGIN := 10.0     # (pixels) outside a gun's range: it sees a gun only inside its own sight, so no more
+
+
+## A scout that is not enabled (a rush plan) still posts a sentry once the plan has fallen back
+## to a normal game.
+func _sentry_alone() -> void:
+	if ai.difficulty < 1 or ai.peaceful or ai.strategy in ["rush", "air", "xrush"] or game.clock < SENTRY_FROM:
+		return
+	var foe := ai._foe()
+	if foe < 0:
+		return
+	_foe = foe
+	_observe()
+	_sentry_tick()
+
+
+## The enemy's ramp is walled: wall or gate pieces seen near it, or a scout shut out of a Crown base
+## (walls stand on the high ground and are rarely seen from below). Only the Crown builds walls.
+func foe_ramp_walled() -> bool:
+	if _foe < 0:
+		return false
+	if _ramp_pt == Vector2.INF:
+		_ramp_pt = _find_ramp(game.center_of_team(ai.team))
+	if _ramp_pt == Vector2.INF:
+		return false
+	var n := 0
+	for b in _seen_b.keys():
+		if is_instance_valid(b) and not b.dead and (b.kind in ["gate", "palisade", "wall", "stone_wall"] or b.d.get("wall", false)) \
+				and b.center().distance_to(_ramp_pt) < 12.0 * Defs.TILE:
+			n += 1
+	return n >= SENTRY_WALLS or (denied_trips >= 1 and _foe_faction() == "crown")
+
+
+## Once the foe has walled its ramp the scout is shut out and the computer goes blind. One worker
+## (a grub, a labourer) then stands at the foot of the ramp, just inside its own sight of it and
+## outside every gun it knows of, and keeps watching: the wall, the Musketeers behind it. It backs
+## away from any armed unit that reaches it and comes back when they are gone. Cheap: one worker,
+## one post at a time; a lost one is replaced up to SENTRY_MAX_POSTS times.
+func _sentry_tick() -> void:
+	if sentry != null and (not is_instance_valid(sentry) or sentry.dead):
+		sentry = null
+		_sentry_pt = Vector2.INF
+		_sentry_next = game.clock + SENTRY_RETRY
+		sentry_losses += 1        # (the next one stands further back)
+		_sentry_log("lost")
+	if sentry == null:
+		if game.clock < maxf(SENTRY_FROM, _sentry_next) or sentry_posts >= SENTRY_MAX_POSTS or state == "going" or _busy_with_foe():
+			return
+		if not foe_ramp_walled() or game.workers(ai.team).size() < SENTRY_MIN_WORKERS:
+			return
+		var u := _pick()
+		if u == null:
+			_sentry_next = game.clock + 10.0
+			return
+		sentry = u
+		sentry_posts += 1
+		_sentry_fleeing = false
+		_sentry_pt = _sentry_spot(sentry, [])
+		sentry.cmd_move(_sentry_pt)
+		_say("posts a %s at the foot of the walled ramp to keep watch" % String(Defs.UNITS[u.kind]["name"]))
+		_sentry_log("posted")
+		return
+	if sentry.order == "gather" or sentry.order == "build":
+		sentry = null            # (another part of the computer used it)
+		_sentry_next = game.clock + 10.0
+		return
+	if _busy_with_foe():
+		sentry = null            # (the enemy is at home: back to work)
+		_sentry_next = game.clock + 30.0
+		return
+	var thr := _sentry_threats()
+	if not thr.is_empty():
+		if not _sentry_fleeing:
+			_sentry_fleeing = true
+			sentry_flees += 1
+			_say("the sentry backs away from a %s" % String(Defs.UNITS[thr[0].kind]["name"]))
+			_sentry_log("fled")
+		_sentry_pt = _sentry_spot(sentry, thr)
+		sentry.cmd_move(_sentry_pt)
+		return
+	if _sentry_fleeing:
+		_sentry_fleeing = false
+		_sentry_pt = _sentry_spot(sentry, [])
+		sentry.cmd_move(_sentry_pt)
+		return
+	# (hold the post; an idle worker would be taken for work)
+	if sentry.position.distance_to(_sentry_pt) > 90.0:
+		if sentry.order == "idle":
+			sentry.cmd_move(_sentry_pt)
+	elif sentry.order != "hold" and (sentry.order == "idle" or sentry.position.distance_to(_sentry_pt) < 50.0):
+		sentry.cmd_hold()
+
+
+func _sentry_log(what: String) -> void:
+	sentry_log.append([game.clock, what])
+
+
+## Armed enemy units that can reach the sentry soon (weapon range plus a margin).
+func _sentry_threats() -> Array:
+	var out: Array = []
+	for e in game.units_near(sentry.position, 520.0):
+		if not (e is Unit) or e.dead or e.off_field or e.aboard != null or not game.hostile(e.team, ai.team):
+			continue
+		if not e.has_attack() or e.kind == "horse" or not e.can_hit(sentry) or not game.is_visible_to(ai.team, e.position):
+			continue
+		var rng := float(e.d["range"])
+		if e.position.distance_to(sentry.position) <= rng + e.radius + sentry.radius + (SENTRY_MARGIN if rng > 40.0 else MELEE_MARGIN):
+			out.append(e)
+			_learn(e)
+	return out
+
+
+## The watch post: on a ring at the sentry's sight round the foot of the ramp, outside every known
+## gun's reach, off the enemy's high ground, the nearest to home. If every spot is covered, the one
+## farthest from the guns.
+func _sentry_spot(u: Unit, thr: Array) -> Vector2:
+	var home := game.center_of_team(ai.team)
+	if _ramp_pt == Vector2.INF:
+		_ramp_pt = _find_ramp(home)
+	if _ramp_pt == Vector2.INF:
+		return u.position
+	var guns: Array = []
+	for e in _danger.keys():
+		if not is_instance_valid(e) or e.dead or game.clock - float(_danger[e][1]) > DANGER_FOR:
+			_danger.erase(e)
+			continue
+		var rng := float(e.d["range"])
+		guns.append([_danger[e][0], rng + e.radius + u.radius + (SENTRY_MARGIN if rng > 40.0 else MELEE_MARGIN)])
+	for e in thr:
+		var rng := float(e.d["range"])
+		guns.append([e.position, rng + e.radius + u.radius + (SENTRY_MARGIN if rng > 40.0 else MELEE_MARGIN)])
+	var st := Vector2(game.starts[_foe])
+	var h0 := int(game.height[game.idx(Vector2i(st + Vector2(2.5, 2.0)))])
+	var ring: float = maxf(2.0, float(u.d["sight"]) - 2.0) * Defs.TILE + 45.0 * sentry_losses
+	var best := Vector2.INF
+	var bs := INF
+	var safest := Vector2.INF
+	var safe_d := -INF
+	for k in 16:
+		var c := _free_near(Vector2i((_ramp_pt + Vector2.from_angle(TAU * k / 16.0) * ring) / Defs.TILE))
+		if c.x < 0:
+			continue
+		var p := (Vector2(c) + Vector2(0.5, 0.5)) * Defs.TILE
+		if int(game.height[game.idx(c)]) == h0:
+			continue
+		var slack := INF
+		for g in guns:
+			slack = minf(slack, p.distance_to(g[0]) - float(g[1]))
+		if slack > safe_d:
+			safe_d = slack
+			safest = p
+		if slack <= 8.0:
+			continue
+		var score := p.distance_to(home)
+		if score < bs:
+			bs = score
+			best = p
+	if best == Vector2.INF:
+		best = safest if safest != Vector2.INF else home
+	return best
