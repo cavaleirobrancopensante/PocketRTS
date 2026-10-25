@@ -114,7 +114,7 @@ func _run() -> void:
 	var hive: Building = g.halls_of(0)[0]
 	var home: Vector2 = hive.center() + Vector2(0, hive.rect().size.y * 0.5 + 40.0)
 	var spot: Vector2i = g.find_spot(0, "feeding_pit", hive, 4, 10, "near")
-	check(spot.x >= 0, "a spot for a Spore Vent on the swamp")
+	check(spot.x >= 0, "a spot for a Feeding Pit on the swamp")
 	var cost := int(Defs.BUILDINGS["feeding_pit"]["cost"])
 
 	# 1a: the grub is ordered elsewhere

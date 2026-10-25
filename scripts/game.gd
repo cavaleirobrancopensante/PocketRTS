@@ -2329,16 +2329,20 @@ func capital_dist(t: int, p: Vector2) -> float:
 
 
 ## The Brood's resource reach: swamp joined to the capital's, as far from it as the swamp goes
-## (capped at Defs.BROOD_RESOURCE_MAX_D). Grows with Clutch Mounds, Spore Vents and any other swamp.
+## (capped at Defs.BROOD_RESOURCE_MAX_D). Grows with Clutch Mounds and any other swamp.
 var swamp_conn: Array = []        # per team: PackedByteArray, 1 = swamp joined to the capital's
 var swamp_reach: Array = []       # per team: farthest such cell from the capital, in tiles
+var swamp_hall_conn: Array = []   # per team: PackedByteArray, 1 = swamp joined to the swamp of ANY finished Burrow (Clutch Mound rule)
 
 
 func _update_conn() -> void:
 	while swamp_conn.size() < n_players():
 		swamp_conn.append(PackedByteArray())
 		swamp_reach.append(0.0)
+	while swamp_hall_conn.size() < n_players():
+		swamp_hall_conn.append(PackedByteArray())
 	for t in n_players():
+		swamp_hall_conn[t] = _flood_from_halls(t)
 		var conn := PackedByteArray()
 		conn.resize(W * H)
 		swamp_reach[t] = 0.0
@@ -2370,6 +2374,56 @@ func _update_conn() -> void:
 		swamp_conn[t] = conn
 
 
+## Swamp cells joined (4-connected) to the swamp under any finished Burrow of side t.
+func _flood_from_halls(t: int) -> PackedByteArray:
+	var conn := PackedByteArray()
+	conn.resize(W * H)
+	if faction_of(t) != "brood":
+		return conn
+	var g: PackedByteArray = swamp[t]
+	var stack: Array[int] = []
+	for b in buildings:
+		if b.team != t or b.dead or not b.built or b.kind != faction_hall(t):
+			continue
+		for y in b.size.y:
+			for x in b.size.x:
+				var c: Vector2i = b.cell + Vector2i(x, y)
+				if in_map(c) and g[idx(c)] == 1 and conn[idx(c)] == 0:
+					conn[idx(c)] = 1
+					stack.append(idx(c))
+	while not stack.is_empty():
+		var i: int = stack.pop_back()
+		var x := i % W
+		var y := i / W
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nx: int = x + d.x
+			var ny: int = y + d.y
+			if nx < 0 or ny < 0 or nx >= W or ny >= H:
+				continue
+			var j := ny * W + nx
+			if g[j] == 1 and conn[j] == 0:
+				conn[j] = 1
+				stack.append(j)
+	return conn
+
+
+## Why a Clutch Mound can't stand at this spot, or "": it must be planted on swamp joined to a
+## finished Burrow's swamp (no distance cap: the chain of swamp is the limit, and it is breakable).
+func mound_problem(t: int, c: Vector2i) -> String:
+	if faction_of(t) != "brood":
+		return ""
+	var size: Vector2i = Defs.BUILDINGS["clutch_mound"]["size"]
+	if swamp_hall_conn.size() <= t or (swamp_hall_conn[t] as PackedByteArray).size() != W * H:
+		_update_conn()
+	var join: PackedByteArray = swamp_hall_conn[t]
+	for y in size.y:
+		for x in size.x:
+			var cc := c + Vector2i(x, y)
+			if in_map(cc) and join[idx(cc)] == 0:
+				return "Must stand on swamp joined to a Burrow's swamp."
+	return ""
+
+
 ## Why a Brood resource building (Feeding Pit, Brood Pen) can't stand at this spot, or "".
 func brood_reach_problem(t: int, k: String, c: Vector2i) -> String:
 	if faction_of(t) != "brood" or not Defs.is_econ(k):
@@ -2383,7 +2437,7 @@ func brood_reach_problem(t: int, k: String, c: Vector2i) -> String:
 	var mid := (Vector2(c) + Vector2(size) * 0.5)
 	var d := cap.center().distance_to(mid * T) / T
 	if d > Defs.BROOD_RESOURCE_MAX_D or d > float(swamp_reach[t]) + 0.01:
-		return "Too far from your capital (reach %d tiles): spread your swamp (Spore Vent, Clutch Mound) to reach farther." % int(swamp_reach[t])
+		return "Too far from your capital (reach %d tiles): spread your swamp (plant a Clutch Mound) to reach farther." % int(swamp_reach[t])
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
@@ -4145,10 +4199,10 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			# the computer keeps its ramps clear (for its own wall and its army)
 			if ai and not Defs.BUILDINGS[k].get("line", false) and _near_ramp(cc):
 				return "Keep the ramp clear."
-	if k == "spore_vent" and seed_src != null and is_instance_valid(seed_src):
-		var sp := seed_reach_problem(t, seed_src, c)
-		if sp != "":
-			return sp
+	if k == "clutch_mound":
+		var mp := mound_problem(t, c)
+		if mp != "":
+			return mp
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		var spacing: int = Defs.BROOD_HALL_SPACING if faction_of(t) == "brood" else Defs.HALL_SPACING
@@ -4202,8 +4256,6 @@ func _near_ramp_slow(c: Vector2i) -> bool:
 
 ## queued (Shift): the builders go to it after the orders they already have.
 func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := false) -> Building:
-	if k == "spore_vent":
-		return null      # (grown by the capital or another vent: seed_vent)
 	if placement_problem(t, k, c) != "" or players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		return null
 	if not requirement_met(t, k):
@@ -4235,139 +4287,6 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		if u is Unit and u.is_worker() and not u.dead:
 			u.give({"o": "build", "e": b}, queued)
 	return b
-
-
-# ------------------------------------------------------------------ Brood: SEED VENT
-## A Spore Vent is not built by a grub: the capital and every finished Spore Vent GROW one (SEED VENT).
-## The new vent stands on swamp joined to the source's, its centre within Defs.SEED_REACH tiles of
-## the source's centre, on ground that passes placement_problem like any Brood building. Same price
-## and time as before, no grub is used up, and a source grows one vent at a time.
-## seed_src: the source whose reach placement_problem(.., "spore_vent", ..) applies (set while the player
-## picks the spot, or while the computer looks for one; null: only the usual placement rules).
-var seed_src = null
-var _seed_join := PackedByteArray()
-var _seed_join_src = null
-var _seed_join_ms := -9999
-
-
-## Can this building of side t seed a Spore Vent (finished capital or finished Spore Vent)?
-func can_seed(t: int, b) -> bool:
-	if b == null or not is_instance_valid(b) or b.team != t or b.dead or not b.built or faction_of(t) != "brood":
-		return false
-	return b.kind == "spore_vent" or (b.kind == "hive" and capital(t) == b)
-
-
-## The vent this source is growing right now (still unfinished), else null.
-func seed_busy(b) -> bool:
-	var s = b.seeding
-	return s != null and is_instance_valid(s) and not s.dead and not s.built
-
-
-## Why `src` can't seed right now ("" when it can): busy, or the price.
-func seed_source_problem(t: int, src) -> String:
-	if not can_seed(t, src):
-		return "Only your capital and finished Spore Vents can seed a Spore Vent."
-	if seed_busy(src):
-		return "This source is already growing a Spore Vent."
-	if players[t]["gold"] < int(Defs.BUILDINGS["spore_vent"]["cost"]):
-		return "Not enough biomass."
-	return ""
-
-
-## The swamp cells joined (4-connected) to the swamp under `src`, near it (cached for half a second).
-func _seed_joined(t: int, src) -> PackedByteArray:
-	var now := Time.get_ticks_msec()
-	if _seed_join_src == src and _seed_join.size() == W * H and now - _seed_join_ms < 500:
-		return _seed_join
-	_seed_join_src = src
-	_seed_join_ms = now
-	_seed_join = PackedByteArray()
-	_seed_join.resize(W * H)
-	var g: PackedByteArray = swamp[t]
-	var lim := int(Defs.SEED_REACH) + 8
-	var c0 := cell_of(src.center())
-	var stack: Array[int] = []
-	var cells: Array[Vector2i] = [c0]
-	for y in src.size.y:
-		for x in src.size.x:
-			cells.append(src.cell + Vector2i(x, y))
-	for c in cells:
-		if in_map(c) and g[idx(c)] == 1 and _seed_join[idx(c)] == 0:
-			_seed_join[idx(c)] = 1
-			stack.append(idx(c))
-	while not stack.is_empty():
-		var i: int = stack.pop_back()
-		var x := i % W
-		var y := i / W
-		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var nx: int = x + d.x
-			var ny: int = y + d.y
-			if nx < 0 or ny < 0 or nx >= W or ny >= H or absi(nx - c0.x) > lim or absi(ny - c0.y) > lim:
-				continue
-			var j := ny * W + nx
-			if g[j] == 1 and _seed_join[j] == 0:
-				_seed_join[j] = 1
-				stack.append(j)
-	return _seed_join
-
-
-## The reach part of a seeded vent's placement: near enough to the source, on swamp joined to the source's.
-func seed_reach_problem(t: int, src, c: Vector2i) -> String:
-	if not can_seed(t, src):
-		return "Only your capital and finished Spore Vents can seed a Spore Vent."
-	var size: Vector2i = Defs.BUILDINGS["spore_vent"]["size"]
-	var mid := Vector2(c) + Vector2(size) * 0.5
-	if src.center().distance_to(mid * T) / T > Defs.SEED_REACH + 0.01:
-		return "Too far: a Spore Vent reaches %d tiles from its source." % int(Defs.SEED_REACH)
-	var join := _seed_joined(t, src)
-	for y in size.y:
-		for x in size.x:
-			var cc := c + Vector2i(x, y)
-			if in_map(cc) and join[idx(cc)] == 0:
-				return "Must stand on swamp joined to the source's."
-	return ""
-
-
-## Why a Spore Vent can't be seeded by `src` at `c` ("" when it can).
-func seed_problem(t: int, src, c: Vector2i, ai := false) -> String:
-	var why := seed_source_problem(t, src)
-	if why != "" and why != "Not enough biomass.":
-		return why
-	var prev = seed_src
-	seed_src = src
-	why = placement_problem(t, "spore_vent", c, ai)
-	seed_src = prev
-	if why != "":
-		return why
-	return seed_source_problem(t, src)
-
-
-## SEED VENT: `src` grows a Spore Vent at `c`. The price is paid now; the vent builds itself in its
-## 16 s (no grub). Null when it can't (see seed_problem).
-func seed_vent(t: int, src, c: Vector2i, ai := false) -> Building:
-	if seed_problem(t, src, c, ai) != "":
-		return null
-	var cost := int(Defs.BUILDINGS["spore_vent"]["cost"])
-	players[t]["gold"] -= cost
-	stats[t]["spent"] += cost
-	stats[t]["built"] += 1
-	var b := _add_building("spore_vent", t, c, false, false)
-	b.seeded = true
-	b._update_sprite()
-	src.seeding = b
-	last_placed[t] = {"at": b.center(), "t": clock, "kind": "spore_vent"}
-	if mlog:
-		mlog.add("%s seeds a Spore Vent" % mlog.who(t))
-	return b
-
-
-## The computer's search for a vent spot around `src` (seed reach applies).
-func find_seed_spot(t: int, src, min_d: int, max_d: int, prefer := "far_safe") -> Vector2i:
-	var prev = seed_src
-	seed_src = src
-	var spot := find_spot(t, "spore_vent", src, min_d, mini(max_d, int(Defs.SEED_REACH)), prefer)
-	seed_src = prev
-	return spot
 
 
 ## Clockwork: the Clocktower a Winder at `from` fetches the crate for `site` from: the one
@@ -7138,10 +7057,7 @@ func abandon(b: Building) -> void:
 			if u.team == b.team and not u.dead and u.order == "build" and u.order_target == b:
 				u.site_gone()
 		return
-	# (a seeded Spore Vent costs no grub: cancelling it pays everything back)
-	players[b.team]["gold"] += int(b.d["cost"]) if b.kind == "spore_vent" else int(int(b.d["cost"]) * 0.75)
-	if b.kind == "spore_vent":
-		stats[b.team]["spent"] -= int(b.d["cost"])
+	players[b.team]["gold"] += int(int(b.d["cost"]) * 0.75)
 	b.take_damage(9999999.0, null)
 	if b.crate_obj and is_instance_valid(b.crate_obj):
 		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)

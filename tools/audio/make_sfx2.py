@@ -1424,13 +1424,6 @@ def sel_brood_pen(rng, v):      # a low chitter and a squelch
     return mix(fit(chitter(rng, 0.3, 25, 1800, 1), 0.35), squelch(rng, 0.35, 0.9) * 0.6)
 
 
-@sel("spore_vent")
-def sel_spore_vent(rng, v):     # a wet puff of spores
-    t = T(0.35)
-    puff = bp(noise(rng, 0.35), 700, 4000) * np.exp(-t * 9) * np.minimum(1, t / 0.02)
-    return puff + fit(grains(rng, 0.3, 60, (0.01, 0.03), 300, 800, src="bubble"), 0.35) * 0.5
-
-
 @sel("roost")
 def sel_roost(rng, v):          # a high shriek-chitter overhead
     return mix(fit(chitter(rng, 0.25, 35, 5200, 2), 0.3), screech(rng, 0.2, 3800, 4400, 0.4) * 0.4)

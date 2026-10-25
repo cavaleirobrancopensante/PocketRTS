@@ -939,7 +939,7 @@ func _econ_build() -> void:
 		_no_room[kind] = game.clock      # nowhere to put it right now; look again later
 		if kind == "feeding_pit":
 			_spread_swamp()
-	if _brood() and _mine("spore_vent").size() < _halls().size() and game.clock > 120.0 and not _warren_due() and not _army_behind():
+	if _brood() and _mine("clutch_mound").size() < _halls().size() + 1 and game.clock > 120.0 and not _warren_due() and not _army_behind():
 		_spread_swamp()
 
 
@@ -1007,31 +1007,35 @@ func _econ_spot(kind: String) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-## Brood: a Spore Vent at the edge of the swamp pushes it out for richer pits.
+## Brood: a Clutch Mound planted at the edge of the swamp pushes it out for richer pits (it is also
+## the supply building: it only goes up while supply is below the cap).
 func _spread_swamp() -> void:
-	if _busy_building("spore_vent") or _mine("spore_vent").size() >= 2 * _halls().size():
+	var sup: String = _f()["supply"]
+	if _busy_building(sup) or _mine(sup).size() >= 2 * _halls().size() + 1:
 		return
-	if _no_room.has("spore_vent"):
+	if int(game.players[team]["cap"]) >= game.max_supply(team):
 		return
-	_no_room["spore_vent"] = game.clock
-	if _gold() < int(Defs.BUILDINGS["spore_vent"]["cost"]) + 40:
+	if _no_room.has(sup):
 		return
-	# SEED VENT (no grub): from the capital or a finished vent, the one farthest out first (a chain)
+	_no_room[sup] = game.clock
+	if _gold() < int(Defs.BUILDINGS[sup]["cost"]) + 40:
+		return
+	var spot := _mound_spot()
+	if spot.x >= 0:
+		_construct(sup, spot)
+
+
+## Brood: where a Clutch Mound goes to spread the swamp: out from the capital as far as the pits can use
+## (the joined-swamp rule applies), on the safe side. (-1, -1): no room.
+func _mound_spot() -> Vector2i:
 	var cap := game.capital(team)
-	if cap == null:
-		return
-	var srcs: Array = [cap]
-	for v in _mine("spore_vent"):
-		if v.built:
-			srcs.append(v)
-	srcs.sort_custom(func(a: Building, b: Building) -> bool: return a.center().distance_to(cap.center()) > b.center().distance_to(cap.center()))
-	for s in srcs:
-		if game.seed_source_problem(team, s) != "":
-			continue
-		var spot := game.find_seed_spot(team, s, 6, 22, "far_safe")
-		if spot.x >= 0:
-			game.seed_vent(team, s, spot, true)
-			return
+	if cap == null or not cap.built:
+		return Vector2i(-1, -1)
+	var reach := int(game.swamp_reach[team])
+	var spot := game.find_spot(team, "clutch_mound", cap, maxi(8, reach - 4), reach, "far_safe")
+	if spot.x < 0:
+		spot = game.find_spot(team, "clutch_mound", cap, 8, reach, "far_safe")
+	return spot
 
 
 func _energy_split() -> void:
@@ -1064,7 +1068,8 @@ func _supply() -> void:
 			_construct(sup)
 		return
 	if cap - used <= margin and building == 0:
-		_construct(sup)
+		# Brood: the first mound tucks in at home; later ones (or any, when the pits have no room) go out to the swamp's edge to spread it
+		_construct(sup, _mound_spot() if _brood() and (_no_room.has("feeding_pit") or not _mine(sup).is_empty()) else Vector2i(-1, -1))
 
 
 func _build_up() -> void:

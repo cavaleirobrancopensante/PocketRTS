@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://8ds5mp14tlsj"
-path="res://.godot/imported/spore_vent_destroyed.png-8e2b66ddf9e9adf58bece36263fc96eb.ctex"
+uid="uid://d1flavdb7trvj"
+path="res://.godot/imported/clutch_mound_vent_chatgpt.png-a5ffcd15774c90c4eb0c59647b7406ac.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/buildings/spore_vent_destroyed.png"
-dest_files=["res://.godot/imported/spore_vent_destroyed.png-8e2b66ddf9e9adf58bece36263fc96eb.ctex"]
+source_file="res://art/redraws/clutch_mound_vent_chatgpt.png"
+dest_files=["res://.godot/imported/clutch_mound_vent_chatgpt.png-a5ffcd15774c90c4eb0c59647b7406ac.ctex"]
 
 [params]
 

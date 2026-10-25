@@ -148,9 +148,6 @@ const PIT_CREW_STEP := 4.0
 const PIT_CREW_MAX := 12
 ## Brood resource buildings (Feeding Pit, Brood Pen) need swamp joined to the capital's, no farther than this.
 const BROOD_RESOURCE_MAX_D := 40.0
-## SEED VENT: the capital and every finished Spore Vent grow a Spore Vent (no grub) on swamp joined to their own,
-## its centre no farther than this many tiles from the source's centre. One at a time per source; same price and time.
-const SEED_REACH := 10.0
 const GROUND_RESERVE := 10500     # (a fully worked Hive draws ~1,000-1,150 a minute: ~10 minutes)
 const ESSENCE_PER_SUPPLY := 3     # a body falling near a Brood Pen
 const PEN_RANGE := 12             # tiles
@@ -353,7 +350,7 @@ const UNITS := {
 		"name": "Grub", "hp": 46, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 6, "range": 18, "damage": 6, "cooldown": 1.0, "radius": 8, "from": "hive",
 		"faction": "brood", "worker": true,
-		"about": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more). Turns into buildings (all but Spore Vents, which the capital and other vents seed).",
+		"about": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more). Turns into buildings.",
 	},
 	"raptor": {
 		"tags": ["light"],
@@ -519,11 +516,11 @@ const BUILDINGS := {
 	"hive": {
 		"name": "Burrow", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
 		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield nothing). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; the capital (and every Spore Vent) can SEED VENT, growing a Spore Vent on joined swamp up to 10 tiles away to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
+		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield nothing). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; plant Clutch Mounds forward to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
-		"supply": 12, "sight": 5, "trains": [], "swamp": 7, "faction": "brood", "about": "12 more supply. Spreads swamp. Each one makes your Burrows lay eggs 10% faster (up to 3).",
+		"supply": 12, "sight": 5, "trains": [], "swamp": 10, "faction": "brood", "about": "12 more supply. Its swamp spreads far around it (10 tiles), so plant it forward and guard it: it must stand on swamp joined to a Burrow's. If it falls, the swamp only it held shrinks back. Each one makes your Burrows lay eggs 10% faster (up to 3).",
 	},
 	"warren": {
 		"name": "Spawning Den", "hp": 800, "armor": 1, "cost": 150, "time": 35.0, "size": Vector2i(4, 3),
@@ -584,11 +581,6 @@ const BUILDINGS := {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 6, "trains": [], "swamp": 4, "faction": "brood",
 		"about": "Turns every body that falls nearby (friend or foe) into essence. SACRIFICE: Brood creatures brought here are offered up for essence (12% of their biomass cost: 3 a Raptor).",
-	},
-	"spore_vent": {
-		"name": "Spore Vent", "hp": 300, "armor": 0, "cost": 90, "time": 16.0, "size": Vector2i(2, 2),
-		"supply": 0, "sight": 7, "trains": [], "swamp": 12, "faction": "brood",
-		"about": "Spreads swamp far around it. Never built by a grub: the capital and every finished Spore Vent can SEED one on joined swamp up to 10 tiles away (90 biomass, 16 s), one at a time, so vents chain the swamp far across the map.",
 	},
 	"roost": {
 		"name": "Roost", "hp": 700, "armor": 1, "cost": 175, "time": 35.0, "size": Vector2i(3, 3),
@@ -1023,7 +1015,7 @@ const TIPS := {
 	"balloon": "Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.",
 	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
 	# Brood units
-	"grub": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more) and turns into buildings (not Spore Vents: those are seeded).",
+	"grub": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more) and turns into buildings.",
 	"raptor": "Fast, flimsy claws. Three hatch from each egg.",
 	"spitter": "Spits acid that burns and strips armour. Two hatch from each egg.",
 	"brute": "Huge horned tank: charges in and knocks enemies back.",
@@ -1044,13 +1036,12 @@ const TIPS := {
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
 	# Brood buildings
-	"hive": "Lays eggs (up to 5): every Brood unit hatches here. The first Burrow is the capital: the only one grubs unload at. Allows 1 Brood Pen each. The capital can SEED VENT: grow a Spore Vent on joined swamp up to 10 tiles away. Upgrades to a Warren (10 eggs), then a Broodmound (15).",
-	"clutch_mound": "12 more supply. Spreads swamp; each makes Burrows lay eggs 10% faster (up to 3).",
+	"hive": "Lays eggs (up to 5): every Brood unit hatches here. The first Burrow is the capital: the only one grubs unload at. Allows 1 Brood Pen each. Upgrades to a Warren (10 eggs), then a Broodmound (15).",
+	"clutch_mound": "12 more supply. Spreads swamp far around it (10 tiles; plant it forward, on swamp joined to a Burrow's); if it falls, the swamp only it held shrinks back. Each makes Burrows lay eggs 10% faster (up to 3).",
 	"warren": "Lets your Burrows hatch Raptors and Spitters.",
 	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",
 	"feeding_pit": "Up to 5 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles).",
 	"brood_pen": "Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.",
-	"spore_vent": "Spreads swamp far around it. SEED VENT grows another Spore Vent on joined swamp up to 10 tiles from it (90 biomass).",
 	"roost": "Lets your Burrows hatch Skywings and Bloaters.",
 	# Crown research
 	"armour": "Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.",

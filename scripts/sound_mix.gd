@@ -142,7 +142,6 @@ const GAIN := {
 	"res://assets/audio/select/ore_crusher.wav": -1.8,
 	"res://assets/audio/select/powder_mill.wav": 2.0,
 	"res://assets/audio/select/roost.wav": 2.9,
-	"res://assets/audio/select/spore_vent.wav": -0.8,
 	"res://assets/audio/select/spring_tower.wav": 2.6,
 	"res://assets/audio/select/town_hall.wav": 2.3,
 	"res://assets/audio/select/town_hall_1.wav": -2.5,
