@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.4": ["A sala do ONLINE agora é parecida com a tela de ESCARAMUÇA: as mesmas linhas de jogador (JOGADOR, FACÇÃO, COR, PLANO, EQUIPE), os botões 1v1 e COOP no alto e o mesmo painel de mapa com seletor, prévia e sorteios. Cada um escolhe sua facção e cor (uma cor que outro jogador já tem é recusada); o anfitrião também define o nível e o plano do computador, as equipes e o mapa. O convidado vê a mesma tela com os controles do anfitrião esmaecidos."],
 	"0.14.3": ["ONLINE: um botão COPIAR ao lado do código da sala, para o anfitrião colar para um amigo."],
 	"0.14.2": ["O ONLINE já conhece o endereço do relay sozinho: ninguém precisa colar nada, basta apertar ONLINE e criar ou entrar com o código da sala."],
 	"0.14.1": ["O jogo fala três idiomas: inglês, português do Brasil e espanhol. Clique numa bandeira (EUA, Brasil, Espanha) no canto superior direito do menu principal, ou escolha IDIOMA nas Configurações; muda na hora e fica lembrado. Menus, a tela da partida, nomes e descrições de unidades e prédios, dicas, as páginas de ajuda e estas notas da versão estão traduzidos; as vozes faladas das unidades, do locutor e das provocações também têm gravações em português e espanhol (os sons das criaturas e a música são os mesmos em todos os idiomas).", "Nomes de mapas, títulos de músicas e o registro da partida continuam em inglês. Como acrescentar um idioma: docs/localisation.md."],

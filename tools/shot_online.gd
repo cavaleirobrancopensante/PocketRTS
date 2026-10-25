@@ -18,6 +18,11 @@ func _run() -> void:
 	var a := OS.get_cmdline_user_args()
 	var role: String = a[1] if a.size() > 1 else "menu"
 	var wait: float = float(a[2]) if a.size() > 2 else 3.0
+	var code: String = a[3] if a.size() > 3 else "KQXZ"
+	var lang: String = a[4] if a.size() > 4 else "en"
+	var mode: String = a[5] if a.size() > 5 else "1v1"
+	if lang != "en":
+		Loc.set_lang(lang)
 	await create_timer(1.0).timeout
 	if role != "menu":
 		main.show_online()
@@ -30,9 +35,10 @@ func _run() -> void:
 		l.changed.connect(mm._on_changed)
 		l.failed.connect(mm._on_failed)
 		if role == "host":
-			l.host(Settings.relay_url, "KQXZ")
+			l.host(Settings.relay_url, code)
+			l.set_mode(mode)
 		else:
-			l.join(Settings.relay_url, "KQXZ")
+			l.join(Settings.relay_url, code)
 		mm._draw()
 	await create_timer(wait).timeout
 	root.get_viewport().get_texture().get_image().save_png(a[0])

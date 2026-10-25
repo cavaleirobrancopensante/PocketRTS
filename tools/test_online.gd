@@ -31,6 +31,10 @@ var watch := 50.0
 var stay := 0.0
 var shot_path := ""
 var left_t := -1.0
+var cstep := 0                 # guest: the colour picks in the room (0 wait, 1 duplicate sent, 2 own colour sent, 3 done)
+var cstep_t := 0.0
+const HOST_COL := 0
+const GUEST_COL := 4
 
 
 func _initialize() -> void:
@@ -109,6 +113,10 @@ func _begin() -> void:
 			lobby.set_mode("coop")
 		lobby.map = map
 		lobby.slots[0]["faction"] = fac_host
+		check("host_colour_pick_accepted", lobby.set_colour(0, HOST_COL))
+		check("host_duplicate_colour_refused", not lobby.set_colour(1, HOST_COL) and int(lobby.slots[1]["colour"]) != HOST_COL)
+		if coop:
+			lobby.set_strategy(2, "rush")
 		lobby.slots[1]["faction"] = fac_guest
 		if coop:
 			lobby.slots[2]["faction"] = "brood"
@@ -123,11 +131,16 @@ func _begin() -> void:
 
 func _host_tick() -> void:
 	if g == null:
-		if lobby.all_seated() and step_t > 1.0:
+		if lobby.all_seated() and step_t > 1.0 and (int(lobby.slots[1]["colour"]) == GUEST_COL or step_t > 25.0):
+			check("host_refused_guest_duplicate_colour", lobby.denied >= 2, "denied=%d" % lobby.denied)
+			check("host_has_guest_colour", int(lobby.slots[1]["colour"]) == GUEST_COL)
 			print("HOST: guest seated, starting")
 			main.start(lobby.make_cfg())
 			g = main.game
 			g.net.trace = true
+			check("host_game_colours", int(g.colours[0]) == HOST_COL and int(g.colours[1]) == GUEST_COL, str(g.colours))
+			if coop:
+				check("host_computer_plan_in_config", String(main.last_cfg["slots"][2].get("strategy", "")) == "rush")
 			if autoplay:
 				for tm in [0, 1]:
 					var ai := AI.new()
@@ -182,9 +195,37 @@ func _host_report() -> void:
 
 # ------------------------------------------------------------------ guest
 
+func _guest_colour_picks() -> void:
+	cstep_t += 1.0 / 60.0
+	var my := lobby.my_slot
+	match cstep:
+		0:
+			if lobby.slots.size() >= 2 and bool(lobby.slots[my].get("here", false)):
+				lobby.choose_colour(HOST_COL)        # the host wears it: must be refused
+				cstep = 1
+				cstep_t = 0.0
+		1:
+			if cstep_t > 1.5:
+				var back_ok: bool = int(lobby.slots[my]["colour"]) != HOST_COL
+				check("guest_duplicate_colour_refused", back_ok and lobby.status.contains("taken"), "colour=%s status=%s" % [str(lobby.slots[my]["colour"]), lobby.status])
+				lobby.choose_colour(GUEST_COL)
+				cstep = 2
+				cstep_t = 0.0
+		2:
+			if int(lobby.slots[my]["colour"]) == GUEST_COL:
+				check("guest_colour_pick_confirmed", true, "after %.1fs" % cstep_t)
+				cstep = 3
+			elif cstep_t > 5.0:
+				check("guest_colour_pick_confirmed", false)
+				cstep = 3
+
+
 func _guest_tick() -> void:
 	if g == null:
+		if main.game == null and cstep < 3:
+			_guest_colour_picks()
 		if main.game != null:
+			check("guest_game_colours", int(g_colour(0)) == HOST_COL and int(g_colour(lobby.my_slot)) == GUEST_COL, str(main.game.colours))
 			g = main.game
 			print("GUEST game up. puppet=%s human=%d terrain hash %d" % [g.puppet, g.human, _terrain_hash()])
 			step = 1
@@ -268,6 +309,10 @@ func _guest_tick() -> void:
 	if step == 6 and t - done_t > 1.0:
 		lobby.dispose()
 		quit(0)
+
+
+func g_colour(i: int) -> int:
+	return int(main.game.colours[i])
 
 
 func _start_train(s: NetSession) -> void:

@@ -151,3 +151,51 @@ es COPIAR
 > COPIED
 pt COPIADO
 es COPIADO
+
+> ROOM
+pt SALA
+es SALA
+
+> CO-OP
+pt COOP
+es COOP
+
+> CUSTOM TEAMS
+pt EQUIPES PERSONALIZADAS
+es EQUIPOS PERSONALIZADOS
+
+> The host starts the game.
+pt O anfitrião inicia a partida.
+es El anfitrión inicia la partida.
+
+> That colour is already taken.
+pt Essa cor já está em uso.
+es Ese color ya está en uso.
+
+> Same TEAM number = allies.  The host sets the teams, the computer's level and plan, and the map; everyone picks their own faction and colour.
+pt Mesmo número de EQUIPE = aliados.  O anfitrião define as equipes, o nível e o plano do computador e o mapa; cada um escolhe sua facção e cor.
+es Mismo número de EQUIPO = aliados.  El anfitrión fija los equipos, el nivel y el plan del ordenador y el mapa; cada uno elige su facción y color.
+
+> Same TEAM number = allies.  You pick your own faction and colour; the host sets the teams and the map.
+pt Mesmo número de EQUIPE = aliados.  Você escolhe sua facção e cor; o anfitrião define as equipes e o mapa.
+es Mismo número de EQUIPO = aliados.  Tú eliges tu facción y color; el anfitrión fija los equipos y el mapa.
+
+> Room %s is open. Tell your friend the code.
+pt A sala %s está aberta. Diga o código ao seu amigo.
+es La sala %s está abierta. Dile el código a tu amigo.
+
+> A friend joined.
+pt Um amigo entrou.
+es Un amigo se ha unido.
+
+> In the room. The host starts the game.
+pt Na sala. O anfitrião inicia o jogo.
+es En la sala. El anfitrión inicia el juego.
+
+> Joined room %s. Waiting for the host...
+pt Você entrou na sala %s. Esperando o anfitrião...
+es Te has unido a la sala %s. Esperando al anfitrión...
+
+> Your friend left. Waiting for someone to join.
+pt Seu amigo saiu. Esperando alguém entrar.
+es Tu amigo se ha ido. Esperando a que alguien se una.
