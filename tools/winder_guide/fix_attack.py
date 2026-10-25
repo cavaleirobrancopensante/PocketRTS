@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Composition fix of the ChatGPT Winder attack sheet: copy the good two-hole bow into the
-claws that lack it and erase the back key where the key is in the hand. Usage: fix_attack.py in.png out.png"""
+"""Composition fix of the ChatGPT Winder attack sheet: the chunky two-hole key bow of the back key
+(frames 1 and 4) is copied into every place the key is in the hand (frames 2 and 3), turned square
+to the shank; the back key is erased where it is in the hand. Usage: fix_attack.py in.png out.png"""
 import sys
 from PIL import Image
 import numpy as np
@@ -13,20 +14,25 @@ def cut(im, box):
 
 def main(src, out):
     im = Image.open(src).convert('RGB')
-    bow = cut(im, (855, 100, 898, 129))             # the good two-hole bow (south row, frame 3)
+    bow = cut(im, (1164, 448, 1196, 505))           # the chunky bow of the back key (east row, frame 4)
     sheet = im.copy()
     def erase(box):
         sheet.paste(Image.new('RGB', (box[2] - box[0], box[3] - box[1]), tuple(NAVY)), (box[0], box[1]))
-    def put(cx, cy, flip=False, scale=1.0):
-        b = bow.transpose(Image.FLIP_LEFT_RIGHT) if flip else bow
-        if scale != 1.0:
-            b = b.resize((int(b.width * scale), int(b.height * scale)), Image.NEAREST)
+    def put(cx, cy, angle, scale=0.9):
+        b = bow.resize((int(bow.width * scale), int(bow.height * scale)), Image.NEAREST)
+        b = b.rotate(angle, resample=Image.NEAREST, expand=True)
         sheet.paste(b, (cx - b.width // 2, cy - b.height // 2), b)
     erase((864, 646, 893, 694))                       # NE, frame 3: no key on the back (it is in the hand)
-    put(936, 488)                                     # E, frame 3: the bow in the claw
-    put(884, 312)                                     # SE, frame 3
-    put(951, 650)                                     # NE, frame 3
-    put(926, 846)                                     # N, frame 3
+    erase((856, 99, 899, 130))                        # S, frame 3: the thin bow
+    # frame 2: the key held high, the shank pointing down: the bow lies across it
+    for cx, cy in ((571, 28), (585, 234), (583, 410), (593, 594), (590, 785)):
+        put(cx, cy, 90)
+    # frame 3: the shank leads, the bow is square to it
+    put(876, 114, -45)      # S: shank toward the viewer, down and right
+    put(884, 312, -45)      # SE
+    put(936, 488, 0)        # E
+    put(951, 650, 45)       # NE
+    put(926, 846, 90)       # N
     sheet.save(out)
 
 if __name__ == '__main__':
