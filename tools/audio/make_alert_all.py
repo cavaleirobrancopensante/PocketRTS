@@ -2,7 +2,7 @@
 Variant "horn": a low war horn calling twice (a rising fifth) over deep war-drum hits, warm and
 round (the harmonics are low-passed and the horn swells in), with a short room tail.
 Variant "toll": a deep bell struck three times, falling, with a drum under each.
-usage: make_alert_all.py out.wav [horn|toll|toll3]"""
+usage: make_alert_all.py out.wav [horn|toll|toll3|toll6]"""
 import numpy as np, wave, sys
 from scipy import signal
 sr = 44100
@@ -43,12 +43,18 @@ def place(buf, snd, at):
     buf[i:i + len(snd)] += snd[:len(buf) - i]
 
 variant = sys.argv[2] if len(sys.argv) > 2 else "horn"
-buf = np.zeros(int(sr * 2.2))
+buf = np.zeros(int(sr * 3.6))
+length = 2.0
 if variant == "horn":
     place(buf, drum(), 0.0)
     place(buf, horn(98.0, 0.55), 0.02)          # G2
     place(buf, drum(65, 0.5, 1.1), 0.62)
     place(buf, horn(146.83, 0.95), 0.64)        # D3, a rising fifth, held
+elif variant == "toll6":
+    length = 3.0
+    for at in (0.0, 0.3, 0.6, 1.5, 1.8, 2.1):      # three rings, a gap, three rings
+        place(buf, bell(196.0, 0.9), at)
+        place(buf, drum(60, 0.35, 0.85), at)
 elif variant == "toll3":
     for at in (0.0, 0.3, 0.6):                 # the first bell note, struck three times quickly
         place(buf, bell(196.0, 0.9), at)
@@ -63,7 +69,7 @@ for dly, g in [(0.045, 0.35), (0.083, 0.28), (0.127, 0.2), (0.19, 0.14), (0.27, 
     i = int(dly * sr)
     rev[i:] += buf[:-i] * g
 buf = buf + signal.lfilter(*signal.butter(1, 3000 / (sr / 2)), rev)
-buf = buf[:int(sr * 2.0)]
+buf = buf[:int(sr * length)]
 buf *= np.minimum(1, (len(buf) - np.arange(len(buf))) / (0.15 * sr))
 buf = buf / np.max(np.abs(buf)) * 0.85
 with wave.open(sys.argv[1] if len(sys.argv) > 1 else "assets/audio/ui/alert_all.wav", "wb") as f:
