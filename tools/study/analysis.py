@@ -286,38 +286,41 @@ def main():
         T["tech_" + "all"] = "\n\n".join(md(pd.DataFrame([r])) for r in rows)
 
         # ---------------------------------------------------------- snowball / comebacks
-        rows = []
         piv = ts.pivot_table(index=["id", "t"], columns="team", values="power")
         piv = piv.dropna()
         gi = games.set_index("id")
-        for tm in (180, 300, 420, 600, 900, 1200):
-            if tm not in piv.index.get_level_values("t"):
-                continue
-            p = piv.xs(tm, level="t")
-            p = p[p.index.isin(gi.index)]
-            for thr, lab in ((1.0, "any lead"), (1.3, "lead of 30%+"), (2.0, "lead of 2x+")):
-                tot = 0
-                led_won = 0
-                comeb = 0
-                for gid, r in p.iterrows():
-                    g = gi.loc[gid]
-                    if g.winner_team < 0 or g.end_t < tm + 30:
-                        continue
-                    hi = max(r[0], r[1])
-                    lo = max(1.0, min(r[0], r[1]))
-                    if hi / lo < thr or hi == lo:
-                        continue
-                    leader = 0 if r[0] > r[1] else 1
-                    tot += 1
-                    if g.winner_team == leader:
-                        led_won += 1
-                    else:
-                        comeb += 1
-                if tot:
-                    lo_ci, hi_ci = wilson(led_won, tot)
-                    rows.append({"at": mmss(tm), "lead": lab, "games": tot, "leader went on to win": "%d (%s) [%s-%s]" % (led_won, pct(led_won / tot), pct(lo_ci), pct(hi_ci)),
-                                 "comebacks": comeb})
-        T["snowball"] = md(pd.DataFrame(rows))
+
+        def snowball(id_ok):
+            rows = []
+            for tm in (180, 300, 420, 600, 900, 1200):
+                if tm not in piv.index.get_level_values("t"):
+                    continue
+                p = piv.xs(tm, level="t")
+                p = p[p.index.isin(gi.index)]
+                for thr, lab in ((1.0, "any lead"), (1.3, "lead of 30%+"), (2.0, "lead of 2x+")):
+                    tot = led_won = 0
+                    for gid, r in p.iterrows():
+                        if not id_ok(gid):
+                            continue
+                        g = gi.loc[gid]
+                        if g.winner_team < 0 or g.end_t < tm + 30:
+                            continue
+                        hi = max(r[0], r[1])
+                        lo = max(1.0, min(r[0], r[1]))
+                        if hi / lo < thr or hi == lo:
+                            continue
+                        leader = 0 if r[0] > r[1] else 1
+                        tot += 1
+                        led_won += int(g.winner_team == leader)
+                    if tot:
+                        lo_ci, hi_ci = wilson(led_won, tot)
+                        rows.append({"at": mmss(tm), "lead": lab, "games": tot, "leader went on to win": "%d (%s) [%s-%s]" % (led_won, pct(led_won / tot), pct(lo_ci), pct(hi_ci)),
+                                     "comebacks": tot - led_won})
+            return md(pd.DataFrame(rows))
+        T["snowball"] = snowball(lambda gid: True)
+        like = lambda gid: ("brood" not in gi.loc[gid].pair) or gi.loc[gid].a == gi.loc[gid].b
+        T["snowball_nobroodcross"] = snowball(like)
+        T["snowball_mirror"] = snowball(lambda gid: gi.loc[gid].a == gi.loc[gid].b)
 
         # lead at 10:00 in more detail for the games that were decided later
         try:
@@ -346,6 +349,46 @@ def main():
             plt.close()
         except Exception as e:
             print("snowball fig failed", e)
+
+        # ---------------------------------------------------------- what predicts the winner (difference team0 - team1 at a time)
+        rows = []
+        feats = ["power", "workers", "army_value", "halls", "buildings", "income_min", "supply", "gold"]
+        for tm in (180, 300, 420, 600, 900):
+            sub = ts[ts.t == tm]
+            if sub.empty:
+                continue
+            a0 = sub[sub.team == 0].set_index("id")
+            a1 = sub[sub.team == 1].set_index("id")
+            ids = a0.index.intersection(a1.index).intersection(gi.index)
+            ids = [i for i in ids if gi.loc[i].winner_team >= 0 and gi.loc[i].end_t >= tm + 30]
+            if len(ids) < 8:
+                continue
+            y = np.array([1 if gi.loc[i].winner_team == 0 else 0 for i in ids])
+            r = {"at": mmss(tm), "games": len(ids)}
+            for f in feats:
+                d = np.array([a0.loc[i, f] - a1.loc[i, f] for i in ids], dtype=float)
+                nz = d != 0
+                agree = ((d > 0) == (y == 1))[nz].mean() if nz.any() else float("nan")
+                r[f] = "%d%%" % round(100 * agree) if not math.isnan(agree) else "-"
+            rows.append(r)
+        T["predictors"] = md(pd.DataFrame(rows))
+
+        # ---------------------------------------------------------- measured timelines (compare docs/ai_build_timelines.md)
+        rows = []
+        prod_key = {"crown": "t_barracks", "brood": "t_warren", "clockwork": "t_assembly_works"}
+        other = sides.set_index(["id", "team"]).plan_start
+        for f in FACS:
+            for plan in ["balanced", "rush", "xrush", "timing"]:
+                x = sides[(sides.faction == f) & (sides.plan_start == plan)]
+                if len(x) < 2:
+                    continue
+                r = {"faction": f, "plan": plan, "n": len(x), "production bldg (median)": mmss(x[prod_key[f]].median()), "first attack (median)": mmss(x.first_attack_t.median()) if x.first_attack_t.notna().any() else "never"}
+                for tm in (120, 180, 240, 300):
+                    q = ts[(ts.t == tm) & (ts.faction == f) & ts.id.isin(x.id)]
+                    q = q.merge(x[["id", "team"]], on=["id", "team"])
+                    r["%d:%02d wk/army" % (tm // 60, tm % 60)] = "%d / %d" % (q.workers.median(), q.army_value.median()) if len(q) else "-"
+                rows.append(r)
+        T["timelines"] = md(pd.DataFrame(rows))
 
     # ------------------------------------------------------------------ trade efficiency and army
     rows = []
