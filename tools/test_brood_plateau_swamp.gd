@@ -25,7 +25,10 @@ func _run() -> void:
 		await physics_frame
 	g.explored.fill(1)
 	g.players[0]["gold"] = 5000
+	for i in 400:
+		await physics_frame
 	g._update_swamp()
+	var far := 0.0
 	var cap = g.capital(0)
 	var tot := 0
 	var miss := 0
@@ -37,8 +40,10 @@ func _run() -> void:
 				# only the capital's own plateau (near it)
 				if Vector2(c).distance_to(Vector2(start)) < 20.0:
 					tot += 1
+					far = maxf(far, Vector2(c).distance_to(Vector2(start)))
 					if g.swamp[0][y * g.W + x] != 1:
 						miss += 1
 	check(tot > 100 and miss == 0, "every high-ground tile near the capital is swamp (%d tiles, %d missing)" % [tot, miss])
+	print("farthest plateau tile %.1f, hive swamp %s" % [far, str(Defs.BUILDINGS["hive"]["swamp"])])
 	print("DONE  %d failure(s)" % fails)
 	quit(fails)

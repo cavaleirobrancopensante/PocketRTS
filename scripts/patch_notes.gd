@@ -5,7 +5,7 @@ extends RefCounted
 
 const NOTES := [
 	{"v": "0.13.4", "items": [
-		"The Brood capital's swamp now covers the whole main base: every high-ground tile of the main plateau is swamp as soon as the capital stands.",
+		"The Brood capital's swamp reaches 5 tiles farther than other Burrows', so a normal main base is swamp from edge to edge (a very big main would not be fully covered).",
 	]},
 	{"v": "0.13.3", "items": [
 		"The Crown computer now builds its first Cottage at the foot of its ramp as part of a wall: one Gate beside it (and a palisade piece only where a gap is left) seals the mouth, so the wall stands earlier and costs less. The Gate still lets its own army, workers and horses out.",

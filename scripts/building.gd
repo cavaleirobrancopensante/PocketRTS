@@ -197,7 +197,7 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	if d["faction"] == "brood":
 		seeded = complete
 		if complete:
-			swamp_r = float(d.get("swamp", 0))
+			swamp_r = swamp_target()
 		if d.get("eggs", false):
 			eggs = Defs.EGGS_MAX if complete else 0
 	if is_leveled():
@@ -1039,13 +1039,25 @@ static func _seg_hits(r: Rect2, a: Vector2, b: Vector2) -> bool:
 	return false
 
 
+## The swamp radius this building grows to. The Brood's capital reaches farther (CAPITAL_SWAMP_BONUS)
+## so that a normal main base is swamp from edge to edge; a very big main is not fully covered.
+func swamp_target() -> float:
+	var r := float(d.get("swamp", 0))
+	if r > 0.0 and d.get("eggs", false) and game != null and game.capital(team) == self:
+		r += Defs.CAPITAL_SWAMP_BONUS
+	return r
+
+
 func _brood(delta: float) -> void:
 	if not built and seeded:
 		add_progress(delta)
 	if built:
 		if hp < max_hp:
 			hp = minf(max_hp, hp + 1.5 * delta)
-		var target := float(d.get("swamp", 0))
+		var target := swamp_target()
+		if swamp_r > target + 0.01:
+			swamp_r = target
+			game.swamp_dirty = true
 		if swamp_r < target:
 			swamp_r = minf(target, swamp_r + delta / 1.2)
 			game.swamp_dirty = true

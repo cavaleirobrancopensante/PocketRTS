@@ -133,6 +133,8 @@ const FOOD_FAR := 18.0
 const FOOD_PEAK := 22.0
 const FOOD_BONUS := 0.3
 const FOOD_FADE := 0.015          # share of the rate lost per tile beyond FOOD_PEAK
+## The capital's swamp reaches this many tiles farther than other Burrows', to cover a normal main base.
+const CAPITAL_SWAMP_BONUS := 5
 const FOOD_TRIP := 0.8            # seconds of round trip per tile walked (mostly on swamp)
 const FOOD_REACH := 1.5           # tiles of the gap a grub doesn't walk
 const FOOD_MAX_D := 32.0          # a load is worth no more from farther out than this
