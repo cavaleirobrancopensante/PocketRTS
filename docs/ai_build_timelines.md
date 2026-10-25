@@ -80,3 +80,19 @@ Runs vary a little from game to game (random choices): read the numbers to +-20 
   and a lost wave can leave the Brood wiped out by 4:30 on some seeds. That is the intended risk of a
   rush, but the Brood could keep its Raptors home when it sees Horsemen. Open.
 - The Crown AI banks 1-2k gold by 4:30 in these runs (not touched here).
+
+## After the first rush resolves (patch 0.13.2, tools/test_ai_rush_followup.gd)
+The Horseman rush (Crown, Horse Breeder opening, as a raiding party or as the Rush plan's first wave),
+the Brood Raptor rushes and the Rush plan of any faction are judged from facts (`AI._rush_verdict`):
+riders alive, enemy value killed against the rush's worth, armed defenders seen, enemy workers seen,
+time since it began. ONGOING changes nothing.
+- FAILED (riders dead or beaten back, defenders alive, no headway): the riders ride home, new cavalry
+  stay home as defence, no raiding party re-forms for 150-240 s, the plan becomes a normal build and
+  the next attack waits for a proper force (usual army-size rules, regroup time).
+- SUCCEEDED, few workers (3 or fewer seen) and no defenders ("finish"): fresh cavalry may ride out,
+  but only as a group of 2+.
+- SUCCEEDED otherwise ("mop"): the riders regroup at the rally point, the economy goes on (normal
+  Musketeer and cavalry mix), and ONE force of at least 12 supply (more for bigger defences) goes out.
+- Always: units trained after a wave left wait at home and join only as a group (2+ units, and 6+
+  supply in an ordinary wave); a party cut down to one rider sends him home. Scouts are the only
+  units that go alone.

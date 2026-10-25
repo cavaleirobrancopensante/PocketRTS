@@ -129,6 +129,231 @@ var _opened := ""               # the strategy it started with (a failed rush sw
 var _first_wave := false        # (the match log notes the first attack)
 
 
+# ---- the rush's result: what to send after the first rush resolves ----
+## An early rush (the Horseman rush, the Brood Raptor rush, the Clockwork/any "rush" plan) is judged
+## from facts while it runs: our riders alive, the enemy value killed against what the rush cost,
+## the armed defenders seen, the workers still seen, the time since it began. The verdict is
+##  ONGOING   no change;
+##  FAILED    the riders ride home and stay as defence; no unit goes out alone; the plan switches to
+##            economy/army/walls and attacks again only with a proper force (the usual army rules);
+##  SUCCEEDED the economy is crippled. Few workers left and no defenders: a small group (2+)
+##            of fresh cavalry may finish them (mode "finish"). Otherwise (mode "mop") the riders
+##            pull back to the rally point out of the defenders' reach and one mop-up force
+##            (Musketeers and cavalry, RUSH_MOP_MIN supply or more) goes out as ONE group.
+## Whatever the phase, nothing goes into the enemy's land alone (scouts excepted).
+const RUSH_MIN_T := 12.0        # no verdict before the rush has been at it this long
+const RUSH_FINISH_WORKERS := 3  # at most this many enemy workers left (seen) for cavalry to finish
+const RUSH_FINISH_DEF := 40.0   # ... and armed defenders worth less than this
+const RUSH_MOP_MIN := 12        # the least supply of a mop-up force
+const GROUP_MIN := 2            # the fewest units that ever go out together as reinforcements
+const GROUP_SUPPLY := 6         # ... and the least supply of a reinforcing group in an ordinary wave
+var _rush_state := ""           # "", "ongoing", "succeeded", "failed"
+var _rush_mode := ""            # succeeded: "finish" or "mop"
+var _rush_t0 := 0.0
+var _rush_n0 := 0               # riders at the start
+var _rush_wave := false         # the first wave out is the rush
+var _rush_raid := false         # the rush is the raiding party (the Horse Breeder opening on another plan)
+var _rush_def := 0.0            # armed defenders last seen (value) ...
+var _rush_def_t := -999.0       # ... and when
+var _rush_wk_peak := 0
+var _rush_why := ""
+var _mop_pending := false       # the mop-up force has not gone out yet (a Brood swarm then needs no 30 supply)
+var _raid_block := 0.0          # no raiding party forms before this
+var _raid_peak := 0             # the biggest the party has been since it formed
+var _wave_set: Dictionary = {}  # Unit -> true: the units sent in the wave out (the rest wait at home)
+
+
+func _front() -> Vector2:
+	var hall: Array = _halls()
+	return _rally_front(hall[0]) if not hall.is_empty() else game.center_of_team(team)
+
+
+## The Horse Breeder rush is still the plan at this moment: horses and Horsemen first.
+func _rush_open() -> bool:
+	return opening == "breeder" and game.clock < 600.0 and (_rush_state == "" or _rush_state == "ongoing" or (_rush_state == "succeeded" and _rush_mode == "finish"))
+
+
+## A rush begins (a party of at least two goes out): remember what it is worth.
+func _rush_begin(party: Array, raid: bool) -> void:
+	_rush_state = "ongoing"
+	_rush_mode = ""
+	_rush_t0 = game.clock
+	_rush_n0 = party.size()
+	_rush_raid = raid
+	_rush_wave = not raid
+	_rush_def = 0.0
+	_rush_def_t = -999.0
+	_rush_wk_peak = 0
+	if raid:
+		_wave_value = 0.0
+		for u in party:
+			_wave_value += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
+		_wave_sup = _army_supply(party)
+		_wave_kill0 = int(game.stats[team]["value_killed"])
+
+
+## Armed defenders seen around the party / the enemy base (value), remembered for 25 s; 0 when none.
+func _rush_defenders(party: Array) -> float:
+	var spots: Array = [_enemy_base()]
+	if not party.is_empty():
+		var c := Vector2.ZERO
+		for u in party:
+			c += u.position
+		spots.append(c / party.size())
+	var best := -1.0
+	for s in spots:
+		var a := _assess(s)
+		if a["value"] != DEF_UNSEEN:
+			best = maxf(best, float(a["value"]))
+	if best >= 0.0:
+		_rush_def = best
+		_rush_def_t = game.clock
+		return best
+	return _rush_def if game.clock - _rush_def_t < 25.0 else 0.0
+
+
+func _rush_workers_left() -> int:
+	var foe := _foe()
+	if foe < 0:
+		return 0
+	var n := 0
+	for o in game.workers(foe):
+		if _sighted(o):
+			n += 1
+	_rush_wk_peak = maxi(_rush_wk_peak, n)
+	return n
+
+
+## "ongoing", "failed" or "succeeded" from the facts (party = the riders still alive).
+func _rush_verdict(party: Array) -> String:
+	var t := game.clock - _rush_t0
+	var alive := party.size()
+	var mine := 0.0
+	for u in party:
+		mine += _unit_value(u)
+	var wv := maxf(1.0, _wave_value)
+	var gained := float(int(game.stats[team]["value_killed"]) - _wave_kill0)
+	var defv := _rush_defenders(party)
+	var left := _rush_workers_left()
+	if t < RUSH_MIN_T and alive > 0:
+		return "ongoing"
+	if alive == 0:
+		if gained >= wv and defv < 100.0:
+			return "succeeded"
+		_rush_why = "the riders are dead"
+		return "failed"
+	if float(alive) <= float(_rush_n0) * 0.4 and gained < wv * 0.8:
+		_rush_why = "the riders were beaten back (%d of %d left)" % [alive, _rush_n0]
+		return "failed"
+	if defv >= 100.0 and defv > mine * 1.15 and gained < wv * 0.8:
+		_rush_why = "the defenders are worth more than the riders"
+		return "failed"
+	if t > 90.0 and gained < wv * 0.3:
+		_rush_why = "no headway in %d s" % int(t)
+		return "failed"
+	if gained >= wv * 0.7 or (_rush_wk_peak >= 6 and left <= RUSH_FINISH_WORKERS and gained >= wv * 0.5):
+		return "succeeded"
+	if t > 150.0:
+		if gained >= wv * 0.5:
+			return "succeeded"
+		_rush_why = "out of time"
+		return "failed"
+	return "ongoing"
+
+
+## finish (cavalry can ride down the last workers) or mop (a real force must go).
+func _rush_mode_now(party: Array) -> String:
+	var defv := _rush_defenders(party)
+	return "finish" if _rush_workers_left() <= RUSH_FINISH_WORKERS and defv < RUSH_FINISH_DEF else "mop"
+
+
+## The mop-up force: sized by the defenders seen, never under RUSH_MOP_MIN supply.
+func _rush_mop_size() -> int:
+	return clampi(int(ceil(1.5 * _rush_def / 40.0)), RUSH_MOP_MIN, 40)
+
+
+## Ride home and stay: the party is over.
+func _rush_recall(party: Array) -> void:
+	var front := _front()
+	for u in party:
+		if is_instance_valid(u) and not u.dead:
+			u.cmd_move(_home_spot(front))
+
+
+func _rush_log(msg: String) -> void:
+	if game.mlog:
+		game.mlog.add("%s's rush: %s" % [game.mlog.who(team), msg])
+
+
+## FAILED: ride home, stay as defence, build up (economy, army, walls) and come back in force.
+func _rush_failed(party: Array) -> void:
+	_rush_state = "failed"
+	_rush_recall(party)
+	_rush_log("FAILED (%s): the riders ride home, no more go out alone; it builds up and attacks only with a proper force" % _rush_why)
+	_failed += 1
+	_rush_wave = false
+	_attacking = false
+	_wave_set.clear()
+	_raiders.clear()
+	_raid_peak = 0
+	_raid_block = game.clock + _lv([240.0, 180.0, 150.0])
+	_regroup_until = maxf(_regroup_until, game.clock + _lv([150.0, 120.0, 90.0]))
+	_attack_at = maxi(maxi(_attack_at, int(ceil(_wave_sup * 1.4))), 30 if _brood() else 14)
+	if _brood() and strategy in ["xrush", "rush"]:
+		_xrush_over(_rush_why)
+	elif strategy == "rush":
+		strategy = "balanced"
+		_attack_at = maxi(_attack_at, 24)
+
+
+## SUCCEEDED, mop-up (the usual case): the riders pull back out of the defenders' reach, the
+## economy goes on, and one force of at least RUSH_MOP_MIN supply goes out together.
+func _rush_mop(party: Array) -> void:
+	_rush_mode = "mop"
+	_rush_recall(party)
+	var need := _rush_mop_size()
+	_rush_log("SUCCEEDED, mop-up: the riders regroup at home; a force of %d+ supply goes out as one group" % need)
+	_rush_wave = false
+	_attacking = false
+	_wave_set.clear()
+	_raiders.clear()
+	_raid_peak = 0
+	_raid_block = game.clock + 600.0
+	_regroup_until = 0.0
+	_attack_at = need
+	_mop_pending = true
+	if _brood() and strategy in ["xrush", "rush"]:
+		strategy = "balanced"
+		_xr_wave.clear()
+
+
+## One tick of the verdict on a rush party; returns true when the party is disbanded.
+func _rush_tick(party: Array) -> bool:
+	if _rush_state == "ongoing":
+		var v := _rush_verdict(party)
+		if v == "failed":
+			_rush_failed(party)
+			return true
+		if v == "succeeded":
+			_rush_state = "succeeded"
+			_rush_mode = _rush_mode_now(party)
+			if _rush_mode == "mop":
+				_rush_mop(party)
+				return true
+			_rush_log("SUCCEEDED, %d workers left and no defenders: a small cavalry group may finish them" % _rush_workers_left())
+	elif _rush_state == "succeeded" and _rush_mode == "finish":
+		if _rush_mode_now(party) == "mop":
+			_rush_mop(party)
+			return true
+	return false
+
+
+## Fresh cavalry (or riders) idle near home that are not in the party: they go out only as a group.
+func _rush_pool(candidates: Array) -> Array:
+	var front := _front()
+	return candidates.filter(func(u: Unit) -> bool: return u.kind == "cuirassier" and not _horse_coming(u) and u.position.distance_to(front) < 420.0)
+
+
 func _physics_process(delta: float) -> void:
 	var _p0 := Time.get_ticks_usec()
 	_tick_ai(delta)
@@ -1573,17 +1798,55 @@ var _raid_home := 0.0
 ## Crown: up to four Cuirassiers ride out to hunt the enemy's workers and economy, the
 ## farther from the enemy's main the better (Brood grubs hauling from distant pits,
 ## undefended farms). They avoid armies and ride home to mend when badly hurt.
+## The raiding party is (or may become) the rush: the Horse Breeder opening on a plan whose first
+## wave is not the rush itself.
+func _rush_raid_or_new() -> bool:
+	return _rush_raid or _rush_state == ""
+
+
 func _raid() -> void:
 	_raiders = _raiders.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
 	if opening == "breeder" and strategy == "rush":
 		_raiders.clear()             # (a Horseman rush: they ride out together with the wave)
 		return
-	for u in game.army(team):
-		if _raiders.size() >= 4:
-			break
-		if u.kind == "cuirassier" and not _raiders.has(u):
-			_raiders.append(u)
+	var rush_raid := opening == "breeder" and game.clock < 600.0 and (_rush_state == "" or _rush_state == "ongoing" or _rush_state == "succeeded") and _rush_raid_or_new()
+	# a party cut down to one rider is over: he rides home (never a lone rider in the enemy's land)
+	if _raid_peak >= 2 and _raiders.size() < 2:
+		var rest := _raiders.duplicate()
+		_raiders.clear()
+		_raid_peak = 0
+		if rush_raid and _rush_state == "ongoing":
+			_rush_why = "the raiding party was cut down"
+			_rush_failed(rest)
+		else:
+			_rush_recall(rest)
+			_raid_block = game.clock + 120.0
+		return
+	if _raiders.is_empty():
+		# a party forms at home with at least two riders, together (never one by one)
+		if game.clock < _raid_block:
+			return
+		var pool := _rush_pool(game.army(team).filter(func(u: Unit) -> bool: return not _on_errand(u)))
+		if pool.size() < GROUP_MIN:
+			return
+		for u in pool:
+			if _raiders.size() < 4:
+				_raiders.append(u)
+		_raid_peak = _raiders.size()
+		if rush_raid and _rush_state == "":
+			_rush_begin(_raiders, true)
+			_rush_log("goes out (%d Horsemen together)" % _raiders.size())
+	elif rush_raid and _rush_state == "succeeded" and _rush_mode == "finish":
+		# the last workers: a pair or more of fresh cavalry may ride out together to finish them
+		var pool2 := _rush_pool(game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u)))
+		if pool2.size() >= GROUP_MIN:
+			for u in pool2:
+				if _raiders.size() < 6:
+					_raiders.append(u)
+			_raid_peak = maxi(_raid_peak, _raiders.size())
 	if _raiders.size() < 2:
+		return
+	if rush_raid and _rush_tick(_raiders):
 		return
 	var foe := _foe()
 	if foe < 0:
@@ -2117,7 +2380,7 @@ func _produce() -> void:
 			var k := _soldier_key(b, "musketeer")
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
 			var hk := _soldier_key(b, "cuirassier")
-			var rush := opening == "breeder" and game.clock < 600.0
+			var rush := _rush_open()
 			if (horse < 3 or horse * 6 < army.size() or rush) and randf() < (0.85 if rush else (0.6 if short_powder else 0.3)) and hk != "":
 				k = hk
 			elif k == "":
@@ -2311,7 +2574,7 @@ func _army() -> void:
 		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field or u.runs_on_spring())   # (wind-ups fight on; the escort cranks them)
 	var sup := _army_supply(army)
 	var swarm_min := 7 if strategy == "rush" else (10 if strategy in ["rush", "air"] or scout.verdict == "greedy" else 30)
-	if _brood() and _attack_at < swarm_min and strategy != "xrush":
+	if _brood() and _attack_at < swarm_min and strategy != "xrush" and not _mop_pending:
 		_attack_at = swarm_min     # a swarm waits until it's a swarm
 	# timing attack: nothing goes out before the timing; then everything does, wave after wave
 	if strategy == "timing" and game.clock >= float(_s("timing")) * (1.0 if difficulty >= 2 else 1.25) and _attack_at >= 999:
@@ -2334,6 +2597,15 @@ func _army() -> void:
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
 		_wave_start(ready)
+		_mop_pending = false
+		_wave_set.clear()
+		for u in ready:
+			_wave_set[u] = true      # (only these go; the ones trained later wait for a group)
+		# the first wave of a rush plan is the rush: judged from the facts while it runs
+		var is_rush := not _first_wave and _rush_state == "" and strategy == "rush" and strategy == _opened
+		_rush_wave = false
+		if is_rush:
+			_rush_begin(ready, false)
 		if game.mlog and not _first_wave:
 			_first_wave = true
 			game.mlog.add("%s's first attack goes out (%d supply, %d Horsemen)" % [game.mlog.who(team), _army_supply(ready), ready.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()])
@@ -2344,20 +2616,48 @@ func _army() -> void:
 				continue
 			u.cmd_move(_wave_target + Vector2(randf_range(-50, 50), randf_range(-50, 50)), true)
 	elif _attacking:
-		if sup < 6:
+		var wave: Array = ready.filter(func(u: Unit) -> bool: return _wave_set.has(u))
+		# the wave's own strength (units trained since wait at home: they never trickle in alone)
+		if _army_supply(wave) < 6:
 			_attacking = false
 			_release_escort()
+			if _rush_wave and _rush_state == "ongoing":
+				if _rush_verdict(wave) != "succeeded":
+					_rush_why = _rush_why if _rush_why != "" else "the wave is gone"
+					_rush_failed(wave)
+					return
+				_rush_state = "succeeded"
+				_rush_mode = "mop"
+				_rush_mop(wave)
+				_wave_end()
+				return
+			for u in wave:
+				u.cmd_move(_home_spot(_front()))        # (a lone survivor rides home)
+			_rush_wave = false
+			_wave_set.clear()
 			_wave_end()
+			return
+		if _rush_wave and _rush_tick(wave):
 			return
 		_wave_target = _enemy_base()
 		# a wall in the way: the army weighs it up as one (break in, or pull back)
-		_siege_tick(army)
+		_siege_tick(wave)
 		if not _attacking:
 			return
+		# fresh units join only as a group: 2+ cavalry finishing a crippled enemy, or 6+ supply
+		var pool: Array = ready.filter(func(u: Unit) -> bool: return not _wave_set.has(u))
+		var finishing := _rush_wave and _rush_state == "succeeded" and _rush_mode == "finish"
+		if finishing:
+			pool = _rush_pool(pool)
+		var group_ok: bool = pool.size() >= GROUP_MIN and (finishing or (_rush_wave and _rush_state == "ongoing") or _army_supply(pool) >= GROUP_SUPPLY)
+		if group_ok:
+			for u in pool:
+				_wave_set[u] = true
+				wave.append(u)
 		var wagon := _wagon() if _crown() else null
 		var cav := _cavalry_wave(ready)
 		var prey := Vector2.INF
-		for u in ready:
+		for u in wave:
 			if cav and u.kind == "cuirassier" and u.siege_t <= 0.0 and u.wall_flee_t <= 0.0:
 				if prey == Vector2.INF:
 					prey = _prey_spot(u.position)
@@ -2369,6 +2669,11 @@ func _army() -> void:
 						and wagon.powder >= 1.0 and u.position.distance_to(wagon.position) < 120.0 and u.target == null:
 					continue
 				u.cmd_move(_wave_target + Vector2(randf_range(-60, 60), randf_range(-60, 60)), true)
+		if not group_ok:
+			var front2 := _front()
+			for u in pool:
+				if u.order == "idle" and u.position.distance_to(front2) > 160.0:
+					u.cmd_move(_home_spot(front2), true)
 		if _clock():
 			_follow_with_escort(army)
 	else:
@@ -2465,6 +2770,7 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
+		_mop_pending = false
 		_wave_start(army)
 		_plan_swarm(army)
 		_swarm_phase = "flank"
@@ -2573,12 +2879,14 @@ func _xrush_army(army: Array, sup: int) -> void:
 	var hall: Array = _halls()
 	var front: Vector2 = _rally_front(hall[0]) if not hall.is_empty() else game.center_of_team(team)
 	if not _attacking:
-		if sup >= int(_s("wave")) and not peaceful:
+		if sup >= int(_s("wave")) and not peaceful and game.clock >= _regroup_until:
 			_attacking = true
 			_xr_t0 = game.clock
 			_wave_target = _enemy_base()
 			_wave_start(army)
 			_xr_wave = army.duplicate()
+			if _rush_state == "" and not _first_wave:
+				_rush_begin(_xr_wave, false)
 			if game.mlog and not _first_wave:
 				_first_wave = true
 				game.mlog.add("%s's first attack goes out (%d supply of Raptors)" % [game.mlog.who(team), sup])
@@ -2588,9 +2896,15 @@ func _xrush_army(army: Array, sup: int) -> void:
 					u.cmd_move(_home_spot(front), true)
 			return
 	_xr_wave = _xr_wave.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
-	for u in army:
-		if not _xr_wave.has(u):
-			_xr_wave.append(u)          # (reinforcements follow at once)
+	# the ones trained since wait at home and join as a group (2+), never one by one
+	var fresh: Array = army.filter(func(u: Unit) -> bool: return not _xr_wave.has(u))
+	var finishing := _rush_state == "succeeded" and _rush_mode == "finish"
+	if fresh.size() >= GROUP_MIN:
+		_xr_wave.append_array(fresh)
+	else:
+		for u in fresh:
+			if u.order == "idle" and u.position.distance_to(front) > 160.0:
+				u.cmd_move(_home_spot(front), true)
 	var alive := _army_supply(_xr_wave)
 	var c := Vector2.ZERO
 	var mine := 0.0
@@ -2605,15 +2919,27 @@ func _xrush_army(army: Array, sup: int) -> void:
 		var a := _assess(c)
 		losing = a["value"] >= 100.0 and a["value"] > mine * 1.15 and game.clock - _xr_t0 > 6.0 and a["value"] != DEF_UNSEEN
 	var stale: bool = game.clock - _xr_t0 > 75.0 and gained < _wave_value * 0.3
+	if _rush_state == "ongoing" and not (alive < 2 or losing or stale):
+		var v := _rush_verdict(_xr_wave)
+		if v == "failed":
+			_rush_failed(_xr_wave)
+			return
+		elif v == "succeeded":
+			_rush_state = "succeeded"
+			_rush_mode = _rush_mode_now(_xr_wave)
+			if _rush_mode == "mop":
+				_rush_mop(_xr_wave)
+				return
+			_rush_log("SUCCEEDED, %d workers left and no defenders: new Raptors in groups of 2+ may finish them" % _rush_workers_left())
+	elif finishing and _rush_mode_now(_xr_wave) == "mop":
+		_rush_mop(_xr_wave)
+		return
 	if alive < 2 or losing or stale:
-		for u in _xr_wave:
-			if is_instance_valid(u) and not u.dead and losing:
-				u.cmd_move(front + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
-		_attacking = false
-		var why := "wiped out" if alive < 2 else ("clearly outgunned" if losing else "no headway")
-		_wave_end()
-		if strategy in ["xrush", "rush"]:
-			_xrush_over(why)
+		if _rush_state == "succeeded":
+			_rush_mop(_xr_wave)          # (the finishing party is spent: the mop-up force takes over)
+			return
+		_rush_why = "wiped out" if alive < 2 else ("clearly outgunned" if losing else "no headway")
+		_rush_failed(_xr_wave)
 		return
 	# armed defenders in sight: fight them together (an attack-move; a plain move would run the
 	# Raptors past the guns to the workers and they would die without a bite), else hunt workers
