@@ -7265,19 +7265,27 @@ func under_attack(e: Entity) -> void:
 		return
 	_alert_ms = now
 	var fac := faction_of(human)
+	# the same alarm for every faction and every kind of attack, then the faction's voice says what
+	Sfx.play_any(["ui/alert_all"])
+	var line := "under_attack"
+	var gap := 20.0
+	var text := "Your forces are under attack!"
 	if e.team != human:
 		# an ally's men or buildings (allies_hit: only when no fight of ours is on screen)
-		Sfx.announce(fac, "ally_attack", 25.0, "alert")
-		notify("Our allies are under attack!", true)
+		line = "ally_attack"
+		gap = 25.0
+		text = "Our allies are under attack!"
 	elif e is Building:
-		Sfx.announce(fac, "base_attack", 15.0, "base_alert")
-		notify("Your base is under attack!", true)
+		line = "base_attack"
+		gap = 15.0
+		text = "Your base is under attack!"
 	elif e is Unit and (e as Unit).is_worker():
-		Sfx.announce(fac, "workers_attack", 20.0, "alert")
-		notify("Your workers are under attack!", true)
-	else:
-		Sfx.announce(fac, "under_attack", 20.0, "alert")
-		notify("Your forces are under attack!", true)
+		line = "workers_attack"
+		text = "Your workers are under attack!"
+	notify(text, true)
+	await get_tree().create_timer(1.3).timeout
+	if is_inside_tree():
+		Sfx.announce(fac, line, gap)
 
 
 ## Where each unit of a group goes for a move to p (the bunch-up rule of group_move).

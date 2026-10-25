@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.97", "items": [
+		"One attack alarm for all three factions: a rising three-blast klaxon plays whenever your forces, workers, base or an ally are hit (not while you are looking at the fight), and the faction's voice says which about a second later.",
+	]},
 	{"v": "0.12.96", "items": [
 		"Workers at war: a Grub or Labourer given the ATTACK command (a click on an enemy or an attack-move) now has the fight before its automatic WORK and REPAIR. It goes on from enemy to enemy until none is left in sight, and only then goes back to work. Any other order ends it.",
 		"SURRENDER (and any defeat): the battle report has a VIEW MAP button. The report steps aside, the fog is lifted and you can roam the map to see what the enemy did; a small bar at the top brings the report back or leaves for the menu.",
