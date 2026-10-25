@@ -111,7 +111,7 @@ def write_entry(cell, anchor, frames):
     if pat.search(src):
         src = pat.sub(lambda m: entry, src, count=1)
     else:
-        start = src.index("const UNITS := {")
+        start = src.index("const BASE_UNITS := {")
         end = src.index("\n}\n", start) + 1
         src = src[:end] + entry + src[end:]
     open(path, "w").write(src)

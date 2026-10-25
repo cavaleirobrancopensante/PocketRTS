@@ -431,6 +431,7 @@ func show_editor_menu() -> void:
 	for it in [["SANDBOX", "Set up any match, then spawn any unit or building for any player, hand out resources, lift the fog, take control of any side, switch AIs off and speed up time.", func() -> void:
 				sandbox_lobby = true
 				show_skirmish()],
+			["CLOCKWORK LAB", "One tap: you as the Clockwork on an open test map against a computer that never attacks, with plenty of ore, a Line, a Rail Yard and every new experimental unit and building unlocked. Spawn anything from the SANDBOX panel. For trying the experimental Clockwork roster.", func() -> void: start_lab()],
 			["MAP EDITOR", "Maps of any size, 1v1 to 4v4: paint high ground, ramps, water or lava, fords, trees and rocks in any biome, place decorations and start and hall spots with their teams, mirror it all for fairness, CHECK it, then save and play it in Skirmish.", func() -> void: show_map_editor()]]:
 		var b := _button(it[0], it[2])
 		b.custom_minimum_size.y = 64
@@ -446,6 +447,14 @@ func show_editor_menu() -> void:
 
 var sandbox_lobby := false
 var _editor: MapEditor
+
+
+## CLOCKWORK LAB: a match at once, you as the Clockwork against a computer that never attacks, on an open map,
+## with the whole experimental roster unlocked and plenty of ore (scripts/cw_lab.gd).
+func start_lab() -> void:
+	start({"map": "greenhold", "lab": true, "sandbox": true, "slots": [
+		{"who": "you", "faction": "clockwork", "colour": 0, "side": 0},
+		{"who": "easy", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
 
 
 ## The map editor on one of your maps (by name), on a map's data (a new map of a chosen
@@ -569,6 +578,9 @@ func show_settings() -> void:
 			Settings.save_all(), "GRID (QWER/ASDF/ZXCV)", "BY NAME"))
 	v.add_child(_toggle_row("TOOLTIPS", func() -> bool: return Settings.tooltips, func() -> void:
 		Settings.tooltips = not Settings.tooltips
+		Settings.save_all()))
+	v.add_child(_toggle_row("CLOCKWORK LAB", func() -> bool: return Settings.cw_lab, func() -> void:
+		Settings.cw_lab = not Settings.cw_lab
 		Settings.save_all()))
 	v.add_child(_toggle_row("BUILD GRID", func() -> bool: return Settings.build_grid, func() -> void:
 		Settings.build_grid = not Settings.build_grid
@@ -1871,6 +1883,7 @@ func start(cfg: Dictionary = {}) -> void:
 	if not cfg.has("seed"):
 		cfg["seed"] = randi()
 	cfg = cfg.duplicate(true)
+	Defs.cw_roster = bool(cfg.get("lab", false)) or Settings.cw_lab      # (the Clockwork roster prototype: off in normal games)
 	# a random map is picked here (among the pool's maps that hold everyone), so colours can
 	# be chosen to suit its ground
 	var pool := String(cfg.get("map", "random"))
@@ -1930,6 +1943,7 @@ func start(cfg: Dictionary = {}) -> void:
 		if strat == "random" or not allowed.has(strat):
 			strat = "balanced" if strat != "random" else allowed[randi() % allowed.size()]
 		ai.strategy = strat
+		ai.peaceful = bool(cfg.get("lab", false))     # (the LAB's computer never attacks)
 		last_cfg["slots"][t]["strategy"] = strat
 		game.add_child(ai)
 		game.ais.append(ai)
@@ -1969,6 +1983,8 @@ func start(cfg: Dictionary = {}) -> void:
 		sbx.game = game
 		ui_layer.add_child(sbx)
 	game.ended.connect(_on_end)
+	if cfg.get("lab", false):
+		CwLab.setup(game)
 	var foes: Array = []
 	for t in game.n_players():
 		if game.hostile(t, game.human):

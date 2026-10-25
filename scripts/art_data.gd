@@ -3,7 +3,7 @@ class_name ArtData
 
 const DIRS := ["s", "se", "e", "ne", "n"]
 
-const UNITS := {
+const BASE_UNITS := {
 	"labourer": {"cell": Vector2i(42, 35), "anchor": Vector2(21, 33), "frames": {
 		"build_e": 4,
 		"build_n": 4,
@@ -1167,3 +1167,7 @@ const PACKS := {
 ## feet on the bottom row). CRATE_GROUND: the crate's width in crate_ground.png.
 const CRATE := {"assembly_works": [176, 203, 84.5, 4], "boiler": [126, 144, 59.8, 5], "capacitor_works": [78, 90, 37.0, 5], "charging_pylon": [70, 78, 32.3, 5], "clocktower": [134, 154, 64.1, 5], "engine_hall": [142, 162, 67.4, 5], "ore_crusher": [112, 127, 52.7, 5], "spring_tower": [94, 107, 44.1, 5]}
 const CRATE_GROUND := 18
+
+## Every unit sprite set: the generated ones above plus the roster prototype's (scripts/cw_art.gd: code-drawn
+## placeholders until their sheets are dropped into assets/units/<kind>/). A static var, not a const, so it can be merged.
+static var UNITS: Dictionary = BASE_UNITS.merged(CwArt.units())

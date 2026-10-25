@@ -828,7 +828,7 @@ func _build_card() -> Array:
 		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if not units.is_empty():
-		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker())
+		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker() or u.kind == "work_car")
 		if page in ["build", "advanced"] and has_lab:
 			# every building on one card (more pages if they don't fit)
 			var all: Array = Defs.build_list(game.faction_of(game.human))
@@ -874,7 +874,7 @@ func _build_card() -> Array:
 				page = "build"
 				build_page = 0, true, "", ""])
 			_balloon_buttons(list, units)     # labourers can ride too
-			if units.any(func(u: Unit) -> bool: return u.kind == "winder"):
+			if units.any(func(u: Unit) -> bool: return u.kind == "winder" or u.kind == "work_car"):
 				list.append(["build", "LINE", func() -> void: controls.begin_line(), true, "", str(int(Defs.LINE["pipe"]["cost"])) + "/seg"])
 				list.append(["gauge", ("~ " if game.line_net.overlay_on else "") + "PRESSURE", func() -> void:
 					game.line_net.overlay_on = not game.line_net.overlay_on
@@ -901,6 +901,8 @@ func _build_card() -> Array:
 					toast("Tap a spot beside the Line: a Troop Train picks them up and takes them there."), true, "", ""])
 			list.append(["hold", "HOLD", func() -> void: game.command_all(game.selected_units(), "hold"), true, "", ""])
 			_refit_buttons(list, units)
+		if Defs.cw_roster:
+			CwUnits.card(self, list, units)       # the experimental Clockwork roster's buttons
 		_horse_buttons(list, units)
 		if has_lab:
 			var gatherers := units.filter(func(u: Unit) -> bool: return u.can_gather())
@@ -1351,7 +1353,8 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATR
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
 	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q",
-	"HOLD FIRE": "F"}
+	"HOLD FIRE": "F",
+	"SIDING": "N", "CREW OUT": "O", "CREW IN": "I", "PLATES": "E", "SET UP": "D", "BOARD": "G", "THUNDER": "T", "DOCK": "Q", "CARRY": "F"}
 ## Keys the left hand reaches without leaving the group numbers: names only take letters
 ## from here (H for HOLD is the one fixed key outside it).
 const NEAR_KEYS := "QWERTASDFGZXCVB"
@@ -1361,7 +1364,8 @@ const NEAR_KEYS := "QWERTASDFGZXCVB"
 ## Dragoon F, Armoured Dragoon V, Officer G, Armoured Officer B).
 const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A", "guardsman": "S",
 	"horseman": "D", "cuirassier": "C", "dragoon": "F", "armoured_dragoon": "V",
-	"dismounted": "G", "dismounted_cuirassier": "B"}
+	"dismounted": "G", "dismounted_cuirassier": "B",
+	"tin_militia": "A", "scrapper": "D", "rail_rifleman": "F", "work_car": "S", "plate_wagon": "A", "heavy_loco": "D", "carrier_car": "F", "tesla_loco": "G", "storm_engine": "B"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 
 
@@ -1587,7 +1591,7 @@ func confirm_place(queued := false) -> void:
 	if game.players[game.human]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		toast("Not enough gold.")
 		return
-	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker())
+	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker() or u.kind == "work_car")
 	var brood := game.faction_of(game.human) == "brood"
 	if queued and brood:
 		# a grub becomes its building, so each queued site takes a grub that has none yet
@@ -2512,7 +2516,11 @@ func _draw_panel(font: Font) -> void:
 		if e is Unit and (e as Unit).friendly_kills > 0:
 			var fk := (e as Unit).friendly_kills
 			info = "Friendly fire: %d of ours killed. " % fk + info
-		info = Loc.t(info)
+		var cwi := CwUnits.info(e as Unit) if Defs.cw_roster and e is Unit else ""
+		if cwi != "":
+			info = Loc.t(cwi) + ("  ·  " + Loc.t(info) if info != "" else "")      # (the experimental roster's state first)
+		else:
+			info = Loc.t(info)
 		eff_txt = Loc.t(eff_txt)
 		var ifs := 15          # (a longer translation shrinks to fit the card)
 		while ifs > 10 and font.get_string_size(eff_txt + ("  ·  " if eff_txt != "" else "") + info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > r.size.x - 130:
@@ -3285,6 +3293,8 @@ func _icon(name: String) -> Texture2D:
 	var ic := _icon_file(name)
 	if ic == null and Defs.icon_for(name) != name:
 		ic = _icon_file(Defs.icon_for(name))       # (temporary art: Defs.TEMP_ART)
+	if ic == null:
+		ic = CwArt.icon(name)                      # (the Clockwork roster prototype: drawn in code)
 	return ic
 
 

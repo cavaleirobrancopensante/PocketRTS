@@ -14,6 +14,7 @@ static var build_grid := true         # show the planning grid while placing a b
 static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
 static var relay_url := "wss://pocketrts-relay.salgarellius-rts.workers.dev"   # online: the relay (tools/relay/README.md)
 static var language := "en"           # "en", "pt" or "es" (Loc)
+static var cw_lab := false            # the Clockwork roster prototype in every Clockwork match (docs/clockwork_units_prototype.md)
 static var _loaded := false
 
 
@@ -35,6 +36,7 @@ static func load_all() -> void:
 		if relay_url.contains("YOURNAME") or relay_url.strip_edges() == "":
 			relay_url = "wss://pocketrts-relay.salgarellius-rts.workers.dev"     # (an old placeholder saved earlier)
 		language = str(cfg.get_value("ui", "language", "en"))
+		cw_lab = bool(cfg.get_value("ui", "cw_lab", false))
 	Loc.set_lang(language)
 	apply()
 
@@ -52,6 +54,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "mini_alpha", mini_alpha)
 	cfg.set_value("online", "relay_url", relay_url)
 	cfg.set_value("ui", "language", language)
+	cfg.set_value("ui", "cw_lab", cw_lab)
 	cfg.save(PATH)
 
 

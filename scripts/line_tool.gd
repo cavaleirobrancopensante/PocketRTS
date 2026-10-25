@@ -42,7 +42,10 @@ func cell_at(screen: Vector2) -> Vector2i:
 
 
 func builders() -> Array:
-	return game.selected_units().filter(func(u: Unit) -> bool: return u.kind == "winder")
+	var sel: Array = game.selected_units()
+	if Defs.cw_roster:
+		sel = CwUnits.expand_layers(sel)         # a Work Car sends its crew out to lay
+	return sel.filter(func(u: Unit) -> bool: return u.kind == "winder")
 
 
 func _team() -> int:

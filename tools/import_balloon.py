@@ -699,7 +699,7 @@ def write_art_data(entry_text):
     if pat.search(src):
         src = pat.sub(lambda m: entry_text, src, count=1)
     else:
-        i = src.index("\n}\n", src.index("const UNITS := {")) + 1
+        i = src.index("\n}\n", src.index("const BASE_UNITS := {")) + 1
         src = src[:i] + entry_text + src[i:]
     open(path, "w").write(src)
 

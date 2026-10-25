@@ -230,7 +230,7 @@ const LINE := {
 	"pipe": {"name": "Line segment", "hp": 140.0, "armor": 1, "cost": 8, "time": 2.5, "faction": "clockwork"},
 	"supply": {"clocktower": 40.0, "boiler": 30.0},
 	"draw": {"ore_crusher": 12.0, "ore_drill": 12.0, "assembly_works": 16.0, "engine_hall": 20.0, "capacitor_works": 10.0,
-		"charging_pylon": 8.0, "pressure_relay": 4.0},
+		"charging_pylon": 8.0, "pressure_relay": 4.0, "rail_yard": 14.0},
 	"fall": 0.025,
 	"relay": {"min_in": 0.25, "boost": 0.5, "max_out": 0.9},
 	"speed": {"off": 0.1, "floor": 0.25, "full": 0.8},
@@ -258,6 +258,62 @@ const RAIL := {
 }
 const TRAIN_MAX := 10            # trains a team may own
 
+## ==========================================================================================================
+## CLOCKWORK ROSTER PROTOTYPE (docs/clockwork_units_prototype.md). Experimental units to try and then cut: every
+## number of them is in this ONE block (rough guesses, tune by play in the CLOCKWORK LAB). To drop a unit: delete
+## its entry in UNITS, its name in CW_KINDS / CW_RAIL and its sub-block here; scripts/cw_units.gd ignores a
+## kind it does not find. Off unless `cw_roster` is on (the LAB setting, and the tests): the build lists and
+## train cards hide the new things, the computer never uses them.
+## Distances are in pixels (32 = one tile) unless the key says tiles; times in seconds.
+## ==========================================================================================================
+static var cw_roster := false
+
+const CW_KINDS := ["tin_militia", "scrapper", "rail_rifleman", "work_car", "plate_wagon", "heavy_loco", "carrier_car", "tesla_loco", "storm_engine"]
+## Rail-bound units: they move only along the finished Line (CwRail), at the pressure's speed.
+const CW_RAIL := ["work_car", "plate_wagon", "heavy_loco", "carrier_car", "tesla_loco", "storm_engine"]
+## The building that builds the rail vehicles (the foot units come from the Assembly Works).
+const CW_YARD := "rail_yard"
+
+const CW := {
+	# the LAB: resources a match starts with, and the buildings put up beside the Line at the start
+	"lab": {"ore": 40000, "res2": 600, "buildings": ["assembly_works", "rail_yard", "engine_hall", "boiler", "charging_pylon"]},
+	# SIDINGS (a side arm on a Line segment where a vehicle waits for another to pass)
+	#  cost: ore to build one; gap: tiles (Chebyshev) between two sidings; reach: cells a vehicle will go to find one;
+	#  meet: cells at which two vehicles head-on count as meeting; hold: seconds a vehicle waits at least / at most;
+	#  offset: px the parked vehicle stands to the side of the track
+	"siding": {"cost": 12, "gap": 4, "reach": 4, "meet": 3, "hold_min": 1.2, "hold_max": 9.0, "offset": 11.0},
+	# WORK CAR: crew = Winders that come with it, crew_max = the most it holds; radius = how far (tiles) from the car the
+	# crew leave to work; idle_back = seconds a crew member is idle before he walks back; depart_wait = how long
+	# the car waits for its crew before it leaves without them; stranded = their speed share once the car is lost
+	"work_car": {"crew": 3, "crew_max": 4, "radius": 6, "idle_back": 2.5, "depart_wait": 6.0, "stranded": 0.5, "board": 42.0},
+	# TIN MILITIA: leash = tiles from the Line they can be ordered to / stay in. fuel = what a militia body counts as for a Scrapper
+	"militia": {"leash": 7, "fuel": 2},
+	# SCRAPPER: salvage stacks. reach: px around it in which a death counts; max: stacks; decay: seconds per stack lost;
+	# damage / speed: bonus per stack; gain_cd: seconds between two gains (a splash that kills six counts once)
+	"scrapper": {"reach": 260.0, "max": 5, "decay": 4.0, "damage": 0.10, "speed": 0.04, "gain_cd": 0.4, "heal": 6.0},
+	# PLATE WAGON: its body blocks enemy ground units across the track (half = px each side of its middle; deployed
+	# the side plates widen it); PLATES gives cover to your units within `radius` for `time` s: ranged hits on them
+	# do `cover` of the damage; cooldown after; siege = damage taken from siege units; deploy = seconds to raise the plates
+	"plate": {"half": 46.0, "half_up": 64.0, "radius": 150.0, "time": 6.0, "cooldown": 14.0, "cover": 0.4, "siege": 2.0, "deploy": 1.2},
+	# HEAVY LOCOMOTIVE: on the rails full damage. Set up off the rails (within `reach` tiles of the Line) it needs
+	# Tin Militia aboard: `crew` seats; power = share of damage / fire rate at full crew (scaled by the crew aboard);
+	# no crew = helpless. splash: px of the shell's burst.
+	"heavy": {"crew": 3, "power": 0.6, "reach": 6, "deploy": 2.5, "splash": 34.0, "splash_dmg": 0.5, "off_speed": 0.6},
+	# RAIL RIFLEMAN: standing on or within `near` tiles of the Line he shoots `range` x further and `damage` x harder;
+	# riding a Troop Train he fires from it at `train` x the normal rate.
+	"rifle": {"near": 2, "range": 1.3, "damage": 1.3, "train": 0.8},
+	# CARRIER CAR: deck seats for Ornithopters; a landed flyer heals `heal` hp a second, is wound up at `wind` a second
+	# and refills its battery; `pick` px: a landed Ornithopter takes a small unit standing this close; one car per team.
+	"carrier": {"deck": 2, "heal": 14.0, "wind": 0.5, "pick": 110.0, "max_team": 1, "land_time": 0.8},
+	# TESLA LOCOMOTIVE: bolts hit `jumps` more enemies at `falloff`; the pipe it runs on is `pipe` px of reach for the chain
+	# (enemies near the Line within it are hit too); pressure scales damage between `min_p` and 1; units it passes get
+	# overcharged for `charge` s (friends); `pressure_rate` = bonus damage per point of local pressure over 0.5.
+	"tesla": {"jumps": 2, "falloff": 0.55, "reach": 96.0, "min_p": 0.6, "pass": 70.0, "pressure_bonus": 0.6},
+	# STORM ENGINE: THUNDER raises a storm of `radius` px for `time` s at up to `range` px: `dps` damage and the acid slow (Defs.BLOAT slow)
+	# to enemies in it; cooldown after. Set up off the rails with Tin Militia: `off_*` multipliers.
+	"storm": {"range": 330.0, "radius": 110.0, "time": 9.0, "dps": 9.0, "cooldown": 20.0, "cast": 1.2, "reach": 6, "deploy": 2.5, "off_dps": 0.6, "off_radius": 0.7, "crew": 3},
+}
+
 ## The old economy (Winders hauling batteries to Ore Crushers) stays in the game behind this switch until the
 ## rails are proven: false puts the Ore Crusher back in the Clockwork's build list and start.
 static var rail_econ := true
@@ -268,6 +324,8 @@ static func build_list(faction: String) -> Array:
 	var l: Array = FACTIONS[faction]["build"].duplicate()
 	if faction == "clockwork" and rail_econ:
 		l[l.find("ore_crusher")] = "ore_drill"
+	if faction == "clockwork" and not cw_roster:
+		l.erase(CW_YARD)
 	return l
 
 
@@ -332,7 +390,7 @@ const FACTIONS := {
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
-		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works", "pressure_relay"],
+		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works", "pressure_relay", "rail_yard"],
 		"start_workers": 4, "ready": true, "max_supply": 200,
 		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2, "ore_drill": 2},
 		"start": ["ore_crusher"],
@@ -557,6 +615,71 @@ const UNITS := {
 		"tesla": true, "anti_air": true, "requires": "charging_pylon", "faction": "clockwork",
 		"about": "Mobile power: rolls packed; deploy it (3 s) to wind up (and overcharge) the constructs around it. Its lightning hits flyers too and jumps to one more enemy. Costs 2 energy.",
 	},
+	# ---- CLOCKWORK ROSTER PROTOTYPE: begin (numbers beside it in CW; docs/clockwork_units_prototype.md) ----
+	"tin_militia": {
+		"tags": ["light"],
+		"name": "Tin Militia", "hp": 45, "armor": 0, "speed": 64, "cost": 90, "time": 12.0, "supply": 1, "spawn": 4,
+		"sight": 7, "range": 20, "damage": 6, "cooldown": 1.0, "aim": 0.15, "radius": 8, "from": "assembly_works",
+		"line_bound": true, "faction": "clockwork",
+		"about": "Cheap tin spearmen, four to an order, that fight only within 7 tiles of the Line: orders to go farther are cut short at the edge of that ground, and near the Line they never run down. They climb into a Heavy Locomotive or a Storm Engine as its crew (aboard they stay wound and safe), and when they fall they feed a nearby Scrapper.",
+	},
+	"scrapper": {
+		"tags": ["light"],
+		"name": "Scrapper", "hp": 150, "armor": 1, "speed": 58, "cost": 110, "time": 16.0, "supply": 2,
+		"sight": 7, "range": 22, "damage": 11, "cooldown": 1.1, "aim": 0.2, "radius": 13, "from": "assembly_works",
+		"wind_drain": 1.5, "scrap": true, "faction": "clockwork",
+		"about": "A walking scrapheap with a cutting arm. Whenever anything dies near it, friend or foe, it salvages the wreck: up to 5 stacks of +10% damage and +4% speed, one stack lost every 4 s (a fallen Tin Militia counts double). It mends a little while it salvages. Strong where the dead pile up, nothing special in a quiet fight.",
+	},
+	"rail_rifleman": {
+		"tags": ["light"],
+		"name": "Rail Rifleman", "hp": 60, "armor": 0, "speed": 62, "cost": 95, "time": 14.0, "supply": 1,
+		"sight": 8, "range": 130, "damage": 12, "cooldown": 1.6, "aim": 0.25, "radius": 9, "from": "assembly_works",
+		"rail_rifle": true, "faction": "clockwork",
+		"about": "Lightning rifle. Standing on or beside the Line (2 tiles) it reaches 30% farther and hits 30% harder, drawing on the pipe. He can ride a Troop Train (RIDE) and shoot from the carriage.",
+	},
+	"work_car": {
+		"tags": ["armored"],
+		"name": "Work Car", "hp": 320, "armor": 2, "speed": 66, "cost": 260, "time": 30.0, "supply": 2, "extra_supply": 3,
+		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 16, "from": "rail_yard",
+		"rail": true, "no_attack": true, "faction": "clockwork", "crew_car": true,
+		"about": "A rail car with a crew of 3 Winders (4 at most) and the building crates: it replaces the Winder as the Line's builder. Pick it to BUILD (it runs along the Line to the site, crew go out and build), and the crew mend, wind and lay within 6 tiles of it, then walk back aboard. CREW OUT sends them all out, CREW IN calls them back. Lose the car and the crew are stranded, slow on their feet. Rail-bound.",
+	},
+	"plate_wagon": {
+		"tags": ["armored"],
+		"name": "Plate Wagon", "hp": 420, "armor": 4, "speed": 52, "cost": 180, "time": 22.0, "supply": 3,
+		"sight": 7, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 18, "from": "rail_yard",
+		"rail": true, "no_attack": true, "gate": true, "faction": "clockwork",
+		"about": "A moving gate: its body blocks the track across 3 tiles and enemy ground units cannot pass it (yours can). PLATES raises side shields for 6 s: wider block, and your units near it take only 40% of ranged hits. Weak to siege: cannons, mortars and heavy hitters do double damage to it. Rail-bound.",
+	},
+	"heavy_loco": {
+		"tags": ["armored", "massive"],
+		"name": "Heavy Locomotive", "hp": 600, "armor": 4, "speed": 38, "cost": 340, "time": 38.0, "supply": 5,
+		"sight": 9, "range": 200, "damage": 34, "cooldown": 2.4, "aim": 0.4, "radius": 22, "from": "rail_yard",
+		"rail": true, "heavy": true, "requires": "boiler", "building_bonus": 1.5, "faction": "clockwork",
+		"about": "Slow armoured train with a cannon turret: full damage on the rails. SET UP takes it off the rails (up to 6 tiles from the Line) as a ground battery, but then it needs Tin Militia aboard to stay steamed: with a full crew of 3 it fires at 60% power, with none it is helpless. BOARD sends the Tin Militia selected with it aboard; they stay wound and safe inside. PACK drives it back to the rails.",
+	},
+	"carrier_car": {
+		"tags": ["armored"],
+		"name": "Carrier Car", "hp": 360, "armor": 2, "speed": 56, "cost": 240, "time": 28.0, "supply": 3,
+		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 18, "from": "rail_yard",
+		"rail": true, "no_attack": true, "requires": "charging_pylon", "max_team": 1, "faction": "clockwork",
+		"about": "A rail wagon with a landing deck for 2 Ornithopters (DOCK them on it). Landed flyers are healed, wound up and recharged. A landed Ornithopter can CARRY one small unit (a Winder) and DROP it elsewhere. One per team. Rail-bound.",
+	},
+	"tesla_loco": {
+		"tags": ["armored"],
+		"name": "Tesla Locomotive", "hp": 380, "armor": 3, "speed": 66, "cost": 300, "time": 34.0, "supply": 4,
+		"sight": 9, "range": 150, "damage": 12, "cooldown": 1.2, "aim": 0.2, "radius": 18, "from": "rail_yard",
+		"rail": true, "tesla_loco": true, "anti_air": true, "requires": "charging_pylon", "faction": "clockwork",
+		"about": "Zaps along the Line, flyers too. Its bolts jump to 2 more enemies and then along the pipe to enemies beside the Line; the more pressure under it, the harder it hits, and your constructs it passes are overcharged. Rail-bound.",
+	},
+	"storm_engine": {
+		"tags": ["armored", "massive"],
+		"name": "Storm Engine", "hp": 340, "armor": 2, "speed": 40, "cost": 340, "time": 40.0, "supply": 4,
+		"sight": 9, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 20, "from": "rail_yard",
+		"rail": true, "no_attack": true, "storm_engine": true, "requires": ["charging_pylon", "boiler"], "faction": "clockwork",
+		"about": "Rail-bound zoning engine. THUNDER raises a big storm for 9 s up to 330 px away: it hurts and slows everything of the enemy inside. SET UP puts it off the rails (6 tiles from the Line), but then it needs Tin Militia aboard and storms at 60% damage and 70% size.",
+	},
+	# ---- CLOCKWORK ROSTER PROTOTYPE: end ----
 }
 
 const BUILDINGS := {
@@ -622,7 +745,7 @@ const BUILDINGS := {
 	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1400, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(5, 4),
-		"supply": 0, "sight": 7, "trains": ["windup_soldier", "thresher", "bulwark", "arc_thrower"], "faction": "clockwork",
+		"supply": 0, "sight": 7, "trains": ["windup_soldier", "thresher", "bulwark", "arc_thrower", "tin_militia", "scrapper", "rail_rifleman"], "faction": "clockwork",
 		"about": "Assembles the line: Wind-up Soldiers, Threshers, and (with a Boiler) Bulwarks and Arc Throwers. Faster with blue energy.",
 	},
 	"engine_hall": {
@@ -690,6 +813,12 @@ const BUILDINGS := {
 		"name": "Pressure Relay", "hp": 350, "armor": 2, "cost": 75, "time": 20.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
 		"about": "Stands beside the Line and boosts its pressure back up for the stretch beyond it (it needs at least a quarter of pressure coming in). Place it where the Line is thinning.",
+	},
+	"rail_yard": {
+		"name": "Rail Yard", "hp": 1100, "armor": 3, "cost": 220, "time": 40.0, "size": Vector2i(4, 3),
+		"supply": 0, "sight": 7, "trains": ["work_car", "plate_wagon", "heavy_loco", "carrier_car", "tesla_loco", "storm_engine"],
+		"requires": "assembly_works", "faction": "clockwork",
+		"about": "Builds the rail vehicles: Work Cars, Plate Wagons, Heavy Locomotives, Carrier Cars, Tesla Locomotives and Storm Engines. They come out onto the Line beside it, so it must touch the Line (it runs at the Line's pressure). Needs an Assembly Works.",
 	},
 	"charging_pylon": {
 		"name": "Charging Pylon", "hp": 600, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(2, 2),
@@ -829,6 +958,7 @@ const TEMP_ART := {
 	"mounted_missionary": {"art": "missionary_mounted", "portrait": "mounted_missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
 	"ore_drill": {"building": "ore_crusher", "portrait": "ore_crusher"},     # (until the Drill sheet is imported)
+	"rail_yard": {"building": "engine_hall", "portrait": "engine_hall"},     # (roster prototype: the Engine Hall's picture until a Rail Yard is drawn)
 	"pressure_relay": {"building": "charging_pylon", "portrait": "charging_pylon"},     # (phase 1 of the Line: the Pylon's picture, plus a gauge drawn in code: docs/art_style_inconsistency.md)
 	# the horse commands' card icons (tools/import_horse_icons.py)
 	"horse_lead": {"portrait": "horse_lead"},
@@ -901,6 +1031,8 @@ static func train_name(key: String) -> String:
 static func train_keys(kinds: Array, armour: bool) -> Array:
 	var out: Array = []
 	for k in kinds:
+		if CW_KINDS.has(k) and not cw_roster:
+			continue
 		if ARMOURED.has(k):
 			out.append(train_key(k, false))
 			if armour:
@@ -980,7 +1112,7 @@ const DEFLATE := {"refill": 4.0, "swamp": 2.0, "slow": 0.8, "anim": 0.8}
 ## A balloon shot down: each man in the basket rolls his fall. [chance, share of his health left]
 ## (hp share 0 = he dies): bruised, hurt (yellow health), crippled (red health) or killed.
 const FALL_ODDS := [[0.20, [0.8, 1.0]], [0.25, [0.45, 0.65]], [0.20, [0.08, 0.2]], [0.35, [0.0, 0.0]]]
-const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "labourer"], "board": 26.0, "give_up": 30.0}
+const DROPSHIP := {"capacity": 4, "kinds": ["musketeer", "labourer"], "board": 42.0, "give_up": 30.0}
 ## Skywing landed: a ground unit that bites (these replace its flying stats).
 const SKYWING_LANDED := {"air": false, "air_only": false, "ground_only": true, "anti_air": false,
 	"speed": 70, "range": 24, "damage": 14, "cooldown": 1.0, "aim": 0.15}
@@ -1026,7 +1158,7 @@ const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 2
 static func has_tag(kind: String, tag: String) -> bool:
 	return UNITS.has(kind) and (UNITS[kind].get("tags", []) as Array).has(tag)
 
-const ADVANCED := ["barracks", "horse_breeder", "armoury", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works"]
+const ADVANCED := ["barracks", "horse_breeder", "armoury", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works", "rail_yard"]
 
 
 static func is_basic(kind: String) -> bool:

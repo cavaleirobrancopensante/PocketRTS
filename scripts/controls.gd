@@ -334,7 +334,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_line_btn = "left"
 				_line_add(e.position)
 				return
-			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol", "ride":
+			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol", "ride", "cwsiding", "cwsetup", "cwcast", "cwdrop":
 				_tap(e.position, false, e.shift_pressed)
 				return
 		_lmb_down = true
@@ -578,6 +578,9 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 				game.cast_order(units, cast_spell, p)
 			cancel_mode()
 			Sfx.play_any(["ui/click", "click"])
+			return
+		"cwsiding", "cwsetup", "cwcast", "cwdrop":
+			CwUnits.tap(self, game, mode, units, p)
 			return
 		"ride":
 			var why := game.ride_order(units, p)

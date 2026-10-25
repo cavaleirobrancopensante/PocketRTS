@@ -113,6 +113,7 @@ var auto_work := true
 var held_t := 0.0               # a set-up gun holding fire for its own men: it stays set up meanwhile
 var auto_repair := false        # REPAIR autocast: idle, it fixes damaged buildings nearby first (Winders: on from the start)
 var _cold := false
+var cw := {}                 # Clockwork roster prototype state (scripts/cw_units.gd)
 var slow_t := 0.0              # slowed (Bloater acid)
 var kills := 0:                 # veterancy: enemy kills only (it shows on the sprite: VetLook)
 	set(v):
@@ -858,6 +859,8 @@ func is_air() -> bool:
 
 ## Can this unit attack that one at all?
 func can_hit(e: Entity) -> bool:
+	if Defs.cw_roster and CwUnits.on(kind) and not CwUnits.can_fire(self):
+		return false
 	if d.get("medic", false) or d.get("no_attack", false) or e.untouchable():
 		return false
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
@@ -1039,6 +1042,8 @@ func set_canister(on: bool) -> void:
 
 
 func _cooldown() -> float:
+	if kind == "heavy_loco":
+		return float(d["cooldown"]) * CwUnits.cooldown_mult(self)
 	if mode == "pistol":
 		return float(Defs.PISTOL["after"])
 	if mode == "bayonet" and d.has("sabre"):
@@ -1067,6 +1072,8 @@ func can_gather() -> bool:
 
 
 func take_damage(amount: float, from: Entity, blow := "") -> void:
+	if Defs.cw_roster:
+		amount = CwUnits.incoming(self, amount, from, blow)
 	if work == "feeding":
 		amount *= 0.5      # burrowed grubs are hard to hit
 	if not team_horses.is_empty() and amount > 0.0 and not dead:
@@ -1562,6 +1569,8 @@ func center() -> Vector2:
 # ------------------------------------------------------------------ orders
 
 func cmd_move(p: Vector2, attack_move := false) -> void:
+	if Defs.cw_roster and CwUnits.hooked(kind):
+		p = CwUnits.order_point(self, p)
 	if aboard:
 		return      # riding in a balloon
 	if _ai_keeps_windup():
@@ -1589,6 +1598,8 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 
 
 func cmd_attack(e: Entity) -> void:
+	if Defs.cw_roster and not CwUnits.target_ok(self, e):
+		return
 	if aboard:
 		return      # riding in a balloon
 	if _ai_keeps_windup():
@@ -2710,6 +2721,8 @@ func _tick_unit(delta: float) -> void:
 	if slow_t > 0.0:
 		slow_t -= delta
 		speed *= float(Defs.BLOAT["slow"])
+	if Defs.cw_roster and CwUnits.hooked(kind):
+		CwUnits.pre_tick(self, delta)
 	if d["faction"] == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
 		if hp < max_hp:
@@ -2998,7 +3011,11 @@ func _tick_unit(delta: float) -> void:
 		_shield_t = maxf(_shield_t - delta, 0.0)
 		if braced:
 			want = Vector2.ZERO    # the shield is planted
+	if Defs.cw_roster and CwUnits.hooked(kind):
+		want = CwUnits.steer(self, want, delta)
 	_move(want, delta)
+	if Defs.cw_roster and CwUnits.hooked(kind):
+		CwUnits.post_move(self)
 	_animate(delta)
 	if kind == "winder" and (crate_site or _crate_spr):
 		_update_crate_spr()
@@ -3086,6 +3103,8 @@ func _scan_range() -> float:
 
 
 func _range() -> float:
+	if kind == "rail_rifleman":
+		return CwUnits.range_of(self)
 	if kind == "bloater":
 		# holding its gas, or about to pop anyway: it goes in to burst (out of gas it
 		# deflates instead, and can't attack at all until it has filled up again)
@@ -3110,6 +3129,8 @@ func _request_path(goal: Vector2) -> void:
 		path_pending = false
 		return
 	path_goal = goal
+	if Defs.cw_roster and CwUnits.on(kind) and CwUnits.plan_path(self, goal):
+		return
 	path_pending = true
 	game.queue_path(self)
 
@@ -3242,6 +3263,8 @@ func _move(want: Vector2, delta: float) -> void:
 			squeeze_t = 0.0
 	else:
 		position = game.resolve_terrain(position, before, radius, team)
+		if not game.cw_gates.is_empty():
+			position = CwUnits.gate_push(self, before, position)     # a Plate Wagon blocks the track
 		# A limbered gun: the horses stand a length ahead of the barrel, so their spot must
 		# be clear too (they clipped through walls and palisades): slide along it instead
 		if (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and position != before:
@@ -3581,6 +3604,8 @@ func _strike(e: Entity) -> void:
 	var dmg := float(d["damage"]) * (1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
 	if d["faction"] == "clockwork":
 		dmg *= lerpf(0.7, 1.0, wind)
+	if Defs.cw_roster and CwUnits.on(kind) and CwUnits.strike(self, e, dmg):
+		return
 	if overclock_t > 0.0:
 		dmg *= float(Defs.OVERLOAD["damage"])
 	elif overcharged():
@@ -4846,6 +4871,8 @@ func die() -> void:
 	dead = true
 	selected = false
 	velocity = Vector2.ZERO
+	if Defs.cw_roster:
+		CwUnits.on_death(game, self)
 	queue.clear()
 	line_rest.clear()
 	_haul_abort()              # (a hauler: his claims on horses are let go; the keg still blows)

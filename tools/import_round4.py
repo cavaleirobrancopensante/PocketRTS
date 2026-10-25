@@ -736,7 +736,7 @@ def write_units_data(entries):
         if pat.search(src):
             src = pat.sub(lambda m: entry, src, count=1)
         else:
-            i = src.index("\n}\n", src.index("const UNITS := {")) + 1
+            i = src.index("\n}\n", src.index("const BASE_UNITS := {")) + 1
             src = src[:i] + entry + src[i:]
     open(path, "w").write(src)
 

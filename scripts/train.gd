@@ -107,6 +107,8 @@ func step(delta: float) -> void:
 	for r in riders:
 		if is_instance_valid(r):
 			r.position = position
+	if Defs.cw_roster and not riders.is_empty():
+		CwUnits.train_fire(self, delta)       # Rail Riflemen shoot from the carriage
 	queue_redraw()
 
 

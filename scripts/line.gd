@@ -16,6 +16,7 @@ const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 var game: Game
 var segs := {}                    # Vector2i -> PipeSeg
 var version := 0                  # bumped whenever the set of segments or their state changes (snapshots)
+var cw_field := {}               # Clockwork roster: per team, the distance-to-the-Line field (CwUnits.line_dist)
 var enforce := true               # false: Clockwork buildings work without the Line (old tests, sandbox)
 var overlay_on := false           # the pressure overlay (hotkey / button)
 var bstate := {}                  # Building -> {"p": pressure, "touch": bool, "state": String}
@@ -35,6 +36,7 @@ var tool_from := Vector2i(-1, -1)
 var tool_path: Array = []
 var tool_info := {}
 var rails: Rails                  # the trains (scripts/rails.gd)
+var sidings := {}                 # cell -> the side (a Vector2i, one of DIRS) its side arm leaves on (roster prototype: CwRail)
 
 
 func _ready() -> void:
@@ -102,6 +104,7 @@ func _add_seg(t: int, c: Vector2i, complete: bool) -> PipeSeg:
 func remove_seg(s: PipeSeg, died := false) -> void:
 	if segs.get(s.cell) == s:
 		segs.erase(s.cell)
+		sidings.erase(s.cell)
 	if not died and not s.built:
 		game.players[s.team]["gold"] += int(s.d["cost"])
 	s.dead = true
@@ -651,7 +654,7 @@ func save() -> Array:
 		var s: PipeSeg = segs[c]
 		if s.dead:
 			continue
-		rows.append([c.x, c.y, s.team, snappedf(s.hp, 0.1), snappedf(s.progress, 0.01), 1 if s.built else 0])
+		rows.append([c.x, c.y, s.team, snappedf(s.hp, 0.1), snappedf(s.progress, 0.01), 1 if s.built else 0, DIRS.find(sidings.get(c, Vector2i.ZERO)) + 1])
 	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[1] * 100000 + a[0] < b[1] * 100000 + b[0])
 	return rows
 
@@ -669,6 +672,10 @@ func load_rows(rows: Array) -> void:
 			s = _add_seg(int(r[2]), c, int(r[5]) == 1)
 		s.hp = float(r[3])
 		s.progress = float(r[4])
+		if r.size() > 6 and int(r[6]) > 0:
+			sidings[c] = DIRS[int(r[6]) - 1]
+		else:
+			sidings.erase(c)
 		if (int(r[5]) == 1) != s.built:
 			s.built = int(r[5]) == 1
 			changed()
@@ -679,6 +686,7 @@ func load_rows(rows: Array) -> void:
 
 
 func clear() -> void:
+	sidings.clear()
 	for c in segs.keys():
 		var s: PipeSeg = segs[c]
 		segs.erase(c)
@@ -694,7 +702,7 @@ func clear() -> void:
 
 ## A short fingerprint of the segments (snapshots send them only when it changes).
 func fingerprint() -> int:
-	var h := segs.size()
+	var h := segs.size() + sidings.size() * 977
 	for c in segs:
 		var s: PipeSeg = segs[c]
 		h = (h + (c.x * 7919 + c.y * 104729 + (1 if s.built else 0) * 31 + int(s.hp / 10.0)) * 2654435761) & 0x7fffffff    # (a sum: the order of the dictionary does not matter)
@@ -853,6 +861,8 @@ func _draw_ground() -> void:
 			continue
 		var m := _mask(s) | _building_mask(s)
 		steam_n += _draw_pipe(_ground, s, m, steam_n)
+		if sidings.has(c):
+			CwRail.draw_siding(_ground, s.global_position, sidings[c], s.built)
 	if tool_on and not tool_path.is_empty():
 		_draw_tool(_ground)
 

@@ -1,0 +1,421 @@
+# Clockwork roster prototype (scripts/cw_*.gd, docs/clockwork_units_prototype.md): units, Rail Yard, the CLOCKWORK LAB, card buttons and messages.
+> Tin Militia
+pt Milícia de Lata
+es Milicia de Hojalata
+
+> Scrapper
+pt Sucateiro
+es Chatarrero
+
+> Rail Rifleman
+pt Fuzileiro do Trilho
+es Fusilero del Riel
+
+> Work Car
+pt Vagão de Obras
+es Vagón de Obras
+
+> Plate Wagon
+pt Vagão Blindado
+es Vagón Blindado
+
+> Heavy Locomotive
+pt Locomotiva Pesada
+es Locomotora Pesada
+
+> Carrier Car
+pt Vagão Porta-Voadores
+es Vagón Portavoladores
+
+> Tesla Locomotive
+pt Locomotiva Tesla
+es Locomotora Tesla
+
+> Storm Engine
+pt Máquina de Tempestade
+es Máquina de Tormenta
+
+> Rail Yard
+pt Pátio Ferroviário
+es Patio Ferroviario
+
+> Cheap tin spearmen, four to an order, that fight only within 7 tiles of the Line: orders to go farther are cut short at the edge of that ground, and near the Line they never run down. They climb into a Heavy Locomotive or a Storm Engine as its crew (aboard they stay wound and safe), and when they fall they feed a nearby Scrapper.
+pt Lanceiros de lata baratos, quatro por ordem, que só lutam a até 7 casas da Linha: ordens para ir mais longe são cortadas na borda desse terreno, e perto da Linha eles nunca perdem corda. Entram numa Locomotiva Pesada ou numa Máquina de Tempestade como tripulação (a bordo ficam com corda e seguros) e, quando caem, alimentam um Sucateiro por perto.
+es Lanceros de hojalata baratos, cuatro por orden, que solo luchan a menos de 7 casillas de la Línea: las órdenes de ir más lejos se cortan en el borde de ese terreno, y cerca de la Línea nunca se quedan sin cuerda. Se suben a una Locomotora Pesada o a una Máquina de Tormenta como tripulación (a bordo siguen con cuerda y a salvo) y, cuando caen, alimentan a un Chatarrero cercano.
+
+> A walking scrapheap with a cutting arm. Whenever anything dies near it, friend or foe, it salvages the wreck: up to 5 stacks of +10% damage and +4% speed, one stack lost every 4 s (a fallen Tin Militia counts double). It mends a little while it salvages. Strong where the dead pile up, nothing special in a quiet fight.
+pt Um monte de sucata ambulante com um braço cortante. Sempre que algo morre por perto, amigo ou inimigo, ele recolhe os destroços: até 5 acúmulos de +10% de dano e +4% de velocidade, um acúmulo perdido a cada 4 s (uma Milícia de Lata caída conta em dobro). Ele se conserta um pouco enquanto recolhe. Forte onde os mortos se amontoam, nada de especial numa luta calma.
+es Un montón de chatarra con patas y un brazo cortante. Cuando muere algo cerca, amigo o enemigo, recupera los restos: hasta 5 acumulaciones de +10% de daño y +4% de velocidad, una acumulación perdida cada 4 s (una Milicia de Hojalata caída cuenta doble). Se repara un poco mientras recupera. Fuerte donde se amontonan los muertos, nada especial en una pelea tranquila.
+
+> Lightning rifle. Standing on or beside the Line (2 tiles) it reaches 30% farther and hits 30% harder, drawing on the pipe. He can ride a Troop Train (RIDE) and shoot from the carriage.
+pt Fuzil de raios. Parado sobre a Linha ou ao lado dela (2 casas), alcança 30% mais longe e bate 30% mais forte, sugando o cano. Pode andar num Trem de Tropas (EMBARCAR) e atirar do vagão.
+es Fusil de rayos. De pie sobre la Línea o a su lado (2 casillas) alcanza un 30% más lejos y pega un 30% más fuerte, tirando de la tubería. Puede viajar en un Tren de Tropas (EMBARCAR) y disparar desde el vagón.
+
+> A rail car with a crew of 3 Winders (4 at most) and the building crates: it replaces the Winder as the Line's builder. Pick it to BUILD (it runs along the Line to the site, crew go out and build), and the crew mend, wind and lay within 6 tiles of it, then walk back aboard. CREW OUT sends them all out, CREW IN calls them back. Lose the car and the crew are stranded, slow on their feet. Rail-bound.
+pt Um vagão com uma tripulação de 3 Enroladores (4 no máximo) e as caixas de construção: substitui o Enrolador como construtor da Linha. Escolha-o para CONSTRUIR (ele corre pela Linha até o canteiro, a tripulação sai e constrói), e a tripulação conserta, dá corda e assenta a Linha a até 6 casas dele, depois volta a bordo. TRIP. FORA manda todos para fora, TRIP. DENTRO os chama de volta. Perdido o vagão, a tripulação fica abandonada, lenta a pé. Preso aos trilhos.
+es Un vagón con una tripulación de 3 Dadores de cuerda (4 como máximo) y las cajas de construcción: sustituye al Dador de cuerda como constructor de la Línea. Elígelo para CONSTRUIR (corre por la Línea hasta la obra, la tripulación sale y construye), y la tripulación repara, da cuerda y tiende la Línea a menos de 6 casillas de él, y vuelve a bordo. TRIP. FUERA los manda salir a todos, TRIP. DENTRO los llama. Si pierdes el vagón, la tripulación queda abandonada, lenta a pie. Atado a los rieles.
+
+> A moving gate: its body blocks the track across 3 tiles and enemy ground units cannot pass it (yours can). PLATES raises side shields for 6 s: wider block, and your units near it take only 40% of ranged hits. Weak to siege: cannons, mortars and heavy hitters do double damage to it. Rail-bound.
+pt Um portão móvel: seu corpo bloqueia o trilho por 3 casas e unidades terrestres inimigas não passam (as suas passam). PLACAS levanta escudos laterais por 6 s: bloqueio mais largo, e suas unidades perto dele sofrem só 40% dos tiros à distância. Fraco contra cerco: canhões, morteiros e golpes pesados causam o dobro de dano nele. Preso aos trilhos.
+es Una puerta móvil: su cuerpo bloquea la vía a lo largo de 3 casillas y las unidades terrestres enemigas no pueden pasar (las tuyas sí). PLACAS levanta escudos laterales durante 6 s: bloqueo más ancho, y tus unidades cerca de él reciben solo el 40% de los disparos a distancia. Débil ante el asedio: cañones, morteros y golpes pesados le hacen el doble de daño. Atado a los rieles.
+
+> Slow armoured train with a cannon turret: full damage on the rails. SET UP takes it off the rails (up to 6 tiles from the Line) as a ground battery, but then it needs Tin Militia aboard to stay steamed: with a full crew of 3 it fires at 60% power, with none it is helpless. BOARD sends the Tin Militia selected with it aboard; they stay wound and safe inside. PACK drives it back to the rails.
+pt Trem blindado lento com uma torre de canhão: dano total sobre os trilhos. INSTALAR o tira dos trilhos (a até 6 casas da Linha) como bateria de solo, mas então precisa de Milícia de Lata a bordo para manter a caldeira acesa: com tripulação completa de 3 atira com 60% de poder, sem ninguém fica indefeso. TRIPULAR manda a Milícia de Lata selecionada com ele para dentro; ela fica com corda e segura lá. RECOLHER o leva de volta aos trilhos.
+es Tren blindado lento con una torreta de cañón: daño total sobre los rieles. INSTALAR lo saca de los rieles (a 6 casillas de la Línea como máximo) como batería de tierra, pero entonces necesita Milicia de Hojalata a bordo para mantener la caldera: con la tripulación completa de 3 dispara al 60% de potencia, sin nadie queda indefenso. TRIPULAR manda a bordo a la Milicia de Hojalata seleccionada con él; dentro sigue con cuerda y a salvo. RECOGER lo devuelve a los rieles.
+
+> A rail wagon with a landing deck for 2 Ornithopters (DOCK them on it). Landed flyers are healed, wound up and recharged. A landed Ornithopter can CARRY one small unit (a Winder) and DROP it elsewhere. One per team. Rail-bound.
+pt Um vagão com um convés de pouso para 2 Ornitópteros (ACOPLAR neles). Voadores pousados são curados, recebem corda e recarregam. Um Ornitóptero pousado pode CARREGAR uma unidade pequena (um Enrolador) e LARGÁ-LA em outro lugar. Um por time. Preso aos trilhos.
+es Un vagón con una cubierta de aterrizaje para 2 Ornitópteros (ACOPLAR en ella). Los voladores posados se curan, reciben cuerda y se recargan. Un Ornitóptero posado puede LLEVAR a una unidad pequeña (un Dador de cuerda) y SOLTARLA en otro sitio. Uno por equipo. Atado a los rieles.
+
+> Zaps along the Line, flyers too. Its bolts jump to 2 more enemies and then along the pipe to enemies beside the Line; the more pressure under it, the harder it hits, and your constructs it passes are overcharged. Rail-bound.
+pt Lança raios ao longo da Linha, em voadores também. Seus raios saltam para mais 2 inimigos e depois pelo cano até inimigos ao lado da Linha; quanto mais pressão sob ele, mais forte bate, e suas construções por onde passa ficam sobrecarregadas. Preso aos trilhos.
+es Lanza rayos a lo largo de la Línea, también a los voladores. Sus rayos saltan a 2 enemigos más y luego por la tubería hasta los enemigos junto a la Línea; cuanta más presión bajo él, más fuerte pega, y las construcciones por las que pasa quedan sobrecargadas. Atado a los rieles.
+
+> Rail-bound zoning engine. THUNDER raises a big storm for 9 s up to 330 px away: it hurts and slows everything of the enemy inside. SET UP puts it off the rails (6 tiles from the Line), but then it needs Tin Militia aboard and storms at 60% damage and 70% size.
+pt Máquina de zoneamento presa aos trilhos. TROVÃO levanta uma grande tempestade por 9 s a até 330 px: machuca e deixa lento tudo o que for inimigo lá dentro. INSTALAR a tira dos trilhos (a 6 casas da Linha), mas então precisa de Milícia de Lata a bordo e faz tempestades com 60% do dano e 70% do tamanho.
+es Máquina de zonas atada a los rieles. TRUENO levanta una gran tormenta durante 9 s a hasta 330 px: hace daño y ralentiza a todo enemigo que esté dentro. INSTALAR la saca de los rieles (a 6 casillas de la Línea), pero entonces necesita Milicia de Hojalata a bordo y hace tormentas con el 60% del daño y el 70% del tamaño.
+
+> Builds the rail vehicles: Work Cars, Plate Wagons, Heavy Locomotives, Carrier Cars, Tesla Locomotives and Storm Engines. They come out onto the Line beside it, so it must touch the Line (it runs at the Line's pressure). Needs an Assembly Works.
+pt Constrói os veículos de trilho: Vagões de Obras, Vagões Blindados, Locomotivas Pesadas, Vagões Porta-Voadores, Locomotivas Tesla e Máquinas de Tempestade. Saem para a Linha ao lado dele, então ele precisa tocar a Linha (funciona com a pressão da Linha). Precisa de uma Oficina de Montagem.
+es Construye los vehículos de riel: Vagones de Obras, Vagones Blindados, Locomotoras Pesadas, Vagones Portavoladores, Locomotoras Tesla y Máquinas de Tormenta. Salen a la Línea junto a él, así que debe tocar la Línea (funciona con la presión de la Línea). Necesita un Taller de Montaje.
+
+> CLOCKWORK LAB
+pt LABORATÓRIO DO MECANISMO
+es LABORATORIO DEL MECANISMO
+
+> One tap: you as the Clockwork on an open test map against a computer that never attacks, with plenty of ore, a Line, a Rail Yard and every new experimental unit and building unlocked. Spawn anything from the SANDBOX panel. For trying the experimental Clockwork roster.
+pt Um toque: você como o Mecanismo num mapa de teste aberto contra um computador que nunca ataca, com muito minério, uma Linha, um Pátio Ferroviário e todas as unidades e construções experimentais liberadas. Crie qualquer coisa pelo painel da CAIXA DE AREIA. Para experimentar o elenco experimental do Mecanismo.
+es Un toque: tú como el Mecanismo en un mapa de pruebas abierto contra un ordenador que nunca ataca, con mucho mineral, una Línea, un Patio Ferroviario y todas las unidades y edificios experimentales desbloqueados. Crea lo que quieras desde el panel del MODO LIBRE. Para probar el elenco experimental del Mecanismo.
+
+> CLOCKWORK LAB: open SANDBOX, tab CLOCK, to spawn the new units (rail vehicles land on the Line). The Rail Yard and Assembly Works train them too. The enemy never attacks.
+pt LABORATÓRIO DO MECANISMO: abra a CAIXA DE AREIA, aba RELÓGIO, para criar as novas unidades (veículos de trilho caem na Linha). O Pátio Ferroviário e a Oficina de Montagem também as treinam. O inimigo nunca ataca.
+es LABORATORIO DEL MECANISMO: abre el MODO LIBRE, pestaña RELOJ, para crear las nuevas unidades (los vehículos de riel aparecen en la Línea). El Patio Ferroviario y el Taller de Montaje también las entrenan. El enemigo nunca ataca.
+
+> Tap a finished piece of your Line.
+pt Toque num trecho pronto da sua Linha.
+es Toca un tramo terminado de tu Línea.
+
+> There is a siding here already.
+pt Já há um desvio aqui.
+es Ya hay un apartadero aquí.
+
+> A siding needs a straight piece with no joint.
+pt Um desvio precisa de um trecho reto sem junção.
+es Un apartadero necesita un tramo recto sin empalme.
+
+> No free ground beside it for the side arm.
+pt Não há chão livre ao lado para o braço lateral.
+es No hay terreno libre al lado para el brazo lateral.
+
+> Too close to another siding (%d tiles apart at least).
+pt Perto demais de outro desvio (pelo menos %d casas de distância).
+es Demasiado cerca de otro apartadero (al menos %d casillas de distancia).
+
+> Only %d %s per side.
+pt Só %d %s por lado.
+es Solo %d %s por bando.
+
+> It is set up already: PACK it first.
+pt Já está instalado: RECOLHA-o primeiro.
+es Ya está instalado: RECÓGELO primero.
+
+> Too far from the Line (%d tiles at most).
+pt Longe demais da Linha (no máximo %d casas).
+es Demasiado lejos de la Línea (como mucho %d casillas).
+
+> No room to set up there.
+pt Sem espaço para instalar ali.
+es No hay espacio para instalar ahí.
+
+> The plates are up already.
+pt As placas já estão levantadas.
+es Las placas ya están levantadas.
+
+> The plates are cooling: %d s.
+pt As placas estão esfriando: %d s.
+es Las placas se están enfriando: %d s.
+
+> It must be landed on a Carrier Car.
+pt Precisa estar pousado num Vagão Porta-Voadores.
+es Debe estar posado en un Vagón Portavoladores.
+
+> It carries one already.
+pt Já carrega um.
+es Ya lleva uno.
+
+> No small unit beside the car.
+pt Nenhuma unidade pequena ao lado do vagão.
+es Ninguna unidad pequeña junto al vagón.
+
+> It carries nothing.
+pt Não carrega nada.
+es No lleva nada.
+
+> Recharging: %d s.
+pt Recarregando: %d s.
+es Recargando: %d s.
+
+> Set up first (or pack onto the rails).
+pt Instale primeiro (ou recolha para os trilhos).
+es Instálala primero (o recógela a los rieles).
+
+> No Tin Militia aboard: it cannot steam.
+pt Sem Milícia de Lata a bordo: não consegue manter o vapor.
+es Sin Milicia de Hojalata a bordo: no puede mantener el vapor.
+
+> Aboard a machine: wound and safe.
+pt A bordo de uma máquina: com corda e seguro.
+es A bordo de una máquina: con cuerda y a salvo.
+
+> Holds ground within %d tiles of the Line.
+pt Defende o terreno a até %d casas da Linha.
+es Defiende el terreno a menos de %d casillas de la Línea.
+
+> Salvage x%d of %d: +%d%% damage, +%d%% speed, one stack lost every %d s.
+pt Sucata x%d de %d: +%d%% de dano, +%d%% de velocidade, um acúmulo perdido a cada %d s.
+es Chatarra x%d de %d: +%d%% de daño, +%d%% de velocidad, una acumulación perdida cada %d s.
+
+> Beside the Line: +%d%% range, +%d%% damage.
+pt Ao lado da Linha: +%d%% de alcance, +%d%% de dano.
+es Junto a la Línea: +%d%% de alcance, +%d%% de daño.
+
+> Too far from the Line for the bonus (+%d%% range, +%d%% damage).
+pt Longe demais da Linha para o bônus (+%d%% de alcance, +%d%% de dano).
+es Demasiado lejos de la Línea para la bonificación (+%d%% de alcance, +%d%% de daño).
+
+> Crew %d (%d aboard, %d out).
+pt Tripulação %d (%d a bordo, %d fora).
+es Tripulación %d (%d a bordo, %d fuera).
+
+> Plates up for %d s: ranged hits on your units near it do %d%%.
+pt Placas levantadas por %d s: tiros à distância em suas unidades perto dele fazem %d%%.
+es Placas levantadas %d s: los disparos a distancia a tus unidades cerca de él hacen un %d%%.
+
+> Plates cooling: %d s.
+pt Placas esfriando: %d s.
+es Placas enfriándose: %d s.
+
+> A gate across the track for enemy ground units.
+pt Um portão no trilho contra unidades terrestres inimigas.
+es Una puerta en la vía contra las unidades terrestres enemigas.
+
+> On the rails. Crew %d/%d.
+pt Nos trilhos. Tripulação %d/%d.
+es En los rieles. Tripulación %d/%d.
+
+> SET UP. Crew %d/%d: power %d%%.
+pt INSTALADO. Tripulação %d/%d: poder %d%%.
+es INSTALADO. Tripulación %d/%d: potencia %d%%.
+
+> Off the rails. Crew %d/%d: power %d%%.
+pt Fora dos trilhos. Tripulação %d/%d: poder %d%%.
+es Fuera de los rieles. Tripulación %d/%d: potencia %d%%.
+
+> SET UP. Crew %d/%d: helpless without crew.
+pt INSTALADO. Tripulação %d/%d: indefeso sem tripulação.
+es INSTALADO. Tripulación %d/%d: indefenso sin tripulación.
+
+> Off the rails. Crew %d/%d: helpless without crew.
+pt Fora dos trilhos. Tripulação %d/%d: indefeso sem tripulação.
+es Fuera de los rieles. Tripulación %d/%d: indefenso sin tripulación.
+
+> Deck: %d of %d seats free.
+pt Convés: %d de %d lugares livres.
+es Cubierta: %d de %d plazas libres.
+
+> Pressure under it: %d%%.
+pt Pressão sob ele: %d%%.
+es Presión bajo él: %d%%.
+
+> Landed on a Carrier Car: healing, winding up, recharging.
+pt Pousado num Vagão Porta-Voadores: curando, recebendo corda, recarregando.
+es Posado en un Vagón Portavoladores: curándose, recibiendo cuerda, recargándose.
+
+> Carrying a %s.
+pt Carregando: %s.
+es Llevando: %s.
+
+> SIDING
+pt DESVIO
+es APARTADERO
+
+> CREW OUT
+pt TRIP. FORA
+es TRIP. FUERA
+
+> CREW IN
+pt TRIP. DENTRO
+es TRIP. DENTRO
+
+> PLATES
+pt PLACAS
+es PLACAS
+
+> SET UP
+pt INSTALAR
+es INSTALAR
+
+> BOARD
+pt TRIPULAR
+es TRIPULAR
+
+> THUNDER
+pt TROVÃO
+es TRUENO
+
+> DOCK
+pt ACOPLAR
+es ACOPLAR
+
+> CARRY
+pt CARREGAR
+es LLEVAR
+
+> DROP
+pt LARGAR
+es SOLTAR
+
+> Siding
+pt Desvio
+es Apartadero
+
+> Tap a straight piece of your Line to give it (or take away) a side arm where a vehicle waits for another to pass (%d ore; one every %d tiles).
+pt Toque num trecho reto da sua Linha para dar a ele (ou tirar) um braço lateral onde um veículo espera outro passar (%d de minério; um a cada %d casas).
+es Toca un tramo recto de tu Línea para darle (o quitarle) un brazo lateral donde un vehículo espera a que pase otro (%d de mineral; uno cada %d casillas).
+
+> Tap a straight piece of the Line.
+pt Toque num trecho reto da Linha.
+es Toca un tramo recto de la Línea.
+
+> The crew come out and work within %d tiles of the car.
+pt A tripulação sai e trabalha a até %d casas do vagão.
+es La tripulación sale y trabaja a menos de %d casillas del vagón.
+
+> They are out already.
+pt Já estão fora.
+es Ya están fuera.
+
+> The crew walk back aboard.
+pt A tripulação volta a bordo.
+es La tripulación vuelve a bordo.
+
+> Side plates up for %d s.
+pt Placas laterais levantadas por %d s.
+es Placas laterales levantadas %d s.
+
+> Packing: back onto the rails.
+pt Recolhendo: de volta aos trilhos.
+es Recogiendo: de vuelta a los rieles.
+
+> Tap the ground (up to %d tiles from the Line) to set up. It needs Tin Militia aboard there.
+pt Toque no chão (a até %d casas da Linha) para instalar. Lá ele precisa de Milícia de Lata a bordo.
+es Toca el suelo (a menos de %d casillas de la Línea) para instalar. Allí necesita Milicia de Hojalata a bordo.
+
+> %d Tin Militia climb aboard.
+pt %d de Milícia de Lata sobem a bordo.
+es %d de Milicia de Hojalata suben a bordo.
+
+> Select Tin Militia with it first (they must be within their ground).
+pt Selecione antes a Milícia de Lata junto com ele (ela precisa estar no seu terreno).
+es Selecciona antes a la Milicia de Hojalata junto con él (debe estar en su terreno).
+
+> The crew climb out.
+pt A tripulação desce.
+es La tripulación baja.
+
+> Tap where the storm should break (up to %d px away).
+pt Toque onde a tempestade deve cair (a até %d px).
+es Toca dónde debe estallar la tormenta (hasta %d px de distancia).
+
+> The Carrier Car's deck is full.
+pt O convés do Vagão Porta-Voadores está cheio.
+es La cubierta del Vagón Portavoladores está llena.
+
+> %d Ornithopter(s) fly to the deck.
+pt %d Ornitóptero(s) voam para o convés.
+es %d Ornitóptero(s) vuelan a la cubierta.
+
+> Land on a Carrier Car first (DOCK).
+pt Pouse antes num Vagão Porta-Voadores (ACOPLAR).
+es Posa antes en un Vagón Portavoladores (ACOPLAR).
+
+> A small unit climbs aboard.
+pt Uma unidade pequena sobe a bordo.
+es Una unidad pequeña sube a bordo.
+
+> Tap where to set it down.
+pt Toque onde largá-lo.
+es Toca dónde soltarlo.
+
+> Crew out
+pt Tripulação fora
+es Tripulación fuera
+
+> Work Car: every Winder comes out and works (builds, mends, winds) near the car. Heavy Locomotive and Storm Engine: the Tin Militia aboard climb down.
+pt Vagão de Obras: todo Enrolador sai e trabalha (constrói, conserta, dá corda) perto do vagão. Locomotiva Pesada e Máquina de Tempestade: a Milícia de Lata a bordo desce.
+es Vagón de Obras: todo Dador de cuerda sale y trabaja (construye, repara, da cuerda) cerca del vagón. Locomotora Pesada y Máquina de Tormenta: la Milicia de Hojalata a bordo baja.
+
+> Crew in
+pt Tripulação dentro
+es Tripulación dentro
+
+> The Winders walk back aboard the car and wait there, safe.
+pt Os Enroladores voltam a bordo do vagão e esperam lá, seguros.
+es Los Dadores de cuerda vuelven a bordo del vagón y esperan allí, a salvo.
+
+> Raise the plates
+pt Levantar as placas
+es Levantar las placas
+
+> Side plates go up for a few seconds: the gate widens and your units near the wagon take far less from ranged fire. Then they cool down.
+pt As placas laterais sobem por alguns segundos: o portão alarga e suas unidades perto do vagão sofrem bem menos de tiros à distância. Depois esfriam.
+es Las placas laterales suben unos segundos: la puerta se ensancha y tus unidades cerca del vagón reciben mucho menos de los disparos a distancia. Luego se enfrían.
+
+> Set up off the rails
+pt Instalar fora dos trilhos
+es Instalar fuera de los rieles
+
+> Drive off the Line (a few tiles at most) and set up on the ground. Without Tin Militia aboard it is helpless; with a full crew it works at reduced power.
+pt Saia da Linha (poucas casas no máximo) e instale-se no chão. Sem Milícia de Lata a bordo fica indefeso; com tripulação completa funciona com poder reduzido.
+es Sal de la Línea (pocas casillas como mucho) e instálate en el suelo. Sin Milicia de Hojalata a bordo queda indefenso; con la tripulación completa funciona con potencia reducida.
+
+> Board
+pt Tripular
+es Tripular
+
+> The Tin Militia selected with the machine climb aboard as its crew. Aboard they are wound and safe.
+pt A Milícia de Lata selecionada com a máquina sobe a bordo como tripulação. A bordo fica com corda e segura.
+es La Milicia de Hojalata seleccionada con la máquina sube a bordo como tripulación. A bordo sigue con cuerda y a salvo.
+
+> Thunder
+pt Trovão
+es Trueno
+
+> Raise a big thunderstorm at a spot in range: slow damage and slowed movement for the enemy inside. Then it recharges.
+pt Levanta uma grande tempestade num ponto ao alcance: dano lento e movimento lento para o inimigo lá dentro. Depois recarrega.
+es Levanta una gran tormenta en un punto a su alcance: daño lento y movimiento ralentizado para el enemigo dentro. Luego se recarga.
+
+> Dock
+pt Acoplar
+es Acoplar
+
+> The selected Ornithopters fly to the Carrier Car and land: they are healed, rewound and recharged there.
+pt Os Ornitópteros selecionados voam até o Vagão Porta-Voadores e pousam: lá são curados, recebem corda e recarregam.
+es Los Ornitópteros seleccionados vuelan al Vagón Portavoladores y aterrizan: allí se curan, reciben cuerda y se recargan.
+
+> Carry
+pt Carregar
+es Llevar
+
+> A landed Ornithopter takes a small unit standing by the car aboard.
+pt Um Ornitóptero pousado leva a bordo uma unidade pequena que esteja ao lado do vagão.
+es Un Ornitóptero posado se lleva a bordo a una unidad pequeña que esté junto al vagón.
+
+> Drop
+pt Largar
+es Soltar
+
+> Fly to a spot and set the passenger down.
+pt Voe até um ponto e largue o passageiro.
+es Vuela a un punto y suelta al pasajero.
+

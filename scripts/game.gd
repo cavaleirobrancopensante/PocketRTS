@@ -155,7 +155,8 @@ static func _new_stats() -> Dictionary:
 
 static func tex(path: String) -> Texture2D:
 	if not _tex_cache.has(path):
-		_tex_cache[path] = load(path)
+		# (the Clockwork roster prototype's units with no sheet yet are drawn in code: scripts/cw_art.gd)
+		_tex_cache[path] = CwArt.texture(path) if CwArt.is_placeholder(path) else load(path)
 	return _tex_cache[path]
 
 
@@ -2755,6 +2756,8 @@ func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 	apply_drills(u)
 	world.add_child(u)
 	units.append(u)
+	if Defs.cw_roster:
+		CwUnits.on_created(self, u)
 	return u
 
 
@@ -3520,7 +3523,11 @@ func can_train(b: Building, key: String) -> String:
 		var allowed := buildings.filter(func(x: Building) -> bool: return x.team == b.team and x.kind == u["per"] and x.built and not x.dead).size()
 		if have >= allowed:
 			return "Only one %s per %s." % [u["name"], Defs.BUILDINGS[u["per"]]["name"]]
-	if supply_used(b.team) + int(u["supply"]) * int(u.get("spawn", 1)) > players[b.team]["cap"]:
+	if Defs.cw_roster and Defs.CW_KINDS.has(k):
+		var cwp := CwUnits.limit_problem(self, b.team, k, b.queue.count(k))
+		if cwp != "":
+			return cwp
+	if supply_used(b.team) + int(u["supply"]) * int(u.get("spawn", 1)) + CwUnits.extra_supply(k) > players[b.team]["cap"]:
 		if players[b.team]["cap"] >= max_supply(b.team):
 			return "Supply is maxed out."
 		var sup: String = Defs.FACTIONS[factions[b.team]]["supply"]
@@ -3535,6 +3542,11 @@ func egg_rate(t: int) -> float:
 		if b.team == t and b.kind == "clutch_mound" and b.built and not b.dead:
 			n += 1
 	return 1.0 + minf(0.1 * n, 0.3)
+
+
+## LINE tool for a SIDING (CwRail): toggles a side arm on a straight piece of the team's Line; "" or why not.
+func siding_order(t: int, c: Vector2i) -> String:
+	return CwRail.toggle_siding(self, t, c)
 
 
 func _has_built(t: int, kind: String) -> bool:
@@ -4120,6 +4132,8 @@ func sweep_ghosts(quick := false) -> void:
 		if b.dead or b.built or b.team < 0 or not (b.ghost or not b.seeded):
 			continue
 		var f: String = b.d["faction"]
+		if Defs.cw_roster and f == "clockwork" and CwUnits.car_claims(self, b):
+			continue                                    # (a Work Car has this site: its crew come out to it)
 		if f == "brood" or (f == "clockwork" and b.ghost and (b.crate == "" or b.crate == "tower")) \
 				or (f == "crown" and b.ghost):
 			sites.append(b)
@@ -4349,6 +4363,8 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		# the Winder fetches its crate from a Clocktower first (none: he starts it by hand)
 		b.crate = "tower" if crate_tower(t, b.center(), b) != null else ""
 		b._update_sprite()
+		if Defs.cw_roster:
+			builders = CwUnits.assign_builders(self, builders, b)      # a Work Car's crew start it from the car
 		builders = builders.slice(0, 1)   # one winder starts it, then it builds itself
 	if Defs.BUILDINGS[k]["faction"] == "brood":
 		b.seeded = false
@@ -4486,6 +4502,8 @@ func in_overcharge(t: int, p: Vector2) -> bool:
 		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
 			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
 				return true
+		if Defs.cw_roster and u.team == t and not u.dead and u.kind == "tesla_loco" and u.position.distance_to(p) <= float(Defs.CW["tesla"]["pass"]):
+			return true             # (the Tesla Locomotive overcharges what it passes)
 	return false
 
 
@@ -4957,6 +4975,8 @@ func separation(u: Unit) -> Vector2:
 			continue
 		if o == u.steed or u == o.steed:
 			continue           # (a man beside his own horse: he got off there, close by it)
+		if Defs.cw_roster and o.team == u.team and Defs.CW_RAIL.has(u.kind) and Defs.CW_RAIL.has(o.kind):
+			continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
 		var dvec: Vector2 = u.position - o.position
 		var dist := dvec.length()
 		var min_d: float = (u.radius + o.radius) * 0.85
@@ -4971,8 +4991,8 @@ func separation(u: Unit) -> Vector2:
 				k = 260.0
 			# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
 			# anything light that bumps it gives way); equal masses push each other as before
-			var mu := 12.0 if u.kind in ["cannon", "mortar"] else 1.0
-			var mo := 12.0 if o.kind in ["cannon", "mortar"] else 1.0
+			var mu := 12.0 if u.kind in ["cannon", "mortar"] or (Defs.cw_roster and Defs.CW_RAIL.has(u.kind)) else 1.0
+			var mo := 12.0 if o.kind in ["cannon", "mortar"] or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
 			push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
 
@@ -6922,9 +6942,16 @@ func _physics_process(delta: float) -> void:
 	Prof.add("game", _p0)
 
 
+var cw_gates: Array = []                 # Plate Wagons (blocking the track against the enemy's ground units)
+var cw_storms: Array = []                # Storm Engine storms in the field
+var cw_fx: Node2D = null
+
+
 func _tick_game(delta: float) -> void:
 	if over or edit_mode:
 		return
+	if Defs.cw_roster:
+		CwUnits.tick_game(self, delta)
 	if puppet:
 		return NetPuppet.tick_game(self, delta)
 	clock += delta
