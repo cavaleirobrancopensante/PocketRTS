@@ -201,6 +201,7 @@ func _ready() -> void:
 	swamp_layer = Node2D.new()
 	swamp_layer.z_index = -19
 	swamp_layer.draw.connect(_draw_swamp)
+	swamp_layer.material = _swamp_material()
 	add_child(swamp_layer)
 	field_layer = Node2D.new()
 	field_layer.z_index = -18
@@ -4627,6 +4628,34 @@ func _draw_fields() -> void:
 			var size: Vector2i = Defs.BUILDINGS[k]["size"]
 			var c := Vector2(controls.ghost_cell) * T + Vector2(size) * T * 0.5
 			draw_ring.call(c, float(Defs.BUILDINGS[k]["field"]) * T * field_mult(human), 0.8)
+
+
+## A slow, cheap shimmer on the swamp: big soft waves of brightness and a little teal drift over
+## it (one tiny shader on the whole layer; the tiles themselves are drawn once), so the swamp
+## reads as alive and never as a flat dark patch next to green ground.
+const SWAMP_SHADER := """
+shader_type canvas_item;
+varying vec2 wpos;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy; }
+void fragment() {
+	vec4 c = COLOR;       // (already the texture times the modulate)
+	float a = sin(wpos.x * 0.045 + TIME * 0.55) * sin(wpos.y * 0.055 - TIME * 0.42);
+	float b = sin((wpos.x + wpos.y) * 0.03 - TIME * 0.3);
+	float w = 0.6 * a + 0.4 * b;
+	c.rgb *= 0.94 + 0.13 * w;
+	c.g += 0.03 * max(w, 0.0);
+	c.b += 0.012 * max(w, 0.0);
+	COLOR = c;
+}
+"""
+
+
+func _swamp_material() -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = SWAMP_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	return m
 
 
 func _draw_swamp() -> void:
