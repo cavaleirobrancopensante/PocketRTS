@@ -314,7 +314,9 @@ func show_menu() -> void:
 		else:
 			b.custom_minimum_size = Vector2(196, 54)
 		row.add_child(b)
-	var ver := UiStyle.text("v%s  ·  playing on %s" % [version, "computer" if Settings.pc() else "mobile"], 14, Color(1, 1, 1, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
+	var ver := UiStyle.text("v%s  ·  playing on %s" % [version, "computer" if Settings.pc() else "mobile"], 22, Color(1, 0.96, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	ver.add_theme_constant_override("outline_size", 5)
 	v.add_child(ver)
 
 
