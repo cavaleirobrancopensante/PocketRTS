@@ -33,8 +33,9 @@ const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); fast
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
-## Brood Burrows have no ground of their own (only the capital has), so extra ones may stand
-## close round it: the least distance between two of them (centre to centre, tiles).
+## Brood Burrows have no ground of their own (only the capital has) and have no spacing rule for
+## the player (since 0.12.99); this is only how far apart the COMPUTER plants its extra ones
+## (centre to centre, tiles).
 const BROOD_HALL_SPACING := 8
 const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
 ## Lodes: every Town Hall's ground holds a reserve of saltpetre for its Powder Mill, every

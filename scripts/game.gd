@@ -4238,7 +4238,9 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			return mp
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
-		var spacing: int = Defs.BROOD_HALL_SPACING if faction_of(t) == "brood" else Defs.HALL_SPACING
+		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
+		# so only the usual footprint and margin rules keep two apart)
+		var spacing: int = 0 if faction_of(t) == "brood" else Defs.HALL_SPACING
 		for h in (_spot_all_halls if limits_checked and _in_spot else halls_of(t, false)):
 			if h.center().distance_to(mid0) < spacing * T:
 				return "Too close to your other %s: it needs its own ground." % Defs.BUILDINGS[k]["name"]
