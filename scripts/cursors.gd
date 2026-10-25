@@ -6,8 +6,10 @@ extends Node
 ## right click attacks), MOVE's arrow on a ring, PATROL's dotted pointer, the hammer for
 ## building and REPAIR (the barred circle where the building can't go), the pennant for rally
 ## points, the pointer with a green ring over your own units and buildings.
-## Art: assets/ui/cursors/<name>.png, cut by tools/import_cursors.py, which also writes the
-## hotspots (scripts/cursor_hotspots.gd).
+## Art: assets/ui/cursors/<name>.png (the Crown's, also used in the menus) and the Brood's and
+## Clockwork's own sets in its brood/ and clockwork/ sub-folders, shown in a match of that
+## faction; cut by tools/import_cursors.py, which also writes the hotspots
+## (scripts/cursor_hotspots.gd).
 
 const HOT := preload("res://scripts/cursor_hotspots.gd")
 const NAMES := ["pointer", "attack", "attack_enemy", "move", "select", "build", "rally", "forbidden", "patrol"]
@@ -15,8 +17,9 @@ const HOVER_EVERY := 0.1        # seconds between looks at what's under the mous
 
 var main: Node                  # its `game` is the match being played (null in the menus)
 var current := ""               # the cursor shown ("" = the system's)
-var _tex := {}
-var _hot := {}
+var _tex := {}                  # faction -> {name -> texture}
+var _hot := {}                  # faction -> {name -> hotspot}
+var _set := "crown"             # whose cursors are shown
 var _hover: Entity = null
 var _hover_t := 0.0
 var _hover_at := Vector2.INF
@@ -30,9 +33,14 @@ func _ready() -> void:
 	# 48 px on high-DPI desktop screens; the web always 32 (a browser draws a cursor in CSS
 	# pixels, already scaled for the screen)
 	var big := not OS.has_feature("web") and DisplayServer.screen_get_scale() >= 1.5
-	for n in NAMES:
-		_tex[n] = load("res://assets/ui/cursors/%s%s.png" % [n, "_48" if big else ""])
-		_hot[n] = (HOT.HOTSPOT_48 if big else HOT.HOTSPOT_32)[n]
+	var sz := "48" if big else "32"
+	for fac in ["crown", "brood", "clockwork"]:
+		var dir := "res://assets/ui/cursors/" + ("" if fac == "crown" else fac + "/")
+		var hot: Dictionary = HOT.get_script_constant_map()["HOTSPOT_%s%s" % ["" if fac == "crown" else fac.to_upper() + "_", sz]]
+		_tex[fac] = {}
+		_hot[fac] = hot
+		for n in NAMES:
+			_tex[fac][n] = load("%s%s%s.png" % [dir, n, "_48" if big else ""])
 
 
 ## Custom cursors only with a mouse: not on phones (or a computer set up as a phone, where
@@ -49,9 +57,21 @@ func _process(delta: float) -> void:
 		return
 	var game: Game = main.get("game") if main else null
 	if game == null or not is_instance_valid(game) or game.controls == null or game.over:
+		_use("crown")
 		_show("pointer")
 		return
+	_use(game.faction_of(game.human) if _tex.has(game.faction_of(game.human)) else "crown")
 	_show(choose(game.controls, game, _hovered(game, delta)))
+
+
+## Switch to a faction's set (the cursor on show is redrawn from it).
+func _use(fac: String) -> void:
+	if fac != _set:
+		_set = fac
+		if current != "":
+			var n := current
+			current = ""
+			_show(n)
 
 
 func _show(n: String) -> void:
@@ -61,7 +81,7 @@ func _show(n: String) -> void:
 	if n == "":
 		Input.set_custom_mouse_cursor(null)
 	else:
-		Input.set_custom_mouse_cursor(_tex[n], Input.CURSOR_ARROW, _hot[n])
+		Input.set_custom_mouse_cursor(_tex[_set][n], Input.CURSOR_ARROW, _hot[_set][n])
 
 
 ## What's under the mouse in the world (null over the interface), looked at every
