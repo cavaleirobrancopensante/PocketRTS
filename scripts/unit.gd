@@ -3735,6 +3735,7 @@ func _repair(delta: float) -> Vector2:
 				cmd_stop()
 			return Vector2.ZERO
 		game.players[team]["gold_f"] = float(game.players[team].get("gold_f", 0.0)) - cost
+		game.stats[team]["repair"] = float(game.stats[team].get("repair", 0.0)) + cost       # (the gold a side spent mending buildings)
 		while float(game.players[team]["gold_f"]) <= -1.0:
 			game.players[team]["gold_f"] = float(game.players[team]["gold_f"]) + 1.0
 			game.players[team]["gold"] -= 1

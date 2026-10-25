@@ -19,6 +19,8 @@ func _setup(main: Node, ai_faction: String) -> Game:
 	main.start({"map": "greenhold", "seed": 5, "slots": [
 		{"who": "human", "faction": "crown", "colour": 0, "side": 0, "strategy": "balanced"},
 		{"who": "hard", "faction": ai_faction, "colour": 1, "side": 1, "strategy": "balanced"}]})
+	for a in main.game.ais:
+		a.safe_opening = false      # (the old layout this test was made on; before the first think)
 	return main.game
 
 

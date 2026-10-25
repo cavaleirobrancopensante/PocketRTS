@@ -31,6 +31,8 @@ func _start() -> void:
 	main.start({"map": "greenhold", "seed": 4242, "slots": [
 		{"who": "hard", "faction": "crown", "colour": 0, "side": 0, "strategy": "balanced"},
 		{"who": "hard", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
+	for a in main.game.ais:
+		a.safe_opening = false       # (this test is about the scout and the Musketeers on its road, on the layout it was made on; before the first think)
 	await process_frame
 	await process_frame
 	g = main.game
