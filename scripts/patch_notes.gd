@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.3", "items": [
+		"ONLINE: a COPY button next to the room code, so the host can paste it to a friend.",
+	]},
 	{"v": "0.14.2", "items": [
 		"ONLINE now knows the relay address by itself: nobody has to paste anything, just press ONLINE, then host or join with the room code.",
 	]},

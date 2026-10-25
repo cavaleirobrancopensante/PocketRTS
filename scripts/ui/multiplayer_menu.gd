@@ -138,7 +138,19 @@ func _draw_room() -> void:
 	top.add_theme_constant_override("separation", 14)
 	var code := UiStyle.heading("ROOM  " + l.code, 38, Color(1, 0.9, 0.55))
 	code.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	code.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	top.add_child(code)
+	if l.is_host:
+		var cp: Button
+		cp = main._button("COPY", func() -> void:
+			DisplayServer.clipboard_set(l.code)
+			cp.text = Loc.t("COPIED"))
+		cp.custom_minimum_size = Vector2(150, 54)
+		top.add_child(cp)
+		top.move_child(cp, 0)
+		var pad := Control.new()
+		pad.custom_minimum_size = Vector2(150, 0)
+		top.add_child(pad)
 	_box.add_child(top)
 	var st := UiStyle.text(l.status, 18, UiStyle.BAD if l.refused != "" or not l.online else UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 	st.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

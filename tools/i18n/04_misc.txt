@@ -143,3 +143,11 @@ es El relay rechazó la conexión.
 > The host left the game.
 pt O anfitrião saiu da partida.
 es El anfitrión salió de la partida.
+
+> COPY
+pt COPIAR
+es COPIAR
+
+> COPIED
+pt COPIADO
+es COPIADO
