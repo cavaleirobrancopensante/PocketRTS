@@ -477,18 +477,23 @@ func show_settings() -> void:
 	var p := PanelContainer.new()
 	p.custom_minimum_size.x = 520
 	c.add_child(p)
-	# the list scrolls when it's taller than the screen (a phone in a browser: FULL SCREEN too)
+	# the list scrolls when it's taller than the screen (a phone in a browser: FULL SCREEN too);
+	# the heading and BACK stay pinned above it so BACK is always on screen
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 7)
+	p.add_child(outer)
+	outer.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
+	outer.add_child(_button("BACK", func() -> void: show_menu()))
 	var scr := ScrollContainer.new()
 	scr.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	p.add_child(scr)
+	outer.add_child(scr)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 7)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scr.add_child(v)
 	(func() -> void:
 		if is_instance_valid(scr):
-			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 60.0)).call_deferred()
-	v.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
+			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 190.0)).call_deferred()
 	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
 	v.add_child(_volume_row("MUSIC LEVEL", "music"))
 	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))

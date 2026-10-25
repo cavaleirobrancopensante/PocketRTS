@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.12.83", "items": [
+		"Settings on a phone: the BACK button is pinned under the heading, so it is always on screen (the list below it scrolls).",
+	]},
 	{"v": "0.12.82", "items": [
 		"Main menu: the version line at the bottom is bigger, bright and outlined, so it is easy to read.",
 	]},
