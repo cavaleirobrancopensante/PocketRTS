@@ -1915,7 +1915,35 @@ func _on_end(winner: int) -> void:
 	o.process_mode = Node.PROCESS_MODE_ALWAYS
 	o.play_again.connect(func() -> void: start())
 	o.to_menu.connect(func() -> void: _to_menu())
+	o.view_map.connect(func() -> void: _view_map(o))
 	ui_layer.add_child(o)
+
+
+## VIEW MAP on the battle report: the report steps aside, the whole map is shown (no fog) and
+## the camera can roam to see what the enemy did; a small bar brings the report back.
+func _view_map(report: Control) -> void:
+	if game == null:
+		return
+	game.reveal = true
+	game.refresh_fog()
+	report.visible = false
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 12)
+	bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 70)
+	bar.process_mode = Node.PROCESS_MODE_ALWAYS
+	for bt in [["BATTLE REPORT", "report"], ["MENU", "menu"]]:
+		var b := Button.new()
+		b.text = bt[0]
+		b.custom_minimum_size = Vector2(190, 52)
+		b.pressed.connect(func() -> void:
+			Sfx.play_any(["ui/click", "click"])
+			if bt[1] == "menu":
+				_to_menu()
+			else:
+				report.visible = true
+				bar.queue_free())
+		bar.add_child(b)
+	ui_layer.add_child(bar)
 
 
 ## RANDOM / FITS MAP colours become real palette colours, all different.

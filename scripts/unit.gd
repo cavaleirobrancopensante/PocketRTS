@@ -838,10 +838,16 @@ func is_worker() -> bool:
 	return Defs.is_worker(kind)
 
 
-## Grubs fight when told to ATTACK (an attack-move engages what it meets, like a Raptor's);
-## Labourers and the like still just walk. (Idle grubs never pick fights by themselves.)
+## A worker that can hurt (Labourer, Grub) fights when told to ATTACK: an attack-move engages
+## what it meets, like a soldier's. Idle workers never pick fights by themselves.
 func fights_on_command() -> bool:
-	return not is_worker() or kind == "grub"
+	return not is_worker() or float(d["damage"]) > 0.0
+
+
+## A worker given an attack order stays at war: the fight comes before the automatic WORK and
+## REPAIR, and it goes on from enemy to enemy until none is left in sight; only then does it
+## go back to work by itself. Any other order ends it.
+var war := false
 
 
 func is_air() -> bool:
@@ -1569,6 +1575,7 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 		set_brace(false)     # a Bulwark lifts its shield to walk
 	_reset_work()
 	order = "amove" if attack_move else "move"
+	war = attack_move and is_worker()
 	if kind == "dragoon" and attack_move:
 		order = "d_amove"       # rides on, dismounting to shoot what comes in range
 	order_point = p
@@ -1589,6 +1596,7 @@ func cmd_attack(e: Entity) -> void:
 			return
 	_reset_work()
 	order = "attack"
+	war = is_worker()
 	if kind == "dragoon":
 		order = "d_attack"      # rides up to musket range, dismounts and fires
 		order_target = e
@@ -2165,6 +2173,7 @@ func plan_end() -> Vector2:
 
 
 func _reset_work() -> void:
+	war = false
 	if not _keep_queue:
 		queue.clear()          # a new order (not Shift-queued) replaces the queue
 		line_rest.clear()
@@ -2815,7 +2824,7 @@ func _tick_unit(delta: float) -> void:
 						_care_auto = true      # (his own choice: he may change his mind for a body)
 			# REPAIR autocast: an idle worker fixes what's damaged nearby (before going back to
 			# work, when WORK is on too)
-			if auto_repair and scan_t <= 0.0 and (kind == "winder" or kind == "labourer"):
+			if auto_repair and not war and scan_t <= 0.0 and (kind == "winder" or kind == "labourer"):
 				scan_t = 1.0
 				var hurt := game.find_repair(self, float(Defs.AUTO_REPAIR) * Defs.TILE)
 				if hurt and can_repair(hurt) and game.players[team]["gold"] >= 1:
@@ -2830,7 +2839,7 @@ func _tick_unit(delta: float) -> void:
 					cmd_build(cr.site)
 					cr.claimed = self
 			# WORK is on by default: an idle worker goes back to its post by itself
-			if is_worker() and auto_work and order == "idle" and scan_t <= 0.0:
+			if is_worker() and auto_work and not war and order == "idle" and scan_t <= 0.0:
 				scan_t = 1.5
 				var post := game.free_site(team, position)
 				if post:
@@ -2840,9 +2849,11 @@ func _tick_unit(delta: float) -> void:
 				_courier_t = 1.0
 				if _courier_scan():
 					return
-			if not is_worker() and scan_t <= 0.0:
+			if (not is_worker() or war) and scan_t <= 0.0:
 				scan_t = 0.35
 				target = _pick_target(_scan_range())
+				if target == null:
+					war = false           # nobody left in sight: back to work
 			_walled_check(delta)
 			if target:
 				want = _engage(target, delta, true)

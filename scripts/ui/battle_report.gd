@@ -4,6 +4,7 @@ extends Control
 
 signal play_again
 signal to_menu
+signal view_map
 
 var game: Game
 var winner := -1
@@ -120,7 +121,7 @@ func _ready() -> void:
 	btns.alignment = BoxContainer.ALIGNMENT_CENTER
 	btns.add_theme_constant_override("separation", 16)
 	v.add_child(btns)
-	for bt in [["PLAY AGAIN", play_again], ["MENU", to_menu]]:
+	for bt in [["PLAY AGAIN", play_again], ["VIEW MAP", view_map], ["MENU", to_menu]]:
 		var b := Button.new()
 		b.text = bt[0]
 		b.custom_minimum_size = Vector2(240, 58)

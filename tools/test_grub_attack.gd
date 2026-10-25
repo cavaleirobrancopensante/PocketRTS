@@ -28,14 +28,29 @@ func _run() -> void:
 	var c: Vector2 = grubs[0].position
 	var foe = g._add_unit("musketeer", 1, c + Vector2(160, 0))
 	foe.order = "hold"
+	var foe2 = g._add_unit("musketeer", 1, c + Vector2(190, 120))
+	foe2.order = "hold"
 	g.set_selection(grubs)
 	g.group_move(grubs, c + Vector2(190, 0), true)
 	check(grubs[0].order == "amove", "ATTACK gives a grub an attack-move (%s)" % grubs[0].order)
 	var t0: float = g.clock
-	while g.clock < t0 + 25.0 and not foe.dead:
+	while g.clock < t0 + 40.0 and not (foe.dead and foe2.dead):
 		await physics_frame
-	check(foe.dead or foe.hp < foe.max_hp, "the grubs attacked the musketeer (hp %d of %d, %.0f s)" % [int(foe.hp), int(foe.max_hp), g.clock - t0])
-	# Labourers still just walk
-	var lab = g.units.filter(func(u): return u.kind == "labourer")
+	check(foe.dead, "the grubs attacked the first musketeer (%.0f s)" % (g.clock - t0))
+	check(foe2.dead, "and went on to the second one, which was not on their way (chain, %.0f s)" % (g.clock - t0))
+	var at_war := grubs.filter(func(u): return not u.dead and u.war).size()
+	var t1: float = g.clock
+	while g.clock < t1 + 6.0:
+		await physics_frame
+	var still := grubs.filter(func(u): return not u.dead and u.war).size()
+	var working := grubs.filter(func(u): return not u.dead and u.order != "idle").size()
+	check(still == 0, "no enemy left: the war ends (%d at war just after, %d 6 s later)" % [at_war, still])
+	check(working > 0, "and the grubs are back to work (%d busy)" % working)
+	# a plain move ends a war, and Labourers fight on command too
+	var lab = g.units.filter(func(u): return u.team == 0 and u.kind == "grub" and not u.dead)[0]
+	lab.cmd_move(lab.position + Vector2(40, 0), true)
+	check(lab.war, "an attack-move puts a worker at war")
+	lab.cmd_move(lab.position + Vector2(40, 0), false)
+	check(not lab.war, "a plain move ends it")
 	print("DONE  %d failure(s)" % fails)
 	quit(1 if fails > 0 else 0)
