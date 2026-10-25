@@ -63,7 +63,7 @@ func _draw_entry() -> void:
 	rrow.add_child(rl)
 	var re := LineEdit.new()
 	re.text = Settings.relay_url
-	re.placeholder_text = "wss://pocketrts-relay.YOURNAME.workers.dev"
+	re.placeholder_text = "wss://pocketrts-relay.salgarellius-rts.workers.dev"
 	re.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	re.custom_minimum_size = Vector2(0, 52)
 	re.text_changed.connect(func(t: String) -> void:

@@ -12,7 +12,7 @@ static var grid_keys := false         # computer: command card keys by position 
 static var tooltips := true           # hover tooltips (computer) and the "?" help button (phone)
 static var build_grid := true         # show the planning grid while placing a building
 static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
-static var relay_url := "wss://pocketrts-relay.YOURNAME.workers.dev"   # online: the relay (tools/relay/README.md)
+static var relay_url := "wss://pocketrts-relay.salgarellius-rts.workers.dev"   # online: the relay (tools/relay/README.md)
 static var language := "en"           # "en", "pt" or "es" (Loc)
 static var _loaded := false
 
@@ -32,6 +32,8 @@ static func load_all() -> void:
 		build_grid = cfg.get_value("input", "build_grid", true)
 		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
 		relay_url = String(cfg.get_value("online", "relay_url", relay_url))
+		if relay_url.contains("YOURNAME") or relay_url.strip_edges() == "":
+			relay_url = "wss://pocketrts-relay.salgarellius-rts.workers.dev"     # (an old placeholder saved earlier)
 		language = str(cfg.get_value("ui", "language", "en"))
 	Loc.set_lang(language)
 	apply()

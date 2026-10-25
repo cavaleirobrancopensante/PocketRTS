@@ -584,7 +584,7 @@ func show_settings() -> void:
 	rh.add_child(rhl)
 	var rhe := LineEdit.new()
 	rhe.text = Settings.relay_url
-	rhe.placeholder_text = "wss://pocketrts-relay.YOURNAME.workers.dev"
+	rhe.placeholder_text = "wss://pocketrts-relay.salgarellius-rts.workers.dev"
 	rhe.custom_minimum_size = Vector2(250, 50)
 	rhe.text_changed.connect(func(x: String) -> void:
 		Settings.relay_url = x.strip_edges()
