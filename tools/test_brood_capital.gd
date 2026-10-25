@@ -5,7 +5,7 @@ extends SceneTree
 ##  2. the capital dies: the next oldest Burrow takes over (and its ground)
 ##  3. cancelling a hatching egg refunds the cost but NOT the egg
 ##  4. eggs are laid every 9 s (was 6)
-##  5. pit crews grow with distance from the capital; pits need swamp joined to it and reach grows with vents
+##  5. pit crews grow with distance from the capital; pits need swamp joined to it and reach grows with Clutch Mounds
 var main: Node
 var t := 0.0
 var g
@@ -139,8 +139,8 @@ func _run() -> void:
 	check(_placeable(cap, reach0 + 0.5).x < 0, "   no pit farther than the swamp's reach can be placed")
 	var why: String = g.placement_problem(0, "feeding_pit", far_cell, true)
 	check(why != "", "   a pit beyond the swamp is refused (%s)" % why)
-	# a vent at the swamp's edge pushes the reach out
-	# (the vent goes at the swamp's edge on a side with room to grow: not into a corner or a cliff)
+	# a Clutch Mound at the swamp's edge pushes the reach out
+	# (the mound goes at the swamp's edge on a side with room to grow: not into a corner or a cliff)
 	var vent: Building = null
 	var fc2 := Vector2i(-1, -1)
 	var reach1 := reach0
@@ -149,13 +149,13 @@ func _run() -> void:
 	for y in range(int(c0.y - reach0), int(c0.y + reach0)):
 		for x in range(int(c0.x - reach0), int(c0.x + reach0)):
 			var cell := Vector2i(x, y)
-			if not g.in_map(cell) or not g._footprint_open(cell, Vector2i(4, 3)) or not g.margin_free(cell, Vector2i(4, 3)):
+			if not g.in_map(cell) or not g._footprint_open(cell, Vector2i(2, 2)) or not g.margin_free(cell, Vector2i(2, 2)):
 				continue
-			var dd := (Vector2(cell) + Vector2(2, 1.5)).distance_to(c0)
-			if absf(dd - (reach0 - 3.0)) < 1.5 and g.placement_problem(0, "spore_vent", cell, true) == "":
+			var dd := (Vector2(cell) + Vector2(1, 1)).distance_to(c0)
+			if absf(dd - (reach0 - 3.0)) < 1.5 and g.placement_problem(0, "clutch_mound", cell, true) == "":
 				cands.append(cell)
 	for edge in cands:
-		vent = g._add_building("spore_vent", 0, edge, true)
+		vent = g._add_building("clutch_mound", 0, edge, true)
 		g._update_swamp()
 		await wait(0.3)
 		reach1 = g.swamp_reach[0]
@@ -166,8 +166,8 @@ func _run() -> void:
 		vent = null
 		g._update_swamp()
 		await wait(0.1)
-	check(vent != null, "   (found a side with room for a Spore Vent: %d tried)" % cands.size())
-	check(reach1 > reach0 + 3.0, "   a Spore Vent at the edge: reach %.1f -> %.1f tiles" % [reach0, reach1])
+	check(vent != null, "   (found a side with room for a Clutch Mound: %d tried)" % cands.size())
+	check(reach1 > reach0 + 3.0, "   a Clutch Mound at the edge: reach %.1f -> %.1f tiles" % [reach0, reach1])
 	check(fc2.x >= 0, "   a pit farther than the old reach (%.1f) is now allowed (cell %s)" % [reach0, str(fc2)])
 	if fc2.x < 0:
 		fc2 = _cell_at(cap, reach0)
@@ -200,9 +200,9 @@ func _cell_at(cap: Building, d: float) -> Vector2i:
 	for y in range(int(c0.y - d - 3), int(c0.y + d + 4)):
 		for x in range(int(c0.x - d - 3), int(c0.x + d + 4)):
 			var cell := Vector2i(x, y)
-			if not g.in_map(cell) or not g._footprint_open(cell, Vector2i(4, 3)) or not g.margin_free(cell, Vector2i(4, 3)):
+			if not g.in_map(cell) or not g._footprint_open(cell, Vector2i(2, 2)) or not g.margin_free(cell, Vector2i(2, 2)):
 				continue
-			var dd := (Vector2(cell) + Vector2(2, 1.5)).distance_to(c0)
+			var dd := (Vector2(cell) + Vector2(1, 1)).distance_to(c0)
 			var sc := absf(dd - d)
 			if sc < bs:
 				bs = sc

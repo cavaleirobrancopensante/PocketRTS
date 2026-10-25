@@ -20,7 +20,6 @@ var rally := Vector2.INF
 var rally_target: Entity = null
 var worker_rally := Vector2.INF  # Hive: workers and army have separate rally points
 var worker_rally_target: Entity = null
-var seeding = null              # Brood capital / Spore Vent: the Spore Vent it is growing now (SEED VENT), one at a time
 var seeded := true               # Brood: a grub has turned into the site; Clockwork: the crate has landed (or a Winder started it)
 # Clockwork: the Winder's crate (Defs.CRATE). "" none (started by hand, or no Clocktower to
 # fetch it from); "tower" waiting at a Clocktower for a Winder to fetch it; "carried" on
@@ -103,7 +102,7 @@ const AMBIENT := {
 	"hive": [["smoke", 0.5, 0.78, 1.3, 0.35, Color(0.6, 1.0, 0.3, 0.55)], ["smoke", 0.22, 0.82, 2.2, 0.3, Color(0.6, 1.0, 0.3, 0.5)], ["smoke", 0.78, 0.82, 2.4, 0.3, Color(0.6, 1.0, 0.3, 0.5)]],
 	"warren": [["smoke", 0.5, 0.74, 1.5, 0.35, Color(0.6, 1.0, 0.3, 0.5)]],
 	"gorge_pit": [["smoke", 0.5, 0.52, 0.9, 0.45, Color(0.6, 1.0, 0.3, 0.55)]],
-	"spore_vent": [["smoke", 0.42, 0.12, 0.8, 0.4, Color(0.75, 1.0, 0.4, 0.6)]],
+	"clutch_mound": [["smoke", 0.42, 0.22, 1.6, 0.3, Color(0.75, 1.0, 0.4, 0.45)]],
 	"brood_pen": [["smoke", 0.5, 0.45, 1.6, 0.4, Color(0.75, 0.5, 1.0, 0.5)]],
 	"feeding_pit": [["acid_splash", 0.5, 0.55, 1.4, 0.5, Color(1, 0.6, 0.6, 0.8)]],
 	"clocktower": [["smoke", 0.2, 0.3, 1.1, 0.4, Color(1.2, 1.2, 1.2, 0.6)]],

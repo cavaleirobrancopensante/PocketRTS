@@ -226,7 +226,7 @@ func _ai_run(fac: String) -> void:
 	var tr := Tracker.new(g, 0)
 	var res: Array = Defs.FACTIONS[fac]["res"]
 	var econ: Array = Defs.FACTIONS[fac]["econ"].keys()
-	var extra_kinds: Array = {"crown": ["cottage"], "brood": ["clutch_mound", "spore_vent"], "clockwork": ["spring_tower", "charging_pylon"]}[fac]
+	var extra_kinds: Array = {"crown": ["cottage"], "brood": ["clutch_mound"], "clockwork": ["spring_tower", "charging_pylon"]}[fac]
 	var head := ["minute", "income_" + res[0].to_lower(), "income_" + res[1].to_lower() + ("_batteries_filled" if fac == "clockwork" else ""),
 		"bank_" + res[0].to_lower(), "bank_" + res[1].to_lower(), "spent", "workers", "workers_at_work", "halls"]
 	for k in econ:
@@ -333,10 +333,10 @@ func _build_out(g: Game, t: int) -> void:
 		var spot: Vector2i = helper._econ_spot(k)
 		var tries := 0
 		while spot.x < 0 and k == "feeding_pit" and tries < 3:
-			# the AI pushes its swamp out with a Spore Vent when a pit has no room
-			var vs := g.find_spot(t, "spore_vent", _hall(g, t), 6, 22, "far_safe")
+			# the AI pushes its swamp out with a Clutch Mound when a pit has no room
+			var vs := g.find_spot(t, "clutch_mound", _hall(g, t), 6, 22, "far_safe")
 			if vs.x >= 0:
-				g._add_building("spore_vent", t, vs, true)
+				g._add_building("clutch_mound", t, vs, true)
 				g._update_swamp()
 			spot = helper._econ_spot(k)
 			tries += 1

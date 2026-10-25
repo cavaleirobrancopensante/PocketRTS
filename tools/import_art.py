@@ -986,7 +986,8 @@ STRUCTURES2 = {
                                   "skip": ["powder_mill", "church"]},
     "art/brood/structures2.png": {"names": ["feeding_pit", "bone_midden", "spore_vent", "roost"],
                                   "rows": [0, 252, 458, 712, 1024],
-                                  "width": {"feeding_pit": 108, "bone_midden": 104, "spore_vent": 70, "roost": 100}},
+                                  "width": {"feeding_pit": 108, "bone_midden": 104, "spore_vent": 70, "roost": 100},
+                                  "skip": ["spore_vent"]},      # (the Spore Vent was removed in 0.12.84: its look is on the Clutch Mound, tools/import_mound_chatgpt.py)
     "art/clockwork/structures2.png": {"names": ["boiler", "ore_crusher", "charging_pylon"], "rows": [0, 352, 662, 1024],
                                       "width": {"boiler": 126, "ore_crusher": 112, "charging_pylon": 70}},
 }
