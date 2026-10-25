@@ -1570,6 +1570,8 @@ func center() -> Vector2:
 
 func cmd_move(p: Vector2, attack_move := false) -> void:
 	if Defs.cw_roster and CwUnits.hooked(kind):
+		if CwUnits.order_follow(self, p, attack_move):
+			return
 		p = CwUnits.order_point(self, p)
 	if aboard:
 		return      # riding in a balloon

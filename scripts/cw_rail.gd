@@ -76,11 +76,19 @@ static func plan(u: Unit, goal: Vector2) -> PackedVector2Array:
 	return out
 
 
-## Pull a rail unit back onto the track (the nearest point of the Line's centre lines).
+## Pull a rail unit back onto the track (the nearest point of the Line's centre lines). Two tracks: it drives on the right of
+## the way it goes, so along a stretch that runs the way it is going the track it is on is the lane (centre line shifted by
+## Train.lane_of); a stretch across its way (a side branch at a junction) counts a little farther, so a unit in its lane does
+## not get pulled into a branch it is only passing.
 static func snap(u: Unit) -> void:
 	var net := net_of(u)
 	var game := u.game
 	var c := game.cell_of(u.position)
+	var vd: Vector2i = u.cw.get("lane_d", Vector2i.ZERO)
+	if u.velocity.length() > 8.0:
+		vd = Vector2i(int(signf(u.velocity.x)), 0) if absf(u.velocity.x) >= absf(u.velocity.y) else Vector2i(0, int(signf(u.velocity.y)))
+		u.cw["lane_d"] = vd
+	var lane := Train.lane_of(vd) if vd != Vector2i.ZERO else Vector2.ZERO
 	var best := u.position
 	var bd := INF
 	for k in [Vector2i.ZERO] + DIRS:
@@ -100,17 +108,15 @@ static func snap(u: Unit) -> void:
 			var ab := b - a
 			var tt := clampf((u.position - a).dot(ab) / maxf(ab.length_squared(), 1.0), 0.0, 1.0)
 			var qp := a + ab * tt
-			var dq := qp.distance_squared_to(u.position)
+			var along: bool = vd != Vector2i.ZERO and (d == vd or d == -vd)
+			var across: bool = vd != Vector2i.ZERO and not along
+			var dq := (qp + (lane if along else Vector2.ZERO)).distance_to(u.position) + (8.0 if across else 0.0)
+			dq *= dq
 			if dq < bd:
 				bd = dq
 				best = qp
 	if bd < INF and bd < 96.0 * 96.0:
-		# two tracks: drive on the right of the way it goes (Train.lane_of)
-		var vd: Vector2i = u.cw.get("lane_d", Vector2i.ZERO)
-		if u.velocity.length() > 8.0:
-			vd = Vector2i(int(signf(u.velocity.x)), 0) if absf(u.velocity.x) >= absf(u.velocity.y) else Vector2i(0, int(signf(u.velocity.y)))
-			u.cw["lane_d"] = vd
-		u.position = best + (Train.lane_of(vd) if vd != Vector2i.ZERO else Vector2.ZERO)
+		u.position = best + lane
 
 
 ## The pressure's share of its speed under a rail unit (1.0 with enforcement off).
@@ -264,10 +270,11 @@ static func _leader(game: Game, u: Unit, wdir: Vector2) -> Array:
 	var follow := float(Defs.CW["siding"].get("follow", 34.0))
 	var best: Array = []
 	var bg := follow
+	var mine := CwConsist.of(u)
 	for v in vehicles(game, u.team):
 		var o = v[3]
-		if o == u:
-			continue
+		if o == u or (o is Unit and mine != null and CwConsist.of(o) == mine):
+			continue                           # (the cars of its own train)
 		var od: Vector2 = v[1]
 		var vel: Vector2 = o.velocity if o is Unit else od * float(Defs.TRAINS[o.tkind]["speed"]) * T
 		var standing: bool = od == Vector2.ZERO
@@ -315,8 +322,8 @@ static func steer(u: Unit, want: Vector2, delta: float) -> Vector2:
 					u.cw["q_t"] = 0.0           # (gave up waiting: passed through for a few seconds, then looks again)
 			else:
 				u.cw["q_t"] = maxf(0.0, float(u.cw.get("q_t", 0.0)) - delta * 2.0)
-		if net.sidings.is_empty():
-			return out
+		if net.sidings.is_empty() or CwConsist.of(u) != null:
+			return out                    # (a train is too long for a siding: faster vehicles queue behind it)
 		u.cw["sid_scan"] = float(u.cw.get("sid_scan", 0.0)) - delta
 		if float(u.cw["sid_scan"]) > 0.0:
 			return out

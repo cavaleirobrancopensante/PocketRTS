@@ -419,3 +419,59 @@ es Soltar
 pt Voe até um ponto e largue o passageiro.
 es Vuela a un punto y suelta al pasajero.
 
+
+> COUPLE
+pt ENGATAR
+es ENGANCHAR
+
+> UNCOUPLE
+pt DESENGATAR
+es DESENGANCHAR
+
+> Couple
+pt Engatar
+es Enganchar
+
+> Uncouple
+pt Desengatar
+es Desenganchar
+
+> Hook the selected rail vehicles (and trains) into one train: the one with a Heavy Locomotive (else another locomotive) leads and waits, the others drive to its last car and hook on. Driving a vehicle into an idle one hooks it on too. A train moves as one at the speed of its slowest car and takes one order; each car keeps its job. A Heavy Locomotive shields the other cars.
+pt Engata os veículos de trilho selecionados (e trens) num só trem: o que tem uma Locomotiva Pesada (ou outra locomotiva) lidera e espera, os outros vão até o último vagão e se engatam. Dirigir um veículo contra um parado também o engata. Um trem anda como um só na velocidade do vagão mais lento e recebe uma só ordem; cada vagão mantém sua função. Uma Locomotiva Pesada protege os outros vagões.
+es Engancha los vehículos de riel seleccionados (y trenes) en un solo tren: el que tiene una Locomotora Pesada (o si no otra locomotora) lidera y espera, los demás van hasta su último vagón y se enganchan. Conducir un vehículo contra uno parado también lo engancha. Un tren se mueve como uno solo a la velocidad de su vagón más lento y recibe una sola orden; cada vagón conserva su función. Una Locomotora Pesada protege a los demás vagones.
+
+> Split the train in front of the car you tapped (the last car if you selected the whole train). The rear part becomes a train of its own. A car that dies splits the train too.
+pt Divide o trem na frente do vagão em que você tocou (o último vagão se você selecionou o trem inteiro). A parte de trás vira um trem próprio. Um vagão que morre também divide o trem.
+es Divide el tren delante del vagón que tocaste (el último vagón si seleccionaste todo el tren). La parte trasera pasa a ser un tren propio. Un vagón que muere también divide el tren.
+
+> Select two or more rail vehicles (or trains) to couple.
+pt Selecione dois ou mais veículos de trilho (ou trens) para engatar.
+es Selecciona dos o más vehículos de riel (o trenes) para enganchar.
+
+> A train holds %d cars at most.
+pt Um trem leva no máximo %d vagões.
+es Un tren lleva como mucho %d vagones.
+
+> A vehicle could not reach the train to couple.
+pt Um veículo não conseguiu chegar ao trem para engatar.
+es Un vehículo no pudo llegar al tren para engancharse.
+
+> The selected vehicles drive to the last car and hook on.
+pt Os veículos selecionados vão até o último vagão e se engatam.
+es Los vehículos seleccionados van hasta el último vagón y se enganchan.
+
+> The train is split in front of the car you tapped (the last car if none).
+pt O trem é dividido na frente do vagão em que você tocou (o último se nenhum).
+es El tren se divide delante del vagón que tocaste (el último si ninguno).
+
+> No train selected.
+pt Nenhum trem selecionado.
+es Ningún tren seleccionado.
+
+> Train of %d, car %d (%s leads): it goes at the speed of its slowest car.
+pt Trem de %d, vagão %d (%s lidera): anda na velocidade do vagão mais lento.
+es Tren de %d, vagón %d (lidera %s): va a la velocidad de su vagón más lento.
+
+> The Heavy Locomotive shields it: %d%% less damage.
+pt A Locomotiva Pesada o protege: %d%% menos dano.
+es La Locomotora Pesada lo protege: %d%% menos daño.

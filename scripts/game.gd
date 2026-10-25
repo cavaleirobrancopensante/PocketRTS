@@ -6965,6 +6965,10 @@ func _physics_process(delta: float) -> void:
 var cw_gates: Array = []                 # Plate Wagons (blocking the track against the enemy's ground units)
 var cw_storms: Array = []                # Storm Engine storms in the field
 var cw_fx: Node2D = null
+var cw_consists: Array = []              # coupled rail trains (scripts/cw_consist.gd)
+var cw_cons_next := 1
+var cw_links: Node2D = null              # draws the steel links between coupled cars
+var cw_bump_t := 0.0
 
 
 func _tick_game(delta: float) -> void:
@@ -7111,6 +7115,8 @@ func _select_voice_kind(list: Array, first: Unit) -> String:
 
 
 func set_selection(list: Array) -> void:
+	if Defs.cw_roster and not cw_consists.is_empty():
+		list = CwConsist.expand_selection(list)          # tapping one coupled car selects the whole train
 	# a unit or building you pick answers you (once per new pick)
 	for e in list:
 		if is_instance_valid(e) and (e is Unit or e is Building) and e.team == human and not e.dead and not selection.has(e):

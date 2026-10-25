@@ -374,6 +374,28 @@ static func _ability_glyph(img: Image, name: String) -> void:
 			_ln(img, Vector2(30, 24), Vector2(52, 24), TIN, 4)
 			for i in 6:
 				_fill(img, 10 + i * 8, 44, 3, 6, RUST)
+		"ab_cw_couple":
+			_fill(img, 4, 30, 24, 14, STEEL)
+			_fill(img, 36, 30, 24, 14, RUST)
+			_fill(img, 4, 30, 24, 3, TIN)
+			_fill(img, 36, 30, 24, 3, BRASS)
+			_ln(img, Vector2(26, 38), Vector2(38, 38), TIN, 4)
+			_disc(img, 32, 38, 4.0, BRASS)
+			_wheels(img, 10, 22, 48, 2, 0, 3)
+			_wheels(img, 42, 54, 48, 2, 0, 3)
+			_ln(img, Vector2(8, 52), Vector2(56, 52), SPARK, 2)
+		"ab_cw_uncouple":
+			_fill(img, 4, 30, 20, 14, STEEL)
+			_fill(img, 40, 30, 20, 14, RUST)
+			_fill(img, 4, 30, 20, 3, TIN)
+			_fill(img, 40, 30, 20, 3, BRASS)
+			_ln(img, Vector2(24, 38), Vector2(30, 38), TIN, 3)
+			_ln(img, Vector2(34, 38), Vector2(40, 38), TIN, 3)
+			_ln(img, Vector2(28, 20), Vector2(36, 28), SPARK, 3)
+			_ln(img, Vector2(36, 20), Vector2(28, 28), SPARK, 3)
+			_wheels(img, 8, 20, 48, 2, 0, 3)
+			_wheels(img, 44, 56, 48, 2, 0, 3)
+			_ln(img, Vector2(8, 52), Vector2(56, 52), SPARK, 2)
 		"ab_cw_crew_out":
 			_disc(img, 32, 20, 7.0, TIN)
 			_fill(img, 24, 28, 16, 18, TIN_D)

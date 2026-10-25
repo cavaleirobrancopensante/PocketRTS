@@ -149,6 +149,10 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		if u.haul_t >= 0.0:
 			# a keg on the balloon's rope (paid for): it keeps climbing after a load
 			ud["haul"] = [u.haul_t, u.haul_shots, u.haul_at.x, u.haul_at.y]
+		if Defs.cw_roster:
+			var cpl = CwConsist.save_tag(u)
+			if cpl != null:
+				ud["cpl"] = cpl                  # coupled into a train: [train id, place in it]
 		d["units"].append(ud)
 	# control groups (units by their number in this list, buildings by their cell) and the
 	# camera hotkeys
@@ -516,6 +520,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			for hb in game.buildings:
 				if hb.team == u.team and not hb.dead and hb.haul_cap() > 0 and hb.cell == Vector2i(int(ud["hallc"][0]), int(ud["hallc"][1])):
 					u.cmd_gather(hb)       # (back at his Town Hall: a hauler again, no job)
+	if Defs.cw_roster:
+		CwConsist.restore(game, units_d, made)       # coupled rail trains
 	for a in d.get("ai", []):
 		for ai in game.ais:
 			if ai.team == int(a["team"]):

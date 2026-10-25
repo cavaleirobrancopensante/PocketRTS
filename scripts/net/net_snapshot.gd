@@ -97,6 +97,8 @@ static func build(s: NetSession) -> Dictionary:
 	if fp != s.line_fp or s.snap_n % 20 == 0:
 		s.line_fp = fp
 		m["ln"] = g.line_net.save()            # the Clockwork Line (pipe segments), sent when it changes
+	if Defs.cw_roster and (not g.cw_consists.is_empty() or s.snap_n % 10 == 0):
+		m["cpl"] = CwConsist.net_rows(s, g)     # coupled rail trains (lists of ids; the host moves the cars)
 	if not g.line_net.rails.trains.is_empty() or s.snap_n % 10 == 0:
 		m["tr"] = g.line_net.rails.view_rows()  # the trains (they move every snapshot)
 	if not s.fx.is_empty():
@@ -166,6 +168,8 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 			s.count_diff_snaps += 1
 	if m.has("ln"):
 		g.line_net.load_rows(m["ln"])
+	if m.has("cpl") and Defs.cw_roster:
+		CwConsist.net_apply(s, g, m["cpl"])
 	if m.has("tr"):
 		g.line_net.rails.load_view(m["tr"])
 	if m.has("stats"):

@@ -98,6 +98,7 @@ static func clamp_point(game: Game, t: int, p: Vector2, tiles: int) -> Vector2:
 static func on_created(game: Game, u: Unit) -> void:
 	if not on(u.kind):
 		return
+	u.cw["born"] = game.clock
 	if Defs.CW_RAIL.has(u.kind):
 		var c := game.line_net.rails.nearest_cell(u.team, u.position, 12)
 		if c.x >= 0:
@@ -141,6 +142,14 @@ static func pre_tick(u: Unit, delta: float) -> void:
 		if CwRail.bound(u):
 			u.speed *= CwRail.speed_mult(u)
 			u.wind = 1.0                                  # on the Line a vehicle never runs down
+			var cons := CwConsist.of(u)
+			if cons != null and not cons.puppet:
+				if cons.cars[0] == u:
+					u.speed = minf(u.speed, cons.min_speed() * CwRail.speed_mult(u))      # a train goes at its slowest car
+				elif u.order == "move" or u.order == "amove":
+					u.order = "idle"                      # (a coupled car is driven by the car in front)
+					u.path = PackedVector2Array()
+					u.path_goal = Vector2.INF
 		else:
 			u.speed *= float(Defs.CW["heavy"]["off_speed"])
 			if _crew_needed(u) and crew_count(u) == 0:
@@ -198,16 +207,40 @@ static func steer(u: Unit, want: Vector2, delta: float) -> Vector2:
 	elif u.kind == "work_car":
 		u.cw["wait"] = 0.0
 	if CwRail.bound(u):
+		if CwConsist.of(u) != null:
+			want = CwConsist.steer(u, want, delta)
+			if CwConsist.is_follower(u):
+				return Vector2.ZERO
 		return CwRail.steer(u, want, delta)
 	return want
 
 
 static func post_move(u: Unit) -> void:
+	if CwConsist.is_follower(u) and CwRail.bound(u):
+		CwConsist.place(u)                                # a coupled car sits where the train puts it
+		return
 	if CwRail.bound(u) and not (u.cw.has("sid") and String(u.cw["sid"]["phase"]) != "to"):
 		CwRail.snap(u)
 
 
 # ------------------------------------------------------------------ orders
+
+## Called at the top of cmd_move: a coupled car does not take orders of its own; the order goes to the car in front
+## (unless that one is selected too and gets its own). True if swallowed.
+static func order_follow(u: Unit, p: Vector2, attack_move: bool) -> bool:
+	var c := CwConsist.of(u)
+	if c == null or c.puppet or c.cars.is_empty() or c.cars[0] == u:
+		return false
+	var drv: Unit = c.cars[0]
+	if not drv.selected:
+		drv.cmd_move(p, attack_move)
+	return true
+
+
+## Move the whole train `u` is in (its driver) to a point.
+static func drive(u: Unit, p: Vector2) -> void:
+	CwConsist.driver_of(u).cmd_move(p)
+
 
 ## Called at the top of cmd_move: where the unit may really go. Landed flyers take off, a Militia's order is cut at the leash.
 static func order_point(u: Unit, p: Vector2) -> Vector2:
@@ -329,6 +362,10 @@ static func rifle_shot(u: Unit, e: Entity, near: bool, rate := 1.0) -> void:
 ## Called from Unit.take_damage: Plate Wagon cover and its weakness to siege.
 static func incoming(u: Unit, amount: float, from: Entity, blow: String) -> float:
 	var game := u.game
+	if u.kind != "heavy_loco" and u.cw.has("cons"):
+		var cons := CwConsist.of(u)
+		if cons != null and cons.has_heavy():
+			amount *= float(Defs.CW["couple"]["guard"])       # the Heavy Locomotive shields the cars it pulls
 	if u.kind == "plate_wagon" and from is Unit:
 		var f: Unit = from
 		if float(f.d.get("building_bonus", 1.0)) >= SIEGE_BLOW or float(f.d.get("splash", 0.0)) >= 30.0:
@@ -369,6 +406,7 @@ static func _militia(u: Unit, delta: float) -> void:
 
 ## A unit died: every Scrapper near it salvages the wreck.
 static func on_death(game: Game, dead: Unit) -> void:
+	CwConsist.on_death(dead)                           # a dead car splits its train
 	if dead.kind == "work_car" or dead.kind == "heavy_loco" or dead.kind == "storm_engine":
 		_strand(dead)
 	if dead.kind == "carrier_car":
@@ -527,6 +565,7 @@ static func set_up_order(u: Unit, p: Vector2) -> String:
 		return "Too far from the Line (%d tiles at most)." % reach
 	if not game.is_free(c):
 		return "No room to set up there."
+	CwConsist.detach(u)                      # (it leaves its train)
 	u.cw["off"] = true
 	u.cw["setting"] = true
 	u.cw.erase("sid")
@@ -680,7 +719,7 @@ static func _car(car: Unit, delta: float) -> void:
 		if (float(w.cw["idle_t"]) >= float(cfg["idle_back"]) or far and not busy) and not bool(car.cw.get("out", false)):
 			w.cw["rtn"] = true
 			w.cmd_move(car.position)
-	if (car.order == "move" or car.order == "amove"):
+	if car.order == "move" or car.order == "amove" or CwConsist.driving(car):
 		return                                  # driving: no new jobs
 	# sites queued with BUILD
 	var sites: Array = car.cw.get("sites", [])
@@ -689,8 +728,8 @@ static func _car(car: Unit, delta: float) -> void:
 			sites.erase(s)
 			continue
 		if car.position.distance_to(s.center()) > r:
-			if CwRail.bound(car) and car.order == "idle":
-				car.cmd_move(s.center())
+			if CwRail.bound(car) and car.order == "idle" and not CwConsist.driving(car):
+				drive(car, s.center())
 			continue
 		var w := _free_hand(car)
 		if w != null:
@@ -1046,7 +1085,7 @@ static func cast_order(units: Array, p: Vector2) -> String:
 		sent += 1
 		if u.position.distance_to(p) > float(Defs.CW["storm"]["range"]):
 			if CwRail.bound(u):
-				u.cmd_move(p)                    # runs along the Line until the spot is in range
+				drive(u, p)                      # runs along the Line (with its train) until the spot is in range
 	if sent == 0 and why != "":
 		return why
 	return ""
@@ -1074,7 +1113,7 @@ static func _storm(u: Unit, delta: float) -> void:
 				u.cw["cast_left"] = float(cfg["cast"])
 				u.cmd_stop()
 				u.facing = (p - u.position).normalized()
-		elif u.order == "idle":
+		elif u.order == "idle" and not CwConsist.driving(u):
 			u.cw.erase("target")
 
 
@@ -1091,6 +1130,7 @@ static func raise_storm(game: Game, t: int, p: Vector2, owner: Unit, r: float, d
 
 ## Ticked by Game: the storms in the field (they outlast their engine).
 static func tick_game(game: Game, delta: float) -> void:
+	CwConsist.tick_all(game, delta)
 	if game.cw_storms.is_empty():
 		return
 	for s in game.cw_storms.duplicate():
@@ -1157,6 +1197,17 @@ static func train_fire(tr: Train, delta: float) -> void:
 # ------------------------------------------------------------------ the HUD
 
 static func info(u: Unit) -> String:
+	var own := _info(u)
+	var c := CwConsist.of(u)
+	if c != null and c.cars.size() >= 2:
+		var t := Loc.t("Train of %d, car %d (%s leads): it goes at the speed of its slowest car.") % [c.cars.size(), c.cars.find(u) + 1, Loc.t(c.head_name())]
+		if c.has_heavy() and u.kind != "heavy_loco":
+			t += " " + Loc.t("The Heavy Locomotive shields it: %d%% less damage.") % int(round((1.0 - float(Defs.CW["couple"]["guard"])) * 100.0))
+		return t if own == "" else own + " " + t
+	return own
+
+
+static func _info(u: Unit) -> String:
 	var cfg: Dictionary = Defs.CW
 	match u.kind:
 		"tin_militia":
@@ -1217,6 +1268,17 @@ static func card(hud, list: Array, units: Array) -> void:
 		list.append(["ab_siding", "SIDING", func() -> void:
 			ctl.mode = "cwsiding"
 			hud.toast("Tap a straight piece of the Line."), true, "", str(Defs.CW["siding"]["cost"])])
+	# COUPLE / UNCOUPLE (rail vehicles)
+	var rail := own.filter(func(u: Unit) -> bool: return Defs.CW_RAIL.has(u.kind))
+	if not rail.is_empty():
+		var cwhy := CwConsist.couple_problem(rail)
+		list.append(["ab_cw_couple", "COUPLE", func() -> void:
+			var r := CwConsist.couple_order(game, rail)
+			hud.toast(r if r != "" else "The selected vehicles drive to the last car and hook on."), cwhy == "", cwhy, ""])
+		if rail.any(func(u: Unit) -> bool: return CwConsist.of(u) != null):
+			list.append(["ab_cw_uncouple", "UNCOUPLE", func() -> void:
+				var n := CwConsist.uncouple_order(rail)
+				hud.toast("The train is split in front of the car you tapped (the last car if none)." if n > 0 else "No train selected."), true, "", ""])
 	var cars := own.filter(func(u: Unit) -> bool: return u.kind == "work_car")
 	if not cars.is_empty():
 		var out: bool = cars.any(func(u: Unit) -> bool: return bool(u.cw.get("out", false)))
@@ -1300,6 +1362,8 @@ static func card(hud, list: Array, units: Array) -> void:
 
 ## Tooltips of the roster's buttons: label -> [title, body].
 const TIPS := {
+	"COUPLE": ["Couple", "Hook the selected rail vehicles (and trains) into one train: the one with a Heavy Locomotive (else another locomotive) leads and waits, the others drive to its last car and hook on. Driving a vehicle into an idle one hooks it on too. A train moves as one at the speed of its slowest car and takes one order; each car keeps its job. A Heavy Locomotive shields the other cars."],
+	"UNCOUPLE": ["Uncouple", "Split the train in front of the car you tapped (the last car if you selected the whole train). The rear part becomes a train of its own. A car that dies splits the train too."],
 	"CREW OUT": ["Crew out", "Work Car: every Winder comes out and works (builds, mends, winds) near the car. Heavy Locomotive and Storm Engine: the Tin Militia aboard climb down."],
 	"CREW IN": ["Crew in", "The Winders walk back aboard the car and wait there, safe."],
 	"PLATES": ["Raise the plates", "Side plates go up for a few seconds: the gate widens and your units near the wagon take far less from ranged fire. Then they cool down."],

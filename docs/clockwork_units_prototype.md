@@ -59,6 +59,53 @@ switched on, and easy to remove (see the end).
     storm (radius 110 px, 9 s, 9 damage/s and the acid slow to every enemy unit inside; buildings are not hurt), 20 s recharge. SET UP off the
     rails with Tin Militia aboard: storms at 60% damage and 70% size, and nothing without crew. Storms outlast their engine.
 
+## Trains: coupling rail vehicles (v0.14.13)
+
+Rail vehicles hook together into ONE train (a "consist", `scripts/cw_consist.gd`, numbers in `Defs.CW["couple"]`). Roster rail vehicles
+only: the Work Car, Plate Wagon, Heavy Locomotive, Carrier Car, Tesla Locomotive and Storm Engine. The Ore Train and Troop Train are a
+different thing (the `Train` entity of the economy: not selectable, no orders) and stay as they are; players cannot couple wagons to
+them. Turning them into ready-made consists would mean making them units first.
+
+- **COUPLE** (command card, hotkey C) with two or more vehicles or trains selected: the one with a Heavy Locomotive (else another
+  locomotive-type: Tesla Locomotive, Storm Engine; else the biggest group) is the main train and waits; the others drive along the Line
+  to its last car and hook on within 78 px (they give up after 45 s if the Line is cut). **Driving into an idle vehicle** that is straight
+  ahead in the same lane (40 px) hooks on too: the moving one goes behind, and the whole train carries on to where the mover was
+  going. New vehicles (4 s) and the parts of a train just uncoupled (5 s) are left alone by this. A train holds 6 cars.
+- **One train.** The front car is the DRIVER: it plans the path, is steered by `CwRail` (lanes, queueing behind a slower vehicle or
+  train going the same way, the loops are just track), and takes the orders. The other cars do not move on their own: each tick every
+  one is put on the driver's trail at the tight coupling distance (half of each length less the hook overlap: 64 px side on, 27 px end on)
+  as a rigid chord, so the train holds together round bends, loops and lane changes. A car dragged out of place (a new joiner, a bump)
+  slides in at 260 px/s. The steel link is drawn between side-on cars (`CwConsist.draw_links`, code art).
+- **Selecting any car selects the whole train** (`Game.set_selection`); an order given to a car goes to the driver. The train goes
+  at the speed of its slowest car (`CwConsist.min_speed`, times the pressure under the driver). A Work Car's crew are called aboard
+  before a moving train leaves (the usual 6 s wait).
+- **Each car keeps its job:** crews build and mend near their car (a Work Car in a train that is driving takes no new jobs), the Plate
+  Wagon's gate and cover stay where the wagon is, Tesla Locomotives and Heavy Locomotives (on the rails) fire from the train, Storm
+  Engines cast (THUNDER drives the whole train toward the spot first), the Carrier Car's deck carries its flyers along. SET UP takes a
+  car out of its train.
+- **Heavy Locomotive bonus:** while one is coupled the other cars take `guard` = 85% of the damage (15% less). It applies to every other
+  car of the train, wherever the locomotive stands in it. The locomotive's speed (38) is the lowest of the roster, so a speed bonus
+  would have been moot.
+- **Turning round.** A train cannot U-turn, and wagons must not stick out: told to go back, it stands 1 s and then SWAPS ENDS
+  (push-pull): the last car becomes the driver, the trail is reversed, and the order is carried over. So the Heavy Locomotive may end
+  up pushing. A train at a dead end does the same.
+- **UNCOUPLE** (hotkey U): splits the train in front of the car the player tapped (tap one car, then the button; the front car alone if
+  the first car was tapped; the last car if the whole train was box-selected). The rear part is a train of its own, standing.
+- **A car dying** (or leaving the rails) splits the train there: the cars in front keep their order, the cars behind become a train
+  of their own and carry on to the same place. A train of one is just a vehicle. HP stays per car.
+- **Save, load, online:** a unit's save row carries `cpl: [train id, place]` and `CwConsist.restore` rebuilds the trains (the trail is
+  re-walked along the Line behind the driver). The host's snapshot carries the trains as lists of net ids (`cpl`); a guest keeps drawn and
+  selectable copies (the host moves the cars). COUPLE/UNCOUPLE are not forwarded from a guest (the Lab is not for online play).
+- **The AI** ignores all this (it never trains or couples these units).
+
+Rough edges: sidings are for single vehicles (a train is too long for a side arm, so a faster vehicle behind a train queues, then
+passes through after the 6 s fallback); a vehicle sent to couple from the far side of a train drives through it; the order of cars is
+the order they joined (only the choice of the main train prefers a locomotive, there is no re-sorting afterwards); the lengths of
+the cars are the placeholder art's (68 px side on, `Defs.CW["couple"]["len"]`: change them when the real sheets arrive); a loop
+at the Clocktower is only used by trains of the economy, a coupled train turns by swapping ends instead.
+A Heavy Locomotive (radius 22) can snag at a corner with a cliff or building close beside it (the units' terrain collision, not coupling; found while testing, not fixed: a solo one stops there too).
+Test: `tools/test_cw_couple.gd`; screenshots: `tools/shot_cw_couple.gd`.
+
 ## The tuning block
 
 All numbers are in `Defs.CW` (one dictionary, with a comment per entry) plus each unit's own line in `Defs.UNITS` between the
@@ -76,6 +123,7 @@ All numbers are in `Defs.CW` (one dictionary, with a comment per entry) plus eac
 | rifle | near 2 tiles, range x1.3, damage x1.3, train rate x0.8 |
 | carrier | deck 2, heal 14/s, wind 0.5/s, pick 110 px, one per team |
 | tesla | jumps 2, falloff 0.55, pipe reach 96 px, min_p 0.6, pass 70 px, pressure_bonus 0.6 |
+| couple | reach 78, bump 40, max 6 cars, reverse 1 s, guard 0.85, close 260 px/s, len 68/28 px, hook 4/1 px, give_up 45 s |
 | storm | range 330, radius 110, time 9 s, dps 9, cooldown 20 s, cast 1.2 s, reach 6, crew 3, off_dps 0.6, off_radius 0.7 |
 
 Design notes (docs/design_principles.md): the Scrapper's stacks are capped and decay in seconds (anti-snowball, a quiet brake, not
@@ -85,7 +133,7 @@ the whole crew, and losing it strands them); off-rail machines trade power for p
 
 ## Tests (tools/test_cw_*.gd, each a few seconds)
 
-siding, work_car, militia, scrapper, plate, heavy, rifleman, carrier, tesla, storm, lab (production of every unit and the lab's
+siding, couple, work_car, militia, scrapper, plate, heavy, rifleman, carrier, tesla, storm, lab (production of every unit and the lab's
 setup) and ai (3 minutes of a Hard Clockwork AI with the roster on: no crash, none of the new units trained). Run:
 `godot --headless --fixed-fps 30 --script res://tools/test_cw_<name>.gd`. Helpers: `tools/cw_test_util.gd`.
 Screenshots: `xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_cw_units.gd -- /tmp/shots_units`.

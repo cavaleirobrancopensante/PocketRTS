@@ -318,6 +318,17 @@ const CW := {
 	"tesla": {"jumps": 2, "falloff": 0.55, "reach": 96.0, "min_p": 0.6, "pass": 70.0, "pressure_bonus": 0.6},
 	# STORM ENGINE: THUNDER raises a storm of `radius` px for `time` s at up to `range` px: `dps` damage and the acid slow (Defs.BLOAT slow)
 	# to enemies in it; cooldown after. Set up off the rails with Tin Militia: `off_*` multipliers.
+	# COUPLING (scripts/cw_consist.gd): rail vehicles hook together into one train. len: [side view, end-on view] px a vehicle
+	# is long on the track (a coupling joins two vehicles at half of each length less the hook overlap); reach: px from the
+	# last car at which a vehicle sent to couple hooks on; bump: px ahead (same lane) at which a moving vehicle running into an
+	# idle one hooks on; reverse: seconds a train stands before it swaps ends (the rear car leads: push-pull, so nothing
+	# sticks out); close: px/s at which a car slides into its place on the train; guard: damage taken by the other cars while
+	# a Heavy Locomotive is coupled (the locomotive shields the train); max: cars in one train; age: seconds a new vehicle
+	# is left alone by "driving into it"; cool: seconds after UNCOUPLE before a bump can hook the parts again;
+	# give_up: seconds a vehicle sent to couple tries before it gives up; locos: the kinds that lead a train.
+	"couple": {"len": {"work_car": [68.0, 28.0], "plate_wagon": [68.0, 28.0], "heavy_loco": [68.0, 28.0], "carrier_car": [68.0, 28.0],
+		"tesla_loco": [68.0, 28.0], "storm_engine": [68.0, 28.0]}, "hook": [4.0, 1.0], "reach": 78.0, "bump": 40.0, "reverse": 1.0,
+		"close": 260.0, "guard": 0.85, "max": 6, "age": 4.0, "cool": 5.0, "give_up": 45.0, "locos": ["heavy_loco", "tesla_loco", "storm_engine"]},
 	"storm": {"range": 330.0, "radius": 110.0, "time": 9.0, "dps": 9.0, "cooldown": 20.0, "cast": 1.2, "reach": 6, "deploy": 2.5, "off_dps": 0.6, "off_radius": 0.7, "crew": 3},
 }
 
