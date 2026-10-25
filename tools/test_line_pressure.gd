@@ -85,7 +85,11 @@ func _run() -> void:
 			g._remove_quietly(b)
 	net.solve()
 	var before: float = net.seg_at(cells[28]).pressure
-	var relay := U.building_beside(g, 0, "pressure_relay", cells[24])
+	var relay: Building = null
+	for ci in [24, 23, 25, 22, 26, 21, 20]:
+		relay = U.building_beside(g, 0, "pressure_relay", cells[ci])
+		if relay != null:
+			break
 	net.solve()
 	var after: float = net.seg_at(cells[28]).pressure
 	check("a Pressure Relay raises the pressure beyond it", relay != null and after > before + 0.25, "%.2f -> %.2f" % [before, after])

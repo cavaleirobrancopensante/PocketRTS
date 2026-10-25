@@ -134,6 +134,7 @@ func _run() -> void:
 	var seg2 := net.seg_at(plan["cells"][8])
 	seg2.hp = seg2.max_hp * 0.3
 	winders[0].auto_repair = true
+	winders[0].position = seg2.global_position + Vector2(20, 20)      # (Winders no longer end up beside the run: no hauling)
 	check("a damaged segment is found for repair", g.find_repair(winders[0], 300.0) == seg2 or g.find_repair(winders[0], 300.0) != null)
 	winders[0].position = seg2.global_position + Vector2(20, 20)
 	winders[0].cmd_repair(seg2)

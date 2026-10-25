@@ -40,7 +40,7 @@ func _starts_of(g: Game, t: int) -> Array:
 	var out: Array = []
 	var hall: Building = g._own_hall(t)
 	var hc: Vector2 = hall.rect().get_center() / Game.T
-	var want: Array = Defs.FACTIONS[g.factions[t]]["start"]
+	var want: Array = Defs.start_list(g.factions[t])
 	for b in g.buildings:
 		if b.team == t and want.has(b.kind):
 			var h0 := int(g.height[g.idx(g.cell_of(hall.rect().get_center()))])
@@ -78,7 +78,7 @@ func _check(g: Game, bad: Array) -> void:
 		var hr := Rect2i(Vector2i(hall.cell), hall.size)
 		var h0 := int(g.height[g.idx(g.cell_of(hall.rect().get_center()))])
 		var mine := _starts_of(g, t)
-		var want: Array = Defs.FACTIONS[g.factions[t]]["start"]
+		var want: Array = Defs.start_list(g.factions[t])
 		if mine.size() != want.size():
 			bad.append("team %d: %d starting buildings, expected %d" % [t, mine.size(), want.size()])
 		for s in mine:
