@@ -170,7 +170,7 @@ const GAIN := {
 	"res://assets/audio/select/warren.wav": 2.0,
 	"res://assets/audio/steam.wav": -1.0,
 	"res://assets/audio/ui/back.wav": 4.3,
-	"res://assets/audio/ui/alert_all.wav": -11.0,
+	"res://assets/audio/ui/alert_all.wav": -4.0,
 	"res://assets/audio/ui/click.wav": 3.6,
 	"res://assets/audio/ui/error.wav": 2.4,
 	"res://assets/audio/ui/group_set.wav": 6.5,
