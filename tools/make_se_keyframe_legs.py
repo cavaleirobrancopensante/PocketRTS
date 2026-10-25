@@ -1,4 +1,4 @@
-"""Owner-requested keyframe for the ChatGPT south-east walk: the labourer from /tmp/gait_blocks.png (a 6px-block sampling of the owner image) with its legs deleted and code legs drawn (picture-left leg leading and nearer, picture-right leg trailing and higher), black outline. Reference for prompt 37. Run from a scratch dir; paths are /tmp."""
+"""Owner-requested keyframe for the ChatGPT south-east walk (prompt 37): the labourer from /tmp/gait_blocks.png (a 6px-block sampling of the owner image) with its legs deleted and code legs drawn: an inverted V, the picture-left leg leading (lowest, flat boot), the picture-right leg trailing (higher, heel up), black outline."""
 import numpy as np
 from PIL import Image, ImageDraw
 g=np.array(Image.open("/tmp/gait_blocks.png")).copy()
@@ -39,10 +39,10 @@ def paint(layers):
     for mask,pal in layers:
         o=clip(outline(mask)); g[o]=BLACK
         m=clip(mask); sh=shade(m,pal); g[m]=sh[m]
-# back leg (the picture-RIGHT hip): trailing, farther, higher on the picture, knee bent, heel up, on its toes
-bt,bb=leg([(48,93),(47,103)],8,[(47,103),(40,111)],6.5,[(34,106),(44,108),(45,115),(37,123),(29,124),(29,120),(33,114)])
-# front leg (the picture-LEFT hip): leading, nearer, lower on the picture, straight, heel down, toe toward the lower right
-ft,fb=leg([(38,93),(42,106)],8.5,[(42,106),(49,122)],7,[(44,117),(53,118),(54,128),(64,131),(64,136),(45,136),(43,129)])
+# the picture-RIGHT leg: trailing, farther, a little higher on the picture, knee bent, heel up, going to the lower right
+bt,bb=leg([(48,93),(52,104)],8,[(52,104),(58,113)],6.5,[(53,108),(62,109),(65,119),(71,125),(71,129),(56,129),(53,121)])
+# the picture-LEFT leg: leading, nearer, lowest on the picture, straight, boot flat on the ground, going to the lower left
+ft,fb=leg([(38,93),(33,106)],8.5,[(33,106),(27,121)],7,[(21,116),(31,117),(32,127),(36,131),(36,136),(14,136),(14,131),(21,128)])
 paint([(bt,GREY),(bb,BRO),(ft,GREY),(fb,BRO)])
 Image.fromarray(g).save("/tmp/gait/coded_blocks.png")
 Image.fromarray(g).resize((W*8,H*8),Image.NEAREST).save("/tmp/gait/coded_big.png")
