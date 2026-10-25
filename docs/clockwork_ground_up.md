@@ -15,3 +15,5 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 
 ## Decided
 - Clocktower: makes the copy-workers (Winders); takes in the ore; holds the blueprint (unlocks the other buildings; a new Clocktower extends the spread, it unlocks nothing new). Not decided: supply, more than one Clocktower, defence (suggested: tough, does not shoot).
+- Worker: ONE kind only, the Winder (builds by carrying a crate that unfolds; works the Drill for income per worker; winds and repairs). It CAN fight (owner). All factions' workers share one speed (the Labourer's 74) for balance. Numbers match the Crown Labourer for now (cost 50, 46 hp, 12 s); worker counts of 40-70 in a late game are a later balance pass.
+- Winder look (art + animation, owner picked): clock-face head with turning hands, winding key on the back, ticking steps (small jerky one-second beats like a second hand), working on the beat (hammer, hammer, pause), squat pocket-watch body. Art request to ChatGPT is written once the faction look is settled.
