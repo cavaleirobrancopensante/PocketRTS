@@ -150,6 +150,19 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			# a keg on the balloon's rope (paid for): it keeps climbing after a load
 			ud["haul"] = [u.haul_t, u.haul_shots, u.haul_at.x, u.haul_at.y]
 		d["units"].append(ud)
+	# control groups (units by their number in this list, buildings by their cell) and the
+	# camera hotkeys
+	d["groups"] = game.groups.map(func(g: Array) -> Array:
+		var out: Array = []
+		for e in g:
+			if not is_instance_valid(e) or e.dead:
+				continue
+			if e is Building:
+				out.append(["b", e.cell.x, e.cell.y])
+			elif ids.has(e):
+				out.append(["u", ids[e]])
+		return out)
+	d["cams"] = game.cam_slots.map(func(c) -> Variant: return null if c == null else [c[0].x, c[0].y, c[1]])
 	# Clockwork crates on the ground, and the ones on a Winder's back (they come back lying
 	# where he stood): [x, y, team, site cell x, site cell y, hp]
 	d["crates"] = []
@@ -164,6 +177,28 @@ static func save(game: Game, cfg: Dictionary) -> void:
 	if f:
 		f.store_string(JSON.stringify(d))
 		f.close()
+
+
+## Control groups and camera hotkeys back (saves from before them have none).
+static func _restore_groups(game: Game, d: Dictionary, made: Array) -> void:
+	var gs: Array = d.get("groups", [])
+	for gi in mini(gs.size(), game.groups.size()):
+		var out: Array = []
+		for ent in gs[gi]:
+			if ent is Array and String(ent[0]) == "u":
+				var i := int(ent[1])
+				if i >= 0 and i < made.size() and made[i] != null and is_instance_valid(made[i]):
+					out.append(made[i])
+			elif ent is Array and String(ent[0]) == "b":
+				for b in game.buildings:
+					if not b.dead and b.cell == Vector2i(int(ent[1]), int(ent[2])) and b.team == game.human:
+						out.append(b)
+						break
+		game.groups[gi] = out
+	var cs: Array = d.get("cams", [])
+	for i in mini(cs.size(), game.cam_slots.size()):
+		var c = cs[i]
+		game.cam_slots[i] = [Vector2(float(c[0]), float(c[1])), float(c[2])] if c is Array and c.size() >= 3 else null
 
 
 ## Saves from v0.7.32 on had rock outcrops ([x, y, kind, amount left], 2x2 tiles): the share
@@ -497,6 +532,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 	game._astar_dirty = true
 	game.camera.position = _to_v2(d["camera"])
 	game.camera.zoom = Vector2.ONE * float(d.get("zoom", 1.5))
+	_restore_groups(game, d, made)
 	if game.mlog:
 		game.mlog.lines = PackedStringArray(d.get("log", []))
 		game.mlog.add("(match continued after it was closed)")

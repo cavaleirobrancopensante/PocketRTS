@@ -4,7 +4,7 @@ extends Node
 ## COMPUTER: left click selects (Shift adds, Ctrl or double-click = all of that type on
 ##   screen), left drag = box, right click = command, wheel = zoom, middle drag or the
 ##   screen edges or arrow keys = pan, letter hotkeys for everything on the command card,
-##   1-9 groups (Ctrl+number saves), F1 idle worker, F2 army, F3 hall, Space = jump to
+##   1-9 and 0 groups (Shift+number adds, Ctrl+number removes, Alt+number sets), F1 idle workers, F2 army, F3 make, F4-F12 camera views (Shift+F saves), Space = jump to
 ##   the selection, Esc = cancel. Shift with a command (right click, MOVE, ATTACK, REPAIR,
 ##   placing buildings and walls) queues it after the units' current orders. Watching computers: 0 all vision, 1-4 follow that player.
 ## MOBILE:
@@ -380,22 +380,14 @@ func _key(e: InputEventKey) -> void:
 	if game.spectating() and not e.ctrl_pressed and not e.shift_pressed and not e.meta_pressed \
 			and e.keycode >= KEY_0 and e.keycode <= KEY_8 and game.spectator.hotkey(int(e.keycode - KEY_0)):
 		return
+	# the hotkey bar: 1-9 and 0 groups (Shift adds, Ctrl removes, Alt sets), F1 idle, F2 army,
+	# F3 make, F4-F12 camera views (Shift+F saves)
+	if Settings.pc() and hud and hud.bar.key(e):
+		return
 	if Settings.pc() and hud and not e.ctrl_pressed and hud.hotkey(e.keycode):
 		return
 	if Settings.pc():
 		match e.keycode:
-			KEY_F1:
-				hud._group_pressed(1, 0.0)
-				return
-			KEY_F2:
-				hud._group_pressed(0, 0.0)
-				return
-			KEY_F3:
-				hud._group_pressed(2, 0.0)
-				return
-			KEY_F4:
-				hud._group_pressed(6, 0.0)
-				return
 			KEY_SPACE:
 				var sel: Array = game.selection.filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
 				if not sel.is_empty():
@@ -405,25 +397,6 @@ func _key(e: InputEventKey) -> void:
 					game.camera.position = c / sel.size()
 					_user_cam()
 				return
-		if e.keycode >= KEY_1 and e.keycode <= KEY_9:
-			var gi := int(e.keycode - KEY_1)
-			if e.ctrl_pressed or e.meta_pressed:
-				game.groups[gi] = game.selection.duplicate()
-				hud.toast("Group %d set." % (gi + 1))
-			elif e.shift_pressed:
-				var add: Array = game.selection.duplicate()
-				for x in game.groups[gi]:
-					if is_instance_valid(x) and not x.dead and not add.has(x):
-						add.append(x)
-				game.set_selection(add)
-			else:
-				var alive: Array = game.groups[gi].filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
-				if not alive.is_empty() and game.selection == alive and Time.get_ticks_msec() - _last_click_t < 400:
-					game.camera.position = alive[0].global_position
-					_user_cam()
-				game.set_selection(alive)
-				_last_click_t = Time.get_ticks_msec()
-			return
 	match e.keycode:
 		KEY_ESCAPE, KEY_BACKSPACE:
 			if mode != "":
@@ -446,12 +419,6 @@ func _key(e: InputEventKey) -> void:
 		KEY_B:
 			if hud and units.any(func(u: Unit) -> bool: return u.is_worker()):
 				hud.page = "build"
-		KEY_1, KEY_2, KEY_3:
-			var g := int(e.keycode - KEY_1)
-			if e.ctrl_pressed or e.meta_pressed:
-				game.groups[g] = game.selection.duplicate()
-			else:
-				game.set_selection(game.groups[g])
 
 
 func _process(delta: float) -> void:

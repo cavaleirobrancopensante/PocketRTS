@@ -34,7 +34,7 @@ func _sizes() -> Dictionary:
 	var b := 60.0 if Settings.pc() else 70.0
 	var cols := 4 if Settings.pc() else 3
 	var rows := 3 if Settings.pc() else 2
-	return {"mini": Vector2(210, 210.0 * Game.H / Game.W), "groups": Vector2(206, 90),
+	return {"mini": Vector2(210, 210.0 * Game.H / Game.W), "hotbar": HotkeyBar.size_hint(),
 		"card": Vector2(b * cols + 4, b * rows + 4), "panel": Vector2(0, 88)}
 
 
@@ -239,7 +239,7 @@ func _input(event: InputEvent) -> void:
 		if p.y < 110:
 			return       # the buttons up top
 		var rs := _rects()
-		for part in ["card", "panel", "groups", "mini"]:
+		for part in ["card", "panel", "hotbar", "mini"]:
 			if (rs[part] as Rect2).has_point(hp):
 				_drag = part
 				_drag_off = hp - (rs[part] as Rect2).position

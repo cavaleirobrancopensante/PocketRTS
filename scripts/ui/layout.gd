@@ -1,13 +1,13 @@
 class_name UiLayout
 ## In-game interface layouts. Two built-in profiles that can't be changed (STANDARD and
 ## MINIMAP TOP RIGHT) and three CUSTOM slots where the player moves the minimap, the quick
-## buttons, the selection panel and the command card, and sets their own letter hotkeys.
+## hotkey bar, the selection panel and the command card, and sets their own letter hotkeys.
 ## Saved in user://settings.cfg, section "layout".
 
 const BUILT_IN := ["STANDARD", "MINIMAP TOP RIGHT"]
 const CUSTOM := ["CUSTOM 1", "CUSTOM 2", "CUSTOM 3"]
-const PARTS := ["mini", "groups", "panel", "card"]
-const PART_NAMES := {"mini": "MINIMAP", "groups": "QUICK BUTTONS", "panel": "SELECTION", "card": "COMMANDS"}
+const PARTS := ["mini", "hotbar", "panel", "card"]
+const PART_NAMES := {"mini": "MINIMAP", "hotbar": "HOTKEY BAR", "panel": "SELECTION", "card": "COMMANDS"}
 const TOP := 44.0          # below the top bar
 const M := 8.0             # margin from the screen edge
 
@@ -79,20 +79,29 @@ static func fraction(r: Rect2, hud: Vector2) -> Array:
 
 static func _preset(base: String, hud: Vector2, sizes: Dictionary) -> Dictionary:
 	var mini: Vector2 = sizes["mini"]
-	var groups: Vector2 = sizes["groups"]
+	var hb: Vector2 = sizes["hotbar"]     # least width, height
 	var card: Vector2 = sizes["card"]
 	var ph: float = sizes["panel"].y
 	var out := {}
 	out["card"] = Rect2(hud.x - card.x - M, hud.y - card.y - M, card.x, card.y)
 	if base == "MINIMAP TOP RIGHT":
 		out["mini"] = Rect2(hud.x - mini.x - M, TOP, mini.x, mini.y)
-		out["groups"] = Rect2(hud.x - groups.x - M, TOP + mini.y + 10, groups.x, groups.y)
 		out["panel"] = Rect2(M, hud.y - ph - M, maxf(220.0, (out["card"] as Rect2).position.x - 2 * M), ph)
 	else:
 		out["mini"] = Rect2(M, hud.y - mini.y - M, mini.x, mini.y)
-		out["groups"] = Rect2(M, hud.y - mini.y - M - groups.y - 8, groups.x, groups.y)
 		var l := M + mini.x + 8
 		out["panel"] = Rect2(l, hud.y - ph - M, maxf(220.0, (out["card"] as Rect2).position.x - 8 - l), ph)
+	# the hotkey bar: right above the selection panel, as far right as the command card begins
+	# (on a narrow screen it reaches left over the minimap's column, then sits above that too)
+	var pr: Rect2 = out["panel"]
+	var w := minf(maxf(pr.size.x, hb.x), pr.end.x - M)
+	var left := pr.end.x - w
+	var bottom := pr.position.y
+	for part in ["mini", "panel"]:
+		var r: Rect2 = out[part]
+		if r.end.y >= hud.y - M - 1.0 and r.end.x > left and r.position.x < pr.end.x:
+			bottom = minf(bottom, r.position.y)
+	out["hotbar"] = Rect2(left, bottom - 4.0 - hb.y, w, hb.y)
 	return out
 
 

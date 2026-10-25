@@ -125,7 +125,8 @@ var hud: Control
 var ais: Array = []
 
 var selection: Array = []
-var groups: Array = [[], [], [], [], [], [], [], [], []]
+var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
+var cam_slots: Array = [null, null, null, null, null, null, null, null, null]   # camera hotkeys F4-F12: [position, zoom] or null (kept in the autosave)
 var _hash := {}
 var _path_queue: Array = []
 var _end_t := 0.0
@@ -7087,6 +7088,20 @@ func selected_producers() -> Array:
 	return selection.duplicate()
 
 
+## Own buildings of mixed kinds selected together (a Barracks with an Armoury...): the list, else [].
+## (One kind alone is selected_buildings; a mix gets one merged command card.)
+func selected_mixed() -> Array:
+	if selection.size() < 2:
+		return []
+	var me := controlled_team()
+	var kinds := {}
+	for e in selection:
+		if not is_instance_valid(e) or not (e is Building) or e.team != me or e.dead:
+			return []
+		kinds[e.kind] = true
+	return selection.duplicate() if kinds.size() > 1 else []
+
+
 ## Every finished building of a team that trains fighting units.
 func producers(t: int) -> Array:
 	return buildings.filter(func(b: Building) -> bool:
@@ -7096,7 +7111,12 @@ func producers(t: int) -> Array:
 ## The buildings a rally order goes to: the selected ones of one kind, or a MAKE selection.
 func rally_buildings() -> Array:
 	var bs := selected_buildings()
-	return bs if not bs.is_empty() else selected_producers()
+	if bs.is_empty():
+		bs = selected_producers()
+	if bs.is_empty():
+		# a mixed selection (Barracks + Armoury ...): the ones that train
+		bs = selected_mixed().filter(func(x: Building) -> bool: return x.built and not (x.d["trains"] as Array).is_empty())
+	return bs
 
 
 ## Train at the least busy of several buildings (or the only one).

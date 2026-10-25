@@ -18,7 +18,7 @@ var _card_buttons: Array = []        # the command card's: {rect, cb, enabled, w
 var _hud_touches := {}               # touch index -> what it pressed
 var _msg := ""
 var _msg_t := 0.0
-var _hold_t := {}                    # group index -> press time
+var bar: HotkeyBar                   # the bottom hotkey bar (scripts/ui/hotkey_bar.gd)
 var _attack_alarm_t := 0.0
 var _mouse_hud := false
 var _card_items: Array = []
@@ -26,6 +26,7 @@ var _card_items: Array = []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar = HotkeyBar.new(self)
 	_fit()
 	for n in LAYERS:
 		var l := HudLayer.new()
@@ -312,12 +313,7 @@ func _layer_sig(n: String) -> Array:
 				al = [game.alert_at, int(game.alert_t * 40.0)]
 			return [mr, zoom_rect(), Vector2i(((c - vp * 0.5) * k * 4.0).round()), Vector2i((vp * k * 4.0).round()), al, snappedf(game.camera.zoom.x, 0.01), int(_zoom_alpha() * 40.0)]
 		"groups":
-			var hv := -1
-			if pc:
-				for i in QUICK:
-					if group_rect(i).has_point(m):
-						hv = i
-			return [_vs(), _counts, hv, _hold_t.keys()]
+			return [_vs(), _counts, bar.hit(m) if pc else -1, bar.sig()]
 		"selection":
 			if game.selection.is_empty():
 				return [_vs(), 0]
@@ -340,7 +336,7 @@ func _layer_sig(n: String) -> Array:
 				for i in _card_buttons.size():
 					if (_card_buttons[i]["rect"] as Rect2).has_point(m):
 						hv = i
-			return [_vs(), _card_look, hv]
+			return [_vs(), _card_look, hv, _card_flash_phase()]
 		"glow":
 			for b in _card_buttons:
 				if String(b["item"][1]).begins_with("~ "):
@@ -407,7 +403,7 @@ func _layout() -> Dictionary:
 		var b := _btn()
 		_rects = UiLayout.rects(_vs(), {
 			"mini": mini_size(),
-			"groups": Vector2(206, 90),
+			"hotbar": HotkeyBar.size_hint(),
 			"card": Vector2(b * _cols() + 4, b * _rows() + 4),
 			"panel": Vector2(0, 88)})
 	return _rects
@@ -454,23 +450,6 @@ func panel_rect() -> Rect2:
 	return _layout()["panel"]
 
 
-## Quick-select buttons above the minimap: ARMY, IDLE, HALL, MAKE on the bottom row,
-## groups 1-4 above. Index: 0 ARMY, 1 IDLE, 2 HALL, 3-5 groups 1-3, 6 MAKE, 7 group 4.
-const QUICK := 8
-
-
-func group_rect(i: int) -> Rect2:
-	var g: Rect2 = _layout()["groups"]
-	var col := i % 3 if i < 6 else 3
-	var row := 0 if (i >= 3 and i < 6) or i == 7 else 1
-	return Rect2(g.position.x + col * 52, g.position.y + row * 48, 50, 42)
-
-
-## The group number (0-based) a quick button stands for, or -1.
-func _group_of(i: int) -> int:
-	return i - 3 if i >= 3 and i < 6 else (3 if i == 7 else -1)
-
-
 func menu_rect() -> Rect2:
 	return Rect2(_vs().x - 96, 2, 90, 32)
 
@@ -496,10 +475,7 @@ func _hud_has(p: Vector2) -> bool:
 	for r in [top_rect(), mini_rect(), panel_rect(), card_rect(), drag_rect()]:
 		if (r as Rect2).has_point(p):
 			return true
-	for i in QUICK:
-		if group_rect(i).has_point(p):
-			return true
-	return false
+	return bar.rect().has_point(p)
 
 
 # ------------------------------------------------------------------ input
@@ -620,10 +596,10 @@ func _press(p: Vector2) -> void:
 		Settings.save_all()
 		toast("One-finger drag now %s." % ("moves the view" if Settings.drag_mode == "pan" else "box-selects"))
 		return
-	for i in QUICK:
-		if group_rect(i).has_point(p):
-			_hold_t[i] = Time.get_ticks_msec()
-			return
+	var hid := bar.hit(p)
+	if hid >= 0:
+		bar.press(hid)
+		return
 	for b in _all_buttons():
 		if (b["rect"] as Rect2).has_point(p):
 			if b.has("alt") and not Settings.pc():
@@ -648,11 +624,7 @@ func _release(p: Vector2) -> void:
 			elif b.has("why"):
 				toast(b["why"])
 		_alt_press = {}
-	for i in _hold_t.keys():
-		var held := (Time.get_ticks_msec() - int(_hold_t[i])) / 1000.0
-		_hold_t.erase(i)
-		if group_rect(i).has_point(p):
-			_group_pressed(i, held)
+	bar.release(p)
 
 
 func _minimap_to(p: Vector2) -> void:
@@ -804,55 +776,6 @@ func _draw_view(font: Font) -> void:
 			key = "[%d] " % (int(o[2]) + 1)
 		_text(UiStyle.bold_font(), Vector2(rr.position.x + 42, rr.get_center().y + 7), key + String(o[0]) + ("  (out)" if not o[3] else ""), 19,
 			(Color(1, 0.9, 0.55) if cur else UiStyle.TEXT) if o[3] else Color(1, 1, 1, 0.4))
-
-
-func _group_pressed(i: int, held: float) -> void:
-	match i:
-		0:   # whole army
-			game.set_selection(game.army(game.human))
-		1:   # idle labourers
-			var idle := game.labourers(game.human).filter(func(u: Unit) -> bool: return u.order == "idle")
-			if idle.is_empty():
-				toast("No idle workers.")
-			else:
-				game.set_selection([idle[0]])
-				_jump(idle[0].position)
-		2:   # town hall: each tap goes on to the next one (the main hall, then expansions)
-			var halls: Array = game.halls_of(game.human, false)
-			if halls.is_empty():
-				var h := game._own_hall(game.human)
-				if h:
-					game.set_selection([h])
-					_jump(h.global_position)
-				return
-			var cur: int = halls.find(game.selection[0]) if game.selection.size() == 1 else -1
-			var nh: Building = halls[(cur + 1) % halls.size()]
-			game.set_selection([nh])
-			_jump(nh.center())
-		6:   # every production building: train from all of them at once
-			var pb := game.producers(game.human)
-			if pb.is_empty():
-				toast("No buildings that train an army yet.")
-			else:
-				game.set_selection(pb)
-		_:
-			var g := _group_of(i)
-			if held > 0.45 or game.groups[g].is_empty():
-				if not game.selection.is_empty():
-					game.groups[g] = game.selection.duplicate()
-					toast("Group %d set." % (g + 1))
-			else:
-				var alive: Array = game.groups[g].filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead)
-				game.groups[g] = alive
-				game.set_selection(alive)
-				if held < 0.3 and not alive.is_empty() and Time.get_ticks_msec() - _last_group_tap < 350 and _last_group == g:
-					_jump(alive[0].position)
-				_last_group = g
-				_last_group_tap = Time.get_ticks_msec()
-
-
-var _last_group := -1
-var _last_group_tap := 0
 
 
 # ------------------------------------------------------------------ command card
@@ -1013,9 +936,9 @@ func _build_card() -> Array:
 		_shift_queueable(list)
 		return list
 	if b == null:
-		var pbs := game.selected_producers()
-		if not pbs.is_empty():
-			return _production_card(pbs)
+		var mixed := game.selected_mixed()
+		if not mixed.is_empty():
+			return _mixed_card(mixed)
 	if b and b.built and b.kind == "gate":
 		var was_locked: bool = b.locked
 		list.append(["unlock" if was_locked else "lock", "UNLOCK" if was_locked else "LOCK", func() -> void:
@@ -1068,23 +991,7 @@ func _build_card() -> Array:
 				var w := game.start_hall_upgrade(b)
 				toast(w if w != "" else "Your %s is growing into a %s." % [b.d["name"], nl["name"]]), uwhy == "", uwhy, str(nl["cost"])])
 	if b and b.built:
-		for rk in Defs.RESEARCH:
-			var rkk: String = rk
-			var info: Dictionary = Defs.RESEARCH[rk]
-			# done, or already in a queue (it shows there, with its progress): no button
-			if info["at"] != b.kind or game.has_tech(game.human, rk) or game.researching(game.human, rk):
-				continue
-			# a chain (the musket locks): only the next one shows, once the one before is
-			# done or queued
-			var rreq: String = info.get("requires", "")
-			if rreq != "" and not game.has_tech(game.human, rreq) and not game.researching(game.human, rreq):
-				continue
-			var rwhy := game.research_problem(b, rk)
-			var lab: String = Defs.research_label(rk)
-			list.append([_research_icon(rk), lab, func() -> void:
-				var w := game.start_research(b, rkk)
-				if w != "":
-					toast(w), rwhy == "", rwhy, str(info["cost"])])
+		_research_buttons(list, b)
 		# (a soldier with a light and an armoured version: two buttons once Armour is researched)
 		for k in Defs.train_keys(b.d["trains"], game.has_tech(game.human, "armour")):
 			var kk: String = k
@@ -1120,6 +1027,36 @@ func _build_card() -> Array:
 			# (once there's something to refit with)
 			_auto_refit_button(list, game.selected_buildings().filter(func(x: Building) -> bool: return Defs.REFIT_AT.has(x.kind) and x.built))
 	return list
+
+
+## The research buttons of a finished building (what it can still research).
+func _research_buttons(list: Array, b: Building, group: Array = []) -> void:
+	for rk in Defs.RESEARCH:
+		var rkk: String = rk
+		var info: Dictionary = Defs.RESEARCH[rk]
+		# done, or already in a queue (it shows there, with its progress): no button
+		if info["at"] != b.kind or game.has_tech(game.human, rk) or game.researching(game.human, rk):
+			continue
+		# a chain (the musket locks): only the next one shows, once the one before is
+		# done or queued
+		var rreq: String = info.get("requires", "")
+		if rreq != "" and not game.has_tech(game.human, rreq) and not game.researching(game.human, rreq):
+			continue
+		# (several of the same kind selected: it goes to the one that can start it with the shortest queue)
+		var at: Building = b
+		var rwhy := game.research_problem(b, rk)
+		for gb in group:
+			if is_instance_valid(gb) and not gb.dead and gb.built and gb.kind == b.kind:
+				var w2 := game.research_problem(gb, rk)
+				if w2 == "" and (rwhy != "" or gb.queue.size() < at.queue.size()):
+					at = gb
+					rwhy = ""
+		var lab: String = Defs.research_label(rk)
+		var target: Building = at
+		list.append([_research_icon(rk), lab, func() -> void:
+			var w := game.start_research(target, rkk)
+			if w != "":
+				toast(w), rwhy == "", rwhy, str(info["cost"])])
 
 
 ## The icon of a queued unit: a soldier's light or armoured picture, by what he was paid for.
@@ -1404,28 +1341,29 @@ const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
-var prod_page := 0
 
 
 ## Several kinds of production building selected (MAKE): every unit any of them trains,
 ## each going to the least busy building that can train it. Long press / right-click
 ## switches automatic training on all of them that can.
-func _production_card(pbs: Array) -> Array:
+## Buildings of different kinds selected together (4 Barracks and an Armoury, a Hall and a
+## Barracks...): everything they can do on one card. Each unit goes to the selected building
+## that can train it and has the shortest queue (so four Barracks show a Musketeer once),
+## each research to the Armoury (or whichever) that offers it; RALLY goes to all that train,
+## CANCEL takes the last order of the busiest one. If it doesn't fit, _paged adds MORE (Tab).
+func _mixed_card(bs: Array) -> Array:
 	var list: Array = []
+	var built := bs.filter(func(x: Building) -> bool: return x.built)
 	var kinds: Array = []
-	for sb in pbs:
+	for sb in built:
 		for k in Defs.train_keys(sb.d["trains"], game.has_tech(game.human, "armour")):
-			if not kinds.has(k) and not Defs.UNITS[Defs.train_kind(k)].get("worker", false):
+			if not kinds.has(k):
 				kinds.append(k)
-	var slots := _cols() * _rows()
-	var per := slots - 1 if kinds.size() <= slots - 1 else slots - 2     # room for RALLY (and MORE)
-	var pages := maxi(1, int(ceil(kinds.size() / float(per))))
-	prod_page = clampi(prod_page, 0, pages - 1)
-	for k in kinds.slice(prod_page * per, prod_page * per + per):
+	for k in kinds:
 		var kk: String = k
 		var why := "Can't train that here."
 		var able: Array = []
-		for sb in pbs:
+		for sb in built:
 			if (sb.d["trains"] as Array).has(Defs.train_kind(kk)):
 				able.append(sb)
 				var w := game.can_train(sb, kk)
@@ -1439,16 +1377,46 @@ func _production_card(pbs: Array) -> Array:
 			for sb in able:
 				if is_instance_valid(sb):
 					sb.auto_train = "" if auto_all else kk
-			toast(("Training %s automatically in every %s." % [Defs.train_name(kk), "building that can"]) if not auto_all else "Automatic training off.")
+			toast(("Training %s automatically in every building that can." % Defs.train_name(kk)) if not auto_all else "Automatic training off.")
 		if able.any(func(x: Building) -> bool: return x.auto_train == kk):
 			ulab = "~ " + ulab
 		list.append([kk, ulab, func() -> void:
 			var w := game.train_any(able, kk)
 			if w != "":
 				toast(w), why == "", why, str(game.unit_price(game.human, kk)[0])])
-	if pages > 1:
-		list.append(["build", "MORE", func() -> void: prod_page = (prod_page + 1) % pages, true, "", ""])
-	list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
+	var seen := {}
+	for sb in built:
+		if not seen.has(sb.kind):
+			seen[sb.kind] = true
+			_research_buttons(list, sb, built)
+	if built.any(func(x: Building) -> bool: return not (x.d["trains"] as Array).is_empty()):
+		list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
+	var busy := built.filter(func(x: Building) -> bool: return not x.queue.is_empty())
+	if not busy.is_empty():
+		list.append(["cancel", "CANCEL", func() -> void:
+			var best: Building = null
+			for x in game.selected_mixed():
+				if is_instance_valid(x) and not x.dead and not x.queue.is_empty() and (best == null or x.queue.size() > best.queue.size()):
+					best = x
+			if best:
+				game.cancel_train(best), true, "", ""])
+	var refitters := built.filter(func(x: Building) -> bool: return Defs.REFIT_AT.has(x.kind))
+	if not refitters.is_empty() and game.has_refits(game.human):
+		_auto_refit_button(list, refitters)
+	if bs.any(func(x: Building) -> bool: return not x.built):
+		list.append(["stop", "ABANDON", func() -> void:
+			for sb in game.selected_mixed():
+				if not sb.built:
+					game.abandon(sb), true, "", ""])
+	if bs.any(func(x: Building) -> bool: return x.built and x.kind != game.faction_hall(game.human)):
+		list.append(["demolish", "DEMOLISH", func() -> void:
+			if Time.get_ticks_msec() - _demolish_ms > 2500:
+				_demolish_ms = Time.get_ticks_msec()
+				toast("Press DEMOLISH again to pull it down.")
+				return
+			for sb in game.selected_mixed():
+				if sb.built and sb.kind != game.faction_hall(game.human):
+					game.demolish(sb), true, "", ""])
 	return list
 
 
@@ -1529,11 +1497,22 @@ func hotkey(code: int, repeat := false) -> bool:
 	if (code == KEY_ESCAPE or code == KEY_BACKSPACE) and controls.mode == "" and page != "":
 		page = ""
 		return true
+	if code == KEY_TAB:
+		# Tab flips the command card's pages (the same as its MORE button)
+		for it in _card_items:
+			if String(it[1]) == "MORE" and it[3]:
+				it[2].call()
+				_card_fresh = true
+				flash_card("MORE")
+				Sfx.play_any(["ui/click", "click"])
+				return true
+		return false
 	var letter := OS.get_keycode_string(code)
 	if letter.length() != 1:
 		return false
 	for it in _card_items:
 		if it.size() > 6 and it[6] == letter:
+			flash_card(String(it[1]).trim_prefix("> ").trim_prefix("~ "))
 			if repeat and not Defs.UNITS.has(String(it[0])):
 				return false          # (only training repeats while a key is held)
 			if it[3]:
@@ -1543,6 +1522,28 @@ func hotkey(code: int, repeat := false) -> bool:
 				toast(it[4])
 			return true
 	return false
+
+
+## A command card button reacts to its hotkey like a pressed button (drawn pushed in for a moment).
+var _card_flash := ""
+var _card_flash_ms := 0
+
+
+func flash_card(label: String) -> void:
+	_card_flash = label
+	_card_flash_ms = Time.get_ticks_msec()
+	_card_fresh = true
+
+
+## 0 when no card button is pushed in; else a number that changes every 45 ms while it is.
+func _card_flash_phase() -> int:
+	if _card_flash == "":
+		return 0
+	var age := Time.get_ticks_msec() - _card_flash_ms
+	if age >= 140:
+		_card_flash = ""
+		return 0
+	return 1 + age / 45
 
 
 ## queued (Shift on a computer): the site goes in the builders' order queue, after what
@@ -1695,7 +1696,7 @@ func chat_log_rect() -> Rect2:
 	var vs := _vs()
 	var l := _layout()
 	var parts: Array = []
-	for k in ["mini", "groups", "panel", "card"]:
+	for k in ["mini", "hotbar", "panel", "card"]:
 		parts.append((l[k] as Rect2).grow(4))
 	var m := UiLayout.M
 	var cands: Array = [Rect2(m, vs.y - m - h, w, h)]
@@ -2150,26 +2151,9 @@ func _refresh_counts() -> void:
 
 
 func _draw_groups(font: Font) -> void:
-	var labels := ["ARMY", "IDLE", "HALL", "1", "2", "3", "MAKE", "4"]
 	if _counts.is_empty():
 		_refresh_counts()
-	for i in QUICK:
-		var r := group_rect(i)
-		UiStyle.draw_button(_ci, r, Settings.pc() and r.has_point(_mouse()), _hold_t.has(i))
-		var sub := ""
-		match i:
-			0:
-				sub = str(_counts[0])
-			1:
-				sub = str(_counts[1])
-			6:
-				sub = str(_counts[2]) if int(_counts[2]) > 0 else ""
-			_:
-				if _group_of(i) >= 0:
-					sub = str(_counts[3 + _group_of(i)])
-		_text(UiStyle.bold_font(), r.position + Vector2(r.size.x * 0.5, 18), labels[i], 14, UiStyle.TEXT, 1)
-		if sub != "":
-			_text(font, r.position + Vector2(r.size.x * 0.5, 36), sub, 13, Color(1, 1, 1, 0.6), 1)
+	bar.draw(font, _counts)
 
 
 func _draw_panel(font: Font) -> void:
@@ -2811,7 +2795,12 @@ func _draw_card(font: Font) -> void:
 		var ic := _icon(it[0])
 		var hov := br.has_point(hover)
 		var on := String(it[1]).begins_with("> ")
-		UiStyle.draw_button(_ci, br, hov, on, enabled)
+		var pushed := _card_flash != "" and String(it[1]).trim_prefix("> ").trim_prefix("~ ") == _card_flash
+		if pushed:
+			br = Rect2(br.position + Vector2(0, 2), br.size)
+		UiStyle.draw_button(_ci, br, hov, on or pushed, enabled)
+		if pushed:
+			_ci.draw_rect(br, Color(0, 0, 0, 0.22))
 		if ic:
 			_ci.draw_texture_rect(ic, br.grow(-3), false, Color.WHITE if enabled else Color(0.4, 0.4, 0.4, 0.8))
 		_ci.draw_rect(Rect2(br.position.x + 2, br.end.y - 17, br.size.x - 4, 15), Color(0, 0, 0, 0.62))
@@ -2939,12 +2928,6 @@ const CMD_TIPS := {
 	"DROP HERE": "Let everyone off right below the balloon.",
 	"RESTOCK": "Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 40-shot store is full.",
 }
-
-## The quick buttons: [title, text] (groups 1-4 are worded in _tip_of).
-const GROUP_TIPS := [["Army", "Select every soldier you have."], ["Idle", "Select an idle worker and jump to it."],
-	["Hall", "Select your hall; again for the next one."], [], [], [],
-	["Make", "Select every building that trains an army, to train from all of them at once."], []]
-
 
 func _cost_text(a: int, b: int) -> String:
 	var r := _res()
@@ -3086,9 +3069,9 @@ func _hover_at(p: Vector2) -> Dictionary:
 	for pr in _pill_rects:
 		if (pr[0] as Rect2).has_point(p):
 			return {"id": "res:%d" % pr[1], "delay": TIP_HUD_DELAY, "res": pr[1]}
-	for i in QUICK:
-		if group_rect(i).has_point(p):
-			return {"id": "grp:%d" % i, "delay": TIP_HUD_DELAY, "grp": i}
+	var hid := bar.hit(p)
+	if hid >= 0:
+		return {"id": "grp:%d" % hid, "delay": TIP_HUD_DELAY, "grp": hid}
 	for b in _card_buttons:
 		if (b["rect"] as Rect2).has_point(p):
 			return {"id": "card:" + String(b["item"][1]), "delay": TIP_CARD_DELAY, "item": b["item"]}
@@ -3108,13 +3091,7 @@ func _tip_of(c: Dictionary) -> Dictionary:
 	if c.has("e"):
 		return _entity_tip(c["e"])
 	if c.has("grp"):
-		var i: int = c["grp"]
-		var g := _group_of(i)
-		if g >= 0:
-			return {"title": "Group %d" % (g + 1), "body": ("Click: select it (twice: jump to it). Hold, or Ctrl+%d: keep the selection here." % (g + 1)) if Settings.pc()
-				else "Tap: select it (twice: jump to it). Hold: keep the selection here."}
-		var gt: Array = GROUP_TIPS[i]
-		return {"title": gt[0], "body": gt[1]} if not gt.is_empty() else {}
+		return bar.tip(int(c["grp"]))
 	return {}
 
 
