@@ -126,7 +126,7 @@ var ais: Array = []
 
 var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
-var cam_slots: Array = [null, null, null, null, null, null, null, null, null]   # camera hotkeys F4-F12: [position, zoom] or null (kept in the autosave)
+var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
 var _hash := {}
 var _path_queue: Array = []
 var _end_t := 0.0

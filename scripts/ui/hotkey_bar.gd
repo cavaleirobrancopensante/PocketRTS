@@ -2,14 +2,14 @@ class_name HotkeyBar
 extends RefCounted
 ## The bottom hotkey bar (above the selection card, as wide as the card is): IDLE (F1), ARMY (F2),
 ## MAKE (F3) and the ten control groups 1 2 3 4 5 6 7 8 9 0, and under it, peeking out above
-## the bar, nine camera tabs F4-F12.
+## the bar, seven camera tabs F4-F10.
 ##
 ## Groups (computer): number = select (twice: jump to it), Shift+number = ADD the selection to
 ## the group, Ctrl+number = SET it (replace), Ctrl+Shift+number = ADD the selection to it, Shift+number = add the group to the selection (as in StarCraft 2; to drop a unit: select the group, Shift+click the unit off, Ctrl+number again).
 ## The same with the mouse on the buttons (Shift/Ctrl+click), and on a phone: tap selects,
-## hold sets. Camera tabs: F4-F12 jump, Shift+F4-F12 (or Ctrl+) save the view; a tap on a tab
+## hold sets. Camera tabs: F4-F10 jump, Shift+F4-F10 (or Ctrl+) save the view; a tap on a tab
 ## jumps (an empty one saves), a long press saves.
-## (Browsers: Ctrl+1-8 switches tabs, F5/F11/F12 reload, full-screen and dev tools; use the buttons then.)
+## (Browsers: Ctrl+1-8 switches tabs, F5 reloads; use the buttons then.)
 ## The groups and views live in the Game (game.groups, game.cam_slots) and are in the autosave.
 
 const IDLE := 0
@@ -17,13 +17,13 @@ const ARMY := 1
 const MAKE := 2
 const GROUP0 := 3                 # button 3 is group 1 ... button 12 is group 0 (index 9)
 const N_BTN := 13
-const N_CAM := 9
-const CAM0 := 100                 # hit ids 100-108 are the camera tabs
+const N_CAM := 7
+const CAM0 := 100                 # hit ids 100-106 are the camera tabs
 const TAB_H := 16.0               # the visible edge of a camera tab
 const BTN_H := 40.0
 const FLASH_S := 0.14             # how long a pressed button stays pushed in
 const HOLD_S := 0.45              # a long press saves (group / view)
-const FKEYS := [KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12]
+const FKEYS := [KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10]
 const NAMES := ["IDLE", "ARMY", "MAKE"]
 
 var hud: Control                  # the Hud (its game, toast, drawing)
@@ -152,7 +152,7 @@ func game() -> Game:
 
 # ------------------------------------------------------------------ keyboard
 
-## A key pressed: true if the bar took it. Numbers 1-9, 0 and F1-F12.
+## A key pressed: true if the bar took it. Numbers 1-9, 0 and F1-F10.
 func key(e: InputEventKey) -> bool:
 	if hud.paused or game().over or game().spectating():
 		return false

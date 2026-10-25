@@ -84,7 +84,7 @@ func _run() -> void:
 	var g: Game = r[1]
 	var hud = g.hud
 	var bar: HotkeyBar = hud.bar
-	check(bar != null and g.groups.size() == 10 and g.cam_slots.size() == 9, "bar exists; 10 groups, 9 camera views")
+	check(bar != null and g.groups.size() == 10 and g.cam_slots.size() == 7, "bar exists; 10 groups, 7 camera views")
 	check(hud.bar.rect().size.x > 100 and hud.bar.rect().position.y > 200, "bar has a place: %s" % str(hud.bar.rect()))
 
 	# ---- groups
@@ -279,7 +279,7 @@ func _run() -> void:
 	bar.key(_key(KEY_5, false, true))
 	g.camera.position = Vector2(2000, 1500)
 	g.camera.zoom = Vector2(1.1, 1.1)
-	bar.key(_key(KEY_F12, true))
+	bar.key(_key(KEY_F10, true))
 	var m6pos: Vector2 = m[6].position
 	main._to_menu()
 	await process_frame
@@ -297,7 +297,7 @@ func _run() -> void:
 	check(st2[3] == 1 and st2[4] == 2, "group 4 (a Musketeer) and group 5 (2 buildings) are back: %s" % str(st2))
 	check(g2.groups[3].size() == 1 and g2.groups[3][0].kind == "musketeer" and g2.groups[3][0].position.distance_to(m6pos) < 40.0, "the group's unit is the same one")
 	check(g2.groups[4].all(func(e) -> bool: return e is Building) and g2.groups[4].any(func(e) -> bool: return e.kind == "armoury"), "buildings in a group came back")
-	check(g2.cam_slots[8] != null and (g2.cam_slots[8][0] as Vector2).distance_to(Vector2(2000, 1500)) < 1.0, "camera view F12 came back")
+	check(g2.cam_slots[6] != null and (g2.cam_slots[6][0] as Vector2).distance_to(Vector2(2000, 1500)) < 1.0, "camera view F10 came back")
 	check(g2.cam_slots[1] != null, "camera view F5 came back")
 	SaveGame.clear()
 	print("DONE  %d failed" % fails)
