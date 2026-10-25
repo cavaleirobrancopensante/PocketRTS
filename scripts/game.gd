@@ -4366,15 +4366,34 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		b._update_sprite()
 		if Defs.cw_roster:
 			builders = CwUnits.assign_builders(self, builders, b)      # a Work Car's crew start it from the car
-		builders = builders.slice(0, 1)   # one winder starts it, then it builds itself
+		builders = _one_builder(builders, b, queued)   # one winder starts it, then it builds itself
 	if Defs.BUILDINGS[k]["faction"] == "brood":
 		b.seeded = false
 		b._update_sprite()
-		builders = builders.slice(0, 1)   # one grub becomes the building
+		builders = _one_builder(builders, b, queued)   # one grub becomes the building
 	for u in builders:
 		if u is Unit and u.is_worker() and not u.dead:
 			u.give({"o": "build", "e": b}, queued)
 	return b
+
+
+## Winders and grubs build one site each: of the selected workers the one with the least to do
+## (idle first, then the shortest queue, then the nearest) takes this site, so a shift-queue of
+## several buildings is shared out between them instead of piling onto the first worker.
+func _one_builder(builders: Array, site: Building, queued: bool) -> Array:
+	var best: Unit = null
+	var bs := INF
+	for u in builders:
+		if not (u is Unit) or u.dead or not u.is_worker():
+			continue
+		var load_n: float = float(u.queue.size()) + (1.0 if Unit.QUEUE_BUSY.has(u.order) else 0.0)
+		if not queued:
+			load_n = 0.0        # an immediate order: the nearest worker takes it
+		var score: float = load_n * 100000.0 + u.position.distance_to(site.center())
+		if score < bs:
+			bs = score
+			best = u
+	return [] if best == null else [best]
 
 
 func _redraw_line() -> void:
