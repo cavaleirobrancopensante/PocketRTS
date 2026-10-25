@@ -1,7 +1,7 @@
 # Balance notes
 
 Observations from playtests to come back to. The numbers themselves live in
-`scripts/defs.gd` (and the overview sheet `docs/PocketRTS_balance.xlsx`).
+`scripts/defs.gd` (and the overview sheet `docs/Holdfast_balance.xlsx`).
 
 ## To check later
 

@@ -136,6 +136,6 @@ for i, w in enumerate([10, 20, 7, 9, 7, 6, 7, 7, 6, 8, 40, 80], 1):
     bs.column_dimensions[L(i)].width = w
 bs.freeze_panes = 'C2'
 
-out = 'docs/PocketRTS_balance.xlsx'
+out = 'docs/Holdfast_balance.xlsx'
 wb.save(out)
 print(out, last)

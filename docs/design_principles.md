@@ -45,7 +45,7 @@ cite the rule you are following in the commit message.
 - Epic scale; battles that carry the weight of the whole match.
 - Gentle onboarding: complexity is the main cost.
 
-## Where this already shows in PocketRTS, and open questions
+## Where this already shows in Holdfast, and open questions
 - Soil and ground depletion, saltpetre and the Burrow/Town Hall expansion pressure follow section 2.
   Playtest v0.12.4 (Frostmere, Crown vs Hard Brood): soil hit 0% at about 10 minutes and the Crown sat on
   1,000-2,100 unspent gold at the 100/100 supply cap. Depletion should force expansion, not strangle it,

@@ -1,4 +1,4 @@
-"""PocketRTS voices (groups F, G, H of AUDIO_PROMPTS.md): unit lines, announcers, AI taunts.
+"""Holdfast voices (groups F, G, H of AUDIO_PROMPTS.md): unit lines, announcers, AI taunts.
 
     KOKORO_DIR=/path/to/models python3 tools/audio/make_voices.py [filter ...]
     python3 tools/audio/make_voices.py --models /path/to/models [filter ...]

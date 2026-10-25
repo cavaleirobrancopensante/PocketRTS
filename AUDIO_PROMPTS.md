@@ -1,4 +1,4 @@
-# PocketRTS: sound and voice list
+# Holdfast: sound and voice list
 
 Every sound the game uses is listed below, with the file name to save it as and a prompt to paste into a generator.
 Drop the files into the named folder and the game picks them up on the next build. Any file that is missing falls back to the built-in synth sound, so you can add them a few at a time.

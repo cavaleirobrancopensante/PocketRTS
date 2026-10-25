@@ -56,7 +56,7 @@ jobs:
           version=$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)
           echo "Built version $version ($(git rev-parse --short HEAD))" >> "$GITHUB_STEP_SUMMARY"
 
-      # The same game as an Android app, published next to the web build as PocketRTS.apk.
+      # The same game as an Android app, published next to the web build as Holdfast.apk.
       # (If this step fails the web build still goes out.)
       - name: Export Android app
         continue-on-error: true
@@ -73,9 +73,9 @@ jobs:
             mkdir -p ~/.config/godot
             printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' "$sdk" "$JAVA_HOME_17_X64" > "$f"
           done
-          ~/godot/godot --headless --export-release "Android" build/web/PocketRTS.apk 2>&1 | grep -v "savepack\|Storing File" | tail -40
-          test -s build/web/PocketRTS.apk
-          echo "Android app: PocketRTS.apk ($(du -h build/web/PocketRTS.apk | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+          ~/godot/godot --headless --export-release "Android" build/web/Holdfast.apk 2>&1 | grep -v "savepack\|Storing File" | tail -40
+          test -s build/web/Holdfast.apk
+          echo "Android app: Holdfast.apk ($(du -h build/web/Holdfast.apk | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-pages-artifact@v3
         with:

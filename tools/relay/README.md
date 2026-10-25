@@ -1,4 +1,4 @@
-# PocketRTS online relay
+# Holdfast online relay
 
 A tiny server that pairs two (or three) players by a room code and forwards their game messages. It
 does not know anything about the game. The match itself runs on the host's device; the guest sends
@@ -24,7 +24,7 @@ few thousand billed requests against a free allowance of 100,000 a day.
    type the code. The host picks map and mode and presses START.
 
 If you want a different name than `pocketrts-relay`, change `name` in `wrangler.toml` before deploying.
-Check that it runs: open the address in a browser; it says "PocketRTS relay is running."
+Check that it runs: open the address in a browser; it says "Holdfast relay is running."
 
 Nothing else is needed: GitHub Pages and the APK stay as they are. Both players must run the same
 game version (the lobby refuses a different one and says which versions).

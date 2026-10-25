@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.4": ["El juego ahora se llama HOLDFAST. Nueva dirección web (cavaleirobrancopensante.github.io/Holdfast/) y la app de Android es el archivo Holdfast.apk. Tus ajustes, partidas guardadas y atajos en ordenador o móvil se mantienen; en la versión web empiezan de cero porque la dirección cambió."],
 	"0.14.3": ["ONLINE: un botón COPIAR junto al código de sala, para que el anfitrión se lo pegue a un amigo."],
 	"0.14.2": ["ONLINE ya conoce la dirección del relay por sí mismo: nadie tiene que pegar nada, basta pulsar ONLINE y crear o unirse con el código de sala."],
 	"0.14.1": ["El juego habla tres idiomas: inglés, portugués de Brasil y español. Haz clic en una bandera (EE. UU., Brasil, España) arriba a la derecha del menú principal, o elige IDIOMA en Ajustes; cambia al instante y se recuerda. Los menús, la pantalla de partida, los nombres y descripciones de unidades y edificios, las ayudas, las páginas de ayuda y estas notas de versión están traducidos; las voces habladas de las unidades, del locutor y de las burlas también tienen grabaciones en portugués y español (los sonidos de las criaturas y la música son los mismos en todos los idiomas).", "Los nombres de mapas, títulos de música y el registro de la partida siguen en inglés. Cómo añadir un idioma: docs/localisation.md."],

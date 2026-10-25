@@ -1,4 +1,4 @@
-"""Orchestral sections for the PocketRTS soundtrack (the overtures and the later faction pieces).
+"""Orchestral sections for the Holdfast soundtrack (the overtures and the later faction pieces).
 
 The instruments in synth.py are single players built from a handful of sine partials. These are
 *sections*: several slightly detuned, separately vibrating players read from band-limited wavetables

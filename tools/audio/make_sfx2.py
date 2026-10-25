@@ -1,4 +1,4 @@
-"""PocketRTS sound effects, fully procedural (groups A-E of AUDIO_PROMPTS.md).
+"""Holdfast sound effects, fully procedural (groups A-E of AUDIO_PROMPTS.md).
 
     python3 tools/audio/make_sfx2.py            # everything
     python3 tools/audio/make_sfx2.py ui crown   # only names/folders containing these substrings

@@ -4,7 +4,7 @@
 # Needs godot on the PATH and node. Prints the CHECK lines; exit code 1 if any failed.
 cd "$(dirname "$0")/.." || exit 1
 PORT=${PORT:-8799}
-OUT=${TMPDIR:-/tmp}/pocketrts_online_$$
+OUT=${TMPDIR:-/tmp}/holdfast_online_$$
 mkdir -p "$OUT"
 node tools/relay/local_relay.mjs $PORT > "$OUT/relay.log" 2>&1 &
 RELAY=$!

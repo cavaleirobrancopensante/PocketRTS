@@ -1,8 +1,8 @@
-# Pocket RTS
+# Holdfast
 
-**Play in your browser (version 0.14.3): https://cavaleirobrancopensante.github.io/PocketRTS/**
+**Play in your browser (version 0.14.4): https://cavaleirobrancopensante.github.io/Holdfast/**
 
-**Android app: https://cavaleirobrancopensante.github.io/PocketRTS/PocketRTS.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
+**Android app: https://cavaleirobrancopensante.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
 If the game ever closes on its own, the next start shows a crash report with a COPY button: the end of the engine log, with a line for every autosave, so the moment it died can be found.
 
@@ -274,7 +274,7 @@ On the first start the game asks where you are playing. The two control schemes 
 
 Everything is synthesised, with no samples. `tools/music/compose.py` holds the hand-written score, and `tools/make_sfx.py` makes the effects (numpy, scipy, ffmpeg). The instrument library is shared with TCG-RPG.
 
-- **Menu**: *PocketRTS Overture*, with the Crown's call, then the Brood's swamp, the Clockwork's music box, and all three together.
+- **Menu**: *Holdfast Overture*, with the Crown's call, then the Brood's swamp, the Clockwork's music box, and all three together.
 - **The Crown**: *The King's Muster* (lute, recorder, shawm) and *Pike and Shot* (fife and drum, horns, timpani).
 - **The Brood**: *The Warm Swamp* (drones, throat-choir, log drums) and *Hunger* (6/8 war drums, phrygian shawm).
 - **The Clockwork**: *Winding the Spring* (music box, dulcimer, ticks; it slows down at the end as the spring runs out) and *Brass and Steam* (7/8 machinery, anvils, steam). It is played on a dead-straight grid, with no human timing.

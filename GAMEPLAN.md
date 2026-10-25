@@ -1,4 +1,4 @@
-# Pocket RTS — game plan
+# Holdfast — game plan
 
 A StarCraft 2 / Beyond All Reason style RTS for phones and the browser, made in Godot 4.7.
 

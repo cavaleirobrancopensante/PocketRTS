@@ -1,4 +1,4 @@
-"""PocketRTS soundtrack: hand-written pieces for the menu and for each faction.
+"""Holdfast soundtrack: hand-written pieces for the menu and for each faction.
 
 Every faction has five calm pieces (<f>_peace, <f>_peace_2.._5) and five battle pieces (<f>_battle,
 <f>_battle_2.._5; the game cross-fades to one when fighting breaks out), plus a victory sting; there is
@@ -752,7 +752,7 @@ def defeat():
 
 def menu():
     """Overture: the Crown's call, the Brood's swamp, the Clockwork's box, then all three."""
-    s = Song("menu", "PocketRTS Overture", 100, 4, n("G", 4), "ionian", reverb=(2.2, 0.45), seed=1)
+    s = Song("menu", "Holdfast Overture", 100, 4, n("G", 4), "ionian", reverb=(2.2, 0.45), seed=1)
     call = ["5:1.5 5:0.5 1':2", "7:1 6:1 5:2", "4:1.5 4:0.5 6:1 4:1", "5:4",
             "5:1.5 5:0.5 1':1 2':1", "3':2 2':1 1':1", "7:1 5:1 6:1 7:1", "1':4"]
     callc = [0, 4, 3, 4, 0, 5, 4, 0]

@@ -13,7 +13,7 @@ extends Node
 
 const FACTION_KEY := {"crown": "crown", "brood": "brood", "clockwork": "clock"}
 const BASE_TITLES := {
-	"menu": "PocketRTS Overture",
+	"menu": "Holdfast Overture",
 	"crown_peace": "The King's Muster", "crown_battle": "Pike and Shot",
 	"brood_peace": "The Warm Swamp", "brood_battle": "Hunger",
 	"clock_peace": "Winding the Spring", "clock_battle": "Brass and Steam",

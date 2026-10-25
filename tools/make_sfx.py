@@ -1,4 +1,4 @@
-"""Synthesise PocketRTS sound effects (no samples).
+"""Synthesise Holdfast sound effects (no samples).
    python3 tools/make_sfx.py [name ...]   -> assets/audio/<name>.wav  (22.05 kHz mono)"""
 import os
 import sys

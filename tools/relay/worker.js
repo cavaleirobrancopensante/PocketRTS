@@ -1,4 +1,4 @@
-// PocketRTS relay: pairs players by room code and forwards bytes. It knows nothing about the game.
+// Holdfast relay: pairs players by room code and forwards bytes. It knows nothing about the game.
 // Cloudflare Worker + one Durable Object per room (WebSocket hibernation API).
 //
 //   wss://<your-worker>.workers.dev/room/<CODE>?role=host    the host (one per room)
@@ -12,7 +12,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     const m = url.pathname.match(/^\/room\/([A-Za-z0-9]{3,12})$/);
-    if (!m) return new Response("PocketRTS relay is running.\n");
+    if (!m) return new Response("Holdfast relay is running.\n");
     if (req.headers.get("Upgrade") !== "websocket") return new Response("WebSocket expected", { status: 426 });
     return env.ROOM.get(env.ROOM.idFromName(m[1].toUpperCase())).fetch(req);
   },

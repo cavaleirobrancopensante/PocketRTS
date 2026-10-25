@@ -16,7 +16,7 @@ function frame(op, payload) {
 const sendText = (s, o) => s.write(frame(1, Buffer.from(typeof o === "string" ? o : JSON.stringify(o))));
 const sendBin = (s, b) => s.write(frame(2, b));
 
-const server = http.createServer((req, res) => res.end("PocketRTS local relay\n"));
+const server = http.createServer((req, res) => res.end("Holdfast local relay\n"));
 server.on("upgrade", (req, sock) => {
   const url = new URL(req.url, "http://x");
   const m = url.pathname.match(/^\/room\/([A-Za-z0-9]{3,12})$/);
