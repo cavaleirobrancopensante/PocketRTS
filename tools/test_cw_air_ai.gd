@@ -73,19 +73,32 @@ func _put(kind: String, around: Building) -> Building:
 	return null
 
 
+## A finished building of `kind` meshing with `around`'s ring that keeps room by it for `users` (GearEcon.room_spot, as the
+## computer places), else anywhere round it (_put).
+func _room(kind: String, around: Building, users: Array) -> Building:
+	var c := GearEcon.room_spot(g, 0, kind, [around], users)
+	if c.x < 0:
+		return _put(kind, around)
+	var b: Building = g._add_building(kind, 0, c, true)
+	g.gear_net.solve()
+	return b
+
+
 func _run() -> void:
 	var hall: Building = _mine("clocktower")[0]
 	g.players[0]["gold"] = 6000
 	g.players[0]["tension"] = 1500.0
 	# its tier 2, ready: a Movement Works, a Mainspring meshing with it and an Escapement meshing with the Mainspring (the AI's
 	# own would come later; THE TENSION RULE: Tension is spent only where a Mainspring meshes)
+	# (placed as the computer places its own: the Mainspring keeping room by it for the Escapement and the Aviary, the
+	# Escapement keeping room for the Aviary, AI._spring_spot; the plateau is small and gears mesh only on one level)
 	var works: Building = _mine(Defs.CW_WORKS)[0] if not _mine(Defs.CW_WORKS).is_empty() else _put(Defs.CW_WORKS, hall)
 	var spring: Building = _mine("mainspring")[0] if not _mine("mainspring").is_empty() else null
 	if spring == null and works != null:
-		spring = _put("mainspring", works)
+		spring = _room("mainspring", works, [Defs.CW_TECH, Defs.CW_AIR])
 	if spring == null:
-		spring = _put("mainspring", hall)
-	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
+		spring = _room("mainspring", hall, [Defs.CW_TECH, Defs.CW_AIR])
+	var esc: Building = _room(Defs.CW_TECH, spring, [Defs.CW_AIR]) if spring else null
 	await physics_frame
 	g.gear_net.solve()
 	check("the computer's Escapement works (meshed with its Mainspring)", esc != null and g.gear_net.speed_mult(esc) > 0.0)

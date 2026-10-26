@@ -108,8 +108,14 @@ func _run() -> void:
 			"%.2f/s, eff %s" % [p2.press_rate(), str(p2.efficiency())])
 		var ct := GearEcon.card_text(p2)
 		check("its card says 80% and why", ct.contains("80%") and ct.contains("%d/%d" % [sc, sc]) and ct.contains("rings from"), ct)
-	# a Mainspring meshing with the Works re-drives it (and the press beyond it)
+	# a Mainspring meshing with the Works re-drives it (and the press beyond it, when there is room for both)
 	var sp := _hang(g, "mainspring", works)
+	if sp == null and p2 != null:
+		# (no room for one more ring by the Works on the plateau's level: the press makes way for the Mainspring)
+		g._remove_quietly(p2)
+		net.solve()
+		p2 = null
+		sp = _hang(g, "mainspring", works)
 	check("a Mainspring hung on the Works", sp != null)
 	if sp != null:
 		check("the Works now meshes with a driver: 100%", int(net.drive_of.get(works, -1)) == 1 and is_equal_approx(net.speed_mult(works), 1.0), "steps %d" % int(net.drive_of.get(works, -1)))
@@ -149,7 +155,8 @@ func _run() -> void:
 		U.step(g, 4.0)
 		check("winding stops at the store (400)", is_equal_approx(g.tension(0), 400.0), "%.2f" % g.tension(0))
 		check("and the wound Tension is counted (5)", absf(float(g.stats[0].get("tension_in", 0.0)) - in0 - 5.0) < 0.01, "%.2f" % (float(g.stats[0].get("tension_in", 0.0)) - in0))
-		check("a full Mainspring stands still (rate 0, card says FULL)", sp.spring_rate() == 0.0 and GearEcon.card_info(sp).contains("FULL"), GearEcon.card_info(sp))
+		check("a full Mainspring stands still (rate 0, its card says Tension full)", sp.spring_rate() == 0.0 and GearEcon.card_text(sp).contains("Tension full"), GearEcon.card_text(sp))
+		check("and its card says what it stores of the side's store", GearEcon.card_info(sp).contains("400 of your 400"), GearEcon.card_info(sp))
 		g.players[0]["tension"] = 100.0
 		g.income_mult[0] = 2.0
 		var a0 := g.tension(0)

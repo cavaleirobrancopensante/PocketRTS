@@ -2592,7 +2592,7 @@ func _draw_panel(font: Font) -> void:
 				if game.gear_net.needs_spring(bb):
 					info = "NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Jacks). Build a Mainspring right beside it."
 				elif game.gear_net.speed_mult(bb) > 0.0:
-					info = "Working: its ring meshes with a Mainspring. Jacks can be made at a Movement Works whose ring meshes with a Mainspring%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
+					info = "Working: its ring meshes with a Mainspring. Jacks, Netters and Pendulums can be made at a Movement Works whose ring meshes with a Mainspring%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
 			if Defs.gear_mode and bb.built and not bb.dead and (e.team == game.human or game.demo):
 				var gi := GearEcon.card_info(bb)        # (the Tension rule and the store: scripts/gear_econ.gd)
 				if gi != "":
@@ -3277,7 +3277,7 @@ func _res_tip(i: int) -> Dictionary:
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
 		if Defs.gear_mode and i == 1:
-			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Jack, the Swift, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, and a Movement Works for its Jacks."}
+			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Jack, the Swift, the Netter, the Pendulum, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, and a Movement Works for its Jacks, Netters and Pendulums."}
 		if i != 2:
 			return {}
 	if i == 3:

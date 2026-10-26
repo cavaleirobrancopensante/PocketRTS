@@ -619,20 +619,24 @@ func _tier2(t: float) -> void:
 
 ## Gear mode, TIER 3 (scripts/pendulum.gd, scripts/netter.gd), kept simple: once its Escapement works and it has the
 ## Tension for a Pendulum, one Movement Works goes onto its BIG gear (a gear swap: the Pendulum is made only there; the
-## newest Works when it has more, the others keep to the small gear); _produce then mixes a few Pendulums and Netters into
-## the army. Its Netters pick their targets themselves (the most dangerous enemy in reach not caught already:
-## Netter.pick; _micro leaves them to it).
+## newest Works whose ring meshes with a Mainspring's when it has more, since the Pendulum costs Tension (THE TENSION RULE,
+## GearEcon); the others keep to the small gear); _produce then mixes a few Pendulums and Netters into the army. Its
+## Netters pick their targets themselves (the most dangerous enemy in reach not caught already: Netter.pick; _micro leaves
+## them to it).
 func _tier3() -> void:
-	if not game.has_working(team, Defs.CW_TECH) or game.tension(team) < float(Defs.UNITS[Defs.PENDULUM]["tension"]):
+	if not game.has_working(team, Defs.CW_TECH) or game.tension(team) < float(Defs.tension_cost(Defs.UNITS[Defs.PENDULUM])):
 		return
 	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built)
 	if works.is_empty() or works.any(func(b: Building) -> bool: return (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)):
 		return
-	var w: Building = works[works.size() - 1]
-	if game.gear_swap_problem(w) == "":
-		game.swap_gear(w)
-		if game.mlog:
-			game.mlog.add("%s put a Movement Works on its big gear (Pendulums)" % game.mlog.who(team))
+	var fed: Array = works.filter(func(b: Building) -> bool: return GearEcon.spend_problem(game, b) == "")
+	fed.reverse()
+	for w in fed:
+		if game.gear_swap_problem(w) == "":
+			game.swap_gear(w)
+			if game.mlog:
+				game.mlog.add("%s put a Movement Works on its big gear (Pendulums)" % game.mlog.who(team))
+			return
 
 
 ## Gear mode: a building whose work DRIVE scales (GearEcon: a Cog Press, the Works, a Mainspring...) goes where its ring

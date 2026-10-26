@@ -16,16 +16,17 @@ extends RefCounted
 ## refund may go over it, nothing unwinds. Buildings may cost Tension (a BUILDINGS `tension` price: the Clock Aviary).
 ## THE TENSION RULE: anything that costs Tension is made only at a building whose ring meshes with a Mainspring's ring (one
 ## hop; an idler between them counts): the Escapement and the Clock Aviary work only so (Defs.TENSION_USERS: idle otherwise,
-## NEEDS MAINSPRING), and a Movement Works makes Jacks only so (its Clock Soldiers need nothing): spend_problem.
+## NEEDS MAINSPRING), and a Movement Works makes Jacks, Netters and Pendulums only so (its Clock Soldiers need nothing):
+## spend_problem.
 
 const DRIVE_FREE := ["clocktower", "regulator", "ratchet_turret", "spring_tower"]
 
 
 ## Rings from the nearest driver for every connected building of the field (GearNet.solve): `list` the finished buildings,
-## `gp` / `rr` their ring centres (gear space) and pitch radii, `linked` the connected ones. A building meshing with a
-## Clocktower or a Mainspring is 1; a Mainspring counts the other drivers only (its own winding is driven by them).
-## Building -> int (>= 1); a Clocktower is not in it.
-static func drive_steps(list: Array, gp: Array, rr: Array, linked: Dictionary, slack: float) -> Dictionary:
+## `linked` the connected ones, `touch` (i, j) whether their rings mesh (within the link gap, by THE LEVEL RULE). A building
+## meshing with a Clocktower or a Mainspring is 1; a Mainspring counts the other drivers only (its own winding is driven by
+## them). Building -> int (>= 1); a Clocktower is not in it.
+static func drive_steps(list: Array, linked: Dictionary, touch: Callable) -> Dictionary:
 	var n := list.size()
 	var nb: Array = []
 	for i in n:
@@ -36,7 +37,7 @@ static func drive_steps(list: Array, gp: Array, rr: Array, linked: Dictionary, s
 		for j in range(i + 1, n):
 			if not linked.has(list[j]) or list[j].team != list[i].team:
 				continue
-			if (gp[i] as Vector2).distance_to(gp[j]) <= float(rr[i]) + float(rr[j]) + slack:
+			if touch.call(i, j):
 				nb[i].append(j)
 				nb[j].append(i)
 	var drivers: Array = []
@@ -273,6 +274,8 @@ static func preview_steps(net: GearNet, t: int, kind: String, c: Vector2i, big :
 			continue
 		if g.distance_to(GearNet.b_c(b)) - r - GearNet.b_r(b) > slack:
 			continue
+		if not GearNet.level_ok(net.game, kind, c, big, b):
+			continue          # (THE LEVEL RULE: a ring on the other level is no mesh)
 		var s := 1 if _drives(b.kind) else int(net.drive_of.get(b, 1)) + 1
 		if best < 0 or s < best:
 			best = s
@@ -316,8 +319,8 @@ static func room_spot_n(game: Game, t: int, kind: String, must: Array, users: Ar
 			var gaps := 0.0
 			for m in must:
 				var gap: float = gc.distance_to(GearNet.b_c(m)) - r - GearNet.b_r(m)
-				if gap < -over or gap > slack:
-					ok = false
+				if gap < -over or gap > slack or not GearNet.level_ok(game, kind, c, false, m):
+					ok = false          # (out of reach, or on the other ground level: THE LEVEL RULE)
 					break
 				gaps += absf(gap)
 			if ok:
@@ -355,6 +358,7 @@ static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var gc := GearNet.gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
 	var r := GearNet.ring_r(kind, size, false)
+	var lv := GearNet.foot_level(game, c, size)
 	var placed: Array = [[gc, r, Rect2i(c, size)]]
 	var rings: Array = []
 	for b in game.buildings:
@@ -387,6 +391,8 @@ static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -
 						break
 				if bad or not _ground_ok(game, c2, us):
 					continue
+				if GearNet.foot_level(game, c2, us) != lv or not GearNet.joint_ok(game, g2, ur, gc, r, lv):
+					continue          # (THE LEVEL RULE: it would mesh only on the same ground level)
 				placed.append([g2, ur, Rect2i(c2, us)])
 				n += 1
 				found = true
@@ -432,7 +438,7 @@ static func would_feed(net: GearNet, t: int, c: Vector2i, big := false) -> Array
 	for b in net.linked:
 		if not is_instance_valid(b) or b.dead or b.team != t or not spends_tension(b.kind):
 			continue
-		if g.distance_to(GearNet.b_c(b)) - r - GearNet.b_r(b) <= slack:
+		if g.distance_to(GearNet.b_c(b)) - r - GearNet.b_r(b) <= slack and GearNet.level_ok(net.game, "mainspring", c, big, b):
 			if net.spring_for(b) == null:
 				fresh.append(b)
 			else:

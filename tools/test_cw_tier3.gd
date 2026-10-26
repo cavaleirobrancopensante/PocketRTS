@@ -9,6 +9,8 @@ extends SceneTree
 ## then it does again; a flyer it catches is on the ground meanwhile (a ground-only unit can hit it, its sprite comes
 ## down) and flies again after; the Netter then waits its long reload; by itself it nets the most dangerous enemy in reach
 ## and not one caught already. The Lab starts with a big-gear Works, two Pendulums and two Netters; the sandbox lists both.
+## Both cost Tension, so (THE TENSION RULE, scripts/gear_econ.gd) they are made only at a Works whose ring meshes with a
+## Mainspring's: a Works with none refuses them.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_tier3.gd
 const U := preload("res://tools/gear_test_util.gd")
 var fails := 0
@@ -66,6 +68,13 @@ func _run() -> void:
 	var spring := _spring_beside(g, esc)
 	U.step(g, 0.6)
 	check("a Mainspring meshes with the Escapement: it works", spring != null and g.gear_net.speed_mult(esc) > 0.0)
+	# ---- THE TENSION RULE (GearEcon): both cost Tension, so they are made only at a Works whose ring meshes with a Mainspring's
+	if g.gear_net.spring_for(works) == null:
+		why = g.can_train(works, N)
+		check("a Works meshing with no Mainspring refuses the Netter (it costs Tension)", why.contains("meshes with no Mainspring"), why)
+		var wsp := _spring_beside(g, works)
+		U.step(g, 0.6)
+		check("a Mainspring put beside the Works meshes with it", wsp != null and g.gear_net.spring_for(works) != null)
 	# ---- the Netter at the small-gear Works; the Pendulum only on the big gear
 	why = g.can_train(works, N)
 	check("with a working Escapement the Netter trains at a small-gear Works", why == "", why)
