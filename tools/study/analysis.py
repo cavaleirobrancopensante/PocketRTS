@@ -448,6 +448,35 @@ def main():
                          "value killed / lost": w2.killed_value.sum() / max(1, w2.lost_value.sum()) if len(w2) else 0,
                          "small waves (<8 supply) after 5:00": int(((w2.supply < 8) & (w2.t0 > 300)).sum())})
         T["waves"] = md(pd.DataFrame(rows), floatfmt=".2f")
+        # first waves and wave number
+        w1 = waves[waves.kind == "wave"].sort_values(["id", "team", "t0"]).copy()
+        w1["n"] = w1.groupby(["id", "team"]).cumcount() + 1
+        w1["plan0"] = [sides.set_index(["id", "team"]).plan_start.get((r.id, r.team), "") for r in w1.itertuples()]
+        rows = []
+        for f in FACS:
+            for plan in ["balanced", "rush", "xrush", "timing"]:
+                x = w1[(w1.faction == f) & (w1.n == 1) & (w1.plan0 == plan)]
+                if len(x) < 3:
+                    continue
+                comp = {}
+                for c in x.comp:
+                    for k, v in json.loads(c).items():
+                        if k not in ("horse", "messenger") and not k in ("labourer", "grub", "winder"):
+                            comp[k] = comp.get(k, 0) + v
+                top = ", ".join("%s %.0f" % (k, v / len(x)) for k, v in sorted(comp.items(), key=lambda kv: -kv[1])[:3])
+                rows.append({"faction": f, "plan": plan, "first waves": len(x), "start (median)": mmss(x.t0.median()), "supply sent": x.supply.median(),
+                             "value sent": x.value.median(), "kinds (avg per wave)": top, "killed >= lost": "%d%%" % round(100 * (x.killed_value >= x.lost_value).mean()),
+                             "value killed / lost": x.killed_value.sum() / max(1, x.lost_value.sum())})
+        T["first_wave"] = md(pd.DataFrame(rows), floatfmt=".1f")
+        rows = []
+        for f in FACS:
+            for lab, sel in (("1st", w1.n == 1), ("2nd", w1.n == 2), ("3rd+", w1.n >= 3)):
+                x = w1[(w1.faction == f) & sel]
+                if len(x) < 3:
+                    continue
+                rows.append({"faction": f, "wave": lab, "n": len(x), "median start": mmss(x.t0.median()), "median supply": x.supply.median(),
+                             "killed >= lost": "%d%%" % round(100 * (x.killed_value >= x.lost_value).mean()), "value killed / lost": x.killed_value.sum() / max(1, x.lost_value.sum())})
+        T["wave_number"] = md(pd.DataFrame(rows), floatfmt=".2f")
         # repeated failures
         rep = []
         for (gid, tm), w in waves[waves.kind == "wave"].groupby(["id", "team"]):
