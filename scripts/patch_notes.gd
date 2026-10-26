@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.22", "items": [
+		"FIX: the Crown Mortar's DEPLOY / PACK button showed the Clockwork's tesla tripod; it now shows the Mortar with the Crown's red limber arrow.",
+	]},
 	{"v": "0.14.21", "items": [
 		"CLOCKWORK AIR (gear mode): the CLOCK AVIARY, a tall clock tower on its gear ring (2x2, 175 cogs, 900 hp), makes the Clockwork's flyers; it can only be built while an Escapement works (meshed with a Mainspring). While it trains, its little doors open and a brass bird flies off. The SWIFT (75 cogs + 15 Tension, 2 supply, 90 hp, fast) hunts flyers only: it darts in and pecks (10 damage about every 1.3 s) and cannot touch the ground. Research TICKING OWL at the Aviary (150 cogs + 150 Tension, 60 s), then MORPH TO OWL rebuilds each Swift on its own into a TICKING OWL (100 cogs + 50 Tension, 20 s; it hovers in place meanwhile while a clock hand sweeps round it; CANCEL MORPH pays it back): a heavy, slow flyer (220 hp, 1 armour, 4 supply) that swoops down on units with its talons (20 damage every 2 s) and lets its pendulum weight fall on buildings as a bomb that bursts where it lands (45 damage to the buildings round it, every 3 s). It cannot hit flyers: Ratchet Turrets, Musketeers, Spitters, Skywings, Jacks and Swifts shoot it down. Shot-down flyers fall to the ground. The JACK now raises its arm to shoot at flyers. The CLOCKWORK LAB starts with an Aviary, three Swifts and a Ticking Owl; the Clockwork computer builds an Aviary when it sees enemy flyers (or late), answers them with Swifts and morphs an Owl now and then late in the game.",
 	]},

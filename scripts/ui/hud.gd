@@ -944,7 +944,7 @@ func _build_card() -> Array:
 			if units.any(func(u: Unit) -> bool: return u.kind == kk):
 				var packed := units.any(func(u: Unit) -> bool: return u.kind == kk and u.tesla_mode == "packed")
 				var lab: String = {"cannon": "UNLIMBER" if packed else "LIMBER", "spore_mother": "ROOT" if packed else "UPROOT"}.get(kk, "DEPLOY" if packed else "PACK")
-				list.insert(3, [{"cannon": "ab_limber", "spore_mother": "ab_root"}.get(kk, "ab_deploy"), lab, func() -> void:
+				list.insert(3, [{"cannon": "ab_limber", "spore_mother": "ab_root", "mortar": "ab_mortar_deploy"}.get(kk, "ab_deploy"), lab, func() -> void:
 					for u in game.selected_units():
 						if u.kind == kk:
 							if packed:
@@ -2802,7 +2802,7 @@ func _unit_icon(e: Entity) -> Texture2D:
 ## (the button works on the selection, so it runs with just that man selected).
 const SHIFT_QUEUE := ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch", "horse_harness",
 	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
-	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_supply", "ab_sacrifice"]
+	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice"]
 
 
 func _shift_queueable(list: Array) -> void:
