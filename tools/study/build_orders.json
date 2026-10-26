@@ -1,5 +1,5 @@
 {
- "about": "Scripted openings for the build-order study (docs/build_orders_study.md). Played by tools/study/bo_ai.gd in headless matches (tools/study/bo_match.gd) and timed by tools/study/bo_calc.py. Step grammar: see tools/study/bo_ai.gd. 'then': the computer's plan once the script is over. 'opening': the Crown computer's opening flag (mill or breeder), read by its own supply and horse logic.",
+ "about": "Scripted openings for the build-order study (docs/build_orders_study.md). Played by tools/study/bo_ai.gd in headless matches (tools/study/bo_match.gd) and timed by tools/study/bo_calc.py. Step grammar: see tools/study/bo_ai.gd. 'then': the computer's plan once the script is over. 'opening': the Crown computer's opening flag (mill or breeder), read by its own supply and horse logic. (The Clockwork's left-over Wind-up Soldier opening was dropped when 0.14.31 retired the Assembly Works.)",
  "builds": [
   {
    "name": "crown_musket_wall",
@@ -406,21 +406,6 @@
     "clock_soldier*",
     "pendulum*1",
     "attack@24|480",
-    "end"
-   ]
-  },
-  {
-   "name": "cw_windup_swarm",
-   "faction": "clockwork",
-   "label": "Clockwork (leftover): the old Assembly Works and Wind-up Soldiers",
-   "then": "balanced",
-   "steps": [
-    "workers:6",
-    "assembly_works",
-    "regulator",
-    "windup_soldier*",
-    "attack@12|200",
-    "workers:8",
     "end"
    ]
   }

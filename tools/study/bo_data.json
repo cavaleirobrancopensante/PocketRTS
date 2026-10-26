@@ -29,8 +29,7 @@
    "movement_works",
    "ratchet_turret",
    "escapement",
-   "cuckoo_house",
-   "assembly_works"
+   "cuckoo_house"
   ],
   "crown": [
    "town_hall",
@@ -2244,5 +2243,5 @@
    "time": 30.0
   }
  },
- "version": "0.14.27"
+ "version": "0.14.31"
 }
