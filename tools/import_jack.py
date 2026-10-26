@@ -1,20 +1,27 @@
 """Import the Jack's sheets (art/redraws/jack_*.png, navy background RGB 0,22,48, rows = directions S SE E NE N; the west
 views are the east ones mirrored in the game) into the game's unit strips:
-  assets/units/jack/{idle,walk,jump,attack,death}_{s,se,e,ne,n}.png (frames side by side, one canvas for all)
+  assets/units/jack/{idle,walk,jump,attack_r,attack_l,attack_up,death}_{s,se,e,ne,n}.png (frames side by side, one canvas)
 the card portrait assets/icons/jack.png, and prints the scripts/cw_art.gd SHEETS line and the drill tips for
-Defs.JACK "tips".
+Defs.JACK_SHOT "tips" (one set per arm) and Defs.JACK_SHOT_UP.
 
-  idle    jack_idle.png         ChatGPT, 6 rows (the 6th repeats the back view: unused) x 4; not on an exact grid, so the
-                                figures are found as connected components (the thin dark shadow strips under them and
-                                other dark specks are dropped)
+  idle    jack_idle_twin_chatgpt.png  ChatGPT's TWO-LAUNCHER Jack (both arms drill launchers), laid out like the first idle
+                                sheet (jack_idle.png, the claw arm): 6 rows (the 6th repeats the back view: unused) x 4;
+                                not on an exact grid, so the figures are found as connected components (the thin dark
+                                shadow strips under them and other dark specks are dropped)
   walk    jack_hop.png          the HOP (made in code: tools/jack_guide/hop.py), 5 x 6 on a 256 px grid with consistent
                                 positions: every frame of a row keeps its place in the cell, so the foot plate stays put
                                 except when it lifts with the hop
   jump    jack_jump.png         5 x 8 (192 px grid): crouch 1-3, launch 4, in the air 5-6, landing 7-8. Every frame is put
                                 on its own foot plate: the sheet's lift (and its dark ground ellipse) is dropped, the game
                                 flies the unit along its arc over its own ground shadow
-  attack  jack_attack_body.png  5 x 6 (256 px grid): the recoil without the burst. The frames are the rest pose shifted
-                                along the barrel; here the foot plate stays still and only the body above it kicks back
+  attack_r, attack_l  jack_attack_twin_body.png  5 x 12 (256 x 204 cells, made in code from the two-launcher idle:
+                                tools/jack_guide/attack_twin.py): cells 0-5 the robot's RIGHT arm fires, 6-11 its LEFT;
+                                the screw leaves on the 2nd frame of each. The foot plate keeps its place in every cell
+                                (only the body kicks, the spring flexes), so a row keeps one anchor, like the hop. The
+                                game fires the arms in turn (scripts/jack.gd); each arm's tip on its fire frame comes from
+                                art/redraws/jack_attack_twin_tips.json
+                                (The hop, jump, death and raised-arm sheets still show the first, clawed Jack: ChatGPT's
+                                two-launcher redraws are pending.)
   attack_up jack_attack_up_body.png  5 x 6, laid out like the attack sheet (tools/jack_guide/attack_up.py): the launcher
                                 arm RAISED at a flyer, the same recoil along the raised barrel; the drill tip on its fire
                                 frame (the 2nd) comes from art/redraws/jack_attack_up_tips.json
@@ -47,19 +54,19 @@ NAVY = np.array([0, 22, 48])
 TOL = 40
 SOLDIER_S_H = 59        # px: the Clock Soldier's S idle in game (assets/units/clock_soldier/idle_s.png)
 # anim: (file, rows in the sheet, columns, how the frames are found, how they are aligned)
+# (a 5th item: the sheet's columns that make the strip)
 SHEETS = {
-    'idle': ('jack_idle.png', 6, 4, 'foot'),
+    'idle': ('jack_idle_twin_chatgpt.png', 6, 4, 'foot'),
     'walk': ('jack_hop.png', 5, 6, 'row'),
     'jump': ('jack_jump.png', 5, 8, 'foot'),
-    'attack': ('jack_attack_body.png', 5, 6, 'recoil'),
+    'attack_r': ('jack_attack_twin_body.png', 5, 12, 'row', range(0, 6)),
+    'attack_l': ('jack_attack_twin_body.png', 5, 12, 'row', range(6, 12)),
     'attack_up': ('jack_attack_up_body.png', 5, 6, 'recoil'),
     'death': ('jack_death_final.png', 5, 7, 'foot'),
 }
 UP_TIPS = 'art/redraws/jack_attack_up_tips.json'     # the raised drill tip on the fire frame, cell px (+ barrel direction)
-# the drill tip on the painted idle frame (tools/jack_guide/attack.py: TIP in the BOX crop, the crop pasted in a 256 x 204
-# cell at ((256 - w) // 2, 204 - h - 10))
-IDLE_BOX = [(159, 23, 306, 181), (174, 216, 299, 360), (170, 387, 301, 537), (166, 571, 308, 713), (164, 743, 308, 873)]
-TIP = [(5, 115), (4, 116), (131, 92), (140, 92), (141, 90)]
+TWIN_TIPS = 'art/redraws/jack_attack_twin_tips.json'   # each arm's drill tip on its fire frame, cell px (+ barrel)
+ARMS = {'attack_r': 'r', 'attack_l': 'l'}
 SHOT_FRAME = 1          # the attack frame the screw leaves on (the strongest kick)
 
 
@@ -163,12 +170,17 @@ def shrink(img, scale):
 def main():
     frames = {}       # (anim, dir) -> [(rgba, ax, ay)]
     recoil = {}       # (anim, dir) -> (dx, dy) sheet px of the body kick on the shot frame
-    attack0 = {}      # (anim, dir) -> (foot in sheet coords) of the first attack frame
     shot_foot = {}    # (anim, dir) -> the shot frame's own foot in sheet coords (before the plate is put back)
-    for anim, (f, rows, cols, how) in SHEETS.items():
-        figs = figures(SRC + f, rows, cols)
+    row_foot = {}     # (anim, dir) -> a 'row' strip's anchor: its first frame's foot in cell coordinates
+    sheet_figs = {}
+    for anim, spec in SHEETS.items():
+        f, rows, cols, how = spec[:4]
+        take = spec[4] if len(spec) > 4 else range(cols)
+        if f not in sheet_figs:
+            sheet_figs[f] = figures(SRC + f, rows, cols)
+        figs = sheet_figs[f]
         for row, d in enumerate(DIRS):
-            row_figs = [figs[(row, c)] for c in range(cols) if (row, c) in figs]
+            row_figs = [figs[(row, c)] for c in take if (row, c) in figs]
             out = []
             first = None
             for i, (o, (x0, y0), (cx0, cy0)) in enumerate(row_figs):
@@ -177,13 +189,13 @@ def main():
                     # one anchor for the row: the first frame's foot, in cell coordinates (the hop lifts the plate)
                     if first is None:
                         first = (x0 - cx0 + fx, y0 - cy0 + fy)
+                        row_foot[(anim, d)] = first
                     fx, fy = first[0] - (x0 - cx0), first[1] - (y0 - cy0)
                 elif how == 'recoil':
                     # the plate stays on the anchor; the rows above it keep their kick against the first frame
                     sx, sy = x0 - cx0 + fx, y0 - cy0 + fy
                     if first is None:
                         first = (sx, sy, x0 - cx0, y0 - cy0)
-                        attack0[(anim, d)] = (x0 + fx, y0 + fy)
                     if i == SHOT_FRAME:
                         shot_foot[(anim, d)] = (x0 + fx, y0 + fy)
                     kx, ky = int(round((x0 - cx0) - first[2])), int(round((y0 - cy0) - first[3]))
@@ -244,17 +256,18 @@ def main():
     print('jack: scale %.3f, cell %dx%d, anchor (%d, %d)' % (scale, cw, ch, half, up))
     print('SHEETS line: "jack": [%d, %d, %d, %d],' % (cw, ch, half, up))
     print('frames:', {a: len(frames[(a, 's')]) for a in SHEETS})
-    # the drill tip per drawn direction on the shot frame, game px from the anchor (the feet)
+    # each arm's drill tip per drawn direction on its fire frame, game px from the anchor (the feet): the JSON gives it in
+    # the fire frame's cell, where the foot plate sits as on the strip's first frame (the row's anchor)
+    tw = json.load(open(TWIN_TIPS))
     tips = {}
-    for row, d in enumerate(DIRS):
-        bx0, by0, bx1, by1 = IDLE_BOX[row]
-        w, h = bx1 - bx0, by1 - by0
-        tx = 0 * 256 + (256 - w) // 2 + TIP[row][0]
-        ty = row * 204 + 204 - h - 10 + TIP[row][1]
-        fx, fy = attack0[('attack', d)]
-        kx, ky = recoil.get(('attack', d), (0, 0))
-        tips[d] = (round((tx - fx + kx) * scale), round((ty - fy + ky) * scale))
-    print('tips: {' + ', '.join('"%s": Vector2(%d, %d)' % (d, t[0], t[1]) for d, t in tips.items()) + '}')
+    for anim, arm in ARMS.items():
+        tips[arm] = {}
+        for d in DIRS:
+            tx, ty = tw[d][arm]['tip']
+            fx, fy = row_foot[(anim, d)]
+            tips[arm][d] = (round((tx - fx) * scale), round((ty - fy) * scale))
+    print('tips: {' + ', '.join('"%s": {' % arm + ', '.join('"%s": Vector2(%d, %d)' % (d, t[0], t[1]) for d, t in tt.items()) + '}'
+                                for arm, tt in tips.items()) + '}')
     # the RAISED drill tip (shooting at a flyer): the JSON gives it on the fire frame in that frame's cell (the sheet's rows
     # are 204 px apart); in the strip that frame's body keeps its kick over the first frame's foot plate, so the tip is
     # (the tip - the fire frame's own foot) + its kick, from the anchor

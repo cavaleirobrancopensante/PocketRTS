@@ -2,8 +2,12 @@
 
 The rule (units only; the buildings keep their painted reds):
   - PLAYER COLOUR is the team shader's two key reds (shaders/team.gdshader: (255,0,0) -> the player's colour, (150,0,0) ->
-    0.6 x it). The painted red parts stay player colour, and every part painted BLUE becomes player colour too: ball
-    joints, shoulders, knee gems, wing-root springs, eyes. No blue is left anywhere.
+    0.6 x it). The painted red parts stay player colour (with the orange-red seams and rim light ChatGPT paints into
+    them, which would show as orange stripes on another colour), and every part painted BLUE becomes player colour too:
+    ball joints, shoulders, knee gems, wing-root springs, eyes. No blue is left anywhere. Both are put on one pure red
+    ramp by their value, so their painted shading lands on the light or the dark key. (No third, darker key: tried, the
+    gain was slight at game size, and about 70,000 pixels of other units and buildings of all three factions lie within
+    reach of a key at (80,0,0) and would turn team colour.)
   - BRASS stays brass, WHITE stays white (the clock faces), the dark OUTLINES, the STEEL and IRON greys stay as painted.
   - STEEL that is tinted blue (the Jack's coil spring, drill tips and inner arm segments, the Pendulum's blade) is metal,
     not paint: it keeps its own colour, only greyed toward steel when it is bluer than STEEL_SAT (a ChatGPT sheet that
@@ -18,13 +22,14 @@ the warm ramp of BRASS below. The dark outlines may be any very dark colour (val
 
 Entry points (tools/import_clock_soldier.py, import_jack.py, import_cuckoo.py (Swift and Owl) and import_tier3.py
 (Pendulum and Netter) call them; another unit's importer switches over by calling the same two):
-  recolour(o, unit, ref=None, tilt=0.0, window=16.0) -> o
+  recolour(o, unit, ref=None, tilt=0.0, window=16.0, info=None, tipped=False) -> o
         one keyed frame (H x W x 4 uint8, the SHEET's own resolution, alpha 0 = background), BEFORE the shrink and AFTER
         the importer has taken its anchors (they look for the red body); returns a new frame, painted colours. `unit` is
         the art kind ('clock_soldier', 'jack', 'cuckoo', 'ticking_owl', 'pendulum', 'netter'; any other kind gets the
-        general rule). The Clock Soldier also needs `ref` (its upright idle frame of the same direction, the cap's
-        template) and, for a frame where the body tips over, `tilt` (degrees, screen clockwise: the guess of where the
-        body's own up axis points) and `window` (how far either side of it to look).
+        general rule). The Clock Soldier also needs `ref`: its upright idle frame of the same direction (the cap is found
+        on it by its place), or a ready template (template_from: a sheet's own upright first frame and the cap found on
+        it, for the rest of that row); and, for a frame where the body tips over, `tilt` (degrees, screen clockwise: the
+        guess of where the body's own up axis points), `window` (how far either side of it to look) and tipped=True.
   snap_team(img) -> img
         AFTER the shrink: the team reds to the shader's exact key reds (the light key from r 175 up, the dark key down to
         r 60, so no shaded red keeps its painted colour on another team), red highlights to a neutral light.
@@ -63,15 +68,21 @@ def is_red(h, s, v):
     return ((h <= 14) | (h >= 346)) & (s >= 0.45) & (v >= 0.12)
 
 
-def red_parts(o):
-    """The team red parts: the red family, and the orange-red (hue up to 22 degrees) that ChatGPT paints inside them as
-    seams, rim light and edges, where it lies in the red (closed over 2 px) or on its edge. On another team's colour that
-    orange would show as stripes; brass (hue 25 and up) is not taken."""
+def red_parts(o, min_size=150):
+    """The team red parts: the blobs of the red family of min_size px or more (a body, a leg, a band: not the darkest rim
+    pixels of a brass part, which read as red too), and the orange-red (hue up to 22 degrees) that ChatGPT paints inside
+    them as seams, rim light and edges, where it lies in them (closed over 2 px) or on their edge. On another team's
+    colour that orange would show as stripes; brass (hue 25 and up) is not taken."""
     al = o[..., 3] > 0
     h, s, v = hsv(o)
     red = al & is_red(h, s, v)
-    near = ndi.binary_closing(red, iterations=2) | ndi.binary_dilation(red, iterations=1)
-    return red | (near & al & (h > 14) & (h <= 22) & (s >= 0.45) & (v >= 0.12))
+    lab, n = ndi.label(red, structure=np.ones((3, 3)))
+    if n == 0:
+        return red
+    sz = ndi.sum(red, lab, range(1, n + 1))
+    big = np.isin(lab, [i + 1 for i in range(n) if sz[i] >= min_size])
+    near = ndi.binary_closing(big, iterations=2) | ndi.binary_dilation(big, iterations=1)
+    return big | (near & al & (h > 14) & (h <= 22) & (s >= 0.45) & (v >= 0.12))
 
 
 def is_blue(h, s, v):
@@ -101,7 +112,7 @@ def blue_parts(o, unit):
         return paint, blue
     if unit == 'jack':
         core = ndi.binary_opening(blue & (h >= JACK_HUE) & (s >= 0.55), iterations=1)
-        red = ndi.binary_dilation(al & is_red(h, s, v), iterations=6)
+        red = ndi.binary_dilation(body_mask(o), iterations=6)        # (its red BODY: not the brass plate's dark rim)
         lab, n = ndi.label(core, structure=np.ones((3, 3)))
         for i, sl in enumerate(ndi.find_objects(lab)):
             m = lab[sl] == i + 1
@@ -380,7 +391,7 @@ def recolour(o, unit, ref=None, tilt=0.0, window=16.0, info=None, tipped=False):
                 info.update(cap_score=sc, cap_angle=th, cap_ncc=_LAST_POSE.get('ncc', 0.0))
         # the body's reds (its orange seams and pink highlights too) along the brass ramp, by value; red specks off the
         # body go brass as well (the body is its only red part)
-        bm = red_parts(o) | (al & B & ((h <= 16) | (h >= 340)) & (s >= 0.15) & (v >= 0.6))
+        bm = red_parts(o) | (al & is_red(h, s, v)) | (al & B & ((h <= 16) | (h >= 340)) & (s >= 0.15) & (v >= 0.6))
         if bm.any():
             br = brass_of(v)
             # a pink highlight (low saturation, bright) -> the brass highlight

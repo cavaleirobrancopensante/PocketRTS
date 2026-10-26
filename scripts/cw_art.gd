@@ -8,7 +8,7 @@ extends RefCounted
 ## Also the command-card icons (64 x 64) of the new units and abilities, drawn the same way.
 
 const DIRS := ["s", "se", "e", "ne", "n"]
-const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb"]
+const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb", "attack_r", "attack_l"]
 ## kind -> [cell width, cell height, anchor x, anchor y (the feet)]
 const SHEETS := {
 	"tin_militia": [36, 40, 18, 36],

@@ -9,7 +9,8 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 	"cocoon", "coat", "armoured", "kills", "art", "powder", "wind", "max_hp", "off_field", "horse_hp", "harnessed",
 	"topter_bat", "courier", "supplying", "auto_repair", "hold_fire", "pistol", "bayonet", "pouch", "carry_empty",
 	"gas", "spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
-	"owl_t", "net_t"]       # (a Swift's morph under way: its clock and bar; a unit caught in a Netter's net)
+	"owl_t", "net_t", "arm"]       # (a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
+	# launcher a Jack fires now, so a guest plays that arm's strip)
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target"]
 const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "prod_t", "eggs", "upgrade_t", "growth",
 	"soil", "lode", "swamp_r", "batteries", "auto_train", "auto_refit", "gate_open", "locked", "vertical", "seeded",

@@ -478,12 +478,14 @@ const TENSION_USERS := ["escapement"]
 ## the range jumps the full range that way; a spot that cannot be landed on gives way to the nearest one within `search`
 ## tiles on the same level. `ai_low`: a computer's Jack jumps away from melee below this share of its health.
 ## Shot: the screw (the Ratchet Turret's projectile, Game.screw_shot) leaves the drill tip, `tips` game px from its feet per
-## drawn direction (W/SW/NW mirror E/SE/NE; printed by tools/import_jack.py), at `shot_scale` of the turret's screw art
-## (`muzzle_scale` for the burst), `speed` px/s.
+## launcher ("r" the robot's right arm, "l" its left: the two fire in turn, scripts/jack.gd) and drawn direction (W/SW/NW
+## mirror E/SE/NE; printed by tools/import_jack.py), at `shot_scale` of the turret's screw art (`muzzle_scale` for the
+## burst, played at that tip), `speed` px/s.
 const JACK_JUMP := {"range": 160.0, "crouch": 0.35, "land": 0.2, "air": 0.3, "air_speed": 520.0, "peak": 20.0, "peak_per": 0.22,
 	"cooldown": 10.0, "search": 2, "ai_low": 0.4}
 const JACK_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
-	"tips": {"s": Vector2(-26, -16), "se": Vector2(-21, -11), "e": Vector2(25, -22), "ne": Vector2(28, -19), "n": Vector2(27, -15)}}
+	"tips": {"r": {"s": Vector2(-24, -13), "se": Vector2(-21, -11), "e": Vector2(24, -15), "ne": Vector2(23, -13), "n": Vector2(31, -11)},
+		"l": {"s": Vector2(31, -13), "se": Vector2(25, -12), "e": Vector2(22, -21), "ne": Vector2(-26, -18), "n": Vector2(-19, -12)}}}
 
 
 ## The raised arm (shooting at a FLYER: the "attack_up" strip, tools/jack_guide/attack_up.py): the drill tip on the fire frame per
