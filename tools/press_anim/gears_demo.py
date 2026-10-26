@@ -50,13 +50,46 @@ def paste_ring(canvas,im,cx,cy,theta):
     r=im.rotate(-math.degrees(theta),resample=Image.BICUBIC,fillcolor=NAVY)
     a=np.array(r).astype(int); m=Image.fromarray((~navy(a)*255).astype('uint8'))
     canvas.paste(r,(int(cx-r.width/2),int(cy-r.height/2)),m)
+
+def ringmask(im,theta):
+    r=im.rotate(-math.degrees(theta),resample=Image.BICUBIC,fillcolor=NAVY)
+    return ~navy(np.array(r).astype(int))
+def best_dist(phi,o):
+    A=ringmask(ti,0.0); B=ringmask(si,o)
+    best=None
+    for d in np.arange(Dc+14,Dc-30,-0.5):
+        bx=cx0+d*math.cos(phi); by=cy0+d*math.sin(phi)
+        canvas=np.zeros((H,W),bool); ca=np.zeros((H,W),bool)
+        ay=A.shape[0]; 
+        x0=int(cx0-A.shape[1]/2); y0=int(cy0-A.shape[0]/2); ca[y0:y0+A.shape[0],x0:x0+A.shape[1]]=A
+        x1=int(bx-B.shape[1]/2); y1=int(by-B.shape[0]/2)
+        cb=np.zeros((H,W),bool)
+        ys0=max(y1,0); xs0=max(x1,0)
+        sub=B[ys0-y1:ys0-y1+min(H-ys0,B.shape[0]-(ys0-y1)), xs0-x1:xs0-x1+min(W-xs0,B.shape[1]-(xs0-x1))]
+        cb[ys0:ys0+sub.shape[0],xs0:xs0+sub.shape[1]]=sub
+        ov=(ca&cb).sum()
+        if ov>60: break
+        best=d
+    return best
+DISTS=[]
+newoffs=[]
+for p,o in zip(angles,offs):
+    best=(1e9,None)
+    step=2*math.pi/small['N']/24
+    for k in range(-14,15):
+        oo=o+k*step
+        d=best_dist(p,oo)
+        if d is not None and d<best[0]: best=(d,oo)
+    DISTS.append(best[0]); newoffs.append(best[1])
+offs=newoffs
+print('dists',DISTS,'Dc',Dc)
 def frame(i):
     th=math.radians(1.0*i)
     c=Image.new('RGB',(W,H),NAVY)
     paste_ring(c,ti,cx0,cy0,th)
     for phi,o in zip(angles,offs):
         thB=o-th*tower['N']/small['N']
-        paste_ring(c,si,cx0+Dc*math.cos(phi),cy0+Dc*math.sin(phi),thB)
+        paste_ring(c,si,cx0+DISTS[angles.index(phi)]*math.cos(phi),cy0+DISTS[angles.index(phi)]*math.sin(phi),thB)
     # squash and extrude
     h2=int(H*SQ); c=c.resize((W,h2),Image.LANCZOS)
     a=np.array(c).astype(int); m=~navy(a)
