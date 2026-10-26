@@ -2,11 +2,12 @@ extends SceneTree
 ## Screenshots of THE CLOCKWORK'S ECONOMY RULES (scripts/gear_econ.gd) in the CLOCKWORK LAB: the efficiency labels over the
 ## buildings (crew, bar, %), a building linked two rings out (90%), the cards (a Cog Press's efficiency line, the Movement
 ## Works' Tension rule line, the Mainspring's store), the top bar's Tension held / stored, and the placement ghost before a
-## building is placed (a Cog Press ghost two rings out: "LINKS 90%"; a Mainspring ghost by a Works that has none: "FEEDS 1"),
+## building is placed (a Movement Works ghost two rings out: "LINKS 90%"; a Mainspring ghost where the Lab's Mainspring stood:
+## "FEEDS 2"; the Lab's plateau is full, so turrets and Regulators make way first),
 ## and THE LEVEL RULE: a Regulator ghost on the low ground whose ring reaches the field on the high ground: "NO LINK: OTHER
 ## LEVEL".
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_gear_econ.gd -- <outdir>
-## Writes <outdir>/labels.png, labels_close.png, card_press.png, card_works.png, card_spring.png, card_works_far.png,
+## Writes <outdir>/labels.png, labels_close.png, card_press.png, card_works.png, card_spring.png, card_far.png,
 ## ghost_drive.png, ghost_spring.png, ghost_level.png, top_bar.png.
 var main: Node
 var g
@@ -62,7 +63,7 @@ func _hint(on: bool) -> void:
 
 
 ## The placeable, linking cell for a building of `kind` nearest `near` (px) for which `ok(cell)` holds, else (-1, -1).
-func _scan(kind: String, near: Vector2, ok: Callable) -> Vector2i:
+func _scan(kind: String, near: Vector2, ok: Callable, farthest := false) -> Vector2i:
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var h0: Vector2i = g.cell_of(near)
 	var best := Vector2i(-1, -1)
@@ -93,7 +94,7 @@ func _scan(kind: String, near: Vector2, ok: Callable) -> Vector2i:
 			if not ok.call(c):
 				continue
 			n[3] += 1
-			var d := (Vector2(c) * Defs.TILE).distance_to(near)
+			var d := (Vector2(c) * Defs.TILE).distance_to(near) * (-1.0 if farthest else 1.0)
 			if d < bd:
 				bd = d
 				best = c
@@ -164,11 +165,48 @@ func _run() -> void:
 	# a Movement Works two rings out from the Clocktower (hung on a building of its ring, no Mainspring by it: 90%), built
 	# at once
 	var extra: Building = null
-	var c2 := _second_ring(Defs.CW_WORKS, hall.center())
-	if c2.x >= 0:
-		extra = g._add_building(Defs.CW_WORKS, g.human, c2, true)
+	var fk: String = Defs.CW_WORKS          # (the far building: a Works, else a Mainspring, else a Clock Aviary (2x2), whichever fits)
+	var c2 := _second_ring(fk, hall.center())
+	# (the Lab's plateau is full since main 0.14.31: clear the turrets, then the Regulators farthest from the Clocktower,
+	# one at a time, until a Works fits two rings out)
+	var spare: Array = g.buildings.filter(func(b: Building) -> bool: return b.team == g.human and not b.dead \
+			and (b.kind == "ratchet_turret" or b.kind == Defs.CW_SUPPLY))
+	spare.sort_custom(func(a: Building, b: Building) -> bool:
+		return (0 if a.kind == "ratchet_turret" else 1) * 100000.0 - a.center().distance_to(hall.center()) \
+				< (0 if b.kind == "ratchet_turret" else 1) * 100000.0 - b.center().distance_to(hall.center()))
+	while c2.x < 0 and not spare.is_empty():
+		var gone: Building = spare.pop_front()
+		if gone == reg:
+			continue
+		g._remove_quietly(gone)
 		g.gear_net.solve()
-	print("a Works two rings out: %s (%s)" % [str(extra != null), str(g.gear_net.drive_of.get(extra, -1)) if extra else "-"])
+		c2 = _second_ring(fk, hall.center())
+	# (still no room: string Regulators outward, the farthest linking spot each time, and hang the Works on the last)
+	for i in 3:
+		if c2.x >= 0:
+			break
+		var far := _scan(Defs.CW_SUPPLY, hall.center(), func(cc: Vector2i) -> bool: return true, true)
+		if far.x < 0:
+			break
+		g._add_building(Defs.CW_SUPPLY, g.human, far, true)
+		g.gear_net.solve()
+		c2 = _second_ring(fk, hall.center())
+		for k2 in ["mainspring", Defs.CW_AIR]:
+			if c2.x < 0:
+				fk = k2
+				c2 = _second_ring(fk, hall.center())
+	if c2.x >= 0:
+		# the placement ghost there first: it says LINKS 90% (80%...) before it is placed
+		_hint(false)
+		g.controls.begin_place(fk)
+		g.controls.ghost_cell = c2
+		_look_at_ghost(fk, c2)
+		await _snap("ghost_drive", 0.6)
+		g.controls.cancel_mode()
+		_hint(true)
+		extra = g._add_building(fk, g.human, c2, true)
+		g.gear_net.solve()
+	print("a %s two rings out: %s (%s)" % [fk, str(extra != null), str(g.gear_net.drive_of.get(extra, -1)) if extra else "-"])
 	await _snap("labels", 2.5)
 	_hint(false)
 	g.camera.position = hall.center() + Vector2(0, 40)
@@ -187,28 +225,8 @@ func _run() -> void:
 	if extra != null:
 		g.set_selection([extra])
 		g.camera.position = extra.center() + Vector2(0, 60)
-		await _snap("card_works_far", 1.0)
+		await _snap("card_far", 1.0)
 	g.set_selection([])
-	# the placement ghost: a Movement Works rings out says LINKS 90% (80%...) before it is placed
-	var gc := _second_ring(Defs.CW_WORKS, (extra if extra != null else hall).center())
-	print("a Works ghost rings out: %s (%d)" % [str(gc), GearEcon.preview_steps(g.gear_net, g.human, Defs.CW_WORKS, gc) if gc.x >= 0 else -1])
-	if gc.x >= 0:
-		g.controls.begin_place(Defs.CW_WORKS)
-		g.controls.ghost_cell = gc
-		_look_at_ghost(Defs.CW_WORKS, gc)
-		await _snap("ghost_drive", 0.6)
-		g.controls.cancel_mode()
-	# a Mainspring ghost by the far Works (no Mainspring meshes with it): FEEDS 1
-	var sc := Vector2i(-1, -1)
-	if extra != null:
-		sc = _scan("mainspring", extra.center(), func(c: Vector2i) -> bool: return not GearEcon.would_feed(g.gear_net, g.human, c).is_empty())
-	print("a Mainspring ghost that feeds: %s" % str(sc))
-	if sc.x >= 0:
-		g.controls.begin_place("mainspring")
-		g.controls.ghost_cell = sc
-		_look_at_ghost("mainspring", sc)
-		await _snap("ghost_spring", 0.6)
-		g.controls.cancel_mode()
 	# THE LEVEL RULE: a ghost on the other ground level whose ring reaches the field (it says NO LINK: OTHER LEVEL)
 	var lc := _other_level(Defs.CW_SUPPLY, hall)
 	print("a ghost on the other level: %s" % str(lc))
@@ -224,5 +242,30 @@ func _run() -> void:
 	g.camera.position = hall.center()
 	g.camera.zoom = Vector2(1.0, 1.0)
 	await _snap("top_bar", 0.6)
+	# a Mainspring ghost by the far Works (no Mainspring meshes with it): FEEDS 1
+	var sc := Vector2i(-1, -1)
+	if extra != null:
+		sc = _scan("mainspring", extra.center(), func(c: Vector2i) -> bool: return not GearEcon.would_feed(g.gear_net, g.human, c).is_empty())
+	if sc.x < 0:
+		# (no room by it: take the Lab's own Mainspring away; a Mainspring ghost where it stood feeds the Works and the
+		# Escapement again)
+		var at: Vector2i = spring.cell
+		for u in spring.crew:
+			if is_instance_valid(u) and not u.dead:
+				u.cmd_stop()
+		spring.crew.clear()
+		for u in g.units:
+			if is_instance_valid(u) and u.get("home_mine") == spring:
+				u.home_mine = null
+		g._remove_quietly(spring)
+		g.gear_net.solve()
+		sc = at
+	print("a Mainspring ghost that feeds: %s %s" % [str(sc), str(GearEcon.would_feed(g.gear_net, g.human, sc)) if sc.x >= 0 else ""])
+	if sc.x >= 0:
+		g.controls.begin_place("mainspring")
+		g.controls.ghost_cell = sc
+		_look_at_ghost("mainspring", sc)
+		await _snap("ghost_spring", 0.6)
+		g.controls.cancel_mode()
 	print("done")
 	quit()
