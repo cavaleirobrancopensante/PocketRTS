@@ -55,6 +55,10 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Supply building = the REGULATOR: a squat 2x2 regulator clock with a pendulum behind glass (art/redraws/regulator.png). Lore: every unit runs in step with a regulator's beat; each keeps only so many in time. Kept SQUAT on purpose so it never reads like the tall Cuckoo House.
 - Floor plate under every building (art/clockwork/gear/floor_plate_src.png): the ring turns around a fixed bolted deck.
 
+## Tier 2 built (0.14.19): the Escapement and the Jack
+- ESCAPEMENT: the tech building (3x3, 150 cogs, needs a Movement Works), unlocks the Jack, researches HIGH LEAP. Tension rule (owner): a building that uses Tension must have its ring mesh DIRECTLY with a Mainspring's ring (one hop; an idler between the two counts), else it stands idle (NEEDS MAINSPRING); if its Mainspring dies it goes idle until one meshes again. This answers the open questions above: one hop, any number of users per Mainspring, idle (not lost) when the Mainspring dies.
+- JACK (the spring jumper below): 100 cogs + 25 Tension, 2 supply, ranged screws at ground and air, hops, JUMP (crouch, arc up to 5 tiles, 10 s); up a cliff after HIGH LEAP (150 cogs + 100 Tension) and only where you can see. Numbers are guesses (docs/clockwork_gear_prototype.md).
+
 ## Spring jumper unit idea (owner, 2026-10-26)
 - Jumps on flat ground (no upgrade); jumping UP onto high ground needs an upgrade (owner, 2026-10-26).
 - A unit standing on a coiled spring (like the Mainspring's cone spring) that JUMPS: onto enemy units and up onto high ground when it has vision there (the Stalker's Blink role).

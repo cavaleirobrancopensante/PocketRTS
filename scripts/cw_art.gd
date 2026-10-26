@@ -8,7 +8,7 @@ extends RefCounted
 ## Also the command-card icons (64 x 64) of the new units and abilities, drawn the same way.
 
 const DIRS := ["s", "se", "e", "ne", "n"]
-const ANIMS := ["idle", "walk", "attack", "death"]
+const ANIMS := ["idle", "walk", "attack", "death", "jump"]
 ## kind -> [cell width, cell height, anchor x, anchor y (the feet)]
 const SHEETS := {
 	"tin_militia": [36, 40, 18, 36],
@@ -22,6 +22,8 @@ const SHEETS := {
 	"storm_engine": [92, 70, 46, 58],
 	# the new-style army (gear mode): real sheets only (tools/import_clock_soldier.py prints this line)
 	"clock_soldier": [92, 81, 46, 68],
+	# tier 2: the Jack (tools/import_jack.py prints this line); its walk is a hop, plus a JUMP strip (8 frames)
+	"jack": [108, 80, 54, 69],
 }
 
 const TIN := Color(0.68, 0.72, 0.76)

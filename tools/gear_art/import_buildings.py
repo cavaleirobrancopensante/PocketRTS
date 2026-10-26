@@ -1,4 +1,4 @@
-"""Import the painted Cog Press, Mainspring, Movement Works and Regulator frames (art/clockwork/gear/<kind>_*.png, drawn at 3x on one canvas per kind,
+"""Import the painted Cog Press, Mainspring, Movement Works, Regulator and Escapement frames (art/clockwork/gear/<kind>_*.png, drawn at 3x on one canvas per kind,
 the building's base bottom-centre on the canvas's bottom-centre) into the game's building sprites:
   assets/buildings/<kind>_{built,construction,damaged,destroyed}.png and <kind>_work_0..7.png, and a 64x64 card
   portrait assets/icons/<kind>.png (a crop of the built frame).
@@ -14,7 +14,7 @@ SCALE = 1.0 / 3.0
 SCALES = {'regulator': 1.0 / 3.5}
 STATES = {'built': 'built', 'construct': 'construction', 'damaged': 'damaged', 'destroyed': 'destroyed'}
 
-for kind in ('cog_press', 'mainspring', 'movement_works', 'regulator'):
+for kind in ('cog_press', 'mainspring', 'movement_works', 'regulator', 'escapement'):
     names = list(STATES) + ['work_%d' % i for i in range(8)]
     ims = {n: Image.open(SRC + '%s_%s.png' % (kind, n)).convert('RGBA') for n in names}
     W, H = ims['built'].size

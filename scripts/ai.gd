@@ -570,6 +570,42 @@ func _turrets() -> void:
 		_construct(k)
 
 
+## Gear mode, TIER 2: once a Movement Works stands, a Mainspring (idle Winders crew it, so it winds Tension), then an
+## Escapement whose ring meshes with that Mainspring's (the Tension rule: placed by GearNet.ring_spot round it).
+## _produce mixes Jacks into the army while the Tension lasts. (No HIGH LEAP: its Jacks only jump away from melee, on the
+## flat or down: Jack.ai_tick.)
+var _tier2_t := 0.0
+
+
+func _tier2(t: float) -> void:
+	if _mine(_works()).filter(func(b: Building) -> bool: return b.built).is_empty() or t < _lv([560.0, 330.0, 270.0]):
+		return
+	var springs := _mine("mainspring")
+	var esc := _mine(Defs.CW_TECH)
+	# (what comes next is saved up for: the army pauses once it holds the line, like for an economy building)
+	var next := "mainspring" if springs.is_empty() else (Defs.CW_TECH if esc.is_empty() and springs.any(func(b: Building) -> bool: return b.built) else "")
+	if next != "" and _gold() < int(Defs.BUILDINGS[next]["cost"]) + 20 and _threat() == Vector2.INF:
+		_reserve = maxi(_reserve, int(Defs.BUILDINGS[next]["cost"]) + 20)
+	if game.clock < _tier2_t:
+		return
+	_tier2_t = game.clock + 3.0
+	if springs.is_empty():
+		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
+			_construct("mainspring")
+		return
+	if esc.is_empty():
+		if _gold() < int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20 or not game.requirement_met(team, Defs.CW_TECH):
+			return
+		for sp in springs:
+			if sp.built:
+				var c := GearNet.ring_spot(game, team, Defs.CW_TECH, sp, 90.0, true)
+				if c.x >= 0:
+					_construct(Defs.CW_TECH, c)
+					return
+		_tier2_t = game.clock + 20.0        # (no room by its Mainspring: look again later)
+		return
+
+
 ## Our supply building (the Clockwork's Regulator in gear mode: Defs.supply_kind).
 func _sup() -> String:
 	return Defs.supply_kind(game.faction_of(team))
@@ -1399,6 +1435,7 @@ func _build_up() -> void:
 		elif mw == 1 and t > _lv([600.0, 300.0, 220.0]) and gold > 300:
 			_construct(_works())
 		_turrets()
+		_tier2(t)
 	elif _clock():
 		var works := _mine("assembly_works").size()
 		# (the first Works comes by the clock, not the plan's tech factor: every plan needs a line by ~2:00)
@@ -2685,11 +2722,23 @@ func _produce() -> void:
 		return
 	var army := game.army(team)
 	if _clock() and Defs.gear_mode:
-		# gear mode: Clock Soldiers from every Movement Works
+		# gear mode: Clock Soldiers from every Movement Works, and a Jack (tier 2: an Escapement that works, and Tension)
+		# for every two of them while the Tension lasts
+		var jacks: int = army.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
+		var others: int = army.size() - jacks
+		for w in _mine(_works()):
+			jacks += w.queue.count(Defs.JACK)
 		for w in _mine(_works()):
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
-				if game.train(w, "clock_soldier") != "":
+				var k := "clock_soldier"
+				if jacks * 2 <= others and game.can_train(w, Defs.JACK) == "":
+					k = Defs.JACK
+				if game.train(w, k) != "":
 					break
+				if k == Defs.JACK:
+					jacks += 1
+				else:
+					others += 1
 		return
 	if _clock():
 		var n_of := func(kind: String) -> int: return army.filter(func(u: Unit) -> bool: return u.kind == kind).size()

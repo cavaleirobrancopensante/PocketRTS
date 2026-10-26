@@ -2,7 +2,8 @@ class_name CwLab
 extends RefCounted
 ## The CLOCKWORK LAB (EDITOR menu): the human Clockwork starts with plenty of cogs and, in gear mode (the default), the
 ## GEAR FIELD on show: the Clocktower on its big ring with two Cog Presses and a Mainspring meshing round it, Winders
-## working them, a Ratchet Turret, the camera on it, and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
+## working them, a Ratchet Turret, the Escapement meshing with the Mainspring and three Jacks (tier 2), the camera on it,
+## and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
 ## a Rail Yard, Assembly Works, Engine Hall, Boiler and Pylon beside it.) A hint line says what to try.
 ## Also holds the Line helpers the cw tests share (run_from_hall, beside).
 
@@ -37,10 +38,14 @@ static func setup(game: Game) -> void:
 ## Then the new-style army: a Movement Works (training nothing yet) and a Regulator, built and linked, and SOLDIERS Clock
 ## Soldiers standing in front of the Works; and a Ratchet Turret, the static defence, built and linked on the field's
 ## edge (no power in gear mode: no Charging Pylon, no Boilers; Defs.ENERGY_KINDS are not in the gear build list).
-const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["movement_works", -130.0], ["regulator", 105.0],
-	["ratchet_turret", 5.0]]
-const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0}
+## Tier 2: the Escapement meshing with the Mainspring's ring (a third entry: the kind it meshes with instead of the
+## Clocktower; it tries ESC_ANGLES round it until one fits), working, and JACKS Jacks beside the soldiers.
+const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["escapement", 0.0, "mainspring"],
+	["movement_works", -130.0], ["regulator", 105.0], ["ratchet_turret", 5.0]]
+const ESC_ANGLES := [0.0, 40.0, 80.0, -40.0, 120.0, -80.0, 160.0]
+const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0}
 const SOLDIERS := 4
+const JACKS := 3
 
 
 static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
@@ -58,10 +63,26 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 	var put: Array = []
 	for sc in SHOWCASE:
 		var k := String(sc[0])
-		var c := _ring_spot(game, t, k, hall, float(sc[1]))
-		if c.x >= 0:
-			var b := game._add_building(k, t, c, true)
-			put.append(b)
+		var around: Building = hall
+		var angles: Array = [float(sc[1])]
+		if sc.size() > 2:
+			# (meshing with one of the showcase's own buildings: the Escapement with the Mainspring)
+			for b in put:
+				if b.kind == String(sc[2]):
+					around = b
+			angles = ESC_ANGLES if k == Defs.CW_TECH else angles
+		for deg in angles:
+			var c := _ring_spot(game, t, k, around, float(deg)) if around == hall else GearNet.ring_spot(game, t, k, around, float(deg), true)
+			if c.x >= 0:
+				var b := game._add_building(k, t, c, true)
+				put.append(b)
+				game.gear_net.solve()
+				break
+	# room in the supply for the Jacks (2 each): a second and third Regulator, linked, wherever they fit
+	for i in 2:
+		var rs := game.find_spot(t, Defs.CW_SUPPLY, hall, 3, 24, "near")
+		if rs.x >= 0:
+			game._add_building(Defs.CW_SUPPLY, t, rs, true)
 			game.gear_net.solve()
 	# the Lab's other buildings, linked to the field beyond the showcase
 	for k in cfg["buildings"]:
@@ -90,6 +111,10 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 	var at: Vector2 = (works.center() + Vector2(0, float(works.size.y) * Defs.TILE * 0.5 + 70.0)) if works else hall.center() + Vector2(0, 150)
 	for i in SOLDIERS:
 		game._add_unit("clock_soldier", t, at + Vector2((float(i) - (SOLDIERS - 1) * 0.5) * 36.0, 0.0))
+	# the Jacks: a rank just behind the soldiers
+	for i in JACKS:
+		var jp := game.on_map(at + Vector2((float(i) - (JACKS - 1) * 0.5) * 40.0, 44.0))
+		game._add_unit(Defs.JACK, t, game.cell_center(game.nearest_free(game.cell_of(jp), 4)) if not game.is_free(game.cell_of(jp)) else jp)
 	if game.camera:
 		game.camera.position = hall.center() + Vector2(0, 30)
 		game.camera.zoom = Vector2(1.3, 1.3)
@@ -108,35 +133,10 @@ static func _take_away(game: Game, b: Building) -> void:
 	b.queue_free()
 
 
-## The cell for `kind` whose ring meshes with the Clocktower's nearest to direction `deg` (screen degrees, 0 = right,
-## clockwise): placeable, its ring links, the pitch-circle gap as small as possible (a direct mesh) and the angle close.
+## The cell for `kind` whose ring meshes with `hall`'s (the Clocktower's, or any building's) nearest to direction `deg`
+## (GearNet.ring_spot).
 static func _ring_spot(game: Game, t: int, kind: String, hall: Building, deg: float) -> Vector2i:
-	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
-	var hc := GearNet.b_c(hall)
-	var hr := GearNet.b_r(hall)
-	var r := GearNet.ring_r(kind, size, false)
-	var want := deg_to_rad(deg)
-	var best := Vector2i(-1, -1)
-	var bs := INF
-	var h0 := game.cell_of(hall.center())
-	for y in range(h0.y - 14, h0.y + 15):
-		for x in range(h0.x - 14, h0.x + 15):
-			var c := Vector2i(x, y)
-			if not game.in_map(c):
-				continue
-			var g := GearNet.gpos(Vector2(c) * Defs.TILE + Vector2(size) * Defs.TILE * 0.5)
-			var gap := g.distance_to(hc) - hr - r
-			if gap < -float(Defs.GEAR["overlap"]) * Defs.TILE or gap > float(Defs.GEAR["slack"]) * Defs.TILE:
-				continue
-			var da := absf(angle_difference(want, (g - hc).angle()))
-			var score := absf(gap) + (0.0 if absf(gap) <= float(Defs.GEAR["mesh_tol"]) else 12.0) + da * 60.0
-			if score >= bs:
-				continue
-			if game.placement_problem(t, kind, c) != "" or not game.margin_free(c, size):
-				continue
-			best = c
-			bs = score
-	return best
+	return GearNet.ring_spot(game, t, kind, hall, deg)
 
 
 static func _hint(game: Game) -> void:
@@ -157,7 +157,7 @@ static func _hint(game: Game) -> void:
 
 static func hint_text() -> String:
 	if Defs.gear_mode:
-		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
+		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. TIER 2: the ESCAPEMENT meshes with the Mainspring (a building that uses Tension must, or it shows NEEDS MAINSPRING); it unlocks the JACK (cogs and Tension), which hops, shoots screws at ground and air and can JUMP (E, then tap a spot: flat or down any time, UP a cliff after HIGH LEAP, researched at the Escapement, where you can see). Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
 	return Loc.t("CLOCKWORK LAB: open SANDBOX, tab CLOCK, to spawn the new units (rail vehicles land on the Line). The Rail Yard and Assembly Works train them too. The enemy never attacks.")
 
 

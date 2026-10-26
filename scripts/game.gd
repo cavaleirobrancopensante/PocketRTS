@@ -3422,14 +3422,55 @@ func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> voi
 		var info: Dictionary = Defs.RESEARCH[k.substr(1)]
 		players[t]["gold"] += int(info["cost"])
 		add_res2(t, float(info.get("cost2", 0)))
+		add_tension(t, float(Defs.tension_cost(info)))
 		stats[t]["spent"] -= int(info["cost"])
 		return
 	var fee := kit_fee(kit, k)
 	players[t]["gold"] += int(Defs.UNITS[k]["cost"]) + fee[0]
-	if faction_of(t) == "clockwork":
+	if Defs.tension_cost(Defs.UNITS[k]) > 0:
+		add_tension(t, float(Defs.tension_cost(Defs.UNITS[k])))      # (gear mode's Clockwork: its Tension back)
+	elif faction_of(t) == "clockwork":
 		give_batteries(t, int(Defs.UNITS[k].get("cost2", 0)))
 	else:
 		add_res2(t, int(Defs.UNITS[k].get("cost2", 0)) + fee[1])
+
+
+## TENSION (gear mode's Clockwork, wound by the Mainsprings: Defs.GEAR "mainspring"): what player t holds, and adding to
+## it (spending: a negative v; never below 0). Spent on the Jack and the Escapement's research (their `tension` price).
+func tension(t: int) -> float:
+	return float(players[t].get("tension", 0.0))
+
+
+func add_tension(t: int, v: float) -> void:
+	if v != 0.0:
+		players[t]["tension"] = maxf(0.0, tension(t) + v)
+
+
+## "" when player t can pay `n` Tension, else the refusal.
+func tension_problem(t: int, n: int) -> String:
+	if n > 0 and tension(t) < float(n):
+		return "Not enough Tension: it needs %d. Winders cranking a Mainspring wind more." % n
+	return ""
+
+
+## Does player t have a finished `kind` that is WORKING (gear mode: linked, and a Tension user meshed with a Mainspring)?
+func has_working(t: int, kind: String) -> bool:
+	for b in buildings:
+		if b.team == t and b.kind == kind and b.built and not b.dead and gear_net.speed_mult(b) > 0.0:
+			return true
+	return false
+
+
+## Why a Tension user (the Escapement) of player t does not unlock or research now: "" when one works.
+func tension_user_problem(t: int, kind: String) -> String:
+	if has_working(t, kind):
+		return ""
+	if not _has_built(t, kind):
+		return "Needs an Escapement first." if kind == Defs.CW_TECH else "Needs a %s first." % Defs.BUILDINGS[kind]["name"]
+	for b in buildings:
+		if b.team == t and b.kind == kind and b.built and not b.dead and gear_net.needs_spring(b):
+			return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
+	return "The Escapement is unlinked: its gear ring must mesh with the gear field."
 
 
 ## Clockwork ENERGY: the full batteries waiting at the player's Clocktowers and Boilers.
@@ -3510,7 +3551,12 @@ func can_train(b: Building, key: String) -> String:
 	# the tech step: the Brood's and the Clockwork's ranged units need their second economy building
 	var reqs: Array = u["requires"] if u.get("requires", "") is Array else ([u["requires"]] if u.get("requires", "") != "" else [])
 	for req in reqs:
-		if not _has_built(b.team, req):
+		if Defs.gear_mode and Defs.TENSION_USERS.has(req):
+			# (tier 2: the Jack needs an Escapement that WORKS: linked and meshed with a Mainspring)
+			var tp := tension_user_problem(b.team, req)
+			if tp != "":
+				return tp
+		elif not _has_built(b.team, req):
 			return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
 	if b.uses_eggs():
 		if b.eggs < 1:
@@ -3531,7 +3577,11 @@ func can_train(b: Building, key: String) -> String:
 		if horse_cost > 0 and players[b.team]["gold"] >= price[0]:
 			return "Not enough %s for its horse (%d more)." % [res[0].to_lower(), horse_cost]
 		return "Not enough %s." % res[0].to_lower()
-	if float(players[b.team]["res2"]) < price[1]:
+	if Defs.tension_cost(u) > 0:
+		var tw := tension_problem(b.team, price[1])      # (gear mode's Clockwork: the second price is Tension)
+		if tw != "":
+			return tw
+	elif float(players[b.team]["res2"]) < price[1]:
 		return "Not enough %s." % res[1].to_lower()
 	if u.has("per"):
 		var have := units.filter(func(x: Unit) -> bool: return x.team == b.team and not x.dead and (x.kind == k or String(Defs.FOOT.get(x.kind, "")) == k)).size()
@@ -3603,9 +3653,16 @@ func research_problem(b: Building, key: String) -> String:
 	var needs: String = info.get("needs", "")
 	if needs != "" and not _has_built(b.team, needs):
 		return "Needs a %s first." % Defs.BUILDINGS[needs]["name"]
-	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
+	if Defs.gear_mode and Defs.TENSION_USERS.has(b.kind) and gear_net.speed_mult(b) <= 0.0:
+		# (a Tension user researches only while it works: linked and meshed with a Mainspring)
+		if gear_net.needs_spring(b):
+			return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
+		return "The Escapement is unlinked: its gear ring must mesh with the gear field."
+	var res: Array = Defs.res_names(factions[b.team])
 	if players[b.team]["gold"] < int(info["cost"]):
 		return "Not enough %s." % String(res[0]).to_lower()
+	if Defs.tension_cost(info) > 0:
+		return tension_problem(b.team, Defs.tension_cost(info))
 	if float(players[b.team]["res2"]) < float(info.get("cost2", 0)):
 		return "Not enough %s." % String(res[1]).to_lower()
 	return ""
@@ -3620,6 +3677,7 @@ func start_research(b: Building, key: String) -> String:
 		return why
 	players[b.team]["gold"] -= int(Defs.RESEARCH[key]["cost"])
 	add_res2(b.team, -float(Defs.RESEARCH[key].get("cost2", 0)))
+	add_tension(b.team, -float(Defs.tension_cost(Defs.RESEARCH[key])))
 	stats[b.team]["spent"] += int(Defs.RESEARCH[key]["cost"])
 	if b.queue.is_empty():
 		b.prod_t = 0.0
@@ -3808,6 +3866,8 @@ func unit_price(t: int, key: String) -> Array:
 	var k := Defs.train_kind(key)
 	var u: Dictionary = Defs.UNITS[k]
 	var p := [int(u["cost"]), int(u.get("cost2", 0))]
+	if Defs.tension_cost(u) > 0:
+		p[1] = Defs.tension_cost(u)          # (gear mode's Clockwork: the second price is Tension)
 	if Defs.ARMOURED.has(k) and t >= 0:
 		var f := kit_fee(kit_for_new(t, key), k)
 		p[0] += f[0]
@@ -3959,7 +4019,9 @@ func train(b: Building, key: String) -> String:
 	var k := Defs.train_kind(key)
 	var price := unit_price(b.team, key)
 	players[b.team]["gold"] -= price[0]
-	if faction_of(b.team) == "clockwork":
+	if Defs.tension_cost(Defs.UNITS[k]) > 0:
+		add_tension(b.team, -float(price[1]))      # (gear mode's Clockwork: Tension)
+	elif faction_of(b.team) == "clockwork":
 		spend_batteries(b.team, price[1])
 	else:
 		add_res2(b.team, -price[1])
@@ -4732,7 +4794,7 @@ func _draw_fields() -> void:
 			draw_ring.call(e.center(), float(e.d["field"]) * T * field_mult(e.team), 0.9 if e.field_on() else 0.18)
 		elif e is Unit and e.kind == "tesla_cart" and e.tesla_mode == "deployed":
 			draw_ring.call(e.position, Defs.TESLA_FIELD * T * field_mult(e.team), 0.9)
-	if controls and controls.mode == "cast" and controls.cast_spell != "tongue":
+	if controls and controls.mode == "cast" and controls.cast_spell != "tongue" and controls.cast_spell != "jump":
 		var info: Dictionary = spell_info(controls.cast_spell)
 		var col: Color = {"storm": Color(0.55, 0.8, 1.0, 0.9), "fog": Color(0.75, 0.85, 0.8, 0.9)}.get(controls.cast_spell, Color(0.6, 1.0, 0.35, 0.9))
 		var at: Vector2 = get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position()
@@ -5426,29 +5488,35 @@ func tower_zap(b: Building, e: Unit) -> void:
 	Sfx.play_any(["combat/tesla_attack", "zap"], b.global_position)
 
 
-## The Ratchet Turret's screw (RatchetTurret, Defs.TURRET): the damage lands now (like a musket ball); the screw flies
-## from the barrel tip `from`, turned toward the target and spinning (its 4 frames looping), a muzzle burst at the tip and
-## sparks where it hits. Ground and air alike.
-func screw_shot(b: Building, e: Entity, dmg: float, from: Vector2, _dir: Array) -> void:
-	e = intercept(b, e)
+## The Ratchet Turret's screw (RatchetTurret, Defs.TURRET), and the Jack's (Defs.JACK_SHOT: `sc` / `ms` scale the screw
+## and its burst, `speed` its flight): the damage lands now (like a musket ball); the screw flies from the barrel or drill
+## tip `from`, turned toward the target and spinning (its 4 frames looping), a muzzle burst at the tip and sparks where it
+## hits. Ground and air alike. Returns the screw (tests watch it fly).
+func screw_shot(src: Entity, e: Entity, dmg: float, from: Vector2, _dir: Array, sc := -1.0, ms := -1.0, speed := -1.0) -> Shot:
+	e = intercept(src, e)
 	var to := e.center()
-	e.take_damage(dmg, b, Entity.BLOW_RANGED)
-	var sc := float(Defs.TURRET["shot_scale"])
+	e.take_damage(dmg, src, Entity.BLOW_RANGED)
+	if sc <= 0.0:
+		sc = float(Defs.TURRET["shot_scale"])
+	if ms <= 0.0:
+		ms = float(Defs.TURRET["muzzle_scale"])
+	if speed <= 0.0:
+		speed = float(Defs.TURRET["speed"])
 	var ang := (to - from).angle()
 	if ArtData.EFFECTS.has("screw_muzzle"):
 		var mz := spawn_effect("screw_muzzle", from, 1.2)
 		# (the burst's brass rings, 0.366 of its cell from the left, sit on the barrel tip; the smoke blows forward)
 		mz.offset = Vector2(float(ArtData.EFFECTS["screw_muzzle"]["size"].x) * (0.5 - 0.366), 0.0)
 		mz.rotation = ang
-		var ms := float(Defs.TURRET["muzzle_scale"])
 		mz.scale = Vector2(ms, ms)
 		mz.z_index = 6
 	var s := Shot.new()
 	s.scale = Vector2(sc, sc)
 	s.impact = "screw_impact" if ArtData.EFFECTS.has("screw_impact") else "hit"
 	s.impact_scale = sc
-	s.launch(self, "screw" if ArtData.EFFECTS.has("screw") else "bolt", from, to, float(Defs.TURRET["speed"]))
-	Sfx.play_any(["combat/bolt_attack", "bolt"], b.global_position)
+	s.launch(self, "screw" if ArtData.EFFECTS.has("screw") else "bolt", from, to, speed)
+	Sfx.play_any(["combat/%s_attack" % (src.kind if src is Unit else "ratchet_turret"), "combat/bolt_attack", "bolt"], src.global_position)
+	return s
 
 
 ## The lightning itself: sprite effects when there are any, else a jagged line.
@@ -5832,9 +5900,15 @@ func drop_spots(at: Vector2, n: int, t: int) -> Array:
 	return out
 
 
-## The selected casters: the nearest one that can cast goes and does it.
+## The selected casters: the nearest one that can cast goes and does it. ("jump": every selected Jack that can jumps, each
+## to its own spot of the group round p: Jack.jump_order.)
 func cast_order(list: Array, spell: String, p: Vector2) -> void:
 	if net_forward(self, "cast_order", [list, spell, p]): return
+	if spell == "jump":
+		var why := Jack.jump_order(self, list, p)
+		if why != "" and not list.is_empty() and list[0] is Unit and list[0].team == human:
+			notify(why)
+		return
 	var kind: String = CASTERS.get(spell, "spore_mother")
 	var best: Unit = null
 	var bd := INF
@@ -7998,7 +8072,7 @@ func _overlay_moving() -> bool:
 	if not m and (hover_target != null or _hover_was):
 		m = true
 	_hover_was = hover_target != null
-	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol"):
+	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol" or (controls.mode == "cast" and controls.cast_spell == "jump")):
 		m = true
 	if not m:
 		for e in selection:
@@ -8020,6 +8094,9 @@ func _draw_overlay_all() -> void:
 	_draw_mine_labels()
 	_draw_queues()
 	_draw_hover()
+	if controls and controls.mode == "cast" and controls.cast_spell == "jump":
+		# a Jack's JUMP target: its reach, where it would land and the arc (over the rings and buildings, so it reads)
+		Jack.draw_target(self, overlay, overlay.get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position())
 	if controls and controls.mode == "patrol":
 		# choosing the patrol point: show the walk there and back from each selected unit
 		var mp := overlay.get_global_mouse_position()
