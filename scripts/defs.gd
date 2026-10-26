@@ -502,7 +502,10 @@ const OWL_BOMB := {"range": 4.0, "aim": 0.11, "strike": 0.56, "cooldown": 2.33, 
 ## game lifts it `lift` px over its shadow, as every flyer) and the motion the code draws over them:
 ##   flap    frames a second of the fly loop (idle and walk alike)
 ##   strike  s the attack strip keeps playing after the blow lands (so its last frames are seen)
-##   lunge   the Swift's peck: share of its REACH per frame of the attack strip (pull back, lunge on the 3rd, recover)
+##   lunge   the Swift's peck: share of its REACH per frame of the attack strip (pull back with the wings up, dart in on the
+##           downstroke: the blow on the 3rd, the beak held in on the 4th, the wings up again as it pulls away)
+##   tilt    the Swift's pitch on the peck, radians per frame (nose up as it winds back, nose DOWN into the blow), turned
+##           about its body; `tilt_view` how much of it shows per drawn view (side on all of it, none head-on or from behind)
 ##   dive    the Owl's swoop: the same per frame (rise, wind up, dive, strike low on the 4th, climb back)
 ##           REACH: from its beak (the Swift) or talons (the Owl), `strike_y` px over its anchor, to the prey's body
 ##           (Entity.center), less `contact` px, at most `reach` px: the bird darts all the way in and back, whatever the gap
@@ -511,13 +514,36 @@ const OWL_BOMB := {"range": 4.0, "aim": 0.11, "strike": 0.56, "cooldown": 2.33, 
 ##   fall    share of the flying height left per frame of the death strip (frames 5-6 lie on the ground)
 ##   centre  px over its ground point where shots aim (its body in the air); `bar`: where its health bar sits
 const FLYER := {
-	"cuckoo": {"lift": 20.0, "flap": 10.0, "strike": 0.45, "lunge": [0.0, -0.12, 1.0, 0.55, 0.2, 0.0],
+	"cuckoo": {"lift": 20.0, "flap": 10.0, "strike": 0.45, "lunge": [0.0, -0.12, 1.0, 0.8, 0.3, 0.0],
+		"tilt": [0.0, -0.1, 0.34, 0.24, 0.08, 0.0], "tilt_view": {"e": 1.0, "se": 0.75, "ne": 0.75},
 		"strike_y": 14.0, "contact": 16.0, "reach": 64.0,
 		"fall": [1.0, 0.9, 0.65, 0.3, 0.0, 0.0], "centre": 34.0, "bar": 52.0},
 	"ticking_owl": {"lift": 20.0, "flap": 7.0, "strike": 0.35, "dive": [0.0, -0.15, 0.55, 1.0, 0.4, 0.0],
 		"strike_y": 18.0, "contact": 6.0, "reach": 70.0,
 		"bob": [0.0, 0.0, -4.0, -5.0, -1.0, 0.0], "fall": [1.0, 0.9, 0.65, 0.3, 0.0, 0.0], "centre": 52.0, "bar": 72.0},
 }
+
+
+## TIER 3 of the gear-mode Clockwork (docs/clockwork_ground_up.md "Tier 3"): the PENDULUM, the melee AREA DAMAGE, and the
+## NETTER, the STOPPER; both from the Movement Works once an Escapement works, both paid in cogs and Tension
+## (scripts/pendulum.gd, scripts/netter.gd; numbers beside their UNITS entries).
+const PENDULUM := "pendulum"
+const NETTER := "netter"
+## The Pendulum is made only while its Movement Works runs on the BIG gear (UNITS "big_gear": the heavy torque;
+## Game.can_train). Its blade's swing (the blow on the 5th frame of the strip) hits EVERY enemy on the ground in the ARC in
+## front of it: within `reach` px of its feet (to the victim's edge), up to `arc` degrees either side of the way it faces
+## (a third of the circle); a building it swings at takes the blow too. The machine's own units keep in step with the
+## swing: it never hits its own side. `strike`: s the swing goes on after the blow (the strip's last frames).
+const PENDULUM_SWING := {"reach": 62.0, "arc": 60.0, "strike": 0.45}
+## The Netter's NET: a weighted chain net fired from its spring cannon (its UNITS entry: reach, the long reload) at ONE enemy
+## unit, leaving the muzzle (`mouth`: per drawn direction, game px from its feet, W/SW/NW mirror E/SE/NE; printed by
+## tools/import_tier3.py) on the 2nd frame of the recoil; it flies `speed` px/s along a low arc (`arc` of the distance) and
+## follows its target. Where it lands the target is CAUGHT for `time` s: it cannot move or fight (a blow it was winding up
+## is lost) and a FLYER is brought down to the ground for that time (then anything can hit it, flyer hunters cannot). The
+## weights do `damage`. A second net on a caught unit only tops its time up. `strike`: s the recoil keeps playing.
+## Spread over the caught unit: assets/effects/netter_net_open(_big).png, scaled to `cover` x its radius across.
+const NET := {"time": 4.0, "speed": 380.0, "arc": 0.12, "damage": 4.0, "strike": 0.5, "cover": 3.4, "drop": 0.12,
+	"mouth": {"s": Vector2(0, -43), "se": Vector2(22, -34), "e": Vector2(34, -32), "ne": Vector2(19, -42), "n": Vector2(0, -41)}}
 
 
 ## The Tension a unit, building or research costs (gear mode's Clockwork: its `tension`; 0 for anything else).
@@ -819,6 +845,34 @@ const UNITS := {
 		"air": true, "ground_only": true, "faction": "clockwork",
 		"about": "A heavy clockwork owl with a pendulum weight under it: it SWOOPS DOWN on units with its talons and DROPS its weight as a BOMB on buildings (it bursts on impact and hurts the buildings close by). Slow; it cannot hit flyers. Made from a Swift: MORPH TO OWL, once TICKING OWL is researched at a Clock Aviary.",
 	},
+	# TIER 3 (gear mode; Defs.PENDULUM_SWING): the PENDULUM, the melee AREA DAMAGE: a tall, slow, tough clock tower on long
+	# legs whose pendulum blade swings through everything in the arc in front of it. Guesses (design_principles 1): a
+	# Brute's job with area instead of a charge: 340 hp + 2 armour (a Brute 240 + 2), 22 a swing to EVERY enemy in a third
+	# of a circle, one swing every 2.59 s (aim 0.44, the blade through the middle on the 5th frame at 9 fps, + 0.45 +
+	# cooldown 1.7): 8.5 a second per enemy caught (a Brute 10.8 on one, the old Steam Walker 6.7 in its cone); slow (46,
+	# a Brute 56 and charging, a Musketeer 62: kiting shooters, cavalry and spreading out answer it), ground only. 200 cogs +
+	# 75 Tension (a Brute 150 + 20, a Cuirassier 155 with its horse), 4 supply, and only from a BIG-gear Works.
+	"pendulum": {
+		"tags": ["armored", "massive"],
+		"name": "Pendulum", "hp": 340, "armor": 2, "speed": 46, "cost": 200, "tension": 75, "time": 35.0, "supply": 4,
+		"sight": 8, "range": 32, "damage": 22, "cooldown": 1.7, "aim": 0.44, "radius": 20, "from": "movement_works",
+		"building_bonus": 1.25, "requires": "escapement", "big_gear": true, "ground_only": true, "faction": "clockwork",
+		"about": "A tall clock tower on long legs with a pendulum blade under it: every swing cuts EVERY enemy on the ground in the wide arc in front of it (never your own units). Slow and tough; it cannot reach flyers. Made at the Movement Works once an Escapement works, and only while the Works runs on its BIG gear (the heavy torque). Costs Tension.",
+	},
+	# TIER 3 (gear mode; Defs.NET): the NETTER, the STOPPER (the owner's "unit that stops one enemy", made of machinery: no
+	# magic). Its spring cannon fires a weighted chain net at ONE enemy unit: caught, it cannot move or fight for 4 s, and a
+	# flyer is brought down to the ground for that time. Guesses (design_principles 1): a long reload (a net every 14.6 s:
+	# aim 0.11, the net leaves on the 2nd frame, + 0.5 + 14) and weak itself (120 hp + 1 armour, 4 damage a net, slow 54);
+	# its reach (180) is a Musketeer's (190) less a little and a Spitter's (150) more. 125 cogs + 50 Tension, 2 supply (a
+	# Mist Toad 100 + 25, 3 supply, a TONGUE about every 50 s). It picks the most dangerous enemy in reach that is not caught
+	# already (Netter.pick); a net is visible in flight and the catch lasts a fixed time (design_principles 1: telegraphed).
+	"netter": {
+		"tags": ["armored"],
+		"name": "Netter", "hp": 120, "armor": 1, "speed": 54, "cost": 125, "tension": 50, "time": 28.0, "supply": 2,
+		"sight": 9, "range": 180, "damage": 4, "cooldown": 14.0, "aim": 0.11, "radius": 16, "from": "movement_works",
+		"requires": "escapement", "anti_air": true, "faction": "clockwork",
+		"about": "A low iron drum on four short legs with a spring cannon on top: it fires a weighted chain NET at one enemy, which then cannot move or fight for 4 s; a flyer it catches comes down to the ground for that time, where anything can hit it. By itself it picks the most dangerous enemy in reach that is not caught already (right-click one to choose). A long reload, and weak itself: keep it behind the line. Made at the Movement Works once an Escapement works. Costs Tension.",
+	},
 	"windup_soldier": {
 		"tags": ["light"],
 		"name": "Wind-up Soldiers", "hp": 55, "armor": 1, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
@@ -1036,8 +1090,8 @@ const BUILDINGS := {
 	# costs like the Crown Barracks, the Regulator houses like the Spring Tower.
 	"movement_works": {
 		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack"], "faction": "clockwork",
-		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks once an Escapement works. Must stay linked to the gear field.",
+		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack", "pendulum", "netter"], "faction": "clockwork",
+		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks, Netters and Pendulums once an Escapement works (a Pendulum only while the Works runs on its BIG gear). Must stay linked to the gear field.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
 	# its ring meshes with a Mainspring's. Numbers are guesses: the Movement Works' price and health.

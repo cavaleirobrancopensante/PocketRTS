@@ -27,8 +27,12 @@ const SHEETS := {
 	"jack": [108, 80, 54, 69],
 	# the air (tools/import_cuckoo.py prints these): the Swift (fly loop as idle and walk, attack, death) and the Ticking Owl
 	# (the same, its swoop as the attack, and the bomb drop)
-	"cuckoo": [72, 56, 36, 46],
-	"ticking_owl": [94, 84, 47, 72],
+	"cuckoo": [74, 55, 37, 44],
+	"ticking_owl": [94, 81, 47, 69],
+	# tier 3 (tools/import_tier3.py prints these): the Pendulum (idle sway, walk, the swing as its attack, death) and the
+	# Netter (its walk's first frame as the idle, the trot, the recoil as its attack, death)
+	"pendulum": [84, 93, 42, 84],
+	"netter": [84, 58, 42, 54],
 }
 
 const TIN := Color(0.68, 0.72, 0.76)
