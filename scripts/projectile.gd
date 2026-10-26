@@ -15,6 +15,7 @@ var shooter: Entity
 var round_shot := false
 var blob := false               # Spore Mother: a big glob of spit lobbed high
 var shell := false              # Mortar: a shell lobbed high over men and walls
+var aimed := false              # fired at a spot (BOMBARD): it tears up the bodies in its whole blast (Defs.BODY_BLAST)
 var sprite: Sprite2D
 var _frames := 1
 
@@ -67,9 +68,9 @@ func _tick_projectile(delta: float) -> void:
 		if blob:
 			game.blob_land(to, damage, splash, team, shooter)
 		elif shell:
-			game.mortar_land(to, damage, splash, team, shooter)
+			game.mortar_land(to, damage, splash, team, shooter, aimed)
 		elif round_shot:
-			game.round_shot_land(from, to, damage, team, shooter)
+			game.round_shot_land(from, to, damage, team, shooter, aimed)
 		else:
 			game.explode(to, damage, splash, team, shooter)
 		queue_free()

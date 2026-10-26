@@ -3308,8 +3308,17 @@ func brood_in_match() -> bool:
 	return false
 
 
-func corpse_value(u: Unit) -> int:
-	return body_supply(u) * int(Defs.HARVEST["per_supply"]) + u.kills
+## The essence a harvested body gives: Defs.HARVEST per_supply (1.25) for each point of its body_supply, plus 1 a kill.
+## A float (essence is kept as one): a Musketeer or a Raptor 1.25, a Brute 3.75, a Horseman on his horse 5.
+func corpse_value(u: Unit) -> float:
+	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + float(u.kills)
+
+
+## An amount of essence as text: "5", "1.25", "2.5".
+static func essence_text(v: float) -> String:
+	if is_equal_approx(v, roundf(v)):
+		return str(int(roundf(v)))
+	return ("%.2f" % v).trim_suffix("0")
 
 
 ## What a body is worth to the Brood, in supply: the unit's own, a horse's carcass 1 plus its
@@ -5420,9 +5429,18 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 
 ## Cannon canister: a cone of musket balls; every enemy in it is hit (buildings barely).
 func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
+	canister_at(u, e.center(), dmg, e)
+
+
+## Canister toward `aim` (an enemy's centre, or a spot on the ground: BOMBARD); `e`: the building aimed at, if any. It tears
+## up the bodies lying in its cone too (Defs.BODY_BLAST), before the balls strike (the men it kills fall as bodies).
+func canister_at(u: Unit, aim: Vector2, dmg: float, e: Entity = null) -> void:
 	var from := u.center() + u.facing * 28.0
-	var dir := (e.center() - from).normalized()
+	var dir := (aim - from).normalized()
+	if dir == Vector2.ZERO:
+		dir = u.facing.normalized()
 	var reach := float(Defs.CANISTER["range"]) + 30.0
+	blast_bodies_cone(from, dir, reach, float(Defs.CANISTER["cone"]), u.order == "bombard")
 	# area damage hits whoever is in it, friend or foe (not the gun itself)
 	for o in units_near(from, reach + 20.0):
 		if o == u or o.dead or o.off_field:
@@ -5431,7 +5449,7 @@ func canister_shot(u: Unit, e: Entity, dmg: float) -> void:
 		if to.length() <= reach + o.radius and dir.dot(to.normalized()) > float(Defs.CANISTER["cone"]):
 			var bonus: float = Defs.CANISTER["vs_light"] if o.has_tag("light") else 1.0
 			o.take_damage(dmg * bonus * (1.3 if to.length() < reach * 0.5 else 1.0), u)
-	if e.is_building():
+	if e != null and is_instance_valid(e) and e.is_building():
 		e.take_damage(dmg * 0.6, u)
 	Sfx.play_any(["combat/cannon_canister", "combat/cannon_attack", "cannon"], u.global_position)
 	spawn_effect("smoke", from + dir * 12.0, 0.9)
@@ -5595,17 +5613,20 @@ func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	pr.round_shot = true
 	pr.team = u.team
 	pr.shooter = u
+	pr.aimed = u.order == "bombard"
 	add_child(pr)
 	Sfx.play_any(["combat/cannon_attack", "cannon"], u.global_position)
 
 
 ## A round shot lands: everyone in a line from a little before the spot to well past it
-## takes the full blow (more against armour); a small splash where it hits.
-func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Entity) -> void:
+## takes the full blow (more against armour); a small splash where it hits. The bodies in
+## that splash and on that line are torn up (Defs.BODY_BLAST; `aimed`: a BOMBARD shot).
+func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Entity, aimed := false) -> void:
 	var dir := (p - from).normalized()
 	var a := p - dir * 30.0
 	var b := p + dir * float(Defs.ROUND_SHOT["line"])
 	var w := float(Defs.ROUND_SHOT["width"])
+	blast_bodies(p, float(Defs.ROUND_SHOT["splash"]), aimed, a, b, w)
 	for o in units_near(p + dir * float(Defs.ROUND_SHOT["line"]) * 0.4, float(Defs.ROUND_SHOT["line"]) + 40.0):
 		if o == shooter or o.dead or o.is_air() or o.off_field:
 			continue
@@ -5743,6 +5764,7 @@ func mortar_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	pr.shell = true
 	pr.team = u.team
 	pr.shooter = u
+	pr.aimed = u.order == "bombard"
 	add_child(pr)
 	var sm := spawn_effect("smoke", muzzle + Vector2(0, -8), 0.9)
 	sm.modulate = Color(1, 1, 1, 0.8)
@@ -5750,13 +5772,15 @@ func mortar_shot(u: Unit, p: Vector2, dmg: float) -> void:
 
 
 ## The shell bursts: every ground unit inside the blast is hurt, friend or foe (less at the
-## edge), and enemy buildings close by.
-func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
+## edge), and enemy buildings close by. The bodies lying in the blast are torn up first
+## (Defs.BODY_BLAST; `aimed`: a BOMBARD shell): the men it kills fall as bodies.
+func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity, aimed := false) -> void:
 	var name := "mortar_blast" if ArtData.EFFECTS.has("mortar_blast") else "blast"
 	var fx := spawn_effect(name, p, 1.0)
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
 	fx.scale = Vector2.ONE * (splash / 36.0)
 	Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
+	blast_bodies(p, splash, aimed)
 	var edge := float(Defs.MORTAR["edge"])
 	for u in units_near(p, splash + 24.0):
 		if u.dead or u.off_field or u.is_air():
@@ -5781,6 +5805,7 @@ func owl_bomb_land(p: Vector2, dmg: float, t: int, shooter: Entity) -> void:
 	Sfx.play_any(["combat/owl_bomb", "combat/mortar_hit", "combat/cannon_hit", "boom"], p)
 	var ud := float(ob["unit_damage"]) * dmg / maxf(float(ob["damage"]), 1.0)
 	var ur := float(ob["unit_radius"])
+	blast_bodies(p, ur, false)          # (ordinary fire: tears bodies only with a Defs.BODY_BLAST combat share above 0)
 	for u in units_near(p, ur + 30.0):
 		if u.dead or u.off_field or u.is_air() or not hostile(u.team, t):
 			continue
@@ -5793,6 +5818,147 @@ func owl_bomb_land(p: Vector2, dmg: float, t: int, shooter: Entity) -> void:
 
 
 var bombs_landed := 0       # Ticking Owl bombs that went off (tests)
+
+
+# ------------------------------------------------------------------ FIRE AT A SPOT (BOMBARD) and AREA SHOTS DESTROY BODIES
+
+## BOMBARD (Ctrl+A or the card's button, then a spot): every unit in the list that can (Defs.BOMBARD kinds) keeps firing at
+## `p` until another order; the others are left as they are. queued: Shift, after their orders. How many took it.
+func bombard_order(list: Array, p: Vector2, queued := false) -> int:
+	p = on_map(p)
+	if puppet and not queued:
+		for e in list:
+			if e is Unit and is_instance_valid(e) and e.can_bombard():
+				e.order_point = p          # (online guest: its copy shows the spot; the host sends the order back)
+	if net_forward(self, "bombard_order", [list, p, queued]): return 0
+	var us: Array = list.filter(func(e) -> bool: return e is Unit and is_instance_valid(e) and not e.dead and e.can_bombard())
+	for u in us:
+		u.give({"o": "bombard", "p": p}, queued)
+	if not us.is_empty() and us[0].team == human:
+		command_sound(us, "attack", "attack")
+		_ping(p, Color(1.0, 0.55, 0.2))
+	return us.size()
+
+
+## One shot of a BOMBARD at the spot p: the gun's round shot or canister, the Mortar's shell, the Spore Mother's blob. The
+## enemies standing where it lands may see who fired (as for a shot at them: note_shot).
+func bombard_shot(u: Unit, p: Vector2, dmg: float) -> void:
+	match u.kind:
+		"cannon":
+			if u.mode == "canister":
+				canister_at(u, p, float(Defs.CANISTER["damage"]))
+			else:
+				cannon_shot(u, p, dmg)
+		"mortar":
+			mortar_shot(u, p, dmg)
+		"spore_mother":
+			blob_shot(u, p, dmg)
+	var told := {}
+	for o in units_near(p, float(u.d.get("splash", 40.0)) + 40.0):
+		if not o.dead and not o.off_field and hostile(o.team, u.team) and not told.has(o.team):
+			told[o.team] = true
+			note_shot(u, o)
+
+
+var bodies_blasted := {"aimed": 0, "combat": 0}     # bodies torn up so far: by BOMBARD shots, by ordinary fire (tests, measurements)
+var body_combat := -1.0           # (measurements) this match's share of the blast for ordinary fire; < 0: Defs.BODY_BLAST.combat
+
+
+func _combat_share(aimed: bool) -> float:
+	if aimed:
+		return 1.0
+	return body_combat if body_combat >= 0.0 else float(Defs.BODY_BLAST["combat"])
+
+
+## The bodies that matter lying near p (the Brood's to harvest, the Crown's to raise) and the others still lying there.
+func _bodies_near(p: Vector2, r: float) -> Array:
+	var out: Array = []
+	for group in [corpses, fallen, bodies]:
+		for b in group:
+			if is_instance_valid(b) and b.position.distance_to(p) <= r and b.dead and not b.torn and not out.has(b):
+				out.append(b)
+	return out
+
+
+## A blast at p (a shell's splash r, round shot's splash plus the line a..b it ploughs, `w` wide) tears up the bodies lying
+## in it (Defs.BODY_BLAST): no harvest, no raising. `aimed`: a BOMBARD shot; ordinary fire tears only the `combat` share of
+## the blast (its middle). Returns how many.
+func blast_bodies(p: Vector2, r: float, aimed: bool, a := Vector2.INF, b := Vector2.INF, w := 0.0) -> int:
+	var k := _combat_share(aimed)
+	if k <= 0.0:
+		return 0
+	r *= k
+	var look := r
+	if a != Vector2.INF:
+		look = maxf(look, maxf(p.distance_to(a), p.distance_to(b)) + w)
+	var n := 0
+	for body in _bodies_near(p, look + 12.0):
+		var reach: float = body.radius * 0.5
+		var inside: bool = body.position.distance_to(p) <= r + reach
+		if not inside and a != Vector2.INF and w * k > 0.0:
+			# the line it ploughs (a combat shot: only the middle of its width, and only near where it lands)
+			var aa := p + (a - p) * k
+			var bb := p + (b - p) * k
+			inside = Geometry2D.get_closest_point_to_segment(body.position, aa, bb).distance_to(body.position) <= w * k + reach
+		if inside:
+			tear_body(body, aimed)
+			n += 1
+	return n
+
+
+## Canister's cone (from the muzzle along dir, `reach` long, cos of its half-angle `cone`) tears up the bodies in it.
+func blast_bodies_cone(from: Vector2, dir: Vector2, reach: float, cone: float, aimed: bool) -> int:
+	var k := _combat_share(aimed)
+	if k <= 0.0:
+		return 0
+	reach *= k
+	var n := 0
+	for body in _bodies_near(from, reach + 12.0):
+		var to: Vector2 = body.position - from
+		if to.length() <= reach + body.radius * 0.5 and to.length() > 1.0 and dir.dot(to.normalized()) > cone:
+			tear_body(body, aimed)
+			n += 1
+	return n
+
+
+## A body torn up by a shell, round shot, canister or bomb: off the harvest and revive lists at once (a grub wrapping it or
+## a Missionary raising it lets go), a puff of earth and scraps where it lay, and it is gone in a moment.
+func tear_body(b: Unit, aimed := false) -> void:
+	if b == null or not is_instance_valid(b) or not b.dead or b.torn:
+		return
+	corpses.erase(b)
+	fallen.erase(b)
+	bodies.erase(b)
+	bodies_blasted["aimed" if aimed else "combat"] += 1
+	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
+		net.fx.append(["c", "", b.position, 0.0])       # (online: the guest's copy of it goes too)
+	torn_fx(b.position)
+	b.tear_up()
+
+
+## The little effect of a body torn up (code-made: the dust puff tinted to earth and scraps, docs/art_style_inconsistency.md).
+func torn_fx(p: Vector2) -> void:
+	var e := Effect.new()
+	e.setup("dust", 1.7, false)
+	e.position = p + Vector2(0, -2)
+	e.scale = Vector2(0.55, 0.42)
+	e.modulate = Color(0.58, 0.42, 0.34, 0.95)
+	e.z_index = 3
+	add_child(e)
+
+
+## Online guest: the host tore up the body lying at p: the nearest body there goes too (only the look).
+func torn_at(p: Vector2) -> void:
+	var best: Unit = null
+	var bd := 12.0
+	for n in world.get_children():
+		if n is Unit and n.dead and not n.torn and (n as Unit).position.distance_to(p) < bd:
+			bd = (n as Unit).position.distance_to(p)
+			best = n
+	torn_fx(p)
+	if best:
+		bodies.erase(best)
+		best.tear_up()
 
 
 ## MORPH TO OWL: the selected Swifts that can start turning into Ticking Owls (CwAir.morph_order). "" or why none did.
@@ -8027,7 +8193,7 @@ func _draw_mine_labels() -> void:
 ## Shift-queued orders of your selected units: a faint line from each unit through its
 ## waypoints, with a small marker at each (green move, red attack, yellow build / work).
 const QUEUE_COLS := {"move": Color(0.4, 1.0, 0.4), "amove": Color(1.0, 0.35, 0.3), "attack": Color(1.0, 0.35, 0.3),
-	"build": Color(1.0, 0.85, 0.3), "repair": Color(1.0, 0.85, 0.3), "gather": Color(1.0, 0.85, 0.3)}
+	"build": Color(1.0, 0.85, 0.3), "repair": Color(1.0, 0.85, 0.3), "gather": Color(1.0, 0.85, 0.3), "bombard": Color(1.0, 0.55, 0.2)}
 
 
 func _draw_queues() -> void:
@@ -8040,6 +8206,8 @@ func _draw_queues() -> void:
 		var u := e as Unit
 		if u.patrol_a != Vector2.INF:
 			_draw_patrol(u.patrol_a, u.patrol_b, u.global_position)
+		if u.order == "bombard":
+			_draw_bombard_spot(u.order_point, u.global_position)
 		if u.queue.is_empty() and u.line_rest.is_empty():
 			continue
 		var pts := u.plan_points()
@@ -8055,6 +8223,19 @@ func _draw_queues() -> void:
 
 
 const PATROL_COL := Color(0.45, 0.85, 1.0)
+const BOMBARD_COL := Color(1.0, 0.55, 0.2)
+
+
+## A selected unit's BOMBARD spot: a faint dashed line from it and a target ring with four ticks on the spot.
+func _draw_bombard_spot(p: Vector2, from: Vector2) -> void:
+	overlay.draw_dashed_line(from, p, Color(BOMBARD_COL, 0.35), 1.5, 8.0)
+	overlay.draw_set_transform(p, 0.0, Vector2(1.0, FIELD_Y))
+	overlay.draw_arc(Vector2.ZERO, 14.0, 0, TAU, 28, Color(0, 0, 0, 0.55), 4.0)
+	overlay.draw_arc(Vector2.ZERO, 14.0, 0, TAU, 28, Color(BOMBARD_COL, 0.9), 2.0)
+	for k in 4:
+		var dv := Vector2.from_angle(k * PI * 0.5)
+		overlay.draw_line(dv * 8.0, dv * 20.0, Color(BOMBARD_COL, 0.9), 2.0)
+	overlay.draw_set_transform(Vector2.ZERO)
 
 var hover_target: Entity = null          # what the mouse is over (set by the cursor, computer only)
 

@@ -1,0 +1,35 @@
+# FIRE AT A SPOT (BOMBARD, Ctrl+A; Defs.BOMBARD) and AREA SHOTS DESTROY BODIES (Defs.BODY_BLAST), owner's design 2026-10-26:
+# the command card's BOMBARD button, its tooltips, the prompt while picking the spot, and the Brood's fractional essence
+# from a harvested body (1.25 a supply).
+
+> BOMBARD
+pt BOMBARDEAR
+es BOMBARDEAR
+
+> Bombard
+pt Bombardear
+es Bombardear
+
+> Then pick a spot on the ground (in the fog too): the cannons and mortars set up in range and keep firing at it until you give another order, as long as their shot lasts. Shells, round shot and canister tear up the bodies where they land: the Brood can't harvest them, a Missionary can't raise them (yours too).
+pt Depois escolha um lugar no chão (na névoa também): os canhões e morteiros se instalam ao alcance e continuam atirando nele até você dar outra ordem, enquanto durar a munição. Bombas, balas de canhão e metralha despedaçam os corpos onde caem: a Ninhada não pode colhê-los, um Missionário não pode erguê-los (os seus também).
+es Luego elige un punto del suelo (también en la niebla): los cañones y morteros se emplazan a su alcance y siguen disparando allí hasta que des otra orden, mientras les dure la munición. Las bombas, las balas de cañón y la metralla destrozan los cuerpos donde caen: la Nidada no puede recogerlos, un Misionero no puede levantarlos (también los tuyos).
+
+> Then pick a spot on the ground (in the fog too): the Spore Mothers walk into range, root and keep lobbing spit blobs at it until you give another order. Spit does not tear up bodies.
+pt Depois escolha um lugar no chão (na névoa também): as Mães de Esporos chegam ao alcance, criam raízes e continuam lançando bolhas de cuspe nele até você dar outra ordem. O cuspe não despedaça os corpos.
+es Luego elige un punto del suelo (también en la niebla): las Madres de Esporas se acercan a su alcance, echan raíces y siguen lanzando bolas de escupitajo allí hasta que des otra orden. El escupitajo no destroza los cuerpos.
+
+> Tap the spot to bombard: they keep firing at it until another order
+pt Toque no lugar a bombardear: eles continuam atirando nele até outra ordem
+es Toca el punto a bombardear: siguen disparando allí hasta otra orden
+
+> Click the spot to bombard: they keep firing at it until another order
+pt Clique no lugar a bombardear: eles continuam atirando nele até outra ordem
+es Haz clic en el punto a bombardear: siguen disparando allí hasta otra orden
+
+> Only cannons, mortars and Spore Mothers can fire at a spot.
+pt Só canhões, morteiros e Mães de Esporos podem atirar num lugar.
+es Solo los cañones, los morteros y las Madres de Esporas pueden disparar a un punto.
+
+> +%s essence
+pt +%s de essência
+es +%s de esencia

@@ -1475,7 +1475,10 @@ const VET := {"per_kill": 0.01, "max": 0.5, "silver": 25, "gold": 50}
 ## (its share of a rider's too) and +`body` supply's worth of essence in its carcass.
 const HORSE_VET := {"tiles": 100.0, "max": 3, "hp": 0.15, "body": 1}
 const HORSE_REGEN := 0.5          # hp a second: horses heal by themselves (they're never raised)
-const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1}
+## per_supply: essence a harvested body gives for each point of its supply (a float: Game.corpse_value; was 1, raised to
+## 1.25 when area shots began to tear bodies up, Defs.BODY_BLAST: a Musketeer 1.25, a Brute 3.75, a Horseman with his
+## horse 5), plus 1 for each kill it made.
+const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1.25}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
@@ -1498,6 +1501,28 @@ const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "cone": 0.82
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.
 const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 24.0, "splash_dmg": 0.35}
+## FIRE AT A SPOT (BOMBARD; owner, 2026-10-26, as in Total Annihilation): Ctrl+A or the BOMBARD button, then a spot on the
+## ground (in the fog too): the units of these kinds in the selection walk into range, set up and keep firing at it until
+## another order, as long as their shot lasts (Unit.cmd_bombard). Area weapons only: the Field Cannon (round shot or
+## canister, whichever it is loaded with), the Mortar, the Brood's Spore Mother (her spit blobs; she roots). Next: the
+## Clockwork's Spring Catapult. `queued`: with orders Shift-queued behind it, a unit fires this many shots at the spot and
+## then goes on to the next order (the last one it keeps firing).
+const BOMBARD := {"kinds": ["cannon", "mortar", "spore_mother"], "queued": 3}
+## AREA SHOTS DESTROY BODIES (owner, 2026-10-26): a shell, round shot or canister fired at a spot (BOMBARD) tears up the
+## bodies lying in its blast (Game.blast_bodies): the Brood can no longer harvest them, a Missionary can no longer raise them
+## (the Crown's own dead too: the price of blasting). The blast: a Mortar shell's splash, round shot's small splash where it
+## lands and the line it ploughs, canister's cone (and a Ticking Owl bomb's reach on units, were `combat` above 0). Not the
+## Spore Mother's spit (acid), nor a keg or a Powder Wagon going up. The bodies of the men a shot kills stay (only what lay
+## there before is torn up).
+## `combat`: the share of the blast (radius, or the cone's reach) that tears bodies when the shot is ordinary fire at an
+## enemy, not BOMBARD. LIMIT (2026-10-26, tools/measure_body_blast.gd): 0, ONLY DELIBERATE GROUND FIRE tears bodies. In two
+## Hard Crown AI matches against the Brood (ashford_crossing, hollowfen) ordinary splash tore 0 of 95 and 0 of 187 bodies
+## (the computer's 1-3 guns came late and seldom fired where bodies lay), but in a gun line holding against Brood waves
+## (the "lab": 4 Cannons, 2 Mortars, 6 waves) it tore 80 of 86 bodies (93%) with the whole blast, 78 of 87 (90%) with half
+## its radius and 61 of 87 (70%) with 0.3: guns firing again and again at a swarm over its own dead sweep the pile anyway.
+## Denying the harvest stays a choice with a price (powder, and guns busy and reloading if the enemy rushes in), not a
+## free side effect of every fight (docs/design_principles.md 1: a punishment should match the mistake).
+const BODY_BLAST := {"combat": 0.0}
 
 
 static func has_tag(kind: String, tag: String) -> bool:

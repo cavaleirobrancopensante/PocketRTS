@@ -125,7 +125,7 @@ var patrol_a := Vector2.INF     # PATROL: the two ends he walks between (INF: no
 var patrol_b := Vector2.INF
 var friendly_kills := 0         # our own men his blows finished off (splash): just for the card
 var harvester: Unit = null      # (a body) the grub coming to take it
-var cocoon := 0                 # (a grub) essence it carries home
+var cocoon := 0.0               # (a grub) essence it carries home (Game.corpse_value: 1.25 a supply)
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # A Musketeer in a balloon's basket: its pose up there (gun_state[0], "idle"/"down"/"up") and
 # how long it has held it
@@ -328,6 +328,23 @@ func _rest_in_peace() -> void:
 		game.fallen.erase(self))
 	_rip.tween_property(self, "modulate:a", 0.0, 3.0)
 	_rip.tween_callback(queue_free)
+
+
+var torn := false               # (a body) torn up by a shell, round shot, canister or bomb (Game.tear_body): going
+
+
+## (a body) torn up by an area shot (Game.tear_body: already off the harvest and revive lists): it darkens and is gone in
+## a moment.
+func tear_up() -> void:
+	torn = true
+	if _rip and _rip.is_valid():
+		_rip.kill()
+	_rip = null
+	set_physics_process(false)
+	set_process(false)
+	var tw := create_tween()
+	tw.tween_property(self, "modulate", Color(0.3, 0.24, 0.2, 0.0), 0.3)
+	tw.tween_callback(queue_free)
 
 
 ## (a body) raised by a Missionary: back on the field with part of its health, under the
@@ -1932,6 +1949,104 @@ func cmd_patrol(p: Vector2) -> void:
 		patrol_b = p
 
 
+# ------------------------------------------------------------------ FIRE AT A SPOT (BOMBARD; Defs.BOMBARD)
+
+var _bombard_n := 0             # shots fired at the BOMBARD spot so far (orders Shift-queued behind it wait for Defs.BOMBARD.queued)
+
+
+## Can it fire at a spot on the ground? (An area weapon: the Defs.BOMBARD kinds; not from a balloon's basket.)
+func can_bombard() -> bool:
+	return (Defs.BOMBARD["kinds"] as Array).has(kind) and not dead and aboard == null
+
+
+## BOMBARD (as in Total Annihilation): walk into range of the spot `p`, set up there (a gun unlimbers, a Mortar deploys, a
+## Spore Mother roots) and keep firing at it, into the fog too, until another order. Out of shot it waits there (a Powder
+## Wagon nearby fills it up again and it goes on). It fires at nothing else meanwhile.
+func cmd_bombard(p: Vector2) -> void:
+	if not can_bombard():
+		return
+	_reset_work()
+	order = "bombard"
+	order_point = p
+	target = null
+	order_target = null
+	_bombard_n = 0
+	leash_from = position
+
+
+## The BOMBARD order, every tick: into range (packing up to move, backing off if too close), set up, fire.
+func _bombard(delta: float) -> Vector2:
+	var p := order_point
+	var dist := position.distance_to(p) - radius
+	var rng := _range()
+	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
+	if phase != "" or (dist <= rng and dist >= min_r):
+		path = PackedVector2Array()
+		if deploys() and tesla_mode != "deployed":
+			if tesla_mode == "packed":
+				tesla_mode = "deploying"
+				tesla_t = switch_time()
+			return Vector2.ZERO          # (setting up)
+		_bombard_cycle(delta)
+		return Vector2.ZERO
+	if deploys() and tesla_mode != "packed":
+		if tesla_mode == "deployed":
+			tesla_mode = "packing"       # out of range: pack up to move
+			tesla_t = switch_time()
+		return Vector2.ZERO
+	if dist < min_r:
+		return (position - p).normalized() * speed      # too close (a Mortar's least range): back off
+	if (path.is_empty() or path_i >= path.size()) and not path_pending or repath_t <= 0.0:
+		repath_t = 1.5
+		_request_path(p)
+	return _follow(delta)
+
+
+## Aim, fire at the spot, reload (as _attack_cycle does for a target). No HOLD FIRE or own-men check: it was ordered.
+func _bombard_cycle(delta: float) -> void:
+	var p := order_point
+	if p.distance_to(position) > 2.0:
+		facing = (p - position).normalized()
+	if phase == "":
+		if cooldown > 0.0 or stun_t > 0.0:
+			return
+		if _pmax > 0.0 and powder < 1.0:
+			cooldown = 0.5               # out of shot: it waits for powder (a Powder Wagon, a Mill...)
+			if Time.get_ticks_msec() > _hold_note:
+				_hold_note = Time.get_ticks_msec() + 5000
+				game.out_of_powder(self)
+			return
+		phase = "aim"
+		phase_t = _aim()
+		return
+	phase_t -= delta
+	if phase == "aim" and phase_t <= 0.0:
+		phase = "strike"
+		phase_t = _strike_time()
+		_fire_at_spot(p)
+	elif phase == "strike" and phase_t <= 0.0:
+		phase = ""
+		cooldown = _cooldown()
+		if not queue.is_empty() and _bombard_n >= int(Defs.BOMBARD["queued"]):
+			_next_order()                # (Shift-queued orders behind it: on to the next after its few shots)
+
+
+## One shot at the spot (Game.bombard_shot): it spends a shot of powder; in a fog bank it lands wide half the time.
+func _fire_at_spot(p: Vector2) -> void:
+	var dmg := float(d["damage"]) * (1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
+	if _pmax > 0.0:
+		if powder < 1.0:
+			return
+		powder -= 1.0
+		if powder < 1.0:
+			game.out_of_powder(self)
+	_bombard_n += 1
+	var wide := Vector2.ZERO
+	if not game.zones.is_empty() and (game.in_fog(global_position) or game.in_fog(p)) and randf() < float(Defs.FOG["miss"]):
+		wide = Vector2.from_angle(randf() * TAU) * randf_range(55.0, 95.0)
+	game.bombard_shot(self, p + wide, dmg)
+
+
 func cmd_heal(e: Unit) -> void:
 	if aboard:
 		return      # riding in a balloon
@@ -2070,7 +2185,8 @@ func cmd_build(site: Building) -> void:
 
 ## The orders that end by themselves: Shift-queued orders wait behind them. Behind anything
 ## else (idle, hold, working at a post...) a queued order starts at once.
-const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d_attack", "lead", "mount", "dismount"]
+## (BOMBARD never ends by itself: with orders queued behind it, it hands over after Defs.BOMBARD.queued shots.)
+const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d_attack", "lead", "mount", "dismount", "bombard"]
 
 
 ## Give an order ({"o": move/amove/attack/build/repair/gather/wall, "p", "e", "pieces"}): a
@@ -2188,6 +2304,8 @@ func _start(o: Dictionary) -> bool:
 			if e == null or not is_instance_valid(e) or not (e is Unit) or e.dead:
 				return false
 			cmd_follow(e)
+		"bombard":
+			cmd_bombard(o["p"])
 	return order != "idle"
 
 
@@ -2199,7 +2317,7 @@ static func _spot(e: Entity) -> Vector2:
 ## queued behind it (for the waypoint lines drawn for your selection).
 func plan_points() -> Array:
 	var pts: Array = []
-	if order == "move" or order == "amove" or order == "d_amove":
+	if order == "move" or order == "amove" or order == "d_amove" or order == "bombard":
 		pts.append(["amove" if order == "d_amove" else order, order_point])
 	elif (order == "attack" or order == "build" or order == "repair" or order == "gather") \
 			and order_target and is_instance_valid(order_target) and not order_target.dead:
@@ -2210,7 +2328,7 @@ func plan_points() -> Array:
 	for o in queue:
 		var e = o.get("e")
 		match String(o["o"]):
-			"move", "amove":
+			"move", "amove", "bombard":
 				pts.append([o["o"], o["p"]])
 			"wall":
 				for b in o["pieces"]:
@@ -3034,6 +3152,8 @@ func _tick_unit(delta: float) -> void:
 			want = _cast(delta)
 		"tongue":
 			want = _tongue_order(delta)
+		"bombard":
+			want = _bombard(delta)
 		"harvest":
 			want = _harvest(delta)
 		"board":
@@ -4281,8 +4401,8 @@ func _harvest(delta: float) -> Vector2:
 		if hive.edge_distance(position) < radius + 17.0:
 			game.add_res2(team, cocoon)
 			if team == game.human:
-				game.float_text(position + Vector2(0, -26), "+%d essence" % cocoon, Color(0.8, 0.5, 1.0))
-			cocoon = 0
+				game.float_text(position + Vector2(0, -26), "+%s essence" % Game.essence_text(cocoon), Color(0.8, 0.5, 1.0))
+			cocoon = 0.0
 			path = PackedVector2Array()
 			_request_path(harvest_home)
 			return Vector2.ZERO
@@ -5085,7 +5205,7 @@ func _anim_name() -> String:
 				return "walk" if moving else _anim_or("idle_packed", "idle")
 			if phase != "":
 				return "fire"
-			if cooldown > 0.0 and target:
+			if cooldown > 0.0 and (target or order == "bombard"):
 				return "reload"
 			return "idle"
 		"cannon":
@@ -5096,7 +5216,7 @@ func _anim_name() -> String:
 				return "walk" if new_art else ("move" if moving else "idle")
 			if phase != "":
 				return "fire"
-			if cooldown > 0.0 and target:
+			if cooldown > 0.0 and (target or order == "bombard"):
 				return "reload"
 			return "idle"
 		"powder_wagon":
@@ -5718,10 +5838,12 @@ var _aim_t := 0.0
 ## computer, while an ATTACK order is being given, at the mouse.
 func _aim_dir() -> Vector2:
 	var c = game.controls
-	if c and c.get("mode") == "attack" and not game.demo:
+	if c and (c.get("mode") == "attack" or c.get("mode") == "bombard") and not game.demo:
 		var m := get_global_mouse_position()
 		if m.distance_to(global_position) > 8.0:
 			return (m - global_position).normalized()
+	if order == "bombard" and order_point.distance_to(global_position) > 8.0:
+		return (order_point - center()).normalized()
 	if target and is_instance_valid(target) and not target.dead:
 		return (target.center() - center()).normalized()
 	return facing.normalized() if facing != Vector2.ZERO else Vector2.RIGHT
@@ -5740,8 +5862,15 @@ func _draw_aim() -> void:
 		var hi := float(d["range"]) + radius
 		draw_arc(Vector2.ZERO, hi, 0.0, TAU, 96, Color(gold.r, gold.g, gold.b, a + 0.1), 1.5)
 		draw_arc(Vector2.ZERO, lo, 0.0, TAU, 64, Color(red.r, red.g, red.b, a), 1.0)
-		if target and is_instance_valid(target) and not target.dead:
-			var at: Vector2 = (target.position if target is Unit else target.center()) - global_position
+		var mc = game.controls
+		var at := Vector2.INF
+		if mc and mc.get("mode") == "bombard" and not game.demo:
+			at = get_global_mouse_position() - global_position       # (choosing the BOMBARD spot)
+		elif order == "bombard":
+			at = order_point - global_position
+		elif target and is_instance_valid(target) and not target.dead:
+			at = (target.position if target is Unit else target.center()) - global_position
+		if at != Vector2.INF:
 			var sp := float(d["splash"])
 			draw_circle(at, sp, Color(red.r, red.g, red.b, 0.12))
 			draw_arc(at, sp, 0.0, TAU, 32, Color(red.r, red.g, red.b, 0.5), 1.5)
@@ -5782,8 +5911,10 @@ func _draw_aim() -> void:
 	draw_line(g0, g1, Color(gold.r, gold.g, gold.b, a * 0.8), 1.0)
 	var aim := Vector2.INF                          # where the ball would land (local)
 	var c = game.controls
-	if c and c.get("mode") == "attack" and not game.demo and get_global_mouse_position().distance_to(global_position) <= length:
+	if c and (c.get("mode") == "attack" or c.get("mode") == "bombard") and not game.demo and get_global_mouse_position().distance_to(global_position) <= length:
 		aim = get_global_mouse_position() - global_position
+	elif order == "bombard":
+		aim = order_point - global_position
 	elif target and is_instance_valid(target) and not target.dead:
 		aim = target.center() - global_position
 	if aim == Vector2.INF:
@@ -5880,7 +6011,7 @@ func _draw_unit() -> void:
 		# essence it holds, for the Brood to see
 		var seasoned := (kind == "horse" or is_mounted()) and horse_rank(horse_miles) > 0
 		if (kills > 0 or seasoned) and game.corpses.has(self):
-			_draw_number(game.corpse_value(self), Vector2(0, -26))
+			_draw_number(int(game.corpse_value(self)), Vector2(0, -26))
 		return
 	if selected and (kind == "cannon" or kind == "mortar") and team == game.human and aboard == null:
 		_draw_aim()
