@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.32", "items": [
+		"FOG OF WAR: one grey only, as in StarCraft 2. The black fog over ground nobody had looked at is gone: the whole map's ground (cliffs, ramps, water, trees, rocks, the places to build a base) shows from the start under the grey fog, on the minimap too, and what your side sees is clear. The enemy still shows only once seen: its units while in sight, its buildings once spotted (then remembered under the grey as you last saw them), its swamp only where you have looked; smoke, shots and blasts on ground you have never looked at stay hidden. The same when you watch the computers through one player's eyes, and online.",
+		"BUILD ANYWHERE: a building can be placed anywhere on the map, seen or not (no more \"Unexplored.\"). The worker walks there; if an enemy building you had not seen stands in the way when he arrives, the site fails as usual (\"Can't build there: the spot is blocked.\") and its cost comes back. Enemy buildings you have seen still block the ghost; ones you haven't do not show on it, nor on the build grid.",
+	]},
 	{"v": "0.14.31", "items": [
 		"CLOCKWORK: only the rebuilt army in the live game. The old Assembly Works and its prototype units (Wind-up Soldiers, Thresher, Bulwark, Arc Thrower, Tin Militia, Scrapper, Rail Rifleman) can no longer be built or trained, and the SANDBOX's CLOCK tab lists only the new units and buildings: Winder, Clock Soldier, Jack, Pendulum, Netter, Swift and Ticking Owl.",
 	]},
