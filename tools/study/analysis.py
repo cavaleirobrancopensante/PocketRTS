@@ -97,7 +97,8 @@ def main():
                      "failed runs": 0, "maps": g["map"].nunique()})
     T["sample"] = md(pd.DataFrame(rows))
     T["maps_used"] = ", ".join("%s (%d)" % (m, c) for m, c in games["map"].value_counts().items())
-    T["wall"] = "mean %.0f s, median %.0f s, max %.0f s of real time per game (%.1f game minutes on average)" % (
+    # (key "wall_clock": "wall" is the Crown ramp-wall table further down; until stage 11 this line was overwritten by it)
+    T["wall_clock"] = "mean %.0f s, median %.0f s, max %.0f s of real time per game (%.1f game minutes on average)" % (
         games.wall_s.mean(), games.wall_s.median(), games.wall_s.max(), games.len_min.mean())
     T["wall_per_gamemin"] = "%.1f" % (games.wall_s.sum() / max(1e-9, games.len_min.sum()))
 

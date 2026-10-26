@@ -157,6 +157,7 @@ brood-brood_154,brood-brood,brood,brood,balanced,balanced,twin_fords,106709,0,0,
 brood-brood_155,brood-brood,brood,brood,balanced,balanced,cinder_steps,106746,1,1,brood,1,873.2,victory,220.2,0.14.1
 brood-brood_156,brood-brood,brood,brood,balanced,balanced,greenhold,106783,1,1,brood,1,1800.0,timeout_lead,207.4,0.14.1
 brood-brood_157,brood-brood,brood,brood,balanced,balanced,frostmere,106820,0,-1,,-1,1800.0,timeout_even,227.2,0.14.1
+brood-brood_158,brood-brood,brood,brood,rush,balanced,ashford_crossing,106857,1,0,brood,0,892.8,victory,664.5,0.14.1
 brood-clockwork_000,brood-clockwork,brood,clockwork,balanced,balanced,greenhold,105011,0,1,clockwork,0,483.6,victory,46.7,0.14.1
 brood-clockwork_001,brood-clockwork,brood,clockwork,balanced,balanced,frostmere,105048,1,0,clockwork,0,421.6,victory,37.5,0.14.1
 brood-clockwork_002,brood-clockwork,brood,clockwork,balanced,balanced,ashford_crossing,105085,0,1,clockwork,0,669.6,victory,171.2,0.14.1
@@ -947,3 +948,4 @@ crown-crown_154,crown-crown,crown,crown,balanced,balanced,twin_fords,105709,0,1,
 crown-crown_155,crown-crown,crown,crown,balanced,balanced,cinder_steps,105746,1,1,crown,1,1744.3,victory,954.8,0.14.1
 crown-crown_156,crown-crown,crown,crown,balanced,balanced,greenhold,105783,1,0,crown,0,1403.3,victory,362.5,0.14.1
 crown-crown_157,crown-crown,crown,crown,balanced,balanced,frostmere,105820,0,1,crown,0,1084.0,victory,140.0,0.14.1
+crown-crown_158,crown-crown,crown,crown,rush,balanced,ashford_crossing,105857,1,1,crown,1,1274.0,gg,772.8,0.14.1

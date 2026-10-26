@@ -234,15 +234,19 @@ def main():
         if on is None:
             continue
         r = x.iloc[on]
-        rows.append({"id": gid, "team": team, "fac": r.faction, "onset": r.t, "gold": r.gold, "soil": r.soil_mean, "halls": r.halls, "workers": r.workers, "idle": r.idle_workers})
+        rows.append({"id": gid, "team": team, "fac": r.faction, "onset": r.t, "gold": r.gold, "soil": r.soil_mean, "halls": r.halls, "workers": r.workers, "idle": r.idle_workers,
+                     "earned": r.earned})
     es = pd.DataFrame(rows).merge(sides[["id", "team", "won", "end_t", "opp"]], on=["id", "team"])
     es["afford"] = es.apply(lambda r: r.gold >= HALL_COST[r.fac], axis=1)
+    # (the Brood's pits all draw on the capital's ground, and a second Burrow shows a full, unused 100%: "spent" for the Brood is
+    #  its capital's reserve drawn, i.e. earned >= BROOD_CAP; for the others every hall's soil/coal at 0 somewhere = soil_mean 0)
+    es["spent"] = np.where(es.fac == "brood", es.earned >= BROOD_CAP, es.soil <= 0.01)
     out = []
     for f in FACS:
         x = es[es.fac == f]
         n_all = (sides.faction == f).sum()
         out.append({"faction": f, "side-games": n_all, "economy stalled": "%d (%s)" % (len(x), pct(len(x) / n_all)), "median onset": mmss(x.onset.median()) if len(x) else "-",
-                    "ground/soil already spent": pct((x.soil <= 0.01).mean()) if len(x) else "-", "could afford a new hall": "%d of %d" % (x.afford.sum(), len(x)),
+                    "ground/soil already spent": pct(x.spent.mean()) if len(x) else "-", "vs (side-games)": ", ".join("%s %d" % (k, v) for k, v in x.opp.value_counts().items()) if len(x) else "-", "could afford a new hall": "%d of %d" % (x.afford.sum(), len(x)),
                     "went on to lose": pct((x.won == 0).mean()) if len(x) else "-"})
     T["dd_econ_stall"] = md(pd.DataFrame(out))
     T["dd_econ_stall_ids"] = "; ".join("`%s` (%s side, from %s: %d of %d workers idle, %d gold, %d hall%s)" % (r.id, r.fac, mmss(r.onset), r.idle, r.workers, r.gold, r.halls, "" if r.halls == 1 else "s")
@@ -514,6 +518,163 @@ def main():
         rows.append({"matchup (first side's score)": lab, "30:00 games": int(to.sum()), "as run (lead of 25%+ wins)": score_line(k1, 0, len(x)),
                      "all 30:00 games drawn": score_line(k2, 0, len(x)), "30:00 games left out": score_line(k3, 0, len(xx))})
     T["dd_sensitivity"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ the same south-ramp grouping on games run AFTER it was chosen (stage 11)
+    # The grouping above was picked at about 930 games, after looking at the per-map table. Crown-Clockwork games from round
+    # 155 on had not finished when it was picked: they are a fresh, out-of-sample check of the same prediction.
+    ccg["round"] = ccg.id.str.rsplit("_", n=1).str[1].astype(int)
+    rows = []
+    for lab, x in (("rounds 0-154 (the games the grouping was found in)", ccg[ccg["round"] < 155]), ("rounds 155 on (run after it was chosen)", ccg[ccg["round"] >= 155])):
+        xs, xo = x[x["map"].isin(SOUTH)], x[~x["map"].isin(SOUTH)]
+        k1, n1, k2, n2 = int(xs.crown_won.sum()), len(xs), int(xo.crown_won.sum()), len(xo)
+        rows.append({"games": lab, "Crown won on the 4 south-ramp maps": ci(k1, n1) if n1 else "-", "Crown won on the other 8 maps": ci(k2, n2) if n2 else "-",
+                     "Fisher p (two-sided)": ("p = %.2g" % fisher2(k1, n1, k2, n2)) if n1 and n2 else "-"})
+    T["dd_layout_oos"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ economies side by side, where the opponent is the same faction (Balanced/Balanced mirrors)
+    gb = games.set_index("id")
+    balm = [i for i in gi.index if gi.loc[i, "a"] == gi.loc[i, "b"] and gi.loc[i, "plan_a"] == "balanced" and gi.loc[i, "plan_b"] == "balanced"]
+    m = ts[ts.id.isin(balm)]
+    rows = []
+    for tm in (120, 180, 240, 300, 420, 600, 900):
+        r = {"at": mmss(tm)}
+        for f in FACS:
+            y = m[(m.t == tm) & (m.faction == f)]
+            r[f + ": army value / earned / workers"] = "%d / %d / %d (n=%d)" % (y.army_value.median(), y.earned.median(), y.workers.median(), len(y)) if len(y) else "-"
+        rows.append(r)
+    T["dd_mirror_econ"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ the Brood against the other two, minute by minute (Balanced/Balanced)
+    rows = []
+    for pr, foe in (("crown-brood", "crown"), ("brood-clockwork", "clockwork")):
+        ids = games[(games.pair == pr) & (games.plan_a == "balanced") & (games.plan_b == "balanced")].id
+        y = ts[ts.id.isin(ids)]
+        for tm in (180, 240, 300, 360, 420, 480, 600):
+            b, o = y[(y.t == tm) & (y.faction == "brood")], y[(y.t == tm) & (y.faction == foe)]
+            if len(b) == 0:
+                continue
+            rows.append({"Brood vs": foe, "at": mmss(tm), "games still on": len(b), "Brood grubs / army value": "%d / %d" % (b.workers.median(), b.army_value.median()),
+                         "%s workers / army value" % foe: "%d / %d" % (o.workers.median(), o.army_value.median()),
+                         "Brood units lost so far": int(b.units_lost.median())})
+    T["dd_brood_vs"] = md(pd.DataFrame(rows).fillna("-"))
+    kb = []
+    for f in ("crown", "clockwork"):
+        x = sides[(sides.faction == f) & (sides.opp == "brood")]
+        tot = {}
+        for js in x.kills_by:
+            for k, v in json.loads(js).items():
+                tot[k] = tot.get(k, 0) + v
+        n_ = max(1, sum(tot.values()))
+        kb.append("the %s's kills of Brood units were made by %s" % (f.capitalize(), ", ".join("%s %d%%" % (k.replace("_", " "), round(100 * v / n_)) for k, v in sorted(tot.items(), key=lambda kv: -kv[1])[:4] if round(100 * v / n_) >= 1)))
+    T["dd_brood_killers"] = "; ".join(kb)
+
+    # ------------------------------------------------------------------ armies that sit at the supply cap with a bank and do not attack
+    # From the 30 s samples: the longest unbroken stretch (after 8:00) where a side is within 2 of its cap (or at 199+), has 1,000+
+    # in the bank and has no wave out, while the game goes on.
+    rows = []
+    for (gid, team), x in ts30[ts30.t >= 480].groupby(["id", "team"]):
+        ok = (((x.supply >= x.cap - 2) | (x.supply >= 199)) & (x.gold >= 1000) & (x.attacking == 0)).values
+        best = cur = 0
+        start = bstart = None
+        tv = x.t.values
+        for i_, e in enumerate(ok):
+            if e:
+                cur += 1
+                if cur == 1:
+                    start = tv[i_]
+                if cur > best:
+                    best, bstart = cur, start
+            else:
+                cur = 0
+        if best >= 2:
+            y = x[x.t >= bstart].iloc[:best]
+            rows.append({"id": gid, "team": team, "faction": x.faction.iloc[0], "from": bstart, "minutes": best * 0.5, "bank_max": int(y.gold.max()),
+                         "army": int(y.army_value.median()), "won": int(gi.loc[gid, "winner_team"] == team) if gi.loc[gid, "winner_team"] >= 0 else -1,
+                         "cause": gi.loc[gid, "cause"], "pair": gi.loc[gid, "pair"]})
+    st_ = pd.DataFrame(rows)
+    out = []
+    for f in FACS:
+        x = st_[st_.faction == f] if len(st_) else st_
+        n_all = (sides.faction == f).sum()
+        out.append({"faction": f, "side-games": n_all, "capped with 1,000+ banked and no wave out for 5+ min": int((x.minutes >= 5).sum()) if len(x) else 0,
+                    "for 10+ min": int((x.minutes >= 10).sum()) if len(x) else 0, "of the 10+ min ones, side won": int(((x.minutes >= 10) & (x.won == 1)).sum()) if len(x) else 0,
+                    "longest (min)": "%.1f" % x.minutes.max() if len(x) else "-"})
+    T["dd_capped_idle"] = md(pd.DataFrame(out))
+    T["dd_capped_idle_examples"] = "\n".join("- `%s` %s side (%s): at the cap with 1,000+ banked and no wave out for %.1f minutes from %s, bank up to %d, army value about %d; the game ended by %s" % (
+        r.id, r.faction, {1: "won", 0: "lost", -1: "draw"}[r.won], r.minutes, mmss(r["from"]), r.bank_max, r.army, r.cause) for _, r in st_.sort_values("minutes", ascending=False).head(6).iterrows()) if len(st_) else ""
+
+    # ------------------------------------------------------------------ the other kind of stall: a wave that stays out for 10+ minutes
+    lw = waves[waves.kind == "wave"].copy()
+    for c in ["t0", "t1"]:
+        lw[c] = pd.to_numeric(lw[c], errors="coerce")
+    lw["dur"] = lw.t1 - lw.t0
+    lw = lw[lw.dur >= 600]
+    lw["pair"] = lw.id.map(gi.pair)
+    lw["cause"] = lw.id.map(gi.cause)
+    lw["won"] = [int(gi.loc[r.id, "winner_team"] == r.team) for r in lw.itertuples()]
+    out = []
+    for (f, pr), x in lw.groupby(["faction", "pair"]):
+        out.append({"attacker": f, "matchup": pr.replace("-", " vs "), "waves out 10+ min": len(x), "median minutes": "%.0f" % (x.dur.median() / 60.0),
+                    "attacker won": "%d of %d" % (x.won.sum(), len(x)), "game reached 30:00": int(x.cause.str.startswith("timeout").sum())})
+    T["dd_long_waves"] = md(pd.DataFrame(out).sort_values("waves out 10+ min", ascending=False)) if out else "_(none)_"
+    T["dd_long_waves_note"] = "%d waves stayed out 10 minutes or more in %d games" % (len(lw), lw.id.nunique())
+
+    # ------------------------------------------------------------------ could the next-wave threshold have been out of reach? (rebuilt from ai.gd)
+    # ai.gd: a failed wave (killed under 60% of its value) sets _attack_at >= ceil(1.4 x the wave's supply) with no upper bound
+    # (_wave_end); a pull-back at a gate sets it >= min(ceil(1.4 x supply), supply + 40) (_siege_plan); only a launched wave caps
+    # it at 70. The most army a side can field is 200 minus its workers. Rebuilt here from the logged waves and pull-backs.
+    pbk = events[(events.kind == "siege") & events.text.str.contains("pulls back")].copy()
+    pbk["team"] = pbk.who.str[1].astype(int) - 1
+    wv2 = waves[waves.kind == "wave"].copy()
+    for c in ["t0", "t1", "supply", "killed_value", "value"]:
+        wv2[c] = pd.to_numeric(wv2[c], errors="coerce")
+    wv2 = wv2.dropna(subset=["t0", "t1", "supply", "killed_value", "value"])
+    pbset = {}
+    for r in pbk.itertuples():
+        pbset.setdefault((r.id, r.team), []).append(r.t)
+    wv2["pullback"] = [any(r.t0 - 1 <= tt <= r.t1 + 3 for tt in pbset.get((r.id, r.team), [])) for r in wv2.itertuples()]
+    wv2["failed"] = wv2.killed_value < 0.6 * wv2.value
+    wv2["thr"] = [max(math.ceil(1.4 * s_) if f_ else 0, min(math.ceil(1.4 * s_), s_ + 40) if p_ else 0) for s_, f_, p_ in zip(wv2.supply, wv2.failed, wv2.pullback)]
+    tsi = ts.set_index(["id", "team", "t"])
+    def wk(r):
+        tt = int(r.t1 // 30 * 30)
+        for d in (0, 30, -30):
+            k = (r.id, r.team, tt + d)
+            if k in tsi.index:
+                return float(tsi.loc[k, "workers"])
+        return float("nan")
+    wv2["room"] = [200 - wk(r) for r in wv2.itertuples()]
+    fz = wv2[wv2.thr > wv2.room]
+    T["dd_freeze_thr"] = ("%d of %d waves ended with a next-wave threshold (rebuilt) above 200 minus the side's workers, in %d games: %s." % (
+        len(fz), len(wv2), fz.id.nunique(), ", ".join("`%s` (%s, wave of %d supply at %s, threshold %d, room %d, %s)" % (
+            r.id, r.faction, r.supply, mmss(r.t1), r.thr, r.room, gi.loc[r.id, "cause"]) for r in fz.sort_values("t1").itertuples()))) if len(fz) else "No wave ended with a threshold out of reach."
+
+    # ------------------------------------------------------------------ the scout's "rush" verdict against a Balanced foe: why it fired
+    sc = events[(events.kind == "scouted") & events.text.str.contains("scouted: rush")].copy()
+    sc["team"] = sc.who.str[1].astype(int) - 1
+    sc = sc.merge(sides[["id", "team", "faction", "opp", "opp_plan"]], on=["id", "team"])
+    sc["why"] = np.select([sc.text.str.contains("Spawning Den already up"), sc.text.str.contains("Assembly Works already up"), sc.text.str.contains("early army"),
+                           sc.text.str.contains("fast")], ["a Spawning Den seen before 2:20", "an Assembly Works seen before 1:40", "an early army", "fast units seen (Horsemen)"], "other")
+    fb = sc[sc.opp_plan == "balanced"].sort_values("t").groupby(["id", "team"]).first().reset_index()
+    rows = []
+    for o in FACS:
+        x = fb[fb.opp == o]
+        n_bal = int(((sides.opp == o) & (sides.opp_plan == "balanced")).sum())
+        rows.append({"foe (playing Balanced)": o, "side-games": n_bal, "scout said 'rush'": "%d (%s)" % (len(x), pct(len(x) / max(1, n_bal))),
+                     "median time": mmss(x.t.median()) if len(x) else "-", "first reason": ", ".join("%s %d" % (k, v) for k, v in x.why.value_counts().items())})
+    T["dd_scout_false"] = md(pd.DataFrame(rows))
+    early = sc[sc.t <= 240].groupby(["id", "team"]).size().rename("er").reset_index()
+    s3 = sides.merge(early, on=["id", "team"], how="left")
+    s3["er"] = s3.er.notna()
+    lines_ = []
+    for f in FACS:
+        mm_ = s3[(s3.faction == f) & (s3.opp == f) & (s3.won >= 0)]
+        mm_ = mm_[mm_.id.isin(balm)]
+        j = mm_[mm_.team == 0].set_index("id").join(mm_[mm_.team == 1].set_index("id"), lsuffix="_a", rsuffix="_b", how="inner")
+        d_ = j[j.er_a != j.er_b]
+        k_ = int(((d_.er_a) & (d_.won_a == 1)).sum() + ((d_.er_b) & (d_.won_b == 1)).sum())
+        lines_.append("in the %s mirror, %d game%s where only one side got a 'rush' verdict by 4:00, that side won %s" % (f.capitalize(), len(d_), "" if len(d_) == 1 else "s", ci(k_, len(d_)) if len(d_) else "-"))
+    T["dd_scout_cost"] = "; ".join(lines_)
 
     # ------------------------------------------------------------------ what a bigger sample would decide
     def n_half(p, h):
