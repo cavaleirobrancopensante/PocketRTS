@@ -45,3 +45,8 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - The CUCKOO HOUSE (concept art/redraws/concepts/barracks_cuckoo_house.png) makes the FLYING units (the Cuckoo).
 - The Glockenspiel turntable concept (art/redraws/concepts/barracks_glockenspiel.png) is not chosen for the barracks; the "building turns with its ring" idea stays open for other buildings.
 - The soldiers in the concepts give a first Clock Soldier look: clock-face chest, small crown spike, blue joints, pocket-watch-cover shield, clock-hand sword.
+
+## Clock Soldier (owner, 2026-10-26)
+
+- Tier 1, kept simple for now: a plain melee front-line unit from the Movement Works, cogs only, no special trait yet (closing shield, wound charge or ticking strikes stay ideas for later upgrades).
+- Look: squat pocket-watch body, clock face on the chest, small crown spike, blue joints, clock-hand sword, pocket-watch-cover shield; heavier than the Winder.
