@@ -180,3 +180,28 @@ static func draw_button(ci: CanvasItem, r: Rect2, hover := false, on := false, e
 		bd = TRIM
 	bg.a *= alpha
 	cached_box(bg, bd, 2, 7, 2).draw(ci.get_canvas_item(), r)
+
+## A text box a phone can type into. The project doesn't turn touches into mouse clicks (the game reads
+## touches itself), so a LineEdit never takes focus from a tap on its own, and the web build has no virtual
+## keyboard: a tap grabs the focus and opens the phone's keyboard (Android), or, in a phone's browser, the
+## browser's own text prompt (`title` is its question). With a mouse (emulated touches too) it is a normal box.
+static func touch_text(le: LineEdit, title := "") -> void:
+	le.focus_mode = Control.FOCUS_ALL
+	le.mouse_filter = Control.MOUSE_FILTER_STOP
+	le.virtual_keyboard_enabled = true
+	le.gui_input.connect(func(ev: InputEvent) -> void:
+		var tap := (ev is InputEventScreenTouch and (ev as InputEventScreenTouch).pressed)
+		if not tap:
+			return
+		le.grab_focus()
+		if OS.has_feature("web") and not Settings.pc():     # (a desktop browser types into the box as usual)
+			var asked = JavaScriptBridge.eval("(function(){var r=window.prompt(%s,%s);return r===null?'__cancel__':String(r);})()" % [JSON.stringify(Loc.t(title) if title != "" else ""), JSON.stringify(le.text)], true)
+			if typeof(asked) == TYPE_STRING and String(asked) != "__cancel__":
+				var t := String(asked)
+				if le.max_length > 0:
+					t = t.substr(0, le.max_length)
+				le.text = t
+				le.caret_column = t.length()
+				le.text_changed.emit(t)
+		elif DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+			DisplayServer.virtual_keyboard_show(le.text, le.get_global_rect(), DisplayServer.KEYBOARD_TYPE_DEFAULT, le.max_length if le.max_length > 0 else -1))

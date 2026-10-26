@@ -41,6 +41,12 @@ var count_diff_max := 0           # guest (tests): the most entities a snapshot 
 var count_diff_snaps := 0
 var line_fp := -1                 # host: fingerprint of the Line in the last snapshot that carried it
 var _last_snap_ms := 0
+# The start: both sides hold the 3-2-1 countdown until every guest's match has loaded (a phone loads slower
+# than the host), then the host says GO and both count down together. READY_WAIT: start anyway after that.
+const READY_WAIT := 20.0
+var ready_peers := {}             # host: relay ids whose match has loaded
+var go_given := false
+var _wait_t := 0.0
 
 
 ## Create the session on a Game (after it is in the tree).
@@ -57,7 +63,32 @@ static func attach(g: Game, lnk: NetLink, host: bool, team: int, peers: Dictiona
 	lnk.message.connect(s._on_message)
 	lnk.notice.connect(s._on_notice)
 	lnk.closed.connect(s._on_closed)
+	if not host:
+		lnk.send({"t": "ready"})            # my match has loaded: the host can start the countdown
 	return s
+
+
+## Release the held countdown on this machine (the 3-2-1 then runs as usual).
+func _go() -> void:
+	go_given = true
+	if game and is_instance_valid(game) and game.hud:
+		game.hud.count_hold = false
+
+
+## The host gives GO once every guest has loaded (or after READY_WAIT); a guest stops waiting by itself a
+## little later if the GO never comes.
+func _start_wait(delta: float) -> void:
+	_wait_t += delta
+	if is_host:
+		var all_in := true
+		for pr in peer_team:
+			if not ready_peers.has(int(pr)) and not lost_peers.has(int(pr)):
+				all_in = false
+		if all_in or _wait_t >= READY_WAIT:
+			link.send({"t": "go"})
+			_go()
+	elif _wait_t >= READY_WAIT + 5.0:
+		_go()
 
 
 func assign(e: Entity) -> void:
@@ -67,6 +98,8 @@ func assign(e: Entity) -> void:
 
 
 func _process(delta: float) -> void:
+	if not go_given:
+		_start_wait(delta)
 	if not is_host:
 		return
 	_t += delta
@@ -176,6 +209,12 @@ func send_cmd(c: Dictionary) -> void:
 
 func _on_message(from: int, m: Dictionary) -> void:
 	match String(m.get("t", "")):
+		"ready":
+			if is_host:
+				ready_peers[from] = true
+		"go":
+			if not is_host and not go_given:
+				_go()
 		"cmd":
 			if not is_host:
 				return

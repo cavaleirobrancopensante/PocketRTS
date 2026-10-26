@@ -91,6 +91,9 @@ var _redraw_t := 0.0
 ## A match opens with a short countdown (3, 2, 1, GO): the world waits while you get ready.
 var countdown := 0.0
 var _count_shown := -1
+## Online: the countdown waits (frozen at its start) until every player's match has loaded; the host's
+## NetSession releases it on both sides at once ("ready" / "go", net/net_session.gd).
+var count_hold := false
 
 
 func start_countdown(secs := 3.0) -> void:
@@ -103,6 +106,8 @@ func _countdown(delta: float) -> void:
 	if countdown <= 0.0 or paused:
 		return
 	get_tree().paused = true
+	if count_hold:
+		return
 	countdown -= delta
 	var n := int(ceil(countdown))
 	if n != _count_shown:
@@ -126,6 +131,10 @@ func _draw_countdown() -> void:
 	var vs := _vs()
 	var c := vs * 0.5 - Vector2(0, 40)
 	var font := UiStyle.bold_font()
+	if count_hold and countdown > 0.0:
+		_ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
+		_text(font, c, Loc.t("Waiting for the other player..."), 30, Color(1, 0.88, 0.45, 0.9), 1)
+		return
 	var txt := str(int(ceil(countdown))) if countdown > 0.0 else "GO!"
 	var f: float = (countdown - floor(countdown)) if countdown > 0.0 else _go_t / 0.6
 	var sz := int(96 + 40 * f)

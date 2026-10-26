@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.25", "items": [
+		"FIX ONLINE: on a phone the ROOM CODE box (and the relay address boxes) could not be tapped. A tap now selects it and opens the keyboard; in a phone's browser it opens the browser's own text box.",
+		"ONLINE: the 3, 2, 1, GO countdown is back, and it waits until every player's match has loaded, so a slower phone no longer starts behind the host.",
+	]},
 	{"v": "0.14.24", "items": [
 		"WORKERS take the primary resource's jobs first, in every faction: a new Labourer goes to a Farm before any Powder Mill and hauls at the Town Hall only when both are full (Grubs: Feeding Pits; Winders: Cog Presses before Mainsprings). Nearest first within each.",
 		"CAMERA: it now scrolls only 7 tiles past the map's edge (it was 25).",

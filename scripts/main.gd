@@ -601,6 +601,7 @@ func show_settings() -> void:
 	rhe.text_changed.connect(func(x: String) -> void:
 		Settings.relay_url = x.strip_edges()
 		Settings.save_all())
+	UiStyle.touch_text(rhe, "ONLINE RELAY ADDRESS")
 	rh.add_child(rhe)
 	v.add_child(rh)
 	v.add_child(_gap(4))
@@ -1996,8 +1997,9 @@ func start(cfg: Dictionary = {}) -> void:
 		SaveGame.restore(game, cfg["resume"])
 		last_cfg.erase("resume")
 	_save_t = 0.0
-	if not game.demo and not cfg.has("net"):
+	if not game.demo:
 		hud.start_countdown(3.0)
+		hud.count_hold = cfg.has("net")      # online: held until every player has loaded (NetSession "ready"/"go")
 
 
 func _to_menu() -> void:
