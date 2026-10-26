@@ -10,10 +10,8 @@
 
 ## Backlog (owner's list, easiest first; jobs marked "branch" were stopped half done: the work is kept on their branch (worktree-agent-*; uncommitted parts were saved as a "WIP snapshot" commit and the worktrees removed to free disk): recreate a worktree from the branch to resume, or merge it)
 
-- UI: move the zoom bar off the minimap into a small UI; small music player (next track, list of all songs to pick). (branch worktree-agent-afc321a811e072d5a)
+- UI: a small music player (next track, a list of all songs to pick) inside the in-game MENU, skirmish and online (the zoom bar is already off the minimap). In progress with the online MENU work (wt-online); an older start is on branch worktree-agent-afc321a811e072d5a.
 - BUG: a labourer leading a horse from the Breeder to the recruit gets stuck / has pathfinding trouble (seen in 0.12.9 playtests).
-- Starting resource buildings hugging the plateau edge, fairly mirrored; balloon destruction kills all passengers and leaves corpses. (branch worktree-agent-a196928da4db82c4b)
-- Farm: true 6x6 square, no bottom fence, mill centred; builder hammer animation (arm only); cliff readability from both heights. (branch worktree-agent-a7cbf06f1b14d4af1)
 - Lag: units ~360 ms/s late game, hud/selection 45-110 ms/s and hud draw ~120 ms/s on the tablet profile, command card rebuilt 18x/s, fog/units, one 12 s frame in a long match. (branch worktree-agent-a4e52e95e6eea66eb)
 - AI: Crown lost ALL workers at ~6:00 in a Greenhold game (supply 0/60, workers 0) after Raptors counterattacked: check the "workers pitch in when army < 3" defence and escort workers; real attackers still pull every worker.
 - AI: Brood AI on Rush built no army by 4:30 after the capital/income nerf (all grubs): check rush AI under the halved income. (The Crown no longer walls late: see the wall work below.)
