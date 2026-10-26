@@ -1,5 +1,41 @@
 # Clockwork economy study: Tension, efficiency, neighbours (2026-10-26)
 
+## Summary (wt-econ, 0.14.33; read this first)
+
+**The rules built (gear mode):**
+- **Tension is a full resource.** Each Mainspring stores 200 (big gear 400); winding stops when the pool holds what the
+  Mainsprings store together; nothing leaks or unwinds. Small spring 2.0/s at 3 Winders, big 2.6/s at 6. Buildings may
+  carry a Tension price: the **Clock Aviary costs 150 cogs + 50 Tension** (HUD `150+50`, refunds on cancel, the computer
+  pays). Units and research keep their prices (Jack 25, Swift 15, Netter 50, Pendulum 75, MORPH TO OWL 50, HIGH LEAP 100,
+  TICKING OWL 150).
+- **Efficiency %** = crew share x drive x brass. Drive: 100% meshing with the Clocktower or a Mainspring, -10% per ring
+  farther out, at least 70%; idlers are free. It multiplies cogs, Tension, training and research (not supply, turrets,
+  building). Shown on the map (crew, bar, %), on the card (`Efficiency 90%: 6/6 Winders · drive 90%: 2 rings from a
+  Clocktower or Mainspring`) and on the placement ghost (`LINKS 90%`, `FEEDS 1`).
+- **Neighbours (THE TENSION RULE):** anything that costs Tension is made only at a building whose ring meshes with a
+  Mainspring's (one hop, an idler counts): the Escapement, the Clock Aviary, and a Movement Works' Jacks, Netters and
+  Pendulums. Clock Soldiers need nothing.
+- **THE LEVEL RULE:** rings and idlers mesh only on the same ground level (no link across a cliff or along a ramp), in
+  solve(), idler_for, the ghost and its preview, and the computer's site choice (tools/test_gear_levels.gd).
+- **The clock never punishes:** the tick is not part of efficiency (a chime may only ever add).
+- **Balance beyond the request:** Cog Press crews doubled (small 6, big 12 Winders; full rates unchanged), so a Winder
+  adds about what a Crown Labourer adds on a Farm.
+
+**Numbers (Greenhold, 0.14.33, section 4 re-measured):** the five scripted layouts make their first Jack at 2:48-3:29
+and their first Swift at 3:48-4:19 (big gears: none, no room for the Aviary), cogs at 10:00 within -5% / +17% of the
+flower layout: no layout dominates. The Clockwork computer earns 1.9x / 1.4x / 1.3x the Crown computer at 3 / 6 / 10
+minutes (Crown 1,140 / 4,180 / 10,640 gold; Clockwork 2,158 / 5,999 / 13,475 cogs).
+
+**For the owner to decide or veto (section 5):** the doubled press crews; the Mainspring's store (200/400, no leak); the
+Aviary as a Tension user; Jacks only from a Works beside a Mainspring; the drive numbers; the Aviary's price; whether
+big gears may lose the air on a cramped plateau; the Clockwork computer's late tier 2 (AI work, not done here).
+
+**Tests (all pass on 0.14.33):** test_gear_econ, test_gear_levels, test_gear_ai, test_gear_graph, test_gear_mesh,
+test_gear_placement, test_gear_press, test_gear_save, test_gear_swap, test_gear_unlinked, test_gear_winddown,
+test_cw_tier2, test_cw_tier3, test_cw_tier3_ai, test_cw_air, test_cw_air_ai, test_cw_lab, test_ratchet_turret,
+test_i18n. Screenshots: docs/shots/wt-econ/ (labels_close, card_press, card_works, card_spring, card_far, ghost_drive,
+ghost_spring, ghost_level, top_bar), made by tools/shot_gear_econ.gd.
+
 The owner (2026-10-26): "make Tension work as a resource, and also the efficiency for buildings, and also the necessity of
 certain buildings to be neighbouring others: this is actually a good puzzle and differentiates builds; a study might be
 required." This is that study, the rule set it recommends, and what was built from it (0.14.32, gear mode). Read with
@@ -197,6 +233,42 @@ The spread: cogs at 10:00 within -5% / +7% of the flower, the first Jack from 2:
 each, before the presses pay in full; the Aviary costs 50 Tension) and the cogs earned are 14% lower at 3 minutes
 (2,127 against 2,462 for the flower) and 4% lower at 10.
 
+### Re-measured on 0.14.33 (the level rule, main 0.14.31-0.14.33 merged)
+
+The table above was made before THE LEVEL RULE: rings then still reached across the plateau's cliff, so there was more
+room. Measured again on 0.14.33 (same seed, same order). The scripted bot learned three things a player does: a Regulator
+goes on the far side of the Clocktower from the Works while the Works still waits for its Mainspring and Aviary (the old
+bot put one where the Mainspring had to go); an Escapement or an Aviary with no room by its layout's Mainspring goes by
+any Mainspring with room (`GearEcon.room_spot`, as the computer looks), else a spare Mainspring is built for it; while a
+building has no spot the Works keeps making Jacks (the old bot waited, and the split and big runs stood still).
+
+| Layout | Escapement working | First Jack | First Swift | What the rules added | Cogs at 3 / 6 / 10 | Tension at 3 / 6 / 10 | Winders at 10 | Jacks / Swifts at 10 | Plateau full |
+|---|---|---|---|---|---|---|---|---|---|
+| flower | 2:06 | 2:50 | 4:04 | - | 2,170 / 5,044 / 8,861 | 86 / 443 / 886 | 16 | 17 / 17 | not by 10:00 |
+| twin springs | 2:04 | 2:48 | 3:59 | (a second Mainspring, planned) | 2,164 / 5,038 / 8,831 | 108 / 772 / 1,035 | 19 | 15 / 14 | 8:26 |
+| chain | 2:15 | 2:50 | 4:19 | a second Mainspring for the Aviary (3:34) | 2,060 / 4,796 / 8,426 | 84 / 686 / 1,155 | 19 | 17 / 16 | not by 10:00 |
+| split | 2:07 | 3:15 | 3:48 | a Mainspring by the first Works (2:48; no room for a second Works by the first Mainspring) | 2,158 / 5,026 / 8,813 | 103 / 765 / 1,120 | 19 | 16 / 18 | 9:35 |
+| big gears | 2:28 | 3:29 | **none** | - (no room left for the Aviary nor a spare Mainspring at 4:50) | 1,795 / 5,344 / 10,384 | 24 / 217 / 746 | 34 | 13 / 0 | (no Aviary room at 4:50) |
+
+Still no dominant layout: cogs at 10:00 from -5% (chain) to +17% (big gears) of the flower; the first Jack from 2:48 to
+3:29, the first Swift from 3:48 to 4:19. **Big gears now pay for their cogs with the air:** on Greenhold's main plateau their
+big rings leave no room for a Clock Aviary by a Mainspring, so a big-gear base flies only from an expansion. The split
+base is no longer last to fly: its fix (a Mainspring by the Works) leaves the first Mainspring free for the Aviary.
+
+**The computers on 0.14.33** (main changed the Crown's opening since: it earns more now):
+
+| | 3:00 | 6:00 | 10:00 | workers at 3 / 6 / 10 | army value at 3 / 6 / 10 |
+|---|---|---|---|---|---|
+| Crown: gold (powder) | 1,140 (0) | 4,180 (70) | 10,640 (440) | 13 / 24 / 40 | 115 / 520 / 2,285 |
+| Brood: biomass (essence) | 658 (0) | 1,917 (0) | 5,848 (57) | 9 / 20 / 40 | 75 / 300 / 600 |
+| Clockwork: cogs (Tension) | 2,158 (0) | 5,999 (0) | 13,475 (468) | 14 / 30 / 30 | 350 / 2,100 / 6,620 |
+
+The Clockwork computer earns 1.9x / 1.4x / 1.3x the Crown computer (it was 1.9x / 1.8x / 1.55x on 0.14.23): the gap is
+mostly its opening now. Its tier 2 is late: Mainspring 5:58, Escapement 7:02, a Pendulum at 8:03, but **no Jack and no
+Clock Aviary by 10:00** (it keeps its Tension for Pendulums, and its plateau has no room by a Mainspring for the
+Aviary). That is the computer's planning, not the rules (the scripted bot makes its first Jack before 3:30 on every
+layout); see point 10 below.
+
 ### The computers with the new rules
 
 The Clockwork computer now gets its tier 2 on Greenhold (it never did before: no room by its Mainspring): Mainspring
@@ -246,3 +318,9 @@ the AI-against-AI study to measure on 0.14.23 (see point 9 below).
    Farm. Not changed here. If the AI-against-AI study on 0.14.23 still has the Clockwork winning too often, the levers
    are an earlier second Farm for the Crown computer, or on the Clockwork side the small press's full rate (8 -> 7
    cogs/s) or the Winder's price (50).
+10. **The Clockwork computer's tier 2** comes late and makes no Jack or Swift by 10:00 on Greenhold (0.14.33). Not
+    changed here (AI planning, not economy): its first Mainspring waits for the expansion; an earlier Mainspring by its
+    first Works (as `AI._spring_spot` already picks) and a Jack before saving for Pendulums would fix it.
+11. **Big gears and the air.** With the level rule a big-gear base on Greenhold's plateau has no room for the Aviary by a
+    Mainspring (section 4, re-measured). A trade-off, or too harsh? A softer option: the Aviary's Tension rule reaches two
+    rings (a Mainspring meshing with a building meshing with the Aviary).

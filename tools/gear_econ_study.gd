@@ -24,7 +24,8 @@ extends SceneTree
 ##         twin    as flower, with a second Mainspring for the Aviary
 ##       Prints one line a minute (cogs and Tension earned, Winders, buildings, the average efficiency) and the times of
 ##       the Works, the Mainspring, the Escapement at work, the first Jack and the first Swift.
-## Output: the lines on stdout (and a CSV row per run appended to user://gear_econ_study.csv).
+## Output: the lines on stdout (and a CSV row per run appended to user://gear_econ_study.csv). STUDY_DEBUG=1 in the
+## environment prints why each candidate cell of the scripted placer was refused.
 
 const DT := 1.0 / 30.0
 
@@ -243,7 +244,7 @@ func _bo_run(lay: String) -> void:
 		if m + 1 in [3, 6, 10]:
 			_csv(["bo", layout, m + 1, int(st["gold"]), int(_tension_in(g, 0, counted)), g.workers(0).size(), _count(Defs.JACK), _count(Defs.CUCKOO), snappedf(ae, 0.01)])
 	var parts: Array = []
-	for k in ["works", "spring", "esc_work", "jack", "aviary", "swift", "works2", "spring2", "springw", "full"]:
+	for k in ["works", "spring", "esc_work", "jack", "aviary", "swift", "works2", "spring2", "springw", "springe", "spring3", "full"]:
 		if firsts.has(k):
 			parts.append("%s %d:%02d" % [k, int(firsts[k]) / 60, int(firsts[k]) % 60])
 	print("RESULT bo %s: %s" % [layout, ", ".join(parts)])
@@ -308,7 +309,8 @@ func _bot() -> void:
 	# and Swifts all the time. The split layout builds a second Works by the Mainspring when its first Works may not
 	# make Jacks (the Tension rule: no Mainspring meshes with it) once the Escapement works.
 	var works: Array = _built(g, 0, Defs.CW_WORKS)
-	if steps.is_empty() or _count(Defs.JACK) == 0:
+	var stuck: bool = not next.is_empty() and _no_spot.has(String(next["id"]))
+	if steps.is_empty() or _count(Defs.JACK) == 0 or stuck:
 		for w in works:
 			if w.queue.is_empty() and g.can_train(w, Defs.JACK) == "":
 				g.train(w, Defs.JACK)
@@ -329,6 +331,10 @@ func _bot() -> void:
 				steps.pop_front()
 			elif next["k"] == Defs.CW_AIR and not made.has("spring2") and Defs.TENSION_USERS.has(Defs.CW_AIR):
 				steps.push_front({"k": "mainspring", "big": false, "id": "spring2"})      # (no room by a Mainspring: another one)
+			elif next["k"] == Defs.CW_AIR and _b("spring2") != null and _b("spring2").built and not made.has("spring3") and last_spot.x < 0:
+				steps.push_front({"k": "mainspring", "big": false, "id": "spring3"})      # (still none: a third, with room)
+			elif next["k"] == Defs.CW_TECH and _b("spring") != null and _b("spring").built and not made.has("springe") and last_spot.x < 0:
+				steps.push_front({"k": "mainspring", "big": false, "id": "springe"})      # (no room by the Mainspring: another)
 			elif next["id"] == "works2" and last_spot.x < 0:
 				# (no room for a Works by any Mainspring: a Mainspring by the first Works instead)
 				steps.pop_front()
@@ -390,6 +396,25 @@ func _where(step: Dictionary) -> Vector2i:
 	var c := _where_raw(step) if not (k == Defs.CW_AIR and _b("spring2") != null and layout != "twin") else Vector2i(-1, -1)
 	if c.x >= 0:
 		return c
+	if k == Defs.CW_TECH or k == Defs.CW_AIR:
+		# (no room in its layout's spot: by any built Mainspring with room, as the computer looks (GearEcon.room_spot))
+		for m in _springs():
+			var cr := GearEcon.room_spot(g, 0, k, [m], [Defs.CW_AIR] if k == Defs.CW_TECH else [], m.center(), true, 30)
+			if cr.x >= 0:
+				return cr
+	if step["id"] == "springe" or step["id"] == "spring3":
+		# (a spare Mainspring for the Escapement or the Aviary that found no room: on a Clocktower's ring with room for it,
+		# else by any building with room)
+		var users2: Array = [Defs.CW_TECH, Defs.CW_AIR] if step["id"] == "springe" else [Defs.CW_AIR]
+		var rn: Array = GearEcon.room_spot_n(g, 0, k, [tower], users2, tower.center(), true, 30)
+		if int(rn[1]) >= 1:
+			return rn[0]
+		for b in g.buildings:
+			if b.team == 0 and not b.dead and b.built and GearNet.has_gear(b) and b.kind != "clocktower":
+				var rb: Array = GearEcon.room_spot_n(g, 0, k, [b], users2, b.center(), true, 14)
+				if int(rb[1]) >= 1:
+					return rb[0]
+		return Vector2i(-1, -1)
 	if c.x == -1 and k != Defs.CW_AIR:
 		return c              # (its layout's spot is not there yet: try again later)
 	if k == Defs.CW_AIR:
@@ -409,10 +434,16 @@ func _where(step: Dictionary) -> Vector2i:
 				var c6 := _spot(k, false, [m], [], _deg(true))
 				if c6.x >= 0:
 					return c6
+		for m in _springs():
+			var c7 := GearEcon.room_spot(g, 0, k, [m], [], m.center(), true, 30)
+			if c7.x >= 0:
+				return c7
 		return Vector2i(-1, -1)
 	if step["id"] == "springw":
 		var w := _b("works")
-		return _first([_spot(k, false, [w], [], _deg(true), [Defs.CW_AIR]), _spot(k, false, [w], [], 0.0)]) if w != null else Vector2i(-1, -1)
+		if w == null:
+			return Vector2i(-1, -1)
+		return _first([_spot(k, false, [w], [], _deg(true), [Defs.CW_AIR]), _spot(k, false, [w], [], 0.0), GearEcon.room_spot(g, 0, k, [w], [Defs.CW_AIR], w.center(), true, 30)])
 	if step["id"] == "spring2" and layout != "twin":
 		# (a second Mainspring for the Aviary: on the Clocktower's ring with room for it, else by any building with room)
 		var c4 := _spot(k, false, [tower], [], _deg(true, -60.0), [Defs.CW_AIR])
@@ -439,7 +470,15 @@ func _where_raw(step: Dictionary) -> Vector2i:
 	var users: Array = [Defs.CW_TECH, Defs.CW_AIR]       # (what a Mainspring must keep room for)
 	if k == Defs.CW_SUPPLY:
 		# Regulators: tucked behind, on the Clocktower's ring if there is room, else anywhere linked
-		var c := _spot(k, false, [tower], [], _deg(false, 70.0))
+		# (a planner keeps the Regulators off the rings of the Works and the Mainspring while their neighbours are still to
+		# come: the room by them is for the Mainspring, the Escapement and the Aviary)
+		var keep: Array = []
+		var rdeg := _deg(false, 70.0)
+		var wk := _b("works")
+		if wk != null and (_b("spring") == null or _b("aviary") == null):
+			keep = [wk, _b("spring")]
+			rdeg = rad_to_deg((tower.center() - wk.center()).angle())     # (the far side of the Clocktower from the Works)
+		var c := _first([_spot(k, false, [tower], keep, rdeg), _spot(k, false, [tower], [], rdeg)])
 		return c if c.x >= 0 else _spot_any(k)
 	match layout:
 		"flower", "big", "twin":
@@ -501,6 +540,19 @@ func _where_raw(step: Dictionary) -> Vector2i:
 	return Vector2i(-2, -2)          # (a step this layout has no rule for)
 
 
+## Team 0's built Mainsprings, the layout's own first.
+func _springs() -> Array:
+	var out: Array = []
+	for id in ["spring", "spring2", "springw", "springe", "spring3"]:
+		var m := _b(id)
+		if m != null and m.built:
+			out.append(m)
+	for b in g.buildings:
+		if b.team == 0 and not b.dead and b.built and b.kind == "mainspring" and not out.has(b):
+			out.append(b)
+	return out
+
+
 func _first(cands: Array) -> Vector2i:
 	for c in cands:
 		if c.x >= 0:
@@ -555,8 +607,12 @@ func _spot(k: String, big: bool, must: Array, avoid: Array, deg: float, room: Ar
 				continue
 			score += absf(angle_difference(want, (gp - GearNet.b_c(a0)).angle())) * 60.0
 			if g.placement_problem(0, k, c, true) != "" or not g.margin_free(c, size):
+				if OS.has_environment("STUDY_DEBUG"):
+					print("    dbg %s %s: %s / margin %s" % [k, str(c), g.placement_problem(0, k, c, true), str(g.margin_free(c, size))])
 				continue
 			if g.gear_net.candidate(0, k, c, big)["state"] != "ok":
+				if OS.has_environment("STUDY_DEBUG"):
+					print("    dbg %s %s: gear %s" % [k, str(c), str(g.gear_net.candidate(0, k, c, big))])
 				continue
 			cands.append([score, c])
 	if cands.is_empty():
