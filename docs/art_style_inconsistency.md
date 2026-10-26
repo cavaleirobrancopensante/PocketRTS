@@ -56,3 +56,6 @@ Shared code: tools/gait_lib.py. Audit and ranking: docs/animation_gait_audit.md 
 
 ## Cog Press working animation (code-drawn, 2026-10-26)
 - tools/press_anim/press_work.py draws 8 working frames from the ChatGPT built cell (art/redraws/cog_press.png): six flywheel spokes and dark shafts redrawn in code (7.5 degrees per frame), the stamping piston moved down and up, a small cog dropping into the tray, a steam puff of plain grey circles. Result in art/redraws/cog_press_work_code.png/.gif. The owner wants ChatGPT to do an art pass over it for one uniform style.
+
+## Mainspring working animation (code-drawn, 2026-10-26)
+- tools/press_anim/mainspring_work.py: 8 frames from the ChatGPT built cell (art/redraws/mainspring.png): both hand cranks erased and redrawn turning (mirrored, 45 degrees per frame), gauge needle redrawn swinging, a bright glint sweeping across the steel spring, a steam puff of grey circles. Result in art/redraws/mainspring_work_code.png/.gif. Pose guide for a ChatGPT art pass.
