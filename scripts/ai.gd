@@ -605,6 +605,25 @@ func _tier2(t: float) -> void:
 		_tier2_t = game.clock + 20.0        # (no room by its Mainspring: look again later)
 		return
 	_air(t)
+	_tier3()
+
+
+## Gear mode, TIER 3 (scripts/pendulum.gd, scripts/netter.gd), kept simple: once its Escapement works and it has the
+## Tension for a Pendulum, one Movement Works goes onto its BIG gear (a gear swap: the Pendulum is made only there; the
+## newest Works when it has more, the others keep to the small gear); _produce then mixes a few Pendulums and Netters into
+## the army. Its Netters pick their targets themselves (the most dangerous enemy in reach not caught already:
+## Netter.pick; _micro leaves them to it).
+func _tier3() -> void:
+	if not game.has_working(team, Defs.CW_TECH) or game.tension(team) < float(Defs.UNITS[Defs.PENDULUM]["tension"]):
+		return
+	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built)
+	if works.is_empty() or works.any(func(b: Building) -> bool: return (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)):
+		return
+	var w: Building = works[works.size() - 1]
+	if game.gear_swap_problem(w) == "":
+		game.swap_gear(w)
+		if game.mlog:
+			game.mlog.add("%s put a Movement Works on its big gear (Pendulums)" % game.mlog.who(team))
 
 
 ## Gear mode, THE AIR (Defs.CW_AIR; scripts/cw_air.gd), kept simple: once its Escapement works, ONE Clock Aviary when the
@@ -2790,20 +2809,37 @@ func _produce() -> void:
 	var army := game.army(team)
 	if _clock() and Defs.gear_mode:
 		# gear mode: Clock Soldiers from every Movement Works, and a Jack (tier 2: an Escapement that works, and Tension)
-		# for every two of them while the Tension lasts
-		var jacks: int = army.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
-		var others: int = army.size() - jacks
-		for w in _mine(_works()):
-			jacks += w.queue.count(Defs.JACK)
+		# for every two of them while the Tension lasts; tier 3 (_tier3): a Pendulum at the big-gear Works for every four
+		# other soldiers (up to 4; the Tension for the next one is kept back from Jacks and Netters) and a Netter for every
+		# five (up to 3)
+		var n_of := func(kind: String) -> int:
+			var n: int = army.filter(func(u: Unit) -> bool: return u.kind == kind).size()
+			for w in _mine(_works()):
+				n += w.queue.count(kind)
+			return n
+		var jacks: int = n_of.call(Defs.JACK)
+		var pends: int = n_of.call(Defs.PENDULUM)
+		var netters: int = n_of.call(Defs.NETTER)
+		var others: int = army.size() - army.filter(func(u: Unit) -> bool: return u.kind in [Defs.JACK, Defs.PENDULUM, Defs.NETTER]).size()
 		for w in _mine(_works()):
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "clock_soldier"
-				if jacks * 2 <= others and game.can_train(w, Defs.JACK) == "":
+				var want_p: bool = w.gear_big and pends < mini(4, 1 + others / 4)
+				var keep := float(Defs.UNITS[Defs.PENDULUM]["tension"]) if want_p else 0.0
+				if want_p and game.can_train(w, Defs.PENDULUM) == "":
+					k = Defs.PENDULUM
+				elif netters < mini(3, others / 5) and game.tension(team) - float(Defs.UNITS[Defs.NETTER]["tension"]) >= keep and game.can_train(w, Defs.NETTER) == "":
+					k = Defs.NETTER
+				elif jacks * 2 <= others and game.tension(team) - float(Defs.UNITS[Defs.JACK]["tension"]) >= keep and game.can_train(w, Defs.JACK) == "":
 					k = Defs.JACK
 				if game.train(w, k) != "":
 					break
 				if k == Defs.JACK:
 					jacks += 1
+				elif k == Defs.PENDULUM:
+					pends += 1
+				elif k == Defs.NETTER:
+					netters += 1
 				else:
 					others += 1
 		# the air (a Clock Aviary): Swifts against the enemy's flyers, one more than it has shown (up to 6); two once the
@@ -4755,6 +4791,123 @@ func _abilities() -> void:
 					if o.is_air():
 						flyers += 1
 			u.set_canister(crowd >= 3 or flyers >= 1)
+	_shell_bodies()
+
+
+# ------------------------------------------------------------------ Crown vs Brood: shelling the bodies (Defs.BODY_BLAST)
+
+## The owner's design (2026-10-26): when the Crown faces the Brood and nothing threatens its base, an idle cannon or mortar
+## fires a few shots (BOMBARD) at a spot it can see where several bodies the Brood could harvest lie together (ground the
+## Brood's grubs can walk to), away from our own men. Never mid-battle: no armed enemy in sight near the gun or the spot,
+## and it stands down at once when one shows up or the base is attacked (or after `shots`, or when the bodies are gone).
+const SHELL := {"min_bodies": 3, "shots": 3, "scan": 5.0, "clear": 420.0, "own_near": 64.0, "walk": 96.0, "max_t": 40.0}
+var shell_bodies_on := true      # (tests switch it off to measure the ordinary splash alone)
+var _shell := {}                 # gun -> {"p": the spot, "t": clock it began, "pw": its powder then}
+var _shell_t := 0.0
+var shell_log: Array = []        # [clock, gun kind, bodies at the spot] (tests, the match log)
+
+
+func _vs_brood() -> bool:
+	for f in game.enemies_of(team):
+		if game.faction_of(f) == "brood" and not game.eliminated[f]:
+			return true
+	return false
+
+
+## The radius a gun's shot tears bodies in (a Mortar's splash; a cannon: round shot's small splash, canister's reach).
+func _blast_r(g: Unit) -> float:
+	if g.kind == "cannon":
+		return 60.0 if g.mode == "canister" else float(Defs.ROUND_SHOT["splash"]) + 6.0
+	return float(g.d.get("splash", 40.0))
+
+
+## The bodies the Brood could still harvest within r of p.
+func _bodies_at(p: Vector2, r: float) -> int:
+	var n := 0
+	for c in game.corpses:
+		if is_instance_valid(c) and not c.torn and c.position.distance_to(p) <= r:
+			n += 1
+	return n
+
+
+## The walkable region at p (a body or a unit can lie on the edge of a cell that is not walkable: the nearest one that is).
+func _region_at(p: Vector2) -> int:
+	var c: Vector2i = game.cell_of(p)
+	var r: int = game.region_of(c)
+	if r >= 0:
+		return r
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+		r = game.region_of(c + d)
+		if r >= 0:
+			return r
+	return -1
+
+
+## An armed enemy in sight (or seen a moment ago) within SHELL.clear of p.
+func _foes_near(p: Vector2) -> bool:
+	for o in game.units_near(p, float(SHELL["clear"])):
+		if game.hostile(o.team, team) and not o.dead and not o.off_field and _armed(o) and _sighted(o):
+			return true
+	return false
+
+
+func _shell_bodies() -> void:
+	var calm := _threat() == Vector2.INF
+	for g in game.army(team):
+		if g.order == "bombard" and not _shell.has(g):
+			_shell[g] = {"p": g.order_point, "t": game.clock, "pw": g.powder}     # (a game loaded with one at it)
+	# the guns at it: they stand down when it is done, when it gets dangerous, or when something else ordered them
+	for g in _shell.keys():
+		var job: Dictionary = _shell[g]
+		var done: bool = not is_instance_valid(g) or g.dead or g.order != "bombard" or (g.order_point as Vector2).distance_to(job["p"]) > 1.0
+		if not done and (not calm or float(job["pw"]) - g.powder >= float(SHELL["shots"]) or g.powder < 1.0 \
+				or game.clock - float(job["t"]) > float(SHELL["max_t"]) or _bodies_at(job["p"], _blast_r(g)) == 0 \
+				or _foes_near(g.position) or _foes_near(job["p"])):
+			g.cmd_stop()
+			done = true
+		if done:
+			_shell.erase(g)
+	if not calm or not shell_bodies_on or game.clock < _shell_t or not _vs_brood():
+		return
+	_shell_t = game.clock + float(SHELL["scan"])
+	if game.corpses.size() < int(SHELL["min_bodies"]):
+		return
+	# where the Brood's ground units can walk: the regions they stand in
+	var reach := {}
+	for o in game.units:
+		if not o.dead and game.hostile(o.team, team) and game.faction_of(o.team) == "brood" and not o.is_air():
+			reach[_region_at(o.position)] = true
+	for g in game.army(team):
+		if not g.can_bombard() or _shell.has(g) or g.order != "idle" or g.target != null or g.phase != "" or g.powder < 2.0 \
+				or (_attacking and _wave_set.has(g)):
+			continue        # (busy, nearly dry, or out with the wave)
+		var r := _blast_r(g)
+		var far: float = g._range() + (float(SHELL["walk"]) if g.can_roll() else 0.0)
+		var best := Vector2.INF
+		var best_n := int(SHELL["min_bodies"]) - 1
+		for c in game.corpses:
+			if not is_instance_valid(c) or c.torn or c.position.distance_to(g.position) > far:
+				continue
+			if not game.is_visible_to(team, c.position) or not reach.has(_region_at(c.position)):
+				continue
+			var n := _bodies_at(c.position, r * 0.85)
+			if n <= best_n:
+				continue
+			if _shell.values().any(func(j: Dictionary) -> bool: return (j["p"] as Vector2).distance_to(c.position) < r * 1.5):
+				continue        # (another gun is on it)
+			if game.units_near(c.position, float(SHELL["own_near"]) + r).any(func(o: Unit) -> bool: return not o.dead and game.allied(o.team, team) and not o.is_air()):
+				continue        # (our own men would be hit)
+			if _foes_near(c.position) or _foes_near(g.position):
+				continue
+			best = c.position
+			best_n = n
+		if best == Vector2.INF:
+			continue
+		g.cmd_bombard(best)
+		_shell[g] = {"p": best, "t": game.clock, "pw": g.powder}
+		shell_log.append([game.clock, g.kind, best_n])
+		if game.mlog:
+			game.mlog.add("%s's %s shells %d bodies so the Brood can't harvest them" % [game.mlog.who(team), g.d["name"], best_n])
 
 
 ## Stormcallers drop storms on packed enemies (not on our own men); Spore Mothers heal a
@@ -5175,6 +5328,8 @@ func _micro() -> void:
 				u.cmd_move(u.position + (u.position - close.position).normalized() * 60.0)
 				_kite[u] = 0.6
 				continue
+		if u.kind == Defs.NETTER:
+			continue        # (its own pick: the most dangerous enemy not caught already, Netter.pick)
 		if u.order in ["idle", "amove", "hold"] and u.target:
 			var best: Entity = null
 			var bh := INF

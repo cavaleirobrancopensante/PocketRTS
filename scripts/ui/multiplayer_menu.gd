@@ -69,6 +69,7 @@ func _draw_entry() -> void:
 	re.text_changed.connect(func(t: String) -> void:
 		Settings.relay_url = t.strip_edges()
 		Settings.save_all())
+	UiStyle.touch_text(re, "RELAY ADDRESS")
 	rrow.add_child(re)
 	v.add_child(rrow)
 	if not _relay_set():
@@ -99,6 +100,7 @@ func _draw_entry() -> void:
 		if up != t:
 			code_edit.text = up
 			code_edit.caret_column = up.length())
+	UiStyle.touch_text(code_edit, "ROOM CODE")
 	jrow.add_child(code_edit)
 	var join: Button = main._button("JOIN", func() -> void:
 		var c := code_edit.text.strip_edges()

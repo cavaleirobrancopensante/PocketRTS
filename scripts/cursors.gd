@@ -124,7 +124,7 @@ func choose(c: Controls, game: Game, hover: Entity) -> String:
 			return "build"
 		"rally", "rally_army", "rally_worker":
 			return "rally"
-		"cast", "load", "unload", "overload":
+		"cast", "load", "unload", "overload", "bombard":
 			return "attack"
 	if hover == null:
 		return "pointer"

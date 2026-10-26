@@ -1,6 +1,6 @@
 extends SceneTree
 ## Crown workers take real posts first and haul only when every post is full (owner, 0.14.19):
-## 1. a new game: the starting labourers work the Farm, none hauls;
+## 1. a new game: the starting labourers work the Farm, none hauls; then every Farm comes before any Powder Mill;
 ## 2. every Farm and Mill full: a labourer trained with no rally becomes a hauler at the Town Hall;
 ## 3. the Town Hall's hauler slots full too: one more stands by (no hauler over the cap);
 ## 4. a rally on the ground still sends him to that spot.
@@ -43,6 +43,26 @@ func _run() -> void:
 	check(start_workers.size() == 4, "the Crown starts with 4 labourers (%d)" % start_workers.size())
 	check(farming == start_workers.size(), "they all work the starting Farm (%d of %d)" % [farming, start_workers.size()])
 	check(hauling == 0, "none of them hauls (%d)" % hauling)
+	# job priority (owner, 2026-10-26): every Farm before any Powder Mill, hauling last
+	var hc: Vector2i = g.cell_of(hall.center())
+	var toward := Vector2i(1 if hc.x < g.W / 2 else -1, 1 if hc.y < g.H / 2 else -1)
+	var mill: Building = g._add_building("powder_mill", 0, hc + Vector2i(0, 5 * toward.y), true)
+	var far_farm: Building = g._add_building("farm", 0, hc + Vector2i(16 * toward.x, 10 * toward.y), true)
+	for b in g.buildings:
+		if b.team == 0 and b.kind == "farm" and b != far_farm:
+			while b.crew.size() < b.crew_max():
+				var fw: Unit = g._add_unit("labourer", 0, b.center() + Vector2(0, 60))
+				fw.cmd_gather(b)
+	for i in 5:
+		await physics_frame
+	var near_mill := mill.center().distance_to(hall.center()) < far_farm.center().distance_to(hall.center())
+	check(near_mill and g.free_site(0, hall.center()) == far_farm, "a free Farm comes before a nearer Powder Mill (%s)" % (g.free_site(0, hall.center()).kind if g.free_site(0, hall.center()) else "none"))
+	while far_farm.crew.size() < far_farm.crew_max():
+		var ffw: Unit = g._add_unit("labourer", 0, far_farm.center() + Vector2(0, 60))
+		ffw.cmd_gather(far_farm)
+	for i in 5:
+		await physics_frame
+	check(g.free_site(0, hall.center()) == mill, "with every Farm full the Powder Mill is next (%s)" % (g.free_site(0, hall.center()).kind if g.free_site(0, hall.center()) else "none"))
 	# fill every post
 	for b in g.buildings.duplicate():
 		if b.team == 0 and b.built and b.crew_max() > 0 and b.haul_cap() == 0:

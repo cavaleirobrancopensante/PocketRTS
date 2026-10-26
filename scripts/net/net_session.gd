@@ -41,6 +41,12 @@ var count_diff_max := 0           # guest (tests): the most entities a snapshot 
 var count_diff_snaps := 0
 var line_fp := -1                 # host: fingerprint of the Line in the last snapshot that carried it
 var _last_snap_ms := 0
+# The start: both sides hold the 3-2-1 countdown until every guest's match has loaded (a phone loads slower
+# than the host), then the host says GO and both count down together. READY_WAIT: start anyway after that.
+const READY_WAIT := 20.0
+var ready_peers := {}             # host: relay ids whose match has loaded
+var go_given := false
+var _wait_t := 0.0
 
 
 ## Create the session on a Game (after it is in the tree).
@@ -57,7 +63,32 @@ static func attach(g: Game, lnk: NetLink, host: bool, team: int, peers: Dictiona
 	lnk.message.connect(s._on_message)
 	lnk.notice.connect(s._on_notice)
 	lnk.closed.connect(s._on_closed)
+	if not host:
+		lnk.send({"t": "ready"})            # my match has loaded: the host can start the countdown
 	return s
+
+
+## Release the held countdown on this machine (the 3-2-1 then runs as usual).
+func _go() -> void:
+	go_given = true
+	if game and is_instance_valid(game) and game.hud:
+		game.hud.count_hold = false
+
+
+## The host gives GO once every guest has loaded (or after READY_WAIT); a guest stops waiting by itself a
+## little later if the GO never comes.
+func _start_wait(delta: float) -> void:
+	_wait_t += delta
+	if is_host:
+		var all_in := true
+		for pr in peer_team:
+			if not ready_peers.has(int(pr)) and not lost_peers.has(int(pr)):
+				all_in = false
+		if all_in or _wait_t >= READY_WAIT:
+			link.send({"t": "go"})
+			_go()
+	elif _wait_t >= READY_WAIT + 5.0:
+		_go()
 
 
 func assign(e: Entity) -> void:
@@ -67,6 +98,8 @@ func assign(e: Entity) -> void:
 
 
 func _process(delta: float) -> void:
+	if not go_given:
+		_start_wait(delta)
 	if not is_host:
 		return
 	_t += delta
@@ -109,14 +142,50 @@ func note_shot(s: Shot, kind: String, a: Vector2, b: Vector2, spd: float) -> voi
 		fx.append(["s", kind, a, b, spd, s.face_offset, s.scale.x, s.impact, s.impact_scale, s.arc])
 
 
+## A Ticking Owl let its weight go (CwAir.drop_bomb): the guest sees it fall and burst (the host's bomb does the damage).
+func note_bomb(b: OwlBomb) -> void:
+	if fx.size() < FX_MAX:
+		fx.append(["b", "", b.from, b.to, b.ground_from, b.duration])
+
+
+## A Netter's net left the muzzle (Netter.fire): the guest sees it fly at its copy of the target (the host's net catches).
+func note_net(cn: ChainNet) -> void:
+	if fx.size() < FX_MAX and cn.target != null and is_instance_valid(cn.target):
+		assign(cn.target)
+		fx.append(["n", "", cn.from, cn.target.net_id, cn.speed])
+
+
 ## Guest: play what the host saw happen since the last snapshot.
 func play_fx(list: Array) -> void:
 	for f in list:
 		var p: Vector2 = f[2]
+		if f[0] == "c":
+			game.torn_at(p)          # a body the host's shell tore up (Game.tear_body): gone here too, seen or not
+			continue
 		if not game.view_rect.has_point(p):
 			continue
 		if f[0] == "e":
 			game.spawn_effect(String(f[1]), p, float(f[3]))
+		elif f[0] == "b":
+			var ob := OwlBomb.new()       # (the falling weight, as a picture: it bursts where it lands)
+			ob.game = game
+			ob.view = true
+			ob.from = p
+			ob.to = f[3]
+			ob.ground_from = f[4]
+			ob.duration = float(f[5])
+			game.add_child(ob)
+		elif f[0] == "n":
+			var tg = by_id.get(int(f[3]))
+			if not is_instance_valid(tg) or not (tg is Unit):
+				continue
+			var cn := ChainNet.new()      # (the net in flight, as a picture: the host's catches)
+			cn.game = game
+			cn.view = true
+			cn.from = p
+			cn.target = tg
+			cn.speed = float(f[4])
+			game.add_child(cn)
 		else:
 			var s := Shot.new()
 			s.face_offset = float(f[5])
@@ -143,6 +212,12 @@ func send_cmd(c: Dictionary) -> void:
 
 func _on_message(from: int, m: Dictionary) -> void:
 	match String(m.get("t", "")):
+		"ready":
+			if is_host:
+				ready_peers[from] = true
+		"go":
+			if not is_host and not go_given:
+				_go()
 		"cmd":
 			if not is_host:
 				return
