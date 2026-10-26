@@ -83,12 +83,14 @@ for p,o in zip(angles,offs):
     DISTS.append(best[0]); newoffs.append(best[1])
 offs=newoffs
 print('dists',DISTS,'Dc',Dc)
+import pickle
+CORR=pickle.load(open('corr.pkl','rb'))
 def frame(i):
     th=math.radians(1.0*i)
     c=Image.new('RGB',(W,H),NAVY)
     paste_ring(c,ti,cx0,cy0,th)
     for phi,o in zip(angles,offs):
-        thB=o-th*tower['N']/small['N']
+        thB=o-th*tower['N']/small['N']+CORR[angles.index(phi)][i]
         paste_ring(c,si,cx0+DISTS[angles.index(phi)]*math.cos(phi),cy0+DISTS[angles.index(phi)]*math.sin(phi),thB)
     # squash and extrude
     h2=int(H*SQ); c=c.resize((W,h2),Image.LANCZOS)
