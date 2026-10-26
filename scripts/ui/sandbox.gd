@@ -113,7 +113,7 @@ func _build() -> void:
 	for k in Defs.UNITS:
 		if Defs.UNITS[k]["faction"] == _tab and not Defs.energy_only(k):
 			kinds.append(k)
-	for k in Defs.FACTIONS[_tab]["build"] + Defs.build_list(_tab):      # (+ gear mode's Movement Works, Regulator and Ratchet Turret)
+	for k in Defs.FACTIONS[_tab]["build"] + Defs.build_list(_tab):      # (+ gear mode's Movement Works, Regulator, Ratchet Turret and Escapement)
 		if not kinds.has(k) and not Defs.energy_only(k):      # (gear mode: no power)
 			kinds.append(k)
 	for k in kinds:

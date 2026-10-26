@@ -373,12 +373,14 @@ const GEAR := {
 	# one Winder pays 3.5 (small) vs 3.1 (big), four pay 7.5 vs 8.0 limited to 8.0 by the cap, five 8.0 vs 9.0, six
 	# 8.0 vs 10.5: the big gear only wins from 5 Winders. 2 presses per Clocktower (Defs.FACTIONS econ).
 	"press": {"base": 0.15, "small": {"full": 8.0, "crew": 3}, "big": {"full": 10.5, "crew": 6}},
-	# THE MAINSPRING (showcase, docs/clockwork_ground_up.md): winds TENSION, the second resource, at `full` a second with
-	# its whole crew (BUILDINGS crew), `base` of that alone; nothing spends Tension yet. Shown only for the Clockwork.
+	# THE MAINSPRING (docs/clockwork_ground_up.md): winds TENSION, the second resource, at `full` a second with its whole
+	# crew (BUILDINGS crew), `base` of that alone. Spent on the strong things (the Jack, the Escapement's research: their
+	# `tension` price). Shown only for the Clockwork.
 	"mainspring": {"base": 0.15, "full": 2.0},
 	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
 	"works_dt": 0.12,               # ... of the Movement Works' loop (while it trains)
 	"regulator_dt": 0.15,           # ... of the Regulator's pendulum (always, while built and linked)
+	"escapement_dt": 0.14,          # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring)
 	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
 	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
 	"col": {"brass": Color("#e8c76a"), "edge": Color("#3b2a14"), "rim": Color(0.282, 0.18, 0.071), "dead": Color("#4a443c"), "off": Color("#8c8478"),
@@ -437,6 +439,36 @@ const TURRET := {"range": 200.0, "damage": 14.0, "cooldown": 1.5, "speed": 520.0
 const CW_TURRET := "ratchet_turret"
 
 
+## TIER 2 of the gear-mode Clockwork (docs/clockwork_ground_up.md): the ESCAPEMENT, the tech building (like a Cybernetics
+## Core: it unlocks the Jack and holds the Tension research), and the JACK, the first unit that costs Tension.
+const CW_TECH := "escapement"
+const JACK := "jack"
+## THE TENSION RULE (owner, 2026-10-26): a building that uses Tension works only while its gear ring meshes DIRECTLY with
+## a Mainspring's ring (one hop, within the link gap: an idler cog between the two rings counts), on top of being linked
+## to the field. Else it is idle (no research, unlocks nothing) and shows NEEDS MAINSPRING (GearNet.spring_for).
+const TENSION_USERS := ["escapement"]
+## The Jack (Defs.UNITS "jack"): a jack-in-the-box on a coil spring that hops about and shoots screws.
+## JUMP (an ability, a point): the spring presses down for `crouch` s (a visible crouch: readable and answerable), then it
+## flies to the point (at most `range` px) along an arc and lands; `cooldown` s before the next. It cannot attack from the
+## crouch to the landing (`land` s after touching down). The flight takes `air` s plus a px/`air_speed` s; the arc's top is
+## `peak` px plus `peak_per` of the distance. Allowed onto open walkable ground only (no water, cliffs, buildings, walls);
+## flat and DOWN always, UP onto higher ground only once HIGH LEAP is researched and the side sees the spot. A click past
+## the range jumps the full range that way; a spot that cannot be landed on gives way to the nearest one within `search`
+## tiles on the same level. `ai_low`: a computer's Jack jumps away from melee below this share of its health.
+## Shot: the screw (the Ratchet Turret's projectile, Game.screw_shot) leaves the drill tip, `tips` game px from its feet per
+## drawn direction (W/SW/NW mirror E/SE/NE; printed by tools/import_jack.py), at `shot_scale` of the turret's screw art
+## (`muzzle_scale` for the burst), `speed` px/s.
+const JACK_JUMP := {"range": 160.0, "crouch": 0.35, "land": 0.2, "air": 0.3, "air_speed": 520.0, "peak": 20.0, "peak_per": 0.22,
+	"cooldown": 10.0, "search": 2, "ai_low": 0.4}
+const JACK_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
+	"tips": {"s": Vector2(-26, -16), "se": Vector2(-21, -11), "e": Vector2(25, -22), "ne": Vector2(28, -19), "n": Vector2(27, -15)}}
+
+
+## The Tension a unit, building or research costs (gear mode's Clockwork: its `tension`; 0 for anything else).
+static func tension_cost(d: Dictionary) -> int:
+	return int(d.get("tension", 0)) if gear_mode else 0
+
+
 ## A faction's two resources' names: the Clockwork's second is Tension in gear mode (no Energy), else FACTIONS "res".
 static func res_names(faction: String) -> Array:
 	if faction == "clockwork" and gear_mode:
@@ -467,6 +499,8 @@ static func build_list(faction: String) -> Array:
 			for k in ENERGY_KINDS:
 				l.erase(k)
 			l.insert(l.find(CW_WORKS) + 1, CW_TURRET)
+			# tier 2: the Escapement (the tech building, a Tension user) after the turret
+			l.insert(l.find(CW_TURRET) + 1, CW_TECH)
 		elif rail_econ:
 			l[l.find("ore_crusher")] = "ore_drill"
 		if not line_mode:
@@ -691,6 +725,19 @@ const UNITS := {
 		"faction": "clockwork",
 		"about": "The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Made at the Movement Works.",
 	},
+	# TIER 2 (gear mode): the JACK, the first Tension unit (the Clockwork's Stalker): ranged, hits ground and air, hops
+	# (its walk), JUMPs (Defs.JACK_JUMP). Guesses (design_principles 1): 100 cogs + 25 Tension, 2 supply; a shot every
+	# 1.41 s (aim 0.11, the screw leaves on the 2nd frame at 9 fps, + 0.35 + cooldown 0.95): 7.1 a second, a little over a
+	# Musketeer's 5.6 (20 every 3.55 s) for 1.8 of his price, at 170 px (his 190 out-ranges it: the jump is its way in);
+	# 90 hp + 1 armour; a bit faster than the Clock Soldier (70 vs 62). Brass box on a spring: "armored" (round shot hurts
+	# it more, canister less). An egg of Raptors (75 biomass) still beats one in the open; two Musketeers beat one.
+	"jack": {
+		"tags": ["armored"],
+		"name": "Jack", "hp": 90, "armor": 1, "speed": 70, "cost": 100, "tension": 25, "time": 25.0, "supply": 2,
+		"sight": 8, "range": 170, "damage": 10, "cooldown": 0.95, "aim": 0.11, "radius": 12, "from": "movement_works",
+		"requires": "escapement", "anti_air": true, "faction": "clockwork",
+		"about": "A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at the Movement Works once an Escapement works.",
+	},
 	"windup_soldier": {
 		"tags": ["light"],
 		"name": "Wind-up Soldiers", "hp": 55, "armor": 1, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
@@ -908,8 +955,15 @@ const BUILDINGS := {
 	# costs like the Crown Barracks, the Regulator houses like the Spring Tower.
 	"movement_works": {
 		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["clock_soldier"], "faction": "clockwork",
-		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line. Must stay linked to the gear field.",
+		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack"], "faction": "clockwork",
+		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks once an Escapement works. Must stay linked to the gear field.",
+	},
+	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
+	# its ring meshes with a Mainspring's. Numbers are guesses: the Movement Works' price and health.
+	"escapement": {
+		"name": "Escapement", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 7, "trains": [], "requires": "movement_works", "faction": "clockwork",
+		"about": "The Clockwork's tech building: it unlocks the Jack and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Movement Works.",
 	},
 	"regulator": {
 		"name": "Regulator", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -991,7 +1045,7 @@ const BUILDINGS := {
 	"mainspring": {
 		"name": "Mainspring", "hp": 800, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
-		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (up to 3). Must stay linked to the gear field. Nothing spends Tension yet.",
+		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (up to 3). Must stay linked to the gear field. Tension pays for the Jack and the Escapement's research; a building that uses Tension (the Escapement) must mesh its ring with a Mainspring's.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
@@ -1060,6 +1114,10 @@ const RESEARCH := {
 	"charge": {"name": "Cavalry Charge", "label": "CHARGE", "at": "armoury", "faction": "crown", "cost": 60, "cost2": 0, "time": 25.0,
 		"icon": "research_charge", "drill": true, "kinds": ["cuirassier"],
 		"about": "Drilled to charge: after about 2 s at the gallop a Horseman's or Cuirassier's next sabre blow hits double and throws the enemy back."},
+	# the Clockwork's Tension research (gear mode), at the Escapement (it must be working: meshed with a Mainspring)
+	"high_leap": {"name": "High Leap", "label": "HIGH LEAP", "at": "escapement", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 100,
+		"time": 60.0, "icon": "research_high_leap",
+		"about": "A stiffer spring: every Jack can JUMP UP onto high ground too (only where you can see)."},
 }
 ## The musket locks, in order.
 const LOCKS := ["matchlock", "flintlock", "caplock"]

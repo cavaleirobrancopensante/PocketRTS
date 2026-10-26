@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.20", "items": [
+		"CLOCKWORK TIER 2 (gear mode): the ESCAPEMENT, the Clockwork's tech building (3x3, 150 cogs, needs a Movement Works), unlocks the JACK and researches HIGH LEAP. It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler cog between them counts): otherwise it stands idle and shows NEEDS MAINSPRING, and its placement ghost says so; if its Mainspring is destroyed it waits until one meshes again. The JACK, the first unit that costs Tension (100 cogs + 25 Tension, 2 supply), is a jack-in-the-box on a coil spring: it hops about and shoots spinning screws at ground and air (10 damage about every 1.4 s, a little short of a Musketeer's reach). JUMP (E, then a spot): a short crouch, then a leap of up to 5 tiles along an arc over its shadow; it cannot shoot in the air and its spring takes 10 s to wind back; flat ground or down a cliff any time, UP a cliff only after HIGH LEAP (150 cogs + 100 Tension) and only where you can see. Tension prices show on the cards (100+25) and in the tooltips. The CLOCKWORK LAB starts with an Escapement meshing with the Mainspring and three Jacks; the Clockwork computer builds a Mainspring and an Escapement, mixes Jacks into its army and jumps them out of a melee when they are hurt.",
+	]},
 	{"v": "0.14.19", "items": [
 		"CROWN WORKERS take real jobs first and HAUL only when every job is taken: a new Labourer (or one whose Farm is full) goes to the nearest Farm or Powder Mill with room, and only when all of them are full does he become a hauler at the Town Hall (if it has a free hauler slot). FIX: until now a Town Hall's hauler slots counted as the nearest job, so every Crown game started with all four Labourers hauling and the starting Farm unworked. A rally on the ground still sends new workers to that spot.",
 	]},

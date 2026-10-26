@@ -188,10 +188,6 @@ es sus prensas rinden
 pt Mola Real
 es Muelle Real
 
-> Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (up to 3). Must stay linked to the gear field. Nothing spends Tension yet.
-pt Enrola TENSÃO, o segundo recurso do Mecanismo: um pouco sozinha, mais para cada Enrolador que gira a manivela (até 3). Precisa continuar ligada ao campo de engrenagens. Nada gasta Tensão ainda.
-es Da cuerda a la TENSIÓN, el segundo recurso del Mecanismo: un poco por sí solo, más por cada Dador de cuerda que gira su manivela (hasta 3). Debe seguir enlazado al campo de engranajes. Nada gasta Tensión todavía.
-
 > %d tension
 pt %d de tensão
 es %d de tensión
@@ -200,26 +196,10 @@ es %d de tensión
 pt Tensão: %d
 es Tensión: %d
 
-> The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. Nothing spends it yet.
-pt O segundo recurso do Mecanismo, enrolado pelos Enroladores que giram a manivela de uma Mola Real engrenada no campo de engrenagens. Nada o gasta ainda.
-es El segundo recurso del Mecanismo, al que dan cuerda los Dadores de cuerda girando la manivela de un Muelle Real engranado al campo de engranajes. Nada lo gasta todavía.
-
-> CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.
-pt LABORATÓRIO DO MECANISMO, o CAMPO DE ENGRENAGENS: toda construção do Mecanismo fica num anel de engrenagens no chão que precisa engrenar, anel a anel, até o grande anel da Torre do Relógio, ou para (UNLINKED). Onde dois anéis não chegam a se tocar, uma pequena engrenagem intermediária preenche o vão. Enroladores giram as Prensas de Engrenagens para obter engrenagens e a Mola Real para obter Tensão. O novo exército: a Oficina de Movimentos treina Soldados-Relógio, o Regulador dá suprimento, a Torreta de Catraca dispara parafusos em alvos no chão e no ar. Ponha mais construções: o fantasma mostra o anel girando e LINKS / NO LINK / CLASH. A CAIXA DE AREIA, aba RELÓGIO, cria as novas unidades. O inimigo nunca ataca.
-es LABORATORIO DEL MECANISMO, el CAMPO DE ENGRANAJES: todo edificio del Mecanismo está en un anillo de engranajes en el suelo que debe engranar, anillo a anillo, hasta el gran anillo de la Torre del Reloj, o se detiene (UNLINKED). Donde dos anillos no llegan a tocarse, un pequeño engranaje intermedio llena el hueco. Los Dadores de cuerda giran las Prensas de Engranajes para obtener engranajes y el Muelle Real para obtener Tensión. El nuevo ejército: el Taller de Movimientos entrena Soldados Reloj, el Regulador da suministros, la Torreta de Trinquete dispara tornillos a tierra y aire. Coloca más edificios: el fantasma muestra su anillo girando y LINKS / NO LINK / CLASH. El MODO LIBRE, pestaña RELOJ, crea las nuevas unidades. El enemigo nunca ataca.
-
-> One tap: you as the Clockwork on an open test map against a computer that never attacks, with plenty of cogs, the gear field on show (the Clocktower with two Cog Presses, a Mainspring, a Movement Works, a Regulator and a Ratchet Turret meshing round it, and four Clock Soldiers) and every new experimental unit and building unlocked. Spawn anything from the SANDBOX panel. For trying the gear field and the experimental Clockwork roster.
-pt Um toque: você como o Mecanismo num mapa de teste aberto contra um computador que nunca ataca, com muitas engrenagens, o campo de engrenagens à vista (a Torre do Relógio com duas Prensas de Engrenagens, uma Mola Real, uma Oficina de Movimentos, um Regulador e uma Torreta de Catraca engrenados em volta, e quatro Soldados-Relógio) e todas as unidades e construções experimentais liberadas. Crie qualquer coisa pelo painel da CAIXA DE AREIA. Para experimentar o campo de engrenagens e o elenco experimental do Mecanismo.
-es Un toque: tú como el Mecanismo en un mapa de pruebas abierto contra un ordenador que nunca ataca, con muchos engranajes, el campo de engranajes a la vista (la Torre del Reloj con dos Prensas de Engranajes, un Muelle Real, un Taller de Movimientos, un Regulador y una Torreta de Trinquete engranados alrededor, y cuatro Soldados Reloj) y todas las unidades y edificios experimentales desbloqueados. Crea lo que quieras desde el panel del MODO LIBRE. Para probar el campo de engranajes y el elenco experimental del Mecanismo.
-
 # the new-style Clockwork army (gear mode)
 > Movement Works
 pt Oficina de Movimentos
 es Taller de Movimientos
-
-> The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line. Must stay linked to the gear field.
-pt O quartel do Mecanismo: um longo salão que monta Soldados-Relógio numa linha suspensa. Precisa continuar ligada ao campo de engrenagens.
-es El cuartel del Mecanismo: una larga nave que monta Soldados Reloj en una línea colgante. Debe seguir enlazado al campo de engranajes.
 
 > Regulator
 pt Regulador

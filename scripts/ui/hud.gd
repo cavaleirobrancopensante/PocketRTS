@@ -1058,7 +1058,7 @@ func _build_card() -> Array:
 			list.append([k, ulab, func() -> void:
 				var w := game.train_any(game.selected_buildings(), kk)
 				if w != "":
-					toast(w), why == "", why, str(game.unit_price(game.human, k)[0])])
+					toast(w), why == "", why, _price_chip(game.unit_price(game.human, k), Defs.tension_cost(Defs.UNITS[Defs.train_kind(k)]) > 0)])
 		if b.dual_rally():
 			list.append(["rally", "RALLY", func() -> void: controls.mode = "rally_army", true, "", ""])
 			list.append(["feeding_pit", "GRUBS", func() -> void: controls.mode = "rally_worker", true, "", ""])
@@ -1103,7 +1103,7 @@ func _research_buttons(list: Array, b: Building, group: Array = []) -> void:
 		list.append([_research_icon(rk), lab, func() -> void:
 			var w := game.start_research(target, rkk)
 			if w != "":
-				toast(w), rwhy == "", rwhy, str(info["cost"])])
+				toast(w), rwhy == "", rwhy, _price_chip([int(info["cost"]), Defs.tension_cost(info)], Defs.tension_cost(info) > 0)])
 
 
 ## The icon of a queued unit: a soldier's light or armoured picture, by what he was paid for.
@@ -1269,6 +1269,25 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_miasma", "MIASMA", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "miasma", ok, why, ""])
+	# Jack: JUMP (a spot): every selected Jack that can leaps there (Jack.jump_order); the corner shows the spring's wind-back
+	var jacks := units.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK)
+	if not jacks.is_empty():
+		var ready_n: int = jacks.filter(func(u: Unit) -> bool: return Jack.ready_problem(u) == "").size()
+		var jwhy := "" if ready_n > 0 else Jack.ready_problem(jacks[0])
+		var cdl := INF
+		for u in jacks:
+			if ready_n == 0 and u.jump.is_empty():
+				cdl = minf(cdl, u.jump_cd)          # (none ready: the soonest one's wind-back)
+		if cdl == INF:
+			cdl = 0.0
+		var up := game.has_tech(game.human, "high_leap")
+		_tip_for["JUMP"] = ["Jump", "Tap where: after a short crouch the Jack leaps up to %d tiles along an arc (each Jack selected, to its own spot of the group). Flat ground and down a cliff any time; %s Not onto water, cliffs or buildings. It cannot shoot in the air; the spring winds back in %d s." % [
+			int(round(float(Defs.JACK_JUMP["range"]) / Defs.TILE)),
+			"UP onto high ground too, where you can see (HIGH LEAP)." if up else "UP onto high ground once HIGH LEAP is researched at the Escapement (and only where you can see).",
+			int(Defs.JACK_JUMP["cooldown"])]]
+		list.append(["ab_jump", "JUMP", func() -> void:
+			controls.mode = "cast"
+			controls.cast_spell = "jump", ready_n > 0, jwhy, ("%ds" % int(ceil(cdl))) if ready_n == 0 and cdl > 0.0 else ""])
 	# Mist Toad: FOG (a spot) and TONGUE (an enemy unit), both paid from its energy
 	var toads := units.filter(func(u: Unit) -> bool: return u.kind == "mist_toad")
 	if not toads.is_empty():
@@ -1370,6 +1389,7 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATR
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
+	"JUMP": "E", "HIGH LEAP": "E",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
 	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q",
@@ -1432,7 +1452,7 @@ func _mixed_card(bs: Array) -> Array:
 		list.append([kk, ulab, func() -> void:
 			var w := game.train_any(able, kk)
 			if w != "":
-				toast(w), why == "", why, str(game.unit_price(game.human, kk)[0])])
+				toast(w), why == "", why, _price_chip(game.unit_price(game.human, kk), Defs.tension_cost(Defs.UNITS[Defs.train_kind(kk)]) > 0)])
 	var seen := {}
 	for sb in built:
 		if not seen.has(sb.kind):
@@ -2063,8 +2083,8 @@ func _draw_rest(font: Font) -> void:
 		_ci.draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
 	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker", "cast"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
-			"cast": "Tap the enemy to lash with the tongue" if controls.cast_spell == "tongue" else "Tap where to cast the %s" % {"storm": "storm (it stuns your own units too)",
-				"fog": "fog (shots from or into it miss half the time, yours too)"}.get(controls.cast_spell, "healing miasma"),
+			"cast": "Tap the enemy to lash with the tongue" if controls.cast_spell == "tongue" else ("Tap where to JUMP (up to 5 tiles; up a cliff only with HIGH LEAP, where you can see)" if controls.cast_spell == "jump" else "Tap where to cast the %s" % {"storm": "storm (it stuns your own units too)",
+				"fog": "fog (shots from or into it miss half the time, yours too)"}.get(controls.cast_spell, "healing miasma")),
 			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a Feeding Pit (or a spot) for new grubs"}[controls.mode]
 		if Settings.pc():
 			t = t.replace("Tap", "Click") + "  (right-click or Esc cancels)"
@@ -2352,6 +2372,9 @@ func _draw_panel(font: Font) -> void:
 				info = pistol_text(uu) + " · " + info
 			elif uu.kind == "dismounted":
 				info = pistol_text(uu) + " · Sabre up close. MOUNT a horse to ride."
+			elif uu.kind == Defs.JACK:
+				var jn := "In the air." if not uu.jump.is_empty() else ("JUMP ready" if uu.jump_cd <= 0.0 else "JUMP in %d s" % int(ceil(uu.jump_cd)))
+				info = jn + (" · HIGH LEAP: it can jump up onto high ground it can see." if game.has_tech(uu.team, "high_leap") else " · Flat and down only (HIGH LEAP at the Escapement: up too).")
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -2495,6 +2518,11 @@ func _draw_panel(font: Font) -> void:
 					" spent: pits yield a third, grow a Burrow on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
 				if bb.upgrade_t >= 0.0 and not bb.next_level().is_empty():
 					info += " · Growing into a %s: %d s left" % [bb.next_level()["name"], int(ceil(float(bb.next_level()["time"]) - bb.upgrade_t))]
+			if bb.kind == Defs.CW_TECH and bb.built and not bb.dead and Defs.gear_mode:
+				if game.gear_net.needs_spring(bb):
+					info = "NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Jacks). Build a Mainspring right beside it."
+				elif game.gear_net.speed_mult(bb) > 0.0:
+					info = "Working: its ring meshes with a Mainspring. Jacks can be made at the Movement Works%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
 			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and (e.team == game.human or game.demo):
 				if not game.gear_net.is_linked(bb):
 					info = "UNLINKED: its gear ring does not mesh with the field, so it does nothing. Build a linked building beside it, or put it back in reach.  ·  " + info
@@ -3051,6 +3079,13 @@ func _cost_text(a: int, b: int) -> String:
 	return t
 
 
+## The price in a card button's corner: the first resource; a Tension price (gear mode's Clockwork) as cogs+tension.
+func _price_chip(price: Array, tension: bool) -> String:
+	if tension and int(price[1]) > 0:
+		return "%d+%d" % [int(price[0]), int(price[1])]
+	return str(int(price[0]))
+
+
 ## The tooltip for a command card button (it: the card item, with its key at [6]).
 func _card_tip(it: Array) -> Dictionary:
 	var lab: String = String(it[1]).trim_prefix("> ").trim_prefix("~ ")
@@ -3066,7 +3101,7 @@ func _card_tip(it: Array) -> Dictionary:
 	elif b and rk != "" and Defs.RESEARCH[rk]["at"] == b.kind:
 		var ri: Dictionary = Defs.RESEARCH[rk]
 		t["title"] = "Research: %s" % ri["name"]
-		t["stats"] = "%s  ·  %d s" % [_cost_text(int(ri["cost"]), int(ri.get("cost2", 0))), int(ri["time"])]
+		t["stats"] = "%s  ·  %d s" % [_cost_text(int(ri["cost"]), int(ri.get("cost2", 0)) + Defs.tension_cost(ri)), int(ri["time"])]
 		t["body"] = Defs.tip(rk)
 		t["hint"] = "Queued like a unit; CANCEL takes it back out (paid back)."
 	elif (Defs.UNITS.has(k) or Defs.TRAIN_AS.has(k)) and lab == Defs.train_name(k).to_upper():
@@ -3162,7 +3197,7 @@ func _res_tip(i: int) -> Dictionary:
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
 		if Defs.gear_mode and i == 1:
-			return {"title": "Tension: %d" % int(float(pl.get("tension", 0.0))), "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. Nothing spends it yet."}
+			return {"title": "Tension: %d" % int(float(pl.get("tension", 0.0))), "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. It pays for the strong things: the Jack and the Escapement's research. A building that uses Tension (the Escapement) must mesh its ring with a Mainspring's."}
 		if i != 2:
 			return {}
 	if i == 3:

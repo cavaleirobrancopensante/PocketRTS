@@ -451,6 +451,8 @@ func in_use() -> bool:
 			return not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0
 		"regulator":
 			return game.gear_net.speed_mult(self) > 0.0
+		"escapement":
+			return game.gear_net.speed_mult(self) > 0.0       # (linked and meshed with a Mainspring)
 	return true
 
 
@@ -746,7 +748,7 @@ func spring_rate() -> float:
 	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
 
 
-## Cog Press / Mainspring / Movement Works / Regulator: the painted working loop (assets/buildings/<kind>_work_0..7.png,
+## Cog Press / Mainspring / Movement Works / Regulator / Escapement: the painted working loop (assets/buildings/<kind>_work_0..7.png,
 ## `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it works; the built picture while it idles, and none of it
 ## once it is damaged (under half its hp).
 func _gear_anim(working: bool, dt := -1.0) -> void:
@@ -905,6 +907,9 @@ func _econ(delta: float) -> void:
 		"regulator":
 			# a clock: the pendulum swings whenever it is built and linked
 			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["regulator_dt"]))
+		"escapement":
+			# the anchor rocks and the wheel ticks while it works: linked and meshed with a Mainspring (the Tension rule)
+			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["escapement_dt"]))
 		"powder_mill":
 			# grinds its Town Hall's saltpetre; once that's spent, nothing
 			var n := working_crew()

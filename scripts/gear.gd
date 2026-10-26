@@ -15,6 +15,12 @@ extends Node2D
 ## that dies leaves its ring stopped; whatever hung on it alone is unlinked. Constructs stay wound on connected gear
 ## ground (Game.in_field asks here). The placement rule (placement_problem): a new building's ring must touch the
 ## connected field and may not cut deeper than Defs.GEAR.overlap into another ring (a Clocktower is the exception).
+##
+## THE TENSION RULE (Defs.TENSION_USERS, the Escapement): a building that uses Tension works only while it is connected AND
+## its ring meshes directly with a Mainspring's ring (one hop, within the link gap: an idler between them counts). Such a
+## building is linked last in the connection tree, hung on that Mainspring when there is one (so the drawn mesh and its
+## idler run between the two); spring_of holds its Mainspring. Without one it is idle (speed_mult 0) and shows NEEDS
+## MAINSPRING; the placement ghost says so too.
 
 const T := Defs.TILE
 const FY := Game.FIELD_Y
@@ -29,6 +35,7 @@ var ang := {}                    # Building -> its gear's angle now
 var version := 0                 # bumped when the connected set changes
 var idler_of := {}               # Building -> {"pos": gear space, "n": teeth, "r": pitch radius} between it and its parent
 var idler_ang := {}              # Building -> the angle of its idler now
+var spring_of := {}              # a connected Tension user (Defs.TENSION_USERS) -> the Mainspring its ring meshes with
 var _field := {}                 # team -> [[centre in gear space, radius px]] of the connected rings
 var _sig := -1
 var _solved_at := -10.0
@@ -152,11 +159,25 @@ func is_linked(b: Building) -> bool:
 	return linked.has(b)
 
 
-## Work speed of a Clockwork building: 0 while unconnected (or while its gear is being swapped), else 1.
+## Work speed of a Clockwork building: 0 while unconnected (or while its gear is being swapped, or, using Tension, while
+## its ring meshes with no Mainspring), else 1.
 func speed_mult(b: Building) -> float:
 	if not enforce or not Defs.gear_mode or b.d["faction"] != "clockwork" or not b.built or b.dead:
 		return 1.0
+	if Defs.TENSION_USERS.has(b.kind) and not spring_of.has(b):
+		return 0.0
 	return 1.0 if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
+
+
+## A Tension user's Mainspring (its ring meshing with this one's), null when it has none (or is not connected).
+func spring_for(b: Building) -> Building:
+	var m = spring_of.get(b)
+	return m if m != null and is_instance_valid(m) and not m.dead else null
+
+
+## A finished Clockwork building that uses Tension and is connected but meshes with no Mainspring: idle.
+func needs_spring(b: Building) -> bool:
+	return enforce and Defs.gear_mode and Defs.TENSION_USERS.has(b.kind) and b.built and not b.dead and linked.has(b) and spring_for(b) == null
 
 
 func _signature() -> int:
@@ -176,6 +197,7 @@ func solve() -> void:
 	parent_of = {}
 	order = []
 	_field = {}
+	spring_of = {}
 	if not Defs.gear_mode or game == null:
 		return
 	var list: Array = []
@@ -187,24 +209,55 @@ func solve() -> void:
 			gp.append(b_c(b))
 			rr.append(b_r(b))
 	var slack := float(Defs.GEAR["slack"]) * T
+	var touch := func(a: int, j: int) -> bool:
+		return (gp[a] as Vector2).distance_to(gp[j]) <= float(rr[a]) + float(rr[j]) + slack
 	var q: Array = []
 	for i in list.size():
 		if list[i].kind == "clocktower":
 			linked[list[i]] = true
 			q.append(i)
+	# Tension users wait until everything else reachable is linked, then each hangs on a linked Mainspring its ring
+	# touches if there is one (else on whatever found it first), and the search goes on from them
+	var deferred := {}          # index -> the index that found it first
 	var qi := 0
-	while qi < q.size():
-		var a: int = q[qi]
-		qi += 1
-		var ta: int = list[a].team
-		for j in list.size():
-			var bj: Building = list[j]
-			if bj.team != ta or linked.has(bj):
-				continue
-			if (gp[a] as Vector2).distance_to(gp[j]) <= float(rr[a]) + float(rr[j]) + slack:
-				linked[bj] = true
-				parent_of[bj] = list[a]
-				q.append(j)
+	while true:
+		while qi < q.size():
+			var a: int = q[qi]
+			qi += 1
+			var ta: int = list[a].team
+			for j in list.size():
+				var bj: Building = list[j]
+				if bj.team != ta or linked.has(bj) or deferred.has(j):
+					continue
+				if touch.call(a, j):
+					if Defs.TENSION_USERS.has(bj.kind):
+						deferred[j] = a
+						continue
+					linked[bj] = true
+					parent_of[bj] = list[a]
+					q.append(j)
+		if deferred.is_empty():
+			break
+		for j in deferred.keys():
+			var par: int = deferred[j]
+			for k in q:
+				if list[k].kind == "mainspring" and list[k].team == list[j].team and touch.call(k, j):
+					par = k
+					break
+			linked[list[j]] = true
+			parent_of[list[j]] = list[par]
+			q.append(j)
+		deferred.clear()
+	# the Tension rule: each connected Tension user's Mainspring (its parent, or one hanging on it)
+	spring_of = {}
+	for j in q:
+		if not Defs.TENSION_USERS.has(list[j].kind):
+			continue
+		for k in q:
+			if list[k].kind == "mainspring" and list[k].team == list[j].team and touch.call(k, j):
+				spring_of[list[j]] = list[k]
+				if parent_of.get(list[j]) == list[k]:
+					break
 	idler_of = {}
 	for i in q:
 		var b: Building = list[i]
@@ -248,6 +301,39 @@ func in_field(t: int, p: Vector2) -> bool:
 	return false
 
 
+## The cell for a building of `kind` whose ring meshes with `around`'s ring nearest to direction `deg` (screen degrees,
+## 0 = right, clockwise) from it: placeable, its ring links, the pitch-circle gap as small as possible (a direct mesh) and
+## the angle close. (-1, -1) when none. The Lab's showcase and the computer's Escapement (by its Mainspring) use it;
+## `unseen`: ground the player has not explored yet will do (the Lab's setup, the computer).
+static func ring_spot(game: Game, t: int, kind: String, around: Building, deg: float, unseen := false) -> Vector2i:
+	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var hc := b_c(around)
+	var hr := b_r(around)
+	var r := ring_r(kind, size, false)
+	var want := deg_to_rad(deg)
+	var best := Vector2i(-1, -1)
+	var bs := INF
+	var h0 := game.cell_of(around.center())
+	for y in range(h0.y - 14, h0.y + 15):
+		for x in range(h0.x - 14, h0.x + 15):
+			var c := Vector2i(x, y)
+			if not game.in_map(c):
+				continue
+			var g := gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
+			var gap := g.distance_to(hc) - hr - r
+			if gap < -float(Defs.GEAR["overlap"]) * T or gap > float(Defs.GEAR["slack"]) * T:
+				continue
+			var da := absf(angle_difference(want, (g - hc).angle()))
+			var score := absf(gap) + (0.0 if absf(gap) <= float(Defs.GEAR["mesh_tol"]) else 12.0) + da * 60.0
+			if score >= bs:
+				continue
+			if game.placement_problem(t, kind, c, unseen) != "" or not game.margin_free(c, size):
+				continue
+			best = c
+			bs = score
+	return best
+
+
 ## "" if a building of kind k may go at cell c for team t, else why not: its ring must touch the connected field and
 ## not cut into another ring (a Clocktower starts a field of its own).
 func placement_problem(t: int, k: String, c: Vector2i, big := false) -> String:
@@ -260,7 +346,9 @@ func placement_problem(t: int, k: String, c: Vector2i, big := false) -> String:
 	return ""
 
 
-## {"state": "ok" | "clash" | "far" | "tower", "with": the building it clashes with}
+## {"state": "ok" | "clash" | "far" | "tower", "with": the building it clashes with, or the linked one its ring would hang
+## on}; a Tension user (Defs.TENSION_USERS) that links also gets "spring": the finished Mainspring its ring would mesh with
+## (null: none, it would stand idle) and hangs on that one when it is linked.
 func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	if not enforce or not Defs.gear_mode or Defs.BUILDINGS[k]["faction"] != "clockwork" or k == "clocktower":
 		return {"state": "ok" if k != "clocktower" else "tower"}
@@ -274,6 +362,9 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	var best := INF
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
+	var tension := Defs.TENSION_USERS.has(k)
+	var spring: Building = null
+	var sbest := INF
 	for b in game.buildings:
 		if not is_instance_valid(b) or b.dead or b.team != t or b.d["faction"] != "clockwork":
 			continue
@@ -283,7 +374,27 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 		if gap <= slack and linked.has(b) and gap < best:
 			touch = b
 			best = gap
-	return {"state": "ok", "with": touch} if touch != null else {"state": "far"}
+		if tension and b.kind == "mainspring" and b.built and not b.ghost and gap <= slack and gap < sbest:
+			spring = b
+			sbest = gap
+	if touch == null:
+		return {"state": "far"}
+	var out := {"state": "ok", "with": touch}
+	if tension:
+		out["spring"] = spring
+		if spring != null and linked.has(spring):
+			out["with"] = spring        # (the ghost turns meshed with the Mainspring: that is the mesh that counts)
+	return out
+
+
+## "" when a Tension user placed at c would mesh with a Mainspring (or the kind needs none), else why it would stand idle.
+func spring_problem(t: int, k: String, c: Vector2i, big := false) -> String:
+	if not Defs.TENSION_USERS.has(k) or not enforce or not Defs.gear_mode:
+		return ""
+	var st := candidate(t, k, c, big)
+	if st["state"] == "ok" and st.get("spring") == null:
+		return "Its ring meshes with no Mainspring: it will stand idle. Place it right beside a Mainspring."
+	return ""
 
 
 # ------------------------------------------------------------------ ticking and drawing
@@ -456,6 +567,9 @@ func _draw_top() -> void:
 		elif b.gear_swap_t >= 0.0:
 			txt = "SWAPPING"
 			col = Color(0.95, 0.8, 0.4)
+		elif needs_spring(b):
+			txt = "NEEDS MAINSPRING"
+			col = Color(1.0, 0.72, 0.3)
 		if txt == "":
 			continue
 		_badge(font, b.rect().get_center() + Vector2(0, -b.rect().size.y * 0.5 - 14.0), txt, col)
@@ -484,6 +598,8 @@ func draw_ghost(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) ->
 	var centre := Vector2(c) * T + Vector2(size) * T * 0.5
 	var st := candidate(t, k, c, big)
 	var col: Color = ghost_colour(st["state"])
+	if st["state"] == "ok" and Defs.TENSION_USERS.has(k) and st.get("spring") == null:
+		col = ghost_colour("far")         # (it links, but no Mainspring: it would stand idle)
 	var n := ring_n(k, size, big)
 	var k_tint := 0.85 if st["state"] == "clash" else 0.55
 	var tint := Color(lerpf(1.0, col.r, k_tint), lerpf(1.0, col.g, k_tint), lerpf(1.0, col.b, k_tint), 0.8)
@@ -517,9 +633,17 @@ func draw_ghost_label(ci: CanvasItem, t: int, k: String, c: Vector2i, big := fal
 		return
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	var centre := Vector2(c) * T + Vector2(size) * T * 0.5
-	var state: String = candidate(t, k, c, big)["state"]
+	var st := candidate(t, k, c, big)
+	var state: String = st["state"]
 	var label: String = {"far": "NO LINK", "clash": "CLASH", "tower": "NEW FIELD"}.get(state, "LINKS")
 	var col := ghost_colour(state)
+	if state == "ok" and Defs.TENSION_USERS.has(k):
+		# a Tension user: it links, but works only meshed with a Mainspring
+		if st.get("spring") == null:
+			label = "NEEDS MAINSPRING"
+			col = ghost_colour("far")
+		else:
+			label = "MESHES MAINSPRING"
 	var font := ThemeDB.fallback_font
 	label = Loc.t(label)
 	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
