@@ -106,6 +106,10 @@ func _countdown(delta: float) -> void:
 	if countdown <= 0.0 or paused:
 		return
 	get_tree().paused = true
+	if game:
+		game.update_view_rect()         # (the game's tick keeps it current; it hasn't ticked yet)
+		if game.gear_net:
+			game.gear_net.held()        # (the ground gears stand drawn through the countdown, not popping in at GO)
 	if count_hold:
 		return
 	countdown -= delta
@@ -1723,7 +1727,7 @@ func _confirm_line(k: String, queued := false) -> void:
 func _pause_buttons() -> Array:
 	var vs := _vs()
 	var list: Array = [
-		{"label": "RESUME", "cb": func() -> void: set_paused(false)},
+		{"label": "BACK" if game.net else "RESUME", "cb": func() -> void: set_paused(false)},
 		{"label": "MUSIC", "slider": "music", "cb": func() -> void: pass},
 		{"label": "SOUND", "slider": "sound", "cb": func() -> void: pass},
 		{"label": "AMBIENCE", "slider": "ambience", "cb": func() -> void: pass},
@@ -1997,8 +2001,11 @@ func _draw_chat() -> void:
 
 
 func set_paused(v: bool) -> void:
-	if game and game.net and v:
-		toast("An online match can't be paused.")
+	if game and game.net:
+		# online: the MENU opens over the running match (nothing pauses), so SURRENDER and QUIT are always reachable
+		if v and not paused:
+			toast("Online: the match keeps running.", false)
+		paused = v
 		return
 	if v != paused and game and not game.demo:
 		Sfx.announce(game.faction_of(game.human), "paused" if v else "resumed", 1.0)
