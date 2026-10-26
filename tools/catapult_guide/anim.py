@@ -876,7 +876,7 @@ def main():
                 cups[DIRS[r]] = []
                 for i, (g, bob, mid) in enumerate(fr):
                     x = (mid[0] + PARTS[r]['win'][0] - ax) * GS + cell[2]
-                    y = (mid[1] + PARTS[r]['win'][1] - ay) * GS + cell[3]
+                    y = (mid[1] + PARTS[r]['win'][1] - ay) * GS + cell[3] + bob     # (the cup rides the jolt)
                     cups[DIRS[r]].append([round(x, 1), round(y, 1)])
                 st = payload_state(r, THROW[THROW_RELEASE + 1][1])
                 cups[DIRS[r] + '_fly'] = [round((st[1][0] + PARTS[r]['win'][0] - ax) * GS + cell[2], 1),
