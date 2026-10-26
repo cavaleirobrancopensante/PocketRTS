@@ -37,7 +37,7 @@ Fp=pad(F,NAVY); bodyp,lLp,lRp=pad(body,None),pad(legL,None),pad(legR,None)
 A=9.0; L=7.0
 fr=[]
 for c in range(6):
-    p=c/6.0
+    p=(-c/6.0)%1.0   # reversed: the stepping read as walking backwards
     sA=math.cos(2*math.pi*p)*A; lA=max(0.0,math.sin(2*math.pi*p))*L
     sB=-sA; lB=max(0.0,-math.sin(2*math.pi*p))*L
     bob=round(1.5*abs(math.cos(2*math.pi*p)))
