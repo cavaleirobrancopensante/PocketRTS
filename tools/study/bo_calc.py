@@ -157,7 +157,7 @@ class Sim:
         elif k == "feeding_pit":
             crew = 6 if b["placed"] == 0.0 else 7          # (the crew grows with the distance from the capital: Building.crew_max)
         elif k == "cog_press":
-            crew = int(DATA["gear"]["press"]["small"]["crew"])
+            crew = int(DATA["gear"]["press"]["big" if b.get("big") else "small"]["crew"])
         elif k == "mainspring":
             crew = int(B["mainspring"].get("crew", 3))
         if crew:
@@ -322,12 +322,15 @@ class Sim:
                 self.earned += v
             elif k == "cog_press":
                 g = DATA["gear"]["press"]
-                v = g["small"]["full"] * (g["base"] + (1.0 - g["base"]) * crew / g["small"]["crew"]) * dt
+                gs = g["big" if b.get("big") else "small"]
+                v = gs["full"] * (g["base"] + (1.0 - g["base"]) * crew / gs["crew"]) * dt
                 self.gold += v
                 self.earned += v
             elif k == "mainspring":
                 g = DATA["gear"]["mainspring"]
                 self.tension += g["full"] * (g["base"] + (1.0 - g["base"]) * crew / 3.0) * dt
+                if g.get("store"):        # (wt-econ: every Mainspring stores so much; winding stops at the cap)
+                    self.tension = min(self.tension, float(g["store"]) * self.count("mainspring", True))
 
     def _eggs(self, dt):
         mounds = min(3, self.count("clutch_mound", True))
@@ -363,6 +366,8 @@ class Sim:
         for p in self.prod:
             if not p["queue"]:
                 continue
+            if p["bld"].get("swap_until", -1.0) > self.t:
+                continue        # (a gear swap: the building idles meanwhile)
             if p["kind"] == self.hall and self.f == "brood":
                 # eggs hatch together
                 for q in list(p["queue"]):
@@ -433,7 +438,8 @@ class Sim:
 
     def place(self, kind):
         cost = int(B[kind]["cost"])
-        if self.gold < cost or not self.req_met(kind):
+        t2 = int(B[kind].get("tension", 0)) if self.f == "clockwork" else 0      # (wt-econ: buildings may cost Tension)
+        if self.gold < cost or self.tension < t2 or not self.req_met(kind):
             return None
         if self.f == "brood" and len(self.alive_workers()) <= 2 and kind != self.sup_kind:
             return None
@@ -441,6 +447,7 @@ class Sim:
         if w is None:
             return None
         self.gold -= cost
+        self.tension -= t2
         b = self._add_bld(kind, self.t)
         w["walk"] = False
         if self.f == "crown":
@@ -462,7 +469,10 @@ class Sim:
 
     def makers(self, kind):
         frm = U[kind]["from"] if kind != "dismounted" else "barracks"
-        return [p for p in self.prod if p["kind"] == frm and p["bld"]["built"]]
+        out = [p for p in self.prod if p["kind"] == frm and p["bld"]["built"]]
+        if U[kind].get("big_gear"):       # (the Pendulum: only a Works on its big gear, not while it swaps)
+            out = [p for p in out if p["bld"].get("big") and p["bld"].get("swap_until", -1.0) <= self.t]
+        return out
 
     def train(self, kind, step_i=None):
         """Queue one unit; True if it was."""
@@ -693,11 +703,35 @@ class Sim:
                 self.note(s)
                 return True
             return False
+        if s.startswith("gear:"):
+            parts = s.split(":")
+            kind = parts[1]
+            big = len(parts) < 3 or parts[2] != "small"
+            bl = [b for b in self.blds if b["kind"] == kind and b["built"]]
+            if not bl:
+                return False
+            b = bl[-1]
+            if bool(b.get("big")) == big:
+                self.note(s, round(self.t, 1))
+                return True
+            swap = int(DATA["gear"]["swap_cost"])
+            if self.gold < swap:
+                self.hold = swap
+                return False
+            self.gold -= swap
+            b["big"] = big
+            b["swap_until"] = self.t + float(DATA["gear"]["swap_time"])
+            if kind == "cog_press" and b["name"] in self.posts:
+                self.posts[b["name"]]["cap"] = int(DATA["gear"]["press"]["big" if big else "small"]["crew"])
+            self.note(s, round(b["swap_until"], 1))
+            return True
         if s.startswith("crew:"):
             _, kind, n = s.split(":")
             posts = [nm for nm, p in self.posts.items() if p["kind"] == kind and p["bld"]["built"]]
             if not posts:
                 return False
+            roomy = [nm for nm in posts if self._taken(nm) < min(int(n), self.posts[nm]["cap"])]
+            posts = roomy or posts      # (the first with room for the crew, as the scripted player picks)
             moved = 0
             for w in self.workers:
                 if moved >= int(n) - self._taken(posts[0]):
@@ -959,6 +993,36 @@ def vs(a_name, b_name, map_name):
         print("   (>1.5 the wave should win the fight, <0.67 it should lose; walls, range, bayonets, splash and micro are not in it)")
 
 
+## Named sets of "what if" changes (--preset). econ28: the Clockwork economy being built in the wt-econ worktree (its
+## 0.14.28, PROVISIONAL, not in the game yet): a Cog Press takes 6 Winders (big gear 12) for the same top rate, so a
+## Winder adds about what a Labourer adds on a Farm; every Mainspring stores 200 Tension (winding stops at the cap); the
+## Clock Aviary costs 150 cogs + 50 Tension. Its DRIVE rule (a building one ring away from the Clocktower or a Mainspring
+## works at 90%, two rings 80%...) is taken at its best case (100%: the computer's presses and Works mesh with the
+## Clocktower), and its placement rules (a Works makes Jacks only beside a Mainspring) are not modelled.
+PRESETS = {
+    "econ28": [("gear.press.small.crew", 6), ("gear.press.big.crew", 12), ("gear.mainspring.store", 200),
+               ("buildings.cuckoo_house.cost", 150), ("buildings.cuckoo_house.tension", 50)],
+}
+
+
+def apply_set(path, val):
+    """One what-if: DATA (or CAL with a cal. prefix) at the dotted path takes the value (a number when it reads as one)."""
+    keys = path.split(".")
+    root = CAL if keys[0] == "cal" else DATA
+    node = root
+    for k in (keys[1:-1] if keys[0] == "cal" else keys[:-1]):
+        node = node[k]
+    last = keys[-1]
+    old_v = node.get(last)
+    try:
+        num = float(val)
+        new_v = int(num) if (isinstance(old_v, int) and not isinstance(old_v, bool)) or (old_v is None and num == int(num)) else num
+    except (TypeError, ValueError):
+        new_v = val
+    node[last] = new_v
+    return old_v, new_v
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("build", nargs="?")
@@ -971,18 +1035,15 @@ def main():
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--set", action="append", default=[], metavar="PATH=VALUE",
                     help="try a change: units.spitter.cost2=0, buildings.warren.time=30, econ.FARM_BASE=0.25, cal.crown_walk=5")
+    ap.add_argument("--preset", choices=sorted(PRESETS), help="a named set of changes (econ28: the provisional Clockwork economy of wt-econ)")
     a = ap.parse_args()
+    for path, val in PRESETS.get(a.preset, []):
+        old_v, new_v = apply_set(path, val)
+        print("(preset %s: %s = %s, was %s)" % (a.preset, path, new_v, old_v))
     for kv in a.set:
         path, val = kv.split("=", 1)
-        keys = path.split(".")
-        root = CAL if keys[0] == "cal" else DATA
-        node = root
-        for k in keys[1:-1] if keys[0] == "cal" else keys[:-1]:
-            node = node[k]
-        last = keys[-1]
-        old_v = node.get(last)
-        node[last] = type(old_v)(float(val)) if isinstance(old_v, (int, float)) and not isinstance(old_v, bool) else val
-        print("(what if: %s = %s, was %s)" % (path, node[last], old_v))
+        old_v, new_v = apply_set(path, val)
+        print("(what if: %s = %s, was %s)" % (path, new_v, old_v))
     maps = [a.map] if a.map else ["kestrel_rise", "ashford_crossing", "frostmere"]
     maps = [m for m in maps if m in DATA["maps"]] or [m for m in DATA["maps"]][:3]
     if a.vs:

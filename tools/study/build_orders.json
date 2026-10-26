@@ -118,7 +118,7 @@
   {
    "name": "crown_cannon_push",
    "faction": "crown",
-   "label": "Crown 6: Cannon and Musketeer push",
+   "label": "Crown 6: Cannon and Musketeer push (the standard, then a timing attack)",
    "opening": "mill",
    "then": "timing",
    "steps": [
@@ -126,15 +126,16 @@
     "wall",
     "barracks",
     "powder_mill",
-    "mill:4",
-    "musketeer*",
-    "workers:12",
+    "mill:3",
     "farm",
+    "musketeer*3",
+    "workers:12",
     "horse_breeder",
     "foundry",
-    "workers:16",
+    "musketeer*",
+    "workers:14",
     "cannon*2",
-    "attack@14|420",
+    "attack@16|420",
     "end"
    ]
   },
@@ -175,7 +176,7 @@
   {
    "name": "brood_economy",
    "faction": "brood",
-   "label": "Brood 3: Economy (grubs first, Warren, Spitters)",
+   "label": "Brood 3: Economy (grubs first, two pits, Warren, then a big Raptor wave)",
    "then": "balanced",
    "steps": [
     "workers:10",
@@ -325,8 +326,12 @@
     "escapement",
     "clock_soldier*2",
     "cuckoo_house",
+    "mainspring",
+    "workers:13",
+    "crew:mainspring:3",
     "cuckoo*2",
     "research:owl_morph",
+    "clock_soldier*",
     "ratchet_turret",
     "cuckoo*2",
     "morph:3",
@@ -346,8 +351,33 @@
     "crew:mainspring:3",
     "escapement",
     "jack*",
-    "attack@8|300",
+    "movement_works",
+    "attack@10|300",
     "cog_press",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_pendulum_push",
+   "faction": "clockwork",
+   "label": "Clockwork 6: Pendulum and Netter push (tier 3)",
+   "then": "balanced",
+   "steps": [
+    "workers:7",
+    "cog_press",
+    "movement_works",
+    "mainspring",
+    "workers:10",
+    "crew:mainspring:3",
+    "escapement",
+    "clock_soldier*2",
+    "movement_works",
+    "gear:movement_works:big",
+    "pendulum*2",
+    "netter*1",
+    "clock_soldier*",
+    "pendulum*1",
+    "attack@24|480",
     "end"
    ]
   },

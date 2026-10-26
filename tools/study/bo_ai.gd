@@ -24,6 +24,8 @@ extends AI
 ##   upgrade             Brood: grow the capital a level (Warren, then Broodmound)
 ##   morph:N             Clockwork: N Swifts turn into Ticking Owls
 ##   crew:<kind>:N       send N workers to work that building (e.g. crew:mainspring:3)
+##   gear:<kind>:big     Clockwork: swap the newest finished building of that kind onto its big gear (or :small);
+##                       25 cogs, 4 s (the Pendulum is made only at a Movement Works on the big gear)
 ##   sacrifice:N         Brood: offer N Raptors at the Brood Pen for essence (3 each)
 ##   supply:auto|off     the computer's own supply buildings (default auto)
 ##   mill:N              Crown: N Labourers on the Powder Mill (else the computer's own rule: 3 while powder is short)
@@ -302,6 +304,8 @@ func _do(s: String) -> String:
 	if s.begins_with("crew:"):
 		var p := s.split(":")
 		return _do_crew(s, p[1], int(p[2]))
+	if s.begins_with("gear:"):
+		return _do_gear(s)
 	if s.contains("*"):
 		var p2 := s.split("*")
 		var key := String(p2[0])
@@ -401,11 +405,16 @@ func _do_build(kind: String) -> String:
 	var spot := _spot_for(kind)
 	if spot.x < 0:
 		_wait_fails[si] = int(_wait_fails.get(si, 0)) + 1
-		if Defs.TENSION_USERS.has(kind) and int(_wait_fails[si]) == 12 and _gold() >= cost + 140:
-			# (no room to mesh with the Mainspring we have: a second Mainspring out where there is room, as a player would)
+		var spring_cost := int(Defs.BUILDINGS["mainspring"]["cost"])
+		if Defs.TENSION_USERS.has(kind) and int(_wait_fails[si]) % 12 == 0 and _gold() >= spring_cost and not _busy_building("mainspring"):
+			# (no room to mesh with the Mainspring we have: a second Mainspring out where there is room, as a player would;
+			# looked for again every dozen thinks while the first stays boxed in)
 			var c2: Vector2i = game.find_spot(team, "mainspring", _halls()[0], 8, 22, "far_safe", true) if not _halls().is_empty() else Vector2i(-1, -1)
 			if c2.x >= 0 and _place("mainspring", c2) != null:
 				_log("mainspring (a second one: the first had no room for the %s)" % kind)
+		if Defs.TENSION_USERS.has(kind) and _busy_building("mainspring"):
+			_hold = cost
+			return "wait"       # (its new Mainspring is going up)
 		if int(_wait_fails[si]) > 90:
 			_log(kind + " (no spot: skipped)", -3.0)
 			return "done"
@@ -587,9 +596,8 @@ func _do_sacrifice(s: String, n: int) -> String:
 func _do_crew(s: String, kind: String, n: int) -> String:
 	var site: Building = null
 	for b in _mine(kind):
-		if b.built:
-			site = b
-			break
+		if b.built and (site == null or (site.crew.size() >= mini(n, site.crew_max()) and b.crew.size() < mini(n, b.crew_max()))):
+			site = b        # (the first finished one, or the first with room for the crew)
 	if site == null:
 		return "wait"
 	var sent := 0
@@ -601,6 +609,26 @@ func _do_crew(s: String, kind: String, n: int) -> String:
 		u.cmd_gather(site)
 		sent += 1
 	_log(s)
+	return "done"
+
+
+## Clockwork "gear:<kind>:big|small": the newest finished building of that kind onto that gear (Game.swap_gear).
+func _do_gear(s: String) -> String:
+	var p := s.split(":")
+	var kind := String(p[1])
+	var big := p.size() < 3 or String(p[2]) != "small"
+	var list: Array = _mine(kind).filter(func(b: Building) -> bool: return b.built)
+	if list.is_empty():
+		return "wait"
+	var b: Building = list[list.size() - 1]
+	if (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big) == big:
+		_log(s, game.clock)
+		return "done"
+	if game.gear_swap_problem(b) != "":
+		_hold = int(Defs.GEAR["swap_cost"])
+		return "wait"
+	game.swap_gear(b)
+	_log(s, game.clock + float(Defs.GEAR["swap_time"]))
 	return "done"
 
 

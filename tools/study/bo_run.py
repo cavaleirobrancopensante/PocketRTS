@@ -64,9 +64,10 @@ DUELS = [
     # Crown against Clockwork
     ("crown_horse_rush", "cw_jack_tech"), ("crown_musket_wall", "cw_soldier_rush"), ("crown_fast_expand", "cw_soldier_rush"),
     ("crown_balloon_drop", "cw_jack_tech"), ("cw_owl_harass", "crown_musket_wall"), ("crown_cannon_push", "cw_turret_expand"),
+    ("cw_pendulum_push", "crown_musket_wall"), ("cw_windup_swarm", "crown_musket_wall"),
     # Brood against Clockwork
     ("brood_xrush", "cw_turret_expand"), ("brood_xrush", "cw_jack_tech"), ("brood_economy", "cw_soldier_rush"),
-    ("brood_spitter_timing", "cw_jack_tech"),
+    ("brood_spitter_timing", "cw_jack_tech"), ("cw_pendulum_push", "brood_economy"),
     # mirrors
     ("crown_horse_rush", "crown_musket_wall"), ("brood_xrush", "brood_economy"), ("cw_soldier_rush", "cw_jack_tech"),
 ]
@@ -78,17 +79,19 @@ BIG_MAP = [   # (build, foe faction) also played on the big map: the openings wh
 
 
 def matrix_specs(a):
+    """In the order they are worth running (a stop part-way still leaves the most useful ones done): every build against
+    the ordinary computer of both other factions on the small map, the duels, the big map, then the computer's baseline."""
     specs = []
     small, big = MAPS2
     for name, b in BUILDS.items():
         for foe in FOE[b["faction"]]:
             specs.append((name, "ai:balanced", small, 11, 0, None, foe))
-    for fa, fb in (("crown", "brood"), ("crown", "clockwork"), ("brood", "clockwork")):
-        specs.append(("ai:balanced", "ai:balanced", small, 31, 0, fa, fb))
     for x, y in DUELS:
         specs.append((x, y, small, 21, 1, None, None))
     for name, foe in BIG_MAP:
         specs.append((name, "ai:balanced", big, 12, 1, None, foe))
+    for fa, fb in (("crown", "brood"), ("crown", "clockwork"), ("brood", "clockwork")):
+        specs.append(("ai:balanced", "ai:balanced", small, 31, 0, fa, fb))
     for fa, fb in (("crown", "brood"), ("crown", "clockwork"), ("brood", "clockwork")):
         specs.append(("ai:balanced", "ai:balanced", big, 32, 1, fa, fb))
     return specs
