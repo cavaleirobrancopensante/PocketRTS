@@ -7,9 +7,12 @@ anim.py's cut-out body, pendulum and hub.
 - The stride is 3D-ish: each row projects "forward" on screen (side view: across; front and back views: a little
   down or up; there the bones stretch or shorten along their length instead of turning).
 - The body dips when both feet are down (a heavy stomp; the same dip in every row, set by the side view), sways
-  over the standing leg, leans a little into the walk. The pendulum swings (smaller and slower than the attack) and
+  over the standing leg, leans a little into the walk. The pendulum swings side to side (slower than the attack) and
   drives the legs (owner, 2026-10-26): as it swings right the screen-left leg steps forward, as it swings left the
-  screen-right one (side view: swinging forward = the far leg steps, back = the near leg).
+  screen-right one. Seen from the side that swing goes towards us and away (owner: make it clear it goes all the way
+  to the other side): on the far side it is darker, shorter (tilted away) and drawn behind the legs; on our side it
+  is lit, longer and drawn in front of everything, and it comes to our side when the near leg is back, so it is
+  clear of the leg.
 Out: art/redraws/pendulum_walk.png/.gif (5 rows x 8 frames, cells 204 x 307 like pendulum_idle.png)."""
 import math, numpy as np
 from PIL import Image
@@ -20,7 +23,9 @@ A_STEP=45.0      # a foot travels +-A_STEP px forward/back of the hip (side view
 LIFT=19.0        # how high the stepping foot lifts
 HEEL=10.0        # a foot lands heel first, toe up (deg, side view)
 PUSH=14.0        # and pushes off with its heel lifted (deg)
-SWING=14.0       # the pendulum's swing while walking (deg; the attack goes to 62)
+SWING=22.0       # the pendulum's swing while walking (deg; the attack goes to 62)
+SIDE_DEPTH=0.55  # side view: how much a pendulum swung towards us drops on screen (and one swung away rises)
+FAR_DARK=0.38    # side view: how much darker it gets on the far side
 LEAN=2.5         # body leans into the walk (side view, deg)
 ROCK=3.0         # body sways over the standing leg (front view, px)
 ROLL=1.5         # and tilts with it (deg)
@@ -89,8 +94,11 @@ for r in range(5):
         legs.append(dict(hip=(hx,hy),knee=(kx,ky),ankle=(ax,float(ay)),sole=(float(bxs.mean()),float(sy)),heel=heel,toe=toe,
                          thigh=img(thigh),shin=img(shin),foot=img(foot),hipball=img(lm&hipd)))
     body=B.copy(); body[...,3]=rest*255
+    ha=np.array(R['hub'])[...,3]>0; px=int(round(R['pivot'][0]))
+    hb=np.nonzero(ha[:,max(0,px-2):px+3].any(1))[0]          # the rod shows from under the hub's bottom edge
     LEGDATA.append(dict(body=padded(Image.fromarray(body,'RGBA'),W,H),legs=legs,size=(W,H),
-                        piece=padded(R['piece'],W,H),hub=padded(R['hub'],W,H)))
+                        piece=padded(R['piece'],W,H),hub=padded(R['hub'],W,H),
+                        rodtop=float(hb.max()) if len(hb) else R['pivot'][1]))
 
 def foot(q):
     """forward offset, lift and foot turn (deg, + = toe down) of a foot at gait phase q: 0 = lands in front on its
@@ -195,15 +203,28 @@ def frame(r,q):
                place(L['hipball'],L['hip'],hip_s,Mb)]
         for p in parts: cv.alpha_composite(shade(p,dark) if dark else p)
     hub=body_pt(R['pivot'])
-    theta=PSIGN[r]*SWING*math.cos(2*math.pi*q)        # PIL sense: + = the bob goes right
-    pend=place(D['piece'],R['pivot'],hub,rotm(math.radians(-theta)))
+    if r==2:
+        # side view: the swing is towards us (+) and away (-); our side when the near (right) leg is back (q=0.5)
+        lat=-math.radians(SWING)*math.cos(2*math.pi*q); sl=math.sin(lat)
+        M=np.array([[1+0.06*sl,0.0],[0.0,math.cos(lat)+SIDE_DEPTH*sl]])
+        # stretch it from where the rod comes out under the body (the body keeps the rod's top: no gap opens)
+        top=(R['pivot'][0],D['rodtop']); pend=place(D['piece'],top,body_pt(top),M)
+        if sl<0: pend=shade(pend,1-FAR_DARK*(-sl/math.sin(math.radians(SWING))))
+        depth=sl/math.sin(math.radians(SWING))
+    else:
+        theta=PSIGN[r]*SWING*math.cos(2*math.pi*q)        # PIL sense: + = the bob goes right
+        pend=place(D['piece'],R['pivot'],hub,rotm(math.radians(-theta)))
     bodyimg=place(D['body'],piv,(piv[0]+bx,piv[1]+bob),Mb)
     hubimg=place(D['hub'],piv,(piv[0]+bx,piv[1]+bob),Mb)
     order=sorted(range(len(legs)),key=lambda i:legs[i]['hip'][1])     # the higher hip is further away
     if r==2:
+        if depth<-0.3: cv.alpha_composite(pend)                          # away from us: behind everything
         draw_leg(legs[0],q+0.5,FAR_OFF,FAR_SHADE)                        # the far (left) leg
-        cv.alpha_composite(bodyimg); cv.alpha_composite(pend); cv.alpha_composite(hubimg)
+        cv.alpha_composite(bodyimg)
+        if -0.3<=depth<=0.3: cv.alpha_composite(pend)                     # in the middle: between the legs
+        cv.alpha_composite(hubimg)
         draw_leg(legs[0],q)
+        if depth>0.3: cv.alpha_composite(pend); cv.alpha_composite(hubimg)   # on our side: in front of the leg
     elif BEHIND[r]:
         cv.alpha_composite(pend)
         for i in order: draw_leg(legs[i],phases[i])
