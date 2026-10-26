@@ -22,14 +22,23 @@ Defs.JACK "tips".
                                 the body is flung off); the last frame is the corpse
 
 Per frame: key out the navy (tolerance 40), keep the figure (its big pieces and its bright small ones: the winding key,
-gears and screws flying off), shrink to game size (the S idle as tall as the Clock Soldier's S idle), snap the team reds
-to the shader's key reds.
+gears and screws flying off), the Clockwork palette (tools/cw_palette.py), shrink to game size (the S idle as tall as the
+Clock Soldier's S idle), snap the team reds to the shader's key reds.
+
+PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): BRASS + PLAYER COLOUR. The
+Jack's red body stays player colour and its two blue ball SHOULDERS become player colour; its steel stays steel: the coil
+spring, the inner arm segments and the drill tips (cw_palette.blue_parts, the Jack's rule: only the deep-blue balls fixed
+to the red body are paint), greyed toward steel where a sheet paints them bluer than the older ones (the two-launcher
+sheet's drill tips).
   python3 tools/import_jack.py"""
 import json
 import os
+import sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cw_palette
 
 SRC = 'art/redraws/'
 DST = 'assets/units/jack/'
@@ -37,8 +46,6 @@ DIRS = ['s', 'se', 'e', 'ne', 'n']
 NAVY = np.array([0, 22, 48])
 TOL = 40
 SOLDIER_S_H = 59        # px: the Clock Soldier's S idle in game (assets/units/clock_soldier/idle_s.png)
-TEAM_LIGHT = (255, 0, 0)
-TEAM_DARK = (150, 0, 0)
 # anim: (file, rows in the sheet, columns, how the frames are found, how they are aligned)
 SHEETS = {
     'idle': ('jack_idle.png', 6, 4, 'foot'),
@@ -153,17 +160,6 @@ def shrink(img, scale):
     return out
 
 
-def snap_team(img):
-    """Team-coloured parts (the red box) -> exact key reds the shader recolours (tools/import_art.py). Its dark shading
-    (down to r 60: the corpse lies in shadow) goes to the dark key too, so no red patches stay on another team's colour."""
-    r, g, b = img[..., 0].astype(int), img[..., 1].astype(int), img[..., 2].astype(int)
-    red = (img[..., 3] > 0) & (r >= 60) & (g <= r * 0.3) & (b <= r * 0.35)
-    light = red & (r >= 175)
-    img[light, :3] = TEAM_LIGHT
-    img[red & ~light, :3] = TEAM_DARK
-    return img
-
-
 def main():
     frames = {}       # (anim, dir) -> [(rgba, ax, ay)]
     recoil = {}       # (anim, dir) -> (dx, dy) sheet px of the body kick on the shot frame
@@ -238,10 +234,11 @@ def main():
         strip = np.zeros((ch, cw * len(fl), 4), np.uint8)
         for i, (o, ax, ay) in enumerate(fl):
             # the source on a canvas cw/scale x ch/scale with its anchor at (half, up)/scale, then shrunk to cw x ch
+            o = cw_palette.recolour(o, 'jack')      # (after the anchors: they look for the coil spring)
             big = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
             big.paste(Image.fromarray(o, 'RGBA'), (int(round(half / scale - ax)), int(round(up / scale - ay))))
             s = shrink(np.array(big), cw / BW)[:ch, :cw]
-            s = snap_team(s)
+            s = cw_palette.snap_team(s)
             strip[:s.shape[0], i * cw:i * cw + s.shape[1]] = s
         Image.fromarray(strip, 'RGBA').save(DST + '%s_%s.png' % (anim, d))
     print('jack: scale %.3f, cell %dx%d, anchor (%d, %d)' % (scale, cw, ch, half, up))

@@ -29,21 +29,26 @@ swing, the recoil). Death rows: every frame gets the shift of that row's FIRST f
 body over the anchor), so the fall plays as drawn and nothing jumps when the death starts.
 
 Per frame: key out the navy (tolerance 40), keep the figure (its big pieces and the bright small ones: cogs and bolts
-flying off), shrink to game size (the Pendulum's idle S PEND_H px tall, the Netter's walk S NETTER_W px wide), snap the
-team reds to the shader's key reds.
+flying off), the Clockwork palette (tools/cw_palette.py), shrink to game size (the Pendulum's idle S PEND_H px tall, the
+Netter's walk S NETTER_W px wide), snap the team reds to the shader's key reds.
+
+PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): BRASS + PLAYER COLOUR. The
+Pendulum's red case and legs stay player colour and its blue ball joints become player colour; its blade is steel. The
+Netter's red bands stay player colour; its blue ball joints and the blue spring on its cannon become player colour; its
+drum's iron and the chain mesh in its window stay as painted.
   python3 tools/import_tier3.py [preview.png]"""
 import os
 import sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cw_palette
 
 SRC = 'art/redraws/'
 DIRS = ['s', 'se', 'e', 'ne', 'n']
 NAVY = np.array([0, 22, 48])
 TOL = 40
-TEAM_LIGHT = (255, 0, 0)
-TEAM_DARK = (150, 0, 0)
 PEND_H = 82.0          # px: the Pendulum's S idle in game (the Winder 43, the Clock Soldier 59, a Brute 65): a tall tower
 NETTER_W = 62.0        # px: the Netter's S walk (a wide, low drum; the Jack is ~50 wide)
 PEND_GROUND = 297      # the ground line in the Pendulum's code-built cells (the unit box bottom CH - 8, its crop pad 2)
@@ -151,16 +156,6 @@ def soft_shrink(img, scale):
     return out
 
 
-def snap_team(img):
-    """Team-coloured parts -> exact key reds the shader recolours (tools/import_clock_soldier.py)."""
-    r, g, b = img[..., 0].astype(int), img[..., 1].astype(int), img[..., 2].astype(int)
-    red = (img[..., 3] > 0) & (r >= 100) & (g <= r * 0.3) & (b <= r * 0.32)
-    light = red & (r >= 175)
-    img[light, :3] = TEAM_LIGHT
-    img[red & ~light, :3] = TEAM_DARK
-    return img
-
-
 # ------------------------------------------------------------------ slicing
 
 def grid_cells(path, rows, cols, cw, ch, y0s=None):
@@ -239,10 +234,11 @@ def place_all(frames, scale, kind, soft=False):
         for i, (o, ax, ay, s) in enumerate(fl):
             k = scale * s                 # this frame's px -> game px
             BW, BH = int(round(cw / k)), int(round(ch / k))
+            o = cw_palette.recolour(o, kind)      # (after the anchors: case_x looks for the red case)
             big = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
             big.paste(Image.fromarray(o, 'RGBA'), (int(round(half / k - ax)), int(round(up / k - ay))))
             sm = shrink(np.array(big), cw / BW)[:ch, :cw]
-            sm = snap_team(sm)
+            sm = cw_palette.snap_team(sm)
             strip[:sm.shape[0], i * cw:i * cw + sm.shape[1]] = sm
         strips[(anim, d)] = strip
         Image.fromarray(strip, 'RGBA').save(dst + '%s_%s.png' % (anim, d))

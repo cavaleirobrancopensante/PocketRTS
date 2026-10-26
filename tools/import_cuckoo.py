@@ -25,7 +25,12 @@ IT ON THE BODY: every frame of a direction is shifted so its body (the red case 
 from the front the dial splits the red in two) lies best on the fly loop's first frame's (overlap), so nothing jitters; the motion of the lunge, the swoop, the bob and the fall is the game's (code), not the
 drawing's. The anchor (the unit's point) is the bottom of the figure under the body on the first fly frame: the game
 lifts it to the flyers' height over its shadow. The wreck frames (death 5-6) sit with their middle on the anchor (on the
-ground). Shrink to game size (a wingspan of SPAN px with the wings level), snap the team reds to the shader's key reds.
+ground). The Clockwork palette (tools/cw_palette.py), shrink to game size (a wingspan of SPAN px with the wings level),
+snap the team reds to the shader's key reds.
+
+PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): BRASS + PLAYER COLOUR. The red
+body cases stay player colour; the blue parts become player colour (the Swift's wing-root joints and eyes, the Owl's
+blue-and-white wing-root springs); the brass wings, the white dials and the Owl's iron weight stay as painted.
   python3 tools/import_cuckoo.py [preview.png]"""
 import json
 import os
@@ -33,13 +38,13 @@ import sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cw_palette
 
 SRC = 'art/redraws/'
 NAVY = np.array([0, 22, 48])
 TOL = 40
 DIRS = ['s', 'se', 'e', 'ne', 'n']
-TEAM_LIGHT = (255, 0, 0)
-TEAM_DARK = (150, 0, 0)
 UP = 1.0 / 0.85          # the owl's swoop, bomb and death sheets were drawn at 0.85 of its fly sheet
 
 # kind: the wingspan in game px of the level-wing fly frame (S view), and its sheets: anim -> (file, columns, scale up to the
@@ -229,16 +234,6 @@ def shrink(img, scale):
     return out
 
 
-def snap_team(img):
-    """The red body -> the exact key reds the shader recolours (light and dark; its dark shading to the dark key)."""
-    r, g, b = img[..., 0].astype(int), img[..., 1].astype(int), img[..., 2].astype(int)
-    red = (img[..., 3] > 0) & (r >= 60) & (g <= r * 0.3) & (b <= r * 0.35)
-    light = red & (r >= 175)
-    img[light, :3] = TEAM_LIGHT
-    img[red & ~light, :3] = TEAM_DARK
-    return img
-
-
 def weight_centre(o, main):
     """The pendulum weight under the owl: the dark grey ball at the bottom of the main figure. Its centre in crop px."""
     r, g, b = o[..., 0].astype(int), o[..., 1].astype(int), o[..., 2].astype(int)
@@ -356,10 +351,11 @@ def import_kind(kind, info, preview):
         for i, (o, ax, ay, up) in enumerate(fl):
             s = scale * up            # this sheet's px -> game px
             BW, BH = int(round(cw / s)), int(round(ch / s))
+            o = cw_palette.recolour(o, kind)      # (after the alignment: it looks for the red body)
             big = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
             big.paste(Image.fromarray(o, 'RGBA'), (int(round(half / s - ax)), int(round(up_px / s - ay))))
             sm = shrink(np.array(big), cw / BW)[:ch, :cw]
-            sm = snap_team(sm)
+            sm = cw_palette.snap_team(sm)
             strip[:sm.shape[0], i * cw:i * cw + sm.shape[1]] = sm
         strips[(anim, d)] = strip
         names = ['idle', 'walk'] if anim == 'fly' else [anim]
