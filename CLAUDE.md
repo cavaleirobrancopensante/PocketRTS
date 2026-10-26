@@ -12,6 +12,7 @@
 
 - UI: a small music player (next track, a list of all songs to pick) inside the in-game MENU, skirmish and online (the zoom bar is already off the minimap). In progress with the online MENU work (wt-online); an older start is on branch worktree-agent-afc321a811e072d5a.
 - BUG: a labourer leading a horse from the Breeder to the recruit gets stuck / has pathfinding trouble (seen in 0.12.9 playtests).
+- BUG: limbered guns (cannon/mortar with horses) clip through walls and jam at gates, wall ends and cliff blocks; horses bought for a rider or gun walk into the building and vanish. Both fixes were left unmerged (branches fix-limber-gate-wip, fix-horse-vanish-wip on origin); being ported onto main as branch fix-guns-horses.
 - Lag: units ~360 ms/s late game, hud/selection 45-110 ms/s and hud draw ~120 ms/s on the tablet profile, command card rebuilt 18x/s, fog/units, one 12 s frame in a long match. (branch worktree-agent-a4e52e95e6eea66eb)
 - AI: Crown lost ALL workers at ~6:00 in a Greenhold game (supply 0/60, workers 0) after Raptors counterattacked: check the "workers pitch in when army < 3" defence and escort workers; real attackers still pull every worker.
 - AI: Brood AI on Rush built no army by 4:30 after the capital/income nerf (all grubs): check rush AI under the halved income. (The Crown no longer walls late: see the wall work below.)
