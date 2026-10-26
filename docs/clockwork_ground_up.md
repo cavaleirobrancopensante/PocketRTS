@@ -28,3 +28,6 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Ticks and chimes: a rhythm, with benefits for following it, but NEVER punishing (missing the timing must not lose the game).
 - Winding and running down: possibly a massive winder, like the Crown's powder wagon, a logistics unit that keeps the army fighting longer (still to decide).
 - Time effects: slow fields yes; NO haste (Stim Pack danger); a specialised unit that stops ONE unit (like the Ghost's Lockdown in StarCraft 1).
+- Winders are needed because a mindless machine can't tune itself: a cog press turns and pays a small trickle by itself (like a farm with nobody on it), and each Winder who keeps the mesh tight adds the same amount, up to a limit. Income is per second, not a bar that fills.
+- Cog sizing: ONE connecting gear per building, small or big. Small = turns fast, works faster, fewer Winders. Big = turns slow, more torque, more Winders and more at full crew. Visible on the ground (small gears visibly spin faster). The player may swap a building's gear later for a small cost.
+- Units: aim at the Protoss roster as a scaffold (not to copy everything, only something to aim for). Clock Soldier (Zealot-like basic melee): sword is a clock hand, shield is a pocket-watch cover. Cuckoo is a flying unit.
