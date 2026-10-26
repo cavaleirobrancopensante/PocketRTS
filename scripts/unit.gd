@@ -4029,6 +4029,10 @@ func _leave_mine() -> void:
 	if home_mine and is_instance_valid(home_mine):
 		if home_mine is Building:
 			(home_mine as Building).crew.erase(self)
+	_mill_in = false              # (out of a Powder Mill's yard work: Game.separation shoves him again)
+	_mill_site = null
+	_mill_shed = []
+	_mill_walking = false
 
 
 ## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
@@ -4070,9 +4074,9 @@ func _gather(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if kind == "labourer" and site.kind == "farm":
 		return _farm(site, delta)
+	if kind == "labourer" and site.kind == "powder_mill":
+		return _mill_work(site, delta)
 	if work == "manning":
-		if kind == "labourer" and site.kind == "powder_mill":
-			return _mill_work(site, delta)
 		facing = (site.center() - position).normalized()
 		return Vector2.ZERO
 	work = "to_site"
@@ -4085,33 +4089,61 @@ func _gather(delta: float) -> Vector2:
 	return _follow(delta)
 
 
-## The Powder Mill: a real workflow. Each labourer walks to one of the three heaps (saltpetre,
-## sulphur, charcoal: the heap centres in art/redraws/powder_mill_shed.png as imported by
-## tools/import_mill_chatgpt.py: sprite columns 20, 31, 47 less the base column 62) under the
-## lean-to, DIGS and LIFTS a shovelful (shovel strips: dig, lift, swing, tip; 4 frames a load, a
-## load per heap), WALKS carrying the loaded shovel (walk_shovel strips) along the strip of
-## ground in front of the shed to the hopper on the right, TIPS it in (swing, tip) and walks back
-## (a lane further out) to the next heap, forever. All of it is manning: the powder the mill
-## grinds only counts the crew at work (Building.working_crew), not where they stand, so the
-## output is the same however they walk. The six are staggered (a different start phase, two
-## lanes per heap and per tipping spot, a slightly different dig time, a lane out and a lane
-## back) and soft separation does the rest.
-const MILL_PILE_DX := [-42.0, -31.0, -15.0]     # (the hopper's mouth is at column 72, row 65: +10, -42 from the base point)
-const MILL_HOPPER_DX := [2.0, 14.0, 26.0]       # three tipping spots in front of the hopper, from the footprint's middle (mouth: +10)
-const MILL_STAND_DY := 2.0
-const MILL_TIP_DY := 6.0                        # (the tipping spots stand a little further out than the heaps' stations)
-const MILL_LANE_OUT := 14.0                     # the carry lane's distance below the footprint's front edge
-const MILL_LANE_BACK := 26.0                    # the way back, further out
+## The Powder Mill: a real workflow, in the mill's own WORK YARD (Building.MILL_YARD: the front
+## row of its footprint, walkable, nothing is built on it), so no neighbour, wall or cliff can
+## block it. Each labourer walks to one of the three heaps (saltpetre, sulphur, charcoal: the heap
+## centres in art/redraws/powder_mill_shed.png as imported by tools/import_mill_chatgpt.py:
+## sprite columns 21, 32, 49 less the base column 62) under the lean-to, DIGS and LIFTS a
+## shovelful (shovel strips: dig, lift, swing, tip; 4 frames a load, a load per heap), WALKS
+## carrying the loaded shovel (walk_shovel strips) along the front of the yard to the hopper,
+## TIPS it in (swing, tip) and walks back to the next heap, forever. All of it is manning: the
+## powder the mill grinds only counts the crew at work (Building.working_crew), not where they
+## stand, so the output is the same however they walk.
+## Six men in a yard three tiles by one: each heap and each of the three tipping spots has two
+## places (MILL_DIG_AT, MILL_TIP_AT: no two nearer than 5 px), and each man takes the heap,
+## and the tipping spot, that the fewest of the others hold, at the place there nobody holds
+## (_mill_pick); they dig at the heaps' feet, behind the two lanes the walkers use. They don't
+## shove each other there (Game.separation: shoving in a yard this small only pushed men off
+## their places and dragged walkers along): they pass close by, and a man who comes up right
+## behind another going the same way drops back behind him (_mill_pace) instead of walking on
+## top of him. A leg that makes no headway for MILL_STALL s ends where he is, so nobody walks
+## on the spot with a frozen stride. A man outside the yard walks in by its open
+## side (the pathfinder); when neighbours shut the yard in on every side he goes up to the shed
+## and in through it (_mill_shed_way); only a mill with no free ground round it at all is worked
+## from outside, the shovel going round where he stands.
+## Places are from the base point (the footprint's front middle), x right and y down: the yard
+## is y -32..0 (a man's middle stays 3.3 px inside it), the sprite's row 107 is y 0.
+const MILL_PILE_DX := [-40.0, -30.0, -13.0]     # the heaps' columns (21, 32, 49 in the sprite)
+const MILL_DIG_AT := [[Vector2(-42.0, -10.0), Vector2(-36.5, -10.0)], [Vector2(-30.5, -10.0), Vector2(-24.5, -10.0)],
+	[Vector2(-18.0, -9.5), Vector2(-10.0, -9.5)]]          # (two places a heap, at its foot under the lean-to's eaves)
+const MILL_TIP_AT := [[Vector2(-3.0, -16.0), Vector2(1.0, -20.0)], [Vector2(6.0, -23.0), Vector2(9.0, -18.0)],
+	[Vector2(13.0, -21.0), Vector2(15.0, -16.0)]]          # (three spots before the hopper's legs, staggered; its mouth: column 72, row 65)
+const MILL_MOUTH := Vector2(10.0, -42.0)        # (he tips facing it)
+const MILL_LANE_OUT := -3.5                     # the carry lane, along the yard's front edge
+const MILL_LANE_BACK := -5.5                    # the way back, a step further in (both well in front of the diggers)
+const MILL_TAIL := 7.0                          # a crew man walking the same way this close ahead: he drops back (_mill_pace)
+const MILL_CREEP := 12.0
+const MILL_STALL := 0.4                         # a leg with no headway this long ends where he is
 const MILL_CYCLE := 2.0                         # dig + tip time (the walks come on top)
 const MILL_STEP_ENDS := [0.7, 1.05, 1.35]      # dig, lift, swing end here; tip to MILL_CYCLE
 var _mill_k := -1                               # the heap he works (the load's colour)
+var _mill_j := 0                                # the tipping spot he takes
+var _mill_slot := 0                             # which of the two places at his heap / spot he takes
 var _mill_t := 0.0                              # 0..1.05 digging and lifting, 1.05..MILL_CYCLE swinging and tipping
 var _mill_walking := false
 var _mill_ph := 3                               # 0 dig at the heap, 1 carry to the hopper, 2 tip, 3 back to a heap
 var _mill_route: Array = []                     # the waypoints still to walk
 var _mill_site: Building = null
-var _mill_leg_t := 0.0                          # time on this leg (no leg lasts for ever)
+var _mill_in := false                           # at work in the yard (Game.separation: the crew there don't shove each other)
+var _mill_best := INF                           # this leg's closest approach to its waypoint so far
+var _mill_stall := 0.0                          # time without headway on this leg
 var _mill_first := true
+var _mill_look_t := 0.0                         # outside: the way in is looked at again when this runs out
+var _mill_path_t := 0.0                         # (and a new path asked for at most this often)
+var _mill_gate := Vector2.INF                   # the yard shut in: the free cell beside the shed he goes in from
+var _mill_gate_way: Array = []                  # and from there through the shed into the yard
+var _mill_shed: Array = []                      # the way through the shed still to walk
+var _mill_edge := false                         # no free ground round the mill at all: he works from outside
 
 
 static func mill_step(t: float) -> int:
@@ -4121,31 +4153,100 @@ static func mill_step(t: float) -> int:
 	return MILL_STEP_ENDS.size()
 
 
-func _mill_lane(site: Building) -> float:
-	return 3.0 if site.crew.find(self) % 2 == 1 else -3.0
+## The base point of a mill on footprint `r` (its front middle), where the places are from.
+static func mill_base(r: Rect2) -> Vector2:
+	return Vector2(r.get_center().x, r.end.y)
 
 
+## Place `slot` (0, 1) to dig at heap k in the yard of a mill on footprint `r`.
+static func mill_heap_spot(r: Rect2, k: int, slot := 0) -> Vector2:
+	return mill_base(r) + Vector2(MILL_DIG_AT[k][slot])
+
+
+## Place `slot` at tipping spot j before the hopper.
+static func mill_tip_spot(r: Rect2, j: int, slot := 0) -> Vector2:
+	return mill_base(r) + Vector2(MILL_TIP_AT[j][slot])
+
+
+## Where he digs at heap k.
 func mill_station(site: Building, k: int) -> Vector2:
-	var r := site.rect()
-	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_PILE_DX[k]) + _mill_lane(site), r.end.y + MILL_STAND_DY)
+	return mill_heap_spot(site.rect(), clampi(k, 0, 2), _mill_slot)
 
 
-## Where he stands to tip into the hopper (one of three spots, by his place in the crew).
+## Where he stands to tip into the hopper (his place at his tipping spot).
 func mill_hopper_station(site: Building) -> Vector2:
-	var r := site.rect()
-	var i := maxi(site.crew.find(self), 0) % 3
-	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_HOPPER_DX[i]) + _mill_lane(site), r.end.y + MILL_TIP_DY)
+	return mill_tip_spot(site.rect(), _mill_j, _mill_slot)
 
 
-## The legs of the round: out from heap k to the hopper along the near lane, back from the
-## hopper to heap k along the far one (a waypoint on blocked ground is left out).
+## His next heap (tip false) or tipping spot (tip true): of the three, the one the fewest of the
+## others at work in the yard hold right now (going there or working there), `first` first, then
+## on in turn; and the place there that is free (two share a heap at the most: six men, three
+## heaps, three spots, two places each).
+func _mill_pick(site: Building, tip: bool, first: int) -> int:
+	var held := [0, 0, 0]
+	var taken := [0, 0, 0]          # bit 1: its first place is held, 2: its second
+	for o in site.crew:
+		if o == self or not is_instance_valid(o) or o.dead or not o._mill_in or o._mill_site != site:
+			continue
+		var o_tip: bool = o._mill_ph == 1 or o._mill_ph == 2
+		var at: int = o._mill_j if o_tip else o._mill_k
+		if o_tip != tip or at < 0 or at > 2:
+			continue
+		held[at] += 1
+		taken[at] |= 1 << clampi(o._mill_slot, 0, 1)
+	var best := posmod(first, 3)
+	for n in 3:
+		var c := (first + n) % 3
+		if held[c] < held[best]:
+			best = c
+	match int(taken[best]):
+		1:
+			_mill_slot = 1
+		2:
+			_mill_slot = 0
+		_:
+			_mill_slot = maxi(site.crew.find(self), 0) % 2
+	return best
+
+
+## How fast he may walk (INF: his own pace). Another of the crew walking the same way close
+## ahead of him sets it: he keeps a little slower and drops back behind him (they don't shove
+## each other in the yard, and two walking together would be drawn on top of each other). Of
+## two level with each other the later man drops back, faster, so two men slowed by the same
+## man ahead don't walk on together. Never below MILL_CREEP: he never stands still on the spot.
+func _mill_pace(site: Building, dir: Vector2) -> float:
+	var cap := INF
+	for o in site.crew:
+		if o == self or not is_instance_valid(o) or o.dead or not o._mill_in or not o._mill_walking:
+			continue
+		var rel: Vector2 = o.position - position
+		if rel.length() >= MILL_TAIL or o.facing.dot(dir) < 0.3:
+			continue
+		var ahead := rel.dot(dir + o.facing)
+		var theirs := maxf(o.velocity.dot(dir), 0.0)
+		if ahead > 0.5:
+			cap = minf(cap, theirs * 0.8)
+		elif ahead > -0.5 and o.get_instance_id() < get_instance_id():
+			cap = minf(cap, theirs * 0.5)
+	return maxf(cap, MILL_CREEP) if cap < INF else INF
+
+
+## The way from where he is to his heap (out false) or tipping spot (out true): onto the lane
+## (the carry lane along the yard's front, the way back a step further in), along it, and to the
+## spot; inside the yard, all of it.
 func _mill_walk_route(site: Building, out: bool) -> Array:
 	var r := site.rect()
-	var heap := mill_station(site, _mill_k)
-	var hop := mill_hopper_station(site)
+	var goal := mill_hopper_station(site) if out else mill_station(site, _mill_k)
 	var ly := r.end.y + (MILL_LANE_OUT if out else MILL_LANE_BACK)
-	var pts: Array = [Vector2(heap.x if out else hop.x, ly), Vector2(hop.x if out else heap.x, ly), hop if out else heap]
-	return pts.filter(func(p: Vector2) -> bool: return game.is_free(game.cell_of(p)))
+	var pts: Array = []
+	if absf(position.y - ly) > 2.0 and absf(position.x - goal.x) > 4.0:
+		pts.append(Vector2(position.x, ly))
+	if absf(goal.x - position.x) > 4.0:
+		pts.append(Vector2(goal.x, ly))
+	pts.append(goal)
+	_mill_best = INF
+	_mill_stall = 0.0
+	return pts
 
 
 func _mill_snd() -> void:
@@ -4154,72 +4255,222 @@ func _mill_snd() -> void:
 
 func _mill_work(site: Building, delta: float) -> Vector2:
 	var idx := maxi(site.crew.find(self), 0)
-	if _mill_site != site or _mill_k < 0:
+	if _mill_site != site:
 		_mill_site = site
-		_mill_k = idx % 3
+		_mill_in = false
+		_mill_k = -1
 		_mill_ph = 3
 		_mill_route = []
+		_mill_shed = []
+		_mill_gate = Vector2.INF
 		_mill_first = true
-		_mill_leg_t = 0.0
-	var heap := mill_station(site, _mill_k)
-	var hop := mill_hopper_station(site)
-	if (_mill_first and position.distance_to(heap) > 90.0) or not game.is_free(game.cell_of(heap)) or not game.is_free(game.cell_of(hop)):
-		# no way to his heap (blocked, or pushed far away): shovel where he stands, facing the mill
-		_mill_walking = false
-		_mill_ph = 0
+		_mill_edge = false
+		_mill_look_t = 0.0
+	var r := site.rect()
+	var yard := Building.mill_yard_rect(r)
+	if not _mill_in:
+		if not yard.grow(-1.0).has_point(position):
+			return _mill_enter(site, idx, delta)
+		# in the yard: to work, at the heap fewest of the others hold
+		_mill_in = true
+		work = "manning"
+		path = PackedVector2Array()
+		_mill_shed = []
+		_mill_gate = Vector2.INF
+		_mill_ph = 3
+		_mill_k = _mill_pick(site, false, _mill_k if _mill_k >= 0 else idx % 3)
+		_mill_route = _mill_walk_route(site, false)
+	elif not yard.grow(24.0).has_point(position):
+		# taken out of the yard (shoved far, or knocked back): back in, the way he can
+		_mill_in = false
 		_mill_route = []
-		facing = (site.center() - position).normalized()
-		_mill_t += delta
-		if _mill_t >= MILL_CYCLE:
-			_mill_t = 0.0
-			_mill_k = (_mill_k + 1) % 3
-		return Vector2.ZERO
-	if _mill_ph == 3 and _mill_route.is_empty() and position.distance_to(heap) > 6.0 and _mill_leg_t == 0.0:
-		_mill_route = [heap] if _mill_first else _mill_walk_route(site, false)
-	if _mill_ph == 1 and _mill_route.is_empty() and _mill_leg_t == 0.0:
-		_mill_route = _mill_walk_route(site, true)
-	if not _mill_route.is_empty():
+		_mill_look_t = 0.0
+		return _mill_enter(site, idx, delta)
+	work = "manning"
+	# the legs: straight from waypoint to waypoint (the yard is all walkable and the crew don't
+	# shove each other); a leg that gets no closer for MILL_STALL s ends where he is
+	while not _mill_route.is_empty():
 		var wp: Vector2 = _mill_route[0]
-		var final := _mill_route.size() == 1
 		var d := wp - position
-		_mill_leg_t += delta
-		if d.length() > (6.0 if final else 9.0) and _mill_leg_t < 9.0:
-			_mill_walking = true
-			facing = d.normalized()
-			return d.normalized() * minf(speed, d.length() / maxf(delta, 0.001))
+		var dist := d.length()
+		var last := _mill_route.size() == 1
+		if dist > (1.0 if last else 5.0):
+			if dist < _mill_best - 0.3:
+				_mill_best = dist
+				_mill_stall = 0.0
+			else:
+				_mill_stall += delta
+			if _mill_stall < MILL_STALL:
+				_mill_walking = true
+				facing = d / dist
+				# (onto his place he slows down: the eased velocity, Unit._move, would carry him past it)
+				var v := minf(speed, dist * 8.0 + 8.0 if last else dist / maxf(delta, 0.001))
+				return d / dist * minf(v, _mill_pace(site, d / dist))
 		_mill_route.remove_at(0)
-		if not _mill_route.is_empty():
-			return Vector2.ZERO
-	_mill_leg_t = 0.0
-	_mill_walking = false
-	facing = Vector2(0.0, -1.0)
+		_mill_best = INF
+		_mill_stall = 0.0
+	if _mill_walking:
+		# arrived: he stops dead (the eased velocity and a shove taken on the way, Unit._move,
+		# would slide him a few px on, onto the next man's place)
+		_mill_walking = false
+		velocity = Vector2.ZERO
+		_push = Vector2.ZERO
 	match _mill_ph:
-		3:      # at a heap: dig (the six start at different points of the dig, then drift apart)
+		3:      # at a heap: dig (the first time, each at a different point of the dig: they drift apart)
 			_mill_ph = 0
 			_mill_t = 0.0
 			if _mill_first:
 				_mill_t = [0.0, 0.5, 0.9][(idx + idx / 3) % 3]
 				_mill_first = false
 			_mill_snd()
+			facing = Vector2(0.0, -1.0)
 		0:
+			facing = Vector2(0.0, -1.0)
 			_mill_t += delta
 			if _mill_t >= float(MILL_STEP_ENDS[1]) + 0.12 * float(idx % 3):
+				# lifted: off to the hopper with the load, to the tipping spot fewest hold
 				_mill_ph = 1
 				_mill_t = float(MILL_STEP_ENDS[1]) - 0.001       # (the lifted load stays on the blade)
+				_mill_j = _mill_pick(site, true, idx % 3)
+				_mill_route = _mill_walk_route(site, true)
 				_mill_walking = true
 		1:      # at the hopper
 			_mill_ph = 2
 			_mill_t = float(MILL_STEP_ENDS[1])
 			_mill_snd()
+			facing = (mill_base(r) + MILL_MOUTH - position).normalized()
 		2:
+			facing = (mill_base(r) + MILL_MOUTH - position).normalized()
 			_mill_t += delta
 			if _mill_t >= MILL_CYCLE:
-				_mill_k = (_mill_k + 1) % 3
+				# tipped: on to the next heap (the next in turn, unless it's busier)
 				_mill_ph = 3
 				_mill_t = 0.0
-				_mill_walking = true
+				_mill_k = _mill_pick(site, false, (_mill_k + 1) % 3)
 				_mill_route = _mill_walk_route(site, false)
+				_mill_walking = true
 	return Vector2.ZERO
+
+
+## Outside the yard: walk in. By its open side when there is one (the pathfinder: the yard's
+## cells are walkable); when neighbours shut the yard in on every side, to the free cell beside
+## the shed nearest him and in through the shed (_mill_shed_way); with no free ground round the
+## mill at all, he works from the nearest spot he can reach.
+func _mill_enter(site: Building, idx: int, delta: float) -> Vector2:
+	_mill_walking = false
+	if _mill_k < 0:
+		_mill_k = idx % 3
+		_mill_slot = idx % 2
+	if not _mill_shed.is_empty():
+		return _mill_through_shed(delta)
+	_mill_look_t -= delta
+	_mill_path_t -= delta
+	if _mill_look_t <= 0.0:
+		# (which way in: looked at again every couple of seconds, the ground may have changed)
+		_mill_look_t = 2.0
+		_mill_gate = Vector2.INF
+		_mill_edge = false
+		var mine := game.region_of(game.cell_of(position))
+		if mine >= 0 and mine != game.region_of(game.cell_of(mill_station(site, _mill_k))):
+			var way := _mill_shed_way(site, mine)
+			if way.is_empty():
+				_mill_edge = true
+			else:
+				_mill_gate = way[0]
+				_mill_gate_way = way.slice(1)
+	if _mill_edge:
+		return _mill_from_edge(site, delta)
+	work = "to_site"
+	var target := mill_station(site, _mill_k) if _mill_gate == Vector2.INF else _mill_gate
+	if _mill_gate != Vector2.INF and position.distance_to(_mill_gate) < 8.0:
+		_mill_shed = _mill_gate_way.duplicate()
+		_mill_gate = Vector2.INF
+		_mill_best = INF
+		_mill_stall = 0.0
+		return _mill_through_shed(delta)
+	if ((path.is_empty() or path_i >= path.size()) or path_goal != target) and not path_pending and _mill_path_t <= 0.0:
+		_mill_path_t = 0.5
+		_request_path(target)
+	return _follow(delta)
+
+
+## The yard shut in (no cell beside it he can walk to): the free cell beside the shed nearest
+## him that he can reach (behind it, or beside its two back rows), then the way from there
+## through the mill's own cells into the yard below, as points: [that cell's middle, the shed
+## cell he steps into, the yard cell under it]. [] when there is none.
+func _mill_shed_way(site: Building, region: int) -> Array:
+	var c0 := site.cell
+	var row: int = Building.MILL_YARD.position.y
+	var cands: Array = []          # [the free cell, the shed cell beside it]
+	for x in site.size.x:
+		cands.append([c0 + Vector2i(x, -1), c0 + Vector2i(x, 0)])
+	for y in row:
+		cands.append([c0 + Vector2i(-1, y), c0 + Vector2i(0, y)])
+		cands.append([c0 + Vector2i(site.size.x, y), c0 + Vector2i(site.size.x - 1, y)])
+	var best: Array = []
+	var bd := INF
+	for cand in cands:
+		var fc: Vector2i = cand[0]
+		if not game.is_free(fc) or game.region_of(fc) != region:
+			continue
+		var p := game.cell_center(fc)
+		if p.distance_to(position) < bd:
+			bd = p.distance_to(position)
+			var sc: Vector2i = cand[1]
+			best = [p, game.cell_center(sc), game.cell_center(Vector2i(sc.x, c0.y + row))]
+	return best
+
+
+## In through the shed, waypoint by waypoint (buildings don't stop a man squeezing through,
+## Unit._move; the way only crosses the mill's own cells). A way that gets him nowhere is given up.
+func _mill_through_shed(delta: float) -> Vector2:
+	work = "manning"
+	_mill_ph = 3
+	while not _mill_shed.is_empty():
+		var wp: Vector2 = _mill_shed[0]
+		var d := wp - position
+		var dist := d.length()
+		if dist > 4.0:
+			if dist < _mill_best - 0.3:
+				_mill_best = dist
+				_mill_stall = 0.0
+			else:
+				_mill_stall += delta
+			if _mill_stall > 1.5:
+				_mill_shed = []
+				_mill_look_t = 0.0
+				break
+			_mill_walking = true
+			squeeze_t = 0.25
+			facing = d / dist
+			return d / dist * minf(speed, dist / maxf(delta, 0.001))
+		_mill_shed.remove_at(0)
+		_mill_best = INF
+		_mill_stall = 0.0
+	_mill_walking = false
+	return Vector2.ZERO
+
+
+## No free ground round the mill to get in from (walled in on every side): he works from the
+## nearest spot he can reach, the shovel going round the three loads where he stands.
+func _mill_from_edge(site: Building, delta: float) -> Vector2:
+	if site.edge_distance(position) < radius + 18.0:
+		work = "manning"
+		path = PackedVector2Array()
+		_mill_ph = 0
+		facing = (site.center() - position).normalized()
+		_mill_t += delta
+		if _mill_t >= MILL_CYCLE:
+			_mill_t = 0.0
+			_mill_k = (_mill_k + 1) % 3
+		return Vector2.ZERO
+	if work != "manning":
+		work = "to_site"
+	var target := game.approach_point(site, position)
+	if ((path.is_empty() or path_i >= path.size()) or path_goal != target) and not path_pending and _mill_path_t <= 0.0:
+		_mill_path_t = 0.5
+		_request_path(target)
+	return _follow(delta)
 
 
 ## REPAIR autocast at work: now and then a worker at its post looks round for a damaged
