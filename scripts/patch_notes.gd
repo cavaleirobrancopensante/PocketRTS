@@ -4,6 +4,20 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.31", "items": [
+		"CLOCKWORK: only the rebuilt army in the live game. The old Assembly Works and its prototype units (Wind-up Soldiers, Thresher, Bulwark, Arc Thrower, Tin Militia, Scrapper, Rail Rifleman) can no longer be built or trained, and the SANDBOX's CLOCK tab lists only the new units and buildings: Winder, Clock Soldier, Jack, Pendulum, Netter, Swift and Ticking Owl.",
+	]},
+	{"v": "0.14.30", "items": [
+		"ONLINE MATCH LOGS are kept: an online match left before its end (QUIT, a lost connection) now saves its log in MATCH LOGS, and the running log is kept as UNFINISHED OR CLOSED MATCH while you play, as in a skirmish.",
+	]},
+	{"v": "0.14.29", "items": [
+		"CROWN BUILDINGS IN YOUR COLOUR: every flag, banner, pennant, awning and red cloth on the Crown's buildings now wears the player's colour: the Town Hall's striped market awning, the Horse Breeder's saddles and blankets, the Foundry's wall hangings and its workmen, the Armoury inventor's shirt, and the red edges of the banners (some of it was painted in a red that stayed red for every player). The Farm's windmill roof is terracotta now, no longer the player's colour. Bricks, fire, powder kegs, food and the Barracks' target stay as painted (the Foundry's forge fire and some of its bricks used to show the player's colour).",
+		"The building you are placing shows your colour on its flags, like the building will.",
+	]},
+	{"v": "0.14.28", "items": [
+		"ONLINE: the MENU opens again during an online match, so you can SURRENDER or QUIT. The match keeps running behind it (online nothing pauses); its first button is BACK.",
+		"ONLINE: turning a phone upright no longer holds the match when you play online (a held host stopped the game for the other player too).",
+	]},
 	{"v": "0.14.27", "items": [
 		"FIX: the gear rings under Clockwork buildings now stand drawn through the 3, 2, 1 countdown (in the Clockwork Lab, a skirmish or online) instead of popping in at GO.",
 	]},
