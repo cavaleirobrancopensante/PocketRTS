@@ -1811,8 +1811,8 @@ func _process(delta: float) -> void:
 	var portrait := Settings.device == "mobile" and vs.y > vs.x * 1.05
 	if portrait != _rotate.visible:
 		_rotate.visible = portrait
-		# hold the match while the phone is upright
-		if game and not game.over:
+		# hold the match while the phone is upright (not online: a held host would stop the match for everyone)
+		if game and not game.over and not game.net:
 			if portrait and not get_tree().paused:
 				get_tree().paused = true
 				_rotate_paused = true
