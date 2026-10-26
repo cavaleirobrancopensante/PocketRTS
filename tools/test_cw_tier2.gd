@@ -3,7 +3,7 @@ extends SceneTree
 ## An Escapement linked to the field but not meshed with a Mainspring is idle (NEEDS MAINSPRING: no research, no Jack);
 ## one meshed directly with a Mainspring works (an idler between them counts; a chain through another building does not)
 ## and a Jack trains, paying cogs AND Tension (refused when Tension is short); if the Mainspring dies the Escapement goes
-## idle again (nothing else is lost). THE TENSION RULE (0.14.23, scripts/gear_econ.gd): the Jack is made only at a Movement
+## idle again (nothing else is lost). THE TENSION RULE (0.14.33, scripts/gear_econ.gd): the Jack is made only at a Movement
 ## Works whose ring meshes with a Mainspring's (one that does not refuses it). A Jack shoots and kills a ground unit and a flyer with its screws; JUMP on flat ground
 ## crouches in place, flies over its shadow and lands at the spot, cannot shoot in the air and then waits for its spring;
 ## jumping UP a cliff is refused before HIGH LEAP, refused after it where the side cannot see, and allowed with vision; down

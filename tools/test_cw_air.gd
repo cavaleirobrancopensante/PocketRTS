@@ -59,7 +59,7 @@ func _run() -> void:
 	U.step(g, 0.6)
 	check("a Mainspring meshes with the Escapement: it works", spring != null and g.gear_net.speed_mult(esc) > 0.0)
 	check("with an ACTIVE Escapement the Aviary is allowed", g.requirement_text(0, Defs.CW_AIR) == "", g.requirement_text(0, Defs.CW_AIR))
-	# (THE TENSION RULE, 0.14.23: all the Aviary makes costs Tension, so its ring meshes with the Mainspring's, or it is idle)
+	# (THE TENSION RULE, 0.14.33: all the Aviary makes costs Tension, so its ring meshes with the Mainspring's, or it is idle)
 	var av := _beside(g, Defs.CW_AIR, spring)
 	check("an Aviary links to the field, meshing with the Mainspring", av != null and g.gear_net.is_linked(av) and g.gear_net.spring_for(av) != null)
 	if av == null:
