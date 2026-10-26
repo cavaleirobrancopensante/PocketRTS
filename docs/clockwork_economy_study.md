@@ -94,6 +94,7 @@ What could change it, and the verdict:
 | A helper building (a Regulator's beat) | rejected | Pure adjacency maths (principle 3): a Regulator beside every Works, always, no choice |
 | A Mainspring as a driver | **kept** | One sentence; makes the spring a hub as well as a bank; lets a far district work at 100% |
 | Crowding | rejected | The rings already limit how many buildings fit round one ring; a number on top is maths |
+| The tick (working on the Clocktower's beat) | rejected for the % | The owner's rule: the rhythm may give benefits but must never punish; a % that dips when a beat is missed would punish. A later chime bonus may only add on top |
 
 **DRIVE.** The Clocktower and every Mainspring drive the field. A building whose ring meshes with one of them works at
 100%; each ring farther from the nearest driver loses 10% (90%, 80%, 70% from the 4th ring on). An idler is free. A

@@ -4,8 +4,8 @@ extends SceneTree
 ##   godot --headless --fixed-fps 30 --script res://tools/gear_econ_study.gd -- <mode> [key=value ...]
 ##
 ## Modes:
-##   ai fac=<crown|brood|clockwork> [minutes=10 map=greenhold seed=1]
-##       The Hard computer (balanced, peaceful: it builds its economy and army but never attacks) against an idle
+##   ai fac=<crown|brood|clockwork> [minutes=10 map=greenhold seed=1 strat=balanced]
+##       The Hard computer (balanced, or the AI strategy `strat`; peaceful: it builds its economy and army but never attacks) against an idle
 ##       opponent. One line a minute: what it has EARNED so far of both resources (Tension for the Clockwork),
 ##       workers, army value; then when its tier-2 things came.
 ##   bo layout=<name> [minutes=10 map=greenhold seed=1]
@@ -77,7 +77,7 @@ func _run() -> void:
 ## team 1's computer is switched off.
 func _start(fac: String, opp: String, ai0: bool) -> Game:
 	var slots := [
-		{"who": "hard" if ai0 else "you", "faction": fac, "colour": 0, "side": 0, "strategy": "balanced"},
+		{"who": "hard" if ai0 else "you", "faction": fac, "colour": 0, "side": 0, "strategy": String(_opt("strat", "balanced"))},
 		{"who": "hard", "faction": opp, "colour": 1, "side": 1, "strategy": "balanced"},
 	]
 	seed(int(_opt("seed", 1)))
@@ -151,7 +151,7 @@ func _ai_run(fac: String) -> void:
 	var res: Array = Defs.res_names(fac)
 	var counted := 0.0
 	var firsts := {}
-	print("== ai %s (Hard, peaceful) vs idle %s on %s, %d min" % [fac, opp, g.map_name, minutes])
+	print("== ai %s (Hard, %s, peaceful) vs idle %s on %s, %d min" % [fac, String(_opt("strat", "balanced")), opp, g.map_name, minutes])
 	var marks: Array = []
 	for m in minutes:
 		var end := float(m + 1) * 60.0

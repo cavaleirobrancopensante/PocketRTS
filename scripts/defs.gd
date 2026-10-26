@@ -376,7 +376,7 @@ const GEAR := {
 	# it); every Winder winding it adds an equal share up to `crew`. Small gear: 8/s, crew 6. Big gear: 10.5/s, crew 12:
 	# a Winder adds 1.13 (small) or 0.74 (big), about a Crown Labourer on a Farm (1.19 gold/s); six pay 8.0 vs 6.0, nine
 	# 8.0 vs 8.3: the big gear only wins from 9 Winders. 2 presses per Clocktower (Defs.FACTIONS econ). (Crews were 3 and
-	# 6 until 0.14.23: the Clockwork earned about twice the Crown per worker, docs/clockwork_economy_study.md.)
+	# 6 until 0.14.33: the Clockwork earned about twice the Crown per worker, docs/clockwork_economy_study.md.)
 	"press": {"base": 0.15, "small": {"full": 8.0, "crew": 6}, "big": {"full": 10.5, "crew": 12}},
 	# THE MAINSPRING (docs/clockwork_ground_up.md): winds TENSION, the second resource, at `full` a second with its whole
 	# `crew`, `base` of that alone, like the press: SMALL gear 2.0/s with 3 Winders, BIG gear 2.6/s with 6 (the big one wins
@@ -1122,7 +1122,7 @@ const BUILDINGS := {
 	"movement_works": {
 		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack", "pendulum", "netter"], "faction": "clockwork",
-		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks, Netters and Pendulums once an Escapement works (a Pendulum only while the Works runs on its BIG gear). Must stay linked to the gear field.",
+		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). Must stay linked to the gear field.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
 	# its ring meshes with a Mainspring's. Numbers are guesses: the Movement Works' price and health.

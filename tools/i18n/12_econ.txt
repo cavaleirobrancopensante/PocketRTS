@@ -36,13 +36,9 @@ es latón agotado
 pt Tensão cheia
 es Tensión llena
 
-> Stores %d Tension · your Mainsprings hold %d of %d
-pt Guarda %d de Tensão · suas Molas Reais têm %d de %d
-es Almacena %d de Tensión · tus Muelles Reales tienen %d de %d
-
-> FULL: it stands still until Tension is spent
-pt CHEIA: fica parada até a Tensão ser gasta
-es LLENO: se queda quieto hasta que se gaste Tensión
+> Stores %d of your %d Tension
+pt Guarda %d da sua reserva de %d de Tensão
+es Almacena %d de tu reserva de %d de Tensión
 
 > NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle. Build a Mainspring right beside it.
 pt PRECISA DE MOLA REAL: seu anel não engrena com nenhuma Mola Real, então fica parada. Construa uma Mola Real bem ao lado.
@@ -109,6 +105,10 @@ es Un muñeco de caja sorpresa sobre un resorte espiral: va dando saltitos y dis
 > Presses COGS from its Clocktower's brass: a trickle by itself, and every Winder winding it adds the same share (SMALL gear: faster, up to 6 Winders; BIG gear: slower per Winder but up to 12, and more in all from 9). It works at full speed when its gear ring meshes with the Clocktower's or a Mainspring's, less farther out. Spent brass: a quarter. Must stay linked to the gear field.
 pt Prensa ENGRENAGENS com o latão da sua Torre do Relógio: um fio por si só, e cada Enrolador que a enrola soma a mesma parte (engrenagem PEQUENA: mais rápida, até 6 Enroladores; engrenagem GRANDE: mais lenta por Enrolador, mas até 12, e mais no total a partir de 9). Trabalha a toda velocidade quando seu anel de engrenagens engrena com o da Torre do Relógio ou de uma Mola Real, menos mais longe. Latão esgotado: um quarto. Precisa continuar ligada ao campo de engrenagens.
 es Prensa ENGRANAJES con el latón de su Torre del Reloj: un hilillo por sí sola, y cada Dador de cuerda que le da cuerda suma la misma parte (engranaje PEQUEÑO: más rápido, hasta 6 Dadores; engranaje GRANDE: más lento por Dador, pero hasta 12, y más en total desde 9). Trabaja a toda velocidad cuando su anillo de engranajes engrana con el de la Torre del Reloj o un Muelle Real, menos más lejos. Latón agotado: un cuarto. Debe seguir enlazada al campo de engranajes.
+
+> The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). Must stay linked to the gear field.
+pt O quartel do Mecanismo: um longo salão que monta Soldados-Relógio numa linha suspensa, e Bonecos de Mola, Lança-Redes e Pêndulos quando um Escape funciona e o anel de engrenagens de uma Mola Real engrena com o seu (custam Tensão; um Pêndulo só enquanto a Oficina gira na sua engrenagem GRANDE). Precisa continuar ligada ao campo de engrenagens.
+es El cuartel del Mecanismo: una larga nave que monta Soldados Reloj en una línea colgante, y Muñecos de Resorte, Lanzarredes y Péndulos cuando funciona un Escape y el anillo de engranajes de un Muelle Real engrana con el suyo (cuestan Tensión; un Péndulo solo mientras el Taller gira con su engranaje GRANDE). Debe seguir enlazado al campo de engranajes.
 
 # tier 3 under THE TENSION RULE (the Pendulum and the Netter cost Tension: made only at a Works meshing with a Mainspring)
 
