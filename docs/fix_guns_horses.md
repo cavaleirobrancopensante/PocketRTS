@@ -1,4 +1,4 @@
-# Limbered guns and horses: fixes (0.14.33)
+# Limbered guns and horses: fixes (0.14.35)
 
 Branch `fix-guns-horses`: the unmerged branches `fix-limber-gate-wip` and `fix-horse-vanish-wip`
 ported onto today's code (not merged as they were), plus the hauler pathfinding report.

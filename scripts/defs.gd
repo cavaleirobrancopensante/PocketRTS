@@ -384,7 +384,8 @@ const GEAR := {
 	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
 	"works_dt": 0.12,               # ... of the Movement Works' loop (while it trains)
 	"regulator_dt": 0.15,           # ... of the Regulator's pendulum (always, while built and linked)
-	"escapement_dt": 0.14,          # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring)
+	"escapement_dt": 0.125,         # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring):
+	"escapement_frames": 24,        #     a tick or a tock every 4 frames (0.5 s), the wheel's half-tooth jump as the anchor swings through
 	"aviary_dt": 0.15,              # ... of the Clock Aviary's doors and bird (4 frames, while it makes a Swift or researches)
 	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
 	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
