@@ -83,7 +83,17 @@ func _process(delta: float) -> bool:
 	if g.clock >= next_t:
 		next_t += STEP
 		_sample()
+		if int(round(g.clock)) % 60 == 0:
+			_flush()       # (partial lines survive if the game is killed)
 	return false
+
+
+func _flush() -> void:
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var f := FileAccess.open("%s/%s.csv" % [out_dir, gid], FileAccess.WRITE)
+	if f:
+		f.store_string("\n".join(lines) + "\n")
+		f.close()
 
 
 func _sample() -> void:

@@ -182,8 +182,10 @@ def main():
         out = []
         for pr, x in sg.groupby("pair"):
             t = x[x.timeout]
+            pts = ev[ev.text.str.contains("pulls back") & ev.id.isin(x.id)].t
             out.append({"matchup": pr.replace("-", " vs "), "games": len(x), "games with a pull-back": "%d (%s)" % ((x.n_pull > 0).sum(), pct((x.n_pull > 0).mean())),
-                        "pull-backs in all": int(x.n_pull.sum()), "30:00 games": len(t), "of those with a pull-back": int((t.n_pull > 0).sum()),
+                        "pull-backs in all": int(x.n_pull.sum()), "median time": mmss(pts.median()) if len(pts) else "-",
+                        "after 15:00": pct((pts >= 900).mean()) if len(pts) else "-", "30:00 games": len(t), "of those with a pull-back": int((t.n_pull > 0).sum()),
                         "median minutes from the last pull-back to the end (30:00 games)": "%.0f" % ((t[t.n_pull > 0].end_t - t[t.n_pull > 0].last_pull).median() / 60.0) if (t.n_pull > 0).any() else "-"})
         T["dd_siege"] = md(pd.DataFrame(out))
         txt = ev[ev.text.str.contains("pulls back")].text.str.replace(r"\d+", "N", regex=True).str.replace(r"^P\w ", "", regex=True)
@@ -543,6 +545,15 @@ def main():
             r[f + ": army value / earned / workers"] = "%d / %d / %d (n=%d)" % (y.army_value.median(), y.earned.median(), y.workers.median(), len(y)) if len(y) else "-"
         rows.append(r)
     T["dd_mirror_econ"] = md(pd.DataFrame(rows))
+    # how much army each faction keeps per 100 of its own currency earned (a ratio, so the currencies cancel)
+    rows = []
+    for tm in (180, 300, 420, 600):
+        r = {"at": mmss(tm)}
+        for f in FACS:
+            y = m[(m.t == tm) & (m.faction == f)]
+            r[f] = "%.0f" % (100.0 * y.army_value.sum() / max(1.0, float(y.earned.sum()))) if len(y) else "-"
+        rows.append(r)
+    T["dd_conversion"] = md(pd.DataFrame(rows))
 
     # ------------------------------------------------------------------ the Brood against the other two, minute by minute (Balanced/Balanced)
     rows = []
@@ -567,6 +578,31 @@ def main():
         n_ = max(1, sum(tot.values()))
         kb.append("the %s's kills of Brood units were made by %s" % (f.capitalize(), ", ".join("%s %d%%" % (k.replace("_", " "), round(100 * v / n_)) for k, v in sorted(tot.items(), key=lambda kv: -kv[1])[:4] if round(100 * v / n_) >= 1)))
     T["dd_brood_killers"] = "; ".join(kb)
+
+    # ------------------------------------------------------------------ the Brood's answer to Horsemen: does it arrive?
+    # (ai.gd: on seeing Horsemen the Brood "keeps its army at home and builds Spitters and Brutes"; Spitters need a Brood Pen and
+    #  5 essence each, Brutes a Gorge Pit and 20 essence each: Defs.UNITS)
+    hs = events[events.text.str.contains("saw Horsemen: Raptors do little", na=False)].copy()
+    hs["team"] = hs.who.str[1].astype(int) - 1
+    hs = hs.groupby(["id", "team"]).t.min().rename("home_t").reset_index()
+    bb2 = sides[(sides.faction == "brood") & (sides.opp == "crown")].merge(hs, on=["id", "team"], how="left")
+    for c in ["t_brood_pen", "t_gorge_pit"]:
+        bb2[c] = pd.to_numeric(bb2[c], errors="coerce")
+
+    def made(js, k):
+        try:
+            return json.loads(js).get(k, 0)
+        except Exception:
+            return 0
+    bb2["spitters"] = bb2.produced.map(lambda js: made(js, "spitter"))
+    bb2["brutes"] = bb2.produced.map(lambda js: made(js, "brute"))
+    T["dd_brood_answer"] = md(pd.DataFrame([{
+        "Brood side-games vs the Crown": len(bb2),
+        "decided to keep its army home (median time)": "%d (%s)" % (bb2.home_t.notna().sum(), mmss(bb2.home_t.median()) if bb2.home_t.notna().any() else "-"),
+        "Brood Pen built (median time)": "%s (%s)" % (pct(bb2.t_brood_pen.notna().mean()), mmss(bb2.t_brood_pen.median())),
+        "Gorge Pit built (median time)": "%s (%s)" % (pct(bb2.t_gorge_pit.notna().mean()), mmss(bb2.t_gorge_pit.median())),
+        "Spitters made per game": "%.1f" % bb2.spitters.mean(), "Brutes made per game": "%.1f" % bb2.brutes.mean(),
+        "game length (median)": mmss(bb2.end_t.median())}]))
 
     # ------------------------------------------------------------------ armies that sit at the supply cap with a bank and do not attack
     # From the 30 s samples: the longest unbroken stretch (after 8:00) where a side is within 2 of its cap (or at 199+), has 1,000+

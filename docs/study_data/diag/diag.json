@@ -1,0 +1,15 @@
+{
+ "diag_games": [
+  "d009",
+  "d073",
+  "d088",
+  "d105",
+  "d129",
+  "d140",
+  "d141",
+  "x01_saltmarsh_isles"
+ ],
+ "diag_table": "| game                | side               | result       | capped and idle    | enemy near a building   | of which armed   | nearest enemy kinds   | next to   | below the wave threshold   | regrouping   | none of these   | threshold / army supply (median)   |\n|:--------------------|:-------------------|:-------------|:-------------------|:------------------------|:-----------------|:----------------------|:----------|:---------------------------|:-------------|:----------------|:-----------------------------------|\n| x01_saltmarsh_isles | clockwork (team 0) | ran to 30:00 | 9.4 min from 20:40 | 0%                      | 0%               | -                     | -         | 100%                       | 0%           | 0%              | 171 / 168                          |",
+ "diag_status": "measured in 1 diagnostic side-games (section 10.1)",
+ "diag_text": "Diagnostic games with `tools/study/diag_army.gd` (Crown against Clockwork, the AI's gates logged every 5 s): 8 run, 1 side(s) stalled at the cap with 1,000+ banked for a minute or more. What held each stalled army (share of its stalled 5 s samples):"
+}

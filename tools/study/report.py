@@ -207,8 +207,10 @@ TEMPLATE = r"""
    The cause is not established (section 9.2).
 4. **The AI often neither finishes a won game nor gives up a lost one.** In {{H.stall10_n}} side-games ({{H.stall10_pairs}}) the
    winner sat at its supply cap with 1,000+ banked and no wave out for 10 minutes or more, its bank growing to as much as
-   {{H.stall10_bank}}; the loser never qualified for gg, because the gg rule counts "a hall and a worker" as income even
-   when the soil is spent and nothing comes in. Brood mirrors that reach 30:00 are dead economies on both sides (section 10).
+   {{H.stall10_bank}}. The cause is in the AI's wave threshold: after a big wave pulls back at the Crown's gate, the army
+   supply it waits for before the next wave is set higher than it can ever field, measured directly in a diagnostic game.
+   And the loser never qualified for gg, because the gg rule counts "a hall and a worker" as income even when the soil is
+   spent and nothing comes in. Brood mirrors that reach 30:00 are dead economies on both sides (section 10).
 5. **Leads start to decide games at about 10 minutes.** Inside mirrors, the side ahead in power at 3:00 won only
    {{H.sb_m3_any}} decided games, and at 5:00 {{H.sb_m5_any}}: the early game is open, and an early army bought ahead of the
    opponent is if anything a handicap. At 10:00 a lead of 30% or more won {{H.sb_m10_30}}, at 15:00 {{H.sb_m15_30}}, and
@@ -390,6 +392,14 @@ same opponent, so this compares the factions' own pace more fairly than the cros
 - The **Brood** earns least, then drones hard from 4:00 to 7:00 (9 to 26 grubs) while its army value stays flat at about 300.
   That flat army is exactly the window in which the Crown's and the Clockwork's first waves arrive (section 4.2).
 
+Army value standing per 100 of the faction's own currency earned so far (same mirrors; a ratio, so the currencies cancel):
+
+{{T.dd_conversion}}
+
+At 5:00 all three keep about a quarter of what they have earned as army. **The Clockwork's lead is its income, not a better
+conversion**: it earns about twice as much and turns it into army at the same rate. (Later the Brood's ratio falls because it
+loses its army in the mirror's fights and spends on grubs.)
+
 All games, per faction, means of the sides still playing (the curves after 15:00 are mostly long games, and the Brood's mostly
 mirrors):
 
@@ -411,7 +421,16 @@ Against the Clockwork the Brood's army is gone by 6:00: the first Clockwork wave
 Wind-up Soldiers and 3 Arc Throwers on average) and the second at about 6:50 with 39 (section 7.1). Against the Crown the
 Brood's army never grows past about 300 while the Crown's passes 1,000 by 10:00; the Crown's first wave (Musketeers, often
 with Horsemen) takes the Feeding Pits and then the Burrow. Who did the killing: {{T.dd_brood_killers}}. Brood workers lost
-per game in these matchups: see section 6. Example: `crown-brood_012` (Balanced/Balanced, Greenhold): the Brood scouts
+per game in these matchups: see section 6.
+
+What the Brood does against Horsemen: in every Crown-Brood game it sees Horsemen and decides that "Raptors do little
+against them, so it keeps its army at home and builds Spitters and Brutes". The answer barely arrives: Spitters need a Brood
+Pen and 5 essence each, Brutes a Gorge Pit and 20 essence each, and essence is scarce early (main's 1.25 essence per supply
+of a harvested body may help here):
+
+{{T.dd_brood_answer}}
+
+Example: `crown-brood_012` (Balanced/Balanced, Greenhold): the Brood scouts
 Horsemen at 3:08 and decides "Raptors do little against them, so it keeps its army at home and builds Spitters and Brutes";
 the Crown's first wave (4 Horsemen) leaves at 4:02, the Brood loses three Feeding Pits between 5:04 and 5:27 and its Burrow at
 6:04, and the game is cut as a gg at 6:17.
@@ -618,8 +637,10 @@ Read against the anti-snowball principles in `docs/design_principles.md`:
 
 {{T.dd_closing}}
 
-- **The defender's advantage does not fade for the Crown.** The ramp wall and gate are built by 0:40 and still make attackers
-  pull back late in the game (section 7.2), which is part of why Crown mirrors and Crown-Clockwork games can drag on.
+- **The defender's advantage fades, but slowly in some games.** The Crown's ramp wall and gate are up by 0:40. Most
+  pull-backs at a Crown gate come in the middle game (median about 6-7 minutes); against the Clockwork almost none come after
+  15:00, but in Crown mirrors about one in six does, and in every Crown-Clockwork stall the last pull-back came at 11-16
+  minutes (sections 7.2 and 10.1).
 
 ---
 
@@ -680,23 +701,37 @@ on the study box), the likely cause in the code, and whether main has changed it
 
 {{T.dd_capped_idle_examples}}
 
-Only the Clockwork does this, and only against the Crown. The clearest example, `crown-clockwork_140` (Saltmarsh Isles):
+Only the Clockwork does this, and only against the Crown. The clearest example, `crown-clockwork_140` (Thornwood Maze):
 from 12:49 to 30:00 the Clockwork sits at 199/200 supply with an army worth 6,790 (74 Wind-up Soldiers, 14 Arc Throwers, 10
 Bulwarks and more) and its bank climbs from 1,092 to 22,569 ore; it kills nothing after 13:33. The Crown meanwhile has
 18 gold, 0% soil and 0% saltpetre, 28 idle Labourers and an army worth 430. Its last attack pulled back from the Crown's
 gate at 11:29 ("it can't get through under 36 dps of fire").
 
 Why the army waits, from `scripts/ai.gd` `_army()`: a wave goes out only when (a) no enemy unit is within 330 px of any of
-the AI's buildings (`_threat()`; any enemy, armed or not, counts, and if one is near, the army defends and `_army()` returns
-before the wave logic), and (b) the army's supply reaches `_attack_at`. Two ways the gate can lock shut:
-- **The threshold rises out of reach.** A failed wave raises `_attack_at` to 1.4x that wave's supply with no upper bound
-  (`_wave_end()`), and a pull-back at a gate to at least min(1.4x, +40) (`_siege_plan()`); only a launched wave caps it at 70,
-  and nothing ever lowers it. A Clockwork with 32 Winders can field at most 168 supply of army. Rebuilt from the logged waves:
-  {{T.dd_freeze_thr}} That covers some of the stalls but not `crown-clockwork_140` (its last wave left with 49 supply, so its
-  threshold stayed near 70).
-- **A permanent "threat".** With five or six Clockwork halls spread over the map and 28 Crown Labourers and loose horses
-  still alive, some enemy unit may always be within 330 px of some Clockwork building, which would keep the army in
-  "defend" forever without a target it can reach. {{H.diag_text}}
+the AI's buildings (`_threat()`: if one is near, the army defends and `_army()` returns before the wave logic), and (b) the
+army's supply reaches `_attack_at`, the threshold for the next wave. Launching a wave caps the threshold at 70, but two things
+raise it afterwards with no upper bound: a failed wave (killed under 60% of its value) sets it to 1.4x that wave's supply
+(`_wave_end()`), and a pull-back at a gate to at least min(1.4x, supply + 40) (`_siege_plan()`). Nothing else ever lowers it.
+A Clockwork with 32 Winders can field at most 168 supply of army, so **one pull-back by a wave of about 129 supply or more
+(about 120 if it failed) leaves a threshold the army can never reach, and it never attacks again.**
+
+{{H.diag_text}}
+
+{{H.diag_table}}
+
+**Measured in a diagnostic game.** `tools/study/diag_army.gd` logs the AI's gates every 5 s. It was run with the exact settings
+of seven stalled games (rounds 9, 73, 88, 105, 129, 140, 141; none stalled again: games do not replay, section 1, and all seven
+were quick Clockwork wins) and then with fresh seeds. In `x01_saltmarsh_isles` the Clockwork's threshold went 57, 72 and 122
+around two pull-backs at the Crown's gate at 10:49-10:51, then **171 after a pull-back at 15:43** ("it can't get through under
+28 dps of fire", while dealing 98 dps to the gate), against an army of 168 supply with 32 Winders. From then to 30:00 it never
+attacked: at 200/200 with up to 11,478 ore banked, an enemy was never near its buildings, and its army stayed 3 supply short
+of its threshold the whole time. That is the threshold lock, measured directly; the "permanent threat" alternative did not
+occur.
+
+The same lock fits the stalled study games. Rebuilt from their logged waves: {{T.dd_freeze_thr}} The rebuild misses some locks:
+a big wave can leave and pull back at the gate within a second or two, between the harness's once-a-second checks (in
+`x01_saltmarsh_isles` the wave that set 122 never showed as a wave in the 5 s samples). `crown-clockwork_140` fits that
+pattern: two pull-backs at 11:29 and 11:30 with an army of about 135-140 supply, and no attack afterwards.
 
 The Crown never does this (its army rarely reaches the cap), and the Brood never reaches its cap.
 
@@ -707,7 +742,7 @@ The Crown never does this (its army rarely reaches the cap), and the Brood never
 Most of these are Clockwork mirrors, where the attack flag simply stays on for 10-15 minutes at a time: the two Clockworks
 keep pressing each other without a pause, so one "wave" there is a stretch of constant pressure, not a stall. The
 Crown-Clockwork ones are sieges: the army is attacking the whole time but does not break the defence. Example:
-`crown-clockwork_115` (Saltmarsh Isles), one Clockwork wave out from 7:10 to 30:00 against a Crown whose Missionary raises a
+`crown-clockwork_115` (Highmoor, Clockwork on Rush), one Clockwork wave out from 7:10 to 30:00 against a Crown whose Missionary raises a
 fallen Musketeer or Guardsman again and again (21 times in the log). That is closer to a real siege than to a fault, but it
 is part of why Crown-Clockwork games run long.
 
@@ -861,7 +896,7 @@ a sample still open; "weak" = a hint.
 | # | What to change | Kind | Evidence | Strength | Principle |
 |---|---|---|---|---|---|
 | 1 | Re-measure the Brood on main with this harness, then give it an early game that holds: its army must be able to meet a Crown wave of Musketeers and Horsemen at 4:00-6:00 and a Clockwork wave of 18 supply at 3:40, without giving up its economy (cheaper early defence, a faster first Spawning Den army curve, or Raptors that do something against Horsemen) | balance | {{H.brood_cross_wins}} wins in {{H.brood_cross_n}} cross side-games; army value flat at about 300 from 4:00 to 7:00 (4.1, 4.2) | strong | 1. fairness and counterplay |
-| 2 | Make an army at its supply cap attack: cap `_attack_at` at what the army can field (200 minus workers, minus a margin) in `_wave_end()` and `_siege_plan()`, and/or attack when capped with a bank for a minute; count only armed (or reachable) enemies in `_threat()` | AI | {{H.stall10_n}} side-games capped with a bank and no wave for 10+ min, bank up to {{H.stall10_bank}} (10.1) | strong (effect); moderate (which gate) | 2. a big bank must not be a win button; the winner must be able to finish |
+| 2 | Make an army at its supply cap attack: never let `_wave_end()` or `_siege_plan()` raise `_attack_at` above what the army can field (cap minus workers, minus a margin), or let a capped army with a bank go anyway; and check the siege verdict that sends back an army dealing several times the fire it takes ("it can't get through") | AI | {{H.stall10_n}} side-games capped with a bank and no wave for 10+ min, bank up to {{H.stall10_bank}}; the threshold lock measured in a diagnostic game (10.1) | strong | 2. a big bank must not be a win button; the winner must be able to finish |
 | 3 | Make the gg rule look at real income: "can rebuild" only if the side earned something in the last minute or two (or has the money for a hall), not "has a hall and a worker" | AI | losers of every cap stall never hopeless; `crown-clockwork_140` (10.2) | strong | 4. respect the player's time |
 | 4 | The Brood's single ground reserve: every pit draws on the capital's 10,500 and a new Burrow brings no ground, so a game's pit income is fixed. Give later Burrows ground of their own (or let the capital's ground recover slowly), so that expanding pays, then teach the AI to expand before the reserve runs out | economy + AI | 46% of Brood mirror sides spend it (median 15:30), then 80%+ of grubs idle; every 30:00 Brood mirror is a dead stalemate (4.6, 10.3); same rule on main | strong | 2. economy forces expansion, does not strangle |
 | 5 | Measure the gear-mode Clockwork with this harness before tuning it. The old Clockwork out-earned both others about 2:1 and beat the Crown {{H.cw}}; keep the new one's early income in line with the Crown's | balance | mirror medians (4.1); win matrix (2.1) | strong for the old Clockwork; unknown for the new | 1. fairness |
@@ -870,7 +905,7 @@ a sample still open; "weak" = a hint.
 | 8 | Look at the four maps where the Crown cannot beat the Clockwork (natural at the ramp foot?) | map / AI | Crown {{H.s_all}} there against {{H.o_all}} elsewhere; out-of-sample check {{H.s_oos}} against {{H.o_oos}} (9.2) | moderate (effect); weak (cause) | 1. fairness across maps |
 | 9 | Crown supply blocks: build Cottages first when blocked, not more production buildings | AI | median 5 production buildings added during 2+ min blocks; most idle after (10.5) | moderate (rare, but clear) | 3. buildings with a purpose |
 | 10 | The Brood's Clutch Mound site loop: do not re-place a site no grub can or will reach (back off, or pick another spot) | AI | 6,000+ drops, bursts of 35 in 30 s; losers drop 3x more (10.11) | moderate | (AI quality) |
-| 11 | The Crown's defender's advantage at the gate does not fade mid-game: consider making gates and palisades weaker against big armies later, or have the attacker commit when its army is much bigger | balance + AI | pull-backs in most Crown-Clockwork and Crown mirror games, also late (7.2, 10.12) | moderate | 2. defender's advantage early, fading mid-game |
+| 11 | Let a much bigger army commit at a gate: the siege check ("it can't get through") sends back armies that deal several times the fire they take; and in long Crown mirrors the gate still decides fights after 15:00 | AI (+ balance) | pull-backs in 85% of Crown-Clockwork and two-thirds of Crown mirror games; one in six Crown-mirror pull-backs after 15:00; the stalls of 10.1 start with one (7.2, 10.12) | moderate | 2. defender's advantage early, fading mid-game |
 | 12 | Retune `AIScout.EARLY_PROD` so the Brood's standard opening and the Clockwork's Assembly Works are not read as a rush | AI | "rush" on about 89% of Balanced foes; no measured cost (7.3) | weak (low impact) | (AI quality) |
 | 13 | Find why games do not replay from a seed | engineering | state hashes differ on identical runs (1) | strong (fact); unknown (cause) | (testing, online play) |
 
@@ -896,7 +931,8 @@ a sample still open; "weak" = a hint.
 
 **Not verified, or only partly:**
 - Faction strength and AI skill cannot be separated with AI-against-AI games (see the Summary).
-- The mechanism of the cap stalls (10.1): the effect is clear; which of the two gates locks is {{H.diag_status}}.
+- The mechanism of the cap stalls (10.1): measured in one diagnostic game (the threshold lock) and consistent with the logs of
+  the stalled study games; the diagnostic games are not part of the 1,080-game sample ({{H.diag_status}}).
 - The four-map effect (9.2): the cause is a hypothesis.
 - Why games do not replay from a seed (1).
 - The harness reads the AI's own state for waves (`_attacking`, swarm phase, raiders) and parses the match log for events
@@ -942,6 +978,7 @@ def render(T, H, stage):
     m3 = re.search(r"\| clockwork \|[^\n]*\| (\d+/\d+)\s+\| (\d+/\d+)\s+\| [^|]+\|\s*$", T.get("faults_econ", ""), re.M)
     H["cap200_cw"] = m3.group(1) if m3 else "(see table)"
     H.setdefault("diag_text", "")
+    H.setdefault("diag_table", "")
     H.setdefault("diag_status", "not settled")
 
     def sub(mo):
