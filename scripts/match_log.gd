@@ -173,9 +173,12 @@ func snapshot() -> void:
 				bl[b.kind] = int(bl.get(b.kind, 0)) + 1
 		var halls := int(bl.get(game.faction_hall(t), 0))
 		var last: Dictionary = _last.get(t, {"killed": 0, "lost": 0})
-		var res: Array = Defs.FACTIONS[game.faction_of(t)]["res"]
+		var res: Array = Defs.res_names(game.faction_of(t))
+		var r2 := int(game.players[t]["res2"])
+		if game.faction_of(t) == "clockwork" and Defs.gear_mode:
+			r2 = int(float(game.players[t].get("tension", 0.0)))      # (gear mode: Tension, no energy)
 		lines.append("  %s: earned %d %s total, has %d + %d %s | supply %d/%d | workers %d | halls %d | army (%d value): %s | kills +%d (%d) losses +%d (%d)" % [
-			who(t), int(st["gold"]), String(res[0]).to_lower(), int(game.players[t]["gold"]), int(game.players[t]["res2"]),
+			who(t), int(st["gold"]), String(res[0]).to_lower(), int(game.players[t]["gold"]), r2,
 			String(res[1]).to_lower(), game.supply_used(t), int(game.players[t]["cap"]), workers, halls, value,
 			", ".join(army) if not army.is_empty() else "none",
 			int(st["killed"]) - int(last["killed"]), int(st["killed"]), int(st["lost"]) - int(last["lost"]), int(st["lost"])])

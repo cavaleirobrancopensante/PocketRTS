@@ -81,6 +81,7 @@ var _mill_far := -1                   # 1: on the far half (behind the post), 0 
 # the second-generation buildings' parts: a bell, a drilling man, paddock horses, the inventor,
 # lit windows (BuildingLife)
 var life: BuildingLife = null
+var turret: RatchetTurret = null      # Ratchet Turret (gear mode): its turning head and gun
 # in_use, looked at twice a second
 var _use_t := 0.0
 var _in_use := true
@@ -283,6 +284,9 @@ func _ready() -> void:
 	elif BuildingLife.has_life(kind):
 		life = BuildingLife.new()
 		life.setup(self)
+	if kind == Defs.CW_TURRET:
+		turret = RatchetTurret.new(self)
+		turret.head.material = sprite.material
 	_update_sprite()
 
 
@@ -960,10 +964,12 @@ func _tick_building(delta: float) -> void:
 		_turn_mill(delta)
 	if life:
 		life.tick(delta)
+	if turret:
+		turret.tick(delta)
 	if built and not dead:
 		_econ(delta)
-		if d.has("field"):
-			_tower(delta)
+		if d.has("field") and not Defs.gear_mode:
+			_tower(delta)      # (gear mode: no power, so no lightning; the Ratchet Turret is the defence)
 		_ambient(delta)
 	if d["faction"] == "brood":
 		_brood(delta)
@@ -972,7 +978,7 @@ func _tick_building(delta: float) -> void:
 			add_progress(delta)
 		if unfold_t >= 0.0:
 			_unfold_tick(delta)
-		if built and d.has("battery"):
+		if built and d.has("battery") and not Defs.gear_mode:      # (gear mode: no power, no batteries)
 			var bat: Array = d["battery"]
 			if batteries < int(bat[1]):
 				_bat_t += delta
@@ -1358,6 +1364,8 @@ func _update_sprite() -> void:
 		_mill_ground.offset = sprite.offset
 	if life:
 		life.show(state)
+	if turret:
+		turret.head.visible = built and not dead      # (also on an online guest, whose buildings are not ticked)
 	if not seeded and not dead:
 		sprite.modulate = Color(1, 1, 1, 0.3)
 	elif unfold_t >= 0.0 and not dead:
@@ -1401,6 +1409,8 @@ func die() -> void:
 	var was_site := not built
 	dead = true
 	selected = false
+	if turret:
+		turret.head.visible = false      # (the ruin has the head lying in its rubble)
 	if team == game.human and built and not game.over:
 		Sfx.announce(d["faction"], "building_lost", 6.0)
 	elif team == game.human and not built and not ghost and not game.over and hp <= 0.0:

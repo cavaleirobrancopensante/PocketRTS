@@ -34,7 +34,7 @@ func _run() -> void:
 			if placed >= 3:
 				break
 			var c := base + Vector2i(dx, dy)
-			var kind: String = ["boiler", "spring_tower", "spring_tower"][placed]
+			var kind: String = ["mainspring", "regulator", "regulator"][placed]      # (gear mode: no Boilers)
 			if g.placement_problem(0, kind, c) == "":
 				var b = g.place_building(0, kind, c, ws, true)
 				if b:

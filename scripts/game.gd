@@ -3500,6 +3500,8 @@ func can_train(b: Building, key: String) -> String:
 		return "Research Armour at the Armoury first."
 	if not ArtData.UNITS.has(k) or Defs.PENDING.has(k):
 		return "Coming soon."      # its sprites aren't in (or tested) yet
+	if Defs.energy_only(k):
+		return "No power on the gear field."      # (gear mode: Defs.ENERGY_KINDS)
 	var u: Dictionary = Defs.UNITS[k]
 	var rs: String = u.get("research", "")
 	if rs != "" and not has_tech(b.team, rs):
@@ -4263,6 +4265,8 @@ func _crown_chain() -> Dictionary:
 
 ## "" when every building this one needs stands (finished), else what's missing.
 func requirement_text(t: int, k: String) -> String:
+	if Defs.energy_only(k):
+		return "No power on the gear field."      # (gear mode: Defs.ENERGY_KINDS)
 	var r = Defs.BUILDINGS[k].get("requires", "")
 	var reqs: Array = r if r is Array else ([r] if r != "" else [])
 	for req in reqs:
@@ -5420,6 +5424,31 @@ func tower_zap(b: Building, e: Unit) -> void:
 		hit.append(nxt)
 		last = nxt
 	Sfx.play_any(["combat/tesla_attack", "zap"], b.global_position)
+
+
+## The Ratchet Turret's screw (RatchetTurret, Defs.TURRET): the damage lands now (like a musket ball); the screw flies
+## from the barrel tip `from`, turned toward the target and spinning (its 4 frames looping), a muzzle burst at the tip and
+## sparks where it hits. Ground and air alike.
+func screw_shot(b: Building, e: Entity, dmg: float, from: Vector2, _dir: Array) -> void:
+	e = intercept(b, e)
+	var to := e.center()
+	e.take_damage(dmg, b, Entity.BLOW_RANGED)
+	var sc := float(Defs.TURRET["shot_scale"])
+	var ang := (to - from).angle()
+	if ArtData.EFFECTS.has("screw_muzzle"):
+		var mz := spawn_effect("screw_muzzle", from, 1.2)
+		# (the burst's brass rings, 0.366 of its cell from the left, sit on the barrel tip; the smoke blows forward)
+		mz.offset = Vector2(float(ArtData.EFFECTS["screw_muzzle"]["size"].x) * (0.5 - 0.366), 0.0)
+		mz.rotation = ang
+		var ms := float(Defs.TURRET["muzzle_scale"])
+		mz.scale = Vector2(ms, ms)
+		mz.z_index = 6
+	var s := Shot.new()
+	s.scale = Vector2(sc, sc)
+	s.impact = "screw_impact" if ArtData.EFFECTS.has("screw_impact") else "hit"
+	s.impact_scale = sc
+	s.launch(self, "screw" if ArtData.EFFECTS.has("screw") else "bolt", from, to, float(Defs.TURRET["speed"]))
+	Sfx.play_any(["combat/bolt_attack", "bolt"], b.global_position)
 
 
 ## The lightning itself: sprite effects when there are any, else a jagged line.

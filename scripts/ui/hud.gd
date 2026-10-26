@@ -75,7 +75,7 @@ func toast(t: String, sound := true) -> void:
 		Sfx.play_any(["ui/error", "error"])
 	if game and not game.demo:
 		var fac := game.faction_of(game.human)
-		var res: Array = Defs.FACTIONS[fac]["res"]
+		var res: Array = Defs.res_names(fac)
 		var low := t.to_lower()
 		if low.begins_with("not enough " + String(res[0]).to_lower()):
 			Sfx.announce(fac, "no_gold", 5.0)
@@ -292,7 +292,7 @@ func _layer_sig(n: String) -> Array:
 				var pl: Dictionary = game.players[shown]
 				vals.append_array([int(pl["gold"]), int(pl["res2"]), int(pl["cap"]), game.supply_used(shown)])
 				if game.faction_of(shown) == "clockwork":
-					vals.append_array([int(game.energy[shown]), game.blue_energy(shown)])
+					vals.append_array([int(game.energy[shown]), game.blue_energy(shown), int(float(pl.get("tension", 0.0)))])
 				if game.faction_of(shown) == "crown":
 					vals.append(game.horses_text(shown))
 			else:
@@ -1955,7 +1955,7 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	if fac == "clockwork":
 		r2 = "%d energy (%s batteries stored)" % [int(game.energy[t]), "blue" if game.blue_energy(t) else "yellow"]
 		if Defs.gear_mode:
-			r2 = "%d energy" % int(game.energy[t])       # (short, so the Tension pill after it fits the top bar)
+			r2 = "%d tension" % int(float(pl.get("tension", 0.0)))       # (gear mode: no energy; TENSION, the Mainspring's)
 	var x1 := x
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(t)
@@ -1965,9 +1965,6 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	var x3 := x
 	if fac == "crown":
 		x = _pill(font, x, Color(0.55, 0.42, 0.3), game.horses_text(t), UiStyle.TEXT)
-	elif fac == "clockwork" and Defs.gear_mode:
-		# TENSION (the Mainspring's, nothing spends it yet)
-		x = _pill(font, x, Color(0.62, 0.8, 0.95), "%d tension" % int(float(pl.get("tension", 0.0))), Color(0.85, 0.93, 1.0))
 	if t == game.human and not game.spectating():
 		# (for their tooltips)
 		_pill_rects = [[Rect2(x0, 4, x1 - 8 - x0, 30), 0], [Rect2(x1, 4, x2 - 8 - x1, 30), 1], [Rect2(x2, 4, x3 - 8 - x2, 30), 2]]
@@ -1980,8 +1977,10 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 func _res_line(t: int) -> String:
 	var pl: Dictionary = game.players[t]
 	var fac := game.faction_of(t)
-	var names: Array = {"crown": ["gold", "powder"], "brood": ["biomass", "essence"], "clockwork": ["cogs" if Defs.gear_mode else "ore", "energy"]}[fac]
+	var names: Array = {"crown": ["gold", "powder"], "brood": ["biomass", "essence"], "clockwork": ["cogs", "tension"] if Defs.gear_mode else ["ore", "energy"]}[fac]
 	var r2: int = int(game.energy[t]) if fac == "clockwork" else int(pl["res2"])
+	if fac == "clockwork" and Defs.gear_mode:
+		r2 = int(float(pl.get("tension", 0.0)))
 	return "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
 
 
@@ -2446,10 +2445,9 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
 				var coal := bb.soil_left()
 				if Defs.gear_mode:
-					info = "%d/%d batteries ready · Brass: %d left%s · Coal: %d%%%s · allows 2 Boilers and 2 Cog Presses nearby" % [
-						bb.batteries, int(bb.d["battery"][1]), int(bb.lode),
-						" (spent: its presses yield a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
-						int(round(coal * 100)), " (spent: its Boilers fill no more)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else "")]
+					# (no power in gear mode: no batteries, no Boilers, no coal)
+					info = "Brass: %d left%s · allows 2 Cog Presses nearby" % [int(bb.lode),
+						" (spent: its presses yield a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else "")]
 				else:
 					info = "%d/%d batteries ready (one every %.1f s) · Ore: %d left%s · Coal: %d%%%s · allows 2 Boilers and 2 Ore Crushers nearby" % [
 						bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0]), int(bb.lode),
@@ -2978,7 +2976,7 @@ func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := f
 
 
 func _res() -> Array:
-	return Defs.FACTIONS[game.faction_of(game.human)]["res"]
+	return Defs.res_names(game.faction_of(game.human))
 
 
 # ------------------------------------------------------------------ tooltips
@@ -3163,9 +3161,10 @@ func _res_tip(i: int) -> Dictionary:
 	if fac == "clockwork":
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
-		if Defs.gear_mode and i == 3:
+		if Defs.gear_mode and i == 1:
 			return {"title": "Tension: %d" % int(float(pl.get("tension", 0.0))), "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. Nothing spends it yet."}
-		return {}
+		if i != 2:
+			return {}
 	if i == 3:
 		var hs: Array = game.horses_of(game.human)
 		var led := hs.filter(func(h: Unit) -> bool: return h.leader != null).size()
