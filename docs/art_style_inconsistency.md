@@ -81,3 +81,4 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 
 ## Clock Soldier walk pose guide (code, 2026-10-26)
 - tools/soldier_guide/walk_guide.py: the idle sheet's frame 1 per direction with the legs cut at the hip and moved into a 6-frame stride (swing leg forward and lifted, stance leg back, body bob). Pose guide for a ChatGPT repaint: art/redraws/clock_soldier_walk_guide.png.
+- tools/soldier_guide/walk_code.py builds the WALK itself from the painted idle frame (ChatGPT's repaint of the guide came back almost without steps): each leg stays attached at the hip, the foot is sheared forward/back and the leg shortened as it lifts. Result art/redraws/clock_soldier_walk.png (+ .gif preview).
