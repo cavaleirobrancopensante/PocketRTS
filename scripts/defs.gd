@@ -381,6 +381,7 @@ const GEAR := {
 	"works_dt": 0.12,               # ... of the Movement Works' loop (while it trains)
 	"regulator_dt": 0.15,           # ... of the Regulator's pendulum (always, while built and linked)
 	"escapement_dt": 0.14,          # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring)
+	"aviary_dt": 0.15,              # ... of the Clock Aviary's doors and bird (4 frames, while it makes a Swift or researches)
 	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
 	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
 	"col": {"brass": Color("#e8c76a"), "edge": Color("#3b2a14"), "rim": Color(0.282, 0.18, 0.071), "dead": Color("#4a443c"), "off": Color("#8c8478"),
@@ -464,6 +465,61 @@ const JACK_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
 	"tips": {"s": Vector2(-26, -16), "se": Vector2(-21, -11), "e": Vector2(25, -22), "ne": Vector2(28, -19), "n": Vector2(27, -15)}}
 
 
+## The raised arm (shooting at a FLYER: the "attack_up" strip, tools/jack_guide/attack_up.py): the drill tip on the fire frame per
+## drawn direction, game px from its feet (tools/import_jack.py prints them), and the raised barrel's direction (the muzzle
+## burst blows along it).
+const JACK_SHOT_UP := {"tips": {"s": Vector2(-30, -54), "se": Vector2(-22, -52), "e": Vector2(17, -43), "ne": Vector2(24, -48), "n": Vector2(26, -48)},
+	"barrel": {"s": Vector2(-0.686, -0.728), "se": Vector2(-0.442, -0.897), "e": Vector2(0.707, -0.707), "ne": Vector2(0.606, -0.795), "n": Vector2(0.656, -0.754)}}
+
+
+## THE CLOCKWORK'S AIR (gear mode; docs/clockwork_ground_up.md "Air: Cuckoo and Ticking Owl"). Display names (owner,
+## 2026-10-26): the building is the CLOCK AVIARY, the flyer the SWIFT; the ids stay cuckoo_house and cuckoo.
+## The Aviary (CW_AIR) makes the flyers, like a Stargate: a 2x2 on its gear ring (the painted tower's plinth is narrow) that
+## needs an ACTIVE Escapement to be placed (linked and meshed with a Mainspring; the Aviary itself need not mesh with one).
+## The SWIFT (CUCKOO) is an air-to-air flyer that pecks (a short lunge). Once TICKING OWL is researched at an Aviary, each
+## Swift can be MORPHED into a TICKING OWL (OWL) on its own (OWL_MORPH): a heavy flyer that swoops down with its talons on
+## units and drops its pendulum-weight bombs on buildings (OWL_BOMB). It cannot hit flyers.
+const CW_AIR := "cuckoo_house"
+const CUCKOO := "cuckoo"
+const OWL := "ticking_owl"
+## MORPH TO OWL (a Swift's card): `cost` cogs + `tension` Tension, `time` s, each Swift on its own. It hovers where it is
+## meanwhile (no moving, no fighting; it can be hit; killed, the price is lost); CANCEL MORPH pays it all back. The Owl needs
+## the 2 supply more it uses than the Swift (held while it morphs).
+const OWL_MORPH := {"cost": 100, "tension": 50, "time": 20.0}
+## The Owl's BOMB, its attack on a BUILDING (on a unit it swoops: its UNITS numbers). The weight is let go on the 2nd frame
+## of the drop (`aim` s), from where it hangs (`drop`: per drawn direction, game px from the Owl's anchor, W/SW/NW mirror
+## E/SE/NE; tools/import_cuckoo.py prints them), and falls onto the building (the point of it nearest the Owl, `inside` px
+## in) in `fall` s plus a little per px across; it bursts there: `damage` to every enemy building within `radius` px (edge to
+## the impact) and `unit_damage` to enemy ground units within `unit_radius` px (a small area; the bonus is on buildings).
+## One every `aim` + `strike` + `cooldown` s (3 s: 15 a second on buildings), from `range` px (edge distance less its radius:
+## it comes right up to the building's edge, so the weight drops more than it is thrown).
+## Guesses (design_principles 1): a Brute does about 17 a second to buildings for 3 supply; the Owl is slow, costs a Swift
+## plus 100 cogs and 50 Tension, and a Ratchet Turret (14 every 1.5 s, at air) shoots one down before it bombs the turret.
+const OWL_BOMB := {"range": 4.0, "aim": 0.11, "strike": 0.56, "cooldown": 2.33, "damage": 45.0, "radius": 32.0,
+	"unit_damage": 12.0, "unit_radius": 24.0, "fall": 0.32, "fall_per": 0.003, "inside": 6.0, "scale": 1.0,
+	"drop": {"s": Vector2(-3, -7), "se": Vector2(-2, -5), "e": Vector2(-4, -7), "ne": Vector2(-1, -6), "n": Vector2(-1, -7)}}
+## The flyers' sprites (tools/import_cuckoo.py: every frame aligned on the body; the anchor is the bottom of the figure, the
+## game lifts it `lift` px over its shadow, as every flyer) and the motion the code draws over them:
+##   flap    frames a second of the fly loop (idle and walk alike)
+##   strike  s the attack strip keeps playing after the blow lands (so its last frames are seen)
+##   lunge   the Swift's peck: share of its REACH per frame of the attack strip (pull back, lunge on the 3rd, recover)
+##   dive    the Owl's swoop: the same per frame (rise, wind up, dive, strike low on the 4th, climb back)
+##           REACH: from its beak (the Swift) or talons (the Owl), `strike_y` px over its anchor, to the prey's body
+##           (Entity.center), less `contact` px, at most `reach` px: the bird darts all the way in and back, whatever the gap
+##           the attack range leaves between the two
+##   bob     the Owl after letting a bomb go: px down per frame of the bomb strip (negative: up)
+##   fall    share of the flying height left per frame of the death strip (frames 5-6 lie on the ground)
+##   centre  px over its ground point where shots aim (its body in the air); `bar`: where its health bar sits
+const FLYER := {
+	"cuckoo": {"lift": 20.0, "flap": 10.0, "strike": 0.45, "lunge": [0.0, -0.12, 1.0, 0.55, 0.2, 0.0],
+		"strike_y": 14.0, "contact": 16.0, "reach": 64.0,
+		"fall": [1.0, 0.9, 0.65, 0.3, 0.0, 0.0], "centre": 34.0, "bar": 52.0},
+	"ticking_owl": {"lift": 20.0, "flap": 7.0, "strike": 0.35, "dive": [0.0, -0.15, 0.55, 1.0, 0.4, 0.0],
+		"strike_y": 18.0, "contact": 6.0, "reach": 70.0,
+		"bob": [0.0, 0.0, -4.0, -5.0, -1.0, 0.0], "fall": [1.0, 0.9, 0.65, 0.3, 0.0, 0.0], "centre": 52.0, "bar": 72.0},
+}
+
+
 ## The Tension a unit, building or research costs (gear mode's Clockwork: its `tension`; 0 for anything else).
 static func tension_cost(d: Dictionary) -> int:
 	return int(d.get("tension", 0)) if gear_mode else 0
@@ -499,8 +555,9 @@ static func build_list(faction: String) -> Array:
 			for k in ENERGY_KINDS:
 				l.erase(k)
 			l.insert(l.find(CW_WORKS) + 1, CW_TURRET)
-			# tier 2: the Escapement (the tech building, a Tension user) after the turret
+			# tier 2: the Escapement (the tech building, a Tension user) after the turret, and the Clock Aviary (the flyers)
 			l.insert(l.find(CW_TURRET) + 1, CW_TECH)
+			l.insert(l.find(CW_TECH) + 1, CW_AIR)
 		elif rail_econ:
 			l[l.find("ore_crusher")] = "ore_drill"
 		if not line_mode:
@@ -738,6 +795,30 @@ const UNITS := {
 		"requires": "escapement", "anti_air": true, "faction": "clockwork",
 		"about": "A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at the Movement Works once an Escapement works.",
 	},
+	# THE AIR (gear mode; Defs.CW_AIR): the SWIFT (id cuckoo), an air-to-air flyer from the Clock Aviary, and the TICKING OWL
+	# each Swift can be morphed into (Defs.OWL_MORPH). Guesses (design_principles 1): the Swift is the Skywing's match in
+	# the air for less (75 cogs + 15 Tension vs 100 + 40 essence) but it must close in to peck (28 px vs the Skywing's 130)
+	# and cannot touch the ground: 10 every 1.27 s (aim 0.22, the hit on the 3rd frame at 9 fps, + 0.45 + 0.6), 7.9 a second;
+	# one beats a Skywing that lets it close (about 10 s vs 14), loses to a balloon full of Musketeers. Fast (118, a
+	# Skywing's). "light".
+	"cuckoo": {
+		"tags": ["light"],
+		"name": "Swift", "hp": 90, "armor": 0, "speed": 118, "cost": 75, "tension": 15, "time": 20.0, "supply": 2,
+		"sight": 9, "range": 28, "damage": 10, "cooldown": 0.6, "aim": 0.22, "radius": 13, "from": "cuckoo_house",
+		"air": true, "anti_air": true, "air_only": true, "faction": "clockwork",
+		"about": "A fast brass bird with a clock in its chest: it hunts other flyers and pecks them with a short lunge (it must close in, and it cannot touch the ground). MORPH TO OWL rebuilds it into a Ticking Owl once TICKING OWL is researched at a Clock Aviary. Costs Tension. Made at the Clock Aviary.",
+	},
+	# the TICKING OWL (morphed from a Swift: Defs.OWL_MORPH; never trained): heavy, slow, ground only. Against units the
+	# TALON SWOOP: 20 every 2 s (aim 0.33, the blow on the 4th frame, + 0.35 + 1.32) from 28 px; against buildings the BOMB
+	# (Defs.OWL_BOMB: 45 every 3 s, a small area). 220 hp + 1 armour, 4 supply, speed 56 (a balloon's 46, a Skywing's 118).
+	# Answers: anything that shoots flyers (a Ratchet Turret, Musketeers, Spitters, Skywings, Jacks, Swifts).
+	"ticking_owl": {
+		"tags": ["armored"],
+		"name": "Ticking Owl", "hp": 220, "armor": 1, "speed": 56, "cost": 175, "tension": 65, "time": 20.0, "supply": 4,
+		"sight": 9, "range": 28, "damage": 20, "cooldown": 1.32, "aim": 0.33, "radius": 18, "from": "",
+		"air": true, "ground_only": true, "faction": "clockwork",
+		"about": "A heavy clockwork owl with a pendulum weight under it: it SWOOPS DOWN on units with its talons and DROPS its weight as a BOMB on buildings (it bursts on impact and hurts the buildings close by). Slow; it cannot hit flyers. Made from a Swift: MORPH TO OWL, once TICKING OWL is researched at a Clock Aviary.",
+	},
 	"windup_soldier": {
 		"tags": ["light"],
 		"name": "Wind-up Soldiers", "hp": 55, "armor": 1, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
@@ -965,6 +1046,14 @@ const BUILDINGS := {
 		"supply": 0, "sight": 7, "trains": [], "requires": "movement_works", "faction": "clockwork",
 		"about": "The Clockwork's tech building: it unlocks the Jack and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Movement Works.",
 	},
+	# THE AIR (gear mode): the CLOCK AVIARY (id cuckoo_house), the flyers' building (like a Stargate). A tall narrow 2x2 tower
+	# on its gear ring; it needs an ACTIVE Escapement to be placed (Game.requirement_text) but no Mainspring of its own.
+	# Guesses: a Brood Roost's price (175, cogs only: buildings have no Tension price), a Foundry's health.
+	"cuckoo_house": {
+		"name": "Clock Aviary", "hp": 900, "armor": 2, "cost": 175, "time": 45.0, "size": Vector2i(2, 2),
+		"supply": 0, "sight": 7, "trains": ["cuckoo"], "requires": "escapement", "faction": "clockwork",
+		"about": "A tall clock tower whose little doors open for brass birds to fly out. It makes the Swift, the Clockwork's flyer, and researches TICKING OWL (then every Swift can be rebuilt into a Ticking Owl). Needs a working Escapement (meshed with a Mainspring) to be built; it must stay linked to the gear field.",
+	},
 	"regulator": {
 		"name": "Regulator", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
 		"supply": 10, "sight": 6, "trains": [], "faction": "clockwork",
@@ -1118,6 +1207,11 @@ const RESEARCH := {
 	"high_leap": {"name": "High Leap", "label": "HIGH LEAP", "at": "escapement", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 100,
 		"time": 60.0, "icon": "research_high_leap",
 		"about": "A stiffer spring: every Jack can JUMP UP onto high ground too (only where you can see)."},
+	# the Clock Aviary's research (gear mode): then each Swift can be morphed into a Ticking Owl (Defs.OWL_MORPH)
+	# (id owl_morph: the unit is ticking_owl)
+	"owl_morph": {"name": "Ticking Owl", "label": "TICKING OWL", "at": "cuckoo_house", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 150,
+		"time": 60.0, "icon": "research_ticking_owl",
+		"about": "The plans of the Ticking Owl: every Swift gets MORPH TO OWL (100 cogs and 50 Tension, 20 s each), rebuilding it into a heavy owl that swoops on units and bombs buildings."},
 }
 ## The musket locks, in order.
 const LOCKS := ["matchlock", "flintlock", "caplock"]

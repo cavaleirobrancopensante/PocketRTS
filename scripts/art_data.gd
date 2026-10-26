@@ -1098,6 +1098,10 @@ const EFFECTS := {
 	"screw": {"frames": 4, "size": Vector2i(61, 25)},
 	"screw_muzzle": {"frames": 4, "size": Vector2i(74, 49)},
 	"screw_impact": {"frames": 4, "size": Vector2i(62, 60)},
+	# the Ticking Owl's bomb: the weight falling (tumbling, its red light pulsing) and its explosion (the impact point in the
+	# middle of every cell; tools/import_cuckoo.py prints these)
+	"owl_bomb": {"frames": 4, "size": Vector2i(18, 18)},
+	"owl_blast": {"frames": 8, "size": Vector2i(96, 96)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):

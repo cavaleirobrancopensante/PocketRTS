@@ -181,7 +181,13 @@ var jump_cd := 0.0              # Jack: seconds before its spring can JUMP again
 var jumps := 0                  # Jack: leaps made (tests, the log)
 var shots := 0                  # Jack: screws fired (tests)
 var last_shot: Shot = null      # Jack: its last screw in flight (tests, screenshots)
+var last_tip := Vector2.ZERO    # Jack: where its last screw left from (the drill tip, raised at a flyer; tests)
 var _jack_t := 0.0              # Jack (the computer's): when it next thinks of jumping away
+var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
+var bombs := 0                  # Ticking Owl: bombs let go (tests)
+var last_bomb: OwlBomb = null   # Ticking Owl: its last bomb (tests, screenshots)
+var _owl_bomb := false          # Ticking Owl: this attack is a bomb on a building (else the talon swoop)
+var _reach := Vector2.ZERO      # Swift / Ticking Owl: how far its lunge or swoop carries the sprite (CwAir.reach)
 # Mist Toad (its energy is `charge`): TONGUE
 var tongue_victim: Unit = null  # who its tongue is on
 var tongue_stage := ""          # "", "windup" (the crosshair), "lash" (the tongue flies out), "pull"
@@ -871,6 +877,8 @@ func can_hit(e: Entity) -> bool:
 		return false
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
 		return false            # a deflated Bloater, a Skywing landing or taking off
+	if owl_t >= 0.0:
+		return false            # (a Swift turning into a Ticking Owl)
 	if e.is_air() and d.get("ground_only", false):
 		return false
 	if not e.is_air() and d.get("air_only", false):
@@ -1048,6 +1056,8 @@ func set_canister(on: bool) -> void:
 
 
 func _cooldown() -> float:
+	if _owl_bomb and kind == Defs.OWL:
+		return float(Defs.OWL_BOMB["cooldown"])
 	if kind == "heavy_loco":
 		return float(d["cooldown"]) * CwUnits.cooldown_mult(self)
 	if mode == "pistol":
@@ -1065,7 +1075,19 @@ func _cooldown() -> float:
 	return float(d["cooldown"])
 
 
+## How long a blow's strike phase lasts (the attack strip keeps playing): 0.35 s, or the Swift's and the Owl's own
+## (Defs.FLYER "strike", Defs.OWL_BOMB "strike") so their whole lunge, swoop or drop is seen.
+func _strike_time() -> float:
+	if _owl_bomb and kind == Defs.OWL:
+		return float(Defs.OWL_BOMB["strike"])
+	if Defs.FLYER.has(kind):
+		return float(Defs.FLYER[kind]["strike"])
+	return 0.35
+
+
 func _aim() -> float:
+	if _owl_bomb and kind == Defs.OWL:
+		return float(Defs.OWL_BOMB["aim"])      # (the weight is let go on the 2nd frame of the drop)
 	if mode == "pistol":
 		return float(Defs.PISTOL["aim"])
 	if mode == "bayonet":
@@ -1568,7 +1590,9 @@ func coil_point() -> Vector2:
 
 
 func center() -> Vector2:
-	# flyers are drawn hovering 20 px up: shots and zaps go to where they're seen
+	# flyers are drawn hovering 20 px up: shots and zaps go to where they're seen (the Swift's and the Owl's bodies: Defs.FLYER)
+	if Defs.FLYER.has(kind):
+		return global_position + Vector2(0, -float(Defs.FLYER[kind]["centre"]))
 	return global_position + Vector2(0, -32 if is_air() else -12)
 
 
@@ -2845,6 +2869,13 @@ func _tick_unit(delta: float) -> void:
 		if visible and game.view_rect.has_point(position):
 			queue_redraw()       # (its shadow shrinks as it rises)
 		return
+	if owl_t >= 0.0:
+		# a Swift turning into a Ticking Owl: it hovers where it is (scripts/cw_air.gd); it cannot move or fight meanwhile
+		CwAir.morph_tick(self, delta)
+		_animate(delta)
+		if visible and game.view_rect.has_point(position):
+			queue_redraw()       # (the clock hand and the bar)
+		return
 	if kind == Defs.JACK and jump_cd <= 0.0:
 		_jack_t -= delta
 		if _jack_t <= 0.0:
@@ -3140,6 +3171,8 @@ func _scan_range() -> float:
 func _range() -> float:
 	if kind == "rail_rifleman":
 		return CwUnits.range_of(self)
+	if kind == Defs.OWL and target is Building:
+		return float(Defs.OWL_BOMB["range"])     # (the bomb: it comes right up to the building's edge to let it fall)
 	if kind == "bloater":
 		# holding its gas, or about to pop anyway: it goes in to burst (out of gas it
 		# deflates instead, and can't attack at all until it has filled up again)
@@ -3584,6 +3617,11 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 	if braced:
 		# the planted shield turns only slowly toward what it fights
 		facing = facing.slerp((e.center() - center()).normalized(), clampf(delta * 2.0, 0.0, 1.0)).normalized()
+	elif Defs.FLYER.has(kind):
+		# (the Swift and the Owl turn to face it on the ground plane: their bodies sit high over their shadows)
+		var gp: Vector2 = e.position if e is Unit else e.rect().get_center()
+		if gp.distance_to(position) > 2.0:
+			facing = (gp - position).normalized()
 	else:
 		facing = (e.center() - center()).normalized()
 	if phase == "":
@@ -3613,6 +3651,7 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 			if order != "hold":
 				target = null
 			return
+		_owl_bomb = kind == Defs.OWL and e is Building      # (the Owl: a bomb on a building, the talons on a unit)
 		phase = "aim"
 		phase_t = _aim()
 		return
@@ -3626,7 +3665,7 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		return
 	if phase == "aim" and phase_t <= 0.0:
 		phase = "strike"
-		phase_t = 0.35
+		phase_t = _strike_time()
 		_strike(e)
 	elif phase == "strike" and phase_t <= 0.0:
 		phase = ""
@@ -3722,6 +3761,13 @@ func _strike(e: Entity) -> void:
 			Sfx.play_any(["combat/skywing_attack", "bite"], position)
 		"jack":
 			Jack.shoot(self, e, dmg)       # (a spinning screw from the drill tip, ground or air)
+		"ticking_owl":
+			if e is Building:
+				CwAir.drop_bomb(self, e)       # (the weight falls onto it: the damage is the bomb's, where it lands)
+			else:
+				e.take_damage(dmg, self, BLOW_MELEE)      # the talons, swooping down
+				game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.7)
+				Sfx.play_any(["combat/ticking_owl_attack", "clash"], position)
 		"ornithopter":
 			if e.is_air():
 				dmg *= float(d.get("vs_air", 1.0))
@@ -4912,6 +4958,7 @@ func die() -> void:
 		jump = {}                  # (a Jack killed in the air falls where it was)
 		if sprite:
 			sprite.position = Vector2.ZERO
+	owl_t = -1.0                   # (a Swift killed while turning into an Owl: the price is lost)
 	if Defs.cw_roster:
 		CwUnits.on_death(game, self)
 	queue.clear()
@@ -4963,7 +5010,7 @@ func die() -> void:
 	game.on_unit_died(self)
 	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim(_death_anim(), true)
-	z_index = -1
+	z_index = 3 if Defs.FLYER.has(kind) else -1     # (the Swift and the Owl fall first: under the living once down)
 	# powder goes up: a keg on a labourer's back, or a whole Powder Wagon
 	if keg:
 		keg = false
@@ -5203,7 +5250,14 @@ func _anim_name() -> String:
 			if not jump.is_empty():
 				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
 			if phase != "":
-				return "attack"
+				# at a flyer it raises its arm (the attack_up strip: same timing, same shot frame)
+				return "attack_up" if Jack.aims_up(self) else "attack"
+		"cuckoo":
+			if phase != "":
+				return "attack"          # (the pecking lunge)
+		"ticking_owl":
+			if phase != "":
+				return "bomb" if _owl_bomb else "attack"     # (the bomb drop on a building, the swoop on a unit)
 	return "walk" if moving else "idle"
 
 
@@ -5215,7 +5269,7 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
 		"dismounted_armoured": 12.0, "winder": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
-		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0}
+		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.
@@ -5282,7 +5336,7 @@ func _animate(delta: float) -> void:
 	var loop := true
 	match anim:
 		"idle", "idle_carry":
-			fps = 2.0
+			fps = 2.0 if not Defs.FLYER.has(kind) else float(Defs.FLYER[kind]["flap"]) * 0.85     # (a flyer flaps in place)
 		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0
 			loop = false
@@ -5310,7 +5364,7 @@ func _animate(delta: float) -> void:
 			# draw, aim, fire, lower: over the aim and the shot (Defs.PISTOL)
 			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
 			loop = false
-		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee":
+		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee", "attack_up", "bomb":
 			fps = 6.0 if kind == "spore_mother" else 9.0
 			loop = false
 		"burrow":
@@ -5400,6 +5454,14 @@ func _animate(delta: float) -> void:
 		# coming down to (or rising from) the ground
 		var f := clampf(sky_t / Defs.SKYWING_SWITCH, 0.0, 1.0)
 		sprite.position.y = -20.0 * (f if sky == "landing" else 1.0 - f)
+	elif Defs.FLYER.has(kind):
+		# the Swift and the Owl: the hover, their lunge / dive / bob, the fall when they die (scripts/cw_air.gd)
+		sprite.position = CwAir.sprite_offset(self)
+		if dead:
+			if CwAir.falling(self):
+				queue_redraw()       # (its shadow fades as it comes down)
+			else:
+				z_index = -1         # (on the ground now: a wreck under the living)
 	elif is_air():
 		# flyers hover above their shadow and drop to the ground when they die
 		sprite.position.y = lerpf(sprite.position.y, 0.0, delta * 3.0) if dead else -20.0 + sin(_bob_t * 4.0) * 2.5
@@ -5811,6 +5873,8 @@ func _draw() -> void:
 
 
 func _draw_unit() -> void:
+	if dead and CwAir.falling(self):
+		CwAir.draw_fall_shadow(self)
 	if dead:
 		# a veteran's body (or a seasoned horse's carcass, or a rider's on one): how much
 		# essence it holds, for the Brood to see
@@ -5831,6 +5895,8 @@ func _draw_unit() -> void:
 	if haul_t >= 0.0 and kind == "balloon" and _haul_node == null:
 		_draw_haul(self)
 	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0 - lifted
+	if Defs.FLYER.has(kind):
+		top = -float(Defs.FLYER[kind]["bar"])       # (the Swift and the Owl: just over the drawn bird, not its shadow or cell)
 	if kind == "mortar":
 		top = -50.0
 	elif kind == "tesla_cart" and tesla_mode != "packed":
@@ -5839,6 +5905,8 @@ func _draw_unit() -> void:
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	var bw := radius * 2.4
 	draw_health(top, bw, true)
+	if owl_t >= 0.0:
+		CwAir.draw_morph(self, top, bw)
 	if has_attack():
 		# the reload, only while reloading (or setting up a gun): nothing when ready
 		var rf := reload_frac()

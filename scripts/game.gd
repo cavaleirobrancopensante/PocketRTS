@@ -3405,6 +3405,8 @@ func supply_used(t: int) -> int:
 	for u in units:
 		if u.team == t and not u.dead:
 			n += int(u.d["supply"])
+			if u.owl_t >= 0.0:
+				n += int(Defs.UNITS[Defs.OWL]["supply"]) - int(u.d["supply"])     # (a Swift turning into an Owl holds its supply)
 	for b in buildings:
 		if b.team == t:
 			for k in b.queue:
@@ -4342,7 +4344,12 @@ func requirement_text(t: int, k: String) -> String:
 	var r = Defs.BUILDINGS[k].get("requires", "")
 	var reqs: Array = r if r is Array else ([r] if r != "" else [])
 	for req in reqs:
-		if not _has_built(t, req):
+		if Defs.gear_mode and Defs.TENSION_USERS.has(req):
+			# (the Clock Aviary needs an Escapement that WORKS: linked and meshed with a Mainspring)
+			var tp := tension_user_problem(t, req)
+			if tp != "":
+				return tp
+		elif not _has_built(t, req):
 			return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
 	return ""
 
@@ -5502,7 +5509,7 @@ func tower_zap(b: Building, e: Unit) -> void:
 ## and its burst, `speed` its flight): the damage lands now (like a musket ball); the screw flies from the barrel or drill
 ## tip `from`, turned toward the target and spinning (its 4 frames looping), a muzzle burst at the tip and sparks where it
 ## hits. Ground and air alike. Returns the screw (tests watch it fly).
-func screw_shot(src: Entity, e: Entity, dmg: float, from: Vector2, _dir: Array, sc := -1.0, ms := -1.0, speed := -1.0) -> Shot:
+func screw_shot(src: Entity, e: Entity, dmg: float, from: Vector2, _dir: Array, sc := -1.0, ms := -1.0, speed := -1.0, barrel := Vector2.ZERO) -> Shot:
 	e = intercept(src, e)
 	var to := e.center()
 	e.take_damage(dmg, src, Entity.BLOW_RANGED)
@@ -5517,7 +5524,7 @@ func screw_shot(src: Entity, e: Entity, dmg: float, from: Vector2, _dir: Array, 
 		var mz := spawn_effect("screw_muzzle", from, 1.2)
 		# (the burst's brass rings, 0.366 of its cell from the left, sit on the barrel tip; the smoke blows forward)
 		mz.offset = Vector2(float(ArtData.EFFECTS["screw_muzzle"]["size"].x) * (0.5 - 0.366), 0.0)
-		mz.rotation = ang
+		mz.rotation = barrel.angle() if barrel != Vector2.ZERO else ang      # (along a raised barrel: the Jack shooting up)
 		mz.scale = Vector2(ms, ms)
 		mz.z_index = 6
 	var s := Shot.new()
@@ -5762,6 +5769,42 @@ func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity)
 	for b in buildings.duplicate():
 		if not allied(b.team, t) and not b.dead and b.edge_distance(p) < splash * 0.6:
 			b.take_damage(dmg * bb, shooter)
+
+
+## The Ticking Owl's bomb lands (OwlBomb, Defs.OWL_BOMB): every enemy building within "radius" px of the impact (edge
+## distance) takes `dmg`, enemy ground units within "unit_radius" px a little ("unit_damage", in step with dmg); the
+## explosion plays there (its strip has the impact point in the middle of every cell).
+func owl_bomb_land(p: Vector2, dmg: float, t: int, shooter: Entity) -> void:
+	var ob: Dictionary = Defs.OWL_BOMB
+	var fx := spawn_effect("owl_blast" if ArtData.EFFECTS.has("owl_blast") else "explosion", p, 1.0)
+	fx.z_index = 6
+	Sfx.play_any(["combat/owl_bomb", "combat/mortar_hit", "combat/cannon_hit", "boom"], p)
+	var ud := float(ob["unit_damage"]) * dmg / maxf(float(ob["damage"]), 1.0)
+	var ur := float(ob["unit_radius"])
+	for u in units_near(p, ur + 30.0):
+		if u.dead or u.off_field or u.is_air() or not hostile(u.team, t):
+			continue
+		if u.position.distance_to(p) <= ur + u.radius:
+			u.take_damage(ud, shooter)
+	for b in buildings.duplicate():
+		if not b.dead and hostile(b.team, t) and b.edge_distance(p) <= float(ob["radius"]):
+			b.take_damage(dmg, shooter)
+	bombs_landed += 1
+
+
+var bombs_landed := 0       # Ticking Owl bombs that went off (tests)
+
+
+## MORPH TO OWL: the selected Swifts that can start turning into Ticking Owls (CwAir.morph_order). "" or why none did.
+func morph_order(list: Array) -> String:
+	if net_forward(self, "morph_order", [list]): return ""
+	return CwAir.morph_order(self, list)
+
+
+## CANCEL MORPH: the selected Swifts that are turning into Owls stop, paid back.
+func cancel_morph(list: Array) -> void:
+	if net_forward(self, "cancel_morph", [list]): return
+	CwAir.cancel_order(list)
 
 
 ## Spells on the ground for a while: [{kind, pos, r, t, team, age, fx, healed}]

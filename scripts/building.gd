@@ -453,6 +453,8 @@ func in_use() -> bool:
 			return game.gear_net.speed_mult(self) > 0.0
 		"escapement":
 			return game.gear_net.speed_mult(self) > 0.0       # (linked and meshed with a Mainspring)
+		"cuckoo_house":
+			return not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0
 	return true
 
 
@@ -748,10 +750,10 @@ func spring_rate() -> float:
 	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
 
 
-## Cog Press / Mainspring / Movement Works / Regulator / Escapement: the painted working loop (assets/buildings/<kind>_work_0..7.png,
-## `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it works; the built picture while it idles, and none of it
-## once it is damaged (under half its hp).
-func _gear_anim(working: bool, dt := -1.0) -> void:
+## Cog Press / Mainspring / Movement Works / Regulator / Escapement / Clock Aviary: the painted working loop
+## (assets/buildings/<kind>_work_0..7.png, `frames` of them; `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
+## works; the built picture while it idles, and none of it once it is damaged (under half its hp).
+func _gear_anim(working: bool, dt := -1.0, frames := 8) -> void:
 	if sprite == null:
 		return
 	if not working or hp < max_hp * 0.5:
@@ -759,7 +761,7 @@ func _gear_anim(working: bool, dt := -1.0) -> void:
 			drill_anim = false
 			_update_sprite()
 		return
-	var i := int(game.clock / (dt if dt > 0.0 else float(Defs.GEAR["frame_dt"]))) % 8
+	var i := int(game.clock / (dt if dt > 0.0 else float(Defs.GEAR["frame_dt"]))) % frames
 	var t := Game.tex("res://assets/buildings/%s_work_%d.png" % [kind, i])
 	if t == null:
 		return
@@ -910,6 +912,10 @@ func _econ(delta: float) -> void:
 		"escapement":
 			# the anchor rocks and the wheel ticks while it works: linked and meshed with a Mainspring (the Tension rule)
 			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["escapement_dt"]))
+		"cuckoo_house":
+			# the Clock Aviary: its doors open and a little brass bird pops out and flies off, over and over, while it makes
+			# a Swift (or researches) and is linked; doors shut when idle
+			_gear_anim(not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["aviary_dt"]), 4)
 		"powder_mill":
 			# grinds its Town Hall's saltpetre; once that's spent, nothing
 			var n := working_crew()

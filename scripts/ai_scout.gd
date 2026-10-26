@@ -34,7 +34,7 @@ const DANGER_FOR := 30.0        # a shooter seen this long ago still counts when
 const DEFEND_FOR := 210.0       # how long a defensive game lasts before the verdict is looked at again
 ## Production and tech buildings: seeing them says "this enemy builds an army".
 const MILITARY := ["barracks", "horse_breeder", "foundry", "armoury", "warren", "gorge_pit", "roost",
-	"assembly_works", "engine_hall", "capacitor_works", "movement_works", "escapement"]
+	"assembly_works", "engine_hall", "capacitor_works", "movement_works", "escapement", "cuckoo_house"]
 ## What a minute of a rush looks like, per faction: the army value seen before 6:00 that counts as a rush
 ## (the Brood's cheap bodies come early whatever it plays: it takes much more).
 const RUSH_VALUE := {"crown": 300.0, "clockwork": 360.0, "brood": 800.0}

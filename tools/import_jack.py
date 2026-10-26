@@ -15,6 +15,9 @@ Defs.JACK "tips".
                                 flies the unit along its arc over its own ground shadow
   attack  jack_attack_body.png  5 x 6 (256 px grid): the recoil without the burst. The frames are the rest pose shifted
                                 along the barrel; here the foot plate stays still and only the body above it kicks back
+  attack_up jack_attack_up_body.png  5 x 6, laid out like the attack sheet (tools/jack_guide/attack_up.py): the launcher
+                                arm RAISED at a flyer, the same recoil along the raised barrel; the drill tip on its fire
+                                frame (the 2nd) comes from art/redraws/jack_attack_up_tips.json
   death   jack_death_final.png  5 x 7 (~219.4 px cells): every frame on its spring's foot (the base plate stays put while
                                 the body is flung off); the last frame is the corpse
 
@@ -22,6 +25,7 @@ Per frame: key out the navy (tolerance 40), keep the figure (its big pieces and 
 gears and screws flying off), shrink to game size (the S idle as tall as the Clock Soldier's S idle), snap the team reds
 to the shader's key reds.
   python3 tools/import_jack.py"""
+import json
 import os
 import numpy as np
 from PIL import Image
@@ -41,8 +45,10 @@ SHEETS = {
     'walk': ('jack_hop.png', 5, 6, 'row'),
     'jump': ('jack_jump.png', 5, 8, 'foot'),
     'attack': ('jack_attack_body.png', 5, 6, 'recoil'),
+    'attack_up': ('jack_attack_up_body.png', 5, 6, 'recoil'),
     'death': ('jack_death_final.png', 5, 7, 'foot'),
 }
+UP_TIPS = 'art/redraws/jack_attack_up_tips.json'     # the raised drill tip on the fire frame, cell px (+ barrel direction)
 # the drill tip on the painted idle frame (tools/jack_guide/attack.py: TIP in the BOX crop, the crop pasted in a 256 x 204
 # cell at ((256 - w) // 2, 204 - h - 10))
 IDLE_BOX = [(159, 23, 306, 181), (174, 216, 299, 360), (170, 387, 301, 537), (166, 571, 308, 713), (164, 743, 308, 873)]
@@ -160,8 +166,9 @@ def snap_team(img):
 
 def main():
     frames = {}       # (anim, dir) -> [(rgba, ax, ay)]
-    recoil = {}       # dir -> (dx, dy) sheet px of the body kick on the shot frame
-    attack0 = {}      # dir -> (foot in sheet coords) of the first attack frame
+    recoil = {}       # (anim, dir) -> (dx, dy) sheet px of the body kick on the shot frame
+    attack0 = {}      # (anim, dir) -> (foot in sheet coords) of the first attack frame
+    shot_foot = {}    # (anim, dir) -> the shot frame's own foot in sheet coords (before the plate is put back)
     for anim, (f, rows, cols, how) in SHEETS.items():
         figs = figures(SRC + f, rows, cols)
         for row, d in enumerate(DIRS):
@@ -180,7 +187,9 @@ def main():
                     sx, sy = x0 - cx0 + fx, y0 - cy0 + fy
                     if first is None:
                         first = (sx, sy, x0 - cx0, y0 - cy0)
-                        attack0[d] = (x0 + fx, y0 + fy)
+                        attack0[(anim, d)] = (x0 + fx, y0 + fy)
+                    if i == SHOT_FRAME:
+                        shot_foot[(anim, d)] = (x0 + fx, y0 + fy)
                     kx, ky = int(round((x0 - cx0) - first[2])), int(round((y0 - cy0) - first[3]))
                     if kx or ky:
                         pt = plate_top(o, fy)
@@ -198,7 +207,7 @@ def main():
                         o = big
                         fx, fy = fx - kx + pad, fy - ky + pad
                         if i == SHOT_FRAME:
-                            recoil[d] = (kx, ky)
+                            recoil[(anim, d)] = (kx, ky)
                 out.append((o, fx, fy))
             if anim == 'idle':
                 out = out[:4]
@@ -245,10 +254,25 @@ def main():
         w, h = bx1 - bx0, by1 - by0
         tx = 0 * 256 + (256 - w) // 2 + TIP[row][0]
         ty = row * 204 + 204 - h - 10 + TIP[row][1]
-        fx, fy = attack0[d]
-        kx, ky = recoil.get(d, (0, 0))
+        fx, fy = attack0[('attack', d)]
+        kx, ky = recoil.get(('attack', d), (0, 0))
         tips[d] = (round((tx - fx + kx) * scale), round((ty - fy + ky) * scale))
     print('tips: {' + ', '.join('"%s": Vector2(%d, %d)' % (d, t[0], t[1]) for d, t in tips.items()) + '}')
+    # the RAISED drill tip (shooting at a flyer): the JSON gives it on the fire frame in that frame's cell (the sheet's rows
+    # are 204 px apart); in the strip that frame's body keeps its kick over the first frame's foot plate, so the tip is
+    # (the tip - the fire frame's own foot) + its kick, from the anchor
+    up = json.load(open(UP_TIPS))
+    cwu, chu = up['cell']
+    tips_up = {}
+    for row, d in enumerate(DIRS):
+        tx, ty, bx, by = up['tips'][d.upper()]
+        tx += SHOT_FRAME * cwu
+        ty += row * chu
+        fx, fy = shot_foot[('attack_up', d)]
+        kx, ky = recoil.get(('attack_up', d), (0, 0))
+        tips_up[d] = (round((tx - fx + kx) * scale), round((ty - fy + ky) * scale), bx, by)
+    print('tips_up: {' + ', '.join('"%s": Vector2(%d, %d)' % (d, t[0], t[1]) for d, t in tips_up.items()) + '}')
+    print('barrel_up: {' + ', '.join('"%s": Vector2(%.3f, %.3f)' % (d, t[2], t[3]) for d, t in tips_up.items()) + '}')
     # the card portrait (64 x 64): the S idle frame's upper body
     s0 = np.array(Image.open(DST + 'idle_s.png'))[:, :cw]
     ys, xs = np.nonzero(s0[..., 3] > 0)

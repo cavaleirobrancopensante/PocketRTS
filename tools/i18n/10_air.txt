@@ -1,0 +1,107 @@
+# THE AIR of the gear-mode Clockwork (scripts/cw_air.gd): the Clock Aviary (id cuckoo_house), the Swift (id cuckoo), the
+# Ticking Owl, TICKING OWL and MORPH TO OWL. Names (owner, 2026-10-26): English "Swift" and "Clock Aviary"; Portuguese and
+# Spanish keep the cuckoo ("Cuco", "Casa do Cuco" / "Casa del Cuco").
+
+> Swift
+pt Cuco
+es Cuco
+
+> A fast brass bird with a clock in its chest: it hunts other flyers and pecks them with a short lunge (it must close in, and it cannot touch the ground). MORPH TO OWL rebuilds it into a Ticking Owl once TICKING OWL is researched at a Clock Aviary. Costs Tension. Made at the Clock Aviary.
+pt Um pássaro de latão veloz com um relógio no peito: caça os outros voadores e os bica com uma investida curta (precisa chegar perto, e não alcança o chão). VIRAR CORUJA o reconstrói numa Coruja Tique-Taque depois de pesquisar CORUJA TIQUE-TAQUE numa Casa do Cuco. Custa Tensão. Feito na Casa do Cuco.
+es Un pájaro de latón veloz con un reloj en el pecho: caza a los demás voladores y los picotea con una embestida corta (tiene que acercarse, y no alcanza el suelo). CONVERTIR EN BÚHO lo reconstruye en un Búho Tictac una vez investigado BÚHO TICTAC en una Casa del Cuco. Cuesta Tensión. Se hace en la Casa del Cuco.
+
+> Ticking Owl
+pt Coruja Tique-Taque
+es Búho Tictac
+
+> A heavy clockwork owl with a pendulum weight under it: it SWOOPS DOWN on units with its talons and DROPS its weight as a BOMB on buildings (it bursts on impact and hurts the buildings close by). Slow; it cannot hit flyers. Made from a Swift: MORPH TO OWL, once TICKING OWL is researched at a Clock Aviary.
+pt Uma pesada coruja de corda com um peso de pêndulo embaixo: MERGULHA sobre as unidades com as garras e SOLTA o peso como BOMBA sobre as construções (explode ao cair e fere as construções ao redor). Lenta; não acerta voadores. Feita a partir de um Cuco: VIRAR CORUJA, depois de pesquisar CORUJA TIQUE-TAQUE numa Casa do Cuco.
+es Un pesado búho de cuerda con un peso de péndulo debajo: SE LANZA EN PICADO sobre las unidades con las garras y SUELTA su peso como BOMBA sobre los edificios (estalla al caer y daña los edificios cercanos). Lento; no alcanza a los voladores. Se hace a partir de un Cuco: CONVERTIR EN BÚHO, una vez investigado BÚHO TICTAC en una Casa del Cuco.
+
+> Clock Aviary
+pt Casa do Cuco
+es Casa del Cuco
+
+> A tall clock tower whose little doors open for brass birds to fly out. It makes the Swift, the Clockwork's flyer, and researches TICKING OWL (then every Swift can be rebuilt into a Ticking Owl). Needs a working Escapement (meshed with a Mainspring) to be built; it must stay linked to the gear field.
+pt Uma alta torre de relógio cujas portinhas se abrem para pássaros de latão saírem voando. Faz o Cuco, o voador do Mecanismo, e pesquisa CORUJA TIQUE-TAQUE (então todo Cuco pode ser reconstruído numa Coruja Tique-Taque). Precisa de um Escape funcionando (engrenado com uma Mola Real) para ser construída; precisa continuar ligada ao campo de engrenagens.
+es Una alta torre de reloj cuyas puertecitas se abren para que salgan volando pájaros de latón. Hace el Cuco, el volador del Mecanismo, e investiga BÚHO TICTAC (luego todo Cuco puede reconstruirse en un Búho Tictac). Necesita un Escape que funcione (engranado con un Muelle Real) para construirse; debe seguir enlazada al campo de engranajes.
+
+> TICKING OWL
+pt CORUJA TIQUE-TAQUE
+es BÚHO TICTAC
+
+> The plans of the Ticking Owl: every Swift gets MORPH TO OWL (100 cogs and 50 Tension, 20 s each), rebuilding it into a heavy owl that swoops on units and bombs buildings.
+pt Os planos da Coruja Tique-Taque: todo Cuco ganha VIRAR CORUJA (100 engrenagens e 50 de Tensão, 20 s cada), que o reconstrói numa coruja pesada que mergulha sobre as unidades e bombardeia as construções.
+es Los planos del Búho Tictac: todo Cuco gana CONVERTIR EN BÚHO (100 engranajes y 50 de Tensión, 20 s cada uno), que lo reconstruye en un búho pesado que se lanza en picado sobre las unidades y bombardea los edificios.
+
+> MORPH TO OWL
+pt VIRAR CORUJA
+es CONVERTIR EN BÚHO
+
+> CANCEL MORPH
+pt CANCELAR MUDANÇA
+es CANCELAR CAMBIO
+
+> Morph to Owl
+pt Virar Coruja
+es Convertir en búho
+
+> Each Swift selected is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs; CANCEL MORPH pays it back.
+pt Cada Cuco selecionado é reconstruído numa Coruja Tique-Taque: um voador pesado e lento que mergulha sobre as unidades com as garras e bombardeia as construções (não acerta voadores). Fica pairando parado e não pode lutar enquanto muda; CANCELAR MUDANÇA devolve o pago.
+es Cada Cuco seleccionado se reconstruye en un Búho Tictac: un volador pesado y lento que se lanza en picado sobre las unidades con las garras y bombardea los edificios (no alcanza a los voladores). Se queda suspendido en el sitio y no puede luchar mientras cambia; CANCELAR CAMBIO devuelve lo pagado.
+
+> Each Swift selected is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs. Needs TICKING OWL, researched at a Clock Aviary.
+pt Cada Cuco selecionado é reconstruído numa Coruja Tique-Taque: um voador pesado e lento que mergulha sobre as unidades com as garras e bombardeia as construções (não acerta voadores). Fica pairando parado e não pode lutar enquanto muda. Precisa de CORUJA TIQUE-TAQUE, pesquisada numa Casa do Cuco.
+es Cada Cuco seleccionado se reconstruye en un Búho Tictac: un volador pesado y lento que se lanza en picado sobre las unidades con las garras y bombardea los edificios (no alcanza a los voladores). Se queda suspendido en el sitio y no puede luchar mientras cambia. Necesita BÚHO TICTAC, investigado en una Casa del Cuco.
+
+> %d cogs + %d tension  ·  %d s  ·  +%d supply
+pt %d engrenagens + %d de tensão  ·  %d s  ·  +%d de suprimento
+es %d engranajes + %d de tensión  ·  %d s  ·  +%d de suministros
+
+> Cancel the morph
+pt Cancelar a mudança
+es Cancelar el cambio
+
+> The Swifts turning into Ticking Owls stop and stay Swifts: everything paid comes back.
+pt Os Cucos que estão virando Corujas Tique-Taque param e continuam Cucos: tudo o que foi pago volta.
+es Los Cucos que se están convirtiendo en Búhos Tictac se detienen y siguen siendo Cucos: todo lo pagado se devuelve.
+
+> Turning into a Ticking Owl: %d s left (it cannot move or fight; CANCEL MORPH pays it back).
+pt Virando Coruja Tique-Taque: faltam %d s (não pode se mover nem lutar; CANCELAR MUDANÇA devolve o pago).
+es Convirtiéndose en Búho Tictac: quedan %d s (no puede moverse ni luchar; CANCELAR CAMBIO devuelve lo pagado).
+
+> Hunts flyers: it pecks them up close; it cannot touch the ground. MORPH TO OWL rebuilds it into a Ticking Owl.
+pt Caça voadores: bica-os de perto; não alcança o chão. VIRAR CORUJA o reconstrói numa Coruja Tique-Taque.
+es Caza voladores: los picotea de cerca; no alcanza el suelo. CONVERTIR EN BÚHO lo reconstruye en un Búho Tictac.
+
+> Hunts flyers: it pecks them up close; it cannot touch the ground. Research TICKING OWL at a Clock Aviary to rebuild it into a Ticking Owl.
+pt Caça voadores: bica-os de perto; não alcança o chão. Pesquise CORUJA TIQUE-TAQUE numa Casa do Cuco para reconstruí-lo numa Coruja Tique-Taque.
+es Caza voladores: los picotea de cerca; no alcanza el suelo. Investiga BÚHO TICTAC en una Casa del Cuco para reconstruirlo en un Búho Tictac.
+
+> Swoops on units with its talons; drops its weight as a bomb on buildings. It cannot hit flyers.
+pt Mergulha sobre as unidades com as garras; solta o peso como bomba sobre as construções. Não acerta voadores.
+es Se lanza en picado sobre las unidades con las garras; suelta su peso como bomba sobre los edificios. No alcanza a los voladores.
+
+> Only a Swift can be rebuilt into a Ticking Owl.
+pt Só um Cuco pode ser reconstruído numa Coruja Tique-Taque.
+es Solo un Cuco puede reconstruirse en un Búho Tictac.
+
+> It is already turning into a Ticking Owl.
+pt Já está virando uma Coruja Tique-Taque.
+es Ya se está convirtiendo en un Búho Tictac.
+
+> Research TICKING OWL at a Clock Aviary first.
+pt Pesquise CORUJA TIQUE-TAQUE numa Casa do Cuco primeiro.
+es Investiga BÚHO TICTAC en una Casa del Cuco primero.
+
+> A Ticking Owl is ready.
+pt Uma Coruja Tique-Taque está pronta.
+es Un Búho Tictac está listo.
+
+> CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. TIER 2: the ESCAPEMENT meshes with the Mainspring (a building that uses Tension must, or it shows NEEDS MAINSPRING); it unlocks the JACK (cogs and Tension), which hops, shoots screws at ground and air and can JUMP (E, then tap a spot: flat or down any time, UP a cliff after HIGH LEAP, researched at the Escapement, where you can see). THE AIR: the CLOCK AVIARY (it needs a working Escapement) makes SWIFTS, fast flyers that peck other flyers; TICKING OWL is researched there, then a Swift's MORPH TO OWL rebuilds it into a Ticking Owl that swoops on units and bombs buildings (it cannot hit flyers). Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.
+pt LABORATÓRIO DO MECANISMO, o CAMPO DE ENGRENAGENS: toda construção do Mecanismo fica num anel de engrenagens no chão que precisa engrenar, anel a anel, até o grande anel da Torre do Relógio, ou para (UNLINKED). Onde dois anéis não chegam a se tocar, uma pequena engrenagem intermediária preenche o vão. Enroladores giram as Prensas de Engrenagens para obter engrenagens e a Mola Real para obter Tensão. O novo exército: a Oficina de Movimentos treina Soldados-Relógio, o Regulador dá suprimento, a Torreta de Catraca dispara parafusos em alvos no chão e no ar. NÍVEL 2: o ESCAPE engrena com a Mola Real (uma construção que usa Tensão precisa, ou mostra PRECISA DE MOLA REAL); ele libera o BONECO DE MOLA (engrenagens e Tensão), que anda aos pulinhos, dispara parafusos no chão e no ar e pode SALTAR (E, depois toque num lugar: no plano ou para baixo a qualquer hora, PARA CIMA de um penhasco depois de PULO ALTO, pesquisado no Escape, onde você vê). O AR: a CASA DO CUCO (precisa de um Escape funcionando) faz CUCOS, voadores rápidos que bicam outros voadores; lá se pesquisa CORUJA TIQUE-TAQUE, e então o VIRAR CORUJA de um Cuco o reconstrói numa Coruja Tique-Taque que mergulha sobre as unidades e bombardeia as construções (não acerta voadores). Ponha mais construções: o fantasma mostra o anel girando e LINKS / NO LINK / CLASH. A CAIXA DE AREIA, aba RELÓGIO, cria as novas unidades. O inimigo nunca ataca.
+es LABORATORIO DEL MECANISMO, el CAMPO DE ENGRANAJES: todo edificio del Mecanismo está en un anillo de engranajes en el suelo que debe engranar, anillo a anillo, hasta el gran anillo de la Torre del Reloj, o se detiene (UNLINKED). Donde dos anillos no llegan a tocarse, un pequeño engranaje intermedio llena el hueco. Los Dadores de cuerda giran las Prensas de Engranajes para obtener engranajes y el Muelle Real para obtener Tensión. El nuevo ejército: el Taller de Movimientos entrena Soldados Reloj, el Regulador da suministros, la Torreta de Trinquete dispara tornillos a tierra y aire. NIVEL 2: el ESCAPE engrana con el Muelle Real (un edificio que usa Tensión debe hacerlo, o muestra NECESITA MUELLE REAL); desbloquea el MUÑECO DE RESORTE (engranajes y Tensión), que va dando saltitos, dispara tornillos a tierra y aire y puede SALTAR (E, luego toca un sitio: en llano o hacia abajo cuando quieras, HACIA ARRIBA por un acantilado tras SALTO ALTO, investigado en el Escape, donde ves). EL AIRE: la CASA DEL CUCO (necesita un Escape que funcione) hace CUCOS, voladores rápidos que picotean a otros voladores; allí se investiga BÚHO TICTAC, y luego CONVERTIR EN BÚHO reconstruye un Cuco en un Búho Tictac que se lanza en picado sobre las unidades y bombardea los edificios (no alcanza a los voladores). Coloca más edificios: el fantasma muestra su anillo girando y LINKS / NO LINK / CLASH. El MODO LIBRE, pestaña RELOJ, crea las nuevas unidades. El enemigo nunca ataca.
+
+> One tap: you as the Clockwork on an open test map against a computer that never attacks, with plenty of cogs, the gear field on show (the Clocktower with two Cog Presses, a Mainspring, a Movement Works, a Regulator and a Ratchet Turret meshing round it, an Escapement meshing with the Mainspring, a Clock Aviary, four Clock Soldiers, three Jacks, three Swifts and a Ticking Owl) and every new experimental unit and building unlocked. Spawn anything from the SANDBOX panel. For trying the gear field and the experimental Clockwork roster.
+pt Um toque: você como o Mecanismo num mapa de teste aberto contra um computador que nunca ataca, com muitas engrenagens, o campo de engrenagens à vista (a Torre do Relógio com duas Prensas de Engrenagens, uma Mola Real, uma Oficina de Movimentos, um Regulador e uma Torreta de Catraca engrenados em volta, um Escape engrenado com a Mola Real, uma Casa do Cuco, quatro Soldados-Relógio, três Bonecos de Mola, três Cucos e uma Coruja Tique-Taque) e todas as unidades e construções experimentais liberadas. Crie qualquer coisa pelo painel da CAIXA DE AREIA. Para experimentar o campo de engrenagens e o elenco experimental do Mecanismo.
+es Un toque: tú como el Mecanismo en un mapa de pruebas abierto contra un ordenador que nunca ataca, con muchos engranajes, el campo de engranajes a la vista (la Torre del Reloj con dos Prensas de Engranajes, un Muelle Real, un Taller de Movimientos, un Regulador y una Torreta de Trinquete engranados alrededor, un Escape engranado con el Muelle Real, una Casa del Cuco, cuatro Soldados Reloj, tres Muñecos de Resorte, tres Cucos y un Búho Tictac) y todas las unidades y edificios experimentales desbloqueados. Crea lo que quieras desde el panel del MODO LIBRE. Para probar el campo de engranajes y el elenco experimental del Mecanismo.
