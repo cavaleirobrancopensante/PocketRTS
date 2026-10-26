@@ -92,8 +92,9 @@ class Sim:
         fd = DATA["factions"][faction]
         self.t = 0.0
         self.gold = float(fd.get("start_gold", E["START_GOLD"]))
-        self.res2 = 0.0
-        self.tension = 0.0
+        # (what-if only: no faction starts with any of its second resource; --set factions.brood.start_res2=40)
+        self.res2 = float(fd.get("start_res2", 0.0))
+        self.tension = float(fd.get("start_res2", 0.0)) if faction == "clockwork" else 0.0
         self.hall = fd["hall"]
         self.worker = fd["worker"]
         self.sup_kind = DATA["supply_kind"][faction]
