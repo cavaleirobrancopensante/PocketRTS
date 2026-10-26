@@ -35,13 +35,14 @@ Two parts of the game were being changed in other branches while this was writte
 | How the money comes | A Farm ripens into a 380-gold harvest: every 40 seconds with 8 Labourers, every 70 with 4, every 267 with nobody. So it comes in lumps. A Mill hand grinds a third of a powder a second | Each grub earns about 0.58 biomass a second on the starting pit, about 0.62 on pits farther out | A Cog Press pays 1.2 cogs a second by itself and 2.3 more for each Winder on it, up to 3: 8 a second with a full crew. A Mainspring winds 0.3 Tension a second alone, 2 with 3 Winders |
 | Per worker, roughly | 1 gold a second (60 a minute) | 0.6 biomass a second (35 a minute) | 2.3 cogs a second (136 a minute); with the wt-econ rebuild, 1.1 |
 | The second resource | Powder, from the Powder Mill (up to 6 hands, 2 a second): steady from the first minute | Essence, only from bodies (3 a supply for a body that falls near a Brood Pen, 1.25 for one a grub carries home) or from SACRIFICE (12% of a creature's price, 3 for a Raptor). No building makes it | Tension, from Mainsprings (3 hands, 2 a second each, and there is no limit on Mainsprings): steady once one stands |
-| ECONOMY_ROWS
+| Earned by 3:00 (measured, by opening) | 760 to 1,140 gold | 600 to 1,000 biomass | 1,400 to 2,500 cogs |
+| Earned by 6:00 (measured, by opening) | 2,660 to 3,800 | 2,100 to 2,800 | 4,200 to 8,100 |
 | Making the army | One unit at a time per Barracks or Foundry (a Musketeer takes 15 seconds) | Eggs: each Burrow lays one every 9 seconds (10% faster for each Clutch Mound, up to 3) and holds 5; every unit, grubs included, takes an egg, and the eggs hatch side by side | One unit at a time per Movement Works (a Clock Soldier takes 16 seconds) |
 | The land runs out | 9,000 gold of soil per Town Hall; a new hall brings fresh soil | 10,500 biomass of ground at the capital, for the whole game: other Burrows have no ground | 11,400 brass per Clocktower; spent brass still pays a quarter, forever |
 
 Three things in this table shape every opening.
 
-First, the Clockwork's money. On the game as it is, a Winder on a Cog Press earns more than twice what a Labourer earns on a Farm, and a press is full with only three Winders. So the Clockwork has more to spend than the other two from the first minute, and most of its openings are limited by how fast its buildings can make units, not by money. The wt-econ rebuild halves a Winder's share, which brings it to about a Labourer's. Everything said below about the Clockwork's strength must be read with that in mind.
+First, the Clockwork's money. On the game as it is, a Winder on a Cog Press earns more than twice what a Labourer earns on a Farm, and a press is full with only three Winders. So the Clockwork has more to spend than the other two from the first minute, and most of its openings are limited by how fast its buildings can make units, not by money. Measured against a sleeping opponent, the Clockwork's fast expansion earned 8,066 cogs by 6:00 and had 31 Clock Soldiers; the Crown's fast expansion earned 3,800 gold and had 9 Musketeers. The wt-econ rebuild halves a Winder's share, which brings it to about a Labourer's; the calculator puts the same Clockwork expansion at about 5,300 cogs by 6:00 after the rebuild, still well ahead of the Crown. Everything said below about the Clockwork's strength must be read with that in mind.
 
 Second, the Brood's essence. The Crown's powder and the Clockwork's Tension each come from a building the player can put up in the first two minutes. The Brood has no such building: essence comes from the dead. Before the first fight, the only essence is offering up its own creatures at the Brood Pen, at 12% of their price. A Brute's 20 essence costs 7 Raptors offered up (175 biomass, more than the Brute's own price), a Bloater's 25 costs 9 (225 biomass, for a 50-biomass unit), a Skywing's 40 costs 14 (350 biomass). So every Brood opening that is not Raptors pays a heavy tax, and this is the main reason the Brood has few openings (see the gaps below).
 
@@ -454,7 +455,11 @@ RECOMMENDATIONS_SECTION
 
 ## The calculator against the game
 
-CALIBRATION_SECTION
+Each opening was timed twice: by the calculator and by the scripted player in a real headless match against a sleeping opponent on Ashford Crossing. The table shows how far apart the two put each step of the script (when a building is finished, or when a step is started), and the army and the gold earned at 3:00 and 6:00. "(over)" means the match had already been won by then.
+
+CALIBRATION_TABLE
+
+The fitted constants are at the top of tools/study/bo_calc.py (CAL): a Labourer walks about 7 seconds to a site and 7 back and stays for the whole build; a grub reaches its site in about 2 seconds and morphs in 1.6; a Winder fetches the crate in about 9 seconds and is back at his press 5 seconds after it lands; a grub earns 0.58 biomass a second on the starting pit and 0.62 on the others. The gold earned differs most for the Crown at 3:00 (the calculator's third harvest falls just before 3:00, the game's just after: one lump of 380) and for the fast expansion at 6:00 (the calculator crews the new hall's farms faster than the game does). The calculator does not fight, and after the script's last step it only keeps the last background training going while the real computer switches to its own plan, so the two are compared up to the end of the script.
 
 ## How to run the tools
 
