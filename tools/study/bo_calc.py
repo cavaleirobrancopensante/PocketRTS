@@ -907,6 +907,25 @@ def arrival(sim, att, map_name):
     return out
 
 
+def travel_table():
+    """Every standard map: the walk from a side's rally point to the enemy's hall, and how long it takes (a Clockwork
+    construct slows down and runs down off its gear field: the wind it has left on arrival)."""
+    rows = []
+    for name, m in DATA["maps"].items():
+        d = float(m["to_hall"])
+        cs_t, cs_w = wind_walk(d, float(U["clock_soldier"]["speed"]))
+        rows.append((d, name, d / 32.0, d / float(U["raptor"]["speed"]), d / float(U["cuirassier"]["speed"]),
+                     d / float(U["musketeer"]["speed"]), cs_t, cs_w, d / float(U["cannon"]["speed"]),
+                     float(m["air"]) / float(U["balloon"]["speed"]), float(m["air"]) / 32.0))
+    rows.sort()
+    print("| Map | walk (tiles) | Raptor | Horseman | Musketeer | Clock Soldier (wind left) | Field Cannon | Balloon (straight line) |")
+    print("|---|---|---|---|---|---|---|---|")
+    for _, name, tiles, rap, hor, mus, cs_t, cs_w, can, bal, air in rows:
+        print("| %s | %d | %d s | %d s | %d s | %d s (%d%%) | %d s | %d s (%d tiles) |" % (
+            name.replace("_", " ").title(), round(tiles), round(rap), round(hor), round(mus), round(cs_t), round(cs_w * 100), round(can),
+            round(bal), round(air)))
+
+
 # ------------------------------------------------------------------ output
 
 def fmt_t(t):
@@ -1036,7 +1055,11 @@ def main():
     ap.add_argument("--set", action="append", default=[], metavar="PATH=VALUE",
                     help="try a change: units.spitter.cost2=0, buildings.warren.time=30, econ.FARM_BASE=0.25, cal.crown_walk=5")
     ap.add_argument("--preset", choices=sorted(PRESETS), help="a named set of changes (econ28: the provisional Clockwork economy of wt-econ)")
+    ap.add_argument("--travel", action="store_true", help="the walk to the enemy's hall on every standard map (a Markdown table)")
     a = ap.parse_args()
+    if a.travel:
+        travel_table()
+        return
     for path, val in PRESETS.get(a.preset, []):
         old_v, new_v = apply_set(path, val)
         print("(preset %s: %s = %s, was %s)" % (a.preset, path, new_v, old_v))
