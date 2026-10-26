@@ -88,3 +88,4 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 
 ## Floor plate (2026-10-26)
 - art/clockwork/gear/floor_plate_src.png (ChatGPT, flat top-down): the iron deck with a ball-bearing edge that fills each ring's hole; does not turn; scaled to the hole and squashed with the rings (tools/press_anim/base_demo2.py). Not in the game yet.
+- tools/press_anim/regulator_work.py: the Regulator's painted pendulum swung in code inside its window (glass behind filled by row interpolation); art/redraws/regulator_work.png/.gif. ChatGPT's own working frames shifted the case between frames.

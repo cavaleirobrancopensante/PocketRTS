@@ -50,3 +50,7 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 
 - Tier 1, kept simple for now: a plain melee front-line unit from the Movement Works, cogs only, no special trait yet (closing shield, wound charge or ticking strikes stay ideas for later upgrades).
 - Look: squat pocket-watch body, clock face on the chest, small crown spike, blue joints, clock-hand sword, pocket-watch-cover shield; heavier than the Winder.
+
+## Supply: the Regulator (owner, 2026-10-26)
+- Supply building = the REGULATOR: a squat 2x2 regulator clock with a pendulum behind glass (art/redraws/regulator.png). Lore: every unit runs in step with a regulator's beat; each keeps only so many in time. Kept SQUAT on purpose so it never reads like the tall Cuckoo House.
+- Floor plate under every building (art/clockwork/gear/floor_plate_src.png): the ring turns around a fixed bolted deck.
