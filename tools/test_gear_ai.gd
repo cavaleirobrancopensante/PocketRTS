@@ -75,6 +75,8 @@ func _mine(kind := "") -> Array:
 
 
 var _jacks_seen := {}
+var _air_seen := {}             # Swifts (and the Owls they became) it made
+var _owls_seen := {}
 
 
 func _watch() -> void:
@@ -82,6 +84,10 @@ func _watch() -> void:
 	for u in g.units:
 		if u.team == 0 and u.kind == Defs.JACK:
 			_jacks_seen[u.get_instance_id()] = true
+		if u.team == 0 and (u.kind == Defs.CUCKOO or u.kind == Defs.OWL):
+			_air_seen[u.get_instance_id()] = true
+		if u.team == 0 and u.kind == Defs.OWL:
+			_owls_seen[u.get_instance_id()] = true
 	var tower_up := not _mine("clocktower").filter(func(b: Building) -> bool: return b.built).is_empty()
 	for b in _mine():
 		if b.built and tower_up:
@@ -155,5 +161,8 @@ func _run() -> void:
 		int(g.clock) / 60, int(g.clock) % 60, _mine("mainspring").size(), esc_n, working, _jacks_seen.size(),
 		g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == Defs.JACK and not u.dead).size(), int(g.tension(0)), str(g.has_tech(0, "high_leap"))])
 	check(esc_n == working or (vs != "passive" and g.over), "every Escapement it built meshes with a Mainspring (%d of %d)" % [working, esc_n])
+	# the air (it builds an Aviary only against flyers or late): reported
+	print("NOTE  the air at %d:%02d: %d Clock Aviary(ies), %d Swifts made, %d Ticking Owls, TICKING OWL %s" % [
+		int(g.clock) / 60, int(g.clock) % 60, _mine(Defs.CW_AIR).size(), _air_seen.size(), _owls_seen.size(), str(g.has_tech(0, "owl_morph"))])
 	print("ALL PASS" if fails == 0 else "FAIL (%d)" % fails)
 	quit(1 if fails > 0 else 0)

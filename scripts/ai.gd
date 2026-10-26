@@ -604,6 +604,73 @@ func _tier2(t: float) -> void:
 					return
 		_tier2_t = game.clock + 20.0        # (no room by its Mainspring: look again later)
 		return
+	_air(t)
+
+
+## Gear mode, THE AIR (Defs.CW_AIR; scripts/cw_air.gd), kept simple: once its Escapement works, ONE Clock Aviary when the
+## enemy shows flyers (or late anyway); Swifts against the flyers it has seen (_produce); TICKING OWL researched late with
+## Tension to spare; then, while no enemy flyer is about, one Swift at a time morphed into a Ticking Owl where it is safe
+## (not fighting, no armed enemy near; the nearest home) (the Owls go with the army and bomb buildings).
+var _air_seen := 0
+var _air_seen_t := -999.0
+
+
+## Enemy flyers this side sees now, the most seen at once remembered for 90 s.
+func _foe_air() -> int:
+	var n := 0
+	for u in game.units:
+		if not u.dead and not u.off_field and u.is_air() and game.hostile(u.team, team) and game.side_sees(team, u.position):
+			n += 1
+	if n > 0:
+		_air_seen = maxi(n, _air_seen if game.clock - _air_seen_t < 90.0 else 0)
+		_air_seen_t = game.clock
+	elif game.clock - _air_seen_t > 90.0:
+		_air_seen = 0
+	return _air_seen
+
+
+func _air(t: float) -> void:
+	var av := _mine(Defs.CW_AIR)
+	if av.is_empty():
+		var cost := int(Defs.BUILDINGS[Defs.CW_AIR]["cost"])
+		if (_foe_air() > 0 or t > _lv([1300.0, 780.0, 660.0])) and _gold() >= cost + 20 and game.requirement_met(team, Defs.CW_AIR):
+			_construct(Defs.CW_AIR)
+		return
+	var built: Array = av.filter(func(b: Building) -> bool: return b.built)
+	if built.is_empty():
+		return
+	var home: Building = built[0]
+	if not game.has_tech(team, "owl_morph"):
+		if t > _lv([1500.0, 900.0, 780.0]) and not home.queue.has("@owl_morph") and game.tension(team) >= float(Defs.RESEARCH["owl_morph"]["tension"]) + 25.0 \
+				and game.research_problem(home, "owl_morph") == "":
+			game.start_research(home, "owl_morph")
+		return
+	if _foe_air() > 0 or _threat() != Vector2.INF or game.tension(team) < float(Defs.OWL_MORPH["tension"]) + 25.0:
+		return          # (Swifts are needed as they are; or no Tension to spare)
+	var army := game.army(team)
+	if army.any(func(u: Unit) -> bool: return u.owl_t >= 0.0):
+		return          # (one at a time)
+	# the safest Swift: not fighting, no armed enemy within 10 tiles, the nearest home (it hovers helpless for the morph)
+	var hall := _halls()
+	var home_at: Vector2 = (hall[0] as Building).center() if not hall.is_empty() else Vector2.ZERO
+	var best: Unit = null
+	var bd := INF
+	for u in army:
+		if u.kind != Defs.CUCKOO or u.owl_t >= 0.0 or (u.target != null and is_instance_valid(u.target)) or CwAir.morph_problem(u) != "":
+			continue
+		var unsafe := false
+		for o in game.units_near(u.position, 10.0 * Defs.TILE):
+			if not o.dead and game.hostile(o.team, team) and not o.is_worker() and o.has_attack():
+				unsafe = true
+				break
+		if unsafe:
+			continue
+		var dd: float = u.position.distance_to(home_at)
+		if dd < bd:
+			bd = dd
+			best = u
+	if best != null:
+		CwAir.start_morph(best)
 
 
 ## Our supply building (the Clockwork's Regulator in gear mode: Defs.supply_kind).
@@ -2739,6 +2806,15 @@ func _produce() -> void:
 					jacks += 1
 				else:
 					others += 1
+		# the air (a Clock Aviary): Swifts against the enemy's flyers, one more than it has shown (up to 6); two once the
+		# Owls are researched (to be morphed)
+		for av in _mine(Defs.CW_AIR):
+			if av.built and av.queue.size() < 2:
+				var swifts: int = army.filter(func(u: Unit) -> bool: return u.kind == Defs.CUCKOO).size() + av.queue.count(Defs.CUCKOO)
+				var fa := _foe_air()
+				var want := mini(6, fa + 1) if fa > 0 else (2 if game.has_tech(team, "owl_morph") else 0)
+				if swifts < want and game.can_train(av, Defs.CUCKOO) == "":
+					game.train(av, Defs.CUCKOO)
 		return
 	if _clock():
 		var n_of := func(kind: String) -> int: return army.filter(func(u: Unit) -> bool: return u.kind == kind).size()

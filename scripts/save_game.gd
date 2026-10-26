@@ -97,6 +97,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 				ud["rfp"] = u.refit_paid
 		if u.auto_refit:
 			ud["ar"] = true
+		if u.owl_t >= 0.0:
+			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
 		if u.coat != "":
 			ud["coat"] = u.coat
 		# horses: who leads it, where it grazes; riders and guns: their horse's health, a gun's
@@ -395,6 +397,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 			# all; and every Cuirassier was armoured)
 			u.set_kit(ud["kit"] if ud.get("kit") is Dictionary else _old_kit(game, u.team, uk))
 		u.auto_refit = bool(ud.get("ar", false))
+		u.owl_t = float(ud.get("owl", -1.0)) if uk == Defs.CUCKOO else -1.0
 		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):
 			u.coat = String(ud["coat"])      # (older saves: the coat it was just given)
 			HorseCoat.apply(u)

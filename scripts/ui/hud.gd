@@ -1288,6 +1288,28 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_jump", "JUMP", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "jump", ready_n > 0, jwhy, ("%ds" % int(ceil(cdl))) if ready_n == 0 and cdl > 0.0 else ""])
+	# Swift: MORPH TO OWL (each selected Swift that can, paying for itself: CwAir.morph_order) and, while any of them is
+	# turning into an Owl, CANCEL MORPH (paid back)
+	var swifts := units.filter(func(u: Unit) -> bool: return u.kind == Defs.CUCKOO)
+	if not swifts.is_empty():
+		var idle: Array = swifts.filter(func(u: Unit) -> bool: return u.owl_t < 0.0)
+		if not idle.is_empty():
+			var mwhy := ""
+			for u in idle:
+				mwhy = CwAir.morph_problem(u)
+				if mwhy == "":
+					break
+			var m: Dictionary = Defs.OWL_MORPH
+			_tip_for["MORPH TO OWL"] = ["Morph to Owl", "Each Swift selected is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs; CANCEL MORPH pays it back." if game.has_tech(game.human, "owl_morph")
+				else "Each Swift selected is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs. Needs TICKING OWL, researched at a Clock Aviary.",
+				"%d cogs + %d tension  ·  %d s  ·  +%d supply" % [int(m["cost"]), int(m["tension"]), int(m["time"]), int(Defs.UNITS[Defs.OWL]["supply"]) - int(Defs.UNITS[Defs.CUCKOO]["supply"])]]
+			list.append(["ab_morph_owl", "MORPH TO OWL", func() -> void:
+				var w := game.morph_order(game.selected_units())
+				if w != "":
+					toast(w), mwhy == "", mwhy, "%d+%d" % [int(m["cost"]), int(m["tension"])]])
+		if swifts.any(func(u: Unit) -> bool: return u.owl_t >= 0.0):
+			_tip_for["CANCEL MORPH"] = ["Cancel the morph", "The Swifts turning into Ticking Owls stop and stay Swifts: everything paid comes back."]
+			list.append(["cancel", "CANCEL MORPH", func() -> void: game.cancel_morph(game.selected_units()), true, "", ""])
 	# Mist Toad: FOG (a spot) and TONGUE (an enemy unit), both paid from its energy
 	var toads := units.filter(func(u: Unit) -> bool: return u.kind == "mist_toad")
 	if not toads.is_empty():
@@ -1389,7 +1411,7 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATR
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
-	"JUMP": "E", "HIGH LEAP": "E",
+	"JUMP": "E", "HIGH LEAP": "E", "MORPH TO OWL": "E", "CANCEL MORPH": "X", "TICKING OWL": "E",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
 	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q",
@@ -2372,6 +2394,15 @@ func _draw_panel(font: Font) -> void:
 				info = pistol_text(uu) + " · " + info
 			elif uu.kind == "dismounted":
 				info = pistol_text(uu) + " · Sabre up close. MOUNT a horse to ride."
+			elif uu.kind == Defs.CUCKOO:
+				if uu.owl_t >= 0.0:
+					info = "Turning into a Ticking Owl: %d s left (it cannot move or fight; CANCEL MORPH pays it back)." % int(ceil(float(Defs.OWL_MORPH["time"]) - uu.owl_t))
+				elif game.has_tech(uu.team, "owl_morph"):
+					info = "Hunts flyers: it pecks them up close; it cannot touch the ground. MORPH TO OWL rebuilds it into a Ticking Owl."
+				else:
+					info = "Hunts flyers: it pecks them up close; it cannot touch the ground. Research TICKING OWL at a Clock Aviary to rebuild it into a Ticking Owl."
+			elif uu.kind == Defs.OWL:
+				info = "Swoops on units with its talons; drops its weight as a bomb on buildings. It cannot hit flyers."
 			elif uu.kind == Defs.JACK:
 				var jn := "In the air." if not uu.jump.is_empty() else ("JUMP ready" if uu.jump_cd <= 0.0 else "JUMP in %d s" % int(ceil(uu.jump_cd)))
 				info = jn + (" · HIGH LEAP: it can jump up onto high ground it can see." if game.has_tech(uu.team, "high_leap") else " · Flat and down only (HIGH LEAP at the Escapement: up too).")

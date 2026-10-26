@@ -225,21 +225,39 @@ static func frame(u: Unit) -> int:
 
 # ------------------------------------------------------------------ the shot
 
+## Does it shoot UP now (its target a flyer): it raises its arm (the "attack_up" strip; Defs.JACK_SHOT_UP).
+static func aims_up(u: Unit) -> bool:
+	return u.target != null and is_instance_valid(u.target) and u.target.is_air() and ArtData.UNITS[u.art]["frames"].has("attack_up_s")
+
+
 ## The drill tip in world px for the way it faces now (Defs.JACK_SHOT "tips": from its feet, per drawn direction; the
-## west views mirror the east ones), lifted with it.
-static func tip(u: Unit) -> Vector2:
+## west views mirror the east ones), lifted with it; the raised arm's tip (Defs.JACK_SHOT_UP) when it shoots at a flyer.
+static func tip(u: Unit, up := false) -> Vector2:
 	var dd: Array = Unit.DIR_FLIP[posmod(int(round(u.facing.angle() / (PI / 4.0))), 8)]
-	var o: Vector2 = Defs.JACK_SHOT["tips"][String(dd[0])]
+	var o: Vector2 = (Defs.JACK_SHOT_UP if up else Defs.JACK_SHOT)["tips"][String(dd[0])]
 	if bool(dd[1]):
 		o.x = -o.x
 	return u.position + o - Vector2(0.0, lift(u))
 
 
-## Its screw: the damage lands now; the screw flies from the drill tip with a muzzle burst there (Game.screw_shot).
+## The raised barrel's direction (world) for the way it faces now: the muzzle burst blows along it.
+static func barrel_up(u: Unit) -> Vector2:
+	var dd: Array = Unit.DIR_FLIP[posmod(int(round(u.facing.angle() / (PI / 4.0))), 8)]
+	var b: Vector2 = Defs.JACK_SHOT_UP["barrel"][String(dd[0])]
+	if bool(dd[1]):
+		b.x = -b.x
+	return b
+
+
+## Its screw: the damage lands now; the screw flies from the drill tip with a muzzle burst there (Game.screw_shot). At a
+## flyer the arm is raised: the screw leaves the raised tip and the burst blows along the raised barrel.
 static func shoot(u: Unit, e: Entity, dmg: float) -> void:
 	var js: Dictionary = Defs.JACK_SHOT
+	var up: bool = e != null and e.is_air() and ArtData.UNITS[u.art]["frames"].has("attack_up_s")
 	u.shots += 1
-	u.last_shot = u.game.screw_shot(u, e, dmg, tip(u), [], float(js["shot_scale"]), float(js["muzzle_scale"]), float(js["speed"]))
+	u.last_shot = u.game.screw_shot(u, e, dmg, tip(u, up), [], float(js["shot_scale"]), float(js["muzzle_scale"]), float(js["speed"]),
+		barrel_up(u) if up else Vector2.ZERO)
+	u.last_tip = tip(u, up)
 
 
 # ------------------------------------------------------------------ the computer's Jacks

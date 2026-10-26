@@ -72,6 +72,8 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 ## Air: Cuckoo and Ticking Owl (owner, 2026-10-26)
 - CUCKOO (from the Cuckoo House): AIR-TO-AIR flyer.
 - It can be UPGRADED into the TICKING OWL: a nasty flying GROUND attacker (like a morph). Owl attack (owner): SWOOPS DOWN with its talons against units, DROPS its pendulum-weight BOMBS on buildings. Upgrade (owner): research it once, then each Cuckoo is morphed into an Owl individually (cost and time per unit).
+- Display names (owner, 2026-10-26): the flyer is the SWIFT and its building the CLOCK AVIARY in English (Portuguese and Spanish keep the cuckoo: Cuco, Casa do Cuco / Casa del Cuco); the ids stay cuckoo and cuckoo_house.
+- Built (0.14.21; numbers are guesses, docs/clockwork_gear_prototype.md "The air"): the Clock Aviary (2x2, 175 cogs, needs a WORKING Escapement to be placed), the Swift (75 cogs + 15 Tension, 2 supply, air-to-air peck), TICKING OWL (150 cogs + 150 Tension) then MORPH TO OWL per Swift (100 cogs + 50 Tension, 20 s), the Owl (220 hp, 4 supply, talon swoop on units, a falling bomb on buildings, no hits on flyers).
 
 ## Tier 3, next (2026-10-26, not decided)
 - NO MAGIC in the setting (owner, 2026-10-26): every effect must be mechanical and physical (no time-freezing, no glowing spells). The earlier "time effects" (stop one enemy, slow field) must be built from machinery: nets, clamps, chains, harpoons, caltrops, grease.

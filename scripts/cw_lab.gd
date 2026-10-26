@@ -2,7 +2,8 @@ class_name CwLab
 extends RefCounted
 ## The CLOCKWORK LAB (EDITOR menu): the human Clockwork starts with plenty of cogs and, in gear mode (the default), the
 ## GEAR FIELD on show: the Clocktower on its big ring with two Cog Presses and a Mainspring meshing round it, Winders
-## working them, a Ratchet Turret, the Escapement meshing with the Mainspring and three Jacks (tier 2), the camera on it,
+## working them, a Ratchet Turret, the Escapement meshing with the Mainspring and three Jacks (tier 2), the Clock Aviary
+## (internal kind cuckoo_house), three Swifts and a Ticking Owl (TICKING OWL researched), the camera on it,
 ## and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
 ## a Rail Yard, Assembly Works, Engine Hall, Boiler and Pylon beside it.) A hint line says what to try.
 ## Also holds the Line helpers the cw tests share (run_from_hall, beside).
@@ -40,12 +41,16 @@ static func setup(game: Game) -> void:
 ## edge (no power in gear mode: no Charging Pylon, no Boilers; Defs.ENERGY_KINDS are not in the gear build list).
 ## Tier 2: the Escapement meshing with the Mainspring's ring (a third entry: the kind it meshes with instead of the
 ## Clocktower; it tries ESC_ANGLES round it until one fits), working, and JACKS Jacks beside the soldiers.
+## The air: the Clock Aviary on the Clocktower's ring (up left: it lands by the map's edge), SWIFTS Swifts and OWLS Ticking
+## Owls hovering over the Clocktower's ring (in the Lab's first view).
 const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["escapement", 0.0, "mainspring"],
-	["movement_works", -130.0], ["regulator", 105.0], ["ratchet_turret", 5.0]]
+	["movement_works", -130.0], ["regulator", 105.0], ["ratchet_turret", 5.0], ["cuckoo_house", -95.0]]
 const ESC_ANGLES := [0.0, 40.0, 80.0, -40.0, 120.0, -80.0, 160.0]
-const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0}
+const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0, "cuckoo_house": 0}
 const SOLDIERS := 4
 const JACKS := 3
+const SWIFTS := 3
+const OWLS := 1
 
 
 static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
@@ -78,8 +83,9 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 				put.append(b)
 				game.gear_net.solve()
 				break
-	# room in the supply for the Jacks (2 each): a second and third Regulator, linked, wherever they fit
-	for i in 2:
+	# room in the supply for the Jacks (2 each) and the flyers (Swifts 2, the Owl 4): three more Regulators, linked, wherever
+	# they fit
+	for i in 4:
 		var rs := game.find_spot(t, Defs.CW_SUPPLY, hall, 3, 24, "near")
 		if rs.x >= 0:
 			game._add_building(Defs.CW_SUPPLY, t, rs, true)
@@ -115,6 +121,18 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 	for i in JACKS:
 		var jp := game.on_map(at + Vector2((float(i) - (JACKS - 1) * 0.5) * 40.0, 44.0))
 		game._add_unit(Defs.JACK, t, game.cell_center(game.nearest_free(game.cell_of(jp), 4)) if not game.is_free(game.cell_of(jp)) else jp)
+	# the air: TICKING OWL researched; the Swifts and the Owl
+	game.players[t]["tech"]["owl_morph"] = true
+	# (over the Clocktower's ring, up right, where the Lab's first view shows them clear of the soldiers and the hint: a little
+	# V of Swifts, the Owl behind them)
+	var sky: Vector2 = hall.center() + Vector2(95, -105)
+	for i in SWIFTS:
+		var k := float(i) - (SWIFTS - 1) * 0.5
+		var su: Unit = game._add_unit(Defs.CUCKOO, t, game.on_map(sky + Vector2(k * 40.0, 22.0 * absf(k))))
+		su.cmd_stop()
+	for i in OWLS:
+		var ou: Unit = game._add_unit(Defs.OWL, t, game.on_map(sky + Vector2(-60.0 + 60.0 * float(i), 70.0)))
+		ou.cmd_stop()
 	if game.camera:
 		game.camera.position = hall.center() + Vector2(0, 30)
 		game.camera.zoom = Vector2(1.3, 1.3)
@@ -149,7 +167,7 @@ static func _hint(game: Game) -> void:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	l.add_theme_constant_override("outline_size", 4)
 	l.position = Vector2(14, 62)
-	l.custom_minimum_size = Vector2(420, 0)
+	l.custom_minimum_size = Vector2(520, 0)       # (wide enough that the whole hint stays above the minimap)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layer.add_child(l)
 	game.add_child(layer)
@@ -157,7 +175,7 @@ static func _hint(game: Game) -> void:
 
 static func hint_text() -> String:
 	if Defs.gear_mode:
-		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. TIER 2: the ESCAPEMENT meshes with the Mainspring (a building that uses Tension must, or it shows NEEDS MAINSPRING); it unlocks the JACK (cogs and Tension), which hops, shoots screws at ground and air and can JUMP (E, then tap a spot: flat or down any time, UP a cliff after HIGH LEAP, researched at the Escapement, where you can see). Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
+		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. TIER 2: the ESCAPEMENT meshes with the Mainspring (a building that uses Tension must, or it shows NEEDS MAINSPRING); it unlocks the JACK (cogs and Tension), which hops, shoots screws at ground and air and can JUMP (E, then tap a spot: flat or down any time, UP a cliff after HIGH LEAP, researched at the Escapement, where you can see). THE AIR: the CLOCK AVIARY (it needs a working Escapement) makes SWIFTS, fast flyers that peck other flyers; TICKING OWL is researched there, then a Swift's MORPH TO OWL rebuilds it into a Ticking Owl that swoops on units and bombs buildings (it cannot hit flyers). Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
 	return Loc.t("CLOCKWORK LAB: open SANDBOX, tab CLOCK, to spawn the new units (rail vehicles land on the Line). The Rail Yard and Assembly Works train them too. The enemy never attacks.")
 
 
