@@ -1,0 +1,896 @@
+"""Spring Catapult THROW and MOVE in code from ChatGPT's direction sheet (art/redraws/catapult_dirs.png: rows S, SE, E,
+NE, N; column 1 the whole unit, column 2 the arm alone). The sheet already shows the LOADED pose: the arm lies back
+(the cup over the rear, by the crank), as the owner wanted (ChatGPT's first concept had it forward in both poses).
+
+Cut-out parts per row (sheet px, hand-set in ROWS):
+- the ARM: the cup (anchored at J, where the beam meets it) and the beam from J to the hinge H over the spring drum.
+  The beam is the body's own paint where it shows; in E and NE the part hidden behind the drum's gear rim is the
+  visible beam copied along its length (a whole number of px, no resampling). The hinge ball / knuckle stays on the
+  body. Side and 3/4 views: the arm sits in the middle of the machine, BEHIND the drum's near rim (drawn under the
+  body); S: in front (as painted); N: in front while it leans back towards us, behind once it passes the top.
+- the WHEELS: cut out and turned in place about the hub (S: ellipses, un-squashed for the turn). The blue hub ball
+  stays still (a sphere does not turn), and the big light and shade of the painting stay where they are (the turned
+  wheel is re-lit by the ratio of the blurred brightness before and after the turn), so only the teeth and bolts go
+  round. Far wheels (partly hidden): only their visible tooth ring turns, teeth taken one pitch round where the turn
+  would bring in a hidden part. N: the wheels are seen edge-on; their tooth bars scroll down the tread.
+- the BODY: the rest, with the holes the arm and wheels leave filled from the neighbouring paint (S and N: the drum
+  behind the upright beam is filled row by row between its two sides).
+- the PAYLOAD: ChatGPT's curled-up Clock Soldier from the concept (art/redraws/concepts/catapult_v1.png, the flying
+  one, speed lines removed), shrunk to sit in the cup; the cup's front wall is drawn over it.
+
+The arm in 3D: angle T (deg) from the machine's forward horizontal (0 = pointing forward, 90 = up, 180 = back); the
+joint is at H + L (cos T F + sin T U) on screen, U = straight up, F = the row's forward axis on screen (E: across;
+SE/NE: fitted to the painted arm; S/N: towards/away from us, i.e. down/up the screen by DEPTH). The painted arm is the
+loaded pose T0 (N: ChatGPT drew it nearer upright, about 130 deg, so the loaded N pose is built: the cup comes down
+in front of the machine's back). The beam is mapped from its painted vector onto the new one (turned and stretched
+along its length, its width kept): foreshortening in the front/back views, a turn in the picture plane in the side
+view. The cup turns with the beam on screen (side and 3/4 views; S/N it only moves).
+
+THROW (12 frames): loaded and held (a Clock Soldier curled in the cup), a slight extra pull, the fast release over the
+top, the soldier leaving the cup ahead of it, the follow-through and a bounce off the stop, the slow wind back, and
+the next soldier dropping into the cup. MOVE (8 frames): the wheels turn a quarter turn (their four bolts come round
+again), the body rides 1 game px up and down twice over them, the arm loaded and the cup empty.
+
+Out (GAME SCALE, GS game px per sheet px; one cell size and anchor for both, the anchor = the ground under the axles):
+art/redraws/catapult_throw.png (5 rows x 12), catapult_move.png (5 x 8), and a GIF of each at 3x (5 directions side
+by side). Also art/redraws/catapult_payload.png (the curled soldier, sheet scale) and catapult_cup.json (the cup's
+middle per THROW frame and row, in cell px from the cell's top-left, and the release frame) for the game's projectile.
+  python3 tools/catapult_guide/anim.py            (python3 tools/catapult_guide/anim.py parts DIR [-v]: the cut parts)"""
+import json, math, os, sys
+import numpy as np
+from PIL import Image
+from scipy import ndimage as ndi
+
+NAVY = np.array([0, 22, 48])
+SHEET = np.array(Image.open('art/redraws/catapult_dirs.png').convert('RGB')).astype(int)
+CONCEPT = np.array(Image.open('art/redraws/concepts/catapult_v1.png').convert('RGB')).astype(int)
+GS = 0.26             # game px per sheet px (the Netter is 0.238: the Catapult comes out ~1.1x its size)
+DIRS = ['s', 'se', 'e', 'ne', 'n']
+T0 = 168.6            # the loaded pose (deg), from the side view's painted arm
+ARM_L = 116.3         # the arm's true length, hinge to cup joint (sheet px), from the side view
+DEPTH = 0.36          # S/N: screen px down (S) or up (N) per px towards/away from us, from the S view's painted arm
+MARGIN = (70, 175, 70, 14)   # render window around the unit's box: left, top, right, bottom (sheet px)
+
+# per row (sheet px): the unit's box; H the hinge, J the cup joint (where the beam meets the cup); bw the beam's
+# width; clean: the stretch (from J) where the beam shows whole; past it (behind the drum's rim) the beam is that
+# stretch repeated (None: it shows whole all the way); cup: the cup's box;
+# rim: the cup's rim ellipse (cx, cy, rx, ry); hub: the hinge's knuckle box drawn on top of the arm (S, N);
+# F: the forward axis on screen; tpaint: the painted arm's angle; arm: 'behind' / 'front' / 'n' (see the docstring);
+# wheels: (cx, cy, rx, ry, kind, turn): 'near' turns whole, 'far' only its visible tooth ring, 'edge' (seen edge-on)
+# scrolls its tooth bars; turn: +1 clockwise on screen while rolling forward, -1 the other way (S: the right-hand
+# wheel shows its other face); edge-on wheels are listed nearest first
+ROWS = [
+    dict(box=(184, 59, 446, 298), H=(325, 186), J=(326, 122), bw=30, clean=None, cup=(292, 55, 369, 135),
+         rim=(330.5, 70.5, 33, 9), hub=(306, 176, 345, 209), F=(0.0, DEPTH), tpaint=T0, arm='front',
+         wheels=[(233, 256, 31, 47, 'near', 1), (413, 256, 32, 47, 'near', -1)]),
+    dict(box=(169, 354, 476, 587), H=(349, 425), J=(297, 392), bw=25, clean=None, cup=(226, 352, 300, 409),
+         rim=(263, 366, 33, 10), hub=None, F=None, tpaint=T0, arm='behind',
+         wheels=[(220, 505, 44, 44, 'near'), (371, 547, 40, 40, 'near'), (440, 486, 46, 46, 'far')]),
+    dict(box=(139, 656, 493, 856), H=(351, 706), J=(237, 683), bw=26, clean=(5, 27), cup=(162, 655, 240, 708),
+         rim=(201, 671, 33, 9), hub=None, F=(1.0, 0.0), tpaint=T0, arm='behind',
+         wheels=[(233, 797, 47, 47, 'near'), (429, 810, 44, 44, 'near'), (448, 772, 47, 47, 'far')]),
+    dict(box=(179, 927, 495, 1150), H=(360, 980), J=(276, 960), bw=27, clean=(4, 27), cup=(200, 926, 279, 981),
+         rim=(238, 942, 33, 10), hub=None, F=None, tpaint=T0, arm='behind',
+         wheels=[(221, 1055, 45, 45, 'near'), (348, 1103, 45, 45, 'near'), (442, 1076, 44, 44, 'far')]),
+    dict(box=(207, 1200, 465, 1452), H=(323, 1320), J=(322, 1257), bw=30, clean=None, cup=(284, 1196, 362, 1268),
+         rim=(322.5, 1211, 35, 10), hub=(302, 1305, 345, 1363), F=(0.0, -DEPTH), tpaint=130.0, arm='n',
+         wheels=[(249, 1407, 16, 46, 'edge'), (397, 1407, 17, 46, 'edge'), (228, 1378, 18, 48, 'edge'),
+                 (425, 1380, 17, 48, 'edge')]),
+]
+
+
+def fg(a):
+    return np.abs(a - NAVY).sum(-1) > 45
+
+
+def rgba(rgb, m):
+    o = np.zeros(rgb.shape[:2] + (4,), np.uint8)
+    o[..., :3] = np.clip(rgb, 0, 255)
+    o[..., 3] = m * 255
+    return o
+
+
+def place(img, p0, p1, M):
+    """img (an RGBA array) drawn so that point p0 lands on p1 and the rest follows matrix M about it (NEAREST)"""
+    Mi = np.linalg.inv(M)
+    a, b = Mi[0]
+    d, e = Mi[1]
+    im = Image.fromarray(img, 'RGBA')
+    return np.array(im.transform(im.size, Image.AFFINE,
+                                 (a, b, p0[0] - a * p1[0] - b * p1[1], d, e, p0[1] - d * p1[0] - e * p1[1]),
+                                 resample=Image.NEAREST))
+
+
+def rotm(deg):
+    r = math.radians(deg)
+    c, s = math.cos(r), math.sin(r)
+    return np.array([[c, -s], [s, c]])
+
+
+def stretch_to(v0, v1):
+    """turn v0 onto v1 and stretch along it, keeping the width"""
+    rot = math.atan2(v1[1], v1[0]) - math.atan2(v0[1], v0[0])
+    n0 = math.hypot(*v0)
+    u = np.array(v0) / n0
+    c, s = math.cos(rot), math.sin(rot)
+    return np.array([[c, -s], [s, c]]) @ (np.eye(2) + (math.hypot(*v1) / n0 - 1) * np.outer(u, u))
+
+
+def over(dst, src):
+    """alpha-composite src over dst (both RGBA uint8 arrays, hard alpha)"""
+    m = src[..., 3] > 0
+    dst[m] = src[m]
+    return dst
+
+
+def fill_nearest(rgb, known, todo):
+    """todo pixels take the colour of the nearest known pixel"""
+    _, (iy, ix) = ndi.distance_transform_edt(~known, return_indices=True)
+    out = rgb.copy()
+    out[todo] = rgb[iy[todo], ix[todo]]
+    return out
+
+
+# ------------------------------------------------------------------ the payload (the curled-up Clock Soldier)
+
+def payload_img():
+    S = CONCEPT[195:318, 950:1092]
+    m = fg(S)
+    r, g, b = S[..., 0], S[..., 1], S[..., 2]
+    m &= ~((b > r + 30) & (b > 120) & (r < 160) & (g > 100))      # the speed lines
+    lab, n = ndi.label(m)
+    sz = ndi.sum(m, lab, range(1, n + 1))
+    m &= lab == int(np.argmax(sz)) + 1
+    m = ndi.binary_fill_holes(m)
+    ys, xs = np.nonzero(m)
+    im = Image.fromarray(rgba(S, m)[ys.min():ys.max() + 1, xs.min():xs.max() + 1], 'RGBA')
+    return im
+
+
+PAYLOAD_SRC = payload_img()
+
+
+def payload_at(width):
+    w = int(round(width))
+    h = int(round(PAYLOAD_SRC.height * w / PAYLOAD_SRC.width))
+    p = np.array(PAYLOAD_SRC.resize((w, h), Image.LANCZOS))
+    p[..., 3] = np.where(p[..., 3] >= 128, 255, 0)
+    return p
+
+
+# ------------------------------------------------------------------ cutting a row into parts
+
+FACE = 0.70            # a wheel's face plate (hub, bolts) reaches this far out (of the rim's radius)
+EDGE_PITCH = 22.0      # the edge-on wheels' tooth bars (N), measured down their middles
+TOOTH_PITCH = 26.0     # deg between a cog's teeth when they are too irregular to measure (about 14 teeth)
+
+
+def fit_wheel(WM, cx, cy, rx, ry, circle=True):
+    """the wheel's own outline: an axis-aligned ellipse fitted to where its teeth meet the navy (round the hand-set
+    guess); returns its middle and radii (the teeth's tips at about 1.0). ChatGPT drew the hubs a few px off the
+    middle of the rims (they stick out of the face): the face turns about the rim's middle, the hub stays put"""
+    edge = WM & ndi.binary_dilation(~WM)
+    H, Wd = WM.shape
+    yy, xx = np.mgrid[0:H, 0:Wd]
+    rn = np.hypot((xx - cx) / rx, (yy - cy) / ry)
+    ang = np.degrees(np.arctan2((yy - cy) / ry, (xx - cx) / rx)) % 360
+    bins = (ang // 10).astype(int)
+    outside = (rn > 1.12) & (rn < 1.3)
+    cnt = np.bincount(bins[outside], minlength=36)
+    hit = np.bincount(bins[outside & WM], minlength=36)
+    clean = (hit / np.maximum(cnt, 1)) < 0.1
+    sel = edge & (rn > 0.8) & (rn < 1.2) & clean[bins]
+    y, x = np.nonzero(sel)
+    if len(x) < 40:
+        return cx, cy, rx, ry
+    x, y = x.astype(float), y.astype(float)
+    if circle:
+        c, d, e = np.linalg.lstsq(np.c_[x, y, np.ones_like(x)], -(x * x + y * y), rcond=None)[0]
+        ex, ey = -c / 2, -d / 2
+        erx = ery = math.sqrt(max(1.0, ex * ex + ey * ey - e))
+    else:
+        a, b, c, d = np.linalg.lstsq(np.c_[x * x, y * y, x, y], np.ones_like(x), rcond=None)[0]
+        ex, ey = -c / (2 * a), -d / (2 * b)
+        k = 1 + c * c / (4 * a) + d * d / (4 * b)
+        if k / a <= 0 or k / b <= 0:
+            return cx, cy, rx, ry
+        erx, ery = math.sqrt(k / a), math.sqrt(k / b)
+    tip = float(np.percentile(np.hypot((x - ex) / erx, (y - ey) / ery), 92))
+    if abs(ex - cx) > 15 or abs(ey - cy) > 15:
+        return cx, cy, rx, ry
+    return ex, ey, erx * tip, ery * tip
+
+
+def measure_pitch(wh):
+    """deg between the wheel's teeth: the autocorrelation of the teeth-or-gap signal round its tips, where they stand
+    against the navy (ChatGPT's cogs have 11 to 17 teeth); TOOTH_PITCH when the teeth are too irregular to tell"""
+    m = wh['mask']
+    H, Wd = m.shape
+    clean = wh['known'] if wh['kind'] == 'far' else wh['clean']
+    sig, ok = [], []
+    for a in np.arange(0, 360, 0.5):
+        ar = math.radians(a)
+        v = c = 0
+        good = True
+        for rr in np.linspace(0.93, 1.06, 6):
+            x = int(round(wh['cx'] + rr * wh['rx'] * math.cos(ar)))
+            y = int(round(wh['cy'] + rr * wh['ry'] * math.sin(ar)))
+            if not (0 <= x < Wd and 0 <= y < H):
+                good = False
+                continue
+            v += m[y, x]
+            c += 1
+            if rr > 1.0 and not clean[y, x]:
+                good = False
+        sig.append(v / max(c, 1))
+        ok.append(good)
+    sig, ok = np.array(sig, float), np.array(ok)
+    best = (0.0, TOOTH_PITCH)
+    for lag in range(30, 82):
+        o = ok & np.roll(ok, -lag)
+        if o.sum() < 40:
+            continue
+        x_ = sig[o] - sig[o].mean()
+        y_ = np.roll(sig, -lag)[o] - np.roll(sig, -lag)[o].mean()
+        c_ = (x_ * y_).sum() / math.sqrt((x_ * x_).sum() * (y_ * y_).sum() + 1e-9)
+        if c_ > best[0]:
+            best = (c_, lag / 2.0)
+    return best[1] if best[0] > 0.45 else TOOTH_PITCH
+
+
+def wheel_parts(R, W, WM, win):
+    """the wheel layers of a row: a list of dicts (img, mask, ...); edge-on wheels nearest first"""
+    x0, y0 = win[0], win[1]
+    H, Wd = WM.shape
+    yy, xx = np.mgrid[0:H, 0:Wd]
+    r_, g_, b_ = W[..., 0], W[..., 1], W[..., 2]
+    brass = WM & (r_ > 105) & (g_ > 45) & (b_ < 110) & (r_ > b_ + 50)
+    blue = WM & (b_ > r_ + 40) & (b_ > 100)
+    taken = np.zeros_like(WM)
+    out = []
+    nears = [w for w in R['wheels'] if w[4] == 'near']
+    ang = None
+    for w in R['wheels']:
+        cx, cy, rx, ry, kind = w[0] - x0, w[1] - y0, w[2], w[3], w[4]
+        if kind != 'edge':
+            cx, cy, rx, ry = fit_wheel(WM, cx, cy, rx, ry, circle=abs(rx - ry) < 8)
+            if '-v' in sys.argv:
+                print('  wheel %s (%.1f, %.1f) r %.1f x %.1f' % (kind, cx + x0, cy + y0, rx, ry))
+        rn = np.hypot((xx - cx) / rx, (yy - cy) / ry)
+        if kind == 'edge':
+            # seen edge-on: a rounded upright bar of tooth tops
+            sil = (np.abs((xx - cx) / (rx + 1.5)) ** 4 + np.abs((yy - cy) / (ry + 1.5)) ** 4) <= 1
+            m = WM & sil & ~taken
+            out.append(dict(kind='edge', mask=m, img=rgba(W, m), cx=cx, cy=cy, rx=rx, ry=ry, overlap=np.zeros_like(WM)))
+            taken |= m
+            continue
+        tip = rn <= 1.12
+        ang = np.degrees(np.arctan2((yy - cy) / ry, (xx - cx) / rx)) % 360
+        if kind == 'near':
+            # round the ring: where the paint just outside the teeth is the body (not the navy), the gaps between
+            # the teeth show the body behind: there only brass and the dark edge next to it is wheel
+            outside = (rn > 1.13) & (rn < 1.25)
+            bins = (ang // 6).astype(int)
+            cnt = np.bincount(bins[outside], minlength=60)
+            hit = np.bincount(bins[outside & WM], minlength=60)
+            busy = (hit / np.maximum(cnt, 1)) > 0.5
+            busy = busy | np.roll(busy, 1) | np.roll(busy, -1)
+            over_body = busy[bins]
+            ring = (rn <= 1.05) & (rn >= 0.84)
+            red = (r_ > 140) & (g_ < 70) & (b_ < 70)
+            grey = (np.abs(r_ - b_) < 18) & (np.abs(r_ - g_) < 18) & ((r_ + g_ + b_) > 150)
+            foreign = blue | red | grey      # (a ball, a red band or grey frame poking into the ring is not wheel)
+            m = WM & ((rn < 0.84) | (ring & ~over_body) | (ring & over_body & ~foreign) |
+                      ((rn > 1.05) & (rn <= 1.12) & ~over_body))     # (the teeth tips poke a little past the ring)
+            m &= ~taken
+            hub = ndi.binary_dilation(blue & (rn < 0.38), iterations=1) & m
+            lab_, nl_ = ndi.label(hub)
+            if nl_ > 1:
+                sz_ = ndi.sum(hub, lab_, range(1, nl_ + 1))
+                hub &= lab_ == int(np.argmax(sz_)) + 1
+            hys, hxs = np.nonzero(hub)
+            hcx, hcy = (float(hxs.mean()), float(hys.mean())) if len(hxs) else (cx, cy)
+            known = tip & ~over_body          # the teeth that stand against the navy, and the navy between them
+            overlap = ring & over_body
+        else:
+            # a far wheel: only the teeth that stand out against the navy (no near wheel or body round them) turn
+            cover = np.zeros_like(WM)
+            for o_ in out:
+                if o_['kind'] == 'near':
+                    cover |= o_['rn'] <= 1.12
+            outside = (rn > 1.13) & (rn < 1.3)
+            bins = (ang // 6).astype(int)
+            cnt = np.bincount(bins[outside], minlength=60)
+            hit = np.bincount(bins[outside & (WM | cover)], minlength=60)
+            busy = (hit / np.maximum(cnt, 1)) > 0.25
+            busy = busy | np.roll(busy, 1) | np.roll(busy, -1)
+            band = (rn >= 0.86) & tip & ~cover & ~busy[bins]
+            m = WM & band
+            hub = np.zeros_like(WM)
+            hcx, hcy = cx, cy
+            known = band.copy()               # the teeth there and the navy between them
+            overlap = np.zeros_like(WM)
+        img = rgba(W, m)
+        # the painting's big light and shade (blurred brightness over the wheel)
+        lum = (0.3 * r_ + 0.59 * g_ + 0.11 * b_) * m
+        sig = 0.16 * max(rx, ry)
+        light = ndi.gaussian_filter(lum.astype(float), sig) / np.maximum(ndi.gaussian_filter(m.astype(float), sig), 1e-3)
+        # the face plate (hub and bolts) turns about the hub, which ChatGPT drew a few px off the rim's middle
+        face_r = FACE * rx
+        dh = np.hypot((xx - hcx) / rx, (yy - hcy) / ry) * rx
+        out.append(dict(kind=kind, cx=cx, cy=cy, rx=rx, ry=ry, mask=m, img=img, hub=rgba(W, hub), hubm=hub,
+                        known=known, light=light, rn=rn, overlap=overlap, cw=w[5] if len(w) > 5 else 1,
+                        hcx=hcx, hcy=hcy, face=m & (dh <= face_r), clean=known & (dh > face_r)))
+        out[-1]['pitch'] = measure_pitch(out[-1])
+        taken |= m
+    return out, taken
+
+
+def _turn(wh, deg, centre, want, src_ok, steps=(0.0,)):
+    """pixels in `want` (within the wheel's box) taken from where the turn by deg about centre brings them from
+    (un-squashing the ellipse); only from `src_ok`; re-lit with the painting's big light and shade"""
+    H, Wd = wh['mask'].shape
+    cx, cy, rx, ry = wh['cx'], wh['cy'], wh['rx'], wh['ry']
+    bx0, by0 = max(0, int(cx - 1.25 * rx)), max(0, int(cy - 1.25 * ry))
+    bx1, by1 = min(Wd, int(cx + 1.25 * rx) + 2), min(H, int(cy + 1.25 * ry) + 2)
+    sub = (slice(by0, by1), slice(bx0, bx1))
+    yy, xx = np.mgrid[by0:by1, bx0:bx1].astype(float)
+    ox, oy = centre
+    Rr = float(max(rx, ry))
+    X, Y = (xx - ox) * Rr / rx, (yy - oy) * Rr / ry
+    outb = np.zeros((by1 - by0, bx1 - bx0, 4), np.uint8)
+    w_ = want[sub]
+    tried = np.zeros(w_.shape, bool)
+    light = wh['light'][sub]
+    for k in steps:
+        a = math.radians(-(deg + k))
+        c, s_ = math.cos(a), math.sin(a)
+        ix = np.clip(np.rint(ox + (c * X - s_ * Y) * rx / Rr).astype(int), 0, Wd - 1)
+        iy = np.clip(np.rint(oy + (s_ * X + c * Y) * ry / Rr).astype(int), 0, H - 1)
+        ok = w_ & ~tried & src_ok[iy, ix]
+        src = wh['img'][iy, ix]
+        lit = src.astype(float)
+        lit[..., :3] *= np.clip(light / np.maximum(wh['light'][iy, ix], 1.0), 0.6, 1.6)[..., None]
+        lit = np.clip(lit, 0, 255).astype(np.uint8)
+        outb[ok] = lit[ok]
+        outb[ok & (src[..., 3] == 0)] = 0
+        tried |= ok
+    out = np.zeros((H, Wd, 4), np.uint8)
+    out[sub] = outb
+    return out, tried, sub
+
+
+def turn_wheel(wh, deg, pitch=None):
+    """the wheel turned by deg (screen clockwise): its tooth ring about the rim's middle, its face plate about the
+    hub; the hub ball stays still"""
+    if wh['kind'] == 'far':
+        out, tried, sub = _turn(wh, deg, (wh['cx'], wh['cy']), wh['known'], wh['known'],
+                                [0.0] + [k * pitch for j in range(1, 5) for k in (j, -j)])
+        rest = np.zeros_like(wh['mask'])
+        rest[sub] = wh['mask'][sub] & ~tried
+        out[rest] = wh['img'][rest]
+        return out
+    # the teeth against the navy go round (taken one pitch round where the turn brings in teeth that stand over the
+    # body, which stay as painted); the face plate turns about the hub
+    st = [0.0] + [k * pitch for j in range(1, 5) for k in (j, -j)]
+    out = wh['img'].copy()
+    out[wh['clean']] = 0
+    ring, _, _ = _turn(wh, deg, (wh['cx'], wh['cy']), wh['clean'], wh['clean'], st)
+    over(out, ring)
+    face, _, _ = _turn(wh, deg, (wh['hcx'], wh['hcy']), wh['face'], wh['face'])
+    over(out, face)
+    return over(out, wh['hub'])
+
+
+def scroll_edge(wh, frac, pitch):
+    """an edge-on wheel: its tooth bars move down the tread by frac of a pitch"""
+    m = wh['mask']
+    H, Wd = m.shape
+    s = frac * pitch
+    out = np.zeros((H, Wd, 4), np.uint8)
+    ys, xs = np.nonzero(m)
+    for k in (0, 1, 2, -1):
+        sy = np.rint(ys - s + k * pitch).astype(int)
+        ok = (sy >= 0) & (sy < H)
+        ok[ok] &= m[sy[ok], xs[ok]]
+        ok &= out[ys, xs, 3] == 0
+        out[ys[ok], xs[ok]] = wh['img'][sy[ok], xs[ok]]
+    return out
+
+
+def cut_row(r):
+    R = ROWS[r]
+    bx0, by0, bx1, by1 = R['box']
+    win = (bx0 - MARGIN[0], by0 - MARGIN[1], bx1 + MARGIN[2], by1 + MARGIN[3])
+    x0, y0, x1, y1 = win
+    W = np.full((y1 - y0, x1 - x0, 3), NAVY, int)
+    sx0, sy0, sx1, sy1 = max(0, x0), max(0, y0), min(SHEET.shape[1], x1), min(SHEET.shape[0], y1)
+    W[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = SHEET[sy0:sy1, sx0:sx1]
+    WM = fg(W)
+    unit = np.zeros_like(WM)
+    unit[by0 - y0 - 2:by1 - y0 + 2, bx0 - x0 - 2:bx1 - x0 + 2] = True
+    WM &= unit
+    Hh, Wd = WM.shape
+    yy, xx = np.mgrid[0:Hh, 0:Wd]
+    r_, g_, b_ = W[..., 0], W[..., 1], W[..., 2]
+    H = np.array(R['H'], float) - (x0, y0)
+    J = np.array(R['J'], float) - (x0, y0)
+    L = float(np.hypot(*(H - J)))
+    a = (H - J) / L
+    n = np.array([-a[1], a[0]])
+    t = (xx - J[0]) * a[0] + (yy - J[1]) * a[1]
+    v = (xx - J[0]) * n[0] + (yy - J[1]) * n[1]
+    corridor = (np.abs(v) <= R['bw'] / 2.0) & (t >= -1)
+    # the cup (and in S/N its joint ball): the box, before the beam starts
+    cx0, cy0, cx1, cy1 = R['cup']
+    cupbox = (xx >= cx0 - x0) & (xx < cx1 - x0) & (yy >= cy0 - y0) & (yy < cy1 - y0)
+    if R['arm'] == 'behind':
+        cup = WM & cupbox & ~(corridor & (t >= 0))
+    else:
+        cup = WM & cupbox & (t <= 2)
+    lab, nl = ndi.label(cup)
+    if nl > 1:
+        sz = ndi.sum(cup, lab, range(1, nl + 1))
+        cup &= lab == int(np.argmax(sz)) + 1
+    # the beam: greys (its dark body, light edge, outline) and its small brass rivets
+    grey = (np.abs(r_ - g_) < 45) & (np.abs(g_ - b_) < 45)
+    brass = (r_ > 140) & (g_ > 80) & (b_ < 110)
+    lab, nl = ndi.label(brass & WM)
+    small = np.zeros_like(WM)
+    if nl:
+        sz = ndi.sum(brass & WM, lab, range(1, nl + 1))
+        small = np.isin(lab, [i + 1 for i, s_ in enumerate(sz) if s_ <= 25])
+    hubm = np.zeros_like(WM)
+    if R['hub']:
+        hx0, hy0, hx1, hy1 = R['hub']
+        hubm = WM & (xx >= hx0 - x0) & (xx < hx1 - x0) & (yy >= hy0 - y0) & (yy < hy1 - y0)
+    if R['arm'] == 'behind':
+        beam = WM & corridor & (grey | small) & ~cup & (t <= L) & (np.hypot(xx - H[0], yy - H[1]) > 15)
+        if R['clean']:
+            # behind the drum's rim: the stretch that shows whole, repeated along the beam (whole px, no resampling)
+            ta, tb = R['clean']
+            beam &= t <= tb
+            P = tb - ta
+            sh = np.rint(P * a).astype(int)
+            beam_img = rgba(W, beam)
+            need = corridor & (t > tb) & (t <= L)
+            ys, xs = np.nonzero(need)
+            for k in range(1, 12):
+                if len(ys) == 0:
+                    break
+                sy, sx = ys - k * sh[1], xs - k * sh[0]
+                inb = (sy >= 0) & (sy < Hh) & (sx >= 0) & (sx < Wd)
+                src_t = t[np.clip(sy, 0, Hh - 1), np.clip(sx, 0, Wd - 1)]
+                ok = inb & (src_t <= tb)
+                beam_img[ys[ok], xs[ok]] = beam_img[sy[ok], sx[ok]]
+                ys, xs = ys[~ok], xs[~ok]
+            # what shows of the beam past the clean stretch (above the rim) comes off the body too; the rim stays
+            rim = ndi.binary_dilation(WM & ~grey & ~small, iterations=1)
+            extra = WM & corridor & (t > tb) & (t <= L) & (grey | small) & ~rim & (np.hypot(xx - H[0], yy - H[1]) > 15)
+            cut = beam | cup | extra
+        else:
+            beam_img = rgba(W, beam)
+            cut = beam | cup
+    else:
+        beam = WM & corridor & (t <= L) & ~cup & ~hubm
+        beam_img = rgba(W, beam)
+        cut = beam | cup
+    body = WM & ~cut
+    # fill what the arm leaves behind
+    fill = np.zeros_like(WM)
+    Wf = W.copy()
+    if R['arm'] == 'behind':
+        k = np.ones((11, 11))
+        dens = ndi.convolve(body.astype(float), k, mode='constant') / k.sum()
+        fill = cut & (dens > 0.55)
+        Wf = fill_nearest(W, body, fill)
+    else:
+        # the drum behind the upright beam and ball: row by row between its two sides (a few px out, past the
+        # beam's outline), where the result is paint and not the navy
+        for y in range(Hh):
+            row = cut[y]
+            if not row.any():
+                continue
+            xs_ = np.nonzero(row)[0]
+            for seg in np.split(xs_, np.nonzero(np.diff(xs_) > 1)[0] + 1):
+                l, rr = seg[0] - 2, seg[-1] + 2
+                if l < 2 or rr >= Wd - 2:
+                    continue
+                cl = np.median(W[y, l - 2:l + 1], axis=0)
+                cr = np.median(W[y, rr:rr + 3], axis=0)
+                for xq in range(l + 1, rr):
+                    f = (xq - l) / float(rr - l)
+                    c = (1 - f) * cl + f * cr
+                    if np.abs(c - NAVY).sum() > 45 and (body[y, l] or body[y, rr]):
+                        Wf[y, xq] = c
+                        fill[y, xq] = True
+                    elif cut[y, xq]:
+                        fill[y, xq] = False
+    bodym = body | fill
+    # the wheels come off the body. Behind a near wheel's teeth, where it stands over the body, the gaps show the
+    # body's shadow (a dark brown taken from the painting); elsewhere behind a wheel nothing is ever seen
+    wheels, taken = wheel_parts(R, Wf, bodym, win)
+    Wb = Wf.copy()
+    bodym2 = bodym & ~taken
+    for wh in wheels:
+        o = wh['overlap'] & taken
+        if o.any():
+            dark = WM & ~taken & ndi.binary_dilation(o, iterations=4) & ((r_ + g_ + b_) < 200)
+            col = np.median(Wf[dark], axis=0) if dark.sum() > 10 else np.array([40, 30, 32])
+            Wb[o] = col
+            bodym2 |= o
+    lab, nl = ndi.label(bodym2)
+    if nl > 1:
+        sz = ndi.sum(bodym2, lab, range(1, nl + 1))
+        bodym2 &= np.isin(lab, [i + 1 for i, s_ in enumerate(sz) if s_ >= 40])
+    hub_img = rgba(W, hubm)
+    # the payload's place in the cup and the cup's front wall (over the payload)
+    rcx, rcy, rrx, rry = R['rim']
+    rcx, rcy = rcx - x0, rcy - y0
+    inside = np.clip(1 - ((xx - rcx) / rrx) ** 2, 0, 1)
+    front = cup & (yy > rcy + rry * np.sqrt(inside) - 1) & (np.abs(xx - rcx) <= rrx + 3)
+    return dict(win=win, H=H, J=J, L=L, body=rgba(Wb, bodym2), cup=rgba(W, cup), cupfront=rgba(W, front),
+                beam=beam_img, hub=hub_img, wheels=wheels, rim=(rcx, rcy, rrx, rry), size=(Wd, Hh), W=W, WM=WM)
+
+
+# ------------------------------------------------------------------ the arm in 3D
+
+def fwd(r, P):
+    """the row's forward axis on screen: given, or fitted so the painted arm is the loaded pose"""
+    R = ROWS[r]
+    if R['F'] is not None:
+        return np.array(R['F'], float)
+    v = np.array(P, float) - ARM_L * math.sin(math.radians(T0)) * np.array([0.0, -1.0])
+    return v / (ARM_L * math.cos(math.radians(T0)))
+
+
+def arm_vec(r, F, T):
+    t = math.radians(T)
+    return ARM_L * (math.cos(t) * F + math.sin(t) * np.array([0.0, -1.0]))
+
+
+PARTS = []
+for _r in range(5):
+    _p = cut_row(_r)
+    _p['F'] = fwd(_r, _p['J'] - _p['H'])
+    _p['paint'] = _p['J'] - _p['H']          # the painted arm vector (hinge -> joint)
+    _p['vpaint'] = arm_vec(_r, _p['F'], ROWS[_r]['tpaint'])
+    _p['M0'] = stretch_to(_p['vpaint'], _p['paint'])
+    PARTS.append(_p)
+PAY_W = 0.66 * 2 * ROWS[2]['rim'][2]         # the curled soldier, about two thirds of the cup across
+PAYLOAD = payload_at(PAY_W)
+LAUNCH = 40.0                                 # the payload flies off this steeply (deg)
+
+
+def wheel_pitch(wh):
+    """tooth pitch in deg: the teeth on a ring just inside the tips, counted by brightness"""
+    rn, m = wh['rn'], wh['mask']
+    H, Wd = m.shape
+    angs = np.radians(np.arange(0, 360, 2.0))
+    best = None
+    for rr in (0.90, 0.94):
+        vals = []
+        for a in angs:
+            x = int(round(wh['cx'] + rr * wh['rx'] * math.cos(a)))
+            y = int(round(wh['cy'] + rr * wh['ry'] * math.sin(a)))
+            vals.append(1.0 if 0 <= x < Wd and 0 <= y < H and m[y, x] else 0.0)
+        v = np.array(vals) - np.mean(vals)
+        f = np.abs(np.fft.rfft(v))
+        f[:6] = 0
+        k = int(np.argmax(f[:40]))
+        if best is None or f[k] > best[0]:
+            best = (f[k], k)
+    return 360.0 / max(6, best[1])
+
+
+def arm_now(r, T):
+    """the arm's vector (hinge -> joint) on screen at angle T: the model, nudged so the painted angle gives exactly
+    the painted vector"""
+    P = PARTS[r]
+    return P['M0'] @ arm_vec(r, P['F'], T)
+
+
+def frame(r, T, wheel_deg, payload=None, edge_frac=0.0):
+    """one frame of row r at painted scale, as layer groups [(rgba, rides)] bottom to top (rides: moves with the
+    body's bob, which is added later in whole game px); and the cup's middle. Arm angle T, wheels turned wheel_deg;
+    payload: None, ('cup', drop px above the cup), or ('fly', (dx, dy, spin) from the cup's middle at release)"""
+    P = PARTS[r]
+    R = ROWS[r]
+    Wd, Hh = P['size']
+    H = P['H']
+    v = arm_now(r, T)
+    beam = place(P['beam'], H, H, stretch_to(P['paint'], v))
+    Jn = H + v
+    # the cup: turns with the beam on screen (side and 3/4 views); S/N it only moves
+    turn = 0.0
+    if R['arm'] == 'behind':
+        turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(P['paint'][1], P['paint'][0]))
+    Mc = rotm(turn)
+    cup = place(P['cup'], P['J'], Jn, Mc)
+    cupf = place(P['cupfront'], P['J'], Jn, Mc)
+    rcx, rcy, rrx, rry = P['rim']
+    mid = Jn + Mc @ (np.array([rcx, rcy]) - P['J'])
+    arm = np.zeros((Hh, Wd, 4), np.uint8)
+    over(arm, beam)
+    over(arm, cup)
+    fly = None
+    if payload is not None:
+        ph, pw = PAYLOAD.shape[:2]
+        if payload[0] == 'cup':
+            # sitting in the bowl (its lower part behind the cup's front wall); turned with the cup
+            pim = np.zeros((Hh, Wd, 4), np.uint8)
+            _paste(pim, PAYLOAD, int(round(rcx - pw / 2.0)), int(round(rcy + rry * 0.35 - ph * 0.70 - payload[1])))
+            over(arm, place(pim, P['J'], Jn, Mc))
+            if payload[1] <= 0:
+                over(arm, cupf)
+        else:
+            dx, dy, spin = payload[1]
+            pr = np.array(Image.fromarray(PAYLOAD, 'RGBA').rotate(spin, resample=Image.NEAREST, expand=True))
+            fly = np.zeros((Hh, Wd, 4), np.uint8)
+            _paste(fly, pr, int(round(dx - pr.shape[1] / 2.0)), int(round(dy - pr.shape[0] / 2.0)))
+    groups = []
+
+    def add(img, rides):
+        if groups and groups[-1][1] == rides:
+            over(groups[-1][0], img)
+        else:
+            groups.append((img.copy(), rides))
+    for wh in P['wheels']:
+        if wh['kind'] == 'far':
+            add(turn_wheel(wh, wheel_deg * wh['cw'], wh['pitch']), False)
+    arm_front = R['arm'] == 'front' or (R['arm'] == 'n' and T > 90)
+    if not arm_front:
+        add(arm, True)
+    add(P['body'], True)
+    for wh in P['wheels']:
+        if wh['kind'] == 'near':
+            add(turn_wheel(wh, wheel_deg * wh['cw'], wh['pitch']), False)
+        elif wh['kind'] == 'edge':
+            add(scroll_edge(wh, -edge_frac, wh['pitch']), False)      # (moving away: the tread we see goes up)
+    if arm_front:
+        add(arm, True)
+        add(P['hub'], True)
+    if fly is not None:
+        add(fly, False)
+    return groups, mid
+
+
+def _paste(dst, src, x, y):
+    h, w = src.shape[:2]
+    H, W = dst.shape[:2]
+    sx0, sy0 = max(0, -x), max(0, -y)
+    dx0, dy0 = max(0, x), max(0, y)
+    w2, h2 = min(w - sx0, W - dx0), min(h - sy0, H - dy0)
+    if w2 <= 0 or h2 <= 0:
+        return
+    s = src[sy0:sy0 + h2, sx0:sx0 + w2]
+    m = s[..., 3] > 0
+    d = dst[dy0:dy0 + h2, dx0:dx0 + w2]
+    d[m] = s[m]
+
+
+
+
+for _p in PARTS:
+    for _wh in _p['wheels']:
+        if _wh['kind'] == 'edge':
+            _wh['pitch'] = EDGE_PITCH
+        _wh.setdefault('cw', 1)
+
+
+def flat(groups, bob=0):
+    """the groups composited at painted scale (for looking at), riding ones moved by bob sheet px"""
+    H, W = groups[0][0].shape[:2]
+    cv = np.zeros((H, W, 4), np.uint8)
+    for img, rides in groups:
+        over(cv, place(img, (0, 0), (0, bob), np.eye(2)) if (rides and bob) else img)
+    return cv
+
+
+# ------------------------------------------------------------------ the two animations
+
+T_REL = 112.0          # the payload leaves the cup at this arm angle (between frames 2 and 3)
+FLY_SPEED = 58.0       # sheet px a frame, along its launch (which is LAUNCH deg up from the row's forward)
+SPIN = -35.0           # and it tumbles (deg a frame)
+# THROW: (arm angle, payload): 'cup' sits in the cup, 'drop' falls into it from above, a number = frames since
+# release (it flies on its own)
+THROW = [(T0, 'cup'), (T0 + 4, 'cup'), (134.0, 'cup'), (90.0, 0.8), (55.0, 1.7), (34.0, None), (46.0, None),
+         (64.0, None), (91.0, None), (119.0, None), (147.0, None), (T0, 'drop')]
+THROW_RELEASE = 3      # the first frame with the payload out of the cup
+MOVE_N = 8             # MOVE: the wheels a quarter turn round, the edge-on wheels' bars 3 pitches on
+MOVE_BOB = [0, -1, -1, 0, 0, -1, -1, 0]      # the body's ride over the cogs (game px)
+
+
+def payload_state(r, p):
+    if p is None:
+        return None
+    if p == 'cup':
+        return ('cup', 0)
+    if p == 'drop':
+        return ('cup', 26)
+    # in flight, from where the cup was at release
+    P = PARTS[r]
+    _, mid = frame_mid(r, T_REL)
+    d = math.cos(math.radians(LAUNCH)) * P['F'] + math.sin(math.radians(LAUNCH)) * np.array([0.0, -1.0])
+    pos = mid + FLY_SPEED * p * d + np.array([0.0, 3.0 * p * p])
+    return ('fly', (pos[0], pos[1], SPIN * p))
+
+
+def frame_mid(r, T):
+    """the cup's middle on screen at arm angle T (no drawing)"""
+    P = PARTS[r]
+    R = ROWS[r]
+    v = arm_now(r, T)
+    Jn = P['H'] + v
+    turn = 0.0
+    if R['arm'] == 'behind':
+        turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(P['paint'][1], P['paint'][0]))
+    rcx, rcy, rrx, rry = P['rim']
+    return None, Jn + rotm(turn) @ (np.array([rcx, rcy]) - P['J'])
+
+
+def cropped(groups):
+    """the layer groups cut to their boxes: [(rgba, x, y, rides)]"""
+    out = []
+    for img, rides in groups:
+        ys, xs = np.nonzero(img[..., 3])
+        if len(ys):
+            out.append((img[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy(), xs.min(), ys.min(), rides))
+    return out
+
+
+def anim_frames(name, r):
+    """[(cropped layer groups, bob game px, cup middle)] of one animation's row"""
+    out = []
+    if name == 'throw':
+        for T, p in THROW:
+            g, mid = frame(r, T, 0.0, payload_state(r, p))
+            out.append((cropped(g), 0, mid))
+    else:
+        for i in range(MOVE_N):
+            g, mid = frame(r, T0, 90.0 * i / MOVE_N, None, edge_frac=3.0 * i / MOVE_N)
+            out.append((cropped(g), MOVE_BOB[i], mid))
+    return out
+
+
+def anchor(r):
+    """the unit's point in the sheet: under the middle of its wheels, on the ground (their lowest tips)"""
+    ws = [w for w in ROWS[r]['wheels'] if w[4] in ('near', 'edge')]
+    return (float(np.mean([w[0] for w in ws])), float(max(w[1] + w[3] for w in ws)))
+
+
+def shrink(img, w, h):
+    """premultiplied box-filter shrink with a hard alpha (tools/import_tier3.py)"""
+    a = img[..., 3:4].astype(np.float32) / 255.0
+    pre = np.concatenate([img[..., :3] * a, a * 255.0], -1).clip(0, 255).astype(np.uint8)
+    s_ = np.array(Image.fromarray(pre).resize((w, h), Image.BOX)).astype(np.float32)
+    al = s_[..., 3:4] / 255.0
+    rgb = np.where(al > 0.01, s_[..., :3] / np.maximum(al, 0.01), 0)
+    out = np.zeros((h, w, 4), np.uint8)
+    out[..., :3] = rgb.clip(0, 255)
+    out[..., 3] = np.where(al[..., 0] >= 0.45, 255, 0)
+    out[out[..., 3] == 0] = 0
+    return out
+
+
+def to_cell(r, groups, bob, cell):
+    CW, CH, AX, AY = cell
+    P = PARTS[r]
+    ax, ay = anchor(r)
+    ax -= P['win'][0]
+    ay -= P['win'][1]
+    ox, oy = int(round(ax - AX / GS)), int(round(ay - AY / GS))
+    w, h = int(round(CW / GS)), int(round(CH / GS))
+    out = np.zeros((CH, CW, 4), np.uint8)
+    for img, gx, gy, rides in groups:
+        crop = np.zeros((h, w, 4), np.uint8)
+        _paste(crop, img, gx - ox, gy - oy)
+        sm = shrink(crop, CW, CH)
+        if rides and bob:
+            sm = np.roll(sm, bob, axis=0)
+            if bob < 0:
+                sm[bob:] = 0
+            else:
+                sm[:bob] = 0
+        over(out, sm)
+    return out
+
+
+def extents(frames):
+    """how far any frame reaches from its row's anchor (sheet px): left, right, up, down"""
+    L = Rr = U = D = 0.0
+    for (name, r), fr in frames.items():
+        ax, ay = anchor(r)
+        ax -= PARTS[r]['win'][0]
+        ay -= PARTS[r]['win'][1]
+        for groups, bob, _ in fr:
+            for img, gx, gy, rides in groups:
+                h, w = img.shape[:2]
+                lift = (-bob / GS) if (rides and bob < 0) else 0.0
+                L, Rr = max(L, ax - gx), max(Rr, gx + w - ax)
+                U, D = max(U, ay - gy + lift), max(D, gy + h - ay)
+    return L, Rr, U, D
+
+
+def save(name, rows, cell, dur):
+    CW, CH, AX, AY = cell
+    n = len(rows[0])
+    sheet = Image.new('RGB', (n * CW, 5 * CH), tuple(NAVY))
+    for r in range(5):
+        for c, img in enumerate(rows[r]):
+            im = Image.fromarray(img, 'RGBA')
+            sheet.paste(im, (c * CW, r * CH), im)
+    sheet.save('art/redraws/catapult_%s.png' % name)
+    g = []
+    for c in range(n):
+        o = Image.new('RGB', (5 * CW, CH), tuple(NAVY))
+        for r in range(5):
+            o.paste(sheet.crop((c * CW, r * CH, (c + 1) * CW, (r + 1) * CH)), (r * CW, 0))
+        g.append(o.resize((o.width * 3, o.height * 3), Image.NEAREST))
+    g[0].save('art/redraws/catapult_%s.gif' % name, save_all=True, append_images=g[1:], duration=dur, loop=0)
+
+
+def main():
+    frames = {(name, r): anim_frames(name, r) for name in ('throw', 'move') for r in range(5)}
+    L, Rr, U, D = extents(frames)
+    half = int(math.ceil(max(L, Rr) * GS)) + 1
+    up, down = int(math.ceil(U * GS)) + 1, int(math.ceil(D * GS)) + 1
+    cell = (2 * half, up + down, half, up)
+    print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f)' % (cell + (GS,)))
+    cups = {}
+    for name, dur in (('throw', 90), ('move', 110)):
+        rows = []
+        for r in range(5):
+            fr = frames[(name, r)]
+            rows.append([to_cell(r, g, bob, cell) for g, bob, _ in fr])
+            if name == 'throw':
+                ax, ay = anchor(r)
+                cups[DIRS[r]] = []
+                for i, (g, bob, mid) in enumerate(fr):
+                    x = (mid[0] + PARTS[r]['win'][0] - ax) * GS + cell[2]
+                    y = (mid[1] + PARTS[r]['win'][1] - ay) * GS + cell[3]
+                    cups[DIRS[r]].append([round(x, 1), round(y, 1)])
+                st = payload_state(r, THROW[THROW_RELEASE + 1][1])
+                cups[DIRS[r] + '_fly'] = [round((st[1][0] + PARTS[r]['win'][0] - ax) * GS + cell[2], 1),
+                                          round((st[1][1] + PARTS[r]['win'][1] - ay) * GS + cell[3], 1)]
+        save(name, rows, cell, dur)
+    lines = ['{', ' "note": "cup: the cup\'s middle per THROW frame (cell px from the cell\'s top-left); <dir>_fly: the payload '
+             'on the last frame it is painted (release_frame + 1), where the game\'s projectile takes over",',
+             ' "cell": %s,' % json.dumps(list(cell)), ' "release_frame": %d,' % THROW_RELEASE, ' "cup": {']
+    keys = list(cups)
+    for i, k in enumerate(keys):
+        lines.append('  "%s": %s%s' % (k, json.dumps(cups[k]), ',' if i < len(keys) - 1 else ''))
+    lines += [' }', '}']
+    open('art/redraws/catapult_cup.json', 'w').write('\n'.join(lines) + '\n')
+    PAYLOAD_SRC.save('art/redraws/catapult_payload.png')
+    print('ok')
+
+
+if __name__ == '__main__' and len(sys.argv) == 1:
+    main()
+
+
+if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'parts':
+    out = sys.argv[2]
+    os.makedirs(out, exist_ok=True)
+    for r in range(5):
+        P = PARTS[r]
+        tiles = [P['body'], P['beam'], P['cup'], P['cupfront'], P['hub']]
+        for wh in P['wheels']:
+            tiles.append(wh['img'])
+        ims = []
+        for t in tiles:
+            im = Image.fromarray(t, 'RGBA')
+            bb = im.getbbox() or (0, 0, 4, 4)
+            im = im.crop(bb)
+            ims.append(im.resize((im.width * 2, im.height * 2), Image.NEAREST))
+        W = sum(i.width for i in ims) + 10 * len(ims)
+        H = max(i.height for i in ims)
+        sheet = Image.new('RGB', (W, H), (40, 70, 40))
+        x = 0
+        for im in ims:
+            sheet.paste(im, (x, 0), im)
+            x += im.width + 10
+        sheet.save('%s/parts_%s.png' % (out, DIRS[r]))
+        print(DIRS[r], 'F', np.round(P['F'], 3), 'paint', P['paint'], 'pitches', [round(w['pitch'], 1) for w in P['wheels']])
+    sys.exit(0)
