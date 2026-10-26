@@ -20,7 +20,8 @@ The sheet draws each tower on a little island of packed earth and grass; that ya
 away (trim_yard) so the Farm's crop fields (tools/make_farm_field.py) run right up to the
 tower, its fence, sacks and barrel: only a little dark ground among them stays as a shadow.
 assets/icons/farm.png (the build button) is remade from the windmill with its sails.
-Team colour: the cap and the coats are snapped to the two key reds (snap_cap).
+The cap's tiles are terracotta, shaded as painted (tile_cap; the owner, 2026-10-26: the roof is
+not the player's colour); the scarecrows' coats are snapped to the two key reds (snap_cap).
 
 Usage (from the repo root): python3 tools/import_windmill.py
 Prints the numbers Building.FARM_ART needs. Needs Pillow, NumPy and SciPy. Re-runnable.
@@ -35,6 +36,7 @@ from scipy import ndimage
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from import_art import TEAM_DARK, TEAM_LIGHT, load  # noqa: E402
 from import_cannon2 import bg_mask, clean, defringe, shrink, snap_team  # noqa: E402
+from recolour_crown_buildings import near_key, terracotta  # noqa: E402
 
 SHEET = "art/crown/farm_windmill.png"
 OUT = "assets/buildings"
@@ -151,6 +153,16 @@ def snap_cap(img):
     return img
 
 
+def tile_cap(img):
+    """The cap's tiles in terracotta, shaded as painted: the pixels snap_cap would make team red
+    (tools/recolour_crown_buildings.py's ramp)."""
+    snapped = snap_cap(img)
+    cap = (img[..., 3] > 0) & ((snapped[..., :3] != img[..., :3]).any(-1) | near_key(snapped)[0])
+    out = img.copy()
+    terracotta(out, cap)
+    return out
+
+
 def bbox(img):
     ys, xs = np.nonzero(img[..., 3] > 0)
     return xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
@@ -166,7 +178,7 @@ def main():
         im = trim_yard(cut(px, lab, bgc, labels, (x0, y0, x1, y1)), ay - y0)
         # pad so the anchor lands on a whole pixel after scaling
         imgs.append((im, (ax - x0) * SCALE, (ay - y0) * SCALE))
-    small = [(clean(snap_cap(shrink(im, SCALE))), ax, ay) for im, ax, ay in imgs]
+    small = [(clean(tile_cap(shrink(im, SCALE))), ax, ay) for im, ax, ay in imgs]
     # the sails (made here so the destroyed tower can have a broken one)
     sx0 = [48, 288, 550, 804, 1050, 1300][SAIL_SRC]
     sail_labels = in_cell(ps, 1, sx0 - 20, sx0 + 230, 0.002)
