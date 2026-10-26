@@ -77,3 +77,4 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 - Update: tools/press_anim/movement_works_work.py adds the hanging bodies sliding along the rail (painted body copied, the old ones erased by row interpolation, they slip behind the press) and the press stamping; result art/redraws/movement_works_work.gif.
 - Update: the bodies now swing in place on their hooks (no sliding, so nothing passes behind the press) and the press stroke is shorter.
 - Update: back to the moving line: the bodies hold, then step one slot along the rail; the leading body fades into the press as it slams (no body passes behind the piston); the soldier body past the press stays painted and still.
+- Update: the body past the press now slides on behind the pillar while a stamped body comes out of the press; the finished soldier is erased from the door and drawn coming forward out of the dark hall each loop (darkened then lit, a small step), fading at frame 8.

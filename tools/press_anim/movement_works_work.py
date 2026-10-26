@@ -14,7 +14,7 @@ STEP=np.array([33.0,15.0])
 from scipy import ndimage as ndi
 clean=B.copy()
 EM=np.zeros(B.shape[:2],bool)
-for (x0,y0,x1,y1) in [(84,283,121,358),(117,298,153,370),(150,314,187,385)]:
+for (x0,y0,x1,y1) in [(84,283,121,358),(117,298,153,370),(150,314,187,385),(229,336,266,408)]:
     m=np.zeros(B.shape[:2],bool); m[y0:y1,x0:x1]=B[y0:y1,x0:x1].sum(2)>150
     m=ndi.binary_dilation(m,iterations=2)&(np.mgrid[0:B.shape[0],0:B.shape[1]][0]<y1)
     # keep the rail: only below the rail line through the hang points
@@ -23,6 +23,18 @@ for (x0,y0,x1,y1) in [(84,283,121,358),(117,298,153,370),(150,314,187,385)]:
     EM|=m
 _rng=np.random.default_rng(3)
 clean[EM]=np.array([20,17,24])+_rng.integers(-3,4,(int(EM.sum()),1))
+# the right-hand body (past the press) and the finished soldier at the door
+r4=(229,336,266,408)
+b4=B[r4[1]:r4[3],r4[0]:r4[2]].copy(); b4m=_n.binary_dilation(b4.sum(2)>150,iterations=1)
+SB=(296,358,345,421)
+sold=B[SB[1]:SB[3],SB[0]:SB[2]].copy(); sm=sold.sum(2)>120
+DOOR=np.array([24,19,26])
+clean[SB[1]:SB[3],SB[0]:SB[2]][sm]=DOOR+_rng.integers(-3,4,(int(sm.sum()),1))
+def blit(f,spr,msk,x,y,al,dark=None,s=1.0):
+    x=int(round(x)); y=int(round(y)); h,w=spr.shape[:2]
+    sub=f[y:y+h,x:x+w]; mm=msk[:sub.shape[0],:sub.shape[1]]; sp=spr[:sub.shape[0],:sub.shape[1]].astype(float)
+    if dark is not None: sp=dark+s*(sp-dark)
+    sub[mm]=(al*sp[mm]+(1-al)*sub[mm])
 # foreground parts that stand in front of the line (pasted back on top)
 def fg(box,th=150):
     x0,y0,x1,y1=box; m=np.zeros(B.shape[:2],bool); sub=B[y0:y1,x0:x1].sum(2)>th; m[y0:y1,x0:x1]=sub; return m
@@ -46,6 +58,17 @@ def frame(i):
         h=sub.shape[0]
         mm=bmask[:h,:w]
         sub[mm]=(al*body[:h,:w][mm]+(1-al)*sub[mm])
+    # past the press: the body there slides on behind the pillar while a stamped one comes out of the press
+    xa=r4[0]+t*33; ya=r4[1]+t*15
+    blit(f,b4,b4m,xa,ya,float(np.clip(1-(t*33)/20.0,0,1)))
+    xb=r4[0]-33+t*33; yb=r4[1]-15+t*15
+    blit(f,b4,b4m,xb,yb,float(np.clip((t*33-11)/22.0,0,1)))
+    # the soldier steps out of the dark hall: frames 0-3 come forward and light up, 4-6 stand, 7 leaves
+    e=min(1.0,i/3.0)
+    ox=0; oy=-5*(1-e); sh=0.15+0.85*e; al=1.0
+    if i==7: ox,oy,al=3,2,0.45
+    sm2=sm.copy(); sm2[:, :max(0,294-int(SB[0]+ox))]=False
+    blit(f,sold,sm2,SB[0]+ox,SB[1]+oy,al,DOOR,sh)
     # parts in front go back on top (posts, beam, press frame) except the moving press head
     keep=FG.copy(); x0,y0,x1,y1=PRESS; keep[y0:y1,x0:x1]=False
     f[keep]=B[keep]
@@ -62,7 +85,7 @@ def frame(i):
     img.paste(bi,(int(AX-bw/2),BY0),mi)
     return img
 fr=[frame(i) for i in range(8)]
-fr[0].save('mw_all7.gif',save_all=True,append_images=fr[1:],duration=140,loop=0)
+fr[0].save('mw_all8.gif',save_all=True,append_images=fr[1:],duration=140,loop=0)
 big=[f.crop((20,60,384,480)).resize((728,840),Image.NEAREST) for f in fr[:4]]
 s=Image.new('RGB',(728*4,840)); [s.paste(b,(i*728,0)) for i,b in enumerate(big)]
-s.resize((1456,420)).save('mw_all7_strip.png')
+s.resize((1456,420)).save('mw_all8_strip.png')
