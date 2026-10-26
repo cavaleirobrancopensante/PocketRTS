@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.16", "items": [
+		"CLOCKWORK ARMY, first look (gear mode): the MOVEMENT WORKS, the Clockwork's barracks (4x3, 150 cogs), trains the CLOCK SOLDIER, a plain melee front-line soldier with a clock-hand sword and a pocket-watch shield (70 cogs, 90 hp, 1 armour, 10 damage). Its hanging line runs while it trains. The REGULATOR, a squat pendulum clock (2x2, 100 cogs, +10 supply), replaces the Spring Tower; its pendulum swings while it is linked. Every Clockwork building's ring now has a bolted iron FLOOR PLATE in its middle that the ring turns round. The CLOCKWORK LAB starts with a Movement Works, a Regulator and four Clock Soldiers too; the Clockwork computer builds Movement Works and Regulators and trains Clock Soldiers on the gear field.",
+	]},
 	{"v": "0.14.15", "items": [
 		"CLOCKWORK GEAR FIELD, painted: the ground gear rings are now the painted brass-and-iron rings, with big chunky teeth (the same size on every ring) and a thick edge, lying on the ground at the camera's angle. Meshing rings turn with their teeth exactly in each other's gaps. Where two linked rings do not quite touch, a small IDLER cog sits between them and meshes both. The placement ghost shows its ring already turning meshed, with the idler it would get; a clash is washed red. Rings may overlap only about half a tooth now and link across a gap of up to 2 tiles. The Cog Press has its own painted art (built, building, damaged, wreck) and a working loop while Winders crank it. New Clockwork building: the MAINSPRING (3x3, up to 3 Winders), which winds TENSION, a second resource shown in the top bar (nothing spends it yet). The CLOCKWORK LAB now opens on the gear field: the Clocktower with two Cog Presses and a Mainspring meshing round it, Winders at work.",
 	]},

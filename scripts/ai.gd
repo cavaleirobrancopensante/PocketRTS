@@ -553,6 +553,16 @@ func _f() -> Dictionary:
 	return Defs.FACTIONS[game.faction_of(team)]
 
 
+## Our supply building (the Clockwork's Regulator in gear mode: Defs.supply_kind).
+func _sup() -> String:
+	return Defs.supply_kind(game.faction_of(team))
+
+
+## The Clockwork's army works: the Movement Works in gear mode, else the Assembly Works.
+func _works() -> String:
+	return Defs.CW_WORKS if Defs.gear_mode else "assembly_works"
+
+
 func _brood() -> bool:
 	return game.faction_of(team) == "brood"
 
@@ -671,8 +681,8 @@ func _workers() -> void:
 	# (a feared rush with a Barracks standing: the first Musketeers before more labourers)
 	if _army_first() and labs.size() >= (6 if safe_opening else 8) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
 		hold_gold = true
-	if _clock() and _mine("assembly_works").is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
-			and _gold() < int(Defs.BUILDINGS["assembly_works"]["cost"]) + 20:
+	if _clock() and _mine(_works()).is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
+			and _gold() < int(Defs.BUILDINGS[_works()]["cost"]) + 20:
 		hold_gold = true            # (the Winders wait for the Works' 200)
 	if _brood():
 		# the Den first (save its 150), then the army before more grubs than a working minimum
@@ -1244,7 +1254,7 @@ func _econ_spot(kind: String) -> Vector2i:
 ## Brood: a Clutch Mound planted at the edge of the swamp pushes it out for richer pits (it is also
 ## the supply building: it only goes up while supply is below the cap).
 func _spread_swamp() -> void:
-	var sup: String = _f()["supply"]
+	var sup: String = _sup()
 	if _busy_building(sup) or _mine(sup).size() >= 2 * _halls().size() + 1:
 		return
 	if int(game.players[team]["cap"]) >= game.max_supply(team):
@@ -1268,7 +1278,7 @@ func _mound_spot() -> Vector2i:
 	var cap := game.capital(team)
 	if cap == null or not cap.built:
 		return Vector2i(-1, -1)
-	var sup: String = _f()["supply"]
+	var sup: String = _sup()
 	var spot := Vector2i(-1, -1)
 	var h0 := int(game.height[game.idx(game.cell_of(cap.center()))])
 	if _mine(sup).is_empty() or not _swamp_on_low_ground(h0):
@@ -1337,10 +1347,10 @@ func _supply() -> void:
 	if cap >= game.max_supply(team):
 		return
 	var used := game.supply_used(team)
-	var sup: String = _f()["supply"]
+	var sup: String = _sup()
 	var prod := _halls().size() * 3 if _brood() else 3 * _mine("barracks").size() + 2 * _mine("foundry").size()
 	if _clock():
-		prod = 6 * _mine("assembly_works").size() + 5 * _mine("engine_hall").size()
+		prod = (3 * _mine(_works()).size()) if Defs.gear_mode else 6 * _mine("assembly_works").size() + 5 * _mine("engine_hall").size()
 	var margin := 3 + prod
 	var building := _mine(sup).filter(func(b: Building) -> bool: return not b.built).size()
 	if _crown() and opening == "breeder" and game.clock < 600.0 and not _mine("barracks").is_empty():
@@ -1362,7 +1372,14 @@ func _build_up() -> void:
 	# tech comes sooner or later by strategy (and sooner with money in the bank)
 	var t := game.clock / float(_s("tech")) + (60.0 if _gold() > 500 else 0.0)
 	var gold := _gold()
-	if _clock():
+	if _clock() and Defs.gear_mode:
+		# gear mode: the new-style army only (Movement Works, Clock Soldiers); more Works with money in the bank below
+		var mw := _mine(_works()).size()
+		if mw == 0 and game.clock > _lv([90.0, 60.0, 40.0]) and labs >= 7:
+			_construct(_works())
+		elif mw == 1 and t > _lv([600.0, 300.0, 220.0]) and gold > 300:
+			_construct(_works())
+	elif _clock():
 		var works := _mine("assembly_works").size()
 		# (the first Works comes by the clock, not the plan's tech factor: every plan needs a line by ~2:00)
 		if works == 0 and game.clock > _lv([90.0, 60.0, 40.0]) and labs >= 7:
@@ -1424,8 +1441,8 @@ func _build_up() -> void:
 			_construct("foundry")
 		elif _crown() and _mine("barracks").size() < 9 and not _busy_building("barracks") and not _mine("barracks").is_empty() and not _tech_wait():
 			_construct("barracks")
-		elif _clock() and _mine("assembly_works").size() < 5 and not _busy_building("assembly_works") and not _mine("assembly_works").is_empty():
-			_construct("assembly_works")
+		elif _clock() and _mine(_works()).size() < 5 and not _busy_building(_works()) and not _mine(_works()).is_empty():
+			_construct(_works())
 		elif _brood() and gold > 700:
 			_more_halls(true)
 	# Expand once our economy structures are all up (a new hall brings more slots).
@@ -2574,7 +2591,7 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	if spot.x < 0:
 		return
 	# Brood: the grub is used up, so don't eat into a tiny economy.
-	if _brood() and game.workers(team).size() <= 3 and kind != _f()["supply"]:
+	if _brood() and game.workers(team).size() <= 3 and kind != _sup():
 		return
 	# The nearest worker that isn't busy building; idle ones first.
 	var best: Unit = null
@@ -2614,7 +2631,7 @@ func _find_spot(kind: String) -> Vector2i:
 		var far := 26 if h == halls[0] else 20
 		# (supply buildings tuck in behind the hall, away from the middle of the map: the room
 		# close to the hall is for the production and tech buildings)
-		var spot := game.find_spot(team, kind, h, 3, far, "behind" if kind == String(_f()["supply"]) else "near", true)
+		var spot := game.find_spot(team, kind, h, 3, far, "behind" if kind == String(_sup()) else "near", true)
 		if spot.x >= 0:
 			return spot
 	# the plateau is full: the foot of the nearest ramp, hall by hall
@@ -2645,6 +2662,13 @@ func _produce() -> void:
 	if (_saving or (_reserve > 0 and _gold() < _reserve + 60)) and _army_supply(game.army(team)) >= minimum:
 		return
 	var army := game.army(team)
+	if _clock() and Defs.gear_mode:
+		# gear mode: Clock Soldiers from every Movement Works
+		for w in _mine(_works()):
+			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
+				if game.train(w, "clock_soldier") != "":
+					break
+		return
 	if _clock():
 		var n_of := func(kind: String) -> int: return army.filter(func(u: Unit) -> bool: return u.kind == kind).size()
 		var walkers: int = n_of.call("steam_walker")
@@ -5508,7 +5532,7 @@ func _bank_spend() -> void:
 	if game.clock - _bank_since < BANK_WAIT or game.clock - _bank_t < 10.0:
 		return
 	_bank_t = game.clock
-	var sup: String = _f()["supply"]
+	var sup: String = _sup()
 	var cap: int = game.players[team]["cap"]
 	if cap < game.max_supply(team) and game.supply_used(team) >= cap - 4 and _mine(sup).filter(func(b: Building) -> bool: return not b.built).size() < 2:
 		_construct(sup)          # (supply-blocked with gold in hand: a second Cottage goes up beside the first)

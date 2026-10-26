@@ -5157,7 +5157,7 @@ func _anim_name() -> String:
 					return _anim_or("dwalk", "walk" if moving else "idle")
 			if phase != "":
 				return "attack"
-		"ornithopter":
+		"ornithopter", "clock_soldier":
 			if phase != "":
 				return "attack"
 	return "walk" if moving else "idle"
@@ -5171,7 +5171,7 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
 		"dismounted_armoured": 12.0, "winder": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
-		"thresher": 10.0}
+		"thresher": 10.0, "clock_soldier": 10.0}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.

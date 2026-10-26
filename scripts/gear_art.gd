@@ -157,6 +157,34 @@ static func _bake(kind: String, n: int) -> Array:
 	return [ImageTexture.create_from_image(fi), ImageTexture.create_from_image(si), R, float(size) / (2.0 * BAKE)]
 
 
+## The radius (game px) of a ring's inner hole: the band's inner edge, as _bake cuts it.
+static func hole_r(kind: String, n: int) -> float:
+	var pitch := float(Defs.GEAR["pitch"])
+	var rp := float(n) * pitch / TAU
+	var r_root := tip_r(rp, pitch) - tooth_h(pitch)
+	var m: Dictionary = META[kind]
+	return r_root * float(m["r_in"]) / float(m["r_root"])
+
+
+## THE FLOOR PLATE (art/clockwork/gear/floor_plate_src.png keyed by tools/gear_art/import_buildings.py to
+## assets/gear/floor_plate.png): the flat, bolted iron deck that fills a ring's hole, `d` game px across. Resized ONCE per
+## whole-px diameter (BAKE times, smooth) and cached; null without the art (or headless).
+static func plate(d: int) -> Texture2D:
+	var key := "plate:%d" % d
+	if _cache.has(key):
+		return _cache[key]
+	var out: Texture2D = null
+	if not disabled:
+		var src := _strip("floor_plate")
+		if src != null:
+			var img := src.duplicate() as Image
+			var side := maxi(8, int(round(float(d) * BAKE)))
+			img.resize(side, side, Image.INTERPOLATE_LANCZOS)
+			out = ImageTexture.create_from_image(img)
+	_cache[key] = out
+	return out
+
+
 static func reset() -> void:
 	_cache.clear()
 	_src.clear()

@@ -34,7 +34,7 @@ const DANGER_FOR := 30.0        # a shooter seen this long ago still counts when
 const DEFEND_FOR := 210.0       # how long a defensive game lasts before the verdict is looked at again
 ## Production and tech buildings: seeing them says "this enemy builds an army".
 const MILITARY := ["barracks", "horse_breeder", "foundry", "armoury", "warren", "gorge_pit", "roost",
-	"assembly_works", "engine_hall", "capacitor_works"]
+	"assembly_works", "engine_hall", "capacitor_works", "movement_works"]
 ## What a minute of a rush looks like, per faction: the army value seen before 6:00 that counts as a rush
 ## (the Brood's cheap bodies come early whatever it plays: it takes much more).
 const RUSH_VALUE := {"crown": 300.0, "clockwork": 360.0, "brood": 800.0}
@@ -76,7 +76,7 @@ var foe_first_military := -1.0  # when an armed soldier or a military building w
 var foe_rush_logged := false
 var foe_early_prod := {}        # military building kind -> clock it was first seen
 ## Production buildings that this early (game seconds) are an opening that goes for units at once.
-const EARLY_PROD := {"warren": 140.0, "assembly_works": 100.0}
+const EARLY_PROD := {"warren": 140.0, "assembly_works": 100.0, "movement_works": 100.0}
 var standoff_log: Array = []    # (the stand-off spots chosen; tests read it)       # (what went to the match log; tests read it)
 
 var _foe := -1
@@ -866,7 +866,7 @@ func _defence() -> void:
 		"brood":
 			plan = {"warren": 1}
 		"clockwork":
-			plan = {"assembly_works": 2}
+			plan = {ai._works(): 2}
 	for k in plan:
 		if ai._mine(k).size() < int(plan[k]) and not ai._busy_building(k) and game.requirement_met(ai.team, k) \
 				and ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) and (ai._mine(k).size() > 0 or ai._gold() >= int(Defs.BUILDINGS[k]["cost"]) + 30):

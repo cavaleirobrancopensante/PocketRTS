@@ -109,7 +109,7 @@ func _build() -> void:
 	for k in Defs.UNITS:
 		if Defs.UNITS[k]["faction"] == _tab:
 			kinds.append(k)
-	for k in Defs.FACTIONS[_tab]["build"]:
+	for k in Defs.FACTIONS[_tab]["build"] + Defs.build_list(_tab):      # (+ gear mode's Movement Works and Regulator)
 		if not kinds.has(k):
 			kinds.append(k)
 	for k in kinds:

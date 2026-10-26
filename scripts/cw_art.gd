@@ -20,6 +20,8 @@ const SHEETS := {
 	"carrier_car": [92, 58, 46, 50],
 	"tesla_loco": [88, 66, 44, 56],
 	"storm_engine": [92, 70, 46, 58],
+	# the new-style army (gear mode): real sheets only (tools/import_clock_soldier.py prints this line)
+	"clock_soldier": [92, 81, 46, 68],
 }
 
 const TIN := Color(0.68, 0.72, 0.76)

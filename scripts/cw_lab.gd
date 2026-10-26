@@ -33,8 +33,11 @@ static func setup(game: Game) -> void:
 ## The showcase, like art/redraws/base_demo.gif: the start's Cog Press is taken away and two presses and a Mainspring are
 ## put round the Clocktower where their rings mesh with its ring (directly when the grid allows, else through an idler),
 ## at three set angles (screen: up right, down left, down right).
-const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0]]
-const CREW := {"cog_press": 3, "mainspring": 3}
+## Then the new-style army: a Movement Works (training nothing yet) and a Regulator, built and linked, and SOLDIERS Clock
+## Soldiers standing in front of the Works.
+const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["movement_works", -130.0], ["regulator", 105.0]]
+const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0}
+const SOLDIERS := 4
 
 
 static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
@@ -76,6 +79,14 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 			u.cmd_gather(b)
 	for u in free:
 		u.cmd_stop()
+	# the Clock Soldiers: a short rank in front of the Movement Works (else by the Clocktower)
+	var works: Building = null
+	for b in put:
+		if b.kind == Defs.CW_WORKS:
+			works = b
+	var at: Vector2 = (works.center() + Vector2(0, float(works.size.y) * Defs.TILE * 0.5 + 70.0)) if works else hall.center() + Vector2(0, 150)
+	for i in SOLDIERS:
+		game._add_unit("clock_soldier", t, at + Vector2((float(i) - (SOLDIERS - 1) * 0.5) * 36.0, 0.0))
 	if game.camera:
 		game.camera.position = hall.center() + Vector2(0, 30)
 		game.camera.zoom = Vector2(1.3, 1.3)
@@ -143,7 +154,7 @@ static func _hint(game: Game) -> void:
 
 static func hint_text() -> String:
 	if Defs.gear_mode:
-		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
+		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply. Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
 	return Loc.t("CLOCKWORK LAB: open SANDBOX, tab CLOCK, to spawn the new units (rail vehicles land on the Line). The Rail Yard and Assembly Works train them too. The enemy never attacks.")
 
 

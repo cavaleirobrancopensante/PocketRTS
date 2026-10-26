@@ -87,8 +87,13 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 - tools/soldier_guide/walk_se_fix.py rebuilds the SE row of clock_soldier_walk_mix.png with exact leg boxes (the first split cut each leg in half) and the sword kept with the body.
 
 ## Floor plate (2026-10-26)
-- art/clockwork/gear/floor_plate_src.png (ChatGPT, flat top-down): the iron deck with a ball-bearing edge that fills each ring's hole; does not turn; scaled to the hole and squashed with the rings (tools/press_anim/base_demo2.py). Not in the game yet.
+- art/clockwork/gear/floor_plate_src.png (ChatGPT, flat top-down): the iron deck with a ball-bearing edge that fills each ring's hole; does not turn; scaled to the hole and squashed with the rings (tools/press_anim/base_demo2.py). In the game since 0.14.16: keyed to assets/gear/floor_plate.png by tools/gear_art/import_buildings.py, drawn by GearNet.draw_plate (painted, not code-drawn).
 - tools/press_anim/regulator_work.py: the Regulator's painted pendulum swung in code inside its window (glass behind filled by row interpolation); art/redraws/regulator_work.png/.gif. ChatGPT's own working frames shifted the case between frames.
 - tools/soldier_guide/attack.py: ATTACK from the painted idle frames, the sword arm cut out and swung about the shoulder (wind-up, strike, recover), the hidden body filled from nearby pixels; art/redraws/clock_soldier_attack.png/.gif. Rough spots: SE (sword crosses the near leg), E (filled torso). tools/soldier_guide/death.py: DEATH, the whole painted figure tips over around its feet, bounces, darkens; art/redraws/clock_soldier_death.png/.gif (7 frames). Both are pose guides for a ChatGPT clean-up pass.
 - art/redraws/clock_soldier_attack_final.png: ChatGPT's clean-up of the code attack guide (kept the poses); its misplaced motion arcs (always on the left) erased in code.
 - art/redraws/clock_soldier_death_final.png: ChatGPT's clean-up of the code death guide (shield, sword, spring and gears come loose).
+
+## New-style Clockwork army in the game (0.14.16)
+- Regulator working loop in game (art/clockwork/gear/regulator_work_0..7.png, tools/gear_art/regulator_swing.py): CODE-SWUNG. The painted pendulum of the built frame is cut out of the glass, the glass behind filled by row interpolation and the pendulum rotated +-10 degrees about its pivot (the exported work frames were all copies of the built frame). The navy key's pin holes in the dark glass are filled from neighbours. Wanted: a painted pendulum swing (or ChatGPT frames that keep the case still).
+- Clock Soldier in game (assets/units/clock_soldier/, tools/import_clock_soldier.py): the four ChatGPT sheets sliced, keyed and scaled; the walk's E/NE/N rows still carry the parts-rig legs (code-built, see the walk entries above); the reds snapped to the team key reds.
+
