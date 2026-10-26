@@ -7333,6 +7333,13 @@ var cw_links: Node2D = null              # draws the steel links between coupled
 var cw_bump_t := 0.0
 
 
+## The world rect the camera shows, plus a margin: what gets drawn (gear rings, effects... skip what's outside it). The
+## game's tick keeps it current; the HUD calls it too while the 3-2-1 countdown holds the game paused.
+func update_view_rect() -> void:
+	var vsz := get_viewport().get_visible_rect().size / camera.zoom
+	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
+
+
 func _tick_game(delta: float) -> void:
 	if over or edit_mode:
 		return
@@ -7349,8 +7356,7 @@ func _tick_game(delta: float) -> void:
 		body_bars.queue_redraw()
 		for t in n_players():
 			income_rates(t)            # (keeps each side's income log going)
-	var vsz := get_viewport().get_visible_rect().size / camera.zoom
-	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
+	update_view_rect()
 	_economy(delta)
 	line_net.tick(delta)
 	gear_net.tick(delta)

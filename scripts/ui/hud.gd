@@ -106,6 +106,10 @@ func _countdown(delta: float) -> void:
 	if countdown <= 0.0 or paused:
 		return
 	get_tree().paused = true
+	if game:
+		game.update_view_rect()         # (the game's tick keeps it current; it hasn't ticked yet)
+		if game.gear_net:
+			game.gear_net.held()        # (the ground gears stand drawn through the countdown, not popping in at GO)
 	if count_hold:
 		return
 	countdown -= delta

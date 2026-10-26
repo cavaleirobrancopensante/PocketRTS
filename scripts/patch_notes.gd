@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.27", "items": [
+		"FIX: the gear rings under Clockwork buildings now stand drawn through the 3, 2, 1 countdown (in the Clockwork Lab, a skirmish or online) instead of popping in at GO.",
+	]},
 	{"v": "0.14.26", "items": [
 		"FIRE AT A SPOT (BOMBARD): Ctrl+A (A is still attack-move) or the new BOMBARD button on their card, then a spot on the ground: the Field Cannons, Mortars and the Brood's Spore Mothers in the selection walk into range, set up and keep firing at it, into the fog too, until you give another order, as long as their shot lasts (a Powder Wagon nearby keeps them going). A Cannon fires what it is loaded with, round shot or canister. Shift queues it; with orders queued behind it, each fires 3 shots at the spot and goes on. While they are selected their spot shows on the map; the order is kept in a saved game and works online. Its icons are placeholders until the painted ones come.",
 		"AREA SHOTS DESTROY BODIES: a Mortar shell, round shot or canister fired at a spot (BOMBARD) tears up the bodies lying in its blast: the Brood can no longer harvest them and a Missionary can no longer raise them (the Crown's own dead too: the price of blasting). The men the shot itself kills still fall as bodies. Ordinary fire at enemies leaves the bodies alone: measured, a gun line holding against Brood waves would otherwise have torn up 9 bodies in 10 by accident; clearing a field is a choice that costs powder and keeps the guns busy. To make up for it, a harvested body now gives 1.25 essence for each point of supply instead of 1 (a Musketeer or a Raptor 1.25, a Brute 3.75, a Horseman with his horse 5, plus 1 for each kill); SACRIFICE and the Brood Pen are unchanged.",
