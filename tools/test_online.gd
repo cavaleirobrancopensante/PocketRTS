@@ -46,7 +46,8 @@ var lag_work := PackedFloat32Array()      # ms spent on snapshots in each frame 
 var lag_gaps := PackedFloat32Array()      # guest: ms between frames that applied a snapshot
 var lag_sizes := PackedFloat32Array()     # host: bytes sent in each frame that sent a snapshot
 var lag_seen := PackedFloat32Array()      # guest: ms from an order to the host's ack in a snapshot
-var lag_moved := PackedFloat32Array()     # guest: ms from a move order to the unit visibly moving on this screen
+var lag_moved := PackedFloat32Array()     # guest: ms from a move order to the unit 3 px on its way on this screen
+var lag_walk := PackedFloat32Array()      # guest: ms from a move order to the unit walking that way (its walk shown)
 var _lag_us := 0
 var _lag_prof := 0
 var _lag_bytes := 0
@@ -226,13 +227,20 @@ func _probe_tick(real: float) -> void:
 	if not _probe.is_empty():
 		var u: Unit = _probe["u"]
 		var ms := (Time.get_ticks_usec() - int(_probe["t0"])) / 1000.0
+		var dir: Vector2 = ((_probe["to"] as Vector2) - (_probe["from"] as Vector2)).normalized()
 		if not is_instance_valid(u) or u.dead or ms > 3000.0:
 			_probe = {}
-		elif (u.position - (_probe["from"] as Vector2)).dot(((_probe["to"] as Vector2) - (_probe["from"] as Vector2)).normalized()) > 3.0:
+			return
+		if not _probe.has("walk") and u.velocity.dot(dir) > 10.0:
+			_probe["walk"] = true
+			lag_walk.append(ms)
+		if (u.position - (_probe["from"] as Vector2)).dot(dir) > 3.0:
 			lag_moved.append(ms)
+			if not _probe.has("walk"):
+				lag_walk.append(ms)
 			_probe = {}
 		return
-	if _probe_t < 3.0 or step < 2:
+	if _probe_t < 2.0 or step < 2:
 		return
 	_probe_t = 0.0
 	for u in _mine():
@@ -273,7 +281,7 @@ func _lag_report() -> void:
 		print("LAG HOST snapshot build+send ms per frame: %s | bytes per snapshot: %s | units %d buildings %d" % [_stats(lag_work), _stats(lag_sizes), g.units.size(), g.buildings.size()])
 	else:
 		print("LAG GUEST snapshot apply ms per frame: %s | ms between snapshot frames: %s" % [_stats(lag_work), _stats(lag_gaps)])
-		print("LAG GUEST order -> ack in a snapshot ms: %s | move order -> unit visibly moving ms: %s" % [_stats(lag_seen), _stats(lag_moved)])
+		print("LAG GUEST order -> ack in a snapshot ms: %s | move order -> unit walking ms: %s | -> 3 px on its way ms: %s" % [_stats(lag_seen), _stats(lag_walk), _stats(lag_moved)])
 
 
 # ------------------------------------------------------------------ host
