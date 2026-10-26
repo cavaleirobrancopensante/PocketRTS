@@ -63,13 +63,13 @@ ROWS = [
     dict(box=(184, 59, 446, 298), H=(325, 186), J=(326, 122), bw=30, clean=None, cup=(292, 55, 369, 135),
          rim=(330.5, 70.5, 33, 9), hub=(306, 176, 345, 209), F=(0.0, DEPTH), tpaint=T0, arm='front',
          wheels=[(233, 256, 31, 47, 'near', 1), (413, 256, 32, 47, 'near', -1)]),
-    dict(box=(169, 354, 476, 587), H=(349, 425), J=(297, 392), bw=25, clean=None, cup=(226, 352, 300, 409),
+    dict(box=(169, 354, 476, 587), H=(349, 425), J=(297, 392), bw=28, clean=None, cup=(226, 352, 300, 409),
          rim=(263, 366, 33, 10), hub=None, F=None, tpaint=T0, arm='behind',
          wheels=[(220, 505, 44, 44, 'near'), (371, 547, 40, 40, 'near'), (440, 486, 46, 46, 'far')]),
-    dict(box=(139, 656, 493, 856), H=(351, 706), J=(237, 683), bw=26, clean=(5, 27), cup=(162, 655, 240, 708),
+    dict(box=(139, 656, 493, 856), H=(351, 706), J=(237, 683), bw=28, clean=(5, 27), cup=(162, 655, 240, 708),
          rim=(201, 671, 33, 9), hub=None, F=(1.0, 0.0), tpaint=T0, arm='behind',
          wheels=[(233, 797, 47, 47, 'near'), (429, 810, 44, 44, 'near'), (448, 772, 47, 47, 'far')]),
-    dict(box=(179, 927, 495, 1150), H=(360, 980), J=(276, 960), bw=27, clean=(4, 27), cup=(200, 926, 279, 981),
+    dict(box=(179, 927, 495, 1150), H=(360, 980), J=(276, 960), bw=29, clean=(4, 27), cup=(200, 926, 279, 981),
          rim=(238, 942, 33, 10), hub=None, F=None, tpaint=T0, arm='behind',
          wheels=[(221, 1055, 45, 45, 'near'), (348, 1103, 45, 45, 'near'), (442, 1076, 44, 44, 'far')]),
     dict(box=(207, 1200, 465, 1452), H=(323, 1320), J=(322, 1257), bw=30, clean=None, cup=(284, 1196, 362, 1268),
@@ -81,6 +81,13 @@ ROWS = [
 
 def fg(a):
     return np.abs(a - NAVY).sum(-1) > 45
+
+
+def solid(a):
+    """the painted figure: clear of the navy, plus the dark paint it encloses (the importer, tools/import_tier3.py,
+    keeps enclosed pixels that are not the navy itself: they must not become holes here)"""
+    m = fg(a)
+    return m | (ndi.binary_fill_holes(m) & (np.abs(a - NAVY).sum(-1) >= 12))
 
 
 def rgba(rgb, m):
@@ -162,6 +169,8 @@ def payload_at(width):
 
 FACE = 0.70            # a wheel's face plate (hub, bolts) reaches this far out (of the rim's radius)
 EDGE_PITCH = 22.0      # the edge-on wheels' tooth bars (N), measured down their middles
+TEETH_PER_LOOP = 3     # MOVE: the teeth go round 3 pitches in the 8 frames (3/8 of a tooth a frame: clearly forward;
+                       # at 1/2 a tooth a frame the eye cannot tell which way they turn)
 TOOTH_PITCH = 26.0     # deg between a cog's teeth when they are too irregular to measure (about 14 teeth)
 
 
@@ -360,9 +369,12 @@ def _turn(wh, deg, centre, want, src_ok, steps=(0.0,)):
     return out, tried, sub
 
 
-def turn_wheel(wh, deg, pitch=None):
-    """the wheel turned by deg (screen clockwise): its tooth ring about the rim's middle, its face plate about the
-    hub; the hub ball stays still"""
+def turn_wheel(wh, frac, pitch=None):
+    """the wheel turned on by frac of a MOVE loop (screen clockwise): its tooth ring about the rim's middle by
+    TEETH_PER_LOOP pitches, its face plate (four bolts) about the hub by a quarter turn, so both come round in one
+    loop (nobody sees that the two go at slightly different speeds); the hub ball stays still"""
+    deg = TEETH_PER_LOOP * pitch * frac
+    face_deg = 90.0 * frac
     if wh['kind'] == 'far':
         out, tried, sub = _turn(wh, deg, (wh['cx'], wh['cy']), wh['known'], wh['known'],
                                 [0.0] + [k * pitch for j in range(1, 5) for k in (j, -j)])
@@ -377,7 +389,7 @@ def turn_wheel(wh, deg, pitch=None):
     out[wh['clean']] = 0
     ring, _, _ = _turn(wh, deg, (wh['cx'], wh['cy']), wh['clean'], wh['clean'], st)
     over(out, ring)
-    face, _, _ = _turn(wh, deg, (wh['hcx'], wh['hcy']), wh['face'], wh['face'])
+    face, _, _ = _turn(wh, face_deg, (wh['hcx'], wh['hcy']), wh['face'], wh['face'])
     over(out, face)
     return over(out, wh['hub'])
 
@@ -386,15 +398,17 @@ def scroll_edge(wh, frac, pitch):
     """an edge-on wheel: its tooth bars move down the tread by frac of a pitch"""
     m = wh['mask']
     H, Wd = m.shape
-    s = frac * pitch
+    s = (frac * pitch) % pitch
     out = np.zeros((H, Wd, 4), np.uint8)
     ys, xs = np.nonzero(m)
-    for k in (0, 1, 2, -1):
+    done = np.zeros(len(ys), bool)
+    for k in (0, 1, -1, 2, -2):
         sy = np.rint(ys - s + k * pitch).astype(int)
-        ok = (sy >= 0) & (sy < H)
+        ok = ~done & (sy >= 0) & (sy < H)
         ok[ok] &= m[sy[ok], xs[ok]]
-        ok &= out[ys, xs, 3] == 0
         out[ys[ok], xs[ok]] = wh['img'][sy[ok], xs[ok]]
+        done |= ok
+    out[ys[~done], xs[~done]] = wh['img'][ys[~done], xs[~done]]      # (no bar comes round there: as painted)
     return out
 
 
@@ -406,7 +420,7 @@ def cut_row(r):
     W = np.full((y1 - y0, x1 - x0, 3), NAVY, int)
     sx0, sy0, sx1, sy1 = max(0, x0), max(0, y0), min(SHEET.shape[1], x1), min(SHEET.shape[0], y1)
     W[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = SHEET[sy0:sy1, sx0:sx1]
-    WM = fg(W)
+    WM = solid(W)
     unit = np.zeros_like(WM)
     unit[by0 - y0 - 2:by1 - y0 + 2, bx0 - x0 - 2:bx1 - x0 + 2] = True
     WM &= unit
@@ -445,7 +459,10 @@ def cut_row(r):
         hx0, hy0, hx1, hy1 = R['hub']
         hubm = WM & (xx >= hx0 - x0) & (xx < hx1 - x0) & (yy >= hy0 - y0) & (yy < hy1 - y0)
     if R['arm'] == 'behind':
-        beam = WM & corridor & (grey | small) & ~cup & (t <= L) & (np.hypot(xx - H[0], yy - H[1]) > 15)
+        # (the hinge's blue ball stays on the body: the beam stops at it)
+        ball = ndi.binary_dilation((b_ > r_ + 40) & (b_ > 100) & (np.hypot(xx - H[0], yy - H[1]) < 16), iterations=1)
+        beam = WM & corridor & (grey | small) & ~cup & (t <= L) & ~ball
+        beam = ndi.binary_fill_holes(beam) & WM & corridor
         if R['clean']:
             # behind the drum's rim: the stretch that shows whole, repeated along the beam (whole px, no resampling)
             ta, tb = R['clean']
@@ -466,7 +483,7 @@ def cut_row(r):
                 ys, xs = ys[~ok], xs[~ok]
             # what shows of the beam past the clean stretch (above the rim) comes off the body too; the rim stays
             rim = ndi.binary_dilation(WM & ~grey & ~small, iterations=1)
-            extra = WM & corridor & (t > tb) & (t <= L) & (grey | small) & ~rim & (np.hypot(xx - H[0], yy - H[1]) > 15)
+            extra = WM & corridor & (t > tb) & (t <= L) & (grey | small) & ~rim & ~ball
             cut = beam | cup | extra
         else:
             beam_img = rgba(W, beam)
@@ -476,13 +493,21 @@ def cut_row(r):
         beam_img = rgba(W, beam)
         cut = beam | cup
     body = WM & ~cut
+    # thin leftovers of the beam's outline sticking out into the navy along its way (1-2 px lines) go too
+    near = ndi.binary_dilation(cut, iterations=3)
+    k = np.ones((9, 9))
+    sparse = ndi.convolve(body.astype(float), k, mode='constant') / k.sum() < 0.45
+    body &= ~(near & sparse & ~ndi.binary_opening(body, structure=np.ones((3, 3))))
     # fill what the arm leaves behind
     fill = np.zeros_like(WM)
     Wf = W.copy()
     if R['arm'] == 'behind':
+        # where the beam lay over the machine: the cut pixels inside the body's outline (its notches up to ~12 px
+        # closed) take the nearest body paint; where it stood out over the navy, nothing
         k = np.ones((11, 11))
         dens = ndi.convolve(body.astype(float), k, mode='constant') / k.sum()
-        fill = cut & (dens > 0.55)
+        disk = np.hypot(*np.mgrid[-6:7, -6:7]) <= 6
+        fill = cut & ((dens > 0.55) | ndi.binary_closing(body, structure=disk))
         Wf = fill_nearest(W, body, fill)
     else:
         # the drum behind the upright beam and ball: row by row between its two sides (a few px out, past the
@@ -590,9 +615,10 @@ def arm_now(r, T):
     return P['M0'] @ arm_vec(r, P['F'], T)
 
 
-def frame(r, T, wheel_deg, payload=None, edge_frac=0.0):
+def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
     """one frame of row r at painted scale, as layer groups [(rgba, rides)] bottom to top (rides: moves with the
-    body's bob, which is added later in whole game px); and the cup's middle. Arm angle T, wheels turned wheel_deg;
+    body's bob, which is added later in whole game px); and the cup's middle. Arm angle T, wheels turned on by
+    wheel_frac of a MOVE loop;
     payload: None, ('cup', drop px above the cup), or ('fly', (dx, dy, spin) from the cup's middle at release)"""
     P = PARTS[r]
     R = ROWS[r]
@@ -637,14 +663,14 @@ def frame(r, T, wheel_deg, payload=None, edge_frac=0.0):
             groups.append((img.copy(), rides))
     for wh in P['wheels']:
         if wh['kind'] == 'far':
-            add(turn_wheel(wh, wheel_deg * wh['cw'], wh['pitch']), False)
+            add(turn_wheel(wh, wheel_frac * wh['cw'], wh['pitch']), False)
     arm_front = R['arm'] == 'front' or (R['arm'] == 'n' and T > 90)
     if not arm_front:
         add(arm, True)
     add(P['body'], True)
     for wh in P['wheels']:
         if wh['kind'] == 'near':
-            add(turn_wheel(wh, wheel_deg * wh['cw'], wh['pitch']), False)
+            add(turn_wheel(wh, wheel_frac * wh['cw'], wh['pitch']), False)
         elif wh['kind'] == 'edge':
             add(scroll_edge(wh, -edge_frac, wh['pitch']), False)      # (moving away: the tread we see goes up)
     if arm_front:
@@ -697,7 +723,9 @@ SPIN = -35.0           # and it tumbles (deg a frame)
 THROW = [(T0, 'cup'), (T0 + 4, 'cup'), (134.0, 'cup'), (90.0, 0.8), (55.0, 1.7), (34.0, None), (46.0, None),
          (64.0, None), (91.0, None), (119.0, None), (147.0, None), (T0, 'drop')]
 THROW_RELEASE = 3      # the first frame with the payload out of the cup
-MOVE_N = 8             # MOVE: the wheels a quarter turn round, the edge-on wheels' bars 3 pitches on
+THROW_BOB = [0, 0, 0, 0, -1, 1, 0, 0, 0, 0, 0, 0]          # the machine jolts as the arm hits its stop (game px)
+THROW_MS = [300, 160, 60, 50, 50, 70, 90, 110, 110, 110, 130, 260]   # the GIF's timing (the game's may differ)
+MOVE_N = 8             # MOVE: the wheels' teeth 3 pitches round (the edge-on wheels' bars 3 bars on), the bolts a quarter turn
 MOVE_BOB = [0, -1, -1, 0, 0, -1, -1, 0]      # the body's ride over the cogs (game px)
 
 
@@ -743,12 +771,12 @@ def anim_frames(name, r):
     """[(cropped layer groups, bob game px, cup middle)] of one animation's row"""
     out = []
     if name == 'throw':
-        for T, p in THROW:
+        for k, (T, p) in enumerate(THROW):
             g, mid = frame(r, T, 0.0, payload_state(r, p))
-            out.append((cropped(g), 0, mid))
+            out.append((cropped(g), THROW_BOB[k], mid))
     else:
         for i in range(MOVE_N):
-            g, mid = frame(r, T0, 90.0 * i / MOVE_N, None, edge_frac=3.0 * i / MOVE_N)
+            g, mid = frame(r, T0, i / float(MOVE_N), None, edge_frac=float(TEETH_PER_LOOP) * i / MOVE_N)
             out.append((cropped(g), MOVE_BOB[i], mid))
     return out
 
@@ -838,7 +866,7 @@ def main():
     cell = (2 * half, up + down, half, up)
     print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f)' % (cell + (GS,)))
     cups = {}
-    for name, dur in (('throw', 90), ('move', 110)):
+    for name, dur in (('throw', THROW_MS), ('move', 110)):
         rows = []
         for r in range(5):
             fr = frames[(name, r)]
