@@ -35,7 +35,8 @@ var ang := {}                    # Building -> its gear's angle now
 var version := 0                 # bumped when the connected set changes
 var idler_of := {}               # Building -> {"pos": gear space, "n": teeth, "r": pitch radius} between it and its parent
 var idler_ang := {}              # Building -> the angle of its idler now
-var spring_of := {}              # a connected Tension user (Defs.TENSION_USERS) -> the Mainspring its ring meshes with
+var spring_of := {}              # a connected building (not a Mainspring) -> the Mainspring its ring meshes with (Tension rule)
+var drive_of := {}               # a connected building -> rings from the nearest driver, a Clocktower or Mainspring (GearEcon)
 var _field := {}                 # team -> [[centre in gear space, radius px]] of the connected rings
 var _sig := -1
 var _solved_at := -10.0
@@ -160,13 +161,14 @@ func is_linked(b: Building) -> bool:
 
 
 ## Work speed of a Clockwork building: 0 while unconnected (or while its gear is being swapped, or, using Tension, while
-## its ring meshes with no Mainspring), else 1.
+## its ring meshes with no Mainspring), else its DRIVE share (GearEcon: 1 meshing with a Clocktower or Mainspring, less
+## farther out; always 1 for the Clocktower, supply and the turret).
 func speed_mult(b: Building) -> float:
 	if not enforce or not Defs.gear_mode or b.d["faction"] != "clockwork" or not b.built or b.dead:
 		return 1.0
 	if Defs.TENSION_USERS.has(b.kind) and not spring_of.has(b):
 		return 0.0
-	return 1.0 if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
+	return GearEcon.work_mult(self, b) if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
 
 
 ## A Tension user's Mainspring (its ring meshing with this one's), null when it has none (or is not connected).
@@ -198,6 +200,7 @@ func solve() -> void:
 	order = []
 	_field = {}
 	spring_of = {}
+	drive_of = {}
 	if not Defs.gear_mode or game == null:
 		return
 	var list: Array = []
@@ -248,16 +251,18 @@ func solve() -> void:
 			parent_of[list[j]] = list[par]
 			q.append(j)
 		deferred.clear()
-	# the Tension rule: each connected Tension user's Mainspring (its parent, or one hanging on it)
+	# the Tension rule: each connected building's Mainspring (its parent, or one hanging on it): a Tension user works only
+	# with one, and anything that costs Tension is made only at a building that has one (GearEcon.spend_problem)
 	spring_of = {}
 	for j in q:
-		if not Defs.TENSION_USERS.has(list[j].kind):
+		if list[j].kind == "mainspring":
 			continue
 		for k in q:
 			if list[k].kind == "mainspring" and list[k].team == list[j].team and touch.call(k, j):
 				spring_of[list[j]] = list[k]
 				if parent_of.get(list[j]) == list[k]:
 					break
+	drive_of = GearEcon.drive_steps(list, gp, rr, linked, slack)      # (the efficiency: rings from a Clocktower or Mainspring)
 	idler_of = {}
 	for i in q:
 		var b: Building = list[i]
@@ -362,7 +367,7 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	var best := INF
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
-	var tension := Defs.TENSION_USERS.has(k)
+	var tension := GearEcon.spends_tension(k)          # (a Tension user, or a Movement Works for its Jacks)
 	var spring: Building = null
 	var sbest := INF
 	for b in game.buildings:
@@ -644,8 +649,12 @@ func draw_ghost_label(ci: CanvasItem, t: int, k: String, c: Vector2i, big := fal
 			col = ghost_colour("far")
 		else:
 			label = "MESHES MAINSPRING"
+	elif state == "ok" and st.get("spring") != null:
+		label = "MESHES MAINSPRING"        # (a Movement Works: its Jacks may be made here)
 	var font := ThemeDB.fallback_font
 	label = Loc.t(label)
+	if state == "ok" and not (Defs.TENSION_USERS.has(k) and st.get("spring") == null):
+		label += GearEcon.ghost_note(self, t, k, c, big)     # (its efficiency before it is placed; what a Mainspring feeds)
 	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var at := centre + Vector2(-w * 0.5, -float(size.y) * T * 0.5 - 34.0)
 	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), Color(0.05, 0.05, 0.07, 0.85))

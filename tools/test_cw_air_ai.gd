@@ -1,7 +1,8 @@
 extends SceneTree
 ## The gear-mode Clockwork COMPUTER and the air (AI._air, scripts/cw_air.gd): a Hard Clockwork with a working Escapement (a
 ## Mainspring meshing with it) and a Movement Works, cogs and Tension to spare, against a passive Crown. A Crown balloon
-## shows itself over its base: it builds ONE Clock Aviary and trains Swifts against it (they kill it). Later, with no enemy
+## shows itself over its base: it builds ONE Clock Aviary (meshing with a Mainspring: THE TENSION RULE; with no room by
+## one it builds another Mainspring first) and trains Swifts against it (they kill it). Later, with no enemy
 ## flyer about, it researches TICKING OWL and morphs a Swift into a Ticking Owl where it is safe (its Swifts may be out with
 ## the army by then).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_air_ai.gd
@@ -76,10 +77,14 @@ func _run() -> void:
 	var hall: Building = _mine("clocktower")[0]
 	g.players[0]["gold"] = 6000
 	g.players[0]["tension"] = 1500.0
-	# its tier 2, ready: a Movement Works, a Mainspring and an Escapement meshing with it (the AI's own would come later)
-	if _mine(Defs.CW_WORKS).is_empty():
-		_put(Defs.CW_WORKS, hall)
-	var spring: Building = _mine("mainspring")[0] if not _mine("mainspring").is_empty() else _put("mainspring", hall)
+	# its tier 2, ready: a Movement Works, a Mainspring meshing with it and an Escapement meshing with the Mainspring (the AI's
+	# own would come later; THE TENSION RULE: Tension is spent only where a Mainspring meshes)
+	var works: Building = _mine(Defs.CW_WORKS)[0] if not _mine(Defs.CW_WORKS).is_empty() else _put(Defs.CW_WORKS, hall)
+	var spring: Building = _mine("mainspring")[0] if not _mine("mainspring").is_empty() else null
+	if spring == null and works != null:
+		spring = _put("mainspring", works)
+	if spring == null:
+		spring = _put("mainspring", hall)
 	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
 	await physics_frame
 	g.gear_net.solve()

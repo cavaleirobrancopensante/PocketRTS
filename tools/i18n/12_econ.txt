@@ -1,0 +1,111 @@
+# THE CLOCKWORK'S ECONOMY RULES (gear mode; scripts/gear_econ.gd, docs/clockwork_economy_study.md): a building's
+# EFFICIENCY (crew x DRIVE x brass) on its label, its card and the placement ghost; TENSION as a full resource (each
+# Mainspring stores some, buildings can cost it); THE TENSION RULE (anything that costs Tension is made only where a
+# Mainspring's ring meshes). "drive" (how strongly a ring is turned from a Clocktower or Mainspring): pt "tração",
+# es "tracción".
+
+> Efficiency %d%%
+pt Eficiência %d%%
+es Eficiencia %d%%
+
+> %d/%d Winders
+pt %d/%d Enroladores
+es %d/%d Dadores de cuerda
+
+> idle
+pt parado
+es parado
+
+> drive %d%%: %s
+pt tração %d%%: %s
+es tracción %d%%: %s
+
+> meshes with a Clocktower or Mainspring
+pt engrena com uma Torre do Relógio ou Mola Real
+es engrana con una Torre del Reloj o un Muelle Real
+
+> %d rings from a Clocktower or Mainspring
+pt a %d anéis de uma Torre do Relógio ou Mola Real
+es a %d anillos de una Torre del Reloj o un Muelle Real
+
+> brass spent
+pt latão esgotado
+es latón agotado
+
+> Tension full
+pt Tensão cheia
+es Tensión llena
+
+> Stores %d Tension · your Mainsprings hold %d of %d
+pt Guarda %d de Tensão · suas Molas Reais têm %d de %d
+es Almacena %d de Tensión · tus Muelles Reales tienen %d de %d
+
+> FULL: it stands still until Tension is spent
+pt CHEIA: fica parada até a Tensão ser gasta
+es LLENO: se queda quieto hasta que se gaste Tensión
+
+> NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle. Build a Mainspring right beside it.
+pt PRECISA DE MOLA REAL: seu anel não engrena com nenhuma Mola Real, então fica parada. Construa uma Mola Real bem ao lado.
+es NECESITA MUELLE REAL: su anillo no engrana con ningún Muelle Real, así que se queda parada. Construye un Muelle Real justo al lado.
+
+> Working: its ring meshes with a Mainspring.
+pt Funcionando: seu anel engrena com uma Mola Real.
+es Funcionando: su anillo engrana con un Muelle Real.
+
+> Meshes with a Mainspring: it can make what costs Tension (%s).
+pt Engrena com uma Mola Real: pode fazer o que custa Tensão (%s).
+es Engrana con un Muelle Real: puede hacer lo que cuesta Tensión (%s).
+
+> No Mainspring meshes with it: no %s until a Mainspring's ring meshes with its ring (they cost Tension).
+pt Nenhuma Mola Real engrena com ela: nada de %s até o anel de uma Mola Real engrenar com o seu (custam Tensão).
+es Ningún Muelle Real engrana con él: nada de %s hasta que el anillo de un Muelle Real engrane con el suyo (cuestan Tensión).
+
+> This %s meshes with no Mainspring: anything that costs Tension is made only where a Mainspring's ring meshes with the building's.
+pt %s sem Mola Real engrenada: o que custa Tensão só é feito onde o anel de uma Mola Real engrena com o da construção.
+es %s sin Muelle Real engranado: lo que cuesta Tensión solo se hace donde el anillo de un Muelle Real engrana con el del edificio.
+
+> FEEDS %d
+pt ALIMENTA %d
+es ALIMENTA %d
+
+> The Clock Aviary stands idle: mesh its gear ring with a Mainspring's.
+pt A Casa do Cuco está parada: engrene seu anel de engrenagens com o de uma Mola Real.
+es La Casa del Cuco está parada: engrana su anillo de engranajes con el de un Muelle Real.
+
+> The Clock Aviary is unlinked: its gear ring must mesh with the gear field.
+pt A Casa do Cuco está desligada: seu anel de engrenagens precisa engrenar com o campo de engrenagens.
+es La Casa del Cuco está sin enlace: su anillo de engranajes debe engranar con el campo de engranajes.
+
+> %d/%d tension
+pt %d/%d de tensão
+es %d/%d de tensión
+
+> Tension: %d of %d
+pt Tensão: %d de %d
+es Tensión: %d de %d
+
+> The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Jack, the Swift, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, and a Movement Works for its Jacks.
+pt O segundo recurso do Mecanismo, enrolado por Enroladores girando a manivela de uma Mola Real. Cada Mola Real guarda 200 de Tensão (engrenagem grande: 400): o enrolar para quando você tem o que suas Molas Reais guardam. Paga as coisas fortes: o Boneco de Mola, o Cuco, a Casa do Cuco e as pesquisas. Tudo o que custa Tensão só é feito numa construção cujo anel de engrenagens engrena com o de uma Mola Real: o Escape, a Casa do Cuco, e uma Oficina de Movimentos para seus Bonecos de Mola.
+es El segundo recurso del Mecanismo, al que dan cuerda los Dadores de cuerda girando la manivela de un Muelle Real. Cada Muelle Real almacena 200 de Tensión (engranaje grande: 400): se deja de dar cuerda cuando tienes lo que almacenan tus Muelles Reales. Paga las cosas fuertes: el Muñeco de Resorte, el Cuco, la Casa del Cuco y las investigaciones. Todo lo que cuesta Tensión solo se hace en un edificio cuyo anillo de engranajes engrana con el de un Muelle Real: el Escape, la Casa del Cuco y un Taller de Movimientos para sus Muñecos de Resorte.
+
+> Working: its ring meshes with a Mainspring. Jacks can be made at a Movement Works whose ring meshes with a Mainspring%s.
+pt Funcionando: seu anel engrena com uma Mola Real. Bonecos de Mola podem ser feitos numa Oficina de Movimentos cujo anel engrena com uma Mola Real%s.
+es Funcionando: su anillo engrana con un Muelle Real. Los Muñecos de Resorte se pueden hacer en un Taller de Movimientos cuyo anillo engrane con un Muelle Real%s.
+
+# the data texts that changed (Defs.BUILDINGS / UNITS "about")
+
+> A tall clock tower whose little doors open for brass birds to fly out. It makes the Swift, the Clockwork's flyer, and researches TICKING OWL (then every Swift can be rebuilt into a Ticking Owl). Costs Tension. Needs a working Escapement to be built; everything it makes costs Tension, so its gear ring must mesh with a Mainspring's ring, else it stands idle (NEEDS MAINSPRING).
+pt Uma alta torre de relógio cujas portinhas se abrem para pássaros de latão saírem voando. Faz o Cuco, o voador do Mecanismo, e pesquisa CORUJA TIQUE-TAQUE (então todo Cuco pode ser reconstruído numa Coruja Tique-Taque). Custa Tensão. Precisa de um Escape funcionando para ser construída; tudo o que ela faz custa Tensão, então seu anel de engrenagens precisa engrenar com o anel de uma Mola Real, senão fica parada (PRECISA DE MOLA REAL).
+es Una alta torre de reloj cuyas puertecitas se abren para que salgan volando pájaros de latón. Hace el Cuco, el volador del Mecanismo, e investiga BÚHO TICTAC (luego todo Cuco puede reconstruirse en un Búho Tictac). Cuesta Tensión. Necesita un Escape que funcione para construirse; todo lo que hace cuesta Tensión, así que su anillo de engranajes debe engranar con el anillo de un Muelle Real, si no se queda parada (NECESITA MUELLE REAL).
+
+> Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, and a Movement Works for its Jacks. Must stay linked to the gear field.
+pt Enrola TENSÃO, o segundo recurso do Mecanismo: um pouco sozinha, mais para cada Enrolador que gira a manivela (engrenagem PEQUENA: até 3; GRANDE: até 6, mais no total com 5 ou 6). Cada Mola Real guarda 200 de Tensão (grande: 400): o enrolar para quando você tem o que suas Molas Reais guardam. Ela também MOVE os anéis que engrenam com ela, como a Torre do Relógio. Tudo o que custa Tensão só é feito onde o anel de uma Mola Real engrena: o Escape, a Casa do Cuco, e uma Oficina de Movimentos para seus Bonecos de Mola. Precisa continuar ligada ao campo de engrenagens.
+es Da cuerda a la TENSIÓN, el segundo recurso del Mecanismo: un poco por sí mismo, más por cada Dador de cuerda que gira su manivela (engranaje PEQUEÑO: hasta 3; GRANDE: hasta 6, más en total con 5 o 6). Cada Muelle Real almacena 200 de Tensión (grande: 400): se deja de dar cuerda cuando tienes lo que almacenan tus Muelles Reales. También MUEVE los anillos que engranan con él, como la Torre del Reloj. Todo lo que cuesta Tensión solo se hace donde engrana el anillo de un Muelle Real: el Escape, la Casa del Cuco y un Taller de Movimientos para sus Muñecos de Resorte. Debe seguir enlazado al campo de engranajes.
+
+> A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at a Movement Works whose gear ring meshes with a Mainspring's, once an Escapement works.
+pt Um boneco de caixa de surpresa sobre uma mola espiral: anda aos pulinhos e dispara parafusos giratórios do braço-broca, contra o chão e para o alto, nos voadores. SALTAR: um agachamento curto, depois um salto de até 5 casas (10 s para a mola se enrolar de novo); no plano ou para baixo a qualquer hora, PARA CIMA num terreno alto depois de pesquisar PULO ALTO e se você vir o lugar. Não pode atirar no ar. Custa Tensão. Feito numa Oficina de Movimentos cujo anel de engrenagens engrena com o de uma Mola Real, quando um Escape funciona.
+es Un muñeco de caja sorpresa sobre un resorte espiral: va dando saltitos y dispara tornillos giratorios con su brazo taladro, a tierra y hacia arriba, a los voladores. SALTAR: un breve agachado y luego un salto de hasta 5 casillas (10 s para volver a tensar el resorte); en llano o hacia abajo cuando quieras, HACIA ARRIBA a terreno alto una vez investigado SALTO ALTO y si ves el sitio. No puede disparar en el aire. Cuesta Tensión. Se hace en un Taller de Movimientos cuyo anillo de engranajes engrana con el de un Muelle Real, cuando funciona un Escape.
+
+> Presses COGS from its Clocktower's brass: a trickle by itself, and every Winder winding it adds the same share (SMALL gear: faster, up to 6 Winders; BIG gear: slower per Winder but up to 12, and more in all from 9). It works at full speed when its gear ring meshes with the Clocktower's or a Mainspring's, less farther out. Spent brass: a quarter. Must stay linked to the gear field.
+pt Prensa ENGRENAGENS com o latão da sua Torre do Relógio: um fio por si só, e cada Enrolador que a enrola soma a mesma parte (engrenagem PEQUENA: mais rápida, até 6 Enroladores; engrenagem GRANDE: mais lenta por Enrolador, mas até 12, e mais no total a partir de 9). Trabalha a toda velocidade quando seu anel de engrenagens engrena com o da Torre do Relógio ou de uma Mola Real, menos mais longe. Latão esgotado: um quarto. Precisa continuar ligada ao campo de engrenagens.
+es Prensa ENGRANAJES con el latón de su Torre del Reloj: un hilillo por sí sola, y cada Dador de cuerda que le da cuerda suma la misma parte (engranaje PEQUEÑO: más rápido, hasta 6 Dadores; engranaje GRANDE: más lento por Dador, pero hasta 12, y más en total desde 9). Trabaja a toda velocidad cuando su anillo de engranajes engrana con el de la Torre del Reloj o un Muelle Real, menos más lejos. Latón agotado: un cuarto. Debe seguir enlazada al campo de engranajes.

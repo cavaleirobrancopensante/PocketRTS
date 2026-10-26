@@ -591,20 +591,105 @@ func _tier2(t: float) -> void:
 	_tier2_t = game.clock + 3.0
 	if springs.is_empty():
 		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
-			_construct("mainspring")
+			_construct("mainspring", _spring_spot())
 		return
 	if esc.is_empty():
 		if _gold() < int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20 or not game.requirement_met(team, Defs.CW_TECH):
 			return
 		for sp in springs:
 			if sp.built:
-				var c := GearNet.ring_spot(game, team, Defs.CW_TECH, sp, 90.0, true)
+				var c := GearEcon.room_spot(game, team, Defs.CW_TECH, [sp], [Defs.CW_AIR])
+				if c.x < 0:
+					c = GearNet.ring_spot(game, team, Defs.CW_TECH, sp, 90.0, true)
 				if c.x >= 0:
 					_construct(Defs.CW_TECH, c)
 					return
-		_tier2_t = game.clock + 20.0        # (no room by its Mainspring: look again later)
+		# (no room by its Mainspring: another Mainspring where there is room, then the Escapement by it)
+		if springs.size() < 2 and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]):
+			var ss := _spring_spot()
+			if ss.x >= 0:
+				_construct("mainspring", ss)
+		_tier2_t = game.clock + 20.0        # (look again later)
+		_jack_works()
 		return
+	_jack_works()
 	_air(t)
+
+
+## Gear mode: a building whose work DRIVE scales (GearEcon: a Cog Press, the Works, a Mainspring...) goes where its ring
+## meshes with a Clocktower's (100%), nearest the main Clocktower first; (-1, -1) when there is no room (the usual search).
+## The first Movement Works keeps room beside it for a Mainspring (its Jacks, later); a Works built while no Works meshes
+## with a Mainspring goes by a Mainspring first (THE TENSION RULE).
+func _drive_spot(kind: String) -> Vector2i:
+	if not _clock() or not Defs.gear_mode or not GearEcon.uses_drive(kind) or kind == String(_f()["hall"]):
+		return Vector2i(-1, -1)
+	if kind == _works() and not _mine(_works()).any(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null):
+		for sp in _mine("mainspring"):
+			if sp.built:
+				var cs := GearEcon.room_spot(game, team, kind, [sp])
+				if cs.x >= 0:
+					return cs
+	var users: Array = ["mainspring"] if kind == _works() and _mine(_works()).is_empty() else []
+	var halls: Array = _halls().filter(func(h: Building) -> bool: return h.built)
+	if game.starts.size() > team:
+		var home := Vector2(game.starts[team]) * Defs.TILE
+		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.center().distance_to(home) < b.center().distance_to(home))
+	for h in halls:
+		var c := GearEcon.room_spot(game, team, kind, [h], users, h.center(), true, 8)
+		if c.x >= 0:
+			return c
+	return Vector2i(-1, -1)
+
+
+## Gear mode: where the Mainspring goes. Its ring meshes with a Movement Works' (so that Works may make Jacks: anything that
+## costs Tension is made only where a Mainspring meshes, GearEcon) and keeps room round it for an Escapement and a Clock
+## Aviary; with no room by a Works, by the Clocktower; `spare`: a second one, only room for the Escapement and the Aviary.
+func _spring_spot(spare := false) -> Vector2i:
+	if spare:
+		# (a second one for the Clock Aviary: room for it)
+		for h in _halls():
+			if h.built:
+				var r: Array = GearEcon.room_spot_n(game, team, "mainspring", [h], [Defs.CW_AIR])
+				if int(r[1]) >= 1:
+					return r[0]
+		return Vector2i(-1, -1)
+	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built and game.gear_net.spring_for(b) == null)
+	var fall := Vector2i(-1, -1)
+	for w in works:
+		var r2: Array = GearEcon.room_spot_n(game, team, "mainspring", [w], [Defs.CW_TECH, Defs.CW_AIR])
+		if int(r2[1]) >= 1:
+			return r2[0]          # (beside a Works, room for the Escapement at least)
+	# no room by a Works: by a Clocktower, with room for the Escapement AND a Works that may make Jacks (_jack_works)
+	for h in _halls():
+		if h.built:
+			var r3: Array = GearEcon.room_spot_n(game, team, "mainspring", [h], [Defs.CW_TECH, _works(), Defs.CW_AIR])
+			if int(r3[1]) >= 2:
+				return r3[0]
+			if fall.x < 0 and int(r3[1]) >= 1:
+				fall = r3[0]
+	return fall
+
+
+## Gear mode: no Movement Works meshes with a Mainspring (so none may make Jacks), money in the bank: a Works whose ring
+## meshes with a Mainspring's, as soon as a Mainspring stands (before the room by it is taken).
+var _jack_works_t := 0.0
+
+
+func _jack_works() -> void:
+	if game.clock < _jack_works_t or not _mine("mainspring").any(func(b: Building) -> bool: return b.built):
+		return
+	_jack_works_t = game.clock + 15.0
+	var works := _mine(_works())
+	if works.any(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null) or _busy_building(_works()):
+		return
+	if _gold() < int(Defs.BUILDINGS[_works()]["cost"]) + 60:
+		return
+	for sp in _mine("mainspring"):
+		if sp.built:
+			var c := GearEcon.room_spot(game, team, _works(), [sp])
+			if c.x >= 0:
+				_construct(_works(), c)
+				return
 
 
 ## Gear mode, THE AIR (Defs.CW_AIR; scripts/cw_air.gd), kept simple: once its Escapement works, ONE Clock Aviary when the
@@ -629,12 +714,27 @@ func _foe_air() -> int:
 	return _air_seen
 
 
+var _want_aviary := false           # (its Tension price is kept: no Jacks eat into it, _produce)
+
+
 func _air(t: float) -> void:
 	var av := _mine(Defs.CW_AIR)
+	_want_aviary = av.is_empty() and (_foe_air() > 0 or t > _lv([1300.0, 780.0, 660.0])) and game.requirement_met(team, Defs.CW_AIR)
 	if av.is_empty():
 		var cost := int(Defs.BUILDINGS[Defs.CW_AIR]["cost"])
-		if (_foe_air() > 0 or t > _lv([1300.0, 780.0, 660.0])) and _gold() >= cost + 20 and game.requirement_met(team, Defs.CW_AIR):
-			_construct(Defs.CW_AIR)
+		if (_foe_air() > 0 or t > _lv([1300.0, 780.0, 660.0])) and _gold() >= cost + 20 and game.requirement_met(team, Defs.CW_AIR) \
+				and game.tension(team) >= float(Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR])):
+			# (all it makes costs Tension: its ring must mesh with a Mainspring's; no room by one, a second Mainspring first)
+			var spot := Vector2i(-1, -1)
+			for sp in _mine("mainspring"):
+				if sp.built and spot.x < 0:
+					spot = GearEcon.room_spot(game, team, Defs.CW_AIR, [sp])
+			if spot.x >= 0:
+				_construct(Defs.CW_AIR, spot)
+			elif _mine("mainspring").size() < 3 and not _busy_building("mainspring") and _gold() >= cost + int(Defs.BUILDINGS["mainspring"]["cost"]):
+				var ss := _spring_spot(true)
+				if ss.x >= 0:
+					_construct("mainspring", ss)
 		return
 	var built: Array = av.filter(func(b: Building) -> bool: return b.built)
 	if built.is_empty():
@@ -785,9 +885,9 @@ func _workers() -> void:
 		extra = 1 + (2 if game.army(team).size() >= 4 else 0)   # builder + escorts
 	var want := mini(int((cap * fill + extra) * float(_s("workers"))), 46 if difficulty >= 3 else _lv([16, 30, 40]))
 	if _clock():
-		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler): the rest of the
-		# 100 supply is for the army
-		want = mini(want, 14 * _halls().size() + extra + 2)
+		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler; gear mode: two Cog Presses of 6 and a
+		# Mainspring of 3): the rest of the supply is for the army
+		want = mini(want, (16 if Defs.gear_mode else 14) * _halls().size() + extra + 2)
 		want = mini(want, 36 if difficulty >= 3 else _lv([16, 26, 32]))
 	if strategy == "xrush":
 		want = mini(want, 8)       # (a six-pool: about eight hands, everything else is Raptors)
@@ -1338,6 +1438,9 @@ func _rushing() -> bool:
 
 
 func _econ_spot(kind: String) -> Vector2i:
+	var ds := _drive_spot(kind)
+	if ds.x >= 0:
+		return ds
 	var halls := _halls()
 	var lodes := kind == "powder_mill" or kind == "ore_crusher" or kind == "ore_drill" or kind == Defs.GEAR_PRESS
 	if kind == "feeding_pit":
@@ -2711,6 +2814,8 @@ func site_failed(b: Building) -> void:
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 		return
+	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[kind])):
+		return          # (gear mode: a Tension price, the Clock Aviary's)
 	if not game.requirement_met(team, kind):
 		return
 	var spot := at if at.x >= 0 else _find_spot(kind)
@@ -2748,6 +2853,9 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 ## room does it go down, and then to the foot of the nearest ramp (a short walk from the hall,
 ## never over a cliff, never in the ramp's way), else anywhere by a hall.
 func _find_spot(kind: String) -> Vector2i:
+	var ds := _drive_spot(kind)
+	if ds.x >= 0:
+		return ds
 	var halls: Array = _halls().filter(func(h: Building) -> bool: return h.built)
 	if game.starts.size() > team:
 		var home := Vector2(game.starts[team]) * Defs.TILE
@@ -2798,7 +2906,8 @@ func _produce() -> void:
 		for w in _mine(_works()):
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "clock_soldier"
-				if jacks * 2 <= others and game.can_train(w, Defs.JACK) == "":
+				var keep := float(Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR])) if _want_aviary else 0.0
+				if jacks * 2 <= others and game.can_train(w, Defs.JACK) == "" and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.JACK])) >= keep:
 					k = Defs.JACK
 				if game.train(w, k) != "":
 					break

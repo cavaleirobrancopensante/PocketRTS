@@ -41,12 +41,16 @@ static func setup(game: Game) -> void:
 ## edge (no power in gear mode: no Charging Pylon, no Boilers; Defs.ENERGY_KINDS are not in the gear build list).
 ## Tier 2: the Escapement meshing with the Mainspring's ring (a third entry: the kind it meshes with instead of the
 ## Clocktower; it tries ESC_ANGLES round it until one fits), working, and JACKS Jacks beside the soldiers.
-## The air: the Clock Aviary on the Clocktower's ring (up left: it lands by the map's edge), SWIFTS Swifts and OWLS Ticking
-## Owls hovering over the Clocktower's ring (in the Lab's first view).
+## The Movement Works meshes with the Mainspring too (THE TENSION RULE, GearEcon: Jacks are made only where a Mainspring
+## meshes), else it goes on the Clocktower's ring (down left). The air: a second Mainspring on the Clocktower's ring (up left)
+## and the Clock Aviary meshing with it (everything the Aviary makes costs Tension), SWIFTS Swifts and OWLS Ticking Owls
+## hovering over the Clocktower's ring (in the Lab's first view). An entry that names a kind to mesh with tries ESC_ANGLES
+## round the last one of that kind put, then its own angle on the Clocktower's ring.
 const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["escapement", 0.0, "mainspring"],
-	["movement_works", -130.0], ["regulator", 105.0], ["ratchet_turret", 5.0], ["cuckoo_house", -95.0]]
+	["movement_works", -130.0, "mainspring"], ["mainspring", -95.0], ["cuckoo_house", -95.0, "mainspring"], ["regulator", 105.0],
+	["ratchet_turret", 5.0]]
 const ESC_ANGLES := [0.0, 40.0, 80.0, -40.0, 120.0, -80.0, 160.0]
-const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0, "cuckoo_house": 0}
+const CREW := {"cog_press": 6, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0, "cuckoo_house": 0}
 const SOLDIERS := 4
 const JACKS := 3
 const SWIFTS := 3
@@ -71,18 +75,33 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 		var around: Building = hall
 		var angles: Array = [float(sc[1])]
 		if sc.size() > 2:
-			# (meshing with one of the showcase's own buildings: the Escapement with the Mainspring)
+			# (meshing with one of the showcase's own buildings: the Escapement, the Aviary and the Works with the Mainspring)
 			for b in put:
 				if b.kind == String(sc[2]):
 					around = b
-			angles = ESC_ANGLES if k == Defs.CW_TECH else angles
+			angles = ESC_ANGLES
+		var placed := false
 		for deg in angles:
 			var c := _ring_spot(game, t, k, around, float(deg)) if around == hall else GearNet.ring_spot(game, t, k, around, float(deg), true)
 			if c.x >= 0:
 				var b := game._add_building(k, t, c, true)
 				put.append(b)
 				game.gear_net.solve()
+				placed = true
 				break
+		if not placed and around != hall:
+			# (no room round it: on the Clocktower's ring at its own angle)
+			var c2 := _ring_spot(game, t, k, hall, float(sc[1]))
+			if c2.x >= 0:
+				put.append(game._add_building(k, t, c2, true))
+				game.gear_net.solve()
+				placed = true
+		if not placed:
+			# (the plateau is crowded: anywhere it links)
+			var c3 := game.find_spot(t, k, hall, 3, 24, "near")
+			if c3.x >= 0:
+				put.append(game._add_building(k, t, c3, true))
+				game.gear_net.solve()
 	# room in the supply for the Jacks (2 each) and the flyers (Swifts 2, the Owl 4): three more Regulators, linked, wherever
 	# they fit
 	for i in 4:
