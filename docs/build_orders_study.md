@@ -19,6 +19,8 @@ Every opening was played in three ways:
 2. against the ordinary Hard computer, on its Balanced plan, of both other factions, on Kestrel Rise, the smallest standard map;
 3. against other openings, where a direct answer was needed (a rush against a greedy build, and so on), and a few again on Frostmere, a big map, where the walk matters.
 
+What the ordinary computer does matters for every result below. On its Balanced plan it sends a worker to scout at about 0:18 and changes its plan on what it sees: an early army or a minimal economy with several production buildings means a rush, and it turns to a defensive game (army and walls first, then a counter-attack); an early expansion with little army means greed, and it prepares a timing attack against it. The Crown computer walls its ramp with a Cottage and a Gate by about 0:40, opens with the Powder Mill (Musketeers) seven games in ten and with the Horse Breeder (a Horseman rush) the other three. The Clockwork computer builds a Movement Works (done at about 1:25) and Clock Soldiers, more Works and a turret, and from 3:30 to 4:30 on Hard (sooner with money in the bank) a Mainspring, an Escapement, Jacks, and then Pendulums and Netters. The Brood computer is the weak one and is being rewritten.
+
 Read the match results as indications, not proof. Both sides are played by the computer, which defends and fights the way it does; there is one game per pairing; and the machine was shared with several other jobs, so the list of matches was kept short. The timings, on the other hand, are solid: the calculator and the game agree on them (the last section shows by how much).
 
 Two parts of the game were being changed in other branches while this was written, and both are marked as provisional where they matter:
@@ -260,6 +262,12 @@ CROWN6_RESULTS
 
 **How to spot it.** Exactly the standard until about 5:00; then a second Cannon and Musketeers gathering at the front instead of a second hall.
 
+### Crown openings not played here
+
+- **A proxy Barracks.** The Crown's production buildings (Barracks, Horse Breeder, Foundry) can stand anywhere the player has explored, so a Barracks (and a Breeder) can go up near the enemy's base: Horsemen or Musketeers arrive at once. The cost is a Labourer walking across the map and building in the open for 40 seconds.
+- **The Mortar push.** The Mortar (reach 352, lobs over walls, 30 damage over a wide area) is the Foundry's siege tool against a walled or turreted base. It is a mid-game tool more than an opening.
+- **An Armour timing.** The Armoury's Armour (it needs the Foundry) turns Musketeers into Guardsmen and Horsemen into Cuirassiers; a push at 6 to 7 minutes.
+
 CROWN_SUMMARY
 
 ## The Brood's openings
@@ -329,6 +337,12 @@ BROOD5_RESULTS
 BROOD6_RESULTS
 
 **How to spot it.** A Roost; Raptors being offered up; a Bloater in the sky at about 5:45.
+
+### Brood openings not played here
+
+- **A forward Burrow.** A Burrow needs no swamp and the Brood has no spacing rule for its halls, so one can go down near the enemy's base (350 biomass and a grub). Only the capital takes food, but the forward one lays eggs and gives supply, so Raptors hatch at the enemy's door, and its swamp lets Clutch Mounds grow forward. It is the Brood's counterpart of a proxy Barracks, and the computer never does it.
+- **Mist Toads or Spore Mothers.** Both come from the Gorge Pit and cost essence (25 and 40), so they are even later than the Brutes.
+- **Skywings first.** The Skywing (100 and 40 essence) is the Brood's only answer that reaches a hovering Balloon or a Swift; it is a reaction to an air opening, not an opening.
 
 BROOD_SUMMARY
 
@@ -423,6 +437,12 @@ CW6_RESULTS
 CW7_RESULTS
 
 **How to spot it.** A big Assembly Works instead of a Movement Works.
+
+### Clockwork openings not played here
+
+- **A forward Clocktower.** A new Clocktower starts a gear field of its own and needs only to stand 18 tiles from the other Clocktowers, so it can go up near the enemy (400 cogs). A Movement Works and a Regulator meshed with it would make and wind an army at the enemy's door. It is the Clockwork's only answer to the wind on the big maps today, and the computer never does it.
+- **Big-gear presses.** A press swapped to its big gear takes six Winders and pays 10.5 cogs a second: an economy choice for a second hall, not an opening of its own.
+- **Threshers** from the left-over Assembly Works (see above).
 
 CLOCKWORK_SUMMARY
 
