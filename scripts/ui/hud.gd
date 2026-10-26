@@ -2406,6 +2406,10 @@ func _draw_panel(font: Font) -> void:
 			elif uu.kind == Defs.JACK:
 				var jn := "In the air." if not uu.jump.is_empty() else ("JUMP ready" if uu.jump_cd <= 0.0 else "JUMP in %d s" % int(ceil(uu.jump_cd)))
 				info = jn + (" · HIGH LEAP: it can jump up onto high ground it can see." if game.has_tech(uu.team, "high_leap") else " · Flat and down only (HIGH LEAP at the Escapement: up too).")
+			elif uu.kind == Defs.NETTER:
+				info = Netter.card_line(uu)
+			elif uu.kind == Defs.PENDULUM:
+				info = "Its blade cuts every enemy in the arc in front of it (never your own units). It cannot reach flyers."
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -2461,6 +2465,8 @@ func _draw_panel(font: Font) -> void:
 				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."
 			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99:
 				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
+			if uu.net_t > 0.0:
+				info = "CAUGHT IN A NET: %d s (it cannot move or fight)" % int(ceil(uu.net_t))      # (a Netter's: scripts/netter.gd)
 			if uu.hold_fire and not uu.has_pistol():
 				info = "HOLD FIRE · " + info      # (the pistol's own line says it)
 			if not uu.led.is_empty():

@@ -1102,6 +1102,10 @@ const EFFECTS := {
 	# middle of every cell; tools/import_cuckoo.py prints these)
 	"owl_bomb": {"frames": 4, "size": Vector2i(18, 18)},
 	"owl_blast": {"frames": 8, "size": Vector2i(96, 96)},
+	# the Netter's net: in flight (pointing right) and spread over a caught unit (small and big; tools/import_tier3.py)
+	"netter_net": {"frames": 1, "size": Vector2i(30, 21)},
+	"netter_net_open": {"frames": 1, "size": Vector2i(46, 38)},
+	"netter_net_open_big": {"frames": 1, "size": Vector2i(74, 60)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):

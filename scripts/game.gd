@@ -3570,6 +3570,10 @@ func can_train(b: Building, key: String) -> String:
 				return tp
 		elif not _has_built(b.team, req):
 			return "Needs a %s first." % Defs.BUILDINGS[req]["name"]
+	if u.get("big_gear", false):
+		var gp := Pendulum.gear_problem(b)      # (tier 3: the Pendulum, only on the Works' BIG gear: the heavy torque)
+		if gp != "":
+			return gp
 	if b.uses_eggs():
 		if b.eggs < 1:
 			return "No eggs ready."
@@ -7513,6 +7517,9 @@ func gear_swap_problem(b: Building) -> String:
 		return "Wait until it is built."
 	if b.gear_swap_t >= 0.0:
 		return "Its gear is already being swapped."
+	var pw := Pendulum.swap_problem(b)       # (a Pendulum in its queue keeps the Works on the big gear)
+	if pw != "":
+		return pw
 	if int(players[b.team]["gold"]) < int(Defs.GEAR["swap_cost"]):
 		return "Not enough %s." % String(Defs.FACTIONS[faction_of(b.team)]["res"][0]).to_lower()
 	return ""

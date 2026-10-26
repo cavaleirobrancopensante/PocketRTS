@@ -99,6 +99,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["ar"] = true
 		if u.owl_t >= 0.0:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
+		if u.net_t > 0.0:
+			ud["net"] = snappedf(u.net_t, 0.01)      # (caught in a Netter's net)
 		if u.coat != "":
 			ud["coat"] = u.coat
 		# horses: who leads it, where it grazes; riders and guns: their horse's health, a gun's
@@ -398,6 +400,10 @@ static func restore(game: Game, d: Dictionary) -> void:
 			u.set_kit(ud["kit"] if ud.get("kit") is Dictionary else _old_kit(game, u.team, uk))
 		u.auto_refit = bool(ud.get("ar", false))
 		u.owl_t = float(ud.get("owl", -1.0)) if uk == Defs.CUCKOO else -1.0
+		u.net_t = float(ud.get("net", 0.0))
+		if u.net_t > 0.0:
+			u.stun_t = maxf(u.stun_t, u.net_t)      # (still caught: it stays put; a flyer is down on the ground)
+			u._low = 1.0 if u.d.get("air", false) else 0.0
 		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):
 			u.coat = String(ud["coat"])      # (older saves: the coat it was just given)
 			HorseCoat.apply(u)

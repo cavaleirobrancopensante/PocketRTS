@@ -605,6 +605,25 @@ func _tier2(t: float) -> void:
 		_tier2_t = game.clock + 20.0        # (no room by its Mainspring: look again later)
 		return
 	_air(t)
+	_tier3()
+
+
+## Gear mode, TIER 3 (scripts/pendulum.gd, scripts/netter.gd), kept simple: once its Escapement works and it has the
+## Tension for a Pendulum, one Movement Works goes onto its BIG gear (a gear swap: the Pendulum is made only there; the
+## newest Works when it has more, the others keep to the small gear); _produce then mixes a few Pendulums and Netters into
+## the army. Its Netters pick their targets themselves (the most dangerous enemy in reach not caught already:
+## Netter.pick; _micro leaves them to it).
+func _tier3() -> void:
+	if not game.has_working(team, Defs.CW_TECH) or game.tension(team) < float(Defs.UNITS[Defs.PENDULUM]["tension"]):
+		return
+	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built)
+	if works.is_empty() or works.any(func(b: Building) -> bool: return (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)):
+		return
+	var w: Building = works[works.size() - 1]
+	if game.gear_swap_problem(w) == "":
+		game.swap_gear(w)
+		if game.mlog:
+			game.mlog.add("%s put a Movement Works on its big gear (Pendulums)" % game.mlog.who(team))
 
 
 ## Gear mode, THE AIR (Defs.CW_AIR; scripts/cw_air.gd), kept simple: once its Escapement works, ONE Clock Aviary when the
@@ -2790,20 +2809,37 @@ func _produce() -> void:
 	var army := game.army(team)
 	if _clock() and Defs.gear_mode:
 		# gear mode: Clock Soldiers from every Movement Works, and a Jack (tier 2: an Escapement that works, and Tension)
-		# for every two of them while the Tension lasts
-		var jacks: int = army.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
-		var others: int = army.size() - jacks
-		for w in _mine(_works()):
-			jacks += w.queue.count(Defs.JACK)
+		# for every two of them while the Tension lasts; tier 3 (_tier3): a Pendulum at the big-gear Works for every four
+		# other soldiers (up to 4; the Tension for the next one is kept back from Jacks and Netters) and a Netter for every
+		# five (up to 3)
+		var n_of := func(kind: String) -> int:
+			var n: int = army.filter(func(u: Unit) -> bool: return u.kind == kind).size()
+			for w in _mine(_works()):
+				n += w.queue.count(kind)
+			return n
+		var jacks: int = n_of.call(Defs.JACK)
+		var pends: int = n_of.call(Defs.PENDULUM)
+		var netters: int = n_of.call(Defs.NETTER)
+		var others: int = army.size() - army.filter(func(u: Unit) -> bool: return u.kind in [Defs.JACK, Defs.PENDULUM, Defs.NETTER]).size()
 		for w in _mine(_works()):
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "clock_soldier"
-				if jacks * 2 <= others and game.can_train(w, Defs.JACK) == "":
+				var want_p: bool = w.gear_big and pends < mini(4, 1 + others / 4)
+				var keep := float(Defs.UNITS[Defs.PENDULUM]["tension"]) if want_p else 0.0
+				if want_p and game.can_train(w, Defs.PENDULUM) == "":
+					k = Defs.PENDULUM
+				elif netters < mini(3, others / 5) and game.tension(team) - float(Defs.UNITS[Defs.NETTER]["tension"]) >= keep and game.can_train(w, Defs.NETTER) == "":
+					k = Defs.NETTER
+				elif jacks * 2 <= others and game.tension(team) - float(Defs.UNITS[Defs.JACK]["tension"]) >= keep and game.can_train(w, Defs.JACK) == "":
 					k = Defs.JACK
 				if game.train(w, k) != "":
 					break
 				if k == Defs.JACK:
 					jacks += 1
+				elif k == Defs.PENDULUM:
+					pends += 1
+				elif k == Defs.NETTER:
+					netters += 1
 				else:
 					others += 1
 		# the air (a Clock Aviary): Swifts against the enemy's flyers, one more than it has shown (up to 6); two once the
@@ -5175,6 +5211,8 @@ func _micro() -> void:
 				u.cmd_move(u.position + (u.position - close.position).normalized() * 60.0)
 				_kite[u] = 0.6
 				continue
+		if u.kind == Defs.NETTER:
+			continue        # (its own pick: the most dangerous enemy not caught already, Netter.pick)
 		if u.order in ["idle", "amove", "hold"] and u.target:
 			var best: Entity = null
 			var bh := INF

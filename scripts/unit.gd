@@ -188,6 +188,16 @@ var bombs := 0                  # Ticking Owl: bombs let go (tests)
 var last_bomb: OwlBomb = null   # Ticking Owl: its last bomb (tests, screenshots)
 var _owl_bomb := false          # Ticking Owl: this attack is a bomb on a building (else the talon swoop)
 var _reach := Vector2.ZERO      # Swift / Ticking Owl: how far its lunge or swoop carries the sprite (CwAir.reach)
+var swings := 0                 # Pendulum: swings made (tests)
+var last_hits := 0              # Pendulum: the enemies its last swing caught (tests)
+var nets := 0                   # Netter: nets fired (tests)
+var last_net: ChainNet = null   # Netter: its last net in flight (tests, screenshots)
+var net_t := 0.0                # CAUGHT in a Netter's net: s left (it cannot move or fight; a flyer is down on the ground)
+var nets_in := 0                # nets flying at it now (Netters pick someone else meanwhile)
+var nets_taken := 0             # nets that caught it (tests)
+var net_drop := 0.0             # s since the net over it landed (it drops onto it: Netter.update_net)
+var _net_spr: Sprite2D          # the spread net over it while caught
+var _low := 0.0                 # a flyer brought down by a net: 0 at its flying height, 1 on the ground
 # Mist Toad (its energy is `charge`): TONGUE
 var tongue_victim: Unit = null  # who its tongue is on
 var tongue_stage := ""          # "", "windup" (the crosshair), "lash" (the tongue flies out), "pull"
@@ -866,7 +876,7 @@ var war := false
 
 
 func is_air() -> bool:
-	return d.get("air", false)
+	return d.get("air", false) and net_t <= 0.0      # (a flyer caught in a net is down on the ground: scripts/netter.gd)
 
 
 ## Can this unit attack that one at all?
@@ -879,6 +889,8 @@ func can_hit(e: Entity) -> bool:
 		return false            # a deflated Bloater, a Skywing landing or taking off
 	if owl_t >= 0.0:
 		return false            # (a Swift turning into a Ticking Owl)
+	if kind == Defs.NETTER and (not (e is Unit) or ((e as Unit).net_t > 0.0 and not (order == "attack" and e == order_target))):
+		return false            # (its net is for units, and one caught already only when it is told to)
 	if e.is_air() and d.get("ground_only", false):
 		return false
 	if not e.is_air() and d.get("air_only", false):
@@ -1082,6 +1094,10 @@ func _strike_time() -> float:
 		return float(Defs.OWL_BOMB["strike"])
 	if Defs.FLYER.has(kind):
 		return float(Defs.FLYER[kind]["strike"])
+	if kind == Defs.PENDULUM:
+		return float(Defs.PENDULUM_SWING["strike"])      # (the blade swings on through the strip's last frames)
+	if kind == Defs.NETTER:
+		return float(Defs.NET["strike"])                 # (the recoil eases back)
 	return 0.35
 
 
@@ -1592,7 +1608,7 @@ func coil_point() -> Vector2:
 func center() -> Vector2:
 	# flyers are drawn hovering 20 px up: shots and zaps go to where they're seen (the Swift's and the Owl's bodies: Defs.FLYER)
 	if Defs.FLYER.has(kind):
-		return global_position + Vector2(0, -float(Defs.FLYER[kind]["centre"]))
+		return global_position + Vector2(0, -float(Defs.FLYER[kind]["centre"]) + float(Defs.FLYER[kind]["lift"]) * _low)
 	return global_position + Vector2(0, -32 if is_air() else -12)
 
 
@@ -2743,6 +2759,7 @@ func _tick_unit(delta: float) -> void:
 		elif phase == "":
 			run_t = maxf(run_t - delta * 3.0, 0.0)
 	stun_t = maxf(stun_t - delta, 0.0)
+	net_t = maxf(net_t - delta, 0.0)      # (caught in a net: its stun_t holds it meanwhile)
 	held_t = maxf(held_t - delta, 0.0)
 	scan_t -= delta
 	_wall_watch(delta)
@@ -3513,6 +3530,8 @@ func _any_enemy_wall() -> bool:
 ## to what it sees (men standing behind a wall or a shut gate) goes for the wall or gate in
 ## the way instead, rather than pushing at the wall trying to reach them.
 func _pick_target(r: float) -> Entity:
+	if kind == Defs.NETTER:
+		return Netter.pick(self, r)      # (the most dangerous enemy not caught already: scripts/netter.gd)
 	var e := game.find_target(self, r)
 	if e == null or is_air() or float(d["range"]) > 40.0 or not e.is_unit() or _can_get_at(e):
 		return e
@@ -3761,6 +3780,10 @@ func _strike(e: Entity) -> void:
 			Sfx.play_any(["combat/skywing_attack", "bite"], position)
 		"jack":
 			Jack.shoot(self, e, dmg)       # (a spinning screw from the drill tip, ground or air)
+		"pendulum":
+			Pendulum.swing(self, e, dmg)   # (the blade through every enemy in the arc in front: scripts/pendulum.gd)
+		"netter":
+			Netter.fire(self, e)           # (the chain net flies; it catches its target where it lands: scripts/netter.gd)
 		"ticking_owl":
 			if e is Building:
 				CwAir.drop_bomb(self, e)       # (the weight falls onto it: the damage is the bomb's, where it lands)
@@ -4959,6 +4982,10 @@ func die() -> void:
 		if sprite:
 			sprite.position = Vector2.ZERO
 	owl_t = -1.0                   # (a Swift killed while turning into an Owl: the price is lost)
+	net_t = 0.0                    # (caught in a net: the net goes with it)
+	if _net_spr:
+		_net_spr.queue_free()
+		_net_spr = null
 	if Defs.cw_roster:
 		CwUnits.on_death(game, self)
 	queue.clear()
@@ -5243,9 +5270,9 @@ func _anim_name() -> String:
 					return _anim_or("dwalk", "walk" if moving else "idle")
 			if phase != "":
 				return "attack"
-		"ornithopter", "clock_soldier":
+		"ornithopter", "clock_soldier", "pendulum", "netter":
 			if phase != "":
-				return "attack"
+				return "attack"          # (the Pendulum's swing, the Netter's recoil)
 		"jack":
 			if not jump.is_empty():
 				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
@@ -5269,7 +5296,10 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
 		"dismounted_armoured": 12.0, "winder": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
-		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0}
+		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
+		# the Pendulum's long strides (90 sheet px a step at 0.284: one 8-frame cycle carries it 51 px, 1.1 s at 46);
+		# the Netter's quick trot (its stubby legs step faster than the ground goes by: as fast as reads)
+		"pendulum": 7.2, "netter": 14.0}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.
@@ -5450,23 +5480,35 @@ func _animate(delta: float) -> void:
 		_rein_on = leader != null
 		_rein.queue_redraw()
 	_bob_t += delta
+	if (d.get("air", false) or _low > 0.0) and not dead:
+		# a flyer caught in a net comes down to the ground (quickly) and rises again once free (scripts/netter.gd); one
+		# killed down there stays down
+		_low = move_toward(_low, 1.0 if net_t > 0.0 else 0.0, delta * (4.0 if net_t > 0.0 else 2.0))
+	if net_t > 0.0 or _net_spr:
+		Netter.update_net(self, delta)
 	if kind == "skywing" and (sky == "landing" or sky == "lifting") and not dead:
 		# coming down to (or rising from) the ground
 		var f := clampf(sky_t / Defs.SKYWING_SWITCH, 0.0, 1.0)
 		sprite.position.y = -20.0 * (f if sky == "landing" else 1.0 - f)
 	elif Defs.FLYER.has(kind):
-		# the Swift and the Owl: the hover, their lunge / dive / bob, the fall when they die (scripts/cw_air.gd)
+		# the Swift and the Owl: the hover, their lunge / dive / bob, the fall when they die (scripts/cw_air.gd); the Swift
+		# pitches nose down into its peck, turned about its body
 		sprite.position = CwAir.sprite_offset(self)
+		var tl := CwAir.sprite_tilt(self)
+		sprite.rotation = tl
+		if tl != 0.0:
+			var bc := Vector2(0.0, float(Defs.FLYER[kind]["lift"]) - float(Defs.FLYER[kind]["centre"]))
+			sprite.position += bc - bc.rotated(tl)
 		if dead:
 			if CwAir.falling(self):
 				queue_redraw()       # (its shadow fades as it comes down)
 			else:
 				z_index = -1         # (on the ground now: a wreck under the living)
-	elif is_air():
-		# flyers hover above their shadow and drop to the ground when they die
-		sprite.position.y = lerpf(sprite.position.y, 0.0, delta * 3.0) if dead else -20.0 + sin(_bob_t * 4.0) * 2.5
+	elif d.get("air", false):
+		# flyers hover above their shadow and drop to the ground when they die (or while a net holds them down: _low)
+		sprite.position.y = lerpf(sprite.position.y, 0.0, delta * 3.0) if dead else (-20.0 + sin(_bob_t * 4.0) * 2.5) * (1.0 - _low)
 		if kind == "balloon" and not dead:
-			sprite.position.y += _descend * 14.0     # down low to take men on or let them off
+			sprite.position.y += _descend * 14.0 * (1.0 - _low)     # down low to take men on or let them off
 	elif anim == "bandage":
 		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
 	elif anim == "mount" and work == "mounting" and is_instance_valid(order_target):

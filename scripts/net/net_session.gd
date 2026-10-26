@@ -109,6 +109,19 @@ func note_shot(s: Shot, kind: String, a: Vector2, b: Vector2, spd: float) -> voi
 		fx.append(["s", kind, a, b, spd, s.face_offset, s.scale.x, s.impact, s.impact_scale, s.arc])
 
 
+## A Ticking Owl let its weight go (CwAir.drop_bomb): the guest sees it fall and burst (the host's bomb does the damage).
+func note_bomb(b: OwlBomb) -> void:
+	if fx.size() < FX_MAX:
+		fx.append(["b", "", b.from, b.to, b.ground_from, b.duration])
+
+
+## A Netter's net left the muzzle (Netter.fire): the guest sees it fly at its copy of the target (the host's net catches).
+func note_net(cn: ChainNet) -> void:
+	if fx.size() < FX_MAX and cn.target != null and is_instance_valid(cn.target):
+		assign(cn.target)
+		fx.append(["n", "", cn.from, cn.target.net_id, cn.speed])
+
+
 ## Guest: play what the host saw happen since the last snapshot.
 func play_fx(list: Array) -> void:
 	for f in list:
@@ -117,6 +130,26 @@ func play_fx(list: Array) -> void:
 			continue
 		if f[0] == "e":
 			game.spawn_effect(String(f[1]), p, float(f[3]))
+		elif f[0] == "b":
+			var ob := OwlBomb.new()       # (the falling weight, as a picture: it bursts where it lands)
+			ob.game = game
+			ob.view = true
+			ob.from = p
+			ob.to = f[3]
+			ob.ground_from = f[4]
+			ob.duration = float(f[5])
+			game.add_child(ob)
+		elif f[0] == "n":
+			var tg = by_id.get(int(f[3]))
+			if not is_instance_valid(tg) or not (tg is Unit):
+				continue
+			var cn := ChainNet.new()      # (the net in flight, as a picture: the host's catches)
+			cn.game = game
+			cn.view = true
+			cn.from = p
+			cn.target = tg
+			cn.speed = float(f[4])
+			game.add_child(cn)
 		else:
 			var s := Shot.new()
 			s.face_offset = float(f[5])

@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.23", "items": [
+		"CLOCKWORK TIER 3 (gear mode): two new units from the MOVEMENT WORKS once an Escapement works, both paid in cogs and Tension. The PENDULUM (200 cogs + 75 Tension, 4 supply, 340 hp, 2 armour, slow), a tall clock tower on long legs, swings its pendulum blade through EVERY enemy on the ground in the wide arc in front of it (22 damage to each, a swing about every 2.6 s); it never hits its own side and cannot reach flyers. It is made only while the Works runs on its BIG gear (swap the gear on the Works' card): on the small gear its button says why, and a Works making a Pendulum cannot go back to the small gear until it is done or cancelled. The NETTER (125 cogs + 50 Tension, 2 supply, 120 hp, weak) fires a weighted chain NET from its spring cannon at ONE enemy up to 180 away: the net flies where you can see it, and the enemy it catches cannot move or fight for 4 s; a flyer it catches comes down to the ground for that time, where anything can hit it. One net about every 15 s; by itself it nets the most dangerous enemy in reach that is not caught already (right-click one to choose). The CLOCKWORK LAB starts with its Movement Works on the big gear, two Pendulums and two Netters; the SANDBOX's CLOCK tab spawns them. The Clockwork computer puts one Works on its big gear once it has an Escapement and adds a few Pendulums and Netters to its army.",
+		"CLOCKWORK AIR, smoothed: a Swift or a Ticking Owl that is shot down no longer drifts sideways while it spins; the Swift's peck now dips its beak into the blow, nose down, and holds it there a moment (re-timed from its flight frames). ONLINE: the guest now sees the Owl's bomb fall, not only burst, and the progress bar of a Swift's MORPH TO OWL.",
+	]},
 	{"v": "0.14.22", "items": [
 		"FIX: the Crown Mortar's DEPLOY / PACK button showed the Clockwork's tesla tripod; it now shows the Mortar with the Crown's red limber arrow.",
 	]},

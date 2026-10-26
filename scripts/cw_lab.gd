@@ -3,8 +3,8 @@ extends RefCounted
 ## The CLOCKWORK LAB (EDITOR menu): the human Clockwork starts with plenty of cogs and, in gear mode (the default), the
 ## GEAR FIELD on show: the Clocktower on its big ring with two Cog Presses and a Mainspring meshing round it, Winders
 ## working them, a Ratchet Turret, the Escapement meshing with the Mainspring and three Jacks (tier 2), the Clock Aviary
-## (internal kind cuckoo_house), three Swifts and a Ticking Owl (TICKING OWL researched), the camera on it,
-## and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
+## (internal kind cuckoo_house), three Swifts and a Ticking Owl (TICKING OWL researched), tier 3 (the Movement Works on its BIG
+## gear, two Pendulums and two Netters), the camera on it, and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
 ## a Rail Yard, Assembly Works, Engine Hall, Boiler and Pylon beside it.) A hint line says what to try.
 ## Also holds the Line helpers the cw tests share (run_from_hall, beside).
 
@@ -51,6 +51,8 @@ const SOLDIERS := 4
 const JACKS := 3
 const SWIFTS := 3
 const OWLS := 1
+const PENDULUMS := 2
+const NETTERS := 2
 
 
 static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
@@ -78,14 +80,23 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 			angles = ESC_ANGLES if k == Defs.CW_TECH else angles
 		for deg in angles:
 			var c := _ring_spot(game, t, k, around, float(deg)) if around == hall else GearNet.ring_spot(game, t, k, around, float(deg), true)
+			var big := false
+			if k == Defs.CW_WORKS:
+				# tier 3: the Works on its BIG gear (the Pendulum is made only there), its bigger ring meshing with the
+				# Clocktower's (else on its small gear where that fits)
+				var cb := _big_ring_spot(game, t, k, around, float(deg))
+				if cb.x >= 0:
+					c = cb
+					big = true
 			if c.x >= 0:
 				var b := game._add_building(k, t, c, true)
+				b.gear_big = big
 				put.append(b)
 				game.gear_net.solve()
 				break
-	# room in the supply for the Jacks (2 each) and the flyers (Swifts 2, the Owl 4): three more Regulators, linked, wherever
-	# they fit
-	for i in 4:
+	# room in the supply for the Jacks (2 each), the flyers (Swifts 2, the Owl 4) and tier 3 (Pendulums 4, Netters 2): five
+	# more Regulators, linked, wherever they fit
+	for i in 5:
 		var rs := game.find_spot(t, Defs.CW_SUPPLY, hall, 3, 24, "near")
 		if rs.x >= 0:
 			game._add_building(Defs.CW_SUPPLY, t, rs, true)
@@ -121,6 +132,13 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 	for i in JACKS:
 		var jp := game.on_map(at + Vector2((float(i) - (JACKS - 1) * 0.5) * 40.0, 44.0))
 		game._add_unit(Defs.JACK, t, game.cell_center(game.nearest_free(game.cell_of(jp), 4)) if not game.is_free(game.cell_of(jp)) else jp)
+	# tier 3: the Pendulums at the ends of the soldiers' rank, the Netters behind the Jacks
+	for i in PENDULUMS:
+		var pp := game.on_map(at + Vector2((-1.0 if i % 2 == 0 else 1.0) * (SOLDIERS * 18.0 + 40.0), 20.0 + 50.0 * float(i / 2)))
+		game._add_unit(Defs.PENDULUM, t, game.cell_center(game.nearest_free(game.cell_of(pp), 4)) if not game.is_free(game.cell_of(pp)) else pp).cmd_stop()
+	for i in NETTERS:
+		var np := game.on_map(at + Vector2((float(i) - (NETTERS - 1) * 0.5) * 60.0, 92.0))
+		game._add_unit(Defs.NETTER, t, game.cell_center(game.nearest_free(game.cell_of(np), 4)) if not game.is_free(game.cell_of(np)) else np).cmd_stop()
 	# the air: TICKING OWL researched; the Swifts and the Owl
 	game.players[t]["tech"]["owl_morph"] = true
 	# (over the Clocktower's ring, up right, where the Lab's first view shows them clear of the soldiers and the hint: a little
@@ -133,6 +151,21 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 	for i in OWLS:
 		var ou: Unit = game._add_unit(Defs.OWL, t, game.on_map(sky + Vector2(-60.0 + 60.0 * float(i), 70.0)))
 		ou.cmd_stop()
+	# and room left in the supply to train more at once (a Pendulum takes 4): more Regulators while fewer than 12 are free
+	# (the big-gear Works' ring crowds the plateau: when no open spot is left, one against the plateau's cliffs or the map's
+	# edge that leaves every route open, find_spot's tight ground mode)
+	for i in 6:
+		game._recount_supply(t)
+		if game.supply_used(t) + 12 <= int(game.players[t]["cap"]) or int(game.players[t]["cap"]) >= game.max_supply(t):
+			break
+		var rs := game.find_spot(t, Defs.CW_SUPPLY, hall, 3, 26, "near")
+		if rs.x < 0:
+			rs = game.find_spot(t, Defs.CW_SUPPLY, hall, 3, 26, "near", true)
+		if rs.x < 0:
+			break
+		game._add_building(Defs.CW_SUPPLY, t, rs, true)
+		game.gear_net.solve()
+	game._recount_supply(t)
 	if game.camera:
 		game.camera.position = hall.center() + Vector2(0, 30)
 		game.camera.zoom = Vector2(1.3, 1.3)
@@ -157,6 +190,36 @@ static func _ring_spot(game: Game, t: int, kind: String, hall: Building, deg: fl
 	return GearNet.ring_spot(game, t, kind, hall, deg)
 
 
+## The cell for `kind` on its BIG gear whose ring meshes with `around`'s nearest to direction `deg` (GearNet.ring_spot for the
+## big ring: within the link gap and no deeper than the overlap; placed as the computer places), or (-1, -1).
+static func _big_ring_spot(game: Game, t: int, kind: String, around: Building, deg: float) -> Vector2i:
+	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var hc := GearNet.b_c(around)
+	var hr := GearNet.b_r(around)
+	var r := GearNet.ring_r(kind, size, true)
+	var want := deg_to_rad(deg)
+	var best := Vector2i(-1, -1)
+	var bs := INF
+	var h0 := game.cell_of(around.center())
+	for y in range(h0.y - 16, h0.y + 17):
+		for x in range(h0.x - 16, h0.x + 17):
+			var c := Vector2i(x, y)
+			if not game.in_map(c):
+				continue
+			var gp := GearNet.gpos(Vector2(c) * Defs.TILE + Vector2(size) * Defs.TILE * 0.5)
+			var gap := gp.distance_to(hc) - hr - r
+			if gap < -float(Defs.GEAR["overlap"]) * Defs.TILE or gap > float(Defs.GEAR["slack"]) * Defs.TILE:
+				continue
+			var score := absf(gap) + (0.0 if absf(gap) <= float(Defs.GEAR["mesh_tol"]) else 12.0) + absf(angle_difference(want, (gp - hc).angle())) * 60.0
+			if score >= bs:
+				continue
+			if game.placement_problem(t, kind, c, true) != "" or game.gear_net.candidate(t, kind, c, true)["state"] != "ok" or not game.margin_free(c, size):
+				continue
+			best = c
+			bs = score
+	return best
+
+
 static func _hint(game: Game) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 40
@@ -167,7 +230,8 @@ static func _hint(game: Game) -> void:
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	l.add_theme_constant_override("outline_size", 4)
 	l.position = Vector2(14, 62)
-	l.custom_minimum_size = Vector2(520, 0)       # (wide enough that the whole hint stays above the minimap)
+	# (wide enough that the whole hint stays above the minimap and the control-group bar, clear of the sandbox panel)
+	l.custom_minimum_size = Vector2(640, 0)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layer.add_child(l)
 	game.add_child(layer)
@@ -175,7 +239,7 @@ static func _hint(game: Game) -> void:
 
 static func hint_text() -> String:
 	if Defs.gear_mode:
-		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. TIER 2: the ESCAPEMENT meshes with the Mainspring (a building that uses Tension must, or it shows NEEDS MAINSPRING); it unlocks the JACK (cogs and Tension), which hops, shoots screws at ground and air and can JUMP (E, then tap a spot: flat or down any time, UP a cliff after HIGH LEAP, researched at the Escapement, where you can see). THE AIR: the CLOCK AVIARY (it needs a working Escapement) makes SWIFTS, fast flyers that peck other flyers; TICKING OWL is researched there, then a Swift's MORPH TO OWL rebuilds it into a Ticking Owl that swoops on units and bombs buildings (it cannot hit flyers). Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
+		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED); an idler cog fills a small gap between two rings. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The Movement Works trains the army, the Regulator adds supply, the Ratchet Turret shoots at ground and air. TIER 2: the ESCAPEMENT must mesh with the Mainspring (every Tension user must, or it shows NEEDS MAINSPRING); it unlocks the JACK, which hops, shoots at ground and air and can JUMP (E, then tap a spot; up a cliff you can see only after HIGH LEAP, researched at the Escapement). THE AIR: the CLOCK AVIARY makes SWIFTS, fast flyers that peck other flyers; once TICKING OWL is researched there, a Swift's MORPH TO OWL turns it into a Ticking Owl that swoops on units and bombs buildings. TIER 3: PENDULUMS (only from a Movement Works on its BIG gear, as here; a Works' gear is swapped on its card) cut every enemy in the arc in front of them; a NETTER's chain net stops one enemy for 4 s and brings a flyer down. New buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
 	return Loc.t("CLOCKWORK LAB: open SANDBOX, tab CLOCK, to spawn the new units (rail vehicles land on the Line). The Rail Yard and Assembly Works train them too. The enemy never attacks.")
 
 

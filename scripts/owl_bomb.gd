@@ -4,8 +4,11 @@ extends Node2D
 ## (`from`, in the air) onto the impact point (`to`, on the ground), tumbling with its red light pulsing
 ## (assets/effects/owl_bomb.png, 4 frames), faster as it comes down; its shadow slides along the ground under it and darkens.
 ## Where it lands it bursts (Game.owl_bomb_land: the damage, the explosion assets/effects/owl_blast.png).
+## On an online guest the host's drop arrives as an effect row (NetSession.note_bomb / play_fx) and this node falls as a
+## picture only (`view`): it bursts where it lands, the damage is the host's.
 
 var game: Game
+var view := false                # (an online guest) only the picture: the burst, no damage
 var from := Vector2.ZERO         # where it was let go (world px, as drawn in the air)
 var to := Vector2.ZERO           # the impact point (on the ground)
 var ground_from := Vector2.ZERO  # the ground point under `from`
@@ -49,6 +52,13 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 	if f >= 1.0 and not landed:
 		landed = true
+		if view:
+			# (an online guest: the burst where it lands; the host's bomb did the damage)
+			var fx := game.spawn_effect("owl_blast" if ArtData.EFFECTS.has("owl_blast") else "explosion", to, 1.0)
+			fx.z_index = 6
+			Sfx.play_any(["combat/owl_bomb", "combat/mortar_hit", "combat/cannon_hit", "boom"], to)
+			queue_free()
+			return
 		if not is_instance_valid(shooter):
 			shooter = null       # (the Owl is gone from the game: removed, not just dead)
 		game.owl_bomb_land(to, damage, team, shooter)

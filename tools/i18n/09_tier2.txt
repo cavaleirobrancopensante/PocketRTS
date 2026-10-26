@@ -29,10 +29,6 @@ es SALTO ALTO
 pt Uma mola mais firme: todo Boneco de Mola pode SALTAR PARA CIMA num terreno alto também (só onde você vê).
 es Un resorte más firme: todo Muñeco de Resorte puede SALTAR HACIA ARRIBA a terreno alto también (solo donde ves).
 
-> The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks once an Escapement works. Must stay linked to the gear field.
-pt O quartel do Mecanismo: um longo salão que monta Soldados-Relógio numa linha suspensa, e Bonecos de Mola quando um Escape funciona. Precisa continuar ligada ao campo de engrenagens.
-es El cuartel del Mecanismo: una larga nave que monta Soldados Reloj en una línea colgante, y Muñecos de Resorte cuando funciona un Escape. Debe seguir enlazado al campo de engranajes.
-
 > Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (up to 3). Must stay linked to the gear field. Tension pays for the Jack and the Escapement's research; a building that uses Tension (the Escapement) must mesh its ring with a Mainspring's.
 pt Enrola TENSÃO, o segundo recurso do Mecanismo: um pouco sozinha, mais para cada Enrolador que gira a manivela (até 3). Precisa continuar ligada ao campo de engrenagens. A Tensão paga o Boneco de Mola e a pesquisa do Escape; uma construção que usa Tensão (o Escape) precisa engrenar seu anel com o de uma Mola Real.
 es Da cuerda a la TENSIÓN, el segundo recurso del Mecanismo: un poco por sí solo, más por cada Dador de cuerda que gira su manivela (hasta 3). Debe seguir enlazado al campo de engranajes. La Tensión paga el Muñeco de Resorte y la investigación del Escape; un edificio que usa Tensión (el Escape) debe engranar su anillo con el de un Muelle Real.
