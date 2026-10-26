@@ -82,6 +82,13 @@ def fg(a):
     return np.abs(a - NAVY).sum(-1) > 45
 
 
+def solid(a):
+    """the painted figure: clear of the navy, plus the dark paint it encloses (the importer, tools/import_tier3.py,
+    keeps enclosed pixels that are not the navy itself: they must not become holes here)"""
+    m = fg(a)
+    return m | (ndi.binary_fill_holes(m) & (np.abs(a - NAVY).sum(-1) >= 12))
+
+
 def rgba(rgb, m):
     o = np.zeros(rgb.shape[:2] + (4,), np.uint8)
     o[..., :3] = np.clip(rgb, 0, 255)
@@ -125,7 +132,7 @@ def window(R, src_box=None, off=(0, 0)):
     a0, b0 = max(0, sx0), max(0, sy0)
     a1, b1 = min(SHEET.shape[1], sx0 + (x1 - x0)), min(SHEET.shape[0], sy0 + (y1 - y0))
     W[b0 - sy0:b1 - sy0, a0 - sx0:a1 - sx0] = SHEET[b0:b1, a0:a1]
-    M = fg(W)
+    M = solid(W)
     if src_box is not None:
         cx0, cy0, cx1, cy1 = src_box
         keep = np.zeros_like(M)
