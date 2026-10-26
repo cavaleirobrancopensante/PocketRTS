@@ -391,15 +391,13 @@ func _connected(a: Vector2i, b: Vector2i) -> bool:
 ## solid: 0 open, 1 terrain, 2 building, 3 gate, 4 wall (paths run through gates; only
 ## units of the gate's side and its allies can actually step on one).
 func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
+	_unknown_dirty = true                 # (what each player knows stands where: worked out again)
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
 			if in_map(cc):
 				solid[idx(cc)] = v
-				if v != 0 and _deco_at.has(idx(cc)):
-					# a building (wall, field...) goes up over a decoration: it's gone
-					for s in _deco_at[idx(cc)]:
-						s.visible = false
+				# (a building going up over a decoration hides it: _solidify, _cover_decos)
 				_region_dirty = true
 				if astar.region.size != Vector2i.ZERO:
 					astar.set_point_solid(cc, v != 0 and v != 3 and v != 5)
@@ -2840,6 +2838,7 @@ func _solidify(b: Building, keep: Array = []) -> void:
 		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
 	for fc in Building.field_cells(k):
 		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows: men walk them, nothing is built on them
+	_cover_decos(b)
 	if Defs.BUILDINGS[k].get("line", false):
 		_orient_gates(c)
 		relink_walls(c)
@@ -2907,8 +2906,11 @@ func site_blockers(b: Building) -> Array:
 	return out
 
 
-## A ghost's cells still free to build on (no terrain or building has come there since).
+## A ghost's cells still free to build on (no terrain or building has come there since, nor
+## one its player hadn't seen when it ordered it: there is no black fog to stop that order).
 func site_cells_free(b: Building) -> bool:
+	if line_net.blocks(b.cell, b.size):
+		return false
 	for y in b.size.y:
 		for x in b.size.x:
 			var cc := b.cell + Vector2i(x, y)
@@ -4329,7 +4331,9 @@ func sweep_ghosts(quick := false) -> void:
 		if last is Vector2 and (last as Vector2).distance_to(coming.position) < 6.0 \
 				and b.edge_distance(coming.position) > coming.radius + 24.0 \
 				and not coming._walk_reaches_point(approach_point(b, coming.position)):
-			site_failed(b, "unreachable")       # (its worker goes on to its next order)
+			# (its worker goes on to its next order; a site planned over a building its player
+			# hadn't seen, which he can't get into: blocked)
+			site_failed(b, "unreachable" if site_cells_free(b) else "blocked")
 	_crown_orphan = orphans
 
 
@@ -4399,11 +4403,16 @@ func requirement_text(t: int, k: String) -> String:
 	return ""
 
 
-## "" if the building can go at this cell, else the reason. ai: skip the fog check.
+## "" if the building can go at this cell, else the reason. ai: the computer's rules (it
+## keeps its ramps clear, and sees the map as it is). Anywhere on the map will do, seen or not;
+## a player who plans by sight (you) isn't stopped by an enemy building it has never seen:
+## the worker finds the spot blocked when he gets there (_plans_by_sight).
 func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_checked := false) -> String:
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
-	if line_net.blocks(c, size):
+	var by_sight := not ai and _plans_by_sight(t)
+	if _pipe_in_way(t, c, size, by_sight):
 		return "A pipe is in the way."
+	var unk: PackedByteArray = _unknown_grid(t) if by_sight else _EMPTY
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
@@ -4414,12 +4423,11 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 					continue     # a gate can replace a piece of your own wall
 				if k == "wall" and in_map(cc) and _own_gate_at(t, cc) != null:
 					continue     # and a wall piece a gate of yours (place_line: a single piece only)
-				return "Blocked."
+				if unk.is_empty() or not in_map(cc) or unk[idx(cc)] == 0:
+					return "Blocked."
 			var gh := side_ghost_at(t, cc)
 			if gh != null and not (gh.team == t and ((k == "gate" and gh.kind == "wall") or (k == "wall" and gh.kind == "gate"))):
 				return "Blocked: a building is planned there."
-			if not ai and t == human and not demo and explored[idx(cc)] == 0:
-				return "Unexplored."
 			if needs_swamp(k) and swamp[t][idx(cc)] == 0:
 				return "Brood structures must grow on your swamp."
 			# the computer keeps its ramps clear (for its own wall and its army)
@@ -4460,6 +4468,21 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			if not near:
 				return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
 	return ""
+
+
+## A pipe of the Line under a building at c (shelved: Defs.line_mode). By sight: another
+## side's pipes only where t sees them now (they aren't drawn under the fog).
+func _pipe_in_way(t: int, c: Vector2i, size: Vector2i, by_sight: bool) -> bool:
+	if not line_net.blocks(c, size):
+		return false
+	if not by_sight:
+		return true
+	for y in size.y:
+		for x in size.x:
+			var s: PipeSeg = line_net.seg_at(c + Vector2i(x, y))
+			if s != null and (allied(s.team, t) or is_visible_to(t, s.center())):
+				return true
+	return false
 
 
 var _gear_relax := false             # the starting layout may skip the gear rule when no linked spot is found
@@ -4818,13 +4841,15 @@ func _update_swamp() -> void:
 					g[i] = 1
 					swamp_dirty = true
 		swamp[t] = g
+	_swamp_any = _all_swamp()
 	_update_conn()
 	swamp_layer.queue_redraw()
 	swamp_layer_b.queue_redraw()
 	_swamp_minimap()
 
 
-## One small picture of every Brood swamp, drawn on the minimap for everyone.
+## One small picture of every Brood swamp, drawn on the minimap for everyone (another side's
+## only where your side has looked: _known_ground).
 func _swamp_minimap() -> void:
 	if swamp_img == null:
 		swamp_img = Image.create(W, H, false, Image.FORMAT_RGBA8)
@@ -4835,8 +4860,10 @@ func _swamp_minimap() -> void:
 		var g: PackedByteArray = swamp[t]
 		var col := team_colour(t).lerp(Color(0.32, 0.22, 0.38), 0.6)
 		col.a = 0.85
+		var known: PackedByteArray = _EMPTY if allied(t, fog_team()) else _known_ground()
+		var hide := known.size() == W * H
 		for i in W * H:
-			if g[i] == 1:
+			if g[i] == 1 and (not hide or known[i] == 1):
 				swamp_img.set_pixel(i % W, i / W, col)
 	if swamp_tex == null:
 		swamp_tex = ImageTexture.create_from_image(swamp_img)
@@ -4917,11 +4944,14 @@ func _draw_swamp(team: int) -> void:
 	var t: Texture2D = tex("res://assets/tiles/swamp.png")
 	var g: PackedByteArray = swamp[team]
 	# not on cliffs or ramps: the swamp hid the hillsides and slopes (the ground there
-	# still counts as swamp; it just isn't painted over)
+	# still counts as swamp; it just isn't painted over); another side's only where your
+	# side has looked (_known_ground: it would give its base away under the grey fog)
+	var known: PackedByteArray = _EMPTY if allied(team, fog_team()) else _known_ground()
+	var hide := known.size() == W * H
 	var sh := PackedByteArray()
 	sh.resize(W * H)
 	for j in W * H:
-		sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 else 0
+		sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 and (not hide or known[j] == 1) else 0
 	for i in W * H:
 		if sh[i] == 1:
 			var x := i % W
@@ -5983,6 +6013,7 @@ func torn_fx(p: Vector2) -> void:
 	e.scale = Vector2(0.55, 0.42)
 	e.modulate = Color(0.58, 0.42, 0.34, 0.95)
 	e.z_index = 3
+	e.visible = ground_seen(p)          # (a body torn up where your side has never looked: unseen)
 	add_child(e)
 
 
@@ -6915,6 +6946,12 @@ func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> E
 	e.setup(name, speed, looping)
 	e.position = p
 	e.z_index = 3
+	if not ground_seen(p):
+		# (ground your side has never looked at: what happens there stays out of sight, as
+		# under the old black fog; a lasting one shows once that ground is seen, _show_waiting)
+		e.visible = false
+		if looping:
+			_fx_hidden.append(e)
 	add_child(e)
 	return e
 
@@ -6959,19 +6996,33 @@ func _reveal(t: int, c: Vector2i, r: int) -> void:
 		_explore(t, c, r, low)
 
 
-## Demo: what this player has explored, for when the spectator looks through its eyes
-## (the same cells _reveal / _reveal_air just lit).
+## Demo: what this player's side has explored, for when the spectator looks through its
+## eyes (the same cells _reveal / _reveal_air just lit). One map per side, kept in the slot of
+## the side's first player (side_slot): nothing to merge when it's looked at.
 func _explore(t: int, c: Vector2i, r: int, low: bool) -> void:
-	var ex: PackedByteArray = explored_by[t]
-	explored_by[t] = _EMPTY
+	var s := side_slot(t)
+	var ex: PackedByteArray = explored_by[s]
+	explored_by[s] = _EMPTY
+	var sw := _swamp_any
+	var watch := sw.size() == W * H and view_team >= 0 and allied(t, view_team)
 	for o in _disk(r):
 		var cc: Vector2i = c + o
 		if cc.x >= 0 and cc.y >= 0 and cc.x < W and cc.y < H:
 			var i := cc.y * W + cc.x
 			if low and height[i] == 1 and o.length_squared() > 2:
 				continue
+			if watch and ex[i] == 0 and sw[i] == 1:
+				_swamp_seen = true
 			ex[i] = 1
-	explored_by[t] = ex
+	explored_by[s] = ex
+
+
+## The player whose explored_by slot holds this player's side's map (the side's first).
+func side_slot(t: int) -> int:
+	for o in n_players():
+		if allied(o, t):
+			return o
+	return t
 
 
 ## The cells of a disk of radius r as (dx, dy, far) triples; far = 1 beyond the cells
@@ -6979,7 +7030,8 @@ func _explore(t: int, c: Vector2i, r: int, low: bool) -> void:
 var _disk_ofs := {}
 
 
-## Mark a disk of cells seen in the team's and its side's grid (and explored, on your side).
+## Mark a disk of cells seen in the team's and its side's grid (and explored, on your side:
+## the ground your side has ever looked at, where another side's swamp and the like may show).
 ## Seen from low ground, high ground is hidden beyond the next cells. (The disk as flat
 ## int offsets, and no bounds tests when it lies inside the map: this runs for every unit
 ## and building four times a second.)
@@ -6997,8 +7049,7 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 	var k := 0
 	var w := W
 	var h := H
-	var fog_on := mine and _fog_base.size() == w * h * 2
-	var mode := _fog_mode if fog_on else 0
+	var mode := _fog_mode if mine and _fog_base.size() == w * h * 2 else 0
 	# (the fog picture being cut is taken out of its member while it's written: see above)
 	var fw: PackedByteArray = _EMPTY
 	if mode == 1:
@@ -7009,6 +7060,9 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 		_fog_w = _EMPTY
 	var ex := explored
 	explored = _EMPTY
+	var sw := _swamp_any
+	var swn := sw.size() == w * h
+	var new_swamp := false
 	while k < n:
 		var x := c.x + d[k]
 		var y := c.y + d[k + 1]
@@ -7020,34 +7074,35 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 				if mine:
 					if ex[i] == 0:
 						ex[i] = 1
-						if fog_on:
-							_fog_base[i * 2 + 1] = FOG_EXPLORED
-							if mode == 1:
-								fw[i * 2 + 1] = FOG_EXPLORED
-							else:
-								_fog_bld[i * 2 + 1] = FOG_EXPLORED
+						if swn and sw[i] == 1:
+							new_swamp = true
 					if mode != 0:
 						fw[i * 2 + 1] = 0
 		k += 3
 	explored = ex
+	if new_swamp:
+		_swamp_seen = true       # (swamp looked at for the first time: drawn under the fog from now on)
 	if mode == 1:
 		_fog_bld = fw
 	elif mode == 2:
 		_fog_w = fw
 
 
-## Your fog picture (LA8: alpha 250 unexplored, 140 explored, 0 seen), kept up as it's seen
-## instead of worked out cell by cell four times a second: _fog_base is the explored map,
-## _fog_bld that with what the buildings see cut out (made again when they change), _fog_w
-## this update's (with what the units see cut out as they're stamped). Watching computers
-## play, the picture is still worked out cell by cell (it's whose eyes the spectator picks).
-const FOG_EXPLORED := 140
-const FOG_UNSEEN := 250
+## Your fog picture (LA8: alpha FOG_GREY where your side doesn't see now, 0 where it does).
+## One grey only, as in StarCraft 2: the whole map's ground (cliffs, ramps, water, trees, rocks,
+## the resource spots) is known from the start and shows under it; what an enemy has put there
+## shows once seen (buildings, remembered as last seen) or only while seen (units). Kept up as
+## it's seen instead of worked out cell by cell four times a second: _fog_base is the plain
+## grey, _fog_bld that with what the buildings see cut out (made again when they change), _fog_w
+## this update's (with what the units see cut out as they're stamped). Watching computers play,
+## the picture is still worked out cell by cell (it's whose eyes the spectator picks).
+const FOG_GREY := 140
 var _fog_base := PackedByteArray()
 var _fog_bld := PackedByteArray()
 var _fog_w := PackedByteArray()
+var _fog_shown := PackedByteArray()      # the picture last sent to fog_tex (the same again: not sent)
 var _fog_mode := 0                       # what _stamp also cuts the seen cells out of: 1 _fog_bld, 2 _fog_w
-var fog_base_dirty := true               # explored was changed outside _stamp (a load, the sandbox)
+var fog_base_dirty := true               # explored or whose side you are changed outside _stamp (a load, the sandbox)
 
 
 func _rebuild_fog_base() -> void:
@@ -7056,7 +7111,7 @@ func _rebuild_fog_base() -> void:
 	var fb := PackedByteArray()
 	fb.resize(n * 2)
 	for i in n:
-		fb[i * 2 + 1] = FOG_EXPLORED if explored[i] == 1 else FOG_UNSEEN
+		fb[i * 2 + 1] = FOG_GREY
 	_fog_base = fb
 	_fog_bld = fb.duplicate()
 	_bvis_key = PackedInt64Array()        # (the buildings' sight is cut out again)
@@ -7118,10 +7173,14 @@ func _building_vis() -> void:
 func _update_vis() -> void:
 	var _z := Time.get_ticks_usec()
 	var fast := not demo
+	if fog_base_dirty:
+		_swamp_seen = true                # (what was explored changed from outside: the swamp under the fog too)
+		_unknown_dirty = true
 	if fast and (fog_base_dirty or _fog_base.size() != W * H * 2):
 		_rebuild_fog_base()
 	elif not fast:
 		_fog_base = PackedByteArray()
+		fog_base_dirty = false
 	_building_vis()
 	Prof.add("game/fog/buildings", _z)
 	_z = Time.get_ticks_usec()
@@ -7156,14 +7215,18 @@ func _update_vis() -> void:
 	# what your side sees (the explored map was marked as it was seen)
 	var hv: PackedByteArray = (_side_vis[sides[human]] as PackedByteArray).duplicate()
 	_human_vis = hv
-	if demo:
+	if demo or (net != null and not puppet):
 		# enemy buildings stay on screen once spotted: remember who has spotted each one
+		# (watching computers: for whose eyes the spectator picks; online, the host: what each
+		# guest knows stands there, knows_building)
 		for b in buildings:
 			if not b.dead and not b.ghost:
 				var bi := idx(cell_of(b.rect().get_center()))
 				for t in n_players():
-					if vis[t][bi] == 1:
+					if vis[t][bi] == 1 and (b.seen_mask & (1 << t)) == 0:
 						b.seen_mask |= 1 << t
+						_unknown_dirty = true
+	_swamp_view()
 	if sees_all():
 		fog_sprite.visible = false
 		for u in units:
@@ -7172,32 +7235,33 @@ func _update_vis() -> void:
 			b.visible = true
 		for c in crates:
 			c.visible = true
+		if line_net and line_net.rails:
+			for tr in line_net.rails.trains:
+				if is_instance_valid(tr):
+					tr.visible = true
+		_show_waiting()
 		return
 	fog_sprite.visible = true
 	# whose eyes: yours, or (watching computers) the player the spectator picked, with
-	# everything their side sees and has explored, exactly as you'd see it on that side
+	# everything their side sees, exactly as you'd see it on that side
 	var ft := fog_team()
-	var ex := explored
 	if ft != human:
 		hv = (_side_vis[sides[ft]] as PackedByteArray).duplicate()
-		ex = (explored_by[ft] as PackedByteArray).duplicate()
-		for o in n_players():
-			if o != ft and allied(o, ft):
-				var oe: PackedByteArray = explored_by[o]
-				for i in W * H:
-					if oe[i] == 1:
-						ex[i] = 1
 	Prof.add("game/fog/copy", _z)
 	_z = Time.get_ticks_usec()
 	if fast and ft == human:
-		fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_w)
+		if _fog_w != _fog_shown:
+			_fog_shown = _fog_w
+			fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_w)
+			fog_tex.update(fog_img)
 	else:
 		if _fog_bytes.size() != W * H * 2:
 			_fog_bytes.resize(W * H * 2)
 		for i in W * H:
-			_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else (FOG_EXPLORED if ex[i] == 1 else FOG_UNSEEN)
+			_fog_bytes[i * 2 + 1] = 0 if hv[i] == 1 else FOG_GREY
 		fog_img.set_data(W, H, false, Image.FORMAT_LA8, _fog_bytes)
-	fog_tex.update(fog_img)
+		fog_tex.update(fog_img)
+		_fog_shown = PackedByteArray()
 	Prof.add("game/fog/picture", _z)
 	_z = Time.get_ticks_usec()
 	var side_mask := 0
@@ -7214,6 +7278,10 @@ func _update_vis() -> void:
 			c.visible = hv[idx(cell_of(c.position))] == 1
 		elif demo:
 			c.visible = true
+	if line_net and line_net.rails:
+		for tr in line_net.rails.trains:
+			if is_instance_valid(tr):
+				tr.visible = allied(tr.team, ft) or hv[idx(cell_of(tr.global_position))] == 1     # (the Line's trains: like units)
 	for b in buildings:
 		if not allied(b.team, ft):
 			if b.ghost:
@@ -7226,9 +7294,11 @@ func _update_vis() -> void:
 				var cc := cell_of(b.rect().get_center())
 				if hv[idx(cc)] == 1:
 					b.seen_by_human = true
+					_unknown_dirty = true
 			b.visible = b.seen_by_human
 		elif demo:
 			b.visible = true
+	_show_waiting()
 	Prof.add("game/fog/shown", _z)
 
 
@@ -7247,6 +7317,193 @@ func sees_all() -> bool:
 func refresh_fog() -> void:
 	_vis_t = 0.25
 	_update_vis()
+
+
+## The ground the watching side has looked at at least once (yours; watching computers, the
+## side of the player the spectator looks through), or empty when nothing is hidden. The ground
+## itself is known from the start; this keeps what another side has put on ground you have
+## never looked at out of sight under the grey (its swamp, a puff of smoke: what the old black
+## fog hid there).
+func _known_ground() -> PackedByteArray:
+	if edit_mode or sees_all():
+		return _EMPTY
+	if demo:
+		return explored_by[side_slot(fog_team())]
+	return explored
+
+
+## Has the watching side ever looked at the ground at p? (Effects and missiles where it never
+## has stay hidden: Effect, Shot, Projectile...)
+func ground_seen(p: Vector2) -> bool:
+	var kg := _known_ground()
+	return kg.size() != W * H or kg[idx(cell_of(p))] == 1
+
+
+## A missile or effect from a to b that nobody on the watching side would see: both ends on
+## ground it has never looked at.
+func fx_hidden(a: Vector2, b: Vector2) -> bool:
+	return not ground_seen(a) and not ground_seen(b)
+
+
+## The swamp drawn under the fog (and on the minimap): another side's only where your side has
+## looked (it would give its base away). Redrawn when whose eyes, or what they have seen of
+## it, change.
+var _swamp_any := PackedByteArray()      # every Brood swamp cell, whoever's (_update_swamp)
+var _swamp_seen := false                 # swamp looked at for the first time since the last redraw
+var _swamp_key := Vector3i(-9, -9, -9)
+
+
+func _swamp_view() -> void:
+	var key := Vector3i(fog_team(), int(sees_all()), human)
+	if key != _swamp_key:
+		_swamp_key = key
+		_swamp_seen = true
+	if _swamp_seen and swamp_layer:
+		_swamp_seen = false
+		swamp_layer.queue_redraw()
+		swamp_layer_b.queue_redraw()
+		_swamp_minimap()
+
+
+## Every Brood swamp cell, whoever's (a lone Brood player's own grid, shared).
+func _all_swamp() -> PackedByteArray:
+	var any := PackedByteArray()
+	for t in n_players():
+		if faction_of(t) != "brood":
+			continue
+		if any.is_empty():
+			any = swamp[t]
+			continue
+		var g: PackedByteArray = swamp[t]
+		for i in W * H:
+			if g[i] == 1:
+				any[i] = 1
+	return any
+
+
+## Looping effects that started where the watching side had never looked (spawn_effect), and
+## the walk-through decorations under a building it hasn't seen yet (_cover_decos): shown, or
+## gone, once it does.
+var _fx_hidden: Array = []
+var _deco_wait := {}                     # Building -> the decorations it covers
+
+
+func _show_waiting() -> void:
+	for i in range(_fx_hidden.size() - 1, -1, -1):
+		var e = _fx_hidden[i]
+		if not is_instance_valid(e):
+			_fx_hidden.remove_at(i)
+		elif e.get_parent() != self or ground_seen(e.global_position):
+			e.visible = true             # (seen now; or carried by a building, which shows or hides it)
+			_fx_hidden.remove_at(i)
+	if _deco_wait.is_empty():
+		return
+	for b in _deco_wait.keys():
+		if not is_instance_valid(b) or b.dead:
+			_deco_wait.erase(b)          # (gone before you saw it: the flowers were never trodden flat for you)
+		elif b.visible or sees_all():
+			for s in _deco_wait[b]:
+				if is_instance_valid(s):
+					s.visible = false
+			_deco_wait.erase(b)
+
+
+## A building going up over walk-through decorations hides them; where the watching side
+## hasn't seen it, only once it does (flowers vanishing under the fog would give it away).
+func _cover_decos(b: Building) -> void:
+	if _deco_at.is_empty():
+		return
+	var list: Array = []
+	var cells: Array = []
+	for y in b.size.y:
+		for x in b.size.x:
+			cells.append(b.cell + Vector2i(x, y))
+	for fc in Building.field_cells(b.kind):
+		cells.append(b.cell + fc)
+	for cc in cells:
+		if in_map(cc) and _deco_at.has(idx(cc)):
+			list.append_array(_deco_at[idx(cc)])
+	if list.is_empty():
+		return
+	var ft := fog_team()
+	if edit_mode or sees_all() or allied(b.team, ft) or is_visible_to(ft, b.center()):
+		for s in list:
+			s.visible = false
+	else:
+		_deco_wait[b] = list
+
+
+## Does player t know this building stands there: its own side's, or one its side has seen
+## (an enemy building, once seen, is remembered under the grey fog). Ghost sites of another
+## side are never known.
+func knows_building(t: int, b: Building) -> bool:
+	if allied(b.team, t):
+		return true
+	if b.ghost:
+		return false
+	if t == human and not demo:
+		return b.seen_by_human or reveal
+	for o in n_players():
+		if (b.seen_mask & (1 << o)) != 0 and allied(o, t):
+			return true
+	return false
+
+
+## A player who plans by what it has seen (you, or an online guest; not a computer, nor
+## anyone while the computers play or the fog is lifted): an enemy building it has never seen
+## doesn't stop it ordering a building there; the worker finds the spot blocked when he gets
+## there (try_start_site), as in StarCraft 2.
+func _plans_by_sight(t: int) -> bool:
+	if demo or reveal or t < 0:
+		return false
+	if t == human:
+		return true
+	if net != null and not puppet:
+		for pr in net.peer_team:
+			if int(net.peer_team[pr]) == t and not net.lost_peers.has(pr):
+				return true            # (a guest's side; once it has left, a computer plays it)
+	return false
+
+
+## Per player: 1 on the cells taken by a building it doesn't know is there (knows_building).
+## Worked out when asked, again after the ground or what is known changes.
+var _unknown := {}
+var _unknown_dirty := true
+
+
+func _unknown_grid(t: int) -> PackedByteArray:
+	if _unknown_dirty:
+		_unknown_dirty = false
+		_unknown.clear()
+	if not _unknown.has(t):
+		var g := PackedByteArray()
+		g.resize(W * H)
+		g.fill(0)
+		for b in buildings:
+			if b.dead or b.ghost or knows_building(t, b):
+				continue
+			for y in b.size.y:
+				for x in b.size.x:
+					var cc: Vector2i = b.cell + Vector2i(x, y)
+					if in_map(cc):
+						g[idx(cc)] = 1
+			for fc in Building.field_cells(b.kind):
+				var fcc: Vector2i = b.cell + fc
+				if in_map(fcc):
+					g[idx(fcc)] = 1
+		_unknown[t] = g
+	return _unknown[t]
+
+
+## Open ground as far as player t knows: free, or taken only by an enemy building it has never
+## seen (when it plans by sight).
+func looks_free(t: int, c: Vector2i) -> bool:
+	if not in_map(c):
+		return false
+	var v := solid[idx(c)]
+	if v == 0:
+		return true
+	return v != 1 and _plans_by_sight(t) and _unknown_grid(t)[idx(c)] == 1
 
 
 ## A ranged unit on HIGH ground that fires at a target on LOW ground shows itself to the side
@@ -8462,7 +8719,7 @@ func _draw_overlay_all() -> void:
 		for y in size.y:
 			for x in size.x:
 				var cc := c + Vector2i(x, y)
-				var free: bool = is_free(cc) and (demo or explored[idx(cc)] == 1) and (not needs_swamp(k) or swamp[human][idx(cc)] == 1) if in_map(cc) else false
+				var free: bool = looks_free(human, cc) and (not needs_swamp(k) or swamp[human][idx(cc)] == 1) if in_map(cc) else false
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
 		var t: Texture2D = Building.farm_body("built") if k == "farm" else tex("res://assets/buildings/%s_built.png" % k)
 		if Defs.BUILDINGS[k].get("line", false):
