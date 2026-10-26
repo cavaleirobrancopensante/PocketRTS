@@ -48,6 +48,13 @@ var lag_sizes := PackedFloat32Array()     # host: bytes sent in each frame that 
 var lag_seen := PackedFloat32Array()      # guest: ms from an order to the host's ack in a snapshot
 var lag_moved := PackedFloat32Array()     # guest: ms from a move order to the unit 3 px on its way on this screen
 var lag_walk := PackedFloat32Array()      # guest: ms from a move order to the unit walking that way (its walk shown)
+var lag_hostmove := PackedFloat32Array()  # guest: ms from a move order to a snapshot showing the host's unit on its way
+var lag_jumps := 0                        # guest: frames where a probed unit jumped (moved much further than it walks)
+var lag_jump_max := 0.0                   # guest: the biggest such jump (px beyond its walk)
+var lag_own := PackedFloat32Array()       # host: ms from its own move order (given as at the screen) to the unit walking
+var lag_hold := PackedFloat32Array()      # host: how long its own orders were held then (the same delay for both)
+var _hprobe := {}                         # host: its own move order being timed
+var _hprobe_t := 0.0
 var _lag_us := 0
 var _lag_prof := 0
 var _lag_bytes := 0
@@ -193,6 +200,7 @@ func _lag_sample(real: float) -> void:
 		if d > 0 and _lag_bytes > 0:
 			lag_sizes.append(float(b - _lag_bytes))
 		_lag_bytes = b
+		_host_probe_tick(real)
 	else:
 		var s: NetSession = g.net
 		if s.last_ack > _lag_ack:
@@ -220,24 +228,45 @@ func _freeze_tick() -> void:
 	_frozen_at = t + 0.001
 
 
-## Guest: every 3 s a worker of ours is told to walk 200 px; the time until it visibly moves that way here is the
-## input delay a player feels (order out, the host runs it, the snapshot back, the glide starts).
+## Guest: every 2 s or so an idle soldier of ours is told to walk 200 px (group_move, as a click would), and timed until
+## it shows walking here (its walk animation: "walk"), until it is 3 px on its way on this screen ("moved"), until a
+## snapshot carries the host's ack ("ack") and until a snapshot shows the host's own unit on its way ("host"). Every
+## frame of the 2.5 s it is watched, a step much longer than its walk would take is counted as a jump (a snap).
 func _probe_tick(real: float) -> void:
 	_probe_t += real
+	var s = g.net
 	if not _probe.is_empty():
 		var u: Unit = _probe["u"]
 		var ms := (Time.get_ticks_usec() - int(_probe["t0"])) / 1000.0
-		var dir: Vector2 = ((_probe["to"] as Vector2) - (_probe["from"] as Vector2)).normalized()
-		if not is_instance_valid(u) or u.dead or ms > 3000.0:
+		if not is_instance_valid(u) or u.dead:
 			_probe = {}
 			return
+		var dir: Vector2 = _probe["dir"]
+		var from: Vector2 = _probe["from"]
 		if not _probe.has("walk") and u.velocity.dot(dir) > 10.0:
-			_probe["walk"] = true
-			lag_walk.append(ms)
-		if (u.position - (_probe["from"] as Vector2)).dot(dir) > 3.0:
-			lag_moved.append(ms)
-			if not _probe.has("walk"):
-				lag_walk.append(ms)
+			_probe["walk"] = ms
+		if not _probe.has("moved") and (u.position - from).dot(dir) > 3.0:
+			_probe["moved"] = ms
+		if not _probe.has("ack") and int(s.last_ack) >= int(_probe["seq"]):
+			_probe["ack"] = ms
+		var mo = s.motion.get(u.net_id)
+		if not _probe.has("host") and mo != null and ((mo[1] as Vector2) - from).dot(dir) > 3.0:
+			_probe["host"] = ms
+		var step_px := (u.position - (_probe["last"] as Vector2)).length()
+		var allowed := u.speed * maxf(real, 1.0 / 30.0) * 2.0 + 2.0
+		if step_px > allowed:
+			lag_jumps += 1
+			lag_jump_max = maxf(lag_jump_max, step_px - allowed)
+		_probe["last"] = u.position
+		if ms > 2500.0:
+			if _probe.has("walk"):
+				lag_walk.append(float(_probe["walk"]))
+			if _probe.has("moved"):
+				lag_moved.append(float(_probe["moved"]))
+			if _probe.has("host"):
+				lag_hostmove.append(float(_probe["host"]))
+			if OS.get_environment("PROBE_DEBUG") != "":
+				print("PROBE %s walk %s moved %s ack %s host %s" % [u.kind, _probe.get("walk", "-"), _probe.get("moved", "-"), _probe.get("ack", "-"), _probe.get("host", "-")])
 			_probe = {}
 		return
 	if _probe_t < 2.0 or step < 2:
@@ -247,12 +276,42 @@ func _probe_tick(real: float) -> void:
 		if u.velocity.length() < 1.0 and not u.off_field and u.kind != "horse" and not u.is_worker() and u.kind != "cannon" \
 				and not ["build", "move", "amove", "patrol"].has(u.order):
 			var to: Vector2 = u.position + Vector2(200, 0).rotated(randf() * TAU)
-			if not g.in_map(g.cell_of(to)) or not g.is_free(g.cell_of(to)):
+			if not g.in_map(g.cell_of(to)) or not g.is_free(g.cell_of(to)) or not g.line_clear(u.position, to):
 				continue
-			_probe = {"u": u, "from": u.position, "to": to, "t0": Time.get_ticks_usec()}
+			_probe = {"u": u, "from": u.position, "to": to, "dir": (to - u.position).normalized(), "last": u.position, "t0": Time.get_ticks_usec()}
 			g.group_move([u], to, false)
-			if OS.get_environment("PROBE_DEBUG") != "":
-				print("PROBE %s lead=%s off_field=%s work=%s order=%s aboard=%s speed=%.0f" % [u.kind, g.net.get("leads").has(u.net_id) if g.net.get("leads") != null else "-", u.off_field, u.work, u.order, u.aboard, u.speed])
+			_probe["seq"] = int(s.cmd_seq)
+			return
+
+
+## Host: every 3 s one of its own idle soldiers is told to walk 200 px, given as at the screen (Game.input_cmd: with the
+## same delay for both players it is held like a guest's order), and timed until it walks.
+func _host_probe_tick(real: float) -> void:
+	_hprobe_t += real
+	if not _hprobe.is_empty():
+		var u: Unit = _hprobe["u"]
+		var ms := (Time.get_ticks_usec() - int(_hprobe["t0"])) / 1000.0
+		if not is_instance_valid(u) or u.dead or ms > 2000.0:
+			_hprobe = {}
+			return
+		if u.velocity.dot(_hprobe["dir"]) > 10.0:
+			lag_own.append(ms)
+			_hprobe = {}
+		return
+	if _hprobe_t < 3.0 or step < 2 or autoplay:
+		return
+	_hprobe_t = 0.0
+	for u in g.units:
+		if u.team == 0 and not u.dead and u.velocity.length() < 1.0 and not u.is_worker() and u.kind != "horse" and u.kind != "cannon" \
+				and not ["build", "move", "amove", "patrol"].has(u.order):
+			var to: Vector2 = u.position + Vector2(200, 0).rotated(randf() * TAU)
+			if not g.in_map(g.cell_of(to)) or not g.is_free(g.cell_of(to)) or not g.line_clear(u.position, to):
+				continue
+			_hprobe = {"u": u, "dir": (to - u.position).normalized(), "t0": Time.get_ticks_usec()}
+			g.set("input_cmd", true)
+			g.group_move([u], to, false)
+			g.set("input_cmd", false)
+			lag_hold.append(float(g.net.hold_ms()) if g.net.has_method("hold_ms") else 0.0)
 			return
 
 
@@ -282,9 +341,11 @@ func _lag_report() -> void:
 			float(g.net.snap_every), g.net.glide_span(), g.net.ping_shown(), g.net.jitter * 1000.0, g.net.hold_ms()])
 	if role == "host":
 		print("LAG HOST snapshot build+send ms per frame: %s | bytes per snapshot: %s | units %d buildings %d" % [_stats(lag_work), _stats(lag_sizes), g.units.size(), g.buildings.size()])
+		print("LAG HOST own move order -> unit walking ms: %s | held for the same delay ms: %s" % [_stats(lag_own), _stats(lag_hold)])
 	else:
 		print("LAG GUEST snapshot apply ms per frame: %s | ms between snapshot frames: %s" % [_stats(lag_work), _stats(lag_gaps)])
 		print("LAG GUEST order -> ack in a snapshot ms: %s | move order -> unit walking ms: %s | -> 3 px on its way ms: %s" % [_stats(lag_seen), _stats(lag_walk), _stats(lag_moved)])
+		print("LAG GUEST move order -> a snapshot shows the host's unit on its way ms: %s | jumps while watched: %d (biggest %.1f px)" % [_stats(lag_hostmove), lag_jumps, lag_jump_max])
 
 
 # ------------------------------------------------------------------ host
@@ -349,16 +410,30 @@ func _give_guest_soldiers() -> void:
 	for b in g.buildings:
 		if b.team == 1 and b.kind == g.faction_hall(1):
 			hall = b
+		elif b.team == 0 and b.kind == g.faction_hall(0):
+			# the host gets two soldiers of its own (its own orders are timed too: the same delay for both)
+			var hk: String = {"crown": "musketeer", "brood": "raptor", "clockwork": "clock_soldier"}[g.faction_of(0)]
+			for j in 2:
+				var hc := g.nearest_free(g.cell_of(b.center() + Vector2(-40 + j * 80, 130 if b.center().y < Game.H * Game.T * 0.5 else -130)), 8)
+				g._add_unit(hk, 0, g.cell_center(hc))
 	if hall == null:
 		return
 	var f := g.faction_of(1)
 	var kinds: Array = {"crown": ["musketeer", "musketeer", "musketeer", "musketeer", "cannon"], "brood": ["raptor", "raptor", "raptor", "raptor"],
-		"clockwork": ["windup_soldier", "windup_soldier", "windup_soldier", "windup_soldier"]}[f]
+		"clockwork": ["clock_soldier", "clock_soldier", "clock_soldier", "clock_soldier"]}[f]
 	var i := 0
 	for k in kinds:
 		var c := g.nearest_free(g.cell_of(hall.center() + Vector2(-90 + i * 45, 130 if hall.center().y < Game.H * Game.T * 0.5 else -130)), 8)
 		g._add_unit(k, 1, g.cell_center(c))
 		i += 1
+	# and a supply building for them (else the guest's first TRAIN is refused: "Need more supply")
+	var sk := Defs.supply_kind(f)
+	for r in range(6, 16):
+		for a in 24:
+			var sc := hall.cell + Vector2i(Vector2.from_angle(TAU * a / 24.0 + 0.3) * r)
+			if g.in_map(sc) and g.placement_problem(1, sk, sc) == "":
+				g._add_building(sk, 1, sc, true)
+				return
 
 
 func _host_report() -> void:
@@ -511,7 +586,7 @@ func _start_train(s: NetSession) -> void:
 
 func _start_build(s: NetSession) -> void:
 	var f := g.faction_of(g.human)
-	var k: String = Defs.FACTIONS[f]["supply"]
+	var k: String = Defs.supply_kind(f)
 	var hall: Building = base["hall"]
 	var spot := Vector2i(-1, -1)
 	for r in range(5, 14):
