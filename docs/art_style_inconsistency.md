@@ -85,3 +85,6 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 - tools/soldier_guide/rig.py: cut-out RIG. The legs are ChatGPT's painted parts (art/redraws/clock_soldier_parts.png: thigh, knee, shin, foot; front parts for S/N, side parts for the others, feet per direction), scaled and rotated at hip and knee in code; the body comes from the painted idle frame; feet are kept on the ground (automatic bob). Walk result art/redraws/clock_soldier_walk_rig.png/.gif. The same rig can make the attack and death.
 - art/redraws/clock_soldier_walk_mix.png/.gif: the walk used for now. Rows S and SE come from walk_code.py (the painted idle legs bent in place; the parts rig looked wrong from the front: long thin legs that do not match the stubby painted ones), rows E, NE and N from the parts rig (rig.py).
 - tools/soldier_guide/walk_se_fix.py rebuilds the SE row of clock_soldier_walk_mix.png with exact leg boxes (the first split cut each leg in half) and the sword kept with the body.
+
+## Floor plate (2026-10-26)
+- art/clockwork/gear/floor_plate_src.png (ChatGPT, flat top-down): the iron deck with a ball-bearing edge that fills each ring's hole; does not turn; scaled to the hole and squashed with the rings (tools/press_anim/base_demo2.py). Not in the game yet.

@@ -44,9 +44,22 @@ def angles(t):
         phi=info[name][3]; nA=info[par][1]; aA=a[par]
         a[name]=phi+math.pi+(2*math.pi/n)*((phi-aA)*nA/(2*math.pi)-0.5)
     return a
+import numpy as _np
+_pl=Image.open('/home/claude/pocketrts/art/clockwork/gear/floor_plate_src.png').convert('RGB')
+_a=_np.array(_pl).astype(int); _m=_np.abs(_a-_np.array(NAVY)).sum(2)>40; _ys,_xs=_np.nonzero(_m)
+_pl=_pl.crop((_xs.min(),_ys.min(),_xs.max()+1,_ys.max()+1))
+_pm=Image.new('L',_pl.size,0); ImageDraw.Draw(_pm).ellipse((0,0,_pl.width-1,_pl.height-1),fill=255)
+PLATE=_pl.convert('RGBA'); PLATE.putalpha(_pm)
+def hole_r(k):
+    kind,n=info[k][0],info[k][1]; R=R_of(n); m=META[kind]
+    pitch=2*math.pi*R/n; th=pitch*TOOTH.shape[0]/META['tooth']['pitch_px']; rr=R-th
+    return rr*m['r_in']/m['r_root']
 def rings(t):
     a=angles(t)
     c=Image.new('RGBA',(W,Hf),NAVY+(255,))
+    for k in names:
+        d=int(round(2*hole_r(k)+10)); p=PLATE.resize((d,d),Image.LANCZOS)
+        c.alpha_composite(p,(int(round(pos[k][0]+OX-d/2)),int(round(pos[k][1]+OY-d/2))))
     for k in names:
         im=IMG[k].rotate(-math.degrees(a[k]),resample=Image.BICUBIC)
         x,y=pos[k][0]+OX,pos[k][1]+OY
@@ -88,6 +101,6 @@ a=np.array(frames[0]).astype(int); m=np.abs(a-np.array(NAVY)).sum(2)>40; ys,xs=n
 box=(max(xs.min()-10,0),max(ys.min()-10,0),xs.max()+10,ys.max()+10)
 frames=[f.crop(box) for f in frames]
 k=0.8; frames=[f.resize((int(f.width*k),int(f.height*k)),Image.LANCZOS) for f in frames]
-frames[0].save('base3_f0.png')
-frames[0].save('base3.gif',save_all=True,append_images=frames[1:],duration=60,loop=0)
+frames[0].save('base4_f0.png')
+frames[0].save('base4.gif',save_all=True,append_images=frames[1:],duration=60,loop=0)
 print(frames[0].size)
