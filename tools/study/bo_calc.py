@@ -622,7 +622,8 @@ class Sim:
             self.attacks.append({"go": round(self.t, 1), "units": [a["kind"] for a in army], "supply": sup})
             self.note(s, round(self.t, 1))
             return True
-        if s == "drop":
+        if s in ("drop", "drop:hover"):
+            # (hovering, the men stay aboard and fire from the basket: the balloon gets there all the same)
             balloons = [a for a in self.army if a["kind"] == "balloon"]
             muskets = [a for a in self.army if a["kind"] == "musketeer" and not a.get("wave")]
             if not balloons or len(muskets) < 3:

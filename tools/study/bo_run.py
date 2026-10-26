@@ -70,6 +70,10 @@ DUELS = [
     ("brood_spitter_timing", "cw_jack_tech"), ("cw_pendulum_push", "brood_economy"),
     # mirrors
     ("crown_horse_rush", "crown_musket_wall"), ("brood_xrush", "brood_economy"), ("cw_soldier_rush", "cw_jack_tech"),
+    # so that every opening meets at least one opening of another faction
+    ("crown_balloon_raid", "brood_economy"), ("crown_balloon_raid", "cw_jack_tech"), ("crown_dragoon_raid", "brood_economy"),
+    ("brood_spitter_timing", "crown_musket_wall"), ("brood_air", "crown_musket_wall"), ("brood_brute_timing", "crown_musket_wall"),
+    ("cw_owl_harass", "brood_economy"), ("cw_jack_rush", "crown_musket_wall"), ("brood_pool_eco", "cw_jack_tech"),
 ]
 BIG_MAP = [   # (build, foe faction) also played on the big map: the openings whose worth depends on the walk
     ("crown_horse_rush", "brood"), ("crown_balloon_drop", "clockwork"), ("brood_xrush", "crown"), ("brood_pool_eco", "clockwork"),

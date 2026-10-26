@@ -31,6 +31,8 @@ extends AI
 ##   mill:N              Crown: N Labourers on the Powder Mill (else the computer's own rule: 3 while powder is short)
 ##   attack              the army goes now; attack@S: when it has S supply; attack@S|T: or at T seconds at the latest
 ##   drop                Crown: a Balloon takes up to 4 Musketeers and drops them by the enemy's workers
+##   drop:hover          Crown: the same, but the Balloon stays up over the enemy's economy and the Musketeers fire
+##                       from the basket (35% more reach) until their powder runs out or it is badly hurt
 ##   wait:T              wait until T seconds
 ##   end                 the script is over: the ordinary computer plays on
 ## The scripted attack: everything in the army goes (later units follow in pairs or more); Horsemen and Raptors hunt
@@ -291,7 +293,7 @@ func _do(s: String) -> String:
 		return _do_wall(s)
 	if s.begins_with("attack"):
 		return _do_attack(s)
-	if s == "drop":
+	if s == "drop" or s == "drop:hover":
 		return _do_drop(s)
 	if s.begins_with("research:"):
 		return _do_research(s, s.substr(9))
@@ -797,9 +799,34 @@ func _do_drop(s: String) -> String:
 		return "wait"
 	balloon.cmd_stop()
 	game.load_order(men, [balloon])
-	_bdrop = {"b": balloon, "men": men, "phase": "load", "at": at, "t": 0.0, "log": {"load": snappedf(game.clock, 0.1), "men": men.size()}}
+	_bdrop = {"b": balloon, "men": men, "phase": "load", "at": at, "t": 0.0, "hover": s == "drop:hover", "retarget": 0.0,
+		"log": {"load": snappedf(game.clock, 0.1), "men": men.size(), "hover": s == "drop:hover"}}
 	_log(s)
 	return "done"
+
+
+## The shots the men in the basket have left, their own and the balloon's store.
+func _basket_shots(b: Unit) -> float:
+	var n := float(b.powder)
+	for p in b.passengers:
+		if is_instance_valid(p) and not p.dead:
+			n += float(p.powder)
+	return n
+
+
+## A hovering raid is over: the balloon floats home with the men aboard; what it did goes in the log.
+func _hover_over(b: Unit, why: String) -> void:
+	var lg: Dictionary = _bdrop["log"]
+	lg["result"] = why
+	lg["end"] = snappedf(game.clock, 0.1)
+	lg["killed_value"] = int(game.stats[team]["value_killed"]) - int(lg.get("kv0", game.stats[team]["value_killed"]))
+	lg["hp_left"] = snappedf(b.hp / maxf(1.0, b.max_hp), 0.01) if is_instance_valid(b) and not b.dead else 0.0
+	drop_log.append(lg)
+	if is_instance_valid(b) and not b.dead:
+		var hall: Array = _halls()
+		if not hall.is_empty():
+			b.cmd_move(hall[0].center())
+	_bdrop = {}
 
 
 func _drop_tick() -> void:
@@ -812,9 +839,12 @@ func _drop_tick() -> void:
 	if not is_instance_valid(b) or b.dead:
 		lg["result"] = "balloon lost"
 		lg["end"] = snappedf(game.clock, 0.1)
+		if lg.has("kv0"):
+			lg["killed_value"] = int(game.stats[team]["value_killed"]) - int(lg["kv0"])
 		drop_log.append(lg)
 		_bdrop = {}
 		return
+	var hover: bool = bool(_bdrop.get("hover", false))
 	match _bdrop["phase"]:
 		"load":
 			var walking: bool = (_bdrop["men"] as Array).any(func(u: Unit) -> bool: return u.order == "board")
@@ -826,10 +856,44 @@ func _drop_tick() -> void:
 					return
 				lg["fly"] = snappedf(game.clock, 0.1)
 				lg["aboard"] = b.passengers.size()
-				b.cmd_unload(_bdrop["at"])
+				lg["kv0"] = int(game.stats[team]["value_killed"])
+				if hover:
+					b.cmd_move(_bdrop["at"])
+				else:
+					b.cmd_unload(_bdrop["at"])
 				_bdrop["phase"] = "fly"
 				_bdrop["t"] = 0.0
+		"hover":
+			# over the enemy's economy: the basket fires by itself; stay over the workers (the spot is looked for again
+			# now and then: the best economy building away from the enemy's army), home when hurt or out of powder
+			if b.hp < b.max_hp * 0.4:
+				_hover_over(b, "turned back hurt")
+				return
+			if _basket_shots(b) < 1.0:
+				_hover_over(b, "out of powder")
+				return
+			if float(_bdrop["t"]) > 150.0:
+				_hover_over(b, "time up")
+				return
+			_bdrop["retarget"] = float(_bdrop["retarget"]) - _think_dt
+			if float(_bdrop["retarget"]) <= 0.0:
+				_bdrop["retarget"] = 8.0
+				var at2 := _drop_spot()
+				if at2 != Vector2.INF:
+					_bdrop["at"] = at2
+			if b.position.distance_to(_bdrop["at"]) > 40.0 and (b.order != "move" or (b.order_point as Vector2).distance_to(_bdrop["at"]) > 1.0):
+				b.cmd_move(_bdrop["at"])
 		"fly":
+			if hover:
+				if b.position.distance_to(_bdrop["at"]) < 60.0:
+					lg["landed"] = snappedf(game.clock, 0.1)        # (over the spot)
+					_bdrop["phase"] = "hover"
+					_bdrop["t"] = 0.0
+				elif b.hp < b.max_hp * 0.4:
+					_hover_over(b, "turned back hurt")
+				elif b.order != "move" or (b.order_point as Vector2).distance_to(_bdrop["at"]) > 1.0:
+					b.cmd_move(_bdrop["at"])
+				return
 			if b.passengers.is_empty():
 				lg["landed"] = snappedf(game.clock, 0.1)
 				lg["result"] = "landed"

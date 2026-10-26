@@ -71,6 +71,29 @@
    ]
   },
   {
+   "name": "crown_balloon_raid",
+   "faction": "crown",
+   "label": "Crown 3b: Balloon raid (the Musketeers fire from the basket)",
+   "opening": "mill",
+   "then": "balanced",
+   "steps": [
+    "workers:9",
+    "wall",
+    "barracks",
+    "powder_mill",
+    "mill:4",
+    "foundry",
+    "musketeer*4",
+    "workers:12",
+    "balloon*1",
+    "drop:hover",
+    "musketeer*",
+    "farm",
+    "wait:420",
+    "end"
+   ]
+  },
+  {
    "name": "crown_fast_expand",
    "faction": "crown",
    "label": "Crown 4: Wall and a second Town Hall",
