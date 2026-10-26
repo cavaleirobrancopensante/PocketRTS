@@ -2245,6 +2245,7 @@ func best_crusher(p: Vector2, t: int, reach := INF) -> Building:
 func free_site(t: int, p: Vector2) -> Building:
 	var best: Building = null
 	var bd := INF
+	var bt := 99
 	var hall: Building = null
 	var hd := INF
 	for b in buildings:
@@ -2260,7 +2261,9 @@ func free_site(t: int, p: Vector2) -> Building:
 			continue
 		if b.barren():
 			continue            # spent land: nobody works a Farm, Pit, Mill or Boiler on it any more
-		if dd < bd:
+		var tier := int(Defs.CREW_TIER.get(b.kind, 0))      # the primary resource's posts first (Defs.CREW_TIER)
+		if tier < bt or (tier == bt and dd < bd):
+			bt = tier
 			bd = dd
 			best = b
 	return best if best != null else hall

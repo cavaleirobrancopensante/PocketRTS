@@ -49,13 +49,11 @@ func _run() -> void:
 	var br := cam.position + half
 	check(is_equal_approx(br.x, mw + m), "right edge of the view reaches map + %d px (%.0f)" % [m, br.x])
 	check(br.y >= mh + m and br.y <= mh + m + 170.0 + 0.5, "bottom edge of the view reaches the margin (%.0f)" % br.y)
-	# a corner of the map can be centred
+	# the margin is small now (owner: 7 tiles, not 25): a corner can't be centred any more, the view just shows a
+	# strip of dark past the edge; a point the margin's width inside the edge can still be brought to the view's middle
 	cam.position = Vector2.ZERO
 	g.controls._clamp_camera()
-	check(cam.position.distance_to(Vector2.ZERO) < 1.0, "the map's top-left corner can be centred (%s)" % cam.position)
-	cam.position = Vector2(mw, mh)
-	g.controls._clamp_camera()
-	check(cam.position.distance_to(Vector2(mw, mh)) < 1.0, "the bottom-right corner can be centred (%s)" % cam.position)
+	check(cam.position.x - half.x <= -m + 0.5 and cam.position.x > 0.0, "at the top-left corner the view stops %d px past the edge (%s)" % [m, cam.position])
 	# zoomed out: still clamped to the bigger rectangle
 	cam.zoom = Vector2(0.55, 0.55)
 	half = g.get_viewport().get_visible_rect().size * 0.5 / cam.zoom

@@ -3,7 +3,7 @@ class_name Defs
 ## Ranges and radii are in pixels; one map tile is 32 px.
 
 const TILE := 32
-const CAMERA_MARGIN_TILES := 25  # the camera may scroll this many tiles past every map edge (a base by the edge can be centred); units stay on the map
+const CAMERA_MARGIN_TILES := 7  # the camera may scroll this many tiles past every map edge (a base by the edge can be centred); units stay on the map (owner: 25 was too much)
 const START_GOLD := 250
 const EGGS_MAX := 5               # a Burrow's eggs (an upgraded hall holds more: HALL_LEVELS)
 ## Seconds for a Burrow to lay one egg (a Clutch Mound still speeds it up). Was 6.0: +50% so each
@@ -345,6 +345,10 @@ static var gear_mode := true
 
 ## The cog-making building's kind (provisional name: change it here and in the loc files only).
 const GEAR_PRESS := "cog_press"
+## A new worker's first job (owner, 2026-10-26), every faction: a post on the PRIMARY resource (Farms, Feeding
+## Pits, Cog Presses, the old ore buildings) before any on the SECONDARY one (tier 1: Powder Mills, Mainsprings, the
+## old Boilers), and hauling at the Town Hall last. Nearest first within a tier. Kinds not listed are tier 0.
+const CREW_TIER := {"powder_mill": 1, "mainspring": 1, "boiler": 1}
 
 const GEAR := {
 	# THE FIELD. Every Clockwork building has a ground gear ring: radius = half its footprint + `pad` (small / big
