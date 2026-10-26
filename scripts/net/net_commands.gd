@@ -57,6 +57,21 @@ static func forward(s: NetSession, who: Object, fn: String, args: Array) -> bool
 	return true
 
 
+## Host, with the same delay for both players: its own order (given at the screen now) waits as long as a guest's takes
+## to reach it (NetSession.hold_ms), then runs (NetSession._run_held); the click answers at once, as on a guest
+## (feedback). The caller returns as on a guest. True: taken.
+static func hold(s: NetSession, who: Object, fn: String, args: Array) -> bool:
+	var game := s.game
+	if fn == "place_building":
+		var why := game.placement_problem(game.human, String(args[1]), args[2])
+		if why != "":
+			game.notify(why)
+			return true
+	feedback(game, who, fn, args)
+	s.hold(who, fn, args.duplicate(true))
+	return true
+
+
 ## Guest: what the player sees and hears at the click, as the host would show it (the ring on the ground, the unit
 ## answering, the bugle), while the order itself goes to the host. (On the host these are only made for its own
 ## orders: Game._ping and command_sound stay quiet while a guest's order runs.)

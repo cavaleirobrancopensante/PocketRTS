@@ -7,6 +7,9 @@ extends SceneTree
 ## starts, and then the guest plays: it moves a worker, trains a unit, places a building and tries to
 ## order one of the host's units (refused). Snapshots must show every effect on the guest.
 ## Extra args: coop (two humans vs a computer), fac_host:<faction>, fac_guest:<faction>, map:<id>, secs:<n>.
+## The window going away (docs/online_lag_study.md): freeze_host:<s> / freeze_guest:<s> stop that game for s seconds
+## (as a browser stops a hidden tab, without telling anyone), hide_host:<s> the same with the hidden-page notice,
+## freeze_at:<s> when (seconds after the first snapshots, default 20).
 var main: Node
 var role := "host"
 var relay := "ws://127.0.0.1:8799"
@@ -51,6 +54,14 @@ var _lag_snap_us := 0
 var _lag_ack := 0
 var _probe := {}                          # guest: the move order being timed {u, from, to, t0}
 var _probe_t := 0.0
+var freeze_host := 0.0
+var freeze_guest := 0.0
+var hide_host := 0.0
+var freeze_at := 20.0
+var _frozen_at := -1.0                    # t when the freeze ended (-1: not yet)
+var _after_freeze := PackedFloat32Array() # frame times in the 2 s after it
+var _saw_wait := false
+var _saw_away := false
 
 
 func _initialize() -> void:
@@ -82,6 +93,14 @@ func _initialize() -> void:
 			watch = float(a.substr(6))
 		elif a.begins_with("speed:"):
 			speed = float(a.substr(6))
+		elif a.begins_with("freeze_host:"):
+			freeze_host = float(a.substr(12))
+		elif a.begins_with("freeze_guest:"):
+			freeze_guest = float(a.substr(13))
+		elif a.begins_with("hide_host:"):
+			hide_host = float(a.substr(10))
+		elif a.begins_with("freeze_at:"):
+			freeze_at = float(a.substr(10))
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 
@@ -154,7 +173,10 @@ func _lag_sample(real: float) -> void:
 		return
 	if _lag_us > 0:
 		lag_frames.append((now - _lag_us) / 1000.0)
+		if _frozen_at >= 0.0 and t - _frozen_at < 2.0 and t - _frozen_at > 0.0:
+			_after_freeze.append((now - _lag_us) / 1000.0)
 	_lag_us = now
+	_freeze_tick()
 	var key := "net/snapshot" if role == "host" else "net/apply"
 	var v := int(Prof.us.get(key, 0))
 	var d := v - _lag_prof if v >= _lag_prof else v       # (the match log empties Prof each minute)
@@ -176,6 +198,25 @@ func _lag_sample(real: float) -> void:
 			_lag_ack = s.last_ack
 			lag_seen.append(s.cmd_rtt_ms)
 		_probe_tick(real)
+
+
+## The window going away for a while (freeze_* / hide_host), once, freeze_at seconds into the match.
+func _freeze_tick() -> void:
+	var s = g.net
+	if s.get("waiting") == true:
+		_saw_wait = true
+	if s.get("away") == true:
+		_saw_away = true
+	var secs := freeze_host + hide_host if role == "host" else freeze_guest
+	if secs <= 0.0 or _frozen_at >= 0.0 or step_t < freeze_at or step < 1:
+		return
+	print("%s: the window goes away for %.0f s%s" % [role.to_upper(), secs, " (with the hidden-page notice)" if hide_host > 0.0 and role == "host" else ""])
+	if role == "host" and hide_host > 0.0:
+		s.set_hidden(true)
+	OS.delay_msec(int(secs * 1000.0))
+	if role == "host" and hide_host > 0.0:
+		s.set_hidden(false)
+	_frozen_at = t + 0.001
 
 
 ## Guest: every 3 s a worker of ours is told to walk 200 px; the time until it visibly moves that way here is the
@@ -223,6 +264,11 @@ func _lag_report() -> void:
 		if f > 50.0:
 			over50 += 1
 	print("LAG %s frames ms: %s, over 50 ms: %d" % [role.to_upper(), _stats(lag_frames), over50])
+	if _frozen_at >= 0.0 or freeze_host + hide_host > 0.0:
+		print("LAG %s after the window came back, frames ms: %s | saw 'waiting for the host': %s, saw 'host away': %s" % [role.to_upper(), _stats(_after_freeze), _saw_wait, _saw_away])
+	if g.net.get("snap_every") != null:
+		print("LAG %s snapshot every %.3f s (adaptive), guest glide %.3f s, ping %d ms, jitter %.0f ms, own orders held %d ms" % [role.to_upper(),
+			float(g.net.snap_every), g.net.glide_span(), g.net.ping_shown(), g.net.jitter * 1000.0, g.net.hold_ms()])
 	if role == "host":
 		print("LAG HOST snapshot build+send ms per frame: %s | bytes per snapshot: %s | units %d buildings %d" % [_stats(lag_work), _stats(lag_sizes), g.units.size(), g.buildings.size()])
 	else:

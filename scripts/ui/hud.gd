@@ -164,7 +164,11 @@ func _tick_hud(delta: float) -> void:
 		_go_t = maxf(_go_t - delta, 0.0)
 	if not _alt_press.is_empty() and not _alt_press["done"] and Time.get_ticks_msec() - int(_alt_press["t"]) > 450:
 		_alt_press["done"] = true
+		if game:
+			game.input_cmd = true
 		(_alt_press["b"]["alt"] as Callable).call()
+		if game:
+			game.input_cmd = false
 		Sfx.play_any(["ui/click", "click"])
 	if game == null:
 		return
@@ -504,6 +508,15 @@ func _hud_has(p: Vector2) -> bool:
 # ------------------------------------------------------------------ input
 
 func _input(event: InputEvent) -> void:
+	if game == null:
+		return
+	game.input_cmd = true          # (the player's own orders: online, with the same delay for both, they wait)
+	_on_input(event)
+	if is_instance_valid(game):
+		game.input_cmd = false
+
+
+func _on_input(event: InputEvent) -> void:
 	if game == null or (game.over and not game.map_view):
 		return
 	if event is InputEventKey and _chat_input(event as InputEventKey):

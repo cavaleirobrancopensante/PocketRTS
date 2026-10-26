@@ -28,6 +28,9 @@ var refused := ""
 var version: String = ProjectSettings.get_setting("application/config/version", "dev")
 var strategy_ai := "hard"
 var denied := 0                          # host: how many colour / team picks were refused
+## The same delay for both players (the host's choice, on unless turned off): the host's own orders wait as long as a
+## guest's take to reach it (NetSession.hold_ms), so neither side reacts faster.
+var same_delay := true
 
 
 ## Host a game: `relay` is the relay's address, `room` a code (NetLink.new_code()).
@@ -170,6 +173,14 @@ func _mode_of_sides() -> String:
 	return "custom"
 
 
+## The host turns the same delay for both players on or off.
+func set_same_delay(on: bool) -> void:
+	if is_host:
+		same_delay = on
+		changed.emit()
+		_send_lobby()
+
+
 ## The host sets the difficulty of the computer in slot `i`.
 func set_level(i: int, lvl: String) -> void:
 	if is_host and i >= 0 and i < slots.size() and _is_computer(slots[i]) and LEVELS.has(lvl):
@@ -222,7 +233,7 @@ func _send_lobby() -> void:
 		return
 	for i in slots.size():
 		if slots[i]["who"] == "remote" and int(slots[i].get("peer", -1)) >= 0:
-			link.send({"t": "lobby", "map": map, "mode": mode, "slots": _public_slots(), "you": i}, int(slots[i]["peer"]))
+			link.send({"t": "lobby", "map": map, "mode": mode, "slots": _public_slots(), "you": i, "same": same_delay}, int(slots[i]["peer"]))
 
 
 ## Start the match (host). Main.start(cfg) builds the game and calls begin() with the resolved cfg.
@@ -248,10 +259,10 @@ func begin(game: Game, cfg: Dictionary) -> void:
 				peers[pr] = i
 		for pr in peers:
 			var gc := _guest_cfg(cfg, int(peers[pr]))
-			link.send({"t": "start", "cfg": gc, "team": int(peers[pr])}, int(pr))
-		NetSession.attach(game, link, true, 0, peers)
+			link.send({"t": "start", "cfg": gc, "team": int(peers[pr]), "same": same_delay}, int(pr))
+		NetSession.attach(game, link, true, 0, peers, same_delay)
 	else:
-		NetSession.attach(game, link, false, my_slot, {})
+		NetSession.attach(game, link, false, my_slot, {}, same_delay)
 
 
 func _guest_cfg(cfg: Dictionary, team: int) -> Dictionary:
@@ -347,6 +358,7 @@ func _on_message(from: int, m: Dictionary) -> void:
 				return
 			map = String(m.get("map", map))
 			mode = String(m.get("mode", mode))
+			same_delay = bool(m.get("same", same_delay))
 			slots = m.get("slots", [])
 			my_slot = int(m.get("you", 0))
 			status = "In the room. The host starts the game."
@@ -361,6 +373,7 @@ func _on_message(from: int, m: Dictionary) -> void:
 				return
 			var c: Dictionary = m["cfg"]
 			my_slot = int(m.get("team", my_slot))
+			same_delay = bool(m.get("same", same_delay))
 			c["net"] = {"role": "guest", "lobby": self}
 			start_now.emit(c)
 

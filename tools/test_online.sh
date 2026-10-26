@@ -2,7 +2,8 @@
 # Online play on one computer: a relay, a host and a guest process (see tools/test_online.gd).
 #   tools/test_online.sh [coop] [fac_host:brood fac_guest:clockwork ...]
 # Needs godot on the PATH and node. Prints the CHECK lines and the LAG lines; exit code 1 if any failed.
-# LAG_MS=40 tools/test_online.sh ...: the relay holds every frame 40 ms each way (a real connection's round trip).
+# LAG_MS=40 JITTER_MS=20 tools/test_online.sh ...: the relay holds every frame 40 ms each way, plus up to 20 ms at random
+# (a real connection's round trip and its unevenness).
 cd "$(dirname "$0")/.." || exit 1
 PORT=${PORT:-8799}
 OUT=${TMPDIR:-/tmp}/holdfast_online_$$

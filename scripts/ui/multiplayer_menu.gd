@@ -245,6 +245,18 @@ func _draw_room() -> void:
 	var dl := UiStyle.text(_map_desc(mid, l.slots.size()), 15, UiStyle.MUTED)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mv.add_child(dl)
+	# the same delay for both players (the host's choice): the host's own orders wait as long as the friend's take
+	var sd: Button = main._button("SAME DELAY FOR BOTH: ON" if l.same_delay else "SAME DELAY FOR BOTH: OFF", func() -> void: l.set_same_delay(not l.same_delay))
+	sd.custom_minimum_size = Vector2(0, 46)
+	sd.add_theme_font_size_override("font_size", 16)
+	sd.disabled = not host
+	sd.add_theme_color_override("font_disabled_color", UiStyle.TEXT)
+	if l.same_delay:
+		UiStyle.chosen(sd)
+	mv.add_child(sd)
+	var sdn := UiStyle.text("On: the host's own orders wait as long as the friend's take to arrive over the internet, so neither side reacts faster.", 13, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	sdn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mv.add_child(sdn)
 	# Bottom row
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)

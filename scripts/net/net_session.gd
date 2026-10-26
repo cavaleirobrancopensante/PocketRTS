@@ -33,9 +33,19 @@ var by_id := {}                   # net id -> Entity (as of the last snapshot)
 var known := {}                   # host: the ids the last snapshot listed
 var sent_slow := {}               # host: id -> hash of the values last sent whole (unchanged: a short row or none)
 var sent_fast := {}               # host: id -> where it was / its health when last sent (unchanged too: no row)
+var was_seen := {}                # host: ids a guest could see at the last snapshot (NetSnapshot._seen_by)
+## Host: seconds between snapshots, from SNAP_FAST (20 a second) to SNAP_EVERY (10), by what they cost to make here:
+## they may take SNAP_BUDGET of the time (a big battle on a phone: fewer, a small game on a computer: more).
+const SNAP_FAST := 0.05
+const SNAP_BUDGET := 0.05
+var snap_every := SNAP_FAST
+var _build_ms := 1.0              # host: a snapshot's cost here (ms), smoothed
+var _eyes: Array = []             # host: the sides the guests play (guest_sides), worked out when the guests change
+var _eyes_n := -1
 var next_id := 1
 var snap_n := 0                   # host: snapshots sent / guest: the last one applied
 var interval := SNAP_EVERY        # guest: seconds between snapshots, smoothed
+var jitter := 0.0                 # guest: how far the time between them strays from that (smoothed), seconds
 var motion := {}                  # guest: id -> [from, to, seconds since]
 var rowhash := {}                 # guest: id -> hash of the last row applied
 var acks := {}                    # host: relay id -> the last command number run for it
@@ -87,9 +97,18 @@ var _hidden_ms := 0
 var _vis_cb = null                # (web) the page's visibilitychange listener: kept, or the browser drops it
 
 # ---- guest: units told to walk start out at once, before the host's picture shows the order (lead)
-const LEAD_PACE := 0.4            # ...at this share of their speed (a small lead, taken back gently once the host's own walk shows)
+const LEAD_PACE := 1.0            # ...at their own speed
+const LEAD_BACK := 0.35           # once the host's snapshot shows the order, the lead is taken back at this share of their speed
+const LEAD_MAX := 0.35            # seconds of walking at most ahead of the snapshots (a very late answer: they wait)
 const LEAD_GIVE_UP := 1500        # msec: no word of the order by then, the lead is taken back
 var leads := {}                   # unit id -> {"to": spot, "seq": the order's number, "off": how far ahead it is shown, "t": msec}
+# ---- host: the same delay for both players (the lobby's choice, on by default): the host's own orders wait as long
+# as a guest's take to reach it, half the measured round trip (smoothed), HOLD_MAX at most
+const HOLD_MAX := 250.0
+var same_delay := false
+var ping_avg := -1.0              # the round trip, smoothed (host: the slowest guest's)
+var held: Array = []              # host: its own orders waiting: {"at": msec, "who", "fn", "args"}
+var _hold_logged := -1000
 # ---- guest: the pictures that came this frame (only the newest is applied: _apply_pending)
 var pending: Array = []
 var _cmd_tick := -1               # host: the physics frame a guest's order was run on (-1: none waiting for a picture)
@@ -101,13 +120,14 @@ var mstat := {}                   # this minute's numbers for the match log (min
 
 
 ## Create the session on a Game (after it is in the tree).
-static func attach(g: Game, lnk: NetLink, host: bool, team: int, peers: Dictionary) -> NetSession:
+static func attach(g: Game, lnk: NetLink, host: bool, team: int, peers: Dictionary, same := false) -> NetSession:
 	var s := NetSession.new()
 	s.game = g
 	s.link = lnk
 	s.is_host = host
 	s.my_team = team
 	s.peer_team = peers
+	s.same_delay = same
 	s.process_mode = Node.PROCESS_MODE_ALWAYS
 	g.net = s
 	g.add_child(s)
@@ -124,6 +144,7 @@ static func attach(g: Game, lnk: NetLink, host: bool, team: int, peers: Dictiona
 		lnk.send({"t": "ready"})            # my match has loaded: the host can start the countdown
 	s._m_reset()
 	s._watch_visibility()
+	s._log("%s; same delay for both players %s" % ["host" if host else "guest", "on (the host's orders wait as long as the guest's take to arrive)" if same else "off"])
 	return s
 
 
@@ -180,10 +201,12 @@ func _process(delta: float) -> void:
 		_tick_waiting(now)
 		return
 	_tick_quiet(now)
+	if not held.is_empty():
+		_run_held(now)
 	_t += delta
-	var every := SNAP_PAUSED if paused() else SNAP_EVERY
+	var every := SNAP_PAUSED if paused() else snap_every
 	if _cmd_tick >= 0 and not paused() and Engine.get_physics_frames() > _cmd_tick:
-		every = SNAP_AFTER_CMD               # (the order has had its first game tick: show it now)
+		every = minf(every, SNAP_AFTER_CMD)  # (the order has had its first game tick: show it now)
 	if _t < every:
 		return
 	if game.over:
@@ -206,6 +229,22 @@ func _process(delta: float) -> void:
 	mstat["work_us"] += us
 	mstat["work_max"] = maxi(mstat["work_max"], us)
 	Prof.add("net/snapshot", t0)
+	# the next ones: as often as their cost allows (SNAP_BUDGET of the time), 10 to 20 a second
+	_build_ms = lerpf(_build_ms, us / 1000.0, 0.1)
+	snap_every = clampf(_build_ms / 1000.0 / SNAP_BUDGET, SNAP_FAST, SNAP_EVERY)
+
+
+## Host: the sides the guests (still here) play: a snapshot leaves out the enemy units none of them can see.
+func guest_sides() -> Array:
+	var n := peer_team.size() * 8 + lost_peers.size()
+	if n != _eyes_n:
+		_eyes_n = n
+		_eyes = []
+		for pr in _live_peers():
+			var sd := int(game.sides[int(peer_team[pr])])
+			if not _eyes.has(sd):
+				_eyes.append(sd)
+	return _eyes
 
 
 ## All the players of this machine's side are out (a friend still playing keeps the match going).
@@ -305,6 +344,47 @@ func play_fx(list: Array) -> void:
 			s.launch(game, String(f[1]), p, f[3], float(f[4]))
 
 
+# ------------------------------------------------------------------ host: its own orders, held (same delay)
+
+## How long the host's own orders wait now (msec): half the round trip to the guests, smoothed (0: off, or not
+## measured yet).
+func hold_ms() -> int:
+	if not is_host or not same_delay or ping_avg < 0.0:
+		return 0
+	return int(clampf(ping_avg * 0.5, 0.0, HOLD_MAX))
+
+
+func hold(who: Object, fn: String, args: Array) -> void:
+	var at := Time.get_ticks_msec() + hold_ms()
+	if not held.is_empty():
+		at = maxi(at, int(held[held.size() - 1]["at"]))       # (in the order given)
+	held.append({"at": at, "who": who, "fn": fn, "args": args})
+
+
+func _run_held(now: int) -> void:
+	while not held.is_empty() and int(held[0]["at"]) <= now:
+		var h: Dictionary = held.pop_front()
+		var who = h["who"]
+		if game.over or who == null or not is_instance_valid(who) or (who is Entity and who.dead):
+			continue
+		game.net_quiet = true        # (its ring and voice came at the click)
+		(who as Object).callv(String(h["fn"]), _alive(h["args"]))
+		game.net_quiet = false
+
+
+## The arguments with anything freed meanwhile taken out of their lists (a unit that died while the order waited).
+static func _alive(args: Array) -> Array:
+	var out: Array = []
+	for a in args:
+		if a is Array:
+			out.append(a.filter(func(x) -> bool: return not (x is Object) or is_instance_valid(x)))
+		elif a is Object and not is_instance_valid(a):
+			out.append(null)
+		else:
+			out.append(a)
+	return out
+
+
 # ------------------------------------------------------------------ guest: orders out
 
 func send_cmd(c: Dictionary) -> void:
@@ -332,6 +412,12 @@ func tell(team: int, text: String, quiet := false) -> void:
 
 
 # ------------------------------------------------------------------ guest: units answer at once
+
+## How long a unit glides to where the newest snapshot has it: the time between snapshots plus room for one coming
+## late (twice the measured jitter), so a late one finds it still walking; at most twice the interval.
+func glide_span() -> float:
+	return clampf(interval + 2.0 * jitter, interval, interval * 2.0)
+
 
 ## Guest: these units were just told to walk to p (the order goes out right after): they start out here at once,
 ## turned that way and walking, a little ahead of the pictures (NetPuppet.tick_unit); once a picture with the order
@@ -414,6 +500,10 @@ func _pong(from: int, k: int) -> void:
 			ping_ms = maxf(ping_ms, float(ping_of.get(pr, 0.0)))
 	else:
 		ping_ms = rtt
+	ping_avg = ping_ms if ping_avg < 0.0 else lerpf(ping_avg, ping_ms, 0.2)
+	if is_host and same_delay and absi(hold_ms() - _hold_logged) >= 20:
+		_hold_logged = hold_ms()
+		_log("same delay for both: the host's orders wait %d ms (half the %d ms round trip)" % [hold_ms(), int(ping_avg)])
 	mstat["ping_sum"] += rtt
 	mstat["ping_n"] += 1
 	mstat["ping_max"] = maxf(mstat["ping_max"], rtt)
@@ -722,7 +812,9 @@ func _apply_pending() -> void:
 	pending.clear()
 	_end_wait(now)
 	if _last_snap_ms > 0:
-		interval = clampf(lerpf(interval, float(now - _last_snap_ms) / 1000.0, 0.2), 0.05, 0.4)
+		var gap := float(now - _last_snap_ms) / 1000.0
+		jitter = lerpf(jitter, minf(absf(gap - interval), 0.2), 0.1)
+		interval = clampf(lerpf(interval, gap, 0.2), 0.03, 0.4)
 	_last_snap_ms = now
 	snap_n = int(m.get("n", snap_n))
 	var ack := int(m.get("ack", {}).get(link.my_id, 0)) if m.get("ack") is Dictionary else 0
@@ -800,6 +892,8 @@ func minute_line() -> String:
 		if int(ms["held"]) > 0:
 			line += ", %d held for a slow uplink" % int(ms["held"])
 		line += " | orders from guests %d, applied %d, refused %d" % [int(ms["sent"]), int(ms["applied"]), int(ms["refused"])]
+		if same_delay:
+			line += " | own orders held %d ms" % hold_ms()
 	else:
 		var run := int(_acc[0]) - int(_acc_was[0])
 		var refused := int(_acc[1]) - int(_acc_was[1])

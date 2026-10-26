@@ -7,9 +7,18 @@ import crypto from "node:crypto";
 const port = Number(process.argv[2] || 8787);
 const rooms = new Map(); // CODE -> Map(id -> socket)
 // LAG_MS=40: every frame forwarded (and every pong) waits this long, one way: a round trip 2 x LAG_MS slower,
-// like a real connection (tests measure the guest's input delay with it). Equal waits keep the order.
+// like a real connection (tests measure the guest's input delay with it). JITTER_MS=30: plus 0 to 30 ms more,
+// at random, frame by frame; a frame never overtakes the one before it to the same socket (a WebSocket keeps order).
 const LAG = Number(process.env.LAG_MS || 0);
-const later = (fn) => (LAG > 0 ? setTimeout(fn, LAG) : fn());
+const JIT = Number(process.env.JITTER_MS || 0);
+const lastAt = new Map(); // socket -> when its last frame goes out
+const later = (sock, fn) => {
+  if (LAG <= 0 && JIT <= 0) return fn();
+  const now = Date.now();
+  const at = Math.max(now + LAG + Math.random() * JIT, lastAt.get(sock) || 0);
+  lastAt.set(sock, at);
+  setTimeout(fn, at - now);
+};
 
 function frame(op, payload) {
   const n = payload.length;
@@ -44,10 +53,10 @@ server.on("upgrade", (req, sock) => {
   const handle = (op, data) => {
     if (op === 8) { sock.end(); return; }
     if (op === 9) { sock.write(frame(10, data)); return; }
-    if (op === 1) { if (data.toString() === "ping") later(() => sendText(sock, "pong")); return; }
+    if (op === 1) { if (data.toString() === "ping") later(sock, () => sendText(sock, "pong")); return; }
     if (op !== 2) return;
-    if (id > 0) { const h = room.get(0); if (h) later(() => sendBin(h, Buffer.concat([Buffer.from([id]), data]))); }
-    else if (data.length > 0) for (const [sid, s] of room) if (sid > 0 && (data[0] === 0 || data[0] === sid)) later(() => sendBin(s, data.subarray(1)));
+    if (id > 0) { const h = room.get(0); if (h) later(h, () => sendBin(h, Buffer.concat([Buffer.from([id]), data]))); }
+    else if (data.length > 0) for (const [sid, s] of room) if (sid > 0 && (data[0] === 0 || data[0] === sid)) later(s, () => sendBin(s, data.subarray(1)));
   };
   sock.on("data", (d) => {
     buf = Buffer.concat([buf, d]);
@@ -77,4 +86,4 @@ server.on("upgrade", (req, sock) => {
   };
   sock.on("close", gone); sock.on("error", gone);
 });
-server.listen(port, () => console.log(`[relay] listening on ws://127.0.0.1:${port}${LAG > 0 ? ` (each way +${LAG} ms)` : ""}`));
+server.listen(port, () => console.log(`[relay] listening on ws://127.0.0.1:${port}${LAG + JIT > 0 ? ` (each way +${LAG} ms, jitter ${JIT} ms)` : ""}`));

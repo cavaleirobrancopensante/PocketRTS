@@ -8,6 +8,9 @@ extends RefCounted
 ## Only what changed is sent: an entity whose values are the same as in the last snapshot sends a short row (the
 ## fixed fields: it moved, or its health changed) or nothing at all. Every KEY_EVERY-th snapshot is a keyframe:
 ## every row whole, and "ids", the list of everything there is (the guest drops what is not on it).
+## Two more savings: an enemy unit no guest's side can see is not sent (the guest's fog hides it anyway; it is sent
+## again as it comes into sight), and when snapshots go faster than 12 a second a unit's whole row is looked at every
+## other one (its place and health every time): what it is doing still reaches the guest ten times a second.
 ## The values are read and written directly (unit_vals / set_unit_vals ...): by name (`get`/`set`) they were the
 ## host's biggest cost (5 ms a snapshot with 70 units). The lists stay the spec: check_lists() compares the two.
 
@@ -88,6 +91,8 @@ static func check_lists(u: Unit, b: Building) -> String:
 static func build(s: NetSession) -> Dictionary:
 	var g := s.game
 	var key := s.snap_n % KEY_EVERY == 1
+	var halves := s.snap_every < 0.08          # (fast snapshots: each unit's whole row every other one)
+	var eyes := s.guest_sides()                 # the sides the guests play: what they can see
 	var cur := {}
 	var brows: Array = []
 	var urows: Array = []
@@ -128,7 +133,18 @@ static func build(s: NetSession) -> Dictionary:
 			brows.append(row)
 		else:
 			var u: Unit = e
+			if not key and not _seen_by(g, u, eyes):
+				if not s.was_seen.has(id):
+					continue           # (fogged for every guest: its row waits until it comes into sight)
+				s.was_seen.erase(id)    # (just gone out of sight: one last row, where it went)
+			else:
+				s.was_seen[id] = true
 			var fast: Array = [u.position.snapped(Vector2(0.25, 0.25)), snappedf(u.hp, 0.1), snappedf(u.facing.angle(), 0.02)]
+			if halves and not key and (id + s.snap_n) % 2 == 1 and s.sent_slow.has(id):
+				if s.sent_fast.get(id) != fast:
+					s.sent_fast[id] = fast
+					urows.append([id, u.kind, u.team, fast[0], fast[1], fast[2]])
+				continue               # (its whole row is looked at in the next one)
 			var slow := unit_vals(u)
 			slow.append(u.cooldown > 0.0)
 			slow.append(ref(s, u.target))
@@ -159,6 +175,7 @@ static func build(s: NetSession) -> Dictionary:
 			gone.append([id, old is Building if is_instance_valid(old) else int(id) < 0, died])
 			s.sent_slow.erase(id)
 			s.sent_fast.erase(id)
+			s.was_seen.erase(id)
 	s.known = cur
 	s.by_id = cur
 	var pl: Array = []
@@ -190,6 +207,17 @@ static func build(s: NetSession) -> Dictionary:
 		m["quit"] = g.end_quitter
 		m["ahead"] = g.end_ahead
 	return m
+
+
+## Can a guest see this unit? Its own side's always; another's where a guest's side sees (as the guest's fog will).
+static func _seen_by(g: Game, u: Unit, eyes: Array) -> bool:
+	if eyes.is_empty() or (u.team >= 0 and eyes.has(int(g.sides[u.team]))):
+		return true
+	var i := g.idx(g.cell_of(u.position))
+	for t in g.n_players():
+		if eyes.has(int(g.sides[t])) and (g.vis[t] as PackedByteArray)[i] == 1:
+			return true
+	return false
 
 
 # ------------------------------------------------------------------ guest
@@ -462,7 +490,8 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	# movement: glide from where it is to the new spot over about one snapshot interval (NetPuppet.tick_unit)
 	var mo = s.motion.get(id)
 	var shown: Vector2 = u.position - s.lead_off(id)       # (where the pictures have it: a unit walking off at once is shown ahead)
-	if fresh or mo == null or shown.distance_to(pos) > 260.0:
+	var stale: bool = mo != null and float(mo[2]) > s.interval * 3.0 and shown.distance_to(pos) > 24.0     # (out of sight a while: it jumps, no glide across)
+	if fresh or mo == null or stale or shown.distance_to(pos) > 260.0:
 		s.motion[id] = [pos, pos, 99.0]
 		s.leads.erase(id)
 		if not fresh:

@@ -143,6 +143,12 @@ func begin_place(kind: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	game.input_cmd = true          # (the orders given here are the player's own: online, with the same delay for both, they wait)
+	_on_input(event)
+	game.input_cmd = false
+
+
+func _on_input(event: InputEvent) -> void:
 	if game.over and not game.map_view:
 		return
 	if event is InputEventScreenTouch:
@@ -498,7 +504,9 @@ func _process(delta: float) -> void:
 				var units := game.selected_units()
 				if not units.is_empty():
 					_long_done = true
+					game.input_cmd = true
 					game.smart_command(units, to_world(info["pos"]), true)
+					game.input_cmd = false
 					Sfx.play_any(["ui/click", "click"])
 	_clamp_camera()
 

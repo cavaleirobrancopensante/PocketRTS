@@ -151,6 +151,11 @@ var end_quitter := -1           # on a player surrender: the team that gave up
 ## and what it may click on is what that side sees, not this screen's fog (shown_to_commander).
 var net_cmd_team := -1
 var net_cmd_peer := -1
+## Online: no ring or voice from the order running now (a guest's, or the host's own held one: both were shown at the
+## click). input_cmd: the local player's input is being handled (Controls, HUD): with the same delay for both players
+## the host's own orders made now wait (NetCommands.hold); the computers' and the game's own never do.
+var net_quiet := false
+var input_cmd := false
 var resigned: Array = []        # computers that resigned after a gg
 var _first_of := {}             # "team:kind" -> true once that player has had one
 
@@ -2771,7 +2776,13 @@ func _own_hall(t: int) -> Building:
 ## Online guest: send this call to the host instead of running it (true: it was sent, the caller
 ## returns). Everywhere else (the host, single player) false and the call runs as always.
 func net_forward(who: Object, fn: String, args: Array) -> bool:
-	return puppet and net != null and NetCommands.forward(net, who, fn, args)
+	if net == null:
+		return false
+	if puppet:
+		return NetCommands.forward(net, who, fn, args)
+	if input_cmd and net_cmd_team < 0 and net.hold_ms() > 0:
+		return NetCommands.hold(net, who, fn, args)     # (online host, the same delay for both: it waits as a guest's order does)
+	return false
 
 
 ## Set a command-card setting (auto repair, auto training ...) on something of yours; an online
@@ -7967,7 +7978,7 @@ func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
 ## voice (the Crown's bugle only now and then, for the calls that mean something: attack, patrol);
 ## a mixed Crown group is answered by the bugle alone; whatever has no voice falls back to the bugle.
 func command_sound(us: Array, what: String, call: String) -> void:
-	if us.is_empty() or net_cmd_team >= 0:
+	if us.is_empty() or net_cmd_team >= 0 or net_quiet:
 		return
 	var kinds := {}
 	for u in us:
@@ -8021,7 +8032,7 @@ var _pings: Array = []
 ## A ring where an order was given (it fades in half a second). Only the player who gave the order sees it: a guest's
 ## order run on the host makes none here (the guest drew its own at the click: NetCommands.feedback).
 func _ping(p: Vector2, col: Color) -> void:
-	if net_cmd_team >= 0:
+	if net_cmd_team >= 0 or net_quiet:
 		return
 	_pings.append([p, col, 0.5])
 
