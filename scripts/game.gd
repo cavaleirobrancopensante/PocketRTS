@@ -7428,8 +7428,8 @@ func _plans_by_sight(t: int) -> bool:
 		return true
 	if net != null and not puppet:
 		for pr in net.peer_team:
-			if int(net.peer_team[pr]) == t:
-				return true
+			if int(net.peer_team[pr]) == t and not net.lost_peers.has(pr):
+				return true            # (a guest's side; once it has left, a computer plays it)
 	return false
 
 
