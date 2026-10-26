@@ -65,6 +65,10 @@ const LEG_MIN := 0.30
 const LEG_MIN_FB := 0.12
 const RNG_MIN := 3
 const GAIT_UNITS := ["missionary", "windup_soldier", "winder", "musketeer_armoured", "raptor", "labourer"]
+## The Winder (0.14.28) walks on ChatGPT's own sheet, which the owner accepted: a short 4-frame stride played on a ticking
+## beat (Unit.WINDER_BEAT), its side views changing 0.30 (e) and 0.18 (ne) of the leg zone a frame. Its side views keep
+## this lower floor, so a broken strip (legs that do not move) still fails.
+const WINDER_LEG_MIN := 0.15
 
 
 func solid(img: Image, x: int, y: int) -> bool:
@@ -175,7 +179,8 @@ func _initialize() -> void:
 			var n2: int = ArtData.UNITS[art]["frames"]["walk_" + d]
 			var gn: Array = gait_numbers(strip(art, "walk", d), c2.x, n2)
 			var side: bool = d != "s" and d != "n"
-			check(gn[0] >= (LEG_MIN if side else LEG_MIN_FB), "%s walk_%s: legs move frame to frame (%.2f)" % [art, d, gn[0]])
+			var need := (WINDER_LEG_MIN if art == "winder" else LEG_MIN) if side else LEG_MIN_FB
+			check(gn[0] >= need, "%s walk_%s: legs move frame to frame (%.2f)" % [art, d, gn[0]])
 			if side and not (art == "raptor" and d == "e"):
 				check(gn[1] >= RNG_MIN, "%s walk_%s: feet spread %d px over the cycle" % [art, d, gn[1]])
 	print("ALL PASS" if fails == 0 else "FAILED: %d" % fails)

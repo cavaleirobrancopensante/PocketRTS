@@ -5446,11 +5446,11 @@ static func walk_fps_for(a: String) -> float:
 ## death    he runs down: each frame slower than the last, then the heap
 ## Strips not listed run at their frame rate (Unit._animate). The anim viewer plays the same beat.
 const WINDER_BEAT := {
-	"walk": [0.0667, 0.1333, 0.0667, 0.1333],
-	"wind": [0.4667, 0.1333, 0.4667, 0.1333],
+	"walk": [1.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0, 2.0 / 15.0],
+	"wind": [7.0 / 15.0, 2.0 / 15.0, 7.0 / 15.0, 2.0 / 15.0],
 	"idle": [1.0, 1.0],
-	"attack": [0.0667, 0.1333, 0.2667, 0.4],
-	"death": [0.0667, 0.1333, 0.2, 0.2, 0.2667, 9.0],
+	"attack": [1.0 / 15.0, 2.0 / 15.0, 4.0 / 15.0, 6.0 / 15.0],
+	"death": [1.0 / 15.0, 2.0 / 15.0, 3.0 / 15.0, 3.0 / 15.0, 4.0 / 15.0, 9.0],
 }
 
 
@@ -5461,13 +5461,16 @@ static func beat_of(a: String) -> String:
 	return a if WINDER_BEAT.has(a) else ""
 
 
-## The frame of beat strip `a` (n frames) `t` seconds in: looped, or held on the last frame when it does not loop.
+## The frame of beat strip `a` (n frames) `t` seconds in: looped, or held on the last frame when it does not loop. The
+## beat is read half an animation tick ahead, so its boundaries fall between the 15 Hz ticks and every hold lasts its
+## whole number of ticks (on a boundary, rounding would make it one tick too long or too short).
 static func beat_frame(a: String, t: float, n: int, loop: bool) -> int:
 	var beat: Array = WINDER_BEAT[beat_of(a)]
 	var m := mini(n, beat.size())
 	var total := 0.0
 	for i in m:
 		total += float(beat[i])
+	t += 0.5 / 15.0
 	if loop:
 		t = fposmod(t, total)
 	for i in m:

@@ -1,17 +1,22 @@
 extends SceneTree
-## Screenshots of the Winder (tools/import_winder_v2.py, Unit.WINDER_BEAT) in the CLOCKWORK LAB (scripts/cw_lab.gd): the
-## crews winding the Cog Presses (with a frame run for a GIF of the beat), Winders walking in all eight views, one fetching
-## a crate and carrying it to a site and winding it as it unfolds, one repairing, a fight, deaths and the heaps, and his
-## size beside a Clock Soldier and a Jack.
-##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_winder.gd -- <outdir> [frames]
-## Writes <outdir>/press.png and press_00.png ... (frames, 1/15 s apart), walk.png and walk_00.png ..., crate.png,
-## crate_wind.png, repair.png, attack.png and fight_00.png ..., death_mid.png, death.png, size.png.
+## Screenshots of the Winder (tools/import_winder_v2.py, Unit.WINDER_BEAT) in the CLOCKWORK LAB (scripts/cw_lab.gd): a crew
+## winding a Cog Press, Winders walking in all eight views, the five views in a row standing (the clock hands tick) and
+## winding (the crank: hammer, hammer, pause), one fetching a crate and carrying it to a site and winding it as it unfolds,
+## one repairing a Regulator, four attacking an enemy Cottage, deaths in the five views and the heaps, and his size beside
+## a Clock Soldier and a Jack.
+##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_winder.gd -- <outdir> [frames] [old_dir]
+## Writes <outdir>/press.png, walk.png, lineup.png, crate.png, crate_wind.png, repair.png, attack.png, death_mid.png,
+## death.png, size.png, and frame runs 1/15 s apart (press_00.png ..., walk_..., lineup_..., fight_...; `frames` each).
+## old_dir: a folder (outside the project) of the OLD Winder's strips (<anim>_<view>.png, 48 x 47 cells, feet at (24, 43),
+## as they were before 0.14.28): they are shown instead of the new ones, for before / after pictures.
 var main: Node
 var g
 var out := ""
 var frames := 24
 var t := 0.0
 var started := false
+var used: Array = []           # the open spots the scenes took
+const VIEWS := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(1, -1), Vector2(0, -1)]     # S SE E NE N
 
 
 func _initialize() -> void:
@@ -19,8 +24,22 @@ func _initialize() -> void:
 	out = a[0]
 	if a.size() > 1:
 		frames = int(a[1])
+	if a.size() > 2:
+		_use_old(a[2])
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
+
+
+## The old strips in the texture cache and the old layout in ArtData (nothing in the project is touched).
+func _use_old(dir: String) -> void:
+	var counts := {}
+	for f in DirAccess.get_files_at(dir):
+		if not f.ends_with(".png") or f.begins_with("icon"):
+			continue
+		var img := Image.load_from_file(dir.path_join(f))
+		Game._tex_cache["res://assets/units/winder/" + f] = ImageTexture.create_from_image(img)
+		counts[f.trim_suffix(".png")] = img.get_width() / 48
+	ArtData.UNITS["winder"] = {"cell": Vector2i(48, 47), "anchor": Vector2(24, 43), "frames": counts}
 
 
 func _process(delta: float) -> bool:
@@ -44,6 +63,8 @@ func _process(delta: float) -> bool:
 func _snap(name: String, wait := 0.5) -> void:
 	if wait > 0.0:
 		await create_timer(wait).timeout
+	await process_frame          # (a camera just moved: let it draw there first)
+	await process_frame
 	root.get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out, name])
 
 
@@ -59,46 +80,33 @@ func _look(p: Vector2, zoom: float) -> void:
 	g.camera.zoom = Vector2(zoom, zoom)
 
 
-## Open, flat grass off the gear field with no buildings round it (tools/shot_cw_army.gd).
-func _open_spot(tower: Building, skip := 0) -> Vector2:
-	var found := 0
-	for r in range(8, 34):
-		for k in 16:
-			var p: Vector2 = tower.center() + Vector2.from_angle(TAU * k / 16.0) * float(r) * Defs.TILE
+## Open, flat grass off the gear field with nothing on or near it (no building, tree, rock, decoration or water; rows below
+## too: a tree's crown stands over the cells above its foot), at least 14 tiles from the spots already used.
+func _open_spot(tower: Building) -> Vector2:
+	for r in range(8, 44):
+		for k in 24:
+			var p: Vector2 = tower.center() + Vector2.from_angle(TAU * k / 24.0) * float(r) * Defs.TILE
+			if used.any(func(q: Vector2) -> bool: return q.distance_to(p) < 14.0 * Defs.TILE):
+				continue
 			var c: Vector2i = g.cell_of(p)
 			var ok := true
-			for y in range(c.y - 6, c.y + 7):
+			for y in range(c.y - 6, c.y + 10):
 				for x in range(c.x - 8, c.x + 9):
 					var cc := Vector2i(x, y)
-					if not g.in_map(cc) or g.solid[g.idx(cc)] != 0 or g.cliff[g.idx(cc)] != 0 or g.ramp[g.idx(cc)] != 0 \
+					if not g.in_map(cc):
+						ok = false
+						break
+					var i: int = g.idx(cc)
+					if g.solid[i] != 0 or g.cliff[i] != 0 or g.ramp[i] != 0 or g.water[i] != 0 or g._terrain_kind.has(i) \
 							or g.gear_net.in_field(g.human, Vector2(cc) * Defs.TILE):
 						ok = false
 						break
 				if not ok:
 					break
 			if ok:
-				if found == skip:
-					return p
-				found += 1
-	return tower.center() + Vector2(0, 300 + 200 * skip)
-
-
-## Free cells in a row on the gear field (a Winder standing there idles instead of winding his own spring).
-func _field_row(tower: Building, n: int) -> Vector2:
-	var tc: Vector2i = tower.cell
-	for r in range(2, 16):
-		for y in range(tc.y - r, tc.y + r + 1):
-			for x in range(tc.x - r, tc.x + r + 1):
-				var ok := true
-				for i in n:
-					var c := Vector2i(x + i, y)
-					if not g.in_map(c) or g.solid[g.idx(c)] != 0 or g.cliff[g.idx(c)] != 0 \
-							or not g.gear_net.in_field(g.human, g.cell_center(c)):
-						ok = false
-						break
-				if ok:
-					return g.cell_center(Vector2i(x, y))
-	return Vector2.INF
+				used.append(p)
+				return p
+	return tower.center() + Vector2(0, 300 + 100 * used.size())
 
 
 ## A cell where a Clockwork building of `kind` would mesh with the field (tools/shot_gear_lab.gd).
@@ -116,8 +124,36 @@ func _site_cell(tower: Building, kind: String) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-func _winders() -> Array:
-	return g.units.filter(func(u: Unit) -> bool: return u.team == g.human and u.kind == "winder" and not u.dead)
+## Five Winders in a row facing S, SE, E, NE, N (on open grass they wind their own springs; `idle`: kept on the field's
+## footing so they stand idle).
+func _lineup(at: Vector2, idle: bool) -> Array:
+	var row: Array = []
+	for i in VIEWS.size():
+		var u: Unit = g._add_unit("winder", g.human, at + Vector2(-96 + i * 48, 0))
+		u.cmd_stop()
+		row.append(u)
+	await create_timer(0.3).timeout
+	for i in row.size():
+		var u: Unit = row[i]
+		u.position = at + Vector2(-96 + i * 48, 0)
+		if idle:
+			u._in_field = true
+			u._field_t = 1.0e9
+	return row
+
+
+func _face(row: Array) -> void:
+	for i in row.size():
+		if is_instance_valid(row[i]) and not row[i].dead:
+			row[i].velocity = Vector2.ZERO
+			row[i].facing = (VIEWS[i] as Vector2).normalized()
+
+
+
+func _gone(row: Array) -> void:
+	for u in row:
+		if is_instance_valid(u) and not u.dead:
+			u.take_damage(9999.0, null)
 
 
 func _run() -> void:
@@ -126,35 +162,52 @@ func _run() -> void:
 	var ui := root.find_children("*", "CanvasLayer", true, false)
 	for c in ui:
 		c.visible = false
-	# 1. the crews winding the Cog Presses
+	# 1. a crew winding a Cog Press (the camera on the crew)
 	var press: Building = null
 	for b in g.buildings:
 		if b.team == g.human and b.kind == Defs.GEAR_PRESS and not b.dead and not b.crew.is_empty():
 			press = b
 			break
-	await create_timer(5.0).timeout
+	await create_timer(6.0).timeout
 	if press:
-		_look(press.center() + Vector2(0, 16), 3.0)
+		var mid := Vector2.ZERO
+		for u in press.crew:
+			mid += (u as Unit).position / float(press.crew.size())
+		_look(mid + Vector2(0, -14), 4.0)
 		await _snap("press", 0.3)
 		for i in frames:
-			await _snap("press_%02d" % i, 1.0 / 15.0)
+			await _snap("press_%02d" % i, 1.0 / 15.0 - 0.033)
 	# 2. walking in all eight views: a ring of Winders on open grass, each walking straight out
 	var spot := _open_spot(tower)
 	var ring: Array = []
 	for k in 8:
 		var d := Vector2.from_angle(TAU * k / 8.0)
-		var u: Unit = g._add_unit("winder", g.human, spot + d * 26.0)
+		var u: Unit = g._add_unit("winder", g.human, spot + d * 30.0)
 		ring.append([u, d])
 	await create_timer(0.2).timeout
 	for e in ring:
 		(e[0] as Unit).cmd_move(spot + (e[1] as Vector2) * 600.0)
-	_look(spot, 2.6)
-	await _snap("walk", 0.75)
+	_look(spot, 3.0)
+	await _snap("walk", 0.6)
 	for i in frames:
-		await _snap("walk_%02d" % i, 1.0 / 15.0)
+		await _snap("walk_%02d" % i, 1.0 / 15.0 - 0.033)
 	for e in ring:
-		(e[0] as Unit).cmd_stop()
-	# 3. building: one Winder fetches the crate from the Clocktower, carries it to a Regulator's site and winds it
+		(e[0] as Unit).take_damage(9999.0, null)
+	# 3. the five views standing (idle: the clock hands tick) and winding (the crank turns: hammer, hammer, pause)
+	var lspot := _open_spot(tower)
+	var idle_row: Array = await _lineup(lspot + Vector2(0, -60), true)
+	var wind_row: Array = await _lineup(lspot + Vector2(0, 30), false)
+	_face(idle_row)
+	_face(wind_row)
+	_look(lspot + Vector2(0, -30), 4.2)
+	await _snap("lineup", 0.5)
+	for i in frames:
+		_face(idle_row)
+		_face(wind_row)
+		await _snap("lineup_%02d" % i, 1.0 / 15.0 - 0.033)
+	_gone(idle_row)
+	_gone(wind_row)
+	# 4. building: one Winder fetches the crate from the Clocktower, carries it to a Regulator's site and winds it
 	var builder: Unit = g._add_unit("winder", g.human, tower.center() + Vector2(0, 90))
 	var sc := _site_cell(tower, Defs.CW_SUPPLY)
 	var site: Building = null
@@ -162,89 +215,86 @@ func _run() -> void:
 		site = g.place_building(g.human, Defs.CW_SUPPLY, sc, [builder])
 	if site:
 		var carried := false
-		for i in 200:
+		for i in 300:
 			await create_timer(0.1).timeout
 			if not carried and builder.crate_site != null and builder.velocity.length() > 10.0:
 				carried = true
-				await create_timer(0.4).timeout
-				_look(builder.position + Vector2(0, -16), 3.2)
+				await create_timer(0.5).timeout
+				_look(builder.position + Vector2(0, -16), 4.0)
 				await _snap("crate", 0.0)
 			if builder.game.clock < builder._crank_until:
-				_look(builder.position + Vector2(0, -16), 3.2)
-				await _snap("crate_wind", 0.5)
+				_look(builder.position + Vector2(0, -16), 4.0)
+				await _snap("crate_wind", 0.3)
 				break
-	# 4. repairing: a damaged Cog Press, a Winder sent to mend it
-	if press:
-		press.hp = press.max_hp * 0.5
-		var fixer: Unit = g._add_unit("winder", g.human, press.center() + Vector2(-60, 70))
-		fixer.cmd_repair(press)
-		for i in 80:
+	# 5. repairing: a Regulator nobody works at, half broken, and a Winder sent to mend it
+	var reg: Building = null
+	for b in g.buildings:
+		if b.team == g.human and b.kind == Defs.CW_SUPPLY and b.built and not b.dead and b != site:
+			reg = b
+			break
+	if reg:
+		reg.hp = reg.max_hp * 0.5
+		var fixer: Unit = g._add_unit("winder", g.human, reg.center() + Vector2(-50, 60))
+		fixer.cmd_repair(reg)
+		for i in 100:
 			await create_timer(0.1).timeout
 			if fixer.work == "repairing":
 				break
-		_look(fixer.position + Vector2(0, -16), 3.2)
-		await _snap("repair", 0.5)
-	# 5. a fight on open grass: three Winders against a Raptor and a Grub (they bite back)
-	var fspot := _open_spot(tower, 1)
+		_look(fixer.position + Vector2(0, -16), 4.0)
+		await _snap("repair", 0.4)
+	# 6. the attack: four Winders round an enemy Cottage on open grass (it does not hit back)
+	var fspot := _open_spot(tower)
 	var foe_t := 1 if g.human == 0 else 0
+	var hut: Building = g._add_building("cottage", foe_t, g.cell_of(fspot) - Vector2i(1, 1), true)
 	var mine: Array = []
-	for i in 3:
-		var w: Unit = g._add_unit("winder", g.human, fspot + Vector2(-60, -36 + i * 36))
-		w.cmd_stop()
+	for p in [Vector2(0, -52), Vector2(-50, 0), Vector2(50, 0), Vector2(0, 46)]:
+		var w: Unit = g._add_unit("winder", g.human, hut.center() + p * 1.6)
 		mine.append(w)
-	var foes: Array = []
-	for i in 2:
-		var f: Unit = g._add_unit("raptor" if i == 0 else "grub", foe_t, fspot + Vector2(40, -20 + i * 40))
-		f.cmd_stop()
-		foes.append(f)
 	await create_timer(0.3).timeout
-	for i in mine.size():
-		mine[i].cmd_attack(foes[i % 2])
-	_look(fspot + Vector2(0, -10), 2.8)
+	for w in mine:
+		w.cmd_attack(hut)
+	_look(hut.center() + Vector2(0, -10), 3.4)
 	var shot_attack := false
-	for i in frames:
-		await _snap("fight_%02d" % i, 1.0 / 15.0)
-		if not shot_attack:
-			for u in mine:
-				if is_instance_valid(u) and not u.dead and u.anim == "attack" and u.sprite.frame == 2:
-					shot_attack = true
-					_look(u.position + Vector2(0, -16), 3.4)
-					await _snap("attack", 0.0)
-					_look(fspot + Vector2(0, -10), 2.8)
-					break
-	for f in foes:
-		if is_instance_valid(f) and not f.dead:
-			f.take_damage(9999.0, null)
-	# 6. deaths in five views (the ring of walkers, turned and killed where they stand)
-	var dspot := _open_spot(tower, 2)
-	var dead: Array = []
-	var views := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(1, -1), Vector2(0, -1)]
-	for i in 5:
-		var u: Unit = ring[i][0]
-		u.position = dspot + Vector2(-100 + i * 50, 0)
-		u.cmd_stop()
-		u.facing = views[i].normalized()
-		dead.append(u)
-	await create_timer(0.5).timeout
-	for u in dead:
-		u.facing = views[dead.find(u)].normalized()
-		u.take_damage(9999.0, null)
-	_look(dspot + Vector2(0, -10), 3.0)
-	await _snap("death_mid", 0.3)
+	for i in frames + 20:
+		var thrust := 0
+		for w in mine:
+			if is_instance_valid(w) and not w.dead and w.anim == "attack" and w.sprite.frame == 2:
+				thrust += 1
+		if not shot_attack and thrust >= 2:
+			shot_attack = true
+			await _snap("attack", 0.0)
+		if i >= 20:
+			await _snap("fight_%02d" % (i - 20), 1.0 / 15.0 - 0.033)
+		else:
+			await create_timer(1.0 / 15.0).timeout
+	if not shot_attack:
+		await _snap("attack", 0.0)
+	_gone(mine)
+	# 7. deaths in the five views, then the heaps
+	var dspot := _open_spot(tower)
+	var drow: Array = await _lineup(dspot, true)
+	_face(drow)
+	_look(dspot + Vector2(0, -14), 4.0)
+	await create_timer(0.2).timeout
+	_face(drow)
+	_gone(drow)
+	await _snap("death_mid", 0.25)
 	await _snap("death", 1.6)
-	# 7. the size: a Winder beside a Clock Soldier and a Jack, all facing us, on the field (so the Winder idles)
-	var row := _field_row(tower, 7)
-	if row == Vector2.INF:
-		row = dspot + Vector2(0, 120)
-	var w2: Unit = g._add_unit("winder", g.human, row + Vector2(16, 0))
-	var cs: Unit = g._add_unit("clock_soldier", g.human, row + Vector2(80, 0))
-	var jk: Unit = g._add_unit(Defs.JACK, g.human, row + Vector2(150, 0))
-	for u in [w2, cs, jk]:
+	# 8. the size: a Winder beside a Clock Soldier and a Jack, all facing us
+	var zspot := _open_spot(tower)
+	var w2: Unit = g._add_unit("winder", g.human, zspot + Vector2(-60, 0))
+	var cs: Unit = g._add_unit("clock_soldier", g.human, zspot + Vector2(0, 0))
+	var jk: Unit = g._add_unit(Defs.JACK, g.human, zspot + Vector2(66, 0))
+	var trio := [w2, cs, jk]
+	for u in trio:
 		u.cmd_stop()
 	await create_timer(0.4).timeout
-	for u in [w2, cs, jk]:
-		u.position = row + Vector2([16, 80, 150][[w2, cs, jk].find(u)], 0)
-		u.facing = Vector2(0, 1)
-	_look(row + Vector2(80, -20), 3.0)
+	w2._in_field = true
+	w2._field_t = 1.0e9
+	for i in trio.size():
+		trio[i].position = zspot + Vector2([-60, 0, 66][i], 0)
+		trio[i].facing = Vector2(0, 1)
+		trio[i].velocity = Vector2.ZERO
+	_look(zspot + Vector2(0, -24), 4.0)
 	await _snap("size", 0.4)
 	quit(0)

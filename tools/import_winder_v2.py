@@ -65,21 +65,22 @@ TEAM_DARK = (150, 0, 0)
 # length, the turn's ellipse (x and y radius factors: a circle when it faces us, a vertical swing side on) and the frames'
 # angles (degrees, screen; 0 = right, 90 = down).
 CRANK = {
-    's': {'hub': (0, -14), 'arm': 4.0, 'ell': (1.0, 0.8)},
-    'se': {'hub': (7, -15), 'arm': 4.0, 'ell': (0.75, 0.9)},
-    'e': {'hub': (16, -16), 'arm': 4.0, 'ell': (0.4, 1.0)},
-    'ne': {'hub': (16, -17), 'arm': 3.5, 'ell': (0.6, 0.9)},
+    's': {'hub': (0, -14), 'arm': 5.0, 'ell': (1.0, 0.8)},
+    'se': {'hub': (8, -15), 'arm': 5.0, 'ell': (0.75, 0.9)},
+    'e': {'hub': (16, -16), 'arm': 4.5, 'ell': (0.45, 1.0)},
+    'ne': {'hub': (16, -17), 'arm': 4.0, 'ell': (0.6, 0.9)},
 }
 CRANK_ANGLES = [-90, 0, 90, 180]
-STEEL = (206, 212, 220)
-STEEL_D = (96, 100, 110)
-BRASS = (240, 184, 72)
-BRASS_L = (255, 236, 150)
-BRASS_D = (150, 92, 30)
+STEEL = (214, 220, 228)
+STEEL_D = (110, 116, 128)
+BRASS = (246, 190, 70)
+BRASS_L = (255, 240, 160)
+BRASS_D = (160, 98, 28)
 INK = (24, 14, 10)
 # The beat (keep in step with Unit.WINDER_BEAT): how long each frame is held, in seconds (preview only here)
-BEAT = {'idle': [1.0, 1.0], 'walk': [0.0667, 0.1333, 0.0667, 0.1333], 'wind': [0.4667, 0.1333, 0.4667, 0.1333],
-        'attack': [0.0667, 0.1333, 0.2667, 0.4], 'death': [0.0667, 0.1333, 0.2, 0.2, 0.2667, 1.2]}
+T = 1.0 / 15.0         # (the game's animation tick)
+BEAT = {'idle': [1.0, 1.0], 'walk': [T, 2 * T, T, 2 * T], 'wind': [7 * T, 2 * T, 7 * T, 2 * T],
+        'attack': [T, 2 * T, 4 * T, 6 * T], 'death': [T, 2 * T, 3 * T, 3 * T, 4 * T, 1.2]}
 
 
 # ------------------------------------------------------------------ finding the figures
@@ -236,12 +237,12 @@ def crank(frame, view, k, anchor):
     ang = np.radians(CRANK_ANGLES[k % len(CRANK_ANGLES)])
     kx = int(round(hx + np.cos(ang) * c['arm'] * c['ell'][0]))
     ky = int(round(hy + np.sin(ang) * c['arm'] * c['ell'][1]))
-    # the arm (a light steel line), the axle (a dark pin), then the knob: 2 x 2 brass, lit from the top left, a dark rim
-    # under it so it reads on the brass body
+    # the arm (a light steel line with a dark edge under it), the axle (a dark pin), then the knob: 2 x 2 brass lit from
+    # the top left in a dark rim, so it reads on the brass body and on grass
+    d.line([(hx, hy + 1), (kx, ky + 1)], fill=INK + (255,), width=1)
     d.line([(hx, hy), (kx, ky)], fill=STEEL + (255,), width=1)
     d.point([(hx, hy)], fill=STEEL_D + (255,))
-    d.line([(kx - 1, ky + 1), (kx, ky + 1)], fill=INK + (255,))
-    d.line([(kx + 1, ky - 1), (kx + 1, ky + 1)], fill=INK + (255,))
+    d.rectangle([kx - 2, ky - 2, kx + 1, ky + 1], fill=INK + (255,))
     d.point([(kx - 1, ky - 1)], fill=BRASS_L + (255,))
     d.point([(kx, ky - 1), (kx - 1, ky)], fill=BRASS + (255,))
     d.point([(kx, ky)], fill=BRASS_D + (255,))
@@ -357,8 +358,8 @@ def write_art_data(cell, anchor, counts):
 
 
 def portrait():
-    """The card portrait (64 x 64): the S idle figure's head and chest from the sheet itself, on the dark tile the other
-    portraits use."""
+    """The card portrait (64 x 64): the S idle figure's head and chest from the sheet itself, on a clear background like
+    the other new Clockwork units' (the Clock Soldier's, the Jack's)."""
     f, cols, _ = SHEETS['idle']
     a = np.array(Image.open(SRC + f).convert('RGB')).astype(int)
     fg, _ = keyed(a)
@@ -373,15 +374,11 @@ def portrait():
     cx = (xs.min() + xs.max()) // 2
     y0 = ys.min() - 4
     crop = o[y0:y0 + side, cx - side // 2:cx - side // 2 + side]
-    small = snap_team(shrink(crop, 58.0 / side))
+    small = snap_team(shrink(crop, 62.0 / side))
     icon = np.zeros((64, 64, 4), np.uint8)
-    icon[..., :3] = (28, 30, 30)
-    icon[..., 3] = 255
-    icon[0:2, :, :3] = icon[-2:, :, :3] = icon[:, 0:2, :3] = icon[:, -2:, :3] = (70, 74, 72)
     h, w = small.shape[:2]
-    oy, ox = 64 - 2 - h, (64 - w) // 2
-    sel = small[..., 3] > 0
-    icon[oy:oy + h, ox:ox + w][sel] = small[sel]
+    oy, ox = 64 - h, (64 - w) // 2
+    icon[oy:oy + h, ox:ox + w] = small
     Image.fromarray(icon, 'RGBA').save(ICON)
 
 
