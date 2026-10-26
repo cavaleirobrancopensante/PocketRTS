@@ -11,7 +11,8 @@ The rule (units only; the buildings keep their painted reds):
   - BRASS stays brass, WHITE stays white (the clock faces), the dark OUTLINES, the STEEL and IRON greys stay as painted.
   - STEEL that is tinted blue (the Jack's coil spring, drill tips and inner arm segments, the Pendulum's blade) is metal,
     not paint: it keeps its own colour, only greyed toward steel when it is bluer than STEEL_SAT (a ChatGPT sheet that
-    paints the steel saturated blue comes out like the older, greyer ones).
+    paints the steel saturated blue comes out like the older, greyer ones). The Jack's drill tips and inner arm segments
+    (all its steel but the coil spring) go further, to TOOL_SAT: at STEEL_SAT the bright tips still read as ice blue.
   - Per unit: the CLOCK SOLDIER is all BRASS but its HEAD (owner): its round body (it was red) and its blue shoulders and
     knee gems become brass, and its head (the cap with the crown spike on top of the body) alone is player colour, so it
     reads apart from the JACK, whose body and shoulders are player colour.
@@ -44,6 +45,7 @@ from scipy import ndimage as ndi
 TEAM_LIGHT = (255, 0, 0)
 TEAM_DARK = (150, 0, 0)
 STEEL_SAT = 0.45          # the most a steel pixel's saturation keeps (the older Jack sheet's coil spring and drill tip)
+TOOL_SAT = 0.15           # the same for the Jack's drill tips and inner arm segments (grey steel with a cool hint)
 PAINT_SAT = 0.42          # a blue region this saturated (its median) is paint, not steel (the units' blue-tinted steel: 0.38 at most)
 JACK_HUE = 213.0          # the Jack's shoulders are this deep a blue or deeper (~218-222); its steel is cyan-er (~205-211)
 SOLDIER_HEAD_ONLY = True   # the Clock Soldier is all brass but its head (owner, 2026-10-26): its blue shoulders and knee gems go brass
@@ -146,19 +148,29 @@ def to_team(rgb, mask):
     return out
 
 
-def steel(rgb, mask):
-    """Steel tinted bluer than STEEL_SAT -> greyed toward steel (its value kept, the saturation down to STEEL_SAT)."""
+def steel(rgb, mask, cap=STEEL_SAT):
+    """Steel tinted bluer than `cap` -> greyed toward steel (its value kept, the saturation down to `cap`)."""
     h, s, v = hsv(rgb)
-    m = mask & (s > STEEL_SAT)
+    m = mask & (s > cap)
     if not m.any():
         return rgb
     a = rgb[..., :3].astype(np.float32)
     mx = a.max(-1, keepdims=True)
-    k = np.where(s > 0, STEEL_SAT / np.maximum(s, 1e-6), 1.0)[..., None]
+    k = np.where(s > 0, cap / np.maximum(s, 1e-6), 1.0)[..., None]
     grey = mx - (mx - a) * k               # each channel's distance below the max scaled: saturation x k, value kept
     out = rgb.copy()
     out[..., :3] = np.where(m[..., None], grey.clip(0, 255), a).astype(np.uint8)
     return out
+
+
+def jack_spring(steel_m):
+    """The Jack's coil spring: the biggest patch of its steel (its rings joined over 1 px). The rest of its steel is the
+    drill tips and the inner arm segments."""
+    lab, n = ndi.label(ndi.binary_dilation(steel_m, iterations=1), structure=np.ones((3, 3)))
+    if n == 0:
+        return steel_m
+    sz = ndi.sum(steel_m, lab, range(1, n + 1))
+    return (lab == int(np.argmax(sz)) + 1) & steel_m
 
 
 # ------------------------------------------------------------------ the Clock Soldier: brass body, player-colour head
@@ -409,7 +421,14 @@ def recolour(o, unit, ref=None, tilt=0.0, window=16.0, info=None, tipped=False):
     else:
         rgb[:] = to_team(rgb, red_parts(o))      # (the red parts on one pure red ramp: no orange seams on another team)
     rgb[:] = to_team(rgb, paint)
-    rgb[:] = steel(rgb, steel_m)
+    if unit == 'jack' and steel_m.any():
+        tool = steel_m & ~jack_spring(steel_m)
+        rgb[:] = steel(rgb, tool, TOOL_SAT)
+        rgb[:] = steel(rgb, steel_m & ~tool)
+        if info is not None:
+            info.update(tool=tool)
+    else:
+        rgb[:] = steel(rgb, steel_m)
     if info is not None:
         info.update(paint=paint, steel=steel_m)
     o[..., :3] = rgb
@@ -436,8 +455,9 @@ def snap_team(img):
 # ------------------------------------------------------------------ a check of a sheet
 
 def check(unit, path, rows, cols, out, only_row=None, navy=(0, 22, 48), tol=40):
-    """Each cell: the frame, the overlay (magenta: blue paint -> player colour; cyan: steel; yellow: the Clock Soldier's
-    head; orange: its body -> brass) and the result (painted colours before the snap)."""
+    """Each cell: the frame, the overlay (magenta: blue paint -> player colour; cyan: steel; light blue: the Jack's tool
+    steel, greyed further; yellow: the Clock Soldier's head; orange: its body -> brass) and the result (painted colours
+    before the snap)."""
     from PIL import Image
     a = np.array(Image.open(path).convert('RGB')).astype(int)
     H, W = a.shape[:2]
@@ -461,6 +481,8 @@ def check(unit, path, rows, cols, out, only_row=None, navy=(0, 22, 48), tol=40):
             ov = sub.copy()
             ov[info['paint']] = [255, 0, 255]
             ov[info['steel']] = [0, 255, 255]
+            if 'tool' in info:
+                ov[info['tool']] = [0, 160, 255]
             if 'cap' in info:
                 ov[info['body']] = [255, 140, 0]
                 ov[info['cap']] = [255, 255, 0]

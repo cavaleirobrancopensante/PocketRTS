@@ -35,8 +35,8 @@ clearly bigger than the Clock Soldier), snap the team reds to the shader's key r
 PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): BRASS + PLAYER COLOUR. The
 Jack's red body stays player colour and its two blue ball SHOULDERS become player colour; its steel stays steel: the coil
 spring, the inner arm segments and the drill tips (cw_palette.blue_parts, the Jack's rule: only the deep-blue balls fixed
-to the red body are paint), greyed toward steel where a sheet paints them bluer than the older ones (the two-launcher
-sheet's drill tips).
+to the red body are paint), greyed toward steel where a sheet paints them bluer than the older ones; the drill tips and
+inner arm segments greyed further (cw_palette.TOOL_SAT: the two-launcher sheet's bright tips read as ice blue).
   python3 tools/import_jack.py"""
 import json
 import os

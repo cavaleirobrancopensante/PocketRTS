@@ -5,7 +5,7 @@ extends RefCounted
 
 const NOTES := [
 	{"v": "0.14.32", "items": [
-		"CLOCKWORK COLOURS: every Clockwork unit is now brass and your colour, with no blue left. The Jack's body and shoulders are in your colour; the Clock Soldier is all brass except its head (the cap with the crown spike), which is in your colour, so the two are easy to tell apart. On the others the blue ball joints and wing springs are now in your colour. Steel stays steel and the clock faces stay white. The red parts no longer show orange streaks on other colours, and the Clock Soldier seen from behind no longer has the top of its head cut off.",
+		"CLOCKWORK COLOURS: every Clockwork unit is now brass and your colour, with no blue left. The Jack's body and shoulders are in your colour; the Clock Soldier is all brass except its head (the cap with the crown spike), which is in your colour, so the two are easy to tell apart. On the others the blue ball joints and wing springs are now in your colour. Steel stays steel (the Jack's drill tips are a plain steel grey now, not icy blue) and the clock faces stay white. The red parts no longer show orange streaks on other colours, and the Clock Soldier seen from behind no longer has the top of its head cut off.",
 		"THE JACK now has two drill launchers and fires them in turn, a screw from each arm, each from its own tip. Its hop, jump and death still show the old claw arm until their new drawings arrive.",
 		"THE SWIFT's peck is painted now: it brakes with its wings up, stabs its beak forward and down, and pulls away; the blow lands on the stab.",
 		"THE PENDULUM's death seen from behind and from the back three-quarter view is painted now (it was a rough sketch).",

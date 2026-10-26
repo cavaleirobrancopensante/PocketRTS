@@ -152,7 +152,7 @@ Readability rule). The painted sheets in art/redraws are unchanged; the importer
 tools/cw_palette.py (by value along a red ramp for the player-colour parts, so their painted shading is kept; then the two
 team key reds). A ChatGPT repaint in these colours would retire each line:
 - Clock Soldier (tools/import_clock_soldier.py): its red round body repainted along its own brass ramp; its blue shoulders and knee gems repainted brass too; its cap with the crown spike (found in every frame by matching the idle's cap, turned with the body in the death) made player colour, the only player colour on it. Attack E, 3rd frame: ChatGPT's frame has no cap (the raised arm took its place), so no player-colour head there. Its importer now takes whole figures (the back views' caps and raised swords crossed the sheet's grid lines and were cut).
-- Jack (tools/import_jack.py): its blue ball shoulders made player colour; its coil spring, inner arm segments and drill tips kept as steel (the two-launcher sheet's saturated blue drill tips and arm segments greyed toward steel).
+- Jack (tools/import_jack.py): its blue ball shoulders made player colour; its coil spring, inner arm segments and drill tips kept as steel (the two-launcher sheet paints them saturated blue: greyed toward steel, and the drill tips and inner arm segments further, to a grey with a cool hint, since its bright tips read as ice blue).
 - Swift (tools/import_cuckoo.py): its blue wing-root joints and eyes made player colour.
 - Ticking Owl (tools/import_cuckoo.py): the blue of its blue-and-white wing-root springs made player colour (the white kept).
 - Pendulum (tools/import_tier3.py): its blue ball joints (hips, knees, ankles) made player colour; the blade stays steel.
