@@ -278,5 +278,56 @@ func _run() -> void:
 	d.refresh_fog()
 	check("spectator, all vision: no fog drawn", not d.fog_sprite.visible and dhive.visible)
 	d.queue_free()
+	await process_frame
+	# ---- online: the host places for a guest by what the guest has seen; the guest's own fog
+	var host := _make(false)
+	await process_frame
+	await process_frame
+	var hs := NetSession.new()
+	hs.game = host
+	hs.is_host = true
+	hs.peer_team = {7: 1}                    # (a guest plays the Brood, team 1)
+	host.net = hs
+	host._update_vis()
+	var h_hall := _hall(host, 0)
+	check("online host: the guest's side may plan over your hall it has never seen",
+		host.placement_problem(1, "cottage", h_hall.cell) == "", host.placement_problem(1, "cottage", h_hall.cell))
+	var eye: Unit = host._add_unit("raptor", 1, h_hall.center() + Vector2(0, h_hall.rect().size.y * 0.5 + 40.0))
+	host._update_vis()
+	check("online host: once the guest's side has seen it, it blocks", host.placement_problem(1, "cottage", h_hall.cell) == "Blocked.",
+		host.placement_problem(1, "cottage", h_hall.cell))
+	host.consume_unit(eye)
+	host._update_vis()
+	check("online host: and stays known", host.placement_problem(1, "cottage", h_hall.cell) == "Blocked.")
+	var hut_at := _far_spot(host, "cottage", [h_hall.cell, _hall(host, 1).cell])
+	var hut := host._add_building("cottage", 0, hut_at, true)
+	host._update_vis()
+	check("online host: a cottage of yours the guest hasn't seen doesn't stop it", host.placement_problem(1, "cottage", hut.cell) == "")
+	hs.lost_peers[7] = true
+	check("online host: a guest who left: the computer's rules", host.placement_problem(1, "cottage", hut.cell) == "Blocked.")
+	var m := NetSnapshot.build(hs)
+	var guest := Game.new()
+	guest.puppet = true
+	guest.map_id = "ashford_crossing"
+	guest.factions = ["crown", "brood"]
+	guest.sides = [0, 1]
+	guest.human = 1
+	root.add_child(guest)
+	await process_frame
+	var gs := NetSession.new()
+	gs.game = guest
+	gs.is_host = false
+	guest.net = gs
+	NetSnapshot.apply(gs, m)
+	guest._update_swamp()
+	guest._update_vis()
+	var gh := _hall(guest, 0)
+	var gown := _hall(guest, 1)
+	check("online guest: its fog is only grey and clear", _only_grey(_alphas(guest)), str(_alphas(guest)))
+	check("online guest: the host's hall is hidden, its own shows", gh != null and gown != null and not gh.visible and gown.visible)
+	check("online guest: the host's hall ground reads grey", gh != null and _alpha_at(guest, guest.cell_of(gh.center())) == Game.FOG_GREY)
+	check("online guest: it may plan over the host's hall it has never seen", gh != null and guest.placement_problem(1, "cottage", gh.cell) == "")
+	host.queue_free()
+	guest.queue_free()
 	print("fog grey: %s" % ("ALL OK" if fails == 0 else "%d FAILED" % fails))
 	quit(1 if fails > 0 else 0)
