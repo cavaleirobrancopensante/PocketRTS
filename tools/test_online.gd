@@ -244,12 +244,15 @@ func _probe_tick(real: float) -> void:
 		return
 	_probe_t = 0.0
 	for u in _mine():
-		if u.velocity.length() < 1.0 and not u.off_field and u.kind != "horse" and not ["build", "move", "amove"].has(u.order):
+		if u.velocity.length() < 1.0 and not u.off_field and u.kind != "horse" and not u.is_worker() and u.kind != "cannon" \
+				and not ["build", "move", "amove", "patrol"].has(u.order):
 			var to: Vector2 = u.position + Vector2(200, 0).rotated(randf() * TAU)
 			if not g.in_map(g.cell_of(to)) or not g.is_free(g.cell_of(to)):
 				continue
 			_probe = {"u": u, "from": u.position, "to": to, "t0": Time.get_ticks_usec()}
 			g.group_move([u], to, false)
+			if OS.get_environment("PROBE_DEBUG") != "":
+				print("PROBE %s lead=%s off_field=%s work=%s order=%s aboard=%s speed=%.0f" % [u.kind, g.net.get("leads").has(u.net_id) if g.net.get("leads") != null else "-", u.off_field, u.work, u.order, u.aboard, u.speed])
 			return
 
 
@@ -296,6 +299,7 @@ func _host_tick() -> void:
 			g = main.game
 			g.net.trace = true
 			check("host_game_colours", int(g.colours[0]) == HOST_COL and int(g.colours[1]) == GUEST_COL, str(g.colours))
+			_give_guest_soldiers()
 			if coop:
 				check("host_computer_plan_in_config", String(main.last_cfg["slots"][2].get("strategy", "")) == "rush")
 			if autoplay:
@@ -334,6 +338,27 @@ func _host_tick() -> void:
 				_finish()
 		else:
 			_finish()
+
+
+## The guest's side gets 4 soldiers and (Crown) a Cannon by its hall at the start: units free to walk (the lag
+## probe times their first steps) and for the orders only soldiers take (attack, patrol, hold, BOMBARD).
+func _give_guest_soldiers() -> void:
+	if autoplay:
+		return
+	var hall: Building = null
+	for b in g.buildings:
+		if b.team == 1 and b.kind == g.faction_hall(1):
+			hall = b
+	if hall == null:
+		return
+	var f := g.faction_of(1)
+	var kinds: Array = {"crown": ["musketeer", "musketeer", "musketeer", "musketeer", "cannon"], "brood": ["raptor", "raptor", "raptor", "raptor"],
+		"clockwork": ["windup_soldier", "windup_soldier", "windup_soldier", "windup_soldier"]}[f]
+	var i := 0
+	for k in kinds:
+		var c := g.nearest_free(g.cell_of(hall.center() + Vector2(-90 + i * 45, 130 if hall.center().y < Game.H * Game.T * 0.5 else -130)), 8)
+		g._add_unit(k, 1, g.cell_center(c))
+		i += 1
 
 
 func _host_report() -> void:
