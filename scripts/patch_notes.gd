@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.19", "items": [
+		"CROWN WORKERS take real jobs first and HAUL only when every job is taken: a new Labourer (or one whose Farm is full) goes to the nearest Farm or Powder Mill with room, and only when all of them are full does he become a hauler at the Town Hall (if it has a free hauler slot). FIX: until now a Town Hall's hauler slots counted as the nearest job, so every Crown game started with all four Labourers hauling and the starting Farm unworked. A rally on the ground still sends new workers to that spot.",
+	]},
 	{"v": "0.14.18", "items": [
 		"CLOCKWORK, no more power (gear mode): steam and electricity are only looks now. The Boiler, the Charging Pylon (the tesla tower), the Engine Hall and the Capacitor Works are gone from the Clockwork's build list, and nothing that needs them or costs energy is trained; the Clocktower fills no batteries and no longer zaps flyers. The top bar shows cogs, TENSION and supply (no energy pill). The RATCHET TURRET is the Clockwork's new static defence (2x2, 125 cogs, 450 hp, needs a Movement Works): its head turns to the nearest enemy and fires big spinning screws at ground and air alike (14 damage every 1.5 s, range a little over a Musketeer's). Like every gear building it must stay linked to the gear field or it does not fire. The CLOCKWORK LAB starts with one (and no Pylon); the Clockwork computer builds one or two.",
 	]},

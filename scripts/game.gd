@@ -2238,22 +2238,32 @@ func best_crusher(p: Vector2, t: int, reach := INF) -> Building:
 
 # ------------------------------------------------------------------ economy
 
-## An economy structure with room in its crew for this team's workers, nearest first.
+## An economy structure with room in its crew for this team's workers, nearest first. A real post (Farm, Mill,
+## Feeding Pit, Cog Press...) always comes first; a Town Hall's hauler slots only when every post is full (a Town
+## Hall counts its haulers as its crew, so without this the nearest hall won: every Crown game started with all
+## its labourers hauling and the starting Farm unworked).
 func free_site(t: int, p: Vector2) -> Building:
 	var best: Building = null
 	var bd := INF
+	var hall: Building = null
+	var hd := INF
 	for b in buildings:
 		if b.team != t or b.dead or not b.built or b.crew_max() == 0:
 			continue
 		if b.crew.size() >= b.crew_max():
 			continue
 		var dd: float = b.center().distance_to(p) + b.crew.size() * 40.0
+		if b.haul_cap() > 0:
+			if dd < hd:         # hauling: the fallback when all the posts are taken
+				hd = dd
+				hall = b
+			continue
 		if b.barren():
 			continue            # spent land: nobody works a Farm, Pit, Mill or Boiler on it any more
 		if dd < bd:
 			bd = dd
 			best = b
-	return best
+	return best if best != null else hall
 
 
 ## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one);
