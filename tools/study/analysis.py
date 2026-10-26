@@ -257,6 +257,20 @@ def main():
                          "median spent at": mmss(s.soil_zero_t.median()) if s.soil_zero_t.notna().any() else "-"})
         T["faults_econ"] = md(pd.DataFrame(rows), floatfmt=".1f")
 
+        # supply-capped share from the 30 s samples (threshold 50 in the bank: the Brood's units cost 25-75, so the 100 of the
+        # per-second counter understates its blocks)
+        tsa = ts[(ts.halls > 0) & (ts.t >= 120) & (ts.cap < 200)]
+        rows = []
+        for f in FACS:
+            x = tsa[tsa.faction == f]
+            if x.empty:
+                continue
+            capped = (x.supply >= x.cap - 1) & (x.gold >= 50)
+            rows.append({"faction": f, "samples": len(x), "supply-capped with 50+ in the bank (% of 30 s samples)": 100 * capped.mean(),
+                         "within 10% of the cap (%)": 100 * ((x.cap - x.supply) <= 0.1 * x.cap).mean(),
+                         "capped at 3:00-8:00 (%)": 100 * capped[(x.t >= 180) & (x.t <= 480)].mean(), "capped after 8:00 (%)": 100 * capped[x.t > 480].mean()})
+        T["capped_samples"] = md(pd.DataFrame(rows), floatfmt=".1f")
+
         # expansion timing
         rows = []
         for f in FACS:
