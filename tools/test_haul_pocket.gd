@@ -104,10 +104,13 @@ func _run() -> void:
 	br = g._add_building("horse_breeder", 0, origin + Vector2i(9, 1), true)
 	bar = g._add_building("barracks", 0, origin + Vector2i(19, 1), true)
 	# a palisade shuts in the Barracks' west side (the side facing the Breeder): a pocket 3 cells
-	# long between it and the Barracks
+	# long between it and the Barracks; its ends wrap round the corners, so the nearest ground he
+	# can reach to the pocket is outside the palisade, out of reach of the Barracks
 	for y in range(0, 5):
 		g._add_building("wall", 0, origin + Vector2i(17, y), true)
 	g._add_building("wall", 0, origin + Vector2i(18, 0), true)
+	g._add_building("wall", 0, origin + Vector2i(19, 0), true)
+	g._add_building("wall", 0, origin + Vector2i(19, 4), true)
 	g._add_building("wall", 0, origin + Vector2i(18, 4), true)
 	for b in g.buildings:
 		if b.team == 0:
@@ -146,7 +149,7 @@ func _run() -> void:
 		last = w.position
 	var took: float = g.clock - t_lead
 	check(horse.leader != w, "he lets the horse go at the Barracks (%.1f s after taking it)" % took)
-	check(took < 16.0 and max_still < 4.0, "without standing stuck against the palisade (longest standstill %.1f s; the fallback comes at 16 s)" % max_still)
+	check(took < 7.0 and max_still < 1.0, "without standing stuck against the palisade (longest standstill %.1f s; the fallback comes at 16 s)" % max_still)
 	await wait_for(func() -> bool: return not is_instance_valid(horse) or horse.dead or horse.get("hitch_p") == null or horse.hitch_p != Vector2.INF, 10.0)
 	if is_instance_valid(horse) and not horse.dead and horse.get("hitch_p") != null:
 		await wait_for(func() -> bool: return not is_instance_valid(horse) or horse.position.distance_to(horse.hitch_p) < 4.0, 25.0)

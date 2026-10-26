@@ -5044,6 +5044,7 @@ func approach_point(e: Entity, from: Vector2) -> Vector2:
 	var c1 := cell_of(r.end - Vector2(1, 1)) + Vector2i.ONE
 	var best := Vector2.INF
 	var bd := INF
+	var home := region_of(cell_of(from))
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
 			if x != c0.x and x != c1.x and y != c0.y and y != c1.y:
@@ -5055,6 +5056,8 @@ func approach_point(e: Entity, from: Vector2) -> Vector2:
 				var corner := (x == c0.x or x == c1.x) and (y == c0.y or y == c1.y)
 				if corner:
 					dd += 48.0
+				if home >= 0 and region_of(c) != home:
+					dd += 100000.0      # (a pocket shut in by a palisade or other buildings, the far side of a wall: he can't walk there, so a side he can reach first)
 				if dd < bd:
 					bd = dd
 					best = p
