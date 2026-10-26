@@ -5,7 +5,7 @@ gpt=Image.open('wheel_gpt2.png').convert('RGB').crop((0,0,384,512))   # frame-1 
 face=Image.open('wheel_face.png').convert('RGB')
 FC=(628,600); FR=470
 face=face.crop((FC[0]-FR,FC[1]-FR,FC[0]+FR,FC[1]+FR))     # square around the face
-OC=(225,268); ORX,ORY=75,168; HUB=(250,270)
+OC=(231,268); ORX,ORY=77,170; HUB=(250,270)
 def navy(a): return (a[...,2]>a[...,0]+25)&(a[...,2]>a[...,1]+10)
 def wheel_big(angle):
     rot=face.rotate(-angle,resample=Image.BICUBIC,fillcolor=(14,10,12))
