@@ -4104,10 +4104,10 @@ func _gather(delta: float) -> Vector2:
 ## and the tipping spot, that the fewest of the others hold, at the place there nobody holds
 ## (_mill_pick); they dig at the heaps' feet, behind the two lanes the walkers use. They don't
 ## shove each other there (Game.separation: shoving in a yard this small only pushed men off
-## their places and dragged walkers along): they pass close by, and a man who comes up right
-## behind another going the same way drops back behind him (_mill_pace) instead of walking on
-## top of him. A leg that makes no headway for MILL_STALL s ends where he is, so nobody walks
-## on the spot with a frozen stride. A man outside the yard walks in by its open
+## their places and dragged walkers along): they pass close by, and a man who comes up behind
+## another going his way keeps a step behind him, or waits a moment for a man crossing his way
+## (_mill_pace), instead of walking on top of him. A leg that makes no headway for MILL_STALL s
+## ends where he is, so nobody walks on the spot with a frozen stride. A man outside the yard walks in by its open
 ## side (the pathfinder); when neighbours shut the yard in on every side he goes up to the shed
 ## and in through it (_mill_shed_way); only a mill with no free ground round it at all is worked
 ## from outside, the shovel going round where he stands.
@@ -4121,9 +4121,12 @@ const MILL_TIP_AT := [[Vector2(-3.0, -16.0), Vector2(1.0, -20.0)], [Vector2(6.0,
 const MILL_MOUTH := Vector2(10.0, -42.0)        # (he tips facing it)
 const MILL_LANE_OUT := -3.5                     # the carry lane, along the yard's front edge
 const MILL_LANE_BACK := -5.5                    # the way back, a step further in (both well in front of the diggers)
-const MILL_TAIL := 7.0                          # a crew man walking the same way this close ahead: he drops back (_mill_pace)
-const MILL_CREEP := 12.0
-const MILL_STALL := 0.4                         # a leg with no headway this long ends where he is
+const MILL_WAY := 3.5                           # a crew man this near the line he walks is in his way (_mill_pace)
+const MILL_LOOK := 9.0                          # (looked for this far ahead)
+const MILL_GAP := 5.0                           # the gap he keeps behind a man walking ahead in his way
+const MILL_GAP_K := 10.0                        # (px/s of speed for each px the gap is long or short)
+const MILL_HOLD := 0.8                          # held back longer than this (the man ahead doesn't move on): he walks on
+const MILL_STALL := 0.4                         # a leg with no headway this long (not held back) ends where he is
 const MILL_CYCLE := 2.0                         # dig + tip time (the walks come on top)
 const MILL_STEP_ENDS := [0.7, 1.05, 1.35]      # dig, lift, swing end here; tip to MILL_CYCLE
 var _mill_k := -1                               # the heap he works (the load's colour)
@@ -4137,6 +4140,7 @@ var _mill_site: Building = null
 var _mill_in := false                           # at work in the yard (Game.separation: the crew there don't shove each other)
 var _mill_best := INF                           # this leg's closest approach to its waypoint so far
 var _mill_stall := 0.0                          # time without headway on this leg
+var _mill_held := 0.0                           # time held back behind another man (_mill_pace)
 var _mill_first := true
 var _mill_look_t := 0.0                         # outside: the way in is looked at again when this runs out
 var _mill_path_t := 0.0                         # (and a new path asked for at most this often)
@@ -4209,26 +4213,43 @@ func _mill_pick(site: Building, tip: bool, first: int) -> int:
 	return best
 
 
-## How fast he may walk (INF: his own pace). Another of the crew walking the same way close
-## ahead of him sets it: he keeps a little slower and drops back behind him (they don't shove
-## each other in the yard, and two walking together would be drawn on top of each other). Of
-## two level with each other the later man drops back, faster, so two men slowed by the same
-## man ahead don't walk on together. Never below MILL_CREEP: he never stands still on the spot.
+## How fast he may walk (INF: his own pace). They don't shove each other in the yard, and two
+## walking together would be drawn on top of each other, so he keeps MILL_GAP behind another of
+## the crew walking ahead of him in his way (within MILL_WAY of the line he walks, at most
+## MILL_LOOK ahead): no faster than that man goes along it, slower while the gap is short (a
+## standstill when it is), faster to close it again. Like traffic: a man stepping onto the lane
+## or off it (a leg more up and down than along) waits for the lane's walkers in his way, they
+## never wait for him. Between two walking the same kind of leg, who is ahead is measured along
+## both their ways together (dir plus his), the same answer for both, and of two level with each
+## other the later man (the higher id) drops back: so nobody waits for a man who waits for him
+## (the old rule, a little slower than the man ahead, let two walk on top of each other for a
+## second and more; a test each man made along his own way alone left two, or three, standing
+## stuck together where the lanes meet the hopper's spots). A man standing in his way (at his
+## place), or coming the other way, is passed close by: that is a moment.
 func _mill_pace(site: Building, dir: Vector2) -> float:
 	var cap := INF
+	var lane := absf(dir.x) >= absf(dir.y)
 	for o in site.crew:
-		if o == self or not is_instance_valid(o) or o.dead or not o._mill_in or not o._mill_walking:
+		if o == self or not is_instance_valid(o) or o.dead or not o._mill_in or not o._mill_walking or o._mill_site != site:
 			continue
 		var rel: Vector2 = o.position - position
-		if rel.length() >= MILL_TAIL or o.facing.dot(dir) < 0.3:
+		if rel.length_squared() > MILL_LOOK * MILL_LOOK or absf(dir.cross(rel)) > MILL_WAY:
 			continue
-		var ahead := rel.dot(dir + o.facing)
-		var theirs := maxf(o.velocity.dot(dir), 0.0)
-		if ahead > 0.5:
-			cap = minf(cap, theirs * 0.8)
-		elif ahead > -0.5 and o.get_instance_id() < get_instance_id():
-			cap = minf(cap, theirs * 0.5)
-	return maxf(cap, MILL_CREEP) if cap < INF else INF
+		var od: Vector2 = o.facing
+		if od.dot(dir) < -0.5:
+			continue             # coming the other way: they pass
+		var o_lane: bool = absf(od.x) >= absf(od.y)
+		if lane and not o_lane:
+			continue             # (stepping onto the lane or off it: he waits for me)
+		var lon := rel.dot(dir)
+		if lane == o_lane:
+			var ahead := rel.dot(dir + od)
+			if ahead < -0.5 or (ahead <= 0.5 and get_instance_id() < o.get_instance_id()):
+				continue         # (he is behind, or level and the later man: it's his to keep back)
+		elif lon <= 0.0:
+			continue             # (a lane walker I have already crossed)
+		cap = minf(cap, maxf(0.0, maxf(0.0, o.velocity.dot(dir)) + (lon - MILL_GAP) * MILL_GAP_K))
+	return cap
 
 
 ## The way from where he is to his heap (out false) or tipping spot (out true): onto the lane
@@ -4246,6 +4267,7 @@ func _mill_walk_route(site: Building, out: bool) -> Array:
 	pts.append(goal)
 	_mill_best = INF
 	_mill_stall = 0.0
+	_mill_held = 0.0
 	return pts
 
 
@@ -4288,27 +4310,35 @@ func _mill_work(site: Building, delta: float) -> Vector2:
 		return _mill_enter(site, idx, delta)
 	work = "manning"
 	# the legs: straight from waypoint to waypoint (the yard is all walkable and the crew don't
-	# shove each other); a leg that gets no closer for MILL_STALL s ends where he is
+	# shove each other); a leg that gets no closer for MILL_STALL s ends where he is (time held
+	# back behind another man doesn't count: that man moves on)
 	while not _mill_route.is_empty():
 		var wp: Vector2 = _mill_route[0]
 		var d := wp - position
 		var dist := d.length()
 		var last := _mill_route.size() == 1
 		if dist > (1.0 if last else 5.0):
+			var dir := d / dist
+			# (onto his place he slows down: the eased velocity, Unit._move, would carry him past it)
+			var v := minf(speed, dist * 8.0 + 8.0 if last else dist / maxf(delta, 0.001))
+			var pace := _mill_pace(site, dir)
+			var held := pace < v * 0.7
+			_mill_held = _mill_held + delta if held else 0.0
+			if _mill_held < MILL_HOLD:
+				v = minf(v, pace)
 			if dist < _mill_best - 0.3:
 				_mill_best = dist
 				_mill_stall = 0.0
-			else:
+			elif not held:
 				_mill_stall += delta
 			if _mill_stall < MILL_STALL:
 				_mill_walking = true
-				facing = d / dist
-				# (onto his place he slows down: the eased velocity, Unit._move, would carry him past it)
-				var v := minf(speed, dist * 8.0 + 8.0 if last else dist / maxf(delta, 0.001))
-				return d / dist * minf(v, _mill_pace(site, d / dist))
+				facing = dir
+				return dir * v
 		_mill_route.remove_at(0)
 		_mill_best = INF
 		_mill_stall = 0.0
+		_mill_held = 0.0
 	if _mill_walking:
 		# arrived: he stops dead (the eased velocity and a shove taken on the way, Unit._move,
 		# would slide him a few px on, onto the next man's place)
