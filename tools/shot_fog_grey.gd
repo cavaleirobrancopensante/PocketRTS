@@ -17,7 +17,8 @@ func _initialize() -> void:
 
 
 func _snap() -> Image:
-	await create_timer(0.5).timeout
+	paused = false               # (the start's countdown holds the tree: the camera moves with physics)
+	await create_timer(0.6).timeout
 	return root.get_viewport().get_texture().get_image()
 
 
@@ -30,6 +31,9 @@ func _run() -> void:
 	await process_frame
 	var g = main.game
 	g.hud.countdown = 0.0
+	paused = false
+	for ai in g.ais:
+		ai.process_mode = Node.PROCESS_MODE_DISABLED     # (a still start: nobody walks off)
 	await create_timer(1.5).timeout
 	# the whole map in view
 	var vs: Vector2 = root.get_viewport().get_visible_rect().size
