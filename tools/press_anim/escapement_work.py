@@ -139,8 +139,12 @@ _core &= (ndi.sum(_core, lab, range(n + 1)) >= 25)[lab]
 _zone = _arms | _bar | _nut | _small
 ANCH = _core | (ndi.binary_dilation(_core, iterations=1) & _zone & DARK)
 ANCH = ndi.binary_fill_holes(ndi.binary_closing(ANCH, iterations=1) & _zone)
-# (its outline and glints where it stands against the backdrop: the arms' tops, the right pallet)
-ANCH |= ndi.binary_dilation(ANCH, iterations=2) & SOLID & (ndi.distance_transform_edt(SOLID) <= 3.0) & (YY < 200)
+# (its outline and glints where it stands against the backdrop: the arms' tops, the right pallet; and the specks of
+# outline that would be left alone on the backdrop without it)
+_rim3 = ndi.distance_transform_edt(SOLID) <= 3.0
+ANCH |= ndi.binary_dilation(ANCH, iterations=2) & SOLID & _rim3 & (YY < 200)
+lab, n = ndi.label(SOLID & ~ANCH)
+ANCH |= (ndi.sum(SOLID & ~ANCH, lab, range(n + 1)) < 40)[lab] & (SOLID & ~ANCH) & _rim3 & ndi.binary_dilation(ANCH, iterations=3)
 # the little pin on top of the arbor stays (it holds the arbor)
 PIN = poly([[209, 129], [224, 129], [224, 144], [209, 144]]) & ~BLUE & (LUM > 40) & ~ANCH
 
@@ -222,6 +226,13 @@ BG = soft_fill(BG, _known2, SOLID & ~_known2)                                   
 # paint within 7 px of the backdrop counts as backdrop, the rest has the building behind it
 BG_ALPHA = SOLID & ~(ANCH & (ndi.distance_transform_edt(SOLID) <= 7.0))
 BG_ALPHA = ndi.binary_opening(BG_ALPHA, iterations=1) | (SOLID & ~ANCH)
+# the iron post below the right pallet goes on up behind it (the pallet rests against it): its clean rows just under the
+# pallet (206..217, where no tooth crosses it) repeated upward
+_py, _px = np.nonzero(poly([[270, 187], [284, 187], [284, 206], [270, 206]]))
+_sy = 206 + (_py - 187) % 12
+_ok = SOLID[_sy, _px] & ~SATBRASS[_sy, _px]
+BG[_py[_ok], _px[_ok]] = RGB[_sy[_ok], _px[_ok]]
+BG_ALPHA[_py[_ok], _px[_ok]] = True
 
 # the rim (stays): the painted ring, its inner edge where painted spokes met it and its outer edge under the painted
 # teeth carried on along the circle from the clean stretches; over the turning spokes, under the turning teeth
