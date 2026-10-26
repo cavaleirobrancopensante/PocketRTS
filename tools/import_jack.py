@@ -29,8 +29,8 @@ Defs.JACK_SHOT "tips" (one set per arm) and Defs.JACK_SHOT_UP.
                                 the body is flung off); the last frame is the corpse
 
 Per frame: key out the navy (tolerance 40), keep the figure (its big pieces and its bright small ones: the winding key,
-gears and screws flying off), the Clockwork palette (tools/cw_palette.py), shrink to game size (the S idle as tall as the
-Clock Soldier's S idle), snap the team reds to the shader's key reds.
+gears and screws flying off), the Clockwork palette (tools/cw_palette.py), shrink to game size (the S idle JACK_S_H px tall,
+clearly bigger than the Clock Soldier), snap the team reds to the shader's key reds.
 
 PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): BRASS + PLAYER COLOUR. The
 Jack's red body stays player colour and its two blue ball SHOULDERS become player colour; its steel stays steel: the coil
@@ -52,7 +52,7 @@ DST = 'assets/units/jack/'
 DIRS = ['s', 'se', 'e', 'ne', 'n']
 NAVY = np.array([0, 22, 48])
 TOL = 40
-SOLDIER_S_H = 59        # px: the Clock Soldier's S idle in game (assets/units/clock_soldier/idle_s.png)
+JACK_S_H = 59           # px: the S idle's height in game (its own: the Clock Soldier was this tall until 0.14.32, now 42)
 # anim: (file, rows in the sheet, columns, how the frames are found, how they are aligned)
 # (a 5th item: the sheet's columns that make the strip)
 SHEETS = {
@@ -220,12 +220,12 @@ def main():
             if anim == 'idle':
                 out = out[:4]
             frames[(anim, d)] = out
-    # the scale: the S idle as tall as the Clock Soldier's
+    # the scale: the S idle JACK_S_H px tall
     hs = []
     for o, ax, ay in frames[('idle', 's')]:
         ys = np.nonzero((o[..., 3] > 0).any(1))[0]
         hs.append(ys.max() - ys.min() + 1)
-    scale = SOLDIER_S_H / float(np.median(hs))
+    scale = JACK_S_H / float(np.median(hs))
     # one canvas: the farthest any frame reaches from its anchor
     L = R = U = D = 0.0
     for fl in frames.values():

@@ -21,7 +21,7 @@ const SHEETS := {
 	"tesla_loco": [88, 66, 44, 56],
 	"storm_engine": [92, 70, 46, 58],
 	# the new-style army (gear mode): real sheets only (tools/import_clock_soldier.py prints this line)
-	"clock_soldier": [104, 83, 52, 70],
+	"clock_soldier": [74, 60, 37, 50],
 	# tier 2: the Jack (tools/import_jack.py prints this line); its walk is a hop, plus a JUMP strip (8 frames) and the raised
 	# arm for shooting at flyers (attack_up)
 	"jack": [108, 80, 54, 69],
@@ -31,7 +31,7 @@ const SHEETS := {
 	"ticking_owl": [94, 81, 47, 69],
 	# tier 3 (tools/import_tier3.py prints these): the Pendulum (idle sway, walk, the swing as its attack, death) and the
 	# Netter (its walk's first frame as the idle, the trot, the recoil as its attack, death)
-	"pendulum": [84, 93, 42, 84],
+	"pendulum": [98, 97, 49, 84],
 	"netter": [84, 58, 42, 54],
 }
 

@@ -12,8 +12,9 @@ The rule (units only; the buildings keep their painted reds):
   - STEEL that is tinted blue (the Jack's coil spring, drill tips and inner arm segments, the Pendulum's blade) is metal,
     not paint: it keeps its own colour, only greyed toward steel when it is bluer than STEEL_SAT (a ChatGPT sheet that
     paints the steel saturated blue comes out like the older, greyer ones).
-  - Per unit: the CLOCK SOLDIER's round body becomes BRASS (it was red) and its HEAD (the cap with the crown spike on top
-    of the body) becomes player colour, so it reads apart from the JACK, which keeps its red (player colour) body.
+  - Per unit: the CLOCK SOLDIER is all BRASS but its HEAD (owner): its round body (it was red) and its blue shoulders and
+    knee gems become brass, and its head (the cap with the crown spike on top of the body) alone is player colour, so it
+    reads apart from the JACK, whose body and shoulders are player colour.
 
 For future art (what the importers expect): paint the team parts in one clean, saturated red ramp (a light, a mid and a
 shadow red; highlights white rather than pink), the steel in neutral greys (a hint of blue at most, saturation under
@@ -45,6 +46,7 @@ TEAM_DARK = (150, 0, 0)
 STEEL_SAT = 0.45          # the most a steel pixel's saturation keeps (the older Jack sheet's coil spring and drill tip)
 PAINT_SAT = 0.42          # a blue region this saturated (its median) is paint, not steel (the units' blue-tinted steel: 0.38 at most)
 JACK_HUE = 213.0          # the Jack's shoulders are this deep a blue or deeper (~218-222); its steel is cyan-er (~205-211)
+SOLDIER_HEAD_ONLY = True   # the Clock Soldier is all brass but its head (owner, 2026-10-26): its blue shoulders and knee gems go brass
 # The Clock Soldier's own painted brass (measured on art/redraws/clock_soldier_idle.png: the median colour of its brass
 # pixels by value), value -> colour; its body is repainted along it.
 BRASS = [(0.15, (40, 23, 10)), (0.225, (58, 33, 13)), (0.325, (83, 46, 16)), (0.425, (108, 59, 17)),
@@ -399,6 +401,9 @@ def recolour(o, unit, ref=None, tilt=0.0, window=16.0, info=None, tipped=False):
             br[hl] = brass_of(np.ones(hl.sum()))
             rgb[bm] = br[bm].clip(0, 255).astype(np.uint8)
         rgb[:] = to_team(rgb, cap)
+        if SOLDIER_HEAD_ONLY and paint.any():
+            rgb[paint] = brass_of(hsv(rgb)[2])[paint].clip(0, 255).astype(np.uint8)
+            paint = np.zeros_like(paint)
         if info is not None:
             info.update(body=bm, cap=cap)
     else:

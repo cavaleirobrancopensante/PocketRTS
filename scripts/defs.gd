@@ -828,11 +828,12 @@ const UNITS := {
 	},
 	# the new-style army's tier 1 (gear mode; docs/clockwork_ground_up.md): plain melee, no special ability. Guesses: a
 	# Musketeer's price (60 + 10 powder) in cogs, sturdier than a Winder (46 hp), a short clock-hand sword whose blow lands
-	# on the 4th frame of the swing (aim 0.33 s at the attack strip's 9 fps)
+	# on the 4th frame of the swing (aim 0.33 s at the attack strip's 9 fps). Radius 10, a Musketeer's: the owner had it
+	# drawn about 30% smaller in 0.14.32 (42 px tall, the Jack 59), so its body went from 14 to 10 with it
 	"clock_soldier": {
 		"tags": ["light"],
 		"name": "Clock Soldier", "hp": 90, "armor": 1, "speed": 62, "cost": 70, "time": 16.0, "supply": 1,
-		"sight": 7, "range": 22, "damage": 10, "cooldown": 1.2, "aim": 0.33, "radius": 14, "from": "movement_works",
+		"sight": 7, "range": 22, "damage": 10, "cooldown": 1.2, "aim": 0.33, "radius": 10, "from": "movement_works",
 		"faction": "clockwork",
 		"about": "The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Made at the Movement Works.",
 	},

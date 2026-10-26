@@ -13,8 +13,11 @@ sheet, every frame with the unit's box bottom 8 px over the cell bottom and cent
   attack  pendulum_attack.png   5 x 8, cells 330 x 307 (the blade swings wide): wind-up 1-3, the blow on the 5th frame
   death   pendulum_death_chatgpt_1.png rows S, SE, E: ChatGPT's (3 rows x 6 frames, columns 256 wide; ChatGPT moved the rows:
           content bands y 13-330, 364-649, 669-968; drawn at the unit's scale). Rows NE, N: pendulum_death_chatgpt_2.png
-          when it exists (its two rows found by content, columns 256 wide), else the code guide pendulum_death_guide_2.png
-          (rows at y 0 and 327, 6 frames of 256 x 307).
+          when it exists (its two rows found by content, columns 256 wide; ChatGPT's, the back view's last two frames
+          mirrored; checked 0.14.32: its first frame stands on the idle's feet line, within 1 px of its case across and
+          2-3 px of its height, like rows S, SE, E), else the code guide pendulum_death_guide_2.png (rows at y 0 and 327,
+          6 frames of 256 x 307). In these banded sheets a falling figure's blade reaches over the column lines: each
+          frame takes the pieces whose middle is in its column (band_cells), so nothing is cut or stray.
 NETTER (tools/netter_guide/: built in code from ChatGPT's direction sheet; the unit's box bottom 12 px over the cell bottom):
   walk    netter_walk.png       5 x 8, cells 307 x 204 (a trot); its first frame is also the IDLE (one frame)
   attack  netter_fire.png       5 x 6, cells 307 x 204: the recoil (the net leaves on the 2nd frame, the strongest kick)
@@ -172,18 +175,33 @@ def grid_cells(path, rows, cols, cw, ch, y0s=None):
     return out
 
 
+BAND_PAD = 48         # px each side of a band's column: a falling figure's blade reaches over the column line
+
+
 def band_cells(path, bands, cols, cw):
     """[row][col] -> (rgba crop, (x0, y0)) for sheets whose rows ChatGPT moved: each band is a row, cut into columns cw
-    wide; inside a cell every piece is kept (a cannon or a blade flying off is a piece of its own)."""
+    wide, each column BAND_PAD px wider on both sides (every crop of a band keeps its column's coordinates); a piece goes
+    to the column its middle falls in, so a figure reaching over a column line stays whole and the neighbour's blade
+    reaching in is not taken (a cannon or a blade flying off is a piece of its own)."""
     rgb = np.array(Image.open(path).convert('RGB')).astype(int)
     W = rgb.shape[1]
     out = []
     for (y0, y1) in bands:
+        band = rgb[y0:y1 + 1]
+        lab, n = ndi.label(figure(band))
+        owner = np.full(n + 1, -1)
+        for i, sl in enumerate(ndi.find_objects(lab)):
+            xs = np.nonzero(lab[sl] == i + 1)[1] + sl[1].start
+            owner[i + 1] = min(cols - 1, int(xs.mean() / cw))
+        P = BAND_PAD
+        padded = np.pad(band, ((0, 0), (P, P), (0, 0)))
+        padded[:, :P] = NAVY
+        padded[:, -P:] = NAVY
+        lp = np.pad(owner[lab], ((0, 0), (P, P)), constant_values=-1)
         row = []
         for c in range(cols):
             x0, x1 = int(round(c * cw)), min(W, int(round((c + 1) * cw)))
-            sub = rgb[y0:y1 + 1, x0:x1]
-            row.append((rgba(sub, figure(sub)), (x0, y0)))
+            row.append((rgba(padded[:, x0:x1 + 2 * P], lp[:, x0:x1 + 2 * P] == c), (x0 - P, y0)))
         out.append(row)
     return out
 

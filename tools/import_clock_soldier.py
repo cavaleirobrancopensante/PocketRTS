@@ -5,16 +5,16 @@ and the cell / anchor line for scripts/cw_art.gd SHEETS (printed).
 
 Per frame: key out the navy (tolerance ~40), take the pieces whose middle falls in the frame's grid cell (whole: ChatGPT's
 figures cross the grid lines, the back views' caps and a raised sword; keyed_cells), drop specks, the Clockwork palette
-(tools/cw_palette.py), shrink to game size (the S idle S_IDLE_H px tall), snap the team reds to the shader's key reds.
+(tools/cw_palette.py), shrink to game size (the S idle S_IDLE_H px tall: 42), snap the team reds to the shader's key reds.
 Alignment (the figures are not always at the cell's centre): idle and walk frames are each put with their FEET (bounding
 box bottom) on the
 anchor and the body (centre of the red chest, taken before the palette makes it brass) on the anchor's x, so they do not
 jitter; attack and death frames move on purpose, so every frame of a row gets the shift of that row's first frame.
 
-PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): the Clock Soldier is BRASS +
-PLAYER COLOUR. Its round body, painted red, is repainted along its own brass ramp; its HEAD (the cap with the crown spike
-on top of the body) becomes player colour, so it reads apart from the Jack (red body); its blue shoulders and knee gems
-become player colour; the clock face stays white. The cap is found in every frame: on the idle frame of each direction
+PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): the Clock Soldier is ALL
+BRASS BUT ITS HEAD. Its round body, painted red, is repainted along its own brass ramp, and its blue shoulders and knee
+gems go brass too (cw_palette.SOLDIER_HEAD_ONLY); its HEAD (the cap with the crown spike on top of the body) alone is
+player colour, so it reads apart from the Jack (body and shoulders in player colour); the clock face stays white. The cap is found in every frame: on the idle frame of each direction
 by its place (on the middle of the body's top), then laid on every frame of that direction (turned, scaled and shifted
 around the body's middle until its colours and shading match: cw_palette.find_cap). The attack and death sheets use
 their own first (upright) frame's cap as the template for the rest of their row (the same drawing). In the death the
@@ -40,9 +40,10 @@ SHEETS = {  # anim: (file, columns, align by first frame of the row)
 DIRS = ['s', 'se', 'e', 'ne', 'n']
 NAVY = np.array([0, 22, 48])
 TOL = 40
-S_IDLE_H = 59.0        # px: the S idle's height in game, about 1.37x the Winder's 43 (assets/units/winder/idle_s.png). It
-                       # was set by the median idle height while the back views' caps were cut by the grid; the whole
-                       # figures keep that size (tools/import_jack.py matches the Jack to it)
+S_IDLE_H = 42.0        # px: the S idle's height in game. The owner (2026-10-26): 59 was too big; about 30% smaller, by a
+                       # Musketeer (35), a Labourer (32) and a Netter (45), and well under the Jack (59, its own size in
+                       # tools/import_jack.py), which helps tell the two apart
+ICON_SCALE = 0.359     # the card portrait's own scale (the size the unit had until 0.14.32: the icon keeps its detail)
 # The death's tip, as the code guide drew it (tools/soldier_guide/death.py FALL, ANG; ChatGPT's clean-up kept the poses):
 # per row the side it falls to (-1: its top goes left), per frame the angle; the cap is searched WINDOW degrees round it.
 DEATH_FALL = [-1, -1, 1, 1, 1]
@@ -199,8 +200,9 @@ def main():
         Image.fromarray(strip, 'RGBA').save(DST + '%s_%s.png' % (anim, d))
     print('clock_soldier: scale %.3f, cell %dx%d, anchor (%d, %d)' % (scale, cw, ch, half, up))
     print('SHEETS line: "clock_soldier": [%d, %d, %d, %d],' % (cw, ch, half, up))
-    # 4. the card portrait (64 x 64): the S idle frame's upper body
-    s0 = np.array(Image.open(DST + 'idle_s.png'))[:, :cw]
+    # 4. the card portrait (64 x 64): the S idle frame's upper body, shrunk at its own ICON_SCALE
+    o, ax, ay = frames[('idle', 's')][0]
+    s0 = cw_palette.snap_team(shrink(o, ICON_SCALE))
     ys, xs = np.nonzero(s0[..., 3] > 0)
     side = max(xs.max() - xs.min(), int((ys.max() - ys.min()) * 0.8)) + 2
     cx = (xs.min() + xs.max()) // 2
