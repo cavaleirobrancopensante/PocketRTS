@@ -13,13 +13,13 @@ the alternation; the front view gets the middle legs the same way (outside and b
 dips 1 game px as each tripod lands.
 
 WIND (12 frames): the winding arm (cut from column 2 and laid on the column-1 body) slides out of the machine along its
-length (frames 1-3), then the key at its end turns about the arm (frames 3-8: a full turn, 60 deg a frame; seen from
-the side the key's bow narrows to its edge and opens again flipped, seen end-on (S, N) it spins round), then the arm
-slides back in (9-11). Frames 3-8 loop while it winds. N: ChatGPT drew the arm where the big key on top stands, so
+length (frames 0-2), then ChatGPT's painted key head at its end (art/redraws/great_winder_key_rollers_chatgpt.png, top)
+turns about the arm in 8 painted steps of 45 deg (frames 2-9: face-on, 45, edge-on, ... back face), its shaft along
+the arm, then the arm slides back in (10-11). Frames 2-9 loop while it winds. N: ChatGPT drew the arm where the big key on top stands, so
 there it comes out a little to the left of the big key (the S view shows it reaching to the machine's left).
 
-SWEEP (8 frames): the brush rollers turn (the bristle stripes run up round the roller: S and the 3/4 views scroll them
-across the roller, E turns the end-on roller in place); the machine shakes a little. N: the brushes are hidden behind
+SWEEP (8 frames): the brush rollers turn (S and the 3/4 views: each blade shows ChatGPT's new roller band, its stripes
+scrolling up the front; E: the end-on bristles turn in place under the roller's painted end cap, which turns too); the machine shakes a little. N: the brushes are hidden behind
 the machine; it shakes and a few painted scraps (from the concept) are tossed up over it into the hopper.
 
 Out (GAME SCALE, GS game px per sheet px; one cell and anchor for all three, the anchor = the ground under the body):
@@ -36,7 +36,7 @@ SHEET = np.array(Image.open('art/redraws/great_winder_dirs.png').convert('RGB'))
 CONCEPT = np.array(Image.open('art/redraws/concepts/great_winder_v1a.png').convert('RGB')).astype(int)
 GS = 0.30             # game px per sheet px (the Netter is 0.238, the Pendulum 0.283: a big machine)
 DIRS = ['s', 'se', 'e', 'ne', 'n']
-MARGIN = (40, 60, 220, 14)   # render window round the unit's box: left, top, right, bottom (sheet px; the arm reaches)
+MARGIN = (40, 60, 220, 40)   # render window round the unit's box: left, top, right, bottom (sheet px; the arm and its key reach)
 N_WALK = 8
 STEP = 13.0           # a foot travels +-STEP px forward/back of its rest (side view px)
 LIFT = 14.0           # how high a swinging foot lifts
@@ -248,6 +248,80 @@ ARM = [
 ]
 
 
+# ------------------------------------------------------------------ the painted key (WIND)
+
+KEYS_SHEET = np.array(Image.open('art/redraws/great_winder_key_rollers_chatgpt.png').convert('RGB')).astype(int)
+# ChatGPT's key sheet, top: the arm-tip key at four turns (columns: face-on, 45 deg, edge-on, back face; the five rows
+# barely differ, row 1 is used). Only the key's head is taken: the bow and its neck down to the collar over the first
+# blue ball (the arm has its own shaft and balls). Per column: the box (sheet px); the neck's bottom (the anchor) is
+# found on its middle at row KEY_NECK
+KEY_COLS = [(132, 26, 228, 93), (360, 26, 438, 93), (604, 26, 648, 93), (795, 26, 886, 93)]
+KEY_NECK = 92          # the key's neck meets the collar here (sheet px)
+KEY_BOW_W = 62.0       # the bow, face-on, this wide on the machine (sheet px; ChatGPT's is 83): ~19 game px, it reads
+KEY_SINK = 4.0         # the key's neck starts this far back inside the arm's tip (sheet px)
+KEY_TURN = 45.0        # deg a frame while it winds: 8 frames a turn
+# the turn's 8 steps (0, 45 ... 315 deg) -> (column, mirrored about the shaft): face-on, 45, edge-on, 45 seen from the
+# other side, the back face, then the same again (a bow is the same shape after half a turn)
+KEY_STEPS = [(0, False), (1, False), (2, False), (1, True), (3, False), (1, False), (2, False), (1, True)]
+
+
+def key_heads():
+    out = []
+    k = KEY_BOW_W / float(KEY_COLS[0][2] - KEY_COLS[0][0] - 13)
+    for x0, y0, x1, y1 in KEY_COLS:
+        C = KEYS_SHEET[y0:y1, x0:x1]
+        m = solid(C)
+        lab, n = ndi.label(m)
+        if n > 1:
+            sz = ndi.sum(m, lab, range(1, n + 1))
+            m &= lab == int(np.argmax(sz)) + 1
+        xs = np.nonzero(m[KEY_NECK - y0 - 6])[0]
+        ax = (xs.min() + xs.max()) / 2.0
+        im = Image.fromarray(rgba(C, m), 'RGBA')
+        w, h = max(2, int(round(im.width * k))), max(2, int(round(im.height * k)))
+        a = np.array(im.resize((w, h), Image.LANCZOS))
+        a[..., 3] = np.where(a[..., 3] >= 128, 255, 0)
+        a[a[..., 3] == 0] = 0
+        out.append((a, np.array([ax * k, (KEY_NECK - y0) * k])))
+    return out
+
+
+KEY_HEADS = key_heads()
+
+
+def key_step(i):
+    """the key head at turn step i (of 8): (rgba, anchor = the neck's bottom middle); a mirrored step is re-lit with
+    the painting's big light (the blurred brightness ratio), so its light still comes from the top left"""
+    col, mir = KEY_STEPS[i % 8]
+    a, anc = KEY_HEADS[col]
+    if not mir:
+        return a, anc
+    b = a[:, ::-1].copy()
+    m = b[..., 3] > 0
+    lum = lambda x: (x[..., 0] * 0.3 + x[..., 1] * 0.59 + x[..., 2] * 0.11) * m
+    sig = 4.0
+    k = ndi.gaussian_filter(lum(a.astype(float)), sig) / np.maximum(ndi.gaussian_filter(lum(b.astype(float)), sig), 1.0)
+    b[..., :3] = np.clip(b[..., :3] * np.clip(k, 0.7, 1.4)[..., None], 0, 255).astype(np.uint8)
+    b[~m] = 0
+    return b, np.array([a.shape[1] - 1 - anc[0], anc[1]])
+
+
+def key_layer(size, tip, a, i):
+    """the key head at step i laid at the arm's tip, its shaft along the arm (a: root -> tip on screen): turned in the
+    picture plane (rotated paint, NEAREST) so the neck comes out of the tip and the bow stands beyond it"""
+    Wd, H = size
+    img, anc = key_step(i)
+    ang = math.degrees(math.atan2(a[0], -a[1]))           # from 'up' (the paint's shaft) to a, clockwise on screen
+    im = Image.fromarray(img, 'RGBA')
+    pad = int(max(im.size)) + 4
+    big = Image.new('RGBA', (2 * pad, 2 * pad), (0, 0, 0, 0))
+    big.paste(im, (int(round(pad - anc[0])), int(round(pad - anc[1]))), im)
+    big = big.rotate(-ang, resample=Image.NEAREST, center=(pad, pad))
+    out = np.zeros((H, Wd, 4), np.uint8)
+    _paste(out, np.array(big), int(round(tip[0] - pad)), int(round(tip[1] - pad)))
+    return out
+
+
 def seg_dist(xx, yy, a, b):
     vx, vy = b[0] - a[0], b[1] - a[1]
     t = np.clip(((xx - a[0]) * vx + (yy - a[1]) * vy) / float(vx * vx + vy * vy), 0, 1)
@@ -371,6 +445,8 @@ def cut_brush(r, W, M, org):
         # end-on: a disc turning about its middle
         cx, cy = BRUSH[r][2][0] - x0, BRUSH[r][2][1] - y0
         out.update(cx=cx, cy=cy)
+        ys_, xs_ = np.nonzero(bristle)
+        out['R'] = float(np.percentile(np.hypot(xs_ - cx, ys_ - cy), 95))
         # the tufts' angular period round the disc (at two thirds of the radius)
         ys, xs = np.nonzero(bristle)
         ang = np.degrees(np.arctan2(ys - cy, xs - cx))
@@ -388,6 +464,96 @@ def cut_brush(r, W, M, org):
             if c > best[0]:
                 best = (c, float(P))
         out['pitch'] = best[1]
+    return out
+
+
+# the new rollers (ChatGPT's key sheet, bottom: art/redraws/great_winder_key_rollers_chatgpt.png). TREAD_TEX: the side
+# view's bristle band (row 1, column 1), the inside of its blue band (sheet px); each roller blade on the machine
+# (a run of bristles: S and the 3/4 views) gets the band once across its width and scrolls it up its front. CAP: the
+# end-on view (row 1, column 3): the roller's end cap, turned in place over the middle of E's end-on roller
+TREAD_TEX = (154, 926, 177, 980)
+TEX_ZOOM = 3.0         # the band 3x (ChatGPT's stripes are ~5.5 px apart, like the old ones: at 1x they blur to a flat blue)
+TEX_P = 5.5            # its stripes' period down the band (measured: autocorrelation)
+TEX_SPIN = 2.0         # stripes scrolled per 8-frame loop
+CAP_BOX = (588, 909, 670, 1001)
+CAP_K = 0.62           # the cap's radius, of the end-on roller's (the bristles stick out round it)
+CAP_TURN = 90.0        # deg per loop (two of its eight lugs)
+
+
+def roller_pieces():
+    S_ = np.array(Image.open('art/redraws/great_winder_key_rollers_chatgpt.png').convert('RGB')).astype(int)
+    x0, y0, x1, y1 = TREAD_TEX
+    tex = S_[y0:y1, x0:x1].astype(float)
+    x0, y0, x1, y1 = CAP_BOX
+    C = S_[y0:y1, x0:x1]
+    m = solid(C)
+    r_, g_, b_ = C[..., 0], C[..., 1], C[..., 2]
+    blue = m & (b_ > r_ + 40) & (b_ > 100)
+    ys, xs = np.nonzero(blue)
+    cx, cy = xs.mean(), ys.mean()
+    yy, xx = np.mgrid[0:C.shape[0], 0:C.shape[1]]
+    rr = np.hypot(xx - cx, yy - cy)
+    # the cap's own radius: its lugs' tips (the stub over the top, a tuft, is left out)
+    R = float(np.percentile(rr[m], 93))
+    m &= rr <= R
+    return tex, dict(img=rgba(C, m), c=(cx, cy), R=R, hub=blue)
+
+
+TEX, CAP = roller_pieces()
+
+
+def tread_texture(b, i, n):
+    """the bristle runs (S, 3/4 views) painted with TEX: each blade (a connected run of bristles) gets the band once
+    across its width; down a column the band's rows follow the run and scroll up by TEX_SPIN stripes a loop (wrapped
+    a whole number of stripes, so it never jumps); re-lit with the painting's big light (the blade's old brightness
+    over the band's mean)"""
+    m = b['mask']
+    H, Wd = m.shape
+    out = np.zeros((H, Wd, 4), np.uint8)
+    th, tw = TEX.shape[:2]
+    Hw = math.floor((th - 1) / TEX_P) * TEX_P
+    shift = TEX_SPIN * TEX_P * i / float(n)
+    lab, nb = ndi.label(m)
+    tmean = (TEX @ np.array([0.3, 0.59, 0.11])).mean()
+    for k in range(1, nb + 1):
+        ys, xs = np.nonzero(lab == k)
+        if len(ys) < 20:
+            continue
+        x0, x1 = xs.min(), xs.max()
+        for x in np.unique(xs):
+            col = ys[xs == x]
+            col.sort()
+            for run in np.split(col, np.nonzero(np.diff(col) > 1)[0] + 1):
+                L = run[-1] - run[0] + 1
+                ty = ((run - run[0]) * (Hw / max(L, 1)) / TEX_ZOOM + shift) % Hw
+                tx = (x - x0) / max(1.0, x1 - x0) * (tw - 1)
+                rgb = np.stack([ndi.map_coordinates(TEX[..., c], [ty, np.full(len(ty), tx)], order=1)
+                                for c in range(3)], -1)
+                lk = np.clip(b['light'][run, x] / tmean, 0.5, 1.6)
+                out[run, x, :3] = np.clip(rgb * lk[:, None], 0, 255).astype(np.uint8)
+                out[run, x, 3] = 255
+    return out
+
+
+def cap_layer(b, i, n, size):
+    """E: the roller's painted end cap turned in place (CAP_TURN a loop) over the middle of the end-on roller, its hub
+    ball still; only where the roller shows (inside its bristles' outline)"""
+    Wd, H = size
+    R = CAP_K * b['R']
+    k = R / CAP['R']
+    img = Image.fromarray(CAP['img'], 'RGBA')
+    big = img.resize((max(2, int(round(img.width * k))), max(2, int(round(img.height * k)))), Image.LANCZOS)
+    c = (CAP['c'][0] * k, CAP['c'][1] * k)
+    turned = big.rotate(-CAP_TURN * i / float(n), resample=Image.BICUBIC, center=c)
+    a = np.array(turned)
+    still = np.array(big)
+    hub = np.hypot(*(np.mgrid[0:a.shape[0], 0:a.shape[1]][::-1] - np.array(c)[:, None, None])) <= 0.36 * R
+    a[hub] = still[hub]
+    a[..., 3] = np.where(a[..., 3] >= 128, 255, 0)
+    a[a[..., 3] == 0] = 0
+    out = np.zeros((H, Wd, 4), np.uint8)
+    _paste(out, a, int(round(b['cx'] - c[0])), int(round(b['cy'] - c[1])))
+    out[~ndi.binary_dilation(b['mask'], iterations=2)] = 0
     return out
 
 
@@ -537,8 +703,8 @@ def legs_groups(r, q, stand=False):
     return far, near
 
 
-def arm_layers(r, t, phi):
-    """the arm out by t (0 in, 1 all out), its key's bow turned phi deg about the arm"""
+def arm_layers(r, t, step):
+    """the arm out by t (0 in, 1 all out), with ChatGPT's painted key at its tip at turn step `step` (of 8)"""
     P = PARTS[r]
     root, tip = P['root'], P['tip']
     L = float(np.hypot(*(tip - root)))
@@ -546,25 +712,8 @@ def arm_layers(r, t, phi):
     back = -(1.0 - t) * (L + 30.0) * a
     H, Wd = P['arm'].shape[:2]
     yy, xx = np.mgrid[0:H, 0:Wd]
-    arm = shift(P['arm'], *back)
-    bow = P['bow']
-    ph = math.radians(phi)
-    if ARM[r]['front'] or r == 4:
-        # seen end-on (S, N): the bow spins round the shaft's end
-        c, s_ = math.cos(ph), math.sin(ph)
-        bow = place(bow, tip, tip, np.array([[c, -s_], [s_, c]]))
-    else:
-        # seen from the side: the bow narrows to its edge and opens again, flipped
-        n = np.array([-a[1], a[0]])
-        Mb = np.eye(2) + (math.cos(ph) - 1.0) * np.outer(n, n)
-        if abs(math.cos(ph)) < 0.12:
-            Mb = np.eye(2) + (0.12 * (1 if math.cos(ph) >= 0 else -1) - 1.0) * np.outer(n, n)
-        bow = place(bow, tip, tip, Mb)
-        if math.cos(ph) < 0:
-            bow = shade(bow, 0.8)        # (its far face, in its own shade)
-    bow = shift(bow, *back)
-    out = arm.copy()
-    over(out, bow)
+    out = shift(P['arm'], *back)
+    over(out, key_layer((Wd, H), tip + back - KEY_SINK * a, a, step))
     # hidden inside the machine: anything behind the root along the arm
     inside = ((xx - root[0]) * a[0] + (yy - root[1]) * a[1]) < 0
     out[inside] = 0
@@ -577,9 +726,9 @@ def walk_frame(r, i):
     return far + [(PARTS[r]['body'], True)] + near
 
 
-def wind_frame(r, t, phi):
+def wind_frame(r, t, step):
     far, near = legs_groups(r, 0.0, stand=True)
-    arm = arm_layers(r, t, phi)
+    arm = arm_layers(r, t, step)
     if ARM[r]['front']:
         return far + [(PARTS[r]['body'], True)] + near + [(arm, True)]
     return far + [(arm, True), (PARTS[r]['body'], True)] + near
@@ -590,13 +739,20 @@ def sweep_frame(r, i):
     g = far + [(PARTS[r]['body'], True)]
     b = PARTS[r]['brush']
     if b is not None:
-        g.append((roll_brush(b, i, N_SWEEP), True))
+        if b['kind'] == 'tread':
+            g.append((tread_texture(b, i, N_SWEEP), True))
+        else:
+            # (E: the bristles round it turn at their painted size, BRUSH_ZOOM is for the old treads only)
+            g.append((roll_brush(b, i, N_SWEEP), True))
+            g.append((cap_layer(b, i, N_SWEEP, PARTS[r]['size']), True))
     return g + near + [(scraps_layer(r, i, N_SWEEP, PARTS[r]['size']), False)]
 
 
 N_SWEEP = 8
-WIND = [(0.0, 0.0), (0.4, 0.0), (0.8, 0.0), (1.0, 0.0), (1.0, 60.0), (1.0, 120.0), (1.0, 180.0), (1.0, 240.0),
-        (1.0, 300.0), (0.75, 0.0), (0.4, 0.0), (0.1, 0.0)]
+# WIND: (how far out, the key's turn step): out in 2 frames, a full turn in 8 (frames 2-9 loop while it winds), back
+# in 2
+WIND = [(0.0, 0), (0.55, 0), (1.0, 0), (1.0, 1), (1.0, 2), (1.0, 3), (1.0, 4), (1.0, 5), (1.0, 6), (1.0, 7),
+        (0.6, 0), (0.2, 0)]
 WALK_BOB = [1, 0, 0, 0, 1, 0, 0, 0]        # the body dips as each tripod lands (game px)
 SWEEP_BOB = [0, 1, 1, 0, 0, 1, 1, 0]       # it rumbles with the brushes
 
