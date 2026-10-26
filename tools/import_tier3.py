@@ -13,8 +13,11 @@ sheet, every frame with the unit's box bottom 8 px over the cell bottom and cent
   attack  pendulum_attack.png   5 x 8, cells 330 x 307 (the blade swings wide): wind-up 1-3, the blow on the 5th frame
   death   pendulum_death_chatgpt_1.png rows S, SE, E: ChatGPT's (3 rows x 6 frames, columns 256 wide; ChatGPT moved the rows:
           content bands y 13-330, 364-649, 669-968; drawn at the unit's scale). Rows NE, N: pendulum_death_chatgpt_2.png
-          when it exists (its two rows found by content, columns 256 wide), else the code guide pendulum_death_guide_2.png
-          (rows at y 0 and 327, 6 frames of 256 x 307).
+          when it exists (its two rows found by content, columns 256 wide; ChatGPT's, the back view's last two frames
+          mirrored; checked 0.14.32: its first frame stands on the idle's feet line, within 1 px of its case across and
+          2-3 px of its height, like rows S, SE, E), else the code guide pendulum_death_guide_2.png (rows at y 0 and 327,
+          6 frames of 256 x 307). In these banded sheets a falling figure's blade reaches over the column lines: each
+          frame takes the pieces whose middle is in its column (band_cells), so nothing is cut or stray.
 NETTER (tools/netter_guide/: built in code from ChatGPT's direction sheet; the unit's box bottom 12 px over the cell bottom):
   walk    netter_walk.png       5 x 8, cells 307 x 204 (a trot); its first frame is also the IDLE (one frame)
   attack  netter_fire.png       5 x 6, cells 307 x 204: the recoil (the net leaves on the 2nd frame, the strongest kick)
@@ -29,21 +32,26 @@ swing, the recoil). Death rows: every frame gets the shift of that row's FIRST f
 body over the anchor), so the fall plays as drawn and nothing jumps when the death starts.
 
 Per frame: key out the navy (tolerance 40), keep the figure (its big pieces and the bright small ones: cogs and bolts
-flying off), shrink to game size (the Pendulum's idle S PEND_H px tall, the Netter's walk S NETTER_W px wide), snap the
-team reds to the shader's key reds.
+flying off), the Clockwork palette (tools/cw_palette.py), shrink to game size (the Pendulum's idle S PEND_H px tall, the
+Netter's walk S NETTER_W px wide), snap the team reds to the shader's key reds.
+
+PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): BRASS + PLAYER COLOUR. The
+Pendulum's red case and legs stay player colour and its blue ball joints become player colour; its blade is steel. The
+Netter's red bands stay player colour; its blue ball joints and the blue spring on its cannon become player colour; its
+drum's iron and the chain mesh in its window stay as painted.
   python3 tools/import_tier3.py [preview.png]"""
 import os
 import sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cw_palette
 
 SRC = 'art/redraws/'
 DIRS = ['s', 'se', 'e', 'ne', 'n']
 NAVY = np.array([0, 22, 48])
 TOL = 40
-TEAM_LIGHT = (255, 0, 0)
-TEAM_DARK = (150, 0, 0)
 PEND_H = 82.0          # px: the Pendulum's S idle in game (the Winder 43, the Clock Soldier 59, a Brute 65): a tall tower
 NETTER_W = 62.0        # px: the Netter's S walk (a wide, low drum; the Jack is ~50 wide)
 PEND_GROUND = 297      # the ground line in the Pendulum's code-built cells (the unit box bottom CH - 8, its crop pad 2)
@@ -151,16 +159,6 @@ def soft_shrink(img, scale):
     return out
 
 
-def snap_team(img):
-    """Team-coloured parts -> exact key reds the shader recolours (tools/import_clock_soldier.py)."""
-    r, g, b = img[..., 0].astype(int), img[..., 1].astype(int), img[..., 2].astype(int)
-    red = (img[..., 3] > 0) & (r >= 100) & (g <= r * 0.3) & (b <= r * 0.32)
-    light = red & (r >= 175)
-    img[light, :3] = TEAM_LIGHT
-    img[red & ~light, :3] = TEAM_DARK
-    return img
-
-
 # ------------------------------------------------------------------ slicing
 
 def grid_cells(path, rows, cols, cw, ch, y0s=None):
@@ -177,18 +175,33 @@ def grid_cells(path, rows, cols, cw, ch, y0s=None):
     return out
 
 
+BAND_PAD = 48         # px each side of a band's column: a falling figure's blade reaches over the column line
+
+
 def band_cells(path, bands, cols, cw):
     """[row][col] -> (rgba crop, (x0, y0)) for sheets whose rows ChatGPT moved: each band is a row, cut into columns cw
-    wide; inside a cell every piece is kept (a cannon or a blade flying off is a piece of its own)."""
+    wide, each column BAND_PAD px wider on both sides (every crop of a band keeps its column's coordinates); a piece goes
+    to the column its middle falls in, so a figure reaching over a column line stays whole and the neighbour's blade
+    reaching in is not taken (a cannon or a blade flying off is a piece of its own)."""
     rgb = np.array(Image.open(path).convert('RGB')).astype(int)
     W = rgb.shape[1]
     out = []
     for (y0, y1) in bands:
+        band = rgb[y0:y1 + 1]
+        lab, n = ndi.label(figure(band))
+        owner = np.full(n + 1, -1)
+        for i, sl in enumerate(ndi.find_objects(lab)):
+            xs = np.nonzero(lab[sl] == i + 1)[1] + sl[1].start
+            owner[i + 1] = min(cols - 1, int(xs.mean() / cw))
+        P = BAND_PAD
+        padded = np.pad(band, ((0, 0), (P, P), (0, 0)))
+        padded[:, :P] = NAVY
+        padded[:, -P:] = NAVY
+        lp = np.pad(owner[lab], ((0, 0), (P, P)), constant_values=-1)
         row = []
         for c in range(cols):
             x0, x1 = int(round(c * cw)), min(W, int(round((c + 1) * cw)))
-            sub = rgb[y0:y1 + 1, x0:x1]
-            row.append((rgba(sub, figure(sub)), (x0, y0)))
+            row.append((rgba(padded[:, x0:x1 + 2 * P], lp[:, x0:x1 + 2 * P] == c), (x0 - P, y0)))
         out.append(row)
     return out
 
@@ -239,10 +252,11 @@ def place_all(frames, scale, kind, soft=False):
         for i, (o, ax, ay, s) in enumerate(fl):
             k = scale * s                 # this frame's px -> game px
             BW, BH = int(round(cw / k)), int(round(ch / k))
+            o = cw_palette.recolour(o, kind)      # (after the anchors: case_x looks for the red case)
             big = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
             big.paste(Image.fromarray(o, 'RGBA'), (int(round(half / k - ax)), int(round(up / k - ay))))
             sm = shrink(np.array(big), cw / BW)[:ch, :cw]
-            sm = snap_team(sm)
+            sm = cw_palette.snap_team(sm)
             strip[:sm.shape[0], i * cw:i * cw + sm.shape[1]] = sm
         strips[(anim, d)] = strip
         Image.fromarray(strip, 'RGBA').save(dst + '%s_%s.png' % (anim, d))
