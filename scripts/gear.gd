@@ -184,7 +184,7 @@ func _signature() -> int:
 	var s := 0
 	for b in game.buildings:
 		if is_instance_valid(b) and b.d["faction"] == "clockwork":
-			s += b.get_instance_id() % 9973 + (3 if b.built else 0) + (5 if b.dead else 0) + (7 if b.gear_big else 0) + (11 if b.ghost else 0)
+			s += b.serial % 9973 + (3 if b.built else 0) + (5 if b.dead else 0) + (7 if b.gear_big else 0) + (11 if b.ghost else 0)
 	return s
 
 

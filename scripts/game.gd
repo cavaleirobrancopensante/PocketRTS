@@ -2786,8 +2786,13 @@ func net_set(e: Object, prop: String, v) -> void:
 		NetCommands.forward(net, e, "@" + prop, [v])
 
 
+var _serial := 0                 # Entity.serial of the last unit or building made
+
+
 func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 	var u := Unit.new()
+	_serial += 1
+	u.serial = _serial
 	u.setup(self, k, t, pos)
 	apply_drills(u)
 	world.add_child(u)
@@ -2801,6 +2806,8 @@ func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 ## ground until it does (_solidify).
 func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := false) -> Building:
 	var b := Building.new()
+	_serial += 1
+	b.serial = _serial
 	b.setup(self, k, t, c, complete)
 	b.ghost = ghost and not complete
 	if k == "gate":
@@ -7347,6 +7354,11 @@ func update_view_rect() -> void:
 	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 
 
+## The path queue's time limit in a tick, past its first 6 paths (µs). A tool that needs a match to
+## play out the same every time lifts it (tools/perf_bench.gd): then only the count, 24 a tick, limits it.
+var path_budget_us := 6000
+
+
 func _tick_game(delta: float) -> void:
 	if over or edit_mode:
 		return
@@ -7386,7 +7398,7 @@ func _tick_game(delta: float) -> void:
 	# (at most 24 a tick, and past the first 6 only while under 6 ms: a crowd ordered at once
 	# gets its paths over a few ticks instead of in one long frame)
 	var budget := 24
-	while budget > 0 and not _path_queue.is_empty() and (budget > 18 or Time.get_ticks_usec() - pt < 6000):
+	while budget > 0 and not _path_queue.is_empty() and (budget > 18 or Time.get_ticks_usec() - pt < path_budget_us):
 		var u = _path_queue.pop_front()
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()

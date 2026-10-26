@@ -8,6 +8,12 @@ var game: Game
 var team := -1
 var kind := ""
 var net_id := 0                # online: the id both players know it by (0: none yet)
+## Its number in the match, in the order things were made (Game._add_unit / _add_building). The game
+## uses it, never the engine's instance id, where it needs a fixed way to tell things apart (a
+## unit's turn for separation, a raptor's side of its prey): the instance id differs from run to
+## run (it counts every object the engine has made, sounds and menus too), so the same match with
+## the same seed would not play out the same.
+var serial := 0
 var hp := 1.0
 var max_hp := 1.0
 var armor := 0.0

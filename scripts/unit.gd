@@ -1558,7 +1558,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 
 
 func _ready() -> void:
-	_sep_n = get_instance_id() % 3
+	_sep_n = serial % 3
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -3737,7 +3737,7 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	# A swarm surrounds its prey: each Brood melee unit runs for its own side of the
 	# target, so one blast or cone can't catch them all.
 	if (kind == "raptor" or kind == "brute") and e is Unit:
-		var ang := float(get_instance_id() % 628) * 0.01
+		var ang := float(serial * 7919 % 628) * 0.01      # (its own side, spread round by its number)
 		goal = (e as Unit).position + Vector2.from_angle(ang) * ((e as Unit).radius + radius + 4.0)
 	if is_air() or (position.distance_to(goal) < 140.0 and game.line_clear(position, goal)):
 		path = PackedVector2Array()

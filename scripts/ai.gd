@@ -4915,7 +4915,7 @@ func _shell_bodies() -> void:
 func _spells() -> void:
 	for u in game.army(team):
 		# half the Bloaters keep their gas for big bursts (on walls and clumps)
-		if u.kind == "bloater" and u.mode == "" and u.get_instance_id() % 2 == 0:
+		if u.kind == "bloater" and u.mode == "" and u.serial % 2 == 0:
 			u.set_hold_gas(true)
 		if u.order == "cast" or u.order == "tongue" or u.tongue_stage != "":
 			continue
