@@ -111,7 +111,9 @@ func _process(delta: float) -> void:
 		if over_sent > 20:
 			return                  # (the end has been told; stop)
 	snap_n += 1
+	var _t0 := Time.get_ticks_usec()       # (measurement only: the lag study's baseline)
 	link.send(NetSnapshot.build(self), 0)
+	Prof.add("net/snapshot", _t0)
 
 
 ## All the players of this machine's side are out (a friend still playing keeps the match going).
@@ -251,7 +253,9 @@ func _on_message(from: int, m: Dictionary) -> void:
 				for k in sent_at.keys():
 					if int(k) <= ack:
 						sent_at.erase(k)
+			var _t0 := Time.get_ticks_usec()       # (measurement only)
 			NetSnapshot.apply(self, m)
+			Prof.add("net/apply", _t0)
 		"msg":
 			game.notify(String(m.get("m", "")))
 
