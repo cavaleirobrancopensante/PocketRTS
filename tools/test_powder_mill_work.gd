@@ -204,6 +204,17 @@ func _run() -> void:
 	check(ks.size() >= 3, "he works all three heaps in turn (%s)" % str(ks.keys()))
 	check(u.frame_i < 12 and u.sprite.hframes == 12 or u.anim == "walk", "the shovel strip plays its 12 frames")
 	check(Unit.mill_step(0.1) == 0 and Unit.mill_step(0.9) == 1 and Unit.mill_step(1.2) == 2 and Unit.mill_step(1.8) == 3, "the shovel steps run dig, lift, swing, tip")
+	# soldiers still refill at the mill (within Defs.POWDER range of its edge, paid from the bank):
+	# one dry Musketeer in front of the yard, one standing in it
+	g.players[0]["res2"] = 300.0
+	var mus: Array = []
+	for p in [Vector2(m.rect().get_center().x - 20.0, m.rect().end.y + 40.0), Building.mill_yard_rect(m.rect()).get_center() + Vector2(30.0, 8.0)]:
+		var s: Unit = g._add_unit("musketeer", 0, p)
+		s.powder = 0.0
+		mus.append(s)
+	await wait(3.0)
+	var got: Array = mus.map(func(s: Unit) -> float: return snappedf(s.powder, 0.1))
+	check(mus.all(func(s: Unit) -> bool: return s.powder >= 4.0), "Musketeers by the mill refill there, in front of its yard and in it (%s shots after 3 s)" % str(got))
 	# a farm hand still hoes
 	var fo := _open_area(20, 14)
 	var f: Building = g._add_building("farm", 0, fo + Vector2i(2, 2), true)
