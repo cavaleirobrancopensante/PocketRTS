@@ -31,3 +31,10 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Winders are needed because a mindless machine can't tune itself: a cog press turns and pays a small trickle by itself (like a farm with nobody on it), and each Winder who keeps the mesh tight adds the same amount, up to a limit. Income is per second, not a bar that fills.
 - Cog sizing: ONE connecting gear per building, small or big. Small = turns fast, works faster, fewer Winders. Big = turns slow, more torque, more Winders and more at full crew. Visible on the ground (small gears visibly spin faster). The player may swap a building's gear later for a small cost.
 - Units: aim at the Protoss roster as a scaffold (not to copy everything, only something to aim for). Clock Soldier (Zealot-like basic melee): sword is a clock hand, shield is a pocket-watch cover. Cuckoo is a flying unit.
+
+## Second resource: Tension (owner, 2026-10-26)
+
+- Power is dropped as a resource: the gear field already is the power. Steam and electricity are looks only (a puff of steam from a press is fine), never resources. The theme is clockwork, springs, weights, pendulums.
+- Main resource: cogs (cog presses, Winders in the crew). Second resource: TENSION, the wound spring that Winders store. A Mainspring building takes a Winder crew and fills a reserve.
+- Tension is spent on the strong things (top-tier units, slow field, the stopper unit).
+- Buildings that use Tension must be placed ADJACENT to a Mainspring (owner idea): this makes building interlocking a core mechanic. Suggested: adjacency is through meshing gear rings, so it joins the Cosmoteer-style placement puzzle (one system, not two). Open: ports per Mainspring, chains or one hop only, what happens when the Mainspring dies.
