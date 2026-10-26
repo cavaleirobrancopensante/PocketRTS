@@ -1,0 +1,370 @@
+{
+ "about": "Scripted openings for the build-order study (docs/build_orders_study.md). Played by tools/study/bo_ai.gd in headless matches (tools/study/bo_match.gd) and timed by tools/study/bo_calc.py. Step grammar: see tools/study/bo_ai.gd. 'then': the computer's plan once the script is over. 'opening': the Crown computer's opening flag (mill or breeder), read by its own supply and horse logic.",
+ "builds": [
+  {
+   "name": "crown_musket_wall",
+   "faction": "crown",
+   "label": "Crown 1: Musketeer wall into the Cannon (the standard)",
+   "opening": "mill",
+   "then": "balanced",
+   "steps": [
+    "workers:9",
+    "wall",
+    "barracks",
+    "powder_mill",
+    "mill:3",
+    "farm",
+    "musketeer*3",
+    "workers:12",
+    "horse_breeder",
+    "musketeer*",
+    "foundry",
+    "workers:16",
+    "cannon*1",
+    "wait:360",
+    "end"
+   ]
+  },
+  {
+   "name": "crown_horse_rush",
+   "faction": "crown",
+   "label": "Crown 2: Horseman rush",
+   "opening": "breeder",
+   "then": "balanced",
+   "steps": [
+    "workers:8",
+    "horse_breeder",
+    "cottage",
+    "barracks",
+    "horseman*3",
+    "attack@9|200",
+    "horseman*",
+    "workers:12",
+    "farm",
+    "powder_mill",
+    "wait:330",
+    "stop:horseman",
+    "end"
+   ]
+  },
+  {
+   "name": "crown_balloon_drop",
+   "faction": "crown",
+   "label": "Crown 3: Musketeers and a Balloon drop",
+   "opening": "mill",
+   "then": "balanced",
+   "steps": [
+    "workers:9",
+    "wall",
+    "barracks",
+    "powder_mill",
+    "mill:4",
+    "foundry",
+    "musketeer*4",
+    "workers:12",
+    "balloon*1",
+    "drop",
+    "musketeer*",
+    "farm",
+    "wait:420",
+    "end"
+   ]
+  },
+  {
+   "name": "crown_fast_expand",
+   "faction": "crown",
+   "label": "Crown 4: Wall and a second Town Hall",
+   "opening": "mill",
+   "then": "economy",
+   "steps": [
+    "workers:10",
+    "wall",
+    "town_hall",
+    "barracks",
+    "powder_mill",
+    "mill:3",
+    "musketeer*",
+    "workers:20",
+    "farm",
+    "farm",
+    "workers:26",
+    "wait:360",
+    "end"
+   ]
+  },
+  {
+   "name": "crown_dragoon_raid",
+   "faction": "crown",
+   "label": "Crown 5: Dragoon raid (Mill and Breeder)",
+   "opening": "breeder",
+   "then": "balanced",
+   "steps": [
+    "workers:9",
+    "powder_mill",
+    "cottage",
+    "horse_breeder",
+    "barracks",
+    "mill:3",
+    "dragoon*4",
+    "attack@4|270",
+    "dragoon*",
+    "workers:12",
+    "farm",
+    "wait:360",
+    "stop:dragoon",
+    "end"
+   ]
+  },
+  {
+   "name": "crown_cannon_push",
+   "faction": "crown",
+   "label": "Crown 6: Cannon and Musketeer push",
+   "opening": "mill",
+   "then": "timing",
+   "steps": [
+    "workers:9",
+    "wall",
+    "barracks",
+    "powder_mill",
+    "mill:4",
+    "musketeer*",
+    "workers:12",
+    "farm",
+    "horse_breeder",
+    "foundry",
+    "workers:16",
+    "cannon*2",
+    "attack@14|420",
+    "end"
+   ]
+  },
+  {
+   "name": "brood_xrush",
+   "faction": "brood",
+   "label": "Brood 1: Six-pool (extreme rush)",
+   "then": "balanced",
+   "steps": [
+    "workers:6",
+    "warren",
+    "raptor*",
+    "attack@6|150",
+    "workers:8",
+    "wait:300",
+    "end"
+   ]
+  },
+  {
+   "name": "brood_pool_eco",
+   "faction": "brood",
+   "label": "Brood 2: Pool first, one wave, then economy",
+   "then": "balanced",
+   "steps": [
+    "workers:8",
+    "warren",
+    "feeding_pit",
+    "raptor*2",
+    "attack@6|170",
+    "workers:13",
+    "clutch_mound",
+    "brood_pen",
+    "raptor*",
+    "workers:15",
+    "end"
+   ]
+  },
+  {
+   "name": "brood_economy",
+   "faction": "brood",
+   "label": "Brood 3: Economy (grubs first, Warren, Spitters)",
+   "then": "balanced",
+   "steps": [
+    "workers:10",
+    "feeding_pit",
+    "warren",
+    "workers:14",
+    "feeding_pit",
+    "brood_pen",
+    "clutch_mound",
+    "workers:17",
+    "upgrade",
+    "raptor*",
+    "attack@30|420",
+    "end"
+   ]
+  },
+  {
+   "name": "brood_spitter_timing",
+   "faction": "brood",
+   "label": "Brood 4: Spitter timing",
+   "then": "balanced",
+   "steps": [
+    "workers:10",
+    "warren",
+    "feeding_pit",
+    "brood_pen",
+    "workers:13",
+    "raptor*4",
+    "sacrifice:10",
+    "clutch_mound",
+    "spitter*5",
+    "raptor*",
+    "attack@24|360",
+    "end"
+   ]
+  },
+  {
+   "name": "brood_brute_timing",
+   "faction": "brood",
+   "label": "Brood 5: Brute timing (Gorge Pit)",
+   "then": "balanced",
+   "steps": [
+    "workers:10",
+    "warren",
+    "feeding_pit",
+    "brood_pen",
+    "workers:13",
+    "gorge_pit",
+    "raptor*5",
+    "sacrifice:14",
+    "clutch_mound",
+    "brute*2",
+    "raptor*",
+    "attack@24|420",
+    "end"
+   ]
+  },
+  {
+   "name": "brood_air",
+   "faction": "brood",
+   "label": "Brood 6: Roost (Bloaters and Skywings)",
+   "then": "air",
+   "steps": [
+    "workers:10",
+    "warren",
+    "feeding_pit",
+    "brood_pen",
+    "roost",
+    "workers:13",
+    "raptor*6",
+    "sacrifice:17",
+    "bloater*2",
+    "raptor*",
+    "attack@16|420",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_soldier_rush",
+   "faction": "clockwork",
+   "label": "Clockwork 1: Clock Soldier rush (two Works)",
+   "then": "balanced",
+   "steps": [
+    "workers:5",
+    "movement_works",
+    "regulator",
+    "clock_soldier*",
+    "movement_works",
+    "attack@6|200",
+    "workers:8",
+    "cog_press",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_jack_tech",
+   "faction": "clockwork",
+   "label": "Clockwork 2: Jacks (Mainspring and Escapement), the standard",
+   "then": "balanced",
+   "steps": [
+    "workers:7",
+    "cog_press",
+    "movement_works",
+    "mainspring",
+    "workers:10",
+    "crew:mainspring:3",
+    "escapement",
+    "clock_soldier*2",
+    "jack*",
+    "movement_works",
+    "clock_soldier*",
+    "ratchet_turret",
+    "attack@16|360",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_turret_expand",
+   "faction": "clockwork",
+   "label": "Clockwork 3: Turret and a second Clocktower",
+   "then": "economy",
+   "steps": [
+    "workers:7",
+    "cog_press",
+    "movement_works",
+    "clocktower",
+    "ratchet_turret",
+    "clock_soldier*",
+    "workers:14",
+    "cog_press",
+    "cog_press",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_owl_harass",
+   "faction": "clockwork",
+   "label": "Clockwork 4: Swifts into Ticking Owls",
+   "then": "balanced",
+   "steps": [
+    "workers:7",
+    "cog_press",
+    "movement_works",
+    "mainspring",
+    "workers:10",
+    "crew:mainspring:3",
+    "escapement",
+    "clock_soldier*2",
+    "cuckoo_house",
+    "cuckoo*2",
+    "research:owl_morph",
+    "ratchet_turret",
+    "cuckoo*2",
+    "morph:3",
+    "attack@12|600",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_jack_rush",
+   "faction": "clockwork",
+   "label": "Clockwork 5: Fast Jacks (Escapement first)",
+   "then": "balanced",
+   "steps": [
+    "workers:7",
+    "movement_works",
+    "mainspring",
+    "crew:mainspring:3",
+    "escapement",
+    "jack*",
+    "attack@8|300",
+    "cog_press",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_windup_swarm",
+   "faction": "clockwork",
+   "label": "Clockwork (leftover): the old Assembly Works and Wind-up Soldiers",
+   "then": "balanced",
+   "steps": [
+    "workers:6",
+    "assembly_works",
+    "regulator",
+    "windup_soldier*",
+    "attack@12|200",
+    "workers:8",
+    "end"
+   ]
+  }
+ ]
+}

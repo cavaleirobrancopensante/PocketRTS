@@ -1,0 +1,2200 @@
+{
+ "bayonet": {
+  "aim": 0.2,
+  "bonus": {
+   "cannon": 2.0,
+   "cuirassier": 1.5,
+   "spitter": 1.3
+  },
+  "close": 30.0,
+  "cooldown": 1.0,
+  "damage": 18.0,
+  "range": 26.0
+ },
+ "build_list": {
+  "brood": [
+   "hive",
+   "clutch_mound",
+   "feeding_pit",
+   "brood_pen",
+   "warren",
+   "gorge_pit",
+   "roost"
+  ],
+  "clockwork": [
+   "clocktower",
+   "regulator",
+   "cog_press",
+   "mainspring",
+   "movement_works",
+   "ratchet_turret",
+   "escapement",
+   "cuckoo_house",
+   "assembly_works"
+  ],
+  "crown": [
+   "town_hall",
+   "cottage",
+   "farm",
+   "horse_breeder",
+   "powder_mill",
+   "wall",
+   "gate",
+   "barracks",
+   "armoury",
+   "foundry",
+   "church"
+  ]
+ },
+ "buildings": {
+  "armoury": {
+   "armor": 2,
+   "cost": 150,
+   "faction": "crown",
+   "hp": 1000,
+   "name": "Armoury",
+   "requires": "barracks",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 40.0,
+   "trains": []
+  },
+  "assembly_works": {
+   "armor": 3,
+   "cost": 200,
+   "faction": "clockwork",
+   "hp": 1400,
+   "name": "Assembly Works",
+   "size": [
+    5,
+    4
+   ],
+   "supply": 0,
+   "time": 45.0,
+   "trains": [
+    "windup_soldier",
+    "thresher",
+    "bulwark",
+    "arc_thrower",
+    "tin_militia",
+    "scrapper",
+    "rail_rifleman"
+   ]
+  },
+  "barracks": {
+   "armor": 2,
+   "cost": 150,
+   "faction": "crown",
+   "hp": 1000,
+   "name": "Barracks",
+   "requires": "cottage",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 40.0,
+   "trains": [
+    "musketeer",
+    "dragoon",
+    "cuirassier",
+    "dismounted"
+   ]
+  },
+  "boiler": {
+   "armor": 2,
+   "cost": 150,
+   "crew": 7,
+   "faction": "clockwork",
+   "hp": 900,
+   "name": "Boiler",
+   "size": [
+    4,
+    4
+   ],
+   "supply": 0,
+   "time": 30.0,
+   "trains": []
+  },
+  "brood_pen": {
+   "armor": 0,
+   "cost": 100,
+   "faction": "brood",
+   "hp": 600,
+   "name": "Brood Pen",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 22.0,
+   "trains": []
+  },
+  "capacitor_works": {
+   "armor": 2,
+   "cost": 250,
+   "faction": "clockwork",
+   "hp": 900,
+   "name": "Capacitor Works",
+   "requires": "assembly_works",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 0,
+   "time": 50.0,
+   "trains": []
+  },
+  "charging_pylon": {
+   "armor": 2,
+   "cost": 150,
+   "faction": "clockwork",
+   "field": 7,
+   "hp": 600,
+   "name": "Charging Pylon",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 0,
+   "time": 30.0,
+   "trains": []
+  },
+  "church": {
+   "armor": 2,
+   "cost": 150,
+   "faction": "crown",
+   "hp": 900,
+   "name": "Church",
+   "requires": "barracks",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 35.0,
+   "trains": [
+    "missionary"
+   ]
+  },
+  "clocktower": {
+   "armor": 3,
+   "cost": 400,
+   "crew": 4,
+   "faction": "clockwork",
+   "field": 9,
+   "hp": 2000,
+   "name": "Clocktower",
+   "size": [
+    5,
+    4
+   ],
+   "supply": 10,
+   "time": 60.0,
+   "trains": [
+    "winder"
+   ]
+  },
+  "clutch_mound": {
+   "armor": 0,
+   "cost": 75,
+   "faction": "brood",
+   "hp": 350,
+   "name": "Clutch Mound",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 12,
+   "time": 18.0,
+   "trains": []
+  },
+  "cog_press": {
+   "armor": 2,
+   "cost": 140,
+   "crew": 6,
+   "faction": "clockwork",
+   "hp": 900,
+   "name": "Cog Press",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 35.0,
+   "trains": []
+  },
+  "cottage": {
+   "armor": 1,
+   "cost": 100,
+   "faction": "crown",
+   "hp": 400,
+   "name": "Cottage",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 8,
+   "time": 20.0,
+   "trains": []
+  },
+  "cuckoo_house": {
+   "armor": 2,
+   "cost": 175,
+   "faction": "clockwork",
+   "hp": 900,
+   "name": "Clock Aviary",
+   "requires": "escapement",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 0,
+   "time": 45.0,
+   "trains": [
+    "cuckoo"
+   ]
+  },
+  "engine_hall": {
+   "armor": 3,
+   "cost": 250,
+   "faction": "clockwork",
+   "hp": 1500,
+   "name": "Engine Hall",
+   "requires": [
+    "assembly_works",
+    "boiler"
+   ],
+   "size": [
+    4,
+    4
+   ],
+   "supply": 0,
+   "time": 50.0,
+   "trains": [
+    "steam_walker",
+    "tesla_cart",
+    "stormcaller",
+    "ornithopter"
+   ]
+  },
+  "escapement": {
+   "armor": 2,
+   "cost": 150,
+   "faction": "clockwork",
+   "hp": 1000,
+   "name": "Escapement",
+   "requires": "movement_works",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 40.0,
+   "trains": []
+  },
+  "farm": {
+   "armor": 1,
+   "cost": 100,
+   "crew": 8,
+   "faction": "crown",
+   "hp": 500,
+   "name": "Farm",
+   "size": [
+    6,
+    6
+   ],
+   "supply": 0,
+   "time": 25.0,
+   "trains": []
+  },
+  "feeding_pit": {
+   "armor": 0,
+   "cost": 75,
+   "crew": 5,
+   "faction": "brood",
+   "hp": 450,
+   "name": "Feeding Pit",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 18.0,
+   "trains": []
+  },
+  "foundry": {
+   "armor": 2,
+   "cost": 200,
+   "faction": "crown",
+   "hp": 900,
+   "name": "Foundry",
+   "requires": "barracks",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 45.0,
+   "trains": [
+    "cannon",
+    "mortar",
+    "balloon",
+    "powder_wagon"
+   ]
+  },
+  "gate": {
+   "armor": 2,
+   "cost": 50,
+   "faction": "crown",
+   "hp": 300,
+   "name": "Gate",
+   "requires": "cottage",
+   "size": [
+    1,
+    1
+   ],
+   "supply": 0,
+   "time": 12.0,
+   "trains": []
+  },
+  "gorge_pit": {
+   "armor": 1,
+   "cost": 200,
+   "faction": "brood",
+   "hp": 800,
+   "name": "Gorge Pit",
+   "requires": "warren",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 45.0,
+   "trains": []
+  },
+  "hive": {
+   "armor": 1,
+   "cost": 350,
+   "eggs": true,
+   "faction": "brood",
+   "hp": 1500,
+   "name": "Burrow",
+   "size": [
+    5,
+    4
+   ],
+   "supply": 16,
+   "time": 55.0,
+   "trains": [
+    "grub",
+    "raptor",
+    "spitter",
+    "brute",
+    "skywing",
+    "spore_mother",
+    "bloater",
+    "mist_toad"
+   ]
+  },
+  "horse_breeder": {
+   "armor": 1,
+   "cost": 100,
+   "faction": "crown",
+   "hp": 500,
+   "name": "Horse Breeder",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 25.0,
+   "trains": [
+    "horse"
+   ]
+  },
+  "mainspring": {
+   "armor": 2,
+   "cost": 140,
+   "crew": 3,
+   "faction": "clockwork",
+   "hp": 800,
+   "name": "Mainspring",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 35.0,
+   "trains": []
+  },
+  "movement_works": {
+   "armor": 2,
+   "cost": 150,
+   "faction": "clockwork",
+   "hp": 1000,
+   "name": "Movement Works",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 40.0,
+   "trains": [
+    "clock_soldier",
+    "jack"
+   ]
+  },
+  "ore_crusher": {
+   "armor": 2,
+   "cost": 125,
+   "faction": "clockwork",
+   "hp": 800,
+   "name": "Ore Crusher",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 30.0,
+   "trains": []
+  },
+  "ore_drill": {
+   "armor": 2,
+   "cost": 140,
+   "faction": "clockwork",
+   "hp": 900,
+   "name": "Ore Drill",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 35.0,
+   "trains": []
+  },
+  "powder_mill": {
+   "armor": 1,
+   "cost": 100,
+   "crew": 6,
+   "faction": "crown",
+   "hp": 600,
+   "name": "Powder Mill",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 30.0,
+   "trains": []
+  },
+  "pressure_relay": {
+   "armor": 2,
+   "cost": 75,
+   "faction": "clockwork",
+   "hp": 350,
+   "name": "Pressure Relay",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 0,
+   "time": 20.0,
+   "trains": []
+  },
+  "rail_yard": {
+   "armor": 3,
+   "cost": 220,
+   "faction": "clockwork",
+   "hp": 1100,
+   "name": "Rail Yard",
+   "requires": "assembly_works",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 40.0,
+   "trains": [
+    "work_car",
+    "plate_wagon",
+    "heavy_loco",
+    "carrier_car",
+    "tesla_loco",
+    "storm_engine"
+   ]
+  },
+  "ratchet_turret": {
+   "armor": 1,
+   "cost": 125,
+   "faction": "clockwork",
+   "hp": 450,
+   "name": "Ratchet Turret",
+   "requires": "movement_works",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 0,
+   "time": 30.0,
+   "trains": []
+  },
+  "regulator": {
+   "armor": 2,
+   "cost": 100,
+   "faction": "clockwork",
+   "hp": 500,
+   "name": "Regulator",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 10,
+   "time": 20.0,
+   "trains": []
+  },
+  "roost": {
+   "armor": 1,
+   "cost": 175,
+   "faction": "brood",
+   "hp": 700,
+   "name": "Roost",
+   "requires": "warren",
+   "size": [
+    3,
+    3
+   ],
+   "supply": 0,
+   "time": 35.0,
+   "trains": []
+  },
+  "spring_tower": {
+   "armor": 2,
+   "cost": 100,
+   "faction": "clockwork",
+   "field": 7,
+   "hp": 500,
+   "name": "Spring Tower",
+   "size": [
+    2,
+    2
+   ],
+   "supply": 10,
+   "time": 20.0,
+   "trains": []
+  },
+  "town_hall": {
+   "armor": 2,
+   "cost": 400,
+   "faction": "crown",
+   "haulers": 6,
+   "hp": 1600,
+   "name": "Town Hall",
+   "size": [
+    5,
+    4
+   ],
+   "supply": 10,
+   "time": 60.0,
+   "trains": [
+    "labourer"
+   ]
+  },
+  "wall": {
+   "armor": 2,
+   "cost": 25,
+   "faction": "crown",
+   "hp": 300,
+   "name": "Palisade",
+   "requires": "cottage",
+   "size": [
+    1,
+    1
+   ],
+   "supply": 0,
+   "time": 8.0,
+   "trains": []
+  },
+  "warren": {
+   "armor": 1,
+   "cost": 150,
+   "faction": "brood",
+   "hp": 800,
+   "name": "Spawning Den",
+   "size": [
+    4,
+    3
+   ],
+   "supply": 0,
+   "time": 35.0,
+   "trains": []
+  }
+ },
+ "crate": {
+  "auto": 10,
+  "fade": 0.5,
+  "hold": 0.3,
+  "hp": 40.0,
+  "lift": 0.5,
+  "pickup": 0.8,
+  "unfold": 0.4
+ },
+ "dropship": {
+  "board": 42.0,
+  "capacity": 4,
+  "give_up": 30.0,
+  "kinds": [
+   "musketeer",
+   "labourer"
+  ]
+ },
+ "econ": {
+  "ECON_RANGE": 14,
+  "EGGS_MAX": 5,
+  "EGG_TIME": 9.0,
+  "ESSENCE_PER_SUPPLY": 3,
+  "FARM_BASE": 0.15,
+  "FARM_GROW": 40.0,
+  "FARM_YIELD": 380,
+  "FOOD_BONUS": 0.3,
+  "FOOD_FADE": 0.015,
+  "FOOD_FAR": 18.0,
+  "FOOD_NEAR": 6.0,
+  "FOOD_PEAK": 22.0,
+  "FOOD_RATE": 0.6,
+  "FOOD_REACH": 1.5,
+  "FOOD_TRIP": 0.8,
+  "GROUND_RESERVE": 10500,
+  "HALL_SPACING": 18,
+  "LODE": {
+   "clocktower": 11400.0,
+   "town_hall": 1320.0
+  },
+  "MILL_RATE": 0.33,
+  "PIT_CREW_MAX": 12,
+  "PIT_CREW_STEP": 4.0,
+  "PIT_TIME": 2.0,
+  "SACRIFICE": 0.12,
+  "SOIL_RESERVE": 9000,
+  "START_GOLD": 250,
+  "START_POWDER": 0,
+  "WIND_DECAY": 0.012
+ },
+ "factions": {
+  "brood": {
+   "about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Supply cap 200.",
+   "build": [
+    "hive",
+    "clutch_mound",
+    "feeding_pit",
+    "brood_pen",
+    "warren",
+    "gorge_pit",
+    "roost"
+   ],
+   "econ": {
+    "brood_pen": 1,
+    "feeding_pit": 3
+   },
+   "hall": "hive",
+   "max_supply": 200,
+   "name": "The Brood",
+   "ready": true,
+   "res": [
+    "Biomass",
+    "Essence"
+   ],
+   "start": [
+    "feeding_pit"
+   ],
+   "start_workers": 5,
+   "supply": "clutch_mound",
+   "worker": "grub"
+  },
+  "clockwork": {
+   "about": "A spreading machine of gears. Every building sits in a ring of ground gears that must mesh with the Clocktower's: unlinked buildings stop. Winders wind the Cog Presses for COGS, the money. Each Clocktower's brass and coal run out in time. Supply cap 200.",
+   "build": [
+    "clocktower",
+    "spring_tower",
+    "boiler",
+    "ore_crusher",
+    "charging_pylon",
+    "assembly_works",
+    "engine_hall",
+    "capacitor_works",
+    "pressure_relay",
+    "rail_yard"
+   ],
+   "econ": {
+    "boiler": 2,
+    "cog_press": 2,
+    "ore_crusher": 2,
+    "ore_drill": 2
+   },
+   "hall": "clocktower",
+   "max_supply": 200,
+   "name": "The Clockwork",
+   "ready": true,
+   "res": [
+    "Cogs",
+    "Energy"
+   ],
+   "start": [
+    "ore_crusher"
+   ],
+   "start_gold": 300,
+   "start_workers": 4,
+   "supply": "spring_tower",
+   "worker": "winder"
+  },
+  "crown": {
+   "about": "Musketeers, cannons and mortars, and horses for them. Farms ripen into big harvests; Horse Breeders sell the horses that cavalry and guns need; Powder Mills grind each Town Hall's saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
+   "build": [
+    "town_hall",
+    "cottage",
+    "farm",
+    "horse_breeder",
+    "powder_mill",
+    "wall",
+    "gate",
+    "barracks",
+    "armoury",
+    "foundry",
+    "church"
+   ],
+   "econ": {
+    "farm": 2,
+    "powder_mill": 1
+   },
+   "hall": "town_hall",
+   "max_supply": 200,
+   "name": "The Crown",
+   "ready": true,
+   "res": [
+    "Gold",
+    "Powder"
+   ],
+   "start": [
+    "farm"
+   ],
+   "start_gold": 300,
+   "start_workers": 4,
+   "supply": "cottage",
+   "worker": "labourer"
+  }
+ },
+ "gear": {
+  "mainspring": {
+   "base": 0.15,
+   "full": 2.0
+  },
+  "press": {
+   "base": 0.15,
+   "big": {
+    "crew": 6,
+    "full": 10.5
+   },
+   "small": {
+    "crew": 3,
+    "full": 8.0
+   }
+  },
+  "spent": 0.25,
+  "start_cogs": 300,
+  "swap_cost": 25,
+  "swap_time": 4.0
+ },
+ "gear_mode": true,
+ "hall_levels": [
+  {
+   "armor": 1,
+   "art": "hive",
+   "eggs": 5,
+   "hp": 1500,
+   "name": "Burrow",
+   "scale": 1.0
+  },
+  {
+   "about": "Upgrade to Warren: up to 10 eggs, more health (2000). The hall keeps laying eggs and hatching meanwhile.",
+   "armor": 1,
+   "art": "warren_hall",
+   "cost": 150,
+   "cost2": 0,
+   "eggs": 10,
+   "hp": 2000,
+   "label": "WARREN",
+   "name": "Warren",
+   "scale": 1.15,
+   "time": 40.0
+  },
+  {
+   "about": "Upgrade to Broodmound: up to 15 eggs, more health (2600) and armour 2. The hall keeps laying eggs and hatching meanwhile.",
+   "armor": 2,
+   "art": "broodmound",
+   "cost": 250,
+   "cost2": 50,
+   "eggs": 15,
+   "hp": 2600,
+   "label": "BROODMOUND",
+   "name": "Broodmound",
+   "needs": "gorge_pit",
+   "scale": 1.3,
+   "time": 60.0
+  }
+ ],
+ "maps": {
+  "amberfall_vale": {
+   "air": 3328,
+   "hall_to_hall_walk": 3180,
+   "own_ramp_top": 4,
+   "seeds": [
+    1
+   ],
+   "size": [
+    88,
+    120
+   ],
+   "to_hall": 2856,
+   "to_ramp_foot": 2380,
+   "to_ramp_top": 2538
+  },
+  "ashford_crossing": {
+   "air": 3326,
+   "hall_to_hall_walk": 3178,
+   "own_ramp_top": 146,
+   "seeds": [
+    1
+   ],
+   "size": [
+    96,
+    96
+   ],
+   "to_hall": 3006,
+   "to_ramp_foot": 2656,
+   "to_ramp_top": 2759
+  },
+  "cinder_steps": {
+   "air": 2050,
+   "hall_to_hall_walk": 2482,
+   "own_ramp_top": 321,
+   "seeds": [
+    1
+   ],
+   "size": [
+    70,
+    56
+   ],
+   "to_hall": 2464,
+   "to_ramp_foot": 2083,
+   "to_ramp_top": 2152
+  },
+  "frostmere": {
+   "air": 3479,
+   "hall_to_hall_walk": 3445,
+   "own_ramp_top": 173,
+   "seeds": [
+    1
+   ],
+   "size": [
+    72,
+    112
+   ],
+   "to_hall": 3307,
+   "to_ramp_foot": 2907,
+   "to_ramp_top": 3054
+  },
+  "glimmerdeep": {
+   "air": 2783,
+   "hall_to_hall_walk": 2819,
+   "own_ramp_top": 262,
+   "seeds": [
+    1
+   ],
+   "size": [
+    80,
+    80
+   ],
+   "to_hall": 2756,
+   "to_ramp_foot": 2380,
+   "to_ramp_top": 2483
+  },
+  "greenhold": {
+   "air": 2281,
+   "hall_to_hall_walk": 2471,
+   "own_ramp_top": 275,
+   "seeds": [
+    1,
+    2
+   ],
+   "size": [
+    84,
+    60
+   ],
+   "to_hall": 2415,
+   "to_ramp_foot": 2129,
+   "to_ramp_top": 2234
+  },
+  "highmoor": {
+   "air": 2281,
+   "hall_to_hall_walk": 2436,
+   "own_ramp_top": 275,
+   "seeds": [
+    1,
+    2
+   ],
+   "size": [
+    84,
+    60
+   ],
+   "to_hall": 2393,
+   "to_ramp_foot": 2153,
+   "to_ramp_top": 2200
+  },
+  "hollowfen": {
+   "air": 3508,
+   "hall_to_hall_walk": 3445,
+   "own_ramp_top": 190,
+   "seeds": [
+    1
+   ],
+   "size": [
+    112,
+    84
+   ],
+   "to_hall": 3283,
+   "to_ramp_foot": 2873,
+   "to_ramp_top": 3008
+  },
+  "kestrel_rise": {
+   "air": 2150,
+   "hall_to_hall_walk": 2362,
+   "own_ramp_top": 264,
+   "seeds": [
+    1
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "to_hall": 2330,
+   "to_ramp_foot": 1968,
+   "to_ramp_top": 2066
+  },
+  "redrock_canyon": {
+   "air": 2816,
+   "hall_to_hall_walk": 2871,
+   "own_ramp_top": 20,
+   "seeds": [
+    1
+   ],
+   "size": [
+    64,
+    104
+   ],
+   "to_hall": 2602,
+   "to_ramp_foot": 2092,
+   "to_ramp_top": 2249
+  },
+  "saltmarsh_isles": {
+   "air": 3315,
+   "hall_to_hall_walk": 3922,
+   "own_ramp_top": 236,
+   "seeds": [
+    1
+   ],
+   "size": [
+    104,
+    80
+   ],
+   "to_hall": 3798,
+   "to_ramp_foot": 3312,
+   "to_ramp_top": 3466
+  },
+  "thornwood_maze": {
+   "air": 3099,
+   "hall_to_hall_walk": 3344,
+   "own_ramp_top": 234,
+   "seeds": [
+    1
+   ],
+   "size": [
+    100,
+    76
+   ],
+   "to_hall": 3218,
+   "to_ramp_foot": 2750,
+   "to_ramp_top": 2899
+  },
+  "twin_fords": {
+   "air": 2281,
+   "hall_to_hall_walk": 2407,
+   "own_ramp_top": 275,
+   "seeds": [
+    1,
+    2
+   ],
+   "size": [
+    84,
+    60
+   ],
+   "to_hall": 2378,
+   "to_ramp_foot": 2127,
+   "to_ramp_top": 2149
+  }
+ },
+ "owl_morph": {
+  "cost": 100,
+  "tension": 50,
+  "time": 20.0
+ },
+ "pistol": {
+  "after": 0.4,
+  "aim": 0.35,
+  "busy": 40.0,
+  "damage": 30.0,
+  "kinds": [
+   "cuirassier",
+   "dismounted"
+  ],
+  "powder": 1.0,
+  "range": 110.0,
+  "reload": 4.0
+ },
+ "res_names": {
+  "brood": [
+   "Biomass",
+   "Essence"
+  ],
+  "clockwork": [
+   "Cogs",
+   "Tension"
+  ],
+  "crown": [
+   "Gold",
+   "Powder"
+  ]
+ },
+ "research": {
+  "armour": {
+   "about": "Breastplates, morions and cuirasses: unlocks the ARMOUR refit for Musketeers (they become Guardsmen: +1 armour, +20 health; 12 gold + 4 powder a man) and Horsemen (they become Cuirassiers: +1 armour, +30 health, a little slower; 30 gold). The Barracks can then train both armoured.",
+   "at": "armoury",
+   "cost": 125,
+   "cost2": 50,
+   "faction": "crown",
+   "fees": {
+    "cuirassier": [
+     30,
+     0
+    ],
+    "dismounted": [
+     30,
+     0
+    ],
+    "dragoon": [
+     12,
+     4
+    ],
+    "musketeer": [
+     12,
+     4
+    ]
+   },
+   "icon": "research_armour",
+   "name": "Armour",
+   "needs": "foundry",
+   "time": 45.0
+  },
+  "bayonet": {
+   "about": "A socket bayonet that leaves the muzzle free: unlocks the refit (bayonet +6 damage, thrusts 15% faster), 3 gold a man. New Musketeers come out with it.",
+   "at": "armoury",
+   "cooldown": 0.85,
+   "cost": 40,
+   "cost2": 0,
+   "damage": 6.0,
+   "faction": "crown",
+   "fee": 3,
+   "icon": "research_bayonet",
+   "label": "BAYONET",
+   "name": "Socket Bayonet",
+   "time": 20.0
+  },
+  "caplock": {
+   "about": "Percussion caps: unlocks the refit (reload 30% faster than at the start), 16 gold a man. New Musketeers come out with it.",
+   "at": "armoury",
+   "cost": 100,
+   "cost2": 40,
+   "faction": "crown",
+   "fee": 16,
+   "icon": "research_caplock",
+   "name": "Caplock",
+   "reload": 0.7,
+   "requires": "flintlock",
+   "time": 50.0
+  },
+  "charge": {
+   "about": "Drilled to charge: after about 2 s at the gallop a Horseman's or Cuirassier's next sabre blow hits double and throws the enemy back.",
+   "at": "armoury",
+   "cost": 60,
+   "cost2": 0,
+   "drill": true,
+   "faction": "crown",
+   "icon": "research_charge",
+   "kinds": [
+    "cuirassier"
+   ],
+   "label": "CHARGE",
+   "name": "Cavalry Charge",
+   "time": 25.0
+  },
+  "charges": {
+   "about": "Powder in ready-made bags: every Field Cannon and Mortar reloads 20% faster.",
+   "at": "armoury",
+   "cost": 100,
+   "cost2": 40,
+   "drill": true,
+   "faction": "crown",
+   "icon": "research_charges",
+   "kinds": [
+    "cannon",
+    "mortar"
+   ],
+   "label": "CHARGES",
+   "name": "Prepared Charges",
+   "needs": "foundry",
+   "reload": 0.8,
+   "time": 40.0
+  },
+  "flintlock": {
+   "about": "Flintlocks: unlocks the refit (reload 20% faster than at the start), 12 gold a man. New Musketeers come out with it.",
+   "at": "armoury",
+   "cost": 75,
+   "cost2": 25,
+   "faction": "crown",
+   "fee": 12,
+   "icon": "research_flintlock",
+   "name": "Flintlock",
+   "needs": "foundry",
+   "reload": 0.8,
+   "requires": "matchlock",
+   "time": 40.0
+  },
+  "high_leap": {
+   "about": "A stiffer spring: every Jack can JUMP UP onto high ground too (only where you can see).",
+   "at": "escapement",
+   "cost": 150,
+   "cost2": 0,
+   "faction": "clockwork",
+   "icon": "research_high_leap",
+   "label": "HIGH LEAP",
+   "name": "High Leap",
+   "tension": 100,
+   "time": 60.0
+  },
+  "matchlock": {
+   "about": "Better matchlocks: unlocks the refit (reload 10% faster, powder burns faster), 8 gold a man. New Musketeers come out with it.",
+   "at": "armoury",
+   "cost": 50,
+   "cost2": 10,
+   "faction": "crown",
+   "fee": 8,
+   "icon": "research_matchlock",
+   "name": "Matchlock",
+   "reload": 0.9,
+   "time": 30.0
+  },
+  "owl_morph": {
+   "about": "The plans of the Ticking Owl: every Swift gets MORPH TO OWL (100 cogs and 50 Tension, 20 s each), rebuilding it into a heavy owl that swoops on units and bombs buildings.",
+   "at": "cuckoo_house",
+   "cost": 150,
+   "cost2": 0,
+   "faction": "clockwork",
+   "icon": "research_ticking_owl",
+   "label": "TICKING OWL",
+   "name": "Ticking Owl",
+   "tension": 150,
+   "time": 60.0
+  },
+  "pouch": {
+   "about": "A bigger shot pouch: unlocks the refit (he carries 20 shots instead of 10), 5 gold a man. Every musket soldier: Musketeers, Guardsmen and Dragoons. Recruits don't come with it.",
+   "at": "armoury",
+   "cost": 60,
+   "cost2": 20,
+   "faction": "crown",
+   "fee": 5,
+   "icon": "research_pouch",
+   "label": "POUCH",
+   "name": "Shot Pouch",
+   "time": 25.0
+  },
+  "quadrant": {
+   "about": "Laying the guns by the quadrant: every Field Cannon and Mortar reaches 1 tile further.",
+   "at": "armoury",
+   "cost": 125,
+   "cost2": 30,
+   "drill": true,
+   "faction": "crown",
+   "icon": "research_quadrant",
+   "kinds": [
+    "cannon",
+    "mortar"
+   ],
+   "label": "QUADRANT",
+   "name": "Gunner's Quadrant",
+   "range": 32,
+   "requires": "charges",
+   "time": 45.0
+  }
+ },
+ "start_list": {
+  "brood": [
+   "feeding_pit"
+  ],
+  "clockwork": [
+   "cog_press"
+  ],
+  "crown": [
+   "farm"
+  ]
+ },
+ "supply_kind": {
+  "brood": "clutch_mound",
+  "clockwork": "regulator",
+  "crown": "cottage"
+ },
+ "turret": {
+  "cooldown": 1.5,
+  "damage": 14.0,
+  "range": 200.0
+ },
+ "units": {
+  "arc_thrower": {
+   "aim": 0.4,
+   "anti_air": true,
+   "armor": 1,
+   "cooldown": 2.6,
+   "cost": 150,
+   "damage": 28,
+   "faction": "clockwork",
+   "from": "assembly_works",
+   "hp": 160,
+   "name": "Arc Thrower",
+   "range": 210,
+   "requires": "boiler",
+   "sight": 9,
+   "speed": 54,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 22.0
+  },
+  "balloon": {
+   "air": true,
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 125,
+   "cost2": 20,
+   "damage": 0,
+   "faction": "crown",
+   "from": "foundry",
+   "hp": 180,
+   "name": "Observation Balloon",
+   "no_attack": true,
+   "range": 0,
+   "sight": 14,
+   "speed": 46,
+   "supply": 2,
+   "tags": [
+    "light"
+   ],
+   "time": 25.0
+  },
+  "bloater": {
+   "aim": 0.5,
+   "air": true,
+   "armor": 0,
+   "cooldown": 2.2,
+   "cost": 50,
+   "cost2": 25,
+   "damage": 7,
+   "faction": "brood",
+   "from": "hive",
+   "ground_only": true,
+   "hp": 60,
+   "name": "Bloater",
+   "range": 160,
+   "requires": "roost",
+   "sight": 8,
+   "speed": 44,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 14.0
+  },
+  "brute": {
+   "aim": 0.25,
+   "armor": 2,
+   "building_bonus": 1.6,
+   "cooldown": 1.8,
+   "cost": 150,
+   "cost2": 20,
+   "damage": 26,
+   "faction": "brood",
+   "from": "hive",
+   "hp": 240,
+   "name": "Brute",
+   "range": 28,
+   "requires": "gorge_pit",
+   "sight": 7,
+   "speed": 56,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 22.0
+  },
+  "bulwark": {
+   "aim": 0.3,
+   "armor": 4,
+   "cooldown": 1.6,
+   "cost": 175,
+   "damage": 9,
+   "faction": "clockwork",
+   "from": "assembly_works",
+   "hp": 340,
+   "name": "Bulwark",
+   "range": 34,
+   "requires": "boiler",
+   "sight": 7,
+   "speed": 46,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 26.0
+  },
+  "cannon": {
+   "aim": 0.6,
+   "armor": 1,
+   "building_bonus": 2.5,
+   "cooldown": 4.5,
+   "cost": 170,
+   "damage": 32,
+   "faction": "crown",
+   "from": "foundry",
+   "hp": 140,
+   "min_range": 80,
+   "name": "Field Cannon",
+   "needs_horse": true,
+   "range": 430,
+   "sight": 8,
+   "speed": 38,
+   "splash": 46,
+   "supply": 4,
+   "tags": [
+    "armored"
+   ],
+   "time": 32.0
+  },
+  "carrier_car": {
+   "armor": 2,
+   "cooldown": 1.0,
+   "cost": 240,
+   "damage": 0,
+   "faction": "clockwork",
+   "from": "rail_yard",
+   "hp": 360,
+   "name": "Carrier Car",
+   "no_attack": true,
+   "range": 0,
+   "requires": "charging_pylon",
+   "sight": 8,
+   "speed": 56,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 28.0
+  },
+  "clock_soldier": {
+   "aim": 0.33,
+   "armor": 1,
+   "cooldown": 1.2,
+   "cost": 70,
+   "damage": 10,
+   "faction": "clockwork",
+   "from": "movement_works",
+   "hp": 90,
+   "name": "Clock Soldier",
+   "range": 22,
+   "sight": 7,
+   "speed": 62,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 16.0
+  },
+  "cuckoo": {
+   "aim": 0.22,
+   "air": true,
+   "air_only": true,
+   "anti_air": true,
+   "armor": 0,
+   "cooldown": 0.6,
+   "cost": 75,
+   "damage": 10,
+   "faction": "clockwork",
+   "from": "cuckoo_house",
+   "hp": 90,
+   "name": "Swift",
+   "range": 28,
+   "sight": 9,
+   "speed": 118,
+   "supply": 2,
+   "tags": [
+    "light"
+   ],
+   "tension": 15,
+   "time": 20.0
+  },
+  "cuirassier": {
+   "aim": 0.15,
+   "armor": 1,
+   "bonus": {
+    "arc_thrower": 1.3,
+    "cannon": 1.6,
+    "spitter": 1.3
+   },
+   "charge": true,
+   "cooldown": 1.1,
+   "cost": 115,
+   "damage": 18,
+   "faction": "crown",
+   "from": "barracks",
+   "hp": 140,
+   "name": "Horseman",
+   "needs_horse": true,
+   "range": 26,
+   "requires": "horse_breeder",
+   "sight": 8,
+   "speed": 112,
+   "supply": 3,
+   "tags": [
+    "light"
+   ],
+   "time": 22.0
+  },
+  "dismounted": {
+   "aim": 0.35,
+   "armor": 1,
+   "cooldown": 1.1,
+   "cost": 75,
+   "damage": 30,
+   "faction": "crown",
+   "from": "barracks",
+   "hp": 80,
+   "name": "Officer",
+   "range": 110,
+   "requires": "horse_breeder",
+   "sabre": {
+    "cooldown": 1.1,
+    "damage": 18.0
+   },
+   "sight": 8,
+   "speed": 64,
+   "supply": 3,
+   "tags": [
+    "light"
+   ],
+   "time": 18.0
+  },
+  "dragoon": {
+   "anti_air": true,
+   "armor": 0,
+   "cooldown": 2.8,
+   "cost": 60,
+   "cost2": 10,
+   "damage": 0,
+   "faction": "crown",
+   "from": "barracks",
+   "hp": 90,
+   "mounted": true,
+   "name": "Dragoon",
+   "needs_horse": true,
+   "no_attack": true,
+   "range": 190,
+   "requires": [
+    "powder_mill",
+    "horse_breeder"
+   ],
+   "sight": 8,
+   "speed": 112,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 15.0
+  },
+  "grub": {
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 50,
+   "damage": 6,
+   "faction": "brood",
+   "from": "hive",
+   "hp": 46,
+   "name": "Grub",
+   "range": 18,
+   "sight": 6,
+   "speed": 68,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 12.0,
+   "worker": true
+  },
+  "heavy_loco": {
+   "aim": 0.4,
+   "armor": 4,
+   "building_bonus": 1.5,
+   "cooldown": 2.4,
+   "cost": 340,
+   "damage": 34,
+   "faction": "clockwork",
+   "from": "rail_yard",
+   "hp": 600,
+   "name": "Heavy Locomotive",
+   "range": 200,
+   "requires": "boiler",
+   "sight": 9,
+   "speed": 38,
+   "supply": 5,
+   "tags": [
+    "armored",
+    "massive"
+   ],
+   "time": 38.0
+  },
+  "horse": {
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 40,
+   "damage": 0,
+   "faction": "crown",
+   "from": "horse_breeder",
+   "hp": 60,
+   "name": "Horse",
+   "no_attack": true,
+   "range": 0,
+   "sight": 4,
+   "speed": 96,
+   "supply": 0,
+   "tags": [
+    "light"
+   ],
+   "time": 15.0
+  },
+  "jack": {
+   "aim": 0.11,
+   "anti_air": true,
+   "armor": 1,
+   "cooldown": 0.95,
+   "cost": 100,
+   "damage": 10,
+   "faction": "clockwork",
+   "from": "movement_works",
+   "hp": 90,
+   "name": "Jack",
+   "range": 170,
+   "requires": "escapement",
+   "sight": 8,
+   "speed": 70,
+   "supply": 2,
+   "tags": [
+    "armored"
+   ],
+   "tension": 25,
+   "time": 25.0
+  },
+  "labourer": {
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 50,
+   "damage": 7,
+   "faction": "crown",
+   "from": "town_hall",
+   "hp": 46,
+   "name": "Labourer",
+   "range": 20,
+   "sight": 7,
+   "speed": 74,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 12.0,
+   "worker": true
+  },
+  "messenger": {
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 50,
+   "damage": 0,
+   "faction": "crown",
+   "from": "",
+   "hp": 60,
+   "mounted": true,
+   "name": "Messenger",
+   "no_attack": true,
+   "range": 0,
+   "sight": 9,
+   "speed": 124,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 1.0
+  },
+  "missionary": {
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 125,
+   "damage": 0,
+   "faction": "crown",
+   "from": "church",
+   "hp": 60,
+   "name": "Missionary",
+   "range": 0,
+   "sight": 8,
+   "speed": 62,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 20.0
+  },
+  "mist_toad": {
+   "aim": 0.3,
+   "armor": 0,
+   "cooldown": 1.6,
+   "cost": 100,
+   "cost2": 25,
+   "damage": 4,
+   "faction": "brood",
+   "from": "hive",
+   "hp": 90,
+   "name": "Mist Toad",
+   "range": 24,
+   "requires": "gorge_pit",
+   "sight": 9,
+   "speed": 42,
+   "supply": 3,
+   "tags": [
+    "light"
+   ],
+   "time": 22.0
+  },
+  "mortar": {
+   "aim": 0.6,
+   "armor": 1,
+   "building_bonus": 1.5,
+   "cooldown": 5.0,
+   "cost": 145,
+   "cost2": 20,
+   "damage": 30,
+   "faction": "crown",
+   "from": "foundry",
+   "ground_only": true,
+   "hp": 120,
+   "min_range": 160,
+   "name": "Mortar",
+   "needs_horse": true,
+   "range": 352,
+   "sight": 8,
+   "speed": 38,
+   "splash": 48,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 30.0
+  },
+  "mounted_missionary": {
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 125,
+   "damage": 0,
+   "faction": "crown",
+   "from": "",
+   "hp": 60,
+   "mounted": true,
+   "name": "Mounted Missionary",
+   "range": 0,
+   "sight": 9,
+   "speed": 124,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 1.0
+  },
+  "musketeer": {
+   "aim": 0.4,
+   "anti_air": true,
+   "armor": 0,
+   "cooldown": 2.8,
+   "cost": 60,
+   "cost2": 10,
+   "damage": 20,
+   "faction": "crown",
+   "from": "barracks",
+   "hp": 70,
+   "name": "Musketeer",
+   "range": 190,
+   "requires": "powder_mill",
+   "sight": 8,
+   "speed": 62,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 15.0
+  },
+  "ornithopter": {
+   "aim": 0.2,
+   "air": true,
+   "anti_air": true,
+   "armor": 1,
+   "cooldown": 1.4,
+   "cost": 150,
+   "damage": 12,
+   "faction": "clockwork",
+   "from": "engine_hall",
+   "hp": 110,
+   "name": "Ornithopter",
+   "range": 140,
+   "requires": "charging_pylon",
+   "sight": 9,
+   "speed": 112,
+   "supply": 2,
+   "tags": [
+    "light"
+   ],
+   "time": 22.0
+  },
+  "plate_wagon": {
+   "armor": 4,
+   "cooldown": 1.0,
+   "cost": 180,
+   "damage": 0,
+   "faction": "clockwork",
+   "from": "rail_yard",
+   "hp": 420,
+   "name": "Plate Wagon",
+   "no_attack": true,
+   "range": 0,
+   "sight": 7,
+   "speed": 52,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 22.0
+  },
+  "powder_wagon": {
+   "armor": 1,
+   "cooldown": 1.0,
+   "cost": 70,
+   "cost2": 30,
+   "damage": 0,
+   "faction": "crown",
+   "from": "foundry",
+   "hp": 220,
+   "name": "Powder Wagon",
+   "needs_horse": true,
+   "no_attack": true,
+   "range": 0,
+   "sight": 7,
+   "speed": 38,
+   "supply": 2,
+   "tags": [
+    "armored"
+   ],
+   "time": 25.0
+  },
+  "rail_rifleman": {
+   "aim": 0.25,
+   "armor": 0,
+   "cooldown": 1.6,
+   "cost": 95,
+   "damage": 12,
+   "faction": "clockwork",
+   "from": "assembly_works",
+   "hp": 60,
+   "name": "Rail Rifleman",
+   "range": 130,
+   "sight": 8,
+   "speed": 62,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 14.0
+  },
+  "raptor": {
+   "aim": 0.1,
+   "armor": 0,
+   "cooldown": 0.9,
+   "cost": 75,
+   "damage": 6,
+   "faction": "brood",
+   "from": "hive",
+   "hp": 36,
+   "name": "Raptors",
+   "range": 22,
+   "requires": "warren",
+   "sight": 7,
+   "spawn": 3,
+   "speed": 108,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 11.0
+  },
+  "scrapper": {
+   "aim": 0.2,
+   "armor": 1,
+   "cooldown": 1.1,
+   "cost": 110,
+   "damage": 11,
+   "faction": "clockwork",
+   "from": "assembly_works",
+   "hp": 150,
+   "name": "Scrapper",
+   "range": 22,
+   "sight": 7,
+   "speed": 58,
+   "supply": 2,
+   "tags": [
+    "light"
+   ],
+   "time": 16.0,
+   "wind_drain": 1.5
+  },
+  "skywing": {
+   "aim": 0.15,
+   "air": true,
+   "air_only": true,
+   "anti_air": true,
+   "armor": 0,
+   "cooldown": 1.1,
+   "cost": 100,
+   "cost2": 40,
+   "damage": 11,
+   "faction": "brood",
+   "from": "hive",
+   "hp": 75,
+   "name": "Skywing",
+   "range": 130,
+   "requires": "roost",
+   "sight": 9,
+   "speed": 118,
+   "supply": 2,
+   "tags": [
+    "light"
+   ],
+   "time": 16.0
+  },
+  "spitter": {
+   "acid": 3.0,
+   "aim": 0.35,
+   "anti_air": true,
+   "armor": 0,
+   "cooldown": 2.0,
+   "cost": 90,
+   "cost2": 5,
+   "damage": 8,
+   "faction": "brood",
+   "from": "hive",
+   "hp": 70,
+   "name": "Spitters",
+   "range": 150,
+   "requires": [
+    "warren",
+    "brood_pen"
+   ],
+   "sight": 8,
+   "spawn": 2,
+   "speed": 68,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 13.0
+  },
+  "spore_mother": {
+   "aim": 0.6,
+   "armor": 1,
+   "cooldown": 4.0,
+   "cost": 175,
+   "cost2": 40,
+   "damage": 26,
+   "faction": "brood",
+   "from": "hive",
+   "hp": 260,
+   "min_range": 70,
+   "name": "Spore Mother",
+   "range": 300,
+   "requires": "gorge_pit",
+   "sight": 10,
+   "speed": 40,
+   "splash": 50,
+   "supply": 4,
+   "tags": [
+    "armored"
+   ],
+   "time": 26.0
+  },
+  "steam_walker": {
+   "aim": 0.3,
+   "armor": 2,
+   "building_bonus": 2.0,
+   "cooldown": 1.6,
+   "cost": 240,
+   "cost2": 3,
+   "damage": 15,
+   "faction": "clockwork",
+   "from": "engine_hall",
+   "hp": 380,
+   "name": "Steam Walker",
+   "range": 72,
+   "sight": 8,
+   "speed": 44,
+   "supply": 5,
+   "tags": [
+    "armored",
+    "massive"
+   ],
+   "time": 34.0,
+   "wind_drain": 2.0
+  },
+  "storm_engine": {
+   "armor": 2,
+   "cooldown": 1.0,
+   "cost": 340,
+   "damage": 0,
+   "faction": "clockwork",
+   "from": "rail_yard",
+   "hp": 340,
+   "name": "Storm Engine",
+   "no_attack": true,
+   "range": 0,
+   "requires": [
+    "charging_pylon",
+    "boiler"
+   ],
+   "sight": 9,
+   "speed": 40,
+   "supply": 4,
+   "tags": [
+    "armored",
+    "massive"
+   ],
+   "time": 40.0
+  },
+  "stormcaller": {
+   "aim": 0.25,
+   "anti_air": true,
+   "armor": 0,
+   "cooldown": 1.3,
+   "cost": 150,
+   "cost2": 2,
+   "damage": 7,
+   "faction": "clockwork",
+   "from": "engine_hall",
+   "hp": 90,
+   "name": "Stormcaller",
+   "range": 120,
+   "requires": "charging_pylon",
+   "sight": 9,
+   "speed": 56,
+   "supply": 2,
+   "tags": [
+    "light"
+   ],
+   "time": 24.0
+  },
+  "tesla_cart": {
+   "aim": 0.2,
+   "anti_air": true,
+   "armor": 2,
+   "cooldown": 1.6,
+   "cost": 180,
+   "cost2": 2,
+   "damage": 14,
+   "faction": "clockwork",
+   "from": "engine_hall",
+   "hp": 240,
+   "name": "Tesla Cart",
+   "range": 170,
+   "requires": "charging_pylon",
+   "sight": 9,
+   "speed": 50,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 28.0
+  },
+  "tesla_loco": {
+   "aim": 0.2,
+   "anti_air": true,
+   "armor": 3,
+   "cooldown": 1.2,
+   "cost": 300,
+   "damage": 12,
+   "faction": "clockwork",
+   "from": "rail_yard",
+   "hp": 380,
+   "name": "Tesla Locomotive",
+   "range": 150,
+   "requires": "charging_pylon",
+   "sight": 9,
+   "speed": 66,
+   "supply": 4,
+   "tags": [
+    "armored"
+   ],
+   "time": 34.0
+  },
+  "thresher": {
+   "aim": 0.2,
+   "armor": 3,
+   "cooldown": 1.0,
+   "cost": 165,
+   "damage": 20,
+   "faction": "clockwork",
+   "from": "assembly_works",
+   "hp": 280,
+   "name": "Thresher",
+   "range": 26,
+   "sight": 7,
+   "speed": 54,
+   "supply": 3,
+   "tags": [
+    "armored"
+   ],
+   "time": 21.0,
+   "wind_drain": 2.0
+  },
+  "ticking_owl": {
+   "aim": 0.33,
+   "air": true,
+   "armor": 1,
+   "cooldown": 1.32,
+   "cost": 175,
+   "damage": 20,
+   "faction": "clockwork",
+   "from": "",
+   "ground_only": true,
+   "hp": 220,
+   "name": "Ticking Owl",
+   "range": 28,
+   "sight": 9,
+   "speed": 56,
+   "supply": 4,
+   "tags": [
+    "armored"
+   ],
+   "tension": 65,
+   "time": 20.0
+  },
+  "tin_militia": {
+   "aim": 0.15,
+   "armor": 0,
+   "cooldown": 1.0,
+   "cost": 90,
+   "damage": 6,
+   "faction": "clockwork",
+   "from": "assembly_works",
+   "hp": 45,
+   "name": "Tin Militia",
+   "range": 20,
+   "sight": 7,
+   "spawn": 4,
+   "speed": 64,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 12.0
+  },
+  "winder": {
+   "armor": 1,
+   "cooldown": 1.0,
+   "cost": 50,
+   "damage": 7,
+   "faction": "clockwork",
+   "from": "clocktower",
+   "hp": 46,
+   "name": "Winder",
+   "range": 20,
+   "sight": 7,
+   "speed": 74,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 12.0,
+   "worker": true
+  },
+  "windup_soldier": {
+   "aim": 0.15,
+   "armor": 1,
+   "cooldown": 1.1,
+   "cost": 75,
+   "damage": 7,
+   "faction": "clockwork",
+   "from": "assembly_works",
+   "hp": 55,
+   "name": "Wind-up Soldiers",
+   "range": 24,
+   "sight": 7,
+   "spawn": 3,
+   "speed": 66,
+   "spring": true,
+   "supply": 1,
+   "tags": [
+    "light"
+   ],
+   "time": 13.0
+  },
+  "work_car": {
+   "armor": 2,
+   "cooldown": 1.0,
+   "cost": 260,
+   "damage": 0,
+   "faction": "clockwork",
+   "from": "rail_yard",
+   "hp": 320,
+   "name": "Work Car",
+   "no_attack": true,
+   "range": 0,
+   "sight": 8,
+   "speed": 66,
+   "supply": 2,
+   "tags": [
+    "armored"
+   ],
+   "time": 30.0
+  }
+ },
+ "version": "0.14.22"
+}
