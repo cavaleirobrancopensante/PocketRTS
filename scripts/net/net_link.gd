@@ -14,7 +14,10 @@ var is_host := false
 var code := ""
 var my_id := -1
 var connected := false                  # accepted by the relay
-var rtt_ms := 0.0
+var rtt_ms := 0.0                       # the last round trip to the relay itself (not to the other player)
+var relay_sum := 0.0                     # (the match log's minute line: this device's leg to the relay; NetSession)
+var relay_n := 0
+var relay_max := 0.0
 var sent_bytes := 0
 var recv_bytes := 0
 var sent_msgs := 0
@@ -141,6 +144,9 @@ func _process(delta: float) -> void:
 func _text(s: String) -> void:
 	if s == "pong":
 		rtt_ms = float(Time.get_ticks_msec() - _ping_at)
+		relay_sum += rtt_ms
+		relay_n += 1
+		relay_max = maxf(relay_max, rtt_ms)
 		return
 	var d = JSON.parse_string(s)
 	if not (d is Dictionary):

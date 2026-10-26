@@ -139,7 +139,7 @@ static func build(s: NetSession) -> Dictionary:
 				s.was_seen.erase(id)    # (just gone out of sight: one last row, where it went)
 			else:
 				s.was_seen[id] = true
-			var fast: Array = [u.position.snapped(Vector2(0.25, 0.25)), snappedf(u.hp, 0.1), snappedf(u.facing.angle(), 0.02)]
+			var fast: Array = [u.position.snapped(Vector2(0.1, 0.1)), snappedf(u.hp, 0.1), snappedf(u.facing.angle(), 0.02)]
 			if halves and not key and (id + s.snap_n) % 2 == 1 and s.sent_slow.has(id):
 				if s.sent_fast.get(id) != fast:
 					s.sent_fast[id] = fast
@@ -284,6 +284,7 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 		var e = s.by_id.get(int(gn[0]))
 		s.by_id.erase(int(gn[0]))
 		s.motion.erase(int(gn[0]))
+		s.hist.erase(int(gn[0]))
 		s.rowhash.erase(int(gn[0]))
 		if not is_instance_valid(e):
 			continue
@@ -318,6 +319,7 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 				var e = s.by_id[id]
 				s.by_id.erase(id)
 				s.motion.erase(id)
+				s.hist.erase(id)
 				s.rowhash.erase(id)
 				if is_instance_valid(e):
 					if e is Building:
@@ -493,11 +495,15 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	var stale: bool = mo != null and float(mo[2]) > s.interval * 3.0 and shown.distance_to(pos) > 24.0     # (out of sight a while: it jumps, no glide across)
 	if fresh or mo == null or stale or shown.distance_to(pos) > 260.0:
 		s.motion[id] = [pos, pos, 99.0]
+		s.push_pos(id, pos, true)
 		s.leads.erase(id)
 		if not fresh:
 			u.position = pos
 			u.reset_physics_interpolation()       # (a jump, not a glide across the map)
 	else:
+		s.push_pos(id, pos, false)
+		if s.leads.has(id):
+			s.lead_seen(id, mo[1] if mo != null else shown, pos)
 		s.motion[id] = [shown, pos, 0.0]
 	u.hp = float(row[4])
 	if not s.leading(id):

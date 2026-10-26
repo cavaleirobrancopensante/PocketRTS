@@ -15,7 +15,6 @@ signal lost(why: String)
 
 const SNAP_EVERY := 0.1
 const SNAP_PAUSED := 0.5          # while paused nothing moves: a picture every half second is plenty
-const SNAP_AFTER_CMD := 0.04      # host: a guest's order was run: the next picture goes after a game tick, not up to 0.1 s later
 const UPLINK_MAX := 48 * 1024     # host: while this much is still waiting to leave the device, the next picture waits
 const PING_EVERY := 1.0
 const STALL_AFTER := 1000         # guest: msec without a picture = waiting for the host
@@ -34,12 +33,16 @@ var known := {}                   # host: the ids the last snapshot listed
 var sent_slow := {}               # host: id -> hash of the values last sent whole (unchanged: a short row or none)
 var sent_fast := {}               # host: id -> where it was / its health when last sent (unchanged too: no row)
 var was_seen := {}                # host: ids a guest could see at the last snapshot (NetSnapshot._seen_by)
-## Host: seconds between snapshots, from SNAP_FAST (20 a second) to SNAP_EVERY (10), by what they cost to make here:
+## Host: seconds between snapshots, from SNAP_FAST (15 a second, every 2 game ticks) to SNAP_EVERY (10, every 3), by what
+## they cost to make here and their size (SNAP_BYTES a second at most):
 ## they may take SNAP_BUDGET of the time (a big battle on a phone: fewer, a small game on a computer: more).
-const SNAP_FAST := 0.05
+const SNAP_FAST := 0.0667        # (two game ticks)
 const SNAP_BUDGET := 0.05
 var snap_every := SNAP_FAST
+const SNAP_BYTES := 40.0 * 1024.0
 var _build_ms := 1.0              # host: a snapshot's cost here (ms), smoothed
+var _snap_pf := 0                 # host: the physics frame of the last picture
+var _bytes_avg := 0.0             # host: a snapshot's size (bytes), smoothed
 var _eyes: Array = []             # host: the sides the guests play (guest_sides), worked out when the guests change
 var _eyes_n := -1
 var next_id := 1
@@ -58,6 +61,7 @@ var cmds_rejected := 0
 var snaps_got := 0
 var last_reject := ""
 var last_msg := ""                # guest: the last reason the host gave for an order it refused
+var refusals := 0                 # guest: orders the host refused (each one said why)
 var _told := {}                   # host: "team:text" -> msec it was last told (tell)
 var trace := false
 var _t := 0.0
@@ -98,15 +102,20 @@ var _vis_cb = null                # (web) the page's visibilitychange listener: 
 
 # ---- guest: units told to walk start out at once, before the host's picture shows the order (lead)
 const LEAD_PACE := 1.0            # ...at their own speed
-const LEAD_BACK := 0.35           # once the host's snapshot shows the order, the lead is taken back at this share of their speed
-const LEAD_MAX := 0.35            # seconds of walking at most ahead of the snapshots (a very late answer: they wait)
+const LEAD_BACK := 0.12           # once the host's snapshot shows the order, the lead is taken back at this share of their speed
+const LEAD_BACK_TURN := 0.6       # ...or this, when the host's path turns away from it (NetPuppet._lead)
+const LEAD_MAX := 0.5             # seconds of walking at most ahead of the snapshots (a very late answer: they wait)
 const LEAD_GIVE_UP := 1500        # msec: no word of the order by then, the lead is taken back
+var lead_on := true               # (tools/test_online.gd nolead: off, to measure without it)
+var snap_by_clock := false
+var snap_fixed := 0.0              # (tests: rate10 = every 0.1 s, as before the adaptive rate; 0: adaptive)
 var leads := {}                   # unit id -> {"to": spot, "seq": the order's number, "off": how far ahead it is shown, "t": msec}
 # ---- host: the same delay for both players (the lobby's choice, on by default): the host's own orders wait as long
 # as a guest's take to reach it, half the measured round trip (smoothed), HOLD_MAX at most
 const HOLD_MAX := 250.0
 var same_delay := false
-var ping_avg := -1.0              # the round trip, smoothed (host: the slowest guest's)
+var ping_avg := -1.0              # the round trip, steady (host: the slowest guest's): the middle of the last 7 since GO
+var _recent: Array = []
 var held: Array = []              # host: its own orders waiting: {"at": msec, "who", "fn", "args"}
 var _hold_logged := -1000
 # ---- guest: the pictures that came this frame (only the newest is applied: _apply_pending)
@@ -204,10 +213,21 @@ func _process(delta: float) -> void:
 	if not held.is_empty():
 		_run_held(now)
 	_t += delta
-	var every := SNAP_PAUSED if paused() else snap_every
-	if _cmd_tick >= 0 and not paused() and Engine.get_physics_frames() > _cmd_tick:
-		every = minf(every, SNAP_AFTER_CMD)  # (the order has had its first game tick: show it now)
-	if _t < every:
+	# A picture goes out every few game ticks (the game moves 30 times a second): each then carries the same amount of
+	# game time, so the guest's units glide at an even speed (by the clock, at 20 a second on a 60 Hz screen, they
+	# alternated one and two ticks of movement: a stutter). Paused (no ticks): by the clock.
+	var pf := Engine.get_physics_frames()
+	var due: bool
+	if paused():
+		due = _t >= SNAP_PAUSED
+	else:
+		var ticks := maxi(1, roundi(snap_every * float(Engine.physics_ticks_per_second)))
+		due = pf - _snap_pf >= ticks
+		if snap_by_clock:
+			due = _t >= snap_every     # (tests: the 0.14.32 way, by the clock, to compare)
+		if _cmd_tick >= 0 and pf > _cmd_tick:
+			due = true               # (a guest's order has had its first game tick: show it now)
+	if not due:
 		return
 	if game.over:
 		over_sent += 1
@@ -217,6 +237,7 @@ func _process(delta: float) -> void:
 		mstat["held"] += 1          # the last pictures are still on their way out (a slow uplink): this one waits
 		return
 	_t = 0.0
+	_snap_pf = pf
 	_cmd_tick = -1
 	snap_n += 1
 	var t0 := Time.get_ticks_usec()
@@ -231,7 +252,12 @@ func _process(delta: float) -> void:
 	Prof.add("net/snapshot", t0)
 	# the next ones: as often as their cost allows (SNAP_BUDGET of the time), 10 to 20 a second
 	_build_ms = lerpf(_build_ms, us / 1000.0, 0.1)
-	snap_every = clampf(_build_ms / 1000.0 / SNAP_BUDGET, SNAP_FAST, SNAP_EVERY)
+	_bytes_avg = lerpf(_bytes_avg, float(bytes), 0.1)
+	# ...and as their size allows: SNAP_BYTES a second at most (a big battle on a phone's mobile uplink: fewer, smaller
+	# bursts that don't queue up behind each other)
+	snap_every = clampf(maxf(_build_ms / 1000.0 / SNAP_BUDGET, _bytes_avg / SNAP_BYTES), SNAP_FAST, SNAP_EVERY)
+	if snap_fixed > 0.0:
+		snap_every = snap_fixed
 
 
 ## Host: the sides the guests (still here) play: a snapshot leaves out the enemy units none of them can see.
@@ -413,6 +439,82 @@ func tell(team: int, text: String, quiet := false) -> void:
 
 # ------------------------------------------------------------------ guest: units answer at once
 
+# ------------------------------------------------------------------ guest: the units' positions, from a buffer
+
+## Each unit's last few places with the host's clock (hist), and the screen shows them at a host clock a little behind
+## the newest picture (rclk, buffer_s behind): its place there is worked out between the two pictures around it, so it
+## walks at an even speed however unevenly the pictures arrive (the internet's jitter), as long as the next one comes
+## within the buffer. The buffer is sized to the measured jitter (buffer_s). The clock is steered gently (up to 15%
+## faster or slower) to stay that far behind on average; a big gap (a stall, a hidden window) jumps it.
+const BUF_MIN := 0.05
+const BUF_MAX := 0.3
+const HIST_N := 8
+var interp_on := true              # (tests: noterp = the older glide toward the newest picture)
+var hist := {}                     # guest: id -> [[host clock, where], ...] oldest first
+var rclk := -1.0                   # guest: the host clock the screen shows
+var snap_clk := 0.0                # guest: the newest picture's host clock
+var prev_clk := 0.0                # guest: the one before it
+var _rc_err := 0.0
+
+
+## Seconds the screen stays behind the newest picture: the time between pictures and twice their measured unevenness.
+func buffer_s() -> float:
+	return clampf(interval + 2.0 * jitter + 0.01, BUF_MIN, BUF_MAX)
+
+
+## Guest, each game tick (NetPuppet.tick_game): the shown clock moves on.
+func tick_rclk(delta: float) -> void:
+	if snap_clk <= 0.0:
+		return
+	var target := snap_clk - buffer_s()
+	if rclk < 0.0 or absf(target - rclk) > 0.5:
+		rclk = target
+		_rc_err = 0.0
+	else:
+		# (steered by the error smoothed over a couple of seconds: the target itself saws up by a picture's worth at
+		# every arrival, and following that tooth made the walk pulse faster and slower)
+		_rc_err = lerpf(_rc_err, target - rclk, 0.03)
+		rclk += delta * (1.0 + clampf(_rc_err * 1.5, -0.15, 0.15))
+	rclk = minf(rclk, snap_clk)
+
+
+## Guest (NetSnapshot): a picture puts unit `id` at p. `jump`: start its buffer over (new, or a jump across the map).
+func push_pos(id: int, p: Vector2, jump: bool) -> void:
+	var h: Array = hist.get(id, [])
+	if jump or h.is_empty():
+		hist[id] = [[snap_clk, p]]
+		return
+	var last: Array = h[h.size() - 1]
+	if float(last[0]) < prev_clk - 0.001:
+		h.append([prev_clk, last[1]])      # (it stood still until the last picture: no row meanwhile)
+	if float(last[0]) >= snap_clk:
+		h[h.size() - 1] = [snap_clk, p]
+	else:
+		h.append([snap_clk, p])
+	while h.size() > HIST_N:
+		h.pop_front()
+	hist[id] = h
+
+
+## Guest: where unit `id` is shown now, and its speed there ([place, velocity]); [] if no buffer.
+func shown_at(id: int) -> Array:
+	var h = hist.get(id)
+	if h == null or (h as Array).is_empty():
+		return []
+	var arr: Array = h
+	var rc := rclk
+	if rc <= float(arr[0][0]) or arr.size() == 1:
+		return [arr[0][1], Vector2.ZERO]
+	for i in range(1, arr.size()):
+		var b: Array = arr[i]
+		if rc <= float(b[0]):
+			var a: Array = arr[i - 1]
+			var span := maxf(float(b[0]) - float(a[0]), 0.001)
+			var f := clampf((rc - float(a[0])) / span, 0.0, 1.0)
+			return [(a[1] as Vector2).lerp(b[1], f), ((b[1] as Vector2) - (a[1] as Vector2)) / span]
+	return [arr[arr.size() - 1][1], Vector2.ZERO]      # (past the newest: it waits there)
+
+
 ## How long a unit glides to where the newest snapshot has it: the time between snapshots plus room for one coming
 ## late (twice the measured jitter), so a late one finds it still walking; at most twice the interval.
 func glide_span() -> float:
@@ -424,7 +526,7 @@ func glide_span() -> float:
 ## comes, the lead is taken back gently while the host's own walk carries on. Units that can't simply walk off
 ## (aboard, set up, braced, caught, changing) are left alone; for an attack-move, only those with no enemy near.
 func lead(us: Array, p: Vector2, attack_move: bool) -> void:
-	if is_host:
+	if is_host or not lead_on:
 		return
 	var spots := game.group_points(us, p)
 	var now := Time.get_ticks_msec()
@@ -435,8 +537,11 @@ func lead(us: Array, p: Vector2, attack_move: bool) -> void:
 			continue
 		if attack_move and _foe_near(u, 300.0):
 			continue
+		if trace:
+			print("[net] lead #%d %s" % [u.net_id, u.kind])
 		var was: Dictionary = leads.get(u.net_id, {})
-		leads[u.net_id] = {"to": spots.get(u, p), "seq": cmd_seq + 1, "off": was.get("off", Vector2.ZERO), "t": now}
+		var off: Vector2 = was.get("off", Vector2.ZERO)
+		leads[u.net_id] = {"to": spots.get(u, p), "seq": cmd_seq + 1, "off": off, "t": now, "from": u.position - off}
 
 
 func _foe_near(u: Unit, r: float) -> bool:
@@ -451,12 +556,28 @@ func lead_off(id: int) -> Vector2:
 	return leads[id]["off"] if leads.has(id) else Vector2.ZERO
 
 
-## Still waiting for the host to show its order (its facing is ours meanwhile).
+## Still waiting for the host to show its order (its facing is ours meanwhile): until a picture after the order shows
+## the unit itself on its way (the order is run a tick or two before the unit takes its first step: taking the lead
+## back at the ack alone pulled the unit back for a moment on a fast connection), or LEAD_GIVE_UP.
 func leading(id: int) -> bool:
 	if not leads.has(id):
 		return false
 	var ld: Dictionary = leads[id]
-	return last_ack < int(ld["seq"]) and Time.get_ticks_msec() - int(ld["t"]) < LEAD_GIVE_UP
+	var going: bool = ld.get("go", false) and (not interp_on or rclk >= float(ld.get("go_clk", 0.0)))   # (shown from the buffer: once the shown clock gets there too)
+	return (last_ack < int(ld["seq"]) or not going) and Time.get_ticks_msec() - int(ld["t"]) < LEAD_GIVE_UP
+
+
+## Guest (NetSnapshot): a picture put this unit from `was` to `now`: once its order has been run, a step toward its spot
+## means the host's own walk has begun (leading ends; the lead is taken back from here).
+func lead_seen(id: int, was: Vector2, now: Vector2) -> void:
+	var ld = leads.get(id)
+	if ld == null or ld.get("go", false) or last_ack < int(ld["seq"]):
+		return
+	var to: Vector2 = ld["to"]
+	var from: Vector2 = ld.get("from", was)       # (where the pictures had it at the order: a standing unit's jostle is not a walk)
+	if (now - from).dot((to - from).normalized()) > 3.0 or now.distance_to(to) < 6.0:
+		ld["go"] = true
+		ld["go_clk"] = prev_clk         # (the picture before this one still had it standing)
 
 
 # ------------------------------------------------------------------ chat
@@ -500,7 +621,15 @@ func _pong(from: int, k: int) -> void:
 			ping_ms = maxf(ping_ms, float(ping_of.get(pr, 0.0)))
 	else:
 		ping_ms = rtt
-	ping_avg = ping_ms if ping_avg < 0.0 else lerpf(ping_avg, ping_ms, 0.2)
+	# the round trip for the same delay: the middle of the last few (a single slow one doesn't move it), counted only
+	# from GO (the first answers come while the match is still loading and can take seconds)
+	if go_given:
+		_recent.append(ping_ms)
+		if _recent.size() > 7:
+			_recent.pop_front()
+		var srt := _recent.duplicate()
+		srt.sort()
+		ping_avg = float(srt[srt.size() / 2])
 	if is_host and same_delay and absi(hold_ms() - _hold_logged) >= 20:
 		_hold_logged = hold_ms()
 		_log("same delay for both: the host's orders wait %d ms (half the %d ms round trip)" % [hold_ms(), int(ping_avg)])
@@ -753,8 +882,7 @@ func _on_message(from: int, m: Dictionary) -> void:
 				last_reject = why
 				if trace:
 					print("[net] host refused #%d %s: %s" % [int(m.get("s", 0)), m.get("f"), why])
-				if why.length() > 8 and why[0] == why[0].to_upper() and not why.begins_with("not ") and not why.begins_with("unknown"):
-					link.send({"t": "msg", "m": why}, from)       # (a game reason: "Not enough gold." ...)
+				link.send({"t": "msg", "m": refusal_text(why), "x": true}, from)     # (every refusal says why on the guest's screen)
 			applied_by[from] = ab
 			mstat["sent"] += 1
 		"snap":
@@ -762,7 +890,13 @@ func _on_message(from: int, m: Dictionary) -> void:
 				pending.append(m)             # (applied once this frame's messages are all in: _apply_pending)
 		"msg":
 			last_msg = String(m.get("m", ""))
-			game.notify(last_msg, bool(m.get("q", false)))
+			if bool(m.get("x", false)):
+				refusals += 1                      # (a refused order: always on screen, not held back like other notes)
+				_log("the host refused an order: %s" % last_msg)
+				if game.hud:
+					game.hud.toast(last_msg, true)
+			else:
+				game.notify(last_msg, bool(m.get("q", false)))
 		"chat":
 			if game.chat == null:
 				return
@@ -799,6 +933,23 @@ func _on_message(from: int, m: Dictionary) -> void:
 					_log("%s's window was hidden %.0f s" % [_who(team), float(m.get("secs", 0.0))])
 
 
+## Host: the words a guest sees for an order it refused. A game's own reason ("Not enough gold.") as it is; the checks
+## of the funnel (NetCommands._apply) in the player's words.
+static func refusal_text(why: String) -> String:
+	match why:
+		"not yours":
+			return "That order was refused: it is not yours (any more)."
+		"target is gone":
+			return "That order was refused: its target is gone."
+		"no team", "bad args", "bad property", "no callables":
+			return "That order was refused by the host."
+	if why.begins_with("unknown"):
+		return "That order can't be given online yet."
+	if why.length() > 0 and why[0] == why[0].to_upper():
+		return why
+	return "That order was refused by the host."
+
+
 ## Guest: the pictures that came this frame. Each one is the whole match, so only the newest is applied; what
 ## happened in between (who is gone, the shots, the Line) is taken from the older ones (several come at once after
 ## a slow frame, and hundreds when a hidden window comes back: applying each would freeze the game for seconds).
@@ -817,6 +968,8 @@ func _apply_pending() -> void:
 		interval = clampf(lerpf(interval, gap, 0.2), 0.03, 0.4)
 	_last_snap_ms = now
 	snap_n = int(m.get("n", snap_n))
+	prev_clk = snap_clk
+	snap_clk = float(m.get("clk", snap_clk))
 	var ack := int(m.get("ack", {}).get(link.my_id, 0)) if m.get("ack") is Dictionary else 0
 	if ack > last_ack:
 		if sent_at.has(ack):
@@ -904,6 +1057,12 @@ func minute_line() -> String:
 			ping, int(ms["snaps"]), int(ms["snaps"]) / secs, int(ms["work_us"]) / 1000.0 / n, int(ms["work_max"]) / 1000.0, sent, run, refused]
 		if int(ms["seen_n"]) > 0:
 			line += ", seen after %d ms avg (%d max)" % [int(ms["seen_sum"] / int(ms["seen_n"])), int(ms["seen_max"])]
+	if link.relay_n > 0:
+		# (this device's own leg: the relay answers its pings itself; the ping to the other player is both legs)
+		line += " | to the relay %d ms avg, %d max" % [int(link.relay_sum / link.relay_n), int(link.relay_max)]
+		link.relay_sum = 0.0
+		link.relay_n = 0
+		link.relay_max = 0.0
 	line += " | stalls %d" % int(ms["stalls"])
 	if int(ms["stalls"]) > 0:
 		line += " (longest %.1f s)" % float(ms["stall_max"])

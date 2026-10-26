@@ -408,25 +408,20 @@ func current_stem() -> String:
 	return _current
 
 
-## The pieces the in-game player lists, as the music setting has it: your faction's ("faction"), yours and the
-## enemies' (the default: theirs come now and then), everything ("all"), only the ticked ones ("picked").
+## The pieces the in-game player lists: every piece of every faction (the owner: "a list of all songs to pick"), your
+## faction's first, then the enemies', then the rest. (NEXT still follows the music setting: _next / _pool.)
 func player_pieces() -> Array:
 	if _faction == "":
 		return []
-	var out: Array = []
-	match mode:
-		"faction":
-			return all_pieces(_faction)
-		"all", "picked":
-			for f in FACTION_KEY.values():
-				out += all_pieces(f)
-			if mode == "picked":
-				var on := out.filter(func(st: String) -> bool: return is_enabled(st))
-				return on if not on.is_empty() else all_pieces(_faction)
-			return out
-	out = all_pieces(_faction)
+	var out: Array = all_pieces(_faction)
 	for e in _enemies:
-		out += all_pieces(e)
+		for st in all_pieces(e):
+			if not out.has(st):
+				out.append(st)
+	for f in FACTION_KEY.values():
+		for st in all_pieces(f):
+			if not out.has(st):
+				out.append(st)
 	return out
 
 

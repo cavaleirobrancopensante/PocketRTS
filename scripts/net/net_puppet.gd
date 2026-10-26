@@ -10,6 +10,8 @@ static func tick_game(g: Game, delta: float) -> void:
 	if g.edit_mode:
 		return
 	g.clock += delta
+	if g.net:
+		g.net.tick_rclk(delta)
 	g.line_net.tick_view(delta)
 	g.gear_net.tick(delta)           # (the gear field is worked out from the synced buildings: the guest sees the turning gears)
 	g.alert_t = maxf(g.alert_t - delta, 0.0)
@@ -62,12 +64,18 @@ static func tick_unit(u: Unit, delta: float) -> void:
 	var s: NetSession = u.game.net
 	var mo = s.motion.get(u.net_id) if s else null
 	if mo != null:
-		# (over a little more than the time between snapshots: one that comes a bit late doesn't stop the walk)
-		var span := s.glide_span()
 		mo[2] += delta
-		var f := clampf(mo[2] / span, 0.0, 1.0)
-		u.position = (mo[0] as Vector2).lerp(mo[1], f)
-		u.velocity = ((mo[1] as Vector2) - (mo[0] as Vector2)) / span if f < 1.0 else Vector2.ZERO
+		var at: Array = s.shown_at(u.net_id) if s.interp_on else []
+		if not at.is_empty():
+			# (from the buffer: between the two pictures around the shown clock, NetSession.shown_at)
+			u.position = at[0]
+			u.velocity = at[1]
+		else:
+			# (the older way: over a little more than the time between snapshots, toward the newest)
+			var span := s.glide_span()
+			var f := clampf(mo[2] / span, 0.0, 1.0)
+			u.position = (mo[0] as Vector2).lerp(mo[1], f)
+			u.velocity = ((mo[1] as Vector2) - (mo[0] as Vector2)) / span if f < 1.0 else Vector2.ZERO
 		if s.leads.has(u.net_id):
 			_lead(s, u, delta)
 	if u.kind == "balloon":
@@ -100,7 +108,15 @@ static func _lead(s: NetSession, u: Unit, delta: float) -> void:
 			u.facing = dir
 			u.velocity = dir * u.speed          # (the walk)
 	else:
-		off = off.move_toward(Vector2.ZERO, u.speed * NetSession.LEAD_BACK * delta)
+		# Taken back as gently as the host's walk allows: walking the same way as the lead, a little at a time (it
+		# shows at about 90% of its speed for a moment); turning off it (a path round a corner), faster; stopped on the
+		# host (there, or held up), at once over a few frames, so it never stands off where the host has it.
+		var v := u.velocity
+		var rate := 1.2
+		if v.length() > 1.0 and off.length() > 0.01:
+			var align := clampf(off.normalized().dot(v.normalized()), 0.0, 1.0)
+			rate = lerpf(NetSession.LEAD_BACK_TURN, NetSession.LEAD_BACK, align)
+		off = off.move_toward(Vector2.ZERO, u.speed * rate * delta)
 		if off == Vector2.ZERO:
 			s.leads.erase(u.net_id)
 	ld["off"] = off

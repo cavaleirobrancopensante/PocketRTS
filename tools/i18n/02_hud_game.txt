@@ -2697,3 +2697,108 @@ es Esperando al otro jugador...
 > Online: the match keeps running.
 pt Online: a partida continua rodando.
 es Online: la partida sigue en marcha.
+
+# Online: the menu and pause, the ping, refused orders (0.14.33)
+> NO
+pt NÃO
+es NO
+
+> NEXT
+pt PRÓXIMA
+es SIGUIENTE
+
+> YES, SURRENDER
+pt SIM, RENDER-SE
+es SÍ, RENDIRSE
+
+> YES, LEAVE
+pt SIM, SAIR
+es SÍ, SALIR
+
+> BACK TO THE MATCH
+pt VOLTAR À PARTIDA
+es VOLVER A LA PARTIDA
+
+> Give up this match? Your buildings fall.
+pt Desistir desta partida? Seus edifícios caem.
+es ¿Abandonar esta partida? Tus edificios caen.
+
+> Leave the match? It ends for your friend too.
+pt Sair da partida? Ela acaba para seu amigo também.
+es ¿Salir de la partida? También termina para tu amigo.
+
+> Leave the match? A computer plays your side.
+pt Sair da partida? Um computador joga no seu lugar.
+es ¿Salir de la partida? Un ordenador juega en tu lugar.
+
+> PAUSE  (%d LEFT)
+pt PAUSAR  (RESTAM %d)
+es PAUSA  (QUEDAN %d)
+
+> No pauses left.
+pt Não restam pausas.
+es No te quedan pausas.
+
+> The host's game is in the background: the match goes on when it is back.
+pt O jogo do anfitrião está em segundo plano: a partida continua quando ele voltar.
+es El juego del anfitrión está en segundo plano: la partida sigue cuando vuelva.
+
+> Waiting for the host...
+pt Esperando o anfitrião...
+es Esperando al anfitrión...
+
+> (nothing playing)
+pt (nada tocando)
+es (no suena nada)
+
+> %s resumed the match.
+pt %s retomou a partida.
+es %s reanudó la partida.
+
+> The pause ran out: the match goes on.
+pt A pausa acabou: a partida continua.
+es Se acabó la pausa: la partida sigue.
+
+> The host's game is in the background: the match waits.
+pt O jogo do anfitrião está em segundo plano: a partida espera.
+es El juego del anfitrión está en segundo plano: la partida espera.
+
+> The host's game is in the background.
+pt O jogo do anfitrião está em segundo plano.
+es El juego del anfitrión está en segundo plano.
+
+> Your game was in the background.
+pt Seu jogo estava em segundo plano.
+es Tu juego estaba en segundo plano.
+
+> Paused by %s
+pt Pausado por %s
+es Pausado por %s
+
+> %s's game went to the background.
+pt O jogo de %s foi para segundo plano.
+es El juego de %s pasó a segundo plano.
+
+> %s left the game. A computer plays on.
+pt %s saiu do jogo. Um computador continua por ele.
+es %s salió del juego. Un ordenador sigue en su lugar.
+
+> That order was refused: it is not yours (any more).
+pt Ordem recusada: não é (mais) sua.
+es Orden rechazada: (ya) no es tuya.
+
+> That order was refused: its target is gone.
+pt Ordem recusada: o alvo não existe mais.
+es Orden rechazada: el objetivo ya no está.
+
+> That order was refused by the host.
+pt O anfitrião recusou essa ordem.
+es El anfitrión rechazó esa orden.
+
+> That order can't be given online yet.
+pt Essa ordem ainda não pode ser dada online.
+es Esa orden aún no se puede dar en línea.
+
+> That order can't be sent online.
+pt Essa ordem não pode ser enviada online.
+es Esa orden no se puede enviar en línea.
