@@ -56,6 +56,7 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Floor plate under every building (art/clockwork/gear/floor_plate_src.png): the ring turns around a fixed bolted deck.
 
 ## Spring jumper unit idea (owner, 2026-10-26)
+- Jumps on flat ground (no upgrade); jumping UP onto high ground needs an upgrade (owner, 2026-10-26).
 - A unit standing on a coiled spring (like the Mainspring's cone spring) that JUMPS: onto enemy units and up onto high ground when it has vision there (the Stalker's Blink role).
 - Suggested by Claude, not decided: name Jack (jack-in-the-box) or Springer; tier 2 (needs the Escapement), costs cogs and Tension; the jump coils the spring (visible crouch) before the leap so it can be read and answered; cooldown; open: ranged or melee, landing hit or not.
 - Art: the cone spring rings already painted for the Mainspring can be the unit's leg (pressed flat when crouching, stretched in the air).
