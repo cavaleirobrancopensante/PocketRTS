@@ -376,6 +376,8 @@ const GEAR := {
 	# its whole crew (BUILDINGS crew), `base` of that alone; nothing spends Tension yet. Shown only for the Clockwork.
 	"mainspring": {"base": 0.15, "full": 2.0},
 	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
+	"works_dt": 0.12,               # ... of the Movement Works' loop (while it trains)
+	"regulator_dt": 0.15,           # ... of the Regulator's pendulum (always, while built and linked)
 	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
 	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
 	"col": {"brass": Color("#e8c76a"), "edge": Color("#3b2a14"), "rim": Color(0.282, 0.18, 0.071), "dead": Color("#4a443c"), "off": Color("#8c8478"),
@@ -387,6 +389,18 @@ const GEAR := {
 static var rail_econ := true
 
 
+## Gear mode's Clockwork barracks and supply building (the Line keeps the Assembly Works and the Spring Tower).
+const CW_WORKS := "movement_works"
+const CW_SUPPLY := "regulator"
+
+
+## A faction's supply building: the Clockwork's is the Regulator in gear mode, else FACTIONS "supply".
+static func supply_kind(faction: String) -> String:
+	if faction == "clockwork" and gear_mode:
+		return CW_SUPPLY
+	return String(FACTIONS[faction]["supply"])
+
+
 ## What a faction may build / starts with. The Clockwork: the cog press (gear mode), the Ore Drill (Line mode with rails)
 ## or the Ore Crusher; the Pressure Relay and the Rail Yard only while the Line is on.
 static func build_list(faction: String) -> Array:
@@ -395,6 +409,10 @@ static func build_list(faction: String) -> Array:
 		if gear_mode:
 			l[l.find("ore_crusher")] = GEAR_PRESS
 			l.insert(l.find(GEAR_PRESS) + 1, "mainspring")
+			# the new-style army (docs/clockwork_ground_up.md): the Regulator for supply instead of the Spring Tower, and
+			# the Movement Works (the barracks) after the Mainspring
+			l[l.find("spring_tower")] = "regulator"
+			l.insert(l.find("mainspring") + 1, CW_WORKS)
 		elif rail_econ:
 			l[l.find("ore_crusher")] = "ore_drill"
 		if not line_mode:
@@ -609,6 +627,16 @@ const UNITS := {
 		"faction": "clockwork", "worker": true, "repairs": true,
 		"about": "The one worker: his job is WINDING. He winds a Cog Press for cogs (send him onto it: up to its crew), builds (he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on) and repairs. He can fight a little.",
 	},
+	# the new-style army's tier 1 (gear mode; docs/clockwork_ground_up.md): plain melee, no special ability. Guesses: a
+	# Musketeer's price (60 + 10 powder) in cogs, sturdier than a Winder (46 hp), a short clock-hand sword whose blow lands
+	# on the 4th frame of the swing (aim 0.33 s at the attack strip's 9 fps)
+	"clock_soldier": {
+		"tags": ["light"],
+		"name": "Clock Soldier", "hp": 90, "armor": 1, "speed": 62, "cost": 70, "time": 16.0, "supply": 1,
+		"sight": 7, "range": 22, "damage": 10, "cooldown": 1.2, "aim": 0.33, "radius": 14, "from": "movement_works",
+		"faction": "clockwork",
+		"about": "The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Made at the Movement Works.",
+	},
 	"windup_soldier": {
 		"tags": ["light"],
 		"name": "Wind-up Soldiers", "hp": 55, "armor": 1, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
@@ -821,6 +849,18 @@ const BUILDINGS := {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
 		"supply": 10, "sight": 6, "trains": [], "field": 7, "faction": "clockwork",
 		"about": "10 more supply. Keeps nearby constructs wound up.",
+	},
+	# THE NEW-STYLE CLOCKWORK ARMY (gear mode; docs/clockwork_ground_up.md). Numbers are first guesses: the Movement Works
+	# costs like the Crown Barracks, the Regulator houses like the Spring Tower.
+	"movement_works": {
+		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
+		"supply": 0, "sight": 7, "trains": ["clock_soldier"], "faction": "clockwork",
+		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line. Must stay linked to the gear field.",
+	},
+	"regulator": {
+		"name": "Regulator", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
+		"supply": 10, "sight": 6, "trains": [], "faction": "clockwork",
+		"about": "10 more supply. Its pendulum keeps the machine's units in time: each Regulator keeps only so many in step.",
 	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1400, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(5, 4),

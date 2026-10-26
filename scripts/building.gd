@@ -443,6 +443,10 @@ func in_use() -> bool:
 			return working_crew() > 0 and press_rate() > 0.0
 		"mainspring":
 			return working_crew() > 0 and spring_rate() > 0.0
+		"movement_works":
+			return not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0
+		"regulator":
+			return game.gear_net.speed_mult(self) > 0.0
 	return true
 
 
@@ -738,9 +742,10 @@ func spring_rate() -> float:
 	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
 
 
-## Cog Press / Mainspring: the painted working loop (assets/buildings/<kind>_work_0..7.png, Defs.GEAR "frame_dt" a frame)
-## while it works; the built picture while it idles, and none of it once it is damaged (under half its hp).
-func _gear_anim(working: bool) -> void:
+## Cog Press / Mainspring / Movement Works / Regulator: the painted working loop (assets/buildings/<kind>_work_0..7.png,
+## `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it works; the built picture while it idles, and none of it
+## once it is damaged (under half its hp).
+func _gear_anim(working: bool, dt := -1.0) -> void:
 	if sprite == null:
 		return
 	if not working or hp < max_hp * 0.5:
@@ -748,7 +753,7 @@ func _gear_anim(working: bool) -> void:
 			drill_anim = false
 			_update_sprite()
 		return
-	var i := int(game.clock / float(Defs.GEAR["frame_dt"])) % 8
+	var i := int(game.clock / (dt if dt > 0.0 else float(Defs.GEAR["frame_dt"]))) % 8
 	var t := Game.tex("res://assets/buildings/%s_work_%d.png" % [kind, i])
 	if t == null:
 		return
@@ -890,6 +895,12 @@ func _econ(delta: float) -> void:
 			if sr > 0.0:
 				game.players[team]["tension"] = float(game.players[team].get("tension", 0.0)) + sr * delta
 			_gear_anim(working_crew() > 0 and sr > 0.0)
+		"movement_works":
+			# the hanging line runs while it assembles a Clock Soldier and is linked
+			_gear_anim(not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["works_dt"]))
+		"regulator":
+			# a clock: the pendulum swings whenever it is built and linked
+			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["regulator_dt"]))
 		"powder_mill":
 			# grinds its Town Hall's saltpetre; once that's spent, nothing
 			var n := working_crew()

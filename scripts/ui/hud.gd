@@ -3169,7 +3169,7 @@ func _res_tip(i: int) -> Dictionary:
 		return {"title": "%s, %d led" % [game.horses_text(game.human), led],
 			"body": "Your free horses (riders' and guns' horses aren't counted); reserved ones are kept for a recruit in a queue. Horse Breeders sell them (40 gold each). Training a Horseman, Cuirassier, Field Cannon, Mortar or Powder Wagon takes a horse standing at its building, else a free one at a breeder, else a breeder trains one for it (40 gold more): one click does both. Any man can MOUNT a free horse. Left alone near an enemy man, a horse is stolen."}
 	if i == 2:
-		var sup: String = Defs.BUILDINGS[Defs.FACTIONS[fac]["supply"]]["name"]
+		var sup: String = Defs.BUILDINGS[Defs.supply_kind(fac)]["name"]
 		var sp := _supply_split(game.human)
 		return {"title": "Supply: %d of %d used" % [game.supply_used(game.human), int(pl["cap"])],
 			"body": "Workers %d · Army %d · In production %d.\nEvery unit takes supply. Each %s and %s raises the cap, up to %d." % [sp["workers"], sp["army"], sp["queued"], sup, Defs.BUILDINGS[game.faction_hall(game.human)]["name"], game.max_supply(game.human)]}

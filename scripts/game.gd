@@ -3537,7 +3537,7 @@ func can_train(b: Building, key: String) -> String:
 	if supply_used(b.team) + int(u["supply"]) * int(u.get("spawn", 1)) + CwUnits.extra_supply(k) > players[b.team]["cap"]:
 		if players[b.team]["cap"] >= max_supply(b.team):
 			return "Supply is maxed out."
-		var sup: String = Defs.FACTIONS[factions[b.team]]["supply"]
+		var sup: String = Defs.supply_kind(factions[b.team])
 		return "Need more supply: build a %s." % Defs.BUILDINGS[sup]["name"]
 	return ""
 

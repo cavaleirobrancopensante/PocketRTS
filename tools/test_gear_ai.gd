@@ -126,6 +126,11 @@ func _run() -> void:
 		check(worst_stall < 120.0, "it never stopped spending for 2 minutes (worst %.0f s)" % worst_stall)
 		check(g.supply_used(0) >= 12, "it grew an army/workforce (supply %d)" % g.supply_used(0))
 		check(_mine().filter(func(b: Building) -> bool: return b.built).size() >= 6, "it built a base (%d buildings)" % _mine().filter(func(b: Building) -> bool: return b.built).size())
+		# the new-style army (gear mode): Movement Works, Regulators, Clock Soldiers
+		var soldiers: int = g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == "clock_soldier" and not u.dead).size()
+		check(not _mine(Defs.CW_WORKS).is_empty(), "it built a Movement Works (%d)" % _mine(Defs.CW_WORKS).size())
+		check(not _mine(Defs.CW_SUPPLY).is_empty() and _mine("spring_tower").is_empty(), "it built Regulators (%d), no Spring Tower" % _mine(Defs.CW_SUPPLY).size())
+		check(soldiers >= 3, "it trained Clock Soldiers (%d)" % soldiers)
 	else:
 		check(true, "the match ran to %d:%02d (%s)" % [int(g.clock) / 60, int(g.clock) % 60, "ended" if g.over else "7 minutes"])
 		check(worst_stall < 150.0 or g.over, "it kept spending (worst gap %.0f s)" % worst_stall)

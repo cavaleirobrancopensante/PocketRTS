@@ -20,6 +20,9 @@ The Clockwork's economy as a field of turning gears (`Defs.gear_mode`, default o
 - **AI**: places presses, assigns Winders, and places buildings so they link; never builds unlinked ones.
 - **Saves and online**: gear size and swap state are saved ("gb", "gs", "gst") and in `BLD_PROPS`; the guest recomputes the graph from synced buildings.
 
+- **New-style army (0.14.16)**: the MOVEMENT WORKS (`Defs.CW_WORKS`, 4x3, 150 cogs, the barracks; painted frames, working loop while it trains and is linked, `GEAR.works_dt`) trains the CLOCK SOLDIER (70 cogs, 90 hp, 1 armour, 10 damage / 1.2 s, the blow on frame 4 of the swing: aim 0.33 s; sheets by `tools/import_clock_soldier.py`). The REGULATOR (`Defs.CW_SUPPLY`, 2x2, 100 cogs, +10 supply) replaces the Spring Tower in gear mode (`Defs.supply_kind`); its pendulum swings whenever it is built and linked (`GEAR.regulator_dt`). Art imported by `tools/gear_art/import_buildings.py` (Regulator swing: `tools/gear_art/regulator_swing.py`). The AI in gear mode builds Works and Regulators and trains only Clock Soldiers. Test: `tools/test_cw_army.gd`; screenshots `tools/shot_cw_army.gd`.
+- **Floor plate**: every ring's hole holds the bolted iron deck (`GearArt.plate`, resized once per diameter and cached; `GearNet.draw_plate`, under the ring edges, never turned).
+
 ## Tuning: `Defs.GEAR`
 
 One commented block: `pitch` (tooth size, px), `pad` (ring padding per small / big / tower), `slack`, `overlap`, `solve` (graph period), `teeth_rate`, `swap_cost`, `swap_time`, `start_cogs`, `press` (`base` trickle; `small` and `big` each with `full` rate and `crew` cap), `spent` (reserve-spent share), `col` (colours).
@@ -30,9 +33,9 @@ One commented block: `pitch` (tooth size, px), `pad` (ring padding per small / b
 
 ## Known gaps
 
-- The Clockwork help text in the main menu (`scripts/main.gd`) and the Clockwork Lab hint still describe ore, crushers and rail vehicles.
+- The Clockwork help text in the main menu (`scripts/main.gd`) still describes ore, crushers and rail vehicles.
 - The AI never swaps gears and only uses small gears.
-- The Spring Tower's supply is not cut when it is unlinked.
+- The Regulator's (and the Spring Tower's) supply is not cut when it is unlinked.
 - The plateau is small, so placement is tight; tune `overlap` (0.25 tiles now, about half a tooth) and `slack` (2 tiles).
 - Only the parent link of each ring is meshed; two rings that touch without being parent and child can show teeth on teeth.
 - The cogs icon, the swap button icon, the idler hub and the ring edge are code-drawn (see `docs/art_style_inconsistency.md`).

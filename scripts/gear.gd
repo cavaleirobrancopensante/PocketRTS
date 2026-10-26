@@ -18,6 +18,7 @@ extends Node2D
 
 const T := Defs.TILE
 const FY := Game.FIELD_Y
+const PLATE_TUCK := 4.0          # px: the floor plate reaches this far under the ring's band
 
 var game: Game
 var enforce := true              # false: unconnected buildings work anyway (old tests, sandbox)
@@ -380,6 +381,10 @@ func _draw() -> void:
 		if not idl.is_empty() and linked.has(b):
 			var ip: Vector2 = idl["pos"]
 			items.append(["idler", int(idl["n"]), Vector2(ip.x, ip.y * FY), float(idler_ang.get(b, 0.0)), 1.0, m])
+	# the floor plates first: the fixed decks the rings turn round (under the ring's edge and the building)
+	for it in items:
+		if it[0] != "idler":
+			draw_plate(self, it[0], it[1], it[2], it[4], it[5])
 	for it in items:
 		draw_ring(self, it[0], it[1], it[2], it[3], it[4], it[5], true, false)
 	for it in items:
@@ -421,6 +426,17 @@ static func draw_ring(ci: CanvasItem, kind: String, n: int, c: Vector2, rot: flo
 		ci.draw_texture_rect(art[0], rect, false, mod)
 		if glow.a > 0.0:
 			ci.draw_texture_rect(art[1], rect, false, glow)       # (a wash of colour over it: the ghost's verdict)
+
+
+## The FLOOR PLATE in a ring's hole (GearArt.plate): a flat round iron deck, a few px wider than the hole so it tucks under
+## the band, squashed onto the ground like the ring but never turned (it is bolted down; the ring turns round it).
+static func draw_plate(ci: CanvasItem, kind: String, n: int, c: Vector2, s: float, mod: Color) -> void:
+	var r := (GearArt.hole_r(kind, n) + float(PLATE_TUCK)) * s
+	var tex := GearArt.plate(int(round(r * 2.0)))
+	if tex == null:
+		return
+	ci.draw_set_transform_matrix(Transform2D(Vector2(1, 0), Vector2(0, FY), c))
+	ci.draw_texture_rect(tex, Rect2(-r, -r, r * 2.0, r * 2.0), false, mod)
 
 
 func _draw_top() -> void:
@@ -485,6 +501,7 @@ func draw_ghost(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) ->
 			var ia := mesh_phase(pa, b_n(p), (ip - b_c(p)).angle(), int(idl["n"]))
 			rot = mesh_phase(ia, int(idl["n"]), (g - ip).angle(), n)
 			draw_ring(ci, "idler", int(idl["n"]), Vector2(ip.x, ip.y * FY), ia, 1.0, tint)
+	draw_plate(ci, ring_kind(k, big), n, centre, 1.0, Color(tint.r, tint.g, tint.b, 0.6))
 	draw_ring(ci, ring_kind(k, big), n, centre, rot, 1.0, tint, true, true, Color(col.r, col.g, col.b, 0.38 if st["state"] == "clash" else 0.18))
 	ci.draw_set_transform(Vector2.ZERO)
 
