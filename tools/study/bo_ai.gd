@@ -14,6 +14,7 @@ extends AI
 ##   <building>          place one (cottage, barracks, powder_mill, farm, horse_breeder, foundry, armoury, church,
 ##                       town_hall, warren, brood_pen, gorge_pit, roost, clutch_mound, feeding_pit, hive, cog_press,
 ##                       mainspring, movement_works, regulator, ratchet_turret, escapement, cuckoo_house, clocktower)
+##   <building>@proxy[:F] place it on the way to the enemy, F of the way from home to its hall (default 0.72)
 ##   wall                Crown: the ramp wall (the computer's own: a Cottage in the ramp's mouth and a Gate); the step is
 ##                       done once the Cottage is placed, the Gate follows by itself
 ##   <unit>*N            queue N (train-button keys: musketeer, horseman, dragoon, officer, cannon, mortar, balloon,
@@ -322,6 +323,13 @@ func _do(s: String) -> String:
 			_log(s, game.clock)
 			return "done"
 		return _do_units(s, key, int(p2[1]))
+	if s.contains("@proxy"):
+		var pp := s.split("@proxy")
+		var frac := 0.72
+		if String(pp[1]).begins_with(":"):
+			frac = float(String(pp[1]).substr(1))
+		if Defs.BUILDINGS.has(String(pp[0])):
+			return _do_build(String(pp[0]), frac)
 	if Defs.BUILDINGS.has(s):
 		return _do_build(s)
 	push_warning("bo_ai: unknown step " + s)
@@ -399,7 +407,7 @@ func _spot_for(kind: String) -> Vector2i:
 	return _find_spot(kind)
 
 
-func _do_build(kind: String) -> String:
+func _do_build(kind: String, proxy := -1.0) -> String:
 	var cost := int(Defs.BUILDINGS[kind]["cost"])
 	if not game.requirement_met(team, kind) or _gold() < cost:
 		_hold = cost
@@ -410,7 +418,7 @@ func _do_build(kind: String) -> String:
 			return "wait"       # (a new hall is going up: its slots come with it)
 		_log(kind + " (over the limit: skipped)", -3.0)
 		return "done"
-	var spot := _spot_for(kind)
+	var spot := _spot_for(kind) if proxy < 0.0 else _proxy_spot(kind, proxy)
 	if spot.x < 0:
 		_wait_fails[si] = int(_wait_fails.get(si, 0)) + 1
 		var spring_cost := int(Defs.BUILDINGS["mainspring"]["cost"])
@@ -432,9 +440,23 @@ func _do_build(kind: String) -> String:
 	if b == null:
 		_hold = cost
 		return "wait"
-	var i := _log(kind)
+	var i := _log(kind + (" (proxy)" if proxy >= 0.0 else ""))
 	_bwatch.append([i, b])
 	return "done"
+
+
+## "<building>@proxy[:F]" (study only): a spot on the way to the enemy, F of the way from home to its hall (0.72 by
+## default: near their base but outside it), as a player hiding a proxy building would pick. Grey fog (0.14.32) lets
+## any side build anywhere. The builder walks there from home.
+func _proxy_spot(kind: String, frac: float) -> Vector2i:
+	if _halls().is_empty() or _foe() < 0:
+		return Vector2i(-1, -1)
+	var home: Vector2 = (_halls()[0] as Building).center()
+	var at: Vector2 = home.lerp(_enemy_base(), frac) / Defs.TILE
+	var c: Vector2i = game.find_spot(team, kind, _halls()[0], 0, 9, "near", false, at)
+	if c.x < 0:
+		c = game.find_spot(team, kind, _halls()[0], 0, 16, "near", false, at)
+	return c
 
 
 ## AI._construct, returning the site (the nearest worker that is not building; idle ones first).

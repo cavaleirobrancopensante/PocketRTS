@@ -130,6 +130,7 @@ class Sim:
         self.notes = []
         self.step_units = {}
         self.pending_essence = []
+        self.proxy = None               # "<building>@proxy[:F]": F of the way to the enemy (the attack starts from there)
         # the start: the hall, the starting economy building, the workers
         self._add_bld(self.hall, 0.0, built=True)
         for k in DATA["start_list"][faction]:
@@ -453,6 +454,7 @@ class Sim:
         self.gold -= cost
         self.tension -= t2
         b = self._add_bld(kind, self.t)
+        b["w"] = w
         w["walk"] = False
         if self.f == "crown":
             start = self.t + CAL["crown_walk"]
@@ -777,6 +779,21 @@ class Sim:
                 return True
             self.hold = self.price(kind)[0]
             return False
+        if "@proxy" in s:
+            kind, rest = s.split("@proxy", 1)
+            frac = float(rest[1:]) if rest.startswith(":") else 0.72
+            b = self.place(kind)
+            if b is None:
+                self.hold = int(B[kind]["cost"])
+                return False
+            # (the builder walks F of the way to the enemy first: Defs worker speed 74 for all three factions)
+            walk = frac * float(DATA["maps"][self.map]["hall_to_hall_walk"]) / 74.0
+            b["start"] += walk
+            if self.f != "brood":
+                b["w"]["busy"] += 2.0 * walk        # (there and back; a grub is used up)
+            self.proxy = frac
+            b["log"] = self.note(s)
+            return True
         if s in B:
             if s in DATA["factions"][self.f]["econ"]:
                 lim = int(DATA["factions"][self.f]["econ"][s]) * max(1, self.count(self.hall, True))
@@ -905,6 +922,10 @@ def arrival(sim, att, map_name):
     flyer = all(U[k].get("air") for k in set(kinds))
     d_hall = m["air"] if flyer else m["to_hall"]
     d_door = m["air"] * 0.85 if flyer else m["to_ramp_foot"]
+    if sim.proxy is not None and not flyer:
+        # (a proxy: the army is made F of the way there; a forward Clocktower's gear field winds it up to there)
+        d_hall *= 1.0 - sim.proxy
+        d_door = max(0.0, d_door - m["to_hall"] * sim.proxy)
     go = att["go"]
     ready = max([a.get("ready", a["t"]) for a in sim.army if a.get("wave") == sim.attacks.index(att) + 1] + [go])
     if sim.f == "clockwork" and not flyer:

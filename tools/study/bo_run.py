@@ -194,11 +194,14 @@ DUELS = [
     ("crown_balloon_raid", "brood_economy"), ("crown_balloon_raid", "cw_jack_tech"), ("crown_dragoon_raid", "brood_economy"),
     ("brood_spitter_timing", "crown_musket_wall"), ("brood_air", "crown_musket_wall"), ("brood_brute_timing", "crown_musket_wall"),
     ("cw_owl_harass", "brood_economy"), ("cw_jack_rush", "crown_musket_wall"), ("brood_pool_eco", "cw_jack_tech"),
+    # the proxy openings (grey fog, 0.14.32: any side can build anywhere)
+    ("crown_proxy_horse", "brood_economy"), ("crown_proxy_horse", "cw_jack_tech"), ("brood_proxy_burrow", "crown_musket_wall"),
+    ("cw_proxy_tower", "crown_musket_wall"), ("cw_proxy_tower", "brood_economy"),
 ]
 BIG_MAP = [   # (build, foe faction) also played on the big map: the openings whose worth depends on the walk
     ("crown_horse_rush", "brood"), ("crown_balloon_drop", "clockwork"), ("brood_xrush", "crown"), ("brood_pool_eco", "clockwork"),
     ("cw_soldier_rush", "crown"), ("cw_soldier_rush", "brood"), ("cw_jack_tech", "crown"), ("cw_pendulum_push", "crown"),
-    ("cw_owl_harass", "brood"),
+    ("cw_owl_harass", "brood"), ("cw_proxy_tower", "crown"),
 ]
 PARTS = ["key", "vs_ai", "duels", "big", "vs_brood_ai", "base"]
 

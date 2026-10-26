@@ -408,6 +408,63 @@
     "attack@24|480",
     "end"
    ]
+  },
+  {
+   "name": "crown_proxy_horse",
+   "faction": "crown",
+   "label": "Crown 7: Proxy Horseman rush",
+   "opening": "breeder",
+   "then": "balanced",
+   "steps": [
+    "workers:8",
+    "cottage",
+    "horse_breeder@proxy",
+    "barracks@proxy",
+    "horseman*3",
+    "attack@9|200",
+    "horseman*",
+    "workers:12",
+    "farm",
+    "powder_mill",
+    "wait:330",
+    "stop:horseman",
+    "end"
+   ]
+  },
+  {
+   "name": "brood_proxy_burrow",
+   "faction": "brood",
+   "label": "Brood 7: Forward Burrow (Raptors at their door)",
+   "then": "balanced",
+   "steps": [
+    "workers:8",
+    "warren",
+    "hive@proxy:0.65",
+    "raptor*",
+    "attack@9|200",
+    "workers:10",
+    "wait:330",
+    "end"
+   ]
+  },
+  {
+   "name": "cw_proxy_tower",
+   "faction": "clockwork",
+   "label": "Clockwork 7: Forward Clocktower (Clock Soldiers at their door)",
+   "then": "balanced",
+   "steps": [
+    "workers:7",
+    "cog_press",
+    "clocktower@proxy:0.65",
+    "wait:115",
+    "movement_works@proxy:0.65",
+    "regulator",
+    "clock_soldier*",
+    "movement_works@proxy:0.65",
+    "attack@6|240",
+    "workers:10",
+    "end"
+   ]
   }
  ]
 }
