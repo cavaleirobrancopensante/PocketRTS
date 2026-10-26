@@ -702,6 +702,18 @@ func _wave_orders() -> void:
 	if wave.is_empty():
 		_wave_over("wiped out")
 		return
+	# the Clockwork: a construct running low on wind leaves the attack for the gear field, as the computer's own army does
+	# (AI._army: below 20%; the spring-driven Wind-ups fight on)
+	if _clock():
+		var homes: Array = _halls()
+		for u in wave.duplicate():
+			if u.wind < 0.2 and not u.runs_on_spring() and not u._in_field and not u.powered_down():
+				wave.erase(u)
+				if not homes.is_empty():
+					u.cmd_move((homes[0] as Building).center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+		if wave.is_empty():
+			_wave_over("wound down: back to the gear field")
+			return
 	# later units follow in groups (two or more) while the attack is on
 	var front := _front()
 	var fresh: Array = _army_now().filter(func(u: Unit) -> bool: return not wave.has(u) and u.position.distance_to(front) < 500.0)

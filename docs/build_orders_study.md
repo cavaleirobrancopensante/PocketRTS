@@ -65,7 +65,7 @@ The table gives the walking distance from a side's rally point to the enemy's To
 | Frostmere | 103 | 31 s | 30 s | 53 s | 59 s (30%) | 87 s | 76 s (109 tiles) |
 | Saltmarsh Isles | 119 | 35 s | 34 s | 61 s | 68 s (18%) | 100 s | 72 s (104 tiles) |
 
-Two things follow. First, a Raptor or a Horseman crosses any standard map in 20 to 35 seconds, so the Brood's and the Crown's fast rushes hit at about the same time everywhere; the map barely changes them. Second, the Clockwork's ground army arrives with about half its wind on the small maps and with less than a third on Hollowfen, Frostmere and Saltmarsh Isles: it has 20 to 40 seconds of fighting left there before it freezes. The Clockwork's attacks are short-range by design (a clock runs down), and on the big maps this decides its openings. Its flyers have no such limit.
+Two things follow. First, a Raptor or a Horseman crosses any standard map in 20 to 35 seconds, so the Brood's and the Crown's fast rushes hit at about the same time everywhere; the map barely changes them. Second, the Clockwork's ground army arrives with about half its wind on the small maps and with less than a third on Hollowfen, Frostmere and Saltmarsh Isles: it has 20 to 40 seconds of fighting left there before it freezes. The Clockwork's attacks are short-range by design (a clock runs down), and on the big maps this decides its openings. Its flyers run down too (they are constructs like the rest), but they fly the straight line over cliffs, so they get there sooner.
 
 ### What the early units are worth
 
@@ -388,7 +388,7 @@ CW3_RESULTS
 
 **The build.** The standard to the Escapement, then the Clock Aviary (working at about 3:15), a second Mainspring for the Tension, two Swifts, the TICKING OWL research (150 cogs and 150 Tension, a minute), a Ratchet Turret, two more Swifts, and three of them morphed into Owls (100 cogs and 50 Tension each, 20 seconds). The Owls go at about 5:15 and reach a small map's enemy base at about 6:00.
 
-**What it is.** The Clockwork's air opening: Owls swoop on units and drop bombs on buildings (45 to every building around the impact), and they have no wind to lose. Tension is the bottleneck: three Owls with their research cost 345 Tension, nearly three minutes of a full Mainspring, hence the second one.
+**What it is.** The Clockwork's air opening: Owls swoop on units and drop bombs on buildings (45 to every building around the impact). They wind down off the gear field like every construct, but they fly the straight line over cliffs. Tension is the bottleneck: three Owls with their research cost 345 Tension, nearly three minutes of a full Mainspring, hence the second one.
 
 CW4_RESULTS
 
