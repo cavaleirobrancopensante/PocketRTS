@@ -441,6 +441,8 @@ func in_use() -> bool:
 			return OreDrill.working(self)
 		"cog_press":
 			return working_crew() > 0 and press_rate() > 0.0
+		"mainspring":
+			return working_crew() > 0 and spring_rate() > 0.0
 	return true
 
 
@@ -725,6 +727,37 @@ func press_rate() -> float:
 	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
 
 
+## Mainspring: Tension a second right now (Defs.GEAR "mainspring"): a trickle by itself, every Winder on it adds an equal
+## share up to its crew; 0 while it is unlinked or unfinished.
+func spring_rate() -> float:
+	if kind != "mainspring" or not built or dead or game.gear_net.speed_mult(self) <= 0.0:
+		return 0.0
+	var info: Dictionary = Defs.GEAR["mainspring"]
+	var cap := int(d.get("crew", 3))
+	var base := float(info["base"])
+	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
+
+
+## Cog Press / Mainspring: the painted working loop (assets/buildings/<kind>_work_0..7.png, Defs.GEAR "frame_dt" a frame)
+## while it works; the built picture while it idles, and none of it once it is damaged (under half its hp).
+func _gear_anim(working: bool) -> void:
+	if sprite == null:
+		return
+	if not working or hp < max_hp * 0.5:
+		if drill_anim:
+			drill_anim = false
+			_update_sprite()
+		return
+	var i := int(game.clock / float(Defs.GEAR["frame_dt"])) % 8
+	var t := Game.tex("res://assets/buildings/%s_work_%d.png" % [kind, i])
+	if t == null:
+		return
+	drill_anim = true
+	if sprite.texture != t:
+		sprite.texture = t
+		sprite.offset = body_offset(kind, t)
+
+
 ## Town Hall / Hive / Clocktower: the full reserve of its land (Crown soil, Brood ground,
 ## Clockwork coal for its Boilers).
 func reserve() -> float:
@@ -850,7 +883,13 @@ func _econ(delta: float) -> void:
 				var pay := game.draw_lode(self, rate * delta)
 				press_paid += pay
 				game.add_gold_f(team, pay)
-			OreDrill._animate(self, working_crew() > 0 and rate > 0.0)
+			_gear_anim(working_crew() > 0 and rate > 0.0)
+		"mainspring":
+			# winds TENSION (the Clockwork's second resource, nothing spends it yet) while it is linked and crewed
+			var sr := spring_rate()
+			if sr > 0.0:
+				game.players[team]["tension"] = float(game.players[team].get("tension", 0.0)) + sr * delta
+			_gear_anim(working_crew() > 0 and sr > 0.0)
 		"powder_mill":
 			# grinds its Town Hall's saltpetre; once that's spent, nothing
 			var n := working_crew()

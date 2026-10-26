@@ -2,10 +2,12 @@ class_name GearNet
 extends Node2D
 ## THE GEAR FIELD (the Clockwork's base, docs/clockwork_gear_prototype.md; every number in Defs.GEAR).
 ##
-## Every Clockwork building has a ring of real gears set into the ground round it (a toothed ring, drawn in code):
+## Every Clockwork building has a ring of real gears set into the ground round it (the painted ring rebuilt for its tooth
+## count by GearArt, scripts/gear_art.gd, drawn flat on the ground at the 3/4 angle with a thick edge under it):
 ## radius = half its footprint + a pad (a SMALL or a BIG connecting gear; the Clocktower's is the biggest), rounded to a
 ## whole number of teeth. Rings that touch MESH: neighbours counter-rotate, a small gear spins faster than a big one and
-## the teeth interlock (each gear's angle is worked out from its parent's in the connection tree, so the mesh is exact).
+## the teeth interlock (each gear's angle is worked out from its parent's in the connection tree with mesh_phase, so the
+## mesh is exact). Two linked rings with a gap between them get an IDLER: a small free cog that meshes both (idler_for).
 ##
 ## CONNECTED: a finished building is connected if its ring touches a ring that is connected, down to a finished Clocktower
 ## (a Clocktower is a root: its own field). The graph is recomputed at once when anything changes and every 0.5 s.
@@ -24,7 +26,8 @@ var parent_of := {}              # Building -> the building it hangs on in the c
 var order: Array = []            # connected buildings, roots first (parents before children)
 var ang := {}                    # Building -> its gear's angle now
 var version := 0                 # bumped when the connected set changes
-var _nodes := {}                 # Building -> GearDisc
+var idler_of := {}               # Building -> {"pos": gear space, "n": teeth, "r": pitch radius} between it and its parent
+var idler_ang := {}              # Building -> the angle of its idler now
 var _field := {}                 # team -> [[centre in gear space, radius px]] of the connected rings
 var _sig := -1
 var _solved_at := -10.0
@@ -83,6 +86,61 @@ static func has_gear(b: Building) -> bool:
 ## The ring's centre in gear space.
 static func b_c(b: Building) -> Vector2:
 	return gpos(b.center())
+
+
+## Which painted ring a building wears: "tower" (a Clocktower), "big" or "small".
+static func ring_kind(kind: String, big: bool) -> String:
+	return "tower" if kind == "clocktower" else ("big" if big else "small")
+
+
+## THE MESH RULE. A ring's tooth centres sit at phase + TAU*k/n. Ring A (phase pa, na teeth) drives ring B (nb teeth) whose
+## centre lies in direction phi from A's: at the contact point a tooth of one faces a gap of the other, i.e. with
+## u = frac((phi - pa) * na / TAU) and v = frac((phi + PI - pb) * nb / TAU), u + v = 0.5 (mod 1). Returns B's phase. Called
+## every frame from the parent's phase, so it stays exact (and B counter-rotates at na/nb of A's speed).
+static func mesh_phase(pa: float, na: int, phi: float, nb: int) -> float:
+	var u := (phi - pa) * float(na) / TAU
+	return fposmod(phi + PI - (0.5 - u) * TAU / float(nb), TAU)
+
+
+## How far two rings are from meshing at their contact point, in teeth (0: a tooth exactly in the other's gap; 0.5: tooth on
+## tooth). For tests and the ghost.
+static func mesh_error(pa: float, na: int, pb: float, nb: int, phi: float) -> float:
+	var u := fposmod((phi - pa) * float(na) / TAU, 1.0)
+	var v := fposmod((phi + PI - pb) * float(nb) / TAU, 1.0)
+	var e := fposmod(u + v - 0.5, 1.0)
+	return minf(e, 1.0 - e)
+
+
+## An IDLER for two linked rings (centres ca, cb in gear space, pitch radii ra, rb) whose pitch circles have a gap: a free cog
+## of n teeth (at least Defs.GEAR.idler_min, enough to span the gap) whose pitch circle touches both, on the line of
+## centres when it just spans the gap, else beside it (the side with more room from the `others` rings, [[centre, r]]).
+## {} when the rings mesh directly (gap within Defs.GEAR.mesh_tol px). {"pos", "n", "r"}.
+static func idler_for(ca: Vector2, ra: float, cb: Vector2, rb: float, others: Array = []) -> Dictionary:
+	var p := float(Defs.GEAR["pitch"])
+	var d := ca.distance_to(cb)
+	var gap := d - ra - rb
+	if gap <= float(Defs.GEAR["mesh_tol"]) or d < 0.001:
+		return {}
+	var n := maxi(int(Defs.GEAR["idler_min"]), int(ceil(PI * gap / p)))
+	var ri := radius_of_teeth(n)
+	var a := ra + ri
+	var bb := rb + ri
+	var x := (a * a - bb * bb + d * d) / (2.0 * d)
+	var h := sqrt(maxf(0.0, a * a - x * x))
+	var u := (cb - ca) / d
+	var perp := Vector2(-u.y, u.x)
+	var best := Vector2.ZERO
+	var best_room := -INF
+	for side in [1.0, -1.0]:
+		var pos: Vector2 = ca + u * x + perp * h * side
+		var room := 1000.0
+		for o in others:
+			room = minf(room, pos.distance_to(o[0]) - float(o[1]) - ri)
+		room += 0.02 * pos.y          # (a tie goes to the front side, where it shows)
+		if room > best_room:
+			best_room = room
+			best = pos
+	return {"pos": best, "n": n, "r": ri}
 
 
 # ------------------------------------------------------------------ the graph
@@ -146,9 +204,19 @@ func solve() -> void:
 				linked[bj] = true
 				parent_of[bj] = list[a]
 				q.append(j)
+	idler_of = {}
 	for i in q:
 		var b: Building = list[i]
 		order.append(b)
+		var p: Building = parent_of.get(b)
+		if p != null:
+			var others: Array = []
+			for k in q:
+				if k != i and list[k] != p:
+					others.append([gp[k], rr[k]])
+			var idl := idler_for(b_c(p), b_r(p), gp[i], rr[i], others)
+			if not idl.is_empty():
+				idler_of[b] = idl
 		if not _field.has(b.team):
 			_field[b.team] = []
 		_field[b.team].append([gp[i], rr[i]])
@@ -201,7 +269,8 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	var g := gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
 	var r := ring_r(k, size, big)
-	var touch := false
+	var touch: Building = null
+	var best := INF
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
 	for b in game.buildings:
@@ -210,9 +279,10 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 		var gap := g.distance_to(b_c(b)) - (r + b_r(b))
 		if gap < -over:
 			return {"state": "clash", "with": b}
-		if gap <= slack and linked.has(b):
-			touch = true
-	return {"state": "ok" if touch else "far"}
+		if gap <= slack and linked.has(b) and gap < best:
+			touch = b
+			best = gap
+	return {"state": "ok", "with": touch} if touch != null else {"state": "far"}
 
 
 # ------------------------------------------------------------------ ticking and drawing
@@ -235,14 +305,20 @@ func tick(delta: float) -> void:
 		_sig = s
 		solve()
 	_spin(delta)
-	_sync_nodes()
+	for b in ang.keys():
+		if not is_instance_valid(b) or b.is_queued_for_deletion():
+			ang.erase(b)
+			idler_ang.erase(b)
+	if Defs.gear_mode:
+		queue_redraw()
 	_top_t -= delta
 	if _top_t <= 0.0:
 		_top_t = 0.25
 		_top.queue_redraw()
 
 
-## Turn the gears: a root turns by itself, every other connected gear is placed from its parent so the teeth mesh.
+## Turn the gears: a root turns by itself, every other connected gear (and the idler before it) is placed from its parent by
+## the mesh rule (mesh_phase), so the teeth interlock exactly.
 func _spin(delta: float) -> void:
 	var rate := float(Defs.GEAR["teeth_rate"])
 	for b in order:
@@ -251,32 +327,100 @@ func _spin(delta: float) -> void:
 		var p: Building = parent_of.get(b)
 		var nb := b_n(b)
 		if p == null:
-			ang[b] = float(ang.get(b, 0.0)) + TAU * rate / float(nb) * delta
+			ang[b] = fposmod(float(ang.get(b, 0.0)) + TAU * rate / float(nb) * delta, TAU)
+			continue
+		var pa := float(ang.get(p, 0.0))
+		var np := b_n(p)
+		var idl: Dictionary = idler_of.get(b, {})
+		if idl.is_empty():
+			ang[b] = mesh_phase(pa, np, (b_c(b) - b_c(p)).angle(), nb)
 		else:
-			var theta: float = (b_c(b) - b_c(p)).angle()
-			var rp := b_r(p)
-			var rb := b_r(b)
-			ang[b] = theta + PI - rp * (float(ang.get(p, 0.0)) - theta) / rb - TAU / float(nb) * 0.5
+			var ia := mesh_phase(pa, np, (Vector2(idl["pos"]) - b_c(p)).angle(), int(idl["n"]))
+			idler_ang[b] = ia
+			ang[b] = mesh_phase(ia, int(idl["n"]), (b_c(b) - Vector2(idl["pos"])).angle(), nb)
 
 
-func _sync_nodes() -> void:
+## The rings on the ground (this node sits under the buildings and units): every Clockwork building's ring and the idlers
+## between linked rings; first all the thick edges, then all the faces, so a neighbour's edge never covers a face.
+func _draw() -> void:
+	if game == null or not Defs.gear_mode:
+		return
 	var me := game.controlled_team()
+	var items: Array = []
+	var cols: Dictionary = Defs.GEAR["col"]
 	for b in game.buildings:
 		if not is_instance_valid(b) or not has_gear(b):
 			continue
-		var d: GearDisc = _nodes.get(b)
-		var n := b_n(b)
-		if d == null:
-			d = GearDisc.new()
-			d.b = b
-			add_child(d)
-			_nodes[b] = d
-		d.sync(self, n, me)
-	for b in _nodes.keys():
-		if not is_instance_valid(b) or b.is_queued_for_deletion():
-			(_nodes[b] as Node).queue_free()
-			_nodes.erase(b)
-			ang.erase(b)
+		if b.dead and b.rubble_t > 24.0:
+			continue
+		if me >= 0 and not game.allied(me, b.team) and not game.demo and not b.visible:
+			continue
+		var c: Vector2 = b.center()
+		var n: int = b_n(b)
+		var rp := radius_of_teeth(n)
+		if not game.view_rect.grow(rp + 60.0).has_point(c):
+			continue
+		var s := 1.0
+		if b.gear_swap_t >= 0.0:
+			# the ring visibly changes size while the gear is swapped: from the old radius to the new one
+			var total := float(Defs.GEAR["swap_time"])
+			var k := clampf(1.0 - b.gear_swap_t / total, 0.0, 1.0)
+			var r_new := ring_r(b.kind, b.size, b.gear_swap_to)
+			s = lerpf(rp, r_new, k * k * (3.0 - 2.0 * k)) / rp
+		# state colours: connected (full), unlinked (dull red), a site (faint), dead (dark)
+		var m := Color(1, 1, 1, 1)
+		if b.dead:
+			m = Color(cols["dead"].r * 1.4, cols["dead"].g * 1.4, cols["dead"].b * 1.4, 0.7)
+		elif not b.built or b.ghost:
+			m = Color(1, 1, 1, 0.45)
+		elif enforce and not linked.has(b):
+			m = Color(1.0, 0.6, 0.52, 0.85)
+		items.append([ring_kind(b.kind, b.gear_big), n, c, float(ang.get(b, 0.0)), s, m])
+		var idl: Dictionary = idler_of.get(b, {})
+		if not idl.is_empty() and linked.has(b):
+			var ip: Vector2 = idl["pos"]
+			items.append(["idler", int(idl["n"]), Vector2(ip.x, ip.y * FY), float(idler_ang.get(b, 0.0)), 1.0, m])
+	for it in items:
+		draw_ring(self, it[0], it[1], it[2], it[3], it[4], it[5], true, false)
+	for it in items:
+		draw_ring(self, it[0], it[1], it[2], it[3], it[4], it[5], false, true)
+	# the placement ghost's ring, over the others so a clash reads
+	var ctl = game.controls
+	if ctl and ctl.mode == "place" and Defs.BUILDINGS.has(ctl.place_kind) and Defs.BUILDINGS[ctl.place_kind]["faction"] == "clockwork":
+		draw_ghost(self, game.human, ctl.place_kind, ctl.ghost_cell)
+	draw_set_transform(Vector2.ZERO)
+
+
+## One painted ring on `ci` in world space: centre `c` (world px), turned by `rot` and squashed onto the ground (rotate the
+## flat ring, then FIELD_Y vertically, in one transform), scaled by `s`, tinted `mod`. `edge`: the thick edge under it (the
+## ring's silhouette drawn Defs.GEAR.edge times, each 1 px lower, darkening downward); `face`: the ring itself.
+static func draw_ring(ci: CanvasItem, kind: String, n: int, c: Vector2, rot: float, s: float, mod: Color, edge := true, face := true, glow := Color(0, 0, 0, 0)) -> void:
+	var art := GearArt.ring(kind, n)
+	var cs := cos(rot) * s
+	var sn := sin(rot) * s
+	var xa := Vector2(cs, sn * FY)
+	var ya := Vector2(-sn, cs * FY)
+	if art.is_empty():
+		# (no strips: the old code-drawn ring)
+		if face:
+			ci.draw_set_transform_matrix(Transform2D(xa, ya, c))
+			draw_gear(ci, n, radius_of_teeth(n), Color(Defs.GEAR["col"]["brass"]) * mod, Defs.GEAR["col"]["edge"], Color(0, 0, 0, 0))
+		return
+	var half: float = art[3]
+	var rect := Rect2(-half, -half, half * 2.0, half * 2.0)
+	if edge:
+		var depth := int(Defs.GEAR["edge"])
+		var ec: Color = Defs.GEAR["col"]["rim"]
+		for k in range(depth, 0, -1):
+			var t := 1.0 - float(k) / float(depth)
+			var col := Color(ec.r * (0.55 + 0.45 * t), ec.g * (0.55 + 0.45 * t), ec.b * (0.55 + 0.45 * t), mod.a)
+			ci.draw_set_transform_matrix(Transform2D(xa, ya, c + Vector2(0, float(k))))
+			ci.draw_texture_rect(art[1], rect, false, col)
+	if face:
+		ci.draw_set_transform_matrix(Transform2D(xa, ya, c))
+		ci.draw_texture_rect(art[0], rect, false, mod)
+		if glow.a > 0.0:
+			ci.draw_texture_rect(art[1], rect, false, glow)       # (a wash of colour over it: the ghost's verdict)
 
 
 func _draw_top() -> void:
@@ -314,17 +458,34 @@ func _badge(font: Font, p: Vector2, txt: String, col: Color) -> void:
 	_top.draw_string(font, r.position + Vector2(18.0, 13.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
 
 
-## The placement ghost's ring (Game._draw_fields): drawn on `ci` in world space, green when it links, orange when it is
-## too far from the field, red when it clashes with another ring.
+## The placement ghost's ring (Game._draw_fields): drawn on `ci` in world space, tinted green when it links (then it already
+## turns meshed with the ring it would hang on, with the idler it would get), orange when it is too far from the field, red
+## when it clashes with another ring.
 func draw_ghost(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) -> void:
 	if not Defs.gear_mode or Defs.BUILDINGS[k]["faction"] != "clockwork":
 		return
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	var centre := Vector2(c) * T + Vector2(size) * T * 0.5
-	var col: Color = ghost_colour(candidate(t, k, c, big)["state"])
+	var st := candidate(t, k, c, big)
+	var col: Color = ghost_colour(st["state"])
 	var n := ring_n(k, size, big)
-	ci.draw_set_transform(centre, 0.0, Vector2(1.0, FY))
-	draw_gear(ci, n, radius_of_teeth(n), col, Color(0.05, 0.1, 0.05), col, 0.22, float(_clock) * 0.4)
+	var k_tint := 0.85 if st["state"] == "clash" else 0.55
+	var tint := Color(lerpf(1.0, col.r, k_tint), lerpf(1.0, col.g, k_tint), lerpf(1.0, col.b, k_tint), 0.8)
+	var rot := float(_clock) * 0.3
+	var p: Building = st.get("with") if st["state"] == "ok" else null
+	if p != null and is_instance_valid(p):
+		var g := gpos(centre)
+		var others: Array = []
+		var idl := idler_for(b_c(p), b_r(p), g, radius_of_teeth(n), others)
+		var pa := float(ang.get(p, 0.0))
+		if idl.is_empty():
+			rot = mesh_phase(pa, b_n(p), (g - b_c(p)).angle(), n)
+		else:
+			var ip: Vector2 = idl["pos"]
+			var ia := mesh_phase(pa, b_n(p), (ip - b_c(p)).angle(), int(idl["n"]))
+			rot = mesh_phase(ia, int(idl["n"]), (g - ip).angle(), n)
+			draw_ring(ci, "idler", int(idl["n"]), Vector2(ip.x, ip.y * FY), ia, 1.0, tint)
+	draw_ring(ci, ring_kind(k, big), n, centre, rot, 1.0, tint, true, true, Color(col.r, col.g, col.b, 0.38 if st["state"] == "clash" else 0.18))
 	ci.draw_set_transform(Vector2.ZERO)
 
 
@@ -381,62 +542,3 @@ static func draw_gear(ci: CanvasItem, n: int, r: float, tone: Color, edge: Color
 	loop.append(pts[0])
 	ci.draw_polyline(loop, Color(edge.r, edge.g, edge.b, 0.75), 3.6, true)
 	ci.draw_polyline(loop, tone, 1.8, true)
-
-
-## One building's ring on the ground: a holder squashed like the old field rings, with a spinning child that draws once.
-class GearDisc extends Node2D:
-	var b: Building
-	var spin: Node2D
-	var n := 0
-	var drawn_n := -1
-	var drawn_team := -1
-	var swap_from := 1.0
-
-	func _init() -> void:
-		spin = Node2D.new()
-		add_child(spin)
-		spin.draw.connect(_draw_spin)
-
-	func _draw_spin() -> void:
-		if b == null or n <= 0:
-			return
-		var cols: Dictionary = Defs.GEAR["col"]
-		var tc: Color = Defs.TEAM_COLOURS[clampi(b.team, 0, Defs.TEAM_COLOURS.size() - 1)]
-		GearNet.draw_gear(spin, n, GearNet.radius_of_teeth(n), cols["brass"], cols["edge"], tc)
-
-	func sync(net: GearNet, tooth_n: int, me: int) -> void:
-		if b.dead and b.rubble_t > 24.0:
-			visible = false
-			return
-		var c := b.center()
-		position = c
-		scale = Vector2(1.0, GearNet.FY)
-		if tooth_n != n or b.team != drawn_team:
-			n = tooth_n
-			drawn_team = b.team
-			spin.queue_redraw()
-		var s := 1.0
-		if b.gear_swap_t >= 0.0:
-			# the ring visibly changes size while the gear is swapped: from the old radius to the new one
-			var total := float(Defs.GEAR["swap_time"])
-			var k := clampf(1.0 - b.gear_swap_t / total, 0.0, 1.0)
-			var r_old := GearNet.b_r(b)
-			var r_new := GearNet.ring_r(b.kind, b.size, b.gear_swap_to)
-			var cur := lerpf(r_old, r_new, k * k * (3.0 - 2.0 * k))
-			s = cur / r_old
-		spin.scale = Vector2(s, s)
-		spin.rotation = float(net.ang.get(b, 0.0))
-		# state colours: connected (full), unlinked (dull red-grey), a site or a swap (faint), dead (dark)
-		var cols: Dictionary = Defs.GEAR["col"]
-		var m := Color(1, 1, 1, 1)
-		if b.dead:
-			m = Color(cols["dead"].r * 1.4, cols["dead"].g * 1.4, cols["dead"].b * 1.4, 0.55)
-		elif not b.built or b.ghost:
-			m = Color(1, 1, 1, 0.4)
-		elif net.enforce and not net.linked.has(b):
-			m = Color(1.0, 0.62, 0.55, 0.78)
-		modulate = m
-		var shown := true
-		if me >= 0 and not net.game.allied(me, b.team) and not net.game.demo:
-			shown = b.visible
-		visible = shown and net.game.view_rect.grow(GearNet.radius_of_teeth(n) + 40.0).has_point(c)

@@ -348,13 +348,19 @@ const GEAR_PRESS := "cog_press"
 const GEAR := {
 	# THE FIELD. Every Clockwork building has a ground gear ring: radius = half its footprint + `pad` (small / big
 	# connecting gear), the Clocktower's ring is the biggest (`tower`). The radius is rounded to a whole number of
-	# teeth (`pitch` px apart along the rim) so that meshing gears keep the same tooth size.
-	"pitch": 15.0,
-	"pad": {"small": 0.9, "big": 2.0, "tower": 4.2},
-	# Two rings LINK when their edges are at most `slack` tiles apart (or overlap), and they may not overlap deeper than
-	# `overlap` tiles (gears cannot pass through each other: a building's ring may not cut into another ring).
-	"slack": 0.8,
-	"overlap": 1.4,
+	# teeth (`pitch` px apart along the rim) so that meshing gears keep the same tooth size. The rings are the painted
+	# ones (scripts/gear_art.gd): a 3x3 building's small ring has 21 chunky teeth, a big one 30, the Clocktower's 38.
+	"pitch": 25.0,
+	"pad": {"small": 0.9, "big": 2.0, "tower": 2.2},
+	# Two rings LINK when their pitch circles (mid tooth) are at most `slack` tiles apart (or overlap), and they may not
+	# overlap deeper than `overlap` tiles (about half a tooth: gears cannot pass through each other). Within `mesh_tol` px
+	# of touching they mesh directly; a wider gap gets an IDLER cog between them (at least `idler_min` teeth, bigger for a
+	# wider gap, GearNet.idler_for).
+	"slack": 2.0,
+	"overlap": 0.25,
+	"mesh_tol": 3.0,
+	"idler_min": 8,
+	"edge": 6,                      # px: the ring's thick edge under it (its silhouette drawn this many times, 1 px lower each)
 	"solve": 0.5,                   # seconds between connection recomputes
 	"teeth_rate": 1.4,              # teeth a second passing a mesh point: the Clocktower ring turns this slowly, small gears spin faster
 	# GEAR SWAP (a building's SMALL GEAR / BIG GEAR button): cogs and seconds; the building idles meanwhile
@@ -366,9 +372,13 @@ const GEAR := {
 	# one Winder pays 3.5 (small) vs 3.1 (big), four pay 7.5 vs 8.0 limited to 8.0 by the cap, five 8.0 vs 9.0, six
 	# 8.0 vs 10.5: the big gear only wins from 5 Winders. 2 presses per Clocktower (Defs.FACTIONS econ).
 	"press": {"base": 0.15, "small": {"full": 8.0, "crew": 3}, "big": {"full": 10.5, "crew": 6}},
+	# THE MAINSPRING (showcase, docs/clockwork_ground_up.md): winds TENSION, the second resource, at `full` a second with
+	# its whole crew (BUILDINGS crew), `base` of that alone; nothing spends Tension yet. Shown only for the Clockwork.
+	"mainspring": {"base": 0.15, "full": 2.0},
+	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
 	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
 	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
-	"col": {"brass": Color("#e8c76a"), "edge": Color("#3b2a14"), "dead": Color("#4a443c"), "off": Color("#8c8478"),
+	"col": {"brass": Color("#e8c76a"), "edge": Color("#3b2a14"), "rim": Color(0.282, 0.18, 0.071), "dead": Color("#4a443c"), "off": Color("#8c8478"),
 		"ok": Color("#8fe39a"), "clash": Color("#ff7f6a"), "far": Color("#ffc65a")},
 }
 
@@ -384,6 +394,7 @@ static func build_list(faction: String) -> Array:
 	if faction == "clockwork":
 		if gear_mode:
 			l[l.find("ore_crusher")] = GEAR_PRESS
+			l.insert(l.find(GEAR_PRESS) + 1, "mainspring")
 		elif rail_econ:
 			l[l.find("ore_crusher")] = "ore_drill"
 		if not line_mode:
@@ -877,6 +888,11 @@ const BUILDINGS := {
 		"supply": 0, "sight": 6, "trains": [], "crew": 6, "faction": "clockwork",
 		"about": "Presses COGS from its Clocktower's brass: a trickle by itself, and every Winder winding it adds the same share (SMALL gear: faster, up to 3 Winders; BIG gear: slower per Winder but up to 6, and more in all at 5 or 6). Spent brass: a quarter. Must stay linked to the gear field.",
 	},
+	"mainspring": {
+		"name": "Mainspring", "hp": 800, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
+		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (up to 3). Must stay linked to the gear field. Nothing spends Tension yet.",
+	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 7, "trains": [], "requires": "assembly_works", "faction": "clockwork",
@@ -1030,7 +1046,6 @@ const TEMP_ART := {
 	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "dismounted", "portrait_armoured": "dismounted_armoured"},
 	"mounted_missionary": {"art": "missionary_mounted", "portrait": "mounted_missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
-	"cog_press": {"building": "ore_drill", "portrait": "ore_crusher"},     # (placeholder: the Ore Drill's picture until a Cog Press is drawn)
 	"ore_drill": {"building": "ore_crusher", "portrait": "ore_crusher"},     # (until the Drill sheet is imported)
 	"rail_yard": {"building": "engine_hall", "portrait": "engine_hall"},     # (roster prototype: the Engine Hall's picture until a Rail Yard is drawn)
 	"pressure_relay": {"building": "charging_pylon", "portrait": "charging_pylon"},     # (phase 1 of the Line: the Pylon's picture, plus a gauge drawn in code: docs/art_style_inconsistency.md)

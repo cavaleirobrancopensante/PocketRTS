@@ -10,10 +10,10 @@ def ring(kind, n, size):
     band = np.array(Image.open(D + 'band_%s.png' % kind).convert('RGBA')).astype(float)
     m = META[kind]
     R = size / 2.0
-    th_frac = META['tooth']['height_frac'] * 22 / n * (META['tooth']['ring_radius_px'] / 252.0)
-    # tooth height follows the pitch: a tooth is as tall, relative to its width, as in the art
+    # tooth height follows the pitch: a tooth is as tall, relative to its width, as in the art (the strip's rows are px of
+    # the painted ring, its columns angle samples: so rows / painted pitch px, not rows / cols)
     pitch = 2 * math.pi * R / n
-    tooth_h = pitch * TOOTH.shape[0] / TOOTH.shape[1]
+    tooth_h = pitch * TOOTH.shape[0] / META['tooth']['pitch_px']
     r_root = R - tooth_h
     band_w = r_root * (1 - m['r_in'] / m['r_root'])   # keep the art's band-to-hole proportion
     r_in = r_root - band_w

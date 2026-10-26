@@ -1954,6 +1954,8 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	var r2 := "%d" % int(pl["res2"])
 	if fac == "clockwork":
 		r2 = "%d energy (%s batteries stored)" % [int(game.energy[t]), "blue" if game.blue_energy(t) else "yellow"]
+		if Defs.gear_mode:
+			r2 = "%d energy" % int(game.energy[t])       # (short, so the Tension pill after it fits the top bar)
 	var x1 := x
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(t)
@@ -1963,6 +1965,9 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	var x3 := x
 	if fac == "crown":
 		x = _pill(font, x, Color(0.55, 0.42, 0.3), game.horses_text(t), UiStyle.TEXT)
+	elif fac == "clockwork" and Defs.gear_mode:
+		# TENSION (the Mainspring's, nothing spends it yet)
+		x = _pill(font, x, Color(0.62, 0.8, 0.95), "%d tension" % int(float(pl.get("tension", 0.0))), Color(0.85, 0.93, 1.0))
 	if t == game.human and not game.spectating():
 		# (for their tooltips)
 		_pill_rects = [[Rect2(x0, 4, x1 - 8 - x0, 30), 0], [Rect2(x1, 4, x2 - 8 - x1, 30), 1], [Rect2(x2, 4, x3 - 8 - x2, 30), 2]]
@@ -3155,6 +3160,8 @@ func _res_tip(i: int) -> Dictionary:
 	if fac == "clockwork":
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
+		if Defs.gear_mode and i == 3:
+			return {"title": "Tension: %d" % int(float(pl.get("tension", 0.0))), "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. Nothing spends it yet."}
 		return {}
 	if i == 3:
 		var hs: Array = game.horses_of(game.human)

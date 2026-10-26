@@ -110,6 +110,13 @@ static func chain_spot(g: Game, t: int, kind: String, parent: Building, big := f
 			var gap := centre.distance_to(GearNet.b_c(tower)) - (GearNet.ring_r(kind, size, big) + GearNet.b_r(tower))
 			if gap <= slack * 1.05:
 				continue
+			var near_other := false
+			for o in g.buildings:
+				if o != parent and o != tower and o.team == t and not o.dead and GearNet.has_gear(o):
+					if centre.distance_to(GearNet.b_c(o)) - (GearNet.ring_r(kind, size, big) + GearNet.b_r(o)) <= slack * 1.05:
+						near_other = true
+			if near_other:
+				continue
 			var pgap := centre.distance_to(GearNet.b_c(parent)) - (GearNet.ring_r(kind, size, big) + GearNet.b_r(parent))
 			if pgap > slack * 0.9 or pgap < -float(Defs.GEAR["overlap"]) * Defs.TILE * 0.9:
 				continue

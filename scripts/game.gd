@@ -4730,7 +4730,7 @@ func _draw_fields() -> void:
 	if controls and controls.mode == "place":
 		var k: String = controls.place_kind
 		if Defs.gear_mode and Defs.BUILDINGS[k]["faction"] == "clockwork":
-			gear_net.draw_ghost(field_layer, human, k, controls.ghost_cell)       # (its ring and whether it links: scripts/gear.gd)
+			pass       # (its ring and whether it links: GearNet draws it over the other rings, scripts/gear.gd)
 		elif faction_of(human) == "clockwork" or Defs.BUILDINGS[k].has("field"):
 			for b in buildings:
 				if b.team == human and b.built and not b.dead and b.d.has("field") and not selection.has(b):
