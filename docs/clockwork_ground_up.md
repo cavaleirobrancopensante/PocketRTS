@@ -38,3 +38,10 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Main resource: cogs (cog presses, Winders in the crew). Second resource: TENSION, the wound spring that Winders store. A Mainspring building takes a Winder crew and fills a reserve.
 - Tension is spent on the strong things (top-tier units, slow field, the stopper unit).
 - Buildings that use Tension must be placed ADJACENT to a Mainspring (owner idea): this makes building interlocking a core mechanic. Suggested: adjacency is through meshing gear rings, so it joins the Cosmoteer-style placement puzzle (one system, not two). Open: ports per Mainspring, chains or one hop only, what happens when the Mainspring dies.
+
+## Production buildings (owner, 2026-10-26)
+
+- Barracks = the MOVEMENT WORKS (concept art/redraws/concepts/barracks_movement_works.png): a workshop that assembles clockwork soldiers on a hanging line. Open: the giant winding key on the roof (who winds it? the owner finds it too big for Winders).
+- The CUCKOO HOUSE (concept art/redraws/concepts/barracks_cuckoo_house.png) makes the FLYING units (the Cuckoo).
+- The Glockenspiel turntable concept (art/redraws/concepts/barracks_glockenspiel.png) is not chosen for the barracks; the "building turns with its ring" idea stays open for other buildings.
+- The soldiers in the concepts give a first Clock Soldier look: clock-face chest, small crown spike, blue joints, pocket-watch-cover shield, clock-hand sword.
