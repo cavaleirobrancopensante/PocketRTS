@@ -80,8 +80,8 @@ func _look(p: Vector2, zoom: float) -> void:
 	g.camera.zoom = Vector2(zoom, zoom)
 
 
-## Open, flat grass off the gear field with nothing on or near it (no building, tree, rock, decoration or water; rows below
-## too: a tree's crown stands over the cells above its foot), at least 14 tiles from the spots already used.
+## Open, flat grass off the gear field with nothing on or near it (no building, tree, rock or water; rows below too: a
+## tree's crown stands over the cells above its foot), at least 14 tiles from the spots already used.
 func _open_spot(tower: Building) -> Vector2:
 	for r in range(8, 44):
 		for k in 24:
@@ -97,7 +97,7 @@ func _open_spot(tower: Building) -> Vector2:
 						ok = false
 						break
 					var i: int = g.idx(cc)
-					if g.solid[i] != 0 or g.cliff[i] != 0 or g.ramp[i] != 0 or g.water[i] != 0 or g._terrain_kind.has(i) \
+					if g.solid[i] != 0 or g.cliff[i] != 0 or g.ramp[i] != 0 or g.water[i] != 0 or String(g._terrain_kind.get(i, "")) in ["tree", "rock"] \
 							or g.gear_net.in_field(g.human, Vector2(cc) * Defs.TILE):
 						ok = false
 						break
@@ -106,7 +106,9 @@ func _open_spot(tower: Building) -> Vector2:
 			if ok:
 				used.append(p)
 				return p
-	return tower.center() + Vector2(0, 300 + 100 * used.size())
+	var far := tower.center() + Vector2(0, 300 + 260 * used.size())
+	used.append(far)
+	return far
 
 
 ## A cell where a Clockwork building of `kind` would mesh with the field (tools/shot_gear_lab.gd).
