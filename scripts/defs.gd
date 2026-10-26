@@ -46,8 +46,8 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 ## spent, its Mill / Crushers yield NOTHING (LODE_SPENT = 0: barren, no efficiency trickle). Like soil, a hall raised where one fell takes
 ## over what was left there. The Brood has no lode (its Hive ground is GROUND_RESERVE).
 const LODE := {"town_hall": 1320.0, "clocktower": 11400.0}     # 3 x 440 powder, 3 x 3,800 ore
-const LODE_NAME := {"town_hall": "saltpetre", "clocktower": "ore"}
-const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "ore_drill": "clocktower", "boiler": "clocktower"}
+const LODE_NAME := {"town_hall": "saltpetre", "clocktower": "brass"}      # (the Clockwork's: ore on the old Line economy, raw brass for the cog presses)
+const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "ore_drill": "clocktower", "boiler": "clocktower", "cog_press": "clocktower"}
 const LODE_SPENT := 0.0
 ## Efficiency bars (economy buildings): staffing (crew at work / full crew) x the state of the
 ## base's reserve, from 100% fresh down to its trickle share once spent (Building.efficiency).
@@ -332,25 +332,75 @@ const CW := {
 	"storm": {"range": 330.0, "radius": 110.0, "time": 9.0, "dps": 9.0, "cooldown": 20.0, "cast": 1.2, "reach": 6, "deploy": 2.5, "off_dps": 0.6, "off_radius": 0.7, "crew": 3},
 }
 
+## ==========================================================================================================
+## GEAR FIELD AND COGS (docs/clockwork_gear_prototype.md, owner's design 2026-10-26). The Clockwork's NEW economy
+## and base. The Line (pipes, rails, trains, pressure) is SHELVED behind `line_mode` (default off, kept intact:
+## switch it on in tests); `gear_mode` (default on) is the Clockwork's economy now. Every number of the gear
+## field and the cog presses is in the ONE block GEAR below (rough guesses: tune by play). Lengths in tiles
+## unless the key says px; times in seconds.
+## ==========================================================================================================
+static var line_mode := false
+static var gear_mode := true
+
+## The cog-making building's kind (provisional name: change it here and in the loc files only).
+const GEAR_PRESS := "cog_press"
+
+const GEAR := {
+	# THE FIELD. Every Clockwork building has a ground gear ring: radius = half its footprint + `pad` (small / big
+	# connecting gear), the Clocktower's ring is the biggest (`tower`). The radius is rounded to a whole number of
+	# teeth (`pitch` px apart along the rim) so that meshing gears keep the same tooth size.
+	"pitch": 15.0,
+	"pad": {"small": 0.9, "big": 2.0, "tower": 4.2},
+	# Two rings LINK when their edges are at most `slack` tiles apart (or overlap), and they may not overlap deeper than
+	# `overlap` tiles (gears cannot pass through each other: a building's ring may not cut into another ring).
+	"slack": 0.8,
+	"overlap": 1.4,
+	"solve": 0.5,                   # seconds between connection recomputes
+	"teeth_rate": 1.4,              # teeth a second passing a mesh point: the Clocktower ring turns this slowly, small gears spin faster
+	# GEAR SWAP (a building's SMALL GEAR / BIG GEAR button): cogs and seconds; the building idles meanwhile
+	"swap_cost": 25,
+	"swap_time": 4.0,
+	"start_cogs": 300,
+	# THE COG PRESS: `full` cogs a second at full crew; with nobody on it, `base` of that (like a farm with nobody on
+	# it); every Winder winding it adds an equal share up to `crew`. Small gear: 8/s, crew 3. Big gear: 10.5/s, crew 6:
+	# one Winder pays 3.5 (small) vs 3.1 (big), four pay 7.5 vs 8.0 limited to 8.0 by the cap, five 8.0 vs 9.0, six
+	# 8.0 vs 10.5: the big gear only wins from 5 Winders. 2 presses per Clocktower (Defs.FACTIONS econ).
+	"press": {"base": 0.15, "small": {"full": 8.0, "crew": 3}, "big": {"full": 10.5, "crew": 6}},
+	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
+	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
+	"col": {"brass": Color("#e8c76a"), "edge": Color("#3b2a14"), "dead": Color("#4a443c"), "off": Color("#8c8478"),
+		"ok": Color("#8fe39a"), "clash": Color("#ff7f6a"), "far": Color("#ffc65a")},
+}
+
 ## The old economy (Winders hauling batteries to Ore Crushers) stays in the game behind this switch until the
 ## rails are proven: false puts the Ore Crusher back in the Clockwork's build list and start.
 static var rail_econ := true
 
 
-## What a faction may build / starts with (the Clockwork's Ore Crusher is the Ore Drill while rail_econ is on).
+## What a faction may build / starts with. The Clockwork: the cog press (gear mode), the Ore Drill (Line mode with rails)
+## or the Ore Crusher; the Pressure Relay and the Rail Yard only while the Line is on.
 static func build_list(faction: String) -> Array:
 	var l: Array = FACTIONS[faction]["build"].duplicate()
-	if faction == "clockwork" and rail_econ:
-		l[l.find("ore_crusher")] = "ore_drill"
-	if faction == "clockwork" and not cw_roster:
-		l.erase(CW_YARD)
+	if faction == "clockwork":
+		if gear_mode:
+			l[l.find("ore_crusher")] = GEAR_PRESS
+		elif rail_econ:
+			l[l.find("ore_crusher")] = "ore_drill"
+		if not line_mode:
+			l.erase("pressure_relay")
+			l.erase(CW_YARD)
+		elif not cw_roster:
+			l.erase(CW_YARD)
 	return l
 
 
 static func start_list(faction: String) -> Array:
 	var l: Array = FACTIONS[faction]["start"].duplicate()
-	if faction == "clockwork" and rail_econ and l.has("ore_crusher"):
-		l[l.find("ore_crusher")] = "ore_drill"
+	if faction == "clockwork" and l.has("ore_crusher"):
+		if gear_mode:
+			l[l.find("ore_crusher")] = GEAR_PRESS
+		elif rail_econ:
+			l[l.find("ore_crusher")] = "ore_drill"
 	return l
 
 
@@ -410,9 +460,9 @@ const FACTIONS := {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
 		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works", "pressure_relay", "rail_yard"],
 		"start_workers": 4, "ready": true, "max_supply": 200,
-		"res": ["Ore", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2, "ore_drill": 2},
-		"start": ["ore_crusher"],
-		"about": "Constructs that run on wind and batteries. The Clocktower and Boilers fill batteries; Winders carry them to Ore Crushers (a battery fades on the road), and the batteries left waiting are your Energy. Each Clocktower's ore and coal run out in time. Supply cap 200.",
+		"res": ["Cogs", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2, "ore_drill": 2, "cog_press": 2},
+		"start": ["ore_crusher"], "start_gold": 300,
+		"about": "A spreading machine of gears. Every building sits in a ring of ground gears that must mesh with the Clocktower's: unlinked buildings stop. Winders wind the Cog Presses for COGS, the money. Each Clocktower's brass and coal run out in time. Supply cap 200.",
 	},
 }
 
@@ -543,10 +593,10 @@ const UNITS := {
 	},
 	"winder": {
 		"tags": ["light"],
-		"name": "Winder", "hp": 70, "armor": 1, "speed": 64, "cost": 60, "time": 14.0, "supply": 1,
+		"name": "Winder", "hp": 46, "armor": 1, "speed": 74, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 7, "cooldown": 1.0, "radius": 12, "from": "clocktower",
 		"faction": "clockwork", "worker": true, "repairs": true,
-		"about": "Cranks Boilers for energy and repairs constructs and buildings. To start a building he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on.",
+		"about": "The one worker: his job is WINDING. He winds a Cog Press for cogs (send him onto it: up to its crew), builds (he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on) and repairs. He can fight a little.",
 	},
 	"windup_soldier": {
 		"tags": ["light"],
@@ -754,7 +804,7 @@ const BUILDINGS := {
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
 		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
-		"about": "Builds Winders and fills a battery every 2 s. Allows 2 Boilers and 2 Ore Crushers nearby. Its ground holds a reserve of ore for its crushers (spent, they pay nothing), and its Boilers share its coal (once that's burnt they fill no batteries). Expand to fresh coal and ore.",
+		"about": "The blueprint of the machine: builds Winders, takes in the cogs, unlocks the other buildings and fills a battery every 2 s. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Boilers and 2 Cog Presses nearby. Its ground holds a reserve of raw brass for its presses (spent, they yield a quarter), and its Boilers share its coal. A new Clocktower starts its own gear field.",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -810,7 +860,7 @@ const BUILDINGS := {
 	"boiler": {
 		"name": "Boiler", "hp": 900, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(4, 4),
 		"supply": 0, "sight": 6, "trains": [], "battery": [1.0, 8], "crew": 7, "faction": "clockwork",
-		"about": "Fills a battery every second by itself, burning its Clocktower's coal (spent coal: it stops). Up to 7 Winders carry them to Ore Crushers. Constructs that stand by it a while get overcharged. Unlocks Bulwarks, Arc Throwers and the Engine Hall.",
+		"about": "Fills a battery every second by itself, burning its Clocktower's coal (spent coal: it stops); the batteries waiting are your Energy. Constructs that stand by it a while get overcharged. Unlocks Bulwarks, Arc Throwers and the Engine Hall.",
 	},
 	"ore_crusher": {
 		"name": "Ore Crusher", "hp": 800, "armor": 2, "cost": 125, "time": 30.0, "size": Vector2i(3, 3),
@@ -821,6 +871,11 @@ const BUILDINGS := {
 		"name": "Ore Drill", "hp": 900, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "faction": "clockwork",
 		"about": "Digs its Clocktower's ore into a stock (it must stand beside the Line, and works at the Line's pressure). Ore Trains carry the stock to the Clocktower along the rails; once the ore is spent it digs a quarter. Buy trains at the Clocktower.",
+	},
+	"cog_press": {
+		"name": "Cog Press", "hp": 900, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 6, "trains": [], "crew": 6, "faction": "clockwork",
+		"about": "Presses COGS from its Clocktower's brass: a trickle by itself, and every Winder winding it adds the same share (SMALL gear: faster, up to 3 Winders; BIG gear: slower per Winder but up to 6, and more in all at 5 or 6). Spent brass: a quarter. Must stay linked to the gear field.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
@@ -975,6 +1030,7 @@ const TEMP_ART := {
 	"dismounted": {"art": "dismounted", "armoured": "dismounted_armoured", "portrait": "dismounted", "portrait_armoured": "dismounted_armoured"},
 	"mounted_missionary": {"art": "missionary_mounted", "portrait": "mounted_missionary"},
 	"horse_breeder": {"building": "horse_breeder", "portrait": "horse_breeder"},
+	"cog_press": {"building": "ore_drill", "portrait": "ore_crusher"},     # (placeholder: the Ore Drill's picture until a Cog Press is drawn)
 	"ore_drill": {"building": "ore_crusher", "portrait": "ore_crusher"},     # (until the Drill sheet is imported)
 	"rail_yard": {"building": "engine_hall", "portrait": "engine_hall"},     # (roster prototype: the Engine Hall's picture until a Rail Yard is drawn)
 	"pressure_relay": {"building": "charging_pylon", "portrait": "charging_pylon"},     # (phase 1 of the Line: the Pylon's picture, plus a gauge drawn in code: docs/art_style_inconsistency.md)
@@ -1051,6 +1107,8 @@ static func train_keys(kinds: Array, armour: bool) -> Array:
 	for k in kinds:
 		if CW_KINDS.has(k) and not cw_roster:
 			continue
+		if CW_RAIL.has(k) and not line_mode:
+			continue        # (rail vehicles: shelved with the Line)
 		if ARMOURED.has(k):
 			out.append(train_key(k, false))
 			if armour:

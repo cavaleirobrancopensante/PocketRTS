@@ -1,0 +1,34 @@
+# Clockwork gear prototype
+
+The Clockwork's economy as a field of turning gears (`Defs.gear_mode`, default on). The old Line (rails, trains, pressure) is shelved behind `Defs.line_mode` (default off) and still works when switched on; the Line tests set `line_mode` true and `gear_mode` false (`tools/line_test_util.gd`).
+
+## What it does
+
+- **Gear field** (`scripts/gear.gd`, class `GearNet`): every Clockwork building has a ring of toothed ground gears, small or big; the Clocktower has the biggest. Teeth are a constant size, so rings mesh exactly: neighbours counter-rotate and the smaller gear spins faster. Replaces the blue field drawing.
+- **Connection**: a BFS from finished Clocktowers over finished, living Clockwork buildings of the same team; rings link when the gap is within `slack`. Recomputed every 0.5 s (at once when the set of buildings changes). Unlinked buildings stop (`speed_mult` 0, production, repair and mends included) and show UNLINKED.
+- **Placement**: a new building's ring must touch the connected field (a Clocktower may go anywhere); overlap deeper than `overlap` tiles is refused (CLASH). The ghost shows its ring and LINKS / NO LINK / CLASH / NEW FIELD.
+- **Constructs** wind down off connected gear ground (`Game.in_field`), as they did off the blue field.
+- **Winder**: the only worker (speed 74, cost 50, 46 hp, 12 s); builds through the crate, repairs, winds.
+- **Cog Press** (placeholder name, `Defs.GEAR_PRESS`): 3x3, replaces the Ore Crusher. Pays cogs a second: a 15% trickle alone, plus an equal share per Winder up to the crew cap. Small gear: higher rate, crew 3. Big gear: crew 6, better only at 5-6 Winders. Max 2 per Clocktower; each Clocktower holds a finite brass reserve (spent: a quarter). Crew assigned by the Crown farm crew logic.
+- **Gear swap**: 25 cogs, 4 s, the building idles and the ring visibly grows or shrinks (`Game.swap_gear`, net command `swap_gear`).
+- **Cogs**: the resource is renamed in the UI with a code-drawn gear icon, start 300. The battery/energy side of Boilers and Pylons is unchanged.
+- **AI**: places presses, assigns Winders, and places buildings so they link; never builds unlinked ones.
+- **Saves and online**: gear size and swap state are saved ("gb", "gs", "gst") and in `BLD_PROPS`; the guest recomputes the graph from synced buildings.
+
+## Tuning: `Defs.GEAR`
+
+One commented block: `pitch` (tooth size, px), `pad` (ring padding per small / big / tower), `slack`, `overlap`, `solve` (graph period), `teeth_rate`, `swap_cost`, `swap_time`, `start_cogs`, `press` (`base` trickle; `small` and `big` each with `full` rate and `crew` cap), `spent` (reserve-spent share), `col` (colours).
+
+## Tests
+
+`tools/test_gear_graph`, `_press`, `_swap`, `_unlinked`, `_placement`, `_winddown`, `_save`, and `_ai` (args `vs:passive|crown|brood`, `map:`, `seed:`, `minutes:`). Screenshots: `tools/shot_gear.gd` (to /tmp/shots_gear).
+
+## Known gaps
+
+- The Clockwork help text in the main menu (`scripts/main.gd`) and the Clockwork Lab hint still describe ore, crushers and rail vehicles.
+- The AI never swaps gears and only uses small gears.
+- The Spring Tower's supply is not cut when it is unlinked.
+- The plateau is small, so placement is tight; tune `overlap` and `slack`.
+- Press art, portrait, cogs icon and the swap button icon are placeholders; gear rings are code-drawn (see `docs/art_style_inconsistency.md`).
+- Old saves with ore buildings are not migrated.
+- The Winder's win and attack animations and death sheet are not imported.

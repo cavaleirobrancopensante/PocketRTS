@@ -74,7 +74,8 @@ var swamp_dirty := true
 var swamp_layer: Node2D
 var swamp_layer_b: Node2D      # (the second player's swamp: its own layer so its shimmer takes that player's colour)
 var field_layer: Node2D                  # Clockwork fields of the selected / placed building
-var line_net: LineNetwork                # the Clockwork Line: pipe segments and pressure (scripts/line.gd)
+var line_net: LineNetwork                # the Clockwork Line: pipe segments and pressure (scripts/line.gd; shelved: Defs.line_mode)
+var gear_net: GearNet                    # the Clockwork gear field: rings of ground gears, connection graph (scripts/gear.gd)
 var swamp_img: Image                     # the swamp of every Brood player, for the minimap
 var swamp_tex: ImageTexture
 var _swamp_t := 0.0
@@ -222,6 +223,10 @@ func _ready() -> void:
 	line_net = LineNetwork.new()
 	line_net.game = self
 	add_child(line_net)
+	gear_net = GearNet.new()
+	gear_net.game = self
+	gear_net.z_index = -17
+	add_child(gear_net)
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
@@ -1654,7 +1659,7 @@ func _start_positions() -> void:
 			if site:
 				u.cmd_gather(site)
 		players[t]["gold"] = int(f.get("start_gold", Defs.START_GOLD))
-		if factions[t] == "clockwork":
+		if factions[t] == "clockwork" and Defs.line_mode:
 			line_net.lay_start(t)       # a finished main from the Clocktower to its first buildings
 	_update_swamp()
 
@@ -2162,7 +2167,8 @@ func draw_lode(b: Building, v: float) -> float:
 		fresh = minf(h.lode, v)
 		h.lode -= fresh
 		_lode_check(h)
-	return fresh + (v - fresh) * Defs.LODE_SPENT
+	var spent: float = float(Defs.GEAR["spent"]) if b.kind == Defs.GEAR_PRESS else Defs.LODE_SPENT
+	return fresh + (v - fresh) * spent
 
 
 ## What `v` worth would pay right now (no side effects).
@@ -2180,7 +2186,7 @@ func _lode_check(h: Building) -> void:
 		return
 	h.lode_warned = level
 	var what: String = Defs.LODE_NAME[h.kind]
-	var user := "its Mill grinds" if h.kind == "town_hall" else "its crushers pay"
+	var user := "its Mill grinds" if h.kind == "town_hall" else ("its presses yield" if Defs.gear_mode else "its crushers pay")
 	if mlog:
 		mlog.add("%s: the %s at a %s %s" % [mlog.who(h.team), what, h.d["name"], ("is spent (%s at a quarter)" % user) if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
@@ -2228,7 +2234,7 @@ func free_site(t: int, p: Vector2) -> Building:
 	var best: Building = null
 	var bd := INF
 	for b in buildings:
-		if b.team != t or b.dead or not b.built or int(b.d.get("crew", 0)) == 0:
+		if b.team != t or b.dead or not b.built or b.crew_max() == 0:
 			continue
 		if b.crew.size() >= b.crew_max():
 			continue
@@ -4282,6 +4288,10 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			# the computer keeps its ramps clear (for its own wall and its army)
 			if ai and not Defs.BUILDINGS[k].get("line", false) and _near_ramp(cc):
 				return "Keep the ramp clear."
+	if Defs.gear_mode and Defs.BUILDINGS[k]["faction"] == "clockwork" and not _gear_relax:
+		var gp := gear_net.placement_problem(t, k, c)      # (the gear ring must touch the connected field: scripts/gear.gd)
+		if gp != "":
+			return gp
 	if k == "clutch_mound":
 		var mp := mound_problem(t, c)
 		if mp != "":
@@ -4313,6 +4323,9 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			if not near:
 				return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
 	return ""
+
+
+var _gear_relax := false             # the starting layout may skip the gear rule when no linked spot is found
 
 
 func _near_ramp(c: Vector2i) -> bool:
@@ -4528,6 +4541,15 @@ func in_overcharge(t: int, p: Vector2) -> bool:
 
 
 func in_field(t: int, p: Vector2) -> bool:
+	if Defs.gear_mode and faction_of(t) == "clockwork":
+		# gear mode: constructs stay wound on CONNECTED GEAR GROUND (inside a connected building's ring), Defs.GEAR
+		if gear_net.in_field(t, p):
+			return true
+		for u in units:
+			if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+				if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * field_mult(t)):
+					return true
+		return false
 	var m := field_mult(t)
 	for b in buildings:
 		if b.team == t and b.built and not b.dead and b.d.has("field") and b.field_on():
@@ -4692,7 +4714,7 @@ func _draw_fields() -> void:
 	for e in selection:
 		if not is_instance_valid(e) or e.dead:
 			continue
-		if e is Building and e.d.has("field") and e.built:
+		if e is Building and e.d.has("field") and e.built and not Defs.gear_mode:
 			# a tower busy fighting flyers has its field switched off
 			draw_ring.call(e.center(), float(e.d["field"]) * T * field_mult(e.team), 0.9 if e.field_on() else 0.18)
 		elif e is Unit and e.kind == "tesla_cart" and e.tesla_mode == "deployed":
@@ -4707,11 +4729,13 @@ func _draw_fields() -> void:
 		field_layer.draw_set_transform(Vector2.ZERO)
 	if controls and controls.mode == "place":
 		var k: String = controls.place_kind
-		if faction_of(human) == "clockwork" or Defs.BUILDINGS[k].has("field"):
+		if Defs.gear_mode and Defs.BUILDINGS[k]["faction"] == "clockwork":
+			gear_net.draw_ghost(field_layer, human, k, controls.ghost_cell)       # (its ring and whether it links: scripts/gear.gd)
+		elif faction_of(human) == "clockwork" or Defs.BUILDINGS[k].has("field"):
 			for b in buildings:
 				if b.team == human and b.built and not b.dead and b.d.has("field") and not selection.has(b):
 					draw_ring.call(b.center(), float(b.d["field"]) * T * field_mult(human), 0.35)
-		if Defs.BUILDINGS[k].has("field"):
+		if Defs.BUILDINGS[k].has("field") and not Defs.gear_mode:
 			var size: Vector2i = Defs.BUILDINGS[k]["size"]
 			var c := Vector2(controls.ghost_cell) * T + Vector2(size) * T * 0.5
 			draw_ring.call(c, float(Defs.BUILDINGS[k]["field"]) * T * field_mult(human), 0.8)
@@ -5172,7 +5196,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 ## whose footprint or sprite is under p, or null.
 func crew_site_at(p: Vector2, t: int) -> Building:
 	for b in buildings:
-		if b.team != t or b.dead or not b.built or not b.visible or int(b.d.get("crew", 0)) <= 0:
+		if b.team != t or b.dead or not b.built or not b.visible or b.crew_max() <= 0:
 			continue
 		if b.rect().grow(4).has_point(p):
 			return b
@@ -6991,6 +7015,7 @@ func _tick_game(delta: float) -> void:
 	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 	_economy(delta)
 	line_net.tick(delta)
+	gear_net.tick(delta)
 	_horse_res_tick(delta)
 	for fl in _floats:
 		fl[3] -= delta
@@ -7313,6 +7338,34 @@ func abandon(b: Building) -> void:
 
 
 ## Pull down a finished building of your own (nothing comes back).
+## GEAR SWAP (Clockwork, gear mode): a building's connecting gear changes between SMALL and BIG. Costs Defs.GEAR.swap_cost
+## cogs, takes Defs.GEAR.swap_time seconds; the building idles meanwhile and its ring visibly changes size. Returns "" or
+## why it can't be done (the card's tooltip).
+func gear_swap_problem(b: Building) -> String:
+	if not Defs.gear_mode or b.d["faction"] != "clockwork" or b.kind == "clocktower":
+		return "Only a Clockwork building's connecting gear can be swapped (not the Clocktower's)."
+	if not b.built or b.dead:
+		return "Wait until it is built."
+	if b.gear_swap_t >= 0.0:
+		return "Its gear is already being swapped."
+	if int(players[b.team]["gold"]) < int(Defs.GEAR["swap_cost"]):
+		return "Not enough %s." % String(Defs.FACTIONS[faction_of(b.team)]["res"][0]).to_lower()
+	return ""
+
+
+func swap_gear(b: Building) -> String:
+	if net_forward(self, "swap_gear", [b]): return ""
+	var why := gear_swap_problem(b)
+	if why != "":
+		return why
+	players[b.team]["gold"] = int(players[b.team]["gold"]) - int(Defs.GEAR["swap_cost"])
+	stats[b.team]["spent"] += int(Defs.GEAR["swap_cost"])
+	b.gear_swap_to = not b.gear_big
+	b.gear_swap_t = float(Defs.GEAR["swap_time"])
+	Sfx.play_any(["ui/click", "click"], b.center())
+	return ""
+
+
 func demolish(b: Building) -> void:
 	if net_forward(self, "demolish", [b]): return
 	if b.dead:
@@ -7973,6 +8026,8 @@ func _draw_overlay_all() -> void:
 		var size: Vector2i = Defs.BUILDINGS[k]["size"]
 		var c: Vector2i = controls.ghost_cell
 		var ok := placement_problem(human, k, c) == ""
+		if Defs.gear_mode and Defs.BUILDINGS[k]["faction"] == "clockwork":
+			gear_net.draw_ghost_label(overlay, human, k, c)
 		for y in size.y:
 			for x in size.x:
 				var cc := c + Vector2i(x, y)

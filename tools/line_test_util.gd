@@ -2,6 +2,8 @@ extends RefCounted
 ## Shared helpers for tools/test_line_*.gd.
 
 static func make(root: Window, facs: Array = ["clockwork", "crown"], map := "") -> Game:
+	Defs.line_mode = true       # (the Line tests: the shelved Line economy on, the gear field off)
+	Defs.gear_mode = false
 	var g := Game.new()
 	g.map_id = map if map != "" else "ashford_crossing"
 	g.demo = true

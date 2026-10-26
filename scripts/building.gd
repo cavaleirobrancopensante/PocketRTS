@@ -16,6 +16,10 @@ var stock := 0.0                # Ore Drill: ore dug and waiting for a train
 var drill_on := false           # Ore Drill: digging this moment
 var drill_anim := false         # Ore Drill: showing the working loop
 var batteries := 0               # Clockwork: full batteries waiting to be carried off
+var gear_big := false            # Clockwork (gear mode): the connecting gear is BIG (else SMALL): Defs.GEAR, scripts/gear.gd
+var gear_swap_t := -1.0          # seconds left of a gear swap (-1: none); the building idles meanwhile
+var gear_swap_to := false        # the size it swaps to
+var press_paid := 0.0            # Cog Press: cogs it has paid in all (statistics)
 var _bat_t := 0.0
 var auto_train := ""             # keep training this unit (right-click / long press on its button)
 var _auto_t := 0.0
@@ -435,6 +439,8 @@ func in_use() -> bool:
 			return d.has("battery") and batteries < int(d["battery"][1])
 		"ore_drill":
 			return OreDrill.working(self)
+		"cog_press":
+			return working_crew() > 0 and press_rate() > 0.0
 	return true
 
 
@@ -689,6 +695,10 @@ func haulers_free() -> int:
 ## How many workers it takes. A Brood Feeding Pit takes more the farther it is from the capital
 ## (Defs.PIT_CREW_STEP); everything else its `crew`.
 func crew_max() -> int:
+	if kind == Defs.GEAR_PRESS:
+		return int(Defs.GEAR["press"]["big" if gear_big else "small"]["crew"])      # (its connecting gear sets the crew)
+	if Defs.gear_mode and d["faction"] == "clockwork" and (kind == "clocktower" or kind == "boiler"):
+		return 0        # (gear mode: Winders no longer haul batteries; the Clocktower and Boilers have no crew)
 	var base := Defs.crew_cap(d)
 	if kind == "feeding_pit" and game != null and game.capital(team) != null:
 		var far := game.capital_dist(team, center())
@@ -699,6 +709,20 @@ func crew_max() -> int:
 ## Farm: share of full growing speed (1.0 with a full crew of 8; every hand counts the same).
 func farm_speed() -> float:
 	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])
+
+
+## Cog Press: cogs a second right now. A trickle by itself (`base` of the full rate, like a farm with nobody on it),
+## every Winder winding it adds an equal share up to its crew cap; 0 while it is unlinked, unfinished or swapping gears.
+func press_rate() -> float:
+	if kind != Defs.GEAR_PRESS or not built or dead:
+		return 0.0
+	if game.gear_net.speed_mult(self) <= 0.0:
+		return 0.0
+	var gp: Dictionary = Defs.GEAR["press"]
+	var info: Dictionary = gp["big" if gear_big else "small"]
+	var cap := int(info["crew"])
+	var base := float(gp["base"])
+	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
 
 
 ## Town Hall / Hive / Clocktower: the full reserve of its land (Crown soil, Brood ground,
@@ -737,7 +761,7 @@ func barren() -> bool:
 			return soil_left() <= 0.0
 		"powder_mill", "ore_crusher", "ore_drill":
 			return lode_left() <= 0.0
-	return false
+	return false      # (a Cog Press is never barren: spent brass pays it a quarter, Defs.GEAR.spent)
 
 
 ## Economy buildings (and the Clocktower): production efficiency right now, as
@@ -755,7 +779,12 @@ func efficiency() -> Array:
 		"farm", "powder_mill":
 			have = working_crew()
 			want = int(d["crew"])
+		"cog_press":
+			have = working_crew()
+			want = crew_max()
 		"feeding_pit", "boiler", "clocktower":
+			if Defs.gear_mode:
+				return []        # (the Clocktower and Boilers have no crew in gear mode)
 			have = crew.size()
 			want = crew_max()
 		"ore_crusher":
@@ -780,8 +809,8 @@ func efficiency() -> Array:
 			trickle = Defs.COAL_SPENT
 		_:
 			left = lode_left()
-			res = "saltpetre" if kind == "powder_mill" else "ore"
-			trickle = Defs.LODE_SPENT
+			res = "saltpetre" if kind == "powder_mill" else ("brass" if kind == "cog_press" else "ore")
+			trickle = float(Defs.GEAR["spent"]) if kind == "cog_press" else Defs.LODE_SPENT
 	var staff := clampf(float(have) / float(want), 0.0, 1.0) if want > 0 else 0.0
 	return [staff * (trickle + (1.0 - trickle) * left), have, want, left, res]
 
@@ -810,6 +839,18 @@ func _econ(delta: float) -> void:
 					Sfx.play("done", center())
 		"ore_drill":
 			OreDrill.tick(self, delta)
+		"cog_press":
+			# presses cogs from its Clocktower's brass at press_rate() a second (a quarter once the brass is spent)
+			while crew.size() > crew_max():
+				var extra: Unit = crew.pop_back()
+				if is_instance_valid(extra) and not extra.dead:
+					extra.cmd_stop()          # (a swap to the small gear lets the extra Winders go: WORK finds them another post)
+			var rate := press_rate()
+			if rate > 0.0:
+				var pay := game.draw_lode(self, rate * delta)
+				press_paid += pay
+				game.add_gold_f(team, pay)
+			OreDrill._animate(self, working_crew() > 0 and rate > 0.0)
 		"powder_mill":
 			# grinds its Town Hall's saltpetre; once that's spent, nothing
 			var n := working_crew()
@@ -888,7 +929,7 @@ func _tick_building(delta: float) -> void:
 				# a Boiler burns its Clocktower's coal; on spent coal it stops
 				var every := float(bat[0])
 				var coal: Building = game.soil_hall(self) if kind == "boiler" else null
-				if kind == "boiler" and (coal == null or coal.soil < 1.0):
+				if kind == "boiler" and (coal == null or coal.soil < 1.0 or game.gear_net.speed_mult(self) <= 0.0):
 					_bat_t = 0.0        # barren coal: no more batteries
 					every = INF
 				if _bat_t >= every:
