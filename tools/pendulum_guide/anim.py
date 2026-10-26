@@ -15,6 +15,7 @@ FULL=[(218,14,422,303),(221,313,416,580),(264,589,363,865),(222,883,416,1156),(2
 PART=[(645,87,738,289),(653,356,736,566),(658,638,714,847),(653,919,719,1133),(645,1230,738,1449)]
 BEHIND=[False,False,False,True,True]
 MATCH='tools/pendulum_guide/pendulum_match.json'
+FARLEG={'hip':141,'dx':11,'dy':-6,'shade':0.68}      # E row: where the leg starts, and the far leg's offset and shade
 def crop(box,pad=2):
     x0,y0,x1,y1=box; c=A[y0-pad:y1+pad,x0-pad:x1+pad]; m=np.abs(c-NAVY).sum(2)>45; return c,m
 def scaled(P,PM,s):
@@ -84,8 +85,14 @@ for r in range(5):
     lab,n=ndi.label(bodym)                       # stray bits of the old pendulum's outline: drop small loose pieces
     if n>1:
         sz=ndi.sum(bodym,lab,range(1,n+1)); bodym&=np.isin(lab,[i+1 for i,v in enumerate(sz) if v>=300])
+    far=None
+    if r==2:      # side view: the far leg hides exactly behind the near one; show it a little (owner): a darker copy
+        hip=int(FARLEG['hip'])
+        legm=bodym.copy(); legm[:hip]=False
+        dark=(Fb*FARLEG['shade']).astype(int)
+        far=Image.new('RGBA',(W,H),(0,0,0,0)); far.paste(rgba(dark,legm),(FARLEG['dx'],FARLEG['dy']))
     ROWS.append(dict(body=rgba(Fb,bodym),piece=rgba(piece,piece_m),hub=rgba(F,hubdisc&FM),
-                     pivot=hub,size=(W,H)))
+                     pivot=hub,size=(W,H),far=far))
 CW,CH=204,307
 def frame(r,ang,cw=204):
     R=ROWS[r]; W,H=R['size']; pad=140
@@ -93,6 +100,7 @@ def frame(r,ang,cw=204):
         c=Image.new('RGBA',(W+2*pad,H+2*pad),(0,0,0,0)); c.paste(img,(pad,pad)); return c
     piece=place(R['piece']).rotate(ang,resample=Image.NEAREST,center=(R['pivot'][0]+pad,R['pivot'][1]+pad))
     cv=Image.new('RGBA',(W+2*pad,H+2*pad),(0,0,0,0))
+    if R.get('far') is not None: cv.alpha_composite(place(R['far']))
     if BEHIND[r]:
         cv.alpha_composite(piece); cv.alpha_composite(place(R['body']))
     else:
