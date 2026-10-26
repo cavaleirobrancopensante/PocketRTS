@@ -66,4 +66,4 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 
 ## Air: Cuckoo and Ticking Owl (owner, 2026-10-26)
 - CUCKOO (from the Cuckoo House): AIR-TO-AIR flyer.
-- It can be UPGRADED into the TICKING OWL: a nasty flying GROUND attacker (like a morph). Open: per unit (morph, costs and time) or a research; what the Owl's attack is.
+- It can be UPGRADED into the TICKING OWL: a nasty flying GROUND attacker (like a morph). Owl attack (owner): SWOOPS DOWN with its talons against units, DROPS its pendulum-weight BOMBS on buildings. Open: per-unit morph (cost, time) or one research.
