@@ -21,8 +21,8 @@ KINDS = ('cog_press', 'mainspring', 'movement_works', 'regulator', 'escapement',
 ONLY = [k for k in sys.argv[1:] if k in KINDS]
 # Painted reds the team shader would take for its key reds (within 0.08 of 255,0,0 or 150,0,0: scripts/../shaders/team.gdshader)
 # and recolour as specks of the side's colour: nudged just off the key (a little green). Only for these kinds (the older
-# buildings keep their sprites as they are).
-OFF_KEY = ('cuckoo_house',)
+# buildings keep their sprites as they are; the Escapement's shaded red panels showed blue specks in the owner's game).
+OFF_KEY = ('cuckoo_house', 'escapement')
 
 
 def off_key(im):
