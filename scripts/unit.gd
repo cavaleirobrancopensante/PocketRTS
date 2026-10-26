@@ -264,8 +264,10 @@ var pistol_t := 0.0             # (an Officer) how far through reloading it, in 
 var led: Array = []              # (a man) the horses he leads by the reins, in their string
 var leader: Unit = null          # (a horse) who leads it
 var claimed: Unit = null         # (a horse) the man walking over to mount or lead it
-var into: Entity = null          # (a horse) the building it walks into (training) or the gun it goes to
+var into: Entity = null          # (a horse) the building it is taken to (training) or the gun it goes to
 var _into_t := 0.0
+var hitch_p := Vector2.INF       # (a horse) its spot beside that building, where it stands hitched for its recruit or gun (INF: not hitched)
+var _hitch_t := 0.0
 var graze_at := Vector2.INF      # (a horse) where it was left: it grazes round here
 var _graze_goal := Vector2.INF
 var _graze_t := 0.0
@@ -3359,7 +3361,83 @@ func compute_path() -> void:
 		if out != Vector2.INF:
 			squeeze_t = 3.0
 			path = PackedVector2Array([out]) + game.find_path(out, path_goal, not is_worker())
+	if _towed():
+		path = _tow_gate_approach(path)
 	_open_gates(shut)
+
+
+## A limbered gun's horses lead the way: through a gate the team must go straight, so the path
+## gets a waypoint a little before and after each gate it crosses, on the gate's axis (the
+## middle of the opening when several gates stand side by side).
+func _tow_gate_approach(pts: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var cur := position
+	var done := {}
+	var skip := []                  # the middles of the gates already lined up: waypoints inside the run-out are dropped
+	for wi in pts.size():
+		var wp := pts[wi]
+		var seg := wp - cur
+		var n := int(seg.length() / 8.0) + 1
+		for s in n + 1:
+			var q: Vector2 = cur.lerp(wp, float(s) / float(n))
+			var c: Vector2i = game.cell_of(q)
+			if not game.in_map(c) or int(game.solid[game.idx(c)]) != 3 or done.has(c):
+				continue
+			# the opening: the gate cells in this one's row (or column), whichever way the wall runs
+			# (wall, building or cliff on its east / west side: an east-west wall; on both sides, or
+			# neither, the way the path crosses it decides)
+			var ew := _blocks(c + Vector2i(1, 0)) or _blocks(c + Vector2i(-1, 0))
+			var ns := _blocks(c + Vector2i(0, 1)) or _blocks(c + Vector2i(0, -1))
+			var horiz: bool = ew if ew != ns else absf(seg.y) >= absf(seg.x)
+			var step := Vector2i(1, 0) if horiz else Vector2i(0, 1)
+			var mid := game.cell_center(c)
+			var cnt := 1
+			for sgn in [1, -1]:
+				var k: Vector2i = c + step * sgn
+				while game.in_map(k) and int(game.solid[game.idx(k)]) == 3:
+					done[k] = true
+					mid += game.cell_center(k)
+					cnt += 1
+					k += step * sgn
+			done[c] = true
+			mid /= float(cnt)
+			var axis := Vector2(0, 1) if horiz else Vector2(1, 0)
+			var dirn := signf(seg.dot(axis))
+			if dirn == 0.0:
+				continue
+			var before_pt := mid - axis * dirn * 80.0
+			var after_pt := mid + axis * dirn * 80.0
+			# where the leg starts (the gun itself on the first): short of the opening it runs in
+			# from before_pt, unless it is lined up already or in the gateway (never back out of it)
+			var rel := cur - mid
+			var along := rel.dot(axis) * dirn
+			var lateral := absf(rel.dot(Vector2(-axis.y, axis.x)))
+			if along < -8.0:
+				if along < -24.0 and (along < -78.0 or lateral > 6.0) and game._clear_at(before_pt, 10.0, team):
+					while not out.is_empty() and out[out.size() - 1].distance_to(mid) < 78.0:
+						out.remove_at(out.size() - 1)
+					out.append(before_pt)
+				out.append(mid)
+			if game._clear_at(after_pt, 10.0, team):
+				out.append(after_pt)
+				skip.append(mid)
+		var drop := false
+		if wi < pts.size() - 1:
+			for m: Vector2 in skip:
+				if wp.distance_to(m) < 78.0:
+					drop = true
+		if not drop:
+			out.append(wp)
+		cur = wp
+	return out
+
+
+## Nothing walks on this cell (terrain, a building, a wall, a gate; off the map too).
+func _blocks(c: Vector2i) -> bool:
+	if not game.in_map(c):
+		return true
+	var v := int(game.solid[game.idx(c)])
+	return v != 0 and v != 5
 
 
 ## The pathfinder counts every gate as open (it opens for its own side): while it works out
@@ -3467,24 +3545,17 @@ func _move(want: Vector2, delta: float) -> void:
 		elif game.in_open_map(sc) and game._clear_at(position, radius, team):
 			squeeze_t = 0.0
 	else:
-		position = game.resolve_terrain(position, before, radius, team)
+		if _towed():
+			position = _tow_resolve(position, before)
+		else:
+			position = game.resolve_terrain(position, before, radius, team)
 		if not game.cw_gates.is_empty():
 			position = CwUnits.gate_push(self, before, position)     # a Plate Wagon blocks the track
-		# A limbered gun: the horses stand a length ahead of the barrel, so their spot must
-		# be clear too (they clipped through walls and palisades): slide along it instead
-		if (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and position != before:
-			var lead := facing * (radius + 14.0)
-			if not game._clear_at(position + lead, radius * 0.9, team):
-				var alt_a := Vector2(position.x, before.y)
-				var alt_b := Vector2(before.x, position.y)
-				if game._clear_at(alt_a + lead, radius * 0.9, team) and game._clear_at(alt_a, radius, team):
-					position = alt_a
-				elif game._clear_at(alt_b + lead, radius * 0.9, team) and game._clear_at(alt_b, radius, team):
-					position = alt_b
-				else:
-					position = before
 	if want.length() > 5.0 and phase == "":
-		facing = facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
+		var nf := facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
+		if _towed() and not is_air():
+			nf = _tow_turn(nf, want.normalized())
+		facing = nf
 	# Stuck detection while trying to move
 	if want.length() > 5.0:
 		if position.distance_to(last_pos) < speed * delta * 0.25:
@@ -3503,6 +3574,71 @@ func _move(want: Vector2, delta: float) -> void:
 			stuck_t = 0.9
 			_request_path(path_goal)
 	last_pos = position
+
+
+## A limbered gun or wagon: only the barrel / body is the unit; the horses are art standing
+## ahead of it along `facing`. So the whole silhouette (body + horse spots) is what must be
+## clear of cliffs, walls and buildings, and the body is narrow enough for a one-tile gate.
+func _towed() -> bool:
+	return (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and harnessed
+
+
+## Terrain width of a limbered body (the sprite is wider than a tile: its wheels may overhang).
+func _tow_body() -> float:
+	return minf(radius, 15.0)
+
+
+func _tow_clear(p: Vector2, f: Vector2) -> bool:
+	if not game._clear_at(p, _tow_body(), team):
+		return false
+	# the horses: every spot from the barrel to the lead horse, closer together than a wall or
+	# cliff ring is thick (one tile), so a thin obstacle can't be stepped over
+	var reach := radius + 22.0 + (40.0 if not team_horses.is_empty() else 0.0)
+	var d := radius
+	while d < reach + 5.0:
+		if not game._clear_at(p + f * minf(d, reach), 13.0, team):
+			return false
+		d += 11.0
+	return true
+
+
+## The new position of a limbered vehicle that tried to go from `before` to `pos`: as is, else
+## sliding along x or y, else it stays. (Wedged already: the plain terrain rule pops it out.)
+func _tow_resolve(pos: Vector2, before: Vector2) -> Vector2:
+	pos = pos.clamp(Vector2(radius, radius), Vector2(Game.W, Game.H) * Game.T - Vector2(radius, radius))
+	if _tow_clear(pos, facing):
+		return pos
+	if not _tow_clear(before, facing):
+		return game.resolve_terrain(pos, before, _tow_body(), team)
+	var a := Vector2(pos.x, before.y)
+	if _tow_clear(a, facing):
+		return a
+	var b := Vector2(before.x, pos.y)
+	if _tow_clear(b, facing):
+		return b
+	return before
+
+
+## Turn toward `nf` only as far as the horses' spots stay on legal ground (else it holds its
+## heading and slides, or swings at once to the wanted heading when that is clear): the team never swings over a cliff or through a wall.
+func _tow_turn(nf: Vector2, want_dir: Vector2) -> Vector2:
+	var ahead := position + want_dir * 4.0       # (clear here too, or the next step is refused)
+	if not _tow_clear(position, facing):
+		return nf
+	if _tow_clear(position, nf) and _tow_clear(ahead, nf):
+		return nf
+	for k in [0.5, 0.25]:
+		var h: Vector2 = facing.lerp(nf, k).normalized()
+		if _tow_clear(position, h) and _tow_clear(ahead, h):
+			return h
+	# the arc between is shut (a wall end beside the team): it swings round at once to the
+	# nearest heading to the wanted one that is clear, so it is never stuck pointing at the wall
+	for deg in [0.0, 8.0, 16.0, 26.0, 38.0, 52.0, 70.0]:
+		for sgn in [1.0, -1.0]:
+			var h: Vector2 = want_dir.rotated(deg_to_rad(deg) * sgn)
+			if _tow_clear(position, h) and _tow_clear(ahead, h):
+				return h
+	return facing
 
 
 ## Computer players: melee units hacking at a wall weigh it up rather than run at the first
@@ -4693,9 +4829,9 @@ func _haul_stuck(ref: float, delta: float) -> int:
 	return 0
 
 
-## Let the leash go at the destination: a building takes the horse in (for its recruit or
-## gun: Game.horse_arrived), a gun or wagon harnesses it, a new rider waiting on foot finds it
-## beside him and mounts.
+## Let the leash go at the destination: at a building the horse stands hitched beside it for its
+## recruit or gun (Game.hitch_horse), a gun or wagon harnesses it, a new rider waiting on foot
+## finds it beside him and mounts.
 func _hitch(h: Unit, dest: Entity) -> void:
 	led.erase(h)
 	h.leader = null
@@ -6782,31 +6918,41 @@ func _snap_to_leader(goal: Vector2) -> void:
 		path_i = 0
 
 
-## Walking into a building (taken for a recruit or a gun) or to a gun (to be harnessed).
+## Taken to a building (for a recruit or a gun): it walks there and stands HITCHED on its own
+## spot beside it until the recruit comes out (riding it, or the gun drawn by it:
+## Game.spawn_trained) or is cancelled (it is free again where it stands). Or walking to a gun
+## (to be harnessed). It never vanishes on the way: whatever happens, it is hitched or free.
 func _horse_into(delta: float) -> Vector2:
 	var e := into
 	_into_t += delta
 	if e == null or not is_instance_valid(e) or e.dead or e.team != team:
-		into = null
-		graze_at = position
+		_unhitch()
 		return Vector2.ZERO
 	if e is Building:
+		var b := e as Building
+		if order != "idle" or not queue.is_empty():
+			order = "idle"           # (taken for a recruit or a gun it takes no orders: cancelling the recruit frees it)
+			path_goal = Vector2.INF
+			queue.clear()
+		if hitch_p != Vector2.INF:
+			if not game.entry_holds(b, self):
+				_unhitch()           # (its recruit was cancelled or came out without it: free again)
+				return Vector2.ZERO
+			return _stand_hitched(b, delta)
 		if horse_rid != 0 and game.rid_owner(team, horse_rid) != e:
-			into = null              # (its recruit was cancelled: it stays where it is, free; or he came out
-			graze_at = position      # on foot meanwhile: it stays kept for him, he mounts it)
-			if game.rid_owner(team, horse_rid) == null:
+			var keep := horse_rid    # (its recruit was cancelled: it stays where it is, free; or he came out
+			_unhitch()               # on foot meanwhile: it stays kept for him, he mounts it)
+			if game.rid_owner(team, keep) == null:
 				horse_rid = 0
 			return Vector2.ZERO
-		var far: float = e.edge_distance(position)
-		if far < 4.0 or (_into_t > 4.0 and far < 40.0) or _into_t > 90.0:
-			if horse_rid != 0:
-				game.horse_arrived(e, self)
-			game.consume_unit(self)
+		if horse_rid == 0 and not game.entry_holds(b, self):
+			_unhitch()               # (the recruit it was going to is gone)
 			return Vector2.ZERO
-		if far >= 40.0:
-			return _walk_to(game.approach_point(e, position), delta)    # (a reserved horse comes by itself from the breeder)
-		speed = 60.0
-		return (e.center() - position).normalized() * speed
+		var far: float = e.edge_distance(position)
+		if far < 40.0 or _into_t > 90.0:
+			game.hitch_horse(b, self)     # (there, or it could not get there: it is hitched all the same)
+			return _stand_hitched(b, delta)
+		return _walk_to(game.approach_point(e, position), delta)    # (a reserved horse comes by itself from the breeder)
 	var g := e as Unit
 	if not g.team_room():
 		into = null
@@ -6818,7 +6964,40 @@ func _horse_into(delta: float) -> Vector2:
 	return _walk_to(g.position, delta)
 
 
-## Taken for a recruit at this building: it walks in and is gone (Game.train).
+## Hitched (hitch_p): it goes to its spot beside the building (put there if it can't get there
+## in 20 s: a wall or a crowd in the way) and stands there facing the building.
+func _stand_hitched(b: Building, delta: float) -> Vector2:
+	_hitch_t += delta
+	var hd := position.distance_to(hitch_p)
+	if hd > 3.0:
+		if _hitch_t > 20.0 and game._clear_at(hitch_p, radius, team):
+			position = hitch_p          # (it could not get there: it stands there all the same)
+			path = PackedVector2Array()
+			return Vector2.ZERO
+		var v := _walk_to(hitch_p, delta)
+		return v.limit_length(hd * 4.0 + 8.0) if path.is_empty() else v      # (slows down onto its spot)
+	var to_b: Vector2 = b.center() - position
+	if to_b.length() > 1.0:
+		facing = to_b.normalized()
+	return Vector2.ZERO
+
+
+## Free again: not going to a building nor hitched at one; it stays (and grazes) where it is.
+func _unhitch() -> void:
+	into = null
+	hitch_p = Vector2.INF
+	_hitch_t = 0.0
+	graze_at = position
+	_graze_goal = Vector2.INF
+
+
+## A horse hitched for a recruit can't be hurt or taken (it was safe inside the building before).
+func untouchable() -> bool:
+	return (hitch_p != Vector2.INF and into != null) or super()
+
+
+## Taken for a recruit or a gun at this building: it walks over and stands hitched beside it
+## (Game.train, Game.hitch_horse); or sent to a gun to be harnessed.
 func walk_into(e: Entity) -> void:
 	if team < 0 and e.team >= 0:
 		game.steal_horse(self, e)        # a loose horse sent for by a gun (HARNESS): its side's now
@@ -6828,6 +7007,8 @@ func walk_into(e: Entity) -> void:
 	claimed = null
 	into = e
 	_into_t = 0.0
+	hitch_p = Vector2.INF
+	_hitch_t = 0.0
 	order = "idle"
 	path = PackedVector2Array()
 	if selected:

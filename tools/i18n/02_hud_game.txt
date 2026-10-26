@@ -806,9 +806,13 @@ es Un %s viene a por él.
 pt Guiado por um(a) %s.
 es Guiado por un %s.
 
-> Walking into the %s.
-pt Entrando em %s.
-es Entrando en %s.
+> Going to the %s, to be hitched there.
+pt Indo para %s, para ficar amarrado lá.
+es Yendo a %s, para quedar atado allí.
+
+> Hitched at the %s till its rider or gun comes out: it can't be hurt or taken.
+pt Amarrado em %s até sair seu cavaleiro ou canhão: não pode ser ferido nem roubado.
+es Atado en %s hasta que salga su jinete o su cañón: no puede ser herido ni robado.
 
 > Going to be harnessed to the %s.
 pt Indo ser atrelado a %s.
