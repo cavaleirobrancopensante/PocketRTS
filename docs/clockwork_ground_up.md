@@ -95,3 +95,10 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 
 ## Names (owner, 2026-10-26)
 - The air-to-air flyer is the SWIFT and its building the CLOCK AVIARY (English). "Cuckoo" read comic in English (crazy; the cuckold bird). Portuguese keeps the cuckoo ("Cuco", "Casa do Cuco"), the owner finds it fine there; Spanish does the same ("Cuco", "Casa del Cuco"). Internal ids and art files keep "cuckoo".
+
+## Under discussion (owner, 2026-10-26)
+- NO ZEPPELIN: the Swift and the Ticking Owl are the Clockwork's two air units (the Brood has two; the Crown's Balloon is strong enough alone).
+- Next units: the SPRING CATAPULT (throws its own melee units, Clock Soldiers and Pendulums, into the enemy: area damage where it lands, the thrown unit is hurt too; concept prompt sent) and a CASTER (no magic). Caster options sent: Great Winder (Rewind repairs an ally; Overwind: hit harder now, run down after), Tinker (caltrops, grease, spring trap), Surveyor (flare, mark).
+- After those two, the new Clockwork goes into the real game (it replaces the prototype roster).
+- REASSEMBLY (owner idea): machines can be taken apart and rebuilt as another unit in the field, after a research, while Winders nearby work on them; a hotkey on the unit. Pairs suggested: Clock Soldier <-> Jack, Swift <-> Ticking Owl, Netter <-> Catapult.
+- SWEEPER (owner idea): one unit that is both a big winder (a winding area for the army) and a sweeper that collects every body around it, Crown, Brood and Clockwork alike. It denies the Brood's harvest and the Missionary's resurrection. What the bodies give back is open; it must not be resurrection (that is the Crown's).
