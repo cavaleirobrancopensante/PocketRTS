@@ -28,6 +28,7 @@ func _ready() -> void:
 	sprite.scale = Vector2.ONE * float(Defs.OWL_BOMB["scale"])
 	add_child(sprite)
 	z_index = 6
+	visible = game == null or not game.fx_hidden(ground_from, to)     # (over ground the watching side has never looked at: unseen)
 	_place(0.0)
 
 
