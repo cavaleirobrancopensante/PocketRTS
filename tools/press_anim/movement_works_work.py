@@ -13,14 +13,15 @@ STEP=np.array([33.0,15.0])
 # erase all four bodies: dilated masks, filled by interpolating each row across the hole
 from scipy import ndimage as ndi
 clean=B.copy()
-EM=np.zeros(B.shape[:2],bool)
+EM=np.zeros(B.shape[:2],bool); BM=[]
+BODIES=[(84,283,121,362),(117,298,153,374),(150,314,184,390)]
 for (x0,y0,x1,y1) in [(84,283,121,362),(117,298,153,374),(150,314,184,390)]:
     m=np.zeros(B.shape[:2],bool); m[y0:y1,x0:x1]=B[y0:y1,x0:x1].sum(2)>150
     m=ndi.binary_dilation(m,iterations=2)
     # keep the rail: only below the rail line through the hang points
     yy,xx=np.mgrid[0:B.shape[0],0:B.shape[1]]
     m&=yy>(298+(xx-135)*15/33.0+3)
-    EM|=m
+    EM|=m; BM.append(m)
 for y in np.nonzero(EM.any(1))[0]:
     row=EM[y]; xs=np.nonzero(row)[0]
     good=np.nonzero(~row)[0]
@@ -37,17 +38,17 @@ def frame(i):
     t=i/8.0
     f=clean.copy()
     # press stamp: down on frames 2-4
-    d=[0,3,7,9,6,3,1,0][i]
-    # bodies sliding along the rail, one slot every 8 frames
-    for k in range(-2,6):
-        p=np.array(bc)+(k-1+t)*STEP
-        if not (70<p[0]<285): continue
-        x=int(round(p[0]-(bx1-bx0)/2)); y=int(round(p[1]))
-        w=min(body.shape[1],184-x)
-        if w<=0: continue
-        sub=f[y:y+body.shape[0],x:x+w]
-        h=sub.shape[0]
-        sub[bmask[:h,:w]]=body[:h,:w][bmask[:h,:w]]
+    d=[0,2,4,5,3,1,0,0][i]
+    # bodies swing in place on their hooks, each a little out of step (no sliding: nothing passes behind the press)
+    for j,(x0,y0,x1,y1) in enumerate(BODIES):
+        reg=B[y0:y1,x0:x1]; m=BM[j][y0:y1,x0:x1]
+        rgba=np.zeros(reg.shape[:2]+(4,),np.uint8); rgba[...,:3]=reg; rgba[...,3]=m*255
+        im=Image.fromarray(rgba,'RGBA')
+        ang=5.0*math.sin(2*math.pi*(i/8.0)+j*1.3)
+        hx=(x1-x0)/2.0; hy=0
+        im=im.rotate(ang,resample=Image.NEAREST,center=(hx,hy),expand=False)
+        ra=np.array(im); mm=ra[...,3]>128
+        sub=f[y0:y1,x0:x1]; sub[mm]=ra[...,:3][mm]
     # parts in front go back on top (posts, beam, press frame) except the moving press head
     keep=FG.copy(); x0,y0,x1,y1=PRESS; keep[y0:y1,x0:x1]=False
     f[keep]=B[keep]
@@ -64,7 +65,7 @@ def frame(i):
     img.paste(bi,(int(AX-bw/2),BY0),mi)
     return img
 fr=[frame(i) for i in range(8)]
-fr[0].save('mw_all.gif',save_all=True,append_images=fr[1:],duration=140,loop=0)
+fr[0].save('mw_all2.gif',save_all=True,append_images=fr[1:],duration=140,loop=0)
 big=[f.crop((20,60,384,480)).resize((728,840),Image.NEAREST) for f in fr[:4]]
 s=Image.new('RGB',(728*4,840)); [s.paste(b,(i*728,0)) for i,b in enumerate(big)]
-s.resize((1456,420)).save('mw_all_strip.png')
+s.resize((1456,420)).save('mw_all2_strip.png')
