@@ -121,5 +121,8 @@ python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band
                                          # mount strips included
 python3 tools/import_vet_skin.py         # veterancy skin masks for the Brood's fighting creatures
 python3 tools/import_cursors.py          # the mouse cursors (art/ui/cursors.png) and their hotspots
+python3 tools/press_anim/escapement_work.py          # the Escapement's tick-tock from its painted cell (art/redraws/escapement.png):
+                                                     # art/clockwork/gear/escapement_built.png and _work_0..23.png (wheel and anchor in code)
+python3 tools/gear_art/import_buildings.py escapement   # ... and its game sprites (assets/buildings/escapement_*, assets/icons/escapement.png)
 echo "Now run: godot --headless --import"
 python3 tools/make_calm_grass.py
