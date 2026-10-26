@@ -27,6 +27,74 @@ def mid(sa, sb, m, seed, swap, fa=None, fb=None):
 
 
 LIMIT = [3600]       # seconds of real time one match may take (--limit; a loaded box needs many minutes for one)
+MAX_PROCS = [0]      # --max-procs: at most this many of this worktree's matches at once, whichever runner started them
+_ROOM = threading.Lock()
+
+
+def _running_matches():
+    """This worktree's headless matches now running (any runner's, even one whose runner was stopped)."""
+    n = 0
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        try:
+            cmd = open("/proc/%s/cmdline" % pid, "rb").read().split(b"\0")
+        except OSError:
+            continue
+        if b"res://tools/study/bo_match.gd" in cmd and PROJECT.encode() in cmd and os.path.basename(cmd[0]) != b"python3":
+            n += 1
+    return n
+
+
+def _wait_for_room():
+    """A shared box runs out of memory with too many Godot processes (the kernel kills one, and its match is lost):
+    wait until fewer than --max-procs of our matches are running."""
+    if MAX_PROCS[0] <= 0:
+        return
+    while _running_matches() >= MAX_PROCS[0]:
+        time.sleep(10.0)
+
+
+def _alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _match_running(path):
+    """True while a Godot process is playing the match that writes `path` (its runner may be gone)."""
+    want = ("out:" + path).encode()
+    for pid in os.listdir("/proc"):
+        if pid.isdigit():
+            try:
+                if want in open("/proc/%s/cmdline" % pid, "rb").read().split(b"\0"):
+                    return True
+            except OSError:
+                pass
+    return False
+
+
+def _claim(lock):
+    """A match being played has a .lock file holding the runner's process id, so several runners can share one folder
+    (each skips what another is playing); a lock whose runner is gone is taken over, unless its match still runs."""
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        try:
+            pid = int(open(lock).read().strip() or 0)
+        except (OSError, ValueError):
+            pid = 0
+        if pid and pid != os.getpid() and _alive(pid):
+            return False
+        if _match_running(lock[:-len(".lock")]):
+            return False
+        open(lock, "w").write(str(os.getpid()))
+        return True
 
 
 def run(out, sa, sb, m, seed, swap=0, end=600, fa=None, fb=None, limit=None):
@@ -35,6 +103,9 @@ def run(out, sa, sb, m, seed, swap=0, end=600, fa=None, fb=None, limit=None):
     path = os.path.join(out, i + ".json")
     if os.path.exists(path):
         return path, "skip"
+    lock = path + ".lock"
+    if _match_running(path) or not _claim(lock):
+        return path, "busy (another runner)"
     cmd = [GODOT, "--headless", "--fixed-fps", "30", "--path", PROJECT, "--script", "res://tools/study/bo_match.gd", "--",
            "sa:" + sa, "sb:" + sb, "map:" + m, "seed:%d" % seed, "swap:%d" % swap, "end:%d" % end, "out:" + path]
     if fa:
@@ -42,10 +113,23 @@ def run(out, sa, sb, m, seed, swap=0, end=600, fa=None, fb=None, limit=None):
     if fb:
         cmd.append("b:" + fb)
     t0 = time.time()
+    proc = None
     try:
-        subprocess.run(cmd, capture_output=True, text=True, timeout=limit)
+        with _ROOM:         # (one thread at a time waits for room and starts its match, so two never squeeze into one slot)
+            _wait_for_room()
+            t0 = time.time()
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(3.0)
+        proc.wait(timeout=limit)
     except subprocess.TimeoutExpired:
-        pass
+        proc.kill()
+    finally:
+        try:
+            os.remove(lock)
+        except OSError:
+            pass
+    if not os.path.exists(path):
+        return path, "%.0fs, NO RESULT (exit %s: killed, out of memory?)" % (time.time() - t0, proc.returncode if proc else "?")
     return path, "%.0fs" % (time.time() - t0)
 
 
@@ -210,8 +294,10 @@ def main():
     ap.add_argument("--jobs", type=int, default=1, help="matches side by side (each is one Godot process)")
     ap.add_argument("--part", help="matrix: only these parts, comma-separated (%s)" % ", ".join(PARTS))
     ap.add_argument("--limit", type=int, default=LIMIT[0], help="real seconds one match may take before it is given up")
+    ap.add_argument("--max-procs", type=int, default=0, help="at most this many of this worktree's matches at once (all runners)")
     a = ap.parse_args()
     LIMIT[0] = a.limit
+    MAX_PROCS[0] = a.max_procs
     os.makedirs(a.out, exist_ok=True)
     if a.mode == "calib":
         calib(a)

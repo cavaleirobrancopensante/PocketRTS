@@ -1,6 +1,8 @@
 # Build orders: what each faction can open with
 
-A study of Holdfast v0.14.27, 26 October 2026. The owner's question: what build orders does each faction have? He wants variety: at least three distinct openings that work for each faction, and four would be very healthy.
+A study of Holdfast v0.14.31, 26 and 27 October 2026. The owner's question: what build orders does each faction have? He wants variety: at least three distinct openings that work for each faction, and four would be very healthy.
+
+(The timings were first measured on v0.14.27. Between 0.14.27 and 0.14.31 only one rule that matters here changed: the Clockwork's old Assembly Works left the build card. Every price, time and economy number is the same, which the tools checked by reading the rules again, and the Crown's standard opening was timed again on 0.14.31 with the same result.)
 
 This is a study only. It changes no gameplay or balance code; the tools it adds live in tools/study and do not change how the game plays.
 
@@ -25,7 +27,7 @@ Read the match results as indications, not proof. Both sides are played by the c
 
 Two parts of the game were being changed in other branches while this was written, and both are marked as provisional where they matter:
 - **The Brood's computer player** is being fixed (the wt-brood-ai branch: essence without corpses, supply on time, no attacks into a stronger army, a real rush). Every match against the Brood computer below was played with the old one, which is known to be weak.
-- **The Clockwork's economy** is being rebuilt (the wt-econ branch, its 0.14.28: Tension prices on buildings, an efficiency for every building, neighbour rules, and a Cog Press that needs twice the Winders for the same cogs). The Clockwork openings below are timed both ways: on the game as it is, and with the calculator's econ28 preset for the rebuilt economy.
+- **The Clockwork's economy** is being rebuilt (the wt-econ branch, 0.14.28 to 0.14.32 there: Tension prices on buildings, an efficiency for every building, neighbour rules, and a Cog Press that needs twice the Winders for the same cogs; then a Mainspring that stores at most 200 Tension, anything that costs Tension made only where a Mainspring's ring meshes, Jacks included, and gear rings that mesh only on one ground level). The Clockwork openings below are timed both ways: on the game as it is, and with the calculator's econ28 preset for the rebuilt economy (its numbers; the placement rules are not in the calculator, and they can cost a Clockwork opening a second Works or a second Mainspring).
 
 ## The three economies
 
@@ -88,8 +90,6 @@ Two things follow. First, a Raptor or a Horseman crosses any standard map in 20 
 | Pendulum | 200 + 75 Tension | 4 | 340, armour 2 | 62, an arc | 8.5 to every enemy in the arc in front of it | 46 |
 | Swift | 75 + 15 Tension | 2 | 90, flies | 28 | 8.5, only at flyers | 118 |
 | Ticking Owl | 175 + 65 Tension, as a Swift plus the morph | 4 | 220, armour 1, flies | 28 | 10 on units, 15 on buildings | 56 |
-| Wind-up Soldier | 25 (75 for three) | 1 | 55, armour 1 | 24 | 4.4, freezes 50 s off the field | 66 |
-| Thresher | 165 cogs | 3 | 280, armour 3 | 26 | up to about 13 as its saws spin up, and bites two more | 54 |
 
 (Damage a second is the blow divided by the time between blows: about the cooldown plus the aim plus a third of a second.)
 
@@ -167,7 +167,6 @@ Every Clockwork building sits in a ring of ground gears that must mesh with the 
 | Ratchet Turret | 125 | 30 | static defence, shoots ground and air (14 every 1.5 s, reach 200) | a Movement Works |
 | Escapement | 150 | 40 | unlocks the Jack, the Netter and the Pendulum; researches HIGH LEAP (150 + 100 Tension) | a Movement Works, and its ring must mesh with a Mainspring's |
 | Clock Aviary | 175 | 45 | Swift; researches TICKING OWL (150 + 150 Tension), then each Swift can morph (100 + 50 Tension, 20 s) | a working Escapement |
-| Assembly Works (left over from before gear mode) | 200 | 45 | Wind-up Soldiers (75 for three), Thresher (165) | |
 
 | Unit | price | time | supply | needs |
 |---|---|---|---|---|
@@ -178,12 +177,10 @@ Every Clockwork building sits in a ring of ground gears that must mesh with the 
 | Pendulum | 200 + 75 Tension | 35 s | 4 | a working Escapement, a Works on its big gear |
 | Swift | 75 + 15 Tension | 20 s | 2 | Clock Aviary |
 | Ticking Owl | a Swift + 100 + 50 Tension | 20 s morph | 4 | TICKING OWL researched |
-| Wind-up Soldiers, three an order | 75 | 13 s | 1 each | Assembly Works |
-| Thresher | 165 | 21 s | 3 | Assembly Works |
 
 Provisional, all of it: the Clockwork is being rebuilt from the ground up (docs/clockwork_ground_up.md). In the wt-econ branch the Cog Press takes 6 Winders for its 8 cogs a second, every Mainspring stores at most 200 Tension, the Clock Aviary costs 150 cogs and 50 Tension and must mesh with a Mainspring, a Movement Works makes Jacks only beside a Mainspring, and every building works at 100% only when it meshes with the Clocktower or a Mainspring (10% less for each ring farther out, down to 70%). Planned next: the Spring Catapult (it throws its own melee units into the enemy) and the Great Winder (the caster: it winds the army in the field, sweeps up bodies so the Brood cannot harvest them nor a Missionary raise them, and is the field workshop that rebuilds one unit into another after a research). The owner has decided the Clockwork gets no zeppelin: its air is the Swift and the Ticking Owl.
 
-One leftover matters for openings today: the old ASSEMBLY WORKS is still on the Clockwork's build card in gear mode (Defs.build_list keeps it, and nothing that needs power is offered, but it needs none), so a player can still make Wind-up Soldiers and Threshers. The computer never does. It is studied below as a leftover, not as part of the new faction.
+Until 0.14.31 the old ASSEMBLY WORKS was still on the Clockwork's build card, so a player could open with Wind-up Soldiers (three for 75 cogs) or Threshers. 0.14.31 retired it with the rest of the prototype roster, so that leftover opening is gone (see the end of the Clockwork's openings).
 
 ## The Crown's openings
 
@@ -349,7 +346,7 @@ BROOD_SUMMARY
 
 ## The Clockwork's openings (provisional: the faction is being rebuilt)
 
-Six openings of the new Clockwork and one leftover were written down and played. Everything here is provisional twice over: the faction's roster is still growing (the Spring Catapult and the Great Winder are next), and its economy is being rebuilt in the wt-econ branch. So each opening is given twice: measured in the game as it is today, and from the calculator with the rebuilt economy (`--preset econ28`).
+Six openings of the new Clockwork were written down and played. Everything here is provisional twice over: the faction's roster is still growing (the Spring Catapult and the Great Winder are next), and its economy is being rebuilt in the wt-econ branch. So each opening is given twice: measured in the game as it is today, and from the calculator with the rebuilt economy (`--preset econ28`).
 
 | Opening | first soldier | army at 3:00 | 4:00 | 5:00 | 6:00 | earned by 3:00 / 6:00 | attack leaves, and reaches the enemy's hall |
 |---|---|---|---|---|---|---|---|
@@ -365,9 +362,8 @@ With the rebuilt economy (calculator, Kestrel Rise):
 | Clockwork 4: Swifts into Ticking Owls | 140 | 222 | 585 | 1,335 | 1,656 / 4,063 | 5:27, 6:11 |
 | Clockwork 5: fast Jacks | 225 | 675 | 900 | 1,238 | 1,110 / 2,377 | 3:38, 4:13 |
 | Clockwork 6: Pendulum and Netter push | 140 | 378 | 1,045 | 1,632 | 1,689 / 3,721 | 5:59, 6:54 |
-| Leftover: Wind-up Soldiers | 600 | 900 | 1,275 | 1,575 | 1,312 / 2,752 | 1:47, 2:26 |
 
-The rebuild costs the slow, worker-heavy openings the most (the Jacks, the Pendulums, the second Clocktower: half a minute to a minute later and a quarter to a half less army at 3:00 and 4:00) and the cheap rushes the least (the Clock Soldier rush and the Wind-up Soldiers use few Winders, so a press that needs more of them barely touches them). Even rebuilt, the Clockwork earns the most of the three by 3:00. One reason is not in the price list at all: a Winder only carries the crate to the site (about 9 seconds) and goes back to his press while the building unfolds itself, whereas a Labourer stays on the site for the whole build (a Barracks takes one off the farm for about a minute) and a grub is used up. The Clockwork's builders cost it almost nothing (design_principles.md section 3: builders must have an opportunity cost).
+The rebuild costs the slow, worker-heavy openings the most (the Jacks, the Pendulums, the second Clocktower: half a minute to a minute later and a quarter to a half less army at 3:00 and 4:00) and the cheap rush the least (the Clock Soldier rush uses few Winders, so a press that needs more of them barely touches it). Even rebuilt, the Clockwork earns the most of the three by 3:00. One reason is not in the price list at all: a Winder only carries the crate to the site (about 9 seconds) and goes back to his press while the building unfolds itself, whereas a Labourer stays on the site for the whole build (a Barracks takes one off the farm for about a minute) and a grub is used up. The Clockwork's builders cost it almost nothing (design_principles.md section 3: builders must have an opportunity cost).
 
 ### Clockwork 1: the Clock Soldier rush (two Works)
 
@@ -429,21 +425,14 @@ CW6_RESULTS
 
 **How to spot it.** The standard's Escapement, then a Movement Works with a big gear ring; tall Pendulums in the army from about 3:30.
 
-### Leftover: the Assembly Works and Wind-up Soldiers
+### Retired: the Assembly Works and Wind-up Soldiers
 
-**The build.** Six Winders, the Assembly Works and a Regulator at once, Wind-up Soldiers (three for 75 cogs) without a stop; twelve go at about 1:47.
-
-**What it is.** Not part of the new Clockwork. The old Assembly Works is still on the build card in gear mode, and nothing it makes needs power, so a player can still open with it; the computer never does. Wind-up Soldiers run on a spring, not on wind: 50 seconds off the gear field and they freeze. Twelve of them reach a small map's enemy hall with a fifth of their spring left (about 11 seconds of fighting) and a big map's with none. The Assembly Works also makes the Thresher (165 cogs, 280 health, armour 3, saws that spin up), which this study did not script.
-
-CW7_RESULTS
-
-**How to spot it.** A big Assembly Works instead of a Movement Works.
+Until 0.14.31 a Clockwork player could still put down the old Assembly Works and open with Wind-up Soldiers (three for 75 cogs): twelve of them left at 1:47 on 0.14.27 against a sleeping opponent. They run on a spring, not on wind, and freeze 50 seconds off the gear field, so twelve reached a small map's enemy hall with a fifth of their spring left and a big map's with none. 0.14.31 retired the Assembly Works, so this opening no longer exists and was dropped from the study.
 
 ### Clockwork openings not played here
 
 - **A forward Clocktower.** A new Clocktower starts a gear field of its own and needs only to stand 18 tiles from the other Clocktowers, so it can go up near the enemy (400 cogs). A Movement Works and a Regulator meshed with it would make and wind an army at the enemy's door. It is the Clockwork's only answer to the wind on the big maps today, and the computer never does it.
 - **Big-gear presses.** A press swapped to its big gear takes six Winders and pays 10.5 cogs a second: an economy choice for a second hall, not an opening of its own.
-- **Threshers** from the left-over Assembly Works (see above).
 
 CLOCKWORK_SUMMARY
 
@@ -463,10 +452,10 @@ The fitted constants are at the top of tools/study/bo_calc.py (CAL): a Labourer 
 
 ## How to run the tools
 
-All from the worktree root, one Godot process at a time (export PATH=$PATH:/home/claude/godot first):
+All from the worktree root (export PATH=$PATH:/home/claude/godot first). The folders below are examples; any folder will do.
 
 - The rule numbers (only after a balance change): `godot --headless --fixed-fps 30 --script res://tools/study/bo_dump.gd -- defs out:/tmp/bo/defs.json`; the map distances (only after a map change): the same with `map:<id> seed:1 out:/tmp/bo/maps/<id>_1.json` for each map; then `python3 tools/study/bo_data.py --defs /tmp/bo/defs.json --maps /tmp/bo/maps`.
-- The calculator: `python3 tools/study/bo_calc.py crown_horse_rush` for one build, `--map kestrel_rise` for one map, `--all` for a summary of every build, `--travel` for the walking table, `--vs crown_horse_rush brood_economy` for a rough fight estimate when an attack lands, `--steps "workers:8,horse_breeder,cottage,barracks,horseman*3,attack" --faction crown` for a build of your own, `--set PATH=VALUE` to try a change, and `--preset econ28` for the provisional Clockwork economy.
+- The calculator: `python3 tools/study/bo_calc.py crown_horse_rush` for one build, `--map kestrel_rise` for one map, `--all` for a summary of every build, `--travel` for the walking table, `--vs crown_horse_rush brood_economy` for a rough fight estimate when an attack lands, `--steps "workers:8,horse_breeder,cottage,barracks,horseman*3,attack" --faction crown` for a build of your own, `--set PATH=VALUE` to try a change (for example `--set factions.brood.start_res2=40`), and `--preset econ28` for the provisional Clockwork economy.
 - One match: `godot --headless --fixed-fps 30 --script res://tools/study/bo_match.gd -- sa:crown_horse_rush sb:ai:balanced b:brood map:kestrel_rise seed:1 end:480 out:/tmp/bo/m.json`. A side is a build name, `ai:<plan>` (the ordinary computer) or `idle` (a sleeping opponent).
-- Many matches: `python3 tools/study/bo_run.py calib --out /tmp/bo/calib --end 420` and `python3 tools/study/bo_run.py matrix --out /tmp/bo/runs --end 480` (resumable: finished matches are skipped; touch STOP in the folder to stop after the current one), then `python3 tools/study/bo_report.py --runs /tmp/bo/runs` for the tables and `--calib` for the timing table.
+- Many matches: `python3 tools/study/bo_run.py calib --out /tmp/bo/calib --end 420` and `python3 tools/study/bo_run.py matrix --out /tmp/bo/runs --end 480`, with `--part key,vs_ai` for parts of the list (key, vs_ai, duels, big, vs_brood_ai, base), `--jobs 2` for two matches side by side and `--max-procs 2` to keep at most two of them running whoever started them (a shared machine runs out of memory with too many Godot processes, and the kernel then kills one: its match leaves no result and is played again on the next run). It is resumable: finished matches are skipped, and several runners can share a folder (a match being played has a .lock file); touch STOP in the folder to stop after the current matches. Then `python3 tools/study/bo_report.py --runs /tmp/bo/runs` for the tables, `--notes` for one line per match, `--calib` for the timing table and `--compare` for the calculator against the game.
 - The step grammar of a build order is described at the top of tools/study/bo_ai.gd.

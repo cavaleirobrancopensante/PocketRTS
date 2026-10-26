@@ -935,7 +935,17 @@ func _drop_tick() -> void:
 				b.cmd_unload(_bdrop["at"])
 
 
-## Everything the match tool reads back.
+## Everything the match tool reads back. (A drop or a hovering raid still under way when the match ends is reported as it
+## stands, so a raid that outlasts the match is not lost from the record.)
 func report() -> Dictionary:
+	var drops: Array = drop_log.duplicate(true)
+	if not _bdrop.is_empty():
+		var lg: Dictionary = (_bdrop["log"] as Dictionary).duplicate(true)
+		lg["result"] = "still over them at the end" if String(_bdrop["phase"]) == "hover" else "under way at the end (%s)" % String(_bdrop["phase"])
+		if lg.has("kv0"):
+			lg["killed_value"] = int(game.stats[team]["value_killed"]) - int(lg["kv0"])
+		var b = _bdrop.get("b")
+		lg["hp_left"] = snappedf(b.hp / maxf(1.0, b.max_hp), 0.01) if is_instance_valid(b) and not b.dead else 0.0
+		drops.append(lg)
 	return {"name": bo_name, "scripted_until": -1.0 if scripted else 0.0, "step": si, "steps": steps.size(), "log": step_log,
-		"waves": waves_log, "drops": drop_log}
+		"waves": waves_log, "drops": drops}
