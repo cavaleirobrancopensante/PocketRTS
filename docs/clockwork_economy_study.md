@@ -2,7 +2,7 @@
 
 The owner (2026-10-26): "make Tension work as a resource, and also the efficiency for buildings, and also the necessity of
 certain buildings to be neighbouring others: this is actually a good puzzle and differentiates builds; a study might be
-required." This is that study, the rule set it recommends, and what was built from it (0.14.23, gear mode). Read with
+required." This is that study, the rule set it recommends, and what was built from it (0.14.28, gear mode). Read with
 docs/design_principles.md (fairness, anti-snowball, meaningful base building), docs/clockwork_ground_up.md and
 docs/clockwork_gear_prototype.md.
 
@@ -126,14 +126,30 @@ swapping, needing a Mainspring). The player reads it:
   must mesh with a Regulator (supply is global; the beat would be a free bonus).
 - **The good-neighbour bonus** is the Mainspring as a driver: a building beside a spring works at 100% wherever the spring
   is.
+- **Tier 3 follows the same rule** (the Pendulum and the Netter came in from main while this was built): both cost Tension
+  (75 and 50), so a Works makes them only while a Mainspring meshes with it, like the Jack; the Pendulum also needs the
+  Works on its big gear. A big ring reaches farther, so the big-gear Works finds a Mainspring more easily: the same
+  puzzle, one size up.
+- **THE LEVEL RULE (owner, 2026-10-26, a bug report: "currently you can link a gear down from the high ground to low
+  ground, this should not be possible").** Gear rings mesh only on the same ground level. A building's level is its
+  footprint's height (a ramp is low ground, and no building stands on a ramp or a cliff, so a footprint is on one level);
+  two rings of buildings on different levels never link, however close: not across a cliff, and not along a ramp (its top
+  and its foot are two levels: a flat gear cannot follow a slope). Where two rings on one level meet, the ground is on that
+  level too: the contact point of a direct mesh, or the idler between a gap (of its two possible spots the one on the level
+  is taken), so no idler ever sits across a cliff, even between two plateaus. It belongs with the neighbour rules: a
+  plateau's field ends at its cliff, the low ground below is another place that needs its own Clocktower, and the plateau's
+  room becomes the scarce thing it should be (the econ test's own chain had hung its Mainspring on the low ground below
+  the cliff; in the computer's air test on Ashford Crossing the Aviary found no room by the test's hand-placed Mainspring
+  any more, until that Mainspring was placed as the computer places its own, keeping room round it).
 
-## 3. The recommendation (built in 0.14.23)
+## 3. The recommendation (built in 0.14.28)
 
 1. Tension: each Mainspring stores 200 (big 400), winding stops at the store; small spring 2.0/s at 3 Winders, big 2.6/s at
    6; the Clock Aviary costs 150 cogs + 50 Tension; buildings may carry a Tension price (HUD, refunds, computer).
 2. Efficiency: crew x drive x brass, one % per building, on the map, the card and the ghost. Drive: 100% meshing with a
    Clocktower or Mainspring, -10% per ring farther out, at least 70%.
-3. Neighbours: anything that costs Tension is made only where a Mainspring meshes (Escapement, Clock Aviary, a Works' Jacks).
+3. Neighbours: anything that costs Tension is made only where a Mainspring meshes (Escapement, Clock Aviary, a Works' Jacks,
+   Netters and Pendulums), and gear rings mesh only on the same ground level (no link and no idler across a cliff or a ramp).
 4. Balance: the Cog Press's crews doubled (small gear 6 Winders, big gear 12; full rates unchanged), so a Winder adds 1.13
    cogs/s on a small press (0.74 on a big one), about what a Labourer adds on a Farm (1.19 gold/s). A base's top income is
    unchanged (16 cogs/s from two small presses, 21 from two big ones); reaching it takes 12 Winders instead of 6.

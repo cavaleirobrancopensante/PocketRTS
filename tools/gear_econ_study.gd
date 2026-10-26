@@ -539,8 +539,8 @@ func _spot(k: String, big: bool, must: Array, avoid: Array, deg: float, room: Ar
 			var ok := true
 			for m in must:
 				var gap: float = gp.distance_to(GearNet.b_c(m)) - r - GearNet.b_r(m)
-				if gap < -over or gap > slack:
-					ok = false
+				if gap < -over or gap > slack or not GearNet.level_ok(g, k, c, big, m):
+					ok = false          # (out of reach, or on the other ground level: no mesh)
 					break
 				score += absf(gap)
 			if not ok:
@@ -548,7 +548,7 @@ func _spot(k: String, big: bool, must: Array, avoid: Array, deg: float, room: Ar
 			for a in avoid:
 				if a == null or not is_instance_valid(a) or a.dead:
 					continue
-				if gp.distance_to(GearNet.b_c(a)) - r - GearNet.b_r(a) <= slack:
+				if gp.distance_to(GearNet.b_c(a)) - r - GearNet.b_r(a) <= slack and GearNet.level_ok(g, k, c, big, a):
 					ok = false
 					break
 			if not ok:
@@ -621,6 +621,8 @@ func _room(k: String, c: Vector2i, big: bool, users: Array) -> int:
 							break
 				if bad or g.placement_problem(0, uk, c2, true) != "" or not g.margin_free(c2, us):
 					continue
+				if GearNet.foot_level(g, c2, us) != GearNet.foot_level(g, c, size) or not GearNet.joint_ok(g, g2, ur, gc, r, GearNet.foot_level(g, c, size)):
+					continue          # (gears mesh only on the same ground level)
 				placed.append([g2, ur, Rect2i(c2, us)])
 				n += 1
 				found = true

@@ -2,10 +2,12 @@ extends SceneTree
 ## Screenshots of THE CLOCKWORK'S ECONOMY RULES (scripts/gear_econ.gd) in the CLOCKWORK LAB: the efficiency labels over the
 ## buildings (crew, bar, %), a building linked two rings out (90%), the cards (a Cog Press's efficiency line, the Movement
 ## Works' Tension rule line, the Mainspring's store), the top bar's Tension held / stored, and the placement ghost before a
-## building is placed (a Cog Press ghost two rings out: "LINKS 90%"; a Mainspring ghost by a Works that has none: "FEEDS 1").
+## building is placed (a Cog Press ghost two rings out: "LINKS 90%"; a Mainspring ghost by a Works that has none: "FEEDS 1"),
+## and THE LEVEL RULE: a Regulator ghost on the low ground whose ring reaches the field on the high ground: "NO LINK: OTHER
+## LEVEL".
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_gear_econ.gd -- <outdir>
 ## Writes <outdir>/labels.png, labels_close.png, card_press.png, card_works.png, card_spring.png, card_works_far.png,
-## ghost_drive.png, ghost_spring.png, top_bar.png.
+## ghost_drive.png, ghost_spring.png, ghost_level.png, top_bar.png.
 var main: Node
 var g
 var out := ""
@@ -109,6 +111,35 @@ func _second_ring(kind: String, near: Vector2) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
+## A cell on free ground (no ramp) where a building of `kind` would reach the human's field only across a level change
+## (GearNet.candidate: "far" with "level"), nearest the Clocktower; (-1, -1) when none.
+func _other_level(kind: String, hall: Building) -> Vector2i:
+	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var best := Vector2i(-1, -1)
+	var bd := INF
+	for y in range(hall.cell.y - 24, hall.cell.y + 25):
+		for x in range(hall.cell.x - 24, hall.cell.x + 25):
+			var c := Vector2i(x, y)
+			if not g.in_map(c) or not g.margin_free(c, size):
+				continue
+			var ok := true
+			for yy in size.y:
+				for xx in size.x:
+					var cc := c + Vector2i(xx, yy)
+					if not g.in_map(cc) or not g.is_free(cc) or g.ramp[g.idx(cc)] == 1:
+						ok = false
+			if not ok:
+				continue
+			var st: Dictionary = g.gear_net.candidate(g.human, kind, c)
+			if st["state"] != "far" or not st.get("level", false):
+				continue
+			var d := Vector2(c - hall.cell).length()
+			if d < bd:
+				bd = d
+				best = c
+	return best
+
+
 ## The camera on a placement ghost of `kind` at cell c (the ghost stays where it is put: no mouse motion moves it).
 func _look_at_ghost(kind: String, c: Vector2i) -> void:
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
@@ -177,6 +208,16 @@ func _run() -> void:
 		g.controls.ghost_cell = sc
 		_look_at_ghost("mainspring", sc)
 		await _snap("ghost_spring", 0.6)
+		g.controls.cancel_mode()
+	# THE LEVEL RULE: a ghost on the other ground level whose ring reaches the field (it says NO LINK: OTHER LEVEL)
+	var lc := _other_level(Defs.CW_SUPPLY, hall)
+	print("a ghost on the other level: %s" % str(lc))
+	if lc.x >= 0:
+		g.controls.begin_place(Defs.CW_SUPPLY)
+		g.controls.ghost_cell = lc
+		_look_at_ghost(Defs.CW_SUPPLY, lc)
+		g.camera.zoom = Vector2(1.15, 1.15)
+		await _snap("ghost_level", 0.6)
 		g.controls.cancel_mode()
 	# the top bar: Tension held of what the Mainsprings store
 	g.players[g.human]["tension"] = 140.0
