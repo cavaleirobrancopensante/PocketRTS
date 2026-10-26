@@ -35,6 +35,7 @@ func _ready() -> void:
 		sprite.scale = Vector2(0.9, 0.9)
 	add_child(sprite)
 	z_index = 5
+	visible = game == null or not game.fx_hidden(from, to)     # (fired and landing where the watching side has never looked: unseen)
 
 
 func _arc() -> float:
