@@ -92,3 +92,6 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 - tools/soldier_guide/attack.py: ATTACK from the painted idle frames, the sword arm cut out and swung about the shoulder (wind-up, strike, recover), the hidden body filled from nearby pixels; art/redraws/clock_soldier_attack.png/.gif. Rough spots: SE (sword crosses the near leg), E (filled torso). tools/soldier_guide/death.py: DEATH, the whole painted figure tips over around its feet, bounces, darkens; art/redraws/clock_soldier_death.png/.gif (7 frames). Both are pose guides for a ChatGPT clean-up pass.
 - art/redraws/clock_soldier_attack_final.png: ChatGPT's clean-up of the code attack guide (kept the poses); its misplaced motion arcs (always on the left) erased in code.
 - art/redraws/clock_soldier_death_final.png: ChatGPT's clean-up of the code death guide (shield, sword, spring and gears come loose).
+
+## Jack (code, 2026-10-26)
+- tools/jack_guide/jump.py: JUMP from the painted idle frame (art/redraws/jack_idle.png): the coil spring band is squashed (crouch) and stretched (launch) row by row, the body rides on it, the unit lifts with a dark ground ellipse left under it. art/redraws/jack_jump.png/.gif (8 frames). Spring is ChatGPT art resampled; the shadow is code.
