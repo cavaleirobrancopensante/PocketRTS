@@ -105,6 +105,7 @@ python3 tools/import_barracks_props.py   # the Barracks yard's wooden horse prop
 python3 tools/import_armoury_anims.py    # the Armoury's nine research experiments (the inventor's 6-frame
                                          # strips, assets/buildings/armoury_anim_<research>.png) from
                                          # art/crown/armoury_anim/ (after import_buildings_v2: same roof patch)
+python3 tools/recolour_crown_buildings.py  # Crown buildings: red cloth in the player's colour, bricks / fire off the key reds (after every Crown building pass)
 python3 tools/import_queen.py           # the Brood Queen at the capital Burrow (art/brood/queen.png: still, backdrop keyed out)
 python3 tools/import_mound_chatgpt.py   # the Clutch Mound with the vent chimneys (art/redraws/clutch_mound_vent_chatgpt.png; built from the drawing, other states derived in code; after import_art, which writes the plain mound)
 # Gait passes (tools/gait_lib.py, docs/animation_gait_audit.md): legs rebuilt per frame, one foot after the other;

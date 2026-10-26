@@ -123,6 +123,8 @@ var _disk_cache := {}
 var minimap_img: Image
 var camera: Camera2D
 var overlay: Node2D
+var ghost_layer: Node2D        # the placement ghost's pictures, over the overlay, in the side's colours (team shader)
+var _ghosts: Array = []        # what it draws: [texture, position, region (size 0: all of it)]
 var build_grid := BuildGrid.new()      # the planning grid while placing (BuildGrid)
 var controls: Node
 var hud: Control
@@ -238,6 +240,11 @@ func _ready() -> void:
 	overlay.z_index = 50
 	overlay.draw.connect(_draw_overlay)
 	add_child(overlay)
+	ghost_layer = Node2D.new()
+	ghost_layer.material = ShaderMaterial.new()
+	(ghost_layer.material as ShaderMaterial).shader = Entity.TEAM_SHADER
+	ghost_layer.draw.connect(_draw_ghosts)
+	overlay.add_child(ghost_layer)
 	fog_sprite = Sprite2D.new()
 	fog_sprite.centered = false
 	fog_sprite.scale = Vector2(T, T)
@@ -8363,8 +8370,30 @@ func _overlay_moving() -> bool:
 
 func _draw_overlay() -> void:
 	var pt := Time.get_ticks_usec()
+	var had := not _ghosts.is_empty()
+	_ghosts.clear()
 	_draw_overlay_all()
+	if had or not _ghosts.is_empty():
+		ghost_layer.queue_redraw()
 	Prof.add("overlay draw", pt)
+
+
+## A building about to be placed where it may go: drawn faintly on the ghost layer, so its flags
+## and cloth wear the side's colour like the building will (a red-tinted ghost stays on the overlay).
+func _ghost(t: Texture2D, pos: Vector2, region := Rect2()) -> void:
+	_ghosts.append([t, pos, region])
+
+
+func _draw_ghosts() -> void:
+	if _ghosts.is_empty():
+		return
+	(ghost_layer.material as ShaderMaterial).set_shader_parameter("team", team_colour(human))
+	for g in _ghosts:
+		var rg: Rect2 = g[2]
+		if rg.size == Vector2.ZERO:
+			ghost_layer.draw_texture(g[0], g[1], Color(1, 1, 1, 0.6))
+		else:
+			ghost_layer.draw_texture_rect_region(g[0], Rect2(g[1], rg.size), rg, Color(1, 1, 1, 0.6))
 
 
 func _draw_overlay_all() -> void:
@@ -8418,7 +8447,11 @@ func _draw_overlay_all() -> void:
 			var lok: bool = oks[i]
 			var lt := line_ghost_tex(lk, lc, plan)
 			overlay.draw_rect(Rect2(Vector2(lc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if lok else Color(1, 0.3, 0.3, 0.4))
-			overlay.draw_texture(lt, Vector2(lc) * T + Vector2(T * 0.5, T) + Vector2(-lt.get_width() * 0.5, -lt.get_height() + 6), Color(1, 1, 1, 0.6) if lok else Color(1, 0.5, 0.5, 0.4))
+			var lp := Vector2(lc) * T + Vector2(T * 0.5, T) + Vector2(-lt.get_width() * 0.5, -lt.get_height() + 6)
+			if lok:
+				_ghost(lt, lp)
+			else:
+				overlay.draw_texture(lt, lp, Color(1, 0.5, 0.5, 0.4))
 	elif controls and controls.mode == "place":
 		var k: String = controls.place_kind
 		var size: Vector2i = Defs.BUILDINGS[k]["size"]
@@ -8438,13 +8471,20 @@ func _draw_overlay_all() -> void:
 		if k == "farm":
 			overlay.draw_texture(tex("res://assets/buildings/farm_field_young.png"), r.position, Color(1, 1, 1, 0.5) if ok else Color(1, 0.5, 0.5, 0.4))
 		var pos := Building.anchor(k, r) + Building.body_offset(k, t)
-		overlay.draw_texture(t, pos, Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))
+		if ok:
+			_ghost(t, pos)
+		else:
+			overlay.draw_texture(t, pos, Color(1, 0.5, 0.5, 0.5))
 		if k == "farm" and String(Building.FARM_ART["sails"]) != "":
 			# the windmill's sails, standing still
 			var st: Texture2D = tex(Building.FARM_ART["sails"])
 			var fw := st.get_width() / int(Building.FARM_ART["sail_frames"])
 			var hub: Vector2 = Building.anchor(k, r) + Vector2(Building.FARM_ART["hub"])
-			overlay.draw_texture_rect_region(st, Rect2(hub - Vector2(fw, st.get_height()) * 0.5, Vector2(fw, st.get_height())), Rect2(0, 0, fw, st.get_height()), Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))
+			var sr := Rect2(0, 0, fw, st.get_height())
+			if ok:
+				_ghost(st, hub - sr.size * 0.5, sr)
+			else:
+				overlay.draw_texture_rect_region(st, Rect2(hub - sr.size * 0.5, sr.size), sr, Color(1, 0.5, 0.5, 0.5))
 
 
 # ------------------------------------------------------------------ horses (Defs.HORSES)
