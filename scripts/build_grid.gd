@@ -29,14 +29,18 @@ var _lines_key := ""
 var fp := Rect2i()            # the ghost footprint
 
 
-## What a tile is, for the grid.
+## What a tile is, for the grid: as you know it (another side's planned sites never show, and
+## an enemy building you have never seen is open ground to you: Game.looks_free).
 static func cell_class(g, c: Vector2i) -> int:
 	if not g.in_map(c):
 		return TERRAIN
 	var i: int = g.idx(c)
-	if g.ghost_cells.has(i):
+	if g.side_ghost_at(g.human, c) != null:
 		return BUILDING
-	match int(g.solid[i]):
+	var v := int(g.solid[i])
+	if v >= 2 and g.looks_free(g.human, c):
+		return FREE
+	match v:
 		0:
 			return FREE
 		1:
