@@ -697,7 +697,9 @@ class Sim:
                     break
                 if a["kind"] == "raptor" and not a.get("wave"):
                     self.army.remove(a)
-                    self.pending_essence.append([self.t + 10.0, 3.0])     # (walks to the Pen, 3 essence)
+                    # (walks to the Pen; Game.sacrifice_value: a share of its price, at least 1: 3 for a Raptor)
+                    ess = max(1, round(float(U["raptor"]["cost"]) / float(U["raptor"].get("spawn", 1)) * float(E["SACRIFICE"])))
+                    self.pending_essence.append([self.t + 10.0, float(ess)])
                     done += 1
             self.unit_count[self.si] = done
             if done >= n:

@@ -84,14 +84,19 @@ BIG_MAP = [   # (build, foe faction) also played on the big map: the openings wh
 
 def matrix_specs(a):
     """In the order they are worth running (a stop part-way still leaves the most useful ones done): every build against
-    the ordinary computer of both other factions on the small map, the duels, the big map, then the computer's baseline."""
+    the ordinary Crown and Clockwork computers on the small map, the duels, the builds against the Brood computer (being
+    rewritten in another branch: the least telling), the big map, then the computers' own baseline."""
     specs = []
     small, big = MAPS2
     for name, b in BUILDS.items():
         for foe in FOE[b["faction"]]:
-            specs.append((name, "ai:balanced", small, 11, 0, None, foe))
+            if foe != "brood":
+                specs.append((name, "ai:balanced", small, 11, 0, None, foe))
     for x, y in DUELS:
         specs.append((x, y, small, 21, 1, None, None))
+    for name, b in BUILDS.items():
+        if "brood" in FOE[b["faction"]]:
+            specs.append((name, "ai:balanced", small, 11, 0, None, "brood"))
     for name, foe in BIG_MAP:
         specs.append((name, "ai:balanced", big, 12, 1, None, foe))
     for fa, fb in (("crown", "brood"), ("crown", "clockwork"), ("brood", "clockwork")):
