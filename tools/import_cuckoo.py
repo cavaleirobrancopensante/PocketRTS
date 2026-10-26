@@ -9,7 +9,10 @@ Defs.OWL "drop" points (where the pendulum weight hangs, per drawn direction) an
 
   fly     cuckoo_fly.png / ticking_owl_fly.png     5 x 4 (384 x 204.8 cells): wings up, level, down, level: the loop for
                                                     both idle and walk (the game flaps it at its own pace)
-  attack  cuckoo_attack.png                         5 x 6 (256 x 204): pull back, lunge (the hit on the 3rd frame)
+  attack  cuckoo_peck.png                           5 x 6, ChatGPT's PECK (not on an exact grid: the figures are found by
+                                                    their pieces): level, brake (wings up, head back), the STAB (beak
+                                                    driven forward and down, body pitched nose-down: the blow lands on
+                                                    this 3rd frame), held in, pull back, level
           owl_swoop.png                             5 x 6, drawn at 0.85 of the fly sheet: rise, wind up, dive, strike low
                                                     (the hit on the 4th frame), climb back
   bomb    owl_bomb.png                              5 x 6 at 0.85: the chain snaps on the 2nd frame; the falling weight
@@ -52,7 +55,7 @@ UP = 1.0 / 0.85          # the owl's swoop, bomb and death sheets were drawn at 
 KINDS = {
     'cuckoo': {'span': 62.0, 'sheets': {
         'fly': ('cuckoo_fly.png', 4, 1.0),
-        'attack': ('cuckoo_attack.png', 6, 1.0),
+        'attack': ('cuckoo_peck.png', 6, 1.0),
         'death': ('cuckoo_death_final.png', 6, 1.0)}},
     'ticking_owl': {'span': 84.0, 'sheets': {
         'fly': ('ticking_owl_fly.png', 4, 1.0),
@@ -67,10 +70,9 @@ DROPPED = [1, 2]         # bomb frames whose painted falling weight is taken off
 # flying one (align) shifts it 2-5 px from frame to frame; these frames keep the CENTRE of their body (the red case and
 # dial) where the first death frame's body centre is, so the bird spins in place while the game brings it down.
 SPIN = [1, 2, 3]
-# The Swift's peck, re-timed from its own frames (cuckoo_attack.png: level, wings up, wings down, then level held): pull
-# back with the wings up, dart in on the downstroke (the blow, the 3rd frame), the beak held in a moment on the downstroke,
-# the wings up again as it pulls away, level. (The code darts it at its prey and tips it nose-down on the blow: Defs.FLYER.)
-ORDER = {('cuckoo', 'attack'): [0, 1, 2, 2, 1, 0]}
+# A strip's frames re-ordered: (kind, anim) -> the sheet's frame per strip frame. None now: the Swift's peck was its flight
+# frames re-timed until ChatGPT painted the peck (cuckoo_peck.png, in its own order).
+ORDER = {}
 
 
 def red_mask(a):

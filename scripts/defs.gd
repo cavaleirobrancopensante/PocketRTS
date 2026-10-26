@@ -525,10 +525,13 @@ const OWL_BOMB := {"range": 4.0, "aim": 0.11, "strike": 0.56, "cooldown": 2.33, 
 ## game lifts it `lift` px over its shadow, as every flyer) and the motion the code draws over them:
 ##   flap    frames a second of the fly loop (idle and walk alike)
 ##   strike  s the attack strip keeps playing after the blow lands (so its last frames are seen)
-##   lunge   the Swift's peck: share of its REACH per frame of the attack strip (pull back with the wings up, dart in on the
-##           downstroke: the blow on the 3rd, the beak held in on the 4th, the wings up again as it pulls away)
-##   tilt    the Swift's pitch on the peck, radians per frame (nose up as it winds back, nose DOWN into the blow), turned
-##           about its body; `tilt_view` how much of it shows per drawn view (side on all of it, none head-on or from behind)
+##   lunge   the Swift's peck: share of its REACH per frame of the attack strip (ChatGPT's painted peck: level, the brake
+##           with the wings up, the STAB, held in, pulling back, level: it pulls back on the brake, darts in on the stab, the
+##           blow on that 3rd frame, the beak held in on the 4th, away as the wings beat)
+##   tilt    the Swift's pitch on the peck, radians per frame, turned about its body; `tilt_view` how much of it shows per
+##           drawn view (side on all of it, none head-on or from behind). The painted stab already pitches the bird nose
+##           down (about 15-25 degrees side on), so this is only a small snap on the blow (it was the whole pitch, about
+##           20 degrees, while the peck was the flight frames re-timed)
 ##   dive    the Owl's swoop: the same per frame (rise, wind up, dive, strike low on the 4th, climb back)
 ##           REACH: from its beak (the Swift) or talons (the Owl), `strike_y` px over its anchor, to the prey's body
 ##           (Entity.center), less `contact` px, at most `reach` px: the bird darts all the way in and back, whatever the gap
@@ -537,8 +540,8 @@ const OWL_BOMB := {"range": 4.0, "aim": 0.11, "strike": 0.56, "cooldown": 2.33, 
 ##   fall    share of the flying height left per frame of the death strip (frames 5-6 lie on the ground)
 ##   centre  px over its ground point where shots aim (its body in the air); `bar`: where its health bar sits
 const FLYER := {
-	"cuckoo": {"lift": 20.0, "flap": 10.0, "strike": 0.45, "lunge": [0.0, -0.12, 1.0, 0.8, 0.3, 0.0],
-		"tilt": [0.0, -0.1, 0.34, 0.24, 0.08, 0.0], "tilt_view": {"e": 1.0, "se": 0.75, "ne": 0.75},
+	"cuckoo": {"lift": 20.0, "flap": 10.0, "strike": 0.34, "lunge": [0.0, -0.12, 1.0, 0.8, 0.3, 0.0],
+		"tilt": [0.0, -0.03, 0.1, 0.07, 0.02, 0.0], "tilt_view": {"e": 1.0, "se": 0.75, "ne": 0.75},
 		"strike_y": 14.0, "contact": 16.0, "reach": 64.0,
 		"fall": [1.0, 0.9, 0.65, 0.3, 0.0, 0.0], "centre": 34.0, "bar": 52.0},
 	"ticking_owl": {"lift": 20.0, "flap": 7.0, "strike": 0.35, "dive": [0.0, -0.15, 0.55, 1.0, 0.4, 0.0],
@@ -849,13 +852,14 @@ const UNITS := {
 	# THE AIR (gear mode; Defs.CW_AIR): the SWIFT (id cuckoo), an air-to-air flyer from the Clock Aviary, and the TICKING OWL
 	# each Swift can be morphed into (Defs.OWL_MORPH). Guesses (design_principles 1): the Swift is the Skywing's match in
 	# the air for less (75 cogs + 15 Tension vs 100 + 40 essence) but it must close in to peck (28 px vs the Skywing's 130)
-	# and cannot touch the ground: 10 every 1.27 s (aim 0.22, the hit on the 3rd frame at 9 fps, + 0.45 + 0.6), 7.9 a second;
+	# and cannot touch the ground: 10 every 1.27 s (aim 0.33, the hit on the stab, the 3rd or 4th frame of its painted peck
+	# at 9 fps whatever the 66 ms animation tick, + 0.34 + 0.6), 7.9 a second;
 	# one beats a Skywing that lets it close (about 10 s vs 14), loses to a balloon full of Musketeers. Fast (118, a
 	# Skywing's). "light".
 	"cuckoo": {
 		"tags": ["light"],
 		"name": "Swift", "hp": 90, "armor": 0, "speed": 118, "cost": 75, "tension": 15, "time": 20.0, "supply": 2,
-		"sight": 9, "range": 28, "damage": 10, "cooldown": 0.6, "aim": 0.22, "radius": 13, "from": "cuckoo_house",
+		"sight": 9, "range": 28, "damage": 10, "cooldown": 0.6, "aim": 0.33, "radius": 13, "from": "cuckoo_house",
 		"air": true, "anti_air": true, "air_only": true, "faction": "clockwork",
 		"about": "A fast brass bird with a clock in its chest: it hunts other flyers and pecks them with a short lunge (it must close in, and it cannot touch the ground). MORPH TO OWL rebuilds it into a Ticking Owl once TICKING OWL is researched at a Clock Aviary. Costs Tension. Made at the Clock Aviary.",
 	},
