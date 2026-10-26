@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b3lewcca6pb03"
-path="res://.godot/imported/attack_ne.png-0b4a0d3301631ba1895fffe31415c1d5.ctex"
+uid="uid://bptmsxw1hm5k1"
+path="res://.godot/imported/great_winder_leg_chatgpt.png-039a9b4cd80340224fc5c8c68464ee7c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/jack/attack_ne.png"
-dest_files=["res://.godot/imported/attack_ne.png-0b4a0d3301631ba1895fffe31415c1d5.ctex"]
+source_file="res://art/redraws/great_winder_leg_chatgpt.png"
+dest_files=["res://.godot/imported/great_winder_leg_chatgpt.png-039a9b4cd80340224fc5c8c68464ee7c.ctex"]
 
 [params]
 

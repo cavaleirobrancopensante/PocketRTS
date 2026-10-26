@@ -185,6 +185,7 @@ var jumps := 0                  # Jack: leaps made (tests, the log)
 var shots := 0                  # Jack: screws fired (tests)
 var last_shot: Shot = null      # Jack: its last screw in flight (tests, screenshots)
 var last_tip := Vector2.ZERO    # Jack: where its last screw left from (the drill tip, raised at a flyer; tests)
+var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn)
 var _jack_t := 0.0              # Jack (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
@@ -3946,6 +3947,8 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 				target = null
 			return
 		_owl_bomb = kind == Defs.OWL and e is Building      # (the Owl: a bomb on a building, the talons on a unit)
+		if kind == Defs.JACK:
+			arm = shots % 2          # (its two launchers fire in turn: scripts/jack.gd)
 		phase = "aim"
 		phase_t = _aim()
 		return
@@ -5558,8 +5561,9 @@ func _anim_name() -> String:
 			if not jump.is_empty():
 				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
 			if phase != "":
-				# at a flyer it raises its arm (the attack_up strip: same timing, same shot frame)
-				return "attack_up" if Jack.aims_up(self) else "attack"
+				# at a flyer it raises its arm (the attack_up strip: same timing, same shot frame); at the ground its two
+				# launchers fire in turn (attack_r / attack_l)
+				return "attack_up" if Jack.aims_up(self) else Jack.attack_anim(self)
 		"cuckoo":
 			if phase != "":
 				return "attack"          # (the pecking lunge)
@@ -5719,7 +5723,7 @@ func _animate(delta: float) -> void:
 			# draw, aim, fire, lower: over the aim and the shot (Defs.PISTOL)
 			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
 			loop = false
-		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee", "attack_up", "bomb":
+		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee", "attack_up", "bomb", "attack_r", "attack_l":
 			fps = 6.0 if kind == "spore_mother" else 9.0
 			loop = false
 		"burrow":

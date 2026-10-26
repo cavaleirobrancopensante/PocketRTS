@@ -8,7 +8,7 @@ extends RefCounted
 ## Also the command-card icons (64 x 64) of the new units and abilities, drawn the same way.
 
 const DIRS := ["s", "se", "e", "ne", "n"]
-const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb"]
+const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb", "attack_r", "attack_l"]
 ## kind -> [cell width, cell height, anchor x, anchor y (the feet)]
 const SHEETS := {
 	"tin_militia": [36, 40, 18, 36],
@@ -21,7 +21,7 @@ const SHEETS := {
 	"tesla_loco": [88, 66, 44, 56],
 	"storm_engine": [92, 70, 46, 58],
 	# the new-style army (gear mode): real sheets only (tools/import_clock_soldier.py prints this line)
-	"clock_soldier": [92, 81, 46, 68],
+	"clock_soldier": [74, 60, 37, 50],
 	# tier 2: the Jack (tools/import_jack.py prints this line); its walk is a hop, plus a JUMP strip (8 frames) and the raised
 	# arm for shooting at flyers (attack_up)
 	"jack": [108, 80, 54, 69],
@@ -31,7 +31,7 @@ const SHEETS := {
 	"ticking_owl": [94, 81, 47, 69],
 	# tier 3 (tools/import_tier3.py prints these): the Pendulum (idle sway, walk, the swing as its attack, death) and the
 	# Netter (its walk's first frame as the idle, the trot, the recoil as its attack, death)
-	"pendulum": [84, 93, 42, 84],
+	"pendulum": [98, 97, 49, 84],
 	"netter": [84, 58, 42, 54],
 }
 
