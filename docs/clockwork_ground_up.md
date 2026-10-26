@@ -63,3 +63,7 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 
 ## Defence: the Ratchet Turret (owner, 2026-10-26)
 - Static defence: a squat 2x2 base on its gear ring with a separate head that turns to aim and fires big screws (the Jack's screw art). Hits BOTH air and ground (owner: the Clockwork needs it).
+
+## Air: Cuckoo and Ticking Owl (owner, 2026-10-26)
+- CUCKOO (from the Cuckoo House): AIR-TO-AIR flyer.
+- It can be UPGRADED into the TICKING OWL: a nasty flying GROUND attacker (like a morph). Open: per unit (morph, costs and time) or a research; what the Owl's attack is.
