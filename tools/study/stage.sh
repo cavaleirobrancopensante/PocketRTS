@@ -6,6 +6,7 @@ RUNS=${1:-/home/claude/study_runs}
 python3 tools/study/aggregate.py --runs "$RUNS" --out docs/study_data
 python3 tools/study/analysis.py --data docs/study_data --out docs/study_data/tables.json
 python3 tools/study/examples.py --data docs/study_data --out docs/study_data/tables.json
+python3 tools/study/deepdive.py --data docs/study_data --out docs/study_data/tables.json
 python3 - <<PY
 import json, glob, collections, time
 c = collections.Counter()

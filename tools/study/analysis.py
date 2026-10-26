@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Tables and figures for docs/ai_balance_study.md from the aggregated CSVs.
+"""Tables and figures from the aggregated CSVs (the machine-readable result of the study).
 
   python3 tools/study/analysis.py --data docs/study_data --out docs/study_data/tables.json
 
-Writes <out> (a JSON map name -> markdown table/text, substituted into the report template by build_report.py)
+Writes <out> (a JSON map name -> markdown table/text; see also examples.py and deepdive.py, which add keys)
 and PNG figures under <data>/figs/.
 """
 import argparse, json, math, os
@@ -52,7 +52,11 @@ def score_line(wins, draws, n):
 
 
 def load(data):
-    r = lambda n: pd.read_csv(os.path.join(data, n)) if os.path.exists(os.path.join(data, n)) else pd.DataFrame()
+    def r(n):
+        for cand in (n, n + ".gz"):
+            if os.path.exists(os.path.join(data, cand)):
+                return pd.read_csv(os.path.join(data, cand))
+        return pd.DataFrame()
     return r("games.csv"), r("sides.csv"), r("timeseries.csv"), r("waves.csv"), r("events.csv")
 
 

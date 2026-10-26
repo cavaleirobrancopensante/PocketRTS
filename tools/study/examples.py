@@ -23,7 +23,7 @@ def main():
     ap.add_argument("--data", default="docs/study_data")
     ap.add_argument("--out", default="docs/study_data/tables.json")
     a = ap.parse_args()
-    ld = lambda n: pd.read_csv(os.path.join(a.data, n))
+    ld = lambda n: pd.read_csv(os.path.join(a.data, n if os.path.exists(os.path.join(a.data, n)) else n + ".gz"))
     games, sides, ts, waves = ld("games.csv"), ld("sides.csv"), ld("timeseries.csv"), ld("waves.csv")
     T = json.load(open(a.out)) if os.path.exists(a.out) else {}
     ts = ts.sort_values(["id", "team", "t"])

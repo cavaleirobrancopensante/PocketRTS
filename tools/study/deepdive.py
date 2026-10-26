@@ -1,0 +1,386 @@
+#!/usr/bin/env python3
+"""Second-pass tables for the AI balance study: the questions the first pass raised (plans within a matchup, the Brood
+ground cap, stalled games, siege pull-backs, scouting accuracy, build-order and expansion effects ...).
+Everything here is computed from the committed CSVs, so every number quoted from the study can be re-derived:
+
+  python3 tools/study/deepdive.py --data docs/study_data --out docs/study_data/tables.json
+
+Adds `dd_*` keys (markdown tables / lines) to the tables.json written by analysis.py and examples.py.
+Measurement only: it never touches the game.
+"""
+import argparse, json, math, os, sys
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from analysis import wilson, pct, md, mmss, score_line      # noqa: E402
+
+HALL_COST = {"crown": 400, "brood": 350, "clockwork": 400}
+FACS = ["crown", "brood", "clockwork"]
+BROOD_CAP = 10400          # the capital's ground reserve is 10,500 biomass: "earned" this high means it is spent
+
+
+def ci(k, n):
+    lo, hi = wilson(k, n)
+    return "%d/%d = %s [%s-%s]" % (round(k), n, pct(k / n if n else float("nan")), pct(lo), pct(hi))
+
+
+def chi2_sf(x, k):
+    """Survival function of chi-square(k): regularised upper incomplete gamma (series / continued fraction)."""
+    a, xx = k / 2.0, x / 2.0
+    if xx <= 0:
+        return 1.0
+    if xx < a + 1:
+        s, term, n = 1.0 / a, 1.0 / a, 1
+        while abs(term) > 1e-12 * abs(s) and n < 500:
+            term *= xx / (a + n)
+            s += term
+            n += 1
+        return max(0.0, 1.0 - s * math.exp(-xx + a * math.log(xx) - math.lgamma(a)))
+    b, c, d = xx + 1 - a, 1e300, 1.0 / (xx + 1 - a)
+    h = d
+    for i in range(1, 500):
+        an = -i * (i - a)
+        b += 2
+        d = an * d + b
+        d = 1e-300 if abs(d) < 1e-300 else d
+        c = b + an / c
+        c = 1e-300 if abs(c) < 1e-300 else c
+        d = 1.0 / d
+        dl = d * c
+        h *= dl
+        if abs(dl - 1) < 1e-12:
+            break
+    return min(1.0, math.exp(-xx + a * math.log(xx) - math.lgamma(a)) * h)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", default="docs/study_data")
+    ap.add_argument("--out", default="docs/study_data/tables.json")
+    a = ap.parse_args()
+    ld = lambda n: pd.read_csv(os.path.join(a.data, n if os.path.exists(os.path.join(a.data, n)) else n + ".gz"))
+    games, sides, ts, waves, events = ld("games.csv"), ld("sides.csv"), ld("timeseries.csv"), ld("waves.csv"), ld("events.csv")
+    T = json.load(open(a.out)) if os.path.exists(a.out) else {}
+    ts = ts.drop_duplicates(["id", "team", "t"], keep="last").sort_values(["id", "team", "t"])
+    gi = games.set_index("id")
+    for c in ["hall2_t", "hall3_t", "soil_zero_t", "cap200_t", "gg_t"]:
+        sides[c] = pd.to_numeric(sides[c], errors="coerce")
+    sides["score"] = sides.won.map({1: 1.0, 0: 0.0, -1: 0.5})
+    opp = sides[["id", "team", "plan_start"]].copy()
+    opp["team"] = 1 - opp["team"]
+    sides = sides.merge(opp.rename(columns={"plan_start": "opp_plan"}), on=["id", "team"])
+    ts["power"] = ts.army_value + 50 * ts.workers + 30 * ts.buildings
+    ts30 = ts[ts.t % 30 == 0]
+
+    # ------------------------------------------------------------------ plans inside one matchup (no faction mix)
+    rows = []
+    for f, o in [("crown", "crown"), ("brood", "brood"), ("clockwork", "clockwork"), ("crown", "clockwork"), ("clockwork", "crown")]:
+        d = sides[(sides.faction == f) & (sides.opp == o)]
+        base = d[(d.plan_start == "balanced") & (d.opp_plan == "balanced")]
+        lab = "%s vs %s%s" % (f, o, " (mirror)" if f == o else "")
+        for plan in ["balanced", "rush", "xrush", "timing"]:
+            x = d[(d.plan_start == plan) & (d.opp_plan == ("balanced"))] if plan != "balanced" else base
+            if len(x) == 0:
+                continue
+            rows.append({"matchup": lab, "this side plays": plan, "against": "Balanced", "n": len(x), "score": score_line((x.won == 1).sum(), (x.won < 0).sum(), len(x))})
+        # the Balanced side facing a rush or a timing attack
+        for plan in ["rush", "xrush", "timing"]:
+            x = d[(d.plan_start == "balanced") & (d.opp_plan == plan)]
+            if len(x):
+                rows.append({"matchup": lab, "this side plays": "balanced", "against": plan, "n": len(x), "score": score_line((x.won == 1).sum(), (x.won < 0).sum(), len(x))})
+    T["dd_plans"] = md(pd.DataFrame(rows))
+    b = sides[(sides.faction == "brood") & (sides.opp != "brood")]
+    T["dd_brood_cross"] = "Brood in a cross matchup: %d wins in %d side-games (%d with a Rush, Extreme rush or Timing plan on either side)" % (
+        (b.won == 1).sum(), len(b), ((b.plan_start != "balanced") | (b.opp_plan != "balanced")).sum())
+
+    # ------------------------------------------------------------------ the Brood ground cap (one 10,500 reserve at the capital)
+    br = ts[ts.faction == "brood"]
+    capt = br[br.earned >= BROOD_CAP].groupby(["id", "team"]).t.min().rename("cap_t").reset_index()
+    idle80 = br[(br.workers >= 10) & (br.idle_workers / br.workers.clip(lower=1) >= 0.8)].groupby(["id", "team"]).t.min().rename("idle80_t").reset_index()
+    sb = sides[sides.faction == "brood"].merge(capt, on=["id", "team"], how="left").merge(idle80, on=["id", "team"], how="left")
+    sb["cause"] = sb.id.map(gi.cause)
+    rows = []
+    for o in ["brood", "crown", "clockwork"]:
+        x = sb[sb.opp == o]
+        c = x[x.cap_t.notna()]
+        rows.append({"Brood side-games vs": o, "n": len(x), "ground spent (earned >= 10,400)": "%d (%s)" % (len(c), pct(len(c) / len(x))),
+                     "median time it was spent": mmss(c.cap_t.median()) if len(c) else "-",
+                     "then 80%+ of grubs idle": "%d of %d" % (c.idle80_t.notna().sum(), len(c)),
+                     "of those, won": "%d" % (c.won == 1).sum(), "game went to 30:00": "%d" % (c.cause.str.startswith("timeout")).sum()})
+    T["dd_brood_cap"] = md(pd.DataFrame(rows))
+    # earned biomass at fixed times, all three factions (own currency)
+    rows = []
+    for tm in (300, 600, 900, 1200, 1500):
+        r = {"at": mmss(tm)}
+        for f in FACS:
+            v = ts[(ts.t == tm) & (ts.faction == f)].earned
+            r[f + " earned (median, n)"] = "%d (%d)" % (v.median(), len(v)) if len(v) else "-"
+        rows.append(r)
+    T["dd_earned"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ games that reached 30:00: why
+    ev = events[events.kind == "siege"] if "siege" in set(events.kind) else events.iloc[0:0]
+    pulls = ev[ev.text.str.contains("pulls back")].groupby("id").agg(n_pull=("t", "size"), last_pull=("t", "max"))
+    to = games[games.cause.str.startswith("timeout")]
+    rows = []
+    for gid in to.id:
+        x = ts30[ts30.id == gid]
+        r = {"id": gid, "pair": gi.loc[gid, "pair"], "cause": gi.loc[gid, "cause"]}
+        for tm in (0, 1):
+            y = x[x.team == tm].set_index("t")
+            if 1800 not in y.index or 1500 not in y.index:
+                break
+            r["inc%d" % tm] = y.loc[1800, "earned"] - y.loc[1500, "earned"]
+            r["army%d" % tm] = y.loc[1800, "army_value"]
+            r["att%d" % tm] = y.loc[1500:1800, "attacking"].max()
+        else:
+            rows.append(r)
+    st = pd.DataFrame(rows)
+    st["n_pull"] = st.id.map(pulls.n_pull).fillna(0)
+    st["dead"] = (st.inc0 < 150) & (st.inc1 < 150)
+    hi, lo = st[["army0", "army1"]].max(axis=1), st[["army0", "army1"]].min(axis=1).clip(lower=1)
+    st["ratio"] = hi / lo
+    st["kind"] = np.where(st.dead, "dead economy on both sides (nobody can rebuild)",
+                          np.where((st.n_pull > 0) & (st.ratio >= 3), "one side 3x+ bigger after a siege pull-back at a gate",
+                                   np.where(st.ratio >= 3, "one side 3x+ bigger, no siege decision logged", "even armies, both still fighting")))
+    tab = st.groupby(["pair", "kind"]).size().unstack(fill_value=0)
+    T["dd_stalls"] = md(tab.reset_index())
+
+    # ------------------------------------------------------------------ closing time: sustained 3x power lead -> end of game
+    p = ts30.pivot_table(index=["id", "t"], columns="team", values="power").dropna()
+    p.columns = ["p0", "p1"]
+    rows = []
+    for gid in gi.index:
+        wt = int(gi.loc[gid, "winner_team"])
+        if wt < 0 or gid not in p.index.get_level_values(0):
+            continue
+        x = p.loc[gid]
+        pw, pl = x["p%d" % wt], x["p%d" % (1 - wt)]
+        ok = pw >= 3.0 * pl.clip(lower=1)
+        sus = np.nan
+        for t in x.index[::-1]:
+            if ok.loc[t]:
+                sus = t
+            else:
+                break
+        if not np.isnan(sus):
+            rows.append({"id": gid, "pair": gi.loc[gid, "pair"], "winner": gi.loc[gid, "winner_faction"], "cause": gi.loc[gid, "cause"], "finish": gi.loc[gid, "end_t"] - sus})
+    cl = pd.DataFrame(rows)
+    out = []
+    for w in FACS:
+        x = cl[cl.winner == w].finish
+        out.append({"winner": w, "decided games with a sustained 3x power lead": len(x), "median s to the end": int(x.median()), "90th pct s": int(x.quantile(.9)),
+                    "10+ minutes of lead before the end": int((x >= 600).sum())})
+    T["dd_closing"] = md(pd.DataFrame(out))
+    T["dd_closing_ids"] = ", ".join("`%s` (%s, %d s)" % (r.id, r.winner, r.finish) for r in cl[cl.finish >= 600].sort_values("finish", ascending=False).itertuples())
+
+    # ------------------------------------------------------------------ siege pull-backs at gates
+    if len(ev):
+        sg = games[["id", "pair", "cause", "end_t"]].merge(pulls, on="id", how="left").fillna({"n_pull": 0})
+        sg["timeout"] = sg.cause.str.startswith("timeout")
+        out = []
+        for pr, x in sg.groupby("pair"):
+            t = x[x.timeout]
+            out.append({"matchup": pr.replace("-", " vs "), "games": len(x), "games with a pull-back": "%d (%s)" % ((x.n_pull > 0).sum(), pct((x.n_pull > 0).mean())),
+                        "pull-backs in all": int(x.n_pull.sum()), "30:00 games": len(t), "of those with a pull-back": int((t.n_pull > 0).sum()),
+                        "median minutes from the last pull-back to the end (30:00 games)": "%.0f" % ((t[t.n_pull > 0].end_t - t[t.n_pull > 0].last_pull).median() / 60.0) if (t.n_pull > 0).any() else "-"})
+        T["dd_siege"] = md(pd.DataFrame(out))
+        txt = ev[ev.text.str.contains("pulls back")].text.str.replace(r"\d+", "N", regex=True).str.replace(r"^P\w ", "", regex=True)
+        T["dd_siege_text"] = "; ".join("%d x %s" % (v, k) for k, v in txt.value_counts().head(4).items())
+    else:
+        T["dd_siege"] = "_(events.csv has no siege rows yet: re-run aggregate.py)_"
+
+    # ------------------------------------------------------------------ the scout's verdict against the foe's real plan
+    foe = sides[["id", "team", "plan_start", "scout_verdict"]].copy()
+    foe["team"] = 1 - foe["team"]
+    foe = foe.rename(columns={"plan_start": "foe_plan", "scout_verdict": "_"})
+    s2 = sides.merge(foe[["id", "team", "foe_plan"]], on=["id", "team"])
+    s2["foe_rush"] = s2.foe_plan.isin(["rush", "xrush"])
+    rows = []
+    for f in FACS:
+        x = s2[s2.faction == f]
+        r = {"scouting side": f}
+        for lab, m in [("foe really rushes", x.foe_rush), ("foe plays Timing", x.foe_plan == "timing"), ("foe plays Balanced", x.foe_plan == "balanced")]:
+            y = x[m]
+            r["verdict 'rush' when " + lab] = "%d/%d = %s" % ((y.scout_verdict == "rush").sum(), len(y), pct((y.scout_verdict == "rush").mean()))
+        rows.append(r)
+    T["dd_scout_acc"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ abandoned build sites
+    dr = events[events.kind == "dropped_site"].copy()
+    dr["site"] = dr.text.str.extract(r"(?:dropped a|couldn't start a) ([^:]+):")[0]
+    dr["reason"] = np.where(dr.text.str.contains("nobody was coming"), "nobody was coming (abandoned)", "spot blocked")
+    dr["team"] = dr.who.str.replace("P", "").astype(int) - 1
+    tot = sides.groupby("faction").size()
+    rows = []
+    for (site, rs), x in dr.groupby(["site", "reason"]):
+        f = x.merge(sides[["id", "team", "faction"]], on=["id", "team"]).faction.mode().iloc[0]
+        n_sg = x[["id", "team"]].drop_duplicates().shape[0]
+        rows.append({"site": site, "reason": rs, "faction": f, "drops": len(x), "side-games with any": "%d of %d" % (n_sg, tot[f]), "most in one game": "%s (%d)" % (x.groupby("id").size().idxmax(), x.groupby("id").size().max())})
+    T["dd_drops"] = md(pd.DataFrame(rows).sort_values("drops", ascending=False).head(10))
+    mound = dr[dr.site == "Clutch Mound"].groupby(["id", "team"]).size().rename("mound").reset_index()
+    pit = dr[dr.site == "Feeding Pit"].groupby(["id", "team"]).size().rename("pit").reset_index()
+    bm = sides[(sides.faction == "brood") & (sides.opp == "brood") & (sides.won >= 0)].merge(mound, on=["id", "team"], how="left").merge(pit, on=["id", "team"], how="left").fillna({"mound": 0, "pit": 0})
+    T["dd_drops_mirror"] = md(bm.groupby(bm.won.map({1: "winner", 0: "loser"})).agg(side_games=("id", "size"), mound_drops_mean=("mound", "mean"), pit_drops_mean=("pit", "mean"),
+                                                                                       peak_supply_mean=("peak_supply", "mean")).reset_index().rename(columns={"won": "Brood mirror side"}), floatfmt=".1f")
+
+    # ------------------------------------------------------------------ economies that stop (80%+ of workers idle for 90 s)
+    rows = []
+    for (gid, team), x in ts30[ts30.t >= 420].groupby(["id", "team"]):
+        x = x.reset_index(drop=True)
+        stl = ((x.workers >= 8) & (x.idle_workers / x.workers.clip(lower=1) >= 0.8)).values
+        on = next((i for i in range(len(stl) - 2) if stl[i] and stl[i + 1] and stl[i + 2]), None)
+        if on is None:
+            continue
+        r = x.iloc[on]
+        rows.append({"id": gid, "team": team, "fac": r.faction, "onset": r.t, "gold": r.gold, "soil": r.soil_mean, "halls": r.halls, "workers": r.workers, "idle": r.idle_workers})
+    es = pd.DataFrame(rows).merge(sides[["id", "team", "won", "end_t", "opp"]], on=["id", "team"])
+    es["afford"] = es.apply(lambda r: r.gold >= HALL_COST[r.fac], axis=1)
+    out = []
+    for f in FACS:
+        x = es[es.fac == f]
+        n_all = (sides.faction == f).sum()
+        out.append({"faction": f, "side-games": n_all, "economy stalled": "%d (%s)" % (len(x), pct(len(x) / n_all)), "median onset": mmss(x.onset.median()) if len(x) else "-",
+                    "ground/soil already spent": pct((x.soil <= 0.01).mean()) if len(x) else "-", "could afford a new hall": "%d of %d" % (x.afford.sum(), len(x)),
+                    "went on to lose": pct((x.won == 0).mean()) if len(x) else "-"})
+    T["dd_econ_stall"] = md(pd.DataFrame(out))
+    T["dd_econ_stall_ids"] = "; ".join("`%s` (%s side, from %s: %d of %d workers idle, %d gold, %d hall%s)" % (r.id, r.fac, mmss(r.onset), r.idle, r.workers, r.gold, r.halls, "" if r.halls == 1 else "s")
+                                       for r in es[es.fac == "crown"].sort_values("onset").head(5).itertuples())
+
+    # ------------------------------------------------------------------ Crown opening, and who expands first (mirrors)
+    c = sides[sides.faction == "crown"]
+    rows = []
+    for o in ["crown", "clockwork"]:
+        for op in ["mill", "breeder"]:
+            x = c[(c.opp == o) & (c.plan_start == "balanced") & (c.opp_plan == "balanced") & (c.crown_opening == op)]
+            rows.append({"Crown vs": o, "opening": op, "Balanced/Balanced side-games": len(x), "score": score_line((x.won == 1).sum(), (x.won < 0).sum(), len(x))})
+    m = c[(c.opp == "crown") & (c.plan_start == "balanced") & (c.opp_plan == "balanced")]
+    j = m[m.team == 0].set_index("id").join(m[m.team == 1].set_index("id"), lsuffix="_a", rsuffix="_b")
+    j2 = j[(j.crown_opening_a != j.crown_opening_b) & (j.won_a >= 0)]
+    am = j2.crown_opening_a == "mill"
+    w = int((((am) & (j2.won_a == 1)) | ((~am) & (j2.won_b == 1))).sum())
+    T["dd_crown_open"] = md(pd.DataFrame(rows)) + "\n\nHead to head in the Balanced/Balanced Crown mirror (one Mill opening against one Breeder opening): the Mill side won %s." % ci(w, len(j2))
+    rows = []
+    for f in FACS:
+        m = sides[(sides.faction == f) & (sides.opp == f) & (sides.won >= 0)]
+        j = m[m.team == 0].set_index("id").join(m[m.team == 1].set_index("id"), lsuffix="_a", rsuffix="_b", how="inner")
+        both = j[j.hall2_t_a.notna() & j.hall2_t_b.notna() & (j.hall2_t_a != j.hall2_t_b)]
+        ea = both.hall2_t_a < both.hall2_t_b
+        w = int(((ea & (both.won_a == 1)) | ((~ea) & (both.won_b == 1))).sum())
+        one = j[j.hall2_t_a.notna() ^ j.hall2_t_b.notna()]
+        ex = one.hall2_t_a.notna()
+        w1 = int(((ex & (one.won_a == 1)) | ((~ex) & (one.won_b == 1))).sum())
+        rows.append({"mirror": f, "both expanded: the earlier one won": ci(w, len(both)), "only one side expanded: it won": ci(w1, len(one)) if len(one) else "-"})
+    T["dd_expand_first"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ what leads predict, inside mirrors only (and Balanced/Balanced)
+    rows = []
+    feats = ["power", "workers", "army_value", "halls", "buildings", "supply", "gold"]
+    mir = [i for i in gi.index if gi.loc[i, "a"] == gi.loc[i, "b"]]
+    for label, ids0 in (("mirrors", mir), ("Balanced/Balanced mirrors", [i for i in mir if gi.loc[i, "plan_a"] == "balanced" and gi.loc[i, "plan_b"] == "balanced"])):
+        for tm in (180, 300, 420, 600, 900):
+            sub = ts[(ts.t == tm) & ts.id.isin(ids0)]
+            a0, a1 = sub[sub.team == 0].set_index("id"), sub[sub.team == 1].set_index("id")
+            ids = [i for i in a0.index.intersection(a1.index) if gi.loc[i, "winner_team"] >= 0 and gi.loc[i, "end_t"] >= tm + 30]
+            y = np.array([1 if gi.loc[i, "winner_team"] == 0 else 0 for i in ids])
+            r = {"sample": label, "at": mmss(tm), "games": len(ids)}
+            for f in feats:
+                d = np.array([a0.loc[i, f] - a1.loc[i, f] for i in ids], dtype=float)
+                nz = d != 0
+                r[f] = "%d%% (n=%d)" % (round(100 * ((d > 0) == (y == 1))[nz].mean()), nz.sum()) if nz.any() else "-"
+            rows.append(r)
+    T["dd_predictors_mirror"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ is any map unfair to one spawn? (mirrors only, so the faction cannot matter)
+    def homog(df, kcol, ncol):
+        ph = df[kcol].sum() / df[ncol].sum()
+        chi_ = float((((df[kcol] - df[ncol] * ph) ** 2) / (df[ncol] * ph * (1 - ph))).sum())
+        pv_ = chi2_sf(chi_, len(df) - 1)
+        return chi_, pv_
+
+    def ptxt(pv_):
+        return "p < 0.001" if pv_ < 0.001 else "p = %.3f" % pv_
+
+    mm = games[(games.a == games.b) & (games.winner_team >= 0)].copy()
+    mm["bal"] = (mm.plan_a == "balanced") & (mm.plan_b == "balanced")
+    rows = []
+    for mp, x in mm.groupby("map"):
+        xb = x[x.bal]
+        rows.append({"map": mp, "all plans: decided mirror games": len(x), "spawn 0 won": ci(int((x.winner_team == 0).sum()), len(x)),
+                     "Balanced/Balanced only": len(xb), "spawn 0 won ": ci(int((xb.winner_team == 0).sum()), len(xb)),
+                     "k": int((x.winner_team == 0).sum()), "n": len(x), "kb": int((xb.winner_team == 0).sum()), "nb": len(xb)})
+    sp = pd.DataFrame(rows)
+    c1, p1 = homog(sp, "k", "n")
+    c2, p2 = homog(sp, "kb", "nb")
+    T["dd_spawn_maps"] = md(sp.drop(columns=["k", "n", "kb", "nb"])) + "\n\nHomogeneity of the spawn-0 share across the %d maps: all plans chi-square %.1f, %s; Balanced/Balanced only chi-square %.1f, %s." % (
+        len(sp), c1, ptxt(p1), c2, ptxt(p2))
+
+    # ------------------------------------------------------------------ Crown against Clockwork, map by map
+    cc = sides[(sides.faction == "crown") & (sides.opp == "clockwork")].copy()
+    cc["bal"] = (cc.plan_start == "balanced") & (cc.opp_plan == "balanced")
+    rows = []
+    for mp, x in cc.groupby("map"):
+        xb = x[x.bal]
+        rows.append({"map": mp, "all plans: Crown won": ci(int((x.won == 1).sum()), len(x)), "Balanced/Balanced only: Crown won": ci(int((xb.won == 1).sum()), len(xb)),
+                     "k": int((x.won == 1).sum()), "n": len(x), "kb": int((xb.won == 1).sum()), "nb": len(xb)})
+    g = pd.DataFrame(rows)
+    c1, p1 = homog(g, "k", "n")
+    c2, p2 = homog(g, "kb", "nb")
+    T["dd_cc_maps"] = md(g.drop(columns=["k", "n", "kb", "nb"])) + "\n\nHomogeneity of the Crown's result across the %d maps: all plans chi-square %.1f, %s (%s); Balanced/Balanced only chi-square %.1f, %s (%s)." % (
+        len(g), c1, ptxt(p1), "the maps differ" if p1 < 0.05 else "no evidence that the maps differ", c2, ptxt(p2), "the maps differ" if p2 < 0.05 else "no evidence that the maps differ")
+
+    # ------------------------------------------------------------------ early worker wipe-outs and the saltpetre bank
+    rows = []
+    for (gid, team), x in ts30[(ts30.t <= 600)].groupby(["id", "team"]):
+        if x.workers.max() < 8:
+            continue
+        w = x[x.workers <= 2]
+        if len(w):
+            rows.append({"id": gid, "team": team, "faction": x.faction.iloc[0], "first": w.t.iloc[0], "peak": x.workers.max(), "army": w.army_value.iloc[0], "opp": gi.loc[gid, "pair"]})
+    ew = pd.DataFrame(rows)
+    out = []
+    for f in FACS:
+        n_all = (sides.faction == f).sum()
+        x = ew[ew.faction == f] if len(ew) else ew
+        out.append({"faction": f, "side-games": n_all, "down to 2 or fewer workers before 10:00": len(x)})
+    T["dd_early_wipe"] = md(pd.DataFrame(out)) + ("\n\n" + "\n".join("- `%s` %s side at %s: workers down to 2 or fewer (peak %d), army value %d" % (r.id, r.faction, mmss(r.first), r.peak, r.army) for r in ew.sort_values("first").head(6).itertuples()) if len(ew) else "")
+    cr = ts[(ts.faction == "crown")]
+    rows = []
+    for tm in (600, 900, 1200, 1500):
+        v = cr[cr.t == tm].res2
+        rows.append({"at": mmss(tm), "Crown sides still playing": len(v), "median powder banked": int(v.median()), "share with 500+ powder": pct((v >= 500).mean())})
+    T["dd_powder"] = md(pd.DataFrame(rows))
+
+    # ------------------------------------------------------------------ the AI's own attack gate (only games run from stage 9 on carry it)
+    if "attack_at_end" in sides.columns and sides.attack_at_end.notna().any():
+        x = sides[sides.attack_at_end.notna()].copy()
+        x["cause"] = x.id.map(gi.cause)
+        x["short"] = x.army_supply_end < x.attack_at_end
+        def idle_share(js):
+            try:
+                o = json.loads(js)
+                return o.get("idle", 0) / max(1, sum(o.values()))
+            except Exception:
+                return float("nan")
+        x["idle_share"] = x.army_orders.map(idle_share)
+        out = []
+        for f in FACS:
+            y = x[(x.faction == f) & x.cause.str.startswith("timeout")]
+            if len(y):
+                out.append({"faction": f, "30:00 side-games with the gate logged": len(y), "army supply below the next-wave threshold": int(y.short.sum()),
+                            "median threshold": int(y.attack_at_end.median()), "median army supply": int(y.army_supply_end.median()),
+                            "enemy near one of its buildings": int(y.threat_end.astype(str).str.lower().eq("true").sum()),
+                            "siege plan active": int(y.siege_end.astype(str).str.lower().eq("true").sum()),
+                            "median share of army idle": pct(y.idle_share.median())})
+        T["dd_attack_gate"] = md(pd.DataFrame(out)) if out else "_(no 30:00 games with the gate logged yet)_"
+        T["dd_attack_gate_n"] = str(len(x))
+    else:
+        T["dd_attack_gate"] = "_(no games with the gate logged yet)_"
+        T["dd_attack_gate_n"] = "0"
+    json.dump(T, open(a.out, "w"), indent=1)
+    print("deepdive: %d dd tables" % sum(1 for k in T if k.startswith("dd_")))
+
+
+if __name__ == "__main__":
+    main()

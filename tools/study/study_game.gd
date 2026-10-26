@@ -313,7 +313,8 @@ func _second(dt: float) -> void:
 				comp[u.kind] = int(comp.get(u.kind, 0)) + 1
 			X["wave"] = {"t0": snappedf(g.clock, 0.1), "kind": "raid" if (raid and not att) else "wave", "supply": _supply_of_army(i),
 				"value": g.army_value(i), "comp": comp, "kv0": int(st["value_killed"]), "lv0": int(g.stats[1 - i]["value_killed"]),
-				"plan": String(ai.strategy), "rush_state": String(ai._rush_state), "ek0": int(st["killed"]), "el0": int(st["lost"])}
+				"plan": String(ai.strategy), "rush_state": String(ai._rush_state), "ek0": int(st["killed"]), "el0": int(st["lost"]),
+				"attack_at": int(ai._attack_at)}      # (the army supply wanted for the NEXT wave: stepped up at launch)
 			if X["first_attack_t"] < 0.0:
 				X["first_attack_t"] = snappedf(g.clock, 0.1)
 		elif not active and not (X["wave"] as Dictionary).is_empty():
@@ -324,6 +325,7 @@ func _second(dt: float) -> void:
 			w["kills"] = int(st["killed"]) - int(w["ek0"])
 			w["losses"] = int(st["lost"]) - int(w["el0"])
 			w["army_end"] = g.army_value(i)
+			w["attack_at_end"] = int(ai._attack_at)      # (after _wave_end or a siege pull-back raised it)
 			for k in ["kv0", "lv0", "ek0", "el0"]:
 				w.erase(k)
 			(X["waves"] as Array).append(w)
@@ -468,6 +470,7 @@ func _finish(loser_team := -1) -> void:
 			"end_gold": int(g.players[i]["gold"]), "end_res2": int(g.players[i]["res2"]), "end_halls": g.halls_of(i).size(),
 			"end_power": Game.power(stand),
 		}
+		td.merge(_peek(i))      # (why an army may be sitting still at the end; added at stage 9)
 		for k in X:
 			if k in ["wave", "attacking", "strategy"]:
 				continue
@@ -475,6 +478,28 @@ func _finish(loser_team := -1) -> void:
 		(row["teams"] as Array).append(td)
 	_write(row)
 	quit(0)
+
+
+## Read-only peeks at the AI's attack gates and where its army is, for games that stall (added at stage 9).
+func _peek(i: int) -> Dictionary:
+	var ai = ais[i]
+	var ar: Array = g.army(i)
+	var oc := {}
+	var cen := Vector2.ZERO
+	for u in ar:
+		var k := String(u.order)
+		oc[k] = int(oc.get(k, 0)) + 1
+		cen += u.position
+	if ar.size() > 0:
+		cen /= float(ar.size())
+	var wt: Vector2 = ai._wave_target
+	return {
+		"attack_at_end": int(ai._attack_at), "army_supply_end": _supply_of_army(i),
+		"regroup_left": snappedf(maxf(0.0, float(ai._regroup_until) - g.clock), 0.1),
+		"threat_end": ai._threat() != Vector2.INF, "siege_end": not (ai._siege as Dictionary).is_empty(),
+		"walled_halls_end": (ai._walled_halls as Dictionary).size(), "peaceful": bool(ai.peaceful),
+		"army_orders": oc, "army_centroid": [int(cen.x), int(cen.y)], "wave_target_end": [int(wt.x), int(wt.y)],
+	}
 
 
 func _write(row: Dictionary) -> void:

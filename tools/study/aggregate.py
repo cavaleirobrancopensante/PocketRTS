@@ -3,13 +3,13 @@
 
   games.csv       one row per game (setup, result, length, cause)
   sides.csv       one row per game and side (faction, plan, economy totals, tech timings, losses, waves ...)
-  timeseries.csv  one row per game, side and 30 s (see study_game.gd HEADER)
+  timeseries.csv.gz  one row per game, side and 30 s (see study_game.gd HEADER; gzip: pandas reads it as it is)
   waves.csv       one row per attack wave / raiding party
-  events.csv      key lines of the match logs (walls, expansions, lost buildings, failed rushes, ...)
+  events.csv.gz   key lines of the match logs (walls, expansions, lost buildings, failed rushes, siege decisions ...; gzip)
 
   python3 tools/study/aggregate.py --runs /home/claude/study_runs --out docs/study_data
 """
-import argparse, csv, glob, json, os, re
+import argparse, csv, glob, gzip, io, json, os, re
 
 TS_HEADER = ["id", "t", "team", "faction", "gold", "res2", "earned", "res2_in", "spent", "supply", "cap", "workers",
              "idle_workers", "army_value", "army_supply", "army_units", "army_idle", "halls", "buildings", "wall_pieces",
@@ -26,6 +26,7 @@ EVENT_PATTERNS = [
     ("attack", re.compile(r"first attack goes out")),
     ("rush", re.compile(r"rush|failed: it builds up|saw Horsemen")),
     ("dropped_site", re.compile(r"dropped a .*nobody was coming|couldn't start a")),
+    ("siege", re.compile(r" (pulls back from|breaks in at) ")),
     ("lost_building", re.compile(r" lost a ")),
     ("soil", re.compile(r"is spent|is running low")),
     ("capital", re.compile(r"capital fell")),
@@ -47,9 +48,13 @@ def flat_team(g, t):
               "end_buildings", "end_gold", "end_res2", "end_halls", "end_power", "blocked_s", "capped_s", "bank500_s",
               "bank1000_s", "idle_w_s", "worker_s", "army_idle_s", "army_s", "prod_idle_s", "prod_s", "peak_supply",
               "peak_workers", "peak_gold", "first_blood_t", "first_attack_t", "first_worker_lost_t", "hope_first", "hope_flips",
-              "gg_t", "min_workers_after_3", "soil_zero_t", "wall_start_t", "wall_done_t", "workers_lost", "cap200_t"]:
+              "gg_t", "min_workers_after_3", "soil_zero_t", "wall_start_t", "wall_done_t", "workers_lost", "cap200_t",
+              # read-only peeks at the AI's attack gates at the end of the game (only games run from stage 9 on have them)
+              "attack_at_end", "army_supply_end", "regroup_left", "threat_end", "siege_end", "walled_halls_end", "peaceful"]:
         d[k] = t.get(k, "")
     d["value_lost"] = g["teams"][1 - t["team"]]["value_killed"]
+    for k in ["army_orders", "army_centroid", "wave_target_end"]:
+        d[k] = json.dumps(t[k]) if k in t else ""
     fb = t["first_built"]
     for k in BUILD_KEYS:
         d["t_" + k] = fb.get(k, "")
@@ -70,6 +75,13 @@ def flat_team(g, t):
     return d
 
 
+def open_out(path):
+    """Text file for csv; a .gz path is written gzipped with no timestamp (so an unchanged file stays byte-identical)."""
+    if path.endswith(".gz"):
+        return io.TextIOWrapper(gzip.GzipFile(path, "wb", mtime=0), newline="", encoding="utf8")
+    return open(path, "w", newline="")
+
+
 def write(path, rows, header=None):
     if not rows and header is None:
         return
@@ -79,7 +91,7 @@ def write(path, rows, header=None):
             for k in r:
                 if k not in header:
                     header.append(k)
-    with open(path, "w", newline="") as f:
+    with open_out(path) as f:
         w = csv.DictWriter(f, fieldnames=header, extrasaction="ignore")
         w.writeheader()
         for r in rows:
@@ -104,7 +116,7 @@ def main():
             sides.append(flat_team(g, t))
             for w in t["waves"]:
                 d = {"id": gid, "team": t["team"], "faction": t["faction"], "opp": g["teams"][1 - t["team"]]["faction"], "map": g["map"]}
-                d.update({k: w.get(k, "") for k in ["t0", "t1", "kind", "supply", "value", "killed_value", "lost_value", "kills", "losses", "army_end", "plan", "rush_state", "open"]})
+                d.update({k: w.get(k, "") for k in ["t0", "t1", "kind", "supply", "value", "killed_value", "lost_value", "kills", "losses", "army_end", "plan", "rush_state", "open", "attack_at", "attack_at_end"]})
                 d["comp"] = json.dumps(w.get("comp", {}))
                 waves.append(d)
         tp = "%s/ts/%s.csv" % (a.runs, gid)
@@ -129,8 +141,14 @@ def main():
     write(a.out + "/games.csv", games)
     write(a.out + "/sides.csv", sides)
     write(a.out + "/waves.csv", waves)
-    write(a.out + "/events.csv", events)
-    with open(a.out + "/timeseries.csv", "w", newline="") as f:
+    write(a.out + "/events.csv.gz", events)
+    # the end-of-game sample can repeat a 30 s grid row (a timeout at 1800): keep the last one of each (id, team, t)
+    last = {}
+    for i, row in enumerate(ts):
+        last[(row[0], row[1], row[2])] = i
+    keep = sorted(last.values())
+    ts = [ts[i] for i in keep]
+    with open_out(a.out + "/timeseries.csv.gz") as f:
         w = csv.writer(f)
         w.writerow(TS_HEADER)
         w.writerows(ts)
