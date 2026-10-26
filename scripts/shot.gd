@@ -29,6 +29,7 @@ func launch(g: Game, kind: String, a: Vector2, b: Vector2, spd: float) -> Shot:
 	_dur = maxf(a.distance_to(b) / speed, 0.04)
 	position = a
 	z_index = 6
+	visible = not g.fx_hidden(a, b)       # (from and to ground the watching side has never looked at: unseen)
 	g.add_child(self)
 	_place(0.0)
 	return self
