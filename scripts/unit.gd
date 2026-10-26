@@ -3099,7 +3099,65 @@ func compute_path() -> void:
 		if out != Vector2.INF:
 			squeeze_t = 3.0
 			path = PackedVector2Array([out]) + game.find_path(out, path_goal, not is_worker())
+	if _towed():
+		path = _tow_gate_approach(path)
 	_open_gates(shut)
+
+
+## A limbered gun's horses lead the way: through a gate the team must go straight, so the path
+## gets a waypoint a little before and after each gate it crosses, on the gate's axis (the
+## middle of the opening when several gates stand side by side).
+func _tow_gate_approach(pts: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var cur := position
+	var done := {}
+	var skip := []                  # the middles of the gates already lined up: waypoints inside the run-out are dropped
+	for wi in pts.size():
+		var wp := pts[wi]
+		var seg := wp - cur
+		var n := int(seg.length() / 8.0) + 1
+		for s in n + 1:
+			var q: Vector2 = cur.lerp(wp, float(s) / float(n))
+			var c: Vector2i = game.cell_of(q)
+			if not game.in_map(c) or int(game.solid[game.idx(c)]) != 3 or done.has(c):
+				continue
+			# the opening: the gate cells in this one's row (or column), whichever way the wall runs
+			var horiz: bool = int(game.solid[game.idx(c + Vector2i(1, 0))]) >= 2 or int(game.solid[game.idx(c + Vector2i(-1, 0))]) >= 2
+			var step := Vector2i(1, 0) if horiz else Vector2i(0, 1)
+			var mid := game.cell_center(c)
+			var cnt := 1
+			for sgn in [1, -1]:
+				var k: Vector2i = c + step * sgn
+				while game.in_map(k) and int(game.solid[game.idx(k)]) == 3:
+					done[k] = true
+					mid += game.cell_center(k)
+					cnt += 1
+					k += step * sgn
+			done[c] = true
+			mid /= float(cnt)
+			var axis := Vector2(0, 1) if horiz else Vector2(1, 0)
+			var dirn := signf(seg.dot(axis))
+			if dirn == 0.0:
+				continue
+			var before_pt := mid - axis * dirn * 80.0
+			var after_pt := mid + axis * dirn * 80.0
+			if game._clear_at(before_pt, 10.0, team):
+				while not out.is_empty() and out[out.size() - 1].distance_to(mid) < 78.0:
+					out.remove_at(out.size() - 1)
+				out.append(before_pt)
+			out.append(mid)
+			if game._clear_at(after_pt, 10.0, team):
+				out.append(after_pt)
+				skip.append(mid)
+		var drop := false
+		if wi < pts.size() - 1:
+			for m: Vector2 in skip:
+				if wp.distance_to(m) < 78.0:
+					drop = true
+		if not drop:
+			out.append(wp)
+		cur = wp
+	return out
 
 
 ## The pathfinder counts every gate as open (it opens for its own side): while it works out
@@ -3207,22 +3265,15 @@ func _move(want: Vector2, delta: float) -> void:
 		elif game.in_open_map(sc) and game._clear_at(position, radius, team):
 			squeeze_t = 0.0
 	else:
-		position = game.resolve_terrain(position, before, radius, team)
-		# A limbered gun: the horses stand a length ahead of the barrel, so their spot must
-		# be clear too (they clipped through walls and palisades): slide along it instead
-		if (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and position != before:
-			var lead := facing * (radius + 14.0)
-			if not game._clear_at(position + lead, radius * 0.9, team):
-				var alt_a := Vector2(position.x, before.y)
-				var alt_b := Vector2(before.x, position.y)
-				if game._clear_at(alt_a + lead, radius * 0.9, team) and game._clear_at(alt_a, radius, team):
-					position = alt_a
-				elif game._clear_at(alt_b + lead, radius * 0.9, team) and game._clear_at(alt_b, radius, team):
-					position = alt_b
-				else:
-					position = before
+		if _towed():
+			position = _tow_resolve(position, before)
+		else:
+			position = game.resolve_terrain(position, before, radius, team)
 	if want.length() > 5.0 and phase == "":
-		facing = facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
+		var nf := facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
+		if _towed() and not is_air():
+			nf = _tow_turn(nf, want.normalized())
+		facing = nf
 	# Stuck detection while trying to move
 	if want.length() > 5.0:
 		if position.distance_to(last_pos) < speed * delta * 0.25:
@@ -3241,6 +3292,71 @@ func _move(want: Vector2, delta: float) -> void:
 			stuck_t = 0.9
 			_request_path(path_goal)
 	last_pos = position
+
+
+## A limbered gun or wagon: only the barrel / body is the unit; the horses are art standing
+## ahead of it along `facing`. So the whole silhouette (body + horse spots) is what must be
+## clear of cliffs, walls and buildings, and the body is narrow enough for a one-tile gate.
+func _towed() -> bool:
+	return (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and harnessed
+
+
+## Terrain width of a limbered body (the sprite is wider than a tile: its wheels may overhang).
+func _tow_body() -> float:
+	return minf(radius, 15.0)
+
+
+func _tow_clear(p: Vector2, f: Vector2) -> bool:
+	if not game._clear_at(p, _tow_body(), team):
+		return false
+	# the horses: every spot from the barrel to the lead horse, closer together than a wall or
+	# cliff ring is thick (one tile), so a thin obstacle can't be stepped over
+	var reach := radius + 22.0 + (40.0 if not team_horses.is_empty() else 0.0)
+	var d := radius
+	while d < reach + 5.0:
+		if not game._clear_at(p + f * minf(d, reach), 13.0, team):
+			return false
+		d += 11.0
+	return true
+
+
+## The new position of a limbered vehicle that tried to go from `before` to `pos`: as is, else
+## sliding along x or y, else it stays. (Wedged already: the plain terrain rule pops it out.)
+func _tow_resolve(pos: Vector2, before: Vector2) -> Vector2:
+	pos = pos.clamp(Vector2(radius, radius), Vector2(Game.W, Game.H) * Game.T - Vector2(radius, radius))
+	if _tow_clear(pos, facing):
+		return pos
+	if not _tow_clear(before, facing):
+		return game.resolve_terrain(pos, before, _tow_body(), team)
+	var a := Vector2(pos.x, before.y)
+	if _tow_clear(a, facing):
+		return a
+	var b := Vector2(before.x, pos.y)
+	if _tow_clear(b, facing):
+		return b
+	return before
+
+
+## Turn toward `nf` only as far as the horses' spots stay on legal ground (else it holds its
+## heading and slides, or swings at once to the wanted heading when that is clear): the team never swings over a cliff or through a wall.
+func _tow_turn(nf: Vector2, want_dir: Vector2) -> Vector2:
+	var ahead := position + want_dir * 4.0       # (clear here too, or the next step is refused)
+	if not _tow_clear(position, facing):
+		return nf
+	if _tow_clear(position, nf) and _tow_clear(ahead, nf):
+		return nf
+	for k in [0.5, 0.25]:
+		var h: Vector2 = facing.lerp(nf, k).normalized()
+		if _tow_clear(position, h) and _tow_clear(ahead, h):
+			return h
+	# the arc between is shut (a wall end beside the team): it swings round at once to the
+	# nearest heading to the wanted one that is clear, so it is never stuck pointing at the wall
+	for deg in [0.0, 8.0, 16.0, 26.0, 38.0, 52.0, 70.0]:
+		for sgn in [1.0, -1.0]:
+			var h: Vector2 = want_dir.rotated(deg_to_rad(deg) * sgn)
+			if _tow_clear(position, h) and _tow_clear(ahead, h):
+				return h
+	return facing
 
 
 ## Computer players: melee units hacking at a wall weigh it up rather than run at the first
