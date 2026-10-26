@@ -159,6 +159,9 @@ func note_net(cn: ChainNet) -> void:
 func play_fx(list: Array) -> void:
 	for f in list:
 		var p: Vector2 = f[2]
+		if f[0] == "c":
+			game.torn_at(p)          # a body the host's shell tore up (Game.tear_body): gone here too, seen or not
+			continue
 		if not game.view_rect.has_point(p):
 			continue
 		if f[0] == "e":

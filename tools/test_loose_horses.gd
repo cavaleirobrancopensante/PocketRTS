@@ -162,7 +162,7 @@ func _run() -> void:
 	var h1: Unit = d1.loose_horse
 	check(d1.dead and h1 != null and h1.team == -1 and h1.kind == "horse", "a Dragoon shot dead: his horse lives, belonging to nobody")
 	check(d1.kind == "musketeer" and d1.coat == "", "  he lies there on foot, a Musketeer (%s)" % d1.kind)
-	check(Game.body_supply(d1) == int(Defs.UNITS["musketeer"]["supply"]) and g.corpse_value(d1) == int(Defs.UNITS["musketeer"]["supply"]),
+	check(Game.body_supply(d1) == int(Defs.UNITS["musketeer"]["supply"]) and is_equal_approx(g.corpse_value(d1), float(Defs.UNITS["musketeer"]["supply"]) * float(Defs.HARVEST["per_supply"])),
 		"  his body is worth only the man (%d)" % Game.body_supply(d1))
 	check(g.fallen.has(d1), "  and a Missionary can still raise him")
 	if h1:

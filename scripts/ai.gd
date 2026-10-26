@@ -4791,6 +4791,123 @@ func _abilities() -> void:
 					if o.is_air():
 						flyers += 1
 			u.set_canister(crowd >= 3 or flyers >= 1)
+	_shell_bodies()
+
+
+# ------------------------------------------------------------------ Crown vs Brood: shelling the bodies (Defs.BODY_BLAST)
+
+## The owner's design (2026-10-26): when the Crown faces the Brood and nothing threatens its base, an idle cannon or mortar
+## fires a few shots (BOMBARD) at a spot it can see where several bodies the Brood could harvest lie together (ground the
+## Brood's grubs can walk to), away from our own men. Never mid-battle: no armed enemy in sight near the gun or the spot,
+## and it stands down at once when one shows up or the base is attacked (or after `shots`, or when the bodies are gone).
+const SHELL := {"min_bodies": 3, "shots": 3, "scan": 5.0, "clear": 420.0, "own_near": 64.0, "walk": 96.0, "max_t": 40.0}
+var shell_bodies_on := true      # (tests switch it off to measure the ordinary splash alone)
+var _shell := {}                 # gun -> {"p": the spot, "t": clock it began, "pw": its powder then}
+var _shell_t := 0.0
+var shell_log: Array = []        # [clock, gun kind, bodies at the spot] (tests, the match log)
+
+
+func _vs_brood() -> bool:
+	for f in game.enemies_of(team):
+		if game.faction_of(f) == "brood" and not game.eliminated[f]:
+			return true
+	return false
+
+
+## The radius a gun's shot tears bodies in (a Mortar's splash; a cannon: round shot's small splash, canister's reach).
+func _blast_r(g: Unit) -> float:
+	if g.kind == "cannon":
+		return 60.0 if g.mode == "canister" else float(Defs.ROUND_SHOT["splash"]) + 6.0
+	return float(g.d.get("splash", 40.0))
+
+
+## The bodies the Brood could still harvest within r of p.
+func _bodies_at(p: Vector2, r: float) -> int:
+	var n := 0
+	for c in game.corpses:
+		if is_instance_valid(c) and not c.torn and c.position.distance_to(p) <= r:
+			n += 1
+	return n
+
+
+## The walkable region at p (a body or a unit can lie on the edge of a cell that is not walkable: the nearest one that is).
+func _region_at(p: Vector2) -> int:
+	var c: Vector2i = game.cell_of(p)
+	var r: int = game.region_of(c)
+	if r >= 0:
+		return r
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+		r = game.region_of(c + d)
+		if r >= 0:
+			return r
+	return -1
+
+
+## An armed enemy in sight (or seen a moment ago) within SHELL.clear of p.
+func _foes_near(p: Vector2) -> bool:
+	for o in game.units_near(p, float(SHELL["clear"])):
+		if game.hostile(o.team, team) and not o.dead and not o.off_field and _armed(o) and _sighted(o):
+			return true
+	return false
+
+
+func _shell_bodies() -> void:
+	var calm := _threat() == Vector2.INF
+	for g in game.army(team):
+		if g.order == "bombard" and not _shell.has(g):
+			_shell[g] = {"p": g.order_point, "t": game.clock, "pw": g.powder}     # (a game loaded with one at it)
+	# the guns at it: they stand down when it is done, when it gets dangerous, or when something else ordered them
+	for g in _shell.keys():
+		var job: Dictionary = _shell[g]
+		var done: bool = not is_instance_valid(g) or g.dead or g.order != "bombard" or (g.order_point as Vector2).distance_to(job["p"]) > 1.0
+		if not done and (not calm or float(job["pw"]) - g.powder >= float(SHELL["shots"]) or g.powder < 1.0 \
+				or game.clock - float(job["t"]) > float(SHELL["max_t"]) or _bodies_at(job["p"], _blast_r(g)) == 0 \
+				or _foes_near(g.position) or _foes_near(job["p"])):
+			g.cmd_stop()
+			done = true
+		if done:
+			_shell.erase(g)
+	if not calm or not shell_bodies_on or game.clock < _shell_t or not _vs_brood():
+		return
+	_shell_t = game.clock + float(SHELL["scan"])
+	if game.corpses.size() < int(SHELL["min_bodies"]):
+		return
+	# where the Brood's ground units can walk: the regions they stand in
+	var reach := {}
+	for o in game.units:
+		if not o.dead and game.hostile(o.team, team) and game.faction_of(o.team) == "brood" and not o.is_air():
+			reach[_region_at(o.position)] = true
+	for g in game.army(team):
+		if not g.can_bombard() or _shell.has(g) or g.order != "idle" or g.target != null or g.phase != "" or g.powder < 2.0 \
+				or (_attacking and _wave_set.has(g)):
+			continue        # (busy, nearly dry, or out with the wave)
+		var r := _blast_r(g)
+		var far: float = g._range() + (float(SHELL["walk"]) if g.can_roll() else 0.0)
+		var best := Vector2.INF
+		var best_n := int(SHELL["min_bodies"]) - 1
+		for c in game.corpses:
+			if not is_instance_valid(c) or c.torn or c.position.distance_to(g.position) > far:
+				continue
+			if not game.is_visible_to(team, c.position) or not reach.has(_region_at(c.position)):
+				continue
+			var n := _bodies_at(c.position, r * 0.85)
+			if n <= best_n:
+				continue
+			if _shell.values().any(func(j: Dictionary) -> bool: return (j["p"] as Vector2).distance_to(c.position) < r * 1.5):
+				continue        # (another gun is on it)
+			if game.units_near(c.position, float(SHELL["own_near"]) + r).any(func(o: Unit) -> bool: return not o.dead and game.allied(o.team, team) and not o.is_air()):
+				continue        # (our own men would be hit)
+			if _foes_near(c.position) or _foes_near(g.position):
+				continue
+			best = c.position
+			best_n = n
+		if best == Vector2.INF:
+			continue
+		g.cmd_bombard(best)
+		_shell[g] = {"p": best, "t": game.clock, "pw": g.powder}
+		shell_log.append([game.clock, g.kind, best_n])
+		if game.mlog:
+			game.mlog.add("%s's %s shells %d bodies so the Brood can't harvest them" % [game.mlog.who(team), g.d["name"], best_n])
 
 
 ## Stormcallers drop storms on packed enemies (not on our own men); Spore Mothers heal a

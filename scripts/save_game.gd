@@ -2,7 +2,8 @@ class_name SaveGame
 ## Keeps a match you closed: every few seconds (and when the app goes to the background)
 ## the whole state goes to user://autosave.json; the menu offers CONTINUE. The map is
 ## rebuilt from its seed, then every building, unit, resource and the fog are put back.
-## Orders in flight aren't kept: soldiers stand where they were, workers go back to work.
+## Orders in flight aren't kept: soldiers stand where they were, workers go back to work
+## (a PATROL and a BOMBARD spot are kept: they go on).
 
 const PATH := "user://autosave.json"
 
@@ -133,6 +134,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 				ud["plt"] = snappedf(u.pistol_t, 0.01)
 		if u.patrol_a != Vector2.INF:
 			ud["pat"] = [_v2(u.patrol_a), _v2(u.patrol_b)]
+		if u.order == "bombard":
+			ud["bomb"] = _v2(u.order_point)      # BOMBARD: the spot it keeps firing at (it goes on after a load)
 		if u.steed and ids.has(u.steed):
 			ud["steed"] = ids[u.steed]
 		if u.order == "mount" and u.order_target and ids.has(u.order_target):
@@ -500,6 +503,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			u.patrol_b = _to_v2(ud["pat"][1])
 		if u.kind == "horse" and ud.get("graze") is Array:
 			u.graze_at = _to_v2(ud["graze"])
+		if ud.get("bomb") is Array and u.can_bombard():
+			u.cmd_bombard(_to_v2(ud["bomb"]))      # (set up as it was saved: "tm"; it fires on at the spot)
 	# the horses' ties: who leads which (in their string's order), a man's own horse, and a
 	# man on his way to mount or lead one goes on with it
 	var units_d: Array = d["units"]
