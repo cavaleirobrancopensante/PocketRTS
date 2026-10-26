@@ -225,8 +225,9 @@
    "then": "balanced",
    "steps": [
     "workers:10",
-    "warren",
     "feeding_pit",
+    "until:workers:10",
+    "warren",
     "brood_pen",
     "workers:13",
     "raptor*4",
@@ -245,8 +246,9 @@
    "then": "balanced",
    "steps": [
     "workers:10",
-    "warren",
     "feeding_pit",
+    "until:workers:10",
+    "warren",
     "brood_pen",
     "workers:13",
     "gorge_pit",
@@ -266,8 +268,9 @@
    "then": "air",
    "steps": [
     "workers:10",
-    "warren",
     "feeding_pit",
+    "until:workers:10",
+    "warren",
     "brood_pen",
     "roost",
     "workers:13",
