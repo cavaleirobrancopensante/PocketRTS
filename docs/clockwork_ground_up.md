@@ -68,3 +68,6 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 ## Air: Cuckoo and Ticking Owl (owner, 2026-10-26)
 - CUCKOO (from the Cuckoo House): AIR-TO-AIR flyer.
 - It can be UPGRADED into the TICKING OWL: a nasty flying GROUND attacker (like a morph). Owl attack (owner): SWOOPS DOWN with its talons against units, DROPS its pendulum-weight BOMBS on buildings. Upgrade (owner): research it once, then each Cuckoo is morphed into an Owl individually (cost and time per unit).
+
+## Tier 3, next (2026-10-26, not decided)
+- The STOPPER: the owner's "unit that stops one enemy, like Lockdown" (stops its clock for a few seconds). Three concept prompts sent: the Stopwatch (tall herald with a stopwatch staff), the Hand of Time (a floating clock face with hour/minute hand arms), the Grandfather Warden (a walking grandfather clock whose pendulum stops). Also still open: the slow field (no haste), the heavy units (Grandfather, Pendulum), the Great Winder.
