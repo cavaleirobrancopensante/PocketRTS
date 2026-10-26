@@ -65,6 +65,9 @@ def unit_cycle(u):
 
 
 def unit_dps(kind, armor=0.0):
+    if kind == "dragoon":
+        # (no weapon in the saddle: it gets off and fires as a Musketeer, reloading a third slower: Defs.HORSES dragoon_reload)
+        return unit_dps("musketeer", armor) / float(DATA.get("horses", {}).get("dragoon_reload", 1.3))
     u = U[kind]
     dmg = float(u.get("damage", 0))
     if kind == "musketeer":
