@@ -108,11 +108,15 @@ python3 tools/import_armoury_anims.py    # the Armoury's nine research experimen
 python3 tools/recolour_crown_buildings.py  # Crown buildings: red cloth in the player's colour, bricks / fire off the key reds (after every Crown building pass)
 python3 tools/import_queen.py           # the Brood Queen at the capital Burrow (art/brood/queen.png: still, backdrop keyed out)
 python3 tools/import_mound_chatgpt.py   # the Clutch Mound with the vent chimneys (art/redraws/clutch_mound_vent_chatgpt.png; built from the drawing, other states derived in code; after import_art, which writes the plain mound)
+python3 tools/import_winder_v2.py       # the new Winder (art/redraws/winder_*: idle, walk, wind (= repair), attack, death): its strips,
+                                         # art_data entry and card portrait (after import_art, which no longer writes him, and
+                                         # after import_round11, whose painted portrait of the old Winder it replaces)
 # Gait passes (tools/gait_lib.py, docs/animation_gait_audit.md): legs rebuilt per frame, one foot after the other;
 # each strip's torso / head / gear kept, pristine sources snapshotted in art/redraws/gait_src/<unit>/ (idempotent)
 python3 tools/import_gait_missionary.py
 python3 tools/import_gait_windup_soldier.py
-python3 tools/import_gait_winder.py
+# RETIRED 2026-10-26: the Winder's code-built walk legs (the new Winder's walk is ChatGPT's own; import_winder_v2.py below)
+# python3 tools/import_gait_winder.py
 python3 tools/import_gait_musketeer_armoured.py
 python3 tools/import_gait_raptor.py
 python3 tools/import_crown_legs.py        # labourer's new walk legs under the Armoured Musketeer (all views) and the Musketeer (s, n)

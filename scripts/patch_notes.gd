@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.34", "items": [
+		"NEW WINDER: the Clockwork's worker is the new clock-faced Winder in every view (standing, walking, winding, attacking, dying), in brass and the player's colour (his blue joints and red heart now show the team colour). He moves on a clockwork beat: ticking steps; his work goes hammer, hammer, pause with a small crank turning in his hands (at a Cog Press, repairing, and on the crate he sets down on a site, which he gives a few turns as it unfolds); the hands on his clock face tick once a second; and when he dies he runs down. New card portrait.",
+	]},
 	{"v": "0.14.33", "items": [
 		"ART: the ESCAPEMENT's working loop redone. Its anchor now rocks on its pivot like a pendulum and, each time it swings through the middle, the escape wheel jumps forward half a tooth and stops: tick... tock..., a beat every half second (24 frames instead of 8). The wheel turns cleanly in its own plane (no more smeared, jagged spokes and teeth) and is evened out from its own painted pieces (12 teeth, 8 spokes); what it and the anchor uncover is the drum's own paint, not a flat dark fill, and the drum no longer has see-through holes. The idle building and its card picture show the evened wheel too, and its red panels no longer show specks of the player's colour.",
 	]},
