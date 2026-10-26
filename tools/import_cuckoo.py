@@ -58,6 +58,14 @@ KINDS = {
 GROUND = [4, 5]          # death frames on the ground (0-based)
 WRECK_MID = 0.32         # the wreck's middle (the anchor) this share of its height up from its bottom
 DROPPED = [1, 2]         # bomb frames whose painted falling weight is taken off (0-based)
+# The SPIN of a dying bird (death frames 1-3, still in the air): the body turns over, so laying its outline over the level
+# flying one (align) shifts it 2-5 px from frame to frame; these frames keep the CENTRE of their body (the red case and
+# dial) where the first death frame's body centre is, so the bird spins in place while the game brings it down.
+SPIN = [1, 2, 3]
+# The Swift's peck, re-timed from its own frames (cuckoo_attack.png: level, wings up, wings down, then level held): pull
+# back with the wings up, dart in on the downstroke (the blow, the 3rd frame), the beak held in a moment on the downstroke,
+# the wings up again as it pulls away, level. (The code darts it at its prey and tips it nose-down on the blow: Defs.FLYER.)
+ORDER = {('cuckoo', 'attack'): [0, 1, 2, 2, 1, 0]}
 
 
 def red_mask(a):
@@ -151,6 +159,25 @@ def body(o):
         return None
     sz = ndi.sum(rm, lab, range(1, n + 1))
     return lab == int(np.argmax(sz)) + 1
+
+
+def body_centre(o):
+    """The centre of the round body (the red case with its dial): the middle of the biggest disc that fits in it (the
+    peak of its distance map). The visible red changes as the bird turns over (the dial, its brass ring and the brass
+    stripe down the back cut it up; wings cover parts of it), but the round case's middle stays the middle of the disc."""
+    a = o[..., :3].astype(int)
+    al = o[..., 3] > 0
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    dial = (r >= 190) & (g >= 170) & (b >= 120) & (np.abs(r - g) < 50)
+    rm = ndi.binary_fill_holes(ndi.binary_closing((red_mask(a) | dial) & al, iterations=4)) & al
+    lab, n = ndi.label(rm)
+    if n == 0:
+        return None
+    sz = ndi.sum(rm, lab, range(1, n + 1))
+    big = lab == int(np.argmax(sz)) + 1
+    dt = ndi.distance_transform_edt(big)
+    ys, xs = np.nonzero(dt >= dt.max() * 0.92)
+    return xs.mean() + 0.5, ys.mean() + 0.5
 
 
 def scaled_mask(m, s):
@@ -266,22 +293,32 @@ def import_kind(kind, info, preview):
         A0 = (c0[0], bottom)
         for anim, (f, cols, up) in sheets.items():
             out = []
+            spin_c = None          # (death) the first frame's body centre, in ref px
             for c in range(cols):
                 fr = figs[anim][row][c]
                 o = fr['o']
                 if anim == 'bomb' and c in DROPPED:
                     o = drop_bombs(o, fr['main'])
                 if anim == 'death' and c in GROUND:
-                    bm = body(o)
-                    by, bx = np.nonzero(bm)
+                    # the wreck on the ground: its body's centre over the anchor, the anchor WRECK_MID up its height
+                    bc = body_centre(o)
                     my_, mx_ = np.nonzero(fr['main'])
                     h = my_.max() + 1 - my_.min()
-                    ax, ay = bx.mean(), (my_.max() + 1) - WRECK_MID * h
+                    ax, ay = bc[0], (my_.max() + 1) - WRECK_MID * h
                     out.append((o, ax, ay, up))
                     continue
                 bm = body(o)
-                t, iou = align(ref, scaled_mask(bm, up))
-                report.append((anim, d, c, round(iou, 2), t))
+                if anim == 'death' and c in SPIN and spin_c is not None:
+                    # spinning: its body centre stays where the first death frame's was (t: this frame's px -> ref px)
+                    bc = body_centre(o)
+                    t = (round(spin_c[0] - bc[0] * up), round(spin_c[1] - bc[1] * up))
+                    report.append((anim, d, c, -1.0, t))
+                else:
+                    t, iou = align(ref, scaled_mask(bm, up))
+                    report.append((anim, d, c, round(iou, 2), t))
+                    if anim == 'death' and c == 0:
+                        bc = body_centre(o)
+                        spin_c = (bc[0] * up + t[0], bc[1] * up + t[1])
                 # the anchor in this frame's own crop (its scale): A0 - t in ref px, divided by up
                 ax, ay = (A0[0] - t[0]) / up, (A0[1] - t[1]) / up
                 out.append((o, ax, ay, up))
@@ -289,6 +326,8 @@ def import_kind(kind, info, preview):
                     w = weight_centre(o, fr['main'])
                     if w is not None:
                         drop[d] = ((w[0] - ax) * up, (w[1] - ay) * up)     # ref px from the anchor
+            if (kind, anim) in ORDER:
+                out = [out[i] for i in ORDER[(kind, anim)]]
             frames[(anim, d)] = out
     # the scale: the S level-wing fly frame (the 2nd) is SPAN px wide
     o1 = figs['fly'][0][1]['main']

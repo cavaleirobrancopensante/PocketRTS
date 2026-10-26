@@ -92,7 +92,7 @@ Constructs run down away from a Clocktower, Spring Tower, Charging Pylon or depl
 Left click selects (Shift adds, Ctrl-click or double-click picks every unit of that type on screen); left drag box-selects; right click commands (move, attack, work, rally). Mouse wheel zooms; screen edges, arrow keys or the middle button pan.
 Line move: hold the right button and drag a line; your units spread out along it (with A first, they attack-move). On a phone: tap MOVE or ATTACK, then drag.
 Shift-queued orders: hold Shift while giving an order (right click, MOVE, ATTACK, REPAIR, placing buildings or walls) and it goes after what the units are already doing, up to 16 orders. MOVE, ATTACK, REPAIR and placement stay open while Shift is held. Shift-placed buildings are built one after another in click order (each Brood site takes its own grub). A plain order clears the queue. Selected units show their queue as faint lines: green move, red attack, yellow build or work.
-Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work, E repair (right-click it: automatic repair, glowing). The hotkey bar above the selection card: F1 idle workers, F2 army, F3 MAKE (every building that makes something), then groups 1-9 and 0: the number selects (twice: jumps to it), Ctrl+number sets the group to the selection, Ctrl+Shift+number adds the selection to it, Shift+number adds the group to your selection (to drop a unit: select the group, Shift+click it off, Ctrl+number again). F4-F10 jump to camera views (the tabs peeking above the bar); Shift+F4-F10 saves the current view. Tab flips the command card's pages. Space jumps to the selection, Esc cancels. In a browser, Ctrl+1-8 and F5 may be taken by the browser: use the bar's buttons or Shift+click. Enter: chat (type, Enter sends, Esc cancels; the computer's "gg" can be answered with gg).
+Every command button has a letter hotkey (hover for details): B build, A attack, M move, S stop, H hold, G work, E repair (right-click it: automatic repair, glowing), Ctrl+A bombard (cannons, mortars and Spore Mothers fire at a spot until another order). The hotkey bar above the selection card: F1 idle workers, F2 army, F3 MAKE (every building that makes something), then groups 1-9 and 0: the number selects (twice: jumps to it), Ctrl+number sets the group to the selection, Ctrl+Shift+number adds the selection to it, Shift+number adds the group to your selection (to drop a unit: select the group, Shift+click it off, Ctrl+number again). F4-F10 jump to camera views (the tabs peeking above the bar); Shift+F4-F10 saves the current view. Tab flips the command card's pages. Space jumps to the selection, Esc cancels. In a browser, Ctrl+1-8 and F5 may be taken by the browser: use the bar's buttons or Shift+click. Enter: chat (type, Enter sends, Esc cancels; the computer's "gg" can be answered with gg).
 Tooltips: rest the mouse on a command button for its cost, time, supply, what's still missing (in red) and what it does; on a unit or building (yours or the enemy's), a resource or a quick button a little longer. Settings > TOOLTIPS switches them off.
 
 MOBILE
@@ -431,7 +431,7 @@ func show_editor_menu() -> void:
 	for it in [["SANDBOX", "Set up any match, then spawn any unit or building for any player, hand out resources, lift the fog, take control of any side, switch AIs off and speed up time.", func() -> void:
 				sandbox_lobby = true
 				show_skirmish()],
-			["CLOCKWORK LAB", "One tap: you as the Clockwork on an open test map against a computer that never attacks, with plenty of cogs, the gear field on show (the Clocktower with two Cog Presses, a Mainspring, a Movement Works, a Regulator and a Ratchet Turret meshing round it, an Escapement meshing with the Mainspring, a Clock Aviary, four Clock Soldiers, three Jacks, three Swifts and a Ticking Owl) and every new experimental unit and building unlocked. Spawn anything from the SANDBOX panel. For trying the gear field and the experimental Clockwork roster.", func() -> void: start_lab()],
+			["CLOCKWORK LAB", "One tap: you as the Clockwork on an open test map against a computer that never attacks, with plenty of cogs, the gear field on show (the Clocktower with two Cog Presses, a Mainspring, a Movement Works on its big gear, a Regulator and a Ratchet Turret meshing round it, an Escapement meshing with the Mainspring, a Clock Aviary, four Clock Soldiers, three Jacks, two Pendulums, two Netters, three Swifts and a Ticking Owl) and every new experimental unit and building unlocked. Spawn anything from the SANDBOX panel. For trying the gear field and the experimental Clockwork roster.", func() -> void: start_lab()],
 			["MAP EDITOR", "Maps of any size, 1v1 to 4v4: paint high ground, ramps, water or lava, fords, trees and rocks in any biome, place decorations and start and hall spots with their teams, mirror it all for fairness, CHECK it, then save and play it in Skirmish.", func() -> void: show_map_editor()]]:
 		var b := _button(it[0], it[2])
 		b.custom_minimum_size.y = 64
@@ -601,6 +601,7 @@ func show_settings() -> void:
 	rhe.text_changed.connect(func(x: String) -> void:
 		Settings.relay_url = x.strip_edges()
 		Settings.save_all())
+	UiStyle.touch_text(rhe, "ONLINE RELAY ADDRESS")
 	rh.add_child(rhe)
 	v.add_child(rh)
 	v.add_child(_gap(4))
@@ -1996,8 +1997,9 @@ func start(cfg: Dictionary = {}) -> void:
 		SaveGame.restore(game, cfg["resume"])
 		last_cfg.erase("resume")
 	_save_t = 0.0
-	if not game.demo and not cfg.has("net"):
+	if not game.demo:
 		hud.start_countdown(3.0)
+		hud.count_hold = cfg.has("net")      # online: held until every player has loaded (NetSession "ready"/"go")
 
 
 func _to_menu() -> void:

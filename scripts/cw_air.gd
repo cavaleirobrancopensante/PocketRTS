@@ -17,6 +17,8 @@ static func morph_problem(u: Unit) -> String:
 		return "Only a Swift can be rebuilt into a Ticking Owl."
 	if u.owl_t >= 0.0:
 		return "It is already turning into a Ticking Owl."
+	if u.net_t > 0.0:
+		return "It is caught in a net."
 	var g := u.game
 	if not g.has_tech(u.team, "owl_morph"):
 		return "Research TICKING OWL at a Clock Aviary first."
@@ -137,11 +139,11 @@ static func curve(vals: Array, at: float) -> float:
 ## ground (the wreck frames lie on it).
 static func sprite_offset(u: Unit) -> Vector2:
 	var f: Dictionary = Defs.FLYER[u.kind]
-	var lift := float(f["lift"])
+	var lift := float(f["lift"]) * (1.0 - u._low)       # (caught in a Netter's net: down on the ground, scripts/netter.gd)
 	var at := float(u.frame_i) + clampf(u.anim_t, 0.0, 1.0)
 	if u.dead:
 		return Vector2(0.0, -lift * curve(f["fall"], at))
-	var p := Vector2(0.0, -lift + sin(u._bob_t * 4.0) * 2.5)
+	var p := Vector2(0.0, -lift + sin(u._bob_t * 4.0) * 2.5 * (1.0 - u._low))
 	if u.owl_t >= 0.0:
 		p.y += sin(u._bob_t * 9.0) * 1.0          # (a shiver while it is rebuilt)
 	if u.anim == "attack" and f.has("lunge"):
@@ -151,6 +153,19 @@ static func sprite_offset(u: Unit) -> Vector2:
 	elif u.anim == "bomb" and f.has("bob"):
 		p.y += curve(f["bob"], at)
 	return p
+
+
+## The Swift's pitch on its peck now (Defs.FLYER "tilt" by the frame of the attack strip, "tilt_view" for the drawn view; a
+## west view mirrors the east one): nose up as it winds back, nose down into the blow. Unit._animate turns the sprite
+## about its body by it. 0 when it is not pecking.
+static func sprite_tilt(u: Unit) -> float:
+	var f: Dictionary = Defs.FLYER[u.kind]
+	if u.dead or u.anim != "attack" or not f.has("tilt"):
+		return 0.0
+	var k := float((f["tilt_view"] as Dictionary).get(u.anim_dir, 0.0))
+	if k == 0.0:
+		return 0.0
+	return curve(f["tilt"], float(u.frame_i) + clampf(u.anim_t, 0.0, 1.0)) * k * (-1.0 if u.anim_flip else 1.0)
 
 
 ## The full lunge or swoop now: from the bird's beak or talons (Defs.FLYER "strike_y" px over its hovering anchor) to its
@@ -168,8 +183,8 @@ static func reach(u: Unit) -> Vector2:
 
 ## A dead flyer still falling (not yet on the ground)?
 static func falling(u: Unit) -> bool:
-	if not u.dead or not Defs.FLYER.has(u.kind):
-		return false
+	if not u.dead or not Defs.FLYER.has(u.kind) or u._low >= 0.99:
+		return false          # (one a net had brought down was on the ground already)
 	return curve(Defs.FLYER[u.kind]["fall"], float(u.frame_i) + clampf(u.anim_t, 0.0, 1.0)) > 0.0
 
 
@@ -213,6 +228,8 @@ static func drop_bomb(u: Unit, b: Building) -> OwlBomb:
 	g.add_child(bomb)
 	u.bombs += 1
 	u.last_bomb = bomb
+	if g.net != null and not g.puppet:
+		g.net.note_bomb(bomb)          # (online host: the guest sees it fall and burst)
 	if u.visible and g.view_rect.has_point(u.position):
 		Sfx.play_any(["combat/owl_drop", "ratchet"], u.position, -6.0)
 	return bomb

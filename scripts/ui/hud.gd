@@ -91,6 +91,9 @@ var _redraw_t := 0.0
 ## A match opens with a short countdown (3, 2, 1, GO): the world waits while you get ready.
 var countdown := 0.0
 var _count_shown := -1
+## Online: the countdown waits (frozen at its start) until every player's match has loaded; the host's
+## NetSession releases it on both sides at once ("ready" / "go", net/net_session.gd).
+var count_hold := false
 
 
 func start_countdown(secs := 3.0) -> void:
@@ -103,6 +106,12 @@ func _countdown(delta: float) -> void:
 	if countdown <= 0.0 or paused:
 		return
 	get_tree().paused = true
+	if game:
+		game.update_view_rect()         # (the game's tick keeps it current; it hasn't ticked yet)
+		if game.gear_net:
+			game.gear_net.held()        # (the ground gears stand drawn through the countdown, not popping in at GO)
+	if count_hold:
+		return
 	countdown -= delta
 	var n := int(ceil(countdown))
 	if n != _count_shown:
@@ -126,6 +135,10 @@ func _draw_countdown() -> void:
 	var vs := _vs()
 	var c := vs * 0.5 - Vector2(0, 40)
 	var font := UiStyle.bold_font()
+	if count_hold and countdown > 0.0:
+		_ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
+		_text(font, c, Loc.t("Waiting for the other player..."), 30, Color(1, 0.88, 0.45, 0.9), 1)
+		return
 	var txt := str(int(ceil(countdown))) if countdown > 0.0 else "GO!"
 	var f: float = (countdown - floor(countdown)) if countdown > 0.0 else _go_t / 0.6
 	var sz := int(96 + 40 * f)
@@ -637,6 +650,10 @@ func _minimap_to(p: Vector2) -> void:
 		game.group_move(game.selected_units(), w, controls.mode == "attack", q)
 		controls.cancel_mode()     # (closed even with Shift: a drag on the minimap would queue a flood)
 		return
+	if controls.mode == "bombard":
+		game.bombard_order(game.selected_units(), w, Settings.pc() and Input.is_key_pressed(KEY_SHIFT))
+		controls.cancel_mode()
+		return
 	_jump(w)
 
 
@@ -870,6 +887,11 @@ func _build_card() -> Array:
 		list.append(["stop", "STOP", func() -> void: game.command_all(game.selected_units(), "stop"), true, "", ""])
 		if not units.all(func(u: Unit) -> bool: return u.is_worker() or u.kind == "horse"):
 			list.append(["patrol", "PATROL", func() -> void: controls.mode = "patrol", true, "", ""])
+		if units.any(func(u: Unit) -> bool: return u.can_bombard()):
+			# BOMBARD (Ctrl+A): fire at a spot until another order (Defs.BOMBARD); the Brood's is the Spore Mother's
+			if game.faction_of(game.human) == "brood":
+				_tip_for["BOMBARD"] = ["Bombard", "Then pick a spot on the ground (in the fog too): the Spore Mothers walk into range, root and keep lobbing spit blobs at it until you give another order. Spit does not tear up bodies."]
+			list.append(["ab_bombard", "BOMBARD", func() -> void: controls.begin_bombard(), true, "", ""])
 		if has_lab:
 			# workers don't need HOLD: two build pages instead, basic and advanced
 			list.append(["build", "BUILD", func() -> void:
@@ -1431,6 +1453,8 @@ const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A
 	"dismounted": "G", "dismounted_cuirassier": "B",
 	"tin_militia": "A", "scrapper": "D", "rail_rifleman": "F", "work_car": "S", "plate_wagon": "A", "heavy_loco": "D", "carrier_car": "F", "tesla_loco": "G", "storm_engine": "B"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
+## Commands on a Ctrl key (computer): the hint shows it, and they take no letter (A stays ATTACK).
+const CTRL_KEYS := {"BOMBARD": "^A"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -1538,6 +1562,9 @@ func _with_keys(items: Array) -> Array:
 	for i in items.size():
 		var own := UiLayout.key_for(key_id(items[i]))
 		var lab: String = lab_of.call(items[i])
+		if own == "" and CTRL_KEYS.has(lab):
+			chosen[i] = String(CTRL_KEYS[lab])
+			continue
 		var k: String = own if own != "" else (String(FIXED_KEYS[lab]) if MUST_KEYS.has(lab) else String(UNIT_KEYS.get(String(items[i][0]), "")))
 		if k != "" and not used.has(k):
 			used[k] = true
@@ -2108,8 +2135,9 @@ func _draw_rest(font: Font) -> void:
 	if br.size != Vector2.ZERO:
 		_ci.draw_rect(br, Color(0.4, 1, 0.4, 0.12))
 		_ci.draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
-	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker", "cast"]:
+	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker", "cast", "bombard"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
+			"bombard": "Tap the spot to bombard: they keep firing at it until another order",
 			"cast": "Tap the enemy to lash with the tongue" if controls.cast_spell == "tongue" else ("Tap where to JUMP (up to 5 tiles; up a cliff only with HIGH LEAP, where you can see)" if controls.cast_spell == "jump" else "Tap where to cast the %s" % {"storm": "storm (it stuns your own units too)",
 				"fog": "fog (shots from or into it miss half the time, yours too)"}.get(controls.cast_spell, "healing miasma")),
 			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a Feeding Pit (or a spot) for new grubs"}[controls.mode]
@@ -2411,6 +2439,10 @@ func _draw_panel(font: Font) -> void:
 			elif uu.kind == Defs.JACK:
 				var jn := "In the air." if not uu.jump.is_empty() else ("JUMP ready" if uu.jump_cd <= 0.0 else "JUMP in %d s" % int(ceil(uu.jump_cd)))
 				info = jn + (" · HIGH LEAP: it can jump up onto high ground it can see." if game.has_tech(uu.team, "high_leap") else " · Flat and down only (HIGH LEAP at the Escapement: up too).")
+			elif uu.kind == Defs.NETTER:
+				info = Netter.card_line(uu)
+			elif uu.kind == Defs.PENDULUM:
+				info = "Its blade cuts every enemy in the arc in front of it (never your own units). It cannot reach flyers."
 			elif uu.kind == "tesla_cart":
 				info = {"packed": "Packed: rolls, can't fire. DEPLOY to fight.", "deploying": "Deploying...",
 					"deployed": "Deployed: powers constructs nearby and zaps enemies.", "packing": "Packing up..."}[uu.tesla_mode]
@@ -2466,6 +2498,8 @@ func _draw_panel(font: Font) -> void:
 				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."
 			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99:
 				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
+			if uu.net_t > 0.0:
+				info = "CAUGHT IN A NET: %d s (it cannot move or fight)" % int(ceil(uu.net_t))      # (a Netter's: scripts/netter.gd)
 			if uu.hold_fire and not uu.has_pistol():
 				info = "HOLD FIRE · " + info      # (the pistol's own line says it)
 			if not uu.led.is_empty():
@@ -2998,9 +3032,11 @@ func _draw_card(font: Font) -> void:
 			_text(UiStyle.bold_font(), Vector2(cbr.get_center().x, cbr.end.y - 3), it[5], 12, Color(1, 0.86, 0.4) if enabled else Color(1, 0.86, 0.4, 0.5), 1)
 		if Settings.pc() and it.size() > 6 and it[6] != "":
 			var kr := Rect2(br.position + Vector2(2, 2), Vector2(16, 16))
+			if String(it[6]).length() > 1:
+				kr.size.x = UiStyle.bold_font().get_string_size(it[6], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6.0     # (^A)
 			_ci.draw_rect(kr, Color(0.1, 0.08, 0.05, 0.85))
 			_ci.draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
-			_text(UiStyle.bold_font(), kr.position + Vector2(8, 13), it[6], 12, Color(1, 0.92, 0.6), 1)
+			_text(UiStyle.bold_font(), kr.position + Vector2(kr.size.x * 0.5, 13), it[6], 12, Color(1, 0.92, 0.6), 1)
 
 
 ## Autocast (WORK, PUSH): a golden outline that breathes, with sparks running round it.
@@ -3112,6 +3148,7 @@ const CMD_TIPS := {
 	"UNLOAD": "Then pick where to drop them: the balloon flies there and lets everyone off.",
 	"DROP HERE": "Let everyone off right below the balloon.",
 	"RESTOCK": "Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 40-shot store is full.",
+	"BOMBARD": "Then pick a spot on the ground (in the fog too): the cannons and mortars set up in range and keep firing at it until you give another order, as long as their shot lasts. Shells, round shot and canister tear up the bodies where they land: the Brood can't harvest them, a Missionary can't raise them (yours too).",
 }
 
 func _cost_text(a: int, b: int) -> String:
@@ -3377,7 +3414,8 @@ func _draw_tip() -> void:
 	for f in [["stats", bold, 14, UiStyle.TEXT], ["need", bold, 14, UiStyle.BAD], ["body", body_f, 14, Color(0.95, 0.91, 0.82)], ["hint", body_f, 13, UiStyle.MUTED]]:
 		if String(_tip.get(f[0], "")) != "":
 			rows.append([Loc.t(String(_tip[f[0]])), f[1], f[2], f[3]])
-	var key_w := 22.0 if key != "" else 0.0
+	var key_bw := maxf(17.0, bold.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6.0) if key.length() > 1 else 17.0     # (^A)
+	var key_w := key_bw + 5.0 if key != "" else 0.0
 	var w := bold.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + key_w
 	for r in rows:
 		w = maxf(w, (r[1] as Font).get_string_size(r[0], HORIZONTAL_ALIGNMENT_LEFT, -1, r[2]).x)
@@ -3406,10 +3444,10 @@ func _draw_tip() -> void:
 	UiStyle.draw_panel(_ci, rect, UiStyle.accent(game.faction_of(game.human)), 0.96)
 	var x := rect.position.x + 10
 	if key != "":
-		var kr := Rect2(x, rect.position.y + 8, 17, 17)
+		var kr := Rect2(x, rect.position.y + 8, key_bw, 17)
 		_ci.draw_rect(kr, Color(0.1, 0.08, 0.05, 0.9))
 		_ci.draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
-		_text(bold, kr.position + Vector2(8.5, 13.5), key, 12, Color(1, 0.92, 0.6), 1)
+		_text(bold, kr.position + Vector2(key_bw * 0.5, 13.5), key, 12, Color(1, 0.92, 0.6), 1)
 	_ci.draw_string(bold, Vector2(x + key_w, rect.position.y + 22), title, HORIZONTAL_ALIGNMENT_LEFT, tw - key_w, 16, Color(1, 0.88, 0.55))
 	var y := rect.position.y + 30.0
 	for i in rows.size():

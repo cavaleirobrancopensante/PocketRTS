@@ -312,6 +312,7 @@ func _build_ui() -> void:
 	_name_edit.tooltip_text = "The map's name"
 	_name_edit.add_theme_stylebox_override("normal", UiStyle.box(Color(0.08, 0.07, 0.05, 0.95), UiStyle.TRIM_DIM, 2, 7, 10.0))
 	_name_edit.text_changed.connect(func(t: String) -> void: map_name = t.strip_edges())
+	UiStyle.touch_text(_name_edit, "The map's name")
 	top.add_child(_name_edit)
 	var info := UiStyle.text(("%dx%d" % [W, H]) if mode() == "-" else ("%s  %dx%d" % [mode(), W, H]), 17, UiStyle.TRIM, HORIZONTAL_ALIGNMENT_CENTER, true)
 	info.custom_minimum_size = Vector2(104, 44)

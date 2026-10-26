@@ -7,6 +7,8 @@ extends Node
 ##   1-9 and 0 groups (Ctrl+number sets, Ctrl+Shift+number adds the selection, Shift+number adds the group to the selection), F1 idle workers, F2 army, F3 make, F4-F10 camera views (Shift+F saves), Space = jump to
 ##   the selection, Esc = cancel. Shift with a command (right click, MOVE, ATTACK, REPAIR,
 ##   placing buildings and walls) queues it after the units' current orders. Watching computers: 0 all vision, 1-4 follow that player.
+##   Ctrl+A = BOMBARD (fire at a spot, as in Total Annihilation): the next click is a spot on the ground the selected
+##   cannons, mortars and Spore Mothers keep firing at (Defs.BOMBARD).
 ## MOBILE:
 ## Touch:  tap = select / command,  drag = box select,  long-press = move only,
 ##         two fingers = pan and pinch-zoom,  double-tap a unit = all of that type.
@@ -113,6 +115,17 @@ func cancel_mode() -> void:
 	ghost_cell = Vector2i(-1, -1)
 
 
+## BOMBARD (Ctrl+A or the card's button): the next click or tap is a spot on the ground. Only when a unit in the selection
+## can fire at a spot (Defs.BOMBARD); false (and a note) if none can.
+func begin_bombard() -> bool:
+	if not game.selected_units().any(func(u: Unit) -> bool: return u.can_bombard()):
+		game.notify("Only cannons, mortars and Spore Mothers can fire at a spot.")
+		return false
+	cancel_mode()
+	mode = "bombard"
+	return true
+
+
 func begin_line() -> void:
 	cancel_mode()
 	mode = "lay_line"
@@ -162,7 +175,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		hud.hotkey((event as InputEventKey).keycode, true)
 	elif event is InputEventKey and not event.pressed and (event as InputEventKey).keycode == KEY_SHIFT:
 		# Shift let go: a mode kept open for queueing closes (the next click would replace the queue)
-		if _shift_kept and mode in ["move", "attack", "repair", "place"]:
+		if _shift_kept and mode in ["move", "attack", "repair", "place", "bombard"]:
 			cancel_mode()
 		_shift_kept = false
 
@@ -334,7 +347,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				_line_btn = "left"
 				_line_add(e.position)
 				return
-			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol", "ride", "cwsiding", "cwsetup", "cwcast", "cwdrop":
+			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol", "ride", "cwsiding", "cwsetup", "cwcast", "cwdrop", "bombard":
 				_tap(e.position, false, e.shift_pressed)
 				return
 		_lmb_down = true
@@ -418,6 +431,11 @@ func _key(e: InputEventKey) -> void:
 					game.camera.position = c / sel.size()
 					_user_cam()
 				return
+	if e.keycode == KEY_A and (e.ctrl_pressed or e.meta_pressed) and not e.shift_pressed:
+		# Ctrl+A: BOMBARD, fire at a spot (A stays attack-move)
+		if not units.is_empty() and begin_bombard() and hud:
+			hud.flash_card("BOMBARD")
+		return
 	match e.keycode:
 		KEY_ESCAPE, KEY_BACKSPACE:
 			if mode != "":
@@ -510,7 +528,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 	var raw := to_world(screen)
 	var p := game.on_map(raw)       # (the view may reach past the map edge: orders stay on it)
 	var units := game.selected_units()
-	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair")
+	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair" or mode == "bombard")
 	match mode:
 		"lay_line":
 			if line_tool != null:
@@ -551,6 +569,15 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 			if not units.is_empty() and units[0].team == game.human:
 				game.command_sound(units, "attack", "patrol")
 			game._ping(p, Color(1, 0.75, 0.3))
+			if queued:
+				_keep_for_shift()
+			else:
+				cancel_mode()
+			Sfx.play_any(["ui/click", "click"])
+			return
+		"bombard":
+			# the spot to fire at (anywhere on the map, in the fog too); Shift: after their orders, and BOMBARD stays on
+			game.bombard_order(units, p, queued)
 			if queued:
 				_keep_for_shift()
 			else:

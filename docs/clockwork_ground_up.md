@@ -87,6 +87,11 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - AREA DAMAGE (the old Steam Walker / Storm Engine role, now without steam or electricity), three concepts sent: the PENDULUM (a heavy walker swinging a giant pendulum blade in a wide arc: melee cleave), the COG MORTAR (lobs a canister that bursts over an area in spinning cogs and screws: ranged splash), the MAINSPRING BOMB (a wind-up crawler that runs into the enemy and its spring bursts out: suicide splash).
 - Still open: the slow field (mechanical: spiked caltrop cogs, grease), the heavy Grandfather, the Great Winder.
 
+## Tier 3 built (0.14.23): the Pendulum and the Netter
+- Owner's calls (2026-10-26): both from the MOVEMENT WORKS once an Escapement works, paid in cogs and Tension; the PENDULUM only while its Works runs on the BIG gear (on the small gear its button is greyed with the reason; a Works with one queued cannot swap back).
+- PENDULUM (melee area damage): 200 cogs + 75 Tension, 4 supply, 340 hp, 2 armour, slow (46), ground only; every swing (about every 2.6 s) does 22 to EVERY enemy ground unit in the arc in front (62 px, 60 degrees either side), never its own side.
+- NETTER (the stopper): 125 cogs + 50 Tension, 2 supply, 120 hp, 1 armour; a visible chain net at ONE enemy unit up to 180 px: CAUGHT for 4 s (no moving, no fighting), 4 damage; a caught flyer is down on the ground for that time (anything can hit it, flyer hunters cannot). A net every 14.6 s; on its own it nets the most dangerous enemy in reach not caught already. Numbers are guesses (docs/clockwork_gear_prototype.md "Tier 3").
+
 ## Readability rule (owner, 2026-10-26)
 - Problem (owner): every Clockwork unit so far is a red round body with a clock in the middle: hard to tell apart.
 - Rule (proposed): every unit has its OWN SILHOUETTE (size class and outline: round, tall and thin, wide and low, drum, tower, flyer) and its OWN BODY MATERIAL by role (melee = red case; ranged = polished brass; control/support = dark iron; heavy = tall tower); the team red becomes an ACCENT (bands, plates, a sash) on most units instead of the whole body; the big white clock face on the chest is the CLOCK SOLDIER's alone (other units show time another way: a small gauge, a dial on the head, a pendulum, a gear); each unit's weapon is big and readable.
@@ -95,8 +100,18 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 
 ## The Pendulum (owner, 2026-10-26)
 - Chosen as the Clockwork's MELEE AREA DAMAGE unit (concept art/redraws/concepts/pendulum_v1.png): a tall clock-tower body on two long legs, a big clock face at the top, a pendulum with a heavy bob and a crescent scythe blade that swings in a wide arc and hits everything in front of it. Its tower silhouette on long legs sets it apart from the Clock Soldier even though it keeps a red case and a clock (a tower clock, the heavy role).
-- Open: tier and producing building, cost (cogs + Tension?), numbers (slow, tough, cleave arc).
-- Art plan: a 5-direction sheet with the pendulum drawn separately; the swing and the idle sway are done in code by rotating the painted pendulum about its pivot (like the flywheel); the walk later.
+- Decided and built in 0.14.23 (see "Tier 3 built" above).
+- Art (as built): painted idle, walk and attack (the swing is painted, not turned in code) and death sheets in 5 directions (art/redraws/pendulum_*.png, imported by tools/import_tier3.py); its NE/N death is still the code guide until ChatGPT's part 2 arrives.
 
 ## Names (owner, 2026-10-26)
 - The air-to-air flyer is the SWIFT and its building the CLOCK AVIARY (English). "Cuckoo" read comic in English (crazy; the cuckold bird). Portuguese keeps the cuckoo ("Cuco", "Casa do Cuco"), the owner finds it fine there; Spanish does the same ("Cuco", "Casa del Cuco"). Internal ids and art files keep "cuckoo".
+
+## Under discussion (owner, 2026-10-26)
+- NO ZEPPELIN: the Swift and the Ticking Owl are the Clockwork's two air units (the Brood has two; the Crown's Balloon is strong enough alone).
+- Next units: the SPRING CATAPULT (throws its own melee units, Clock Soldiers and Pendulums, into the enemy: area damage where it lands, the thrown unit is hurt too; concept prompt sent) and a CASTER (no magic). Caster options sent: Great Winder (Rewind repairs an ally; Overwind: hit harder now, run down after), Tinker (caltrops, grease, spring trap), Surveyor (flare, mark).
+- After those two, the new Clockwork goes into the real game (it replaces the prototype roster).
+- REASSEMBLY (owner idea): machines can be taken apart and rebuilt as another unit in the field, after a research, while Winders nearby work on them; a hotkey on the unit. Pairs suggested: Clock Soldier <-> Jack, Swift <-> Ticking Owl, Netter <-> Catapult.
+- SWEEPER (owner idea): one unit that is both a big winder (a winding area for the army) and a sweeper that collects every body around it, Crown, Brood and Clockwork alike. It denies the Brood's harvest and the Missionary's resurrection. What the bodies give back is open; it must not be resurrection (that is the Crown's).
+- DECIDED (owner, 2026-10-26): the caster is the GREAT WINDER, which is also the sweeper and the field workshop for reassembly. It winds (repairs) allies with a winding arm and keeps the army wound in the field; it sweeps bodies and wreckage into its hopper (denies the Brood's harvest and the Missionary's resurrection) and keeps them as PARTS that pay for reassembly in the field (suggested: own wrecks give the most parts, Crown bodies some, Brood bodies none; reverse-engineering of enemy units maybe later). Concept prompt sent.
+- DECIDED (owner, 2026-10-26): the Spring Catapult's look (art/redraws/concepts/catapult_v1.png, on cog-wheels with a spiral-spring drum) is approved; its 5-direction sheet is requested with the arm drawn separately, so the throw is swung in code (demo: art/redraws/catapult_throw_demo.gif).
+- Fire at a spot (all factions, area weapons only: Ctrl+A and a card button) and bodies blasted by area shots, with the Brood's harvest raised to 1.25 essence per supply: being built (owner, 2026-10-26).

@@ -25,6 +25,8 @@ static func ready_problem(u: Unit) -> String:
 		return "It is already jumping."
 	if u.jump_cd > 0.0:
 		return "The spring is still winding back: JUMP in %d s." % int(ceil(u.jump_cd))
+	if u.net_t > 0.0:
+		return "It is caught in a net."
 	if u.powered_down():
 		return "It has run down: wind it up first."
 	return ""

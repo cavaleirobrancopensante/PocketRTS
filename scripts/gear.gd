@@ -404,6 +404,27 @@ func spring_problem(t: int, k: String, c: Vector2i, big := false) -> String:
 
 # ------------------------------------------------------------------ ticking and drawing
 
+var _held_view := Rect2()       # held(): the view the rings were last drawn for
+
+
+## The game is held paused (the 3-2-1 countdown, an online start waiting for the other player): tick() doesn't run yet,
+## so solve and draw the rings as they stand, else they'd pop in at GO. Cheap while nothing changes (HUD._countdown).
+func held() -> void:
+	if game == null or not Defs.gear_mode:
+		return
+	var s := _signature()
+	if s == _sig and game.view_rect == _held_view:
+		return
+	_held_view = game.view_rect
+	if s != _sig:
+		_sig = s
+		solve()
+		_spin(0.0)
+	queue_redraw()
+	if _top:
+		_top.queue_redraw()
+
+
 func tick(delta: float) -> void:
 	_clock += delta
 	if game == null:

@@ -125,7 +125,7 @@ var patrol_a := Vector2.INF     # PATROL: the two ends he walks between (INF: no
 var patrol_b := Vector2.INF
 var friendly_kills := 0         # our own men his blows finished off (splash): just for the card
 var harvester: Unit = null      # (a body) the grub coming to take it
-var cocoon := 0                 # (a grub) essence it carries home
+var cocoon := 0.0               # (a grub) essence it carries home (Game.corpse_value: 1.25 a supply)
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # A Musketeer in a balloon's basket: its pose up there (gun_state[0], "idle"/"down"/"up") and
 # how long it has held it
@@ -188,6 +188,16 @@ var bombs := 0                  # Ticking Owl: bombs let go (tests)
 var last_bomb: OwlBomb = null   # Ticking Owl: its last bomb (tests, screenshots)
 var _owl_bomb := false          # Ticking Owl: this attack is a bomb on a building (else the talon swoop)
 var _reach := Vector2.ZERO      # Swift / Ticking Owl: how far its lunge or swoop carries the sprite (CwAir.reach)
+var swings := 0                 # Pendulum: swings made (tests)
+var last_hits := 0              # Pendulum: the enemies its last swing caught (tests)
+var nets := 0                   # Netter: nets fired (tests)
+var last_net: ChainNet = null   # Netter: its last net in flight (tests, screenshots)
+var net_t := 0.0                # CAUGHT in a Netter's net: s left (it cannot move or fight; a flyer is down on the ground)
+var nets_in := 0                # nets flying at it now (Netters pick someone else meanwhile)
+var nets_taken := 0             # nets that caught it (tests)
+var net_drop := 0.0             # s since the net over it landed (it drops onto it: Netter.update_net)
+var _net_spr: Sprite2D          # the spread net over it while caught
+var _low := 0.0                 # a flyer brought down by a net: 0 at its flying height, 1 on the ground
 # Mist Toad (its energy is `charge`): TONGUE
 var tongue_victim: Unit = null  # who its tongue is on
 var tongue_stage := ""          # "", "windup" (the crosshair), "lash" (the tongue flies out), "pull"
@@ -328,6 +338,23 @@ func _rest_in_peace() -> void:
 		game.fallen.erase(self))
 	_rip.tween_property(self, "modulate:a", 0.0, 3.0)
 	_rip.tween_callback(queue_free)
+
+
+var torn := false               # (a body) torn up by a shell, round shot, canister or bomb (Game.tear_body): going
+
+
+## (a body) torn up by an area shot (Game.tear_body: already off the harvest and revive lists): it darkens and is gone in
+## a moment.
+func tear_up() -> void:
+	torn = true
+	if _rip and _rip.is_valid():
+		_rip.kill()
+	_rip = null
+	set_physics_process(false)
+	set_process(false)
+	var tw := create_tween()
+	tw.tween_property(self, "modulate", Color(0.3, 0.24, 0.2, 0.0), 0.3)
+	tw.tween_callback(queue_free)
 
 
 ## (a body) raised by a Missionary: back on the field with part of its health, under the
@@ -866,7 +893,7 @@ var war := false
 
 
 func is_air() -> bool:
-	return d.get("air", false)
+	return d.get("air", false) and net_t <= 0.0      # (a flyer caught in a net is down on the ground: scripts/netter.gd)
 
 
 ## Can this unit attack that one at all?
@@ -879,6 +906,8 @@ func can_hit(e: Entity) -> bool:
 		return false            # a deflated Bloater, a Skywing landing or taking off
 	if owl_t >= 0.0:
 		return false            # (a Swift turning into a Ticking Owl)
+	if kind == Defs.NETTER and (not (e is Unit) or ((e as Unit).net_t > 0.0 and not (order == "attack" and e == order_target))):
+		return false            # (its net is for units, and one caught already only when it is told to)
 	if e.is_air() and d.get("ground_only", false):
 		return false
 	if not e.is_air() and d.get("air_only", false):
@@ -1082,6 +1111,10 @@ func _strike_time() -> float:
 		return float(Defs.OWL_BOMB["strike"])
 	if Defs.FLYER.has(kind):
 		return float(Defs.FLYER[kind]["strike"])
+	if kind == Defs.PENDULUM:
+		return float(Defs.PENDULUM_SWING["strike"])      # (the blade swings on through the strip's last frames)
+	if kind == Defs.NETTER:
+		return float(Defs.NET["strike"])                 # (the recoil eases back)
 	return 0.35
 
 
@@ -1592,7 +1625,7 @@ func coil_point() -> Vector2:
 func center() -> Vector2:
 	# flyers are drawn hovering 20 px up: shots and zaps go to where they're seen (the Swift's and the Owl's bodies: Defs.FLYER)
 	if Defs.FLYER.has(kind):
-		return global_position + Vector2(0, -float(Defs.FLYER[kind]["centre"]))
+		return global_position + Vector2(0, -float(Defs.FLYER[kind]["centre"]) + float(Defs.FLYER[kind]["lift"]) * _low)
 	return global_position + Vector2(0, -32 if is_air() else -12)
 
 
@@ -1932,6 +1965,104 @@ func cmd_patrol(p: Vector2) -> void:
 		patrol_b = p
 
 
+# ------------------------------------------------------------------ FIRE AT A SPOT (BOMBARD; Defs.BOMBARD)
+
+var _bombard_n := 0             # shots fired at the BOMBARD spot so far (orders Shift-queued behind it wait for Defs.BOMBARD.queued)
+
+
+## Can it fire at a spot on the ground? (An area weapon: the Defs.BOMBARD kinds; not from a balloon's basket.)
+func can_bombard() -> bool:
+	return (Defs.BOMBARD["kinds"] as Array).has(kind) and not dead and aboard == null
+
+
+## BOMBARD (as in Total Annihilation): walk into range of the spot `p`, set up there (a gun unlimbers, a Mortar deploys, a
+## Spore Mother roots) and keep firing at it, into the fog too, until another order. Out of shot it waits there (a Powder
+## Wagon nearby fills it up again and it goes on). It fires at nothing else meanwhile.
+func cmd_bombard(p: Vector2) -> void:
+	if not can_bombard():
+		return
+	_reset_work()
+	order = "bombard"
+	order_point = p
+	target = null
+	order_target = null
+	_bombard_n = 0
+	leash_from = position
+
+
+## The BOMBARD order, every tick: into range (packing up to move, backing off if too close), set up, fire.
+func _bombard(delta: float) -> Vector2:
+	var p := order_point
+	var dist := position.distance_to(p) - radius
+	var rng := _range()
+	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
+	if phase != "" or (dist <= rng and dist >= min_r):
+		path = PackedVector2Array()
+		if deploys() and tesla_mode != "deployed":
+			if tesla_mode == "packed":
+				tesla_mode = "deploying"
+				tesla_t = switch_time()
+			return Vector2.ZERO          # (setting up)
+		_bombard_cycle(delta)
+		return Vector2.ZERO
+	if deploys() and tesla_mode != "packed":
+		if tesla_mode == "deployed":
+			tesla_mode = "packing"       # out of range: pack up to move
+			tesla_t = switch_time()
+		return Vector2.ZERO
+	if dist < min_r:
+		return (position - p).normalized() * speed      # too close (a Mortar's least range): back off
+	if (path.is_empty() or path_i >= path.size()) and not path_pending or repath_t <= 0.0:
+		repath_t = 1.5
+		_request_path(p)
+	return _follow(delta)
+
+
+## Aim, fire at the spot, reload (as _attack_cycle does for a target). No HOLD FIRE or own-men check: it was ordered.
+func _bombard_cycle(delta: float) -> void:
+	var p := order_point
+	if p.distance_to(position) > 2.0:
+		facing = (p - position).normalized()
+	if phase == "":
+		if cooldown > 0.0 or stun_t > 0.0:
+			return
+		if _pmax > 0.0 and powder < 1.0:
+			cooldown = 0.5               # out of shot: it waits for powder (a Powder Wagon, a Mill...)
+			if Time.get_ticks_msec() > _hold_note:
+				_hold_note = Time.get_ticks_msec() + 5000
+				game.out_of_powder(self)
+			return
+		phase = "aim"
+		phase_t = _aim()
+		return
+	phase_t -= delta
+	if phase == "aim" and phase_t <= 0.0:
+		phase = "strike"
+		phase_t = _strike_time()
+		_fire_at_spot(p)
+	elif phase == "strike" and phase_t <= 0.0:
+		phase = ""
+		cooldown = _cooldown()
+		if not queue.is_empty() and _bombard_n >= int(Defs.BOMBARD["queued"]):
+			_next_order()                # (Shift-queued orders behind it: on to the next after its few shots)
+
+
+## One shot at the spot (Game.bombard_shot): it spends a shot of powder; in a fog bank it lands wide half the time.
+func _fire_at_spot(p: Vector2) -> void:
+	var dmg := float(d["damage"]) * (1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
+	if _pmax > 0.0:
+		if powder < 1.0:
+			return
+		powder -= 1.0
+		if powder < 1.0:
+			game.out_of_powder(self)
+	_bombard_n += 1
+	var wide := Vector2.ZERO
+	if not game.zones.is_empty() and (game.in_fog(global_position) or game.in_fog(p)) and randf() < float(Defs.FOG["miss"]):
+		wide = Vector2.from_angle(randf() * TAU) * randf_range(55.0, 95.0)
+	game.bombard_shot(self, p + wide, dmg)
+
+
 func cmd_heal(e: Unit) -> void:
 	if aboard:
 		return      # riding in a balloon
@@ -2070,7 +2201,8 @@ func cmd_build(site: Building) -> void:
 
 ## The orders that end by themselves: Shift-queued orders wait behind them. Behind anything
 ## else (idle, hold, working at a post...) a queued order starts at once.
-const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d_attack", "lead", "mount", "dismount"]
+## (BOMBARD never ends by itself: with orders queued behind it, it hands over after Defs.BOMBARD.queued shots.)
+const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d_attack", "lead", "mount", "dismount", "bombard"]
 
 
 ## Give an order ({"o": move/amove/attack/build/repair/gather/wall, "p", "e", "pieces"}): a
@@ -2188,6 +2320,8 @@ func _start(o: Dictionary) -> bool:
 			if e == null or not is_instance_valid(e) or not (e is Unit) or e.dead:
 				return false
 			cmd_follow(e)
+		"bombard":
+			cmd_bombard(o["p"])
 	return order != "idle"
 
 
@@ -2199,7 +2333,7 @@ static func _spot(e: Entity) -> Vector2:
 ## queued behind it (for the waypoint lines drawn for your selection).
 func plan_points() -> Array:
 	var pts: Array = []
-	if order == "move" or order == "amove" or order == "d_amove":
+	if order == "move" or order == "amove" or order == "d_amove" or order == "bombard":
 		pts.append(["amove" if order == "d_amove" else order, order_point])
 	elif (order == "attack" or order == "build" or order == "repair" or order == "gather") \
 			and order_target and is_instance_valid(order_target) and not order_target.dead:
@@ -2210,7 +2344,7 @@ func plan_points() -> Array:
 	for o in queue:
 		var e = o.get("e")
 		match String(o["o"]):
-			"move", "amove":
+			"move", "amove", "bombard":
 				pts.append([o["o"], o["p"]])
 			"wall":
 				for b in o["pieces"]:
@@ -2743,6 +2877,7 @@ func _tick_unit(delta: float) -> void:
 		elif phase == "":
 			run_t = maxf(run_t - delta * 3.0, 0.0)
 	stun_t = maxf(stun_t - delta, 0.0)
+	net_t = maxf(net_t - delta, 0.0)      # (caught in a net: its stun_t holds it meanwhile)
 	held_t = maxf(held_t - delta, 0.0)
 	scan_t -= delta
 	_wall_watch(delta)
@@ -3034,6 +3169,8 @@ func _tick_unit(delta: float) -> void:
 			want = _cast(delta)
 		"tongue":
 			want = _tongue_order(delta)
+		"bombard":
+			want = _bombard(delta)
 		"harvest":
 			want = _harvest(delta)
 		"board":
@@ -3513,6 +3650,8 @@ func _any_enemy_wall() -> bool:
 ## to what it sees (men standing behind a wall or a shut gate) goes for the wall or gate in
 ## the way instead, rather than pushing at the wall trying to reach them.
 func _pick_target(r: float) -> Entity:
+	if kind == Defs.NETTER:
+		return Netter.pick(self, r)      # (the most dangerous enemy not caught already: scripts/netter.gd)
 	var e := game.find_target(self, r)
 	if e == null or is_air() or float(d["range"]) > 40.0 or not e.is_unit() or _can_get_at(e):
 		return e
@@ -3761,6 +3900,10 @@ func _strike(e: Entity) -> void:
 			Sfx.play_any(["combat/skywing_attack", "bite"], position)
 		"jack":
 			Jack.shoot(self, e, dmg)       # (a spinning screw from the drill tip, ground or air)
+		"pendulum":
+			Pendulum.swing(self, e, dmg)   # (the blade through every enemy in the arc in front: scripts/pendulum.gd)
+		"netter":
+			Netter.fire(self, e)           # (the chain net flies; it catches its target where it lands: scripts/netter.gd)
 		"ticking_owl":
 			if e is Building:
 				CwAir.drop_bomb(self, e)       # (the weight falls onto it: the damage is the bomb's, where it lands)
@@ -4281,8 +4424,8 @@ func _harvest(delta: float) -> Vector2:
 		if hive.edge_distance(position) < radius + 17.0:
 			game.add_res2(team, cocoon)
 			if team == game.human:
-				game.float_text(position + Vector2(0, -26), "+%d essence" % cocoon, Color(0.8, 0.5, 1.0))
-			cocoon = 0
+				game.float_text(position + Vector2(0, -26), "+%s essence" % Game.essence_text(cocoon), Color(0.8, 0.5, 1.0))
+			cocoon = 0.0
 			path = PackedVector2Array()
 			_request_path(harvest_home)
 			return Vector2.ZERO
@@ -4959,6 +5102,10 @@ func die() -> void:
 		if sprite:
 			sprite.position = Vector2.ZERO
 	owl_t = -1.0                   # (a Swift killed while turning into an Owl: the price is lost)
+	net_t = 0.0                    # (caught in a net: the net goes with it)
+	if _net_spr:
+		_net_spr.queue_free()
+		_net_spr = null
 	if Defs.cw_roster:
 		CwUnits.on_death(game, self)
 	queue.clear()
@@ -5085,7 +5232,7 @@ func _anim_name() -> String:
 				return "walk" if moving else _anim_or("idle_packed", "idle")
 			if phase != "":
 				return "fire"
-			if cooldown > 0.0 and target:
+			if cooldown > 0.0 and (target or order == "bombard"):
 				return "reload"
 			return "idle"
 		"cannon":
@@ -5096,7 +5243,7 @@ func _anim_name() -> String:
 				return "walk" if new_art else ("move" if moving else "idle")
 			if phase != "":
 				return "fire"
-			if cooldown > 0.0 and target:
+			if cooldown > 0.0 and (target or order == "bombard"):
 				return "reload"
 			return "idle"
 		"powder_wagon":
@@ -5243,9 +5390,9 @@ func _anim_name() -> String:
 					return _anim_or("dwalk", "walk" if moving else "idle")
 			if phase != "":
 				return "attack"
-		"ornithopter", "clock_soldier":
+		"ornithopter", "clock_soldier", "pendulum", "netter":
 			if phase != "":
-				return "attack"
+				return "attack"          # (the Pendulum's swing, the Netter's recoil)
 		"jack":
 			if not jump.is_empty():
 				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
@@ -5269,7 +5416,10 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
 		"dismounted_armoured": 12.0, "winder": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
-		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0}
+		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
+		# the Pendulum's long strides (90 sheet px a step at 0.284: one 8-frame cycle carries it 51 px, 1.1 s at 46);
+		# the Netter's quick trot (its stubby legs step faster than the ground goes by: as fast as reads)
+		"pendulum": 7.2, "netter": 14.0}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.
@@ -5450,23 +5600,35 @@ func _animate(delta: float) -> void:
 		_rein_on = leader != null
 		_rein.queue_redraw()
 	_bob_t += delta
+	if (d.get("air", false) or _low > 0.0) and not dead:
+		# a flyer caught in a net comes down to the ground (quickly) and rises again once free (scripts/netter.gd); one
+		# killed down there stays down
+		_low = move_toward(_low, 1.0 if net_t > 0.0 else 0.0, delta * (4.0 if net_t > 0.0 else 2.0))
+	if net_t > 0.0 or _net_spr:
+		Netter.update_net(self, delta)
 	if kind == "skywing" and (sky == "landing" or sky == "lifting") and not dead:
 		# coming down to (or rising from) the ground
 		var f := clampf(sky_t / Defs.SKYWING_SWITCH, 0.0, 1.0)
 		sprite.position.y = -20.0 * (f if sky == "landing" else 1.0 - f)
 	elif Defs.FLYER.has(kind):
-		# the Swift and the Owl: the hover, their lunge / dive / bob, the fall when they die (scripts/cw_air.gd)
+		# the Swift and the Owl: the hover, their lunge / dive / bob, the fall when they die (scripts/cw_air.gd); the Swift
+		# pitches nose down into its peck, turned about its body
 		sprite.position = CwAir.sprite_offset(self)
+		var tl := CwAir.sprite_tilt(self)
+		sprite.rotation = tl
+		if tl != 0.0:
+			var bc := Vector2(0.0, float(Defs.FLYER[kind]["lift"]) - float(Defs.FLYER[kind]["centre"]))
+			sprite.position += bc - bc.rotated(tl)
 		if dead:
 			if CwAir.falling(self):
 				queue_redraw()       # (its shadow fades as it comes down)
 			else:
 				z_index = -1         # (on the ground now: a wreck under the living)
-	elif is_air():
-		# flyers hover above their shadow and drop to the ground when they die
-		sprite.position.y = lerpf(sprite.position.y, 0.0, delta * 3.0) if dead else -20.0 + sin(_bob_t * 4.0) * 2.5
+	elif d.get("air", false):
+		# flyers hover above their shadow and drop to the ground when they die (or while a net holds them down: _low)
+		sprite.position.y = lerpf(sprite.position.y, 0.0, delta * 3.0) if dead else (-20.0 + sin(_bob_t * 4.0) * 2.5) * (1.0 - _low)
 		if kind == "balloon" and not dead:
-			sprite.position.y += _descend * 14.0     # down low to take men on or let them off
+			sprite.position.y += _descend * 14.0 * (1.0 - _low)     # down low to take men on or let them off
 	elif anim == "bandage":
 		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
 	elif anim == "mount" and work == "mounting" and is_instance_valid(order_target):
@@ -5718,10 +5880,12 @@ var _aim_t := 0.0
 ## computer, while an ATTACK order is being given, at the mouse.
 func _aim_dir() -> Vector2:
 	var c = game.controls
-	if c and c.get("mode") == "attack" and not game.demo:
+	if c and (c.get("mode") == "attack" or c.get("mode") == "bombard") and not game.demo:
 		var m := get_global_mouse_position()
 		if m.distance_to(global_position) > 8.0:
 			return (m - global_position).normalized()
+	if order == "bombard" and order_point.distance_to(global_position) > 8.0:
+		return (order_point - center()).normalized()
 	if target and is_instance_valid(target) and not target.dead:
 		return (target.center() - center()).normalized()
 	return facing.normalized() if facing != Vector2.ZERO else Vector2.RIGHT
@@ -5740,8 +5904,15 @@ func _draw_aim() -> void:
 		var hi := float(d["range"]) + radius
 		draw_arc(Vector2.ZERO, hi, 0.0, TAU, 96, Color(gold.r, gold.g, gold.b, a + 0.1), 1.5)
 		draw_arc(Vector2.ZERO, lo, 0.0, TAU, 64, Color(red.r, red.g, red.b, a), 1.0)
-		if target and is_instance_valid(target) and not target.dead:
-			var at: Vector2 = (target.position if target is Unit else target.center()) - global_position
+		var mc = game.controls
+		var at := Vector2.INF
+		if mc and mc.get("mode") == "bombard" and not game.demo:
+			at = get_global_mouse_position() - global_position       # (choosing the BOMBARD spot)
+		elif order == "bombard":
+			at = order_point - global_position
+		elif target and is_instance_valid(target) and not target.dead:
+			at = (target.position if target is Unit else target.center()) - global_position
+		if at != Vector2.INF:
 			var sp := float(d["splash"])
 			draw_circle(at, sp, Color(red.r, red.g, red.b, 0.12))
 			draw_arc(at, sp, 0.0, TAU, 32, Color(red.r, red.g, red.b, 0.5), 1.5)
@@ -5782,8 +5953,10 @@ func _draw_aim() -> void:
 	draw_line(g0, g1, Color(gold.r, gold.g, gold.b, a * 0.8), 1.0)
 	var aim := Vector2.INF                          # where the ball would land (local)
 	var c = game.controls
-	if c and c.get("mode") == "attack" and not game.demo and get_global_mouse_position().distance_to(global_position) <= length:
+	if c and (c.get("mode") == "attack" or c.get("mode") == "bombard") and not game.demo and get_global_mouse_position().distance_to(global_position) <= length:
 		aim = get_global_mouse_position() - global_position
+	elif order == "bombard":
+		aim = order_point - global_position
 	elif target and is_instance_valid(target) and not target.dead:
 		aim = target.center() - global_position
 	if aim == Vector2.INF:
@@ -5880,7 +6053,7 @@ func _draw_unit() -> void:
 		# essence it holds, for the Brood to see
 		var seasoned := (kind == "horse" or is_mounted()) and horse_rank(horse_miles) > 0
 		if (kills > 0 or seasoned) and game.corpses.has(self):
-			_draw_number(game.corpse_value(self), Vector2(0, -26))
+			_draw_number(int(game.corpse_value(self)), Vector2(0, -26))
 		return
 	if selected and (kind == "cannon" or kind == "mortar") and team == game.human and aboard == null:
 		_draw_aim()
