@@ -450,6 +450,71 @@ def main():
         T["dd_threat_freeze"] = "_(no games with the gate logged per 30 s yet)_"
         T["dd_threat_games"] = "0"
 
+    # ------------------------------------------------------------------ Crown against Clockwork: the four maps with a south ramp (post hoc)
+    # Found after the per-map table above: the four maps where the Crown never wins share one base layout in scripts/map_data.gd
+    # (plateau ramp at about (9-12, 24), natural at (5-6, 26-28)). The grouping is post hoc: it is a lead, not a pre-registered test.
+    SOUTH = {"kestrel_rise", "cinder_steps", "glimmerdeep", "frostmere"}
+
+    def fisher2(k1, n1, k2, n2):
+        tot, K = n1 + n2, k1 + k2
+
+        def pm(x):
+            return math.comb(K, x) * math.comb(tot - K, n1 - x) / math.comb(tot, n1)
+        p0 = pm(k1)
+        return sum(pm(x) for x in range(max(0, n1 - (tot - K)), min(K, n1) + 1) if pm(x) <= p0 * (1 + 1e-9))
+
+    ccg = games[games.pair == "crown-clockwork"].copy()
+    ccg["grp"] = np.where(ccg["map"].isin(SOUTH), "south-ramp maps (Kestrel Rise, Cinder Steps, Glimmerdeep, Frostmere)", "the other 8 maps")
+    ccg["bal"] = (ccg.plan_a == "balanced") & (ccg.plan_b == "balanced")
+    ccg["crown_won"] = (ccg.winner_faction == "crown").astype(int)
+    lostb = events[(events.kind == "lost_building") & events.text.str.contains(" Crown lost ")].groupby("id").t.min()
+    army9 = ts[(ts.t == 540) & ts.id.isin(ccg.id)].pivot_table(index="id", columns="faction", values="army_value")
+    rows, kn = [], {}
+    for gname, x in ccg.groupby("grp"):
+        xb = x[x.bal]
+        kn[gname] = ((int(x.crown_won.sum()), len(x)), (int(xb.crown_won.sum()), len(xb)))
+        rows.append({"maps": gname, "games": len(x), "Crown won (all plans)": ci(int(x.crown_won.sum()), len(x)),
+                     "Crown won (Balanced/Balanced)": ci(int(xb.crown_won.sum()), len(xb)), "median game length": mmss(x.end_t.median()),
+                     "first Crown building lost (median)": mmss(lostb.reindex(x.id).median()),
+                     "army value at 9:00, Crown / Clockwork (median)": "%d / %d" % (army9.reindex(x.id).crown.median(), army9.reindex(x.id).clockwork.median())})
+    ks = [v for v in kn if v.startswith("south")][0]
+    ko = [v for v in kn if v.startswith("the other")][0]
+    T["dd_layout"] = md(pd.DataFrame(rows)) + "\n\nFisher exact test, Crown wins on the south-ramp maps against the other maps: all plans p = %.1e; Balanced/Balanced p = %.1e (post hoc grouping)." % (
+        fisher2(kn[ks][0][0], kn[ks][0][1], kn[ko][0][0], kn[ko][0][1]), fisher2(kn[ks][1][0], kn[ks][1][1], kn[ko][1][0], kn[ko][1][1]))
+
+    wv = waves[(waves.faction == "clockwork") & (waves.opp == "crown")].copy()
+    for c in ["t0", "killed_value", "lost_value", "supply"]:
+        wv[c] = pd.to_numeric(wv[c], errors="coerce")
+    wv["grp"] = np.where(wv["map"].isin(SOUTH), "south-ramp maps", "the other 8 maps")
+    wv["rank"] = wv.sort_values("t0").groupby(["id", "team"]).cumcount() + 1
+    rows = []
+    for gname, x in wv[wv["rank"] <= 3].groupby("grp"):
+        for rk, y in x.groupby("rank"):
+            rows.append({"maps": gname, "Clockwork wave": "#%d" % rk, "waves": len(y), "median start": mmss(y.t0.median()), "median supply": int(y.supply.median()),
+                         "value it killed (mean)": int(y.killed_value.mean()), "value it lost (mean)": int(y.lost_value.mean()),
+                         "killed per value lost": "%.1f" % (y.killed_value.sum() / max(1.0, y.lost_value.sum()))})
+    T["dd_layout_waves"] = md(pd.DataFrame(rows)) if rows else "_(no waves)_"
+
+    # ------------------------------------------------------------------ does the 30:00 adjudication (power lead of 25%+ = win) change the matrix?
+    rows = []
+    for pr, x in games.groupby("pair", sort=False):
+        a_, b_ = pr.split("-")
+        fa = a_
+        won_a = (x.winner_faction == fa).astype(float) if a_ != b_ else (x.winner_team == 0).astype(float)
+        draw = (x.winner_team < 0)
+        to = x.cause.str.startswith("timeout")
+        as_is = won_a + 0.5 * draw
+        k1 = as_is.sum()
+        # 30:00 games all counted as draws
+        k2 = (won_a.where(~to, 0.5)).sum()
+        # 30:00 games left out
+        xx = x[~to]
+        k3 = ((xx.winner_faction == fa).astype(float) if a_ != b_ else (xx.winner_team == 0).astype(float)).sum()
+        lab = "%s vs %s%s" % (a_, b_, " (spawn 0)" if a_ == b_ else "")
+        rows.append({"matchup (first side's score)": lab, "30:00 games": int(to.sum()), "as run (lead of 25%+ wins)": score_line(k1, 0, len(x)),
+                     "all 30:00 games drawn": score_line(k2, 0, len(x)), "30:00 games left out": score_line(k3, 0, len(xx))})
+    T["dd_sensitivity"] = md(pd.DataFrame(rows))
+
     # ------------------------------------------------------------------ what a bigger sample would decide
     def n_half(p, h):
         """Smallest n whose Wilson 95% interval around a rate of p has a half-width of h or less."""
