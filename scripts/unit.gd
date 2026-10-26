@@ -3402,7 +3402,23 @@ func _tow_gate_approach(pts: PackedVector2Array) -> PackedVector2Array:
 			done[c] = true
 			mid /= float(cnt)
 			var axis := Vector2(0, 1) if horiz else Vector2(1, 0)
-			var dirn := signf(seg.dot(axis))
+			# the way through: toward the first point of the path (or its goal) past the
+			# gateway, not the leg's own heading (a gun in the gateway gets a first waypoint
+			# at the gate's centre, a few pixels behind it: it must not turn back)
+			var dirn := 0.0
+			var last_in := wi - 1           # the last waypoint in the gateway
+			for wj in range(wi, pts.size()):
+				if absf((pts[wj] - mid).dot(axis)) < 24.0 and pts[wj].distance_to(mid) < 16.0 * float(cnt) + 24.0:
+					last_in = wj
+			for wj in range(last_in + 1, pts.size()):
+				var dd := (pts[wj] - mid).dot(axis)
+				if absf(dd) >= 24.0:
+					dirn = signf(dd)
+					break
+			if dirn == 0.0 and path_goal != Vector2.INF and absf((path_goal - mid).dot(axis)) >= 24.0:
+				dirn = signf((path_goal - mid).dot(axis))
+			if dirn == 0.0:
+				dirn = signf(seg.dot(axis))
 			if dirn == 0.0:
 				continue
 			var before_pt := mid - axis * dirn * 80.0
