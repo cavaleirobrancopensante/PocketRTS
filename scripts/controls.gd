@@ -69,7 +69,7 @@ func _line_add(screen: Vector2) -> void:
 	# (the mouse can be outside the window while the button is held: its position is far off the
 	# screen, and the camera may be scrolling: the line follows the edge of the screen instead)
 	screen = screen.clamp(Vector2.ZERO, game.get_viewport().get_visible_rect().size)
-	var w := to_world(screen)
+	var w := game.on_map(to_world(screen))
 	if line.is_empty() or line[line.size() - 1].distance_to(w) > 6.0:
 		line.append(w)
 
@@ -507,7 +507,8 @@ func _move_ghost(screen: Vector2) -> void:
 
 ## shift: a computer's Shift-click (MOVE, ATTACK and REPAIR queue the order); taps never.
 func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
-	var p := to_world(screen)
+	var raw := to_world(screen)
+	var p := game.on_map(raw)       # (the view may reach past the map edge: orders stay on it)
 	var units := game.selected_units()
 	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair")
 	match mode:
@@ -622,7 +623,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 				game.set_rally(sb, p, {"rally": "auto", "rally_army": "army", "rally_worker": "worker"}[mode])
 			cancel_mode()
 			return
-	var e := game.entity_at(p)
+	var e := game.entity_at(raw)       # (a tap past the edge picks nothing)
 	var own := e != null and e.team == game.human
 	# Labourers tapping their own unfinished building: help build. (A finished one, a new
 	# Town Hall too, is selected like anything else: a long press sends them to it.)

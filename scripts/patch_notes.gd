@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.17", "items": [
+		"FIX: workers sent to a Feeding Pit, Farm or Powder Mill whose ground is spent no longer stand idle under a \"0/5\" with the wrong message \"fully crewed\": they go to the nearest site on fresh land, or, when there is none, you are told the ground is spent; a barren site's label now reads \"spent\". The CAMERA can now scroll 25 tiles past every edge of the map, so a base by the edge can be viewed centred (orders, rallies and buildings still stay on the map).",
+	]},
 	{"v": "0.14.16", "items": [
 		"CLOCKWORK ARMY, first look (gear mode): the MOVEMENT WORKS, the Clockwork's barracks (4x3, 150 cogs), trains the CLOCK SOLDIER, a plain melee front-line soldier with a clock-hand sword and a pocket-watch shield (70 cogs, 90 hp, 1 armour, 10 damage). Its hanging line runs while it trains. The REGULATOR, a squat pendulum clock (2x2, 100 cogs, +10 supply), replaces the Spring Tower; its pendulum swings while it is linked. Every Clockwork building's ring now has a bolted iron FLOOR PLATE in its middle that the ring turns round. The CLOCKWORK LAB starts with a Movement Works, a Regulator and four Clock Soldiers too; the Clockwork computer builds Movement Works and Regulators and trains Clock Soldiers on the gear field.",
 	]},
