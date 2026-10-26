@@ -78,3 +78,6 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 - Update: the bodies now swing in place on their hooks (no sliding, so nothing passes behind the press) and the press stroke is shorter.
 - Update: back to the moving line: the bodies hold, then step one slot along the rail; the leading body fades into the press as it slams (no body passes behind the piston); the soldier body past the press stays painted and still.
 - Update: the body past the press now slides on behind the pillar while a stamped body comes out of the press; the finished soldier is erased from the door and drawn coming forward out of the dark hall each loop (darkened then lit, a small step), fading at frame 8.
+
+## Clock Soldier walk pose guide (code, 2026-10-26)
+- tools/soldier_guide/walk_guide.py: the idle sheet's frame 1 per direction with the legs cut at the hip and moved into a 6-frame stride (swing leg forward and lifted, stance leg back, body bob). Pose guide for a ChatGPT repaint: art/redraws/clock_soldier_walk_guide.png.
