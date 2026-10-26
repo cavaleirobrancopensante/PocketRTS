@@ -408,6 +408,23 @@ const CW_SUPPLY := "regulator"
 const ENERGY_KINDS := ["boiler", "charging_pylon", "engine_hall", "capacitor_works"]
 
 
+## The Clockwork's units in gear mode (the rebuilt faction, docs/clockwork_ground_up.md): every other Clockwork unit is the
+## old roster, retired from the live game (owner, 2026-10-26), kept in the code for the shelved Line and the tests.
+const CW_NEW_UNITS := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter"]
+
+
+## True in gear mode for an old Clockwork unit or building that the live game no longer offers (not in CW_NEW_UNITS /
+## not in build_list). Always false with gear mode off.
+static func retired(k: String) -> bool:
+	if not gear_mode:
+		return false
+	if UNITS.has(k):
+		return String(UNITS[k].get("faction", "")) == "clockwork" and not CW_NEW_UNITS.has(k)
+	if BUILDINGS.has(k):
+		return String(BUILDINGS[k].get("faction", "")) == "clockwork" and not build_list("clockwork").has(k)
+	return false
+
+
 ## True in gear mode for a Clockwork building or unit that runs on energy (ENERGY_KINDS, a unit costing batteries, or
 ## anything that requires one of ENERGY_KINDS): left out of the build and train lists. Always false with gear mode off.
 static func energy_only(k: String) -> bool:
@@ -588,6 +605,8 @@ static func build_list(faction: String) -> Array:
 			# tier 2: the Escapement (the tech building, a Tension user) after the turret, and the Clock Aviary (the flyers)
 			l.insert(l.find(CW_TURRET) + 1, CW_TECH)
 			l.insert(l.find(CW_TECH) + 1, CW_AIR)
+			# the old prototype army's building is retired (owner, 2026-10-26: only the new units in the live game)
+			l.erase("assembly_works")
 		elif rail_econ:
 			l[l.find("ore_crusher")] = "ore_drill"
 		if not line_mode:
