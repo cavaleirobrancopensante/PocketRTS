@@ -20,3 +20,11 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Winder's one job is WINDING (owner, 2026-10-25). Every Clockwork building has its own winding key that keeps it going; the Winder winds it: building (winding a construct until it assembles), repairing, working a Drill or any resource building are all the same action, winding. Its attack is winding too: it takes the key off its back and tries to wind the enemy (flavour for a melee hit). Animations needed: idle (done), walk (done), WIND (one animation for all work), attack (key off the back, wind the enemy), death. The earlier mallet "work" idea is dropped.
 - Winder art status: idle (art/redraws/winder_idle_v2.png), walk (winder_walk_v2.png), wind (the ChatGPT sheet; arms stiff, a code-drawn crank overlay is planned), attack (winder_attack_v3.png, owner accepted as the best we will get), death still to do. Importing into the game happens once all sheets are in.
 - Winder death sheet received (art/redraws/winder_death_v2.png, 6 frames x 5 directions). All Winder sheets are in; import into the game is the next code job.
+
+## Decided (2026-10-26)
+- Resource: COGS. Winders wind a cog-making building (name to pick: Cog Press / Gear Mill / Cog Forge / Ratchet Loom); farms-make-gold logic: it produces cogs, not ore. Numbers later.
+- Rails and trains are SHELVED for now (owner asked what the faction can be built on, based on clocks).
+- GEAR FIELD replaces the blue (Protoss-like) energy field: real gears in the ground that turn and mesh with each other, so the whole base becomes one visible machine. Very unique; owner loves it.
+- Ticks and chimes: a rhythm, with benefits for following it, but NEVER punishing (missing the timing must not lose the game).
+- Winding and running down: possibly a massive winder, like the Crown's powder wagon, a logistics unit that keeps the army fighting longer (still to decide).
+- Time effects: slow fields yes; NO haste (Stim Pack danger); a specialised unit that stops ONE unit (like the Ghost's Lockdown in StarCraft 1).
