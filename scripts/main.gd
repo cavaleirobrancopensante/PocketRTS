@@ -1772,8 +1772,13 @@ var _f11_t := 0.0
 
 ## Autosave the match every 15 s (and the log with it), so closing the game loses nothing.
 func _autosave() -> void:
-	if game == null or game.over or game.demo or game.edit_mode or game.net:
-		return           # (an online match can't be continued: no save)
+	if game == null or game.over or game.demo or game.edit_mode:
+		return
+	if game.net:
+		# an online match can't be continued (no save), but its log is kept as it goes, like any match's
+		if game.mlog:
+			_write_log("user://logs/unfinished.txt", game.mlog.text())
+		return
 	var pt := Time.get_ticks_usec()
 	var cfg := last_cfg.duplicate(true)
 	cfg.erase("resume")
@@ -2007,9 +2012,10 @@ func _to_menu() -> void:
 	Engine.time_scale = 1.0
 	if game:
 		_autosave()      # (leaving a match keeps it as it is now: CONTINUE brings back the groups and camera hotkeys too)
-		# a watched match left before its end still keeps its log (MATCH LOGS)
-		if game.demo and not game.over and game.mlog:
-			game.mlog.add("(stopped watching before the end)")
+		# a watched or online match left before its end still keeps its log (MATCH LOGS); a skirmish keeps its
+		# running log as "unfinished" (the autosave above) and can be continued
+		if (game.demo or game.net) and not game.over and game.mlog:
+			game.mlog.add("(stopped watching before the end)" if game.demo else "(left the match before the end)")
 			game._sample_stats()
 			game.mlog.finish(-1)
 			_save_log(game.mlog.text())

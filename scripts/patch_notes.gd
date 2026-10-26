@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.30", "items": [
+		"ONLINE MATCH LOGS are kept: an online match left before its end (QUIT, a lost connection) now saves its log in MATCH LOGS, and the running log is kept as UNFINISHED OR CLOSED MATCH while you play, as in a skirmish.",
+	]},
 	{"v": "0.14.29", "items": [
 		"CROWN BUILDINGS IN YOUR COLOUR: every flag, banner, pennant, awning and red cloth on the Crown's buildings now wears the player's colour: the Town Hall's striped market awning, the Horse Breeder's saddles and blankets, the Foundry's wall hangings and its workmen, the Armoury inventor's shirt, and the red edges of the banners (some of it was painted in a red that stayed red for every player). The Farm's windmill roof is terracotta now, no longer the player's colour. Bricks, fire, powder kegs, food and the Barracks' target stay as painted (the Foundry's forge fire and some of its bricks used to show the player's colour).",
 		"The building you are placing shows your colour on its flags, like the building will.",
