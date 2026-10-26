@@ -369,6 +369,7 @@ func _mill_art() -> void:
 	_mill_trio.visible = false
 	add_child(_mill_trio)
 	for n: CanvasItem in [_mill_horse, _mill_stone, _mill_run]:
+		n.visible = false             # (until a state with a track shows them: _mill_show)
 		_mill_trio.add_child(n)
 	_mill_a = float(posmod(hash(cell), 360)) * PI / 180.0     # (not every mill in step)
 

@@ -153,6 +153,35 @@ func _run() -> void:
 	g._add_building("town_hall", 0, origin + Vector2i(1, 1), true)      # (the mill grinds its hall's saltpetre)
 	var m: Building = g._add_building("powder_mill", 0, cell, true)
 	check(m.rect().size == Vector2(sz) * Defs.TILE, "the built mill's rect is the 3x3 footprint")
+	# the work yard (Building.MILL_YARD, the footprint's front row): walkable, the shed solid,
+	# nothing built on it, every place and lane inside it with a man's room to stand
+	var yard_ok := true
+	var shed_ok := true
+	for y in sz.y:
+		for x in sz.x:
+			var v: int = g.solid[g.idx(cell + Vector2i(x, y))]
+			if Building.MILL_YARD.has_point(Vector2i(x, y)):
+				yard_ok = yard_ok and v == 5
+			else:
+				shed_ok = shed_ok and v == 2
+	check(yard_ok and shed_ok, "the yard (front row) is walkable, the shed and hopper behind it solid")
+	var yc := cell + Building.MILL_YARD.position
+	var blocked: bool = g.placement_problem(0, "cottage", yc + Vector2i(1, 0), true, true) != "" \
+		and g.placement_problem(0, "cottage", yc + Vector2i(0, 0), true, true) != "" \
+		and g.placement_problem(0, "wall", yc + Vector2i(1, 0), true, true) != "" \
+		and g.placement_problem(0, "wall", yc + Vector2i(0, 1), true, true) == ""
+	check(blocked, "nothing can be built on the yard (a Cottage or a wall piece over it is refused; beside it is fine)")
+	var lab_r := float(Defs.UNITS["labourer"]["radius"])
+	var room := Rect2(Vector2(-48.0, -32.0), Vector2(96.0, 32.0)).grow_individual(-lab_r * 0.6 - 0.1, -lab_r * 0.36 - 0.1, -lab_r * 0.6 - 0.1, -lab_r * 0.36 - 0.1)
+	var places_in := true
+	for pl in Unit.MILL_DIG_AT + Unit.MILL_TIP_AT:
+		for p in pl:
+			places_in = places_in and room.has_point(p)
+	for ly in [Unit.MILL_LANE_OUT, Unit.MILL_LANE_BACK]:
+		places_in = places_in and room.has_point(Vector2(0.0, ly))
+	check(places_in, "every heap and hopper place and both lanes lie inside the yard, a man's room from its edges (neighbours, walls and cliffs can't block them)")
+	check(m.sprite.global_position.y < m.rect().end.y - 32.0 and m.sprite.global_position.y > m.rect().position.y,
+		"the mill's body sorts behind its yard (a man working there is drawn over the shed, heaps and hopper; one behind the mill under it)")
 	var u: Unit = g._add_unit("labourer", 0, m.center() + Vector2(0, m.rect().size.y * 0.5 + 24))
 	await physics_frame
 	u.auto_work = false

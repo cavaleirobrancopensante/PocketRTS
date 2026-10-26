@@ -4,8 +4,9 @@ extends SceneTree
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_mill_crowded.gd -- /abs/out.png [A|D] [seconds]
 ## Layout A (the owner's screenshot): Cottages tight on the mill's front and left, a Barracks
 ## behind it; D: shut in by Cottages on the front and both sides. Six labourers are sent to it
-## from a few tiles away; after `seconds` of game time (default 25) the screen round the mill is
-## saved, cropped (the HUD hidden). Runs on builds from before the work yard too.
+## from a few tiles away; after `seconds` of game time (default 25), once the mill's horse walks
+## the near right of its track (in sight), the screen round the mill is saved, cropped (the HUD
+## hidden). Runs on builds from before the work yard too.
 var main: Node
 var g
 var out := ""
@@ -111,7 +112,9 @@ func _run() -> void:
 		u.auto_work = false
 		u.cmd_gather(m)
 	var t0: float = g.clock
-	while g.clock - t0 < wait_s:
+	# (then on until the mill's horse walks the near right of its track, in front of the millstone
+	# and in sight: not behind the post, nor behind the men tipping at the hopper; a few seconds)
+	while g.clock - t0 < wait_s or ((sin(float(m.get("_mill_a"))) < 0.35 or cos(float(m.get("_mill_a"))) < -0.2) and g.clock - t0 < wait_s + 8.0):
 		root.get_viewport().warp_mouse(Vector2(2, 2))       # (no hover marker on the crew: the corner shows grass)
 		await process_frame
 	await process_frame
