@@ -27,3 +27,5 @@
 ## Current work
 
 - Animation packs are done (Barracks drills, Breeder coats, Armoury experiments in game); the Queen is a still sprite at the Brood capital. Status table: `docs/animation_packs.md`.
+- Jobs running in separate cloud sessions (one-shot scheduled tasks, 2026-10-26), each pushing to its own branch, never to main; merge a branch when its summary doc is written: perf-lag (docs/perf/perf_pass_v0.14.md), wt-online (docs/online_lag_study.md; baseline probes on wt-online-base-probes), wt-econ (docs/clockwork_economy_study.md), wt-brood-ai (docs/brood_ai_fixes.md), fix-guns-horses (docs/fix_guns_horses.md), wt-bo (docs/build_orders_study.md), web-load (docs/web_load.md), cw-anim-parts (docs/cw_anim_parts.md; last commit "DONE:").
+- Great Winder legs: the painted leg sheet is in (art/redraws/great_winder_leg_chatgpt.png, longer legs with a knee). After cw-anim-parts is DONE, a follow-up cloud job (great-winder-legs) rebuilds every Great Winder strip on it, with a LEGS constant and 4- and 6-leg walk GIFs; the owner hasn't picked yet (Claude recommended four).

@@ -797,7 +797,7 @@ func spring_rate() -> float:
 
 
 ## Cog Press / Mainspring / Movement Works / Regulator / Escapement / Clock Aviary: the painted working loop
-## (assets/buildings/<kind>_work_0..7.png, `frames` of them; `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
+## (assets/buildings/<kind>_work_0..7.png, `frames` of them (the Escapement: 24); `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
 ## works; the built picture while it idles, and none of it once it is damaged (under half its hp).
 func _gear_anim(working: bool, dt := -1.0, frames := 8) -> void:
 	if sprite == null:
@@ -957,7 +957,7 @@ func _econ(delta: float) -> void:
 			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["regulator_dt"]))
 		"escapement":
 			# the anchor rocks and the wheel ticks while it works: linked and meshed with a Mainspring (the Tension rule)
-			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["escapement_dt"]))
+			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["escapement_dt"]), int(Defs.GEAR["escapement_frames"]))
 		"cuckoo_house":
 			# the Clock Aviary: its doors open and a little brass bird pops out and flies off, over and over, while it makes
 			# a Swift (or researches) and is linked; doors shut when idle

@@ -298,13 +298,13 @@ func _run() -> void:
 		var before2 := jk.shots
 		step(g, 1.0 / 30.0)
 		t += 1.0 / 30.0
-		if jk.anim == "attack":
-			saw_ground = true
+		if jk.anim == "attack" or jk.anim == "attack_r" or jk.anim == "attack_l":
+			saw_ground = true          # (its two launchers in turn: attack_r / attack_l)
 		if jk.anim == "attack_up":
 			saw_up2 = true
 		if jk.shots > before2:
 			ground_tip = jk.last_tip.distance_to(Jack.tip(jk, false)) < 0.5
-	check("at a ground unit it keeps the old attack strip", saw_ground and not saw_up2)
+	check("at a ground unit it keeps the ground attack strips (an arm's)", saw_ground and not saw_up2)
 	check("and the old (lowered) tip", ground_tip, "tip %s" % str(jk.last_tip - jk.position))
 	# ---- the sandbox's CLOCK tab and the Lab
 	for k in [Defs.CUCKOO, Defs.OWL]:
