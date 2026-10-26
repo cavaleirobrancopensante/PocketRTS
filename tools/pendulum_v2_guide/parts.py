@@ -54,15 +54,15 @@ ROWS = [
              clamp=(236.5, 225.5, 6.5, 10.0),
              poly=[(255, 112), (281, 112), (279, 126), (270, 150), (265, 170), (266, 200), (264, 222), (262, 232),
                    (262, 254), (204, 254), (204, 200), (222, 180), (236, 160), (250, 125)]),
-        dict(side='R', robot='left', pivot=(371, 96), hub=(371, 96, 13, 19), ball=(399.5, 199.5, 19.5),
+        dict(side='R', robot='left', pivot=(371, 96), hub=(371, 96, 13, 19), ball=(390.0, 200.0, 19.0),
              clamp=(396.5, 226.0, 6.5, 10.0),
              poly=[(357, 112), (384, 112), (392, 125), (402, 160), (412, 178), (426, 200), (426, 254), (367, 254),
                    (367, 214), (370, 190), (366, 160), (361, 126)])]),
     dict(box=(203, 302, 422, 582), mid=326.0, arms=[
-        dict(side='L', robot='right', pivot=(275, 383), hub=(276, 384, 16, 17), ball=(242.0, 482.0, 18.5),
-             clamp=(246.0, 507.5, 6.0, 9.5),
-             poly=[(259, 398), (284, 398), (281, 425), (272, 445), (266, 465), (265, 500), (265, 537), (214, 537),
-                   (214, 488), (222, 465), (240, 440), (253, 410)]),
+        dict(side='L', robot='right', pivot=(275, 383), hub=(276, 384, 16, 17), ball=(250.0, 484.0, 18.5),
+             clamp=(246.0, 505.0, 6.0, 9.5),
+             poly=[(259, 398), (284, 398), (281, 425), (274, 445), (271, 462), (271, 505), (268, 512), (268, 537),
+                   (214, 537), (214, 488), (222, 465), (240, 440), (253, 410)]),
         dict(side='R', robot='left', pivot=(362, 381), hub=(362, 382, 9, 18), ball=(379.0, 484.0, 17.5),
              clamp=(389.0, 506.0, 6.0, 9.5),
              poly=[(357, 399), (373, 399), (385, 430), (398, 458), (403, 468), (414, 488), (414, 534), (368, 534),
@@ -73,10 +73,10 @@ ROWS = [
              poly=[(328, 664), (343, 664), (342, 700), (345, 736), (358, 738), (368, 752), (372, 802), (320, 802),
                    (320, 762), (321, 740), (328, 736), (328, 700)])]),
     dict(box=(203, 859, 426, 1148), mid=318.0, arms=[
-        dict(side='L', robot='left', pivot=(266, 938), hub=(266, 938, 15, 19), ball=(245.0, 1037.0, 18.5),
-             clamp=(242.0, 1062.0, 6.0, 9.5),
-             poly=[(253, 956), (281, 956), (278, 975), (268, 1005), (265, 1030), (265, 1060), (262, 1066),
-                   (262, 1086), (214, 1086), (214, 1040), (225, 1012), (240, 990), (250, 970)]),
+        dict(side='L', robot='left', pivot=(266, 938), hub=(266, 938, 15, 19), ball=(250.5, 1038.0, 18.0),
+             clamp=(244.0, 1056.0, 6.0, 9.5),
+             poly=[(253, 956), (281, 956), (278, 975), (271, 1005), (271, 1056), (266, 1060), (264, 1068),
+                   (264, 1086), (214, 1086), (214, 1040), (225, 1012), (240, 990), (250, 970)]),
         dict(side='R', robot='right', pivot=(360, 937), hub=(360, 938, 15, 19), ball=(384.0, 1038.0, 18.5),
              clamp=(390.0, 1061.0, 6.0, 9.5),
              poly=[(349, 957), (376, 957), (386, 980), (398, 1008), (408, 1025), (414, 1040), (414, 1086), (368, 1086),
@@ -328,14 +328,14 @@ def cut_arm(F, FM, arm, org):
         sol = np.linalg.lstsq(Am, fx * fx + fy * fy, rcond=None)[0]
         cx_, cy_ = sol[0], sol[1]
         r_ = math.sqrt(max(1.0, sol[2] + cx_ * cx_ + cy_ * cy_))
-        if math.hypot(cx_ - bx, cy_ - by) < 4 and abs(r_ - br) < 4:
+        if math.hypot(cx_ - bx, cy_ - by) < 6 and abs(r_ - br) < 4:
             bx, by, br = float(cx_), float(cy_), float(r_)
             rr = np.hypot(xx - bx, yy - by)
             disc = rr <= br
             C = np.array([bx, by])
             tC = float((C - T) @ u)
     ballrgb = fill_ball(F, ball_vis, disc, (bx, by))
-    ball_m = ball_vis | (disc & front)            # the strip the sleeve and the clamp hid, filled
+    ball_m = ball_vis | (disc & m)                # whatever hid it (the sleeve, the clamp, a blade's horn), filled
     t_split = tC - br - 4.0
     rod = front & (t < t_split)
     head = front & (t >= t_split)
@@ -471,6 +471,10 @@ def cut_row(r):
         arms.append(dict(cfg=arm, lay=lay, geo=geo, hub=padded(rgba(F, hubm)), mask=m,
                          pivot=(arm['pivot'][0] - x0, arm['pivot'][1] - y0)))
     body = FM & ~cut
+    lab, n = ndi.label(body)                     # loose slivers an arm's cut left behind (a ball's edge, an outline)
+    if n > 1:
+        sz = ndi.sum(body, lab, range(1, n + 1))
+        body &= np.isin(lab, [i + 1 for i, v in enumerate(sz) if v >= 300])
     if r == 2:
         # the side view: the knuckle the painted arm hung from sat on the case's front edge: fill the case there
         # (to the case's own edge, x <= 333 on the sheet) from the case's paint, with a dark outline at the edge
