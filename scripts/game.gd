@@ -4676,11 +4676,14 @@ func in_overcharge(t: int, p: Vector2) -> bool:
 			return true
 		if b.kind == "charging_pylon" and b.field_on() and in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
 			return true
+	var cw := Defs.cw_roster
 	for u in units:
-		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+		if u.team != t or u.dead:
+			continue                # (asked of every Clockwork unit a few times a second: the cheap tests first)
+		if u.kind == "tesla_cart" and u.tesla_mode == "deployed":
 			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
 				return true
-		if Defs.cw_roster and u.team == t and not u.dead and u.kind == "tesla_loco" and u.position.distance_to(p) <= float(Defs.CW["tesla"]["pass"]):
+		if cw and u.kind == "tesla_loco" and u.position.distance_to(p) <= float(Defs.CW["tesla"]["pass"]):
 			return true             # (the Tesla Locomotive overcharges what it passes)
 	return false
 
@@ -4691,7 +4694,9 @@ func in_field(t: int, p: Vector2) -> bool:
 		if gear_net.in_field(t, p):
 			return true
 		for u in units:
-			if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+			if u.team != t or u.dead:
+				continue
+			if u.kind == "tesla_cart" and u.tesla_mode == "deployed":
 				if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * field_mult(t)):
 					return true
 		return false
@@ -4701,7 +4706,9 @@ func in_field(t: int, p: Vector2) -> bool:
 			if in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
 				return true
 	for u in units:
-		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+		if u.team != t or u.dead:
+			continue
+		if u.kind == "tesla_cart" and u.tesla_mode == "deployed":
 			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
 				return true
 	return false
@@ -5124,22 +5131,77 @@ func _gate_lets(i: int, v: int, t: int) -> bool:
 
 # ------------------------------------------------------------------ spatial queries
 
+## The units by HASH-px cell, rebuilt every tick. The cells over the map are a flat list
+## (row by row, null where nobody stands) and the few off it (a unit past the edge) a
+## dictionary: a look-up by index is much cheaper than one by Vector2i key, and units_near
+## and separation look at dozens of cells for every unit. The units in a cell keep the
+## order of `units`, as before.
+var _grid: Array = []
+var _grid_w := 0
+var _grid_h := 0
+var _grid_used := PackedInt32Array()
+
+
 func _rebuild_hash() -> void:
 	_hash.clear()
+	var gw := int(W * T) / HASH + 2
+	var gh := int(H * T) / HASH + 2
+	if gw != _grid_w or gh != _grid_h or _grid.size() != gw * gh:
+		_grid_w = gw
+		_grid_h = gh
+		_grid = []
+		_grid.resize(gw * gh)
+		_grid_used = PackedInt32Array()
+	for i in _grid_used:
+		_grid[i] = null
+	_grid_used.clear()
 	for u in units:
-		var k := Vector2i(int(u.position.x) / HASH, int(u.position.y) / HASH)
-		if not _hash.has(k):
-			_hash[k] = []
-		_hash[k].append(u)
+		var kx := int(u.position.x) / HASH
+		var ky := int(u.position.y) / HASH
+		if kx >= 0 and ky >= 0 and kx < gw and ky < gh:
+			var gi := ky * gw + kx
+			var cell = _grid[gi]
+			if cell == null:
+				_grid[gi] = [u]
+				_grid_used.append(gi)
+			else:
+				cell.append(u)
+			continue
+		var k := Vector2i(kx, ky)
+		var lst = _hash.get(k)
+		if lst == null:
+			_hash[k] = [u]
+		else:
+			lst.append(u)
+
+
+## The units in grid cell (x, y) at the last rebuild, or null.
+func _hash_cell(x: int, y: int):
+	if x >= 0 and y >= 0 and x < _grid_w and y < _grid_h:
+		return _grid[y * _grid_w + x]
+	return _hash.get(Vector2i(x, y))
 
 
 func units_near(p: Vector2, r: float) -> Array:
 	var out: Array = []
 	var c0 := Vector2i(int(p.x - r) / HASH, int(p.y - r) / HASH)
 	var c1 := Vector2i(int(p.x + r) / HASH, int(p.y + r) / HASH)
+	var gw := _grid_w
+	if _hash.is_empty():
+		# (nobody off the grid: the cells past its edges are empty, so only the ones on it are looked at)
+		for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
+			var row := y * gw
+			for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
+				var lst = _grid[row + x]
+				if lst == null:
+					continue
+				for u in lst:
+					if is_instance_valid(u) and u.position.distance_to(p) <= r:
+						out.append(u)
+		return out
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
-			var lst = _hash.get(Vector2i(x, y))
+			var lst = _hash_cell(x, y)
 			if lst == null:
 				continue
 			for u in lst:
@@ -5156,41 +5218,58 @@ func separation(u: Unit) -> Vector2:
 	var air := u.is_air()
 	var c0 := Vector2i(int(p.x - rr) / HASH, int(p.y - rr) / HASH)
 	var c1 := Vector2i(int(p.x + rr) / HASH, int(p.y + rr) / HASH)
-	var near: Array = []
-	for y in range(c0.y, c1.y + 1):
-		for x in range(c0.x, c1.x + 1):
-			var lst = _hash.get(Vector2i(x, y))
+	# (one pass, in the grid's order, without a list of the neighbours: every unit asks this
+	# every second or third tick. What it asks of itself is worked out once, before the loop.)
+	var u_rail := Defs.cw_roster and Defs.CW_RAIL.has(u.kind)
+	var mu := 12.0 if u.kind == "cannon" or u.kind == "mortar" or u_rail else 1.0
+	var u_still := u.velocity.length() < 15.0
+	var gw := _grid_w
+	var off := not _hash.is_empty()      # (anyone off the grid: then every cell is looked up the slow way)
+	var y0 := c0.y if off else maxi(c0.y, 0)
+	var y1 := c1.y if off else mini(c1.y, _grid_h - 1)
+	var x0 := c0.x if off else maxi(c0.x, 0)
+	var x1 := c1.x if off else mini(c1.x, gw - 1)
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			var lst = _hash_cell(x, y) if off else _grid[y * gw + x]
 			if lst == null:
 				continue
 			for o in lst:
 				if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
 					continue
-				near.append(o)
-	for o in near:
-		if o.dead or o.off_field or o.is_air() != air:
-			continue
-		if o == u.steed or u == o.steed:
-			continue           # (a man beside his own horse: he got off there, close by it)
-		if Defs.cw_roster and o.team == u.team and Defs.CW_RAIL.has(u.kind) and Defs.CW_RAIL.has(o.kind):
-			continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
-		var dvec: Vector2 = u.position - o.position
-		var dist := dvec.length()
-		var min_d: float = (u.radius + o.radius) * 0.85
-		if dist < min_d:
-			if dist < 0.01:
-				dvec = Vector2.from_angle(randf() * TAU)
-				dist = 0.01
-			var strength := (min_d - dist) / min_d
-			var k := 140.0
-			# Idle units step aside for friends on the move.
-			if o.team == u.team and o.velocity.length() > 15.0 and u.velocity.length() < 15.0:
-				k = 260.0
-			# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
-			# anything light that bumps it gives way); equal masses push each other as before
-			var mu := 12.0 if u.kind in ["cannon", "mortar"] or (Defs.cw_roster and Defs.CW_RAIL.has(u.kind)) else 1.0
-			var mo := 12.0 if o.kind in ["cannon", "mortar"] or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
-			push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
+				if o.dead or o.off_field or o.is_air() != air:
+					continue
+				if o == u.steed or u == o.steed:
+					continue           # (a man beside his own horse: he got off there, close by it)
+				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
+					continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
+				var dvec: Vector2 = p - o.position
+				var dist := dvec.length()
+				var min_d: float = (u.radius + o.radius) * 0.85
+				if dist < min_d:
+					if dist < 0.01:
+						dvec = Vector2.from_angle(randf() * TAU)
+						dist = 0.01
+					var strength := (min_d - dist) / min_d
+					var k := 140.0
+					# Idle units step aside for friends on the move.
+					if o.team == u.team and o.velocity.length() > 15.0 and u_still:
+						k = 260.0
+					# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
+					# anything light that bumps it gives way); equal masses push each other as before
+					var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+					push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
+
+
+## hostile(o, t) for every team o (1 = enemy), as bytes indexed by team; t's own row.
+func _foe_table(t: int) -> PackedByteArray:
+	var n := sides.size()
+	var out := PackedByteArray()
+	out.resize(n)
+	for o in n:
+		out[o] = 1 if hostile(o, t) else 0
+	return out
 
 
 func find_target(u: Unit, r: float) -> Entity:
@@ -5212,8 +5291,10 @@ func find_target(u: Unit, r: float) -> Entity:
 		min_r = float(u.d.get("min_range", 0.0))
 	var careful := (u.kind == "cannon" and u.mode != "canister") or u.kind == "mortar"
 	var picks: Array = []
+	# (who is an enemy, by team, worked out once: hostile() was asked of every unit and building)
+	var foe := _foe_table(u.team)
 	for o in units_near(u.position, r):
-		if not hostile(o.team, u.team) or o.dead or not u.can_hit(o) or (held and o.is_air()):
+		if o.team < 0 or foe[o.team] == 0 or o.dead or not u.can_hit(o) or (held and o.is_air()):
 			continue
 		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
 			continue
@@ -5258,7 +5339,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	if u.d.get("medic", false) or u.d.get("air_only", false):
 		return null
 	for b in buildings:
-		if not hostile(b.team, u.team) or b.dead or b.ghost:
+		if b.team < 0 or foe[b.team] == 0 or b.dead or b.ghost:
 			continue
 		var dd: float = b.edge_distance(u.position)
 		if dd >= r or (min_r > 0.0 and dd - u.radius < min_r):
@@ -5310,8 +5391,13 @@ func nearest_of(p: Vector2, t: int, kind: String) -> Building:
 func nearest_hall(p: Vector2, t: int) -> Building:
 	var best: Building = null
 	var bd := INF
+	var hk := ""                     # (asked once, not for every building: this runs thousands of times a second)
 	for b in buildings:
-		if b.team == t and b.kind == faction_hall(t) and b.built and not b.dead:
+		if b.team != t:
+			continue
+		if hk == "":
+			hk = faction_hall(t)
+		if b.kind == hk and b.built and not b.dead:
 			var dd: float = b.edge_distance(p)
 			if dd < bd:
 				bd = dd
@@ -5323,7 +5409,11 @@ func nearest_hall(p: Vector2, t: int) -> Building:
 func entity_at(p: Vector2, _any := true) -> Entity:
 	var best: Entity = null
 	var bd := 26.0
+	# (the mouse asks this whenever it moves: a unit more than 26 px away on either axis can't
+	# be the nearest within 26 px, so it's passed over before anything else is asked of it)
 	for u in units:
+		if absf(u.position.x - p.x) >= 26.5 or absf(u.position.y - 12.0 - p.y) >= 26.5:
+			continue
 		if u.dead or not u.visible:
 			continue
 		var dd: float = (u.position + Vector2(0, -12)).distance_to(p)
@@ -5332,9 +5422,10 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			best = u
 	if best:
 		return best
+	var ct := controlled_team()
 	for b in buildings:
-		if hidden_ghost(b, controlled_team()):
-			continue
+		if not b.visible or hidden_ghost(b, ct):
+			continue                  # (both tests below need it on show)
 		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
 		if b.visible and b.sprite and b.sprite.texture:
@@ -7007,28 +7098,18 @@ func side_slot(t: int) -> int:
 	return t
 
 
-## The cells of a disk of radius r as (dx, dy, far) triples; far = 1 beyond the cells
-## right next to the middle (those are seen even up a cliff).
-var _disk_ofs := {}
 
 
 ## Mark a disk of cells seen in the team's and its side's grid (and explored, on your side:
 ## the ground your side has ever looked at, where another side's swamp and the like may show).
 ## Seen from low ground, high ground is hidden beyond the next cells. (The disk as flat
-## int offsets, and no bounds tests when it lies inside the map: this runs for every unit
-## and building four times a second.)
+## offsets with no bounds tests when it lies inside the map (_stamp_inside), else by rows cut
+## to the map: this runs for every unit and building four times a second.)
 func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: bool, mine: bool) -> void:
-	if not _disk_ofs.has(r):
-		var ofs := PackedInt32Array()
-		for o in _disk(r):
-			ofs.append(o.x)
-			ofs.append(o.y)
-			ofs.append(1 if o.length_squared() > 2 else 0)
-		_disk_ofs[r] = ofs
-	var d: PackedInt32Array = _disk_ofs[r]
 	var inside := c.x - r >= 0 and c.y - r >= 0 and c.x + r < W and c.y + r < H
-	var n := d.size()
-	var k := 0
+	if inside:
+		_stamp_inside(v, sv, c, r, low, mine)
+		return
 	var w := W
 	var h := H
 	var mode := _fog_mode if mine and _fog_base.size() == w * h * 2 else 0
@@ -7045,22 +7126,125 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 	var sw := _swamp_any
 	var swn := sw.size() == w * h
 	var new_swamp := false
-	while k < n:
-		var x := c.x + d[k]
-		var y := c.y + d[k + 1]
-		if inside or (x >= 0 and y >= 0 and x < w and y < h):
-			var i := y * w + x
-			if not (low and d[k + 2] == 1 and height[i] == 1):
-				v[i] = 1
-				sv[i] = 1
-				if mine:
-					if ex[i] == 0:
-						ex[i] = 1
-						if swn and sw[i] == 1:
-							new_swamp = true
-					if mode != 0:
-						fw[i * 2 + 1] = 0
-		k += 3
+	# (by rows: each row of the disk is one run of cells, cut to the map; the cells right next
+	# to the middle are the near ones, seen even up a cliff)
+	var spans := _disk_rows(r)
+	for si in range(0, spans.size(), 2):
+		var dy := spans[si]
+		var y := c.y + dy
+		if y < 0 or y >= h:
+			continue
+		var hw := spans[si + 1]
+		var row := y * w
+		var near_row := dy >= -1 and dy <= 1
+		for x in range(maxi(c.x - hw, 0), mini(c.x + hw, w - 1) + 1):
+			var i := row + x
+			if low and height[i] == 1 and not (near_row and x >= c.x - 1 and x <= c.x + 1):
+				continue
+			v[i] = 1
+			sv[i] = 1
+			if mine:
+				if ex[i] == 0:
+					ex[i] = 1
+					if swn and sw[i] == 1:
+						new_swamp = true
+				if mode != 0:
+					fw[i * 2 + 1] = 0
+	explored = ex
+	if new_swamp:
+		_swamp_seen = true       # (swamp looked at for the first time: drawn under the fog from now on)
+	if mode == 1:
+		_fog_bld = fw
+	elif mode == 2:
+		_fog_w = fw
+
+
+## The disk of radius r as rows: [dy, half width] pairs (each row of _disk(r) is one run
+## of cells, -half width .. +half width).
+var _disk_row_cache := {}
+
+
+func _disk_rows(r: int) -> PackedInt32Array:
+	if not _disk_row_cache.has(r):
+		var hw := {}
+		for o in _disk(r):
+			hw[o.y] = maxi(int(hw.get(o.y, 0)), absi(o.x))
+		var out := PackedInt32Array()
+		for y in range(-r, r + 1):
+			if hw.has(y):
+				out.append(y)
+				out.append(int(hw[y]))
+		_disk_row_cache[r] = out
+	return _disk_row_cache[r]
+
+
+## _stamp for a disk that lies wholly inside the map: the same cells, as flat offsets from
+## the middle cell (no x / y or bounds work per cell), the cells next to the middle apart
+## from the far ones (only the far ones can be high ground hidden from low ground).
+var _disk_flat := {}                     # r + W * 1000 -> [near offsets, far offsets]
+
+
+func _stamp_inside(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: bool, mine: bool) -> void:
+	var key := r + W * 1000
+	if not _disk_flat.has(key):
+		var near := PackedInt32Array()
+		var far := PackedInt32Array()
+		for o in _disk(r):
+			if o.length_squared() > 2:
+				far.append(o.y * W + o.x)
+			else:
+				near.append(o.y * W + o.x)
+		_disk_flat[key] = [near, far]
+	var lists: Array = _disk_flat[key]
+	var near_o: PackedInt32Array = lists[0]
+	var far_o: PackedInt32Array = lists[1]
+	var base := c.y * W + c.x
+	if not mine:
+		for o in near_o:
+			v[base + o] = 1
+			sv[base + o] = 1
+		if low:
+			for o in far_o:
+				var i := base + o
+				if height[i] != 1:
+					v[i] = 1
+					sv[i] = 1
+		else:
+			for o in far_o:
+				v[base + o] = 1
+				sv[base + o] = 1
+		return
+	var w := W
+	var h := H
+	var mode := _fog_mode if _fog_base.size() == w * h * 2 else 0
+	# (the grids being written are taken out of their members meanwhile: see _reveal)
+	var fw: PackedByteArray = _EMPTY
+	if mode == 1:
+		fw = _fog_bld
+		_fog_bld = _EMPTY
+	elif mode == 2:
+		fw = _fog_w
+		_fog_w = _EMPTY
+	var ex := explored
+	explored = _EMPTY
+	var sw := _swamp_any
+	var swn := sw.size() == w * h
+	var new_swamp := false
+	for pass_i in 2:
+		var lst: PackedInt32Array = near_o if pass_i == 0 else far_o
+		var check := low and pass_i == 1
+		for o in lst:
+			var i := base + o
+			if check and height[i] == 1:
+				continue
+			v[i] = 1
+			sv[i] = 1
+			if ex[i] == 0:
+				ex[i] = 1
+				if swn and sw[i] == 1:
+					new_swamp = true
+			if mode != 0:
+				fw[i * 2 + 1] = 0
 	explored = ex
 	if new_swamp:
 		_swamp_seen = true       # (swamp looked at for the first time: drawn under the fog from now on)
@@ -8246,13 +8430,22 @@ func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 
 
 func army(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and not u.is_worker() and u.aboard == null \
-		and u.kind != "horse" and u.kind != "messenger")
+	# (a plain loop: the same units in the same order as a filter with a lambda, at about half
+	# the cost; the computer players ask for it dozens of times a second)
+	var out: Array = []
+	for u in units:
+		if u.team == t and not u.dead and not u.is_worker() and u.aboard == null and u.kind != "horse" and u.kind != "messenger":
+			out.append(u)
+	return out
 
 
 ## A player's horses (bred, released, stolen; not the ones under riders or hitched to guns).
 func horses_of(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.kind == "horse")
+	var out: Array = []
+	for u in units:
+		if u.team == t and not u.dead and u.kind == "horse":
+			out.append(u)
+	return out
 
 
 ## "Horses: 3 (1 reserved)" for the top bar and the breeder's card.
@@ -8268,7 +8461,11 @@ func labourers(t: int) -> Array:
 
 ## Workers not tied to a Town Hall (the haulers are counted by their hall: Building.haulers).
 func workers(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.is_worker() and u.aboard == null and not u.is_hauler())
+	var out: Array = []
+	for u in units:
+		if u.team == t and not u.dead and u.is_worker() and u.aboard == null and not u.is_hauler():
+			out.append(u)
+	return out
 
 
 func center_of_team(t: int) -> Vector2:

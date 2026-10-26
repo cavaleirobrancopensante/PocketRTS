@@ -546,7 +546,12 @@ func _lv(v: Array) -> Variant:
 
 
 func _mine(kind: String) -> Array:
-	return game.buildings.filter(func(b: Building) -> bool: return b.team == team and b.kind == kind and not b.dead)
+	# (a plain loop: the same buildings in the same order as a filter with a lambda, cheaper)
+	var out: Array = []
+	for b in game.buildings:
+		if b.team == team and b.kind == kind and not b.dead:
+			out.append(b)
+	return out
 
 
 func _f() -> Dictionary:
