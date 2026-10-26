@@ -29,8 +29,8 @@ func _run() -> void:
 	var base: Vector2i = g.cell_of(hall.center())
 	var placed := 0
 	var sites: Array = []
-	for dx in range(-14, 15, 2):
-		for dy in [-9, 9, -12, 12]:
+	for dx in range(-30, 31, 1):
+		for dy in range(-30, 31, 1):
 			if placed >= 3:
 				break
 			var c := base + Vector2i(dx, dy)

@@ -1,0 +1,185 @@
+# The Clockwork gear field and cogs (scripts/gear.gd, docs/clockwork_gear_prototype.md): the Cog Press, the cog money, the ring placement rule, GEAR SWAP, UNLINKED.
+
+> Cog Press
+pt Prensa de Engrenagens
+es Prensa de Engranajes
+
+> Presses COGS from its Clocktower's brass: a trickle by itself, and every Winder winding it adds the same share (SMALL gear: faster, up to 3 Winders; BIG gear: slower per Winder but up to 6, and more in all at 5 or 6). Spent brass: a quarter. Must stay linked to the gear field.
+pt Prensa ENGRENAGENS com o latão da sua Torre do Relógio: um fio por si só, e cada Enrolador que a enrola soma a mesma parte (engrenagem PEQUENA: mais rápida, até 3 Enroladores; engrenagem GRANDE: mais lenta por Enrolador, mas até 6, e mais no total com 5 ou 6). Latão esgotado: um quarto. Precisa continuar ligada ao campo de engrenagens.
+es Prensa ENGRANAJES con el latón de su Torre del Reloj: un hilillo por sí sola, y cada Dador de cuerda que le da cuerda suma la misma parte (engranaje PEQUEÑO: más rápido, hasta 3 Dadores; engranaje GRANDE: más lento por Dador, pero hasta 6, y más en total con 5 o 6). Latón agotado: un cuarto. Debe seguir enlazada al campo de engranajes.
+
+> The blueprint of the machine: builds Winders, takes in the cogs, unlocks the other buildings and fills a battery every 2 s. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Boilers and 2 Cog Presses nearby. Its ground holds a reserve of raw brass for its presses (spent, they yield a quarter), and its Boilers share its coal. A new Clocktower starts its own gear field.
+pt O projeto da máquina: cria Enroladores, recebe as engrenagens, libera as outras construções e enche uma bateria a cada 2 s. Seu anel de engrenagens é o maior: toda construção precisa engrenar com ele, direta ou por outras, ou para. Permite 2 Caldeiras e 2 Prensas de Engrenagens por perto. Seu chão guarda uma reserva de latão bruto para as prensas (esgotada, rendem um quarto), e suas Caldeiras dividem o carvão. Uma nova Torre do Relógio começa o seu próprio campo de engrenagens.
+es El plano de la máquina: crea Dadores de cuerda, recibe los engranajes, desbloquea los demás edificios y llena una batería cada 2 s. Su anillo de engranajes es el mayor: todo edificio debe engranar con él, directamente o a través de otros, o se detiene. Permite 2 Calderas y 2 Prensas de Engranajes cerca. Su suelo guarda una reserva de latón en bruto para sus prensas (agotada, rinden un cuarto), y sus Calderas comparten su carbón. Una nueva Torre del Reloj empieza su propio campo de engranajes.
+
+> Fills a battery every second by itself, burning its Clocktower's coal (spent coal: it stops); the batteries waiting are your Energy. Constructs that stand by it a while get overcharged. Unlocks Bulwarks, Arc Throwers and the Engine Hall.
+pt Enche uma bateria por segundo sozinha, queimando o carvão da sua Torre do Relógio (carvão esgotado: para); as baterias à espera são a sua Energia. Constructos que ficam um tempo ao lado dela ficam sobrecarregados. Libera Baluartes, Lançadores de Arco e o Salão de Máquinas.
+es Llena una batería por segundo por sí sola, quemando el carbón de su Torre del Reloj (carbón agotado: se detiene); las baterías en espera son tu Energía. Los constructos que están un rato a su lado se sobrecargan. Desbloquea Baluartes, Lanzadores de Arco y el Salón de Máquinas.
+
+> The one worker: his job is WINDING. He winds a Cog Press for cogs (send him onto it: up to its crew), builds (he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on) and repairs. He can fight a little.
+pt O único trabalhador: sua tarefa é ENROLAR. Ele enrola uma Prensa de Engrenagens para obter engrenagens (mande-o até ela: até a sua equipe), constrói (busca uma caixa na Torre do Relógio mais próxima e a leva até o local, onde ela se desdobra e se constrói sozinha; morto ou mandado para outro lugar no caminho, ele larga a caixa para outro Enrolador continuar) e conserta. Luta um pouco.
+es El único trabajador: su tarea es DAR CUERDA. Da cuerda a una Prensa de Engranajes para obtener engranajes (envíalo a ella: hasta su equipo), construye (recoge una caja de la Torre del Reloj más cercana y la lleva al lugar, donde se despliega y se construye sola; si lo matan o lo mandan a otro sitio por el camino, suelta la caja para que otro Dador siga) y repara. Puede pelear un poco.
+
+> A spreading machine of gears. Every building sits in a ring of ground gears that must mesh with the Clocktower's: unlinked buildings stop. Winders wind the Cog Presses for COGS, the money. Each Clocktower's brass and coal run out in time. Supply cap 200.
+pt Uma máquina de engrenagens que se espalha. Toda construção fica num anel de engrenagens no chão que precisa engrenar com o da Torre do Relógio: construções desligadas param. Enroladores enrolam as Prensas de Engrenagens para obter ENGRENAGENS, o dinheiro. O latão e o carvão de cada Torre do Relógio acabam com o tempo. Limite de suprimento: 200.
+es Una máquina de engranajes que se extiende. Todo edificio está en un anillo de engranajes en el suelo que debe engranar con el de la Torre del Reloj: los edificios sin enlace se detienen. Los Dadores de cuerda dan cuerda a las Prensas de Engranajes para obtener ENGRANAJES, el dinero. El latón y el carbón de cada Torre del Reloj se acaban con el tiempo. Límite de suministro: 200.
+
+> Cogs
+pt Engrenagens
+es Engranajes
+
+> cogs
+pt engrenagens
+es engranajes
+
+> brass
+pt latão
+es latón
+
+> Its gear ring would clash with a %s's ring: leave room for the gears to mesh.
+pt Seu anel de engrenagens bateria no anel de %s: deixe espaço para as engrenagens engrenarem.
+es Su anillo de engranajes chocaría con el anillo de %s: deja espacio para que los engranajes engranen.
+
+> Its gear ring must touch your gear field: mesh it with a linked building's ring.
+pt Seu anel de engrenagens precisa tocar o seu campo de engrenagens: engrene-o com o anel de uma construção ligada.
+es Su anillo de engranajes debe tocar tu campo de engranajes: engránalo con el anillo de un edificio enlazado.
+
+> Only a Clockwork building's connecting gear can be swapped (not the Clocktower's).
+pt Só a engrenagem de ligação de uma construção do Mecanismo pode ser trocada (não a da Torre do Relógio).
+es Solo se puede cambiar el engranaje de enlace de un edificio del Mecanismo (no el de la Torre del Reloj).
+
+> Wait until it is built.
+pt Espere até ficar pronta.
+es Espera a que esté construido.
+
+> Its gear is already being swapped.
+pt A engrenagem já está sendo trocada.
+es Su engranaje ya se está cambiando.
+
+> UNLINKED
+pt DESLIGADA
+es SIN ENLACE
+
+> SWAPPING
+pt TROCANDO
+es CAMBIANDO
+
+> LINKS
+pt LIGA
+es ENLAZA
+
+> NO LINK
+pt SEM LIGAÇÃO
+es SIN ENLACE
+
+> CLASH
+pt CHOQUE
+es CHOQUE
+
+> NEW FIELD
+pt NOVO CAMPO
+es NUEVO CAMPO
+
+> BIG GEAR
+pt ENGRENAGEM GRANDE
+es ENGRANAJE GRANDE
+
+> SMALL GEAR
+pt ENGRENAGEM PEQUENA
+es ENGRANAJE PEQUEÑO
+
+> Swap to the BIG gear
+pt Trocar para a engrenagem GRANDE
+es Cambiar al engranaje GRANDE
+
+> Swap to the SMALL gear
+pt Trocar para a engrenagem PEQUENA
+es Cambiar al engranaje PEQUEÑO
+
+> Big gear: turns slow, more torque: a bigger ring and a bigger crew (a Cog Press takes 6 Winders), more cogs at full crew.
+pt Engrenagem grande: gira devagar, mais torque: um anel maior e uma equipe maior (uma Prensa de Engrenagens leva 6 Enroladores), mais engrenagens com a equipe completa.
+es Engranaje grande: gira despacio, más par: un anillo mayor y un equipo mayor (una Prensa de Engranajes admite 6 Dadores), más engranajes con el equipo completo.
+
+> Small gear: turns fast, works faster per Winder, a smaller ring and a smaller crew (a Cog Press takes 3 Winders).
+pt Engrenagem pequena: gira depressa, rende mais por Enrolador, um anel menor e uma equipe menor (uma Prensa de Engrenagens leva 3 Enroladores).
+es Engranaje pequeño: gira rápido, rinde más por Dador, un anillo menor y un equipo menor (una Prensa de Engranajes admite 3 Dadores).
+
+> %d cogs
+pt %d engrenagens
+es %d engranajes
+
+> Swapping the gear: the building idles for a few seconds.
+pt Trocando a engrenagem: a construção fica parada por alguns segundos.
+es Cambiando el engranaje: el edificio se detiene unos segundos.
+
+> big gear
+pt engrenagem grande
+es engranaje grande
+
+> small gear
+pt engrenagem pequena
+es engranaje pequeño
+
+> Cogs: %d
+pt Engrenagens: %d
+es Engranajes: %d
+
+> The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs.
+pt O dinheiro do Mecanismo. Enroladores enrolando uma Prensa de Engrenagens as prensam do latão da Torre do Relógio; a Torre do Relógio as recebe na hora. Tudo se compra com engrenagens.
+es El dinero del Mecanismo. Los Dadores de cuerda que dan cuerda a una Prensa de Engranajes los prensan del latón de la Torre del Reloj; la Torre del Reloj los recibe al instante. Todo se compra con engranajes.
+
+> UNLINKED: its gear ring does not mesh with the field, so it does nothing. Build a linked building beside it, or put it back in reach.
+pt DESLIGADA: seu anel de engrenagens não engrena com o campo, então ela não faz nada. Construa uma construção ligada ao lado dela, ou traga-a de volta ao alcance.
+es SIN ENLACE: su anillo de engranajes no engrana con el campo, así que no hace nada. Construye un edificio enlazado a su lado, o devuélvelo a su alcance.
+
+> Swapping its gear (%d s)
+pt Trocando a engrenagem (%d s)
+es Cambiando su engranaje (%d s)
+
+> +%.1f cogs/s
+pt +%.1f engrenagens/s
+es +%.1f engranajes/s
+
+> %d/%d Winders winding
+pt %d/%d Enroladores enrolando
+es %d/%d Dadores dando cuerda
+
+> BIG gear
+pt engrenagem GRANDE
+es engranaje GRANDE
+
+> SMALL gear
+pt engrenagem PEQUENA
+es engranaje PEQUEÑO
+
+> brass spent: a quarter; expand to a new Clocktower
+pt latão esgotado: um quarto; expanda para uma nova Torre do Relógio
+es latón agotado: un cuarto; expándete a una nueva Torre del Reloj
+
+> brass running low
+pt latão acabando
+es latón agotándose
+
+> %d/%d batteries ready
+pt %d/%d baterias prontas
+es %d/%d baterías listas
+
+> Brass: %d left%s
+pt Latão: restam %d%s
+es Latón: quedan %d%s
+
+> allows 2 Boilers and 2 Cog Presses nearby
+pt permite 2 Caldeiras e 2 Prensas de Engrenagens por perto
+es permite 2 Calderas y 2 Prensas de Engranajes cerca
+
+> (spent: its presses yield a quarter; expand)
+pt (esgotado: suas prensas rendem um quarto; expanda)
+es (agotado: sus prensas rinden un cuarto; expándete)
+
+> (spent: its Boilers fill no more)
+pt (esgotado: suas Caldeiras não enchem mais)
+es (agotado: sus Calderas ya no llenan)
+
+> its presses yield
+pt suas prensas rendem
+es sus prensas rinden

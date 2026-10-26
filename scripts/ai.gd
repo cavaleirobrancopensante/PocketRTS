@@ -390,8 +390,8 @@ func _think_stage(i: int) -> void:
 		0:
 			_cottage_wall()
 			_workers()
-			if _clock():
-				LineAI.tick(self)           # the Clockwork Line (scripts/line_ai.gd)
+			if _clock() and Defs.line_mode:
+				LineAI.tick(self)           # the Clockwork Line (scripts/line_ai.gd; shelved unless Defs.line_mode)
 			pt = _lap("ai/workers", pt)
 			_econ_build()
 			_lap("ai/econ", pt)
@@ -645,7 +645,7 @@ func _workers() -> void:
 	var labs := game.workers(team)
 	var cap := 0
 	for b in game.buildings:
-		if b.team == team and not b.dead and int(b.d.get("crew", 0)) > 0:
+		if b.team == team and not b.dead and b.crew_max() > 0:
 			cap += b.crew_max()
 	var fill: float = 0.75 if difficulty == 0 else 1.0
 	var extra := 2
@@ -1146,7 +1146,7 @@ func _econ_build() -> void:
 			order.erase("feeding_pit")
 	else:
 		# batteries need somewhere to go: a crusher first, then Boilers, a crusher per Boiler
-		var mill := "ore_drill" if Defs.rail_econ else "ore_crusher"      # (rails: Drills dig, trains haul)
+		var mill := Defs.GEAR_PRESS if Defs.gear_mode else ("ore_drill" if Defs.rail_econ else "ore_crusher")      # (gear mode: Cog Presses; rails: Drills dig, trains haul)
 		var crushers := _mine(mill).size()
 		order = [mill, "boiler"] if crushers <= _mine("boiler").size() else ["boiler", mill]
 	_reserve = 0
@@ -1207,7 +1207,7 @@ func _rushing() -> bool:
 
 func _econ_spot(kind: String) -> Vector2i:
 	var halls := _halls()
-	var lodes := kind == "powder_mill" or kind == "ore_crusher" or kind == "ore_drill"
+	var lodes := kind == "powder_mill" or kind == "ore_crusher" or kind == "ore_drill" or kind == Defs.GEAR_PRESS
 	if kind == "feeding_pit":
 		# Brood: the pit hauls to the capital and must stand on swamp joined to it, as far out as pays most
 		var cap := game.capital(team)

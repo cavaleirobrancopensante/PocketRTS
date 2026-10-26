@@ -874,7 +874,7 @@ func _build_card() -> Array:
 				page = "build"
 				build_page = 0, true, "", ""])
 			_balloon_buttons(list, units)     # labourers can ride too
-			if units.any(func(u: Unit) -> bool: return u.kind == "winder" or u.kind == "work_car"):
+			if Defs.line_mode and units.any(func(u: Unit) -> bool: return u.kind == "winder" or u.kind == "work_car"):
 				list.append(["build", "LINE", func() -> void: controls.begin_line(), true, "", str(int(Defs.LINE["pipe"]["cost"])) + "/seg"])
 				list.append(["gauge", ("~ " if game.line_net.overlay_on else "") + "PRESSURE", func() -> void:
 					game.line_net.overlay_on = not game.line_net.overlay_on
@@ -894,7 +894,7 @@ func _build_card() -> Array:
 
 		else:
 			_ability_buttons(list, units)
-			if Defs.rail_econ and game.faction_of(game.human) == "clockwork" and game.line_net.rails.count(game.human, "troop") > 0 \
+			if Defs.line_mode and Defs.rail_econ and game.faction_of(game.human) == "clockwork" and game.line_net.rails.count(game.human, "troop") > 0 \
 					and units.any(func(u: Unit) -> bool: return not u.is_air() and u.kind != "horse"):
 				list.append(["build", "RIDE", func() -> void:
 					controls.mode = "ride"
@@ -984,6 +984,26 @@ func _build_card() -> Array:
 			for sb in game.selected_buildings():
 				game.abandon(sb), true, "", ""])
 		return list
+	if b and b.built and not b.dead and Defs.gear_mode and b.d["faction"] == "clockwork" and b.kind != "clocktower" and b.team == game.human:
+		# GEAR SWAP: the button offers the other size of connecting gear (a small cost in cogs, a few seconds)
+		var to_big: bool = not (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)
+		var glab := "BIG GEAR" if to_big else "SMALL GEAR"
+		var gwhy := game.gear_swap_problem(b)
+		_tip_for[glab] = [("Swap to the BIG gear" if to_big else "Swap to the SMALL gear"),
+			("Big gear: turns slow, more torque: a bigger ring and a bigger crew (a Cog Press takes 6 Winders), more cogs at full crew." if to_big
+				else "Small gear: turns fast, works faster per Winder, a smaller ring and a smaller crew (a Cog Press takes 3 Winders)."),
+			"%d cogs  ·  %d s" % [int(Defs.GEAR["swap_cost"]), int(Defs.GEAR["swap_time"])]]
+		list.append(["build", glab, func() -> void:
+			var w := ""
+			for sb in game.selected_buildings():
+				if sb.team == game.human and game.gear_swap_problem(sb) == "":
+					w = game.swap_gear(sb)
+					if w != "":
+						break
+			if w != "":
+				toast(w)
+			else:
+				toast("Swapping the gear: the building idles for a few seconds."), gwhy == "", gwhy, str(int(Defs.GEAR["swap_cost"]))])
 	if b and b.built and b.kind != game.faction_hall(game.human):
 		list.append(["demolish", "DEMOLISH", func() -> void:
 			if Time.get_ticks_msec() - _demolish_ms > 2500:
@@ -1010,7 +1030,7 @@ func _build_card() -> Array:
 				toast(w if w != "" else "Your %s is growing into a %s." % [b.d["name"], nl["name"]]), uwhy == "", uwhy, str(nl["cost"])])
 	if b and b.built:
 		_research_buttons(list, b)
-		if b.kind == game.faction_hall(game.human) and Defs.rail_econ and game.faction_of(game.human) == "clockwork":
+		if Defs.line_mode and b.kind == game.faction_hall(game.human) and Defs.rail_econ and game.faction_of(game.human) == "clockwork":
 			for tk in ["ore", "troop"]:
 				var tkk: String = tk
 				var twhy: String = game.line_net.rails.buy_problem(game.human, tkk, b)
@@ -1589,7 +1609,7 @@ func confirm_place(queued := false) -> void:
 		Sfx.announce(game.faction_of(game.human), "bad_place", 4.0)
 		return
 	if game.players[game.human]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
-		toast("Not enough gold.")
+		toast("Not enough %s." % _res()[0].to_lower())
 		return
 	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker() or u.kind == "work_car")
 	var brood := game.faction_of(game.human) == "brood"
@@ -1930,7 +1950,7 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.35, 0.33, 0.36)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
 		"clockwork": [Color(0.7, 0.72, 0.78), Color(0.45, 0.75, 1.0)]}[fac]
 	var x0 := x
-	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55))
+	x = _pill(font, x, cols[0], "%d" % pl["gold"], Color(1, 0.9, 0.55), false, fac == "clockwork" and Defs.gear_mode)
 	var r2 := "%d" % int(pl["res2"])
 	if fac == "clockwork":
 		r2 = "%d energy (%s batteries stored)" % [int(game.energy[t]), "blue" if game.blue_energy(t) else "yellow"]
@@ -1955,7 +1975,7 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 func _res_line(t: int) -> String:
 	var pl: Dictionary = game.players[t]
 	var fac := game.faction_of(t)
-	var names: Array = {"crown": ["gold", "powder"], "brood": ["biomass", "essence"], "clockwork": ["ore", "energy"]}[fac]
+	var names: Array = {"crown": ["gold", "powder"], "brood": ["biomass", "essence"], "clockwork": ["cogs" if Defs.gear_mode else "ore", "energy"]}[fac]
 	var r2: int = int(game.energy[t]) if fac == "clockwork" else int(pl["res2"])
 	return "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
 
@@ -2417,10 +2437,16 @@ func _draw_panel(font: Font) -> void:
 					int(round(salt * 100)), int(bb.lode), " spent: the Mill grinds at a quarter" if salt <= 0.0 else (" running low" if salt < Defs.SOIL_LOW else "")]
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
 				var coal := bb.soil_left()
-				info = "%d/%d batteries ready (one every %.1f s) · Ore: %d left%s · Coal: %d%%%s · allows 2 Boilers and 2 Ore Crushers nearby" % [
-					bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0]), int(bb.lode),
-					" (spent: its crushers pay a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
-					int(round(coal * 100)), " (spent: its Boilers fill at a third)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else "")]
+				if Defs.gear_mode:
+					info = "%d/%d batteries ready · Brass: %d left%s · Coal: %d%%%s · allows 2 Boilers and 2 Cog Presses nearby" % [
+						bb.batteries, int(bb.d["battery"][1]), int(bb.lode),
+						" (spent: its presses yield a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
+						int(round(coal * 100)), " (spent: its Boilers fill no more)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else "")]
+				else:
+					info = "%d/%d batteries ready (one every %.1f s) · Ore: %d left%s · Coal: %d%%%s · allows 2 Boilers and 2 Ore Crushers nearby" % [
+						bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0]), int(bb.lode),
+						" (spent: its crushers pay a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
+						int(round(coal * 100)), " (spent: its Boilers fill at a third)" if coal <= 0.0 else (" (running low)" if coal < Defs.SOIL_LOW else "")]
 			elif bb.kind == "horse_breeder" and bb.built and (e.team == game.human or game.demo):
 				info = "%s  ·  " % game.horses_text(bb.team) + info
 			elif (bb.kind == "barracks" or bb.kind == "foundry") and bb.built and (e.team == game.human or game.demo):
@@ -2436,6 +2462,10 @@ func _draw_panel(font: Font) -> void:
 				var coal2 := bb.soil_left()
 				info = "%d/%d batteries ready (one every %.1f s)%s" % [bb.batteries, int(bat[1]),
 					float(bat[0]) / (1.0 if coal2 > 0.0 else Defs.COAL_SPENT), " · coal spent: a third as fast" if coal2 <= 0.0 else (" · coal running low" if coal2 < Defs.SOIL_LOW else "")]
+			elif bb.kind == Defs.GEAR_PRESS:
+				var bl := bb.lode_left()
+				info = "+%.1f cogs/s · %d/%d Winders winding · %s gear%s" % [bb.press_rate(), bb.working_crew(), bb.crew_max(), "BIG" if bb.gear_big else "SMALL",
+					" · brass spent: a quarter; expand to a new Clocktower" if bl <= 0.0 else (" · brass running low" if bl < Defs.SOIL_LOW else "")]
 			elif bb.kind == "ore_drill":
 				var ol2 := bb.lode_left()
 				var q2 := 1.0 if ol2 > 0.0 else Defs.LODE_SPENT
@@ -2459,6 +2489,11 @@ func _draw_panel(font: Font) -> void:
 					" spent: pits yield a third, grow a Burrow on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
 				if bb.upgrade_t >= 0.0 and not bb.next_level().is_empty():
 					info += " · Growing into a %s: %d s left" % [bb.next_level()["name"], int(ceil(float(bb.next_level()["time"]) - bb.upgrade_t))]
+			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and (e.team == game.human or game.demo):
+				if not game.gear_net.is_linked(bb):
+					info = "UNLINKED: its gear ring does not mesh with the field, so it does nothing. Build a linked building beside it, or put it back in reach.  ·  " + info
+				elif bb.gear_swap_t >= 0.0:
+					info = "Swapping its gear (%d s)  ·  " % int(ceil(bb.gear_swap_t)) + info
 			if bb.built and (e.team == game.human or game.demo):
 				var ef: Array = bb.efficiency()
 				if not ef.is_empty():
@@ -2913,12 +2948,18 @@ func _autocast_glow(br: Rect2) -> void:
 
 
 ## A resource readout in the top bar; returns where the next one starts.
-func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := false) -> float:
+func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := false, gear := false) -> float:
 	var vw := font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
 	var w := 36.0 + vw + 14.0
 	var r := Rect2(x, 4, w, 30)
 	UiStyle.draw_panel(_ci, r, Color(0, 0, 0, 0), 0.8)
-	if box:
+	if gear:
+		# the Clockwork's COGS: a small gear drawn in code (placeholder resource icon: docs/art_style_inconsistency.md)
+		_ci.draw_set_transform(Vector2(x + 18, 19), 0.0, Vector2.ONE)
+		GearNet.draw_gear(_ci, 9, 9.0, Color(0.93, 0.8, 0.46), Color(0.2, 0.13, 0.06), Color(0, 0, 0, 0), 0.95)
+		_ci.draw_circle(Vector2.ZERO, 2.6, Color(0.12, 0.09, 0.05))
+		_ci.draw_set_transform(Vector2.ZERO)
+	elif box:
 		_ci.draw_rect(Rect2(x + 10, 11, 14, 16), dot)
 		_ci.draw_rect(Rect2(x + 10, 11, 14, 16), Color(0, 0, 0, 0.5), false, 1.0)
 	else:
@@ -3112,6 +3153,8 @@ func _res_tip(i: int) -> Dictionary:
 	var pl: Dictionary = game.players[game.human]
 	var r := _res()
 	if fac == "clockwork":
+		if Defs.gear_mode and i == 0:
+			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
 		return {}
 	if i == 3:
 		var hs: Array = game.horses_of(game.human)

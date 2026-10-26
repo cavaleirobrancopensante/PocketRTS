@@ -16,6 +16,8 @@ var off_t := {}
 
 
 func _initialize() -> void:
+	Defs.line_mode = true      # (the shelved Line economy: gear mode off)
+	Defs.gear_mode = false
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	for a in OS.get_cmdline_user_args():

@@ -69,7 +69,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
-			"stock": snappedf(b.stock, 0.1), "soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
+			"stock": snappedf(b.stock, 0.1), "gb": b.gear_big, "gs": snappedf(b.gear_swap_t, 0.01), "gst": b.gear_swap_to, "soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
@@ -327,6 +327,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 			b.auto_train = "horseman"      # (before the Armoury, "cuirassier" was the one horseman)
 		b.batteries = int(bd.get("bat", 0))
 		b.stock = float(bd.get("stock", 0.0))
+		b.gear_big = bool(bd.get("gb", false))                # (the gear field's connecting gear: scripts/gear.gd)
+		b.gear_swap_t = float(bd.get("gs", -1.0))
+		b.gear_swap_to = bool(bd.get("gst", false))
 		b.vertical = bool(bd.get("v", false))
 		b.dir_locked = bool(bd.get("vl", false))
 		b.locked = bool(bd.get("gl", false))

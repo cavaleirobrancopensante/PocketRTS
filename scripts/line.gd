@@ -600,6 +600,8 @@ func pressure_at(b: Building) -> float:
 
 ## Work speed of a building: 1.0 for everything that is not a Clockwork consumer.
 func speed_mult(b: Building) -> float:
+	if not Defs.line_mode:
+		return game.gear_net.speed_mult(b)      # (the Line is shelved: the gear field decides whether a Clockwork building works)
 	if not enforce or not Defs.LINE["draw"].has(b.kind):
 		return 1.0
 	return Defs.line_speed(pressure_at(b))
@@ -607,7 +609,7 @@ func speed_mult(b: Building) -> float:
 
 ## "ok", "weak" (below full speed), "starved" (touches a Line with no pressure), "off" (touches none).
 func state_of(b: Building) -> String:
-	if not enforce or not is_consumer(b) or not b.built or b.dead:
+	if not Defs.line_mode or not enforce or not is_consumer(b) or not b.built or b.dead:
 		return "ok"
 	var st: Dictionary = bstate.get(b, {})
 	if st.is_empty() or not st.get("touch", false):
@@ -824,6 +826,8 @@ func _warn_players() -> void:
 # ------------------------------------------------------------------ ticking
 
 func tick(delta: float) -> void:
+	if not Defs.line_mode:
+		return          # (shelved: no pipes, rails, trains or pressure unless the Line is switched on)
 	_clock += delta
 	rails.tick(delta)
 	_solve_t -= delta
@@ -1065,6 +1069,8 @@ func redraw() -> void:
 
 
 func _draw_ground() -> void:
+	if not Defs.line_mode:
+		return
 	if segs.is_empty() and not (tool_on and not tool_path.is_empty()):
 		return
 	var view: Rect2 = game.view_rect.grow(T * float(Defs.LINE["scale"]))
@@ -1262,6 +1268,8 @@ func _puff(cv: Node2D, at: Vector2, phase: float, big: float, p: float) -> void:
 
 
 func _draw_top() -> void:
+	if not Defs.line_mode:
+		return
 	var view: Rect2 = game.view_rect
 	var font := ThemeDB.fallback_font
 	# steam puffs at joints and leaks

@@ -1961,7 +1961,7 @@ func cmd_gather(site: Entity) -> void:
 		cmd_move(site.center())
 		return
 	var b := site as Building
-	if b.team != team or Defs.crew_cap(b.d) == 0 or (b.haul_cap() > 0 and not can_haul()):
+	if b.team != team or (b.crew_max() == 0 and b.haul_cap() == 0) or (b.haul_cap() > 0 and not can_haul()):
 		cmd_move(site.center())
 		return
 	if b.haul_cap() > 0 and not b.crew.has(self) and b.haulers().size() >= b.haul_cap():

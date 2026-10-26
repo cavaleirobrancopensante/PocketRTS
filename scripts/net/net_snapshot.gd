@@ -12,7 +12,7 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target"]
 const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "prod_t", "eggs", "upgrade_t", "growth",
 	"soil", "lode", "swamp_r", "batteries", "auto_train", "auto_refit", "gate_open", "locked", "vertical", "seeded",
-	"crate", "unfold_t", "max_hp", "rally", "worker_rally", "stock"]
+	"crate", "unfold_t", "max_hp", "rally", "worker_rally", "stock", "gear_big", "gear_swap_t", "gear_swap_to"]
 const BLD_REFS := ["rally_target", "worker_rally_target"]
 const U_FIXED := 6      # id, kind, team, position, hp, facing angle
 const B_FIXED := 6      # id, kind, team, cell, hp, (spare)

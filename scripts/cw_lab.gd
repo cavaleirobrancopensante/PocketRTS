@@ -10,6 +10,22 @@ static func setup(game: Game) -> void:
 	var cfg: Dictionary = Defs.CW["lab"]
 	game.players[t]["gold"] = int(cfg["ore"])
 	game.players[t]["res2"] = float(cfg["res2"])
+	if Defs.gear_mode:
+		# gear mode: the lab buildings go where their gear rings link to the Clocktower's
+		var hall: Building = null
+		for b in game.buildings:
+			if b.team == t and b.kind == game.faction_hall(t):
+				hall = b
+				break
+		for k in cfg["buildings"]:
+			if hall == null or not Defs.BUILDINGS.has(k) or not Defs.build_list("clockwork").has(k):
+				continue
+			var spot := game.find_spot(t, String(k), hall, 3, 24, "near")
+			if spot.x >= 0:
+				game._add_building(String(k), t, spot, true)
+		game.gear_net.solve()
+		_hint(game)
+		return
 	var cells := run_from_hall(game, t, 44)
 	if cells.is_empty():
 		return
@@ -21,6 +37,10 @@ static func setup(game: Game) -> void:
 			if b != null:
 				break
 	game.line_net.solve()
+	_hint(game)
+
+
+static func _hint(game: Game) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 40
 	var l := Label.new()
