@@ -90,3 +90,6 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Chosen as the Clockwork's MELEE AREA DAMAGE unit (concept art/redraws/concepts/pendulum_v1.png): a tall clock-tower body on two long legs, a big clock face at the top, a pendulum with a heavy bob and a crescent scythe blade that swings in a wide arc and hits everything in front of it. Its tower silhouette on long legs sets it apart from the Clock Soldier even though it keeps a red case and a clock (a tower clock, the heavy role).
 - Open: tier and producing building, cost (cogs + Tension?), numbers (slow, tough, cleave arc).
 - Art plan: a 5-direction sheet with the pendulum drawn separately; the swing and the idle sway are done in code by rotating the painted pendulum about its pivot (like the flywheel); the walk later.
+
+## Names (owner, 2026-10-26)
+- The air-to-air flyer is the SWIFT and its building the CLOCK AVIARY (English). "Cuckoo" read comic in English (crazy; the cuckold bird). Portuguese keeps the cuckoo ("Cuco", "Casa do Cuco"), the owner finds it fine there; Spanish does the same ("Cuco", "Casa del Cuco"). Internal ids and art files keep "cuckoo".
