@@ -46,7 +46,7 @@ One commented block: `pitch` (tooth size, px), `pad` (ring padding per small / b
 - Only the parent link of each ring is meshed; two rings that touch without being parent and child can show teeth on teeth.
 - The cogs icon, the swap button icon, the idler hub and the ring edge are code-drawn (see `docs/art_style_inconsistency.md`).
 - Old saves with ore buildings are not migrated.
-- The Winder's win and attack animations and death sheet are not imported.
+- (Done 2026-10-26: the new Winder's sheets are in the game, tools/import_winder_v2.py.)
 - The Owl's falling bomb and a Netter's net in flight are not in saves (one in the air is lost; a unit already caught keeps its time).
 - A netted flyer keeps drawing over ground units (its z order is a flyer's) while it lies on the ground.
 - The Jack's leap is not in saves or online snapshots: a game saved mid-leap loads it where it was (popped onto free ground), and an online guest sees the Jack slide instead of crouch and fly.

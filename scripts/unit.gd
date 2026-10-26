@@ -69,6 +69,9 @@ var anim_dir := ""
 var anim_flip := false
 var anim_t := 0.0
 var frame_i := 0
+var _beat_t := 0.0              # (a Winder) seconds into the strip, played on its beat (WINDER_BEAT)
+var _beat_dip := 0.0            # (a Winder) the hammer blow just struck: the body dips a pixel this long
+var _crank_until := -1.0        # (a Winder) game clock: he winds the crate he set down until then (a picture only)
 var corpse_t := 0.0
 var _anim_art := ""             # whose sheet the sprite shows now (the mounted kind's while getting on)
 var _mount_len := 0.0           # (mounting / dismounting) how long it takes: the strip plays over it
@@ -4974,6 +4977,9 @@ func _build(delta: float) -> Vector2:
 				site.seeded = true
 				site._update_sprite()
 				Sfx.play("ratchet", position)
+			# and gives it a few turns while it unfolds (one beat of his wind strip; it never holds him up: a new
+			# order walks him off at once)
+			_crank_until = game.clock + 1.2
 			if not (_continue_line() or _next_order()):
 				cmd_stop()
 			return Vector2.ZERO
@@ -5056,9 +5062,10 @@ func _fetch_crate(site: Building, delta: float) -> Vector2:
 
 
 ## Winder: where the crate on his back sits for each view ([x, y from the feet, unflipped art
-## (facing east), drawn behind the body]): behind him when he faces us, in front of him when
-## he walks away. One picture for every view; it bobs with his steps.
-const CRATE_BACK := {"s": [0, -25, true], "se": [-4, -25, true], "e": [-7, -24, true], "ne": [-4, -23, false], "n": [0, -23, false]}
+## (facing east), drawn behind the body]): behind him when he faces us (over his clock head, which
+## hides the rest), low on his back under the winding key side on, in front of him when he walks
+## away. One picture for every view; it bobs with his steps.
+const CRATE_BACK := {"s": [0, -38, true], "se": [-10, -21, true], "e": [-12, -17, true], "ne": [-5, -20, false], "n": [0, -22, false]}
 
 
 func _update_crate_spr() -> void:
@@ -5317,6 +5324,8 @@ func _anim_name() -> String:
 			if phase != "":
 				return "attack"
 		"winder":
+			# his one job is winding (docs/clockwork_ground_up.md): his own spring, a Cog Press, a repair, the crate he
+			# has just set down on a site (the repair strip is the wind strip)
 			if self_wind_t > 0.0:
 				return "wind"
 			if work == "manning":
@@ -5325,7 +5334,7 @@ func _anim_name() -> String:
 				return "repair"
 			if phase != "":
 				return "attack"
-			if not moving and not _in_field:
+			if not moving and (not _in_field or game.clock < _crank_until):
 				return "wind"
 		"steam_walker":
 			if phase != "":
@@ -5415,7 +5424,7 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## that far in a stride at WALK_FPS; 12 fps is the fastest legs that still read as walking (the
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
-		"dismounted_armoured": 12.0, "winder": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
+		"dismounted_armoured": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
 		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
 		# the Pendulum's long strides (90 sheet px a step at 0.284: one 8-frame cycle carries it 51 px, 1.1 s at 46);
 		# the Netter's quick trot (its stubby legs step faster than the ground goes by: as fast as reads)
@@ -5425,6 +5434,47 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 ## Frames a second of art `a`'s walk strip at full speed.
 static func walk_fps_for(a: String) -> float:
 	return float(WALK_FPS_ART.get(a, WALK_FPS))
+
+
+## The Winder moves on a clockwork beat (docs/clockwork_ground_up.md): every frame of these strips is HELD for its time
+## and then snaps to the next, like a second hand. Seconds, in steps of the 15 Hz animation tick so the holds stay even.
+## walk     ticking steps: each step a quick swing frame, then the foot planted and held (the walk's speed scales it)
+## wind     his work (a Cog Press, a repair, his own spring, a crate he set down): hammer, hammer, pause: two quick
+##          quarter turns of the crank in his hands, then a rest (the body dips a pixel on each blow); also "repair"
+## idle     the hands on his clock face tick once a second
+## attack   the key off his back, raised, the thrust held over the blow (it lands 0.25 s in), the key back on
+## death    he runs down: each frame slower than the last, then the heap
+## Strips not listed run at their frame rate (Unit._animate). The anim viewer plays the same beat.
+const WINDER_BEAT := {
+	"walk": [0.0667, 0.1333, 0.0667, 0.1333],
+	"wind": [0.4667, 0.1333, 0.4667, 0.1333],
+	"idle": [1.0, 1.0],
+	"attack": [0.0667, 0.1333, 0.2667, 0.4],
+	"death": [0.0667, 0.1333, 0.2, 0.2, 0.2667, 9.0],
+}
+
+
+## The WINDER_BEAT key of strip `a` (repairing is winding), or "" when it plays at its frame rate.
+static func beat_of(a: String) -> String:
+	if a == "repair":
+		a = "wind"
+	return a if WINDER_BEAT.has(a) else ""
+
+
+## The frame of beat strip `a` (n frames) `t` seconds in: looped, or held on the last frame when it does not loop.
+static func beat_frame(a: String, t: float, n: int, loop: bool) -> int:
+	var beat: Array = WINDER_BEAT[beat_of(a)]
+	var m := mini(n, beat.size())
+	var total := 0.0
+	for i in m:
+		total += float(beat[i])
+	if loop:
+		t = fposmod(t, total)
+	for i in m:
+		t -= float(beat[i])
+		if t < 0.0:
+			return i
+	return m - 1
 
 
 ## Animation runs at most 15 times a second, and not at all for units nobody can see.
@@ -5568,6 +5618,12 @@ func _animate(delta: float) -> void:
 			loop = false
 	if kind == "labourer" and not dead and _drive_labourer(delta, n):
 		pass
+	elif kind == "winder" and beat_of(anim) != "":
+		# the clockwork beat (WINDER_BEAT): held frames that snap on (a step walks it as fast as he goes)
+		var was := frame_i
+		_beat_t += delta * (clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3) if anim == "walk" else 1.0)
+		frame_i = beat_frame(anim, _beat_t, n, loop)
+		_beat_dip = 0.05 if frame_i != was and beat_of(anim) == "wind" else maxf(0.0, _beat_dip - delta)   # (one tick)
 	else:
 		anim_t += delta * fps
 		if anim_t >= 1.0:
@@ -5635,6 +5691,8 @@ func _animate(delta: float) -> void:
 		sprite.position = order_target.position - position     # the strip's horse where the horse is
 	elif kind == Defs.JACK and not jump.is_empty() and not dead:
 		sprite.position = Vector2(0.0, -Jack.lift(self))      # (in the air: over its shadow, on the arc)
+	elif kind == "winder" and not dead and _beat_dip > 0.0 and beat_of(anim) == "wind":
+		sprite.position = Vector2(0.0, 1.0)      # (a Winder's hammer blow: the body dips a pixel)
 	elif kind != "cannon":
 		sprite.position = Vector2.ZERO
 	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
@@ -5843,6 +5901,7 @@ func _set_anim(a: String, force: bool) -> void:
 	if a != anim:
 		frame_i = 0
 		anim_t = 0.0
+		_beat_t = 0.0
 	var frames: Dictionary = ArtData.UNITS[sa]["frames"]
 	if not frames.has(a + "_" + dr):
 		# Closest drawn direction; side-only animations face the way we're heading.

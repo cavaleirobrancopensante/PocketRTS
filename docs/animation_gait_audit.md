@@ -23,7 +23,7 @@ Leg zone = bottom 30% of the sprite. `leg` = share of the leg silhouette (union)
 | gearknight | biped | 9 | 0.35 | e | e 0.35/10/Y | ok |
 | spore_mother | quad | 4,4,4,4,4 | 0.35 | n | s 0.25/1/n; se 0.49/26/n; e 0.39/8/n; ne 0.39/8/n; n 0.25/1/n | FAIL s,se,e,ne,n |
 | messenger | mount | 9,9,5,8,8 | 0.36 | n | s 0.17/0/n; se 0.52/13/Y; e 0.57/49/n; ne 0.44/21/Y; n 0.11/1/n | FAIL s,e,n |
-| winder | biped | 4,6,5,7,5 | 0.38 | s | s 0.25/6/Y; se 0.39/4/Y; e 0.45/6/Y; ne 0.39/6/Y; n 0.43/6/Y | ok |
+| winder | biped | 4,4,4,4,4 | 0.25 | ne | s 0.21/4/Y; se 0.39/7/Y; e 0.30/8/n; ne 0.18/3/n; n 0.20/3/Y | FAIL e,ne |
 | labourer | biped | 6,6,6,6,6 | 0.40 | s | s 0.22/4/Y; se 0.51/5/Y; e 0.54/5/Y; ne 0.50/4/Y; n 0.23/8/Y | ok |
 | dismounted_armoured | biped | 8,8,8,8,8 | 0.41 | s | s 0.17/5/Y; se 0.53/13/Y; e 0.61/12/Y; ne 0.57/13/Y; n 0.18/0/n | FAIL n |
 | dragoon_armoured | mount | 10,10,10,10,10 | 0.42 | s | s 0.39/5/Y; se 0.44/11/Y; e 0.40/15/Y; ne 0.40/15/Y; n 0.48/3/n | FAIL n |
@@ -45,7 +45,7 @@ Leg zone = bottom 30% of the sprite. `leg` = share of the leg silhouette (union)
 |---|---|---|
 | missionary | fixed | legs rebuilt (tools/import_gait_missionary.py), all views: robe-black legs, boots under the hem |
 | windup_soldier | fixed | legs rebuilt (import_gait_windup_soldier.py), all views; tiny sprite, the front/back stride is subtle |
-| winder | fixed | legs rebuilt (import_gait_winder.py), all views |
+| winder | new art | 2026-10-26: the new Winder's own ChatGPT walk (tools/import_winder_v2.py; the code legs of import_gait_winder.py are retired); 4 frames that stride once a loop, played on a ticking beat (Unit.WINDER_BEAT); the ne view's stride is small |
 | musketeer_armoured | fixed | legs rebuilt (import_gait_musketeer_armoured.py), all views; frame counts 3/4/6/5/7 unchanged |
 | raptor | improved | s / se / ne / n legs rebuilt (import_gait_raptor.py); walk_e kept (already a real run). Front/back stride is small: a ChatGPT redraw would still be better |
 | horse | needs ChatGPT redraw | quadruped: a believable diagonal-pair leg cycle cannot be built from the painted horse by code (prompt 18/20-25) |
