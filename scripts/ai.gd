@@ -553,6 +553,23 @@ func _f() -> Dictionary:
 	return Defs.FACTIONS[game.faction_of(team)]
 
 
+## Gear mode: a Ratchet Turret or two for the home base (Defs.TURRET): the first once a Movement Works stands and the
+## first soldiers are paid for (or at once when an enemy is at the door), a second on Normal and Hard later with money in
+## the bank. They go up near the Clocktower like any gear building (they must link to the field).
+func _turrets() -> void:
+	var k := Defs.CW_TURRET
+	if not game.requirement_met(team, k) or _busy_building(k) or _gold() < int(Defs.BUILDINGS[k]["cost"]):
+		return
+	var have := _mine(k).size()
+	var want := 0
+	if game.clock > _lv([420.0, 300.0, 240.0]) or (_threat() != Vector2.INF and game.clock > 150.0):
+		want = 1
+	if difficulty > 0 and game.clock > _lv([9999.0, 540.0, 420.0]) and _gold() > 300:
+		want = 2
+	if have < want:
+		_construct(k)
+
+
 ## Our supply building (the Clockwork's Regulator in gear mode: Defs.supply_kind).
 func _sup() -> String:
 	return Defs.supply_kind(game.faction_of(team))
@@ -1159,6 +1176,8 @@ func _econ_build() -> void:
 		var mill := Defs.GEAR_PRESS if Defs.gear_mode else ("ore_drill" if Defs.rail_econ else "ore_crusher")      # (gear mode: Cog Presses; rails: Drills dig, trains haul)
 		var crushers := _mine(mill).size()
 		order = [mill, "boiler"] if crushers <= _mine("boiler").size() else ["boiler", mill]
+		if Defs.gear_mode:
+			order = [mill]      # (no power in gear mode: no Boilers)
 	_reserve = 0
 	for k in _no_room.keys():
 		if game.clock - float(_no_room[k]) > 20.0:
@@ -1379,6 +1398,7 @@ func _build_up() -> void:
 			_construct(_works())
 		elif mw == 1 and t > _lv([600.0, 300.0, 220.0]) and gold > 300:
 			_construct(_works())
+		_turrets()
 	elif _clock():
 		var works := _mine("assembly_works").size()
 		# (the first Works comes by the clock, not the plan's tech factor: every plan needs a line by ~2:00)
@@ -1449,6 +1469,8 @@ func _build_up() -> void:
 	var hall: String = _f()["hall"]
 	var full := true
 	for kind in _f()["econ"]:
+		if not Defs.build_list(game.faction_of(team)).has(kind):
+			continue        # (another mode's economy building: the Clockwork's crushers, drills or Boilers)
 		if game.econ_count(team, kind) < game.econ_limit(team, kind):
 			full = false
 	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * (0.7 if _brood() else 1.0) * float(_s("expand"))

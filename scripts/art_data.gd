@@ -1093,6 +1093,11 @@ const EFFECTS := {
 	"mortar_blast": {"frames": 6, "size": Vector2i(64, 66)},
 	"arc_ball": {"frames": 3, "size": Vector2i(56, 24)},
 	"arc_impact": {"frames": 4, "size": Vector2i(52, 40)},
+	# the Ratchet Turret's screw: in flight (spinning, pointing right), the muzzle burst, the impact sparks
+	# (tools/gear_art/import_ratchet_turret.py prints these)
+	"screw": {"frames": 4, "size": Vector2i(61, 25)},
+	"screw_muzzle": {"frames": 4, "size": Vector2i(74, 49)},
+	"screw_impact": {"frames": 4, "size": Vector2i(62, 60)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):

@@ -131,9 +131,14 @@ func _run() -> void:
 		check(not _mine(Defs.CW_WORKS).is_empty(), "it built a Movement Works (%d)" % _mine(Defs.CW_WORKS).size())
 		check(not _mine(Defs.CW_SUPPLY).is_empty() and _mine("spring_tower").is_empty(), "it built Regulators (%d), no Spring Tower" % _mine(Defs.CW_SUPPLY).size())
 		check(soldiers >= 3, "it trained Clock Soldiers (%d)" % soldiers)
+		# no power in gear mode: no Boiler, Pylon, Engine Hall or Capacitor Works; a Ratchet Turret for defence
+		var power: Array = Defs.ENERGY_KINDS.filter(func(k: String) -> bool: return not _mine(k).is_empty())
+		check(power.is_empty(), "it built nothing that runs on power (%s)" % str(power))
+		check(not _mine(Defs.CW_TURRET).is_empty(), "it built a Ratchet Turret (%d)" % _mine(Defs.CW_TURRET).size())
 	else:
 		check(true, "the match ran to %d:%02d (%s)" % [int(g.clock) / 60, int(g.clock) % 60, "ended" if g.over else "7 minutes"])
 		check(worst_stall < 150.0 or g.over, "it kept spending (worst gap %.0f s)" % worst_stall)
+		check(Defs.ENERGY_KINDS.all(func(k: String) -> bool: return _mine(k).is_empty()), "it built nothing that runs on power")
 		check(worst_off < 60.0 or g.over, "no finished building stood unlinked for a minute while its Clocktower lived (worst %.0f s)" % worst_off)
 	print("ALL PASS" if fails == 0 else "FAIL (%d)" % fails)
 	quit(1 if fails > 0 else 0)

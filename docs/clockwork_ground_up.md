@@ -63,3 +63,4 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 
 ## Defence: the Ratchet Turret (owner, 2026-10-26)
 - Static defence: a squat 2x2 base on its gear ring with a separate head that turns to aim and fires big screws (the Jack's screw art). Hits BOTH air and ground (owner: the Clockwork needs it).
+- Built (0.14.17, numbers are guesses): 125 cogs, 450 hp, 1 armour, needs the Movement Works; 14 damage every 1.5 s (about 9 a second, a Musketeer's 7 and a bit), range 200 px (a Musketeer's 190; cannons and mortars out-range it), ground and air; linked only. Power (Boiler, Charging Pylon, batteries, energy) is gone from gear mode.

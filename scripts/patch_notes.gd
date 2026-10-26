@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.17", "items": [
+		"CLOCKWORK, no more power (gear mode): steam and electricity are only looks now. The Boiler, the Charging Pylon (the tesla tower), the Engine Hall and the Capacitor Works are gone from the Clockwork's build list, and nothing that needs them or costs energy is trained; the Clocktower fills no batteries and no longer zaps flyers. The top bar shows cogs, TENSION and supply (no energy pill). The RATCHET TURRET is the Clockwork's new static defence (2x2, 125 cogs, 450 hp, needs a Movement Works): its head turns to the nearest enemy and fires big spinning screws at ground and air alike (14 damage every 1.5 s, range a little over a Musketeer's). Like every gear building it must stay linked to the gear field or it does not fire. The CLOCKWORK LAB starts with one (and no Pylon); the Clockwork computer builds one or two.",
+	]},
 	{"v": "0.14.16", "items": [
 		"CLOCKWORK ARMY, first look (gear mode): the MOVEMENT WORKS, the Clockwork's barracks (4x3, 150 cogs), trains the CLOCK SOLDIER, a plain melee front-line soldier with a clock-hand sword and a pocket-watch shield (70 cogs, 90 hp, 1 armour, 10 damage). Its hanging line runs while it trains. The REGULATOR, a squat pendulum clock (2x2, 100 cogs, +10 supply), replaces the Spring Tower; its pendulum swings while it is linked. Every Clockwork building's ring now has a bolted iron FLOOR PLATE in its middle that the ring turns round. The CLOCKWORK LAB starts with a Movement Works, a Regulator and four Clock Soldiers too; the Clockwork computer builds Movement Works and Regulators and trains Clock Soldiers on the gear field.",
 	]},

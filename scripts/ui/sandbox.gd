@@ -74,11 +74,15 @@ func _build() -> void:
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 4)
 	v.add_child(row2)
-	var res: Array = Defs.FACTIONS[game.faction_of(acting)]["res"]
+	var res: Array = Defs.res_names(game.faction_of(acting))
 	row2.add_child(_small("+1000 " + String(res[0]).to_upper(), false, func() -> void:
 		game.players[acting]["gold"] += 1000))
+	var tens := game.faction_of(acting) == "clockwork" and Defs.gear_mode      # (gear mode: Tension, no energy)
 	row2.add_child(_small("+200 " + String(res[1]).to_upper(), false, func() -> void:
-		game.players[acting]["res2"] = float(game.players[acting]["res2"]) + 200.0))
+		if tens:
+			game.players[acting]["tension"] = float(game.players[acting].get("tension", 0.0)) + 200.0
+		else:
+			game.players[acting]["res2"] = float(game.players[acting]["res2"]) + 200.0))
 	var row3 := HBoxContainer.new()
 	row3.add_theme_constant_override("separation", 4)
 	v.add_child(row3)
@@ -107,10 +111,10 @@ func _build() -> void:
 	scroll.add_child(list)
 	var kinds: Array = []
 	for k in Defs.UNITS:
-		if Defs.UNITS[k]["faction"] == _tab:
+		if Defs.UNITS[k]["faction"] == _tab and not Defs.energy_only(k):
 			kinds.append(k)
-	for k in Defs.FACTIONS[_tab]["build"] + Defs.build_list(_tab):      # (+ gear mode's Movement Works and Regulator)
-		if not kinds.has(k):
+	for k in Defs.FACTIONS[_tab]["build"] + Defs.build_list(_tab):      # (+ gear mode's Movement Works, Regulator and Ratchet Turret)
+		if not kinds.has(k) and not Defs.energy_only(k):      # (gear mode: no power)
 			kinds.append(k)
 	for k in kinds:
 		var kk: String = k

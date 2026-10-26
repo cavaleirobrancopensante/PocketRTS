@@ -2,7 +2,7 @@ class_name CwLab
 extends RefCounted
 ## The CLOCKWORK LAB (EDITOR menu): the human Clockwork starts with plenty of cogs and, in gear mode (the default), the
 ## GEAR FIELD on show: the Clocktower on its big ring with two Cog Presses and a Mainspring meshing round it, Winders
-## working them, the camera on it, and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
+## working them, a Ratchet Turret, the camera on it, and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
 ## a Rail Yard, Assembly Works, Engine Hall, Boiler and Pylon beside it.) A hint line says what to try.
 ## Also holds the Line helpers the cw tests share (run_from_hall, beside).
 
@@ -13,6 +13,7 @@ static func setup(game: Game) -> void:
 	game.players[t]["gold"] = int(cfg["ore"])
 	game.players[t]["res2"] = float(cfg["res2"])
 	if Defs.gear_mode:
+		game.players[t]["tension"] = float(cfg["res2"])      # (gear mode: no energy; Tension instead)
 		_gear_field(game, t, cfg)
 		_hint(game)
 		return
@@ -34,9 +35,11 @@ static func setup(game: Game) -> void:
 ## put round the Clocktower where their rings mesh with its ring (directly when the grid allows, else through an idler),
 ## at three set angles (screen: up right, down left, down right).
 ## Then the new-style army: a Movement Works (training nothing yet) and a Regulator, built and linked, and SOLDIERS Clock
-## Soldiers standing in front of the Works.
-const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["movement_works", -130.0], ["regulator", 105.0]]
-const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0}
+## Soldiers standing in front of the Works; and a Ratchet Turret, the static defence, built and linked on the field's
+## edge (no power in gear mode: no Charging Pylon, no Boilers; Defs.ENERGY_KINDS are not in the gear build list).
+const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["movement_works", -130.0], ["regulator", 105.0],
+	["ratchet_turret", 5.0]]
+const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0}
 const SOLDIERS := 4
 
 
@@ -154,7 +157,7 @@ static func _hint(game: Game) -> void:
 
 static func hint_text() -> String:
 	if Defs.gear_mode:
-		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply. Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
+		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED). Where two rings do not quite touch, a small idler cog fills the gap. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The new army: the Movement Works trains Clock Soldiers, the Regulator adds supply, the Ratchet Turret shoots screws at ground and air. Place more buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
 	return Loc.t("CLOCKWORK LAB: open SANDBOX, tab CLOCK, to spawn the new units (rail vehicles land on the Line). The Rail Yard and Assembly Works train them too. The enemy never attacks.")
 
 

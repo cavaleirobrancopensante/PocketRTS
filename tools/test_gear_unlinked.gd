@@ -1,5 +1,5 @@
 extends SceneTree
-## An unlinked building does nothing: no production, no income, no battery filling, no repairs; its gears stand still
+## An unlinked building does nothing: no production, no income, no Tension winding, no repairs; its gears stand still
 ## and the HUD says UNLINKED. Linked ones work.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_gear_unlinked.gd
 const U := preload("res://tools/gear_test_util.gd")
@@ -25,8 +25,8 @@ func _run() -> void:
 	g.players[0]["gold"] = 5000
 	var works := U.put(g, 0, "assembly_works", tower.cell)
 	var lone := U.put_far(g, 0, "assembly_works", 20)
-	var boiler_ok := U.put(g, 0, "boiler", tower.cell)
-	var boiler_off := U.put_far(g, 0, "boiler", 20)
+	var spring_ok := U.put(g, 0, "mainspring", tower.cell)      # (gear mode has no power: the Mainspring, not a Boiler)
+	var spring_off := U.put_far(g, 0, "mainspring", 20)
 	var press_off := U.put_far(g, 0, Defs.GEAR_PRESS, 20)
 	check("set-up: a linked and an unlinked Assembly Works", works != null and lone != null and net.linked.has(works) and not net.linked.has(lone))
 	check("is_linked says so (the HUD shows UNLINKED)", net.is_linked(works) and not net.is_linked(lone))
@@ -43,10 +43,11 @@ func _run() -> void:
 	var paid0 := press_off.press_paid
 	U.step(g, 10.0)
 	check("an unlinked Cog Press pays nothing (even with Winders on it)", press_off.press_paid == paid0 and press_off.press_rate() == 0.0)
-	# batteries: a linked Boiler fills, an unlinked one does not
-	U.step(g, 8.0)
-	check("a linked Boiler fills batteries", boiler_ok != null and boiler_ok.batteries > 0, "%d" % (boiler_ok.batteries if boiler_ok else -1))
-	check("an unlinked Boiler fills none", boiler_off != null and boiler_off.batteries == 0, "%d" % (boiler_off.batteries if boiler_off else -1))
+	# Tension: a linked Mainspring winds (a little by itself), an unlinked one does not; and no batteries anywhere (no power)
+	U.step(g, 2.0)
+	check("a linked Mainspring winds Tension", spring_ok != null and spring_ok.spring_rate() > 0.0, "%.2f" % (spring_ok.spring_rate() if spring_ok else -1.0))
+	check("an unlinked Mainspring winds none", spring_off != null and spring_off.spring_rate() == 0.0, "%.2f" % (spring_off.spring_rate() if spring_off else -1.0))
+	check("no batteries fill anywhere (no power in gear mode)", g.buildings.all(func(b: Building) -> bool: return b.batteries == 0))
 	# gears stand still
 	var a0: float = net.ang.get(lone, 0.0)
 	var m0: float = net.ang.get(works, 0.0)

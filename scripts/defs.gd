@@ -394,6 +394,55 @@ const CW_WORKS := "movement_works"
 const CW_SUPPLY := "regulator"
 
 
+## NO POWER in gear mode (owner, 2026-10-26: "steam and electricity are looks only"): the Boiler, the Charging Pylon (the
+## tesla tower), the Engine Hall (it needs a Boiler and its engines cost energy) and the Capacitor Works (blue energy) are
+## not built, and nothing that needs one of them or costs energy (cost2: stored batteries) is trained. The Line keeps them.
+const ENERGY_KINDS := ["boiler", "charging_pylon", "engine_hall", "capacitor_works"]
+
+
+## True in gear mode for a Clockwork building or unit that runs on energy (ENERGY_KINDS, a unit costing batteries, or
+## anything that requires one of ENERGY_KINDS): left out of the build and train lists. Always false with gear mode off.
+static func energy_only(k: String) -> bool:
+	if not gear_mode:
+		return false
+	if ENERGY_KINDS.has(k):
+		return true
+	var d: Dictionary = UNITS.get(k, BUILDINGS.get(k, {}))
+	if String(d.get("faction", "")) != "clockwork":
+		return false
+	if UNITS.has(k) and int(d.get("cost2", 0)) > 0:
+		return true
+	var r = d.get("requires", "")
+	for x in (r if r is Array else [r]):
+		if ENERGY_KINDS.has(String(x)):
+			return true
+	return false
+
+
+## The RATCHET TURRET (gear mode; docs/clockwork_ground_up.md): the Clockwork's static defence. A squat 2x2 base on its
+## gear ring with a head that turns to aim (one 45-degree step every `turn` s, back to its last facing when idle) and
+## fires a big screw at the nearest enemy in `range` px, on the ground or in the air, every `cooldown` s, for `damage`.
+## Like every gear building it does nothing while it is unlinked. The screw flies at `speed` px/s (the damage lands when
+## it is fired, like a musket ball; the screw is the picture). `scan`: s between target searches.
+## Numbers are guesses (design_principles 1 and 2): about a Musketeer and a third of damage a second (9.3 vs 7.1), a
+## Musketeer's reach (190) plus a little, so Crown guns (430) and mortars out-range it and a rush of 8 Raptors (36 hp,
+## 3 screws each) still kills it (about 10 s at 6 dps each) after losing 2-3. Linked only: it cannot be pushed forward.
+## Head art: `head_at` (game px from the building's anchor, its footprint's bottom centre) is where the head's collar
+## centre sits on the base's turntable (found by eye); `tips` the barrel tip per drawn facing, px from the collar centre
+## (W/SW/NW mirror E/SE/NE); `shot_scale` the screw's size in flight (and its sparks), `muzzle_scale` the burst's.
+const TURRET := {"range": 200.0, "damage": 14.0, "cooldown": 1.5, "speed": 520.0, "turn": 0.07, "scan": 0.25,
+	"head_at": Vector2(0, -70), "shot_scale": 0.6, "muzzle_scale": 0.8,
+	"tips": {"s": Vector2(0, -4), "se": Vector2(22, -3), "e": Vector2(40, -15), "ne": Vector2(21, -38), "n": Vector2(0, -40)}}
+const CW_TURRET := "ratchet_turret"
+
+
+## A faction's two resources' names: the Clockwork's second is Tension in gear mode (no Energy), else FACTIONS "res".
+static func res_names(faction: String) -> Array:
+	if faction == "clockwork" and gear_mode:
+		return ["Cogs", "Tension"]
+	return FACTIONS[faction]["res"]
+
+
 ## A faction's supply building: the Clockwork's is the Regulator in gear mode, else FACTIONS "supply".
 static func supply_kind(faction: String) -> String:
 	if faction == "clockwork" and gear_mode:
@@ -413,6 +462,10 @@ static func build_list(faction: String) -> Array:
 			# the Movement Works (the barracks) after the Mainspring
 			l[l.find("spring_tower")] = "regulator"
 			l.insert(l.find("mainspring") + 1, CW_WORKS)
+			# no power (ENERGY_KINDS), and the Ratchet Turret, the static defence, after the Works
+			for k in ENERGY_KINDS:
+				l.erase(k)
+			l.insert(l.find(CW_WORKS) + 1, CW_TURRET)
 		elif rail_econ:
 			l[l.find("ore_crusher")] = "ore_drill"
 		if not line_mode:
@@ -862,6 +915,12 @@ const BUILDINGS := {
 		"supply": 10, "sight": 6, "trains": [], "faction": "clockwork",
 		"about": "10 more supply. Its pendulum keeps the machine's units in time: each Regulator keeps only so many in step.",
 	},
+	# the static defence (gear mode): Defs.TURRET; priced at a little under two Clock Soldiers, needs the Movement Works
+	"ratchet_turret": {
+		"name": "Ratchet Turret", "hp": 450, "armor": 1, "cost": 125, "time": 30.0, "size": Vector2i(2, 2),
+		"supply": 0, "sight": 8, "trains": [], "requires": "movement_works", "anti_air": true, "faction": "clockwork",
+		"about": "Static defence: its head turns to the nearest enemy and fires big screws at ground and air alike. Must stay linked to the gear field or it does not fire. Needs a Movement Works.",
+	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1400, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(5, 4),
 		"supply": 0, "sight": 7, "trains": ["windup_soldier", "thresher", "bulwark", "arc_thrower", "tin_militia", "scrapper", "rail_rifleman"], "faction": "clockwork",
@@ -1164,6 +1223,8 @@ static func train_keys(kinds: Array, armour: bool) -> Array:
 			continue
 		if CW_RAIL.has(k) and not line_mode:
 			continue        # (rail vehicles: shelved with the Line)
+		if energy_only(k):
+			continue        # (gear mode: no power)
 		if ARMOURED.has(k):
 			out.append(train_key(k, false))
 			if armour:
@@ -1411,7 +1472,15 @@ const TIPS := {
 
 
 ## The short tooltip text for a unit, building or research ("about" when it has none).
+## Gear mode's own tooltips where the old text speaks of batteries, Boilers or coal (no power in gear mode).
+const GEAR_TIPS := {
+	"clocktower": "The blueprint of the machine: builds Winders, takes in the cogs and unlocks the other buildings. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Cog Presses nearby. Its ground holds a reserve of raw brass for its presses (spent, they yield a quarter). A new Clocktower starts its own gear field.",
+}
+
+
 static func tip(kind: String) -> String:
+	if gear_mode and GEAR_TIPS.has(kind):
+		return GEAR_TIPS[kind]
 	if TIPS.has(kind):
 		return TIPS[kind]
 	if train_armoured(kind):
