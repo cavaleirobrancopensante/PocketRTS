@@ -245,6 +245,7 @@ _spoke_ang = ndi.binary_dilation(_spoke_ang, iterations=8)
 _tooth_ang = ndi.binary_dilation(_tooth_ang, iterations=4)
 _band = (RHO > 0.80) & (RHO < 1.035)
 _unclean = ANCH | (_spoke_ang[_ai] & (RHO < 0.885)) | (_tooth_ang[_ai] & (RHO > 0.955))
+_unclean |= ndi.binary_dilation(BLUE & (RHO > 0.86) & (RHO < 0.99), iterations=1)   # (a rivet would stand still on it)
 RIMC, _ = ring_fill(RGB, _band & ~_unclean & SOLID, _band & _unclean, 0.80, 1.035, d_rho=0.003)
 _rr, _rg, _rb = RIMC[..., 0], RIMC[..., 1], RIMC[..., 2]
 RIM_A = _band & ((_rr - _rb) > 18) & (0.3 * _rr + 0.59 * _rg + 0.11 * _rb > 30) & (RHO > 0.81) & (RHO < 1.02)
