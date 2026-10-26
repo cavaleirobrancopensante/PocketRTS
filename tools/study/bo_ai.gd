@@ -34,6 +34,7 @@ extends AI
 ##   drop:hover          Crown: the same, but the Balloon stays up over the enemy's economy and the Musketeers fire
 ##                       from the basket (35% more reach) until their powder runs out or it is badly hurt
 ##   wait:T              wait until T seconds
+##   until:workers:N     wait until N workers are alive (with workers:N before it: a "grubs first" opening)
 ##   end                 the script is over: the ordinary computer plays on
 ## The scripted attack: everything in the army goes (later units follow in pairs or more); Horsemen and Raptors hunt
 ## workers (the computer's own _hunt), the rest attack-move at the enemy's hall; it breaks a wall in its way; it pulls back
@@ -274,6 +275,11 @@ func _do(s: String) -> String:
 		return "done"
 	if s.begins_with("wait:"):
 		if game.clock < float(s.substr(5)):
+			return "wait"
+		_log(s, game.clock)
+		return "done"
+	if s.begins_with("until:workers:"):
+		if game.workers(team).size() < int(s.substr(14)):
 			return "wait"
 		_log(s, game.clock)
 		return "done"

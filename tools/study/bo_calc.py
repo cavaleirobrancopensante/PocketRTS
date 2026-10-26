@@ -585,6 +585,11 @@ class Sim:
                 return False
             self.note(s, round(self.t, 1))
             return True
+        if s.startswith("until:workers:"):
+            if len(self.alive_workers()) < int(s[14:]):
+                return False
+            self.note(s, round(self.t, 1))
+            return True
         if s.startswith("supply:"):
             self.supply_auto = s[7:] != "off"
             self.note(s, round(self.t, 1))
