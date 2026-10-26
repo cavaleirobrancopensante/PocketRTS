@@ -1,12 +1,14 @@
 extends SceneTree
-## Screenshots of the Clockwork units' palette (brass + player colour, tools/cw_palette.py) in the CLOCKWORK LAB: the six
-## units standing together (Clock Soldier, Jack, Pendulum, Netter on the ground, a Swift and a Ticking Owl in the air) and
-## one action frame each (the Soldier's swing, the Jack's shot, the Pendulum's swing, the Netter's shot, the Swift's stab,
-## the Owl's swoop), every picture in three player colours (the game frozen on the moment, the colour swapped); plus the
-## frames of two GIFs: the Jack firing its two launchers in turn, the Swift's painted peck.
+## Screenshots of the Clockwork units' palette (brass + player colour, tools/cw_palette.py) in the CLOCKWORK LAB, on open
+## ground away from the buildings: the six units standing together (Clock Soldier, Jack, Pendulum, Netter on the ground, a
+## Swift and a Ticking Owl in the air), the Clock Soldier's size between a Musketeer, a Jack and a Labourer, and one action
+## frame each (the Soldier's swing, the Jack's shot, the Pendulum's swing, the Netter's shot, the Swift's stab, the Owl's
+## swoop), every picture in three player colours (the game frozen on the moment, the colour swapped); plus the frames of
+## two GIFs: the Jack firing its two launchers in turn, the Swift's painted peck.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_cw_palette.gd -- <outdir>
-## Writes <outdir>/idle_<colour>.png, <outdir>/act_<unit>_<colour>.png (the camera on the unit: crop the middle),
-## <outdir>/gif_jack/f_NNN.png and <outdir>/gif_swift/f_NNN.png.
+## Writes <outdir>/idle_<colour>.png, idle_se_<colour>.png, size_<colour>.png (the whole screen),
+## <outdir>/act_<unit>_<colour>.png (640 x 400 round the unit), <outdir>/gif_jack/f_NNN.png and gif_swift/f_NNN.png
+## (+ frames.txt: the game clock of each frame).
 var main: Node
 var g
 var out := ""
@@ -107,17 +109,25 @@ func _gone(u: Unit) -> void:
 	u.visible = false
 
 
-## Open low ground near the base (every cell within 6 tiles walkable): the stage.
+## Open low ground away from every building (a 21 x 15 tile patch walkable and flat, no building within 16 tiles), the
+## nearest such spot to the base: the stage.
 func _open_ground(hall: Building) -> Vector2:
+	var centres: Array = []
+	for b in g.buildings:
+		if not b.dead:
+			centres.append(b.center())
 	var best := Vector2i(-1, -1)
 	var bd := INF
-	for y in range(hall.cell.y - 34, hall.cell.y + 35):
-		for x in range(hall.cell.x - 34, hall.cell.x + 35):
+	for y in range(hall.cell.y - 60, hall.cell.y + 61, 2):
+		for x in range(hall.cell.x - 60, hall.cell.x + 61, 2):
 			var c := Vector2i(x, y)
 			if not g.in_map(c) or c.x < 14 or c.y < 14 or c.x > Game.W - 14 or c.y > Game.H - 14:
 				continue
 			var d := Vector2(c - hall.cell).length()
-			if d >= bd or d < 14.0:
+			if d >= bd:
+				continue
+			var p: Vector2 = g.cell_center(c)
+			if centres.any(func(q: Vector2) -> bool: return q.distance_to(p) < 16.0 * Defs.TILE):
 				continue
 			var ok := true
 			for yy in range(-7, 8):
@@ -131,11 +141,30 @@ func _open_ground(hall: Building) -> Vector2:
 			if ok:
 				best = c
 				bd = d
+	print("stage: ", best, " ", bd)
 	return g.cell_center(best) if best.x >= 0 else hall.center() + Vector2(0, 260)
 
 
-## Every 2nd rendered frame for `secs` of game time (slowed), the camera where it is, the middle 640 x 360 of the screen:
-## <out>/<dir>/f_NNN.png (and the game clock of each in frames.txt).
+## The game stopped where it is, one picture per player colour of the 640 x 400 screen px round world point `at`, then
+## let go.
+func _frozen_round(name: String, at: Vector2) -> void:
+	g.process_mode = Node.PROCESS_MODE_DISABLED
+	var scr: Vector2 = root.get_viewport().get_canvas_transform() * at
+	var box := Rect2i(int(scr.x) - 320, int(scr.y) - 220, 640, 400)
+	box.position.x = clampi(box.position.x, 0, 1280 - 640)
+	box.position.y = clampi(box.position.y, 0, 720 - 400)
+	for cn in COLOURS:
+		_colour(int(cn[1]))
+		await process_frame
+		await process_frame
+		root.get_viewport().get_texture().get_image().get_region(box).save_png("%s/%s_%s.png" % [out, name, cn[0]])
+	_colour(0)
+	g.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## Every 2nd rendered frame for `secs` of game time (slowed to `scale`, so no sprite frame is skipped), the camera where
+## it is, the middle 640 x 360 of the screen: <out>/<dir>/f_NNN.png (and the game clock of each in frames.txt, for the
+## GIF's frame times).
 func _gif(dir: String, secs: float, scale := 0.35) -> void:
 	var n := 0
 	var k := 0
@@ -168,6 +197,7 @@ func _run() -> void:
 		return
 	_ui(false)
 	g.reveal = true
+	root.get_viewport().warp_mouse(Vector2(2, 2))       # (no hover ring on a unit)
 	# (the Lab's own army out of the picture)
 	for u in g.units.duplicate():
 		if u.team == 0 and not (u.kind in ["winder"]):
@@ -216,22 +246,24 @@ func _run() -> void:
 	cs.cmd_attack(foe)
 	await _wait(func() -> bool: return cs.anim == "attack" and cs.frame_i == 2, 20.0)
 	Engine.time_scale = 1.0
-	await _frozen_all("act_soldier")
+	await _frozen_round("act_soldier", cs.position + Vector2(10, -20))
 	_gone(cs)
 	_gone(foe)
-	# ---- the Jack's shot (the screw leaving, the burst)
+	# ---- the Jack's shot: the next screw leaving, the burst at the tip. Facing the camera (the target due south, a
+	# Raptor that stands its ground: a Labourer runs and the Jack would follow), so both launchers show.
 	var jk := _mine(Defs.JACK, open)
-	var tgt := _dummy("labourer", open + Vector2(120, 40))
-	g.camera.position = open + Vector2(40, -10)
+	var tgt := _dummy("raptor", open + Vector2(10, 130))
+	g.camera.position = open + Vector2(0, -12)
+	g.camera.zoom = Vector2(3.2, 3.2)
 	await create_timer(0.4).timeout
 	Engine.time_scale = 0.3
 	jk.cmd_attack(tgt)
-	await _wait(func() -> bool: return jk.shots > 0 and String(jk.anim).begins_with("attack"), 20.0)
+	var s0 := jk.shots
+	await _wait(func() -> bool: return jk.shots > s0, 20.0)
 	Engine.time_scale = 1.0
-	await _frozen_all("act_jack")
+	await _frozen_round("act_jack", jk.position + Vector2(0, -12))
 	# ---- its GIF: two launchers in turn
-	g.camera.position = open + Vector2(50, -20)
-	await _gif("gif_jack", 2.6)
+	await _gif("gif_jack", 3.0, 0.15)
 	_gone(jk)
 	_gone(tgt)
 	# ---- the Pendulum's swing (the blow)
@@ -247,25 +279,25 @@ func _run() -> void:
 	pd.cmd_attack(crowd[1])
 	await _wait(func() -> bool: return pd.anim == "attack" and pd.frame_i >= 4, 20.0)
 	Engine.time_scale = 1.0
-	await _frozen_all("act_pendulum")
+	await _frozen_round("act_pendulum", pd.position + Vector2(20, -35))
 	_gone(pd)
 	for u in crowd:
 		_gone(u)
 	# ---- the Netter's shot (the net in flight)
 	var nt := _mine(Defs.NETTER, open)
-	var br := _dummy("brute", open + Vector2(150, -10))
-	g.camera.position = open + Vector2(60, -20)
-	g.camera.zoom = Vector2(3.6, 3.6)
+	var br := _dummy("brute", open + Vector2(100, -10))
+	g.camera.position = open + Vector2(50, -20)
+	g.camera.zoom = Vector2(3.0, 3.0)
 	await create_timer(0.4).timeout
 	nt.cooldown = 0.0
 	Engine.time_scale = 0.25
 	nt.cmd_attack(br)
-	await _wait(func() -> bool: return nt.nets > 0 and is_instance_valid(nt.last_net) and nt.last_net.t > nt.last_net.duration * 0.3, 20.0)
+	await _wait(func() -> bool: return nt.nets > 0 and is_instance_valid(nt.last_net) and nt.last_net.t > nt.last_net.duration * 0.35, 20.0)
 	Engine.time_scale = 1.0
-	await _frozen_all("act_netter")
+	await _frozen_round("act_netter", nt.position + Vector2(50, -20))
 	_gone(nt)
 	_gone(br)
-	# ---- the Swift's stab and the Owl's swoop
+	# ---- the Swift's stab
 	var sw := _mine(Defs.CUCKOO, open)
 	var prey := _dummy("balloon", open + Vector2(56, -6))
 	g.camera.position = open + Vector2(28, -40)
@@ -275,18 +307,22 @@ func _run() -> void:
 	sw.cmd_attack(prey)
 	await _wait(func() -> bool: return sw.anim == "attack" and sw.frame_i == 2, 20.0)
 	Engine.time_scale = 1.0
-	await _frozen_all("act_swift")
+	await _frozen_round("act_swift", sw.position + Vector2(28, -45))
 	# its GIF: the painted peck
-	await _gif("gif_swift", 2.4, 0.3)
+	g.camera.position = sw.position + Vector2(28, -40)
+	await _gif("gif_swift", 2.6, 0.15)
 	_gone(sw)
 	_gone(prey)
+	# ---- the Owl's swoop
 	var ow := _mine(Defs.OWL, open)
-	var mouse := _dummy("labourer", open + Vector2(40, 14))
+	var mouse := _dummy("raptor", open + Vector2(40, 14))     # (stands its ground: a Labourer runs and the Owl follows)
 	g.camera.position = open + Vector2(20, -40)
 	await create_timer(0.5).timeout
+	print("owl at ", ow.position, " dead ", ow.dead, " visible ", ow.visible, " mouse at ", mouse.position)
 	Engine.time_scale = 0.25
 	ow.cmd_attack(mouse)
 	await _wait(func() -> bool: return ow.anim == "attack" and ow.frame_i == 3, 20.0)
 	Engine.time_scale = 1.0
-	await _frozen_all("act_owl")
+	print("owl swoop: anim ", ow.anim, " frame ", ow.frame_i, " at ", ow.position)
+	await _frozen_round("act_owl", ow.position + Vector2(15, -18))
 	quit(0)
