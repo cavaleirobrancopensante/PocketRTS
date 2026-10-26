@@ -80,3 +80,8 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Problem (owner): every Clockwork unit so far is a red round body with a clock in the middle: hard to tell apart.
 - Rule (proposed): every unit has its OWN SILHOUETTE (size class and outline: round, tall and thin, wide and low, drum, tower, flyer) and its OWN BODY MATERIAL by role (melee = red case; ranged = polished brass; control/support = dark iron; heavy = tall tower); the team red becomes an ACCENT (bands, plates, a sash) on most units instead of the whole body; the big white clock face on the chest is the CLOCK SOLDIER's alone (other units show time another way: a small gauge, a dial on the head, a pendulum, a gear); each unit's weapon is big and readable.
 - First concept of the Netter (art/redraws/concepts/netter_v1.png) breaks the rule (red ball body with a chest clock): redraw it as a wide, low dark-iron drum walker.
+
+## The Pendulum (owner, 2026-10-26)
+- Chosen as the Clockwork's MELEE AREA DAMAGE unit (concept art/redraws/concepts/pendulum_v1.png): a tall clock-tower body on two long legs, a big clock face at the top, a pendulum with a heavy bob and a crescent scythe blade that swings in a wide arc and hits everything in front of it. Its tower silhouette on long legs sets it apart from the Clock Soldier even though it keeps a red case and a clock (a tower clock, the heavy role).
+- Open: tier and producing building, cost (cogs + Tension?), numbers (slow, tough, cleave arc).
+- Art plan: a 5-direction sheet with the pendulum drawn separately; the swing and the idle sway are done in code by rotating the painted pendulum about its pivot (like the flywheel); the walk later.
