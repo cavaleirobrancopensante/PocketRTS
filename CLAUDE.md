@@ -8,7 +8,7 @@
 - **Design:** read `docs/design_principles.md` (fairness, anti-snowball, meaningful base building)
   before balance, economy, AI or building changes; the owner wants these followed.
 
-## Backlog (owner's list, easiest first; jobs marked "branch" were stopped half done: their worktrees are in .claude/worktrees/, resume with their agent or merge the branch)
+## Backlog (owner's list, easiest first; jobs marked "branch" were stopped half done: the work is kept on their branch (worktree-agent-*; uncommitted parts were saved as a "WIP snapshot" commit and the worktrees removed to free disk): recreate a worktree from the branch to resume, or merge it)
 
 - UI: move the zoom bar off the minimap into a small UI; small music player (next track, list of all songs to pick). (branch worktree-agent-afc321a811e072d5a)
 - BUG: a labourer leading a horse from the Breeder to the recruit gets stuck / has pathfinding trouble (seen in 0.12.9 playtests).
