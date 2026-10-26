@@ -153,6 +153,7 @@ brood-brood_150,brood-brood,brood,brood,balanced,timing,hollowfen,106561,0,0,bro
 brood-brood_151,brood-brood,brood,brood,balanced,balanced,highmoor,106598,1,1,brood,1,970.6,gg,279.0,0.14.1
 brood-brood_152,brood-brood,brood,brood,balanced,balanced,thornwood_maze,106635,0,0,brood,1,786.4,victory,95.8,0.14.1
 brood-brood_153,brood-brood,brood,brood,balanced,balanced,saltmarsh_isles,106672,1,0,brood,0,893.9,victory,127.4,0.14.1
+brood-brood_154,brood-brood,brood,brood,balanced,balanced,twin_fords,106709,0,0,brood,1,724.9,gg,180.8,0.14.1
 brood-clockwork_000,brood-clockwork,brood,clockwork,balanced,balanced,greenhold,105011,0,1,clockwork,0,483.6,victory,46.7,0.14.1
 brood-clockwork_001,brood-clockwork,brood,clockwork,balanced,balanced,frostmere,105048,1,0,clockwork,0,421.6,victory,37.5,0.14.1
 brood-clockwork_002,brood-clockwork,brood,clockwork,balanced,balanced,ashford_crossing,105085,0,1,clockwork,0,669.6,victory,171.2,0.14.1
@@ -307,6 +308,7 @@ brood-clockwork_150,brood-clockwork,brood,clockwork,balanced,timing,hollowfen,11
 brood-clockwork_151,brood-clockwork,brood,clockwork,balanced,balanced,highmoor,110598,1,0,clockwork,0,455.7,victory,45.2,0.14.1
 brood-clockwork_152,brood-clockwork,brood,clockwork,balanced,balanced,thornwood_maze,110635,0,1,clockwork,0,520.8,victory,60.3,0.14.1
 brood-clockwork_153,brood-clockwork,brood,clockwork,balanced,balanced,saltmarsh_isles,110672,1,0,clockwork,0,903.2,victory,285.3,0.14.1
+brood-clockwork_154,brood-clockwork,brood,clockwork,balanced,balanced,twin_fords,110709,0,1,clockwork,0,448.5,victory,97.2,0.14.1
 clockwork-clockwork_000,clockwork-clockwork,clockwork,clockwork,balanced,balanced,greenhold,102011,0,0,clockwork,1,1198.1,gg,212.5,0.14.1
 clockwork-clockwork_001,clockwork-clockwork,clockwork,clockwork,balanced,balanced,frostmere,102048,1,0,clockwork,0,1038.5,victory,233.9,0.14.1
 clockwork-clockwork_002,clockwork-clockwork,clockwork,clockwork,balanced,balanced,ashford_crossing,102085,0,0,clockwork,1,1110.9,victory,444.8,0.14.1
@@ -461,6 +463,7 @@ clockwork-clockwork_150,clockwork-clockwork,clockwork,clockwork,balanced,timing,
 clockwork-clockwork_151,clockwork-clockwork,clockwork,clockwork,balanced,balanced,highmoor,107598,1,0,clockwork,0,1355.9,gg,339.4,0.14.1
 clockwork-clockwork_152,clockwork-clockwork,clockwork,clockwork,balanced,balanced,thornwood_maze,107635,0,0,clockwork,1,1246.7,gg,363.1,0.14.1
 clockwork-clockwork_153,clockwork-clockwork,clockwork,clockwork,balanced,balanced,saltmarsh_isles,107672,1,0,clockwork,0,1800.0,timeout_lead,437.2,0.14.1
+clockwork-clockwork_154,clockwork-clockwork,clockwork,clockwork,balanced,balanced,twin_fords,107709,0,0,clockwork,1,1419.6,gg,412.2,0.14.1
 crown-brood_000,crown-brood,crown,brood,balanced,balanced,greenhold,103011,0,0,crown,1,392.6,gg,18.7,0.14.1
 crown-brood_001,crown-brood,crown,brood,balanced,balanced,frostmere,103048,1,1,crown,1,864.9,victory,107.3,0.14.1
 crown-brood_002,crown-brood,crown,brood,balanced,balanced,ashford_crossing,103085,0,0,crown,1,1105.7,victory,295.6,0.14.1
@@ -615,6 +618,7 @@ crown-brood_150,crown-brood,crown,brood,balanced,timing,hollowfen,108561,0,0,cro
 crown-brood_151,crown-brood,crown,brood,balanced,balanced,highmoor,108598,1,1,crown,1,864.9,victory,179.8,0.14.1
 crown-brood_152,crown-brood,crown,brood,balanced,balanced,thornwood_maze,108635,0,0,crown,1,911.4,victory,157.9,0.14.1
 crown-brood_153,crown-brood,crown,brood,balanced,balanced,saltmarsh_isles,108672,1,1,crown,1,512.6,gg,34.5,0.14.1
+crown-brood_154,crown-brood,crown,brood,balanced,balanced,twin_fords,108709,0,0,crown,1,726.5,victory,111.7,0.14.1
 crown-clockwork_000,crown-clockwork,crown,clockwork,balanced,balanced,greenhold,104011,0,1,clockwork,0,832.9,victory,119.3,0.14.1
 crown-clockwork_001,crown-clockwork,crown,clockwork,balanced,balanced,frostmere,104048,1,0,clockwork,0,1166.7,victory,243.6,0.14.1
 crown-clockwork_002,crown-clockwork,crown,clockwork,balanced,balanced,ashford_crossing,104085,0,0,crown,1,1086.1,victory,377.1,0.14.1
@@ -769,6 +773,7 @@ crown-clockwork_150,crown-clockwork,crown,clockwork,balanced,timing,hollowfen,10
 crown-clockwork_151,crown-clockwork,crown,clockwork,balanced,balanced,highmoor,109598,1,1,crown,1,997.9,gg,187.3,0.14.1
 crown-clockwork_152,crown-clockwork,crown,clockwork,balanced,balanced,thornwood_maze,109635,0,0,crown,1,1143.9,victory,252.3,0.14.1
 crown-clockwork_153,crown-clockwork,crown,clockwork,balanced,balanced,saltmarsh_isles,109672,1,0,clockwork,0,1040.4,gg,404.2,0.14.1
+crown-clockwork_154,crown-clockwork,crown,clockwork,balanced,balanced,twin_fords,109709,0,1,clockwork,0,1289.1,gg,595.4,0.14.1
 crown-crown_000,crown-crown,crown,crown,balanced,balanced,greenhold,100011,0,1,crown,0,804.0,victory,74.9,0.14.1
 crown-crown_001,crown-crown,crown,crown,balanced,balanced,frostmere,100048,1,0,crown,0,1279.3,victory,242.9,0.14.1
 crown-crown_002,crown-crown,crown,crown,balanced,balanced,ashford_crossing,100085,0,1,crown,0,1754.6,victory,407.0,0.14.1
@@ -923,3 +928,4 @@ crown-crown_150,crown-crown,crown,crown,balanced,timing,hollowfen,105561,0,1,cro
 crown-crown_151,crown-crown,crown,crown,balanced,balanced,highmoor,105598,1,0,crown,0,1179.1,victory,437.3,0.14.1
 crown-crown_152,crown-crown,crown,crown,balanced,balanced,thornwood_maze,105635,0,1,crown,0,784.3,victory,87.7,0.14.1
 crown-crown_153,crown-crown,crown,crown,balanced,balanced,saltmarsh_isles,105672,1,1,crown,1,933.1,victory,109.0,0.14.1
+crown-crown_154,crown-crown,crown,crown,balanced,balanced,twin_fords,105709,0,1,crown,0,1800.0,timeout_lead,889.1,0.14.1

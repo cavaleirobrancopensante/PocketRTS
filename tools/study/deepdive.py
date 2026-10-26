@@ -352,6 +352,36 @@ def main():
         rows.append({"at": mmss(tm), "Crown sides still playing": len(v), "median powder banked": int(v.median()), "share with 500+ powder": pct((v >= 500).mean())})
     T["dd_powder"] = md(pd.DataFrame(rows))
 
+    # ------------------------------------------------------------------ long supply blocks: does the AI keep buying production meanwhile?
+    rows = []
+    for f in FACS:
+        bl = sides[(sides.faction == f) & (sides.blocked_s >= 120)]
+        for r in bl.itertuples():
+            y = ts[(ts.id == r.id) & (ts.team == r.team)].sort_values("t").copy()
+            y["db"] = y.blocked_s.diff().fillna(y.blocked_s)
+            w = y[y.db >= 15]
+            if len(w) == 0:
+                continue
+            t0, t1 = w.t.iloc[0], w.t.iloc[-1]
+            a0, b1 = y[y.t == max(t0 - 30, 0)], y[y.t == t1]
+            if len(a0) and len(b1):
+                rows.append({"id": r.id, "team": r.team, "faction": f, "blocked": r.blocked_s, "from": t0, "to": t1,
+                             "production_gained": int(b1.prod_bld.iloc[0] - a0.prod_bld.iloc[0]), "buildings_gained": int(b1.buildings.iloc[0] - a0.buildings.iloc[0]),
+                             "gold_peak": int(w.gold.max()), "supply": int(w.supply.iloc[0]), "cap": int(w.cap.iloc[0]), "idle_at_end": int(b1.prod_idle.iloc[0]), "prod_at_end": int(b1.prod_bld.iloc[0])})
+    bb = pd.DataFrame(rows)
+    out = []
+    for f in FACS:
+        x = bb[bb.faction == f] if len(bb) else bb
+        n_all = (sides.faction == f).sum()
+        n120 = int((sides[sides.faction == f].blocked_s >= 120).sum())
+        out.append({"faction": f, "side-games": n_all, "blocked 120 s or more (supply at the cap, 100+ gold)": "%d (%s)" % (n120, pct(n120 / n_all)),
+                    "median production buildings added during the block": int(x.production_gained.median()) if len(x) else "-",
+                    "median peak gold in the block": int(x.gold_peak.median()) if len(x) else "-"})
+    T["dd_block_build"] = md(pd.DataFrame(out))
+    T["dd_block_examples"] = "\n".join("- `%s` %s side: supply-blocked %d s between %s and %s; %d production buildings added in that span (%d of %d idle at its end), gold up to %d" % (
+        r.id, r.faction, r.blocked, mmss(r["from"]), mmss(r.to), r.production_gained, r.idle_at_end, r.prod_at_end, r.gold_peak)
+        for _, r in bb.sort_values("blocked", ascending=False).head(5).iterrows()) if len(bb) else ""
+
     # ------------------------------------------------------------------ the AI's own attack gate (only games run from stage 9 on carry it)
     if "attack_at_end" in sides.columns and sides.attack_at_end.notna().any():
         x = sides[sides.attack_at_end.notna()].copy()
@@ -378,6 +408,97 @@ def main():
     else:
         T["dd_attack_gate"] = "_(no games with the gate logged yet)_"
         T["dd_attack_gate_n"] = "0"
+    # ------------------------------------------------------------------ is a waiting army held by the wave threshold or by "an enemy is near a building"?
+    # (the threat / attack_at / siege columns exist from the stage-9b harness on; older games have them empty)
+    if "threat" in ts.columns and ts.threat.notna().any():
+        tg = ts[ts.threat.notna()].copy()
+        T["dd_threat_games"] = str(tg.id.nunique())
+        z = tg[(tg.t >= 600) & (tg.army_units >= 5) & (tg.attacking == 0)].copy()
+        A, B, C = "A: army supply below the next-wave threshold", "B: threshold met, an enemy is near a building", "C: threshold met, nobody near"
+        z["why"] = np.where(z.army_supply < z.attack_at, A, np.where(z.threat == 1, B, C))
+        z["idle80"] = z.army_idle >= 0.8 * z.army_units
+        rows = []
+        for f in FACS:
+            x = z[z.faction == f]
+            if not len(x):
+                continue
+            r = {"faction": f, "side-games": x.groupby(["id", "team"]).ngroups, "30 s samples": len(x)}
+            for k in (A, B, C):
+                m = x.why == k
+                r[k + " (share of samples; of those, army 80%+ idle)"] = "%s; %s" % (pct(m.mean()), pct(x[m].idle80.mean()) if m.any() else "-")
+            rows.append(r)
+        T["dd_threat_freeze"] = md(pd.DataFrame(rows)) if rows else "_(no samples yet)_"
+        runs = []
+        for (gid, team), x in tg[tg.t >= 600].sort_values("t").groupby(["id", "team"]):
+            v = x.threat.astype(int).values
+            best = cur = 0
+            for e in v:
+                cur = cur + 1 if e else 0
+                best = max(best, cur)
+            runs.append({"id": gid, "team": team, "faction": x.faction.iloc[0], "share": float(v.mean()), "longest_min": best * 0.5, "won": int(gi.loc[gid, "winner_team"] == team) if gi.loc[gid, "winner_team"] >= 0 else -1})
+        rr = pd.DataFrame(runs)
+        out = []
+        for f in FACS:
+            x = rr[rr.faction == f]
+            if len(x):
+                out.append({"faction": f, "side-games with the gate logged": len(x), "enemy near a building for 50%+ of the time after 10:00": int((x.share >= 0.5).sum()),
+                            "median longest unbroken stretch (min)": "%.1f" % x.longest_min.median(), "longest of all (min)": "%.1f" % x.longest_min.max()})
+        T["dd_threat_runs"] = md(pd.DataFrame(out)) if out else "_(no samples yet)_"
+        T["dd_threat_examples"] = "\n".join("- `%s` %s side (team %d, %s): an enemy unit within reach of one of its buildings for %.1f unbroken minutes after 10:00 (%s of the time overall)" % (
+            r.id, r.faction, r.team, {1: "won", 0: "lost", -1: "draw"}[r.won], r.longest_min, pct(r.share)) for r in rr.sort_values("longest_min", ascending=False).head(6).itertuples())
+    else:
+        T["dd_threat_freeze"] = "_(no games with the gate logged per 30 s yet)_"
+        T["dd_threat_games"] = "0"
+
+    # ------------------------------------------------------------------ what a bigger sample would decide
+    def n_half(p, h):
+        """Smallest n whose Wilson 95% interval around a rate of p has a half-width of h or less."""
+        for n in range(20, 60001, 10):
+            lo, hi = wilson(p * n, n)
+            if (hi - lo) / 2.0 <= h:
+                return n
+        return None
+
+    def n_vs_half(p):
+        """Games needed to tell a true rate of p from 50% (two-sided 5%, 80% power)."""
+        d = abs(p - 0.5)
+        return None if d < 0.01 else int(math.ceil(7.85 * max(p * (1 - p), 0.05 * 0.95) / (d * d)))
+
+    def cap(n):
+        return "more than 5,000" if n is None or n > 5000 else "%d" % n
+
+    def capm(need, have):
+        return cap(need) + (" (met)" if need is not None and have >= need else "")
+
+    def prow(question, k, n, what):
+        p = k / n
+        lo, hi = wilson(k, n)
+        return {"question": question, "now": "%s [%s-%s] in %d %s" % (pct(p), pct(lo), pct(hi), n, what), "half-width now": "%.1f pts" % (50 * (hi - lo)),
+                "CI excludes 50%": "yes" if (lo > 0.5 or hi < 0.5) else "no", "games for +-5 pts": capm(n_half(p, 0.05), n), "games for +-3 pts": capm(n_half(p, 0.03), n),
+                "games to tell it from 50% (80% power)": capm(n_vs_half(p), n)}
+
+    rows = []
+    cw = games[games.pair == "crown-clockwork"]
+    rows.append(prow("Crown against Clockwork: how lopsided?", (cw.winner_faction == "crown").sum() + 0.5 * (cw.winner_team < 0).sum(), len(cw), "games (score)"))
+    dec = games[games.winner_team >= 0]
+    rows.append(prow("Does the first spawn win more often (all matchups)?", int((dec.winner_team == 0).sum()), len(dec), "decided games"))
+    bc = sides[(sides.faction == "brood") & (sides.opp != "brood")]
+    kb, nb_ = int((bc.won == 1).sum()), len(bc)
+    rows.append({"question": "Can the Brood beat the other two at all?", "now": "%d wins in %d side-games (95%% upper bound %s)" % (kb, nb_, pct(wilson(kb, nb_)[1])),
+                 "half-width now": "-", "CI excludes 50%": "yes", "games for +-5 pts": "0 more", "games for +-3 pts": "0 more", "games to tell it from 50% (80% power)": "0 more"})
+    for f in FACS:
+        for plan in ("rush", "xrush", "timing"):
+            x = sides[(sides.faction == f) & (sides.opp == f) & (sides.plan_start == plan) & (sides.opp_plan == "balanced")]
+            if len(x) >= 8:
+                rows.append(prow("%s mirror: is the %s plan better or worse than Balanced?" % (f, plan), float(x.score.sum()), len(x), "side-games (score)"))
+    mmx = games[(games.a == games.b) & (games.winner_team >= 0)]
+    per_map = mmx.groupby("map").size()
+    nmed = int(per_map.median())
+    hw = 50 * (wilson(nmed / 2, nmed)[1] - wilson(nmed / 2, nmed)[0])
+    rows.append({"question": "Does one map favour one spawn by 15 points (65:35)?", "now": "%d to %d decided mirror games per map (median %d)" % (per_map.min(), per_map.max(), nmed),
+                 "half-width now": "%.0f pts per map" % hw, "CI excludes 50%": "-", "games for +-5 pts": "-", "games for +-3 pts": "-",
+                 "games to tell it from 50% (80% power)": "%s per map" % cap(int(math.ceil(7.85 * 0.65 * 0.35 / (0.15 ** 2))))})
+    T["dd_power"] = md(pd.DataFrame(rows))
     json.dump(T, open(a.out, "w"), indent=1)
     print("deepdive: %d dd tables" % sum(1 for k in T if k.startswith("dd_")))
 

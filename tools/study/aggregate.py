@@ -16,6 +16,8 @@ TS_HEADER = ["id", "t", "team", "faction", "gold", "res2", "earned", "res2_in", 
              "prod_bld", "prod_idle", "units_lost", "units_killed", "value_killed", "value_lost", "bld_lost", "soil_mean",
              "soil_min", "lode_mean", "attacking", "blocked_s", "bank500_s", "bank1000_s", "idle_w_s", "worker_s",
              "hopeless", "strategy"]
+# columns added at stage 9 (older games have 38 columns: these stay empty for them)
+TS_EXTRA = ["threat", "attack_at", "siege"]
 BUILD_KEYS = ["barracks", "powder_mill", "horse_breeder", "armoury", "foundry", "church", "farm", "cottage", "gate",
               "warren", "brood_pen", "gorge_pit", "roost", "feeding_pit", "clutch_mound",
               "assembly_works", "engine_hall", "capacitor_works", "ore_crusher", "boiler", "spring_tower", "charging_pylon"]
@@ -124,6 +126,8 @@ def main():
             with open(tp) as f:
                 for row in csv.reader(f):
                     if len(row) == len(TS_HEADER):
+                        ts.append(row + [""] * len(TS_EXTRA))
+                    elif len(row) == len(TS_HEADER) + len(TS_EXTRA):
                         ts.append(row)
         lp = "%s/logs/%s.log" % (a.runs, gid)
         if os.path.exists(lp):
@@ -150,7 +154,7 @@ def main():
     ts = [ts[i] for i in keep]
     with open_out(a.out + "/timeseries.csv.gz") as f:
         w = csv.writer(f)
-        w.writerow(TS_HEADER)
+        w.writerow(TS_HEADER + TS_EXTRA)
         w.writerows(ts)
     print("games %d, sides %d, waves %d, events %d, ts rows %d" % (len(games), len(sides), len(waves), len(events), len(ts)))
 

@@ -4,6 +4,8 @@ extends SceneTree
 ##   godot --headless --fixed-fps 30 --script res://tools/study/study_game.gd -- \
 ##       a:crown b:brood pa:balanced pb:balanced map:greenhold seed:1 swap:0 out:/abs/dir id:g0001 [end:1800] [fast:1] [gg:1]
 ## `a` plays slot 0 (and sits on the first spawn) unless swap:1, then `a` is slot 1 (the second spawn).
+## (Time series columns 39-41, from stage 9 on: threat = an enemy unit is within 330 px of one of the AI's buildings, which makes
+##  AI._army() return before its wave logic; attack_at = the army supply it wants for the next wave; siege = a wall siege plan is active.)
 ## Writes (atomically, tmp then rename):
 ##   <out>/games/<id>.json   one row: setup, result, per-side totals, tech timings, waves, supply-block seconds ...
 ##   <out>/ts/<id>.csv       one line per side every 30 game seconds (economy, army, losses ...)
@@ -406,7 +408,8 @@ func _sample() -> void:
 			snappedf(soil_sum / float(nh), 0.001) if nh > 0 else -1, snappedf(soil_min, 0.001) if nh > 0 else -1,
 			snappedf(lode_sum / float(nh), 0.001) if nh > 0 else -1,
 			1 if X["attacking"] else 0, snappedf(X["blocked_s"], 0.1), snappedf(X["bank500_s"], 0.1), snappedf(X["bank1000_s"], 0.1),
-			snappedf(X["idle_w_s"], 0.1), snappedf(X["worker_s"], 0.1), 1 if X["hope_since"] >= 0.0 else 0, X["strategy"]])
+			snappedf(X["idle_w_s"], 0.1), snappedf(X["worker_s"], 0.1), 1 if X["hope_since"] >= 0.0 else 0, X["strategy"],
+			1 if ais[i]._threat() != Vector2.INF else 0, int(ais[i]._attack_at), 0 if (ais[i]._siege as Dictionary).is_empty() else 1])
 
 
 func _winner_by_power() -> int:
