@@ -245,10 +245,13 @@ func _ready() -> void:
 	fog_sprite.z_index = 40
 	add_child(fog_sprite)
 	camera = Camera2D.new()
-	camera.limit_left = 0
-	camera.limit_top = -40
-	camera.limit_right = W * T
-	camera.limit_bottom = H * T + 170
+	# the view may go CAMERA_MARGIN_TILES past every edge (the dark clear colour out there);
+	# the -40 / +170 leave room for the top bar and the bottom HUD as before
+	var cm := Defs.CAMERA_MARGIN_TILES * T
+	camera.limit_left = -cm
+	camera.limit_top = -40 - cm
+	camera.limit_right = W * T + cm
+	camera.limit_bottom = H * T + 170 + cm
 	add_child(camera)
 	camera.make_current()
 	_generate_map()
@@ -281,6 +284,12 @@ func idx(c: Vector2i) -> int:
 
 func in_map(c: Vector2i) -> bool:
 	return c.x >= 0 and c.y >= 0 and c.x < W and c.y < H
+
+
+## A world point pulled onto the map (half a tile in): the camera may look past the edge
+## (Defs.CAMERA_MARGIN_TILES), but orders, rallies and lines always land on the real map.
+func on_map(p: Vector2) -> Vector2:
+	return p.clamp(Vector2(T, T) * 0.5, Vector2(W * T, H * T) - Vector2(T, T) * 0.5)
 
 
 func cell_of(p: Vector2) -> Vector2i:
@@ -4074,7 +4083,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 				var post := free_site(b.team, u.position)
 				if post != null:
 					site = post
-			if site == null or site.dead or site.crew.size() >= site.crew_max():
+			if site == null or site.dead or site.crew.size() >= site.crew_max() or site.barren():
 				var was_site := site != null and not site.dead
 				site = null
 				var rp: Vector2 = b.worker_rally if b.dual_rally() else b.rally
@@ -7376,6 +7385,7 @@ func demolish(b: Building) -> void:
 ## Tap/right-click on the map with units selected: do the obvious thing.
 ## queued (Shift on a computer): after the orders they already have, not instead of them.
 func smart_command(list: Array, p: Vector2, force_move := false, queued := false) -> void:
+	p = on_map(p)
 	if net_forward(self, "smart_command", [list, p, force_move, queued]): return
 	# (a horse takes no orders: only a leash or a rider moves it)
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.kind != "horse")
@@ -7544,6 +7554,7 @@ func command_sound(us: Array, what: String, call: String) -> void:
 
 
 func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> void:
+	p = on_map(p)
 	if net_forward(self, "group_move", [us, p, attack_move, queued]): return
 	us = us.filter(func(u) -> bool: return not (u is Unit and u.kind == "horse"))
 	if us.is_empty():
@@ -7600,6 +7611,7 @@ func command_all(list: Array, what: String) -> void:
 ## which: "auto" (a Hive sends workers to a tapped mine, the army anywhere else),
 ## "army" or "worker".
 func set_rally(b: Building, p: Vector2, which := "auto") -> void:
+	p = on_map(p)
 	if net_forward(self, "set_rally", [b, p, which]): return
 	var e := entity_at(p)
 	if b.dual_rally():
@@ -7819,8 +7831,10 @@ func _draw_mine_labels() -> void:
 		var sz := 15
 		var txt := ""
 		var w1 := 0.0
+		var spent: bool = crew_max > 0 and b.crew.is_empty() and b.barren()
 		if crew_max > 0:
-			txt = "%d/%d" % [b.crew.size(), crew_max]
+			# (spent land takes no crew: "spent" rather than a 0/5 that looks like room)
+			txt = Loc.t("spent") if spent else "%d/%d" % [b.crew.size(), crew_max]
 			w1 = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
 		var bar_w := 40.0
 		var pct := ""
@@ -7836,7 +7850,8 @@ func _draw_mine_labels() -> void:
 		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(total + 8, sz + 5)), Color(0, 0, 0, 0.6))
 		if txt != "":
 			var have: int = b.crew.size()
-			overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, Color(1, 1, 1) if have < crew_max else Color(0.45, 1, 0.45))
+			var tc := Color(1, 0.45, 0.4) if spent else (Color(1, 1, 1) if have < crew_max else Color(0.45, 1, 0.45))
+			overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, tc)
 		if pct != "":
 			var f := float(eff[0])
 			var col := eff_colour(f)

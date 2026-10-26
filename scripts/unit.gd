@@ -1970,6 +1970,16 @@ func cmd_gather(site: Entity) -> void:
 			game.notify("That Town Hall has all its haulers.")
 		cmd_move(b.center())
 		return
+	if b.barren():
+		# spent land takes no crew (Unit._gather would let him go at once, leaving idle
+		# workers under a "0/5" that looks like room): the nearest fresh site instead
+		var fresh := game.free_site(team, b.center())
+		if fresh == null:
+			if team == game.human:
+				game.notify("That %s's ground is spent: it yields nothing. Work fresh land." % b.d["name"])
+			cmd_move(b.center())
+			return
+		b = fresh
 	if not b.crew.has(self) and b.crew.size() >= b.crew_max():
 		var alt := game.free_site(team, b.center())
 		if alt == null:

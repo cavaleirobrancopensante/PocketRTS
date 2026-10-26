@@ -2142,7 +2142,10 @@ func _draw_map_view() -> void:
 	# Camera view
 	var vp := get_viewport().get_visible_rect().size / game.camera.zoom
 	var c := game.camera.get_screen_center_position()
-	_ci.draw_rect(Rect2(m.position + (c - vp * 0.5) * k, vp * k), Color(1, 1, 1, 0.9), false, 1.0)
+	# (the camera may look past the map edge, Defs.CAMERA_MARGIN_TILES: the box stays on the minimap)
+	var vr := Rect2(m.position + (c - vp * 0.5) * k, vp * k).intersection(m)
+	if vr.size.x > 0.0 and vr.size.y > 0.0:
+		_ci.draw_rect(vr, Color(1, 1, 1, 0.9), false, 1.0)
 	# where you're being hit
 	if game.alert_t > 0.0 and game.alert_at != Vector2.INF:
 		var ap: Vector2 = m.position + game.alert_at * k

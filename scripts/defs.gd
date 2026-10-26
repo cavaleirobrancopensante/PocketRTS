@@ -3,6 +3,7 @@ class_name Defs
 ## Ranges and radii are in pixels; one map tile is 32 px.
 
 const TILE := 32
+const CAMERA_MARGIN_TILES := 25  # the camera may scroll this many tiles past every map edge (a base by the edge can be centred); units stay on the map
 const START_GOLD := 250
 const EGGS_MAX := 5               # a Burrow's eggs (an upgraded hall holds more: HALL_LEVELS)
 ## Seconds for a Burrow to lay one egg (a Clutch Mound still speeds it up). Was 6.0: +50% so each

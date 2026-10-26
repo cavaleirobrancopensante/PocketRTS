@@ -2685,3 +2685,11 @@ es azules
 > yellow
 pt amarelas
 es amarillas
+
+> That %s's ground is spent: it yields nothing. Work fresh land.
+pt O solo desse(a) %s está esgotado: não rende nada. Trabalhe terra nova.
+es La tierra de ese %s está agotada: no rinde nada. Trabaja tierra nueva.
+
+> spent
+pt esgotado
+es agotado
