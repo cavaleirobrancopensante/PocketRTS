@@ -2,7 +2,7 @@
 
 The owner (2026-10-26): "make Tension work as a resource, and also the efficiency for buildings, and also the necessity of
 certain buildings to be neighbouring others: this is actually a good puzzle and differentiates builds; a study might be
-required." This is that study, the rule set it recommends, and what was built from it (0.14.28, gear mode). Read with
+required." This is that study, the rule set it recommends, and what was built from it (0.14.32, gear mode). Read with
 docs/design_principles.md (fairness, anti-snowball, meaningful base building), docs/clockwork_ground_up.md and
 docs/clockwork_gear_prototype.md.
 
@@ -142,7 +142,7 @@ swapping, needing a Mainspring). The player reads it:
   the cliff; in the computer's air test on Ashford Crossing the Aviary found no room by the test's hand-placed Mainspring
   any more, until that Mainspring was placed as the computer places its own, keeping room round it).
 
-## 3. The recommendation (built in 0.14.28)
+## 3. The recommendation (built in 0.14.32)
 
 1. Tension: each Mainspring stores 200 (big 400), winding stops at the store; small spring 2.0/s at 3 Winders, big 2.6/s at
    6; the Clock Aviary costs 150 cogs + 50 Tension; buildings may carry a Tension price (HUD, refunds, computer).
