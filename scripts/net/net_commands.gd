@@ -19,7 +19,8 @@ const GAME := {
 	"cast_order": {"own": [0]}, "tongue_order": {"own": [0]}, "line_move": {"own": [0]},
 	"morph_order": {"own": [0]}, "cancel_morph": {"own": [0]},
 	"bombard_order": {"own": [0]},
-	"lay_line": {"team": 0, "own": [2]}, "buy_train": {"team": 0}, "ride_order": {"own": [0]}, "set_split": {"team": 0}, "player_surrender": {},
+	"lay_line": {"team": 0, "own": [2]}, "buy_train": {"team": 0}, "ride_order": {"own": [0]}, "set_split": {"team": 0},
+	"player_surrender": {"team": 0},
 }
 
 ## UNIT / BUILDING: methods of an entity the guest owns (the receiver must be theirs).
@@ -51,15 +52,63 @@ static func forward(s: NetSession, who: Object, fn: String, args: Array) -> bool
 	if not ok[0]:
 		game.notify("That order can't be sent online.", true)
 		return true
+	feedback(game, who, fn, args)
 	s.send_cmd({"o": oid, "f": fn, "a": wire})
 	return true
 
 
-## Host side: run a guest's command (after checking it).
+## Guest: what the player sees and hears at the click, as the host would show it (the ring on the ground, the unit
+## answering, the bugle), while the order itself goes to the host. (On the host these are only made for its own
+## orders: Game._ping and command_sound stay quiet while a guest's order runs.)
+static func feedback(game: Game, who: Object, fn: String, args: Array) -> void:
+	match fn:
+		"smart_command":
+			game.smart_feedback(args[0], args[1], bool(args[2]))
+		"group_move":
+			var us: Array = (args[0] as Array).filter(func(u) -> bool: return u is Unit and is_instance_valid(u) and not u.dead and u.kind != "horse")
+			if not us.is_empty() and us[0].team == game.human:
+				var atk := bool(args[2])
+				game.command_sound(us, "attack" if atk else "move", "amove" if atk else "move")
+				game._ping(game.on_map(args[1]), Color(1, 0.3, 0.3) if atk else Color(0.4, 1, 0.4))
+				game.net.lead(us, args[1], atk)
+		"line_move":
+			var pts: PackedVector2Array = args[1]
+			if pts.size() >= 2:
+				game._ping(pts[pts.size() - 1], Color(1, 0.4, 0.3) if bool(args[2]) else Color(0.4, 1, 0.4))
+		"bombard_order":
+			var us: Array = (args[0] as Array).filter(func(u) -> bool: return u is Unit and is_instance_valid(u) and not u.dead and u.can_bombard())
+			if not us.is_empty() and us[0].team == game.human:
+				game.command_sound(us, "attack", "attack")
+				game._ping(game.on_map(args[1]), Color(1.0, 0.55, 0.2))
+		"command_all":
+			for u in args[0]:
+				if u is Unit and is_instance_valid(u) and not u.dead and u.kind != "horse" and u.team == game.human:
+					Sfx.bugle(game.faction_of(game.human), String(args[1]))
+					break
+		"set_rally":
+			game._ping(game.on_map(args[1]), Color(1, 0.85, 0.3))
+		"tongue_order", "overload_order":
+			var e = args[1]
+			if e is Entity and is_instance_valid(e):
+				game._ping(e.position, Color(1.0, 0.45, 0.6) if fn == "tongue_order" else Color(1, 0.85, 0.3))
+
+
+## Host side: run a guest's command (after checking it). While it runs, the game knows whose it is
+## (Game.net_cmd_team / net_cmd_peer: its marker and voice stay quiet here, its messages go to the guest).
 static func apply(s: NetSession, peer: int, c: Dictionary) -> String:
 	var team: int = s.peer_team.get(peer, -1)
 	if team < 0:
 		return "no team"
+	var game := s.game
+	game.net_cmd_team = team
+	game.net_cmd_peer = peer
+	var why := _apply(s, team, c)
+	game.net_cmd_team = -1
+	game.net_cmd_peer = -1
+	return why
+
+
+static func _apply(s: NetSession, team: int, c: Dictionary) -> String:
 	var fn := String(c.get("f", ""))
 	var args = NetCodec.dec(c.get("a", []), s.by_id)
 	if not (args is Array):
@@ -89,12 +138,6 @@ static func apply(s: NetSession, peer: int, c: Dictionary) -> String:
 		return ""
 	if not GAME.has(fn):
 		return "unknown " + fn
-	if fn == "player_surrender":
-		var was := game.human
-		game.human = team
-		game.player_surrender()
-		game.human = was
-		return ""
 	var spec: Dictionary = GAME[fn]
 	if spec.has("team"):
 		if args.size() <= int(spec["team"]):

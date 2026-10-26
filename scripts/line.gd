@@ -457,8 +457,8 @@ func lay(t: int, cells: Array, builders: Array, queued := false) -> Array:
 			fresh.append(c)
 	var cost := fresh.size() * int(Defs.LINE["pipe"]["cost"])
 	if fresh.size() > int(Defs.LINE["max_run"]) * 2 or int(game.players[t]["gold"]) < cost:
-		if t == game.human and not game.demo:
-			game.notify("Not enough ore for the pipe.")
+		if not game.demo:
+			game.tell(t, "Not enough ore for the pipe.")
 		return []
 	game.players[t]["gold"] -= cost
 	game.stats[t]["spent"] += cost

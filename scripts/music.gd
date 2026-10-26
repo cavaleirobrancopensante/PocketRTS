@@ -61,6 +61,10 @@ var _in_menu := false     # the menu shuffle is running
 var _menu_bag: Array = [] # overtures not yet played in this round of the shuffle
 var _last_menu := ""
 var heat := 0.0           # raised by hits near the player, decays over a few seconds
+## PICKED-PIECE RULE (the in-game menu's music player, ui/menu_music.gd): a piece chosen from the list plays through to
+## its end, and the fight / calm switching waits meanwhile; then the normal choice (open / skirmish / battle / calm by
+## the heat) resumes. NEXT hands back to it at once. The list and NEXT follow the music setting (player_pieces, _pool).
+var picked := false
 
 
 func _ready() -> void:
@@ -337,11 +341,21 @@ func play(track: String, loop := false) -> void:
 	_fade(_b, -80.0, true)
 
 
+var _tweens := {}     # player -> its running fade
+
+
 func _fade(p: AudioStreamPlayer, to: float, stop_after := false) -> void:
+	# (one fade per player: an older fade-out would otherwise stop a piece that has since come back as the playing
+	# one, when NEXT is pressed twice within a couple of seconds)
+	if _tweens.has(p) and (_tweens[p] as Tween).is_valid():
+		(_tweens[p] as Tween).kill()
 	var tw := create_tween()
+	_tweens[p] = tw
 	tw.tween_property(p, "volume_db", to, FADE).set_trans(Tween.TRANS_SINE)
 	if stop_after:
-		tw.tween_callback(p.stop)
+		tw.tween_callback(func() -> void:
+			if p != _a or _current == "":
+				p.stop())
 
 
 ## A piece ended: on the menu the next overture, in a match the next one from the same mood.
@@ -356,7 +370,64 @@ func _on_finished(p: AudioStreamPlayer) -> void:
 	if _faction == "":
 		return
 	_current = ""
+	if picked:
+		_resume_auto(false)
+		return
 	play(_next(("skirmish" if _skirmish else "battle") if _battle else "peace"))
+
+
+## Back to the automatic music for the fight as it is now (a picked piece ended, or NEXT).
+func _resume_auto(force_new: bool) -> void:
+	picked = false
+	_battle = heat > HEAT_ON
+	_skirmish = _battle and heat < HEAT_HIGH and not pieces(_faction, "skirmish").is_empty()
+	_calm_t = 0.0
+	_piece_t = 0.0
+	if force_new:
+		_current = ""
+	play(_next(("skirmish" if _skirmish else "battle") if _battle else "peace"))
+
+
+## The in-game player: play this piece now, to its end (PICKED-PIECE RULE).
+func play_picked(track: String) -> void:
+	if _faction == "" or track == "" or not player_pieces().has(track):
+		return
+	picked = true
+	_current = ""
+	play(track)
+
+
+## NEXT: the automatic music's next piece for the fight as it is (it ends a picked piece too).
+func skip() -> void:
+	if _faction == "":
+		return
+	_resume_auto(true)
+
+
+func current_stem() -> String:
+	return _current
+
+
+## The pieces the in-game player lists, as the music setting has it: your faction's ("faction"), yours and the
+## enemies' (the default: theirs come now and then), everything ("all"), only the ticked ones ("picked").
+func player_pieces() -> Array:
+	if _faction == "":
+		return []
+	var out: Array = []
+	match mode:
+		"faction":
+			return all_pieces(_faction)
+		"all", "picked":
+			for f in FACTION_KEY.values():
+				out += all_pieces(f)
+			if mode == "picked":
+				var on := out.filter(func(st: String) -> bool: return is_enabled(st))
+				return on if not on.is_empty() else all_pieces(_faction)
+			return out
+	out = all_pieces(_faction)
+	for e in _enemies:
+		out += all_pieces(e)
+	return out
 
 
 ## The main menu: keep the overture that is playing (coming back from a sub-page), or start the
@@ -424,6 +495,7 @@ func match_started(faction: String, enemies: Array = []) -> void:
 			_enemies.append(k)
 	_preview = false
 	_battle = false
+	picked = false
 	heat = 0.0
 	_current = ""
 	_recent.clear()
@@ -449,6 +521,7 @@ func ambience(biome: String) -> void:
 
 ## End of a match: fade the music and play the sting.
 func match_ended(won: bool, faction: String) -> void:
+	picked = false
 	_amb.stop()
 	_current = ""
 	_in_menu = false
@@ -472,6 +545,8 @@ func _process(delta: float) -> void:
 	if _faction == "":
 		return
 	heat *= exp(-delta / 5.0)
+	if picked:
+		return          # a picked piece is not cut off by a fight or by calm
 	_piece_t += delta
 	if not _battle and heat > HEAT_ON:
 		_battle = true

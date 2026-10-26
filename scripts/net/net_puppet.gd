@@ -4,6 +4,10 @@ extends RefCounted
 ## HUD, same fog) but nothing is simulated. Each one is moved and animated here from what the last
 ## snapshots said. (Hooks: Game._tick_game, Unit._physics_process, Building._physics_process.)
 
+## A unit glides from where it was shown to its new spot over this many snapshot intervals: a bit more than one, so
+## a snapshot that comes a little late finds it still walking (no stop and jump), for 0.2 of an interval more delay.
+const GLIDE := 1.2
+
 
 static func tick_game(g: Game, delta: float) -> void:
 	if g.edit_mode:
@@ -61,10 +65,14 @@ static func tick_unit(u: Unit, delta: float) -> void:
 	var s: NetSession = u.game.net
 	var mo = s.motion.get(u.net_id) if s else null
 	if mo != null:
+		# (over a little more than the time between pictures: one that comes a bit late doesn't stop the walk)
+		var span := s.interval * GLIDE
 		mo[2] += delta
-		var f := clampf(mo[2] / s.interval, 0.0, 1.0)
+		var f := clampf(mo[2] / span, 0.0, 1.0)
 		u.position = (mo[0] as Vector2).lerp(mo[1], f)
-		u.velocity = ((mo[1] as Vector2) - (mo[0] as Vector2)) / s.interval if f < 1.0 else Vector2.ZERO
+		u.velocity = ((mo[1] as Vector2) - (mo[0] as Vector2)) / span if f < 1.0 else Vector2.ZERO
+		if s.leads.has(u.net_id):
+			_lead(s, u, delta)
 	if u.kind == "balloon":
 		for p in u.passengers:
 			if is_instance_valid(p):
@@ -79,6 +87,27 @@ static func tick_unit(u: Unit, delta: float) -> void:
 		if key != u._draw_key:
 			u._draw_key = key
 			u.queue_redraw()
+
+
+## A unit told to walk, shown ahead of the pictures (NetSession.lead): before the host's picture of the order it steps
+## off toward its spot at LEAD_PACE of its speed; after, the lead is taken back at the same pace.
+static func _lead(s: NetSession, u: Unit, delta: float) -> void:
+	var ld: Dictionary = s.leads[u.net_id]
+	var off: Vector2 = ld["off"]
+	var pace := u.speed * NetSession.LEAD_PACE * delta
+	if s.leading(u.net_id):
+		var dir: Vector2 = (ld["to"] as Vector2) - (u.position + off)
+		if dir.length() > 4.0:
+			dir = dir.normalized()
+			off += dir * pace
+			u.facing = dir
+			u.velocity = dir * u.speed          # (the walk)
+	else:
+		off = off.move_toward(Vector2.ZERO, pace)
+		if off == Vector2.ZERO:
+			s.leads.erase(u.net_id)
+	ld["off"] = off
+	u.position += off
 
 
 static func tick_building(b: Building, delta: float) -> void:

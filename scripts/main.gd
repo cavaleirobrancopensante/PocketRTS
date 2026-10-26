@@ -1793,6 +1793,13 @@ func _notification(what: int) -> void:
 		DirAccess.remove_absolute(RUNNING)
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		_mark_running("resumed" if game == null else "resumed a match")
+	# online: the app put away (or back): the host pauses the match for everyone meanwhile (NetSession.set_hidden;
+	# on the web the page's visibility says it)
+	if game and is_instance_valid(game) and game.net and not OS.has_feature("web"):
+		if what == NOTIFICATION_APPLICATION_PAUSED:
+			game.net.set_hidden(true)
+		elif what == NOTIFICATION_APPLICATION_RESUMED:
+			game.net.set_hidden(false)
 
 
 func _process(delta: float) -> void:
@@ -1811,8 +1818,8 @@ func _process(delta: float) -> void:
 	var portrait := Settings.device == "mobile" and vs.y > vs.x * 1.05
 	if portrait != _rotate.visible:
 		_rotate.visible = portrait
-		# hold the match while the phone is upright
-		if game and not game.over:
+		# hold the match while the phone is upright (not online: the other player's match would stop too)
+		if game and not game.over and game.net == null:
 			if portrait and not get_tree().paused:
 				get_tree().paused = true
 				_rotate_paused = true

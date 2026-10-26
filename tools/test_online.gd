@@ -35,6 +35,22 @@ var cstep := 0                 # guest: the colour picks in the room (0 wait, 1 
 var cstep_t := 0.0
 const HOST_COL := 0
 const GUEST_COL := 4
+# ---- lag: measured once the match runs (the LAG lines at the end): real frame times, the time each frame spent on
+# snapshots (Prof "net/snapshot" on the host, "net/apply" on the guest), their sizes, the gaps between them, and how
+# long a guest's order takes to show
+var lag_frames := PackedFloat32Array()
+var lag_work := PackedFloat32Array()      # ms spent on snapshots in each frame that had any
+var lag_gaps := PackedFloat32Array()      # guest: ms between frames that applied a snapshot
+var lag_sizes := PackedFloat32Array()     # host: bytes sent in each frame that sent a snapshot
+var lag_seen := PackedFloat32Array()      # guest: ms from an order to the host's ack in a snapshot
+var lag_moved := PackedFloat32Array()     # guest: ms from a move order to the unit visibly moving on this screen
+var _lag_us := 0
+var _lag_prof := 0
+var _lag_bytes := 0
+var _lag_snap_us := 0
+var _lag_ack := 0
+var _probe := {}                          # guest: the move order being timed {u, from, to, t0}
+var _probe_t := 0.0
 
 
 func _initialize() -> void:
@@ -87,6 +103,7 @@ func _process(delta: float) -> bool:
 	var real := delta / maxf(Engine.time_scale, 0.01)
 	t += real
 	step_t += real
+	_lag_sample(real)
 	if t < 0.5 or main.game == null and lobby == null:
 		if t >= 0.5 and lobby == null:
 			_begin()
@@ -125,6 +142,92 @@ func _begin() -> void:
 			print("GUEST got start: map=%s slots=%d" % [cfg["map"], cfg["slots"].size()])
 			main.start(cfg))
 		lobby.join(relay, code)
+
+
+# ------------------------------------------------------------------ lag
+
+func _lag_sample(real: float) -> void:
+	var now := Time.get_ticks_usec()
+	var running: bool = g != null and g.net != null and g.net.go_given and not g.over and step >= 1
+	if not running:
+		_lag_us = now
+		return
+	if _lag_us > 0:
+		lag_frames.append((now - _lag_us) / 1000.0)
+	_lag_us = now
+	var key := "net/snapshot" if role == "host" else "net/apply"
+	var v := int(Prof.us.get(key, 0))
+	var d := v - _lag_prof if v >= _lag_prof else v       # (the match log empties Prof each minute)
+	_lag_prof = v
+	if d > 0:
+		lag_work.append(d / 1000.0)
+		if role == "guest":
+			if _lag_snap_us > 0:
+				lag_gaps.append((now - _lag_snap_us) / 1000.0)
+			_lag_snap_us = now
+	if role == "host":
+		var b := int(g.net.link.sent_bytes)
+		if d > 0 and _lag_bytes > 0:
+			lag_sizes.append(float(b - _lag_bytes))
+		_lag_bytes = b
+	else:
+		var s: NetSession = g.net
+		if s.last_ack > _lag_ack:
+			_lag_ack = s.last_ack
+			lag_seen.append(s.cmd_rtt_ms)
+		_probe_tick(real)
+
+
+## Guest: every 3 s a worker of ours is told to walk 200 px; the time until it visibly moves that way here is the
+## input delay a player feels (order out, the host runs it, the snapshot back, the glide starts).
+func _probe_tick(real: float) -> void:
+	_probe_t += real
+	if not _probe.is_empty():
+		var u: Unit = _probe["u"]
+		var ms := (Time.get_ticks_usec() - int(_probe["t0"])) / 1000.0
+		if not is_instance_valid(u) or u.dead or ms > 3000.0:
+			_probe = {}
+		elif (u.position - (_probe["from"] as Vector2)).dot(((_probe["to"] as Vector2) - (_probe["from"] as Vector2)).normalized()) > 3.0:
+			lag_moved.append(ms)
+			_probe = {}
+		return
+	if _probe_t < 3.0 or step < 2:
+		return
+	_probe_t = 0.0
+	for u in _mine():
+		if u.velocity.length() < 1.0 and not u.off_field and u.kind != "horse" and not ["build", "move", "amove"].has(u.order):
+			var to: Vector2 = u.position + Vector2(200, 0).rotated(randf() * TAU)
+			if not g.in_map(g.cell_of(to)) or not g.is_free(g.cell_of(to)):
+				continue
+			_probe = {"u": u, "from": u.position, "to": to, "t0": Time.get_ticks_usec()}
+			g.group_move([u], to, false)
+			return
+
+
+static func _stats(a: PackedFloat32Array) -> String:
+	if a.is_empty():
+		return "-"
+	var tot := 0.0
+	var mx := 0.0
+	for x in a:
+		tot += x
+		mx = maxf(mx, x)
+	var sorted := a.duplicate()
+	sorted.sort()
+	return "avg %.1f, p95 %.1f, max %.1f (n %d)" % [tot / a.size(), sorted[int(a.size() * 0.95)], mx, a.size()]
+
+
+func _lag_report() -> void:
+	var over50 := 0
+	for f in lag_frames:
+		if f > 50.0:
+			over50 += 1
+	print("LAG %s frames ms: %s, over 50 ms: %d" % [role.to_upper(), _stats(lag_frames), over50])
+	if role == "host":
+		print("LAG HOST snapshot build+send ms per frame: %s | bytes per snapshot: %s | units %d buildings %d" % [_stats(lag_work), _stats(lag_sizes), g.units.size(), g.buildings.size()])
+	else:
+		print("LAG GUEST snapshot apply ms per frame: %s | ms between snapshot frames: %s" % [_stats(lag_work), _stats(lag_gaps)])
+		print("LAG GUEST order -> ack in a snapshot ms: %s | move order -> unit visibly moving ms: %s" % [_stats(lag_seen), _stats(lag_moved)])
 
 
 # ------------------------------------------------------------------ host
@@ -191,6 +294,7 @@ func _host_report() -> void:
 		check("host_guest_trained_unit", units > int(base.get("units", 99)))
 		check("host_guest_placed_building", bld > int(base.get("bld", 99)))
 	print("HOST_RESULT snapshots=%d bytes_sent=%d (%.1f KB/s)" % [s.snap_n, s.link.sent_bytes, s.link.sent_bytes / 1024.0 / maxf(step_t, 1.0)])
+	_lag_report()
 
 
 # ------------------------------------------------------------------ guest
@@ -297,6 +401,7 @@ func _guest_tick() -> void:
 			if step_t > 2.5:
 				check("guest_entity_counts_match_host", s.count_diff_max == 0, "worst difference %d, snapshots off by any: %d of %d" % [s.count_diff_max, s.count_diff_snaps, s.snaps_got])
 				print("GUEST_RESULT snaps=%d interval=%.3f cmds=%d cmd_rtt=%.0f ms ping=%.0f ms recv=%d bytes (%.1f KB/s)" % [s.snaps_got, s.interval, s.cmd_seq, s.cmd_rtt_ms, s.link.rtt_ms, s.link.recv_bytes, s.link.recv_bytes / 1024.0 / maxf(t, 1.0)])
+				_lag_report()
 				var all_ok := true
 				for k in results:
 					all_ok = all_ok and results[k]

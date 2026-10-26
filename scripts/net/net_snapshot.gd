@@ -2,8 +2,14 @@ class_name NetSnapshot
 extends RefCounted
 ## What the host streams to a guest, ten times a second, and how the guest puts it on its puppets.
 ## A snapshot is a Dictionary: {"t": "snap", "n", "clk", "ack", "u": unit rows, "b": building rows,
-## "gone": [[id, is_building, died]], "pl": players, ...}. A row is an Array: fixed fields, then the
-## values of the property lists below (in order), then the ids of the entities it points at.
+## "gone": [[id, is_building, died]], "pl": players, ...}. A row starts with the fixed fields (U_FIXED / B_FIXED:
+## id, kind, team, where, health, facing); a whole row goes on with the values of the property lists below (in
+## order) and the ids of the entities it points at.
+## Only what changed is sent: an entity whose values are the same as in the last snapshot sends a short row (the
+## fixed fields: it moved, or its health changed) or nothing at all. Every KEY_EVERY-th snapshot is a keyframe:
+## every row whole, and "ids", the list of everything there is (the guest drops what is not on it).
+## The values are read and written directly (unit_vals / set_unit_vals ...): by name (`get`/`set`) they were the
+## host's biggest cost (5 ms a snapshot with 70 units). The lists stay the spec: check_lists() compares the two.
 
 const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode", "braced", "sky", "deflate", "keg",
 	"cocoon", "coat", "armoured", "kills", "art", "powder", "wind", "max_hp", "off_field", "horse_hp", "harnessed",
@@ -17,6 +23,7 @@ const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "
 const BLD_REFS := ["rally_target", "worker_rally_target"]
 const U_FIXED := 6      # id, kind, team, position, hp, facing angle
 const B_FIXED := 6      # id, kind, team, cell, hp, (spare)
+const KEY_EVERY := 30   # a keyframe every 3 s
 
 
 static func q(v):
@@ -33,10 +40,54 @@ static func ref(s: NetSession, r) -> int:
 	return r.net_id
 
 
+## The unit's values, in UNIT_PROPS order.
+static func unit_vals(u: Unit) -> Array:
+	return [u.order, u.phase, u.work, u.carrying, u.mode, u.tesla_mode, u.braced, u.sky, u.deflate, u.keg,
+		snappedf(u.cocoon, 0.01), u.coat, u.armoured, u.kills, u.art, snappedf(u.powder, 0.01), snappedf(u.wind, 0.01),
+		snappedf(u.max_hp, 0.01), u.off_field, snappedf(u.horse_hp, 0.01), u.harnessed,
+		u.topter_bat, u.courier, u.supplying, u.auto_repair, u.hold_fire, u.pistol, u.bayonet, u.pouch, u.carry_empty,
+		snappedf(u.gas, 0.01), snappedf(u.spin, 0.01), snappedf(u.overclock_t, 0.01), snappedf(u.cranked_t, 0.01),
+		snappedf(u.self_wind_t, 0.01), u.tongue_stage, snappedf(u.tesla_t, 0.01), snappedf(u.haul_t, 0.01), u.auto_work,
+		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01)]
+
+
+## The building's values, in BLD_PROPS order.
+static func bld_vals(b: Building) -> Array:
+	return [b.built, snappedf(b.progress, 0.01), b.ghost, b.level, b.queue, b.morph_t, snappedf(b.prod_t, 0.01), b.eggs,
+		snappedf(b.upgrade_t, 0.01), snappedf(b.growth, 0.01), snappedf(b.soil, 0.01), snappedf(b.lode, 0.01),
+		snappedf(b.swamp_r, 0.01), b.batteries, b.auto_train, b.auto_refit, b.gate_open, b.locked, b.vertical, b.seeded,
+		b.crate, snappedf(b.unfold_t, 0.01), snappedf(b.max_hp, 0.01), b.rally, b.worker_rally, snappedf(b.stock, 0.01),
+		b.gear_big, snappedf(b.gear_swap_t, 0.01), b.gear_swap_to]
+
+
+## Do the direct readers and writers match the lists? "" if so, else what differs (tools/bench_net_snapshot.gd and
+## the online test call it on real units and buildings).
+static func check_lists(u: Unit, b: Building) -> String:
+	var out := PackedStringArray()
+	if u:
+		var direct := unit_vals(u)
+		if direct.size() != UNIT_PROPS.size():
+			out.append("unit_vals has %d values, UNIT_PROPS %d" % [direct.size(), UNIT_PROPS.size()])
+		else:
+			for i in UNIT_PROPS.size():
+				if typeof(direct[i]) != typeof(q(u.get(UNIT_PROPS[i]))) or direct[i] != q(u.get(UNIT_PROPS[i])):
+					out.append("unit %s: %s != %s" % [UNIT_PROPS[i], str(direct[i]), str(u.get(UNIT_PROPS[i]))])
+	if b:
+		var bd := bld_vals(b)
+		if bd.size() != BLD_PROPS.size():
+			out.append("bld_vals has %d values, BLD_PROPS %d" % [bd.size(), BLD_PROPS.size()])
+		else:
+			for i in BLD_PROPS.size():
+				if typeof(bd[i]) != typeof(q(b.get(BLD_PROPS[i]))) or bd[i] != q(b.get(BLD_PROPS[i])):
+					out.append("building %s: %s != %s" % [BLD_PROPS[i], str(bd[i]), str(b.get(BLD_PROPS[i]))])
+	return "; ".join(out)
+
+
 # ------------------------------------------------------------------ host
 
 static func build(s: NetSession) -> Dictionary:
 	var g := s.game
+	var key := s.snap_n % KEY_EVERY == 1
 	var cur := {}
 	var brows: Array = []
 	var urows: Array = []
@@ -45,40 +96,60 @@ static func build(s: NetSession) -> Dictionary:
 			continue
 		s.assign(b)
 		cur[b.net_id] = b
+	var n_units := 0
 	for u in g.units:
 		if not is_instance_valid(u) or u.is_queued_for_deletion() or u.dead:
 			continue
 		s.assign(u)
 		cur[u.net_id] = u
+		n_units += 1
 	for id in cur:
 		var e: Entity = cur[id]
 		if e is Building:
-			var row: Array = [id, e.kind, e.team, e.cell, snappedf(e.hp, 0.1), 0]
-			for p in BLD_PROPS:
-				row.append(q(e.get(p)))
-			for p in BLD_REFS:
-				row.append(ref(s, e.get(p)))
+			var b: Building = e
+			var hp := snappedf(b.hp, 0.1)
+			var slow := bld_vals(b)
+			slow.append(ref(s, b.rally_target))
+			slow.append(ref(s, b.worker_rally_target))
 			var crew: Array = []
-			for c in e.crew:
+			for c in b.crew:
 				var cid := ref(s, c)
 				if cid != 0:
 					crew.append(cid)
-			row.append(crew)
+			slow.append(crew)
+			var hs := hash(slow)
+			var row: Array = [id, b.kind, b.team, b.cell, hp, 0]
+			if key or int(s.sent_slow.get(id, 0)) != hs:
+				row.append_array(slow)
+				s.sent_slow[id] = hs
+			elif s.sent_fast.get(id) == hp:
+				continue               # (nothing changed)
+			s.sent_fast[id] = hp
 			brows.append(row)
 		else:
 			var u: Unit = e
-			var row: Array = [id, u.kind, u.team, u.position, snappedf(u.hp, 0.1), snappedf(u.facing.angle(), 0.02)]
-			for p in UNIT_PROPS:
-				row.append(q(u.get(p)))
-			row.append(u.cooldown > 0.0)
-			for p in UNIT_REFS:
-				row.append(ref(s, u.get(p)))
+			var fast: Array = [u.position.snapped(Vector2(0.25, 0.25)), snappedf(u.hp, 0.1), snappedf(u.facing.angle(), 0.02)]
+			var slow := unit_vals(u)
+			slow.append(u.cooldown > 0.0)
+			slow.append(ref(s, u.target))
+			slow.append(ref(s, u.home_mine))
+			slow.append(ref(s, u.leader))
+			slow.append(ref(s, u.aboard))
+			slow.append(ref(s, u.order_target))
 			var pas: Array = []
 			for c in u.passengers:
 				var pid := ref(s, c)
 				if pid != 0:
 					pas.append(pid)
-			row.append(pas)
+			slow.append(pas)
+			var hs := hash(slow)
+			var row: Array = [id, u.kind, u.team, fast[0], fast[1], fast[2]]
+			if key or int(s.sent_slow.get(id, 0)) != hs:
+				row.append_array(slow)
+				s.sent_slow[id] = hs
+			elif s.sent_fast.get(id) == fast:
+				continue               # (it stood still and nothing changed)
+			s.sent_fast[id] = fast
 			urows.append(row)
 	var gone: Array = []
 	for id in s.known:
@@ -86,6 +157,8 @@ static func build(s: NetSession) -> Dictionary:
 			var old = s.known[id]
 			var died: bool = is_instance_valid(old) and old.dead
 			gone.append([id, old is Building if is_instance_valid(old) else int(id) < 0, died])
+			s.sent_slow.erase(id)
+			s.sent_fast.erase(id)
 	s.known = cur
 	s.by_id = cur
 	var pl: Array = []
@@ -93,7 +166,9 @@ static func build(s: NetSession) -> Dictionary:
 		pl.append(g.players[t].duplicate(true))
 	var m := {"t": "snap", "n": s.snap_n, "clk": snappedf(g.clock, 0.01), "ack": s.acks.duplicate(), "u": urows, "b": brows,
 		"gone": gone, "pl": pl, "en": g.energy, "ore": g.ore_rate, "asm": g.asm_mult, "wind": g.wind_e,
-		"elim": g.eliminated, "over": g.over, "win": g.winner, "cnt": [urows.size(), brows.size()]}
+		"elim": g.eliminated, "over": g.over, "win": g.winner, "cnt": [n_units, g.buildings.size()]}
+	if key:
+		m["ids"] = PackedInt32Array(cur.keys())
 	var fp := g.line_net.fingerprint()
 	if fp != s.line_fp or s.snap_n % 20 == 0:
 		s.line_fp = fp
@@ -107,12 +182,71 @@ static func build(s: NetSession) -> Dictionary:
 		s.fx = []
 	if g.over or s.snap_n % 10 == 0:
 		m["stats"] = g.stats           # (about once a second: income, the battle report)
+		m["acc"] = s.applied_by.duplicate(true)     # (each guest: its orders run and refused, for its match log)
+	if s.paused():
+		m["pz"] = [s.pause_by, s.away]
 	if g.over:
 		m["note"] = g.end_note
+		m["quit"] = g.end_quitter
+		m["ahead"] = g.end_ahead
 	return m
 
 
 # ------------------------------------------------------------------ guest
+
+## Several snapshots that came at once (oldest first) as one: the newest of each row (a short row, only the fixed
+## fields, updates the whole one before it), every gone list (and nothing they name is made again), the shots of the
+## last few and every body torn up, the newest of the parts sent only now and then (the Line, trains, stats). The ids
+## of a keyframe count only if it is the newest.
+static func merge(list: Array) -> Dictionary:
+	var last: Dictionary = (list[list.size() - 1] as Dictionary).duplicate()
+	var urows := {}
+	var brows := {}
+	var gone: Array = []
+	var gone_ids := {}
+	var shots: Array = []
+	for i in list.size():
+		var sm: Dictionary = list[i]
+		for gn in sm.get("gone", []):
+			gone.append(gn)
+			gone_ids[int(gn[0])] = true
+		for row in sm.get("b", []):
+			brows[int(row[0])] = _newer(brows.get(int(row[0])), row, B_FIXED)
+		for row in sm.get("u", []):
+			urows[int(row[0])] = _newer(urows.get(int(row[0])), row, U_FIXED)
+		var recent := i >= list.size() - 3
+		for f in sm.get("fx", []):
+			if recent or f[0] == "c":
+				shots.append(f)
+	for id in gone_ids:
+		urows.erase(id)
+		brows.erase(id)
+	last["u"] = urows.values()
+	last["b"] = brows.values()
+	last["gone"] = gone
+	if shots.is_empty():
+		last.erase("fx")
+	else:
+		last["fx"] = shots
+	for k in ["ln", "cpl", "tr", "stats", "acc"]:
+		if last.has(k):
+			continue
+		for i in range(list.size() - 2, -1, -1):
+			if (list[i] as Dictionary).has(k):
+				last[k] = list[i][k]
+				break
+	return last
+
+
+## A row on top of the one before it for the same entity: a short row only brings the fixed fields.
+static func _newer(old, row: Array, fixed: int) -> Array:
+	if old == null or row.size() > fixed or (old as Array).size() <= fixed:
+		return row
+	var r: Array = (old as Array).duplicate()
+	for i in fixed:
+		r[i] = row[i]
+	return r
+
 
 static func apply(s: NetSession, m: Dictionary) -> void:
 	var g := s.game
@@ -130,26 +264,38 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 		elif bool(gn[2]):
 			NetPuppet.unit_dies(e)
 		else:
-			g.units.erase(e)
-			g.selection.erase(e)
-			e.queue_free()
-	var seen := {}
+			_unit_gone(g, e)
+	var whole: Array = []
 	for row in m.get("b", []):
-		seen[int(row[0])] = true
-		_building_row(s, row)
+		var bb := _building_row(s, row)
+		if bb and row.size() > B_FIXED:
+			whole.append([bb, row])
 	var refs: Array = []
 	for row in m.get("u", []):
-		seen[int(row[0])] = true
 		var u := _unit_row(s, row)
-		if u:
+		if u and row.size() > U_FIXED:
 			refs.append([u, row])
-	for br in m.get("b", []):
-		var bb = s.by_id.get(int(br[0]))
-		if is_instance_valid(bb):
-			_building_refs(s, bb, br)
+	for pr in whole:
+		_building_refs(s, pr[0], pr[1])
 	for pr in refs:
 		_unit_refs(s, pr[0], pr[1])
-	# what the snapshot no longer lists is no longer there (the 'gone' list covers it, this is the net)
+	# a keyframe lists every id: what is not on it is no longer there (the gone lists say so; this is the net under
+	# them, for a snapshot lost on the way)
+	if m.has("ids"):
+		var ids := {}
+		for id in m["ids"]:
+			ids[int(id)] = true
+		for id in s.by_id.keys():
+			if not ids.has(id):
+				var e = s.by_id[id]
+				s.by_id.erase(id)
+				s.motion.erase(id)
+				s.rowhash.erase(id)
+				if is_instance_valid(e):
+					if e is Building:
+						_building_gone(g, e, false)
+					else:
+						_unit_gone(g, e)
 	var pl: Array = m.get("pl", [])
 	for t in mini(pl.size(), g.players.size()):
 		g.players[t] = pl[t]
@@ -179,9 +325,21 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 		s.play_fx(m["fx"])
 	if bool(m.get("over", false)) and not g.over:
 		g.end_note = String(m.get("note", ""))
+		var quitter := int(m.get("quit", -1))
+		if g.end_note == "player_surrender" and quitter >= 0 and quitter != g.human:
+			g.end_quitter = quitter            # (the other side gave up: the log says so; our own was said at the press)
+			g.end_ahead = String(m.get("ahead", ""))
+			if g.mlog:
+				g.mlog.add("%s surrendered while %s" % [g.mlog.who(quitter), g.end_ahead])
 		g.over = true
 		g.winner = int(m.get("win", -1))
 		g.ended.emit(g.winner)
+
+
+static func _unit_gone(g: Game, u: Unit) -> void:
+	g.units.erase(u)
+	g.selection.erase(u)
+	u.queue_free()
 
 
 static func _building_gone(g: Game, b: Building, died: bool) -> void:
@@ -200,35 +358,35 @@ static func _building_gone(g: Game, b: Building, died: bool) -> void:
 	b.queue_free()
 
 
-static func _building_row(s: NetSession, row: Array) -> void:
+static func _building_row(s: NetSession, row: Array) -> Building:
 	var g := s.game
 	var id := int(row[0])
 	var b = s.by_id.get(id)
-	var p0 := B_FIXED
-	var built: bool = bool(row[p0])           # (BLD_PROPS[0] is "built", [2] "ghost")
-	var ghost: bool = bool(row[p0 + 2])
 	var fresh := false
+	var whole := row.size() > B_FIXED
 	if not is_instance_valid(b):
-		b = g._add_building(String(row[1]), int(row[2]), Vector2i(row[3]), built, ghost)
+		if not whole:
+			return null                 # (a short row for one we never had: the next keyframe brings it)
+		b = g._add_building(String(row[1]), int(row[2]), Vector2i(row[3]), bool(row[B_FIXED]), bool(row[B_FIXED + 2]))
 		b.net_id = id
 		s.by_id[id] = b
 		fresh = true
-	var hsh := hash(row.slice(4))
+	b.hp = float(row[4])
+	if not whole:
+		return b
+	var hsh := hash(row.slice(B_FIXED))
 	if not fresh and s.rowhash.get(id, 0) == hsh:
-		return
+		return b
 	s.rowhash[id] = hsh
 	var was_ghost: bool = b.ghost
 	var was_built: bool = b.built
-	var lvl := int(row[p0 + BLD_PROPS.find("level")])
+	var o := B_FIXED
+	var built: bool = row[o]
+	var ghost: bool = row[o + 2]
+	var lvl := int(row[o + 3])
 	if b.is_leveled() and lvl != b.level:
 		b.set_level(lvl)
-	b.hp = float(row[4])
-	for i in BLD_PROPS.size():
-		var v = row[p0 + i]
-		var pn: String = BLD_PROPS[i]
-		if pn == "ghost" or pn == "built" or v == null:
-			continue
-		b.set(pn, v)
+	_set_bld_vals(b, row, o)
 	if was_ghost and not ghost:
 		g._solidify(b)
 	b.built = built
@@ -237,6 +395,38 @@ static func _building_row(s: NetSession, row: Array) -> void:
 		g.swamp_dirty = true
 	b._update_sprite()
 	b.queue_redraw()
+	return b
+
+
+## A row's values (BLD_PROPS order, from `o`) onto the guest's building ("built" and "ghost" are the caller's).
+static func _set_bld_vals(b: Building, row: Array, o: int) -> void:
+	b.progress = row[o + 1]
+	b.level = row[o + 3]
+	b.queue = row[o + 4]
+	b.morph_t = row[o + 5]
+	b.prod_t = row[o + 6]
+	b.eggs = row[o + 7]
+	b.upgrade_t = row[o + 8]
+	b.growth = row[o + 9]
+	b.soil = row[o + 10]
+	b.lode = row[o + 11]
+	b.swamp_r = row[o + 12]
+	b.batteries = row[o + 13]
+	b.auto_train = row[o + 14]
+	b.auto_refit = row[o + 15]
+	b.gate_open = row[o + 16]
+	b.locked = row[o + 17]
+	b.vertical = row[o + 18]
+	b.seeded = row[o + 19]
+	b.crate = row[o + 20]
+	b.unfold_t = row[o + 21]
+	b.max_hp = row[o + 22]
+	b.rally = row[o + 23]
+	b.worker_rally = row[o + 24]
+	b.stock = row[o + 25]
+	b.gear_big = row[o + 26]
+	b.gear_swap_t = row[o + 27]
+	b.gear_swap_to = row[o + 28]
 
 
 static func _building_refs(s: NetSession, b: Building, row: Array) -> void:
@@ -257,7 +447,10 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	var pos: Vector2 = row[3]
 	var u = s.by_id.get(id)
 	var fresh := false
+	var whole := row.size() > U_FIXED
 	if not is_instance_valid(u):
+		if not whole:
+			return null                 # (a short row for one we never had: the next keyframe brings it)
 		u = g._add_unit(String(row[1]), int(row[2]), pos)
 		u.net_id = id
 		s.by_id[id] = u
@@ -266,46 +459,86 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 		return null
 	if u.kind != String(row[1]):
 		u.morph(String(row[1]))
-	# movement: glide from where it is to the new spot over one snapshot interval
+	# movement: glide from where it is to the new spot over about one snapshot interval (NetPuppet.tick_unit)
 	var mo = s.motion.get(id)
-	if fresh or mo == null or u.position.distance_to(pos) > 260.0:
+	var shown: Vector2 = u.position - s.lead_off(id)       # (where the pictures have it: a unit walking off at once is shown ahead)
+	if fresh or mo == null or shown.distance_to(pos) > 260.0:
 		s.motion[id] = [pos, pos, 99.0]
+		s.leads.erase(id)
+		if not fresh:
+			u.position = pos
+			u.reset_physics_interpolation()       # (a jump, not a glide across the map)
 	else:
-		s.motion[id] = [u.position, pos, 0.0]
-	var hsh := hash(row.slice(4))
+		s.motion[id] = [shown, pos, 0.0]
+	u.hp = float(row[4])
+	if not s.leading(id):
+		u.facing = Vector2.from_angle(float(row[5]))
+	if not whole:
+		return u                        # (NetPuppet.tick_unit redraws it when its health shows a change)
+	var hsh := hash(row.slice(U_FIXED))
 	if not fresh and s.rowhash.get(id, 0) == hsh:
 		return u
 	s.rowhash[id] = hsh
-	u.hp = float(row[4])
-	u.facing = Vector2.from_angle(float(row[5]))
 	var o := U_FIXED
 	var coat_was: String = u.coat
 	var art_was: String = u.art
-	var arm_row: bool = false
-	for i in UNIT_PROPS.size():
-		var v = row[o + i]
-		var pn: String = UNIT_PROPS[i]
-		if v == null:
-			continue
-		if pn == "armoured":
-			arm_row = bool(v)
-			continue
-		if pn == "art":
-			continue
-		u.set(pn, v)
-	if arm_row and not u.armoured:
+	_set_unit_vals(u, row, o)
+	if bool(row[o + 12]) and not u.armoured:
 		u.put_on_armour()
-	var art_row := String(row[o + UNIT_PROPS.find("art")])
+	var art_row := String(row[o + 14])
 	if art_row != "" and art_row != u.art and ArtData.UNITS.has(art_row):
 		u.art = art_row
 	if u.coat != coat_was and u.sprite:
 		HorseCoat.apply(u)
 	if u.art != art_was and u.sprite:
 		u._set_anim(u._anim_name(), true)
-	u.max_hp = float(row[o + UNIT_PROPS.find("max_hp")])
+	u.max_hp = row[o + 17]
 	u.cooldown = 1.0 if bool(row[o + UNIT_PROPS.size()]) else 0.0
 	u.queue_redraw()
 	return u
+
+
+## A row's values (UNIT_PROPS order, from `o`) onto the guest's unit; "armoured", "art" and "max_hp" are the
+## caller's (armour goes on with put_on_armour, which sets its own health; an art only if there is such a picture).
+static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
+	u.order = row[o]
+	u.phase = row[o + 1]
+	u.work = row[o + 2]
+	u.carrying = row[o + 3]
+	u.mode = row[o + 4]
+	u.tesla_mode = row[o + 5]
+	u.braced = row[o + 6]
+	u.sky = row[o + 7]
+	u.deflate = row[o + 8]
+	u.keg = row[o + 9]
+	u.cocoon = row[o + 10]
+	u.coat = row[o + 11]
+	u.kills = row[o + 13]
+	u.powder = row[o + 15]
+	u.wind = row[o + 16]
+	u.off_field = row[o + 18]
+	u.horse_hp = row[o + 19]
+	u.harnessed = row[o + 20]
+	u.topter_bat = row[o + 21]
+	u.courier = row[o + 22]
+	u.supplying = row[o + 23]
+	u.auto_repair = row[o + 24]
+	u.hold_fire = row[o + 25]
+	u.pistol = row[o + 26]
+	u.bayonet = row[o + 27]
+	u.pouch = row[o + 28]
+	u.carry_empty = row[o + 29]
+	u.gas = row[o + 30]
+	u.spin = row[o + 31]
+	u.overclock_t = row[o + 32]
+	u.cranked_t = row[o + 33]
+	u.self_wind_t = row[o + 34]
+	u.tongue_stage = row[o + 35]
+	u.tesla_t = row[o + 36]
+	u.haul_t = row[o + 37]
+	u.auto_work = row[o + 38]
+	u.owl_t = row[o + 39]
+	u.net_t = row[o + 40]
 
 
 static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:

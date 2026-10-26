@@ -8,6 +8,7 @@ signal opened(my_id: int)               # the relay accepted us (host: id 0, gue
 signal notice(d: Dictionary)            # {"t": "join"/"leave"/"closed"/"error", ...}
 signal message(from: int, msg: Dictionary)
 signal closed(reason: String)
+signal polled                           # every message waiting this frame has been handed out (NetSession applies the newest snapshot then)
 
 var is_host := false
 var code := ""
@@ -65,10 +66,10 @@ func is_open() -> bool:
 	return _ws != null and _ws.get_ready_state() == WebSocketPeer.STATE_OPEN
 
 
-## Host: to one guest id (0 = every guest). Guest: to the host (`to` is ignored).
-func send(msg: Dictionary, to := 0) -> void:
+## Host: to one guest id (0 = every guest). Guest: to the host (`to` is ignored). Returns the bytes sent (0: not open).
+func send(msg: Dictionary, to := 0) -> int:
 	if not is_open():
-		return
+		return 0
 	var body := NetCodec.pack(msg)
 	var out := PackedByteArray()
 	if is_host:
@@ -77,6 +78,18 @@ func send(msg: Dictionary, to := 0) -> void:
 	_ws.send(out, WebSocketPeer.WRITE_MODE_BINARY)
 	sent_bytes += out.size()
 	sent_msgs += 1
+	return out.size()
+
+
+## Push what was just sent onto the wire now (before the app goes to the background and stops running).
+func flush() -> void:
+	if _ws:
+		_ws.poll()
+
+
+## Bytes sent but still waiting to leave this device (a slow uplink makes them pile up).
+func buffered() -> int:
+	return _ws.get_current_outbound_buffered_amount() if is_open() else 0
 
 
 func close(why := "") -> void:
@@ -114,6 +127,7 @@ func _process(delta: float) -> void:
 				var m2 := NetCodec.unpack(pkt)
 				if not m2.is_empty():
 					message.emit(0, m2)
+		polled.emit()
 		_ping_t -= delta
 		if _ping_t <= 0.0 and connected:
 			_ping_t = 2.0

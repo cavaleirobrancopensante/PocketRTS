@@ -148,6 +148,8 @@ func _physics_process(delta: float) -> void:
 func snapshot() -> void:
 	lines.append("--- minute %d ---" % int(round(game.clock / 60.0)))
 	_lag_lines()
+	if game.net != null:
+		lines.append("  " + game.net.minute_line())      # (online: ping, snapshots, orders, stalls this minute)
 	for t in game.n_players():
 		if game.eliminated[t]:
 			continue
@@ -220,7 +222,10 @@ func finish(winner: int) -> void:
 	if game.end_note == "ai_resigned" and winner >= 0 and game.allied(winner, game.human):
 		how = " - AI resigned after gg"
 	elif game.end_note == "player_surrender":
-		how = " - ended by surrender (player was %s)" % game.end_ahead
+		if game.end_quitter >= 0 and game.end_quitter != game.human:
+			how = " - ended by surrender (%s gave up while %s)" % [who(game.end_quitter), game.end_ahead]
+		else:
+			how = " - ended by surrender (player was %s)" % game.end_ahead
 	lines.append("RESULT at %s: %s%s" % [stamp(), ("winner " + who(winner)) if winner >= 0 else "no winner", how])
 	if not _lag_minutes.is_empty():
 		var pm := PackedStringArray()
