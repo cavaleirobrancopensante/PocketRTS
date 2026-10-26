@@ -213,16 +213,72 @@ def calib_table(rows, faction=None):
                                                              "{:,}".format(e3) if e3 is not None else "-", "{:,}".format(e6) if e6 is not None else "(over)", att))
 
 
+def compare_table(rows):
+    """The calculator against the game: for each build timed against a sleeping opponent, how far apart the two put the
+    finished buildings (and the placed steps) of the script, and the army and gold at 3:00 and 6:00."""
+    sys.path.insert(0, HERE)
+    import bo_calc as C
+    print("| Opening | steps compared | apart on average | at most | army at 3:00, game / calculator | at 6:00 | earned by 3:00, game / calculator | by 6:00 |")
+    print("|---|---|---|---|---|---|---|---|")
+    allg = []
+    for name in BUILDS:
+        hit = [r for r in rows if r["sa"] == name]
+        if not hit:
+            continue
+        r = hit[0]
+        ta, A, tb, Bs = sides(r)
+        sim = C.simulate(name, horizon=480.0, map_name=r["map"])
+        glog = [e for e in A["bo"]["log"] if not e["step"].startswith("?")]
+        clog = list(sim.log)
+        diffs = []
+        ci = 0
+        for e in glog:
+            stepname = e["step"].split(" (")[0]
+            # (the calculator writes the ramp wall as "wall (ramp Cottage)"; match by the first word)
+            j = next((k for k in range(ci, len(clog)) if clog[k]["step"].split(" (")[0].split()[0] == stepname.split()[0]), None)
+            if j is None:
+                continue
+            ci = j + 1
+            c = clog[j]
+            gd, cd = e["done"], c["done"]
+            if gd >= 0 and cd >= 0 and not any(x in stepname for x in ("*", "workers:", "wait:", "end", "mill:", "crew:", "supply:")):
+                diffs.append(abs(gd - cd))
+            elif e["issued"] >= 0 and c["issued"] >= 0 and not any(x in stepname for x in ("workers:", "wait:", "end", "mill:", "supply:")):
+                diffs.append(abs(e["issued"] - c["issued"]))
+        allg.extend(diffs)
+
+        def g(t, key):
+            s = A["snaps"].get(str(t))
+            return s[key] if s else None
+        cs = sim.snap
+
+        def pair(t, key, ckey):
+            v = g(t, key)
+            return "%s / %s" % ("{:,}".format(v) if v is not None else "(over)", "{:,}".format(cs[t][ckey]))
+        avg = sum(diffs) / len(diffs) if diffs else 0.0
+        print("| %s | %d | %.0f s | %.0f s | %s | %s | %s | %s |" % (label(name), len(diffs), avg, max(diffs or [0]),
+                                                               pair(180, "value", "value"), pair(360, "value", "value"),
+                                                               pair(180, "earned", "earned"), pair(360, "earned", "earned")))
+    if allg:
+        allg.sort()
+        print("\n(all openings: %d steps, %.0f s apart on average, half of them within %.0f s, 9 in 10 within %.0f s)" % (
+            len(allg), sum(allg) / len(allg), allg[len(allg) // 2], allg[int(len(allg) * 0.9)]))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", required=True)
     ap.add_argument("--calib", action="store_true")
+    ap.add_argument("--compare", action="store_true")
     ap.add_argument("--faction")
     ap.add_argument("--notes", action="store_true")
     a = ap.parse_args()
     rows = load(a.runs)
     if a.calib:
         calib_table(rows, a.faction)
+        return
+    if a.compare:
+        compare_table(rows)
         return
     if a.notes:
         notes(rows)
