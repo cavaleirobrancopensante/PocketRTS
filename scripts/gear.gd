@@ -304,7 +304,7 @@ func in_field(t: int, p: Vector2) -> bool:
 ## The cell for a building of `kind` whose ring meshes with `around`'s ring nearest to direction `deg` (screen degrees,
 ## 0 = right, clockwise) from it: placeable, its ring links, the pitch-circle gap as small as possible (a direct mesh) and
 ## the angle close. (-1, -1) when none. The Lab's showcase and the computer's Escapement (by its Mainspring) use it;
-## `unseen`: ground the player has not explored yet will do (the Lab's setup, the computer).
+## `unseen`: the computer's placement rules (placement_problem's `ai`: the Lab's setup, the computer).
 static func ring_spot(game: Game, t: int, kind: String, around: Building, deg: float, unseen := false) -> Vector2i:
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var hc := b_c(around)
@@ -478,7 +478,8 @@ func _spin(delta: float) -> void:
 func _draw() -> void:
 	if game == null or not Defs.gear_mode:
 		return
-	var me := game.controlled_team()
+	var ft := game.fog_team()
+	var all := game.sees_all()
 	var items: Array = []
 	var cols: Dictionary = Defs.GEAR["col"]
 	for b in game.buildings:
@@ -486,8 +487,8 @@ func _draw() -> void:
 			continue
 		if b.dead and b.rubble_t > 24.0:
 			continue
-		if me >= 0 and not game.allied(me, b.team) and not game.demo and not b.visible:
-			continue
+		if not all and ft >= 0 and not game.allied(ft, b.team) and not b.visible:
+			continue        # (an enemy building whose side's eyes you look through haven't seen it: watching computers too)
 		var c: Vector2 = b.center()
 		var n: int = b_n(b)
 		var rp := radius_of_teeth(n)
@@ -576,11 +577,15 @@ func _draw_top() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	var me := game.controlled_team()
+	var ft := game.fog_team()
+	var all := game.sees_all()
 	for b in game.buildings:
 		if not is_instance_valid(b) or b.dead or not b.built or not has_gear(b) or not game.view_rect.intersects(b.rect()):
 			continue
 		if me >= 0 and not game.allied(me, b.team):
 			continue
+		if not all and ft >= 0 and not game.allied(ft, b.team) and not b.visible:
+			continue        # (watching computers through one side's eyes: a building it hasn't seen)
 		var txt := ""
 		var col := Color(0.95, 0.35, 0.28)
 		if enforce and not linked.has(b):

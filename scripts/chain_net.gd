@@ -31,6 +31,7 @@ func _ready() -> void:
 	if target != null and is_instance_valid(target):
 		to = target.center()
 	duration = maxf(from.distance_to(to) / maxf(speed, 1.0), 0.08)
+	visible = game == null or not game.fx_hidden(from, to)     # (over ground the watching side has never looked at: unseen)
 	_place(0.0)
 
 

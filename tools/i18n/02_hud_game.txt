@@ -1962,10 +1962,6 @@ es Bloqueado.
 pt Bloqueado: há um prédio planejado ali.
 es Bloqueado: hay un edificio planeado ahí.
 
-> Unexplored.
-pt Inexplorado.
-es Inexplorado.
-
 > Brood structures must grow on your swamp.
 pt Estruturas da Ninhada devem crescer no seu pântano.
 es Las estructuras de la Nidada deben crecer en tu pantano.
