@@ -60,3 +60,6 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - A unit standing on a coiled spring (like the Mainspring's cone spring) that JUMPS: onto enemy units and up onto high ground when it has vision there (the Stalker's Blink role).
 - Suggested by Claude, not decided: name Jack (jack-in-the-box) or Springer; tier 2 (needs the Escapement), costs cogs and Tension; the jump coils the spring (visible crouch) before the leap so it can be read and answered; cooldown; RANGED (owner, 2026-10-26): its right arm is a drill-like launcher that SHOOTS SCREWS (the screw tip is the bolt).
 - Art: the cone spring rings already painted for the Mainspring can be the unit's leg (pressed flat when crouching, stretched in the air).
+
+## Defence: the Ratchet Turret (owner, 2026-10-26)
+- Static defence: a squat 2x2 base on its gear ring with a separate head that turns to aim and fires big screws (the Jack's screw art). Hits BOTH air and ground (owner: the Clockwork needs it).
