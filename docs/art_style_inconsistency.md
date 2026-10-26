@@ -59,3 +59,5 @@ Shared code: tools/gait_lib.py. Audit and ranking: docs/animation_gait_audit.md 
 
 ## Mainspring working animation (code-drawn, 2026-10-26)
 - tools/press_anim/mainspring_work.py: 8 frames from the ChatGPT built cell (art/redraws/mainspring.png): both hand cranks erased and redrawn turning (mirrored, 45 degrees per frame), gauge needle redrawn swinging, a bright glint sweeping across the steel spring, a steam puff of grey circles. Result in art/redraws/mainspring_work_code.png/.gif. Pose guide for a ChatGPT art pass.
+
+Update 2026-10-26: the Cog Press flywheel is no longer code-drawn. ChatGPT painted one flat wheel face (art/redraws/cog_wheel_face_chatgpt.png); tools/press_anim/wheel_turn.py rotates that single painted image by exact angles and squashes it inside the painted rim of ChatGPT's wheel (art/redraws/cog_wheel_chatgpt_try2.png). Result: art/redraws/cog_press_work_v2.png/.gif. Only the piston motion, the small falling cog and the steam puff are still code-drawn. (Scripts expect their input files next to them; copy the PNGs beside the script to rerun.)
