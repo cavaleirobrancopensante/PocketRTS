@@ -55,6 +55,10 @@ func _s(key: String) -> Variant:
 ## "breeder" (Horse Breeder first, a Horseman rush: on Rush, and else about 3 games in 10).
 var opening := "mill"
 var scout: AIScout = null       # scouts the enemy first and picks the plan from what it saw (unless rushing)
+## The Brood's own judgement (scripts/ai_brood.gd): essence, supply ahead of need, when a wave may go and
+## when it pulls back. null for the other factions (and with AIBrood.enabled off: the Brood as it was,
+## for a "before" number); every Brood branch below then runs as before.
+var brood: AIBrood = null
 
 
 func _ready() -> void:
@@ -66,6 +70,8 @@ func _ready() -> void:
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
 	scout = AIScout.new(self)
+	if game.faction_of(team) == "brood" and AIBrood.enabled:
+		brood = AIBrood.new(self)
 	_attack_at = int(_s("wave"))
 	if opening == "breeder" and strategy == "rush":
 		_attack_at = maxi(_attack_at, RUSH_HORSEMEN * int(Defs.UNITS["cuirassier"]["supply"]))   # (the first 3 Horsemen ride out together)
@@ -409,6 +415,8 @@ func _think_stage(i: int) -> void:
 			_lap("ai/raid", pt)
 		3:
 			scout.tick()
+			if brood != null:
+				brood.tick()                # (what the eyes show, the income, the grubs harvesting)
 			_army()
 			_lap("ai/army", pt)
 		4:
@@ -829,6 +837,8 @@ func _workers() -> void:
 			hold_gold = true
 		elif _army_behind() and labs.size() + queued >= (5 if strategy == "xrush" else ((6 if not _first_wave else 10) if strategy == "rush" else (9 if strategy != "economy" else 10))):
 			hold_gold = true
+		elif brood != null and labs.size() + queued >= 4 and brood.holding(int(Defs.UNITS[worker]["cost"])):
+			hold_gold = true      # (biomass put by for a Clutch Mound, the Pen or the Gorge Pit: scripts/ai_brood.gd)
 	for h in _halls():
 		if h.built and not hold_gold and labs.size() + queued < want and (h.uses_eggs() or h.queue.size() < 2):
 			if game.train(h, worker) == "":
@@ -1286,8 +1296,11 @@ func _econ_build() -> void:
 				order.erase("powder_mill")
 	elif _brood():
 		order = ["feeding_pit"]
-		# (the Pen turns the fallen into essence: after the Den and a first army, not before)
-		if _mine("warren").is_empty() or (_army_behind() and not _horse_alert()):
+		# (the Pen turns the fallen into essence: after the Den and a first army, not before; the first one
+		# as soon as the army has caught up, its biomass put by: scripts/ai_brood.gd)
+		if brood != null and brood.pen_due():
+			order.append("brood_pen")
+		elif _mine("warren").is_empty() or (_army_behind() and not _horse_alert()):
 			pass
 		else:
 			order.append("brood_pen")
@@ -1484,6 +1497,9 @@ func _energy_split() -> void:
 
 
 func _supply() -> void:
+	if brood != null:
+		brood.supply()            # (Clutch Mounds ahead of need, judged from the income and the eggs: scripts/ai_brood.gd)
+		return
 	var cap: int = game.players[team]["cap"]
 	if cap >= game.max_supply(team):
 		return
@@ -1539,9 +1555,12 @@ func _build_up() -> void:
 		_horse_tech()
 		if _mine("warren").is_empty() and labs >= _warren_hands():
 			_construct("warren")
-		if _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > _lv([480.0, 250.0, 190.0]):
+		if brood != null:
+			if brood.gorge_due(t):
+				_construct("gorge_pit")         # (after the Pen; its biomass is put by: AIBrood.reserve)
+		elif _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > _lv([480.0, 250.0, 190.0]):
 			_construct("gorge_pit")
-		if _mine("roost").is_empty() and game.requirement_met(team, "roost") and t > _lv([560.0, 320.0, 260.0]):
+		if _mine("roost").is_empty() and game.requirement_met(team, "roost") and t > _lv([560.0, 320.0, 260.0]) and (brood == null or brood.roost_ok()):
 			_construct("roost")
 		elif strategy == "air" and _mine("roost").is_empty() and game.requirement_met(team, "roost"):
 			_construct("roost")
@@ -2930,11 +2949,15 @@ func _produce() -> void:
 			if not h.built:
 				continue
 			while h.eggs > 0:
+				if brood != null and brood.holding(int(Defs.UNITS["raptor"]["cost"])):
+					break           # (biomass put by for a Clutch Mound, the Pen or the Gorge Pit: AIBrood.reserve)
 				if strategy == "xrush":
 					if game.train(h, "raptor") != "":      # (only Raptors, all the income)
 						break
 					continue
 				var k := "raptor" if randf() < 0.6 or game.can_train(h, "spitter") != "" else "spitter"
+				if k == "spitter" and brood != null and not brood.spitter_ok():
+					k = "raptor"    # (the essence is kept for the next Brute or Mist Toad)
 				# a Roost and too few Skywings: they come first whenever the essence is there
 				# (spare raptors are offered up at the Brood Pen for it: see _offer)
 				var want_wing: bool = game._has_built(team, "roost") and wings * (2 if strategy == "air" else 6) < army.size() + (6 if strategy == "air" else 0)
@@ -3368,7 +3391,8 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 			if game.is_visible_to(team, u.position):      # (only what our eyes show)
 				theirs += float(u.d["cost"])
 	var big_enough := mine >= theirs * 0.8 or sup >= 70 or strategy in ["rush", "air"] or (strategy == "timing" and scout.timing_ok(mine))
-	if _swarm_phase == "" and sup >= _attack_at and big_enough and not regrouping and not _horse_hold(army):
+	# (and never into an enemy army we have seen to be clearly stronger: AIBrood.attack_ok)
+	if _swarm_phase == "" and sup >= _attack_at and big_enough and not regrouping and not _horse_hold(army) and (brood == null or brood.attack_ok(mine)):
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
@@ -3398,6 +3422,15 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 			_swarm_phase = ""
 			_swarm.clear()
 			_attacking = false
+			_wave_end()
+		elif brood != null and brood.wave_lost(wave, _wave_value):
+			# a clearly lost fight: the swarm pulls back home and the next wave waits for a bigger army
+			brood.retreat(wave, brood.fight_value(wave))
+			_swarm_phase = ""
+			_swarm.clear()
+			_siege_clear()
+			_attacking = false
+			_regroup_until = maxf(_regroup_until, game.clock + float(_lv([90.0, 60.0, 45.0])))
 			_wave_end()
 		elif _swarm_phase == "flank":
 			# everyone in place (or it's taking too long, or we were spotted and hit): go
@@ -3484,7 +3517,7 @@ func _xrush_army(army: Array, sup: int) -> void:
 		_xrush_over("Horsemen seen: Raptors would do little")      # (a normal game: Pen, Spitters, Brutes; _horse_hold keeps the army home)
 		return
 	if not _attacking:
-		if sup >= int(_s("wave")) and not peaceful and game.clock >= _regroup_until:
+		if sup >= int(_s("wave")) and not peaceful and game.clock >= _regroup_until and (brood == null or brood.attack_ok(brood.army_value(army), AIBrood.RUSH_RATIO)):
 			_attacking = true
 			_xr_t0 = game.clock
 			_wave_target = _enemy_base()
@@ -4649,6 +4682,8 @@ func _defend(army: Array, threat: Vector2, spots: Array) -> void:
 		if _gun_danger(spot):
 			continue
 		var lone: bool = a["lone"]
+		if lone and brood != null and brood.raid_party(spot):
+			lone = false        # (Brood: two Horsemen hunting the grubs are a raid, not a lone rider: the Raptors answer as a pack)
 		if lone and game.clock < _lone_cool:
 			continue
 		var committed := 0.0
@@ -4775,7 +4810,10 @@ func _abilities() -> void:
 	_spells()
 	if _brood():
 		_skywings()
-		_offer()
+		if brood != null:
+			brood.offer()           # (offerings for the next tech creature when no bodies are coming: scripts/ai_brood.gd)
+		else:
+			_offer()
 	if _clock():
 		_overloads()
 		_braces()

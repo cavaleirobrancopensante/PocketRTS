@@ -1,0 +1,515 @@
+class_name AIBrood
+extends RefCounted
+## The Brood computer's own judgement (an AI holds one as `brood` when it plays the Brood). Kept apart
+## from the shared AI code; ai.gd calls it from its Brood branches. No cheating (docs/design_principles.md):
+## it knows only what its own eyes have shown. Measured with tools/measure_brood_ai.gd
+## (docs/ai_build_timelines.md, "The Brood in a real game").
+##  ESSENCE  The Brood Pen goes up, its biomass put by, as soon as the army has caught up with its plan
+##           (at once against Horsemen), then the Gorge Pit once essence comes in: Spitters need the
+##           Pen, a fight at home feeds it, offerings are made there. Bodies left on our side of the map
+##           after a fight are harvested by a few grubs, who go back to the pits when none are left. With
+##           no bodies coming, the Raptors the army can spare are offered up for the essence the next tech
+##           creature needs (offer).
+##  SUPPLY   Clutch Mounds go up ahead of need: the margin is what the eggs could fill while one goes up
+##           (the recent income and the biomass and eggs in hand), and its 75 biomass is put by first.
+##  ATTACKS  Every enemy soldier seen is remembered (until seen to fall, or for MEMORY seconds). No wave
+##           goes into an army clearly stronger than ours (it defends and techs meanwhile), and a wave
+##           that is clearly losing its fight pulls back home; the next one waits for a bigger army.
+
+const MEMORY := 240.0           # an enemy soldier seen counts this long (unless we saw it fall)
+const ATTACK_RATIO := 1.25      # a wave goes only when worth this many times the enemy army we know of
+const RUSH_RATIO := 0.8         # ... a rush plan's first wave (a gamble, but not into a known wall of guns)
+const LOST_RATIO := 1.5         # a wave facing this many times its own worth (health counted) ...
+const LOST_SHARE := 0.25        # ... after losing this share of what it took out, pulls back
+const LOST_ROUT := 2.5          # ... and at once against this many times its worth
+const LOST_MIN := 150.0         # (never over less than this much enemy)
+const FIGHT_R := 360.0          # enemies this close to any unit of the wave are its fight
+const LEAD := 30.0              # seconds from a Clutch Mound's order to its supply (the walk, 18 s building, slack)
+const HARVEST_MAX := 4          # grubs out harvesting at once
+const HARVEST_CLEAR := 400.0    # no armed enemy (seen) this close to the bodies
+const HARVEST_HOME := 1100.0    # bodies this far from our nearest building at most
+const HARVEST_MIN := 2.5        # essence a group of bodies must hold to send a grub
+const HARVEST_WORKERS := 8      # no harvesting with fewer grubs than this (they are the economy)
+const GUARD := 5                # Raptors always kept at home (never offered up)
+const PEN_GUARD := 6            # army supply at home before the Pen's biomass is put by
+const GORGE_GUARD := 9          # ... and before the Gorge Pit's
+const GORGE_ESSENCE := 15.0     # essence earned (or in hand) before the Gorge Pit is due
+const RESERVE_MAX := 45.0       # a reserve not spent in this long (no room, no grub) ...
+const RESERVE_REST := 30.0      # ... is dropped for this long
+
+## (tools switch it off before a match for a "before" number: the Brood computer as it was)
+static var enabled := true
+
+var ai: AI
+var game: Game
+var team := 1
+var _foe_seen := {}             # enemy unit instance id -> {"u": Unit, "v": value, "t": clock seen}
+var _watch_t := -99.0
+var _inc: Array = []            # [clock, biomass earned so far, supply used] every 5 s (the last minute)
+var supply_due := false         # a Clutch Mound is due (its biomass is put by)
+var _harvesters := {}           # grub -> {"at": the spot it harvests, "swarm": sent along with a swarm}
+var _harvest_t := 0.0
+var _offer_t := 0.0
+var _hold_said := -999.0        # (the match log: when a held attack was last noted)
+var _reserve_t := -1.0
+var _reserve := 0
+var _res_why := ""              # what the biomass is put by for ("mound", "pen", "gorge") ...
+var _res_since := 0.0           # ... since when
+var _rest_until := 0.0          # (a reserve that went unspent too long is dropped until then)
+## (tests and tools/measure_brood_ai.gd read these)
+var harvest_sent := 0           # grubs sent to harvest
+var retreats := 0               # waves pulled back from a lost fight
+var holds := 0                  # times a wave was held back by what was seen
+var offered := 0                # creatures offered up at the Pen
+
+
+func _init(a: AI) -> void:
+	ai = a
+	game = a.game
+	team = a.team
+
+
+## Every think (before the army's): what the eyes show, the income, the harvesters.
+func tick() -> void:
+	_watch()
+	_sample()
+	_harvest()
+
+
+func _say(msg: String) -> void:
+	if game.mlog:
+		game.mlog.add("%s %s" % [game.mlog.who(team), msg])
+
+
+# ------------------------------------------------------------------ what we know of the enemy army
+
+## Every armed enemy unit in sight is remembered with its value; one seen to fall (in sight, or by our
+## hand) is struck off; the rest are forgotten MEMORY seconds after they were last seen.
+func _watch() -> void:
+	if game.clock - _watch_t < 1.0:
+		return
+	_watch_t = game.clock
+	for u in game.units:
+		if u.dead or u.off_field or u.is_worker() or u.kind == "horse" or not game.hostile(u.team, team):
+			continue
+		if not (u.has_attack() or Defs.MUSKETS.has(u.kind)):
+			continue
+		if game.is_visible_to(team, u.position):
+			_foe_seen[u.get_instance_id()] = {"u": u, "v": float(Game.unit_value(u)), "t": game.clock}
+	for id in _foe_seen.keys():
+		var e: Dictionary = _foe_seen[id]
+		if game.clock - float(e["t"]) > MEMORY:
+			_foe_seen.erase(id)
+			continue
+		var u = e["u"]
+		if is_instance_valid(u) and u.dead and (game.is_visible_to(team, u.position) or u.last_hit_team == team):
+			_foe_seen.erase(id)
+
+
+## What the enemy army is worth as far as our eyes have shown it: the soldiers seen lately, less the
+## ones seen to fall (the match log's value: cost per unit made).
+func known_foe_value() -> float:
+	_watch()
+	var v := 0.0
+	for id in _foe_seen:
+		v += float(_foe_seen[id]["v"])
+	return v
+
+
+## Our army's worth the same way (eggs hatching count: they are on their way).
+func army_value(list: Array) -> float:
+	var v := 0.0
+	for u in list:
+		v += float(Game.unit_value(u))
+	return v
+
+
+## May a wave worth `mine` go? Not into an enemy army clearly stronger than it, as far as we know it.
+## A held wave is noted in the match log (once a minute at most).
+func attack_ok(mine: float, ratio := ATTACK_RATIO) -> bool:
+	var known := known_foe_value()
+	if known <= 0.0 or mine >= known * ratio or game.supply_used(team) >= game.max_supply(team) - 12:
+		return true         # (nothing known against it, or at the supply cap: the army cannot grow, it goes)
+	if game.clock - _hold_said > 60.0:
+		_hold_said = game.clock
+		holds += 1
+		_say("holds its attack: the enemy army it has seen is worth %d, its own %d; it defends and builds up first" % [int(known), int(mine)])
+	return false
+
+
+## Is this wave clearly losing its fight? The armed enemies in sight within FIGHT_R of any of its units
+## against the wave's own worth (health counted): a rout at once, a clear loss once it has bled.
+func wave_lost(wave: Array, sent: float) -> bool:
+	if wave.is_empty():
+		return false
+	var mine := 0.0
+	var foes := {}
+	for u in wave:
+		mine += ai._unit_value(u)
+		for o in game.units_near(u.position, FIGHT_R):
+			if not foes.has(o) and game.hostile(o.team, team) and not o.dead and not o.off_field and ai._armed(o) and ai._sighted(o):
+				foes[o] = true
+	var theirs := 0.0
+	for o in foes:
+		theirs += ai._unit_value(o)
+	if theirs < LOST_MIN:
+		return false
+	var bled := 1.0 - mine / maxf(1.0, sent)
+	return theirs > mine * LOST_ROUT or (theirs > mine * LOST_RATIO and bled >= LOST_SHARE)
+
+
+## Two or more Horsemen in sight by this raid spot (AI._defend): a raiding party hunting the grubs, not a
+## lone rider. Four Raptors are no match for two of them (and AI._defend sent nobody when they were
+## worth too little against them): the Raptors answer it as a pack, which also drives the party home.
+func raid_party(spot: Vector2) -> bool:
+	var riders := 0
+	for o in game.units_near(spot, 300.0):
+		if game.hostile(o.team, team) and not o.dead and not o.off_field and ai._armed(o) and AIScout._is_horseman(o) and ai._sighted(o):
+			riders += 1
+	return riders >= 2
+
+
+## The wave pulls back home (a lost fight is a lost fight, not a lost army): noted in the match log.
+func retreat(wave: Array, why_theirs: float) -> void:
+	retreats += 1
+	var front: Vector2 = ai._front()
+	for u in wave:
+		if is_instance_valid(u) and not u.dead:
+			u.siege_t = 0.0
+			u.cmd_move(ai._home_spot(front))
+	_say("pulls its swarm back: the fight is lost (%d of its own against %d in sight); the next wave waits for a bigger army" % [int(army_value(wave)), int(why_theirs)])
+
+
+## The enemy value in sight around a wave (for the log line of a retreat).
+func fight_value(wave: Array) -> float:
+	var foes := {}
+	for u in wave:
+		for o in game.units_near(u.position, FIGHT_R):
+			if game.hostile(o.team, team) and not o.dead and not o.off_field and ai._armed(o) and ai._sighted(o):
+				foes[o] = true
+	var v := 0.0
+	for o in foes:
+		v += ai._unit_value(o)
+	return v
+
+
+# ------------------------------------------------------------------ supply
+
+func _sample() -> void:
+	if _inc.is_empty() or game.clock - float(_inc[_inc.size() - 1][0]) >= 5.0:
+		_inc.append([game.clock, float(game.stats[team]["gold"]), float(game.supply_used(team))])
+		while _inc.size() > 13:
+			_inc.pop_front()
+
+
+## Biomass earned a second over the last minute (4 until there is a history).
+func income() -> float:
+	if _inc.size() < 3:
+		return 4.0
+	var a: Array = _inc[0]
+	var b: Array = _inc[_inc.size() - 1]
+	return maxf(0.0, (float(b[1]) - float(a[1])) / maxf(1.0, float(b[0]) - float(a[0])))
+
+
+## Supply taken up a second over the last minute (what was actually hatched, less what fell).
+func supply_growth() -> float:
+	if _inc.size() < 3:
+		return 0.0
+	var a: Array = _inc[0]
+	var b: Array = _inc[_inc.size() - 1]
+	return maxf(0.0, (float(b[2]) - float(a[2])) / maxf(1.0, float(b[0]) - float(a[0])))
+
+
+## How much free supply to keep: what the eggs will fill while a Clutch Mound goes up (the supply taken
+## up lately, never under the income spent on grubs, 50 biomass a supply, nor over the income spent on
+## Raptors once the Spawning Den stands, 25, nor faster than the Burrows lay: one egg every 9 s each),
+## plus what could hatch at once from the eggs and biomass in hand, plus a little.
+func supply_margin() -> int:
+	var eggs := 0
+	var halls := 0
+	for h in ai._halls():
+		if h.built:
+			eggs += h.eggs
+			halls += 1
+	var den := game._has_built(team, "warren")
+	var per := 25.0 if den else 50.0
+	var per_egg := 3 if den else 1
+	var lay := float(per_egg * halls) * game.egg_rate(team) / Defs.EGG_TIME
+	var rate := minf(clampf(supply_growth(), income() / 50.0, income() / per), lay)
+	var now := mini(eggs * per_egg, int(float(ai._gold()) / per))
+	return clampi(int(ceil(rate * LEAD)) + now + 2, 4, 30)
+
+
+## Clutch Mounds ahead of need (in place of AI._supply for the Brood): a second one at once when the
+## margin is wide. Without the 75 biomass the mound is put by first (reserve).
+func supply() -> void:
+	supply_due = false
+	var cap: int = game.players[team]["cap"]
+	if cap >= game.max_supply(team):
+		return
+	var sup: String = ai._sup()
+	var going := 0
+	for b in ai._mine(sup):
+		if not b.built:
+			going += 1
+	var coming := going * int(Defs.BUILDINGS[sup]["supply"])
+	for h in ai._halls():
+		if not h.built:
+			coming += int(Defs.BUILDINGS[h.kind]["supply"])
+	if cap + coming >= game.max_supply(team):
+		return
+	var margin := supply_margin()
+	if ai.strategy in ["rush", "xrush"] and not ai._first_wave:
+		margin = 2          # (a rush's first wave first: a mound only once an egg of Raptors would not fit)
+	var free := cap + coming - game.supply_used(team)
+	if free > margin or going >= (2 if margin > 14 else 1):
+		return
+	supply_due = true
+	if ai._gold() < int(Defs.BUILDINGS[sup]["cost"]):
+		return
+	ai._construct(sup, ai._mound_spot())
+
+
+# ------------------------------------------------------------------ biomass put by for what is due
+
+## The Brood Pen is due: the Spawning Den stands and the army has caught up with what the plan wants by
+## now (Horsemen seen: at once, Spitters answer them; on a rush plan: once the first wave has gone). The
+## six-pool builds none while it lasts.
+func pen_due() -> bool:
+	if ai.strategy == "xrush" or not ai._mine("brood_pen").is_empty() or not game._has_built(team, "warren"):
+		return false
+	if ai._no_room.has("brood_pen"):
+		return false
+	if ai.strategy == "rush" and not ai._first_wave:
+		return false
+	return not ai._army_behind() or ai._horse_alert()
+
+
+## The Gorge Pit (Brutes, Mist Toads, the Broodmound) is due: its time by the plan, once the Pen stands,
+## the army has caught up (Horsemen seen: at once) and essence is coming in (GORGE_ESSENCE earned or in
+## hand: everything it unlocks costs essence, so without it the Pit is 200 biomass and a grub for nothing).
+func gorge_due(t: float) -> bool:
+	if not ai._mine("gorge_pit").is_empty() or not game.requirement_met(team, "gorge_pit") or not game._has_built(team, "brood_pen"):
+		return false
+	if ai._army_behind() and not ai._horse_alert():
+		return false
+	if float(game.stats[team]["res2_in"]) < GORGE_ESSENCE and ai._res2() + essence_coming() < GORGE_ESSENCE:
+		return false
+	return t > float(ai._lv([480.0, 250.0, 190.0]))
+
+
+## Biomass to keep in hand for a building that is due (worked out once a think): eggs and grubs wait for
+## it, or they would eat every coin as it comes in and the building would never go up. A Clutch Mound is
+## always put by (nothing hatches without supply); the Pen only with a few Raptors at home (PEN_GUARD
+## supply) and the Gorge Pit with a few more (GORGE_GUARD), and neither while the enemy is in our base.
+## A reserve that has not been spent in RESERVE_MAX seconds (no room, no grub to build it) is dropped
+## for RESERVE_REST seconds: it must never starve the eggs for good.
+func reserve() -> int:
+	if _reserve_t == game.clock:
+		return _reserve
+	_reserve_t = game.clock
+	var r := 0
+	var why := ""
+	if supply_due:
+		r = int(Defs.BUILDINGS[ai._sup()]["cost"])
+		why = "mound"
+	if ai._threat() == Vector2.INF and game.clock >= _rest_until:
+		var guard := ai._army_supply(game.army(team))
+		if pen_due() and guard >= PEN_GUARD:
+			r = maxi(r, int(Defs.BUILDINGS["brood_pen"]["cost"]))
+			why = "pen"
+		elif guard >= GORGE_GUARD and gorge_due(game.clock / float(ai._s("tech")) + (60.0 if ai._gold() > 500 else 0.0)):
+			r = maxi(r, int(Defs.BUILDINGS["gorge_pit"]["cost"]))
+			why = "gorge"
+	if why != _res_why:
+		_res_why = why
+		_res_since = game.clock
+	elif why != "" and why != "mound" and game.clock - _res_since > RESERVE_MAX:
+		_rest_until = game.clock + RESERVE_REST
+		r = int(Defs.BUILDINGS[ai._sup()]["cost"]) if supply_due else 0
+	_reserve = r
+	return r
+
+
+## Would spending `price` now eat into what is put by?
+func holding(price: int) -> bool:
+	var r := reserve()
+	return r > 0 and ai._gold() - price < r
+
+
+# ------------------------------------------------------------------ essence
+
+## The essence to have in hand for the next tech creature: two eggs of Spitters once the Pen stands;
+## a Brute or a Mist Toad with the Gorge Pit; the Broodmound's 50 when it is saved for; a Skywing's
+## 40 with a Roost.
+func essence_want() -> float:
+	var want := 0.0
+	if game._has_built(team, "brood_pen"):
+		want = 2.0 * float(Defs.UNITS["spitter"]["cost2"])
+	if game._has_built(team, "gorge_pit"):
+		want = maxf(want, float(Defs.UNITS["mist_toad"]["cost2"]))
+	if game._has_built(team, "roost"):
+		want = maxf(want, float(Defs.UNITS["skywing"]["cost2"]))
+	if ai._mound_saving():
+		want = maxf(want, float(Defs.HALL_LEVELS[2]["cost2"]) + 20.0)
+	return want
+
+
+## A Roost (Skywings: 40 essence each) only once the essence for one is there or the enemy has shown flyers
+## (Skywings hunt them): without essence it is 175 biomass and a grub for nothing.
+func roost_ok() -> bool:
+	return ai._res2() >= float(Defs.UNITS["skywing"]["cost2"]) or ai._foe_air() > 0
+
+
+## An egg of Spitters (5 essence) only from essence beyond what the next Brute needs once there is a Gorge
+## Pit, unless the enemy has shown flyers (Spitters are the swarm's answer to them).
+func spitter_ok() -> bool:
+	if not game._has_built(team, "gorge_pit") or ai._foe_air() > 0:
+		return true
+	return ai._res2() - float(Defs.UNITS["spitter"]["cost2"]) >= float(Defs.UNITS["brute"]["cost2"])
+
+
+## The essence on its way: offerings walking to the Pen, cocoons carried home, bodies being wrapped.
+func essence_coming() -> float:
+	var v := 0.0
+	for u in game.army(team):
+		if u.order == "sacrifice":
+			v += float(Game.sacrifice_value(u.kind))
+	for g in game.workers(team):
+		if g.order == "harvest":
+			v += g.cocoon
+			if g._corpse != null and is_instance_valid(g._corpse):
+				v += game.corpse_value(g._corpse)
+	return v
+
+
+## With too little essence for the next tech creature and no bodies coming, spare Raptors at home are
+## offered up at the Pen (3 essence each): only the army's surplus over what the plan wants by now
+## (AI._army_want: an army under it needs every Raptor), never from a wave, never with the enemy in our
+## base, never the last GUARD of them; a few at a time.
+func offer() -> void:
+	if game.clock < _offer_t or ai._hall_reserve or ai._threat() != Vector2.INF:
+		return
+	var pen := game.nearest_of(game.center_of_team(team), team, "brood_pen")
+	if pen == null or not pen.built:
+		return
+	var want := essence_want()
+	var have := ai._res2() + essence_coming()
+	if want <= 0.0 or have >= want:
+		return
+	if not _bodies().is_empty():
+		return              # (bodies to harvest: the grubs bring the essence)
+	var in_wave := {}
+	for g in ai._swarm:
+		for u in g[0]:
+			in_wave[u] = true
+	for u in ai._xr_wave:
+		in_wave[u] = true
+	var raptors := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "raptor" and not in_wave.has(u) \
+		and u.order in ["idle", "move", "amove"] and u.target == null and u.can_sacrifice())
+	var per_value := float(Game.unit_value(raptors[0])) if not raptors.is_empty() else 25.0
+	var surplus := int(floor((ai._army_value() - ai._army_want()) / per_value))
+	var spare := mini(raptors.size() - GUARD, surplus)
+	if spare <= 0:
+		return
+	raptors.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(pen.center()) < b.position.distance_squared_to(pen.center()))
+	var per := float(Game.sacrifice_value("raptor"))
+	var n := mini(mini(int(ceil((want - have) / per)), 4), spare)
+	for u in raptors.slice(0, n):
+		u.cmd_sacrifice()
+		offered += 1
+	_offer_t = game.clock + float(ai._lv([40.0, 25.0, 15.0]))
+
+
+# ------------------------------------------------------------------ harvesting the fallen
+
+## Is this spot safe for a grub: no armed enemy seen within HARVEST_CLEAR, and on our side (within
+## HARVEST_HOME of one of our buildings)?
+func _safe(p: Vector2) -> bool:
+	if ai._home_dist(p) > HARVEST_HOME:
+		return false
+	for o in game.units_near(p, HARVEST_CLEAR):
+		if game.hostile(o.team, team) and not o.dead and not o.off_field and ai._armed(o) and ai._sighted(o):
+			return false
+	return not ai._gun_danger(p)
+
+
+## The bodies we can harvest now, in groups (each [centre, essence, count]): in sight, not torn, not
+## claimed, on safe ground our grubs can walk to.
+func _bodies() -> Array:
+	var groups: Array = []
+	var cap := game.capital(team)
+	if cap == null:
+		return groups
+	var home_reg: int = ai._region_at(cap.center() + Vector2(0, cap.rect().size.y * 0.5 + 20.0))
+	for c in game.corpses:
+		if not is_instance_valid(c) or c.torn:
+			continue
+		var h = c.harvester
+		if h != null and is_instance_valid(h) and not h.dead and h.order == "harvest":
+			continue
+		if not game.is_visible_to(team, c.position):
+			continue
+		var placed := false
+		for gr in groups:
+			if (gr[0] as Vector2).distance_to(c.position) < float(Defs.HARVEST["range"]) * Defs.TILE * 0.6:
+				gr[1] = float(gr[1]) + game.corpse_value(c)
+				gr[2] = int(gr[2]) + 1
+				placed = true
+				break
+		if not placed:
+			groups.append([c.position, game.corpse_value(c), 1])
+	return groups.filter(func(gr: Array) -> bool: return float(gr[1]) >= HARVEST_MIN and _safe(gr[0]) \
+		and (home_reg < 0 or ai._region_at(gr[0]) == home_reg or ai._region_at(gr[0]) < 0))
+
+
+## Grubs harvest the bodies left after a fight (a few, the nearest that are not carrying food), and go
+## back to their pits when none are left by their spot or it turns dangerous (the swarm's own
+## harvesters too: they used to stand at the staging point for good).
+func _harvest() -> void:
+	if game.clock < _harvest_t:
+		return
+	_harvest_t = game.clock + 2.0
+	for g in game.workers(team):
+		if g.order == "harvest" and not _harvesters.has(g):
+			_harvesters[g] = {"at": g.harvest_home, "swarm": true}      # (sent with a swarm by AI._swarm_army)
+	for g in _harvesters.keys():
+		if not is_instance_valid(g) or g.dead or g.order != "harvest":
+			_harvesters.erase(g)
+			continue
+		if g.cocoon > 0.0 or (g._corpse != null and is_instance_valid(g._corpse)):
+			continue            # (wrapping one, or carrying one home)
+		var job: Dictionary = _harvesters[g]
+		var spot: Vector2 = job["at"]
+		var left := false
+		for c in game.corpses:
+			if is_instance_valid(c) and not c.torn and c.position.distance_to(spot) < float(Defs.HARVEST["range"]) * Defs.TILE:
+				left = true
+				break
+		if job["swarm"] and ai._swarm_phase != "" and _safe(g.position):
+			continue            # (the swarm's harvesters wait by it while it fights: bodies are coming)
+		if not left or not _safe(g.position):
+			_harvesters.erase(g)
+			ai._resume(g)
+	var room := HARVEST_MAX - _harvesters.size()
+	if room <= 0 or game.corpses.is_empty() or game.workers(team).size() < HARVEST_WORKERS:
+		return
+	var groups := _bodies()
+	if groups.is_empty():
+		return
+	groups.sort_custom(func(a: Array, b: Array) -> bool: return float(a[1]) > float(b[1]))
+	var free: Array = game.workers(team).filter(func(g: Unit) -> bool: return g.order == "gather" and g.carrying == 0 \
+		and g.cocoon <= 0.0 and not ai._fled.has(g) and not ai._fighters.has(g) and not (ai.scout != null and ai.scout.is_scout(g)))
+	for gr in groups:
+		if room <= 0 or free.is_empty():
+			break
+		var at: Vector2 = gr[0]
+		var n := mini(mini(int(ceil(float(gr[2]) / 3.0)), 3), room)
+		free.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(at) < b.position.distance_squared_to(at))
+		for g in free.slice(0, n):
+			g.cmd_harvest()
+			g.harvest_home = at
+			_harvesters[g] = {"at": at, "swarm": false}
+			harvest_sent += 1
+			room -= 1
+		free = free.slice(n)
