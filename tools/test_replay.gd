@@ -272,7 +272,7 @@ func _watch() -> bool:
 func _frame_at(clk: float) -> int:
 	var k := -1
 	for i in truth.size():
-		if float(truth[i]["clk"]) <= clk + 0.0005:
+		if float(truth[i]["clk"]) <= clk:
 			k = i
 	return k
 
@@ -340,9 +340,11 @@ func _compare(rp: ReplayPlayer, k: int, f: float, old: bool) -> Dictionary:
 	for n in g.world.get_children():
 		if n is Unit and n.dead and not n.is_queued_for_deletion() and n.died_at < t0 - 0.01:
 			stale += 1
+			bad.append("old body %s died %.1f" % [n.kind, n.died_at])
 	for n in g.get_children():
-		if n is Effect and not n.is_queued_for_deletion() and n.visible and not old:
-			pass                    # (effects of the pictures since the keyframe are not played on a seek: none should be)
+		if n is Shot and not n.is_queued_for_deletion() and f == 0.0:
+			stale += 1              # (right after a seek: it fires no shots from the pictures it runs through, none may be in the air)
+			bad.append("left over shot")
 	return {"bad": bad, "worst": worst, "stale": stale}
 
 

@@ -46,7 +46,9 @@ func _run() -> void:
 	# the end screen, as after a match
 	g.over = true
 	main._on_end(-1)
-	await create_timer(1.6).timeout
+	while not main.ui_layer.get_children().any(func(c) -> bool: return c.has_signal("watch_replay")):
+		await process_frame
+	await create_timer(0.8).timeout
 	await _shot("end.png")
 	main._to_menu()
 	await process_frame

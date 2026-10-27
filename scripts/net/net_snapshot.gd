@@ -500,7 +500,7 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	# movement: glide from where it is to the new spot over about one snapshot interval (NetPuppet.tick_unit)
 	var mo = s.motion.get(id)
 	var shown: Vector2 = u.position - s.lead_off(id)       # (where the pictures have it: a unit walking off at once is shown ahead)
-	var stale: bool = mo != null and float(mo[2]) > s.interval * 3.0 and shown.distance_to(pos) > 24.0     # (out of sight a while: it jumps, no glide across)
+	var stale: bool = mo != null and float(mo[2]) > s.interval * 3.0 and shown.distance_to(pos) > maxf(24.0, s.interval * 300.0)     # (out of sight a while: it jumps, no glide across; a replay's pictures come 5 a second, a step between them is longer)
 	if fresh or mo == null or stale or shown.distance_to(pos) > 260.0:
 		s.motion[id] = [pos, pos, 99.0]
 		s.push_pos(id, pos, true)
@@ -528,6 +528,7 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	_set_unit_vals(u, row, o)
 	if bool(row[o + 12]) and not u.armoured:
 		u.put_on_armour()
+		u.hp = float(row[4])            # (putting it on adds health of its own: the row's is the true one)
 	var art_row := String(row[o + 14])
 	if art_row != "" and art_row != u.art and ArtData.UNITS.has(art_row):
 		u.art = art_row

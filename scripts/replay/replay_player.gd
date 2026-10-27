@@ -430,6 +430,9 @@ func seek(t: float) -> void:
 	rclk = t
 	game.clock = t
 	at_end = t >= length - 0.001
+	if at_end and playing:
+		playing = false              # (the end: it stands there; PLAY starts it from the beginning)
+		_freeze(true)
 	# the chat: the lines of the last few seconds, as they would still show
 	_ev = 0
 	if game.chat:
@@ -480,6 +483,9 @@ func _clear_world() -> void:
 	for grp in g.groups:
 		grp.clear()
 	g._floats.clear()
+	g._fx_hidden.clear()
+	g._tracers.clear()
+	g._pings.clear()
 	by_id.clear()
 	motion.clear()
 	hist.clear()

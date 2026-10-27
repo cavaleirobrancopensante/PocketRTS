@@ -695,6 +695,8 @@ func _guest_tick() -> void:
 			return
 		_guest_replay_checks(s)
 		step = 30
+	if step == 30 and coop and g.rec and not results.has("guest_view_only_plays"):
+		_guest_view_only_check()
 	if step == 30:
 		print("GUEST_RESULT snaps=%d interval=%.3f cmds=%d cmd_rtt=%.0f ms ping=%.0f ms recv=%d bytes (%.1f KB/s)" % [s.snaps_got, s.interval, s.cmd_seq, s.cmd_rtt_ms, s.link.rtt_ms, s.link.recv_bytes, s.link.recv_bytes / 1024.0 / maxf(t, 1.0)])
 		_lag_report()
@@ -748,6 +750,32 @@ func _guest_replay_checks(s: NetSession) -> void:
 		ok = ok and rp.cam_teams().has(0) and rp.cam_teams().has(lobby.my_slot) and rp._cams.has(lobby.my_slot) and rp._cams.has(0)
 		pg.queue_free()
 	check("guest_replay_plays", ok, "units by team at the middle %s; listed as %s for this player; cameras %s" % [str(teams), meta.get("result", "?"), cams])
+
+
+## Co-op: the guest is out but the match goes on for the host, so no whole replay comes yet: the guest's own record
+## (its view only) is what it keeps, and it plays.
+func _guest_view_only_check() -> void:
+	var path: String = g.rec.finish(-1, true)
+	var d := ReplayPlayer.load_file(path)
+	var ok := path != "" and not d.has("error") and bool(d["header"].get("view_only", false))
+	var teams := {}
+	if ok:
+		var pg := Game.new()
+		pg.puppet = true
+		pg.demo = true
+		pg.factions = g.factions.duplicate()
+		pg.colours = g.colours.duplicate()
+		pg.sides = g.sides.duplicate()
+		pg.income_mult = g.income_mult.duplicate()
+		pg.map_id = g.map_id
+		root.add_child(pg)
+		var rp := ReplayPlayer.play(pg, d)
+		rp.seek(rp.length * 0.5)
+		for u in pg.units:
+			teams[u.team] = int(teams.get(u.team, 0)) + 1
+		ok = teams.has(lobby.my_slot) and rp.view_only
+		pg.queue_free()
+	check("guest_view_only_plays", ok, "%s, units by team at the middle %s" % [path.get_file(), str(teams)])
 
 
 ## Host: answers the guest's chat line, sees its pause and its surrender.
