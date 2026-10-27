@@ -779,8 +779,9 @@ func _tier3() -> void:
 	var fed: Array = works.filter(func(b: Building) -> bool: return GearEcon.spend_problem(game, b) == "")
 	# (the Jacks first: a Works goes on its big gear only once another one makes Jacks and a few are out; in 0.14.72's
 	# games the only Works that could make Jacks went onto its big gear and made Pendulums: the first Jack came at 8:00)
-	if fed.size() < 2 or game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size() < 3:
-		return
+	var jk: int = game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
+	if jk < 3 or (fed.size() < 2 and jk < 6):
+		return          # (one Works that may make Jacks: it goes on its big gear once six are out; it still makes Jacks there)
 	fed.reverse()
 	for w in fed:
 		if game.gear_swap_problem(w) == "":
@@ -3591,7 +3592,7 @@ func _army() -> void:
 		return
 	# (riders still on foot, their horses on the way, don't count yet: they follow mounted)
 	var ready := army.filter(func(u: Unit) -> bool: return not _horse_coming(u))
-	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping and _timing_ok(ready):
+	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping and _timing_ok(ready) and _kit_ready(ready):
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
@@ -3692,6 +3693,16 @@ func _army() -> void:
 				u.cmd_deploy()
 		if _clock() and Defs.gear_mode:
 			_follow_with_escort(army)       # (the Winders keep the waiting army wound: the rally may be off the gear ground)
+
+
+## Gear mode's Clockwork against a walled enemy: the first attack waits for its kit, the Jacks that shoot the menders
+## and the shooters on the edge (Normal 2, Hard 4), until 8:00 at the latest (Clock Soldiers alone at a mended gate
+## lost 25 for 1 in the 0.14.72 siege). A rush plan or an enemy without walls goes as before.
+func _kit_ready(list: Array) -> bool:
+	if not (_clock() and Defs.gear_mode) or difficulty < 1 or strategy == "rush" or _first_wave or game.clock > 480.0 or not _foe_walled():
+		return true
+	var jacks := list.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
+	return jacks >= _lv([0, 2, 4])
 
 
 ## A timing attack the scout sized waits while the army is not worth enough against what
@@ -5609,6 +5620,8 @@ func _open_target(enemy: int) -> Vector2:
 			continue
 		if _bad_spots.keys().any(func(p: Vector2) -> bool: return float(_bad_spots[p]) > game.clock and p.distance_to(bc) < 500.0):
 			continue          # (a wave just lost far more than it killed there: _losing_trade)
+		if _overlooked(bc, flood):
+			continue          # (under a walled plateau's guns: the siege of the main is weighed up instead)
 		var score: float = bc.distance_to(me)
 		if b.kind == game.faction_hall(enemy):
 			score -= 600.0
@@ -5621,6 +5634,27 @@ func _open_target(enemy: int) -> Vector2:
 		_open_b = best
 		_open_at = best.center()
 	return _open_at
+
+
+## Spot p lies under high ground we cannot walk onto (a walled plateau: its Musketeers and guns shoot down on whoever
+## fights there): a walkable high-ground cell outside `flood` within COVER_R. (A Crown expansion right under its main's
+## cliff drew wave after wave into the fire from above, 0.14.73 Greenhold.)
+const COVER_R := 300.0
+
+
+func _overlooked(p: Vector2, flood: PackedByteArray) -> bool:
+	if game.on_high(p):
+		return false
+	var c0: Vector2i = game.cell_of(p)
+	var r := int(COVER_R / Defs.TILE)
+	for dy in range(-r, r + 1, 2):
+		for dx in range(-r, r + 1, 2):
+			if dx * dx + dy * dy > r * r:
+				continue
+			var c := c0 + Vector2i(dx, dy)
+			if game.in_map(c) and game.height[game.idx(c)] == 1 and flood[game.idx(c)] == 0 and _walkable(c, -1):
+				return true
+	return false
 
 
 ## Some cell right beside building b is in `flood` (we can walk up to it).

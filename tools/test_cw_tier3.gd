@@ -228,6 +228,7 @@ func _run() -> void:
 	foot.cmd_hold()
 	g.camera.position = fly.position
 	check("a flyer: a ground melee unit cannot hit it in the air", fly.is_air() and not foot.can_hit(fly))
+	nt.phase = ""             # (its last net's follow-through done too: a new order no longer skips the reload, 0.14.73)
 	nt.cooldown = 0.0
 	nt.cmd_attack(fly)
 	t = 0.0

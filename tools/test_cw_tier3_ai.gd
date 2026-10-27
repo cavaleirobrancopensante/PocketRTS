@@ -1,7 +1,7 @@
 extends SceneTree
 ## The gear-mode Clockwork COMPUTER and tier 3 (AI._tier3, AI._produce; scripts/pendulum.gd, scripts/netter.gd): a Hard
-## Clockwork with two Movement Works and a working Escapement (a Mainspring meshing with it), cogs and Tension to spare,
-## against a passive Crown. It puts ONE Works on its big gear, then mixes a few Pendulums (from that Works) and Netters
+## Clockwork with two Movement Works, a working Escapement (a Mainspring meshing with it), six Jacks (the Jacks come
+## first: 0.14.73), cogs and Tension to spare, against a passive Crown. It puts ONE Works on its big gear, then mixes a few Pendulums (from that Works) and Netters
 ## into its army; a Netter of its own nets the most dangerous enemy that comes in reach (a Cuirassier before a Labourer
 ## with less health left: the focus fire of AI._micro leaves the Netters to their own pick).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_tier3_ai.gd
@@ -84,6 +84,10 @@ func _run() -> void:
 	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
 	for i in 3:
 		_put(Defs.CW_SUPPLY, hall)
+	# (0.14.73: the Jacks first: a Works goes on its big gear once three Jacks are out and two Works may make them, or six
+	# with one, AI._tier3; six Jacks stand by here)
+	for i in 6:
+		g._add_unit(Defs.JACK, 0, g.cell_center(g.nearest_free(g.cell_of(hall.center() + Vector2(-120 + i * 40, 160)), 6)))
 	await physics_frame
 	g.gear_net.solve()
 	check("the computer's Escapement works (meshed with its Mainspring)", esc != null and g.gear_net.speed_mult(esc) > 0.0)
