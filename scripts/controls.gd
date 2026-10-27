@@ -158,6 +158,60 @@ func _unhandled_input(event: InputEvent) -> void:
 	game.input_cmd = false
 
 
+## A drag ends when its button or finger is let go, wherever that happened. A release over the HUD or another
+## Control is taken by the UI and never reaches _unhandled_input: the drag never ended and kept following the mouse
+## (a right-drag line "running out of control", playtest 0.14.82). Touch: a finger lifted is seen here first and, if
+## _unhandled_input didn't get it (_touches still has it once the event is through), ended by _touch_lost. The mouse
+## buttons are checked every frame (_end_lost_drags).
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch and not (event as InputEventScreenTouch).pressed and _touches.has((event as InputEventScreenTouch).index):
+		_touch_lost.call_deferred((event as InputEventScreenTouch).index)
+
+
+func _touch_lost(index: int) -> void:
+	if game == null or not _touches.has(index):
+		return                      # (_unhandled_input had it: done as usual)
+	var was_multi := _touches.size() >= 2
+	_touches.erase(index)
+	_press.erase(index)
+	game.input_cmd = true
+	if _line_btn == "touch" and not was_multi:
+		if _line_end():
+			cancel_mode()
+	else:
+		line = PackedVector2Array()
+		_line_btn = ""
+		if _box_from != Vector2.INF and not was_multi:
+			_finish_box()
+	_box_from = Vector2.INF
+	game.input_cmd = false
+
+
+## The mouse side of the above: a drag whose button is no longer held ends where the mouse is now (a line long
+## enough is carried out; never a click on what lies under the UI).
+func _end_lost_drags() -> void:
+	if _mid_pan and not Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		_mid_pan = false
+	if not Settings.pc():
+		return
+	var mp := game.get_viewport().get_mouse_position()
+	var shift := Input.is_key_pressed(KEY_SHIFT)
+	game.input_cmd = true
+	if _line_btn == "right" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		_line_add(mp)
+		_line_end(_queued(shift))
+	elif _line_btn == "left" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_line_add(mp)
+		if _line_end(shift) and not shift:
+			cancel_mode()
+	if _lmb_down and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_lmb_down = false
+		if _box_from != Vector2.INF:
+			_box_to = mp
+			_finish_box(shift)
+	game.input_cmd = false
+
+
 func _on_input(event: InputEvent) -> void:
 	if game.over and not game.map_view:
 		return
@@ -486,6 +540,7 @@ func _key(e: InputEventKey) -> void:
 func _process(delta: float) -> void:
 	if game == null or (game.over and not game.map_view):
 		return
+	_end_lost_drags()
 	# Keyboard panning
 	var k := Vector2.ZERO
 	if not (hud and hud.chat_typing):          # (typing in the chat box: the arrow keys are not for panning)

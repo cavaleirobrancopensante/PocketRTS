@@ -81,6 +81,11 @@ func die() -> void:
 			game.float_text(global_position + Vector2(0, -26), "crate lost", Color(1, 0.6, 0.4))
 		if game.mlog:
 			game.mlog.add("%s lost the crate for a %s: cancelled" % [game.mlog.who(team), site.d["name"]])
+		if site.kind == game.faction_hall(site.team):
+			# (a computer's Clocktower crate shot on the road: that ground is the enemy's for a while, AI.note_lost_site)
+			for ai in game.ais:
+				if ai.team == site.team and ai.has_method("note_lost_site"):
+					ai.note_lost_site(site.cell)
 		game.abandon(site)
 	remove()
 

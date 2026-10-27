@@ -4750,9 +4750,14 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		return null          # (gear mode: a building's Tension price, the Clock Aviary's)
 	if not requirement_met(t, k):
 		return null
+	var old_wall: Building = null
 	if k == "gate":
-		var old_wall := _own_wall_at(t, c)
+		old_wall = _own_wall_at(t, c)
 		if old_wall:
+			if old_wall.ghost:
+				players[t]["gold"] += int(old_wall.d["cost"])      # (a planned piece never began: its price back)
+				stats[t]["spent"] -= int(old_wall.d["cost"])
+				stats[t]["built"] = maxi(0, int(stats[t]["built"]) - 1)
 			_remove_quietly(old_wall)
 	if k == "wall":
 		var old_gate := _own_gate_at(t, c)
@@ -4776,10 +4781,63 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		b.seeded = false
 		b._update_sprite()
 		builders = _one_builder(builders, b, queued)   # one grub becomes the building
+	if old_wall:
+		_wall_piece_to_gate(old_wall, b)
 	for u in builders:
 		if u is Unit and u.is_worker() and not u.dead:
+			# a gate laid over a wall a worker is building: the gate first, then on with the rest of his wall
+			var rest: Array = _wall_work(u, b) if old_wall and not queued else []
 			u.give({"o": "build", "e": b}, queued)
+			if not rest.is_empty():
+				u.line_rest = rest
 	return b
+
+
+## A gate takes the place of a wall piece: every worker who had that piece in his work (going to it, next in his
+## wall, Shift-queued) has the gate there instead, so the rest of the wall stays planned with its builders. (The piece
+## used to vanish from under them: a Labourer on his way to it stopped, nobody was coming to the other planned pieces
+## and the whole ghost wall went, the gate too, playtest 0.14.82.)
+func _wall_piece_to_gate(old: Building, gate: Building) -> void:
+	for u in units:
+		if u.dead or u.team != gate.team or not u.is_worker():
+			continue
+		for i in u.line_rest.size():
+			if u.line_rest[i] == old:
+				u.line_rest[i] = gate
+		for o in u.queue:
+			if String(o["o"]) == "build" and o.get("e") == old:
+				o["e"] = gate
+			elif String(o["o"]) == "wall":
+				var ps: Array = o["pieces"]
+				for i in ps.size():
+					if ps[i] == old:
+						ps[i] = gate
+		if u.order == "build" and u.order_target == old:
+			var rest: Array = u.line_rest.duplicate()
+			var q: Array = u.queue.duplicate()
+			u.cmd_build(gate)
+			u.line_rest = rest
+			u.queue = q
+
+
+## The unfinished wall pieces and gates a worker still has to build (where he's going, the rest of his wall, his
+## queued walls), without `skip`: what he goes on with after a gate laid over his wall.
+func _wall_work(u: Unit, skip: Building) -> Array:
+	var out: Array = []
+	var all: Array = []
+	if u.order == "build" and u.order_target is Building:
+		all.append(u.order_target)
+	all.append_array(u.line_rest)
+	for o in u.queue:
+		if String(o["o"]) == "wall":
+			all.append_array(o["pieces"])
+		elif String(o["o"]) == "build":
+			all.append(o.get("e"))
+	for p in all:
+		if p is Building and is_instance_valid(p) and p != skip and not p.dead and not p.built \
+				and (p.kind == "wall" or p.kind == "gate") and not out.has(p):
+			out.append(p)
+	return out
 
 
 ## Winders and grubs build one site each: of the selected workers the one with the least to do
