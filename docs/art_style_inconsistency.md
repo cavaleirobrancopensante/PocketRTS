@@ -275,3 +275,15 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   painted as buttons. A painted MEND (the key turning in a gear) and SWEEP (rollers with a cog flying into a hopper) could
   replace them.
 - A swept wreck goes in the torn-body puff of dust (Game.torn_fx), not a painted sweep effect.
+
+## Clockwork buildings going up out of the crate (code, 0.14.84)
+- Every Clockwork building's crate unfolding strip (assets/effects/crate_unfold_<kind>.png) is the ONE painted sheet
+  art/clockwork/crate_unfold.png (closed crate, lid open, sides folding, iron plates, gantry) scaled in code by
+  tools/import_crate.py to each building's construction sprite: the same crate and gantry for every building. The gear-mode
+  buildings (Cog Press, Mainspring, Regulator, Movement Works, Ratchet Turret, Escapement, Clock Aviary) had no strip until
+  0.14.84, so they showed no crate at all; a building added later without a re-run of the importer borrows the nearest
+  strip, scaled (Building.crate_art). Wanted: per-building painted unfolds (the crate opening into that building's frame).
+- The build-up after the unfold is code: the painted construction sprite (scaffold) is clipped from the bottom
+  (Building._rise: 40% of it at the start, all of it at half built), so it rises out of the plates; a hard straight cut, no
+  painted half-built stages. Wanted: two or three painted construction stages per building (plates and lower frame,
+  half-built walls in scaffold, the full scaffold) to replace the clip.
