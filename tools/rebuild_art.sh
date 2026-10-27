@@ -87,6 +87,10 @@ python3 tools/import_redraw_creatures.py  # Raptor + Grub: walk_s / se / ne / n 
 python3 tools/import_redraw_mounted.py    # Dragoon: walk_ne / se / e / n (Cuirassier kept)
 python3 tools/import_horse_coats.py     # horse coat masks for every strip with a horse (Cuirassier,
                                          # Field Cannon, Mortar, Powder Wagon): after all their sheets
+python3 tools/recolour_officers.py       # the Officers and the riders (Horseman, Cuirassier, both Officers): white coat,
+                                         # team-colour breeches, sash, plume and saddle cloth, their portraits too (after
+                                         # every sheet of theirs and the coat masks; before the Barracks drill strips and the
+                                         # veterancy trim masks, which read these strips; pristine copies in art/redraws/officer_white_src/)
 python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill (art/crown/powder_mill_horse.png:
                                          # replaces structures2's water mill, which import_art skips), its
                                          # millstone overlays, icon and the bay mill horse cut from the team

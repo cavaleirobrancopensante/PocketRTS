@@ -46,6 +46,9 @@ from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from import_horse_coats import fb_left  # noqa: E402
+from recolour_officers import WHITES, SASH  # noqa: E402
+
+OFFICER_COAT = WHITES + SASH
 
 UNITS_DIR = "assets/units"
 OUT = "assets/units/trim_masks"
@@ -101,7 +104,11 @@ def lum(rgb):
 
 def team_red(px):
     r, g, b = px[..., 0], px[..., 1], px[..., 2]
-    return (g == 0) & (b == 0) & ((r == 255) | (r == 150))
+    red = (g == 0) & (b == 0) & ((r == 255) | (r == 150))
+    # (the Officers' and riders' white coat and sash, tools/recolour_officers.py: their coat as it was)
+    for c in OFFICER_COAT:
+        red |= (r == c[0]) & (g == c[1]) & (b == c[2])
+    return red
 
 
 def head_box(px, pad=3, whole=False):
