@@ -403,6 +403,11 @@ def main():
             o[..., 1] = np.where(mask, np.clip(tone * 255 + 0.5, 0, 255), 0).astype(np.uint8)
             Image.fromarray(o).save(os.path.join(udir, key + ".png"))
             results[key] = (im, o)
+        # a strip that lost its trim keeps no .import of its own (Godot would then try to load a texture that is gone:
+        # "Failed loading resource" each time the unit shows that strip)
+        for f in os.listdir(udir):
+            if f.endswith(".png.import") and not os.path.exists(os.path.join(udir, f[:-len(".import")])):
+                os.remove(os.path.join(udir, f))
         print("%s: %d strips with trim (of %d)" % (unit, len(results), len(data)))
         if contact_dir:
             os.makedirs(contact_dir, exist_ok=True)

@@ -1,6 +1,6 @@
 extends SceneTree
 ## Replays (docs/replays.md), end to end in one process:
-##   godot --headless --fixed-fps 30 --script res://tools/test_replay.gd [-- secs:<n> map:<id> seed:<n> spawn:<n>]
+##   godot --headless --fixed-fps 30 --script res://tools/test_replay.gd [-- secs:<n> map:<id> seed:<n> spawn:<n> a:<faction> b:<faction>]
 ## Two Hard computers play for `secs` game seconds while the replay is recorded (as every match is); the true state of
 ## every unit is kept at each recorded picture. Then the replay is played back (Main.start_replay: the viewer with its
 ## HUD and bar) and checked: at several times the puppet's units match the match (kind, team, place within a few px,
@@ -15,6 +15,8 @@ var map := "hollowfen"
 var seed_ := 4242
 var secs := 150.0
 var spawn := 0
+var fa := "crown"
+var fb := "brood"
 var stage := "play"
 var truth: Array = []            # one per recorded picture: {"clk", "u": {id: [kind, team, pos, hp]}}
 var rec_path := ""
@@ -80,6 +82,10 @@ func _initialize() -> void:
 			seed_ = int(a.substr(5))
 		elif a.begins_with("spawn:"):
 			spawn = int(a.substr(6))
+		elif a.begins_with("a:"):
+			fa = a.substr(2)
+		elif a.begins_with("b:"):
+			fb = a.substr(2)
 
 
 func check(name: String, ok: bool, detail := "") -> void:
@@ -105,8 +111,8 @@ func _play() -> bool:
 	if t > 0.2 and main.game == null:
 		seed(seed_)
 		main.start({"map": map, "seed": seed_, "slots": [
-			{"who": "hard", "faction": "crown", "colour": 0, "side": 0, "strategy": "balanced"},
-			{"who": "hard", "faction": "brood", "colour": 1, "side": 1, "strategy": "balanced"}]})
+			{"who": "hard", "faction": fa, "colour": 0, "side": 0, "strategy": "balanced"},
+			{"who": "hard", "faction": fb, "colour": 1, "side": 1, "strategy": "balanced"}]})
 		return false
 	if main.game == null:
 		return false
@@ -220,6 +226,12 @@ func _watch() -> bool:
 			g.refresh_fog()
 			var hidden_all := g.units.filter(func(u: Unit) -> bool: return not u.visible and not u.off_field).size()
 			check("fog_switch", hidden > 0 and hidden_all == 0, "P1's view hides %d of P2's units, all vision hides %d" % [hidden, hidden_all])
+			g.spectator.set_mode("free", 1, true)
+			g.refresh_fog()
+			var hidden2 := g.units.filter(func(u: Unit) -> bool: return u.team == 0 and not u.visible).size()
+			g.spectator.set_mode("all", 0, true)
+			g.refresh_fog()
+			check("fog_switch_p2", hidden2 > 0, "P2's view hides %d of P1's units" % hidden2)
 			# the end: the clock stops there, PLAY starts it again from the beginning
 			rp.seek(rp.length)
 			check("seek_to_end", rp.at_end and absf(rp.play_t - rp.length) < 0.01, "at %s of %s" % [ReplayPlayer.clock_text(rp.play_t), ReplayPlayer.clock_text(rp.length)])

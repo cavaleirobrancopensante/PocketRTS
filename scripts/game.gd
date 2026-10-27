@@ -283,6 +283,7 @@ func _ready() -> void:
 	camera.limit_top = -40 - cm
 	camera.limit_right = W * T + cm
 	camera.limit_bottom = H * T + 170 + cm
+	camera.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS      # (physics interpolation is on: Godot forces this anyway, with a WARNING each match)
 	add_child(camera)
 	camera.make_current()
 	_generate_map()
