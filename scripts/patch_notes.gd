@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.39", "items": [
+		"WEB VERSION LOADS FASTER: the first visit downloads about 60 MB instead of about 145 MB, and after an update usually only about 2 MB. The game is split into a small code pack and an art pack that only downloads again when the art changes; the browser keeps both (and the engine) for the next visit. The music no longer comes in the first download: each piece downloads when it is first played (the menu and match music start a moment later the first time) and is kept too. A new loading screen in the game's colours shows how far it is. The Android app is unchanged (everything inside it) and a little smaller.",
+	]},
 	{"v": "0.14.38", "items": [
 		"CLOCKWORK ECONOMY (gear mode; the study: docs/clockwork_economy_study.md). TENSION is a full resource now: every Mainspring STORES 200 Tension (400 on its big gear, which takes up to 6 Winders and winds 2.6 a second); winding stops when you hold what your Mainsprings store (the top bar reads held / stored), and nothing unwinds. Buildings can cost Tension: the CLOCK AVIARY is 150 cogs + 50 Tension (a cancelled site gives it back; the computer pays it too).",
 		"EFFICIENCY: every working Clockwork building shows its % over it and on its card: its crew share times its DRIVE. The Clocktower and every Mainspring drive the gear field: a building meshing with one works at 100%, each ring farther out 10% less (at least 70%); an idler costs nothing. Drive sets a Cog Press's cogs, a Mainspring's winding and the speed of training and research (not supply, the Ratchet Turret or building). The placement ghost shows the % before you place (LINKS 90%), and a Mainspring's ghost how many buildings it would feed (FEEDS 2).",

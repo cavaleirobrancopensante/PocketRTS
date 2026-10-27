@@ -214,7 +214,7 @@ static func all_pieces(fkey: String) -> Array:
 	var out: Array = []
 	for stem in titles():
 		var s: String = stem
-		if (s.begins_with(fkey + "_peace") or s.begins_with(fkey + "_battle")) and ResourceLoader.exists("res://assets/music/%s.ogg" % s):
+		if (s.begins_with(fkey + "_peace") or s.begins_with(fkey + "_battle")) and has_piece(s):
 			out.append(s)
 	return out
 
@@ -248,7 +248,7 @@ static func menu_pieces() -> Array:
 	for stem in titles():
 		var s: String = stem
 		if s == "menu" or s.begins_with("menu_"):
-			if ResourceLoader.exists("res://assets/music/%s.ogg" % s):
+			if has_piece(s):
 				out.append(s)
 	return out
 
@@ -266,6 +266,8 @@ func _next_menu() -> String:
 		_menu_bag.shuffle()
 	var pick: String = _menu_bag.pop_back()
 	_last_menu = pick
+	if not _menu_bag.is_empty():
+		_fetch.call_deferred(_menu_bag.back())   # on the web: the next overture downloads after this one
 	return pick
 
 
@@ -306,6 +308,12 @@ func _next(mood: String) -> String:
 		fresh = pool.filter(func(s: String) -> bool: return s != _current)
 		if fresh.is_empty():
 			fresh = pool
+	var ready := fresh.filter(func(s: String) -> bool: return is_ready(s))
+	if not ready.is_empty() and ready.size() < fresh.size():
+		# on the web: play one that is already here, and fetch another for next time
+		var later: Array = fresh.filter(func(s: String) -> bool: return not is_ready(s))
+		_fetch(later[randi() % later.size()])
+		fresh = ready
 	var pick: String = fresh[randi() % fresh.size()]
 	_recent.append(pick)
 	while _recent.size() > maxi(1, pool.size() - 1):
@@ -320,9 +328,15 @@ func play(track: String, loop := false) -> void:
 	if track == _current or track == "":
 		return
 	_current = track
+	var stream := _stream(track)
+	if stream == null:
+		# on the web the piece is still downloading: the old one plays on until it arrives
+		_want = track
+		_want_loop = loop
+		return
+	_want = ""
 	_piece_t = 0.0
 	_sting.stop()
-	var stream: AudioStream = load("res://assets/music/%s.ogg" % track)
 	if stream is AudioStreamOggVorbis:
 		stream = (stream as AudioStreamOggVorbis).duplicate()
 		(stream as AudioStreamOggVorbis).loop = loop
@@ -429,6 +443,9 @@ func match_started(faction: String, enemies: Array = []) -> void:
 	_recent.clear()
 	_skirmish = false
 	play(_next("open"))
+	# on the web: fetch the end-of-match stings and a fighting piece ahead of time
+	for s in [_sting_name(faction, true), _sting_name(faction, false)] + pieces(_faction, "skirmish").slice(0, 1) + pieces(_faction, "battle").slice(0, 1):
+		_fetch(s)
 
 
 ## The land's background sound (wind, frogs, lava) under the music, quietly.
@@ -455,9 +472,16 @@ func match_ended(won: bool, faction: String) -> void:
 	_faction = ""
 	_fade(_a, -80.0, true)
 	_fade(_b, -80.0, true)
-	_sting.stream = (load("res://assets/music/%s.ogg" % ("win_" + FACTION_KEY.get(faction, "crown").replace("clock", "clockwork") if won else "defeat")))
+	_want = ""
+	_sting.stream = _stream(_sting_name(faction, won))
+	if _sting.stream == null:
+		return
 	_sting.volume_db = VOL
 	_sting.play()
+
+
+static func _sting_name(faction: String, won: bool) -> String:
+	return "win_" + FACTION_KEY.get(faction, "crown").replace("clock", "clockwork") if won else "defeat"
 
 
 func add_heat(v: float) -> void:
@@ -486,3 +510,111 @@ func _process(delta: float) -> void:
 			_battle = false
 			_calm_t = 0.0
 			play(_next("peace"))
+
+
+# ------------------------------------------------------------------ music on the web
+
+## The web build leaves the music out of its packs (it was half the download): the page lists
+## every piece in window.HOLDFAST_MUSIC (stem -> {"u": "music/<stem>.ogg?h=<hash>"}) and each one
+## is downloaded when it is first wanted. The page keeps what it downloaded in the browser's cache,
+## so a piece is fetched once, until it changes. On Android and the desktop the pieces are in the
+## pack as usual. See docs/web_load.md.
+const MUSIC_PATH := "res://assets/music/%s.ogg"
+const KEEP := 6                      # downloaded pieces kept decoded-ready in memory
+static var _web: Dictionary = {}
+static var _web_read := false
+var _got: Dictionary = {}            # stem -> AudioStreamOggVorbis (downloaded)
+var _got_order: Array = []
+var _queue: Array = []               # stems waiting to be downloaded, first = next
+var _http: HTTPRequest
+var _http_stem := ""
+var _tries: Dictionary = {}
+var _want := ""                      # the piece play() is waiting for
+var _want_loop := false
+
+
+static func _web_list() -> Dictionary:
+	if not _web_read:
+		_web_read = true
+		if OS.has_feature("web"):
+			var s: Variant = JavaScriptBridge.eval("JSON.stringify(window.HOLDFAST_MUSIC || {})", true)
+			var d: Variant = JSON.parse_string(str(s)) if s != null else null
+			if d is Dictionary:
+				_web = d
+	return _web
+
+
+## The piece is part of this build (in the pack, or on the web server).
+static func has_piece(stem: String) -> bool:
+	return ResourceLoader.exists(MUSIC_PATH % stem) or _web_list().has(stem)
+
+
+## The piece can play right now (always true outside the web).
+func is_ready(stem: String) -> bool:
+	return _got.has(stem) or ResourceLoader.exists(MUSIC_PATH % stem) or not _web_list().has(stem)
+
+
+## The piece's stream, or null while it is being downloaded (it is asked for first in the queue).
+func _stream(stem: String) -> AudioStream:
+	if ResourceLoader.exists(MUSIC_PATH % stem):
+		return load(MUSIC_PATH % stem)
+	if _got.has(stem):
+		_got_order.erase(stem)
+		_got_order.append(stem)
+		return _got[stem]
+	_fetch(stem, true)
+	return null
+
+
+func _fetch(stem: String, urgent := false) -> void:
+	if is_ready(stem) or stem == _http_stem:
+		return
+	_queue.erase(stem)
+	if urgent:
+		_queue.push_front(stem)
+	else:
+		_queue.push_back(stem)
+	_fetch_next()
+
+
+func _fetch_next() -> void:
+	if _http_stem != "" or _queue.is_empty():
+		return
+	if _http == null:
+		_http = HTTPRequest.new()
+		_http.accept_gzip = false
+		_http.request_completed.connect(_on_fetched)
+		add_child(_http)
+	_http_stem = _queue.pop_front()
+	var base: Variant = JavaScriptBridge.eval("new URL('.', window.location.href).href", true)
+	var err := _http.request(str(base) + String(_web_list()[_http_stem].get("u", "")))
+	if err != OK:
+		_http_stem = ""
+
+
+func _on_fetched(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var stem := _http_stem
+	_http_stem = ""
+	var s: AudioStreamOggVorbis = null
+	if result == HTTPRequest.RESULT_SUCCESS and code == 200:
+		s = AudioStreamOggVorbis.load_from_buffer(body)
+	if s == null:
+		_tries[stem] = int(_tries.get(stem, 0)) + 1
+		MatchLog.sound("MUSIC download failed %s (%d, %d)" % [stem, result, code])
+		if _tries[stem] < 3:
+			_queue.push_back(stem)
+	else:
+		_got[stem] = s
+		_got_order.append(stem)
+		while _got_order.size() > KEEP:
+			var old: String = _got_order.pop_front()
+			if old != _current and old != _want:
+				_got.erase(old)
+			else:
+				_got_order.append(old)
+				break
+		if stem == _want:
+			_want = ""
+			_current = ""
+			play(stem, _want_loop)
+	_fetch_next()

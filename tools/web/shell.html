@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+<title>$GODOT_PROJECT_NAME</title>
+<!--
+  Holdfast's own loading page (export_presets.cfg "Web": html/custom_html_shell).
+  tools/web/build_web.sh fills HOLDFAST_FILES below after the export. What it does (docs/web_load.md):
+  - shows real progress in the game's colours instead of Godot's splash;
+  - mounts the art pack (assets.<hash>.pck) next to the code pack, so an update that only changes
+    code downloads the small code pack;
+  - keeps every downloaded file in the browser's Cache Storage under its content hash, so a second
+    visit starts without downloading anything that did not change;
+  - downloads gzipped copies of the engine (.wasm) and the code pack where the browser can unpack them.
+-->
+<style>
+@font-face { font-family: "Cinzel"; src: url("cinzel.ttf") format("truetype"); font-display: swap; }
+html, body, #canvas { margin: 0; padding: 0; border: 0; }
+body { color: #f2ead8; background-color: #15120e; overflow: hidden; touch-action: none; }
+#canvas { display: block; }
+#canvas:focus { outline: none; }
+#status {
+	position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+	align-items: center; gap: 18px; padding: 16px; box-sizing: border-box; visibility: hidden;
+	background: radial-gradient(ellipse at 50% 40%, #2a2219 0%, #15120e 70%);
+	font-family: "Alegreya Sans", "Trebuchet MS", Arial, sans-serif;
+}
+#status-icon { width: 128px; height: 128px; image-rendering: pixelated; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); }
+#status-title { font-family: "Cinzel", Georgia, serif; font-size: 52px; letter-spacing: 6px; color: #c9a24a;
+	text-shadow: 0 4px 0 rgba(0, 0, 0, 0.6); margin: 0; }
+#status-bar { width: min(520px, 86vw); height: 14px; border: 2px solid #c9a24a; background: #1b1712; box-sizing: border-box; }
+#status-fill { height: 100%; width: 0%; background: linear-gradient(#e2c06a, #a8822f); transition: width 0.2s; }
+#status-bar.busy #status-fill { width: 30%; animation: busy 1.2s ease-in-out infinite alternate; }
+@keyframes busy { from { margin-left: 0%; } to { margin-left: 70%; } }
+#status-text { font-size: 17px; color: rgba(242, 234, 216, 0.75); min-height: 1.3em; text-align: center; }
+#status-notice { display: none; max-width: 36rem; background: #5b3943; border: 1px solid #9b3943; border-radius: 6px;
+	padding: 1rem; text-align: center; line-height: 1.3; }
+</style>
+$GODOT_HEAD_INCLUDE
+</head>
+<body>
+<canvas id="canvas">Your browser does not support the canvas tag.</canvas>
+<noscript>Your browser does not support JavaScript.</noscript>
+<div id="status">
+	<img id="status-icon" src="index.icon.png" alt="">
+	<h1 id="status-title">HOLDFAST</h1>
+	<div id="status-bar" class="busy"><div id="status-fill"></div></div>
+	<div id="status-text">Loading…</div>
+	<div id="status-notice"></div>
+</div>
+
+<script>
+// Filled in by tools/web/build_web.sh: {files: {name: {h, s, gz, type}}, assets: "assets.<hash>.pck", music: {stem: {u}}}
+const HOLDFAST_FILES = /*HOLDFAST_FILES*/null;
+window.HOLDFAST_MUSIC = HOLDFAST_FILES ? HOLDFAST_FILES.music : {};
+
+// Every file named in HOLDFAST_FILES (and every music piece, whose URL carries ?h=<hash>) goes
+// through the browser's Cache Storage, keyed by its content hash: fetched once, until it changes.
+(function () {
+	if (!HOLDFAST_FILES) {
+		return;
+	}
+	const CACHE = 'holdfast-web';
+	const base = new URL('.', window.location.href);
+	const realFetch = window.fetch.bind(window);
+	const canGunzip = typeof DecompressionStream !== 'undefined';
+	const keep = new Set();
+	const plans = {};
+	Object.keys(HOLDFAST_FILES.files).forEach(function (rel) {
+		const f = HOLDFAST_FILES.files[rel];
+		const useGz = f.gz && canGunzip;
+		plans[rel] = {
+			key: new URL(rel + '?h=' + f.h, base).href,
+			url: new URL((useGz ? f.gz : rel) + '?h=' + f.h, base).href,
+			raw: new URL(rel + '?h=' + f.h, base).href,
+			gz: useGz,
+			type: f.type || 'application/octet-stream',
+		};
+		keep.add(plans[rel].key);
+	});
+	Object.keys(HOLDFAST_FILES.music || {}).forEach(function (stem) {
+		keep.add(new URL(HOLDFAST_FILES.music[stem].u, base).href);
+	});
+	window.HOLDFAST_STATS = { cached: 0, downloaded: 0 };
+
+	// The .gz copy arrives as it is on the server (GitHub Pages sends no Content-Encoding for it); if
+	// a host ever unpacks it on the way, the bytes no longer start with gzip's magic and pass as they are.
+	async function gunzipIfNeeded(body) {
+		const reader = body.getReader();
+		const first = await reader.read();
+		const stream = new ReadableStream({
+			start: function (c) {
+				if (first.done) {
+					c.close();
+					return;
+				}
+				c.enqueue(first.value);
+				(function pump() {
+					reader.read().then(function (r) {
+						if (r.done) {
+							c.close();
+							return;
+						}
+						c.enqueue(r.value);
+						pump();
+					}, function (e) { c.error(e); });
+				}());
+			},
+		});
+		const gz = !first.done && first.value.length >= 2 && first.value[0] === 0x1f && first.value[1] === 0x8b;
+		return gz ? stream.pipeThrough(new DecompressionStream('gzip')) : stream;
+	}
+
+	function planFor(input) {
+		let u;
+		try {
+			u = new URL(typeof input === 'string' ? input : input.url, window.location.href);
+		} catch (e) {
+			return null;
+		}
+		if (u.origin !== base.origin || !u.pathname.startsWith(base.pathname)) {
+			return null;
+		}
+		const rel = u.pathname.slice(base.pathname.length);
+		if (plans[rel]) {
+			return plans[rel];
+		}
+		if (u.searchParams.has('h')) {
+			return { key: u.href, url: u.href, gz: false, type: null };
+		}
+		return null;
+	}
+
+	let cachePromise = null;
+	function openCache() {
+		if (cachePromise === null) {
+			cachePromise = ('caches' in window ? caches.open(CACHE) : Promise.reject(new Error('no Cache Storage')))
+				.catch(function () { return null; });
+		}
+		return cachePromise;
+	}
+
+	window.fetch = async function (input, init) {
+		const p = planFor(input);
+		if (p === null || (init && init.method && init.method !== 'GET')) {
+			return realFetch(input, init);
+		}
+		const cache = await openCache();
+		if (cache) {
+			try {
+				const hit = await cache.match(p.key);
+				if (hit) {
+					window.HOLDFAST_STATS.cached += 1;
+					return hit;
+				}
+			} catch (e) { /* fall through to the network */ }
+		}
+		let r = await realFetch(p.url);
+		if (!r.ok && p.gz) {
+			r = await realFetch(p.raw);
+		}
+		if (!r.ok) {
+			return r;
+		}
+		window.HOLDFAST_STATS.downloaded += 1;
+		if (p.gz) {
+			r = new Response(await gunzipIfNeeded(r.body), { headers: { 'Content-Type': p.type } });
+		}
+		if (cache) {
+			const copy = r.clone();
+			cache.put(p.key, copy).catch(function () { /* full or private mode: just don't keep it */ });
+		}
+		return r;
+	};
+
+	// Once the game runs: drop cached files from older builds.
+	window.HOLDFAST_PRUNE = function () {
+		openCache().then(function (cache) {
+			if (!cache) {
+				return;
+			}
+			cache.keys().then(function (reqs) {
+				reqs.forEach(function (req) {
+					if (!keep.has(req.url)) {
+						cache.delete(req);
+					}
+				});
+			});
+		});
+	};
+}());
+</script>
+<script src="$GODOT_URL"></script>
+<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+if (HOLDFAST_FILES) {
+	GODOT_CONFIG.fileSizes[HOLDFAST_FILES.assets] = HOLDFAST_FILES.files[HOLDFAST_FILES.assets].s;
+}
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusBar = document.getElementById('status-bar');
+	const statusFill = document.getElementById('status-fill');
+	const statusText = document.getElementById('status-text');
+	const statusNotice = document.getElementById('status-notice');
+	let initializing = true;
+	statusOverlay.style.visibility = 'visible';
+
+	function fail(err) {
+		console.error(err);
+		statusNotice.textContent = (err instanceof Error) ? err.message : (typeof err === 'string' ? err : 'An unknown error occurred.');
+		statusNotice.style.display = 'block';
+		statusBar.style.display = 'none';
+		statusText.textContent = '';
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+	if (missing.length !== 0) {
+		fail('The following features required to run Holdfast in a browser are missing:\n' + missing.join('\n'));
+		return;
+	}
+	const exe = GODOT_CONFIG.executable;
+	const pack = GODOT_CONFIG.mainPack || (exe + '.pck');
+	engine.config.update({
+		'onProgress': function (current, total) {
+			if (!initializing) {
+				return;
+			}
+			if (current > 0 && total > 0) {
+				statusBar.classList.remove('busy');
+				statusFill.style.width = Math.min(100, 100 * current / total).toFixed(1) + '%';
+				const s = window.HOLDFAST_STATS;
+				const fromCache = s && s.cached > 0 && s.downloaded === 0;
+				const pct = Math.min(100, Math.floor(100 * current / total));
+				statusText.textContent = fromCache ? ('Loading… ' + pct + '%')
+					: ('Downloading… ' + pct + '%  (kept for next time)');
+			} else {
+				statusBar.classList.add('busy');
+			}
+		},
+	});
+	// Engine.startGame() without its own pack handling: the code pack and the art pack (mounted by
+	// scripts/web_boot.gd before the game loads anything) both have to be in before it starts.
+	const loads = [engine.init(exe), engine.preloadFile(pack, pack)];
+	if (HOLDFAST_FILES) {
+		loads.push(engine.preloadFile(HOLDFAST_FILES.assets, '/assets.pck'));
+	}
+	Promise.all(loads).then(function () {
+		statusBar.classList.add('busy');
+		statusText.textContent = 'Starting…';
+		return engine.start({ 'args': ['--main-pack', pack].concat(GODOT_CONFIG.args || []) });
+	}).then(function () {
+		statusOverlay.remove();
+		initializing = false;
+		if (window.HOLDFAST_PRUNE) {
+			setTimeout(window.HOLDFAST_PRUNE, 5000);
+		}
+	}, fail);
+}());
+</script>
+</body>
+</html>
