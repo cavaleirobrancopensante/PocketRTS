@@ -125,7 +125,7 @@ func _initialize() -> void:
 		elif a.begins_with("hide_host:"):
 			hide_host = float(a.substr(10))
 		elif a == "nolead":
-			nolead = true             # the guest's units wait for the host's picture (as before 0.14.33)
+			nolead = true             # the guest's units wait for the host's picture (as before 0.14.37)
 		elif a == "nosame":
 			nosame = true             # the lobby's "Same delay for both players" off
 		elif a == "hostsurrender":

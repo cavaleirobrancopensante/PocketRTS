@@ -384,7 +384,8 @@ const GEAR := {
 	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
 	"works_dt": 0.12,               # ... of the Movement Works' loop (while it trains)
 	"regulator_dt": 0.15,           # ... of the Regulator's pendulum (always, while built and linked)
-	"escapement_dt": 0.14,          # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring)
+	"escapement_dt": 0.125,         # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring):
+	"escapement_frames": 24,        #     a tick or a tock every 4 frames (0.5 s), the wheel's half-tooth jump as the anchor swings through
 	"aviary_dt": 0.15,              # ... of the Clock Aviary's doors and bird (4 frames, while it makes a Swift or researches)
 	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
 	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
@@ -478,12 +479,14 @@ const TENSION_USERS := ["escapement"]
 ## the range jumps the full range that way; a spot that cannot be landed on gives way to the nearest one within `search`
 ## tiles on the same level. `ai_low`: a computer's Jack jumps away from melee below this share of its health.
 ## Shot: the screw (the Ratchet Turret's projectile, Game.screw_shot) leaves the drill tip, `tips` game px from its feet per
-## drawn direction (W/SW/NW mirror E/SE/NE; printed by tools/import_jack.py), at `shot_scale` of the turret's screw art
-## (`muzzle_scale` for the burst), `speed` px/s.
+## launcher ("r" the robot's right arm, "l" its left: the two fire in turn, scripts/jack.gd) and drawn direction (W/SW/NW
+## mirror E/SE/NE; printed by tools/import_jack.py), at `shot_scale` of the turret's screw art (`muzzle_scale` for the
+## burst, played at that tip), `speed` px/s.
 const JACK_JUMP := {"range": 160.0, "crouch": 0.35, "land": 0.2, "air": 0.3, "air_speed": 520.0, "peak": 20.0, "peak_per": 0.22,
 	"cooldown": 10.0, "search": 2, "ai_low": 0.4}
 const JACK_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
-	"tips": {"s": Vector2(-26, -16), "se": Vector2(-21, -11), "e": Vector2(25, -22), "ne": Vector2(28, -19), "n": Vector2(27, -15)}}
+	"tips": {"r": {"s": Vector2(-24, -13), "se": Vector2(-21, -11), "e": Vector2(24, -15), "ne": Vector2(23, -13), "n": Vector2(31, -11)},
+		"l": {"s": Vector2(31, -13), "se": Vector2(25, -12), "e": Vector2(22, -21), "ne": Vector2(-26, -18), "n": Vector2(-19, -12)}}}
 
 
 ## The raised arm (shooting at a FLYER: the "attack_up" strip, tools/jack_guide/attack_up.py): the drill tip on the fire frame per
@@ -523,10 +526,13 @@ const OWL_BOMB := {"range": 4.0, "aim": 0.11, "strike": 0.56, "cooldown": 2.33, 
 ## game lifts it `lift` px over its shadow, as every flyer) and the motion the code draws over them:
 ##   flap    frames a second of the fly loop (idle and walk alike)
 ##   strike  s the attack strip keeps playing after the blow lands (so its last frames are seen)
-##   lunge   the Swift's peck: share of its REACH per frame of the attack strip (pull back with the wings up, dart in on the
-##           downstroke: the blow on the 3rd, the beak held in on the 4th, the wings up again as it pulls away)
-##   tilt    the Swift's pitch on the peck, radians per frame (nose up as it winds back, nose DOWN into the blow), turned
-##           about its body; `tilt_view` how much of it shows per drawn view (side on all of it, none head-on or from behind)
+##   lunge   the Swift's peck: share of its REACH per frame of the attack strip (ChatGPT's painted peck: level, the brake
+##           with the wings up, the STAB, held in, pulling back, level: it pulls back on the brake, darts in on the stab, the
+##           blow on that 3rd frame, the beak held in on the 4th, away as the wings beat)
+##   tilt    the Swift's pitch on the peck, radians per frame, turned about its body; `tilt_view` how much of it shows per
+##           drawn view (side on all of it, none head-on or from behind). The painted stab already pitches the bird nose
+##           down (about 15-25 degrees side on), so this is only a small snap on the blow (it was the whole pitch, about
+##           20 degrees, while the peck was the flight frames re-timed)
 ##   dive    the Owl's swoop: the same per frame (rise, wind up, dive, strike low on the 4th, climb back)
 ##           REACH: from its beak (the Swift) or talons (the Owl), `strike_y` px over its anchor, to the prey's body
 ##           (Entity.center), less `contact` px, at most `reach` px: the bird darts all the way in and back, whatever the gap
@@ -535,8 +541,8 @@ const OWL_BOMB := {"range": 4.0, "aim": 0.11, "strike": 0.56, "cooldown": 2.33, 
 ##   fall    share of the flying height left per frame of the death strip (frames 5-6 lie on the ground)
 ##   centre  px over its ground point where shots aim (its body in the air); `bar`: where its health bar sits
 const FLYER := {
-	"cuckoo": {"lift": 20.0, "flap": 10.0, "strike": 0.45, "lunge": [0.0, -0.12, 1.0, 0.8, 0.3, 0.0],
-		"tilt": [0.0, -0.1, 0.34, 0.24, 0.08, 0.0], "tilt_view": {"e": 1.0, "se": 0.75, "ne": 0.75},
+	"cuckoo": {"lift": 20.0, "flap": 10.0, "strike": 0.34, "lunge": [0.0, -0.12, 1.0, 0.8, 0.3, 0.0],
+		"tilt": [0.0, -0.03, 0.1, 0.07, 0.02, 0.0], "tilt_view": {"e": 1.0, "se": 0.75, "ne": 0.75},
 		"strike_y": 14.0, "contact": 16.0, "reach": 64.0,
 		"fall": [1.0, 0.9, 0.65, 0.3, 0.0, 0.0], "centre": 34.0, "bar": 52.0},
 	"ticking_owl": {"lift": 20.0, "flap": 7.0, "strike": 0.35, "dive": [0.0, -0.15, 0.55, 1.0, 0.4, 0.0],
@@ -823,11 +829,12 @@ const UNITS := {
 	},
 	# the new-style army's tier 1 (gear mode; docs/clockwork_ground_up.md): plain melee, no special ability. Guesses: a
 	# Musketeer's price (60 + 10 powder) in cogs, sturdier than a Winder (46 hp), a short clock-hand sword whose blow lands
-	# on the 4th frame of the swing (aim 0.33 s at the attack strip's 9 fps)
+	# on the 4th frame of the swing (aim 0.33 s at the attack strip's 9 fps). Radius 10, a Musketeer's: the owner had it
+	# drawn about 30% smaller in 0.14.32 (42 px tall, the Jack 59), so its body went from 14 to 10 with it
 	"clock_soldier": {
 		"tags": ["light"],
 		"name": "Clock Soldier", "hp": 90, "armor": 1, "speed": 62, "cost": 70, "time": 16.0, "supply": 1,
-		"sight": 7, "range": 22, "damage": 10, "cooldown": 1.2, "aim": 0.33, "radius": 14, "from": "movement_works",
+		"sight": 7, "range": 22, "damage": 10, "cooldown": 1.2, "aim": 0.33, "radius": 10, "from": "movement_works",
 		"faction": "clockwork",
 		"about": "The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Made at the Movement Works.",
 	},
@@ -847,13 +854,14 @@ const UNITS := {
 	# THE AIR (gear mode; Defs.CW_AIR): the SWIFT (id cuckoo), an air-to-air flyer from the Clock Aviary, and the TICKING OWL
 	# each Swift can be morphed into (Defs.OWL_MORPH). Guesses (design_principles 1): the Swift is the Skywing's match in
 	# the air for less (75 cogs + 15 Tension vs 100 + 40 essence) but it must close in to peck (28 px vs the Skywing's 130)
-	# and cannot touch the ground: 10 every 1.27 s (aim 0.22, the hit on the 3rd frame at 9 fps, + 0.45 + 0.6), 7.9 a second;
+	# and cannot touch the ground: 10 every 1.27 s (aim 0.33, the hit on the stab, the 3rd or 4th frame of its painted peck
+	# at 9 fps whatever the 66 ms animation tick, + 0.34 + 0.6), 7.9 a second;
 	# one beats a Skywing that lets it close (about 10 s vs 14), loses to a balloon full of Musketeers. Fast (118, a
 	# Skywing's). "light".
 	"cuckoo": {
 		"tags": ["light"],
 		"name": "Swift", "hp": 90, "armor": 0, "speed": 118, "cost": 75, "tension": 15, "time": 20.0, "supply": 2,
-		"sight": 9, "range": 28, "damage": 10, "cooldown": 0.6, "aim": 0.22, "radius": 13, "from": "cuckoo_house",
+		"sight": 9, "range": 28, "damage": 10, "cooldown": 0.6, "aim": 0.33, "radius": 13, "from": "cuckoo_house",
 		"air": true, "anti_air": true, "air_only": true, "faction": "clockwork",
 		"about": "A fast brass bird with a clock in its chest: it hunts other flyers and pecks them with a short lunge (it must close in, and it cannot touch the ground). MORPH TO OWL rebuilds it into a Ticking Owl once TICKING OWL is researched at a Clock Aviary. Costs Tension. Made at the Clock Aviary.",
 	},

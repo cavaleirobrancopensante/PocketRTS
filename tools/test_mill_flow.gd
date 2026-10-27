@@ -3,9 +3,11 @@ extends SceneTree
 ## to the hopper, tip it in and walk back:
 ##   godot --headless --fixed-fps 30 --script res://tools/test_mill_flow.gd
 ##  every worker visits all three heaps, digs there, carries (walk_shovel) then tips at the
-##  hopper's spot, nobody stands still for long or ends up inside the shed's footprint, the
-##  six do not bunch, and the powder income is exactly what the working crew earns (Defs.MILL_RATE
-##  per worker at work: the workflow is visuals only), with all six at work throughout.
+##  hopper's spot, nobody stands still for long or ends up on the shed's solid cells (the work
+##  yard, the footprint's front row, is walkable: Building.MILL_YARD), the six do not stack on
+##  one spot (two within 3 px for 0.5 s at a stretch at the most, three 0.25 s: crossing), and the
+##  powder income is exactly what the working crew earns (Defs.MILL_RATE per worker at work: the
+##  workflow is visuals only), with all six at work throughout.
 var main: Node
 var t := 0.0
 var g
@@ -125,7 +127,10 @@ func _run() -> void:
 	var moved := []
 	var last := []
 	var inside := 0
-	var maxclump := 0
+	var pair_run := {}        # (two on top of each other: how long at a stretch, pair by pair)
+	var pair_long := 0.0
+	var three_run := 0.0
+	var three_long := 0.0
 	for i in 6:
 		heaps.append({})
 		tipped.append(0)
@@ -163,8 +168,9 @@ func _run() -> void:
 			last[i] = u.position
 			if u.work != "manning":
 				continue
-			if g.clock - t0 > 15.0 and r.grow(-2.0).has_point(u.position):
-				inside += 1
+			var cv: int = g.solid[g.idx(g.cell_of(u.position))]
+			if g.clock - t0 > 15.0 and r.grow(-2.0).has_point(u.position) and cv != 5 and cv != 0:
+				inside += 1        # (on the shed's solid cells; the yard, the front row, is walkable)
 			if u.anim == "walk_shovel":
 				carried[i] += 1
 				loads_seen[u._mill_k] = true
@@ -180,14 +186,20 @@ func _run() -> void:
 				if tipping and not tip_prev[i]:
 					tipped[i] += 1
 				tip_prev[i] = tipping
-		var clump := 0
-		for i in 6:
-			var c := 0
-			for j in 6:
-				if us[i].position.distance_to(us[j].position) < 9.0:
-					c += 1
-			clump = maxi(clump, c)
-		maxclump = maxi(maxclump, clump)
+		if g.clock - t0 > 15.0:
+			var most := 0
+			for i in 6:
+				var c := 0
+				for j in 6:
+					if us[i].position.distance_to(us[j].position) < 3.0:
+						c += 1
+					if j > i:
+						var pr: float = float(pair_run.get(i * 6 + j, 0.0)) + dt if us[i].position.distance_to(us[j].position) < 3.0 else 0.0
+						pair_run[i * 6 + j] = pr
+						pair_long = maxf(pair_long, pr)
+				most = maxi(most, c)
+			three_run = three_run + dt if most >= 3 else 0.0
+			three_long = maxf(three_long, three_run)
 	var gain: float = g.players[0]["res2"] - res0
 	for i in 6:
 		check(heaps[i].size() == 3, "worker %d digs at all three heaps (%s)" % [i, str(heaps[i].keys())])
@@ -195,8 +207,8 @@ func _run() -> void:
 		check(tipped[i] >= 3, "worker %d tips into the hopper (%d times in 75 s)" % [i, tipped[i]])
 		check(moved[i] > 400.0, "worker %d is never stuck (%d px walked)" % [i, int(moved[i])])
 	check(loads_seen.size() == 3, "all three loads are carried (%s)" % str(loads_seen.keys()))
-	check(inside == 0, "nobody walks through the shed's footprint (%d samples)" % inside)
-	check(maxclump <= 3, "the six do not bunch (at most %d within 9 px)" % maxclump)
+	check(inside == 0, "nobody walks through the shed (its solid cells: %d samples)" % inside)
+	check(pair_long <= 0.5 and three_long <= 0.25, "the six do not stack on one spot (within 3 px: two for %.2f s at the longest, three for %.2f s)" % [pair_long, three_long])
 	check(all_work >= samples - 2, "all six are at work throughout (%d of %d ticks)" % [all_work, samples])
 	check(expect > 0.0 and absf(gain - expect) < 0.02 * expect + 0.01, "powder income is the crew's rate: %.2f gained, %.2f expected" % [gain, expect])
 	print("income %.3f over 75 s" % gain)
