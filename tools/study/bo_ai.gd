@@ -72,6 +72,7 @@ var _bdrop: Dictionary = {}
 var drop_log: Array = []
 var _wait_fails: Dictionary = {}    # step index -> thinks it found no spot
 var _own_orders := false           # (while the scripted wave gives its orders)
+var _redo: Array = []              # [kind, proxy] of a step's building lost before it stood (a blocked site is refunded)
 var mill_fixed := -1                # Crown "mill:N": the Powder Mill's crew while scripted (else the computer's own rule)
 
 
@@ -184,7 +185,10 @@ func _bo_tick() -> void:
 	_train_workers()
 	_hold = 0
 	_hold2 = 0
-	var guard := 0
+	for r in _redo.duplicate():
+		if _do_build(String(r[0]), float(r[1])) == "done":
+			_redo.erase(r)
+	var guard := 0 if _redo.is_empty() else 8      # (the lost building comes first, as its step did)
 	while si < steps.size() and guard < 8:
 		guard += 1
 		var r := _do(String(steps[si]))
@@ -216,6 +220,8 @@ func _watch_buildings() -> void:
 		var b = e[1]
 		if not is_instance_valid(b) or b.dead:
 			step_log[e[0]]["done"] = -2.0        # (lost before it stood)
+			if e.size() > 2 and scripted:
+				_redo.append(e[2])               # (placed again, as a player would after a blocked or cancelled site)
 			continue
 		if b.built:
 			step_log[e[0]]["done"] = snappedf(game.clock, 0.1)
@@ -441,7 +447,7 @@ func _do_build(kind: String, proxy := -1.0) -> String:
 		_hold = cost
 		return "wait"
 	var i := _log(kind + (" (proxy)" if proxy >= 0.0 else ""))
-	_bwatch.append([i, b])
+	_bwatch.append([i, b, [kind, proxy]])
 	return "done"
 
 
