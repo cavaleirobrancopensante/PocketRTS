@@ -931,7 +931,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if _on_ui(mb.position) and mb.pressed:
+		# a press on the panel or the top bar is the button's; so is its release (unless it ends
+		# a stroke that started on the map): eating the release left BACK, SAVE, HELP... dead
+		if _on_ui(mb.position) and (mb.pressed or (not _painting and _drag_from == Vector2.INF)):
 			return
 		match mb.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -981,6 +983,8 @@ func _input(event: InputEvent) -> void:
 				var ps: Array = _touches.values()
 				_pinch = (ps[0] as Vector2).distance_to(ps[1])
 		else:
+			if not _touches.has(st.index):
+				return          # a tap that began on a button: its release is the button's (BACK did nothing on a phone)
 			_touches.erase(st.index)
 			if _touches.is_empty():
 				_end_stroke()

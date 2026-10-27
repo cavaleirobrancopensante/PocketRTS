@@ -133,9 +133,13 @@ func _build_keys() -> void:
 	p.position = Vector2(8, 112)
 	p.size = Vector2(size.x - 16, size.y - 120)
 	_ui.add_child(p)
+	# the list and its note one above the other (the note was a second child of the panel, drawn over the list)
+	var pv := VBoxContainer.new()
+	p.add_child(pv)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	p.add_child(scroll)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pv.add_child(scroll)
 	var grid := GridContainer.new()
 	grid.columns = 6
 	grid.add_theme_constant_override("h_separation", 10)
@@ -181,7 +185,7 @@ func _build_keys() -> void:
 		grid.add_child(b)
 	if not editable:
 		var l := UiStyle.text("Built-in layouts can't be changed: pick a CUSTOM slot.", 15, UiStyle.MUTED)
-		p.add_child(l)
+		pv.add_child(l)
 
 
 # ------------------------------------------------------------------ input

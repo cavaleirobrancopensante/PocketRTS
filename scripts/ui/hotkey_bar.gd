@@ -383,7 +383,7 @@ func draw(font: Font, counts: Array) -> void:
 		var lit := i < GROUP0 or count > 0
 		var col := UiStyle.TEXT if lit else Color(1, 1, 1, 0.5)
 		var lsz := 15 if i < GROUP0 else 20
-		while lsz > 9 and UiStyle.bold_font().get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > vr.size.x - 3:
+		while lsz > 7 and UiStyle.bold_font().get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, lsz).x > vr.size.x - 3:
 			lsz -= 1
 		hud._text(UiStyle.bold_font(), vr.position + Vector2(vr.size.x * 0.5, 19), label, lsz, col, 1)
 		var sub := ""
