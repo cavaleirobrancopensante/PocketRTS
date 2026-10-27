@@ -40,6 +40,12 @@ Self-unfolding buildings (a crate unfolds and builds itself) fit the lore.
 - Tension is spent on the strong things (top-tier units, slow field, the stopper unit).
 - Buildings that use Tension must be placed ADJACENT to a Mainspring (owner idea): this makes building interlocking a core mechanic. Suggested: adjacency is through meshing gear rings, so it joins the Cosmoteer-style placement puzzle (one system, not two). Open: ports per Mainspring, chains or one hop only, what happens when the Mainspring dies.
 
+## Tension, efficiency and neighbours (study and build 0.14.33; docs/clockwork_economy_study.md)
+- Owner (2026-10-26): "make Tension work as a resource, and also the efficiency for buildings, and also the necessity of certain buildings to be neighbouring others: this is actually a good puzzle and differentiates builds."
+- Built (numbers are guesses, the owner may veto any of it): each Mainspring STORES 200 Tension (big gear 400; it takes 6 Winders and winds 2.6/s) and winding stops at the store; buildings can cost Tension (the Clock Aviary: 150 cogs + 50 Tension). EFFICIENCY % per building = crew x DRIVE x brass: the Clocktower and every Mainspring drive the field, a building meshing with one works at 100%, each ring farther out 10% less (at least 70%); shown over the building, on its card and on the placement ghost. THE TENSION RULE extended: anything that costs Tension is made only where a Mainspring's ring meshes with the building's (the Escapement, the Clock Aviary, a Movement Works' Jacks, Netters and Pendulums).
+- Owner (2026-10-26): "currently you can link a gear down from the high ground to low ground, this should not be possible". Built: gear rings mesh only on the same ground level (a building's level is its footprint's height; a ramp is low ground): no link and no idler across a cliff or along a ramp (docs/clockwork_gear_prototype.md, "The level rule").
+- Balance: the Clockwork earned about twice the Crown per worker; the Cog Press now takes 6 Winders (big gear 12) for the same full rate.
+
 ## Production buildings (owner, 2026-10-26)
 
 - Barracks = the MOVEMENT WORKS (concept art/redraws/concepts/barracks_movement_works.png): a workshop that assembles clockwork soldiers on a hanging line. Open: the giant winding key on the roof (who winds it? the owner finds it too big for Winders).

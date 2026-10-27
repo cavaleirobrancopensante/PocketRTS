@@ -3007,6 +3007,7 @@ func site_failed(b: Building, why := "blocked") -> void:
 	var t := b.team
 	var cost := int(b.d["cost"])
 	players[t]["gold"] += cost
+	add_tension(t, float(Defs.tension_cost(b.d)))          # (and its Tension price, all of it)
 	stats[t]["spent"] -= cost
 	stats[t]["built"] = maxi(0, int(stats[t]["built"]) - 1)
 	if t == human and not demo and hud and why != "abandoned":
@@ -3508,7 +3509,20 @@ func tension_user_problem(t: int, kind: String) -> String:
 		return "Needs an Escapement first." if kind == Defs.CW_TECH else "Needs a %s first." % Defs.BUILDINGS[kind]["name"]
 	for b in buildings:
 		if b.team == t and b.kind == kind and b.built and not b.dead and gear_net.needs_spring(b):
-			return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
+			return _idle_text(kind)
+	return _unlinked_text(kind)
+
+
+## A Tension user's refusals (the Escapement's, the Clock Aviary's).
+func _idle_text(kind: String) -> String:
+	if kind == Defs.CW_AIR:
+		return "The Clock Aviary stands idle: mesh its gear ring with a Mainspring's."
+	return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
+
+
+func _unlinked_text(kind: String) -> String:
+	if kind == Defs.CW_AIR:
+		return "The Clock Aviary is unlinked: its gear ring must mesh with the gear field."
 	return "The Escapement is unlinked: its gear ring must mesh with the gear field."
 
 
@@ -3601,6 +3615,10 @@ func can_train(b: Building, key: String) -> String:
 		var gp := Pendulum.gear_problem(b)      # (tier 3: the Pendulum, only on the Works' BIG gear: the heavy torque)
 		if gp != "":
 			return gp
+	if Defs.tension_cost(u) > 0:
+		var spp := GearEcon.spend_problem(self, b)      # (THE TENSION RULE: made only where a Mainspring meshes, GearEcon)
+		if spp != "":
+			return spp
 	if b.uses_eggs():
 		if b.eggs < 1:
 			return "No eggs ready."
@@ -3699,8 +3717,12 @@ func research_problem(b: Building, key: String) -> String:
 	if Defs.gear_mode and Defs.TENSION_USERS.has(b.kind) and gear_net.speed_mult(b) <= 0.0:
 		# (a Tension user researches only while it works: linked and meshed with a Mainspring)
 		if gear_net.needs_spring(b):
-			return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
-		return "The Escapement is unlinked: its gear ring must mesh with the gear field."
+			return _idle_text(b.kind)
+		return _unlinked_text(b.kind)
+	if Defs.tension_cost(info) > 0:
+		var sp := GearEcon.spend_problem(self, b)       # (THE TENSION RULE: made only where a Mainspring meshes)
+		if sp != "":
+			return sp
 	var res: Array = Defs.res_names(factions[b.team])
 	if players[b.team]["gold"] < int(info["cost"]):
 		return "Not enough %s." % String(res[0]).to_lower()
@@ -4516,6 +4538,8 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 	if net_forward(self, "place_building", [t, k, c, builders, queued]): return null
 	if placement_problem(t, k, c) != "" or players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		return null
+	if tension(t) < float(Defs.tension_cost(Defs.BUILDINGS[k])):
+		return null          # (gear mode: a building's Tension price, the Clock Aviary's)
 	if not requirement_met(t, k):
 		return null
 	if k == "gate":
@@ -4527,6 +4551,7 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		if old_gate:
 			_remove_quietly(old_gate)
 	players[t]["gold"] -= int(Defs.BUILDINGS[k]["cost"])
+	add_tension(t, -float(Defs.tension_cost(Defs.BUILDINGS[k])))
 	stats[t]["spent"] += int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["built"] += 1
 	var b := _add_building(k, t, c, false, true)     # a ghost until its building starts
@@ -7956,8 +7981,9 @@ func abandon(b: Building) -> void:
 	if b.built or b.dead:
 		return
 	if b.ghost:
-		# it never began: all of it comes back
+		# it never began: all of it comes back (its Tension too)
 		players[b.team]["gold"] += int(b.d["cost"])
+		add_tension(b.team, float(Defs.tension_cost(b.d)))
 		stats[b.team]["spent"] -= int(b.d["cost"])
 		stats[b.team]["built"] = maxi(0, int(stats[b.team]["built"]) - 1)
 		remove_ghost(b)
@@ -7966,6 +7992,7 @@ func abandon(b: Building) -> void:
 				u.site_gone()
 		return
 	players[b.team]["gold"] += int(int(b.d["cost"]) * 0.75)
+	add_tension(b.team, float(int(Defs.tension_cost(b.d) * 0.75)))      # (a begun building: three quarters, like the cogs)
 	b.take_damage(9999999.0, null)
 	if b.crate_obj and is_instance_valid(b.crate_obj):
 		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)

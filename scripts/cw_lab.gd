@@ -17,6 +17,10 @@ static func setup(game: Game) -> void:
 	if Defs.gear_mode:
 		game.players[t]["tension"] = float(cfg["res2"])      # (gear mode: no energy; Tension instead)
 		_gear_field(game, t, cfg)
+		# (the Lab's Mainsprings start wound full: what they store, GearEcon.tension_cap)
+		var cap := GearEcon.tension_cap(game, t)
+		if cap > 0.0:
+			game.players[t]["tension"] = minf(float(cfg["res2"]), cap)
 		_hint(game)
 		return
 	var cells := run_from_hall(game, t, 44)
@@ -41,12 +45,16 @@ static func setup(game: Game) -> void:
 ## edge (no power in gear mode: no Charging Pylon, no Boilers; Defs.ENERGY_KINDS are not in the gear build list).
 ## Tier 2: the Escapement meshing with the Mainspring's ring (a third entry: the kind it meshes with instead of the
 ## Clocktower; it tries ESC_ANGLES round it until one fits), working, and JACKS Jacks beside the soldiers.
-## The air: the Clock Aviary on the Clocktower's ring (up left: it lands by the map's edge), SWIFTS Swifts and OWLS Ticking
-## Owls hovering over the Clocktower's ring (in the Lab's first view).
+## The Movement Works on the Clocktower's ring (down left) on its BIG gear (tier 3: the Pendulum), and a second Mainspring
+## meshing with the Works (THE TENSION RULE, GearEcon: Jacks, Pendulums and Netters cost Tension, so they are made only where
+## a Mainspring meshes) and with the Clock Aviary (everything the Aviary makes costs Tension); SWIFTS Swifts and OWLS Ticking
+## Owls hovering over the Clocktower's ring (in the Lab's first view). An entry that names a kind to mesh with tries
+## ESC_ANGLES round the last one of that kind put, then its own angle on the Clocktower's ring.
 const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50.0], ["escapement", 0.0, "mainspring"],
-	["movement_works", -130.0], ["regulator", 105.0], ["ratchet_turret", 5.0], ["cuckoo_house", -95.0]]
+	["movement_works", -130.0], ["mainspring", -95.0, "movement_works"], ["cuckoo_house", -95.0, "mainspring"], ["regulator", 105.0],
+	["ratchet_turret", 5.0]]
 const ESC_ANGLES := [0.0, 40.0, 80.0, -40.0, 120.0, -80.0, 160.0]
-const CREW := {"cog_press": 3, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0, "cuckoo_house": 0}
+const CREW := {"cog_press": 6, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0, "cuckoo_house": 0}
 const SOLDIERS := 4
 const JACKS := 3
 const SWIFTS := 3
@@ -73,11 +81,12 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 		var around: Building = hall
 		var angles: Array = [float(sc[1])]
 		if sc.size() > 2:
-			# (meshing with one of the showcase's own buildings: the Escapement with the Mainspring)
+			# (meshing with one of the showcase's own buildings: the Escapement, the Aviary and the Works with the Mainspring)
 			for b in put:
 				if b.kind == String(sc[2]):
 					around = b
-			angles = ESC_ANGLES if k == Defs.CW_TECH else angles
+			angles = ESC_ANGLES
+		var placed := false
 		for deg in angles:
 			var c := _ring_spot(game, t, k, around, float(deg)) if around == hall else GearNet.ring_spot(game, t, k, around, float(deg), true)
 			var big := false
@@ -93,7 +102,29 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 				b.gear_big = big
 				put.append(b)
 				game.gear_net.solve()
+				placed = true
 				break
+		if not placed and around != hall:
+			# (no room round it: on the Clocktower's ring at its own angle; the Works on its big gear where that fits)
+			var c2 := _ring_spot(game, t, k, hall, float(sc[1]))
+			var big2 := false
+			if k == Defs.CW_WORKS:
+				var cb2 := _big_ring_spot(game, t, k, hall, float(sc[1]))
+				if cb2.x >= 0:
+					c2 = cb2
+					big2 = true
+			if c2.x >= 0:
+				var b2 := game._add_building(k, t, c2, true)
+				b2.gear_big = big2
+				put.append(b2)
+				game.gear_net.solve()
+				placed = true
+		if not placed:
+			# (the plateau is crowded: anywhere it links)
+			var c3 := game.find_spot(t, k, hall, 3, 24, "near")
+			if c3.x >= 0:
+				put.append(game._add_building(k, t, c3, true))
+				game.gear_net.solve()
 	# room in the supply for the Jacks (2 each), the flyers (Swifts 2, the Owl 4) and tier 3 (Pendulums 4, Netters 2): five
 	# more Regulators, linked, wherever they fit
 	for i in 5:
@@ -213,6 +244,8 @@ static func _big_ring_spot(game: Game, t: int, kind: String, around: Building, d
 			var score := absf(gap) + (0.0 if absf(gap) <= float(Defs.GEAR["mesh_tol"]) else 12.0) + absf(angle_difference(want, (gp - hc).angle())) * 60.0
 			if score >= bs:
 				continue
+			if not GearNet.level_ok(game, kind, c, true, around):
+				continue          # (gears mesh only on the same ground level)
 			if game.placement_problem(t, kind, c, true) != "" or game.gear_net.candidate(t, kind, c, true)["state"] != "ok" or not game.margin_free(c, size):
 				continue
 			best = c

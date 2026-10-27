@@ -120,6 +120,8 @@ static func chain_spot(g: Game, t: int, kind: String, parent: Building, big := f
 			var pgap := centre.distance_to(GearNet.b_c(parent)) - (GearNet.ring_r(kind, size, big) + GearNet.b_r(parent))
 			if pgap > slack * 0.9 or pgap < -float(Defs.GEAR["overlap"]) * Defs.TILE * 0.9:
 				continue
+			if not GearNet.level_ok(g, kind, c, big, parent):
+				continue          # (gears mesh only on the same ground level)
 			var d := Vector2(c - parent.cell).length()
 			if d < bd:
 				bd = d
