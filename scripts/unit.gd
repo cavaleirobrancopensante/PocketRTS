@@ -3407,7 +3407,7 @@ func _tick_unit(delta: float) -> void:
 		_prune_led()
 	if crew_of != null and order != "crew":
 		Ballista.leave(self)          # (a Ballista's crewman given another order: he steps off and does it)
-	# a Horseman or Cuirassier in the saddle, on any order but HOLD: he fights on the move (scripts/ride_by.gd)
+	# a Horseman or Cuirassier in the saddle, under way on an order: he fights on the move (scripts/ride_by.gd)
 	_rides_by = RideBy.rides(self)
 	if _rides_by:
 		RideBy.blows(self, delta)
@@ -3464,7 +3464,7 @@ func _tick_unit(delta: float) -> void:
 					war = false           # nobody left in sight: back to work
 			_walled_check(delta)
 			if target:
-				want = RideBy.steer(self, target, delta) if _rides_by else _engage(target, delta, true)
+				want = _engage(target, delta, true)
 				if position.distance_to(leash_from) > 320.0:
 					target = null
 					cmd_move(leash_from)

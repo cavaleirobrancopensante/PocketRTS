@@ -2,13 +2,13 @@ extends SceneTree
 ## The Horseman and the Cuirassier fight on the move (scripts/ride_by.gd, Defs.RIDE_BY, docs/ride_by.md):
 ##   godot --headless --fixed-fps 30 --script res://tools/test_ride_by.gd
 ##  1. a plain move past enemies: he strikes those in reach without slowing, and gets where he was told
-##  2. an attack order makes passes: he rides at the target, strikes, rides on past and swings round, both sides,
-##     never standing beside it (an Armoured Cuirassier too)
+##  2. an attack order makes passes: he rides at the target, strikes, rides on past and swings round it (his bearing
+##     from it goes right round), never standing beside it (an Armoured Cuirassier too)
 ##  3. a fleeing man is ridden down: struck again and again on the run
 ##  4. a building: passes along its side
 ##  5. the pistol is fired on the move (at a gallop)
 ##  6. the Cavalry Charge doubles only the first blow after a run, not every pass
-##  7. HOLD POSITION: he stands and fights (no loops)
+##  7. HOLD POSITION, and stopped on guard: he stands and fights (no loops)
 ##  8. the Dragoon is unchanged (dismounts to fire)
 ##  9. deterministic: the same fight twice, the same ride to the frame
 var main: Node
@@ -218,16 +218,15 @@ func _passes(armoured: bool) -> void:
 			if c.velocity.length() < c.speed * 0.5:
 				standing += 1
 			far = maxf(far, c.position.distance_to(e.position))
-			# which side of him the target is on as he passes it (close by)
-			if c.position.distance_to(e.position) < 60.0 and c.velocity.length() > 10.0:
-				sides[signf(c.velocity.cross(e.position - c.position))] = true
+			# where he is round it (eight sectors of the compass)
+			sides[posmod(int(floor((c.position - e.position).angle() / (PI / 4.0))), 8)] = true
 		states[c.rb_state] = true
 	var who := "a Cuirassier" if armoured else "a Horseman"
 	var blows := c.ride_n
 	check(blows >= 4, "%s told to attack: %d blows in 14 s, struck in passing (%.0f damage)" % [who, blows, hp0 - e.hp])
 	check(frames > 0 and float(standing) / frames < 0.08, "  never standing beside it (%.0f%% of the time under half speed)" % (100.0 * standing / maxf(frames, 1)))
 	check(far > 60.0 and far < 220.0 and states.has("out"), "  he rides on past it and swings round (up to %.0f px away)" % far)
-	check(sides.size() == 2, "  passes on both sides (a figure of eight)")
+	check(sides.size() == 8, "  he rides right round it (in %d of the 8 directions from it)" % sides.size())
 	check(c.order == "attack" and c.order_target == e, "  the order stands")
 
 
@@ -357,6 +356,17 @@ func _hold() -> void:
 		moved = maxf(moved, c.position.distance_to(p0))
 	check(moved < 12.0 and e.hp < hp0 - 20.0 and c.ride_n == 0,
 		"HOLD POSITION: he stands and fights as before (moved %.0f px, %.0f damage, %d passing blows)" % [moved, hp0 - e.hp, c.ride_n])
+	# stopped (idle, on guard) with an enemy by him: he stands and fights too
+	c.cmd_stop()
+	p0 = c.position
+	hp0 = e.hp
+	moved = 0.0
+	t0 = g.clock
+	while g.clock - t0 < 6.0:
+		await physics_frame
+		moved = maxf(moved, c.position.distance_to(p0))
+	check(c.order == "idle" and moved < 24.0 and e.hp < hp0 - 20.0 and c.ride_n == 0,
+		"stopped, on guard: he stands and fights as before (moved %.0f px, %.0f damage)" % [moved, hp0 - e.hp])
 
 
 # ---------------------------------------------------------------- 8

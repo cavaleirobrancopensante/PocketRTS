@@ -2606,6 +2606,7 @@ func _hunt(u: Unit, prey: Vector2) -> void:
 		if dd < wd:
 			wd = dd
 			w = o
+	w = _party_prey(u, w)
 	var tgt = u.target if u.target != null and is_instance_valid(u.target) and not u.target.dead else null
 	var fighting: bool = tgt is Unit and not (tgt as Unit).is_worker() and (tgt as Unit).kind != "horse"
 	if w and not fighting:
@@ -2619,6 +2620,23 @@ func _hunt(u: Unit, prey: Vector2) -> void:
 		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
 	elif not far and (u.order == "idle" or u.order == "move"):
 		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+
+
+
+## (ride-by, scripts/ride_by.gd) riders hunting together ride down the same hand: they fight on the move in loops round
+## their prey, and each going for the hand nearest him split the party up. The worker a mate within 300 px is already
+## riding down, if this one can see it within 10 tiles; else his own pick `w`.
+func _party_prey(u: Unit, w: Unit) -> Unit:
+	if w == null:
+		return w
+	for o in game.units_near(u.position, 300.0):
+		if o == u or o.team != team or o.kind != "cuirassier" or o.dead or o.order != "attack":
+			continue
+		var p = o.order_target
+		if p is Unit and is_instance_valid(p) and not p.dead and (p as Unit).is_worker() and u.can_hit(p) \
+				and p.position.distance_to(u.position) < 10.0 * Defs.TILE and game.is_visible_to(team, p.position):
+			return p
+	return w
 
 
 

@@ -2,14 +2,15 @@ class_name RideBy
 extends RefCounted
 ## The Horseman and the Cuirassier fight on the move, like StarCraft 2's Cyclone with a sabre (the owner,
 ## 2026-10-27; docs/ride_by.md, the numbers in Defs.RIDE_BY):
-## - On any order but HOLD (move, attack-move, attack, patrol, standing guard, the computer's hunts), while he rides,
+## - On any order (move, attack-move, attack, patrol, follow, the computer's hunts and raids), while he rides,
 ##   he strikes an enemy within sabre reach as he passes, on his normal cooldown, without slowing or stopping (blows).
-## - Told to attack (or fighting what he picked on an attack-move or on guard), he rides AT the target, strikes in
-##   passing, rides on a little past it and swings round for the next pass, on the other side each time (a figure of
-##   eight), instead of standing beside it (steer). A fleeing man is ridden down: he aims where the man will be.
-## - His one loaded pistol shot is fired on the move too.
-## - HOLD POSITION: he stands and fights as before (Unit._engage). A wall or gate piece is hacked at standing too
-##   (a horse can't ride through a wall).
+## - Told to attack (or fighting what he picked on an attack-move), he rides AT the target, strikes in passing, rides
+##   on a little past it and swings round its far end for the next pass along its other side (a loop round the
+##   target, like a racetrack), instead of standing beside it (steer). A fleeing man is ridden down: he aims where the
+##   man will be.
+## - His one loaded pistol shot is fired on the move too (on an attack or an attack-move; a plain move keeps it).
+## - HOLD POSITION, and standing idle (stopped, on guard): he stands and fights as before (Unit._engage). A wall or
+##   gate piece is hacked at standing too (a horse can't ride through a wall).
 ## Everything here runs on the game clock and the units' own state (no randomness): the same in every replay and
 ## online (the host simulates; ride_n, streamed, tells a guest to draw the sabre arc).
 
@@ -18,9 +19,14 @@ extends RefCounted
 static var enabled := true
 
 
-## Fights on the move this tick: a Horseman or Cuirassier in the saddle, not on HOLD.
+## The orders he rides on (a patrol is a move or an attack-move). Standing (idle, on guard) or on HOLD he fights as
+## before: told to stop, he stops, and strikes what comes to him.
+const ORDERS := ["move", "amove", "attack", "follow"]
+
+
+## Fights on the move this tick: a Horseman or Cuirassier in the saddle, under way on an order.
 static func rides(u: Unit) -> bool:
-	return enabled and (Defs.RIDE_BY["kinds"] as Array).has(u.kind) and u.order != "hold" and u.aboard == null and not u.off_field
+	return enabled and (Defs.RIDE_BY["kinds"] as Array).has(u.kind) and ORDERS.has(u.order) and u.aboard == null and not u.off_field
 
 
 ## The blows struck in passing: the pistol (his one loaded shot, at a man ahead in its reach, on an attack-move,
@@ -29,7 +35,7 @@ static func blows(u: Unit, delta: float) -> void:
 	if u.stun_t > 0.0 or u.phase != "" or u.dead:
 		u.rb_aim = 0.0
 		return
-	var fights := u.order == "attack" or u.order == "amove" or u.order == "idle"
+	var fights := u.order == "attack" or u.order == "amove"
 	if u.pistol and not u.hold_fire and fights:
 		if u.rb_aim > 0.0:
 			# (he takes aim as he comes into reach, a gallop's worth of the aim time early, and fires once in reach)
@@ -191,7 +197,6 @@ static func steer(u: Unit, e: Entity, delta: float) -> Vector2:
 		var blocked := _blocked(u, ahead)
 		if u.rb_t >= float(R["out_max"]) or dist >= lat + float(R["over"]) or blocked or u.stuck_t > 0.4:
 			u.rb_state = "in"
-			u.rb_side = -u.rb_side               # (the next pass goes by on the other side: a figure of eight)
 			u.rb_t = -1.0                        # (turning back: no new pass begins until he faces it again)
 			if blocked:
 				u.rb_head = dir                  # (a wall or a cliff edge ahead: he wheels round at once)
@@ -252,14 +257,13 @@ static func _blocked(u: Unit, p: Vector2) -> bool:
 	return not u.game.line_clear(u.position, p, u._path_margin()) or u.game.level_of(p) != u.game.level_of(u.position)
 
 
-## Turns his heading toward `want_dir` by at most `turn` rad/s (a wide U-turn: toward the side of his next pass) and
-## gallops on it.
+## Turns his heading toward `want_dir` by at most `turn` rad/s and gallops on it.
 static func _ride(u: Unit, want_dir: Vector2, delta: float, turn: float) -> Vector2:
 	if turn > 0.0 and want_dir != Vector2.ZERO:
 		var ang := u.rb_head.angle_to(want_dir)
 		if absf(ang) > 1.6:
-			# (turning right round after a pass: away from the target, so the next pass goes by its other side: a
-			# figure of eight, not a circle round it. rb_side has flipped already: the last pass was on -rb_side)
+			# (turning right round after a pass: round the far end, toward the target's side (it was on his rb_side), so the
+			# next pass comes back along its other side: a loop round the target, not hairpins off to one side of it)
 			ang = absf(ang) * float(-u.rb_side)
 		var step := turn * delta
 		u.rb_head = u.rb_head.rotated(clampf(ang, -step, step)).normalized()
@@ -306,7 +310,7 @@ class Slash extends Node2D:
 		var f := clampf(t / life, 0.0, 1.0)
 		# the blade sweeps 150 degrees across his front at the rider's shoulder height, the trail fading behind it
 		var c := Vector2(0, -26)
-		var r := 30.0
+		var r := 34.0
 		var a0 := ang - 1.3
 		var a1 := ang + 1.3
 		if back:
@@ -321,7 +325,8 @@ class Slash extends Node2D:
 			var a := lerpf(tail, tip, float(i) / n)
 			pts.append(c + Vector2(cos(a), sin(a) * 0.55) * r)
 		var fade := 1.0 - f * f
-		draw_polyline(pts, Color(1.0, 0.97, 0.88, 0.35 * fade), 6.0, true)
-		draw_polyline(pts, Color(1.0, 1.0, 1.0, 0.85 * fade), 2.0, true)
+		draw_polyline(pts, Color(0.1, 0.08, 0.06, 0.45 * fade), 5.0, true)      # (a dark edge: it reads on bright ground too)
+		draw_polyline(pts, Color(1.0, 0.97, 0.88, 0.5 * fade), 3.5, true)
+		draw_polyline(pts, Color(1.0, 1.0, 1.0, 0.95 * fade), 1.6, true)
 		var e := c + Vector2(cos(tip), sin(tip) * 0.55) * r
 		draw_line(e, c + Vector2(cos(tip), sin(tip) * 0.55) * (r - 12.0), Color(0.85, 0.88, 0.95, fade), 2.0, true)

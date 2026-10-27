@@ -1645,7 +1645,8 @@ const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
 ## The Horseman and the Cuirassier fight on the move, like StarCraft 2's Cyclone with a sabre (scripts/ride_by.gd,
 ## docs/ride_by.md): on any order but HOLD he strikes what comes in sabre reach as he rides past, on his normal
 ## cooldown, and never stops to swing. Told to attack, he rides at the target, strikes in passing, rides on `over` px
-## and swings round (turning at most `turn` radians a second) for the next pass, on the other side each time.
+## and swings round (turning at most `turn` radians a second) for the next pass along the target's other side: a loop
+## round it.
 ##   hit: the move-hit's damage multiplier (1.0 = the full sabre blow, as the Cyclone fires at full damage)
 ##   side: how far beside the target's edge he passes (px; less than his sabre's reach)
 ##   commit: from this far (px, past the side line) he rides straight through the pass
