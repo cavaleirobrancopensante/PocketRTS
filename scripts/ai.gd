@@ -1865,11 +1865,17 @@ var _stage_t := 0.0
 func _hall_first() -> bool:
 	_hall_reserve = false
 	var hall: String = _f()["hall"]
-	if _halls().size() >= 7 or _best_soil() >= HALL_FIRST_SOIL:
+	if _halls().size() >= 7:
 		return false
 	# halls with a fair share of soil left (one going up counts: it's fresh land)
 	var fresh := _halls().filter(func(h: Building) -> bool: return not h.built or _land(h) > 0.25).size()
-	if fresh >= 2 or _busy_building(hall):
+	# how many fresh halls it needs: a second once the best soil is under HALL_FIRST_SOIL; the Crown also one for every
+	# 16 Labourers (a hall's farms and mill hold about that many: with more on one hall's land they stood idle or
+	# crowded a tired farm while the main went barren, coach round 2)
+	var need := 1 if _best_soil() >= HALL_FIRST_SOIL else 2
+	if _crown():
+		need = maxi(need, ceili(game.workers(team).size() / 16.0))
+	if fresh >= need or _busy_building(hall):
 		return false
 	_hall_reserve = true
 	_saving = true
