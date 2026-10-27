@@ -26,6 +26,11 @@ func _process(_delta: float) -> void:
 		set_process(false)
 		return
 	var frames: Array = _packs.get(unit.anim + "_" + unit.anim_dir, [])
+	# (an own west strip with no spots of its own: its east twin's, mirrored; Unit.WEST_OF)
+	var mirror := frames.is_empty() and Unit.EAST_OF.has(unit.anim_dir)
+	if mirror:
+		frames = _packs.get(unit.anim + "_" + unit.view_dir(), [])
+	flip_h = mirror
 	if frames.is_empty():
 		visible = false
 		return
@@ -35,6 +40,6 @@ func _process(_delta: float) -> void:
 	visible = true
 	frame = int(e[0]) * 14 + level
 	show_behind_parent = not e[1]
-	position = Vector2(e[2], e[3])
-	rotation_degrees = e[4]
+	position = Vector2(-float(e[2]) if mirror else float(e[2]), e[3])
+	rotation_degrees = -float(e[4]) if mirror else float(e[4])
 	self_modulate = Color(1, 1, 1) if unit.wind > 0.0 else Color(0.6, 0.6, 0.6)

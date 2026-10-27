@@ -2,7 +2,8 @@ class_name AnimViewer
 extends Control
 ## ANIMATION VIEWER (Settings): every strip of ArtData.UNITS, looped at the game's frame rate,
 ## for reviewing art without playing a match. Reads ArtData/Defs/Unit directly so it cannot drift.
-## Strips are "<anim>_<dir>" with dirs s/se/e/ne/n; sw/w/nw are the mirrored views the game draws.
+## Strips are "<anim>_<dir>" with dirs s/se/e/ne/n; sw/w/nw are the mirrored views the game draws, or the art's own
+## sw/w/nw strips when it has them (drawn unflipped, as the game does: Unit.WEST_OF).
 
 signal back_pressed
 
@@ -94,7 +95,13 @@ static func anims_of(a: String) -> Dictionary:
 
 ## Frames in the strip, or 0 when it does not exist.
 static func strip_frames(a: String, an: String, d: String) -> int:
-	return int(ArtData.UNITS[a]["frames"].get(an + "_" + MIRROR.get(d, d), 0))
+	var fr: Dictionary = ArtData.UNITS[a]["frames"]
+	return int(fr.get(an + "_" + d, fr.get(an + "_" + MIRROR.get(d, d), 0)))
+
+
+## Is view d of strip `an` the east one mirrored (not the art's own west strip)?
+static func mirrored(a: String, an: String, d: String) -> bool:
+	return MIRROR.has(d) and not ArtData.UNITS[a]["frames"].has(an + "_" + d)
 
 
 ## Frames a second the game plays animation `an` of art `a` at (mirrors Unit._animate).
@@ -585,7 +592,7 @@ func select_anim(nm: String) -> void:
 	for c in _dir_row.get_children():
 		c.queue_free()
 	for d in SHOW_DIRS:
-		var b := _btn(d.to_upper() + (" *" if MIRROR.has(d) else ""), func() -> void: select_dir(d), 40.0)
+		var b := _btn(d.to_upper() + (" *" if mirrored(art, nm, d) else ""), func() -> void: select_dir(d), 40.0)
 		b.custom_minimum_size.x = 56
 		b.disabled = strip_frames(art, nm, d) == 0
 		_dir_row.add_child(b)
@@ -704,7 +711,8 @@ class Preview extends Control:
 			draw_string(ThemeDB.fallback_font, r.position + Vector2(6, 16), d.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.7))
 		if n == 0:
 			return
-		var src: String = AnimViewer.MIRROR.get(d, d)
+		var mir := AnimViewer.mirrored(viewer.art, viewer.anim, d)
+		var src: String = AnimViewer.MIRROR.get(d, d) if mir else d
 		var tex := Game.tex("res://assets/units/%s/%s_%s.png" % [viewer.art, viewer.anim, src]) as Texture2D
 		if tex == null:
 			return
@@ -718,12 +726,12 @@ class Preview extends Control:
 		var cell := Vector2i(ArtData.UNITS[viewer.art]["cell"])
 		var base := Vector2(r.position.x + r.size.x * 0.5, r.position.y + r.size.y * 0.82)
 		var x0 := base.x - anchor.x * sc
-		if MIRROR.has(d):
+		if mir:
 			x0 = base.x - (fw - anchor.x) * sc
 		var y0 := base.y - (anchor.y + (fh - cell.y)) * sc
 		var f := mini(viewer.frame, n - 1)
 		var dst := Rect2(x0, y0, dw, dh)
 		var srcr := Rect2(f * fw, 0, fw, fh)
-		if MIRROR.has(d):
+		if mir:
 			dst = Rect2(x0 + dw, y0, -dw, dh)
 		draw_texture_rect_region(tex, dst, srcr)

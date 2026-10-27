@@ -4,10 +4,14 @@ extends RefCounted
 ## under assets/units/<kind>/<anim>_<dir>.png when the file exists (the same strips as the other units: frames side
 ## by side, cell width = SHEETS' first number; drop real sheets in and the frame counts are read from them) and
 ## drawn here, in code, when it does not (docs/art_style_inconsistency.md). Placeholders: idle (1 frame), walk
-## (2), death (1), in the five directions s se e ne n; the west views are the east ones mirrored by the sprite.
+## (2), death (1), in the five directions s se e ne n; the west views are the east ones mirrored by the sprite, unless a
+## kind has its own sw / w / nw strips (WEST_DIRS).
 ## Also the command-card icons (64 x 64) of the new units and abilities, drawn the same way.
 
 const DIRS := ["s", "se", "e", "ne", "n"]
+## A kind's own west views, read when the files exist (never drawn here): the game draws them unflipped instead of the
+## east ones mirrored (Unit.WEST_OF; the Clock Soldier's sword stays in its right hand).
+const WEST_DIRS := ["sw", "w", "nw"]
 const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb", "attack_r", "attack_l"]
 ## kind -> [cell width, cell height, anchor x, anchor y (the feet)]
 const SHEETS := {
@@ -69,6 +73,12 @@ static func units() -> Dictionary:
 					frames["%s_%s" % [a, dr]] = 1
 				elif a == "walk":
 					frames["%s_%s" % [a, dr]] = 2
+			for dr in WEST_DIRS:
+				var p := _path(k, a, dr)
+				if ResourceLoader.exists(p):
+					var t := load(p) as Texture2D
+					if t != null:
+						frames["%s_%s" % [a, dr]] = maxi(1, t.get_width() / int(sh[0]))
 		out[k] = {"cell": Vector2i(int(sh[0]), int(sh[1])), "anchor": Vector2(float(sh[2]), float(sh[3])), "frames": frames}
 	return out
 

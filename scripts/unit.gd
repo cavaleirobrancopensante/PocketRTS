@@ -1421,7 +1421,7 @@ func _update_basket() -> void:
 		var s: Sprite2D = pair[0]
 		if s == null:
 			continue
-		s.texture = _basket_tex(pair[1], anim_dir)
+		s.texture = _basket_tex(pair[1], view_dir())
 		if s.texture == null:
 			continue
 		s.hframes = nb
@@ -1429,7 +1429,7 @@ func _update_basket() -> void:
 		s.offset = sprite.offset
 	if _pilot_fig:
 		_pilot_fig.offset.y -= _pilot_lift()
-	var slots: Array = info.get("gunners", {}).get(anim_dir, [Vector2.ZERO, Vector2.ZERO])
+	var slots: Array = info.get("gunners", {}).get(view_dir(), [Vector2.ZERO, Vector2.ZERO])
 	var mid: Vector2 = (Vector2(slots[0]) + Vector2(slots[slots.size() - 1])) * 0.5
 	var sc := float(BASKET["scale"])
 	var anchor := Vector2(info.get("gunner_anchor", Vector2.ZERO))
@@ -1622,8 +1622,8 @@ func rect() -> Rect2:
 
 ## Where the Tesla Cart's lightning starts: the sphere on its coil.
 func coil_point() -> Vector2:
-	var p: Vector2 = COIL_TOP.get(anim_dir, Vector2(0, -55))
-	if anim_flip:
+	var p: Vector2 = view_entry(COIL_TOP, Vector2(0, -55))
+	if anim_flip or view_mirror(COIL_TOP):
 		p.x = -p.x
 	return global_position + p * float(d.get("art_scale", 1.0))
 
@@ -5514,10 +5514,10 @@ func _update_crate_spr() -> void:
 		_crate_spr.texture = Game.tex("res://assets/effects/crate_carried.png")
 		_crate_spr.use_parent_material = true
 		sprite.add_child(_crate_spr)
-	var e: Array = CRATE_BACK.get(anim_dir, [0, -24, true])
+	var e: Array = view_entry(CRATE_BACK, [0, -24, true])
 	var bob := -1.0 if anim == "walk" and sprite.frame % 2 == 1 else 0.0
 	_crate_spr.visible = true
-	_crate_spr.position = Vector2(float(e[0]), float(e[1]) + bob)
+	_crate_spr.position = Vector2(float(e[0]) * (-1.0 if view_mirror(CRATE_BACK) else 1.0), float(e[1]) + bob)
 	_crate_spr.show_behind_parent = e[2]
 
 
@@ -6146,7 +6146,7 @@ func _animate(delta: float) -> void:
 	elif kind == "spitter" or kind == "bolt":
 		# rear up / tilt the crossbow at a flyer
 		var at_air: bool = target != null and is_instance_valid(target) and target.is_air() and phase != ""
-		sprite.rotation = (-0.32 if not anim_flip else 0.32) if at_air else 0.0
+		sprite.rotation = (-0.32 if not view_mirrored() else 0.32) if at_air else 0.0
 
 
 ## The cannon sheet has one frame per pose, so the crew's work is faked: the gun rocks and
@@ -6314,6 +6314,41 @@ func _drive_labourer(delta: float, n: int) -> bool:
 
 
 const DIR_FLIP := [["e", false], ["se", false], ["s", false], ["se", true], ["e", true], ["ne", true], ["n", false], ["ne", false]]
+## The west views (SW, W, NW) are the east ones (SE, E, NE) mirrored (DIR_FLIP), unless the art has its own west strip
+## (assets/units/<art>/<anim>_<sw|w|nw>.png, in ArtData.UNITS frames): then that one is drawn, unflipped (the Clock
+## Soldier: its sword stays in its right hand, which a mirror would move to the left; owner, 2026-10-27). Then anim_dir
+## is "sw" / "w" / "nw" and anim_flip false; per-view tables keyed by the five east views read the east twin, mirrored
+## (view_dir, view_entry, view_mirror, view_mirrored).
+const WEST_OF := {"se": "sw", "e": "w", "ne": "nw"}
+const EAST_OF := {"sw": "se", "w": "e", "nw": "ne"}
+
+
+## The east view the strip on show stands for: anim_dir, or a west strip's east twin (per-view tables have s/se/e/ne/n).
+func view_dir() -> String:
+	return EAST_OF.get(anim_dir, anim_dir)
+
+
+## Is the strip on show a west view (mirrored east strip, or the art's own west strip)?
+func view_mirrored() -> bool:
+	return anim_flip or EAST_OF.has(anim_dir)
+
+
+## A per-view table's entry for the strip on show: its own key when the table has one (a west strip's own numbers),
+## else its east twin's (then view_mirror(tab) says it still needs mirroring on top of the sprite's flip).
+func view_entry(tab: Dictionary, def: Variant) -> Variant:
+	return tab.get(anim_dir, tab.get(view_dir(), def))
+
+
+## Must view_entry(tab)'s x be mirrored beyond the sprite's flip? (A west strip drawn unflipped reading its east twin.)
+func view_mirror(tab: Dictionary) -> bool:
+	return EAST_OF.has(anim_dir) and not tab.has(anim_dir)
+
+
+## The art's own west strip for animation a in east view dr (flipped), or "" (then the east strip is mirrored).
+static func own_west(art_frames: Dictionary, a: String, dr: String) -> String:
+	if WEST_OF.has(dr) and art_frames.has(a + "_" + String(WEST_OF[dr])):
+		return WEST_OF[dr]
+	return ""
 
 
 func _set_anim(a: String, force: bool) -> void:
@@ -6336,6 +6371,11 @@ func _set_anim(a: String, force: bool) -> void:
 	var dir_flip: Array = DIR_FLIP[o]
 	var dr: String = dir_flip[0]
 	var flip: bool = dir_flip[1]
+	if flip and ArtData.UNITS.has(sa):
+		var own := own_west(ArtData.UNITS[sa]["frames"], a, dr)
+		if own != "":
+			dr = own
+			flip = false
 	if not force and a == anim and dr == anim_dir and flip == anim_flip and sa == _anim_art:
 		return
 	if a != anim:
@@ -6355,6 +6395,9 @@ func _set_anim(a: String, force: bool) -> void:
 			dr = "e" if frames.has("idle_e") else "s"
 		if dr == "e":
 			flip = face.x < 0.0
+			if flip and own_west(frames, a, dr) != "":
+				dr = own_west(frames, a, dr)
+				flip = false
 	anim = a
 	anim_dir = dr
 	anim_flip = flip
@@ -6498,7 +6541,12 @@ func _draw_haul(ci: CanvasItem) -> void:
 	var info: Dictionary = ArtData.UNITS[kind]
 	var hand := Vector2(0, sprite.position.y - 12.0)
 	var rim := Vector2(0, sprite.position.y - 2.0)
-	var hp: Array = info.get("pilot_hand", {}).get(anim_dir, [])
+	var hp_tab: Dictionary = info.get("pilot_hand", {})
+	var hp: Array = view_entry(hp_tab, []).duplicate()
+	if hp.size() == 2 and view_mirror(hp_tab):
+		# (an own west strip, unflipped, reading its east twin's cell px: mirrored about the anchor)
+		var ax := float(info["anchor"].x) * 2.0
+		hp = [Vector2(ax - Vector2(hp[0]).x, Vector2(hp[0]).y), Vector2(ax - Vector2(hp[1]).x - 1.0, Vector2(hp[1]).y)]
 	if hp.size() == 2:
 		# cell px -> this unit's space, through the body sprite (offset, flip, scale)
 		var xf := sprite.transform
@@ -7539,8 +7587,8 @@ func _update_team(delta: float, fps: float) -> void:
 				changed = true
 				break
 	var pose := "idle_packed" if kind == "mortar" and anim != "walk" else "walk"
-	var view: String = look["view"].get(anim_dir, anim_dir)
-	if changed or view != _team_dir or anim_flip != _team_flip or pose != _team_pose:
+	var view: String = look["view"].get(view_dir(), view_dir())
+	if changed or view != _team_dir or view_mirrored() != _team_flip or pose != _team_pose:
 		_layout_team(look, view, pose, changed)
 	var moving := anim == "walk" and velocity.length() >= 10.0
 	if moving:
@@ -7575,11 +7623,11 @@ func _layout_team(look: Dictionary, view: String, pose: String, remake: bool) ->
 			_team_sprites.append(s)
 			_team_shown.append(c)
 	_team_dir = view
-	_team_flip = anim_flip
+	_team_flip = view_mirrored()
 	_team_pose = pose
 	var sc: float = look["scale"]
 	var own_tab: Dictionary = look["own"].get(pose, look["own"]["walk"])
-	var own: Vector2 = own_tab.get(view, own_tab.get(anim_dir, Vector2.ZERO))
+	var own: Vector2 = own_tab.get(view, own_tab.get(view_dir(), Vector2.ZERO))
 	var step: Array = TEAM_STEP[view]
 	var fwd: Vector2 = step[0] * sc
 	var side: Vector2 = step[1] * sc
@@ -7594,14 +7642,14 @@ func _layout_team(look: Dictionary, view: String, pose: String, remake: bool) ->
 			p = own + fwd + (side * 0.5 if n == 2 else Vector2.ZERO)    # a lone leader in the middle
 		elif i == 2:
 			p = own + fwd + side
-		if anim_flip:
+		if view_mirrored():
 			p.x = -p.x
 		var s := _team_sprites[i]
 		s.texture = tex
 		s.hframes = nf
 		s.offset = -anchor
 		s.position = p
-		s.scale = Vector2(-sc if anim_flip else sc, sc)
+		s.scale = Vector2(-sc if view_mirrored() else sc, sc)
 		(s.material as ShaderMaterial).set_shader_parameter("horse_mask", mask)
 	# draw order by depth (y), farther first: those standing farther back than the vehicle's
 	# feet (ahead of a gun facing north) behind its sprite, the others over it
@@ -7653,8 +7701,8 @@ const BRIDLE := {"e": Vector2(19, -36), "se": Vector2(8, -37), "s": Vector2(0, -
 func _draw_rein() -> void:
 	if leader == null or not is_instance_valid(leader) or dead or not visible:
 		return
-	var b: Vector2 = BRIDLE.get(anim_dir, Vector2(10, -27))
-	if anim_flip:
+	var b: Vector2 = view_entry(BRIDLE, Vector2(10, -27))
+	if anim_flip or view_mirror(BRIDLE):
 		b.x = -b.x
 	var i := leader.led.find(self)
 	var hand: Vector2

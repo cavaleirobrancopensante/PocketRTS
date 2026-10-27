@@ -162,10 +162,11 @@ static func sprite_tilt(u: Unit) -> float:
 	var f: Dictionary = Defs.FLYER[u.kind]
 	if u.dead or u.anim != "attack" or not f.has("tilt"):
 		return 0.0
-	var k := float((f["tilt_view"] as Dictionary).get(u.anim_dir, 0.0))
+	var tv: Dictionary = f["tilt_view"]
+	var k := float(u.view_entry(tv, 0.0))
 	if k == 0.0:
 		return 0.0
-	return curve(f["tilt"], float(u.frame_i) + clampf(u.anim_t, 0.0, 1.0)) * k * (-1.0 if u.anim_flip else 1.0)
+	return curve(f["tilt"], float(u.frame_i) + clampf(u.anim_t, 0.0, 1.0)) * k * (-1.0 if u.anim_flip or u.view_mirror(tv) else 1.0)
 
 
 ## The full lunge or swoop now: from the bird's beak or talons (Defs.FLYER "strike_y" px over its hovering anchor) to its
