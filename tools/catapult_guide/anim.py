@@ -15,7 +15,8 @@ Cut-out parts per row (sheet px, hand-set in ROWS):
   keeps what stands in front of them); behind a near wheel's tooth gaps the body's paint is reflected inward, shaded.
 - S/N ARM POSES: away from the loaded pose the arm is ChatGPT's own painted arm (art/redraws/catapult_arm_poses_
   chatgpt.png: straight up, and tipped toward the viewer for the S follow-through; N and NE's cup in EVERY frame:
-  the cup seen from below, its back to us, the loaded soldier peeking over its far rim), its beam tiled.
+  the cup seen from below, its back to us, the loaded soldier peeking over its far rim; NE turns it NE_TILT further
+  clockwise and squashes it across, so its mouth reads diagonal, up and to the right), its beam tiled.
 - the BODY: the rest, with the holes the arm and wheels leave filled from the neighbouring paint (S and N: the drum
   behind the upright beam is filled row by row between its two sides).
 - the PAYLOAD: ChatGPT's curled-up Clock Soldier from the concept (art/redraws/concepts/catapult_v1.png, the flying
@@ -58,6 +59,11 @@ DEPTH_AWAY = 0.53     # N follow-through only (see arm_vec)
 MARGIN = (70, 175, 70, 14)   # render window around the unit's box: left, top, right, bottom (sheet px)
 SQUASH_34 = 0.72     # SE: the near wheels' faces are turned ~45 deg from us: their ellipse is this wide (of its height)
 N_BACK_T = 100.0     # N / NE (seen from behind): the cup always shows its back; above this angle it stays tipped as here
+NE_TILT = 38.0       # NE (3/4 from behind): the back cup is turned this much CLOCKWISE on screen on top of the beam's
+NE_SQUASH = 0.86     # own turn (its mouth faces up and right, toward the enemy), and squashed across its axis to this
+NE_TURN_MAX = 55.0   # NE: the back cup is never turned further than this from upright (the follow-through's beam already
+                     # leans right: its mouth keeps facing up and right, not straight right)
+NE_RISE = 0.27       # NE follow-through (arm forward of upright): forward on screen rises this much per px across
 
 # per row (sheet px): the unit's box; H the hinge, J the cup joint (where the beam meets the cup); bw the beam's
 # width; clean: the stretch (from J) where the beam shows whole; past it (behind the drum's rim) the beam is that
@@ -88,7 +94,7 @@ ROWS = [
          rim=(238, 942, 33, 10), hub=None, F=None, tpaint=T0, arm='behind',
          wheels=[(221, 1055, 45, 45, 'near'), (348, 1103, 45, 45, 'near'), (442, 1076, 44, 44, 'far')],
          occ=[(340, 1020), (395, 1020), (430, 1022), (462, 1028), (462, 1048), (450, 1056), (440, 1062), (440, 1095), (420, 1110),
-              (395, 1120), (340, 1120)], back_t=N_BACK_T),
+              (395, 1120), (340, 1120)], back_t=N_BACK_T, tilt=NE_TILT, sq=NE_SQUASH, rise=NE_RISE),
     dict(box=(207, 1200, 465, 1452), H=(323, 1320), J=(322, 1257), bw=30, clean=None, cup=(284, 1196, 362, 1268),
          rim=(322.5, 1211, 35, 10), hub=(302, 1305, 345, 1363), F=(0.0, -DEPTH), tpaint=130.0, arm='n',
          wheels=[(249, 1407, 16, 46, 'edge'), (397, 1407, 17, 46, 'edge'), (228, 1378, 18, 48, 'edge'),
@@ -920,6 +926,10 @@ def arm_vec(r, F, T):
         # stays at least as high as at vertical instead of sinking back toward the machine, which read as the arm
         # tipping toward us (a choice for the eye: the camera's real slope is DEPTH)
         F = F * (DEPTH_AWAY / DEPTH)
+    elif ROWS[r].get('rise') and T < 90:
+        # NE, the follow-through: the fitted forward axis is nearly flat across the screen; forward of upright the
+        # arm swings along NE's real forward axis (up and to the right: away from us counts DEPTH up per px across)
+        F = np.array([F[0], F[1] - ROWS[r]['rise'] * F[0]])
     return ARM_L * (math.cos(t) * F + math.sin(t) * np.array([0.0, -1.0]))
 
 
@@ -990,20 +1000,49 @@ def cup_top(cup):
     return float(row.min() + row.max()) / 2.0, float(y0)
 
 
-def under_on(P, Jn, v):
+def under_on(P, Jn, v, r=None):
     """the 'under' cup (UNDER) at the joint Jn, scaled to this row's cup and turned so its axis lies along the beam
-    (v: hinge -> joint): the layer and the bowl's middle"""
+    (v: hinge -> joint); NE: turned NE_TILT further clockwise and squashed across (sq), resampled smoothly
+    (premultiplied BICUBIC, hard alpha) so its rim and rivets do not stair-step. The layer, the bowl's middle and the
+    rim's middle (the top of the bowl, where the loaded soldier peeks over)"""
     if 'under' not in P:
         P['under'] = under_piece(width(P['cup']))
     u = P['under']
+    R = ROWS[r] if r is not None else {}
     Wd, Hh = P['size']
     canvas = np.zeros((Hh, Wd, 4), np.uint8)
     ox, oy = int(Wd // 2 - u['anchor'][0]), int(Hh // 2 - u['anchor'][1])
     _paste(canvas, u['img'], ox, oy)
     a0 = np.array([ox, oy], float) + u['anchor']
     turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(-1.0, 0.0))
+    if R.get('tilt'):
+        turn = min(turn + R['tilt'], max(turn, NE_TURN_MAX))
     M = rotm(turn)
-    return place(canvas, a0, Jn, M), Jn + M @ u['rim_off']
+    ys, xs = np.nonzero(u['img'][..., 3])
+    top = np.array([(xs[ys <= ys.min() + 1].min() + xs[ys <= ys.min() + 1].max()) / 2.0, ys.min()]) - u['anchor']
+    if R.get('sq'):
+        M = M @ np.diag([R['sq'], 1.0])
+        return place_smooth(canvas, a0, Jn, M), Jn + M @ u['rim_off'], Jn + M @ top
+    return place(canvas, a0, Jn, M), Jn + M @ u['rim_off'], Jn + M @ top
+
+
+def place_smooth(img, p0, p1, M):
+    """place() with premultiplied BICUBIC resampling and a hard alpha (for the NE back cup's turn and squash)"""
+    a = img[..., 3:4].astype(float) / 255
+    pre = np.concatenate([img[..., :3] * a, a * 255], -1).astype(np.uint8)
+    Mi = np.linalg.inv(M)
+    aa, b = Mi[0]
+    d, e = Mi[1]
+    im = Image.fromarray(pre, 'RGBA')
+    t = np.array(im.transform(im.size, Image.AFFINE,
+                              (aa, b, p0[0] - aa * p1[0] - b * p1[1], d, e, p0[1] - d * p1[0] - e * p1[1]),
+                              resample=Image.BICUBIC)).astype(float)
+    al = t[..., 3:4] / 255
+    out = np.zeros(t.shape, np.uint8)
+    out[..., :3] = np.clip(np.where(al > 0.02, t[..., :3] / np.maximum(al, 0.02), 0), 0, 255)
+    out[..., 3] = np.where(al[..., 0] >= 0.5, 255, 0)
+    out[out[..., 3] == 0] = 0
+    return out
 
 
 def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
@@ -1019,6 +1058,7 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
     Jn = H + v
     pose = pose_for(r, T)
     arm = np.zeros((Hh, Wd, 4), np.uint8)
+    rimtop = None          # NE: the back cup's rim middle (the loaded soldier peeks over it)
     back = None            # N / NE: the cup seen from behind, drawn over the payload (which peeks over its far rim)
     if pose:
         # S / N: ChatGPT's own painted arm for this pose (no stretched beam), the cup at the joint
@@ -1040,7 +1080,9 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
         if back_cup(r, T):
             # NE (seen from behind) once the arm is up or past vertical: the cup seen from below (its back), its axis
             # along the beam, its joint ball on the beam's end
-            cup, mid = under_on(P, Jn, back_axis(r, T))
+            cup, mid, rimtop = under_on(P, Jn, back_axis(r, T), r)
+            if not R.get('tilt'):
+                rimtop = None      # (N's loaded cup: the soldier over its top row, as before)
             cupf = np.zeros_like(cup)
             (rcx, rcy), rrx, rry = mid, 0.0, 0.0
             back = cup
@@ -1060,7 +1102,7 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
         ph, pw = PAYLOAD.shape[:2]
         if payload[0] == 'cup' and back is not None:
             # N / NE: behind the cup's back, its top peeking over the far rim (the cup is visibly loaded)
-            tx, ty = cup_top(back)
+            tx, ty = cup_top(back) if rimtop is None else rimtop
             pay = np.zeros((Hh, Wd, 4), np.uint8)
             _paste(pay, PAYLOAD, int(round(tx - pw / 2.0)), int(round(ty - ph * PEEK - payload[1])))
         elif payload[0] == 'cup':
@@ -1245,7 +1287,7 @@ def frame_mid(r, T):
     if R['arm'] == 'behind':
         turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(P['paint'][1], P['paint'][0]))
     if back_cup(r, T):
-        return None, under_on(P, Jn, back_axis(r, T))[1]
+        return None, under_on(P, Jn, back_axis(r, T), r)[1]
     rcx, rcy, rrx, rry = P['rim']
     return None, Jn + rotm(turn) @ (np.array([rcx, rcy]) - P['J'])
 
