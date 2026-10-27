@@ -8,7 +8,7 @@ body shows). The motion is the matching east row's mirrored (SW from SE, W from 
   Walk: the legs cut at the hip and sheared like walk_code.py, the forward vector mirrored (the body, arms, sword and
      shield stay as painted, with a small bob).
   Death: tips over about its feet like death.py, to the mirrored side.
-Out (3 rows SW W NW on a 1536 x 1024 navy sheet, like the east sheets; tools/import_clock_soldier.py imports them):
+Out (3 rows SW W NW on a navy sheet 1024 px tall, WIDE px across; tools/import_clock_soldier.py imports them):
   art/redraws/clock_soldier_{walk,attack,death}_west.png and a .gif of each.
   python3 tools/soldier_guide/west.py [--debug out.png]"""
 import math
