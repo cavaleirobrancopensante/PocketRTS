@@ -1,13 +1,18 @@
 class_name Pendulum
 extends RefCounted
-## THE PENDULUM (gear mode's Clockwork tier 3, Defs.UNITS "pendulum"; the swing's numbers in Defs.PENDULUM_SWING): a tall,
-## slow, tough clock tower on long legs, the Clockwork's melee AREA DAMAGE. Its pendulum blade winds back (the strip's
-## frames 2-4: the telegraph) and swings through the front on the 5th frame: every enemy on the ground in the ARC in front
-## of it takes the blow (never its own side: the machine's units keep in step with the swing), and a building it swings
-## at takes it too. It cannot reach flyers. It is made only while its Movement Works runs on the BIG gear (the heavy
-## torque: gear_problem, Game.can_train); a Works with Pendulums queued cannot go back to the small gear meanwhile.
-## Art: tools/import_tier3.py (the sway, the swing and the walk were built in code from ChatGPT's direction sheet:
-## tools/pendulum_guide/).
+## THE PENDULUM (gear mode's Clockwork tier 3, Defs.UNITS "pendulum"; the blow's numbers in Defs.PENDULUM_SWING): a tall,
+## slow, tough clock tower on long legs with TWO ARMS, each a brass rod ending in a heavy weight with a crescent blade
+## (the v2 redesign, owner 2026-10-26: nothing hangs between the legs), the Clockwork's melee AREA DAMAGE. It attacks
+## FORWARD and the arms CUT IN TURN (Unit.arm: the right arm, then the left; each blow plays its arm's strip, attack_r /
+## attack_l): each blow is a LOW SWEEP, a scythe at ankle height: the arm swings back behind its hip (the strip's frames
+## 1-2: the telegraph), its blade's edge turned at the enemy, then sweeps forward and across just above the ground in
+## front of its feet, through where small enemies stand, and lands on the 4th frame: every enemy on the ground in the
+## ARC in front of it takes the blow (never its own side: the machine's units keep in step with the swing), a LIGHT unit
+## (tag "light") more (PENDULUM_SWING "vs_light"), and a building it swings at takes it too. It cannot reach flyers. It is
+## made only while its Movement Works runs on the BIG gear (the heavy torque: gear_problem, Game.can_train); a Works with
+## Pendulums queued cannot go back to the small gear meanwhile.
+## Art: tools/import_tier3.py (the idle, the walk and the two low sweeps built in code from ChatGPT's direction sheet,
+## tools/pendulum_v2_guide/; the death painted by ChatGPT).
 
 
 ## "" when Movement Works b may make a Pendulum as far as its gear goes: it runs on its BIG gear (or is being fitted with
@@ -27,6 +32,17 @@ static func swap_problem(b: Building) -> String:
 	if b == null or not b.gear_big or b.gear_swap_t >= 0.0 or not b.queue.has(Defs.PENDULUM):
 		return ""
 	return "A Pendulum is being made here: it needs the big gear. Cancel it (or let it finish) before going back to the small gear."
+
+
+## Its two arms cut in turn (Unit.arm, set as each blow's wind-up starts to the blows so far mod 2: right, left, right...;
+## streamed to online guests with the unit, so they play the same arm's strip).
+const ARMS := ["r", "l"]
+
+
+## The strip of the blow under way: its arm's ("attack" when a sheet has one strip for both).
+static func attack_anim(u: Unit) -> String:
+	var a := "attack_" + String(ARMS[u.arm % 2])
+	return a if ArtData.UNITS[u.art]["frames"].has(a + "_s") else "attack"
 
 
 ## The way the blade swings (on the ground): toward its target's feet, else the way it faces.
@@ -51,6 +67,12 @@ static func in_arc(u: Unit, o: Unit, dir: Vector2) -> bool:
 	return dir.dot(to / dist) >= cos(deg_to_rad(float(ps["arc"])))
 
 
+## The blow's bonus on unit o: a light unit (tag "light": no armour to turn the blade) takes PENDULUM_SWING "vs_light"
+## times the blow (a guess, design_principles 1), anything else the blow.
+static func light_bonus(o: Unit) -> float:
+	return float(Defs.PENDULUM_SWING["vs_light"]) if o.has_tag("light") else 1.0
+
+
 ## Every enemy unit on the ground the swing of unit u toward `dir` catches.
 static func victims(u: Unit, dir: Vector2) -> Array:
 	var g := u.game
@@ -64,7 +86,8 @@ static func victims(u: Unit, dir: Vector2) -> Array:
 
 
 ## The blow (Unit._strike: dmg with its veterancy, and the building bonus already in when it swings at a building): every
-## enemy unit in the arc takes the blow (an area blow: a rider's horse goes down with him); the building takes its bonus.
+## enemy unit in the arc takes the blow (an area blow: a rider's horse goes down with him), a light one with its bonus
+## (light_bonus); the building takes its building bonus.
 ## Returns how many units it caught.
 static func swing(u: Unit, e: Entity, dmg: float) -> int:
 	var g := u.game
@@ -72,7 +95,7 @@ static func swing(u: Unit, e: Entity, dmg: float) -> int:
 	var hit := victims(u, dir)
 	var on_units := dmg / float(u.d.get("building_bonus", 1.0)) if e is Building else dmg
 	for o in hit:
-		o.take_damage(on_units, u, "")
+		o.take_damage(on_units * light_bonus(o), u, "")
 		if o.visible and g.view_rect.has_point(o.position):
 			g.spawn_effect("hit", o.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.7)
 	if e is Building and is_instance_valid(e) and not e.dead:

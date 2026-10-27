@@ -8,15 +8,20 @@ WALK (8 frames): the old Pendulum's long stride (rig.py), driven by the arms: th
   near arm swings in front of the body and legs and the far one, darker, behind them; from the front and back a
   forward arm comes towards us (lower, bigger, in front of its leg), a back arm goes away (higher, smaller, darker,
   tucked behind the hip).
-ATTACK (12 frames, two blows, tick... tock...): the right arm winds back, swings through low and fast, and strikes
-  forward and up across the front of the body, then follows through while the left arm swings back (its wind-up);
-  the left arm strikes the same way, and both settle. Seen from the side the blow swings forward and up in the picture
-  plane; from the front the blade slashes from its side across the belly to the other side; from behind the weight
-  rises forward beside the shoulder. The body leans into each blow. THE HITS: frames 4 and 8 (0-based 3 and 7).
+ATTACK (12 frames, two LOW SWEEPS: cut.py): the right arm (frames 1-6), then the left (frames 7-12). Each blow is a
+  scythe stroke at ankle height (owner, 2026-10-27: a ground unit that mostly kills Raptors sweeps the ground): the arm
+  turns on a cone round its shoulder, swings BACK behind its hip (not up), then sweeps forward and across just above the
+  ground in front of the feet, the crescent's edge leading and facing the target at the hit, follows through low and
+  settles; the knees give and the body leans into it so the weight runs low, while the other arm swings a little
+  against it. Side view: a low forward arc in front of the feet; front: across the front of the body at the feet's
+  height; back: cut short beside its own leg (CROSS: from behind nothing may pass behind the gap between the legs);
+  3/4 in between. A steel-white smear trails the edge on the sweep frames. THE HITS: frames 4 and 10 (0-based 3 and 9);
+  each blow is a strip of its own in the game (attack_r = frames 1-6, attack_l = frames 7-12, starting and ending at
+  rest).
 
 Out (sheet px; the unit's point, under the case's middle on the ground, at the middle of each cell 10 px above its
 bottom): art/redraws/pendulum_v2_idle.png (rows S, SE, E, NE, N x 4 frames) and pendulum_v2_walk.png (5 x 8), cells
-236 x 302; pendulum_v2_attack.png (5 x 12), cells 320 x 326 (the sizes are worked out from the frames); and a GIF of
+236 x 302; pendulum_v2_attack.png (5 x 12), cells 314 x 368 (the sizes are worked out from the frames); and a GIF of
 each: the five facings side by side at game scale (GS = 0.28) x 3, the attack's hit frames marked by a red bar.
   python3 tools/pendulum_v2_guide/anim.py            (... anim.py review DIR: contact sheets for checking)"""
 import math, os, sys
@@ -36,34 +41,29 @@ ROCK = 3.0          # it sways over the standing leg (front view, px)
 ROLL = 1.5          # and tilts with it (deg)
 IDLE_ARM = 3.5      # the idle's tick and tock (deg)
 
-# the attack, per frame: right arm (theta, yaw), left arm (theta, yaw), the body's lean (deg, + forward) and dip (px).
-# A blow is a forward swing that turns in across the front of the body (yaw): seen from the front the blade slashes
-# from the side across the belly; seen from the side the same sweep shows as forward and up (PITCHK turns part of
-# the yaw into more lift where the yaw cannot be seen, SWEEPK keeps the sweep where it can, and from behind keeps it
-# small so the weight is not lost behind the body). An arm swung back tucks in behind the body (negative yaw).
-ATTACK = [
-    ((-35, -8), (12, 0), -1.5, 0),      # 1  the right arm winds back, tucking in behind
-    ((-66, -12), (18, 4), -3.0, 1),     # 2  wound up
-    ((14, 4), (-20, -4), 1.5, 2),       # 3  it swings through, low and fast
-    ((74, 38), (-44, -8), 4.0, 3),      # 4  THE BLOW: forward and in, the blade sweeping the space in front
-    ((86, 62), (-60, -12), 3.0, 2),     # 5  follow-through across the body; the left arm is wound back
-    ((42, 18), (-66, -12), -1.0, 1),    # 6  the right arm falls back; the left one holds
-    ((-16, -4), (14, 4), 1.5, 2),       # 7  the left arm swings through
-    ((-42, -8), (74, 38), 4.0, 3),      # 8  THE BLOW
-    ((-56, -12), (86, 62), 3.0, 2),     # 9  follow-through
-    ((-34, -6), (42, 18), -1.0, 1),     # 10 it falls back
-    ((-14, -2), (18, 4), 0.0, 0),       # 11 settling
-    ((-4, 0), (5, 0), 0.0, 0),          # 12 almost at rest (loops into 1)
+# the attack: two LOW SWEEPS (cut.py), the right arm (frames 1-6, THE HIT on frame 4), then the left (frames 7-12, THE
+# HIT on frame 10). Each blow is a scythe stroke at ankle height: the arm swings BACK (not up), then sweeps forward and
+# across low in front of the unit, the blade's edge leading and facing the target at the hit, follows through low past
+# it and settles. The other arm swings a little against it. Per frame of a blow: the striking arm (phi round the
+# shoulder: -90 back, 0 its own side, 90 forward, 150 across the front; c how far out of the hang; blow weight w; blade
+# turn beta), the other arm (th: + forward), the body's lean (deg, + into the blow) and dip (px, down: the knees give).
+BLOW = [
+    ((-45, 20, 0.55, 0.5), 6, -1.0, 6),     # 1  it swings back, low, the edge turning to lead; the knees start to give
+    ((-75, 34, 1.0, 0.9), 12, -2.0, 16),    # 2  swung back behind its hip, out and low: the edge faces forward
+    ((15, 30, 1.0, 1.0), 4, 3.0, 26),       # 3  sweeping forward fast, skimming the ground beside its feet
+    ((70, 26, 1.0, 1.0), -8, 7.0, 30),      # 4  THE HIT: in front of the feet, at ankle height, the edge at the target
+    ((135, 28, 1.0, 1.0), -12, 5.0, 24),    # 5  follow-through: low, across the front, past the target
+    ((120, 14, 0.45, 0.4), -4, 1.0, 8),     # 6  it rises and settles back to the hang
 ]
-HITS = [3, 7]
-ATTACK_DUR = [130, 130, 60, 130, 100, 110, 70, 130, 100, 110, 120, 120]
-SWEEPK = [1.0, 0.85, 1.0, -0.1, -0.15]  # how much of a blow's sweep across shows, per facing (from behind it turns a
-                                        # little OUT instead, so the weight rises beside the shoulder, not behind it)
-PITCHK = [0.0, 0.1, 0.25, 0.5, 0.6]     # how much of it becomes lift instead
-WINDK = [0.72, 0.72, 1.0, 0.9, 0.9]     # the wind-up's reach per facing: from the front a full wind-up hides behind
-                                        # the shoulder (or juts out sideways in 3/4), so it goes less far there
-TUCKK = [1.0, 1.0, 0.0, 0.0, 0.0]       # a swung-back arm tucks in behind the hip only where "back" is away from us:
-                                        # from behind, back is towards us and a tucked weight would hang in front of
+CROSS = [165.0, 150.0, 120.0, 80.0, 75.0]  # per facing: the farthest round the front a sweep goes (phi). From behind,
+                                        # a weight that crossed the front would show through the gap between the legs
+                                        # (the old pendulum's look): there the sweep stops beside its own leg
+SMEARED = {2: 4, 3: 4, 4: 4}            # frames of a blow with a smear behind the edge (and its length in steps)
+HITS = [3, 9]
+BLOW_DUR = [130, 150, 70, 90, 100, 140]
+ATTACK_DUR = BLOW_DUR * 2
+TUCKK = [1.0, 1.0, 0.0, 0.0, 0.0]       # a swung-back walking arm tucks in behind the hip only where "back" is away from
+                                        # us: from behind, back is towards us and a tucked weight would hang in front of
                                         # the crotch
 STAND = [(0.0, 0.0, 0.0), (0.0, 0.0, 0.0)]
 
@@ -101,18 +101,25 @@ def idle_pose(r, i):
                 arms={'right': (IDLE_ARM * s, 0.0), 'left': (-IDLE_ARM * s, 0.0)})
 
 
-def blow(r, th, yw):
-    if th > 0:
-        return th + PITCHK[r] * yw, yw * SWEEPK[r]
-    return th * WINDK[r], yw * TUCKK[r]
-
-
 def attack_pose(r, i):
-    (tr, yr), (tl, yl), lean, d = ATTACK[i]
-    # the lean turns the body in the side views; seen from the front or back it dips a little more instead
+    """frame i of the two-blow sweep (0-5 the right arm's blow, 6-11 the left's)"""
+    k_ = i % 6
+
+    def q_of(j):
+        (phi, c, w, beta) = BLOW[j][0]
+        return {'phi': min(float(phi), CROSS[r]), 'c': float(c), 'w': w, 'beta': beta}
+    strike = q_of(k_)
+    other, lean, d = BLOW[k_][1:]
+    if k_ in SMEARED:
+        q0 = q_of(k_ - 1)
+        n = SMEARED[k_]
+        strike['trail'] = [{'phi': q0['phi'] + (strike['phi'] - q0['phi']) * j / float(n),
+                            'c': q0['c'] + (strike['c'] - q0['c']) * j / float(n),
+                            'w': strike['w'], 'beta': strike['beta']} for j in range(n)]
+    rest = {'th': float(other), 'w': 0.0, 'beta': 0.0}
+    arms = {'right': strike, 'left': rest} if i < 6 else {'right': rest, 'left': strike}
     k = LEANK[r]
-    return dict(legs=STAND, body=(0.0, d + (1 - k) * max(0.0, lean) * 0.5, lean * k),
-                arms={'right': blow(r, tr, yr), 'left': blow(r, tl, yl)})
+    return dict(legs=STAND, body=(0.0, d + (1 - k) * max(0.0, lean) * 0.5, lean * k), arms=arms)
 
 
 def frames_of(poses):
