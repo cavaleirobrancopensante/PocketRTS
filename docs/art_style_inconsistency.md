@@ -211,3 +211,20 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - Pendulum v2 death (0.14.36, ChatGPT's art/redraws/pendulum_v2_death_chatgpt_1/2.png, tools/import_tier3.py): CODE EDIT:
   a pink puff in the dust (sheet 1, row SE, frame 4) recoloured to the dust's grey by brightness (grey_pink); each row
   SCALED (x1.08-1.22) so its standing first frame matches the idle's height. Otherwise as painted.
+
+## Clock Soldier SHIELD FORWARD (code, 0.14.49; docs/clock_soldier_shield.md)
+
+- The stance's strips `assets/units/clock_soldier/guard_<dir>.png` (standing) and `guard_walk_<dir>.png` (walking), all
+  eight views, are BUILT IN CODE from the painted game strips by `tools/soldier_guide/shield.py` (guide sheet
+  `art/redraws/clock_soldier_shield_guide.png`): the painted shield is CUT OUT of the W idle (the one view where it faces
+  us whole) and pasted in front of the soldier, SQUASHED on x in the side views (seen edge on), scaled 0.95-1.15, with a
+  CODE-DARKENED rim ring so it reads on the body; drawn under the body when it faces away (N, NE, NW: only the top of the
+  shield shows over the shoulders). The shield on the arm is WIPED (an ellipse per view) and the holes in the body are
+  FILLED by smearing the nearest body pixel of the same row, a shade darker (visible in SW as a smeared arm stub). In W the
+  painted shield stays and the cut-out goes over it, raised and forward. The shield arm itself is never redrawn (no arm
+  raised behind the shield), and the walk legs are the code-built walk's. While attacking, the soldier plays its normal
+  attack strip (the shield back on its arm for the swing). A ChatGPT pass (the requests in docs/clock_soldier_shield.md)
+  would retire all of this.
+- Placeholder command icons drawn in code (CwArt._ability_glyph "ab_shield", "research_shield": a brass disc with a boss,
+  an arrow / a cap) until `assets/icons/clockwork/ab_shield.png` and `research_shield.png` are drawn (they drop in with no
+  code: the HUD takes the files first).

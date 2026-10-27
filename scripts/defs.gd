@@ -200,6 +200,14 @@ const ARC := {"drain": 0.05, "speed": 420.0}
 ## behind it, inside the `cone` (cosine) away from the shooter, hit the shield instead
 ## (the shooter must be in front of it: `front`).
 const BRACE := {"armor": 7, "reach": 120.0, "cone": 0.45, "front": 0.2, "switch": 0.6, "drain": 2.5}   # drain: battery use while braced (x normal)
+## Clock Soldier: SHIELD FORWARD (research SHIELD WALL at the Movement Works; scripts/shield_wall.gd,
+## docs/clock_soldier_shield.md). Switching takes `switch` s (it stands still meanwhile); raised, it walks at `speed` of
+## its pace, has `armor` more armour and takes `front` less from SHOTS whose shooter stands in front of it (inside the
+## `cone`, a cosine about where it faces) and `front_melee` less from blows from in front; blows from the side or behind
+## and splash (shells, blasts, clouds) are not stopped. It keeps fighting, its blows `cooldown` times slower. Guesses,
+## tuned with tools/measure_clock_soldier.gd (docs/clock_soldier_shield.md): a stand-up fight against shooters is won,
+## the race to chase or flee is lost, and swarms of claws are not turned into a wall of it.
+const SHIELD_WALL := {"speed": 0.6, "armor": 1.0, "front": 0.5, "front_melee": 0.2, "cone": 0.35, "switch": 0.5, "cooldown": 1.15}
 ## Wind-up Soldiers run on a spring, not a battery: `run` s away from a field and they run
 ## down; a Winder cranks one back up at `crank` a second (or a field does).
 const SPRING := {"run": 50.0, "crank": 0.6}
@@ -841,16 +849,18 @@ const UNITS := {
 		"faction": "clockwork", "worker": true, "repairs": true,
 		"about": "The one worker: his job is WINDING. He winds a Cog Press for cogs (send him onto it: up to its crew), builds (he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on) and repairs. He can fight a little.",
 	},
-	# the new-style army's tier 1 (gear mode; docs/clockwork_ground_up.md): plain melee, no special ability. Guesses: a
+	# the new-style army's tier 1 (gear mode; docs/clockwork_ground_up.md): plain melee. 0.14.49 (the owner: a bit faster, less
+	# health, docs/clock_soldier_shield.md): 90 hp -> 75, speed 62 -> 68 (guesses, measured there); its SHIELD FORWARD
+	# stance (Defs.SHIELD_WALL, scripts/shield_wall.gd) comes with the SHIELD WALL research. First guesses: a
 	# Musketeer's price (60 + 10 powder) in cogs, sturdier than a Winder (46 hp), a short clock-hand sword whose blow lands
 	# on the 4th frame of the swing (aim 0.33 s at the attack strip's 9 fps). Radius 10, a Musketeer's: the owner had it
 	# drawn about 30% smaller in 0.14.32 (42 px tall, the Jack 59), so its body went from 14 to 10 with it
 	"clock_soldier": {
 		"tags": ["light"],
-		"name": "Clock Soldier", "hp": 90, "armor": 1, "speed": 62, "cost": 70, "time": 16.0, "supply": 1,
+		"name": "Clock Soldier", "hp": 75, "armor": 1, "speed": 68, "cost": 70, "time": 16.0, "supply": 1,
 		"sight": 7, "range": 22, "damage": 10, "cooldown": 1.2, "aim": 0.33, "radius": 10, "from": "movement_works",
 		"faction": "clockwork",
-		"about": "The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Made at the Movement Works.",
+		"about": "The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Quick on its feet but light. SHIELD FORWARD (once SHIELD WALL is researched at the Movement Works) raises the shield in front: slower, but tougher, and much tougher against shots from the front. Made at the Movement Works.",
 	},
 	# TIER 2 (gear mode): the JACK, the first Tension unit (the Clockwork's Stalker): ranged, hits ground and air, hops
 	# (its walk), JUMPs (Defs.JACK_JUMP). Guesses (design_principles 1): 100 cogs + 25 Tension, 2 supply; a shot every
@@ -1138,7 +1148,7 @@ const BUILDINGS := {
 	"movement_works": {
 		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack", "pendulum", "netter"], "faction": "clockwork",
-		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). Must stay linked to the gear field.",
+		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
 	# its ring meshes with a Mainspring's. Numbers are guesses: the Movement Works' price and health.
@@ -1309,6 +1319,11 @@ const RESEARCH := {
 	"high_leap": {"name": "High Leap", "label": "HIGH LEAP", "at": "escapement", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 100,
 		"time": 60.0, "icon": "research_high_leap",
 		"about": "A stiffer spring: every Jack can JUMP UP onto high ground too (only where you can see)."},
+	# the Movement Works' research (gear mode): SHIELD FORWARD for every Clock Soldier (Defs.SHIELD_WALL). It costs
+	# Tension, so it is made only at a Works whose ring meshes with a Mainspring's (THE TENSION RULE). Guesses.
+	"shield_wall": {"name": "Shield Wall", "label": "SHIELD WALL", "at": "movement_works", "faction": "clockwork", "cost": 100, "cost2": 0,
+		"tension": 50, "time": 45.0, "icon": "research_shield",
+		"about": "Drilled to hold the shield in front: every Clock Soldier gets SHIELD FORWARD. Raised, it walks 40% slower and swings a little slower, but has 1 more armour and takes half the damage from shots coming from the front (a fifth less from blows from the front)."},
 	# the Clock Aviary's research (gear mode): then each Swift can be morphed into a Ticking Owl (Defs.OWL_MORPH)
 	# (id owl_morph: the unit is ticking_owl)
 	"owl_morph": {"name": "Ticking Owl", "label": "TICKING OWL", "at": "cuckoo_house", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 150,

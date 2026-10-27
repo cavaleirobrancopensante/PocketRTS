@@ -177,6 +177,8 @@ var _spin_idle := 0.0           # Thresher: seconds since its last blow
 var braced := false             # Bulwark: the tower shield planted
 var brace_t := 0.0              # Bulwark: planting / lifting the shield
 var _shield_t := 0.0            # Bulwark: a shot just hit the shield (braced_hit)
+var shield_up := false          # Clock Soldier: SHIELD FORWARD raised (or being raised): scripts/shield_wall.gd
+var shield_t := 0.0             # Clock Soldier: the shield's switch under way (s left)
 var self_wind_t := 0.0          # Winder: stopped to wind itself
 var cranked_t := 0.0            # Wind-up Soldier: a Winder is cranking it (wind-up anim)
 var jump := {}                  # Jack: the leap under way ({} on the ground; scripts/jack.gd)
@@ -232,6 +234,12 @@ func set_brace(on: bool) -> void:
 	braced = on
 	brace_t = float(Defs.BRACE["switch"])
 	armor = float(Defs.BRACE["armor"]) if on else float(d["armor"])
+
+
+## Clock Soldier: SHIELD FORWARD on or off (scripts/shield_wall.gd; needs the SHIELD WALL research).
+func set_shield(on: bool) -> void:
+	if game.net_forward(self, "set_shield", [on]): return
+	ShieldWall.set_up(self, on)
 
 
 ## Bulwark: a shot hit the planted shield.
@@ -1166,6 +1174,8 @@ func _cooldown() -> float:
 		return musket_cooldown()
 	if overclock_t > 0.0:
 		return float(d["cooldown"]) * float(Defs.OVERLOAD["cooldown"])
+	if shield_up:
+		return float(d["cooldown"]) * ShieldWall.cooldown_mult(self)     # (SHIELD FORWARD swings slower)
 	return float(d["cooldown"])
 
 
@@ -1198,6 +1208,8 @@ func can_gather() -> bool:
 
 
 func take_damage(amount: float, from: Entity, blow := "") -> void:
+	if shield_up:
+		amount = ShieldWall.incoming(self, amount, from, blow)     # (SHIELD FORWARD: less from the front)
 	if Defs.cw_roster:
 		amount = CwUnits.incoming(self, amount, from, blow)
 	if work == "feeding":
@@ -3160,6 +3172,8 @@ func _tick_unit(delta: float) -> void:
 		speed *= float(Defs.BLOAT["slow"])
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		CwUnits.pre_tick(self, delta)
+	if shield_up or shield_t > 0.0:
+		ShieldWall.tick(self, delta)        # (a Clock Soldier's SHIELD FORWARD: the switch, the slower pace)
 	if _k_fac == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
 		if hp < max_hp:
@@ -6092,6 +6106,8 @@ func _anim_name() -> String:
 		"ornithopter", "clock_soldier", "netter":
 			if phase != "":
 				return "attack"          # (the Netter's recoil)
+			if shield_up:
+				return ShieldWall.anim(self, moving)     # (SHIELD FORWARD: guard, guard_walk)
 		"pendulum":
 			if phase != "":
 				return Pendulum.attack_anim(self)   # (its two arms cut in turn: attack_r, attack_l)
@@ -6232,7 +6248,7 @@ func _animate(delta: float) -> void:
 		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
 	var loop := true
 	match anim:
-		"idle", "idle_carry":
+		"idle", "idle_carry", "guard":
 			fps = 2.0 if not Defs.FLYER.has(kind) else float(Defs.FLYER[kind]["flap"]) * 0.85     # (a flyer flaps in place)
 		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0

@@ -25,7 +25,7 @@ const GAME := {
 
 ## UNIT / BUILDING: methods of an entity the guest owns (the receiver must be theirs).
 const ENTITY := ["cmd_gather", "cmd_harvest", "cmd_sacrifice", "cmd_deploy", "cmd_pack", "cmd_stop",
-	"cmd_land", "cmd_take_off", "cmd_dismount", "cmd_restock", "give", "set_hold_fire", "set_brace", "set_supply"]
+	"cmd_land", "cmd_take_off", "cmd_dismount", "cmd_restock", "give", "set_hold_fire", "set_brace", "set_supply", "set_shield"]
 
 ## Settings flipped by the command card (a property of an entity the guest owns).
 const PROPS := ["auto_repair", "auto_train", "auto_refit", "supplying", "courier", "team_want"]

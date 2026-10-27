@@ -102,7 +102,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			"kills": u.kills, "ff": u.friendly_kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
 			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying, "tw": u.team_want,
-			"spin": u.spin, "brace": u.braced, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
+			"spin": u.spin, "brace": u.braced, "shd": u.shield_up, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
 		if Defs.ARMOURED.has(u.kind):
 			ud["kit"] = u.get_kit()
 			if not u.refit.is_empty():
@@ -457,6 +457,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.carry_t = float(ud.get("ct", 0.0))
 		if bool(ud.get("brace", false)):
 			u.set_brace(true)
+		if bool(ud.get("shd", false)) and u.kind == ShieldWall.KIND:
+			u.shield_up = true          # (SHIELD FORWARD: raised, settled)
+			u.armor = float(u.d["armor"]) + float(Defs.SHIELD_WALL["armor"])
 		if ud.get("rf") is Array and not (ud["rf"] as Array).is_empty():
 			# on his way to a refit he'd paid for: he goes again (or it's paid back)
 			var rfp: Array = ud.get("rfp", [0, 0])

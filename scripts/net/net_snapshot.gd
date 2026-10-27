@@ -18,7 +18,7 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 	"cocoon", "coat", "armoured", "kills", "art", "powder", "wind", "max_hp", "off_field", "horse_hp", "harnessed",
 	"topter_bat", "courier", "supplying", "auto_repair", "hold_fire", "pistol", "bayonet", "pouch", "carry_empty",
 	"gas", "spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
-	"owl_t", "net_t", "arm"]       # (a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
+	"owl_t", "net_t", "arm", "shield_up", "shield_t"]       # (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
 	# launcher a Jack fires now, so a guest plays that arm's strip)
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target"]
 const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "prod_t", "eggs", "upgrade_t", "growth",
@@ -52,7 +52,7 @@ static func unit_vals(u: Unit) -> Array:
 		u.topter_bat, u.courier, u.supplying, u.auto_repair, u.hold_fire, u.pistol, u.bayonet, u.pouch, u.carry_empty,
 		snappedf(u.gas, 0.01), snappedf(u.spin, 0.01), snappedf(u.overclock_t, 0.01), snappedf(u.cranked_t, 0.01),
 		snappedf(u.self_wind_t, 0.01), u.tongue_stage, snappedf(u.tesla_t, 0.01), snappedf(u.haul_t, 0.01), u.auto_work,
-		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm]
+		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm, u.shield_up, snappedf(u.shield_t, 0.01)]
 
 
 ## The building's values, in BLD_PROPS order.
@@ -583,6 +583,8 @@ static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
 	u.owl_t = row[o + 39]
 	u.net_t = row[o + 40]
 	u.arm = row[o + 41]
+	u.shield_up = row[o + 42]
+	u.shield_t = row[o + 43]
 
 
 static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:
