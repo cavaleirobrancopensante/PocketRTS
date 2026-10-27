@@ -455,7 +455,9 @@ def cmd_combine(a):
     say("Medians over every side still playing at that minute (games that ended earlier drop out, so later rows lean on "
         "the closer games). Income is the main resource (gold, biomass or cogs) earned in the minute before; the bank is "
         "what is unspent; the army is its value. The earlier study (docs/study_data, version 0.14.1, plain Hard "
-        "computers, mirrors left out here) is in brackets.")
+        "computers, mirrors left out here) is in brackets. Careful with the Clockwork's brackets: that study played the old "
+        "ore-and-energy Clockwork, which has since been rebuilt twice (gear mode, then the Tension economy of 0.14.38), and "
+        "its Brood had neither the essence nor the pit ground rules of 0.14.40 to 0.14.42.")
     say("")
     new_e = econ_at([r for r in D["ts"] if not is_explore(r["id"])])
     old_ts = []
@@ -515,6 +517,19 @@ def cmd_combine(a):
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     open(a.out, "w").write("\n".join(L) + "\n")
     print("wrote %s (%d games, %d explore games)" % (a.out, len(games), len(xgames)))
+
+
+MUT_KINDS = [("workers", "worker count"), ("swap", "steps swapped"), ("drop attack", "attack dropped"), ("drop", "step dropped"),
+             ("add attack", "attack added"), ("add", "step added"), ("attack", "attack timing"), ("proxy", "proxy"),
+             ("fast", "fast expansion"), ("no wall", "no wall"), ("early tech", "early tech"), ("unit mix", "unit mix"),
+             ("then", "plan after the script")]
+
+
+def mut_kind(label):
+    for pre, name in MUT_KINDS:
+        if label.startswith(pre):
+            return name
+    return label.split(" ")[0]
 
 
 def explore_section(L, D, xgames, builds, a):
@@ -587,8 +602,8 @@ def explore_section(L, D, xgames, builds, a):
     say("")
     for fit, c, cand, rec, scores in out[:a.max_outliers]:
         f = cand.get("faction", "")
-        say("**%s** (%s, fitness %.2f over %d games; grown from %s%s)." % (
-            c, FNAME.get(f, f), fit, len(scores), cand.get("origin", "?"),
+        say("**%s** (%s, fitness %.2f over %d game%s; grown from %s%s)." % (
+            c, FNAME.get(f, f), fit, len(scores), "" if len(scores) == 1 else "s", cand.get("origin", "?"),
             ", by " + "; ".join(", ".join(m) for m in cand.get("mutations", []) if m) if any(cand.get("mutations", [])) else ""))
         say("")
         say("The script: `%s`, then the computer plays on with the %s plan." % (", ".join(cand.get("steps", [])), cand.get("then", "balanced")))
@@ -600,7 +615,7 @@ def explore_section(L, D, xgames, builds, a):
             o = ops.get((gid, str(at)), {})
             sn = snaps.get((gid, str(at)), {})
             osn = snaps.get((gid, str(1 - at)), {})
-            res_txt = {1.0: "win", 0.0: "loss", 0.75: "lead at 30:00", 0.25: "behind at 30:00", 0.5: "even"}[sc]
+            res_txt = {1.0: "win", 0.0: "loss", 0.75: "ahead at the time cap", 0.25: "behind at the time cap", 0.5: "even"}[sc]
             a5 = num(sn.get("300", {}).get("army_value")) if sn.get("300") else None
             o5 = num(osn.get("300", {}).get("army_value")) if osn.get("300") else None
             rows.append([gid, g["map"].replace("_", " "), "%s %s" % (g["b"], sp["ob"]), res_txt + " (%s, %s)" % (g["cause"], mmss(g["end_t"])),
@@ -618,10 +633,9 @@ def explore_section(L, D, xgames, builds, a):
         lens = [num(g["end_t"]) for gid, at, sp, g, sc in rec if sc == 1.0]
         if a5s and b5:
             m5 = med(a5s)
-            if m5 > 1.25 * b5:
-                why.append("it has more army at 5:00 than the documented %s openings (%s against a median of %s)" % (FNAME[f], fmt(m5), fmt(b5)))
-            elif m5 < 0.75 * b5:
-                why.append("it is light on army at 5:00 (%s against a median of %s for the documented openings), so its edge comes later" % (fmt(m5), fmt(b5)))
+            word = "more" if m5 > 1.25 * b5 else ("less" if m5 < 0.75 * b5 else "about as much")
+            why.append("it has %s army at 5:00 %s the documented %s openings (%s against their median of %s)" % (
+                word, "as" if word == "about as much" else "than", FNAME[f], fmt(m5), fmt(b5)))
         if firsts:
             why.append("its scripted attack goes out at %s" % mmss(med(firsts)) + (" and kills %s worth on the way" % fmt(med(kills)) if med(kills) else ""))
         if lens:
@@ -633,7 +647,8 @@ def explore_section(L, D, xgames, builds, a):
         if any("@proxy" in s for s in steps):
             why.append("it builds forward (a proxy)")
         if why:
-            say("What the numbers say: " + "; ".join(why) + ". With so few games each, treat it as a lead to test, not a result.")
+            lead = "Why it may work" if fit >= a.outlier else "What the numbers say"
+            say(lead + ": " + "; ".join(why) + ". With so few games each, treat it as a lead to test, not a result.")
             say("")
     # what the search tried: success by kind of mutation
     mc = defaultdict(list)
@@ -642,7 +657,7 @@ def explore_section(L, D, xgames, builds, a):
         last = labs[-1] if labs else []
         kinds = set()
         for lab in last:
-            kinds.add(lab.split(" ")[0] if not lab.startswith("fast") else "fast expansion")
+            kinds.add(mut_kind(lab))
         if cand.get("origin") == "grammar" and not labs:
             kinds = {"fresh build"}
         for k in kinds:

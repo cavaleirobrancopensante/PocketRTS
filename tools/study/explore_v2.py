@@ -51,8 +51,10 @@ BUILDINGS = {
     "brood": ["warren", "feeding_pit", "brood_pen", "clutch_mound", "gorge_pit", "roost", "hive"],
     "clockwork": ["cog_press", "mainspring", "movement_works", "regulator", "ratchet_turret", "escapement", "cuckoo_house", "clocktower"],
 }
+# (buildings that may go forward as a proxy: production with no Tension rule to meet; a Clockwork Tension user must mesh
+# with a Mainspring at home)
 PRODUCTION = {"crown": ["barracks", "horse_breeder", "foundry"], "brood": ["warren", "gorge_pit", "roost"],
-              "clockwork": ["movement_works", "cuckoo_house", "regulator"]}
+              "clockwork": ["movement_works", "clocktower"]}
 UNITS = {"crown": ["musketeer", "horseman", "dragoon", "cannon", "mortar", "balloon"],
          "brood": ["raptor", "spitter", "brute", "skywing", "bloater", "mist_toad"],
          "clockwork": ["clock_soldier", "jack", "netter", "pendulum", "cuckoo"]}
