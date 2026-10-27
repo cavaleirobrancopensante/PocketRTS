@@ -100,7 +100,7 @@ The Clockwork computer (on Normal and Hard) does three things, all in the Clockw
 - It raises a soldier's shield when two or more enemy shooters are within about nine tiles and the soldier is neither chasing nor falling back. It keeps the shield up while at least one shooter is near.
 - It lowers the shield when the soldier chases a shooter that is walking away out of its reach, when the soldier is ordered back away from the enemy, or when no shooter is near. One soldier switches at most every two and a half seconds, so the shields do not flicker.
 
-The test checks each of these. In two full computer-against-computer games on Kestrel Rise (Clockwork against Crown, thirteen minutes) it never got to SHIELD WALL: in one the Clockwork computer built its first Mainspring only at about 12 minutes, in the other it fell behind and never built one. The research comes as late as that computer's Tension comes.
+The test checks each of these. In two full computer-against-computer games on Kestrel Rise (Clockwork against Crown, thirteen minutes) it never got to SHIELD WALL: in one the Clockwork computer built its first Mainspring only at about 12 minutes, in the other it fell behind and never built one. On Greenhold, against the Crown computer (eighteen minutes, two seeds), it did research it: at 7:59 in one game (its first Mainspring at 6:45; that game it won at 15:24) and at 10:43 in the other (Mainsprings at 9:22 and 10:01; that game ended even). Against the Brood computer on Greenhold it won at 9:25 before it met enough shooters to want it. The research comes as late as that computer's Tension comes.
 
 ## Online and saved games
 
@@ -210,6 +210,10 @@ The pose: a slow, careful advance behind the shield. The sword is ALWAYS in the 
 - NW: we see the back; the shield's rim shows beyond the left shoulder; the sword on the right of the picture.
 - Do not move the sword to the near arm. No motion lines, no text, no extra objects, no shadows on the background.
 ```
+
+## Tests
+
+The new test, `tools/test_clock_soldier_shield.gd`, passes. So do every Clockwork test (`test_cw_*`), every gear test (`test_gear_*`), `test_hotkeys`, `test_i18n` (every text has its Portuguese and Spanish), `test_west_views` and `test_unit_walk_audit`. `test_determinism` runs to the end; its two runs differ from 20 seconds on, exactly as they do on main before this change (it is a Crown against Brood game and measures, it does not pass or fail).
 
 ## Files
 
