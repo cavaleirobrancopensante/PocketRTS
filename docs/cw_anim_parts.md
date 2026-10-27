@@ -179,3 +179,43 @@ then MOVE twice): art/redraws/catapult_facing2_compare.gif.
 Still rough: the peeking soldier is small at game scale (about 4 px of it shows); the loaded N cup sits over the
 drum's top, as the painted loaded cup did. The cup-from-below is the one painted pose for every angle, so between
 the loaded tilt and vertical it does not turn in depth (the ChatGPT request above would give in-between poses).
+
+### Third pass (branch catapult-facing-3, 2026-10-27)
+
+The owner on the second pass, about NE: the arm read as facing totally back (like N); NE is a diagonal view and the
+cup should read diagonal. Compare GIF (last pass on top, new below, THROW then MOVE twice):
+art/redraws/catapult_facing3_compare.gif.
+
+- NE's back cup (ChatGPT's cup from below) is now turned NE_TILT (38 deg) clockwise on screen on top of the beam's own
+  turn, and squashed across its axis to NE_SQUASH (0.86), so its mouth faces up and to the right (away from us,
+  toward the enemy): the rim's edge runs along its upper right, between N's flat rim line and E's mouth-right. It
+  holds in every NE frame of THROW and MOVE (loaded, rising, upright, follow-through, winding back); the inside of
+  the bowl is still never shown. In the follow-through, where the beam already leans right, the cup's turn is capped
+  at NE_TURN_MAX (55 deg from upright), so it never points straight right. The turn and squash are resampled
+  smoothly (premultiplied BICUBIC, hard alpha) instead of NEAREST, so the rim does not stair-step.
+- The beam: forward of upright, NE's arm now swings along NE's real forward axis (NE_RISE: forward rises 0.27 px
+  up the screen per px across), so the follow-through goes up and to the right instead of nearly flat across. The
+  loaded pose (the painted arm) and the frames behind upright are unchanged; the timing too.
+- Loaded: the soldier peeks over the middle of the turned rim (it used to sit over the cup's top row, which is now its
+  upper right corner). Release: the flying soldier still leaves behind the back cup, over the far (mouth) rim.
+- catapult_cup.json: the NE cup middles moved (about 4-9 px right) and ne_fly moved (+9, +2); S/SE/E/N unchanged.
+- S, SE, E and N are pixel for pixel as before in THROW and MOVE (checked); the cell is still 158x141, anchor (79, 139).
+- NE's wheels: squashing them like SE's (SQUASH_34) was tried; it leaves curved slivers of the old round wheels' edge
+  paint beside the narrower cogs (the SE fill does not cover them in NE's layout), so they stay round for now.
+
+Still rough: the turn is a rotation of the one painted cup-from-below, so its rivets and its light turn with it (the
+highlight is no longer top-left). A painted 3/4 rear cup would fix that:
+
+```
+Attached: a pixel-art steampunk catapult on cog wheels in 5 directions (rows S, SE, E, NE, N) and a sheet of its arm
+(the riveted beam, the blue joint ball and the cup). Please paint ONLY the CUP with its blue joint ball, same style,
+same size as the cup in the top row of the arm sheet, on the same navy background (0, 22, 48), for the NE row: the
+camera above and BEHIND the machine on its left, the machine facing up and to the right on the screen. 3 poses side
+by side, the joint ball always at the bottom left of the cup, the arm's beam (not drawn) coming up from below it:
+1. the arm straight up: the cup's mouth faces up and to the right, away from the camera; we see the riveted outside
+   of the bowl, turned diagonally, the rim's edge a thin line along its upper right, no inside;
+2. the arm leaning 40 degrees forward (to the upper right): the same, the bowl turned further toward the right;
+3. the arm leaning 20 degrees back toward the camera: the bowl still turned toward the upper right, its back to us.
+Light from the top left, as in the attached sheets. No beam, no machine, no text, nothing touching.
+```
+(attach art/redraws/catapult_dirs.png and art/redraws/catapult_arm_poses_chatgpt.png)
