@@ -1,4 +1,4 @@
-# Ride-by: the Horseman and the Cuirassier attack on the move (0.14.93)
+# Ride-by: the Horseman and the Cuirassier attack on the move (0.14.94)
 
 The owner asked for this on 2026-10-27.
 A harassment unit with no splash that must stop to swing is useless.

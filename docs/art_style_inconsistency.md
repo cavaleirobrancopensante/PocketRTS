@@ -310,7 +310,7 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   painted half-built stages. Wanted: two or three painted construction stages per building (plates and lower frame,
   half-built walls in scaffold, the full scaffold) to replace the clip.
 
-## The Horseman's and Cuirassier's blow in passing (code, 0.14.93)
+## The Horseman's and Cuirassier's blow in passing (code, 0.14.94)
 - Fighting on the move (scripts/ride_by.gd), a rider keeps his gallop strip and a SABRE ARC is drawn in code over him
   (RideBy.Slash: a white blade line with a dark edge and a fading trail, sweeping 150 degrees across his front at
   shoulder height, forehand and backhand in turn, 0.24 s). His painted attack strip stands the horse still, so it isn't

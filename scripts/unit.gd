@@ -7346,6 +7346,14 @@ func _lead_run(delta: float) -> Vector2:
 	return _walk_to(h.position, delta)
 
 
+## A horse sound for getting on (whinny) or taking the reins (a soft neigh), so the two
+## acts sound apart; only where the player can see it (playtest 0.14.90).
+func _horse_cue(name: String, vol: float) -> void:
+	if game == null or not game.is_visible_to(game.human, position):
+		return
+	Sfx.play(name, position, vol)
+
+
 ## The horse is his to lead from now on (at the end of his string).
 func take_reins(h: Unit) -> void:
 	if h.team < 0 and team >= 0:
@@ -7356,6 +7364,7 @@ func take_reins(h: Unit) -> void:
 	h.claimed = null
 	if not led.has(h):
 		led.append(h)
+		_horse_cue("horse/neigh", -9.0)     # taking the reins: a soft snort (getting on whinnies)
 	if h.order == "move":
 		h.cmd_stop()
 
@@ -7497,6 +7506,7 @@ func _mount_run(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if position.distance_to(h.position) < radius + h.radius + 10.0:
 		work = "mounting"
+		_horse_cue("horse/whinny", -2.0)    # getting on: the horse whinnies (leading only snorts)
 		work_t = float(Defs.HORSES["quick" if auto_mount else "mount"])
 		_mount_len = work_t
 		path = PackedVector2Array()
