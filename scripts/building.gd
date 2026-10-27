@@ -972,7 +972,7 @@ func _econ(delta: float) -> void:
 var _fetch_t := 0.0
 
 
-## The front entry is a gun or wagon whose reserved horse hasn't walked in yet.
+## The front entry is a gun or wagon whose reserved horse hasn't reached the building yet.
 func _horse_pending(k: String) -> bool:
 	return not is_research(k) and not Defs.RIDERS.has(k) and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
 
@@ -1067,7 +1067,7 @@ func _tick_building(delta: float) -> void:
 		prod_t += delta * (game.asm_mult[team] * game.line_net.speed_mult(self) if d["faction"] == "clockwork" else 1.0)
 		var k: String = queue[0]
 		if prod_t >= entry_time(k) and _horse_pending(k):
-			# a gun is ready, its horse isn't here yet: it comes out when the horse walks in
+			# a gun is ready, its horse isn't here yet: it comes out once the horse is hitched here
 			prod_t = entry_time(k)
 			_fetch_t -= delta
 			if _fetch_t <= 0.0:

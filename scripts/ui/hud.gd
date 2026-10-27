@@ -2367,8 +2367,10 @@ func _draw_panel(font: Font) -> void:
 						+ (" A %s is coming for it." % uu.claimed.d["name"] if uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu else "")
 				elif uu.leader and is_instance_valid(uu.leader):
 					info = "Led by a %s." % uu.leader.d["name"]
+				elif is_instance_valid(uu.into) and uu.into is Building and uu.hitch_p != Vector2.INF:
+					info = "Hitched at the %s till its rider or gun comes out: it can't be hurt or taken." % uu.into.d["name"]
 				elif is_instance_valid(uu.into) and uu.into is Building:
-					info = "Walking into the %s." % uu.into.d["name"]
+					info = "Going to the %s, to be hitched there." % uu.into.d["name"]
 				elif is_instance_valid(uu.into) and uu.into is Unit:
 					info = "Going to be harnessed to the %s." % uu.into.d["name"]
 				elif uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu:

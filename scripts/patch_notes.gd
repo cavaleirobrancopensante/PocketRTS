@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.37", "items": [
+		"LIMBERED GUNS no longer clip through walls or jam: a Field Cannon, Mortar or Powder Wagon on the move (its horse team drawn ahead of it) now keeps the whole team, not just the gun, off walls, palisades, buildings and cliffs. The gun itself is narrow enough for a one-tile gate; it lines up on the gate before it goes through and drives straight out the far side (one that stopped in a gateway carries on through instead of backing out), and at a wall end or a block of rock the team swings round it instead of pointing into it and sticking.",
+		"HORSES NO LONGER VANISH INTO BUILDINGS: a horse taken for a Horseman, Cuirassier, Dragoon, Field Cannon, Mortar or Powder Wagon (standing at the building, kept at a breeder or led over by a Town Hall hauler) walks to its own spot beside the Barracks or Foundry and waits there HITCHED, in sight, where it can't be hurt or taken, until the recruit comes out: the rider mounts it there (on its coat and health as they are then) and the gun comes out drawn by it. Cancelling the recruit frees the horse where it stands. Before, it walked into the building and was gone (after 90 s even if it never got there).",
+		"HAULERS: a Labourer leading a horse to a recruit whose building has a side shut in by a palisade or other buildings now goes round to a side he can reach, instead of walking at the palisade and standing stuck.",
+	]},
 	{"v": "0.14.36", "items": [
 		"POWDER MILL WORK YARD: the mill's crew no longer stands stuck. The mill's front row is now its work yard, walkable like a Farm's fields (nothing can be built on it): the labourers dig at the three heaps, carry the loaded shovel along the front and tip it into the hopper, all inside the mill's own ground, so Cottages, walls or a cliff edge right against the mill no longer block them (with every open side of the yard built up, they go in through the shed). The six spread over the heaps and the hopper and keep a step apart instead of bunching at one side, always shovelling or walking (no frozen poses), and they are drawn in front of the shed, heaps and hopper they work at.",
 	]},
