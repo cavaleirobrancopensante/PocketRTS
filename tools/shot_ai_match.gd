@@ -130,6 +130,32 @@ func _wind_line(c: float) -> void:
 		wind_lines.append("%s clockwork army %d: run down %d (avg %.0f tiles from the main), low %d, on gear ground %d" % [_mmss(c), n, down, far / maxf(1, down), low, field])
 
 
+## What each soldier in a fight shot is doing (written to <out>/why.txt): its order, what it is after, whether it can
+## get at it (walk there with the gates shut) and the AI's siege, to see why an army stands where it stands.
+var why: Array = []
+
+
+func _why_lines(file: String, at: Vector2) -> void:
+	if not file.begins_with("fight"):
+		return
+	why.append("== %s" % file)
+	for a in g.ais:
+		var sg = a.get("_siege")
+		why.append("  team %d attacking %s wave_target %s siege %s" % [a.team, str(a.get("_attacking")), str(a.get("_wave_target")),
+			("piece %s at %s stage %s" % [sg["piece"].kind, str(sg["piece"].center()), str(sg["stage"])]) if sg is Dictionary and not sg.is_empty() and is_instance_valid(sg.get("piece")) else "-"])
+	for u in g.units:
+		if not is_instance_valid(u) or u.dead or u.is_worker() or u.position.distance_to(at) > 500.0:
+			continue
+		var c = g.cell_of(u.position)
+		var tg = u.target
+		var ts := "-"
+		if is_instance_valid(tg) and not tg.dead:
+			var tc = g.cell_of(tg.position if tg.is_unit() else tg.center())
+			ts = "%s(t%d) h%d d%.0f canget %s walk %s" % [tg.kind, tg.team, g.height[g.idx(tc)] if g.in_map(tc) else -1, tg.edge_distance(u.position), str(u._can_get_at(tg)), str(u._walk_reaches(tg))]
+		why.append("  t%d %s %s h%d v%.0f order %s ot %s goal %s path %d/%d siege %.1f wind %.2f -> %s" % [u.team, u.kind, str(u.position.round()), g.height[g.idx(c)] if g.in_map(c) else -1, u.velocity.length(), u.order,
+			(u.order_target.kind if is_instance_valid(u.order_target) else "-"), str(u.path_goal.round()) if u.path_goal != Vector2.INF else "-", u.path_i, u.path.size(), u.siege_t, u.wind, ts])
+
+
 func _mmss(c: float) -> String:
 	return "%02d%02d" % [int(c) / 60, int(c) % 60]
 
@@ -176,6 +202,7 @@ func _shoot() -> void:
 	print("SHOT %s zoom %s at %s view %s gearvis %s draws %d" % [p[0], str(cam.zoom), str(cam.get_screen_center_position()), str(g.view_rect), str(g.gear_net.is_visible_in_tree()), _draws])
 	var img := root.get_viewport().get_texture().get_image()
 	img.save_png(out.path_join(p[0]))
+	_why_lines(p[0], p[1])
 	RenderingServer.render_loop_enabled = live
 	cam.position = keep_pos
 	cam.zoom = keep_zoom
@@ -188,6 +215,10 @@ func _finish() -> void:
 		for l in g.mlog.lines:
 			f.store_line(str(l))
 	f.close()
+	var yf := FileAccess.open(out.path_join("why.txt"), FileAccess.WRITE)
+	for l in why:
+		yf.store_line(l)
+	yf.close()
 	var wf := FileAccess.open(out.path_join("wind.txt"), FileAccess.WRITE)
 	for l in wind_lines:
 		wf.store_line(l)

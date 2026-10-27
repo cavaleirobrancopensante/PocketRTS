@@ -4276,7 +4276,13 @@ func _flood_point(flood: PackedByteArray, p: Vector2, fallback: Vector2) -> Vect
 ## reach, splash}.
 func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: Vector2) -> Dictionary:
 	var pc := piece.center()
-	var out: Vector2 = (centre - pc).normalized()
+	# OUTWARD is the side of the piece we can walk up to (the cells beside it in our flood), not the straight line to the
+	# army: a gate at the top of a ramp is reached up the ramp, and an army standing off to one side of it, under the cliff,
+	# would otherwise stage (and queue for the face) at the foot of that cliff, under the muskets on the high ground and
+	# unable to reach the gate (the owner's screenshots, 2026-10-27)
+	var out := _siege_out(piece, flood)
+	if out == Vector2.ZERO:
+		out = (centre - pc).normalized()
 	if out == Vector2.ZERO:
 		out = (game.center_of_team(team) - pc).normalized()
 	# --- the defenders that reach the wall face, and how far out past it they reach
@@ -4490,6 +4496,22 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 	var stage: Vector2 = _flood_point(flood, pc + out * clampf(maxf(reach + 70.0, minf(art_reach, seen_out) + 50.0), 130.0, 420.0), centre)
 	return {"win": win, "breach": breached, "t": t_breach, "left": frac_left, "dps": maxf(dps0, 0.0),
 		"inc": single + spray * minf(cap + 2.0, 8.0), "cap": cap, "out": out, "stage": stage, "reach": art_reach, "mreach": reach, "splash": splash}
+
+
+## The way out from a wall piece toward our side: from the piece to the middle of the cells within two of it that we can
+## walk to (`flood`), ZERO when there are none.
+func _siege_out(piece: Building, flood: PackedByteArray) -> Vector2:
+	var sum := Vector2.ZERO
+	var n := 0
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var c: Vector2i = piece.cell + Vector2i(dx, dy)
+			if game.in_map(c) and flood[game.idx(c)] == 1:
+				sum += game.cell_center(c)
+				n += 1
+	if n == 0:
+		return Vector2.ZERO
+	return (sum / float(n) - piece.center()).normalized()
 
 
 ## Orders while breaking in: first the army forms up out of the defenders' reach (the melee
