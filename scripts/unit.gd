@@ -1549,7 +1549,7 @@ func _gunner_material(g: Sprite2D, p: Unit) -> void:
 const WORK_SOUNDS := {"building": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
 	"repairing": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
 	"morphing": {"grub": "work/brood_build"}, "winding": {"winder": "work/winder_crank"},
-	"manning": {"labourer": "work/hoe"}}
+	"manning": {"labourer": "work/hoe", "winder": "work/winder_crank"}}    # (a Winder manning a Cog Press: its crank)
 var _work_snd_t := randf() * 2.0
 
 
@@ -1562,7 +1562,7 @@ func _work_sound(delta: float) -> void:
 		_work_snd_t = 0.1       # (the bite comes when he is at his heap again)
 		return
 	if name == "" or (work == "manning" and not ((anim == "mine" and home_mine is Building and (home_mine as Building).kind == "farm") \
-			or (anim == "shovel" and home_mine is Building and (home_mine as Building).kind == "powder_mill"))):
+			or (anim == "shovel" and home_mine is Building and (home_mine as Building).kind == "powder_mill") or kind == "winder")):
 		_work_snd_t = 0.5
 		return
 	_work_snd_t = MILL_CYCLE if anim == "shovel" else randf_range(2.2, 3.2) if work == "manning" else 2.0

@@ -3950,7 +3950,8 @@ func research_done(b: Building, key: String) -> void:
 	if b.team == human:
 		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		notify("%s researched: %s" % [info["name"], what], true)
-		Sfx.announce(faction_of(b.team), "research_done", 3.0)
+		# (the Clockwork rings its old clock bell once, clock/research)
+		Sfx.announce(faction_of(b.team), "research_done", 3.0, "research" if faction_of(b.team) == "clockwork" else "")
 	elif not demo:
 		var what2 := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		tell(b.team, "%s researched: %s" % [info["name"], what2], true)      # (online: the guest who researched it)
@@ -8930,8 +8931,12 @@ func under_attack(e: Entity) -> void:
 		return
 	_alert_ms = now
 	var fac := faction_of(human)
-	# the same alarm for every faction and every kind of attack, then (once it has rung) the faction's voice says what
-	Sfx.play_any(["ui/alert_all"])
+	# the same alarm for every faction and every kind of attack, then (once it has rung) the faction's voice says what;
+	# the Clockwork's alarm is an alarm clock ringing (its own base: another ring; tools/audio/make_clockwork_sounds.py)
+	if fac == "clockwork":
+		Sfx.play_any((["clock/base_alert"] if e is Building and e.team == human else []) + ["clock/alert", "ui/alert_all"])
+	else:
+		Sfx.play_any(["ui/alert_all"])
 	var line := "under_attack"
 	var gap := 20.0
 	var text := "Your forces are under attack!"
