@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b26e6lce41w51"
-path="res://.godot/imported/attack_se.png-62f23046a10cf0356519e1807dabfb10.ctex"
+uid="uid://fesa62cfwdsx"
+path="res://.godot/imported/death_end.png-0940e4887cfee48cc5c9bcb658a209ab.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/pendulum/attack_se.png"
-dest_files=["res://.godot/imported/attack_se.png-62f23046a10cf0356519e1807dabfb10.ctex"]
+source_file="res://docs/shots/pendulum-v2/death_end.png"
+dest_files=["res://.godot/imported/death_end.png-0940e4887cfee48cc5c9bcb658a209ab.ctex"]
 
 [params]
 
