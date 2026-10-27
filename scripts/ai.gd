@@ -3919,6 +3919,8 @@ func _fight_spot() -> Vector2:
 ## computer gathers a bigger army (and goes for another of the enemy's halls meanwhile, if
 ## there's one). Weighed up again every SIEGE_EVAL seconds.
 const SIEGE_EVAL := 3.0
+## Tests and experiments only (tools/shot_ai_match.gd noretreat:1): a siege is never called off, so it plays out to the end.
+var siege_no_retreat := false
 var _siege := {}                # {"piece", "out" (outward dir), "stage", "cap" (melee at the face), "spots" {unit: point}, "splash", "flood"}
 var _siege_next := 0.0          # (match clock) when the siege is weighed up again
 var _siege_said := ""           # the last siege decision written to the match log (not said twice running)
@@ -4189,6 +4191,8 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 		if best.is_empty() or not best["ok"] or score < best["score"]:
 			best = r.merged({"ok": true, "piece": b, "score": score})
 	var who: String = game.mlog.who(team) if game.mlog else "AI"
+	if siege_no_retreat and not best.is_empty() and not best["ok"]:
+		best["ok"] = true                # (an experiment: it goes on whatever the odds)
 	if best["ok"]:
 		var piece: Building = best["piece"]
 		if piece != cur:

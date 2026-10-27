@@ -18,6 +18,20 @@ var seed_ := 1
 var swap := false
 var out := "/tmp/ai_match"
 var end_t := 1800.0
+var norepair := false        # norepair:1 the walls and gates are never repaired (repair orders cancelled, autocast off)
+var noretreat := false       # noretreat:1 a computer's siege is never called off (AI.siege_no_retreat)
+var minwave := 0             # minwave:N only a siege by a wave of at least N units is watched (the flags start with it)
+var siege_end := false       # siege_end:1 stop once the first siege has played out, writing siege.txt
+var _siege_t0 := -1.0
+var _siege_next := 0.0
+var _siege_wave: Array = []
+var _siege_def: Array = []
+var _siege_def_w := 0
+var _siege_piece: Building = null
+var _siege_breach := -1.0
+var _siege_cancel := 0
+var _siege_team := -1
+var _siege_lines: Array = []
 var live := false            # live:1 keeps drawing every frame (slow; for checking the shots)
 var t := 0.0
 var last_fight := -999.0
@@ -47,6 +61,10 @@ func _initialize() -> void:
 			"out": out = kv[1]
 			"end": end_t = float(kv[1])
 			"live": live = kv[1] == "1"
+			"norepair": norepair = kv[1] == "1"
+			"noretreat": noretreat = kv[1] == "1"
+			"siege_end": siege_end = kv[1] == "1"
+			"minwave": minwave = int(kv[1])
 	DirAccess.make_dir_recursive_absolute(out)
 	Settings.load_all()
 	Settings.device = "pc"
@@ -71,6 +89,7 @@ func _process(delta: float) -> bool:
 	if main.game == null:
 		return false
 	g = main.game
+	g.path_budget_us = 1 << 40        # (no time limit on the path queue: the same match every run, like tools/perf_bench.gd)
 	if not g.gear_net.draw.is_connected(_count_draw):
 		g.gear_net.draw.connect(_count_draw)
 	if g.hud:
@@ -79,6 +98,21 @@ func _process(delta: float) -> bool:
 		g.spectator.process_mode = Node.PROCESS_MODE_DISABLED     # (the director camera would move it off the shot)
 	if g.controls and g.controls.process_mode != Node.PROCESS_MODE_DISABLED:
 		g.controls.process_mode = Node.PROCESS_MODE_DISABLED       # (the mouse sits in a corner under xvfb: edge scrolling)
+	_siege_watch()
+	if noretreat and _siege_t0 >= 0.0:
+		for a in g.ais:
+			a.siege_no_retreat = true
+	if norepair and _siege_t0 >= 0.0:
+		for u in g.units:
+			if is_instance_valid(u) and not u.dead and u.is_worker():
+				u.auto_repair = false
+				if u.order == "repair" and is_instance_valid(u.order_target) and u.order_target is Building:
+					u.cmd_stop()
+					_siege_cancel += 1
+	if siege_end and _siege_t0 >= 0.0 and _siege_over():
+		_siege_report()
+		_finish()
+		return true
 	if shooting:
 		return false
 	if not pending.is_empty():
@@ -154,6 +188,87 @@ func _why_lines(file: String, at: Vector2) -> void:
 			ts = "%s(t%d) h%d d%.0f canget %s walk %s" % [tg.kind, tg.team, g.height[g.idx(tc)] if g.in_map(tc) else -1, tg.edge_distance(u.position), str(u._can_get_at(tg)), str(u._walk_reaches(tg))]
 		why.append("  t%d %s %s h%d v%.0f order %s ot %s goal %s path %d/%d siege %.1f wind %.2f -> %s" % [u.team, u.kind, str(u.position.round()), g.height[g.idx(c)] if g.in_map(c) else -1, u.velocity.length(), u.order,
 			(u.order_target.kind if is_instance_valid(u.order_target) else "-"), str(u.path_goal.round()) if u.path_goal != Vector2.INF else "-", u.path_i, u.path.size(), u.siege_t, u.wind, ts])
+
+
+## The first siege: who was in the wave and the defence when it began, the piece, when it fell.
+func _siege_watch() -> void:
+	for a in g.ais:
+		var sg = a.get("_siege")
+		if _siege_t0 < 0.0 and sg is Dictionary and not sg.is_empty() and is_instance_valid(sg.get("piece")) \
+				and a._wave_set.keys().filter(func(u) -> bool: return is_instance_valid(u) and not u.dead).size() >= minwave:
+			_siege_t0 = g.clock
+			_siege_team = a.team
+			_siege_piece = sg["piece"]
+			for u in a._wave_set.keys():
+				if is_instance_valid(u) and not u.dead:
+					_siege_wave.append(u)
+			for u in g.units:
+				if is_instance_valid(u) and not u.dead and u.team != a.team and u.team >= 0:
+					if u.is_worker():
+						_siege_def_w += 1
+					else:
+						_siege_def.append(u)
+			_siege_lines.append("%s siege begins: team %d's wave of %d (%s) at the %s (%d hp) at %s; defenders %d soldiers (%s), %d workers" % [_mmss(g.clock), a.team, _siege_wave.size(), _kinds(_siege_wave), _siege_piece.kind, int(_siege_piece.hp), str(_siege_piece.center()), _siege_def.size(), _kinds(_siege_def), _siege_def_w])
+	if _siege_t0 >= 0.0 and _siege_breach < 0.0 and g.clock >= _siege_next:
+		_siege_next = g.clock + 3.0
+		var at_face := 0
+		var hitting := 0
+		for u in _siege_wave:
+			if is_instance_valid(u) and not u.dead and is_instance_valid(_siege_piece):
+				if _siege_piece.edge_distance(u.position) < 30.0:
+					at_face += 1
+				if u.target == _siege_piece and u.phase != "":
+					hitting += 1
+		var defn := 0
+		for u in _siege_def:
+			if is_instance_valid(u) and not u.dead and is_instance_valid(_siege_piece) and u.position.distance_to(_siege_piece.center()) < 300.0:
+				defn += 1
+		_siege_lines.append("  %s +%ds: gate %d hp, wave alive %d, at the gate %d, swinging %d, defenders within 300 px %d" % [_mmss(g.clock), int(g.clock - _siege_t0), int(_siege_piece.hp) if is_instance_valid(_siege_piece) and not _siege_piece.dead else 0, _alive(_siege_wave), at_face, hitting, defn])
+	if _siege_t0 >= 0.0 and _siege_breach < 0.0 and (not is_instance_valid(_siege_piece) or _siege_piece.dead):
+		_siege_breach = g.clock
+		_siege_lines.append("%s the %s falls (%d s after the start); wave alive %d, defenders alive %d" % [_mmss(g.clock), "gate", int(g.clock - _siege_t0), _alive(_siege_wave), _alive(_siege_def)])
+
+
+func _alive(list: Array) -> int:
+	return list.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead).size()
+
+
+func _kinds(list: Array) -> String:
+	var n := {}
+	for u in list:
+		if is_instance_valid(u):
+			n[u.kind] = int(n.get(u.kind, 0)) + 1
+	var out: Array = []
+	for k in n:
+		out.append("%d %s" % [n[k], k])
+	return ", ".join(out)
+
+
+## Over: the wave is (almost) gone, or the attacker stopped attacking, or 5 minutes.
+func _siege_over() -> bool:
+	if g.over or g.clock - _siege_t0 > 300.0:
+		return true
+	var a = null
+	for x in g.ais:
+		if x.team == _siege_team:
+			a = x
+	return _alive(_siege_wave) <= 2 or (a != null and not a._attacking and g.clock - _siege_t0 > 20.0)
+
+
+func _siege_report() -> void:
+	var dead_b: Array = []
+	for l in g.mlog.lines:
+		var t := str(l)
+		if t.contains(" lost a ") and t.contains("to P%d" % (_siege_team + 1)):
+			dead_b.append(t)
+	_siege_lines.append("%s over (%d s): wave alive %d of %d (%s); defenders alive %d of %d; defender workers now %d; attacker still attacking %s; repairs cancelled %d; defender repair spend %d" % [_mmss(g.clock), int(g.clock - _siege_t0), _alive(_siege_wave), _siege_wave.size(), _kinds(_siege_wave.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)), _alive(_siege_def), _siege_def.size(), g.workers(1 - _siege_team).size(), str(g.ais.filter(func(x) -> bool: return x.team == _siege_team)[0]._attacking), _siege_cancel, int(float(g.stats[1 - _siege_team].get("repair", 0.0)))])
+	_siege_lines.append("buildings the attacker destroyed during the game: %d" % dead_b.size())
+	for t in dead_b:
+		_siege_lines.append("  " + t)
+	var f := FileAccess.open(out.path_join("siege.txt"), FileAccess.WRITE)
+	for l in _siege_lines:
+		f.store_line(l)
+	f.close()
 
 
 func _mmss(c: float) -> String:
