@@ -1,5 +1,9 @@
 # The Great Winder on its painted legs (branch great-winder-legs, 2026-10-27)
 
+SUPERSEDED (branch gw-wheels, 2026-10-27): the owner found the legs silly in the game; the Great Winder now rolls on cog
+wheels (docs/great_winder.md "On cog wheels"). The legs code below is kept behind MOUNT = 'legs' in
+tools/great_winder_guide/anim.py.
+
 Art and tools only: nothing in scripts/ or assets/ changed, no version bump. Every code edit is logged in
 docs/art_style_inconsistency.md ("Great Winder legs pass"). Built by tools/great_winder_guide/anim.py.
 

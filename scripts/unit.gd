@@ -6365,9 +6365,9 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 		# the Raptor runs at 108 px/s on a 6-frame cycle: at 8 fps its planted feet slid ~10 px a frame, at 12 ~6
 		# (docs/animation_audit_brood.md)
 		"raptor": 12.0,
-		# the Great Winder's slow 4-leg creep: 16 px a 12-frame loop (docs/great_winder_legs.md) at its 27 px/s
+		# the Great Winder's cog wheels: 90 deg a 12-frame loop rolls it 20.25 px (docs/great_winder.md) at its 27 px/s
 		# (GreatWinder.walk_fps; tools/test_great_winder.gd checks they agree); played on a 30 Hz tick (_animate)
-		"great_winder": 20.25}
+		"great_winder": 16.0}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.
@@ -6436,7 +6436,7 @@ func _animate(delta: float) -> void:
 	# (a walking or hammering Labourer steps at 30 Hz: his frames follow the ground he covers
 	# and the hammer beat, which 15 Hz ticks would make uneven)
 	var tick := 0.033 if (kind == "labourer" and (anim == "build" or velocity.length() > 10.0)) \
-			or (kind == Defs.GREAT_WINDER_KIND and anim == "walk") else 0.066     # (the Great Winder's 20 fps walk too)
+			or (kind == Defs.GREAT_WINDER_KIND and anim == "walk") else 0.066     # (the Great Winder's 16 fps wheels too)
 	if _anim_dt < tick and not dead:
 		return
 	if kind == "horse" and not dead:
