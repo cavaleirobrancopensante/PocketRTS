@@ -175,9 +175,189 @@ crown-clockwork_018,1,crown,crown_horse_rush,180,345,9,7,25,1140,0.0,0.0,7,1,"{"
 crown-clockwork_018,1,crown,crown_horse_rush,300,690,18,8,40,2280,44.5,0.0,11,1,"{""cuirassier"": 6}",m2
 crown-clockwork_018,1,crown,crown_horse_rush,420,720,15,9,15,3040,14.4,0.0,14,1,"{""cuirassier"": 4, ""musketeer"": 3}",m2
 crown-clockwork_018,1,crown,crown_horse_rush,600,800,17,22,0,5700,0.0,0.0,20,2,"{""cuirassier"": 4, ""dragoon"": 1, ""musketeer"": 4}",m2
+crown-clockwork_019,0,crown,crown_cannon_push,180,180,3,8,30,760,82.9,0.0,7,1,"{""musketeer"": 3}",m2
+crown-clockwork_019,0,crown,crown_cannon_push,300,340,5,13,140,2280,160.4,0.0,10,1,"{""musketeer"": 5}",m2
+crown-clockwork_019,0,crown,crown_cannon_push,420,955,19,17,15,3420,164.9,0.0,14,1,"{""cannon"": 2, ""mortar"": 1, ""musketeer"": 6, ""powder_wagon"": 1}",m2
+crown-clockwork_019,0,crown,crown_cannon_push,600,945,15,35,57,7220,209.0,0.0,20,2,"{""cuirassier"": 2, ""missionary"": 1, ""musketeer"": 6, ""powder_wagon"": 1}",m2
+crown-clockwork_019,1,clockwork,cw_owl_harass,180,140,2,10,782,1742,0.0,110.8,7,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_019,1,clockwork,cw_owl_harass,300,290,6,13,1463,3528,0.0,2.9,11,1,"{""clock_soldier"": 2, ""cuckoo"": 2}",m2
+crown-clockwork_019,1,clockwork,cw_owl_harass,420,175,4,12,2227,5282,0.0,20.1,12,1,"{""ticking_owl"": 1}",m2
+crown-clockwork_019,1,clockwork,cw_owl_harass,600,215,4,13,3280,6897,0.0,147.3,11,1,"{""ticking_owl"": 1}",m2
 crown-clockwork_020,0,clockwork,cw_proxy_tower,180,0,0,7,676,1566,0.0,0.0,5,2,{},m2
 crown-clockwork_020,0,clockwork,cw_proxy_tower,300,350,5,5,13,2329,0.0,0.0,7,2,"{""clock_soldier"": 5}",m2
 crown-clockwork_020,0,clockwork,cw_proxy_tower,420,0,0,10,65,2798,0.0,0.0,4,0,{},m2
 crown-clockwork_020,1,crown,crown_balloon_drop,180,240,4,10,25,1140,83.7,0.0,6,1,"{""musketeer"": 4}",m2
 crown-clockwork_020,1,crown,crown_balloon_drop,300,605,10,12,175,1900,182.0,0.0,9,1,"{""balloon"": 1, ""musketeer"": 8}",m2
 crown-clockwork_020,1,crown,crown_balloon_drop,420,905,15,12,735,3040,249.9,0.0,10,1,"{""balloon"": 1, ""musketeer"": 13}",m2
+crown-clockwork_021,0,crown,crown_dragoon_raid,180,0,0,10,190,1140,89.8,0.0,8,1,{},m2
+crown-clockwork_021,0,crown,crown_dragoon_raid,300,640,8,12,299,2280,126.1,0.0,9,1,"{""dragoon"": 3, ""musketeer"": 5}",m2
+crown-clockwork_021,0,crown,crown_dragoon_raid,420,780,7,13,35,3040,185.5,0.0,14,1,"{""dragoon"": 1, ""musketeer"": 6}",m2
+crown-clockwork_021,0,crown,crown_dragoon_raid,600,960,13,23,8,5320,214.3,0.0,21,2,"{""cuirassier"": 1, ""mortar"": 1, ""musketeer"": 7}",m2
+crown-clockwork_021,1,clockwork,cw_soldier_rush,180,560,8,8,38,1238,0.0,0.0,6,1,"{""clock_soldier"": 8}",m2
+crown-clockwork_021,1,clockwork,cw_soldier_rush,300,630,9,15,135,2840,0.0,0.0,8,1,"{""clock_soldier"": 9}",m2
+crown-clockwork_021,1,clockwork,cw_soldier_rush,420,140,2,8,23,4022,0.0,0.0,10,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_021,1,clockwork,cw_soldier_rush,600,70,1,3,147,4303,0.0,0.0,6,0,"{""clock_soldier"": 1}",m2
+crown-clockwork_022,0,clockwork,cw_turret_expand,180,210,3,14,9,1814,0.0,0.0,8,2,"{""clock_soldier"": 3}",m2
+crown-clockwork_022,0,clockwork,cw_turret_expand,300,770,11,25,322,4461,0.0,0.0,12,2,"{""clock_soldier"": 11}",m2
+crown-clockwork_022,0,clockwork,cw_turret_expand,420,2310,33,28,646,8075,0.0,219.6,21,2,"{""clock_soldier"": 33}",m2
+crown-clockwork_022,0,clockwork,cw_turret_expand,600,4660,70,32,12,11586,0.0,289.3,27,2,"{""clock_soldier"": 58, ""cuckoo"": 1, ""netter"": 1, ""pendulum"": 2}",m2
+crown-clockwork_022,1,crown,crown_balloon_raid,180,240,4,10,25,1140,82.9,0.0,6,1,"{""musketeer"": 4}",m2
+crown-clockwork_022,1,crown,crown_balloon_raid,300,605,6,12,175,1900,179.3,0.0,9,1,"{""balloon"": 1, ""musketeer"": 4}",m2
+crown-clockwork_022,1,crown,crown_balloon_raid,420,1085,14,12,735,3040,257.7,0.0,10,1,"{""balloon"": 1, ""musketeer"": 12}",m2
+crown-clockwork_022,1,crown,crown_balloon_raid,600,195,3,19,49,5320,203.9,0.0,16,1,"{""cuirassier"": 1}",m2
+crown-clockwork_023,0,crown,crown_fast_expand,180,0,0,10,40,1140,16.7,0.0,8,2,{},m2
+crown-clockwork_023,0,crown,crown_fast_expand,300,300,5,22,240,2660,61.6,0.0,9,2,"{""musketeer"": 5}",m2
+crown-clockwork_023,0,crown,crown_fast_expand,420,760,12,32,5,5320,11.4,0.0,20,2,"{""musketeer"": 12}",m2
+crown-clockwork_023,0,crown,crown_fast_expand,600,1860,34,40,16,9880,14.4,0.0,26,2,"{""cannon"": 1, ""cuirassier"": 3, ""mortar"": 1, ""musketeer"": 18}",m2
+crown-clockwork_023,1,clockwork,cw_proxy_tower,180,0,0,7,868,1608,0.0,0.0,6,2,{},m2
+crown-clockwork_023,1,clockwork,cw_proxy_tower,300,350,5,15,52,2857,0.0,5.5,11,2,"{""clock_soldier"": 5}",m2
+crown-clockwork_023,1,clockwork,cw_proxy_tower,420,980,14,32,930,6225,0.0,186.2,17,2,"{""clock_soldier"": 14}",m2
+crown-clockwork_023,1,clockwork,cw_proxy_tower,600,70,1,31,1559,11469,0.0,273.6,21,2,"{""clock_soldier"": 1}",m2
+crown-clockwork_024,0,crown,crown_horse_rush,180,345,9,7,25,1140,0.0,0.0,7,1,"{""cuirassier"": 3}",m2
+crown-clockwork_024,0,crown,crown_horse_rush,300,690,18,8,40,2280,43.8,0.0,11,1,"{""cuirassier"": 6}",m2
+crown-clockwork_024,1,clockwork,cw_owl_harass,180,140,2,10,784,1744,0.0,114.8,7,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_024,1,clockwork,cw_owl_harass,300,150,4,0,131,2271,0.0,5.1,9,1,"{""cuckoo"": 2}",m2
+crown-clockwork_025,0,clockwork,cw_pendulum_push,180,140,2,10,516,1751,0.0,125.9,8,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_025,0,clockwork,cw_pendulum_push,300,1025,16,10,186,2937,0.0,130.3,12,1,"{""clock_soldier"": 10, ""netter"": 1, ""pendulum"": 1}",m2
+crown-clockwork_025,0,clockwork,cw_pendulum_push,420,695,13,16,239,4191,0.0,240.3,13,1,"{""clock_soldier"": 1, ""jack"": 1, ""netter"": 1, ""pendulum"": 2}",m2
+crown-clockwork_025,0,clockwork,cw_pendulum_push,600,480,8,27,68,6941,0.0,400.0,15,2,"{""clock_soldier"": 4, ""pendulum"": 1}",m2
+crown-clockwork_025,0,clockwork,cw_pendulum_push,900,280,4,27,15,13910,0.0,400.0,24,2,"{""clock_soldier"": 4}",m2
+crown-clockwork_025,1,crown,crown_balloon_raid,180,240,4,10,25,1140,88.7,0.0,6,1,"{""musketeer"": 4}",m2
+crown-clockwork_025,1,crown,crown_balloon_raid,300,240,4,12,175,1900,187.1,0.0,9,1,"{""musketeer"": 4}",m2
+crown-clockwork_025,1,crown,crown_balloon_raid,420,720,12,12,731,3040,251.0,0.0,9,1,"{""musketeer"": 12}",m2
+crown-clockwork_025,1,crown,crown_balloon_raid,600,865,13,23,3,5320,215.5,0.0,19,2,"{""balloon"": 1, ""musketeer"": 11}",m2
+crown-clockwork_025,1,crown,crown_balloon_raid,900,2040,35,40,4,13560,166.1,0.0,28,2,"{""cuirassier"": 2, ""dragoon"": 1, ""musketeer"": 26, ""powder_wagon"": 1}",m2
+crown-clockwork_026,0,crown,crown_balloon_drop,1200,3515,67,40,2,19640,661.2,0.0,35,3,"{""cannon"": 2, ""cuirassier"": 5, ""dismounted"": 1, ""missionary"": 1, ""mortar"": 2, ""musketeer"": 32, ""powder_wagon"": 1}",m2
+crown-clockwork_026,0,crown,crown_balloon_drop,180,180,3,10,25,1140,85.6,0.0,6,1,"{""musketeer"": 3}",m2
+crown-clockwork_026,0,crown,crown_balloon_drop,300,485,8,12,175,1900,180.9,0.0,9,1,"{""balloon"": 1, ""musketeer"": 6}",m2
+crown-clockwork_026,0,crown,crown_balloon_drop,420,425,7,12,835,3040,259.3,0.0,9,1,"{""balloon"": 1, ""musketeer"": 5}",m2
+crown-clockwork_026,0,crown,crown_balloon_drop,600,700,12,23,15,5320,170.2,0.0,18,2,"{""balloon"": 1, ""cuirassier"": 1, ""musketeer"": 7}",m2
+crown-clockwork_026,0,crown,crown_balloon_drop,900,1405,26,40,302,13180,254.8,0.0,28,2,"{""cannon"": 1, ""cuirassier"": 2, ""mortar"": 1, ""musketeer"": 13}",m2
+crown-clockwork_026,1,clockwork,cw_jack_rush,1200,1365,21,30,300,21631,0.0,400.0,27,2,"{""clock_soldier"": 17, ""cuckoo"": 1, ""jack"": 1}",m2
+crown-clockwork_026,1,clockwork,cw_jack_rush,180,100,2,7,324,1264,0.0,52.9,8,1,"{""jack"": 1}",m2
+crown-clockwork_026,1,clockwork,cw_jack_rush,300,310,5,10,48,2203,0.0,73.3,11,1,"{""clock_soldier"": 3, ""jack"": 1}",m2
+crown-clockwork_026,1,clockwork,cw_jack_rush,420,240,4,14,228,3778,0.0,130.9,11,1,"{""clock_soldier"": 2, ""jack"": 1}",m2
+crown-clockwork_026,1,clockwork,cw_jack_rush,600,1180,18,26,52,6772,0.0,200.0,15,2,"{""clock_soldier"": 14, ""pendulum"": 1}",m2
+crown-clockwork_026,1,clockwork,cw_jack_rush,900,1525,26,32,302,15017,0.0,19.5,25,2,"{""clock_soldier"": 10, ""jack"": 3, ""netter"": 1, ""pendulum"": 2}",m2
+crown-clockwork_027,0,clockwork,cw_jack_tech,180,350,5,10,24,1739,0.0,92.7,10,1,"{""clock_soldier"": 5}",m2
+crown-clockwork_027,0,clockwork,cw_jack_tech,300,1320,20,12,70,3065,0.0,189.6,11,1,"{""clock_soldier"": 16, ""jack"": 2}",m2
+crown-clockwork_027,0,clockwork,cw_jack_tech,420,785,12,17,179,4959,0.0,146.4,12,1,"{""clock_soldier"": 8, ""jack"": 1, ""netter"": 1}",m2
+crown-clockwork_027,0,clockwork,cw_jack_tech,600,960,16,30,585,9130,0.0,83.5,18,2,"{""clock_soldier"": 8, ""jack"": 2, ""pendulum"": 1}",m2
+crown-clockwork_027,0,clockwork,cw_jack_tech,900,0,0,13,215,15411,0.0,179.7,20,1,{},m2
+crown-clockwork_027,1,crown,crown_dragoon_raid,180,0,0,10,10,760,107.9,0.0,8,1,{},m2
+crown-clockwork_027,1,crown,crown_dragoon_raid,300,340,3,12,430,2280,136.6,0.0,9,1,"{""dragoon"": 2, ""musketeer"": 1}",m2
+crown-clockwork_027,1,crown,crown_dragoon_raid,420,560,8,13,9,3040,143.7,0.0,14,1,"{""dragoon"": 8}",m2
+crown-clockwork_027,1,crown,crown_dragoon_raid,600,1345,23,23,4,6080,135.6,0.0,20,2,"{""cuirassier"": 4, ""dragoon"": 4, ""missionary"": 1, ""musketeer"": 6}",m2
+crown-clockwork_027,1,crown,crown_dragoon_raid,900,2525,47,40,400,12420,274.0,0.0,28,2,"{""cuirassier"": 5, ""dragoon"": 4, ""musketeer"": 26, ""powder_wagon"": 1}",m2
+crown-clockwork_028,0,crown,crown_musket_wall,1200,2420,42,40,17,16980,680.0,0.0,32,3,"{""cannon"": 2, ""cuirassier"": 1, ""dragoon"": 1, ""missionary"": 1, ""mortar"": 2, ""musketeer"": 21, ""powder_wagon"": 1}",m2
+crown-clockwork_028,0,crown,crown_musket_wall,180,180,3,9,60,1140,72.3,0.0,7,1,"{""musketeer"": 3}",m2
+crown-clockwork_028,0,crown,crown_musket_wall,300,590,11,13,10,1900,138.0,0.0,10,1,"{""cannon"": 1, ""musketeer"": 7}",m2
+crown-clockwork_028,0,crown,crown_musket_wall,420,1085,20,17,180,3800,98.3,0.0,13,1,"{""cannon"": 1, ""mortar"": 1, ""musketeer"": 11, ""powder_wagon"": 1}",m2
+crown-clockwork_028,0,crown,crown_musket_wall,600,1290,24,22,1,6460,34.9,0.0,20,2,"{""cannon"": 1, ""dragoon"": 1, ""mortar"": 2, ""musketeer"": 11, ""powder_wagon"": 1}",m2
+crown-clockwork_028,0,crown,crown_musket_wall,900,1875,37,40,34,11280,402.2,0.0,25,2,"{""cannon"": 1, ""cuirassier"": 3, ""dragoon"": 2, ""mortar"": 2, ""musketeer"": 14, ""powder_wagon"": 1}",m2
+crown-clockwork_028,1,clockwork,cw_jack_rush,1200,690,11,32,525,24055,0.0,88.1,29,3,"{""clock_soldier"": 3, ""jack"": 2, ""pendulum"": 1}",m2
+crown-clockwork_028,1,clockwork,cw_jack_rush,180,200,4,7,96,1136,0.0,101.1,8,1,"{""jack"": 2}",m2
+crown-clockwork_028,1,clockwork,cw_jack_rush,300,240,4,10,27,2082,0.0,191.8,9,1,"{""clock_soldier"": 2, ""jack"": 1}",m2
+crown-clockwork_028,1,clockwork,cw_jack_rush,420,310,5,15,132,3872,0.0,125.1,11,1,"{""clock_soldier"": 3, ""jack"": 1}",m2
+crown-clockwork_028,1,clockwork,cw_jack_rush,600,505,8,26,81,6971,0.0,189.6,15,2,"{""clock_soldier"": 4, ""jack"": 1, ""netter"": 1}",m2
+crown-clockwork_028,1,clockwork,cw_jack_rush,900,910,16,32,870,16450,0.0,33.2,28,3,"{""clock_soldier"": 8, ""cuckoo"": 2, ""pendulum"": 1}",m2
+crown-clockwork_029,0,clockwork,cw_pendulum_push,180,140,2,10,549,1784,0.0,107.0,8,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_029,0,clockwork,cw_pendulum_push,300,1025,16,10,521,3251,0.0,43.3,11,1,"{""clock_soldier"": 10, ""netter"": 1, ""pendulum"": 1}",m2
+crown-clockwork_029,0,clockwork,cw_pendulum_push,420,550,9,15,91,4791,0.0,91.0,13,1,"{""clock_soldier"": 5, ""pendulum"": 1}",m2
+crown-clockwork_029,0,clockwork,cw_pendulum_push,600,1000,16,32,458,8478,0.0,303.1,18,2,"{""clock_soldier"": 10, ""jack"": 3}",m2
+crown-clockwork_029,0,clockwork,cw_pendulum_push,900,450,7,8,27,14829,0.0,606.7,20,2,"{""clock_soldier"": 5, ""jack"": 1}",m2
+crown-clockwork_029,1,crown,crown_cannon_push,180,180,3,8,30,760,75.3,0.0,7,1,"{""musketeer"": 3}",m2
+crown-clockwork_029,1,crown,crown_cannon_push,300,510,9,12,30,1900,166.8,0.0,10,1,"{""cannon"": 1, ""musketeer"": 5}",m2
+crown-clockwork_029,1,crown,crown_cannon_push,420,1255,24,14,125,3420,171.5,0.0,13,1,"{""cannon"": 2, ""mortar"": 1, ""musketeer"": 11, ""powder_wagon"": 1}",m2
+crown-clockwork_029,1,crown,crown_cannon_push,600,685,12,31,60,6460,139.6,0.0,21,2,"{""cuirassier"": 1, ""musketeer"": 7, ""powder_wagon"": 1}",m2
+crown-clockwork_029,1,crown,crown_cannon_push,900,2120,42,34,33,13940,379.9,0.0,31,3,"{""cuirassier"": 6, ""dragoon"": 1, ""musketeer"": 21, ""powder_wagon"": 1}",m2
+crown-clockwork_030,0,crown,crown_fast_expand,180,0,0,10,40,1140,19.1,0.0,8,2,{},m2
+crown-clockwork_030,0,crown,crown_fast_expand,300,300,5,22,240,2660,67.9,0.0,9,2,"{""musketeer"": 5}",m2
+crown-clockwork_030,0,crown,crown_fast_expand,420,1005,15,32,20,5320,30.5,0.0,19,2,"{""missionary"": 1, ""musketeer"": 14}",m2
+crown-clockwork_030,0,crown,crown_fast_expand,600,1700,27,37,586,8740,168.4,0.0,20,2,"{""cuirassier"": 1, ""missionary"": 1, ""musketeer"": 23}",m2
+crown-clockwork_030,0,crown,crown_fast_expand,900,2135,32,40,861,12420,1134.0,0.0,30,2,"{""cuirassier"": 2, ""missionary"": 1, ""musketeer"": 25}",m2
+crown-clockwork_030,1,clockwork,cw_turret_expand,180,210,3,14,13,1818,0.0,0.0,8,2,"{""clock_soldier"": 3}",m2
+crown-clockwork_030,1,clockwork,cw_turret_expand,300,770,11,30,472,4867,0.0,1.3,14,2,"{""clock_soldier"": 11}",m2
+crown-clockwork_030,1,clockwork,cw_turret_expand,420,2490,36,32,383,8468,0.0,61.8,23,2,"{""clock_soldier"": 32, ""netter"": 2}",m2
+crown-clockwork_030,1,clockwork,cw_turret_expand,600,1830,30,32,32,12062,0.0,311.8,29,4,"{""clock_soldier"": 14, ""jack"": 2, ""netter"": 2, ""pendulum"": 2}",m2
+crown-clockwork_030,1,clockwork,cw_turret_expand,900,2300,34,29,38,15358,0.0,400.0,29,4,"{""clock_soldier"": 30, ""pendulum"": 1}",m2
+crown-clockwork_031,0,clockwork,cw_jack_tech,180,280,4,10,91,1806,0.0,42.8,10,1,"{""clock_soldier"": 4}",m2
+crown-clockwork_031,0,clockwork,cw_jack_tech,300,210,3,10,559,3274,0.0,3.8,10,1,"{""clock_soldier"": 3}",m2
+crown-clockwork_031,0,clockwork,cw_jack_tech,420,390,5,14,301,4926,0.0,31.3,11,1,"{""clock_soldier"": 5}",m2
+crown-clockwork_031,0,clockwork,cw_jack_tech,600,645,10,30,976,9266,0.0,110.7,18,2,"{""clock_soldier"": 4, ""netter"": 1, ""pendulum"": 1}",m2
+crown-clockwork_031,0,clockwork,cw_jack_tech,900,2930,48,32,70,15250,0.0,400.0,26,2,"{""clock_soldier"": 22, ""jack"": 5, ""netter"": 2, ""pendulum"": 3}",m2
+crown-clockwork_031,1,crown,crown_proxy_horse,180,270,6,7,225,1140,0.0,0.0,7,1,"{""cuirassier"": 2}",m2
+crown-clockwork_031,1,crown,crown_proxy_horse,300,155,3,11,230,2280,41.9,0.0,9,1,"{""dismounted"": 1}",m2
+crown-clockwork_031,1,crown,crown_proxy_horse,420,315,5,11,25,3040,57.0,0.0,11,1,"{""cuirassier"": 1, ""musketeer"": 2}",m2
+crown-clockwork_031,1,crown,crown_proxy_horse,600,350,8,24,25,6080,62.9,0.0,17,2,"{""cuirassier"": 2, ""musketeer"": 2}",m2
+crown-clockwork_031,1,crown,crown_proxy_horse,900,325,1,27,42,10520,242.1,0.0,23,2,"{""missionary"": 1}",m2
+crown-clockwork_032,0,crown,crown_fast_expand,180,0,0,10,40,1140,18.3,0.0,8,2,{},m2
+crown-clockwork_032,0,crown,crown_fast_expand,300,300,5,22,20,2280,77.1,0.0,9,2,"{""musketeer"": 5}",m2
+crown-clockwork_032,0,crown,crown_fast_expand,420,820,13,32,0,5320,31.2,0.0,21,2,"{""musketeer"": 13}",m2
+crown-clockwork_032,0,crown,crown_fast_expand,600,3230,64,40,22,11400,29.4,0.0,31,3,"{""cuirassier"": 10, ""dismounted"": 1, ""missionary"": 1, ""musketeer"": 30}",m2
+crown-clockwork_032,1,clockwork,cw_proxy_tower,180,0,0,7,1124,1614,0.0,0.0,5,2,{},m2
+crown-clockwork_032,1,clockwork,cw_proxy_tower,300,0,0,7,2251,2841,0.0,0.0,6,2,{},m2
+crown-clockwork_032,1,clockwork,cw_proxy_tower,420,0,0,7,3491,4081,0.0,0.0,6,2,{},m2
+crown-clockwork_032,1,clockwork,cw_proxy_tower,600,0,0,0,3881,5121,0.0,0.0,5,1,{},m2
+crown-clockwork_033,0,clockwork,cw_soldier_rush,1200,1650,23,31,65,17965,0.0,400.0,27,3,"{""clock_soldier"": 23}",m2
+crown-clockwork_033,0,clockwork,cw_soldier_rush,180,560,8,8,21,1221,0.0,0.0,6,1,"{""clock_soldier"": 8}",m2
+crown-clockwork_033,0,clockwork,cw_soldier_rush,300,910,13,13,304,2859,0.0,0.0,8,1,"{""clock_soldier"": 13}",m2
+crown-clockwork_033,0,clockwork,cw_soldier_rush,420,1330,19,15,61,4656,0.0,31.6,13,1,"{""clock_soldier"": 19}",m2
+crown-clockwork_033,0,clockwork,cw_soldier_rush,600,2450,35,18,59,7084,0.0,200.0,14,2,"{""clock_soldier"": 35}",m2
+crown-clockwork_033,0,clockwork,cw_soldier_rush,900,2240,32,32,285,13315,0.0,200.0,20,2,"{""clock_soldier"": 32}",m2
+crown-clockwork_033,1,crown,crown_balloon_raid,1200,1140,20,29,26,13940,548.6,0.0,27,2,"{""balloon"": 2, ""cuirassier"": 2, ""missionary"": 1, ""mortar"": 1, ""musketeer"": 4, ""powder_wagon"": 1}",m2
+crown-clockwork_033,1,crown,crown_balloon_raid,180,240,4,10,25,1140,85.8,0.0,6,1,"{""musketeer"": 4}",m2
+crown-clockwork_033,1,crown,crown_balloon_raid,300,605,10,12,175,1900,184.2,0.0,9,1,"{""balloon"": 1, ""musketeer"": 8}",m2
+crown-clockwork_033,1,crown,crown_balloon_raid,420,1085,18,12,735,3040,262.6,0.0,10,1,"{""balloon"": 1, ""musketeer"": 16}",m2
+crown-clockwork_033,1,crown,crown_balloon_raid,600,1620,28,25,20,5700,208.5,0.0,17,1,"{""balloon"": 2, ""cuirassier"": 1, ""mortar"": 1, ""musketeer"": 16, ""powder_wagon"": 1}",m2
+crown-clockwork_033,1,crown,crown_balloon_raid,900,1050,19,31,22,10140,448.1,0.0,23,2,"{""balloon"": 2, ""cuirassier"": 2, ""dragoon"": 1, ""musketeer"": 6, ""powder_wagon"": 1}",m2
+crown-clockwork_034,0,crown,crown_balloon_drop,180,180,3,10,25,1140,82.1,0.0,6,1,"{""musketeer"": 3}",m2
+crown-clockwork_034,0,crown,crown_balloon_drop,300,425,7,12,175,1900,177.0,0.0,9,1,"{""balloon"": 1, ""musketeer"": 5}",m2
+crown-clockwork_034,0,crown,crown_balloon_drop,420,605,10,12,835,3040,255.4,0.0,9,1,"{""balloon"": 1, ""musketeer"": 8}",m2
+crown-clockwork_034,0,crown,crown_balloon_drop,600,810,9,21,6,4940,273.8,0.0,19,2,"{""balloon"": 2, ""musketeer"": 5}",m2
+crown-clockwork_034,1,clockwork,cw_owl_harass,180,140,2,10,782,1742,0.0,110.8,7,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_034,1,clockwork,cw_owl_harass,300,0,0,12,1101,3039,0.0,147.7,11,1,{},m2
+crown-clockwork_034,1,clockwork,cw_owl_harass,420,175,4,12,1378,4413,0.0,39.1,11,1,"{""ticking_owl"": 1}",m2
+crown-clockwork_034,1,clockwork,cw_owl_harass,600,0,0,13,3426,6677,0.0,211.3,10,1,{},m2
+crown-clockwork_035,0,clockwork,cw_soldier_rush,180,140,2,9,64,1244,0.0,0.0,6,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_035,0,clockwork,cw_soldier_rush,300,630,9,12,355,2980,0.0,0.0,9,1,"{""clock_soldier"": 9}",m2
+crown-clockwork_035,0,clockwork,cw_soldier_rush,420,630,9,15,46,4761,0.0,10.6,13,1,"{""clock_soldier"": 9}",m2
+crown-clockwork_035,0,clockwork,cw_soldier_rush,600,2100,30,25,5,7910,0.0,200.0,16,2,"{""clock_soldier"": 30}",m2
+crown-clockwork_035,0,clockwork,cw_soldier_rush,900,6740,99,28,28,16083,0.0,216.0,31,2,"{""clock_soldier"": 87, ""netter"": 2, ""pendulum"": 2}",m2
+crown-clockwork_035,1,crown,crown_horse_rush,180,155,3,7,225,1140,0.0,0.0,7,1,"{""cuirassier"": 1}",m2
+crown-clockwork_035,1,crown,crown_horse_rush,300,615,15,8,130,2280,0.0,0.0,8,1,"{""cuirassier"": 5}",m2
+crown-clockwork_035,1,crown,crown_horse_rush,420,1075,27,8,210,3420,0.0,0.0,11,1,"{""cuirassier"": 9}",m2
+crown-clockwork_035,1,crown,crown_horse_rush,600,350,6,15,5,4940,201.9,0.0,17,2,"{""cuirassier"": 2}",m2
+crown-clockwork_035,1,crown,crown_horse_rush,900,0,0,0,150,7220,496.9,0.0,10,0,{},m2
+crown-clockwork_036,0,clockwork,cw_jack_rush,180,0,0,7,719,1259,0.0,139.2,7,1,{},m2
+crown-clockwork_036,0,clockwork,cw_jack_rush,300,0,0,7,1679,2219,0.0,200.0,7,1,{},m2
+crown-clockwork_036,0,clockwork,cw_jack_rush,420,0,0,0,2460,3050,0.0,200.0,5,0,{},m2
+crown-clockwork_036,1,crown,crown_cannon_push,180,180,3,8,60,1140,79.4,0.0,7,1,"{""musketeer"": 3}",m2
+crown-clockwork_036,1,crown,crown_cannon_push,300,640,13,12,140,2280,156.9,0.0,10,1,"{""cannon"": 2, ""musketeer"": 5}",m2
+crown-clockwork_036,1,crown,crown_cannon_push,420,1200,24,16,80,3420,199.7,0.0,13,1,"{""cannon"": 2, ""cuirassier"": 1, ""mortar"": 1, ""musketeer"": 10}",m2
+crown-clockwork_037,0,crown,crown_proxy_horse,180,270,6,7,225,1140,0.0,0.0,7,1,"{""cuirassier"": 2}",m2
+crown-clockwork_037,0,crown,crown_proxy_horse,300,575,15,8,245,2280,39.8,0.0,9,1,"{""cuirassier"": 5}",m2
+crown-clockwork_037,1,clockwork,cw_owl_harass,180,140,2,12,370,1730,0.0,85.9,7,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_037,1,clockwork,cw_owl_harass,300,150,4,0,125,2415,0.0,33.5,10,1,"{""cuckoo"": 2}",m2
+crown-clockwork_038,0,clockwork,cw_pendulum_push,1200,0,0,0,43,16486,0.0,400.0,10,0,{},m2
+crown-clockwork_038,0,clockwork,cw_pendulum_push,180,140,2,10,744,1839,0.0,69.7,9,1,"{""clock_soldier"": 2}",m2
+crown-clockwork_038,0,clockwork,cw_pendulum_push,300,270,5,10,1800,3430,0.0,4.0,9,1,"{""clock_soldier"": 1, ""pendulum"": 1}",m2
+crown-clockwork_038,0,clockwork,cw_pendulum_push,420,910,13,10,2289,5069,0.0,40.0,10,1,"{""clock_soldier"": 13}",m2
+crown-clockwork_038,0,clockwork,cw_pendulum_push,600,1540,22,21,958,7658,0.0,98.4,17,2,"{""clock_soldier"": 22}",m2
+crown-clockwork_038,0,clockwork,cw_pendulum_push,900,220,5,30,14,15104,0.0,96.4,24,2,"{""clock_soldier"": 1, ""cuckoo"": 2}",m2
+crown-clockwork_038,1,crown,crown_dragoon_raid,1200,3395,66,40,3,19900,913.0,0.0,39,3,"{""cuirassier"": 9, ""missionary"": 1, ""mortar"": 1, ""musketeer"": 33, ""powder_wagon"": 1}",m2
+crown-clockwork_038,1,crown,crown_dragoon_raid,180,0,0,10,10,760,104.8,0.0,8,1,{},m2
+crown-clockwork_038,1,crown,crown_dragoon_raid,300,420,5,12,430,2280,133.5,0.0,9,1,"{""dragoon"": 2, ""musketeer"": 3}",m2
+crown-clockwork_038,1,crown,crown_dragoon_raid,420,435,5,12,15,3040,202.6,0.0,14,1,"{""dismounted"": 1, ""dragoon"": 2}",m2
+crown-clockwork_038,1,crown,crown_dragoon_raid,600,825,15,25,10,5700,273.9,0.0,19,2,"{""cuirassier"": 4, ""missionary"": 1, ""musketeer"": 2}",m2
+crown-clockwork_038,1,crown,crown_dragoon_raid,900,1680,29,40,2,12040,563.2,0.0,28,2,"{""cuirassier"": 3, ""missionary"": 1, ""musketeer"": 17, ""powder_wagon"": 1}",m2
+crown-clockwork_039,0,crown,crown_musket_wall,180,180,3,8,30,760,75.0,0.0,7,1,"{""musketeer"": 3}",m2
+crown-clockwork_039,0,crown,crown_musket_wall,300,470,9,13,180,2280,130.7,0.0,10,1,"{""cannon"": 1, ""musketeer"": 5}",m2
+crown-clockwork_039,0,crown,crown_musket_wall,420,1105,21,18,415,3800,127.0,0.0,12,1,"{""cannon"": 1, ""mortar"": 1, ""musketeer"": 12, ""powder_wagon"": 1}",m2
+crown-clockwork_039,0,crown,crown_musket_wall,600,1015,17,25,86,6840,206.8,0.0,17,1,"{""cuirassier"": 1, ""missionary"": 1, ""mortar"": 1, ""musketeer"": 8, ""powder_wagon"": 1}",m2
+crown-clockwork_039,0,crown,crown_musket_wall,900,125,1,1,0,9000,455.6,0.0,18,1,"{""missionary"": 1}",m2
+crown-clockwork_039,1,clockwork,cw_proxy_tower,180,0,0,7,681,1571,0.0,0.0,6,2,{},m2
+crown-clockwork_039,1,clockwork,cw_proxy_tower,300,420,6,15,76,2821,0.0,0.0,11,2,"{""clock_soldier"": 6}",m2
+crown-clockwork_039,1,clockwork,cw_proxy_tower,420,1610,23,25,228,5623,0.0,3.5,15,2,"{""clock_soldier"": 23}",m2
+crown-clockwork_039,1,clockwork,cw_proxy_tower,600,1540,22,30,623,11043,0.0,1.9,23,2,"{""clock_soldier"": 22}",m2
+crown-clockwork_039,1,clockwork,cw_proxy_tower,900,1530,23,30,53,13508,0.0,200.0,24,2,"{""clock_soldier"": 19, ""jack"": 2}",m2
