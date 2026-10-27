@@ -2,15 +2,17 @@
 SE, E, NE, N; column 1 the machine with its winding arm stowed, column 2 the arm out), in the style of the Netter's
 walk (tools/netter_guide/walk.py): painted parts cut out and moved, little drawn.
 
-WALK (8 frames): six legs in a TRIPOD gait: front and back on one side with the middle on the other (A: left-front,
-right-middle, left-back; B: right-front, left-middle, right-back), so three legs stand while three swing. A leg =
-its big blue ball (rides with the body, drawn on top), the steel collar under it (SHEARED: its top stays in the ball,
-its bottom follows the foot) and the brass dome foot (lifts and swings forward; a standing foot slides back at a
-steady speed, planted while the machine moves). The front legs, hidden behind the brush housing in the side views, show
-only their ball, which lifts with its tripod. The far side's legs are not painted: darker copies of the near legs
-stand behind the body, a little up and along (as the Pendulum's far leg), on the other tripod, so the side views show
-the alternation; the front view gets the middle legs the same way (outside and behind its two front legs). The body
-dips 1 game px as each tripod lands.
+WALK (12 frames) on ChatGPT's painted leg (art/redraws/great_winder_leg_chatgpt.png: rows side / three-quarter / front,
+columns standing / lifted back / swung forward / down ahead). The sheet's stubby legs (ball, collar, dome foot) are cut
+off the body (cut_legs, ROWS) and the body stands higher on the new, longer legs: the ground moves down, the body stays
+put in its window. LEGS = 4 (default: a slow, heavy walk, one leg at a time, LB LF RB RF) or 6 (a tripod gait). Side
+legs in E, three-quarter legs in SE / NE, front legs in S / N; the far side's legs are the same paint behind the body,
+darker. A planted leg: the standing cell cut into hip ball, rigid leg and flat foot; the foot stays put on the ground
+(it slides back at the body's speed, so it is planted while the machine moves), the rigid leg turns about the hip to
+reach it and slides up under the hip ball for the rest (REST_LEN is chosen so it never has to slide down; in S / N the
+step is depth, so it is not turned). A stepping leg: the painted step poses (column 2, then column 3) turned about the
+hip so the foot follows a smooth path from behind to ahead (S / N: turned so it stays under the hip), never through
+the floor. The body dips 1 game px as each leg (tripod) lands; ground speed: 2 * STRIDE / duty * GS game px a loop.
 
 WIND (12 frames): the winding arm (cut from column 2 and laid on the column-1 body) slides out of the machine along its
 length (frames 0-2), then ChatGPT's painted key head at its end (art/redraws/great_winder_key_rollers_chatgpt.png, top)
@@ -22,8 +24,10 @@ SWEEP (8 frames): the brush rollers turn (S and the 3/4 views: each blade shows 
 scrolling up the front; E: the end-on bristles turn in place under the roller's painted end cap, which turns too); the machine shakes a little. N: the brushes are hidden behind
 the machine; it shakes and a few painted scraps (from the concept) are tossed up over it into the hopper.
 
+WIND and SWEEP stand on the same legs, planted, at the same body height (SWEEP's rumble: the legs take it).
+
 Out (GAME SCALE, GS game px per sheet px; one cell and anchor for all three, the anchor = the ground under the body):
-art/redraws/great_winder_walk.png (5 rows x 8), great_winder_wind.png (5 x 12), great_winder_sweep.png (5 x 8), and a
+art/redraws/great_winder_walk.png (5 rows x 12; also great_winder_walk_4legs.gif and _6legs.gif on the same cell), great_winder_wind.png (5 x 12), great_winder_sweep.png (5 x 8), and a
 GIF of each at 3x (5 directions side by side).
   python3 tools/great_winder_guide/anim.py            (python3 tools/great_winder_guide/anim.py parts DIR: the parts)"""
 import math, os, sys
@@ -36,12 +40,7 @@ SHEET = np.array(Image.open('art/redraws/great_winder_dirs.png').convert('RGB'))
 CONCEPT = np.array(Image.open('art/redraws/concepts/great_winder_v1a.png').convert('RGB')).astype(int)
 GS = 0.30             # game px per sheet px (the Netter is 0.238, the Pendulum 0.283: a big machine)
 DIRS = ['s', 'se', 'e', 'ne', 'n']
-MARGIN = (40, 60, 220, 40)   # render window round the unit's box: left, top, right, bottom (sheet px; the arm and its key reach)
-N_WALK = 8
-STEP = 13.0           # a foot travels +-STEP px forward/back of its rest (side view px)
-LIFT = 14.0           # how high a swinging foot lifts
-FAR_DARK = 0.62       # the far side's legs, darker
-TRIPOD = {'lf': 0.0, 'rm': 0.0, 'lb': 0.0, 'rf': 0.5, 'lm': 0.5, 'rb': 0.5}
+MARGIN = (40, 60, 220, 130)   # render window round the unit's box: left, top, right, bottom (sheet px; the arm and its key reach)
 # "forward" on screen per row (side view across, front/back views a little down/up)
 FWD = [(0.0, 0.22), (0.72, 0.25), (1.0, 0.0), (0.72, -0.25), (0.0, -0.22)]
 
@@ -195,42 +194,6 @@ def cut_legs(R, W, M, org):
         legs.append(d)
         taken |= part
     return legs, taken
-
-
-def foot_at(p):
-    """forward offset and lift of a foot at gait phase p: down from 0 (in front) to 0.5 (behind), then a step"""
-    p %= 1.0
-    if p < 0.5:
-        return STEP * (1 - 4 * p), 0.0
-    t = (p - 0.5) / 0.5
-    return -STEP + STEP * (1 - math.cos(math.pi * t)), LIFT * math.sin(math.pi * t)
-
-
-def leg_layers(r, d, q, dark=None, off=(0.0, 0.0)):
-    """[(img, rides)] of one leg at walk phase q: its shin sheared from the ball to the foot, the foot moved, the ball"""
-    fx, fy = FWD[r]
-    f, h = foot_at(q + TRIPOD[d['role']])
-    dx, dy = f * fx, f * fy - h
-    bx, by, br = d['b']
-    out = []
-
-    def put(img, rides, M=None, p0=None, p1=None):
-        im = img
-        if M is not None:
-            im = place(im, p0, p1, M)
-        if off != (0.0, 0.0):
-            im = shift(im, *off)
-        if dark:
-            im = shade(im, dark)
-        out.append((im, rides))
-    if d['kind'] == 'full':
-        k = dx / max(6.0, d['fy'] - by)                    # the collar leans: its top in the ball, its bottom on the foot
-        put(d['shin'], True, np.array([[1.0, k], [0.0, 1.0]]), (bx, by), (bx, by))
-        put(d['foot'], False, np.eye(2), (0, 0), (dx, dy))
-        put(d['ball'], True)
-    else:
-        put(d['ball'], False, np.eye(2), (0, 0), (dx * 0.4, dy * 0.7))      # (a front leg's ball: only it shows)
-    return out
 
 
 # ------------------------------------------------------------------ the winding arm (from column 2)
@@ -688,20 +651,320 @@ def cut_row(r):
 PARTS = [cut_row(_r) for _r in range(5)]
 
 
-# ------------------------------------------------------------------ the frames
+# ------------------------------------------------------------------ the new legs (ChatGPT's painted leg)
 
-def legs_groups(r, q, stand=False):
-    """(far legs' layers, near legs' layers) at walk phase q (stand: every foot down where it was painted)"""
+LEGS = 4               # 4: a slow, heavy walk, one leg at a time; 6: a tripod gait (the owner picks; 4 recommended)
+LEG_SHEET = np.array(Image.open('art/redraws/great_winder_leg_chatgpt.png').convert('RGB')).astype(int)
+# the leg sheet: rows = view (side, three-quarter, front), columns = one step (standing; foot lifted, leg back; foot
+# swung forward in the air; foot down a little ahead). Which leg row each direction uses (S, SE, E, NE, N)
+LEG_VIEW = [2, 1, 0, 1, 2]
+LEG_K = 0.46           # leg sheet px -> body sheet px (the hip ball ~20 px across, the old balls 20-36: ~34 game px tall)
+LEG_DARK = 0.72        # the far side's legs: the same paint behind the body, darker
+STRIDE = 20.0          # a planted foot goes from +STRIDE to -STRIDE (body sheet px along the view's "forward")
+N_WALK = 12
+GAIT = {               # duty (the share of the loop a foot is down) and when each leg touches down
+    4: dict(duty=0.75, off={'lb': 0.0, 'lf': 0.25, 'rb': 0.5, 'rf': 0.75}),
+    6: dict(duty=0.5, off={'lf': 0.0, 'rm': 0.0, 'lb': 0.0, 'rf': 0.5, 'lm': 0.5, 'rb': 0.5}),
+}
+WALK_BOB = {4: [1, 0, 0] * 4, 6: [1, 0, 0, 0, 0, 0] * 2}   # the body dips a game px as a leg (a tripod) lands
+SWEEP_BOB = [0, 1, 1, 0, 0, 1, 1, 0]       # it rumbles with the brushes (the legs stay planted: IK takes it)
+
+# per direction, the hips (body sheet px, column 1) of each leg: (role, x, y, layer); layer 'near' (over the body),
+# 'back' (a near-side leg drawn behind the body: the front legs in the side views stand behind the brush housing),
+# 'far' (the far side, behind the body and darker). The far legs are the near ones moved by the row's FAR offset
+# (up and along, into the picture). Which legs are used: LEG_SET[LEGS]
+HIPS = [
+    # S: the front legs at the corners; the middle and back legs behind them, outside
+    dict(near=[('rf', 232, 214, 'near'), ('lf', 398, 214, 'near')],
+         extra=[('rm', 215, 203, 'far'), ('lm', 415, 203, 'far'), ('rb', 224, 190, 'far'), ('lb', 406, 190, 'far')],
+         far=None),
+    # SE
+    dict(near=[('rb', 205, 478, 'near'), ('rm', 274, 507, 'near'), ('rf', 316, 527, 'back')], far=(26, -16)),
+    # E
+    dict(near=[('rb', 197, 776, 'near'), ('rm', 293, 776, 'near'), ('rf', 356, 780, 'back')], far=(16, -9)),
+    # NE
+    dict(near=[('rb', 206, 1057, 'near'), ('rm', 298, 1080, 'near'), ('rf', 336, 1091, 'back')], far=(24, -14)),
+    # N: the back legs near; the middle and front legs behind them, outside
+    dict(near=[('lb', 258, 1380, 'near'), ('rb', 380, 1380, 'near')],
+         extra=[('lm', 222, 1362, 'far'), ('rm', 400, 1362, 'far'), ('lf', 236, 1346, 'far'), ('rf', 394, 1346, 'far')],
+         far=None),
+]
+LEG_SET = {4: ('lf', 'rf', 'lb', 'rb'), 6: ('lf', 'rf', 'lm', 'rm', 'lb', 'rb')}
+# 4 legs in S / N: the far pair stands where 6 legs put the middle ones (the back legs of 6 are hidden further in)
+FOUR_AT = {0: {'rb': 'rm', 'lb': 'lm'}, 4: {'lf': 'lm', 'rf': 'rm'}}
+
+
+def _leg_cells():
+    """the 12 painted cells: [row][col] = dict(rgba crop, o (its origin), hip (centre of the top ball), mask)"""
+    m = solid(LEG_SHEET)
+    lab, n = ndi.label(m)
+    objs = ndi.find_objects(lab)
+    cells = []
+    for i, sl in enumerate(objs):
+        if (lab[sl] == i + 1).sum() < 5000:
+            continue
+        y0, y1, x0, x1 = sl[0].start - 3, sl[0].stop + 3, sl[1].start - 3, sl[1].stop + 3
+        cm = lab[y0:y1, x0:x1] == i + 1
+        C = LEG_SHEET[y0:y1, x0:x1]
+        R_, G_, B_ = C[..., 0], C[..., 1], C[..., 2]
+        blue = ndi.binary_opening(cm & (B_ > R_ + 40) & (B_ > 90))
+        bl, nb = ndi.label(blue)
+        tops = sorted((ndi.find_objects(bl)[j][0].start, j + 1) for j in range(nb) if (bl == j + 1).sum() > 300)
+        ys, xs = np.nonzero(bl == tops[0][1])
+        hip = np.array([(xs.min() + xs.max()) / 2.0 + x0, (ys.min() + ys.max()) / 2.0 + y0])
+        cells.append(dict(rgba=rgba(C, cm), o=np.array([x0, y0]), hip=hip, mask=cm, hip_r=(ys.max() - ys.min()) / 2.0,
+                          cy=y0, cx=x0))
+    cells.sort(key=lambda c: c['cy'])
+    rows = [sorted(cells[k:k + 4], key=lambda c: c['cx']) for k in (0, 4, 8)]
+    return rows
+
+
+def _split_standing(c):
+    """the standing cell cut in three: the hip ball, the rigid leg (hip collar, thigh, knee, ankle collar) and the
+    flat brass foot; the ankle (where the leg meets the foot), the sole and the foot's middle"""
+    m = c['mask']
+    C = c['rgba'][..., :3].astype(int)
+    H, Wd = m.shape
+    yy, xx = np.mgrid[0:H, 0:Wd]
+    hx, hy = c['hip'] - c['o']
+    split = int(round(hy + c['hip_r'])) + 2            # under the ball: its collar starts
+    R_, G_, B_ = C[..., 0], C[..., 1], C[..., 2]
+    brass = m & (R_ > 120) & (G_ > 60) & (B_ < 110) & (R_ > B_ + 60)
+    wid = brass.sum(1)
+    sole = int(np.nonzero(m.any(1))[0].max())
+    full = wid[sole - 30:sole].max()
+    ank = sole - 30
+    for y in range(int(hy + 2 * c['hip_r']), sole):
+        if wid[y] >= 0.7 * full:
+            ank = y
+            break
+    leg = m & (yy >= split) & (yy < ank)
+    xs = np.nonzero(leg[ank - 1])[0]
+    ankle = np.array([(xs.min() + xs.max()) / 2.0, ank]) + c['o']
+    foot = m & (yy >= ank)
+    fy, fx = np.nonzero(foot)
+    return dict(ball=rgba(C, m & (yy < split)), leg=rgba(C, leg), foot=rgba(C, foot), ankle=ankle,
+                sole=np.array([fx.mean(), sole]) + c['o'], footc=np.array([fx.mean(), fy.mean()]) + c['o'],
+                o=c['o'], hip=c['hip'])
+
+
+def _foot_centre(c):
+    """a swing cell's foot middle: the paint furthest from the hip (its outer fifth)"""
+    ys, xs = np.nonzero(c['mask'])
+    p = np.stack([xs, ys], 1) + c['o']
+    d = np.hypot(*(p - c['hip']).T)
+    return p[d >= 0.8 * d.max()].mean(0)
+
+
+LEG_CELLS = _leg_cells()
+STAND = [_split_standing(r[0]) for r in LEG_CELLS]
+for _r in LEG_CELLS:
+    for _c in _r:
+        _c['footc'] = _foot_centre(_c)
+
+
+def xform(img, o, ps, th, pd, size, dark=None):
+    """a leg-sheet piece (rgba, its origin o) turned th deg (clockwise on screen) about its point ps, scaled LEG_K and
+    laid so ps lands on pd (window px): a full-window rgba (2x supersampled, premultiplied, alpha cut at half)"""
+    Wd, H = size
+    h, w = img.shape[:2]
+    c, s = math.cos(math.radians(th)), math.sin(math.radians(th))
+    K = LEG_K
+    corners = np.array([[0, 0], [w, 0], [0, h], [w, h]], float) + o - ps
+    dst = (np.array([[c, -s], [s, c]]) @ corners.T).T * K + pd
+    tx0, ty0 = np.floor(dst.min(0)).astype(int) - 2
+    tx1, ty1 = np.ceil(dst.max(0)).astype(int) + 2
+    tw, tht = tx1 - tx0, ty1 - ty0
+    a, b = c / (2 * K), s / (2 * K)
+    cx = ps[0] - o[0] + (c * (tx0 - pd[0]) + s * (ty0 - pd[1])) / K
+    cy = ps[1] - o[1] + (-s * (tx0 - pd[0]) + c * (ty0 - pd[1])) / K
+    im = Image.fromarray(img, 'RGBA').convert('RGBa')
+    t = im.transform((2 * tw, 2 * tht), Image.AFFINE, (a, b, cx, -b, a, cy), resample=Image.BILINEAR)
+    t = t.resize((tw, tht), Image.BOX).convert('RGBA')
+    t = np.array(t)
+    t[..., 3] = np.where(t[..., 3] >= 128, 255, 0)
+    t[t[..., 3] == 0] = 0
+    if dark:
+        t = shade(t, dark)
+    out = np.zeros((H, Wd, 4), np.uint8)
+    _paste(out, t, tx0, ty0)
+    return out
+
+
+def hips_of(r):
+    """[(role, hip (window px), layer)] of the legs in use in direction r"""
+    x0, y0 = PARTS[r]['org']
+    Hd = HIPS[r]
+    allh = {}
+    for role, x, y, layer in Hd['near']:
+        allh[role] = (np.array([x - x0, y - y0], float), layer)
+        if Hd['far'] is not None:
+            fr = 'l' + role[1]
+            allh[fr] = (np.array([x - x0 + Hd['far'][0], y - y0 + Hd['far'][1]], float), 'far')
+    for role, x, y, layer in Hd.get('extra', []):
+        allh[role] = (np.array([x - x0, y - y0], float), layer)
+    out = []
+    for role in LEG_SET[LEGS]:
+        src = FOUR_AT.get(r, {}).get(role, role) if LEGS == 4 else role
+        out.append((role,) + allh[src])
+    return out
+
+
+def fwd_of(r):
+    return np.array(FWD[r], float)
+
+
+def stance_geom(r, hip, x_off, rest_len, bob=0.0):
+    """a planted leg's pose: (ankle, turn of the rigid leg, its slide up the hip) for its foot flat on the ground at
+    x_off along forward from under the rest hip (hip: the rest hip; bob: how far the body has dipped)"""
+    st = STAND[LEG_VIEW[r]]
+    f = fwd_of(r)
+    ank0 = (st['ankle'] - st['hip']) * LEG_K                 # the rest leg, hip -> ankle
+    sole0 = (st['sole'] - st['ankle']) * LEG_K
+    sole = np.array([hip[0] + ank0[0] + sole0[0], hip[1] + rest_len]) + x_off * f
+    ankle = sole - sole0
+    hp = hip + np.array([0.0, bob])
+    dx = ankle[0] - hp[0]
+    L = math.hypot(*ank0)
+    th = 0.0
+    if abs(f[0]) > 1e-6:
+        th = math.degrees(math.atan2(ank0[0], ank0[1])) - math.degrees(math.asin(max(-1.0, min(1.0, dx / L))))
+    c, s = math.cos(math.radians(th)), math.sin(math.radians(th))
+    rot = np.array([[c, -s], [s, c]]) @ ank0
+    return ankle, th, (ankle - (hp + rot))[1]
+
+
+def stance_leg(r, hip, x_off, size, dark, rest_len, bob=0.0):
+    """a planted leg: its foot flat on the ground, the rigid leg (hip collar, thigh, knee, ankle collar) turned about
+    the hip to reach it (in the front views not turned: there the step is depth, foreshortened) and slid up under the
+    hip ball for the rest (never down: REST_LEN is chosen so it never has to); the standing cell's hip ball on top"""
+    st = STAND[LEG_VIEW[r]]
+    ankle, th, slide = stance_geom(r, hip, x_off, rest_len, bob)
+    hp = hip + np.array([0.0, bob])
+    return [xform(st['foot'], st['o'], st['ankle'], 0.0, ankle, size, dark),
+            xform(st['leg'], st['o'], st['hip'], th, hp + np.array([0.0, slide]), size, dark),
+            xform(st['ball'], st['o'], st['hip'], 0.0, hp, size, dark)]
+
+
+SWING_LIFT = 7.0       # a stepping foot clears the ground by at least this (body sheet px; the painted lift is small)
+
+
+def swing_leg(r, hip, u, size, dark, ground=None):
+    """a stepping leg at u (0 lift-off .. 1 touch-down): the painted step poses (column 2 early, column 3 late) turned
+    about the hip so the foot follows a smooth path from behind to ahead (the front views: so it stays under the
+    hip), never through the floor, the standing cell's hip ball laid over its own"""
+    cells = LEG_CELLS[LEG_VIEW[r]]
+    st = STAND[LEG_VIEW[r]]
+    c = cells[1] if u < 0.45 else cells[2]
+    f = fwd_of(r)
+    fn = f / max(1e-6, np.hypot(*f))
+    x_off = -STRIDE + 2 * STRIDE * (1 - math.cos(math.pi * u)) / 2.0
+    if abs(f[0]) < 1e-6:
+        # front views: the step is depth; ChatGPT's lifted feet lean to one side, so the pose is turned back until
+        # the foot is under the hip again
+        fn, want = np.array([1.0, 0.0]), ((st['footc'] - st['hip']) * LEG_K)[0]
+    else:
+        want = ((st['footc'] - st['hip']) * LEG_K) @ fn + x_off * np.hypot(*f)
+    v = (c['footc'] - c['hip']) * LEG_K
+    best = None
+    for t in np.arange(-70.0, 70.1, 0.5):
+        cc, ss = math.cos(math.radians(t)), math.sin(math.radians(t))
+        e = abs((np.array([[cc, -ss], [ss, cc]]) @ v) @ fn - want)
+        if best is None or e < best[0]:
+            best = (e, t)
+    th = best[1]
+    leg = xform(c['rgba'], c['o'], c['hip'], th, hip, size, dark)
+    if ground is not None:
+        # never through the floor: the whole pose slides up under the hip ball until the foot clears it
+        ys = np.nonzero(leg[..., 3].any(1))[0]
+        g = ground + x_off * f[1] - (2.0 + SWING_LIFT * math.sin(math.pi * u))
+        up = int(math.ceil(ys.max() - g)) if len(ys) else 0
+        if up > 0:
+            leg = shift(leg, 0, -up)
+    return [leg, xform(st['ball'], st['o'], st['hip'], 0.0, hip, size, dark)]
+
+
+def legs_layers(r, t, bob=0.0, stand=False):
+    """{'far': [...], 'back': [...], 'near': [...]} full-window rgba layers of the legs at walk time t (0..1 a loop;
+    stand: every foot planted under its hip), the hips dipped by bob (window px)"""
     P = PARTS[r]
-    far, near = [], []
-    for role, i, dx, dy in ROWS[r]['far']:
-        d = dict(P['legs'][i], role=role)
-        far += leg_layers(r, d, 0.25 - TRIPOD[role] if stand else q, FAR_DARK, (dx, dy))
-    order = sorted(P['legs'], key=lambda d: d.get('sole', d['b'][1] + d['b'][2]))
-    for d in order:
-        near += leg_layers(r, d, 0.25 - TRIPOD[d['role']] if stand else q)
-    return far, near
+    g = GAIT[LEGS]
+    out = {'far': [], 'back': [], 'near': []}
+    hl = sorted(hips_of(r), key=lambda h: h[1][1])
+    for role, hip, layer in hl:
+        dark = LEG_DARK if layer == 'far' else None
+        if stand:
+            lay = stance_leg(r, hip, 0.0, P['size'], dark, REST_LEN, bob)
+        else:
+            p = (t - g['off'][role] + 0.5 / N_WALK) % 1.0
+            if p < g['duty']:
+                x_off = STRIDE - 2 * STRIDE * p / g['duty']
+                lay = stance_leg(r, hip, x_off, P['size'], dark, REST_LEN, bob)
+            else:
+                lay = swing_leg(r, hip + np.array([0.0, bob]), (p - g['duty']) / (1 - g['duty']), P['size'], dark,
+                                hip[1] + REST_LEN)
+        out[layer] += lay
+    return out
 
+
+def rest_len():
+    """the hip-to-sole height at rest: as long as the painted leg allows with no gap at the hip in any planted pose
+    (the leg only ever slides up under the ball)"""
+    best = 1e9
+    for r in range(5):
+        st = STAND[LEG_VIEW[r]]
+        ank0 = (st['ankle'] - st['hip']) * LEG_K
+        sole0 = (st['sole'] - st['ankle']) * LEG_K
+        base = ank0[1] + sole0[1]
+        for x_off in np.linspace(-STRIDE, STRIDE, 21):
+            sl = stance_geom(r, np.array([200.0, 100.0]), x_off, base)[2]
+            best = min(best, base - sl)
+    return best
+
+
+def body_layer(img, bob):
+    return shift(img, 0, bob) if bob else img
+
+
+def bob_px(b):
+    return int(round(b / GS))
+
+
+def walk_frame(r, i):
+    bob = bob_px(WALK_BOB[LEGS][i])
+    L = legs_layers(r, i / float(N_WALK), bob)
+    return [(x, False) for x in L['far'] + L['back']] + [(body_layer(PARTS[r]['body'], bob), False)] + \
+        [(x, False) for x in L['near']]
+
+
+def wind_frame(r, t, step):
+    L = legs_layers(r, 0.0, stand=True)
+    arm = arm_layers(r, t, step)
+    g = [(x, False) for x in L['far'] + L['back']]
+    if ARM[r]['front']:
+        return g + [(PARTS[r]['body'], False)] + [(x, False) for x in L['near']] + [(arm, False)]
+    return g + [(arm, False), (PARTS[r]['body'], False)] + [(x, False) for x in L['near']]
+
+
+def sweep_frame(r, i):
+    bob = bob_px(SWEEP_BOB[i])
+    L = legs_layers(r, 0.0, bob, stand=True)
+    g = [(x, False) for x in L['far'] + L['back']] + [(body_layer(PARTS[r]['body'], bob), False)]
+    b = PARTS[r]['brush']
+    if b is not None:
+        if b['kind'] == 'tread':
+            g.append((body_layer(tread_texture(b, i, N_SWEEP), bob), False))
+        else:
+            # (E: the bristles round it turn at their painted size, BRUSH_ZOOM is for the old treads only)
+            g.append((body_layer(roll_brush(b, i, N_SWEEP), bob), False))
+            g.append((body_layer(cap_layer(b, i, N_SWEEP, PARTS[r]['size']), bob), False))
+    return g + [(x, False) for x in L['near']] + [(scraps_layer(r, i, N_SWEEP, PARTS[r]['size']), False)]
+
+
+REST_LEN = rest_len()
+
+
+# ------------------------------------------------------------------ the frames
 
 def arm_layers(r, t, step):
     """the arm out by t (0 in, 1 all out), with ChatGPT's painted key at its tip at turn step `step` (of 8)"""
@@ -720,41 +983,11 @@ def arm_layers(r, t, step):
     return out
 
 
-def walk_frame(r, i):
-    q = i / float(N_WALK)
-    far, near = legs_groups(r, q)
-    return far + [(PARTS[r]['body'], True)] + near
-
-
-def wind_frame(r, t, step):
-    far, near = legs_groups(r, 0.0, stand=True)
-    arm = arm_layers(r, t, step)
-    if ARM[r]['front']:
-        return far + [(PARTS[r]['body'], True)] + near + [(arm, True)]
-    return far + [(arm, True), (PARTS[r]['body'], True)] + near
-
-
-def sweep_frame(r, i):
-    far, near = legs_groups(r, 0.0, stand=True)
-    g = far + [(PARTS[r]['body'], True)]
-    b = PARTS[r]['brush']
-    if b is not None:
-        if b['kind'] == 'tread':
-            g.append((tread_texture(b, i, N_SWEEP), True))
-        else:
-            # (E: the bristles round it turn at their painted size, BRUSH_ZOOM is for the old treads only)
-            g.append((roll_brush(b, i, N_SWEEP), True))
-            g.append((cap_layer(b, i, N_SWEEP, PARTS[r]['size']), True))
-    return g + near + [(scraps_layer(r, i, N_SWEEP, PARTS[r]['size']), False)]
-
-
 N_SWEEP = 8
 # WIND: (how far out, the key's turn step): out in 2 frames, a full turn in 8 (frames 2-9 loop while it winds), back
 # in 2
 WIND = [(0.0, 0), (0.55, 0), (1.0, 0), (1.0, 1), (1.0, 2), (1.0, 3), (1.0, 4), (1.0, 5), (1.0, 6), (1.0, 7),
         (0.6, 0), (0.2, 0)]
-WALK_BOB = [1, 0, 0, 0, 1, 0, 0, 0]        # the body dips as each tripod lands (game px)
-SWEEP_BOB = [0, 1, 1, 0, 0, 1, 1, 0]       # it rumbles with the brushes
 
 
 def cropped(groups):
@@ -775,17 +1008,18 @@ def cropped(groups):
 
 def anim_frames(name, r):
     if name == 'walk':
-        return [(cropped(walk_frame(r, i)), WALK_BOB[i]) for i in range(N_WALK)]
+        return [(cropped(walk_frame(r, i)), 0) for i in range(N_WALK)]
     if name == 'wind':
         return [(cropped(wind_frame(r, t, ph)), 0) for t, ph in WIND]
-    return [(cropped(sweep_frame(r, i)), SWEEP_BOB[i]) for i in range(N_SWEEP)]
+    return [(cropped(sweep_frame(r, i)), 0) for i in range(N_SWEEP)]
 
 
 def anchor(r):
-    """the unit's point (window px): under the middle of its near legs, on the ground (the lowest sole)"""
-    P = PARTS[r]
-    full = [d for d in P['legs'] if d['kind'] == 'full']
-    return (float(np.mean([d['b'][0] for d in full])), max(d['sole'] for d in full) + 1.0)
+    """the unit's point (window px): under the middle of its near-side hips (all of HIPS[r]['near'], so it does not
+    move with LEGS), on the ground (the lowest rest sole)"""
+    x0, y0 = PARTS[r]['org']
+    near = HIPS[r]['near']
+    return (float(np.mean([h[1] for h in near])) - x0, max(h[2] for h in near) - y0 + REST_LEN + 1.0)
 
 
 def shrink(img, w, h):
@@ -833,7 +1067,7 @@ def extents(frames):
     return L, Rr, U, D
 
 
-def save(name, rows, cell, dur):
+def save(name, rows, cell, dur, png=True):
     CW, CH = cell[:2]
     n = len(rows[0])
     sheet = Image.new('RGB', (n * CW, 5 * CH), tuple(NAVY))
@@ -841,7 +1075,8 @@ def save(name, rows, cell, dur):
         for c, img in enumerate(rows[r]):
             im = Image.fromarray(img, 'RGBA')
             sheet.paste(im, (c * CW, r * CH), im)
-    sheet.save('art/redraws/great_winder_%s.png' % name)
+    if png:
+        sheet.save('art/redraws/great_winder_%s.png' % name)
     g = []
     for c in range(n):
         o = Image.new('RGB', (5 * CW, CH), tuple(NAVY))
@@ -851,16 +1086,35 @@ def save(name, rows, cell, dur):
     g[0].save('art/redraws/great_winder_%s.gif' % name, save_all=True, append_images=g[1:], duration=dur, loop=0)
 
 
+WALK_MS = {4: 130, 6: 110}     # a heavy creep; the tripod a little quicker
+
+
 def main():
+    """the three strips with LEGS legs on one cell; and both walks as GIFs (great_winder_walk_4legs / _6legs.gif) on
+    that cell, so the owner can pick"""
+    global LEGS
     frames = {(name, r): anim_frames(name, r) for name in ('walk', 'wind', 'sweep') for r in range(5)}
-    L, Rr, U, D = extents(frames)
+    other = 6 if LEGS == 4 else 4
+    keep = LEGS
+    LEGS = other
+    walk2 = {('walk', r): anim_frames('walk', r) for r in range(5)}
+    LEGS = keep
+    both = dict(frames)
+    both.update({('walk2', r): v for (_, r), v in walk2.items()})
+    L, Rr, U, D = extents(both)
     half = int(math.ceil(max(L, Rr) * GS)) + 1
     up, down = int(math.ceil(U * GS)) + 1, int(math.ceil(D * GS)) + 1
     cell = (2 * half, up + down, half, up)
-    print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f)' % (cell + (GS,)))
-    for name, dur in (('walk', 120), ('wind', 110), ('sweep', 100)):
+    print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f), %d legs' % (cell + (GS, LEGS)))
+    for name, dur in (('walk', WALK_MS[LEGS]), ('wind', 110), ('sweep', 100)):
         rows = [[to_cell(r, g, bob, cell) for g, bob in frames[(name, r)]] for r in range(5)]
         save(name, rows, cell, dur)
+        if name == 'walk':
+            save('walk_%dlegs' % LEGS, rows, cell, dur, png=False)
+    LEGS = other
+    rows = [[to_cell(r, g, bob, cell) for g, bob in walk2[('walk', r)]] for r in range(5)]
+    save('walk_%dlegs' % other, rows, cell, WALK_MS[other], png=False)
+    LEGS = keep
     print('ok')
 
 

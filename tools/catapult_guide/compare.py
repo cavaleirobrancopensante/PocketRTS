@@ -64,6 +64,15 @@ if __name__ == '__main__':
             ((old + '/catapult_move.png', 154, 141, 77, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110),
             ((old + '/catapult_move.png', 154, 141, 77, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110)],
             label=('old', 'new: S wheels edge-on, SE wheels squashed, N/NE cup shows its back past vertical'))
+    elif which == 'legs':
+        # python3 tools/catapult_guide/compare.py legs OLD_DIR  (OLD_DIR: the strips before great-winder-legs: walk
+        # on 194x95, anchor (97, 84); wind and sweep on 204x107, anchor (102, 89))
+        cell_n = [int(v) for v in sys.argv[3].split(',')] if len(sys.argv) > 3 else [182, 107, 91, 104]
+        compare('art/redraws/great_winder_legs_compare.gif', [
+            ((old + '/great_winder_walk.png', 194, 95, 97, 84), ('art/redraws/great_winder_walk.png',) + tuple(cell_n), 130),
+            ((old + '/great_winder_wind.png', 204, 107, 102, 89), ('art/redraws/great_winder_wind.png',) + tuple(cell_n), 110),
+            ((old + '/great_winder_sweep.png', 204, 107, 102, 89), ('art/redraws/great_winder_sweep.png',) + tuple(cell_n), 100)],
+            label=('old', 'new: ChatGPT painted legs, 4 legs, body raised'))
     else:
         cell_o = [int(v) for v in sys.argv[3].split(',')]
         cell_n = [int(v) for v in sys.argv[4].split(',')]
