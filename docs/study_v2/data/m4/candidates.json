@@ -367,6 +367,238 @@
   ],
   "then": "xrush"
  },
+ "x_br_046": {
+  "faction": "brood",
+  "label": "explore x_br_046 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_br_046",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:7",
+   "hive",
+   "warren",
+   "brood_pen",
+   "spitter*2",
+   "workers:12",
+   "end"
+  ],
+  "then": "rush"
+ },
+ "x_br_049": {
+  "faction": "brood",
+  "label": "explore x_br_049 (DOC of brood_brute_timing)",
+  "made": "DOC",
+  "mutations": [
+   [
+    "fast expansion: feeding_pit at step 1",
+    "early tech: brute at step 6"
+   ]
+  ],
+  "name": "x_br_049",
+  "origin": "brood_brute_timing",
+  "parent": "brood_brute_timing",
+  "steps": [
+   "workers:10",
+   "feeding_pit",
+   "feeding_pit",
+   "until:workers:10",
+   "warren",
+   "brood_pen",
+   "gorge_pit",
+   "brute*2",
+   "workers:13",
+   "raptor*5",
+   "sacrifice:5",
+   "clutch_mound",
+   "brute*2",
+   "raptor*",
+   "attack@24|420",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_br_052": {
+  "faction": "brood",
+  "label": "explore x_br_052 (POOL of x_br_028)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "swap attack@9|200 / workers:10",
+    "unit mix raptor -> spitter"
+   ],
+   [
+    "early tech: brute at step 3"
+   ]
+  ],
+  "name": "x_br_052",
+  "origin": "brood_proxy_burrow",
+  "parent": "x_br_028",
+  "steps": [
+   "workers:8",
+   "warren",
+   "hive@proxy:0.65",
+   "gorge_pit",
+   "brute*1",
+   "brood_pen",
+   "spitter*",
+   "workers:10",
+   "attack@9|200",
+   "wait:330",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_br_055": {
+  "faction": "brood",
+  "label": "explore x_br_055 (POOL of x_br_043)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "workers 8->10"
+   ],
+   [
+    "then balanced -> xrush"
+   ],
+   [
+    "early tech: spitter at step 3"
+   ]
+  ],
+  "name": "x_br_055",
+  "origin": "brood_proxy_burrow",
+  "parent": "x_br_043",
+  "steps": [
+   "workers:10",
+   "warren",
+   "hive@proxy:0.65",
+   "brood_pen",
+   "spitter*1",
+   "raptor*",
+   "attack@9|200",
+   "workers:10",
+   "wait:330",
+   "end"
+  ],
+  "then": "xrush"
+ },
+ "x_br_058": {
+  "faction": "brood",
+  "label": "explore x_br_058 (POOL of x_br_019)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "attack@24|420 -> attack@22|420",
+    "then balanced -> economy",
+    "add feeding_pit"
+   ],
+   [
+    "early tech: skywing at step 3",
+    "unit mix raptor -> spitter"
+   ]
+  ],
+  "name": "x_br_058",
+  "origin": "brood_brute_timing",
+  "parent": "x_br_019",
+  "steps": [
+   "workers:10",
+   "feeding_pit",
+   "until:workers:10",
+   "warren",
+   "roost",
+   "skywing*3",
+   "feeding_pit",
+   "brood_pen",
+   "workers:13",
+   "gorge_pit",
+   "raptor*5",
+   "sacrifice:5",
+   "clutch_mound",
+   "brute*2",
+   "spitter*",
+   "attack@22|420",
+   "end"
+  ],
+  "then": "economy"
+ },
+ "x_br_061": {
+  "faction": "brood",
+  "label": "explore x_br_061 (POOL of x_br_004)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "attack@24|360 -> attack@24|450",
+    "then balanced -> timing"
+   ],
+   [
+    "then timing -> balanced",
+    "early tech: skywing at step 6"
+   ]
+  ],
+  "name": "x_br_061",
+  "origin": "brood_spitter_timing",
+  "parent": "x_br_004",
+  "steps": [
+   "workers:10",
+   "feeding_pit",
+   "until:workers:10",
+   "warren",
+   "brood_pen",
+   "workers:13",
+   "roost",
+   "skywing*1",
+   "raptor*4",
+   "sacrifice:4",
+   "clutch_mound",
+   "spitter*5",
+   "raptor*",
+   "attack@24|450",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_br_064": {
+  "faction": "brood",
+  "label": "explore x_br_064 (POOL of x_br_058)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "attack@24|420 -> attack@22|420",
+    "then balanced -> economy",
+    "add feeding_pit"
+   ],
+   [
+    "early tech: skywing at step 3",
+    "unit mix raptor -> spitter"
+   ],
+   [
+    "then economy -> balanced"
+   ]
+  ],
+  "name": "x_br_064",
+  "origin": "brood_brute_timing",
+  "parent": "x_br_058",
+  "steps": [
+   "workers:10",
+   "feeding_pit",
+   "until:workers:10",
+   "warren",
+   "roost",
+   "skywing*3",
+   "feeding_pit",
+   "brood_pen",
+   "workers:13",
+   "gorge_pit",
+   "raptor*5",
+   "sacrifice:5",
+   "clutch_mound",
+   "brute*2",
+   "spitter*",
+   "attack@22|420",
+   "end"
+  ],
+  "then": "balanced"
+ },
  "x_cr_000": {
   "faction": "crown",
   "label": "explore x_cr_000 (DOC of crown_fast_expand)",
@@ -805,6 +1037,141 @@
   ],
   "then": "balanced"
  },
+ "x_cr_045": {
+  "faction": "crown",
+  "label": "explore x_cr_045 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_cr_045",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:7",
+   "wall",
+   "barracks",
+   "foundry",
+   "mortar*",
+   "cannon*3",
+   "workers:14",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_cr_048": {
+  "faction": "crown",
+  "label": "explore x_cr_048 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_cr_048",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:12",
+   "wall",
+   "barracks",
+   "powder_mill",
+   "musketeer*3",
+   "workers:13",
+   "attack@24|420",
+   "end"
+  ],
+  "then": "economy"
+ },
+ "x_cr_051": {
+  "faction": "crown",
+  "label": "explore x_cr_051 (POOL of x_cr_003)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "add attack@10|240"
+   ],
+   [
+    "no wall"
+   ]
+  ],
+  "name": "x_cr_051",
+  "origin": "crown_balloon_drop",
+  "parent": "x_cr_003",
+  "steps": [
+   "workers:9",
+   "cottage",
+   "barracks",
+   "powder_mill",
+   "mill:4",
+   "foundry",
+   "musketeer*4",
+   "workers:12",
+   "balloon*1",
+   "drop",
+   "musketeer*",
+   "attack@10|240",
+   "farm",
+   "wait:420",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_cr_054": {
+  "faction": "crown",
+  "label": "explore x_cr_054 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_cr_054",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:5",
+   "wall",
+   "barracks",
+   "foundry",
+   "balloon*",
+   "attack@18|420",
+   "end"
+  ],
+  "then": "timing"
+ },
+ "x_cr_060": {
+  "faction": "crown",
+  "label": "explore x_cr_060 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_cr_060",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:12",
+   "wall",
+   "barracks",
+   "horse_breeder",
+   "horseman*",
+   "powder_mill",
+   "dragoon*3",
+   "workers:17",
+   "attack@8|480",
+   "end"
+  ],
+  "then": "timing"
+ },
+ "x_cr_063": {
+  "faction": "crown",
+  "label": "explore x_cr_063 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_cr_063",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:10",
+   "cottage",
+   "barracks",
+   "powder_mill",
+   "musketeer*",
+   "horse_breeder",
+   "dragoon*1",
+   "end"
+  ],
+  "then": "balanced"
+ },
  "x_cw_002": {
   "faction": "clockwork",
   "label": "explore x_cw_002 (DOC of cw_proxy_tower)",
@@ -1196,5 +1563,149 @@
    "end"
   ],
   "then": "economy"
+ },
+ "x_cw_047": {
+  "faction": "clockwork",
+  "label": "explore x_cw_047 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_cw_047",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:12",
+   "movement_works",
+   "escapement",
+   "cuckoo_house",
+   "mainspring",
+   "crew:mainspring:3",
+   "cuckoo*",
+   "cog_press",
+   "cuckoo*3",
+   "attack@8|420",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_cw_050": {
+  "faction": "clockwork",
+  "label": "explore x_cw_050 (POOL of x_cw_041)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "workers 7->9"
+   ],
+   [
+    "add movement_works"
+   ]
+  ],
+  "name": "x_cw_050",
+  "origin": "cw_proxy_tower",
+  "parent": "x_cw_041",
+  "steps": [
+   "workers:9",
+   "cog_press",
+   "clocktower@proxy:0.65",
+   "wait:115",
+   "movement_works@proxy:0.65",
+   "regulator",
+   "clock_soldier*",
+   "movement_works@proxy:0.65",
+   "attack@6|240",
+   "movement_works",
+   "workers:10",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_cw_053": {
+  "faction": "clockwork",
+  "label": "explore x_cw_053 (POOL of x_cw_041)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "workers 7->9"
+   ],
+   [
+    "add netter*4",
+    "attack@6|240 -> attack@2|240"
+   ]
+  ],
+  "name": "x_cw_053",
+  "origin": "cw_proxy_tower",
+  "parent": "x_cw_041",
+  "steps": [
+   "workers:9",
+   "cog_press",
+   "clocktower@proxy:0.65",
+   "wait:115",
+   "movement_works@proxy:0.65",
+   "regulator",
+   "clock_soldier*",
+   "movement_works@proxy:0.65",
+   "attack@2|240",
+   "workers:10",
+   "escapement",
+   "mainspring",
+   "crew:mainspring:3",
+   "netter*4",
+   "end"
+  ],
+  "then": "balanced"
+ },
+ "x_cw_056": {
+  "faction": "clockwork",
+  "label": "explore x_cw_056 (FRESH of the grammar)",
+  "made": "FRESH",
+  "mutations": [],
+  "name": "x_cw_056",
+  "origin": "grammar",
+  "parent": "",
+  "steps": [
+   "workers:10",
+   "movement_works",
+   "escapement",
+   "mainspring",
+   "crew:mainspring:3",
+   "gear:movement_works:big",
+   "pendulum*6",
+   "attack@6|360",
+   "end"
+  ],
+  "then": "timing"
+ },
+ "x_cw_059": {
+  "faction": "clockwork",
+  "label": "explore x_cw_059 (POOL of x_cw_014)",
+  "made": "POOL",
+  "mutations": [
+   [
+    "proxy movement_works@proxy:0.65",
+    "early tech: pendulum at step 1",
+    "attack@4|360 -> attack@2|360"
+   ]
+  ],
+  "name": "x_cw_059",
+  "origin": "grammar",
+  "parent": "x_cw_014",
+  "steps": [
+   "workers:12",
+   "movement_works",
+   "escapement",
+   "mainspring",
+   "crew:mainspring:3",
+   "gear:movement_works:big",
+   "pendulum*1",
+   "clocktower",
+   "movement_works@proxy:0.65",
+   "crew:mainspring:3",
+   "gear:movement_works:big",
+   "pendulum*3",
+   "workers:12",
+   "attack@2|360",
+   "pendulum*",
+   "end"
+  ],
+  "then": "balanced"
  }
 }
