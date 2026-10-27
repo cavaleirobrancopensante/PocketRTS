@@ -2118,7 +2118,11 @@ func _to_menu() -> void:
 	get_tree().paused = false
 	Engine.time_scale = 1.0
 	if game and game.rec and not game.rec.done:
-		game.rec.finish(-1, true)      # (left before the end: the replay so far is kept)
+		var rp_left := game.rec.finish(-1, true)      # (left before the end: the replay so far is kept)
+		if game.net and game.net.is_host and rp_left != "":
+			game.net.send_replay(rp_left, true)       # (the host leaves: the match is over for the friends too, who get it at once)
+		elif game.net and not game.net.is_host and game.net.rp_path != "" and rp_left != "":
+			ReplayFile.delete(rp_left)                 # (the host's whole replay came: this view is not needed)
 	if game and game.replay:
 		game.queue_free()
 		game = null

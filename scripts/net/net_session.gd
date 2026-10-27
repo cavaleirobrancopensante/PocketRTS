@@ -197,10 +197,13 @@ func rec_skip(_e: Entity) -> bool:
 	return false
 
 
+## A new id: one counter per game (Game.net_next), so the online session and the replay recorder never hand out the same.
 func assign(e: Entity) -> void:
 	if e.net_id == 0:
+		next_id = maxi(next_id, game.net_next)
 		e.net_id = next_id
 		next_id += 1
+		game.net_next = next_id
 
 
 func _process(delta: float) -> void:
@@ -611,13 +614,19 @@ var rp_total := 0                 # guest: its whole size (0: nothing coming yet
 var rp_path := ""                 # guest: where the whole replay was saved, once it came
 
 
-## Host: send the finished replay at `path` to every guest still here.
-func send_replay(path: String) -> void:
+## Host: send the finished replay at `path` to every guest still here (`now`: all of it at once, the host is leaving).
+func send_replay(path: String, now := false) -> void:
 	if not is_host or _live_peers().is_empty():
 		return
 	rp_out = FileAccess.get_file_as_bytes(path)
 	rp_pos = 0
 	_log("sending the replay to the guests (%d KB)" % (rp_out.size() / 1024))
+	if now:
+		while rp_pos < rp_out.size():
+			var n := mini(RP_PART, rp_out.size() - rp_pos)
+			link.send({"t": "rp", "i": rp_pos, "n": rp_out.size(), "d": rp_out.slice(rp_pos, rp_pos + n)}, 0)
+			rp_pos += n
+		link.flush()
 
 
 func _send_replay_part() -> void:

@@ -195,3 +195,7 @@ es REPETICIONES en el menú principal las lista, las más recientes primero: OBS
 > WATCHING: play and pause, half speed to 8x, and the timeline to jump to any moment. FOG switches between everything and one player's view; CAMERA follows the camera of the player who recorded it. Select anything to see its card. On a computer: Space pauses, + and - change the speed, Home goes back to the start. A replay from another version of the game still plays, but some things may look different.
 pt ASSISTINDO: reproduzir e pausar, de metade da velocidade até 8x, e a linha do tempo para pular para qualquer momento. NÉVOA alterna entre tudo e a visão de um jogador; CÂMERA segue a câmera do jogador que gravou. Selecione qualquer coisa para ver o cartão. No computador: Espaço pausa, + e - mudam a velocidade, Home volta ao início. Um replay de outra versão do jogo ainda funciona, mas algumas coisas podem parecer diferentes.
 es OBSERVANDO: reproducir y pausar, de media velocidad a 8x, y la línea de tiempo para saltar a cualquier momento. NIEBLA alterna entre todo y la vista de un jugador; CÁMARA sigue la cámara del jugador que la grabó. Selecciona cualquier cosa para ver su ficha. En el ordenador: Espacio pausa, + y - cambian la velocidad, Inicio vuelve al principio. Una repetición de otra versión del juego se sigue viendo, pero algunas cosas pueden verse distintas.
+
+> P%d %s is out.
+pt J%d %s está fora.
+es J%d %s está fuera.

@@ -273,6 +273,13 @@ func _apply(m: Dictionary) -> void:
 	if prev_clk > 0.0:
 		interval = clampf(snap_clk - prev_clk, 0.03, 0.5)
 	NetSnapshot.apply(self, m)
+	if _seeking:
+		# (no game ticks run between the pictures of a jump: each unit stands where its last row put it, so the next row
+		# is a walk from there, not a jump across the map that would start its glide over)
+		for row in m.get("u", []):
+			var su = by_id.get(int(row[0]))
+			if su is Unit and is_instance_valid(su) and not su.dead:
+				su.position = row[3]
 	for id in _ph:
 		var u = by_id.get(id)
 		if is_instance_valid(u):
@@ -365,6 +372,11 @@ func _post_events(t: float) -> void:
 		_ev += 1
 		if String(e[1]) == "chat" and game.chat:
 			game.chat.post(int(e[2]), String(e[3]))
+		elif String(e[1]) == "out" and game.hud and int(e[2]) < game.n_players():
+			game.hud.toast(Loc.t("P%d %s is out.") % [int(e[2]) + 1, game.faction_of(int(e[2])).capitalize()], false)
+		elif String(e[1]) == "end" and game.hud:
+			var w := int(e[2])
+			game.hud.toast(Loc.t("%s wins") % ("P%d %s" % [w + 1, game.faction_of(w).capitalize()]) if w >= 0 and w < game.n_players() else Loc.t("no winner"), false)
 
 
 ## A recorded camera moved (at the picture of `clk`; the one before was at snap_clk): the view glides between the two.

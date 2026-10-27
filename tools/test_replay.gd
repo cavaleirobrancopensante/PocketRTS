@@ -39,18 +39,22 @@ func _capture() -> void:
 	for x in g.units:
 		if is_instance_valid(x) and not x.dead and x.net_id != 0:
 			u[x.net_id] = [x.kind, x.team, x.position.snapped(Vector2(0.1, 0.1)), snappedf(x.hp, 0.1)]
-	truth.append({"clk": g.rec.last_clk, "u": u, "n": g.units.size()})
+	truth.append({"clk": snappedf(g.rec.last_clk, 0.01), "u": u, "n": g.units.size()})     # (a picture's clock is to 0.01 s)
 
 
-## spawn:N: N soldiers a side round each hall (a big battle's worth of units), marching about (_march).
+## spawn:N: N soldiers a side in the middle of the map (a big battle's worth of units), marching about (_march),
+## topped up to N every minute (the fight there goes on all match).
 func _spawn() -> void:
+	_spawned_units = _spawned_units.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
+	var mid := Vector2(Game.W, Game.H) * Game.T * 0.5
 	for tm in 2:
 		var hall: Building = null
 		for b in g.buildings:
 			if b.team == tm and b.kind == g.faction_hall(tm):
 				hall = b
-		var c: Vector2 = hall.center() if hall else Vector2(Game.W, Game.H) * Game.T * 0.5
-		for i in spawn:
+		var c: Vector2 = mid.lerp(hall.center(), 0.25) if hall else mid
+		var have := _spawned_units.filter(func(u) -> bool: return u.team == tm).size()
+		for i in maxi(0, spawn - have):
 			var k := "musketeer" if g.faction_of(tm) == "crown" else ("raptor" if g.faction_of(tm) == "brood" else "windup_soldier")
 			var cell := g.nearest_free(g.cell_of(c + Vector2.from_angle(randf() * TAU) * randf_range(80, 400)), 12)
 			_spawned_units.append(g._add_unit(k, tm, g.cell_center(cell)))
@@ -118,6 +122,8 @@ func _play() -> bool:
 	if _spawned and int(g.clock / 4.0) != _march_n:
 		_march_n = int(g.clock / 4.0)
 		_march()
+		if _march_n % 15 == 0:
+			_spawn()
 	var rec: ReplayRecorder = g.rec
 	if _marks.size() > 0 and g.clock >= float(_marks[0]):
 		var at: float = _marks.pop_front()
@@ -304,6 +310,11 @@ func _compare(rp: ReplayPlayer, k: int, f: float, old: bool) -> Dictionary:
 			bad.append("team #%d" % id)
 		if absf(u.hp - float(want[3])) > 0.11:
 			bad.append("hp %s #%d %.1f != %.1f" % [u.kind, id, u.hp, float(want[3])])
+			if OS.get_cmdline_user_args().has("debug"):
+				var tl: Array = []
+				for kk in range(maxi(0, k - 3), mini(truth.size(), k + 3)):
+					tl.append([kk, snappedf(float(truth[kk]["clk"]), 0.01), truth[kk]["u"].get(id, [0, 0, null, null])[3]])
+				print("DEBUG hp #%d %s at k=%d viewer %.1f fast %s truth %s dead %s" % [id, u.kind, k, u.hp, str(rp._fast.get(id)), str(tl), u.dead])
 		if a.has(id):
 			var p: Vector2 = (a[id][2] as Vector2).lerp(want[2], f)
 			var d: float = u.position.distance_to(p)
@@ -311,6 +322,11 @@ func _compare(rp: ReplayPlayer, k: int, f: float, old: bool) -> Dictionary:
 				worst = maxf(worst, d)
 				if d > 4.0:
 					bad.append("place %s #%d off %.1f px" % [u.kind, id, d])
+					if OS.get_cmdline_user_args().has("debug"):
+						var tl: Array = []
+						for kk in range(maxi(0, k - 3), mini(truth.size(), k + 3)):
+							tl.append([kk, snappedf(float(truth[kk]["clk"]), 0.01), truth[kk]["u"].get(id, [0, 0, null])[2]])
+						print("DEBUG #%d at k=%d f=%.2f shown %s hist %s truth %s motion %s" % [id, k, f, str(u.position), str(rp.hist.get(id)), str(tl), str(rp.motion.get(id))])
 	var stale := 0
 	for u in g.units:
 		if not seen.has(u):

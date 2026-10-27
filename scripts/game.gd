@@ -19,6 +19,7 @@ var human := 0
 var puppet := false                  # online guest: the host plays the match, this game only shows it (NetPuppet)
 var net: NetSession = null           # online: the session (host or guest), else null
 var rec: ReplayRecorder = null       # the replay being recorded (scripts/replay/replay_recorder.gd), else null
+var net_next := 1                    # the next net id (NetSession.assign: the online session and the recorder share it)
 var replay: ReplayPlayer = null      # watching a replay: this game is a puppet fed from the file (replay_player.gd)
 var factions: Array = ["crown", "crown"]
 var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE

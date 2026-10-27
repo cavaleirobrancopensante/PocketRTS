@@ -34,12 +34,15 @@ var _cam_was := Vector3(INF, INF, INF)
 var _id_next := 1 << 28          # (a guest's own entities with no id from the host: a range of their own)
 # measurements (the test prints them; the doc's table)
 var cost_us := 0                 # building and packing pictures, in all
+var build_us := 0                # ...of which NetSnapshot.build
+var compact_us := 0              # ...and compact (patches, columns)
 var write_us := 0                # packing and writing the chunks, in all
 var n_frames := 0
 var n_keys := 0
 var bytes_raw := 0
 var bytes_file := 0
 var _cost_avg := 0.0
+var _out: Array = []             # who was out at the last picture
 
 
 ## Start recording `g` (in the tree, its setup known). `cfg`: the resolved setup (Main.last_cfg), `me`: the team
@@ -96,19 +99,16 @@ func _exit_tree() -> void:
 	pass
 
 
-## Ids: the online host's own (so the replay and the guests agree), else our own counter.
+## Ids: the game's one counter (shared with the online host's session: the replay and the guests agree). An online
+## guest's own entities with no id from the host get one from a range of their own.
 func assign(e: Entity) -> void:
 	if e.net_id != 0:
-		return
-	if game.net != null and game.net != self and game.net.is_host:
-		game.net.assign(e)
 		return
 	if view_only:
 		e.net_id = _id_next
 		_id_next += 1
 		return
-	e.net_id = next_id
-	next_id += 1
+	super.assign(e)
 
 
 ## An online guest's record leaves out the enemies it can't see now (it would otherwise keep them standing where they
@@ -177,7 +177,9 @@ func record(force_key := false) -> void:
 		n_keys += 1
 	elif snap_n % NetSnapshot.KEY_EVERY == 1:
 		snap_n += 1
+	var tb := Time.get_ticks_usec()
 	var m := NetSnapshot.build(self)
+	build_us += Time.get_ticks_usec() - tb
 	m.erase("ack")
 	m.erase("acc")
 	m.erase("pz")
@@ -190,6 +192,10 @@ func record(force_key := false) -> void:
 		m.erase("stats")          # (the battle report's numbers grow all match: only in keyframes and at the end)
 		if game.over:
 			m["stats"] = game.stats.duplicate(true)
+	for t in game.n_players():
+		if t < _out.size() and game.eliminated[t] and not _out[t]:
+			note_event("out", [t])        # (a player is out: the viewer says so at its time)
+	_out = game.eliminated.duplicate()
 	var sg: Array = []
 	for t in game.n_players():
 		sg.append([int(game.stats[t]["gold"]), int(float(game.stats[t].get("res2_in", 0.0)))])
@@ -203,7 +209,9 @@ func record(force_key := false) -> void:
 	elif not _cams_new.is_empty():
 		m["cams"] = _cams_new
 	_cams_new = {}
+	var tc := Time.get_ticks_usec()
 	compact(m, key)
+	compact_us += Time.get_ticks_usec() - tc
 	var b := var_to_bytes(m)
 	frames.append(b)
 	bytes_raw += b.size()
@@ -345,6 +353,6 @@ func finish(winner: int, left := false) -> String:
 ## Measurements for the tests and the doc: ms of recording per second of match, KB a minute.
 func cost_line() -> String:
 	var secs := maxf(game.clock - float(header.get("t0", 0.0)), 1.0)
-	return "frames %d (%.1f/s), keyframes %d, recording %.2f ms per match second (writing %.2f), raw %.0f KB, file %.0f KB (%.0f KB a minute)" % [
-		n_frames, n_frames / secs, n_keys, cost_us / 1000.0 / secs, write_us / 1000.0 / secs, bytes_raw / 1024.0,
+	return "frames %d (%.1f/s), keyframes %d, recording %.2f ms per match second (snapshots %.2f, compacting %.2f, writing %.2f), raw %.0f KB, file %.0f KB (%.0f KB a minute)" % [
+		n_frames, n_frames / secs, n_keys, cost_us / 1000.0 / secs, build_us / 1000.0 / secs, compact_us / 1000.0 / secs, write_us / 1000.0 / secs, bytes_raw / 1024.0,
 		bytes_file / 1024.0, bytes_file / 1024.0 / secs * 60.0]
