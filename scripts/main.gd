@@ -104,6 +104,13 @@ The command card holds 12 buttons (a MORE button pages on when a big mixed selec
 WATCHING COMPUTERS
 With no "you" in the lobby the computers play and you watch. The VIEW button under the clock picks how: Free · all vision (you move the camera, no fog; the default), Free · a player's vision (you move the camera, under that player's fog of war), or Follow a player: the camera goes by itself to what that computer is doing (its fights first, staying with one until it's over, then its army on the attack, raiders at its base, a building it just placed, its army), under its fog, holding each sight a few seconds. Moving the camera yourself while following switches to Free with the same vision; pick Follow again to resume. On a computer, 0 is all vision and 1-4 follow that player. The view you pick stays for the next match you watch.""",
 	"MAP EDITOR": MapEditor.HELP_TEXT,
+	"REPLAYS": """Every match is recorded: a skirmish, a match you watch, and online. A replay is not a video: it keeps what was on the map a few times a second, so you can move the camera anywhere, select units and buildings to read their health and orders, look through any player's fog, and watch at any speed.
+
+Online, the host's game records every side. When the match ends the host sends the whole replay to each friend; until it arrives (or if you leave early) you keep your own, marked YOUR VIEW ONLY: what your side saw.
+
+REPLAYS on the main menu lists them, newest first: WATCH, KEEP (kept ones are never deleted), EXPORT (a file to send or keep), DELETE, and IMPORT for a file a friend sent you. The newest 30 that are not kept stay; Settings > REPLAYS KEPT changes the number.
+
+WATCHING: play and pause, half speed to 8x, and the timeline to jump to any moment. FOG switches between everything and one player's view; CAMERA follows the camera of the player who recorded it. Select anything to see its card. On a computer: Space pauses, + and - change the speed, Home goes back to the start. A replay from another version of the game still plays, but some things may look different.""",
 }
 
 
@@ -303,21 +310,24 @@ func show_menu() -> void:
 		crow.alignment = BoxContainer.ALIGNMENT_CENTER
 		crow.add_child(cont)
 		v.add_child(crow)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
-	v.add_child(row)
-	var items := [["EDITOR", func() -> void: show_editor_menu()], ["HOW TO PLAY", func() -> void: show_help()],
-		["SKIRMISH", func() -> void: show_skirmish()], ["ONLINE", func() -> void: show_online()], ["SETTINGS", func() -> void: show_settings()], ["MATCH LOGS", func() -> void: show_logs()]]
-	for it in items:
-		var b := _button(it[0], it[1])
-		if it[0] == "SKIRMISH":
-			UiStyle.primary(b)
-			b.custom_minimum_size = Vector2(260, 64)
-			b.add_theme_font_size_override("font_size", 28)
-		else:
-			b.custom_minimum_size = Vector2(160, 54)
-		row.add_child(b)
+	# two rows (the owner, 2026-10-27: one row got crowded): the ways to play on top, SKIRMISH in the middle;
+	# the rest below
+	var rows := [[["ONLINE", func() -> void: show_online()], ["SKIRMISH", func() -> void: show_skirmish()], ["REPLAYS", func() -> void: show_replays()]],
+		[["HOW TO PLAY", func() -> void: show_help()], ["EDITOR", func() -> void: show_editor_menu()], ["MATCH LOGS", func() -> void: show_logs()], ["SETTINGS", func() -> void: show_settings()]]]
+	for items in rows:
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 10)
+		v.add_child(row)
+		for it in items:
+			var b := _button(it[0], it[1])
+			if it[0] == "SKIRMISH":
+				UiStyle.primary(b)
+				b.custom_minimum_size = Vector2(260, 64)
+				b.add_theme_font_size_override("font_size", 28)
+			else:
+				b.custom_minimum_size = Vector2(170, 54)
+			row.add_child(b)
 	_corner_flags(root, show_menu)
 	var ver := UiStyle.text("v%s  ·  %s" % [version, Loc.t("playing on computer") if Settings.pc() else Loc.t("playing on mobile")], 22, Color(1, 0.96, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -415,6 +425,51 @@ func _faction_card(f: String) -> Control:
 	tag.custom_minimum_size.x = 140
 	v.add_child(tag)
 	return p
+
+
+## REPLAYS: every recorded match (ui/replays_menu.gd, docs/replays.md).
+func show_replays(note := "", good := true) -> ReplaysMenu:
+	var root := _page()
+	var rm := ReplaysMenu.new()
+	rm.main = self
+	root.add_child(rm)
+	rm.build()
+	if note != "":
+		rm.say(note, good)
+	return rm
+
+
+var _replay_data := {}         # the replay start_replay hands to start()
+
+
+## Watch a replay: the match's setup builds the map, then a puppet game plays the recorded pictures (ReplayPlayer).
+func start_replay(path: String) -> void:
+	var d := ReplayPlayer.load_file(path)
+	if d.has("error"):
+		show_replays(Loc.t("Can't play it: %s") % Loc.t(String(d["error"])), false)
+		return
+	var cfg: Dictionary = (d["header"]["cfg"] as Dictionary).duplicate(true)
+	cfg["replay"] = true
+	cfg.erase("lab")
+	Defs.cw_roster = bool(d["header"].get("cw_roster", false))
+	_replay_data = d
+	_mark_running("watching a replay: %s" % path.get_file())
+	start(cfg)
+	if game:
+		game.process_mode = Node.PROCESS_MODE_PAUSABLE
+
+
+## Leave a replay for the REPLAYS page.
+func _to_replays() -> void:
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	Sfx.hush = false
+	if game:
+		game.queue_free()
+		game = null
+	if Music.me:
+		Music.me.menu()
+	show_replays()
 
 
 ## Sandbox (a match where you can spawn anything) or the map editor.
@@ -584,8 +639,25 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("CLOCKWORK LAB", func() -> bool: return Settings.cw_lab, func() -> void:
 		Settings.cw_lab = not Settings.cw_lab
 		Settings.save_all()))
+	var kh := HBoxContainer.new()
+	kh.add_theme_constant_override("separation", 12)
+	var kl := UiStyle.text("REPLAYS KEPT", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	kh.add_child(kl)
+	var keeps := [10, 20, 30, 50, 100]
+	var kb := _button(Loc.t("NEWEST %d") % Settings.replays_keep, func() -> void:
+		var i := keeps.find(Settings.replays_keep)
+		Settings.replays_keep = keeps[(i + 1) % keeps.size()]
+		Settings.save_all()
+		show_settings())
+	kb.custom_minimum_size = Vector2(190, 50)
+	kh.add_child(kb)
+	v.add_child(kh)
 	v.add_child(_toggle_row("BUILD GRID", func() -> bool: return Settings.build_grid, func() -> void:
 		Settings.build_grid = not Settings.build_grid
+		Settings.save_all()))
+	v.add_child(_toggle_row("AREA MARKS", func() -> bool: return Settings.area_marks, func() -> void:
+		Settings.area_marks = not Settings.area_marks
 		Settings.save_all()))
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
@@ -1895,10 +1967,12 @@ func start(cfg: Dictionary = {}) -> void:
 		game.queue_free()
 	if cfg.is_empty():
 		cfg = last_cfg
+	var watching := bool(cfg.get("replay", false))     # a replay (start_replay): a puppet fed from the file
+	var kept_cfg := last_cfg.duplicate(true)
 	if not cfg.has("seed"):
 		cfg["seed"] = randi()
 	cfg = cfg.duplicate(true)
-	Defs.cw_roster = bool(cfg.get("lab", false)) or Settings.cw_lab      # (the Clockwork roster prototype: off in normal games)
+	Defs.cw_roster = (bool(cfg.get("lab", false)) or Settings.cw_lab) if not watching else bool(_replay_data["header"].get("cw_roster", false))      # (the Clockwork roster prototype: off in normal games)
 	# a random map is picked here (among the pool's maps that hold everyone), so colours can
 	# be chosen to suit its ground
 	var pool := String(cfg.get("map", "random"))
@@ -1910,6 +1984,7 @@ func start(cfg: Dictionary = {}) -> void:
 	_resolve_colours(cfg)
 	last_cfg = cfg.duplicate(true)
 	last_cfg.erase("net")
+	last_cfg.erase("replay")
 	var slots: Array = cfg["slots"]
 	var facs: Array = []
 	var cols: Array = []
@@ -1929,22 +2004,27 @@ func start(cfg: Dictionary = {}) -> void:
 		if sl["who"] == "you" and human < 0:
 			human = i
 		top = maxi(top, lvl)
+	if watching:
+		human = -1                 # (a replay is watched: every side as the computers' matches are)
 	game = Game.new()
 	game.demo = human < 0
-	game.human = maxi(human, 0)
+	game.human = maxi(human, 0) if not watching else maxi(int(_replay_data["header"].get("me", 0)), 0)
 	game.difficulty = top
 	game.factions = facs
 	game.colours = cols
 	game.sides = sides
 	game.income_mult = mult
 	game.map_id = cfg.get("map", "random")
-	game.sandbox = cfg.get("sandbox", false)
-	game.puppet = cfg.has("net") and cfg["net"].get("role", "") == "guest"      # online guest: the host runs the match
+	game.sandbox = cfg.get("sandbox", false) and not watching
+	game.puppet = (cfg.has("net") and cfg["net"].get("role", "") == "guest") or watching      # online guest: the host runs the match
 	game.process_mode = Node.PROCESS_MODE_PAUSABLE
 	game.rng.seed = int(cfg["seed"])
 	_mark_running("match on %s: %s (seed %d)%s" % [game.map_id, " vs ".join(facs), int(cfg["seed"]), " (continued)" if cfg.has("resume") else ""])
 	add_child(game)
 	print("[match] map ready")
+	if watching and game.mlog:
+		game.mlog.queue_free()     # (a replay keeps no match log of its own)
+		game.mlog = null
 	sfx.camera = game.camera
 	for t in slots.size():
 		if t == human or game.puppet or slots[t]["who"] == "remote":
@@ -1986,7 +2066,11 @@ func start(cfg: Dictionary = {}) -> void:
 	c.hud = hud
 	game.hud = hud
 	ui_layer.add_child(hud)
-	hud.quit_requested.connect(func() -> void: _to_menu())
+	hud.quit_requested.connect(func() -> void:
+		if watching:
+			_to_replays()
+		else:
+			_to_menu())
 	if game.demo:
 		# computers only: the VIEW dropdown (all vision, a player's vision, follow a player)
 		var sp := Spectator.new()
@@ -1997,7 +2081,8 @@ func start(cfg: Dictionary = {}) -> void:
 		var sbx := SandboxPanel.new()
 		sbx.game = game
 		ui_layer.add_child(sbx)
-	game.ended.connect(_on_end)
+	if not watching:
+		game.ended.connect(_on_end)
 	if cfg.get("lab", false):
 		CwLab.setup(game)
 	var foes: Array = []
@@ -2014,11 +2099,38 @@ func start(cfg: Dictionary = {}) -> void:
 	if not game.demo:
 		hud.start_countdown(3.0)
 		hud.count_hold = cfg.has("net")      # online: held until every player has loaded (NetSession "ready"/"go")
+	if watching:
+		last_cfg = kept_cfg
+		var rp := ReplayPlayer.play(game, _replay_data)
+		_replay_data = {}
+		var bar := ReplayBar.new()
+		bar.game = game
+		bar.player = rp
+		bar.process_mode = Node.PROCESS_MODE_ALWAYS
+		ui_layer.add_child(bar)
+		bar.quit.connect(func() -> void: _to_replays())
+		if rp.view_only and rp.me >= 0 and game.spectator:
+			game.spectator.set_mode("free", rp.me, true)      # (your view only: under your fog to begin with)
+		elif game.spectator:
+			game.spectator.set_mode("all", 0, true)
+	elif not game.edit_mode:
+		# every match is recorded (docs/replays.md): the skirmish, the online host (every side), an online guest (what it
+		# was sent: its own view, kept until the host's whole replay comes)
+		ReplayRecorder.start(game, last_cfg, human, game.puppet)
 
 
 func _to_menu() -> void:
 	get_tree().paused = false
 	Engine.time_scale = 1.0
+	if game and game.rec and not game.rec.done:
+		var rp_left := game.rec.finish(-1, true)      # (left before the end: the replay so far is kept)
+		if game.net and game.net.is_host and rp_left != "":
+			game.net.send_replay(rp_left, true)       # (the host leaves: the match is over for the friends too, who get it at once)
+		elif game.net and not game.net.is_host and game.net.rp_path != "" and rp_left != "":
+			ReplayFile.delete(rp_left)                 # (the host's whole replay came: this view is not needed)
+	if game and game.replay:
+		game.queue_free()
+		game = null
 	if game:
 		_autosave()      # (leaving a match keeps it as it is now: CONTINUE brings back the groups and camera hotkeys too)
 		# a watched or online match left before its end still keeps its log (MATCH LOGS); a skirmish keeps its
@@ -2046,6 +2158,14 @@ func _on_end(winner: int) -> void:
 		game.mlog.finish(winner)
 		_save_log(game.mlog.text())
 	SaveGame.clear()
+	var rp_path := ""
+	if game.rec:
+		rp_path = game.rec.finish(winner)
+		if game.net and game.net.is_host and rp_path != "":
+			game.net.send_replay(rp_path)          # (each guest gets the whole replay: docs/replays.md)
+		elif game.net and not game.net.is_host and game.net.rp_path != "" and rp_path != "":
+			ReplayFile.delete(rp_path)              # (the host's whole replay came first)
+			rp_path = game.net.rp_path
 	await get_tree().create_timer(1.2, true, false, true).timeout
 	if game == null:
 		return
@@ -2061,6 +2181,10 @@ func _on_end(winner: int) -> void:
 			start())
 	o.to_menu.connect(func() -> void: _to_menu())
 	o.view_map.connect(func() -> void: _view_map(o))
+	o.replay_path = rp_path
+	o.watch_replay.connect(func(path: String) -> void:
+		_to_menu()
+		start_replay(path))
 	ui_layer.add_child(o)
 
 

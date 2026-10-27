@@ -12,7 +12,7 @@ const DIRS := ["s", "se", "e", "ne", "n"]
 ## A kind's own west views, read when the files exist (never drawn here): the game draws them unflipped instead of the
 ## east ones mirrored (Unit.WEST_OF; the Clock Soldier's sword stays in its right hand).
 const WEST_DIRS := ["sw", "w", "nw"]
-const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb", "attack_r", "attack_l"]
+const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb", "attack_r", "attack_l", "guard", "guard_walk"]   # (guard: the Clock Soldier's SHIELD FORWARD)
 ## kind -> [cell width, cell height, anchor x, anchor y (the feet)]
 const SHEETS := {
 	"tin_militia": [36, 40, 18, 36],
@@ -35,7 +35,7 @@ const SHEETS := {
 	"ticking_owl": [94, 81, 47, 69],
 	# tier 3 (tools/import_tier3.py prints these): the Pendulum (idle sway, walk, the swing as its attack, death) and the
 	# Netter (its walk's first frame as the idle, the trot, the recoil as its attack, death)
-	"pendulum": [98, 97, 49, 84],
+	"pendulum": [130, 91, 65, 84],
 	"netter": [84, 58, 42, 54],
 }
 
@@ -378,7 +378,9 @@ static func icon(name: String) -> Texture2D:
 		var oy := 60 - big.get_height()
 		img.blend_rect(big, Rect2i(0, 0, big.get_width(), big.get_height()), Vector2i(ox, oy))
 		t = ImageTexture.create_from_image(img)
-	elif name.begins_with("ab_cw_") or name == "ab_siding":
+	elif name.begins_with("ab_cw_") or name == "ab_siding" or name == "ab_shield" or name == "research_shield":
+		# (ab_shield / research_shield: placeholders until assets/icons/clockwork/ab_shield.png and research_shield.png are
+		# drawn; the HUD takes those files first, with no code)
 		var img2 := Image.create(64, 64, false, Image.FORMAT_RGBA8)
 		_fill(img2, 0, 0, 64, 64, Color(0.16, 0.15, 0.17))
 		_fill(img2, 0, 0, 64, 2, SPARK)
@@ -391,6 +393,19 @@ static func icon(name: String) -> Texture2D:
 
 static func _ability_glyph(img: Image, name: String) -> void:
 	match name:
+		"ab_shield", "research_shield":
+			# a round brass shield held forward, an arrow pushing it on (the research: the shield over a soldier's cap)
+			if name == "research_shield":
+				_disc(img, 32, 14, 7.0, TEAM_D)
+				_fill(img, 30, 4, 4, 6, TEAM_D)
+			_disc(img, 30, 36, 17.0, INK)
+			_disc(img, 30, 36, 15.0, BRASS)
+			_disc(img, 30, 36, 11.0, Color(0.62, 0.44, 0.16))
+			_disc(img, 30, 36, 4.0, TIN)
+			if name == "ab_shield":
+				_ln(img, Vector2(48, 36), Vector2(60, 36), SPARK, 3)
+				_ln(img, Vector2(54, 30), Vector2(60, 36), SPARK, 3)
+				_ln(img, Vector2(54, 42), Vector2(60, 36), SPARK, 3)
 		"ab_siding":
 			_ln(img, Vector2(8, 40), Vector2(56, 40), TIN, 4)
 			_ln(img, Vector2(20, 40), Vector2(30, 24), TIN, 4)

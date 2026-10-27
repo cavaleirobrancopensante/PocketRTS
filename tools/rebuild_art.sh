@@ -128,5 +128,9 @@ python3 tools/import_cursors.py          # the mouse cursors (art/ui/cursors.png
 python3 tools/press_anim/escapement_work.py          # the Escapement's tick-tock from its painted cell (art/redraws/escapement.png):
                                                      # art/clockwork/gear/escapement_built.png and _work_0..23.png (wheel and anchor in code)
 python3 tools/gear_art/import_buildings.py escapement   # ... and its game sprites (assets/buildings/escapement_*, assets/icons/escapement.png)
+python3 tools/import_round13.py          # round 13 icons (art/ui/icons3/: Clockwork portraits, the Clockwork's and the
+                                         # Brood's own command icons in their frame, Crown commands, the Tension picture):
+                                         # last of the icon passes (it replaces portraits written by import_winder_v2,
+                                         # import_clock_soldier, import_cuckoo and the round 11 placeholders)
 echo "Now run: godot --headless --import"
 python3 tools/make_calm_grass.py

@@ -221,7 +221,7 @@ test also checks the chat both ways, the words of a refused order, sixteen kinds
 resume, and a surrender; `quick` skips those. `hide_host:5`, `freeze_host:3` and `freeze_guest:3` test the hidden and
 stalled windows; `shots:<dir>` (with a window, for example under xvfb-run) saves screenshots.
 
-## 12. Instant feedback (0.14.48, branch net-instant)
+## 12. Instant feedback (0.14.55, branch net-instant)
 
 What changed. Until now only a move and an attack-move answered the friend (the guest) at the click; every other
 order showed nothing until the host's answer came back, one ping later. Now every order the guest's screen can give

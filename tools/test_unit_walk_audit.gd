@@ -64,7 +64,7 @@ func body_height(img: Image, cell: Vector2i, i: int) -> int:
 const LEG_MIN := 0.30
 const LEG_MIN_FB := 0.12
 const RNG_MIN := 3
-const GAIT_UNITS := ["missionary", "windup_soldier", "winder", "musketeer_armoured", "raptor", "labourer"]
+const GAIT_UNITS := ["missionary", "windup_soldier", "winder", "musketeer_armoured", "raptor", "labourer", "pendulum"]
 ## The Winder (0.14.28) walks on ChatGPT's own sheet, which the owner accepted: a short 4-frame stride played on a ticking
 ## beat (Unit.WINDER_BEAT), its side views changing 0.30 (e) and 0.18 (ne) of the leg zone a frame. Its side views keep
 ## this lower floor, so a broken strip (legs that do not move) still fails.

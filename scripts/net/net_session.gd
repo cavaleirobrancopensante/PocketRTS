@@ -12,6 +12,7 @@ extends Node
 ## a host whose browser tab or app goes to the background pauses the match for everyone until it is back.
 
 signal lost(why: String)
+signal replay_got(path: String)   # guest: the host's whole replay has arrived (saved there)
 
 const SNAP_EVERY := 0.1
 const SNAP_PAUSED := 0.5          # while paused nothing moves: a picture every half second is plenty
@@ -194,10 +195,18 @@ func _start_wait(delta: float) -> void:
 		_go()
 
 
+## A replay recorder leaves some out (ReplayRecorder.rec_skip: an online guest's record, enemies out of its sight).
+func rec_skip(_e: Entity) -> bool:
+	return false
+
+
+## A new id: one counter per game (Game.net_next), so the online session and the replay recorder never hand out the same.
 func assign(e: Entity) -> void:
 	if e.net_id == 0:
+		next_id = maxi(next_id, game.net_next)
 		e.net_id = next_id
 		next_id += 1
+		game.net_next = next_id
 
 
 func _process(delta: float) -> void:
@@ -214,8 +223,11 @@ func _process(delta: float) -> void:
 			_host_pause(-1, false, -1)       # the pause ran out
 	if not is_host:
 		_tick_waiting(now)
+		_tick_camera(delta)
 		return
 	_tick_quiet(now)
+	if rp_pos < rp_out.size():
+		_send_replay_part()
 	if not held.is_empty():
 		_run_held(now)
 	if predict:
@@ -337,10 +349,32 @@ func note_net(cn: ChainNet) -> void:
 		fx.append(["n", "", cn.from, cn.target.net_id, cn.speed])
 
 
+## An area mark (Game.area_mark: [shape, p, a, r, h, colour, life, warn, zone, arm, smear, team]): the guest lays it by its
+## own fog. And a "+N" for a guest's side (Game.own_float).
+func note_mark(m: Array) -> void:
+	if fx.size() < FX_MAX:
+		fx.append(["g", "", m[1], m])
+
+
+func note_float(team: int, p: Vector2, txt: String, col: Color) -> void:
+	if fx.size() < FX_MAX:
+		fx.append(["f", txt, p, team, col])
+
+
 ## Guest: play what the host saw happen since the last snapshot.
 func play_fx(list: Array) -> void:
+	if game.rec != null:
+		game.rec.note_fx(list)         # (the guest's own record of the match: the effects as they came)
 	for f in list:
 		var p: Vector2 = f[2]
+		if f[0] == "g":
+			var m: Array = f[3]
+			game.area_mark(String(m[0]), int(m[11]), m[1], m[2], float(m[3]), float(m[4]), String(m[5]), float(m[6]), bool(m[7]), bool(m[8]), int(m[9]), bool(m[10]))
+			continue
+		if f[0] == "f":
+			if int(f[3]) == game.human:
+				game.float_text(p, String(f[1]), f[4])
+			continue
 		if f[0] == "c":
 			game.torn_at(p)          # a body the host's shell tore up (Game.tear_body): gone here too, seen or not
 			continue
@@ -660,6 +694,94 @@ func lead_seen(id: int, was: Vector2, now: Vector2) -> void:
 		ld["go_clk"] = prev_clk         # (the picture before this one still had it standing)
 
 
+# ------------------------------------------------------------------ the replay, after the match (docs/replays.md)
+## The host recorded every side; when the match is over it sends the finished file to each guest in parts (a relay
+## message is at most about 1 MB: RP_PART each), one part whenever the last has left the device. Never before the end:
+## the replay shows what the fog hid. A guest keeps its own record (its view only) until the whole one has come.
+
+const RP_PART := 192 * 1024
+const RP_BUFFER := 256 * 1024
+var rp_out := PackedByteArray()   # host: the replay being sent
+var rp_pos := 0                   # host: bytes of it sent so far
+var rp_in := PackedByteArray()    # guest: the parts that came
+var rp_total := 0                 # guest: its whole size (0: nothing coming yet)
+var rp_path := ""                 # guest: where the whole replay was saved, once it came
+
+
+## Host: send the finished replay at `path` to every guest still here (`now`: all of it at once, the host is leaving).
+func send_replay(path: String, now := false) -> void:
+	if not is_host or _live_peers().is_empty():
+		return
+	rp_out = FileAccess.get_file_as_bytes(path)
+	rp_pos = 0
+	_log("sending the replay to the guests (%d KB)" % (rp_out.size() / 1024))
+	if now:
+		while rp_pos < rp_out.size():
+			var n := mini(RP_PART, rp_out.size() - rp_pos)
+			link.send({"t": "rp", "i": rp_pos, "n": rp_out.size(), "d": rp_out.slice(rp_pos, rp_pos + n)}, 0)
+			rp_pos += n
+		link.flush()
+
+
+func _send_replay_part() -> void:
+	if link.buffered() > RP_BUFFER:
+		return
+	var n := mini(RP_PART, rp_out.size() - rp_pos)
+	link.send({"t": "rp", "i": rp_pos, "n": rp_out.size(), "d": rp_out.slice(rp_pos, rp_pos + n)}, 0)
+	rp_pos += n
+	if rp_pos >= rp_out.size():
+		link.flush()
+
+
+## 0..1 of the replay sent (host) or received (guest); -1: none under way.
+func replay_progress() -> float:
+	if is_host:
+		return -1.0 if rp_out.is_empty() else float(rp_pos) / float(rp_out.size())
+	if rp_path != "":
+		return 1.0
+	return -1.0 if rp_total <= 0 else float(rp_in.size()) / float(rp_total)
+
+
+## Guest: a part of the host's replay. The whole one is saved as this player's (its result theirs), and the guest's own
+## record (its view only) goes.
+func _replay_part(m: Dictionary) -> void:
+	var at := int(m.get("i", -1))
+	if at == 0:
+		rp_in = PackedByteArray()
+		rp_total = int(m.get("n", 0))
+	if at != rp_in.size() or rp_total <= 0:
+		return
+	rp_in.append_array(m.get("d", PackedByteArray()))
+	if rp_in.size() < rp_total:
+		return
+	var path := ReplayFile.import_bytes(rp_in, "", my_team, "")
+	rp_in = PackedByteArray()
+	if path == "":
+		_log("the host's replay came damaged: the guest keeps its own view")
+		return
+	rp_path = path
+	if game.rec != null and game.rec.done and game.rec.path != "" and game.rec.path != path:
+		ReplayFile.delete(game.rec.path)        # (the whole replay replaces this player's own view of the match)
+	_log("the host's replay came (%d KB)" % (rp_total / 1024))
+	replay_got.emit(path)
+
+
+## Guest: where its camera looks, twice a second when it moved (the host's replay keeps it: CAMERA in the viewer).
+var _cam_t := 0.0
+var _cam_sent := Vector3.INF
+
+
+func _tick_camera(delta: float) -> void:
+	_cam_t -= delta
+	if _cam_t > 0.0 or not go_given or game.over or game.camera == null:
+		return
+	_cam_t = 0.5
+	var v := Vector3(snappedf(game.camera.position.x, 1.0), snappedf(game.camera.position.y, 1.0), snappedf(game.camera.zoom.x, 0.01))
+	if v != _cam_sent:
+		_cam_sent = v
+		link.send({"t": "cam", "c": v})
+
+
 # ------------------------------------------------------------------ chat
 
 ## Every chat line goes through here (Chat.post): a guest's own lines go to the host; the host passes every line on
@@ -965,6 +1087,12 @@ func _on_message(from: int, m: Dictionary) -> void:
 				link.send({"t": "msg", "m": refusal_text(why), "x": true, "s": int(m.get("s", 0))}, from)     # (every refusal says why on the guest's screen; "s": the order, its click's show is taken back)
 			applied_by[from] = ab
 			mstat["sent"] += 1
+		"rp":
+			if not is_host:
+				_replay_part(m)
+		"cam":
+			if is_host and game.rec != null and m.get("c") is Vector3:
+				game.rec.note_cam(int(peer_team.get(from, -1)), m["c"])
 		"snap":
 			if not is_host:
 				pending.append(m)             # (applied once this frame's messages are all in: _apply_pending)

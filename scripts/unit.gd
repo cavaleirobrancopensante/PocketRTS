@@ -177,6 +177,8 @@ var _spin_idle := 0.0           # Thresher: seconds since its last blow
 var braced := false             # Bulwark: the tower shield planted
 var brace_t := 0.0              # Bulwark: planting / lifting the shield
 var _shield_t := 0.0            # Bulwark: a shot just hit the shield (braced_hit)
+var shield_up := false          # Clock Soldier: SHIELD FORWARD raised (or being raised): scripts/shield_wall.gd
+var shield_t := 0.0             # Clock Soldier: the shield's switch under way (s left)
 var self_wind_t := 0.0          # Winder: stopped to wind itself
 var cranked_t := 0.0            # Wind-up Soldier: a Winder is cranking it (wind-up anim)
 var jump := {}                  # Jack: the leap under way ({} on the ground; scripts/jack.gd)
@@ -185,7 +187,7 @@ var jumps := 0                  # Jack: leaps made (tests, the log)
 var shots := 0                  # Jack: screws fired (tests)
 var last_shot: Shot = null      # Jack: its last screw in flight (tests, screenshots)
 var last_tip := Vector2.ZERO    # Jack: where its last screw left from (the drill tip, raised at a flyer; tests)
-var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn)
+var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
 var _jack_t := 0.0              # Jack (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
@@ -232,6 +234,12 @@ func set_brace(on: bool) -> void:
 	braced = on
 	brace_t = float(Defs.BRACE["switch"])
 	armor = float(Defs.BRACE["armor"]) if on else float(d["armor"])
+
+
+## Clock Soldier: SHIELD FORWARD on or off (scripts/shield_wall.gd; needs the SHIELD WALL research).
+func set_shield(on: bool) -> void:
+	if game.net_forward(self, "set_shield", [on]): return
+	ShieldWall.set_up(self, on)
 
 
 ## Bulwark: a shot hit the planted shield.
@@ -1166,6 +1174,8 @@ func _cooldown() -> float:
 		return musket_cooldown()
 	if overclock_t > 0.0:
 		return float(d["cooldown"]) * float(Defs.OVERLOAD["cooldown"])
+	if shield_up:
+		return float(d["cooldown"]) * ShieldWall.cooldown_mult(self)     # (SHIELD FORWARD swings slower)
 	return float(d["cooldown"])
 
 
@@ -1177,7 +1187,7 @@ func _strike_time() -> float:
 	if Defs.FLYER.has(kind):
 		return float(Defs.FLYER[kind]["strike"])
 	if kind == Defs.PENDULUM:
-		return float(Defs.PENDULUM_SWING["strike"])      # (the blade swings on through the strip's last frames)
+		return float(Defs.PENDULUM_SWING["strike"])      # (the arm follows through and settles: the strip's last frames)
 	if kind == Defs.NETTER:
 		return float(Defs.NET["strike"])                 # (the recoil eases back)
 	return 0.35
@@ -1198,6 +1208,8 @@ func can_gather() -> bool:
 
 
 func take_damage(amount: float, from: Entity, blow := "") -> void:
+	if shield_up:
+		amount = ShieldWall.incoming(self, amount, from, blow)     # (SHIELD FORWARD: less from the front)
 	if Defs.cw_roster:
 		amount = CwUnits.incoming(self, amount, from, blow)
 	if work == "feeding":
@@ -1549,7 +1561,7 @@ func _gunner_material(g: Sprite2D, p: Unit) -> void:
 const WORK_SOUNDS := {"building": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
 	"repairing": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
 	"morphing": {"grub": "work/brood_build"}, "winding": {"winder": "work/winder_crank"},
-	"manning": {"labourer": "work/hoe"}}
+	"manning": {"labourer": "work/hoe", "winder": "work/winder_crank"}}    # (a Winder manning a Cog Press: its crank)
 var _work_snd_t := randf() * 2.0
 
 
@@ -1562,7 +1574,7 @@ func _work_sound(delta: float) -> void:
 		_work_snd_t = 0.1       # (the bite comes when he is at his heap again)
 		return
 	if name == "" or (work == "manning" and not ((anim == "mine" and home_mine is Building and (home_mine as Building).kind == "farm") \
-			or (anim == "shovel" and home_mine is Building and (home_mine as Building).kind == "powder_mill"))):
+			or (anim == "shovel" and home_mine is Building and (home_mine as Building).kind == "powder_mill") or kind == "winder")):
 		_work_snd_t = 0.5
 		return
 	_work_snd_t = MILL_CYCLE if anim == "shovel" else randf_range(2.2, 3.2) if work == "manning" else 2.0
@@ -1581,6 +1593,7 @@ func _battery_blast() -> void:
 	Sfx.play_any(["combat/tesla_attack", "zap"], position)
 	if team == game.human:
 		game.float_text(position + Vector2(0, -30), "battery burst!", Color(1, 0.6, 0.3))
+	game.area_mark("ring", team, position, Vector2.ZERO, 34.0, 0.0, "storm")
 	for o in game.units_near(position, 34.0):
 		if o != self and not o.dead and not o.is_air():
 			o.take_damage(float(Defs.BATTERY["splash"]), self)
@@ -3160,6 +3173,8 @@ func _tick_unit(delta: float) -> void:
 		speed *= float(Defs.BLOAT["slow"])
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		CwUnits.pre_tick(self, delta)
+	if shield_up or shield_t > 0.0:
+		ShieldWall.tick(self, delta)        # (a Clock Soldier's SHIELD FORWARD: the switch, the slower pace)
 	if _k_fac == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
 		if hp < max_hp:
@@ -4202,6 +4217,8 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		_owl_bomb = kind == Defs.OWL and e is Building      # (the Owl: a bomb on a building, the talons on a unit)
 		if kind == Defs.JACK:
 			arm = shots % 2          # (its two launchers fire in turn: scripts/jack.gd)
+		elif kind == Defs.PENDULUM:
+			arm = swings % 2         # (its two arms cut in turn, right then left: scripts/pendulum.gd)
 		phase = "aim"
 		phase_t = _aim()
 		return
@@ -4361,6 +4378,7 @@ func _strike(e: Entity) -> void:
 			if kind == "thresher":
 				# the saws bite the enemies standing round its target too
 				var n := 0
+				game.area_mark("ring", team, e.global_position, Vector2.ZERO, float(Defs.THRESHER["reach"]), 0.0, "steel")
 				for o in game.units_near(e.global_position, float(Defs.THRESHER["reach"]) + 10.0):
 					if n >= int(Defs.THRESHER["cleave"]) or o == e or o.dead or o.off_field or o.is_air() or not game.hostile(o.team, team):
 						continue
@@ -5180,8 +5198,9 @@ func _haul(pit: Building, delta: float) -> Vector2:
 					game.add_gold_f(team, load_f)
 				else:
 					game.add_gold(team, carrying)     # (a load from an older save)
+				if carrying > 0:
+					game.own_float(team, position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
 				if team == game.human and carrying > 0:
-					game.float_text(position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
 					Sfx.play("work/grub_deliver", position, -6.0)
 				carrying = 0
 				load_f = 0.0
@@ -6087,9 +6106,14 @@ func _anim_name() -> String:
 					return _anim_or("dwalk", "walk" if moving else "idle")
 			if phase != "":
 				return "attack"
-		"ornithopter", "clock_soldier", "pendulum", "netter":
+		"ornithopter", "clock_soldier", "netter":
 			if phase != "":
-				return "attack"          # (the Pendulum's swing, the Netter's recoil)
+				return "attack"          # (the Netter's recoil)
+			if shield_up:
+				return ShieldWall.anim(self, moving)     # (SHIELD FORWARD: guard, guard_walk)
+		"pendulum":
+			if phase != "":
+				return Pendulum.attack_anim(self)   # (its two arms cut in turn: attack_r, attack_l)
 		"jack":
 			if not jump.is_empty():
 				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
@@ -6227,7 +6251,7 @@ func _animate(delta: float) -> void:
 		fps *= CUIRASSIER_GALLOP_FPS / WALK_FPS * n / 8.0
 	var loop := true
 	match anim:
-		"idle", "idle_carry":
+		"idle", "idle_carry", "guard":
 			fps = 2.0 if not Defs.FLYER.has(kind) else float(Defs.FLYER[kind]["flap"]) * 0.85     # (a flyer flaps in place)
 		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0

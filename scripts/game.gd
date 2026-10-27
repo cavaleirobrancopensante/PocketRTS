@@ -18,6 +18,9 @@ static var _tex_cache := {}
 var human := 0
 var puppet := false                  # online guest: the host plays the match, this game only shows it (NetPuppet)
 var net: NetSession = null           # online: the session (host or guest), else null
+var rec: ReplayRecorder = null       # the replay being recorded (scripts/replay/replay_recorder.gd), else null
+var net_next := 1                    # the next net id (NetSession.assign: the online session and the recorder share it)
+var replay: ReplayPlayer = null      # watching a replay: this game is a puppet fed from the file (replay_player.gd)
 var factions: Array = ["crown", "crown"]
 var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE
 var sides: Array = [0, 1]                   # players on the same side are allies
@@ -241,9 +244,18 @@ func _ready() -> void:
 	gear_net.game = self
 	gear_net.z_index = -17
 	add_child(gear_net)
+	ground_marks = GroundMarks.new()
+	ground_marks.game = self
+	ground_marks.z_index = -16          # on the ground: over the gears and fields, under every building and unit
+	add_child(ground_marks)
 	world = Node2D.new()
 	world.y_sort_enabled = true
 	add_child(world)
+	swipe_marks = GroundMarks.new()
+	swipe_marks.game = self
+	swipe_marks.top = true
+	swipe_marks.z_index = 2             # the Pendulum's smear: over the units it cuts through
+	add_child(swipe_marks)
 	body_bars = Node2D.new()
 	body_bars.z_index = 1
 	body_bars.draw.connect(_draw_body_bars)
@@ -2847,6 +2859,55 @@ func near_enemy_building(t: int, p: Vector2, tiles: float) -> bool:
 
 
 var _floats: Array = []           # [position, text, colour, time left]
+var ground_marks: GroundMarks         # AREA MARKS on the ground (area_mark; scripts/ground_marks.gd)
+var swipe_marks: GroundMarks          # the Pendulum's smear, over the units
+
+
+## AN AREA MARK (docs/aoe_show.md): the real shape of an area attack laid on the ground where it strikes, fading in
+## GroundMarks.STRIKE s (`life`), or a WARNING where a slow shot will land (`warn`: `life` = its flight), or the edge of a
+## cloud or storm for as long as it lasts (`zone`). shape "ring" (radius r), "oval" (an ellipse squashed by FIELD_Y, as
+## in_ellipse), "wedge" (from p toward the unit vector a, reach r, h radians either side), "band" (from p to a, r either
+## side). col: a GroundMarks.COLS key. smear: also the Pendulum's crescent along the blade's low path (arm 0 right, 1
+## left). Online, the host sends it to the guests (they lay it by their own fog). Shown to the side that made it (team)
+## and to anyone whose side sees that ground now; Settings.area_marks off: none. Returns whether it was laid here.
+func area_mark(shape: String, team: int, p: Vector2, a: Vector2, r: float, h: float, col: String, life: float = GroundMarks.STRIKE,
+		warn := false, zone := false, arm := -1, smear := false) -> bool:
+	if net != null and not puppet:
+		net.note_mark([shape, p, a, snappedf(r, 0.1), snappedf(h, 0.001), col, snappedf(life, 0.01), warn, zone, arm, smear, team])
+	if not Settings.area_marks or ground_marks == null or r <= 0.0:
+		return false
+	var probe := p
+	if shape == "wedge":
+		probe = p + a * r * 0.6
+	elif shape == "band":
+		probe = (p + a) * 0.5
+	if not mark_seen(team, p) and not mark_seen(team, probe):
+		return false
+	var c: Color = GroundMarks.COLS.get(col, Color(1, 1, 1))
+	ground_marks.add({"s": shape, "c": c, "p": p, "a": a, "r": r, "h": h, "life": life, "warn": warn, "zone": zone, "team": team})
+	if smear:
+		swipe_marks.add({"s": "smear", "c": c, "p": p, "a": a, "r": r * 0.7, "h": h, "life": GroundMarks.SMEAR, "arm": arm, "team": team})
+	return true
+
+
+## Would the watching side see an area mark at p made by `team`? Its own side's always (it fired it); else only where its
+## side sees the ground now (the fog), or everywhere with no fog drawn.
+func mark_seen(team: int, p: Vector2) -> bool:
+	if sees_all():
+		return true
+	var me := fog_team()
+	if team >= 0 and allied(team, me):
+		return true
+	return side_sees(me, p)
+
+
+## A float_text "+N" for an income the owner of `team` collects: shown only to that side (as the Farm's harvest and the
+## grub's drop); online, the host sends it to a guest playing that side.
+func own_float(team: int, p: Vector2, txt: String, col: Color) -> void:
+	if team == human and not demo:
+		float_text(p, txt, col)
+	elif net != null and not puppet and net.peer_team.values().has(team):
+		net.note_float(team, p, txt, col)
 
 
 func float_text(p: Vector2, txt: String, col: Color) -> void:
@@ -3892,7 +3953,8 @@ func research_done(b: Building, key: String) -> void:
 	if b.team == human:
 		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		notify("%s researched: %s" % [info["name"], what], true)
-		Sfx.announce(faction_of(b.team), "research_done", 3.0)
+		# (the Clockwork rings its old clock bell once, clock/research)
+		Sfx.announce(faction_of(b.team), "research_done", 3.0, "research" if faction_of(b.team) == "clockwork" else "")
 	elif not demo:
 		var what2 := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		tell(b.team, "%s researched: %s" % [info["name"], what2], true)      # (online: the guest who researched it)
@@ -5896,6 +5958,7 @@ func steam_cone(u: Unit, e: Entity, dmg: float) -> void:
 	var from := u.center()
 	var dir := (e.center() - from).normalized()
 	var reach := float(u.d["range"]) + 24.0
+	area_mark("wedge", u.team, from, dir, reach, acos(0.72), "steam")
 	for o in units_near(from, reach + 20.0):
 		if o == u or o.dead or o.off_field or o.is_air():
 			continue
@@ -5924,6 +5987,7 @@ func canister_at(u: Unit, aim: Vector2, dmg: float, e: Entity = null) -> void:
 		dir = u.facing.normalized()
 	var reach := float(Defs.CANISTER["range"]) + 30.0
 	blast_bodies_cone(from, dir, reach, float(Defs.CANISTER["cone"]), u.order == "bombard", dmg)
+	area_mark("wedge", u.team, from, dir, reach, acos(float(Defs.CANISTER["cone"])), "powder")
 	# area damage hits whoever is in it, friend or foe (not the gun itself)
 	for o in units_near(from, reach + 20.0):
 		if o == u or o.dead or o.off_field:
@@ -6110,6 +6174,7 @@ func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Ent
 	var b := p + dir * float(Defs.ROUND_SHOT["line"])
 	var w := float(Defs.ROUND_SHOT["width"])
 	blast_bodies(p, float(Defs.ROUND_SHOT["splash"]), aimed, a, b, w, dmg)
+	area_mark("band", t, a, b, w, 0.0, "powder")
 	for o in units_near(p + dir * float(Defs.ROUND_SHOT["line"]) * 0.4, float(Defs.ROUND_SHOT["line"]) + 40.0):
 		if o == shooter or o.dead or o.is_air() or o.off_field:
 			continue
@@ -6209,12 +6274,14 @@ func blob_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	pr.shooter = u
 	pr.aimed = u.order == "bombard"
 	add_child(pr)
+	area_mark("oval", u.team, pr.to, Vector2.ZERO, pr.splash, 0.0, "acid", pr.duration, true)     # (where it will land)
 	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
 
 
 ## The blob bursts: acid over a whole area (less at the edge), and it keeps burning.
 func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity, aimed := false) -> void:
 	blast_bodies(p, splash, aimed, Vector2.INF, Vector2.INF, 0.0, dmg)      # (spit at the ground eats the bodies too)
+	area_mark("oval", t, p, Vector2.ZERO, splash, 0.0, "acid")
 	var fx := spawn_effect("acid_splash", p, 0.9)
 	fx.scale = Vector2(1.8, 1.5)
 	for i in 3:
@@ -6251,6 +6318,7 @@ func mortar_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	pr.shooter = u
 	pr.aimed = u.order == "bombard"
 	add_child(pr)
+	area_mark("ring", u.team, pr.to, Vector2.ZERO, pr.splash, 0.0, "powder", pr.duration, true)     # (where it will land)
 	var sm := spawn_effect("smoke", muzzle + Vector2(0, -8), 0.9)
 	sm.modulate = Color(1, 1, 1, 0.8)
 	Sfx.play_any(["combat/mortar_attack", "combat/cannon_attack", "cannon"], u.global_position)
@@ -6266,6 +6334,7 @@ func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity,
 	fx.scale = Vector2.ONE * (splash / 36.0)
 	Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
 	blast_bodies(p, splash, aimed, Vector2.INF, Vector2.INF, 0.0, dmg)
+	area_mark("ring", t, p, Vector2.ZERO, splash, 0.0, "powder")
 	var edge := float(Defs.MORTAR["edge"])
 	for u in units_near(p, splash + 24.0):
 		if u.dead or u.off_field or u.is_air():
@@ -6290,6 +6359,7 @@ func owl_bomb_land(p: Vector2, dmg: float, t: int, shooter: Entity) -> void:
 	Sfx.play_any(["combat/owl_bomb", "combat/mortar_hit", "combat/cannon_hit", "boom"], p)
 	var ud := float(ob["unit_damage"]) * dmg / maxf(float(ob["damage"]), 1.0)
 	var ur := float(ob["unit_radius"])
+	area_mark("ring", t, p, Vector2.ZERO, float(ob["radius"]), 0.0, "brass")
 	blast_bodies(p, ur, false)          # (ordinary fire: tears bodies only with a Defs.BODY_BLAST combat share above 0)
 	for u in units_near(p, ur + 30.0):
 		if u.dead or u.off_field or u.is_air() or not hostile(u.team, t):
@@ -6400,6 +6470,8 @@ func hit_body(b: Unit, dmg: float, aimed := true) -> bool:
 		b._schedule_rot()
 	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
 		net.fx.append(["h", "", b.position, b.body_left()])
+	if rec != null and not puppet and rec.fx.size() < NetSession.FX_MAX:
+		rec.fx.append(["h", "", b.position, b.body_left()])
 	return false
 
 
@@ -6590,6 +6662,8 @@ func tear_body(b: Unit, aimed := false) -> void:
 	bodies_blasted["aimed" if aimed else "combat"] += 1
 	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
 		net.fx.append(["c", "", b.position, 0.0])       # (online: the guest's copy of it goes too)
+	if rec != null and not puppet and rec.fx.size() < NetSession.FX_MAX:
+		rec.fx.append(["c", "", b.position, 0.0])       # (and the replay's)
 	torn_fx(b.position)
 	b.tear_up()
 
@@ -6643,6 +6717,7 @@ func bloat_burst(u: Unit) -> void:
 	var full := clampf(u.gas / 100.0, 0.15, 1.0)
 	var r := float(Defs.BLOAT["radius"]) * (0.5 + 0.5 * full)
 	var dmg := float(Defs.BLOAT["burst"]) * full
+	area_mark("ring", u.team, p, Vector2.ZERO, r, 0.0, "acid")
 	for o in units_near(p, r):
 		if not o.dead and not o.is_air() and hostile(o.team, u.team):
 			o.take_damage(dmg * (1.0 - 0.4 * clampf(o.position.distance_to(p) / r, 0.0, 1.0)), u)
@@ -6653,6 +6728,7 @@ func bloat_burst(u: Unit) -> void:
 		"r": r, "t": float(Defs.BLOAT["time"]) * (0.4 + 0.6 * full)}
 	zones.append(z)
 	_zone_fx(z, "loop")
+	area_mark("oval", u.team, p, Vector2.ZERO, r, 0.0, "acid", float(z["t"]), false, true)     # (the gas cloud's edge)
 	Sfx.play_any(["combat/spitter_hit", "acid"], p)
 
 
@@ -6837,6 +6913,7 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 		Sfx.play_any(["combat/spitter_attack", "acid"], p)
 	zones.append(z)
 	_zone_fx(z, "in")
+	area_mark("oval", u.team, p, Vector2.ZERO, float(z["r"]), 0.0, {"storm": "storm", "fog": "fog"}.get(spell, "miasma"), float(z["t"]), false, true)
 	if mlog:
 		var inside := 0
 		for o in units_near(p, float(z["r"])):
@@ -7236,6 +7313,7 @@ func line_move(list: Array, pts: PackedVector2Array, attack: bool, queued := fal
 
 
 func explode(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
+	area_mark("ring", t, p, Vector2.ZERO, splash, 0.0, "brass" if t >= 0 and t < factions.size() and factions[t] == "clockwork" else "powder")
 	match randi() % 3:
 		0:
 			spawn_effect("blast", p, 1.0)
@@ -7276,6 +7354,7 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 			sm.modulate.a = 0.8
 		Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
 	Sfx.play_any(["combat/cannon_hit", "boom"], p)
+	area_mark("ring", src.team if src != null else -1, p, Vector2.ZERO, r, 0.0, "powder")
 	for u in units_near(p, r + 24.0):
 		if u == src or u.dead or u.off_field or u.is_air():
 			continue
@@ -7530,6 +7609,8 @@ func income_rates(t: int) -> Vector2:
 func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> Effect:
 	if net != null and not puppet:
 		net.note_effect(name, p, speed, looping)         # (online host: the guest sees it too)
+	if rec != null and not puppet:
+		rec.note_effect(name, p, speed, looping)         # (and the replay)
 	var e := Effect.new()
 	e.setup(name, speed, looping)
 	e.position = p
@@ -8853,8 +8934,12 @@ func under_attack(e: Entity) -> void:
 		return
 	_alert_ms = now
 	var fac := faction_of(human)
-	# the same alarm for every faction and every kind of attack, then (once it has rung) the faction's voice says what
-	Sfx.play_any(["ui/alert_all"])
+	# the same alarm for every faction and every kind of attack, then (once it has rung) the faction's voice says what;
+	# the Clockwork's alarm is an alarm clock ringing (its own base: another ring; tools/audio/make_clockwork_sounds.py)
+	if fac == "clockwork":
+		Sfx.play_any((["clock/base_alert"] if e is Building and e.team == human else []) + ["clock/alert", "ui/alert_all"])
+	else:
+		Sfx.play_any(["ui/alert_all"])
 	var line := "under_attack"
 	var gap := 20.0
 	var text := "Your forces are under attack!"

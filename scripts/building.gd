@@ -20,6 +20,8 @@ var gear_big := false            # Clockwork (gear mode): the connecting gear is
 var gear_swap_t := -1.0          # seconds left of a gear swap (-1: none); the building idles meanwhile
 var gear_swap_to := false        # the size it swaps to
 var press_paid := 0.0            # Cog Press: cogs it has paid in all (statistics)
+var pop_got := 0.0               # Cog Press / Mainspring: cogs or Tension since its last "+N" over it (pop_income)
+var pop_t := 0.0                 # ... seconds since then
 var _bat_t := 0.0
 var auto_train := ""             # keep training this unit (right-click / long press on its button)
 var _auto_t := 0.0
@@ -929,6 +931,26 @@ func efficiency() -> Array:
 	return [staff * (trickle + (1.0 - trickle) * left), have, want, left, res]
 
 
+## THE CLOCKWORK'S "+N" (the owner: like the Farm's harvest and the grub's drop at the capital): a Cog Press presses cogs
+## and a Mainspring winds Tension a little every tick, so what came in is summed and shown as one "+N" over the building
+## every Defs.GEAR "pop" s (cogs brass, Tension spring blue), only to its owner (Game.own_float); nothing while nothing
+## comes in (a full Mainspring winds nothing).
+func pop_income(got: float, delta: float) -> void:
+	pop_got += got
+	pop_t += delta
+	var every: float = float(Defs.GEAR["pop"][kind])
+	if pop_t < every:
+		return
+	pop_t = 0.0
+	var n := int(floor(pop_got))
+	pop_got -= float(n)
+	if n <= 0:
+		return
+	var tension := kind == "mainspring"
+	game.own_float(team, center() + Vector2(0, -34 if tension else -30), ("+%d tension" if tension else "+%d") % n,
+		Color(0.55, 0.85, 1.0) if tension else Color(0.95, 0.85, 0.4))
+
+
 func _econ(delta: float) -> void:
 	if not crew.is_empty():
 		var keep := true
@@ -948,8 +970,8 @@ func _econ(delta: float) -> void:
 				var pay := game.harvest(self)
 				_update_sprite()
 				Sfx.play("work/farm_harvest", center(), -4.0)
+				game.own_float(team, center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 				if team == game.human:
-					game.float_text(center() + Vector2(0, -30), "+%d harvest" % pay, Color(1, 0.9, 0.4) if pay >= Defs.FARM_YIELD else Color(0.85, 0.7, 0.45))
 					Sfx.play("done", center())
 		"ore_drill":
 			OreDrill.tick(self, delta)
@@ -964,6 +986,7 @@ func _econ(delta: float) -> void:
 				var pay := game.draw_lode(self, rate * delta)
 				press_paid += pay
 				game.add_gold_f(team, pay)
+				pop_income(pay, delta)
 			_gear_anim(working_crew() > 0 and rate > 0.0)
 		"mainspring":
 			# winds TENSION (the Clockwork's second resource) while it is linked and crewed, up to what the springs store
@@ -973,7 +996,7 @@ func _econ(delta: float) -> void:
 					extra2.cmd_stop()          # (a swap to the small gear lets the extra Winders go)
 			var sr := spring_rate()
 			if sr > 0.0:
-				GearEcon.wind(game, team, sr * delta)
+				pop_income(GearEcon.wind(game, team, sr * delta), delta)
 			_gear_anim(working_crew() > 0 and sr > 0.0)
 		"movement_works":
 			# the hanging line runs while it assembles a Clock Soldier and is linked

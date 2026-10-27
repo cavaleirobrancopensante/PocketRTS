@@ -318,7 +318,7 @@ func _layer_sig(n: String) -> Array:
 						vals.append(_res_line(t))
 			if not game.demo:
 				vals.append(game.apm())
-			if game.net:
+			if _online():
 				var pm := game.net.ping_shown()
 				vals.append_array([pm / 5 if pm < 1000 else pm / 100, game.net.ping_grade(), game.net.waiting])
 			_top_vals = vals
@@ -374,7 +374,7 @@ func _layer_sig(n: String) -> Array:
 				vals.append_array([countdown, _go_t])
 			return vals
 		"chat":
-			if game.chat == null or game.demo:
+			if game.chat == null or (game.demo and game.replay == null):
 				return []
 			var now := Time.get_ticks_msec()
 			var vl: Array = game.chat.visible(now)
@@ -937,7 +937,7 @@ func _build_card() -> Array:
 					page = ""
 					controls.begin_place(kk), why == "", why, _price_chip([int(d["cost"]), Defs.tension_cost(d)], Defs.tension_cost(d) > 0)])
 			if pages > 1:
-				list.append(["build", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
+				list.append(["more", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
 			list.append(["back", "BACK", func() -> void:
 				page = ""
 				build_page = 0, true, "", ""])
@@ -1078,7 +1078,7 @@ func _build_card() -> Array:
 			("Big gear: turns slow, more torque: a bigger ring and a bigger crew (a Cog Press takes 6 Winders), more cogs at full crew." if to_big
 				else "Small gear: turns fast, works faster per Winder, a smaller ring and a smaller crew (a Cog Press takes 3 Winders)."),
 			"%d cogs  ·  %d s" % [int(Defs.GEAR["swap_cost"]), int(Defs.GEAR["swap_time"])]]
-		list.append(["build", glab, func() -> void:
+		list.append(["ab_gear_big" if to_big else "ab_gear_small", glab, func() -> void:
 			var w := ""
 			for sb in game.selected_buildings():
 				if sb.team == game.human and game.gear_swap_problem(sb) == "":
@@ -1283,8 +1283,7 @@ func _auto_refit_button(list: Array, places: Array) -> void:
 		return
 	var on: bool = places.all(func(p) -> bool: return p.auto_refit)
 	_tip_for["AUTO REFIT"] = ["Auto refit (glowing = on)", "Idle soldiers within %d tiles of it get the upgrades researched that they lack, each paying the fee (if you can afford it)." % int(Defs.REFIT["auto"])]
-	var ic := "musketeer_armoured" if _icon("musketeer_armoured") else _research_icon("armour")
-	list.append([ic, ("~ " if on else "") + "AUTO REFIT", func() -> void:
+	list.append(["ab_auto_refit", ("~ " if on else "") + "AUTO REFIT", func() -> void:
 		for p in places:
 			if is_instance_valid(p) and not p.dead:
 				game.net_set(p, "auto_refit", not on)
@@ -1319,7 +1318,7 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 		controls.mode = "unload"
 		toast("Tap where to let them off (or DROP HERE)."), aboard > 0, "Nobody aboard.", count])
 	var low: bool = balloons.any(func(u: Unit) -> bool: return u.powder < u._pmax)
-	list.append(["ab_supply", "RESTOCK", func() -> void:
+	list.append(["ab_restock", "RESTOCK", func() -> void:
 		var sent := 0
 		for u in game.selected_units():
 			if u.kind == "balloon" and u.powder < u._pmax and u.cmd_restock():
@@ -1453,11 +1452,22 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			for u in game.selected_units():
 				if u.kind == "bulwark":
 					u.set_brace(up), true, "", ""])
+	# Clock Soldier: SHIELD FORWARD, once SHIELD WALL is researched at a Movement Works (scripts/shield_wall.gd)
+	var csold := units.filter(func(u: Unit) -> bool: return u.kind == ShieldWall.KIND)
+	if not csold.is_empty() and game.has_tech(game.human, ShieldWall.TECH):
+		var raise: bool = csold.any(func(u: Unit) -> bool: return not u.shield_up)
+		var sw: Dictionary = Defs.SHIELD_WALL
+		_tip_for["SHIELD FORWARD"] = ["Shield forward", "The Clock Soldiers raise their shields in front (%.1f s to switch, standing still): %d%% slower, +%d armour, %d%% less from shots and %d%% less from blows coming from the front; they still fight, a little slower. Nothing against blows from the side or behind, nor against splash. Press again to lower the shields." % [
+			float(sw["switch"]), int(round((1.0 - float(sw["speed"])) * 100.0)), int(sw["armor"]), int(round(float(sw["front"]) * 100.0)), int(round(float(sw["front_melee"]) * 100.0))]]
+		list.append(["ab_shield", "SHIELD FORWARD" if raise else "~ SHIELD FORWARD", func() -> void:
+			for u in game.selected_units():
+				if u.kind == ShieldWall.KIND:
+					u.set_shield(raise), true, "", ""])
 	# Skywing: LAND (ground fighter) / TAKE OFF (hunts flyers)
 	var wings := units.filter(func(u: Unit) -> bool: return u.kind == "skywing")
 	if not wings.is_empty():
 		var flying: bool = wings.any(func(u: Unit) -> bool: return u.sky == "air" or u.sky == "to_land")
-		list.append(["ab_land", "LAND" if flying else "TAKE OFF", func() -> void:
+		list.append(["ab_land" if flying else "ab_take_off", "LAND" if flying else "TAKE OFF", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "skywing":
 					if flying:
@@ -1497,7 +1507,7 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATR
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"JUMP": "E", "HIGH LEAP": "E", "MORPH TO OWL": "E", "CANCEL MORPH": "X", "TICKING OWL": "E",
-	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
+	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "SHIELD FORWARD": "F", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
 	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q",
 	"HOLD FIRE": "F",
@@ -1842,7 +1852,7 @@ func _menu_list() -> Array:
 			_confirm = "surrender"
 			_sig.erase("pause")},
 		{"label": "QUIT TO MENU", "cb": func() -> void:
-			if game.net and not game.over:
+			if _online() and not game.over:
 				_confirm = "quit"          # (online: leaving ends it for the friend too, or hands your side to a computer)
 				_sig.erase("pause")
 				return
@@ -1853,12 +1863,19 @@ func _menu_list() -> Array:
 	]
 	if game.demo or game.over:
 		list = list.filter(func(b: Dictionary) -> bool: return b["label"] != "SURRENDER")    # watching computers: nobody of yours to surrender
+	if game.replay:
+		list = list.filter(func(b: Dictionary) -> bool: return not String(b["label"]).begins_with("PAUSE"))    # (a replay: its own bar pauses)
 	return list
+
+
+## An online match (not a replay, whose session stands in for the host's: game.replay).
+func _online() -> bool:
+	return game != null and game.net != null and game.replay == null
 
 
 ## PAUSE (RESUME when paused). Online: how many pauses are left, and nothing to resume while the host is away.
 func _pause_item() -> Dictionary:
-	var net := game.net
+	var net: NetSession = game.net if _online() else null
 	if paused:
 		var it := {"label": "RESUME", "cb": func() -> void: set_paused(false)}
 		if net and net.away:
@@ -2110,7 +2127,7 @@ func _quick_press(p: Vector2) -> void:
 
 
 func _draw_chat() -> void:
-	if game.chat == null or game.demo:
+	if game.chat == null or (game.demo and game.replay == null):
 		return
 	var font := UiStyle.bold_font()
 	var now := Time.get_ticks_msec()
@@ -2183,7 +2200,11 @@ func _draw_chat() -> void:
 ## PAUSE / RESUME. Online the host decides (NetSession.request_pause): its game stops for everyone, and both screens
 ## hear it back through net_paused.
 func set_paused(v: bool) -> void:
-	if game and game.net:
+	if game and game.replay:
+		game.replay.set_playing(not v)      # (a replay: play and pause, never the tree)
+		_sig.erase("pause")
+		return
+	if game and _online():
 		if v != paused and not game.over:
 			game.net.request_pause(v)
 		return
@@ -2225,7 +2246,8 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 		if Defs.gear_mode:
 			r2 = "%d/%d tension" % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, t))]       # (gear mode: TENSION, held / what the Mainsprings store)
 	var x1 := x
-	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
+	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0), false, false,
+		_icon("tension") if fac == "clockwork" and Defs.gear_mode else null)
 	var used := NetPredict.shown_supply(game, t)
 	var cap: int = pl["cap"]
 	var x2 := x
@@ -2249,7 +2271,10 @@ func _res_line(t: int) -> String:
 	var r2: int = int(game.energy[t]) if fac == "clockwork" else int(pl["res2"])
 	if fac == "clockwork" and Defs.gear_mode:
 		r2 = int(float(pl.get("tension", 0.0)))
-	return "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
+	var line := "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
+	if game.replay:
+		line += "   ·   " + game.replay.obs_line(t)      # (a replay: income, army and workers, as an observer sees them)
+	return line
 
 
 ## The HUD's own canvas item: only the follow camera's cut (a black fade under the layers).
@@ -2292,13 +2317,13 @@ func _draw_top(font: Font) -> void:
 		right_btns = help_rect().position.x if _help_on() else drag_rect().position.x
 		if _chat_button_on():
 			right_btns = minf(right_btns, chat_btn_rect().position.x)
-	if game.net and maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0) + 88.0 < right_btns - 4.0:
+	if _online() and maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0) + 88.0 < right_btns - 4.0:
 		clock_x = maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0)     # (online: room left of the clock for the ping; else under it)
 	var clock_r := Rect2(clock_x, 4, 88, 30)
 	_clock_end = clock_r.end.x
 	UiStyle.draw_panel(_ci, clock_r, acc, 0.8)
 	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
-	if game.net:
+	if _online():
 		_draw_ping(clock_r, x)
 	if not game.demo:
 		var apm_t := "APM %d" % game.apm()
@@ -2759,6 +2784,9 @@ func _draw_panel(font: Font) -> void:
 				info = "RUN DOWN: frozen until a Winder cranks it up again (or a field reaches it)."
 			elif uu.kind == "windup_soldier":
 				info = "Spring %d%%%s: about 50 s away from a field and it runs down." % [int(uu.wind * 100), " (being cranked)" if uu.cranked_t > 0.0 else ""]
+			elif uu.kind == ShieldWall.KIND and uu.shield_up:
+				info = ("SHIELD FORWARD: raising the shield..." if uu.shield_t > 0.0 else "SHIELD FORWARD: %d%% slower, armour %d, %d%% less from shots in front.") % ([] if uu.shield_t > 0.0 else [
+					int(round((1.0 - float(Defs.SHIELD_WALL["speed"])) * 100.0)), int(uu.d["armor"]) + int(Defs.SHIELD_WALL["armor"]), int(round(float(Defs.SHIELD_WALL["front"]) * 100.0))])
 			elif uu.kind == "bulwark" and uu.braced:
 				info = "BRACED: can't move; armour 7; shots at your units behind the shield hit it instead. Charge %d%%." % int(uu.wind * 100)
 			elif uu.kind == "thresher" and uu.spin > 0.05 and uu.overclock_t <= 0.0:
@@ -2887,13 +2915,13 @@ func _draw_panel(font: Font) -> void:
 					var who := "base Winders" if bb.kind == "ore_crusher" else ("grubs" if bb.kind == "feeding_pit" else ("Winders" if bb.d["faction"] == "clockwork" else "workers"))
 					eff_txt = "Efficiency %d%%: %d/%d %s · %s %d%%" % [int(round(float(ef[0]) * 100)), int(ef[1]), int(ef[2]), who, ef[4], int(round(float(ef[3]) * 100))]
 					eff_col = game.eff_colour(float(ef[0]))
-		if e.team >= 0 and e.team != game.human:
-			name += "  (enemy)"
+		if e.team >= 0 and e.team != game.human and not game.demo:
+			name += "  (enemy)"            # (watching, or a replay: nobody is the enemy)
 		name = Loc.t(name)
 		var nsz := 19
 		if e is Unit and (e as Unit).kind == "balloon" and not (e as Unit).passengers.is_empty():
 			# its passengers' icons take the top right: the plain name, shrunk to fit before them
-			name = Loc.t((e as Unit).d["name"] + ("  (enemy)" if e.team >= 0 and e.team != game.human else ""))
+			name = Loc.t((e as Unit).d["name"] + ("  (enemy)" if e.team >= 0 and e.team != game.human and not game.demo else ""))
 			var room := _pass_icon_x(r, (e as Unit).passengers.size(), 0) - 6.0 - (r.position.x + 90.0)
 			while nsz > 12 and UiStyle.title_font().get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, nsz).x > room:
 				nsz -= 1
@@ -3142,7 +3170,7 @@ func _unit_icon(e: Entity) -> Texture2D:
 ## (the button works on the selection, so it runs with just that man selected).
 const SHIFT_QUEUE := ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch", "horse_harness",
 	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
-	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice"]
+	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice", "ab_shield"]
 
 
 func _shift_queueable(list: Array) -> void:
@@ -3246,7 +3274,7 @@ func _paged(all: Array) -> Array:
 	var pages := int(ceil(all.size() / float(per)))
 	_card_page = clampi(_card_page, 0, pages - 1)
 	var out: Array = all.slice(_card_page * per, _card_page * per + per)
-	out.append(["build", "MORE", func() -> void: _card_page = (_card_page + 1) % pages, true, "", "%d/%d" % [_card_page + 1, pages]])
+	out.append(["more", "MORE", func() -> void: _card_page = (_card_page + 1) % pages, true, "", "%d/%d" % [_card_page + 1, pages]])
 	return out
 
 
@@ -3355,12 +3383,14 @@ func _autocast_glow(br: Rect2) -> void:
 
 
 ## A resource readout in the top bar; returns where the next one starts.
-func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := false, gear := false) -> float:
+func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := false, gear := false, pic: Texture2D = null) -> float:
 	var vw := font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
 	var w := 36.0 + vw + 14.0
 	var r := Rect2(x, 4, w, 30)
 	UiStyle.draw_panel(_ci, r, Color(0, 0, 0, 0), 0.8)
-	if gear:
+	if pic:
+		_ci.draw_texture_rect(pic, Rect2(x + 6, 7, 24, 24), false)      # (the Clockwork's TENSION: the wound mainspring)
+	elif gear:
 		# the Clockwork's COGS: a small gear drawn in code (placeholder resource icon: docs/art_style_inconsistency.md)
 		_ci.draw_set_transform(Vector2(x + 18, 19), 0.0, Vector2.ONE)
 		GearNet.draw_gear(_ci, 9, 9.0, Color(0.93, 0.8, 0.46), Color(0.2, 0.13, 0.06), Color(0, 0, 0, 0), 0.95)

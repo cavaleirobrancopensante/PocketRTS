@@ -11,10 +11,12 @@ static var ui_size := 0               # 0 = automatic, else a percentage (100-20
 static var grid_keys := false         # computer: command card keys by position (QWER / ASDF / ZXCV) instead of by name
 static var tooltips := true           # hover tooltips (computer) and the "?" help button (phone)
 static var build_grid := true         # show the planning grid while placing a building
+static var area_marks := true         # area attacks lay their shape on the ground where they strike (GroundMarks)
 static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
 static var relay_url := "wss://pocketrts-relay.salgarellius-rts.workers.dev"   # online: the relay (tools/relay/README.md)
 static var language := "en"           # "en", "pt" or "es" (Loc)
 static var cw_lab := false            # the Clockwork roster prototype in every Clockwork match (docs/clockwork_units_prototype.md)
+static var replays_keep := 30         # replays kept (the newest; KEEP ones are never deleted)
 static var _loaded := false
 
 
@@ -31,12 +33,14 @@ static func load_all() -> void:
 		grid_keys = cfg.get_value("input", "grid_keys", false)
 		tooltips = cfg.get_value("input", "tooltips", true)
 		build_grid = cfg.get_value("input", "build_grid", true)
+		area_marks = bool(cfg.get_value("ui", "area_marks", true))
 		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
 		relay_url = String(cfg.get_value("online", "relay_url", relay_url))
 		if relay_url.contains("YOURNAME") or relay_url.strip_edges() == "":
 			relay_url = "wss://pocketrts-relay.salgarellius-rts.workers.dev"     # (an old placeholder saved earlier)
 		language = str(cfg.get_value("ui", "language", "en"))
 		cw_lab = bool(cfg.get_value("ui", "cw_lab", false))
+		replays_keep = clampi(int(cfg.get_value("ui", "replays_keep", 30)), 5, 200)
 	Loc.set_lang(language)
 	apply()
 
@@ -51,10 +55,12 @@ static func save_all() -> void:
 	cfg.set_value("input", "grid_keys", grid_keys)
 	cfg.set_value("input", "tooltips", tooltips)
 	cfg.set_value("input", "build_grid", build_grid)
+	cfg.set_value("ui", "area_marks", area_marks)
 	cfg.set_value("input", "mini_alpha", mini_alpha)
 	cfg.set_value("online", "relay_url", relay_url)
 	cfg.set_value("ui", "language", language)
 	cfg.set_value("ui", "cw_lab", cw_lab)
+	cfg.set_value("ui", "replays_keep", replays_keep)
 	cfg.save(PATH)
 
 

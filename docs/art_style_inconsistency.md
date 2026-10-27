@@ -175,10 +175,10 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - Jack (tools/import_jack.py): its blue ball shoulders made player colour; its coil spring, inner arm segments and drill tips kept as steel (the two-launcher sheet paints them saturated blue: greyed toward steel, and the drill tips and inner arm segments further, to a grey with a cool hint, since its bright tips read as ice blue).
 - Swift (tools/import_cuckoo.py): its blue wing-root joints and eyes made player colour.
 - Ticking Owl (tools/import_cuckoo.py): the blue of its blue-and-white wing-root springs made player colour (the white kept).
-- Pendulum (tools/import_tier3.py): its blue ball joints (hips, knees, ankles) made player colour; the blade stays steel.
+- Pendulum (tools/import_tier3.py; v2 since 0.14.36): its blue ball joints (hips, knees, ankles) made player colour; the blades stay steel.
 - Netter (tools/import_tier3.py): its blue leg ball joints and the blue spring on its cannon made player colour; the chain mesh in the drum's window stays steel.
 
-## Pendulum v2, two arms (code, 2026-10-26; art guides only, not in the game yet)
+## Pendulum v2, two arms (code, 2026-10-26; in the game since 0.14.36)
 - tools/pendulum_v2_guide/parts.py cuts ChatGPT's new direction sheet (art/redraws/pendulum_v2_dirs.png; preview of the cut parts: art/redraws/pendulum_v2_parts.png). Each painted arm is cut off along a hand-set polygon (the steel of a blade horn touching a knee let in past it) into four layers: rod, sleeve + clamp, ball (the weight), blade. CODE EDITS: the ball's strip hidden behind the sleeve and the clamp (or a blade horn) is FILLED from the ball's own paint, mirrored across the line from its centre through its highlight (nearest paint where that is hidden too); the rods are EXTENDED up under the shoulder hub to the pivot and down under the sleeve by repeating a painted cross-section; loose slivers the cut leaves on the body are dropped.
 - Pendulum v2 side view (E): ChatGPT hung the arm from the case's front corner under the clock, while every other view hangs the arms from the shoulder hubs; the big disc on the side panel is the near shoulder hub, so the arm is RE-HUNG from it, its thin rod STRETCHED along its length (about 1.8x) to reach (the sleeve, weight and blade keep their paint). The brass knuckle it hung from is cut off and the case's front edge there FILLED from the nearest case paint, with a code-darkened outline column. The far arm and the far leg are DARKER COPIES (x0.62, x0.66) of the near ones, drawn behind the body.
 - Pendulum v2 swing (tools/pendulum_v2_guide/anim.py, art/redraws/pendulum_v2_idle/walk/attack.png and .gif): the arms turn on a small 3D model (a hinge square to the splayed arm; the blows also turn in across the body). The rod is turned and STRETCHED or SHORTENED along its length (foreshortening), the sleeve, clamp and blade are SQUASHED and turned by the projection (rotated paint, NEAREST), the ball is only moved (a sphere does not squash); a head swung towards the camera is SCALED up (to 1.22x) and one swung away scaled down and DARKENED (up to 40%, CODE SHADE). The legs are the old Pendulum's walk machinery (tools/pendulum_guide/walk.py: rotated paint, a telescoping knee in the front, back and 3/4 views; the shin/foot seam and the turned knee balls want an art pass). The red bar under the attack GIF's hit frames is a review marker, not art.
@@ -188,3 +188,51 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - The bar over a body (Game._draw_body_bars) is now its health and is drawn a little thicker, longer over a beefy body and higher over a big one: plain code rectangles, as before.
 - The dragged ATTACK GROUND line (Game._draw_ground_line) and a selected unit's stretch (Game._draw_ground_stretch): code-drawn orange lanes, ticks and dots on the overlay, in the style of the formation preview and the BOMBARD target ring.
 - A ground shot that hits nothing (Unit._ground_blow) plays the existing "dust" effect, scaled down and unshaded; a shot reuses the unit's existing shot art (musket ball, acid ball, zap, bolt, steam puffs) through Game.ground_shot_fx.
+- Pendulum v2 CUT (0.14.36, tools/pendulum_v2_guide/cut.py; art/redraws/pendulum_v2_attack.png/.gif, in the game as
+  attack_r / attack_l): the attack is rebuilt as two cutting blows. Each arm turns in 3D on a windmill (back, up over its
+  shoulder, forward and down) in a swing plane leaning across the body (cut.TILT; the back views lean it the other way so
+  the cut stays in sight beside the body: a view-only fudge). CODE EDITS: the BLADE layer is TURNED ON ITS WEIGHT up to
+  90 degrees so the crescent's convex edge points along the weight's path (an axe head: horns along the rod) and its paint
+  is mapped by an affine projection of that 3D turn (squashed, rotated paint, NEAREST), never thinner than 0.6 of its
+  painted width (an edge-on crescent would vanish at game scale); the rod is turned and stretched or shortened along its
+  length, the sleeve and clamp turned and squashed along the rod; a weight swung at the camera is scaled up (to 1.22x),
+  one swung away scaled down and DARKENED. CODE-DRAWN: a see-through steel-white SMEAR (a tapering streak, up to 26
+  sheet px wide) trails the blade's edge on the three slash frames of each blow. A ChatGPT pass on the wound-up and
+  chopping poses (blade seen side-on, a painted motion smear) would retire all of this.
+- Pendulum v2 LOW SWEEP (branch pendulum-sweep, replaces the CUT above; tools/pendulum_v2_guide/cut.py,
+  art/redraws/pendulum_v2_attack.png/.gif, in the game as attack_r / attack_l): each blow is a scythe stroke at ankle
+  height. The arm turns on a CONE round its shoulder (back behind the hip, then forward and across low in front of the
+  feet); the body DIPS up to 30 sheet px (the knees bend: the legs' rotated paint) and leans into it. CODE EDITS as the
+  cut: the BLADE turned on its weight so its edge leads (along the travel bent forward and down: it dips under the ball
+  towards the ground), affine-mapped paint never thinner than 0.6 of its width, rod stretched/shortened, sleeve and clamp
+  squashed, a weight swung at the camera scaled up and one swung away scaled down and DARKENED; the back views stop the
+  sweep beside its own leg (a view-only choice). CODE-DRAWN: the steel-white SMEAR now trails the edge along the low path
+  on the three sweep frames. A ChatGPT pass on the swung-back and sweeping poses would retire this.
+- Pendulum v2 death (0.14.36, ChatGPT's art/redraws/pendulum_v2_death_chatgpt_1/2.png, tools/import_tier3.py): CODE EDIT:
+  a pink puff in the dust (sheet 1, row SE, frame 4) recoloured to the dust's grey by brightness (grey_pink); each row
+  SCALED (x1.08-1.22) so its standing first frame matches the idle's height. Otherwise as painted.
+- AREA MARKS (0.14.49, branch aoe-show; scripts/ground_marks.gd, docs/aoe_show.md): CODE-DRAWN in the game, not art:
+  see-through ground marks of each area attack's shape (a wedge, ring, oval or band: a flat fill and an edge in the
+  effect's colour over a thin dark line, fading in ~0.45 s), a blinking WARNING outline whose fill grows where a Mortar
+  shell, a Spore Mother's spit or an Owl's bomb will land, and a faint edge round lasting clouds and storms. And the
+  Pendulum's game-space SMEAR (GroundMarks._smear, Game.swipe_marks): a cold steel-blue crescent along the blade's low
+  path round its feet (squashed flat, thin tail to a 16 px head, a bright outer edge on a dark line), lingering 0.38 s
+  after each blow, drawn over the units on top of the sprite's own smear. A painted sweep effect (a ChatGPT smear strip
+  turned to the blow's direction) could replace the smear; the marks are UI-like and can stay code-drawn.
+
+## Clock Soldier SHIELD FORWARD (code, 0.14.49; docs/clock_soldier_shield.md)
+
+- The stance's strips `assets/units/clock_soldier/guard_<dir>.png` (standing) and `guard_walk_<dir>.png` (walking), all
+  eight views, are BUILT IN CODE from the painted game strips by `tools/soldier_guide/shield.py` (guide sheet
+  `art/redraws/clock_soldier_shield_guide.png`): the painted shield is CUT OUT of the W idle (the one view where it faces
+  us whole) and pasted in front of the soldier, SQUASHED on x in the side views (seen edge on), scaled 0.95-1.15, with a
+  CODE-DARKENED rim ring so it reads on the body; drawn under the body when it faces away (N, NE, NW: only the top of the
+  shield shows over the shoulders). The shield on the arm is WIPED (an ellipse per view) and the holes in the body are
+  FILLED by smearing the nearest body pixel of the same row, a shade darker (visible in SW as a smeared arm stub). In W the
+  painted shield stays and the cut-out goes over it, raised and forward. The shield arm itself is never redrawn (no arm
+  raised behind the shield), and the walk legs are the code-built walk's. While attacking, the soldier plays its normal
+  attack strip (the shield back on its arm for the swing). A ChatGPT pass (the requests in docs/clock_soldier_shield.md)
+  would retire all of this.
+- Placeholder command icons drawn in code (CwArt._ability_glyph "ab_shield", "research_shield": a brass disc with a boss,
+  an arrow / a cap) until `assets/icons/clockwork/ab_shield.png` and `research_shield.png` are drawn (they drop in with no
+  code: the HUD takes the files first).
