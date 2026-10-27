@@ -1829,7 +1829,7 @@ func _find_start_spot(t: int, kind: String, hall: Building, placed: Array) -> Ve
 			if not _footprint_inside_free(cell, size):
 				continue
 			var gap := edge_gap(cell, size, h0)
-			var score := dd + gap * 4.0
+			var score := dd + maxi(0, gap - 1) * 4.0     # (one free lane to the edge still hugs it: the start layout test accepts it, and the Clockwork's press meshes one row in from a rim)
 			if front != Vector2.ZERO:
 				score += maxf(0.0, (cc - hc).dot(front)) * 1.0
 			for pb in placed:
