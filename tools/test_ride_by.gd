@@ -11,6 +11,7 @@ extends SceneTree
 ##  7. HOLD POSITION, and stopped on guard: he stands and fights (no loops)
 ##  8. the Dragoon is unchanged (dismounts to fire)
 ##  9. deterministic: the same fight twice, the same ride to the frame
+## 10. a save and load in the middle of a fight keeps the ride's state (its side, heading, the charge clock)
 var main: Node
 var t := 0.0
 var g
@@ -157,6 +158,7 @@ func _run() -> void:
 	await _charge()
 	await _hold()
 	await _dragoon()
+	await _save_load()
 	await _determinism()
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(0 if fails == 0 else 1)
@@ -401,6 +403,30 @@ func _trace() -> String:
 		s.append("%.2f,%.2f,%.2f,%.2f,%d,%d,%.1f,%.1f" % [c.position.x - at(0, 0).x, c.position.y - at(0, 0).y,
 			c2.position.x - at(0, 0).x, c2.position.y - at(0, 0).y, c.ride_n, c2.ride_n, e.hp, w.hp])
 	return "\n".join(s)
+
+
+# ---------------------------------------------------------------- 10
+
+func _save_load() -> void:
+	await _clear_units()
+	var e := dummy(at(400, 300))
+	var c := rider(at(160, 300))
+	c.cmd_attack(e)
+	await wait(4.0)
+	# (a save keeps no attack order: he loads standing, idle; what carries over is his side, heading and charge clock)
+	var was := [c.rb_side, snappedf(c.rb_last, 0.01), snappedf(c.run_t, 0.01), c.rb_head.snapped(Vector2(0.001, 0.001))]
+	SaveGame.save(g, {"map": "random", "seed": 4242})
+	SaveGame.restore(g, SaveGame.peek())
+	await physics_frame
+	var cs: Array = g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == "cuirassier" and not u.dead)
+	var ok := cs.size() == 1
+	var now := []
+	if ok:
+		var d: Unit = cs[0]
+		now = [d.rb_side, snappedf(d.rb_last, 0.01), snappedf(d.run_t, 0.01), d.rb_head.snapped(Vector2(0.001, 0.001))]
+	check(ok and str(now) == str(was), "save and load in a fight keep the ride (%s / %s; order %s)" % [was, now, cs[0].order if ok else "-"])
+	SaveGame.clear()
+	await _clear_units()
 
 
 ## Two separate runs of the game (fresh processes, as test_determinism does) ride the same fight: the same trace.
