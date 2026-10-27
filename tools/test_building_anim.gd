@@ -5,6 +5,7 @@ extends SceneTree
 ##     its track while nobody works the mill, walks round it (the runner stone and arm turning with it)
 ##     while a Labourer works there, and comes to a halt again when he leaves; behind the post
 ##     and millstone on the far half of the track (the runner over it), in front on the near half
+##     (the three drawn together, sorted at the track's middle: Building._mill_trio)
 ##  2. the Farm's sails: still while nobody works its fields, turning while somebody does
 ##  3. the Foundry's smoke: none while it's idle, puffs while it trains something
 ##  4. BuildingLife: the Town Hall's bell swings only while it trains; the Barracks' drilling man,
@@ -174,7 +175,11 @@ func _mill() -> void:
 		"far half: the millstone over the horse, the runner over both")
 	m._mill_a = PI * 0.5
 	m._place_mill_horse(true)
-	check(not m._mill_stone.visible and m._mill_run.get_index() < m._mill_horse.get_index(), "near half: the horse over the runner")
+	# (the post-and-stone overlay stays shown, under the runner and the horse: it is the body's own
+	# millstone again, there to hide a man who passes behind the stone, the three sorting at the
+	# track's middle, Building._mill_trio)
+	check(m._mill_stone.get_index() < m._mill_run.get_index() and m._mill_run.get_index() < m._mill_horse.get_index(),
+		"near half: the horse over the runner (the millstone under both)")
 	check(is_equal_approx(m._mill_run_top.rotation, PI * 0.5), "the runner follows the horse to the near half (pointing at it)")
 	u.cmd_stop()
 	await wait(0.6)

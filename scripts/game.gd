@@ -2822,7 +2822,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := fals
 
 
 ## The building takes its ground: its cells turn solid (a gate: passable for its side, a
-## Farm's crop rows walkable) and anyone left standing there is pushed out (but `keep`).
+## Farm's crop rows and a Powder Mill's work yard walkable) and anyone left standing there is
+## pushed out (but `keep`).
 func _solidify(b: Building, keep: Array = []) -> void:
 	var k := b.kind
 	var c := b.cell
@@ -2837,7 +2838,7 @@ func _solidify(b: Building, keep: Array = []) -> void:
 	else:
 		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
 	for fc in Building.field_cells(k):
-		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows: men walk them, nothing is built on them
+		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows, a Mill's yard: men walk them, nothing is built on them
 	_cover_decos(b)
 	if Defs.BUILDINGS[k].get("line", false):
 		_orient_gates(c)
@@ -5166,6 +5167,8 @@ func separation(u: Unit) -> Vector2:
 			continue           # (a man beside his own horse: he got off there, close by it)
 		if Defs.cw_roster and o.team == u.team and Defs.CW_RAIL.has(u.kind) and Defs.CW_RAIL.has(o.kind):
 			continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
+		if u._mill_in and o._mill_in and o.home_mine == u.home_mine:
+			continue           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
 		var dvec: Vector2 = u.position - o.position
 		var dist := dvec.length()
 		var min_d: float = (u.radius + o.radius) * 0.85
