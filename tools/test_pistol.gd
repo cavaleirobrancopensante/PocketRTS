@@ -2,8 +2,8 @@ extends SceneTree
 ## The cavalry's pistol, and the Officers and Dragoons at the Barracks:
 ##   godot --headless --fixed-fps 30 --script res://tools/test_pistol.gd
 ##  1. a Horseman (and an Officer) is trained loaded
-##  2. mounted, he fires the pistol once at range (the pistol strip plays), then fights with
-##     the sabre
+##  2. mounted, he fires the pistol once at range (on the move, at a gallop: scripts/ride_by.gd), then
+##     fights with the sabre
 ##  3. no reload while mounted
 ##  4. on foot (an Officer) he reloads by himself and spends a charge of powder
 ##  5. no powder: no reload
@@ -157,25 +157,25 @@ func _fire_and_reload() -> void:
 	var shot_at := -1.0
 	var hp_before := e.hp
 	var hp_after_shot := -1.0
-	var saw_strip := false
+	var gallop := 0.0
 	var end: float = g.clock + 15.0
 	while g.clock < end and c.pistol:
-		if c._anim_name() == "pistol":
-			saw_strip = true
 		hp_before = e.hp
 		await physics_frame
 	if not c.pistol:
 		shot_at = c.position.distance_to(e.position) - e.radius - c.radius
 		hp_after_shot = e.hp
+		gallop = c.velocity.length()
 	check(not c.pistol and shot_at > 60.0 and shot_at <= float(Defs.PISTOL["range"]) + 4.0,
 		"mounted, he fires the pistol at range (%.0f px; a musket reaches %d)" % [shot_at, int(Defs.UNITS["musketeer"]["range"])])
 	var hit := hp_before - hp_after_shot
 	check(hit < 0.5 or absf(hit - float(Defs.PISTOL["damage"])) < 1.0, "  one shot of %d (this one: %.0f, a miss is 0)" % [int(Defs.PISTOL["damage"]), hit])
-	check(saw_strip and ArtData.UNITS["horseman"]["frames"].has("pistol_e"), "  the pistol strip plays from the saddle")
-	await wait_for(func() -> bool: return c.mode == "" and c.phase != "", 6.0)
+	# (he fights on the move, scripts/ride_by.gd: the shot is fired at a gallop, the gallop strip goes on)
+	check(gallop > c.speed * 0.7, "  fired from the gallop, on the move (%.0f px/s)" % gallop)
+	await wait_for(func() -> bool: return c.mode == "", 6.0)
 	var hp1 := e.hp
-	await wait(4.0)
-	check(c.mode == "" and not c.pistol and e.hp < hp1 - 30.0 and c.kind == "cuirassier", "  then the sabre (%.0f damage in 4 s)" % (hp1 - e.hp))
+	await wait(6.0)
+	check(c.mode == "" and not c.pistol and e.hp < hp1 - 30.0 and c.kind == "cuirassier", "  then the sabre, in passing (%.0f damage in 6 s)" % (hp1 - e.hp))
 	# 3: no reload in the saddle
 	g.consume_unit(e)
 	c.cmd_move(at(150, 300))

@@ -14,9 +14,13 @@ extends RefCounted
 ## online (the host simulates; ride_n, streamed, tells a guest to draw the sabre arc).
 
 
+## (tests only: tools/test_ride_by_raid.gd turns it off to measure the old standing fight)
+static var enabled := true
+
+
 ## Fights on the move this tick: a Horseman or Cuirassier in the saddle, not on HOLD.
 static func rides(u: Unit) -> bool:
-	return (Defs.RIDE_BY["kinds"] as Array).has(u.kind) and u.order != "hold" and u.aboard == null and not u.off_field
+	return enabled and (Defs.RIDE_BY["kinds"] as Array).has(u.kind) and u.order != "hold" and u.aboard == null and not u.off_field
 
 
 ## The blows struck in passing: the pistol (his one loaded shot, at a man ahead in its reach, on an attack-move,
@@ -28,13 +32,16 @@ static func blows(u: Unit, delta: float) -> void:
 	var fights := u.order == "attack" or u.order == "amove" or u.order == "idle"
 	if u.pistol and not u.hold_fire and fights:
 		if u.rb_aim > 0.0:
+			# (he takes aim as he comes into reach, a gallop's worth of the aim time early, and fires once in reach)
 			var a := u.rb_aim_e
-			if a == null or not u._valid_target(a) or a.edge_distance(u.position) - u.radius > float(Defs.PISTOL["range"]):
+			var rng := float(Defs.PISTOL["range"])
+			var dd := a.edge_distance(u.position) - u.radius if a != null and is_instance_valid(a) else INF
+			if a == null or not u._valid_target(a) or dd > rng + _early(u) + 8.0:
 				u.rb_aim = 0.0           # (he rode out of reach, or the man is gone: no shot yet)
 				u.rb_aim_e = null
 			else:
-				u.rb_aim -= delta
-				if u.rb_aim <= 0.0:
+				u.rb_aim = maxf(u.rb_aim - delta, 0.001)
+				if u.rb_aim <= 0.001 and dd <= rng:
 					u.rb_aim = 0.0
 					u.rb_aim_e = null
 					var was := u.mode
@@ -108,7 +115,7 @@ static func _sabre_mark(u: Unit) -> Entity:
 ## The pistol's mark: the target (a man, not a building) within the pistol's reach and seen; on an attack-move or on
 ## guard also the nearest enemy man ahead of him in reach.
 static func _pistol_mark(u: Unit) -> Entity:
-	var rng := float(Defs.PISTOL["range"])
+	var rng := float(Defs.PISTOL["range"]) + _early(u)
 	var t: Entity = u.order_target if u.order == "attack" else u.target
 	if t != null and is_instance_valid(t):
 		if t is Unit and u._valid_target(t) and t.edge_distance(u.position) - u.radius <= rng and u.game.target_seen(u.team, t, u.position):
@@ -132,6 +139,11 @@ static func _pistol_mark(u: Unit) -> Entity:
 			bd = dd
 			best = o
 	return best
+
+
+## How much farther than the pistol's reach he takes aim: what he rides in the aim time.
+static func _early(u: Unit) -> float:
+	return u.speed * float(Defs.PISTOL["aim"])
 
 
 static func _wall(e: Entity) -> bool:

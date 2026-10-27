@@ -1654,8 +1654,8 @@ const CHARGE := {"run": 2.0, "mult": 2.0, "force": 300.0, "stun": 0.6}
 ##   calm: the Cavalry Charge needs this long (s) without a blow before a run counts again: the first blow after a
 ##     run is the charge, not every pass of a fight
 ##   slash: the code-drawn sabre arc lasts this long (s)
-const RIDE_BY := {"kinds": ["cuirassier"], "hit": 1.0, "side": 8.0, "commit": 56.0, "over": 70.0, "out_max": 1.1,
-	"turn": 3.4, "near": 260.0, "calm": 5.0, "slash": 0.24}
+const RIDE_BY := {"kinds": ["cuirassier"], "hit": 1.0, "side": 8.0, "commit": 56.0, "over": 45.0, "out_max": 0.7,
+	"turn": 4.4, "near": 260.0, "calm": 5.0, "slash": 0.24}
 ## Stormcaller: a storm of lightning that stuns everything inside (friends too).
 ## A control spell, not a killer (the rework: was radius 96, 3 s, 8 damage a second to
 ## enemies, charge only): it stuns, hurts almost nothing, and burns `cost2` stored batteries.
