@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bfq688nmcv3ik"
-path="res://.godot/imported/walk_e.png-8a4ecbcb03e5c7f360906d0f290d4289.ctex"
+uid="uid://c18r1vqhwig68"
+path="res://.godot/imported/clock_soldier_shield_idle_east_guide.png-81a697d91183ae0826754bd27e653fad.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/trim_masks/dismounted_armoured/walk_e.png"
-dest_files=["res://.godot/imported/walk_e.png-8a4ecbcb03e5c7f360906d0f290d4289.ctex"]
+source_file="res://art/redraws/clock_soldier_shield_idle_east_guide.png"
+dest_files=["res://.godot/imported/clock_soldier_shield_idle_east_guide.png-81a697d91183ae0826754bd27e653fad.ctex"]
 
 [params]
 
