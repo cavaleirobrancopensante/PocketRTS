@@ -1475,7 +1475,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
 	if not sacs.is_empty():
 		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
-		list.append(["ab_hold_gas", "HOLD GAS" if hold else "SPIT", func() -> void:
+		list.append(["ab_hold_gas" if hold else "ab_spit", "HOLD GAS" if hold else "SPIT", func() -> void:     # (SPIT: its own picture)
 			for u in game.selected_units():
 				if u.kind == "bloater":
 					u.set_hold_gas(hold), true, "", ""])
@@ -3225,7 +3225,7 @@ func _unit_icon(e: Entity) -> Texture2D:
 ## gets the button as an order behind his move or attack, and runs it when he gets there
 ## (the button works on the selection, so it runs with just that man selected).
 const SHIFT_QUEUE := ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch", "horse_harness",
-	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
+	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_spit", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
 	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice", "ab_shield"]
 
 

@@ -1,6 +1,6 @@
 # The Spring Ballista
 
-The owner's unit, decided on 2026-10-27. Built on branch `ballista`, version 0.14.79.
+The owner's unit, decided on 2026-10-27. Built on branch `ballista`, version 0.14.80.
 Code: `scripts/ballista.gd`. Numbers: `Defs.BALLISTA` and `Defs.UNITS["ballista"]`.
 Art: `tools/import_ballista.py`. Tests: `tools/test_ballista.gd` and `tools/test_ballista_ai.gd`.
 Pictures: `tools/shot_ballista.gd`, written to `docs/shots/ballista/`.
@@ -156,7 +156,7 @@ All cut from the owner's Clockwork recordings, in `tools/audio/make_clockwork_so
   Its size is the Spring Catapult's: 1.5 times the Netter.
 - The bolt in flight: cut from `art/redraws/concepts/ballista_v1.png`.
 - The crew: `art/redraws/winder_crew_<view>_chatgpt.png`, push and crank strips on the Winder.
-- The portrait and the CREW button are made from that art.
+- The portrait is the owner's painted one, `art/ui/icons3/portrait_ballista.png`. The CREW button is made from the crew art.
 - What is drawn in code is listed in `docs/art_style_inconsistency.md`: the death, the push bob, the crew's placing.
 
 ## What is left

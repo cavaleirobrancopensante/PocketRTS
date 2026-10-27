@@ -238,7 +238,7 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   an arrow / a cap) until `assets/icons/clockwork/ab_shield.png` and `research_shield.png` are drawn (they drop in with no
   code: the HUD takes the files first).
 
-## Spring Ballista and its crew (code, 0.14.79; docs/ballista.md, tools/import_ballista.py)
+## Spring Ballista and its crew (code, 0.14.80; docs/ballista.md, tools/import_ballista.py)
 - The machine is ChatGPT's (art/redraws/ballista_dirs.png), cut and shrunk; the front view (S) is MIRRORED in code so the crank
   sits on the machine's right in every view. Its idle and walk are the loaded frame, its "attack" the fired one: no motion.
 - DEATH made in code (assets/units/ballista/death_<view>.png, 4 frames): the fired frame squashed down onto its axles and
@@ -251,6 +251,6 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   would replace it.
 - The BUILT-IN CREWMAN is the Winder's own push / crank strips drawn as a child sprite of the Ballista (Ballista.look), placed
   in code behind or beside the machine; the extra crew are real Winders placed the same way.
-- The portrait (assets/icons/ballista.png) is the loaded SE view on the portrait ground in the steel frame (round 11's
-  framing), not a painted portrait; the CREW / BOARD button (assets/icons/clockwork/ab_crew.png) is the crank sheet's
-  Winder in the Clockwork's bronze frame. Both could be redrawn as painted icons.
+- The portrait (assets/icons/ballista.png) is the owner's painted one (art/ui/icons3/portrait_ballista.png, in on main
+  in 0.14.79), cut and framed by tools/import_ballista.py; the CREW / BOARD button (assets/icons/clockwork/ab_crew.png) is the crank sheet's
+  Winder in the Clockwork's bronze frame (not painted as a button: it could be redrawn).

@@ -16,8 +16,8 @@ Writes:
   assets/effects/ballista_bolt.png      the screw bolt in flight, pointing right
   assets/units/winder/push_<v>.png, crank_<v>.png   the crew strips (4 frames each), counts added to the "winder" entry
                                         of scripts/art_data.gd (his cell and anchor)
-  assets/icons/ballista.png             its card portrait (the loaded SE view in the steel portrait frame, like round 13's
-                                        Clockwork portraits)
+  assets/icons/ballista.png             its card portrait: the owner's painted one (art/ui/icons3/portrait_ballista.png),
+                                        cut and framed like round 13's Clockwork portraits; without it, the loaded SE view
   assets/icons/clockwork/ab_crew.png    the BOARD / CREW button (a Winder at the crank, in the Clockwork's bronze frame)
 and prints the scripts/cw_art.gd SHEETS line, the bow's mouth per view (Defs.BALLISTA "mouth"), the crank and push spots.
 
@@ -46,6 +46,7 @@ import import_winder_v2 as W  # noqa: E402
 SHEET = 'art/redraws/ballista_dirs.png'
 CONCEPT = 'art/redraws/concepts/ballista_v1.png'
 CREW = 'art/redraws/winder_crew_%s_chatgpt.png'
+PORTRAIT = 'art/ui/icons3/portrait_ballista.png'     # the owner's painted portrait (when there; else made from the sheet)
 DST = 'assets/units/ballista/'
 WDST = 'assets/units/winder/'
 DIRS = ['s', 'se', 'e', 'ne', 'n']
@@ -292,7 +293,22 @@ def icons(rows_src):
     import import_round13 as r13  # noqa: E402
     sys.argv = _argv
     navy = np.array([0, 22, 48])
-    # the portrait: the loaded SE machine, recoloured like the game's (red bands in the Crown icons' red: unteam keeps it)
+    # the portrait: the owner's painted one (art/ui/icons3/portrait_ballista.png, a steel portrait frame like round 13's
+    # Clockwork portraits) when it is there, cut and framed the same way; else the loaded SE machine on the portrait ground
+    if os.path.exists(PORTRAIT):
+        # (the frame fills the whole picture: its inside is the dark ground reached from a point just inside a corner)
+        px = np.array(Image.open(PORTRAIT).convert('RGB'))
+        lum = px.astype(int).sum(-1) / 3.0
+        h, w = lum.shape
+        lab, _n = ndi.label(lum < 40)
+        k = lab[int(h * 0.12), int(w * 0.12)]
+        ys, xs = np.nonzero(lab == k)
+        iy0, iy1, ix0, ix1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+        pic = px[iy0:iy1, ix0:ix1].copy()
+        r.save_icon(r.framed(r.shrink(r.square(pic, 'ballista'), r.INNER)), 'ballista')
+        print('icons: ballista.png from %s (picture %dx%d)' % (PORTRAIT, ix1 - ix0, iy1 - iy0))
+        _crew_button(r, r13)
+        return
     rows = cells(SHEET)
     o = recolour(rows[1][0])
     pad = 14
@@ -304,6 +320,10 @@ def icons(rows_src):
     pic[pad:pad + h, pad:pad + w, :3] = (o[..., :3] * al + pic[pad:pad + h, pad:pad + w, :3] * (1 - al)).astype(np.uint8)
     r.FIT['ballista'] = (0.6, 0.5)
     r.save_icon(r.framed(r.shrink(r.square(pic[..., :3], 'ballista'), r.INNER)), 'ballista')
+    _crew_button(r, r13)
+
+
+def _crew_button(r, r13):
     # the CREW button: a Winder at the crank (the e sheet, its crank row's first frame) in the bronze frame
     a = np.array(Image.open(CREW % 'e').convert('RGB')).astype(int)
     fg, _ = W.keyed(a)
@@ -315,7 +335,7 @@ def icons(rows_src):
     pic2 = a[sl].astype(np.uint8)
     frame = r13.faction_frame('clockwork')
     r.save_icon(r13.bronze_icon(None, 'ab_crew', frame, pic2), 'clockwork/ab_crew')
-    print('icons: ballista.png, clockwork/ab_crew.png')
+    print('icons: clockwork/ab_crew.png')
 
 
 def preview(path, out, cell, shown, wcell):
