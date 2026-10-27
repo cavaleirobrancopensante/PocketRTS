@@ -1,0 +1,22 @@
+2026-10-27 09:15:25 explore: 100 games (workers 2)
+2026-10-27 09:16:08 done x_001 DOC x_br_001 (brood) vs clockwork:ai kestrel_rise in 40s: candidate fitness 0.25 over 1
+2026-10-27 09:16:47 done x_002 DOC x_cw_002 (clockwork) vs brood:ai twin_fords in 39s: candidate fitness 0.75 over 1
+2026-10-27 09:17:03 done x_003 DOC x_cr_003 (crown) vs brood:ai frostmere in 15s: candidate fitness 0.75 over 1
+2026-10-27 09:17:39 done x_000 DOC x_cr_000 (crown) vs brood:brood_economy frostmere in 133s: candidate fitness 0.75 over 1
+2026-10-27 09:17:47 done x_004 DOC x_br_004 (brood) vs clockwork:cw_turret_expand kestrel_rise in 44s: candidate fitness 0.25 over 1
+2026-10-27 09:19:27 done x_006 DOC x_cr_006 (crown) vs brood:ai kestrel_rise in 100s: candidate fitness 0.75 over 1
+2026-10-27 09:19:47 done x_007 DOC x_br_007 (brood) vs crown:ai greenhold in 19s: candidate fitness 0.25 over 1
+2026-10-27 09:20:35 done x_005 DOC x_cw_005 (clockwork) vs crown:crown_musket_wall saltmarsh_isles in 175s: candidate fitness 0.38 over 1
+2026-10-27 09:20:47 done x_008 DOC x_cw_008 (clockwork) vs brood:brood_economy hollowfen in 59s: candidate fitness 0.25 over 1
+2026-10-27 09:22:00 done x_010 FRESH x_br_010 (brood) vs clockwork:cw_jack_tech saltmarsh_isles in 72s: candidate fitness 0.25 over 1
+2026-10-27 09:22:32 done x_011 POOL x_cw_011 (clockwork) vs brood:brood_air amberfall_vale in 31s: candidate fitness 0.25 over 1
+2026-10-27 09:23:11 done x_009 FRESH x_cr_009 (crown) vs clockwork:cw_jack_tech thornwood_maze in 155s: candidate fitness 0.25 over 1
+2026-10-27 09:23:21 done x_012 POOL x_cr_012 (crown) vs brood:ai kestrel_rise in 48s: candidate fitness 0.75 over 1
+2026-10-27 09:24:18 done x_013 POOL x_br_013 (brood) vs crown:crown_musket_wall twin_fords in 66s: candidate fitness 0.25 over 1
+2026-10-27 09:25:28 done x_015 POOL x_cr_015 (crown) vs clockwork:cw_jack_tech greenhold in 70s: candidate fitness 0.25 over 1
+2026-10-27 09:26:42 done x_016 DOC x_br_016 (brood) vs crown:ai ashford_crossing in 74s: candidate fitness 0.25 over 1
+2026-10-27 09:27:17 done x_014 FRESH x_cw_014 (clockwork) vs brood:brood_economy highmoor in 236s: candidate fitness 0.75 over 1
+2026-10-27 09:27:52 done x_018 POOL x_cr_018 (crown) vs brood:brood_economy cinder_steps in 34s: candidate fitness 0.25 over 1
+2026-10-27 09:27:53 done x_017 POOL x_cw_017 (clockwork) vs crown:ai ashford_crossing in 70s: candidate fitness 0.25 over 1
+2026-10-27 09:28:36 done x_019 DOC x_br_019 (brood) vs clockwork:ai highmoor in 43s: candidate fitness 0.25 over 1
+2026-10-27 09:29:01 done x_020 RETEST x_cw_014 (clockwork) vs brood:brood_economy twin_fords in 68s: candidate fitness 0.83 over 2
