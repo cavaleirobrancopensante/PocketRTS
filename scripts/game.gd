@@ -2355,8 +2355,11 @@ func _take_scar(h: Building) -> void:
 
 
 func halls_of(t: int, built_only := true) -> Array:
-	var k := faction_hall(t)
-	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == k and not b.dead and (b.built or not built_only))
+	var out: Array = []
+	for b in _hall_kind_of(t):       # (the same buildings in the same order as a filter over all of them)
+		if not b.dead and (b.built or not built_only):
+			out.append(b)
+	return out
 
 
 const BROOD_PIT_UNCAPPED := 999
@@ -2785,10 +2788,15 @@ func net_set(e: Object, prop: String, v) -> void:
 
 
 var _serial := 0                 # Entity.serial of the last unit or building made
+## A Tesla Cart or Tesla Locomotive has been made this match (or morphed into): until then
+## in_field and in_overcharge, asked by every Clockwork unit, needn't look through the units.
+var tesla_made := false
 
 
 func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 	var u := Unit.new()
+	if k == "tesla_cart" or k == "tesla_loco":
+		tesla_made = true
 	_serial += 1
 	u.serial = _serial
 	u.setup(self, k, t, pos)
@@ -4676,6 +4684,8 @@ func in_overcharge(t: int, p: Vector2) -> bool:
 			return true
 		if b.kind == "charging_pylon" and b.field_on() and in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
 			return true
+	if not tesla_made:
+		return false
 	var cw := Defs.cw_roster
 	for u in units:
 		if u.team != t or u.dead:
@@ -4693,6 +4703,8 @@ func in_field(t: int, p: Vector2) -> bool:
 		# gear mode: constructs stay wound on CONNECTED GEAR GROUND (inside a connected building's ring), Defs.GEAR
 		if gear_net.in_field(t, p):
 			return true
+		if not tesla_made:
+			return false
 		for u in units:
 			if u.team != t or u.dead:
 				continue
@@ -4705,6 +4717,8 @@ func in_field(t: int, p: Vector2) -> bool:
 		if b.team == t and b.built and not b.dead and b.d.has("field") and b.field_on():
 			if in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
 				return true
+	if not tesla_made:
+		return false
 	for u in units:
 		if u.team != t or u.dead:
 			continue
@@ -5391,18 +5405,39 @@ func nearest_of(p: Vector2, t: int, kind: String) -> Building:
 func nearest_hall(p: Vector2, t: int) -> Building:
 	var best: Building = null
 	var bd := INF
-	var hk := ""                     # (asked once, not for every building: this runs thousands of times a second)
-	for b in buildings:
-		if b.team != t:
-			continue
-		if hk == "":
-			hk = faction_hall(t)
-		if b.kind == hk and b.built and not b.dead:
+	for b in _hall_kind_of(t):      # (every Farm, Mill and Press asks this every tick)
+		if b.built and not b.dead:
 			var dd: float = b.edge_distance(p)
 			if dd < bd:
 				bd = dd
 				best = b
 	return best
+
+
+## Team t's buildings of its faction's hall kind (built or not, standing or not), in the order of
+## `buildings`. A building's team and kind never change, so the lists hold until a building
+## is added or taken out: the list's length and last building are the check (an addition is
+## always at the end, and a removal shortens it).
+var _hall_lists := {}
+var _hall_lists_key: Array = []
+
+
+func _hall_kind_of(t: int) -> Array:
+	var n := buildings.size()
+	var last = buildings[n - 1] if n > 0 else null      # (untyped: it may have been freed)
+	if _hall_lists_key.size() != 2 or int(_hall_lists_key[0]) != n or _hall_lists_key[1] != last:
+		_hall_lists_key = [n, last]
+		_hall_lists.clear()
+	var lst = _hall_lists.get(t)
+	if lst == null:
+		lst = []
+		if t >= 0 and t < factions.size():
+			var hk := faction_hall(t)
+			for b in buildings:
+				if b.team == t and b.kind == hk:
+					lst.append(b)
+		_hall_lists[t] = lst
+	return lst
 
 
 ## (`_any`: kept for its callers; there's nothing on the map but units and buildings to pick.)

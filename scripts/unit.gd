@@ -812,7 +812,7 @@ func set_hold_fire(on: bool) -> void:
 
 ## On a horse (the horse is part of him: DISMOUNT puts it beside him).
 func is_mounted() -> bool:
-	return Defs.FOOT.has(kind)
+	return _k_mounted
 
 
 ## A horse's rank of veterancy for `m` tiles travelled (Defs.HORSE_VET).
@@ -834,7 +834,7 @@ func apply_horse_vet() -> void:
 
 ## Is a horse working under him (ridden, or drawing this gun or wagon)?
 func horse_working() -> bool:
-	return is_mounted() or (harnessed and Defs.HARNESSED.has(kind))
+	return _k_mounted or (harnessed and _k_harness)
 
 
 ## Horses heal by themselves; a working one gains veterancy with the ground it covers.
@@ -877,7 +877,24 @@ func powered_down() -> bool:
 
 
 func is_worker() -> bool:
-	return Defs.is_worker(kind)
+	return _k_worker
+
+
+## What a unit's kind says, asked hundreds of thousands of times a second (is_worker,
+## is_mounted, deploys, horse_working): worked out when the kind is set (setup, morph).
+var _k_worker := false
+var _k_mounted := false
+var _k_harness := false
+var _k_deploys := false
+var _k_fac := ""                 # (d["faction"]: the kind's faction)
+
+
+func _kind_flags() -> void:
+	_k_worker = Defs.is_worker(kind)
+	_k_fac = String(Defs.UNITS[kind]["faction"]) if Defs.UNITS.has(kind) else ""
+	_k_mounted = Defs.FOOT.has(kind)
+	_k_harness = Defs.HARNESSED.has(kind)
+	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar"
 
 
 ## A worker that can hurt (Labourer, Grub) fights when told to ATTACK: an attack-move engages
@@ -908,11 +925,12 @@ func can_hit(e: Entity) -> bool:
 		return false            # (a Swift turning into a Ticking Owl)
 	if kind == Defs.NETTER and (not (e is Unit) or ((e as Unit).net_t > 0.0 and not (order == "attack" and e == order_target))):
 		return false            # (its net is for units, and one caught already only when it is told to)
-	if e.is_air() and d.get("ground_only", false):
+	var ea := e.is_air()        # (asked once: this runs for every target looked at)
+	if ea and d.get("ground_only", false):
 		return false
-	if not e.is_air() and d.get("air_only", false):
+	if not ea and d.get("air_only", false):
 		return false            # (buildings too)
-	if e.is_air():
+	if ea:
 		# the cannon's canister is the Crown's answer to massed flyers; round shot can't
 		if kind == "cannon":
 			return mode == "canister"
@@ -1525,6 +1543,7 @@ func _battery_blast() -> void:
 func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	game = g
 	kind = k
+	_kind_flags()
 	team = t
 	d = Defs.UNITS[k]
 	if Defs.ARMOURED.has(k) or k in ["cannon", "mortar"]:
@@ -1691,7 +1710,7 @@ func cmd_attack(e: Entity) -> void:
 ## Units with two modes: moving (packed) and set up (deployed). The cannon limbers and
 ## unlimbers, the Tesla Cart packs and deploys, the Spore Mother uproots and roots.
 func deploys() -> bool:
-	return kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar"
+	return _k_deploys
 
 
 func switch_time() -> float:
@@ -2901,7 +2920,7 @@ func _tick_unit(delta: float) -> void:
 		speed *= float(Defs.BLOAT["slow"])
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		CwUnits.pre_tick(self, delta)
-	if d["faction"] == "brood" and game.on_swamp(team, position):
+	if _k_fac == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
 		if hp < max_hp:
 			hp = minf(max_hp, hp + 2.0 * delta)
@@ -2944,7 +2963,7 @@ func _tick_unit(delta: float) -> void:
 			wind = float(Defs.OVERLOAD["after"])     # burnt out
 			if team == game.human:
 				game.float_text(position + Vector2(0, -40), "burnt out", Color(0.7, 0.75, 0.85))
-	if d["faction"] == "clockwork":
+	if _k_fac == "clockwork":
 		_field_t -= delta
 		if _field_t <= 0.0:
 			_field_t = 0.4
@@ -3235,7 +3254,7 @@ func _tick_unit(delta: float) -> void:
 		if kind == "balloon":
 			extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
 		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
+			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
 		if key != _draw_key:
 			_draw_key = key
@@ -6543,6 +6562,9 @@ func morph(k: String) -> void:
 	var frac := hp / maxf(max_hp, 1.0)
 	var arm := armoured
 	kind = k
+	_kind_flags()
+	if k == "tesla_cart" or k == "tesla_loco":
+		game.tesla_made = true       # (Game.in_field looks for them from now on)
 	d = Defs.UNITS[k].duplicate(true)
 	armoured = false
 	armor = float(d["armor"])
