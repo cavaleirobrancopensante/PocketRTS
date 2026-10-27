@@ -19,8 +19,8 @@ extends RefCounted
 ##           Raptors look first; a wave that is clearly losing its fight pulls back home; the next one
 ##           waits for a bigger army.
 
-const MEMORY := 240.0           # an enemy soldier seen counts this long (unless we saw it fall)
-const ATTACK_RATIO := 1.25      # a wave goes only when worth this many times the enemy army we know of
+const MEMORY := 480.0           # an enemy soldier seen counts this long (unless we saw it fall; a Crown army does not melt away unseen: at 240 s waves went into 1.4-1.5 times their worth)
+const ATTACK_RATIO := 1.5       # a wave goes only when worth this many times the enemy army we know of (the defender has walls, guns and the first volley: at 1.25 waves killed 0.57 of what they lost)
 const RUSH_RATIO := 0.8         # ... a rush plan's first wave (a gamble, but not into a known wall of guns)
 const LOST_RATIO := 1.5         # a wave facing this many times its own worth (health counted) ...
 const LOST_SHARE := 0.25        # ... after losing this share of what it took out, pulls back
