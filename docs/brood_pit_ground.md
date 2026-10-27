@@ -1,6 +1,6 @@
 # Brood pit ground: a circle of ground for every Feeding Pit
 
-Version 0.14.40, branch brood-pit-ground. This is the owner's decision of 27 October 2026, built as decided.
+Version 0.14.41, branch brood-pit-ground. This is the owner's decision of 27 October 2026, built as decided.
 
 ## The rule
 

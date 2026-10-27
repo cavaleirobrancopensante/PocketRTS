@@ -1206,9 +1206,9 @@ es mineral agotado: un cuarto
 pt minério acabando
 es mineral agotándose
 
-> Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3).
-pt Corpos que caem a até %d casas dão essência. SACRIFICAR criaturas da Ninhada aqui: 12%% do seu custo em biomassa como essência (um Raptor: 3).
-es Los cuerpos que caen a menos de %d casillas dan esencia. SACRIFICA aquí criaturas de la Nidada: el 12%% de su coste en biomasa como esencia (un Raptor: 3).
+> SACRIFICE Brood creatures here: %d%% of their biomass as essence (a Raptor: %d).
+pt SACRIFICAR criaturas da Ninhada aqui: %d%% do seu custo em biomassa como essência (um Raptor: %d).
+es SACRIFICA aquí criaturas de la Nidada: el %d%% de su coste en biomasa como esencia (un Raptor: %d).
 
 > (next in %ds)
 pt (próximo em %ds)

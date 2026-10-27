@@ -402,9 +402,9 @@ es Las larvas llevan comida de aquí a la capital (6, y una más por cada 4 casi
 pt Cercado da Ninhada
 es Corral de la Nidada
 
-> Turns every body that falls nearby (friend or foe) into essence. SACRIFICE: Brood creatures brought here are offered up for essence (12% of their biomass cost: 3 a Raptor).
-pt Transforma todo corpo que cai por perto (amigo ou inimigo) em essência. SACRIFICAR: criaturas da Ninhada trazidas aqui são oferecidas por essência (12% do custo em biomassa: 3 por Raptor).
-es Convierte en esencia todo cuerpo que cae cerca (amigo o enemigo). SACRIFICAR: las criaturas de la Nidada traídas aquí se ofrecen a cambio de esencia (12% de su coste en biomasa: 3 por Raptor).
+> SACRIFICE: Brood creatures brought here are offered up for essence (35% of their biomass cost: 9 a Raptor). The fallen give essence too: grubs wrap the bodies on the field and carry them home.
+pt SACRIFICAR: criaturas da Ninhada trazidas aqui são oferecidas por essência (35% do custo em biomassa: 9 por Raptor). Os caídos também dão essência: as larvas embrulham os corpos no campo e os levam para casa.
+es SACRIFICAR: las criaturas de la Nidada traídas aquí se ofrecen a cambio de esencia (35% de su coste en biomasa: 9 por Raptor). Los caídos también dan esencia: las larvas envuelven los cuerpos en el campo y los llevan a casa.
 
 > Roost
 pt Poleiro
@@ -794,9 +794,9 @@ es Permite que tus Madrigueras incuben Brutos, Madres de Esporas y Sapos de la N
 pt Até 6 larvas levam comida daqui à Toca. Quanto mais longe da Toca, mais paga (melhor entre 18 e 22 casas). O seu próprio chão (3.000 de biomassa) fica num círculo de 5 casas em volta dele; os círculos dos seus poços não podem se sobrepor.
 es Hasta 6 larvas llevan comida de aquí a la Madriguera. Cuanto más lejos de la Madriguera, más paga (lo mejor, de 18 a 22 casillas). Su propio suelo (3.000 de biomasa) está en un círculo de 5 casillas a su alrededor; los círculos de tus fosos no pueden solaparse.
 
-> Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.
-pt Corpos que caem por perto dão essência. SACRIFICAR criaturas da Ninhada aqui por essência.
-es Los cuerpos que caen cerca dan esencia. SACRIFICA aquí criaturas de la Nidada a cambio de esencia.
+> SACRIFICE Brood creatures here for essence (35% of their biomass cost).
+pt SACRIFICAR criaturas da Ninhada aqui por essência (35% do custo em biomassa).
+es SACRIFICA aquí criaturas de la Nidada a cambio de esencia (35% de su coste en biomasa).
 
 > Lets your Burrows hatch Skywings and Bloaters.
 pt Permite que suas Tocas chocem Asas-do-Céu e Inchadores.

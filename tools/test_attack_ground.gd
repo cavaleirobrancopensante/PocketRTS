@@ -1,6 +1,6 @@
 extends SceneTree
 ## FIRE AT A SPOT (BOMBARD, Ctrl+A; Defs.BOMBARD) and AREA SHOTS DESTROY BODIES (Defs.BODY_BLAST), the Brood's harvest at
-## 1.25 essence a supply (Defs.HARVEST), Shift-queueing, save/load and the online order:
+## 2 essence a supply (Defs.HARVEST), Shift-queueing, save/load and the online order:
 ##   godot --headless --fixed-fps 30 --script res://tools/test_attack_ground.gd
 var main: Node
 var t := 0.0
@@ -258,18 +258,18 @@ func _run() -> void:
 		check(not under.torn and g.corpses.has(under), "ordinary fire leaves the bodies alone (combat share 0: only BOMBARD tears them)")
 	g.consume_unit(victim)
 
-	# ---- 4. the essence a body gives (Defs.HARVEST per_supply 1.25)
-	check(is_equal_approx(g.corpse_value(mb), 1.25), "a Musketeer's body: 1.25 essence (%.2f)" % g.corpse_value(mb))
-	check(is_equal_approx(g.corpse_value(rb), 1.25), "a Raptor's: 1.25")
+	# ---- 4. the essence a body gives (Defs.HARVEST per_supply 2)
+	check(is_equal_approx(g.corpse_value(mb), 2.0), "a Musketeer's body: 2 essence (%.2f)" % g.corpse_value(mb))
+	check(is_equal_approx(g.corpse_value(rb), 2.0), "a Raptor's: 2")
 	var brute: Unit = await _body("brute", 1, b_spot + Vector2(0, 120))
 	var rider: Unit = g._add_unit("cuirassier", 0, b_spot + Vector2(80, 120))
 	await physics_frame
 	rider.take_damage(99999.0, null)
 	await wait(0.5)
-	check(is_equal_approx(g.corpse_value(brute), 3.75), "a Brute's: 3.75 (%.2f)" % g.corpse_value(brute))
-	check(is_equal_approx(g.corpse_value(rider), 5.0), "a Horseman with his horse: 5 (%.2f)" % g.corpse_value(rider))
+	check(is_equal_approx(g.corpse_value(brute), 6.0), "a Brute's: 6 (%.2f)" % g.corpse_value(brute))
+	check(is_equal_approx(g.corpse_value(rider), 8.0), "a Horseman with his horse: 8 (%.2f)" % g.corpse_value(rider))
 	check(Game.essence_text(1.25) == "1.25" and Game.essence_text(5.0) == "5" and Game.essence_text(2.5) == "2.5", "essence shown as 1.25, 5, 2.5")
-	# a grub carries one home: +1.25 essence at the capital
+	# a grub carries one home: +2 essence at the capital
 	var hive: Building = null
 	for b in g.buildings:
 		if b.team == 1 and b.kind == "hive" and not b.dead:
@@ -283,7 +283,7 @@ func _run() -> void:
 		gr.cmd_harvest()
 		var r0 := float(g.players[1]["res2"])
 		var got := await wait_for(func() -> bool: return float(g.players[1]["res2"]) > r0 + 0.01, 40.0)
-		check(got and is_equal_approx(float(g.players[1]["res2"]) - r0, 1.25), "a grub brings it home: +%.2f essence" % (float(g.players[1]["res2"]) - r0))
+		check(got and is_equal_approx(float(g.players[1]["res2"]) - r0, 2.0), "a grub brings it home: +%.2f essence" % (float(g.players[1]["res2"]) - r0))
 		g.consume_unit(gr)
 	else:
 		check(false, "the Brood's hall")

@@ -128,7 +128,7 @@ var patrol_a := Vector2.INF     # PATROL: the two ends he walks between (INF: no
 var patrol_b := Vector2.INF
 var friendly_kills := 0         # our own men his blows finished off (splash): just for the card
 var harvester: Unit = null      # (a body) the grub coming to take it
-var cocoon := 0.0               # (a grub) essence it carries home (Game.corpse_value: 1.25 a supply)
+var cocoon := 0.0               # (a grub) essence it carries home (Game.corpse_value: 2 a supply)
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # A Musketeer in a balloon's basket: its pose up there (gun_state[0], "idle"/"down"/"up") and
 # how long it has held it

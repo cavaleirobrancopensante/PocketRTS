@@ -2586,7 +2586,7 @@ func _draw_panel(font: Font) -> void:
 					int(round(Defs.battery_charge(blue, 0.0) * float(Defs.BATTERY["ore"]) * q)), int(Defs.BATTERY["fresh"]), int(round(float(bi["decay"]) * 100)),
 					" · ore spent: a quarter" if ol <= 0.0 else (" · ore running low" if ol < Defs.SOIL_LOW else "")]
 			elif bb.kind == "brood_pen":
-				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
+				info = "SACRIFICE Brood creatures here: %d%% of their biomass as essence (a Raptor: %d)." % [int(round(Defs.SACRIFICE * 100.0)), Game.sacrifice_value("raptor")]
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
 				var nxt := "" if bb.eggs >= bb.eggs_max() else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
 				info = "Eggs: %d / %d%s" % [bb.eggs, bb.eggs_max(), nxt]
