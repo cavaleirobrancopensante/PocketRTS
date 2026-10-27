@@ -405,9 +405,139 @@ crown-brood_058,0,crown,crown_proxy_horse,420,780,16,11,15,3040,9.2,0.0,12,1,"{"
 crown-brood_058,1,brood,brood_spitter_timing,180,75,3,13,37,937,0.0,0.0,6,1,"{""raptor"": 3}",m1
 crown-brood_058,1,brood,brood_spitter_timing,300,0,0,12,236,1611,80.0,0.0,6,1,{},m1
 crown-brood_058,1,brood,brood_spitter_timing,420,0,0,1,32,2007,80.0,0.0,6,1,{},m1
+crown-brood_059,0,brood,brood_economy,180,0,0,14,0,875,0.0,0.0,5,1,{},m1
+crown-brood_059,0,brood,brood_economy,300,325,13,17,56,1856,18.0,0.0,8,1,"{""raptor"": 13}",m1
+crown-brood_059,0,brood,brood_economy,420,0,0,18,65,2965,18.0,0.0,9,1,{},m1
+crown-brood_059,0,brood,brood_economy,600,480,16,38,37,5232,27.0,0.0,12,1,"{""raptor"": 12, ""spitter"": 4}",m1
+crown-brood_059,1,crown,crown_musket_wall,180,180,3,8,60,1140,79.1,0.0,7,1,"{""musketeer"": 3}",m1
+crown-brood_059,1,crown,crown_musket_wall,300,590,11,13,180,2280,137.9,0.0,10,1,"{""cannon"": 1, ""musketeer"": 7}",m1
+crown-brood_059,1,crown,crown_musket_wall,420,1265,23,17,85,3800,156.7,0.0,12,1,"{""cannon"": 1, ""mortar"": 1, ""musketeer"": 14, ""powder_wagon"": 1}",m1
+crown-brood_059,1,crown,crown_musket_wall,600,1665,29,35,10,7600,9.4,0.0,21,2,"{""cannon"": 1, ""cuirassier"": 1, ""missionary"": 1, ""mortar"": 1, ""musketeer"": 16, ""powder_wagon"": 1}",m1
 crown-brood_060,0,brood,brood_xrush,180,150,6,8,27,477,0.0,0.0,4,1,"{""raptor"": 6}",m1
 crown-brood_060,0,brood,brood_xrush,300,150,6,8,70,820,0.0,0.0,4,1,"{""raptor"": 6}",m1
 crown-brood_060,0,brood,brood_xrush,420,150,6,14,67,1292,0.0,0.0,5,1,"{""raptor"": 6}",m1
 crown-brood_060,1,crown,crown_dragoon_raid,180,0,0,10,0,760,107.0,0.0,8,1,{},m1
 crown-brood_060,1,crown,crown_dragoon_raid,300,80,0,3,30,1140,108.4,0.0,7,1,{},m1
 crown-brood_060,1,crown,crown_dragoon_raid,420,0,0,0,30,1140,114.2,0.0,5,1,{},m1
+crown-brood_061,0,crown,crown_cannon_push,180,180,3,8,410,1140,80.6,0.0,7,1,"{""musketeer"": 3}",m1
+crown-brood_061,0,crown,crown_cannon_push,300,510,9,12,30,1900,177.1,0.0,10,1,"{""cannon"": 1, ""musketeer"": 5}",m1
+crown-brood_061,0,crown,crown_cannon_push,420,1195,23,14,125,3420,161.5,0.0,13,1,"{""cannon"": 2, ""mortar"": 1, ""musketeer"": 10, ""powder_wagon"": 1}",m1
+crown-brood_061,1,brood,brood_air,180,0,0,9,17,842,0.0,0.0,6,1,{},m1
+crown-brood_061,1,brood,brood_air,300,275,11,13,14,1564,36.0,0.0,8,1,"{""raptor"": 11}",m1
+crown-brood_061,1,brood,brood_air,420,0,0,13,37,2287,22.0,0.0,7,1,{},m1
+crown-brood_062,0,brood,brood_brute_timing,180,0,0,13,189,939,0.0,0.0,6,1,{},m1
+crown-brood_062,0,brood,brood_brute_timing,300,0,0,13,40,1615,63.0,0.0,7,1,{},m1
+crown-brood_062,0,brood,brood_brute_timing,420,0,0,7,100,1900,87.0,0.0,3,0,{},m1
+crown-brood_062,1,crown,crown_balloon_drop,180,180,3,10,25,1140,79.6,0.0,6,1,"{""musketeer"": 3}",m1
+crown-brood_062,1,crown,crown_balloon_drop,300,545,9,12,175,1900,177.0,0.0,9,1,"{""balloon"": 1, ""musketeer"": 7}",m1
+crown-brood_062,1,crown,crown_balloon_drop,420,905,15,12,735,3040,255.4,0.0,10,1,"{""balloon"": 1, ""musketeer"": 13}",m1
+crown-brood_063,0,crown,crown_fast_expand,180,0,0,10,40,1140,13.6,0.0,8,2,{},m1
+crown-brood_063,0,crown,crown_fast_expand,300,300,5,22,20,2280,72.4,0.0,9,2,"{""musketeer"": 5}",m1
+crown-brood_063,0,crown,crown_fast_expand,420,1005,15,28,0,5320,0.1,0.0,20,2,"{""missionary"": 1, ""musketeer"": 14}",m1
+crown-brood_063,0,crown,crown_fast_expand,600,2745,57,40,774,11400,41.5,0.0,30,2,"{""balloon"": 1, ""cannon"": 1, ""cuirassier"": 2, ""dismounted"": 5, ""mortar"": 1, ""musketeer"": 27}",m1
+crown-brood_063,1,brood,brood_brute_timing,180,0,0,13,135,885,0.0,0.0,6,1,{},m1
+crown-brood_063,1,brood,brood_brute_timing,300,200,8,12,96,1721,63.0,0.0,8,1,"{""raptor"": 8}",m1
+crown-brood_063,1,brood,brood_brute_timing,420,375,9,15,40,2540,23.0,0.0,10,1,"{""brute"": 2, ""raptor"": 3}",m1
+crown-brood_063,1,brood,brood_brute_timing,600,180,4,20,42,4262,43.0,0.0,7,1,"{""spitter"": 4}",m1
+crown-brood_064,0,brood,brood_spitter_timing,180,0,0,13,71,896,0.0,0.0,6,1,{},m1
+crown-brood_064,0,brood,brood_spitter_timing,300,0,0,13,152,1452,83.0,0.0,6,1,{},m1
+crown-brood_064,0,brood,brood_spitter_timing,420,0,0,12,58,1933,145.0,0.0,6,1,{},m1
+crown-brood_064,0,brood,brood_spitter_timing,600,345,9,17,72,3247,139.0,0.0,9,1,"{""raptor"": 3, ""spitter"": 6}",m1
+crown-brood_064,1,crown,crown_proxy_horse,180,270,6,7,225,1140,0.0,0.0,7,1,"{""cuirassier"": 2}",m1
+crown-brood_064,1,crown,crown_proxy_horse,300,385,9,11,5,1900,40.5,0.0,9,1,"{""cuirassier"": 2, ""dismounted"": 1}",m1
+crown-brood_064,1,crown,crown_proxy_horse,420,490,9,9,15,3040,50.1,0.0,14,1,"{""cuirassier"": 2, ""musketeer"": 3}",m1
+crown-brood_064,1,crown,crown_proxy_horse,600,220,3,17,40,5320,64.5,0.0,18,2,"{""musketeer"": 3}",m1
+crown-brood_065,0,crown,crown_dragoon_raid,180,0,0,2,0,760,82.8,0.0,8,1,{},m1
+crown-brood_065,0,crown,crown_dragoon_raid,300,0,0,0,0,760,82.8,0.0,4,0,{},m1
+crown-brood_065,1,brood,brood_xrush,180,225,9,8,27,552,0.0,0.0,4,1,"{""raptor"": 9}",m1
+crown-brood_065,1,brood,brood_xrush,300,525,21,8,58,933,0.0,0.0,5,1,"{""raptor"": 21}",m1
+crown-brood_066,0,brood,brood_pool_eco,180,150,6,8,38,588,0.0,0.0,5,1,"{""raptor"": 6}",m1
+crown-brood_066,0,brood,brood_pool_eco,300,50,2,14,24,1274,0.0,0.0,7,1,"{""raptor"": 2}",m1
+crown-brood_066,0,brood,brood_pool_eco,420,305,9,20,50,2330,17.0,0.0,10,1,"{""raptor"": 5, ""spitter"": 4}",m1
+crown-brood_066,0,brood,brood_pool_eco,600,535,14,36,129,5664,36.0,0.0,16,2,"{""mist_toad"": 1, ""raptor"": 3, ""spitter"": 8}",m1
+crown-brood_066,0,brood,brood_pool_eco,900,1830,60,37,3,12168,25.0,0.0,22,2,"{""bloater"": 2, ""raptor"": 44, ""spitter"": 14}",m1
+crown-brood_066,1,crown,crown_musket_wall,180,180,3,8,30,760,80.8,0.0,7,1,"{""musketeer"": 3}",m1
+crown-brood_066,1,crown,crown_musket_wall,300,590,11,14,130,2280,139.5,0.0,10,1,"{""cannon"": 1, ""musketeer"": 7}",m1
+crown-brood_066,1,crown,crown_musket_wall,420,1265,23,18,15,3800,128.6,0.0,13,1,"{""cannon"": 1, ""mortar"": 1, ""musketeer"": 14, ""powder_wagon"": 1}",m1
+crown-brood_066,1,crown,crown_musket_wall,600,1685,30,33,0,7220,62.0,0.0,22,2,"{""cannon"": 1, ""mortar"": 1, ""musketeer"": 21, ""powder_wagon"": 1}",m1
+crown-brood_066,1,crown,crown_musket_wall,900,1400,24,40,15,15080,417.8,0.0,32,3,"{""cannon"": 1, ""musketeer"": 18, ""powder_wagon"": 1}",m1
+crown-brood_067,0,crown,crown_fast_expand,180,0,0,10,40,1140,14.9,0.0,8,2,{},m1
+crown-brood_067,0,crown,crown_fast_expand,300,300,5,21,240,2660,60.9,0.0,8,2,"{""musketeer"": 5}",m1
+crown-brood_067,0,crown,crown_fast_expand,420,840,14,28,0,4560,183.6,0.0,19,2,"{""musketeer"": 14}",m1
+crown-brood_067,0,crown,crown_fast_expand,600,2015,35,40,0,8740,333.4,0.0,25,2,"{""cuirassier"": 2, ""mortar"": 1, ""musketeer"": 26}",m1
+crown-brood_067,1,brood,brood_proxy_burrow,180,0,0,8,61,636,0.0,0.0,4,1,{},m1
+crown-brood_067,1,brood,brood_proxy_burrow,300,225,9,10,55,1080,0.0,0.0,5,2,"{""raptor"": 9}",m1
+crown-brood_067,1,brood,brood_proxy_burrow,420,375,15,13,25,1625,0.0,0.0,6,2,"{""raptor"": 15}",m1
+crown-brood_067,1,brood,brood_proxy_burrow,600,300,12,37,31,3606,18.0,0.0,11,2,"{""raptor"": 12}",m1
+crown-brood_068,0,brood,brood_economy,180,0,0,13,12,937,0.0,0.0,6,1,{},m1
+crown-brood_068,0,brood,brood_economy,300,0,0,17,27,1652,0.0,0.0,6,1,{},m1
+crown-brood_068,1,crown,crown_balloon_drop,180,240,4,10,25,1140,83.8,0.0,6,1,"{""musketeer"": 4}",m1
+crown-brood_068,1,crown,crown_balloon_drop,300,605,10,12,175,1900,182.2,0.0,9,1,"{""balloon"": 1, ""musketeer"": 8}",m1
+crown-brood_069,0,crown,crown_balloon_raid,180,240,4,10,25,1140,85.0,0.0,6,1,"{""musketeer"": 4}",m1
+crown-brood_069,0,crown,crown_balloon_raid,300,605,6,12,175,1900,183.3,0.0,9,1,"{""balloon"": 1, ""musketeer"": 4}",m1
+crown-brood_069,0,crown,crown_balloon_raid,420,1085,14,12,735,3040,261.7,0.0,10,1,"{""balloon"": 1, ""musketeer"": 12}",m1
+crown-brood_069,0,crown,crown_balloon_raid,600,1350,17,25,13,5700,179.3,0.0,20,2,"{""balloon"": 2, ""musketeer"": 13}",m1
+crown-brood_069,1,brood,brood_air,180,0,0,10,19,894,0.0,0.0,6,1,{},m1
+crown-brood_069,1,brood,brood_air,300,200,8,10,44,1644,30.0,0.0,8,1,"{""raptor"": 8}",m1
+crown-brood_069,1,brood,brood_air,420,525,19,13,28,2403,42.0,0.0,8,1,"{""bloater"": 2, ""raptor"": 17}",m1
+crown-brood_069,1,brood,brood_air,600,175,6,21,21,3821,40.0,0.0,10,1,"{""bloater"": 1, ""raptor"": 5}",m1
+crown-brood_070,0,brood,brood_economy,180,0,0,13,15,940,0.0,0.0,6,1,{},m1
+crown-brood_070,0,brood,brood_economy,300,325,13,16,6,1931,18.0,0.0,8,1,"{""raptor"": 13}",m1
+crown-brood_070,0,brood,brood_economy,420,0,0,16,15,3015,18.0,0.0,7,1,{},m1
+crown-brood_070,1,crown,crown_cannon_push,180,180,3,8,60,1140,79.7,0.0,7,1,"{""musketeer"": 3}",m1
+crown-brood_070,1,crown,crown_cannon_push,300,640,13,12,140,2280,157.4,0.0,10,1,"{""cannon"": 2, ""musketeer"": 5}",m1
+crown-brood_070,1,crown,crown_cannon_push,420,1195,23,13,45,3420,174.7,0.0,13,1,"{""cannon"": 2, ""mortar"": 1, ""musketeer"": 10, ""powder_wagon"": 1}",m1
+crown-brood_071,0,crown,crown_horse_rush,180,345,9,7,25,1140,0.0,0.0,7,1,"{""cuirassier"": 3}",m1
+crown-brood_071,0,crown,crown_horse_rush,300,690,18,8,40,2280,39.3,0.0,11,1,"{""cuirassier"": 6}",m1
+crown-brood_071,1,brood,brood_brute_timing,180,0,0,13,106,856,0.0,0.0,6,1,{},m1
+crown-brood_071,1,brood,brood_brute_timing,300,0,0,0,47,947,0.0,0.0,4,0,{},m1
+crown-brood_072,0,crown,crown_cannon_push,180,180,3,8,30,760,82.9,0.0,7,1,"{""musketeer"": 3}",m1
+crown-brood_072,0,crown,crown_cannon_push,300,340,5,13,140,2280,160.5,0.0,10,1,"{""musketeer"": 5}",m1
+crown-brood_072,0,crown,crown_cannon_push,420,1015,20,16,65,3420,163.5,0.0,13,1,"{""cannon"": 2, ""mortar"": 1, ""musketeer"": 7, ""powder_wagon"": 1}",m1
+crown-brood_072,1,brood,brood_air,180,0,0,10,24,899,0.0,0.0,6,1,{},m1
+crown-brood_072,1,brood,brood_air,300,250,10,13,25,1675,22.0,0.0,8,1,"{""raptor"": 10}",m1
+crown-brood_072,1,brood,brood_air,420,0,0,16,17,2457,17.0,0.0,7,1,{},m1
+crown-brood_073,0,brood,brood_proxy_burrow,180,0,0,8,332,557,0.0,0.0,4,1,{},m1
+crown-brood_073,0,brood,brood_proxy_burrow,300,75,3,3,44,919,10.0,0.0,5,1,"{""raptor"": 3}",m1
+crown-brood_073,0,brood,brood_proxy_burrow,420,75,3,0,10,935,10.0,0.0,5,1,"{""raptor"": 3}",m1
+crown-brood_073,0,brood,brood_proxy_burrow,600,0,0,0,10,935,10.0,0.0,4,1,{},m1
+crown-brood_073,1,crown,crown_balloon_raid,180,240,4,10,25,1140,89.9,0.0,6,1,"{""musketeer"": 4}",m1
+crown-brood_073,1,crown,crown_balloon_raid,300,545,5,12,210,1900,188.8,0.0,9,1,"{""balloon"": 1, ""musketeer"": 3}",m1
+crown-brood_073,1,crown,crown_balloon_raid,420,1025,13,12,770,3040,264.8,0.0,10,1,"{""balloon"": 1, ""musketeer"": 11}",m1
+crown-brood_073,1,crown,crown_balloon_raid,600,1800,27,20,9,5320,283.1,0.0,17,1,"{""balloon"": 2, ""cuirassier"": 1, ""mortar"": 1, ""musketeer"": 15, ""powder_wagon"": 1}",m1
+crown-brood_074,0,crown,crown_balloon_drop,180,180,3,9,71,1140,83.6,0.0,6,1,"{""musketeer"": 3}",m1
+crown-brood_074,0,crown,crown_balloon_drop,300,305,5,12,231,1900,184.4,0.0,9,1,"{""balloon"": 1, ""musketeer"": 3}",m1
+crown-brood_074,0,crown,crown_balloon_drop,420,365,6,12,891,3040,262.8,0.0,9,1,"{""balloon"": 1, ""musketeer"": 4}",m1
+crown-brood_074,0,crown,crown_balloon_drop,600,625,9,25,1,5700,213.3,0.0,19,2,"{""balloon"": 1, ""musketeer"": 7}",m1
+crown-brood_074,1,brood,brood_xrush,180,225,9,8,8,683,0.0,0.0,4,1,"{""raptor"": 9}",m1
+crown-brood_074,1,brood,brood_xrush,300,175,7,6,42,1142,12.0,0.0,5,1,"{""raptor"": 7}",m1
+crown-brood_074,1,brood,brood_xrush,420,0,0,10,25,1575,78.0,0.0,6,1,{},m1
+crown-brood_074,1,brood,brood_xrush,600,0,0,8,36,2286,131.0,0.0,5,1,{},m1
+crown-brood_075,0,brood,brood_pool_eco,180,125,5,8,5,605,0.0,0.0,5,1,"{""raptor"": 5}",m1
+crown-brood_075,0,brood,brood_pool_eco,300,0,0,0,40,690,0.0,0.0,3,1,{},m1
+crown-brood_075,1,crown,crown_proxy_horse,180,270,6,7,225,1140,0.0,0.0,7,1,"{""cuirassier"": 2}",m1
+crown-brood_075,1,crown,crown_proxy_horse,300,575,15,8,20,1900,37.2,0.0,9,1,"{""cuirassier"": 5}",m1
+crown-brood_076,0,crown,crown_musket_wall,180,180,3,8,60,1140,72.4,0.0,7,1,"{""musketeer"": 3}",m1
+crown-brood_076,0,crown,crown_musket_wall,300,530,10,12,390,2280,141.2,0.0,9,1,"{""cannon"": 1, ""musketeer"": 6}",m1
+crown-brood_076,0,crown,crown_musket_wall,420,925,18,17,310,3800,130.0,0.0,11,1,"{""cannon"": 1, ""mortar"": 1, ""musketeer"": 9, ""powder_wagon"": 1}",m1
+crown-brood_076,0,crown,crown_musket_wall,600,1085,21,29,14,6840,154.4,0.0,21,2,"{""balloon"": 1, ""cannon"": 1, ""cuirassier"": 1, ""mortar"": 1, ""musketeer"": 7, ""powder_wagon"": 1}",m1
+crown-brood_076,1,brood,brood_spitter_timing,180,0,0,13,38,863,0.0,0.0,6,1,{},m1
+crown-brood_076,1,brood,brood_spitter_timing,300,330,10,13,59,1629,39.0,0.0,8,1,"{""raptor"": 6, ""spitter"": 4}",m1
+crown-brood_076,1,brood,brood_spitter_timing,420,90,2,16,9,2384,29.0,0.0,8,1,"{""spitter"": 2}",m1
+crown-brood_076,1,brood,brood_spitter_timing,600,200,8,28,131,3756,109.0,0.0,10,1,"{""raptor"": 8}",m1
+crown-brood_077,0,brood,brood_brute_timing,180,0,0,13,186,936,0.0,0.0,6,1,{},m1
+crown-brood_077,0,brood,brood_brute_timing,300,0,0,0,42,1042,0.0,0.0,6,1,{},m1
+crown-brood_077,1,crown,crown_horse_rush,180,345,9,7,25,1140,0.0,0.0,7,1,"{""cuirassier"": 2, ""dismounted"": 1}",m1
+crown-brood_077,1,crown,crown_horse_rush,300,615,15,10,90,2280,42.6,0.0,9,1,"{""cuirassier"": 5}",m1
+crown-brood_079,0,brood,brood_proxy_burrow,180,0,0,8,264,489,0.0,0.0,4,1,{},m1
+crown-brood_079,0,brood,brood_proxy_burrow,300,50,2,9,4,829,2.0,0.0,4,1,"{""raptor"": 2}",m1
+crown-brood_079,0,brood,brood_proxy_burrow,420,0,0,7,27,1077,2.0,0.0,3,0,{},m1
+crown-brood_079,1,crown,crown_dragoon_raid,180,0,0,10,10,760,108.6,0.0,8,1,{},m1
+crown-brood_079,1,crown,crown_dragoon_raid,300,340,3,12,492,2280,127.3,0.0,9,1,"{""dragoon"": 1, ""musketeer"": 2}",m1
+crown-brood_079,1,crown,crown_dragoon_raid,420,800,8,15,12,3040,176.4,0.0,14,1,"{""musketeer"": 8}",m1
+crown-brood_080,0,crown,crown_proxy_horse,180,230,6,7,225,1140,0.0,0.0,7,1,"{""cuirassier"": 2}",m1
+crown-brood_080,0,crown,crown_proxy_horse,300,270,6,9,15,1900,35.9,0.0,9,1,"{""cuirassier"": 2}",m1
+crown-brood_080,0,crown,crown_proxy_horse,420,970,22,10,15,3040,35.5,0.0,12,1,"{""cuirassier"": 6, ""musketeer"": 4}",m1
+crown-brood_080,1,brood,brood_pool_eco,180,0,0,9,39,639,0.0,0.0,5,1,{},m1
+crown-brood_080,1,brood,brood_pool_eco,300,0,0,13,37,1162,51.0,0.0,5,1,{},m1
+crown-brood_080,1,brood,brood_pool_eco,420,0,0,0,24,1724,51.0,0.0,7,1,{},m1
