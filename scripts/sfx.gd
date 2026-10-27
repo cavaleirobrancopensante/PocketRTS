@@ -122,7 +122,7 @@ const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack":
 	"combat/ticking_owl_attack": 150, "combat/pendulum_attack": 150, "combat/winder_attack": 150, "combat/netter_hit": 200,
 	"combat/jack_jump": 150, "combat/jack_land": 150, "combat/jack_crouch": 150, "combat/owl_bomb": 200, "combat/owl_drop": 150,
 	"combat/clock_soldier_death": 150, "combat/jack_death": 200, "combat/cuckoo_death": 200, "combat/ticking_owl_death": 300,
-	"combat/pendulum_death": 400, "combat/netter_death": 250, "combat/winder_death": 200, "select/clocktower": 400,
+	"combat/pendulum_death": 400, "combat/netter_death": 250, "combat/ballista_attack": 150, "combat/ballista_hit": 150, "combat/ballista_crank": 1200, "combat/ballista_wound": 300, "combat/ballista_death": 400, "combat/winder_death": 200, "select/clocktower": 400,
 	"select/cog_press": 400, "select/mainspring": 400, "select/escapement": 400, "select/regulator": 400}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).

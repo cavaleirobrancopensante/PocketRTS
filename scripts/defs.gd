@@ -957,8 +957,8 @@ const UNITS := {
 	# TIER 2 (gear mode; Defs.BALLISTA, scripts/ballista.gd, docs/ballista.md): the SPRING BALLISTA, the owner's unit
 	# (2026-10-27): against ARMOUR and BUILDINGS. Guesses (design_principles 1): a heavy screw bolt, 45 damage (x1.75 on an
 	# armoured unit: 79; x2 on a building: 90), the bolt going on through the line behind its target (50% and 30%); a
-	# shot every 7.3 s alone (aim 0.3 + strike 0.35 + a 7 s reload, wound only while it stands), 6.2 a second, 10.8 on
-	# armour, 12.3 on buildings; with 4 more Winders cranking (each +10%) 5 s of winding: 8.5, 14.9 and 17 a second. Reach
+	# shot every 7.65 s alone (aim 0.3 + strike 0.35 + a 7 s reload, wound only while it stands), 5.9 a second, 10.3 on
+	# armour, 11.8 on buildings; with 4 more Winders cranking (each +10%) 5 s of winding: 8.0, 13.9 and 15.9 a second. Reach
 	# 300 (a Spore Mother's; the Crown Cannon 430, the Mortar 352, a Musketeer 190), and nothing under 64 px (min_range):
 	# weak up close. 210 hp + 1 armour, "armored" (iron and brass: round shot hurts it more). Slow: 34 (a towed gun 38),
 	# 47.6 with four Winders pushing. 150 cogs + 50 Tension, 3 supply (a Cannon 170 gold + a horse, 4 supply).

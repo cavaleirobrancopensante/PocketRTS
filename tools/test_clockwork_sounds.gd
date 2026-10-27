@@ -112,7 +112,7 @@ func _run() -> void:
 	await run(0.3)
 	# ---- the units: picked, sent off, told to attack
 	var at := base + Vector2(0, 260)
-	var kinds := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter"]
+	var kinds := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
 	var us := {}
 	for i in kinds.size():
 		var k: String = kinds[i]
@@ -133,19 +133,19 @@ func _run() -> void:
 	g.spawn_trained(built["movement_works"], "clock_soldier")
 	await run(0.3)
 	# ---- fights: each kind on its own against Crown Musketeers standing still (a balloon for the Swift), till it hits
-	for k in ["clock_soldier", "winder", "pendulum", "ticking_owl", "jack", "netter", "cuckoo"]:
+	for k in ["clock_soldier", "winder", "pendulum", "ticking_owl", "jack", "netter", "cuckoo", "ballista"]:
 		var u: Unit = us[k]
 		var target_kind := "balloon" if k == "cuckoo" else "musketeer"
-		var p: Vector2 = u.position + (Vector2(90, -30) if k == "cuckoo" else Vector2(0, 90 if k in ["jack", "netter"] else 30))
+		var p: Vector2 = u.position + (Vector2(90, -30) if k == "cuckoo" else Vector2(0, 160 if k == "ballista" else (90 if k in ["jack", "netter"] else 30)))
 		var f = foe(target_kind, p)
 		f.hp = 5000.0
 		u.cmd_attack(f)
 		g.camera.position = u.position          # (units animate only on screen)
-		for n in 16:
+		for n in (24 if k == "ballista" else 16):         # (the Ballista: a shot, its crew's crank, the spring wound home)
 			await run(0.5)
 			if u.order == "idle" and not u.dead:
 				u.cmd_attack(f)
-		print("  %s vs %s: it took %.0f damage" % [k, target_kind, 5000.0 - f.hp])
+		print("  %s vs %s: it took %.0f damage%s" % [k, target_kind, 5000.0 - f.hp, (" (%d bolts)" % u.bolts) if k == "ballista" else ""])
 		f.hp = 0.0
 		f.die()
 		await run(0.1)

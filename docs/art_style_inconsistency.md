@@ -237,3 +237,20 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - Placeholder command icons drawn in code (CwArt._ability_glyph "ab_shield", "research_shield": a brass disc with a boss,
   an arrow / a cap) until `assets/icons/clockwork/ab_shield.png` and `research_shield.png` are drawn (they drop in with no
   code: the HUD takes the files first).
+
+## Spring Ballista and its crew (code, 0.14.79; docs/ballista.md, tools/import_ballista.py)
+- The machine is ChatGPT's (art/redraws/ballista_dirs.png), cut and shrunk; the front view (S) is MIRRORED in code so the crank
+  sits on the machine's right in every view. Its idle and walk are the loaded frame, its "attack" the fired one: no motion.
+- DEATH made in code (assets/units/ballista/death_<view>.png, 4 frames): the fired frame squashed down onto its axles and
+  darkened, frame by frame. No painted death: ask ChatGPT for a 5-direction death sheet (the bow snapping, the cog wheels
+  coming off, the spring drum bursting) and drop the code frames.
+- The BOLT in flight (assets/effects/ballista_bolt.png) is cut from the concept (art/redraws/concepts/ballista_v1.png) with
+  its speed lines; its sparks are the Ratchet Turret's screw impact, not the concept's.
+- The crew's STEP BOB (push strips in e, se, ne: the legs barely move in the owner's sheets) is a 1 px dip of the sprite on
+  every other frame, in code (Ballista.crew_bob / Ballista.look). A ChatGPT push sheet with a real stride for those views
+  would replace it.
+- The BUILT-IN CREWMAN is the Winder's own push / crank strips drawn as a child sprite of the Ballista (Ballista.look), placed
+  in code behind or beside the machine; the extra crew are real Winders placed the same way.
+- The portrait (assets/icons/ballista.png) is the loaded SE view on the portrait ground in the steel frame (round 11's
+  framing), not a painted portrait; the CREW / BOARD button (assets/icons/clockwork/ab_crew.png) is the crank sheet's
+  Winder in the Clockwork's bronze frame. Both could be redrawn as painted icons.

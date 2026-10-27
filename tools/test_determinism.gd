@@ -1,7 +1,7 @@
 extends SceneTree
 ## How deterministic is the simulation? Two computers play each other on a fixed seed; the state
 ## hash is printed every 10 game seconds. Run it twice (separate processes) and diff the lines:
-##   godot --headless --fixed-fps 30 --script res://tools/test_determinism.gd [-- map:<id> seed:<n> secs:<n>]
+##   godot --headless --fixed-fps 30 --script res://tools/test_determinism.gd [-- map:<id> seed:<n> secs:<n> f0:<faction> f1:<faction>]
 ## Identical "HASH" lines = the same match every time (lockstep needs this).
 var main: Node
 var t := 0.0
@@ -9,6 +9,7 @@ var g
 var map := "hollowfen"
 var seed_ := 4242
 var secs := 180.0
+var facs := ["crown", "brood"]          # (f0:<faction> f1:<faction>: e.g. f0:clockwork f1:crown for the Clockwork's units)
 var next_at := 10.0
 
 
@@ -22,6 +23,10 @@ func _initialize() -> void:
 			seed_ = int(a.substr(5))
 		elif a.begins_with("secs:"):
 			secs = float(a.substr(5))
+		elif a.begins_with("f0:"):
+			facs[0] = a.substr(3)
+		elif a.begins_with("f1:"):
+			facs[1] = a.substr(3)
 
 
 func state_hash() -> int:
@@ -42,8 +47,8 @@ func _process(delta: float) -> bool:
 	if t > 0.2 and main.game == null:
 		seed(seed_)
 		main.start({"map": map, "seed": seed_, "slots": [
-			{"who": "hard", "faction": "crown", "colour": 0, "side": 0, "strategy": "balanced"},
-			{"who": "hard", "faction": "brood", "colour": 1, "side": 1, "strategy": "balanced"}]})
+			{"who": "hard", "faction": facs[0], "colour": 0, "side": 0, "strategy": "balanced"},
+			{"who": "hard", "faction": facs[1], "colour": 1, "side": 1, "strategy": "balanced"}]})
 		return false
 	if main.game == null:
 		return false

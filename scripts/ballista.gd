@@ -20,10 +20,11 @@ const KIND := Defs.BALLISTA_KIND
 ## Where the crew stand, from the machine's feet, by the way it faces (f, a unit vector) and its right (r = f turned a
 ## quarter clockwise on screen). The machine is long front to back and drawn foreshortened from above: an offset along a
 ## direction d is d.x * the across-screen size + d.y * the up-screen size ("ellipse": BACK, SIDE, ALONG).
-const BACK := Vector2(84.0, 46.0)        # behind the machine (the pushers' line)
-const SIDE := Vector2(46.0, 24.0)        # out to its right side (the crank is on its right, at the rear)
-const REAR := Vector2(40.0, 22.0)        # ... and that far back along it (the crank sits over the rear axle)
-const SPREAD := 15.0                     # px between two crewmen side by side
+const BACK := Vector2(98.0, 50.0)        # behind the machine (the pushers' line)
+const SIDE := Vector2(34.0, 20.0)        # toward its right side (the crank is on its right, at the rear)
+const REAR := Vector2(90.0, 44.0)        # behind it, where the crank and the spring drum are
+const SPREAD := 17.0                     # px between two crewmen side by side
+const STAGGER := 20.0                    # px every other crewman stands further back
 const STEP_BOB := ["e", "se", "ne"]      # views whose push frames barely step (the owner's sheets): a bob in code
 
 
@@ -55,6 +56,14 @@ static func room(b: Unit) -> int:
 static func wind(b: Unit, delta: float) -> void:
 	if b.velocity.length() < float(B["still"]) and b.stun_t <= 0.0:
 		b.cooldown = maxf(b.cooldown - delta * rate(b), 0.0)
+		if b.cooldown > 0.0:
+			# the crew's ratchet crank, a turn now and then while they wind (heard, not every tick)
+			var ct := float(b.get_meta("crank_t", 0.0)) - delta
+			if ct <= 0.0:
+				ct = 1.5
+				if b.visible and b.game.view_rect.has_point(b.position):
+					Sfx.play_any(["combat/ballista_crank", "work/winder_crank"], b.position, -8.0)
+			b.set_meta("crank_t", ct)
 	var was := b.loaded
 	b.loaded = b.cooldown <= 0.0 and b.phase != "strike"
 	if b.loaded and not was and b.visible and b.game.view_rect.has_point(b.position):
@@ -139,23 +148,21 @@ static func crew_job(b: Unit) -> String:
 
 
 ## Spot i of n crewmen (0 = the built-in one, then the boarded ones in order), from the machine's feet, for that job.
-## Pushers in a line across its back; crankers (and those standing by) in a file along its right side from the crank
-## back; the built-in man first in either.
+## Pushers in a line across its back; crankers behind it too, from its right rear corner (the crank sits on its right,
+## over the rear axle) across toward its left; the built-in man first in either.
 static func spot(b: Unit, i: int, n: int, job: String) -> Vector2:
 	var f := snap_face(b)
 	var r := Vector2(-f.y, f.x)
+	var stagger := _ell(-f, Vector2(STAGGER, STAGGER * 0.5)) * float(i % 2)     # (every other man a step further back: a crowd, not a fence)
 	if job == "push":
 		var t := (float(i) - float(n - 1) * 0.5) * SPREAD
-		return _ell(-f, BACK) + _ell(r, Vector2(1.0, 0.6)) * t
-	return _ell(r, SIDE) + _ell(-f, REAR) + _ell(-f, Vector2(1.0, 0.6)) * (float(i) * SPREAD - SPREAD)
+		return _ell(-f, BACK) + r * t + stagger
+	return _ell(-f, REAR) + _ell(r, SIDE) - r * (float(i) * SPREAD) + stagger
 
 
-## Which way a crewman faces for the job: pushers the way it goes, crankers toward the machine.
-static func spot_face(b: Unit, job: String) -> Vector2:
-	var f := snap_face(b)
-	if job == "push":
-		return f
-	return -Vector2(-f.y, f.x)
+## Which way a crewman faces: the way the machine faces (pushing it, or turning a crank on its back).
+static func spot_face(b: Unit, _job: String) -> Vector2:
+	return snap_face(b)
 
 
 ## A crewman, every tick, instead of his own orders: he stands in his spot by the machine (terrain and buildings still
@@ -269,8 +276,8 @@ static func fire_at(u: Unit, p: Vector2, dmg: float) -> void:
 
 ## The bolt: from the mouth through `aim` and on Defs.BALLISTA "line" px past it, hitting the enemies within "width" of the
 ## line in order (up to "hits": each takes dmg x its share, x vs_armored on an armoured unit, x building_bonus on a
-## building, which stops it). `first`: the target it was fired at, hit first even if it stands just off the line (it was
-## aimed at). Never its own side, never flyers. Returns the entities hit, in order (tests).
+## building, which stops it). `first`: the target it was fired at, on the line even if it stands just off it (it was
+## aimed at); what stands before it on the line is hit before it. Never its own side, never flyers. Returns the entities hit, in order (tests).
 static func line_shot(u: Unit, aim: Vector2, dmg: float, first: Entity) -> Array:
 	var g := u.game
 	var from := mouth(u)
@@ -295,10 +302,16 @@ static func line_shot(u: Unit, aim: Vector2, dmg: float, first: Entity) -> Array
 		var q := Geometry2D.get_closest_point_to_segment(c, u.position, to)
 		if bd.edge_distance(q) <= w:
 			found.append([(q - u.position).dot(dir) - bd.rect().size.length() * 0.25, bd])
+	if first != null and is_instance_valid(first) and not first.dead:
+		# (the target it was aimed at is on the line whatever its size; whatever stands before it is hit first: a
+		# wall or gate in the way stops the bolt short of the man behind it)
+		var fc: Vector2 = first.position if first is Unit else first.center()
+		var fd := (Geometry2D.get_closest_point_to_segment(fc, u.position, to) - u.position).dot(dir)
+		if first is Building:
+			fd -= first.rect().size.length() * 0.25
+		found.append([fd - 0.01, first])
 	found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	var order: Array = []
-	if first != null and is_instance_valid(first) and not first.dead:
-		order.append(first)
 	for f in found:
 		order.append(f[1])
 	var shares: Array = B["hits"]
@@ -315,11 +328,18 @@ static func line_shot(u: Unit, aim: Vector2, dmg: float, first: Entity) -> Array
 			amount *= float(B["vs_armored"])
 		e.take_damage(amount, u, Entity.BLOW_RANGED)
 		hit.append(e)
+		if hit.size() == 1 and g.view_rect.has_point(e.position if e is Unit else e.center()):
+			Sfx.play_any(["combat/ballista_hit", "gear_hit"], e.position if e is Unit else e.center(), -2.0)
 		var hp_at: Vector2 = Geometry2D.get_closest_point_to_segment(e.center() if e is Building else (e as Unit).center(), from, to)
-		if g.view_rect.has_point(hp_at):
-			var fx := g.spawn_effect("screw_impact" if ArtData.EFFECTS.has("screw_impact") else "hit", hp_at, 1.2)
-			fx.scale = Vector2(0.9, 0.9) * (1.0 if hit.size() == 1 else 0.7)
-			fx.z_index = 6
+		if g.view_rect.has_point(hp_at) and not (e is Building):
+			# sparks where it passes through him, as the bolt gets there (a picture: the damage landed already)
+			var sc := 0.9 if hit.size() == 1 else 0.65
+			var at_t := from.distance_to(hp_at) / float(B["speed"])
+			g.get_tree().create_timer(at_t).timeout.connect(func() -> void:
+				if is_instance_valid(g):
+					var fx := g.spawn_effect("screw_impact" if ArtData.EFFECTS.has("screw_impact") else "hit", hp_at, 1.2)
+					fx.scale = Vector2(sc, sc)
+					fx.z_index = 6)
 		if e is Building:
 			end = hp_at          # (it sticks in the building)
 			break
@@ -357,13 +377,24 @@ static func pick(u: Unit, r: float) -> Entity:
 		if s > bs:
 			bs = s
 			best = o
+	# walls and gates (and other buildings) in reach that the side can see
+	for bd in g.buildings:
+		if bd.dead or not g.hostile(bd.team, u.team) or not bd.is_building():
+			continue
+		var bdd: float = bd.edge_distance(u.position) - u.radius
+		if bdd > u._range() or bdd < min_r or not g.target_seen(u.team, bd, u.position):
+			continue
+		var s2 := _worth(u, bd)
+		if s2 > bs:
+			bs = s2
+			best = bd
 	return best
 
 
 static func _worth(u: Unit, e: Entity) -> float:
 	if e is Building:
 		var gate := e.kind == "gate" or e.kind == "wall"
-		return 2.2 if gate else 1.6
+		return 1.5 if gate else 0.9      # (a gate before a lone light man, after armour; other buildings last)
 	var o := e as Unit
 	var v := (2.0 if o.has_tag("armored") else 1.0) + (0.3 if o.has_attack() else 0.0)
 	if o.is_worker():
@@ -416,12 +447,13 @@ static func drive_by(u: Unit) -> void:
 ## Its line on the unit card.
 static func card_line(u: Unit) -> String:
 	var n := crew_of(u).size()
-	var crew := "Crew %d of %d (+%d%% reload and speed)" % [n + 1, int(B["crew"]) + 1, int(round(float(B["per_crew"]) * 100.0 * n))]
+	var c := [n + 1, int(B["crew"]) + 1, int(round(float(B["per_crew"]) * 100.0 * n))]
 	if u.loaded:
-		return "Loaded. " + crew
+		return "Loaded. Crew %d of %d (+%d%% reload and speed)." % c
+	var left := int(ceil(u.cooldown / rate(u)))
 	if u.velocity.length() >= float(B["still"]):
-		return "Winding stops while it moves (%d s left). %s" % [int(ceil(u.cooldown / rate(u))), crew]
-	return "Winding the spring: %d s. %s" % [int(ceil(u.cooldown / rate(u))), crew]
+		return "Winding stops while it moves (%d s left). Crew %d of %d (+%d%% reload and speed)." % ([left] + c)
+	return "Winding the spring: %d s. Crew %d of %d (+%d%% reload and speed)." % ([left] + c)
 
 
 # ------------------------------------------------------------------ the computer

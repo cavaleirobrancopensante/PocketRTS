@@ -55,6 +55,14 @@ The sounds could not be listened to. They were chosen by measuring them: loudnes
 | `voice/netter/select` (3 takes) | You pick a Netter. A crank cocks its spring cannon. | crank loop 0.12 to 0.48 lower / crank loop 1.78 to 2.14 lower / crank loop 3.25 to 3.55 lower + typewriter 19.00 to 19.18 |
 | `voice/netter/move` (3 takes) | You send a Netter. A crank click and its grind. | crank loop 5.02 to 5.32 + crank loop 0.55 to 0.85 / crank loop 0.12 to 0.36 higher + crank loop 2.15 to 2.45 / crank loop 3.25 to 3.49 + crank loop 3.65 to 3.95 |
 | `voice/netter/attack` (2 takes) | You order a Netter to attack. A crank, then the spring lets go. | crank loop 1.78 to 2.06 + spring scrape 0.08 to 0.53 / crank loop 5.02 to 5.30 + spring scrape 0.10 to 0.55 lower |
+| `voice/ballista/select` (3 takes) | You pick a Spring Ballista. A heavy, low ratchet (and the spring). | crank loop, lower; spring scrape, low |
+| `voice/ballista/move` (3 takes) | You send a Spring Ballista. A low ratchet and its grind. | crank loop, lower |
+| `voice/ballista/attack` (2 takes) | You order a Spring Ballista to attack. A ratchet, then the bow's spring. | crank loop + spring scrape, low |
+| `combat/ballista_attack` (2 takes) | A Ballista fires: the bow's spring twang with a heavy clang. | spring scrape, low + clang, low + wobble |
+| `combat/ballista_hit` (2 takes) | Its bolt strikes the first thing on the line: a thunk. | clang, low + metal crash |
+| `combat/ballista_crank` (2 takes) | Its crew crank the spring, now and then while it winds. | one crank turn, lower |
+| `combat/ballista_wound` | The spring is wound home: loaded. | crank loop clicks + clang |
+| `combat/ballista_death` (2 takes) | A Ballista is destroyed. | metal crash + spring + clatter |
 | `combat/clock_soldier_attack` (3 takes) | Each sword blow of a Clock Soldier. A bright clang. | clang group 0.07 to 0.47 lower / clang group 1.88 to 2.28 lower / clang group 2.75 to 3.15 lower |
 | `combat/clock_soldier_death` (2 takes) | A Clock Soldier dies. A crash, pieces rattling, a spring. | metallic noise 0.02 to 0.47 + metallic noise 0.62 to 1.52 + liquid wobble 0.76 to 1.11 / metallic noise 0.02 to 0.47 lower + metallic noise 1.30 to 2.10 + liquid wobble 1.63 to 1.98 |
 | `combat/jack_attack` (3 takes) | Each screw a Jack shoots. A fast ratchet spin. | crank loop 0.12 to 0.28 higher / crank loop 1.78 to 1.94 higher / crank loop 3.25 to 3.41 higher |

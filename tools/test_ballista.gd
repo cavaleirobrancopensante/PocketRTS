@@ -91,6 +91,9 @@ func _run() -> void:
 	check("never its own side in the line", friend.hp >= fhp)
 	check("it shows fired while it winds", not b.loaded and b._anim_name() == "attack", "%s %s" % [str(b.loaded), b._anim_name()])
 	_clear(g, line + [off, friend])
+	b.cmd_stop()
+	b.cooldown = 99.0          # (it holds its own fire: the shots below are fired by hand)
+	step(g, 0.2)
 	# ---- ARMOUR and BUILDINGS take more; a building stops the bolt
 	var gun: Unit = _foe(g, "cannon", at + Vector2(200, 0))
 	_tough(gun)
@@ -101,6 +104,7 @@ func _run() -> void:
 	var want := dmg * float(Defs.BALLISTA["vs_armored"])
 	check("an armoured unit (a Crown Cannon) takes x%.2f" % float(Defs.BALLISTA["vs_armored"]), absf(lost.call(gun) - (want - gun.armor)) < 2.0 and b.bolts == n0 + 1, "%.1f" % lost.call(gun))
 	_clear(g, [gun])
+	step(g, 0.2)
 	var wall_c := g.cell_of(at + Vector2(200, 0))
 	var gate: Building = g._add_building("gate", 1, wall_c, true)
 	var past: Unit = _foe(g, "musketeer", at + Vector2(280, 0))
@@ -109,6 +113,11 @@ func _run() -> void:
 	var hits := Ballista.line_shot(b, gate.center(), dmg, gate)
 	check("a gate takes the building bonus (x%.1f)" % float(Defs.UNITS[K]["building_bonus"]), ghp - gate.hp >= dmg * float(Defs.UNITS[K]["building_bonus"]) - gate.armor - 1.0, "%.1f" % (ghp - gate.hp))
 	check("the bolt sticks in it: the man behind is not hit", lost.call(past) < 0.5 and hits.size() == 1, "%d hit" % hits.size())
+	var php := past.hp
+	ghp = gate.hp
+	hits = Ballista.line_shot(b, past.position, dmg, past)
+	check("aimed at the man behind the gate, the bolt hits the gate and stops", gate.hp < ghp and past.hp >= php and hits.size() == 1 and hits[0] == gate,
+			str(hits.map(func(e) -> String: return e.kind)))
 	_clear(g, [past])
 	gate.queue_free()
 	g.buildings.erase(gate)
@@ -145,7 +154,7 @@ func _run() -> void:
 	var crew := Ballista.crew_of(b)
 	check("four Winders crew it (its room is 4)", crew.size() == 4, "%d" % crew.size())
 	check("the fifth one could not board", ws[4].crew_of == null and b.room() == 0)
-	check("the crew stay on the field, by it", crew.all(func(w: Unit) -> bool: return not w.off_field and w.visible and w.position.distance_to(b.position) < 110.0),
+	check("the crew stay on the field, by it", crew.all(func(w: Unit) -> bool: return not w.off_field and w.visible and w.position.distance_to(b.position) < 140.0),
 			str(crew.map(func(w: Unit) -> int: return int(w.position.distance_to(b.position)))))
 	check("they are not workers any more (the economy leaves them)", not g.workers(0).has(crew[0]))
 	check("its own crewman is drawn (a sprite, not a unit)", b.has_meta("own_crew") and (b.get_meta("own_crew") as Sprite2D).visible)
@@ -235,8 +244,9 @@ func _run() -> void:
 			break
 	check("it fires on the move at an enemy ahead (a MOVE order, still moving)", moved_fire and lost.call(ahead) > 0.0, "%d bolts, order %s" % [b.bolts - n1, b.order])
 	# the Ballista dies: its crew step off
+	b.cmd_stop()
 	g.load_order([ws[4]], [b])
-	step(g, 5.0)
+	step(g, 12.0)
 	var last: Unit = ws[4]
 	var on := last.crew_of == b
 	b.take_damage(10000.0, null)
