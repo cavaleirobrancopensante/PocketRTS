@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.92", "items": [
+		"A soldier right-clicking a horse gets on it (Musketeer to Dragoon, Officer to Horseman...). Now a message says so and how to lead it by the reins instead: press LEAD (Q). Labourers still lead a horse on a right-click.",
+	]},
 	{"v": "0.14.91", "items": [
 		"The Great Winder rolls on cog wheels instead of legs. Four brass cogs, the Clockwork's own wheel (as on the Spring Catapult and the Spring Ballista), turn as it moves, at just the speed it goes, and stand still while it mends or sweeps. When it is destroyed its wheels come off. Its speed is unchanged (27): it is still slow on purpose.",
 	]},

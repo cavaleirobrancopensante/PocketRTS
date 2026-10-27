@@ -869,6 +869,7 @@ const T := {
 	"That order can't be given online yet.": "Esa orden aún no se puede dar en línea.",
 	"That order can't be sent online.": "Esa orden no se puede enviar en línea.",
 	"Can't build that yet.": "Todavía no se puede construir eso.",
+	"Right-click mounts the horse. To lead it by the reins instead, press LEAD (Q).": "El clic derecho monta el caballo. Para llevarlo de las riendas, pulsa GUIAR (Q).",
 	"Labourer": "Peón",
 	"Mines gold and builds. Weak in a fight.": "Extrae oro y construye. Débil en combate.",
 	"Musketeer": "Mosquetero",

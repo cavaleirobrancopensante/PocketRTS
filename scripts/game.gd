@@ -10240,6 +10240,9 @@ func _horse_command(us: Array, e, p: Vector2, queued: bool) -> bool:
 		who.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(e.position) < b.position.distance_squared_to(e.position))
 		var u: Unit = who[0]
 		u.give({"o": "mount" if not mounts.is_empty() else "lead", "e": e}, queued)
+		# a soldier's right click mounts: say so, and how to lead instead (playtest 0.14.90)
+		if not mounts.is_empty() and u.can_lead() and u.team == human and hud and not demo:
+			hud.toast("Right-click mounts the horse. To lead it by the reins instead, press LEAD (Q).", false)
 		_ping(p, Color(0.9, 0.8, 0.5))
 		return true
 	if e is Unit and Defs.HARNESSED.has(e.kind) and e.team_room():

@@ -2810,3 +2810,7 @@ es Esa orden no se puede enviar en línea.
 > Can't build that yet.
 pt Ainda não dá para construir isso.
 es Todavía no se puede construir eso.
+
+> Right-click mounts the horse. To lead it by the reins instead, press LEAD (Q).
+pt O clique direito monta o cavalo. Para levá-lo pelas rédeas, aperte GUIAR (Q).
+es El clic derecho monta el caballo. Para llevarlo de las riendas, pulsa GUIAR (Q).
