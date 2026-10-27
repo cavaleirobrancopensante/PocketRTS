@@ -3293,6 +3293,8 @@ func _produce() -> void:
 		var netters: int = n_of.call(Defs.NETTER)
 		var soldiers: int = n_of.call("clock_soldier")
 		var others: int = soldiers + jacks
+		var bals: int = n_of.call(Defs.BALLISTA_KIND)
+		var bal_want := _ballista_want()
 		var cap_t := _tension_cap()
 		var flush: bool = cap_t > 0.0 and game.tension(team) >= cap_t * 0.6
 		# (the Works that may make Tension units first: one waiting for the cogs of a Jack stops the others spending them
@@ -3310,6 +3312,8 @@ func _produce() -> void:
 					keep += _research_keep        # (SHIELD WALL or HIGH LEAP is wanted: its Tension is kept)
 				if want_p and _tension_ok(w, Defs.PENDULUM, 0.0):
 					k = Defs.PENDULUM
+				elif bals < bal_want and others >= 3 and _tension_ok(w, Defs.BALLISTA_KIND, keep):
+					k = Defs.BALLISTA_KIND
 				elif army.size() >= 8 and netters < mini(3, others / 7) and (netters == 0 or jacks >= 4) and _tension_ok(w, Defs.NETTER, keep):
 					k = Defs.NETTER
 				elif (jacks * 3 < soldiers * 2 + 3 or flush) and _tension_ok(w, Defs.JACK, keep):
@@ -3324,6 +3328,8 @@ func _produce() -> void:
 					pends += 1
 				elif k == Defs.NETTER:
 					netters += 1
+				elif k == Defs.BALLISTA_KIND:
+					bals += 1
 				else:
 					soldiers += 1
 					others += 1
@@ -5047,7 +5053,7 @@ func _siege_orders(ground: Array) -> void:
 		var in_reach: bool = piece.edge_distance(u.position) - u.radius <= u._range() - 4.0
 		# the workers mending the piece first, then the shooters on the edge: a wall that is mended as fast as it is hit
 		# never falls (the owner, 2026-10-27: "the Jacks can focus down and kill the workers"); _siege_prey
-		if in_reach or u.position.distance_to(spot) < 40.0:
+		if (in_reach or u.position.distance_to(spot) < 40.0) and u.kind != Defs.BALLISTA_KIND:      # (the Ballista's bolt is for the gate)
 			var prey := _siege_prey(u, piece, aimed)
 			if prey != null:
 				aimed[prey] = int(aimed.get(prey, 0)) + 1
@@ -5354,6 +5360,7 @@ func _follow_with_escort(army: Array) -> void:
 			break
 		_escort.append(pick)
 	if gear:
+		_ballista_crew(army)
 		_escort_wind(army, c)
 		return
 	# run-down Wind-up Soldiers first: the escort cranks them back up
@@ -5386,7 +5393,8 @@ func _escort_want(army: Array) -> int:
 	if cons == 0:
 		return 0
 	var cap := mini(10, maxi(2, game.workers(team).size() / 3))
-	return clampi(2 + cons / 5, 2, cap)
+	var bal := army.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND).size()
+	return clampi(2 + cons / 5, 2, cap) + mini(bal, 2) * BALLISTA_CREW      # (+ the Ballistas' crew: _ballista_crew)
 
 
 ## Gear mode: each free escort Winder winds (cmd_repair: wind first, then mends) the construct that needs it most
@@ -5422,6 +5430,8 @@ func _escort_wind(army: Array, c: Vector2) -> void:
 	for u in _escort:
 		if u.order == "repair" and is_instance_valid(u.order_target) and not u.order_target.dead:
 			continue
+		if u.crew_of != null or u.order == "board":
+			continue          # (crewing a Spring Ballista, or on his way to: _ballista_crew)
 		var best: Unit = null
 		var bi := -1
 		var bd := INF
@@ -5439,6 +5449,47 @@ func _escort_wind(army: Array, c: Vector2) -> void:
 			continue
 		if u.position.distance_to(behind) > 120.0:
 			u.cmd_move(behind + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+
+
+## Gear mode, the SPRING BALLISTA (scripts/ballista.gd), kept small and in its own functions (the clockwork-ai rework
+## edits the rest): once its Escapement works, a couple of Ballistas with the army (_produce), more when the enemy shows
+## ARMOUR (armoured units seen now, remembered 120 s) or WALLS and GATES; they pick their own targets (armour, gates,
+## lines: Ballista.pick; _micro leaves them to it); the escort Winders crew them, BALLISTA_CREW each (the first two).
+const BALLISTA_CREW := 2
+var _armour_seen := 0
+var _armour_seen_t := -999.0
+
+
+func _ballista_want() -> int:
+	if not game.has_working(team, Defs.CW_TECH):
+		return 0
+	var n := 0
+	var walls := false
+	for u in game.units:
+		if not u.dead and not u.off_field and not u.is_air() and u.has_tag("armored") and game.hostile(u.team, team) \
+				and game.side_sees(team, u.position):
+			n += 1
+	if n > 0:
+		_armour_seen = maxi(n, _armour_seen if game.clock - _armour_seen_t < 120.0 else 0)
+		_armour_seen_t = game.clock
+	elif game.clock - _armour_seen_t > 120.0:
+		_armour_seen = 0
+	for b in game.buildings:
+		if (b.kind == "wall" or b.kind == "gate") and not b.dead and game.hostile(b.team, team) and game.side_sees(team, b.center()):
+			walls = true
+			break
+	return 1 + (1 if _armour_seen >= 2 or walls else 0) + (1 if _armour_seen >= 6 else 0)
+
+
+## The escort Winders crew the army's Ballistas (Ballista.ai_crew: the nearest free escort men, BALLISTA_CREW each).
+func _ballista_crew(army: Array) -> void:
+	var bs: Array = army.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND)
+	if bs.is_empty():
+		return
+	var sent := Ballista.ai_crew(bs, _escort, BALLISTA_CREW)
+	if not sent.is_empty() and game.mlog and not game._first_of.has("%d:ai_bal_crew" % team):
+		game._first_of["%d:ai_bal_crew" % team] = true
+		game.mlog.add("%s sends %d Winders to crew its Spring Ballista" % [game.mlog.who(team), sent.size()])
 
 
 ## An enemy (not a worker) within r of p.
@@ -6411,6 +6462,8 @@ func _micro() -> void:
 		if u.kind == Defs.NETTER:
 			_netter_aim(u)       # (its own pick, Netter.pick, but never a worker while a fighter is in reach)
 			continue
+		if u.kind == Defs.BALLISTA_KIND:
+			continue        # (its own pick: armour and gates, Ballista.pick)
 		if u.kind == Defs.PENDULUM and _pendulum_aim(u):
 			continue
 		if u.kind == "clock_soldier" and _patch_up(u):

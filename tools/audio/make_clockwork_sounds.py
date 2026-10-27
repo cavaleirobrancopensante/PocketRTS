@@ -148,6 +148,15 @@ SOUNDS = {
     "voice/netter/move_3": [ratchet(2, 0.24, pitch=1.0), ("crank", 3.65, 0.30, 0.20, 0.5, 1.0, 0.1)],
     "voice/netter/attack_1": [ratchet(1, 0.28, gain=0.8), ("spring", 0.08, 0.45, 0.24, 1.0, 1.0, 0.2)],
     "voice/netter/attack_2": [ratchet(3, 0.28, gain=0.8), ("spring", 0.10, 0.45, 0.24, 1.0, 0.9, 0.2)],
+    # the Spring Ballista: a heavy ratchet and a low spring (a big machine answering)
+    "voice/ballista/select_1": [ratchet(0, 0.36, pitch=0.75), ("spring", 0.08, 0.3, 0.2, 0.5, 0.6, 0.2)],
+    "voice/ballista/select_2": [ratchet(1, 0.36, pitch=0.7)],
+    "voice/ballista/select_3": [ratchet(3, 0.30, pitch=0.75), cl(4, 0.5, 0.3, at=0.28, gain=0.5)],
+    "voice/ballista/move_1": [ratchet(2, 0.30, pitch=0.8), ("crank", 0.55, 0.40, 0.25, 0.5, 0.8, 0.1)],
+    "voice/ballista/move_2": [ratchet(0, 0.26, pitch=0.85), ("crank", 2.15, 0.40, 0.20, 0.5, 0.8, 0.1)],
+    "voice/ballista/move_3": [ratchet(3, 0.26, pitch=0.8), ("crank", 3.65, 0.40, 0.20, 0.5, 0.8, 0.1)],
+    "voice/ballista/attack_1": [ratchet(1, 0.28, gain=0.8, pitch=0.8), ("spring", 0.08, 0.5, 0.22, 1.0, 0.7, 0.2)],
+    "voice/ballista/attack_2": [ratchet(3, 0.28, gain=0.8, pitch=0.8), ("spring", 0.10, 0.5, 0.22, 1.0, 0.65, 0.2)],
 
     # ================= COMBAT (assets/audio/combat/) =================
     # the Clock Soldier's clock-hand sword on brass: bright clangs, a little lower than recorded
@@ -201,6 +210,18 @@ SOUNDS = {
     "combat/netter_hit_2": [clatter(1.30, 0.7, at=0.0, gain=1.0, pitch=1.2), crash(1.4, 0.2, gain=0.4)],
     "combat/netter_death_1": [crash(0.85, 0.45), ("spring", 0.08, 0.6, 0.25, 0.6, 0.8, 0.3), clatter(0.62, 0.8, at=0.4, gain=0.45)],
     "combat/netter_death_2": [crash(0.9, 0.45), boing(3, 0.4, at=0.25, gain=0.6, pitch=0.85), clatter(1.4, 0.8, at=0.4, gain=0.45)],
+    # the Spring Ballista (scripts/ballista.gd): the bow's SPRING TWANG (the spring scrape, low) with a heavy clang; the
+    # bolt's THUNK where it strikes (a low clang over a crash); its spring wound home (a ratchet's last clicks); the
+    # crew's RATCHET CRANK while it winds (one crank turn, played by the cranking crew now and then); its death
+    "combat/ballista_attack_1": [("spring", 0.08, 0.55, 0.0, 1.0, 0.62, 0.25), cl(3, 0.55, 0.35, at=0.02, gain=0.6), boing(0, 0.3, at=0.05, gain=0.4, pitch=0.6)],
+    "combat/ballista_attack_2": [("spring", 0.10, 0.55, 0.0, 1.0, 0.58, 0.25), cl(6, 0.5, 0.35, at=0.02, gain=0.6), boing(2, 0.3, at=0.05, gain=0.4, pitch=0.55)],
+    "combat/ballista_hit_1": [cl(1, 0.45, 0.30, gain=1.0), crash(0.7, 0.25, at=0.0, gain=0.6)],
+    "combat/ballista_hit_2": [cl(5, 0.42, 0.30, gain=1.0), crash(0.75, 0.25, at=0.0, gain=0.6)],
+    "combat/ballista_wound_1": [ratchet(2, 0.26, pitch=0.85), cl(9, 0.7, 0.2, at=0.18, gain=0.5)],
+    "combat/ballista_crank_1": [("crank", CRANK[1], 1.40, 0.0, 1.0, 0.85, 0.25)],
+    "combat/ballista_crank_2": [("crank", CRANK[3], 1.30, 0.0, 1.0, 0.85, 0.25)],
+    "combat/ballista_death_1": [crash(0.7, 0.5), ("spring", 0.08, 0.8, 0.2, 0.6, 0.5, 0.4), clatter(0.62, 0.9, at=0.4, gain=0.5)],
+    "combat/ballista_death_2": [crash(0.75, 0.5), boing(1, 0.5, at=0.2, gain=0.6, pitch=0.5), clatter(1.4, 0.9, at=0.4, gain=0.5)],
     # the Winder: a wrench on brass, and his death
     "combat/winder_attack_1": [cl(10, 1.0, 0.30, gain=0.8), ratchet(0, 0.12, gain=0.5)],
     "combat/winder_attack_2": [cl(7, 1.05, 0.30, gain=0.8), ratchet(2, 0.12, gain=0.5)],

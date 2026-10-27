@@ -1,0 +1,87 @@
+# THE SPRING BALLISTA (gear mode's Clockwork tier 2, scripts/ballista.gd, docs/ballista.md): the owner's crewed bolt
+# thrower (2026-10-27). Name: "Balista de Mola" in Portuguese and "Balista de Resorte" in Spanish (the owner: Ballista =
+# "Balista" in both; the spring as the Springer's "Mola" / "Resorte").
+
+> Spring Ballista
+pt Balista de Mola
+es Balista de Resorte
+
+> A bolt thrower on cog wheels: its spring fires a giant screw in a straight line that goes THROUGH its target into one or two behind it. Hard on armoured units and buildings, poor against swarms of light units, and it cannot shoot anything closer than 2 tiles or in the air. No set-up: it fires as soon as it stops, and on the move at what is ahead of it, but the spring is wound again only while it stands (a slow reload). One Winder is built in; up to 4 more can BOARD it: each makes it reload and move 10% faster. They push it and crank it, and they can be shot. Made at the Movement Works once an Escapement works. Costs Tension.
+pt Um lançador de virotes sobre rodas dentadas: a sua mola dispara um parafuso gigante em linha reta que ATRAVESSA o alvo e acerta um ou dois atrás dele. Forte contra unidades blindadas e construções, fraco contra enxames de unidades leves, e não atira em nada a menos de 2 casas nem no ar. Sem montagem: dispara assim que para, e em movimento no que tem à frente, mas a mola só volta a ser enrolada enquanto está parado (recarga lenta). Um Enrolador vem embutido; até mais 4 podem EMBARCAR: cada um faz recarregar e andar 10% mais rápido. Eles empurram e giram a manivela, e podem ser alvejados. Feita na Oficina de Movimentos quando um Escape funciona. Custa Tensão.
+es Un lanzavirotes sobre ruedas dentadas: su resorte dispara un tornillo gigante en línea recta que ATRAVIESA su objetivo y alcanza a uno o dos detrás. Fuerte contra unidades blindadas y edificios, débil contra enjambres de unidades ligeras, y no dispara a nada a menos de 2 casillas ni al aire. Sin montaje: dispara en cuanto se detiene, y en marcha a lo que tiene delante, pero el resorte solo se vuelve a tensar mientras está parada (recarga lenta). Trae un Dador de cuerda incorporado; hasta 4 más pueden SUBIR: cada uno la hace recargar y moverse un 10% más rápido. La empujan y giran la manivela, y se les puede disparar. Se hace en el Taller de Movimientos cuando funciona un Escape. Cuesta Tensión.
+
+> The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Springers, Spring Ballistas, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.
+pt O quartel do Mecanismo: um longo salão que monta Soldados-Relógio numa linha suspensa, e Saltadores, Balistas de Mola, Lança-Redes e Pêndulos quando um Escape funciona e o anel de engrenagens de uma Mola Real engrena com o seu (custam Tensão; um Pêndulo só enquanto a Oficina gira na sua engrenagem GRANDE). Pesquisa MURALHA DE ESCUDOS (o ESCUDO À FRENTE dos Soldados-Relógio; também com Tensão). Precisa continuar ligada ao campo de engrenagens.
+es El cuartel del Mecanismo: una larga nave que monta Soldados Reloj en una línea colgante, y Saltadores, Balistas de Resorte, Lanzarredes y Péndulos cuando funciona un Escape y el anillo de engranajes de un Muelle Real engrana con el suyo (cuestan Tensión; un Péndulo solo mientras el Taller gira con su engranaje GRANDE). Investiga MURO DE ESCUDOS (el ESCUDO AL FRENTE de los Soldados Reloj; también con Tensión). Debe seguir enlazado al campo de engranajes.
+
+> LOAD CREW
+pt EMBARCAR EQUIPE
+es SUBIR DOTACIÓN
+
+> UNLOAD CREW
+pt DESEMBARCAR EQUIPE
+es BAJAR DOTACIÓN
+
+> Then tap Winders (4 at most): they crew the Spring Ballista, each +10% reload and move speed. Winders selected with it climb on at once.
+pt Depois toque em Enroladores (4 no máximo): eles tripulam a Balista de Mola, cada um +10% de recarga e de velocidade. Enroladores selecionados junto com ela embarcam na hora.
+es Luego toca Dadores de cuerda (4 como máximo): manejan la Balista de Resorte, cada uno +10% de recarga y de velocidad. Los seleccionados con ella suben enseguida.
+
+> Its crew step off where they stand (its own built-in Winder stays).
+pt A equipe desce onde está (o Enrolador embutido fica).
+es Su dotación baja donde está (el Dador de cuerda incorporado se queda).
+
+> These Winders crew your nearest Spring Ballista with room: they push it and crank it (each +10% reload and move speed), and can be shot.
+pt Estes Enroladores tripulam a sua Balista de Mola mais próxima com lugar: eles a empurram e giram a manivela (cada um +10% de recarga e de velocidade), e podem ser alvejados.
+es Estos Dadores de cuerda manejan tu Balista de Resorte más cercana con sitio: la empujan y giran la manivela (cada uno +10% de recarga y de velocidad), y se les puede disparar.
+
+> The Winders walk over and take their places: each pushes and cranks.
+pt Os Enroladores vão até ela e tomam os seus lugares: cada um empurra e gira a manivela.
+es Los Dadores de cuerda van hasta ella y ocupan sus puestos: cada uno empuja y gira la manivela.
+
+> Tap the Winders to take on as crew.
+pt Toque nos Enroladores para levar como equipe.
+es Toca los Dadores de cuerda que subirán como dotación.
+
+> The crew is full.
+pt A equipe está completa.
+es La dotación está completa.
+
+> No crew aboard (only its own man).
+pt Ninguém embarcado (só o seu próprio homem).
+es Nadie a bordo (solo su propio hombre).
+
+> They crew your nearest Spring Ballista.
+pt Eles tripulam a sua Balista de Mola mais próxima.
+es Manejan tu Balista de Resorte más cercana.
+
+> Every Ballista's crew is full.
+pt A equipe de todas as Balistas está completa.
+es La dotación de todas las Balistas está completa.
+
+> Only Winders crew a Spring Ballista.
+pt Só Enroladores tripulam uma Balista de Mola.
+es Solo los Dadores de cuerda manejan una Balista de Resorte.
+
+> The Ballista's crew is full (%d Winders and its own).
+pt A equipe da Balista está completa (%d Enroladores e o seu próprio).
+es La dotación de la Balista está completa (%d Dadores de cuerda y el suyo).
+
+> They can't reach the Ballista.
+pt Eles não conseguem chegar à Balista.
+es No pueden llegar a la Balista.
+
+> Loaded. Crew %d of %d (+%d%% reload and speed).
+pt Carregada. Equipe %d de %d (+%d%% de recarga e velocidade).
+es Cargada. Dotación %d de %d (+%d%% de recarga y velocidad).
+
+> Winding stops while it moves (%d s left). Crew %d of %d (+%d%% reload and speed).
+pt A mola não enrola enquanto ela anda (faltam %d s). Equipe %d de %d (+%d%% de recarga e velocidade).
+es El resorte no se tensa mientras avanza (quedan %d s). Dotación %d de %d (+%d%% de recarga y velocidad).
+
+> Winding the spring: %d s. Crew %d of %d (+%d%% reload and speed).
+pt Enrolando a mola: %d s. Equipe %d de %d (+%d%% de recarga e velocidade).
+es Tensando el resorte: %d s. Dotación %d de %d (+%d%% de recarga y velocidad).
+
+> crew %d
+pt equipe %d
+es dotación %d

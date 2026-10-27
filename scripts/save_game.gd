@@ -114,6 +114,10 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
 		if u.net_t > 0.0:
 			ud["net"] = snappedf(u.net_t, 0.01)      # (caught in a Netter's net)
+		if u.kind == Defs.BALLISTA_KIND and u.cooldown > 0.0:
+			ud["rl"] = snappedf(u.cooldown, 0.01)    # (a Spring Ballista's spring still being wound)
+		if u.crew_of != null and ids.has(u.crew_of):
+			ud["crew"] = ids[u.crew_of]              # (a Winder crewing a Spring Ballista: scripts/ballista.gd)
 		if u.coat != "":
 			ud["coat"] = u.coat
 		# horses: who leads it, where it grazes; riders and guns: their horse's health, a gun's
@@ -427,6 +431,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if u.net_t > 0.0:
 			u.stun_t = maxf(u.stun_t, u.net_t)      # (still caught: it stays put; a flyer is down on the ground)
 			u._low = 1.0 if u.d.get("air", false) else 0.0
+		if uk == Defs.BALLISTA_KIND:
+			u.cooldown = float(ud.get("rl", 0.0))
+			u.loaded = u.cooldown <= 0.0
 		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):
 			u.coat = String(ud["coat"])      # (older saves: the coat it was just given)
 			HorseCoat.apply(u)
@@ -546,6 +553,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		var si := int(ud.get("steed", -1))
 		if si >= 0 and si < made.size() and made[si] != null:
 			u.steed = made[si]
+		var ci := int(ud.get("crew", -1))
+		if ci >= 0 and ci < made.size() and made[ci] != null and made[ci].kind == Defs.BALLISTA_KIND:
+			Ballista.take_crew(made[ci], u)       # (back on the Spring Ballista he crewed)
 	for i in units_d.size():
 		var ud: Dictionary = units_d[i]
 		var u = made[i]
