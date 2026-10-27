@@ -392,6 +392,7 @@ const GEAR := {
 	# one works at the first share, each ring farther out at the next (the last one from there on). An idler is free.
 	"drive": [1.0, 0.9, 0.8, 0.7],
 	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
+	"pop": {"cog_press": 4.0, "mainspring": 6.0},     # seconds between the "+N" shown over a working press / spring (Building.pop_income)
 	"works_dt": 0.12,               # ... of the Movement Works' loop (while it trains)
 	"regulator_dt": 0.15,           # ... of the Regulator's pendulum (always, while built and linked)
 	"escapement_dt": 0.125,         # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring):

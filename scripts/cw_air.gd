@@ -227,6 +227,7 @@ static func drop_bomb(u: Unit, b: Building) -> OwlBomb:
 	bomb.team = u.team
 	bomb.shooter = u
 	g.add_child(bomb)
+	g.area_mark("ring", u.team, bomb.to, Vector2.ZERO, float(ob["radius"]), 0.0, "brass", bomb.duration, true)     # (where it will land)
 	u.bombs += 1
 	u.last_bomb = bomb
 	if g.net != null and not g.puppet:

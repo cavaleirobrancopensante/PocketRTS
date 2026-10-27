@@ -1119,6 +1119,7 @@ static func _storm(u: Unit, delta: float) -> void:
 
 static func raise_storm(game: Game, t: int, p: Vector2, owner: Unit, r: float, dps: float, secs: float) -> void:
 	game.cw_storms.append({"pos": p, "team": t, "r": r, "dps": dps, "t": secs, "age": 0.0, "bolt": 0.0, "owner": owner})
+	game.area_mark("oval", t, p, Vector2.ZERO, r, 0.0, "storm", secs, false, true)     # (its edge, while it lasts)
 	if game.cw_fx == null:
 		var n := Node2D.new()
 		n.z_index = 25

@@ -1681,6 +1681,8 @@ const T := {
 	"spent: it yields nothing, grow a new pit on fresh ground": "esgotado: não rende nada, crie um novo poço em chão fresco",
 	"A Feeding Pit's ground is spent: it yields nothing. Grow a new pit on fresh ground, outside the old circles.": "O chão de um Poço de Alimentação se esgotou: ele não rende nada. Crie um novo poço em chão fresco, fora dos círculos velhos.",
 	"A Feeding Pit's ground is running low (%d%% left): plan a new pit on fresh ground.": "O chão de um Poço de Alimentação está acabando (restam %d%%): planeje um novo poço em chão fresco.",
+	"AREA MARKS": "MARCAS DE ÁREA",
+	"+%d tension": "+%d de tensão",
 	"WHERE ARE YOU PLAYING?": "ONDE VOCÊ ESTÁ JOGANDO?",
 	"YOU CAN CHANGE THIS LATER IN SETTINGS.": "VOCÊ PODE MUDAR ISSO DEPOIS EM CONFIGURAÇÕES.",
 	"FITS MAP": "DO MAPA",

@@ -427,8 +427,8 @@ func _unloading(delta: float) -> void:
 	if cargo > 0.0:
 		game.add_gold_f(team, cargo)
 		rails.delivered[team] = float(rails.delivered.get(team, 0.0)) + cargo
+		game.own_float(team, position + Vector2(0, -34), "+%d" % int(round(cargo)), Color(0.95, 0.85, 0.4))
 		if team == game.human and not game.demo:
-			game.float_text(position + Vector2(0, -34), "+%d" % int(round(cargo)), Color(0.95, 0.85, 0.4))
 			Sfx.play_any(["done"], position)
 		cargo = 0.0
 	state = "idle"
