@@ -79,6 +79,7 @@ func _ready() -> void:
 
 ## A wave goes out: remember what it's worth, to judge it when it's over.
 func _wave_start(army: Array) -> void:
+	_trade.clear()
 	_wave_value = 0.0
 	for u in army:
 		_wave_value += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
@@ -639,7 +640,9 @@ func _tier2(t: float) -> void:
 	var esc := _mine(Defs.CW_TECH)
 	# (what comes next is saved up for: the army pauses once it holds the line, like for an economy building; a raid it
 	# can beat does not stop the saving: a Horseman at the door used to put the tech off for minutes, 2026-10-27)
-	var next := "mainspring" if springs.is_empty() else (Defs.CW_TECH if esc.is_empty() and springs.any(func(b: Building) -> bool: return b.built) else "")
+	# (the Escapement is laid as soon as its Mainspring's site is: it holds the room by the spring, which other buildings
+	# took in the minute the spring took to stand up; it works once the spring does)
+	var next := "mainspring" if springs.is_empty() else (Defs.CW_TECH if esc.is_empty() else "")
 	if next != "" and _gold() < int(Defs.BUILDINGS[next]["cost"]) + 20 and (_threat() == Vector2.INF or _holds_line()):
 		_reserve = maxi(_reserve, int(Defs.BUILDINGS[next]["cost"]) + 20)
 		_tech_hold = true
@@ -659,15 +662,20 @@ func _tier2(t: float) -> void:
 		if _gold() < int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20 or not game.requirement_met(team, Defs.CW_TECH):
 			return
 		for sp in springs:
-			if sp.built:
+			if not sp.dead:
 				var c := GearEcon.room_spot(game, team, Defs.CW_TECH, [sp], [Defs.CW_AIR])
 				if c.x < 0:
-					c = GearNet.ring_spot(game, team, Defs.CW_TECH, sp, 90.0, true)
+					c = GearEcon.room_spot(game, team, Defs.CW_TECH, [sp])
+				# (round the Mainspring every way: one cramped game never placed its Escapement, 0.14.72 Hollowfen)
+				for deg in [90.0, 270.0, 0.0, 180.0, 45.0, 135.0, 225.0, 315.0]:
+					if c.x >= 0:
+						break
+					c = GearNet.ring_spot(game, team, Defs.CW_TECH, sp, deg, true)
 				if c.x >= 0:
 					_construct(Defs.CW_TECH, c)
 					return
 		# (no room by its Mainspring: another Mainspring where there is room, then the Escapement by it)
-		if springs.size() < 2 and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]):
+		if springs.size() < 3 and not _busy_building("mainspring") and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]):
 			var ss := _spring_spot()
 			if ss.x >= 0:
 				_construct("mainspring", ss)
@@ -722,8 +730,10 @@ func _leap_research() -> void:
 	if not game.has_working(team, Defs.CW_TECH):
 		return
 	var jacks := game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
-	if jacks < 3 or not (_foe_walled() or _foe_high()):
+	if jacks < 5 or not (_foe_walled() or _foe_high()):
 		return
+	if not game.has_tech(team, ShieldWall.TECH) and _ranged_seen >= 3 and game.army(team).filter(func(u: Unit) -> bool: return u.kind == ShieldWall.KIND).size() >= 4:
+		return          # (SHIELD WALL first: cheaper, and every Clock Soldier walking up under fire needs it)
 	var info: Dictionary = Defs.RESEARCH["high_leap"]
 	_research_keep = maxf(_research_keep, float(Defs.tension_cost(info)) + 10.0)
 	_research_cogs(int(info["cost"]))
@@ -787,7 +797,8 @@ func _tier3() -> void:
 func _drive_spot(kind: String) -> Vector2i:
 	if not _clock() or not Defs.gear_mode or not GearEcon.uses_drive(kind) or kind == String(_f()["hall"]):
 		return Vector2i(-1, -1)
-	if kind == _works() and not _mine(_works()).any(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null):
+	# (and the next ones too, up to three that may make Jacks: one Works makes a Jack every 25 s, too few)
+	if kind == _works() and _mine(_works()).filter(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null).size() < 3:
 		for sp in _mine("mainspring"):
 			if sp.built:
 				var cs := GearEcon.room_spot(game, team, kind, [sp])
@@ -820,17 +831,25 @@ func _spring_spot(spare := false) -> Vector2i:
 	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built and game.gear_net.spring_for(b) == null)
 	var fall := Vector2i(-1, -1)
 	for w in works:
-		var r2: Array = GearEcon.room_spot_n(game, team, "mainspring", [w], [Defs.CW_TECH, Defs.CW_AIR])
+		# (room for the Escapement itself: a count of 1 over [Escapement, Aviary] was the Aviary's room in one game, and
+		# the Escapement never found a place, 0.14.72 Hollowfen)
+		var r2: Array = GearEcon.room_spot_n(game, team, "mainspring", [w], [Defs.CW_TECH])
 		if int(r2[1]) >= 1:
 			return r2[0]          # (beside a Works, room for the Escapement at least)
 	# no room by a Works: by a Clocktower, with room for the Escapement AND a Works that may make Jacks (_jack_works)
 	for h in _halls():
 		if h.built:
-			var r3: Array = GearEcon.room_spot_n(game, team, "mainspring", [h], [Defs.CW_TECH, _works(), Defs.CW_AIR])
+			var r3: Array = GearEcon.room_spot_n(game, team, "mainspring", [h], [Defs.CW_TECH, _works()])
 			if int(r3[1]) >= 2:
 				return r3[0]
-			if fall.x < 0 and int(r3[1]) >= 1:
-				fall = r3[0]
+			if fall.x < 0:
+				var r4: Array = GearEcon.room_spot_n(game, team, "mainspring", [h], [Defs.CW_TECH])
+				if int(r4[1]) >= 1:
+					fall = r4[0]
+	if fall.x < 0:
+		for h in _halls():
+			if h.built and fall.x < 0:
+				fall = GearEcon.room_spot(game, team, "mainspring", [h])
 	return fall
 
 
@@ -3624,6 +3643,8 @@ func _army() -> void:
 		_siege_tick(wave)
 		if not _attacking:
 			return
+		if _clock() and Defs.gear_mode and difficulty >= 1 and _losing_trade(wave):
+			return
 		# fresh units join only as a group: 2+ cavalry finishing a crippled enemy, or 6+ supply
 		var pool: Array = ready.filter(func(u: Unit) -> bool: return not _wave_set.has(u))
 		var finishing := _rush_wave and _rush_state == "succeeded" and _rush_mode == "finish"
@@ -4081,6 +4102,65 @@ func _fight_spot() -> Vector2:
 	return sum / n if n > 0 else Vector2.INF
 
 
+# ------------------------------------------------------------------ the trade (gear mode's Clockwork)
+
+## A wave that keeps losing far more than it kills pulls back, whatever the reason (Musketeers on a cliff it walks
+## under to reach an open target, a ground it cannot win): over the last TRADE_WINDOW s it lost more than TRADE_MIN of
+## value and more than TRADE_RATIO times what it killed. The spot it was going for is left be for TRADE_AVOID s
+## (_open_target skips it; a hall there is left like a walled one) and the next wave must be bigger. A siege the
+## simulation weighs up (_siege_plan) is left to that. (0.14.72-73 games: one attack ran for 13 minutes and lost 171
+## units for 70, a group of six walking in every half minute.)
+const TRADE_WINDOW := 30.0
+const TRADE_MIN := 300.0
+const TRADE_RATIO := 2.2
+const TRADE_AVOID := 150.0
+var _trade: Array = []          # [clock, value we killed, value we lost] samples while a wave is out
+var _bad_spots := {}            # Vector2 -> clock until which waves leave the spot be
+
+
+func _lost_value() -> float:
+	var v := 0.0
+	for t in game.enemies_of(team):
+		v += float(game.stats[t]["value_killed"])
+	return v
+
+
+func _losing_trade(wave: Array) -> bool:
+	if not _siege.is_empty() or siege_no_retreat:
+		return false
+	var now := game.clock
+	if _trade.is_empty() or now - float(_trade[-1][0]) >= 3.0:
+		_trade.append([now, float(game.stats[team]["value_killed"]), _lost_value()])
+	while _trade.size() > 1 and now - float(_trade[1][0]) >= TRADE_WINDOW:
+		_trade.pop_front()
+	if now - float(_trade[0][0]) < TRADE_WINDOW * 0.6:
+		return false
+	var killed: float = float(_trade[-1][1]) - float(_trade[0][1])
+	var lost: float = float(_trade[-1][2]) - float(_trade[0][2])
+	if lost < TRADE_MIN or lost < killed * TRADE_RATIO:
+		return false
+	var spot := _wave_target
+	_bad_spots[spot] = now + TRADE_AVOID
+	var hall := _hall_at(spot)
+	if hall:
+		_walled_halls[hall] = now + TRADE_AVOID
+	_open_t = -99.0          # (look for another target)
+	if game.mlog:
+		game.mlog.add("%s pulls its wave back: it lost %d for %d in %d s (it leaves that spot be for a while)" % [game.mlog.who(team), int(lost), int(killed), int(now - float(_trade[0][0]))])
+	var back := _home_spot(_front())
+	for u in wave:
+		if is_instance_valid(u) and not u.dead:
+			u.siege_t = 0.0
+			u.cmd_move(back + Vector2(randf_range(-70, 70), randf_range(-70, 70)))
+			u.wall_flee_t = 10.0
+	_trade.clear()
+	_attacking = false
+	_release_escort()
+	_wave_end()
+	_attack_at = maxi(_attack_at, mini(int(ceil(_wave_sup * 1.3)), _wave_sup + 30))
+	return true
+
+
 # ------------------------------------------------------------------ sieges (every faction)
 
 ## When the way to the wave's target is shut by an enemy wall or gate, the army decides as
@@ -4374,8 +4454,10 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 		if best.is_empty() or not best["ok"] or score < best["score"]:
 			best = r.merged({"ok": true, "piece": b, "score": score})
 	var who: String = game.mlog.who(team) if game.mlog else "AI"
+	var forced := false
 	if siege_no_retreat and not best.is_empty() and not best["ok"]:
 		best["ok"] = true                # (an experiment: it goes on whatever the odds)
+		forced = true
 	if best["ok"]:
 		var piece: Building = best["piece"]
 		if piece != cur:
@@ -4387,7 +4469,11 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 			_siege["stage"] = best["stage"]
 			_siege["flood"] = ours
 			_siege["inner"] = inner
-		_say("breach", "%s breaks in at a %s: down in ~%d s (%d dps on it) against %d dps of fire" % [who, String(piece.d["name"]).to_lower(), int(best["t"]), int(best["dps"]), int(best["inc"])])
+		if forced:
+			_say("forced", "%s would pull back from the %s (an experiment keeps it going): %s under %d dps of fire (%d dps on it, %d menders)" % [who, String(piece.d["name"]).to_lower(),
+				("down in ~%d s, too dear" % int(best["t"])) if best["breach"] else "it can't get through", int(best["inc"]), int(best["dps"]), int(best.get("menders", 0))])
+		else:
+			_say("breach", "%s breaks in at a %s: down in ~%d s (%d dps on it) against %d dps of fire, %d menders" % [who, String(piece.d["name"]).to_lower(), int(best["t"]), int(best["dps"]), int(best["inc"]), int(best.get("menders", 0))])
 		return true
 	# lost: pull back out of reach, gather more, and leave this hall be for a while
 	var b0: Building = best["piece"]
@@ -4726,7 +4812,7 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 	var win := breached and won and frac_left >= 0.25
 	# the reserve waits out of their muskets' reach, and out of sight of their guns if it can
 	var stage: Vector2 = _flood_point(flood, pc + out * clampf(maxf(reach + 70.0, minf(art_reach, seen_out) + 50.0), 130.0, 420.0), centre)
-	return {"win": win, "breach": breached, "t": t_breach, "left": frac_left, "dps": maxf(dps0, 0.0),
+	return {"win": win, "breach": breached, "t": t_breach, "left": frac_left, "dps": maxf(dps0, 0.0), "menders": rep_max,
 		"inc": single + spray * minf(cap + 2.0, 8.0), "cap": cap, "out": out, "stage": stage, "reach": art_reach, "mreach": reach, "splash": splash}
 
 
@@ -5521,6 +5607,8 @@ func _open_target(enemy: int) -> Vector2:
 			continue          # (part of the wall: the ramp Cottage)
 		if not _reach_b(b, flood):
 			continue
+		if _bad_spots.keys().any(func(p: Vector2) -> bool: return float(_bad_spots[p]) > game.clock and p.distance_to(bc) < 500.0):
+			continue          # (a wave just lost far more than it killed there: _losing_trade)
 		var score: float = bc.distance_to(me)
 		if b.kind == game.faction_hall(enemy):
 			score -= 600.0
