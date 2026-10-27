@@ -23,6 +23,10 @@ Ranked by how much fixing them would help the game, for the effort.
    jumping, dying and shooting up at a flyer, it still has the old claw on its left arm. So every step it takes swaps a
    launcher for a claw and back. It is the most seen Clockwork unit after the Clock Soldier. Needs four ChatGPT sheets
    (prompt A below). Picture: jack_walk_claw.png.
+   PARTLY FIXED in 0.14.59: the hop and the jump are now built in code from the two-launcher idle
+   (tools/jack_guide/hop_twin.py; fix_jack_hop_twin.gif, fix_jack_jump_twin.gif). A ChatGPT repaint of the hop was
+   tried first: four facings were right, but four up-right frames faced down-right and the foot plate drifted up to
+   9 px. Still to repaint: the death and the shot up at a flyer (prompt A, used on those two sheets).
 2. **The Jack slid about on its spring. FIXED.** Its idle's foot plate wandered up to 7 px from frame to frame (N view)
    and 6 px (SE). The two-launcher strips also stood 3 to 6 px off the anchor, so going from standing to hopping jumped
    it sideways. The importer took the drill tips for the spring. Now every frame stands on the anchor

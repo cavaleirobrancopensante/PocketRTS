@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.59", "items": [
+		"JACK: it keeps both drill launchers when it hops and jumps. Before, its left launcher turned back into the old claw every time it moved. The hop and the jump are now made from the same painting as its standing and shooting, so nothing changes shape between them. (Its death and its shot up at a flyer still show the claw until they are repainted.)",
+	]},
 	{"v": "0.14.58", "items": [
 		"CLOCKWORK MUSIC: ten new pieces, so the Clockwork has twenty, like the Crown. They share one short theme, the Clockwork's motif: a tick and a tock, then a note left hanging. A music box plays it plainly in the calm pieces, the machine repeats it and shifts it in the skirmishes, and the whole orchestra hammers it in the battles. Their percussion is made of real clocks, an old clock bell, metal clangs, a typewriter, a crank and a spring.",
 		"OPENING pieces (the first minutes of a match): The Great Escapement and Calibration. SKIRMISH pieces (a small fight): Tick, Tock, Alarm; The Watchful Gear; Pressure Rising. FULL BATTLE pieces (when the fight grows): Cathedral of Gears; Anvil Chorus of a Thousand Hands; The Grand Calculation. CALM pieces: The Clockmaker's Lament and Canon of Perfect Order. The calm Winding the Spring may now also open a Clockwork match. All of them are in the music player.",
