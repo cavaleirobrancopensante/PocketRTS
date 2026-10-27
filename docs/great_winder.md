@@ -158,6 +158,7 @@ The parts are on its card. Its card says: "Parts 37/100 · winds everything with
 The computer is the clockwork-ai job's to rewrite. These hooks are small and in their own functions.
 
 - `AI._great_winder_due`: once its Escapement works and the army has 4 soldiers, it makes ONE Great Winder.
+  It comes after the Pendulums, Ballistas and Netters the computer wants. Until then the escort Winders do the winding.
 - `AI._great_winder_follow`: the Great Winder walks to a spot just behind the army, toward home.
   It goes wherever the army goes: the rally, the attack. There its autocasts mend and sweep.
 - `AI._great_winder_escort`: the owner's point. The Great Winder takes the workers' place on the battlefield.
@@ -193,6 +194,20 @@ What to draw, if the owner wants it:
 - A MEND button: the key turning in a gear. A SWEEP button: the rollers with a cog flying into a hopper.
 - The arm sliding out and back in is in anim.py, but the game shows only the turning key.
   An "arm out" and "arm in" use could come back if the mending start and end need to read.
+
+## Pictures
+
+All in `docs/shots/great_winder/`, made by `tools/shot_great_winder.gd` in the Clockwork Lab.
+
+- `views.png`: the eight ways it faces. Top row S, SE, E, NE. Bottom row N and the mirrored west views.
+- `walking_with_the_army.png`: it walks behind Clock Soldiers and a Pendulum, selected. The brass ring is its winding area.
+- `walk.gif`: its four-legged walk, close up.
+- `run_down_inside_the_ring.png`: the soldiers run down, standing cold and dark like statues inside its ring.
+- `wound_up_again.png`: the same soldiers, wound up and lit again.
+- `mending_a_pendulum.png`: its key arm out, mending a hurt Pendulum.
+- `sweeping_a_wreck.png` and `sweep.gif`: its rollers sweeping a Clock Soldier's wreck after a fight.
+- `wrecks_swept_crown_bodies_left.png`: the Clockwork wrecks are gone. The Crown Musketeers' bodies are still lying there.
+- `card.png`: its card, with the parts: "Parts 34/100 · winds everything within 6 tiles."
 
 ## Reassembly, later
 
@@ -231,4 +246,12 @@ How the parts could be spent:
 
 ## Tests run on this branch
 
-The list is filled in at the end of the job.
+- `test_great_winder.gd`: all pass. Roster and training, the walk speed, winding inside and outside the ring,
+  mending (and MEND off, a right-click, cogs spent, no enemy mended), sweeping (own wrecks only, parts, the cap, SWEEP off),
+  a save, online, and the computer building one and walking it behind its army with a smaller escort.
+- `test_ballista.gd`, `test_ballista_ai.gd`, `test_files.gd`, `test_i18n.gd`, `test_anim_viewer.gd`, `test_west_views.gd`,
+  `test_gear_ai.gd`, `test_gear_save.gd`, `test_cw_tier3.gd`, `test_cw_tier3_ai.gd`, `test_cw_air.gd`, `test_attack_ground.gd`,
+  `test_replay.gd`: all pass.
+- `test_clockwork_sounds.gd` now hears the Great Winder pick, move, step, mend, sweep and die: all pass.
+- `test_determinism.gd` runs to the end (a whole match is still not the same twice on one seed, as on main).
+- `tools/test_online.sh`, plain and with a Clockwork host: host and guest all OK.
