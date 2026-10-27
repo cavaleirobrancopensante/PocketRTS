@@ -112,7 +112,7 @@ func _run() -> void:
 	await run(0.3)
 	# ---- the units: picked, sent off, told to attack
 	var at := base + Vector2(0, 260)
-	var kinds := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
+	var kinds := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista", "great_winder"]
 	var us := {}
 	for i in kinds.size():
 		var k: String = kinds[i]

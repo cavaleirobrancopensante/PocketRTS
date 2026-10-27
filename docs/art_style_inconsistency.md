@@ -255,3 +255,23 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - The portrait (assets/icons/ballista.png) is the owner's painted one (art/ui/icons3/portrait_ballista.png, in on main
   in 0.14.79), cut and framed by tools/import_ballista.py; the CREW / BOARD button (assets/icons/clockwork/ab_crew.png) is the crank sheet's
   Winder in the Clockwork's bronze frame (not painted as a button: it could be redrawn).
+
+## The Great Winder in the game (code, 0.14.81; docs/great_winder.md, tools/import_great_winder.py)
+- WALK, WIND and SWEEP are tools/great_winder_guide/anim.py's (its code edits are listed above). The importer lays anim.py's
+  layers together at SHEET size and RECOLOURS them there (tools/cw_palette.py, the general rule: the red bands and every
+  blue part become player colour; that takes the leg's blue hip and knee balls and the brush rollers' blue bristles too),
+  then shrinks once (anim.py's own PNGs shrink each layer apart, on navy, unrecoloured).
+- WIND in the game is anim.py's frames 2-9 only (the key out and turning, looped while it mends): the arm sliding out and
+  back in (frames 0-1, 10-11) is not shown; the arm appears out at once.
+- IDLE (2 frames) is MADE in code from anim.py's layers: the machine standing on its planted legs with the arm stowed, then
+  its body dipped 1 game px on the same legs (a slow breath at 2 fps). Not painted.
+- DEATH (5 frames) is MADE in code from the standing frame: it is squashed toward the ground (up to 34%), tipped up to 4
+  degrees and darkened (to 50%), the last frame the still wreck its side's sweepers come for. No painted wreck. A ChatGPT
+  wreck sheet (legs folded, the hopper spilled, the key snapped) would replace it.
+- The winding RING on the ground (GreatWinder.draw_area) is a code-drawn brass circle with 12 clock ticks, shown while it is
+  selected.
+- The MEND and SWEEP buttons (assets/icons/clockwork/ab_mend.png, ab_sweep.png) are ChatGPT's painted key and brush roller
+  (art/redraws/great_winder_key_rollers_chatgpt.png) cut out and put in the Clockwork's bronze frame by the importer: not
+  painted as buttons. A painted MEND (the key turning in a gear) and SWEEP (rollers with a cog flying into a hopper) could
+  replace them.
+- A swept wreck goes in the torn-body puff of dust (Game.torn_fx), not a painted sweep effect.
