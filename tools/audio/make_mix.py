@@ -7,8 +7,9 @@ import numpy as np
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 MUSIC_VOL = -8.0       # music.gd VOL
 LIMIT = 12.0           # never push a file more than this up or down
-# gentler on purpose (dB, added to the levelled gain): the grub is selected and sent off all game long
-OFFSET = {"voice/grub/select": -6.0, "voice/grub/move": -4.0, "voice/spitter/move": -2.0, "combat/grub_death": -3.0}
+# gentler on purpose (dB, added to the levelled gain): the grub is selected and sent off all game long;
+# the Breeder's neigh is a loud sound for a building you click often
+OFFSET = {"select/horse_breeder": -2.0, "voice/grub/select": -6.0, "voice/grub/move": -4.0, "voice/spitter/move": -2.0, "combat/grub_death": -3.0}
 
 def load(p):
     raw = subprocess.run(["ffmpeg", "-v", "quiet", "-i", p, "-f", "f32le", "-ac", "1", "-ar", "22050", "-"],

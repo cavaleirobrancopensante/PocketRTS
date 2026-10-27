@@ -936,7 +936,7 @@ func _build_card() -> Array:
 					page = ""
 					controls.begin_place(kk), why == "", why, _price_chip([int(d["cost"]), Defs.tension_cost(d)], Defs.tension_cost(d) > 0)])
 			if pages > 1:
-				list.append(["build", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
+				list.append(["more", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
 			list.append(["back", "BACK", func() -> void:
 				page = ""
 				build_page = 0, true, "", ""])
@@ -1077,7 +1077,7 @@ func _build_card() -> Array:
 			("Big gear: turns slow, more torque: a bigger ring and a bigger crew (a Cog Press takes 6 Winders), more cogs at full crew." if to_big
 				else "Small gear: turns fast, works faster per Winder, a smaller ring and a smaller crew (a Cog Press takes 3 Winders)."),
 			"%d cogs  ·  %d s" % [int(Defs.GEAR["swap_cost"]), int(Defs.GEAR["swap_time"])]]
-		list.append(["build", glab, func() -> void:
+		list.append(["ab_gear_big" if to_big else "ab_gear_small", glab, func() -> void:
 			var w := ""
 			for sb in game.selected_buildings():
 				if sb.team == game.human and game.gear_swap_problem(sb) == "":
@@ -1282,8 +1282,7 @@ func _auto_refit_button(list: Array, places: Array) -> void:
 		return
 	var on: bool = places.all(func(p) -> bool: return p.auto_refit)
 	_tip_for["AUTO REFIT"] = ["Auto refit (glowing = on)", "Idle soldiers within %d tiles of it get the upgrades researched that they lack, each paying the fee (if you can afford it)." % int(Defs.REFIT["auto"])]
-	var ic := "musketeer_armoured" if _icon("musketeer_armoured") else _research_icon("armour")
-	list.append([ic, ("~ " if on else "") + "AUTO REFIT", func() -> void:
+	list.append(["ab_auto_refit", ("~ " if on else "") + "AUTO REFIT", func() -> void:
 		for p in places:
 			if is_instance_valid(p) and not p.dead:
 				game.net_set(p, "auto_refit", not on)
@@ -1318,7 +1317,7 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 		controls.mode = "unload"
 		toast("Tap where to let them off (or DROP HERE)."), aboard > 0, "Nobody aboard.", count])
 	var low: bool = balloons.any(func(u: Unit) -> bool: return u.powder < u._pmax)
-	list.append(["ab_supply", "RESTOCK", func() -> void:
+	list.append(["ab_restock", "RESTOCK", func() -> void:
 		var sent := 0
 		for u in game.selected_units():
 			if u.kind == "balloon" and u.powder < u._pmax and u.cmd_restock():
@@ -1456,7 +1455,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var wings := units.filter(func(u: Unit) -> bool: return u.kind == "skywing")
 	if not wings.is_empty():
 		var flying: bool = wings.any(func(u: Unit) -> bool: return u.sky == "air" or u.sky == "to_land")
-		list.append(["ab_land", "LAND" if flying else "TAKE OFF", func() -> void:
+		list.append(["ab_land" if flying else "ab_take_off", "LAND" if flying else "TAKE OFF", func() -> void:
 			for u in game.selected_units():
 				if u.kind == "skywing":
 					if flying:
@@ -2224,7 +2223,8 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 		if Defs.gear_mode:
 			r2 = "%d/%d tension" % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, t))]       # (gear mode: TENSION, held / what the Mainsprings store)
 	var x1 := x
-	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
+	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0), false, false,
+		_icon("tension") if fac == "clockwork" and Defs.gear_mode else null)
 	var used := game.supply_used(t)
 	var cap: int = pl["cap"]
 	var x2 := x
@@ -3239,7 +3239,7 @@ func _paged(all: Array) -> Array:
 	var pages := int(ceil(all.size() / float(per)))
 	_card_page = clampi(_card_page, 0, pages - 1)
 	var out: Array = all.slice(_card_page * per, _card_page * per + per)
-	out.append(["build", "MORE", func() -> void: _card_page = (_card_page + 1) % pages, true, "", "%d/%d" % [_card_page + 1, pages]])
+	out.append(["more", "MORE", func() -> void: _card_page = (_card_page + 1) % pages, true, "", "%d/%d" % [_card_page + 1, pages]])
 	return out
 
 
@@ -3348,12 +3348,14 @@ func _autocast_glow(br: Rect2) -> void:
 
 
 ## A resource readout in the top bar; returns where the next one starts.
-func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := false, gear := false) -> float:
+func _pill(font: Font, x: float, dot: Color, value: String, col: Color, box := false, gear := false, pic: Texture2D = null) -> float:
 	var vw := font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
 	var w := 36.0 + vw + 14.0
 	var r := Rect2(x, 4, w, 30)
 	UiStyle.draw_panel(_ci, r, Color(0, 0, 0, 0), 0.8)
-	if gear:
+	if pic:
+		_ci.draw_texture_rect(pic, Rect2(x + 6, 7, 24, 24), false)      # (the Clockwork's TENSION: the wound mainspring)
+	elif gear:
 		# the Clockwork's COGS: a small gear drawn in code (placeholder resource icon: docs/art_style_inconsistency.md)
 		_ci.draw_set_transform(Vector2(x + 18, 19), 0.0, Vector2.ONE)
 		GearNet.draw_gear(_ci, 9, 9.0, Color(0.93, 0.8, 0.46), Color(0.2, 0.13, 0.06), Color(0, 0, 0, 0), 0.95)

@@ -1,0 +1,9 @@
+Clockwork sound sources, sent by the owner on 2026-10-27 (Pixabay downloads, Pixabay Content License):
+liquid_wobble.mp3        freesound_community - liquid-wobble (95799)
+metal_spring_scrape.mp3  freesound_community - metal_spring_scrape_resonance (108297)
+metallic_noise.mp3       magiaz - noise_of_metallic (492842)
+clang_group.mp3          freesound_community - clang-group-1 (73523)
+old_clock_bell.mp3       freesound_community - old-clock-bell (27265)
+alarm_clock.mp3          alban_gogh - ticking-and-ringing-of-an-old-spring-alarm-clock-sound-effect (338285)
+typewriter.mp3           patolenin - original-old-typewriter-sound (394606)
+turn_crank_loop.mp3      freesound_community - turn-crank_old_metal_machine_loop (101356)

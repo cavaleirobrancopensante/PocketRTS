@@ -114,7 +114,7 @@ const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack":
 	"combat/cuirassier_death": 150, "horse/whinny": 6000, "horse/neigh": 2500, "voice/crown_recruit/horse_breeder": 2500, "voice/crown_bugle/move": 9000, "voice/crown_bugle/amove": 7000,
 	"voice/crown_bugle/charge": 7000, "voice/crown_bugle/patrol": 9000, "voice/crown_bugle/trained": 6000,
 	"voice/crown_recruit/town_hall": 2500, "voice/crown_recruit/barracks": 2500, "voice/crown_recruit/foundry": 2500,
-	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
+	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "select/horse_breeder": 1500, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).
 const JITTER := {"combat/musketeer_attack": 0.04, "combat/cannon_attack": 0.04,
