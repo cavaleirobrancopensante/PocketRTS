@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.90", "items": [
+		"FIX: a Gate laid over part of a planned palisade now replaces only that piece (its price comes back); the rest of the wall stays planned and its Labourers carry on with it. Before, the whole planned wall, and the gate, could vanish. Over a wall being built or a built wall, the gate still takes just that one piece.",
+		"FIX: a drag let go over the buttons or the minimap now ends there. The right-drag line no longer keeps following the mouse after its button is up (and the same for the box select, the middle-button map drag and a finger lifted over a button).",
+		"CLOCKWORK COMPUTER: it no longer sends a Clocktower into your base. A new Clocktower goes only on its own side of the map, never nearer your halls, your main or your natural expansion than its own main; and where it lost a Clocktower or its crate, it does not try that ground again for four minutes.",
+	]},
 	{"v": "0.14.89", "items": [
 		"FIX: a man getting on or off his horse, and a gun limbering or unlimbering, stays selected and in its control groups, and you can click or box-select it all the while (a click on him getting on picked the hidden horse). An order you give meanwhile waits: he finishes getting on (or off), then carries it out, and Shift-queued orders follow it.",
 		"FIX: Shift + PATROL now queues the patrol: a unit on the move finishes the move, then patrols between where it ended and the point you clicked (it used to drop the move). The PATROL mode stays on while Shift is held, and the planned patrol shows from the end of its orders.",
