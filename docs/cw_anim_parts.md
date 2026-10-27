@@ -156,3 +156,26 @@ machine (camera above and behind, as in the N row), in 4 poses side by side, the
 4. tipped 70 degrees away: the bowl's underside toward us, a round dome with its rivets in rings, the rim hidden.
 Light from the top left, as in the attached sheets. No beam, no machine, no text, nothing touching.
 ```
+
+### Second pass (branch catapult-facing-2, 2026-10-27)
+
+The owner on the first pass: the S wheels are right, but in NE and N the first frames still showed the cup's open
+mouth (the hole), so the arm read as facing us instead of the enemy. Compare GIF (last pass on top, new below, THROW
+then MOVE twice): art/redraws/catapult_facing2_compare.gif.
+
+- N and NE now show the BACK of the cup (ChatGPT's cup from below: the riveted outside of the bowl, the rim a thin
+  line at the top) in EVERY frame of THROW and MOVE: the loaded pose (frames 0, 1 and 11), the rising frame (2), and
+  MOVE's loaded arm. The inside of the cup is never shown there.
+- While the arm is cocked back toward us, the cup keeps the tilt it has at N_BACK_T (100 deg) on its joint instead
+  of following the beam back: its mouth stays toward the enemy. The arm's positions and timing are unchanged.
+- Loaded: the curled soldier sits behind the cup's back, its top half (PEEK 0.5 of its height) showing over the far
+  rim, so the cup reads as loaded; in frame 11 it drops in from above behind the rim.
+- Release: the flying soldier is drawn BEHIND the back cup while the cup is on screen, so it leaves over the far rim
+  (the mouth side, away from us), not in front of the bowl. catapult_cup.json: the N/NE cup middles of the loaded
+  and wind-back frames moved (the back cup's middle), the rest are the same; n_fly / ne_fly moved 1-4 px.
+- S, SE and E are pixel for pixel as before (checked); so are N/NE frames 5-8. The cell is held at 158x141, anchor
+  (79, 139) (KEEP_CELL: a different cell would resample every row).
+
+Still rough: the peeking soldier is small at game scale (about 4 px of it shows); the loaded N cup sits over the
+drum's top, as the painted loaded cup did. The cup-from-below is the one painted pose for every angle, so between
+the loaded tilt and vertical it does not turn in depth (the ChatGPT request above would give in-between poses).
