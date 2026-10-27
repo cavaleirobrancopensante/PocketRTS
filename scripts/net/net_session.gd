@@ -162,6 +162,9 @@ func play_fx(list: Array) -> void:
 		if f[0] == "c":
 			game.torn_at(p)          # a body the host's shell tore up (Game.tear_body): gone here too, seen or not
 			continue
+		if f[0] == "h":
+			game.body_health_at(p, float(f[3]))     # a body the host's men hit (Game.hit_body): its health here too
+			continue
 		if not game.view_rect.has_point(p):
 			continue
 		if f[0] == "e":

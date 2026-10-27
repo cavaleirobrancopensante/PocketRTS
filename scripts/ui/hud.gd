@@ -887,11 +887,10 @@ func _build_card() -> Array:
 		list.append(["stop", "STOP", func() -> void: game.command_all(game.selected_units(), "stop"), true, "", ""])
 		if not units.all(func(u: Unit) -> bool: return u.is_worker() or u.kind == "horse"):
 			list.append(["patrol", "PATROL", func() -> void: controls.mode = "patrol", true, "", ""])
-		if units.any(func(u: Unit) -> bool: return u.can_bombard()):
-			# BOMBARD (Ctrl+A): fire at a spot until another order (Defs.BOMBARD); the Brood's is the Spore Mother's
-			if game.faction_of(game.human) == "brood":
-				_tip_for["BOMBARD"] = ["Bombard", "Then pick a spot on the ground (in the fog too): the Spore Mothers walk into range, root and keep lobbing spit blobs at it until you give another order. Spit does not tear up bodies."]
-			list.append(["ab_bombard", "BOMBARD", func() -> void: controls.begin_bombard(), true, "", ""])
+		if units.any(func(u: Unit) -> bool: return u.can_ground_attack()):
+			# ATTACK GROUND (Ctrl+A): attack a spot, or a dragged line, until another order (Defs.BOMBARD, Defs.GROUND)
+			_tip_for["ATTACK GROUND"] = ["Attack ground", CMD_TIPS["ATTACK GROUND"]]
+			list.append(["ab_bombard", "ATTACK GROUND", func() -> void: controls.begin_bombard(), true, "", ""])
 		if has_lab:
 			# workers don't need HOLD: two build pages instead, basic and advanced
 			list.append(["build", "BUILD", func() -> void:
@@ -1454,7 +1453,7 @@ const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A
 	"tin_militia": "A", "scrapper": "D", "rail_rifleman": "F", "work_car": "S", "plate_wagon": "A", "heavy_loco": "D", "carrier_car": "F", "tesla_loco": "G", "storm_engine": "B"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 ## Commands on a Ctrl key (computer): the hint shows it, and they take no letter (A stays ATTACK).
-const CTRL_KEYS := {"BOMBARD": "^A"}
+const CTRL_KEYS := {"ATTACK GROUND": "^A"}
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -2140,7 +2139,7 @@ func _draw_rest(font: Font) -> void:
 		_ci.draw_rect(br, Color(0.4, 1, 0.4, 0.8), false, 1.5)
 	if controls.mode in ["move", "attack", "rally", "rally_army", "rally_worker", "cast", "bombard"]:
 		var t: String = {"move": "Tap where to move", "attack": "Tap a target or place to attack-move", "rally": "Tap the rally point",
-			"bombard": "Tap the spot to bombard: they keep firing at it until another order",
+			"bombard": "Tap the spot to attack, or drag a line to share out: they keep at it until another order",
 			"cast": "Tap the enemy to lash with the tongue" if controls.cast_spell == "tongue" else ("Tap where to JUMP (up to 5 tiles; up a cliff only with HIGH LEAP, where you can see)" if controls.cast_spell == "jump" else "Tap where to cast the %s" % {"storm": "storm (it stuns your own units too)",
 				"fog": "fog (shots from or into it miss half the time, yours too)"}.get(controls.cast_spell, "healing miasma")),
 			"rally_army": "Tap where new soldiers gather", "rally_worker": "Tap a Feeding Pit (or a spot) for new grubs"}[controls.mode]
@@ -3153,7 +3152,7 @@ const CMD_TIPS := {
 	"UNLOAD": "Then pick where to drop them: the balloon flies there and lets everyone off.",
 	"DROP HERE": "Let everyone off right below the balloon.",
 	"RESTOCK": "Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 40-shot store is full.",
-	"BOMBARD": "Then pick a spot on the ground (in the fog too): the cannons and mortars set up in range and keep firing at it until you give another order, as long as their shot lasts. Shells, round shot and canister tear up the bodies where they land: the Brood can't harvest them, a Missionary can't raise them (yours too).",
+	"ATTACK GROUND": "Then click a spot on the ground (in the fog too), or hold and drag a line to share it out among them: they keep attacking it until you give another order. Bodies have health and rot, faster the longer they lie; hitting them speeds that up, and a body brought to 0 is torn up: the Brood can't harvest it, a Missionary can't raise it (yours too). Guns, mortars and Spore Mothers blast them; shooters shoot along the line; melee units and workers walk up and strike them (workers slowly).",
 }
 
 func _cost_text(a: int, b: int) -> String:

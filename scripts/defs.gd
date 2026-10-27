@@ -1571,7 +1571,25 @@ const HORSE_REGEN := 0.5          # hp a second: horses heal by themselves (they
 ## per_supply: essence a harvested body gives for each point of its supply (a float: Game.corpse_value; was 1, raised to
 ## 1.25 when area shots began to tear bodies up, Defs.BODY_BLAST, and to 2 in 0.14.40 when the Brood Pen stopped taking the
 ## bodies that fell near it: a Musketeer 2, a Brute 6, a Horseman with his horse 8), plus 1 for each kill it made.
-const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 2.0}
+## take: the seconds a grub takes to wrap a Musketeer-sized body (`ref` health); bigger bodies take a little longer, x the
+## square root of their health over `ref`, from `take_min` to `take_max` (Game.harvest_time: a Raptor 0.9 s, a Brute 2.2).
+const HARVEST := {"range": 10, "take": 1.2, "per_supply": 2.0, "ref": 70.0, "take_min": 0.8, "take_max": 3.0}
+## BODIES ROT (owner, 2026-10-27): a body has the health its unit had in life (a rider's adds his horse's: it lies with him)
+## and loses it at one speed for every body, `base` health a second, which doubles every `double` seconds it has lain
+## (smoothly: base x 2^(seconds since death / double)). At 0 it is gone. Damage (ground attack, Defs.GROUND, and area shots
+## fired at the ground, Defs.BODY_BLAST) takes health off too; a body brought to 0 by damage is torn up (no harvest, no
+## raising). base 0.2696: an untouched Musketeer's body (70) lies 2:00, a Raptor's (36) 1:21, a Brute's (240) 3:30, a
+## Horseman's with his horse (200) 3:16, a Pendulum's (340) 4:01, a Heavy Locomotive's (600) 4:44 (Unit.rot_life).
+const ROT := {"base": 0.2696, "double": 60.0}
+## ATTACK GROUND (Ctrl+A or the card's button; owner, 2026-10-27): any unit that can attack (not medics, wagons, horses,
+## balloons, the trains on their rails, nor the units in `not`) can be told to attack the ground. A click: everyone attacks
+## that spot (melee units and workers take the bodies within `click` tiles of it); a held left-drag: the line is shared out
+## among them like the formation drag and each works its own stretch (melee units and workers in a lane `lane` tiles to
+## each side of it; shooters spread their fire along it, at the bodies in that lane while there are any). A ranged shot
+## lands at its point: an enemy standing there takes it as a normal hit, otherwise the nearest body within `near` tiles,
+## otherwise the ground. Units reaching under `ranged` px strike as melee. It goes on until another order.
+const GROUND := {"click": 1.5, "lane": 0.5, "near": 0.5, "ranged": 60.0, "scan": 0.5,
+	"not": ["netter", "bloater"]}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
@@ -1615,7 +1633,10 @@ const BOMBARD := {"kinds": ["cannon", "mortar", "spore_mother"], "queued": 3}
 ## its radius and 61 of 87 (70%) with 0.3: guns firing again and again at a swarm over its own dead sweep the pile anyway.
 ## Denying the harvest stays a choice with a price (powder, and guns busy and reloading if the enemy rushes in), not a
 ## free side effect of every fight (docs/design_principles.md 1: a punishment should match the mistake).
-const BODY_BLAST := {"combat": 0.0}
+## `body`: an area shot fired at the ground (BOMBARD) hurts each body in its blast by its damage x this (a Mortar shell
+## 300, round shot 320, canister 180, a spit blob 260): enough to tear up most bodies at once (not a Pendulum's 340, a
+## Steam Walker's or a train's).
+const BODY_BLAST := {"combat": 0.0, "body": 10.0}
 
 
 static func has_tag(kind: String, tag: String) -> bool:

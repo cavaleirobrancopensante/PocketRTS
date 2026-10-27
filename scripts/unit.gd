@@ -306,7 +306,7 @@ func is_unit() -> bool:
 	return true
 
 
-## How long bodies stay on the field before they fade (Settings could change this).
+## How long a Winder's spent battery lies on the field before it fades. (Bodies rot instead: Defs.ROT.)
 const CORPSE_TIME := 30.0
 
 
@@ -320,25 +320,67 @@ func _draw_number(v: int, at: Vector2) -> void:
 		x += 8.0
 
 
-var _rip: Tween                  # (a body) lying there, then fading away
-var rip_from := 0.0              # (a body) when it settled, and how long it lies (its bar)
+var _rip: Tween                  # (a body) lying there, then fading away when it has rotted
+var rip_from := 0.0              # (a body) when it settled, and how long it lies untouched from then (rot_end - rip_from)
 var rip_len := 0.0
+var body_max := 0.0              # (a body) its health: the unit's in life, a rider's plus his horse's (body_size)
+var body_dmg := 0.0              # (a body) the damage it has taken lying there (ground attack, area shots at the ground)
+
+
+## BODIES ROT (Defs.ROT): the health a body has lost to rot `t` seconds after death, base x 2^(t / double) a second
+## integrated: base x double / ln 2 x (2^(t / double) - 1). One closed form, so nothing is worked out per frame.
+static func rot_lost(t: float) -> float:
+	var dbl := float(Defs.ROT["double"])
+	return float(Defs.ROT["base"]) * dbl / log(2.0) * (pow(2.0, maxf(t, 0.0) / dbl) - 1.0)
+
+
+## How long a body with `h` health lies untouched (seconds after death): rot_lost(t) = h.
+static func rot_life(h: float) -> float:
+	var dbl := float(Defs.ROT["double"])
+	return dbl * log(1.0 + maxf(h, 0.0) * log(2.0) / (float(Defs.ROT["base"]) * dbl)) / log(2.0)
+
+
+## (a body) its full health: the unit's in life; a rider's adds his horse's, which lies with him.
+func body_size() -> float:
+	if body_max > 0.0:
+		return body_max
+	var h := max_hp
+	if is_mounted():
+		h += float(Defs.UNITS["horse"]["hp"]) + horse_bonus_hp(horse_miles)
+	return h
+
+
+## (a body) the health it has left now: its size, less the damage it took, less the rot.
+func body_left() -> float:
+	return maxf(0.0, body_size() - body_dmg - rot_lost(game.clock - died_at))
+
+
+## (a body) the game clock when it rots away (its health, less the damage it took, all gone).
+func rot_end() -> float:
+	return died_at + rot_life(body_size() - body_dmg)
 
 
 func _rest_in_peace() -> void:
 	queue_redraw()
 	set_physics_process(false)
 	set_process(false)
-	# bodies the Brood can harvest, or a Missionary raise, lie there longer
-	var lie := float(Defs.HARVEST["time"]) if game.corpses.has(self) else CORPSE_TIME
-	if game.fallen.has(self):
-		lie = maxf(lie, float(Defs.REVIVE["window"]) - corpse_t)
+	if body_max <= 0.0:
+		body_max = body_size()
 	rip_from = game.clock
-	rip_len = lie
 	if not game.bodies.has(self):
 		game.bodies.append(self)
+	_schedule_rot()
+
+
+## (a body) its end: when the rot (and the damage it took) has eaten all its health it leaves the harvest and revive lists
+## and fades away. Set again when it is hit (Game.hit_body), so it costs nothing per frame.
+func _schedule_rot() -> void:
+	if _rip and _rip.is_valid():
+		_rip.kill()
+	var end := rot_end()
+	rip_len = end - rip_from
 	_rip = create_tween()
-	_rip.tween_interval(lie)
+	_rip.tween_interval(maxf(end - game.clock, 0.05))
 	_rip.tween_callback(func() -> void:
 		game.corpses.erase(self)
 		game.fallen.erase(self))
@@ -1971,34 +2013,73 @@ func cmd_patrol(p: Vector2) -> void:
 		patrol_b = p
 
 
-# ------------------------------------------------------------------ FIRE AT A SPOT (BOMBARD; Defs.BOMBARD)
+# ------------------------------------------------------------------ ATTACK GROUND (BOMBARD; Defs.BOMBARD, Defs.GROUND)
 
 var _bombard_n := 0             # shots fired at the BOMBARD spot so far (orders Shift-queued behind it wait for Defs.BOMBARD.queued)
+var gnd_a := Vector2.INF         # ATTACK GROUND: its stretch of the dragged line, a..b (a click: both the spot)
+var gnd_b := Vector2.INF
+var _gnd_aim := Vector2.INF      # where its next shot or blow goes
+var _gnd_body: Unit = null       # the body it is after
+var _gnd_scan := 0.0
+var _gnd_k := 0                  # (shooting along an empty stretch) the shots it has spread so far
 
 
-## Can it fire at a spot on the ground? (An area weapon: the Defs.BOMBARD kinds; not from a balloon's basket.)
+## Can it fire at a spot on the ground with an area weapon? (The Defs.BOMBARD kinds; not from a balloon's basket.)
 func can_bombard() -> bool:
 	return (Defs.BOMBARD["kinds"] as Array).has(kind) and not dead and aboard == null
 
 
-## BOMBARD (as in Total Annihilation): walk into range of the spot `p`, set up there (a gun unlimbers, a Mortar deploys, a
-## Spore Mother roots) and keep firing at it, into the fog too, until another order. Out of shot it waits there (a Powder
-## Wagon nearby fills it up again and it goes on). It fires at nothing else meanwhile.
-func cmd_bombard(p: Vector2) -> void:
-	if not can_bombard():
+## Can it ATTACK GROUND (Defs.GROUND)? Anything that can attack: area weapons, shooters, melee units and the workers that
+## can hurt (Labourers, grubs, Winders). Not medics, wagons, horses, balloons, the trains on their rails, flyers that
+## only hit flyers, nor the Netter (its net is for the living) or the Bloater (its spit is its gas, its bite is its end).
+func can_ground_attack() -> bool:
+	if dead or aboard != null or off_field:
+		return false
+	if can_bombard():
+		return true
+	if float(d.get("damage", 0.0)) <= 0.0 or d.get("medic", false) or d.get("no_attack", false) or d.get("air_only", false):
+		return false
+	return not (Defs.GROUND["not"] as Array).has(kind) and not (Defs.CW_RAIL as Array).has(kind)
+
+
+## BOMBARD / ATTACK GROUND (as in Total Annihilation): attack the ground at `p` (or along its stretch a..b of a dragged
+## line) until another order. Area weapons walk into range, set up (a gun unlimbers, a Mortar deploys, a Spore Mother
+## roots) and keep firing; shooters keep firing at the spot or spread their fire along the stretch, at the bodies in it
+## while there are any; melee units and workers strike the bodies there, new ones too, and wait when there are none. Out
+## of shot it waits there (a Powder Wagon nearby fills it up again). It fires at nothing else meanwhile.
+func cmd_bombard(p: Vector2, a := Vector2.INF, b := Vector2.INF) -> void:
+	if not can_ground_attack():
 		return
 	_reset_work()
 	order = "bombard"
 	order_point = p
+	gnd_a = a if a != Vector2.INF else p
+	gnd_b = b if b != Vector2.INF else p
+	_gnd_aim = p
+	_gnd_body = null
+	_gnd_scan = 0.0
+	_gnd_k = 0
 	target = null
 	order_target = null
 	_bombard_n = 0
 	leash_from = position
 
 
+## A click (no stretch to work along)?
+func _gnd_click() -> bool:
+	return gnd_a.distance_to(gnd_b) < 1.0
+
+
 ## The BOMBARD order, every tick: into range (packing up to move, backing off if too close), set up, fire.
 func _bombard(delta: float) -> Vector2:
-	var p := order_point
+	if not can_bombard():
+		return _ground(delta)
+	if phase == "":
+		_gnd_scan -= delta
+		if _gnd_scan <= 0.0:
+			_gnd_scan = float(Defs.GROUND["scan"])
+			_gnd_aim = _gnd_pick(true)
+	var p := _gnd_aim if _gnd_aim != Vector2.INF else order_point
 	var dist := position.distance_to(p) - radius
 	var rng := _range()
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
@@ -2024,9 +2105,170 @@ func _bombard(delta: float) -> Vector2:
 	return _follow(delta)
 
 
+## Where the next shot at the ground goes: a click, the spot itself (area weapons) or, for a shooter, the spot it was
+## given; along a stretch, the body nearest to it in the lane (Defs.GROUND lane), else the next point spread along it.
+func _gnd_pick(_area: bool) -> Vector2:
+	if _gnd_click():
+		_gnd_body = null
+		return order_point
+	_gnd_body = game.ground_body(position, gnd_a, gnd_b, float(Defs.GROUND["lane"]) * Defs.TILE)
+	if _gnd_body:
+		return _gnd_body.position
+	# nothing lying there: spread along it (golden-ratio steps, so every part of it is hit soon)
+	var f := fmod(0.5 + float(_gnd_k) * 0.618034, 1.0)
+	return gnd_a.lerp(gnd_b, f)
+
+
+## Melee units and workers (and shooters) on ATTACK GROUND: see cmd_bombard.
+func _ground(delta: float) -> Vector2:
+	var melee := _range() < float(Defs.GROUND["ranged"])
+	if phase != "":
+		_ground_cycle(delta, melee)
+		return Vector2.ZERO
+	_gnd_scan -= delta
+	if _gnd_body != null and not Game.lying(_gnd_body):
+		_gnd_body = null
+		_gnd_scan = 0.0
+	if _gnd_scan <= 0.0:
+		_gnd_scan = float(Defs.GROUND["scan"])
+		if melee:
+			var r := float(Defs.GROUND["click"] if _gnd_click() else Defs.GROUND["lane"]) * Defs.TILE
+			_gnd_body = game.ground_body(position, gnd_a, gnd_b, r)
+		elif _gnd_click():
+			_gnd_body = null
+			_gnd_aim = order_point
+		else:
+			var was := _gnd_aim
+			_gnd_aim = _gnd_pick(false)
+			if _gnd_body == null and was != Vector2.INF and cooldown > 0.0:
+				_gnd_aim = was        # (spreading along an empty stretch: the next point waits for the next shot)
+	if melee:
+		if _gnd_body == null:
+			if not queue.is_empty():
+				_next_order()            # (nothing there and orders queued behind it: on to them)
+				return Vector2.ZERO
+			# nothing to strike: wait at its spot (the nearest point of its stretch)
+			var post := Geometry2D.get_closest_point_to_segment(position, gnd_a, gnd_b)
+			if position.distance_to(post) > 18.0 + radius:
+				return _gnd_walk(post, delta)
+			path = PackedVector2Array()
+			return Vector2.ZERO
+		var bp: Vector2 = _gnd_body.position
+		if position.distance_to(bp) <= radius + _gnd_body.radius * 0.5 + _range() + 4.0:
+			path = PackedVector2Array()
+			_gnd_aim = bp
+			_ground_cycle(delta, true)
+			return Vector2.ZERO
+		return _gnd_walk(bp, delta)
+	var aim := _gnd_body.position if _gnd_body != null else _gnd_aim
+	if position.distance_to(aim) - radius <= _range():
+		path = PackedVector2Array()
+		_gnd_aim = aim
+		_ground_cycle(delta, false)
+		return Vector2.ZERO
+	return _gnd_walk(aim, delta)
+
+
+## Walk toward a point on the ground: straight when close and clear (a flyer always), else along a path.
+func _gnd_walk(p: Vector2, delta: float) -> Vector2:
+	if is_air() or (position.distance_to(p) < 140.0 and game.line_clear(position, p)):
+		path = PackedVector2Array()
+		return (p - position).normalized() * speed
+	if (path.is_empty() or path_i >= path.size()) and not path_pending or repath_t <= 0.0:
+		repath_t = 1.0
+		_request_path(p)
+	return _follow(delta)
+
+
+## Aim (wind up), strike the ground, reload (as _attack_cycle does for a target).
+func _ground_cycle(delta: float, melee: bool) -> void:
+	var p := _gnd_aim
+	if p.distance_to(position) > 2.0:
+		facing = (p - position).normalized()
+	if phase == "":
+		if cooldown > 0.0 or stun_t > 0.0:
+			return
+		if not melee and _pmax > 0.0 and mode != "bayonet" and powder < 1.0:
+			cooldown = 0.5               # out of shot: it waits for powder (a dry Musketeer fixes bayonets: melee)
+			if Time.get_ticks_msec() > _hold_note:
+				_hold_note = Time.get_ticks_msec() + 5000
+				game.out_of_powder(self)
+			return
+		phase = "aim"
+		phase_t = _aim()
+		return
+	phase_t -= delta
+	if phase == "aim" and phase_t <= 0.0:
+		phase = "strike"
+		phase_t = _strike_time()
+		_ground_blow(p, melee)
+	elif phase == "strike" and phase_t <= 0.0:
+		phase = ""
+		cooldown = _cooldown()
+		if not queue.is_empty() and _bombard_n >= int(Defs.BOMBARD["queued"]):
+			_next_order()                # (Shift-queued orders behind it: on to the next after its few blows)
+
+
+## The damage of one of its blows or shots (as _strike works it out: veterancy, wind, overload, the saws' spin, a
+## bayonet's or a sabre's).
+func _blow_damage() -> float:
+	var vet := 1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"]))
+	if mode == "bayonet":
+		var bd := float(Defs.BAYONET["damage"]) + (float(Defs.RESEARCH["bayonet"]["damage"]) if bayonet else 0.0)
+		if d.has("sabre"):
+			bd = float(d["sabre"]["damage"])
+		return bd * vet
+	var dmg := float(d["damage"]) * vet
+	if d["faction"] == "clockwork":
+		dmg *= lerpf(0.7, 1.0, wind)
+	if overclock_t > 0.0:
+		dmg *= float(Defs.OVERLOAD["damage"])
+	elif overcharged():
+		dmg *= float(Defs.OVERCHARGE["damage"])
+	if kind == "thresher":
+		dmg *= lerpf(float(Defs.THRESHER["low"]), float(Defs.THRESHER["high"]), spin)
+	return dmg
+
+
+## One blow or shot at the ground at p. A shot lands at its point and hits what is there: an enemy standing there takes it
+## as a normal hit (_strike), otherwise the nearest body within Defs.GROUND near, otherwise just the ground. A blow
+## strikes the body it walked up to. Every shot spends a shot of powder, as usual.
+func _ground_blow(p: Vector2, melee: bool) -> void:
+	_bombard_n += 1
+	_gnd_k += 1
+	if melee:
+		var b := _gnd_body
+		if not Game.lying(b) or b.position.distance_to(position) > radius + b.radius * 0.5 + _range() + 12.0:
+			return
+		game.spawn_effect("hit", b.position + Vector2(randf_range(-4, 4), randf_range(-6, 0)), 0.6)
+		Sfx.play_any(["combat/%s_attack" % kind, {"raptor": "bite", "brute": "bite", "grub": "bite", "thresher": "gear_hit", "bulwark": "gear_hit", "winder": "gear_hit"}.get(kind, "clash")], position)
+		game.hit_body(b, _blow_damage())
+		return
+	var foe := game.foe_at(self, p)
+	if foe:
+		_strike(foe)                     # (an enemy standing there: a normal hit, its own shot and powder)
+		return
+	if _pmax > 0.0 and mode != "bayonet":
+		if powder < 1.0:
+			return
+		powder -= 1.0
+		if powder < 1.0 and kind != "musketeer":
+			game.out_of_powder(self)
+	if _range() >= 100.0 and not game.zones.is_empty() and (game.in_fog(global_position) or game.in_fog(p)) and randf() < float(Defs.FOG["miss"]):
+		p += Vector2.from_angle(randf() * TAU) * randf_range(40.0, 80.0)     # (into a fog bank: wide)
+	game.ground_shot_fx(self, p)
+	var near := float(Defs.GROUND["near"]) * Defs.TILE
+	var body := _gnd_body if Game.lying(_gnd_body) and _gnd_body.position.distance_to(p) <= near else game.ground_body(p, p, p, near)
+	if body:
+		game.hit_body(body, _blow_damage())
+	else:
+		var fx := game.spawn_effect("dust", p, 1.6)
+		fx.scale = Vector2(0.35, 0.3)
+
+
 ## Aim, fire at the spot, reload (as _attack_cycle does for a target). No HOLD FIRE or own-men check: it was ordered.
 func _bombard_cycle(delta: float) -> void:
-	var p := order_point
+	var p := _gnd_aim if _gnd_aim != Vector2.INF else order_point
 	if p.distance_to(position) > 2.0:
 		facing = (p - position).normalized()
 	if phase == "":
@@ -2063,6 +2305,7 @@ func _fire_at_spot(p: Vector2) -> void:
 		if powder < 1.0:
 			game.out_of_powder(self)
 	_bombard_n += 1
+	_gnd_k += 1
 	var wide := Vector2.ZERO
 	if not game.zones.is_empty() and (game.in_fog(global_position) or game.in_fog(p)) and randf() < float(Defs.FOG["miss"]):
 		wide = Vector2.from_angle(randf() * TAU) * randf_range(55.0, 95.0)
@@ -2327,7 +2570,7 @@ func _start(o: Dictionary) -> bool:
 				return false
 			cmd_follow(e)
 		"bombard":
-			cmd_bombard(o["p"])
+			cmd_bombard(o["p"], o.get("a", Vector2.INF), o.get("b", Vector2.INF))
 	return order != "idle"
 
 
@@ -4891,7 +5134,7 @@ func _harvest(delta: float) -> Vector2:
 		facing = (_corpse.position - position).normalized()
 		if work != "wrapping":
 			work = "wrapping"
-			work_t = float(Defs.HARVEST["take"])
+			work_t = game.harvest_time(_corpse)       # (a beefy body takes a little longer)
 		work_t -= delta
 		if work_t <= 0.0:
 			cocoon = game.corpse_value(_corpse)
@@ -5573,6 +5816,8 @@ func die() -> void:
 	# fallen under the cross (just raised, or just bandaged): gone for good
 	final_death = cross_t > 0.0
 	died_at = game.clock
+	body_dmg = 0.0                 # (a body: its health is worked out again when it lies down, Unit.body_size)
+	body_max = 0.0
 	reviver = null
 	if not passengers.is_empty():
 		# shot down: the men in the basket die with it and lie where it falls. (Mid-drop, with the
@@ -6408,7 +6653,7 @@ func _draw_aim() -> void:
 		if mc and mc.get("mode") == "bombard" and not game.demo:
 			at = get_global_mouse_position() - global_position       # (choosing the BOMBARD spot)
 		elif order == "bombard":
-			at = order_point - global_position
+			at = (_gnd_aim if _gnd_aim != Vector2.INF else order_point) - global_position
 		elif target and is_instance_valid(target) and not target.dead:
 			at = (target.position if target is Unit else target.center()) - global_position
 		if at != Vector2.INF:
@@ -6455,7 +6700,7 @@ func _draw_aim() -> void:
 	if c and (c.get("mode") == "attack" or c.get("mode") == "bombard") and not game.demo and get_global_mouse_position().distance_to(global_position) <= length:
 		aim = get_global_mouse_position() - global_position
 	elif order == "bombard":
-		aim = order_point - global_position
+		aim = (_gnd_aim if _gnd_aim != Vector2.INF else order_point) - global_position
 	elif target and is_instance_valid(target) and not target.dead:
 		aim = target.center() - global_position
 	if aim == Vector2.INF:
