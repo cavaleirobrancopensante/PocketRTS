@@ -1384,6 +1384,7 @@ func _pass_icon_x(r: Rect2, n: int, i: int) -> float:
 func _ability_buttons(list: Array, units: Array) -> void:
 	_balloon_buttons(list, units)
 	_ballista_buttons(list, units)
+	GreatWinder.card(self, list, units)     # a Great Winder's MEND and SWEEP autocasts (scripts/great_winder.gd)
 	# (Musketeers pick musket or bayonet by themselves: no button)
 	# spells: pick the spot on the map; the nearest caster that can goes and does it
 	var callers := units.filter(func(u: Unit) -> bool: return u.kind == "stormcaller")
@@ -2799,6 +2800,8 @@ func _draw_panel(font: Font) -> void:
 				info = Netter.card_line(uu)
 			elif uu.kind == Defs.BALLISTA_KIND:
 				info = Ballista.card_line(uu)
+			elif uu.kind == Defs.GREAT_WINDER_KIND:
+				info = GreatWinder.card_line(uu)
 			elif uu.kind == Defs.PENDULUM:
 				info = "Its blade cuts every enemy in the arc in front of it (never your own units). It cannot reach flyers."
 			elif uu.kind == "tesla_cart":

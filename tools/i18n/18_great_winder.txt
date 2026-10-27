@@ -1,0 +1,76 @@
+# THE GREAT WINDER (gear mode's Clockwork tier 2, scripts/great_winder.gd, docs/great_winder.md): the owner's walking
+# winding machine (2026-10-26/27). Names (the owner): "Grande Enrolador" in Portuguese and "Gran Dador de Cuerda" in
+# Spanish (the Winder is "Enrolador" / "Dador de cuerda"). MEND = CONSERTAR / REMENDAR, SWEEP = VARRER / BARRER,
+# parts = peças / piezas.
+
+> Great Winder
+pt Grande Enrolador
+es Gran Dador de Cuerda
+
+> The Clockwork's walking winding machine, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Movement Works once an Escapement works. Costs Tension.
+pt A máquina de dar corda que anda do Mecanismo, grande e lenta, sem arma. Mantém o exército ao seu redor COM CORDA: toda construção perto dele (o anel no chão) recebe corda devagar, então não para fora do terreno de engrenagens, e as paradas acordam de novo. CONSERTAR: com seu braço de chave conserta unidades feridas do Mecanismo uma de cada vez, mais rápido que um Enrolador (custa engrenagens, como um reparo). VARRER: varre com seus rolos os DESTROÇOS das suas próprias unidades do Mecanismo e os guarda como PEÇAS (para remontagem, mais tarde). Os dois são automáticos; aperte-os para desligar. Feito na Oficina de Movimentos quando um Escape funciona. Custa Tensão.
+es La máquina de dar cuerda que camina del Mecanismo, grande y lenta, sin arma. Mantiene al ejército a su alrededor CON CUERDA: toda construcción cerca de él (el anillo en el suelo) recibe cuerda poco a poco, así que no se para fuera del terreno de engranajes, y las paradas despiertan de nuevo. REMENDAR: con su brazo de llave remienda unidades heridas del Mecanismo una cada vez, más rápido que un Dador de cuerda (cuesta engranajes, como una reparación). BARRER: barre con sus rodillos los RESTOS de tus propias unidades del Mecanismo y los guarda como PIEZAS (para el reensamblaje, más adelante). Los dos son automáticos; púlsalos para apagarlos. Se hace en el Taller de Movimientos cuando funciona un Escape. Cuesta Tensión.
+
+> MEND
+pt CONSERTAR
+es REMENDAR
+
+> SWEEP
+pt VARRER
+es BARRER
+
+> Mend (automatic)
+pt Consertar (automático)
+es Remendar (automático)
+
+> Sweep (automatic)
+pt Varrer (automático)
+es Barrer (automático)
+
+> On: standing about, the Great Winder mends the most hurt Clockwork unit near it with its key arm, one at a time, %d%% faster than a Winder (it costs cogs, like a repair), and winds it up. Right-click a hurt unit to send it there. Press to switch it off or on.
+pt Ligado: parado, o Grande Enrolador conserta a unidade do Mecanismo mais ferida perto dele com seu braço de chave, uma de cada vez, %d%% mais rápido que um Enrolador (custa engrenagens, como um reparo), e lhe dá corda. Clique com o botão direito numa unidade ferida para mandá-lo lá. Aperte para desligar ou ligar.
+es Encendido: parado, el Gran Dador de Cuerda remienda la unidad del Mecanismo más herida cerca de él con su brazo de llave, una cada vez, un %d%% más rápido que un Dador de cuerda (cuesta engranajes, como una reparación), y le da cuerda. Clic derecho en una unidad herida para enviarlo allí. Pulsa para apagarlo o encenderlo.
+
+> On: with nothing to mend, the Great Winder walks to the wrecks of your Clockwork units near it and sweeps them into its hopper as PARTS (%d at most; for reassembly, later). It never sweeps Crown or Brood bodies. Press to switch it off or on.
+pt Ligado: sem nada para consertar, o Grande Enrolador vai até os destroços das suas unidades do Mecanismo perto dele e os varre para a sua tremonha como PEÇAS (%d no máximo; para remontagem, mais tarde). Ele nunca varre corpos da Coroa ou da Ninhada. Aperte para desligar ou ligar.
+es Encendido: sin nada que remendar, el Gran Dador de Cuerda va a los restos de tus unidades del Mecanismo cerca de él y los barre a su tolva como PIEZAS (%d como máximo; para el reensamblaje, más adelante). Nunca barre cuerpos de la Corona ni de la Nidada. Pulsa para apagarlo o encenderlo.
+
+> Mending off.
+pt Consertar desligado.
+es Remendar apagado.
+
+> Mending on: it mends the hurt Clockwork units near it.
+pt Consertar ligado: ele conserta as unidades do Mecanismo feridas perto dele.
+es Remendar encendido: remienda las unidades del Mecanismo heridas cerca de él.
+
+> Sweeping off.
+pt Varrer desligado.
+es Barrer apagado.
+
+> Sweeping on: it sweeps up your Clockwork wrecks near it.
+pt Varrer ligado: ele varre os destroços do seu Mecanismo perto dele.
+es Barrer encendido: barre los restos de tu Mecanismo cerca de él.
+
+> Parts %d/%d · winds everything within %d tiles · mending.
+pt Peças %d/%d · dá corda a tudo a até %d casas · consertando.
+es Piezas %d/%d · da cuerda a todo a %d casillas · remendando.
+
+> Parts %d/%d · winds everything within %d tiles · sweeping a wreck.
+pt Peças %d/%d · dá corda a tudo a até %d casas · varrendo um destroço.
+es Piezas %d/%d · da cuerda a todo a %d casillas · barriendo unos restos.
+
+> Parts %d/%d · winds everything within %d tiles.
+pt Peças %d/%d · dá corda a tudo a até %d casas.
+es Piezas %d/%d · da cuerda a todo a %d casillas.
+
+> Not enough cogs to mend.
+pt Engrenagens insuficientes para consertar.
+es No hay engranajes suficientes para remendar.
+
+> Your Great Winder's hopper is full of parts.
+pt A tremonha do seu Grande Enrolador está cheia de peças.
+es La tolva de tu Gran Dador de Cuerda está llena de piezas.
+
+> +%d parts
+pt +%d peças
+es +%d piezas
