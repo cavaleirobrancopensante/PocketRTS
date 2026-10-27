@@ -160,7 +160,18 @@ func _host_tick() -> void:
 		var gt := 1
 		base["units"] = g.units.filter(func(u: Unit) -> bool: return u.team == gt).size()
 		base["bld"] = g.buildings.filter(func(b: Building) -> bool: return b.team == gt).size()
+		# a body near the guest's hall, for the guest's ATTACK GROUND (Defs.GROUND) and its health bar (Game.hit_body, fx "h")
+		for hb in g.buildings:
+			if hb.team == gt and hb.kind == Defs.FACTIONS[g.faction_of(gt)]["hall"]:
+				var at: Vector2 = g.cell_center(g.nearest_free(g.cell_of(hb.center() + BODY_OFF), 6))
+				base["host_body"] = g._add_unit("musketeer", 0, at)      # (killed in a moment, once the guest has it)
+				break
 		step = 2
+	if step == 2 and step_t > 3.0 and base.has("host_body"):
+		var bm: Unit = base["host_body"]
+		base.erase("host_body")
+		if is_instance_valid(bm) and not bm.dead:
+			bm.take_damage(99999.0, null)
 	if step_t > 3.0 and int(step_t * 10) % 50 == 0:
 		pass
 	if int(step_t * 30) % 150 == 0 and int(step_t * 30) != _last_print:
@@ -289,9 +300,19 @@ func _guest_tick() -> void:
 			var n := g.buildings.filter(func(b: Building) -> bool: return b.team == g.human).size()
 			if n > int(base["own_bld"]):
 				check("guest_place_building_command", true, "after %.1fs" % step_t)
-				_start_foreign(s)
+				_start_ground(s)
 			elif step_t > 12.0:
 				check("guest_place_building_command", false)
+				_start_ground(s)
+		7:
+			# ATTACK GROUND online: the guest's order reaches the host, its worker strikes the body, and the guest's copy
+			# of the body takes the health the host sends (and rots by itself meanwhile)
+			var b = base.get("body")
+			if b == null or step_t > 45.0:
+				check("guest_ground_attack_hits_body", false, "no body seen" if b == null else "body health %.0f of %.0f" % [b.body_left() if is_instance_valid(b) else -1.0, b.body_size() if is_instance_valid(b) else -1.0])
+				_start_foreign(s)
+			elif not is_instance_valid(b) or b.torn or b.body_dmg > 0.0:
+				check("guest_ground_attack_hits_body", true, "after %.1fs (%s)" % [step_t, "torn" if not is_instance_valid(b) or b.torn else "%.0f of %.0f left" % [b.body_left(), b.body_size()]])
 				_start_foreign(s)
 		5:
 			if step_t > 2.5:
@@ -343,6 +364,28 @@ func _start_build(s: NetSession) -> void:
 	print("GUEST places %s at %s" % [k, str(spot)])
 	g.place_building(g.human, k, spot, builders, false)
 	step = 4
+	step_t = 0.0
+
+
+const BODY_OFF := Vector2(0, 110)
+
+
+func _start_ground(s: NetSession) -> void:
+	var hall: Building = base["hall"]
+	var want: Vector2 = hall.center() + BODY_OFF
+	var body: Unit = null
+	for b in g.bodies:
+		if Game.lying(b) and b.position.distance_to(want) < 90.0:
+			body = b
+	var w: Unit = null
+	for u in _mine():
+		if u.can_ground_attack() and u.order != "build" and (w == null or u.position.distance_to(want) < w.position.distance_to(want)):
+			w = u
+	if body and w:
+		base["body"] = body
+		print("GUEST orders worker %d to attack the ground at the body (%.0f health)" % [w.net_id, body.body_left()])
+		g.ground_order([w], PackedVector2Array([body.position]))
+	step = 7
 	step_t = 0.0
 
 

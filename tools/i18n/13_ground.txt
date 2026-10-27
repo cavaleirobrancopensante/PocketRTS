@@ -1,34 +1,30 @@
-# FIRE AT A SPOT (BOMBARD, Ctrl+A; Defs.BOMBARD) and AREA SHOTS DESTROY BODIES (Defs.BODY_BLAST), owner's design 2026-10-26:
+# ATTACK GROUND (Ctrl+A; Defs.BOMBARD, Defs.GROUND; was FIRE AT A SPOT / BOMBARD, 2026-10-26) and bodies that rot (Defs.ROT, 2026-10-27):
 # the command card's BOMBARD button, its tooltips, the prompt while picking the spot, and the Brood's fractional essence
 # from a harvested body (1.25 a supply).
 
-> BOMBARD
-pt BOMBARDEAR
-es BOMBARDEAR
+> ATTACK GROUND
+pt ATACAR O CHÃO
+es ATACAR EL SUELO
 
-> Bombard
-pt Bombardear
-es Bombardear
+> Attack ground
+pt Atacar o chão
+es Atacar el suelo
 
-> Then pick a spot on the ground (in the fog too): the cannons and mortars set up in range and keep firing at it until you give another order, as long as their shot lasts. Shells, round shot and canister tear up the bodies where they land: the Brood can't harvest them, a Missionary can't raise them (yours too).
-pt Depois escolha um lugar no chão (na névoa também): os canhões e morteiros se instalam ao alcance e continuam atirando nele até você dar outra ordem, enquanto durar a munição. Bombas, balas de canhão e metralha despedaçam os corpos onde caem: a Ninhada não pode colhê-los, um Missionário não pode erguê-los (os seus também).
-es Luego elige un punto del suelo (también en la niebla): los cañones y morteros se emplazan a su alcance y siguen disparando allí hasta que des otra orden, mientras les dure la munición. Las bombas, las balas de cañón y la metralla destrozan los cuerpos donde caen: la Nidada no puede recogerlos, un Misionero no puede levantarlos (también los tuyos).
+> Then click a spot on the ground (in the fog too), or hold and drag a line to share it out among them: they keep attacking it until you give another order. Bodies have health and rot, faster the longer they lie; hitting them speeds that up, and a body brought to 0 is torn up: the Brood can't harvest it, a Missionary can't raise it (yours too). Guns, mortars and Spore Mothers blast them; shooters shoot along the line; melee units and workers walk up and strike them (workers slowly).
+pt Depois clique num lugar do chão (na névoa também), ou segure e arraste uma linha para reparti-la entre eles: eles continuam atacando ali até você dar outra ordem. Os corpos têm vida e apodrecem, mais rápido quanto mais tempo ficam ali; golpeá-los acelera isso, e um corpo levado a 0 é despedaçado: a Ninhada não pode colhê-lo, um Missionário não pode erguê-lo (os seus também). Canhões, morteiros e Mães de Esporos os explodem; atiradores atiram ao longo da linha; unidades corpo a corpo e trabalhadores vão até eles e os golpeiam (os trabalhadores devagar).
+es Luego haz clic en un punto del suelo (también en la niebla), o mantén y arrastra una línea para repartirla entre ellos: siguen atacando allí hasta que des otra orden. Los cuerpos tienen vida y se pudren, más rápido cuanto más tiempo pasan ahí; golpearlos lo acelera, y un cuerpo llevado a 0 queda destrozado: la Nidada no puede recogerlo, un Misionero no puede levantarlo (también los tuyos). Cañones, morteros y Madres de Esporas los revientan; los tiradores disparan a lo largo de la línea; las unidades cuerpo a cuerpo y los trabajadores se acercan y los golpean (los trabajadores despacio).
 
-> Then pick a spot on the ground (in the fog too): the Spore Mothers walk into range, root and keep lobbing spit blobs at it until you give another order. Spit does not tear up bodies.
-pt Depois escolha um lugar no chão (na névoa também): as Mães de Esporos chegam ao alcance, criam raízes e continuam lançando bolhas de cuspe nele até você dar outra ordem. O cuspe não despedaça os corpos.
-es Luego elige un punto del suelo (también en la niebla): las Madres de Esporas se acercan a su alcance, echan raíces y siguen lanzando bolas de escupitajo allí hasta que des otra orden. El escupitajo no destroza los cuerpos.
+> Tap the spot to attack, or drag a line to share out: they keep at it until another order
+pt Toque o lugar a atacar, ou arraste uma linha para repartir: eles continuam até outra ordem
+es Toca el punto a atacar, o arrastra una línea para repartir: siguen hasta otra orden
 
-> Tap the spot to bombard: they keep firing at it until another order
-pt Toque no lugar a bombardear: eles continuam atirando nele até outra ordem
-es Toca el punto a bombardear: siguen disparando allí hasta otra orden
+> Click the spot to attack, or drag a line to share out: they keep at it until another order
+pt Clique no lugar a atacar, ou arraste uma linha para repartir: eles continuam até outra ordem
+es Haz clic en el punto a atacar, o arrastra una línea para repartir: siguen hasta otra orden
 
-> Click the spot to bombard: they keep firing at it until another order
-pt Clique no lugar a bombardear: eles continuam atirando nele até outra ordem
-es Haz clic en el punto a bombardear: siguen disparando allí hasta otra orden
-
-> Only cannons, mortars and Spore Mothers can fire at a spot.
-pt Só canhões, morteiros e Mães de Esporos podem atirar num lugar.
-es Solo los cañones, los morteros y las Madres de Esporas pueden disparar a un punto.
+> None of them can attack the ground.
+pt Nenhum deles pode atacar o chão.
+es Ninguno de ellos puede atacar el suelo.
 
 > +%s essence
 pt +%s de essência
