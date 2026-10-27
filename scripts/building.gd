@@ -70,6 +70,8 @@ var _mill_horse: Sprite2D = null
 var _mill_ground: Sprite2D = null     # the mill's dirt track and grass edge, on the ground under every unit (z_index -1; tools/split_mill_ground.py)
 var _mill_stone: Sprite2D = null      # the post and millstone, over the horse behind them
 var _mill_run: Node2D = null          # the runner stone and arm: turned by _mill_a, squashed like the track
+var _mill_trio: Node2D = null         # the horse, the stone overlay and the runner: drawn together, sorted at the track's middle
+var _mill_sel: Node2D = null          # the selection frame, sorted with the body and just under it (MILL_SORT_UP)
 var _mill_run_top: Sprite2D = null    # (its two sprites: the main one, and its darker copy under it)
 var _mill_run_under: Sprite2D = null
 var _mill_state := ""                 # the state whose track it walks ("": no horse)
@@ -150,6 +152,25 @@ const FARM_ART := {
 	"hub": Vector2(7, -54), "sail_states": ["built", "damaged"],
 	"scarecrows": "res://assets/buildings/farm_scarecrow.png", "scarecrow_kinds": 4,
 }
+
+## The Powder Mill's WORK YARD (Unit._mill_work), as footprint cells from its corner: the front
+## row of its 3x3, where the art has the heaps' fronts under the lean-to, the dirt before the
+## hopper and the horse's track. It is walkable (Game._solidify marks it 5, like a Farm's crop
+## rows: men walk it, nothing is built on it), so the crew digs, carries and tips inside the
+## mill's own footprint, where no neighbour, wall or cliff can block them; the shed, the lean-to's
+## roof and the hopper behind it stay solid.
+const MILL_YARD := Rect2i(0, 2, 3, 1)
+## The mill's body sorts against the units this far above its base line, just behind the yard
+## (the farm's windmill sorts at its door foot the same way): a man in the yard is drawn over
+## the shed, heaps and hopper behind him. The horse, runner and millstone sort at the middle of
+## their track (_mill_trio); the selection frame is drawn just under the body (_mill_sel).
+const MILL_SORT_UP := 34.0
+
+## The yard of a mill whose footprint is `r`, in world space.
+static func mill_yard_rect(r: Rect2) -> Rect2:
+	var t := float(Defs.TILE)
+	return Rect2(r.position + Vector2(MILL_YARD.position) * t, Vector2(MILL_YARD.size) * t)
+
 
 ## The Powder Mill is a horse mill (tools/import_powder_mill.py makes the art): while it is
 ## worked (in_use) a harnessed horse walks round the dirt track at the front right, turning the
@@ -273,6 +294,8 @@ func _ready() -> void:
 		y_sort_enabled = true       # its scarecrows stand among the labourers
 	if kind == "gate":
 		y_sort_enabled = true       # its sprite sorts a pixel below it (_update_sprite)
+	if kind == "powder_mill":
+		y_sort_enabled = true       # its body sorts behind its yard, its horse and stones at their track (MILL_SORT_UP)
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -320,13 +343,21 @@ func _farm_art() -> void:
 
 
 ## The Powder Mill's horse, runner and millstone overlay (MILL_ART), over its body; hidden
-## until a state with a track shows (_update_sprite).
+## until a state with a track shows (_update_sprite). The building is y-sorted: its body sorts
+## at the back of its yard (MILL_SORT_UP, _update_sprite), the three in _mill_trio at the
+## middle of their track (a man behind the millstone is drawn behind it, one in front over it),
+## its selection frame (_mill_sel) with the body, just under it.
 func _mill_art() -> void:
 	_mill_ground = Sprite2D.new()
 	_mill_ground.centered = false
 	_mill_ground.z_index = -1          # labourers walk the dirt on top of it, behind the shed still hidden by the structure
 	add_child(_mill_ground)
 	move_child(_mill_ground, 0)
+	_mill_sel = Node2D.new()
+	_mill_sel.position = Vector2(0.0, -MILL_SORT_UP)
+	_mill_sel.draw.connect(_draw_mill_sel)
+	add_child(_mill_sel)
+	move_child(_mill_sel, sprite.get_index())       # (just before the body: under it at the same sort line)
 	_mill_horse = Sprite2D.new()
 	_mill_horse.centered = false
 	_mill_horse.offset = -Vector2(MILL_ART["anchor"])
@@ -334,10 +365,21 @@ func _mill_art() -> void:
 	_mill_stone = Sprite2D.new()
 	_mill_stone.centered = false
 	_mill_runner()
+	_mill_trio = Node2D.new()
+	_mill_trio.visible = false
+	add_child(_mill_trio)
 	for n: CanvasItem in [_mill_horse, _mill_stone, _mill_run]:
-		n.visible = false
-		add_child(n)
+		n.visible = false             # (until a state with a track shows them: _mill_show)
+		_mill_trio.add_child(n)
 	_mill_a = float(posmod(hash(cell), 360)) * PI / 180.0     # (not every mill in step)
+
+
+## The mill's selection frame round its footprint (drawn by _mill_sel; other buildings draw it
+## themselves, _draw_building).
+func _draw_mill_sel() -> void:
+	if selected and not dead:
+		var r := rect()
+		_mill_sel.draw_rect(Rect2(r.position - _mill_sel.global_position, r.size).grow(3), Color(0.4, 1.0, 0.4, 0.8), false, 2.0)
 
 
 ## The runner stone and arm: a node squashed like the track, its sprites turned inside it (so
@@ -366,14 +408,16 @@ func _mill_show(state: String) -> void:
 	if ms != _mill_state:
 		_mill_state = ms
 		_mill_far = -1
+		_mill_trio.visible = ms != ""
 		_mill_horse.visible = ms != ""
 		_mill_run.visible = ms != ""
-		_mill_stone.visible = false
+		_mill_stone.visible = ms != ""      # (always over the body's own millstone: a man behind it is hidden by it)
 		if ms != "":
+			_mill_trio.position = Vector2(0.0, float(MILL_ART["states"][ms]["centre"].y))
 			_mill_stone.texture = Game.tex(String(MILL_ART["stone"]) % ms)
 			_place_mill_horse(false)
 	if ms != "":
-		_mill_stone.position = sprite.position
+		_mill_stone.position = sprite.position - _mill_trio.position
 		_mill_stone.offset = sprite.offset
 
 
@@ -407,21 +451,19 @@ func _place_mill_horse(walking: bool) -> void:
 		_mill_horse.texture = Game.tex(String(MILL_ART["horse"]) % dr)
 	_mill_horse.flip_h = df[1]
 	_mill_horse.frame = int(_mill_f) % _mill_horse.hframes if walking else 0
-	_mill_horse.position = p
-	_mill_run.position = Vector2(st["centre"]) - Vector2(0, float(MILL_ART["lift"]))
+	_mill_horse.position = p - _mill_trio.position
+	_mill_run.position = Vector2(st["centre"]) - Vector2(0, float(MILL_ART["lift"])) - _mill_trio.position
 	_mill_run_top.rotation = _mill_a
 	_mill_run_under.rotation = _mill_a
 	var far := 1 if sin(_mill_a) < 0.0 else 0
 	if far != _mill_far:
 		_mill_far = far
-		_mill_stone.visible = far == 1
 		# far: the horse, the post and stone over it, the runner in front; near: the runner
 		# (its arm meeting the horse's far side), the horse over it
 		var order: Array = [_mill_horse, _mill_stone, _mill_run] if far == 1 \
 			else [_mill_stone, _mill_run, _mill_horse]
-		var i0 := sprite.get_index()
 		for i in order.size():
-			move_child(order[i], i0 + 1 + i)
+			_mill_trio.move_child(order[i], i)
 
 
 ## In use (its animations play): an economy building while it's worked, a workshop while it
@@ -509,7 +551,7 @@ static func body_offset(k: String, t: Texture2D) -> Vector2:
 
 
 ## The cells of a footprint (from its corner) that stay walkable: a Farm's fields, all round
-## the windmill's 4x2 block in the middle.
+## the windmill's 4x2 block in the middle; a Powder Mill's work yard (MILL_YARD).
 static func field_cells(k: String) -> Array:
 	var out: Array = []
 	if k == "farm":
@@ -518,6 +560,10 @@ static func field_cells(k: String) -> Array:
 			for x in sz.x:
 				if not FARM_BLOCK.has_point(Vector2i(x, y)):
 					out.append(Vector2i(x, y))
+	elif k == "powder_mill":
+		for y in range(MILL_YARD.position.y, MILL_YARD.end.y):
+			for x in range(MILL_YARD.position.x, MILL_YARD.end.x):
+				out.append(Vector2i(x, y))
 	return out
 
 
@@ -711,6 +757,8 @@ func haulers_free() -> int:
 func crew_max() -> int:
 	if kind == Defs.GEAR_PRESS:
 		return int(Defs.GEAR["press"]["big" if gear_big else "small"]["crew"])      # (its connecting gear sets the crew)
+	if kind == "mainspring" and Defs.gear_mode:
+		return int(GearEcon.spring_info(gear_big)["crew"])      # (and a Mainspring's: GearEcon)
 	if Defs.gear_mode and d["faction"] == "clockwork" and (kind == "clocktower" or kind == "boiler"):
 		return 0        # (gear mode: Winders no longer haul batteries; the Clocktower and Boilers have no crew)
 	var base := Defs.crew_cap(d)
@@ -726,32 +774,38 @@ func farm_speed() -> float:
 
 
 ## Cog Press: cogs a second right now. A trickle by itself (`base` of the full rate, like a farm with nobody on it),
-## every Winder winding it adds an equal share up to its crew cap; 0 while it is unlinked, unfinished or swapping gears.
+## every Winder winding it adds an equal share up to its crew cap, times its DRIVE (GearEcon: 100% meshing with a Clocktower
+## or Mainspring, less farther out); 0 while it is unlinked, unfinished or swapping gears.
 func press_rate() -> float:
 	if kind != Defs.GEAR_PRESS or not built or dead:
 		return 0.0
-	if game.gear_net.speed_mult(self) <= 0.0:
+	var drive := game.gear_net.speed_mult(self)
+	if drive <= 0.0:
 		return 0.0
 	var gp: Dictionary = Defs.GEAR["press"]
 	var info: Dictionary = gp["big" if gear_big else "small"]
 	var cap := int(info["crew"])
 	var base := float(gp["base"])
-	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
+	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
 
 
-## Mainspring: Tension a second right now (Defs.GEAR "mainspring"): a trickle by itself, every Winder on it adds an equal
-## share up to its crew; 0 while it is unlinked or unfinished.
+## Mainspring: Tension a second right now (Defs.GEAR "mainspring", by its gear): a trickle by itself, every Winder on it
+## adds an equal share up to its crew, times its DRIVE (GearEcon); 0 while it is unlinked or unfinished, and while its
+## side's pool holds all its Mainsprings store (it stands still, wound tight).
 func spring_rate() -> float:
-	if kind != "mainspring" or not built or dead or game.gear_net.speed_mult(self) <= 0.0:
+	if kind != "mainspring" or not built or dead:
 		return 0.0
-	var info: Dictionary = Defs.GEAR["mainspring"]
-	var cap := int(d.get("crew", 3))
-	var base := float(info["base"])
-	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
+	var drive := game.gear_net.speed_mult(self)
+	if drive <= 0.0 or GearEcon.tension_full(game, team):
+		return 0.0
+	var info := GearEcon.spring_info(gear_big)
+	var cap := int(info["crew"])
+	var base := float(Defs.GEAR["mainspring"]["base"])
+	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
 
 
 ## Cog Press / Mainspring / Movement Works / Regulator / Escapement / Clock Aviary: the painted working loop
-## (assets/buildings/<kind>_work_0..7.png, `frames` of them; `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
+## (assets/buildings/<kind>_work_0..7.png, `frames` of them (the Escapement: 24); `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
 ## works; the built picture while it idles, and none of it once it is damaged (under half its hp).
 static var _work_tex := {}       # kind -> its work frames' textures (null where there's none), by number
 
@@ -826,6 +880,8 @@ func barren() -> bool:
 ## share it still pays once spent (none: spent land is barren). An Ore Crusher has no crew of its own: its staffing is its Clocktower's battery
 ## carriers (the Winders on the Clocktower and its Boilers) against their full crews.
 func efficiency() -> Array:
+	if Defs.gear_mode and d["faction"] == "clockwork" and game != null:
+		return GearEcon.efficiency(self)      # (gear mode: crew x drive x brass, scripts/gear_econ.gd)
 	var have := 0
 	var want := 0
 	var left := 0.0
@@ -908,10 +964,14 @@ func _econ(delta: float) -> void:
 				game.add_gold_f(team, pay)
 			_gear_anim(working_crew() > 0 and rate > 0.0)
 		"mainspring":
-			# winds TENSION (the Clockwork's second resource, nothing spends it yet) while it is linked and crewed
+			# winds TENSION (the Clockwork's second resource) while it is linked and crewed, up to what the springs store
+			while crew.size() > crew_max():
+				var extra2: Unit = crew.pop_back()
+				if is_instance_valid(extra2) and not extra2.dead:
+					extra2.cmd_stop()          # (a swap to the small gear lets the extra Winders go)
 			var sr := spring_rate()
 			if sr > 0.0:
-				game.players[team]["tension"] = float(game.players[team].get("tension", 0.0)) + sr * delta
+				GearEcon.wind(game, team, sr * delta)
 			_gear_anim(working_crew() > 0 and sr > 0.0)
 		"movement_works":
 			# the hanging line runs while it assembles a Clock Soldier and is linked
@@ -921,7 +981,7 @@ func _econ(delta: float) -> void:
 			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["regulator_dt"]))
 		"escapement":
 			# the anchor rocks and the wheel ticks while it works: linked and meshed with a Mainspring (the Tension rule)
-			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["escapement_dt"]))
+			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["escapement_dt"]), int(Defs.GEAR["escapement_frames"]))
 		"cuckoo_house":
 			# the Clock Aviary: its doors open and a little brass bird pops out and flies off, over and over, while it makes
 			# a Swift (or researches) and is linked; doors shut when idle
@@ -936,7 +996,7 @@ func _econ(delta: float) -> void:
 var _fetch_t := 0.0
 
 
-## The front entry is a gun or wagon whose reserved horse hasn't walked in yet.
+## The front entry is a gun or wagon whose reserved horse hasn't reached the building yet.
 func _horse_pending(k: String) -> bool:
 	return not is_research(k) and not Defs.RIDERS.has(k) and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
 
@@ -1031,7 +1091,7 @@ func _tick_building(delta: float) -> void:
 		prod_t += delta * (game.asm_mult[team] * game.line_net.speed_mult(self) if d["faction"] == "clockwork" else 1.0)
 		var k: String = queue[0]
 		if prod_t >= entry_time(k) and _horse_pending(k):
-			# a gun is ready, its horse isn't here yet: it comes out when the horse walks in
+			# a gun is ready, its horse isn't here yet: it comes out once the horse is hitched here
 			prod_t = entry_time(k)
 			_fetch_t -= delta
 			if _fetch_t <= 0.0:
@@ -1249,7 +1309,7 @@ var _soil_key_t := 0.0
 func sprite_point(fx: float, fy: float) -> Vector2:
 	if sprite == null or sprite.texture == null:
 		return center()
-	return global_position + sprite.offset + Vector2(sprite.texture.get_width() * fx, sprite.texture.get_height() * fy)
+	return global_position + sprite.position + sprite.offset + Vector2(sprite.texture.get_width() * fx, sprite.texture.get_height() * fy)
 
 
 func top_point() -> Vector2:
@@ -1373,6 +1433,10 @@ func _update_sprite() -> void:
 			# drawn over its neighbours on the same row (and still behind units in front)
 			sprite.position.y = 1.0
 			sprite.offset.y -= 1.0
+		elif kind == "powder_mill":
+			# it sorts at the back of its yard: the men working there are drawn over it
+			sprite.position.y = -MILL_SORT_UP
+			sprite.offset.y += MILL_SORT_UP
 	if sails:
 		sails.visible = seeded and Array(FARM_ART["sail_states"]).has(state)
 	if _mill_horse:
@@ -1552,12 +1616,15 @@ func _draw_lock(top: float) -> void:
 
 
 func _draw_building() -> void:
+	if _mill_sel:
+		_mill_sel.queue_redraw()        # (the mill's frame is drawn under its body: _draw_mill_sel)
 	if dead:
 		return
 	var r := rect()
 	var local := Rect2(r.position - global_position, r.size)
 	if selected:
-		draw_rect(local.grow(3), Color(0.4, 1.0, 0.4, 0.8), false, 2.0)
+		if _mill_sel == null:
+			draw_rect(local.grow(3), Color(0.4, 1.0, 0.4, 0.8), false, 2.0)
 		if rally != Vector2.INF and (team == game.human or game.spectating()):
 			draw_dashed_line(Vector2(0, -r.size.y * 0.5), rally - global_position, Color(0.4, 1, 0.4, 0.6), 2.0, 8.0)
 			draw_circle(rally - global_position, 4, Color(0.4, 1, 0.4, 0.9))

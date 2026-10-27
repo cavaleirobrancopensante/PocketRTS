@@ -31,6 +31,16 @@ static func _v2(v: Vector2) -> Array:
 	return [v.x, v.y]
 
 
+## A queue entry's kit as saved: the id of the live horse hitched for it means nothing next
+## session (the horse is folded into the kit, its coat and health: Game.spawn_trained).
+static func _kit_save(kt):
+	if kt is Dictionary and kt.has("hid"):
+		var c: Dictionary = kt.duplicate()
+		c.erase("hid")
+		return c
+	return kt
+
+
 ## Units that are no more: a saved Pikeman comes back as a Musketeer.
 ## A unit kind from an older save: the Pikeman became a Musketeer (Crown rework), the
 ## Gearknight a Thresher and the Bolt Automaton an Arc Thrower (Clockwork rework).
@@ -67,7 +77,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		if b.dead:
 			continue
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
-			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits, "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
+			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits.map(func(kt): return _kit_save(kt)), "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
 			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
 			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
 			"stock": snappedf(b.stock, 0.1), "gb": b.gear_big, "gs": snappedf(b.gear_swap_t, 0.01), "gst": b.gear_swap_to, "soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
@@ -77,8 +87,9 @@ static func save(game: Game, cfg: Dictionary) -> void:
 	# every saved unit's number (in this list's order), so horses can name who leads them
 	var ids := {}
 	for u in game.units:
-		if u.dead or u.off_field or (u.kind == "horse" and is_instance_valid(u.into) and u.into is Building):
-			continue           # (a horse walking into a building is already in its queue entry)
+		if u.dead or u.off_field or (u.kind == "horse" and is_instance_valid(u.into) and u.into is Building and u.horse_rid == 0):
+			continue           # (a horse taken to a building, or hitched there, is already in its queue entry; one
+			                   # kept for a gun still on its way is saved with its reservation: it is fetched again)
 		ids[u] = ids.size()
 	for u in game.units:
 		if not ids.has(u):

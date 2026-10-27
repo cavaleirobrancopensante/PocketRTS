@@ -3,7 +3,8 @@ extends SceneTree
 ## An Escapement linked to the field but not meshed with a Mainspring is idle (NEEDS MAINSPRING: no research, no Jack);
 ## one meshed directly with a Mainspring works (an idler between them counts; a chain through another building does not)
 ## and a Jack trains, paying cogs AND Tension (refused when Tension is short); if the Mainspring dies the Escapement goes
-## idle again (nothing else is lost). A Jack shoots and kills a ground unit and a flyer with its screws; JUMP on flat ground
+## idle again (nothing else is lost). THE TENSION RULE (0.14.33, scripts/gear_econ.gd): the Jack is made only at a Movement
+## Works whose ring meshes with a Mainspring's (one that does not refuses it). A Jack shoots and kills a ground unit and a flyer with its screws; JUMP on flat ground
 ## crouches in place, flies over its shadow and lands at the spot, cannot shoot in the air and then waits for its spring;
 ## jumping UP a cliff is refused before HIGH LEAP, refused after it where the side cannot see, and allowed with vision; down
 ## a cliff is always allowed; it never lands on a building.
@@ -74,6 +75,18 @@ func _run() -> void:
 	check("the ghost of a second Escapement by the Mainspring says it meshes", ec2.x < 0 or g.gear_net.spring_problem(0, Defs.CW_TECH, ec2) == "")
 	U.step(g, 0.5)
 	check("its working loop plays while it works", esc.drill_anim and esc.sprite.texture != null and esc.sprite.texture.resource_path.contains("escapement_work_"))
+	# ---- THE TENSION RULE at the Works: the Jack costs Tension, so it is made only where a Mainspring meshes
+	if g.gear_net.spring_for(works) == null:
+		var wn := g.can_train(works, Defs.JACK)
+		check("a Movement Works meshing with no Mainspring refuses the Jack", wn.contains("meshes with no Mainspring"), wn)
+		var w2 := _works_beside(g, spring)
+		check("a Movement Works was put meshing with the Mainspring", w2 != null and g.gear_net.spring_for(w2) != null)
+		if w2 == null:
+			_end()
+			return
+		works = w2
+		g._recount_supply(0)
+		g.players[0]["cap"] = 100
 	# ---- Tension short: refused with a clear message
 	g.players[0]["tension"] = 10.0
 	why = g.can_train(works, Defs.JACK)
@@ -216,8 +229,8 @@ func _run() -> void:
 			lab_spring = b
 	g2.gear_net.solve()
 	check("the Lab has a built Escapement", lab_esc != null and lab_esc.built)
-	check("the Lab's Escapement is linked and meshed with the Mainspring (it works)", lab_esc != null and g2.gear_net.is_linked(lab_esc) \
-			and g2.gear_net.spring_for(lab_esc) == lab_spring and g2.gear_net.speed_mult(lab_esc) > 0.0)
+	check("the Lab's Escapement is linked and meshed with a Mainspring (it works)", lab_esc != null and lab_spring != null and g2.gear_net.is_linked(lab_esc) \
+			and g2.gear_net.spring_for(lab_esc) != null and g2.gear_net.speed_mult(lab_esc) > 0.0)
 	var lab_jacks := g2.units.filter(func(u: Unit) -> bool: return u.team == g2.human and u.kind == Defs.JACK and not u.dead)
 	check("the Lab has three Jacks", lab_jacks.size() == 3, "%d" % lab_jacks.size())
 	check("the Lab has Tension to spare", g2.tension(g2.human) >= 300.0, "%.0f" % g2.tension(g2.human))
@@ -321,6 +334,17 @@ func _spring_beside(g: Game, esc: Building) -> Building:
 		var c := GearNet.ring_spot(g, 0, "mainspring", esc, deg)
 		if c.x >= 0:
 			var b := g._add_building("mainspring", 0, c, true)
+			g.gear_net.solve()
+			return b
+	return null
+
+
+## A finished Movement Works whose ring meshes with the Mainspring's (directly or through an idler), linked; null if none fits.
+func _works_beside(g: Game, sp: Building) -> Building:
+	for deg in [0.0, 90.0, 180.0, -90.0, 45.0, 135.0, -45.0, -135.0]:
+		var c := GearNet.ring_spot(g, 0, Defs.CW_WORKS, sp, deg)
+		if c.x >= 0:
+			var b := g._add_building(Defs.CW_WORKS, 0, c, true)
 			g.gear_net.solve()
 			return b
 	return null

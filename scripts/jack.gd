@@ -232,11 +232,28 @@ static func aims_up(u: Unit) -> bool:
 	return u.target != null and is_instance_valid(u.target) and u.target.is_air() and ArtData.UNITS[u.art]["frames"].has("attack_up_s")
 
 
-## The drill tip in world px for the way it faces now (Defs.JACK_SHOT "tips": from its feet, per drawn direction; the
-## west views mirror the east ones), lifted with it; the raised arm's tip (Defs.JACK_SHOT_UP) when it shoots at a flyer.
+## Its two launchers fire IN TURN at the ground (the robot's right arm, then its left: Unit.arm, set as each shot's aim
+## starts to the shots so far mod 2, so a shot that never left does not skip an arm). Each arm has its own strip,
+## "attack_r" / "attack_l" (tools/import_jack.py, from art/redraws/jack_attack_twin_body.png), and its own drill tip
+## (Defs.JACK_SHOT "tips"); a sheet with one strip ("attack") and one tip per view still works.
+const ARMS := ["r", "l"]
+
+
+## The ground shot's strip for the shot under way: its arm's.
+static func attack_anim(u: Unit) -> String:
+	var a := "attack_" + String(ARMS[u.arm])
+	return a if ArtData.UNITS[u.art]["frames"].has(a + "_s") else "attack"
+
+
+## The drill tip in world px for the way it faces now (Defs.JACK_SHOT "tips": from its feet, per arm and drawn direction;
+## the west views mirror the east ones, as the sprite does), lifted with it; the raised arm's tip (Defs.JACK_SHOT_UP)
+## when it shoots at a flyer.
 static func tip(u: Unit, up := false) -> Vector2:
 	var dd: Array = Unit.DIR_FLIP[posmod(int(round(u.facing.angle() / (PI / 4.0))), 8)]
-	var o: Vector2 = (Defs.JACK_SHOT_UP if up else Defs.JACK_SHOT)["tips"][String(dd[0])]
+	var tips: Dictionary = (Defs.JACK_SHOT_UP if up else Defs.JACK_SHOT)["tips"]
+	if tips.has(ARMS[0]):
+		tips = tips[ARMS[u.arm]]
+	var o: Vector2 = tips[String(dd[0])]
 	if bool(dd[1]):
 		o.x = -o.x
 	return u.position + o - Vector2(0.0, lift(u))

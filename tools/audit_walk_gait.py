@@ -117,13 +117,14 @@ def measure(fr, d, kind):
     return {"n": n, "leg": leg, "rng": int(rng), "alt": bool(alt), "ok": ok, "spread": spread, "lift": lift}
 
 
-FIXED = ["missionary", "windup_soldier", "winder", "musketeer_armoured", "raptor"]
+FIXED = ["missionary", "windup_soldier", "musketeer_armoured", "raptor"]
 
 # what is left, and why (shown in the doc under "Status")
 STATUS = [
     ("missionary", "fixed", "legs rebuilt (tools/import_gait_missionary.py), all views: robe-black legs, boots under the hem"),
     ("windup_soldier", "fixed", "legs rebuilt (import_gait_windup_soldier.py), all views; tiny sprite, the front/back stride is subtle"),
-    ("winder", "fixed", "legs rebuilt (import_gait_winder.py), all views"),
+    ("winder", "new art", "2026-10-26: the new Winder's own ChatGPT walk (tools/import_winder_v2.py; the code legs of import_gait_winder.py are retired); "
+     "4 frames that stride once a loop, played on a ticking beat (Unit.WINDER_BEAT); the ne view's stride is small"),
     ("musketeer_armoured", "fixed", "legs rebuilt (import_gait_musketeer_armoured.py), all views; frame counts 3/4/6/5/7 unchanged"),
     ("raptor", "improved", "s / se / ne / n legs rebuilt (import_gait_raptor.py); walk_e kept (already a real run). Front/back stride is small: a ChatGPT redraw would still be better"),
     ("horse", "needs ChatGPT redraw", "quadruped: a believable diagonal-pair leg cycle cannot be built from the painted horse by code (prompt 18/20-25)"),

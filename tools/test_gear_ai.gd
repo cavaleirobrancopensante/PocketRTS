@@ -77,11 +77,14 @@ func _mine(kind := "") -> Array:
 var _jacks_seen := {}
 var _air_seen := {}             # Swifts (and the Owls they became) it made
 var _owls_seen := {}
+var _kinds_seen := {}           # every kind of unit it had (Defs.retired: none of the old roster)
 
 
 func _watch() -> void:
 	var net: GearNet = g.gear_net
 	for u in g.units:
+		if u.team == 0:
+			_kinds_seen[u.kind] = true
 		if u.team == 0 and u.kind == Defs.JACK:
 			_jacks_seen[u.get_instance_id()] = true
 		if u.team == 0 and (u.kind == Defs.CUCKOO or u.kind == Defs.OWL):
@@ -161,6 +164,15 @@ func _run() -> void:
 		int(g.clock) / 60, int(g.clock) % 60, _mine("mainspring").size(), esc_n, working, _jacks_seen.size(),
 		g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == Defs.JACK and not u.dead).size(), int(g.tension(0)), str(g.has_tech(0, "high_leap"))])
 	check(esc_n == working or (vs != "passive" and g.over), "every Escapement it built meshes with a Mainspring (%d of %d)" % [working, esc_n])
+	# only the rebuilt army (owner, 2026-10-26: Defs.retired): no Assembly Works, no prototype unit, ever
+	var old: Array = []
+	for b in g.buildings:
+		if b.team == 0 and Defs.retired(b.kind) and not old.has(b.kind):
+			old.append(b.kind)
+	for k in _kinds_seen:
+		if Defs.retired(k) and not old.has(k):
+			old.append(k)
+	check(old.is_empty(), "it built and trained nothing retired, no Assembly Works or prototype unit (%s)" % str(old))
 	# the air (it builds an Aviary only against flyers or late): reported
 	print("NOTE  the air at %d:%02d: %d Clock Aviary(ies), %d Swifts made, %d Ticking Owls, TICKING OWL %s" % [
 		int(g.clock) / 60, int(g.clock) % 60, _mine(Defs.CW_AIR).size(), _air_seen.size(), _owls_seen.size(), str(g.has_tech(0, "owl_morph"))])

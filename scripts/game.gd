@@ -2837,7 +2837,8 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := fals
 
 
 ## The building takes its ground: its cells turn solid (a gate: passable for its side, a
-## Farm's crop rows walkable) and anyone left standing there is pushed out (but `keep`).
+## Farm's crop rows and a Powder Mill's work yard walkable) and anyone left standing there is
+## pushed out (but `keep`).
 func _solidify(b: Building, keep: Array = []) -> void:
 	var k := b.kind
 	var c := b.cell
@@ -2852,7 +2853,7 @@ func _solidify(b: Building, keep: Array = []) -> void:
 	else:
 		_mark(c, b.size, 4 if Defs.BUILDINGS[k].get("line", false) else 2)
 	for fc in Building.field_cells(k):
-		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows: men walk them, nothing is built on them
+		_mark(c + fc, Vector2i.ONE, 5)      # a Farm's crop rows, a Mill's yard: men walk them, nothing is built on them
 	_cover_decos(b)
 	if Defs.BUILDINGS[k].get("line", false):
 		_orient_gates(c)
@@ -3021,6 +3022,7 @@ func site_failed(b: Building, why := "blocked") -> void:
 	var t := b.team
 	var cost := int(b.d["cost"])
 	players[t]["gold"] += cost
+	add_tension(t, float(Defs.tension_cost(b.d)))          # (and its Tension price, all of it)
 	stats[t]["spent"] -= cost
 	stats[t]["built"] = maxi(0, int(stats[t]["built"]) - 1)
 	if t == human and not demo and hud and why != "abandoned":
@@ -3463,7 +3465,12 @@ func add_gold(t: int, n: int) -> void:
 ## horse, if it took one, comes back out of `at`).
 func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> void:
 	if kit.has("coat") and at != null and k != "horse":      # (a queued horse's coat is its own: no second horse)
-		horse_back(at, kit)
+		var hh := _kit_horse(kit, at)
+		if hh != null:
+			hh._unhitch()           # (the horse hitched beside the building, or still on its way, is free again where it stands)
+			hh.horse_rid = 0
+		else:
+			horse_back(at, kit)     # (a loaded game's entry: its horse comes back out)
 	if int(kit.get("rid", 0)) != 0 and k != "horse":
 		release_rid(t, int(kit["rid"]))     # (its horse is free again; one still at the breeder is kept)
 	if Building.is_research(k):
@@ -3517,7 +3524,20 @@ func tension_user_problem(t: int, kind: String) -> String:
 		return "Needs an Escapement first." if kind == Defs.CW_TECH else "Needs a %s first." % Defs.BUILDINGS[kind]["name"]
 	for b in buildings:
 		if b.team == t and b.kind == kind and b.built and not b.dead and gear_net.needs_spring(b):
-			return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
+			return _idle_text(kind)
+	return _unlinked_text(kind)
+
+
+## A Tension user's refusals (the Escapement's, the Clock Aviary's).
+func _idle_text(kind: String) -> String:
+	if kind == Defs.CW_AIR:
+		return "The Clock Aviary stands idle: mesh its gear ring with a Mainspring's."
+	return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
+
+
+func _unlinked_text(kind: String) -> String:
+	if kind == Defs.CW_AIR:
+		return "The Clock Aviary is unlinked: its gear ring must mesh with the gear field."
 	return "The Escapement is unlinked: its gear ring must mesh with the gear field."
 
 
@@ -3610,6 +3630,10 @@ func can_train(b: Building, key: String) -> String:
 		var gp := Pendulum.gear_problem(b)      # (tier 3: the Pendulum, only on the Works' BIG gear: the heavy torque)
 		if gp != "":
 			return gp
+	if Defs.tension_cost(u) > 0:
+		var spp := GearEcon.spend_problem(self, b)      # (THE TENSION RULE: made only where a Mainspring meshes, GearEcon)
+		if spp != "":
+			return spp
 	if b.uses_eggs():
 		if b.eggs < 1:
 			return "No eggs ready."
@@ -3708,8 +3732,12 @@ func research_problem(b: Building, key: String) -> String:
 	if Defs.gear_mode and Defs.TENSION_USERS.has(b.kind) and gear_net.speed_mult(b) <= 0.0:
 		# (a Tension user researches only while it works: linked and meshed with a Mainspring)
 		if gear_net.needs_spring(b):
-			return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
-		return "The Escapement is unlinked: its gear ring must mesh with the gear field."
+			return _idle_text(b.kind)
+		return _unlinked_text(b.kind)
+	if Defs.tension_cost(info) > 0:
+		var sp := GearEcon.spend_problem(self, b)       # (THE TENSION RULE: made only where a Mainspring meshes)
+		if sp != "":
+			return sp
 	var res: Array = Defs.res_names(factions[b.team])
 	if players[b.team]["gold"] < int(info["cost"]):
 		return "Not enough %s." % String(res[0]).to_lower()
@@ -4080,13 +4108,14 @@ func train(b: Building, key: String) -> String:
 	stats[b.team]["spent"] += price[0]
 	var kit := kit_for_new(b.team, key)
 	if Defs.UNITS[k].get("needs_horse", false):
-		# the horse at the building is his: it walks in (its coat rides out with him)
+		# the horse at the building is his: it stands hitched beside it till he comes out on it
 		var h := free_horse_at(b)
 		kit = kit.duplicate()
 		if h:
 			kit["coat"] = h.coat
 			kit["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
 			kit["hm"] = snappedf(h.horse_miles, 0.1)
+			kit["hid"] = h.get_instance_id()     # (the live horse: Game._kit_horse)
 			h.walk_into(b)
 		else:
 			# one click trains both: a free horse at a breeder is kept for him, or the
@@ -4167,10 +4196,24 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		Sfx.voice(k, "select")
 	var rid := int(kit.get("rid", 0))
 	var sk := k
+	var spawn_at := cell_center(best)
+	var hh := _kit_horse(kit, b)
+	if hh != null:
+		# the horse waiting hitched beside the building (or still on its way to it): the rider
+		# comes out in its place, on its coat and health as they are now; a gun is drawn by it
+		kit = kit.duplicate()
+		kit.erase("hid")
+		kit["coat"] = hh.coat
+		kit["hh"] = snappedf(hh.hp / maxf(hh.max_hp, 1.0), 0.01)
+		kit["hm"] = snappedf(hh.horse_miles, 0.1)
+		if hh.hitch_p != Vector2.INF and Defs.FOOT.has(k) and hh.position.distance_to(hh.hitch_p) < 8.0 \
+				and in_open_map(cell_of(hh.position)):
+			spawn_at = hh.position
+		consume_unit(hh)
 	if Defs.RIDERS.has(k) and rid != 0:
 		sk = String(Defs.RIDERS[k])    # trained on foot: he goes and gets on the horse kept for him
 	for n in int(Defs.UNITS[k].get("spawn", 1)):
-		var u := _add_unit(sk, b.team, cell_center(best) + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
+		var u := _add_unit(sk, b.team, spawn_at + Vector2(randf_range(-6, 6), randf_range(-6, 6)))
 		if sk != k:
 			u.set_kit(kit)
 			u.horse_rid = rid
@@ -4180,7 +4223,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		if not kit.is_empty():
 			u.set_kit(kit)          # (a soldier paid to come out armoured, a Musketeer with a better lock)
 		if kit.has("coat") and HorseCoat.COATS.has(String(kit["coat"])):
-			u.coat = String(kit["coat"])      # the horse that walked in
+			u.coat = String(kit["coat"])      # the horse hitched for him
 			u.horse_hp = float(kit.get("hh", 1.0))
 			u.horse_miles = float(kit.get("hm", 0.0))
 			if u.is_mounted():
@@ -4510,6 +4553,8 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 	if net_forward(self, "place_building", [t, k, c, builders, queued]): return null
 	if placement_problem(t, k, c) != "" or players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		return null
+	if tension(t) < float(Defs.tension_cost(Defs.BUILDINGS[k])):
+		return null          # (gear mode: a building's Tension price, the Clock Aviary's)
 	if not requirement_met(t, k):
 		return null
 	if k == "gate":
@@ -4521,6 +4566,7 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		if old_gate:
 			_remove_quietly(old_gate)
 	players[t]["gold"] -= int(Defs.BUILDINGS[k]["cost"])
+	add_tension(t, -float(Defs.tension_cost(Defs.BUILDINGS[k])))
 	stats[t]["spent"] += int(Defs.BUILDINGS[k]["cost"])
 	stats[t]["built"] += 1
 	var b := _add_building(k, t, c, false, true)     # a ghost until its building starts
@@ -5077,6 +5123,7 @@ func approach_point(e: Entity, from: Vector2) -> Vector2:
 	var c1 := cell_of(r.end - Vector2(1, 1)) + Vector2i.ONE
 	var best := Vector2.INF
 	var bd := INF
+	var home := region_of(cell_of(from))
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
 			if x != c0.x and x != c1.x and y != c0.y and y != c1.y:
@@ -5088,6 +5135,8 @@ func approach_point(e: Entity, from: Vector2) -> Vector2:
 				var corner := (x == c0.x or x == c1.x) and (y == c0.y or y == c1.y)
 				if corner:
 					dd += 48.0
+				if home >= 0 and region_of(c) != home:
+					dd += 100000.0      # (a pocket shut in by a palisade or other buildings, the far side of a wall: he can't walk there, so a side he can reach first)
 				if dd < bd:
 					bd = dd
 					best = p
@@ -5262,6 +5311,7 @@ func separation(u: Unit) -> Vector2:
 	var u_rail := Defs.cw_roster and Defs.CW_RAIL.has(u.kind)
 	var mu := 12.0 if u.kind == "cannon" or u.kind == "mortar" or u_rail else 1.0
 	var u_still := u.velocity.length() < 15.0
+	var u_mill: bool = u._mill_in
 	var gw := _grid_w
 	var off := not _hash.is_empty()      # (anyone off the grid: then every cell is looked up the slow way)
 	var y0 := c0.y if off else maxi(c0.y, 0)
@@ -5282,6 +5332,8 @@ func separation(u: Unit) -> Vector2:
 					continue           # (a man beside his own horse: he got off there, close by it)
 				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
 					continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
+				if u_mill and o._mill_in and o.home_mine == u.home_mine:
+					continue           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
 				var dvec: Vector2 = p - o.position
 				var dist := dvec.length()
 				var min_d: float = (u.radius + o.radius) * 0.85
@@ -8186,8 +8238,9 @@ func abandon(b: Building) -> void:
 	if b.built or b.dead:
 		return
 	if b.ghost:
-		# it never began: all of it comes back
+		# it never began: all of it comes back (its Tension too)
 		players[b.team]["gold"] += int(b.d["cost"])
+		add_tension(b.team, float(Defs.tension_cost(b.d)))
 		stats[b.team]["spent"] -= int(b.d["cost"])
 		stats[b.team]["built"] = maxi(0, int(stats[b.team]["built"]) - 1)
 		remove_ghost(b)
@@ -8196,6 +8249,7 @@ func abandon(b: Building) -> void:
 				u.site_gone()
 		return
 	players[b.team]["gold"] += int(int(b.d["cost"]) * 0.75)
+	add_tension(b.team, float(int(Defs.tension_cost(b.d) * 0.75)))      # (a begun building: three quarters, like the cogs)
 	b.take_damage(9999999.0, null)
 	if b.crate_obj and is_instance_valid(b.crate_obj):
 		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)
@@ -8508,10 +8562,11 @@ func horses_of(t: int) -> Array:
 	return out
 
 
-## "Horses: 3 (1 reserved)" for the top bar and the breeder's card.
+## "Horses: 3 (1 reserved)" for the top bar and the breeder's card (reserved: kept for a recruit
+## or a gun, or taken to its building and hitched there).
 func horses_text(t: int) -> String:
 	var hs := horses_of(t)
-	var r := hs.filter(func(h: Unit) -> bool: return h.horse_rid != 0).size()
+	var r := hs.filter(func(h: Unit) -> bool: return h.horse_rid != 0 or h.into is Building).size()
 	return "Horses: %d%s" % [hs.size(), (" (%d reserved)" % r) if r > 0 else ""]
 
 
@@ -9129,26 +9184,111 @@ func release_rid(t: int, rid: int) -> void:
 	if h:
 		h.horse_rid = 0
 		if h.into is Building:
-			h.into = null
-			h.graze_at = h.position
+			h._unhitch()
 	for b in breeders_of(t):
 		for i in b.kits.size():
 			if b.kits[i] is Dictionary and int(b.kits[i].get("rid", 0)) == rid:
 				b.kits[i] = {}
 
 
-## A gun's reserved horse has walked into its Foundry: its queue entry gets that horse.
+## A reserved horse has reached its building (a gun's Foundry, or a hauler brought it to the
+## Barracks): its queue entry gets that horse, hitched beside the building (Game.hitch_horse).
 func horse_arrived(b: Building, h: Unit) -> void:
 	for i in b.kits.size():
 		var kt = b.kits[i]
 		if kt is Dictionary and int(kt.get("rid", 0)) == h.horse_rid:
 			var nk: Dictionary = kt.duplicate()
 			nk.erase("rid")
+			nk["hid"] = h.get_instance_id()
 			nk["coat"] = h.coat
 			nk["hh"] = snappedf(h.hp / maxf(h.max_hp, 1.0), 0.01)
 			nk["hm"] = snappedf(h.horse_miles, 0.1)
 			b.kits[i] = nk
 			return
+
+
+## The live horse a queue entry's kit holds at `b` (on its way there or hitched beside it), or null.
+func _kit_horse(kit: Dictionary, b: Building) -> Unit:
+	var id := int(kit.get("hid", 0))
+	if id == 0 or not is_instance_id_valid(id):
+		return null
+	var h = instance_from_id(id)
+	if h is Unit and is_instance_valid(h) and (h as Unit).kind == "horse" and not (h as Unit).dead and (h as Unit).into == b:
+		return h
+	return null
+
+
+## Does a queue entry of `b` hold this horse (so it is still wanted there)?
+func entry_holds(b: Building, h: Unit) -> bool:
+	var id := h.get_instance_id()
+	for kt in b.kits:
+		if kt is Dictionary and int(kt.get("hid", 0)) == id:
+			return true
+	return false
+
+
+## The horse has reached the building: its queue entry takes it (a reserved one: horse_arrived)
+## and it stands hitched on its own spot beside the building until the recruit comes out on it
+## (or the gun is drawn out by it), untouchable; cancelled, it is free again where it stands.
+func hitch_horse(b: Building, h: Unit) -> void:
+	if h.horse_rid != 0:
+		horse_arrived(b, h)
+		h.horse_rid = 0
+	h.hitch_p = hitch_spot(b, h)
+	h._hitch_t = 0.0
+	h.velocity = Vector2.ZERO
+	h.path = PackedVector2Array()
+	h.order = "idle"
+
+
+## A spot beside the building for a hitched horse: round its rim, clear ground the horse can walk
+## to, on the side away from the rally (where the recruits come out), a body's width from the
+## others hitched there; the horse's own spot if there is none.
+func hitch_spot(b: Building, h: Unit) -> Vector2:
+	var r := b.rect()
+	var out := r.grow(22.0)
+	var toward: Vector2 = b.rally if b.rally != Vector2.INF else r.get_center() + Vector2(0, r.size.y)
+	var taken: Array = []
+	for u in units:
+		if u != h and u.kind == "horse" and not u.dead and u.hitch_p != Vector2.INF and u.into == b:
+			taken.append(u.hitch_p)
+	var cands: Array = []
+	var step := 26.0
+	var x := out.position.x
+	while x <= out.end.x:
+		cands.append(Vector2(x, out.position.y))
+		cands.append(Vector2(x, out.end.y))
+		x += step
+	var y := out.position.y + step
+	while y < out.end.y:
+		cands.append(Vector2(out.position.x, y))
+		cands.append(Vector2(out.end.x, y))
+		y += step
+	var home := region_of(cell_of(h.position))
+	var best := Vector2.INF
+	var bs := -INF
+	for p: Vector2 in cands:
+		var c := cell_of(p)
+		if not in_map(c) or not open_cell(c) or not _clear_at(p, h.radius, h.team):
+			continue
+		var clash := false
+		for q: Vector2 in taken:
+			if q.distance_to(p) < 24.0:
+				clash = true
+				break
+		if clash:
+			continue
+		var sc: float = p.distance_to(toward) - 0.5 * p.distance_to(h.position)
+		if not in_open_map(c):
+			sc -= 200000.0           # (a pocket shut in by buildings: only if there is nothing else)
+		elif region_of(c) != home:
+			sc -= 100000.0           # (the far side of a wall from the horse: it would be put there)
+		if sc > bs:
+			bs = sc
+			best = p
+	if best == Vector2.INF:
+		return h.position
+	return best
 
 
 ## A Foundry's gun is ready but its horse isn't there yet: make sure one is coming (its own,
@@ -9182,11 +9322,11 @@ func _horse_res_tick(delta: float) -> void:
 		if h.kind == "horse" and not h.dead and h.horse_rid != 0 and rid_owner(h.team, h.horse_rid) == null:
 			h.horse_rid = 0
 			if h.into is Building:
-				h.into = null
-				h.graze_at = h.position
+				h._unhitch()
 
 
-## A cancelled recruit's horse (its coat and health in the queue entry's kit) walks back out.
+## A cancelled recruit's horse (its coat and health in the queue entry's kit) that is no longer
+## on the field (an entry from a loaded game: Game.refund) walks back out.
 func horse_back(b: Building, kit: Dictionary) -> void:
 	var c := nearest_free(cell_of(b.rect().get_center() + Vector2(0, b.rect().size.y * 0.5 + 16.0)), 6)
 	var p := cell_center(c) if c.x >= 0 else b.center()
@@ -9211,6 +9351,7 @@ func steal_horse(h: Unit, by: Entity) -> void:
 	h.leader = null
 	h.claimed = null
 	h.into = null
+	h.hitch_p = Vector2.INF
 	h.horse_rid = 0
 	h.bolt_t = 0.0
 	h.bolt_to = Vector2.INF
