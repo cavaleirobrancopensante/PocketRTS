@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.86", "items": [
+		"The Crown's buildings have terracotta roofs.",
+	]},
 	{"v": "0.14.85", "items": [
 		"FIX: Clockwork buildings go up out of their crate again. Only the Clocktower showed the crate: the Cog Press, Mainspring, Regulator, Movement Works, Ratchet Turret, Escapement and Clock Aviary jumped straight to their scaffold. Now every one shows the crate the Winder set down opening up and unfolding into its frame, for you and the computer alike.",
 		"Clockwork buildings now BUILD UP: after the crate unfolds, the scaffold rises out of its plates from the bottom as the building goes up (all of it by half way), then the finished building stands.",
