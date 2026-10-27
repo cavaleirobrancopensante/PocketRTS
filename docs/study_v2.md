@@ -55,7 +55,7 @@ python3 tools/study/report_v2.py aggregate --runs ~/study_v2_runs/m1 --machine m
 That fills `docs/study_v2/data/m1/` with:
 - `games/*.json` (one per game: setup, result, cause, per side the opening and the scripted player's step record, totals, waves) and `ts/*.csv` (each side every 30 game seconds), copied as they are;
 - `logs.tar.gz`: the match logs, compressed into one file;
-- on m4 also `explore.tar.gz` (the explorer's working folder), `candidates.json` (every candidate's full script, parent, origin and mutations) and `explore_specs.json` (each game's draw);
+- on m4 also `explore.tar.gz` (the explorer's working folder), `candidates.json` (every candidate's full script, parent, origin and mutations), `explore_specs.json` (each game's draw) and `csv/candidates.csv` (one row per candidate: its script, games, scores, fitness and each result);
 - `csv/`: tools/study/aggregate.py's tables (games, sides, timeseries, waves, events) with the openings added, plus `openings.csv` (one row per scripted side: steps done, timed out, skipped or lost, when the script handed over and why, the scripted attacks), `steps.csv` (one row per step) and `snaps.csv` (army, workers, bank and income at 3, 5, 7, 10, 15 and 20 minutes);
 - `run.log` and `failures.jsonl`.
 
@@ -73,7 +73,24 @@ It is plain prose with small tables, for reading aloud: win rates per match-up w
 
 ## Time per game
 
-MEASURED_TIMES
+Measured on this machine (two cores, two games at once most of the time) with ten full games of the real modes on today's game (games 0 to 2 of each match-up and the explorer's first game):
+
+| game | length (game time) | how it ended | real time |
+|---|---|---|---|
+| Crown v Brood 0 (Dragoon raid v Roost) | 19:15 | destroyed | 4:55 |
+| Crown v Brood 1 (Musketeer wall v Economy) | 13:37 | destroyed | 2:48 |
+| Crown v Brood 2 (Balloon raid v Brute timing) | 14:16 | destroyed | 2:14 |
+| Crown v Clockwork 0 (Balloon drop v Forward Clocktower) | 11:44 | destroyed | 1:33 |
+| Crown v Clockwork 1 (Proxy Horsemen v Pendulum push) | 21:38 | gave up (gg) | 5:24 |
+| Crown v Clockwork 2 (Balloon raid v Fast Jacks) | 18:51 | destroyed | 4:31 |
+| Brood v Clockwork 0 (Six-pool v Jacks) | 10:25 | destroyed | 1:25 |
+| Brood v Clockwork 1 (Spitter timing v Fast Jacks) | 30:00 | the cap, a lead | 7:59 |
+| Brood v Clockwork 2 (Economy v Clock Soldier rush) | 15:53 | destroyed | 3:23 |
+| explore 0 (a Crown fast expansion with Cannons v the Brood economy) | 22:47 | destroyed | 6:48 |
+
+- **Per game: about 4 minutes of real time on average** (mean 4:06, median 3:57, including about 6 seconds to start Godot). The game runs at about a quarter of a second of real time per game second, a little more late in a big game: a game that goes the full 30 minutes takes about 8 minutes.
+- **Per 100 games at two at a time: about 3.5 hours** (100 x 4:06 / 2 = 3 h 25 min). Expect 2.5 to 3 hours for Crown v Brood (its games end soonest), 3.5 to 4 hours for Crown v Clockwork and the explorer, and up to 5 hours for Brood v Clockwork if many of its games run to the cap. The worst case, every game to 30:00, is 100 x 8 min / 2 = about 6 h 40 min.
+- The 8-minute games of the build check and the smoke test took 26 to 86 seconds each, two at a time.
 
 ## What the tools are
 
@@ -90,7 +107,30 @@ The build checks and the smoke test were run on this machine (two cores, the sam
 
 Every documented build was played once for 8 minutes against the plain Hard computer of the next faction (Crown against the Brood, Brood against the Clockwork, Clockwork against the Crown) on Ashford Crossing, with the gg rule off: `python3 tools/study/run_study_v2.py --mode check --out <dir>`, then `python3 tools/study/report_v2.py check --runs <dir>`. "Army" is supply and value. A step "pending" at 8:00 had not come up yet.
 
-CHECK_TABLE
+| build | steps done | script ended | army 3:00 (supply / value) | 5:00 | 7:00 | result at 8:00 | steps not done |
+|---|---|---|---|---|---|---|---|
+| brood_air | 13 of 13 | 7:00 | 0 / 0 | 2 / 100 | 5 / 150 | loss (timeout_lead) | none |
+| brood_brute_timing | 14 of 14 | 7:06 | 0 / 0 | 0 / 0 | 0 / 0 | loss (timeout_lead) | none |
+| brood_economy | 11 of 13 | still scripted | 0 / 0 | 3 / 75 | 0 / 0 | loss (timeout_lead) | attack@30|420 (pending) |
+| brood_pool_eco | 11 of 11 | 4:03 | 6 / 150 | 0 / 0 | 0 / 0 | loss (timeout_lead) | none |
+| brood_proxy_burrow | 8 of 8 | 5:30 | 3 / 75 | 9 / 225 | 0 / 0 | loss (timeout_lead) | none |
+| brood_spitter_timing | 13 of 13 | 6:00 | 3 / 75 | 7 / 315 | 2 / 50 | loss (timeout_lead) | none |
+| brood_xrush | 7 of 7 | 5:00 | 6 / 150 | 6 / 150 | 0 / 0 | loss (timeout_lead) | none |
+| crown_balloon_drop | 14 of 14 | 7:00 | 4 / 240 | 8 / 485 | 15 / 905 | win (victory) | none |
+| crown_balloon_raid | 14 of 14 | 7:00 | 4 / 240 | 6 / 605 | 14 / 1085 | win (timeout_lead) | none |
+| crown_cannon_push | 15 of 15 | 5:43 | 3 / 180 | 9 / 510 | 22 / 1080 | win (timeout_lead) | none |
+| crown_dragoon_raid | 15 of 15 | 6:00 | 0 / 0 | 4 / 280 | 13 / 715 | even (timeout_even) | none |
+| crown_fast_expand | 13 of 13 | 6:00 | 0 / 0 | 5 / 300 | 13 / 820 | win (timeout_lead) | none |
+| crown_horse_rush | 13 of 13 | 5:30 | 9 / 345 | 18 / 690 | - | win (victory) | none |
+| crown_musket_wall | 15 of 15 | 6:00 | 3 / 180 | 10 / 530 | 22 / 1190 | even (timeout_even) | none |
+| crown_proxy_horse | 13 of 13 | 5:30 | 6 / 230 | 0 / 0 | 4 / 255 | win (timeout_lead) | none |
+| cw_jack_rush | 10 of 10 | 4:22 | 2 / 100 | 14 / 740 | 9 / 590 | loss (timeout_lead) | none |
+| cw_jack_tech | 14 of 14 | 4:30 | 5 / 350 | 19 / 1210 | 9 / 510 | even (timeout_even) | none |
+| cw_owl_harass | 20 of 20 | 6:30 | 2 / 140 | 7 / 360 | 23 / 1295 | even (timeout_even) | none |
+| cw_pendulum_push | 13 of 16 | still scripted | 1 / 70 | 4 / 265 | 10 / 700 | even (timeout_even) | pendulum*1 (timeout); attack@24|480 (pending) |
+| cw_proxy_tower | 11 of 11 | 4:00 | 0 / 0 | 7 / 490 | 28 / 1960 | win (timeout_lead) | none |
+| cw_soldier_rush | 9 of 9 | 2:34 | 3 / 210 | 15 / 1050 | 14 / 980 | even (timeout_even) | none |
+| cw_turret_expand | 10 of 10 | 2:59 | 2 / 140 | 10 / 700 | 31 / 2155 | win (timeout_lead) | none |
 
 What broke under the new rules, and the smallest fix for each:
 

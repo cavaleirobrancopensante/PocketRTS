@@ -455,7 +455,9 @@ class Explorer:
                 self.taken.add(k)
                 sp_path = os.path.join(self.dir, "specs", gid + ".json")
                 if os.path.exists(sp_path):
-                    return json.load(open(sp_path))       # (drawn before a restart: played as drawn)
+                    sp = json.load(open(sp_path))       # (drawn before a restart: played as drawn)
+                    sp["builds"] = os.path.join(self.dir, "bfiles", gid + ".json")      # (the folder may have moved)
+                    return sp
                 return self.draw(k)
         return None
 

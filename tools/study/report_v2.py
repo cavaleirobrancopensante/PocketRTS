@@ -175,6 +175,26 @@ def cmd_aggregate(a):
         json.dump(cands, open(os.path.join(dest, "candidates.json"), "w"), indent=1, sort_keys=True)
         specs = [json.load(open(p)) for p in sorted(glob.glob(os.path.join(ex, "specs", "*.json")))]
         json.dump(specs, open(os.path.join(dest, "explore_specs.json"), "w"), indent=1)
+        # every candidate with its results (one row each)
+        import explore_v2
+        per = defaultdict(list)
+        for sp in specs:
+            gp = os.path.join(runs, "games", sp["id"] + ".json")
+            if os.path.exists(gp):
+                g = json.load(open(gp))
+                per[sp["cand"]].append((sp, g))
+        rows = []
+        for nm, c in sorted(cands.items()):
+            lst = per.get(nm, [])
+            sc = [explore_v2.game_score(g) for _, g in lst]
+            rows.append({"name": nm, "faction": c["faction"], "made": c.get("made", ""), "origin": c.get("origin", ""),
+                         "parent": c.get("parent", ""), "then": c.get("then", ""), "steps": " , ".join(c.get("steps", [])),
+                         "mutations": json.dumps(c.get("mutations", [])), "games": len(lst),
+                         "scores": " ".join("%.2f" % x for x in sc), "fitness": round(explore_v2.Explorer.fitness(sc), 3),
+                         "results": " ; ".join("%s %s v %s:%s %s %s" % (sp["id"], g["map"], sp["b"], sp["ob"], g["cause"],
+                                                {1: "won", 0: "lost"}.get(g["a_won"], "even")) for sp, g in lst)})
+        os.makedirs(csvd, exist_ok=True)
+        write_csv(os.path.join(csvd, "candidates.csv"), rows)
     for p in ("failures.jsonl", "run.log"):
         if os.path.exists(os.path.join(runs, p)):
             shutil.copy2(os.path.join(runs, p), os.path.join(dest, p))
