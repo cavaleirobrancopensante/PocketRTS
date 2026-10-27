@@ -1,6 +1,6 @@
 # Holdfast
 
-**Play in your browser (version 0.14.57): https://holdfastrts.github.io/Holdfast/**
+**Play in your browser (version 0.14.58): https://holdfastrts.github.io/Holdfast/**
 
 **Android app: https://holdfastrts.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
@@ -275,16 +275,15 @@ On the first start the game asks where you are playing. The two control schemes 
 
 ## Music and sound
 
-Everything is synthesised, with no samples. `tools/music/compose.py` holds the hand-written score, and `tools/make_sfx.py` makes the effects (numpy, scipy, ffmpeg). The instrument library is shared with TCG-RPG.
+The music is written in code: `tools/music/compose.py` holds the first hand-written scores, and `tools/music/crown_court.py`, `crown_marches.py` and `clock_more.py` the newer sets (`tools/make_sfx.py` makes the effects; numpy, scipy, ffmpeg). Most of it is synthesised. The Crown's marches are built on the owner's own recorded snare solos, and the Clockwork's newer pieces play hits cut from his clock recordings (`tools/music/clock_kit.py`).
 
-- **Menu**: *Holdfast Overture*, with the Crown's call, then the Brood's swamp, the Clockwork's music box, and all three together.
-- **The Crown**: *The King's Muster* (lute, recorder, shawm) and *Pike and Shot* (fife and drum, horns, timpani).
-- **The Brood**: *The Warm Swamp* (drones, throat-choir, log drums) and *Hunger* (6/8 war drums, phrygian shawm).
-- **The Clockwork**: *Winding the Spring* (music box, dulcimer, ticks; it slows down at the end as the spring runs out) and *Brass and Steam* (7/8 machinery, anvils, steam). It is played on a dead-straight grid, with no human timing.
-- Each faction also has three more calm pieces and two more battle pieces (21 match pieces in all). Crown: *The Orchard Minuet*, *Ballad of the Lost Regiment*, *Raising the Bastion*, *Volley Fire*, *Sabres at the Ford*. Brood: *Spawning Pools*, *Moonlit Mudflats*, *The Queen Stirs*, *Teeth in the Reeds*, *The Swarm Rises*. Clockwork: *The Orrery*, *Rust and Rain*, *The Assembly Line*, *Overclock*, *Gearstorm*.
+- **Menu**: nine overtures, shuffled: *Holdfast Overture* (the Crown's call, then the Brood's swamp, the Clockwork's music box, and all three together), *The Banners Rise*, *Before the Long Night*, *Over the High Passes*, *The Iron Anthem*, *Banners and Drums*, *Roll of the Regiment*, *The Long Parade* and *Drums for the King*.
+- **The Crown**, 20 pieces: a courtly band (lute, recorder, shawm, strings, fife and drum, horns). Calm: *The King's Muster*, *The Orchard Minuet*, *Ballad of the Lost Regiment*, *Raising the Bastion*, *The Chapel at Dawn*, three waltzes (*The Elector's Waltz*, *Waltz of the Garrison Flowers*, *Court Waltz by Candlelight*) and *The Colours Furled*. Opening: *Fifes at First Light*. Skirmish: *Tattoo at Dusk*, *Beating to Quarters*, *The Grenadiers' March*. Full battle: *Pike and Shot*, *Volley Fire*, *Sabres at the Ford*, *The Forlorn Hope*, *Storm the Breach*, *Over the Parapet*, *Columns on the March*.
+- **The Brood**, 10 pieces (10 more are being composed): the swamp, with drones, a throat choir, log drums and a bone flute in phrygian and locrian modes. Calm: *The Warm Swamp*, *Spawning Pools*, *Moonlit Mudflats*, *The Queen Stirs*, *Mist on the Brood-Mere*. Battle: *Hunger*, *Teeth in the Reeds*, *The Swarm Rises*, *Blood Moon Rite*, *The Hive Unleashed*.
+- **The Clockwork**, 20 pieces: music boxes and machinery played on a dead-straight grid, with no human timing; the newer pieces all grow from one short motif. Calm: *Winding the Spring* (it slows down at the end as the spring runs out), *The Orrery*, *Rust and Rain*, *The Assembly Line*, *The Lantern Waltz*, *The Clockmaker's Lament*, *Canon of Perfect Order*. Opening: *The Great Escapement*, *Calibration*. Skirmish: *Tick, Tock, Alarm*, *The Watchful Gear*, *Pressure Rising*. Full battle: *Brass and Steam* (7/8 machinery, anvils, steam), *Overclock*, *Gearstorm*, *The Iron Tide*, *Calibrated Fury*, *Cathedral of Gears*, *Anvil Chorus of a Thousand Hands*, *The Grand Calculation*.
 - A victory sting per faction and a defeat sting.
 
-In a match a shuffled playlist of your faction's calm pieces plays, with an enemy faction's piece now and then. It cross-fades to battle music when fighting heats up near your units, and goes back after things are quiet. **Settings > Music player** lets you listen to every piece and choose the playlist: your faction plus a little of the enemy's (default), your faction only, everything, or only the pieces you tick.
+In a match the music follows the moment: an opening piece (or a calm one) as the match starts; then your faction's calm pieces, shuffled, with an enemy faction's piece now and then; a skirmish piece when a small fight starts near your units, the full battle music when the fighting heats up, and calm again once things are quiet. The music player (**Settings > Music player**, and in the in-game MENU) lets you listen to every piece and choose the playlist: your faction plus a little of the enemy's (default), your faction only, everything, or only the pieces you tick.
 
 Sound effects and voices live in `assets/audio/` and `assets/voice/`. [AUDIO_PROMPTS.md](AUDIO_PROMPTS.md) lists every file the game looks for, so a better recording can replace any sound just by taking its name. Variants `_1`, `_2`, `_3` are picked at random.
 

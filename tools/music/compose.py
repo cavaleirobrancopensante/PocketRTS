@@ -2915,6 +2915,8 @@ import crown_marches  # noqa: E402
 crown_marches.register(sys.modules[__name__])
 import crown_court  # noqa: E402
 crown_court.register(sys.modules[__name__])
+import clock_more  # noqa: E402
+clock_more.register(sys.modules[__name__])
 
 
 if __name__ == "__main__":
