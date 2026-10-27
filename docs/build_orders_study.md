@@ -6,7 +6,20 @@ A study of Holdfast v0.14.31 and v0.14.32, 26 and 27 October 2026. The owner's q
 
 This is a study only. It changes no gameplay or balance code; the tools it adds live in tools/study and do not change how the game plays.
 
-SUMMARY_SECTION
+## Summary
+
+**Crown: enough openings, and one standard that holds everything early.** Four openings work and are distinct: the Musketeer wall into the Cannon (the safe standard), the Horseman rush, the Balloon drop or hovering raid, and the fast expansion; the Cannon push is the standard's follow-up. The Dragoon raid is marginal (its first soldier comes at 3:26) and the new proxy Horseman rush adds nothing over the ordinary one. The Crown's only problem is that every opening ends behind the Clockwork on the game as it is; that is the Clockwork's economy, not the Crown's openings.
+
+**Brood: two openings, as the owner feared.** The six-pool works as a gamble (it kills an unwalled opponent's workers, loses to any wall) and the grubs-first economy works (the only Brood opening that holds a rush), but it is wide open to harassment: Horsemen killed 29 of its grubs, a Balloon drop 26. The Spitter, Brute and Bloater openings all come at 6:00 to 7:00 and lost or fell behind everywhere; the one-wave pool and the new forward Burrow are weak. The cause is essence: before the first fight it comes only from offering up Raptors at 12% of their price, which adds a minute or more to every tech opening.
+
+**Clockwork: too many openings, because the economy is double.** Six of its seven openings came out ahead; the Jacks standard was beaten by nothing, and the turret expansion was never punished. Played on the economy rebuild (wt-econ), the Crown standard goes from losing to even against the Jacks and the Clockwork rushes end behind the Crown computer, but the turret expansion stays ahead of everything, and the Tension openings (Owls, Pendulums) stalled under the new placement rules. Everything Clockwork is provisional.
+
+**Top recommendations (recommend only; none is built):**
+1. Brood: a finished Brood Pen gives 40 essence once (or the Brood starts with 40). Measured in the game: the Spitter wave comes about a minute sooner and held the Jacks standard it lost to before; the Brute wave goes at 5:08 instead of 7:00.
+2. Brood: Spitters cost biomass only. The calculator puts a Raptor and Spitter wave at 4:38 instead of 5:33: a ranged, anti-air Brood standard.
+3. Brood: one new role, an early biomass-only defence (a spitting mound), so the economy opening can survive Horsemen and Balloons without an army.
+4. Clockwork: land the economy rebuild, then make the second Clocktower or the Ratchet Turret cost a little more so greed can be punished; a Movement Works that needs a Regulator first, as a Barracks needs a Cottage.
+5. Crown: no change needed; watch the hovering Balloon raid against the Brood (nothing on the ground reaches it) and let the Brood's earlier Skywings answer it.
 
 ## How this was measured
 
@@ -520,11 +533,89 @@ Until 0.14.31 a Clockwork player could still put down the old Assembly Works and
 
 The Clockwork has the most openings, six or seven that work, and that is the problem in reverse: they all work because the economy behind them is twice the others'. The Jacks standard is dominant, and a greedy turret expansion is never punished. All of this is provisional: the economy rebuild (wt-econ) is measured below.
 
-RESULTS_SECTION
+## What the matches say
 
-GAPS_SECTION
+Every opening played the ordinary Hard computer (Balanced) of both other factions on Kestrel Rise, and the openings played each other where a direct answer was needed; the full lists are in the opening sections above. A result is "won" (the enemy has no buildings left), "ahead" or "behind" (at 8:00 one side's army and economy is worth at least 1.25 times the other's) or "even". So "behind" does not mean an opening failed: many Crown openings killed far more than they lost against the Clockwork and still ended behind, because the Clockwork had built more.
 
-RECOMMENDATIONS_SECTION
+### The computers against each other
+
+| Match-up | Kestrel Rise (small) | Frostmere (big) |
+|---|---|---|
+| Crown computer against the Brood computer | the Crown ahead | the Crown won at 6:59 |
+| Crown computer against the Clockwork computer | the Crown behind (the Clockwork attacks at 3:42) | the Crown behind |
+| Brood computer against the Clockwork computer | the Brood behind | the Brood behind |
+
+The order is the same in every part of the study: the Clockwork ahead of the Crown, the Crown ahead of the Brood.
+
+### The Clockwork's economy rebuild, played
+
+The wt-econ branch (the Clockwork's Tension economy, 0.14.33 there) and the wt-brood-ai branch (the Brood's new computer) were merged into a scratch copy with these tools and the main match list was played again. Only the Crown and Clockwork rows are reported: the new Brood computer changes how the scripted Brood player behaves too, so its Brood rows are not comparable.
+
+| Match | on the game as it is | on the rebuild |
+|---|---|---|
+| Crown standard against the Clockwork computer | behind | even (it killed 3,040 worth for 120) |
+| Crown standard against the Jacks standard | lost at 7:55 | even (the Jacks lost 1,310 worth and killed nothing) |
+| Crown standard against the Clock Soldier rush | behind | even |
+| Crown fast expansion against the Clockwork computer | behind | even |
+| Balloon drop against the Jacks standard | behind | ahead |
+| Horseman rush against the Jacks standard | behind | even |
+| Clock Soldier rush against the Crown computer | ahead | behind |
+| Jacks standard against the Crown computer | ahead | behind (it lost 2,430 worth) |
+| Forward Clocktower against the Crown computer | ahead | behind |
+| Fast Jacks against the Crown computer | behind | even |
+| Turret and second Clocktower against the Crown computer | ahead | ahead |
+| Owls, and the Pendulum push, against the Crown computer | ahead, and even | behind: neither attacked in 8 minutes |
+| Crown computer against the Clockwork computer | behind | behind (the Clockwork's first attack comes later: 6:28 instead of 3:42) |
+
+So the rebuild does what it was meant to: the Crown's openings stop losing to the Clockwork's money, and the Clockwork's rushes have to be good rather than rich. Two warnings. The greedy turret expansion is still ahead of everything; and the Owls and the Pendulum push did not attack at all, because their Tension buildings must now mesh with a Mainspring that stores at most 200 Tension. That may be the scripted player not yet placing for the new rules, but a human player will meet the same squeeze; it should be checked when wt-econ lands.
+
+## Gaps
+
+**Fewer than three openings that work: the Brood.** Two work (the six-pool, the grubs-first economy); the one-wave pool, the Spitter, Brute and Roost timings and the forward Burrow do not. The three tech openings are not bad ideas: they are a minute too late, and the minute is the essence tax. With 40 essence at the start (played in the game) the Spitter wave goes at 5:10 instead of 6:00 and the Brute wave at 5:08 instead of 7:00; the Spitter version then held the Clockwork's Jacks standard, which it lost to before. It still did not beat the Crown standard or survive the Horseman rush cleanly (10 grubs lost instead of 29): the essence fix makes the openings real, not winning.
+
+**Dominant openings.** On the game as it is, the Clockwork's Jacks standard: nothing in the study beat it, and every Clockwork opening but the fast Jacks ended ahead of the Crown computer. On the rebuild the dominant risk moves to the Clockwork's turret expansion, a greedy opening that nothing punished. The Crown standard is the default but not dominant: the Horseman rush and the Balloon are better against a greedy Brood. The Brood has the opposite problem: its economy opening is forced, because it is the only one that holds.
+
+**Rush and defence (design principles, section 5).** The owner's anchor asks that a rush beat an opponent who did nothing and lose to a proper defence. The six-pool does exactly that. The Crown's Horseman rush does it against the Crown but not against the Brood, which has no early defence at all (no wall, no static defence, every unit but the Raptor costs essence): the Brood's economy opening has no answer in the time its scouting gives. The Clock Soldier rush fails at a wall, but on the game as it is wins anyway on the economy behind it.
+
+**Openings the computer never plays.** None of the proxy openings (now possible everywhere with grey fog); the hovering Balloon raid is the scripted player's (the computer drops); the computer's Brood never takes a tech path that works, and its Clockwork opens with Works and Soldiers and gets its Mainspring only at 3:30 to 4:30, later than any scripted Clockwork tech opening. No opening here exists only for the computer.
+
+**Proxies (new since 0.14.32).** Grey fog lets every side build anywhere. For the Crown's Horsemen it gains nothing (cavalry crosses any map in 20 to 35 seconds); the forward Burrow costs too much for an opening; the forward Clocktower is the one that matters, because it removes the Clockwork's wind problem on the big maps. It is also exposed: the Brood's economy found it and killed 4,510 worth.
+
+## Recommendations
+
+Recommend only: none of this is built. Each follows docs/design_principles.md, and each has its risk. "Calculator" means sized with tools/study/bo_calc.py `--set`; "played" means a match in a scratch copy of the game with the change.
+
+### The Brood (aim: four openings that work)
+
+| Recommendation | what it gives | how sure | the risk |
+|---|---|---|---|
+| 1. A finished Brood Pen gives 40 essence once (or the Brood starts with 40) | The Spitter, Brute and Bloater timings a minute sooner (played: Spitters 5:10, Brutes 5:08; calculator: Bloaters 4:05 instead of 5:40) | played | An early Bloater or Brute harassment the Crown cannot see coming; the six-pool is not touched |
+| 2. Spitters cost biomass only (90 for two, no essence) | A Raptor and Spitter standard: ranged, anti-air, wave at about 4:38 (calculator) | calculator | Spitters (acid strips 2 armour) everywhere; keep the Pen as their requirement |
+| 3. One new role: an early defensive mound (biomass only, after the Spawning Den, spits at ground and air, reach about 200) | The economy opening survives Horsemen and Balloon drops; the Brood gets the defender's advantage the other two have (a wall, a turret) | design | Turtling; keep its reach under the hovering Balloon's 256 so the raid stays answerable only by Skywings, and make it slow to build |
+| 4. Keep the six-pool as it is | It meets the owner's anchor exactly | played | None |
+
+With 1 and 2 the Brood would have the six-pool, the economy, a Raptor and Spitter standard, and a Brute or Bloater timing: four openings. Design principles: fairness through counterplay (section 1), the defender's advantage early (section 2), every choice with an opportunity cost (section 4).
+
+### The Clockwork (aim: keep four, stop the economy deciding)
+
+| Recommendation | what it gives | how sure | the risk |
+|---|---|---|---|
+| 1. Land the economy rebuild (wt-econ) | The Crown's openings go from losing to even; the Clockwork's rushes must be played well | played | The Tension openings (Owls, Pendulums) stalled under the new placement rules: check that a player can reach them by 4:00 |
+| 2. The Movement Works needs a Regulator first (as a Barracks needs a Cottage) | The Clock Soldier rush 14 s later (calculator), the same rule for both factions | calculator | Small; it touches every Clockwork opening equally |
+| 3. The second Clocktower or the Ratchet Turret a little dearer (for example the turret 125 to 175 cogs) | Greed that can be punished (the turret expansion was ahead of everything, even on the rebuild) | design | A weaker defence against the six-pool, which already kills 4 Winders |
+| 4. The Pendulum's redesign with a little more speed (46 to about 52) | It arrives with more wind and walks less long under Musketeer fire (it traded only even with the Crown) | design | It must not catch Musketeers who walk back (62) |
+| 5. The new roles already planned | The Spring Catapult as the answer to a wall and a turret; the Great Winder as the field winder that makes big-map attacks possible without a forward Clocktower | design | The forward Clocktower and the Great Winder would do the same job: keep one |
+
+With these the Clockwork keeps the Clock Soldier rush, the Jacks standard, the turret expansion and the forward Clocktower as four distinct openings, with Owls and Pendulums as the tech paths.
+
+### The Crown (aim: keep what works)
+
+| Recommendation | what it gives | how sure | the risk |
+|---|---|---|---|
+| 1. No change to the openings | It already has four that work | played | None |
+| 2. Watch the hovering Balloon raid | It killed 500 to 1,450 worth over every base without Jacks; on the ground nothing reaches 256 | played | If the Brood gets no earlier Skywing (recommendation Brood 1), cut the basket's reach bonus from 35% to about 20% (228: still out of reach of every ground weapon but the Musketeer's own) |
+| 3. Optional: the Dragoon trained in 12 s instead of 15 | The Dragoon raid's first soldier near 3:00 instead of 3:26 (a Breeder before the second Farm gives 3:40 waves with no change at all) | calculator | One more Brood-killing raid while the Brood has no early defence: only after Brood 3 |
+
 
 ## The calculator against the game
 
@@ -568,3 +659,5 @@ All from the worktree root (export PATH=$PATH:/home/claude/godot first). The fol
 - One match: `godot --headless --fixed-fps 30 --script res://tools/study/bo_match.gd -- sa:crown_horse_rush sb:ai:balanced b:brood map:kestrel_rise seed:1 end:480 out:/tmp/bo/m.json`. A side is a build name, `ai:<plan>` (the ordinary computer) or `idle` (a sleeping opponent).
 - Many matches: `python3 tools/study/bo_run.py calib --out /tmp/bo/calib --end 420` and `python3 tools/study/bo_run.py matrix --out /tmp/bo/runs --end 480`, with `--part key,vs_ai` for parts of the list (key, vs_ai, duels, big, vs_brood_ai, base), `--jobs 2` for two matches side by side and `--max-procs 2` to keep at most two of them running whoever started them (a shared machine runs out of memory with too many Godot processes, and the kernel then kills one: its match leaves no result and is played again on the next run). It is resumable: finished matches are skipped, and several runners can share a folder (a match being played has a .lock file); touch STOP in the folder to stop after the current matches. Then `python3 tools/study/bo_report.py --runs /tmp/bo/runs` for the tables, `--notes` for one line per match, `--calib` for the timing table and `--compare` for the calculator against the game.
 - The step grammar of a build order is described at the top of tools/study/bo_ai.gd.
+- A proxy step is `<building>@proxy` or `<building>@proxy:0.65`: the building goes down that share of the way from home to the enemy's hall (0.72 by default); both the scripted player and the calculator take it.
+- What-if matches (the rebuild, the Brood's 40 essence) were played in scratch copies of the game (`git worktree add`, the change made there, `python3 <copy>/tools/study/bo_run.py ...`); nothing of them is committed.
