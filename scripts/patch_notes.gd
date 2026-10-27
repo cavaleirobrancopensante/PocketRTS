@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.73", "items": [
+		"CLOCKWORK COMPUTER: its tech now comes on time. On Hard the Mainspring stands by about 3:00 and the Escapement by about 4:00, so its first Jacks, Netters and SHIELD WALL are out for the first big fight. It makes sure a Movement Works can make Jacks (a Mainspring beside it, or a Works beside a Mainspring), keeps its cogs for the tech under a raid it can beat, and spends its Tension instead of leaving it at the cap. Its army is about one Jack for every one and a half Clock Soldiers, with a few Netters and Pendulums.",
+		"CLOCKWORK COMPUTER SIEGES: its Jacks and Netters shoot and net the workers mending a wall or gate first, then the shooters on the edge, while the Clock Soldiers hit the gate, and its reckoning of a siege counts that. Against a walled enemy its first attack waits for four Jacks (two on Normal). With HIGH LEAP its Jacks jump up onto the high ground when the enemies by the landing are worth less than they are. A siege going worse than it reckoned, or a wave that keeps losing far more than it kills, is called off, all the way back to the rally.",
+		"CLOCKWORK COMPUTER TARGETS: it goes first for what it can reach without breaking a wall: an expansion, farms, outlying buildings (not a spot right under a walled plateau's guns). On Hard its Netters net fighters rather than workers, its Pendulums walk into knots of enemy soldiers, and badly hurt Clock Soldiers step back to a Winder to be mended.",
+		"FIX: a unit given a new order while its blow was landing skipped its reload. A Netter given an order every second fired a net every second (its reload is 14 s). Now the reload always follows the blow, for every unit and every player.",
+	]},
 	{"v": "0.14.72", "items": [
 		"Behind the scenes: a test switch that lets a computer's siege play out to the end, used to check when the computer should call an attack off. Nothing changes in play.",
 	]},

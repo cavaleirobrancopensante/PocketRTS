@@ -848,6 +848,16 @@ func _spring_spot(spare := false) -> Vector2i:
 				if int(r4[1]) >= 1:
 					fall = r4[0]
 	if fall.x < 0:
+		# (a cramped corner base: by any building of ours on the field, with room for the Escapement; 0.14.73 Kestrel
+		# Rise waited nine minutes for one)
+		for b in game.buildings:
+			if fall.x >= 0:
+				break
+			if b.team == team and b.built and not b.dead and b.kind != "mainspring" and GearEcon.uses_drive(b.kind):
+				var r5: Array = GearEcon.room_spot_n(game, team, "mainspring", [b], [Defs.CW_TECH])
+				if int(r5[1]) >= 1:
+					fall = r5[0]
+	if fall.x < 0:
 		for h in _halls():
 			if h.built and fall.x < 0:
 				fall = GearEcon.room_spot(game, team, "mainspring", [h])
