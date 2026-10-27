@@ -61,6 +61,8 @@ var _ramps_done := false
 
 func _init(owner_ai) -> void:
 	ai = owner_ai
+	if OS.get_cmdline_user_args().has("r5:off"):
+		on = false              # (study games: `-- ... r5:off` plays the "before" computer, the same as 0.14.90)
 
 
 func _bands() -> Array:
@@ -557,7 +559,8 @@ func _ramp_tick(army: Array) -> void:
 	if g.clock - _horse_t <= HORSE_MEMORY:
 		want = 4 if n >= RAMP_MORE_AT else (3 if n >= RAMP_AT else 0)
 	var spots := _ramp_cells()
-	want = mini(want, spots.size())
+	if spots.is_empty():
+		want = 0
 	if want > 0:
 		# a real army at the top of the ramp: the post joins the fight
 		var c: Vector2 = spots[0]
@@ -582,7 +585,8 @@ func _ramp_tick(army: Array) -> void:
 			_log("ramp", "posts %d Clock Soldiers on HOLD at the top of its ramp against the riders" % want)
 	for i in _ramp.size():
 		var u: Unit = _ramp[i]
-		var spot: Vector2 = spots[i]
+		# (a narrow ramp top has fewer spots than guards: the extra ones stand a little to the side)
+		var spot: Vector2 = spots[i % spots.size()] + Vector2(cos(i * 2.4), sin(i * 2.4)) * (16.0 * int(i / spots.size()))
 		if u.position.distance_to(spot) > 14.0:
 			if u.order == "hold" or not (u.order == "move" and u.order_point.distance_to(spot) < 6.0):
 				if u.target == null or u.position.distance_to(spot) > 60.0:

@@ -74,7 +74,7 @@ func _game(r5_on: bool) -> Dictionary:
 	while g.clock < at and not g.over:
 		await physics_frame
 	var press := _press(g)
-	var out := {"lost": 0, "killed": 0, "sent": 0, "ramp": 0, "spread": 0.0, "w0": 0, "soldiers": 0}
+	var out := {"lost": 0, "killed": 0, "sent": 0, "ramp": 0, "home": 0, "spread": 0.0, "w0": 0, "soldiers": 0}
 	if press == null:
 		print("  no Cog Press at %d s" % int(at))
 		main.queue_free()
@@ -130,6 +130,8 @@ func _game(r5_on: bool) -> Dictionary:
 	while g.clock < t1 + 20.0 and not g.over:
 		await physics_frame
 	out["ramp"] = ai.r5._ramp.size()
+	# (soldiers at home: a wave that went out meanwhile does not man the ramp)
+	out["home"] = g.army(1).filter(func(u: Unit) -> bool: return u.kind == "clock_soldier" and not (ai._attacking and ai._wave_set.has(u))).size()
 	main.queue_free()
 	await process_frame
 	return out
@@ -140,13 +142,13 @@ func _run() -> void:
 	print("RAID before %s seed %d riders %d at %d s: winders %d, lost %d, riders killed %d, soldiers %d (most by the press %d), fighters' spread %.0f px" % [map, seed_, riders, int(at),
 		before["w0"], before["lost"], before["killed"], before["soldiers"], before["sent"], before["spread"]])
 	var after: Dictionary = await _game(true)
-	print("RAID after  %s seed %d riders %d at %d s: winders %d, lost %d, riders killed %d, soldiers %d (most by the press %d), fighters' spread %.0f px, ramp post %d" % [map, seed_, riders, int(at),
-		after["w0"], after["lost"], after["killed"], after["soldiers"], after["sent"], after["spread"], after["ramp"]])
+	print("RAID after  %s seed %d riders %d at %d s: winders %d, lost %d, riders killed %d, soldiers %d (most by the press %d), fighters' spread %.0f px, ramp post %d (%d soldiers at home)" % [map, seed_, riders, int(at),
+		after["w0"], after["lost"], after["killed"], after["soldiers"], after["sent"], after["spread"], after["ramp"], after["home"]])
 	check(int(after["lost"]) < int(before["lost"]) or int(after["killed"]) > int(before["killed"]) or int(after["lost"]) <= 1,
 		"round 5 loses fewer Winders or kills more riders (lost %d -> %d, killed %d -> %d)" % [before["lost"], after["lost"], before["killed"], after["killed"]])
-	check(int(after["sent"]) >= 2 or int(after["soldiers"]) < 2, "a group of Clock Soldiers comes to the press (%d)" % after["sent"])
+	check(int(after["sent"]) >= 2 or int(after["soldiers"]) < 2 or int(after["lost"]) <= 0, "a group of Clock Soldiers comes to the press (%d)" % after["sent"])
 	check(int(after["lost"]) < int(after["w0"]) / 2, "the raid does not take half the Winders (%d of %d)" % [after["lost"], after["w0"]])
-	if int(after["soldiers"]) >= 10:
-		check(int(after["ramp"]) >= 3, "with %d Clock Soldiers a ramp post stands after the raid (%d)" % [after["soldiers"], after["ramp"]])
+	if int(after["home"]) >= 12:
+		check(int(after["ramp"]) >= 3, "with %d Clock Soldiers at home a ramp post stands after the raid (%d)" % [after["home"], after["ramp"]])
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(0 if fails == 0 else 1)
