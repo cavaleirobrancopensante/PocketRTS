@@ -1,7 +1,7 @@
 class_name GreatWinder
 extends RefCounted
 ## THE GREAT WINDER (gear mode's Clockwork tier 2, Defs.UNITS "great_winder"; its numbers in Defs.GREAT_WINDER; the owner's
-## unit, 2026-10-26/27; docs/great_winder.md): the Clockwork's big, slow, walking winding machine. No weapon. It does in the
+## unit, 2026-10-26/27; docs/great_winder.md): the Clockwork's big, slow winding machine on cog wheels. No weapon. It does in the
 ## field, as one machine, what the escort of ordinary Winders does (AI._follow_with_escort):
 ## - WINDING (wind_area, every WIND_EVERY s): every Clockwork construct of its side within Defs.GREAT_WINDER "area" px is
 ##   wound up a little; its ring is drawn on the ground while it is selected (draw_area).
@@ -19,8 +19,8 @@ const WIND_EVERY := 0.5          # s between two winding passes over the area (t
 const RESCAN := 0.6              # s between two looks round for something to mend or sweep, standing about
 
 
-## The walk strip's rate at full speed: the art carries it Defs.GREAT_WINDER "stride" px a loop of "frames" frames, so
-## at its speed the feet stay planted (Unit.walk_fps_for).
+## The walk strip's rate at full speed: the art rolls it Defs.GREAT_WINDER "stride" px a loop of "frames" frames, so
+## at its speed the cog wheels do not slide (Unit.walk_fps_for).
 static func walk_fps() -> float:
 	return float(Defs.UNITS[KIND]["speed"]) * float(G["frames"]) / float(G["stride"])
 

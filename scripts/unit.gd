@@ -6328,9 +6328,9 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 		# the Raptor runs at 108 px/s on a 6-frame cycle: at 8 fps its planted feet slid ~10 px a frame, at 12 ~6
 		# (docs/animation_audit_brood.md)
 		"raptor": 12.0,
-		# the Great Winder's slow 4-leg creep: 16 px a 12-frame loop (docs/great_winder_legs.md) at its 27 px/s
+		# the Great Winder's cog wheels: 90 deg a 12-frame loop rolls it 20.25 px (docs/great_winder.md) at its 27 px/s
 		# (GreatWinder.walk_fps; tools/test_great_winder.gd checks they agree); played on a 30 Hz tick (_animate)
-		"great_winder": 20.25}
+		"great_winder": 16.0}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.
@@ -6393,7 +6393,7 @@ func _animate(delta: float) -> void:
 	# (a walking or hammering Labourer steps at 30 Hz: his frames follow the ground he covers
 	# and the hammer beat, which 15 Hz ticks would make uneven)
 	var tick := 0.033 if (kind == "labourer" and (anim == "build" or velocity.length() > 10.0)) \
-			or (kind == Defs.GREAT_WINDER_KIND and anim == "walk") else 0.066     # (the Great Winder's 20 fps walk too)
+			or (kind == Defs.GREAT_WINDER_KIND and anim == "walk") else 0.066     # (the Great Winder's 16 fps wheels too)
 	if _anim_dt < tick and not dead:
 		return
 	if kind == "horse" and not dead:
@@ -7303,6 +7303,14 @@ func _lead_run(delta: float) -> Vector2:
 	return _walk_to(h.position, delta)
 
 
+## A horse sound for getting on (whinny) or taking the reins (a soft neigh), so the two
+## acts sound apart; only where the player can see it (playtest 0.14.90).
+func _horse_cue(name: String, vol: float) -> void:
+	if game == null or not game.is_visible_to(game.human, position):
+		return
+	Sfx.play(name, position, vol)
+
+
 ## The horse is his to lead from now on (at the end of his string).
 func take_reins(h: Unit) -> void:
 	if h.team < 0 and team >= 0:
@@ -7313,6 +7321,7 @@ func take_reins(h: Unit) -> void:
 	h.claimed = null
 	if not led.has(h):
 		led.append(h)
+		_horse_cue("horse/neigh", -9.0)     # taking the reins: a soft snort (getting on whinnies)
 	if h.order == "move":
 		h.cmd_stop()
 
@@ -7454,6 +7463,7 @@ func _mount_run(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if position.distance_to(h.position) < radius + h.radius + 10.0:
 		work = "mounting"
+		_horse_cue("horse/whinny", -2.0)    # getting on: the horse whinnies (leading only snorts)
 		work_t = float(Defs.HORSES["quick" if auto_mount else "mount"])
 		_mount_len = work_t
 		path = PackedVector2Array()

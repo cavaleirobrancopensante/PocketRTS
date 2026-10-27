@@ -116,7 +116,7 @@ func _roster(g: Game) -> void:
 	check("it is in the gear-mode roster (not retired)", Defs.CW_NEW_UNITS.has(K) and not Defs.retired(K))
 	check("its price is cogs and Tension", g.unit_price(0, K) == [int(Defs.UNITS[K]["cost"]), int(Defs.UNITS[K]["tension"])], str(g.unit_price(0, K)))
 	check("it has no weapon", Defs.UNITS[K].get("no_attack", false) and not g._add_unit(K, 0, U.hall(g, 0).center() + Vector2(0, 200)).has_attack())
-	check("its walk is played so the feet do not slide (16 px a 12-frame loop)", is_equal_approx(Unit.walk_fps_for(K), GreatWinder.walk_fps()),
+	check("its wheels turn so they do not slide (20.25 px a 12-frame loop)", is_equal_approx(Unit.walk_fps_for(K), GreatWinder.walk_fps()),
 		"%.2f vs %.2f" % [Unit.walk_fps_for(K), GreatWinder.walk_fps()])
 	var fr: Dictionary = ArtData.UNITS[K]["frames"]
 	check("its strips are in: walk 12, wind 8, sweep 8, idle, death", int(fr.get("walk_se", 0)) == 12 and int(fr.get("wind_e", 0)) == 8 \
