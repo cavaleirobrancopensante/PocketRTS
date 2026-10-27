@@ -255,3 +255,29 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - The portrait (assets/icons/ballista.png) is the owner's painted one (art/ui/icons3/portrait_ballista.png, in on main
   in 0.14.79), cut and framed by tools/import_ballista.py; the CREW / BOARD button (assets/icons/clockwork/ab_crew.png) is the crank sheet's
   Winder in the Clockwork's bronze frame (not painted as a button: it could be redrawn).
+
+## The gear rules: Heavy Works, brass plates, the gear view (code, 0.14.83; docs/gear_rules.md)
+- HEAVY WORKS building: the owner's ChatGPT sheet (art/redraws/heavy_works_empty_chatgpt.png, top row only: built, under
+  construction, damaged, destroyed) cut and keyed off its navy background by tools/press_anim/heavy_works_key.py, imported
+  by tools/gear_art/import_buildings.py. Its WINDING KEY on the winch house is TURNED IN CODE from the built frame (the bow cut
+  out, the shaft carried up under it, the bow squeezed by |cos| of its angle, flipped edge-on, a little darker): 8 work
+  frames, like the Movement Works' key. The sheet's bottom row (its own key turns) is not used: the owner found its key
+  badly drawn.
+- The crane's CHAIN and HOOK were CUT OFF the built frame (and its work frames) and are drawn by the game
+  (scripts/heavy_works.gd): the painted links tiled down from the beam, the painted hook at the end; idle, the hook rests where
+  it was painted; while a machine is assembled it is lowered onto the top of the work. The damaged frame keeps its own
+  painted hook (the code hook is not drawn over it).
+- THE MACHINE IN THE BAY (scripts/heavy_works.gd): the unit's own idle frame (SE view) drawn in the bay, scaled down to fit,
+  shown from its feet up in 6 steps as it trains, DARKENED in code (from 32% brightness to full), with a code-drawn hot SEAM
+  (two orange-white lines, pulsing) along the top of what is built. A painted "being assembled" frame per machine (scaffold,
+  sparks, a welder) would replace the darkening and the seam.
+- BRASS FLOOR PLATE (assets/gear/floor_plate_brass.png): made IN CODE from the iron floor plate by
+  tools/gear_art/make_brass_plate.py (its grey iron mapped onto a brass ramp, a soft diagonal sheen laid over it). Under the
+  Mainspring, Escapement, Heavy Works and Clock Aviary. A painted polished brass deck would replace it.
+- SPRING MARK over a building fed by a Mainspring (GearNet._spring_mark): a code-drawn zig-zag coil in a small dark box. An
+  icon would replace it.
+- The placing ghost's MESHING TEETH (green) and CLASHES (red): short code-drawn arcs along both rings where they meet
+  (GearNet.draw_contacts).
+- THE GEAR VIEW (GearNet._draw_view): the painted rings washed in code colours (gold drivers, green / yellow / orange / red by
+  how well they work), a dashed ellipse for each Mainspring's reach, the ground dimmed.
+- THE TURRET CIRCLES (GearNet._draw_turret_circles): flat code-drawn circles on the ground, like the Brood's pit circles.

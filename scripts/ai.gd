@@ -655,6 +655,7 @@ func _tier2(t: float) -> void:
 		_tech_hold = true
 	_esc_spring(esc)       # (an Escapement laid first gets its Mainspring)
 	_esc_spring(_mine(Defs.CW_HEAVY), true)      # (and a Heavy Works laid with no Mainspring by it)
+	_heavy_hold()          # (the Heavy Works' cogs, held back on every think)
 	_springer_works()          # (its own clock; the gold it wants is held back on every think)
 	_research_keep = 0.0
 	if not springs.is_empty():
@@ -667,7 +668,10 @@ func _tier2(t: float) -> void:
 		# the Mainspring and the Escapement are laid together: the room by the spring went to Regulators and a turret
 		# in the minute before the Escapement's cogs came in, and three games in eight had no Escapement for minutes
 		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20:
-			_construct("mainspring", _spring_spot())
+			var msc := _spring_spot()
+			_construct("mainspring", msc)
+			if _spring_heavy and msc.x >= 0 and _busy_building("mainspring"):
+				_keep_heavy(msc, [Defs.CW_TECH, Defs.CW_HEAVY])      # (the Heavy Works' spot by it, kept: 0.14.83)
 			for sp in _mine("mainspring"):
 				var ce := GearEcon.room_spot(game, team, Defs.CW_TECH, [sp])
 				if ce.x >= 0 and game.requirement_met(team, Defs.CW_TECH):
@@ -817,46 +821,88 @@ func _foe_high() -> bool:
 
 
 ## Gear mode, THE HEAVY WORKS (0.14.83, docs/gear_rules.md; scripts/pendulum.gd, scripts/ballista.gd): the Pendulums and
-## the Spring Ballistas are made only there (the Light Works no longer makes them), so once its Escapement works and a few
-## Springers are out (or the enemy shows armour or walls, the Ballista's targets) it lays ONE Heavy Works whose BIG ring
-## meshes with a Mainspring's (it is a Tension user: idle otherwise): by a Mainspring with room; else where a Mainspring can
-## go beside it (the Mainspring follows, _esc_spring); its cogs are held back like the tech's. _produce then mixes a few
+## the Spring Ballistas are made only there (the Light Works no longer makes them), so as soon as its Escapement works it
+## lays ONE Heavy Works whose BIG ring
+## meshes with a Mainspring's (it is a Tension user: idle otherwise): by a Mainspring with room; with no room by any, a new
+## Mainspring first where its big ring will fit beside it; its cogs are held back like the tech's (_heavy_hold). _produce then mixes a few
 ## Pendulums and Ballistas into the army from it. (Before 0.14.83 a Movement Works, now the Light Works, was swapped onto its big gear for the
 ## Pendulum, and the Ballista came from any Works meshing with a Mainspring.)
 var _heavy_t := 0.0
+var _heavy_no_room := false         # no room for the Heavy Works by any Mainspring: a Mainspring with room for it is saved for
 
 
 func _tier3() -> void:
-	if not game.has_working(team, Defs.CW_TECH) or not _mine(Defs.CW_HEAVY).is_empty():
+	if not _mine(Defs.CW_HEAVY).is_empty():
+		game.ai_keep.erase(team)        # (laid: the spot kept for it is free again)
 		return
-	var jk: int = game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.SPRINGER).size()
-	if jk < 2 and _ballista_want() < 2 and game.tension(team) < float(Defs.tension_cost(Defs.UNITS[Defs.PENDULUM])):
-		return          # (the first Springers before it: the shooters behind the line come first)
+	if not game.has_working(team, Defs.CW_TECH):
+		return
+	# (laid as soon as the Escapement works: before 0.14.83 the first Ballista came from any Works meshing with a Mainspring
+	# about two minutes after the Escapement; waiting for Springers first put it three minutes later, greenhold seed 11)
 	var cost := int(Defs.BUILDINGS[Defs.CW_HEAVY]["cost"])
-	if _gold() < cost + 20:
-		if _threat() == Vector2.INF or _holds_line():
-			_reserve = maxi(_reserve, cost + 20)
-			_tech_hold = true
-		return
+	if _gold() < mini(cost, int(Defs.BUILDINGS["mainspring"]["cost"])) + 20:
+		return          # (its cogs are held back on every think: _heavy_hold)
 	if game.clock < _heavy_t or _busy_building(Defs.CW_HEAVY):
 		return
 	_heavy_t = game.clock + 6.0
+	# the spot kept for it by a Mainspring (_keep_heavy): there once that Mainspring stands; meanwhile it waits for it
+	if game.ai_keep.has(team):
+		var keep: Dictionary = game.ai_keep[team]
+		if game.clock - float(keep["t"]) > 240.0:
+			game.ai_keep.erase(team)          # (kept too long: let it go)
+		else:
+			var kc: Vector2i = keep["cell"]
+			var st: Dictionary = game.gear_net.candidate(team, Defs.CW_HEAVY, kc)
+			var pp: String = game.placement_problem(team, Defs.CW_HEAVY, kc, true)
+			if pp == "" and st["state"] == "ok" and st.get("spring") != null:
+				_construct(Defs.CW_HEAVY, kc)
+				if game.mlog:
+					game.mlog.add("%s lays a Heavy Works on the spot it kept by a Mainspring" % game.mlog.who(team))
+				return
+			if pp == "" or _busy_building("mainspring"):
+				return          # (its Mainspring is still going up, or has only just stood: the spot waits for it)
+			game.ai_keep.erase(team)          # (the spot was taken after all: look again)
 	var c := _heavy_spot()
+	_heavy_no_room = c.x < 0
 	if c.x >= 0:
+		if _gold() < cost + 20:
+			return
 		_construct(Defs.CW_HEAVY, c)
 		if game.mlog:
 			game.mlog.add("%s lays a Heavy Works (Pendulums and Spring Ballistas)" % game.mlog.who(team))
 	else:
 		_heavy_t = game.clock + 15.0
-		# (no room by any Mainspring, nor for a Mainspring beside it: another Mainspring where there is room)
-		if _mine("mainspring").size() < 3 and not _busy_building("mainspring") and _gold() >= cost + int(Defs.BUILDINGS["mainspring"]["cost"]):
-			var ss := _spring_spot(true)
-			if ss.x >= 0:
-				_construct("mainspring", ss)
+		# (no room by any Mainspring, nor for a Mainspring beside it: another Mainspring where a Heavy Works' big ring can
+		# still go beside it; it goes there next time)
+		if game.mlog:
+			game.mlog.add("%s finds no room for a Heavy Works by its Mainsprings" % game.mlog.who(team))
+		if _mine("mainspring").size() < 4 and not _busy_building("mainspring") and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
+			for b in _gear_neighbours():
+				var r7: Array = GearEcon.room_spot_n(game, team, "mainspring", [b], [Defs.CW_HEAVY])
+				if int(r7[1]) >= 1:
+					_construct("mainspring", r7[0])
+					if _busy_building("mainspring"):
+						_keep_heavy(r7[0], [Defs.CW_HEAVY])
+					if game.mlog:
+						game.mlog.add("%s builds a Mainspring with room for a Heavy Works beside it" % game.mlog.who(team))
+					return
 
 
-## Where the Heavy Works goes: its big ring meshing with a built Mainspring's; else by a hall or a Works where a Mainspring
-## can still go beside it (it follows: _esc_spring). (-1, -1) when there is no room.
+## The Heavy Works' cogs are saved up for on every think (the army pauses for them once it holds the line, like the tech's):
+## _tier3 runs only every few seconds, and a reserve set there was gone by the next think (the Heavy Works came three
+## minutes after the Escapement).
+func _heavy_hold() -> void:
+	if not game.has_working(team, Defs.CW_TECH) or not _mine(Defs.CW_HEAVY).is_empty():
+		return
+	var cost := int(Defs.BUILDINGS[Defs.CW_HEAVY]["cost"])
+	if _heavy_no_room:
+		cost += int(Defs.BUILDINGS["mainspring"]["cost"])      # (no room by a Mainspring: one with room for it first)
+	if _gold() < cost + 20 and (_threat() == Vector2.INF or _holds_line()):
+		_reserve = maxi(_reserve, cost + 20)
+		_tech_hold = true
+
+
+## Where the Heavy Works goes: its big ring meshing with a built Mainspring's. (-1, -1) when there is no room by any.
 func _heavy_spot() -> Vector2i:
 	for sp in _mine("mainspring"):
 		if sp.built and not sp.dead:
@@ -867,13 +913,32 @@ func _heavy_spot() -> Vector2i:
 				c = GearNet.ring_spot(game, team, Defs.CW_HEAVY, sp, deg, true)
 			if c.x >= 0:
 				return c
-	var pair: Array = _halls() + _mine(_works())
-	for b in pair:
-		if b.built and not b.dead:
-			var r6: Array = GearEcon.room_spot_n(game, team, Defs.CW_HEAVY, [b], ["mainspring"])
-			if int(r6[1]) >= 1:
-				return r6[0]
+	# (no spot by a Mainspring: _tier3 builds a Mainspring with room for it first; a Heavy Works laid elsewhere waiting for a
+	# Mainspring stood idle for good in a crowded base, frostmere seed 12)
 	return Vector2i(-1, -1)
+
+
+## Keep the spot for the Heavy Works by a Mainspring laid at cell `spring_cell` (Game.ai_keep): the cell _room's greedy
+## placing found for it, with `users` (the Escapement first when it is laid with the first Mainspring), so the computer's
+## Regulators, presses and turrets do not take it in the minute before the Heavy Works may be laid (0.14.83: room by a
+## Mainspring for its big ring was gone in most games).
+func _keep_heavy(spring_cell: Vector2i, users: Array) -> void:
+	if not _mine(Defs.CW_HEAVY).is_empty():
+		return
+	for uc in GearEcon.room_cells(game, team, "mainspring", spring_cell, users):
+		if String(uc[0]) == Defs.CW_HEAVY:
+			game.ai_keep[team] = {"kind": Defs.CW_HEAVY, "cell": uc[1], "t": game.clock}
+			return
+
+
+## Our finished gear buildings a new ring may hang on, the halls and the Works first (not a Ratchet Turret: nothing else
+## should crowd its circle).
+func _gear_neighbours() -> Array:
+	var out: Array = _halls() + _mine(_works())
+	for b in game.buildings:
+		if b.team == team and not b.dead and b.built and GearNet.has_gear(b) and b.kind != Defs.CW_TURRET and not out.has(b):
+			out.append(b)
+	return out.filter(func(b: Building) -> bool: return b.built and not b.dead)
 
 
 ## Gear mode: a building whose work DRIVE scales (GearEcon: a Cog Press, the Works, a Mainspring...) goes where its ring
@@ -905,7 +970,11 @@ func _drive_spot(kind: String) -> Vector2i:
 ## Gear mode: where the Mainspring goes. Its ring meshes with a Light Works' (so that Works may make Springers: anything that
 ## costs Tension is made only where a Mainspring meshes, GearEcon) and keeps room round it for an Escapement and a Clock
 ## Aviary; with no room by a Works, by the Clocktower; `spare`: a second one, only room for the Escapement and the Aviary.
+var _spring_heavy := false          # _spring_spot chose a spot with room for the Escapement AND the Heavy Works
+
+
 func _spring_spot(spare := false) -> Vector2i:
+	_spring_heavy = false
 	if spare:
 		# (a second one for the Clock Aviary: room for it)
 		for h in _halls():
@@ -916,6 +985,14 @@ func _spring_spot(spare := false) -> Vector2i:
 		return Vector2i(-1, -1)
 	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built and game.gear_net.spring_for(b) == null)
 	var fall := Vector2i(-1, -1)
+	# (0.14.83: beside a Works with room for the Escapement AND the Heavy Works' big ring, when there is such a spot: the
+	# Heavy Works must mesh with a Mainspring too, and a crowded plateau had no room left for it by any)
+	if _mine(Defs.CW_HEAVY).is_empty():
+		for w in works + _halls().filter(func(h: Building) -> bool: return h.built):
+			var rh: Array = GearEcon.room_spot_n(game, team, "mainspring", [w], [Defs.CW_TECH, Defs.CW_HEAVY])
+			if int(rh[1]) >= 2:
+				_spring_heavy = true
+				return rh[0]
 	for w in works:
 		# (room for the Escapement itself: a count of 1 over [Escapement, Aviary] was the Aviary's room in one game, and
 		# the Escapement never found a place, 0.14.72 Hollowfen)
@@ -3347,11 +3424,20 @@ func _produce() -> void:
 		for hw in _mine(Defs.CW_HEAVY):
 			if hw.built and hw.queue.size() < (2 if _gold() > 600 else 1):
 				var hk := ""
-				if want_p and _tension_ok(hw, Defs.PENDULUM, 0.0):
+				# (the first Ballista before the Pendulums, as when it came from the Works: then the Pendulums, then the
+				# other Ballistas)
+				if bals == 0 and bal_want > 0 and others >= 3 and _tension_ok(hw, Defs.BALLISTA_KIND, keep0):
+					hk = Defs.BALLISTA_KIND
+				elif want_p and _tension_ok(hw, Defs.PENDULUM, 0.0):
 					hk = Defs.PENDULUM
 				elif bals < bal_want and others >= 3 and _tension_ok(hw, Defs.BALLISTA_KIND, keep0):
 					hk = Defs.BALLISTA_KIND
 				if hk == "":
+					# (a heavy machine is wanted but its Tension is short: it is kept from the Springers meanwhile; the
+					# Springers used to eat every bit of it, and no Ballista nor Pendulum came all game)
+					var want_k := Defs.BALLISTA_KIND if bals == 0 and bal_want > 0 and others >= 3 else (Defs.PENDULUM if want_p else "")
+					if want_k != "" and game.gear_net.spring_for(hw) != null:
+						heavy_keep = maxf(heavy_keep, float(Defs.tension_cost(Defs.UNITS[want_k])))
 					continue
 				if game.train(hw, hk) != "":
 					heavy_keep = maxf(heavy_keep, float(Defs.tension_cost(Defs.UNITS[hk])))

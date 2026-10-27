@@ -1,7 +1,7 @@
 extends SceneTree
 ## The gear-mode Clockwork COMPUTER and the SPRING BALLISTA (AI._ballista_want, AI._ballista_crew, Ballista.pick /
-## ai_crew; scripts/ballista.gd): a Hard Clockwork with a Movement Works and a working Escapement (a Mainspring meshing with
-## it), cogs and Tension to spare, against a passive Crown. It trains a couple of Ballistas (a few, not a whole army of
+## ai_crew; scripts/ballista.gd): a Hard Clockwork with two Light Works and a working Escapement (a Mainspring meshing with
+## it), cogs and Tension to spare, against a passive Crown. It lays a Heavy Works (0.14.83), trains a couple of Ballistas (a few, not a whole army of
 ## them), its escort Winders crew them, and a Ballista of its own aims at an armoured Cannon before a Musketeer, and at a
 ## gate before a lone Musketeer.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_ballista_ai.gd
@@ -22,7 +22,7 @@ func _process(delta: float) -> bool:
 	t += delta
 	if t > 0.2 and main.game == null:
 		seed(91)
-		main.start({"map": "ashford_crossing", "seed": 91, "slots": [
+		main.start({"map": "greenhold", "seed": 91, "slots": [
 			{"who": "hard", "faction": "clockwork", "colour": 0, "side": 0, "strategy": "balanced"},
 			{"who": "hard", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
 		return false
@@ -76,23 +76,40 @@ func _run() -> void:
 	var hall: Building = _mine("clocktower")[0]
 	g.players[0]["gold"] = 8000
 	g.players[0]["tension"] = 2000.0
+	# (the Mainspring first, with room for the Escapement and the Heavy Works' big ring, as the computer places it:
+	# AI._spring_spot; the Ballista is made at the Heavy Works since 0.14.83, which the computer lays itself)
+	var spring: Building = null
+	var rs: Array = GearEcon.room_spot_n(g, 0, "mainspring", [hall], [Defs.CW_TECH, Defs.CW_HEAVY])
+	if int(rs[1]) >= 2:
+		spring = g._add_building("mainspring", 0, rs[0], true)
+		g.gear_net.solve()
+	if spring == null:
+		spring = _put("mainspring", hall)
+	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
 	while _mine(Defs.CW_WORKS).size() < 2:
 		if _put(Defs.CW_WORKS, hall) == null:
 			break
-	var spring: Building = _mine("mainspring")[0] if not _mine("mainspring").is_empty() else _put("mainspring", hall)
-	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
 	for w in _mine(Defs.CW_WORKS):
 		if g.gear_net.spring_for(w) == null:
 			_put("mainspring", w)
 	for i in 3:
 		_put(Defs.CW_SUPPLY, hall)
+	# (Winders to build with, as a real game has by now; the passive Crown's buildings cannot fall, so the match runs on)
+	for i in 8:
+		g._add_unit("winder", 0, g.cell_center(g.nearest_free(g.cell_of(hall.center() + Vector2(-140 + i * 36, 120)), 6)))
+	for b in g.buildings:
+		if b.team == 1:
+			b.max_hp = 1.0e7
+			b.hp = 1.0e7
 	await physics_frame
 	g.gear_net.solve()
 	check("the computer's Escapement works", esc != null and g.gear_net.speed_mult(esc) > 0.0)
 	g.clock = maxf(g.clock, 330.0)
 	var ai = g.ais.filter(func(a) -> bool: return a.team == 0)[0]
 	check("it wants a Ballista once its Escapement works", ai._ballista_want() >= 1, "%d" % ai._ballista_want())
-	var waited := await _wait(func() -> bool: return not _units(K).is_empty(), 240.0)
+	var waited := await _wait(func() -> bool: return not _mine(Defs.CW_HEAVY).is_empty(), 150.0)
+	check("it lays a Heavy Works for it (0.14.83)", not _mine(Defs.CW_HEAVY).is_empty(), "%.0f s" % waited)
+	waited = await _wait(func() -> bool: return not _units(K).is_empty(), 300.0)
 	check("it trains a Spring Ballista", not _units(K).is_empty(), "%d after %.0f s" % [_units(K).size(), waited])
 	waited = await _wait(func() -> bool: return _units(K).any(func(b: Unit) -> bool: return Ballista.crew_of(b).size() >= 1), 150.0)
 	var crewed: Array = _units(K).filter(func(b: Unit) -> bool: return Ballista.crew_of(b).size() >= 1)

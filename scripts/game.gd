@@ -135,6 +135,10 @@ var ais: Array = []
 
 var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
+## The computer keeps a spot for a building it means to lay soon (team -> {"kind", "cell", "t"}): its own other buildings are
+## not put where they would take that spot or cut into its ring (placement_problem with `ai`). Used for the Heavy Works'
+## big ring by a Mainspring (AI._keep_heavy, 0.14.83). Not saved: the computer works it out again.
+var ai_keep := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
 var _hash := {}
 var _path_queue: Array = []
@@ -4678,6 +4682,8 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var tp := GearNet.turret_problem(self, t, c)      # (THE TURRET CIRCLE: each turret claims a circle; no overlap)
 		if tp != "":
 			return tp
+	if ai and ai_keep.has(t) and String(ai_keep[t]["kind"]) != k and _takes_kept(t, k, c):
+		return "Kept for a building the computer lays next."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
@@ -8835,6 +8841,24 @@ func abandon(b: Building) -> void:
 		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)
 
 
+## Would a building of kind k at cell c take the spot the computer keeps (ai_keep): its footprint on the kept one (a tile
+## of margin), or its gear ring cutting into the kept ring?
+func _takes_kept(t: int, k: String, c: Vector2i) -> bool:
+	var keep: Dictionary = ai_keep[t]
+	var kk := String(keep["kind"])
+	var kc: Vector2i = keep["cell"]
+	var ks: Vector2i = Defs.BUILDINGS[kk]["size"]
+	var sz: Vector2i = Defs.BUILDINGS[k]["size"]
+	if Rect2i(kc, ks).grow(1).intersects(Rect2i(c, sz)):
+		return true
+	if Defs.gear_mode and String(Defs.BUILDINGS[k]["faction"]) == "clockwork" and String(Defs.BUILDINGS[kk]["faction"]) == "clockwork":
+		var ga := GearNet.gpos(Vector2(c) * T + Vector2(sz) * T * 0.5)
+		var gb := GearNet.gpos(Vector2(kc) * T + Vector2(ks) * T * 0.5)
+		if ga.distance_to(gb) - GearNet.ring_r(k, sz, false) - GearNet.ring_r(kk, ks, false) < -float(Defs.GEAR["overlap"]) * T:
+			return true
+	return false
+
+
 ## Pull down a finished building of your own (nothing comes back).
 ## GEAR SWAP (Clockwork, gear mode): a building's connecting gear changes between SMALL and BIG. Costs Defs.GEAR.swap_cost
 ## cogs, takes Defs.GEAR.swap_time seconds; the building idles meanwhile and its ring visibly changes size. Returns "" or
@@ -8862,7 +8886,7 @@ func toggle_gear_view() -> void:
 	gear_net.view = not gear_net.view
 	gear_net.queue_redraw()
 	if hud != null:
-		hud.toast("GEAR VIEW: drivers glow gold; rings green at full speed, yellow at 90%, orange at 80%, red at 70% or idle; dashed: a Mainspring's reach; circles: the turrets' ground." if gear_net.view else "Gear view off.")
+		hud.toast("GEAR VIEW: green full speed, yellow 90%, orange 80%, red 70% or idle." if gear_net.view else "Gear view off.")
 
 
 func swap_gear(b: Building) -> String:

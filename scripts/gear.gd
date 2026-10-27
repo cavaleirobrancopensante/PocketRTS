@@ -805,10 +805,11 @@ func _spring_mark(p: Vector2) -> void:
 	_top.draw_rect(r, Color(0.05, 0.05, 0.07, 0.75))
 	_top.draw_rect(r, Color(0.95, 0.78, 0.35, 0.9), false, 1.0)
 	var pts := PackedVector2Array()
-	for i in 11:
-		pts.append(p + Vector2(-5.0 if i % 2 == 0 else 5.0, -8.0 + 16.0 * float(i) / 10.0))
-	_top.draw_polyline(pts, Color(0.2, 0.12, 0.04), 3.2, true)
-	_top.draw_polyline(pts, Color(1.0, 0.82, 0.4), 1.6, true)
+	for i in 41:
+		var k := float(i) / 40.0
+		pts.append(p + Vector2(5.0 * sin(k * TAU * 3.5), -8.0 + 16.0 * k))       # (a coil seen from the side)
+	_top.draw_polyline(pts, Color(0.2, 0.12, 0.04), 3.4, true)
+	_top.draw_polyline(pts, Color(1.0, 0.82, 0.4), 1.7, true)
 
 
 func _badge(font: Font, p: Vector2, txt: String, col: Color) -> void:
@@ -932,31 +933,30 @@ func _draw_view() -> void:
 ## The gear view's wash for a building's ring: a driver bright gold, else by how well it works.
 func view_colour(b: Building) -> Color:
 	if b.kind == "clocktower" or (b.kind == "mainspring" and linked.has(b)):
-		return Color(1.0, 0.9, 0.45, 0.62)
+		return Color(1.0, 0.97, 0.78, 0.7)          # (a driver: bright white gold)
 	var m := speed_mult(b) / maxf(tempo(b), 0.01)
 	if enforce and (not linked.has(b) or m <= 0.0):
-		return Color(1.0, 0.25, 0.2, 0.55)
+		return Color(1.0, 0.2, 0.18, 0.6)
 	if m >= 0.99:
-		return Color(0.35, 1.0, 0.45, 0.5)
+		return Color(0.3, 1.0, 0.4, 0.5)
 	if m >= 0.89:
-		return Color(0.95, 0.95, 0.3, 0.5)
+		return Color(0.85, 1.0, 0.25, 0.5)
 	if m >= 0.79:
-		return Color(1.0, 0.65, 0.2, 0.5)
-	return Color(1.0, 0.42, 0.2, 0.55)
+		return Color(1.0, 0.62, 0.15, 0.55)
+	return Color(1.0, 0.38, 0.18, 0.6)
 
 
 ## A dashed ellipse on the ground: a circle of radius r in gear space round world point c.
 func _dashed_ellipse(c: Vector2, r: float, col: Color, w: float) -> void:
 	draw_set_transform(Vector2.ZERO)
-	var n := maxi(24, int(r / 9.0))
-	for i in n:
-		if i % 2 == 1:
-			continue
-		var a0 := TAU * float(i) / float(n)
-		var a1 := TAU * float(i + 1) / float(n)
-		var p0 := Vector2.from_angle(a0) * r
-		var p1 := Vector2.from_angle(a1) * r
-		draw_line(c + Vector2(p0.x, p0.y * FY), c + Vector2(p1.x, p1.y * FY), col, w, true)
+	var n := maxi(32, int(r / 6.0))
+	for i in range(0, n, 2):
+		var pts := PackedVector2Array()
+		for k in 5:
+			var a := TAU * (float(i) + float(k) / 4.0) / float(n)
+			var p := Vector2.from_angle(a) * r
+			pts.append(c + Vector2(p.x, p.y * FY))
+		draw_polyline(pts, col, w, true)
 
 
 ## THE TURRET CIRCLES on the ground (true circles, like the Brood's pit circles): every turret of the controlled side, and

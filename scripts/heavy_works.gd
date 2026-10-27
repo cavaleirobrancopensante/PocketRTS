@@ -14,7 +14,7 @@ extends Node2D
 ## The bay, in px from the building's anchor (its footprint's bottom-centre): where the machine's feet stand, where the
 ## chain hangs from the gantry beam (its top) and where the painted hook rests when idle (its top). Measured on the art
 ## (sheet px -> game px: (x - 10) / 3 - 60, (y - 70) / 3 - 129; tools/press_anim/heavy_works_key.py).
-const FEET := Vector2(14, -37)
+const FEET := Vector2(14, -41)
 const CHAIN_TOP := Vector2(14, -105)
 const HOOK_REST := -82.0           # (the hook's top, y, when idle)
 ## The room in the bay (px): the machine is scaled down to fit (never up).

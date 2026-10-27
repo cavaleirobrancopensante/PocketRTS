@@ -21,7 +21,7 @@ func _process(delta: float) -> bool:
 	t += delta
 	if t > 0.2 and main.game == null:
 		seed(91)
-		main.start({"map": "ashford_crossing", "seed": 91, "slots": [
+		main.start({"map": "greenhold", "seed": 91, "slots": [
 			{"who": "hard", "faction": "clockwork", "colour": 0, "side": 0, "strategy": "balanced"},
 			{"who": "hard", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
 		return false
@@ -77,13 +77,24 @@ func _run() -> void:
 	g.players[0]["gold"] = 8000
 	g.players[0]["tension"] = 2000.0
 	# its tier 2, ready: two Light Works, a Mainspring and an Escapement meshing with it
+	# (the Mainspring first, where its ring has room for the Escapement and the Heavy Works' big ring, as the computer
+	# places it, AI._spring_spot: this corner plateau has room for little else once the Works are down)
+	var spring: Building = null
+	var rs: Array = GearEcon.room_spot_n(g, 0, "mainspring", [hall], [Defs.CW_TECH, Defs.CW_HEAVY])
+	if int(rs[1]) >= 2:
+		spring = g._add_building("mainspring", 0, rs[0], true)
+		g.gear_net.solve()
+	if spring == null:
+		spring = _put("mainspring", hall)
+	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
 	while _mine(Defs.CW_WORKS).size() < 2:
 		if _put(Defs.CW_WORKS, hall) == null:
 			break
-	var spring: Building = _mine("mainspring")[0] if not _mine("mainspring").is_empty() else _put("mainspring", hall)
-	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
 	for i in 3:
 		_put(Defs.CW_SUPPLY, hall)
+	# (Winders to build with: a real game at this time has thirty; the four the start has were all busy building)
+	for i in 8:
+		g._add_unit("winder", 0, g.cell_center(g.nearest_free(g.cell_of(hall.center() + Vector2(-140 + i * 36, 120)), 6)))
 	# (0.14.73: the Springers first: a Works goes on its big gear once three Springers are out and two Works may make them, or six
 	# with one, AI._tier3; six Springers stand by here)
 	for i in 6:
@@ -92,11 +103,17 @@ func _run() -> void:
 	g.gear_net.solve()
 	check("the computer's Escapement works (meshed with its Mainspring)", esc != null and g.gear_net.speed_mult(esc) > 0.0)
 	check("it has two Light Works, both on the small gear", _mine(Defs.CW_WORKS).size() >= 2 and _mine(Defs.CW_WORKS).all(func(b: Building) -> bool: return not b.gear_big))
+	# (the passive Crown's buildings cannot fall: its army attacking and winning would end the match before the checks)
+	for b in g.buildings:
+		if b.team == 1:
+			b.max_hp = 1.0e7
+			b.hp = 1.0e7
 	g.clock = maxf(g.clock, 330.0)
-	var waited := await _wait(func() -> bool: return not _mine(Defs.CW_HEAVY).is_empty(), 60.0)
+	# (on a crowded plateau it first builds a Mainspring with room for the Heavy Works' big ring beside it: AI._tier3)
+	var waited := await _wait(func() -> bool: return not _mine(Defs.CW_HEAVY).is_empty(), 150.0)
 	check("it lays a Heavy Works (0.14.83)", not _mine(Defs.CW_HEAVY).is_empty(), "%.0f s" % waited)
 	check("only one", _mine(Defs.CW_HEAVY).size() == 1)
-	waited = await _wait(func() -> bool: return _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), 150.0)
+	waited = await _wait(func() -> bool: return _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), 200.0)
 	check("its Heavy Works stands and meshes with a Mainspring", _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), "%.0f s" % waited)
 	waited = await _wait(func() -> bool: return not _units(Defs.PENDULUM).is_empty() and not _units(Defs.NETTER).is_empty(), 200.0)
 	check("it trains Pendulums", not _units(Defs.PENDULUM).is_empty(), "%d after %.0f s" % [_units(Defs.PENDULUM).size(), waited])
@@ -109,7 +126,8 @@ func _run() -> void:
 	# its Netter nets the most dangerous enemy in reach
 	if not _units(Defs.NETTER).is_empty():
 		var nt: Unit = _units(Defs.NETTER)[0]
-		nt.cooldown = 0.0
+		nt.cmd_hold()          # (it stands where it is: not walking off with an attack wave)
+		nt.cooldown = 99.0     # (it fires once both are in sight: they are seen a moment after they appear)
 		var p: Vector2 = nt.position
 		var cav: Unit = g._add_unit("cuirassier", 1, g.cell_center(g.nearest_free(g.cell_of(p + Vector2(150, 40)), 5)))
 		var lab: Unit = g._add_unit("labourer", 1, g.cell_center(g.nearest_free(g.cell_of(p + Vector2(90, -20)), 5)))
@@ -117,6 +135,8 @@ func _run() -> void:
 		for o in [cav, lab]:
 			o.auto_work = false
 			o.cmd_hold()
+		await _wait(func() -> bool: return false, 1.0)
+		nt.cooldown = 0.0
 		waited = await _wait(func() -> bool: return cav.nets_taken > 0 or lab.nets_taken > 0, 12.0)
 		check("its Netter nets the most dangerous enemy in reach (the Cuirassier)", cav.nets_taken > 0 and lab.nets_taken == 0,
 				"cuirassier %d, labourer %d, %.1f s" % [cav.nets_taken, lab.nets_taken, waited])

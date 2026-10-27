@@ -378,6 +378,12 @@ static func room_spot_n(game: Game, t: int, kind: String, must: Array, users: Ar
 ## How many of `users` (kinds, placed one after another) could still mesh with a ring of `kind` put at cell c: a greedy count
 ## that keeps the new rings off each other, off the field's rings and off the footprints (ground checks only).
 static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -> int:
+	return room_cells(game, t, kind, c, users).size()
+
+
+## _room's greedy placing, the cells it found: [[user kind, cell], ...] in the order of `users` (the computer keeps the Heavy
+## Works' cell for it: Game.ai_keep).
+static func room_cells(game: Game, t: int, kind: String, c: Vector2i, users: Array) -> Array:
 	var T := float(Defs.TILE)
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
@@ -390,7 +396,7 @@ static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -
 	for b in game.buildings:
 		if not b.dead and GearNet.has_gear(b):
 			rings.append([GearNet.b_c(b), GearNet.b_r(b)])
-	var n := 0
+	var out: Array = []
 	for uk in users:
 		var us: Vector2i = Defs.BUILDINGS[uk]["size"]
 		var ur := GearNet.ring_r(uk, us, false)
@@ -420,10 +426,10 @@ static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -
 				if GearNet.foot_level(game, c2, us) != lv or not GearNet.joint_ok(game, g2, ur, gc, r, lv):
 					continue          # (THE LEVEL RULE: it would mesh only on the same ground level)
 				placed.append([g2, ur, Rect2i(c2, us)])
-				n += 1
+				out.append([uk, c2])
 				found = true
 				break
-	return n
+	return out
 
 
 ## The footprint's ground is free, off ramps, and its margin clear (no gear check: the caller does the rings).
