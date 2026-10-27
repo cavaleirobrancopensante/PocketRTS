@@ -28,6 +28,7 @@ const LOST_ROUT := 2.5          # ... and at once against this many times its wo
 const LOST_MIN := 150.0         # (never over less than this much enemy)
 const FIGHT_R := 360.0          # enemies this close to any unit of the wave are its fight
 const MOUND_URGENT := 6        # free supply (two eggs of Raptors) under which a due mound's biomass is put by
+const ABANDON_WAIT := 8.0       # s a dropped mound site (its grub fled) waits before supply() places another
 const LEAD := 30.0              # seconds from a Clutch Mound's order to its supply (the walk, 18 s building, slack)
 const HARVEST_MAX := 4          # grubs out harvesting at once
 const HARVEST_CLEAR := 400.0    # no armed enemy (seen) this close to the bodies
@@ -190,7 +191,7 @@ func _start_look() -> bool:
 func _looking() -> bool:
 	if _look.is_empty():
 		return false
-	_look = _look.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	_look = _look.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	var base: Vector2 = ai._enemy_base()
 	var there := _look.any(func(u: Unit) -> bool: return base != Vector2.INF and u.position.distance_to(base) < 300.0)
 	if _look.is_empty() or there or _last_seen_t >= _look_t + 1.0 or game.clock - _look_t > LOOK_MAX:
@@ -334,6 +335,8 @@ func supply() -> void:
 	supply_due = free <= MOUND_URGENT
 	if ai._gold() < int(Defs.BUILDINGS[sup]["cost"]):
 		return
+	if game.clock - float(ai._abandoned.get(sup, -99.0)) < ABANDON_WAIT:
+		return          # (a mound's grub just fled from raiders and the site was dropped: not again at once, into the same danger)
 	ai._construct(sup, ai._mound_spot())
 
 
