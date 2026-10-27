@@ -1,25 +1,26 @@
-# The Clockwork computer (branch clockwork-ai, 0.14.79)
-
-The Jack has been called the Springer in the game since 0.14.75. The code, and this page, still say Jack.
-While this job ran, main got the Crown computer's coaching (0.14.73) and the pathfinding work (0.14.74).
-The branch was merged with main, and the last round of games was played against the coached Crown: see "Against the coached Crown" below.
+# The Clockwork computer (branch clockwork-ai, 0.14.81)
 
 Short sentences, to be read aloud. The owner asked on 2026-10-27: "we need the AI to play better, it plays very badly".
 Repair was not to be nerfed: "it is the only thing keeping the Crown from losing, it can be dealt with".
 No unit, building, repair or cost number was changed.
 Everything here is the gear-mode Clockwork computer in `scripts/ai.gd`, except one bug fix in `scripts/unit.gd`.
 
+The Jack has been called the Springer in the game since 0.14.75. The code, and this page, still say Jack.
+While this job ran, main got the Crown computer's coaching (0.14.73), the pathfinding work (0.14.74) and the Spring Ballista (0.14.80).
+The branch was merged with main twice. The last games were played on the merged code, against the coached Crown.
+
 ## The short version
 
-Before, the Clockwork computer lost to the Crown computer almost every time.
-In 8 filmed games it won 1, lost 5, and 2 ran out of time.
-It killed 368 Crown units and lost 1,347: about one for every four.
+Against the Crown computer of 0.14.72, the one the owner looked at:
+before, the Clockwork won 1 game of 8, lost 5, and 2 ran out of time. It killed 368 Crown units and lost 1,347.
+After, it won 5, lost none, and 3 ran out of time. It killed 625 and lost 557.
 
-Now it wins most of them.
-In the same 8 games it won 5, lost none, and 3 ran out of time.
-It killed 625 Crown units and lost 557: a little better than one for one.
+Against the coached Crown of today's main:
+before (main at 0.14.78), the Clockwork won 2 of 8, lost 4, and 2 ran out of time. It killed 468 and lost 1,370.
+After (this branch, 0.14.81), it won 3, lost none, and 5 ran out of time. It killed 863 and lost 946.
+Three earlier rounds against the coached Crown, a few changes apart, went less well: with this one, 15 wins, 7 losses and 10 draws in 32 games.
 
-Its tech now comes on time, its army has shooters, and its sieges kill the workers who mend the wall.
+Its tech now comes on time, its army has shooters, its sieges kill the workers who mend the wall, it picks better targets, it pulls back from fights it is losing, and it expands.
 
 ## What was wrong
 
@@ -60,19 +61,22 @@ This fix is for every unit and every player, not only the computer.
 
 ### Tech on time
 
-On Hard the tier-2 tech starts at about 2:50 by the clock.
+On Hard the tier-2 tech starts at about 2:50 by the clock: the Mainspring and the Escapement are laid together once the cogs for both are in, and both stand by about 4:00.
 Against a walled enemy it starts 40 seconds sooner on Normal and Hard.
 A scout report of a "rush" no longer delays it.
 The gold for the Mainspring and the Escapement is held back even under attack, as long as the army holds the line.
 The army pauses for it from 6 supply on Hard.
 The Mainspring goes where the Escapement itself has room.
-The Escapement is laid as soon as the Mainspring's site is, so the room by the spring is not taken meanwhile.
+The first Mainspring waits for the cogs of both, and the Escapement is laid beside its site at once.
+Before, Regulators and a turret took the room by the spring in the minute the Escapement's cogs took to come in.
+With no room by any Mainspring, the Escapement goes first, where a Mainspring can follow beside it.
+An Escapement with no Mainspring meshing gets one.
 Then it makes sure some Works may make Jacks.
 It builds a Mainspring right beside a Works, or a new Works beside a Mainspring.
 It wants one such Works at first, two once the Escapement works, and three on Hard with money in the bank.
 New Works are placed by a Mainspring until three may make Jacks.
 
-Times in the 8 games, before and after (Hard):
+Times in the 8 games against the 0.14.72 Crown, before and after (Hard; this round laid the Mainspring alone first, then the Escapement):
 
 | | before | after |
 |---|---|---|
@@ -218,7 +222,7 @@ After: a siege at the ramp gate. Clock Soldiers at the gate face, Jacks behind, 
 
 ![After: a siege with nets on the Musketeers](shots/clockwork_ai/after_siege_nets.jpg)
 
-## The numbers, game by game
+## The numbers, game by game (the 0.14.72 Crown)
 
 Hard Crown against Hard Clockwork, balanced plans. The owner's four games, and four more seeds on the same maps.
 "kills / losses" are the Clockwork's.
@@ -241,7 +245,33 @@ An earlier round of the same 8 games, a few changes before the last, went: Clock
 Runs of the same seed are not identical, so these are 16 games, not 8 played twice.
 Hollowfen is still a draw both times: its waves are pulled back again and again.
 
+## Against the coached Crown (today's main)
+
+The same 8 games. Before: main at 0.14.78, with the Crown's coaching and the pathfinding work.
+After: this branch at 0.14.81, merged with main (the Spring Ballista too).
+
+| game | before: winner | before: kills / losses | before: Escapement, first Jack | after: winner | after: kills / losses | after: Escapement, first Jack |
+|---|---|---|---|---|---|---|
+| Greenhold, seed 11, swap 0 | Crown at 17:58 | 59 / 205 | 10:54, 12:33 | nobody by 20:00 | 129 / 174 | 3:57, 6:17 |
+| Frostmere, seed 12, swap 1 | nobody by 20:00 | 26 / 212 | 10:36, never | Clockwork at 13:09 | 68 / 30 | 3:41, 4:33 |
+| Hollowfen, seed 13, swap 0 | nobody by 20:00 | 47 / 207 | 12:30, 14:05 | nobody by 20:00 | 142 / 177 | 3:38, 6:17 |
+| Kestrel Rise, seed 14, swap 1 | Clockwork at 15:24 | 105 / 81 | 10:39, 11:28 | Clockwork at 12:24 | 72 / 33 | 3:36, 5:20 |
+| Greenhold, seed 21, swap 1 | Crown at 16:20 | 33 / 195 | 12:58, never | nobody by 20:00 | 100 / 171 | 3:47, 5:33 |
+| Frostmere, seed 22, swap 0 | Crown at 15:41 | 46 / 175 | never, never | nobody by 20:00 | 151 / 138 | 3:41, 5:21 |
+| Hollowfen, seed 23, swap 1 | Crown at 19:23 | 66 / 206 | 10:44, never | nobody by 20:00 | 114 / 176 | 3:52, 12:33 |
+| Kestrel Rise, seed 24, swap 0 | Clockwork at 17:23 | 86 / 89 | 13:44, never | Clockwork at 13:05 | 87 / 47 | 3:37, 4:48 |
+
+Before: Clockwork 2, Crown 4, no winner 2. Kills and losses 468 / 1,370.
+After: Clockwork 3, Crown 0, no winner 5. Kills and losses 863 / 946.
+The Escapement now stands at 3:36 to 3:57 in every game (before: 10:36 to 13:44, or never).
+Three earlier rounds on the merged code, a few changes apart, went 5 / 2 / 1, 3 / 3 / 2 and 4 / 2 / 2 (Clockwork / Crown / no winner).
+The coached Crown is a much harder opponent: it expands to four Town Halls and out-earns the Clockwork from about 10:00.
+The five games with no winner were close fights that ran to 20:00.
+
 ## Normal and Easy
+
+These were played against the 0.14.72 Crown.
+
 
 The same two games, Greenhold seed 11 and Frostmere seed 12, against the Hard Crown.
 
@@ -266,30 +296,33 @@ No script errors in any of the games filmed for this.
 
 ## Tests
 
-All pass on the last commit:
-`test_gear_ai` (passive, and `vs:crown minutes:11`, and `vs:brood minutes:9`), `test_cw_ai`, `test_cw_tier3`, `test_cw_tier3_ai`, `test_cw_air_ai`,
+All pass on the last commit, run one at a time:
+`test_gear_ai` (passive, `vs:crown minutes:11` and `vs:brood minutes:9`), `test_cw_ai`, `test_cw_tier3`, `test_cw_tier3_ai`, `test_cw_air_ai`,
+`test_ballista`, `test_ballista_ai`, `test_crate_carry`,
 `test_ai_army_response`, `test_ai_wall_vs_rush`, `test_ai_rush`, `test_ai_worker_safety`,
 `test_ai_scout`, `test_ai_scout_defence`, `test_ai_scout_sentry`, `test_ai_scout_threat`.
+`test_pathing` passed after the first merge.
+Run three at once on a two-core machine, `test_ai_army_response` and `test_ai_worker_safety` missed once each; run alone, they passed every time.
 
 Two tests changed, for reasons, not to make them pass:
 `test_cw_tier3` forced a fresh net right after a net, by setting the reload to zero mid-swing; the new order no longer skips the reload, so it also ends the swing.
 `test_cw_tier3_ai` expected a Works on its big gear before any Jack was out; the Jacks now come first, so six Jacks stand by in it.
+After the Ballista merge, the first Netter comes before the Pendulums and the Ballistas, so that test still sees one.
 
 `test_determinism` drifts between two runs from the first 20 to 30 seconds, on this branch and on main alike, Crown against Brood and Crown against Clockwork.
-It now takes `a:` and `b:` factions.
 
 ## What is left
 
-1. The Crown computer now loses most games to the Hard Clockwork. In the 16 games it won none.
-   In the games looked at closely, it earns about two thirds of the Clockwork's income, and its army is worth about half.
-   It builds an expansion right under its own cliff, and it lets its gate fall to 25 Clock Soldiers and 4 Jacks.
-   Reading design principle 1, fairness, this is now a Crown computer question, not a Clockwork one.
-2. Hollowfen ends with no winner. Its waves are pulled back again and again for bad trades.
-3. In some sieges the men do not reach the gate face (Frostmere). That is the path code, for the pathfinding job.
+1. Hollowfen is the hardest map for it. Its main is cramped: on one seed there was no room near a Mainspring for a Works that may make Jacks, and the first Jack came at 12:33.
+   The Escapement itself now always finds a place, at 3:36 to 3:57.
+2. Against the coached Crown it is ahead but not far: over the four rounds of 8 on the merged code (a few changes apart) it won 15 of 32, lost 7, and 10 ran to 20:00.
+   Before, in one round of 8, it won 2 and lost 4. The coached Crown expands to four Town Halls and out-earns it from about 10:00.
+   The Clockwork needs ore for a new Clocktower, and on some maps there is none near: then it cannot keep up.
+3. In some sieges the men do not reach the gate face (Frostmere). That is the path code.
 4. The Jack's 170 reach is under the Musketeer's 190. Jacks lose a straight shoot-out at range, so they are kept behind the Clock Soldiers. No number was changed.
 5. The siege simulation still does not foresee Horsemen riding out of the gate.
 6. The forming-up wait before a siege is still up to 15 seconds.
-7. The air (the Clock Aviary, Swifts, Ticking Owls) was not looked at.
+7. The air (the Clock Aviary, Swifts, Ticking Owls) was not looked at. The Spring Ballista came in at the end: it keeps its own pick, and its bolt stays on the gate in a siege.
 8. The reload fix changes play for everyone: a Netter, or any unit, ordered about in mid-blow no longer fires early.
 
 ## Tools
@@ -299,4 +332,3 @@ It takes `da:` and `db:` for the computers' difficulty.
 `noopen:1` makes every wave go for the main hall (for siege experiments).
 `noretreat:1` now holds from the start, so a siege the computer would call off at once plays out too.
 It shoots `leap_MMSS.png` when Jacks leap up, and `siege_MMSS.png` eight seconds into a siege.
-`tools/test_determinism.gd` takes `a:` and `b:` factions.
