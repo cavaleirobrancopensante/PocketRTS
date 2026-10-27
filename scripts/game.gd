@@ -5920,7 +5920,7 @@ func canister_at(u: Unit, aim: Vector2, dmg: float, e: Entity = null) -> void:
 	if dir == Vector2.ZERO:
 		dir = u.facing.normalized()
 	var reach := float(Defs.CANISTER["range"]) + 30.0
-	blast_bodies_cone(from, dir, reach, float(Defs.CANISTER["cone"]), u.order == "bombard")
+	blast_bodies_cone(from, dir, reach, float(Defs.CANISTER["cone"]), u.order == "bombard", dmg)
 	# area damage hits whoever is in it, friend or foe (not the gun itself)
 	for o in units_near(from, reach + 20.0):
 		if o == u or o.dead or o.off_field:
@@ -6106,7 +6106,7 @@ func round_shot_land(from: Vector2, p: Vector2, dmg: float, t: int, shooter: Ent
 	var a := p - dir * 30.0
 	var b := p + dir * float(Defs.ROUND_SHOT["line"])
 	var w := float(Defs.ROUND_SHOT["width"])
-	blast_bodies(p, float(Defs.ROUND_SHOT["splash"]), aimed, a, b, w)
+	blast_bodies(p, float(Defs.ROUND_SHOT["splash"]), aimed, a, b, w, dmg)
 	for o in units_near(p + dir * float(Defs.ROUND_SHOT["line"]) * 0.4, float(Defs.ROUND_SHOT["line"]) + 40.0):
 		if o == shooter or o.dead or o.is_air() or o.off_field:
 			continue
@@ -6204,12 +6204,14 @@ func blob_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	pr.blob = true
 	pr.team = u.team
 	pr.shooter = u
+	pr.aimed = u.order == "bombard"
 	add_child(pr)
 	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
 
 
 ## The blob bursts: acid over a whole area (less at the edge), and it keeps burning.
-func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity) -> void:
+func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity, aimed := false) -> void:
+	blast_bodies(p, splash, aimed, Vector2.INF, Vector2.INF, 0.0, dmg)      # (spit at the ground eats the bodies too)
 	var fx := spawn_effect("acid_splash", p, 0.9)
 	fx.scale = Vector2(1.8, 1.5)
 	for i in 3:
@@ -6260,7 +6262,7 @@ func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity,
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
 	fx.scale = Vector2.ONE * (splash / 36.0)
 	Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
-	blast_bodies(p, splash, aimed)
+	blast_bodies(p, splash, aimed, Vector2.INF, Vector2.INF, 0.0, dmg)
 	var edge := float(Defs.MORTAR["edge"])
 	for u in units_near(p, splash + 24.0):
 		if u.dead or u.off_field or u.is_air():
@@ -6302,22 +6304,187 @@ var bombs_landed := 0       # Ticking Owl bombs that went off (tests)
 
 # ------------------------------------------------------------------ FIRE AT A SPOT (BOMBARD) and AREA SHOTS DESTROY BODIES
 
-## BOMBARD (Ctrl+A or the card's button, then a spot): every unit in the list that can (Defs.BOMBARD kinds) keeps firing at
-## `p` until another order; the others are left as they are. queued: Shift, after their orders. How many took it.
+## BOMBARD (Ctrl+A or the card's button, then a spot): every unit in the list that can attack the ground keeps attacking
+## `p` until another order (Game.ground_order); the others are left as they are. queued: Shift, after their orders. How
+## many took it.
 func bombard_order(list: Array, p: Vector2, queued := false) -> int:
-	p = on_map(p)
+	return ground_order(list, PackedVector2Array([p]), queued)
+
+
+## ATTACK GROUND (Ctrl+A, then a click or a held left-drag; Defs.GROUND): one point: everyone attacks that spot; a line:
+## it is shared out among the units like the formation drag (Game.line_stretches, in order along it so their paths don't
+## cross) and each attacks the ground along its own stretch. They keep at it until another order. queued: Shift.
+func ground_order(list: Array, pts: PackedVector2Array, queued := false) -> int:
+	var line := PackedVector2Array()
+	for q in pts:
+		line.append(on_map(q))
+	if line.is_empty():
+		return 0
+	var one := line.size() < 2 or _poly_len(line) < 1.0
 	if puppet and not queued:
-		for e in list:
-			if e is Unit and is_instance_valid(e) and e.can_bombard():
-				e.order_point = p          # (online guest: its copy shows the spot; the host sends the order back)
-	if net_forward(self, "bombard_order", [list, p, queued]): return 0
-	var us: Array = list.filter(func(e) -> bool: return e is Unit and is_instance_valid(e) and not e.dead and e.can_bombard())
-	for u in us:
-		u.give({"o": "bombard", "p": p}, queued)
+		var ss := line_stretches(line, list.size()) if not one else []
+		for i in list.size():
+			var e = list[i]
+			if e is Unit and is_instance_valid(e) and e.can_ground_attack():
+				# (online guest: its copy shows the spot or stretch; the host sends the order back)
+				e.order_point = line[0] if one else ss[i][2]
+				e.gnd_a = line[0] if one else ss[i][0]
+				e.gnd_b = line[0] if one else ss[i][1]
+	if net_forward(self, "ground_order", [list, line, queued]): return 0
+	var us: Array = list.filter(func(e) -> bool: return e is Unit and is_instance_valid(e) and not e.dead and e.can_ground_attack())
+	if one:
+		for u in us:
+			u.give({"o": "bombard", "p": line[0]}, queued)
+	else:
+		var dir := (line[line.size() - 1] - line[0]).normalized()
+		us.sort_custom(func(a: Unit, b: Unit) -> bool: return a.plan_end().dot(dir) < b.plan_end().dot(dir))
+		var ss := line_stretches(line, us.size())
+		for i in us.size():
+			us[i].give({"o": "bombard", "p": ss[i][2], "a": ss[i][0], "b": ss[i][1]}, queued)
 	if not us.is_empty() and us[0].team == human:
 		command_sound(us, "attack", "attack")
-		_ping(p, Color(1.0, 0.55, 0.2))
+		_ping(line[line.size() - 1] if not one else line[0], BOMBARD_COL)
 	return us.size()
+
+
+static func _poly_len(pts: PackedVector2Array) -> float:
+	var l := 0.0
+	for i in range(1, pts.size()):
+		l += pts[i - 1].distance_to(pts[i])
+	return l
+
+
+## The point `l` px along a drawn line.
+static func _poly_at(pts: PackedVector2Array, l: float) -> Vector2:
+	for i in range(1, pts.size()):
+		var sl := pts[i - 1].distance_to(pts[i])
+		if l <= sl or i == pts.size() - 1:
+			return pts[i - 1].lerp(pts[i], clampf(l / maxf(sl, 0.001), 0.0, 1.0))
+		l -= sl
+	return pts[pts.size() - 1]
+
+
+## A drawn line shared out among n units, in order along it: [start, end, middle] of each one's stretch.
+static func line_stretches(pts: PackedVector2Array, n: int) -> Array:
+	var total := _poly_len(pts)
+	var out: Array = []
+	for k in maxi(n, 1):
+		var a := _poly_at(pts, total * float(k) / float(maxi(n, 1)))
+		var b := _poly_at(pts, total * float(k + 1) / float(maxi(n, 1)))
+		out.append([a, b, _poly_at(pts, total * (float(k) + 0.5) / float(maxi(n, 1)))])
+	return out
+
+
+# ------------------------------------------------------------------ BODIES HAVE HEALTH (Defs.ROT, Defs.GROUND)
+
+## A body still lying there that can be hit (not torn up, not wrapped and fading, not raised).
+static func lying(b) -> bool:
+	return b != null and is_instance_valid(b) and b is Unit and b.dead and not b.torn and not b.off_field \
+		and b.modulate.a > 0.99 and b.is_inside_tree()
+
+
+## A body takes `dmg` (a ground attack's blow or shot, an area shot fired at the ground): its rot end comes sooner; at 0
+## it is torn up (no harvest, no raising). True if that tore it up. The guest is told its health (fx "h").
+func hit_body(b: Unit, dmg: float, aimed := true) -> bool:
+	if not lying(b) or dmg <= 0.0:
+		return false
+	b.body_dmg += dmg
+	bodies_hit += 1
+	if b.body_left() <= 0.0:
+		tear_body(b, aimed)
+		return true
+	if b._rip and b._rip.is_valid():
+		b._schedule_rot()
+	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
+		net.fx.append(["h", "", b.position, b.body_left()])
+	return false
+
+
+var bodies_hit := 0           # blows and blasts that hurt a body (tests)
+
+
+## Guest: the host says the body lying at p has `left` health now (Game.hit_body): its damage is set to match (the rot it
+## works out itself).
+func body_health_at(p: Vector2, left: float) -> void:
+	var best: Unit = null
+	var bd := 12.0
+	for b in bodies:
+		if lying(b) and (b as Unit).position.distance_to(p) < bd:
+			bd = (b as Unit).position.distance_to(p)
+			best = b
+	if best == null:
+		return
+	best.body_dmg = maxf(0.0, best.body_size() - Unit.rot_lost(clock - best.died_at) - left)
+	if best._rip and best._rip.is_valid():
+		best._schedule_rot()
+
+
+## How long a grub takes to wrap this body: Defs.HARVEST take x sqrt(its health / ref), within take_min..take_max (its
+## size, not what is left of it).
+func harvest_time(b: Unit) -> float:
+	var hv: Dictionary = Defs.HARVEST
+	var k := sqrt(b.body_size() / float(hv["ref"])) if b != null and is_instance_valid(b) else 1.0
+	return clampf(float(hv["take"]) * k, float(hv["take_min"]), float(hv["take_max"]))
+
+
+## The body lying nearest to `from` within `r` of the segment a..b (a == b: of a point), or null.
+func ground_body(from: Vector2, a: Vector2, b: Vector2, r: float) -> Unit:
+	var best: Unit = null
+	var bd := INF
+	for body in bodies:
+		if not lying(body):
+			continue
+		var bp: Vector2 = body.position
+		var q := Geometry2D.get_closest_point_to_segment(bp, a, b)
+		if q.distance_to(bp) > r + body.radius * 0.5:
+			continue
+		var dd := from.distance_to(bp)
+		if dd < bd:
+			bd = dd
+			best = body
+	return best
+
+
+## An enemy of u's (one it could hit) standing at p: where a ranged shot at the ground lands.
+func foe_at(u: Unit, p: Vector2) -> Unit:
+	for o in units_near(p, 40.0):
+		if not o.dead and not o.off_field and hostile(o.team, u.team) and o.position.distance_to(p) <= o.radius + 4.0 \
+				and u.can_hit(o):
+			return o
+	return null
+
+
+## The look and sound of a single ranged shot at the ground (the damage is the caller's): a musket ball, a glob of acid,
+## a zap, a screw, a gust of steam (the units' own art and sounds).
+func ground_shot_fx(u: Unit, to: Vector2) -> void:
+	var from := u.center() + u.facing * 16.0
+	match u.kind:
+		"spitter", "skywing", "bloater":
+			var s := Shot.new()
+			s.arc = 0.18
+			s.scale = Vector2(1.3, 1.3)
+			s.impact = "acid_splash"
+			s.impact_scale = 0.7
+			s.launch(self, "acid_ball", from, to, 330.0)
+			Sfx.play_any(["combat/%s_attack" % u.kind, "combat/spitter_attack", "acid"], from)
+		"tesla_cart", "stormcaller", "ornithopter", "arc_thrower", "tesla_loco":
+			_zap_visual(u.coil_point() if u.kind == "tesla_cart" else from, to, false, true)
+			Sfx.play_any(["combat/tesla_attack", "zap"], from)
+		"steam_walker":
+			var dir := (to - from).normalized()
+			for i in 3:
+				var fx := spawn_effect("smoke", from + dir * (20.0 + i * 22.0), 1.6)
+				fx.modulate = Color(1.3, 1.3, 1.3, 0.85)
+			Sfx.play_any(["combat/steam_walker_attack", "steam"], from)
+		_:
+			spawn_effect("smoke", from + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+			var s := Shot.new()
+			s.face_offset = PI
+			s.scale = Vector2(0.45, 0.45)
+			s.impact = "smoke"
+			s.impact_scale = 0.35
+			s.launch(self, "bolt" if u.kind == Defs.JACK and ArtData.EFFECTS.has("bolt") else "ball", from, to, 950.0)
+			Sfx.play_any(["combat/%s_attack" % u.kind, "combat/musketeer_attack", "musket"], u.global_position)
 
 
 ## One shot of a BOMBARD at the spot p: the gun's round shot or canister, the Mortar's shell, the Spore Mother's blob. The
@@ -6363,7 +6530,7 @@ func _bodies_near(p: Vector2, r: float) -> Array:
 ## A blast at p (a shell's splash r, round shot's splash plus the line a..b it ploughs, `w` wide) tears up the bodies lying
 ## in it (Defs.BODY_BLAST): no harvest, no raising. `aimed`: a BOMBARD shot; ordinary fire tears only the `combat` share of
 ## the blast (its middle). Returns how many.
-func blast_bodies(p: Vector2, r: float, aimed: bool, a := Vector2.INF, b := Vector2.INF, w := 0.0) -> int:
+func blast_bodies(p: Vector2, r: float, aimed: bool, a := Vector2.INF, b := Vector2.INF, w := 0.0, dmg := -1.0) -> int:
 	var k := _combat_share(aimed)
 	if k <= 0.0:
 		return 0
@@ -6380,14 +6547,22 @@ func blast_bodies(p: Vector2, r: float, aimed: bool, a := Vector2.INF, b := Vect
 			var aa := p + (a - p) * k
 			var bb := p + (b - p) * k
 			inside = Geometry2D.get_closest_point_to_segment(body.position, aa, bb).distance_to(body.position) <= w * k + reach
-		if inside:
-			tear_body(body, aimed)
+		if inside and _blast_body(body, dmg, aimed):
 			n += 1
 	return n
 
 
+## A body in an area shot's blast: hurt by the shot's damage x Defs.BODY_BLAST.body (torn up at 0: true), or torn up
+## outright when no damage is given (dmg < 0).
+func _blast_body(body: Unit, dmg: float, aimed: bool) -> bool:
+	if dmg < 0.0:
+		tear_body(body, aimed)
+		return true
+	return hit_body(body, dmg * float(Defs.BODY_BLAST["body"]), aimed)
+
+
 ## Canister's cone (from the muzzle along dir, `reach` long, cos of its half-angle `cone`) tears up the bodies in it.
-func blast_bodies_cone(from: Vector2, dir: Vector2, reach: float, cone: float, aimed: bool) -> int:
+func blast_bodies_cone(from: Vector2, dir: Vector2, reach: float, cone: float, aimed: bool, dmg := -1.0) -> int:
 	var k := _combat_share(aimed)
 	if k <= 0.0:
 		return 0
@@ -6395,8 +6570,8 @@ func blast_bodies_cone(from: Vector2, dir: Vector2, reach: float, cone: float, a
 	var n := 0
 	for body in _bodies_near(from, reach + 12.0):
 		var to: Vector2 = body.position - from
-		if to.length() <= reach + body.radius * 0.5 and to.length() > 1.0 and dir.dot(to.normalized()) > cone:
-			tear_body(body, aimed)
+		if to.length() <= reach + body.radius * 0.5 and to.length() > 1.0 and dir.dot(to.normalized()) > cone \
+				and _blast_body(body, dmg, aimed):
 			n += 1
 	return n
 
@@ -8066,18 +8241,17 @@ var bodies: Array = []                   # the fallen still lying there (Unit._r
 var _body_bar_t := 0.0
 
 
-## Over every body still lying on the field, a thin bar running down to the moment it
-## fades away (for everyone, where they can see).
+## Over every body still lying on the field, a thin bar: its health (Defs.ROT), running down faster the longer it lies,
+## and with every blow it takes (for everyone, where they can see).
 func _draw_body_bars() -> void:
-	var now := clock
 	for b in bodies:
 		if not is_instance_valid(b) or not b.visible or b.modulate.a < 0.99 or not view_rect.has_point(b.position):
 			continue
-		var f := clampf(1.0 - (now - float(b.rip_from)) / maxf(float(b.rip_len), 0.1), 0.0, 1.0)
-		var w := 12.0
-		var p: Vector2 = b.position + Vector2(-w * 0.5, -16.0)
-		body_bars.draw_rect(Rect2(p, Vector2(w, 1.5)).grow(0.5), Color(0, 0, 0, 0.45))
-		body_bars.draw_rect(Rect2(p, Vector2(w * f, 1.5)), Color(0.85, 0.82, 0.72, 0.6))
+		var f := clampf(b.body_left() / maxf(b.body_size(), 1.0), 0.0, 1.0)      # (its health: rot and damage)
+		var w := clampf(12.0 * sqrt(b.body_size() / 70.0), 9.0, 20.0)      # (a little longer over a beefy body)
+		var p: Vector2 = b.position + Vector2(-w * 0.5, -8.0 - maxf(float(b.radius), 8.0))      # (over a beefy body, higher)
+		body_bars.draw_rect(Rect2(p, Vector2(w, 2.0)).grow(0.5), Color(0, 0, 0, 0.5))
+		body_bars.draw_rect(Rect2(p, Vector2(w * f, 2.0)), Color(0.88, 0.84, 0.72, 0.8))
 
 
 var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
@@ -9111,6 +9285,8 @@ func _draw_queues() -> void:
 		if u.patrol_a != Vector2.INF:
 			_draw_patrol(u.patrol_a, u.patrol_b, u.global_position)
 		if u.order == "bombard":
+			if u.gnd_a != Vector2.INF and u.gnd_a.distance_to(u.gnd_b) >= 1.0:
+				_draw_ground_stretch(u.gnd_a, u.gnd_b)
 			_draw_bombard_spot(u.order_point, u.global_position)
 		if u.queue.is_empty() and u.line_rest.is_empty():
 			continue
@@ -9128,6 +9304,42 @@ func _draw_queues() -> void:
 
 const PATROL_COL := Color(0.45, 0.85, 1.0)
 const BOMBARD_COL := Color(1.0, 0.55, 0.2)
+
+
+## An ATTACK GROUND line being dragged (Ctrl+A, then a held left-drag), in the style of the formation preview: the line,
+## faint, and each unit's own stretch of it in turn darker and lighter, with a tick between them and a dot where its
+## middle is (the order's spot). Short of the drag length it is still a click.
+func _draw_ground_line(pts: PackedVector2Array) -> void:
+	var n := selected_units().filter(func(u: Unit) -> bool: return u.can_ground_attack()).size()
+	var long := Game._poly_len(pts) > 40.0
+	overlay.draw_polyline(pts, Color(0, 0, 0, 0.45), 4.0)
+	overlay.draw_polyline(pts, Color(BOMBARD_COL, 0.55 if long else 0.3), 2.0)
+	if n <= 0 or not long:
+		return
+	var lane := float(Defs.GROUND["lane"]) * Defs.TILE
+	var i := 0
+	for st in line_stretches(pts, n):
+		var a: Vector2 = st[0]
+		var b: Vector2 = st[1]
+		var dv := (b - a).normalized() if a.distance_to(b) > 0.5 else Vector2.RIGHT
+		var nv := dv.orthogonal() * lane
+		var col := Color(BOMBARD_COL, 0.22 if i % 2 == 0 else 0.12)
+		overlay.draw_colored_polygon(PackedVector2Array([a + nv, b + nv, b - nv, a - nv]), col)
+		overlay.draw_line(a + nv, a - nv, Color(BOMBARD_COL, 0.8), 1.5)
+		overlay.draw_circle(st[2], 4.0, Color(0, 0, 0, 0.45))
+		overlay.draw_circle(st[2], 2.8, Color(BOMBARD_COL, 0.95))
+		i += 1
+	var last: Vector2 = pts[pts.size() - 1]
+	var lv := (last - pts[pts.size() - 2]).normalized().orthogonal() * lane
+	overlay.draw_line(last + lv, last - lv, Color(BOMBARD_COL, 0.8), 1.5)
+
+
+## A selected unit's ATTACK GROUND stretch (a dragged line): a band along it.
+func _draw_ground_stretch(a: Vector2, b: Vector2) -> void:
+	var dv := (b - a).normalized()
+	var nv := dv.orthogonal() * float(Defs.GROUND["lane"]) * Defs.TILE
+	overlay.draw_colored_polygon(PackedVector2Array([a + nv, b + nv, b - nv, a - nv]), Color(BOMBARD_COL, 0.14))
+	overlay.draw_line(a, b, Color(BOMBARD_COL, 0.6), 1.5)
 
 
 ## A selected unit's BOMBARD spot: a faint dashed line from it and a target ring with four ticks on the spot.
@@ -9272,8 +9484,11 @@ func _draw_overlay_all() -> void:
 	for pg in _pings:
 		var f: float = pg[2] / 0.5
 		overlay.draw_arc(pg[0], 16.0 * (1.5 - f), 0, TAU, 20, Color(pg[1], f), 2.0)
+	# an ATTACK GROUND line being drawn: the line, shared out into each unit's stretch
+	if controls and controls.line.size() >= 2 and controls.line_ground:
+		_draw_ground_line(controls.line)
 	# a line move being drawn: the line and where each unit will stand
-	if controls and controls.line.size() >= 2:
+	elif controls and controls.line.size() >= 2:
 		var lc := Color(1.0, 0.45, 0.35, 0.9) if controls.line_attack else Color(0.45, 1.0, 0.45, 0.9)
 		overlay.draw_polyline(controls.line, lc, 2.0)
 		var n := selected_units().size()

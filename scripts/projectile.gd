@@ -67,7 +67,7 @@ func _tick_projectile(delta: float) -> void:
 		if not is_instance_valid(shooter):
 			shooter = null       # (whoever fired it is gone from the game: removed, not just dead)
 		if blob:
-			game.blob_land(to, damage, splash, team, shooter)
+			game.blob_land(to, damage, splash, team, shooter, aimed)
 		elif shell:
 			game.mortar_land(to, damage, splash, team, shooter, aimed)
 		elif round_shot:

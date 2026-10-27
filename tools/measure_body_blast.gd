@@ -176,7 +176,7 @@ func _follow(g: Game) -> void:
 			fate = "revived"
 		elif is_instance_valid(b) and b.harvester != null and is_instance_valid(b.harvester) and b.harvester.cocoon > 0.0:
 			fate = "harvested"
-		elif g.clock - float(e["died"]) >= float(Defs.HARVEST["time"]) - 2.0:
+		elif is_instance_valid(b) and g.clock >= b.rot_end() - 2.0:      # (rotted away: Defs.ROT)
 			fate = "rotted"
 		elif not is_instance_valid(b):
 			fate = "other"

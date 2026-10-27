@@ -161,6 +161,8 @@ static func unit_dies(u: Unit) -> void:
 		grp.erase(u)
 	u.corpse_t = 0.0
 	u.died_at = g.clock
+	u.body_dmg = 0.0          # (its body rots here as on the host: Unit.rot_end; hits come in the snapshot's fx, "h")
+	u.body_max = 0.0
 	u._set_anim(u._death_anim(), true)
 	u.z_index = -1
 	if u.visible:

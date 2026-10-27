@@ -18,7 +18,7 @@ const GAME := {
 	"unload_order": {"own": [0]}, "load_order": {"own": [0, 1]}, "overload_order": {"own": [0]},
 	"cast_order": {"own": [0]}, "tongue_order": {"own": [0]}, "line_move": {"own": [0]},
 	"morph_order": {"own": [0]}, "cancel_morph": {"own": [0]},
-	"bombard_order": {"own": [0]},
+	"bombard_order": {"own": [0]}, "ground_order": {"own": [0]},
 	"lay_line": {"team": 0, "own": [2]}, "buy_train": {"team": 0}, "ride_order": {"own": [0]}, "set_split": {"team": 0},
 	"player_surrender": {"team": 0},
 }

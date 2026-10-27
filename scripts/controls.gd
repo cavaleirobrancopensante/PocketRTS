@@ -7,8 +7,9 @@ extends Node
 ##   1-9 and 0 groups (Ctrl+number sets, Ctrl+Shift+number adds the selection, Shift+number adds the group to the selection), F1 idle workers, F2 army, F3 make, F4-F10 camera views (Shift+F saves), Space = jump to
 ##   the selection, Esc = cancel. Shift with a command (right click, MOVE, ATTACK, REPAIR,
 ##   placing buildings and walls) queues it after the units' current orders. Watching computers: 0 all vision, 1-4 follow that player.
-##   Ctrl+A = BOMBARD (fire at a spot, as in Total Annihilation): the next click is a spot on the ground the selected
-##   cannons, mortars and Spore Mothers keep firing at (Defs.BOMBARD).
+##   Ctrl+A = ATTACK GROUND (as in Total Annihilation; Defs.BOMBARD, Defs.GROUND): the next click is a spot on the ground
+##   every selected unit that can attack keeps attacking (a held left-drag: a line shared out among them, each its own
+##   stretch, as the right-drag formation does).
 ## MOBILE:
 ## Touch:  tap = select / command,  drag = box select,  long-press = move only,
 ##         two fingers = pan and pinch-zoom,  double-tap a unit = all of that type.
@@ -46,6 +47,7 @@ var _lmb_down := false
 # after MOVE / ATTACK.
 var line := PackedVector2Array()   # world points of the line being drawn
 var line_attack := false
+var line_ground := false           # the line is an ATTACK GROUND line (Ctrl+A, then a held left-drag): Game.ground_order
 var _line_btn := ""                # which button/touch is drawing: "right", "left", "touch"
 var _lmb_from := Vector2.ZERO
 var _mouse_inside := true
@@ -86,11 +88,15 @@ func _line_len() -> float:
 ## Finish a line drag: true if it was long enough to be a line (units sent along it).
 func _line_end(queued := false) -> bool:
 	var ok := line.size() >= 2 and _line_len() > 40.0
-	if ok:
+	if ok and line_ground:
+		game.ground_order(game.selected_units(), line, queued)
+		Sfx.play_any(["ui/click", "click"])
+	elif ok:
 		game.line_move(game.selected_units(), line, line_attack, queued)
 		Sfx.play_any(["ui/click", "click"])
 	line = PackedVector2Array()
 	_line_btn = ""
+	line_ground = false
 	return ok
 
 
@@ -106,6 +112,10 @@ func _keep_for_shift() -> void:
 
 func cancel_mode() -> void:
 	_shift_kept = false
+	if line_ground and _line_btn != "":
+		line = PackedVector2Array()        # (an ATTACK GROUND line being dragged goes with the mode)
+		_line_btn = ""
+	line_ground = false
 	if line_tool != null:
 		line_tool.stop()
 		line_tool = null
@@ -115,11 +125,11 @@ func cancel_mode() -> void:
 	ghost_cell = Vector2i(-1, -1)
 
 
-## BOMBARD (Ctrl+A or the card's button): the next click or tap is a spot on the ground. Only when a unit in the selection
-## can fire at a spot (Defs.BOMBARD); false (and a note) if none can.
+## ATTACK GROUND (Ctrl+A or the card's button): the next click or tap is a spot on the ground, or a held drag a line. Only
+## when a unit in the selection can attack the ground (Unit.can_ground_attack); false (and a note) if none can.
 func begin_bombard() -> bool:
-	if not game.selected_units().any(func(u: Unit) -> bool: return u.can_bombard()):
-		game.notify("Only cannons, mortars and Spore Mothers can fire at a spot.")
+	if not game.selected_units().any(func(u: Unit) -> bool: return u.can_ground_attack()):
+		game.notify("None of them can attack the ground.")
 		return false
 	cancel_mode()
 	mode = "bombard"
@@ -245,9 +255,10 @@ func _drag(e: InputEventScreenDrag) -> void:
 		return
 	if not info["moved"] and e.position.distance_to(info["pos"]) > DRAG_START:
 		info["moved"] = true
-		if mode == "move" or mode == "attack":
+		if mode == "move" or mode == "attack" or mode == "bombard":
 			line = PackedVector2Array()
 			line_attack = mode == "attack"
+			line_ground = mode == "bombard"
 			_line_btn = "touch"
 			_line_add(info["pos"])
 		elif mode == "place" or mode == "lay_line" or Settings.drag_mode == "pan":
@@ -300,6 +311,7 @@ func _mouse(e: InputEventMouseButton) -> void:
 			and not game.selected_units().is_empty():
 		line = PackedVector2Array()
 		line_attack = false
+		line_ground = false
 		_line_btn = "right"
 		_line_add(e.position)
 	elif e.button_index == MOUSE_BUTTON_RIGHT and not e.pressed and _line_btn == "right":
@@ -347,13 +359,15 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				if line_tool != null:
 					line_tool.press(e.position, e.shift_pressed)
 				return
-			"move", "attack":
+			"move", "attack", "bombard":
+				# (ATTACK GROUND: a held drag is a line shared out among them; a short one is a click: _tap)
 				line = PackedVector2Array()
 				line_attack = mode == "attack"
+				line_ground = mode == "bombard"
 				_line_btn = "left"
 				_line_add(e.position)
 				return
-			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol", "ride", "cwsiding", "cwsetup", "cwcast", "cwdrop", "bombard":
+			"rally", "rally_army", "rally_worker", "cast", "load", "unload", "overload", "repair", "patrol", "ride", "cwsiding", "cwsetup", "cwcast", "cwdrop":
 				_tap(e.position, false, e.shift_pressed)
 				return
 		_lmb_down = true
@@ -438,9 +452,9 @@ func _key(e: InputEventKey) -> void:
 					_user_cam()
 				return
 	if e.keycode == KEY_A and (e.ctrl_pressed or e.meta_pressed) and not e.shift_pressed:
-		# Ctrl+A: BOMBARD, fire at a spot (A stays attack-move)
+		# Ctrl+A: ATTACK GROUND, a spot or a dragged line (A stays attack-move)
 		if not units.is_empty() and begin_bombard() and hud:
-			hud.flash_card("BOMBARD")
+			hud.flash_card("ATTACK GROUND")
 		return
 	match e.keycode:
 		KEY_ESCAPE, KEY_BACKSPACE:
@@ -584,7 +598,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 			Sfx.play_any(["ui/click", "click"])
 			return
 		"bombard":
-			# the spot to fire at (anywhere on the map, in the fog too); Shift: after their orders, and BOMBARD stays on
+			# the spot to attack (anywhere on the map, in the fog too); Shift: after their orders, and the mode stays on
 			game.bombard_order(units, p, queued)
 			if queued:
 				_keep_for_shift()
