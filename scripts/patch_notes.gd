@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.56", "items": [
+		"CROWN ANIMATIONS, small fixes from an audit of every Crown animation (docs/animation_audit_crown.md): the Officer and the Armoured Officer no longer hop as they walk (their walking feet now stay on the ground, as when they stand), and the Armoured Officer no longer floats a little when he aims and fires. The Horseman's horse no longer bobs up when it stops facing down and to the right. The Messenger galloping right no longer shows two or three riders in two of its frames. The Mortar's crew no longer jumps from side to side while the gun waits. The Mounted Missionary gallops at a gallop's pace (its horse slid along in slow motion). A stray dash under the Musketeer's muzzle is gone.",
+	]},
 	{"v": "0.14.55", "items": [
 		"CHECKED: every automated test of the game was run (118), the files were checked against each other (every unit animation strip, building picture, icon, sound and requirement: a new test of 1,026 checks), and the README brought up to date (each Feeding Pit's own ground, replays). Two old tests that did not know the newer rules were updated; the game was right.",
 		"FIX: every match tried to load a picture that no longer exists (an old walking frame of the Armoured Officer) and logged an error for it; that leftover is gone. The Android app no longer packs the retired units' art.",

@@ -6130,7 +6130,9 @@ func _anim_name() -> String:
 	return "walk" if moving else "idle"
 
 
-const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]
+## (the Mounted Missionary gallops too: its 9-frame walk at WALK_FPS took 1.1 s a stride at 124 px/s, the
+## horse sliding six times the length of its stride; docs/animation_audit_crown.md)
+const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured", "missionary_mounted"]
 
 ## Walk cycles of the men on foot at full speed, in frames a second (docs/animation_audit_units.md).
 ## Their strips draw a step about 10 to 14 px long, and at 62 to 66 px/s the feet slid 2 to 4 times
