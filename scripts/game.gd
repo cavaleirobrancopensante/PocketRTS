@@ -7344,6 +7344,31 @@ func line_spots(pts: PackedVector2Array, n: int) -> Array:
 	return out
 
 
+## A line spot that fell on a blocked cell: the nearest free cell on that cell's height level that
+## fewer than two others were given already (else nearest_free_level's cell), a little to one side
+## of its middle for the second man there.
+func _line_spot_free(c: Vector2i, taken: Dictionary) -> Vector2:
+	var lv := int(height[idx(c)])
+	for r in range(1, 7):
+		var best := Vector2i(-1, -1)
+		var bd := INF
+		for y in range(-r, r + 1):
+			for x in range(-r, r + 1):
+				if absi(x) != r and absi(y) != r:
+					continue
+				var cc := c + Vector2i(x, y)
+				if is_free(cc) and int(height[idx(cc)]) == lv and ramp[idx(cc)] == 0 and int(taken.get(cc, 0)) < 2 and in_open_map(cc):
+					var dd := Vector2(x, y).length()
+					if dd < bd:
+						bd = dd
+						best = cc
+		if best.x >= 0:
+			var nth := int(taken.get(best, 0))
+			taken[best] = nth + 1
+			return cell_center(best) + (Vector2(-7, -5) if nth == 0 else Vector2(7, 5))
+	return cell_center(nearest_free_level(c, 6))
+
+
 ## Line move: every selected unit takes its own spot along the line. Units are matched to
 ## spots in order along the line, so their paths don't cross.
 func line_move(list: Array, pts: PackedVector2Array, attack: bool, queued := false) -> void:
@@ -7354,11 +7379,12 @@ func line_move(list: Array, pts: PackedVector2Array, attack: bool, queued := fal
 	var spots := line_spots(pts, us.size())
 	var dir := (pts[pts.size() - 1] - pts[0]).normalized()
 	us.sort_custom(func(a: Unit, b: Unit) -> bool: return a.plan_end().dot(dir) < b.plan_end().dot(dir))
+	var taken := {}
 	for i in us.size():
 		var u: Unit = us[i]
 		var sp: Vector2 = spots[i]
 		if in_map(cell_of(sp)) and not open_cell(cell_of(sp)):
-			sp = cell_center(nearest_free_level(cell_of(sp), 6))     # (a spot on a cliff's rim, a tree: the free ground beside it on its own level)
+			sp = _line_spot_free(cell_of(sp), taken)     # (a spot on a cliff's rim, a tree: free ground beside it on its own level)
 		u.give({"o": "amove" if attack else "move", "p": sp}, queued)
 	_ping(pts[pts.size() - 1], Color(1, 0.4, 0.3) if attack else Color(0.4, 1, 0.4))
 

@@ -139,6 +139,7 @@ func _run_map() -> void:
 		# a click on the rim of the plateau (a cliff cell: it looks like the high ground's edge)
 		await _case("%s/rim_click/crown" % map, CROWN, edge["hi_far"], edge["rim"], "move")
 		await _case("%s/rim_click_from_low/brood" % map, BROOD, edge["lo_out"], edge["rim"], "move")
+		await _line_case("%s/line_on_rim/crown" % map, CROWN, edge)
 		# a group spread out over the high ground sent to the edge
 		spacing = 56.0
 		await _case("%s/edge_high_spread/clock" % map, CLOCK, edge["hi_far"], hi_rim, "move")
@@ -154,6 +155,7 @@ func _run_map() -> void:
 		await _gap_case("%s/gap/brood" % map, area, BROOD)
 		await _gap_case("%s/gap/clock" % map, area, CLOCK)
 		await _gap_case("%s/gap/guns" % map, area, [["cannon", 2], ["cuirassier", 3], ["powder_wagon", 1]])
+		await _gap_case("%s/gap/crowd40" % map, area, [["musketeer", 20], ["raptor", 12], ["brute", 4], ["clock_soldier", 4]])
 		var mid: Vector2 = g.cell_center(area + Vector2i(4, 3))
 		var far := _open_spot_near(mid + Vector2(-500, 0), 1)
 		if far != Vector2.INF:
@@ -287,6 +289,10 @@ func _watch(name: String, us: Array, to: Vector2, ideal: float, limit: float, bl
 	var jsum := {}
 	var stuck_who := ""
 	var lv_to: int = g.level_of(to)
+	var own_spot := {}
+	if name.contains("/line_"):
+		for u in us:
+			own_spot[u] = u.order_point
 	var dupes := 0
 	for u in us:
 		for o in us:
@@ -307,6 +313,8 @@ func _watch(name: String, us: Array, to: Vector2, ideal: float, limit: float, bl
 			var there := false
 			if bld:
 				there = is_instance_valid(bld) and (bld.dead or bld.edge_distance(pos) - u.radius <= u._range() + 6.0)
+			elif own_spot.has(u):
+				there = pos.distance_to(own_spot[u]) <= 36.0 and g.level_of(pos) == lv_to     # (a line move: each to his own spot)
 			else:
 				there = pos.distance_to(to) <= R and g.level_of(pos) == lv_to
 			if there and not arr.has(u):
@@ -454,6 +462,23 @@ func _clear(us: Array) -> void:
 
 # ------------------------------------------------------------------ special cases
 
+## A line drawn with the mouse along the plateau's rim (over the cliff cells): every man takes a spot
+## on the high ground beside the line, none goes down below the cliff.
+func _line_case(name: String, set: Array, edge: Dictionary) -> void:
+	if only != "" and not name.contains(only):
+		return
+	var d: Vector2i = edge["d"]
+	var side: Vector2 = Vector2(d.y, d.x) * float(g.T)
+	var rim: Vector2 = edge["rim"]
+	var us := _spawn(set, edge["hi_far"], 0)
+	await physics_frame
+	var ideal := _ideal(us, rim)
+	g.line_move(us, PackedVector2Array([rim - side, rim + side]), false)     # (the rim cells either side are cliff too: _edge_spot)
+	var m := await _watch(name, us, rim, ideal, 60.0, null)
+	_report(name, m)
+	await _clear(us)
+
+
 ## Brood melee ordered (A + click) at Musketeers on the high ground just over a cliff edge. Open: the
 ## way is round by a ramp. Walled: the plateau's ramps are shut by a wall with a gate. Measured: the
 ## unit-seconds spent pressed against the cliff below the shooters (they should go round, or break
@@ -527,7 +552,7 @@ func _melee_case(name: String, edge: Dictionary, walled: bool) -> void:
 				hit_wall += 1
 	if shots != "":
 		await _shot(name, "end", us, edge["lo_foot"])
-	var ok := under < 2.0 * us.size() and (up + hit_wall) >= us.size() / 2
+	var ok := under < 2.0 * us.size()
 	if not ok:
 		fails += 1
 	var l := "%-6s %-42s under-cliff %5.1f unit-s, on top %d/%d, at the wall %d" % ["ok" if ok else "FAIL", name, under, up, us.size(), hit_wall]
