@@ -473,6 +473,10 @@ func _host_tick() -> void:
 		var gt := 1
 		base["units"] = g.units.filter(func(u: Unit) -> bool: return u.team == gt).size()
 		base["bld"] = g.buildings.filter(func(b: Building) -> bool: return b.team == gt).size()
+		# (the snapshot's direct readers and writers must follow UNIT_PROPS / BLD_PROPS: a value added to a list only
+		# shifts every later one on the guest)
+		var why := NetSnapshot.check_lists(g.units[0] if not g.units.is_empty() else null, g.buildings[0] if not g.buildings.is_empty() else null)
+		check("host_snapshot_lists_match", why == "", why)
 		step = 2
 	if step_t > 3.0 and int(step_t * 10) % 50 == 0:
 		pass

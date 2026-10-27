@@ -52,7 +52,7 @@ static func unit_vals(u: Unit) -> Array:
 		u.topter_bat, u.courier, u.supplying, u.auto_repair, u.hold_fire, u.pistol, u.bayonet, u.pouch, u.carry_empty,
 		snappedf(u.gas, 0.01), snappedf(u.spin, 0.01), snappedf(u.overclock_t, 0.01), snappedf(u.cranked_t, 0.01),
 		snappedf(u.self_wind_t, 0.01), u.tongue_stage, snappedf(u.tesla_t, 0.01), snappedf(u.haul_t, 0.01), u.auto_work,
-		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01)]
+		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm]
 
 
 ## The building's values, in BLD_PROPS order.
@@ -576,6 +576,7 @@ static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
 	u.auto_work = row[o + 38]
 	u.owl_t = row[o + 39]
 	u.net_t = row[o + 40]
+	u.arm = row[o + 41]
 
 
 static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:

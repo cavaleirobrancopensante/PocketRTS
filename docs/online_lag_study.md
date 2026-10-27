@@ -1,6 +1,6 @@
 # Online lag study
 
-Written for Holdfast 0.14.37 and after (branch wt-online). It is meant to be read aloud: plain sentences, a few small
+Written for Holdfast 0.14.37 to 0.14.40 (branch wt-online). It is meant to be read aloud: plain sentences, a few small
 tables, numbers rounded.
 
 ## Summary

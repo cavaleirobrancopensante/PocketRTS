@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.40", "items": [
+		"FIX (online): with the Jack's two launchers (0.14.35) a friend's game read every unit's values one place off after the new value, and stopped updating its units; it reads the Jack's launcher now, and the online test checks that the lists match.",
+	]},
 	{"v": "0.14.39", "items": [
 		"ONLINE: the automatic online test now plays every kind of order a friend gives (move, attack-move, a line, hold, stop, hold fire, bombard, rally, train and cancel, auto-train, gather, a hall upgrade the host refuses with its reason, demolish), the chat both ways, a pause and its resume, and a surrender from either player, in a 1 vs 1 with each faction and in co-op (where a friend who surrenders is out and the match goes on for the host).",
 	]},
