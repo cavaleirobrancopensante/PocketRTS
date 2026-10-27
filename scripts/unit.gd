@@ -5731,7 +5731,15 @@ func _build(delta: float) -> Vector2:
 				return Vector2.ZERO
 		if kind == "winder":
 			if crate_site == site:
-				# sets the crate down: it unfolds and assembles itself from here
+				# lowers the crate from his hands to the ground (CRATE_DROP), then it unfolds and assembles itself
+				if work != "crate_drop":
+					work = "crate_drop"
+					work_t = CRATE_DROP
+					return Vector2.ZERO
+				work_t -= delta
+				if work_t > 0.0:
+					return Vector2.ZERO
+				work = ""
 				crate_site = null
 				site.land_crate()
 			else:
@@ -5823,11 +5831,13 @@ func _fetch_crate(site: Building, delta: float) -> Vector2:
 	return _follow(delta)
 
 
-## Winder: where the crate on his back sits for each view ([x, y from the feet, unflipped art
-## (facing east), drawn behind the body]): behind him when he faces us (over his clock head, which
-## hides the rest), low on his back under the winding key side on, in front of him when he walks
-## away. One picture for every view; it bobs with his steps.
-const CRATE_BACK := {"s": [0, -38, true], "se": [-10, -21, true], "e": [-12, -17, true], "ne": [-5, -20, false], "n": [0, -22, false]}
+## Winder: where the crate he carries sits for each view ([x, y from the feet, unflipped art (facing east), drawn behind the
+## body]): held out IN FRONT in his hands at chest height (the owner, 2026-10-27: carried forward, not on his back), over
+## the body when he faces us or side on, behind it when he walks away (its top still shows over his shoulders). One
+## picture for every view; it bobs with his steps. At the site he lowers it to the ground in front of him (CRATE_DROP)
+## before it unfolds.
+const CRATE_HELD := {"s": [0, -14, false], "se": [7, -14, false], "e": [11, -15, false], "ne": [9, -21, true], "n": [0, -26, true]}
+const CRATE_DROP := 0.35      # seconds to set it down on the site
 
 
 func _update_crate_spr() -> void:
@@ -5840,11 +5850,19 @@ func _update_crate_spr() -> void:
 		_crate_spr.texture = Game.tex("res://assets/effects/crate_carried.png")
 		_crate_spr.use_parent_material = true
 		sprite.add_child(_crate_spr)
-	var e: Array = view_entry(CRATE_BACK, [0, -24, true])
+	var e: Array = view_entry(CRATE_HELD, [0, -14, false])
 	var bob := -1.0 if anim == "walk" and sprite.frame % 2 == 1 else 0.0
+	var at := Vector2(float(e[0]) * (-1.0 if view_mirror(CRATE_HELD) else 1.0), float(e[1]) + bob)
+	var behind: bool = e[2]
+	if work == "crate_drop":
+		# lowered to the ground in front of him (forward along his facing, down to his feet)
+		var k := clampf(1.0 - work_t / CRATE_DROP, 0.0, 1.0)
+		var fwd := Vector2(facing.x, facing.y * 0.5) * 10.0
+		at = at.lerp(fwd + Vector2(0, -6), k)
+		behind = behind and k < 0.5
 	_crate_spr.visible = true
-	_crate_spr.position = Vector2(float(e[0]) * (-1.0 if view_mirror(CRATE_BACK) else 1.0), float(e[1]) + bob)
-	_crate_spr.show_behind_parent = e[2]
+	_crate_spr.position = at
+	_crate_spr.show_behind_parent = behind
 
 
 ## Winder: let go of the crate on his back (killed, or given another job on the way): it
@@ -5885,7 +5903,7 @@ func die() -> void:
 	_drop_body()
 	_cancel_boarding()
 	_cancel_refit()            # (killed on the way to a refit: the fee goes back)
-	drop_crate()               # (a Winder) the crate on his back falls where he stood
+	drop_crate()               # (a Winder) the crate in his hands falls where he stood
 	release_horses()           # (his horses stay where they are)
 	if claimed and is_instance_valid(claimed) and claimed.order_target == self:
 		claimed.cmd_stop()     # (a horse) the man coming for it stops
