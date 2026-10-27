@@ -1,7 +1,7 @@
 extends SceneTree
 ## Screenshots of FIRE AT A SPOT (BOMBARD) and of area shots tearing up bodies:
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_attack_ground.gd -- <outdir>
-## Writes card.png (a Cannon's command card with BOMBARD and its tooltip), mode.png (Ctrl+A: picking the spot),
+## Writes card.png (a Cannon's command card with ATTACK GROUND, was BOMBARD, and its tooltip), mode.png (Ctrl+A: picking the spot),
 ## bodies_before.png, shelling.png (a Mortar's shell on its way to the spot), bodies_torn.png (the moment it lands) and
 ## bodies_after.png.
 var main
@@ -64,7 +64,7 @@ func _run() -> void:
 	await create_timer(0.3).timeout
 	g.hud._refresh_card()
 	for bt in g.hud._card_buttons:
-		if String(bt["item"][1]) == "BOMBARD":
+		if String(bt["item"][1]) == "ATTACK GROUND":
 			g.hud._tip = g.hud._card_tip(bt["item"])
 			g.hud._tip_at = (bt["rect"] as Rect2).get_center() + Vector2(-260, -150)
 			g.hud._tip_ms = Time.get_ticks_msec() + 100000

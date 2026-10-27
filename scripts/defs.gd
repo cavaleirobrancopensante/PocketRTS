@@ -1578,8 +1578,8 @@ const HARVEST := {"range": 10, "take": 1.2, "per_supply": 2.0, "ref": 70.0, "tak
 ## and loses it at one speed for every body, `base` health a second, which doubles every `double` seconds it has lain
 ## (smoothly: base x 2^(seconds since death / double)). At 0 it is gone. Damage (ground attack, Defs.GROUND, and area shots
 ## fired at the ground, Defs.BODY_BLAST) takes health off too; a body brought to 0 by damage is torn up (no harvest, no
-## raising). base 0.2696: an untouched Musketeer's body (70) lies 2:00, a Raptor's (36) 1:21, a Brute's (240) 3:30, a
-## Horseman's with his horse (200) 3:16, a Pendulum's (340) 4:01, a Heavy Locomotive's (600) 4:44 (Unit.rot_life).
+## raising). base 0.2696: an untouched Musketeer's body (70) lies 2:00, a Raptor's (36) 1:20, a Brute's (240) 3:30, a
+## Horseman's with his horse (200) 3:15, a Pendulum's (340) 3:58, a Heavy Locomotive's (600) 4:44 (Unit.rot_life).
 const ROT := {"base": 0.2696, "double": 60.0}
 ## ATTACK GROUND (Ctrl+A or the card's button; owner, 2026-10-27): any unit that can attack (not medics, wagons, horses,
 ## balloons, the trains on their rails, nor the units in `not`) can be told to attack the ground. A click: everyone attacks

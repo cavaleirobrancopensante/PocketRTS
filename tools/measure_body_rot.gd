@@ -70,6 +70,7 @@ func _process(delta: float) -> bool:
 		return false
 	if g.hud:
 		g.hud.countdown = 0.0
+	paused = false
 	if lab:
 		if t > 1.0:
 			done = true
@@ -120,7 +121,11 @@ func _lab(g: Game) -> void:
 	for u in g.units.duplicate():
 		if u.position.distance_to(c) < side * 40.0:
 			u.take_damage(99999.0, null)
-	await _frame_ms(90)          # (they fall and lie down)
+	for k in 90:
+		if g.hud:
+			g.hud.countdown = 0.0
+		paused = false
+		await process_frame        # (they fall and lie down)
 	var with := await _frame_ms(300)
 	print("ROTLAB %s bodies %d in view: %.2f ms a frame (%.2f without them)" % [ProjectSettings.get_setting("application/config/version"), _lying(g), with, base])
 	quit()

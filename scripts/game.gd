@@ -7750,9 +7750,9 @@ func _draw_body_bars() -> void:
 			continue
 		var f := clampf(b.body_left() / maxf(b.body_size(), 1.0), 0.0, 1.0)      # (its health: rot and damage)
 		var w := clampf(12.0 * sqrt(b.body_size() / 70.0), 9.0, 20.0)      # (a little longer over a beefy body)
-		var p: Vector2 = b.position + Vector2(-w * 0.5, -16.0)
-		body_bars.draw_rect(Rect2(p, Vector2(w, 1.5)).grow(0.5), Color(0, 0, 0, 0.45))
-		body_bars.draw_rect(Rect2(p, Vector2(w * f, 1.5)), Color(0.85, 0.82, 0.72, 0.6))
+		var p: Vector2 = b.position + Vector2(-w * 0.5, -8.0 - maxf(float(b.radius), 8.0))      # (over a beefy body, higher)
+		body_bars.draw_rect(Rect2(p, Vector2(w, 2.0)).grow(0.5), Color(0, 0, 0, 0.5))
+		body_bars.draw_rect(Rect2(p, Vector2(w * f, 2.0)), Color(0.88, 0.84, 0.72, 0.8))
 
 
 var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
