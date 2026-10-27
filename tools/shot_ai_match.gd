@@ -18,6 +18,7 @@ var seed_ := 1
 var swap := false
 var out := "/tmp/ai_match"
 var end_t := 1800.0
+var live := false            # live:1 keeps drawing every frame (slow; for checking the shots)
 var t := 0.0
 var last_fight := -999.0
 var next_check := 0.0
@@ -26,6 +27,10 @@ var next_wind := 30.0
 var wind_lines: Array = []
 var pending: Array = []        # [file, camera position, zoom]
 var shooting := false
+var _draws := 0
+var shot_frames := 30
+func _count_draw() -> void:
+	_draws += 1
 
 
 func _initialize() -> void:
@@ -41,6 +46,7 @@ func _initialize() -> void:
 			"swap": swap = kv[1] == "1"
 			"out": out = kv[1]
 			"end": end_t = float(kv[1])
+			"live": live = kv[1] == "1"
 	DirAccess.make_dir_recursive_absolute(out)
 	Settings.load_all()
 	Settings.device = "pc"
@@ -49,7 +55,7 @@ func _initialize() -> void:
 	root.add_child(main)
 	Engine.max_fps = 0
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	RenderingServer.render_loop_enabled = false     # (drawn only for the shots: the match runs many times faster)
+	RenderingServer.render_loop_enabled = live     # (drawn only for the shots: the match runs many times faster)
 
 
 func _process(delta: float) -> bool:
@@ -65,6 +71,8 @@ func _process(delta: float) -> bool:
 	if main.game == null:
 		return false
 	g = main.game
+	if not g.gear_net.draw.is_connected(_count_draw):
+		g.gear_net.draw.connect(_count_draw)
 	if g.hud:
 		g.hud.visible = false
 	if g.spectator and g.spectator.process_mode != Node.PROCESS_MODE_DISABLED:
@@ -163,12 +171,12 @@ func _shoot() -> void:
 	cam.zoom = Vector2(p[2], p[2])
 	cam.reset_smoothing()
 	RenderingServer.render_loop_enabled = true     # (drawn normally for a few frames: get_image() gives the last frame drawn)
-	for i in 4:
+	for i in shot_frames:
 		await process_frame
-	print("SHOT %s zoom %s at %s" % [p[0], str(cam.zoom), str(cam.get_screen_center_position())])
+	print("SHOT %s zoom %s at %s view %s gearvis %s draws %d" % [p[0], str(cam.zoom), str(cam.get_screen_center_position()), str(g.view_rect), str(g.gear_net.is_visible_in_tree()), _draws])
 	var img := root.get_viewport().get_texture().get_image()
 	img.save_png(out.path_join(p[0]))
-	RenderingServer.render_loop_enabled = false
+	RenderingServer.render_loop_enabled = live
 	cam.position = keep_pos
 	cam.zoom = keep_zoom
 	shooting = false
