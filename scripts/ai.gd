@@ -2047,6 +2047,7 @@ var _stage_t := 0.0
 func _hall_first() -> bool:
 	_hall_reserve = false
 	var hall: String = _f()["hall"]
+	_note_lost_halls()
 	if _halls().size() >= 7:
 		return false
 	# halls with a fair share of soil left (one going up counts: it's fresh land)
@@ -2057,6 +2058,10 @@ func _hall_first() -> bool:
 	var need := 1 if _best_soil() >= HALL_FIRST_SOIL else 2
 	if _crown():
 		need = maxi(need, mini(3, ceili(game.workers(team).size() / 16.0)))     # (three fresh halls at most: more halls only grew more hands, round 3)
+	elif _clock() and Defs.gear_mode and difficulty >= 1:
+		# (the Clockwork too, one for every 15 Winders: two presses of six and a Mainspring's crew a hall; it sat on two
+		# halls with 32 Winders while its main ran dry, and the coached Crown out-earned it from 10:00, clockwork-ai)
+		need = maxi(need, mini(3, ceili(game.workers(team).size() / 15.0)))
 	if fresh >= need or _busy_building(hall):
 		return false
 	_hall_reserve = true
@@ -2098,6 +2103,28 @@ func _hall_first() -> bool:
 				game.mlog.add("%s is expanding to fresh %s (left at its best hall: %d%%), %d tiles from its main" % [game.mlog.who(team), "land" if _crown() else ("ore" if _clock() else "ground"),
 					int(round(_best_soil() * 100)), int(b.center().distance_to(Vector2(game.starts[team]) * Defs.TILE) / Defs.TILE)])
 	return true
+
+
+## A hall of ours that stood and is gone (razed): its spot is left be for LOST_HALL_WAIT s, like one whose builders
+## were chased off (the enemy holds that ground: a gear-mode Clockwork laid five Clocktowers on one far spot and lost
+## each one, 0.14.79 Frostmere).
+const LOST_HALL_WAIT := 240.0
+var _hall_cells := {}           # cell of a finished hall of ours -> true
+
+
+func _note_lost_halls() -> void:
+	if not (_clock() and Defs.gear_mode):
+		return
+	var now := {}
+	for h in _halls():
+		if h.built:
+			now[h.cell] = true
+	for c in _hall_cells.keys():
+		if not now.has(c):
+			_hall_bad[c] = game.clock + LOST_HALL_WAIT
+			_hall_cells.erase(c)
+	for c in now:
+		_hall_cells[c] = true
 
 
 ## Where a new hall is safest: free ground near our main (the usual expansion

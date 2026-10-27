@@ -1,4 +1,8 @@
-# The Clockwork computer (branch clockwork-ai, 0.14.73)
+# The Clockwork computer (branch clockwork-ai, 0.14.79)
+
+The Jack has been called the Springer in the game since 0.14.75. The code, and this page, still say Jack.
+While this job ran, main got the Crown computer's coaching (0.14.73) and the pathfinding work (0.14.74).
+The branch was merged with main, and the last round of games was played against the coached Crown: see "Against the coached Crown" below.
 
 Short sentences, to be read aloud. The owner asked on 2026-10-27: "we need the AI to play better, it plays very badly".
 Repair was not to be nerfed: "it is the only thing keeping the Crown from losing, it can be dealt with".
