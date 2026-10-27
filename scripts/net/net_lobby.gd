@@ -9,6 +9,7 @@ extends Node
 signal changed                           # slots, status or people changed: redraw
 signal start_now(cfg: Dictionary)        # guest: the host started: hand cfg to Main.start
 signal failed(why: String)               # could not connect / refused / the host left
+signal pinged                            # a new round trip to the other player(s) was measured (ping_ms)
 
 const MODES := ["1v1", "coop"]
 const MODE_LABEL := {"1v1": "1 VS 1", "coop": "2 VS COMPUTER (CO-OP)", "custom": "CUSTOM TEAMS"}
@@ -28,6 +29,30 @@ var refused := ""
 var version: String = ProjectSettings.get_setting("application/config/version", "dev")
 var strategy_ai := "hard"
 var denied := 0                          # host: how many colour / team picks were refused
+## The same delay for both players (the host's choice, on unless turned off): the host's own orders wait as long as a
+## guest's take to reach it (NetSession.hold_ms), so neither side reacts faster.
+var same_delay := true
+## Joining: the guest says "hi" every HI_EVERY s until the room arrives (a first word lost on the way, or said before
+## the host's page was ready, left the room empty); after NO_ANSWER s with nothing it says so (and keeps trying).
+## The host sends the room again to a guest who says hi twice, and every RESEND s anyway. Both measure the round
+## trip to the other side (ping_ms) every PING_EVERY s.
+const HI_EVERY := 2.0
+const NO_ANSWER := 8.0
+const RESEND := 3.0
+const PING_EVERY := 2.0
+var ping_ms := -1                        # the last round trip to the host (host: to the slowest friend); -1: none yet
+var ping_of := {}                        # host: relay id -> its last round trip
+var started := false                     # the match began: the session has the link now
+var _got_lobby := false                  # guest: the host's room has come
+var _lobby_hash := 0
+var _hi_t := 0.0
+var _wait_t := 0.0
+var _resend_t := 0.0
+var _ping_t := 0.0
+var _ping_k := 0
+var _ping_out := {}
+var _no_answer := false
+var _deny_ms := -99999
 
 
 ## Host a game: `relay` is the relay's address, `room` a code (NetLink.new_code()).
@@ -170,6 +195,14 @@ func _mode_of_sides() -> String:
 	return "custom"
 
 
+## The host turns the same delay for both players on or off.
+func set_same_delay(on: bool) -> void:
+	if is_host:
+		same_delay = on
+		changed.emit()
+		_send_lobby()
+
+
 ## The host sets the difficulty of the computer in slot `i`.
 func set_level(i: int, lvl: String) -> void:
 	if is_host and i >= 0 and i < slots.size() and _is_computer(slots[i]) and LEVELS.has(lvl):
@@ -222,7 +255,7 @@ func _send_lobby() -> void:
 		return
 	for i in slots.size():
 		if slots[i]["who"] == "remote" and int(slots[i].get("peer", -1)) >= 0:
-			link.send({"t": "lobby", "map": map, "mode": mode, "slots": _public_slots(), "you": i}, int(slots[i]["peer"]))
+			link.send({"t": "lobby", "map": map, "mode": mode, "slots": _public_slots(), "you": i, "same": same_delay}, int(slots[i]["peer"]))
 
 
 ## Start the match (host). Main.start(cfg) builds the game and calls begin() with the resolved cfg.
@@ -240,6 +273,7 @@ func make_cfg() -> Dictionary:
 ## Main.start made the game: tell the guests and open the session. `cfg` is the resolved setup
 ## (factions, colours, map) that both sides build the same match from.
 func begin(game: Game, cfg: Dictionary) -> void:
+	started = true
 	if is_host:
 		var peers := {}
 		for i in cfg["slots"].size():
@@ -248,10 +282,10 @@ func begin(game: Game, cfg: Dictionary) -> void:
 				peers[pr] = i
 		for pr in peers:
 			var gc := _guest_cfg(cfg, int(peers[pr]))
-			link.send({"t": "start", "cfg": gc, "team": int(peers[pr])}, int(pr))
-		NetSession.attach(game, link, true, 0, peers)
+			link.send({"t": "start", "cfg": gc, "team": int(peers[pr]), "same": same_delay}, int(pr))
+		NetSession.attach(game, link, true, 0, peers, same_delay)
 	else:
-		NetSession.attach(game, link, false, my_slot, {})
+		NetSession.attach(game, link, false, my_slot, {}, same_delay)
 
 
 func _guest_cfg(cfg: Dictionary, team: int) -> Dictionary:
@@ -272,8 +306,45 @@ func _on_opened(_id: int) -> void:
 	else:
 		status = "Joined room %s. Waiting for the host..." % code
 		link.send({"t": "hi", "ver": version})
+		_hi_t = HI_EVERY
+		_wait_t = 0.0
 	online = true
 	changed.emit()
+
+
+func _process(delta: float) -> void:
+	if not online or started or link == null or not link.is_open():
+		return
+	if not is_host and not _got_lobby:
+		_hi_t -= delta
+		_wait_t += delta
+		if _hi_t <= 0.0:
+			_hi_t = HI_EVERY
+			link.send({"t": "hi", "ver": version})
+		if _wait_t >= NO_ANSWER and not _no_answer:
+			_no_answer = true
+			status = "No answer from the host yet. Check the room code, and that the host's room is still open. Still trying..."
+			changed.emit()
+	if is_host:
+		_resend_t -= delta
+		if _resend_t <= 0.0:
+			_resend_t = RESEND
+			_send_lobby()            # (a room lost on the way is put right within a few seconds)
+	_ping_t -= delta
+	if _ping_t <= 0.0 and (is_host or _got_lobby):
+		_ping_t = PING_EVERY
+		_ping_k += 1
+		_ping_out[_ping_k] = Time.get_ticks_msec()
+		link.send({"t": "lping", "k": _ping_k}, 0)
+		if _ping_out.size() > 30:
+			_ping_out.erase(_ping_out.keys().min())
+
+
+## The round trip shown in the room: "Ping to the host: 85 ms" ("" before the first).
+func ping_text() -> String:
+	if ping_ms < 0:
+		return ""
+	return (Loc.t("Ping to your friend: %d ms") if is_host else Loc.t("Ping to the host: %d ms")) % ping_ms
 
 
 func _on_notice(d: Dictionary) -> void:
@@ -291,6 +362,7 @@ func _on_notice(d: Dictionary) -> void:
 				for s in slots:
 					if int(s.get("peer", -1)) == int(d.get("id", -2)):
 						s["peer"] = -1
+				ping_of.erase(int(d.get("id", -2)))
 				status = "Your friend left. Waiting for someone to join."
 				changed.emit()
 				_send_lobby()
@@ -306,6 +378,7 @@ func _on_message(from: int, m: Dictionary) -> void:
 				return
 			for s in slots:
 				if s["who"] == "remote" and int(s.get("peer", -1)) == from:
+					_send_lobby()            # (seated, but its room never came: again)
 					return
 			for s in slots:
 				if s["who"] == "remote" and int(s.get("peer", -1)) < 0:
@@ -338,18 +411,42 @@ func _on_message(from: int, m: Dictionary) -> void:
 			_send_lobby()
 			if bad:
 				link.send({"t": "deny", "m": "That colour is already taken."}, from)
+		"lping":
+			link.send({"t": "lpong", "k": int(m.get("k", 0))}, from)
+		"lpong":
+			var k := int(m.get("k", 0))
+			if _ping_out.has(k):
+				var rtt := Time.get_ticks_msec() - int(_ping_out[k])
+				_ping_out.erase(k)
+				if is_host:
+					ping_of[from] = rtt
+					ping_ms = 0
+					for pr in ping_of:
+						ping_ms = maxi(ping_ms, int(ping_of[pr]))
+				else:
+					ping_ms = rtt
+				pinged.emit()
 		"deny":
 			if not is_host:
 				status = String(m.get("m", "Refused."))
+				_deny_ms = Time.get_ticks_msec()
 				changed.emit()
 		"lobby":
 			if is_host:
 				return
 			map = String(m.get("map", map))
 			mode = String(m.get("mode", mode))
+			same_delay = bool(m.get("same", same_delay))
+			var hs := hash([m.get("map"), m.get("mode"), m.get("same"), m.get("slots"), m.get("you")])
+			if _got_lobby and hs == _lobby_hash:
+				return                  # (the host's regular resend: nothing new, the page is left as it is)
+			_lobby_hash = hs
 			slots = m.get("slots", [])
 			my_slot = int(m.get("you", 0))
-			status = "In the room. The host starts the game."
+			if not _got_lobby or _no_answer or Time.get_ticks_msec() - _deny_ms > 2500:
+				status = "In the room. The host starts the game."     # (a refusal's words stay a little, then the room's)
+			_got_lobby = true
+			_no_answer = false
 			changed.emit()
 		"refuse":
 			refused = String(m.get("m", "Refused."))
@@ -361,6 +458,8 @@ func _on_message(from: int, m: Dictionary) -> void:
 				return
 			var c: Dictionary = m["cfg"]
 			my_slot = int(m.get("team", my_slot))
+			same_delay = bool(m.get("same", same_delay))
+			started = true
 			c["net"] = {"role": "guest", "lobby": self}
 			start_now.emit(c)
 

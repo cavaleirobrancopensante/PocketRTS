@@ -1,8 +1,9 @@
 class_name Chat
 extends Node
-## The in-game chat: what YOU and the computers say. The HUD draws the log (hud.gd), the match
-## log keeps every line ("[02:15] P1 Crown says: gg"), and a "gg" from the player while a computer
-## has one pending ends the match (AI.gg_reply, ai_resign.gd).
+## The in-game chat: what YOU, the computers and (online) the other players say. The HUD draws the log (hud.gd),
+## the match log keeps every line ("[02:15] P1 Crown says: gg"), and a "gg" from the player while a computer
+## has one pending ends the match (AI.gg_reply, ai_resign.gd). Online every line goes through NetSession.chat_out:
+## a guest's own lines to the host, the host's (its own, the computers', the other guests') to the guests.
 
 const SHOW_SECS := 10.0         # a line stays this long, then fades
 const FADE_SECS := 1.5
@@ -25,8 +26,9 @@ func name_of(t: int) -> String:
 	return "P%d %s" % [t + 1, game.faction_of(t).capitalize()]
 
 
-## A line in the log (and the match log). Returns it.
-func post(team: int, text: String) -> Dictionary:
+## A line in the log (and the match log). Returns it. `from_net`: online, where it came from (-1: said here; the host:
+## a guest's relay id; a guest: 0, the host), so it is passed on to the others but not back.
+func post(team: int, text: String, from_net := -1) -> Dictionary:
 	text = clean(text)
 	if text == "":
 		return {}
@@ -37,6 +39,8 @@ func post(team: int, text: String) -> Dictionary:
 	if game.mlog:
 		game.mlog.add("%s says: %s" % [line["name"], text])
 	Sfx.play_any(["ui/chat"], Vector2.INF, -6.0)
+	if game.net != null:
+		game.net.chat_out(team, text, from_net)
 	return line
 
 

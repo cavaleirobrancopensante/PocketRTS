@@ -142,11 +142,23 @@ var winner := -1
 var clock := 0.0
 var stats: Array = []
 var soil_scars: Array = []               # [centre, soil left, hall kind, lode left] where a Town Hall, Hive or Clocktower fell
+var pit_spots: Array = []                # OLD GROUND: [centre (px), biomass left, team] where a Feeding Pit fell (Defs.PIT_CLAIM circles)
 var _sample_t := 0.0
 var mlog: MatchLog              # the playtest log (copied from the end screen)
 var chat: Chat                  # the in-game chat (YOU and the computers; the log lines go to mlog)
 var end_note := ""              # how the match ended, for the log: "", "player_surrender", "ai_resigned"
 var end_ahead := ""             # on a player surrender: "ahead", "behind" or "about even" (worked out at that moment)
+var end_quitter := -1           # on a player surrender: the team that gave up
+## Online host: while a guest's order runs (NetCommands.apply), the team and relay id it came from (-1: none). The
+## order's marker and voice are the guest's own (shown on its screen, not here), its messages go to the guest (tell),
+## and what it may click on is what that side sees, not this screen's fog (shown_to_commander).
+var net_cmd_team := -1
+var net_cmd_peer := -1
+## Online: no ring or voice from the order running now (a guest's, or the host's own held one: both were shown at the
+## click). input_cmd: the local player's input is being handled (Controls, HUD): with the same delay for both players
+## the host's own orders made now wait (NetCommands.hold); the computers' and the game's own never do.
+var net_quiet := false
+var input_cmd := false
 var resigned: Array = []        # computers that resigned after a gg
 var _first_of := {}             # "team:kind" -> true once that player has had one
 
@@ -663,8 +675,7 @@ func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array, qu
 		if k == "wall" and _own_gate_at(t, c) != null and a != b:
 			continue
 		if players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
-			if t == human:
-				notify("Not enough gold for the whole wall.")
+			tell(t, "Not enough gold for the whole wall.")
 			break
 		var bl := place_building(t, k, c, builders if first and not queued else [])
 		if bl:
@@ -1908,6 +1919,11 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	var cells: Array[Vector2i] = []
 	var pair := kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0)
 	var pair_at: Array[Vector2] = []
+	var pit_at: Array[Vector2] = []
+	if kind == "feeding_pit":
+		for b in buildings:
+			if b.team == t and not b.dead and b.kind == "feeding_pit":
+				pit_at.append(b.center())
 	if pair:
 		for b in buildings:
 			if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
@@ -1927,6 +1943,22 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 					continue
 				tight = 1
 			var score := dd + (4.0 if tight == 1 else 0.0)
+			var pit_pen := 0.0
+			if kind == "feeding_pit":
+				# (the ground circles of our own pits: no overlap, checked here first as it rules out most cells)
+				var pm := (Vector2(cell) + Vector2(size) * 0.5) * T
+				var clash := false
+				for pc in pit_at:
+					if pit_circles_overlap(pc, pm):
+						clash = true
+						break
+				if clash:
+					continue
+				# a pit wants fresh ground: never over spent old ground, and tired old ground scores worse
+				var gl := pit_ground_at(pm) / float(Defs.PIT_GROUND)
+				if gl <= 0.1:
+					continue
+				pit_pen = (1.0 - gl) * 30.0
 			if prefer == "far":
 				score = -dd
 			elif prefer == "far_safe":
@@ -1943,6 +1975,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				# tucked behind the hall, away from the middle of the map (like minerals
 				# behind a command centre), and close to it
 				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
+			score += pit_pen
 			if pair:
 				# Boilers and crushers close together (once there's a Boiler; the starting crusher
 				# goes behind the hall): a battery fades on a long road, and a Boiler's Winders
@@ -2275,10 +2308,10 @@ func free_site(t: int, p: Vector2) -> Building:
 
 
 ## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one);
-## for a Feeding Pit, the Hive whose ground it draws on.
+## a Feeding Pit draws on its own ground (Defs.PIT_GROUND), so it is its own "hall".
 func soil_hall(farm: Building) -> Building:
-	if faction_of(farm.team) == "brood":
-		return capital(farm.team)
+	if farm.kind == "feeding_pit":
+		return farm
 	return nearest_hall(farm.center(), farm.team)
 
 
@@ -2312,6 +2345,16 @@ func _soil_check(h: Building) -> void:
 		return
 	h.soil_warned = level
 	var hive := h.kind == "hive"
+	if h.kind == "feeding_pit":
+		# a Feeding Pit's own ground (each pit warns for itself)
+		if mlog:
+			mlog.add("%s: the ground of a Feeding Pit %s" % [mlog.who(h.team), "is spent (barren: it yields nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		if h.team == human and not demo and hud:
+			hud.toast("A Feeding Pit's ground is spent: it yields nothing. Grow a new pit on fresh ground, outside the old circles." if level == 2
+				else "A Feeding Pit's ground is running low (%d%% left): plan a new pit on fresh ground." % int(round(left * 100)), false)
+			Sfx.play("done", h.center())
+		h._update_sprite()
+		return
 	if h.kind == "clocktower":
 		# Clockwork coal: the Boilers around this Clocktower
 		if mlog:
@@ -2354,9 +2397,72 @@ func _take_scar(h: Building) -> void:
 			return
 
 
+# ------------------------------------------------------------------ pit ground (Defs.PIT_GROUND, PIT_CLAIM)
+
+## Where a Feeding Pit placed at cell c would have its centre (px).
+func pit_mid(c: Vector2i) -> Vector2:
+	return (Vector2(c) + Vector2(Defs.BUILDINGS["feeding_pit"]["size"]) * 0.5) * T
+
+
+## Two pit circles overlap when their centres are closer than two radii (exactly 2 x PIT_CLAIM apart is fine).
+static func pit_circles_overlap(a: Vector2, b: Vector2) -> bool:
+	return a.distance_to(b) < 2.0 * Defs.PIT_CLAIM * Defs.TILE - 0.5
+
+
+## Team t's living Feeding Pits (planned, growing or built) whose circle overlaps a circle at p.
+func pit_overlaps(t: int, p: Vector2, skip: Building = null) -> Array:
+	var out: Array = []
+	for b in buildings:
+		if b.kind == "feeding_pit" and b.team == t and not b.dead and b != skip and pit_circles_overlap(b.center(), p):
+			out.append(b)
+	return out
+
+
+## The old ground spots (pit_spots indexes) a pit circle at p overlaps.
+func pit_spots_at(p: Vector2) -> Array:
+	var out: Array = []
+	for i in pit_spots.size():
+		if pit_circles_overlap(pit_spots[i][0], p):
+			out.append(i)
+	return out
+
+
+## The ground a new pit with its centre at p would have: the SMALLEST amount left among the old
+## spots its circle overlaps (rebuilding by a spent pit can't refresh the ground), else fresh.
+func pit_ground_at(p: Vector2) -> float:
+	var g := float(Defs.PIT_GROUND)
+	for i in pit_spots_at(p):
+		g = minf(g, float(pit_spots[i][1]))
+	return maxf(g, 0.0)
+
+
+## A new Feeding Pit takes its ground (when its site starts: _solidify): the old spots under its
+## circle merge into its claim, and it keeps the smallest amount left among them.
+func claim_pit_ground(b: Building) -> void:
+	if puppet:
+		return          # (an online guest: the host's snapshot brings each pit's ground and the old spots)
+	var p := b.center()
+	b.soil = pit_ground_at(p)
+	var idxs := pit_spots_at(p)
+	idxs.reverse()
+	for i in idxs:
+		pit_spots.remove_at(i)
+	b.soil_warned = 2 if b.soil <= 0.0 else (1 if b.soil / b.reserve() < Defs.SOIL_LOW else 0)
+
+
+## Why a Feeding Pit can't go at cell c for team t because of the circles ("" if it can).
+func pit_claim_problem(t: int, c: Vector2i) -> String:
+	if not pit_overlaps(t, pit_mid(c)).is_empty():
+		return "Too close to another Feeding Pit: their grounds would overlap."
+	return ""
+
+
 func halls_of(t: int, built_only := true) -> Array:
-	var k := faction_hall(t)
-	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == k and not b.dead and (b.built or not built_only))
+	var out: Array = []
+	for b in _hall_kind_of(t):       # (the same buildings in the same order as a filter over all of them)
+		if not b.dead and (b.built or not built_only):
+			out.append(b)
+	return out
 
 
 const BROOD_PIT_UNCAPPED := 999
@@ -2372,28 +2478,27 @@ func capital(t: int) -> Building:
 	var had: bool = c != null
 	if had and not is_instance_valid(c):
 		c = null
-		had = _capital_soil.has(t)
+		had = _capital_had.has(t)
 	if c != null and not c.dead and c.built:
-		_capital_soil[t] = c.soil
+		_capital_had[t] = true
 		return c
 	_capital[t] = null
 	for b in buildings:        # (creation order: the oldest first)
 		if b.team == t and b.kind == "hive" and b.built and not b.dead:
 			_capital[t] = b
 			b.queue_redraw()
-			if had and _capital_soil.has(t):
-				b.soil = float(_capital_soil.get(t, b.soil))      # (the ground is the capital's: it passes on as it was)
-				b.soil_warned = 2 if b.soil <= 0.0 else (1 if b.soil / b.reserve() < Defs.SOIL_LOW else 0)
+			if had and _capital_had.has(t):
+				# (the capital has no ground since the pits own it: nothing passes on)
 				if mlog:
 					mlog.add("%s: the capital fell; the next Burrow is the new capital" % mlog.who(t))
-				if hud and t == human:
-					notify("Your capital has fallen: the next Burrow is the new capital.")
+				tell(t, "Your capital has fallen: the next Burrow is the new capital.")
+			_capital_had[t] = true
 			return b
 	return null
 
 
 var _capital := {}
-var _capital_soil := {}
+var _capital_had := {}          # team -> true once it has had a capital (to tell when one falls)
 
 
 ## Where workers unload: the Brood's capital; for the others the nearest hall.
@@ -2557,8 +2662,7 @@ func use_powder(t: int, n: int) -> bool:
 	if faction_of(t) != "crown":
 		return true
 	if float(players[t]["res2"]) < n:
-		if t == human:
-			notify("Powder bank empty: man your Powder Mills.")
+		tell(t, "Powder bank empty: man your Powder Mills.")
 		return false
 	players[t]["res2"] = float(players[t]["res2"]) - n
 	return true
@@ -2773,7 +2877,13 @@ func _own_hall(t: int) -> Building:
 ## Online guest: send this call to the host instead of running it (true: it was sent, the caller
 ## returns). Everywhere else (the host, single player) false and the call runs as always.
 func net_forward(who: Object, fn: String, args: Array) -> bool:
-	return puppet and net != null and NetCommands.forward(net, who, fn, args)
+	if net == null:
+		return false
+	if puppet:
+		return NetCommands.forward(net, who, fn, args)
+	if input_cmd and net_cmd_team < 0 and net.hold_ms() > 0:
+		return NetCommands.hold(net, who, fn, args)     # (online host, the same delay for both: it waits as a guest's order does)
+	return false
 
 
 ## Set a command-card setting (auto repair, auto training ...) on something of yours; an online
@@ -2784,8 +2894,18 @@ func net_set(e: Object, prop: String, v) -> void:
 		NetCommands.forward(net, e, "@" + prop, [v])
 
 
+var _serial := 0                 # Entity.serial of the last unit or building made
+## A Tesla Cart or Tesla Locomotive has been made this match (or morphed into): until then
+## in_field and in_overcharge, asked by every Clockwork unit, needn't look through the units.
+var tesla_made := false
+
+
 func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 	var u := Unit.new()
+	if k == "tesla_cart" or k == "tesla_loco":
+		tesla_made = true
+	_serial += 1
+	u.serial = _serial
 	u.setup(self, k, t, pos)
 	apply_drills(u)
 	world.add_child(u)
@@ -2799,6 +2919,8 @@ func _add_unit(k: String, t: int, pos: Vector2) -> Unit:
 ## ground until it does (_solidify).
 func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := false) -> Building:
 	var b := Building.new()
+	_serial += 1
+	b.serial = _serial
 	b.setup(self, k, t, c, complete)
 	b.ghost = ghost and not complete
 	if k == "gate":
@@ -2832,6 +2954,8 @@ func _solidify(b: Building, keep: Array = []) -> void:
 		b.ghost = false
 		b.block_since = -1.0
 		b.asked.clear()
+	if k == "feeding_pit":
+		claim_pit_ground(b)      # (its own ground, or what old ground under its circle has left)
 	if Defs.BUILDINGS[k].get("gate", false):
 		_mark(c, b.size, 3)
 		gate_team[idx(c)] = b.team
@@ -3014,6 +3138,8 @@ func site_failed(b: Building, why := "blocked") -> void:
 		_notify_t = Time.get_ticks_msec()
 		hud.toast("Can't build there: the spot is blocked." if why == "blocked" else "Can't build there: it can't be reached.", true)
 		Sfx.announce(faction_of(t), "bad_place", 4.0)
+	elif t != human and not demo and why != "abandoned":
+		tell(t, "Can't build there: the spot is blocked." if why == "blocked" else "Can't build there: it can't be reached.")
 	if mlog:
 		var wl: String = {"blocked": "the spot was blocked", "unreachable": "it couldn't be reached", "abandoned": "nobody was coming to start it"}.get(why, why)
 		mlog.add("%s %s a %s: %s (refunded)" % [mlog.who(t), "dropped" if why == "abandoned" else "couldn't start", b.d["name"], wl])
@@ -3300,10 +3426,12 @@ func brood_in_match() -> bool:
 	return false
 
 
-## The essence a harvested body gives: Defs.HARVEST per_supply (2) for each point of its body_supply, plus 1 a kill.
+## The essence a harvested body gives: Defs.HARVEST per_supply (2) for each point of its body_supply, plus 1 a kill up
+## to the kills veterancy counts (Defs.VET max / per_kill: 50, the owner, 0.14.41; it had no cap before).
 ## A float (essence is kept as one): a Musketeer or a Raptor 2, a Brute 6, a Horseman on his horse 8.
 func corpse_value(u: Unit) -> float:
-	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + float(u.kills)
+	var vet_kills := float(Defs.VET["max"]) / float(Defs.VET["per_kill"])
+	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + minf(float(u.kills), roundf(vet_kills))
 
 
 ## An amount of essence as text: "5", "1.25", "2.5".
@@ -3366,6 +3494,9 @@ func on_building_died(b: Building) -> void:
 	# the land stays tired (its soil / ground / coal and its saltpetre / ore drawn out) for the next hall here
 	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
 		soil_scars.append([b.center(), b.soil, b.kind, b.lode])
+	# a Feeding Pit's ground stays on the land as an OLD GROUND spot (its circle, what was left)
+	if b.kind == "feeding_pit" and not puppet and (b.built or b.soil < b.reserve() - 0.5):
+		pit_spots.append([b.center(), maxf(b.soil, 0.0), b.team])
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
 	selection.erase(b)
@@ -3759,6 +3890,9 @@ func research_done(b: Building, key: String) -> void:
 		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		notify("%s researched: %s" % [info["name"], what], true)
 		Sfx.announce(faction_of(b.team), "research_done", 3.0)
+	elif not demo:
+		var what2 := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
+		tell(b.team, "%s researched: %s" % [info["name"], what2], true)      # (online: the guest who researched it)
 	if mlog:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
@@ -3823,8 +3957,8 @@ func cancel_hall_upgrade(b: Building, dying := false) -> void:
 func hall_upgraded(b: Building) -> void:
 	var was := String(b.d["name"])
 	b.set_level(b.level + 1)
+	tell(b.team, "Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
 	if b.team == human:
-		notify("Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
 		Sfx.announce(faction_of(b.team), "research_done", 3.0)
 	if mlog:
 		mlog.add("%s upgraded a %s to a %s" % [mlog.who(b.team), was, b.d["name"]])
@@ -4440,6 +4574,10 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var mp := mound_problem(t, c)
 		if mp != "":
 			return mp
+	if k == "feeding_pit":
+		var pp := pit_claim_problem(t, c)      # (each pit claims a circle of ground: they may not overlap)
+		if pp != "":
+			return pp
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
@@ -4666,7 +4804,7 @@ func free_crate(t: int, p: Vector2, r: float) -> Crate:
 ## The crate on the ground under a tap.
 func crate_at(p: Vector2) -> Crate:
 	for c in crates:
-		if not c.dead and c.visible and c.rect().grow(6).has_point(p):
+		if not c.dead and shown_to_commander(c) and c.rect().grow(6).has_point(p):
 			return c
 	return null
 
@@ -4693,11 +4831,16 @@ func in_overcharge(t: int, p: Vector2) -> bool:
 			return true
 		if b.kind == "charging_pylon" and b.field_on() and in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
 			return true
+	if not tesla_made:
+		return false
+	var cw := Defs.cw_roster
 	for u in units:
-		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+		if u.team != t or u.dead:
+			continue                # (asked of every Clockwork unit a few times a second: the cheap tests first)
+		if u.kind == "tesla_cart" and u.tesla_mode == "deployed":
 			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
 				return true
-		if Defs.cw_roster and u.team == t and not u.dead and u.kind == "tesla_loco" and u.position.distance_to(p) <= float(Defs.CW["tesla"]["pass"]):
+		if cw and u.kind == "tesla_loco" and u.position.distance_to(p) <= float(Defs.CW["tesla"]["pass"]):
 			return true             # (the Tesla Locomotive overcharges what it passes)
 	return false
 
@@ -4707,8 +4850,12 @@ func in_field(t: int, p: Vector2) -> bool:
 		# gear mode: constructs stay wound on CONNECTED GEAR GROUND (inside a connected building's ring), Defs.GEAR
 		if gear_net.in_field(t, p):
 			return true
+		if not tesla_made:
+			return false
 		for u in units:
-			if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+			if u.team != t or u.dead:
+				continue
+			if u.kind == "tesla_cart" and u.tesla_mode == "deployed":
 				if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * field_mult(t)):
 					return true
 		return false
@@ -4717,8 +4864,12 @@ func in_field(t: int, p: Vector2) -> bool:
 		if b.team == t and b.built and not b.dead and b.d.has("field") and b.field_on():
 			if in_ellipse(b.center(), p, float(b.d["field"]) * T * m):
 				return true
+	if not tesla_made:
+		return false
 	for u in units:
-		if u.team == t and not u.dead and u.kind == "tesla_cart" and u.tesla_mode == "deployed":
+		if u.team != t or u.dead:
+			continue
+		if u.kind == "tesla_cart" and u.tesla_mode == "deployed":
 			if in_ellipse(u.position, p, Defs.TESLA_FIELD * T * m):
 				return true
 	return false
@@ -4790,6 +4941,34 @@ func notify(msg: String, quiet := false) -> void:
 		hud.toast(msg, not quiet)
 
 
+## A message for the player of team t: on this screen if it is ours; online, the host sends it to the guest who plays
+## t (a guest's order refused, a guest's unit that can't do what it was told). Nobody else's: nothing.
+func tell(t: int, msg: String, quiet := false) -> void:
+	if t == human and net_cmd_team < 0:
+		notify(msg, quiet)
+	elif net != null and not puppet:
+		net.tell(t, msg, quiet)
+
+
+## Is the player whose order is being worked out allowed to have meant this entity (on their screen)? Normally its
+## visibility on this screen; while a guest's order runs on the host, what the guest's side sees (its own and its
+## allies' things always; others where its side sees now, a building once its side has spotted it: seen_mask).
+func shown_to_commander(e: Node2D) -> bool:
+	if net_cmd_team < 0:
+		return e.visible
+	var t := net_cmd_team
+	var et := int(e.get("team")) if e.get("team") != null else -1
+	if et >= 0 and allied(et, t):
+		return not (e is Unit and (e as Unit).off_field)
+	if e is Building:
+		var mask := 0
+		for o in n_players():
+			if allied(o, t):
+				mask |= 1 << o
+		return not (e as Building).ghost and ((e as Building).seen_mask & mask) != 0
+	return side_sees(t, e.global_position) and not (e is Unit and (e as Unit).off_field)
+
+
 # ------------------------------------------------------------------ swamp
 
 func on_swamp(t: int, p: Vector2) -> bool:
@@ -4832,7 +5011,9 @@ func _update_swamp() -> void:
 							g[y * W + x] = 1
 		# Swamp that lost its building does not vanish at once: it retreats one ring of tiles every swamp
 		# update (every half second), the outermost unsupported tiles first
-		for i in W * H:
+		# (nothing to do where the grid came out as it was, as for every side without swamp:
+		# the whole-map loop ran for every player every half second)
+		for i in (W * H if old != g else 0):
 			if old[i] == 1 and g[i] == 0:
 				var x := i % W
 				var y := i / W
@@ -4861,9 +5042,11 @@ func _swamp_minimap() -> void:
 		col.a = 0.85
 		var known: PackedByteArray = _EMPTY if allied(t, fog_team()) else _known_ground()
 		var hide := known.size() == W * H
-		for i in W * H:
-			if g[i] == 1 and (not hide or known[i] == 1):
+		var i := g.find(1)              # (the swamp's cells only, found by the native find)
+		while i >= 0:
+			if not hide or known[i] == 1:
 				swamp_img.set_pixel(i % W, i / W, col)
+			i = g.find(1, i + 1)
 	if swamp_tex == null:
 		swamp_tex = ImageTexture.create_from_image(swamp_img)
 	else:
@@ -4873,6 +5056,7 @@ func _swamp_minimap() -> void:
 ## The powered field of Clockwork buildings: the selected one (anyone's), and while you
 ## place a building, the one you're placing plus your existing fields.
 func _draw_fields() -> void:
+	_draw_pit_circles()
 	var ring: Texture2D = tex("res://assets/world/field_ring.png")
 	var draw_ring := func(c: Vector2, r: float, a: float) -> void:
 		var half := Vector2(r, r * FIELD_Y)
@@ -4905,6 +5089,102 @@ func _draw_fields() -> void:
 			var size: Vector2i = Defs.BUILDINGS[k]["size"]
 			var c := Vector2(controls.ghost_cell) * T + Vector2(size) * T * 0.5
 			draw_ring.call(c, float(Defs.BUILDINGS[k]["field"]) * T * field_mult(human), 0.8)
+
+
+## PIT GROUND circles (Defs.PIT_CLAIM), flat on the ground under the buildings: while you place a
+## Feeding Pit, the circle of every pit of yours and of every old ground spot you know of, plus the
+## ghost's own circle (green when it's free, red where it overlaps one of your pits, whose circle turns
+## red too); a selected pit shows its own. Fresh ground is a soft green, tiring toward a grey-brown;
+## old ground is dashed and dimmer. Labels: _draw_pit_labels (on the overlay).
+const PIT_FRESH := Color(0.62, 0.86, 0.42)
+const PIT_SPENT := Color(0.52, 0.44, 0.36)
+
+static func pit_colour(left: float) -> Color:
+	return PIT_SPENT.lerp(PIT_FRESH, clampf(left, 0.0, 1.0))
+
+
+func _pit_placing() -> bool:
+	return controls != null and controls.mode == "place" and controls.place_kind == "feeding_pit" and controls.ghost_cell.x >= 0
+
+
+## The old ground spots this player may be shown: its own, and others' where its side has looked.
+func _known_pit_spots() -> Array:
+	var known := _known_ground()
+	var out: Array = []
+	for sp in pit_spots:
+		var c := cell_of(sp[0])
+		if int(sp[2]) == human or known.size() != W * H or (in_map(c) and known[idx(c)] == 1):
+			out.append(sp)
+	return out
+
+
+func _draw_pit_circles() -> void:
+	var r := Defs.PIT_CLAIM * T
+	var circle := func(c: Vector2, col: Color, fill_a: float, w: float, dashed: bool) -> void:
+		field_layer.draw_circle(c, r, Color(col.r, col.g, col.b, fill_a))
+		if dashed:
+			var n := 28
+			for i in n:
+				var a0 := TAU * i / n
+				field_layer.draw_arc(c, r, a0, a0 + TAU / n * 0.55, 4, Color(col, 0.55), w, true)
+		else:
+			field_layer.draw_arc(c, r, 0.0, TAU, 64, Color(col, 0.8), w, true)
+	if _pit_placing():
+		var gc := pit_mid(controls.ghost_cell)
+		var hits := pit_overlaps(human, gc)
+		for sp in _known_pit_spots():
+			circle.call(sp[0], pit_colour(float(sp[1]) / float(Defs.PIT_GROUND)), 0.05, 1.5, true)
+		for b in buildings:
+			if b.kind == "feeding_pit" and b.team == human and not b.dead:
+				var col := Color(1.0, 0.35, 0.3) if hits.has(b) else pit_colour(b.soil_left() if b.built else 1.0)
+				circle.call(b.center(), col, 0.10 if hits.has(b) else 0.07, 2.0, false)
+		var ok := hits.is_empty()
+		circle.call(gc, Color(0.45, 1.0, 0.45) if ok else Color(1.0, 0.35, 0.3), 0.14, 2.5, false)
+		return
+	for e in selection:
+		if e is Building and is_instance_valid(e) and not e.dead and e.kind == "feeding_pit" and (e.team == human or demo):
+			circle.call(e.center(), pit_colour(e.soil_left() if e.built else 1.0), 0.07, 2.0, false)
+
+
+## The labels of the pit circles (on the overlay, over the buildings): the ground left in each
+## (% of PIT_GROUND), and under the ghost what a pit there would have.
+func _draw_pit_labels() -> void:
+	var font := ThemeDB.fallback_font
+	var r := Defs.PIT_CLAIM * T
+	# (on the circle's top edge, inside it, in the small dark box the economy labels use)
+	var label := func(c: Vector2, txt: String, col: Color, sz: int) -> void:
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+		var p := c + Vector2(-w * 0.5, -r + sz + 8.0)
+		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.55))
+		overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+	if _pit_placing():
+		for sp in _known_pit_spots():
+			var left := float(sp[1]) / float(Defs.PIT_GROUND)
+			label.call(sp[0], Loc.t("Old ground: %d%%") % int(round(left * 100)) if float(sp[1]) > 0.0 else Loc.t("Old ground: spent"), Color(pit_colour(left), 0.85), 13)
+		for b in buildings:
+			if b.kind == "feeding_pit" and b.team == human and not b.dead and b.built:
+				label.call(b.center(), "%d%%" % int(round(b.soil_left() * 100)), pit_colour(b.soil_left()), 13)
+		var gc := pit_mid(controls.ghost_cell)
+		var txt := ""
+		var col := Color(0.55, 1.0, 0.55)
+		if not pit_overlaps(human, gc).is_empty():
+			txt = Loc.t("Too close: the grounds would overlap")
+			col = Color(1.0, 0.5, 0.45)
+		else:
+			var gv := pit_ground_at(gc)
+			if gv >= float(Defs.PIT_GROUND):
+				txt = Loc.t("Fresh ground: %d biomass") % Defs.PIT_GROUND
+			elif gv <= 0.0:
+				txt = Loc.t("Old ground, spent: this pit would yield nothing")
+				col = Color(0.85, 0.65, 0.45)
+			else:
+				txt = Loc.t("Old ground: %d biomass left") % int(gv)
+				col = pit_colour(gv / float(Defs.PIT_GROUND))
+		label.call(gc, txt, col, 15)
+		return
+	for e in selection:
+		if e is Building and is_instance_valid(e) and not e.dead and e.kind == "feeding_pit" and e.built and (e.team == human or demo):
+			label.call(e.center(), Loc.t("Ground: %d%%") % int(round(e.soil_left() * 100)), pit_colour(e.soil_left()), 14)
 
 
 ## A slow, cheap shimmer on the swamp: big soft waves of brightness and a little teal drift over
@@ -4949,15 +5229,22 @@ func _draw_swamp(team: int) -> void:
 	var hide := known.size() == W * H
 	var sh := PackedByteArray()
 	sh.resize(W * H)
-	for j in W * H:
-		sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 and (not hide or known[j] == 1) else 0
-	for i in W * H:
-		if sh[i] == 1:
-			var x := i % W
-			var y := i / W
-			var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
-				or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
-			layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
+	# (only the swamp's own cells are visited, found by the native find: a side without swamp,
+	# or with a little, no longer costs two loops over the whole map; the same tiles, in the
+	# same order)
+	var cells := PackedInt32Array()
+	var j := g.find(1)
+	while j >= 0:
+		if cliff[j] == 0 and ramp[j] == 0 and (not hide or known[j] == 1):
+			sh[j] = 1
+			cells.append(j)
+		j = g.find(1, j + 1)
+	for i in cells:
+		var x := i % W
+		var y := i / W
+		var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
+			or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
+		layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
 
 
 var _astar_dirty := false
@@ -5012,13 +5299,26 @@ func _smooth(from: Vector2, pts: PackedVector2Array) -> PackedVector2Array:
 
 
 ## (The same test as open_cell(cell_of(p +- 7, 7)) at every sample, written out: the
-## path smoothing calls it thousands of times for a long path.)
+## path smoothing calls it thousands of times for a long path. Every 4th sample is looked at
+## first, then the others: anything solid covers several samples in a row, so a blocked line
+## is usually found out in a quarter of the work, and a clear one still has every sample
+## looked at. The same samples, so the same answer.)
 func line_clear(a: Vector2, b: Vector2) -> bool:
 	var dist := a.distance_to(b)
 	var steps := int(dist / 10.0) + 1
 	var w1 := W - 1
 	var h1 := H - 1
-	for s in steps + 1:
+	var s := 0
+	var first := true
+	while true:
+		if s > steps:
+			if not first:
+				break
+			first = false
+			s = 1
+		if not first and s % 4 == 0:
+			s += 1
+			continue
 		var p := a.lerp(b, float(s) / float(steps))
 		var x0 := clampi(int((p.x - 7.0) / T), 0, w1)
 		var x1 := clampi(int((p.x + 7.0) / T), 0, w1)
@@ -5036,6 +5336,7 @@ func line_clear(a: Vector2, b: Vector2) -> bool:
 		v = solid[y0 + x1]
 		if v != 0 and v != 5:
 			return false
+		s += 4 if first else 1
 	return true
 
 
@@ -5144,22 +5445,77 @@ func _gate_lets(i: int, v: int, t: int) -> bool:
 
 # ------------------------------------------------------------------ spatial queries
 
+## The units by HASH-px cell, rebuilt every tick. The cells over the map are a flat list
+## (row by row, null where nobody stands) and the few off it (a unit past the edge) a
+## dictionary: a look-up by index is much cheaper than one by Vector2i key, and units_near
+## and separation look at dozens of cells for every unit. The units in a cell keep the
+## order of `units`, as before.
+var _grid: Array = []
+var _grid_w := 0
+var _grid_h := 0
+var _grid_used := PackedInt32Array()
+
+
 func _rebuild_hash() -> void:
 	_hash.clear()
+	var gw := int(W * T) / HASH + 2
+	var gh := int(H * T) / HASH + 2
+	if gw != _grid_w or gh != _grid_h or _grid.size() != gw * gh:
+		_grid_w = gw
+		_grid_h = gh
+		_grid = []
+		_grid.resize(gw * gh)
+		_grid_used = PackedInt32Array()
+	for i in _grid_used:
+		_grid[i] = null
+	_grid_used.clear()
 	for u in units:
-		var k := Vector2i(int(u.position.x) / HASH, int(u.position.y) / HASH)
-		if not _hash.has(k):
-			_hash[k] = []
-		_hash[k].append(u)
+		var kx := int(u.position.x) / HASH
+		var ky := int(u.position.y) / HASH
+		if kx >= 0 and ky >= 0 and kx < gw and ky < gh:
+			var gi := ky * gw + kx
+			var cell = _grid[gi]
+			if cell == null:
+				_grid[gi] = [u]
+				_grid_used.append(gi)
+			else:
+				cell.append(u)
+			continue
+		var k := Vector2i(kx, ky)
+		var lst = _hash.get(k)
+		if lst == null:
+			_hash[k] = [u]
+		else:
+			lst.append(u)
+
+
+## The units in grid cell (x, y) at the last rebuild, or null.
+func _hash_cell(x: int, y: int):
+	if x >= 0 and y >= 0 and x < _grid_w and y < _grid_h:
+		return _grid[y * _grid_w + x]
+	return _hash.get(Vector2i(x, y))
 
 
 func units_near(p: Vector2, r: float) -> Array:
 	var out: Array = []
 	var c0 := Vector2i(int(p.x - r) / HASH, int(p.y - r) / HASH)
 	var c1 := Vector2i(int(p.x + r) / HASH, int(p.y + r) / HASH)
+	var gw := _grid_w
+	if _hash.is_empty():
+		# (nobody off the grid: the cells past its edges are empty, so only the ones on it are looked at)
+		for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
+			var row := y * gw
+			for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
+				var lst = _grid[row + x]
+				if lst == null:
+					continue
+				for u in lst:
+					if is_instance_valid(u) and u.position.distance_to(p) <= r:
+						out.append(u)
+		return out
 	for y in range(c0.y, c1.y + 1):
 		for x in range(c0.x, c1.x + 1):
-			var lst = _hash.get(Vector2i(x, y))
+			var lst = _hash_cell(x, y)
 			if lst == null:
 				continue
 			for u in lst:
@@ -5176,43 +5532,61 @@ func separation(u: Unit) -> Vector2:
 	var air := u.is_air()
 	var c0 := Vector2i(int(p.x - rr) / HASH, int(p.y - rr) / HASH)
 	var c1 := Vector2i(int(p.x + rr) / HASH, int(p.y + rr) / HASH)
-	var near: Array = []
-	for y in range(c0.y, c1.y + 1):
-		for x in range(c0.x, c1.x + 1):
-			var lst = _hash.get(Vector2i(x, y))
+	# (one pass, in the grid's order, without a list of the neighbours: every unit asks this
+	# every second or third tick. What it asks of itself is worked out once, before the loop.)
+	var u_rail := Defs.cw_roster and Defs.CW_RAIL.has(u.kind)
+	var mu := 12.0 if u.kind == "cannon" or u.kind == "mortar" or u_rail else 1.0
+	var u_still := u.velocity.length() < 15.0
+	var u_mill: bool = u._mill_in
+	var gw := _grid_w
+	var off := not _hash.is_empty()      # (anyone off the grid: then every cell is looked up the slow way)
+	var y0 := c0.y if off else maxi(c0.y, 0)
+	var y1 := c1.y if off else mini(c1.y, _grid_h - 1)
+	var x0 := c0.x if off else maxi(c0.x, 0)
+	var x1 := c1.x if off else mini(c1.x, gw - 1)
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			var lst = _hash_cell(x, y) if off else _grid[y * gw + x]
 			if lst == null:
 				continue
 			for o in lst:
 				if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
 					continue
-				near.append(o)
-	for o in near:
-		if o.dead or o.off_field or o.is_air() != air:
-			continue
-		if o == u.steed or u == o.steed:
-			continue           # (a man beside his own horse: he got off there, close by it)
-		if Defs.cw_roster and o.team == u.team and Defs.CW_RAIL.has(u.kind) and Defs.CW_RAIL.has(o.kind):
-			continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
-		if u._mill_in and o._mill_in and o.home_mine == u.home_mine:
-			continue           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
-		var dvec: Vector2 = u.position - o.position
-		var dist := dvec.length()
-		var min_d: float = (u.radius + o.radius) * 0.85
-		if dist < min_d:
-			if dist < 0.01:
-				dvec = Vector2.from_angle(randf() * TAU)
-				dist = 0.01
-			var strength := (min_d - dist) / min_d
-			var k := 140.0
-			# Idle units step aside for friends on the move.
-			if o.team == u.team and o.velocity.length() > 15.0 and u.velocity.length() < 15.0:
-				k = 260.0
-			# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
-			# anything light that bumps it gives way); equal masses push each other as before
-			var mu := 12.0 if u.kind in ["cannon", "mortar"] or (Defs.cw_roster and Defs.CW_RAIL.has(u.kind)) else 1.0
-			var mo := 12.0 if o.kind in ["cannon", "mortar"] or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
-			push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
+				if o.dead or o.off_field or o.is_air() != air:
+					continue
+				if o == u.steed or u == o.steed:
+					continue           # (a man beside his own horse: he got off there, close by it)
+				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
+					continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
+				if u_mill and o._mill_in and o.home_mine == u.home_mine:
+					continue           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
+				var dvec: Vector2 = p - o.position
+				var dist := dvec.length()
+				var min_d: float = (u.radius + o.radius) * 0.85
+				if dist < min_d:
+					if dist < 0.01:
+						dvec = Vector2.from_angle(randf() * TAU)
+						dist = 0.01
+					var strength := (min_d - dist) / min_d
+					var k := 140.0
+					# Idle units step aside for friends on the move.
+					if o.team == u.team and o.velocity.length() > 15.0 and u_still:
+						k = 260.0
+					# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
+					# anything light that bumps it gives way); equal masses push each other as before
+					var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+					push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
+
+
+## hostile(o, t) for every team o (1 = enemy), as bytes indexed by team; t's own row.
+func _foe_table(t: int) -> PackedByteArray:
+	var n := sides.size()
+	var out := PackedByteArray()
+	out.resize(n)
+	for o in n:
+		out[o] = 1 if hostile(o, t) else 0
+	return out
 
 
 func find_target(u: Unit, r: float) -> Entity:
@@ -5234,8 +5608,10 @@ func find_target(u: Unit, r: float) -> Entity:
 		min_r = float(u.d.get("min_range", 0.0))
 	var careful := (u.kind == "cannon" and u.mode != "canister") or u.kind == "mortar"
 	var picks: Array = []
+	# (who is an enemy, by team, worked out once: hostile() was asked of every unit and building)
+	var foe := _foe_table(u.team)
 	for o in units_near(u.position, r):
-		if not hostile(o.team, u.team) or o.dead or not u.can_hit(o) or (held and o.is_air()):
+		if o.team < 0 or foe[o.team] == 0 or o.dead or not u.can_hit(o) or (held and o.is_air()):
 			continue
 		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
 			continue
@@ -5280,7 +5656,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	if u.d.get("medic", false) or u.d.get("air_only", false):
 		return null
 	for b in buildings:
-		if not hostile(b.team, u.team) or b.dead or b.ghost:
+		if b.team < 0 or foe[b.team] == 0 or b.dead or b.ghost:
 			continue
 		var dd: float = b.edge_distance(u.position)
 		if dd >= r or (min_r > 0.0 and dd - u.radius < min_r):
@@ -5332,8 +5708,8 @@ func nearest_of(p: Vector2, t: int, kind: String) -> Building:
 func nearest_hall(p: Vector2, t: int) -> Building:
 	var best: Building = null
 	var bd := INF
-	for b in buildings:
-		if b.team == t and b.kind == faction_hall(t) and b.built and not b.dead:
+	for b in _hall_kind_of(t):      # (every Farm, Mill and Press asks this every tick)
+		if b.built and not b.dead:
 			var dd: float = b.edge_distance(p)
 			if dd < bd:
 				bd = dd
@@ -5341,12 +5717,43 @@ func nearest_hall(p: Vector2, t: int) -> Building:
 	return best
 
 
+## Team t's buildings of its faction's hall kind (built or not, standing or not), in the order of
+## `buildings`. A building's team and kind never change, so the lists hold until a building
+## is added or taken out: the list's length and last building are the check (an addition is
+## always at the end, and a removal shortens it).
+var _hall_lists := {}
+var _hall_lists_key: Array = []
+
+
+func _hall_kind_of(t: int) -> Array:
+	var n := buildings.size()
+	var last = buildings[n - 1] if n > 0 else null      # (untyped: it may have been freed)
+	if _hall_lists_key.size() != 2 or int(_hall_lists_key[0]) != n or _hall_lists_key[1] != last:
+		_hall_lists_key = [n, last]
+		_hall_lists.clear()
+	var lst = _hall_lists.get(t)
+	if lst == null:
+		lst = []
+		if t >= 0 and t < factions.size():
+			var hk := faction_hall(t)
+			for b in buildings:
+				if b.team == t and b.kind == hk:
+					lst.append(b)
+		_hall_lists[t] = lst
+	return lst
+
+
 ## (`_any`: kept for its callers; there's nothing on the map but units and buildings to pick.)
 func entity_at(p: Vector2, _any := true) -> Entity:
 	var best: Entity = null
 	var bd := 26.0
+	var who := net_cmd_team if net_cmd_team >= 0 else controlled_team()
+	# (the mouse asks this whenever it moves: a unit more than 26 px away on either axis can't
+	# be the nearest within 26 px, so it's passed over before anything else is asked of it)
 	for u in units:
-		if u.dead or not u.visible:
+		if absf(u.position.x - p.x) >= 26.5 or absf(u.position.y - 12.0 - p.y) >= 26.5:
+			continue
+		if u.dead or not shown_to_commander(u):
 			continue
 		var dd: float = (u.position + Vector2(0, -12)).distance_to(p)
 		if dd < bd:
@@ -5355,11 +5762,11 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 	if best:
 		return best
 	for b in buildings:
-		if hidden_ghost(b, controlled_team()):
-			continue
-		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
+		if hidden_ghost(b, who) or not shown_to_commander(b):
+			continue                  # (both tests below need it on show to whoever gave the order)
+		if b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
-		if b.visible and b.sprite and b.sprite.texture:
+		if b.sprite and b.sprite.texture:
 			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
@@ -5370,7 +5777,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 ## whose footprint or sprite is under p, or null.
 func crew_site_at(p: Vector2, t: int) -> Building:
 	for b in buildings:
-		if b.team != t or b.dead or not b.built or not b.visible or b.crew_max() <= 0:
+		if b.team != t or b.dead or not b.built or not shown_to_commander(b) or b.crew_max() <= 0:
 			continue
 		if b.rect().grow(4).has_point(p):
 			return b
@@ -6126,12 +6533,12 @@ func load_order(riders: Array, balloons: Array) -> void:
 				best.cmd_stop()        # it stops where it is and comes down
 			u.cmd_board(best)
 		elif not (Defs.DROPSHIP["kinds"] as Array).has(u.kind):
-			if why == "" and u.team == human:
+			if why == "":
 				why = "Only Musketeers and Labourers fit in the basket."
 		elif why == "" and bs.all(func(b: Unit) -> bool: return b.room() <= 0):
 			why = "The basket is full (%d men)." % int(Defs.DROPSHIP["capacity"])
-	if why != "" and not men.is_empty() and men[0].team == human:
-		notify(why)
+	if why != "" and not men.is_empty():
+		tell(men[0].team, why)
 
 
 ## The selected balloons with men aboard fly to `p` and let them off (here: right below).
@@ -6142,15 +6549,16 @@ func unload_order(list: Array, p: Vector2, here := false) -> void:
 		if b is Unit and not b.dead and b.kind == "balloon" and not b.passengers.is_empty():
 			b.cmd_unload(b.position if here else p)
 			any = true
-	if not any and not list.is_empty() and list[0].team == human:
-		notify("Nobody aboard.")
+	if not any and not list.is_empty() and list[0] is Unit:
+		tell(list[0].team, "Nobody aboard.")
 
 
 ## The nearest selected Ornithopter carrying a battery flies over and overloads `e`.
 func overload_order(list: Array, e: Entity) -> void:
 	if net_forward(self, "overload_order", [list, e]): return
-	if not (e is Unit) or e.dead or e.team != human or e.d["faction"] != "clockwork" or e.is_worker():
-		notify("Pick one of your constructs to overload.")
+	var me: int = list[0].team if not list.is_empty() and list[0] is Unit else human      # (online: the guest who ordered it)
+	if not (e is Unit) or e.dead or e.team != me or e.d["faction"] != "clockwork" or e.is_worker():
+		tell(me, "Pick one of your constructs to overload.")
 		return
 	var best: Unit = null
 	var bd := INF
@@ -6164,7 +6572,7 @@ func overload_order(list: Array, e: Entity) -> void:
 		best.cmd_overload(e)
 		_ping(e.position, Color(1, 0.85, 0.3))
 	else:
-		notify("No Ornithopter here carries a battery.")
+		tell(me, "No Ornithopter here carries a battery.")
 
 
 ## Open ground around a spot (or as near as there is) for men let off a balloon: one cell
@@ -6199,8 +6607,8 @@ func cast_order(list: Array, spell: String, p: Vector2) -> void:
 	if net_forward(self, "cast_order", [list, spell, p]): return
 	if spell == "jump":
 		var why := Jack.jump_order(self, list, p)
-		if why != "" and not list.is_empty() and list[0] is Unit and list[0].team == human:
-			notify(why)
+		if why != "" and not list.is_empty() and list[0] is Unit:
+			tell(list[0].team, why)
 		return
 	var kind: String = CASTERS.get(spell, "spore_mother")
 	var best: Unit = null
@@ -6221,15 +6629,14 @@ func cast_order(list: Array, spell: String, p: Vector2) -> void:
 			best = u
 	if best:
 		best.cmd_cast(spell, p)
-	elif list.size() > 0 and list[0].team == human:
-		notify(why)
+	elif list.size() > 0 and list[0] is Unit:
+		tell(list[0].team, why)
 
 
 func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 	var w := spell_problem(u, spell)
 	if w != "":
-		if u.team == human:
-			notify(w)
+		tell(u.team, w)
 		return
 	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {}}
 	if spell == "fog":
@@ -6437,8 +6844,7 @@ func tongue_order(list: Array, e) -> void:
 	if toads.is_empty():
 		return
 	if not (e is Unit) or not toads[0].can_tongue(e):
-		if toads[0].team == human:
-			notify("Pick an enemy unit on the ground (not a building or a flyer).")
+		tell(toads[0].team, "Pick an enemy unit on the ground (not a building or a flyer).")
 		return
 	var best: Unit = null
 	var bd := INF
@@ -6452,16 +6858,16 @@ func tongue_order(list: Array, e) -> void:
 	if best:
 		best.cmd_tongue(e)
 		_ping(e.position, Color(1.0, 0.45, 0.6))
-	elif toads[0].team == human:
-		notify("Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
+	else:
+		tell(toads[0].team, "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
 
 
 ## A Toad has marked its victim: the crosshair goes up (its owner is warned).
 func tongue_marked(toad: Unit, e: Unit) -> void:
 	if not tongues.has(toad):
 		tongues.append(toad)
+	tell(e.team, "A Mist Toad is aiming its tongue at your %s: move it away or stun the Toad!" % String(e.d["name"]), true)
 	if e.team == human:
-		notify("A Mist Toad is aiming its tongue at your %s: move it away or stun the Toad!" % String(e.d["name"]), true)
 		_ping(e.position, Color(1.0, 0.3, 0.3))
 	Sfx.play_any(["combat/spitter_hit", "acid"], toad.position)
 
@@ -7029,28 +7435,18 @@ func side_slot(t: int) -> int:
 	return t
 
 
-## The cells of a disk of radius r as (dx, dy, far) triples; far = 1 beyond the cells
-## right next to the middle (those are seen even up a cliff).
-var _disk_ofs := {}
 
 
 ## Mark a disk of cells seen in the team's and its side's grid (and explored, on your side:
 ## the ground your side has ever looked at, where another side's swamp and the like may show).
 ## Seen from low ground, high ground is hidden beyond the next cells. (The disk as flat
-## int offsets, and no bounds tests when it lies inside the map: this runs for every unit
-## and building four times a second.)
+## offsets with no bounds tests when it lies inside the map (_stamp_inside), else by rows cut
+## to the map: this runs for every unit and building four times a second.)
 func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: bool, mine: bool) -> void:
-	if not _disk_ofs.has(r):
-		var ofs := PackedInt32Array()
-		for o in _disk(r):
-			ofs.append(o.x)
-			ofs.append(o.y)
-			ofs.append(1 if o.length_squared() > 2 else 0)
-		_disk_ofs[r] = ofs
-	var d: PackedInt32Array = _disk_ofs[r]
 	var inside := c.x - r >= 0 and c.y - r >= 0 and c.x + r < W and c.y + r < H
-	var n := d.size()
-	var k := 0
+	if inside:
+		_stamp_inside(v, sv, c, r, low, mine)
+		return
 	var w := W
 	var h := H
 	var mode := _fog_mode if mine and _fog_base.size() == w * h * 2 else 0
@@ -7067,22 +7463,125 @@ func _stamp(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: b
 	var sw := _swamp_any
 	var swn := sw.size() == w * h
 	var new_swamp := false
-	while k < n:
-		var x := c.x + d[k]
-		var y := c.y + d[k + 1]
-		if inside or (x >= 0 and y >= 0 and x < w and y < h):
-			var i := y * w + x
-			if not (low and d[k + 2] == 1 and height[i] == 1):
-				v[i] = 1
-				sv[i] = 1
-				if mine:
-					if ex[i] == 0:
-						ex[i] = 1
-						if swn and sw[i] == 1:
-							new_swamp = true
-					if mode != 0:
-						fw[i * 2 + 1] = 0
-		k += 3
+	# (by rows: each row of the disk is one run of cells, cut to the map; the cells right next
+	# to the middle are the near ones, seen even up a cliff)
+	var spans := _disk_rows(r)
+	for si in range(0, spans.size(), 2):
+		var dy := spans[si]
+		var y := c.y + dy
+		if y < 0 or y >= h:
+			continue
+		var hw := spans[si + 1]
+		var row := y * w
+		var near_row := dy >= -1 and dy <= 1
+		for x in range(maxi(c.x - hw, 0), mini(c.x + hw, w - 1) + 1):
+			var i := row + x
+			if low and height[i] == 1 and not (near_row and x >= c.x - 1 and x <= c.x + 1):
+				continue
+			v[i] = 1
+			sv[i] = 1
+			if mine:
+				if ex[i] == 0:
+					ex[i] = 1
+					if swn and sw[i] == 1:
+						new_swamp = true
+				if mode != 0:
+					fw[i * 2 + 1] = 0
+	explored = ex
+	if new_swamp:
+		_swamp_seen = true       # (swamp looked at for the first time: drawn under the fog from now on)
+	if mode == 1:
+		_fog_bld = fw
+	elif mode == 2:
+		_fog_w = fw
+
+
+## The disk of radius r as rows: [dy, half width] pairs (each row of _disk(r) is one run
+## of cells, -half width .. +half width).
+var _disk_row_cache := {}
+
+
+func _disk_rows(r: int) -> PackedInt32Array:
+	if not _disk_row_cache.has(r):
+		var hw := {}
+		for o in _disk(r):
+			hw[o.y] = maxi(int(hw.get(o.y, 0)), absi(o.x))
+		var out := PackedInt32Array()
+		for y in range(-r, r + 1):
+			if hw.has(y):
+				out.append(y)
+				out.append(int(hw[y]))
+		_disk_row_cache[r] = out
+	return _disk_row_cache[r]
+
+
+## _stamp for a disk that lies wholly inside the map: the same cells, as flat offsets from
+## the middle cell (no x / y or bounds work per cell), the cells next to the middle apart
+## from the far ones (only the far ones can be high ground hidden from low ground).
+var _disk_flat := {}                     # r + W * 1000 -> [near offsets, far offsets]
+
+
+func _stamp_inside(v: PackedByteArray, sv: PackedByteArray, c: Vector2i, r: int, low: bool, mine: bool) -> void:
+	var key := r + W * 1000
+	if not _disk_flat.has(key):
+		var near := PackedInt32Array()
+		var far := PackedInt32Array()
+		for o in _disk(r):
+			if o.length_squared() > 2:
+				far.append(o.y * W + o.x)
+			else:
+				near.append(o.y * W + o.x)
+		_disk_flat[key] = [near, far]
+	var lists: Array = _disk_flat[key]
+	var near_o: PackedInt32Array = lists[0]
+	var far_o: PackedInt32Array = lists[1]
+	var base := c.y * W + c.x
+	if not mine:
+		for o in near_o:
+			v[base + o] = 1
+			sv[base + o] = 1
+		if low:
+			for o in far_o:
+				var i := base + o
+				if height[i] != 1:
+					v[i] = 1
+					sv[i] = 1
+		else:
+			for o in far_o:
+				v[base + o] = 1
+				sv[base + o] = 1
+		return
+	var w := W
+	var h := H
+	var mode := _fog_mode if _fog_base.size() == w * h * 2 else 0
+	# (the grids being written are taken out of their members meanwhile: see _reveal)
+	var fw: PackedByteArray = _EMPTY
+	if mode == 1:
+		fw = _fog_bld
+		_fog_bld = _EMPTY
+	elif mode == 2:
+		fw = _fog_w
+		_fog_w = _EMPTY
+	var ex := explored
+	explored = _EMPTY
+	var sw := _swamp_any
+	var swn := sw.size() == w * h
+	var new_swamp := false
+	for pass_i in 2:
+		var lst: PackedInt32Array = near_o if pass_i == 0 else far_o
+		var check := low and pass_i == 1
+		for o in lst:
+			var i := base + o
+			if check and height[i] == 1:
+				continue
+			v[i] = 1
+			sv[i] = 1
+			if ex[i] == 0:
+				ex[i] = 1
+				if swn and sw[i] == 1:
+					new_swamp = true
+			if mode != 0:
+				fw[i * 2 + 1] = 0
 	explored = ex
 	if new_swamp:
 		_swamp_seen = true       # (swamp looked at for the first time: drawn under the fog from now on)
@@ -7633,6 +8132,11 @@ func update_view_rect() -> void:
 	view_rect = Rect2(camera.get_screen_center_position() - vsz * 0.5, vsz).grow(120.0)
 
 
+## The path queue's time limit in a tick, past its first 6 paths (µs). A tool that needs a match to
+## play out the same every time lifts it (tools/perf_bench.gd): then only the count, 24 a tick, limits it.
+var path_budget_us := 6000
+
+
 func _tick_game(delta: float) -> void:
 	if over or edit_mode:
 		return
@@ -7672,7 +8176,7 @@ func _tick_game(delta: float) -> void:
 	# (at most 24 a tick, and past the first 6 only while under 6 ms: a crowd ordered at once
 	# gets its paths over a few ticks instead of in one long frame)
 	var budget := 24
-	while budget > 0 and not _path_queue.is_empty() and (budget > 18 or Time.get_ticks_usec() - pt < 6000):
+	while budget > 0 and not _path_queue.is_empty() and (budget > 18 or Time.get_ticks_usec() - pt < path_budget_us):
 		var u = _path_queue.pop_front()
 		if is_instance_valid(u) and not u.dead:
 			u.compute_path()
@@ -8098,6 +8602,60 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	group_move(us, p, not force_move and not Settings.pc(), queued)
 
 
+## Online guest: the ring and the answer smart_command gives, worked out on this screen at the click (the host runs
+## the order itself a round trip later); plain walks start at once here (NetSession.lead). Keep in step with
+## smart_command: _smart_choice follows its branches without doing anything.
+func smart_feedback(list: Array, p: Vector2, force_move: bool) -> void:
+	p = on_map(p)
+	var us: Array = list.filter(func(e) -> bool: return e is Unit and is_instance_valid(e) and not e.dead and e.kind != "horse")
+	if us.is_empty() or us[0].team != human:
+		return
+	var tgt := entity_at(p)
+	var atk: bool = tgt != null and hostile(tgt.team, human) and not force_move
+	command_sound(us, "attack" if atk else "move", "charge" if atk else "move")
+	var ch := _smart_choice(us, p, force_move)
+	_ping(p, ch[0])
+	if net != null and (ch[1] == "move" or ch[1] == "amove"):
+		net.lead(us, p, ch[1] == "amove")
+
+
+## What smart_command would do with these units for a click at p: [ring colour, "move" / "amove" / "other"].
+func _smart_choice(us: Array, p: Vector2, force_move: bool) -> Array:
+	var yellow := Color(1, 0.85, 0.3)
+	var e := null if force_move else entity_at(p)
+	var cr: Crate = null
+	if not force_move and not (e is Unit):
+		cr = crate_at(p)
+	if cr and cr.team == us[0].team and us.any(func(u: Unit) -> bool: return u.kind == "winder"):
+		return [yellow, "other"]
+	if cr and hostile(cr.team, us[0].team):
+		e = cr
+	if e is Unit and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_gather()) \
+			and not (e.hp < e.max_hp and us.any(func(u: Unit) -> bool: return u.can_repair(e))):
+		var site := crew_site_at(p, us[0].team)
+		if site:
+			e = site
+	if e != null and (e.team == us[0].team or loose_horse(e)):
+		if e is Unit and e.kind == "horse" and us.any(func(u: Unit) -> bool: return u.can_mount() or u.can_lead()):
+			return [Color(0.9, 0.8, 0.5), "other"]
+		if e is Unit and Defs.HARNESSED.has(e.kind) and e.team_room() and us.any(func(u: Unit) -> bool: return not u.led.is_empty()):
+			return [Color(0.9, 0.8, 0.5), "other"]
+	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
+		return [Color(0.4, 1, 0.4), "other"]
+	if e is Building and e.team == us[0].team and e.built and Defs.crew_cap(e.d) > 0 \
+			and us.any(func(u: Unit) -> bool: return u.can_gather()):
+		return [yellow, "other"]
+	if e and e.team == us[0].team and e.hp < e.max_hp and (e.is_unit() or e.built) \
+			and us.any(func(u: Unit) -> bool: return u.can_repair(e)):
+		return [Color(0.95, 0.7, 0.25), "other"]
+	if e is Building and e.team == us[0].team and not e.built:
+		return [yellow, "other"]
+	if e and prey(us[0].team, e):
+		return [Color(1, 0.3, 0.3), "other"]
+	var amove := not force_move and not Settings.pc()
+	return [Color(1, 0.3, 0.3) if amove else Color(0.4, 1, 0.4), "amove" if amove else "move"]
+
+
 ## Spread a group around the destination so they don't fight for one spot.
 ## You're being hit: an alert (not too often) and a flashing spot on the minimap.
 var alert_at := Vector2.INF
@@ -8171,7 +8729,7 @@ func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
 ## voice (the Crown's bugle only now and then, for the calls that mean something: attack, patrol);
 ## a mixed Crown group is answered by the bugle alone; whatever has no voice falls back to the bugle.
 func command_sound(us: Array, what: String, call: String) -> void:
-	if us.is_empty():
+	if us.is_empty() or net_cmd_team >= 0 or net_quiet:
 		return
 	var kinds := {}
 	for u in us:
@@ -8222,7 +8780,11 @@ func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> vo
 var _pings: Array = []
 
 
+## A ring where an order was given (it fades in half a second). Only the player who gave the order sees it: a guest's
+## order run on the host makes none here (the guest drew its own at the click: NetCommands.feedback).
 func _ping(p: Vector2, col: Color) -> void:
+	if net_cmd_team >= 0 or net_quiet:
+		return
 	_pings.append([p, col, 0.5])
 
 
@@ -8265,13 +8827,22 @@ func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 
 
 func army(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and not u.is_worker() and u.aboard == null \
-		and u.kind != "horse" and u.kind != "messenger")
+	# (a plain loop: the same units in the same order as a filter with a lambda, at about half
+	# the cost; the computer players ask for it dozens of times a second)
+	var out: Array = []
+	for u in units:
+		if u.team == t and not u.dead and not u.is_worker() and u.aboard == null and u.kind != "horse" and u.kind != "messenger":
+			out.append(u)
+	return out
 
 
 ## A player's horses (bred, released, stolen; not the ones under riders or hitched to guns).
 func horses_of(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.kind == "horse")
+	var out: Array = []
+	for u in units:
+		if u.team == t and not u.dead and u.kind == "horse":
+			out.append(u)
+	return out
 
 
 ## "Horses: 3 (1 reserved)" for the top bar and the breeder's card (reserved: kept for a recruit
@@ -8288,7 +8859,11 @@ func labourers(t: int) -> Array:
 
 ## Workers not tied to a Town Hall (the haulers are counted by their hall: Building.haulers).
 func workers(t: int) -> Array:
-	return units.filter(func(u: Unit) -> bool: return u.team == t and not u.dead and u.is_worker() and u.aboard == null and not u.is_hauler())
+	var out: Array = []
+	for u in units:
+		if u.team == t and not u.dead and u.is_worker() and u.aboard == null and not u.is_hauler():
+			out.append(u)
+	return out
 
 
 func center_of_team(t: int) -> Vector2:
@@ -8393,16 +8968,33 @@ func standing_text(t: int) -> String:
 	return "army %d vs %d, workers %d vs %d, buildings %d vs %d" % [m["army"], f["army"], m["workers"], f["workers"], m["buildings"], f["buildings"]]
 
 
-## The player gives up (the pause menu): every building falls, the log says who was ahead.
-func player_surrender() -> void:
-	if net_forward(self, "player_surrender", []): return
-	end_ahead = lead_of(human)
-	end_note = "player_surrender"
-	if mlog:
-		mlog.add("%s surrendered while %s (%s)" % [mlog.who(human), end_ahead, standing_text(human)])
+## The player gives up (the menu's SURRENDER): every building falls, the log says who was ahead. Online the host
+## runs it for a guest too (`team`: the side that gives up; the guest's log says it at the press).
+func player_surrender(team := -1) -> void:
+	if team < 0:
+		team = human
+	if puppet and net != null:
+		_note_surrender(team)
+	if net_forward(self, "player_surrender", [team]): return
+	_note_surrender(team)
 	for b in buildings.duplicate():
-		if b.team == human:
+		if b.team == team:
 			b.take_damage(99999, null)
+
+
+func _note_surrender(team: int) -> void:
+	var ahead := lead_of(team)
+	# (it ends the match unless an ally of theirs plays on: co-op, a friend still in)
+	var ends := true
+	for o in n_players():
+		if o != team and allied(o, team) and not eliminated[o]:
+			ends = false
+	if ends:
+		end_ahead = ahead
+		end_note = "player_surrender"
+		end_quitter = team
+	if mlog:
+		mlog.add("%s surrendered while %s (%s)" % [mlog.who(team), ahead, standing_text(team)])
 
 
 ## Efficiency colour: green from Defs.EFF_GOOD, through yellow, to red at Defs.EFF_POOR.
@@ -8660,6 +9252,7 @@ func _draw_ghosts() -> void:
 
 func _draw_overlay_all() -> void:
 	_draw_mine_labels()
+	_draw_pit_labels()
 	_draw_queues()
 	_draw_hover()
 	if controls and controls.mode == "cast" and controls.cast_spell == "jump":
@@ -9083,8 +9676,8 @@ func steal_horse(h: Unit, by: Entity) -> void:
 	stats[by.team]["horses_stolen"] = int(stats[by.team].get("horses_stolen", 0)) + 1
 	if mlog:
 		mlog.add("%s stole a horse from %s" % [mlog.who(by.team), mlog.who(was)])
+	tell(was, "A horse was stolen!")
 	if was == human:
-		notify("A horse was stolen!")
 		Sfx.announce("crown", "horse_stolen", 8.0)
 	if by.team == human:
 		float_text(h.position + Vector2(0, -34), "horse taken", Color(0.85, 1.0, 0.7))

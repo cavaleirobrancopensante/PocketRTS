@@ -148,6 +148,8 @@ func _physics_process(delta: float) -> void:
 func snapshot() -> void:
 	lines.append("--- minute %d ---" % int(round(game.clock / 60.0)))
 	_lag_lines()
+	if game.net != null:
+		lines.append("  " + game.net.minute_line())      # (online: ping, snapshots, orders, stalls this minute)
 	for t in game.n_players():
 		if game.eliminated[t]:
 			continue
@@ -188,10 +190,16 @@ func snapshot() -> void:
 			game.actions_minute = 0
 		if game.faction_hall(t) == "town_hall" or game.faction_hall(t) == "hive":
 			var soil := PackedStringArray()
-			for h in game.halls_of(t):
-				soil.append("%d%%" % int(round(h.soil_left() * 100)))
+			if game.faction_hall(t) == "hive":
+				# (the Brood: each Feeding Pit's own ground)
+				for h in game.buildings:
+					if h.team == t and h.kind == "feeding_pit" and h.built and not h.dead:
+						soil.append("%d%%" % int(round(h.soil_left() * 100)))
+			else:
+				for h in game.halls_of(t):
+					soil.append("%d%%" % int(round(h.soil_left() * 100)))
 			if not soil.is_empty():
-				lines[lines.size() - 1] += (" | soil " if game.faction_hall(t) == "town_hall" else " | ground ") + " ".join(soil)
+				lines[lines.size() - 1] += (" | soil " if game.faction_hall(t) == "town_hall" else " | pit ground ") + " ".join(soil)
 		if game.faction_hall(t) != "hive":
 			# what each hall's lode has left: saltpetre for the Crown, ore for the Clockwork
 			var left := PackedStringArray()
@@ -220,7 +228,10 @@ func finish(winner: int) -> void:
 	if game.end_note == "ai_resigned" and winner >= 0 and game.allied(winner, game.human):
 		how = " - AI resigned after gg"
 	elif game.end_note == "player_surrender":
-		how = " - ended by surrender (player was %s)" % game.end_ahead
+		if game.end_quitter >= 0 and game.end_quitter != game.human:
+			how = " - ended by surrender (%s gave up while %s)" % [who(game.end_quitter), game.end_ahead]
+		else:
+			how = " - ended by surrender (player was %s)" % game.end_ahead
 	lines.append("RESULT at %s: %s%s" % [stamp(), ("winner " + who(winner)) if winner >= 0 else "no winner", how])
 	if not _lag_minutes.is_empty():
 		var pm := PackedStringArray()
