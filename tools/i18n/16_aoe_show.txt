@@ -1,0 +1,10 @@
+# AREA MARKS (docs/aoe_show.md): area attacks lay their shape on the ground; the setting that turns them off.
+# The Clockwork's "+N" over a working Mainspring (a Cog Press shows a bare "+N", like the grub's drop).
+
+> AREA MARKS
+pt MARCAS DE ÁREA
+es MARCAS DE ÁREA
+
+> +%d tension
+pt +%d de tensão
+es +%d de tensión

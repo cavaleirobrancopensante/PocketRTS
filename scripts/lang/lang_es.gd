@@ -1731,6 +1731,8 @@ const T := {
 	"REPLAYS on the main menu lists them, newest first: WATCH, KEEP (kept ones are never deleted), EXPORT (a file to send or keep), DELETE, and IMPORT for a file a friend sent you. The newest 30 that are not kept stay; Settings > REPLAYS KEPT changes the number.": "REPETICIONES en el menú principal las lista, las más recientes primero: OBSERVAR, GUARDAR (las guardadas nunca se borran), EXPORTAR (un archivo para enviar o conservar), BORRAR, e IMPORTAR para un archivo que te envió un amigo. Se quedan las 30 más recientes no guardadas; Ajustes > REPETICIONES GUARDADAS cambia el número.",
 	"WATCHING: play and pause, half speed to 8x, and the timeline to jump to any moment. FOG switches between everything and one player's view; CAMERA follows the camera of the player who recorded it. Select anything to see its card. On a computer: Space pauses, + and - change the speed, Home goes back to the start. A replay from another version of the game still plays, but some things may look different.": "OBSERVANDO: reproducir y pausar, de media velocidad a 8x, y la línea de tiempo para saltar a cualquier momento. NIEBLA alterna entre todo y la vista de un jugador; CÁMARA sigue la cámara del jugador que la grabó. Selecciona cualquier cosa para ver su ficha. En el ordenador: Espacio pausa, + y - cambian la velocidad, Inicio vuelve al principio. Una repetición de otra versión del juego se sigue viendo, pero algunas cosas pueden verse distintas.",
 	"P%d %s is out.": "J%d %s está fuera.",
+	"AREA MARKS": "MARCAS DE ÁREA",
+	"+%d tension": "+%d de tensión",
 	"WHERE ARE YOU PLAYING?": "¿DÓNDE ESTÁS JUGANDO?",
 	"YOU CAN CHANGE THIS LATER IN SETTINGS.": "PUEDES CAMBIARLO MÁS TARDE EN AJUSTES.",
 	"FITS MAP": "DEL MAPA",

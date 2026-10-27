@@ -1581,6 +1581,7 @@ func _battery_blast() -> void:
 	Sfx.play_any(["combat/tesla_attack", "zap"], position)
 	if team == game.human:
 		game.float_text(position + Vector2(0, -30), "battery burst!", Color(1, 0.6, 0.3))
+	game.area_mark("ring", team, position, Vector2.ZERO, 34.0, 0.0, "storm")
 	for o in game.units_near(position, 34.0):
 		if o != self and not o.dead and not o.is_air():
 			o.take_damage(float(Defs.BATTERY["splash"]), self)
@@ -4363,6 +4364,7 @@ func _strike(e: Entity) -> void:
 			if kind == "thresher":
 				# the saws bite the enemies standing round its target too
 				var n := 0
+				game.area_mark("ring", team, e.global_position, Vector2.ZERO, float(Defs.THRESHER["reach"]), 0.0, "steel")
 				for o in game.units_near(e.global_position, float(Defs.THRESHER["reach"]) + 10.0):
 					if n >= int(Defs.THRESHER["cleave"]) or o == e or o.dead or o.off_field or o.is_air() or not game.hostile(o.team, team):
 						continue
@@ -5182,8 +5184,9 @@ func _haul(pit: Building, delta: float) -> Vector2:
 					game.add_gold_f(team, load_f)
 				else:
 					game.add_gold(team, carrying)     # (a load from an older save)
+				if carrying > 0:
+					game.own_float(team, position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
 				if team == game.human and carrying > 0:
-					game.float_text(position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
 					Sfx.play("work/grub_deliver", position, -6.0)
 				carrying = 0
 				load_f = 0.0

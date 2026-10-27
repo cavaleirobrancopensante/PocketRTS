@@ -344,12 +344,32 @@ func note_net(cn: ChainNet) -> void:
 		fx.append(["n", "", cn.from, cn.target.net_id, cn.speed])
 
 
+## An area mark (Game.area_mark: [shape, p, a, r, h, colour, life, warn, zone, arm, smear, team]): the guest lays it by its
+## own fog. And a "+N" for a guest's side (Game.own_float).
+func note_mark(m: Array) -> void:
+	if fx.size() < FX_MAX:
+		fx.append(["g", "", m[1], m])
+
+
+func note_float(team: int, p: Vector2, txt: String, col: Color) -> void:
+	if fx.size() < FX_MAX:
+		fx.append(["f", txt, p, team, col])
+
+
 ## Guest: play what the host saw happen since the last snapshot.
 func play_fx(list: Array) -> void:
 	if game.rec != null:
 		game.rec.note_fx(list)         # (the guest's own record of the match: the effects as they came)
 	for f in list:
 		var p: Vector2 = f[2]
+		if f[0] == "g":
+			var m: Array = f[3]
+			game.area_mark(String(m[0]), int(m[11]), m[1], m[2], float(m[3]), float(m[4]), String(m[5]), float(m[6]), bool(m[7]), bool(m[8]), int(m[9]), bool(m[10]))
+			continue
+		if f[0] == "f":
+			if int(f[3]) == game.human:
+				game.float_text(p, String(f[1]), f[4])
+			continue
 		if f[0] == "c":
 			game.torn_at(p)          # a body the host's shell tore up (Game.tear_body): gone here too, seen or not
 			continue

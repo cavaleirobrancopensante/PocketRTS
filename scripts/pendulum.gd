@@ -93,6 +93,9 @@ static func swing(u: Unit, e: Entity, dmg: float) -> int:
 	var g := u.game
 	var dir := swing_dir(u, e)
 	var hit := victims(u, dir)
+	# the arc it cuts, laid on the ground, and the blade's smear along its low sweep (docs/aoe_show.md)
+	var ps: Dictionary = Defs.PENDULUM_SWING
+	g.area_mark("wedge", u.team, u.position, dir, float(ps["reach"]), deg_to_rad(float(ps["arc"])), "steel", GroundMarks.STRIKE, false, false, u.arm % 2, true)
 	var on_units := dmg / float(u.d.get("building_bonus", 1.0)) if e is Building else dmg
 	for o in hit:
 		o.take_damage(on_units * light_bonus(o), u, "")

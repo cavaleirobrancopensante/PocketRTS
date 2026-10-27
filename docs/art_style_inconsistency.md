@@ -211,3 +211,11 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - Pendulum v2 death (0.14.36, ChatGPT's art/redraws/pendulum_v2_death_chatgpt_1/2.png, tools/import_tier3.py): CODE EDIT:
   a pink puff in the dust (sheet 1, row SE, frame 4) recoloured to the dust's grey by brightness (grey_pink); each row
   SCALED (x1.08-1.22) so its standing first frame matches the idle's height. Otherwise as painted.
+- AREA MARKS (0.14.49, branch aoe-show; scripts/ground_marks.gd, docs/aoe_show.md): CODE-DRAWN in the game, not art:
+  see-through ground marks of each area attack's shape (a wedge, ring, oval or band: a flat fill and an edge in the
+  effect's colour over a thin dark line, fading in ~0.45 s), a blinking WARNING outline whose fill grows where a Mortar
+  shell, a Spore Mother's spit or an Owl's bomb will land, and a faint edge round lasting clouds and storms. And the
+  Pendulum's game-space SMEAR (GroundMarks._smear, Game.swipe_marks): a cold steel-blue crescent along the blade's low
+  path round its feet (squashed flat, thin tail to a 16 px head, a bright outer edge on a dark line), lingering 0.38 s
+  after each blow, drawn over the units on top of the sprite's own smear. A painted sweep effect (a ChatGPT smear strip
+  turned to the blow's direction) could replace the smear; the marks are UI-like and can stay code-drawn.

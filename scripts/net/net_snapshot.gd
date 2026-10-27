@@ -249,7 +249,7 @@ static func merge(list: Array) -> Dictionary:
 			urows[int(row[0])] = _newer(urows.get(int(row[0])), row, U_FIXED)
 		var recent := i >= list.size() - 3
 		for f in sm.get("fx", []):
-			if recent or f[0] == "c":
+			if recent or f[0] == "c" or f[0] == "f" or (f[0] == "g" and bool(f[3][8])):     # (a "+N", a lasting cloud's edge: kept)
 				shots.append(f)
 	for id in gone_ids:
 		urows.erase(id)
