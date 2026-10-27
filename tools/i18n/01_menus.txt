@@ -650,3 +650,28 @@ es INFORME DE BATALLA
 > HOW TO PLAY
 pt COMO JOGAR
 es CÓMO JUGAR
+
+# Online room: the same delay, the ping, no answer (0.14.33)
+> SAME DELAY FOR BOTH PLAYERS: ON
+pt MESMO ATRASO PARA OS DOIS: LIGADO
+es MISMO RETRASO PARA AMBOS: SÍ
+
+> SAME DELAY FOR BOTH PLAYERS: OFF
+pt MESMO ATRASO PARA OS DOIS: DESLIGADO
+es MISMO RETRASO PARA AMBOS: NO
+
+> On: the host's own orders wait as long as the friend's take to arrive over the internet, so neither side reacts faster.
+pt Ligado: as ordens do anfitrião esperam o mesmo tempo que as do amigo levam para chegar pela internet, então nenhum lado reage mais rápido.
+es Activado: las órdenes del anfitrión esperan lo mismo que tardan las del amigo en llegar por internet, así ningún lado reacciona más rápido.
+
+> Ping to your friend: %d ms
+pt Ping até seu amigo: %d ms
+es Ping a tu amigo: %d ms
+
+> Ping to the host: %d ms
+pt Ping até o anfitrião: %d ms
+es Ping al anfitrión: %d ms
+
+> No answer from the host yet. Check the room code, and that the host's room is still open. Still trying...
+pt Ainda sem resposta do anfitrião. Confira o código da sala e se a sala do anfitrião ainda está aberta. Tentando de novo...
+es Aún sin respuesta del anfitrión. Revisa el código de la sala y que la sala del anfitrión siga abierta. Seguimos intentando...

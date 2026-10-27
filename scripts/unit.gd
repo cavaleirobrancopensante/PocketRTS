@@ -662,8 +662,8 @@ func _refit_run(delta: float) -> Vector2:
 	var p = order_target
 	if p == null or not is_instance_valid(p) or p.dead or (p is Building and not p.built) \
 			or (p is Unit and (p.off_field or p.aboard != null)) or refit.is_empty():
-		if team == game.human and not refit.is_empty():
-			game.notify("Refit called off: the place is gone. Paid back.")
+		if not refit.is_empty():
+			game.tell(team, "Refit called off: the place is gone. Paid back.")
 		cmd_stop()          # (the fee goes back)
 		return Vector2.ZERO
 	var at: Vector2 = p.position if p is Unit else p.center()
@@ -701,8 +701,7 @@ func _refit_run(delta: float) -> Vector2:
 	work = "to_refit"
 	work_t += delta
 	if work_t > float(Defs.REFIT["give_up"]):
-		if team == game.human:
-			game.notify("A %s couldn't reach the place to be refitted. Paid back." % String(d["name"]))
+		game.tell(team, "A %s couldn't reach the place to be refitted. Paid back." % String(d["name"]))
 		cmd_stop()
 		return Vector2.ZERO
 	# a wagon may be on the move: head straight for it when close, else find the way there
@@ -818,7 +817,7 @@ func set_hold_fire(on: bool) -> void:
 
 ## On a horse (the horse is part of him: DISMOUNT puts it beside him).
 func is_mounted() -> bool:
-	return Defs.FOOT.has(kind)
+	return _k_mounted
 
 
 ## A horse's rank of veterancy for `m` tiles travelled (Defs.HORSE_VET).
@@ -840,7 +839,7 @@ func apply_horse_vet() -> void:
 
 ## Is a horse working under him (ridden, or drawing this gun or wagon)?
 func horse_working() -> bool:
-	return is_mounted() or (harnessed and Defs.HARNESSED.has(kind))
+	return _k_mounted or (harnessed and _k_harness)
 
 
 ## Horses heal by themselves; a working one gains veterancy with the ground it covers.
@@ -883,7 +882,24 @@ func powered_down() -> bool:
 
 
 func is_worker() -> bool:
-	return Defs.is_worker(kind)
+	return _k_worker
+
+
+## What a unit's kind says, asked hundreds of thousands of times a second (is_worker,
+## is_mounted, deploys, horse_working): worked out when the kind is set (setup, morph).
+var _k_worker := false
+var _k_mounted := false
+var _k_harness := false
+var _k_deploys := false
+var _k_fac := ""                 # (d["faction"]: the kind's faction)
+
+
+func _kind_flags() -> void:
+	_k_worker = Defs.is_worker(kind)
+	_k_fac = String(Defs.UNITS[kind]["faction"]) if Defs.UNITS.has(kind) else ""
+	_k_mounted = Defs.FOOT.has(kind)
+	_k_harness = Defs.HARNESSED.has(kind)
+	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar"
 
 
 ## A worker that can hurt (Labourer, Grub) fights when told to ATTACK: an attack-move engages
@@ -914,11 +930,12 @@ func can_hit(e: Entity) -> bool:
 		return false            # (a Swift turning into a Ticking Owl)
 	if kind == Defs.NETTER and (not (e is Unit) or ((e as Unit).net_t > 0.0 and not (order == "attack" and e == order_target))):
 		return false            # (its net is for units, and one caught already only when it is told to)
-	if e.is_air() and d.get("ground_only", false):
+	var ea := e.is_air()        # (asked once: this runs for every target looked at)
+	if ea and d.get("ground_only", false):
 		return false
-	if not e.is_air() and d.get("air_only", false):
+	if not ea and d.get("air_only", false):
 		return false            # (buildings too)
-	if e.is_air():
+	if ea:
 		# the cannon's canister is the Crown's answer to massed flyers; round shot can't
 		if kind == "cannon":
 			return mode == "canister"
@@ -1531,6 +1548,7 @@ func _battery_blast() -> void:
 func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	game = g
 	kind = k
+	_kind_flags()
 	team = t
 	d = Defs.UNITS[k]
 	if Defs.ARMOURED.has(k) or k in ["cannon", "mortar"]:
@@ -1564,7 +1582,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 
 
 func _ready() -> void:
-	_sep_n = get_instance_id() % 3
+	_sep_n = serial % 3
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -1647,8 +1665,7 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 	if _ai_keeps_windup():
 		return
 	if not can_roll():
-		if team == game.human:
-			game.notify("No horse: HARNESS one to move it.")
+		game.tell(team, "No horse: HARNESS one to move it.")
 		return
 	# a Dragoon fighting on foot gets back on his horse to move (not with the enemy in range
 	# on an attack-move: he goes on shooting)
@@ -1697,7 +1714,7 @@ func cmd_attack(e: Entity) -> void:
 ## Units with two modes: moving (packed) and set up (deployed). The cannon limbers and
 ## unlimbers, the Tesla Cart packs and deploys, the Spore Mother uproots and roots.
 func deploys() -> bool:
-	return kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar"
+	return _k_deploys
 
 
 func switch_time() -> float:
@@ -1753,8 +1770,7 @@ func _cast(delta: float) -> Vector2:
 		return Vector2.ZERO
 	var why := game.spell_problem(self, cast_spell)
 	if why != "":
-		if team == game.human:
-			game.notify(why)
+		game.tell(team, why)
 		cmd_stop()
 		return Vector2.ZERO
 	if position.distance_to(cast_at) <= _spell_range():
@@ -1812,8 +1828,7 @@ func _tongue_order(delta: float) -> Vector2:
 		cmd_stop()
 		return Vector2.ZERO
 	if charge < float(Defs.TONGUE["cost"]):
-		if team == game.human:
-			game.notify("Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
+		game.tell(team, "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
 		cmd_stop()
 		return Vector2.ZERO
 	var dist: float = (e as Unit).position.distance_to(position)
@@ -1942,8 +1957,7 @@ func _ai_keeps_windup() -> bool:
 func cmd_pack() -> void:
 	if game.net_forward(self, "cmd_pack", []): return
 	if not harnessed and Defs.HARNESSED.has(kind):
-		if team == game.human:
-			game.notify("No horse to limber up: HARNESS one first.")
+		game.tell(team, "No horse to limber up: HARNESS one first.")
 		return
 	if deploys() and tesla_mode == "deployed":
 		tesla_mode = "packing"
@@ -2133,8 +2147,7 @@ func cmd_gather(site: Entity) -> void:
 		return
 	if b.haul_cap() > 0 and not b.crew.has(self) and b.haulers().size() >= b.haul_cap():
 		# (a Town Hall with all its haulers: the worker stands by it)
-		if team == game.human:
-			game.notify("That Town Hall has all its haulers.")
+		game.tell(team, "That Town Hall has all its haulers.")
 		cmd_move(b.center())
 		return
 	if b.barren():
@@ -2142,16 +2155,14 @@ func cmd_gather(site: Entity) -> void:
 		# workers under a "0/5" that looks like room): the nearest fresh site instead
 		var fresh := game.free_site(team, b.center())
 		if fresh == null:
-			if team == game.human:
-				game.notify("That %s's ground is spent: it yields nothing. Work fresh land." % b.d["name"])
+			game.tell(team, "That %s's ground is spent: it yields nothing. Work fresh land." % b.d["name"])
 			cmd_move(b.center())
 			return
 		b = fresh
 	if not b.crew.has(self) and b.crew.size() >= b.crew_max():
 		var alt := game.free_site(team, b.center())
 		if alt == null:
-			if team == game.human:
-				game.notify("That %s is fully crewed." % b.d["name"])
+			game.tell(team, "That %s is fully crewed." % b.d["name"])
 			cmd_move(b.center())
 			return
 		b = alt
@@ -2446,8 +2457,7 @@ func _board(delta: float) -> Vector2:
 		return Vector2.ZERO
 	_board_t += delta
 	if _board_t > float(Defs.DROPSHIP["give_up"]):
-		if team == game.human:
-			game.notify("They can't reach the balloon: it must hover over ground they can walk to.")
+		game.tell(team, "They can't reach the balloon: it must hover over ground they can walk to.")
 		cmd_stop()
 		return Vector2.ZERO
 	if position.distance_to(b.position) < float(Defs.DROPSHIP["board"]):
@@ -2907,7 +2917,7 @@ func _tick_unit(delta: float) -> void:
 		speed *= float(Defs.BLOAT["slow"])
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		CwUnits.pre_tick(self, delta)
-	if d["faction"] == "brood" and game.on_swamp(team, position):
+	if _k_fac == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
 		if hp < max_hp:
 			hp = minf(max_hp, hp + 2.0 * delta)
@@ -2950,7 +2960,7 @@ func _tick_unit(delta: float) -> void:
 			wind = float(Defs.OVERLOAD["after"])     # burnt out
 			if team == game.human:
 				game.float_text(position + Vector2(0, -40), "burnt out", Color(0.7, 0.75, 0.85))
-	if d["faction"] == "clockwork":
+	if _k_fac == "clockwork":
 		_field_t -= delta
 		if _field_t <= 0.0:
 			_field_t = 0.4
@@ -3241,7 +3251,7 @@ func _tick_unit(delta: float) -> void:
 		if kind == "balloon":
 			extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
 		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if d["faction"] == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
+			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
 		if key != _draw_key:
 			_draw_key = key
@@ -3893,7 +3903,7 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	# A swarm surrounds its prey: each Brood melee unit runs for its own side of the
 	# target, so one blast or cone can't catch them all.
 	if (kind == "raptor" or kind == "brute") and e is Unit:
-		var ang := float(get_instance_id() % 628) * 0.01
+		var ang := float(serial * 7919 % 628) * 0.01      # (its own side, spread round by its number)
 		goal = (e as Unit).position + Vector2.from_angle(ang) * ((e as Unit).radius + radius + 4.0)
 	if is_air() or (position.distance_to(goal) < 140.0 and game.line_clear(position, goal)):
 		path = PackedVector2Array()
@@ -4155,8 +4165,7 @@ func _repair(delta: float) -> Vector2:
 		var heal := minf(rate * delta, e.max_hp - e.hp)
 		var cost := heal * float(e.d.get("cost", 0)) * Defs.REPAIR_COST / maxf(e.max_hp, 1.0)
 		if game.players[team]["gold"] < 1:
-			if team == game.human:
-				game.notify("Not enough ore to repair.")
+			game.tell(team, "Not enough ore to repair.")
 			if not _next_order():
 				cmd_stop()
 			return Vector2.ZERO
@@ -4810,8 +4819,7 @@ func cmd_sacrifice() -> void:
 	target = null
 	order_target = game.nearest_of(position, team, "brood_pen")
 	if order_target == null:
-		if team == game.human:
-			game.notify("No Brood Pen to offer them at.")
+		game.tell(team, "No Brood Pen to offer them at.")
 		cmd_stop()
 
 
@@ -5610,8 +5618,7 @@ func die() -> void:
 		var dmg := maxf(float(Defs.WAGON["blast"]) * full, float(Defs.WAGON["blast_min"]))
 		if game.mlog:
 			game.mlog.add("%s's Powder Wagon exploded (%d shots aboard)" % [game.mlog.who(team), int(powder)])
-		if team == game.human:
-			game.notify("Your Powder Wagon blew up!", true)
+		game.tell(team, "Your Powder Wagon blew up!", true)
 		powder = 0.0
 		game.powder_blast(self, position, dmg, float(Defs.WAGON["radius"]) * (0.85 + 0.15 * full), true)
 
@@ -7090,6 +7097,9 @@ func morph(k: String) -> void:
 	var frac := hp / maxf(max_hp, 1.0)
 	var arm := armoured
 	kind = k
+	_kind_flags()
+	if k == "tesla_cart" or k == "tesla_loco":
+		game.tesla_made = true       # (Game.in_field looks for them from now on)
 	d = Defs.UNITS[k].duplicate(true)
 	armoured = false
 	armor = float(d["armor"])

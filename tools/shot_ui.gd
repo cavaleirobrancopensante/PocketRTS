@@ -59,8 +59,12 @@ func _run() -> void:
 	var us = g.army(g.human) + g.workers(g.human)
 	g.set_selection(us)
 	await _snap("7_hud_units")
+	g.hud.toggle_menu(true)
+	await _snap("8_menu")
 	g.hud.set_paused(true)
-	await _snap("8_pause")
+	await _snap("8_menu_paused")
+	g.hud.toggle_menu(false)
+	await _snap("8_paused")
 	g.hud.set_paused(false)
 	g.over = true
 	g._sample_stats()

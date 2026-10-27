@@ -319,6 +319,7 @@ func _online() -> void:
 	var sg := NetSession.attach(gu, NetLink.new(), false, 1, {})
 	sh.set_process(false)
 	var sync := func() -> void:
+		sh.snap_n = 1      # (a keyframe, every unit's row: since 0.14.44 rows fogged for the guest wait for one, and this checks the values, not the culling)
 		var m := NetSnapshot.build(sh)
 		NetSnapshot.apply(sg, NetCodec.unpack(NetCodec.pack(m)))
 	var hall := U.hall(h, 0)

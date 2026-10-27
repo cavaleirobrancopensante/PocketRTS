@@ -30,7 +30,7 @@ const HELP := {
 
 Each faction builds its own economy. Every Town Hall, Burrow or Clocktower allows only so many economy structures nearby, and every faction's land runs out in time, so expanding to a new hall spot is how you grow, and the expansions are what you fight over.
 
-Efficiency: over each of your economy buildings a small bar shows how well it's working right now, as a %: its workers against its full crew, times what's left of its base's reserve (soil, saltpetre, ore or Burrow ground: 100% fresh, down to what spent land still pays). Green is 80% or more, then yellow, then red. Select the building to see the breakdown.
+Efficiency: over each of your economy buildings a small bar shows how well it's working right now, as a %: its workers against its full crew, times what's left of its base's reserve (soil, saltpetre, ore or a Feeding Pit's ground: 100% fresh, down to what spent land still pays). Green is 80% or more, then yellow, then red. Select the building to see the breakdown.
 
 Veterancy: every kill gives a unit +1% damage (up to +50%), and it shows on the unit. A Crown soldier's hat or helmet trim is black, turns silver at 25 kills and gold at 50; a Brood creature's skin turns amber at 25 kills and obsidian black at 50.
 
@@ -66,11 +66,11 @@ Foundry: Field Cannons, Mortars, Powder Wagons and Observation Balloons: only a 
 Church: one Missionary, who bandages wounded soldiers back to full health and raises fallen Musketeers, Horsemen and Officers from their bodies by himself (6 s): back at half health under the cross for 30 s; fall again under the cross and he's gone for good. He goes to bodies first, the most worthwhile (dearer soldiers and veterans) and soonest lost, nearer ones before far ones, skipping any he can't reach in time; then the worst-hurt wounded by their worth. Two Missionaries never go for the same one. The Missionary can't be hurt unless he wanders near enemy buildings.""",
 	"BROOD": """THE BROOD: swarm, swamp and hunger.
 
-Grubs haul food from Feeding Pits to your CAPITAL, your first Burrow (it falls: the next oldest takes over); no other Burrow takes food, they only lay eggs. A load pays for its trip, and a grub earns more the farther its pit is from the capital (about 30% more from 18-22 tiles out than right beside it), and a far pit takes more grubs (5, +1 for every 4 tiles beyond 6, up to 12). Pits must grow on swamp joined to the capital's: Clutch Mounds (your supply building) spread it, and that is how far your pits can reach. A Clutch Mound is built by a grub like any Brood building, but only on swamp joined to a Burrow's swamp (its swamp reaches 10 tiles); plant it forward and guard it, because if it falls the swamp only it held shrinks back. No limit on pits, 1 Brood Pen per Burrow.
+Grubs haul food from Feeding Pits to your CAPITAL, your first Burrow (it falls: the next oldest takes over); no other Burrow takes food, they only lay eggs. A load pays for its trip, and a grub earns more the farther its pit is from the capital (about 30% more from 18-22 tiles out than right beside it), and a far pit takes more grubs (6, +1 for every 4 tiles beyond 6, up to 12). Pits must grow on swamp joined to the capital's: Clutch Mounds (your supply building) spread it, and that is how far your pits can reach. A Clutch Mound is built by a grub like any Brood building, but only on swamp joined to a Burrow's swamp (its swamp reaches 10 tiles); plant it forward and guard it, because if it falls the swamp only it held shrinks back. No count limit on pits (only their ground circles keep them apart), 1 Brood Pen per Burrow.
 
 The Burrow grows: upgrade it on its card to a Warren (150 biomass, 40 s: up to 10 eggs, 2000 health), then to a Broodmound (250 biomass + 50 essence, 60 s, needs a Gorge Pit: up to 15 eggs, 2600 health, armour 2). It keeps laying eggs, hatching and taking food while it grows; STOP UPGRADE pays it all back.
 
-Ground: each Burrow's ground holds 10,500 biomass that its pits draw out load by load (shown as "Ground: %" on the Burrow and its pits). Spent ground turns the pits grey-brown and they yield only a third: grow a new Burrow on fresh ground.
+Ground: every Feeding Pit has its own ground, 3,000 biomass that its grubs draw out load by load (shown as "Ground: %" on the pit), in a circle 5 tiles round it. Your pits' circles may not overlap (their centres stay 10 tiles apart: about 4 or 5 pits on a main plateau); while you place a pit you see every circle, and the new one is green where it fits and red where it would overlap. Spent ground turns a pit grey-brown and it yields nothing: grow a new pit on fresh ground, farther out on your swamp. The ground belongs to the land: a pit that dies leaves its circle as old ground with what was left, and a new pit over old ground takes over the smallest amount left there. The Burrows have no ground.
 
 Essence: grubs harvest the fallen, friend or foe: they wrap a body on the field and carry it home (2 essence for each point of its supply, plus 1 for each kill it made, up to 50). SACRIFICE (K) sends the selected creatures (not grubs) to the nearest Brood Pen to be offered up: 35% of each one's biomass cost as essence (9 a Raptor). Spitters, Bloaters, Brutes, Skywings, Spore Mothers, Mist Toads and Miasma cost essence.
 
@@ -1798,6 +1798,13 @@ func _notification(what: int) -> void:
 		DirAccess.remove_absolute(RUNNING)
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		_mark_running("resumed" if game == null else "resumed a match")
+	# online: the app put away (or back): the host pauses the match for everyone meanwhile (NetSession.set_hidden;
+	# on the web the page's visibility says it)
+	if game and is_instance_valid(game) and game.net and not OS.has_feature("web"):
+		if what == NOTIFICATION_APPLICATION_PAUSED:
+			game.net.set_hidden(true)
+		elif what == NOTIFICATION_APPLICATION_RESUMED:
+			game.net.set_hidden(false)
 
 
 func _process(delta: float) -> void:

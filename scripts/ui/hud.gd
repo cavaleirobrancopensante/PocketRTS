@@ -164,7 +164,11 @@ func _tick_hud(delta: float) -> void:
 		_go_t = maxf(_go_t - delta, 0.0)
 	if not _alt_press.is_empty() and not _alt_press["done"] and Time.get_ticks_msec() - int(_alt_press["t"]) > 450:
 		_alt_press["done"] = true
+		if game:
+			game.input_cmd = true
 		(_alt_press["b"]["alt"] as Callable).call()
+		if game:
+			game.input_cmd = false
 		Sfx.play_any(["ui/click", "click"])
 	if game == null:
 		return
@@ -281,10 +285,10 @@ func _draw_layer(l: HudLayer) -> void:
 		"chat":
 			_draw_chat()
 		"tooltip":
-			if not paused:
+			if not paused and not menu_open:
 				_draw_tip()
 		"pause":
-			if paused:
+			if paused or menu_open:
 				_draw_pause()
 	_ci = self
 	Prof.add("hud/" + l.fn, p0)
@@ -314,6 +318,9 @@ func _layer_sig(n: String) -> Array:
 						vals.append(_res_line(t))
 			if not game.demo:
 				vals.append(game.apm())
+			if game.net:
+				var pm := game.net.ping_shown()
+				vals.append_array([pm / 5 if pm < 1000 else pm / 100, game.net.ping_grade(), game.net.waiting])
 			_top_vals = vals
 			return vals + [menu_rect().has_point(m)]
 		"map view":
@@ -357,7 +364,7 @@ func _layer_sig(n: String) -> Array:
 			return [_card_look]
 		"rest":
 			var br := controls.box_rect()
-			var vals: Array = [_vs(), br, controls.mode, controls.cast_spell, controls.place_kind, controls.line_from, help_mode, paused, game.demo and game.spectator == null,
+			var vals: Array = [_vs(), br, controls.mode, controls.cast_spell, controls.place_kind, controls.line_from, help_mode, paused, menu_open, game.demo and game.spectator == null,
 				game.line_net.overlay_on, controls.line_tool.end if controls.line_tool != null else null, controls.line_tool.start if controls.line_tool != null else null]
 			if _msg_t > 0.0:
 				vals.append_array([_msg, int(minf(_msg_t, 1.0) * 60.0)])
@@ -377,18 +384,24 @@ func _layer_sig(n: String) -> Array:
 			return [_vs(), chat_typing, chat_buf, (now / 500) % 2 if chat_typing else 0, quick_open, ban, _banner,
 				vl.map(func(x: Array) -> Array: return [x[0]["text"], int(float(x[1]) * 10.0)]), chat_log_rect(), paused]
 		"tooltip":
-			if _tip.is_empty() or paused:
+			if _tip.is_empty() or paused or menu_open:
 				return []
 			return [_vs(), _tip.hash(), _tip_at]
 		"pause":
-			if not paused:
+			if not paused and not menu_open:
 				return []
 			var hv := -1
-			var pbs := _pause_buttons()
+			var pbs := _menu_buttons() if menu_open else _paused_buttons()
 			for i in pbs.size():
 				if (pbs[i]["rect"] as Rect2).has_point(m):
 					hv = i
-			return [_vs(), hv, pbs.map(func(b: Dictionary) -> String: return b["label"])]
+			var ms: Array = []
+			if menu_open and _music_shown():
+				ms = music.sig()
+				ms.append(music.rect.has_point(m) and m.x >= 0.0)
+				ms.append(Vector2i(m / 4.0) if music.rect.has_point(m) else Vector2i.ZERO)
+			var net_s: Array = [_pause_who(), int(game.net.pause_t), game.net.my_pauses()] if game.net else []
+			return [_vs(), menu_open, paused, _confirm, countdown > 0.0, hv, pbs.map(func(b: Dictionary) -> String: return b["label"]), ms, net_s]
 	return []
 
 
@@ -480,7 +493,7 @@ func _over_sandbox() -> bool:
 func _hud_has(p: Vector2) -> bool:
 	if game.over and not game.map_view:
 		return false        # the end screen takes the clicks
-	if paused or quick_open:
+	if paused or menu_open or quick_open:
 		return true
 	if game.spectating() and (view_open or view_rect().has_point(p) or prod_rect().has_point(p)):
 		return true         # (an open list takes the next press anywhere: it closes it)
@@ -495,9 +508,27 @@ func _hud_has(p: Vector2) -> bool:
 # ------------------------------------------------------------------ input
 
 func _input(event: InputEvent) -> void:
+	if game == null:
+		return
+	game.input_cmd = true          # (the player's own orders: online, with the same delay for both, they wait)
+	_on_input(event)
+	if is_instance_valid(game):
+		game.input_cmd = false
+
+
+func _on_input(event: InputEvent) -> void:
 	if game == null or (game.over and not game.map_view):
 		return
 	if event is InputEventKey and _chat_input(event as InputEventKey):
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo \
+			and (event as InputEventKey).keycode == KEY_ESCAPE and menu_open:
+		if _confirm != "":
+			_confirm = ""
+			_sig.erase("pause")
+		else:
+			toggle_menu(false)
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
@@ -561,7 +592,7 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and Settings.pc() and _mouse_hud:
 		var mm := event as InputEventMouseMotion
-		if paused:
+		if menu_open:
 			_slide_drag(mm.position)
 		elif mini_rect().has_point(mm.position):
 			_minimap_to(mm.position)
@@ -569,7 +600,7 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		var e := event as InputEventScreenDrag
 		if _hud_touches.has(e.index):
-			if paused:
+			if menu_open:
 				_slide_drag(e.position)
 			elif mini_rect().has_point(e.position):
 				_minimap_to(e.position)
@@ -577,18 +608,25 @@ func _input(event: InputEvent) -> void:
 
 
 func _press(p: Vector2) -> void:
-	if paused:
-		for b in _pause_buttons():
-			if (b["rect"] as Rect2).has_point(p):
-				if b.has("slider"):
-					_slide(b, p)
-				else:
-					b["cb"].call()
+	if menu_open:
+		_menu_press(p)
 		return
 	if game.over and not game.map_view:
 		return
 	if quick_open:
 		_quick_press(p)
+		return
+	if paused:
+		# paused, the menu closed: RESUME, and the top bar's MENU and chat buttons; the rest waits
+		for b in _paused_buttons() + [{"rect": menu_rect(), "cb": func() -> void: toggle_menu(true), "enabled": true},
+				{"rect": chat_btn_rect() if _chat_button_on() else Rect2(), "cb": func() -> void: quick_open = true, "enabled": true}]:
+			if (b["rect"] as Rect2).has_point(p):
+				if b.get("enabled", true):
+					b["cb"].call()
+					Sfx.play_any(["ui/click", "click"])
+				elif b.has("why"):
+					toast(b["why"])
+				return
 		return
 	if game.spectating() and not view_open and prod_rect().has_point(p):
 		prod_open = not prod_open
@@ -626,6 +664,29 @@ func _press(p: Vector2) -> void:
 			elif b.has("why"):
 				toast(b["why"])
 			return
+
+
+## A press while the menu is up: its buttons and sliders, the music player; anywhere off the panel closes it.
+func _menu_press(p: Vector2) -> void:
+	for b in _menu_buttons():
+		if (b["rect"] as Rect2).has_point(p):
+			if b.has("slider"):
+				_slide(b, p)
+			elif b.get("enabled", true):
+				b["cb"].call()
+				Sfx.play_any(["ui/click", "click"])
+			elif b.has("why"):
+				toast(b["why"])
+			_sig.erase("pause")
+			return
+	if _music_shown():
+		music.layout(_music_panel_rect())
+		if music.press(p):
+			_sig.erase("pause")
+			return
+	if not menu_panel_rect().has_point(p):
+		toggle_menu(false)
+		Sfx.play_any(["ui/back", "click"])
 
 
 func _release(p: Vector2) -> void:
@@ -1609,7 +1670,7 @@ func _with_keys(items: Array) -> Array:
 
 ## A key pressed on the keyboard: run the card button with that letter. True if used.
 func hotkey(code: int, repeat := false) -> bool:
-	if paused or game.over:
+	if paused or menu_open or game.over:
 		return false
 	if code == KEY_ESCAPE and view_open:
 		view_open = false
@@ -1727,31 +1788,143 @@ func _confirm_line(k: String, queued := false) -> void:
 	controls.cancel_mode()
 
 
-# ------------------------------------------------------------------ pause
+# ------------------------------------------------------------------ menu and pause
+## MENU (top right) opens the menu over the match, which runs on behind it: PAUSE / RESUME, the volume sliders, the
+## music player (MenuMusic: NEXT and every piece to pick), SURRENDER and QUIT TO MENU (online both asked twice),
+## BACK. PAUSE stops the match; online either player can pause, for both (NetSession: PAUSES each, PAUSE_MAX seconds
+## at most, then a 3-2-1). While paused, with the menu closed, a small panel says so (online: who) with RESUME.
 
-func _pause_buttons() -> Array:
-	var vs := _vs()
-	var list: Array = [
-		{"label": "BACK" if game.net else "RESUME", "cb": func() -> void: set_paused(false)},
+var menu_open := false
+var _confirm := ""                  # the menu asks first: "surrender" or "quit"
+var music := MenuMusic.new()
+const MENU_W := 320.0
+const MUSIC_W := 300.0
+
+
+func toggle_menu(open: bool) -> void:
+	menu_open = open
+	_confirm = ""
+	if open:
+		close_chat()
+		quick_open = false
+		help_mode = false
+	_sig.erase("pause")
+	_redraw_t = 0.0
+
+
+## The music player has a column of its own beside the buttons when the screen is wide enough.
+func _music_shown() -> bool:
+	return _vs().x >= MENU_W + MUSIC_W + 100.0 and _confirm == ""
+
+
+func _menu_list() -> Array:
+	if _confirm != "":
+		var yes := "YES, SURRENDER" if _confirm == "surrender" else "YES, LEAVE"
+		return [
+			{"label": yes, "bad": true, "cb": func() -> void:
+				var what := _confirm
+				toggle_menu(false)
+				if what == "surrender":
+					game.player_surrender()
+				else:
+					set_paused(false)
+					quit_requested.emit()},
+			{"label": "NO", "cb": func() -> void:
+				_confirm = ""
+				_sig.erase("pause")},
+		]
+	var list: Array = [_pause_item(),
 		{"label": "MUSIC", "slider": "music", "cb": func() -> void: pass},
 		{"label": "SOUND", "slider": "sound", "cb": func() -> void: pass},
 		{"label": "AMBIENCE", "slider": "ambience", "cb": func() -> void: pass},
 		{"label": "MINIMAP", "slider": "minimap", "cb": func() -> void: pass},
-		{"label": "SURRENDER", "cb": func() -> void:
-			set_paused(false)
-			game.player_surrender()},
+		{"label": "SURRENDER", "bad": true, "cb": func() -> void:
+			_confirm = "surrender"
+			_sig.erase("pause")},
 		{"label": "QUIT TO MENU", "cb": func() -> void:
+			if game.net and not game.over:
+				_confirm = "quit"          # (online: leaving ends it for the friend too, or hands your side to a computer)
+				_sig.erase("pause")
+				return
+			toggle_menu(false)
 			set_paused(false)
 			quit_requested.emit()},
+		{"label": "BACK TO THE MATCH", "cb": func() -> void: toggle_menu(false)},
 	]
-	if game.demo:
+	if game.demo or game.over:
 		list = list.filter(func(b: Dictionary) -> bool: return b["label"] != "SURRENDER")    # watching computers: nobody of yours to surrender
+	return list
+
+
+## PAUSE (RESUME when paused). Online: how many pauses are left, and nothing to resume while the host is away.
+func _pause_item() -> Dictionary:
+	var net := game.net
+	if paused:
+		var it := {"label": "RESUME", "cb": func() -> void: set_paused(false)}
+		if net and net.away:
+			it["enabled"] = false
+			it["why"] = "The host's game is in the background: the match goes on when it is back."
+		return it
+	var label := "PAUSE"
+	var it2 := {"label": label, "cb": func() -> void: set_paused(true)}
+	if net:
+		it2["label"] = "PAUSE  (%d LEFT)" % net.my_pauses()
+		if net.my_pauses() <= 0:
+			it2["enabled"] = false
+			it2["why"] = "No pauses left."
+	return it2
+
+
+func _menu_pitch(n: int) -> float:
+	return clampf((_vs().y - 150.0) / float(maxi(n, 1)), 46.0, 66.0)
+
+
+## The whole menu panel (the music column too, when there is room).
+func menu_panel_rect() -> Rect2:
+	var vs := _vs()
+	var n := _menu_list().size()
+	var h := 92.0 + n * _menu_pitch(n) + 10.0
+	if _confirm != "":
+		h += 60.0
+	var w := MENU_W + 40.0 + (MUSIC_W + 16.0 if _music_shown() else 0.0)
+	return Rect2(vs.x * 0.5 - w * 0.5, maxf(6.0, vs.y * 0.5 - h * 0.5), w, h)
+
+
+## The menu's buttons, with their rects (the left column).
+func _menu_buttons() -> Array:
+	var list := _menu_list()
+	var pr := menu_panel_rect()
+	var pitch := _menu_pitch(list.size())
+	var y0 := pr.position.y + 92.0 + (60.0 if _confirm != "" else 0.0)
 	for b in list:
 		if b.has("slider"):
 			b["label"] = "%s  %d%%" % [String(b["label"]).split("  ")[0], int(round(_slider_value(b["slider"]) * 100.0))]
 	for i in list.size():
-		list[i]["rect"] = Rect2(vs.x * 0.5 - 160, vs.y * 0.5 - list.size() * 34 + 40 + i * 68, 320, 58)
+		list[i]["rect"] = Rect2(pr.position.x + 20.0, y0 + i * pitch, MENU_W, pitch - 8.0)
 	return list
+
+
+func _music_panel_rect() -> Rect2:
+	var pr := menu_panel_rect()
+	return Rect2(pr.position.x + 20.0 + MENU_W + 16.0, pr.position.y + 84.0, MUSIC_W, pr.size.y - 84.0 - 12.0)
+
+
+## The panel while paused with the menu closed: who paused, RESUME.
+func _paused_rect() -> Rect2:
+	var vs := _vs()
+	return Rect2(vs.x * 0.5 - 210.0, maxf(top_rect().end.y + 70.0, vs.y * 0.2), 420.0, 178.0)
+
+
+func _paused_buttons() -> Array:
+	var r := _paused_rect()
+	var it := _pause_item()
+	it["rect"] = Rect2(r.get_center().x - 120.0, r.end.y - 66.0, 240.0, 52.0)
+	return [it]
+
+
+## Who paused, for the panels ("Paused by Pink"); "" in a match on this machine.
+func _pause_who() -> String:
+	return game.net.pause_text() if game.net else ""
 
 
 func _slider_value(which: String) -> float:
@@ -1774,7 +1947,9 @@ func _slide(b: Dictionary, p: Vector2) -> void:
 
 
 func _slide_drag(p: Vector2) -> void:
-	for b in _pause_buttons():
+	if not menu_open:
+		return
+	for b in _menu_buttons():
 		if b.has("slider") and (b["rect"] as Rect2).grow_individual(0, 6, 0, 6).has_point(p):
 			_slide(b, p)
 
@@ -1873,13 +2048,13 @@ func _chat_input(ke: InputEventKey) -> bool:
 	if not chat_typing:
 		if ke.pressed and not ke.echo and (ke.keycode == KEY_ENTER or ke.keycode == KEY_KP_ENTER) \
 				and not ke.alt_pressed and not ke.ctrl_pressed and not ke.meta_pressed \
-				and not paused and countdown <= 0.0 and not game.spectating():
-			_open_chat()
+				and not menu_open and (countdown <= 0.0 or paused or game.net != null) and not game.spectating():
+			_open_chat()           # (online, paused or counting down: a word to the other player still goes)
 			return true
 		return false
 	if not ke.pressed:
 		return true
-	if paused:
+	if menu_open:
 		close_chat()
 		return false
 	match ke.keycode:
@@ -2005,17 +2180,33 @@ func _draw_chat() -> void:
 			_text(UiStyle.bold_font(), (rs[i] as Rect2).get_center() + Vector2(0, 8), String(Chat.QUICK[i][0]), 23, UiStyle.TEXT, 1)
 
 
+## PAUSE / RESUME. Online the host decides (NetSession.request_pause): its game stops for everyone, and both screens
+## hear it back through net_paused.
 func set_paused(v: bool) -> void:
 	if game and game.net:
-		# online: the MENU opens over the running match (nothing pauses), so SURRENDER and QUIT are always reachable
-		if v and not paused:
-			toast("Online: the match keeps running.", false)
-		paused = v
+		if v != paused and not game.over:
+			game.net.request_pause(v)
 		return
 	if v != paused and game and not game.demo:
 		Sfx.announce(game.faction_of(game.human), "paused" if v else "resumed", 1.0)
 	paused = v
 	get_tree().paused = v
+	_sig.erase("pause")
+
+
+## Online: the match was paused (by a player, or the host is away) or goes on again, after a 3, 2, 1.
+func net_paused(on: bool) -> void:
+	_sig.erase("pause")
+	_sig.erase("top")
+	if on == paused:
+		return
+	paused = on
+	if game and not game.demo:
+		Sfx.announce(game.faction_of(game.human), "paused" if on else "resumed", 1.0)
+	if on:
+		get_tree().paused = true
+	else:
+		start_countdown(NetSession.RESUME_COUNT)
 
 
 # ------------------------------------------------------------------ drawing
@@ -2095,9 +2286,20 @@ func _draw_top(font: Font) -> void:
 			_text(UiStyle.bold_font(), Vector2(28, 22 + n * 20), _res_line(t), 13, UiStyle.TEXT)
 		x = 8.0
 	var secs := int(game.clock)
-	var clock_r := Rect2(maxf(vs.x * 0.5 - 44, x), 4, 88, 30)
+	var clock_x := maxf(vs.x * 0.5 - 44, x)
+	var right_btns := vs.x
+	if not Settings.pc():
+		right_btns = help_rect().position.x if _help_on() else drag_rect().position.x
+		if _chat_button_on():
+			right_btns = minf(right_btns, chat_btn_rect().position.x)
+	if game.net and maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0) + 88.0 < right_btns - 4.0:
+		clock_x = maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0)     # (online: room left of the clock for the ping; else under it)
+	var clock_r := Rect2(clock_x, 4, 88, 30)
+	_clock_end = clock_r.end.x
 	UiStyle.draw_panel(_ci, clock_r, acc, 0.8)
 	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
+	if game.net:
+		_draw_ping(clock_r, x)
 	if not game.demo:
 		var apm_t := "APM %d" % game.apm()
 		var apm_w := UiStyle.bold_font().get_string_size(apm_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
@@ -2126,6 +2328,42 @@ func _draw_top(font: Font) -> void:
 	_text(UiStyle.bold_font(), mr.get_center() + Vector2(0, 6), "MENU", 16, UiStyle.TEXT, 1)
 	if game.demo and game.spectator == null:
 		_text(font, Vector2(vs.x * 0.5, 60), "AI vs AI", 18, Color(1, 1, 1, 0.6), 1)
+
+
+const PING_COLS := [Color(0.45, 0.95, 0.45), Color(1.0, 0.85, 0.3), Color(1.0, 0.35, 0.3)]
+
+
+## Online: the round trip to the other player left of the clock, green / yellow / red (NetSession.ping_grade; red and
+## climbing while an answer is late), and under the top bar "Waiting for the host..." while no picture comes.
+func _ping_txt() -> String:
+	var ms := game.net.ping_shown()
+	return "-- ms" if ms < 0 else ("%d ms" % ms if ms < 10000 else "%d s" % (ms / 1000))
+
+
+## The ping box's width (as wide as "999 ms", so the clock beside it doesn't move as the number changes).
+func _ping_w() -> float:
+	return UiStyle.bold_font().get_string_size("999 ms", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 28.0
+
+
+func _draw_ping(clock_r: Rect2, left: float) -> void:
+	var net := game.net
+	var txt := _ping_txt()
+	var col: Color = PING_COLS[net.ping_grade()]
+	var font := UiStyle.bold_font()
+	var w := maxf(_ping_w(), font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 28.0)
+	var r := Rect2(clock_r.position.x - 6.0 - w, 8, w, 22)
+	if r.position.x < left + 2.0:
+		r = Rect2(clock_r.get_center().x - w * 0.5, clock_r.end.y + 3.0, w, 22)     # (no room beside it: under the clock)
+	UiStyle.draw_panel(_ci, r, Color(0, 0, 0, 0), 0.7)
+	_ci.draw_circle(r.position + Vector2(11, 11), 4.5, Color(0, 0, 0, 0.6))
+	_ci.draw_circle(r.position + Vector2(11, 11), 3.5, col)
+	_ci.draw_string(font, Vector2(r.position.x + 20, r.position.y + 16), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+	if not net.is_host and net.waiting and not game.over:
+		var wt := Loc.t("Waiting for the host...")
+		var ww := font.get_string_size(wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x + 36.0
+		var br := Rect2(_vs().x * 0.5 - ww * 0.5, top_rect().end.y + 8.0, ww, 32)
+		UiStyle.box(Color(0.12, 0.05, 0.04, 0.88), Color(1.0, 0.35, 0.3, 0.8), 2, 14, 0.0).draw(_ci.get_canvas_item(), br)
+		_text(font, Vector2(br.get_center().x, br.position.y + 22), wt, 18, Color(1.0, 0.75, 0.65), 1)
 
 
 ## Over the panels: the selection box, what a chosen command waits for, the message, the
@@ -2171,23 +2409,52 @@ func _draw_rest(font: Font) -> void:
 
 func _draw_pause() -> void:
 	var vs := _vs()
-	if paused:
+	var hv := _mouse() if Settings.pc() else Vector2(-1, -1)
+	if menu_open:
 		# see-through: the match stays visible behind (for screenshots and a look at the field)
-		_ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.12))
-		var pbs := _pause_buttons()
-		var top_y: float = (pbs[0]["rect"] as Rect2).position.y
-		var last: Rect2 = pbs[pbs.size() - 1]["rect"]
-		UiStyle.draw_panel(_ci, Rect2(vs.x * 0.5 - 200, top_y - 96, 400, last.end.y - top_y + 120), UiStyle.accent(game.faction_of(game.human)), 0.3)
-		_text(UiStyle.title_font(), Vector2(vs.x * 0.5, top_y - 34), "PAUSED", 44, UiStyle.TRIM, 1)
-		var hv := _mouse() if Settings.pc() else Vector2(-1, -1)
-		for b in pbs:
+		_ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.12 if not paused else 0.2))
+		var pr := menu_panel_rect()
+		UiStyle.draw_panel(_ci, pr, UiStyle.accent(game.faction_of(game.human)), 0.45)
+		var cx := pr.position.x + 20.0 + MENU_W * 0.5
+		var title := "PAUSED" if paused else "MENU"
+		_text(UiStyle.title_font(), Vector2(cx, pr.position.y + 50), title, 40, UiStyle.TRIM, 1)
+		var sub := _pause_who() if paused else ""
+		if sub != "":
+			_text(UiStyle.bold_font(), Vector2(cx, pr.position.y + 76), sub, 16, UiStyle.TEXT, 1)
+		if _confirm != "":
+			var q := "Give up this match? Your buildings fall." if _confirm == "surrender" else (
+				"Leave the match? It ends for your friend too." if game.net and game.net.is_host else "Leave the match? A computer plays your side.")
+			_text(UiStyle.bold_font(), Vector2(cx, pr.position.y + 120), q, 17, UiStyle.TEXT, 1)
+		for b in _menu_buttons():
 			var r: Rect2 = b["rect"]
-			UiStyle.draw_button(_ci, r, r.has_point(hv), false, true, 0.45)
+			var on: bool = b.get("enabled", true)
+			UiStyle.draw_button(_ci, r, r.has_point(hv) and on, false, on, 0.45)
 			if b.has("slider"):
 				var vv: float = _slider_value(b["slider"])
 				_ci.draw_rect(Rect2(r.position.x + 14, r.end.y - 11, (r.size.x - 28) * vv, 4), UiStyle.TRIM)
 				_ci.draw_rect(Rect2(r.position.x + 14 + (r.size.x - 28) * vv - 2, r.end.y - 14, 4, 10), UiStyle.TEXT)
-			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 22, UiStyle.BAD if b["label"] == "SURRENDER" else UiStyle.TEXT, 1)
+			var col: Color = UiStyle.BAD if b.get("bad", false) else UiStyle.TEXT
+			if not on:
+				col = Color(col, 0.45)
+			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 21, col, 1)
+		if _music_shown():
+			music.layout(_music_panel_rect())
+			music.draw(self, _ci, hv)
+		return
+	if paused and countdown <= 0.0:
+		var r2 := _paused_rect()
+		UiStyle.draw_panel(_ci, r2, UiStyle.accent(game.faction_of(game.human)), 0.75)
+		_text(UiStyle.title_font(), Vector2(r2.get_center().x, r2.position.y + 46), "PAUSED", 38, UiStyle.TRIM, 1)
+		var who := _pause_who()
+		if game.net and game.net.pause_by >= 0 and not game.net.away:
+			who += "  ·  %d s" % int(game.net.pause_t)
+		if who != "":
+			_text(UiStyle.bold_font(), Vector2(r2.get_center().x, r2.position.y + 78), who, 17, UiStyle.TEXT, 1)
+		for b in _paused_buttons():
+			var r: Rect2 = b["rect"]
+			var on: bool = b.get("enabled", true)
+			UiStyle.draw_button(_ci, r, r.has_point(hv) and on, false, on, 0.6)
+			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 21, UiStyle.TEXT if on else Color(UiStyle.TEXT, 0.45), 1)
 
 
 func _draw_minimap() -> void:
@@ -2249,6 +2516,9 @@ func _zoom_alpha() -> float:
 
 
 ## The small zoom gauge, in the top bar left of the menu buttons (not on the minimap).
+var _clock_end := 0.0        # the top bar's clock's right edge (the zoom gauge keeps clear of it)
+
+
 func zoom_rect() -> Rect2:
 	var x := _vs().x - 96 - 128
 	if _chat_button_on():
@@ -2262,6 +2532,8 @@ func _draw_zoom() -> void:
 	var z: float = game.camera.zoom.x
 	var a := _zoom_alpha()
 	var box := zoom_rect()
+	if box.position.x < _clock_end + 4.0:
+		return          # (a crowded top bar, online on a phone: the clock and the ping keep their room, the gauge goes)
 	_ci.draw_rect(box, Color(0, 0, 0, 0.55 * a))
 	var bar := Rect2(box.position + Vector2(40, 7), Vector2(46, 4))
 	_ci.draw_rect(bar, Color(1, 1, 1, 0.25 * a))
@@ -2560,7 +2832,8 @@ func _draw_panel(font: Font) -> void:
 				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
 			elif bb.kind == "feeding_pit":
 				var gl := bb.soil_left()
-				info = "Each load is worth %.1f%s" % [game.load_value(bb), " · spent ground: a third; grow a Burrow on fresh ground" if gl <= 0.0 else ""]
+				info = "Ground: %d%% (%d biomass)%s · each load is worth %.1f" % [int(round(gl * 100)), int(bb.soil),
+					" spent: it yields nothing, grow a new pit on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else ""), game.load_value(bb)]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
 				var coal2 := bb.soil_left()
@@ -2588,9 +2861,7 @@ func _draw_panel(font: Font) -> void:
 				info = "SACRIFICE Brood creatures here: %d%% of their biomass as essence (a Raptor: %d)." % [int(round(Defs.SACRIFICE * 100.0)), Game.sacrifice_value("raptor")]
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
 				var nxt := "" if bb.eggs >= bb.eggs_max() else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
-				var gl := bb.soil_left()
-				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, bb.eggs_max(), nxt, int(round(gl * 100)), int(bb.soil),
-					" spent: pits yield a third, grow a Burrow on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
+				info = "Eggs: %d / %d%s" % [bb.eggs, bb.eggs_max(), nxt]
 				if bb.upgrade_t >= 0.0 and not bb.next_level().is_empty():
 					info += " · Growing into a %s: %d s left" % [bb.next_level()["name"], int(ceil(float(bb.next_level()["time"]) - bb.upgrade_t))]
 			if bb.kind == Defs.CW_TECH and bb.built and not bb.dead and Defs.gear_mode:
@@ -2673,12 +2944,24 @@ func _draw_panel(font: Font) -> void:
 		else:
 			info = Loc.t(info)
 		eff_txt = Loc.t(eff_txt)
-		var ifs := 15          # (a longer translation shrinks to fit the card)
-		while ifs > 10 and font.get_string_size(eff_txt + ("  ·  " if eff_txt != "" else "") + info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > r.size.x - 130:
-			ifs -= 1
-		var iroom: float = r.size.x - 110 - (font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x if eff_txt != "" else 0.0)
-		while info.length() > 12 and font.get_string_size(info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > iroom:
-			info = info.left(info.length() - 2).strip_edges() + "…"      # (still too long for the card: cut it)
+		# (the fitting measures the line again and again, a character at a time: worked out once
+		# for each text and card width, it was most of the panel's cost, drawn 20 times a second)
+		var fit_key := "%s|%s|%d" % [eff_txt, info, int(r.size.x)]
+		var fit: Array = _fit_memo.get(fit_key, [])
+		if fit.is_empty():
+			var ifs := 15          # (a longer translation shrinks to fit the card)
+			while ifs > 10 and font.get_string_size(eff_txt + ("  ·  " if eff_txt != "" else "") + info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > r.size.x - 130:
+				ifs -= 1
+			var iroom: float = r.size.x - 110 - (font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x if eff_txt != "" else 0.0)
+			var cut := info
+			while cut.length() > 12 and font.get_string_size(cut, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > iroom:
+				cut = cut.left(cut.length() - 2).strip_edges() + "…"      # (still too long for the card: cut it)
+			fit = [ifs, cut]
+			if _fit_memo.size() > 400:
+				_fit_memo.clear()
+			_fit_memo[fit_key] = fit
+		var ifs: int = fit[0]
+		info = fit[1]
 		if eff_txt != "":
 			# the efficiency breakdown first, in its bar's colour, then the rest
 			_text(font, r.position + Vector2(90, 72), eff_txt, ifs, eff_col)
@@ -2994,7 +3277,7 @@ func _refresh_card() -> void:
 
 ## Every button the HUD has besides the quick ones: the panel's, MENU and the card's.
 func _all_buttons() -> Array:
-	var extra: Array = [{"rect": menu_rect(), "cb": func() -> void: set_paused(true), "enabled": true}]
+	var extra: Array = [{"rect": menu_rect(), "cb": func() -> void: toggle_menu(not menu_open), "enabled": true}]
 	if _chat_button_on():
 		extra.append({"rect": chat_btn_rect(), "cb": func() -> void: quick_open = not quick_open, "enabled": true})
 	return _buttons_extra + extra + _card_buttons
@@ -3374,7 +3657,7 @@ func _supply_split(t: int) -> Dictionary:
 
 func _update_tip() -> void:
 	var now := Time.get_ticks_msec()
-	if not Settings.tooltips or paused or game.over or countdown > 0.0:
+	if not Settings.tooltips or paused or menu_open or game.over or countdown > 0.0:
 		_tip = {}
 		_hover_id = ""
 		help_mode = false
@@ -3463,12 +3746,22 @@ func _draw_tip() -> void:
 
 
 func _icon(name: String) -> Texture2D:
+	# (looked up once per name: ResourceLoader.exists asks the file system, two or three times
+	# an icon, and the army's 24 portraits and the card's 12 buttons are drawn many times a second)
+	var key := (game.faction_of(game.human) if game else "") + ":" + name
+	if _icon_memo.has(key):
+		return _icon_memo[key]
 	var ic := _icon_file(name)
 	if ic == null and Defs.icon_for(name) != name:
 		ic = _icon_file(Defs.icon_for(name))       # (temporary art: Defs.TEMP_ART)
 	if ic == null:
 		ic = CwArt.icon(name)                      # (the Clockwork roster prototype: drawn in code)
+	_icon_memo[key] = ic
 	return ic
+
+
+var _icon_memo := {}
+var _fit_memo := {}             # the selection card's info line, fitted: text|width -> [font size, the line]
 
 
 func _icon_file(name: String) -> Texture2D:

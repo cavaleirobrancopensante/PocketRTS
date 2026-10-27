@@ -1,7 +1,9 @@
 #!/bin/sh
 # Online play on one computer: a relay, a host and a guest process (see tools/test_online.gd).
 #   tools/test_online.sh [coop] [fac_host:brood fac_guest:clockwork ...]
-# Needs godot on the PATH and node. Prints the CHECK lines; exit code 1 if any failed.
+# Needs godot on the PATH and node. Prints the CHECK lines and the LAG lines; exit code 1 if any failed.
+# LAG_MS=40 JITTER_MS=20 tools/test_online.sh ...: the relay holds every frame 40 ms each way, plus up to 20 ms at random
+# (a real connection's round trip and its unevenness).
 cd "$(dirname "$0")/.." || exit 1
 PORT=${PORT:-8799}
 OUT=${TMPDIR:-/tmp}/holdfast_online_$$
@@ -17,6 +19,6 @@ GUEST=$!
 wait $GUEST
 wait $HOST
 kill $RELAY 2>/dev/null
-grep -h "CHECK\|RESULT\|ALL OK\|SOME FAILED\|hash\|FAILED\|TIMEOUT\|SCRIPT ERROR" "$OUT/host.log" "$OUT/guest.log"
+grep -h "CHECK\|RESULT\|LAG \|ALL OK\|SOME FAILED\|hash\|FAILED\|TIMEOUT\|SCRIPT ERROR" "$OUT/host.log" "$OUT/guest.log"
 echo "(full logs in $OUT)"
 ! grep -q "SOME FAILED\|TIMEOUT\|SCRIPT ERROR" "$OUT/host.log" "$OUT/guest.log"

@@ -546,7 +546,12 @@ func _lv(v: Array) -> Variant:
 
 
 func _mine(kind: String) -> Array:
-	return game.buildings.filter(func(b: Building) -> bool: return b.team == team and b.kind == kind and not b.dead)
+	# (a plain loop: the same buildings in the same order as a filter with a lambda, cheaper)
+	var out: Array = []
+	for b in game.buildings:
+		if b.team == team and b.kind == kind and not b.dead:
+			out.append(b)
+	return out
 
 
 func _f() -> Dictionary:
@@ -1433,14 +1438,16 @@ func _econ_build() -> void:
 
 
 ## Brood: another Feeding Pit is wanted when the ones we have are nearly full (fewer than 3 free
-## places) and the grub limit isn't reached; pits have no count cap, only the swamp's reach.
+## places) and the grub limit isn't reached; pits have no count cap, only the swamp's reach and their
+## ground circles (Defs.PIT_CLAIM). A pit whose own ground is spent counts for nothing: it is replaced.
 func _pit_wanted() -> bool:
 	var room := 0
-	for p in _mine("feeding_pit"):
+	var live: Array = _mine("feeding_pit").filter(func(p: Building) -> bool: return not p.built or not p.barren())
+	for p in live:
 		room += p.crew_max() - p.crew.size() if p.built else p.crew_max()
 	var limit: int = 46 if difficulty >= 3 else _lv([16, 30, 40])
 	var total := 0
-	for p in _mine("feeding_pit"):
+	for p in live:
 		total += p.crew_max()
 	return room < 3 and total < limit + 6
 
@@ -1471,7 +1478,12 @@ func _econ_spot(kind: String) -> Vector2i:
 		var cap := game.capital(team)
 		if cap == null or not cap.built:
 			return Vector2i(-1, -1)
-		return game.find_spot(team, kind, cap, 7, mini(int(Defs.FOOD_PEAK), int(game.swamp_reach[team])), "far_safe")
+		# (find_spot keeps the pits' ground circles apart and prefers fresh ground; once the best stretch
+		# is taken, a pit goes as far out as the swamp reaches)
+		var sp := game.find_spot(team, kind, cap, 7, mini(int(Defs.FOOD_PEAK), int(game.swamp_reach[team])), "far_safe")
+		if sp.x < 0 and int(game.swamp_reach[team]) > int(Defs.FOOD_PEAK):
+			sp = game.find_spot(team, kind, cap, int(Defs.FOOD_PEAK) - 2, int(game.swamp_reach[team]), "near")
+		return sp
 	if kind == "farm":
 		# farms (pits) go where the soil (the Hive's ground) is freshest: tired land pays a third
 		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil_left() > b.soil_left())
@@ -5029,7 +5041,7 @@ func _shell_bodies() -> void:
 func _spells() -> void:
 	for u in game.army(team):
 		# half the Bloaters keep their gas for big bursts (on walls and clumps)
-		if u.kind == "bloater" and u.mode == "" and u.get_instance_id() % 2 == 0:
+		if u.kind == "bloater" and u.mode == "" and u.serial % 2 == 0:
 			u.set_hold_gas(true)
 		if u.order == "cast" or u.order == "tongue" or u.tongue_stage != "":
 			continue

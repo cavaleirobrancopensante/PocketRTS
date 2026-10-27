@@ -1,8 +1,10 @@
 class_name NetCodec
 extends RefCounted
 ## Packing of online messages, and of the arguments of a command (entities travel as ids).
-## A message is a Dictionary; on the wire it is `var_to_bytes` (never objects), deflated when big:
-## byte 0 = 0 plain / 1 deflated (then 4 bytes: the size when plain), then the bytes.
+## A message is a Dictionary; on the wire it is `var_to_bytes` (never objects), compressed when big:
+## byte 0 = 0 plain / 2 zstd (1 deflate, no longer sent) (then 4 bytes: the size when plain), then the bytes.
+## (zstd: a 3.5 KB snapshot of a 100-entity game packs in 0.1 ms, deflate took 3.5 ms, for the same size:
+## tools/bench_net_snapshot.gd.)
 
 const DEFLATE_FROM := 160
 
@@ -14,8 +16,8 @@ static func pack(msg: Dictionary) -> PackedByteArray:
 		out.append(0)
 		out.append_array(raw)
 		return out
-	var z := raw.compress(FileAccess.COMPRESSION_DEFLATE)
-	out.append(1)
+	var z := raw.compress(FileAccess.COMPRESSION_ZSTD)
+	out.append(2)
 	out.resize(5)
 	out.encode_u32(1, raw.size())
 	out.append_array(z)
@@ -29,11 +31,11 @@ static func unpack(bytes: PackedByteArray) -> Dictionary:
 	var raw: PackedByteArray
 	if bytes[0] == 0:
 		raw = bytes.slice(1)
-	elif bytes[0] == 1 and bytes.size() > 5:
+	elif (bytes[0] == 1 or bytes[0] == 2) and bytes.size() > 5:
 		var n := bytes.decode_u32(1)
 		if n > 32 * 1024 * 1024:
 			return {}
-		raw = bytes.slice(5).decompress(n, FileAccess.COMPRESSION_DEFLATE)
+		raw = bytes.slice(5).decompress(n, FileAccess.COMPRESSION_ZSTD if bytes[0] == 2 else FileAccess.COMPRESSION_DEFLATE)
 	else:
 		return {}
 	if raw.is_empty():

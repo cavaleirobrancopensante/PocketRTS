@@ -9,6 +9,7 @@ const FACS := ["crown", "brood", "clockwork", "random"]      # (as the skirmish 
 var main: Node                 # Main (its _button / _page helpers and start())
 var code_edit: LineEdit
 var _box: VBoxContainer
+var _ping_lbl: Label
 
 
 func build() -> void:
@@ -129,6 +130,13 @@ func _on_changed() -> void:
 		_draw()
 
 
+func _on_pinged() -> void:
+	var l := _lobby()
+	if l and is_instance_valid(_ping_lbl) and _ping_lbl.is_inside_tree():
+		_ping_lbl.text = l.ping_text()
+		_ping_lbl.add_theme_color_override("font_color", UiStyle.MUTED if l.ping_ms < 120 else (Color(1, 0.85, 0.3) if l.ping_ms < 250 else UiStyle.BAD))
+
+
 func _on_failed(_why: String) -> void:
 	if is_inside_tree():
 		_draw()
@@ -197,6 +205,12 @@ func _draw_room() -> void:
 	var st := UiStyle.text(l.status, 15, UiStyle.BAD if l.refused != "" or not l.online else UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 	st.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pv.add_child(st)
+	# the round trip to the other player, kept up to date without redrawing the page (NetLobby.pinged)
+	var pg := UiStyle.text(l.ping_text(), 15, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	pv.add_child(pg)
+	if not l.pinged.is_connected(_on_pinged):
+		l.pinged.connect(_on_pinged)
+	_ping_lbl = pg
 	var hint := "Same TEAM number = allies.  The host sets the teams, the computer's level and plan, and the map; everyone picks their own faction and colour." if host else "Same TEAM number = allies.  You pick your own faction and colour; the host sets the teams and the map."
 	var note := UiStyle.text(hint, 15, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -245,6 +259,18 @@ func _draw_room() -> void:
 	var dl := UiStyle.text(_map_desc(mid, l.slots.size()), 15, UiStyle.MUTED)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mv.add_child(dl)
+	# the same delay for both players (the host's choice): the host's own orders wait as long as the friend's take
+	var sd: Button = main._button("SAME DELAY FOR BOTH PLAYERS: ON" if l.same_delay else "SAME DELAY FOR BOTH PLAYERS: OFF", func() -> void: l.set_same_delay(not l.same_delay))
+	sd.custom_minimum_size = Vector2(0, 46)
+	sd.add_theme_font_size_override("font_size", 16)
+	sd.disabled = not host
+	sd.add_theme_color_override("font_disabled_color", UiStyle.TEXT)
+	if l.same_delay:
+		UiStyle.chosen(sd)
+	mv.add_child(sd)
+	var sdn := UiStyle.text("On: the host's own orders wait as long as the friend's take to arrive over the internet, so neither side reacts faster.", 13, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	sdn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mv.add_child(sdn)
 	# Bottom row
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
