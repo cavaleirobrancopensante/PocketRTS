@@ -2,7 +2,7 @@ extends SceneTree
 ## Screenshots of THE AIR (the Clock Aviary, the Swift, the Ticking Owl: scripts/cw_air.gd) in the CLOCKWORK LAB: the Lab's
 ## start (the Aviary on the field, three Swifts and an Owl over it), the Aviary at work (doors open, a bird flies off), the
 ## cards (the Swift at the Aviary, MORPH TO OWL), Swifts flying, a Swift lunging at a balloon, a morph in progress, the Owl
-## swooping on a soldier, a bomb falling onto a building and bursting, the deaths ending on the ground, a Jack raising its arm
+## swooping on a soldier, a bomb falling onto a building and bursting, the deaths ending on the ground, a Springer raising its arm
 ## at a flyer; and a run of frames for a GIF.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_cw_air.gd -- <outdir>
 ## Writes <outdir>/*.png and <outdir>/gif/f_NNN.png + gif/frames.txt (the caller's PIL script makes air.gif).
@@ -151,7 +151,7 @@ func _run() -> void:
 		return
 	await _snap("lab_start", 2.5)
 	_hint(false)
-	# the Aviary with the flyers by it, and the scale against the Jacks and soldiers
+	# the Aviary with the flyers by it, and the scale against the Springers and soldiers
 	g.camera.position = av.center() + Vector2(0, 10)
 	g.camera.zoom = Vector2(1.6, 1.6)
 	await _snap("lab_aviary", 0.8)
@@ -273,10 +273,10 @@ func _run() -> void:
 	await _frozen("bomb_scorch")
 	Engine.time_scale = 1.0
 	owl.cmd_stop()
-	# ---- a Jack raises its arm at a flyer
-	var jacks: Array = g.units.filter(func(u: Unit) -> bool: return u.team == g.human and u.kind == Defs.JACK)
-	if not jacks.is_empty():
-		var j: Unit = jacks[0]
+	# ---- a Springer raises its arm at a flyer
+	var springers: Array = g.units.filter(func(u: Unit) -> bool: return u.team == g.human and u.kind == Defs.SPRINGER)
+	if not springers.is_empty():
+		var j: Unit = springers[0]
 		j.position = open + Vector2(-40, 120)
 		j.cmd_stop()
 		var fly := _dummy("balloon", j.position + Vector2(80, -70))
@@ -287,7 +287,7 @@ func _run() -> void:
 		j.cmd_attack(fly)
 		var n0: int = j.shots
 		await _wait(func() -> bool: return j.shots > n0, 20.0)
-		await _frozen("jack_up")
+		await _frozen("springer_up")
 		Engine.time_scale = 1.0
 		j.cmd_stop()
 		_gone(fly)
@@ -317,7 +317,7 @@ func _run() -> void:
 ## follows each act): a Swift flies in and pecks a balloon, the Owl swoops on a soldier, then turns on a cottage and lets
 ## its weight fall (the bomb bursts), then a second bomb, then the Swift is shot down and falls to the ground.
 func _gif(sw: Unit, owl: Unit, open: Vector2) -> void:
-	# (everything else off the stage: our other flyers and the Jacks, the earlier props and dummies)
+	# (everything else off the stage: our other flyers and the Springers, the earlier props and dummies)
 	for b in props:
 		if is_instance_valid(b):
 			g.buildings.erase(b)

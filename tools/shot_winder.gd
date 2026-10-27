@@ -3,7 +3,7 @@ extends SceneTree
 ## winding a Cog Press, Winders walking in all eight views, the five views in a row standing (the clock hands tick) and
 ## winding (the crank: hammer, hammer, pause), one fetching a crate and carrying it to a site and winding it as it unfolds,
 ## one repairing a Regulator, four attacking an enemy Cottage, deaths in the five views and the heaps, and his size beside
-## a Clock Soldier and a Jack.
+## a Clock Soldier and a Springer.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_winder.gd -- <outdir> [frames] [old_dir]
 ## Writes <outdir>/press.png, walk.png, lineup.png, crate.png, crate_wind.png, repair.png, attack.png, death_mid.png,
 ## death.png, size.png, and frame runs 1/15 s apart (press_00.png ..., walk_..., lineup_..., fight_...; `frames` each).
@@ -282,11 +282,11 @@ func _run() -> void:
 	_gone(drow)
 	await _snap("death_mid", 0.25)
 	await _snap("death", 1.6)
-	# 8. the size: a Winder beside a Clock Soldier and a Jack, all facing us
+	# 8. the size: a Winder beside a Clock Soldier and a Springer, all facing us
 	var zspot := _open_spot(tower)
 	var w2: Unit = g._add_unit("winder", g.human, zspot + Vector2(-60, 0))
 	var cs: Unit = g._add_unit("clock_soldier", g.human, zspot + Vector2(0, 0))
-	var jk: Unit = g._add_unit(Defs.JACK, g.human, zspot + Vector2(66, 0))
+	var jk: Unit = g._add_unit(Defs.SPRINGER, g.human, zspot + Vector2(66, 0))
 	var trio := [w2, cs, jk]
 	for u in trio:
 		u.cmd_stop()

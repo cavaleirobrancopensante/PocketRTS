@@ -1402,22 +1402,22 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_miasma", "MIASMA", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "miasma", ok, why, ""])
-	# Jack: JUMP (a spot): every selected Jack that can leaps there (Jack.jump_order); the corner shows the spring's wind-back
-	var jacks := units.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK)
-	if not jacks.is_empty():
-		var ready_n: int = jacks.filter(func(u: Unit) -> bool: return Jack.ready_problem(u) == "").size()
-		var jwhy := "" if ready_n > 0 else Jack.ready_problem(jacks[0])
+	# Springer: JUMP (a spot): every selected Springer that can leaps there (Springer.jump_order); the corner shows the spring's wind-back
+	var springers := units.filter(func(u: Unit) -> bool: return u.kind == Defs.SPRINGER)
+	if not springers.is_empty():
+		var ready_n: int = springers.filter(func(u: Unit) -> bool: return Springer.ready_problem(u) == "").size()
+		var jwhy := "" if ready_n > 0 else Springer.ready_problem(springers[0])
 		var cdl := INF
-		for u in jacks:
+		for u in springers:
 			if ready_n == 0 and u.jump.is_empty():
 				cdl = minf(cdl, u.jump_cd)          # (none ready: the soonest one's wind-back)
 		if cdl == INF:
 			cdl = 0.0
 		var up := game.has_tech(game.human, "high_leap")
 		_tip_for["JUMP"] = ["Jump", "Tap where: after a short crouch the Springer leaps up to %d tiles along an arc (each Springer selected, to its own spot of the group). Flat ground and down a cliff any time; %s Not onto water, cliffs or buildings. It cannot shoot in the air; the spring winds back in %d s." % [
-			int(round(float(Defs.JACK_JUMP["range"]) / Defs.TILE)),
+			int(round(float(Defs.SPRINGER_JUMP["range"]) / Defs.TILE)),
 			"UP onto high ground too, where you can see (HIGH LEAP)." if up else "UP onto high ground once HIGH LEAP is researched at the Escapement (and only where you can see).",
-			int(Defs.JACK_JUMP["cooldown"])]]
+			int(Defs.SPRINGER_JUMP["cooldown"])]]
 		list.append(["ab_jump", "JUMP", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "jump", ready_n > 0, jwhy, ("%ds" % int(ceil(cdl))) if ready_n == 0 and cdl > 0.0 else ""])
@@ -2792,7 +2792,7 @@ func _draw_panel(font: Font) -> void:
 					info = "Hunts flyers: it pecks them up close; it cannot touch the ground. Research TICKING OWL at a Clock Aviary to rebuild it into a Ticking Owl."
 			elif uu.kind == Defs.OWL:
 				info = "Swoops on units with its talons; drops its weight as a bomb on buildings. It cannot hit flyers."
-			elif uu.kind == Defs.JACK:
+			elif uu.kind == Defs.SPRINGER:
 				var jn := "In the air." if not uu.jump.is_empty() else ("JUMP ready" if uu.jump_cd <= 0.0 else "JUMP in %d s" % int(ceil(uu.jump_cd)))
 				info = jn + (" · HIGH LEAP: it can jump up onto high ground it can see." if game.has_tech(uu.team, "high_leap") else " · Flat and down only (HIGH LEAP at the Escapement: up too).")
 			elif uu.kind == Defs.NETTER:

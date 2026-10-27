@@ -1,13 +1,13 @@
 extends SceneTree
 ## Screenshots of the Clockwork units' palette (brass + player colour, tools/cw_palette.py) in the CLOCKWORK LAB, on open
-## ground away from the buildings: the six units standing together (Clock Soldier, Jack, Pendulum, Netter on the ground, a
-## Swift and a Ticking Owl in the air), the Clock Soldier's size between a Musketeer, a Jack and a Labourer, and one action
-## frame each (the Soldier's swing, the Jack's shot, the Pendulum's swing, the Netter's shot, the Swift's stab, the Owl's
+## ground away from the buildings: the six units standing together (Clock Soldier, Springer, Pendulum, Netter on the ground, a
+## Swift and a Ticking Owl in the air), the Clock Soldier's size between a Musketeer, a Springer and a Labourer, and one action
+## frame each (the Soldier's swing, the Springer's shot, the Pendulum's swing, the Netter's shot, the Swift's stab, the Owl's
 ## swoop), every picture in three player colours (the game frozen on the moment, the colour swapped); plus the frames of
-## two GIFs: the Jack firing its two launchers in turn, the Swift's painted peck.
+## two GIFs: the Springer firing its two launchers in turn, the Swift's painted peck.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_cw_palette.gd -- <outdir>
 ## Writes <outdir>/idle_<colour>.png, idle_se_<colour>.png, size_<colour>.png (the whole screen),
-## <outdir>/act_<unit>_<colour>.png (640 x 400 round the unit), <outdir>/gif_jack/f_NNN.png and gif_swift/f_NNN.png
+## <outdir>/act_<unit>_<colour>.png (640 x 400 round the unit), <outdir>/gif_springer/f_NNN.png and gif_swift/f_NNN.png
 ## (+ frames.txt: the game clock of each frame).
 var main: Node
 var g
@@ -19,7 +19,7 @@ const COLOURS := [["red", 1], ["blue", 0], ["green", 2]]     # [name, Defs.PALET
 
 func _initialize() -> void:
 	out = OS.get_cmdline_user_args()[0]
-	DirAccess.make_dir_recursive_absolute(out + "/gif_jack")
+	DirAccess.make_dir_recursive_absolute(out + "/gif_springer")
 	DirAccess.make_dir_recursive_absolute(out + "/gif_swift")
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -204,7 +204,7 @@ func _run() -> void:
 			_gone(u)
 	var open := _open_ground(hall)
 	# ---- the six standing together, facing the camera
-	var kinds := [Defs.CUCKOO, "clock_soldier", Defs.JACK, Defs.PENDULUM, Defs.NETTER, Defs.OWL]
+	var kinds := [Defs.CUCKOO, "clock_soldier", Defs.SPRINGER, Defs.PENDULUM, Defs.NETTER, Defs.OWL]
 	var line: Array = []
 	for i in kinds.size():
 		var u := _mine(kinds[i], open + Vector2(-125.0 + 50.0 * float(i), 0.0))
@@ -222,9 +222,9 @@ func _run() -> void:
 	for u in line:
 		_gone(u)
 	await create_timer(0.3).timeout
-	# ---- the size: the Clock Soldier (42 px since 0.14.32) between a Musketeer and a Jack (59), facing the camera
+	# ---- the size: the Clock Soldier (42 px since 0.14.32) between a Musketeer and a Springer (59), facing the camera
 	var size_line: Array = []
-	var size_kinds := ["musketeer", "clock_soldier", Defs.JACK, "labourer", "clock_soldier"]
+	var size_kinds := ["musketeer", "clock_soldier", Defs.SPRINGER, "labourer", "clock_soldier"]
 	for i in size_kinds.size():
 		var su := _mine(size_kinds[i], open + Vector2(-80.0 + 40.0 * float(i), 0.0))
 		su.facing = Vector2.DOWN
@@ -249,9 +249,9 @@ func _run() -> void:
 	await _frozen_round("act_soldier", cs.position + Vector2(10, -20))
 	_gone(cs)
 	_gone(foe)
-	# ---- the Jack's shot: the next screw leaving, the burst at the tip. Facing the camera (the target due south, a
-	# Raptor that stands its ground: a Labourer runs and the Jack would follow), so both launchers show.
-	var jk := _mine(Defs.JACK, open)
+	# ---- the Springer's shot: the next screw leaving, the burst at the tip. Facing the camera (the target due south, a
+	# Raptor that stands its ground: a Labourer runs and the Springer would follow), so both launchers show.
+	var jk := _mine(Defs.SPRINGER, open)
 	var tgt := _dummy("raptor", open + Vector2(10, 130))
 	g.camera.position = open + Vector2(0, -12)
 	g.camera.zoom = Vector2(3.2, 3.2)
@@ -261,9 +261,9 @@ func _run() -> void:
 	var s0 := jk.shots
 	await _wait(func() -> bool: return jk.shots > s0, 20.0)
 	Engine.time_scale = 1.0
-	await _frozen_round("act_jack", jk.position + Vector2(0, -12))
+	await _frozen_round("act_springer", jk.position + Vector2(0, -12))
 	# ---- its GIF: two launchers in turn
-	await _gif("gif_jack", 3.0, 0.15)
+	await _gif("gif_springer", 3.0, 0.15)
 	_gone(jk)
 	_gone(tgt)
 	# ---- the Pendulum's swing (the blow)

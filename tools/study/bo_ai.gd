@@ -18,7 +18,7 @@ extends AI
 ##   wall                Crown: the ramp wall (the computer's own: a Cottage in the ramp's mouth and a Gate); the step is
 ##                       done once the Cottage is placed, the Gate follows by itself
 ##   <unit>*N            queue N (train-button keys: musketeer, horseman, dragoon, officer, cannon, mortar, balloon,
-##                       horse, raptor, spitter, brute, skywing, bloater, clock_soldier, jack, cuckoo)
+##                       horse, raptor, spitter, brute, skywing, bloater, clock_soldier, springer, cuckoo)
 ##   <unit>*             keep training it from now on (after the current step's cost is covered)
 ##   stop:<unit>         stop a "<unit>*"
 ##   research:<key>      start a research (armour, charge, high_leap, owl_morph ...)

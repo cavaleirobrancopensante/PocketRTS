@@ -43,9 +43,19 @@ static func _kit_save(kt):
 
 ## Units that are no more: a saved Pikeman comes back as a Musketeer.
 ## A unit kind from an older save: the Pikeman became a Musketeer (Crown rework), the
-## Gearknight a Thresher and the Bolt Automaton an Arc Thrower (Clockwork rework).
+## Gearknight a Thresher and the Bolt Automaton an Arc Thrower (Clockwork rework); the Jack is
+## the Springer (Defs.unit_kind).
 static func _kind(k: String) -> String:
-	return {"pikeman": "musketeer", "gearknight": "thresher", "bolt": "arc_thrower"}.get(k, k)
+	return {"pikeman": "musketeer", "gearknight": "thresher", "bolt": "arc_thrower"}.get(k, Defs.unit_kind(k))
+
+
+## A dictionary keyed by unit kind (kills by kind) with old kinds as today's.
+static func _kinds_keyed(by: Dictionary) -> Dictionary:
+	var out := {}
+	for k in by:
+		var nk := Defs.unit_kind(String(k))
+		out[nk] = out.get(nk, 0) + by[k] if out.has(nk) else by[k]
+	return out
 
 
 ## A soldier from a save without his kit: a Cuirassier was always armoured; a Musketeer had
@@ -300,10 +310,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if t < d["stats"].size():
 			var st: Dictionary = d["stats"][t]
 			for k in st:
-				game.stats[t][k] = st[k]
+				game.stats[t][k] = _kinds_keyed(st[k]) if k == "kills_by" and st[k] is Dictionary else st[k]
 	for t in game.eliminated.size():
 		game.eliminated[t] = bool(d["eliminated"][t])
-	game._first_of = d.get("first_of", {})
+	game._first_of = {}
+	for fk in d.get("first_of", {}):
+		var at := String(fk).find(":")      # ("team:kind": an old kind as today's)
+		game._first_of[String(fk).left(at + 1) + Defs.unit_kind(String(fk).substr(at + 1)) if at >= 0 else fk] = d["first_of"][fk]
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex

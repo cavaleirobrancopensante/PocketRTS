@@ -1,10 +1,10 @@
 extends SceneTree
-## Tier 2 of the gear-mode Clockwork: the ESCAPEMENT and the JACK (docs/clockwork_gear_prototype.md).
-## An Escapement linked to the field but not meshed with a Mainspring is idle (NEEDS MAINSPRING: no research, no Jack);
+## Tier 2 of the gear-mode Clockwork: the ESCAPEMENT and the SPRINGER (docs/clockwork_gear_prototype.md).
+## An Escapement linked to the field but not meshed with a Mainspring is idle (NEEDS MAINSPRING: no research, no Springer);
 ## one meshed directly with a Mainspring works (an idler between them counts; a chain through another building does not)
-## and a Jack trains, paying cogs AND Tension (refused when Tension is short); if the Mainspring dies the Escapement goes
-## idle again (nothing else is lost). THE TENSION RULE (0.14.33, scripts/gear_econ.gd): the Jack is made only at a Movement
-## Works whose ring meshes with a Mainspring's (one that does not refuses it). A Jack shoots and kills a ground unit and a flyer with its screws; JUMP on flat ground
+## and a Springer trains, paying cogs AND Tension (refused when Tension is short); if the Mainspring dies the Escapement goes
+## idle again (nothing else is lost). THE TENSION RULE (0.14.33, scripts/gear_econ.gd): the Springer is made only at a Movement
+## Works whose ring meshes with a Mainspring's (one that does not refuses it). A Springer shoots and kills a ground unit and a flyer with its screws; JUMP on flat ground
 ## crouches in place, flies over its shadow and lands at the spot, cannot shoot in the air and then waits for its spring;
 ## jumping UP a cliff is refused before HIGH LEAP, refused after it where the side cannot see, and allowed with vision; down
 ## a cliff is always allowed; it never lands on a building.
@@ -29,8 +29,8 @@ func _run() -> void:
 	await process_frame
 	var bl := Defs.build_list("clockwork")
 	check("gear mode builds the Escapement", bl.has(Defs.CW_TECH))
-	check("the Movement Works trains the Jack", (Defs.BUILDINGS[Defs.CW_WORKS]["trains"] as Array).has(Defs.JACK))
-	check("the Jack's price is cogs and Tension", g.unit_price(0, Defs.JACK) == [int(Defs.UNITS[Defs.JACK]["cost"]), int(Defs.UNITS[Defs.JACK]["tension"])], str(g.unit_price(0, Defs.JACK)))
+	check("the Movement Works trains the Springer", (Defs.BUILDINGS[Defs.CW_WORKS]["trains"] as Array).has(Defs.SPRINGER))
+	check("the Springer's price is cogs and Tension", g.unit_price(0, Defs.SPRINGER) == [int(Defs.UNITS[Defs.SPRINGER]["cost"]), int(Defs.UNITS[Defs.SPRINGER]["tension"])], str(g.unit_price(0, Defs.SPRINGER)))
 	g.players[0]["gold"] = 20000
 	g.players[0]["tension"] = 1000.0
 	var hall := U.hall(g, 0)
@@ -52,8 +52,8 @@ func _run() -> void:
 		return
 	U.step(g, 0.6)
 	check("without a Mainspring it is idle (NEEDS MAINSPRING)", g.gear_net.speed_mult(esc) == 0.0 and g.gear_net.needs_spring(esc))
-	var why := g.can_train(works, Defs.JACK)
-	check("the Jack cannot be trained (the Escapement is idle)", why != "", why)
+	var why := g.can_train(works, Defs.SPRINGER)
+	check("the Springer cannot be trained (the Escapement is idle)", why != "", why)
 	check("HIGH LEAP cannot be researched there", g.research_problem(esc, "high_leap") != "", g.research_problem(esc, "high_leap"))
 	check("its working loop does not play", not esc.drill_anim)
 	# ---- a chain is not a mesh: a Mainspring two hops away (through a Regulator) does not count
@@ -75,10 +75,10 @@ func _run() -> void:
 	check("the ghost of a second Escapement by the Mainspring says it meshes", ec2.x < 0 or g.gear_net.spring_problem(0, Defs.CW_TECH, ec2) == "")
 	U.step(g, 0.5)
 	check("its working loop plays while it works", esc.drill_anim and esc.sprite.texture != null and esc.sprite.texture.resource_path.contains("escapement_work_"))
-	# ---- THE TENSION RULE at the Works: the Jack costs Tension, so it is made only where a Mainspring meshes
+	# ---- THE TENSION RULE at the Works: the Springer costs Tension, so it is made only where a Mainspring meshes
 	if g.gear_net.spring_for(works) == null:
-		var wn := g.can_train(works, Defs.JACK)
-		check("a Movement Works meshing with no Mainspring refuses the Jack", wn.contains("meshes with no Mainspring"), wn)
+		var wn := g.can_train(works, Defs.SPRINGER)
+		check("a Movement Works meshing with no Mainspring refuses the Springer", wn.contains("meshes with no Mainspring"), wn)
 		var w2 := _works_beside(g, spring)
 		check("a Movement Works was put meshing with the Mainspring", w2 != null and g.gear_net.spring_for(w2) != null)
 		if w2 == null:
@@ -89,39 +89,39 @@ func _run() -> void:
 		g.players[0]["cap"] = 100
 	# ---- Tension short: refused with a clear message
 	g.players[0]["tension"] = 10.0
-	why = g.can_train(works, Defs.JACK)
-	check("short of Tension, the Jack is refused", why.contains("Tension"), why)
+	why = g.can_train(works, Defs.SPRINGER)
+	check("short of Tension, the Springer is refused", why.contains("Tension"), why)
 	g.players[0]["tension"] = 1000.0
-	# ---- a Jack trains: cogs and Tension spent
+	# ---- a Springer trains: cogs and Tension spent
 	var cogs0 := int(g.players[0]["gold"])
 	var ten0 := g.tension(0)
-	why = g.train(works, Defs.JACK)
-	check("the Movement Works takes a Jack order", why == "", why)
-	check("cogs were spent", int(g.players[0]["gold"]) == cogs0 - int(Defs.UNITS[Defs.JACK]["cost"]), "%d -> %d" % [cogs0, int(g.players[0]["gold"])])
-	check("Tension was spent", is_equal_approx(g.tension(0), ten0 - float(Defs.UNITS[Defs.JACK]["tension"])), "%.0f -> %.0f" % [ten0, g.tension(0)])
-	U.step(g, float(Defs.UNITS[Defs.JACK]["time"]) + 2.0)
-	var jacks := g.units.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK and u.team == 0 and not u.dead)
-	check("a Jack came out", jacks.size() == 1, "%d" % jacks.size())
+	why = g.train(works, Defs.SPRINGER)
+	check("the Movement Works takes a Springer order", why == "", why)
+	check("cogs were spent", int(g.players[0]["gold"]) == cogs0 - int(Defs.UNITS[Defs.SPRINGER]["cost"]), "%d -> %d" % [cogs0, int(g.players[0]["gold"])])
+	check("Tension was spent", is_equal_approx(g.tension(0), ten0 - float(Defs.UNITS[Defs.SPRINGER]["tension"])), "%.0f -> %.0f" % [ten0, g.tension(0)])
+	U.step(g, float(Defs.UNITS[Defs.SPRINGER]["time"]) + 2.0)
+	var springers := g.units.filter(func(u: Unit) -> bool: return u.kind == Defs.SPRINGER and u.team == 0 and not u.dead)
+	check("a Springer came out", springers.size() == 1, "%d" % springers.size())
 	# (a cancelled order pays the Tension back)
-	g.train(works, Defs.JACK)
+	g.train(works, Defs.SPRINGER)
 	var ten1 := g.tension(0)
 	g.cancel_train(works)
-	check("a cancelled Jack pays its Tension back", is_equal_approx(g.tension(0), ten1 + float(Defs.UNITS[Defs.JACK]["tension"])))
-	if jacks.is_empty():
+	check("a cancelled Springer pays its Tension back", is_equal_approx(g.tension(0), ten1 + float(Defs.UNITS[Defs.SPRINGER]["tension"])))
+	if springers.is_empty():
 		_end()
 		return
-	var j: Unit = jacks[0]
+	var j: Unit = springers[0]
 	j.cmd_stop()
 	# ---- it shoots a ground unit dead
 	var foot := _foe(g, "labourer", _open_near(g, j.position + Vector2(140, 20)))
 	var t := _until_dead(g, foot, 30.0, j)
-	check("a Jack shoots a ground unit dead", foot.dead, "%.1f s, %d screws" % [t, j.shots])
+	check("a Springer shoots a ground unit dead", foot.dead, "%.1f s, %d screws" % [t, j.shots])
 	check("its screw flew from the drill tip (the shot is a screw)", j.last_shot != null or j.shots > 0)
 	# ---- and a flyer
 	var n0 := j.shots
 	var fly := _foe(g, "balloon", j.position + Vector2(-30, -110))
 	t = _until_dead(g, fly, 60.0, j)
-	check("a Jack shoots a flyer dead", fly.dead, "%.1f s, %d screws" % [t, j.shots - n0])
+	check("a Springer shoots a flyer dead", fly.dead, "%.1f s, %d screws" % [t, j.shots - n0])
 	# ---- JUMP on flat ground
 	j.cmd_stop()
 	U.step(g, 0.5)
@@ -131,11 +131,11 @@ func _run() -> void:
 	if dest != Vector2.INF:
 		var foe2 := _foe(g, "labourer", _open_near(g, p0 + (dest - p0).normalized() * -100.0))
 		var shots_before := j.shots
-		var w := Jack.jump_order(g, [j], dest)
+		var w := Springer.jump_order(g, [j], dest)
 		check("the jump order is taken", w == "", w)
-		U.step(g, float(Defs.JACK_JUMP["crouch"]) * 0.8)
-		check("it crouches in place first", j.position.distance_to(p0) < 2.0 and not j.jump.is_empty() and Jack.frame(j) <= 2 and j._anim_name() == "jump",
-				"%.1f px, frame %d" % [j.position.distance_to(p0), Jack.frame(j)])
+		U.step(g, float(Defs.SPRINGER_JUMP["crouch"]) * 0.8)
+		check("it crouches in place first", j.position.distance_to(p0) < 2.0 and not j.jump.is_empty() and Springer.frame(j) <= 2 and j._anim_name() == "jump",
+				"%.1f px, frame %d" % [j.position.distance_to(p0), Springer.frame(j)])
 		var peak := 0.0
 		var mid_ok := false
 		var shots_air := j.shots
@@ -143,20 +143,20 @@ func _run() -> void:
 		while not j.jump.is_empty() and tt < 3.0:
 			U.step(g, 1.0 / 30.0)
 			tt += 1.0 / 30.0
-			peak = maxf(peak, Jack.lift(j))
-			if Jack.airborne(j) and j.position.distance_to(p0) > 10.0 and j.position.distance_to(dest) > 10.0:
+			peak = maxf(peak, Springer.lift(j))
+			if Springer.airborne(j) and j.position.distance_to(p0) > 10.0 and j.position.distance_to(dest) > 10.0:
 				mid_ok = true
 		check("it flies along an arc (lifted over its shadow, moving between the spots)", mid_ok and peak > 30.0, "peak %.0f px" % peak)
 		check("it cannot shoot in the air", j.shots == shots_air, "%d -> %d" % [shots_air, j.shots])
 		check("it lands at the spot", j.position.distance_to(dest) < 3.0, "%.1f px off" % j.position.distance_to(dest))
 		check("the jump took about crouch + flight + landing", tt > 0.5 and tt < 2.0, "%.2f s" % tt)
-		check("the spring winds back: another jump is refused for now", Jack.problem(j, p0) != "", Jack.problem(j, p0))
+		check("the spring winds back: another jump is refused for now", Springer.problem(j, p0) != "", Springer.problem(j, p0))
 		foe2.queue_free()
 		g.units.erase(foe2)
 		j.jump_cd = 0.0
 		var _unused := shots_before
 	# ---- never onto a building
-	var onto := Jack.landing(j, works.center())
+	var onto := Springer.landing(j, works.center())
 	var bad := onto.has("at") and works.rect().grow(-2.0).has_point(onto["at"])
 	check("it never lands on a building", not bad, str(onto))
 	# ---- UP a cliff: refused before HIGH LEAP; after it, refused where unseen, allowed with vision; DOWN always
@@ -165,17 +165,17 @@ func _run() -> void:
 	if not pair.is_empty():
 		var low: Vector2 = pair[0]
 		var high: Vector2 = pair[1]
-		var jk: Unit = g._add_unit(Defs.JACK, 0, low)
+		var jk: Unit = g._add_unit(Defs.SPRINGER, 0, low)
 		jk.cmd_stop()
 		U.step(g, 0.5)
 		check("the climber stands on low ground", g.level_of(jk.position) == 0)
 		g.players[0]["tech"]["high_leap"] = false
-		var l1 := Jack.landing(jk, high)
+		var l1 := Springer.landing(jk, high)
 		check("UP before HIGH LEAP is refused", not l1.has("at") and String(l1.get("why", "")).contains("HIGH LEAP"), str(l1))
 		g.players[0]["tech"]["high_leap"] = true
 		U.step(g, 0.5)
 		var seen0 := g.side_sees(0, high)
-		var l2 := Jack.landing(jk, high)
+		var l2 := Springer.landing(jk, high)
 		if not seen0:
 			check("UP after HIGH LEAP but unseen is refused", not l2.has("at") and String(l2.get("why", "")).contains("see"), str(l2))
 		# a spotter up there: the side sees the spot
@@ -183,9 +183,9 @@ func _run() -> void:
 		spot.cmd_hold()
 		U.step(g, 1.0)
 		check("the spotter gives vision up there", g.side_sees(0, high))
-		var l3 := Jack.landing(jk, high)
+		var l3 := Springer.landing(jk, high)
 		check("UP after HIGH LEAP, with vision, is allowed", l3.has("at") and g.level_of(l3["at"]) == 1, str(l3))
-		Jack.jump_order(g, [jk], high)
+		Springer.jump_order(g, [jk], high)
 		var t2 := 0.0
 		while not jk.jump.is_empty() and t2 < 4.0:
 			U.step(g, 0.1)
@@ -194,7 +194,7 @@ func _run() -> void:
 		# down again, without the research (down is always allowed)
 		g.players[0]["tech"]["high_leap"] = false
 		jk.jump_cd = 0.0
-		var l4 := Jack.landing(jk, low)
+		var l4 := Springer.landing(jk, low)
 		check("DOWN a cliff is allowed (even without HIGH LEAP)", l4.has("at") and g.level_of(l4["at"]) == 0, str(l4))
 		g.players[0]["tech"]["high_leap"] = true
 	# ---- HIGH LEAP is researched at a working Escapement, for cogs and Tension
@@ -205,17 +205,17 @@ func _run() -> void:
 	check("it costs Tension", is_equal_approx(g.tension(0), ten2 - float(Defs.RESEARCH["high_leap"]["tension"])))
 	U.step(g, 3.0)
 	check("the research runs while the Escapement works", esc.prod_t > 2.0, "%.1f s" % esc.prod_t)
-	# ---- the Mainspring dies: the Escapement goes idle (the research pauses, the Jacks stay)
+	# ---- the Mainspring dies: the Escapement goes idle (the research pauses, the Springers stay)
 	spring.take_damage(99999.0, null)
 	U.step(g, 1.0)
 	check("its Mainspring destroyed, the Escapement is idle again", g.gear_net.speed_mult(esc) == 0.0 and g.gear_net.needs_spring(esc))
 	var before_t := esc.prod_t
 	U.step(g, 3.0)
 	check("the research pauses meanwhile (not lost)", is_equal_approx(esc.prod_t, before_t) and esc.queue.has("@high_leap"), "%.1f -> %.1f" % [before_t, esc.prod_t])
-	check("the Jacks are still there", not j.dead)
-	check("no new Jack while it is idle", g.can_train(works, Defs.JACK) != "")
-	# ---- the CLOCKWORK LAB (its own map): an Escapement built, linked and meshed with the Mainspring, three Jacks,
-	# Tension to spare, room in the supply for a Jack
+	check("the Springers are still there", not j.dead)
+	check("no new Springer while it is idle", g.can_train(works, Defs.SPRINGER) != "")
+	# ---- the CLOCKWORK LAB (its own map): an Escapement built, linked and meshed with the Mainspring, three Springers,
+	# Tension to spare, room in the supply for a Springer
 	var g2 := U.make(root, ["clockwork", "crown"], "greenhold")
 	await process_frame
 	await process_frame
@@ -231,16 +231,16 @@ func _run() -> void:
 	check("the Lab has a built Escapement", lab_esc != null and lab_esc.built)
 	check("the Lab's Escapement is linked and meshed with a Mainspring (it works)", lab_esc != null and lab_spring != null and g2.gear_net.is_linked(lab_esc) \
 			and g2.gear_net.spring_for(lab_esc) != null and g2.gear_net.speed_mult(lab_esc) > 0.0)
-	var lab_jacks := g2.units.filter(func(u: Unit) -> bool: return u.team == g2.human and u.kind == Defs.JACK and not u.dead)
-	check("the Lab has three Jacks", lab_jacks.size() == 3, "%d" % lab_jacks.size())
+	var lab_springers := g2.units.filter(func(u: Unit) -> bool: return u.team == g2.human and u.kind == Defs.SPRINGER and not u.dead)
+	check("the Lab has three Springers", lab_springers.size() == 3, "%d" % lab_springers.size())
 	check("the Lab has Tension to spare", g2.tension(g2.human) >= 300.0, "%.0f" % g2.tension(g2.human))
 	g2._recount_supply(g2.human)
 	var lab_works: Building = null
 	for b in g2.buildings:
 		if b.team == g2.human and b.kind == Defs.CW_WORKS:
 			lab_works = b
-	check("in the Lab a Jack can be trained at once", lab_works != null and g2.can_train(lab_works, Defs.JACK) == "",
-			g2.can_train(lab_works, Defs.JACK) if lab_works else "no Works")
+	check("in the Lab a Springer can be trained at once", lab_works != null and g2.can_train(lab_works, Defs.SPRINGER) == "",
+			g2.can_train(lab_works, Defs.SPRINGER) if lab_works else "no Works")
 	_end()
 
 
@@ -376,12 +376,12 @@ func _until_dead(g: Game, u: Unit, limit: float, shooter: Unit) -> float:
 	return t
 
 
-## A spot on the Jack's own level, `tiles` tiles off, where it may land.
+## A spot on the Springer's own level, `tiles` tiles off, where it may land.
 func _flat_spot(g: Game, j: Unit, tiles: int) -> Vector2:
 	for k in 16:
 		var a := TAU * float(k) / 16.0
 		var p := j.position + Vector2.from_angle(a) * float(tiles) * Defs.TILE
-		var l := Jack.landing(j, p)
+		var l := Springer.landing(j, p)
 		if l.has("at") and (l["at"] as Vector2).distance_to(p) < 4.0 and g.level_of(p) == g.level_of(j.position):
 			return l["at"]
 	return Vector2.INF

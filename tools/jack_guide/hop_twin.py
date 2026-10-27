@@ -9,7 +9,7 @@ Why in code and not a ChatGPT repaint: ChatGPT's repaint of the hop (2026-10-27)
 down-right and let the foot plate drift up to 9 px; the spring is the only thing that moves, and code moves it exactly.
 
 Out: art/redraws/jack_hop_twin.png (5 rows x 6, the 256 x 204.8 grid of jack_hop.png) and jack_jump_twin.png (5 x 8, 192 x
-204.8, like jack_jump.png), each with a .gif for review. tools/import_jack.py reads them.
+204.8, like jack_jump.png), each with a .gif for review. tools/import_springer.py reads them.
   python3 tools/jack_guide/hop_twin.py"""
 import os
 import sys
@@ -20,7 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
 import attack_twin            # (its figures(): frame 1 of each facing in the two-launcher idle, RGBA, padded)
-import import_jack            # (coil(): the spring's steel)
+import import_springer            # (coil(): the spring's steel)
 
 NAVY = np.array([0, 22, 48])
 # per frame: the spring's height factor and the lift in sheet px (hop.py's and jump.py's SEQ)
@@ -31,7 +31,7 @@ PAD = 120
 
 def spring(o):
     """(st, bt, sx0, sx1): the spring's top row, the foot plate's top row and the spring's columns, in the crop."""
-    cm = import_jack.coil(o)        # (the biggest patch of the spring's steel: the coil alone, not the drill tips)
+    cm = import_springer.coil(o)        # (the biggest patch of the spring's steel: the coil alone, not the drill tips)
     ys, xs = np.nonzero(cm)
     # all of its columns: the painted coil's bright highlights are not steel-coloured, so counting steel pixels per column
     # would keep only the middle of the spring and leave its sides riding on the body
@@ -139,7 +139,7 @@ def sheet(figs, seq, name, durations, shadow):
 def main():
     figs = attack_twin.figures()
     sheet(figs, HOP, 'jack_hop_twin', [90, 80, 70, 80, 80, 90], False)
-    # the jump's lift is left out of the sheet: tools/import_jack.py puts every jump frame on its own foot plate (the game
+    # the jump's lift is left out of the sheet: tools/import_springer.py puts every jump frame on its own foot plate (the game
     # flies the unit along its arc over its own ground shadow), and the two-launcher Jack is too tall to lift 34 px in a cell
     sheet(figs, [(k, 0) for k, lift in JUMP], 'jack_jump_twin', [200, 90, 140, 60, 90, 90, 70, 140], False)
 

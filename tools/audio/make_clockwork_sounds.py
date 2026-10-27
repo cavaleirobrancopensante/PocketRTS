@@ -13,10 +13,10 @@ Every sound below is a list of LAYERS mixed together. A layer is
 Every layer also fades in over 4 ms, so nothing clicks; a quiet lead-in before the sound (under 1/20 of its peak)
 is trimmed off. The finished sound is levelled to a 0.7 peak
 (never clipped); tools/audio/make_mix.py then sets how loud it plays in the game.
-So "make the Jack's jump longer" is one number: the length in its line.
+So "make the Springer's jump longer" is one number: the length in its line.
 
 Names: "voice/<unit>/select_1" writes assets/voice/<unit>/select_1.wav; anything else writes
-assets/audio/<name>.wav ("combat/jack_jump_1", "select/escapement"). Numbered takes (_1, _2 ...) are
+assets/audio/<name>.wav ("combat/springer_jump_1", "select/escapement"). Numbered takes (_1, _2 ...) are
 picked at random by the game (scripts/sfx.gd). Plain synthesis is never used: only the recordings,
 cut, layered, pitched by resampling and faded.
 
@@ -103,15 +103,15 @@ SOUNDS = {
     "voice/clock_soldier/move_3": [keys(22.73, 0.44)],
     "voice/clock_soldier/attack_1": [keys(37.57, 0.36), ding(0, at=0.30)],
     "voice/clock_soldier/attack_2": [keys(33.39, 0.36), ding(1, 0.45, at=0.30)],
-    # the Jack: a spring answering (a wobble's boing) with a ratchet click
-    "voice/jack/select_1": [boing(1, 0.38, gain=1.0), ratchet(0, 0.14, at=0.0, gain=0.5, pitch=1.2)],
-    "voice/jack/select_2": [boing(2, 0.36, gain=1.0, pitch=1.1)],
-    "voice/jack/select_3": [boing(3, 0.36, gain=1.0), keys(18.66, 0.16, at=0.30, gain=0.5)],
-    "voice/jack/move_1": [ratchet(1, 0.30, gain=0.8, pitch=1.2), boing(2, 0.32, at=0.18, gain=0.8, pitch=1.2)],
-    "voice/jack/move_2": [ratchet(2, 0.30, gain=0.8, pitch=1.2), boing(3, 0.32, at=0.18, gain=0.8, pitch=1.2)],
-    "voice/jack/move_3": [boing(1, 0.30, gain=1.0, pitch=1.25), boing(3, 0.30, at=0.22, gain=0.7, pitch=1.4)],
-    "voice/jack/attack_1": [("spring", 0.08, 0.40, 0.0, 1.0, 1.2, 0.15), ratchet(3, 0.20, at=0.25, gain=0.6, pitch=1.3)],
-    "voice/jack/attack_2": [("spring", 0.10, 0.40, 0.0, 1.0, 1.35, 0.15), boing(2, 0.25, at=0.25, gain=0.6, pitch=1.4)],
+    # the Springer: a spring answering (a wobble's boing) with a ratchet click
+    "voice/springer/select_1": [boing(1, 0.38, gain=1.0), ratchet(0, 0.14, at=0.0, gain=0.5, pitch=1.2)],
+    "voice/springer/select_2": [boing(2, 0.36, gain=1.0, pitch=1.1)],
+    "voice/springer/select_3": [boing(3, 0.36, gain=1.0), keys(18.66, 0.16, at=0.30, gain=0.5)],
+    "voice/springer/move_1": [ratchet(1, 0.30, gain=0.8, pitch=1.2), boing(2, 0.32, at=0.18, gain=0.8, pitch=1.2)],
+    "voice/springer/move_2": [ratchet(2, 0.30, gain=0.8, pitch=1.2), boing(3, 0.32, at=0.18, gain=0.8, pitch=1.2)],
+    "voice/springer/move_3": [boing(1, 0.30, gain=1.0, pitch=1.25), boing(3, 0.30, at=0.22, gain=0.7, pitch=1.4)],
+    "voice/springer/attack_1": [("spring", 0.08, 0.40, 0.0, 1.0, 1.2, 0.15), ratchet(3, 0.20, at=0.25, gain=0.6, pitch=1.3)],
+    "voice/springer/attack_2": [("spring", 0.10, 0.40, 0.0, 1.0, 1.35, 0.15), boing(2, 0.25, at=0.25, gain=0.6, pitch=1.4)],
     # the Swift: quick bird-like ticks (the alarm clock's ticking, higher and faster) and a little high ding
     "voice/cuckoo/select_1": [ticks(3, 3, pitch=1.4), ding(0, 0.45, at=0.55, gain=0.6, pitch=1.3)],
     "voice/cuckoo/select_2": [ticks(3, 7, pitch=1.5), ding(1, 0.40, at=0.52, gain=0.6, pitch=1.4)],
@@ -166,17 +166,17 @@ SOUNDS = {
     # deaths: a crash of metal, the pieces rattling down, a spring letting go
     "combat/clock_soldier_death_1": [crash(), clatter(), boing(1, 0.35, at=0.45)],
     "combat/clock_soldier_death_2": [crash(0.9), clatter(1.30, 0.8), boing(2, 0.35, at=0.40)],
-    # the Jack: its screw shot is a quick ratchet spin; the spring presses, boings on the jump and clanks on landing
-    "combat/jack_attack_1": [ratchet(0, 0.16, pitch=1.4, fade=0.05)],
-    "combat/jack_attack_2": [ratchet(1, 0.16, pitch=1.4, fade=0.05)],
-    "combat/jack_attack_3": [ratchet(2, 0.16, pitch=1.5, fade=0.05)],
-    "combat/jack_crouch": [("spring", 0.08, 0.40, 0.0, 1.0, 0.9, 0.12)],
-    "combat/jack_jump_1": [boing(1, 0.45, gain=1.0)],
-    "combat/jack_jump_2": [boing(3, 0.45, gain=1.0, pitch=0.95)],
-    "combat/jack_land_1": [cl(4, 0.6, 0.25, fade=0.15), boing(2, 0.25, at=0.03, gain=0.4, pitch=1.3)],
-    "combat/jack_land_2": [cl(7, 0.6, 0.25, fade=0.15), boing(0, 0.25, at=0.03, gain=0.4, pitch=1.3)],
-    "combat/jack_death_1": [crash(1.0, 0.35), boing(1, 0.45, at=0.15, gain=1.0), clatter(0.9, 0.6, at=0.45, gain=0.35)],
-    "combat/jack_death_2": [crash(1.1, 0.35), boing(3, 0.45, at=0.15, gain=1.0), clatter(1.6, 0.6, at=0.45, gain=0.35)],
+    # the Springer: its screw shot is a quick ratchet spin; the spring presses, boings on the jump and clanks on landing
+    "combat/springer_attack_1": [ratchet(0, 0.16, pitch=1.4, fade=0.05)],
+    "combat/springer_attack_2": [ratchet(1, 0.16, pitch=1.4, fade=0.05)],
+    "combat/springer_attack_3": [ratchet(2, 0.16, pitch=1.5, fade=0.05)],
+    "combat/springer_crouch": [("spring", 0.08, 0.40, 0.0, 1.0, 0.9, 0.12)],
+    "combat/springer_jump_1": [boing(1, 0.45, gain=1.0)],
+    "combat/springer_jump_2": [boing(3, 0.45, gain=1.0, pitch=0.95)],
+    "combat/springer_land_1": [cl(4, 0.6, 0.25, fade=0.15), boing(2, 0.25, at=0.03, gain=0.4, pitch=1.3)],
+    "combat/springer_land_2": [cl(7, 0.6, 0.25, fade=0.15), boing(0, 0.25, at=0.03, gain=0.4, pitch=1.3)],
+    "combat/springer_death_1": [crash(1.0, 0.35), boing(1, 0.45, at=0.15, gain=1.0), clatter(0.9, 0.6, at=0.45, gain=0.35)],
+    "combat/springer_death_2": [crash(1.1, 0.35), boing(3, 0.45, at=0.15, gain=1.0), clatter(1.6, 0.6, at=0.45, gain=0.35)],
     # the Ratchet Turret's big screw: a heavier, slower ratchet with a clang
     "combat/ratchet_turret_attack_1": [ratchet(0, 0.26, pitch=0.9, fade=0.1), cl(1, 0.7, 0.25, gain=0.35, fade=0.15)],
     "combat/ratchet_turret_attack_2": [ratchet(3, 0.26, pitch=0.9, fade=0.1), cl(6, 0.7, 0.25, gain=0.35, fade=0.15)],

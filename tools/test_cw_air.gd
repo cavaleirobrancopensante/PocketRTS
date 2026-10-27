@@ -7,7 +7,7 @@ extends SceneTree
 ## Tension), spends cogs and Tension, holds the Owl's supply, keeps the Swift hovering in place for its time (CANCEL pays
 ## back) and leaves a Ticking Owl (no Swift). The Owl's talon swoop hurts a ground unit (it dives); on a building it lets
 ## its weight go: a bomb is spawned, falls, bursts on impact, hurts that building and one beside it (a small area) but not
-## one farther off. The Owl cannot target flyers. A Jack shooting at a flyer raises its arm (the attack_up strip) and its
+## one farther off. The Owl cannot target flyers. A Springer shooting at a flyer raises its arm (the attack_up strip) and its
 ## screw leaves the raised tip; at the ground it keeps the old strip and tip. The Lab starts with an Aviary, three Swifts and
 ## a Ticking Owl (TICKING OWL researched), and the sandbox's CLOCK tab lists the three.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_air.gd
@@ -264,8 +264,8 @@ func _run() -> void:
 	step(g, 3.4)
 	check("one bomb about every 3 s", owl.bombs == b1 + 1, "%d -> %d" % [b1, owl.bombs])
 	owl.cmd_stop()
-	# ---- the Jack raises its arm at a flyer; at the ground it keeps the old strip
-	var jk: Unit = g._add_unit(Defs.JACK, 0, _open_near(g, hall.center() + Vector2(0, 160)))
+	# ---- the Springer raises its arm at a flyer; at the ground it keeps the old strip
+	var jk: Unit = g._add_unit(Defs.SPRINGER, 0, _open_near(g, hall.center() + Vector2(0, 160)))
 	jk.cmd_stop()
 	g.camera.position = jk.position
 	var bal := _foe(g, "balloon", jk.position + Vector2(100, -40))
@@ -283,8 +283,8 @@ func _run() -> void:
 		if jk.anim == "attack_up":
 			saw_up = true
 		if jk.shots > before and jk.last_shot != null:
-			tip_ok = jk.last_tip.distance_to(Jack.tip(jk, true)) < 0.5 and jk.last_shot.from.distance_to(jk.last_tip) < 0.5
-	check("a Jack shooting at a flyer plays the raised-arm strip (attack_up)", saw_up)
+			tip_ok = jk.last_tip.distance_to(Springer.tip(jk, true)) < 0.5 and jk.last_shot.from.distance_to(jk.last_tip) < 0.5
+	check("a Springer shooting at a flyer plays the raised-arm strip (attack_up)", saw_up)
 	check("its screw leaves the raised drill tip", tip_ok and jk.shots > shots0, "tip %s" % str(jk.last_tip - jk.position))
 	_remove_unit(g, bal)
 	var gfoe := _foe(g, "labourer", _open_near(g, jk.position + Vector2(120, 10)))
@@ -305,7 +305,7 @@ func _run() -> void:
 		if jk.anim == "attack_up":
 			saw_up2 = true
 		if jk.shots > before2:
-			ground_tip = jk.last_tip.distance_to(Jack.tip(jk, false)) < 0.5
+			ground_tip = jk.last_tip.distance_to(Springer.tip(jk, false)) < 0.5
 	check("at a ground unit it keeps the ground attack strips (an arm's)", saw_ground and not saw_up2)
 	check("and the old (lowered) tip", ground_tip, "tip %s" % str(jk.last_tip - jk.position))
 	# ---- the sandbox's CLOCK tab and the Lab

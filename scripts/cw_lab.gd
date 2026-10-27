@@ -2,7 +2,7 @@ class_name CwLab
 extends RefCounted
 ## The CLOCKWORK LAB (EDITOR menu): the human Clockwork starts with plenty of cogs and, in gear mode (the default), the
 ## GEAR FIELD on show: the Clocktower on its big ring with two Cog Presses and a Mainspring meshing round it, Winders
-## working them, a Ratchet Turret, the Escapement meshing with the Mainspring and three Jacks (tier 2), the Clock Aviary
+## working them, a Ratchet Turret, the Escapement meshing with the Mainspring and three Springers (tier 2), the Clock Aviary
 ## (internal kind cuckoo_house), three Swifts and a Ticking Owl (TICKING OWL researched), tier 3 (the Movement Works on its BIG
 ## gear, two Pendulums and two Netters), the camera on it, and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
 ## a Rail Yard, Assembly Works, Engine Hall, Boiler and Pylon beside it.) A hint line says what to try.
@@ -44,9 +44,9 @@ static func setup(game: Game) -> void:
 ## Soldiers standing in front of the Works; and a Ratchet Turret, the static defence, built and linked on the field's
 ## edge (no power in gear mode: no Charging Pylon, no Boilers; Defs.ENERGY_KINDS are not in the gear build list).
 ## Tier 2: the Escapement meshing with the Mainspring's ring (a third entry: the kind it meshes with instead of the
-## Clocktower; it tries ESC_ANGLES round it until one fits), working, and JACKS Jacks beside the soldiers.
+## Clocktower; it tries ESC_ANGLES round it until one fits), working, and SPRINGERS Springers beside the soldiers.
 ## The Movement Works on the Clocktower's ring (down left) on its BIG gear (tier 3: the Pendulum), and a second Mainspring
-## meshing with the Works (THE TENSION RULE, GearEcon: Jacks, Pendulums and Netters cost Tension, so they are made only where
+## meshing with the Works (THE TENSION RULE, GearEcon: Springers, Pendulums and Netters cost Tension, so they are made only where
 ## a Mainspring meshes) and with the Clock Aviary (everything the Aviary makes costs Tension); SWIFTS Swifts and OWLS Ticking
 ## Owls hovering over the Clocktower's ring (in the Lab's first view). An entry that names a kind to mesh with tries
 ## ESC_ANGLES round the last one of that kind put, then its own angle on the Clocktower's ring.
@@ -56,7 +56,7 @@ const SHOWCASE := [["cog_press", -40.0], ["cog_press", 160.0], ["mainspring", 50
 const ESC_ANGLES := [0.0, 40.0, 80.0, -40.0, 120.0, -80.0, 160.0]
 const CREW := {"cog_press": 6, "mainspring": 3, "movement_works": 0, "regulator": 0, "ratchet_turret": 0, "escapement": 0, "cuckoo_house": 0}
 const SOLDIERS := 4
-const JACKS := 3
+const SPRINGERS := 3
 const SWIFTS := 3
 const OWLS := 1
 const PENDULUMS := 2
@@ -125,7 +125,7 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 			if c3.x >= 0:
 				put.append(game._add_building(k, t, c3, true))
 				game.gear_net.solve()
-	# room in the supply for the Jacks (2 each), the flyers (Swifts 2, the Owl 4) and tier 3 (Pendulums 4, Netters 2): five
+	# room in the supply for the Springers (2 each), the flyers (Swifts 2, the Owl 4) and tier 3 (Pendulums 4, Netters 2): five
 	# more Regulators, linked, wherever they fit
 	for i in 5:
 		var rs := game.find_spot(t, Defs.CW_SUPPLY, hall, 3, 24, "near")
@@ -159,11 +159,11 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 	var at: Vector2 = (works.center() + Vector2(0, float(works.size.y) * Defs.TILE * 0.5 + 70.0)) if works else hall.center() + Vector2(0, 150)
 	for i in SOLDIERS:
 		game._add_unit("clock_soldier", t, at + Vector2((float(i) - (SOLDIERS - 1) * 0.5) * 36.0, 0.0))
-	# the Jacks: a rank just behind the soldiers
-	for i in JACKS:
-		var jp := game.on_map(at + Vector2((float(i) - (JACKS - 1) * 0.5) * 40.0, 44.0))
-		game._add_unit(Defs.JACK, t, game.cell_center(game.nearest_free(game.cell_of(jp), 4)) if not game.is_free(game.cell_of(jp)) else jp)
-	# tier 3: the Pendulums at the ends of the soldiers' rank, the Netters behind the Jacks
+	# the Springers: a rank just behind the soldiers
+	for i in SPRINGERS:
+		var jp := game.on_map(at + Vector2((float(i) - (SPRINGERS - 1) * 0.5) * 40.0, 44.0))
+		game._add_unit(Defs.SPRINGER, t, game.cell_center(game.nearest_free(game.cell_of(jp), 4)) if not game.is_free(game.cell_of(jp)) else jp)
+	# tier 3: the Pendulums at the ends of the soldiers' rank, the Netters behind the Springers
 	for i in PENDULUMS:
 		var pp := game.on_map(at + Vector2((-1.0 if i % 2 == 0 else 1.0) * (SOLDIERS * 18.0 + 40.0), 20.0 + 50.0 * float(i / 2)))
 		game._add_unit(Defs.PENDULUM, t, game.cell_center(game.nearest_free(game.cell_of(pp), 4)) if not game.is_free(game.cell_of(pp)) else pp).cmd_stop()

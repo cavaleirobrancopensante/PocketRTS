@@ -188,14 +188,14 @@ var shield_up := false          # Clock Soldier: SHIELD FORWARD raised (or being
 var shield_t := 0.0             # Clock Soldier: the shield's switch under way (s left)
 var self_wind_t := 0.0          # Winder: stopped to wind itself
 var cranked_t := 0.0            # Wind-up Soldier: a Winder is cranking it (wind-up anim)
-var jump := {}                  # Jack: the leap under way ({} on the ground; scripts/jack.gd)
-var jump_cd := 0.0              # Jack: seconds before its spring can JUMP again
-var jumps := 0                  # Jack: leaps made (tests, the log)
-var shots := 0                  # Jack: screws fired (tests)
-var last_shot: Shot = null      # Jack: its last screw in flight (tests, screenshots)
-var last_tip := Vector2.ZERO    # Jack: where its last screw left from (the drill tip, raised at a flyer; tests)
-var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
-var _jack_t := 0.0              # Jack (the computer's): when it next thinks of jumping away
+var jump := {}                  # Springer: the leap under way ({} on the ground; scripts/springer.gd)
+var jump_cd := 0.0              # Springer: seconds before its spring can JUMP again
+var jumps := 0                  # Springer: leaps made (tests, the log)
+var shots := 0                  # Springer: screws fired (tests)
+var last_shot: Shot = null      # Springer: its last screw in flight (tests, screenshots)
+var last_tip := Vector2.ZERO    # Springer: where its last screw left from (the drill tip, raised at a flyer; tests)
+var arm := 0                    # Springer: the launcher of the shot under way (0 its right, 1 its left: Springer.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
+var _springer_t := 0.0              # Springer (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
 var last_bomb: OwlBomb = null   # Ticking Owl: its last bomb (tests, screenshots)
@@ -3317,9 +3317,9 @@ func _tick_unit(delta: float) -> void:
 			hp = minf(max_hp, hp + float(d["regen"]) * delta)
 
 	if not jump.is_empty():
-		# a Jack's leap: the crouch, the flight along its arc, the landing (scripts/jack.gd); no walking or fighting
+		# a Springer's leap: the crouch, the flight along its arc, the landing (scripts/springer.gd); no walking or fighting
 		# meanwhile (orders given now are taken up once it has landed)
-		Jack.tick(self, delta)
+		Springer.tick(self, delta)
 		_animate(delta)
 		if visible and game.view_rect.has_point(position):
 			queue_redraw()       # (its shadow shrinks as it rises)
@@ -3331,12 +3331,12 @@ func _tick_unit(delta: float) -> void:
 		if visible and game.view_rect.has_point(position):
 			queue_redraw()       # (the clock hand and the bar)
 		return
-	if kind == Defs.JACK and jump_cd <= 0.0:
-		_jack_t -= delta
-		if _jack_t <= 0.0:
-			_jack_t = 0.3
+	if kind == Defs.SPRINGER and jump_cd <= 0.0:
+		_springer_t -= delta
+		if _springer_t <= 0.0:
+			_springer_t = 0.3
 			if game.ais.any(func(a) -> bool: return a.team == team):
-				Jack.ai_tick(self)      # (the computer's: low and in a melee, it jumps away)
+				Springer.ai_tick(self)      # (the computer's: low and in a melee, it jumps away)
 				if not jump.is_empty():
 					return
 	if kind == "skywing" and sky != "air" and sky != "ground":
@@ -4312,8 +4312,8 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 				target = null
 			return
 		_owl_bomb = kind == Defs.OWL and e is Building      # (the Owl: a bomb on a building, the talons on a unit)
-		if kind == Defs.JACK:
-			arm = shots % 2          # (its two launchers fire in turn: scripts/jack.gd)
+		if kind == Defs.SPRINGER:
+			arm = shots % 2          # (its two launchers fire in turn: scripts/springer.gd)
 		elif kind == Defs.PENDULUM:
 			arm = swings % 2         # (its two arms cut in turn, right then left: scripts/pendulum.gd)
 		phase = "aim"
@@ -4423,8 +4423,8 @@ func _strike(e: Entity) -> void:
 				e.take_damage(dmg, self, BLOW_BROOD)      # (landed: its bite)
 				game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			Sfx.play_any(["combat/skywing_attack", "bite"], position)
-		"jack":
-			Jack.shoot(self, e, dmg)       # (a spinning screw from the drill tip, ground or air)
+		"springer":
+			Springer.shoot(self, e, dmg)       # (a spinning screw from the drill tip, ground or air)
 		"pendulum":
 			Pendulum.swing(self, e, dmg)   # (the blade through every enemy in the arc in front: scripts/pendulum.gd)
 		"netter":
@@ -5930,7 +5930,7 @@ func die() -> void:
 	selected = false
 	velocity = Vector2.ZERO
 	if not jump.is_empty():
-		jump = {}                  # (a Jack killed in the air falls where it was)
+		jump = {}                  # (a Springer killed in the air falls where it was)
 		if sprite:
 			sprite.position = Vector2.ZERO
 	owl_t = -1.0                   # (a Swift killed while turning into an Owl: the price is lost)
@@ -6247,13 +6247,13 @@ func _anim_name() -> String:
 		"pendulum":
 			if phase != "":
 				return Pendulum.attack_anim(self)   # (its two arms cut in turn: attack_r, attack_l)
-		"jack":
+		"springer":
 			if not jump.is_empty():
-				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
+				return "jump"            # (crouch, launch, air, landing: Springer.frame picks the frame)
 			if phase != "":
 				# at a flyer it raises its arm (the attack_up strip: same timing, same shot frame); at the ground its two
 				# launchers fire in turn (attack_r / attack_l)
-				return "attack_up" if Jack.aims_up(self) else Jack.attack_anim(self)
+				return "attack_up" if Springer.aims_up(self) else Springer.attack_anim(self)
 		"cuckoo":
 			if phase != "":
 				return "attack"          # (the pecking lunge)
@@ -6278,7 +6278,7 @@ const SKYWING_HOVER_FPS := 6.0
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
 		"dismounted_armoured": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
-		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
+		"thresher": 10.0, "clock_soldier": 10.0, "springer": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
 		# the Pendulum's long strides (90 sheet px a step at 0.284: one 8-frame cycle carries it 51 px, 1.1 s at 46);
 		# the Netter's quick trot (its stubby legs step faster than the ground goes by: as fast as reads)
 		"pendulum": 7.2, "netter": 14.0,
@@ -6485,7 +6485,7 @@ func _animate(delta: float) -> void:
 			fps = 0.0           # (set from how far through getting on or off he is, below)
 			loop = false
 		"jump":
-			fps = 0.0           # (a Jack's leap: the frame follows the crouch, flight and landing, below)
+			fps = 0.0           # (a Springer's leap: the frame follows the crouch, flight and landing, below)
 			loop = false
 	if kind == "labourer" and not dead and _drive_labourer(delta, n):
 		pass
@@ -6516,7 +6516,7 @@ func _animate(delta: float) -> void:
 	if kind == "mist_toad" and anim == "tongue" and tongue_stage != "":
 		shown = mini(shown, TOAD_MOUTH_OPEN)   # the mouth gapes; the drawn tongue does the reaching
 	if anim == "jump":
-		frame_i = mini(Jack.frame(self), n - 1)
+		frame_i = mini(Springer.frame(self), n - 1)
 		shown = frame_i
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
 	if not team_horses.is_empty() or not _team_sprites.is_empty():
@@ -6560,8 +6560,8 @@ func _animate(delta: float) -> void:
 		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
 	elif anim == "mount" and work == "mounting" and is_instance_valid(order_target):
 		sprite.position = order_target.position - position     # the strip's horse where the horse is
-	elif kind == Defs.JACK and not jump.is_empty() and not dead:
-		sprite.position = Vector2(0.0, -Jack.lift(self))      # (in the air: over its shadow, on the arc)
+	elif kind == Defs.SPRINGER and not jump.is_empty() and not dead:
+		sprite.position = Vector2(0.0, -Springer.lift(self))      # (in the air: over its shadow, on the arc)
 	elif kind == "winder" and not dead and _beat_dip > 0.0 and beat_of(anim) == "wind":
 		sprite.position = Vector2(0.0, 1.0)      # (a Winder's hammer blow: the body dips a pixel)
 	elif crew_of != null and not dead:
@@ -7039,8 +7039,8 @@ func _draw_unit() -> void:
 		return
 	if selected and (kind == "cannon" or kind == "mortar") and team == game.human and aboard == null:
 		_draw_aim()
-	# (a Jack in the air: its shadow stays on the ground under it, a little smaller and darker so the leap reads)
-	var lifted := Jack.lift(self) if not jump.is_empty() else 0.0
+	# (a Springer in the air: its shadow stays on the ground under it, a little smaller and darker so the leap reads)
+	var lifted := Springer.lift(self) if not jump.is_empty() else 0.0
 	var shade := 1.0 - clampf(lifted / 160.0, 0.0, 0.3)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, (radius + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))

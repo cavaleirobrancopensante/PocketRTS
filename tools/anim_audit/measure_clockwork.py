@@ -37,7 +37,7 @@ ALL_DIRS = DIRS + WEST
 NAVY = (0, 22, 48)
 
 # gear mode's live roster (Defs.CW_NEW_UNITS) and the old roster (retired in gear mode, kept for the shelved Line)
-LIVE = ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter"]
+LIVE = ["winder", "clock_soldier", "springer", "cuckoo", "ticking_owl", "pendulum", "netter"]
 OLD = ["gearknight", "bolt", "steam_walker", "stormcaller", "tesla_cart", "ornithopter", "arc_thrower", "thresher",
        "bulwark", "windup_soldier"]
 BUILDINGS = {"clocktower": 0, "cog_press": 8, "mainspring": 8, "escapement": 24, "movement_works": 8,
@@ -117,7 +117,7 @@ def frame_ms(kind, anim, n):
     elif anim == "death":
         fps = 7.0
     elif anim in ("jump",):
-        fps = 9.0      # (the Jack's leap follows Jack.frame: crouch 0.35 s, air 0.3 s, land 0.2 s; shown at 9 fps)
+        fps = 9.0      # (the Springer's leap follows Springer.frame: crouch 0.35 s, air 0.3 s, land 0.2 s; shown at 9 fps)
     elif anim in ("wind", "repair", "vent"):
         fps = 5.0
     elif anim in ("sweep", "throw"):

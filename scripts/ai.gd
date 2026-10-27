@@ -588,8 +588,8 @@ func _turrets() -> void:
 
 ## Gear mode, TIER 2: once a Movement Works stands, a Mainspring (idle Winders crew it, so it winds Tension), then an
 ## Escapement whose ring meshes with that Mainspring's (the Tension rule: placed by GearNet.ring_spot round it).
-## _produce mixes Jacks into the army while the Tension lasts. (No HIGH LEAP: its Jacks only jump away from melee, on the
-## flat or down: Jack.ai_tick.)
+## _produce mixes Springers into the army while the Tension lasts. (No HIGH LEAP: its Springers only jump away from melee, on the
+## flat or down: Springer.ai_tick.)
 var _tier2_t := 0.0
 var _research_keep := 0.0      # gear mode: Tension kept for a research that is wanted (SHIELD WALL, HIGH LEAP)
 var _esc_blocked := false       # gear mode: no room for the Escapement by any Mainspring (another Mainspring is saved for)
@@ -597,7 +597,7 @@ var _tech_hold := false         # gear mode: the gold put by is for the Mainspri
 
 
 ## Gear mode: when the tier-2 tech starts (the plan's tech clock, AI._build_up's `t`). Hard: about 2:50, so the
-## Mainspring stands by ~3:30 and the Escapement by ~4:40: the first Jacks, Netters and SHIELD WALL are out for the
+## Mainspring stands by ~3:30 and the Escapement by ~4:40: the first Springers, Netters and SHIELD WALL are out for the
 ## first big fight (docs/clockwork_ai.md). Sooner against a walled enemy: melee alone cannot take a wall that is mended.
 func _tier2_at() -> float:
 	var at: float = _lv([560.0, 300.0, 170.0])
@@ -654,7 +654,7 @@ func _tier2(t: float) -> void:
 		_reserve = maxi(_reserve, next_cost + 20)
 		_tech_hold = true
 	_esc_spring(esc)       # (an Escapement laid first gets its Mainspring)
-	_jack_works()          # (its own clock; the gold it wants is held back on every think)
+	_springer_works()          # (its own clock; the gold it wants is held back on every think)
 	_research_keep = 0.0
 	if not springs.is_empty():
 		_shield_research()
@@ -736,7 +736,7 @@ func _esc_spring(esc: Array) -> void:
 
 
 ## Gear mode: SHIELD WALL (the Clock Soldiers' SHIELD FORWARD, scripts/shield_wall.gd) once it meets a ranged army
-## (3+ enemy shooters seen in the last 90 s: Musketeers, Spitters, Jacks...) and has Clock Soldiers to use it, at a
+## (3+ enemy shooters seen in the last 90 s: Musketeers, Spitters, Springers...) and has Clock Soldiers to use it, at a
 ## Movement Works whose ring meshes with a Mainspring's (it costs Tension), with the Tension to spare.
 var _ranged_seen := 0
 var _ranged_seen_t := -999.0
@@ -759,7 +759,7 @@ func _shield_research() -> void:
 	var info: Dictionary = Defs.RESEARCH[ShieldWall.TECH]
 	if _meshed_none():
 		return
-	_research_keep = maxf(_research_keep, float(Defs.tension_cost(info)) + 10.0)     # (its Tension is kept from the Jacks: _produce)
+	_research_keep = maxf(_research_keep, float(Defs.tension_cost(info)) + 10.0)     # (its Tension is kept from the Springers: _produce)
 	_research_cogs(int(info["cost"]))
 	if game.tension(team) < float(Defs.tension_cost(info)) + 10.0 or _gold() < int(info["cost"]) + 20:
 		return
@@ -771,16 +771,16 @@ func _shield_research() -> void:
 			return
 
 
-## Gear mode: HIGH LEAP at the Escapement (its Jacks then JUMP UP onto high ground: over a walled ramp onto the workers
-## mending the wall and the shooters on the edge, _jack_leaps), on Normal and Hard, once it has a few Jacks and the
-## enemy has walls or stands on high ground. Its Tension is kept from the Jacks meanwhile (_produce).
+## Gear mode: HIGH LEAP at the Escapement (its Springers then JUMP UP onto high ground: over a walled ramp onto the workers
+## mending the wall and the shooters on the edge, _springer_leaps), on Normal and Hard, once it has a few Springers and the
+## enemy has walls or stands on high ground. Its Tension is kept from the Springers meanwhile (_produce).
 func _leap_research() -> void:
 	if difficulty < 1 or game.has_tech(team, "high_leap") or game.researching(team, "high_leap"):
 		return
 	if not game.has_working(team, Defs.CW_TECH):
 		return
-	var jacks := game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
-	if jacks < 5 or not (_foe_walled() or _foe_high()):
+	var springers := game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.SPRINGER).size()
+	if springers < 5 or not (_foe_walled() or _foe_high()):
 		return
 	if not game.has_tech(team, ShieldWall.TECH) and _ranged_seen >= 3 and game.army(team).filter(func(u: Unit) -> bool: return u.kind == ShieldWall.KIND).size() >= 4:
 		return          # (SHIELD WALL first: cheaper, and every Clock Soldier walking up under fire needs it)
@@ -793,12 +793,12 @@ func _leap_research() -> void:
 		if e.built and game.research_problem(e, "high_leap") == "":
 			game.start_research(e, "high_leap")
 			if game.mlog:
-				game.mlog.add("%s researches HIGH LEAP (%d Jacks, %s)" % [game.mlog.who(team), jacks, "a walled enemy" if _foe_walled() else "an enemy on high ground"])
+				game.mlog.add("%s researches HIGH LEAP (%d Springers, %s)" % [game.mlog.who(team), springers, "a walled enemy" if _foe_walled() else "an enemy on high ground"])
 			return
 
 
 ## A wanted research's cogs are held back too, like a building's (the army pauses for them once it holds the line): it
-## costs cogs and Tension, and with every cog spent on Clock Soldiers its Tension was kept from the Jacks for nothing.
+## costs cogs and Tension, and with every cog spent on Clock Soldiers its Tension was kept from the Springers for nothing.
 func _research_cogs(cost: int) -> void:
 	if _gold() < cost + 20 and (_threat() == Vector2.INF or _holds_line()):
 		_reserve = maxi(_reserve, cost + 20)
@@ -827,11 +827,11 @@ func _tier3() -> void:
 	if works.is_empty() or works.any(func(b: Building) -> bool: return (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)):
 		return
 	var fed: Array = works.filter(func(b: Building) -> bool: return GearEcon.spend_problem(game, b) == "")
-	# (the Jacks first: a Works goes on its big gear only once another one makes Jacks and a few are out; in 0.14.72's
-	# games the only Works that could make Jacks went onto its big gear and made Pendulums: the first Jack came at 8:00)
-	var jk: int = game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
+	# (the Springers first: a Works goes on its big gear only once another one makes Springers and a few are out; in 0.14.72's
+	# games the only Works that could make Springers went onto its big gear and made Pendulums: the first Springer came at 8:00)
+	var jk: int = game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.SPRINGER).size()
 	if jk < 3 or (fed.size() < 2 and jk < 6):
-		return          # (one Works that may make Jacks: it goes on its big gear once six are out; it still makes Jacks there)
+		return          # (one Works that may make Springers: it goes on its big gear once six are out; it still makes Springers there)
 	fed.reverse()
 	for w in fed:
 		if game.gear_swap_problem(w) == "":
@@ -843,12 +843,12 @@ func _tier3() -> void:
 
 ## Gear mode: a building whose work DRIVE scales (GearEcon: a Cog Press, the Works, a Mainspring...) goes where its ring
 ## meshes with a Clocktower's (100%), nearest the main Clocktower first; (-1, -1) when there is no room (the usual search).
-## The first Movement Works keeps room beside it for a Mainspring (its Jacks, later); a Works built while no Works meshes
+## The first Movement Works keeps room beside it for a Mainspring (its Springers, later); a Works built while no Works meshes
 ## with a Mainspring goes by a Mainspring first (THE TENSION RULE).
 func _drive_spot(kind: String) -> Vector2i:
 	if not _clock() or not Defs.gear_mode or not GearEcon.uses_drive(kind) or kind == String(_f()["hall"]):
 		return Vector2i(-1, -1)
-	# (and the next ones too, up to three that may make Jacks: one Works makes a Jack every 25 s, too few)
+	# (and the next ones too, up to three that may make Springers: one Works makes a Springer every 25 s, too few)
 	if kind == _works() and _mine(_works()).filter(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null).size() < 3:
 		for sp in _mine("mainspring"):
 			if sp.built:
@@ -867,7 +867,7 @@ func _drive_spot(kind: String) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-## Gear mode: where the Mainspring goes. Its ring meshes with a Movement Works' (so that Works may make Jacks: anything that
+## Gear mode: where the Mainspring goes. Its ring meshes with a Movement Works' (so that Works may make Springers: anything that
 ## costs Tension is made only where a Mainspring meshes, GearEcon) and keeps room round it for an Escapement and a Clock
 ## Aviary; with no room by a Works, by the Clocktower; `spare`: a second one, only room for the Escapement and the Aviary.
 func _spring_spot(spare := false) -> Vector2i:
@@ -887,7 +887,7 @@ func _spring_spot(spare := false) -> Vector2i:
 		var r2: Array = GearEcon.room_spot_n(game, team, "mainspring", [w], [Defs.CW_TECH])
 		if int(r2[1]) >= 1:
 			return r2[0]          # (beside a Works, room for the Escapement at least)
-	# no room by a Works: by a Clocktower, with room for the Escapement AND a Works that may make Jacks (_jack_works)
+	# no room by a Works: by a Clocktower, with room for the Escapement AND a Works that may make Springers (_springer_works)
 	for h in _halls():
 		if h.built:
 			var r3: Array = GearEcon.room_spot_n(game, team, "mainspring", [h], [Defs.CW_TECH, _works()])
@@ -914,16 +914,16 @@ func _spring_spot(spare := false) -> Vector2i:
 	return fall
 
 
-## Gear mode: Works that may make Jacks, Netters and Pendulums (their ring meshes with a Mainspring's: THE TENSION RULE).
+## Gear mode: Works that may make Springers, Netters and Pendulums (their ring meshes with a Mainspring's: THE TENSION RULE).
 ## None: the first comes at once, as soon as a Mainspring stands: a second Mainspring right beside a Works that has none
 ## (it winds Tension too), else a new Works by a Mainspring. Once the Escapement works, a second one on Normal and Hard
-## (one Works makes a Jack every 25 s: too few for the army it backs), a third on Hard with money in the bank.
-## (0.14.72 games: a Works that could make Jacks was never built in one game in two, and no Jack came all game.)
-var _jack_works_t := 0.0
-var _jw_plan := {}              # {"kind", "cell"}: the next Mainspring or Works that would let a Works make Jacks
+## (one Works makes a Springer every 25 s: too few for the army it backs), a third on Hard with money in the bank.
+## (0.14.72 games: a Works that could make Springers was never built in one game in two, and no Springer came all game.)
+var _springer_works_t := 0.0
+var _jw_plan := {}              # {"kind", "cell"}: the next Mainspring or Works that would let a Works make Springers
 
 
-func _jack_works() -> void:
+func _springer_works() -> void:
 	if not _mine("mainspring").any(func(b: Building) -> bool: return b.built):
 		return
 	var works := _mine(_works())
@@ -936,8 +936,8 @@ func _jack_works() -> void:
 	if meshed >= want or _busy_building(_works()) or _busy_building("mainspring"):
 		_jw_plan = {}
 		return
-	if game.clock >= _jack_works_t:
-		_jack_works_t = game.clock + 6.0
+	if game.clock >= _springer_works_t:
+		_springer_works_t = game.clock + 6.0
 		_jw_plan = _jw_find(works)
 	if _jw_plan.is_empty():
 		return          # (no room for either: nothing is held back for it)
@@ -946,9 +946,9 @@ func _jack_works() -> void:
 	if _gold() >= cost + 20:
 		_construct(kind, _jw_plan["cell"])
 		if game.mlog and kind == "mainspring":
-			game.mlog.add("%s builds a Mainspring by a Movement Works (so it may make Jacks)" % game.mlog.who(team))
+			game.mlog.add("%s builds a Mainspring by a Movement Works (so it may make Springers)" % game.mlog.who(team))
 		_jw_plan = {}
-		_jack_works_t = game.clock + 6.0
+		_springer_works_t = game.clock + 6.0
 		return
 	# (saved up for like the tech: the army pauses for it once it holds the line, _produce)
 	if _threat() == Vector2.INF or _holds_line():
@@ -956,7 +956,7 @@ func _jack_works() -> void:
 		_tech_hold = true
 
 
-## Where the next Jack Works comes from: a Mainspring beside a Works that has none (it winds Tension too), else a new
+## Where the next Springer Works comes from: a Mainspring beside a Works that has none (it winds Tension too), else a new
 ## Works by a Mainspring; {} when there is no room for either.
 func _jw_find(works: Array) -> Dictionary:
 	for w in works:
@@ -1005,7 +1005,7 @@ func _foe_air() -> int:
 	return _air_seen
 
 
-var _want_aviary := false           # (its Tension price is kept: no Jacks eat into it, _produce)
+var _want_aviary := false           # (its Tension price is kept: no Springers eat into it, _produce)
 
 
 func _air(t: float) -> void:
@@ -3278,33 +3278,33 @@ func _produce() -> void:
 	var army := game.army(team)
 	if _clock() and Defs.gear_mode:
 		# gear mode: Clock Soldiers from every Movement Works, and Tension units from the Works that may make them (a ring
-		# that meshes with a Mainspring's): a Jack for about every 1.5 Clock Soldiers (the shooters behind the line: they
+		# that meshes with a Mainspring's): a Springer for about every 1.5 Clock Soldiers (the shooters behind the line: they
 		# kill the workers mending a wall and the Musketeers over it), a Netter for every 7 others (up to 3, from 8 in
 		# the army), and tier 3 (_tier3) a Pendulum at the big-gear Works for every 6 others (up to 4). Tension piling up
 		# (60% of what the Mainsprings store) goes on Tension units first: it is not left at its cap. A Works that may make
-		# a Jack waits for the cogs rather than spend them on another Clock Soldier (docs/clockwork_ai.md).
+		# a Springer waits for the cogs rather than spend them on another Clock Soldier (docs/clockwork_ai.md).
 		var n_of := func(kind: String) -> int:
 			var n: int = army.filter(func(u: Unit) -> bool: return u.kind == kind).size()
 			for w in _mine(_works()):
 				n += w.queue.count(kind)
 			return n
-		var jacks: int = n_of.call(Defs.JACK)
+		var springers: int = n_of.call(Defs.SPRINGER)
 		var pends: int = n_of.call(Defs.PENDULUM)
 		var netters: int = n_of.call(Defs.NETTER)
 		var soldiers: int = n_of.call("clock_soldier")
-		var others: int = soldiers + jacks
+		var others: int = soldiers + springers
 		var bals: int = n_of.call(Defs.BALLISTA_KIND)
 		var bal_want := _ballista_want()
 		var cap_t := _tension_cap()
 		var flush: bool = cap_t > 0.0 and game.tension(team) >= cap_t * 0.6
-		# (the Works that may make Tension units first: one waiting for the cogs of a Jack stops the others spending them
+		# (the Works that may make Tension units first: one waiting for the cogs of a Springer stops the others spending them
 		# on Clock Soldiers)
 		var wl: Array = _mine(_works())
 		wl.sort_custom(func(a: Building, b: Building) -> bool: return game.gear_net.spring_for(a) != null and game.gear_net.spring_for(b) == null)
 		for w in wl:
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "clock_soldier"
-				var want_p: bool = w.gear_big and pends < mini(4, 1 + others / 6) and (jacks >= 3 or flush)
+				var want_p: bool = w.gear_big and pends < mini(4, 1 + others / 6) and (springers >= 3 or flush)
 				var keep := float(Defs.tension_cost(Defs.UNITS[Defs.PENDULUM])) if want_p else 0.0
 				if _want_aviary:
 					keep += float(Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR]))       # (the Aviary's Tension price is kept too)
@@ -3316,15 +3316,15 @@ func _produce() -> void:
 					k = Defs.PENDULUM
 				elif bals < bal_want and others >= 3 and _tension_ok(w, Defs.BALLISTA_KIND, keep):
 					k = Defs.BALLISTA_KIND
-				elif army.size() >= 8 and netters < mini(3, others / 7) and jacks >= 4 and _tension_ok(w, Defs.NETTER, keep):
+				elif army.size() >= 8 and netters < mini(3, others / 7) and springers >= 4 and _tension_ok(w, Defs.NETTER, keep):
 					k = Defs.NETTER
-				elif (jacks * 3 < soldiers * 2 + 3 or flush) and _tension_ok(w, Defs.JACK, keep):
-					k = Defs.JACK
+				elif (springers * 3 < soldiers * 2 + 3 or flush) and _tension_ok(w, Defs.SPRINGER, keep):
+					k = Defs.SPRINGER
 				var why := game.train(w, k)
 				if why != "":
 					break         # (saving up for it, or the supply is full)
-				if k == Defs.JACK:
-					jacks += 1
+				if k == Defs.SPRINGER:
+					springers += 1
 					others += 1
 				elif k == Defs.PENDULUM:
 					pends += 1
@@ -3816,14 +3816,14 @@ func _army() -> void:
 			_follow_with_escort(army)       # (the Winders keep the waiting army wound: the rally may be off the gear ground)
 
 
-## Gear mode's Clockwork against a walled enemy: the first attack waits for its kit, the Jacks that shoot the menders
+## Gear mode's Clockwork against a walled enemy: the first attack waits for its kit, the Springers that shoot the menders
 ## and the shooters on the edge (Normal 2, Hard 4), until 8:00 at the latest (Clock Soldiers alone at a mended gate
 ## lost 25 for 1 in the 0.14.72 siege). A rush plan or an enemy without walls goes as before.
 func _kit_ready(list: Array) -> bool:
 	if not (_clock() and Defs.gear_mode) or difficulty < 1 or strategy == "rush" or _first_wave or game.clock > 480.0 or not _foe_walled():
 		return true
-	var jacks := list.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
-	return jacks >= _lv([0, 2, 4])
+	var springers := list.filter(func(u: Unit) -> bool: return u.kind == Defs.SPRINGER).size()
+	return springers >= _lv([0, 2, 4])
 
 
 ## A timing attack the scout sized waits while the army is not worth enough against what
@@ -4509,10 +4509,10 @@ func _siege_tick(wave: Array) -> bool:
 			return true            # pulled back: the wave is over
 	if _siege.is_empty():
 		if _clock() and Defs.gear_mode:
-			_jack_leaps(ground)
+			_springer_leaps(ground)
 		return false
 	if _clock() and Defs.gear_mode:
-		_jack_leaps(ground)
+		_springer_leaps(ground)
 	_siege_orders(ground)
 	return true
 
@@ -4854,7 +4854,7 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 	var cap := at_face.size()
 	melee = at_face + queue
 	# repairers on the wall (and those close enough to start); the workers farther back come to take a fallen one's place
-	# (one every REP_REFILL s, up to as many as began). Our shooters that can hit them (Jacks, Spitters...) shoot them
+	# (one every REP_REFILL s, up to as many as began). Our shooters that can hit them (Springers, Spitters...) shoot them
 	# first (_siege_prey), and every Netter keeps one of them in a net a share of the time: a wall mended as fast as it
 	# is hit falls once the menders do (the owner, 2026-10-27; the 0.14.72 siege: 25 Clock Soldiers lost for 1 kill)
 	var rate := maxf(float(Defs.REPAIR_RATE), piece.max_hp / maxf(float(piece.d.get("time", 10.0)), 1.0))
@@ -5054,7 +5054,7 @@ func _siege_orders(ground: Array) -> void:
 		var spot: Vector2 = spots[u]
 		var in_reach: bool = piece.edge_distance(u.position) - u.radius <= u._range() - 4.0
 		# the workers mending the piece first, then the shooters on the edge: a wall that is mended as fast as it is hit
-		# never falls (the owner, 2026-10-27: "the Jacks can focus down and kill the workers"); _siege_prey
+		# never falls (the owner, 2026-10-27: "the Springers can focus down and kill the workers"); _siege_prey
 		if (in_reach or u.position.distance_to(spot) < 40.0) and u.kind != Defs.BALLISTA_KIND:      # (the Ballista's bolt is for the gate)
 			var prey := _siege_prey(u, piece, aimed)
 			if prey != null:
@@ -5123,7 +5123,7 @@ func _siege_orders(ground: Array) -> void:
 		_to_spot(u, near_pt if close_in else stage, gap * (1.0 if close_in else 2.0))
 
 
-## A siege's shooter (a Jack, a Netter, a Spitter...): what to shoot instead of the piece, from where it stands (it does
+## A siege's shooter (a Springer, a Netter, a Spitter...): what to shoot instead of the piece, from where it stands (it does
 ## not walk after it up the ramp): an enemy worker mending a wall piece (or standing by this one, about to), then an
 ## enemy shooter on the edge in reach; none: the piece. Only what this side sees (the men at the face see over it).
 ## `aimed`: shooters already on each one (a Labourer dies to about five screws: the next shooter takes another one).
@@ -5154,7 +5154,7 @@ func _siege_prey(u: Unit, piece: Building, aimed: Dictionary) -> Unit:
 	return best
 
 
-## A Jack that has leapt up: once landed, it shoots the workers there first (then the shooters), from where it stands.
+## A Springer that has leapt up: once landed, it shoots the workers there first (then the shooters), from where it stands.
 func _leapt_fight(u: Unit) -> void:
 	u.siege_t = 0.0
 	if not u.jump.is_empty() or u.phase != "":
@@ -5251,29 +5251,29 @@ func _ranged_spot(u: Unit, piece: Building, out: Vector2, flood: PackedByteArray
 	return best + Vector2(randf_range(-6, 6), randf_range(-6, 6))
 
 
-## Gear mode, Normal and up: Jacks JUMP UP onto the high ground (HIGH LEAP: Jack.landing) when that wins: a few of the
-## wave's ready Jacks below a cliff or a walled ramp, enemy workers or shooters on the high ground just past it (seen by
-## our side), a landing spot within the jump where the armed enemies close by are worth less than the Jacks that land
-## (Musketeers in numbers there: no jump, the Jacks would only die). Once up they shoot the workers first (_leapt: the
+## Gear mode, Normal and up: Springers JUMP UP onto the high ground (HIGH LEAP: Springer.landing) when that wins: a few of the
+## wave's ready Springers below a cliff or a walled ramp, enemy workers or shooters on the high ground just past it (seen by
+## our side), a landing spot within the jump where the armed enemies close by are worth less than the Springers that land
+## (Musketeers in numbers there: no jump, the Springers would only die). Once up they shoot the workers first (_leapt: the
 ## siege leaves them be for a while). A leap is visible (the crouch) and costs the spring 10 s (design_principles 1).
-var _leapt := {}               # Jack -> clock when it leapt up (the siege's orders leave it be for LEAP_HOLD s)
+var _leapt := {}               # Springer -> clock when it leapt up (the siege's orders leave it be for LEAP_HOLD s)
 const LEAP_HOLD := 14.0
 var _leap_t := 0.0
 
 
-func _jack_leaps(wave: Array) -> void:
+func _springer_leaps(wave: Array) -> void:
 	if difficulty < 1 or not game.has_tech(team, "high_leap") or game.clock < _leap_t:
 		return
 	_leap_t = game.clock + 1.5
 	for u in _leapt.keys():
 		if not is_instance_valid(u) or u.dead or game.clock - float(_leapt[u]) > LEAP_HOLD:
 			_leapt.erase(u)
-	var ready: Array = wave.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.kind == Defs.JACK \
-			and not _leapt.has(u) and Jack.ready_problem(u) == "" and not game.on_high(u.position) and u.hp > u.max_hp * 0.5)
+	var ready: Array = wave.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.kind == Defs.SPRINGER \
+			and not _leapt.has(u) and Springer.ready_problem(u) == "" and not game.on_high(u.position) and u.hp > u.max_hp * 0.5)
 	if ready.size() < 2:
 		return
-	# the prey: enemy workers and shooters on the high ground that our side sees, within a jump and a shot of a Jack
-	var reach := float(Defs.JACK_JUMP["range"]) + float(Defs.UNITS[Defs.JACK]["range"]) * 0.7
+	# the prey: enemy workers and shooters on the high ground that our side sees, within a jump and a shot of a Springer
+	var reach := float(Defs.SPRINGER_JUMP["range"]) + float(Defs.UNITS[Defs.SPRINGER]["range"]) * 0.7
 	var best_p := Vector2.INF
 	var best_s := 0.0
 	var best_w := false
@@ -5296,7 +5296,7 @@ func _jack_leaps(wave: Array) -> void:
 				best_w = o.is_worker()
 	if best_p == Vector2.INF:
 		return
-	# the jumpers: the ready Jacks within a jump of a landing spot by the prey
+	# the jumpers: the ready Springers within a jump of a landing spot by the prey
 	var group: Array = ready.filter(func(j: Unit) -> bool: return j.position.distance_to(best_p) < reach)
 	if group.size() < 2:
 		return
@@ -5316,20 +5316,20 @@ func _jack_leaps(wave: Array) -> void:
 		return              # (it would not win up there)
 	var n := 0
 	for j in group:
-		var l: Dictionary = Jack.landing(j, land + Vector2(randf_range(-24, 24), randf_range(-24, 24)))
+		var l: Dictionary = Springer.landing(j, land + Vector2(randf_range(-24, 24), randf_range(-24, 24)))
 		if l.has("at") and game.on_high(l["at"]):
-			Jack.start(j, l["at"])
+			Springer.start(j, l["at"])
 			_leapt[j] = game.clock
 			j.siege_t = 0.0
 			n += 1
 	if n > 0 and game.mlog:
-		game.mlog.add("%s's Jacks leap up onto the high ground (%d of them, %s there; %d value of armed enemies near)" % [game.mlog.who(team), n,
+		game.mlog.add("%s's Springers leap up onto the high ground (%d of them, %s there; %d value of armed enemies near)" % [game.mlog.who(team), n,
 			"workers" if best_w else "shooters", int(theirs)])
 
 
 ## Clockwork: Winders walk behind the army and repair it (they repair whatever is hurt near them on their own when
 ## they stop). GEAR MODE (the owner, 2026-10-27: "it brings workers to the battlefield"): a Clock Soldier, a Pendulum,
-## a Jack... runs down in ~80 s off its gear ground and stands still, and only a Winder winds it up again out there, so
+## a Springer... runs down in ~80 s off its gear ground and stands still, and only a Winder winds it up again out there, so
 ## the Winders go WITH the army wherever it is (the rally, the attack): about one for every five constructs (at least
 ## two, at most a third of the workers and 10), and they WIND first (run-down ones, then the lowest), repair second.
 ## Run-down constructs left behind on the way are fetched too while no enemy stands near them. (The Crate drop instead of

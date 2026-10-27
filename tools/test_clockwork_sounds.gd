@@ -1,14 +1,14 @@
 extends SceneTree
 ## The Clockwork's own sounds (tools/audio/make_clockwork_sounds.py, docs/clockwork_sounds.md) really play in a match.
 ## A Clockwork player (you) against an Easy Crown: every gear-mode building is picked, every new unit is picked, ordered
-## to move and to attack, fights a Crown man (the Swift a Crown balloon in the air), and dies; a Jack jumps, a Swift is
+## to move and to attack, fights a Crown man (the Swift a Crown balloon in the air), and dies; a Springer jumps, a Swift is
 ## morphed into a Ticking Owl (the research done rings), the Owl bombs a Crown building, a Netter nets, the Ratchet Turret
 ## shoots, a Winder cranks a Cog Press and builds, a building finishes, a unit comes out of the Works, men and base are
 ## attacked. Sfx's own log (MatchLog.sound) is read at the end: it FAILS if any sound the script makes never played, or
 ## if a Clockwork thing still played a generic or Crown fallback ("clash", "gear_hit", the bolt, the musket ...).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_clockwork_sounds.gd
 const U := preload("res://tools/gear_test_util.gd")
-## The fallbacks the Clockwork's things played before they had their own sounds (scripts/unit.gd, game.gd, jack.gd,
+## The fallbacks the Clockwork's things played before they had their own sounds (scripts/unit.gd, game.gd, springer.gd,
 ## netter.gd, pendulum.gd, cw_air.gd, sfx.gd): none of them may be heard now.
 const FALLBACKS := ["clash", "gear_hit", "combat/gear_hit", "combat/gearknight_attack", "combat/bolt_attack", "bolt",
 	"combat/arrow_whoosh", "combat/clock_death", "death_clock", "clock/select_building", "ui/alert_all", "combat/skywing_attack",
@@ -112,7 +112,7 @@ func _run() -> void:
 	await run(0.3)
 	# ---- the units: picked, sent off, told to attack
 	var at := base + Vector2(0, 260)
-	var kinds := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
+	var kinds := ["winder", "clock_soldier", "springer", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
 	var us := {}
 	for i in kinds.size():
 		var k: String = kinds[i]
@@ -133,10 +133,10 @@ func _run() -> void:
 	g.spawn_trained(built["movement_works"], "clock_soldier")
 	await run(0.3)
 	# ---- fights: each kind on its own against Crown Musketeers standing still (a balloon for the Swift), till it hits
-	for k in ["clock_soldier", "winder", "pendulum", "ticking_owl", "jack", "netter", "cuckoo", "ballista"]:
+	for k in ["clock_soldier", "winder", "pendulum", "ticking_owl", "springer", "netter", "cuckoo", "ballista"]:
 		var u: Unit = us[k]
 		var target_kind := "balloon" if k == "cuckoo" else "musketeer"
-		var p: Vector2 = u.position + (Vector2(90, -30) if k == "cuckoo" else Vector2(0, 160 if k == "ballista" else (90 if k in ["jack", "netter"] else 30)))
+		var p: Vector2 = u.position + (Vector2(90, -30) if k == "cuckoo" else Vector2(0, 160 if k == "ballista" else (90 if k in ["springer", "netter"] else 30)))
 		var f = foe(target_kind, p)
 		f.hp = 5000.0
 		u.cmd_attack(f)
@@ -156,14 +156,14 @@ func _run() -> void:
 	await run(6.0)
 	ft.hp = 0.0
 	ft.die()
-	# ---- a Jack jumps (crouch, boing, landing)
-	var j: Unit = us["jack"]
+	# ---- a Springer jumps (crouch, boing, landing)
+	var j: Unit = us["springer"]
 	j.cmd_stop()
 	await run(0.5)
-	var why: String = Jack.jump_order(g, [j], j.position + Vector2(110, 0))
+	var why: String = Springer.jump_order(g, [j], j.position + Vector2(110, 0))
 	if why != "":
-		why = Jack.jump_order(g, [j], j.position + Vector2(-110, 0))
-	check(why == "", "a Jack jumps (%s)" % why)
+		why = Springer.jump_order(g, [j], j.position + Vector2(-110, 0))
+	check(why == "", "a Springer jumps (%s)" % why)
 	await run(2.0)
 	# ---- the Ticking Owl's bomb on a Crown building (a house put down near our base)
 	var owl: Unit = us["ticking_owl"]

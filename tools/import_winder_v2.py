@@ -359,7 +359,7 @@ def write_art_data(cell, anchor, counts):
 
 def portrait():
     """The card portrait (64 x 64): the S idle figure's head and chest from the sheet itself, on a clear background like
-    the other new Clockwork units' (the Clock Soldier's, the Jack's)."""
+    the other new Clockwork units' (the Clock Soldier's, the Springer's)."""
     f, cols, _ = SHEETS['idle']
     a = np.array(Image.open(SRC + f).convert('RGB')).astype(int)
     fg, _ = keyed(a)

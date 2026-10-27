@@ -9,7 +9,7 @@ No sound is synthesised. The pieces are only cut, layered, faded, and sometimes 
 
 Everything is made by one script: `tools/audio/make_clockwork_sounds.py`.
 Each sound is one line there. Each piece in it says which recording, where it starts, and how long it is, in seconds.
-So "make the Jack's jump longer" is one number: the length in the `combat/jack_jump` lines.
+So "make the Jack's jump longer" is one number: the length in the `combat/springer_jump` lines.
 Then run these, in order:
 
 1. `python3 tools/audio/make_clockwork_sounds.py` (or with a name, like `jack_jump`, to remake only those).
@@ -40,9 +40,9 @@ The sounds could not be listened to. They were chosen by measuring them: loudnes
 | `voice/clock_soldier/select` (3 takes) | You pick a Clock Soldier. A few typewriter keys. | typewriter 0.88 to 1.20 / typewriter 3.93 to 4.23 / typewriter 25.28 to 25.54 |
 | `voice/clock_soldier/move` (3 takes) | You send a Clock Soldier somewhere. A quick run of keys. | typewriter 5.29 to 5.69 / typewriter 12.21 to 12.65 / typewriter 22.73 to 23.17 |
 | `voice/clock_soldier/attack` (2 takes) | You order a Clock Soldier to attack. Keys, then the carriage bell. | typewriter 37.57 to 37.93 + typewriter 30.33 to 30.88 / typewriter 33.39 to 33.75 + typewriter 48.44 to 48.89 |
-| `voice/jack/select` (3 takes) | You pick a Jack. A spring boings. | liquid wobble 0.76 to 1.14 + crank loop 0.12 to 0.26 higher / liquid wobble 1.63 to 1.99 higher / liquid wobble 2.51 to 2.87 + typewriter 18.66 to 18.82 |
-| `voice/jack/move` (3 takes) | You send a Jack. A ratchet click and a boing. | crank loop 1.78 to 2.08 higher + liquid wobble 1.63 to 1.95 higher / crank loop 3.25 to 3.55 higher + liquid wobble 2.51 to 2.83 higher / liquid wobble 0.76 to 1.06 higher + liquid wobble 2.51 to 2.81 higher |
-| `voice/jack/attack` (2 takes) | You order a Jack to attack. A spring scrape and a click. | spring scrape 0.08 to 0.48 higher + crank loop 5.02 to 5.22 higher / spring scrape 0.10 to 0.50 higher + liquid wobble 1.63 to 1.88 higher |
+| `voice/springer/select` (3 takes) | You pick a Jack. A spring boings. | liquid wobble 0.76 to 1.14 + crank loop 0.12 to 0.26 higher / liquid wobble 1.63 to 1.99 higher / liquid wobble 2.51 to 2.87 + typewriter 18.66 to 18.82 |
+| `voice/springer/move` (3 takes) | You send a Jack. A ratchet click and a boing. | crank loop 1.78 to 2.08 higher + liquid wobble 1.63 to 1.95 higher / crank loop 3.25 to 3.55 higher + liquid wobble 2.51 to 2.83 higher / liquid wobble 0.76 to 1.06 higher + liquid wobble 2.51 to 2.81 higher |
+| `voice/springer/attack` (2 takes) | You order a Jack to attack. A spring scrape and a click. | spring scrape 0.08 to 0.48 higher + crank loop 5.02 to 5.22 higher / spring scrape 0.10 to 0.50 higher + liquid wobble 1.63 to 1.88 higher |
 | `voice/cuckoo/select` (3 takes) | You pick a Swift. Quick high ticks and a little ding. | alarm clock 2.46 to 3.36 higher + typewriter 30.33 to 30.78 higher / alarm clock 3.66 to 4.56 higher + typewriter 48.44 to 48.84 higher / alarm clock 4.86 to 6.06 higher |
 | `voice/cuckoo/move` (3 takes) | You send a Swift. Quick high ticks. | alarm clock 2.76 to 3.36 higher / alarm clock 4.26 to 4.86 higher / alarm clock 5.46 to 6.36 higher |
 | `voice/cuckoo/attack` (2 takes) | You order a Swift to attack. Ticks and a high ding. | alarm clock 3.06 to 3.66 higher + typewriter 30.33 to 30.73 higher / alarm clock 6.06 to 6.66 higher + typewriter 48.44 to 48.79 higher |
@@ -65,11 +65,11 @@ The sounds could not be listened to. They were chosen by measuring them: loudnes
 | `combat/ballista_death` (2 takes) | A Ballista is destroyed. | metal crash + spring + clatter |
 | `combat/clock_soldier_attack` (3 takes) | Each sword blow of a Clock Soldier. A bright clang. | clang group 0.07 to 0.47 lower / clang group 1.88 to 2.28 lower / clang group 2.75 to 3.15 lower |
 | `combat/clock_soldier_death` (2 takes) | A Clock Soldier dies. A crash, pieces rattling, a spring. | metallic noise 0.02 to 0.47 + metallic noise 0.62 to 1.52 + liquid wobble 0.76 to 1.11 / metallic noise 0.02 to 0.47 lower + metallic noise 1.30 to 2.10 + liquid wobble 1.63 to 1.98 |
-| `combat/jack_attack` (3 takes) | Each screw a Jack shoots. A fast ratchet spin. | crank loop 0.12 to 0.28 higher / crank loop 1.78 to 1.94 higher / crank loop 3.25 to 3.41 higher |
-| `combat/jack_crouch` | A Jack crouches to jump. The spring is pressed. | spring scrape 0.08 to 0.48 lower |
-| `combat/jack_jump` (2 takes) | A Jack leaves the ground. A boing. | liquid wobble 0.76 to 1.21 / liquid wobble 2.51 to 2.96 lower |
-| `combat/jack_land` (2 takes) | A Jack lands. A low clank with a small boing. | clang group 3.65 to 3.90 lower + liquid wobble 1.63 to 1.88 higher / clang group 8.28 to 8.53 lower + liquid wobble 0.05 to 0.30 higher |
-| `combat/jack_death` (2 takes) | A Jack dies. A crash and a big boing. | metallic noise 0.02 to 0.37 + liquid wobble 0.76 to 1.21 + metallic noise 0.90 to 1.50 / metallic noise 0.02 to 0.37 higher + liquid wobble 2.51 to 2.96 + metallic noise 1.60 to 2.20 |
+| `combat/springer_attack` (3 takes) | Each screw a Jack shoots. A fast ratchet spin. | crank loop 0.12 to 0.28 higher / crank loop 1.78 to 1.94 higher / crank loop 3.25 to 3.41 higher |
+| `combat/springer_crouch` | A Jack crouches to jump. The spring is pressed. | spring scrape 0.08 to 0.48 lower |
+| `combat/springer_jump` (2 takes) | A Jack leaves the ground. A boing. | liquid wobble 0.76 to 1.21 / liquid wobble 2.51 to 2.96 lower |
+| `combat/springer_land` (2 takes) | A Jack lands. A low clank with a small boing. | clang group 3.65 to 3.90 lower + liquid wobble 1.63 to 1.88 higher / clang group 8.28 to 8.53 lower + liquid wobble 0.05 to 0.30 higher |
+| `combat/springer_death` (2 takes) | A Jack dies. A crash and a big boing. | metallic noise 0.02 to 0.37 + liquid wobble 0.76 to 1.21 + metallic noise 0.90 to 1.50 / metallic noise 0.02 to 0.37 higher + liquid wobble 2.51 to 2.96 + metallic noise 1.60 to 2.20 |
 | `combat/ratchet_turret_attack` (2 takes) | Each screw the Ratchet Turret shoots. A heavier ratchet and a clang. | crank loop 0.12 to 0.38 lower + clang group 0.91 to 1.16 lower / crank loop 5.02 to 5.28 lower + clang group 7.40 to 7.65 lower |
 | `combat/cuckoo_attack` (3 takes) | Each peck of a Swift. One high typewriter key. | typewriter 18.66 to 18.80 higher / typewriter 19.00 to 19.14 higher / typewriter 9.66 to 9.80 higher |
 | `combat/cuckoo_death` (2 takes) | A Swift dies. A small high crash and a ding. | metallic noise 0.02 to 0.37 higher + metallic noise 0.62 to 1.32 higher + typewriter 30.33 to 30.73 higher / metallic noise 0.02 to 0.37 higher + metallic noise 1.40 to 2.10 higher + typewriter 48.44 to 48.79 higher |

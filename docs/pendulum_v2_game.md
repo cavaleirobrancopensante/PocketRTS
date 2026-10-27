@@ -60,7 +60,7 @@ on the 4th frame, a blow every ~1.4 s at about the old damage a second, the ligh
 armoured one the plain blow, nothing behind is hit, the arm is in the online snapshot. test_cw_tier3 updated (the arm
 strips, the 4th frame); the Pendulum added to the walk audit (it passes the normal floors, no special one needed).
 Passing: test_pendulum_v2, test_cw_tier3, test_cw_tier3_ai, test_cw_army, test_cw_lab, test_anim_viewer, test_i18n,
-test_unit_walk_audit, test_jack_arms. Screenshots: docs/shots/pendulum-v2/ (tools/shot_pendulum_v2.gd).
+test_unit_walk_audit, test_springer_arms. Screenshots: docs/shots/pendulum-v2/ (tools/shot_pendulum_v2.gd).
 
 ## What still looks rough
 

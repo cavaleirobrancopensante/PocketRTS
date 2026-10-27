@@ -26,9 +26,9 @@ const SHEETS := {
 	"storm_engine": [92, 70, 46, 58],
 	# the new-style army (gear mode): real sheets only (tools/import_clock_soldier.py prints this line)
 	"clock_soldier": [78, 66, 39, 56],
-	# tier 2: the Jack (tools/import_jack.py prints this line); its walk is a hop, plus a JUMP strip (8 frames) and the raised
+	# tier 2: the Springer (tools/import_springer.py prints this line); its walk is a hop, plus a JUMP strip (8 frames) and the raised
 	# arm for shooting at flyers (attack_up)
-	"jack": [108, 80, 54, 69],
+	"springer": [108, 80, 54, 69],
 	# the air (tools/import_cuckoo.py prints these): the Swift (fly loop as idle and walk, attack, death) and the Ticking Owl
 	# (the same, its swoop as the attack, and the bomb drop)
 	"cuckoo": [74, 55, 37, 44],

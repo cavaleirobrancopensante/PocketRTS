@@ -68,7 +68,7 @@ func _dump_defs() -> void:
 		"gear_mode": Defs.gear_mode, "line_mode": Defs.line_mode,
 		"UNITS": _j(Defs.UNITS), "BUILDINGS": _j(Defs.BUILDINGS), "RESEARCH": _j(Defs.RESEARCH),
 		"FACTIONS": _j(Defs.FACTIONS), "HALL_LEVELS": _j(Defs.HALL_LEVELS), "GEAR": _j(Defs.GEAR),
-		"OWL_MORPH": _j(Defs.OWL_MORPH), "JACK_JUMP": _j(Defs.JACK_JUMP), "TURRET": _j(Defs.TURRET),
+		"OWL_MORPH": _j(Defs.OWL_MORPH), "SPRINGER_JUMP": _j(Defs.SPRINGER_JUMP), "TURRET": _j(Defs.TURRET),
 		"OWL_BOMB": _j(Defs.OWL_BOMB), "POWDER": _j(Defs.POWDER), "PISTOL": _j(Defs.PISTOL), "BAYONET": _j(Defs.BAYONET),
 		"CRATE": _j(Defs.CRATE), "HORSES": _j(Defs.HORSES), "DROPSHIP": _j(Defs.DROPSHIP), "BALLOON": _j(Defs.BALLOON),
 		"econ": {

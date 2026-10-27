@@ -16,7 +16,7 @@ extends RefCounted
 ## refund may go over it, nothing unwinds. Buildings may cost Tension (a BUILDINGS `tension` price: the Clock Aviary).
 ## THE TENSION RULE: anything that costs Tension is made only at a building whose ring meshes with a Mainspring's ring (one
 ## hop; an idler between them counts): the Escapement and the Clock Aviary work only so (Defs.TENSION_USERS: idle otherwise,
-## NEEDS MAINSPRING), and a Movement Works makes Jacks, Netters and Pendulums only so (its Clock Soldiers need nothing):
+## NEEDS MAINSPRING), and a Movement Works makes Springers, Netters and Pendulums only so (its Clock Soldiers need nothing):
 ## spend_problem.
 
 const DRIVE_FREE := ["clocktower", "regulator", "ratchet_turret", "spring_tower"]
@@ -225,7 +225,7 @@ static func card_text(b: Building) -> String:
 
 
 ## The card's info line for the Tension rule and the store (gear mode's Clockwork), "" when there is nothing to add: a
-## building that makes something costing Tension but is no Tension user (the Movement Works: its Jacks), the Clock Aviary,
+## building that makes something costing Tension but is no Tension user (the Movement Works: its Springers), the Clock Aviary,
 ## the Mainspring. (The Escapement's line is the HUD's own.)
 static func card_info(b: Building) -> String:
 	var net: GearNet = b.game.gear_net

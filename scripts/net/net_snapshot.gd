@@ -19,7 +19,7 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 	"topter_bat", "courier", "supplying", "auto_repair", "hold_fire", "pistol", "bayonet", "pouch", "carry_empty",
 	"gas", "spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
 	"owl_t", "net_t", "arm", "shield_up", "shield_t", "loaded"]       # (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
-	# launcher a Jack fires now, so a guest plays that arm's strip; a Spring Ballista's bolt in or not: loaded or fired, its crew
+	# launcher a Springer fires now, so a guest plays that arm's strip; a Spring Ballista's bolt in or not: loaded or fired, its crew
 	# cranking)
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target", "crew_of"]      # (crew_of: a Ballista's crewman)
 const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "prod_t", "eggs", "upgrade_t", "growth",
@@ -443,6 +443,9 @@ static func _set_bld_vals(b: Building, row: Array, o: int) -> void:
 	b.progress = row[o + 1]
 	b.level = row[o + 3]
 	b.queue = row[o + 4]
+	for i in b.queue.size():
+		if Defs.OLD_UNIT_KINDS.has(b.queue[i]):
+			b.queue[i] = Defs.OLD_UNIT_KINDS[b.queue[i]]      # (an old id, from an older replay)
 	b.morph_t = row[o + 5]
 	b.prod_t = row[o + 6]
 	b.eggs = row[o + 7]
@@ -452,7 +455,7 @@ static func _set_bld_vals(b: Building, row: Array, o: int) -> void:
 	b.lode = row[o + 11]
 	b.swamp_r = row[o + 12]
 	b.batteries = row[o + 13]
-	b.auto_train = row[o + 14]
+	b.auto_train = Defs.unit_kind(String(row[o + 14]))
 	b.auto_refit = row[o + 15]
 	b.gate_open = row[o + 16]
 	b.locked = row[o + 17]
@@ -484,6 +487,7 @@ static func _building_refs(s: NetSession, b: Building, row: Array) -> void:
 static func _unit_row(s: NetSession, row: Array) -> Unit:
 	var g := s.game
 	var id := int(row[0])
+	row[1] = Defs.unit_kind(String(row[1]))      # (an old id, from an older replay: Defs.OLD_UNIT_KINDS)
 	var pos: Vector2 = row[3]
 	var u = s.by_id.get(id)
 	var fresh := false
@@ -531,7 +535,7 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	if bool(row[o + 12]) and not u.armoured:
 		u.put_on_armour()
 		u.hp = float(row[4])            # (putting it on adds health of its own: the row's is the true one)
-	var art_row := String(row[o + 14])
+	var art_row := Defs.unit_kind(String(row[o + 14]))
 	if art_row != "" and art_row != u.art and ArtData.UNITS.has(art_row):
 		u.art = art_row
 	if u.coat != coat_was and u.sprite:

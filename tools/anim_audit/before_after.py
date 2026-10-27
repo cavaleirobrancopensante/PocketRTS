@@ -67,16 +67,16 @@ def strips(kind, anims, dirs, cw):
 
 
 def main():
-    # the Jack: its idle wandered sideways on its foot plate, its two-launcher strips stood off the anchor
-    b, a = strips("jack", ["idle"], ["s", "se", "e", "ne", "n"], 108)
+    # the Springer: its idle wandered sideways on its foot plate, its two-launcher strips stood off the anchor
+    b, a = strips("springer", ["idle"], ["s", "se", "e", "ne", "n"], 108)
     gif(b, a, 500, "fix_jack_idle.gif", 3, plate=54)
     # idle -> attack_r -> walk, the S and N views, to show the switch no longer jumps
     for d in ("s", "n"):
-        seq_b = cells(old("assets/units/jack/idle_%s.png" % d), 108)[:2] + cells(old("assets/units/jack/attack_r_%s.png" % d), 108) + \
-            cells(old("assets/units/jack/walk_%s.png" % d), 108)
-        seq_a = cells(new("assets/units/jack/idle_%s.png" % d), 108)[:2] + cells(new("assets/units/jack/attack_r_%s.png" % d), 108) + \
-            cells(new("assets/units/jack/walk_%s.png" % d), 108)
-        gif([seq_b], [seq_a], 160, "fix_jack_switch_%s.gif" % d, 3, plate=54)
+        seq_b = cells(old("assets/units/springer/idle_%s.png" % d), 108)[:2] + cells(old("assets/units/springer/attack_r_%s.png" % d), 108) + \
+            cells(old("assets/units/springer/walk_%s.png" % d), 108)
+        seq_a = cells(new("assets/units/springer/idle_%s.png" % d), 108)[:2] + cells(new("assets/units/springer/attack_r_%s.png" % d), 108) + \
+            cells(new("assets/units/springer/walk_%s.png" % d), 108)
+        gif([seq_b], [seq_a], 160, "fix_springer_switch_%s.gif" % d, 3, plate=54)
     # the Clock Soldier's E attack: the overhead frame had no cap (no player colour)
     b, a = strips("clock_soldier", ["attack"], ["e"], 78)
     gif(b, a, 111, "fix_clock_soldier_attack_e.gif", 4)

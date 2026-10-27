@@ -41,7 +41,7 @@ NEEDS = {
               "brute": ["gorge_pit"], "mist_toad": ["gorge_pit"], "skywing": ["roost"], "bloater": ["roost"],
               "sacrifice": ["brood_pen", "raptor"]},
     "clockwork": {"ratchet_turret": ["movement_works"], "escapement": ["movement_works"], "cuckoo_house": ["escapement"],
-                  "clock_soldier": ["movement_works"], "jack": ["escapement", "mainspring"], "netter": ["escapement", "mainspring"],
+                  "clock_soldier": ["movement_works"], "springer": ["escapement", "mainspring"], "netter": ["escapement", "mainspring"],
                   "pendulum": ["escapement", "mainspring", "gear:movement_works:big"], "cuckoo": ["cuckoo_house", "mainspring"],
                   "gear:movement_works:big": ["movement_works"], "morph": ["cuckoo"], "research:high_leap": ["escapement"],
                   "research:owl_morph": ["cuckoo_house"], "mainspring": []},
@@ -57,9 +57,9 @@ PRODUCTION = {"crown": ["barracks", "horse_breeder", "foundry"], "brood": ["warr
               "clockwork": ["movement_works", "clocktower"]}
 UNITS = {"crown": ["musketeer", "horseman", "dragoon", "cannon", "mortar", "balloon"],
          "brood": ["raptor", "spitter", "brute", "skywing", "bloater", "mist_toad"],
-         "clockwork": ["clock_soldier", "jack", "netter", "pendulum", "cuckoo"]}
+         "clockwork": ["clock_soldier", "springer", "netter", "pendulum", "cuckoo"]}
 TECH_UNITS = {"crown": ["cannon", "mortar", "dragoon", "horseman"], "brood": ["brute", "spitter", "bloater", "skywing"],
-              "clockwork": ["jack", "pendulum", "netter", "cuckoo"]}
+              "clockwork": ["springer", "pendulum", "netter", "cuckoo"]}
 EXTRAS = {"crown": ["wall", "farm", "mill:3", "mill:4", "research:armour", "research:charge"],
           "brood": ["feeding_pit", "clutch_mound", "upgrade", "sacrifice:8", "brood_pen"],
           "clockwork": ["cog_press", "crew:mainspring:3", "ratchet_turret", "regulator", "research:high_leap"]}

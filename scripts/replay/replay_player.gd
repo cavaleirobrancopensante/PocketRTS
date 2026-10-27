@@ -352,6 +352,7 @@ func expand(m: Dictionary) -> void:
 func _sanitize(m: Dictionary) -> void:
 	if m.has("u"):
 		for row in m["u"]:
+			row[1] = Defs.unit_kind(String(row[1]))      # (an id renamed since: Defs.OLD_UNIT_KINDS)
 			if not Defs.UNITS.has(String(row[1])):
 				row[1] = PLACEHOLDER
 				_ph[int(row[0])] = true

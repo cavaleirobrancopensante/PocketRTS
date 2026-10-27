@@ -177,15 +177,15 @@ func _wind_line(c: float) -> void:
 
 
 ## Every 30 s, the Clockwork computer's tech and army (written to <out>/ai.txt): cogs, Tension (and what the Mainsprings
-## store), its Works (how many may make Jacks, and why the first one may not), the Escapement, the army by kind, the wave.
+## store), its Works (how many may make Springers, and why the first one may not), the Escapement, the army by kind, the wave.
 var ai_lines: Array = []
 var nets_seen := {}          # Netter id -> nets fired (the last count seen)
-var jumps_seen := {}         # Jack id -> jumps
+var jumps_seen := {}         # Springer id -> jumps
 
 
 func _ai_line(c: float, tm: int) -> void:
 	var works := 0
-	var jack_works := 0
+	var springer_works := 0
 	var why_not := ""
 	var esc := "none"
 	var queues: Array = []
@@ -199,9 +199,9 @@ func _ai_line(c: float, tm: int) -> void:
 			works += 1
 			queues.append("%s%s" % [str(b.queue.size()), ("/" + g.can_train(b, "clock_soldier").left(24)) if b.built and g.can_train(b, "clock_soldier") != "" else ""])
 			if b.built:
-				var w: String = g.can_train(b, Defs.JACK)
+				var w: String = g.can_train(b, Defs.SPRINGER)
 				if w == "" or w.begins_with("Not enough") or w.begins_with("Need more") or w.begins_with("Supply"):
-					jack_works += 1
+					springer_works += 1
 				elif why_not == "":
 					why_not = w.left(70)
 		elif b.kind == Defs.CW_TECH:
@@ -213,7 +213,7 @@ func _ai_line(c: float, tm: int) -> void:
 			army[u.kind] = int(army.get(u.kind, 0)) + 1
 			if u.kind == Defs.NETTER:
 				nets_seen[u.get_instance_id()] = u.nets
-			elif u.kind == Defs.JACK:
+			elif u.kind == Defs.SPRINGER:
 				jumps_seen[u.get_instance_id()] = u.jumps
 	var nets := 0
 	for k in nets_seen:
@@ -225,8 +225,8 @@ func _ai_line(c: float, tm: int) -> void:
 	for a in g.ais:
 		if a.team == tm:
 			ai = a
-	ai_lines.append("%s cogs %d tension %d | works %d (jacks at %d%s) q %s springs %d escapement %s | army %s | nets %d jumps %d | attacking %s siege %s reserve %d" % [_mmss(c),
-		int(g.players[tm]["gold"]), int(g.tension(tm)), works, jack_works, (": " + why_not.left(30)) if why_not != "" else "", str(queues), springs, esc, str(army), nets, jumps,
+	ai_lines.append("%s cogs %d tension %d | works %d (springers at %d%s) q %s springs %d escapement %s | army %s | nets %d jumps %d | attacking %s siege %s reserve %d" % [_mmss(c),
+		int(g.players[tm]["gold"]), int(g.tension(tm)), works, springer_works, (": " + why_not.left(30)) if why_not != "" else "", str(queues), springs, esc, str(army), nets, jumps,
 		str(ai._attacking) if ai else "-", ("on" if ai and not ai._siege.is_empty() else "-"), ai._reserve if ai else 0])
 
 
@@ -368,7 +368,7 @@ func _look_for_fight(c: float) -> void:
 		pending.append(["fight_%s_%d_%d.png" % [_mmss(c), int(at.x), int(at.y)], at, 1.15])
 
 
-## A Clockwork computer's moments worth a picture (leap_<MMSS>.png: Jacks leaping up, a second after they set off;
+## A Clockwork computer's moments worth a picture (leap_<MMSS>.png: Springers leaping up, a second after they set off;
 ## siege_<MMSS>.png: a siege begun, 8 s on), at most one of each kind every 20 s.
 var _leap_n := {}
 var _siege_on := {}

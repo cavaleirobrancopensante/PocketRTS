@@ -118,10 +118,10 @@ const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack":
 	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "select/horse_breeder": 1500, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180,
 	# the Clockwork's sounds cut from the owner's recordings (tools/audio/make_clockwork_sounds.py): quick repeating hits
 	# get a gap so a crowd of them is a clatter, not a wall
-	"combat/clock_soldier_attack": 120, "combat/jack_attack": 110, "combat/ratchet_turret_attack": 120, "combat/cuckoo_attack": 100,
+	"combat/clock_soldier_attack": 120, "combat/springer_attack": 110, "combat/ratchet_turret_attack": 120, "combat/cuckoo_attack": 100,
 	"combat/ticking_owl_attack": 150, "combat/pendulum_attack": 150, "combat/winder_attack": 150, "combat/netter_hit": 200,
-	"combat/jack_jump": 150, "combat/jack_land": 150, "combat/jack_crouch": 150, "combat/owl_bomb": 200, "combat/owl_drop": 150,
-	"combat/clock_soldier_death": 150, "combat/jack_death": 200, "combat/cuckoo_death": 200, "combat/ticking_owl_death": 300,
+	"combat/springer_jump": 150, "combat/springer_land": 150, "combat/springer_crouch": 150, "combat/owl_bomb": 200, "combat/owl_drop": 150,
+	"combat/clock_soldier_death": 150, "combat/springer_death": 200, "combat/cuckoo_death": 200, "combat/ticking_owl_death": 300,
 	"combat/pendulum_death": 400, "combat/netter_death": 250, "combat/ballista_attack": 150, "combat/ballista_hit": 150, "combat/ballista_crank": 1200, "combat/ballista_wound": 300, "combat/ballista_death": 400, "combat/winder_death": 200, "select/clocktower": 400,
 	"select/cog_press": 400, "select/mainspring": 400, "select/escapement": 400, "select/regulator": 400}
 

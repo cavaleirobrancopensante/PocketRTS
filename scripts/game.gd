@@ -3676,7 +3676,7 @@ func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> voi
 
 
 ## TENSION (gear mode's Clockwork, wound by the Mainsprings: Defs.GEAR "mainspring"): what player t holds, and adding to
-## it (spending: a negative v; never below 0). Spent on the Jack and the Escapement's research (their `tension` price).
+## it (spending: a negative v; never below 0). Spent on the Springer and the Escapement's research (their `tension` price).
 func tension(t: int) -> float:
 	return float(players[t].get("tension", 0.0))
 
@@ -3805,7 +3805,7 @@ func can_train(b: Building, key: String) -> String:
 	var reqs: Array = u["requires"] if u.get("requires", "") is Array else ([u["requires"]] if u.get("requires", "") != "" else [])
 	for req in reqs:
 		if Defs.gear_mode and Defs.TENSION_USERS.has(req):
-			# (tier 2: the Jack needs an Escapement that WORKS: linked and meshed with a Mainspring)
+			# (tier 2: the Springer needs an Escapement that WORKS: linked and meshed with a Mainspring)
 			var tp := tension_user_problem(b.team, req)
 			if tp != "":
 				return tp
@@ -6120,7 +6120,7 @@ func tower_zap(b: Building, e: Unit) -> void:
 	Sfx.play_any(["combat/tesla_attack", "zap"], b.global_position)
 
 
-## The Ratchet Turret's screw (RatchetTurret, Defs.TURRET), and the Jack's (Defs.JACK_SHOT: `sc` / `ms` scale the screw
+## The Ratchet Turret's screw (RatchetTurret, Defs.TURRET), and the Springer's (Defs.SPRINGER_SHOT: `sc` / `ms` scale the screw
 ## and its burst, `speed` its flight): the damage lands now (like a musket ball); the screw flies from the barrel or drill
 ## tip `from`, turned toward the target and spinning (its 4 frames looping), a muzzle burst at the tip and sparks where it
 ## hits. Ground and air alike. Returns the screw (tests watch it fly).
@@ -6139,7 +6139,7 @@ func screw_shot(src: Entity, e: Entity, dmg: float, from: Vector2, _dir: Array, 
 		var mz := spawn_effect("screw_muzzle", from, 1.2)
 		# (the burst's brass rings, 0.366 of its cell from the left, sit on the barrel tip; the smoke blows forward)
 		mz.offset = Vector2(float(ArtData.EFFECTS["screw_muzzle"]["size"].x) * (0.5 - 0.366), 0.0)
-		mz.rotation = barrel.angle() if barrel != Vector2.ZERO else ang      # (along a raised barrel: the Jack shooting up)
+		mz.rotation = barrel.angle() if barrel != Vector2.ZERO else ang      # (along a raised barrel: the Springer shooting up)
 		mz.scale = Vector2(ms, ms)
 		mz.z_index = 6
 	var s := Shot.new()
@@ -6608,7 +6608,7 @@ func ground_shot_fx(u: Unit, to: Vector2) -> void:
 			s.scale = Vector2(0.45, 0.45)
 			s.impact = "smoke"
 			s.impact_scale = 0.35
-			s.launch(self, "bolt" if u.kind == Defs.JACK and ArtData.EFFECTS.has("bolt") else "ball", from, to, 950.0)
+			s.launch(self, "bolt" if u.kind == Defs.SPRINGER and ArtData.EFFECTS.has("bolt") else "ball", from, to, 950.0)
 			Sfx.play_any(["combat/%s_attack" % u.kind, "combat/musketeer_attack", "musket"], u.global_position)
 
 
@@ -6913,12 +6913,12 @@ func drop_spots(at: Vector2, n: int, t: int) -> Array:
 	return out
 
 
-## The selected casters: the nearest one that can cast goes and does it. ("jump": every selected Jack that can jumps, each
-## to its own spot of the group round p: Jack.jump_order.)
+## The selected casters: the nearest one that can cast goes and does it. ("jump": every selected Springer that can jumps, each
+## to its own spot of the group round p: Springer.jump_order.)
 func cast_order(list: Array, spell: String, p: Vector2) -> void:
 	if net_forward(self, "cast_order", [list, spell, p]): return
 	if spell == "jump":
-		var why := Jack.jump_order(self, list, p)
+		var why := Springer.jump_order(self, list, p)
 		if why != "" and not list.is_empty() and list[0] is Unit:
 			tell(list[0].team, why)
 		return
@@ -9703,8 +9703,8 @@ func _draw_overlay_all() -> void:
 	_draw_queues()
 	_draw_hover()
 	if controls and controls.mode == "cast" and controls.cast_spell == "jump":
-		# a Jack's JUMP target: its reach, where it would land and the arc (over the rings and buildings, so it reads)
-		Jack.draw_target(self, overlay, overlay.get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position())
+		# a Springer's JUMP target: its reach, where it would land and the arc (over the rings and buildings, so it reads)
+		Springer.draw_target(self, overlay, overlay.get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position())
 	if controls and controls.mode == "patrol":
 		# choosing the patrol point: show the walk there and back from each selected unit
 		var mp := overlay.get_global_mouse_position()

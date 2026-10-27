@@ -430,7 +430,7 @@ const ENERGY_KINDS := ["boiler", "charging_pylon", "engine_hall", "capacitor_wor
 
 ## The Clockwork's units in gear mode (the rebuilt faction, docs/clockwork_ground_up.md): every other Clockwork unit is the
 ## old roster, retired from the live game (owner, 2026-10-26), kept in the code for the shelved Line and the tests.
-const CW_NEW_UNITS := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
+const CW_NEW_UNITS := ["winder", "clock_soldier", "springer", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
 ## (the Spring Catapult, art only, was never in this list: the SPRING BALLISTA replaces it, owner 2026-10-27; its art
 ## and tools stay in art/redraws/catapult_* and tools/catapult_guide/)
 
@@ -484,38 +484,41 @@ const CW_TURRET := "ratchet_turret"
 
 
 ## TIER 2 of the gear-mode Clockwork (docs/clockwork_ground_up.md): the ESCAPEMENT, the tech building (like a Cybernetics
-## Core: it unlocks the Jack and holds the Tension research), and the JACK, the first unit that costs Tension.
+## Core: it unlocks the Springer and holds the Tension research), and the SPRINGER, the first unit that costs Tension.
 const CW_TECH := "escapement"
-const JACK := "jack"
+const SPRINGER := "springer"
+## Unit ids renamed since: an old save, replay or online message that carries one gets today's id (unit_kind). The
+## Springer was "jack" until 0.14.82.
+const OLD_UNIT_KINDS := {"jack": "springer"}
 ## THE TENSION RULE (owner, 2026-10-26): a building that uses Tension works only while its gear ring meshes DIRECTLY with
 ## a Mainspring's ring (one hop, within the link gap: an idler cog between the two rings counts), on top of being linked
 ## to the field. Else it is idle (no research, unlocks nothing) and shows NEEDS MAINSPRING (GearNet.spring_for).
-## The Clock Aviary too (all it makes costs Tension); a Movement Works makes its Jacks, Netters and Pendulums only so
+## The Clock Aviary too (all it makes costs Tension); a Movement Works makes its Springers, Netters and Pendulums only so
 ## (GearEcon.spend_problem).
 const TENSION_USERS := ["escapement", "cuckoo_house"]
-## The Jack (Defs.UNITS "jack"): a jack-in-the-box on a coil spring that hops about and shoots screws.
+## The Springer (Defs.UNITS "springer"): a jack-in-the-box on a coil spring that hops about and shoots screws.
 ## JUMP (an ability, a point): the spring presses down for `crouch` s (a visible crouch: readable and answerable), then it
 ## flies to the point (at most `range` px) along an arc and lands; `cooldown` s before the next. It cannot attack from the
 ## crouch to the landing (`land` s after touching down). The flight takes `air` s plus a px/`air_speed` s; the arc's top is
 ## `peak` px plus `peak_per` of the distance. Allowed onto open walkable ground only (no water, cliffs, buildings, walls);
 ## flat and DOWN always, UP onto higher ground only once HIGH LEAP is researched and the side sees the spot. A click past
 ## the range jumps the full range that way; a spot that cannot be landed on gives way to the nearest one within `search`
-## tiles on the same level. `ai_low`: a computer's Jack jumps away from melee below this share of its health.
+## tiles on the same level. `ai_low`: a computer's Springer jumps away from melee below this share of its health.
 ## Shot: the screw (the Ratchet Turret's projectile, Game.screw_shot) leaves the drill tip, `tips` game px from its feet per
-## launcher ("r" the robot's right arm, "l" its left: the two fire in turn, scripts/jack.gd) and drawn direction (W/SW/NW
-## mirror E/SE/NE; printed by tools/import_jack.py), at `shot_scale` of the turret's screw art (`muzzle_scale` for the
+## launcher ("r" the robot's right arm, "l" its left: the two fire in turn, scripts/springer.gd) and drawn direction (W/SW/NW
+## mirror E/SE/NE; printed by tools/import_springer.py), at `shot_scale` of the turret's screw art (`muzzle_scale` for the
 ## burst, played at that tip), `speed` px/s.
-const JACK_JUMP := {"range": 160.0, "crouch": 0.35, "land": 0.2, "air": 0.3, "air_speed": 520.0, "peak": 20.0, "peak_per": 0.22,
+const SPRINGER_JUMP := {"range": 160.0, "crouch": 0.35, "land": 0.2, "air": 0.3, "air_speed": 520.0, "peak": 20.0, "peak_per": 0.22,
 	"cooldown": 10.0, "search": 2, "ai_low": 0.4}
-const JACK_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
+const SPRINGER_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
 	"tips": {"r": {"s": Vector2(-28, -13), "se": Vector2(-22, -11), "e": Vector2(24, -15), "ne": Vector2(25, -13), "n": Vector2(25, -11)},
 		"l": {"s": Vector2(27, -13), "se": Vector2(24, -12), "e": Vector2(22, -21), "ne": Vector2(-24, -18), "n": Vector2(-25, -12)}}}
 
 
 ## The raised arm (shooting at a FLYER: the "attack_up" strip, tools/jack_guide/attack_up.py): the drill tip on the fire frame per
-## drawn direction, game px from its feet (tools/import_jack.py prints them), and the raised barrel's direction (the muzzle
+## drawn direction, game px from its feet (tools/import_springer.py prints them), and the raised barrel's direction (the muzzle
 ## burst blows along it).
-const JACK_SHOT_UP := {"tips": {"s": Vector2(-30, -54), "se": Vector2(-22, -52), "e": Vector2(17, -43), "ne": Vector2(24, -48), "n": Vector2(26, -48)},
+const SPRINGER_SHOT_UP := {"tips": {"s": Vector2(-30, -54), "se": Vector2(-22, -52), "e": Vector2(17, -43), "ne": Vector2(24, -48), "n": Vector2(26, -48)},
 	"barrel": {"s": Vector2(-0.686, -0.728), "se": Vector2(-0.442, -0.897), "e": Vector2(0.707, -0.707), "ne": Vector2(0.606, -0.795), "n": Vector2(0.656, -0.754)}}
 
 
@@ -878,7 +881,7 @@ const UNITS := {
 	# stance (Defs.SHIELD_WALL, scripts/shield_wall.gd) comes with the SHIELD WALL research. First guesses: a
 	# Musketeer's price (60 + 10 powder) in cogs, sturdier than a Winder (46 hp), a short clock-hand sword whose blow lands
 	# on the 4th frame of the swing (aim 0.33 s at the attack strip's 9 fps). Radius 10, a Musketeer's: the owner had it
-	# drawn about 30% smaller in 0.14.32 (42 px tall, the Jack 59), so its body went from 14 to 10 with it
+	# drawn about 30% smaller in 0.14.32 (42 px tall, the Springer 59), so its body went from 14 to 10 with it
 	"clock_soldier": {
 		"tags": ["light"],
 		"name": "Clock Soldier", "hp": 75, "armor": 1, "speed": 68, "cost": 70, "time": 16.0, "supply": 1,
@@ -886,13 +889,13 @@ const UNITS := {
 		"faction": "clockwork",
 		"about": "The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Quick on its feet but light. SHIELD FORWARD (once SHIELD WALL is researched at the Movement Works) raises the shield in front: slower, but tougher, and much tougher against shots from the front. Made at the Movement Works.",
 	},
-	# TIER 2 (gear mode): the JACK, the first Tension unit (the Clockwork's Stalker): ranged, hits ground and air, hops
-	# (its walk), JUMPs (Defs.JACK_JUMP). Guesses (design_principles 1): 100 cogs + 25 Tension, 2 supply; a shot every
+	# TIER 2 (gear mode): the SPRINGER, the first Tension unit (the Clockwork's Stalker): ranged, hits ground and air, hops
+	# (its walk), JUMPs (Defs.SPRINGER_JUMP). Guesses (design_principles 1): 100 cogs + 25 Tension, 2 supply; a shot every
 	# 1.41 s (aim 0.11, the screw leaves on the 2nd frame at 9 fps, + 0.35 + cooldown 0.95): 7.1 a second, a little over a
 	# Musketeer's 5.6 (20 every 3.55 s) for 1.8 of his price, at 170 px (his 190 out-ranges it: the jump is its way in);
 	# 90 hp + 1 armour; a bit faster than the Clock Soldier (70 vs 62). Brass box on a spring: "armored" (round shot hurts
 	# it more, canister less). An egg of Raptors (75 biomass) still beats one in the open; two Musketeers beat one.
-	"jack": {
+	"springer": {
 		"tags": ["armored"],
 		"name": "Springer", "hp": 90, "armor": 1, "speed": 70, "cost": 100, "tension": 25, "time": 25.0, "supply": 2,
 		"sight": 8, "range": 170, "damage": 10, "cooldown": 0.95, "aim": 0.11, "radius": 12, "from": "movement_works",
@@ -916,7 +919,7 @@ const UNITS := {
 	# the TICKING OWL (morphed from a Swift: Defs.OWL_MORPH; never trained): heavy, slow, ground only. Against units the
 	# TALON SWOOP: 20 every 2 s (aim 0.33, the blow on the 4th frame, + 0.35 + 1.32) from 28 px; against buildings the BOMB
 	# (Defs.OWL_BOMB: 45 every 3 s, a small area). 220 hp + 1 armour, 4 supply, speed 56 (a balloon's 46, a Skywing's 118).
-	# Answers: anything that shoots flyers (a Ratchet Turret, Musketeers, Spitters, Skywings, Jacks, Swifts).
+	# Answers: anything that shoots flyers (a Ratchet Turret, Musketeers, Spitters, Skywings, Springers, Swifts).
 	"ticking_owl": {
 		"tags": ["armored"],
 		"name": "Ticking Owl", "hp": 220, "armor": 1, "speed": 56, "cost": 175, "tension": 65, "time": 20.0, "supply": 4,
@@ -1186,7 +1189,7 @@ const BUILDINGS := {
 	# costs like the Crown Barracks, the Regulator houses like the Spring Tower.
 	"movement_works": {
 		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack", "ballista", "pendulum", "netter"], "faction": "clockwork",
+		"supply": 0, "sight": 7, "trains": ["clock_soldier", "springer", "ballista", "pendulum", "netter"], "faction": "clockwork",
 		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Springers, Spring Ballistas, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
@@ -1497,6 +1500,11 @@ const TRAIN_AS := {"musketeer": ["musketeer", false], "guardsman": ["musketeer",
 ## A research's button label.
 static func research_label(key: String) -> String:
 	return String(RESEARCH[key].get("label", String(RESEARCH[key]["name"]).to_upper()))
+
+
+## A unit id read from a save, a replay or the network: an old id (OLD_UNIT_KINDS) as today's.
+static func unit_kind(k: String) -> String:
+	return String(OLD_UNIT_KINDS.get(k, k))
 
 
 static func train_kind(key: String) -> String:

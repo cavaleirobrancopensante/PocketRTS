@@ -1,13 +1,13 @@
 extends SceneTree
-## Screenshots of TIER 2 (the Escapement and the Jack: scripts/jack.gd) in the CLOCKWORK LAB: the Lab's start (the
-## Escapement meshing with the Mainspring, the Jacks), the placement ghost saying NEEDS MAINSPRING (and MESHES MAINSPRING
-## by the Mainspring), a Jack in the air over its ground shadow, a Jack firing at a balloon (the screw in flight), its death
-## and corpse, and a run of frames for a GIF of a Jack hopping, jumping and shooting.
+## Screenshots of TIER 2 (the Escapement and the Springer: scripts/springer.gd) in the CLOCKWORK LAB: the Lab's start (the
+## Escapement meshing with the Mainspring, the Springers), the placement ghost saying NEEDS MAINSPRING (and MESHES MAINSPRING
+## by the Mainspring), a Springer in the air over its ground shadow, a Springer firing at a balloon (the screw in flight), its death
+## and corpse, and a run of frames for a GIF of a Springer hopping, jumping and shooting.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_cw_tier2.gd -- <outdir>
-## Writes <outdir>/lab_start.png, lab_close.png, lab_jacks.png, card_jack.png, card_escapement.png, card_jump.png,
+## Writes <outdir>/lab_start.png, lab_close.png, lab_springers.png, card_springer.png, card_escapement.png, card_jump.png,
 ## jump_target.png, ghost_needs_mainspring.png, ghost_meshes.png, jump_crouch.png, jump_air.png, jump_land.png,
 ## fire_air.png, fire_air2.png, fire_ground.png, death.png, corpse.png and
-## <outdir>/gif/f_NNN.png + gif/frames.txt (tools/gear_art/frames_to_gif.py or the caller's PIL script makes jack.gif).
+## <outdir>/gif/f_NNN.png + gif/frames.txt (tools/gear_art/frames_to_gif.py or the caller's PIL script makes springer.gif).
 var main: Node
 var g
 var out := ""
@@ -71,7 +71,7 @@ func _hint(on: bool) -> void:
 			c.visible = on
 
 
-## Open low ground near the base (every cell within 5 tiles walkable): where the Jacks show off.
+## Open low ground near the base (every cell within 5 tiles walkable): where the Springers show off.
 func _open_ground(hall: Building) -> Vector2:
 	var best := Vector2i(-1, -1)
 	var bd := INF
@@ -131,45 +131,45 @@ func _run() -> void:
 	var hall := _find("clocktower")
 	var esc := _find(Defs.CW_TECH)
 	var spring := _find("mainspring")
-	var jacks: Array = g.units.filter(func(u: Unit) -> bool: return u.team == g.human and u.kind == Defs.JACK)
-	print("lab: escapement %s, works %s, jacks %d, tension %d" % [str(esc != null and g.gear_net.speed_mult(esc) > 0.0),
-		str(_find(Defs.CW_WORKS) != null), jacks.size(), int(g.tension(g.human))])
-	if esc == null or spring == null or jacks.is_empty():
+	var springers: Array = g.units.filter(func(u: Unit) -> bool: return u.team == g.human and u.kind == Defs.SPRINGER)
+	print("lab: escapement %s, works %s, springers %d, tension %d" % [str(esc != null and g.gear_net.speed_mult(esc) > 0.0),
+		str(_find(Defs.CW_WORKS) != null), springers.size(), int(g.tension(g.human))])
+	if esc == null or spring == null or springers.is_empty():
 		print("LAB NOT SET UP")
 		quit(1)
 		return
 	await _snap("lab_start", 2.5)
 	_hint(false)
-	# the Escapement, the Mainspring and the Jacks close
+	# the Escapement, the Mainspring and the Springers close
 	g.camera.position = (esc.center() + spring.center()) * 0.5 + Vector2(-30, 20)
 	g.camera.zoom = Vector2(1.5, 1.5)
 	await _snap("lab_close", 0.6)
 	var mid := Vector2.ZERO
-	for o in jacks:
-		mid += o.position / float(jacks.size())
+	for o in springers:
+		mid += o.position / float(springers.size())
 	g.camera.position = mid + Vector2(0, -30)
 	g.camera.zoom = Vector2(2.4, 2.4)
-	await _snap("lab_jacks", 0.4)
-	# the Movement Works' card with the Jack (cogs + Tension) and the Escapement's with HIGH LEAP
+	await _snap("lab_springers", 0.4)
+	# the Movement Works' card with the Springer (cogs + Tension) and the Escapement's with HIGH LEAP
 	var works := _find(Defs.CW_WORKS)
 	for sp in root.find_children("*", "SandboxPanel", true, false):
 		sp.open = false
 		sp._build()
 	g.set_selection([works])
-	await _hover_card(Defs.JACK, "")
-	await _snap("card_jack", 1.4)
+	await _hover_card(Defs.SPRINGER, "")
+	await _snap("card_springer", 1.4)
 	g.set_selection([esc])
 	await _hover_card("", "HIGH LEAP")
 	await _snap("card_escapement", 1.4)
-	# the Jacks' card with JUMP, then the JUMP target under the pointer (their reach, the landing ring and the arc)
-	g.set_selection(jacks)
+	# the Springers' card with JUMP, then the JUMP target under the pointer (their reach, the landing ring and the arc)
+	g.set_selection(springers)
 	await _hover_card("", "JUMP")
 	await _snap("card_jump", 1.4)
 	g.controls.mode = "cast"
 	g.controls.cast_spell = "jump"
 	var jm := Vector2.ZERO
-	for o in jacks:
-		jm += o.position / float(jacks.size())
+	for o in springers:
+		jm += o.position / float(springers.size())
 	# (the target is under the pointer on a computer, at the screen's centre on a phone: both are put on the spot)
 	var aim := jm + Vector2(-110, 40)
 	g.camera.position = aim
@@ -200,32 +200,32 @@ func _run() -> void:
 		g.controls.cancel_mode()
 	_ui(false)
 	g.reveal = true
-	# ---- the action on open ground below the plateau: the Jacks are put there
+	# ---- the action on open ground below the plateau: the Springers are put there
 	var open := _open_ground(hall)
-	for i in jacks.size():
-		var o: Unit = jacks[i]
+	for i in springers.size():
+		var o: Unit = springers[i]
 		o.position = open + Vector2(-90.0 + 70.0 * float(i), 60.0 if i > 0 else 0.0)
 		o.cmd_stop()
 		o.path = PackedVector2Array()
 	await create_timer(0.5).timeout
-	# ---- a Jack jumps: crouch, in the air over its shadow, landing
-	var j: Unit = jacks[0]
+	# ---- a Springer jumps: crouch, in the air over its shadow, landing
+	var j: Unit = springers[0]
 	g.players[g.human]["tech"]["high_leap"] = true
 	var dest := _jump_dest(j, 4.5)
 	g.camera.position = (j.position + dest) * 0.5 + Vector2(0, -30)
 	g.camera.zoom = Vector2(2.6, 2.6)
 	await create_timer(0.8).timeout
 	Engine.time_scale = 0.25
-	Jack.jump_order(g, [j], dest)
-	await _wait(func() -> bool: return Jack.frame(j) >= 2 or j.jump.is_empty(), 6.0)
+	Springer.jump_order(g, [j], dest)
+	await _wait(func() -> bool: return Springer.frame(j) >= 2 or j.jump.is_empty(), 6.0)
 	await _frozen("jump_crouch")
-	await _wait(func() -> bool: return Jack.lift(j) > float(j.jump.get("peak", 0.0)) * 0.85 or j.jump.is_empty(), 8.0)
+	await _wait(func() -> bool: return Springer.lift(j) > float(j.jump.get("peak", 0.0)) * 0.85 or j.jump.is_empty(), 8.0)
 	await _frozen("jump_air")
-	await _wait(func() -> bool: return Jack.frame(j) >= 6 or j.jump.is_empty(), 8.0)
+	await _wait(func() -> bool: return Springer.frame(j) >= 6 or j.jump.is_empty(), 8.0)
 	await _frozen("jump_land")
 	Engine.time_scale = 1.0
 	await create_timer(1.0).timeout
-	# ---- a Jack fires at a balloon: the screw in flight
+	# ---- a Springer fires at a balloon: the screw in flight
 	var fly := _dummy("balloon", j.position + Vector2(70, -95))
 	g.camera.position = j.position + Vector2(35, -60)
 	await create_timer(0.3).timeout
@@ -244,20 +244,20 @@ func _run() -> void:
 	j.cmd_stop()
 	await create_timer(0.6).timeout
 	# ---- the GIF: hop, jump, shoot (fixed camera; slow motion, frames kept by game time), back on the open ground, the
-	# other Jacks out of the picture
+	# other Springers out of the picture
 	j.position = open + Vector2(-60, 0)
 	j.cmd_stop()
 	j.jump_cd = 0.0
-	for o in jacks:
-		if o != j and o != jacks[jacks.size() - 1]:
+	for o in springers:
+		if o != j and o != springers[springers.size() - 1]:
 			_gone(o)
-	var last: Unit = jacks[jacks.size() - 1]
+	var last: Unit = springers[springers.size() - 1]
 	last.position = open + Vector2(-60, 260)
 	last.cmd_hold()
 	await _gif(j)
 	last.position = open + Vector2(0, 0)
 	# ---- death and corpse
-	var k: Unit = jacks[jacks.size() - 1]
+	var k: Unit = springers[springers.size() - 1]
 	g.camera.position = k.position + Vector2(0, -20)
 	g.camera.zoom = Vector2(3.0, 3.0)
 	await create_timer(0.5).timeout
@@ -270,12 +270,12 @@ func _run() -> void:
 	quit(0)
 
 
-## A spot about `tiles` tiles from the Jack it may land on, on its own level, toward open ground.
+## A spot about `tiles` tiles from the Springer it may land on, on its own level, toward open ground.
 func _jump_dest(j: Unit, tiles: float) -> Vector2:
 	for k in 16:
 		var a := TAU * float(k) / 16.0
 		var p: Vector2 = j.position + Vector2.from_angle(a) * tiles * Defs.TILE
-		var l := Jack.landing(j, p)
+		var l := Springer.landing(j, p)
 		if l.has("at") and (l["at"] as Vector2).distance_to(p) < 4.0:
 			return l["at"]
 	return j.position + Vector2(-100, 0)
@@ -288,7 +288,7 @@ func _wait(cond: Callable, limit: float) -> void:
 		w += 1.0 / 60.0
 
 
-## Wait for the Jack's next screw, then snap `after` s (game time) into its flight, the game frozen.
+## Wait for the Springer's next screw, then snap `after` s (game time) into its flight, the game frozen.
 func _shot(j: Unit, name: String, after: float) -> void:
 	var n: int = j.shots
 	await _wait(func() -> bool: return j.shots > n, 30.0)
@@ -325,7 +325,7 @@ func _hover_card(kind: String, lab: String) -> void:
 	print("no card button for ", kind, lab, ": ", g.hud._card_buttons.map(func(b) -> String: return String(b["item"][1])))
 
 
-## Frames for jack.gif: the Jack hops right, jumps back left, then shoots a balloon; every rendered frame is saved with the
+## Frames for springer.gif: the Springer hops right, jumps back left, then shoots a balloon; every rendered frame is saved with the
 ## game clock, so the GIF can take them at even game-time steps.
 func _gif(j: Unit) -> void:
 	var start := j.position
@@ -347,10 +347,10 @@ func _gif(j: Unit) -> void:
 		await process_frame
 		cap.call("hop")
 	# jump back to the left
-	var l := Jack.landing(j, start + Vector2(-20, 10))
+	var l := Springer.landing(j, start + Vector2(-20, 10))
 	if l.has("at"):
 		j.jump_cd = 0.0
-		Jack.jump_order(g, [j], l["at"])
+		Springer.jump_order(g, [j], l["at"])
 	t0 = g.clock
 	while g.clock - t0 < 1.6:
 		await process_frame
