@@ -98,3 +98,33 @@ tipping forward on its front edge; (3) the knee bent forward, foot lifted clear 
 quarter of the leg's length up; (4) the leg reaching forward, foot level, just above the ground ahead. The hip ball
 stays at exactly the same spot in every cell. No text, nothing touching.
 ```
+
+## Pass 2: back on the ground (branch great-winder-legs-2, 2026-10-27)
+
+The owner's report on the pass above: the legs were too tall and the brushes floated above the ground. Fixed in
+tools/great_winder_guide/anim.py (art only, no version bump):
+
+- The ground is back where ChatGPT painted it: each view stands at the height of the stubby legs on the body sheet
+  (the mean of its near painted soles), which is where the painting's brush housing touches the ground. The brush
+  housing and its rollers now sit on the ground line in every view and frame of WALK, WIND and SWEEP; while sweeping
+  the bristles turn at the ground. The body is about 15 to 25 game px lower than in the last pass.
+- The leg is drawn smaller (LEG_K 0.46 -> 0.25: about 19 game px from hip to sole when straight) AND crouched: the
+  standing leg is cut into hip ball, thigh, shin (knee ball and ankle collar) and foot, and laid on a two-bone IK with
+  the knee bent out from the body (S / N: to the side; side and 3/4 views: front legs forward, back legs back; the
+  front legs behind the brush housing kneel back so they show behind it). The shin stands about upright over a flat
+  foot, so each leg still reads as a jointed leg (thigh, knee, shin, foot), not a stub. In S the hips are set 10
+  sheet px (3 game px) lower on the body's underside (N: 2 px), because the painted S view stands taller than these
+  legs reach.
+- Feet still plant: a planted foot stays still on the ground and the IK takes the body over it (no more sliding the
+  leg under the hip ball). Stride and gait are unchanged, so the ground speed is the same (16 game px a loop with 4
+  legs, 24 with 6).
+- The stepping leg no longer uses ChatGPT's painted step poses (columns 2 and 3 are a tall, straight leg and did not
+  fit the crouch): it is the same painted pieces on the IK, the foot lifted 9 sheet px (about 3 game px) and kept level.
+- 4 legs stays the default (LEGS in anim.py); 6 still works. The key and the new rollers are unchanged.
+- One cell for all three strips: 182x103, anchor (91, 89).
+
+Compare GIF (the last pass on top, the new one below; walk, then sweep): art/redraws/great_winder_legs2_compare.gif.
+
+Still rough: at 1x the legs are small and the far legs can merge with the near ones in the 3/4 views; the swing is
+code movement of the standing paint (no painted lift-off). A ChatGPT sheet of the leg crouched (thigh out, knee bent,
+shin upright) in the three views would let the stance be painted instead of turned.

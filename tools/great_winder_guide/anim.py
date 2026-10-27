@@ -2,17 +2,16 @@
 SE, E, NE, N; column 1 the machine with its winding arm stowed, column 2 the arm out), in the style of the Netter's
 walk (tools/netter_guide/walk.py): painted parts cut out and moved, little drawn.
 
-WALK (12 frames) on ChatGPT's painted leg (art/redraws/great_winder_leg_chatgpt.png: rows side / three-quarter / front,
-columns standing / lifted back / swung forward / down ahead). The sheet's stubby legs (ball, collar, dome foot) are cut
-off the body (cut_legs, ROWS) and the body stands higher on the new, longer legs: the ground moves down, the body stays
-put in its window. LEGS = 4 (default: a slow, heavy walk, one leg at a time, LB LF RB RF) or 6 (a tripod gait). Side
+WALK (12 frames) on ChatGPT's painted leg (art/redraws/great_winder_leg_chatgpt.png: rows side / three-quarter / front;
+pass 2 uses its standing column only). The sheet's stubby legs (ball, collar, dome foot) are cut off the body
+(cut_legs, ROWS); the new legs stand at the painting's own height (REST: the old painted soles), so the brush housing
+sits on the ground. LEGS = 4 (default: a slow, heavy walk, one leg at a time, LB LF RB RF) or 6 (a tripod gait). Side
 legs in E, three-quarter legs in SE / NE, front legs in S / N; the far side's legs are the same paint behind the body,
-darker. A planted leg: the standing cell cut into hip ball, rigid leg and flat foot; the foot stays put on the ground
-(it slides back at the body's speed, so it is planted while the machine moves), the rigid leg turns about the hip to
-reach it and slides up under the hip ball for the rest (REST_LEN is chosen so it never has to slide down; in S / N the
-step is depth, so it is not turned). A stepping leg: the painted step poses (column 2, then column 3) turned about the
-hip so the foot follows a smooth path from behind to ahead (S / N: turned so it stays under the hip), never through
-the floor. The body dips 1 game px as each leg (tripod) lands; ground speed: 2 * STRIDE / duty * GS game px a loop.
+darker. Each leg is the standing cell cut into hip ball, thigh, shin (knee ball and ankle collar) and flat foot, laid
+on a two-bone IK with the knee bent out (a crouched stance): a planted foot stays put on the ground (it slides back at
+the body's speed, so it is planted while the machine moves); a stepping foot is lifted SWING_LIFT, kept level, and
+carried from behind to ahead on the same IK. The body dips 1 game px as each leg (tripod) lands; ground speed:
+2 * STRIDE / duty * GS game px a loop.
 
 WIND (12 frames): the winding arm (cut from column 2 and laid on the column-1 body) slides out of the machine along its
 length (frames 0-2), then ChatGPT's painted key head at its end (art/redraws/great_winder_key_rollers_chatgpt.png, top)
@@ -658,7 +657,14 @@ LEG_SHEET = np.array(Image.open('art/redraws/great_winder_leg_chatgpt.png').conv
 # the leg sheet: rows = view (side, three-quarter, front), columns = one step (standing; foot lifted, leg back; foot
 # swung forward in the air; foot down a little ahead). Which leg row each direction uses (S, SE, E, NE, N)
 LEG_VIEW = [2, 1, 0, 1, 2]
-LEG_K = 0.46           # leg sheet px -> body sheet px (the hip ball ~20 px across, the old balls 20-36: ~34 game px tall)
+LEG_K = 0.25           # leg sheet px -> body sheet px (pass 2: was 0.46, whose ~33 game px legs lifted the brushes
+                       # off the ground; the hip ball now ~14 px across)
+# pass 2: the ground goes back up to the brush housing (rest_heights: the soles of the stubby legs ChatGPT painted, where
+# its housing sits on the ground). The legs reach it CROUCHED: the thigh turned out about the hip, the knee bent out, the
+# shin standing about upright over a flat foot (two-bone IK, ik_leg; S / N the knees go out to the side, the side and
+# 3/4 views front legs forward and back legs back, the front legs behind the housing kneel back so they show)
+HOUSING_FIT = [0.0, 3.0, 0.0, 0.0, 0.0]      # hand nudges (window px, + = ground lower) after looking at the frames
+SPLAY_SIGN = {'f': 1.0, 'm': 1.0, 'b': -1.0}   # side / 3/4 views: knees out forward (+) or back (-), by the leg's place
 LEG_DARK = 0.72        # the far side's legs: the same paint behind the body, darker
 STRIDE = 20.0          # a planted foot goes from +STRIDE to -STRIDE (body sheet px along the view's "forward")
 N_WALK = 12
@@ -743,9 +749,18 @@ def _split_standing(c):
     ankle = np.array([(xs.min() + xs.max()) / 2.0, ank]) + c['o']
     foot = m & (yy >= ank)
     fy, fx = np.nonzero(foot)
+    # pass 2: the knee (the second blue ball down): the paint between the hip's collar and it is the thigh; the knee
+    # ball and the ankle collar under it are the shin
+    blue = ndi.binary_opening(m & (B_ > R_ + 40) & (B_ > 90))
+    kb = blue & (yy > hy + 1.5 * c['hip_r']) & (yy < ank)
+    ky, kx = np.nonzero(kb)
+    k0, k1 = ky.min(), ky.max()
+    knee = np.array([(kx.min() + kx.max()) / 2.0, (k0 + k1) / 2.0]) + c['o']
+    thigh = m & (yy >= split) & (yy < k0)
+    shin = m & (yy >= k0) & (yy < ank)
     return dict(ball=rgba(C, m & (yy < split)), leg=rgba(C, leg), foot=rgba(C, foot), ankle=ankle,
                 sole=np.array([fx.mean(), sole]) + c['o'], footc=np.array([fx.mean(), fy.mean()]) + c['o'],
-                o=c['o'], hip=c['hip'])
+                o=c['o'], hip=c['hip'], knee=knee, thigh=rgba(C, thigh), shin=rgba(C, shin))
 
 
 def _foot_centre(c):
@@ -806,7 +821,8 @@ def hips_of(r):
     out = []
     for role in LEG_SET[LEGS]:
         src = FOUR_AT.get(r, {}).get(role, role) if LEGS == 4 else role
-        out.append((role,) + allh[src])
+        h, layer = allh[src]
+        out.append((role, h + np.array([0.0, DROP[r]]), layer))
     return out
 
 
@@ -814,112 +830,149 @@ def fwd_of(r):
     return np.array(FWD[r], float)
 
 
-def stance_geom(r, hip, x_off, rest_len, bob=0.0):
-    """a planted leg's pose: (ankle, turn of the rigid leg, its slide up the hip) for its foot flat on the ground at
-    x_off along forward from under the rest hip (hip: the rest hip; bob: how far the body has dipped)"""
-    st = STAND[LEG_VIEW[r]]
+# pass 2 (great-winder-legs-2): a planted or stepping leg is three painted pieces on a two-bone IK: the THIGH turned
+# about the hip, the SHIN (knee ball and ankle collar) turned about the knee, the FOOT flat and still on the ground;
+# the knee bends OUT (away from the body: S / N to the side; the side and 3/4 views: front legs forward, back legs
+# back), so the hip sits low over a wide, crouched stance and the brush housing reaches the ground.
+SWING_LIFT = 9.0       # a stepping foot rises this high mid-step (body sheet px), kept level
+HIP_MARGIN = 0.92      # the legs stand at most this share of their full reach tall (room for the stride)
+REACH_K = 0.97         # a planted leg never straightens past this share of its reach (the knee keeps a bend)
+
+
+def leg_len(v):
+    """the painted leg's thigh (hip -> knee), shin (knee -> ankle) and foot (ankle -> sole) on the body (body px)"""
+    st = STAND[v]
+    return (float(np.hypot(*(st['knee'] - st['hip']))) * LEG_K, float(np.hypot(*(st['ankle'] - st['knee']))) * LEG_K,
+            float(st['sole'][1] - st['ankle'][1]) * LEG_K)
+
+
+def out_dir(r, role, hip, layer=''):
+    """the screen direction a leg's knee and foot go out along (unit)"""
+    if abs(FWD[r][0]) < 1e-6:                    # S / N: out to its side, away from the body's middle
+        mid = np.mean([h[1][0] for h in hips_of(r)])
+        return np.array([1.0 if hip[0] > mid else -1.0, 0.0])
     f = fwd_of(r)
-    ank0 = (st['ankle'] - st['hip']) * LEG_K                 # the rest leg, hip -> ankle
+    sg = SPLAY_SIGN[role[1]]
+    if layer == 'back':
+        sg = -1.0          # the front legs behind the brush housing kneel back, so they show behind it
+    return sg * f / np.hypot(*f)
+
+
+def knee_of(hip, ankle, a, b, u):
+    """two-bone IK: the knee (a from the hip, b from the ankle) on the side of u; the reach is clamped"""
+    d_ = ankle - hip
+    d = float(np.hypot(*d_))
+    d = min(max(d, abs(a - b) + 1e-3), a + b - 1e-3)
+    ang = math.atan2(d_[1], d_[0])
+    al = math.acos(max(-1.0, min(1.0, (a * a + d * d - b * b) / (2 * a * d))))
+    ks = [hip + a * np.array([math.cos(ang + sg * al), math.sin(ang + sg * al)]) for sg in (1, -1)]
+    return max(ks, key=lambda k: (k - hip) @ u)
+
+
+def turn(v_from, v_to):
+    return math.degrees(math.atan2(v_to[1], v_to[0]) - math.atan2(v_from[1], v_from[0]))
+
+
+def ik_leg(r, hip, sole, size, dark, u):
+    """the painted pieces laid for the hip at hip and the sole at sole (window px): foot, thigh, shin, hip ball"""
+    st = STAND[LEG_VIEW[r]]
+    a, b, _ = leg_len(LEG_VIEW[r])
     sole0 = (st['sole'] - st['ankle']) * LEG_K
-    sole = np.array([hip[0] + ank0[0] + sole0[0], hip[1] + rest_len]) + x_off * f
     ankle = sole - sole0
-    hp = hip + np.array([0.0, bob])
-    dx = ankle[0] - hp[0]
-    L = math.hypot(*ank0)
-    th = 0.0
-    if abs(f[0]) > 1e-6:
-        th = math.degrees(math.atan2(ank0[0], ank0[1])) - math.degrees(math.asin(max(-1.0, min(1.0, dx / L))))
-    c, s = math.cos(math.radians(th)), math.sin(math.radians(th))
-    rot = np.array([[c, -s], [s, c]]) @ ank0
-    return ankle, th, (ankle - (hp + rot))[1]
-
-
-def stance_leg(r, hip, x_off, size, dark, rest_len, bob=0.0):
-    """a planted leg: its foot flat on the ground, the rigid leg (hip collar, thigh, knee, ankle collar) turned about
-    the hip to reach it (in the front views not turned: there the step is depth, foreshortened) and slid up under the
-    hip ball for the rest (never down: REST_LEN is chosen so it never has to); the standing cell's hip ball on top"""
-    st = STAND[LEG_VIEW[r]]
-    ankle, th, slide = stance_geom(r, hip, x_off, rest_len, bob)
-    hp = hip + np.array([0.0, bob])
+    if np.hypot(*(ankle - hip)) > a + b:
+        IK_SHORT.append(float(np.hypot(*(ankle - hip)) - a - b))
+    knee = knee_of(hip, ankle, a, b, u)
+    th1 = turn(st['knee'] - st['hip'], knee - hip)
+    th2 = turn(st['ankle'] - st['knee'], ankle - knee)
     return [xform(st['foot'], st['o'], st['ankle'], 0.0, ankle, size, dark),
-            xform(st['leg'], st['o'], st['hip'], th, hp + np.array([0.0, slide]), size, dark),
-            xform(st['ball'], st['o'], st['hip'], 0.0, hp, size, dark)]
+            xform(st['thigh'], st['o'], st['hip'], th1, hip, size, dark),
+            xform(st['shin'], st['o'], st['knee'], th2, knee, size, dark),
+            xform(st['ball'], st['o'], st['hip'], 0.0, hip, size, dark)]
 
 
-SWING_LIFT = 7.0       # a stepping foot clears the ground by at least this (body sheet px; the painted lift is small)
-
-
-def swing_leg(r, hip, u, size, dark, ground=None):
-    """a stepping leg at u (0 lift-off .. 1 touch-down): the painted step poses (column 2 early, column 3 late) turned
-    about the hip so the foot follows a smooth path from behind to ahead (the front views: so it stays under the
-    hip), never through the floor, the standing cell's hip ball laid over its own"""
-    cells = LEG_CELLS[LEG_VIEW[r]]
-    st = STAND[LEG_VIEW[r]]
-    c = cells[1] if u < 0.45 else cells[2]
-    f = fwd_of(r)
-    fn = f / max(1e-6, np.hypot(*f))
-    x_off = -STRIDE + 2 * STRIDE * (1 - math.cos(math.pi * u)) / 2.0
-    if abs(f[0]) < 1e-6:
-        # front views: the step is depth; ChatGPT's lifted feet lean to one side, so the pose is turned back until
-        # the foot is under the hip again
-        fn, want = np.array([1.0, 0.0]), ((st['footc'] - st['hip']) * LEG_K)[0]
-    else:
-        want = ((st['footc'] - st['hip']) * LEG_K) @ fn + x_off * np.hypot(*f)
-    v = (c['footc'] - c['hip']) * LEG_K
-    best = None
-    for t in np.arange(-70.0, 70.1, 0.5):
-        cc, ss = math.cos(math.radians(t)), math.sin(math.radians(t))
-        e = abs((np.array([[cc, -ss], [ss, cc]]) @ v) @ fn - want)
-        if best is None or e < best[0]:
-            best = (e, t)
-    th = best[1]
-    leg = xform(c['rgba'], c['o'], c['hip'], th, hip, size, dark)
-    if ground is not None:
-        # never through the floor: the whole pose slides up under the hip ball until the foot clears it
-        ys = np.nonzero(leg[..., 3].any(1))[0]
-        g = ground + x_off * f[1] - (2.0 + SWING_LIFT * math.sin(math.pi * u))
-        up = int(math.ceil(ys.max() - g)) if len(ys) else 0
-        if up > 0:
-            leg = shift(leg, 0, -up)
-    return [leg, xform(st['ball'], st['o'], st['hip'], 0.0, hip, size, dark)]
+IK_SHORT = []          # any pose the legs could not reach (a gap at the ankle): reported by main()
 
 
 def legs_layers(r, t, bob=0.0, stand=False):
     """{'far': [...], 'back': [...], 'near': [...]} full-window rgba layers of the legs at walk time t (0..1 a loop;
-    stand: every foot planted under its hip), the hips dipped by bob (window px)"""
+    stand: every foot planted at rest), the hips dipped by bob (window px)"""
     P = PARTS[r]
     g = GAIT[LEGS]
+    f = fwd_of(r)
     out = {'far': [], 'back': [], 'near': []}
     hl = sorted(hips_of(r), key=lambda h: h[1][1])
     for role, hip, layer in hl:
         dark = LEG_DARK if layer == 'far' else None
+        u = out_dir(r, role, hip, layer)
+        base = hip + np.array([0.0, REST[r]]) + foot_out(r, hip, u) * u     # the rest sole on the ground
+        hp = hip + np.array([0.0, bob])
         if stand:
-            lay = stance_leg(r, hip, 0.0, P['size'], dark, REST_LEN, bob)
+            sole = base
         else:
             p = (t - g['off'][role] + 0.5 / N_WALK) % 1.0
             if p < g['duty']:
-                x_off = STRIDE - 2 * STRIDE * p / g['duty']
-                lay = stance_leg(r, hip, x_off, P['size'], dark, REST_LEN, bob)
+                sole = base + (STRIDE - 2 * STRIDE * p / g['duty']) * f
             else:
-                lay = swing_leg(r, hip + np.array([0.0, bob]), (p - g['duty']) / (1 - g['duty']), P['size'], dark,
-                                hip[1] + REST_LEN)
-        out[layer] += lay
+                w = (p - g['duty']) / (1 - g['duty'])
+                x_off = -STRIDE + 2 * STRIDE * (1 - math.cos(math.pi * w)) / 2.0
+                sole = base + x_off * f - np.array([0.0, SWING_LIFT * math.sin(math.pi * w)])
+        out[layer] += ik_leg(r, hp, sole, P['size'], dark, u)
     return out
 
 
-def rest_len():
-    """the hip-to-sole height at rest: as long as the painted leg allows with no gap at the hip in any planted pose
-    (the leg only ever slides up under the ball)"""
-    best = 1e9
+def rest_heights():
+    """REST[r] (the hip-to-sole height the legs stand in view r) and DROP[r] (how far the hips are set down on the
+    body's underside). The ground goes back to ChatGPT's painting: the soles of the stubby legs it painted (the mean of
+    the near full legs in ROWS), which is where its brush housing sits on the ground; where that is taller than the new
+    legs reach (S), the hips are set lower on the body instead"""
+    rest, drop = [], []
+    M = solid(SHEET)
     for r in range(5):
-        st = STAND[LEG_VIEW[r]]
-        ank0 = (st['ankle'] - st['hip']) * LEG_K
-        sole0 = (st['sole'] - st['ankle']) * LEG_K
-        base = ank0[1] + sole0[1]
-        for x_off in np.linspace(-STRIDE, STRIDE, 21):
-            sl = stance_geom(r, np.array([200.0, 100.0]), x_off, base)[2]
-            best = min(best, base - sl)
-    return best
+        hs = []
+        for L in ROWS[r]['legs']:
+            if L['kind'] != 'full':
+                continue
+            b = L['box']
+            sub = M[b[1]:b[3] + 15, b[0]:b[2]]
+            hs.append(b[1] + np.nonzero(sub.any(1))[0].max() - L['ball'][1])
+        h = float(np.mean(hs[:2])) + HOUSING_FIT[r]
+        a, b_, ft = leg_len(LEG_VIEW[r])
+        top = HIP_MARGIN * (a + b_) - STRIDE * abs(FWD[r][1]) + ft     # (S / N: the stride is depth: up and down)
+        drop.append(max(0.0, h - top))
+        rest.append(h - drop[-1])
+    return rest, drop
+
+
+def foot_out(r, hip, u):
+    """how far out (along u) the planted foot stands at rest: so the shin stands upright (knee over the ankle)"""
+    st = STAND[LEG_VIEW[r]]
+    a, b, _ = leg_len(LEG_VIEW[r])
+    sole0 = (st['sole'] - st['ankle']) * LEG_K
+    lo, hi = 0.0, a
+    for _ in range(40):
+        c = (lo + hi) / 2
+        ankle = hip + np.array([0.0, REST[r]]) + c * u - sole0
+        knee = knee_of(hip, ankle, a, b, u)
+        if (knee - ankle) @ u > 0:               # the knee still further out than the ankle: the foot goes further out
+            lo = c
+        else:
+            hi = c
+    # but never so far out that the leg cannot reach its foot at the ends of its stride (the knee straightens)
+    f = fwd_of(r)
+
+    def reach(c):
+        return max(np.hypot(*(hip + np.array([0.0, REST[r]]) + c * u + x * f - sole0 - hip))
+                   for x in np.linspace(-STRIDE, STRIDE, 9))
+    if reach(lo) > REACH_K * (a + b):
+        lo2, hi2 = 0.0, lo
+        for _ in range(40):
+            c = (lo2 + hi2) / 2
+            if reach(c) > REACH_K * (a + b):
+                hi2 = c
+            else:
+                lo2 = c
+        lo = lo2
+    return lo
 
 
 def body_layer(img, bob):
@@ -961,7 +1014,7 @@ def sweep_frame(r, i):
     return g + [(x, False) for x in L['near']] + [(scraps_layer(r, i, N_SWEEP, PARTS[r]['size']), False)]
 
 
-REST_LEN = rest_len()
+REST, DROP = rest_heights()
 
 
 # ------------------------------------------------------------------ the frames
@@ -1019,7 +1072,7 @@ def anchor(r):
     move with LEGS), on the ground (the lowest rest sole)"""
     x0, y0 = PARTS[r]['org']
     near = HIPS[r]['near']
-    return (float(np.mean([h[1] for h in near])) - x0, max(h[2] for h in near) - y0 + REST_LEN + 1.0)
+    return (float(np.mean([h[1] for h in near])) - x0, max(h[2] for h in near) - y0 + DROP[r] + REST[r] + 1.0)
 
 
 def shrink(img, w, h):
@@ -1105,6 +1158,9 @@ def main():
     half = int(math.ceil(max(L, Rr) * GS)) + 1
     up, down = int(math.ceil(U * GS)) + 1, int(math.ceil(D * GS)) + 1
     cell = (2 * half, up + down, half, up)
+    if IK_SHORT:
+        print('warning: %d leg poses out of reach (by up to %.1f px)' % (len(IK_SHORT), max(IK_SHORT)))
+    print('rest', [round(x, 1) for x in REST], 'drop', [round(x, 1) for x in DROP])
     print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f), %d legs' % (cell + (GS, LEGS)))
     for name, dur in (('walk', WALK_MS[LEGS]), ('wind', 110), ('sweep', 100)):
         rows = [[to_cell(r, g, bob, cell) for g, bob in frames[(name, r)]] for r in range(5)]
