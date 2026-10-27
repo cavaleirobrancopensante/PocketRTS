@@ -953,6 +953,8 @@ func _workers() -> void:
 		extra = 3          # grubs get used up as buildings
 	elif _clock():
 		extra = 1 + (2 if game.army(team).size() >= 4 else 0)   # builder + escorts
+		if Defs.gear_mode:
+			extra = 1 + _escort_want(game.army(team))          # (the Winders that go with the army are extra hands, not taken from the presses)
 	var want := mini(int((cap * fill + extra) * float(_s("workers"))), 46 if difficulty >= 3 else _lv([16, 30, 40]))
 	if _clock():
 		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler; gear mode: two Cog Presses of 6 and a
@@ -3489,6 +3491,8 @@ func _army() -> void:
 				u.cmd_move(_home_spot(front), true)
 			elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
 				u.cmd_deploy()
+		if _clock() and Defs.gear_mode:
+			_follow_with_escort(army)       # (the Winders keep the waiting army wound: the rally may be off the gear ground)
 
 
 ## A timing attack the scout sized waits while the army is not worth enough against what
@@ -4272,7 +4276,13 @@ func _flood_point(flood: PackedByteArray, p: Vector2, fallback: Vector2) -> Vect
 ## reach, splash}.
 func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: Vector2) -> Dictionary:
 	var pc := piece.center()
-	var out: Vector2 = (centre - pc).normalized()
+	# OUTWARD is the side of the piece we can walk up to (the cells beside it in our flood), not the straight line to the
+	# army: a gate at the top of a ramp is reached up the ramp, and an army standing off to one side of it, under the cliff,
+	# would otherwise stage (and queue for the face) at the foot of that cliff, under the muskets on the high ground and
+	# unable to reach the gate (the owner's screenshots, 2026-10-27)
+	var out := _siege_out(piece, flood)
+	if out == Vector2.ZERO:
+		out = (centre - pc).normalized()
 	if out == Vector2.ZERO:
 		out = (game.center_of_team(team) - pc).normalized()
 	# --- the defenders that reach the wall face, and how far out past it they reach
@@ -4488,6 +4498,22 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 		"inc": single + spray * minf(cap + 2.0, 8.0), "cap": cap, "out": out, "stage": stage, "reach": art_reach, "mreach": reach, "splash": splash}
 
 
+## The way out from a wall piece toward our side: from the piece to the middle of the cells within two of it that we can
+## walk to (`flood`), ZERO when there are none.
+func _siege_out(piece: Building, flood: PackedByteArray) -> Vector2:
+	var sum := Vector2.ZERO
+	var n := 0
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var c: Vector2i = piece.cell + Vector2i(dx, dy)
+			if game.in_map(c) and flood[game.idx(c)] == 1:
+				sum += game.cell_center(c)
+				n += 1
+	if n == 0:
+		return Vector2.ZERO
+	return (sum / float(n) - piece.center()).normalized()
+
+
 ## Orders while breaking in: first the army forms up out of the defenders' reach (the melee
 ## at a staging spot, the ranged at their firing spots, which they open fire from), so it
 ## doesn't arrive at the wall a few at a time; then the melee go to the face (as many as fit;
@@ -4644,8 +4670,13 @@ func _ranged_spot(u: Unit, piece: Building, out: Vector2, flood: PackedByteArray
 	return best + Vector2(randf_range(-6, 6), randf_range(-6, 6))
 
 
-## Clockwork: two Winders walk behind the army and repair it (they repair whatever is
-## hurt near them on their own when they stop).
+## Clockwork: Winders walk behind the army and repair it (they repair whatever is hurt near them on their own when
+## they stop). GEAR MODE (the owner, 2026-10-27: "it brings workers to the battlefield"): a Clock Soldier, a Pendulum,
+## a Jack... runs down in ~80 s off its gear ground and stands still, and only a Winder winds it up again out there, so
+## the Winders go WITH the army wherever it is (the rally, the attack): about one for every five constructs (at least
+## two, at most a third of the workers and 10), and they WIND first (run-down ones, then the lowest), repair second.
+## Run-down constructs left behind on the way are fetched too while no enemy stands near them. (The Crate drop instead of
+## building is the Clockwork's side of this: its workers are the ones that die in the field.)
 func _follow_with_escort(army: Array) -> void:
 	if army.is_empty():
 		return
@@ -4653,17 +4684,29 @@ func _follow_with_escort(army: Array) -> void:
 	for u in army:
 		c += u.position
 	c /= army.size()
+	var gear := Defs.gear_mode
 	var tins := army.filter(func(o: Unit) -> bool: return o.runs_on_spring()).size()
-	while _escort.size() < 2 + mini(tins / 6, 3):
+	var want := 2 + mini(tins / 6, 3)
+	if gear:
+		want = _escort_want(army)
+	_escort = _escort.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
+	while _escort.size() < want:
 		var pick: Unit = null
+		var pd := INF
 		for u in game.workers(team):
-			if not _escort.has(u) and u.order != "build":
+			if _escort.has(u) or u.order == "build" or u.crate_site != null or (scout != null and scout.is_scout(u)) or _fled.has(u):
+				continue
+			# (the nearest free hand; one already idle first)
+			var dd: float = u.position.distance_to(c) - (100000.0 if u.order == "idle" else 0.0)
+			if dd < pd:
+				pd = dd
 				pick = u
-				if u.order == "idle":
-					break
 		if pick == null:
 			break
 		_escort.append(pick)
+	if gear:
+		_escort_wind(army, c)
+		return
 	# run-down Wind-up Soldiers first: the escort cranks them back up
 	var down: Array = game.units.filter(func(o: Unit) -> bool: return o.team == team and not o.dead and o.runs_on_spring() and o.powered_down())
 	for u in _escort:
@@ -4682,6 +4725,79 @@ func _follow_with_escort(army: Array) -> void:
 			continue
 		if u.position.distance_to(c) > 140.0:
 			u.cmd_move(c + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+
+
+## Gear mode: how many Winders go with this army: one for every five constructs that run down (not the flyers), at
+## least two, at most a third of the workers (the economy keeps the rest) and ten.
+func _escort_want(army: Array) -> int:
+	var cons := 0
+	for u in army:
+		if not u.is_worker() and not u.is_air() and String(u.d["faction"]) == "clockwork":
+			cons += 1
+	if cons == 0:
+		return 0
+	var cap := mini(10, maxi(2, game.workers(team).size() / 3))
+	return clampi(2 + cons / 5, 2, cap)
+
+
+## Gear mode: each free escort Winder winds (cmd_repair: wind first, then mends) the construct that needs it most
+## within reach: a run-down one first (anywhere within ~14 tiles of the army, with no enemy beside it), then the
+## lowest under half wind, then a badly hurt one; with nothing to do it keeps just behind the army (toward home).
+func _escort_wind(army: Array, c: Vector2) -> void:
+	var need: Array = []          # [score, unit]: lower is more urgent
+	var taken := {}
+	for x in _escort:
+		if x.order == "repair" and is_instance_valid(x.order_target):
+			taken[x.order_target] = true
+	for o in game.units:
+		if o.team != team or o.dead or o.off_field or o.is_worker() or o.is_air() or String(o.d["faction"]) != "clockwork" or taken.has(o):
+			continue
+		var dc: float = o.position.distance_to(c)
+		var score := INF
+		if o.powered_down() or (o.wind < 0.2 and not o._in_field):
+			if dc < 900.0 and not _enemy_near(o.position, 260.0):
+				score = (0.0 if o.powered_down() else 0.5) + dc * 0.0001
+		elif dc < 420.0:
+			if o.wind < 0.45 and not o._in_field:
+				score = 1.0 + o.wind
+			elif o.hp < o.max_hp * 0.5:
+				score = 2.0 + o.hp / maxf(1.0, o.max_hp)
+		if score < INF:
+			need.append([score, o])
+	need.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var home := c
+	var hall: Array = _halls()
+	if not hall.is_empty():
+		home = (hall[0] as Building).center()
+	var behind := c + (home - c).normalized() * 70.0 if home.distance_to(c) > 1.0 else c
+	for u in _escort:
+		if u.order == "repair" and is_instance_valid(u.order_target) and not u.order_target.dead:
+			continue
+		var best: Unit = null
+		var bi := -1
+		var bd := INF
+		# (the most urgent first; among those as urgent, the nearest)
+		for i in need.size():
+			var o: Unit = need[i][1]
+			var d: float = float(need[i][0]) * 10000.0 + o.position.distance_to(u.position)
+			if d < bd:
+				bd = d
+				best = o
+				bi = i
+		if best and u.can_repair(best):
+			u.cmd_repair(best)
+			need.remove_at(bi)
+			continue
+		if u.position.distance_to(behind) > 120.0:
+			u.cmd_move(behind + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+
+
+## An enemy (not a worker) within r of p.
+func _enemy_near(p: Vector2, r: float) -> bool:
+	for o in game.units_near(p, r):
+		if not o.dead and game.hostile(o.team, team) and not o.is_worker():
+			return true
+	return false
 
 
 func _release_escort() -> void:
