@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.88": ["El Taller de Movimientos del Mecanismo ahora se llama TALLER LIGERO (hace las máquinas ligeras; el Taller Pesado para las grandes está en camino). Su tecla de construcción es L."],
 	"0.14.87": ["Teclas de construcción del Mecanismo: la Torre del Reloj ahora es T y la Prensa de Engranajes C (la G de la Prensa parecía una C, y la C construía una Torre del Reloj que no podías pagar)."],
 	"0.14.86": ["Los edificios de la Corona tienen tejados de terracota."],
 	"0.14.85": ["ARREGLO: los edificios del Mecanismo vuelven a salir de su caja. Solo la Torre del Reloj mostraba la caja: la Prensa de Engranajes, el Muelle Real, el Regulador, el Taller de Movimientos, la Torreta de Trinquete, el Escape y la Casa del Cuco saltaban directamente al andamio. Ahora cada uno muestra la caja que el Dador de cuerda dejó en el suelo abriéndose y desplegándose en su armazón, para ti y para el ordenador.", "Los edificios del Mecanismo ahora SE LEVANTAN: después de que la caja se despliega, el andamio crece desde sus placas de abajo arriba mientras se construye el edificio (entero a la mitad), y luego queda en pie el edificio terminado."],

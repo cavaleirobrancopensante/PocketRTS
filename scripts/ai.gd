@@ -569,7 +569,7 @@ func _f() -> Dictionary:
 	return Defs.FACTIONS[game.faction_of(team)]
 
 
-## Gear mode: a Ratchet Turret or two for the home base (Defs.TURRET): the first once a Movement Works stands and the
+## Gear mode: a Ratchet Turret or two for the home base (Defs.TURRET): the first once a Light Works stands and the
 ## first soldiers are paid for (or at once when an enemy is at the door), a second on Normal and Hard later with money in
 ## the bank. They go up near the Clocktower like any gear building (they must link to the field).
 func _turrets() -> void:
@@ -586,7 +586,7 @@ func _turrets() -> void:
 		_construct(k)
 
 
-## Gear mode, TIER 2: once a Movement Works stands, a Mainspring (idle Winders crew it, so it winds Tension), then an
+## Gear mode, TIER 2: once a Light Works stands, a Mainspring (idle Winders crew it, so it winds Tension), then an
 ## Escapement whose ring meshes with that Mainspring's (the Tension rule: placed by GearNet.ring_spot round it).
 ## _produce mixes Springers into the army while the Tension lasts. (No HIGH LEAP: its Springers only jump away from melee, on the
 ## flat or down: Springer.ai_tick.)
@@ -737,7 +737,7 @@ func _esc_spring(esc: Array) -> void:
 
 ## Gear mode: SHIELD WALL (the Clock Soldiers' SHIELD FORWARD, scripts/shield_wall.gd) once it meets a ranged army
 ## (3+ enemy shooters seen in the last 90 s: Musketeers, Spitters, Springers...) and has Clock Soldiers to use it, at a
-## Movement Works whose ring meshes with a Mainspring's (it costs Tension), with the Tension to spare.
+## Light Works whose ring meshes with a Mainspring's (it costs Tension), with the Tension to spare.
 var _ranged_seen := 0
 var _ranged_seen_t := -999.0
 
@@ -815,7 +815,7 @@ func _foe_high() -> bool:
 
 
 ## Gear mode, TIER 3 (scripts/pendulum.gd, scripts/netter.gd), kept simple: once its Escapement works and it has the
-## Tension for a Pendulum, one Movement Works goes onto its BIG gear (a gear swap: the Pendulum is made only there; the
+## Tension for a Pendulum, one Light Works goes onto its BIG gear (a gear swap: the Pendulum is made only there; the
 ## newest Works whose ring meshes with a Mainspring's when it has more, since the Pendulum costs Tension (THE TENSION RULE,
 ## GearEcon); the others keep to the small gear); _produce then mixes a few Pendulums and Netters into the army. Its
 ## Netters pick their targets themselves (the most dangerous enemy in reach not caught already: Netter.pick; _micro leaves
@@ -837,13 +837,13 @@ func _tier3() -> void:
 		if game.gear_swap_problem(w) == "":
 			game.swap_gear(w)
 			if game.mlog:
-				game.mlog.add("%s put a Movement Works on its big gear (Pendulums)" % game.mlog.who(team))
+				game.mlog.add("%s put a Light Works on its big gear (Pendulums)" % game.mlog.who(team))
 			return
 
 
 ## Gear mode: a building whose work DRIVE scales (GearEcon: a Cog Press, the Works, a Mainspring...) goes where its ring
 ## meshes with a Clocktower's (100%), nearest the main Clocktower first; (-1, -1) when there is no room (the usual search).
-## The first Movement Works keeps room beside it for a Mainspring (its Springers, later); a Works built while no Works meshes
+## The first Light Works keeps room beside it for a Mainspring (its Springers, later); a Works built while no Works meshes
 ## with a Mainspring goes by a Mainspring first (THE TENSION RULE).
 func _drive_spot(kind: String) -> Vector2i:
 	if not _clock() or not Defs.gear_mode or not GearEcon.uses_drive(kind) or kind == String(_f()["hall"]):
@@ -867,7 +867,7 @@ func _drive_spot(kind: String) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-## Gear mode: where the Mainspring goes. Its ring meshes with a Movement Works' (so that Works may make Springers: anything that
+## Gear mode: where the Mainspring goes. Its ring meshes with a Light Works' (so that Works may make Springers: anything that
 ## costs Tension is made only where a Mainspring meshes, GearEcon) and keeps room round it for an Escapement and a Clock
 ## Aviary; with no room by a Works, by the Clocktower; `spare`: a second one, only room for the Escapement and the Aviary.
 func _spring_spot(spare := false) -> Vector2i:
@@ -946,7 +946,7 @@ func _springer_works() -> void:
 	if _gold() >= cost + 20:
 		_construct(kind, _jw_plan["cell"])
 		if game.mlog and kind == "mainspring":
-			game.mlog.add("%s builds a Mainspring by a Movement Works (so it may make Springers)" % game.mlog.who(team))
+			game.mlog.add("%s builds a Mainspring by a Light Works (so it may make Springers)" % game.mlog.who(team))
 		_jw_plan = {}
 		_springer_works_t = game.clock + 6.0
 		return
@@ -1069,7 +1069,7 @@ func _sup() -> String:
 	return Defs.supply_kind(game.faction_of(team))
 
 
-## The Clockwork's army works: the Movement Works in gear mode, else the Assembly Works.
+## The Clockwork's army works: the Light Works in gear mode, else the Assembly Works.
 func _works() -> String:
 	return Defs.CW_WORKS if Defs.gear_mode else "assembly_works"
 
@@ -1922,7 +1922,7 @@ func _build_up() -> void:
 	var t := game.clock / float(_s("tech")) + (60.0 if _gold() > 500 else 0.0)
 	var gold := _gold()
 	if _clock() and Defs.gear_mode:
-		# gear mode: the new-style army only (Movement Works, Clock Soldiers); more Works with money in the bank below
+		# gear mode: the new-style army only (Light Works, Clock Soldiers); more Works with money in the bank below
 		var mw := _mine(_works()).size()
 		if mw == 0 and game.clock > _lv([90.0, 60.0, 40.0]) and labs >= 7:
 			_construct(_works())
@@ -3277,7 +3277,7 @@ func _produce() -> void:
 		return
 	var army := game.army(team)
 	if _clock() and Defs.gear_mode:
-		# gear mode: Clock Soldiers from every Movement Works, and Tension units from the Works that may make them (a ring
+		# gear mode: Clock Soldiers from every Light Works, and Tension units from the Works that may make them (a ring
 		# that meshes with a Mainspring's): a Springer for about every 1.5 Clock Soldiers (the shooters behind the line: they
 		# kill the workers mending a wall and the Musketeers over it), a Netter for every 7 others (up to 3, from 8 in
 		# the army), and tier 3 (_tier3) a Pendulum at the big-gear Works for every 6 others (up to 4). Tension piling up

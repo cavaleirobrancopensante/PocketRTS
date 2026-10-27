@@ -197,9 +197,9 @@ pt Tensão: %d
 es Tensión: %d
 
 # the new-style Clockwork army (gear mode)
-> Movement Works
-pt Oficina de Movimentos
-es Taller de Movimientos
+> Light Works
+pt Oficina Leve
+es Taller Ligero
 
 > Regulator
 pt Regulador
@@ -213,18 +213,18 @@ es 10 suministros más. Su péndulo mantiene a tiempo las unidades de la máquin
 pt Soldado-Relógio
 es Soldado Reloj
 
-> The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Made at the Movement Works.
-pt O soldado simples da linha de frente da máquina: uma espada de ponteiro de relógio e um escudo de tampa de relógio de bolso. Feito na Oficina de Movimentos.
-es El soldado sencillo de primera línea de la máquina: una espada de manecilla de reloj y un escudo de tapa de reloj de bolsillo. Se hace en el Taller de Movimientos.
+> The machine's plain front-line soldier: a clock-hand sword and a pocket-watch-cover shield. Made at the Light Works.
+pt O soldado simples da linha de frente da máquina: uma espada de ponteiro de relógio e um escudo de tampa de relógio de bolso. Feito na Oficina Leve.
+es El soldado sencillo de primera línea de la máquina: una espada de manecilla de reloj y un escudo de tapa de reloj de bolsillo. Se hace en el Taller Ligero.
 
 # no power in gear mode, and the Ratchet Turret (static defence)
 > Ratchet Turret
 pt Torreta de Catraca
 es Torreta de Trinquete
 
-> Static defence: its head turns to the nearest enemy and fires big screws at ground and air alike. Must stay linked to the gear field or it does not fire. Needs a Movement Works.
-pt Defesa fixa: sua cabeça gira para o inimigo mais próximo e dispara grandes parafusos contra alvos no chão e no ar. Precisa continuar ligada ao campo de engrenagens, ou não dispara. Precisa de uma Oficina de Movimentos.
-es Defensa fija: su cabeza gira hacia el enemigo más cercano y dispara grandes tornillos a tierra y aire por igual. Debe seguir enlazada al campo de engranajes o no dispara. Necesita un Taller de Movimientos.
+> Static defence: its head turns to the nearest enemy and fires big screws at ground and air alike. Must stay linked to the gear field or it does not fire. Needs a Light Works.
+pt Defesa fixa: sua cabeça gira para o inimigo mais próximo e dispara grandes parafusos contra alvos no chão e no ar. Precisa continuar ligada ao campo de engrenagens, ou não dispara. Precisa de uma Oficina Leve.
+es Defensa fija: su cabeza gira hacia el enemigo más cercano y dispara grandes tornillos a tierra y aire por igual. Debe seguir enlazada al campo de engranajes o no dispara. Necesita un Taller Ligero.
 
 > No power on the gear field.
 pt Não há energia no campo de engrenagens.

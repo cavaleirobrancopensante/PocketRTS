@@ -5,17 +5,17 @@
 pt Escape
 es Escape
 
-> The Clockwork's tech building: it unlocks the Springer and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Movement Works.
-pt A construção de tecnologia do Mecanismo: libera o Saltador e guarda a pesquisa de Tensão (PULO ALTO). Ela usa Tensão, então seu anel de engrenagens precisa engrenar com o anel de uma Mola Real (bem ao lado; uma engrenagem intermediária entre eles conta), e precisa continuar ligada ao campo de engrenagens: senão fica parada (PRECISA DE MOLA REAL). Precisa de uma Oficina de Movimentos.
-es El edificio de tecnología del Mecanismo: desbloquea el Saltador y guarda la investigación de Tensión (SALTO ALTO). Usa Tensión, así que su anillo de engranajes debe engranar con el anillo de un Muelle Real (justo al lado; un engranaje intermedio entre ellos cuenta), y debe seguir enlazado al campo de engranajes: si no, se queda parado (NECESITA MUELLE REAL). Necesita un Taller de Movimientos.
+> The Clockwork's tech building: it unlocks the Springer and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Light Works.
+pt A construção de tecnologia do Mecanismo: libera o Saltador e guarda a pesquisa de Tensão (PULO ALTO). Ela usa Tensão, então seu anel de engrenagens precisa engrenar com o anel de uma Mola Real (bem ao lado; uma engrenagem intermediária entre eles conta), e precisa continuar ligada ao campo de engrenagens: senão fica parada (PRECISA DE MOLA REAL). Precisa de uma Oficina Leve.
+es El edificio de tecnología del Mecanismo: desbloquea el Saltador y guarda la investigación de Tensión (SALTO ALTO). Usa Tensión, así que su anillo de engranajes debe engranar con el anillo de un Muelle Real (justo al lado; un engranaje intermedio entre ellos cuenta), y debe seguir enlazado al campo de engranajes: si no, se queda parado (NECESITA MUELLE REAL). Necesita un Taller Ligero.
 
 > Springer
 pt Saltador
 es Saltador
 
-> A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at the Movement Works once an Escapement works.
-pt Um boneco de caixa de surpresa sobre uma mola espiral: anda aos pulinhos e dispara parafusos giratórios do braço-broca, contra o chão e para o alto, nos voadores. SALTAR: um agachamento curto, depois um salto de até 5 casas (10 s para a mola se enrolar de novo); no plano ou para baixo a qualquer hora, PARA CIMA num terreno alto depois de pesquisar PULO ALTO e se você vir o lugar. Não pode atirar no ar. Custa Tensão. Feito na Oficina de Movimentos quando um Escape funciona.
-es Un muñeco de caja sorpresa sobre un resorte espiral: va dando saltitos y dispara tornillos giratorios con su brazo taladro, a tierra y hacia arriba, a los voladores. SALTAR: un breve agachado y luego un salto de hasta 5 casillas (10 s para volver a tensar el resorte); en llano o hacia abajo cuando quieras, HACIA ARRIBA a terreno alto una vez investigado SALTO ALTO y si ves el sitio. No puede disparar en el aire. Cuesta Tensión. Se hace en el Taller de Movimientos cuando funciona un Escape.
+> A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at the Light Works once an Escapement works.
+pt Um boneco de caixa de surpresa sobre uma mola espiral: anda aos pulinhos e dispara parafusos giratórios do braço-broca, contra o chão e para o alto, nos voadores. SALTAR: um agachamento curto, depois um salto de até 5 casas (10 s para a mola se enrolar de novo); no plano ou para baixo a qualquer hora, PARA CIMA num terreno alto depois de pesquisar PULO ALTO e se você vir o lugar. Não pode atirar no ar. Custa Tensão. Feito na Oficina Leve quando um Escape funciona.
+es Un muñeco de caja sorpresa sobre un resorte espiral: va dando saltitos y dispara tornillos giratorios con su brazo taladro, a tierra y hacia arriba, a los voladores. SALTAR: un breve agachado y luego un salto de hasta 5 casillas (10 s para volver a tensar el resorte); en llano o hacia abajo cuando quieras, HACIA ARRIBA a terreno alto una vez investigado SALTO ALTO y si ves el sitio. No puede disparar en el aire. Cuesta Tensión. Se hace en el Taller Ligero cuando funciona un Escape.
 
 > High Leap
 pt Pulo Alto
@@ -129,9 +129,9 @@ es Haz clic dónde SALTAR (hasta 5 casillas; acantilado arriba solo con SALTO AL
 pt PRECISA DE MOLA REAL: seu anel não engrena com nenhuma Mola Real, então fica parado (sem pesquisa, sem Saltadores). Construa uma Mola Real bem ao lado.
 es NECESITA MUELLE REAL: su anillo no engrana con ningún Muelle Real, así que se queda parado (sin investigación, sin Saltadores). Construye un Muelle Real justo al lado.
 
-> Working: its ring meshes with a Mainspring. Springers can be made at the Movement Works%s.
-pt Funcionando: seu anel engrena com uma Mola Real. A Oficina de Movimentos pode fazer Saltadores%s.
-es Funcionando: su anillo engrana con un Muelle Real. El Taller de Movimientos puede hacer Saltadores%s.
+> Working: its ring meshes with a Mainspring. Springers can be made at the Light Works%s.
+pt Funcionando: seu anel engrena com uma Mola Real. A Oficina Leve pode fazer Saltadores%s.
+es Funcionando: su anillo engrana con un Muelle Real. El Taller Ligero puede hacer Saltadores%s.
 
 > ; HIGH LEAP can be researched here
 pt ; PULO ALTO pode ser pesquisado aqui

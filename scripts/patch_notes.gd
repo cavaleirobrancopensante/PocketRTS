@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.88", "items": [
+		"The Clockwork's Movement Works is now called the LIGHT WORKS (it makes the light machines; the Heavy Works for the big ones is coming). Its build key is L.",
+	]},
 	{"v": "0.14.87", "items": [
 		"Clockwork build keys: the Clocktower is now T and the Cog Press C (the Cog Press's G looked like a C, and C built a Clocktower you could not afford).",
 	]},

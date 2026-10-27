@@ -857,7 +857,7 @@ func spring_rate() -> float:
 	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
 
 
-## Cog Press / Mainspring / Movement Works / Regulator / Escapement / Clock Aviary: the painted working loop
+## Cog Press / Mainspring / Light Works / Regulator / Escapement / Clock Aviary: the painted working loop
 ## (assets/buildings/<kind>_work_0..7.png, `frames` of them (the Escapement: 24); `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
 ## works; the built picture while it idles, and none of it once it is damaged (under half its hp).
 static var _work_tex := {}       # kind -> its work frames' textures (null where there's none), by number
