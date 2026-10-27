@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.94": ["Oficiales, Jinetes y Coraceros visten casacas blancas y calzones del color del jugador, con una manta de silla del color del jugador: fáciles de distinguir de los Mosqueteros."],
 	"0.14.93": ["Montar un caballo y guiarlo ahora suenan distinto: el caballo relincha cuando un hombre se monta en él, y solo resopla bajito cuando un hombre lo toma de las riendas. El mensaje de la 0.14.92 se quitó (cansaba rápido)."],
 	"0.14.92": ["Un soldado que hace clic derecho en un caballo se monta en él (el Mosquetero pasa a Dragón, el Oficial a Jinete...). Ahora un mensaje lo dice y cómo llevarlo de las riendas: pulsa GUIAR (Q). Los Peones siguen guiando el caballo con el clic derecho."],
 	"0.14.91": ["El Gran Dador de Cuerda rueda sobre ruedas dentadas en vez de patas. Cuatro engranajes de latón, la rueda del propio Mecanismo (como en la Catapulta de Muelle y la Balista de Muelle), giran mientras avanza, justo a la velocidad a la que va, y se quedan quietas mientras remienda o barre. Cuando lo destruyen, se le sueltan las ruedas. Su velocidad no cambia (27): sigue siendo lento a propósito."],

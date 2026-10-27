@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.94": ["Oficiais, Cavaleiros e Couraceiros vestem casacas brancas e calções na cor do jogador, com uma manta de sela na cor do jogador: fáceis de distinguir dos Mosqueteiros."],
 	"0.14.93": ["Montar num cavalo e guiá-lo agora soam diferentes: o cavalo relincha quando um homem monta nele, e só bufa baixinho quando um homem o pega pelas rédeas. A mensagem da 0.14.92 saiu (cansava rápido)."],
 	"0.14.92": ["Um soldado que clica com o botão direito num cavalo monta nele (Mosqueteiro vira Dragão, Oficial vira Cavaleiro...). Agora uma mensagem diz isso e como levá-lo pelas rédeas: aperte GUIAR (Q). Os Operários continuam guiando o cavalo com o clique direito."],
 	"0.14.91": ["O Grande Enrolador anda sobre rodas dentadas em vez de pernas. Quatro engrenagens de latão, a roda do próprio Mecanismo (como na Catapulta de Mola e na Balista de Mola), giram enquanto ele anda, na velocidade exata em que ele vai, e ficam paradas enquanto ele conserta ou varre. Quando ele é destruído, as rodas se soltam. A velocidade não muda (27): ele continua lento de propósito."],
