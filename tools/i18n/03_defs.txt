@@ -298,9 +298,9 @@ es Funde cañones de campaña y morteros, monta globos de observación y constru
 pt Toca
 es Madriguera
 
-> Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield nothing). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; plant Clutch Mounds forward to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).
-pt Põe ovos (até 5); toda unidade da Ninhada nasce aqui. Sua PRIMEIRA Toca é a capital (o trono da Rainha): a única onde as larvas descarregam e a única com chão, uma reserva de biomassa (esgotada pelos poços, não rende nada). As outras só põem ovos. Se a capital cair, a mais antiga seguinte assume. Permite 1 Cercado da Ninhada cada; Poços de Alimentação ficam no seu pântano, até onde a capital alcança; plante Montículos de Ovos à frente para empurrar o pântano. Melhora para Galeria (10 ovos), depois Montículo da Ninhada (15 ovos).
-es Pone huevos (hasta 5); toda unidad de la Nidada nace aquí. Tu PRIMERA Madriguera es la capital (el trono de la Reina): la única donde las larvas descargan y la única con suelo, una reserva de biomasa (agotada por los fosos, no rinde nada). Las demás solo ponen huevos. Si cae la capital, la siguiente más antigua toma el relevo. Permite 1 Corral de la Nidada cada una; los Fosos de Alimentación van en tu pantano, hasta donde alcance la capital; planta Montículos de Huevos adelantados para extender el pantano. Se mejora a Conejera (10 huevos) y luego a Montículo de la Nidada (15 huevos).
+> Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at. It has no ground of its own: every Feeding Pit has its own, in a circle round it. The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; plant Clutch Mounds forward to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).
+pt Põe ovos (até 5); toda unidade da Ninhada nasce aqui. Sua PRIMEIRA Toca é a capital (o trono da Rainha): a única onde as larvas descarregam. Ela não tem chão próprio: cada Poço de Alimentação tem o seu, num círculo em volta dele. As outras só põem ovos. Se a capital cair, a mais antiga seguinte assume. Permite 1 Cercado da Ninhada cada; Poços de Alimentação ficam no seu pântano, até onde a capital alcança; plante Montículos de Ovos à frente para empurrar o pântano. Melhora para Galeria (10 ovos), depois Montículo da Ninhada (15 ovos).
+es Pone huevos (hasta 5); toda unidad de la Nidada nace aquí. Tu PRIMERA Madriguera es la capital (el trono de la Reina): la única donde las larvas descargan. No tiene suelo propio: cada Foso de Alimentación tiene el suyo, en un círculo a su alrededor. Las demás solo ponen huevos. Si cae la capital, la siguiente más antigua toma el relevo. Permite 1 Corral de la Nidada cada una; los Fosos de Alimentación van en tu pantano, hasta donde alcance la capital; planta Montículos de Huevos adelantados para extender el pantano. Se mejora a Conejera (10 huevos) y luego a Montículo de la Nidada (15 huevos).
 
 > Clutch Mound
 pt Montículo de Ovos
@@ -394,9 +394,9 @@ es Envía a un Misionero. Necesita un Cuartel.
 pt Poço de Alimentação
 es Foso de Alimentación
 
-> Grubs haul food from here to the capital (5, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Loads draw on the capital's ground: spent ground yields nothing. Needs swamp joined to the capital's.
-pt As larvas levam comida daqui à capital (5, e mais uma a cada 4 casas além de 6, até 12). Quanto mais longe da capital, mais paga por larva (melhor entre cerca de 18 e 22 casas). As cargas saem do chão da capital: chão esgotado não rende nada. Precisa de pântano ligado ao da capital.
-es Las larvas llevan comida de aquí a la capital (5, y una más por cada 4 casillas más allá de 6, hasta 12). Cuanto más lejos de la capital, más paga por larva (lo mejor, de unas 18 a 22 casillas). Las cargas salen del suelo de la capital: el suelo agotado no rinde nada. Necesita pantano conectado al de la capital.
+> Grubs haul food from here to the capital (6, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Each pit has its own ground (3,000 biomass) in a circle 5 tiles round it: spent ground yields nothing, and your pits' circles may not overlap. A pit raised over old ground takes over what was left there. Needs swamp joined to the capital's.
+pt As larvas levam comida daqui à capital (6, e mais uma a cada 4 casas além de 6, até 12). Quanto mais longe da capital, mais paga por larva (melhor entre cerca de 18 e 22 casas). Cada poço tem o seu próprio chão (3.000 de biomassa) num círculo de 5 casas em volta dele: chão esgotado não rende nada, e os círculos dos seus poços não podem se sobrepor. Um poço erguido sobre chão velho assume o que sobrou ali. Precisa de pântano ligado ao da capital.
+es Las larvas llevan comida de aquí a la capital (6, y una más por cada 4 casillas más allá de 6, hasta 12). Cuanto más lejos de la capital, más paga por larva (lo mejor, de unas 18 a 22 casillas). Cada foso tiene su propio suelo (3.000 de biomasa) en un círculo de 5 casillas a su alrededor: el suelo agotado no rinde nada, y los círculos de tus fosos no pueden solaparse. Un foso levantado sobre suelo viejo se queda con lo que quedaba allí. Necesita pantano conectado al de la capital.
 
 > Brood Pen
 pt Cercado da Ninhada
@@ -790,9 +790,9 @@ es 12 de suministro más. Extiende pantano lejos a su alrededor (10 casillas; pl
 pt Permite que suas Tocas chocem Brutamontes, Mães de Esporos e Sapos da Névoa; uma Galeria pode virar um Montículo da Ninhada.
 es Permite que tus Madrigueras incuben Brutos, Madres de Esporas y Sapos de la Niebla; una Conejera puede convertirse en un Montículo de la Nidada.
 
-> Up to 5 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles).
-pt Até 5 larvas levam comida daqui à Toca. Quanto mais longe da Toca, mais paga (melhor entre 18 e 22 casas).
-es Hasta 5 larvas llevan comida de aquí a la Madriguera. Cuanto más lejos de la Madriguera, más paga (lo mejor, de 18 a 22 casillas).
+> Up to 6 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles). Its own ground (3,000 biomass) lies in a 5-tile circle round it; your pits' circles may not overlap.
+pt Até 6 larvas levam comida daqui à Toca. Quanto mais longe da Toca, mais paga (melhor entre 18 e 22 casas). O seu próprio chão (3.000 de biomassa) fica num círculo de 5 casas em volta dele; os círculos dos seus poços não podem se sobrepor.
+es Hasta 6 larvas llevan comida de aquí a la Madriguera. Cuanto más lejos de la Madriguera, más paga (lo mejor, de 18 a 22 casillas). Su propio suelo (3.000 de biomasa) está en un círculo de 5 casillas a su alrededor; los círculos de tus fosos no pueden solaparse.
 
 > Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.
 pt Corpos que caem por perto dão essência. SACRIFICAR criaturas da Ninhada aqui por essência.

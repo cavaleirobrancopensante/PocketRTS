@@ -2553,7 +2553,8 @@ func _draw_panel(font: Font) -> void:
 				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
 			elif bb.kind == "feeding_pit":
 				var gl := bb.soil_left()
-				info = "Each load is worth %.1f%s" % [game.load_value(bb), " · spent ground: a third; grow a Burrow on fresh ground" if gl <= 0.0 else ""]
+				info = "Ground: %d%% (%d biomass)%s · each load is worth %.1f" % [int(round(gl * 100)), int(bb.soil),
+					" spent: it yields nothing, grow a new pit on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else ""), game.load_value(bb)]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
 				var coal2 := bb.soil_left()
@@ -2581,9 +2582,7 @@ func _draw_panel(font: Font) -> void:
 				info = "Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3)." % Defs.PEN_RANGE
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
 				var nxt := "" if bb.eggs >= bb.eggs_max() else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
-				var gl := bb.soil_left()
-				info = "Eggs: %d / %d%s · Ground: %d%% (%d biomass)%s" % [bb.eggs, bb.eggs_max(), nxt, int(round(gl * 100)), int(bb.soil),
-					" spent: pits yield a third, grow a Burrow on fresh ground" if gl <= 0.0 else (" running low" if gl < Defs.SOIL_LOW else "")]
+				info = "Eggs: %d / %d%s" % [bb.eggs, bb.eggs_max(), nxt]
 				if bb.upgrade_t >= 0.0 and not bb.next_level().is_empty():
 					info += " · Growing into a %s: %d s left" % [bb.next_level()["name"], int(ceil(float(bb.next_level()["time"]) - bb.upgrade_t))]
 			if bb.kind == Defs.CW_TECH and bb.built and not bb.dead and Defs.gear_mode:

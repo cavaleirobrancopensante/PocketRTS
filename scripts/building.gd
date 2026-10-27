@@ -220,8 +220,8 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	hp = max_hp if complete else max_hp * 0.1
 	if d["faction"] == "clockwork":
 		seeded = complete
-	if k == "town_hall" or k == "hive" or k == "clocktower":
-		soil = reserve()
+	if k == "town_hall" or k == "clocktower" or k == "feeding_pit":
+		soil = reserve()      # (a Feeding Pit's own ground: Game.claim_pit_ground may take over less from old ground)
 	lode = lode_full()
 	if d["faction"] == "brood":
 		seeded = complete
@@ -817,19 +817,21 @@ func _gear_anim(working: bool, dt := -1.0, frames := 8) -> void:
 		sprite.offset = body_offset(kind, t)
 
 
-## Town Hall / Hive / Clocktower: the full reserve of its land (Crown soil, Brood ground,
-## Clockwork coal for its Boilers).
+## Town Hall / Clocktower / Feeding Pit: the full reserve of its land (Crown soil, Clockwork coal
+## for its Boilers, a pit's own Brood ground). A Burrow has none (0): the pits own the ground.
 func reserve() -> float:
 	if kind == "clocktower":
 		return float(Defs.COAL_RESERVE)
-	return float(Defs.GROUND_RESERVE if kind == "hive" else Defs.SOIL_RESERVE)
+	if kind == "feeding_pit":
+		return float(Defs.PIT_GROUND)
+	return 0.0 if kind == "hive" else float(Defs.SOIL_RESERVE)
 
 
-## Farm / Feeding Pit: share of its hall's soil (ground) left (0..1); 0 with no hall.
-## Town Hall / Hive: its own.
+## Farm / Boiler: share of its hall's soil (coal) left (0..1); 0 with no hall.
+## Town Hall / Clocktower / Feeding Pit: its own (a pit's own ground); a Burrow 0.
 func soil_left() -> float:
 	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "feeding_pit" or kind == "boiler" else self
-	return clampf(h.soil / h.reserve(), 0.0, 1.0) if h else 0.0
+	return clampf(h.soil / h.reserve(), 0.0, 1.0) if h and h.reserve() > 0.0 else 0.0
 
 
 ## Town Hall / Clocktower: its full lode (saltpetre / ore); 0 for anything else.

@@ -1,0 +1,51 @@
+# PIT GROUND (owner's decision, 2026-10-27): every Feeding Pit has its own ground (Defs.PIT_GROUND) in a circle of
+# Defs.PIT_CLAIM tiles; your pits' circles may not overlap; a dead pit leaves its circle as old ground.
+# The refused spot, the circle labels while placing a pit, the selected pit's card and the low / spent toasts.
+
+> Too close to another Feeding Pit: their grounds would overlap.
+pt Perto demais de outro Poço de Alimentação: os chãos deles se sobreporiam.
+es Demasiado cerca de otro Foso de Alimentación: sus suelos se solaparían.
+
+> Too close: the grounds would overlap
+pt Perto demais: os chãos se sobreporiam
+es Demasiado cerca: los suelos se solaparían
+
+> Fresh ground: %d biomass
+pt Chão fresco: %d de biomassa
+es Suelo fresco: %d de biomasa
+
+> Old ground: %d biomass left
+pt Chão velho: restam %d de biomassa
+es Suelo viejo: quedan %d de biomasa
+
+> Old ground, spent: this pit would yield nothing
+pt Chão velho, esgotado: este poço não renderia nada
+es Suelo viejo, agotado: este foso no rendiría nada
+
+> Old ground: %d%%
+pt Chão velho: %d%%
+es Suelo viejo: %d%%
+
+> Old ground: spent
+pt Chão velho: esgotado
+es Suelo viejo: agotado
+
+> Ground: %d%%
+pt Chão: %d%%
+es Suelo: %d%%
+
+> Ground: %d%% (%d biomass)%s · each load is worth %.1f
+pt Chão: %d%% (%d de biomassa)%s · cada carga vale %.1f
+es Suelo: %d%% (%d de biomasa)%s · cada carga vale %.1f
+
+> spent: it yields nothing, grow a new pit on fresh ground
+pt esgotado: não rende nada, crie um novo poço em chão fresco
+es agotado: no rinde nada, levanta un foso nuevo en suelo fresco
+
+> A Feeding Pit's ground is spent: it yields nothing. Grow a new pit on fresh ground, outside the old circles.
+pt O chão de um Poço de Alimentação se esgotou: ele não rende nada. Crie um novo poço em chão fresco, fora dos círculos velhos.
+es El suelo de un Foso de Alimentación se ha agotado: no rinde nada. Levanta un foso nuevo en suelo fresco, fuera de los círculos viejos.
+
+> A Feeding Pit's ground is running low (%d%% left): plan a new pit on fresh ground.
+pt O chão de um Poço de Alimentação está acabando (restam %d%%): planeje um novo poço em chão fresco.
+es El suelo de un Foso de Alimentación se está agotando (queda un %d%%): planea un foso nuevo en suelo fresco.

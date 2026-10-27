@@ -34,7 +34,7 @@ const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); fast
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
-## Brood Burrows have no ground of their own (only the capital has) and have no spacing rule for
+## Brood Burrows have no ground of their own (each Feeding Pit has its own) and have no spacing rule for
 ## the player (since 0.12.99); this is only how far apart the COMPUTER plants its extra ones
 ## (centre to centre, tiles).
 const BROOD_HALL_SPACING := 8
@@ -45,7 +45,7 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 ## saltpetre lasts a fully worked Mill (~120 powder a minute) about 11 minutes; a Clocktower's
 ## ore lasts a saturated Clockwork base (~1,150-1,200 ore a minute) about 10 minutes. Once
 ## spent, its Mill / Crushers yield NOTHING (LODE_SPENT = 0: barren, no efficiency trickle). Like soil, a hall raised where one fell takes
-## over what was left there. The Brood has no lode (its Hive ground is GROUND_RESERVE).
+## over what was left there. The Brood has no lode (its pits' ground is PIT_GROUND).
 const LODE := {"town_hall": 1320.0, "clocktower": 11400.0}     # 3 x 440 powder, 3 x 3,800 ore
 const LODE_NAME := {"town_hall": "saltpetre", "clocktower": "brass"}      # (the Clockwork's: ore on the old Line economy, raw brass for the cog presses)
 const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "ore_drill": "clocktower", "boiler": "clocktower", "cog_press": "clocktower"}
@@ -67,7 +67,7 @@ const FARM_YIELD := 380           # gold a harvest (fresh soil; was 450 while a 
 ## built where a hall fell takes over what was left there). Powder Mills draw on its saltpetre (LODE).
 const SOIL_RESERVE := 9000
 const SOIL_TIRED := 0.0           # share of a harvest that spent soil still pays (none: barren; was 1/3)
-const SOIL_LOW := 0.25            # warn the player below this share of the reserve (Hive ground too)
+const SOIL_LOW := 0.25            # warn the player below this share of the reserve (a Feeding Pit's ground too)
 const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min) while its saltpetre lasts
 ## The Crown starts with no powder: a Powder Mill comes before Musketeers (or a Horse Breeder
 ## before Horsemen: the two openings).
@@ -139,20 +139,25 @@ const CAPITAL_SWAMP_BONUS := 5
 const FOOD_TRIP := 0.8            # seconds of round trip per tile walked (mostly on swamp)
 const FOOD_REACH := 1.5           # tiles of the gap a grub doesn't walk
 const FOOD_MAX_D := 32.0          # a load is worth no more from farther out than this
-## Hive ground: the Feeding Pits around a Hive (a pit belongs to the nearest Hive) share one
-## reserve of biomass; every load hauled draws its value from it, and once it's spent those
-## pits yield NOTHING (barren; was a third). A new Hive has fresh ground (one grown where a Hive fell takes over
-## what was left there).
+## PIT GROUND (owner's decision, 2026-10-27): every Feeding Pit has its OWN ground, PIT_GROUND biomass;
+## every load hauled from it draws its value from it, and once it's spent the pit yields NOTHING
+## (barren). Each pit claims a circle of ground PIT_CLAIM tiles round its centre, and two of a
+## player's living pits' circles may not overlap (centres at least 2 x PIT_CLAIM apart: about 4-5
+## pits on a main plateau). The ground belongs to the land: a dead pit leaves its circle behind as
+## an "old ground" spot (Game.pit_spots) with what was left, and a new pit whose circle overlaps old
+## spots takes over the SMALLEST amount left among them (they merge into its claim), so rebuilding
+## beside a spent pit can't refresh the ground.
 ## THE CAPITAL: a Brood player's FIRST Burrow (the oldest one standing; if it falls the next oldest takes
-## over) is the only hall grubs unload at (food and cocoons), and the only one with ground (the reserve
-## below). The other Burrows only lay eggs, give supply and spread swamp. Where the Queen sits.
+## over) is the only hall grubs unload at (food and cocoons). It has no ground of its own (the pits do).
+## The other Burrows only lay eggs, give supply and spread swamp. Where the Queen sits.
 ## A Feeding Pit's crew (its `crew` is the base) grows with its distance from the capital: +1 grub per
 ## PIT_CREW_STEP tiles beyond FOOD_NEAR, up to PIT_CREW_MAX, so far pits can take more hands.
 const PIT_CREW_STEP := 4.0
 const PIT_CREW_MAX := 12
 ## Brood resource buildings (Feeding Pit, Brood Pen) need swamp joined to the capital's, no farther than this.
 const BROOD_RESOURCE_MAX_D := 40.0
-const GROUND_RESERVE := 10500     # (a fully worked Hive draws ~1,000-1,150 a minute: ~10 minutes)
+const PIT_GROUND := 3000          # biomass in each Feeding Pit's own ground (a full crew of 6 draws ~200-250 a minute: ~12-15 minutes)
+const PIT_CLAIM := 5.0            # tiles: the radius of the circle of ground a Feeding Pit claims (living pits' circles may not overlap)
 const ESSENCE_PER_SUPPLY := 3     # a body falling near a Brood Pen
 const PEN_RANGE := 12             # tiles
 ## Brood Pen SACRIFICE: a Brood creature offered up at a Pen gives this share of its biomass
@@ -1092,7 +1097,7 @@ const BUILDINGS := {
 	"hive": {
 		"name": "Burrow", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
 		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at, and the only one with ground, a reserve of biomass (once the pits have drawn it out they yield nothing). The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; plant Clutch Mounds forward to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
+		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at. It has no ground of its own: every Feeding Pit has its own, in a circle round it. The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; plant Clutch Mounds forward to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
 	},
 	"clutch_mound": {
 		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
@@ -1183,8 +1188,8 @@ const BUILDINGS := {
 	},
 	"feeding_pit": {
 		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 6, "trains": [], "crew": 5, "swamp": 4, "faction": "brood",
-		"about": "Grubs haul food from here to the capital (5, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Loads draw on the capital's ground: spent ground yields nothing. Needs swamp joined to the capital's.",
+		"supply": 0, "sight": 6, "trains": [], "crew": 6, "swamp": 4, "faction": "brood",
+		"about": "Grubs haul food from here to the capital (6, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Each pit has its own ground (3,000 biomass) in a circle 5 tiles round it: spent ground yields nothing, and your pits' circles may not overlap. A pit raised over old ground takes over what was left there. Needs swamp joined to the capital's.",
 	},
 	"brood_pen": {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
@@ -1718,7 +1723,7 @@ const TIPS := {
 	"clutch_mound": "12 more supply. Spreads swamp far around it (10 tiles; plant it forward, on swamp joined to a Burrow's); if it falls, the swamp only it held shrinks back. Each makes Burrows lay eggs 10% faster (up to 3).",
 	"warren": "Lets your Burrows hatch Raptors and Spitters.",
 	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",
-	"feeding_pit": "Up to 5 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles).",
+	"feeding_pit": "Up to 6 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles). Its own ground (3,000 biomass) lies in a 5-tile circle round it; your pits' circles may not overlap.",
 	"brood_pen": "Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.",
 	"roost": "Lets your Burrows hatch Skywings and Bloaters.",
 	# Crown research

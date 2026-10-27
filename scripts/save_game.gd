@@ -59,7 +59,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		"explored": Marshalls.raw_to_base64(game.explored), "camera": _v2(game.camera.position),
 		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true, "armoury": true, "farm_size": _v2(Vector2(Defs.BUILDINGS["farm"]["size"])),
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
-		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]), "buildings": [], "units": []}
+		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]),
+		"pit_spots": game.pit_spots.map(func(sp: Array) -> Array: return [_v2(sp[0]), sp[1], sp[2]]), "buildings": [], "units": []}
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at, "strategy": ai.strategy,
 			"failed": ai._failed, "regroup": ai._regroup_until, "opening": ai.opening})
@@ -345,9 +346,12 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.crate = String(bd.get("crate", ""))        # (older saves: no crates)
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
-		if b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower":
-			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / ground / coal)
+		if b.kind == "town_hall" or b.kind == "clocktower" or (b.kind == "feeding_pit" and d.has("pit_spots")):
+			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / coal; a pit's own ground from 0.14.37 on)
 			b.soil_warned = int(bd.get("sw", 0))
+		elif b.kind == "feeding_pit":
+			b.soil = b.reserve()        # (saves from before the pits had their own ground: fresh ground)
+			b.soil_warned = 0
 		if b.lode_full() > 0.0:
 			if bd.has("lode"):
 				b.lode = float(bd["lode"])
@@ -370,6 +374,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for sc in d.get("soil_scars", []):
 		var sk := String(sc[2]) if sc.size() > 2 else "town_hall"
 		game.soil_scars.append([_to_v2(sc[0]), float(sc[1]), sk, float(sc[3]) if sc.size() > 3 else float(Defs.LODE.get(sk, 0.0))])
+	game.pit_spots.clear()
+	for sp in d.get("pit_spots", []):
+		game.pit_spots.append([_to_v2(sp[0]), float(sp[1]), int(sp[2]) if sp.size() > 2 else -1])
 	for b in game.buildings:
 		if b.kind == "farm" or b.kind == "feeding_pit":
 			b._update_sprite()      # (its tired-soil tint needs the halls back first)
@@ -559,7 +566,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for t in game.n_players():
 		game._recount_supply(t)
 	game._capital.clear()          # (the capital is found again from the loaded Burrows)
-	game._capital_soil.clear()
+	game._capital_had.clear()
 	game.swamp_dirty = true
 	game._update_swamp()
 	game._astar_dirty = true
