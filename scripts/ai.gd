@@ -589,17 +589,65 @@ func _turrets() -> void:
 ## _produce mixes Jacks into the army while the Tension lasts. (No HIGH LEAP: its Jacks only jump away from melee, on the
 ## flat or down: Jack.ai_tick.)
 var _tier2_t := 0.0
+var _research_keep := 0.0      # gear mode: Tension kept for a research that is wanted (SHIELD WALL, HIGH LEAP)
+var _tech_hold := false         # gear mode: the gold put by is for the Mainspring or the Escapement (the army pauses sooner)
+
+
+## Gear mode: when the tier-2 tech starts (the plan's tech clock, AI._build_up's `t`). Hard: about 2:50, so the
+## Mainspring stands by ~3:30 and the Escapement by ~4:40: the first Jacks, Netters and SHIELD WALL are out for the
+## first big fight (docs/clockwork_ai.md). Sooner against a walled enemy: melee alone cannot take a wall that is mended.
+func _tier2_at() -> float:
+	var at: float = _lv([560.0, 300.0, 170.0])
+	if _foe_walled():
+		at -= _lv([0.0, 40.0, 40.0])
+	return at
+
+
+## The scout has seen an enemy wall or gate (a walled ramp).
+func _foe_walled() -> bool:
+	if scout == null:
+		return false
+	for b in scout._seen_b.keys():
+		if is_instance_valid(b) and not b.dead and (b.kind == "wall" or b.kind == "gate"):
+			return true
+	return false
+
+
+## Under attack, but the army holds the line: worth at least 1.3 times the armed enemies seen at the threat.
+func _holds_line() -> bool:
+	var th := _threat()
+	if th == Vector2.INF:
+		return true
+	var a := _assess(th)
+	var mine := 0.0
+	for u in game.army(team):
+		if not u.dead and not u.is_worker():
+			mine += _unit_value(u)
+	return mine >= float(a["value"]) * 1.3 + 50.0
+
+
+func _meshed_none() -> bool:
+	return not _mine(_works()).any(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null)
 
 
 func _tier2(t: float) -> void:
-	if _mine(_works()).filter(func(b: Building) -> bool: return b.built).is_empty() or t < _lv([560.0, 330.0, 270.0]):
+	# (the clock, not only the plan's tech factor: a scout report of a "rush" (a Horseman, a Musketeer line at home) put
+	# the tech off by a quarter, and melee alone is what loses to that defence)
+	if _mine(_works()).filter(func(b: Building) -> bool: return b.built).is_empty() or maxf(t, game.clock) < _tier2_at():
 		return
 	var springs := _mine("mainspring")
 	var esc := _mine(Defs.CW_TECH)
-	# (what comes next is saved up for: the army pauses once it holds the line, like for an economy building)
+	# (what comes next is saved up for: the army pauses once it holds the line, like for an economy building; a raid it
+	# can beat does not stop the saving: a Horseman at the door used to put the tech off for minutes, 2026-10-27)
 	var next := "mainspring" if springs.is_empty() else (Defs.CW_TECH if esc.is_empty() and springs.any(func(b: Building) -> bool: return b.built) else "")
-	if next != "" and _gold() < int(Defs.BUILDINGS[next]["cost"]) + 20 and _threat() == Vector2.INF:
+	if next != "" and _gold() < int(Defs.BUILDINGS[next]["cost"]) + 20 and (_threat() == Vector2.INF or _holds_line()):
 		_reserve = maxi(_reserve, int(Defs.BUILDINGS[next]["cost"]) + 20)
+		_tech_hold = true
+	_jack_works()          # (its own clock; the gold it wants is held back on every think)
+	_research_keep = 0.0
+	if not springs.is_empty():
+		_shield_research()
+		_leap_research()
 	if game.clock < _tier2_t:
 		return
 	_tier2_t = game.clock + 3.0
@@ -607,7 +655,6 @@ func _tier2(t: float) -> void:
 		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
 			_construct("mainspring", _spring_spot())
 		return
-	_shield_research()
 	if esc.is_empty():
 		if _gold() < int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20 or not game.requirement_met(team, Defs.CW_TECH):
 			return
@@ -625,9 +672,7 @@ func _tier2(t: float) -> void:
 			if ss.x >= 0:
 				_construct("mainspring", ss)
 		_tier2_t = game.clock + 20.0        # (look again later)
-		_jack_works()
 		return
-	_jack_works()
 	_air(t)
 	_tier3()
 
@@ -654,6 +699,10 @@ func _shield_research() -> void:
 	if game.army(team).filter(func(u: Unit) -> bool: return u.kind == ShieldWall.KIND).size() < 4:
 		return
 	var info: Dictionary = Defs.RESEARCH[ShieldWall.TECH]
+	if _meshed_none():
+		return
+	_research_keep = maxf(_research_keep, float(Defs.tension_cost(info)) + 10.0)     # (its Tension is kept from the Jacks: _produce)
+	_research_cogs(int(info["cost"]))
 	if game.tension(team) < float(Defs.tension_cost(info)) + 10.0 or _gold() < int(info["cost"]) + 20:
 		return
 	for w in _mine(_works()):
@@ -662,6 +711,47 @@ func _shield_research() -> void:
 			if game.mlog:
 				game.mlog.add("%s researches SHIELD WALL (it met %d shooters)" % [game.mlog.who(team), _ranged_seen])
 			return
+
+
+## Gear mode: HIGH LEAP at the Escapement (its Jacks then JUMP UP onto high ground: over a walled ramp onto the workers
+## mending the wall and the shooters on the edge, _jack_leaps), on Normal and Hard, once it has a few Jacks and the
+## enemy has walls or stands on high ground. Its Tension is kept from the Jacks meanwhile (_produce).
+func _leap_research() -> void:
+	if difficulty < 1 or game.has_tech(team, "high_leap") or game.researching(team, "high_leap"):
+		return
+	if not game.has_working(team, Defs.CW_TECH):
+		return
+	var jacks := game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size()
+	if jacks < 3 or not (_foe_walled() or _foe_high()):
+		return
+	var info: Dictionary = Defs.RESEARCH["high_leap"]
+	_research_keep = maxf(_research_keep, float(Defs.tension_cost(info)) + 10.0)
+	_research_cogs(int(info["cost"]))
+	if game.tension(team) < float(Defs.tension_cost(info)) + 5.0 or _gold() < int(info["cost"]) + 20:
+		return
+	for e in _mine(Defs.CW_TECH):
+		if e.built and game.research_problem(e, "high_leap") == "":
+			game.start_research(e, "high_leap")
+			if game.mlog:
+				game.mlog.add("%s researches HIGH LEAP (%d Jacks, %s)" % [game.mlog.who(team), jacks, "a walled enemy" if _foe_walled() else "an enemy on high ground"])
+			return
+
+
+## A wanted research's cogs are held back too, like a building's (the army pauses for them once it holds the line): it
+## costs cogs and Tension, and with every cog spent on Clock Soldiers its Tension was kept from the Jacks for nothing.
+func _research_cogs(cost: int) -> void:
+	if _gold() < cost + 20 and (_threat() == Vector2.INF or _holds_line()):
+		_reserve = maxi(_reserve, cost + 20)
+		_tech_hold = true
+
+
+## The enemy's main hall stands on high ground.
+func _foe_high() -> bool:
+	var f := _foe()
+	if f < 0:
+		return false
+	var h: Building = game._own_hall(f)
+	return h != null and game.on_high(h.center())
 
 
 ## Gear mode, TIER 3 (scripts/pendulum.gd, scripts/netter.gd), kept simple: once its Escapement works and it has the
@@ -677,6 +767,10 @@ func _tier3() -> void:
 	if works.is_empty() or works.any(func(b: Building) -> bool: return (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)):
 		return
 	var fed: Array = works.filter(func(b: Building) -> bool: return GearEcon.spend_problem(game, b) == "")
+	# (the Jacks first: a Works goes on its big gear only once another one makes Jacks and a few are out; in 0.14.72's
+	# games the only Works that could make Jacks went onto its big gear and made Pendulums: the first Jack came at 8:00)
+	if fed.size() < 2 or game.army(team).filter(func(u: Unit) -> bool: return u.kind == Defs.JACK).size() < 3:
+		return
 	fed.reverse()
 	for w in fed:
 		if game.gear_swap_problem(w) == "":
@@ -740,26 +834,73 @@ func _spring_spot(spare := false) -> Vector2i:
 	return fall
 
 
-## Gear mode: no Movement Works meshes with a Mainspring (so none may make Jacks), money in the bank: a Works whose ring
-## meshes with a Mainspring's, as soon as a Mainspring stands (before the room by it is taken).
+## Gear mode: Works that may make Jacks, Netters and Pendulums (their ring meshes with a Mainspring's: THE TENSION RULE).
+## None: the first comes at once, as soon as a Mainspring stands: a second Mainspring right beside a Works that has none
+## (it winds Tension too), else a new Works by a Mainspring. Once the Escapement works, a second one on Normal and Hard
+## (one Works makes a Jack every 25 s: too few for the army it backs), a third on Hard with money in the bank.
+## (0.14.72 games: a Works that could make Jacks was never built in one game in two, and no Jack came all game.)
 var _jack_works_t := 0.0
+var _jw_plan := {}              # {"kind", "cell"}: the next Mainspring or Works that would let a Works make Jacks
 
 
 func _jack_works() -> void:
-	if game.clock < _jack_works_t or not _mine("mainspring").any(func(b: Building) -> bool: return b.built):
+	if not _mine("mainspring").any(func(b: Building) -> bool: return b.built):
 		return
-	_jack_works_t = game.clock + 15.0
 	var works := _mine(_works())
-	if works.any(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null) or _busy_building(_works()):
+	var meshed: int = works.filter(func(b: Building) -> bool: return game.gear_net.spring_for(b) != null).size()
+	var want := 1
+	if game.has_working(team, Defs.CW_TECH):
+		want = _lv([1, 2, 2])
+		if difficulty >= 2 and _gold() > 400:
+			want = 3
+	if meshed >= want or _busy_building(_works()) or _busy_building("mainspring"):
+		_jw_plan = {}
 		return
-	if _gold() < int(Defs.BUILDINGS[_works()]["cost"]) + 60:
+	if game.clock >= _jack_works_t:
+		_jack_works_t = game.clock + 6.0
+		_jw_plan = _jw_find(works)
+	if _jw_plan.is_empty():
+		return          # (no room for either: nothing is held back for it)
+	var kind: String = _jw_plan["kind"]
+	var cost := int(Defs.BUILDINGS[kind]["cost"])
+	if _gold() >= cost + 20:
+		_construct(kind, _jw_plan["cell"])
+		if game.mlog and kind == "mainspring":
+			game.mlog.add("%s builds a Mainspring by a Movement Works (so it may make Jacks)" % game.mlog.who(team))
+		_jw_plan = {}
+		_jack_works_t = game.clock + 6.0
 		return
+	# (saved up for like the tech: the army pauses for it once it holds the line, _produce)
+	if _threat() == Vector2.INF or _holds_line():
+		_reserve = maxi(_reserve, cost + 20)
+		_tech_hold = true
+
+
+## Where the next Jack Works comes from: a Mainspring beside a Works that has none (it winds Tension too), else a new
+## Works by a Mainspring; {} when there is no room for either.
+func _jw_find(works: Array) -> Dictionary:
+	for w in works:
+		if w.built and game.gear_net.spring_for(w) == null:
+			var c := GearEcon.room_spot(game, team, "mainspring", [w])
+			if c.x >= 0:
+				return {"kind": "mainspring", "cell": c}
 	for sp in _mine("mainspring"):
 		if sp.built:
-			var c := GearEcon.room_spot(game, team, _works(), [sp])
-			if c.x >= 0:
-				_construct(_works(), c)
-				return
+			var c2 := GearEcon.room_spot(game, team, _works(), [sp])
+			if c2.x < 0:
+				for deg in [90.0, 270.0, 0.0, 180.0]:
+					c2 = GearNet.ring_spot(game, team, _works(), sp, deg, true)
+					if c2.x >= 0:
+						break
+			if c2.x >= 0:
+				return {"kind": _works(), "cell": c2}
+	for w in works:
+		if w.built and game.gear_net.spring_for(w) == null:
+			for deg in [90.0, 270.0, 0.0, 180.0]:
+				var c3 := GearNet.ring_spot(game, team, "mainspring", w, deg, true)
+				if c3.x >= 0:
+					return {"kind": "mainspring", "cell": c3}
+	return {}
 
 
 ## Gear mode, THE AIR (Defs.CW_AIR; scripts/cw_air.gd), kept simple: once its Escapement works, ONE Clock Aviary when the
@@ -1464,6 +1605,7 @@ func _econ_build() -> void:
 		if Defs.gear_mode:
 			order = [mill]      # (no power in gear mode: no Boilers)
 	_reserve = 0
+	_tech_hold = false
 	for k in _no_room.keys():
 		if game.clock - float(_no_room[k]) > 20.0:
 			_no_room.erase(k)
@@ -1763,7 +1905,7 @@ func _build_up() -> void:
 			_construct("foundry")
 		elif _crown() and _mine("barracks").size() < 9 and not _busy_building("barracks") and not _mine("barracks").is_empty() and not _tech_wait():
 			_construct("barracks")
-		elif _clock() and _mine(_works()).size() < 5 and not _busy_building(_works()) and not _mine(_works()).is_empty():
+		elif _clock() and _mine(_works()).size() < 5 and not _busy_building(_works()) and not _mine(_works()).is_empty() and not _tech_hold:
 			_construct(_works())
 		elif _brood() and gold > 700:
 			_more_halls(true)
@@ -2996,14 +3138,18 @@ func _produce() -> void:
 		minimum = mini(minimum, 6)      # (Horsemen seen: more Raptors would not hold the line; the Pen and the Gorge Pit first)
 	if _hall_reserve and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 30:
 		return          # (Crown: the new Town Hall first, whatever the army)
+	if _tech_hold:
+		minimum = mini(minimum, _lv([12, 8, 6]))     # (gear mode: the tech before more Clock Soldiers: _tier2)
 	if (_saving or (_reserve > 0 and _gold() < _reserve + 60)) and _army_supply(game.army(team)) >= minimum:
 		return
 	var army := game.army(team)
 	if _clock() and Defs.gear_mode:
-		# gear mode: Clock Soldiers from every Movement Works, and a Jack (tier 2: an Escapement that works, and Tension)
-		# for every two of them while the Tension lasts; tier 3 (_tier3): a Pendulum at the big-gear Works for every four
-		# other soldiers (up to 4; the Tension for the next one is kept back from Jacks and Netters) and a Netter for every
-		# five (up to 3)
+		# gear mode: Clock Soldiers from every Movement Works, and Tension units from the Works that may make them (a ring
+		# that meshes with a Mainspring's): a Jack for about every 1.5 Clock Soldiers (the shooters behind the line: they
+		# kill the workers mending a wall and the Musketeers over it), a Netter for every 7 others (up to 3, from 8 in
+		# the army), and tier 3 (_tier3) a Pendulum at the big-gear Works for every 6 others (up to 4). Tension piling up
+		# (60% of what the Mainsprings store) goes on Tension units first: it is not left at its cap. A Works that may make
+		# a Jack waits for the cogs rather than spend them on another Clock Soldier (docs/clockwork_ai.md).
 		var n_of := func(kind: String) -> int:
 			var n: int = army.filter(func(u: Unit) -> bool: return u.kind == kind).size()
 			for w in _mine(_works()):
@@ -3012,29 +3158,41 @@ func _produce() -> void:
 		var jacks: int = n_of.call(Defs.JACK)
 		var pends: int = n_of.call(Defs.PENDULUM)
 		var netters: int = n_of.call(Defs.NETTER)
-		var others: int = army.size() - army.filter(func(u: Unit) -> bool: return u.kind in [Defs.JACK, Defs.PENDULUM, Defs.NETTER]).size()
-		for w in _mine(_works()):
+		var soldiers: int = n_of.call("clock_soldier")
+		var others: int = soldiers + jacks
+		var cap_t := _tension_cap()
+		var flush: bool = cap_t > 0.0 and game.tension(team) >= cap_t * 0.6
+		# (the Works that may make Tension units first: one waiting for the cogs of a Jack stops the others spending them
+		# on Clock Soldiers)
+		var wl: Array = _mine(_works())
+		wl.sort_custom(func(a: Building, b: Building) -> bool: return game.gear_net.spring_for(a) != null and game.gear_net.spring_for(b) == null)
+		for w in wl:
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "clock_soldier"
-				var want_p: bool = w.gear_big and pends < mini(4, 1 + others / 4)
+				var want_p: bool = w.gear_big and pends < mini(4, 1 + others / 6) and (jacks >= 3 or flush)
 				var keep := float(Defs.tension_cost(Defs.UNITS[Defs.PENDULUM])) if want_p else 0.0
 				if _want_aviary:
 					keep += float(Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR]))       # (the Aviary's Tension price is kept too)
-				if want_p and game.can_train(w, Defs.PENDULUM) == "":
+				if _research_keep > 0.0:
+					keep += _research_keep        # (SHIELD WALL or HIGH LEAP is wanted: its Tension is kept)
+				if want_p and _tension_ok(w, Defs.PENDULUM, 0.0):
 					k = Defs.PENDULUM
-				elif netters < mini(3, others / 5) and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.NETTER])) >= keep and game.can_train(w, Defs.NETTER) == "":
+				elif army.size() >= 8 and netters < mini(3, others / 7) and (netters == 0 or jacks >= 4) and _tension_ok(w, Defs.NETTER, keep):
 					k = Defs.NETTER
-				elif jacks * 2 <= others and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.JACK])) >= keep and game.can_train(w, Defs.JACK) == "":
+				elif (jacks * 3 < soldiers * 2 + 3 or flush) and _tension_ok(w, Defs.JACK, keep):
 					k = Defs.JACK
-				if game.train(w, k) != "":
-					break
+				var why := game.train(w, k)
+				if why != "":
+					break         # (saving up for it, or the supply is full)
 				if k == Defs.JACK:
 					jacks += 1
+					others += 1
 				elif k == Defs.PENDULUM:
 					pends += 1
 				elif k == Defs.NETTER:
 					netters += 1
 				else:
+					soldiers += 1
 					others += 1
 		# the air (a Clock Aviary): Swifts against the enemy's flyers, one more than it has shown (up to 6); two once the
 		# Owls are researched (to be morphed)
@@ -3217,6 +3375,24 @@ func _produce() -> void:
 	for c in _mine("church"):
 		if c.built and c.queue.is_empty() and game.can_train(c, "missionary") == "":
 			game.train(c, "missionary")
+
+
+## Gear mode: what the Mainsprings store at most (their Tension cap).
+func _tension_cap() -> float:
+	var cap := 0.0
+	var gm: Dictionary = Defs.GEAR["mainspring"]
+	for sp in _mine("mainspring"):
+		if sp.built:
+			cap += float((gm["big"] if sp.gear_big else gm["small"])["store"])
+	return cap
+
+
+## Gear mode: Works w may make `kind` now, or waits only for its cogs, with `keep` Tension left over after it.
+func _tension_ok(w: Building, kind: String, keep: float) -> bool:
+	var why := game.can_train(w, kind)
+	if why != "" and not why.begins_with("Not enough cogs"):
+		return false
+	return game.tension(team) - float(Defs.tension_cost(Defs.UNITS[kind])) >= keep
 
 
 ## Crown: armoured recruits (Guardsmen, Cuirassiers) by default once Armour is researched
@@ -3467,6 +3643,8 @@ func _army() -> void:
 					prey = _prey_spot(u.position)
 				_hunt(u, prey)
 				continue
+			if _patch.has(u):
+				continue          # (stepped back to the escort to be mended: _patch_up)
 			if u.order == "idle" and u.wall_flee_t <= 0.0 and u.siege_t <= 0.0 and not (u.deploys() and u.tesla_mode == "deployed" and u.target):
 				# a dry musketeer topping up at the wagon waits there until it can shoot again
 				if wagon and u.kind == "musketeer" and u.powder < float(Defs.POWDER["rearm"]) + 2.0 \
@@ -3919,6 +4097,7 @@ func _fight_spot() -> Vector2:
 ## computer gathers a bigger army (and goes for another of the enemy's halls meanwhile, if
 ## there's one). Weighed up again every SIEGE_EVAL seconds.
 const SIEGE_EVAL := 3.0
+const REP_REFILL := 7.0         # (the siege sim) s before another worker takes a fallen mender's place
 ## Tests and experiments only (tools/shot_ai_match.gd noretreat:1): a siege is never called off, so it plays out to the end.
 var siege_no_retreat := false
 var _siege := {}                # {"piece", "out" (outward dir), "stage", "cap" (melee at the face), "spots" {unit: point}, "splash", "flood"}
@@ -4117,7 +4296,11 @@ func _siege_tick(wave: Array) -> bool:
 		if not _siege_plan(ground, wave):
 			return true            # pulled back: the wave is over
 	if _siege.is_empty():
+		if _clock() and Defs.gear_mode:
+			_jack_leaps(ground)
 		return false
+	if _clock() and Defs.gear_mode:
+		_jack_leaps(ground)
 	_siege_orders(ground)
 	return true
 
@@ -4209,6 +4392,11 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 	# lost: pull back out of reach, gather more, and leave this hall be for a while
 	var b0: Building = best["piece"]
 	var back: Vector2 = _flood_point(ours, b0.center() + best["out"] * (best["reach"] + 160.0), centre)
+	if _clock() and Defs.gear_mode:
+		# (gear mode: all the way back to the rally, by the escort. A spot just out of reach was the foot of the ramp: the
+		# men packed in there on a plain move order, did not fight back, and died to the Musketeers who came out after
+		# them, 24 Clock Soldiers for 9 in one 0.14.72 game)
+		back = _home_spot(_front())
 	_say("back", "%s pulls back from the %s: %s under %d dps of fire (%d dps on it)" % [who, String(b0.d["name"]).to_lower(),
 		("down in ~%d s, too dear" % int(best["t"])) if best["breach"] else "it can't get through", int(best["inc"]), int(best["dps"])])
 	for u in wave:
@@ -4372,7 +4560,8 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 			var lasts: float = u.hp / (float(Defs.CANISTER["vs_light"]) if u.has_tag("light") else 1.0)
 			melee.append([u.hp, wd, side * side, lasts, maxf(1.0, float(u.d["damage"]) - their_armor) / _cycle(u)])
 		else:
-			ranged.append([u.hp, wd, maxf(float(u.d["range"]) * 0.85, float(u.d.get("min_range", 0.0)) + 24.0), maxf(1.0, float(u.d["damage"]) - their_armor) / _cycle(u)])
+			ranged.append([u.hp, wd, maxf(float(u.d["range"]) * 0.85, float(u.d.get("min_range", 0.0)) + 24.0), maxf(1.0, float(u.d["damage"]) - their_armor) / _cycle(u),
+				not u.deploys() and float(u.d["damage"]) > 0.0])
 	var none := {"win": false, "breach": false, "t": INF, "left": 0.0, "dps": 0.0, "inc": single + spray, "cap": 0,
 		"out": out, "stage": pc + out * 200.0, "reach": art_reach, "splash": splash}
 	if melee.is_empty() and ranged.is_empty():
@@ -4400,12 +4589,31 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 			queue.append(m)
 	var cap := at_face.size()
 	melee = at_face + queue
-	# repairers on the wall (and those close enough to start)
+	# repairers on the wall (and those close enough to start); the workers farther back come to take a fallen one's place
+	# (one every REP_REFILL s, up to as many as began). Our shooters that can hit them (Jacks, Spitters...) shoot them
+	# first (_siege_prey), and every Netter keeps one of them in a net a share of the time: a wall mended as fast as it
+	# is hit falls once the menders do (the owner, 2026-10-27; the 0.14.72 siege: 25 Clock Soldiers lost for 1 kill)
+	var rate := maxf(float(Defs.REPAIR_RATE), piece.max_hp / maxf(float(piece.d.get("time", 10.0)), 1.0))
+	var reps: Array = []          # [hp, share of the time at work] of each mender
+	var spare_hands := 0
+	for o in game.units_near(pc, 700.0):
+		if o.dead or not game.hostile(o.team, team) or not o.is_worker() or o.off_field:
+			continue
+		if o.position.distance_to(pc) < 220.0 and (o.kind == "labourer" or o.kind == "winder"):
+			reps.append([o.hp + float(o.d["armor"]) * 5.0, 1.0 if o.work == "repairing" else 0.5])
+		else:
+			spare_hands += 1
+	var rep_max := reps.size()
+	var nets := 0
+	for u in ground:
+		if u.kind == Defs.NETTER:
+			nets += 1
+	var net_share := clampf(float(nets) * float(Defs.NET["time"]) / 14.6, 0.0, float(rep_max))
+	var rep_next := INF
 	var rep := 0.0
-	for o in game.units_near(pc, 220.0):
-		if not o.dead and game.hostile(o.team, team) and (o.kind == "labourer" or o.kind == "winder"):
-			var rate := maxf(float(Defs.REPAIR_RATE), piece.max_hp / maxf(float(piece.d.get("time", 10.0)), 1.0))
-			rep += rate * (1.0 if o.work == "repairing" else 0.5)
+	for r in reps:
+		rep += rate * float(r[1])
+	rep = maxf(0.0, rep - rate * net_share)
 	# --- the race, half a second at a time. First the wall: the men at the face (the next
 	# stepping up as each falls) and the ranged behind against the piece; the defenders in
 	# reach fire on the men in front (canister on all of the crowd there), and on the
@@ -4434,13 +4642,33 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 		var dps := 0.0
 		for i in active:
 			dps += melee[i][1 if not breached else 4]
+		var shoot_men := 0.0          # (the shooters' fire on the menders, while there are any)
 		for j in ranged.size():
 			if rhp[j] > 0.0:
-				dps += ranged[j][1 if not breached else 3]
+				if not breached and not reps.is_empty() and ranged[j][4]:
+					shoot_men += ranged[j][3]
+				else:
+					dps += ranged[j][1 if not breached else 3]
 		if dps0 < 0.0:
 			dps0 = dps
 		if not breached:
+			if not reps.is_empty() and shoot_men > 0.0:
+				reps[0][0] = float(reps[0][0]) - shoot_men * dt
+				if float(reps[0][0]) <= 0.0:
+					reps.pop_front()
+					if spare_hands > 0 and rep_next == INF:
+						rep_next = t + REP_REFILL
+			if rep_next <= t and spare_hands > 0 and reps.size() < rep_max:
+				spare_hands -= 1
+				reps.append([46.0, 1.0])
+				rep_next = t + REP_REFILL if reps.size() < rep_max else INF
+			rep = 0.0
+			for r in reps:
+				rep += rate * float(r[1])
+			rep = maxf(0.0, rep - rate * minf(net_share, float(reps.size())))
 			dps -= rep
+			if dps <= 0.0 and shoot_men > 0.0:
+				dps = 0.01            # (the wall holds for now, but the menders are falling: the race goes on)
 		if dps <= 0.0:
 			break
 		t += dt
@@ -4532,9 +4760,24 @@ func _siege_orders(ground: Array) -> void:
 	var flood: PackedByteArray = _siege["flood"]
 	var gap := 44.0 if _siege["splash"] else 26.0      # (against splash the waiting men spread)
 	var melee: Array = []
+	var aimed := {}                # prey -> how many shooters are on it (no overkill on a 46-hp Labourer)
 	for u in ground:
+		if _leapt.has(u):
+			_leapt_fight(u)
+			continue
 		u.siege_t = SIEGE_EVAL + 2.0
 		u.wall_flee_t = 0.0
+		if u.kind == Defs.NETTER:
+			# (a net on a worker mending the wall stops the mending for its 4 s; else on a shooter on the edge)
+			if not spots.has(u):
+				spots[u] = _ranged_spot(u, piece, out, flood, spots, gap)
+			var nprey := _siege_prey(u, piece, aimed)
+			if nprey != null and not Netter.caught(nprey):
+				if not (u.order == "attack" and u.order_target == nprey):
+					u.cmd_attack(nprey)
+			elif u.position.distance_to(spots[u]) > 24.0 and (u.order != "move" or u.order_point.distance_to(spots[u]) > 8.0):
+				u.cmd_move(spots[u])
+			continue
 		if not u.has_attack() or not u.can_hit(piece):
 			_to_spot(u, stage, gap * 2.0)
 			continue
@@ -4546,6 +4789,15 @@ func _siege_orders(ground: Array) -> void:
 			spots[u] = _ranged_spot(u, piece, out, flood, spots, gap)
 		var spot: Vector2 = spots[u]
 		var in_reach: bool = piece.edge_distance(u.position) - u.radius <= u._range() - 4.0
+		# the workers mending the piece first, then the shooters on the edge: a wall that is mended as fast as it is hit
+		# never falls (the owner, 2026-10-27: "the Jacks can focus down and kill the workers"); _siege_prey
+		if in_reach or u.position.distance_to(spot) < 40.0:
+			var prey := _siege_prey(u, piece, aimed)
+			if prey != null:
+				aimed[prey] = int(aimed.get(prey, 0)) + 1
+				if not (u.order == "attack" and u.order_target == prey):
+					u.cmd_attack(prey)
+				continue
 		if u.order == "attack" and u.order_target == piece and in_reach:
 			continue
 		if in_reach and (u.position.distance_to(spot) < 28.0 or u.stuck_t > 0.8):
@@ -4605,6 +4857,55 @@ func _siege_orders(ground: Array) -> void:
 			spare -= 1
 			continue                 # (keeps its place until a better breaker gets there)
 		_to_spot(u, near_pt if close_in else stage, gap * (1.0 if close_in else 2.0))
+
+
+## A siege's shooter (a Jack, a Netter, a Spitter...): what to shoot instead of the piece, from where it stands (it does
+## not walk after it up the ramp): an enemy worker mending a wall piece (or standing by this one, about to), then an
+## enemy shooter on the edge in reach; none: the piece. Only what this side sees (the men at the face see over it).
+## `aimed`: shooters already on each one (a Labourer dies to about five screws: the next shooter takes another one).
+func _siege_prey(u: Unit, piece: Building, aimed: Dictionary) -> Unit:
+	var reach: float = u._range() + u.radius - 2.0
+	var best: Unit = null
+	var bs := INF
+	for o in game.units_near(u.position, reach + 24.0):
+		if o.dead or o.off_field or o.is_air() or not game.hostile(o.team, team) or not u.can_hit(o) or o.untouchable():
+			continue
+		if o.edge_distance(u.position) > reach or not game.is_visible_to(team, o.position):
+			continue
+		var score := INF
+		if o.is_worker():
+			var mending: bool = o.order == "repair" and is_instance_valid(o.order_target) and _is_piece(o.order_target)
+			if mending or piece.edge_distance(o.position) < 70.0:
+				score = 0.0 if mending else 1.0
+		elif float(o.d.get("range", 0.0)) >= 100.0 and o.has_attack():
+			score = 3.0
+		if score == INF:
+			continue
+		# (the most hurt first among the same kind; spread once a target has enough shooters on it)
+		var n: int = int(aimed.get(o, 0))
+		score += o.hp / maxf(1.0, o.max_hp) * 0.5 + (1.5 if n * 9.0 >= o.hp else 0.0) + o.position.distance_to(u.position) * 0.001
+		if score < bs:
+			bs = score
+			best = o
+	return best
+
+
+## A Jack that has leapt up: once landed, it shoots the workers there first (then the shooters), from where it stands.
+func _leapt_fight(u: Unit) -> void:
+	u.siege_t = 0.0
+	if not u.jump.is_empty() or u.phase != "":
+		return
+	var best: Unit = null
+	var bs := INF
+	for o in game.units_near(u.position, u._range() + 40.0):
+		if o.dead or o.off_field or o.is_air() or not game.hostile(o.team, team) or not u.can_hit(o):
+			continue
+		var sc: float = o.position.distance_to(u.position) + (0.0 if o.is_worker() else (150.0 if float(o.d.get("range", 0.0)) >= 100.0 else 300.0))
+		if sc < bs:
+			bs = sc
+			best = o
+	if best != null and not (u.order == "attack" and u.order_target == best):
+		u.cmd_attack(best)
 
 
 ## Waiting in a siege's reserve: walk to the spot, then hold there (a unit left idle would go
@@ -4672,6 +4973,82 @@ func _ranged_spot(u: Unit, piece: Building, out: Vector2, flood: PackedByteArray
 				bs = s
 				best = p
 	return best + Vector2(randf_range(-6, 6), randf_range(-6, 6))
+
+
+## Gear mode, Normal and up: Jacks JUMP UP onto the high ground (HIGH LEAP: Jack.landing) when that wins: a few of the
+## wave's ready Jacks below a cliff or a walled ramp, enemy workers or shooters on the high ground just past it (seen by
+## our side), a landing spot within the jump where the armed enemies close by are worth less than the Jacks that land
+## (Musketeers in numbers there: no jump, the Jacks would only die). Once up they shoot the workers first (_leapt: the
+## siege leaves them be for a while). A leap is visible (the crouch) and costs the spring 10 s (design_principles 1).
+var _leapt := {}               # Jack -> clock when it leapt up (the siege's orders leave it be for LEAP_HOLD s)
+const LEAP_HOLD := 14.0
+var _leap_t := 0.0
+
+
+func _jack_leaps(wave: Array) -> void:
+	if difficulty < 1 or not game.has_tech(team, "high_leap") or game.clock < _leap_t:
+		return
+	_leap_t = game.clock + 1.5
+	for u in _leapt.keys():
+		if not is_instance_valid(u) or u.dead or game.clock - float(_leapt[u]) > LEAP_HOLD:
+			_leapt.erase(u)
+	var ready: Array = wave.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.kind == Defs.JACK \
+			and not _leapt.has(u) and Jack.ready_problem(u) == "" and not game.on_high(u.position) and u.hp > u.max_hp * 0.5)
+	if ready.size() < 2:
+		return
+	# the prey: enemy workers and shooters on the high ground that our side sees, within a jump and a shot of a Jack
+	var reach := float(Defs.JACK_JUMP["range"]) + float(Defs.UNITS[Defs.JACK]["range"]) * 0.7
+	var best_p := Vector2.INF
+	var best_s := 0.0
+	var best_w := false
+	var seen := {}
+	for j in ready:
+		for o in game.units_near(j.position, reach):
+			if seen.has(o) or o.dead or o.off_field or o.is_air() or not game.hostile(o.team, team) or not game.on_high(o.position):
+				continue
+			seen[o] = true
+			if not game.is_visible_to(team, o.position):
+				continue
+			var w := 0.0
+			if o.is_worker():
+				w = 2.0 if o.order == "repair" else 1.0
+			elif float(o.d.get("range", 0.0)) >= 100.0:
+				w = 1.0
+			if w > best_s:
+				best_s = w
+				best_p = o.position
+				best_w = o.is_worker()
+	if best_p == Vector2.INF:
+		return
+	# the jumpers: the ready Jacks within a jump of a landing spot by the prey
+	var group: Array = ready.filter(func(j: Unit) -> bool: return j.position.distance_to(best_p) < reach)
+	if group.size() < 2:
+		return
+	var c := Vector2.ZERO
+	for j in group:
+		c += j.position
+	c /= group.size()
+	var land := best_p + (c - best_p).normalized() * 60.0          # (just short of the prey, on its side of the cliff)
+	var mine := 0.0
+	for j in group:
+		mine += _unit_value(j)
+	var theirs := 0.0
+	for o in game.units_near(land, 230.0):
+		if not o.dead and game.hostile(o.team, team) and _armed(o) and not o.off_field:
+			theirs += _unit_value(o)
+	if theirs * 1.1 > mine:
+		return              # (it would not win up there)
+	var n := 0
+	for j in group:
+		var l: Dictionary = Jack.landing(j, land + Vector2(randf_range(-24, 24), randf_range(-24, 24)))
+		if l.has("at") and game.on_high(l["at"]):
+			Jack.start(j, l["at"])
+			_leapt[j] = game.clock
+			j.siege_t = 0.0
+			n += 1
+	if n > 0 and game.mlog:
+		game.mlog.add("%s's Jacks leap up onto the high ground (%d of them, %s there; %d value of armed enemies near)" % [game.mlog.who(team), n,
+			"workers" if best_w else "shooters", int(theirs)])
 
 
 ## Clockwork: Winders walk behind the army and repair it (they repair whatever is hurt near them on their own when
@@ -5069,6 +5446,10 @@ func _enemy_base() -> Vector2:
 	var enemy := _foe()
 	if enemy < 0:
 		return game.center_of_team(team)
+	if _clock() and Defs.gear_mode and difficulty >= 1:
+		var open := _open_target(enemy)
+		if open != Vector2.INF:
+			return open
 	var best := Vector2.INF
 	var bd := INF
 	var me := game.center_of_team(team)
@@ -5098,6 +5479,72 @@ func _enemy_base() -> Vector2:
 	if best == Vector2.INF:
 		return Vector2(game.starts[enemy]) * Defs.TILE
 	return best
+
+
+## Gear mode's Clockwork (Normal and up): a target it can walk up to without breaking a wall: the enemy's expansion, its
+## farms and outlying buildings outside the walls (a walled main with Musketeers on the high ground is the last thing to
+## go for: the 0.14.72 games lost wave after wave at the ramp while the Crown's new Town Hall stood open). The nearest
+## to our base, a hall or an economy building first; INF when everything is behind a wall (then the main and the
+## siege). Worked out every 10 s.
+var _open_t := -99.0
+var _open_at := Vector2.INF
+var _open_b: Building = null
+
+
+func _open_target(enemy: int) -> Vector2:
+	if _open_b != null and is_instance_valid(_open_b) and not _open_b.dead and game.clock - _open_t < 10.0:
+		return _open_at
+	if game.clock - _open_t < 10.0 and _open_b == null:
+		return _open_at
+	_open_t = game.clock
+	_open_b = null
+	_open_at = Vector2.INF
+	var hall: Array = _halls()
+	if hall.is_empty():
+		return _open_at
+	var from: Vector2i = game.cell_of(_front())
+	if not game.in_map(from) or not _walkable(from, team):
+		from = game.nearest_free(from, 4)
+	var flood := _flood_from([from], team)
+	var pieces: Array = []
+	for b in game.buildings:
+		if not b.dead and b.built and _is_piece(b) and game.hostile(b.team, team):
+			pieces.append(b.center())
+	var me: Vector2 = (hall[0] as Building).center()
+	var best: Building = null
+	var bs := INF
+	for b in game.buildings:
+		if b.team != enemy or b.dead or b.ghost or _is_piece(b):
+			continue
+		var bc: Vector2 = b.center()
+		if pieces.any(func(p: Vector2) -> bool: return p.distance_to(bc) < 170.0):
+			continue          # (part of the wall: the ramp Cottage)
+		if not _reach_b(b, flood):
+			continue
+		var score: float = bc.distance_to(me)
+		if b.kind == game.faction_hall(enemy):
+			score -= 600.0
+		elif Defs.is_econ(b.kind):
+			score -= 250.0
+		if score < bs:
+			bs = score
+			best = b
+	if best != null:
+		_open_b = best
+		_open_at = best.center()
+	return _open_at
+
+
+## Some cell right beside building b is in `flood` (we can walk up to it).
+func _reach_b(b: Building, flood: PackedByteArray) -> bool:
+	var r: Rect2 = b.rect()
+	var c0: Vector2i = game.cell_of(r.position) - Vector2i(1, 1)
+	var c1: Vector2i = game.cell_of(r.end) + Vector2i(1, 1)
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			if (y == c0.y or y == c1.y or x == c0.x or x == c1.x) and game.in_map(Vector2i(x, y)) and flood[game.idx(Vector2i(x, y))] == 1:
+				return true
+	return false
 
 
 # ------------------------------------------------------------------ abilities (Normal and up)
@@ -5613,7 +6060,7 @@ func _micro() -> void:
 	var brutal := difficulty >= 3
 	var halls := _halls()
 	var home: Vector2 = halls[0].center() if not halls.is_empty() else game.center_of_team(team)
-	if brutal and _attacking:
+	if (brutal or (difficulty >= 2 and _clock() and Defs.gear_mode)) and _attacking and not siege_no_retreat and _siege.is_empty():
 		var c := Vector2.ZERO
 		var mine := 0.0
 		for u in army:
@@ -5636,6 +6083,9 @@ func _micro() -> void:
 	for k in _mending.keys():
 		if not is_instance_valid(k) or k.dead or k.hp > k.max_hp * 0.85:
 			_mending.erase(k)
+	for k in _patch.keys():
+		if not is_instance_valid(k) or k.dead:
+			_patch.erase(k)
 	for u in army:
 		if u.deploys() or u.d.get("medic", false) or _mending.has(u) or _on_errand(u) or u.siege_t > 0.0:
 			continue
@@ -5665,7 +6115,12 @@ func _micro() -> void:
 				_kite[u] = 0.6
 				continue
 		if u.kind == Defs.NETTER:
-			continue        # (its own pick: the most dangerous enemy not caught already, Netter.pick)
+			_netter_aim(u)       # (its own pick, Netter.pick, but never a worker while a fighter is in reach)
+			continue
+		if u.kind == Defs.PENDULUM and _pendulum_aim(u):
+			continue
+		if u.kind == "clock_soldier" and _patch_up(u):
+			continue
 		if u.order in ["idle", "amove", "hold"] and u.target:
 			var best: Entity = null
 			var bh := INF
@@ -5677,6 +6132,91 @@ func _micro() -> void:
 						best = o
 			if best and best != u.target:
 				u.target = best
+
+
+## Gear mode (Hard): a Netter about to fire that has picked a worker (Netter.pick nets the most dangerous enemy in reach,
+## and a Labourer in front is often all there is: 38 of 45 nets in one 0.14.72 game) nets the most dangerous fighter
+## within its reach and a step instead: a gun, a rider, a Musketeer in a line. In a siege a worker mending the wall is
+## the point (_siege_orders sends it).
+func _netter_aim(u: Unit) -> void:
+	if u.siege_t > 0.0 or u.cooldown > 0.6 or u.phase != "":
+		return
+	var t = u.target if u.target != null and is_instance_valid(u.target) else null
+	if t == null or not (t is Unit) or not t.is_worker():
+		return
+	var best: Unit = null
+	var bs := 0.0
+	for o in game.units_near(u.position, u._range() + 60.0):
+		if o.dead or o.off_field or o.is_worker() or not o.has_attack() or not game.hostile(o.team, team) or not u.can_hit(o) or Netter.caught(o):
+			continue
+		if not game.is_visible_to(team, o.position):
+			continue
+		var v: float = Netter.danger(o)
+		if _is_gun(o) or Defs.RIDERS.values().has(o.kind) or o.kind == "cuirassier":
+			v *= 1.5
+		if v > bs:
+			bs = v
+			best = o
+	if best != null:
+		u.target = best
+
+
+## Gear mode (Hard): a Pendulum's blades cut every enemy in the arc in front of it, the light ones hardest: one that is
+## not at a blow already walks into the thickest knot of enemy foot soldiers close by (three or more together, on its
+## own level), not at a lone one. True when it was sent.
+func _pendulum_aim(u: Unit) -> bool:
+	if u.siege_t > 0.0 or u.phase != "" or not u.order in ["idle", "amove"]:
+		return false
+	if u.target != null and is_instance_valid(u.target) and u.target is Unit and u.target.edge_distance(u.position) <= u._range() + 4.0:
+		return false
+	var lv := game.level_of(u.position)
+	var best: Unit = null
+	var bn := 2
+	var near: Array = game.units_near(u.position, 240.0).filter(func(o: Unit) -> bool: return not o.dead and not o.off_field and not o.is_air() \
+			and game.hostile(o.team, team) and not o.is_worker() and game.level_of(o.position) == lv)
+	for o in near:
+		var n := 0
+		for q in near:
+			if q.position.distance_to(o.position) < 64.0:
+				n += 1
+		if n > bn:
+			bn = n
+			best = o
+	if best == null or best == u.target:
+		return false
+	u.target = best
+	return true
+
+
+## Gear mode (Hard): a badly hurt Clock Soldier in a fight steps back to the nearest escort Winder (they mend it: _escort_wind)
+## and goes back in once it is mended (or after PATCH_MAX s).
+var _patch := {}            # Clock Soldier -> clock it stepped back
+const PATCH_MAX := 20.0
+
+
+func _patch_up(u: Unit) -> bool:
+	if _patch.has(u):
+		if u.hp > u.max_hp * 0.8 or game.clock - float(_patch[u]) > PATCH_MAX:
+			_patch.erase(u)
+			if _attacking:
+				u.cmd_move(_wave_target + Vector2(randf_range(-50, 50), randf_range(-50, 50)), true)
+			return false
+		return true
+	if u.hp > u.max_hp * 0.35 or u.target == null or _escort.is_empty() or u.siege_t > 0.0:
+		return false
+	var best: Unit = null
+	var bd := 520.0
+	for w in _escort:
+		if is_instance_valid(w) and not w.dead:
+			var dd: float = w.position.distance_to(u.position)
+			if dd < bd and not _enemy_near(w.position, 150.0):
+				bd = dd
+				best = w
+	if best == null:
+		return false
+	_patch[u] = game.clock
+	u.cmd_move(best.position + Vector2(randf_range(-16, 16), randf_range(-16, 16)))
+	return true
 
 
 # ------------------------------------------------------------------ horses (Crown)

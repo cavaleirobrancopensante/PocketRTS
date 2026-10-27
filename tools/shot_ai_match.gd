@@ -162,6 +162,61 @@ func _wind_line(c: float) -> void:
 			if u._in_field:
 				field += 1
 		wind_lines.append("%s clockwork army %d: run down %d (avg %.0f tiles from the main), low %d, on gear ground %d" % [_mmss(c), n, down, far / maxf(1, down), low, field])
+		_ai_line(c, tm)
+
+
+## Every 30 s, the Clockwork computer's tech and army (written to <out>/ai.txt): cogs, Tension (and what the Mainsprings
+## store), its Works (how many may make Jacks, and why the first one may not), the Escapement, the army by kind, the wave.
+var ai_lines: Array = []
+var nets_seen := {}          # Netter id -> nets fired (the last count seen)
+var jumps_seen := {}         # Jack id -> jumps
+
+
+func _ai_line(c: float, tm: int) -> void:
+	var works := 0
+	var jack_works := 0
+	var why_not := ""
+	var esc := "none"
+	var queues: Array = []
+	var springs := 0
+	var store := 0.0
+	var army := {}
+	for b in g.buildings:
+		if b.dead or b.team != tm:
+			continue
+		if b.kind == Defs.CW_WORKS:
+			works += 1
+			queues.append("%s%s" % [str(b.queue.size()), ("/" + g.can_train(b, "clock_soldier").left(24)) if b.built and g.can_train(b, "clock_soldier") != "" else ""])
+			if b.built:
+				var w: String = g.can_train(b, Defs.JACK)
+				if w == "" or w.begins_with("Not enough") or w.begins_with("Need more") or w.begins_with("Supply"):
+					jack_works += 1
+				elif why_not == "":
+					why_not = w.left(70)
+		elif b.kind == Defs.CW_TECH:
+			esc = ("working" if g.has_working(tm, Defs.CW_TECH) else "idle") if b.built else "building"
+		elif b.kind == "mainspring":
+			springs += 1
+	for u in g.units:
+		if is_instance_valid(u) and not u.dead and u.team == tm and not u.is_worker():
+			army[u.kind] = int(army.get(u.kind, 0)) + 1
+			if u.kind == Defs.NETTER:
+				nets_seen[u.get_instance_id()] = u.nets
+			elif u.kind == Defs.JACK:
+				jumps_seen[u.get_instance_id()] = u.jumps
+	var nets := 0
+	for k in nets_seen:
+		nets += int(nets_seen[k])
+	var jumps := 0
+	for k in jumps_seen:
+		jumps += int(jumps_seen[k])
+	var ai = null
+	for a in g.ais:
+		if a.team == tm:
+			ai = a
+	ai_lines.append("%s cogs %d tension %d | works %d (jacks at %d%s) q %s springs %d escapement %s | army %s | nets %d jumps %d | attacking %s siege %s reserve %d" % [_mmss(c),
+		int(g.players[tm]["gold"]), int(g.tension(tm)), works, jack_works, (": " + why_not.left(30)) if why_not != "" else "", str(queues), springs, esc, str(army), nets, jumps,
+		str(ai._attacking) if ai else "-", ("on" if ai and not ai._siege.is_empty() else "-"), ai._reserve if ai else 0])
 
 
 ## What each soldier in a fight shot is doing (written to <out>/why.txt): its order, what it is after, whether it can
@@ -338,6 +393,10 @@ func _finish() -> void:
 	for l in wind_lines:
 		wf.store_line(l)
 	wf.close()
+	var af := FileAccess.open(out.path_join("ai.txt"), FileAccess.WRITE)
+	for l in ai_lines:
+		af.store_line(l)
+	af.close()
 	var r := FileAccess.open(out.path_join("result.txt"), FileAccess.WRITE)
 	r.store_line("over %s winner %s clock %.0f" % [str(g.over), str(g.get("winner")), g.clock])
 	r.close()

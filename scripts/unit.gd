@@ -2687,6 +2687,9 @@ func _reset_work() -> void:
 		after = {}
 	_care_auto = false
 	work = ""
+	if phase == "strike":
+		cooldown = maxf(cooldown, _cooldown())     # (the blow has landed: a new order does not skip its reload; a Netter
+		                                           # ordered about every second fired a net a second, 2026-10-27)
 	phase = ""
 	path = PackedVector2Array()
 	path_goal = Vector2.INF
