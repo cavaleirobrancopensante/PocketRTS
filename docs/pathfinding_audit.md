@@ -71,7 +71,7 @@ Computer games, ten minutes each, the same six maps and factions before and afte
 | Greenhold, Clockwork v Brood | 3.7 | 3.5 | 2 | 3 | 0 | 0 |
 | all six | 8.6 | 3.1 | 273 | 21 | 7 | 1 |
 
-Four more games after the change, on other seeds and on Amberfall Vale, had 1.6 to 3.7 stuck unit-seconds a minute, almost nothing at cliffs, and no unit stuck for 10 seconds. A game is not exactly the same twice (see "Left for later"), so single games move about; the totals are the thing to read.
+Eight more games after the change, on other seeds and on Amberfall Vale too, had 1.1 to 5.5 stuck unit-seconds a minute, at most 9 unit-seconds at cliffs, and no unit stuck for 10 seconds. A game is not exactly the same twice (see "Left for later"), so single games move about; the totals are the thing to read.
 
 ## The problems, one by one
 
