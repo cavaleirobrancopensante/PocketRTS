@@ -222,6 +222,11 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   after each blow, drawn over the units on top of the sprite's own smear. A painted sweep effect (a ChatGPT smear strip
   turned to the blow's direction) could replace the smear; the marks are UI-like and can stay code-drawn.
 
+- EXPANSION SPOTS (0.14.94; scripts/expansion_spots.gd, docs/expansion_spots.md): CODE-DRAWN ground tiles, not art: each
+  marked hall spot is 5 x 4 flat cells in warm gold over a light brown wash (2 px gaps between cells), with a dark line and
+  a thin gold border round the spot; small gold squares on the minimap. A painted marker (e.g. surveyor's stakes and a
+  roped-off plot, a pale flagstone pad) could replace the tiles; flat UI-like tiles can stay.
+
 ## Clock Soldier SHIELD FORWARD (code, 0.14.49; docs/clock_soldier_shield.md)
 
 - The stance's strips `assets/units/clock_soldier/guard_<dir>.png` (standing) and `guard_walk_<dir>.png` (walking), all

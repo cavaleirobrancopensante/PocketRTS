@@ -2568,6 +2568,8 @@ func _draw_minimap() -> void:
 	var k := m.size / (Vector2(Game.W, Game.H) * Game.T)
 	if not game.sees_all():
 		_ci.draw_texture_rect(game.fog_tex, m, false, Color(1, 1, 1, 0.95 * Settings.mini_alpha))
+	if game.exp_spots:
+		game.exp_spots.draw_on_minimap(_ci, m)      # (the best expansion spots: small gold squares)
 	for b in game.buildings:
 		if b.visible or (b.team == game.human and not game.demo):
 			var r: Rect2 = b.rect()

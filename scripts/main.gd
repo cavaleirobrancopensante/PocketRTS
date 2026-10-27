@@ -714,6 +714,9 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("AREA MARKS", func() -> bool: return Settings.area_marks, func() -> void:
 		Settings.area_marks = not Settings.area_marks
 		Settings.save_all()))
+	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
+		Settings.expansion_spots = not Settings.expansion_spots
+		Settings.save_all()))
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"

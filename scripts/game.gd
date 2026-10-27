@@ -289,6 +289,13 @@ func _ready() -> void:
 	_generate_map()
 	_setup_astar()
 	_render_ground()
+	if not edit_mode:
+		# the best free hall spots of each side, tinted on the ground (scripts/expansion_spots.gd; rated on the bare map)
+		exp_spots = ExpansionSpots.new()
+		exp_spots.game = self
+		exp_spots.spots = ExpansionSpots.rate(self)
+		exp_spots.z_index = -18
+		add_child(exp_spots)
 	if edit_mode:
 		fog_sprite.visible = false
 		camera.position = Vector2(W, H) * T * 0.5
@@ -2860,6 +2867,7 @@ func near_enemy_building(t: int, p: Vector2, tiles: float) -> bool:
 
 
 var _floats: Array = []           # [position, text, colour, time left]
+var exp_spots: ExpansionSpots         # the best expansion spots tinted on the ground (null in the editor)
 var ground_marks: GroundMarks         # AREA MARKS on the ground (area_mark; scripts/ground_marks.gd)
 var swipe_marks: GroundMarks          # the Pendulum's smear, over the units
 

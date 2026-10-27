@@ -1,0 +1,5 @@
+# EXPANSION SPOTS (docs/expansion_spots.md): the best expansion spots tinted on the ground; the setting that turns them off.
+
+> SHOW EXPANSION SPOTS
+pt MOSTRAR LOCAIS DE EXPANSÃO
+es MOSTRAR LUGARES DE EXPANSIÓN

@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.94", "items": [
+		"EXPANSION SPOTS: the best places to expand are now marked on every map, as a few ground tiles in warm gold where a new Town Hall or Clocktower fits. Each side gets its best spot (a little brighter) and the next one, picked for the room to build round it, few ways in, a short walk from home and distance from the enemy. Both sides of a map get the same. They show for the Crown and the Clockwork (not for the Brood, which rarely moves its capital) and when watching, as small gold squares on the minimap too, and a touch brighter while you place a hall. A spot hides once a building you know of stands on it. Settings: SHOW EXPANSION SPOTS turns them off.",
+		"FIX: on the classic river maps (Twin Fords, Mirewood, Border March) the fords were a few cells wider on one side than the other. Now both sides match.",
+	]},
 	{"v": "0.14.93", "items": [
 		"Getting on a horse and leading it now sound different: the horse whinnies when a man gets on it, and only snorts softly when a man takes it by the reins. The message from 0.14.92 is gone (it got old fast).",
 	]},

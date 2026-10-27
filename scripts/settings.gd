@@ -12,6 +12,7 @@ static var grid_keys := false         # computer: command card keys by position 
 static var tooltips := true           # hover tooltips (computer) and the "?" help button (phone)
 static var build_grid := true         # show the planning grid while placing a building
 static var area_marks := true         # area attacks lay their shape on the ground where they strike (GroundMarks)
+static var expansion_spots := true    # the best expansion spots tinted on the ground (ExpansionSpots; Crown and Clockwork)
 static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
 static var relay_url := "wss://pocketrts-relay.salgarellius-rts.workers.dev"   # online: the relay (tools/relay/README.md)
 static var language := "en"           # "en", "pt" or "es" (Loc)
@@ -34,6 +35,7 @@ static func load_all() -> void:
 		tooltips = cfg.get_value("input", "tooltips", true)
 		build_grid = cfg.get_value("input", "build_grid", true)
 		area_marks = bool(cfg.get_value("ui", "area_marks", true))
+		expansion_spots = bool(cfg.get_value("ui", "expansion_spots", true))
 		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
 		relay_url = String(cfg.get_value("online", "relay_url", relay_url))
 		if relay_url.contains("YOURNAME") or relay_url.strip_edges() == "":
@@ -56,6 +58,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "tooltips", tooltips)
 	cfg.set_value("input", "build_grid", build_grid)
 	cfg.set_value("ui", "area_marks", area_marks)
+	cfg.set_value("ui", "expansion_spots", expansion_spots)
 	cfg.set_value("input", "mini_alpha", mini_alpha)
 	cfg.set_value("online", "relay_url", relay_url)
 	cfg.set_value("ui", "language", language)
