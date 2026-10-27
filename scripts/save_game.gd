@@ -128,6 +128,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["rl"] = snappedf(u.cooldown, 0.01)    # (a Spring Ballista's spring still being wound)
 		if u.crew_of != null and ids.has(u.crew_of):
 			ud["crew"] = ids[u.crew_of]              # (a Winder crewing a Spring Ballista: scripts/ballista.gd)
+		if u.kind == Defs.GREAT_WINDER_KIND:
+			ud["gw"] = [u.parts, u.auto_repair, u.auto_sweep]     # (a Great Winder: its parts, MEND and SWEEP: scripts/great_winder.gd)
 		if u.coat != "":
 			ud["coat"] = u.coat
 		# horses: who leads it, where it grazes; riders and guns: their horse's health, a gun's
@@ -447,6 +449,10 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if uk == Defs.BALLISTA_KIND:
 			u.cooldown = float(ud.get("rl", 0.0))
 			u.loaded = u.cooldown <= 0.0
+		if uk == Defs.GREAT_WINDER_KIND and ud.get("gw") is Array and (ud["gw"] as Array).size() >= 3:
+			u.parts = clampi(int(ud["gw"][0]), 0, int(Defs.GREAT_WINDER["cap"]))
+			u.auto_repair = bool(ud["gw"][1])
+			u.auto_sweep = bool(ud["gw"][2])
 		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):
 			u.coat = String(ud["coat"])      # (older saves: the coat it was just given)
 			HorseCoat.apply(u)

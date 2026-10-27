@@ -671,7 +671,16 @@ func _tier2(t: float) -> void:
 			var msc := _spring_spot()
 			_construct("mainspring", msc)
 			if _spring_heavy and msc.x >= 0 and _busy_building("mainspring"):
-				_keep_heavy(msc, [Defs.CW_TECH, Defs.CW_HEAVY])      # (the Heavy Works' spot by it, kept: 0.14.83)
+				# (the Heavy Works' spot by it is kept, 0.14.85, and the Escapement goes on the spot found with it: the two
+				# were worked out together, so the kept one never pushes the Escapement off the Mainspring)
+				var cells: Array = GearEcon.room_cells(game, team, "mainspring", msc, [Defs.CW_TECH, Defs.CW_HEAVY])
+				_keep_heavy(msc, [Defs.CW_TECH, Defs.CW_HEAVY])
+				for uc in cells:
+					if String(uc[0]) == Defs.CW_TECH and game.requirement_met(team, Defs.CW_TECH) \
+							and game.placement_problem(team, Defs.CW_TECH, uc[1], true) == "":
+						_construct(Defs.CW_TECH, uc[1])
+						if _busy_building(Defs.CW_TECH):
+							return
 			for sp in _mine("mainspring"):
 				var ce := GearEcon.room_spot(game, team, Defs.CW_TECH, [sp])
 				if ce.x >= 0 and game.requirement_met(team, Defs.CW_TECH):
@@ -820,12 +829,12 @@ func _foe_high() -> bool:
 	return h != null and game.on_high(h.center())
 
 
-## Gear mode, THE HEAVY WORKS (0.14.83, docs/gear_rules.md; scripts/pendulum.gd, scripts/ballista.gd): the Pendulums and
+## Gear mode, THE HEAVY WORKS (0.14.85, docs/gear_rules.md; scripts/pendulum.gd, scripts/ballista.gd): the Pendulums and
 ## the Spring Ballistas are made only there (the Light Works no longer makes them), so as soon as its Escapement works it
 ## lays ONE Heavy Works whose BIG ring
 ## meshes with a Mainspring's (it is a Tension user: idle otherwise): by a Mainspring with room; with no room by any, a new
 ## Mainspring first where its big ring will fit beside it; its cogs are held back like the tech's (_heavy_hold). _produce then mixes a few
-## Pendulums and Ballistas into the army from it. (Before 0.14.83 a Movement Works, now the Light Works, was swapped onto its big gear for the
+## Pendulums and Ballistas into the army from it. (Before 0.14.85 a Movement Works, now the Light Works, was swapped onto its big gear for the
 ## Pendulum, and the Ballista came from any Works meshing with a Mainspring.)
 var _heavy_t := 0.0
 var _heavy_no_room := false         # no room for the Heavy Works by any Mainspring: a Mainspring with room for it is saved for
@@ -837,7 +846,7 @@ func _tier3() -> void:
 		return
 	if not game.has_working(team, Defs.CW_TECH):
 		return
-	# (laid as soon as the Escapement works: before 0.14.83 the first Ballista came from any Works meshing with a Mainspring
+	# (laid as soon as the Escapement works: before 0.14.85 the first Ballista came from any Works meshing with a Mainspring
 	# about two minutes after the Escapement; waiting for Springers first put it three minutes later, greenhold seed 11)
 	var cost := int(Defs.BUILDINGS[Defs.CW_HEAVY]["cost"])
 	if _gold() < mini(cost, int(Defs.BUILDINGS["mainspring"]["cost"])) + 20:
@@ -920,7 +929,7 @@ func _heavy_spot() -> Vector2i:
 
 ## Keep the spot for the Heavy Works by a Mainspring laid at cell `spring_cell` (Game.ai_keep): the cell _room's greedy
 ## placing found for it, with `users` (the Escapement first when it is laid with the first Mainspring), so the computer's
-## Regulators, presses and turrets do not take it in the minute before the Heavy Works may be laid (0.14.83: room by a
+## Regulators, presses and turrets do not take it in the minute before the Heavy Works may be laid (0.14.85: room by a
 ## Mainspring for its big ring was gone in most games).
 func _keep_heavy(spring_cell: Vector2i, users: Array) -> void:
 	if not _mine(Defs.CW_HEAVY).is_empty():
@@ -985,7 +994,7 @@ func _spring_spot(spare := false) -> Vector2i:
 		return Vector2i(-1, -1)
 	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built and game.gear_net.spring_for(b) == null)
 	var fall := Vector2i(-1, -1)
-	# (0.14.83: beside a Works with room for the Escapement AND the Heavy Works' big ring, when there is such a spot: the
+	# (0.14.85: beside a Works with room for the Escapement AND the Heavy Works' big ring, when there is such a spot: the
 	# Heavy Works must mesh with a Mainspring too, and a crowded plateau had no room left for it by any)
 	if _mine(Defs.CW_HEAVY).is_empty():
 		for w in works + _halls().filter(func(h: Building) -> bool: return h.built):
@@ -1429,7 +1438,7 @@ func _worker_safety() -> void:
 	for id in _known_guns:
 		var e: Dictionary = _known_guns[id]
 		_danger_pts.append([e["p"], float(e["u"].d.get("range", 200)) + 40.0])
-	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and u.kind != "powder_wagon")
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND)
 	var stand: Dictionary = {}      # workers kept out of the flee list because they fight
 	for c in clusters:
 		_raid_workers(c, labs, army, stand)
@@ -2365,7 +2374,7 @@ func _guard_new_hall(army: Array) -> Array:
 		while _guards.size() > want:
 			_guards.pop_back()
 	if _guards.size() < want:
-		var pool := army.filter(func(u: Unit) -> bool: return not _guards.has(u) and u.kind != "powder_wagon" and not u.is_air())
+		var pool := army.filter(func(u: Unit) -> bool: return not _guards.has(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND and not u.is_air())
 		pool.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(site) < b.position.distance_squared_to(site))
 		for u in pool.slice(0, want - _guards.size()):
 			_guards.append(u)
@@ -3407,11 +3416,12 @@ func _produce() -> void:
 		var others: int = soldiers + springers
 		var bals: int = n_of.call(Defs.BALLISTA_KIND)
 		var bal_want := _ballista_want()
+		var gws: int = n_of.call(Defs.GREAT_WINDER_KIND)      # (one Great Winder: _great_winder_due)
 		var cap_t := _tension_cap()
 		var flush: bool = cap_t > 0.0 and game.tension(team) >= cap_t * 0.6
 		# (the Works that may make Tension units first: one waiting for the cogs of a Springer stops the others spending them
 		# on Clock Soldiers)
-		# (the Heavy Works first: its Pendulums and Spring Ballistas, 0.14.83; a Pendulum for every 6 others, up to 4, once
+		# (the Heavy Works first: its Pendulums and Spring Ballistas, 0.14.85; a Pendulum for every 6 others, up to 4, once
 		# three Springers are out or Tension piles up; the Ballistas as _ballista_want says)
 		var want_p: bool = pends < mini(4, 1 + others / 6) and (springers >= 3 or flush)
 		var keep0 := 0.0
@@ -3432,6 +3442,8 @@ func _produce() -> void:
 					hk = Defs.PENDULUM
 				elif bals < bal_want and others >= 3 and _tension_ok(hw, Defs.BALLISTA_KIND, keep0):
 					hk = Defs.BALLISTA_KIND
+				elif _great_winder_due(hw, gws, others, keep0):
+					hk = Defs.GREAT_WINDER_KIND          # (one Great Winder, from the Heavy Works too)
 				if hk == "":
 					# (a heavy machine is wanted but its Tension is short: it is kept from the Springers meanwhile; the
 					# Springers used to eat every bit of it, and no Ballista nor Pendulum came all game)
@@ -3446,6 +3458,8 @@ func _produce() -> void:
 				if hk == Defs.PENDULUM:
 					pends += 1
 					want_p = pends < mini(4, 1 + others / 6)
+				elif hk == Defs.GREAT_WINDER_KIND:
+					gws += 1
 				else:
 					bals += 1
 		var wl: Array = _mine(_works())
@@ -3796,7 +3810,7 @@ func _tend_wagon() -> void:
 
 
 func _army() -> void:
-	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon" and u.order != "sacrifice")
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND and u.order != "sacrifice")      # (a Great Winder walks behind it: _great_winder_follow)
 	if _crown():
 		army = _guard_new_hall(army)
 	# Bloaters out of gas float home to fill up again (faster on the swamp)
@@ -5501,6 +5515,7 @@ func _follow_with_escort(army: Array) -> void:
 		_escort.append(pick)
 	if gear:
 		_ballista_crew(army)
+		_great_winder_follow(c)
 		_escort_wind(army, c)
 		return
 	# run-down Wind-up Soldiers first: the escort cranks them back up
@@ -5528,13 +5543,13 @@ func _follow_with_escort(army: Array) -> void:
 func _escort_want(army: Array) -> int:
 	var cons := 0
 	for u in army:
-		if not u.is_worker() and not u.is_air() and String(u.d["faction"]) == "clockwork":
+		if not u.is_worker() and not u.is_air() and String(u.d["faction"]) == "clockwork" and u.kind != Defs.GREAT_WINDER_KIND:
 			cons += 1
 	if cons == 0:
 		return 0
 	var cap := mini(10, maxi(2, game.workers(team).size() / 3))
 	var bal := army.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND).size()
-	return clampi(2 + cons / 5, 2, cap) + mini(bal, 2) * BALLISTA_CREW      # (+ the Ballistas' crew: _ballista_crew)
+	return _great_winder_escort(clampi(2 + cons / 5, 2, cap)) + mini(bal, 2) * BALLISTA_CREW      # (+ the Ballistas' crew: _ballista_crew)
 
 
 ## Gear mode: each free escort Winder winds (cmd_repair: wind first, then mends) the construct that needs it most
@@ -5630,6 +5645,58 @@ func _ballista_crew(army: Array) -> void:
 	if not sent.is_empty() and game.mlog and not game._first_of.has("%d:ai_bal_crew" % team):
 		game._first_of["%d:ai_bal_crew" % team] = true
 		game.mlog.add("%s sends %d Winders to crew its Spring Ballista" % [game.mlog.who(team), sent.size()])
+
+
+## Gear mode, the GREAT WINDER (scripts/great_winder.gd), kept small and in its own functions (the clockwork-ai rework
+## edits the rest): once its Escapement works and the army has GREAT_WINDER_ARMY soldiers (after the Pendulums, Ballistas
+## and Netters it wants: the escort Winders do the winding until then), ONE Great Winder (_produce:
+## _great_winder_due); it walks just behind the army wherever the army goes (_great_winder_follow: the attack, the
+## rally), where its area keeps the army wound and it mends and sweeps by itself (its autocasts). It TAKES THE ESCORT'S
+## PLACE (the owner, 2026-10-27): while one is out, the escort of ordinary Winders is GREAT_WINDER_ESCORT smaller for
+## each, down to one Winder (for the stragglers run down outside its area); the Ballistas' crew are extra, as before.
+const GREAT_WINDER_ARMY := 4
+const GREAT_WINDER_ESCORT := 3
+
+
+## Make a Great Winder at this Works now? None yet (nor queued), its Escapement works, enough army, the Tension.
+func _great_winder_due(w: Building, have: int, others: int, keep: float) -> bool:
+	return have < 1 and others >= GREAT_WINDER_ARMY and game.has_working(team, Defs.CW_TECH) \
+			and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.GREAT_WINDER_KIND])) >= keep \
+			and game.can_train(w, Defs.GREAT_WINDER_KIND) == ""
+
+
+## Our Great Winders.
+func _great_winders() -> Array:
+	return game.units.filter(func(u: Unit) -> bool: return u.team == team and not u.dead and u.kind == Defs.GREAT_WINDER_KIND)
+
+
+## The escort's base size (`base` Winders) less GREAT_WINDER_ESCORT for each Great Winder we have, at least one.
+func _great_winder_escort(base: int) -> int:
+	var n := _great_winders().size()
+	if n == 0:
+		return base
+	return maxi(1, base - GREAT_WINDER_ESCORT * n)
+
+
+## Each Great Winder walks to a spot just behind the army (toward home), unless it is mending or sweeping there.
+func _great_winder_follow(c: Vector2) -> void:
+	var gws := _great_winders()
+	if gws.is_empty():
+		return
+	var home := c
+	var hall: Array = _halls()
+	if not hall.is_empty():
+		home = (hall[0] as Building).center()
+	var behind := c + (home - c).normalized() * 60.0 if home.distance_to(c) > 1.0 else c
+	for u in gws:
+		if u.order == "mend" or u.order == "sweep":
+			if u.position.distance_to(c) < 420.0:
+				continue          # (busy by the army: its autocast)
+		if u.position.distance_to(behind) > 110.0 and not (u.order == "move" and u.order_point.distance_to(behind) < 90.0):
+			u.cmd_move(behind)
+			if game.mlog and not game._first_of.has("%d:ai_gw_out" % team):
+				game._first_of["%d:ai_gw_out" % team] = true
+				game.mlog.add("%s sends its Great Winder with the army" % game.mlog.who(team))
 
 
 ## An enemy (not a worker) within r of p.

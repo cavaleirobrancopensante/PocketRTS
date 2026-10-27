@@ -152,6 +152,9 @@ var loaded := true              # (a ballista) its bolt is in (the spring wound)
 var bolts := 0                  # (a ballista) bolts fired (tests)
 var bolt_hits: Array = []       # (a ballista) what its last bolt hit, in order (tests)
 var _db_t := 0.0                # (a ballista) s to the next look for a shot on the move
+# the Great Winder (scripts/great_winder.gd): MEND is its auto_repair; SWEEP its auto_sweep; the parts it has swept up
+var parts := 0                  # (a Great Winder) parts in its hopper (from its side's Clockwork wrecks; for reassembly later)
+var auto_sweep := false         # (a Great Winder) SWEEP autocast: on from the start
 var _board_t := 0.0
 var _descend := 0.0             # (a balloon) 1 = down low, taking men on or letting them off
 var haul_t := -1.0              # (a balloon) a powder keg on the rope: seconds hauled so far (-1: none)
@@ -1642,7 +1645,8 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	_pmax = max_powder()
 	powder = _pmax
 	pistol = has_pistol()            # (trained loaded)
-	auto_repair = k == "winder"      # (Winders always did; Labourers start with it off)
+	auto_repair = k == "winder" or k == Defs.GREAT_WINDER_KIND      # (Winders always did; Labourers start with it off; a Great Winder's MEND)
+	auto_sweep = k == Defs.GREAT_WINDER_KIND                       # (its SWEEP: on from the start)
 	armor = d["armor"]
 	sight = d["sight"]
 	radius = d["radius"]
@@ -2456,6 +2460,8 @@ func cmd_gather(site: Entity) -> void:
 func can_repair(e: Entity) -> bool:
 	if kind == "winder":
 		return e.is_unit() and (e as Unit).d["faction"] == "clockwork" or e.is_building() or e is PipeSeg
+	if kind == Defs.GREAT_WINDER_KIND:
+		return GreatWinder.can_mend(self, e)     # (its MEND: Clockwork units only, scripts/great_winder.gd)
 	if kind == "labourer":
 		return e.is_building() or (e is Unit and Defs.CROWN_MACHINES.has(e.kind))
 	return false
@@ -2468,6 +2474,8 @@ func cmd_repair(e: Entity) -> void:
 		return
 	if e is PipeSeg and not e.built:
 		return LineWork.cmd_lay(self, e)
+	if kind == Defs.GREAT_WINDER_KIND:
+		return GreatWinder.cmd_mend(self, e)     # (a right-click on a hurt unit: MEND it)
 	_reset_work()
 	order = "repair"
 	order_target = e
@@ -3205,6 +3213,8 @@ func _tick_unit(delta: float) -> void:
 	speed = float(d["speed"])
 	if kind == Defs.BALLISTA_KIND:
 		speed *= Ballista.rate(self)        # (each crewman pushing: +10%)
+	elif kind == Defs.GREAT_WINDER_KIND:
+		GreatWinder.tick(self, delta)       # (its winding area: scripts/great_winder.gd)
 	if kind == "horse" or horse_working():
 		_horse_upkeep(delta)
 	if not team_horses.is_empty():
@@ -3373,6 +3383,10 @@ func _tick_unit(delta: float) -> void:
 					if pt:
 						cmd_heal(pt)
 						_care_auto = true      # (his own choice: he may change his mind for a body)
+			# a Great Winder standing about: MEND, then SWEEP (scripts/great_winder.gd)
+			if kind == Defs.GREAT_WINDER_KIND and scan_t <= 0.0:
+				scan_t = GreatWinder.RESCAN
+				GreatWinder.idle_scan(self)
 			# REPAIR autocast: an idle worker fixes what's damaged nearby (before going back to
 			# work, when WORK is on too)
 			if auto_repair and not war and scan_t <= 0.0 and (kind == "winder" or kind == "labourer"):
@@ -3464,6 +3478,10 @@ func _tick_unit(delta: float) -> void:
 			want = _gather(delta)
 		"repair":
 			want = _repair(delta)
+		"mend":
+			want = GreatWinder.mend_tick(self, delta)      # (a Great Winder's key arm on a hurt unit)
+		"sweep":
+			want = GreatWinder.sweep_tick(self, delta)     # (a Great Winder's rollers on a wreck)
 		"follow":
 			var fe = order_target
 			if fe == null or not is_instance_valid(fe) or fe.dead or (fe as Unit).aboard != null:
@@ -6045,6 +6063,8 @@ func _anim_name() -> String:
 	if kind == Defs.BALLISTA_KIND:
 		# the machine is a tool, not animated: loaded or fired (its crew move)
 		return ("walk" if moving else "idle") if loaded else "attack"
+	if kind == Defs.GREAT_WINDER_KIND:
+		return GreatWinder.anim(self, moving)    # (its key arm while mending, its rollers while sweeping)
 	if kind == "labourer":
 		# a crowd shoves him around the 10 px/s line: stay in the walk for a moment instead of
 		# flicking walk <-> idle (every switch restarts the pose)
@@ -6284,7 +6304,10 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 		"pendulum": 7.2, "netter": 14.0,
 		# the Raptor runs at 108 px/s on a 6-frame cycle: at 8 fps its planted feet slid ~10 px a frame, at 12 ~6
 		# (docs/animation_audit_brood.md)
-		"raptor": 12.0}
+		"raptor": 12.0,
+		# the Great Winder's slow 4-leg creep: 16 px a 12-frame loop (docs/great_winder_legs.md) at its 27 px/s
+		# (GreatWinder.walk_fps; tools/test_great_winder.gd checks they agree); played on a 30 Hz tick (_animate)
+		"great_winder": 20.25}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.
@@ -6346,7 +6369,8 @@ func _animate(delta: float) -> void:
 	_anim_dt += delta
 	# (a walking or hammering Labourer steps at 30 Hz: his frames follow the ground he covers
 	# and the hammer beat, which 15 Hz ticks would make uneven)
-	var tick := 0.033 if kind == "labourer" and (anim == "build" or velocity.length() > 10.0) else 0.066
+	var tick := 0.033 if (kind == "labourer" and (anim == "build" or velocity.length() > 10.0)) \
+			or (kind == Defs.GREAT_WINDER_KIND and anim == "walk") else 0.066     # (the Great Winder's 20 fps walk too)
 	if _anim_dt < tick and not dead:
 		return
 	if kind == "horse" and not dead:
@@ -6451,6 +6475,8 @@ func _animate(delta: float) -> void:
 			loop = false
 		"repair", "wind", "vent":
 			fps = 5.0
+		"sweep":
+			fps = 10.0       # (a Great Winder's rollers)
 		"block":
 			fps = 12.0
 			loop = false
@@ -7039,6 +7065,8 @@ func _draw_unit() -> void:
 		return
 	if selected and (kind == "cannon" or kind == "mortar") and team == game.human and aboard == null:
 		_draw_aim()
+	if selected and kind == Defs.GREAT_WINDER_KIND:
+		GreatWinder.draw_area(self)      # (its winding ring on the ground)
 	# (a Springer in the air: its shadow stays on the ground under it, a little smaller and darker so the leap reads)
 	var lifted := Springer.lift(self) if not jump.is_empty() else 0.0
 	var shade := 1.0 - clampf(lifted / 160.0, 0.0, 0.3)

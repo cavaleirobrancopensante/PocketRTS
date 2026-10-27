@@ -31,7 +31,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_HEAVY]
-	check("the Heavy Works trains the Spring Ballista (0.14.83)", (wd["trains"] as Array).has(K))
+	check("the Heavy Works trains the Spring Ballista (0.14.85)", (wd["trains"] as Array).has(K))
 	check("the Light Works no longer does", not (Defs.BUILDINGS[Defs.CW_WORKS]["trains"] as Array).has(K))
 	check("it is in the gear-mode roster (not retired)", Defs.CW_NEW_UNITS.has(K) and not Defs.retired(K))
 	check("the Spring Catapult is not in the roster", not Defs.CW_NEW_UNITS.has("spring_catapult") and not Defs.UNITS.has("spring_catapult"))

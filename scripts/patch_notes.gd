@@ -4,13 +4,23 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.14.83", "items": [
+	{"v": "0.14.85", "items": [
 		"CLOCKWORK GEAR RULES (the owner's, from the gear study): each RATCHET TURRET now claims a circle of ground 4 tiles round it, and two turrets' circles may not overlap: a turret's spring draws all the force from the gears under it, so turrets stand at least 8 tiles apart. While you place one, the circles are drawn and the ghost says TOO NEAR A TURRET. Old saves keep the turrets they have.",
-		"NEW CLOCKWORK BUILDING, the HEAVY WORKS (175 cogs, 45 s, needs a working Escapement): a gantry crane yard where the PENDULUM and the SPRING BALLISTA are now made, and you can watch each machine rise in its bay as it trains. It sits on its BIG gear only and uses Tension, so its ring must mesh with a Mainspring's (else NEEDS MAINSPRING).",
-		"The MOVEMENT WORKS is renamed the LIGHT WORKS: it makes the Clock Soldier, the Springer and the Netter (no more Pendulums or Ballistas).",
+		"NEW CLOCKWORK BUILDING, the HEAVY WORKS (175 cogs, 45 s, needs a working Escapement): a gantry crane yard where the PENDULUM, the SPRING BALLISTA and the GREAT WINDER are now made, and you can watch each machine rise in its bay as it trains. It sits on its BIG gear only and uses Tension, so its ring must mesh with a Mainspring's (else NEEDS MAINSPRING).",
+		"The MOVEMENT WORKS is renamed the LIGHT WORKS: it makes the Clock Soldier, the Springer and the Netter (no more Pendulums, Ballistas or Great Winders).",
 		"SIZE SETS THE TEMPO: a small gear works fast and light, a big gear slow and strong. The Light Works trains 15% faster on its small gear, 15% slower on its big one; the Escapement and the Clock Aviary work 10% faster or slower. A Ratchet Turret on its small gear fires 11 damage every 1.2 s; on its big gear 21 every 2.2 s, better against armour, with the same reach. Each card says its gear's trade in one line.",
 		"READABILITY: the Mainspring, the Escapement, the Heavy Works and the Clock Aviary stand on a polished brass floor plate; a small spring mark shows a building fed by a Mainspring; the placing ghost lights its meshing teeth green and its clashes red and gives its reason in one red line; the GEAR VIEW (the ` key, or GEAR VIEW on a Clockwork building's card) shows the whole network: the drivers gold, every ring green to red by how well it works, each Mainspring's reach and the turret circles.",
 		"CLOCKWORK COMPUTER: it lays a Heavy Works by a Mainspring as soon as its Escapement works (its first Spring Ballista, then its Pendulums), keeps room for it by its first Mainspring, and spaces its turrets by the new rule.",
+	]},
+	{"v": "0.14.84", "items": [
+		"The match log now records every building or button the game refused you, with the reason and the resources you had at that moment, so a refused build can be traced afterwards.",
+	]},
+	{"v": "0.14.83", "items": [
+		"NEW CLOCKWORK UNIT, the GREAT WINDER (Movement Works, once an Escapement works; 175 cogs and 75 Tension): the Clockwork's big, slow, walking winding machine, with no weapon. It does the job the Winders walking with the army did, as one machine.",
+		"WINDING: every Clockwork soldier near the Great Winder (the ring on the ground when it is selected) slowly winds up, so an army off the gear ground no longer runs down beside it, and run-down soldiers there wake up again. It never runs down itself.",
+		"MEND (automatic, press to switch off): standing about, it mends the most hurt Clockwork unit near it with its key arm, one at a time and half again as fast as a Winder (it costs cogs, like a repair). Right-click a hurt unit to send it there.",
+		"SWEEP (automatic, press to switch off): with nothing to mend, it sweeps up the wrecks of your own Clockwork units with its rollers and keeps them as PARTS (up to 100, shown on its card). Parts do nothing yet: they are for rebuilding machines in the field, later. It never sweeps Crown or Brood bodies.",
+		"The Clockwork computer builds one Great Winder once it can and sends it behind its army; fewer of its Winders go with the army while it does.",
 	]},
 	{"v": "0.14.82", "items": [
 		"Internal: the Springer's files and ids renamed from Jack; old saves and replays still load.",

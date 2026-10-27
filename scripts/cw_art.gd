@@ -12,7 +12,8 @@ const DIRS := ["s", "se", "e", "ne", "n"]
 ## A kind's own west views, read when the files exist (never drawn here): the game draws them unflipped instead of the
 ## east ones mirrored (Unit.WEST_OF; the Clock Soldier's sword stays in its right hand).
 const WEST_DIRS := ["sw", "w", "nw"]
-const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb", "attack_r", "attack_l", "guard", "guard_walk"]   # (guard: the Clock Soldier's SHIELD FORWARD)
+const ANIMS := ["idle", "walk", "attack", "death", "jump", "attack_up", "bomb", "attack_r", "attack_l", "guard", "guard_walk",
+	"wind", "sweep"]   # (guard: the Clock Soldier's SHIELD FORWARD; wind and sweep: the Great Winder's key arm and rollers)
 ## kind -> [cell width, cell height, anchor x, anchor y (the feet)]
 const SHEETS := {
 	"tin_militia": [36, 40, 18, 36],
@@ -40,6 +41,9 @@ const SHEETS := {
 	# tier 2: the Spring Ballista (tools/import_ballista.py prints this line): idle and walk = loaded, attack = fired (shown
 	# while it reloads), death (made in code from the fired frame)
 	"ballista": [176, 96, 88, 92],
+	# tier 2: the Great Winder (tools/import_great_winder.py prints this line): walk (12 frames, 4 legs), wind (the key
+	# arm out and turning, 8), sweep (the rollers, 8); idle (2) and death (5) made in code from its standing frame
+	"great_winder": [182, 103, 91, 89],
 }
 
 const TIN := Color(0.68, 0.72, 0.76)

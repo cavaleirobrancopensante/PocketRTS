@@ -137,7 +137,7 @@ var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
 ## The computer keeps a spot for a building it means to lay soon (team -> {"kind", "cell", "t"}): its own other buildings are
 ## not put where they would take that spot or cut into its ring (placement_problem with `ai`). Used for the Heavy Works'
-## big ring by a Mainspring (AI._keep_heavy, 0.14.83). Not saved: the computer works it out again.
+## big ring by a Mainspring (AI._keep_heavy, 0.14.85). Not saved: the computer works it out again.
 var ai_keep := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
 var _hash := {}
@@ -6730,6 +6730,25 @@ func tear_body(b: Unit, aimed := false) -> void:
 		net.fx.append(["c", "", b.position, 0.0])       # (online: the guest's copy of it goes too)
 	if rec != null and not puppet and rec.fx.size() < NetSession.FX_MAX:
 		rec.fx.append(["c", "", b.position, 0.0])       # (and the replay's)
+	torn_fx(b.position)
+	b.tear_up()
+
+
+## A Clockwork wreck swept into a Great Winder's hopper (GreatWinder.take): off the harvest and revive lists, gone from
+## the field like a torn-up body (online and in replays too: the same "c" effect, the guest's copy goes), with a puff of
+## dust where it lay.
+var bodies_swept := 0          # wrecks swept up so far (tests)
+func sweep_body(b: Unit) -> void:
+	if b == null or not is_instance_valid(b) or not b.dead or b.torn:
+		return
+	corpses.erase(b)
+	fallen.erase(b)
+	bodies.erase(b)
+	bodies_swept += 1
+	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
+		net.fx.append(["c", "", b.position, 0.0])
+	if rec != null and not puppet and rec.fx.size() < NetSession.FX_MAX:
+		rec.fx.append(["c", "", b.position, 0.0])
 	torn_fx(b.position)
 	b.tear_up()
 

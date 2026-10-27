@@ -84,7 +84,7 @@ func _run() -> void:
 	if works == null:
 		_end()
 		return
-	check("2nd ring: drive 90% (times its ring's tempo, 0.14.83)", is_equal_approx(net.speed_mult(works) / GearNet.tempo(works), 0.9), "%.2f" % net.speed_mult(works))
+	check("2nd ring: drive 90% (times its ring's tempo, 0.14.85)", is_equal_approx(net.speed_mult(works) / GearNet.tempo(works), 0.9), "%.2f" % net.speed_mult(works))
 	check("supply is not touched by drive (a Regulator's speed stays 1)", reg == null or net.speed_mult(reg) == 1.0)
 	# the Works' training follows its drive
 	var t0 := g.can_train(works, "clock_soldier")

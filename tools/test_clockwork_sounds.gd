@@ -112,7 +112,7 @@ func _run() -> void:
 	await run(0.3)
 	# ---- the units: picked, sent off, told to attack
 	var at := base + Vector2(0, 260)
-	var kinds := ["winder", "clock_soldier", "springer", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
+	var kinds := ["winder", "clock_soldier", "springer", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista", "great_winder"]
 	var us := {}
 	for i in kinds.size():
 		var k: String = kinds[i]
@@ -228,6 +228,23 @@ func _run() -> void:
 	g._alert_ms = -99999
 	g.under_attack(built["regulator"])
 	await run(0.2)
+	# ---- a Great Winder mends a hurt Clock Soldier (the winding crank) and sweeps a wreck (the brush sweep)
+	g.camera.position = at
+	g.camera.force_update_scroll()
+	var gwu: Unit = us["great_winder"] if is_instance_valid(us["great_winder"]) and not us["great_winder"].dead else g._add_unit("great_winder", 0, at)
+	gwu.cmd_stop()
+	var patient: Unit = g._add_unit("clock_soldier", 0, gwu.position + Vector2(70, 30))
+	patient.cmd_hold()
+	patient.hp = patient.max_hp * 0.3
+	_free_sfx()
+	await run(5.0)
+	var wreck: Unit = g._add_unit("clock_soldier", 0, gwu.position + Vector2(-60, 40))
+	wreck.hp = 0.0
+	wreck.die()
+	wreck._rest_in_peace()
+	_free_sfx()
+	await run(6.0)
+	check(gwu.parts > 0, "the Great Winder swept a wreck (%d parts)" % gwu.parts)
 	# ---- deaths, one kind at a time (near the camera: a sound far off screen is not played)
 	g.camera.position = at
 	g.camera.force_update_scroll()

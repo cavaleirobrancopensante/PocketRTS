@@ -1,5 +1,5 @@
 extends SceneTree
-## Screenshots of THE GEAR RULES (docs/gear_rules.md, 0.14.83) in the CLOCKWORK LAB: the placing ghost of a Ratchet Turret
+## Screenshots of THE GEAR RULES (docs/gear_rules.md, 0.14.85) in the CLOCKWORK LAB: the placing ghost of a Ratchet Turret
 ## refused too near another (TOO NEAR A TURRET, the circles drawn) and accepted far enough; a ghost's meshing teeth (green)
 ## and a clash (red); the Heavy Works idle (an empty bay) and building a Spring Ballista and a Pendulum, the machine rising
 ## in its bay; the GEAR VIEW; the base with its brass and iron floor plates; the Light Works' and the turret's cards (the

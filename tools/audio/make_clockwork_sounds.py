@@ -157,6 +157,14 @@ SOUNDS = {
     "voice/ballista/move_3": [ratchet(3, 0.26, pitch=0.8), ("crank", 3.65, 0.40, 0.20, 0.5, 0.8, 0.1)],
     "voice/ballista/attack_1": [ratchet(1, 0.28, gain=0.8, pitch=0.8), ("spring", 0.08, 0.5, 0.22, 1.0, 0.7, 0.2)],
     "voice/ballista/attack_2": [ratchet(3, 0.28, gain=0.8, pitch=0.8), ("spring", 0.10, 0.5, 0.22, 1.0, 0.65, 0.2)],
+    # the Great Winder: the biggest machine answers with its slow, deep ratchet and the old bell's hum (it winds the army)
+    "voice/great_winder/select_1": [ratchet(0, 0.44, pitch=0.6), bell(0, 0.6, at=0.3, gain=0.25, pitch=0.7, fade=0.4)],
+    "voice/great_winder/select_2": [ratchet(2, 0.44, pitch=0.58)],
+    "voice/great_winder/select_3": [ratchet(1, 0.40, pitch=0.62), ("crank", 0.55, 0.45, 0.30, 0.5, 0.7, 0.15)],
+    "voice/great_winder/move_1": [ratchet(3, 0.36, pitch=0.62), ("crank", 2.15, 0.50, 0.25, 0.5, 0.7, 0.15)],
+    "voice/great_winder/move_2": [ratchet(0, 0.34, pitch=0.65), ("crank", 3.65, 0.50, 0.22, 0.5, 0.7, 0.15)],
+    "voice/great_winder/move_3": [ratchet(1, 0.34, pitch=0.6), ("crank", 0.55, 0.50, 0.22, 0.5, 0.68, 0.15)],
+    "voice/great_winder/attack_1": [ratchet(2, 0.36, pitch=0.6), bell(1, 0.5, at=0.3, gain=0.3, pitch=0.7, fade=0.3)],
 
     # ================= COMBAT (assets/audio/combat/) =================
     # the Clock Soldier's clock-hand sword on brass: bright clangs, a little lower than recorded
@@ -222,6 +230,17 @@ SOUNDS = {
     "combat/ballista_crank_2": [("crank", CRANK[3], 1.30, 0.0, 1.0, 0.85, 0.25)],
     "combat/ballista_death_1": [crash(0.7, 0.5), ("spring", 0.08, 0.8, 0.2, 0.6, 0.5, 0.4), clatter(0.62, 0.9, at=0.4, gain=0.5)],
     "combat/ballista_death_2": [crash(0.75, 0.5), boing(1, 0.5, at=0.2, gain=0.6, pitch=0.5), clatter(1.4, 0.9, at=0.4, gain=0.5)],
+    # the Great Winder (scripts/great_winder.gd): a slow heavy RATCHET STEP as its legs come down (once a walk loop), the
+    # WINDING CRANK of its key arm while it mends, the BRUSH SWEEP of its rollers (the crank's grind, low, with scraps
+    # rattling into the hopper), and its death: a crash, its spring letting go, its parts spilling out
+    "combat/great_winder_step_1": [ratchet(1, 0.22, pitch=0.5, gain=0.9), cl(6, 0.35, 0.25, at=0.05, gain=0.35)],
+    "combat/great_winder_step_2": [ratchet(3, 0.22, pitch=0.48, gain=0.9), cl(2, 0.35, 0.25, at=0.05, gain=0.35)],
+    "combat/great_winder_wind_1": [("crank", CRANK[0], 1.50, 0.0, 1.0, 0.72, 0.25)],
+    "combat/great_winder_wind_2": [("crank", CRANK[2], 1.50, 0.0, 1.0, 0.7, 0.25)],
+    "combat/great_winder_sweep_1": [("crank", CRANK[0] + 0.55, 0.90, 0.0, 0.8, 0.55, 0.3), clatter(0.9, 0.7, at=0.3, gain=0.5, pitch=0.8)],
+    "combat/great_winder_sweep_2": [("crank", CRANK[1] + 0.55, 0.90, 0.0, 0.8, 0.5, 0.3), clatter(1.6, 0.7, at=0.3, gain=0.5, pitch=0.75)],
+    "combat/great_winder_death_1": [crash(0.6, 0.6), ("spring", 0.08, 0.9, 0.2, 0.7, 0.45, 0.5), clatter(0.62, 1.2, at=0.4, gain=0.6, pitch=0.8)],
+    "combat/great_winder_death_2": [crash(0.65, 0.6), boing(1, 0.6, at=0.25, gain=0.6, pitch=0.45), clatter(1.4, 1.2, at=0.4, gain=0.6, pitch=0.8)],
     # the Winder: a wrench on brass, and his death
     "combat/winder_attack_1": [cl(10, 1.0, 0.30, gain=0.8), ratchet(0, 0.12, gain=0.5)],
     "combat/winder_attack_2": [cl(7, 1.05, 0.30, gain=0.8), ratchet(2, 0.12, gain=0.5)],
@@ -241,7 +260,7 @@ SOUNDS = {
     "select/movement_works_1": [cl(8, 0.75, 0.30), cl(2, 0.7, 0.35, at=0.28, gain=0.8), keys(49.30, 0.6, at=0.05, gain=0.35)],
     "select/ratchet_turret": [ratchet(1, 0.36, pitch=0.8), cl(4, 0.6, 0.30, at=0.25, gain=0.4)],
     "select/cuckoo_house": [ticks(3, 7, pitch=1.3), ding(0, 0.5, at=0.62, gain=0.8, pitch=1.15)],
-    # the Heavy Works (0.14.83): its winch cranked slow and low, then the heavy clank of the crane's load set down
+    # the Heavy Works (0.14.85): its winch cranked slow and low, then the heavy clank of the crane's load set down
     "select/heavy_works": [("crank", 1.60, 1.00, 0.0, 0.7, 0.9, 0.35), cl(5, 0.5, 0.45, at=0.45, gain=0.9), cl(1, 0.45, 0.5, at=0.7, gain=0.6)],
 
     # ================= THE FACTION (assets/audio/clock/) and WORK (assets/audio/work/) =================

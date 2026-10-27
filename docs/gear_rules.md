@@ -1,4 +1,4 @@
-# The gear rules for base building (0.14.83)
+# The gear rules for base building (0.14.85)
 
 The owner's decisions of 2026-10-27, built. The study behind them is docs/clockwork_gear_study.md. The decisions are at the end of docs/clockwork_ground_up.md.
 

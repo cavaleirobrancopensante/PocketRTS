@@ -663,6 +663,9 @@ func _press(p: Vector2) -> void:
 				Sfx.play_any(["ui/click", "click"])
 			elif b.has("why"):
 				toast(b["why"])
+				if game and game.mlog and not game.demo:
+					var pl: Dictionary = game.players[game.human]
+					game.mlog.add("%s pressed %s: refused, %s (had %d %s, %d tension)" % [game.mlog.who(game.human), (String(b["item"][1]) if b.has("item") and (b["item"] as Array).size() > 1 else "a button"), String(b["why"]), int(pl["gold"]), _res()[0].to_lower(), int(float(pl.get("tension", 0.0)))])
 			return
 
 
@@ -1390,6 +1393,7 @@ func _pass_icon_x(r: Rect2, n: int, i: int) -> float:
 func _ability_buttons(list: Array, units: Array) -> void:
 	_balloon_buttons(list, units)
 	_ballista_buttons(list, units)
+	GreatWinder.card(self, list, units)     # a Great Winder's MEND and SWEEP autocasts (scripts/great_winder.gd)
 	# (Musketeers pick musket or bayonet by themselves: no button)
 	# spells: pick the spot on the map; the nearest caster that can goes and does it
 	var callers := units.filter(func(u: Unit) -> bool: return u.kind == "stormcaller")
@@ -1792,6 +1796,18 @@ func _card_flash_phase() -> int:
 	return 1 + age / 45
 
 
+## A building the player tried to place and was refused, in the match log with what he had then (owner's playtest
+## 2026-10-27, 0.14.82: "I had enough cogs but I couldn't build": the log said nothing about it).
+func _log_refused(k: String, why: String) -> void:
+	if game.mlog == null:
+		return
+	var pl: Dictionary = game.players[game.human]
+	var line := "%s could not place a %s: %s (had %d %s" % [game.mlog.who(game.human), String(Defs.BUILDINGS[k]["name"]), why, int(pl["gold"]), _res()[0].to_lower()]
+	if Defs.tension_cost(Defs.BUILDINGS[k]) > 0 or (game.faction_of(game.human) == "clockwork" and Defs.gear_mode):
+		line += ", %d tension" % int(float(pl.get("tension", 0.0)))
+	game.mlog.add(line + ")")
+
+
 ## queued (Shift on a computer): the site goes in the builders' order queue, after what
 ## they already have to do (several Shift-placed buildings are built one after another).
 func confirm_place(queued := false) -> void:
@@ -1803,13 +1819,16 @@ func confirm_place(queued := false) -> void:
 	var why := game.placement_problem(game.human, k, controls.ghost_cell)
 	if why != "":
 		toast(why)
+		_log_refused(k, why)
 		Sfx.announce(game.faction_of(game.human), "bad_place", 4.0)
 		return
 	if game.players[game.human]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		toast("Not enough %s." % _res()[0].to_lower())
+		_log_refused(k, "not enough %s: it costs %d" % [_res()[0].to_lower(), int(Defs.BUILDINGS[k]["cost"])])
 		return
 	if game.tension_problem(game.human, Defs.tension_cost(Defs.BUILDINGS[k])) != "":
 		toast(game.tension_problem(game.human, Defs.tension_cost(Defs.BUILDINGS[k])))
+		_log_refused(k, game.tension_problem(game.human, Defs.tension_cost(Defs.BUILDINGS[k])))
 		return
 	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker() or u.kind == "work_car")
 	var brood := game.faction_of(game.human) == "brood"
@@ -2805,6 +2824,8 @@ func _draw_panel(font: Font) -> void:
 				info = Netter.card_line(uu)
 			elif uu.kind == Defs.BALLISTA_KIND:
 				info = Ballista.card_line(uu)
+			elif uu.kind == Defs.GREAT_WINDER_KIND:
+				info = GreatWinder.card_line(uu)
 			elif uu.kind == Defs.PENDULUM:
 				info = "Its blade cuts every enemy in the arc in front of it (never your own units). It cannot reach flyers."
 			elif uu.kind == "tesla_cart":
