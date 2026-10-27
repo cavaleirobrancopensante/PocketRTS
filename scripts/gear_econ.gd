@@ -16,7 +16,7 @@ extends RefCounted
 ## refund may go over it, nothing unwinds. Buildings may cost Tension (a BUILDINGS `tension` price: the Clock Aviary).
 ## THE TENSION RULE: anything that costs Tension is made only at a building whose ring meshes with a Mainspring's ring (one
 ## hop; an idler between them counts): the Escapement and the Clock Aviary work only so (Defs.TENSION_USERS: idle otherwise,
-## NEEDS MAINSPRING), and a Movement Works makes Springers, Netters and Pendulums only so (its Clock Soldiers need nothing):
+## NEEDS MAINSPRING), and a Light Works makes Springers and Netters only so (the Heavy Works is a Tension user) (its Clock Soldiers need nothing):
 ## spend_problem.
 
 const DRIVE_FREE := ["clocktower", "regulator", "ratchet_turret", "spring_tower"]
@@ -179,7 +179,7 @@ static func efficiency(b: Building) -> Array:
 	if not uses_drive(b.kind) or not b.built or b.dead:
 		return []
 	var net: GearNet = b.game.gear_net
-	var work := net.speed_mult(b)            # (drive, or 0 when idle)
+	var work := net.speed_mult(b) / GearNet.tempo(b)       # (drive, or 0 when idle; the ring's tempo is not efficiency)
 	match b.kind:
 		Defs.GEAR_PRESS:
 			var gp: Dictionary = Defs.GEAR["press"]
@@ -225,7 +225,7 @@ static func card_text(b: Building) -> String:
 
 
 ## The card's info line for the Tension rule and the store (gear mode's Clockwork), "" when there is nothing to add: a
-## building that makes something costing Tension but is no Tension user (the Movement Works: its Springers), the Clock Aviary,
+## building that makes something costing Tension but is no Tension user (the Light Works: its Springers), the Clock Aviary,
 ## the Mainspring. (The Escapement's line is the HUD's own.)
 static func card_info(b: Building) -> String:
 	var net: GearNet = b.game.gear_net
@@ -249,6 +249,32 @@ static func card_info(b: Building) -> String:
 		if net.spring_for(b) != null:
 			return Loc.t("Meshes with a Mainspring: it can make what costs Tension (%s).") % what
 		return Loc.t("No Mainspring meshes with it: no %s until a Mainspring's ring meshes with its ring (they cost Tension).") % what
+	return ""
+
+
+## SIZE SETS THE TEMPO (owner, 2026-10-27): what a `kind` on its big (or small) ring trades, in one line for its card and
+## the gear swap's tooltip ("Small gear: works 15% faster."), translated; "" for a kind whose ring changes nothing but reach.
+static func trade_line(kind: String, big: bool) -> String:
+	if not Defs.gear_mode:
+		return ""
+	if GearNet.big_only(kind):
+		return Loc.t("Big gear only: slow and strong, the heavy torque.")
+	var tt: Dictionary = Defs.GEAR["tempo"]
+	if tt.has(kind):
+		var pct := int(round(absf(GearNet.tempo_of(kind, big) - 1.0) * 100.0))
+		return (Loc.t("Big gear: works %d%% slower, reaches farther.") if big else Loc.t("Small gear: works %d%% faster.")) % pct
+	match kind:
+		Defs.CW_TURRET:
+			var sw: Dictionary = Defs.TURRET["big" if big else "small"]
+			if big:
+				return Loc.t("Big gear: slow heavy screws, %d every %.1f s: better against armour.") % [int(sw["damage"]), float(sw["cooldown"])]
+			return Loc.t("Small gear: quick light screws, %d every %.1f s.") % [int(sw["damage"]), float(sw["cooldown"])]
+		Defs.GEAR_PRESS:
+			var gp: Dictionary = Defs.GEAR["press"]["big" if big else "small"]
+			return (Loc.t("Big gear: up to %d Winders, %.1f cogs a second at full crew.") if big else Loc.t("Small gear: up to %d Winders, %.1f cogs a second at full crew.")) % [int(gp["crew"]), float(gp["full"])]
+		"mainspring":
+			var gm := spring_info(big)
+			return (Loc.t("Big gear: up to %d Winders, stores %d Tension.") if big else Loc.t("Small gear: up to %d Winders, stores %d Tension.")) % [int(gm["crew"]), int(gm["store"])]
 	return ""
 
 
@@ -418,7 +444,8 @@ static func ghost_note(net: GearNet, t: int, kind: String, c: Vector2i, big := f
 	if uses_drive(kind):
 		var steps := preview_steps(net, t, kind, c, big)
 		if steps > 0:
-			out += "  %d%%" % int(round(drive_factor(steps) * 100.0))
+			# (the % it would work at: its drive, times its ring size's tempo, Defs.GEAR "tempo")
+			out += "  %d%%" % int(round(drive_factor(steps) * GearNet.tempo_of(kind, big or GearNet.big_only(kind)) * 100.0))
 	if kind == "mainspring":
 		var fed := would_feed(net, t, c, big)
 		if not fed.is_empty():

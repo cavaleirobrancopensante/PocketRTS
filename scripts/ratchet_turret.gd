@@ -6,6 +6,7 @@ extends RefCounted
 ## turret stands (under construction the scaffold has no head; the ruin has the head lying in its rubble).
 ## It turns one 45-degree step at a time toward the nearest enemy in range, ground or air, and fires a screw
 ## (Game.screw_shot) once it faces it; idle, it keeps its last facing. Unlinked from the gear field it does nothing.
+## Its screw goes by its ring (screw: small quick and light, big slow and heavy).
 ## Art: tools/gear_art/import_ratchet_turret.py.
 
 ## Facing index 0..7 clockwise on screen from east -> [painted facing, mirrored]
@@ -56,6 +57,14 @@ func dir_to(p: Vector2) -> int:
 	return posmod(int(round(a / (PI / 4.0))), 8)
 
 
+## SIZE SETS THE TEMPO (owner, 2026-10-27): its screw by its ring, Defs.TURRET "small" (quick light screws) or "big" (slow
+## heavy screws, better against armour: armour takes the same off every hit). While the gear is swapped: the old gear's.
+static func screw(bld: Building) -> Dictionary:
+	if not Defs.gear_mode:
+		return {"damage": float(Defs.TURRET["damage"]), "cooldown": float(Defs.TURRET["cooldown"]), "shot_scale": float(Defs.TURRET["shot_scale"])}
+	return Defs.TURRET["big" if bld.gear_big else "small"]
+
+
 ## Can it fire right now: built, standing, linked to the gear field.
 func armed() -> bool:
 	return b.built and not b.dead and b.game.gear_net.speed_mult(b) > 0.0
@@ -87,13 +96,15 @@ func tick(delta: float) -> void:
 			_show()
 		return
 	if cd <= 0.0:
-		cd = float(Defs.TURRET["cooldown"])
+		var sw := screw(b)
+		cd = float(sw["cooldown"])
 		shots += 1
-		b.game.screw_shot(b, target, float(Defs.TURRET["damage"]), tip(), DIRS[facing])
+		b.game.screw_shot(b, target, float(sw["damage"]), tip(), DIRS[facing], float(sw["shot_scale"]))
 
 
-func _good(u: Unit, r: float) -> bool:
-	if u == null or not is_instance_valid(u) or u.dead or u.off_field or u.untouchable():
+func _good(u, r: float) -> bool:
+	# (untyped: a target freed meanwhile is caught here, not by the argument's type check)
+	if u == null or not is_instance_valid(u) or not (u is Unit) or u.dead or u.off_field or u.untouchable():
 		return false
 	if not b.game.hostile(u.team, b.team):
 		return false

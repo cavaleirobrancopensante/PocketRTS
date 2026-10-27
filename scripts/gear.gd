@@ -51,6 +51,7 @@ var _solved_at := -10.0
 var _clock := 0.0
 var _top: Node2D
 var _top_t := 0.0
+var view := false                # THE GEAR VIEW (the ` key, or GEAR VIEW on a Clockwork card): the whole network at a glance
 
 
 func _ready() -> void:
@@ -76,8 +77,30 @@ static func radius_of_teeth(n: int) -> float:
 	return float(n) * float(Defs.GEAR["pitch"]) / TAU
 
 
+## Kinds that only ever sit on their BIG ring (Defs.GEAR "big_only": the Heavy Works, the heavy torque): their ring is the
+## big one whatever is asked, and they cannot swap.
+static func big_only(kind: String) -> bool:
+	return (Defs.GEAR["big_only"] as Array).has(kind)
+
+
+## SIZE SETS THE TEMPO (owner, 2026-10-27): the work-speed multiplier of a `kind` on its big (or small) ring, Defs.GEAR
+## "tempo" [small, big]; 1 for a kind not listed (it trades by crew, by its screw, or not at all).
+static func tempo_of(kind: String, big: bool) -> float:
+	var tt: Dictionary = Defs.GEAR["tempo"]
+	if not Defs.gear_mode or not tt.has(kind):
+		return 1.0
+	return float(tt[kind][1 if big else 0])
+
+
+## A building's tempo (its ring now; while its gear is swapped, the gear it had).
+static func tempo(b: Building) -> float:
+	return tempo_of(b.kind, b.gear_big)
+
+
 ## The tooth count of a building kind's ring: footprint half-extent + pad, to whole teeth.
 static func ring_n(kind: String, size: Vector2i, big: bool) -> int:
+	if big_only(kind):
+		big = true
 	var half := maxf(float(size.x) * T * 0.5, float(size.y) * T * 0.5 / FY)
 	var pads: Dictionary = Defs.GEAR["pad"]
 	var pad: float = pads["tower"] if kind == "clocktower" else (pads["big"] if big else pads["small"])
@@ -257,7 +280,8 @@ func speed_mult(b: Building) -> float:
 		return 1.0
 	if Defs.TENSION_USERS.has(b.kind) and not spring_of.has(b):
 		return 0.0
-	return GearEcon.work_mult(self, b) if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
+	# (its drive share, times its ring size's tempo: a small Light Works trains 15% faster, Defs.GEAR "tempo")
+	return GearEcon.work_mult(self, b) * tempo(b) if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
 
 
 ## A Tension user's Mainspring (its ring meshing with this one's), null when it has none (or is not connected).
@@ -401,6 +425,46 @@ func in_field(t: int, p: Vector2) -> bool:
 	return false
 
 
+# ------------------------------------------------------------------ THE TURRET CIRCLE (owner, 2026-10-27; docs/gear_rules.md)
+# Each Ratchet Turret claims a circle of ground Defs.TURRET "claim" tiles round its centre (like the Brood's Feeding Pits:
+# Game.pit_circles_overlap), and two turrets' circles of one side may not overlap. Lore: a turret's spring draws every bit
+# of force from the gears under it; a second turret inside the circle would starve both and jam. Only new placements are
+# checked: an old save with turrets closer than that keeps them.
+
+## The circle's radius, world px.
+static func turret_claim() -> float:
+	return float(Defs.TURRET["claim"]) * T
+
+
+## Where a Ratchet Turret placed at cell c has its centre (world px).
+static func turret_mid(c: Vector2i) -> Vector2:
+	return (Vector2(c) + Vector2(Defs.BUILDINGS[Defs.CW_TURRET]["size"]) * 0.5) * T
+
+
+## Two turret circles overlap when their centres are closer than two radii (exactly two radii apart is fine).
+static func turret_circles_overlap(a: Vector2, b: Vector2) -> bool:
+	return a.distance_to(b) < 2.0 * turret_claim() - 0.5
+
+
+## Team t's living Ratchet Turrets (planned, being built or built) whose circle overlaps a turret circle at p (world px).
+static func turret_overlaps(game: Game, t: int, p: Vector2, skip: Building = null) -> Array:
+	var out: Array = []
+	if game == null:
+		return out
+	for b in game.buildings:
+		if is_instance_valid(b) and b.kind == Defs.CW_TURRET and b.team == t and not b.dead and b != skip \
+				and turret_circles_overlap(b.center(), p):
+			out.append(b)
+	return out
+
+
+## Why a Ratchet Turret can't go at cell c for team t because of the circles ("" when it can).
+static func turret_problem(game: Game, t: int, c: Vector2i) -> String:
+	if not Defs.gear_mode or turret_overlaps(game, t, turret_mid(c)).is_empty():
+		return ""
+	return "Too near a Ratchet Turret: each turret's spring draws all the force from the gears in its circle (4 tiles round it), and two turrets' circles may not overlap."
+
+
 ## The cell for a building of `kind` whose ring meshes with `around`'s ring nearest to direction `deg` (screen degrees,
 ## 0 = right, clockwise) from it: placeable, its ring links, the pitch-circle gap as small as possible (a direct mesh) and
 ## the angle close. (-1, -1) when none. The Lab's showcase and the computer's Escapement (by its Mainspring) use it;
@@ -447,11 +511,13 @@ func placement_problem(t: int, k: String, c: Vector2i, big := false) -> String:
 			if st.get("level", false):
 				return "Gears mesh only on the same ground level: its ring would touch your field only across a cliff or a ramp."
 			return "Its gear ring must touch your gear field: mesh it with a linked building's ring."
+		"turret":
+			return turret_problem(game, t, c)
 	return ""
 
 
-## {"state": "ok" | "clash" | "far" | "tower", "with": the building it clashes with, or the linked one its ring would hang
-## on}; a Tension user (Defs.TENSION_USERS) that links also gets "spring": the finished Mainspring its ring would mesh with
+## {"state": "ok" | "clash" | "turret" | "far" | "tower", "with": the building it clashes with (a "turret": the Ratchet
+## Turret whose circle a new turret's would overlap), or the linked one its ring would hang on}; a Tension user (Defs.TENSION_USERS) that links also gets "spring": the finished Mainspring its ring would mesh with
 ## (null: none, it would stand idle) and hangs on that one when it is linked.
 func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	if not enforce or not Defs.gear_mode or Defs.BUILDINGS[k]["faction"] != "clockwork" or k == "clocktower":
@@ -459,6 +525,7 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	if _signature() != _sig:
 		_sig = _signature()
 		solve()
+	big = big or big_only(k)
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	var g := gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
 	var r := ring_r(k, size, big)
@@ -467,7 +534,7 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	var best := INF
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
-	var tension := GearEcon.spends_tension(k)          # (a Tension user, or a Movement Works for its Springers, Netters, Pendulums)
+	var tension := GearEcon.spends_tension(k)          # (a Tension user, or a Light Works for its Springers and Netters)
 	var spring: Building = null
 	var sbest := INF
 	var across := false             # (a linked ring in reach, but on the other level: THE LEVEL RULE)
@@ -489,6 +556,10 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 		if tension and b.kind == "mainspring" and b.built and not b.ghost and gap < sbest:
 			spring = b
 			sbest = gap
+	if k == Defs.CW_TURRET:
+		var near := turret_overlaps(game, t, turret_mid(c))      # (THE TURRET CIRCLE: no two turrets' circles overlap)
+		if not near.is_empty():
+			return {"state": "turret", "with": near[0]}
 	if touch == null:
 		return {"state": "far", "level": across}
 	var out := {"state": "ok", "with": touch}
@@ -621,7 +692,7 @@ func _draw() -> void:
 			m = Color(1, 1, 1, 0.45)
 		elif enforce and not linked.has(b):
 			m = Color(1.0, 0.6, 0.52, 0.85)
-		items.append([ring_kind(b.kind, b.gear_big), n, c, float(ang.get(b, 0.0)), s, m])
+		items.append([ring_kind(b.kind, b.gear_big), n, c, float(ang.get(b, 0.0)), s, m, brass_plate(b.kind)])
 		var idl: Dictionary = idler_of.get(b, {})
 		if not idl.is_empty() and linked.has(b):
 			var ip: Vector2 = idl["pos"]
@@ -629,21 +700,32 @@ func _draw() -> void:
 	# the floor plates first: the fixed decks the rings turn round (under the ring's edge and the building)
 	for it in items:
 		if it[0] != "idler":
-			draw_plate(self, it[0], it[1], it[2], it[4], it[5])
+			draw_plate(self, it[0], it[1], it[2], it[4], it[5], it[6])
 	for it in items:
 		draw_ring(self, it[0], it[1], it[2], it[3], it[4], it[5], true, false)
 	for it in items:
 		draw_ring(self, it[0], it[1], it[2], it[3], it[4], it[5], false, true)
-	# the placement ghost's ring, over the others so a clash reads
 	var ctl = game.controls
-	if ctl and ctl.mode == "place" and Defs.BUILDINGS.has(ctl.place_kind) and Defs.BUILDINGS[ctl.place_kind]["faction"] == "clockwork":
-		draw_ghost(self, game.human, ctl.place_kind, ctl.ghost_cell)
+	var placing: String = ctl.place_kind if ctl and ctl.mode == "place" and Defs.BUILDINGS.has(ctl.place_kind) else ""
+	if view:
+		_draw_view()
+	# THE TURRET CIRCLES: while a turret is placed (or in the gear view), every turret's circle of ground
+	if placing == Defs.CW_TURRET or view:
+		_draw_turret_circles(placing == Defs.CW_TURRET and ctl.ghost_cell.x >= 0, ctl.ghost_cell if ctl else Vector2i(-1, -1))
+	# the placement ghost's ring, over the others so a clash reads
+	if placing != "" and Defs.BUILDINGS[placing]["faction"] == "clockwork":
+		draw_ghost(self, game.human, placing, ctl.ghost_cell)
 	draw_set_transform(Vector2.ZERO)
 
 
 ## One painted ring on `ci` in world space: centre `c` (world px), turned by `rot` and squashed onto the ground (rotate the
 ## flat ring, then FIELD_Y vertically, in one transform), scaled by `s`, tinted `mod`. `edge`: the thick edge under it (the
 ## ring's silhouette drawn Defs.GEAR.edge times, each 1 px lower, darkening downward); `face`: the ring itself.
+## Does this kind stand on the BRASS floor plate (it uses Tension: Defs.GEAR "brass_plate"), else the iron one?
+static func brass_plate(kind: String) -> bool:
+	return (Defs.GEAR["brass_plate"] as Array).has(kind)
+
+
 static func draw_ring(ci: CanvasItem, kind: String, n: int, c: Vector2, rot: float, s: float, mod: Color, edge := true, face := true, glow := Color(0, 0, 0, 0)) -> void:
 	var art := GearArt.ring(kind, n)
 	var cs := cos(rot) * s
@@ -675,9 +757,10 @@ static func draw_ring(ci: CanvasItem, kind: String, n: int, c: Vector2, rot: flo
 
 ## The FLOOR PLATE in a ring's hole (GearArt.plate): a flat round iron deck, a few px wider than the hole so it tucks under
 ## the band, squashed onto the ground like the ring but never turned (it is bolted down; the ring turns round it).
-static func draw_plate(ci: CanvasItem, kind: String, n: int, c: Vector2, s: float, mod: Color) -> void:
+## `brass`: the polished brass deck of a building that uses Tension (brass_plate).
+static func draw_plate(ci: CanvasItem, kind: String, n: int, c: Vector2, s: float, mod: Color, brass := false) -> void:
 	var r := (GearArt.hole_r(kind, n) + float(PLATE_TUCK)) * s
-	var tex := GearArt.plate(int(round(r * 2.0)))
+	var tex := GearArt.plate(int(round(r * 2.0)), brass)
 	if tex == null:
 		return
 	ci.draw_set_transform_matrix(Transform2D(Vector2(1, 0), Vector2(0, FY), c))
@@ -698,6 +781,8 @@ func _draw_top() -> void:
 			continue
 		if not all and ft >= 0 and not game.allied(ft, b.team) and not b.visible:
 			continue        # (watching computers through one side's eyes: a building it hasn't seen)
+		if b.kind != "mainspring" and spring_for(b) != null and linked.has(b):
+			_spring_mark(b.rect().get_center() + Vector2(b.rect().size.x * 0.5 - 4.0, -b.rect().size.y * 0.5 - 4.0))
 		var txt := ""
 		var col := Color(0.95, 0.35, 0.28)
 		if enforce and not linked.has(b):
@@ -711,6 +796,19 @@ func _draw_top() -> void:
 		if txt == "":
 			continue
 		_badge(font, b.rect().get_center() + Vector2(0, -b.rect().size.y * 0.5 - 14.0), txt, col)
+
+
+## THE SPRING MARK (owner, 2026-10-27): a little brass coil over a building fed by a Mainspring (its ring meshes with one:
+## it may make what costs Tension). Code-drawn: docs/art_style_inconsistency.md.
+func _spring_mark(p: Vector2) -> void:
+	var r := Rect2(p + Vector2(-9, -11), Vector2(18, 22))
+	_top.draw_rect(r, Color(0.05, 0.05, 0.07, 0.75))
+	_top.draw_rect(r, Color(0.95, 0.78, 0.35, 0.9), false, 1.0)
+	var pts := PackedVector2Array()
+	for i in 11:
+		pts.append(p + Vector2(-5.0 if i % 2 == 0 else 5.0, -8.0 + 16.0 * float(i) / 10.0))
+	_top.draw_polyline(pts, Color(0.2, 0.12, 0.04), 3.2, true)
+	_top.draw_polyline(pts, Color(1.0, 0.82, 0.4), 1.6, true)
 
 
 func _badge(font: Font, p: Vector2, txt: String, col: Color) -> void:
@@ -732,6 +830,7 @@ func _badge(font: Font, p: Vector2, txt: String, col: Color) -> void:
 func draw_ghost(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) -> void:
 	if not Defs.gear_mode or Defs.BUILDINGS[k]["faction"] != "clockwork":
 		return
+	big = big or big_only(k)
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	var centre := Vector2(c) * T + Vector2(size) * T * 0.5
 	var st := candidate(t, k, c, big)
@@ -755,14 +854,141 @@ func draw_ghost(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) ->
 			var ia := mesh_phase(pa, b_n(p), (ip - b_c(p)).angle(), int(idl["n"]))
 			rot = mesh_phase(ia, int(idl["n"]), (g - ip).angle(), n)
 			draw_ring(ci, "idler", int(idl["n"]), Vector2(ip.x, ip.y * FY), ia, 1.0, tint)
-	draw_plate(ci, ring_kind(k, big), n, centre, 1.0, Color(tint.r, tint.g, tint.b, 0.6))
+	draw_plate(ci, ring_kind(k, big), n, centre, 1.0, Color(tint.r, tint.g, tint.b, 0.6), brass_plate(k))
 	draw_ring(ci, ring_kind(k, big), n, centre, rot, 1.0, tint, true, true, Color(col.r, col.g, col.b, 0.38 if st["state"] == "clash" else 0.18))
 	ci.draw_set_transform(Vector2.ZERO)
+	draw_contacts(ci, t, k, c, big)
+
+
+## READABILITY (owner, 2026-10-27): on the placing ghost, the TEETH where its ring would mesh glow green (on both rings,
+## at the point where they meet; a gap an idler would fill too), and where it would clash red. World space on `ci`.
+func draw_contacts(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) -> void:
+	var size: Vector2i = Defs.BUILDINGS[k]["size"]
+	var g := gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
+	var r := ring_r(k, size, big)
+	var lv := foot_level(game, c, size)
+	var slack := float(Defs.GEAR["slack"]) * T
+	var over := float(Defs.GEAR["overlap"]) * T
+	var cols: Dictionary = Defs.GEAR["col"]
+	for b in game.buildings:
+		if not is_instance_valid(b) or b.dead or b.team != t or b.d["faction"] != "clockwork":
+			continue
+		var gb := b_c(b)
+		var rb := b_r(b)
+		var dd := g.distance_to(gb)
+		if dd < 0.001:
+			continue
+		var gap := dd - r - rb
+		var col: Color
+		if gap < -over:
+			col = cols["clash"]
+		elif gap <= slack and linked.has(b) and b_level(b) == lv and joint_ok(game, g, r, gb, rb, lv):
+			col = cols["ok"]
+		else:
+			continue
+		var phi := (gb - g).angle()
+		_teeth_arc(ci, g, r, phi, col)
+		_teeth_arc(ci, gb, rb, phi + PI, col)
+
+
+## A short glowing arc of a ring's teeth (gear space centre g, pitch radius r) round direction phi, drawn on the ground.
+static func _teeth_arc(ci: CanvasItem, g: Vector2, r: float, phi: float, col: Color) -> void:
+	var da := clampf(38.0 / maxf(r, 1.0), 0.12, 0.6)
+	var pts := PackedVector2Array()
+	for i in 9:
+		var a := phi - da + 2.0 * da * float(i) / 8.0
+		var p := g + Vector2.from_angle(a) * r
+		pts.append(Vector2(p.x, p.y * FY))
+	ci.draw_polyline(pts, Color(col.r, col.g, col.b, 0.45), 9.0, true)
+	ci.draw_polyline(pts, Color(col.r, col.g, col.b, 0.95), 3.5, true)
+
+
+## THE GEAR VIEW (owner, 2026-10-27): over the rings, the whole network. The drivers (Clocktowers, Mainsprings) glow bright
+## gold; every other ring is washed by how well it works (full green, 90% yellow, 80% orange, 70% red-orange; idle or
+## unlinked red); each Mainspring's REACH (where a ring must reach to mesh with it, for the Tension rule) is outlined dashed.
+## The controlled side's buildings (or everyone's when watching).
+func _draw_view() -> void:
+	var me := game.controlled_team()
+	var slack := float(Defs.GEAR["slack"]) * T
+	# (the ground dims a little so the rings read)
+	draw_rect(game.view_rect.grow(40.0), Color(0.02, 0.03, 0.06, 0.32))
+	for b in game.buildings:
+		if not is_instance_valid(b) or b.dead or not has_gear(b) or not b.built:
+			continue
+		if me >= 0 and not game.allied(me, b.team):
+			continue
+		var c: Vector2 = b.center()
+		var n := b_n(b)
+		var rp := radius_of_teeth(n)
+		if not game.view_rect.grow(rp + slack + 60.0).has_point(c):
+			continue
+		var w := view_colour(b)
+		draw_ring(self, ring_kind(b.kind, b.gear_big), n, c, float(ang.get(b, 0.0)), 1.0, Color(1, 1, 1, 1), false, true, w)
+		if b.kind == "mainspring" and linked.has(b):
+			_dashed_ellipse(c, rp + slack, Color(1.0, 0.82, 0.35, 0.85), 2.5)
+	draw_set_transform(Vector2.ZERO)
+
+
+## The gear view's wash for a building's ring: a driver bright gold, else by how well it works.
+func view_colour(b: Building) -> Color:
+	if b.kind == "clocktower" or (b.kind == "mainspring" and linked.has(b)):
+		return Color(1.0, 0.9, 0.45, 0.62)
+	var m := speed_mult(b) / maxf(tempo(b), 0.01)
+	if enforce and (not linked.has(b) or m <= 0.0):
+		return Color(1.0, 0.25, 0.2, 0.55)
+	if m >= 0.99:
+		return Color(0.35, 1.0, 0.45, 0.5)
+	if m >= 0.89:
+		return Color(0.95, 0.95, 0.3, 0.5)
+	if m >= 0.79:
+		return Color(1.0, 0.65, 0.2, 0.5)
+	return Color(1.0, 0.42, 0.2, 0.55)
+
+
+## A dashed ellipse on the ground: a circle of radius r in gear space round world point c.
+func _dashed_ellipse(c: Vector2, r: float, col: Color, w: float) -> void:
+	draw_set_transform(Vector2.ZERO)
+	var n := maxi(24, int(r / 9.0))
+	for i in n:
+		if i % 2 == 1:
+			continue
+		var a0 := TAU * float(i) / float(n)
+		var a1 := TAU * float(i + 1) / float(n)
+		var p0 := Vector2.from_angle(a0) * r
+		var p1 := Vector2.from_angle(a1) * r
+		draw_line(c + Vector2(p0.x, p0.y * FY), c + Vector2(p1.x, p1.y * FY), col, w, true)
+
+
+## THE TURRET CIRCLES on the ground (true circles, like the Brood's pit circles): every turret of the controlled side, and
+## while one is placed (`ghost`, at cell gc) the ghost's own circle, green when it is free, red where it overlaps another
+## turret's (whose circle turns red too).
+func _draw_turret_circles(ghost: bool, gc: Vector2i) -> void:
+	draw_set_transform(Vector2.ZERO)
+	var me := game.controlled_team()
+	var r := turret_claim()
+	var gp := turret_mid(gc) if ghost else Vector2.INF
+	var hits: Array = turret_overlaps(game, game.human, gp) if ghost else []
+	for b in game.buildings:
+		if not is_instance_valid(b) or b.dead or b.kind != Defs.CW_TURRET:
+			continue
+		if me >= 0 and not game.allied(me, b.team):
+			continue
+		if not game.view_rect.grow(r + 20.0).has_point(b.center()):
+			continue
+		var bad := hits.has(b)
+		var col := Color(1.0, 0.35, 0.3) if bad else Color(0.95, 0.78, 0.4)
+		draw_circle(b.center(), r, Color(col.r, col.g, col.b, 0.12 if bad else 0.06))
+		draw_arc(b.center(), r, 0.0, TAU, 72, Color(col.r, col.g, col.b, 0.85), 2.0, true)
+	if ghost:
+		var ok := hits.is_empty()
+		var gcol := Color(0.45, 1.0, 0.45) if ok else Color(1.0, 0.35, 0.3)
+		draw_circle(gp, r, Color(gcol.r, gcol.g, gcol.b, 0.12))
+		draw_arc(gp, r, 0.0, TAU, 72, Color(gcol.r, gcol.g, gcol.b, 0.9), 2.5, true)
 
 
 func ghost_colour(state: String) -> Color:
 	var cols: Dictionary = Defs.GEAR["col"]
-	return cols["clash"] if state == "clash" else (cols["far"] if state == "far" else cols["ok"])
+	return cols["clash"] if state == "clash" or state == "turret" else (cols["far"] if state == "far" else cols["ok"])
 
 
 ## The ghost's verdict over it (LINKS / NO LINK / CLASH / NEW FIELD), drawn on the overlay above the buildings.
@@ -788,19 +1014,20 @@ func draw_ghost_label(ci: CanvasItem, t: int, k: String, c: Vector2i, big := fal
 func ghost_text(t: int, k: String, c: Vector2i, big := false) -> Array:
 	var st := candidate(t, k, c, big)
 	var state: String = st["state"]
-	var label: String = {"far": "NO LINK", "clash": "CLASH", "tower": "NEW FIELD"}.get(state, "LINKS")
+	var label: String = {"far": "NO LINK", "clash": "CLASH", "tower": "NEW FIELD", "turret": "TOO NEAR A TURRET"}.get(state, "LINKS")
 	if state == "far" and st.get("level", false):
 		label = "NO LINK: OTHER LEVEL"        # (THE LEVEL RULE: it reaches the field only across a cliff or a ramp)
-	var col := ghost_colour(state)
+	# (a refusal, or a building that would stand idle, reads red: one line, the reason; owner 2026-10-27)
+	var col := ghost_colour("clash") if state == "far" or state == "clash" or state == "turret" else ghost_colour(state)
 	if state == "ok" and Defs.TENSION_USERS.has(k):
 		# a Tension user: it links, but works only meshed with a Mainspring
 		if st.get("spring") == null:
 			label = "NEEDS MAINSPRING"
-			col = ghost_colour("far")
+			col = ghost_colour("clash")
 		else:
 			label = "MESHES MAINSPRING"
 	elif state == "ok" and st.get("spring") != null:
-		label = "MESHES MAINSPRING"        # (a Movement Works: its Springers may be made here)
+		label = "MESHES MAINSPRING"        # (a Light Works: its Springers may be made here)
 	label = Loc.t(label)
 	if state == "ok" and not (Defs.TENSION_USERS.has(k) and st.get("spring") == null):
 		label += GearEcon.ghost_note(self, t, k, c, big)     # (its efficiency before it is placed; what a Mainspring feeds)

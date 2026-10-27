@@ -3717,12 +3717,16 @@ func tension_user_problem(t: int, kind: String) -> String:
 func _idle_text(kind: String) -> String:
 	if kind == Defs.CW_AIR:
 		return "The Clock Aviary stands idle: mesh its gear ring with a Mainspring's."
+	if kind == Defs.CW_HEAVY:
+		return "The Heavy Works stands idle: mesh its gear ring with a Mainspring's."
 	return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
 
 
 func _unlinked_text(kind: String) -> String:
 	if kind == Defs.CW_AIR:
 		return "The Clock Aviary is unlinked: its gear ring must mesh with the gear field."
+	if kind == Defs.CW_HEAVY:
+		return "The Heavy Works is unlinked: its gear ring must mesh with the gear field."
 	return "The Escapement is unlinked: its gear ring must mesh with the gear field."
 
 
@@ -4670,6 +4674,10 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var pp := pit_claim_problem(t, c)      # (each pit claims a circle of ground: they may not overlap)
 		if pp != "":
 			return pp
+	if k == Defs.CW_TURRET:
+		var tp := GearNet.turret_problem(self, t, c)      # (THE TURRET CIRCLE: each turret claims a circle; no overlap)
+		if tp != "":
+			return tp
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
@@ -8838,12 +8846,23 @@ func gear_swap_problem(b: Building) -> String:
 		return "Wait until it is built."
 	if b.gear_swap_t >= 0.0:
 		return "Its gear is already being swapped."
+	if GearNet.big_only(b.kind):
+		return "The %s runs only on its big gear: the heavy torque." % String(b.d["name"])
 	var pw := Pendulum.swap_problem(b)       # (a Pendulum in its queue keeps the Works on the big gear)
 	if pw != "":
 		return pw
 	if int(players[b.team]["gold"]) < int(Defs.GEAR["swap_cost"]):
 		return "Not enough %s." % String(Defs.FACTIONS[faction_of(b.team)]["res"][0]).to_lower()
 	return ""
+
+
+## THE GEAR VIEW (owner, 2026-10-27; the ` key, or GEAR VIEW on a Clockwork building's card): the whole gear network at a
+## glance (GearNet._draw_view). A view only: nothing in the match changes, nothing is sent online.
+func toggle_gear_view() -> void:
+	gear_net.view = not gear_net.view
+	gear_net.queue_redraw()
+	if hud != null:
+		hud.toast("GEAR VIEW: drivers glow gold; rings green at full speed, yellow at 90%, orange at 80%, red at 70% or idle; dashed: a Mainspring's reach; circles: the turrets' ground." if gear_net.view else "Gear view off.")
 
 
 func swap_gear(b: Building) -> String:

@@ -91,9 +91,9 @@ func _run() -> void:
 	var base: Vector2 = hall.center()
 	# ---- every gear-mode building, put down linked, then picked
 	var built := {}
-	for k in ["cog_press", "mainspring", "movement_works", "ratchet_turret", "escapement", "cuckoo_house", "regulator"]:
-		# (the Escapement and the Aviary mesh with the Mainspring's ring: the Aviary needs a working Escapement)
-		var b: Building = beside(k, built["mainspring"]) if k in ["escapement", "cuckoo_house"] else null
+	for k in ["cog_press", "mainspring", "movement_works", "ratchet_turret", "escapement", "cuckoo_house", "heavy_works", "regulator"]:
+		# (the Escapement, the Aviary and the Heavy Works mesh with the Mainspring's ring: they need a working Escapement)
+		var b: Building = beside(k, built["mainspring"]) if k in ["escapement", "cuckoo_house", "heavy_works"] else null
 		if b == null:
 			b = U.put(g, 0, k, hall.cell, k == "movement_works")
 		check(b != null, "a %s stands" % k)

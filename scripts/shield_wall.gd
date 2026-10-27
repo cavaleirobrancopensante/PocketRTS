@@ -1,7 +1,7 @@
 class_name ShieldWall
 extends RefCounted
 ## The Clock Soldier's SHIELD FORWARD (docs/clock_soldier_shield.md): once its side has researched SHIELD WALL at a
-## Movement Works (Defs.RESEARCH "shield_wall"), a Clock Soldier can raise its shield in front of it. Switching takes
+## Light Works (Defs.RESEARCH "shield_wall"), a Clock Soldier can raise its shield in front of it. Switching takes
 ## Defs.SHIELD_WALL "switch" s (it stands still and starts no blow meanwhile). Raised: it walks at "speed" of its pace,
 ## has "armor" more armour, takes "front" less from shots and "front_melee" less from blows from in front of it, and
 ## swings "cooldown" x slower.
@@ -28,7 +28,7 @@ static func problem(u: Unit) -> String:
 	if u.kind != KIND:
 		return "Only Clock Soldiers."
 	if not u.game.has_tech(u.team, TECH):
-		return "Research SHIELD WALL at a Movement Works first."
+		return "Research SHIELD WALL at a Light Works first."
 	return ""
 
 

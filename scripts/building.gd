@@ -86,6 +86,7 @@ var _mill_far := -1                   # 1: on the far half (behind the post), 0 
 # lit windows (BuildingLife)
 var life: BuildingLife = null
 var turret: RatchetTurret = null      # Ratchet Turret (gear mode): its turning head and gun
+var bay: HeavyWorks = null            # Heavy Works (gear mode): the machine being assembled in its bay
 # in_use, looked at twice a second
 var _use_t := 0.0
 var _in_use := true
@@ -222,6 +223,8 @@ func setup(g: Game, k: String, t: int, c: Vector2i, complete: bool) -> void:
 	hp = max_hp if complete else max_hp * 0.1
 	if d["faction"] == "clockwork":
 		seeded = complete
+		if GearNet.big_only(k):
+			gear_big = true          # (the Heavy Works: on its big ring only, Defs.GEAR "big_only")
 	if k == "town_hall" or k == "clocktower" or k == "feeding_pit":
 		soil = reserve()      # (a Feeding Pit's own ground: Game.claim_pit_ground may take over less from old ground)
 	lode = lode_full()
@@ -312,6 +315,10 @@ func _ready() -> void:
 	if kind == Defs.CW_TURRET:
 		turret = RatchetTurret.new(self)
 		turret.head.material = sprite.material
+	if kind == Defs.CW_HEAVY:
+		bay = HeavyWorks.new(self)          # (the machine in training, built up in its bay: scripts/heavy_works.gd)
+		bay.material = sprite.material
+		add_child(bay)
 	_update_sprite()
 
 
@@ -497,7 +504,7 @@ func in_use() -> bool:
 			return game.gear_net.speed_mult(self) > 0.0
 		"escapement":
 			return game.gear_net.speed_mult(self) > 0.0       # (linked and meshed with a Mainspring)
-		"cuckoo_house":
+		"cuckoo_house", "heavy_works":
 			return not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0
 	return true
 
@@ -806,7 +813,7 @@ func spring_rate() -> float:
 	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
 
 
-## Cog Press / Mainspring / Movement Works / Regulator / Escapement / Clock Aviary: the painted working loop
+## Cog Press / Mainspring / Light Works (movement_works) / Heavy Works / Regulator / Escapement / Clock Aviary: the painted working loop
 ## (assets/buildings/<kind>_work_0..7.png, `frames` of them (the Escapement: 24); `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
 ## works; the built picture while it idles, and none of it once it is damaged (under half its hp).
 static var _work_tex := {}       # kind -> its work frames' textures (null where there's none), by number
@@ -1007,6 +1014,10 @@ func _econ(delta: float) -> void:
 		"escapement":
 			# the anchor rocks and the wheel ticks while it works: linked and meshed with a Mainspring (the Tension rule)
 			_gear_anim(game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["escapement_dt"]), int(Defs.GEAR["escapement_frames"]))
+		"heavy_works":
+			# the Heavy Works: the winch house's key turns while it assembles a machine and works (meshed with a Mainspring);
+			# the machine itself rises in the bay (scripts/heavy_works.gd)
+			_gear_anim(not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["heavy_dt"]))
 		"cuckoo_house":
 			# the Clock Aviary: its doors open and a little brass bird pops out and flies off, over and over, while it makes
 			# a Swift (or researches) and is linked; doors shut when idle

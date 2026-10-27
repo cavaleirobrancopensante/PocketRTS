@@ -1,7 +1,7 @@
 extends SceneTree
 ## The gear-mode Clockwork COMPUTER and tier 3 (AI._tier3, AI._produce; scripts/pendulum.gd, scripts/netter.gd): a Hard
-## Clockwork with two Movement Works, a working Escapement (a Mainspring meshing with it), six Springers (the Springers come
-## first: 0.14.73), cogs and Tension to spare, against a passive Crown. It puts ONE Works on its big gear, then mixes a few Pendulums (from that Works) and Netters
+## Clockwork with two Light Works, a working Escapement (a Mainspring meshing with it), six Springers (the Springers come
+## first: 0.14.73), cogs and Tension to spare, against a passive Crown. It lays ONE Heavy Works (0.14.83) by a Mainspring, then mixes a few Pendulums (from it) and Netters
 ## into its army; a Netter of its own nets the most dangerous enemy that comes in reach (a Cuirassier before a Labourer
 ## with less health left: the focus fire of AI._micro leaves the Netters to their own pick).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_tier3_ai.gd
@@ -76,7 +76,7 @@ func _run() -> void:
 	var hall: Building = _mine("clocktower")[0]
 	g.players[0]["gold"] = 8000
 	g.players[0]["tension"] = 2000.0
-	# its tier 2, ready: two Movement Works, a Mainspring and an Escapement meshing with it
+	# its tier 2, ready: two Light Works, a Mainspring and an Escapement meshing with it
 	while _mine(Defs.CW_WORKS).size() < 2:
 		if _put(Defs.CW_WORKS, hall) == null:
 			break
@@ -91,16 +91,17 @@ func _run() -> void:
 	await physics_frame
 	g.gear_net.solve()
 	check("the computer's Escapement works (meshed with its Mainspring)", esc != null and g.gear_net.speed_mult(esc) > 0.0)
-	check("it has two Movement Works, both on the small gear", _mine(Defs.CW_WORKS).size() >= 2 and _mine(Defs.CW_WORKS).all(func(b: Building) -> bool: return not b.gear_big))
+	check("it has two Light Works, both on the small gear", _mine(Defs.CW_WORKS).size() >= 2 and _mine(Defs.CW_WORKS).all(func(b: Building) -> bool: return not b.gear_big))
 	g.clock = maxf(g.clock, 330.0)
-	var waited := await _wait(func() -> bool: return _mine(Defs.CW_WORKS).any(func(b: Building) -> bool: return b.gear_big), 60.0)
-	check("it puts a Movement Works on its big gear", _mine(Defs.CW_WORKS).any(func(b: Building) -> bool: return b.gear_big), "%.0f s" % waited)
-	check("only one", _mine(Defs.CW_WORKS).filter(func(b: Building) -> bool: return b.gear_big).size() == 1)
+	var waited := await _wait(func() -> bool: return not _mine(Defs.CW_HEAVY).is_empty(), 60.0)
+	check("it lays a Heavy Works (0.14.83)", not _mine(Defs.CW_HEAVY).is_empty(), "%.0f s" % waited)
+	check("only one", _mine(Defs.CW_HEAVY).size() == 1)
+	waited = await _wait(func() -> bool: return _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), 150.0)
+	check("its Heavy Works stands and meshes with a Mainspring", _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), "%.0f s" % waited)
 	waited = await _wait(func() -> bool: return not _units(Defs.PENDULUM).is_empty() and not _units(Defs.NETTER).is_empty(), 200.0)
 	check("it trains Pendulums", not _units(Defs.PENDULUM).is_empty(), "%d after %.0f s" % [_units(Defs.PENDULUM).size(), waited])
 	check("and Netters", not _units(Defs.NETTER).is_empty(), "%d" % _units(Defs.NETTER).size())
-	var bw: Array = _mine(Defs.CW_WORKS).filter(func(b: Building) -> bool: return b.gear_big)
-	check("the small-gear Works never queued a Pendulum", _mine(Defs.CW_WORKS).all(func(b: Building) -> bool: return b.gear_big or not b.queue.has(Defs.PENDULUM)))
+	check("the Light Works stay on the small gear and never queued a Pendulum", _mine(Defs.CW_WORKS).all(func(b: Building) -> bool: return not b.gear_big and not b.queue.has(Defs.PENDULUM)))
 	var army: Array = g.army(0)
 	var others: int = army.filter(func(u: Unit) -> bool: return not (u.kind in [Defs.SPRINGER, Defs.PENDULUM, Defs.NETTER])).size()
 	check("a few, not a whole army of them", _units(Defs.PENDULUM).size() <= 4 and _units(Defs.NETTER).size() <= 3,

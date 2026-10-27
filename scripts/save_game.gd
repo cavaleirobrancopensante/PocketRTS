@@ -365,7 +365,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 			b.auto_train = "horseman"      # (before the Armoury, "cuirassier" was the one horseman)
 		b.batteries = int(bd.get("bat", 0))
 		b.stock = float(bd.get("stock", 0.0))
-		b.gear_big = bool(bd.get("gb", false))                # (the gear field's connecting gear: scripts/gear.gd)
+		b.gear_big = bool(bd.get("gb", false)) or GearNet.big_only(b.kind)      # (the gear field's connecting gear: scripts/gear.gd)
 		b.gear_swap_t = float(bd.get("gs", -1.0))
 		b.gear_swap_to = bool(bd.get("gst", false))
 		b.vertical = bool(bd.get("v", false))

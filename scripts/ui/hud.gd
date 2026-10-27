@@ -1070,14 +1070,16 @@ func _build_card() -> Array:
 			for sb in game.selected_buildings():
 				game.abandon(sb), true, "", ""])
 		return list
-	if b and b.built and not b.dead and Defs.gear_mode and b.d["faction"] == "clockwork" and b.kind != "clocktower" and b.team == game.human:
+	if b and b.built and not b.dead and Defs.gear_mode and b.d["faction"] == "clockwork" and b.kind != "clocktower" and b.team == game.human \
+			and not GearNet.big_only(b.kind):
 		# GEAR SWAP: the button offers the other size of connecting gear (a small cost in cogs, a few seconds)
 		var to_big: bool = not (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)
 		var glab := "BIG GEAR" if to_big else "SMALL GEAR"
 		var gwhy := game.gear_swap_problem(b)
+		var trade := GearEcon.trade_line(b.kind, to_big)      # (SIZE SETS THE TEMPO: what this kind trades)
 		_tip_for[glab] = [("Swap to the BIG gear" if to_big else "Swap to the SMALL gear"),
-			("Big gear: turns slow, more torque: a bigger ring and a bigger crew (a Cog Press takes 6 Winders), more cogs at full crew." if to_big
-				else "Small gear: turns fast, works faster per Winder, a smaller ring and a smaller crew (a Cog Press takes 3 Winders)."),
+			Loc.t("Big gear: turns slow and works heavy and strong; a bigger ring that reaches farther." if to_big
+				else "Small gear: turns fast and works quick and light; a smaller ring.") + (" " + trade if trade != "" else ""),
 			"%d cogs  ·  %d s" % [int(Defs.GEAR["swap_cost"]), int(Defs.GEAR["swap_time"])]]
 		list.append(["ab_gear_big" if to_big else "ab_gear_small", glab, func() -> void:
 			var w := ""
@@ -1090,6 +1092,10 @@ func _build_card() -> Array:
 				toast(w)
 			else:
 				toast("Swapping the gear: the building idles for a few seconds."), gwhy == "", gwhy, str(int(Defs.GEAR["swap_cost"]))])
+	if b and Defs.gear_mode and b.d["faction"] == "clockwork" and not b.dead and (b.team == game.human or game.demo or game.spectating()):
+		# THE GEAR VIEW (also the ` key): the whole network at a glance (scripts/gear.gd); phone-friendly
+		_tip_for["GEAR VIEW"] = ["Gear view", "Shows the whole gear network: the drivers glow gold, every ring is tinted by how well it works (green full speed, yellow 90%, orange 80%, red 70% or idle), each Mainspring's reach is outlined and the turrets' circles are drawn. Key: `"]
+		list.append(["gauge", ("~ " if game.gear_net.view else "") + "GEAR VIEW", func() -> void: game.toggle_gear_view(), true, "", ""])
 	if b and b.built and b.kind != game.faction_hall(game.human):
 		list.append(["demolish", "DEMOLISH", func() -> void:
 			if Time.get_ticks_msec() - _demolish_ms > 2500:
@@ -1501,7 +1507,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			for u in game.selected_units():
 				if u.kind == "bulwark":
 					u.set_brace(up), true, "", ""])
-	# Clock Soldier: SHIELD FORWARD, once SHIELD WALL is researched at a Movement Works (scripts/shield_wall.gd)
+	# Clock Soldier: SHIELD FORWARD, once SHIELD WALL is researched at a Light Works (scripts/shield_wall.gd)
 	var csold := units.filter(func(u: Unit) -> bool: return u.kind == ShieldWall.KIND)
 	if not csold.is_empty() and game.has_tech(game.human, ShieldWall.TECH):
 		var raise: bool = csold.any(func(u: Unit) -> bool: return not u.shield_up)
@@ -2952,11 +2958,15 @@ func _draw_panel(font: Font) -> void:
 				if game.gear_net.needs_spring(bb):
 					info = "NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Springers). Build a Mainspring right beside it."
 				elif game.gear_net.speed_mult(bb) > 0.0:
-					info = "Working: its ring meshes with a Mainspring. Springers, Netters and Pendulums can be made at a Movement Works whose ring meshes with a Mainspring%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
+					info = "Working: its ring meshes with a Mainspring. Springers and Netters can be made at a Light Works whose ring meshes with a Mainspring, Pendulums and Spring Ballistas at a Heavy Works%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
 			if Defs.gear_mode and bb.built and not bb.dead and (e.team == game.human or game.demo):
 				var gi := GearEcon.card_info(bb)        # (the Tension rule and the store: scripts/gear_econ.gd)
 				if gi != "":
 					info = gi + ("  ·  " + info if bb.kind == Defs.CW_WORKS else "")
+			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and bb.kind != "clocktower" and (e.team == game.human or game.demo):
+				var tl := GearEcon.trade_line(bb.kind, bb.gear_big)       # (SIZE SETS THE TEMPO: its ring's trade, one line)
+				if tl != "":
+					info = (Loc.t(info) + "  ·  " if info != "" else "") + tl
 			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and (e.team == game.human or game.demo):
 				if not game.gear_net.is_linked(bb):
 					info = "UNLINKED: its gear ring does not mesh with the field, so it does nothing. Build a linked building beside it, or put it back in reach.  ·  " + info
@@ -3660,7 +3670,7 @@ func _res_tip(i: int) -> Dictionary:
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
 		if Defs.gear_mode and i == 1:
-			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Springer, the Swift, the Netter, the Pendulum, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, and a Movement Works for its Springers, Netters and Pendulums."}
+			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Springer, the Swift, the Netter, the Pendulum, the Spring Ballista, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters."}
 		if i != 2:
 			return {}
 	if i == 3:
