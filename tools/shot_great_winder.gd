@@ -130,8 +130,9 @@ func _soldier(kind: String, p: Vector2, team := -1) -> Unit:
 func _gone(list: Array) -> void:
 	for u in list:
 		if is_instance_valid(u) and not u.dead:
-			u.visible = false
-			u.die()
+			g.units.erase(u)          # (gone, leaving no wreck for the sweep below)
+			g.selection.erase(u)
+			u.queue_free()
 	await _frames(5)
 
 
@@ -197,6 +198,11 @@ func _run() -> void:
 	g.set_selection([])
 	# ---- mending a hurt Pendulum with its key arm
 	var pend: Unit = army[army.size() - 1]
+	for u in army:
+		u.cmd_hold()
+	gw.position = _open(army[0].position + Vector2(-120, 60))     # (the walk left it behind: it catches up)
+	gw.cmd_stop()
+	pend.position = _open(gw.position + Vector2(110, 10))
 	pend.hp = pend.max_hp * 0.35
 	gw.auto_repair = true
 	await _wait(func() -> bool: return gw.work == "mending", 12.0)
