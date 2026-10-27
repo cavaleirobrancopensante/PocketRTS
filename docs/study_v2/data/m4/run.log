@@ -82,3 +82,21 @@
 2026-10-27 10:10:17 done x_080 DOC x_cw_080 (clockwork) vs brood:ai hollowfen in 130s: candidate fitness 0.25 over 1
 2026-10-27 10:10:44 done x_081 DOC x_cr_081 (crown) vs brood:brood_pool_eco amberfall_vale in 87s: candidate fitness 0.75 over 1
 2026-10-27 10:10:51 done x_082 POOL x_br_082 (brood) vs crown:crown_musket_wall saltmarsh_isles in 34s: candidate fitness 0.25 over 1
+2026-10-27 10:12:09 done x_083 POOL x_cw_083 (clockwork) vs brood:brood_economy greenhold in 85s: candidate fitness 0.75 over 1
+2026-10-27 10:12:51 done x_085 FRESH x_br_085 (brood) vs crown:crown_musket_wall highmoor in 42s: candidate fitness 0.25 over 1
+2026-10-27 10:13:26 done x_084 POOL x_cr_084 (crown) vs clockwork:cw_jack_tech saltmarsh_isles in 154s: candidate fitness 0.75 over 1
+2026-10-27 10:14:15 done x_086 FRESH x_cw_086 (clockwork) vs crown:crown_musket_wall hollowfen in 83s: candidate fitness 0.25 over 1
+2026-10-27 10:15:31 done x_087 POOL x_cr_087 (crown) vs clockwork:cw_jack_tech hollowfen in 125s: candidate fitness 0.75 over 1
+2026-10-27 10:15:57 done x_088 POOL x_br_088 (brood) vs clockwork:cw_pendulum_push saltmarsh_isles in 101s: candidate fitness 0.25 over 1
+2026-10-27 10:16:43 done x_089 DOC x_cw_089 (clockwork) vs brood:ai amberfall_vale in 72s: candidate fitness 0.75 over 1
+2026-10-27 10:16:53 done x_090 FRESH x_cr_090 (crown) vs brood:brood_xrush amberfall_vale in 55s: candidate fitness 0.25 over 1
+2026-10-27 10:17:05 done x_091 POOL x_br_091 (brood) vs crown:crown_cannon_push glimmerdeep in 21s: candidate fitness 0.25 over 1
+2026-10-27 10:17:36 done x_092 DOC x_cw_092 (clockwork) vs brood:brood_economy greenhold in 43s: candidate fitness 0.25 over 1
+2026-10-27 10:18:10 done x_094 FRESH x_br_094 (brood) vs clockwork:cw_proxy_tower greenhold in 34s: candidate fitness 0.25 over 1
+2026-10-27 10:18:31 done x_093 POOL x_cr_093 (crown) vs brood:ai thornwood_maze in 85s: candidate fitness 0.75 over 1
+2026-10-27 10:18:52 done x_095 DOC x_cw_095 (clockwork) vs crown:ai frostmere in 41s: candidate fitness 0.25 over 1
+2026-10-27 10:19:44 done x_096 RETEST x_cr_081 (crown) vs brood:ai cinder_steps in 72s: candidate fitness 0.83 over 2
+2026-10-27 10:20:20 done x_097 FRESH x_br_097 (brood) vs clockwork:cw_jack_tech glimmerdeep in 87s: candidate fitness 0.25 over 1
+2026-10-27 10:21:10 done x_099 POOL x_cr_099 (crown) vs brood:ai greenhold in 50s: candidate fitness 0.25 over 1
+2026-10-27 10:22:52 done x_098 FRESH x_cw_098 (clockwork) vs crown:crown_musket_wall glimmerdeep in 187s: candidate fitness 0.25 over 1
+2026-10-27 10:22:52 finished
