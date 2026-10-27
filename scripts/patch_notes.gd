@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.54", "items": [
+		"BROOD ANIMATIONS: Raptors and Grubs no longer hop when they turn up or down the screen or stop (those walks stood 2 px above the ground). The Raptor's run plays faster (12 frames a second, was 8), so its feet skate less. A hovering Skywing beats its wings at a real pace (was 2 frames a second), and its east attack no longer shows a frame with only a wing.",
+		"BROOD ANIMATIONS: the Mist Toad's death plays to the end: its body now lies flat instead of freezing half fallen. A Grub's wrapping takes as long as the wrap itself: the cocoon closes just as it picks it up, for small and big bodies alike.",
+		"TEAM COLOUR: the Brood Queen's crest and the Clutch Mound's frills are now in your colour (they were red for every player), and the thin red rims on Brood crests and frills follow the team colour too. Veteran Raptors walking up or down the screen now show their veteran skin on their legs.",
+	]},
 	{"v": "0.14.53", "items": [
 		"CLOCK SOLDIER: a little quicker (speed 68, was 62) and lighter (75 health, was 90). These numbers are a first guess.",
 		"SHIELD WALL, a new research at the Movement Works (100 cogs + 50 Tension, 45 s; it costs Tension, so only at a Works whose ring meshes with a Mainspring's): every Clock Soldier gets SHIELD FORWARD (key F). The soldier raises its shield in front of it (half a second, standing still): it walks 40% slower and swings a little slower, but has 1 more armour, takes half the damage from shots coming from the front and a fifth less from blows from the front. Nothing against blows from the side or behind, nor against splash. Press it again to lower the shields. With the shields up a squad wins a stand-up fight against shooters it used to lose, but it can no longer catch a Musketeer who walks off, and running away it takes far more. Raised shields show: the shield is carried in front of the body. Works online and in saved games.",

@@ -264,6 +264,7 @@ func setup(building: Building) -> void:
 			var qt := Game.tex(QUEEN_ART["tex"])
 			if qt:
 				queen = _sprite(qt, 1, -Vector2(qt.get_width() * 0.5, qt.get_height()))
+				queen.material = b.team_material()      # (her crest is the team colour, like every Brood creature's)
 
 
 func _sprite(t: Texture2D, frames: int, offset: Vector2) -> Sprite2D:

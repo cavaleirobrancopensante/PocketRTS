@@ -372,12 +372,26 @@ func _rest_in_peace() -> void:
 	queue_redraw()
 	set_physics_process(false)
 	set_process(false)
+	_finish_death_strip()
 	if body_max <= 0.0:
 		body_max = body_size()
 	rip_from = game.clock
 	if not game.bodies.has(self):
 		game.bodies.append(self)
 	_schedule_rot()
+
+
+## A death strip longer than the 1.5 s before a body comes to rest (the Mist Toad's 13 frames at 7 fps) would stop on
+## the frame it had reached: the rest of it plays out on a tween (the picture only; the body is at rest already).
+func _finish_death_strip() -> void:
+	if sprite == null or sprite.frame >= sprite.hframes - 1:
+		return
+	var tw := create_tween()
+	for f in range(sprite.frame + 1, sprite.hframes):
+		tw.tween_interval(1.0 / 7.0)
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(sprite) and dead:
+				sprite.frame = f)
 
 
 ## (a body) its end: when the rot (and the damage it took) has eaten all its health it leaves the harvest and revive lists
@@ -6132,6 +6146,11 @@ func _anim_name() -> String:
 
 const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_armoured"]
 
+## A Skywing hovering in the air (its idle_* strips are one wing beat: up, down, out) flaps at this rate; at the
+## standing creatures' 2 fps it beat its wings once every 1 to 1.5 s and snapped between very different poses
+## (docs/animation_audit_brood.md).
+const SKYWING_HOVER_FPS := 6.0
+
 ## Walk cycles of the men on foot at full speed, in frames a second (docs/animation_audit_units.md).
 ## Their strips draw a step about 10 to 14 px long, and at 62 to 66 px/s the feet slid 2 to 4 times
 ## that far in a stride at WALK_FPS; 12 fps is the fastest legs that still read as walking (the
@@ -6141,7 +6160,10 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
 		# the Pendulum's long strides (90 sheet px a step at 0.284: one 8-frame cycle carries it 51 px, 1.1 s at 46);
 		# the Netter's quick trot (its stubby legs step faster than the ground goes by: as fast as reads)
-		"pendulum": 7.2, "netter": 14.0}
+		"pendulum": 7.2, "netter": 14.0,
+		# the Raptor runs at 108 px/s on a 6-frame cycle: at 8 fps its planted feet slid ~10 px a frame, at 12 ~6
+		# (docs/animation_audit_brood.md)
+		"raptor": 12.0}
 
 
 ## Frames a second of art `a`'s walk strip at full speed.
@@ -6253,6 +6275,8 @@ func _animate(delta: float) -> void:
 	match anim:
 		"idle", "idle_carry", "guard":
 			fps = 2.0 if not Defs.FLYER.has(kind) else float(Defs.FLYER[kind]["flap"]) * 0.85     # (a flyer flaps in place)
+			if kind == "skywing":
+				fps = SKYWING_HOVER_FPS
 		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0
 			loop = false
@@ -6270,7 +6294,12 @@ func _animate(delta: float) -> void:
 		"idle_keg":
 			fps = 0.75 * float(n)     # (one breath takes 1.3 s whether the view has 4 frames or 2)
 		"wrap":
-			fps = 5.0 / float(Defs.HARVEST["take"])
+			# over the whole wrapping, which takes longer for a big body (Game.harvest_time: 0.8 to 3 s); at the fixed
+			# 1.2 s a small body was carried off before the cocoon closed and a big one sat finished for up to 1.8 s
+			var wt := float(Defs.HARVEST["take"])
+			if _corpse != null and is_instance_valid(_corpse):
+				wt = game.harvest_time(_corpse)
+			fps = float(n) / maxf(wt, 0.3)
 			loop = false
 		"idle_cocoon":
 			fps = 3.0
