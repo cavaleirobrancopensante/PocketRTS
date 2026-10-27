@@ -3,7 +3,8 @@ the 5 directions on top and the new one under it, at 2x, bottom-aligned on the a
 the other.
   python3 tools/catapult_guide/compare.py OUT.gif K "label" OLD.png:CW:CH NEW.png:CW:CH:AX:AY:OAX:OAY [ms] [more pairs ...]
 (see the bottom of the file: the two calls used for art/redraws/catapult_parts_compare.gif and
-great_winder_parts_compare.gif; 'facing' for catapult_facing_compare.gif, 'facing2' for catapult_facing2_compare.gif)"""
+great_winder_parts_compare.gif; 'facing' for catapult_facing_compare.gif, 'facing2' for catapult_facing2_compare.gif, 'facing3' for
+catapult_facing3_compare.gif)"""
 import sys
 from PIL import Image, ImageDraw
 
@@ -83,6 +84,16 @@ if __name__ == '__main__':
             ((old + '/catapult_move.png', 158, 141, 79, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110),
             ((old + '/catapult_move.png', 158, 141, 79, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110)],
             label=('last pass', 'new: N/NE cup always shows its back, the soldier peeks over the far rim'))
+    elif which == 'facing3':
+        # (art/redraws/catapult_facing3_compare.gif: the second facing pass against the third: NE's back cup turned
+        # diagonally toward the upper right; same cell 158x141, anchor 79,139)
+        cell = json.load(open('art/redraws/catapult_cup.json'))['cell']
+        THROW_MS = [300, 160, 60, 50, 50, 70, 90, 110, 110, 110, 130, 260]
+        compare('art/redraws/catapult_facing3_compare.gif', [
+            ((old + '/catapult_throw.png', 158, 141, 79, 139), ('art/redraws/catapult_throw.png',) + tuple(cell), THROW_MS),
+            ((old + '/catapult_move.png', 158, 141, 79, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110),
+            ((old + '/catapult_move.png', 158, 141, 79, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110)],
+            label=('last pass', 'new: NE cup turned diagonally (mouth up and right), NE follow-through along its forward axis'))
     else:
         cell_o = [int(v) for v in sys.argv[3].split(',')]
         cell_n = [int(v) for v in sys.argv[4].split(',')]

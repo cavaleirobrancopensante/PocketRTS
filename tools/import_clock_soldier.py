@@ -1,7 +1,12 @@
 """Import the Clock Soldier's ChatGPT sheets (art/redraws/clock_soldier_*.png, navy background RGB 0,22,48, 5 rows =
-directions S SE E NE N; the west views are the east ones mirrored in the game) into the game's unit strips:
-  assets/units/clock_soldier/{idle,walk,attack,death}_{s,se,e,ne,n}.png (frames side by side, one canvas for all)
-and the cell / anchor line for scripts/cw_art.gd SHEETS (printed).
+directions S SE E NE N) and its WEST sheets (3 rows = SW W NW: the sword stays in its right hand, so the west views are
+not the east ones mirrored; owner, 2026-10-27) into the game's unit strips:
+  assets/units/clock_soldier/{idle,walk,attack,death}_{s,se,e,ne,n,sw,w,nw}.png (frames side by side, one canvas for all)
+and the cell / anchor line for scripts/cw_art.gd SHEETS (printed). The game draws a unit's own sw/w/nw strip unflipped
+when it has one (Unit._set_anim), else the east strip mirrored.
+WEST: the idle is ChatGPT's (clock_soldier_idle_west_chatgpt.png, painted a little bigger than the east sheet); the
+walk, attack and death are built in code from it (tools/soldier_guide/west.py). Each west row is shrunk so its idle is
+as tall as the matching east row's idle (SW as SE, W as E, NW as NE), so both halves of the compass are one size.
 
 Per frame: key out the navy (tolerance ~40), take the pieces whose middle falls in the frame's grid cell (whole: ChatGPT's
 figures cross the grid lines, the back views' caps and a raised sword; keyed_cells), drop specks, the Clockwork palette
@@ -37,7 +42,15 @@ SHEETS = {  # anim: (file, columns, align by first frame of the row)
     'attack': ('clock_soldier_attack_final.png', 6, True),
     'death': ('clock_soldier_death_final.png', 7, True),
 }
+WEST_SHEETS = {  # the same anims, frame counts and timings, rows SW W NW
+    'idle': ('clock_soldier_idle_west_chatgpt.png', 4, False),
+    'walk': ('clock_soldier_walk_west.png', 6, False),
+    'attack': ('clock_soldier_attack_west.png', 6, True),
+    'death': ('clock_soldier_death_west.png', 7, True),
+}
 DIRS = ['s', 'se', 'e', 'ne', 'n']
+WEST_DIRS = ['sw', 'w', 'nw']
+EAST_OF = {'sw': 'se', 'w': 'e', 'nw': 'ne'}
 NAVY = np.array([0, 22, 48])
 TOL = 40
 S_IDLE_H = 42.0        # px: the S idle's height in game. The owner (2026-10-26): 59 was too big; about 30% smaller, by a
@@ -46,7 +59,7 @@ S_IDLE_H = 42.0        # px: the S idle's height in game. The owner (2026-10-26)
 ICON_SCALE = 0.359     # the card portrait's own scale (the size the unit had until 0.14.32: the icon keeps its detail)
 # The death's tip, as the code guide drew it (tools/soldier_guide/death.py FALL, ANG; ChatGPT's clean-up kept the poses):
 # per row the side it falls to (-1: its top goes left), per frame the angle; the cap is searched WINDOW degrees round it.
-DEATH_FALL = [-1, -1, 1, 1, 1]
+DEATH_FALL = {'s': -1, 'se': -1, 'e': 1, 'ne': 1, 'n': 1, 'sw': 1, 'w': -1, 'nw': -1}   # (west: the east row's mirrored)
 DEATH_ANG = [0, 6, 28, 62, 92, 84, 90]
 WINDOW, WINDOW_TIPPED = 16.0, 30.0
 
@@ -55,7 +68,7 @@ PAD = 64               # px round a grid cell: ChatGPT's figures cross the grid 
                        # a raised sword by 51), so a frame is the cell this much bigger all round
 
 
-def keyed_cells(path, cols):
+def keyed_cells(path, cols, rows=5):
     """{(row, col): keyed frame}: each frame is its grid cell PAD px bigger all round (so every frame of a sheet keeps its
     cell's coordinates), with the sheet's pieces whose middle falls in that cell: a figure crossing the grid lines stays
     whole (its cap, a raised sword), a neighbour's spilling into the cell is not taken; pieces under 25 px are dropped."""
@@ -69,17 +82,17 @@ def keyed_cells(path, cols):
         if sz[i] < 25:
             continue
         ys, xs = np.nonzero(lab[sl] == i + 1)
-        r = min(4, int((ys.mean() + sl[0].start) / (H / 5.0)))
+        r = min(rows - 1, int((ys.mean() + sl[0].start) / (H / float(rows))))
         c = min(cols - 1, int((xs.mean() + sl[1].start) / (W / float(cols))))
         owner[i + 1] = r * cols + c
     ap = np.pad(a, ((PAD, PAD), (PAD, PAD), (0, 0)))
     ap[:PAD], ap[-PAD:], ap[:, :PAD], ap[:, -PAD:] = NAVY, NAVY, NAVY, NAVY
     lp = np.pad(owner[lab], PAD, constant_values=-1)
     out = {}
-    for r in range(5):
+    for r in range(rows):
         for c in range(cols):
-            x0, y0 = round(c * W / cols), round(r * H / 5)
-            x1, y1 = round((c + 1) * W / cols) + 2 * PAD, round((r + 1) * H / 5) + 2 * PAD
+            x0, y0 = round(c * W / cols), round(r * H / rows)
+            x1, y1 = round((c + 1) * W / cols) + 2 * PAD, round((r + 1) * H / rows) + 2 * PAD
             sub = ap[y0:y1, x0:x1]
             mine = lp[y0:y1, x0:x1] == r * cols + c
             mine = ndi.binary_fill_holes(mine) & (np.abs(sub - NAVY).sum(2) >= 12) | mine   # (dark glass-like insides stay solid)
@@ -124,7 +137,7 @@ def shrink(img, scale):
 def palette(frames):
     """Every frame through the Clockwork palette (tools/cw_palette.py), in place: (anim, dir) -> [(rgba, ax, ay)]. The cap's
     template per direction: the idle's first frame; an attack or death row then uses its own first frame's cap."""
-    for row, d in enumerate(DIRS):
+    for d in DIRS + WEST_DIRS:
         idle_ref = frames[('idle', d)][0][0]
         for anim in SHEETS:
             fl = frames[(anim, d)]
@@ -132,7 +145,7 @@ def palette(frames):
                 assert len(fl) == len(DEATH_ANG), 'death %s: %d frames, the tilt table has %d' % (d, len(fl), len(DEATH_ANG))
             ref = idle_ref
             for i, (o, ax, ay) in enumerate(fl):
-                tilt = DEATH_FALL[row] * DEATH_ANG[i] if anim == 'death' else 0.0
+                tilt = DEATH_FALL[d] * DEATH_ANG[i] if anim == 'death' else 0.0
                 tipped = abs(tilt) > 15
                 info = {}
                 o2 = cw_palette.recolour(o, 'clock_soldier', ref=ref, tilt=tilt, window=WINDOW_TIPPED if tipped else WINDOW,
@@ -148,45 +161,52 @@ def palette(frames):
 def main():
     # 1. cut and key every frame, note its anchor (feet bottom, body x) in the cell
     frames = {}      # (anim, dir) -> [(rgba, ax, ay)]
-    for anim, (f, cols, by_first) in SHEETS.items():
-        cells = keyed_cells(SRC + f, cols)
-        for row, d in enumerate(DIRS):
-            out = []
-            first = None
-            for c in range(cols):
-                o = cells[(row, c)]
-                if not (o[..., 3] > 0).any():
-                    continue
-                ax, ay = red_x(o), bottom(o)
-                if by_first:
-                    if first is None:
-                        first = (ax, ay)
-                    ax, ay = first
-                out.append((o, ax, ay))
-            frames[(anim, d)] = out
-    # 2. the scale: the S idle S_IDLE_H px tall
-    hs = []
-    for o, ax, ay in frames[('idle', 's')]:
-        ys = np.nonzero((o[..., 3] > 0).any(1))[0]
-        hs.append(ys.max() - ys.min() + 1)
-    scale = S_IDLE_H / float(np.median(hs))
-    # 3. one canvas: the farthest any frame reaches from its anchor
+    for sheets, dirs in ((SHEETS, DIRS), (WEST_SHEETS, WEST_DIRS)):
+        for anim, (f, cols, by_first) in sheets.items():
+            cells = keyed_cells(SRC + f, cols, len(dirs))
+            for row, d in enumerate(dirs):
+                out = []
+                first = None
+                for c in range(cols):
+                    o = cells[(row, c)]
+                    if not (o[..., 3] > 0).any():
+                        continue
+                    ax, ay = red_x(o), bottom(o)
+                    if by_first:
+                        if first is None:
+                            first = (ax, ay)
+                        ax, ay = first
+                    out.append((o, ax, ay))
+                frames[(anim, d)] = out
+    # 2. the scale: the S idle S_IDLE_H px tall; a west row: its idle as tall as the matching east row's
+    def idle_h(d):
+        hs = []
+        for o, ax, ay in frames[('idle', d)]:
+            ys = np.nonzero((o[..., 3] > 0).any(1))[0]
+            hs.append(ys.max() - ys.min() + 1)
+        return float(np.median(hs))
+    scale = S_IDLE_H / idle_h('s')
+    SC = {d: scale for d in DIRS}
+    for d in WEST_DIRS:
+        SC[d] = scale * idle_h(EAST_OF[d]) / idle_h(d)
+    # 3. one canvas: the farthest any frame reaches from its anchor (in game px)
     L = R = U = D = 0.0
-    for fl in frames.values():
+    for (anim, d), fl in frames.items():
         for o, ax, ay in fl:
             ys, xs = np.nonzero(o[..., 3] > 0)
-            L = max(L, ax - xs.min())
-            R = max(R, xs.max() + 1 - ax)
-            U = max(U, ay - ys.min())
-            D = max(D, ys.max() + 1 - ay)
-    half = int(np.ceil(max(L, R) * scale)) + 1
+            L = max(L, (ax - xs.min()) * SC[d])
+            R = max(R, (xs.max() + 1 - ax) * SC[d])
+            U = max(U, (ay - ys.min()) * SC[d])
+            D = max(D, (ys.max() + 1 - ay) * SC[d])
+    half = int(np.ceil(max(L, R))) + 1
     cw = half * 2
-    up = int(np.ceil(U * scale)) + 1
-    down = int(np.ceil(D * scale)) + 1
+    up = int(np.ceil(U)) + 1
+    down = int(np.ceil(D)) + 1
     ch = up + down
     os.makedirs(DST, exist_ok=True)
     palette(frames)          # (after the anchors: they look for the red body the palette makes brass)
     for (anim, d), fl in frames.items():
+        scale = SC[d]
         strip = np.zeros((ch, cw * len(fl), 4), np.uint8)
         for i, (o, ax, ay) in enumerate(fl):
             # the source on a canvas cw/scale x ch/scale with its anchor at (half, up)/scale, then shrunk to cw x ch
@@ -198,11 +218,12 @@ def main():
             s = cw_palette.snap_team(s)
             strip[:s.shape[0], i * cw:i * cw + s.shape[1]] = s
         Image.fromarray(strip, 'RGBA').save(DST + '%s_%s.png' % (anim, d))
-    print('clock_soldier: scale %.3f, cell %dx%d, anchor (%d, %d)' % (scale, cw, ch, half, up))
+    print('clock_soldier: scale %.3f (west %s), cell %dx%d, anchor (%d, %d)' % (
+        SC['s'], ' '.join('%s %.3f' % (d, SC[d]) for d in WEST_DIRS), cw, ch, half, up))
     print('SHEETS line: "clock_soldier": [%d, %d, %d, %d],' % (cw, ch, half, up))
     # 4. the card portrait (64 x 64): the S idle frame's upper body, shrunk at its own ICON_SCALE
     o, ax, ay = frames[('idle', 's')][0]
-    s0 = cw_palette.snap_team(shrink(o, ICON_SCALE))
+    s0 = cw_palette.snap_team(shrink(o, ICON_SCALE))   # (the S frame, painted at the main sheet's size)
     ys, xs = np.nonzero(s0[..., 3] > 0)
     side = max(xs.max() - xs.min(), int((ys.max() - ys.min()) * 0.8)) + 2
     cx = (xs.min() + xs.max()) // 2
