@@ -27,8 +27,10 @@ const HEAT_HIGH := 14.0   # a fight this hot gets the full battle pieces; a mild
 ## pieces in OPEN_CALM), "skirmish" is the lighter fighting music. Everything else follows its name:
 ## <faction>_peace* for calm, <faction>_battle* for the full battle.
 const ROLES := {"crown_battle_6": "open", "crown_battle_7": "skirmish", "crown_battle_9": "skirmish",
-	"crown_battle_11": "skirmish"}
-const OPEN_CALM := ["crown_peace", "crown_peace_4"]
+	"crown_battle_11": "skirmish",
+	"brood_battle_6": "open", "brood_battle_7": "open", "brood_battle_8": "skirmish",
+	"brood_battle_9": "skirmish", "brood_battle_10": "skirmish"}
+const OPEN_CALM := ["crown_peace", "crown_peace_4", "brood_peace_4"]
 var _skirmish := false    # the battle piece playing is a skirmish piece, to be raised when the fight heats up
 var _piece_t := 0.0
 const FADE := 2.5
