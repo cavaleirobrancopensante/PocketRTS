@@ -304,7 +304,7 @@ func _rush_failed(party0: Array) -> void:
 	var connected := gained >= maxf(1.0, _wave_value) * HARASS_CONNECTED
 	if _crown():
 		_rush_log("FAILED (%s), %d killed for %d: %s" % [_rush_why, int(gained), int(_wave_value),
-				"it connected: the economy next, Musketeers at home" if connected else "it did little: an all-in attack with Horsemen and Musketeers"])
+				"it connected" if connected else "it did little"])
 	else:
 		_rush_log("FAILED (%s): the survivors go home, no more go out alone; it builds up and attacks only with a proper force" % _rush_why)
 	_failed += 1
@@ -381,14 +381,15 @@ func _rush_tick(party: Array) -> bool:
 ## the horses." The riders HARASS: they hover outside the enemy's base (out of its defenders' reach), ride down
 ## workers that stray from cover, flee from soldiers and ride home only to mend. When the enemy's army moves out (or
 ## reaches our base) they ride home and fight with the defence: riding into its base instead lost the Crown's home to
-## the Clockwork's first wave (round 4). Meanwhile the economy (it connected) or an all-in (it did little) runs at home.
+## the Clockwork's first wave (round 4). The riders harass only while it is safe: against a real army (worth 1.5 times
+## the riders) they ride home at once. The all-in after a rush that did little was tried and dropped (see _rush_after);
+## at home the plan builds up as before.
 const HARASS_CONNECTED := 0.5   # the rush connected: it killed at least this share of what the riders cost
 const HARASS_LURK := 13.0       # tiles from the enemy's hall, on our side, where the riders hover
 const HARASS_PREY := 15.0       # tiles round that spot where a worker is fair prey (anywhere in the base when its army is out)
 const HARASS_COVER := 230.0     # px: a worker with this much of a guard near him is left alone
 const HARASS_MEND := 0.4        # a rider below this share of his hit points rides home to mend
 const HARASS_END := 600.0       # the harass is over at this time (the riders come home and join the army)
-const ALLIN_AT := 16            # the all-in goes out with this much supply at home (the riders come with it)
 var _harass_log := 0.0
 var _raid_block_after := 0.0
 var _harass_set: Dictionary = {} # Unit -> true: the rush's own riders (only they go back out to harass)
@@ -401,10 +402,9 @@ func _rush_after(party: Array, connected: bool) -> void:
 	for u in party:
 		if is_instance_valid(u) and not u.dead and not riders.has(u):
 			u.cmd_move(_home_spot(_front()))
-	if not connected:
-		_regroup_until = 0.0         # (the all-in: no waiting to regroup, out as soon as ALLIN_AT supply stands at home)
-		_attack_at = ALLIN_AT
-		_mop_pending = false
+	# (no all-in after a rush that did little: tried in coach round 4, it sent 18 supply at about 4:35 into a Clockwork
+	# that had just switched to an army, lost it, and fell to its wave at about 5:15: 2 Clockwork games won of 8,
+	# against 6 of 8 building up as before. The owner's pick: build up, as before.)
 	if riders.size() < GROUP_MIN or _harass_unsafe(riders):
 		# (the owner's pick after round 4c: harass only while it is safe; an enemy with a real army sends it at us
 		# anyway, and the riders are part of the defence then: they ride home, as before round 4)

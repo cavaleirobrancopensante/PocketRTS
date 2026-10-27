@@ -5,7 +5,7 @@ extends SceneTree
 ## player with no AI. The facts the rush is judged by are set up by the test (enemy value killed,
 ## workers and defenders "seen" through AI._known_foes), the AI decides.
 ##  failed : the riders are beaten back -> verdict FAILED, the survivor rides home, fresh Horsemen
-##           stay home one by one and two by two (no lone unit goes out); the rush did little: all-in (coach round 4)
+##           stay home one by one and two by two (no lone unit goes out)
 ##  few    : the economy is crippled and 2 workers are left, no defenders -> SUCCEEDED / finish: one
 ##           fresh Horseman stays home, a second makes a pair and the pair rides out together
 ##  mop    : crippled but 8 workers and 4 Raptors left -> SUCCEEDED / mop: riders pull back or harass as a party, fresh
@@ -169,13 +169,7 @@ func _case_failed() -> void:
 	check(lone_hits == 0, "never a lone soldier far from home (%d sightings) [failed]" % lone_hits)
 	var surv = hs[2]
 	check(not is_instance_valid(surv) or surv.dead or surv.position.distance_to(front) < 450.0, "the surviving rider retreated home or died, he is not left out there [failed]")
-	# (coach round 4, the owner: a rush that did little goes ALL-IN: out as soon as AI.ALLIN_AT supply stands at
-	# home, no regroup wait; one that connected builds up for a proper force)
-	var gained := int(g.stats[1]["value_killed"]) - ai._wave_kill0
-	if float(gained) >= ai._wave_value * AI.HARASS_CONNECTED:
-		check(ai._attack_at >= 14 and g.clock < ai._regroup_until, "it connected, it builds up: attack size %d, regroup until %.0f (now %.0f) [failed]" % [ai._attack_at, ai._regroup_until, g.clock])
-	else:
-		check(ai._attack_at == AI.ALLIN_AT and g.clock >= ai._regroup_until, "it did little: all-in at %d supply, no regroup wait (%.0f, now %.0f) [failed]" % [ai._attack_at, ai._regroup_until, g.clock])
+	check(ai._attack_at >= 14 and g.clock < ai._regroup_until, "it builds up: attack size %d, regroup until %.0f (now %.0f) [failed]" % [ai._attack_at, ai._regroup_until, g.clock])
 	main.queue_free()
 	await process_frame
 
