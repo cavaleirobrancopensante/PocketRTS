@@ -3310,11 +3310,13 @@ func _produce() -> void:
 					keep += float(Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR]))       # (the Aviary's Tension price is kept too)
 				if _research_keep > 0.0:
 					keep += _research_keep        # (SHIELD WALL or HIGH LEAP is wanted: its Tension is kept)
-				if want_p and _tension_ok(w, Defs.PENDULUM, 0.0):
+				if army.size() >= 8 and netters == 0 and others >= 7 and _tension_ok(w, Defs.NETTER, keep):
+					k = Defs.NETTER          # (the first Netter before the rest: one stopper with the army early)
+				elif want_p and _tension_ok(w, Defs.PENDULUM, 0.0):
 					k = Defs.PENDULUM
 				elif bals < bal_want and others >= 3 and _tension_ok(w, Defs.BALLISTA_KIND, keep):
 					k = Defs.BALLISTA_KIND
-				elif army.size() >= 8 and netters < mini(3, others / 7) and (netters == 0 or jacks >= 4) and _tension_ok(w, Defs.NETTER, keep):
+				elif army.size() >= 8 and netters < mini(3, others / 7) and jacks >= 4 and _tension_ok(w, Defs.NETTER, keep):
 					k = Defs.NETTER
 				elif (jacks * 3 < soldiers * 2 + 3 or flush) and _tension_ok(w, Defs.JACK, keep):
 					k = Defs.JACK
