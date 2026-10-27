@@ -2889,6 +2889,9 @@ func net_forward(who: Object, fn: String, args: Array) -> bool:
 ## Set a command-card setting (auto repair, auto training ...) on something of yours; an online
 ## guest asks the host too.
 func net_set(e: Object, prop: String, v) -> void:
+	if puppet and net != null and net.predict != null and net.predict.on:
+		NetCommands.forward(net, e, "@" + prop, [v])     # (shown at once by the click's prediction, taken back if refused)
+		return
 	e.set(prop, v)
 	if puppet and net != null:
 		NetCommands.forward(net, e, "@" + prop, [v])
