@@ -169,11 +169,25 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - Jack (tools/import_jack.py): its blue ball shoulders made player colour; its coil spring, inner arm segments and drill tips kept as steel (the two-launcher sheet paints them saturated blue: greyed toward steel, and the drill tips and inner arm segments further, to a grey with a cool hint, since its bright tips read as ice blue).
 - Swift (tools/import_cuckoo.py): its blue wing-root joints and eyes made player colour.
 - Ticking Owl (tools/import_cuckoo.py): the blue of its blue-and-white wing-root springs made player colour (the white kept).
-- Pendulum (tools/import_tier3.py): its blue ball joints (hips, knees, ankles) made player colour; the blade stays steel.
+- Pendulum (tools/import_tier3.py; v2 since 0.14.36): its blue ball joints (hips, knees, ankles) made player colour; the blades stay steel.
 - Netter (tools/import_tier3.py): its blue leg ball joints and the blue spring on its cannon made player colour; the chain mesh in the drum's window stays steel.
 
-## Pendulum v2, two arms (code, 2026-10-26; art guides only, not in the game yet)
+## Pendulum v2, two arms (code, 2026-10-26; in the game since 0.14.36)
 - tools/pendulum_v2_guide/parts.py cuts ChatGPT's new direction sheet (art/redraws/pendulum_v2_dirs.png; preview of the cut parts: art/redraws/pendulum_v2_parts.png). Each painted arm is cut off along a hand-set polygon (the steel of a blade horn touching a knee let in past it) into four layers: rod, sleeve + clamp, ball (the weight), blade. CODE EDITS: the ball's strip hidden behind the sleeve and the clamp (or a blade horn) is FILLED from the ball's own paint, mirrored across the line from its centre through its highlight (nearest paint where that is hidden too); the rods are EXTENDED up under the shoulder hub to the pivot and down under the sleeve by repeating a painted cross-section; loose slivers the cut leaves on the body are dropped.
 - Pendulum v2 side view (E): ChatGPT hung the arm from the case's front corner under the clock, while every other view hangs the arms from the shoulder hubs; the big disc on the side panel is the near shoulder hub, so the arm is RE-HUNG from it, its thin rod STRETCHED along its length (about 1.8x) to reach (the sleeve, weight and blade keep their paint). The brass knuckle it hung from is cut off and the case's front edge there FILLED from the nearest case paint, with a code-darkened outline column. The far arm and the far leg are DARKER COPIES (x0.62, x0.66) of the near ones, drawn behind the body.
 - Pendulum v2 swing (tools/pendulum_v2_guide/anim.py, art/redraws/pendulum_v2_idle/walk/attack.png and .gif): the arms turn on a small 3D model (a hinge square to the splayed arm; the blows also turn in across the body). The rod is turned and STRETCHED or SHORTENED along its length (foreshortening), the sleeve, clamp and blade are SQUASHED and turned by the projection (rotated paint, NEAREST), the ball is only moved (a sphere does not squash); a head swung towards the camera is SCALED up (to 1.22x) and one swung away scaled down and DARKENED (up to 40%, CODE SHADE). The legs are the old Pendulum's walk machinery (tools/pendulum_guide/walk.py: rotated paint, a telescoping knee in the front, back and 3/4 views; the shin/foot seam and the turned knee balls want an art pass). The red bar under the attack GIF's hit frames is a review marker, not art.
 - tools/pendulum_v2_guide/death.py (art/redraws/pendulum_v2_death_guide_1.png rows S/SE/E, _2.png rows NE/N, .gif): a GUIDE for a ChatGPT clean-up. The arms that snap off are the sheet's lone arms (column 2, drawn ~1.15x bigger) SCALED DOWN (NEAREST) to the arms on the body, turned and SQUASHED to lie on the ground; the legs are squashed flat and the body tipped (rotated paint); the dust puffs (tan ellipses) and the loose cogs (polygon gears) are DRAWN IN CODE. The cleaned sheets replace the guide.
+- Pendulum v2 CUT (0.14.36, tools/pendulum_v2_guide/cut.py; art/redraws/pendulum_v2_attack.png/.gif, in the game as
+  attack_r / attack_l): the attack is rebuilt as two cutting blows. Each arm turns in 3D on a windmill (back, up over its
+  shoulder, forward and down) in a swing plane leaning across the body (cut.TILT; the back views lean it the other way so
+  the cut stays in sight beside the body: a view-only fudge). CODE EDITS: the BLADE layer is TURNED ON ITS WEIGHT up to
+  90 degrees so the crescent's convex edge points along the weight's path (an axe head: horns along the rod) and its paint
+  is mapped by an affine projection of that 3D turn (squashed, rotated paint, NEAREST), never thinner than 0.6 of its
+  painted width (an edge-on crescent would vanish at game scale); the rod is turned and stretched or shortened along its
+  length, the sleeve and clamp turned and squashed along the rod; a weight swung at the camera is scaled up (to 1.22x),
+  one swung away scaled down and DARKENED. CODE-DRAWN: a see-through steel-white SMEAR (a tapering streak, up to 26
+  sheet px wide) trails the blade's edge on the three slash frames of each blow. A ChatGPT pass on the wound-up and
+  chopping poses (blade seen side-on, a painted motion smear) would retire all of this.
+- Pendulum v2 death (0.14.36, ChatGPT's art/redraws/pendulum_v2_death_chatgpt_1/2.png, tools/import_tier3.py): CODE EDIT:
+  a pink puff in the dust (sheet 1, row SE, frame 4) recoloured to the dust's grey by brightness (grey_pink); each row
+  SCALED (x1.08-1.22) so its standing first frame matches the idle's height. Otherwise as painted.

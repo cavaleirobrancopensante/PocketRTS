@@ -185,7 +185,7 @@ var jumps := 0                  # Jack: leaps made (tests, the log)
 var shots := 0                  # Jack: screws fired (tests)
 var last_shot: Shot = null      # Jack: its last screw in flight (tests, screenshots)
 var last_tip := Vector2.ZERO    # Jack: where its last screw left from (the drill tip, raised at a flyer; tests)
-var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn)
+var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
 var _jack_t := 0.0              # Jack (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
@@ -1116,7 +1116,7 @@ func _strike_time() -> float:
 	if Defs.FLYER.has(kind):
 		return float(Defs.FLYER[kind]["strike"])
 	if kind == Defs.PENDULUM:
-		return float(Defs.PENDULUM_SWING["strike"])      # (the blade swings on through the strip's last frames)
+		return float(Defs.PENDULUM_SWING["strike"])      # (the arm follows through and settles: the strip's last frames)
 	if kind == Defs.NETTER:
 		return float(Defs.NET["strike"])                 # (the recoil eases back)
 	return 0.35
@@ -3797,6 +3797,8 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		_owl_bomb = kind == Defs.OWL and e is Building      # (the Owl: a bomb on a building, the talons on a unit)
 		if kind == Defs.JACK:
 			arm = shots % 2          # (its two launchers fire in turn: scripts/jack.gd)
+		elif kind == Defs.PENDULUM:
+			arm = swings % 2         # (its two arms cut in turn, right then left: scripts/pendulum.gd)
 		phase = "aim"
 		phase_t = _aim()
 		return
@@ -5402,9 +5404,12 @@ func _anim_name() -> String:
 					return _anim_or("dwalk", "walk" if moving else "idle")
 			if phase != "":
 				return "attack"
-		"ornithopter", "clock_soldier", "pendulum", "netter":
+		"ornithopter", "clock_soldier", "netter":
 			if phase != "":
-				return "attack"          # (the Pendulum's swing, the Netter's recoil)
+				return "attack"          # (the Netter's recoil)
+		"pendulum":
+			if phase != "":
+				return Pendulum.attack_anim(self)   # (its two arms cut in turn: attack_r, attack_l)
 		"jack":
 			if not jump.is_empty():
 				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)

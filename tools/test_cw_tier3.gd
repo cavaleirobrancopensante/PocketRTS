@@ -142,12 +142,12 @@ func _run() -> void:
 	while pd.swings == 0 and t < 6.0:
 		step(g, 1.0 / 30.0)
 		t += 1.0 / 30.0
-		if pd.anim == "attack":
+		if String(pd.anim).begins_with("attack"):
 			saw_attack = true
 		if pd.swings > 0:
 			blow_frame = pd.frame_i
-	check("the Pendulum swung (it plays its swing strip)", pd.swings == 1 and saw_attack, "%.2f s" % t)
-	check("the blow lands on the 5th frame of the swing (the blade through the front)", blow_frame >= 3 and blow_frame <= 4, "frame %d" % blow_frame)
+	check("the Pendulum swung (it plays its arm's strip)", pd.swings == 1 and saw_attack, "%.2f s" % t)
+	check("the blow lands on the 4th frame of its arm's strip (the chop through the front)", blow_frame == 3, "frame %d" % blow_frame)
 	var hit := func(o: Unit) -> bool: return o.hp <= 500.0 - (dmg - o.armor) + 0.5
 	check("the swing hit the enemy it swung at", hit.call(front), "%.0f" % front.hp)
 	check("and two more enemies in the arc in front", hit.call(front2) and hit.call(front3), "%.0f %.0f" % [front2.hp, front3.hp])

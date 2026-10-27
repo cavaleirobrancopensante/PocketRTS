@@ -230,7 +230,7 @@ func _run() -> void:
 	Engine.time_scale = 0.25
 	pd.facing = Vector2.RIGHT
 	pd.cmd_attack(crowd[2])
-	await _wait(func() -> bool: return pd.anim == "attack" and pd.frame_i >= 3, 20.0)
+	await _wait(func() -> bool: return String(pd.anim).begins_with("attack") and pd.frame_i >= 2, 20.0)
 	await _frozen("pendulum_windup")
 	await _wait(func() -> bool: return pd.swings > 0, 10.0)
 	await _wait(func() -> bool: return pd.frame_i >= 5, 10.0)
