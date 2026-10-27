@@ -92,15 +92,15 @@ func _open_ground(hall: Building) -> Vector2:
 		return false
 	var best := Vector2i(-1, -1)
 	var bd2 := INF
-	for y in range(26, Game.H - 26, 2):
-		for x in range(32, Game.W - 32, 2):
+	for y in range(18, Game.H - 18, 2):
+		for x in range(24, Game.W - 24, 2):
 			var c := Vector2i(x, y)
 			var d := Vector2(c - hall.cell).length()
-			if d >= bd2 or d < 30.0 or near_b.call(c) or g.in_field(g.human, g.cell_center(c)):
+			if d >= bd2 or d < 24.0 or near_b.call(c) or g.in_field(g.human, g.cell_center(c)):
 				continue
 			var ok := true
-			for yy in range(-6, 7):
-				for xx in range(-12, 13):
+			for yy in range(-4, 5):
+				for xx in range(-8, 9):
 					var cc := c + Vector2i(xx, yy)
 					if not g.in_map(cc) or not g._walkable(cc) or g.ramp[g.idx(cc)] != 0 or g.height[g.idx(cc)] != g.height[g.idx(c)] or g.solid[g.idx(cc)] != 0:
 						ok = false
@@ -143,7 +143,7 @@ func _run() -> void:
 		if b.team == g.human and b.kind == "clocktower":
 			hall = b
 	var at := _open_ground(hall)
-	print("stage at ", g.cell_of(at), " in field ", g.in_field(g.human, at))
+	print("stage at ", g.cell_of(at), " in field ", g.in_field(g.human, at), " map ", Game.W, "x", Game.H, " hall ", hall.cell)
 	# ---- the views: s, se, e, ne, n and the west mirror (sw, w, nw)
 	var views: Array = []
 	for i in 8:
