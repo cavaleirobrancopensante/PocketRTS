@@ -5,10 +5,13 @@ extends RefCounted
 ## snapshots said. (Hooks: Game._tick_game, Unit._physics_process, Building._physics_process.)
 
 
+
 static func tick_game(g: Game, delta: float) -> void:
 	if g.edit_mode:
 		return
 	g.clock += delta
+	if g.net:
+		g.net.tick_rclk(delta)
 	g.line_net.tick_view(delta)
 	g.gear_net.tick(delta)           # (the gear field is worked out from the synced buildings: the guest sees the turning gears)
 	g.alert_t = maxf(g.alert_t - delta, 0.0)
@@ -62,9 +65,19 @@ static func tick_unit(u: Unit, delta: float) -> void:
 	var mo = s.motion.get(u.net_id) if s else null
 	if mo != null:
 		mo[2] += delta
-		var f := clampf(mo[2] / s.interval, 0.0, 1.0)
-		u.position = (mo[0] as Vector2).lerp(mo[1], f)
-		u.velocity = ((mo[1] as Vector2) - (mo[0] as Vector2)) / s.interval if f < 1.0 else Vector2.ZERO
+		var at: Array = s.shown_at(u.net_id) if s.interp_on else []
+		if not at.is_empty():
+			# (from the buffer: between the two pictures around the shown clock, NetSession.shown_at)
+			u.position = at[0]
+			u.velocity = at[1]
+		else:
+			# (the older way: over a little more than the time between snapshots, toward the newest)
+			var span := s.glide_span()
+			var f := clampf(mo[2] / span, 0.0, 1.0)
+			u.position = (mo[0] as Vector2).lerp(mo[1], f)
+			u.velocity = ((mo[1] as Vector2) - (mo[0] as Vector2)) / span if f < 1.0 else Vector2.ZERO
+		if s.leads.has(u.net_id):
+			_lead(s, u, delta)
 	if u.kind == "balloon":
 		for p in u.passengers:
 			if is_instance_valid(p):
@@ -79,6 +92,35 @@ static func tick_unit(u: Unit, delta: float) -> void:
 		if key != u._draw_key:
 			u._draw_key = key
 			u.queue_redraw()
+
+
+## A unit told to walk, shown ahead of the snapshots (NetSession.lead): until the host's snapshot shows the order it
+## walks toward its spot here at its own speed (LEAD_MAX seconds of it at most); after, the lead is taken back at
+## LEAD_BACK of its speed while the host's own walk carries it on: it slows a little for a moment, no jump.
+static func _lead(s: NetSession, u: Unit, delta: float) -> void:
+	var ld: Dictionary = s.leads[u.net_id]
+	var off: Vector2 = ld["off"]
+	if s.leading(u.net_id):
+		var dir: Vector2 = (ld["to"] as Vector2) - (u.position + off)
+		if dir.length() > 4.0 and off.length() < u.speed * NetSession.LEAD_MAX:
+			dir = dir.normalized()
+			off += dir * u.speed * NetSession.LEAD_PACE * delta
+			u.facing = dir
+			u.velocity = dir * u.speed          # (the walk)
+	else:
+		# Taken back as gently as the host's walk allows: walking the same way as the lead, a little at a time (it
+		# shows at about 90% of its speed for a moment); turning off it (a path round a corner), faster; stopped on the
+		# host (there, or held up), at once over a few frames, so it never stands off where the host has it.
+		var v := u.velocity
+		var rate := 1.2
+		if v.length() > 1.0 and off.length() > 0.01:
+			var align := clampf(off.normalized().dot(v.normalized()), 0.0, 1.0)
+			rate = lerpf(NetSession.LEAD_BACK_TURN, NetSession.LEAD_BACK, align)
+		off = off.move_toward(Vector2.ZERO, u.speed * rate * delta)
+		if off == Vector2.ZERO:
+			s.leads.erase(u.net_id)
+	ld["off"] = off
+	u.position += off
 
 
 static func tick_building(b: Building, delta: float) -> void:

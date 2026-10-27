@@ -1798,6 +1798,13 @@ func _notification(what: int) -> void:
 		DirAccess.remove_absolute(RUNNING)
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		_mark_running("resumed" if game == null else "resumed a match")
+	# online: the app put away (or back): the host pauses the match for everyone meanwhile (NetSession.set_hidden;
+	# on the web the page's visibility says it)
+	if game and is_instance_valid(game) and game.net and not OS.has_feature("web"):
+		if what == NOTIFICATION_APPLICATION_PAUSED:
+			game.net.set_hidden(true)
+		elif what == NOTIFICATION_APPLICATION_RESUMED:
+			game.net.set_hidden(false)
 
 
 func _process(delta: float) -> void:

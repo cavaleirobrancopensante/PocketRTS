@@ -148,6 +148,17 @@ var mlog: MatchLog              # the playtest log (copied from the end screen)
 var chat: Chat                  # the in-game chat (YOU and the computers; the log lines go to mlog)
 var end_note := ""              # how the match ended, for the log: "", "player_surrender", "ai_resigned"
 var end_ahead := ""             # on a player surrender: "ahead", "behind" or "about even" (worked out at that moment)
+var end_quitter := -1           # on a player surrender: the team that gave up
+## Online host: while a guest's order runs (NetCommands.apply), the team and relay id it came from (-1: none). The
+## order's marker and voice are the guest's own (shown on its screen, not here), its messages go to the guest (tell),
+## and what it may click on is what that side sees, not this screen's fog (shown_to_commander).
+var net_cmd_team := -1
+var net_cmd_peer := -1
+## Online: no ring or voice from the order running now (a guest's, or the host's own held one: both were shown at the
+## click). input_cmd: the local player's input is being handled (Controls, HUD): with the same delay for both players
+## the host's own orders made now wait (NetCommands.hold); the computers' and the game's own never do.
+var net_quiet := false
+var input_cmd := false
 var resigned: Array = []        # computers that resigned after a gg
 var _first_of := {}             # "team:kind" -> true once that player has had one
 
@@ -664,8 +675,7 @@ func place_line(t: int, k: String, a: Vector2i, b: Vector2i, builders: Array, qu
 		if k == "wall" and _own_gate_at(t, c) != null and a != b:
 			continue
 		if players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
-			if t == human:
-				notify("Not enough gold for the whole wall.")
+			tell(t, "Not enough gold for the whole wall.")
 			break
 		var bl := place_building(t, k, c, builders if first and not queued else [])
 		if bl:
@@ -2481,8 +2491,7 @@ func capital(t: int) -> Building:
 				# (the capital has no ground since the pits own it: nothing passes on)
 				if mlog:
 					mlog.add("%s: the capital fell; the next Burrow is the new capital" % mlog.who(t))
-				if hud and t == human:
-					notify("Your capital has fallen: the next Burrow is the new capital.")
+				tell(t, "Your capital has fallen: the next Burrow is the new capital.")
 			_capital_had[t] = true
 			return b
 	return null
@@ -2653,8 +2662,7 @@ func use_powder(t: int, n: int) -> bool:
 	if faction_of(t) != "crown":
 		return true
 	if float(players[t]["res2"]) < n:
-		if t == human:
-			notify("Powder bank empty: man your Powder Mills.")
+		tell(t, "Powder bank empty: man your Powder Mills.")
 		return false
 	players[t]["res2"] = float(players[t]["res2"]) - n
 	return true
@@ -2869,7 +2877,13 @@ func _own_hall(t: int) -> Building:
 ## Online guest: send this call to the host instead of running it (true: it was sent, the caller
 ## returns). Everywhere else (the host, single player) false and the call runs as always.
 func net_forward(who: Object, fn: String, args: Array) -> bool:
-	return puppet and net != null and NetCommands.forward(net, who, fn, args)
+	if net == null:
+		return false
+	if puppet:
+		return NetCommands.forward(net, who, fn, args)
+	if input_cmd and net_cmd_team < 0 and net.hold_ms() > 0:
+		return NetCommands.hold(net, who, fn, args)     # (online host, the same delay for both: it waits as a guest's order does)
+	return false
 
 
 ## Set a command-card setting (auto repair, auto training ...) on something of yours; an online
@@ -3124,6 +3138,8 @@ func site_failed(b: Building, why := "blocked") -> void:
 		_notify_t = Time.get_ticks_msec()
 		hud.toast("Can't build there: the spot is blocked." if why == "blocked" else "Can't build there: it can't be reached.", true)
 		Sfx.announce(faction_of(t), "bad_place", 4.0)
+	elif t != human and not demo and why != "abandoned":
+		tell(t, "Can't build there: the spot is blocked." if why == "blocked" else "Can't build there: it can't be reached.")
 	if mlog:
 		var wl: String = {"blocked": "the spot was blocked", "unreachable": "it couldn't be reached", "abandoned": "nobody was coming to start it"}.get(why, why)
 		mlog.add("%s %s a %s: %s (refunded)" % [mlog.who(t), "dropped" if why == "abandoned" else "couldn't start", b.d["name"], wl])
@@ -3874,6 +3890,9 @@ func research_done(b: Building, key: String) -> void:
 		var what := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
 		notify("%s researched: %s" % [info["name"], what], true)
 		Sfx.announce(faction_of(b.team), "research_done", 3.0)
+	elif not demo:
+		var what2 := ("%s unlocked." % Defs.UNITS[info["unlocks"]]["name"]) if info.has("unlocks") else String(info["about"])
+		tell(b.team, "%s researched: %s" % [info["name"], what2], true)      # (online: the guest who researched it)
 	if mlog:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
 
@@ -3938,8 +3957,8 @@ func cancel_hall_upgrade(b: Building, dying := false) -> void:
 func hall_upgraded(b: Building) -> void:
 	var was := String(b.d["name"])
 	b.set_level(b.level + 1)
+	tell(b.team, "Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
 	if b.team == human:
-		notify("Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
 		Sfx.announce(faction_of(b.team), "research_done", 3.0)
 	if mlog:
 		mlog.add("%s upgraded a %s to a %s" % [mlog.who(b.team), was, b.d["name"]])
@@ -4785,7 +4804,7 @@ func free_crate(t: int, p: Vector2, r: float) -> Crate:
 ## The crate on the ground under a tap.
 func crate_at(p: Vector2) -> Crate:
 	for c in crates:
-		if not c.dead and c.visible and c.rect().grow(6).has_point(p):
+		if not c.dead and shown_to_commander(c) and c.rect().grow(6).has_point(p):
 			return c
 	return null
 
@@ -4920,6 +4939,34 @@ func notify(msg: String, quiet := false) -> void:
 	if now - _notify_t > 3000 and hud:
 		_notify_t = now
 		hud.toast(msg, not quiet)
+
+
+## A message for the player of team t: on this screen if it is ours; online, the host sends it to the guest who plays
+## t (a guest's order refused, a guest's unit that can't do what it was told). Nobody else's: nothing.
+func tell(t: int, msg: String, quiet := false) -> void:
+	if t == human and net_cmd_team < 0:
+		notify(msg, quiet)
+	elif net != null and not puppet:
+		net.tell(t, msg, quiet)
+
+
+## Is the player whose order is being worked out allowed to have meant this entity (on their screen)? Normally its
+## visibility on this screen; while a guest's order runs on the host, what the guest's side sees (its own and its
+## allies' things always; others where its side sees now, a building once its side has spotted it: seen_mask).
+func shown_to_commander(e: Node2D) -> bool:
+	if net_cmd_team < 0:
+		return e.visible
+	var t := net_cmd_team
+	var et := int(e.get("team")) if e.get("team") != null else -1
+	if et >= 0 and allied(et, t):
+		return not (e is Unit and (e as Unit).off_field)
+	if e is Building:
+		var mask := 0
+		for o in n_players():
+			if allied(o, t):
+				mask |= 1 << o
+		return not (e as Building).ghost and ((e as Building).seen_mask & mask) != 0
+	return side_sees(t, e.global_position) and not (e is Unit and (e as Unit).off_field)
 
 
 # ------------------------------------------------------------------ swamp
@@ -5700,12 +5747,13 @@ func _hall_kind_of(t: int) -> Array:
 func entity_at(p: Vector2, _any := true) -> Entity:
 	var best: Entity = null
 	var bd := 26.0
+	var who := net_cmd_team if net_cmd_team >= 0 else controlled_team()
 	# (the mouse asks this whenever it moves: a unit more than 26 px away on either axis can't
 	# be the nearest within 26 px, so it's passed over before anything else is asked of it)
 	for u in units:
 		if absf(u.position.x - p.x) >= 26.5 or absf(u.position.y - 12.0 - p.y) >= 26.5:
 			continue
-		if u.dead or not u.visible:
+		if u.dead or not shown_to_commander(u):
 			continue
 		var dd: float = (u.position + Vector2(0, -12)).distance_to(p)
 		if dd < bd:
@@ -5713,13 +5761,12 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			best = u
 	if best:
 		return best
-	var ct := controlled_team()
 	for b in buildings:
-		if not b.visible or hidden_ghost(b, ct):
-			continue                  # (both tests below need it on show)
-		if b.visible and b.rect().grow(6).has_point(p + Vector2(0, 10)):
+		if hidden_ghost(b, who) or not shown_to_commander(b):
+			continue                  # (both tests below need it on show to whoever gave the order)
+		if b.rect().grow(6).has_point(p + Vector2(0, 10)):
 			return b
-		if b.visible and b.sprite and b.sprite.texture:
+		if b.sprite and b.sprite.texture:
 			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
@@ -5730,7 +5777,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 ## whose footprint or sprite is under p, or null.
 func crew_site_at(p: Vector2, t: int) -> Building:
 	for b in buildings:
-		if b.team != t or b.dead or not b.built or not b.visible or b.crew_max() <= 0:
+		if b.team != t or b.dead or not b.built or not shown_to_commander(b) or b.crew_max() <= 0:
 			continue
 		if b.rect().grow(4).has_point(p):
 			return b
@@ -6486,12 +6533,12 @@ func load_order(riders: Array, balloons: Array) -> void:
 				best.cmd_stop()        # it stops where it is and comes down
 			u.cmd_board(best)
 		elif not (Defs.DROPSHIP["kinds"] as Array).has(u.kind):
-			if why == "" and u.team == human:
+			if why == "":
 				why = "Only Musketeers and Labourers fit in the basket."
 		elif why == "" and bs.all(func(b: Unit) -> bool: return b.room() <= 0):
 			why = "The basket is full (%d men)." % int(Defs.DROPSHIP["capacity"])
-	if why != "" and not men.is_empty() and men[0].team == human:
-		notify(why)
+	if why != "" and not men.is_empty():
+		tell(men[0].team, why)
 
 
 ## The selected balloons with men aboard fly to `p` and let them off (here: right below).
@@ -6502,15 +6549,16 @@ func unload_order(list: Array, p: Vector2, here := false) -> void:
 		if b is Unit and not b.dead and b.kind == "balloon" and not b.passengers.is_empty():
 			b.cmd_unload(b.position if here else p)
 			any = true
-	if not any and not list.is_empty() and list[0].team == human:
-		notify("Nobody aboard.")
+	if not any and not list.is_empty() and list[0] is Unit:
+		tell(list[0].team, "Nobody aboard.")
 
 
 ## The nearest selected Ornithopter carrying a battery flies over and overloads `e`.
 func overload_order(list: Array, e: Entity) -> void:
 	if net_forward(self, "overload_order", [list, e]): return
-	if not (e is Unit) or e.dead or e.team != human or e.d["faction"] != "clockwork" or e.is_worker():
-		notify("Pick one of your constructs to overload.")
+	var me: int = list[0].team if not list.is_empty() and list[0] is Unit else human      # (online: the guest who ordered it)
+	if not (e is Unit) or e.dead or e.team != me or e.d["faction"] != "clockwork" or e.is_worker():
+		tell(me, "Pick one of your constructs to overload.")
 		return
 	var best: Unit = null
 	var bd := INF
@@ -6524,7 +6572,7 @@ func overload_order(list: Array, e: Entity) -> void:
 		best.cmd_overload(e)
 		_ping(e.position, Color(1, 0.85, 0.3))
 	else:
-		notify("No Ornithopter here carries a battery.")
+		tell(me, "No Ornithopter here carries a battery.")
 
 
 ## Open ground around a spot (or as near as there is) for men let off a balloon: one cell
@@ -6559,8 +6607,8 @@ func cast_order(list: Array, spell: String, p: Vector2) -> void:
 	if net_forward(self, "cast_order", [list, spell, p]): return
 	if spell == "jump":
 		var why := Jack.jump_order(self, list, p)
-		if why != "" and not list.is_empty() and list[0] is Unit and list[0].team == human:
-			notify(why)
+		if why != "" and not list.is_empty() and list[0] is Unit:
+			tell(list[0].team, why)
 		return
 	var kind: String = CASTERS.get(spell, "spore_mother")
 	var best: Unit = null
@@ -6581,15 +6629,14 @@ func cast_order(list: Array, spell: String, p: Vector2) -> void:
 			best = u
 	if best:
 		best.cmd_cast(spell, p)
-	elif list.size() > 0 and list[0].team == human:
-		notify(why)
+	elif list.size() > 0 and list[0] is Unit:
+		tell(list[0].team, why)
 
 
 func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 	var w := spell_problem(u, spell)
 	if w != "":
-		if u.team == human:
-			notify(w)
+		tell(u.team, w)
 		return
 	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {}}
 	if spell == "fog":
@@ -6797,8 +6844,7 @@ func tongue_order(list: Array, e) -> void:
 	if toads.is_empty():
 		return
 	if not (e is Unit) or not toads[0].can_tongue(e):
-		if toads[0].team == human:
-			notify("Pick an enemy unit on the ground (not a building or a flyer).")
+		tell(toads[0].team, "Pick an enemy unit on the ground (not a building or a flyer).")
 		return
 	var best: Unit = null
 	var bd := INF
@@ -6812,16 +6858,16 @@ func tongue_order(list: Array, e) -> void:
 	if best:
 		best.cmd_tongue(e)
 		_ping(e.position, Color(1.0, 0.45, 0.6))
-	elif toads[0].team == human:
-		notify("Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
+	else:
+		tell(toads[0].team, "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
 
 
 ## A Toad has marked its victim: the crosshair goes up (its owner is warned).
 func tongue_marked(toad: Unit, e: Unit) -> void:
 	if not tongues.has(toad):
 		tongues.append(toad)
+	tell(e.team, "A Mist Toad is aiming its tongue at your %s: move it away or stun the Toad!" % String(e.d["name"]), true)
 	if e.team == human:
-		notify("A Mist Toad is aiming its tongue at your %s: move it away or stun the Toad!" % String(e.d["name"]), true)
 		_ping(e.position, Color(1.0, 0.3, 0.3))
 	Sfx.play_any(["combat/spitter_hit", "acid"], toad.position)
 
@@ -8556,6 +8602,60 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	group_move(us, p, not force_move and not Settings.pc(), queued)
 
 
+## Online guest: the ring and the answer smart_command gives, worked out on this screen at the click (the host runs
+## the order itself a round trip later); plain walks start at once here (NetSession.lead). Keep in step with
+## smart_command: _smart_choice follows its branches without doing anything.
+func smart_feedback(list: Array, p: Vector2, force_move: bool) -> void:
+	p = on_map(p)
+	var us: Array = list.filter(func(e) -> bool: return e is Unit and is_instance_valid(e) and not e.dead and e.kind != "horse")
+	if us.is_empty() or us[0].team != human:
+		return
+	var tgt := entity_at(p)
+	var atk: bool = tgt != null and hostile(tgt.team, human) and not force_move
+	command_sound(us, "attack" if atk else "move", "charge" if atk else "move")
+	var ch := _smart_choice(us, p, force_move)
+	_ping(p, ch[0])
+	if net != null and (ch[1] == "move" or ch[1] == "amove"):
+		net.lead(us, p, ch[1] == "amove")
+
+
+## What smart_command would do with these units for a click at p: [ring colour, "move" / "amove" / "other"].
+func _smart_choice(us: Array, p: Vector2, force_move: bool) -> Array:
+	var yellow := Color(1, 0.85, 0.3)
+	var e := null if force_move else entity_at(p)
+	var cr: Crate = null
+	if not force_move and not (e is Unit):
+		cr = crate_at(p)
+	if cr and cr.team == us[0].team and us.any(func(u: Unit) -> bool: return u.kind == "winder"):
+		return [yellow, "other"]
+	if cr and hostile(cr.team, us[0].team):
+		e = cr
+	if e is Unit and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_gather()) \
+			and not (e.hp < e.max_hp and us.any(func(u: Unit) -> bool: return u.can_repair(e))):
+		var site := crew_site_at(p, us[0].team)
+		if site:
+			e = site
+	if e != null and (e.team == us[0].team or loose_horse(e)):
+		if e is Unit and e.kind == "horse" and us.any(func(u: Unit) -> bool: return u.can_mount() or u.can_lead()):
+			return [Color(0.9, 0.8, 0.5), "other"]
+		if e is Unit and Defs.HARNESSED.has(e.kind) and e.team_room() and us.any(func(u: Unit) -> bool: return not u.led.is_empty()):
+			return [Color(0.9, 0.8, 0.5), "other"]
+	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
+		return [Color(0.4, 1, 0.4), "other"]
+	if e is Building and e.team == us[0].team and e.built and Defs.crew_cap(e.d) > 0 \
+			and us.any(func(u: Unit) -> bool: return u.can_gather()):
+		return [yellow, "other"]
+	if e and e.team == us[0].team and e.hp < e.max_hp and (e.is_unit() or e.built) \
+			and us.any(func(u: Unit) -> bool: return u.can_repair(e)):
+		return [Color(0.95, 0.7, 0.25), "other"]
+	if e is Building and e.team == us[0].team and not e.built:
+		return [yellow, "other"]
+	if e and prey(us[0].team, e):
+		return [Color(1, 0.3, 0.3), "other"]
+	var amove := not force_move and not Settings.pc()
+	return [Color(1, 0.3, 0.3) if amove else Color(0.4, 1, 0.4), "amove" if amove else "move"]
+
+
 ## Spread a group around the destination so they don't fight for one spot.
 ## You're being hit: an alert (not too often) and a flashing spot on the minimap.
 var alert_at := Vector2.INF
@@ -8629,7 +8729,7 @@ func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
 ## voice (the Crown's bugle only now and then, for the calls that mean something: attack, patrol);
 ## a mixed Crown group is answered by the bugle alone; whatever has no voice falls back to the bugle.
 func command_sound(us: Array, what: String, call: String) -> void:
-	if us.is_empty():
+	if us.is_empty() or net_cmd_team >= 0 or net_quiet:
 		return
 	var kinds := {}
 	for u in us:
@@ -8680,7 +8780,11 @@ func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> vo
 var _pings: Array = []
 
 
+## A ring where an order was given (it fades in half a second). Only the player who gave the order sees it: a guest's
+## order run on the host makes none here (the guest drew its own at the click: NetCommands.feedback).
 func _ping(p: Vector2, col: Color) -> void:
+	if net_cmd_team >= 0 or net_quiet:
+		return
 	_pings.append([p, col, 0.5])
 
 
@@ -8864,16 +8968,33 @@ func standing_text(t: int) -> String:
 	return "army %d vs %d, workers %d vs %d, buildings %d vs %d" % [m["army"], f["army"], m["workers"], f["workers"], m["buildings"], f["buildings"]]
 
 
-## The player gives up (the pause menu): every building falls, the log says who was ahead.
-func player_surrender() -> void:
-	if net_forward(self, "player_surrender", []): return
-	end_ahead = lead_of(human)
-	end_note = "player_surrender"
-	if mlog:
-		mlog.add("%s surrendered while %s (%s)" % [mlog.who(human), end_ahead, standing_text(human)])
+## The player gives up (the menu's SURRENDER): every building falls, the log says who was ahead. Online the host
+## runs it for a guest too (`team`: the side that gives up; the guest's log says it at the press).
+func player_surrender(team := -1) -> void:
+	if team < 0:
+		team = human
+	if puppet and net != null:
+		_note_surrender(team)
+	if net_forward(self, "player_surrender", [team]): return
+	_note_surrender(team)
 	for b in buildings.duplicate():
-		if b.team == human:
+		if b.team == team:
 			b.take_damage(99999, null)
+
+
+func _note_surrender(team: int) -> void:
+	var ahead := lead_of(team)
+	# (it ends the match unless an ally of theirs plays on: co-op, a friend still in)
+	var ends := true
+	for o in n_players():
+		if o != team and allied(o, team) and not eliminated[o]:
+			ends = false
+	if ends:
+		end_ahead = ahead
+		end_note = "player_surrender"
+		end_quitter = team
+	if mlog:
+		mlog.add("%s surrendered while %s (%s)" % [mlog.who(team), ahead, standing_text(team)])
 
 
 ## Efficiency colour: green from Defs.EFF_GOOD, through yellow, to red at Defs.EFF_POOR.
@@ -9555,8 +9676,8 @@ func steal_horse(h: Unit, by: Entity) -> void:
 	stats[by.team]["horses_stolen"] = int(stats[by.team].get("horses_stolen", 0)) + 1
 	if mlog:
 		mlog.add("%s stole a horse from %s" % [mlog.who(by.team), mlog.who(was)])
+	tell(was, "A horse was stolen!")
 	if was == human:
-		notify("A horse was stolen!")
 		Sfx.announce("crown", "horse_stolen", 8.0)
 	if by.team == human:
 		float_text(h.position + Vector2(0, -34), "horse taken", Color(0.85, 1.0, 0.7))

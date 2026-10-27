@@ -8,12 +8,16 @@ signal opened(my_id: int)               # the relay accepted us (host: id 0, gue
 signal notice(d: Dictionary)            # {"t": "join"/"leave"/"closed"/"error", ...}
 signal message(from: int, msg: Dictionary)
 signal closed(reason: String)
+signal polled                           # every message waiting this frame has been handed out (NetSession applies the newest snapshot then)
 
 var is_host := false
 var code := ""
 var my_id := -1
 var connected := false                  # accepted by the relay
-var rtt_ms := 0.0
+var rtt_ms := 0.0                       # the last round trip to the relay itself (not to the other player)
+var relay_sum := 0.0                     # (the match log's minute line: this device's leg to the relay; NetSession)
+var relay_n := 0
+var relay_max := 0.0
 var sent_bytes := 0
 var recv_bytes := 0
 var sent_msgs := 0
@@ -65,10 +69,10 @@ func is_open() -> bool:
 	return _ws != null and _ws.get_ready_state() == WebSocketPeer.STATE_OPEN
 
 
-## Host: to one guest id (0 = every guest). Guest: to the host (`to` is ignored).
-func send(msg: Dictionary, to := 0) -> void:
+## Host: to one guest id (0 = every guest). Guest: to the host (`to` is ignored). Returns the bytes sent (0: not open).
+func send(msg: Dictionary, to := 0) -> int:
 	if not is_open():
-		return
+		return 0
 	var body := NetCodec.pack(msg)
 	var out := PackedByteArray()
 	if is_host:
@@ -77,6 +81,18 @@ func send(msg: Dictionary, to := 0) -> void:
 	_ws.send(out, WebSocketPeer.WRITE_MODE_BINARY)
 	sent_bytes += out.size()
 	sent_msgs += 1
+	return out.size()
+
+
+## Push what was just sent onto the wire now (before the app goes to the background and stops running).
+func flush() -> void:
+	if _ws:
+		_ws.poll()
+
+
+## Bytes sent but still waiting to leave this device (a slow uplink makes them pile up).
+func buffered() -> int:
+	return _ws.get_current_outbound_buffered_amount() if is_open() else 0
 
 
 func close(why := "") -> void:
@@ -114,6 +130,7 @@ func _process(delta: float) -> void:
 				var m2 := NetCodec.unpack(pkt)
 				if not m2.is_empty():
 					message.emit(0, m2)
+		polled.emit()
 		_ping_t -= delta
 		if _ping_t <= 0.0 and connected:
 			_ping_t = 2.0
@@ -127,6 +144,9 @@ func _process(delta: float) -> void:
 func _text(s: String) -> void:
 	if s == "pong":
 		rtt_ms = float(Time.get_ticks_msec() - _ping_at)
+		relay_sum += rtt_ms
+		relay_n += 1
+		relay_max = maxf(relay_max, rtt_ms)
 		return
 	var d = JSON.parse_string(s)
 	if not (d is Dictionary):

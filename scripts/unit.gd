@@ -662,8 +662,8 @@ func _refit_run(delta: float) -> Vector2:
 	var p = order_target
 	if p == null or not is_instance_valid(p) or p.dead or (p is Building and not p.built) \
 			or (p is Unit and (p.off_field or p.aboard != null)) or refit.is_empty():
-		if team == game.human and not refit.is_empty():
-			game.notify("Refit called off: the place is gone. Paid back.")
+		if not refit.is_empty():
+			game.tell(team, "Refit called off: the place is gone. Paid back.")
 		cmd_stop()          # (the fee goes back)
 		return Vector2.ZERO
 	var at: Vector2 = p.position if p is Unit else p.center()
@@ -701,8 +701,7 @@ func _refit_run(delta: float) -> Vector2:
 	work = "to_refit"
 	work_t += delta
 	if work_t > float(Defs.REFIT["give_up"]):
-		if team == game.human:
-			game.notify("A %s couldn't reach the place to be refitted. Paid back." % String(d["name"]))
+		game.tell(team, "A %s couldn't reach the place to be refitted. Paid back." % String(d["name"]))
 		cmd_stop()
 		return Vector2.ZERO
 	# a wagon may be on the move: head straight for it when close, else find the way there
@@ -1666,8 +1665,7 @@ func cmd_move(p: Vector2, attack_move := false) -> void:
 	if _ai_keeps_windup():
 		return
 	if not can_roll():
-		if team == game.human:
-			game.notify("No horse: HARNESS one to move it.")
+		game.tell(team, "No horse: HARNESS one to move it.")
 		return
 	# a Dragoon fighting on foot gets back on his horse to move (not with the enemy in range
 	# on an attack-move: he goes on shooting)
@@ -1772,8 +1770,7 @@ func _cast(delta: float) -> Vector2:
 		return Vector2.ZERO
 	var why := game.spell_problem(self, cast_spell)
 	if why != "":
-		if team == game.human:
-			game.notify(why)
+		game.tell(team, why)
 		cmd_stop()
 		return Vector2.ZERO
 	if position.distance_to(cast_at) <= _spell_range():
@@ -1831,8 +1828,7 @@ func _tongue_order(delta: float) -> Vector2:
 		cmd_stop()
 		return Vector2.ZERO
 	if charge < float(Defs.TONGUE["cost"]):
-		if team == game.human:
-			game.notify("Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
+		game.tell(team, "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]))
 		cmd_stop()
 		return Vector2.ZERO
 	var dist: float = (e as Unit).position.distance_to(position)
@@ -1961,8 +1957,7 @@ func _ai_keeps_windup() -> bool:
 func cmd_pack() -> void:
 	if game.net_forward(self, "cmd_pack", []): return
 	if not harnessed and Defs.HARNESSED.has(kind):
-		if team == game.human:
-			game.notify("No horse to limber up: HARNESS one first.")
+		game.tell(team, "No horse to limber up: HARNESS one first.")
 		return
 	if deploys() and tesla_mode == "deployed":
 		tesla_mode = "packing"
@@ -2152,8 +2147,7 @@ func cmd_gather(site: Entity) -> void:
 		return
 	if b.haul_cap() > 0 and not b.crew.has(self) and b.haulers().size() >= b.haul_cap():
 		# (a Town Hall with all its haulers: the worker stands by it)
-		if team == game.human:
-			game.notify("That Town Hall has all its haulers.")
+		game.tell(team, "That Town Hall has all its haulers.")
 		cmd_move(b.center())
 		return
 	if b.barren():
@@ -2161,16 +2155,14 @@ func cmd_gather(site: Entity) -> void:
 		# workers under a "0/5" that looks like room): the nearest fresh site instead
 		var fresh := game.free_site(team, b.center())
 		if fresh == null:
-			if team == game.human:
-				game.notify("That %s's ground is spent: it yields nothing. Work fresh land." % b.d["name"])
+			game.tell(team, "That %s's ground is spent: it yields nothing. Work fresh land." % b.d["name"])
 			cmd_move(b.center())
 			return
 		b = fresh
 	if not b.crew.has(self) and b.crew.size() >= b.crew_max():
 		var alt := game.free_site(team, b.center())
 		if alt == null:
-			if team == game.human:
-				game.notify("That %s is fully crewed." % b.d["name"])
+			game.tell(team, "That %s is fully crewed." % b.d["name"])
 			cmd_move(b.center())
 			return
 		b = alt
@@ -2465,8 +2457,7 @@ func _board(delta: float) -> Vector2:
 		return Vector2.ZERO
 	_board_t += delta
 	if _board_t > float(Defs.DROPSHIP["give_up"]):
-		if team == game.human:
-			game.notify("They can't reach the balloon: it must hover over ground they can walk to.")
+		game.tell(team, "They can't reach the balloon: it must hover over ground they can walk to.")
 		cmd_stop()
 		return Vector2.ZERO
 	if position.distance_to(b.position) < float(Defs.DROPSHIP["board"]):
@@ -4174,8 +4165,7 @@ func _repair(delta: float) -> Vector2:
 		var heal := minf(rate * delta, e.max_hp - e.hp)
 		var cost := heal * float(e.d.get("cost", 0)) * Defs.REPAIR_COST / maxf(e.max_hp, 1.0)
 		if game.players[team]["gold"] < 1:
-			if team == game.human:
-				game.notify("Not enough ore to repair.")
+			game.tell(team, "Not enough ore to repair.")
 			if not _next_order():
 				cmd_stop()
 			return Vector2.ZERO
@@ -4829,8 +4819,7 @@ func cmd_sacrifice() -> void:
 	target = null
 	order_target = game.nearest_of(position, team, "brood_pen")
 	if order_target == null:
-		if team == game.human:
-			game.notify("No Brood Pen to offer them at.")
+		game.tell(team, "No Brood Pen to offer them at.")
 		cmd_stop()
 
 
@@ -5629,8 +5618,7 @@ func die() -> void:
 		var dmg := maxf(float(Defs.WAGON["blast"]) * full, float(Defs.WAGON["blast_min"]))
 		if game.mlog:
 			game.mlog.add("%s's Powder Wagon exploded (%d shots aboard)" % [game.mlog.who(team), int(powder)])
-		if team == game.human:
-			game.notify("Your Powder Wagon blew up!", true)
+		game.tell(team, "Your Powder Wagon blew up!", true)
 		powder = 0.0
 		game.powder_blast(self, position, dmg, float(Defs.WAGON["radius"]) * (0.85 + 0.15 * full), true)
 

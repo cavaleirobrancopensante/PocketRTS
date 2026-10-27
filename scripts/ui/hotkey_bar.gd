@@ -154,7 +154,7 @@ func game() -> Game:
 
 ## A key pressed: true if the bar took it. Numbers 1-9, 0 and F1-F10.
 func key(e: InputEventKey) -> bool:
-	if hud.paused or game().over or game().spectating():
+	if hud.paused or hud.menu_open or game().over or game().spectating():
 		return false
 	var kc := e.keycode
 	var g := -1
