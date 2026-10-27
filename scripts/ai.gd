@@ -54,6 +54,7 @@ func _s(key: String) -> Variant:
 ## Crown: the opening this game: "mill" (Powder Mill first, a Musketeer line: the default) or
 ## "breeder" (Horse Breeder first, a Horseman rush: on Rush, and else about 3 games in 10).
 var opening := "mill"
+static var force_opening := ""
 var scout: AIScout = null       # scouts the enemy first and picks the plan from what it saw (unless rushing)
 ## The Brood's own judgement (scripts/ai_brood.gd): essence, supply ahead of need, when a wave may go and
 ## when it pulls back. null for the other factions (and with AIBrood.enabled off: the Brood as it was,
@@ -67,6 +68,8 @@ func _ready() -> void:
 	_opened = strategy
 	if game.faction_of(team) == "crown" and (strategy == "rush" or randf() < 0.3):
 		opening = "breeder"
+	if game.faction_of(team) == "crown" and force_opening != "":
+		opening = force_opening
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
 	scout = AIScout.new(self)
