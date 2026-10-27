@@ -1365,7 +1365,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		if cdl == INF:
 			cdl = 0.0
 		var up := game.has_tech(game.human, "high_leap")
-		_tip_for["JUMP"] = ["Jump", "Tap where: after a short crouch the Jack leaps up to %d tiles along an arc (each Jack selected, to its own spot of the group). Flat ground and down a cliff any time; %s Not onto water, cliffs or buildings. It cannot shoot in the air; the spring winds back in %d s." % [
+		_tip_for["JUMP"] = ["Jump", "Tap where: after a short crouch the Springer leaps up to %d tiles along an arc (each Springer selected, to its own spot of the group). Flat ground and down a cliff any time; %s Not onto water, cliffs or buildings. It cannot shoot in the air; the spring winds back in %d s." % [
 			int(round(float(Defs.JACK_JUMP["range"]) / Defs.TILE)),
 			"UP onto high ground too, where you can see (HIGH LEAP)." if up else "UP onto high ground once HIGH LEAP is researched at the Escapement (and only where you can see).",
 			int(Defs.JACK_JUMP["cooldown"])]]
@@ -2899,9 +2899,9 @@ func _draw_panel(font: Font) -> void:
 					info += " · Growing into a %s: %d s left" % [bb.next_level()["name"], int(ceil(float(bb.next_level()["time"]) - bb.upgrade_t))]
 			if bb.kind == Defs.CW_TECH and bb.built and not bb.dead and Defs.gear_mode:
 				if game.gear_net.needs_spring(bb):
-					info = "NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Jacks). Build a Mainspring right beside it."
+					info = "NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Springers). Build a Mainspring right beside it."
 				elif game.gear_net.speed_mult(bb) > 0.0:
-					info = "Working: its ring meshes with a Mainspring. Jacks, Netters and Pendulums can be made at a Movement Works whose ring meshes with a Mainspring%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
+					info = "Working: its ring meshes with a Mainspring. Springers, Netters and Pendulums can be made at a Movement Works whose ring meshes with a Mainspring%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
 			if Defs.gear_mode and bb.built and not bb.dead and (e.team == game.human or game.demo):
 				var gi := GearEcon.card_info(bb)        # (the Tension rule and the store: scripts/gear_econ.gd)
 				if gi != "":
@@ -3606,7 +3606,7 @@ func _res_tip(i: int) -> Dictionary:
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
 		if Defs.gear_mode and i == 1:
-			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Jack, the Swift, the Netter, the Pendulum, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, and a Movement Works for its Jacks, Netters and Pendulums."}
+			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Springer, the Swift, the Netter, the Pendulum, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, and a Movement Works for its Springers, Netters and Pendulums."}
 		if i != 2:
 			return {}
 	if i == 3:

@@ -5,13 +5,13 @@
 pt Escape
 es Escape
 
-> The Clockwork's tech building: it unlocks the Jack and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Movement Works.
-pt A construção de tecnologia do Mecanismo: libera o Boneco de Mola e guarda a pesquisa de Tensão (PULO ALTO). Ela usa Tensão, então seu anel de engrenagens precisa engrenar com o anel de uma Mola Real (bem ao lado; uma engrenagem intermediária entre eles conta), e precisa continuar ligada ao campo de engrenagens: senão fica parada (PRECISA DE MOLA REAL). Precisa de uma Oficina de Movimentos.
-es El edificio de tecnología del Mecanismo: desbloquea el Muñeco de Resorte y guarda la investigación de Tensión (SALTO ALTO). Usa Tensión, así que su anillo de engranajes debe engranar con el anillo de un Muelle Real (justo al lado; un engranaje intermedio entre ellos cuenta), y debe seguir enlazado al campo de engranajes: si no, se queda parado (NECESITA MUELLE REAL). Necesita un Taller de Movimientos.
+> The Clockwork's tech building: it unlocks the Springer and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Movement Works.
+pt A construção de tecnologia do Mecanismo: libera o Saltador e guarda a pesquisa de Tensão (PULO ALTO). Ela usa Tensão, então seu anel de engrenagens precisa engrenar com o anel de uma Mola Real (bem ao lado; uma engrenagem intermediária entre eles conta), e precisa continuar ligada ao campo de engrenagens: senão fica parada (PRECISA DE MOLA REAL). Precisa de uma Oficina de Movimentos.
+es El edificio de tecnología del Mecanismo: desbloquea el Saltador y guarda la investigación de Tensión (SALTO ALTO). Usa Tensión, así que su anillo de engranajes debe engranar con el anillo de un Muelle Real (justo al lado; un engranaje intermedio entre ellos cuenta), y debe seguir enlazado al campo de engranajes: si no, se queda parado (NECESITA MUELLE REAL). Necesita un Taller de Movimientos.
 
-> Jack
-pt Boneco de Mola
-es Muñeco de Resorte
+> Springer
+pt Saltador
+es Saltador
 
 > A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at the Movement Works once an Escapement works.
 pt Um boneco de caixa de surpresa sobre uma mola espiral: anda aos pulinhos e dispara parafusos giratórios do braço-broca, contra o chão e para o alto, nos voadores. SALTAR: um agachamento curto, depois um salto de até 5 casas (10 s para a mola se enrolar de novo); no plano ou para baixo a qualquer hora, PARA CIMA num terreno alto depois de pesquisar PULO ALTO e se você vir o lugar. Não pode atirar no ar. Custa Tensão. Feito na Oficina de Movimentos quando um Escape funciona.
@@ -25,17 +25,17 @@ es Salto Alto
 pt PULO ALTO
 es SALTO ALTO
 
-> A stiffer spring: every Jack can JUMP UP onto high ground too (only where you can see).
-pt Uma mola mais firme: todo Boneco de Mola pode SALTAR PARA CIMA num terreno alto também (só onde você vê).
-es Un resorte más firme: todo Muñeco de Resorte puede SALTAR HACIA ARRIBA a terreno alto también (solo donde ves).
+> A stiffer spring: every Springer can JUMP UP onto high ground too (only where you can see).
+pt Uma mola mais firme: todo Saltador pode SALTAR PARA CIMA num terreno alto também (só onde você vê).
+es Un resorte más firme: todo Saltador puede SALTAR HACIA ARRIBA a terreno alto también (solo donde ves).
 
-> Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (up to 3). Must stay linked to the gear field. Tension pays for the Jack and the Escapement's research; a building that uses Tension (the Escapement) must mesh its ring with a Mainspring's.
-pt Enrola TENSÃO, o segundo recurso do Mecanismo: um pouco sozinha, mais para cada Enrolador que gira a manivela (até 3). Precisa continuar ligada ao campo de engrenagens. A Tensão paga o Boneco de Mola e a pesquisa do Escape; uma construção que usa Tensão (o Escape) precisa engrenar seu anel com o de uma Mola Real.
-es Da cuerda a la TENSIÓN, el segundo recurso del Mecanismo: un poco por sí solo, más por cada Dador de cuerda que gira su manivela (hasta 3). Debe seguir enlazado al campo de engranajes. La Tensión paga el Muñeco de Resorte y la investigación del Escape; un edificio que usa Tensión (el Escape) debe engranar su anillo con el de un Muelle Real.
+> Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (up to 3). Must stay linked to the gear field. Tension pays for the Springer and the Escapement's research; a building that uses Tension (the Escapement) must mesh its ring with a Mainspring's.
+pt Enrola TENSÃO, o segundo recurso do Mecanismo: um pouco sozinha, mais para cada Enrolador que gira a manivela (até 3). Precisa continuar ligada ao campo de engrenagens. A Tensão paga o Saltador e a pesquisa do Escape; uma construção que usa Tensão (o Escape) precisa engrenar seu anel com o de uma Mola Real.
+es Da cuerda a la TENSIÓN, el segundo recurso del Mecanismo: un poco por sí solo, más por cada Dador de cuerda que gira su manivela (hasta 3). Debe seguir enlazado al campo de engranajes. La Tensión paga el Saltador y la investigación del Escape; un edificio que usa Tensión (el Escape) debe engranar su anillo con el de un Muelle Real.
 
-> The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. It pays for the strong things: the Jack and the Escapement's research. A building that uses Tension (the Escapement) must mesh its ring with a Mainspring's.
-pt O segundo recurso do Mecanismo, enrolado pelos Enroladores que giram a manivela de uma Mola Real engrenada no campo de engrenagens. Paga as coisas fortes: o Boneco de Mola e a pesquisa do Escape. Uma construção que usa Tensão (o Escape) precisa engrenar seu anel com o de uma Mola Real.
-es El segundo recurso del Mecanismo, al que dan cuerda los Dadores de cuerda girando la manivela de un Muelle Real engranado al campo de engranajes. Paga las cosas fuertes: el Muñeco de Resorte y la investigación del Escape. Un edificio que usa Tensión (el Escape) debe engranar su anillo con el de un Muelle Real.
+> The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. It pays for the strong things: the Springer and the Escapement's research. A building that uses Tension (the Escapement) must mesh its ring with a Mainspring's.
+pt O segundo recurso do Mecanismo, enrolado pelos Enroladores que giram a manivela de uma Mola Real engrenada no campo de engrenagens. Paga as coisas fortes: o Saltador e a pesquisa do Escape. Uma construção que usa Tensão (o Escape) precisa engrenar seu anel com o de uma Mola Real.
+es El segundo recurso del Mecanismo, al que dan cuerda los Dadores de cuerda girando la manivela de un Muelle Real engranado al campo de engranajes. Paga las cosas fuertes: el Saltador y la investigación del Escape. Un edificio que usa Tensión (el Escape) debe engranar su anillo con el de un Muelle Real.
 
 > NEEDS MAINSPRING
 pt PRECISA DE MOLA REAL
@@ -65,9 +65,9 @@ es El Escape está parado: engrana su anillo de engranajes con el de un Muelle R
 pt O Escape está desligado: seu anel de engrenagens precisa engrenar com o campo de engrenagens.
 es El Escape está sin enlace: su anillo de engranajes debe engranar con el campo de engranajes.
 
-> Only a Jack can JUMP.
-pt Só um Boneco de Mola pode SALTAR.
-es Solo un Muñeco de Resorte puede SALTAR.
+> Only a Springer can JUMP.
+pt Só um Saltador pode SALTAR.
+es Solo un Saltador puede SALTAR.
 
 > It is already jumping.
 pt Ele já está saltando.
@@ -89,9 +89,9 @@ es Saltar HACIA ARRIBA a terreno alto necesita SALTO ALTO: investígalo en el Es
 pt Não há espaço para aterrissar ali.
 es No hay sitio para aterrizar ahí.
 
-> A Jack can only jump up where you can see.
-pt Um Boneco de Mola só pode saltar para cima onde você vê.
-es Un Muñeco de Resorte solo puede saltar hacia arriba donde ves.
+> A Springer can only jump up where you can see.
+pt Um Saltador só pode saltar para cima onde você vê.
+es Un Saltador solo puede saltar hacia arriba donde ves.
 
 > Too close to jump.
 pt Perto demais para saltar.
@@ -105,9 +105,9 @@ es SALTAR
 pt Saltar
 es Saltar
 
-> Tap where: after a short crouch the Jack leaps up to %d tiles along an arc (each Jack selected, to its own spot of the group). Flat ground and down a cliff any time; %s Not onto water, cliffs or buildings. It cannot shoot in the air; the spring winds back in %d s.
-pt Toque onde: depois de um agachamento curto o Boneco de Mola salta até %d casas num arco (cada Boneco selecionado, para o seu lugar no grupo). Terreno plano e penhasco abaixo a qualquer hora; %s Nunca em água, penhascos ou construções. Não pode atirar no ar; a mola se enrola de novo em %d s.
-es Toca dónde: tras un breve agachado el Muñeco de Resorte salta hasta %d casillas en un arco (cada Muñeco seleccionado, a su sitio del grupo). En llano y acantilado abajo cuando quieras; %s Nunca sobre agua, acantilados ni edificios. No puede disparar en el aire; el resorte vuelve a tensarse en %d s.
+> Tap where: after a short crouch the Springer leaps up to %d tiles along an arc (each Springer selected, to its own spot of the group). Flat ground and down a cliff any time; %s Not onto water, cliffs or buildings. It cannot shoot in the air; the spring winds back in %d s.
+pt Toque onde: depois de um agachamento curto o Saltador salta até %d casas num arco (cada Boneco selecionado, para o seu lugar no grupo). Terreno plano e penhasco abaixo a qualquer hora; %s Nunca em água, penhascos ou construções. Não pode atirar no ar; a mola se enrola de novo em %d s.
+es Toca dónde: tras un breve agachado el Saltador salta hasta %d casillas en un arco (cada Muñeco seleccionado, a su sitio del grupo). En llano y acantilado abajo cuando quieras; %s Nunca sobre agua, acantilados ni edificios. No puede disparar en el aire; el resorte vuelve a tensarse en %d s.
 
 > UP onto high ground too, where you can see (HIGH LEAP).
 pt PARA CIMA num terreno alto também, onde você vê (PULO ALTO).
@@ -125,13 +125,13 @@ es Toca dónde SALTAR (hasta 5 casillas; acantilado arriba solo con SALTO ALTO, 
 pt Clique onde SALTAR (até 5 casas; penhasco acima só com PULO ALTO, onde você vê)
 es Haz clic dónde SALTAR (hasta 5 casillas; acantilado arriba solo con SALTO ALTO, donde ves)
 
-> NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Jacks). Build a Mainspring right beside it.
-pt PRECISA DE MOLA REAL: seu anel não engrena com nenhuma Mola Real, então fica parado (sem pesquisa, sem Bonecos de Mola). Construa uma Mola Real bem ao lado.
-es NECESITA MUELLE REAL: su anillo no engrana con ningún Muelle Real, así que se queda parado (sin investigación, sin Muñecos de Resorte). Construye un Muelle Real justo al lado.
+> NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Springers). Build a Mainspring right beside it.
+pt PRECISA DE MOLA REAL: seu anel não engrena com nenhuma Mola Real, então fica parado (sem pesquisa, sem Saltadores). Construa uma Mola Real bem ao lado.
+es NECESITA MUELLE REAL: su anillo no engrana con ningún Muelle Real, así que se queda parado (sin investigación, sin Saltadores). Construye un Muelle Real justo al lado.
 
-> Working: its ring meshes with a Mainspring. Jacks can be made at the Movement Works%s.
-pt Funcionando: seu anel engrena com uma Mola Real. A Oficina de Movimentos pode fazer Bonecos de Mola%s.
-es Funcionando: su anillo engrana con un Muelle Real. El Taller de Movimientos puede hacer Muñecos de Resorte%s.
+> Working: its ring meshes with a Mainspring. Springers can be made at the Movement Works%s.
+pt Funcionando: seu anel engrena com uma Mola Real. A Oficina de Movimentos pode fazer Saltadores%s.
+es Funcionando: su anillo engrana con un Muelle Real. El Taller de Movimientos puede hacer Saltadores%s.
 
 > ; HIGH LEAP can be researched here
 pt ; PULO ALTO pode ser pesquisado aqui

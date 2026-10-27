@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.75", "items": [
+		"The Clockwork's jumping screw-shooter is now called the SPRINGER (it was the Jack): the name says what it does, a soldier on a spring.",
+	]},
 	{"v": "0.14.74", "items": [
 		"PATHFINDING, THE HIGH GROUND: a click on the edge of a plateau now means the top. Before, a click on the rim often counted as the low ground under the cliff, and the whole group walked down the ramp and round to stand in a heap at the foot of it. A line drawn along a cliff edge puts everybody on top too, each man on his own spot.",
 		"PATHFINDING, GROUPS AT AN EDGE: a group sent near a cliff, a wall or a building spreads out on the side you clicked. Before, every man whose place in the group fell over the edge was sent to the exact spot you clicked, and they piled up there against the cliff.",
