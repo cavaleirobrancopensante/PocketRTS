@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.34", "items": [
+		"ONLINE: the ping counter keeps its place left of the clock (under it when a phone's top bar has no room for it), and the zoom gauge steps aside instead of covering the clock.",
+		"ONLINE ROOM: a refused colour's words stay for a moment, then the room's line comes back.",
+	]},
 	{"v": "0.14.33", "items": [
 		"ONLINE MENU AND PAUSE are two things now: MENU (top right) opens the menu over the running match, with PAUSE, the volume sliders, the music player, SURRENDER and QUIT TO MENU (both asked twice online) and BACK TO THE MATCH. PAUSE stops the match; online either player can pause it for both (3 pauses each, at most 2 minutes each, then a 3, 2, 1), and both screens say who paused. The same in a skirmish.",
 		"MUSIC PLAYER in the in-game MENU: the piece playing and how far into it, NEXT, and a list of every song to pick from (your faction's first). A picked song plays to its end, then the music follows the match again. Only on your own screen.",

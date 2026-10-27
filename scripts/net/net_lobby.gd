@@ -52,6 +52,7 @@ var _ping_t := 0.0
 var _ping_k := 0
 var _ping_out := {}
 var _no_answer := false
+var _deny_ms := -99999
 
 
 ## Host a game: `relay` is the relay's address, `room` a code (NetLink.new_code()).
@@ -428,6 +429,7 @@ func _on_message(from: int, m: Dictionary) -> void:
 		"deny":
 			if not is_host:
 				status = String(m.get("m", "Refused."))
+				_deny_ms = Time.get_ticks_msec()
 				changed.emit()
 		"lobby":
 			if is_host:
@@ -441,8 +443,8 @@ func _on_message(from: int, m: Dictionary) -> void:
 			_lobby_hash = hs
 			slots = m.get("slots", [])
 			my_slot = int(m.get("you", 0))
-			if not _got_lobby or _no_answer:
-				status = "In the room. The host starts the game."
+			if not _got_lobby or _no_answer or Time.get_ticks_msec() - _deny_ms > 2500:
+				status = "In the room. The host starts the game."     # (a refusal's words stay a little, then the room's)
 			_got_lobby = true
 			_no_answer = false
 			changed.emit()

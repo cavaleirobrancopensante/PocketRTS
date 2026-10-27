@@ -285,10 +285,10 @@ func _draw_layer(l: HudLayer) -> void:
 		"chat":
 			_draw_chat()
 		"tooltip":
-			if not paused:
+			if not paused and not menu_open:
 				_draw_tip()
 		"pause":
-			if paused:
+			if paused or menu_open:
 				_draw_pause()
 	_ci = self
 	Prof.add("hud/" + l.fn, p0)
@@ -2281,7 +2281,16 @@ func _draw_top(font: Font) -> void:
 			_text(UiStyle.bold_font(), Vector2(28, 22 + n * 20), _res_line(t), 13, UiStyle.TEXT)
 		x = 8.0
 	var secs := int(game.clock)
-	var clock_r := Rect2(maxf(vs.x * 0.5 - 44, x), 4, 88, 30)
+	var clock_x := maxf(vs.x * 0.5 - 44, x)
+	var right_btns := vs.x
+	if not Settings.pc():
+		right_btns = help_rect().position.x if _help_on() else drag_rect().position.x
+		if _chat_button_on():
+			right_btns = minf(right_btns, chat_btn_rect().position.x)
+	if game.net and maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0) + 88.0 < right_btns - 4.0:
+		clock_x = maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0)     # (online: room left of the clock for the ping; else under it)
+	var clock_r := Rect2(clock_x, 4, 88, 30)
+	_clock_end = clock_r.end.x
 	UiStyle.draw_panel(_ci, clock_r, acc, 0.8)
 	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
 	if game.net:
@@ -2321,13 +2330,22 @@ const PING_COLS := [Color(0.45, 0.95, 0.45), Color(1.0, 0.85, 0.3), Color(1.0, 0
 
 ## Online: the round trip to the other player left of the clock, green / yellow / red (NetSession.ping_grade; red and
 ## climbing while an answer is late), and under the top bar "Waiting for the host..." while no picture comes.
+func _ping_txt() -> String:
+	var ms := game.net.ping_shown()
+	return "-- ms" if ms < 0 else ("%d ms" % ms if ms < 10000 else "%d s" % (ms / 1000))
+
+
+## The ping box's width (as wide as "999 ms", so the clock beside it doesn't move as the number changes).
+func _ping_w() -> float:
+	return UiStyle.bold_font().get_string_size("999 ms", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 28.0
+
+
 func _draw_ping(clock_r: Rect2, left: float) -> void:
 	var net := game.net
-	var ms := net.ping_shown()
-	var txt := "-- ms" if ms < 0 else ("%d ms" % ms if ms < 10000 else "%d s" % (ms / 1000))
+	var txt := _ping_txt()
 	var col: Color = PING_COLS[net.ping_grade()]
 	var font := UiStyle.bold_font()
-	var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 28.0
+	var w := maxf(_ping_w(), font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 28.0)
 	var r := Rect2(clock_r.position.x - 6.0 - w, 8, w, 22)
 	if r.position.x < left + 2.0:
 		r = Rect2(clock_r.get_center().x - w * 0.5, clock_r.end.y + 3.0, w, 22)     # (no room beside it: under the clock)
@@ -2493,6 +2511,9 @@ func _zoom_alpha() -> float:
 
 
 ## The small zoom gauge, in the top bar left of the menu buttons (not on the minimap).
+var _clock_end := 0.0        # the top bar's clock's right edge (the zoom gauge keeps clear of it)
+
+
 func zoom_rect() -> Rect2:
 	var x := _vs().x - 96 - 128
 	if _chat_button_on():
@@ -2506,6 +2527,8 @@ func _draw_zoom() -> void:
 	var z: float = game.camera.zoom.x
 	var a := _zoom_alpha()
 	var box := zoom_rect()
+	if box.position.x < _clock_end + 4.0:
+		return          # (a crowded top bar, online on a phone: the clock and the ping keep their room, the gauge goes)
 	_ci.draw_rect(box, Color(0, 0, 0, 0.55 * a))
 	var bar := Rect2(box.position + Vector2(40, 7), Vector2(46, 4))
 	_ci.draw_rect(bar, Color(1, 1, 1, 0.25 * a))

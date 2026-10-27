@@ -716,15 +716,20 @@ func _guest_extras(s: NetSession) -> void:
 			if _ord.is_empty():
 				if _orders.is_empty():
 					var bad: Array = results.keys().filter(func(k: String) -> bool: return k.begins_with("order_") and not results[k])
-					check("guest_every_order_type", bad.is_empty(), "%d types, failed: %s" % [results.keys().filter(func(k: String) -> bool: return k.begins_with("order_")).size(), str(bad)])
+					if not results.has("guest_every_order_type"):
+						check("guest_every_order_type", bad.is_empty(), "%d types, failed: %s" % [results.keys().filter(func(k: String) -> bool: return k.begins_with("order_")).size(), str(bad)])
 					if shots != "" and not base.has("menu_shot"):
 						base["menu_shot"] = true
 						g.hud.toggle_menu(true)
 						snap("menu")
 						step_t = 0.0
 						return
-					if shots != "" and step_t < 1.0:
+					if shots != "" and (step_t < 2.5 or not _shot_q.is_empty()):
 						return
+					g.hud.toggle_menu(true)
+					var labels: Array = g.hud._menu_buttons().map(func(b: Dictionary) -> String: return String(b["label"]))
+					check("guest_menu_has_pause_and_surrender", g.hud._pause_item().get("enabled", true) and labels.has("SURRENDER") and g.hud._layer_sig("pause").size() > 0,
+						str(labels))
 					g.hud.toggle_menu(false)
 					s.request_pause(true)
 					step = 23
@@ -750,7 +755,7 @@ func _guest_extras(s: NetSession) -> void:
 				base["pause_shot"] = true
 				snap("paused")
 				step_t = 0.0
-			elif s.pause_by == g.human and (shots == "" or step_t > 1.0):
+			elif s.pause_by == g.human and (shots == "" or (step_t > 1.0 and _shot_q.is_empty())):
 				check("guest_pause_holds_both", g.hud.paused and s.my_pauses() == NetSession.PAUSES - 1, "pauses left %d" % s.my_pauses())
 				s.request_pause(false)
 				step = 24

@@ -151,6 +151,8 @@ static func attach(g: Game, lnk: NetLink, host: bool, team: int, peers: Dictiona
 			s._heard[int(pr)] = Time.get_ticks_msec()
 	else:
 		lnk.send({"t": "ready"})            # my match has loaded: the host can start the countdown
+		for t in g.n_players():
+			s.pauses_left[t] = PAUSES        # (the host counts; until its first word, everyone has them all)
 	s._m_reset()
 	s._watch_visibility()
 	s._log("%s; same delay for both players %s" % ["host" if host else "guest", "on (the host's orders wait as long as the guest's take to arrive)" if same else "off"])
