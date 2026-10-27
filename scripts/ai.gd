@@ -392,6 +392,14 @@ func _rush_after(party: Array, connected: bool) -> void:
 	for u in party:
 		if is_instance_valid(u) and not u.dead and not riders.has(u):
 			u.cmd_move(_home_spot(_front()))
+	if _harass_unsafe(riders):
+		# (the owner's pick after round 4c: harass only while it is safe; an enemy with a real army sends it at us
+		# anyway, and the riders are part of the defence then: they ride home, as before round 4)
+		_rush_state = "done"
+		_rush_recall(riders)
+		if riders.size() > 0:
+			_rush_log("its army is too strong to harass: the %d Horsemen ride home to the defence" % riders.size())
+		return
 	_rush_state = "harass"
 	_harass_n = maxi(2, riders.size())
 	_raiders = riders
@@ -403,6 +411,22 @@ func _rush_after(party: Array, connected: bool) -> void:
 		_mop_pending = false
 	if riders.size() > 0:
 		_rush_log("%d Horsemen stay out and harass (never into its army)" % riders.size())
+
+
+## The enemy has a real army (seen in the last 20 s): worth HARASS_SAFE times the riders or more (300 at least).
+const HARASS_SAFE := 1.5
+func _harass_unsafe(riders: Array) -> bool:
+	var foe := _foe()
+	if foe < 0:
+		return false
+	var mine := 0.0
+	for u in riders:
+		mine += _unit_value(u)
+	var theirs := 0.0
+	for o in game.army(foe):
+		if not o.dead and not o.off_field and not o.is_worker() and o.kind != "grub" and o.kind != "horse" and _sighted(o):
+			theirs += _unit_value(o)
+	return theirs >= maxf(300.0, mine * HARASS_SAFE)
 
 
 func _enemy_army_out(foe: int, ebase: Vector2) -> bool:
@@ -451,12 +475,12 @@ func _harass(party: Array) -> void:
 				u.cmd_move(away + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 		return
 	var out := _enemy_army_out(foe, ebase)
-	if out or _threat() != Vector2.INF:
+	if out or _threat() != Vector2.INF or _harass_unsafe(party):
 		# its army is coming for us: the riders ride home and fight with the defence (coach round 4: with the riders
 		# off raiding its base, the Crown's home fell to the Clockwork's first wave in 3 games of 4; the base raid
 		# traded a few workers for the whole game)
 		_rush_state = "done"
-		_rush_log("its army has moved out: the %d Horsemen ride home to defend" % party.size())
+		_rush_log("its army is out or too strong now: the %d Horsemen ride home to defend" % party.size())
 		var spot := _threat() if _threat() != Vector2.INF else _front()
 		for u in party:
 			u.cmd_move(spot, true)
