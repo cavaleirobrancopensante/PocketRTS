@@ -4,11 +4,33 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.14.73", "items": [
-		"CLOCKWORK COMPUTER: its tech now comes on time. On Hard the Mainspring stands by about 3:00 and the Escapement by about 4:00, so its first Jacks, Netters and SHIELD WALL are out for the first big fight. It makes sure a Movement Works can make Jacks (a Mainspring beside it, or a Works beside a Mainspring), keeps its cogs for the tech under a raid it can beat, and spends its Tension instead of leaving it at the cap. Its army is about one Jack for every one and a half Clock Soldiers, with a few Netters and Pendulums.",
-		"CLOCKWORK COMPUTER SIEGES: its Jacks and Netters shoot and net the workers mending a wall or gate first, then the shooters on the edge, while the Clock Soldiers hit the gate, and its reckoning of a siege counts that. Against a walled enemy its first attack waits for four Jacks (two on Normal). With HIGH LEAP its Jacks jump up onto the high ground when the enemies by the landing are worth less than they are. A siege going worse than it reckoned, or a wave that keeps losing far more than it kills, is called off, all the way back to the rally.",
+	{"v": "0.14.79", "items": [
+		"CLOCKWORK COMPUTER: its tech now comes on time. On Hard the Mainspring stands by about 3:00 and the Escapement by about 4:00, so its first Springers, Netters and SHIELD WALL are out for the first big fight. It makes sure a Movement Works can make Springers (a Mainspring beside it, or a Works beside a Mainspring), keeps its cogs for the tech under a raid it can beat, and spends its Tension instead of leaving it at the cap. Its army is about one Springer for every one and a half Clock Soldiers, with a few Netters and Pendulums.",
+		"CLOCKWORK COMPUTER SIEGES: its Springers and Netters shoot and net the workers mending a wall or gate first, then the shooters on the edge, while the Clock Soldiers hit the gate, and its reckoning of a siege counts that. Against a walled enemy its first attack waits for four Springers (two on Normal). With HIGH LEAP its Springers jump up onto the high ground when the enemies by the landing are worth less than they are. A siege going worse than it reckoned, or a wave that keeps losing far more than it kills, is called off, all the way back to the rally.",
 		"CLOCKWORK COMPUTER TARGETS: it goes first for what it can reach without breaking a wall: an expansion, farms, outlying buildings (not a spot right under a walled plateau's guns). On Hard its Netters net fighters rather than workers, its Pendulums walk into knots of enemy soldiers, and badly hurt Clock Soldiers step back to a Winder to be mended.",
 		"FIX: a unit given a new order while its blow was landing skipped its reload. A Netter given an order every second fired a net every second (its reload is 14 s). Now the reload always follows the blow, for every unit and every player.",
+	]},
+	{"v": "0.14.78", "items": [
+		"WINDERS have new art for carrying a building's crate: they walk with it held out in both hands, stand with it, and bend down to set it on the ground before it unfolds into the building, in every direction.",
+	]},
+	{"v": "0.14.77", "items": [
+		"A Winder walking away from you with a building's crate now shows it over his head (it is in his hands in front of him), instead of hiding it behind his back.",
+	]},
+	{"v": "0.14.76", "items": [
+		"WINDERS carry a building's crate out in front of them in their hands (it was on their backs), and at the site they lower it to the ground in front of them before it unfolds into the building.",
+	]},
+	{"v": "0.14.75", "items": [
+		"The Clockwork's jumping screw-shooter is now called the SPRINGER (it was the Jack): the name says what it does, a soldier on a spring.",
+	]},
+	{"v": "0.14.74", "items": [
+		"PATHFINDING, THE HIGH GROUND: a click on the edge of a plateau now means the top. Before, a click on the rim often counted as the low ground under the cliff, and the whole group walked down the ramp and round to stand in a heap at the foot of it. A line drawn along a cliff edge puts everybody on top too, each man on his own spot.",
+		"PATHFINDING, GROUPS AT AN EDGE: a group sent near a cliff, a wall or a building spreads out on the side you clicked. Before, every man whose place in the group fell over the edge was sent to the exact spot you clicked, and they piled up there against the cliff.",
+		"PATHFINDING, NO WAY THERE: a unit sent where it can't go (up a cliff with no way round, into a walled base) walks to the nearest place it can reach and stops. Before, it walked on from there straight into the cliff or wall and pushed at it for good; computer scouts did this for minutes under the enemy base.",
+		"MELEE AND THE HIGH GROUND: Raptors, Brutes and other fighters no longer run to the foot of a cliff under an enemy they can't get at. With a wall or gate in the way they go and break it; with no way at all they leave him and look for another fight. A Raptor or Brute circling its prey no longer picks a spot below the cliff edge either.",
+		"CORNERS: a unit that walks into a corner (a step in a cliff, the corner of a building) slips round it instead of stopping dead, and big units (Horsemen, Brutes, Pendulums, guns and wagons) plan their paths a little further from corners. Details and numbers: docs/pathfinding_audit.md.",
+	]},
+	{"v": "0.14.73", "items": [
+		"CROWN COMPUTER, coached over 32 games against the Clockwork and the Brood computers: after a Horseman opening it no longer holds its Labourers at eight for ten minutes (its Horsemen now count as defenders); an ordinary Clockwork Movement Works is no longer taken for a rush (two of them early still are); it expands in time (a fresh Town Hall for every 16 Labourers, three at most) instead of waiting until its main is barren; it does not lay a new Town Hall again and again on a spot its builders were just chased from; and when powder piles up while gold runs out, Labourers go back from the Powder Mills to the farms.",
 	]},
 	{"v": "0.14.72", "items": [
 		"Behind the scenes: a test switch that lets a computer's siege play out to the end, used to check when the computer should call an attack off. Nothing changes in play.",

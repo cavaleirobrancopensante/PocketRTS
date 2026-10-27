@@ -2212,7 +2212,7 @@ func _ground(delta: float) -> Vector2:
 
 ## Walk toward a point on the ground: straight when close and clear (a flyer always), else along a path.
 func _gnd_walk(p: Vector2, delta: float) -> Vector2:
-	if is_air() or (position.distance_to(p) < 140.0 and game.line_clear(position, p)):
+	if is_air() or (position.distance_to(p) < 140.0 and game.line_clear(position, p, _path_margin())):
 		path = PackedVector2Array()
 		return (p - position).normalized() * speed
 	if (path.is_empty() or path_i >= path.size()) and not path_pending or repath_t <= 0.0:
@@ -2736,7 +2736,7 @@ func _board(delta: float) -> Vector2:
 	if position.distance_to(b.position) < float(Defs.DROPSHIP["board"]):
 		b.take_aboard(self)
 		return Vector2.ZERO
-	if position.distance_to(b.position) < 90.0 and game.line_clear(position, b.position):
+	if position.distance_to(b.position) < 90.0 and game.line_clear(position, b.position, _path_margin()):
 		path = PackedVector2Array()
 		return (b.position - position).normalized() * speed
 	if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):
@@ -3639,7 +3639,7 @@ func compute_path() -> void:
 	# the enemy's gates are shut to us: the path goes round (or, walled out, up to the wall
 	# to break it), never into a gate it can't open
 	var shut := _shut_gates()
-	path = game.find_path(position, path_goal, not is_worker())
+	path = game.find_path(position, path_goal, not is_worker(), _path_margin())
 	path_i = 0
 	stuck_t = 0.0
 	squeeze_t = 0.0
@@ -3649,10 +3649,18 @@ func compute_path() -> void:
 		var out := game.escape_point(position)
 		if out != Vector2.INF:
 			squeeze_t = 3.0
-			path = PackedVector2Array([out]) + game.find_path(out, path_goal, not is_worker())
+			path = PackedVector2Array([out]) + game.find_path(out, path_goal, not is_worker(), _path_margin())
 	if _towed():
 		path = _tow_gate_approach(path)
 	_open_gates(shut)
+
+
+## How far its path's straight stretches keep from walls, cliffs and buildings: a man 7 px (as
+## before); something big (a Horseman, a Brute, a Pendulum, a gun) what it takes up on the ground
+## (_clear_at: 0.6 of its radius) and a little more, so its path doesn't graze corners it can't
+## get round.
+func _path_margin() -> float:
+	return 7.0 if radius < 15.0 else minf(float(radius) * 0.6 + 2.0, 14.0)
 
 
 ## A limbered gun's horses lead the way: through a gate the team must go straight, so the path
@@ -4094,12 +4102,43 @@ func _pick_target(r: float) -> Entity:
 	if kind == Defs.NETTER:
 		return Netter.pick(self, r)      # (the most dangerous enemy not caught already: scripts/netter.gd)
 	var e := game.find_target(self, r)
-	if e == null or is_air() or float(d["range"]) > 40.0 or not e.is_unit() or _can_get_at(e):
+	if e == null or is_air() or float(d["range"]) > 40.0 or not e.is_unit():
+		return e
+	if e == _no_reach and game.clock < _no_reach_t:
+		return null                  # (found out a moment ago: there's no way to it)
+	if _can_get_at(e):
 		return e
 	if siege_t > 0.0:
 		return null                  # (waiting in a siege's reserve: the army sends it to the wall)
 	var w := _wall_toward(e)
-	return w if w else e
+	if w:
+		return w
+	# no wall piece in sight to break: it goes for him only if some wall or gate stands in the way
+	# (the path takes it up to the wall, which it then breaks); a man it can't get at at all (up a
+	# cliff with no way round) it leaves alone, rather than run at the foot of the cliff under him
+	# and stand there pressed against the rock
+	if _siege_reaches(e):
+		return e
+	_no_reach = e
+	_no_reach_t = game.clock + 2.0
+	return null
+
+
+var _no_reach: Entity = null           # (a melee unit) the last enemy it found it can't get at at all
+var _no_reach_t := 0.0                  # (game clock) until when it doesn't ask again
+
+
+## Can it get to `e` by breaking through enemy walls and gates (cliffs, water, trees still stop it)?
+func _siege_reaches(e: Entity) -> bool:
+	var a: Vector2i = game.cell_of(position)
+	if not game.open_cell(a):
+		a = game.nearest_free(a, 4)
+	var b: Vector2i = game.cell_of(e.position)
+	if not game.open_cell(b):
+		b = game.nearest_free(b, 3)
+	if a.x < 0 or b.x < 0:
+		return false
+	return not game.astar_siege.get_id_path(a, b).is_empty()
 
 
 ## The enemy wall or gate piece to break to get at `e`: of the pieces in sight it can walk
@@ -4179,8 +4218,11 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	# target, so one blast or cone can't catch them all.
 	if (kind == "raptor" or kind == "brute") and e is Unit:
 		var ang := float(serial * 7919 % 628) * 0.01      # (its own side, spread round by its number)
-		goal = (e as Unit).position + Vector2.from_angle(ang) * ((e as Unit).radius + radius + 4.0)
-	if is_air() or (position.distance_to(goal) < 140.0 and game.line_clear(position, goal)):
+		var side: Vector2 = (e as Unit).position + Vector2.from_angle(ang) * ((e as Unit).radius + radius + 4.0)
+		# (only a side it can stand on: not over a cliff edge from him, in a wall or a building)
+		if game.in_map(game.cell_of(side)) and game.line_clear((e as Unit).position, side) and game.level_of(side) == game.level_of((e as Unit).position):
+			goal = side
+	if is_air() or (position.distance_to(goal) < 140.0 and game.line_clear(position, goal, _path_margin())):
 		path = PackedVector2Array()
 		return (goal - position).normalized() * speed
 	if repath_t <= 0.0 or path.is_empty():
@@ -5621,7 +5663,7 @@ func _revive(delta: float) -> Vector2:
 		path = PackedVector2Array()
 		Sfx.play("combat/missionary_heal", position)
 		return Vector2.ZERO
-	if position.distance_to(b.position) < 140.0 and game.line_clear(position, b.position):
+	if position.distance_to(b.position) < 140.0 and game.line_clear(position, b.position, _path_margin()):
 		path = PackedVector2Array()
 		return (b.position - position).normalized() * speed
 	if repath_t <= 0.0 or (path.is_empty() and not path_pending):
@@ -5692,7 +5734,15 @@ func _build(delta: float) -> Vector2:
 				return Vector2.ZERO
 		if kind == "winder":
 			if crate_site == site:
-				# sets the crate down: it unfolds and assembles itself from here
+				# lowers the crate from his hands to the ground (CRATE_DROP), then it unfolds and assembles itself
+				if work != "crate_drop":
+					work = "crate_drop"
+					work_t = CRATE_DROP
+					return Vector2.ZERO
+				work_t -= delta
+				if work_t > 0.0:
+					return Vector2.ZERO
+				work = ""
 				crate_site = null
 				site.land_crate()
 			else:
@@ -5778,21 +5828,23 @@ func _fetch_crate(site: Building, delta: float) -> Vector2:
 		work = w
 		path = PackedVector2Array()
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
-		if src is Crate and position.distance_to(goal) < 140.0 and game.line_clear(position, goal):
+		if src is Crate and position.distance_to(goal) < 140.0 and game.line_clear(position, goal, _path_margin()):
 			return (goal - position).normalized() * speed
 		_request_path(goal)
 	return _follow(delta)
 
 
-## Winder: where the crate on his back sits for each view ([x, y from the feet, unflipped art
-## (facing east), drawn behind the body]): behind him when he faces us (over his clock head, which
-## hides the rest), low on his back under the winding key side on, in front of him when he walks
-## away. One picture for every view; it bobs with his steps.
-const CRATE_BACK := {"s": [0, -38, true], "se": [-10, -21, true], "e": [-12, -17, true], "ne": [-5, -20, false], "n": [0, -22, false]}
+## Winder: where the crate he carries sits for each view ([x, y from the feet, unflipped art (facing east), drawn behind the
+## body]): held out IN FRONT in his hands at chest height (the owner, 2026-10-27: carried forward, not on his back), over
+## the body when he faces us or side on, behind it when he walks away (seen from above, its top shows over his head). One
+## picture for every view; it bobs with his steps. At the site he lowers it to the ground in front of him (CRATE_DROP)
+## before it unfolds.
+const CRATE_HELD := {"s": [0, -14, false], "se": [7, -14, false], "e": [11, -15, false], "ne": [9, -21, true], "n": [0, -34, true]}
+const CRATE_DROP := 0.35      # seconds to set it down on the site
 
 
 func _update_crate_spr() -> void:
-	if crate_site == null or dead:
+	if crate_site == null or dead or anim in ["carry", "idle_carry", "setdown"]:
 		if _crate_spr:
 			_crate_spr.visible = false
 		return
@@ -5801,11 +5853,19 @@ func _update_crate_spr() -> void:
 		_crate_spr.texture = Game.tex("res://assets/effects/crate_carried.png")
 		_crate_spr.use_parent_material = true
 		sprite.add_child(_crate_spr)
-	var e: Array = view_entry(CRATE_BACK, [0, -24, true])
+	var e: Array = view_entry(CRATE_HELD, [0, -14, false])
 	var bob := -1.0 if anim == "walk" and sprite.frame % 2 == 1 else 0.0
+	var at := Vector2(float(e[0]) * (-1.0 if view_mirror(CRATE_HELD) else 1.0), float(e[1]) + bob)
+	var behind: bool = e[2]
+	if work == "crate_drop":
+		# lowered to the ground in front of him (forward along his facing, down to his feet)
+		var k := clampf(1.0 - work_t / CRATE_DROP, 0.0, 1.0)
+		var fwd := Vector2(facing.x, facing.y * 0.5) * 10.0
+		at = at.lerp(fwd + Vector2(0, -6), k)
+		behind = behind and k < 0.5
 	_crate_spr.visible = true
-	_crate_spr.position = Vector2(float(e[0]) * (-1.0 if view_mirror(CRATE_BACK) else 1.0), float(e[1]) + bob)
-	_crate_spr.show_behind_parent = e[2]
+	_crate_spr.position = at
+	_crate_spr.show_behind_parent = behind
 
 
 ## Winder: let go of the crate on his back (killed, or given another job on the way): it
@@ -5846,7 +5906,7 @@ func die() -> void:
 	_drop_body()
 	_cancel_boarding()
 	_cancel_refit()            # (killed on the way to a refit: the fee goes back)
-	drop_crate()               # (a Winder) the crate on his back falls where he stood
+	drop_crate()               # (a Winder) the crate in his hands falls where he stood
 	release_horses()           # (his horses stay where they are)
 	if claimed and is_instance_valid(claimed) and claimed.order_target == self:
 		claimed.cmd_stop()     # (a horse) the man coming for it stops
@@ -6048,6 +6108,11 @@ func _anim_name() -> String:
 			if phase != "":
 				return "attack"
 		"winder":
+			# a building's crate in his hands (owner, 2026-10-27): his carry walk, standing with it, setting it down
+			if crate_site != null and _anim_or("carry", "") != "":
+				if work == "crate_drop":
+					return "setdown"
+				return "carry" if moving else "idle_carry"
 			# his one job is winding (docs/clockwork_ground_up.md): his own spring, a Cog Press, a repair, the crate he
 			# has just set down on a site (the repair strip is the wind strip)
 			if self_wind_t > 0.0:
@@ -6198,6 +6263,8 @@ const WINDER_BEAT := {
 static func beat_of(a: String) -> String:
 	if a == "repair":
 		a = "wind"
+	elif a == "carry":
+		a = "walk"           # (the Winder's carry walk ticks like his walk)
 	return a if WINDER_BEAT.has(a) else ""
 
 
@@ -7155,7 +7222,7 @@ func _prune_led() -> void:
 
 ## Straight there when close and clear, else along a path.
 func _walk_to(p: Vector2, delta: float) -> Vector2:
-	if position.distance_to(p) < 140.0 and game.line_clear(position, p):
+	if position.distance_to(p) < 140.0 and game.line_clear(position, p, _path_margin()):
 		path = PackedVector2Array()
 		return (p - position).normalized() * speed
 	if repath_t <= 0.0 or ((path.is_empty() or path_i >= path.size()) and not path_pending):

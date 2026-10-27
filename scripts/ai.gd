@@ -125,6 +125,7 @@ var _swarm_phase := ""          # "", "flank" (getting into position), "strike"
 var _swarm_t := 0.0
 var _tight := false            # Brood: this wave packs tight (the enemy has little splash damage)
 var _no_room := {}              # economy kinds with no free spot, and when we looked
+var _hall_bad := {}            # Crown: a new hall's spot -> until when not to try it again (its builders fled from raiders there)
 var _abandoned := {}            # kind -> when a site of it was last dropped as "abandoned" (its builder fled): AIBrood.supply waits a little
 # how the last wave went: what it was worth going out, and the enemy value killed before it
 var _wave_value := 0.0
@@ -1142,7 +1143,7 @@ func _workers() -> void:
 	var hold_gold: bool = _crown() and difficulty > 0 and labs.size() + queued >= 6 and not _mine("cottage").is_empty() and game.clock < 200.0 and \
 			((opening == "mill" and (_mine("barracks").is_empty() or _mine("powder_mill").is_empty())) or (not _walled and (_wall_wanted() or _cw_active())))
 	# (a feared rush with a Barracks standing: the first Musketeers before more labourers)
-	if _army_first() and labs.size() >= (6 if safe_opening else 8) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
+	if _army_first() and labs.size() >= (6 if safe_opening else 8) + (4 if opening == "breeder" else 0) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
 		hold_gold = true
 	if _clock() and _mine(_works()).is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
 			and _gold() < int(Defs.BUILDINGS[_works()]["cost"]) + 20:
@@ -1443,6 +1444,16 @@ func _resume(w: Unit, e := {}) -> void:
 ## is healthy, and the rest tend the farms (a farm with 1-2 hands ripens in two minutes).
 func _mill_cap() -> int:
 	if game.clock > 300.0 or difficulty == 0:
+		if difficulty > 0 and _res2() > 300.0 and _gold() < 150:
+			# powder piling up while gold runs out (2,000 powder banked and no gold, coach round 3): two hands a think
+			# back from the Mills to the farms, never below one a Mill
+			var crew := 0
+			var mills := 0
+			for m in _mine("powder_mill"):
+				if m.built:
+					crew += m.crew.size()
+					mills += 1
+			return maxi(mills, crew - 2)
 		return 99
 	if _mine("barracks").is_empty():
 		return 0
@@ -2036,11 +2047,17 @@ var _stage_t := 0.0
 func _hall_first() -> bool:
 	_hall_reserve = false
 	var hall: String = _f()["hall"]
-	if _halls().size() >= 7 or _best_soil() >= HALL_FIRST_SOIL:
+	if _halls().size() >= 7:
 		return false
 	# halls with a fair share of soil left (one going up counts: it's fresh land)
 	var fresh := _halls().filter(func(h: Building) -> bool: return not h.built or _land(h) > 0.25).size()
-	if fresh >= 2 or _busy_building(hall):
+	# how many fresh halls it needs: a second once the best soil is under HALL_FIRST_SOIL; the Crown also one for every
+	# 16 Labourers (a hall's farms and mill hold about that many: with more on one hall's land they stood idle or
+	# crowded a tired farm while the main went barren, coach round 2)
+	var need := 1 if _best_soil() >= HALL_FIRST_SOIL else 2
+	if _crown():
+		need = maxi(need, mini(3, ceili(game.workers(team).size() / 16.0)))     # (three fresh halls at most: more halls only grew more hands, round 3)
+	if fresh >= need or _busy_building(hall):
 		return false
 	_hall_reserve = true
 	_saving = true
@@ -2055,6 +2072,8 @@ func _hall_first() -> bool:
 	if _gold() < cost:
 		return true
 	var spot := _stage_spot
+	if game.clock - float(_abandoned.get(hall, -99.0)) < 20.0:
+		return true                # (a hall site just dropped, its builders chased off: a moment before the next try)
 	if _crown():
 		# the escort walks over first; the hall goes down once it's there (or after a while)
 		var site := (Vector2(spot) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5) * Defs.TILE
@@ -2121,6 +2140,8 @@ func _safe_hall_spot() -> Vector2i:
 				score += float(u.d["supply"]) * 3.0
 		if c == ex:
 			score -= 4.0           # (the map's own expansion spot: open ground, near a ramp of ours)
+		if float(_hall_bad.get(c, -1.0)) > game.clock:
+			score += 1000.0        # (its builders were just chased off it)
 		score -= _lode_value(c)
 		if score < bs:
 			bs = score
@@ -2993,7 +3014,9 @@ func _army_first() -> bool:
 		return false
 	if not (scout.verdict == "rush" or scout.verdict == "uncertain"):
 		return false
-	var muskets := game.army(team).filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind)).size()
+	# (the defenders it has: Musketeers, and Horsemen when it opened with the Breeder: a Horseman opening makes no
+	# Musketeers for minutes, and counting only those held its Labourers at eight for seven minutes; coach round 1)
+	var muskets := game.army(team).filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind) or u.kind == "cuirassier").size()
 	for b in _mine("barracks"):
 		muskets += b.queue.size()
 	return muskets < 6
@@ -3082,6 +3105,8 @@ func site_failed(b: Building, why := "blocked") -> void:
 		_no_room.erase(b.kind)
 	else:
 		_abandoned[b.kind] = game.clock
+		if b.kind == String(_f()["hall"]):
+			_hall_bad[b.cell] = game.clock + 90.0     # (raiders there: another spot, or this one later; coach round 2)
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:

@@ -871,7 +871,7 @@ const UNITS := {
 	# it more, canister less). An egg of Raptors (75 biomass) still beats one in the open; two Musketeers beat one.
 	"jack": {
 		"tags": ["armored"],
-		"name": "Jack", "hp": 90, "armor": 1, "speed": 70, "cost": 100, "tension": 25, "time": 25.0, "supply": 2,
+		"name": "Springer", "hp": 90, "armor": 1, "speed": 70, "cost": 100, "tension": 25, "time": 25.0, "supply": 2,
 		"sight": 8, "range": 170, "damage": 10, "cooldown": 0.95, "aim": 0.11, "radius": 12, "from": "movement_works",
 		"requires": "escapement", "anti_air": true, "faction": "clockwork",
 		"about": "A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at a Movement Works whose gear ring meshes with a Mainspring's, once an Escapement works.",
@@ -1149,14 +1149,14 @@ const BUILDINGS := {
 	"movement_works": {
 		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack", "pendulum", "netter"], "faction": "clockwork",
-		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Jacks, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
+		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Springers, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
 	# its ring meshes with a Mainspring's. Numbers are guesses: the Movement Works' price and health.
 	"escapement": {
 		"name": "Escapement", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 7, "trains": [], "requires": "movement_works", "faction": "clockwork",
-		"about": "The Clockwork's tech building: it unlocks the Jack and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Movement Works.",
+		"about": "The Clockwork's tech building: it unlocks the Springer and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Movement Works.",
 	},
 	# THE AIR (gear mode): the CLOCK AVIARY (id cuckoo_house), the flyers' building (like a Stargate). A tall narrow 2x2 tower
 	# on its gear ring; it needs an ACTIVE Escapement to be placed (Game.requirement_text), and everything it makes costs
@@ -1247,7 +1247,7 @@ const BUILDINGS := {
 	"mainspring": {
 		"name": "Mainspring", "hp": 800, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
-		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, and a Movement Works for its Jacks, Netters and Pendulums. Must stay linked to the gear field.",
+		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, and a Movement Works for its Springers, Netters and Pendulums. Must stay linked to the gear field.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
@@ -1319,7 +1319,7 @@ const RESEARCH := {
 	# the Clockwork's Tension research (gear mode), at the Escapement (it must be working: meshed with a Mainspring)
 	"high_leap": {"name": "High Leap", "label": "HIGH LEAP", "at": "escapement", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 100,
 		"time": 60.0, "icon": "research_high_leap",
-		"about": "A stiffer spring: every Jack can JUMP UP onto high ground too (only where you can see)."},
+		"about": "A stiffer spring: every Springer can JUMP UP onto high ground too (only where you can see)."},
 	# the Movement Works' research (gear mode): SHIELD FORWARD for every Clock Soldier (Defs.SHIELD_WALL). It costs
 	# Tension, so it is made only at a Works whose ring meshes with a Mainspring's (THE TENSION RULE). Guesses.
 	"shield_wall": {"name": "Shield Wall", "label": "SHIELD WALL", "at": "movement_works", "faction": "clockwork", "cost": 100, "cost2": 0,

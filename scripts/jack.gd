@@ -20,7 +20,7 @@ const CROUCH_FRAMES := 3
 ## "" when unit u can start a jump now (the spot aside), else why not.
 static func ready_problem(u: Unit) -> String:
 	if u == null or u.dead or u.kind != Defs.JACK:
-		return "Only a Jack can JUMP."
+		return "Only a Springer can JUMP."
 	if not u.jump.is_empty():
 		return "It is already jumping."
 	if u.jump_cd > 0.0:
@@ -66,7 +66,7 @@ static func landing(u: Unit, p: Vector2) -> Dictionary:
 	if best == Vector2.INF:
 		return {"why": "No room to land there."}
 	if up and not g.side_sees(u.team, best):
-		return {"why": "A Jack can only jump up where you can see."}
+		return {"why": "A Springer can only jump up where you can see."}
 	if best.distance_to(from) < 16.0:
 		return {"why": "Too close to jump."}
 	return {"at": best}
@@ -98,7 +98,7 @@ static func problem(u: Unit, p: Vector2) -> String:
 static func jump_order(game: Game, list: Array, p: Vector2) -> String:
 	var jacks: Array = list.filter(func(u) -> bool: return u is Unit and is_instance_valid(u) and not u.dead and u.kind == Defs.JACK)
 	if jacks.is_empty():
-		return "Only a Jack can JUMP."
+		return "Only a Springer can JUMP."
 	var ready: Array = jacks.filter(func(u: Unit) -> bool: return ready_problem(u) == "")
 	if ready.is_empty():
 		return ready_problem(jacks[0])
@@ -139,7 +139,7 @@ static func start(u: Unit, at: Vector2) -> void:
 	if u.visible and u.game.view_rect.has_point(u.position):
 		Sfx.play_any(["combat/jack_crouch", "ratchet"], u.position, -6.0)
 	if u.game.mlog and u.team == u.game.human and u.jumps == 1:
-		u.game.mlog.add("%s's Jack jumped (%.0f tiles)" % [u.game.mlog.who(u.team), dist / Defs.TILE])
+		u.game.mlog.add("%s's Springer jumped (%.0f tiles)" % [u.game.mlog.who(u.team), dist / Defs.TILE])
 
 
 ## How far through its leap unit u is: the seconds of each part and the time now.

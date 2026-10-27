@@ -470,7 +470,16 @@ func rush_units_seen() -> int:
 ## Evidence of a rush from what was seen: fast units in numbers (or any, very early), or a
 ## great deal of army very early. "rush", or "" when there is none.
 func rush_evidence() -> String:
+	# (a Movement Works up by 1:40 is every Clockwork's ordinary opening, not a rush: two of them by 2:30 is)
+	var works_early := 0
+	for b in game.buildings:
+		if b.team == _foe and not b.dead and not b.ghost and b.kind == "movement_works" and _seen_b.has(b):
+			works_early += 1
+	if works_early >= 2 and game.clock <= 150.0:
+		return "two Movement Works already up at %d:%02d" % [int(game.clock) / 60, int(game.clock) % 60]
 	for k in foe_early_prod:
+		if k == "movement_works":
+			continue
 		if float(foe_early_prod[k]) <= float(EARLY_PROD[k]):
 			return "a %s already up at %d:%02d" % [String(Defs.BUILDINGS[k]["name"]), int(foe_early_prod[k]) / 60, int(foe_early_prod[k]) % 60]
 	var n := 0
