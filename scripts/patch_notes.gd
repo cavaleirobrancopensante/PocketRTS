@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.72", "items": [
+		"Behind the scenes: a test switch that lets a computer's siege play out to the end, used to check when the computer should call an attack off. Nothing changes in play.",
+	]},
 	{"v": "0.14.71", "items": [
 		"CLOCKWORK COMPUTER: its Winders now go with the army, at the rally point and on the attack, about one for every five soldiers. Out there they wind the soldiers up (the run-down ones first, then the lowest), and mend them second, and fetch soldiers left run down on the way. The Winders that go are extra hands: the presses keep theirs. Before, two Winders followed an attack and never wound a Clock Soldier, so a long march left half the army standing still.",
 		"COMPUTER SIEGES: an army breaking in at a gate now gathers and queues on the side it can walk up to (down the ramp below a ramp gate), not at the foot of the cliff beside it, under the muskets on the high ground.",
