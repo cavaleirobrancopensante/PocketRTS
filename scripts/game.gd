@@ -4836,7 +4836,9 @@ func _update_swamp() -> void:
 							g[y * W + x] = 1
 		# Swamp that lost its building does not vanish at once: it retreats one ring of tiles every swamp
 		# update (every half second), the outermost unsupported tiles first
-		for i in W * H:
+		# (nothing to do where the grid came out as it was, as for every side without swamp:
+		# the whole-map loop ran for every player every half second)
+		for i in (W * H if old != g else 0):
 			if old[i] == 1 and g[i] == 0:
 				var x := i % W
 				var y := i / W
@@ -4865,9 +4867,11 @@ func _swamp_minimap() -> void:
 		col.a = 0.85
 		var known: PackedByteArray = _EMPTY if allied(t, fog_team()) else _known_ground()
 		var hide := known.size() == W * H
-		for i in W * H:
-			if g[i] == 1 and (not hide or known[i] == 1):
+		var i := g.find(1)              # (the swamp's cells only, found by the native find)
+		while i >= 0:
+			if not hide or known[i] == 1:
 				swamp_img.set_pixel(i % W, i / W, col)
+			i = g.find(1, i + 1)
 	if swamp_tex == null:
 		swamp_tex = ImageTexture.create_from_image(swamp_img)
 	else:
@@ -4953,15 +4957,22 @@ func _draw_swamp(team: int) -> void:
 	var hide := known.size() == W * H
 	var sh := PackedByteArray()
 	sh.resize(W * H)
-	for j in W * H:
-		sh[j] = 1 if g[j] == 1 and cliff[j] == 0 and ramp[j] == 0 and (not hide or known[j] == 1) else 0
-	for i in W * H:
-		if sh[i] == 1:
-			var x := i % W
-			var y := i / W
-			var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
-				or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
-			layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
+	# (only the swamp's own cells are visited, found by the native find: a side without swamp,
+	# or with a little, no longer costs two loops over the whole map; the same tiles, in the
+	# same order)
+	var cells := PackedInt32Array()
+	var j := g.find(1)
+	while j >= 0:
+		if cliff[j] == 0 and ramp[j] == 0 and (not hide or known[j] == 1):
+			sh[j] = 1
+			cells.append(j)
+		j = g.find(1, j + 1)
+	for i in cells:
+		var x := i % W
+		var y := i / W
+		var edge := (x > 0 and sh[i - 1] == 0) or (x < W - 1 and sh[i + 1] == 0) \
+			or (y > 0 and sh[i - W] == 0) or (y < H - 1 and sh[i + W] == 0)
+		layer.draw_texture(t, Vector2(x * T, y * T), Color(1, 1, 1, 0.55 if edge else 1.0))
 
 
 var _astar_dirty := false
@@ -5016,13 +5027,26 @@ func _smooth(from: Vector2, pts: PackedVector2Array) -> PackedVector2Array:
 
 
 ## (The same test as open_cell(cell_of(p +- 7, 7)) at every sample, written out: the
-## path smoothing calls it thousands of times for a long path.)
+## path smoothing calls it thousands of times for a long path. Every 4th sample is looked at
+## first, then the others: anything solid covers several samples in a row, so a blocked line
+## is usually found out in a quarter of the work, and a clear one still has every sample
+## looked at. The same samples, so the same answer.)
 func line_clear(a: Vector2, b: Vector2) -> bool:
 	var dist := a.distance_to(b)
 	var steps := int(dist / 10.0) + 1
 	var w1 := W - 1
 	var h1 := H - 1
-	for s in steps + 1:
+	var s := 0
+	var first := true
+	while true:
+		if s > steps:
+			if not first:
+				break
+			first = false
+			s = 1
+		if not first and s % 4 == 0:
+			s += 1
+			continue
 		var p := a.lerp(b, float(s) / float(steps))
 		var x0 := clampi(int((p.x - 7.0) / T), 0, w1)
 		var x1 := clampi(int((p.x + 7.0) / T), 0, w1)
@@ -5040,6 +5064,7 @@ func line_clear(a: Vector2, b: Vector2) -> bool:
 		v = solid[y0 + x1]
 		if v != 0 and v != 5:
 			return false
+		s += 4 if first else 1
 	return true
 
 
