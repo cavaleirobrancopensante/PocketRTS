@@ -25,6 +25,43 @@ var _n_seen := 0
 var _wait := 0
 var _spawned := false
 var _bench := {}
+var _spawned_units: Array = []
+var _march_n := -1
+var _marks: Array = [300.0, 600.0, 1200.0]
+var _mark_clk := 0.0
+var _mark_us := 0
+var _mark_n := 0
+
+
+## The match as it is the moment a picture is taken.
+func _capture() -> void:
+	var u := {}
+	for x in g.units:
+		if is_instance_valid(x) and not x.dead and x.net_id != 0:
+			u[x.net_id] = [x.kind, x.team, x.position.snapped(Vector2(0.1, 0.1)), snappedf(x.hp, 0.1)]
+	truth.append({"clk": g.rec.last_clk, "u": u, "n": g.units.size()})
+
+
+## spawn:N: N soldiers a side round each hall (a big battle's worth of units), marching about (_march).
+func _spawn() -> void:
+	for tm in 2:
+		var hall: Building = null
+		for b in g.buildings:
+			if b.team == tm and b.kind == g.faction_hall(tm):
+				hall = b
+		var c: Vector2 = hall.center() if hall else Vector2(Game.W, Game.H) * Game.T * 0.5
+		for i in spawn:
+			var k := "musketeer" if g.faction_of(tm) == "crown" else ("raptor" if g.faction_of(tm) == "brood" else "windup_soldier")
+			var cell := g.nearest_free(g.cell_of(c + Vector2.from_angle(randf() * TAU) * randf_range(80, 400)), 12)
+			_spawned_units.append(g._add_unit(k, tm, g.cell_center(cell)))
+
+
+## Every 4 s half the added soldiers walk somewhere else (the rest stand or fight where they are).
+func _march() -> void:
+	for u in _spawned_units:
+		if is_instance_valid(u) and not u.dead and randf() < 0.5:
+			var to := g.cell_center(g.nearest_free(g.cell_of(u.position + Vector2.from_angle(randf() * TAU) * 300.0), 10))
+			u.give({"o": "move", "p": to})
 
 
 func _initialize() -> void:
@@ -77,17 +114,22 @@ func _play() -> bool:
 		return true
 	if spawn > 0 and not _spawned and g.clock >= 30.0:
 		_spawned = true
-		for i in spawn:
-			g._add_unit("musketeer", 0, g.cell_center(g.starts[0]) + Vector2(80 + (i % 10) * 14, 60 + (i / 10) * 14))
-			g._add_unit("raptor", 1, g.cell_center(g.starts[1]) + Vector2(-80 - (i % 10) * 14, -60 - (i / 10) * 14))
+		_spawn()
+	if _spawned and int(g.clock / 4.0) != _march_n:
+		_march_n = int(g.clock / 4.0)
+		_march()
 	var rec: ReplayRecorder = g.rec
-	if rec.n_frames != _n_seen:
-		_n_seen = rec.n_frames
-		var u := {}
-		for x in g.units:
-			if is_instance_valid(x) and not x.dead and x.net_id != 0:
-				u[x.net_id] = [x.kind, x.team, x.position.snapped(Vector2(0.1, 0.1)), snappedf(x.hp, 0.1)]
-		truth.append({"clk": rec.last_clk, "u": u, "n": g.units.size()})
+	if _marks.size() > 0 and g.clock >= float(_marks[0]):
+		var at: float = _marks.pop_front()
+		var secs_w := maxf(g.clock - _mark_clk, 1.0)
+		print("SIZE_AT %s: file %d KB (+ %d KB this chunk), %d units %d buildings, recording %.2f ms per match second since the last mark, %.1f pictures a second" % [
+			ReplayPlayer.clock_text(at), (rec.bytes_file + ReplayFile.pack_frames(rec.frames).size()) / 1024, 0, g.units.size(), g.buildings.size(),
+			(rec.cost_us - _mark_us) / 1000.0 / secs_w, (rec.n_frames - _mark_n) / secs_w])
+		_mark_clk = g.clock
+		_mark_us = rec.cost_us
+		_mark_n = rec.n_frames
+	if not rec.recorded.is_connected(_capture):
+		rec.recorded.connect(_capture)
 	if g.clock >= secs or g.over:
 		rec_line = rec.cost_line()
 		print("RECORDER %s" % rec_line)
@@ -323,11 +365,14 @@ func _make_variants() -> void:
 	var out := PackedByteArray(ReplayFile.MAGIC.to_ascii_buffer())
 	out.append_array(ReplayFile._record(ReplayFile.T_HEAD, 0, 0, var_to_bytes(h)))
 	var ai := NetSnapshot.UNIT_PROPS.find("arm")
+	var ex := ReplayPlayer.new()          # (the old version wrote whole rows: the patches undone first)
 	for c in d["chunks"]:
 		var frames := ReplayFile.unpack_frames(c["data"])
 		var nf: Array = []
 		for fb in frames:
 			var m: Dictionary = bytes_to_var(fb)
+			ex.expand(m)
+			m = m.duplicate(true)
 			for row in m.get("u", []):
 				if String(row[1]) == gone_kind:
 					row[1] = "zz_gone_unit"
@@ -341,6 +386,7 @@ func _make_variants() -> void:
 					row.append_array(nr)
 			nf.append(var_to_bytes(m))
 		out.append_array(ReplayFile._record(ReplayFile.T_CHUNK, c["t0"], c["t1"], ReplayFile.pack_frames(nf)))
+	ex.free()
 	out.append_array(ReplayFile._record(ReplayFile.T_EVENTS, 0, 0, var_to_bytes(d["events"])))
 	out.append_array(ReplayFile._record(ReplayFile.T_FOOT, 0, 0, var_to_bytes(d["footer"])))
 	_old_path = ReplayFile.DIR + "/test_old.hfr"

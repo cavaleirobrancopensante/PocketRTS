@@ -2900,13 +2900,13 @@ func _draw_panel(font: Font) -> void:
 					var who := "base Winders" if bb.kind == "ore_crusher" else ("grubs" if bb.kind == "feeding_pit" else ("Winders" if bb.d["faction"] == "clockwork" else "workers"))
 					eff_txt = "Efficiency %d%%: %d/%d %s · %s %d%%" % [int(round(float(ef[0]) * 100)), int(ef[1]), int(ef[2]), who, ef[4], int(round(float(ef[3]) * 100))]
 					eff_col = game.eff_colour(float(ef[0]))
-		if e.team >= 0 and e.team != game.human:
-			name += "  (enemy)"
+		if e.team >= 0 and e.team != game.human and not game.demo:
+			name += "  (enemy)"            # (watching, or a replay: nobody is the enemy)
 		name = Loc.t(name)
 		var nsz := 19
 		if e is Unit and (e as Unit).kind == "balloon" and not (e as Unit).passengers.is_empty():
 			# its passengers' icons take the top right: the plain name, shrunk to fit before them
-			name = Loc.t((e as Unit).d["name"] + ("  (enemy)" if e.team >= 0 and e.team != game.human else ""))
+			name = Loc.t((e as Unit).d["name"] + ("  (enemy)" if e.team >= 0 and e.team != game.human and not game.demo else ""))
 			var room := _pass_icon_x(r, (e as Unit).passengers.size(), 0) - 6.0 - (r.position.x + 90.0)
 			while nsz > 12 and UiStyle.title_font().get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, nsz).x > room:
 				nsz -= 1

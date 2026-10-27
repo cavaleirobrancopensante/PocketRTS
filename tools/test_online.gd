@@ -686,6 +686,15 @@ func _guest_tick() -> void:
 				step = 30
 		20, 21, 22, 23, 24, 25, 26, 27:
 			_guest_extras(s)
+	if step == 30 and g.over and not results.has("guest_got_whole_replay"):
+		step = 31                  # (the match is over: the host's whole replay comes, docs/replays.md)
+		step_t = 0.0
+		return
+	if step == 31:
+		if s.rp_path == "" and step_t < 40.0:
+			return
+		_guest_replay_checks(s)
+		step = 30
 	if step == 30:
 		print("GUEST_RESULT snaps=%d interval=%.3f cmds=%d cmd_rtt=%.0f ms ping=%.0f ms recv=%d bytes (%.1f KB/s)" % [s.snaps_got, s.interval, s.cmd_seq, s.cmd_rtt_ms, s.link.rtt_ms, s.link.recv_bytes, s.link.recv_bytes / 1024.0 / maxf(t, 1.0)])
 		_lag_report()
@@ -701,6 +710,44 @@ func _guest_tick() -> void:
 	if step == 6 and t - done_t > 1.0:
 		lobby.dispose()
 		quit(0)
+
+
+## Guest: the host's whole replay came after the end (every side, not only what this side saw), the guest's own record
+## (its view only) went, and it plays: a puppet fed from it holds both sides' units.
+func _guest_replay_checks(s: NetSession) -> void:
+	var own: String = g.rec.path if g.rec else ""
+	check("guest_got_whole_replay", s.rp_path != "" and FileAccess.file_exists(s.rp_path) and (own == "" or not FileAccess.file_exists(own)),
+		"%s (%d KB) after %.1fs; own view %s" % [s.rp_path.get_file(), FileAccess.get_file_as_bytes(s.rp_path).size() / 1024 if s.rp_path != "" else 0, step_t,
+		"replaced" if own != "" and not FileAccess.file_exists(own) else "kept"])
+	if s.rp_path == "":
+		return
+	var d := ReplayPlayer.load_file(s.rp_path)
+	var meta := ReplayFile.read_meta(s.rp_path)
+	var ok := not d.has("error") and not bool(d["header"].get("view_only", true))
+	var teams := {}
+	var cams := ""
+	if ok:
+		var pg := Game.new()
+		pg.puppet = true
+		pg.demo = true
+		pg.factions = g.factions.duplicate()
+		pg.colours = g.colours.duplicate()
+		pg.sides = g.sides.duplicate()
+		pg.income_mult = g.income_mult.duplicate()
+		pg.map_id = g.map_id
+		root.add_child(pg)
+		var rp := ReplayPlayer.play(pg, d)
+		rp.seek(rp.length * 0.5)
+		for u in pg.units:
+			teams[u.team] = int(teams.get(u.team, 0)) + 1
+		ok = teams.has(0) and teams.has(lobby.my_slot)
+		# both players' cameras were recorded (the guest's came to the host twice a second): CAMERA follows either
+		rp.follow_camera(lobby.my_slot)
+		rp.tick_rclk(0.0)
+		cams = "%s, following P%d: %s" % [str(rp.cam_teams()), lobby.my_slot + 1, str(pg.camera.position.round())]
+		ok = ok and rp.cam_teams().has(0) and rp.cam_teams().has(lobby.my_slot) and rp._cams.has(lobby.my_slot) and rp._cams.has(0)
+		pg.queue_free()
+	check("guest_replay_plays", ok, "units by team at the middle %s; listed as %s for this player; cameras %s" % [str(teams), meta.get("result", "?"), cams])
 
 
 ## Host: answers the guest's chat line, sees its pause and its surrender.
@@ -962,6 +1009,8 @@ func _start_foreign(s: NetSession) -> void:
 
 func _finish() -> void:
 	if role == "host" and g != null:
+		if g.over and not coop:
+			check("host_sent_replay", g.net.replay_progress() >= 1.0, "sent %.0f%% of %d KB" % [g.net.replay_progress() * 100.0, g.net.rp_out.size() / 1024])
 		_host_report()
 		var all_ok := true
 		for k in results:

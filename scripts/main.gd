@@ -104,6 +104,13 @@ The command card holds 12 buttons (a MORE button pages on when a big mixed selec
 WATCHING COMPUTERS
 With no "you" in the lobby the computers play and you watch. The VIEW button under the clock picks how: Free · all vision (you move the camera, no fog; the default), Free · a player's vision (you move the camera, under that player's fog of war), or Follow a player: the camera goes by itself to what that computer is doing (its fights first, staying with one until it's over, then its army on the attack, raiders at its base, a building it just placed, its army), under its fog, holding each sight a few seconds. Moving the camera yourself while following switches to Free with the same vision; pick Follow again to resume. On a computer, 0 is all vision and 1-4 follow that player. The view you pick stays for the next match you watch.""",
 	"MAP EDITOR": MapEditor.HELP_TEXT,
+	"REPLAYS": """Every match is recorded: a skirmish, a match you watch, and online. A replay is not a video: it keeps what was on the map a few times a second, so you can move the camera anywhere, select units and buildings to read their health and orders, look through any player's fog, and watch at any speed.
+
+Online, the host's game records every side. When the match ends the host sends the whole replay to each friend; until it arrives (or if you leave early) you keep your own, marked YOUR VIEW ONLY: what your side saw.
+
+REPLAYS on the main menu lists them, newest first: WATCH, KEEP (kept ones are never deleted), EXPORT (a file to send or keep), DELETE, and IMPORT for a file a friend sent you. The newest 30 that are not kept stay; Settings > REPLAYS KEPT changes the number.
+
+WATCHING: play and pause, half speed to 8x, and the timeline to jump to any moment. FOG switches between everything and one player's view; CAMERA follows the camera of the player who recorded it. Select anything to see its card. On a computer: Space pauses, + and - change the speed, Home goes back to the start. A replay from another version of the game still plays, but some things may look different.""",
 }
 
 

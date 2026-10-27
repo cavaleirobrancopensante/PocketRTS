@@ -14,14 +14,18 @@ var _js_cb = null              # (web) the file picker's callback: kept, or the 
 
 func build() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var mg := MarginContainer.new()
+	mg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]:
+		mg.add_theme_constant_override("margin_" + side, 30)
+	for side in ["top", "bottom"]:
+		mg.add_theme_constant_override("margin_" + side, 14)
+	add_child(mg)
+	var pn := PanelContainer.new()
+	mg.add_child(pn)
 	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 30
-	v.offset_right = -30
-	v.offset_top = 16
-	v.offset_bottom = -16
 	v.add_theme_constant_override("separation", 8)
-	add_child(v)
+	pn.add_child(v)
 	v.add_child(UiStyle.heading("REPLAYS", 40, UiStyle.TRIM))
 	var help := UiStyle.text(HELP, 16, UiStyle.MUTED)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -79,7 +83,7 @@ const RESULT_TEXT := {"victory": "VICTORY", "defeat": "DEFEAT", "draw": "DRAW", 
 func _row(m: Dictionary) -> Control:
 	var path := String(m["path"])
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiStyle.box(UiStyle.PANEL, UiStyle.TRIM_DIM, 2, 10, 10.0))
+	p.add_theme_stylebox_override("panel", UiStyle.box(UiStyle.PANEL_LIGHT, UiStyle.TRIM_DIM, 2, 10, 8.0))
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 12)
 	p.add_child(h)

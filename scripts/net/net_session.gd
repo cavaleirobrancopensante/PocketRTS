@@ -217,6 +217,7 @@ func _process(delta: float) -> void:
 			_host_pause(-1, false, -1)       # the pause ran out
 	if not is_host:
 		_tick_waiting(now)
+		_tick_camera(delta)
 		return
 	_tick_quiet(now)
 	if rp_pos < rp_out.size():
@@ -662,6 +663,22 @@ func _replay_part(m: Dictionary) -> void:
 	replay_got.emit(path)
 
 
+## Guest: where its camera looks, twice a second when it moved (the host's replay keeps it: CAMERA in the viewer).
+var _cam_t := 0.0
+var _cam_sent := Vector3.INF
+
+
+func _tick_camera(delta: float) -> void:
+	_cam_t -= delta
+	if _cam_t > 0.0 or not go_given or game.over or game.camera == null:
+		return
+	_cam_t = 0.5
+	var v := Vector3(snappedf(game.camera.position.x, 1.0), snappedf(game.camera.position.y, 1.0), snappedf(game.camera.zoom.x, 0.01))
+	if v != _cam_sent:
+		_cam_sent = v
+		link.send({"t": "cam", "c": v})
+
+
 # ------------------------------------------------------------------ chat
 
 ## Every chat line goes through here (Chat.post): a guest's own lines go to the host; the host passes every line on
@@ -970,6 +987,9 @@ func _on_message(from: int, m: Dictionary) -> void:
 		"rp":
 			if not is_host:
 				_replay_part(m)
+		"cam":
+			if is_host and game.rec != null and m.get("c") is Vector3:
+				game.rec.note_cam(int(peer_team.get(from, -1)), m["c"])
 		"snap":
 			if not is_host:
 				pending.append(m)             # (applied once this frame's messages are all in: _apply_pending)

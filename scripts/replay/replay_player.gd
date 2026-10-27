@@ -26,18 +26,18 @@ var at_end := false
 var view_only := false
 var me := -1                      # the team that recorded (-1: computers only)
 var version_note := ""            # "recorded on v0.14.40: some things may look different" (another version)
-var cam_follow := false           # the camera follows the recording player's
+var cam_team := -1                # the camera follows this player's recorded camera (-1: free)
 var _ci := -1                     # the chunk whose frames are decoded
 var _frames: Array = []
 var _fi := 0
 var _ev := 0
 var _seeking := false
-var _cam_cur = null               # the recorded camera (Vector3: x, y, zoom) as of the last picture
-var _cam_a: Array = []            # [clock, camera] before the newest change, and [clock, camera] of it
-var _cam_b: Array = []
+var _cams := {}                   # team -> [[clock, camera] before its newest change, [clock, camera] of it, camera now]
 var _remap := {}                  # another version's field lists: how to read its rows (remap)
 var _ph := {}                     # ids drawn as a placeholder
 var _skip := {}                   # building ids of a kind this version no longer has (left out)
+var _rows := {}                   # id -> its last whole row (patches are applied on it: expand)
+var _fast := {}                   # unit id -> [kind, team, x, y, health, facing] of its last row (the columns: expand)
 var _udef := {}                   # this version's default value of each unit / building field (remap)
 var _bdef := {}
 var _income := {}                 # team -> [[clock, gold so far], ...] (income per minute on the observer bar)
@@ -173,9 +173,21 @@ func _freeze(on: bool) -> void:
 		game.world.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT
 
 
-func follow_camera(on: bool) -> void:
-	cam_follow = on and me >= 0
-	if cam_follow and game.spectator and game.spectator.mode == "follow":
+## The players whose camera was recorded: the one who recorded it, and online the other humans (their cameras came to
+## the host twice a second).
+func cam_teams() -> Array:
+	var out: Array = []
+	var slots: Array = (header.get("cfg", {}) as Dictionary).get("slots", [])
+	for t in slots.size():
+		if String(slots[t].get("who", "")) in ["you", "remote"] or t == me:
+			out.append(t)
+	return out
+
+
+## Follow player `team`'s recorded camera (-1: the camera is free).
+func follow_camera(team: int) -> void:
+	cam_team = team if cam_teams().has(team) else -1
+	if cam_team >= 0 and game.spectator and game.spectator.mode == "follow":
 		game.spectator.set_mode("free" if game.view_team >= 0 else "all", maxi(game.view_team, 0), true)
 	changed.emit()
 
@@ -195,7 +207,7 @@ func tick_rclk(delta: float) -> void:
 	rclk = play_t
 	game.clock = play_t
 	_post_events(play_t)
-	if cam_follow:
+	if cam_team >= 0:
 		_camera()
 
 
@@ -240,9 +252,10 @@ func _apply(m: Dictionary) -> void:
 			end_winner = int(m.get("win", -1))
 		m.erase("over")            # (the match never ends here: seeking back must still work)
 	if m.has("cam"):
-		_cam_a = [snap_clk, _cam_cur if _cam_cur != null else m["cam"]]
-		_cam_b = [clk, m["cam"]]
-		_cam_cur = m["cam"]
+		_cam_in(me, clk, m["cam"])
+	for ct in m.get("cams", {}):
+		_cam_in(int(ct), clk, m["cams"][ct])
+	expand(m)
 	if not _remap.is_empty():
 		_remap_rows(m)
 	_sanitize(m)
@@ -273,6 +286,61 @@ func _apply(m: Dictionary) -> void:
 		_income[t] = h
 
 
+## A patch row (ReplayRecorder.compact) back to a whole one, from this entity's last whole row. (A patch for one we
+## never had a whole row of: only its fixed fields count; the next keyframe brings the rest.)
+func expand(m: Dictionary) -> void:
+	if m.has("ids"):
+		_rows.clear()
+		_fast.clear()
+	for gn in m.get("gone", []):
+		_rows.erase(int(gn[0]))
+		_fast.erase(int(gn[0]))
+	# the short unit rows, from their columns of changes (ReplayRecorder._columns)
+	if m.has("u") or m.has("uf"):
+		var urows: Array = m.get("u", [])
+		for r in urows:
+			_fast[int(r[0])] = ReplayRecorder.fast_ints(r)
+		if m.has("uf"):
+			var a: PackedInt32Array = m["uf"]
+			var n := a.size() / 5
+			for i in n:
+				var id := a[i]
+				var was = _fast.get(id)
+				if was == null:
+					continue
+				var now: Array = [was[0], was[1], int(was[2]) + a[n + i], int(was[3]) + a[n * 2 + i], int(was[4]) + a[n * 3 + i], int(was[5]) + a[n * 4 + i]]
+				_fast[id] = now
+				urows.append([id, now[0], now[1], Vector2(now[2] / 10.0, now[3] / 10.0), now[4] / 10.0, now[5] / 50.0])
+			m.erase("uf")
+		m["u"] = urows
+	var fu := int(_remap.get("uf", NetSnapshot.U_FIXED))
+	var fb := int(_remap.get("bf", NetSnapshot.B_FIXED))
+	for pr in [["u", fu], ["b", fb]]:
+		if not m.has(pr[0]):
+			continue
+		var fixed: int = pr[1]
+		var rows: Array = m[pr[0]]
+		for j in rows.size():
+			var r: Array = rows[j]
+			if r.size() <= fixed:
+				continue
+			var id := int(r[0])
+			if r.size() == fixed + 1 and r[fixed] is Array:
+				var prev = _rows.get(id)
+				if prev == null:
+					r.resize(fixed)
+					continue
+				var full: Array = (prev as Array).duplicate()
+				for i in fixed:
+					full[i] = r[i]
+				var patch: Array = r[fixed]
+				for i in range(0, patch.size() - 1, 2):
+					full[int(patch[i])] = patch[i + 1]
+				rows[j] = full
+				r = full
+			_rows[id] = r
+
+
 ## A unit kind this version doesn't have: drawn as PLACEHOLDER, greyed. A building kind: left out.
 func _sanitize(m: Dictionary) -> void:
 	if m.has("u"):
@@ -299,13 +367,22 @@ func _post_events(t: float) -> void:
 			game.chat.post(int(e[2]), String(e[3]))
 
 
+## A recorded camera moved (at the picture of `clk`; the one before was at snap_clk): the view glides between the two.
+func _cam_in(team: int, clk: float, v) -> void:
+	var c: Array = _cams.get(team, [[], [], null])
+	_cams[team] = [[snap_clk, c[2] if c[2] != null else v], [clk, v], v]
+
+
 func _camera() -> void:
-	if _cam_b.is_empty():
+	var cm: Array = _cams.get(cam_team, [[], [], null])
+	if (cm[1] as Array).is_empty():
 		return
-	var a: Vector3 = _cam_a[1]
-	var b: Vector3 = _cam_b[1]
-	var span := float(_cam_b[0]) - float(_cam_a[0])
-	var f := 1.0 if span <= 0.001 else clampf((play_t - float(_cam_a[0])) / span, 0.0, 1.0)
+	var ca: Array = cm[0]
+	var cb: Array = cm[1]
+	var a: Vector3 = ca[1]
+	var b: Vector3 = cb[1]
+	var span := float(cb[0]) - float(ca[0])
+	var f := 1.0 if span <= 0.001 else clampf((play_t - float(ca[0])) / span, 0.0, 1.0)
 	var c := a.lerp(b, f)
 	game.camera.position = Vector2(c.x, c.y)
 	game.camera.zoom = Vector2(c.z, c.z)
@@ -330,9 +407,7 @@ func seek(t: float) -> void:
 		_load_chunk(k)
 	snap_clk = 0.0
 	prev_clk = 0.0
-	_cam_a = []
-	_cam_b = []
-	_cam_cur = null
+	_cams = {}
 	_income = {}
 	_seeking = true
 	Sfx.hush = true
@@ -359,6 +434,7 @@ func seek(t: float) -> void:
 			(ex as PackedByteArray).fill(0)     # (what each side had looked at by then: from here on)
 	game.swamp_dirty = true
 	game.fog_base_dirty = true
+	game._rebuild_hash()               # (nothing freed by the jump may still be found under the mouse)
 	game.refresh_fog()
 	for u in game.units:
 		var at := shown_at(u.net_id)          # (where the pictures have it now: NetPuppet.tick_unit would put it there next)
@@ -366,7 +442,7 @@ func seek(t: float) -> void:
 			u.position = at[0]
 			u.velocity = at[1]
 		u.reset_physics_interpolation()
-	if cam_follow:
+	if cam_team >= 0:
 		_camera()
 	changed.emit()
 
@@ -399,6 +475,8 @@ func _clear_world() -> void:
 	leads.clear()
 	_ph.clear()
 	_skip.clear()
+	_rows.clear()
+	_fast.clear()
 
 
 # ------------------------------------------------------------------ the observer bar

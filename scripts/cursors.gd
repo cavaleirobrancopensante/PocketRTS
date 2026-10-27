@@ -103,8 +103,8 @@ func _hovered(game: Game, delta: float) -> Entity:
 		_hover_at = mp
 		var gui := vp.gui_get_hovered_control()
 		_hover = null if gui != null else game.entity_at(game.controls.to_world(mp))
-	if _hover != null and (not is_instance_valid(_hover) or _hover.dead):
-		_hover = null
+	if not is_instance_valid(_hover) or _hover.dead:
+		_hover = null              # (a freed one compares equal to null: a replay's seek frees what was under the mouse)
 	return _hover
 
 

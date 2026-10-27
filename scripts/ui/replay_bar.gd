@@ -66,8 +66,8 @@ func _ready() -> void:
 	row.add_child(_len)
 	_fog = _btn("", func() -> void: _next_fog(), 150)
 	row.add_child(_fog)
-	_cam = _btn("", func() -> void: player.follow_camera(not player.cam_follow), 150)
-	_cam.visible = player.me >= 0
+	_cam = _btn("", func() -> void: _next_camera(), 150)
+	_cam.visible = not player.cam_teams().is_empty()
 	row.add_child(_cam)
 	row.add_child(_btn("QUIT", func() -> void: quit.emit(), 80))
 	_note = UiStyle.text("", 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
@@ -102,6 +102,12 @@ func _on_slide(x: float) -> void:
 		player.seek(x)           # (dragging: a picture every 0.2 s or so; the release puts it exactly there)
 
 
+## The camera: free, then each recorded player's camera in turn.
+func _next_camera() -> void:
+	var order: Array = [-1] + player.cam_teams()
+	player.follow_camera(order[(order.find(player.cam_team) + 1) % order.size()])
+
+
 ## The fog: everything, then each player's view in turn (the HUD's VIEW menu has the same and the follow director).
 func _next_fog() -> void:
 	var sp: Spectator = game.spectator
@@ -133,7 +139,7 @@ func _refresh() -> void:
 		_fog.add_theme_color_override("font_color", game.team_colour(ft).lightened(0.3))
 	else:
 		_fog.remove_theme_color_override("font_color")
-	_cam.text = Loc.t("CAMERA: P%d") % (player.me + 1) if player.cam_follow else Loc.t("CAMERA: FREE")
+	_cam.text = Loc.t("CAMERA: P%d") % (player.cam_team + 1) if player.cam_team >= 0 else Loc.t("CAMERA: FREE")
 	var bits: Array = []
 	if player.view_only:
 		bits.append(Loc.t("Your view only: what your side saw."))
