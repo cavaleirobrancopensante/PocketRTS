@@ -481,6 +481,7 @@ func _harass(party: Array) -> void:
 		# traded a few workers for the whole game)
 		_rush_state = "done"
 		_rush_log("its army is out or too strong now: the %d Horsemen ride home to defend" % party.size())
+		_raid_block = maxf(_raid_block, game.clock + _lv([240.0, 180.0, 150.0]))    # (and no new raiding party leaves soon: round 4d)
 		var spot := _threat() if _threat() != Vector2.INF else _front()
 		for u in party:
 			u.cmd_move(spot, true)
@@ -2358,6 +2359,7 @@ func _raid() -> void:
 		if _attacking and _wave_set.size() >= 3:
 			_rush_state = "done"
 			_rush_log("the attack goes out: the %d harassing Horsemen join it" % _raiders.size())
+			_raid_block = maxf(_raid_block, game.clock + 120.0)
 			for u in _raiders:
 				_wave_set[u] = true
 			_raiders.clear()
