@@ -103,3 +103,56 @@ background (0, 22, 48), at that angle: as tall as the face-on wheel, about one t
 blue hub ball) turned slightly toward the camera so a thin sliver of the face and the hub shows on one side and the
 tooth tops show down the tread. One wheel only, no text.
 ```
+
+## Facing fixes (branch catapult-facing, 2026-10-27)
+
+The owner's two reports on the Spring Catapult. Compare GIF (old on top, new below, THROW then MOVE twice):
+art/redraws/catapult_facing_compare.gif. tools/catapult_guide/anim.py; outputs catapult_throw.png/.gif (5x12),
+catapult_move.png/.gif (5x8) and catapult_cup.json regenerated. The cell grew from 154x141 to 158x141 (anchor 79, 139).
+
+What changed.
+- S (front): the wheels are now EDGE-ON. ChatGPT's face-on wheels, and the rear wheels' face-on teeth peeking out
+  behind them, are erased off the body; where they covered the ends of the riveted base, the base is filled from its
+  own plate further in (the right end mirrors the left). The new wheels are the cog's edge-on paint, evened like N's,
+  in N's layout: the front pair at the sides, the rear pair at the base's ends, higher and behind it. The body keeps
+  its painted width; the unit's anchor was kept where the old wheels put it. In MOVE the tread rolls down, toward us.
+- SE: the near wheels (and the far one) are ellipses 0.72 as wide as tall, not round. The strips of the old round
+  wheels left beside them are filled with the body's paint where they lay over the body, and empty where they stood
+  out against the navy.
+- N (back): from the arm straight up through the follow-through, the cup is ChatGPT's cup seen from below (column 2
+  row 3): the rim a thin line at the top, the riveted outside of the bowl toward us, no mouth and no inside. It
+  replaces the old trick (the straight-up cup with its mouth painted over). The follow-through now keeps the cup at
+  least as high on screen as at vertical (it used to sink back toward the machine, which read as tipping toward us).
+  While the arm leans back toward us (loading and winding back) the mouth still faces us, and the loaded pose is
+  unchanged.
+- NE (also from behind): once the arm is up or past vertical, the same cup-from-below, turned along the beam.
+- S was checked: the follow-through still shows the cup's mouth toward us.
+
+What still looks rough.
+- The S base's two ends are a repeat of a 7 px strip of plate: at 3x they read as vertical ribs.
+- The S crank now stands over the navy (its wheel is gone from under it); it still joins the body through its blue
+  balls.
+- SE: the fills beside the squashed wheels are soft (a blur of the body's paint), and a few 1-2 px scraps of the old
+  wheels' teeth remain at their edges. The squash is one number (SQUASH_34); the cog's light was painted for a face-on
+  wheel.
+- NE's wheels are still round face-on cogs (not asked; at that angle they should be squashed like SE's: set
+  squash=SQUASH_34 on the NE row to try it).
+- The cup-from-below is scaled up about 1.4x from a smaller painting, so it is a little softer than the other cups,
+  and in NE its rivets turn with it (the light on it turns too).
+- The N/NE cup jumps from mouth-toward-us to back-toward-us between two frames (at 100 deg); there is no painted
+  in-between.
+
+ChatGPT request that would fix the last two (attach art/redraws/catapult_dirs.png and
+art/redraws/catapult_arm_poses_chatgpt.png):
+
+```
+Attached: a pixel-art steampunk catapult on cog wheels in 5 directions (rows S, SE, E, NE, N) and a sheet of its arm
+(the riveted beam, the blue joint ball and the cup). Please paint ONLY the CUP with its blue joint ball, same style,
+same size as the cup in the top row of the arm sheet, on the same navy background (0, 22, 48), seen from BEHIND the
+machine (camera above and behind, as in the N row), in 4 poses side by side, the joint ball always at the bottom:
+1. the arm straight up: the cup's mouth faces up, we look slightly down into it (a thin crescent of the inside);
+2. tipped 20 degrees away from the camera: we see the far rim's top edge and mostly the rounded outside of the bowl;
+3. tipped 45 degrees away: no inside at all, the riveted outside of the bowl toward us, the rim a thin line at the top;
+4. tipped 70 degrees away: the bowl's underside toward us, a round dome with its rivets in rings, the rim hidden.
+Light from the top left, as in the attached sheets. No beam, no machine, no text, nothing touching.
+```
