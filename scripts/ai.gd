@@ -59,13 +59,16 @@ var scout: AIScout = null       # scouts the enemy first and picks the plan from
 ## when it pulls back. null for the other factions (and with AIBrood.enabled off: the Brood as it was,
 ## for a "before" number); every Brood branch below then runs as before.
 var brood: AIBrood = null
+## AI round 5 (scripts/ai_round5.gd, docs/ai_round5.md): the Crown against the Clockwork, the Clockwork against Horsemen.
+const AIRound5 := preload("res://scripts/ai_round5.gd")
+var r5 = AIRound5.new(self)      # (made with the AI: tests that build one by hand get it too)
 
 
 func _ready() -> void:
 	if not strategies_for(game.faction_of(team)).has(strategy):
 		strategy = "balanced"
 	_opened = strategy
-	if game.faction_of(team) == "crown" and (strategy == "rush" or randf() < 0.3):
+	if game.faction_of(team) == "crown" and (strategy == "rush" or randf() < r5.breeder_chance(0.3)):
 		opening = "breeder"
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
@@ -254,7 +257,7 @@ func _rush_verdict(party: Array) -> String:
 	if float(alive) <= float(_rush_n0) * 0.4 and gained < wv * 0.8:
 		_rush_why = "the riders were beaten back (%d of %d left)" % [alive, _rush_n0]
 		return "failed"
-	if defv >= 100.0 and defv > mine * 1.15 and gained < wv * 0.8:
+	if defv >= 100.0 and defv > mine * 1.15 and gained < wv * 0.8 or r5.rush_beaten(defv, mine, gained, wv):
 		_rush_why = "the defenders are worth more than the riders"
 		return "failed"
 	if t > 90.0 and gained < wv * 0.3:
@@ -1194,6 +1197,8 @@ func _workers() -> void:
 	# (a feared rush with a Barracks standing: the first Musketeers before more labourers)
 	if _army_first() and labs.size() >= (6 if safe_opening else 8) + (4 if opening == "breeder" else 0) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
 		hold_gold = true
+	if r5.hold_labourers(labs.size() + queued):
+		hold_gold = true            # (round 5: against the Clockwork the army catches up first)
 	if _clock() and _mine(_works()).is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
 			and _gold() < int(Defs.BUILDINGS[_works()]["cost"]) + 20:
 		hold_gold = true            # (the Winders wait for the Works' 200)
@@ -1357,6 +1362,8 @@ func _raid_workers(c: Dictionary, labs: Array, army: Array, stand: Dictionary) -
 	near = near.filter(func(w: Unit) -> bool: return not (_repairers.has(w) and w.order == "repair"))
 	if near.is_empty():
 		return
+	if r5.worker_raid(c, labs, stand):
+		return          # (round 5: Winders against riders group up and fight together)
 	var armor := 0.0
 	var fast := 0.0
 	var ground := 0
@@ -2097,6 +2104,8 @@ func _hall_first() -> bool:
 	_hall_reserve = false
 	var hall: String = _f()["hall"]
 	_note_lost_halls()
+	if r5.hold_hall():
+		return false        # (round 5: against the Clockwork the next hall waits for an army to hold it)
 	if _halls().size() >= 7:
 		return false
 	# halls with a fair share of soil left (one going up counts: it's fresh land)
@@ -2315,6 +2324,8 @@ func _recycle_spent() -> void:
 ## of ours. `macro`: the Brood just needs more Hives to spend its food (eggs come from Hives).
 func _more_halls(macro: bool) -> void:
 	var hall: String = _f()["hall"]
+	if r5.hold_hall():
+		return
 	# (halls on spent soil don't count toward the strategy's limit: the land has run out)
 	var live := _halls().filter(func(h: Building) -> bool: return _brood() or _land(h) > 0.0).size()
 	if live >= int(_s("halls")) + (1 if macro else 0) or _halls().size() >= 7 or _busy_building(hall):
@@ -3488,7 +3499,9 @@ func _produce() -> void:
 			var horse := army.filter(func(u: Unit) -> bool: return u.kind == "cuirassier").size()
 			var hk := _soldier_key(b, "cuirassier")
 			var rush := _rush_open()
-			if (horse < 3 or horse * 6 < army.size() or rush) and randf() < (0.85 if rush else (0.6 if short_powder else 0.3)) and hk != "":
+			var hcap: int = r5.horsemen_cap()      # (round 5: two riders and no more against the Clockwork)
+			var horse_ok: bool = (horse < 3 or horse * 6 < army.size() or rush) if hcap < 0 else horse < hcap
+			if horse_ok and randf() < (0.85 if rush else (0.6 if short_powder else 0.3)) and hk != "":
 				k = hk
 			elif k == "":
 				k = hk
@@ -3519,7 +3532,7 @@ func _produce() -> void:
 			game.train(f, "balloon")
 			balloons += 1
 	for c in _mine("church"):
-		if c.built and c.queue.is_empty() and game.can_train(c, "missionary") == "":
+		if c.built and c.queue.is_empty() and r5.missionary_ok() and game.can_train(c, "missionary") == "":
 			game.train(c, "missionary")
 
 
@@ -3664,8 +3677,11 @@ func _tend_wagon() -> void:
 
 func _army() -> void:
 	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND and u.order != "sacrifice")      # (a Great Winder walks behind it: _great_winder_follow)
-	if _crown():
-		army = _guard_new_hall(army)
+	if _clock():
+		r5.tick(army)                   # (round 5: the guards by the Winders and the ramp post against riders)
+		army = army.filter(func(u: Unit) -> bool: return not r5.busy(u))
+	if _crown() and not r5.holding():
+		army = _guard_new_hall(army)    # (round 5: while it holds behind the wall the hall's guards come home too)
 	# Bloaters out of gas float home to fill up again (faster on the swamp)
 	for u in game.army(team):
 		if u.kind == "bloater" and u.deflate == "flat" and u.order != "move":
@@ -3681,7 +3697,10 @@ func _army() -> void:
 	var threat := _threat()
 	if threat != Vector2.INF:
 		# (sized response: only as many soldiers as the visible enemy needs, see _defend)
-		_defend(army, threat, _threats())
+		var tspots := _threats()
+		if r5.hold_behind_wall(army, tspots):
+			return              # (round 5: a bigger wave at the gate: the army holds on the high ground behind the wall)
+		_defend(army, threat, tspots)
 		# (workers: _worker_safety, from the economy think, pulls them out of reach or sends the hands)
 		return
 	if not _det.is_empty():
@@ -3718,7 +3737,7 @@ func _army() -> void:
 		return
 	# (riders still on foot, their horses on the way, don't count yet: they follow mounted)
 	var ready := army.filter(func(u: Unit) -> bool: return not _horse_coming(u))
-	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping and _timing_ok(ready) and _kit_ready(ready):
+	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping and _timing_ok(ready) and _kit_ready(ready) and r5.attack_ok(ready):
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
@@ -3770,7 +3789,7 @@ func _army() -> void:
 		_siege_tick(wave)
 		if not _attacking:
 			return
-		if _clock() and Defs.gear_mode and difficulty >= 1 and _losing_trade(wave):
+		if (_clock() and Defs.gear_mode or r5.retreat_rule() and not _rush_wave) and difficulty >= 1 and _losing_trade(wave):
 			return
 		# fresh units join only as a group: 2+ cavalry finishing a crippled enemy, or 6+ supply
 		var pool: Array = ready.filter(func(u: Unit) -> bool: return not _wave_set.has(u))
@@ -5702,6 +5721,11 @@ func _defend(army: Array, threat: Vector2, spots: Array) -> void:
 	_note_guns()
 	if spots.is_empty():
 		spots = [threat]
+	# (round 5, Clockwork: riders at the Winders draw a group of Clock Soldiers to the Winders, not a chase)
+	var by_r5: Array = r5.guard_workers(army, spots)
+	if not by_r5.is_empty():
+		spots = spots.filter(func(sp: Vector2) -> bool: return not by_r5.has(sp))
+		army = army.filter(func(u: Unit) -> bool: return not r5.busy(u))
 	var asses: Array = []
 	for sp in spots:
 		asses.append(_assess(sp))
@@ -6644,6 +6668,9 @@ func _horses() -> void:
 	var places: Array = _mine("foundry").filter(func(b: Building) -> bool: return b.built)
 	for b in places:
 		var want := 2 if _gold() > 600 else 1
+		var fh: int = r5.foundry_horses(b)     # (round 5: against the Clockwork one, and only for a gun it wants)
+		if fh >= 0:
+			want = fh
 		var have: int = game.horses_at(b)
 		for h in horses:
 			if h.order == "move" and b.edge_distance(h.order_point) < 40.0:
@@ -6954,6 +6981,10 @@ func _buy_horses(horses: Array, keep: Dictionary, need: int) -> void:
 			if b.queue[i] == "horse" and int(b.kit_at(i).get("rid", 0)) == 0:
 				coming += 1
 	var spare := 2 if _rushing() else 1
+	if r5.spare_horses() >= 0:
+		spare = r5.spare_horses()           # (round 5: no spare standing about against the Clockwork)
+	if need + spare <= 0:
+		return
 	if free + coming >= need + spare:
 		return
 	breeders.sort_custom(func(a: Building, b: Building) -> bool: return a.queue.size() < b.queue.size())

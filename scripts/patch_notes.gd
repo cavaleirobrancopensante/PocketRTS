@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.88", "items": [
+		"Crown computer against the Clockwork: Musketeers are the bulk of its army (two Horsemen at most), it stops adding Labourers while its army lags behind them, keeps no idle horses and trains one Missionary at most. When a bigger wave comes to its ramp wall the army holds on the high ground behind the wall instead of walking out to meet it, it does not attack into a much bigger army it has seen, it pulls a wave back that trades badly, and its next Town Hall waits until it has an army to hold it. It opens with the Horseman rush less often against the Clockwork, and the rush rides home sooner when Clock Soldiers come.",
+		"Clockwork computer against Horsemen: the Winders by a raided Cog Press group up and fight the riders together (they cannot outrun them) while the nearest Clock Soldiers come as one group to the Winders instead of chasing a rider about. Once riders have been seen and it has 10 or more Clock Soldiers, 3 or 4 of them stand on HOLD at the top of its ramp. The Winders still run from Balloons and from armies they cannot fight.",
+	]},
 	{"v": "0.14.87", "items": [
 		"Clockwork build keys: the Clocktower is now T and the Cog Press C (the Cog Press's G looked like a C, and C built a Clocktower you could not afford).",
 	]},
