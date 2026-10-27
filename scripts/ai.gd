@@ -1273,6 +1273,16 @@ func _resume(w: Unit, e := {}) -> void:
 ## is healthy, and the rest tend the farms (a farm with 1-2 hands ripens in two minutes).
 func _mill_cap() -> int:
 	if game.clock > 300.0 or difficulty == 0:
+		if difficulty > 0 and _res2() > 300.0 and _gold() < 150:
+			# powder piling up while gold runs out (2,000 powder banked and no gold, coach round 3): two hands a think
+			# back from the Mills to the farms, never below one a Mill
+			var crew := 0
+			var mills := 0
+			for m in _mine("powder_mill"):
+				if m.built:
+					crew += m.crew.size()
+					mills += 1
+			return maxi(mills, crew - 2)
 		return 99
 	if _mine("barracks").is_empty():
 		return 0
@@ -1874,7 +1884,7 @@ func _hall_first() -> bool:
 	# crowded a tired farm while the main went barren, coach round 2)
 	var need := 1 if _best_soil() >= HALL_FIRST_SOIL else 2
 	if _crown():
-		need = maxi(need, ceili(game.workers(team).size() / 16.0))
+		need = maxi(need, mini(3, ceili(game.workers(team).size() / 16.0)))     # (three fresh halls at most: more halls only grew more hands, round 3)
 	if fresh >= need or _busy_building(hall):
 		return false
 	_hall_reserve = true
