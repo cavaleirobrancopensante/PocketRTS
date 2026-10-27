@@ -309,7 +309,7 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   (Building._rise: 40% of it at the start, all of it at half built), so it rises out of the plates; a hard straight cut, no
   painted half-built stages. Wanted: two or three painted construction stages per building (plates and lower frame,
   half-built walls in scaffold, the full scaffold) to replace the clip.
-## The gear rules: Heavy Works, brass plates, the gear view (code, 0.14.92; docs/gear_rules.md)
+## The gear rules: Heavy Works, brass plates, the gear view (code, 0.14.94; docs/gear_rules.md)
 - HEAVY WORKS building: the owner's ChatGPT sheet (art/redraws/heavy_works_empty_chatgpt.png, top row only: built, under
   construction, damaged, destroyed) cut and keyed off its navy background by tools/press_anim/heavy_works_key.py, imported
   by tools/gear_art/import_buildings.py. Its WINDING KEY on the winch house is TURNED IN CODE from the built frame (the bow cut

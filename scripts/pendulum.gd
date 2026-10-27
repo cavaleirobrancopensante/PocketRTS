@@ -9,7 +9,7 @@ extends RefCounted
 ## front of its feet, through where small enemies stand, and lands on the 4th frame: every enemy on the ground in the
 ## ARC in front of it takes the blow (never its own side: the machine's units keep in step with the swing), a LIGHT unit
 ## (tag "light") more (PENDULUM_SWING "vs_light"), and a building it swings at takes it too. It cannot reach flyers. It is
-## made only at the HEAVY WORKS (0.14.92), which always runs on its BIG gear (the heavy torque: gear_problem, Game.can_train);
+## made only at the HEAVY WORKS (0.14.94), which always runs on its BIG gear (the heavy torque: gear_problem, Game.can_train);
 ## a works with Pendulums queued cannot go back to the small gear meanwhile.
 ## Art: tools/import_tier3.py (the idle, the walk and the two low sweeps built in code from ChatGPT's direction sheet,
 ## tools/pendulum_v2_guide/; the death painted by ChatGPT).

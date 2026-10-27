@@ -1,7 +1,7 @@
 extends SceneTree
 ## The gear-mode Clockwork COMPUTER and tier 3 (AI._tier3, AI._produce; scripts/pendulum.gd, scripts/netter.gd): a Hard
 ## Clockwork with two Light Works, a working Escapement (a Mainspring meshing with it), six Springers (the Springers come
-## first: 0.14.73), cogs and Tension to spare, against a passive Crown. It lays ONE Heavy Works (0.14.92) by a Mainspring, then mixes a few Pendulums (from it) and Netters
+## first: 0.14.73), cogs and Tension to spare, against a passive Crown. It lays ONE Heavy Works (0.14.94) by a Mainspring, then mixes a few Pendulums (from it) and Netters
 ## into its army; a Netter of its own nets the most dangerous enemy that comes in reach (a Cuirassier before a Labourer
 ## with less health left: the focus fire of AI._micro leaves the Netters to their own pick).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_tier3_ai.gd
@@ -111,7 +111,7 @@ func _run() -> void:
 	g.clock = maxf(g.clock, 330.0)
 	# (on a crowded plateau it first builds a Mainspring with room for the Heavy Works' big ring beside it: AI._tier3)
 	var waited := await _wait(func() -> bool: return not _mine(Defs.CW_HEAVY).is_empty(), 150.0)
-	check("it lays a Heavy Works (0.14.92)", not _mine(Defs.CW_HEAVY).is_empty(), "%.0f s" % waited)
+	check("it lays a Heavy Works (0.14.94)", not _mine(Defs.CW_HEAVY).is_empty(), "%.0f s" % waited)
 	check("only one", _mine(Defs.CW_HEAVY).size() == 1)
 	waited = await _wait(func() -> bool: return _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), 200.0)
 	check("its Heavy Works stands and meshes with a Mainspring", _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), "%.0f s" % waited)

@@ -497,7 +497,7 @@ static func energy_only(k: String) -> bool:
 ## SIZE SETS THE TEMPO (owner, 2026-10-27): on its SMALL ring it fires quick light screws (`small`), on its BIG ring slow heavy
 ## ones (`big`: about the same damage a second, but armour takes the same off every hit, so the big screw is the answer to
 ## armour); the reach is the same on both, well under the Crown's guns. `damage` / `cooldown` are the old single values (the
-## small ring's were these until 0.14.92). THE TURRET CIRCLE (owner, 2026-10-27): each turret claims a circle of ground
+## small ring's were these until 0.14.94). THE TURRET CIRCLE (owner, 2026-10-27): each turret claims a circle of ground
 ## `claim` tiles round its centre (like the Brood's Feeding Pits) and two turrets' circles may not overlap (a turret's
 ## spring draws every bit of force from the gears under it: a second one inside the circle would starve both and jam).
 ## A guess: 4 tiles, so turrets stand at least 8 tiles apart. Old saves keep the turrets they have.

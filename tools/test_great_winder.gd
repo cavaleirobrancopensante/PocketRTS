@@ -1,5 +1,5 @@
 extends SceneTree
-## THE GREAT WINDER (scripts/great_winder.gd, Defs.GREAT_WINDER, docs/great_winder.md): made at the Heavy Works (0.14.92) once an
+## THE GREAT WINDER (scripts/great_winder.gd, Defs.GREAT_WINDER, docs/great_winder.md): made at the Heavy Works (0.14.94) once an
 ## Escapement works (cogs and Tension); its walk is played so the feet do not slide; it WINDS the constructs inside its
 ## area (a run-down one wakes) and not the ones outside, and never runs down itself; MEND (autocast, on from the start)
 ## mends a hurt Clockwork unit near it, costs cogs, and stops when switched off; it never mends a Crown unit; SWEEP
@@ -112,7 +112,7 @@ func _wreck(g: Game, u: Unit) -> void:
 
 func _roster(g: Game) -> void:
 	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_HEAVY]
-	check("the Heavy Works trains the Great Winder (0.14.92)", (wd["trains"] as Array).has(K))
+	check("the Heavy Works trains the Great Winder (0.14.94)", (wd["trains"] as Array).has(K))
 	check("the Light Works does not", not (Defs.BUILDINGS[Defs.CW_WORKS]["trains"] as Array).has(K))
 	check("it is in the gear-mode roster (not retired)", Defs.CW_NEW_UNITS.has(K) and not Defs.retired(K))
 	check("its price is cogs and Tension", g.unit_price(0, K) == [int(Defs.UNITS[K]["cost"]), int(Defs.UNITS[K]["tension"])], str(g.unit_price(0, K)))
@@ -352,7 +352,7 @@ func _computer() -> void:
 	g.players[0]["gold"] = 8000
 	g.players[0]["tension"] = 2000.0
 	# (the Mainspring first, with room for the Escapement and the Heavy Works' big ring, as the computer places it: the
-	# Great Winder is made at the Heavy Works since 0.14.92, which the computer lays itself)
+	# Great Winder is made at the Heavy Works since 0.14.94, which the computer lays itself)
 	var spring: Building = null
 	var rs: Array = GearEcon.room_spot_n(g, 0, "mainspring", [hall], [Defs.CW_TECH, Defs.CW_HEAVY])
 	if int(rs[1]) >= 2:

@@ -4,13 +4,19 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.14.92", "items": [
+	{"v": "0.14.94", "items": [
 		"CLOCKWORK GEAR RULES (the owner's, from the gear study): each RATCHET TURRET now claims a circle of ground 4 tiles round it, and two turrets' circles may not overlap: a turret's spring draws all the force from the gears under it, so turrets stand at least 8 tiles apart. While you place one, the circles are drawn and the ghost says TOO NEAR A TURRET. Old saves keep the turrets they have.",
 		"NEW CLOCKWORK BUILDING, the HEAVY WORKS (175 cogs, 45 s, needs a working Escapement): a gantry crane yard where the PENDULUM, the SPRING BALLISTA and the GREAT WINDER are now made, and you can watch each machine rise in its bay as it trains. It sits on its BIG gear only and uses Tension, so its ring must mesh with a Mainspring's (else NEEDS MAINSPRING).",
 		"The LIGHT WORKS now makes only the light machines: the Clock Soldier, the Springer and the Netter (no more Pendulums, Ballistas or Great Winders).",
 		"SIZE SETS THE TEMPO: a small gear works fast and light, a big gear slow and strong. The Light Works trains 15% faster on its small gear, 15% slower on its big one; the Escapement and the Clock Aviary work 10% faster or slower. A Ratchet Turret on its small gear fires 11 damage every 1.2 s; on its big gear 21 every 2.2 s, better against armour, with the same reach. Each card says its gear's trade in one line.",
 		"READABILITY: the Mainspring, the Escapement, the Heavy Works and the Clock Aviary stand on a polished brass floor plate; a small spring mark shows a building fed by a Mainspring; the placing ghost lights its meshing teeth green and its clashes red and gives its reason in one red line; the GEAR VIEW (the ` key, or GEAR VIEW on a Clockwork building's card) shows the whole network: the drivers gold, every ring green to red by how well it works, each Mainspring's reach and the turret circles.",
 		"CLOCKWORK COMPUTER: it lays a Heavy Works by a Mainspring as soon as its Escapement works (its first Spring Ballista, then its Pendulums), keeps room for it by its first Mainspring, and spaces its turrets by the new rule.",
+	]},
+	{"v": "0.14.93", "items": [
+		"Getting on a horse and leading it now sound different: the horse whinnies when a man gets on it, and only snorts softly when a man takes it by the reins. The message from 0.14.92 is gone (it got old fast).",
+	]},
+	{"v": "0.14.92", "items": [
+		"A soldier right-clicking a horse gets on it (Musketeer to Dragoon, Officer to Horseman...). Now a message says so and how to lead it by the reins instead: press LEAD (Q). Labourers still lead a horse on a right-click.",
 	]},
 	{"v": "0.14.91", "items": [
 		"The Great Winder rolls on cog wheels instead of legs. Four brass cogs, the Clockwork's own wheel (as on the Spring Catapult and the Spring Ballista), turn as it moves, at just the speed it goes, and stand still while it mends or sweeps. When it is destroyed its wheels come off. Its speed is unchanged (27): it is still slow on purpose.",

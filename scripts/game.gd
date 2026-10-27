@@ -137,7 +137,7 @@ var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
 ## The computer keeps spots for buildings it means to lay soon (team -> {kind -> {"cell", "t", "spring"}}): its own other
 ## buildings are not put where they would take such a spot or cut into its ring (placement_problem with `ai`). Used for the
-## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.92). Not saved: the computer works it
+## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.94). Not saved: the computer works it
 ## out again.
 var ai_keep := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)

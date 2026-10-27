@@ -1,4 +1,4 @@
-# The gear rules for base building (0.14.92)
+# The gear rules for base building (0.14.94)
 
 The owner's decisions of 2026-10-27, built. The study behind them is docs/clockwork_gear_study.md. The decisions are at the end of docs/clockwork_ground_up.md.
 
@@ -182,7 +182,7 @@ Branch round 2, Hollowfen: the Mainspring came at 4:36 and the Escapement at 7:1
 
 ### One more round after merging main 0.14.91
 
-Main moved on while this ran (its computer now keeps new Clocktowers on its own side). So both builds played the four games once more: main at 0.14.91, the branch at 0.14.92.
+Main moved on while this ran (its computer now keeps new Clocktowers on its own side). So both builds played the four games once more: main at 0.14.91, the branch with main 0.14.91 merged.
 
 | run | game | Mainspring | Escapement | Heavy Works | 1st Ballista | 1st Pendulum | 1st Great Winder | result |
 |---|---|---|---|---|---|---|---|---|
@@ -190,10 +190,10 @@ Main moved on while this ran (its computer now keeps new Clocktowers on its own 
 | main 0.14.91 | Frostmere | 3:48 | 3:54 | - | 6:04 | 9:59 | 8:14 | no winner |
 | main 0.14.91 | Hollowfen | 3:43 | 3:49 | - | 10:15 | 12:22 | 10:48 | no winner |
 | main 0.14.91 | Kestrel Rise | 3:55 | 7:42 | - | 10:54 | - | 11:29 | Clockwork wins |
-| branch 0.14.92 | Greenhold | 3:41 | 3:47 | 7:06 | 7:36 | 8:47 | 8:11 | no winner |
-| branch 0.14.92 | Frostmere | 3:52 | 3:58 | 7:26 | 7:57 | 10:01 | 8:32 | no winner |
-| branch 0.14.92 | Hollowfen | 3:50 | 3:56 | 7:01 | 7:41 | 8:55 | 8:16 | no winner |
-| branch 0.14.92 | Kestrel Rise | 3:48 | 3:56 | 7:29 | 8:06 | 9:14 | - | Clockwork wins |
+| branch + main 0.14.91 | Greenhold | 3:41 | 3:47 | 7:06 | 7:36 | 8:47 | 8:11 | no winner |
+| branch + main 0.14.91 | Frostmere | 3:52 | 3:58 | 7:26 | 7:57 | 10:01 | 8:32 | no winner |
+| branch + main 0.14.91 | Hollowfen | 3:50 | 3:56 | 7:01 | 7:41 | 8:55 | 8:16 | no winner |
+| branch + main 0.14.91 | Kestrel Rise | 3:48 | 3:56 | 7:29 | 8:06 | 9:14 | - | Clockwork wins |
 
 The same picture. Same results. On the branch the heavy machines come steadily, all between 7 and 10 minutes, in every game. On main they swing from 5 to 14 minutes. Kestrel Rise on the branch won before its Great Winder was due.
 
@@ -209,7 +209,7 @@ But the Brood computer was odd in both builds. It made one wave of raptors, then
 - tools/test_gear_rules.gd, new: the turret circle refuses a turret too close and accepts one far enough, also through the computer's spot search; the Heavy Works trains the Pendulum and the Ballista only beside a Mainspring, and the Light Works does not; the ring size changes the training speed and the turret's fire as set; the machine in the bay is drawn and grows; saves keep it all, and an old save's turrets side by side load and stay.
 - Updated for the new rules: test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_great_winder, test_gear_econ, test_clockwork_sounds.
 
-All run on the branch at 0.14.92, after merging main at 0.14.91.
+All run on the branch after merging main at 0.14.91. Main's 0.14.92 and 0.14.93 (horse messages and sounds) were merged at the very end; test_gear_rules, test_i18n, test_files and test_replay were run again then. The gear rules are 0.14.94.
 
 - Pass: test_gear_rules (new), test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_great_winder, test_gear_econ, test_gear_save, test_gear_ai, test_cw_tier2, test_cw_air_ai, test_springer_compat, test_ratchet_turret, test_gear_swap, test_clockwork_sounds, test_cw_lab, test_ai_wall_vs_rush, test_files, test_i18n, test_replay.
 - tools/test_online.sh: GUEST ALL OK.

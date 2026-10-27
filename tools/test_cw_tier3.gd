@@ -1,6 +1,6 @@
 extends SceneTree
 ## TIER 3 of the gear-mode Clockwork (scripts/pendulum.gd, scripts/netter.gd; docs/clockwork_gear_prototype.md "Tier 3"):
-## the PENDULUM (from the HEAVY WORKS since 0.14.92, on its big gear only, a Tension user) and the NETTER (from the Light
+## the PENDULUM (from the HEAVY WORKS since 0.14.94, on its big gear only, a Tension user) and the NETTER (from the Light
 ## Works) once an Escapement WORKS (none, or an idle one, refuses them); both cost cogs AND Tension (Tension short refuses; a
 ## cancel pays the Tension back). The Light Works cannot make the Pendulum; the Heavy Works cannot swap to the small gear. The Pendulum's swing hurts EVERY enemy in the arc
 ## in front of it, not one behind it nor one beside it out of the arc, never its own side; the blow lands on the 5th
@@ -43,7 +43,7 @@ func _run() -> void:
 	var N := Defs.NETTER
 	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_WORKS]
 	var hd: Dictionary = Defs.BUILDINGS[Defs.CW_HEAVY]
-	check("the Light Works trains the Netter, not the Pendulum (0.14.92)", (wd["trains"] as Array).has(N) and not (wd["trains"] as Array).has(P))
+	check("the Light Works trains the Netter, not the Pendulum (0.14.94)", (wd["trains"] as Array).has(N) and not (wd["trains"] as Array).has(P))
 	check("the Heavy Works trains the Pendulum", (hd["trains"] as Array).has(P))
 	check("the Pendulum's price is cogs and Tension", g.unit_price(0, P) == [int(Defs.UNITS[P]["cost"]), int(Defs.UNITS[P]["tension"])], str(g.unit_price(0, P)))
 	check("the Netter's price is cogs and Tension", g.unit_price(0, N) == [int(Defs.UNITS[N]["cost"]), int(Defs.UNITS[N]["tension"])], str(g.unit_price(0, N)))
