@@ -506,8 +506,8 @@ const TENSION_USERS := ["escapement", "cuckoo_house"]
 const JACK_JUMP := {"range": 160.0, "crouch": 0.35, "land": 0.2, "air": 0.3, "air_speed": 520.0, "peak": 20.0, "peak_per": 0.22,
 	"cooldown": 10.0, "search": 2, "ai_low": 0.4}
 const JACK_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
-	"tips": {"r": {"s": Vector2(-24, -13), "se": Vector2(-21, -11), "e": Vector2(24, -15), "ne": Vector2(23, -13), "n": Vector2(31, -11)},
-		"l": {"s": Vector2(31, -13), "se": Vector2(25, -12), "e": Vector2(22, -21), "ne": Vector2(-26, -18), "n": Vector2(-19, -12)}}}
+	"tips": {"r": {"s": Vector2(-28, -13), "se": Vector2(-22, -11), "e": Vector2(24, -15), "ne": Vector2(25, -13), "n": Vector2(25, -11)},
+		"l": {"s": Vector2(27, -13), "se": Vector2(24, -12), "e": Vector2(22, -21), "ne": Vector2(-24, -18), "n": Vector2(-25, -12)}}}
 
 
 ## The raised arm (shooting at a FLYER: the "attack_up" strip, tools/jack_guide/attack_up.py): the drill tip on the fire frame per

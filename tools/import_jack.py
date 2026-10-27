@@ -143,6 +143,40 @@ def foot(o):
     return fx + 0.5, fy
 
 
+# The two-launcher strips (idle, attack_r, attack_l) found their anchor on the coil, which the sheet's ice-blue drill
+# tips and a coil cut short by an arm threw off: their foot plates stood 3 to 6 px off the anchor (S, N) and the idle's
+# plate wandered up to 7 px from frame to frame (docs/animation_audit_clockwork.md). After the shrink, each idle frame
+# (an attack strip: its first frame, the recoil kept) is moved sideways so the middle of its foot plate (its lowest 3
+# rows) sits where the hop's, the jump's and the raised arm's do (half - 0.5: on the anchor column).
+PLATE_ALIGN = ('idle', 'attack_r', 'attack_l')
+
+
+def plate_mid(cell):
+    al = cell[..., 3] > 0
+    rows = np.nonzero(al.any(1))[0]
+    if len(rows) == 0:
+        return None
+    xs = np.nonzero(al[rows.max() - 2:rows.max() + 1].any(0))[0]
+    return (xs.min() + xs.max()) * 0.5
+
+
+def align_plate(strip, cw, half, each):
+    """The strip with its frames moved sideways onto the anchor (each frame alone, or all by the first's shift)."""
+    n = strip.shape[1] // cw
+    out = np.zeros_like(strip)
+    dx0 = None
+    for i in range(n):
+        cell = strip[:, i * cw:(i + 1) * cw]
+        m = plate_mid(cell)
+        dx = 0 if m is None else int(round(half - 0.5 - m))
+        if dx0 is None:
+            dx0 = dx
+        if not each:
+            dx = dx0
+        out[:, i * cw:(i + 1) * cw] = np.roll(cell, dx, axis=1)
+    return out, dx0
+
+
 def plate_top(o, fy):
     """The row where the foot plate begins: just under the coil's lowest row."""
     cm = coil(o)
@@ -242,6 +276,7 @@ def main():
     ch = up + down
     os.makedirs(DST, exist_ok=True)
     BW, BH = int(round(cw / scale)), int(round(ch / scale))
+    plate_dx = {}
     for (anim, d), fl in frames.items():
         strip = np.zeros((ch, cw * len(fl), 4), np.uint8)
         for i, (o, ax, ay) in enumerate(fl):
@@ -252,6 +287,8 @@ def main():
             s = shrink(np.array(big), cw / BW)[:ch, :cw]
             s = cw_palette.snap_team(s)
             strip[:s.shape[0], i * cw:i * cw + s.shape[1]] = s
+        if anim in PLATE_ALIGN:
+            strip, plate_dx[(anim, d)] = align_plate(strip, cw, half, anim == 'idle')
         Image.fromarray(strip, 'RGBA').save(DST + '%s_%s.png' % (anim, d))
     print('jack: scale %.3f, cell %dx%d, anchor (%d, %d)' % (scale, cw, ch, half, up))
     print('SHEETS line: "jack": [%d, %d, %d, %d],' % (cw, ch, half, up))
@@ -265,7 +302,7 @@ def main():
         for d in DIRS:
             tx, ty = tw[d][arm]['tip']
             fx, fy = row_foot[(anim, d)]
-            tips[arm][d] = (round((tx - fx) * scale), round((ty - fy) * scale))
+            tips[arm][d] = (round((tx - fx) * scale) + plate_dx.get((anim, d), 0), round((ty - fy) * scale))
     print('tips: {' + ', '.join('"%s": {' % arm + ', '.join('"%s": Vector2(%d, %d)' % (d, t[0], t[1]) for d, t in tt.items()) + '}'
                                 for arm, tt in tips.items()) + '}')
     # the RAISED drill tip (shooting at a flyer): the JSON gives it on the fire frame in that frame's cell (the sheet's rows

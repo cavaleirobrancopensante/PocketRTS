@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.57", "items": [
+		"JACK: it no longer slides about on its spring while it stands. Its foot plate now stays on the spot in every frame and every direction, so switching between standing, shooting and hopping no longer makes it jump sideways (up to 6 pixels before). The screws still leave from the drill tips.",
+		"CLOCK SOLDIER: facing right, the frame just before its sword comes down no longer loses its head cap, so its player colour shows all through the swing. A few stray dark pixels near its feet are gone.",
+		"CLOCK AVIARY: while it works, only its doors and the little brass bird move. Before, every frame was painted anew, so the whole tower shimmered and it changed look when it started or stopped.",
+	]},
 	{"v": "0.14.56", "items": [
 		"CROWN ANIMATIONS, small fixes from an audit of every Crown animation (docs/animation_audit_crown.md): the Officer and the Armoured Officer no longer hop as they walk (their walking feet now stay on the ground, as when they stand), and the Armoured Officer no longer floats a little when he aims and fires. The Horseman's horse no longer bobs up when it stops facing down and to the right. The Messenger galloping right no longer shows two or three riders in two of its frames. The Mortar's crew no longer jumps from side to side while the gun waits. The Mounted Missionary gallops at a gallop's pace (its horse slid along in slow motion). A stray dash under the Musketeer's muzzle is gone.",
 	]},
