@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.87": ["Teclas de construção do Mecanismo: a Torre do Relógio agora é T e a Prensa de Engrenagens C (o G da Prensa parecia um C, e o C construía uma Torre do Relógio que você não podia pagar)."],
 	"0.14.86": ["Os prédios da Coroa têm telhados de terracota."],
 	"0.14.85": ["CORREÇÃO: os prédios do Mecanismo voltam a subir da sua caixa. Só a Torre do Relógio mostrava a caixa: a Prensa de Engrenagens, a Mola Real, o Regulador, a Oficina de Movimentos, a Torreta de Catraca, o Escape e a Casa do Cuco pulavam direto para o andaime. Agora cada um mostra a caixa que o Enrolador pôs no chão se abrindo e se desdobrando na sua armação, para você e para o computador.", "Os prédios do Mecanismo agora SOBEM: depois que a caixa se desdobra, o andaime cresce das placas de baixo para cima enquanto o prédio é erguido (inteiro na metade), e então o prédio pronto fica de pé."],
 	"0.14.84": ["O registro da partida agora anota cada prédio ou botão que o jogo recusou, com o motivo e os recursos que você tinha naquele momento, para que uma construção recusada possa ser investigada depois."],
