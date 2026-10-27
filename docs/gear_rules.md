@@ -180,6 +180,23 @@ Round 1 on the branch had no Great Winder. It was queued after the Pendulums and
 
 Branch round 2, Hollowfen: the Mainspring came at 4:36 and the Escapement at 7:10. The first Mainspring found no spot with room for both. So the Escapement waited until 6:22, then went with a second Mainspring beside it. One game in eight, not a pattern. Worth a look if it shows again.
 
+### One more round after merging main 0.14.91
+
+Main moved on while this ran (its computer now keeps new Clocktowers on its own side). So both builds played the four games once more: main at 0.14.91, the branch at 0.14.92.
+
+| run | game | Mainspring | Escapement | Heavy Works | 1st Ballista | 1st Pendulum | 1st Great Winder | result |
+|---|---|---|---|---|---|---|---|---|
+| main 0.14.91 | Greenhold | 3:01 | 3:07 | - | 5:00 | 14:32 | 8:11 | no winner |
+| main 0.14.91 | Frostmere | 3:48 | 3:54 | - | 6:04 | 9:59 | 8:14 | no winner |
+| main 0.14.91 | Hollowfen | 3:43 | 3:49 | - | 10:15 | 12:22 | 10:48 | no winner |
+| main 0.14.91 | Kestrel Rise | 3:55 | 7:42 | - | 10:54 | - | 11:29 | Clockwork wins |
+| branch 0.14.92 | Greenhold | 3:41 | 3:47 | 7:06 | 7:36 | 8:47 | 8:11 | no winner |
+| branch 0.14.92 | Frostmere | 3:52 | 3:58 | 7:26 | 7:57 | 10:01 | 8:32 | no winner |
+| branch 0.14.92 | Hollowfen | 3:50 | 3:56 | 7:01 | 7:41 | 8:55 | 8:16 | no winner |
+| branch 0.14.92 | Kestrel Rise | 3:48 | 3:56 | 7:29 | 8:06 | 9:14 | - | Clockwork wins |
+
+The same picture. Same results. On the branch the heavy machines come steadily, all between 7 and 10 minutes, in every game. On main they swing from 5 to 14 minutes. Kestrel Rise on the branch won before its Great Winder was due.
+
 ## The Brood's extreme rush
 
 A quick check, not a test: Hard Clockwork on Balanced against a Hard Brood on Extreme rush, to 6:00, on Greenhold seed 7 and Ashford Crossing seed 4242. Same on main and the branch: the Clocktower stands, the Clockwork loses one or two units, one turret by 4:30.
