@@ -1,5 +1,5 @@
 extends SceneTree
-## MAP EDITOR: a mouse click on a button works after painting (0.14.54: the editor's _input
+## MAP EDITOR: a mouse click on a button works after painting (0.14.64: the editor's _input
 ## ate every release over the panel, so BACK, SAVE, HELP... never fired with a mouse), and a
 ## stroke that ends over the panel still ends.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_map_editor_buttons.gd

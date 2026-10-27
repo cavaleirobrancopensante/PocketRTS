@@ -1,4 +1,4 @@
-# QA: the web version and the interface (0.14.54)
+# QA: the web version and the interface (0.14.64)
 
 One QA machine of the "full ham" test. This one looked at the web build and the interface, as a player sees them.
 Screenshots are in `docs/shots/qa_web/`.
@@ -38,7 +38,7 @@ Screenshots are in `docs/shots/qa_web/`.
 
 1. **The crash page after every normal web visit.** Fixed.
    The game writes `user://running.txt` while it runs, and only removes it on a close notification. A browser sends none when a tab is closed, reloaded or swiped away. So the next visit showed THE GAME CLOSED UNEXPECTEDLY, every time. Confirmed in the browser before the fix: after closing the tab, and after a reload.
-   Now, on the web, the marker lives in the page's localStorage, which writes at once. The page removes it when it is hidden or left, and puts it back when it shows again. If the engine died first (a WebAssembly abort), the marker stays, so a real crash is still reported. A leftover `running.txt` from an older web build is removed quietly.
+   Now, on the web, the marker lives in the page's localStorage, which writes at once. The page removes it when it is hidden or left, and puts it back when it shows again. If the engine died first (a WebAssembly abort), the marker stays, so a real crash is still reported. A leftover `running.txt` from an web build before 0.14.64 is removed quietly.
    Checked in the browser: close, reload, close during a match, on the computer and the phone: no crash page. After a forced engine error and a close: the crash page shows. Screenshot: `crash_page_after_abort.jpg`.
    One scripted run of the forced-error case did not keep the marker; a direct repeat did. Worth a look if real crashes seem to go unreported.
    Also: on the web the report has no previous engine log, since the browser keeps none.
@@ -80,4 +80,4 @@ Screenshots are in `docs/shots/qa_web/`.
 
 - On the web the "still running" marker moved to localStorage, instead of trying to delete a file while the page closes. The IndexedDB write behind `user://` may never finish while a page closes. localStorage writes at once.
 - Fixes were kept small and local, in the menus and the editor. No balance, AI or game rule was touched.
-- The version went to 0.14.54, with patch notes in English, Portuguese and Spanish.
+- The version went to 0.14.64 (tested as 0.14.54 on top of 0.14.53, then merged with main), with patch notes in English, Portuguese and Spanish.

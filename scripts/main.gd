@@ -256,7 +256,7 @@ func _mark_running(what: String) -> void:
 func _crash_report() -> String:
 	var what := ""
 	if OS.has_feature("web"):
-		# a user://running.txt left by a web build before 0.14.54 is not a crash (nothing removed it)
+		# a user://running.txt left by a web build before 0.14.64 is not a crash (nothing removed it)
 		if FileAccess.file_exists(RUNNING):
 			DirAccess.remove_absolute(RUNNING)
 		JavaScriptBridge.eval(web_marker_js(), true)

@@ -4,7 +4,8 @@ extends SceneTree
 ##  1. a Brood ghost whose grub isn't coming any more goes, all of its cost back: the grub
 ##     ordered elsewhere, killed, stopped, or unable to get there; a Shift-queued site stays
 ##     while the grub has it in its queue; a grub that gets there becomes the building.
-##     The same for a Clockwork site whose Winder gives up before he has the crate.
+##     The same for a Clockwork site whose Winder gives up before he has the crate (the Clockwork's supply
+##     building: the Regulator in gear mode).
 ##  2. attack-move: Raptors go for the Musketeers, not the Barracks beside them; Raptors
 ##     hitting a building switch to Musketeers that come into reach
 ##  3. the Bloater's acid cloud eats enemy buildings inside it (at BLOAT.buildings of its rate)
@@ -52,6 +53,15 @@ func wait(sec: float) -> void:
 	var end: float = g.clock + sec
 	while g.clock < end:
 		await physics_frame
+
+
+## (bound, not lambdas over `b`: a lambda made after an await read its captured `b` as null in Godot 4.7)
+func _gone(x) -> bool:
+	return not is_instance_valid(x) or x.dead
+
+
+func _crate_is(x, what: String) -> bool:
+	return is_instance_valid(x) and x.crate == what
 
 
 func wait_for(cond: Callable, sec: float) -> bool:
@@ -124,7 +134,7 @@ func _run() -> void:
 	check(b != null and b.ghost and _gold() == g0 - cost, "placed: a ghost, %d paid" % cost)
 	await wait(0.6)
 	gr.give({"o": "move", "p": home + Vector2(-120, 0)})
-	var gone := await wait_for(func() -> bool: return b.dead, 3.0)
+	var gone := await wait_for(_gone.bind(b), 3.0)
 	check(gone and _gold() == g0 and not g.buildings.has(b), "(a) grub ordered elsewhere: the ghost goes, all refunded (%d / %d)" % [_gold(), g0])
 	check(g.side_ghost_at(0, spot) == null, "(a) its ground is free again")
 
@@ -133,7 +143,7 @@ func _run() -> void:
 	b = g.place_building(0, "feeding_pit", spot, [gr])
 	await wait(0.6)
 	gr.take_damage(99999.0, null)
-	gone = await wait_for(func() -> bool: return b.dead, 3.0)
+	gone = await wait_for(_gone.bind(b), 3.0)
 	check(gone and _gold() == g0, "(b) grub killed: the ghost goes, all refunded (%d / %d)" % [_gold(), g0])
 
 	# 1c: the grub is stopped
@@ -142,7 +152,7 @@ func _run() -> void:
 	b = g.place_building(0, "feeding_pit", spot, [gr])
 	await wait(0.6)
 	gr.cmd_stop()
-	gone = await wait_for(func() -> bool: return b.dead, 3.0)
+	gone = await wait_for(_gone.bind(b), 3.0)
 	check(gone and _gold() == g0, "(c) grub stopped: the ghost goes, all refunded (%d / %d)" % [_gold(), g0])
 
 	# 1d: Shift-queued behind a move: the ghost stays while it's in the grub's queue
@@ -152,7 +162,7 @@ func _run() -> void:
 	await wait(1.5)
 	check(b != null and not b.dead and b.ghost, "(d) Shift-queued site: the ghost stays while the grub has it queued")
 	gr.give({"o": "move", "p": home})
-	gone = await wait_for(func() -> bool: return b.dead, 3.0)
+	gone = await wait_for(_gone.bind(b), 3.0)
 	check(gone and _gold() == g0, "(d) a plain order clears the queue: the ghost goes, refunded")
 
 	# 1e: the grub gets there: it becomes the building
@@ -178,7 +188,7 @@ func _run() -> void:
 	g0 = _gold()
 	b = g.place_building(0, "feeding_pit", spot2, [shut])
 	check(b != null and shut.order == "build", "(f) placed for a shut-in grub (%s)" % shut.order)
-	gone = await wait_for(func() -> bool: return b.dead, 8.0)
+	gone = await wait_for(_gone.bind(b), 8.0)
 	check(gone and _gold() == g0 and shut.order != "build", "(f) the grub can't get there: the ghost goes, refunded, the grub stops (%s)" % shut.order)
 	for c in ring:
 		g._mark(c, Vector2i.ONE, 0)
@@ -190,16 +200,19 @@ func _run() -> void:
 	var tower: Building = g._add_building("clocktower", 0, origin + Vector2i(2, 2), true)
 	var w := unit("winder", g.cell_center(origin + Vector2i(4, 9)))
 	g0 = _gold()
-	b = g.place_building(0, "spring_tower", origin + Vector2i(10, 3), [w])
-	check(b != null and b.ghost and b.crate == "tower", "(g) Clockwork site placed (crate at the Clocktower)")
+	# (gear mode: a Clockwork building goes where its gear ring meshes: the game's own spot finder)
+	var ck: String = Defs.supply_kind("clockwork")
+	var cspot: Vector2i = g.find_spot(0, ck, tower, 3, 12, "near")
+	b = g.place_building(0, ck, cspot, [w]) if cspot.x >= 0 else null
+	check(b != null and b.ghost and b.crate == "tower", "(g) Clockwork site placed (crate at the Clocktower) (%s)" % (g.placement_problem(0, ck, cspot) if b == null and cspot.x >= 0 else "spot %s" % cspot))
 	await wait(0.6)
 	w.give({"o": "move", "p": at(60, 500)})
-	gone = await wait_for(func() -> bool: return b.dead, 3.0)
+	gone = await wait_for(_gone.bind(b), 3.0)
 	check(gone and _gold() == g0, "(g) Winder sent elsewhere before the crate: the ghost goes, refunded")
 	# a dropped crate keeps its site (another Winder can carry it on)
 	g0 = _gold()
-	b = g.place_building(0, "spring_tower", origin + Vector2i(10, 3), [w])
-	var carried := await wait_for(func() -> bool: return b.crate == "carried", 20.0)
+	b = g.place_building(0, ck, cspot, [w]) if cspot.x >= 0 else null
+	var carried := await wait_for(_crate_is.bind(b, "carried"), 20.0)
 	w.give({"o": "move", "p": at(60, 560)})
 	await wait(3.0)
 	check(carried and not b.dead and b.crate == "ground", "(g) a crate dropped on the way keeps its site (%s)" % b.crate)

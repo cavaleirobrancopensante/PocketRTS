@@ -2806,3 +2806,7 @@ es Esa orden aún no se puede dar en línea.
 > That order can't be sent online.
 pt Essa ordem não pode ser enviada online.
 es Esa orden no se puede enviar en línea.
+
+> Can't build that yet.
+pt Ainda não dá para construir isso.
+es Todavía no se puede construir eso.

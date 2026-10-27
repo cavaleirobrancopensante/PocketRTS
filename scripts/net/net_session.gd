@@ -108,10 +108,12 @@ const LEAD_BACK := 0.12           # once the host's snapshot shows the order, th
 const LEAD_BACK_TURN := 0.6       # ...or this, when the host's path turns away from it (NetPuppet._lead)
 const LEAD_MAX := 0.5             # seconds of walking at most ahead of the snapshots (a very late answer: they wait)
 const LEAD_GIVE_UP := 1500        # msec: no word of the order by then, the lead is taken back
+const LEAD_STOP_MAX := 1.0        # a stop: seconds of walking at most it is held back from the pictures
 var lead_on := true               # (tools/test_online.gd nolead: off, to measure without it)
 var snap_by_clock := false
 var snap_fixed := 0.0              # (tests: rate10 = every 0.1 s, as before the adaptive rate; 0: adaptive)
 var leads := {}                   # unit id -> {"to": spot, "seq": the order's number, "off": how far ahead it is shown, "t": msec}
+var predict: NetPredict           # what an order shows on the click, before the host's answer (scripts/net/net_predict.gd)
 # ---- host: the same delay for both players (the lobby's choice, on by default): the host's own orders wait as long
 # as a guest's take to reach it, half the measured round trip (smoothed), HOLD_MAX at most
 const HOLD_MAX := 250.0
@@ -140,6 +142,7 @@ static func attach(g: Game, lnk: NetLink, host: bool, team: int, peers: Dictiona
 	s.peer_team = peers
 	s.same_delay = same
 	s.process_mode = Node.PROCESS_MODE_ALWAYS
+	s.predict = NetPredict.make(s)
 	g.net = s
 	g.add_child(s)
 	lnk.message.connect(s._on_message)
@@ -227,6 +230,8 @@ func _process(delta: float) -> void:
 		_send_replay_part()
 	if not held.is_empty():
 		_run_held(now)
+	if predict:
+		predict.tick()              # (its waiting orders' sites breathe)
 	_t += delta
 	# A picture goes out every few game ticks (the game moves 30 times a second): each then carries the same amount of
 	# game time, so the guest's units glide at an even speed (by the clock, at 20 a second on a 60 Hz screen, they
@@ -420,17 +425,19 @@ func hold_ms() -> int:
 	return int(clampf(ping_avg * 0.5, 0.0, HOLD_MAX))
 
 
-func hold(who: Object, fn: String, args: Array) -> void:
+func hold(who: Object, fn: String, args: Array, pid := 0) -> void:
 	var at := Time.get_ticks_msec() + hold_ms()
 	if not held.is_empty():
 		at = maxi(at, int(held[held.size() - 1]["at"]))       # (in the order given)
-	held.append({"at": at, "who": who, "fn": fn, "args": args})
+	held.append({"at": at, "who": who, "fn": fn, "args": args, "pid": pid})
 
 
 func _run_held(now: int) -> void:
 	while not held.is_empty() and int(held[0]["at"]) <= now:
 		var h: Dictionary = held.pop_front()
 		var who = h["who"]
+		if predict:
+			predict.ran(int(h.get("pid", 0)))      # (what its click showed: the real game shows it from now)
 		if game.over or who == null or not is_instance_valid(who) or (who is Entity and who.dead):
 			continue
 		game.net_quiet = true        # (its ring and voice came at the click)
@@ -565,15 +572,13 @@ func glide_span() -> float:
 ## turned that way and walking, a little ahead of the pictures (NetPuppet.tick_unit); once a picture with the order
 ## comes, the lead is taken back gently while the host's own walk carries on. Units that can't simply walk off
 ## (aboard, set up, braced, caught, changing) are left alone; for an attack-move, only those with no enemy near.
-func lead(us: Array, p: Vector2, attack_move: bool) -> void:
+func lead(us: Array, p: Vector2, attack_move: bool, key := -1) -> void:
 	if is_host or not lead_on:
 		return
 	var spots := game.group_points(us, p)
 	var now := Time.get_ticks_msec()
 	for u in us:
-		if not (u is Unit) or not is_instance_valid(u) or u.dead or u.net_id == 0 or u.off_field or u.aboard != null \
-				or u.speed <= 0.0 or u.tesla_mode != "packed" or u.braced or u.net_t > 0.0 or u.owl_t >= 0.0 \
-				or u.work == "mounting" or u.work == "dismounting":
+		if not _can_lead(u):
 			continue
 		if attack_move and _foe_near(u, 300.0):
 			continue
@@ -581,7 +586,69 @@ func lead(us: Array, p: Vector2, attack_move: bool) -> void:
 			print("[net] lead #%d %s" % [u.net_id, u.kind])
 		var was: Dictionary = leads.get(u.net_id, {})
 		var off: Vector2 = was.get("off", Vector2.ZERO)
-		leads[u.net_id] = {"to": spots.get(u, p), "seq": cmd_seq + 1, "off": off, "t": now, "from": u.position - off}
+		leads[u.net_id] = {"to": spots.get(u, p), "seq": cmd_seq + 1 if key < 0 else key, "off": off, "t": now, "from": u.position - off}
+
+
+## A unit that can simply walk off on its own (not aboard, set up, braced, caught or changing).
+func _can_lead(u) -> bool:
+	return u is Unit and is_instance_valid(u) and not u.dead and u.net_id != 0 and not u.off_field and u.aboard == null \
+			and u.speed > 0.0 and u.tesla_mode == "packed" and not u.braced and u.net_t <= 0.0 and u.owl_t < 0.0 \
+			and u.work != "mounting" and u.work != "dismounting"
+
+
+## Guest (NetPredict): this unit was told to go at `e` (attack it, work at it, board it: kind "chase") or at the area
+## `box` (a building site): it turns that way at once and walks until it is `reach` from it (its weapon's range, or
+## the building's edge), ahead of the pictures like a walk; the lead is taken back the same way once the host shows it.
+func lead_to(u: Unit, e: Entity, reach: float, key: int, box := Rect2()) -> void:
+	if is_host or not lead_on or not is_instance_valid(u) or u.dead or u.net_id == 0:
+		return
+	var at: Vector2 = box.get_center() if e == null else e.center()
+	if not _can_lead(u):
+		face(u, (at - u.position).normalized(), key)
+		return
+	var was: Dictionary = leads.get(u.net_id, {})
+	var off: Vector2 = was.get("off", Vector2.ZERO)
+	leads[u.net_id] = {"kind": "chase", "e": e, "box": box, "reach": reach, "to": at, "seq": key, "off": off,
+		"t": Time.get_ticks_msec(), "from": u.position - off}
+
+
+## Guest: these units were told to stop (stop, hold, deploy, a morph): they stand still at once where they are shown;
+## once the host's pictures show them standing, they close up to it at a walk (a few steps: they had gone on there for
+## the time the order took to arrive).
+func lead_stop(us: Array, key: int) -> void:
+	if is_host or not lead_on:
+		return
+	var now := Time.get_ticks_msec()
+	for u in us:
+		if not (u is Unit) or not is_instance_valid(u) or u.dead or u.net_id == 0 or u.off_field or u.aboard != null:
+			continue
+		if u.velocity.length() < 1.0 and not leads.has(u.net_id):
+			continue          # (standing already)
+		var was: Dictionary = leads.get(u.net_id, {})
+		var off: Vector2 = was.get("off", Vector2.ZERO)
+		leads[u.net_id] = {"kind": "stop", "hold": u.position, "to": u.position, "seq": key, "off": off, "t": now, "from": u.position - off}
+		u.velocity = Vector2.ZERO
+
+
+## Guest: turn this unit toward `dir` at once, until the host's picture (after the order) gives its facing.
+func face(u: Unit, dir: Vector2, key := -1) -> void:
+	if is_host or not lead_on or not is_instance_valid(u) or u.dead or u.net_id == 0 or dir == Vector2.ZERO:
+		return
+	u.facing = dir
+	if leads.has(u.net_id) and String(leads[u.net_id].get("kind", "walk")) != "face":
+		return            # (it is walking off already: the walk turns it)
+	var was: Dictionary = leads.get(u.net_id, {})
+	leads[u.net_id] = {"kind": "face", "dir": dir, "to": u.position, "seq": cmd_seq + 1 if key < 0 else key,
+		"off": was.get("off", Vector2.ZERO), "t": Time.get_ticks_msec(), "from": u.position}
+	u.queue_redraw()
+
+
+## Guest: the host refused order `key`: its units' leads are taken back now (gently, as at the end of any lead).
+func lead_cancel(key: int) -> void:
+	for id in leads:
+		if int(leads[id]["seq"]) == key:
+			leads[id]["t"] = 0
+			leads[id]["go"] = true
 
 
 func _foe_near(u: Unit, r: float) -> bool:
@@ -603,6 +670,8 @@ func leading(id: int) -> bool:
 	if not leads.has(id):
 		return false
 	var ld: Dictionary = leads[id]
+	if String(ld.get("kind", "")) == "face":
+		return last_ack < int(ld["seq"]) and Time.get_ticks_msec() - int(ld["t"]) < LEAD_GIVE_UP
 	var going: bool = ld.get("go", false) and (not interp_on or rclk >= float(ld.get("go_clk", 0.0)))   # (shown from the buffer: once the shown clock gets there too)
 	return (last_ack < int(ld["seq"]) or not going) and Time.get_ticks_msec() - int(ld["t"]) < LEAD_GIVE_UP
 
@@ -615,6 +684,11 @@ func lead_seen(id: int, was: Vector2, now: Vector2) -> void:
 		return
 	var to: Vector2 = ld["to"]
 	var from: Vector2 = ld.get("from", was)       # (where the pictures had it at the order: a standing unit's jostle is not a walk)
+	if String(ld.get("kind", "")) == "stop":
+		if now.distance_to(was) < 0.5:              # (a stop: the host's picture has it standing)
+			ld["go"] = true
+			ld["go_clk"] = prev_clk
+		return
 	if (now - from).dot((to - from).normalized()) > 3.0 or now.distance_to(to) < 6.0:
 		ld["go"] = true
 		ld["go_clk"] = prev_clk         # (the picture before this one still had it standing)
@@ -1010,7 +1084,7 @@ func _on_message(from: int, m: Dictionary) -> void:
 				last_reject = why
 				if trace:
 					print("[net] host refused #%d %s: %s" % [int(m.get("s", 0)), m.get("f"), why])
-				link.send({"t": "msg", "m": refusal_text(why), "x": true}, from)     # (every refusal says why on the guest's screen)
+				link.send({"t": "msg", "m": refusal_text(why), "x": true, "s": int(m.get("s", 0))}, from)     # (every refusal says why on the guest's screen; "s": the order, its click's show is taken back)
 			applied_by[from] = ab
 			mstat["sent"] += 1
 		"rp":
@@ -1027,6 +1101,8 @@ func _on_message(from: int, m: Dictionary) -> void:
 			if bool(m.get("x", false)):
 				refusals += 1                      # (a refused order: always on screen, not held back like other notes)
 				_log("the host refused an order: %s" % last_msg)
+				if predict and m.has("s"):
+					predict.refused(int(m["s"]))
 				if game.hud:
 					game.hud.toast(last_msg, true)
 			else:
@@ -1122,7 +1198,11 @@ func _apply_pending() -> void:
 	if pz is Array and pz.size() == 2 and (int(pz[0]) != pause_by or bool(pz[1]) != away):
 		_apply_state(int(pz[0]), bool(pz[1]), "", -1, 0.0)     # (the messages said it first; this is the net)
 	var t0 := Time.get_ticks_usec()
+	if predict:
+		predict.before_snapshot()        # (the clicks' shows off: the rows bring only what changed)
 	NetSnapshot.apply(self, m)
+	if predict:
+		predict.after_snapshot()         # (the answered ones go, the rest back on)
 	var us := Time.get_ticks_usec() - t0
 	mstat["work_us"] += us
 	mstat["work_max"] = maxi(mstat["work_max"], us)

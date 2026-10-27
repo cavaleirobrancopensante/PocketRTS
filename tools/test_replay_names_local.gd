@@ -1,5 +1,5 @@
 extends SceneTree
-## REPLAYS: the players' names stored in English in a replay show in the language in use (0.14.54).
+## REPLAYS: the players' names stored in English in a replay show in the language in use (0.14.64).
 ##   godot --headless --script res://tools/test_replay_names_local.gd
 var fails := 0
 

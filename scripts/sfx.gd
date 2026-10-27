@@ -115,7 +115,15 @@ const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack":
 	"combat/cuirassier_death": 150, "horse/whinny": 6000, "horse/neigh": 2500, "voice/crown_recruit/horse_breeder": 2500, "voice/crown_bugle/move": 9000, "voice/crown_bugle/amove": 7000,
 	"voice/crown_bugle/charge": 7000, "voice/crown_bugle/patrol": 9000, "voice/crown_bugle/trained": 6000,
 	"voice/crown_recruit/town_hall": 2500, "voice/crown_recruit/barracks": 2500, "voice/crown_recruit/foundry": 2500,
-	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "select/horse_breeder": 1500, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180}
+	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "select/horse_breeder": 1500, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180,
+	# the Clockwork's sounds cut from the owner's recordings (tools/audio/make_clockwork_sounds.py): quick repeating hits
+	# get a gap so a crowd of them is a clatter, not a wall
+	"combat/clock_soldier_attack": 120, "combat/jack_attack": 110, "combat/ratchet_turret_attack": 120, "combat/cuckoo_attack": 100,
+	"combat/ticking_owl_attack": 150, "combat/pendulum_attack": 150, "combat/winder_attack": 150, "combat/netter_hit": 200,
+	"combat/jack_jump": 150, "combat/jack_land": 150, "combat/jack_crouch": 150, "combat/owl_bomb": 200, "combat/owl_drop": 150,
+	"combat/clock_soldier_death": 150, "combat/jack_death": 200, "combat/cuckoo_death": 200, "combat/ticking_owl_death": 300,
+	"combat/pendulum_death": 400, "combat/netter_death": 250, "combat/winder_death": 200, "select/clocktower": 400,
+	"select/cog_press": 400, "select/mainspring": 400, "select/escapement": 400, "select/regulator": 400}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).
 const JITTER := {"combat/musketeer_attack": 0.04, "combat/cannon_attack": 0.04,
@@ -141,8 +149,8 @@ static func gain(st: AudioStream) -> float:
 static func _tier(name: String) -> int:
 	if name == "ui/chat":
 		return 1          # (the chat tick: the lowest tier, it never hushes the fight)
-	if name.begins_with("ui/") or name.begins_with("voice/announcer") or name == "click":
-		return 3
+	if name.begins_with("ui/") or name.begins_with("voice/announcer") or name == "click" or name.ends_with("/alert") or name.ends_with("/base_alert"):
+		return 3          # (a faction's own alarm, the Clockwork's alarm clock, as the shared one)
 	if name.begins_with("voice/") or name.begins_with("horse/") or name.begins_with("select/"):
 		return 2
 	return 1

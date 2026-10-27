@@ -1,7 +1,7 @@
 extends SceneTree
 ## Spent land takes no crew (v0.14.15 playtest: grubs sent to a barren Feeding Pit stood idle
 ## under "0/5" and were told "That Feeding Pit is fully crewed."):
-## 1. Brood: the capital's ground spent, 8 grubs ordered to one of its pits: none stays in its
+## 1. Brood: every pit's own ground spent (0.14.42: the capital has none), 8 grubs ordered to one of its pits: none stays in its
 ##    crew, the notice says the ground is spent (never "fully crewed"), the label reads "spent";
 ## 2. Crown: one Town Hall's soil spent, 8 labourers ordered to its Farm: they go to the Farm of
 ##    the other (fresh) Town Hall instead.
@@ -51,7 +51,10 @@ func _run() -> void:
 			pit = b
 			break
 	check(pit != null, "the capital has a Feeding Pit")
-	cap.soil = 0.0
+	# (0.14.42: every Feeding Pit has its own ground and the capital none: spend every pit's)
+	for b in g.buildings:
+		if b.team == 0 and b.kind == "feeding_pit":
+			b.soil = 0.0
 	check(pit.barren(), "with the ground spent the pit is barren")
 	var grubs: Array = []
 	for i in 8:
