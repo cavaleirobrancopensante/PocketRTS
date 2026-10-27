@@ -2516,12 +2516,33 @@ func give(o: Dictionary, queued := false) -> void:
 		line_rest.clear()
 		if String(o.get("o", "")) != "patrol":
 			patrol_a = Vector2.INF       # a new order ends a patrol
+		if changing_mount():
+			after = o                    # getting on or off: he does it once he's in the saddle (or on foot)
+			return
 		_start(o)
 		return
 	if queue.size() >= QUEUE_MAX:
 		return
 	queue.append(o)
 	if not QUEUE_BUSY.has(order):
+		_next_order()
+
+
+## Getting on or off a horse (the strip playing): orders given now wait for him to finish
+## (a plain one replaces what he was to do after it; Shift ones queue behind it).
+func changing_mount() -> bool:
+	return (order == "mount" and work == "mounting") or (order == "dismount" and work == "dismounting")
+
+
+## In the saddle (or on foot) again: on with `aft` (the order given meanwhile), then the
+## Shift-queued ones behind it.
+func _carry_on(aft: Dictionary) -> void:
+	var q := queue
+	queue = []
+	if not aft.is_empty():
+		_start(aft)          # (as a plain order: it mustn't drop the queue behind it)
+	queue = q
+	if order == "idle" and not queue.is_empty():
 		_next_order()
 
 
@@ -2648,6 +2669,8 @@ func plan_points() -> Array:
 		match String(o["o"]):
 			"move", "amove", "bombard":
 				pts.append([o["o"], o["p"]])
+			"patrol":
+				pts.append(["amove", o["p"]])
 			"wall":
 				for b in o["pieces"]:
 					if is_instance_valid(b) and not b.dead:
@@ -7070,7 +7093,9 @@ func _draw_unit() -> void:
 	# (a Springer in the air: its shadow stays on the ground under it, a little smaller and darker so the leap reads)
 	var lifted := Springer.lift(self) if not jump.is_empty() else 0.0
 	var shade := 1.0 - clampf(lifted / 160.0, 0.0, 0.3)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
+	# (getting on: he is drawn where the horse stands, his ring goes there too)
+	var ring_at := sprite.position if sprite and anim == "mount" and work == "mounting" else Vector2.ZERO
+	draw_set_transform(ring_at, 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, (radius + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))
 	if selected:
 		draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
@@ -7379,6 +7404,15 @@ func mount_strip_art() -> String:
 	return a if ArtData.UNITS.has(a) and ArtData.UNITS[a]["frames"].has("mount_e") else ""
 
 
+## The man getting on horse `h` right now (his strip is drawn where the horse stands: a click
+## or a box there means him), or null.
+static func mounting_onto(h: Unit) -> Unit:
+	if h.kind != "horse" or h.claimed == null or not is_instance_valid(h.claimed):
+		return null
+	var m: Unit = h.claimed
+	return m if m.work == "mounting" and m.order == "mount" and m.order_target == h else null
+
+
 ## (a horse) hidden while a man gets on it: the mounting strip draws it.
 func _hidden_for_mount() -> bool:
 	if claimed == null or not is_instance_valid(claimed):
@@ -7405,10 +7439,12 @@ func _mount_run(delta: float) -> Vector2:
 	var h := order_target as Unit
 	if not horse_free_for(h, self):
 		var aft := after
+		var q := queue
 		cmd_stop()
+		queue = q                    # (orders Shift-queued behind the mount: on foot after all)
 		if not aft.is_empty():
 			auto_mount = false       # (no horse: he carries on on foot)
-			give(aft)
+		_carry_on(aft)
 		return Vector2.ZERO
 	if work == "mounting":
 		h.velocity = Vector2.ZERO
@@ -7469,8 +7505,7 @@ func do_mount(h: Unit) -> void:
 	leash_from = position
 	if team == game.human:
 		Sfx.play_any(["ui/click", "click"], position)
-	if not aft.is_empty():
-		give(aft)
+	_carry_on(aft)
 
 
 ## DISMOUNT (Defs.HORSES dismount s; `quick`: a Dragoon's own, to fire). The horse stands
@@ -7543,8 +7578,7 @@ func do_dismount() -> void:
 	order = "idle"
 	work = ""
 	leash_from = position
-	if not aft.is_empty():
-		give(aft)
+	_carry_on(aft)
 
 
 ## Become another kind in place (mounting, dismounting): he keeps his armour, kit, kills,
