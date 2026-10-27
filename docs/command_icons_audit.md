@@ -269,9 +269,9 @@ Picture shown: the file under `assets/` the button really draws. "Crown style" o
 **Round 13 (2026-10-27): drawn and in the game** (ChatGPT sheets in `art/ui/icons3/`, cut by `tools/import_round13.py`,
 the Brood and Clockwork ones set in their faction's own frame): 1-10, 12-17, 19-21, 23-31 and the portraits 33-37, plus
 the Netter's, the Spring Catapult's and the Great Winder's portraits, a new Winder portrait, the Mortar's DEPLOY and the
-top bar's TENSION picture (`assets/icons/tension.png`, frameless). Still to draw: 11 Brood HOLD and 22 Clockwork HOLD
-(the owner turned the first drawings down; the new prompts make all three factions' HOLD a shield with an arrow
-pointing down, like the Crown's), 18 SPIT (the sheet drew the Mist Toad instead of the Bloater: `brood/ab_spit.png` is
+top bar's TENSION picture (`assets/icons/tension.png`, frameless). 11 Brood HOLD and 22 Clockwork HOLD came after
+(the first drawings were turned down): a shield with an arrow pointing down like the Crown's, in each faction's
+materials (`hold_clockwork.png`, `hold_brood.png`: the owner picked one of two each). Still to draw: 18 SPIT (the sheet drew the Mist Toad instead of the Bloater: `brood/ab_spit.png` is
 cut but not used; the Bloater's button keeps HOLD GAS's picture), 32 LEAD / RELEASE, and 38-42 (the coming roster's
 abilities). Maybe redrawn: 10 Brood DEMOLISH (a mound with a burst egg, close to the Brood BUILD at small size). Cut but
 not used yet: `clockwork/ab_shield.png` and `clockwork/research_shield.png` (the Clock Soldier's shield upgrade).

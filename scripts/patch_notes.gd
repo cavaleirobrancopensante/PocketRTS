@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.50", "items": [
+		"HOLD has its own picture for the Clockwork (a brass shield with a blue steel arrow pointing down) and the Brood (a shield of hide and bone with a yellow arrow pointing down), the same idea as the Crown's shield, so HOLD reads the same in every faction.",
+	]},
 	{"v": "0.14.49", "items": [
 		"NEW ICONS, painted: buttons and portraits that borrowed the Crown's pictures or were cut from the sprites. The CLOCKWORK: portraits of the Clock Soldier, Jack, Swift, Ticking Owl, Pendulum, Netter and Winder; its own BACK, CANCEL, DEMOLISH (a gear in pieces), PATROL (a swinging pendulum), RALLY, WORK, MORE and ATTACK GROUND (a clock hand striking the ground); SMALL GEAR and BIG GEAR, JUMP, MORPH TO OWL, and the HIGH LEAP and TICKING OWL research; and a wound mainspring for TENSION in the top bar. The BROOD: its own BACK, CANCEL, DEMOLISH, PATROL (claw prints), RALLY (a skull totem), WORK, MORE, TONGUE, TAKE OFF and ATTACK GROUND (a Spore Mother's lob). The CROWN: ATTACK GROUND (a cannonball landing in a red ring), TEAM (two harness horses), MORE (a page turning), RESTOCK, AUTO REFIT and the Mortar's DEPLOY. HOLD keeps the Crown's shield for now: the Brood's and the Clockwork's are being drawn.",
 		"HORSE BREEDER: picking it plays hooves trotting with a horse neighing over them (three takes), instead of the Crown's usual building sound.",

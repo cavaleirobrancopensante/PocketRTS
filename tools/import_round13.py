@@ -12,6 +12,10 @@ docs/command_icons_audit.md, in art/ui/icons3/ (names in reading order, row by r
                              tension (the top bar's Tension, frameless)
   commands_brood_a.png       3x2, bronze: back, cancel, demolish, (hold: turned down), patrol, rally
   commands_brood_b.png       3x2, bronze: work, more, ab_tongue, ab_take_off, ab_spit, ab_bombard
+  hold_clockwork.png         2 versions of HOLD (a brass shield, an arrow pointing down): the left one, a plain
+                             blued-steel arrow (the owner's pick)
+  hold_brood.png             2 versions in the Crown's steel frame (a hide-and-bone shield): the right one, the
+                             yellow arrow (the owner's pick), set in the Brood frame
 
 Steel sheets: cut and framed exactly like round 11's (the picture inside the frame's black
 line, made square, box-shrunk to 52x52, set in the Crown icons' 6 px steel bevel) ->
@@ -50,6 +54,13 @@ BRONZE = {
                                           "research_shield", "tension"]),
     "commands_brood_a": ("brood", ["back", "cancel", "demolish", None, "patrol", "rally"]),
     "commands_brood_b": ("brood", ["work", "more", "ab_tongue", "ab_take_off", "ab_spit", "ab_bombard"]),
+    # the HOLD redraws (two versions each, the owner picked one): the Clockwork's plain blued-steel arrow
+    "hold_clockwork": ("clockwork", ["hold", None]),
+}
+# Brood / Clockwork icons ChatGPT drew in the Crown's steel frame: the picture inside the steel frame's black
+# line (like the steel sheets), then set in the faction's frame like the bronze ones
+STEEL_FRAMED = {
+    "hold_brood": ("brood", [None, "hold"]),          # the owner picked the yellow arrow (the right one)
 }
 # the steel bevel: round 11 took it from three hand-painted icons (the pikeman's is gone); these
 # three were framed with that very bevel (round 11 and import_command_icons.py)
@@ -92,9 +103,10 @@ def square_rgba(pic, name):
     return r.square(pic, name)
 
 
-def bronze_icon(crop, name, frame):
+def bronze_icon(crop, name, frame, pic=None):
+    """`crop` cut at a bronze frame's outline (the picture is found inside it), or `pic` the picture itself."""
     med, mask, (y0, y1, x0, x1), bgc = frame
-    pic = r.rebackdrop(r.brass_inner(crop), bgc)
+    pic = r.rebackdrop(r.brass_inner(crop) if pic is None else pic, bgc)
     pic = square_rgba(pic, name)
     h, w = y1 - y0, x1 - x0
     im = Image.fromarray(pic[..., :3].astype(np.uint8), "RGB").resize((w, h), Image.BOX)
@@ -154,6 +166,21 @@ def build():
             r.save_icon(bronze_icon(crop, name, frames[fac]), f"{fac}/{name}")
             made.append(f"{fac}/{name}")
             print(f"icons/{fac}/{name}.png: from {crop.shape[1]}x{crop.shape[0]} at ({sl[1].start}, {sl[0].start})")
+    for sheet, (fac, names) in STEEL_FRAMED.items():
+        if fac not in frames:
+            frames[fac] = faction_frame(fac)
+        px = r.load(f"{SRC}/{sheet}.png")
+        bg, _ = r.bg_mask(px)
+        for name, sl in zip(names, r.frame_boxes(px, bg, len(names))):
+            if name is None:
+                continue
+            oy0, oy1, ox0, ox1 = r.outer_edges(bg, sl)
+            iy0, iy1, ix0, ix1 = r.inner_box(px, oy0, oy1, ox0, ox1)
+            pic = px[iy0:iy1, ix0:ix1].copy()
+            pic[..., 3] = 255
+            r.save_icon(bronze_icon(None, name, frames[fac], pic), f"{fac}/{name}")
+            made.append(f"{fac}/{name}")
+            print(f"icons/{fac}/{name}.png: from a steel frame {ox1 - ox0}x{oy1 - oy0}, picture {ix1 - ix0}x{iy1 - iy0}")
     return made
 
 
