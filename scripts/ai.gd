@@ -606,6 +606,7 @@ func _tier2(t: float) -> void:
 		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
 			_construct("mainspring", _spring_spot())
 		return
+	_shield_research()
 	if esc.is_empty():
 		if _gold() < int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20 or not game.requirement_met(team, Defs.CW_TECH):
 			return
@@ -628,6 +629,38 @@ func _tier2(t: float) -> void:
 	_jack_works()
 	_air(t)
 	_tier3()
+
+
+## Gear mode: SHIELD WALL (the Clock Soldiers' SHIELD FORWARD, scripts/shield_wall.gd) once it meets a ranged army
+## (3+ enemy shooters seen in the last 90 s: Musketeers, Spitters, Jacks...) and has Clock Soldiers to use it, at a
+## Movement Works whose ring meshes with a Mainspring's (it costs Tension), with the Tension to spare.
+var _ranged_seen := 0
+var _ranged_seen_t := -999.0
+
+
+func _shield_research() -> void:
+	if game.has_tech(team, ShieldWall.TECH) or game.researching(team, ShieldWall.TECH):
+		return
+	var n := 0
+	for u in game.units:
+		if game.hostile(u.team, team) and ShieldWall.shooter(u) and game.side_sees(team, u.position):
+			n += 1
+	if n > 0:
+		_ranged_seen = maxi(n, _ranged_seen if game.clock - _ranged_seen_t < 90.0 else 0)
+		_ranged_seen_t = game.clock
+	if _ranged_seen < 3 or game.clock - _ranged_seen_t > 90.0:
+		return
+	if game.army(team).filter(func(u: Unit) -> bool: return u.kind == ShieldWall.KIND).size() < 4:
+		return
+	var info: Dictionary = Defs.RESEARCH[ShieldWall.TECH]
+	if game.tension(team) < float(Defs.tension_cost(info)) + 10.0 or _gold() < int(info["cost"]) + 20:
+		return
+	for w in _mine(_works()):
+		if game.research_problem(w, ShieldWall.TECH) == "":
+			game.start_research(w, ShieldWall.TECH)
+			if game.mlog:
+				game.mlog.add("%s researches SHIELD WALL (it met %d shooters)" % [game.mlog.who(team), _ranged_seen])
+			return
 
 
 ## Gear mode, TIER 3 (scripts/pendulum.gd, scripts/netter.gd), kept simple: once its Escapement works and it has the
@@ -4952,6 +4985,7 @@ func _abilities() -> void:
 	if _clock():
 		_overloads()
 		_braces()
+		ShieldWall.think(game, team)       # (Clock Soldiers: shields up in ranged fire, down to chase or fall back)
 	if not _crown():
 		return
 	for u in game.army(team):

@@ -1451,6 +1451,17 @@ func _ability_buttons(list: Array, units: Array) -> void:
 			for u in game.selected_units():
 				if u.kind == "bulwark":
 					u.set_brace(up), true, "", ""])
+	# Clock Soldier: SHIELD FORWARD, once SHIELD WALL is researched at a Movement Works (scripts/shield_wall.gd)
+	var csold := units.filter(func(u: Unit) -> bool: return u.kind == ShieldWall.KIND)
+	if not csold.is_empty() and game.has_tech(game.human, ShieldWall.TECH):
+		var raise: bool = csold.any(func(u: Unit) -> bool: return not u.shield_up)
+		var sw: Dictionary = Defs.SHIELD_WALL
+		_tip_for["SHIELD FORWARD"] = ["Shield forward", "The Clock Soldiers raise their shields in front (%.1f s to switch, standing still): %d%% slower, +%d armour, %d%% less from shots and %d%% less from blows coming from the front; they still fight, a little slower. Nothing against blows from the side or behind, nor against splash. Press again to lower the shields." % [
+			float(sw["switch"]), int(round((1.0 - float(sw["speed"])) * 100.0)), int(sw["armor"]), int(round(float(sw["front"]) * 100.0)), int(round(float(sw["front_melee"]) * 100.0))]]
+		list.append(["ab_shield", "SHIELD FORWARD" if raise else "~ SHIELD FORWARD", func() -> void:
+			for u in game.selected_units():
+				if u.kind == ShieldWall.KIND:
+					u.set_shield(raise), true, "", ""])
 	# Skywing: LAND (ground fighter) / TAKE OFF (hunts flyers)
 	var wings := units.filter(func(u: Unit) -> bool: return u.kind == "skywing")
 	if not wings.is_empty():
@@ -1495,7 +1506,7 @@ const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATR
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "MIASMA": "Q", "FOG": "F", "TONGUE": "T", "HOLD GAS": "F", "SPIT": "F", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"JUMP": "E", "HIGH LEAP": "E", "MORPH TO OWL": "E", "CANCEL MORPH": "X", "TICKING OWL": "E",
-	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
+	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "SHIELD FORWARD": "F", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
 	"LEAD": "Q", "RELEASE": "W", "MOUNT": "T", "DISMOUNT": "T", "RELEASE HORSE": "W", "HARNESS": "Q",
 	"HOLD FIRE": "F",
@@ -2772,6 +2783,9 @@ func _draw_panel(font: Font) -> void:
 				info = "RUN DOWN: frozen until a Winder cranks it up again (or a field reaches it)."
 			elif uu.kind == "windup_soldier":
 				info = "Spring %d%%%s: about 50 s away from a field and it runs down." % [int(uu.wind * 100), " (being cranked)" if uu.cranked_t > 0.0 else ""]
+			elif uu.kind == ShieldWall.KIND and uu.shield_up:
+				info = ("SHIELD FORWARD: raising the shield..." if uu.shield_t > 0.0 else "SHIELD FORWARD: %d%% slower, armour %d, %d%% less from shots in front.") % ([] if uu.shield_t > 0.0 else [
+					int(round((1.0 - float(Defs.SHIELD_WALL["speed"])) * 100.0)), int(uu.d["armor"]) + int(Defs.SHIELD_WALL["armor"]), int(round(float(Defs.SHIELD_WALL["front"]) * 100.0))])
 			elif uu.kind == "bulwark" and uu.braced:
 				info = "BRACED: can't move; armour 7; shots at your units behind the shield hit it instead. Charge %d%%." % int(uu.wind * 100)
 			elif uu.kind == "thresher" and uu.spin > 0.05 and uu.overclock_t <= 0.0:
@@ -3149,7 +3163,7 @@ func _unit_icon(e: Entity) -> Texture2D:
 ## (the button works on the selection, so it runs with just that man selected).
 const SHIFT_QUEUE := ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch", "horse_harness",
 	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
-	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice"]
+	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice", "ab_shield"]
 
 
 func _shift_queueable(list: Array) -> void:
