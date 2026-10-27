@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.48", "items": [
+		"ONLINE, EVERY ORDER ANSWERS AT ONCE for the friend who joins: not only moves now. Units told to attack turn to the target and start walking into range; stop and hold stand them still at once; a building site appears where you placed it, faint and outlined until the host confirms it, and the worker heads for it; the cost and the supply show as spent; a trained unit, a research or a hall upgrade goes into the queue (drawn faint until confirmed) with its progress bar running; cancelling takes it out with the refund shown; the rally flag, hold fire, auto-train, deploying or packing a gun, cancelling a site or pulling a building down all show on the click. The host still decides everything: a moment later its game takes over, without a jump, and an order the host refuses (not enough gold, a blocked spot) is taken back at once with the reason.",
+		"ONLINE, THE HOST'S OWN ORDERS (with \"Same delay for both players\"): they still wait half the ping, but the queue, the resources and supply and a building site show at once, and the units turn at once, as on the friend's screen.",
+	]},
 	{"v": "0.14.47", "items": [
 		"CLOCK SOLDIER: its sword is now in its right hand and its shield on its left arm whichever way it faces. Turned toward the lower left, left or upper left it no longer swaps them (those views were the right-facing ones mirrored): it has its own west-facing drawings, so facing left you see the shield in front with the sword's blade beyond it, and facing right the sword. Its walk, attack and death in those three views are made from the new drawings: the sword arm, now on the far side, swings partly behind the body.",
 	]},

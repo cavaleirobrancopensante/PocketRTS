@@ -15,7 +15,8 @@ extends RefCounted
 ## shown_queue (the real values with the waiting entries on top), the site is drawn here, the units turn at once.
 
 const MAX_MS := 4000              # an entry the host never answered is dropped after this (a lost link)
-const SITE_MS := 6000             # (a pending site stays until a building of that kind stands there, or this)
+const LINGER := ["prop", "timer", "fade"]     # ops kept one picture past the host's answer (after_snapshot)
+const FADE_MS := 1500             # ...and a fade until the building is gone, at most this long after the answer
 
 var s: NetSession
 var game: Game
@@ -169,7 +170,7 @@ func _react(who: Object, fn: String, args: Array, key: int) -> void:
 			var us := _units_of(who, args)
 			var at: Vector2 = args[1] if args[1] is Vector2 else ((args[1] as PackedVector2Array)[0] if not (args[1] as PackedVector2Array).is_empty() else Vector2.INF)
 			if at != Vector2.INF:
-				_face(us, at)
+				# (no turn: a gun turns only once it is set up there, which the host decides)
 				if fn == "ground_order":
 					g._ping(at, Color(1.0, 0.55, 0.2))
 					g.command_sound(us, "attack", "attack")
@@ -518,9 +519,9 @@ func _apply(e: Dictionary) -> void:
 					o.set(op[2], maxf(0.0, float(op[3]) + float(op[4]) * el))
 			"fade":
 				var b = op[1]
-				if is_instance_valid(b) and b.sprite:
-					_patch(e, b.sprite, "modulate")
-					b.sprite.modulate = op[2]
+				if is_instance_valid(b):
+					_patch(e, b, "modulate")     # (the node's own: its sprite's is set by the building itself every so often)
+					b.modulate = op[2]
 
 
 func _undo(e: Dictionary) -> void:
@@ -558,7 +559,34 @@ func after_snapshot() -> void:
 	if list.is_empty():
 		return
 	var now := _now()
-	list = list.filter(func(e: Dictionary) -> bool: return int(e["key"]) > s.last_ack and now - int(e["t0"]) < MAX_MS)
+	for e in list:
+		if int(e["key"]) <= s.last_ack:
+			# (answered: a site cancelled that the snapshot has just taken away stays faded for the frame it still
+			# stands, instead of flashing back; a building that fell shows its ruin as the host's game made it)
+			for op in e["ops"]:
+				if String(op[0]) == "fade" and is_instance_valid(op[1]) and op[1].is_queued_for_deletion():
+					op[1].modulate = op[2]
+	var keep: Array = []
+	for e in list:
+		if now - int(e["t0"]) >= MAX_MS:
+			continue
+		if int(e["key"]) > s.last_ack:
+			keep.append(e)
+			continue
+		# Answered. What it spent, queued or placed is in this snapshot now; a setting, a timer or a fade stays one picture
+		# more: a unit's slower values come in every other picture (NetSnapshot.build "halves"), and the one with the
+		# answer may not carry them yet (without this a hold fire or a deploy flickered back for a picture).
+		if not e.has("acked"):
+			e["acked"] = now
+			e["ops"] = (e["ops"] as Array).filter(func(op: Array) -> bool: return LINGER.has(String(op[0])))
+			if not (e["ops"] as Array).is_empty():
+				keep.append(e)
+		elif now - int(e["acked"]) < FADE_MS:
+			# (a building told to go stays faded until the host's pictures take it away: its death can come a tick later)
+			e["ops"] = (e["ops"] as Array).filter(func(op: Array) -> bool: return String(op[0]) == "fade" and is_instance_valid(op[1]) and not op[1].dead)
+			if not (e["ops"] as Array).is_empty():
+				keep.append(e)
+	list = keep
 	_redo_all()
 	_redraw_sites()
 
@@ -659,7 +687,7 @@ static func shown_queue(g: Game, b: Building) -> Array:
 	var prod := b.prod_t
 	for e in p.list:
 		for op in e["ops"]:
-			if op[1] != b:
+			if (String(op[0]) != "qadd" and String(op[0]) != "qpop") or op[1] != b:
 				continue
 			if String(op[0]) == "qadd":
 				if out.is_empty():

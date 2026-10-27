@@ -12,12 +12,22 @@ const rooms = new Map(); // CODE -> Map(id -> socket)
 const LAG = Number(process.env.LAG_MS || 0);
 const JIT = Number(process.env.JITTER_MS || 0);
 const lastAt = new Map(); // socket -> when its last frame goes out
+const waiting = new Map(); // socket -> its frames still held, in order: [[at, fn], ...] (one timer at a time: two Node
+// timers due in the same millisecond may fire in either order, which let an order overtake the one before it)
+const pump = (sock) => {
+  const q = waiting.get(sock);
+  while (q.length && q[0][0] <= Date.now()) q.shift()[1]();
+  if (q.length) setTimeout(() => pump(sock), Math.max(0, q[0][0] - Date.now()));
+  else waiting.delete(sock);
+};
 const later = (sock, fn) => {
   if (LAG <= 0 && JIT <= 0) return fn();
   const now = Date.now();
   const at = Math.max(now + LAG + Math.random() * JIT, lastAt.get(sock) || 0);
   lastAt.set(sock, at);
-  setTimeout(fn, at - now);
+  if (waiting.has(sock)) { waiting.get(sock).push([at, fn]); return; }
+  waiting.set(sock, [[at, fn]]);
+  setTimeout(() => pump(sock), at - now);
 };
 
 function frame(op, payload) {

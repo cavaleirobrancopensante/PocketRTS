@@ -191,7 +191,7 @@ static func _build_cost_problem(game: Game, team: int, k: String) -> String:
 	if int(game.players[team]["gold"]) < int(Defs.BUILDINGS[k]["cost"]):
 		return "Not enough %s." % String(res[0]).to_lower()
 	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[k])):
-		return "Not enough tension."
+		return "Not enough %s." % "tension"
 	if not game.requirement_met(team, k):
 		var rt := game.requirement_text(team, k)
 		return rt if rt != "" and rt[0] == rt[0].to_upper() else "Can't build that yet."
