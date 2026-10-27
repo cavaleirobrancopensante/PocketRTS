@@ -86,6 +86,8 @@ static func fire(u: Unit, e: Entity) -> ChainNet:
 	u.last_net = cn
 	if g.net != null and not g.puppet:
 		g.net.note_net(cn)          # (online host: the guest sees it fly)
+	if g.rec != null and not g.puppet:
+		g.rec.note_net(cn)
 	if u.visible and g.view_rect.has_point(u.position):
 		Sfx.play_any(["combat/netter_attack", "combat/arrow_whoosh", "ratchet"], u.position, -4.0)
 		var mz := g.spawn_effect("smoke", cn.from, 1.6)       # (a puff from the spring cannon's mouth)

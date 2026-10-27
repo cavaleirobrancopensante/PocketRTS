@@ -98,13 +98,13 @@ static func build(s: NetSession) -> Dictionary:
 	var brows: Array = []
 	var urows: Array = []
 	for b in g.buildings:
-		if not is_instance_valid(b) or b.is_queued_for_deletion():
+		if not is_instance_valid(b) or b.is_queued_for_deletion() or s.rec_skip(b):
 			continue
 		s.assign(b)
 		cur[b.net_id] = b
 	var n_units := 0
 	for u in g.units:
-		if not is_instance_valid(u) or u.is_queued_for_deletion() or u.dead:
+		if not is_instance_valid(u) or u.is_queued_for_deletion() or u.dead or s.rec_skip(u):
 			continue
 		s.assign(u)
 		cur[u.net_id] = u

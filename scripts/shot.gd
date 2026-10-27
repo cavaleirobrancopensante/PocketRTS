@@ -19,6 +19,8 @@ func launch(g: Game, kind: String, a: Vector2, b: Vector2, spd: float) -> Shot:
 	game = g
 	if g.net != null and not g.puppet:
 		g.net.note_shot(self, kind, a, b, spd)          # (online host: the guest sees it too)
+	if g.rec != null and not g.puppet:
+		g.rec.note_shot(self, kind, a, b, spd)          # (and the replay)
 	texture = Game.tex("res://assets/effects/%s.png" % kind)
 	# an animated missile (the Arc Thrower's ball): its frames cycle in flight
 	if ArtData.EFFECTS.has(kind) and int(ArtData.EFFECTS[kind]["frames"]) > 1:

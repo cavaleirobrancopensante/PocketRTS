@@ -318,7 +318,7 @@ func _layer_sig(n: String) -> Array:
 						vals.append(_res_line(t))
 			if not game.demo:
 				vals.append(game.apm())
-			if game.net:
+			if _online():
 				var pm := game.net.ping_shown()
 				vals.append_array([pm / 5 if pm < 1000 else pm / 100, game.net.ping_grade(), game.net.waiting])
 			_top_vals = vals
@@ -374,7 +374,7 @@ func _layer_sig(n: String) -> Array:
 				vals.append_array([countdown, _go_t])
 			return vals
 		"chat":
-			if game.chat == null or game.demo:
+			if game.chat == null or (game.demo and game.replay == null):
 				return []
 			var now := Time.get_ticks_msec()
 			var vl: Array = game.chat.visible(now)
@@ -1841,7 +1841,7 @@ func _menu_list() -> Array:
 			_confirm = "surrender"
 			_sig.erase("pause")},
 		{"label": "QUIT TO MENU", "cb": func() -> void:
-			if game.net and not game.over:
+			if _online() and not game.over:
 				_confirm = "quit"          # (online: leaving ends it for the friend too, or hands your side to a computer)
 				_sig.erase("pause")
 				return
@@ -1852,12 +1852,19 @@ func _menu_list() -> Array:
 	]
 	if game.demo or game.over:
 		list = list.filter(func(b: Dictionary) -> bool: return b["label"] != "SURRENDER")    # watching computers: nobody of yours to surrender
+	if game.replay:
+		list = list.filter(func(b: Dictionary) -> bool: return not String(b["label"]).begins_with("PAUSE"))    # (a replay: its own bar pauses)
 	return list
+
+
+## An online match (not a replay, whose session stands in for the host's: game.replay).
+func _online() -> bool:
+	return game != null and game.net != null and game.replay == null
 
 
 ## PAUSE (RESUME when paused). Online: how many pauses are left, and nothing to resume while the host is away.
 func _pause_item() -> Dictionary:
-	var net := game.net
+	var net: NetSession = game.net if _online() else null
 	if paused:
 		var it := {"label": "RESUME", "cb": func() -> void: set_paused(false)}
 		if net and net.away:
@@ -2109,7 +2116,7 @@ func _quick_press(p: Vector2) -> void:
 
 
 func _draw_chat() -> void:
-	if game.chat == null or game.demo:
+	if game.chat == null or (game.demo and game.replay == null):
 		return
 	var font := UiStyle.bold_font()
 	var now := Time.get_ticks_msec()
@@ -2182,7 +2189,11 @@ func _draw_chat() -> void:
 ## PAUSE / RESUME. Online the host decides (NetSession.request_pause): its game stops for everyone, and both screens
 ## hear it back through net_paused.
 func set_paused(v: bool) -> void:
-	if game and game.net:
+	if game and game.replay:
+		game.replay.set_playing(not v)      # (a replay: play and pause, never the tree)
+		_sig.erase("pause")
+		return
+	if game and _online():
 		if v != paused and not game.over:
 			game.net.request_pause(v)
 		return
@@ -2248,7 +2259,10 @@ func _res_line(t: int) -> String:
 	var r2: int = int(game.energy[t]) if fac == "clockwork" else int(pl["res2"])
 	if fac == "clockwork" and Defs.gear_mode:
 		r2 = int(float(pl.get("tension", 0.0)))
-	return "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
+	var line := "P%d %s   %d %s · %d %s · %d/%d supply" % [t + 1, String(Defs.FACTIONS[fac]["name"]), int(pl["gold"]), names[0], r2, names[1], game.supply_used(t), int(pl["cap"])]
+	if game.replay:
+		line += "   ·   " + game.replay.obs_line(t)      # (a replay: income, army and workers, as an observer sees them)
+	return line
 
 
 ## The HUD's own canvas item: only the follow camera's cut (a black fade under the layers).
@@ -2291,13 +2305,13 @@ func _draw_top(font: Font) -> void:
 		right_btns = help_rect().position.x if _help_on() else drag_rect().position.x
 		if _chat_button_on():
 			right_btns = minf(right_btns, chat_btn_rect().position.x)
-	if game.net and maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0) + 88.0 < right_btns - 4.0:
+	if _online() and maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0) + 88.0 < right_btns - 4.0:
 		clock_x = maxf(vs.x * 0.5 - 44, x + _ping_w() + 10.0)     # (online: room left of the clock for the ping; else under it)
 	var clock_r := Rect2(clock_x, 4, 88, 30)
 	_clock_end = clock_r.end.x
 	UiStyle.draw_panel(_ci, clock_r, acc, 0.8)
 	_text(UiStyle.title_font(), Vector2(clock_r.get_center().x, 26), "%d:%02d" % [secs / 60, secs % 60], 18, UiStyle.TEXT, 1)
-	if game.net:
+	if _online():
 		_draw_ping(clock_r, x)
 	if not game.demo:
 		var apm_t := "APM %d" % game.apm()

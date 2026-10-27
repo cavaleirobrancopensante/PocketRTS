@@ -5,11 +5,15 @@ extends Control
 signal play_again
 signal to_menu
 signal view_map
+signal watch_replay(path: String)
 
 var game: Game
 var winner := -1
 var chart: Chart
 var _tab_buttons: Array = []
+var replay_path := ""             # the match's replay (Main._on_end), "" if none was written
+var _rp_line: Label
+var _rp_btn: Button
 
 const ROWS := [
 	["Income", "gold"],
@@ -132,6 +136,22 @@ func _ready() -> void:
 			Sfx.play_any(["ui/click", "click"])
 			sig.emit())
 		btns.add_child(b)
+	# the replay (docs/replays.md): saved; online, the host's whole one is sent to (or comes to) each guest
+	_rp_btn = Button.new()
+	_rp_btn.text = "WATCH REPLAY"
+	_rp_btn.custom_minimum_size = Vector2(240, 58)
+	_rp_btn.pressed.connect(func() -> void:
+		Sfx.play_any(["ui/click", "click"])
+		watch_replay.emit(replay_path))
+	_rp_btn.visible = replay_path != ""
+	btns.add_child(_rp_btn)
+	_rp_line = UiStyle.text("", 16, UiStyle.GOOD)
+	v.add_child(_rp_line)
+	if game.net and not game.net.is_host:
+		game.net.replay_got.connect(func(path: String) -> void:
+			replay_path = path
+			_rp_btn.visible = true)
+	_update_replay_line()
 	# the playtest log, to paste to the developer
 	if game.mlog:
 		var cb := Button.new()
@@ -142,6 +162,33 @@ func _ready() -> void:
 			DisplayServer.clipboard_set(game.mlog.text())
 			cb.text = "COPIED!")
 		btns.add_child(cb)
+
+
+func _process(_delta: float) -> void:
+	_update_replay_line()
+
+
+## "Replay saved", and online how the host's replay is coming along.
+func _update_replay_line() -> void:
+	if _rp_line == null or game == null or not is_instance_valid(game):
+		return
+	var t := ""
+	var pr := game.net.replay_progress() if game.net else -1.0
+	if game.net and not game.net.is_host:
+		if pr >= 1.0:
+			t = Loc.t("Replay saved: the whole match, every side.")
+		elif pr >= 0.0:
+			t = Loc.t("Your view is saved. The host's whole replay is coming: %d%%") % int(pr * 100.0)
+		elif replay_path != "":
+			t = Loc.t("Replay saved (your view only). The host's whole replay comes in a moment.")
+	elif game.net and pr >= 0.0 and pr < 1.0:
+		t = Loc.t("Replay saved. Sending it to your friend: %d%%") % int(pr * 100.0)
+	elif game.net and pr >= 1.0:
+		t = Loc.t("Replay saved, and sent to your friend.")
+	elif replay_path != "":
+		t = Loc.t("Replay saved.")
+	if _rp_line.text != t:
+		_rp_line.text = t
 
 
 ## You first, then your allies, then everyone else.

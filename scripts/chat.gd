@@ -41,6 +41,8 @@ func post(team: int, text: String, from_net := -1) -> Dictionary:
 	Sfx.play_any(["ui/chat"], Vector2.INF, -6.0)
 	if game.net != null:
 		game.net.chat_out(team, text, from_net)
+	if game.rec != null:
+		game.rec.note_chat(team, text)        # (the replay keeps the chat at its times)
 	return line
 
 

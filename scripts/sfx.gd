@@ -10,6 +10,7 @@ extends Node
 
 const SHORT := {"crown": "crown", "brood": "brood", "clockwork": "clock"}
 static var me: Sfx
+static var hush := false     # (a replay jumping to another time: the pictures in between make no sound)
 var camera: Camera2D
 var _streams := {}          # name -> Array of streams ([] = none)
 var _players := {}
@@ -96,7 +97,7 @@ static func play_f_once(base: String, faction: String, gap: float, vol := 0.0) -
 
 ## The first of these names that has a sound.
 static func play_any(names: Array, pos := Vector2.INF, vol := 0.0) -> void:
-	if me == null:
+	if me == null or hush:
 		return
 	for n in names:
 		if has(n):
@@ -148,7 +149,7 @@ static func _tier(name: String) -> int:
 
 
 static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
-	if me == null:
+	if me == null or hush:
 		return
 	var list := me._find(name)
 	if list.is_empty():
