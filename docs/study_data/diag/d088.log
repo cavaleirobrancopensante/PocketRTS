@@ -1,0 +1,256 @@
+[00:00] P2 Crown opens with a Powder Mill (Musketeers)
+PocketRTS v0.14.1 match log  (2026-10-26 23:04:43)
+Map: Kestrel Rise, 2 players  (seed 107267)
+  P1 Clockwork  side 1  colour Blue  AI: HARD, BALANCED
+  P2 Crown  side 2  colour Red  AI: HARD, BALANCED
+Device: phone/tablet
+
+[00:12] P2 Crown got its first Labourer
+[00:14] P1 Clockwork got its first Winder
+[00:18] P1 Clockwork sends a Winder to scout
+[00:18] P2 Crown sends a Labourer to scout
+[00:23] P2 Crown finished a Cottage
+[00:23] P2 Crown walled its ramp with a Cottage (1 pieces, 1 labourers on it)
+[00:35] P1 Clockwork finished a Boiler
+[00:37] P2 Crown's ramp wall stands (1 pieces, 13 s after it was laid)
+[00:58] P2 Crown finished a Barracks
+--- minute 1 ---
+  Performance: 945 fps avg, 1% low 105 fps, worst frame 34 ms, 1 frames over 33 ms, 0 over 50 ms, 1.0 physics steps a frame | units 15, buildings 11, bodies 0, corpses 0, effects 2, nodes 291, objects 2681
+    busy with: units 346.8 ms/s (10635 calls/s), game 166.5 ms/s (946 calls/s), ai 137.8 ms/s (1890 calls/s), buildings 128.1 ms/s (7198 calls/s), game/fog 111.8 ms/s (119 calls/s), game/fog/units 104.8 ms/s (119 calls/s), overlay draw 86.1 ms/s (709 calls/s), ai/workers 42.2 ms/s (86 calls/s), ai/army 28.9 ms/s (86 calls/s), ai/build 20.0 ms/s (86 calls/s), ai/econ 17.3 ms/s (86 calls/s), game/unit grid 14.5 ms/s (946 calls/s), ai/produce 12.3 ms/s (86 calls/s), game/paths 11.4 ms/s (946 calls/s), building draw 9.2 ms/s (609 calls/s), unit draw 6.3 ms/s (196 calls/s), ai/raid 5.8 ms/s (86 calls/s), hud draw 5.8 ms/s (12 calls/s), game/fog/buildings 4.5 ms/s (119 calls/s), ai/horses 4.1 ms/s (86 calls/s), effects 4.1 ms/s (2246 calls/s), game/path smoothing 2.3 ms/s (69 calls/s), ai/abil 2.0 ms/s (86 calls/s), game/pathfinder 1.7 ms/s (69 calls/s), hud/groups 1.6 ms/s (1 calls/s), hud/rest 1.4 ms/s (1 calls/s), hud/top 1.4 ms/s (1 calls/s), hud/map view 1.0 ms/s (1 calls/s), ai/gg 1.0 ms/s (86 calls/s), ai/micro 0.7 ms/s (86 calls/s), ai/loose 0.4 ms/s (86 calls/s), hud/minimap 0.3 ms/s (1 calls/s), game/refit 0.2 ms/s (31 calls/s), hud 0.1 ms/s (1 calls/s), hud/look 0.1 ms/s (1 calls/s), hud/card build 0.0 ms/s (1 calls/s), hud/selection 0.0 ms/s (1 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/command card 0.0 ms/s (1 calls/s), hud/tip check 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  P1 Clockwork: earned 402 ore total, has 37 + 2 energy | supply 8/10 | workers 8 | halls 1 | army (0 value): none | kills +0 (0) losses +0 (0) | ore 96% | efficiency 47%
+  P2 Crown: earned 380 gold total, has 30 + 0 powder | supply 9/18 | workers 7 | halls 1 | army (0 value): none | kills +0 (0) losses +0 (0) | soil 96% | saltpetre 100% | efficiency 36%
+[01:10] P2 Crown finished a Powder Mill
+[01:12] P1 Clockwork finished a Spring Tower
+[01:17] P2 Crown scouted: balanced (1 halls, 3 economy, 0 military buildings, 0 supply of army), carrying on with its balanced plan
+[01:32] P1 Clockwork finished a Ore Crusher
+[01:41] P1 Clockwork finished a Boiler
+--- minute 2 ---
+  Performance: 511 fps avg, 1% low 81 fps, worst frame 25 ms, 0 frames over 33 ms, 0 over 50 ms, 1.0 physics steps a frame | units 18, buildings 15, bodies 0, corpses 0, effects 3, nodes 316, objects 2773
+    busy with: units 347.8 ms/s (8358 calls/s), game 159.6 ms/s (511 calls/s), buildings 158.8 ms/s (6542 calls/s), ai 109.2 ms/s (1023 calls/s), overlay draw 109.0 ms/s (449 calls/s), game/fog 99.2 ms/s (64 calls/s), game/fog/units 91.1 ms/s (64 calls/s), ai/workers 30.9 ms/s (47 calls/s), ai/army 23.5 ms/s (47 calls/s), game/paths 19.3 ms/s (511 calls/s), ai/build 19.0 ms/s (47 calls/s), game/unit grid 13.8 ms/s (511 calls/s), ai/econ 13.1 ms/s (47 calls/s), game/pathfinder 12.5 ms/s (82 calls/s), building draw 8.7 ms/s (674 calls/s), ai/produce 7.3 ms/s (47 calls/s), ai/raid 5.6 ms/s (47 calls/s), game/fog/buildings 4.5 ms/s (64 calls/s), unit draw 4.2 ms/s (119 calls/s), ai/horses 3.2 ms/s (47 calls/s), effects 2.9 ms/s (2140 calls/s), ai/abil 2.6 ms/s (47 calls/s), game/path smoothing 1.5 ms/s (82 calls/s), ai/gg 0.7 ms/s (47 calls/s), ai/micro 0.5 ms/s (47 calls/s), game/refit 0.3 ms/s (16 calls/s), ai/loose 0.3 ms/s (47 calls/s)
+  P1 Clockwork: earned 1102 ore total, has 107 + 10 energy | supply 11/20 | workers 9 | halls 1 | army (0 value): none | kills +1 (1) losses +0 (0) | ore 90% | efficiency 33%
+  P2 Crown: earned 760 gold total, has 40 + 13 powder | supply 13/18 | workers 9 | halls 1 | army (0 value): none | kills +0 (0) losses +1 (1) | soil 92% | saltpetre 97% | efficiency 47%
+[02:00] P2 Crown got its first Musketeer
+[02:09] P1 Clockwork saw an enemy Musketeer: a slow foot soldier, the Crown's standard opening (a horse rush would show Horsemen)
+[02:09] P1 Clockwork scout under guard (Musketeer), backing out of range
+[02:11] P2 Crown finished a Farm
+[02:14] P1 Clockwork finished a Spring Tower
+[02:16] P1 Clockwork finished a Assembly Works
+[02:27] P1 Clockwork could not see the enemy (it saw too little of the base): playing safe (army and walls, no greedy economy), scouting again later
+[02:27] P1 Clockwork posts a Winder at the foot of the walled ramp to keep watch
+[02:30] P1 Clockwork got its first Wind-up Soldiers
+[02:53] P1 Clockwork finished a Spring Tower
+[02:57] P2 Crown finished a Cottage
+--- minute 3 ---
+  Performance: 466 fps avg, 1% low 109 fps, worst frame 12 ms, 0 frames over 33 ms, 0 over 50 ms, 1.0 physics steps a frame | units 38, buildings 19, bodies 0, corpses 0, effects 3, nodes 369, objects 2917
+    busy with: units 371.3 ms/s (12433 calls/s), game 156.9 ms/s (466 calls/s), buildings 143.4 ms/s (7721 calls/s), overlay draw 119.6 ms/s (462 calls/s), game/fog 113.6 ms/s (58 calls/s), ai 109.3 ms/s (932 calls/s), game/fog/units 108.1 ms/s (58 calls/s), ai/workers 30.9 ms/s (42 calls/s), ai/army 28.6 ms/s (42 calls/s), ai/build 15.4 ms/s (42 calls/s), game/unit grid 14.9 ms/s (466 calls/s), ai/produce 11.8 ms/s (42 calls/s), ai/econ 7.9 ms/s (42 calls/s), game/paths 7.4 ms/s (466 calls/s), building draw 6.7 ms/s (858 calls/s), unit draw 4.7 ms/s (191 calls/s), ai/abil 3.9 ms/s (42 calls/s), effects 3.4 ms/s (3170 calls/s), ai/horses 3.2 ms/s (42 calls/s), ai/raid 3.1 ms/s (42 calls/s), game/fog/buildings 2.8 ms/s (58 calls/s), game/pathfinder 2.2 ms/s (63 calls/s), ai/gg 1.9 ms/s (42 calls/s), game/path smoothing 1.7 ms/s (63 calls/s), ai/micro 1.7 ms/s (42 calls/s), game/refit 0.5 ms/s (15 calls/s), ai/loose 0.3 ms/s (42 calls/s)
+  P1 Clockwork: earned 2270 ore total, has 125 + 1 energy | supply 31/40 | workers 14 | halls 1 | army (225 value): 9 Wind-up Soldiers | kills +0 (1) losses +0 (0) | ore 80% | efficiency 51%
+  P2 Crown: earned 1140 gold total, has 50 + 22 powder | supply 18/26 | workers 12 | halls 1 | army (180 value): 3 Musketeer | kills +0 (0) losses +0 (1) | soil 87% | saltpetre 95% | efficiency 38%
+[03:15] P1 Clockwork finished a Assembly Works
+[03:19] P1 Clockwork finished a Spring Tower
+[03:31] P1 Clockwork got its first Arc Thrower
+[03:32] P1 Clockwork's first attack goes out (18 supply, 0 Horsemen)
+[03:32] P1 Clockwork breaks in at a gate: down in ~8 s (39 dps on it) against 0 dps of fire
+[03:43] P2 Crown finished a Cottage
+[03:44] P1 Clockwork finished a Spring Tower
+[03:49] P2 Crown finished a Horse Breeder
+[03:52] P1 Clockwork sends a Winder to scout again (trip 2)
+--- minute 4 ---
+  Performance: 275 fps avg, 1% low 42 fps, worst frame 39 ms, 3 frames over 33 ms, 0 over 50 ms, 1.0 physics steps a frame | units 59, buildings 26, bodies 0, corpses 0, effects 6, nodes 440, objects 3144
+    busy with: units 429.8 ms/s (13472 calls/s), game 175.0 ms/s (275 calls/s), buildings 122.2 ms/s (6031 calls/s), game/fog 121.9 ms/s (35 calls/s), game/fog/units 116.0 ms/s (35 calls/s), ai 99.5 ms/s (550 calls/s), overlay draw 90.3 ms/s (265 calls/s), ai/army 32.0 ms/s (25 calls/s), game/paths 22.2 ms/s (275 calls/s), ai/workers 21.8 ms/s (25 calls/s), ai/build 20.3 ms/s (25 calls/s), game/unit grid 15.1 ms/s (275 calls/s), game/path smoothing 13.5 ms/s (63 calls/s), ai/econ 6.8 ms/s (25 calls/s), ai/produce 6.6 ms/s (25 calls/s), building draw 5.5 ms/s (663 calls/s), game/pathfinder 4.4 ms/s (63 calls/s), ai/horses 3.8 ms/s (25 calls/s), unit draw 3.6 ms/s (182 calls/s), game/fog/buildings 3.6 ms/s (35 calls/s), effects 3.2 ms/s (2754 calls/s), ai/abil 2.1 ms/s (25 calls/s), ai/raid 2.1 ms/s (25 calls/s), ai/gg 1.7 ms/s (25 calls/s), ai/micro 1.6 ms/s (25 calls/s), game/refit 1.0 ms/s (9 calls/s), ai/loose 0.2 ms/s (25 calls/s)
+  P1 Clockwork: earned 3443 ore total, has 66 + 1 energy | supply 52/60 | workers 18 | halls 1 | army (825 value): 15 Wind-up Soldiers, 3 Arc Thrower | kills +0 (1) losses +0 (0) | ore 70% | efficiency 44%
+  P2 Crown: earned 1900 gold total, has 0 + 24 powder | supply 23/34 | workers 17 | halls 1 | army (360 value): 6 Musketeer | kills +0 (0) losses +0 (1) | soil 79% | saltpetre 94% | efficiency 31%
+[04:00] P2 Crown scouted: rush (early army (7 supply) in or out of its base), switching to a defensive build: army and walls first, then a counter-attack
+[04:05] P2 Crown got its first Horse
+[04:08] P2 Crown finished a Barracks
+[04:08] P1 Clockwork finished a Spring Tower
+[04:14] P2 Crown finished a Armoury
+[04:16] P1 Clockwork pulls back from the gate: down in ~7 s, too dear under 32 dps of fire (35 dps on it)
+[04:19] P1 Clockwork got its first Bulwark
+[04:21] P2 Crown sends a Labourer to scout again (trip 2)
+[04:27] P1 Clockwork scout under guard (Musketeer), backing out of range
+[04:28] P1 Clockwork finished a Charging Pylon
+[04:28] P2 Crown scout under guard (Arc Thrower), backing out of range
+[04:33] P2 Crown queued research: Socket Bayonet
+[04:41] P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 22 tiles from its main
+[04:43] P2 Crown's first horse hauled by a hauler
+[04:53] P1 Clockwork got its first Thresher
+[04:53] P2 Crown researched Socket Bayonet
+[04:55] P2 Crown got its first Horseman
+[04:57] P1 Clockwork breaks in at a gate: down in ~31 s (31 dps on it) against 0 dps of fire
+[04:57] P2 Crown's first Officer mounted (Horseman)
+[04:58] P2 Crown finished a Cottage
+--- minute 5 ---
+  Performance: 255 fps avg, 1% low 66 fps, worst frame 23 ms, 0 frames over 33 ms, 0 over 50 ms, 1.0 physics steps a frame | units 64, buildings 29, bodies 2, corpses 0, effects 6, nodes 462, objects 3268
+    busy with: units 431.8 ms/s (14896 calls/s), game 182.9 ms/s (255 calls/s), game/fog 133.0 ms/s (33 calls/s), game/fog/units 127.6 ms/s (33 calls/s), buildings 126.2 ms/s (6894 calls/s), ai 90.6 ms/s (509 calls/s), overlay draw 81.2 ms/s (245 calls/s), ai/army 29.2 ms/s (23 calls/s), ai/workers 25.1 ms/s (23 calls/s), game/unit grid 16.8 ms/s (255 calls/s), game/paths 15.9 ms/s (255 calls/s), ai/build 11.5 ms/s (23 calls/s), game/path smoothing 9.2 ms/s (79 calls/s), ai/produce 7.9 ms/s (23 calls/s), building draw 5.0 ms/s (731 calls/s), ai/econ 4.3 ms/s (23 calls/s), game/pathfinder 3.5 ms/s (79 calls/s), effects 3.3 ms/s (3347 calls/s), ai/horses 3.2 ms/s (23 calls/s), ai/abil 2.8 ms/s (23 calls/s), game/fog/buildings 2.7 ms/s (33 calls/s), ai/raid 2.5 ms/s (23 calls/s), ai/gg 2.5 ms/s (23 calls/s), ai/micro 2.4 ms/s (23 calls/s), unit draw 1.9 ms/s (101 calls/s), game/refit 0.9 ms/s (8 calls/s), ai/loose 0.2 ms/s (23 calls/s)
+  P1 Clockwork: earned 4634 ore total, has 37 + 1 energy | supply 52/70 | workers 20 | halls 1 | army (1040 value): 15 Wind-up Soldiers, 1 Arc Thrower, 2 Bulwark, 1 Thresher | kills +1 (2) losses +14 (14) | ore 59% | efficiency 46%
+  P2 Crown: earned 2660 gold total, has 0 + 20 powder | supply 30/42 | workers 18 | halls 1 | army (530 value): 5 Musketeer, 2 Horseman | kills +14 (14) losses +1 (2) | soil 70% | saltpetre 91% | efficiency 37%
+[05:12] P1 Clockwork saw an enemy Horseman (fast, a Crown rush unit): evidence of a rush
+[05:13] P2 Crown's first pistol shot (Horseman)
+[05:16] P1 Clockwork scouted: rush (early army (6 supply) in or out of its base), switching to a defensive build: army and production first, then a counter-attack
+[05:24] P2 Crown queued research: Cavalry Charge
+[05:27] P1 Clockwork posts a Winder at the foot of the walled ramp to keep watch
+[05:33] P1 Clockwork pulls back from the gate: it can't get through under 31 dps of fire (39 dps on it)
+[05:35] P1 Clockwork finished a Spring Tower
+[05:49] P2 Crown researched Cavalry Charge
+[05:52] P1 Clockwork finished a Clocktower (expansion)
+--- minute 6 ---
+  Performance: 128 fps avg, 1% low 31 fps, worst frame 47 ms, 5 frames over 33 ms, 0 over 50 ms, 1.0 physics steps a frame | units 64, buildings 33, bodies 17, corpses 0, effects 6, nodes 509, objects 3457
+    busy with: units 441.3 ms/s (8628 calls/s), game 176.3 ms/s (128 calls/s), buildings 130.6 ms/s (3979 calls/s), game/fog 123.1 ms/s (17 calls/s), game/fog/units 117.2 ms/s (17 calls/s), ai 88.4 ms/s (256 calls/s), overlay draw 71.1 ms/s (124 calls/s), ai/army 27.3 ms/s (11 calls/s), ai/workers 23.7 ms/s (12 calls/s), game/unit grid 18.7 ms/s (128 calls/s), game/paths 16.9 ms/s (128 calls/s), ai/build 11.4 ms/s (12 calls/s), game/path smoothing 9.5 ms/s (49 calls/s), ai/produce 5.7 ms/s (12 calls/s), ai/raid 5.3 ms/s (12 calls/s), building draw 5.3 ms/s (408 calls/s), game/pathfinder 3.8 ms/s (49 calls/s), effects 3.6 ms/s (1848 calls/s), ai/abil 3.5 ms/s (11 calls/s), ai/econ 3.4 ms/s (12 calls/s), ai/gg 3.2 ms/s (11 calls/s), ai/horses 3.1 ms/s (11 calls/s), ai/micro 2.9 ms/s (11 calls/s), game/fog/buildings 2.6 ms/s (17 calls/s), unit draw 2.0 ms/s (63 calls/s), game/refit 0.6 ms/s (4 calls/s), ai/loose 0.1 ms/s (11 calls/s)
+  P1 Clockwork: earned 5805 ore total, has 92 + 5 energy | supply 60/90 | workers 23 | halls 2 | army (1215 value): 10 Wind-up Soldiers, 3 Arc Thrower, 2 Bulwark, 1 Thresher | kills +4 (6) losses +14 (28) | ore 49% 100% | efficiency 52%
+  P2 Crown: earned 3420 gold total, has 293 + 51 powder | supply 29/42 | workers 20 | halls 1 | army (390 value): 2 Musketeer, 2 Horseman, 1 Horse | kills +14 (28) losses +4 (6) | soil 62% | saltpetre 88% | efficiency 56%
+[06:11] P2 Crown is expanding to fresh land (left at its best hall: 58%), 19 tiles from its main
+[06:19] P2 Crown finished a Foundry
+[06:32] P1 Clockwork finished a Ore Crusher
+[06:38] P1 Clockwork finished a Boiler
+[06:52] P2 Crown finished a Town Hall (expansion)
+[06:53] P1 Clockwork posts a Winder at the foot of the walled ramp to keep watch
+[06:55] P2 Crown finished a Church
+--- minute 7 ---
+  Performance: 89 fps avg, 1% low 26 fps, worst frame 68 ms, 12 frames over 33 ms, 3 over 50 ms, 1.0 physics steps a frame | units 82, buildings 37, bodies 4, corpses 0, effects 5, nodes 532, objects 3445
+    busy with: units 432.4 ms/s (6193 calls/s), game 168.2 ms/s (89 calls/s), buildings 132.9 ms/s (3144 calls/s), game/fog 118.9 ms/s (11 calls/s), game/fog/units 113.3 ms/s (11 calls/s), overlay draw 91.1 ms/s (86 calls/s), ai 83.9 ms/s (177 calls/s), ai/army 23.0 ms/s (8 calls/s), ai/workers 21.1 ms/s (8 calls/s), game/unit grid 19.9 ms/s (89 calls/s), ai/produce 8.8 ms/s (8 calls/s), ai/econ 7.6 ms/s (8 calls/s), ai/raid 7.2 ms/s (8 calls/s), ai/build 7.0 ms/s (8 calls/s), game/paths 7.0 ms/s (89 calls/s), effects 4.5 ms/s (1359 calls/s), building draw 4.2 ms/s (332 calls/s), ai/horses 3.6 ms/s (8 calls/s), unit draw 2.9 ms/s (51 calls/s), game/path smoothing 2.3 ms/s (15 calls/s), ai/abil 2.2 ms/s (8 calls/s), game/fog/buildings 2.2 ms/s (11 calls/s), ai/gg 1.3 ms/s (8 calls/s), ai/micro 1.2 ms/s (8 calls/s), game/pathfinder 1.1 ms/s (15 calls/s), game/refit 0.5 ms/s (3 calls/s), ai/loose 0.5 ms/s (8 calls/s)
+  P1 Clockwork: earned 7210 ore total, has 52 + 9 energy | supply 74/90 | workers 28 | halls 2 | army (1640 value): 15 Wind-up Soldiers, 5 Arc Thrower, 2 Bulwark, 1 Thresher | kills +1 (7) losses +3 (31) | ore 38% 99% | efficiency 48%
+  P2 Crown: earned 4180 gold total, has 59 + 114 powder | supply 38/52 | workers 21 | halls 2 | army (705 value): 3 Horseman, 4 Musketeer, 3 Horse | kills +3 (31) losses +1 (7) | soil 54% 100% | saltpetre 81% 100% | efficiency 47%
+[07:07] P1 Clockwork finished a Ore Crusher
+[07:10] P2 Crown sent 1 soldier back to refit
+[07:10] P2 Crown queued research: Armour
+[07:13] P1 Clockwork finished a Boiler
+[07:14] P2 Crown got its first Field Cannon
+[07:16] P2 Crown's first Musketeer mounted (Dragoon)
+[07:16] P2 Crown queued research: Matchlock
+[07:16] P2 Crown queued research: Prepared Charges
+[07:30] P1 Clockwork finished a Spring Tower
+[07:31] P2 Crown scouted: balanced (1 halls, 3 economy, 0 military buildings, 10 supply of army), carrying on with its balanced plan
+[07:55] P2 Crown researched Armour
+[07:56] P1 Clockwork finished a Spring Tower
+--- minute 8 ---
+  Performance: 66 fps avg, 1% low 23 fps, worst frame 52 ms, 49 frames over 33 ms, 2 over 50 ms, 1.0 physics steps a frame | units 90, buildings 44, bodies 2, corpses 0, effects 6, nodes 587, objects 3551
+    busy with: units 454.3 ms/s (5898 calls/s), game 155.3 ms/s (66 calls/s), buildings 125.8 ms/s (2717 calls/s), game/fog 107.5 ms/s (8 calls/s), game/fog/units 101.1 ms/s (8 calls/s), overlay draw 100.8 ms/s (66 calls/s), ai 84.1 ms/s (132 calls/s), ai/army 26.4 ms/s (6 calls/s), ai/workers 20.8 ms/s (6 calls/s), game/unit grid 18.9 ms/s (66 calls/s), ai/build 11.3 ms/s (6 calls/s), game/paths 10.8 ms/s (66 calls/s), ai/raid 6.3 ms/s (6 calls/s), ai/produce 6.1 ms/s (6 calls/s), building draw 5.5 ms/s (284 calls/s), game/path smoothing 4.4 ms/s (26 calls/s), ai/econ 4.3 ms/s (6 calls/s), unit draw 2.9 ms/s (48 calls/s), game/pathfinder 2.8 ms/s (26 calls/s), ai/horses 2.8 ms/s (6 calls/s), effects 2.8 ms/s (1125 calls/s), ai/abil 2.7 ms/s (6 calls/s), game/fog/buildings 2.5 ms/s (8 calls/s), ai/gg 1.5 ms/s (6 calls/s), ai/micro 1.5 ms/s (6 calls/s), game/refit 0.5 ms/s (2 calls/s), projectiles 0.2 ms/s (0 calls/s), ai/loose 0.1 ms/s (6 calls/s)
+  P1 Clockwork: earned 8903 ore total, has 129 + 17 energy | supply 90/110 | workers 32 | halls 2 | army (2260 value): 13 Wind-up Soldiers, 5 Arc Thrower, 3 Bulwark, 4 Thresher | kills +2 (9) losses +5 (36) | ore 26% 96% | efficiency 29%
+  P2 Crown: earned 5320 gold total, has 6 + 92 powder | supply 44/52 | workers 24 | halls 2 | army (755 value): 3 Horseman, 2 Musketeer, 3 Horse, 1 Field Cannon | kills +5 (36) losses +2 (9) | soil 41% 100% | saltpetre 72% 100% | efficiency 46%
+[08:06] P1 Clockwork: the ore at a Clocktower is running low (under 25%)
+[08:06] P1 Clockwork sends a Winder to scout again (trip 3)
+[08:19] P1 Clockwork finished a Spring Tower
+[08:19] P2 Crown got its first Missionary
+[08:25] P2 Crown researched Matchlock
+[08:30] P2 Crown lost a Barracks (unfinished) to P1 Clockwork (thresher)
+[08:34] P1 Clockwork scout under guard (Musketeer), backing out of range
+[08:38] P1 Clockwork: the coal of a Clocktower's Boilers is running low (under 25%)
+[08:40] P1 Clockwork finished a Engine Hall
+[08:46] P1 Clockwork scout turned back: playing safe, will look again
+[08:46] P1 Clockwork could not see the enemy (the scout was turned back before it saw the base): playing safe (army and walls, no greedy economy), scouting again later
+[08:52] P2 Crown finished a Cottage
+--- minute 9 ---
+  Performance: 64 fps avg, 1% low 21 fps, worst frame 70 ms, 76 frames over 33 ms, 7 over 50 ms, 1.0 physics steps a frame | units 96, buildings 46, bodies 9, corpses 0, effects 8, nodes 606, objects 3687
+    busy with: units 455.2 ms/s (5865 calls/s), game 147.1 ms/s (64 calls/s), buildings 126.4 ms/s (2868 calls/s), overlay draw 105.6 ms/s (64 calls/s), game/fog 102.9 ms/s (8 calls/s), game/fog/units 96.2 ms/s (8 calls/s), ai 79.9 ms/s (128 calls/s), ai/army 25.6 ms/s (6 calls/s), ai/workers 21.1 ms/s (6 calls/s), game/unit grid 17.0 ms/s (64 calls/s), game/paths 11.3 ms/s (64 calls/s), ai/build 7.0 ms/s (6 calls/s), ai/produce 6.9 ms/s (6 calls/s), building draw 5.5 ms/s (294 calls/s), effects 4.9 ms/s (1293 calls/s), ai/econ 4.8 ms/s (6 calls/s), game/path smoothing 4.7 ms/s (42 calls/s), ai/raid 3.3 ms/s (6 calls/s), ai/horses 3.3 ms/s (6 calls/s), ai/abil 3.3 ms/s (6 calls/s), game/fog/buildings 2.7 ms/s (8 calls/s), unit draw 2.2 ms/s (40 calls/s), ai/gg 2.1 ms/s (6 calls/s), ai/micro 2.1 ms/s (6 calls/s), game/pathfinder 2.0 ms/s (42 calls/s), ai/loose 0.4 ms/s (6 calls/s), game/refit 0.2 ms/s (2 calls/s), projectiles 0.1 ms/s (2 calls/s)
+  P1 Clockwork: earned 10470 ore total, has 326 + 13 energy | supply 100/120 | workers 32 | halls 2 | army (2460 value): 14 Wind-up Soldiers, 5 Arc Thrower, 4 Bulwark, 4 Thresher | kills +5 (14) losses +5 (41) | ore 15% 93% | efficiency 26%
+  P2 Crown: earned 6460 gold total, has 24 + 155 powder | supply 51/60 | workers 26 | halls 2 | army (905 value): 2 Horseman, 4 Guardsman, 1 Missionary, 2 Horse, 2 Cuirassier | kills +5 (41) losses +5 (14) | soil 28% 100% | saltpetre 63% 100% | efficiency 40%
+[09:01] P2 Crown's Horseman was killed and a horse bolted loose (the first: anyone's to catch)
+[09:01] P1 Clockwork posts a Arc Thrower at the foot of the walled ramp to keep watch
+[09:03] P2 Crown finished a Powder Mill
+[09:03] P1 Clockwork finished a Capacitor Works
+[09:05] P2 Crown researched Prepared Charges
+[09:07] P2 Crown's Missionary raised a fallen Officer
+[09:07] P1 Clockwork got its first Tesla Cart
+[09:08] P2 Crown caught a loose horse (its first; by a Officer)
+[09:15] P1 Clockwork finished a Spring Tower
+[09:18] P2 Crown's Missionary raised a fallen Armoured Officer
+[09:20] P2 Crown: the soil around a Town Hall is running low (under 25%)
+[09:24] P2 Crown's Missionary raised a fallen Armoured Officer
+[09:25] P2 Crown dropped a Barracks: nobody was coming to start it (refunded)
+[09:31] P2 Crown's Missionary raised a fallen Guardsman
+[09:34] P2 Crown lost a Farm (unfinished) to P1 Clockwork (arc_thrower)
+[09:35] P1 Clockwork got its first Steam Walker
+[09:39] P2 Crown's Missionary raised a fallen Guardsman
+[09:42] P1 Clockwork finished a Spring Tower
+[09:54] P1 Clockwork finished a Assembly Works
+[09:57] P1 Clockwork: the ore at a Clocktower is spent (its crushers pay at a quarter)
+--- minute 10 ---
+  Performance: 91 fps avg, 1% low 20 fps, worst frame 94 ms, 34 frames over 33 ms, 7 over 50 ms, 1.0 physics steps a frame | units 88, buildings 50, bodies 19, corpses 0, effects 10, nodes 623, objects 3871
+    busy with: units 445.2 ms/s (8371 calls/s), game 150.5 ms/s (91 calls/s), buildings 125.3 ms/s (4335 calls/s), overlay draw 110.4 ms/s (90 calls/s), game/fog 108.0 ms/s (11 calls/s), game/fog/units 103.1 ms/s (11 calls/s), ai 87.1 ms/s (182 calls/s), ai/army 27.6 ms/s (8 calls/s), ai/workers 23.2 ms/s (8 calls/s), game/unit grid 17.7 ms/s (91 calls/s), ai/build 11.2 ms/s (8 calls/s), game/paths 10.4 ms/s (91 calls/s), ai/produce 9.3 ms/s (8 calls/s), game/path smoothing 5.5 ms/s (51 calls/s), building draw 4.9 ms/s (421 calls/s), ai/econ 4.0 ms/s (8 calls/s), ai/gg 3.2 ms/s (8 calls/s), ai/micro 3.1 ms/s (8 calls/s), effects 3.1 ms/s (2129 calls/s), ai/horses 3.0 ms/s (8 calls/s), unit draw 2.7 ms/s (66 calls/s), ai/abil 2.6 ms/s (8 calls/s), game/fog/buildings 2.6 ms/s (11 calls/s), game/pathfinder 2.1 ms/s (51 calls/s), ai/raid 1.8 ms/s (8 calls/s), game/refit 0.7 ms/s (3 calls/s), projectiles 0.5 ms/s (3 calls/s), ai/loose 0.1 ms/s (8 calls/s)
+  P1 Clockwork: earned 13119 ore total, has 596 + 10 energy | supply 129/140 | workers 32 | halls 2 | army (3255 value): 12 Arc Thrower, 2 Bulwark, 1 Wind-up Soldiers, 4 Thresher, 1 Tesla Cart, 1 Steam Walker | kills +16 (30) losses +15 (56) | ore 0% 84% | efficiency 16%
+  P2 Crown: earned 7220 gold total, has 22 + 239 powder | supply 46/60 | workers 27 | halls 2 | army (800 value): 2 Horseman, 1 Missionary, 1 Horse, 1 Field Cannon, 1 Guardsman, 1 Musketeer, 1 Cuirassier | kills +15 (56) losses +16 (30) | soil 20% 100% | saltpetre 54% 100% | efficiency 20%
+[10:04] P2 Crown lost a Town Hall to P1 Clockwork (arc_thrower)
+[10:04] P1 Clockwork breaks in at a gate: down in ~2 s (134 dps on it) against 39 dps of fire
+[10:06] P2 Crown dropped a Farm: nobody was coming to start it (refunded)
+[10:09] P2 Crown sends a Labourer to scout again (trip 3)
+[10:11] P1 Clockwork sends a Wind-up Soldiers to scout again (trip 4)
+[10:12] P2 Crown's first Field Cannon with a team of 2 horses
+[10:13] P1 Clockwork finished a Spring Tower
+[10:18] P2 Crown finished a Cottage
+[10:18] P2 Crown scout under guard (Arc Thrower), backing out of range
+[10:19] P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+[10:20] P1 Clockwork the sentry backs away from a Field Cannon
+[10:21] P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+[10:22] P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+[10:24] P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+[10:25] P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+[10:27] P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+[10:28] P2 Crown dropped a Cottage: nobody was coming to start it (refunded)
+[10:31] P2 Crown lost a Gate to P1 Clockwork (thresher)
+[10:35] P2 Crown scout killed: playing safe, will look again
+[10:35] P2 Crown could not see the enemy (the scout was killed before it saw the base): playing safe (army and walls, no greedy economy), scouting again later
+[10:45] P1 Clockwork finished a Spring Tower
+[10:46] P1 Clockwork finished a Assembly Works
+[10:46] P2 Crown lost a Cottage to P1 Clockwork (bulwark)
+[10:48] P1 Clockwork caught a loose horse (its first; by a Winder)
+[10:49] P2 Crown is expanding to fresh land (left at its best hall: 11%), 19 tiles from its main
+[10:51] P1 Clockwork got its first Ornithopter
+[10:51] P2 Crown dropped a Town Hall: nobody was coming to start it (refunded)
+[10:52] P2 Crown is expanding to fresh land (left at its best hall: 11%), 19 tiles from its main
+[10:52] P2 Crown lost a Cottage (unfinished) to P1 Clockwork (windup_soldier)
+[10:52] P2 Crown lost a Foundry to P1 Clockwork (tesla_cart)
+[10:54] P2 Crown dropped a Town Hall: nobody was coming to start it (refunded)
+[10:54] P2 Crown is expanding to fresh land (left at its best hall: 11%), 19 tiles from its main
+[10:55] P2 Crown dropped a Town Hall: nobody was coming to start it (refunded)
+[10:56] P2 Crown is expanding to fresh land (left at its best hall: 11%), 19 tiles from its main
+[10:56] P2 Crown lost a Cottage to P1 Clockwork (arc_thrower)
+[10:57] P2 Crown dropped a Town Hall: nobody was coming to start it (refunded)
+[10:57] P2 Crown is expanding to fresh land (left at its best hall: 11%), 19 tiles from its main
+[10:58] P2 Crown dropped a Town Hall: nobody was coming to start it (refunded)
+[10:59] P2 Crown is expanding to fresh land (left at its best hall: 11%), 19 tiles from its main
+[11:00] P2 Crown dropped a Town Hall: nobody was coming to start it (refunded)
+--- minute 11 ---
+  Performance: 68 fps avg, 1% low 7 fps, worst frame 650 ms, 112 frames over 33 ms, 37 over 50 ms, 1.0 physics steps a frame | units 104, buildings 46, bodies 22, corpses 0, effects 17, nodes 693, objects 4043
+    busy with: units 473.2 ms/s (7464 calls/s), game 151.1 ms/s (68 calls/s), buildings 105.3 ms/s (3481 calls/s), game/fog 96.1 ms/s (9 calls/s), ai 95.6 ms/s (137 calls/s), overlay draw 92.6 ms/s (67 calls/s), game/fog/units 90.2 ms/s (9 calls/s), ai/build 32.6 ms/s (6 calls/s), game/paths 23.6 ms/s (68 calls/s), ai/army 23.5 ms/s (6 calls/s), ai/workers 22.5 ms/s (6 calls/s), game/unit grid 19.0 ms/s (68 calls/s), game/path smoothing 13.9 ms/s (66 calls/s), building draw 4.7 ms/s (330 calls/s), unit draw 4.4 ms/s (124 calls/s), game/pathfinder 4.3 ms/s (66 calls/s), ai/produce 3.9 ms/s (6 calls/s), ai/abil 3.2 ms/s (6 calls/s), game/fog/buildings 3.0 ms/s (9 calls/s), ai/gg 2.9 ms/s (6 calls/s), ai/micro 2.9 ms/s (6 calls/s), effects 2.4 ms/s (1743 calls/s), ai/econ 2.2 ms/s (6 calls/s), ai/horses 2.1 ms/s (6 calls/s), ai/raid 1.2 ms/s (6 calls/s), ai/loose 0.4 ms/s (6 calls/s), game/refit 0.2 ms/s (2 calls/s)
+  P1 Clockwork: earned 14526 ore total, has 23 + 29 energy | supply 153/160 | workers 32 | halls 2 | army (4685 value): 11 Arc Thrower, 5 Bulwark, 3 Thresher, 1 Tesla Cart, 3 Steam Walker, 23 Wind-up Soldiers, 1 Horse, 1 Ornithopter | kills +22 (52) losses +7 (63) | ore 0% 72% | efficiency 14%
+  P2 Crown: earned 7980 gold total, has 414 + 315 powder | supply 21/42 | workers 19 | halls 1 | army (245 value): 1 Missionary, 3 Horse | kills +7 (63) losses +22 (52) | soil 11% | saltpetre 46% | efficiency 0%
+[11:04] P2 Crown lost a Cottage to P1 Clockwork (arc_thrower)
+[11:06] P2 Crown lost a Church to P1 Clockwork (windup_soldier)
+[11:14] P2 Crown lost a Farm to P1 Clockwork (steam_walker)
+[11:14] P1 Clockwork finished a Spring Tower
+[11:16] P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+[11:16] P2 Crown saw an enemy Ornithopter (fast, a Clockwork rush unit): evidence of a rush
+[11:16] P1 Clockwork overloaded a Steam Walker
+[11:28] P2 Crown lost a Armoury to P1 Clockwork (arc_thrower)
+[11:29] P2 Crown lost a Barracks to P1 Clockwork (windup_soldier)
+[11:33] P1 Clockwork got its first Stormcaller
+[11:39] P1 Clockwork scouted: balanced (1 halls, 3 economy, 2 military buildings, 13 supply of army), carrying on with its balanced plan
+[11:40] P1 Clockwork is expanding to fresh ore (left at its best hall: 63%), 24 tiles from its main
+[11:45] P2 Crown lost a Barracks to P1 Clockwork (windup_soldier)
+[11:45] P2 Crown lost a Town Hall to P1 Clockwork (windup_soldier)
+[11:46] P1 Clockwork overloaded a Thresher
+[11:48] P1 Clockwork finished a Spring Tower
+[11:50] P2 Crown scouted: balanced (2 halls, 3 economy, 3 military buildings, 70 supply of army), carrying on with its balanced plan
+[11:52] P2 Crown lost a Farm to P1 Clockwork (arc_thrower)
+[11:54] P2 Crown lost a Horse Breeder to P1 Clockwork (windup_soldier)
+[11:58] P2 Crown lost a Powder Mill to P1 Clockwork (arc_thrower)
+--- minute 12 ---
+  Performance: 44 fps avg, 1% low 7 fps, worst frame 366 ms, 268 frames over 33 ms, 74 over 50 ms, 1.0 physics steps a frame | units 106, buildings 38, bodies 2, corpses 0, effects 11, nodes 607, objects 3875
+    busy with: units 506.1 ms/s (4268 calls/s), game 132.5 ms/s (44 calls/s), buildings 99.3 ms/s (2034 calls/s), overlay draw 95.3 ms/s (44 calls/s), game/fog 82.5 ms/s (5 calls/s), game/fog/units 77.7 ms/s (5 calls/s), ai 63.2 ms/s (87 calls/s), ai/army 24.8 ms/s (4 calls/s), ai/workers 16.8 ms/s (4 calls/s), game/paths 15.9 ms/s (44 calls/s), game/unit grid 15.6 ms/s (44 calls/s), game/path smoothing 8.9 ms/s (37 calls/s), unit draw 8.2 ms/s (76 calls/s), ai/build 5.7 ms/s (4 calls/s), effects 4.7 ms/s (1339 calls/s), ai/abil 4.7 ms/s (4 calls/s), building draw 4.6 ms/s (213 calls/s), ai/produce 3.7 ms/s (4 calls/s), ai/gg 3.1 ms/s (4 calls/s), ai/micro 3.1 ms/s (4 calls/s), game/pathfinder 2.7 ms/s (37 calls/s), game/fog/buildings 2.2 ms/s (5 calls/s), ai/horses 1.9 ms/s (4 calls/s), ai/econ 1.2 ms/s (4 calls/s), game/refit 0.3 ms/s (1 calls/s), ai/loose 0.3 ms/s (4 calls/s), ai/raid 0.2 ms/s (4 calls/s)
+  P1 Clockwork: earned 15966 ore total, has 89 + 31 energy | supply 172/180 | workers 32 | halls 2 | army (6300 value): 13 Arc Thrower, 9 Bulwark, 3 Thresher, 1 Tesla Cart, 3 Steam Walker, 40 Wind-up Soldiers, 2 Horse, 1 Ornithopter, 1 Stormcaller | kills +22 (74) losses +1 (64) | ore 0% 59% | efficiency 11%
+  P2 Crown: earned 7980 gold total, has 274 + 318 powder | supply 1/16 | workers 0 | halls 0 | army (125 value): 1 Missionary | kills +1 (64) losses +22 (74) | efficiency 0%
+[12:02] P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+[12:04] P2 Crown lost a Cottage to P1 Clockwork (windup_soldier)
+[12:05] P1 Clockwork: the coal of a Clocktower's Boilers is spent (they fill no more batteries)
+[12:15] P2 Crown stole a horse from P1 Clockwork
+[12:18] P2 Crown lost a Powder Mill to P1 Clockwork (arc_thrower)
+[12:19] P2 Crown is out
+--- minute 12 ---
+  Performance: 50 fps avg, 1% low 17 fps, worst frame 62 ms, 45 frames over 33 ms, 8 over 50 ms, 1.0 physics steps a frame | units 110, buildings 35, bodies 1, corpses 0, effects 7, nodes 599, objects 3879
+    busy with: units 532.0 ms/s (5388 calls/s), game 135.8 ms/s (50 calls/s), game/fog 94.4 ms/s (6 calls/s), overlay draw 88.6 ms/s (49 calls/s), game/fog/units 87.8 ms/s (6 calls/s), buildings 82.3 ms/s (2110 calls/s), ai 61.0 ms/s (100 calls/s), ai/army 18.4 ms/s (4 calls/s), ai/workers 17.9 ms/s (4 calls/s), game/unit grid 15.4 ms/s (50 calls/s), game/paths 14.0 ms/s (50 calls/s), game/path smoothing 8.3 ms/s (36 calls/s), building draw 8.1 ms/s (249 calls/s), ai/abil 7.4 ms/s (4 calls/s), ai/produce 6.7 ms/s (4 calls/s), ai/build 5.4 ms/s (4 calls/s), unit draw 4.3 ms/s (49 calls/s), effects 4.2 ms/s (1362 calls/s), game/fog/buildings 3.6 ms/s (6 calls/s), game/pathfinder 3.3 ms/s (36 calls/s), ai/gg 2.5 ms/s (4 calls/s), ai/micro 2.4 ms/s (4 calls/s), ai/econ 1.6 ms/s (4 calls/s), ai/horses 0.4 ms/s (4 calls/s), ai/raid 0.1 ms/s (4 calls/s), game/refit 0.1 ms/s (2 calls/s), ai/loose 0.1 ms/s (4 calls/s)
+  P1 Clockwork: earned 16409 ore total, has 151 + 26 energy | supply 180/180 | workers 32 | halls 2 | army (6410 value): 13 Arc Thrower, 9 Bulwark, 3 Thresher, 1 Tesla Cart, 3 Steam Walker, 46 Wind-up Soldiers, 1 Horse, 1 Ornithopter, 1 Stormcaller | kills +1 (75) losses +0 (64) | ore 0% 55% | efficiency 24%
+
+RESULT at 12:19: winner P1 Clockwork
+  Performance per minute: m1 945 fps (1% low 105), m2 511 fps (1% low 81), m3 466 fps (1% low 109), m4 275 fps (1% low 42), m5 255 fps (1% low 66), m6 128 fps (1% low 31), m7 89 fps (1% low 26), m8 66 fps (1% low 23), m9 64 fps (1% low 21), m10 91 fps (1% low 20), m11 68 fps (1% low 7), m12 44 fps (1% low 7), m12 50 fps (1% low 17). Worst: minute 11 (1% low 7 fps, worst frame 650 ms).
+  P1 Clockwork: earned 16409, spent 16330, trained 169, built 33, killed 75, lost 64, razed 19, buildings lost 0, peak army 6370. Kills by: Winder 1, Arc Thrower 42, Wind-up Soldiers 21, Thresher 9 Loose horses: 0 of its own bolted, 2 caught.
+  P2 Crown: earned 7980, spent 8187, trained 78, built 20, killed 64, lost 75, razed 0, buildings lost 22, peak army 880. Kills by: Musketeer 50, Horseman 9, Field Cannon 4, Labourer 1 Haulers brought 9 horses and 0 powder kegs. Loose horses: 5 of its own bolted, 3 caught.
