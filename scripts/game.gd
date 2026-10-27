@@ -3271,6 +3271,32 @@ func nearest_free(c: Vector2i, max_r := 10) -> Vector2i:
 	return pocket if pocket.x >= 0 else c
 
 
+## The nearest free cell to a goal, on the goal cell's own height level when there is one close
+## by (a click on the rim of a plateau, which is a cliff cell, or on a tree on the high ground
+## means the high ground; the nearest free cell by distance alone was as often the low ground
+## below the cliff, and the units went all the way round to stand under it). Else nearest_free.
+func nearest_free_level(c: Vector2i, max_r := 8) -> Vector2i:
+	if not in_map(c) or (is_free(c) and in_open_map(c)):
+		return nearest_free(c, max_r)
+	var lv := int(height[idx(c)])
+	for r in range(1, max_r + 1):
+		var best := Vector2i(-1, -1)
+		var bd := INF
+		for y in range(-r, r + 1):
+			for x in range(-r, r + 1):
+				if absi(x) != r and absi(y) != r:
+					continue
+				var cc := c + Vector2i(x, y)
+				if is_free(cc) and int(height[idx(cc)]) == lv and ramp[idx(cc)] == 0 and in_open_map(cc):
+					var dd := Vector2(x, y).length()
+					if dd < bd:
+						bd = dd
+						best = cc
+		if best.x >= 0:
+			return best
+	return nearest_free(c, max_r)
+
+
 ## Walkable for everyone: open ground or a Farm's crop rows (not gates).
 func open_cell(c: Vector2i) -> bool:
 	return in_map(c) and (solid[idx(c)] == 0 or solid[idx(c)] == 5)
@@ -5323,23 +5349,33 @@ func queue_path(u: Unit) -> void:
 		_path_queue.append(u)
 
 
-func find_path(from: Vector2, to: Vector2, siege := false) -> PackedVector2Array:
+## `margin`: how far the straight stretches of the path keep from anything solid (px; about the
+## unit's own half-width: a big Brute or a gun keeps further from corners than a man).
+func find_path(from: Vector2, to: Vector2, siege := false, margin := 7.0) -> PackedVector2Array:
 	# (a Farm's crop rows are walkable: a unit on them starts, or ends, right there)
 	var a := cell_of(from) if open_cell(cell_of(from)) else nearest_free(cell_of(from), 6)
-	var b := cell_of(to) if open_cell(cell_of(to)) else nearest_free(cell_of(to), 8)
+	var b := cell_of(to) if open_cell(cell_of(to)) else nearest_free_level(cell_of(to), 8)
 	var pt := Time.get_ticks_usec()
 	var pts := astar.get_point_path(a, b, true)
-	if pts.is_empty() and siege:
+	# (allow_partial_path: when b can't be reached the path ends at the reachable cell nearest to it)
+	var whole := not pts.is_empty() and cell_of(pts[pts.size() - 1]) == b
+	if not whole and siege:
 		# walled out: walk up to the wall (the unit then breaks it down)
-		pts = astar_siege.get_point_path(a, b, true)
+		var sp := astar_siege.get_point_path(a, b, false)
+		if not sp.is_empty():
+			pts = sp
+			whole = true
 	Prof.add("game/pathfinder", pt)
 	if pts.is_empty():
 		return PackedVector2Array([to])
-	# Use the exact destination when it's on open ground.
-	if open_cell(cell_of(to)) and cell_of(to) == b:
+	# Use the exact destination when it's on open ground, and only when the path gets there: the end
+	# of a path that can't (the goal up a cliff with no way round, on an island) is the nearest spot
+	# it can walk to. (It used to be swapped for the goal too: the unit then walked on from there in a
+	# straight line, into the cliff, and pushed at it for good.)
+	if whole and open_cell(cell_of(to)) and cell_of(to) == b:
 		pts[pts.size() - 1] = to
 	pt = Time.get_ticks_usec()
-	var sm := _smooth(from, pts)
+	var sm := _smooth(from, pts, margin)
 	Prof.add("game/path smoothing", pt)
 	return sm
 
@@ -5350,13 +5386,13 @@ func find_path(from: Vector2, to: Vector2, siege := false) -> PackedVector2Array
 const SMOOTH_LOOK := 40
 
 
-func _smooth(from: Vector2, pts: PackedVector2Array) -> PackedVector2Array:
+func _smooth(from: Vector2, pts: PackedVector2Array, margin := 7.0) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var cur := from
 	var i := 0
 	while i < pts.size():
 		var j := mini(pts.size() - 1, i + SMOOTH_LOOK)
-		while j > i and not line_clear(cur, pts[j]):
+		while j > i and not line_clear(cur, pts[j], margin):
 			j -= 1
 		out.append(pts[j])
 		cur = pts[j]
@@ -5369,7 +5405,7 @@ func _smooth(from: Vector2, pts: PackedVector2Array) -> PackedVector2Array:
 ## first, then the others: anything solid covers several samples in a row, so a blocked line
 ## is usually found out in a quarter of the work, and a clear one still has every sample
 ## looked at. The same samples, so the same answer.)
-func line_clear(a: Vector2, b: Vector2) -> bool:
+func line_clear(a: Vector2, b: Vector2, margin := 7.0) -> bool:
 	var dist := a.distance_to(b)
 	var steps := int(dist / 10.0) + 1
 	var w1 := W - 1
@@ -5386,10 +5422,10 @@ func line_clear(a: Vector2, b: Vector2) -> bool:
 			s += 1
 			continue
 		var p := a.lerp(b, float(s) / float(steps))
-		var x0 := clampi(int((p.x - 7.0) / T), 0, w1)
-		var x1 := clampi(int((p.x + 7.0) / T), 0, w1)
-		var y0 := clampi(int((p.y - 7.0) / T), 0, h1) * W
-		var y1 := clampi(int((p.y + 7.0) / T), 0, h1) * W
+		var x0 := clampi(int((p.x - margin) / T), 0, w1)
+		var x1 := clampi(int((p.x + margin) / T), 0, w1)
+		var y0 := clampi(int((p.y - margin) / T), 0, h1) * W
+		var y1 := clampi(int((p.y + margin) / T), 0, h1) * W
 		var v := solid[y0 + x0]
 		if v != 0 and v != 5:
 			return false
@@ -5458,6 +5494,9 @@ func level_spot(from: Vector2, want: Vector2, radius: float, team := -1) -> Vect
 	return resolve_terrain(from, from, radius, team)
 
 
+const CORNER_SLIP := [0.6, -0.6, 1.1, -1.1]       # (radians: the angles tried to slip round a corner)
+
+
 func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -> Vector2:
 	pos = pos.clamp(Vector2(radius, radius), Vector2(W * T, H * T) - Vector2(radius, radius))
 	if _clear_at(pos, radius, team):
@@ -5471,6 +5510,14 @@ func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -
 	if not _clear_at(before, radius, team):
 		# Wedged inside something (e.g. a new building): pop out.
 		return cell_center(nearest_free(cell_of(before), 6))
+	# a corner (a step of a cliff, a building's corner) blocks the move and both slides along x and y:
+	# it slips round it at an angle instead of stopping dead there
+	var mv := pos - before
+	if mv.length_squared() > 0.01:
+		for ang: float in CORNER_SLIP:
+			var q := before + mv.rotated(ang) * 0.8
+			if _clear_at(q, radius, team):
+				return q
 	return before
 
 
@@ -7309,7 +7356,10 @@ func line_move(list: Array, pts: PackedVector2Array, attack: bool, queued := fal
 	us.sort_custom(func(a: Unit, b: Unit) -> bool: return a.plan_end().dot(dir) < b.plan_end().dot(dir))
 	for i in us.size():
 		var u: Unit = us[i]
-		u.give({"o": "amove" if attack else "move", "p": spots[i]}, queued)
+		var sp: Vector2 = spots[i]
+		if in_map(cell_of(sp)) and not open_cell(cell_of(sp)):
+			sp = cell_center(nearest_free_level(cell_of(sp), 6))     # (a spot on a cliff's rim, a tree: the free ground beside it on its own level)
+		u.give({"o": "amove" if attack else "move", "p": sp}, queued)
 	_ping(pts[pts.size() - 1], Color(1, 0.4, 0.3) if attack else Color(0.4, 1, 0.4))
 
 
@@ -8962,7 +9012,12 @@ func under_attack(e: Entity) -> void:
 		Sfx.announce(fac, line, gap)
 
 
-## Where each unit of a group goes for a move to p (the bunch-up rule of group_move).
+## Where each unit of a group goes for a move to p (the bunch-up rule of group_move): a group
+## already together keeps its shape, one spread out closes in to a blob about its size round p.
+## A man whose spot lands where he can't stand, or where he'd have to walk the long way round to
+## from p (over a cliff edge, behind a wall or a building, in a wood), gets the nearest free spot
+## round p on p's side instead: the group spreads out on the ground where it was sent (it used to
+## pile up on p itself, pressed against the cliff when p was near the edge).
 func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
 	var out := {}
 	var n := us.size()
@@ -8978,13 +9033,81 @@ func group_points(us: Array, p: Vector2, queued := false) -> Dictionary:
 	var spread := 0.0
 	for u in us:
 		spread = maxf(spread, (from[u] as Vector2).distance_to(c))
-	var blob := 8.0 * sqrt(float(n)) + 4.0
+	var blob := 8.0 * sqrt(float(n)) + 4.0            # the radius a bunched group takes (shoulder to shoulder)
 	var k := 1.0 if spread <= blob * 1.5 else blob / spread
+	if n == 1:
+		out[us[0]] = p
+		return out
+	var team: int = us[0].team
+	var start := cell_of(p)
+	if not passable(start, team):
+		start = nearest_free_level(start, 4)
+		p = cell_center(start)
+	# the cells round p by how far a man walks to them from p (4-way, as the pathfinder goes)
+	var fill := _walk_fill(start, team, maxi(n * 3, 24), 10)
+	var used := {}
+	var bad: Array = []
 	for u in us:
 		var sp: Vector2 = p + ((from[u] as Vector2) - c) * k
-		if n == 1 or not is_free(cell_of(sp)) or not line_clear(p, sp):
-			sp = p
-		out[u] = sp
+		var sc := cell_of(sp)
+		var ok: bool = fill.has(sc) and open_cell(sc) and float(fill[sc]) <= sp.distance_to(p) / T * 1.5 + 1.5 and line_clear(p, sp)
+		if ok:
+			out[u] = sp
+			used[sc] = int(used.get(sc, 0)) + 1
+		else:
+			out[u] = p
+			bad.append(u)
+	if bad.is_empty() or fill.is_empty():
+		return out
+	# the others: the free cell of the fill nearest to where each wanted to be (a small man shares
+	# a cell with one more, a big one has it to himself), close to p first
+	var cells: Array = fill.keys()
+	used[start] = int(used.get(start, 0)) + 1           # (p itself: someone stands on it)
+	for u in bad:
+		var want: Vector2 = p + ((from[u] as Vector2) - c) * k
+		var cap := 2 if float(u.radius) <= 12.0 else 1
+		var best := Vector2i(-1, -1)
+		var bd := INF
+		for cc: Vector2i in cells:
+			if int(used.get(cc, 0)) >= cap or not open_cell(cc):
+				continue                                  # (full, or a gate: nobody stands in a gateway)
+			var dd := cell_center(cc).distance_to(want) + float(fill[cc]) * T * 0.75
+			if dd < bd:
+				bd = dd
+				best = cc
+		if best.x < 0:
+			continue                                      # (no room left: he goes to p)
+		var nth := int(used.get(best, 0))
+		used[best] = nth + 1
+		# (two in a cell: a little to either side of its middle)
+		out[u] = cell_center(best) + (Vector2(-7, -5) if nth == 0 and cap > 1 else (Vector2(7, 5) if nth == 1 else Vector2.ZERO))
+	return out
+
+
+## The cells a unit of `team` can walk to from `start` (4-way, through open ground, crop rows and
+## its own side's gates), with how many steps away each is: the nearest `limit` cells, no further
+## than `max_steps`.
+func _walk_fill(start: Vector2i, team: int, limit: int, max_steps: int) -> Dictionary:
+	var out := {}
+	if not passable(start, team):
+		return out
+	out[start] = 0
+	var q: Array = [start]
+	var qi := 0
+	while qi < q.size() and out.size() < limit:
+		var cc: Vector2i = q[qi]
+		qi += 1
+		var st: int = out[cc]
+		if st >= max_steps:
+			continue
+		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nb: Vector2i = cc + dv
+			if out.has(nb) or not passable(nb, team):
+				continue
+			out[nb] = st + 1
+			q.append(nb)
+			if out.size() >= limit:
+				break
 	return out
 
 
@@ -9019,24 +9142,9 @@ func group_move(us: Array, p: Vector2, attack_move: bool, queued := false) -> vo
 	# keeps its shape and moves as one blob; a group spread out bunches up into a clump at
 	# the point (each man keeps his side of it, closed in to a blob about its size).
 	# (queued: from where their queues end)
-	var n := us.size()
-	var from := {}
+	var spots := group_points(us, p, queued)
 	for u in us:
-		from[u] = u.plan_end() if queued else u.position
-	var c := Vector2.ZERO
-	for u in us:
-		c += from[u]
-	c /= n
-	var spread := 0.0
-	for u in us:
-		spread = maxf(spread, (from[u] as Vector2).distance_to(c))
-	var blob := 8.0 * sqrt(float(n)) + 4.0            # the radius a bunched group takes (shoulder to shoulder)
-	var k := 1.0 if spread <= blob * 1.5 else blob / spread
-	for u in us:
-		var sp: Vector2 = p + ((from[u] as Vector2) - c) * k
-		if n == 1 or not is_free(cell_of(sp)) or not line_clear(p, sp):
-			sp = p
-		u.give({"o": "amove" if attack_move and u.fights_on_command() else "move", "p": sp}, queued)
+		u.give({"o": "amove" if attack_move and u.fights_on_command() else "move", "p": spots[u]}, queued)
 	_ping(p, Color(1, 0.3, 0.3) if attack_move else Color(0.4, 1, 0.4))
 
 

@@ -27,6 +27,7 @@ var results: Array = []
 var keep_units := {}
 var made_buildings: Array = []
 var shot_frames := 30
+var spacing := 24.0             # (px between the units of a group as it starts)
 
 ## What a case must do to pass (checked on every case unless the case says otherwise).
 const LIMITS := {"arrived": 1.0, "stuck": 6.0, "far": 0}
@@ -135,6 +136,13 @@ func _run_map() -> void:
 		await _case("%s/edge_low/brood" % map, BROOD, edge["lo_far"], lo_foot, "move")
 		await _case("%s/edge_high_from_low/clock" % map, CLOCK, lo_out, hi_rim, "move")
 		await _case("%s/edge_low_from_high/crown" % map, CROWN, hi_in, lo_foot, "move")
+		# a click on the rim of the plateau (a cliff cell: it looks like the high ground's edge)
+		await _case("%s/rim_click/crown" % map, CROWN, edge["hi_far"], edge["rim"], "move")
+		await _case("%s/rim_click_from_low/brood" % map, BROOD, edge["lo_out"], edge["rim"], "move")
+		# a group spread out over the high ground sent to the edge
+		spacing = 56.0
+		await _case("%s/edge_high_spread/clock" % map, CLOCK, edge["hi_far"], hi_rim, "move")
+		spacing = 24.0
 		await _melee_case("%s/melee_vs_high/open" % map, edge, false)
 		await _melee_case("%s/melee_vs_high/walled" % map, edge, true)
 	if not ramp.is_empty():
@@ -208,7 +216,7 @@ func _blob_spots(p: Vector2, n: int) -> Array:
 			for x in range(-r, r + 1):
 				if maxi(absi(x), absi(y)) != r:
 					continue
-				var q := p + Vector2(x, y) * 24.0
+				var q := p + Vector2(x, y) * spacing
 				var c: Vector2i = g.cell_of(q)
 				if g.in_map(c) and g.is_free(c) and g.ramp[g.idx(c)] == 0 and int(g.height[g.idx(c)]) == lv \
 						and g.line_clear(p, q) and g._clear_at(q, 16.0, 0):
@@ -236,7 +244,7 @@ func _walk_len(a: Vector2, b: Vector2) -> float:
 	if not g.open_cell(ca):
 		ca = g.nearest_free(ca, 4)
 	if not g.open_cell(cb):
-		cb = g.nearest_free(cb, 4)
+		cb = _free_on_level(cb)
 	var pts: PackedVector2Array = g.astar.get_point_path(ca, cb)
 	if pts.is_empty():
 		return INF
@@ -244,6 +252,18 @@ func _walk_len(a: Vector2, b: Vector2) -> float:
 	for i in range(1, pts.size()):
 		l += pts[i - 1].distance_to(pts[i])
 	return l
+
+
+## The nearest open cell on c's own height level (a goal on a cliff's rim means the high ground).
+func _free_on_level(c: Vector2i) -> Vector2i:
+	var lv := int(g.height[g.idx(c)])
+	for r in range(1, 6):
+		for y in range(-r, r + 1):
+			for x in range(-r, r + 1):
+				var q := c + Vector2i(x, y)
+				if maxi(absi(x), absi(y)) == r and g.in_map(q) and g.is_free(q) and int(g.height[g.idx(q)]) == lv and g.ramp[g.idx(q)] == 0:
+					return q
+	return g.nearest_free(c, 4)
 
 
 func _arrive_r(n: int) -> float:
@@ -452,8 +472,10 @@ func _melee_case(name: String, edge: Dictionary, walled: bool) -> void:
 			n += 1
 		await physics_frame
 	var foes := _spawn([["musketeer", 4]], edge["hi_in"], 1)
+	var foe_at: Array = []
 	for f in foes:
 		f.cmd_hold()
+		foe_at.append(f.position)
 	var us := _spawn(BROOD, edge["lo_out"], 0)
 	await physics_frame
 	g.group_move(us, edge["hi_in"], true)
@@ -461,21 +483,39 @@ func _melee_case(name: String, edge: Dictionary, walled: bool) -> void:
 	var under := 0.0
 	var up := 0
 	var hit_wall := 0
+	var mh := {}
 	if shots != "":
 		await _shot(name, "start", us, edge["hi_in"])
 	var shot_mid := false
 	while clk < 45.0:
 		await physics_frame
 		clk += 1.0 / 30.0
-		for f in foes:
+		for i in foes.size():
+			var f: Unit = foes[i]
 			if is_instance_valid(f) and not f.dead:
-				f.hp = f.max_hp        # (they never die: the case measures where the melee goes)
+				f.hp = f.max_hp        # (they never die nor get shoved off: the case measures where the melee goes)
+				f.position = foe_at[i]
 		for u in us:
 			if not is_instance_valid(u) or u.dead:
 				continue
 			u.hp = u.max_hp
-			if g.level_of(u.position) == 0 and _pressed(u) == "cliff" and u.position.distance_to(edge["lo_foot"]) < 260.0:
+			# (pressed against the cliff below them and not getting anywhere: walking along the foot of it
+			# on the way round to the ramp doesn't count)
+			var h: Array = mh.get(u, [])
+			h.append(u.position)
+			if h.size() > 30:
+				h.pop_front()
+			mh[u] = h
+			if g.level_of(u.position) == 0 and _pressed(u) == "cliff" and u.position.distance_to(edge["lo_foot"]) < 260.0 \
+					and h.size() >= 30 and h[0].distance_to(u.position) < 12.0:
 				under += 1.0 / 30.0
+		if OS.get_environment("PATH_DEBUG") != "" and fmod(clk, 5.0) < 1.0 / 30.0:
+			for u in us:
+				if is_instance_valid(u) and not u.dead:
+					print("  t%.0f %s lv%d cell %s order %s target %s path %d/%d goal %s pressed %s stuck %.1f dist-to-target %.0f" % [clk, u.kind, g.level_of(u.position), str(g.cell_of(u.position)), u.order,
+						(u.target.kind + str(g.cell_of(u.target.position))) if is_instance_valid(u.target) else "-", u.path_i, u.path.size(),
+						str(g.cell_of(u.path_goal)) if u.path_goal != Vector2.INF else "-", _pressed(u), u.stuck_t,
+						u.target.edge_distance(u.position) if is_instance_valid(u.target) else -1.0])
 		if shots != "" and not shot_mid and clk > 15.0:
 			shot_mid = true
 			await _shot(name, "mid", us, edge["lo_foot"])
@@ -619,7 +659,7 @@ func _edge_spot(want_detour: bool) -> Dictionary:
 				if score > best_score:
 					best_score = score
 					best = {"hi_rim": g.cell_center(c), "hi_in": g.cell_center(c - d * 3), "hi_far": g.cell_center(c - d * 6),
-						"lo_foot": g.cell_center(lo), "lo_out": g.cell_center(lo + d * 5), "lo_far": g.cell_center(lo + d * 12), "d": d}
+						"lo_foot": g.cell_center(lo), "rim": g.cell_center(mid), "lo_out": g.cell_center(lo + d * 5), "lo_far": g.cell_center(lo + d * 12), "d": d}
 	return best
 
 
