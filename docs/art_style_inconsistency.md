@@ -222,7 +222,7 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   after each blow, drawn over the units on top of the sprite's own smear. A painted sweep effect (a ChatGPT smear strip
   turned to the blow's direction) could replace the smear; the marks are UI-like and can stay code-drawn.
 
-- EXPANSION SPOTS (0.14.94; scripts/expansion_spots.gd, docs/expansion_spots.md): CODE-DRAWN ground tiles, not art: each
+- EXPANSION SPOTS (0.14.95; scripts/expansion_spots.gd, docs/expansion_spots.md): CODE-DRAWN ground tiles, not art: each
   marked hall spot is 5 x 4 flat cells in warm gold over a light brown wash (2 px gaps between cells), with a dark line and
   a thin gold border round the spot; small gold squares on the minimap. A painted marker (e.g. surveyor's stakes and a
   roped-off plot, a pale flagstone pad) could replace the tiles; flat UI-like tiles can stay.
@@ -314,3 +314,71 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   (Building._rise: 40% of it at the start, all of it at half built), so it rises out of the plates; a hard straight cut, no
   painted half-built stages. Wanted: two or three painted construction stages per building (plates and lower frame,
   half-built walls in scaffold, the full scaffold) to replace the clip.
+
+## Officers and riders in white coats, recoloured in code (2026-10-27, tools/recolour_officers.py)
+- The owner (2026-10-27): "The Officer is hard to tell apart from the Musketeer." The Musketeer keeps his red coat
+  (team colour) and light trousers; the Officer (assets/units/dismounted), the Armoured Officer (dismounted_armoured,
+  his steel kept), the Horseman (horseman) and the Cuirassier (cuirassier, his breastplate kept) now wear a WHITE COAT
+  and TEAM-COLOUR BREECHES, a team-colour SASH at the waist (two rows of the coat stay red; on the riders the coat's
+  lower rows stay red over the thighs), a team-colour PLUME (the hat's white feather; the helmets' red plumes were
+  already red) and, on the riders' horses, a team-colour SADDLE CLOTH (the horse round the rider's legs below the seat).
+  Every strip of the four units (idle, walk, sabre, pistol, aim, fire, death, mount), their portraits
+  (assets/icons/<unit>.png) and through them the Barracks drill strips (tools/import_barracks_props.py runs after it).
+- How: the coat's key reds become two exact whites (237,234,223) / (177,173,165) by the key's tone; the team-colour
+  parts are painted with near-keys (within the shader's 0.08 of (255,0,0) / (150,0,0)) so a second run knows them;
+  pristine copies in art/redraws/officer_white_src/ (--redo recolours from them). Masks by colour plus geometry per
+  frame: the shoulders (the first row with 5 coat pixels, 3 for a rider, under his head), a fixed number of white rows,
+  the breeches per column from the coat's hem to the boot, the cloth from the horse coat mask and the horse's greys
+  near his legs; per-strip RULES for the Cuirassier's fall (his horse's painted cloth stays red) and his mounting
+  strips. tools/import_vet_trim.py reads the white coat as the coat it was.
+- Rough parts (code-picked, not painted): the coat's white is two flat tones (the red's shading only); the breeches are
+  flat key reds on the old grey trousers' shapes; the saddle cloth follows the horse's pixels round the leg, so its edge
+  is ragged and it has no hem; in a few frames (the Armoured Officer's walk, a raised sabre arm on foot) part of the
+  breeches or a sleeve keeps its old colour; the lying riders' split between white coat and red legs is a straight cut.
+- Wanted: ChatGPT repaints, one sheet per unit, with the white coat, red breeches, red sash and plume and (riders) a red
+  shabraque painted in, all red parts in flat pure red (#FF0000 lit, #960000 shaded) so they snap to the team keys.
+  Then retire tools/recolour_officers.py from tools/rebuild_art.sh. Prompts (each standalone; attach the listed images):
+
+  **Prompt OW-1, the Horseman (mounted).** Attach: assets/units/horseman/idle_e.png, assets/units/horseman/walk_s.png,
+  assets/units/musketeer/idle_s.png. "Pixel-art sprite sheet for a top-down RTS, same style, scale and palette as the
+  attached Horseman strips (a 17th-century light cavalryman on a dark grey horse, brown felt hat with a feather). Redraw
+  him with a WHITE coat (off-white, grey shading), PURE RED breeches (#FF0000 lit, #960000 shaded), a red waist sash, a
+  red feather on the hat, and a red saddle cloth (shabraque) under the saddle hanging down both flanks. Keep the boots,
+  sabre, pistol, horse and tack exactly as they are. The Musketeer (third image) keeps a red coat: this rider must read
+  as different from him at a glance. Layout: flat slate background, 5 rows top to bottom facing S, SE, E, NE, N; each
+  row: 2 standing frames, then 8 gallop frames. Second sheet, same rows: 4 sabre blows, then 4 death frames (the horse
+  rears and falls, the rider is thrown, his hat on the ground), each drawing on its own darker panel." (Importer:
+  tools/import_horseman.py, art/crown/horseman.png and art/crown/horseman_attack_death.png.)
+
+  **Prompt OW-2, the Cuirassier (mounted).** Attach: assets/units/cuirassier/idle_e.png, assets/units/cuirassier/walk_s.png,
+  assets/units/horseman/idle_e.png. "Pixel-art sprite sheet for a top-down RTS, same style and scale as the first two
+  images (an armoured cavalryman: steel morion and breastplate on a dark grey horse). Keep his steel helmet and
+  breastplate; make his coat sleeves and skirts WHITE (off-white, grey shading), his breeches PURE RED (#FF0000 lit,
+  #960000 shaded), a red plume on the helmet and a big red saddle cloth under the saddle (as on the first image). Same
+  horse, tack and sabre. Layout: flat slate background, 5 rows S, SE, E, NE, N; columns: 2 standing, 8 gallop, 4 sabre
+  slashes, 4 death frames (the horse falls, the rider lies beside it)." (Importers: tools/import_round4.py,
+  art/crown/cuirassier.png; tools/import_cuirassier_gallop.py, art/crown/cuirassier_gallop_e.png for the E gallop.)
+
+  **Prompt OW-3, the Officer (on foot).** Attach: assets/units/dismounted/idle_s.png, assets/units/dismounted/walk_e.png,
+  assets/units/musketeer/idle_s.png. "Pixel-art sprite sheet for a top-down RTS, same style and scale as the first two
+  images (a 17th-century cavalry officer on foot, brown felt hat with a feather, sabre and pistol). Redraw him with a
+  WHITE coat (off-white, grey shading), PURE RED breeches (#FF0000 lit, #960000 shaded) between the coat's hem and his
+  brown boots, a red waist sash and a red feather. The Musketeer (third image) keeps his red coat and light trousers:
+  the Officer must read as different from him at a glance. Layout: flat slate background, 5 rows S, SE, E, NE, N;
+  columns: 2 standing, 8 walking, aim, shot (with the muzzle flash), 4 sabre frames (wind-up, thrust, cut, follow
+  through), 5 death frames (the last lying with his head to the right)." (Importers: tools/import_horse_units.py,
+  art/crown/horseman_dismounted.png; tools/import_redraw_officers.py, art/redraws/officer_melee.png and
+  officer_walk_A.png for the sabre and the walk.)
+
+  **Prompt OW-4, the Armoured Officer (on foot).** Attach: assets/units/dismounted_armoured/idle_s.png,
+  assets/units/dismounted_armoured/walk_e.png, assets/units/dismounted/idle_s.png. "Pixel-art sprite sheet for a
+  top-down RTS, same style and scale as the first two images (an armoured cavalry officer on foot: steel morion with a
+  red plume, steel breastplate, sabre and pistol). Keep the helmet, plume (pure red) and breastplate; make his coat
+  sleeves and skirts WHITE (off-white, grey shading) and his breeches PURE RED (#FF0000 lit, #960000 shaded), with a red
+  waist sash, as on the third image. Layout: flat slate background, 5 rows S, SE, E, NE, N; columns: 2 standing,
+  8 walking, aim, aim, shot, 4 sabre frames, 2 death frames (the last lying with his head to the right)." (Importers:
+  tools/import_horse_units.py, art/crown/cuirassier_dismounted.png; tools/import_redraw_officers.py,
+  art/redraws/armoured_officer_melee.png and officer_walk_B.png.)
+
+  The mounting strips (art/crown/mount/horseman_mount.png, cuirassier_mount_b.png; tools/import_mount.py) need the same
+  colours when they are redrawn: the man stepping up in the Officer's white coat and red breeches, the horse's red cloth.

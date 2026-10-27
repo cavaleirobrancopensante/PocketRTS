@@ -1,4 +1,4 @@
-# Expansion spots (0.14.94)
+# Expansion spots (0.14.95)
 
 The owner asked, on 2026-10-27: "Make the most optimal expansion spots clear in the maps, so people can easily expand to an area that is interesting for base building." Then: "Just make the map positions clear, focusing on Crown and Clockwork for now. Maybe a few tiles in a different colour in each map showing the best expansion places." Not for the Brood: "for Brood it rarely makes sense to change the capital."
 
