@@ -1,8 +1,8 @@
 # Build orders: what each faction can open with
 
-A study of Holdfast v0.14.31, 26 and 27 October 2026. The owner's question: what build orders does each faction have? He wants variety: at least three distinct openings that work for each faction, and four would be very healthy.
+A study of Holdfast v0.14.31 and v0.14.32, 26 and 27 October 2026. The owner's question: what build orders does each faction have? He wants variety: at least three distinct openings that work for each faction, and four would be very healthy.
 
-(The timings were first measured on v0.14.27. Between 0.14.27 and 0.14.31 only one rule that matters here changed: the Clockwork's old Assembly Works left the build card. Every price, time and economy number is the same, which the tools checked by reading the rules again, and the Crown's standard opening was timed again on 0.14.31 with the same result.)
+(The timings were first measured on v0.14.27. Between 0.14.27 and 0.14.31 only one rule that matters here changed: the Clockwork's old Assembly Works left the build card. Every price, time and economy number is the same, which the tools checked by reading the rules again, and the Crown's standard opening was timed again on 0.14.31 with the same result. Version 0.14.32 brought grey fog only: every side can now build anywhere, which is what makes the proxy openings below possible. All the timings and matches in this version of the study were played again on 0.14.32.)
 
 This is a study only. It changes no gameplay or balance code; the tools it adds live in tools/study and do not change how the game plays.
 
@@ -184,11 +184,18 @@ Until 0.14.31 the old ASSEMBLY WORKS was still on the Clockwork's build card, so
 
 ## The Crown's openings
 
-Seven openings were written down and played. The times below were measured in the game against a sleeping opponent on Ashford Crossing; the arrival times on Kestrel Rise, the smallest map, come from the calculator. "Army" is the price of the armed units alive.
+Eight openings were written down and played. The times below were measured in the game against a sleeping opponent on Ashford Crossing, the attack times included (in the last column); the arrival times on Kestrel Rise, the smallest map, given in the text come from the calculator. "Army" is the price of the armed units alive.
 
 | Opening | first soldier | army at 3:00 | 4:00 | 5:00 | 6:00 | earned by 3:00 / 6:00 | attack leaves, and reaches the enemy's hall |
 |---|---|---|---|---|---|---|---|
-CROWN_TABLE
+| Crown 1: Musketeer wall into the Cannon (the standard) | 2:06 | 180 | 240 | 530 | 770 | 760 / 3,040 | none |
+| Crown 2: Horseman rush | 2:01 | 345 | 460 | (over) | (over) | 1,140 / (over) | 2:49, 3:13 |
+| Crown 3: Musketeers and a Balloon drop | 1:55 | 180 | 425 | 605 | (over) | 1,140 / (over) | balloon 3:18, 4:41 |
+| Crown 3b: Balloon raid (the Musketeers fire from the basket) | 1:53 | 180 | 425 | 605 | 845 | 1,140 / 2,660 | balloon 3:18, 4:37 |
+| Crown 4: Wall and a second Town Hall | 3:26 | 0 | 120 | 300 | 540 | 1,140 / 4,180 | none |
+| Crown 5: Dragoon raid (the wall and the Mill, then a Breeder and Dragoons) | 3:26 | 0 | 220 | 660 | (over) | 760 / (over) | 4:11, 4:35 |
+| Crown 6: Cannon and Musketeer push (the standard, then a timing attack) | 2:06 | 180 | 240 | 470 | 920 | 760 / 2,660 | 5:44, 6:26 |
+| Crown 7: Proxy Horseman rush | 2:15 | 270 | 460 | (over) | (over) | 1,140 / (over) | 3:05, 3:15 |
 
 ### Crown 1: the Musketeer wall into the Cannon (the standard)
 
@@ -196,7 +203,7 @@ CROWN_TABLE
 
 **What it is.** The owner's reading is right: this is an economic opening that hurries to the Cannon. Between about 2:40 and 4:25 it adds almost nothing to its army (three or four Musketeers, 180 to 240 worth), because the Breeder, the Foundry and the new Labourers take every coin. What keeps it alive in that window is the wall and the three Musketeers behind it; the Cannon at 4:25 is the answer to the first timing attacks, and from there the army grows fast (seven Musketeers and the Cannon at 5:00, ten at 6:00).
 
-CROWN1_RESULTS
+**How it did.** It is the safest opening in the game today. Against the Brood computer it ended ahead. It held the six-pool cleanly (all the Raptors died, one Labourer was lost), it held the Horseman rush (the Horsemen turned back without a kill), and it beat back the Spitter, Brute, Roost and forward-Burrow timings. Against the Clock Soldier rush the wall held too: the soldiers turned back having killed nothing. But against everything Clockwork it ends behind: the Jacks standard won outright at 7:55 (14 Labourers lost), and the Owls, the Pendulums and the fast Jacks finished even. Against the Clockwork computer it killed 660 worth for 170 and still ended behind, because the Clockwork's bigger economy builds a bigger army (see the results section).
 
 **How to spot it.** A Cottage in the ramp's mouth by 0:25 and a Gate by 0:40; the Mill and the Barracks side by side at about 0:35; a second Farm; no Horse Breeder before 2:30 and no Foundry before 3:20.
 
@@ -206,7 +213,7 @@ CROWN1_RESULTS
 
 **What it is.** The Crown's only true rush: 345 worth of army at 3:00, the most of any Crown opening, all of it fast enough to choose its fight. Its target is workers: a Horseman's pistol shot and sabre kill a Labourer, a grub or a Winder in two or three blows.
 
-CROWN2_RESULTS
+**How it did.** The best opening in the study against the Brood. It beat the Brood computer at 5:44 on Kestrel Rise and at 5:49 on Frostmere (ten grubs killed both times: the walk barely matters to cavalry), and it beat the Brood's economy opening at 7:32 after killing 29 grubs. Against the Crown standard it does nothing: the wall and three Musketeers turn it back (even). Against the Clockwork it fails every time: the Clockwork computer, the Jacks standard and the turret expansion all turned it back, and the Crown ended behind with 11 to 13 Labourers lost later in the game.
 
 **How to spot it.** A Horse Breeder at once and no wall; no Powder Mill; one Farm; horses grazing by the Breeder from about 1:50; seven or eight Labourers.
 
@@ -216,7 +223,7 @@ CROWN2_RESULTS
 
 **What it is.** The owner's Terran-drop idea. It costs a Foundry and a Balloon (325 gold and 20 powder) instead of the Breeder, so it is a little greedier than the standard in army and a little riskier in defence (one fewer Musketeer at home while the four are away).
 
-CROWN3_RESULTS
+**How it did.** A strong punish of a greedy opponent: against the Brood's economy opening the four men killed 26 grubs and the Crown ended far ahead. Against the Brood computer it was even (the drop killed little). Against the Clockwork it lands into Jacks and a turret, which shoot flyers and soldiers alike: against the Jacks standard the drop traded 420 for 425, and against the Clockwork computer the men landed and pulled back. On Frostmere the same drop killed 1,060 worth, because the Clockwork had spread out more; the Crown still ended behind.
 
 **How to spot it.** The standard's wall and Mill, but a Foundry going up by 1:40 and no Horse Breeder; four hands on the Mill; a balloon in the sky from about 3:15.
 
@@ -226,7 +233,7 @@ CROWN3_RESULTS
 
 **Why it is listed apart.** 256 pixels is further than every ground weapon that can hit a flyer: a Musketeer (190), a Ratchet Turret (200), a Netter (180), a Jack (170), a Spitter (150). Only flyers (the Skywing, the Swift) can reach it without walking underneath it, and the Balloon (speed 46) is slower than any of the soldiers that would chase it. So a hovering raid is a different opening from a drop, with different answers.
 
-CROWN3B_RESULTS
+**How it did.** The most damaging raid in the study for its price. Over the Brood computer the basket killed 500 worth (9 grubs) and the Crown ended ahead; over the Brood's economy opening it killed 800 worth (16 grubs). Over the Clockwork computer it killed 1,450 worth (13 Winders) before the powder ran out, and the Crown still ended behind on economy. Only the Jacks standard stopped it: Jacks reach flyers and the Balloon turned back hurt after 200 worth.
 
 **How to spot it.** As Crown 3.
 
@@ -236,7 +243,7 @@ CROWN3B_RESULTS
 
 **What it is.** The greediest Crown opening: no soldier before 3:31 (2 at 4:00, 5 at 5:00, 9 at 6:00), but 24 Labourers at 6:00 against the standard's 15, and 3,800 gold earned by 6:00 against 3,040 (the calculator expects more once the new hall's farms are fully crewed: about 5,300).
 
-CROWN4_RESULTS
+**How it did.** It survives every rush that came at it, but it pays for it in workers. Against the six-pool it lost 8 Labourers (the Raptors killed 400 worth before the Musketeers came) and still ended ahead; against the one-wave Brood opening it lost 4. Against the Clock Soldier rush it held (even: it killed 2,010 worth for 880). Against the Brood computer it was ahead; against the Clockwork computer behind (8 Labourers lost).
 
 **How to spot it.** A second Town Hall going down at about 1:20; the Barracks only then; no soldier at all at 3:00.
 
@@ -246,7 +253,7 @@ CROWN4_RESULTS
 
 **What it is.** A faster, more mobile musket line: it can strike workers and leave before the defence arrives. It is expensive (100 gold a man against a Musketeer's 60) and slow to gather. (A first version that put the Mill, the Cottage and the Breeder down all at once starved itself: five Labourers and a single harvest by 3:00. It was rewritten.)
 
-CROWN5_RESULTS
+**How it did.** Good against a greedy Brood (against the economy opening it killed 1,775 worth, 13 grubs, for 840), even against the Brood computer (the raid met Raptors at home and turned back), and behind against the Clockwork computer. Its first soldier comes at 3:26, more than a minute after the standard's, which is what makes it weak at home in the meantime.
 
 **How to spot it.** The standard's wall and Mill, with a Horse Breeder before 2:00 and no Foundry; Musketeers that come out and walk to the Breeder.
 
@@ -256,25 +263,53 @@ CROWN5_RESULTS
 
 **What it is.** The standard opening turned into an attack: the Cannon (reach 430, two and a half times its damage against buildings) out-ranges a Ratchet Turret (200) and a palisade's defenders, so this is the Crown's tool against a turtle. It is slow (the Cannon walks at 38: a minute from base to base on the small maps, a minute and a half on the big ones).
 
-CROWN6_RESULTS
+**How it did.** Ahead against the Brood computer and against the Brood's economy (11 grubs killed). Against the Clockwork it trades well and still loses the game: against the Clockwork computer it killed 1,960 worth for 715 and ended behind, and against the turret expansion it arrived at 6:12 into a base that had already out-built it.
 
 **How to spot it.** Exactly the standard until about 5:00; then a second Cannon and Musketeers gathering at the front instead of a second hall.
 
+### Crown 7: the proxy Horseman rush
+
+**The build.** Eight Labourers and a Cottage at home; one Labourer walks about three quarters of the way to the enemy and puts down the Horse Breeder (done 0:56) and the Barracks (done 1:26) out of their sight. Since 0.14.32 (grey fog only) any side can build anywhere. Three Horsemen ride out at 3:05 and reach the hall at 3:15 on Ashford Crossing.
+
+**What it is.** The idea is the rush with no walk. In practice it gains nothing: the builder's walk there and back costs the economy more than the Horsemen save on the road, because cavalry crosses any map in 20 to 35 seconds anyway. It arrives at the same time as the ordinary Horseman rush with fewer Labourers at home.
+
+**How it did.** The same as the Horseman rush: it beat the Brood computer at 6:13 and wrecked the Brood's economy opening (18 grubs), and it lost to the Clockwork computer (6:35) and the Jacks standard (6:57). Proxies matter for slow armies, not for cavalry.
+
+**How to spot it.** No Horse Breeder and no Barracks at home at 1:30; one Labourer missing. A worker scout that walks the approach finds them.
+
 ### Crown openings not played here
 
-- **A proxy Barracks.** The Crown's production buildings (Barracks, Horse Breeder, Foundry) can stand anywhere the player has explored, so a Barracks (and a Breeder) can go up near the enemy's base: Horsemen or Musketeers arrive at once. The cost is a Labourer walking across the map and building in the open for 40 seconds.
 - **The Mortar push.** The Mortar (reach 352, lobs over walls, 30 damage over a wide area) is the Foundry's siege tool against a walled or turreted base. It is a mid-game tool more than an opening.
 - **An Armour timing.** The Armoury's Armour (it needs the Foundry) turns Musketeers into Guardsmen and Horsemen into Cuirassiers; a push at 6 to 7 minutes.
 
-CROWN_SUMMARY
+### The Crown, in short
+
+| Opening | type | beats | loses to | verdict |
+|---|---|---|---|---|
+| 1. Musketeer wall into the Cannon | safe standard | every rush; the slow Brood timings | the Clockwork's Jacks (economy) | viable, the default |
+| 2. Horseman rush | rush | every greedy Brood opening, the Brood computer | the wall; anything Clockwork | viable |
+| 3. Balloon drop | harass | greedy openings | Jacks, turrets | viable against Brood |
+| 3b. Balloon raid (hover) | harass | anything without flyers or Jacks | Jacks, Swifts, Skywings | viable, possibly too strong against the Brood |
+| 4. Fast expansion | greedy | out-earns the other Crown openings | early Raptors kill its Labourers | viable |
+| 5. Dragoon raid | raid | a greedy Brood | anything that holds home early | marginal (late first soldier) |
+| 6. Cannon push | timing | a Brood that teched slowly | the Clockwork's bigger army | viable |
+| 7. Proxy Horseman rush | rush | the Brood | the wall; the Clockwork | adds nothing over opening 2 |
+
+The Crown already has what the owner asked for: four distinct openings that work (the standard, the Horseman rush, the Balloon drop or raid, the fast expansion), plus the Cannon push as the standard's follow-up. Its problem is not variety; it is that every opening ends behind the Clockwork, which is the Clockwork's economy (see the gaps).
 
 ## The Brood's openings
 
-Six openings were written down and played (times measured against a sleeping opponent on Ashford Crossing; arrivals on Kestrel Rise from the calculator).
+Seven openings were written down and played (the table: measured against a sleeping opponent on Ashford Crossing; arrivals on Kestrel Rise in the text: from the calculator; "(over)" means the sleeping opponent was already beaten).
 
 | Opening | first soldier | army at 3:00 | 4:00 | 5:00 | 6:00 | earned by 3:00 / 6:00 | attack leaves, and reaches the enemy's hall |
 |---|---|---|---|---|---|---|---|
-BROOD_TABLE
+| Brood 1: Six-pool (extreme rush) | 0:50 | 300 | (over) | (over) | (over) | 598 / (over) | 1:03, 1:28 |
+| Brood 2: Pool first, one wave, then economy | 1:59 | 150 | 150 | 300 | (over) | 658 / (over) | 2:41, 3:05 |
+| Brood 3: Economy (grubs first, two pits, Warren, then a big Raptor wave) | 4:06 | 0 | 0 | 450 | 775 | 976 / 2,650 | 5:33, 5:55 |
+| Brood 4: Spitter timing | 2:55 | 75 | 50 | 410 | 800 | 939 / 2,192 | 5:51, 6:14 |
+| Brood 5: Brute timing (Gorge Pit) | 3:33 | 0 | 225 | 25 | 325 | 939 / 2,070 | 6:58, - |
+| Brood 6: Roost (Bloaters and Skywings) | 3:36 | 0 | 225 | 25 | 500 | 905 / 2,144 | 5:55, 6:18 |
+| Brood 7: Forward Burrow (Raptors at their door) | 3:41 | 0 | 75 | 225 | 375 | 598 / 1,227 | 3:41, 4:05 |
 
 ### Brood 1: the six-pool (extreme rush)
 
@@ -282,7 +317,7 @@ BROOD_TABLE
 
 **What it is.** The owner's extreme rush, played faster than his hand-played anchor (Den 1:01, first hit 2:00 to 2:30) because nothing is spent before the Den. It is all-in: eight grubs, no Pen, no second pit.
 
-BROOD1_RESULTS
+**How it did.** It does what the owner's anchor asks of a rush and no more: it loses to a wall and wins nothing against a prepared opponent. Against the Crown computer (which walls by 0:40) and the Crown standard, every Raptor died and the Crown lost one Labourer, on Kestrel Rise and on Frostmere alike. It hurts the openings that have no wall: it killed 8 Labourers of the Crown fast expansion, 7 Winders of the Clockwork computer and 4 of the turret expansion, but it ended behind every time, and it lost to the Brood's own economy opening (7:47) and to the Clockwork's Jacks (7:00).
 
 **How to spot it.** A Spawning Den at once, before any new grub; five or six grubs and one Feeding Pit; Raptors at the door before 1:30.
 
@@ -292,7 +327,7 @@ BROOD1_RESULTS
 
 **What it is.** A one-wave harassment that buys time and information, then drones. The wave is small (150 worth) and arrives when a standard Crown has three Musketeers behind its wall, so its job is to kill workers caught outside, not to win.
 
-BROOD2_RESULTS
+**How it did.** Weak everywhere. Six Raptors at 3:00 meet three Musketeers behind a wall, or Clock Soldiers, and turn back: behind against the Crown computer, lost at 7:36 against the Clockwork computer, behind on Frostmere. Against the Crown fast expansion it killed 4 Labourers and still ended behind; against the Clockwork's Jacks it lost at 5:49.
 
 **How to spot it.** A Den at once but a second pit too, and grubs still coming; six Raptors at about 3:00, not more.
 
@@ -302,7 +337,7 @@ BROOD2_RESULTS
 
 **What it is.** The greediest Brood opening: no army at all until about 4:30, then the biggest Raptor wave of any opening (30 Raptors by 6:00). It earns 750 by 3:00 and about 2,400 by 6:00 in the calculator, the best Brood economy, but still well under the Crown's standard.
 
-BROOD3_RESULTS
+**How it did.** The only Brood opening that holds a rush: it beat the six-pool, and it beat the Clockwork's forward Clocktower outright (it killed 4,510 worth for 675). But its army comes so late that every harassment finds an empty base: the Horseman rush killed 29 grubs, the Balloon drop 26, the Clock Soldier rush 16, the Dragoons 13, the Cannon push 11. It ended behind the Crown computer (its 6:05 wave lost 500 and turned back) and lost to the Clockwork computer at 7:50.
 
 **How to spot it.** Pits and grubs only, the Den late (after about 0:40, with ten grubs), no Raptors at 3:00.
 
@@ -312,7 +347,7 @@ BROOD3_RESULTS
 
 **What it is.** The Brood's only ranged and anti-air opening. The Spitter costs little essence (5 an egg of two), but even that has to be bought by offering up Raptors before the first fight, and the wave only goes at 6:00.
 
-BROOD4_RESULTS
+**How it did.** The best-fighting Brood timing (its wave killed 480 worth for 395 against the Crown computer), but at 6:00 it is too late to matter: behind against the Crown computer and the Crown standard, lost at 7:00 to the Clockwork computer and at 5:57 to the Jacks standard, which attacked at 3:47 before a single Spitter was out.
 
 **How to spot it.** A Brood Pen early (before 3:00) with Raptors walking into it and vanishing; Spitters at about 5:00.
 
@@ -322,7 +357,7 @@ BROOD4_RESULTS
 
 **What it is.** On paper the Brood's armoured push (a Brute: 240 health, armour 2, knocks men back, 1.6 times against buildings). In practice the essence tax makes it the slowest opening of the study: the Gorge Pit is late on the Brood's thin income, and two Brutes cost the price of fourteen Raptors on top of their own.
 
-BROOD5_RESULTS
+**How it did.** Not viable today. The two Brutes come after 6:30 and the wave at 7:00 met the Crown's army and turned back without a kill (behind against the Crown computer and the Crown standard); the Clockwork computer won at 7:53 before it ever left. (Its first in-game timing had a Gorge Pit refunded on a blocked site and never placed again; the scripted player now places it again, as a player would.)
 
 **How to spot it.** A Gorge Pit; Raptors being offered up at the Pen; few soldiers before 6:00.
 
@@ -332,25 +367,52 @@ BROOD5_RESULTS
 
 **What it is.** The owner's "maybe an air rush". The Bloater (50 biomass and 25 essence) floats over cliffs and spits acid from 160, or bursts as an acid bomb; the Skywing (100 and 40) hunts flyers. With essence only from offerings, two Bloaters cost seventeen Raptors, so this is not a rush: it is the slowest way to the slowest wave.
 
-BROOD6_RESULTS
+**How it did.** Not viable today. Two Bloaters at about 6:00 killed 150 worth for 325 against the Crown computer and nothing against the Crown standard; the Clockwork computer won at 6:59.
 
 **How to spot it.** A Roost; Raptors being offered up; a Bloater in the sky at about 5:45.
 
+### Brood 7: the forward Burrow
+
+**The build.** Eight grubs, the Spawning Den, then a second Burrow put down two thirds of the way to the enemy (a Burrow needs no swamp; grey fog lets it go anywhere), Raptors from both Burrows. The Burrow costs 350 biomass on the Brood's thin income, so it is placed at about 2:17 and stands at 3:41; the first Raptors leave at 3:41 and reach the hall at 4:05.
+
+**What it is.** The Brood's counterpart of a proxy Barracks: eggs and supply at the enemy's door. It is far too expensive for an opening: the six-pool has twelve Raptors at 3:00, this has none.
+
+**How it did.** Not viable. Behind against the Crown computer and the Crown standard (its wave turned back without a kill), lost at 5:42 to the Clockwork computer. A forward Burrow is a mid-game move (a second front, swamp for Clutch Mounds), not an opening.
+
+**How to spot it.** A Spawning Den, no second pit, and a Burrow growing somewhere on the approach.
+
 ### Brood openings not played here
 
-- **A forward Burrow.** A Burrow needs no swamp and the Brood has no spacing rule for its halls, so one can go down near the enemy's base (350 biomass and a grub). Only the capital takes food, but the forward one lays eggs and gives supply, so Raptors hatch at the enemy's door, and its swamp lets Clutch Mounds grow forward. It is the Brood's counterpart of a proxy Barracks, and the computer never does it.
 - **Mist Toads or Spore Mothers.** Both come from the Gorge Pit and cost essence (25 and 40), so they are even later than the Brutes.
 - **Skywings first.** The Skywing (100 and 40 essence) is the Brood's only answer that reaches a hovering Balloon or a Swift; it is a reaction to an air opening, not an opening.
 
-BROOD_SUMMARY
+### The Brood, in short
+
+| Opening | type | beats | loses to | verdict |
+|---|---|---|---|---|
+| 1. Six-pool | all-in rush | an opponent with no wall | a wall; the Clockwork | viable as a gamble |
+| 2. Pool, one wave, economy | harass | nothing measured | everything | weak |
+| 3. Economy (grubs first) | greedy | the six-pool, the forward Clocktower | every harassment (Horsemen, Balloon) | viable but fragile |
+| 4. Spitter timing | timing | (best Brood fight) | everything, it comes at 6:00 | too late |
+| 5. Brute timing | timing | nothing | everything | not viable |
+| 6. Roost (Bloaters) | air | nothing | everything | not viable |
+| 7. Forward Burrow | proxy | nothing | everything | not viable |
+
+The owner's feeling is right: the Brood has two openings that work (the six-pool as a gamble and the grubs-first economy), and only the economy holds a rush. Everything past the Spawning Den costs essence, and before the first fight essence only comes from offering up Raptors at 12% of their price. That tax makes every tech opening a minute or more late (see the gaps and the recommendations).
 
 ## The Clockwork's openings (provisional: the faction is being rebuilt)
 
-Six openings of the new Clockwork were written down and played. Everything here is provisional twice over: the faction's roster is still growing (the Spring Catapult and the Great Winder are next), and its economy is being rebuilt in the wt-econ branch. So each opening is given twice: measured in the game as it is today, and from the calculator with the rebuilt economy (`--preset econ28`).
+Seven openings of the new Clockwork were written down and played. Everything here is provisional twice over: the faction's roster is still growing (the Spring Catapult and the Great Winder are next), and its economy is being rebuilt in the wt-econ branch. So each opening is given twice: measured in the game as it is today, and from the calculator with the rebuilt economy (`--preset econ28`).
 
 | Opening | first soldier | army at 3:00 | 4:00 | 5:00 | 6:00 | earned by 3:00 / 6:00 | attack leaves, and reaches the enemy's hall |
 |---|---|---|---|---|---|---|---|
-CLOCKWORK_TABLE
+| Clockwork 1: Clock Soldier rush (two Works) | 1:02 | 630 | 1,120 | 1,540 | 1,960 | 1,409 / 4,194 | 1:50, 2:36 |
+| Clockwork 2: Jacks (Mainspring and Escapement), the standard | 1:43 | 480 | 980 | 1,530 | (over) | 2,487 / (over) | 3:45, 4:27 |
+| Clockwork 3: Turret and a second Clocktower | 1:50 | 350 | 630 | 1,190 | 2,170 | 2,461 / 8,062 | none |
+| Clockwork 4: Swifts into Ticking Owls | 1:43 | 140 | 500 | 1,055 | 1,745 | 2,469 / 5,348 | 4:59, 5:44 |
+| Clockwork 5: Fast Jacks (Escapement first) | 2:00 | 400 | 700 | 1,120 | 1,595 | 1,407 / 3,750 | 3:04, 3:46 |
+| Clockwork 6: Pendulum and Netter push (tier 3) | 1:47 | 340 | 875 | 1,425 | 1,860 | 2,487 / 5,270 | 4:54, 5:40 |
+| Clockwork 7: Forward Clocktower (Clock Soldiers at their door) | 3:22 | 0 | 280 | 840 | 1,710 | 2,408 / 5,387 | 4:00, 4:16 |
 
 With the rebuilt economy (calculator, Kestrel Rise):
 
@@ -362,6 +424,7 @@ With the rebuilt economy (calculator, Kestrel Rise):
 | Clockwork 4: Swifts into Ticking Owls | 140 | 222 | 585 | 1,335 | 1,656 / 4,063 | 5:27, 6:11 |
 | Clockwork 5: fast Jacks | 225 | 675 | 900 | 1,238 | 1,110 / 2,377 | 3:38, 4:13 |
 | Clockwork 6: Pendulum and Netter push | 140 | 378 | 1,045 | 1,632 | 1,689 / 3,721 | 5:59, 6:54 |
+| Clockwork 7: Forward Clocktower | 0 | 280 | 840 | 1,400 | 1,432 / 3,602 | 4:00, 4:13 |
 
 The rebuild costs the slow, worker-heavy openings the most (the Jacks, the Pendulums, the second Clocktower: half a minute to a minute later and a quarter to a half less army at 3:00 and 4:00) and the cheap rush the least (the Clock Soldier rush uses few Winders, so a press that needs more of them barely touches it). Even rebuilt, the Clockwork earns the most of the three by 3:00. One reason is not in the price list at all: a Winder only carries the crate to the site (about 9 seconds) and goes back to his press while the building unfolds itself, whereas a Labourer stays on the site for the whole build (a Barracks takes one off the farm for about a minute) and a grub is used up. The Clockwork's builders cost it almost nothing (design_principles.md section 3: builders must have an opportunity cost).
 
@@ -371,7 +434,7 @@ The rebuild costs the slow, worker-heavy openings the most (the Jacks, the Pendu
 
 **What it is.** The fastest strong army in the game: 630 worth at 3:00, twice the Crown's best and the Brood's best. The Movement Works needs nothing before it and costs 150, and the Clock Soldier (70 cogs: 90 health, armour 1, a Musketeer's damage up close) is cheap for what it is. Its limit is the wind: the soldiers arrive with half their wind on a small map (about 40 seconds of fighting left), a third on the big ones.
 
-CW1_RESULTS
+**How it did.** Strong, but not in the way a rush should be: at the walls it fails, and it wins on the economy behind it. Against the Crown standard and the Crown computer the soldiers turned back without a kill (350 to 420 lost) and the Clockwork still ended ahead, on both map sizes. Without a wall to stop it, it hurts: 8 grubs of the Brood computer, 16 of the Brood's economy opening. Against the Crown fast expansion it was even, and against its own faction's Jacks standard it lost the trade (380 killed for 1,170) and ended behind.
 
 **How to spot it.** Two Movement Works and no second press; Clock Soldiers on the road before 2:00.
 
@@ -381,7 +444,7 @@ CW1_RESULTS
 
 **What it is.** The Clockwork's balanced opening, the counterpart of the Crown's standard: a little army early, tech by 2:20, a turret at home. The Jack (ranged, hits flyers, jumps 5 tiles) is the first Tension unit. Today it floats money (800 to 1,500 cogs in the bank at 4:00 to 6:00 in the calculator): the economy is bigger than two Works can spend.
 
-CW2_RESULTS
+**How it did.** The strongest opening in the study. It won against the Brood computer at 6:11 and against the Crown standard at 7:55; it ended ahead of the Crown computer (13 Labourers killed) and even on Frostmere; it beat the six-pool, the one-wave Brood, the Spitter timing, the Horseman rush (both kinds), the Balloon drop and raid (Jacks shoot flyers), and its own Clock Soldier rush. Nothing in the study beat it.
 
 **How to spot it.** A Mainspring and an Escapement side by side by 1:40; Jacks hopping at the front at about 2:30.
 
@@ -391,7 +454,7 @@ CW2_RESULTS
 
 **What it is.** The Clockwork's greedy opening: by far the most cogs of any opening in the study (about 8,000 by 6:00 today). The turret covers the home base; the new tower starts its own gear field, so it also stretches the ground on which the Clockwork's army stays wound.
 
-CW3_RESULTS
+**How it did.** Ahead of everything it met: the Crown computer, the Brood computer (23 grubs killed), the six-pool (it lost 4 Winders and still ended ahead), the Horseman rush (it lost nothing that mattered) and the Crown's Cannon push. The Ratchet Turret and the economy carry it; a greedy opening should be punishable, and today nothing in the study punished this one.
 
 **How to spot it.** A second Clocktower going down at about 1:05; a Ratchet Turret; few soldiers.
 
@@ -401,7 +464,7 @@ CW3_RESULTS
 
 **What it is.** The Clockwork's air opening: Owls swoop on units and drop bombs on buildings (45 to every building around the impact). They wind down off the gear field like every construct, but they fly the straight line over cliffs. Tension is the bottleneck: three Owls with their research cost 345 Tension, nearly three minutes of a full Mainspring, hence the second one.
 
-CW4_RESULTS
+**How it did.** Ahead against the Crown computer, the Brood computer (on Kestrel Rise and on Frostmere: the Owls fly the straight line, so the big map hurts them least) and the Brood's economy; even against the Crown standard, whose Musketeers shoot flyers.
 
 **How to spot it.** A Clock Aviary (a tall narrow clock tower) by about 2:30; two Mainsprings; Swifts in the air from about 3:30.
 
@@ -411,7 +474,7 @@ CW4_RESULTS
 
 **What it is.** A ranged rush: Jacks out-range Raptors, Clock Soldiers and Horsemen and can jump away from them, and they shoot flyers. It skips the second press, so its economy is the thinnest of the Clockwork's (1,400 cogs by 3:00), and Tension (25 a Jack, 2 a second from one Mainspring) caps it at about one Jack every 12 seconds.
 
-CW5_RESULTS
+**How it did.** The one Clockwork opening that lost a fight it picked: the Jacks walked into the Crown computer's wall and Musketeers and lost 600 worth for 120 (behind). Even against the Crown standard; ahead against the Brood computer (11 grubs). Its thin economy (one press) is what the Crown punishes.
 
 **How to spot it.** A Mainspring and an Escapement before 1:00, one press; Jacks on the road at about 3:00.
 
@@ -421,7 +484,7 @@ CW5_RESULTS
 
 **What it is.** The new tier 3 as an opening. A Pendulum cuts every enemy in the arc in front of it (22 a swing to each), the natural answer to a swarm of Raptors or a tight musket line; the Netter holds the most dangerous enemy in place for 4 seconds. The Pendulum is slow (46), and that meets the wind: on Kestrel Rise it arrives with about a third of its wind, on Frostmere with almost none (2%). Today this opening only works on small maps.
 
-CW6_RESULTS
+**How it did.** Even against the Crown computer on both maps and against the Crown standard: Musketeers outrange the slow Pendulums and pick them off on the walk, so the push trades about even. Ahead against the Brood computer and the Brood's economy (the Pendulum's arc is made for a Raptor swarm).
 
 **How to spot it.** The standard's Escapement, then a Movement Works with a big gear ring; tall Pendulums in the army from about 3:30.
 
@@ -429,12 +492,33 @@ CW6_RESULTS
 
 Until 0.14.31 a Clockwork player could still put down the old Assembly Works and open with Wind-up Soldiers (three for 75 cogs): twelve of them left at 1:47 on 0.14.27 against a sleeping opponent. They run on a spring, not on wind, and freeze 50 seconds off the gear field, so twelve reached a small map's enemy hall with a fifth of their spring left and a big map's with none. 0.14.31 retired the Assembly Works, so this opening no longer exists and was dropped from the study.
 
+### Clockwork 7: the forward Clocktower
+
+**The build.** Seven Winders, the second press, then a Clocktower put down two thirds of the way to the enemy (placed 0:54, standing 2:22); it starts its own gear field, and a Regulator and two Movement Works mesh with it there. Clock Soldiers come out at the enemy's door: the attack leaves at 4:00 and arrives 16 seconds later with almost all its wind (the calculator: 84% on Kestrel Rise, the same on any map).
+
+**What it is.** The Clockwork's answer to its own wind: soldiers made where they fight do not run down on the walk, so it plays the same on Frostmere as on Kestrel Rise. It is late for a rush (first soldier 3:22), but the forward field also winds every later soldier.
+
+**How it did.** Ahead against the Crown computer on both maps and against the Crown standard; ahead against the Brood computer. Its first wave turned back every time; it won on the economy and the reinforcements. It lost to the Brood's economy opening, whose Raptor wave found the forward base and killed 4,510 worth: a forward Clocktower is exposed.
+
+**How to spot it.** One press short, no Movement Works at home at 2:00, a Winder missing; gears turning on the approach.
+
 ### Clockwork openings not played here
 
-- **A forward Clocktower.** A new Clocktower starts a gear field of its own and needs only to stand 18 tiles from the other Clocktowers, so it can go up near the enemy (400 cogs). A Movement Works and a Regulator meshed with it would make and wind an army at the enemy's door. It is the Clockwork's only answer to the wind on the big maps today, and the computer never does it.
 - **Big-gear presses.** A press swapped to its big gear takes six Winders and pays 10.5 cogs a second: an economy choice for a second hall, not an opening of its own.
 
-CLOCKWORK_SUMMARY
+### The Clockwork, in short
+
+| Opening | type | beats | loses to | verdict |
+|---|---|---|---|---|
+| 1. Clock Soldier rush | rush | anything without a wall | a wall (but wins later on economy); its own Jacks | viable |
+| 2. Jacks | standard | everything in the study | nothing in the study | dominant |
+| 3. Turret and a second Clocktower | greedy | everything it met | nothing in the study | viable, too safe |
+| 4. Swifts into Owls | air | the Brood | (even with the Crown standard) | viable |
+| 5. Fast Jacks | ranged rush | the Brood | a walled Crown | viable against the Brood |
+| 6. Pendulum and Netter push | tier 3 | the Brood | (even with the Crown) | viable on small maps |
+| 7. Forward Clocktower | proxy | the Crown | the Brood's economy | viable, the answer to big maps |
+
+The Clockwork has the most openings, six or seven that work, and that is the problem in reverse: they all work because the economy behind them is twice the others'. The Jacks standard is dominant, and a greedy turret expansion is never punished. All of this is provisional: the economy rebuild (wt-econ) is measured below.
 
 RESULTS_SECTION
 
@@ -446,7 +530,32 @@ RECOMMENDATIONS_SECTION
 
 Each opening was timed twice: by the calculator and by the scripted player in a real headless match against a sleeping opponent on Ashford Crossing. The table shows how far apart the two put each step of the script (when a building is finished, or when a step is started), and the army and the gold earned at 3:00 and 6:00. "(over)" means the match had already been won by then.
 
-CALIBRATION_TABLE
+| Opening | steps compared | apart on average | at most | army at 3:00, game / calculator | at 6:00 | earned by 3:00, game / calculator | by 6:00 |
+|---|---|---|---|---|---|---|---|
+| Crown 1: Musketeer wall into the Cannon (the standard) | 9 | 4 s | 9 s | 180 / 195 | 770 / 820 | 760 / 1,140 | 3,040 / 3,040 |
+| Crown 2: Horseman rush | 8 | 2 s | 6 s | 345 / 345 | (over) / 920 | 1,140 / 1,140 | (over) / 2,660 |
+| Crown 3: Musketeers and a Balloon drop | 9 | 3 s | 5 s | 180 / 260 | (over) / 915 | 1,140 / 1,140 | (over) / 2,280 |
+| Crown 3b: Balloon raid (the Musketeers fire from the basket) | 9 | 3 s | 4 s | 180 / 260 | 845 / 915 | 1,140 / 1,140 | 2,660 / 2,280 |
+| Crown 4: Wall and a second Town Hall | 7 | 10 s | 32 s | 0 / 0 | 540 / 715 | 1,140 / 1,520 | 4,180 / 5,320 |
+| Crown 5: Dragoon raid (the wall and the Mill, then a Breeder and Dragoons) | 8 | 5 s | 10 s | 0 / 0 | (over) / 715 | 760 / 1,140 | (over) / 3,040 |
+| Crown 6: Cannon and Musketeer push (the standard, then a timing attack) | 10 | 6 s | 27 s | 180 / 195 | 920 / 860 | 760 / 1,140 | 2,660 / 3,040 |
+| Brood 1: Six-pool (extreme rush) | 3 | 1 s | 4 s | 300 / 300 | (over) / 675 | 598 / 608 | (over) / 1,234 |
+| Brood 2: Pool first, one wave, then economy | 7 | 5 s | 9 s | 150 / 150 | (over) / 675 | 658 / 618 | (over) / 1,933 |
+| Brood 3: Economy (grubs first, two pits, Warren, then a big Raptor wave) | 8 | 7 s | 18 s | 0 / 0 | 775 / 1,050 | 976 / 1,024 | 2,650 / 2,781 |
+| Brood 4: Spitter timing | 9 | 8 s | 18 s | 75 / 75 | 800 / 975 | 939 / 964 | 2,192 / 2,347 |
+| Brood 5: Brute timing (Gorge Pit) | 10 | 17 s | 41 s | 0 / 0 | 325 / 645 | 939 / 963 | 2,070 / 2,335 |
+| Brood 6: Roost (Bloaters and Skywings) | 9 | 4 s | 14 s | 0 / 0 | 500 / 600 | 905 / 909 | 2,144 / 2,264 |
+| Clockwork 1: Clock Soldier rush (two Works) | 6 | 5 s | 11 s | 630 / 630 | 1,960 / 2,170 | 1,409 / 1,409 | 4,194 / 4,274 |
+| Clockwork 2: Jacks (Mainspring and Escapement), the standard | 11 | 7 s | 14 s | 480 / 462 | (over) / 2,108 | 2,487 / 2,412 | (over) / 5,292 |
+| Clockwork 3: Turret and a second Clocktower | 7 | 3 s | 6 s | 350 / 350 | 2,170 / 1,120 | 2,461 / 2,446 | 8,062 / 8,181 |
+| Clockwork 4: Swifts into Ticking Owls | 16 | 13 s | 20 s | 140 / 140 | 1,745 / 1,545 | 2,469 / 2,444 | 5,348 / 5,324 |
+| Clockwork 5: Fast Jacks (Escapement first) | 8 | 5 s | 8 s | 400 / 562 | 1,595 / 1,800 | 1,407 / 1,402 | 3,750 / 3,166 |
+| Clockwork 6: Pendulum and Netter push (tier 3) | 11 | 7 s | 14 s | 340 / 378 | 1,860 / 2,052 | 2,487 / 2,444 | 5,270 / 5,324 |
+| Crown 7: Proxy Horseman rush | 6 | 3 s | 6 s | 270 / 230 | (over) / 920 | 1,140 / 1,140 | (over) / 2,660 |
+| Brood 7: Forward Burrow (Raptors at their door) | 3 | 8 s | 21 s | 0 / 0 | 375 / 450 | 598 / 608 | 1,227 / 1,234 |
+| Clockwork 7: Forward Clocktower (Clock Soldiers at their door) | 4 | 13 s | 26 s | 0 / 0 | 1,710 / 1,400 | 2,408 / 2,185 | 5,387 / 5,040 |
+
+(all openings: 178 steps, 7 s apart on average, half of them within 4 s, 9 in 10 within 18 s)
 
 The fitted constants are at the top of tools/study/bo_calc.py (CAL): a Labourer walks about 7 seconds to a site and 7 back and stays for the whole build; a grub reaches its site in about 2 seconds and morphs in 1.6; a Winder fetches the crate in about 9 seconds and is back at his press 5 seconds after it lands; a grub earns 0.58 biomass a second on the starting pit and 0.62 on the others. The gold earned differs most for the Crown at 3:00 (the calculator's third harvest falls just before 3:00, the game's just after: one lump of 380) and for the fast expansion at 6:00 (the calculator crews the new hall's farms faster than the game does). The calculator does not fight, and after the script's last step it only keeps the last background training going while the real computer switches to its own plan, so the two are compared up to the end of the script.
 
