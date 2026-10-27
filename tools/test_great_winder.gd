@@ -356,15 +356,25 @@ func _computer() -> void:
 	for w in _mine(g, Defs.CW_WORKS):
 		if g.gear_net.spring_for(w) == null:
 			_put(g, "mainspring", w)
-	for i in 3:
-		_put(g, Defs.CW_SUPPLY, hall)
+	for i in 8:
+		_put(g, Defs.CW_SUPPLY, hall)       # (room in the supply for a 4-supply machine beside its army)
 	await physics_frame
 	g.gear_net.solve()
 	check("the computer's Escapement works", esc != null and g.gear_net.speed_mult(esc) > 0.0)
 	g.clock = maxf(g.clock, 330.0)
 	var ai = g.ais.filter(func(a) -> bool: return a.team == 0)[0]
-	var waited := await _wait(g, func() -> bool: return not _units(g, K).is_empty(), 300.0)
+	var waited := await _wait(g, func() -> bool:
+		for w in _mine(g, Defs.CW_WORKS):
+			if w.built and g.gear_net.spring_for(w) == null and Engine.get_physics_frames() % 60 == 0:
+				_put(g, "mainspring", w)       # (every Works it adds may make Tension units: the test's help, not the computer's)
+		return not _units(g, K).is_empty(), 300.0)
 	check("the computer trains a Great Winder", not _units(g, K).is_empty(), "after %.0f s" % waited)
+	var kinds := {}
+	for u in g.army(0):
+		kinds[u.kind] = int(kinds.get(u.kind, 0)) + 1
+	print("  army %s, tension %.0f, cogs %d" % [str(kinds), g.tension(0), int(g.players[0]["gold"])])
+	for w in _mine(g, Defs.CW_WORKS):
+		print("  works big %s queue %s: %s" % [w.gear_big, str(w.queue), g.can_train(w, K)])
 	await _wait(g, func() -> bool: return false, 90.0)
 	check("one, not more", _units(g, K).size() == 1, "%d" % _units(g, K).size())
 	var army: Array = g.army(0).filter(func(u: Unit) -> bool: return u.kind != K and not u.is_air())
@@ -373,6 +383,9 @@ func _computer() -> void:
 	# send the army out: it walks behind it
 	var far: Vector2 = hall.center() + Vector2(700, 300)
 	ai._follow_with_escort(army)
+	if _units(g, K).is_empty():
+		_main.queue_free()
+		return
 	var gw: Unit = _units(g, K)[0]
 	var c := Vector2.ZERO
 	for u in army:
