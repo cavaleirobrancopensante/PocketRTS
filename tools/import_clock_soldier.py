@@ -158,6 +158,27 @@ def palette(frames):
                 fl[i] = (o2, ax, ay)
 
 
+def lend_cap(strip, cw):
+    """A frame the painting left without the cap (the E attack's overhead frame: ChatGPT drew the raised arm where the
+    head is, so no player colour shows on the frame before the blow): the cap of the frame before it (its team-key
+    pixels and the pixels round them, 1 px out) is put BEHIND that frame, where it is empty. The body does not move
+    between those frames (docs/animation_audit_clockwork.md)."""
+    n = strip.shape[1] // cw
+    cells = [strip[:, i * cw:(i + 1) * cw] for i in range(n)]
+    def key(c):
+        r, g, b = [c[..., i].astype(int) for i in range(3)]
+        return (c[..., 3] > 0) & (g < 20) & (b < 20) & ((np.abs(r - 255) < 20) | (np.abs(r - 150) < 20))
+    for i in range(1, n):
+        if key(cells[i]).sum() == 0 and key(cells[i - 1]).sum() >= 8:
+            k = key(cells[i - 1])
+            ys, xs = np.nonzero(k)
+            area = np.zeros_like(k)
+            area[max(0, ys.min() - 1):ys.max() + 2, max(0, xs.min() - 1):xs.max() + 2] = True
+            take = area & (cells[i - 1][..., 3] > 0) & (cells[i][..., 3] == 0)
+            cells[i][take] = cells[i - 1][take]
+    return np.concatenate(cells, 1)
+
+
 def main():
     # 1. cut and key every frame, note its anchor (feet bottom, body x) in the cell
     frames = {}      # (anim, dir) -> [(rgba, ax, ay)]
@@ -217,6 +238,7 @@ def main():
             s = s[:ch, :cw]
             s = cw_palette.snap_team(s)
             strip[:s.shape[0], i * cw:i * cw + s.shape[1]] = s
+        strip = lend_cap(strip, cw)
         Image.fromarray(strip, 'RGBA').save(DST + '%s_%s.png' % (anim, d))
     print('clock_soldier: scale %.3f (west %s), cell %dx%d, anchor (%d, %d)' % (
         SC['s'], ' '.join('%s %.3f' % (d, SC[d]) for d in WEST_DIRS), cw, ch, half, up))

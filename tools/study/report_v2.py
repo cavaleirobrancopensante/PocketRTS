@@ -299,6 +299,31 @@ def is_explore(gid):
     return gid.startswith("x_")
 
 
+STALL_BANK = 1200       # a scripted side with more than this unspent and no army at all at 5:00, 7:00 or 10:00 stalled
+
+
+def stalled_sides(D):
+    """{(id, team): (minute, bank, the step it waited at)} for the scripted sides that sat idle: the script waited on a
+    step it could not do (units its buildings cannot make yet, or an "attack@N" waiting for N units that never come),
+    and the computer only takes over at the script's end or its 12-minute limit. Such a game measures the script, not
+    the faction, so the report shows the results with and without them."""
+    ops = {(o["id"], o["team"]): o for o in D["openings"]}
+    waited = {}
+    for s in D["steps"]:
+        k = (s["id"], s["team"])
+        if k not in waited and s["status"] == "pending" and num(s["first"], -1) >= 0:
+            waited[k] = s["step"]
+    out = {}
+    for s in sorted(D["snaps"], key=lambda r: num(r["t"], 0)):
+        k = (s["id"], s["team"])
+        o = ops.get(k)
+        if k in out or not o or o.get("scripted") != "1" or s["t"] not in ("300", "420", "600"):
+            continue
+        if num(s["bank"], 0) > STALL_BANK and num(s["army_value"], 0) == 0:
+            out[k] = (int(s["t"]) // 60, int(num(s["bank"], 0)), waited.get(k, "?"))
+    return out
+
+
 def econ_at(ts_rows, t_list=(300, 600, 900, 1200)):
     """faction -> t -> dict of medians: income a minute (main resource, over the minute before), bank, workers, army."""
     by = defaultdict(dict)       # (id, team) -> t -> row
@@ -385,6 +410,34 @@ def cmd_combine(a):
     if summary:
         say("In short: " + "; ".join(summary) + ".")
         say("")
+    stall = stalled_sides(D)
+    st_games = {k[0] for k in stall if not is_explore(k[0])}
+    if st_games:
+        by_op = Counter()
+        waits = defaultdict(Counter)
+        ops_by = {(o["id"], o["team"]): o for o in D["openings"]}
+        for k, (mn, bank, step) in stall.items():
+            if is_explore(k[0]):
+                continue
+            nm = ops_by[k]["opening"]
+            by_op[nm] += 1
+            waits[nm][step.split("|")[0].split("*")[0]] += 1
+        say("**Stalled scripts.** In %d game%s a side's script stalled: it waited on a step it could not do, so at 5, 7 or "
+            "10 minutes it had more than %d unspent and no army at all, and the computer took over only at the script's "
+            "12-minute limit. Those games measure the script, not the faction. By opening: %s." % (
+                len(st_games), "" if len(st_games) == 1 else "s", STALL_BANK,
+                "; ".join("%s %d (waiting at %s)" % (nm, n, ", ".join(sorted(waits[nm]))) for nm, n in by_op.most_common())))
+        say("")
+        rows = []
+        for fa, fb in PAIRS:
+            res = [int(s["won"]) for s in sides if s["faction"] == fa and s["opp"] == fb and s["id"] not in st_games]
+            w, l, d = tally(res)
+            if w + l + d:
+                rows.append([FNAME[fa] + " against " + FNAME[fb], w + l + d, w, l, d, rate(w, l, d)])
+        say("Without those games:")
+        say("")
+        say(table(["match-up", "games", "wins", "losses", "even", "win rate (95% range)"], rows))
+        say("")
 
     # by map, briefly
     say("### By map")
@@ -465,8 +518,9 @@ def cmd_combine(a):
                    and "time limit" not in o["script_end_why"])
         to = sum(int(o["steps_timeout"]) for o in lst)
         ends = [num(o["script_end_t"]) for o in lst if num(o["script_end_t"], -1) >= 0]
-        rows.append([nm, len(lst), "%d of %d" % (full, len(lst)), to, mmss(med(ends))])
-    say(table(["opening", "games", "script finished", "steps timed out (all games)", "median hand-over"], rows) if rows else "_(no data)_")
+        stl = sum(1 for o in lst if (o["id"], o["team"]) in stall)
+        rows.append([nm, len(lst), "%d of %d" % (full, len(lst)), to, stl, mmss(med(ends))])
+    say(table(["opening", "games", "script finished", "steps timed out (all games)", "stalled (idle, full bank)", "median hand-over"], rows) if rows else "_(no data)_")
     say("")
 
     # ---- economy
@@ -567,12 +621,20 @@ def explore_section(L, D, xgames, builds, a):
     for s in D["snaps"]:
         snaps[(s["id"], s["team"])][s["t"]] = s
     ops = {(o["id"], o["team"]): o for o in D["openings"]}
+    stall = stalled_sides(D)
     res = defaultdict(list)
-    for gid, g in gmap.items():
+    left_out = []
+    for gid, g in sorted(gmap.items()):
         sp = spec_of.get(gid)
         if not sp:
             continue
         a_team = 1 if g["swap"] in ("1", "True", "true") else 0
+        stuck = [(t, stall[(gid, t)]) for t in ("0", "1") if (gid, t) in stall]
+        if stuck:
+            t, (mn, bank, step) = stuck[0]
+            who = "the candidate %s" % sp["cand"] if t == str(a_team) else "its opponent"
+            left_out.append("%s (%s: %s stalled at %s, %d unspent at %d:00)" % (gid, g["map"].replace("_", " "), who, step, bank, mn))
+            continue
         res[sp["cand"]].append((gid, a_team, sp))
     say("%d games tried %d candidate openings (%s). Each candidate played an opening of another faction (its standard, "
         "another documented one, or the plain computer) on a random map. A candidate's score is 1 for a win, 0 for a loss, "
@@ -580,6 +642,12 @@ def explore_section(L, D, xgames, builds, a):
         "more than one game to rise far. Winners were mutated more often, and the best were played again to confirm them."
         % (len(xgames), len(res), ", ".join("%d %s" % (sum(1 for c in res if D["cands"].get(c, {}).get("faction") == f), FNAME[f]) for f in FACTIONS)))
     say("")
+    if left_out:
+        say("%d game%s left out of the scores below: a side's script stalled (it asked for something it could not make, "
+            "such as Cannons with no Powder Mill, or an attack waiting for an army that never came, and sat idle until the "
+            "script's 12-minute limit), so the game says nothing about the opening. %s." % (
+                len(left_out), " is" if len(left_out) == 1 else "s are", "; ".join(left_out)))
+        say("")
     # baseline: documented openings in the match-up machines, army at 5:00 by faction
     base5 = defaultdict(list)
     for s in D["snaps"]:

@@ -4,8 +4,49 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.14.54", "items": [
+	{"v": "0.14.64", "items": [
 		"FIXES from a long test run of every map and mode: a Brood computer no longer places a Clutch Mound and drops it again every second while raiders stand near its grubs (it waits a little before trying again); a Brood swarm no longer calls its whole wave off when one of its Raptors is eaten or otherwise gone; a soldier raised by a Missionary who had been on his way to a horse no longer breaks his next order; a building whose rally point followed a unit that turned into something else (a grub that became a building, a man who mounted) lets go of it cleanly; and the dismounted Cuirassier walking east no longer asks for a picture that is not there.",
+	]},
+	{"v": "0.14.63", "items": [
+		"MUSKETEER: facing down-right or up-right, he now aims, fires and thrusts the bayonet that way. Before, every view pointed its musket to the right, so a line firing down the screen shot sideways. The new frames were painted one direction at a time over guides made from his own frames. The south and the Guardsman come next.",
+	]},
+	{"v": "0.14.62", "items": [
+		"ONLINE, EVERY ORDER ANSWERS AT ONCE for the friend who joins: not only moves now. Units told to attack turn to the target and start walking into range; stop and hold stand them still at once; a building site appears where you placed it, faint and outlined until the host confirms it, and the worker heads for it; the cost and the supply show as spent; a trained unit, a research or a hall upgrade goes into the queue (drawn faint until confirmed) with its progress bar running; cancelling takes it out with the refund shown; the rally flag, hold fire, auto-train, deploying or packing a gun, cancelling a site or pulling a building down all show on the click. The host still decides everything: a moment later its game takes over, without a jump, and an order the host refuses (not enough gold, a blocked spot) is taken back at once with the reason.",
+		"ONLINE, THE HOST'S OWN ORDERS (with \"Same delay for both players\"): they still wait half the ping, but the queue, the resources and supply and a building site show at once, and the units turn at once, as on the friend's screen.",
+	]},
+	{"v": "0.14.61", "items": [
+		"BROOD ANIMATIONS: Raptors and Grubs no longer hop when they turn up or down the screen or stop (those walks stood 2 px above the ground). The Raptor's run plays faster (12 frames a second, was 8), so its feet skate less. A hovering Skywing beats its wings at a real pace (was 2 frames a second), and its east attack no longer shows a frame with only a wing.",
+		"BROOD ANIMATIONS: the Mist Toad's death plays to the end: its body now lies flat instead of freezing half fallen. A Grub's wrapping takes as long as the wrap itself: the cocoon closes just as it picks it up, for small and big bodies alike.",
+		"TEAM COLOUR: the Brood Queen's crest and the Clutch Mound's frills are now in your colour (they were red for every player), and the thin red rims on Brood crests and frills follow the team colour too. Veteran Raptors walking up or down the screen now show their veteran skin on their legs.",
+	]},
+	{"v": "0.14.60", "items": [
+		"BROOD MUSIC: ten new pieces, so the Brood has twenty like the Crown, each with its own moment. Two open a match while the swamp wakes, tense under the calm: The Brood Wakes and The Hive Gathers. Three play in a lighter fight, a hunt held back from the kill: Something in the Water, The Scent of Blood and Circling. Three are the full battle, the swarm at full cry with big drums, the throat choir, brass and strings: The Swarm at Full Cry, The Queen's War-Song and Ten Thousand Mouths. Two are calm and slow: The Queen's Lullaby and Night over the Drowned Wood. The Queen Stirs may now open a match too.",
+		"THE HIVE CALL: the new Brood pieces share a short theme of six notes (a low note, a leap up, then a sigh down to the start). A flute sings it plainly in the lullaby, the skirmishes chase it in broken pieces, and in the battles the whole choir roars it in long notes.",
+	]},
+	{"v": "0.14.59", "items": [
+		"JACK: it keeps both drill launchers when it hops and jumps. Before, its left launcher turned back into the old claw every time it moved. The hop and the jump are now made from the same painting as its standing and shooting, so nothing changes shape between them. (Its death and its shot up at a flyer still show the claw until they are repainted.)",
+	]},
+	{"v": "0.14.58", "items": [
+		"CLOCKWORK MUSIC: ten new pieces, so the Clockwork has twenty, like the Crown. They share one short theme, the Clockwork's motif: a tick and a tock, then a note left hanging. A music box plays it plainly in the calm pieces, the machine repeats it and shifts it in the skirmishes, and the whole orchestra hammers it in the battles. Their percussion is made of real clocks, an old clock bell, metal clangs, a typewriter, a crank and a spring.",
+		"OPENING pieces (the first minutes of a match): The Great Escapement and Calibration. SKIRMISH pieces (a small fight): Tick, Tock, Alarm; The Watchful Gear; Pressure Rising. FULL BATTLE pieces (when the fight grows): Cathedral of Gears; Anvil Chorus of a Thousand Hands; The Grand Calculation. CALM pieces: The Clockmaker's Lament and Canon of Perfect Order. The calm Winding the Spring may now also open a Clockwork match. All of them are in the music player.",
+	]},
+	{"v": "0.14.57", "items": [
+		"JACK: it no longer slides about on its spring while it stands. Its foot plate now stays on the spot in every frame and every direction, so switching between standing, shooting and hopping no longer makes it jump sideways (up to 6 pixels before). The screws still leave from the drill tips.",
+		"CLOCK SOLDIER: facing right, the frame just before its sword comes down no longer loses its head cap, so its player colour shows all through the swing. A few stray dark pixels near its feet are gone.",
+		"CLOCK AVIARY: while it works, only its doors and the little brass bird move. Before, every frame was painted anew, so the whole tower shimmered and it changed look when it started or stopped.",
+	]},
+	{"v": "0.14.56", "items": [
+		"CROWN ANIMATIONS, small fixes from an audit of every Crown animation (docs/animation_audit_crown.md): the Officer and the Armoured Officer no longer hop as they walk (their walking feet now stay on the ground, as when they stand), and the Armoured Officer no longer floats a little when he aims and fires. The Horseman's horse no longer bobs up when it stops facing down and to the right. The Messenger galloping right no longer shows two or three riders in two of its frames. The Mortar's crew no longer jumps from side to side while the gun waits. The Mounted Missionary gallops at a gallop's pace (its horse slid along in slow motion). A stray dash under the Musketeer's muzzle is gone.",
+	]},
+	{"v": "0.14.55", "items": [
+		"CHECKED: every automated test of the game was run (118), the files were checked against each other (every unit animation strip, building picture, icon, sound and requirement: a new test of 1,026 checks), and the README brought up to date (each Feeding Pit's own ground, replays). Two old tests that did not know the newer rules were updated; the game was right.",
+		"FIX: every match tried to load a picture that no longer exists (an old walking frame of the Armoured Officer) and logged an error for it; that leftover is gone. The Android app no longer packs the retired units' art.",
+	]},
+	{"v": "0.14.54", "items": [
+		"CLOCKWORK SOUNDS from the owner's recordings of real clocks and machines (a typewriter, an alarm clock, an old clock bell, a crank, a spring, metal clangs). The Clock Soldier, Jack, Swift, Ticking Owl, Pendulum and Netter now answer in their own machine voices when picked or ordered: typewriter keys for the Clock Soldier, a spring's boing for the Jack, quick high ticks and a little bell for the Swift, slow low ticks for the Owl, the old clock bell and a heavy crank for the Pendulum, a crank cocking the spring cannon for the Netter.",
+		"CLOCKWORK FIGHTING: bright clangs for the Clock Soldier's sword, heavy low clangs for the Pendulum's blows, a ratchet spin for each screw the Jack and the Ratchet Turret shoot, a typewriter key for the Swift's peck, a clang for the Owl's talons. The Jack's spring presses, boings and clanks as it jumps and lands; the Netter's spring lets go when it fires and the chain net rattles where it lands; the Owl's weight lets go with a wobble and lands with a heavy clang. Every Clockwork unit (the Winder too) dies with a crash of metal, pieces rattling down and a spring letting go.",
+		"CLOCKWORK BUILDINGS each have their own sound when picked: the Clocktower's old bell, a crank turning for the Cog Press, a spring for the Mainspring, ticking for the Escapement and (slower, with a soft bell) the Regulator, clangs for the Movement Works, a ratchet for the Ratchet Turret, high ticks and a ding for the Clock Aviary. A Winder working a Cog Press is heard cranking it; building and repairing is a click and a clang; the crate is a real ratchet.",
+		"CLOCKWORK ALARM: when your Clockwork units are attacked an alarm clock rings (and rings again, after a tick, when your buildings are attacked), instead of the bell and drums the other factions keep. Research done rings the old clock bell once; a building finished slides the typewriter's carriage back and rings its bell; a unit ready turns a ratchet and rings the bell. MORPH TO OWL turns a crank, and the old bell rings when the Owl is ready.",
 	]},
 	{"v": "0.14.53", "items": [
 		"CLOCK SOLDIER: a little quicker (speed 68, was 62) and lighter (75 health, was 90). These numbers are a first guess.",

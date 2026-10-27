@@ -8,20 +8,21 @@ Defs.JACK_SHOT "tips" (one set per arm) and Defs.JACK_SHOT_UP.
                                 sheet (jack_idle.png, the claw arm): 6 rows (the 6th repeats the back view: unused) x 4;
                                 not on an exact grid, so the figures are found as connected components (the thin dark
                                 shadow strips under them and other dark specks are dropped)
-  walk    jack_hop.png          the HOP (made in code: tools/jack_guide/hop.py), 5 x 6 on a 256 px grid with consistent
-                                positions: every frame of a row keeps its place in the cell, so the foot plate stays put
-                                except when it lifts with the hop
-  jump    jack_jump.png         5 x 8 (192 px grid): crouch 1-3, launch 4, in the air 5-6, landing 7-8. Every frame is put
-                                on its own foot plate: the sheet's lift (and its dark ground ellipse) is dropped, the game
-                                flies the unit along its arc over its own ground shadow
+  walk    jack_hop_twin.png     the HOP with TWO launchers (made in code from the two-launcher idle: tools/jack_guide/
+                                hop_twin.py, as hop.py made jack_hop.png from the first, clawed idle), 5 x 6 on a 256 px grid
+                                with consistent positions: every frame of a row keeps its place in the cell, so the foot
+                                plate stays put except when it lifts with the hop
+  jump    jack_jump_twin.png    5 x 8 (192 px grid, hop_twin.py; jack_jump.png was the clawed one): crouch 1-3, launch 4,
+                                in the air 5-6, landing 7-8. Every frame is put on its own foot plate (the sheet draws them
+                                on the ground), the game flies the unit along its arc over its own ground shadow
   attack_r, attack_l  jack_attack_twin_body.png  5 x 12 (256 x 204 cells, made in code from the two-launcher idle:
                                 tools/jack_guide/attack_twin.py): cells 0-5 the robot's RIGHT arm fires, 6-11 its LEFT;
                                 the screw leaves on the 2nd frame of each. The foot plate keeps its place in every cell
                                 (only the body kicks, the spring flexes), so a row keeps one anchor, like the hop. The
                                 game fires the arms in turn (scripts/jack.gd); each arm's tip on its fire frame comes from
                                 art/redraws/jack_attack_twin_tips.json
-                                (The hop, jump, death and raised-arm sheets still show the first, clawed Jack: ChatGPT's
-                                two-launcher redraws are pending.)
+                                (The death and raised-arm sheets still show the first, clawed Jack: their two-launcher
+                                redraws are pending. The hop and the jump have two launchers since 0.14.59.)
   attack_up jack_attack_up_body.png  5 x 6, laid out like the attack sheet (tools/jack_guide/attack_up.py): the launcher
                                 arm RAISED at a flyer, the same recoil along the raised barrel; the drill tip on its fire
                                 frame (the 2nd) comes from art/redraws/jack_attack_up_tips.json
@@ -57,8 +58,8 @@ JACK_S_H = 59           # px: the S idle's height in game (its own: the Clock So
 # (a 5th item: the sheet's columns that make the strip)
 SHEETS = {
     'idle': ('jack_idle_twin_chatgpt.png', 6, 4, 'foot'),
-    'walk': ('jack_hop.png', 5, 6, 'row'),
-    'jump': ('jack_jump.png', 5, 8, 'foot'),
+    'walk': ('jack_hop_twin.png', 5, 6, 'row'),
+    'jump': ('jack_jump_twin.png', 5, 8, 'foot'),
     'attack_r': ('jack_attack_twin_body.png', 5, 12, 'row', range(0, 6)),
     'attack_l': ('jack_attack_twin_body.png', 5, 12, 'row', range(6, 12)),
     'attack_up': ('jack_attack_up_body.png', 5, 6, 'recoil'),
@@ -141,6 +142,40 @@ def foot(o):
     rows = rows[rows >= ys.max() - 4]          # (below the coil's bottom: the plate)
     fy = float(rows.max() + 1) if len(rows) else float(ys.max() + 1)
     return fx + 0.5, fy
+
+
+# The two-launcher strips (idle, attack_r, attack_l) found their anchor on the coil, which the sheet's ice-blue drill
+# tips and a coil cut short by an arm threw off: their foot plates stood 3 to 6 px off the anchor (S, N) and the idle's
+# plate wandered up to 7 px from frame to frame (docs/animation_audit_clockwork.md). After the shrink, each idle frame
+# (an attack strip: its first frame, the recoil kept) is moved sideways so the middle of its foot plate (its lowest 3
+# rows) sits where the hop's, the jump's and the raised arm's do (half - 0.5: on the anchor column).
+PLATE_ALIGN = ('idle', 'attack_r', 'attack_l', 'walk', 'jump')
+
+
+def plate_mid(cell):
+    al = cell[..., 3] > 0
+    rows = np.nonzero(al.any(1))[0]
+    if len(rows) == 0:
+        return None
+    xs = np.nonzero(al[rows.max() - 2:rows.max() + 1].any(0))[0]
+    return (xs.min() + xs.max()) * 0.5
+
+
+def align_plate(strip, cw, half, each):
+    """The strip with its frames moved sideways onto the anchor (each frame alone, or all by the first's shift)."""
+    n = strip.shape[1] // cw
+    out = np.zeros_like(strip)
+    dx0 = None
+    for i in range(n):
+        cell = strip[:, i * cw:(i + 1) * cw]
+        m = plate_mid(cell)
+        dx = 0 if m is None else int(round(half - 0.5 - m))
+        if dx0 is None:
+            dx0 = dx
+        if not each:
+            dx = dx0
+        out[:, i * cw:(i + 1) * cw] = np.roll(cell, dx, axis=1)
+    return out, dx0
 
 
 def plate_top(o, fy):
@@ -242,6 +277,7 @@ def main():
     ch = up + down
     os.makedirs(DST, exist_ok=True)
     BW, BH = int(round(cw / scale)), int(round(ch / scale))
+    plate_dx = {}
     for (anim, d), fl in frames.items():
         strip = np.zeros((ch, cw * len(fl), 4), np.uint8)
         for i, (o, ax, ay) in enumerate(fl):
@@ -252,6 +288,8 @@ def main():
             s = shrink(np.array(big), cw / BW)[:ch, :cw]
             s = cw_palette.snap_team(s)
             strip[:s.shape[0], i * cw:i * cw + s.shape[1]] = s
+        if anim in PLATE_ALIGN:
+            strip, plate_dx[(anim, d)] = align_plate(strip, cw, half, anim == 'idle')
         Image.fromarray(strip, 'RGBA').save(DST + '%s_%s.png' % (anim, d))
     print('jack: scale %.3f, cell %dx%d, anchor (%d, %d)' % (scale, cw, ch, half, up))
     print('SHEETS line: "jack": [%d, %d, %d, %d],' % (cw, ch, half, up))
@@ -265,7 +303,7 @@ def main():
         for d in DIRS:
             tx, ty = tw[d][arm]['tip']
             fx, fy = row_foot[(anim, d)]
-            tips[arm][d] = (round((tx - fx) * scale), round((ty - fy) * scale))
+            tips[arm][d] = (round((tx - fx) * scale) + plate_dx.get((anim, d), 0), round((ty - fy) * scale))
     print('tips: {' + ', '.join('"%s": {' % arm + ', '.join('"%s": Vector2(%d, %d)' % (d, t[0], t[1]) for d, t in tt.items()) + '}'
                                 for arm, tt in tips.items()) + '}')
     # the RAISED drill tip (shooting at a flyer): the JSON gives it on the fire frame in that frame's cell (the sheet's rows
@@ -283,15 +321,18 @@ def main():
         tips_up[d] = (round((tx - fx + kx) * scale), round((ty - fy + ky) * scale), bx, by)
     print('tips_up: {' + ', '.join('"%s": Vector2(%d, %d)' % (d, t[0], t[1]) for d, t in tips_up.items()) + '}')
     print('barrel_up: {' + ', '.join('"%s": Vector2(%.3f, %.3f)' % (d, t[2], t[3]) for d, t in tips_up.items()) + '}')
-    # the card portrait (64 x 64): the S idle frame's upper body
-    s0 = np.array(Image.open(DST + 'idle_s.png'))[:, :cw]
-    ys, xs = np.nonzero(s0[..., 3] > 0)
-    side = max(xs.max() - xs.min(), int((ys.max() - ys.min()) * 0.8)) + 2
-    cx = (xs.min() + xs.max()) // 2
-    crop = Image.fromarray(s0).crop((cx - side // 2, ys.min() - 1, cx - side // 2 + side, ys.min() - 1 + side))
-    crop.resize((64, 64), Image.NEAREST).save('assets/icons/jack.png')
+    # the card portrait (64 x 64) is the owner's painted one since the round 13 icons (tools/import_round13.py writes
+    # assets/icons/jack.png): this importer no longer overwrites it; it only makes one from the S idle frame's upper body
+    # when there is none
+    if not os.path.exists('assets/icons/jack.png'):
+        s0 = np.array(Image.open(DST + 'idle_s.png'))[:, :cw]
+        ys, xs = np.nonzero(s0[..., 3] > 0)
+        side = max(xs.max() - xs.min(), int((ys.max() - ys.min()) * 0.8)) + 2
+        cx = (xs.min() + xs.max()) // 2
+        crop = Image.fromarray(s0).crop((cx - side // 2, ys.min() - 1, cx - side // 2 + side, ys.min() - 1 + side))
+        crop.resize((64, 64), Image.NEAREST).save('assets/icons/jack.png')
     # the JUMP button (the E view in the air, spring stretched) and the HIGH LEAP research (the S view at the launch):
-    # whole frames, square, 64 x 64
+    # whole frames, square, 64 x 64 (the shared fallbacks: the Clockwork's own painted ones in assets/icons/clockwork/ win)
     for name, (anim, d, f) in {'ab_jump': ('jump', 'e', 4), 'research_high_leap': ('jump', 's', 3)}.items():
         s = np.array(Image.open(DST + '%s_%s.png' % (anim, d)))[:, f * cw:(f + 1) * cw]
         ys, xs = np.nonzero(s[..., 3] > 0)

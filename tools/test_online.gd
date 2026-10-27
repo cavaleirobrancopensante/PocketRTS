@@ -18,7 +18,7 @@ var coop := false
 var fac_host := "crown"
 var fac_guest := "crown"
 var map := "hollowfen"
-var limit := 260.0
+var limit := 420.0
 var t := 0.0
 var lobby: NetLobby
 var g: Game
@@ -79,6 +79,13 @@ var nosame := false
 var rate10 := false
 var clocksnap := false
 var noterp := false
+var nopredict := false           # nopredict: the click shows nothing beyond the ring, the voice and the walk lead (as 0.14.47)
+var react_rows: Array = []       # guest: [order, ms from the click to its first visible reaction (-1: none in 2.5 s), unit jumps, queue flickers, resources given back]
+var _drained := false            # host: the guest's gold is held at 0 (its refused orders: the guest asked in the chat)
+var _gold_was := 0
+var lag_own_train := PackedFloat32Array()   # host: ms from its own TRAIN (held) to the queue showing it / to the real queue
+var lag_own_train_real := PackedFloat32Array()
+var _htrain := {}
 var hostsurrender := false
 var quick := false               # quick: only the first checks (no chat, orders, pause, surrender)
 var _orders: Array = []          # guest: the order types still to send (_guest_extras)
@@ -132,6 +139,8 @@ func _initialize() -> void:
 			hostsurrender = true      # at the end the HOST surrenders (the guest asks in the chat), not the guest
 		elif a == "quick":
 			quick = true
+		elif a == "nopredict":
+			nopredict = true
 		elif a == "noterp":
 			noterp = true             # the guest's units glide toward the newest picture (0.14.32), no buffer
 		elif a == "clocksnap":
@@ -333,7 +342,7 @@ func _probe_tick(real: float) -> void:
 				print("PROBE %s walk %s moved %s ack %s host %s speeds%s" % [u.kind, _probe.get("walk", "-"), _probe.get("moved", "-"), _probe.get("ack", "-"), _probe.get("host", "-"), _probe.get("spd", "")])
 			_probe = {}
 		return
-	if _probe_t < 2.0 or step < 2 or (g.hud and g.hud.countdown > 0.0):      # (not in the 3-2-1: nothing moves yet)
+	if _probe_t < 2.0 or step < 2 or (g.hud and g.hud.countdown > 0.0) or (step >= 20 and not _ord.is_empty()):      # (not in the 3-2-1: nothing moves yet; not while an order's reaction is timed)
 		return
 	_probe_t = 0.0
 	for u in _mine():
@@ -354,6 +363,7 @@ func _probe_tick(real: float) -> void:
 ## Host: every 3 s one of its own idle soldiers is told to walk 200 px, given as at the screen (Game.input_cmd: with the
 ## same delay for both players it is held like a guest's order), and timed until it walks.
 func _host_probe_tick(real: float) -> void:
+	_host_train_probe()
 	_hprobe_t += real
 	if not _hprobe.is_empty():
 		var u: Unit = _hprobe["u"]
@@ -379,6 +389,40 @@ func _host_probe_tick(real: float) -> void:
 			g.group_move([u], to, false)
 			g.set("input_cmd", false)
 			lag_hold.append(float(g.net.hold_ms()) if g.net.has_method("hold_ms") else 0.0)
+			return
+
+
+## Host: every 7 s its own Town Hall (or Hive, Clocktower) is told to train a worker, given as at the screen (held, with the
+## same delay for both), and timed until the HUD's queue shows it (NetPredict.shown_queue) and until the real queue has it.
+func _host_train_probe() -> void:
+	if not _htrain.is_empty():
+		var hb: Building = _htrain["b"]
+		var ms := (Time.get_ticks_usec() - int(_htrain["t0"])) / 1000.0
+		if not is_instance_valid(hb) or ms > 3000.0:
+			_htrain = {}
+			return
+		if not _htrain.has("shown") and NetPredict.shown_queue(g, hb)[0].size() > int(_htrain["n"]):
+			_htrain["shown"] = ms
+			lag_own_train.append(ms)
+		if hb.queue.size() > int(_htrain["n"]):
+			lag_own_train_real.append(ms)
+			if _htrain.has("shown") or true:
+				g.set("input_cmd", true)
+				g.cancel_train(hb)        # (and back out: the host's economy stays as it was)
+				g.set("input_cmd", false)
+			_htrain = {}
+		return
+	if step < 2 or autoplay or (g.hud and g.hud.countdown > 0.0) or Engine.get_physics_frames() % 210 != 0:
+		return
+	for b in g.buildings:
+		if b.team == 0 and b.kind == g.faction_hall(0) and b.built and not b.dead and b.queue.is_empty():
+			var wk: String = Defs.FACTIONS[g.faction_of(0)]["worker"]
+			if g.can_train(b, wk) != "":
+				return
+			_htrain = {"b": b, "n": b.queue.size(), "t0": Time.get_ticks_usec()}
+			g.set("input_cmd", true)
+			g.train_any([b], wk)
+			g.set("input_cmd", false)
 			return
 
 
@@ -409,6 +453,7 @@ func _lag_report() -> void:
 	if role == "host":
 		print("LAG HOST snapshot build+send ms per frame: %s | bytes per snapshot: %s | units %d buildings %d" % [_stats(lag_work), _stats(lag_sizes), g.units.size(), g.buildings.size()])
 		print("LAG HOST own move order -> unit walking ms: %s | held for the same delay ms: %s" % [_stats(lag_own), _stats(lag_hold)])
+		print("LAG HOST own train -> shown in the queue ms: %s | -> in the real queue ms: %s" % [_stats(lag_own_train), _stats(lag_own_train_real)])
 	else:
 		print("LAG GUEST snapshot apply ms per frame: %s | ms between snapshot frames: %s" % [_stats(lag_work), _stats(lag_gaps)])
 		print("LAG GUEST order -> ack in a snapshot ms: %s | move order -> unit walking ms: %s | -> 3 px on its way ms: %s" % [_stats(lag_seen), _stats(lag_walk), _stats(lag_moved)])
@@ -450,6 +495,8 @@ func _host_tick() -> void:
 				g.net.snap_by_clock = true
 				if not rate10:
 					g.net.snap_fixed = 0.05
+			if g.net.predict:
+				g.net.predict.on = not nopredict
 			check("host_game_colours", int(g.colours[0]) == HOST_COL and int(g.colours[1]) == GUEST_COL, str(g.colours))
 			_give_guest_soldiers()
 			if coop:
@@ -600,6 +647,8 @@ func _guest_tick() -> void:
 			g = main.game
 			g.net.lead_on = not nolead
 			g.net.interp_on = not noterp
+			if g.net.predict:
+				g.net.predict.on = not nopredict
 			print("GUEST game up. puppet=%s human=%d terrain hash %d" % [g.puppet, g.human, _terrain_hash()])
 			step = 1
 			step_t = 0.0
@@ -790,6 +839,44 @@ func _host_extras(s: NetSession) -> void:
 				_host_chat_done = true
 				check("host_got_guest_chat", true)
 				g.chat.post(0, "hello from the host")
+	if g.chat and not g.over:
+		# (the guest's test asks for its setups in the chat: a target near its hall, its gold held at 0, given back)
+		for ln in g.chat.lines:
+			if int(ln["team"]) != 1:
+				continue
+			var tx := String(ln["text"])
+			if tx.contains("test: dummy") and not base.has("dummy"):
+				var gh: Building = null
+				for b in g.buildings:
+					if b.team == 1 and b.kind == g.faction_hall(1):
+						gh = b
+				if gh:
+					var c := g.nearest_free(g.cell_of(gh.center() + Vector2(220, 0).rotated(0.6)), 8)
+					var du := g._add_unit("musketeer", 0, g.cell_center(c))
+					du.hold_fire = true
+					base["dummy"] = du
+					print("HOST: a target for the guest at %s" % str(du.position))
+			if tx.contains("test: extras") and not base.has("extras"):
+				base["extras"] = true
+				var eh: Building = null
+				for b in g.buildings:
+					if b.team == 1 and b.kind == g.faction_hall(1):
+						eh = b
+				var ek: Array = {"brood": ["spore_mother", "mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(1), [])
+				for j in ek.size():
+					if eh and Defs.UNITS.has(ek[j]) and ArtData.UNITS.has(ek[j]):
+						var ec := g.nearest_free(g.cell_of(eh.center() + Vector2(-120 + j * 60, 120 if eh.center().y < Game.H * Game.T * 0.5 else -120)), 8)
+						g._add_unit(ek[j], 1, g.cell_center(ec))
+			if tx.contains("test: drain") and not base.has("drained"):
+				base["drained"] = true
+				_drained = true
+				_gold_was = int(g.players[1]["gold"])
+			if tx.contains("test: refill") and not base.has("refilled"):
+				base["refilled"] = true
+				_drained = false
+				g.players[1]["gold"] = _gold_was + 500
+		if _drained:
+			g.players[1]["gold"] = 0
 	if s.pause_by == 1 and not _host_saw_pause:
 		_host_saw_pause = true
 		snap("paused_by_guest")
@@ -844,14 +931,37 @@ func _guest_extras(s: NetSession) -> void:
 					step_t = 0.0
 					return
 				_ord = _orders.pop_front()
+				if _ord.has("ready") and not (_ord["ready"] as Callable).call():
+					# (waits for its setup: the host draining the gold, a site to abandon...) up to 8 s
+					if float(_ord.get("waited", 0.0)) < 8.0:
+						_ord["waited"] = float(_ord.get("waited", 0.0)) + 1.0 / 60.0
+						_orders.push_front(_ord)
+						_ord = {}
+						return
+					var du = base.get("du")
+					check("order_" + String(_ord["name"]), false, "its setup never came" + (" (%s: %s, order %s, %.1f s)" % [du.kind, du.tesla_mode, du.order, du.tesla_t] if is_instance_valid(du) else ""))
+					_ord = {}
+					return
+				if _ord.has("warm") and not _ord.has("warm_t"):
+					(_ord["warm"] as Callable).call()      # (units set walking first, so a stop has something to stop)
+					_ord["warm_t"] = Time.get_ticks_msec()
+				if _ord.has("warm_t") and Time.get_ticks_msec() - int(_ord["warm_t"]) < 1200:
+					_orders.push_front(_ord)
+					_ord = {}
+					return
+				if _ord.has("pre"):
+					(_ord["pre"] as Callable).call()
 				_ord["ref"] = s.refusals
 				_ord["seq0"] = s.cmd_seq
+				_watch_begin()
 				(_ord["do"] as Callable).call()
 				_ord["seq"] = s.cmd_seq
 				step_t = 0.0
 				return
+			_watch_order()
 			var acked: bool = s.last_ack >= int(_ord["seq"])
-			if (acked and step_t > 0.8) or step_t > 6.0:
+			if (acked and step_t > (2.5 if _ord.has("react") else 0.8)) or step_t > 6.0:
+				_watch_end()
 				var sent: bool = int(_ord["seq"]) > int(_ord["seq0"])
 				var ok: bool = sent and acked and s.refusals == int(_ord["ref"])
 				if String(_ord.get("expect", "")) != "":
@@ -859,6 +969,9 @@ func _guest_extras(s: NetSession) -> void:
 					ok = sent and acked and s.refusals == int(_ord["ref"]) + 1 and s.last_msg == String(_ord["expect"])
 				if ok and _ord.has("then"):
 					ok = (_ord["then"] as Callable).call()
+				if g.net.predict and g.net.predict.pending() > 0:
+					ok = false                 # (what the click showed must be gone once the host has answered)
+					print("GUEST: order %s left %d predictions behind" % [String(_ord["name"]), g.net.predict.pending()])
 				check("order_" + String(_ord["name"]), ok, "sent %s acked %s refused %d%s" % [sent, acked, s.refusals - int(_ord["ref"]), (" (" + s.last_msg + ")") if s.refusals > int(_ord["ref"]) else ""])
 				_ord = {}
 		23:
@@ -908,41 +1021,120 @@ func _guest_extras(s: NetSession) -> void:
 
 
 ## Every order type the guest's HUD can give, with the guest's own units and buildings: [name, what to call, (a check
-## that it took)]. Each goes through the real game function, as a click or a key would.
+## that it took)]. Each goes through the real game function, as a click or a key would. "react": what the player sees
+## on its screen first (timed from the click: the LAG REACT lines); "us": units watched for jumps; "qb": a building
+## whose queue is watched for flickers; "cost": what it spends (the resources must not come back while it waits).
 func _order_list() -> Array:
 	var out: Array = []
-	var soldiers: Array = _mine().filter(func(u: Unit) -> bool: return not u.is_worker() and u.kind != "cannon" and u.kind != "horse")
+	var special := ["cannon", "spore_mother", "mist_toad", "tesla_cart"]
+	var soldiers: Array = _mine().filter(func(u: Unit) -> bool: return not u.is_worker() and not special.has(u.kind) and u.kind != "horse")
 	var workers: Array = _mine().filter(func(u: Unit) -> bool: return u.is_worker())
 	var guns: Array = _mine().filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	var hall: Building = base["hall"]
 	var here: Vector2 = hall.center()
 	var away := here + (Vector2(0, 260) if here.y < Game.H * Game.T * 0.5 else Vector2(0, -260))
+	var wk: String = Defs.FACTIONS[g.faction_of(g.human)]["worker"]
+	var p := g.net.predict
 	if not soldiers.is_empty():
 		var sq := soldiers.slice(0, 2)
-		out.append({"name": "move", "do": func() -> void: g.group_move(sq, away, false)})
-		out.append({"name": "attack_move", "do": func() -> void: g.group_move(sq, away + Vector2(60, 0), true)})
-		out.append({"name": "smart_move", "do": func() -> void: g.smart_command(sq, away + Vector2(-60, 0))})
-		out.append({"name": "line_move", "do": func() -> void: g.line_move(sq, PackedVector2Array([away + Vector2(-80, 40), away + Vector2(80, 40)]), false)})
-		out.append({"name": "hold", "do": func() -> void: g.command_all(sq, "hold")})
-		out.append({"name": "stop_all", "do": func() -> void: g.command_all(sq, "stop")})
+		out.append({"name": "move", "do": func() -> void: g.group_move(sq, away, false), "us": sq, "react": func() -> bool: return _walking(sq)})
+		out.append({"name": "attack_move", "do": func() -> void: g.group_move(sq, away + Vector2(60, 0), true), "us": sq, "react": func() -> bool: return _walking(sq)})
+		out.append({"name": "smart_move", "do": func() -> void: g.smart_command(sq, away + Vector2(-60, 0)), "us": sq, "react": func() -> bool: return _walking(sq)})
+		out.append({"name": "line_move", "do": func() -> void: g.line_move(sq, PackedVector2Array([away + Vector2(-80, 40), away + Vector2(80, 40)]), false),
+			"us": sq, "react": func() -> bool: return _walking(sq)})
+		out.append({"name": "hold", "do": func() -> void: g.command_all(sq, "hold"), "warm": func() -> void: _walk_first(sq, away + Vector2(0, 120)),
+			"us": sq, "react": func() -> bool: return _standing(sq)})
+		out.append({"name": "stop_all", "do": func() -> void: g.command_all(sq, "stop"), "warm": func() -> void: _walk_first(sq, away + Vector2(-120, 0)),
+			"us": sq, "react": func() -> bool: return _standing(sq)})
 		var one: Unit = sq[0]
-		out.append({"name": "unit_stop", "do": func() -> void: one.cmd_stop()})
+		out.append({"name": "unit_stop", "do": func() -> void: one.cmd_stop(), "warm": func() -> void: _walk_first([one], away + Vector2(120, 60)),
+			"us": [one], "react": func() -> bool: return _standing([one])})
+		# (the host's own hall, across the map: they turn to it and start out; the next order stops them)
+		var foe_hall: Building = null
+		for b in g.buildings:
+			if b.team == 0 and not b.dead and b.kind == g.faction_hall(0):
+				foe_hall = b
+		if foe_hall:
+			out.append({"name": "attack_building", "do": func() -> void: g.smart_command(sq, foe_hall.center()), "us": sq,
+				"react": func() -> bool: return _turned(sq, foe_hall.center()) and _walking(sq)})
+			out.append({"name": "stop_after_attack", "do": func() -> void: g.command_all(sq, "stop"), "us": sq, "react": func() -> bool: return _standing(sq)})
+		out.append({"name": "attack_unit", "ready": func() -> bool: return _dummy() != null, "pre": func() -> void: base["dummy_u"] = _dummy(),
+			"do": func() -> void: g.smart_command(sq, (base["dummy_u"] as Unit).position), "us": sq,
+			"react": func() -> bool: return is_instance_valid(base["dummy_u"]) and _turned(sq, (base["dummy_u"] as Unit).position)})
 		out.append({"name": "hold_fire", "do": func() -> void: one.set_hold_fire(true),
-			"then": func() -> bool: return one.hold_fire or not one.has_gun()})     # (only a unit with a firearm holds it)
-		out.append({"name": "hold_fire_off", "do": func() -> void: one.set_hold_fire(false)})
+			"then": func() -> bool: return one.hold_fire or not one.has_gun(), "react": func() -> bool: return one.hold_fire or not one.has_gun()})     # (only a unit with a firearm holds it)
+		out.append({"name": "hold_fire_off", "do": func() -> void: one.set_hold_fire(false), "react": func() -> bool: return not one.hold_fire})
 	if not guns.is_empty():
-		out.append({"name": "bombard", "do": func() -> void: g.bombard_order(guns, away + Vector2(0, 120))})
-		out.append({"name": "gun_stop", "do": func() -> void: g.command_all(guns, "stop")})
+		var gp: Vector2 = away + Vector2(0, 120)
+		out.append({"name": "bombard", "do": func() -> void: g.bombard_order(guns, gp), "us": guns,
+			"react": func() -> bool: return g._pings.any(func(pg: Array) -> bool: return (pg[0] as Vector2).distance_to(g.on_map(gp)) < 4.0)})
+		out.append({"name": "gun_stop", "do": func() -> void: g.command_all(guns, "stop"), "us": guns, "react": func() -> bool: return _standing(guns)})
+		var gun: Unit = guns[0]
+		out.append({"name": "deploy", "do": func() -> void: gun.cmd_deploy(), "react": func() -> bool: return gun.tesla_mode != "packed",
+			"then": func() -> bool: return gun.tesla_mode != "packed"})
+		out.append({"name": "pack", "ready": func() -> bool: return gun.tesla_mode == "deployed", "do": func() -> void: gun.cmd_pack(),
+			"react": func() -> bool: return gun.tesla_mode != "deployed"})
+	# the others that set up (the Spore Mother roots, the Tesla Cart deploys) and a spell (the Mist Toad's FOG): the host
+	# puts them by this side's hall when asked (after the entity count check: some of them count apart)
+	var extra: Array = {"brood": ["spore_mother", "mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(g.human), [])
+	for k in extra:
+		if not ["spore_mother", "tesla_cart"].has(k):
+			continue
+		out.append({"name": "deploy_" + k, "ready": func() -> bool: return _extra_unit(k) != null, "pre": func() -> void: base["du"] = _extra_unit(k),
+			"do": func() -> void: (base["du"] as Unit).cmd_deploy(), "react": func() -> bool: return (base["du"] as Unit).tesla_mode != "packed",
+			"then": func() -> bool: return (base["du"] as Unit).tesla_mode != "packed"})
+		out.append({"name": "pack_" + k, "ready": func() -> bool: return (base["du"] as Unit).tesla_mode == "deployed", "do": func() -> void: (base["du"] as Unit).cmd_pack(),
+			"react": func() -> bool: return (base["du"] as Unit).tesla_mode != "deployed"})
+	if extra.has("mist_toad"):
+		out.append({"name": "cast_fog", "ready": func() -> bool: return _extra_unit("mist_toad") != null, "pre": func() -> void:
+				var td: Unit = _extra_unit("mist_toad")
+				base["td"] = td
+				base["fp"] = td.position + Vector2(380, 0)
+				if g.spell_problem(td, "fog") != "":
+					_ord["cant"] = true,           # (no energy yet: the host only says so; nothing to show)
+			"do": func() -> void: g.cast_order([base["td"]], "fog", base["fp"]),
+			"react": func() -> bool:
+				var td: Unit = base["td"]
+				return _ord.has("cant") or (_turned([td], base["fp"]) and (td.velocity.length() > 10.0 or td.order == "cast"))})
 	if hall:
-		out.append({"name": "rally", "do": func() -> void: g.set_rally(hall, away + Vector2(30, 30)),
-			"then": func() -> bool: return hall.rally != Vector2.INF})
-		var wk: String = Defs.FACTIONS[g.faction_of(g.human)]["worker"]
-		out.append({"name": "train", "do": func() -> void: g.train_any([hall], wk)})
-		out.append({"name": "cancel_train", "do": func() -> void: g.cancel_train(hall)})
-		out.append({"name": "auto_train", "do": func() -> void: g.net_set(hall, "auto_train", true)})
+		var rp: Vector2 = away + Vector2(30, 30)
+		out.append({"name": "rally", "do": func() -> void: g.set_rally(hall, rp),
+			"then": func() -> bool: return hall.rally != Vector2.INF, "react": func() -> bool: return hall.rally.distance_to(g.on_map(rp)) < 2.0})
+		if hall.dual_rally():
+			var wp: Vector2 = here + Vector2(-90, 60)
+			out.append({"name": "worker_rally", "do": func() -> void: g.set_rally(hall, wp, "worker"),
+				"react": func() -> bool: return hall.worker_rally.distance_to(g.on_map(wp)) < 2.0})
+		var wcost := int(g.unit_price(g.human, wk)[0])
+		out.append({"name": "train", "do": func() -> void: g.train_any([hall], wk), "qb": hall, "cost": wcost, "react": _queue_grew(hall)})
+		out.append({"name": "cancel_train", "do": func() -> void: g.cancel_train(hall), "qb": hall, "react": _queue_shrank(hall), "refund": true})
+		out.append({"name": "train_two", "do": func() -> void:
+			g.train_any([hall], wk)
+			g.train_any([hall], wk), "qb": hall, "cost": wcost, "react": _queue_grew(hall)})
+		out.append({"name": "cancel_train_at", "ready": func() -> bool: return hall.queue.size() >= 2, "do": func() -> void: g.cancel_train_at(hall, 1),
+			"qb": hall, "react": _queue_shrank(hall), "refund": true})
+		out.append({"name": "auto_train", "do": func() -> void: g.net_set(hall, "auto_train", wk), "react": func() -> bool: return String(hall.auto_train) == wk})
+		out.append({"name": "auto_train_off", "do": func() -> void: g.net_set(hall, "auto_train", ""), "react": func() -> bool: return String(hall.auto_train) == ""})
+		# research, where this side has something to research now
+		for b in g.buildings:
+			if b.team != g.human or b.dead or not b.built:
+				continue
+			var rk := ""
+			for k in Defs.RESEARCH:
+				if g.research_problem(b, k) == "":
+					rk = k
+					break
+			if rk != "":
+				var rb: Building = b
+				out.append({"name": "research", "do": func() -> void: g.start_research(rb, rk), "qb": rb, "cost": int(Defs.RESEARCH[rk]["cost"]), "react": _queue_grew(rb)})
+				out.append({"name": "cancel_research", "do": func() -> void: g.cancel_train(rb), "qb": rb, "react": _queue_shrank(rb), "refund": true})
+				break
 	if hall:
-		var why := g.hall_upgrade_problem(hall)
-		out.append({"name": "hall_upgrade" if why == "" else "hall_upgrade_refused", "expect": why, "do": func() -> void: g.start_hall_upgrade(hall)})
+		# (refused or not by what this side holds when it is given: the orders before spend)
+		out.append({"name": "hall_upgrade", "pre": func() -> void:
+				var why := g.hall_upgrade_problem(hall)
+				if why != "":
+					_ord["expect"] = why,
+			"do": func() -> void: g.start_hall_upgrade(hall)})
 	if not workers.is_empty():
 		var mine: Entity = null
 		for b in g.buildings:
@@ -953,16 +1145,206 @@ func _order_list() -> Array:
 			# (the worker is picked when the order is given: the list is made seconds before, and the worker sent to
 			# attack the ground at the body may be gone by then)
 			out.append({"name": "gather", "do": func() -> void:
-				var ws: Array = _mine().filter(func(u: Unit) -> bool: return u.is_worker() and is_instance_valid(u))
+				var ws: Array = _mine().filter(func(u: Unit) -> bool: return u.is_worker() and is_instance_valid(u) and u.order != "build")
 				if not ws.is_empty():
-					(ws[0] as Unit).cmd_gather(mine)})
+					base["gather_w"] = ws[0]
+					(ws[0] as Unit).cmd_gather(mine), "us": [], "react": func() -> bool:
+						var w = base.get("gather_w")
+						if not is_instance_valid(w):
+							return false
+						var near: Vector2 = (w as Unit).position.clamp((mine as Building).rect().position, (mine as Building).rect().end)      # (it heads for the nearest edge)
+						if near.distance_to((w as Unit).position) < 2.0:
+							return true
+						return _turned([w], near) and ((w as Unit).velocity.length() > 10.0 or mine.edge_distance((w as Unit).position) < 24.0)})
+		# a building site: it shows at once (pending), the worker heads for it; then it is abandoned (cost back)
+		var sk: String = Defs.supply_kind(g.faction_of(g.human))
+		out.append({"name": "place", "ready": func() -> bool: return _free_spot(sk).x >= 0 and int(g.players[g.human]["gold"]) >= int(Defs.BUILDINGS[sk]["cost"]),
+			"pre": func() -> void: base["site_at"] = _free_spot(sk),
+			"do": func() -> void: g.place_building(g.human, sk, base["site_at"], _mine().filter(func(u: Unit) -> bool: return u.is_worker()).slice(0, 2), false),
+			"cost": int(Defs.BUILDINGS[sk]["cost"]), "react": func() -> bool:
+				if _site_at(sk, base["site_at"]) != null:
+					base["site_seen"] = true      # (the host's site: a grub that turns into it may swap it for a moment)
+				return not p.sites().is_empty() or _site_at(sk, base["site_at"]) != null,
+			"then": func() -> bool: return (_site_at(sk, base["site_at"]) != null or base.get("site_seen", false)) and p.sites().is_empty()})
+		out.append({"name": "abandon", "ready": func() -> bool: return _site_at(sk, base.get("site_at", Vector2i(-1, -1))) != null,
+			"pre": func() -> void: base["site_b"] = _site_at(sk, base["site_at"]),
+			"do": func() -> void: g.abandon(base["site_b"]), "refund": true,
+			"react": func() -> bool: return not is_instance_valid(base["site_b"]) or (base["site_b"] as Building).dead or (base["site_b"] as Building).modulate.a < 0.3})
+		# refused on purpose (the host has drained this side's gold; this screen is told it has plenty): the click shows the
+		# site / the queue item at once, then the host's refusal takes it back with its reason, and nothing is left over
+		var res_word := "Not enough %s." % String(Defs.FACTIONS[g.faction_of(g.human)]["res"][0]).to_lower()
+		out.append({"name": "place_refused", "expect": res_word, "ready": func() -> bool: return _drain_ready(), "pre": func() -> void:
+				base["site_at2"] = _free_spot(sk)
+				_cheat_gold(),
+			"do": func() -> void: g.place_building(g.human, sk, base["site_at2"], _mine().filter(func(u: Unit) -> bool: return u.is_worker()).slice(0, 1), false),
+			"react": func() -> bool: return not p.sites().is_empty(),
+			"then": func() -> bool: return p.sites().is_empty() and p.pending() == 0 and _site_at(sk, base["site_at2"]) == null})
+		out.append({"name": "train_refused", "expect": res_word, "ready": func() -> bool: return _drain_ready(), "pre": func() -> void:
+				base["q_was"] = hall.queue.size()
+				_cheat_gold(),
+			"do": func() -> void: g.train_any([hall], wk), "qb": hall, "react": _queue_grew(hall),
+			"then": func() -> bool:
+				g.chat.post(g.human, "test: refill")
+				return p.pending() == 0 and hall.queue.size() == int(base["q_was"])})
 	# last: pull down one of its own buildings (not the hall)
 	for b in g.buildings:
-		if b.team == g.human and not b.dead and b != hall and b.kind != "mine":
+		if b.team == g.human and not b.dead and b != hall and b.kind != "mine" and b.built:
 			var bb: Building = b
-			out.append({"name": "demolish", "do": func() -> void: g.demolish(bb), "then": func() -> bool: return true})
+			out.append({"name": "demolish", "do": func() -> void: g.demolish(bb), "then": func() -> bool: return true,
+				"react": func() -> bool: return bb.dead or not is_instance_valid(bb) or bb.modulate.a < 0.9})
 			break
 	return out
+
+
+# ------------------------------------------------------------------ guest: the click's reaction, timed
+
+## Walking on screen (the walk shown: its speed), any of them.
+func _walking(us: Array) -> bool:
+	return us.any(func(u) -> bool: return is_instance_valid(u) and (u as Unit).velocity.length() > 10.0)
+
+
+## Standing on screen, all of them.
+func _standing(us: Array) -> bool:
+	return us.all(func(u) -> bool: return not is_instance_valid(u) or (u as Unit).velocity.length() < 1.0)
+
+
+## Turned toward p (within 30 degrees), all of them.
+func _turned(us: Array, p: Vector2) -> bool:
+	return us.all(func(u) -> bool: return not is_instance_valid(u) or (u as Unit).facing.dot((p - (u as Unit).position).normalized()) > 0.86)
+
+
+func _queue_grew(b: Building) -> Callable:
+	return func() -> bool: return is_instance_valid(b) and NetPredict.shown_queue(g, b)[0].size() > int(_ord.get("qn0", 99))
+
+
+func _queue_shrank(b: Building) -> Callable:
+	return func() -> bool: return is_instance_valid(b) and NetPredict.shown_queue(g, b)[0].size() < int(_ord.get("qn0", 0))
+
+
+## Before the order: units walking somewhere (so a stop or hold has something to stop).
+func _walk_first(us: Array, to: Vector2) -> void:
+	g.group_move(us, to, false)
+
+
+func _free_spot(k: String) -> Vector2i:
+	var hall: Building = base["hall"]
+	for r in range(5, 16):
+		for a in 24:
+			var c := hall.cell + Vector2i(Vector2.from_angle(TAU * a / 24.0 + 0.13) * r)
+			if g.in_map(c) and g.placement_problem(g.human, k, c) == "":
+				return c
+	return Vector2i(-1, -1)
+
+
+func _site_at(k: String, c: Vector2i) -> Building:
+	for b in g.buildings:
+		if b.team == g.human and not b.dead and b.kind == k and b.cell == c:
+			return b
+	return null
+
+
+## A unit of kind k of this side, asked of the host in the chat the first time (it puts one by the hall).
+func _extra_unit(k: String) -> Unit:
+	if not base.has("extra_asked"):
+		base["extra_asked"] = true
+		g.chat.post(g.human, "test: extras")
+	for u in _mine():
+		if u.kind == k:
+			return u
+	return null
+
+
+## The host's hold-fire Musketeer near this side's hall (it puts it there when asked in the chat).
+func _dummy() -> Unit:
+	if not base.has("dummy_asked"):
+		base["dummy_asked"] = true
+		g.chat.post(g.human, "test: dummy")
+	for u in g.units:
+		if u.team == 0 and not u.dead and u.visible and u.position.distance_to((base["hall"] as Building).center()) < 600.0:
+			return u
+	return null
+
+
+## The host holds this side's gold at 0 (asked in the chat): true once the pictures show it.
+func _drain_ready() -> bool:
+	if not base.has("drain_asked"):
+		base["drain_asked"] = true
+		g.chat.post(g.human, "test: drain")
+	return int(g.players[g.human]["gold"]) == 0
+
+
+## This screen believes it has plenty (until the next picture): its click is shown, the host refuses it.
+func _cheat_gold() -> void:
+	g.players[g.human]["gold"] = 100000
+
+
+func _watch_begin() -> void:
+	_ord["t0"] = Time.get_ticks_usec()
+	_ord["last"] = {}
+	_ord["jumps"] = 0
+	_ord["flick"] = 0
+	_ord["back"] = 0
+	_ord["gold0"] = int(NetPredict.shown_player(g, g.human)["gold"])
+	for u in _ord.get("us", []):
+		if is_instance_valid(u):
+			_ord["last"][u] = (u as Unit).position
+	if _ord.has("qb") and is_instance_valid(_ord["qb"]):
+		_ord["qn0"] = NetPredict.shown_queue(g, _ord["qb"])[0].size()
+		_ord["qn"] = _ord["qn0"]
+		_ord["qdir"] = 0
+
+
+func _watch_order() -> void:
+	var ms := (Time.get_ticks_usec() - int(_ord["t0"])) / 1000.0
+	if ms > 2500.0:
+		return
+	if _ord.has("react"):
+		var r: bool = (_ord["react"] as Callable).call()
+		if r and not _ord.has("rms"):
+			_ord["rms"] = ms
+		if _ord.has("rms") and not r and bool(_ord.get("rwas", false)) and not _ord.has("expect") and not _ord.has("us"):
+			_ord["flick"] = int(_ord["flick"]) + 1          # (it showed, then went back: a flicker)
+		_ord["rwas"] = r
+	# (units move on the game's 30 ticks a second, the screen shows them between: a step is measured against the ticks)
+	var pf := Engine.get_physics_frames()
+	var dt := maxf(float(pf - int(_ord.get("wpf", pf - 1))), 1.0) / float(Engine.physics_ticks_per_second)
+	_ord["wpf"] = pf
+	for u in _ord["last"]:
+		if not is_instance_valid(u) or (u as Unit).dead:
+			continue
+		var step_px := ((u as Unit).position - (_ord["last"][u] as Vector2)).length()
+		if step_px > (u as Unit).speed * dt * 2.0 + 3.0:
+			_ord["jumps"] = int(_ord["jumps"]) + 1
+		if _ord.has("rms") and _ord.has("warm"):
+			# (a stop: how far it is shown to move on after it stood still, the furthest of them)
+			if not _ord.has("stood"):
+				_ord["stood"] = {}
+			if not (_ord["stood"] as Dictionary).has(u):
+				_ord["stood"][u] = (u as Unit).position
+			_ord["after"] = maxf(float(_ord.get("after", 0.0)), ((u as Unit).position - (_ord["stood"][u] as Vector2)).length())
+		_ord["last"][u] = (u as Unit).position
+	if _ord.has("qb") and is_instance_valid(_ord["qb"]):
+		var n: int = NetPredict.shown_queue(g, _ord["qb"])[0].size()
+		if n != int(_ord["qn"]):
+			var d := signi(n - int(_ord["qn"]))
+			if int(_ord["qdir"]) != 0 and d != int(_ord["qdir"]) and not _ord.has("expect"):
+				_ord["flick"] = int(_ord["flick"]) + 1          # (it went one way, then back: a flicker)
+			_ord["qdir"] = d
+			_ord["qn"] = n
+	var gold := int(NetPredict.shown_player(g, g.human)["gold"])
+	if int(_ord.get("cost", 0)) > 0 and not _ord.get("refund", false) and not _ord.has("expect") \
+			and gold - int(_ord.get("glast", _ord["gold0"])) >= int(_ord["cost"]) * 0.8:
+		_ord["back"] = int(_ord["back"]) + 1                 # (what it cost came back, then went again: a jump)
+	_ord["glast"] = gold
+
+
+func _watch_end() -> void:
+	if not _ord.has("react"):
+		return
+	var ms: float = float(_ord.get("rms", -1.0))
+	react_rows.append([String(_ord["name"]), ms, int(_ord["jumps"]), int(_ord["flick"]), int(_ord["back"])])
+	print("LAG GUEST REACT %s: %s | unit jumps %d, flickers %d, resources back %d%s" % [String(_ord["name"]), ("%.0f ms" % ms) if ms >= 0.0 else "none in 2.5 s",
+		int(_ord["jumps"]), int(_ord["flick"]), int(_ord["back"]), (", closes up %.0f px after the stop" % float(_ord.get("after", 0.0))) if _ord.has("warm") else ""])
 
 
 func g_colour(i: int) -> int:
