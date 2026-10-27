@@ -39,26 +39,24 @@ ROCK = 3.0          # it sways over the standing leg (front view, px)
 ROLL = 1.5          # and tilts with it (deg)
 IDLE_ARM = 3.5      # the idle's tick and tock (deg)
 
-# the attack: two CUTTING blows (cut.py), the right arm (frames 1-6, THE HIT on frame 4), then the left (frames 7-12,
-# THE HIT on frame 10). Each blow is a windmill chop, the blade turned on its weight so its convex edge leads: the arm
-# winds back and up over its shoulder (the edge turned forward, towards the enemy), comes over the top and slashes
-# forward and down through the space in front of the unit (side view: overhead to low in the picture plane; front and
-# back: a diagonal from high on its own side to low across the body), follows through past the target and settles.
-# The other arm swings a little against it. Per frame of a blow: the striking arm (windmill theta, blow weight w, blade
-# turn beta), the other arm (theta: + forward), the body's lean (deg, + into the blow) and dip (px).
+# the attack: two LOW SWEEPS (cut.py), the right arm (frames 1-6, THE HIT on frame 4), then the left (frames 7-12, THE
+# HIT on frame 10). Each blow is a scythe stroke at ankle height: the arm swings BACK (not up), then sweeps forward and
+# across low in front of the unit, the blade's edge leading and facing the target at the hit, follows through low past
+# it and settles. The other arm swings a little against it. Per frame of a blow: the striking arm (phi round the
+# shoulder: -90 back, 0 its own side, 90 forward, 150 across the front; c how far out of the hang; blow weight w; blade
+# turn beta), the other arm (th: + forward), the body's lean (deg, + into the blow) and dip (px, down: the knees give).
 BLOW = [
-    ((-55, 0.5, 0.55), 6, -1.5, 0),     # 1  it winds back, the edge turning to lead
-    ((-150, 1.0, 1.0), 12, -3.0, 1),    # 2  wound up, high over its shoulder: the edge faces forward, at the enemy
-    ((-205, 1.0, 1.0), 4, 1.0, 2),      # 3  over the top, fast
-    ((-255, 1.0, 1.0), -8, 4.0, 3),     # 4  THE HIT: forward of the shoulder, chopping down into the enemy
-    ((-310, 1.0, 1.0), -12, 3.0, 2),    # 5  follow-through: low, past the target
-    ((-345, 0.45, 0.4), -4, 0.5, 1),    # 6  it settles back to the hang
+    ((-45, 20, 0.55, 0.5), 6, -1.0, 6),     # 1  it swings back, low, the edge turning to lead; the knees start to give
+    ((-75, 34, 1.0, 0.9), 12, -2.0, 16),    # 2  swung back behind its hip, out and low: the edge faces forward
+    ((15, 30, 1.0, 1.0), 4, 3.0, 26),       # 3  sweeping forward fast, skimming the ground beside its feet
+    ((70, 26, 1.0, 1.0), -8, 7.0, 30),      # 4  THE HIT: in front of the feet, at ankle height, the edge at the target
+    ((135, 28, 1.0, 1.0), -12, 5.0, 24),    # 5  follow-through: low, across the front, past the target
+    ((120, 14, 0.45, 0.4), -4, 1.0, 8),     # 6  it rises and settles back to the hang
 ]
-LAG = [30.0, 20.0, 0.0, 20.0, 30.0]    # per facing: the chop runs this much further (deg) by the hit; seen from the front or
-                                        # the back the arm points at (or away from) us as it passes forward, its weight on the
-                                        # shoulder: a little further on it is already slashing down and across the body
-LAGW = [0.0, 0.0, 0.6, 1.0, 0.7, 0.0]   # ... per frame of a blow
-SMEARED = {2: 3, 3: 5, 4: 5}            # frames of a blow with a smear behind the edge (and its length in steps)
+CROSS = [165.0, 150.0, 120.0, 80.0, 75.0]  # per facing: the farthest round the front a sweep goes (phi). From behind,
+                                        # a weight that crossed the front would show through the gap between the legs
+                                        # (the old pendulum's look): there the sweep stops beside its own leg
+SMEARED = {2: 4, 3: 4, 4: 4}            # frames of a blow with a smear behind the edge (and its length in steps)
 HITS = [3, 9]
 BLOW_DUR = [130, 150, 70, 90, 100, 140]
 ATTACK_DUR = BLOW_DUR * 2
@@ -102,15 +100,20 @@ def idle_pose(r, i):
 
 
 def attack_pose(r, i):
-    """frame i of the two-blow cut (0-5 the right arm's blow, 6-11 the left's)"""
+    """frame i of the two-blow sweep (0-5 the right arm's blow, 6-11 the left's)"""
     k_ = i % 6
-    (th, w, beta), other, lean, d = BLOW[k_]
-    th -= LAG[r] * LAGW[k_]
-    strike = {'th': th, 'w': w, 'beta': beta}
+
+    def q_of(j):
+        (phi, c, w, beta) = BLOW[j][0]
+        return {'phi': min(float(phi), CROSS[r]), 'c': float(c), 'w': w, 'beta': beta}
+    strike = q_of(k_)
+    other, lean, d = BLOW[k_][1:]
     if k_ in SMEARED:
-        prev = BLOW[k_ - 1][0][0] - LAG[r] * LAGW[k_ - 1]
+        q0 = q_of(k_ - 1)
         n = SMEARED[k_]
-        strike['trail'] = [(prev + (th - prev) * j / float(n), w, beta) for j in range(n)]
+        strike['trail'] = [{'phi': q0['phi'] + (strike['phi'] - q0['phi']) * j / float(n),
+                            'c': q0['c'] + (strike['c'] - q0['c']) * j / float(n),
+                            'w': strike['w'], 'beta': strike['beta']} for j in range(n)]
     rest = {'th': float(other), 'w': 0.0, 'beta': 0.0}
     arms = {'right': strike, 'left': rest} if i < 6 else {'right': rest, 'left': strike}
     k = LEANK[r]

@@ -148,12 +148,12 @@ def compose(r, pose, extra=None):
             arm = a if side == a['cfg']['robot'] else dict(a, cfg=dict(a['cfg'], robot=side))
             pv = body_pt(add(a['pivot'], off))
             if isinstance(spec, dict):
-                # a cutting blow (cut.py): windmill angle, blow weight, the blade's turn on its weight
-                lay, depth, C1 = cut.cut_layers(r, arm, pv, spec['th'], spec['w'], spec['beta'], dark=dark)
+                # a sweeping blow (cut.py): the pose on the cone, blow weight, the blade's turn on its weight
+                lay, depth, C1 = cut.cut_layers(r, arm, pv, spec, dark=dark)
                 if spec.get('trail'):
                     # the smear behind the blade's edge: where the edge was over the trail's poses, then now
-                    pts = [cut.edge_point(r, arm, pv, t_, w_, b_)[0] for t_, w_, b_ in spec['trail']]
-                    pts.append(cut.edge_point(r, arm, pv, spec['th'], spec['w'], spec['beta'])[0])
+                    pts = [cut.edge_point(r, arm, pv, q_)[0] for q_ in spec['trail']]
+                    pts.append(cut.edge_point(r, arm, pv, spec)[0])
                     lay = [('smear', pts)] + lay
             else:
                 theta, yaw = spec

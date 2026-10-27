@@ -31,7 +31,7 @@ const SHEETS := {
 	"ticking_owl": [94, 81, 47, 69],
 	# tier 3 (tools/import_tier3.py prints these): the Pendulum (idle sway, walk, the swing as its attack, death) and the
 	# Netter (its walk's first frame as the idle, the trot, the recoil as its attack, death)
-	"pendulum": [130, 110, 65, 103],
+	"pendulum": [130, 91, 65, 84],
 	"netter": [84, 58, 42, 54],
 }
 

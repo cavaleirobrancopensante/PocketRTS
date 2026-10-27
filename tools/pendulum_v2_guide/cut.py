@@ -1,32 +1,40 @@
-"""Pendulum v2 ATTACK as a CUT (owner, 2026-10-26: "the blades should always face the enemy or at least be a cutting
-motion, not just a shoving"). The first guide swung each arm forward like a punch: the weight led and the blade trailed
-under it, its flat face first. Here each blow is a windmill CHOP and the crescent's convex edge LEADS the whole way.
+"""Pendulum v2 ATTACK as a LOW SWEEP (owner, 2026-10-27: "the pendulum attack is overhead, but it shouldn't be, because it
+is a ground unit that mostly kills Raptors, so it should be sweeping the ground"; and earlier: "the blades should always
+face the enemy, or at least be a cutting motion, not just a shoving"). The windmill chop over the shoulder is gone: each
+blow is a SCYTHE stroke that mows at ankle height, the crescent's edge leading.
 
-THE ARM (a 3D direction, projected per facing like parts.arm_screen): the arm turns on its shoulder in a swing plane
-that holds the robot's forward axis F and a tilted "down" v(tau) = cos(tau) down + sin(tau) out (out = the arm's own
-side). At rest tau is the painted splay (the arm hangs exactly as painted); during a blow the plane tilts the other
-way (tau = -TILT: "down" leans IN across the body), so a blow that goes back, up over the shoulder (up and OUT), then
-forward and down (down and IN, across the front of the body) is
-  - seen from the side (E, TILT 0): an overhead-to-low forward arc in the picture plane;
-  - seen from the front or the back: a diagonal slash from high on its own side to low across the body;
-  - the 3/4 views: in between.
-  theta (deg) runs the windmill: 0 = hanging at rest, -90 = straight back, -180 = straight up, -270 = straight forward,
-  -360 = hanging again; a blow only ever turns one way (theta falling), so the travel never reverses mid-stroke.
+THE ARM (a 3D direction, projected per facing like parts.arm_screen) hangs from its shoulder on a CONE about the
+vertical: d = cos(c) down + sin(c) h(phi), h(phi) = cos(phi) out + sin(phi) F, where out is the arm's own side (the
+robot's right for the right arm), F the robot's forward axis and c the cone's opening (how far the weight is swung out
+of the hang). Swinging phi turns the weight round the shoulder at (nearly) one height, so it stays LOW:
+  phi = -90 straight back, 0 out to its own side, +90 straight forward, +150 across the front of the body.
+A blow swings BACK (phi to about -75, never up over the shoulder), then sweeps FORWARD and ACROSS (phi climbing past
+its own side, through the front, to the far side), follows through low and settles. The hang is the painted rest
+direction (rest_dir, as the old guide); a pose blends it with the cone by its blow weight w.
+  - side view (E): a low forward arc, the weight and blade skimming just above the ground in front of the feet;
+  - front: a sweep across the front of the body at the feet's height;
+  - back: the same sweep, seen from behind: it is CUT SHORT (CROSS) so the weight never passes behind the gap between
+    the legs (from behind it must never read as the old pendulum hanging between the legs);
+  - 3/4 views: in between.
+The body dips (the knees give) and leans into the blow, so the swung-out weight (a cone lifts it a little) still runs
+at ankle height.
 
 THE BLADE turns on its weight (beta 0..1): at 0 it hangs under the ball as painted (rest, idle, walk); at 1 the
-crescent lies in the swing plane with its convex EDGE pointing the way the weight travels (the tangent of the windmill)
-and its horns along the rod, like an axe head: so it leads the wind-up (back and up), points forward-up at the top of
-the wind-up (towards the enemy) and leads the chop down into the space in front, where the enemy stands. Its paint is
-mapped to the screen by an affine map (the crescent is flat): the edge's screen direction from the projected tangent,
-the horn axis square to it, foreshortened with the rod but never under 0.6 of its width (an edge-on crescent would be
-a line at game scale: CODE EDIT, a readability floor).
+crescent's convex EDGE points along LEAD = the weight's travel round the cone bent towards the front and down (travel +
+forward + down, so the blade dips under the weight towards the ground), its horns square to it: so through the sweep the edge LEADS, and at the hit (the weight in front of its own shoulder,
+coming round) it faces forward, at the target; through the follow-through it leads across. Its paint is mapped to the
+screen by an affine map (the crescent is flat), foreshortened with the rod but never under 0.6 of its width (an edge-on
+crescent would be a line at game scale: CODE EDIT, a readability floor).
 
 THE SLEEVE, CLAMP and ROD follow the arm (the rod turned and stretched or shortened along its length, the sleeve and
 clamp turned and squashed along the rod, their width kept); the BALL is only moved and scaled (a sphere); a weight
 swung towards the camera grows (to 1.22x), one swung away shrinks and darkens (parts.DEPTH_SCALE / DEPTH_DARK).
 
-THE SMEAR: on the slash frames a faint steel-white crescent of motion blur trails the blade's edge along its path
-(CODE-DRAWN, docs/art_style_inconsistency.md), so the cut reads at game scale."""
+THE SMEAR: on the sweep frames a faint steel-white streak trails the blade's edge along its low path (CODE-DRAWN,
+docs/art_style_inconsistency.md), so the cut reads at game scale.
+
+A pose q is a dict: th (the hang's own forward swing, deg: the other arm's counter-swing), phi, c (deg), w (0 hang ..
+1 on the cone), beta (the blade's turn)."""
 import math, os, sys
 import numpy as np
 from PIL import Image, ImageDraw
@@ -34,11 +42,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import parts as P
 from parts import place, sub
 
-TILT = [36.0, 30.0, 0.0, -24.0, -30.0] # how far a blow's swing plane leans across the body, per facing (deg). Seen from
-                                       # BEHIND a slash across the front of the body would pass out of sight behind the
-                                       # case, so the back views lean it the other way (from over the head down past its
-                                       # own hip, beside the body): a fudge for readability, a view-only choice
 EDGE_FLOOR = 0.6                       # the crescent's width never shows under this share of its painted width
+LEAD_FWD = 0.7                         # the edge's lead: the travel round the cone + this much of the forward axis
+LEAD_DOWN = 0.55                       # ... + this much of straight down: the blade dips under the weight, skimming the ground
 
 
 def _axes(r, robot_right):
@@ -54,7 +60,7 @@ def proj(v):
 
 def rest_frame(r, arm):
     """(down, out, F, sigma deg, length) of an arm: out = the side its painted arm splays to, sigma its painted splay
-    (the side view: the arm's own side, no splay; its rest hang forward is parts.E_REST, added to theta)"""
+    (the side view: the arm's own side, no splay; its rest hang forward is parts.E_REST, added to th)"""
     g = arm['geo']
     robot_right = arm['cfg']['robot'] == 'right'
     a, Fw, Rw = _axes(r, robot_right)
@@ -67,13 +73,34 @@ def rest_frame(r, arm):
     return down, out, Fw, math.degrees(math.atan2(abs(C[0]), C[1])), float(np.linalg.norm(C))
 
 
-def direction(r, arm, theta, w):
-    """the arm's 3D unit direction for windmill angle theta (deg) and blow weight w (0 rest .. 1 in the blow)"""
+def rest_dir(r, arm, th):
+    """the hang, swung th deg forward in its painted plane (the idle's and the other arm's)"""
     down, out, F, sigma, L = rest_frame(r, arm)
-    tau = math.radians(sigma + (-TILT[r] - sigma) * w)
-    th = math.radians(theta + (P.E_REST if r == 2 else 0.0))    # (+ forward from hanging)
-    v = math.cos(tau) * down + math.sin(tau) * out
-    d = math.cos(th) * v + math.sin(th) * F
+    s = math.radians(sigma)
+    t = math.radians(th + (P.E_REST if r == 2 else 0.0))
+    v = math.cos(s) * down + math.sin(s) * out
+    d = math.cos(t) * v + math.sin(t) * F
+    return d / np.linalg.norm(d), L
+
+
+def cone_dir(r, arm, phi, c):
+    """the arm on the cone: c deg out of the vertical, at azimuth phi round the shoulder (0 its own side, 90 forward)"""
+    robot_right = arm['cfg']['robot'] == 'right'
+    a, F, Rw = _axes(r, robot_right)
+    out = Rw if robot_right else -Rw
+    p, cc = math.radians(phi), math.radians(c)
+    h = math.cos(p) * out + math.sin(p) * F
+    return math.cos(cc) * np.array([0.0, 0.0, -1.0]) + math.sin(cc) * h, F, out
+
+
+def direction(r, arm, q, dphi=0.0):
+    """the arm's 3D unit direction for pose q (see the top)"""
+    d0, L = rest_dir(r, arm, q.get('th', 0.0))
+    w = q.get('w', 0.0)
+    if w <= 0.0:
+        return d0, L
+    d1 = cone_dir(r, arm, q['phi'] + dphi, q['c'])[0]
+    d = (1.0 - w) * d0 + w * d1
     return d / np.linalg.norm(d), L
 
 
@@ -86,18 +113,24 @@ def _unit(v, fallback):
     return (v / n, n) if n > 1e-4 else (np.array(fallback, float), 0.0)
 
 
-def cut_screen(r, arm, theta, w, beta):
-    """screen offsets and maps of an arm for (theta, w, beta): the weight's centre offset from the pivot, the head's
-    map, the blade's map, the depth of the weight (px towards the camera) and the edge's screen direction"""
+def cut_screen(r, arm, q):
+    """screen offsets and maps of an arm for pose q: the weight's centre offset from the pivot, the head's map, the
+    blade's map, the depth of the weight (px towards the camera), the arm's length and the edge's screen direction"""
     g = arm['geo']
     robot_right = arm['cfg']['robot'] == 'right'
     a = math.radians(P.AZ[r])
     side = 1.0 if robot_right else -1.0
-    d, L = direction(r, arm, theta, w)
-    # the travel (theta falling): the tangent, from two nearby directions
-    d1, _ = direction(r, arm, theta - 2.0, w)
-    d0, _ = direction(r, arm, theta + 2.0, w)
-    t3, _ = _unit(d1 - d0, d)
+    d, L = direction(r, arm, q)
+    beta = q.get('beta', 0.0)
+    if q.get('w', 0.0) > 0.0:
+        # the travel round the cone (phi climbing), bent towards the front: the way the edge leads
+        t3, _ = _unit(direction(r, arm, q, 2.0)[0] - direction(r, arm, q, -2.0)[0], d)
+        F = _axes(r, robot_right)[1]
+        lead, _ = _unit(t3 + LEAD_FWD * F + LEAD_DOWN * np.array([0.0, 0.0, -1.0]), t3)
+        lead = lead - d * float(lead @ d)          # square to the rod (the blade turns on the weight)
+        lead, _ = _unit(lead, t3)
+    else:
+        lead = d
     v = proj(d) * L
     u_p = np.array(g['u'], float)
     n_p = _perp(u_p)
@@ -105,9 +138,9 @@ def cut_screen(r, arm, theta, w, beta):
     a_s, la = _unit(proj(d), u_p)
     la = max(la, 0.25)
     Mh = np.column_stack([a_s * la, _perp(a_s)]) @ Pm
-    # the blade: the edge turned from along the rod (beta 0) to the travel (beta 1), in the swing plane
+    # the blade: the edge turned from along the rod (beta 0) to the lead (beta 1)
     b = beta * math.pi / 2
-    edge = math.cos(b) * d + math.sin(b) * t3
+    edge = math.cos(b) * d + math.sin(b) * lead
     e_s, le = _unit(proj(edge), a_s)
     le = max(le, 0.75)
     lh = 1.0 + (max(EDGE_FLOOR, min(1.0, la)) - 1.0) * math.sin(b)
@@ -116,12 +149,12 @@ def cut_screen(r, arm, theta, w, beta):
     return v, Mh, Mb, depth, L, e_s
 
 
-def cut_layers(r, arm, pivot_s, theta, w, beta, dark=None):
+def cut_layers(r, arm, pivot_s, q, dark=None):
     """the arm's paint (as parts.arm_layers: [(name, image)], depth, the weight's screen centre)"""
     g = arm['geo']
     lay = arm['lay']
-    v, Mh, Mb, depth, L, e_s = cut_screen(r, arm, theta, w, beta)
-    rest = cut_screen(r, arm, 0.0, 0.0, 0.0)[3]
+    v, Mh, Mb, depth, L, e_s = cut_screen(r, arm, q)
+    rest = cut_screen(r, arm, {})[3]
     dd = depth - rest
     C1 = (pivot_s[0] + v[0], pivot_s[1] + v[1])
     s, k = 1.0, 1.0
@@ -145,10 +178,10 @@ def cut_layers(r, arm, pivot_s, theta, w, beta, dark=None):
 
 
 # ------------------------------------------------------------------------------------------------ the smear
-def edge_point(r, arm, pivot_s, theta, w, beta):
+def edge_point(r, arm, pivot_s, q):
     """the blade's leading edge on screen (the crescent's outer middle, carried by the blade's map)"""
     g = arm['geo']
-    v, Mh, Mb, depth, L, e_s = cut_screen(r, arm, theta, w, beta)
+    v, Mh, Mb, depth, L, e_s = cut_screen(r, arm, q)
     C1 = np.array(pivot_s) + v
     # the painted blade's outer middle: the farthest blade pixel along the painted arm axis from the ball
     tip = arm.setdefault('_edge_off', _edge_off(arm))
