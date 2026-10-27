@@ -1893,7 +1893,9 @@ func _pause_item() -> Dictionary:
 
 
 func _menu_pitch(n: int) -> float:
-	return clampf((_vs().y - 150.0) / float(maxi(n, 1)), 46.0, 66.0)
+	# (the panel is 92 + n * pitch + 10 tall: on a phone held sideways the old 150 / 46 left
+	# BACK TO THE MATCH under the bottom edge)
+	return clampf((_vs().y - 116.0) / float(maxi(n, 1)), 40.0, 66.0)
 
 
 ## The whole menu panel (the music column too, when there is room).
@@ -2461,7 +2463,10 @@ func _draw_pause() -> void:
 			var col: Color = UiStyle.BAD if b.get("bad", false) else UiStyle.TEXT
 			if not on:
 				col = Color(col, 0.45)
-			_text(UiStyle.bold_font(), r.get_center() + Vector2(0, 8), b["label"], 21, col, 1)
+			var ty := r.get_center().y + 8.0
+			if b.has("slider"):
+				ty = minf(ty, r.end.y - 15.0)     # above its bar on a short button (the bar ran through the words)
+			_text(UiStyle.bold_font(), Vector2(r.get_center().x, ty), b["label"], 21, col, 1)
 		if _music_shown():
 			music.layout(_music_panel_rect())
 			music.draw(self, _ci, hv)

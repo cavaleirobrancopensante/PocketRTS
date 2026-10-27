@@ -209,7 +209,43 @@ func show_device() -> void:
 ## session's engine log (Godot keeps the last few in user://logs), ready to copy.
 const RUNNING := "user://running.txt"
 
+## On the web the marker lives in the page's localStorage instead (key WEB_RUNNING): the browser
+## sends no close notification when a tab is closed, reloaded or swiped away, and user:// is
+## IndexedDB, written later in the background, so a file removed while the page goes away may
+## never be removed. web_marker_js() removes it when the page is hidden or left (pagehide,
+## visibilitychange), puts it back when the page shows again, and keeps it when the engine died
+## (a WebAssembly abort), so real crashes are still reported.
+const WEB_RUNNING := "holdfast_running"
+
+static func web_marker_js() -> String:
+	return """
+		(function () {
+			if (window.hfMarkerHooks) return;
+			window.hfMarkerHooks = true;
+			var K = '%s';
+			function dead(m) { return /Aborted|RuntimeError|unreachable|out of bounds|out of memory/i.test(String(m || '')); }
+			window.addEventListener('error', function (e) { if (dead(e.message) || (e.error && dead(e.error))) window.hfCrashed = true; });
+			window.addEventListener('unhandledrejection', function (e) { if (dead(e.reason)) window.hfCrashed = true; });
+			function away() {
+				if (window.hfCrashed) return;
+				try { var v = localStorage.getItem(K); if (v !== null) window.hfMark = v; localStorage.removeItem(K); } catch (x) {}
+			}
+			window.addEventListener('pagehide', away);
+			window.addEventListener('beforeunload', away);
+			document.addEventListener('visibilitychange', function () {
+				if (document.visibilityState === 'hidden') away();
+				else if (window.hfMark) { try { localStorage.setItem(K, window.hfMark); } catch (x) {} }
+			});
+		})();
+	""" % WEB_RUNNING
+
+
 func _mark_running(what: String) -> void:
+	if OS.has_feature("web"):
+		var line := "v%s  %s  %s" % [version, Time.get_datetime_string_from_system(), what]
+		JavaScriptBridge.eval("try { window.hfMark = %s; localStorage.setItem('%s', window.hfMark); } catch (x) {}" % [JSON.stringify(line), WEB_RUNNING], true)
+		print("[session] v%s %s" % [version, what])
+		return
 	var f := FileAccess.open(RUNNING, FileAccess.WRITE)
 	if f:
 		f.store_string("v%s  %s  %s\n" % [version, Time.get_datetime_string_from_system(), what])
@@ -218,10 +254,21 @@ func _mark_running(what: String) -> void:
 
 
 func _crash_report() -> String:
-	if not FileAccess.file_exists(RUNNING):
-		return ""
-	var what := FileAccess.get_file_as_string(RUNNING).strip_edges()
-	DirAccess.remove_absolute(RUNNING)
+	var what := ""
+	if OS.has_feature("web"):
+		# a user://running.txt left by a web build before 0.14.64 is not a crash (nothing removed it)
+		if FileAccess.file_exists(RUNNING):
+			DirAccess.remove_absolute(RUNNING)
+		JavaScriptBridge.eval(web_marker_js(), true)
+		var v: Variant = JavaScriptBridge.eval("(function () { try { var v = localStorage.getItem('%s'); localStorage.removeItem('%s'); return v === null ? '' : v; } catch (x) { return ''; } })()" % [WEB_RUNNING, WEB_RUNNING], true)
+		what = str(v).strip_edges() if v != null else ""
+		if what == "":
+			return ""
+	else:
+		if not FileAccess.file_exists(RUNNING):
+			return ""
+		what = FileAccess.get_file_as_string(RUNNING).strip_edges()
+		DirAccess.remove_absolute(RUNNING)
 	# the previous session's engine log: the newest of the rotated ones (this session's is godot.log)
 	var logs := Array(DirAccess.get_files_at("user://logs")) if DirAccess.dir_exists_absolute("user://logs") else []
 	logs = logs.filter(func(f: String) -> bool: return f.begins_with("godot") and f.ends_with(".log") and f != "godot.log")
@@ -236,16 +283,21 @@ func _crash_report() -> String:
 
 func show_crash(report: String) -> void:
 	var root := _page()
+	# on a panel like the other pages (the text sat straight on the busy backdrop, hard to read)
+	var pan := PanelContainer.new()
+	pan.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pan.offset_left = 24
+	pan.offset_right = -24
+	pan.offset_top = 12
+	pan.offset_bottom = -12
+	root.add_child(pan)
 	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 40
-	v.offset_right = -40
-	v.offset_top = 20
-	v.offset_bottom = -20
 	v.add_theme_constant_override("separation", 10)
-	root.add_child(v)
+	pan.add_child(v)
 	v.add_child(UiStyle.heading("THE GAME CLOSED UNEXPECTEDLY", 34, UiStyle.TRIM))
-	v.add_child(UiStyle.text("Last time the game didn't close normally (a crash, or the phone shut it). COPY the report and paste it to the developer. Your match was autosaved: CONTINUE is on the menu.", 17, UiStyle.MUTED))
+	var why := UiStyle.text("Last time the game didn't close normally (a crash, or the phone shut it). COPY the report and paste it to the developer. Your match was autosaved: CONTINUE is on the menu.", 17, UiStyle.MUTED)
+	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # one long line ran off a phone's screen
+	v.add_child(why)
 	var box := TextEdit.new()
 	box.text = report
 	box.editable = false
@@ -348,14 +400,17 @@ func show_online() -> void:
 ## paste into a playtest report.
 func show_logs() -> void:
 	var root := _page()
+	# on a panel like the other pages (the text sat straight on the busy backdrop, hard to read)
+	var pan := PanelContainer.new()
+	pan.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pan.offset_left = 24
+	pan.offset_right = -24
+	pan.offset_top = 12
+	pan.offset_bottom = -12
+	root.add_child(pan)
 	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 40
-	v.offset_right = -40
-	v.offset_top = 20
-	v.offset_bottom = -20
 	v.add_theme_constant_override("separation", 10)
-	root.add_child(v)
+	pan.add_child(v)
 	v.add_child(UiStyle.heading("MATCH LOGS", 40, UiStyle.TRIM))
 	v.add_child(UiStyle.text("COPY puts a match's log on the clipboard, ready to paste.", 17, UiStyle.MUTED))
 	var scroll := ScrollContainer.new()
@@ -390,7 +445,7 @@ func show_logs() -> void:
 		var name: String = Loc.t("Unfinished or closed match") if fn == "unfinished.txt" else fn.trim_prefix("match_").trim_suffix(".txt").replace("_", "  ").replace("T", " ")
 		var l := UiStyle.text("%s   ·   %s%s" % [name, what, ("   ·   " + result) if result != "" else ""], 17, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		l.clip_text = true
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (was cut off on a phone)
 		row.add_child(l)
 		var b := _button("COPY", func() -> void: pass)
 		b.custom_minimum_size = Vector2(130, 46)
@@ -715,7 +770,9 @@ func show_patch_notes() -> void:
 	v.add_child(UiStyle.heading("PATCH NOTES", 36, UiStyle.TRIM))
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size.y = 380
+	# fits a phone held sideways too (its screen is less than 380 + the heading + BACK tall)
+	var vs := root.get_viewport_rect().size
+	scroll.custom_minimum_size.y = clampf(vs.y - 170.0, 160.0, 380.0)
 	v.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 6)
@@ -732,6 +789,7 @@ func show_patch_notes() -> void:
 		for it in PatchNotes.items(e):
 			var t := UiStyle.text("•  " + it, 17, UiStyle.TEXT if e == cur else UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT, true)
 			t.custom_minimum_size.x = 560
+			t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (one line each ran far off the screen)
 			list.add_child(t)
 	var back := _button("BACK", func() -> void: show_settings())
 	v.add_child(back)
@@ -1239,6 +1297,16 @@ func _dropdown(text: String, w: float, items: Array, pick: Callable, list_w := 2
 	b.size_flags_stretch_ratio = w / 100.0
 	b.add_theme_font_size_override("font_size", 18)
 	b.clip_text = true
+	# a long label (RANDOM 2V2 MAP, a Portuguese faction name) was cut off with its arrow on a
+	# narrow column: the text shrinks (down to 12) until it fits the button
+	b.resized.connect(func() -> void:
+		var f: Font = b.get_theme_font("font")
+		var room := b.size.x - 24.0
+		var fs := 18
+		while fs > 12 and f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+			fs -= 1
+		if b.get_theme_font_size("font_size") != fs:
+			b.add_theme_font_size_override("font_size", fs))
 	b.pressed.connect(func() -> void:
 		_web_fullscreen()
 		Sfx.play_any(["ui/click", "click"])
@@ -1321,6 +1389,16 @@ func _cycle(text: String, w: float, step: Callable) -> Button:
 	b.size_flags_stretch_ratio = w / 100.0
 	b.add_theme_font_size_override("font_size", 18)
 	b.clip_text = true
+	# a long label (RANDOM 2V2 MAP, a Portuguese faction name) was cut off with its arrow on a
+	# narrow column: the text shrinks (down to 12) until it fits the button
+	b.resized.connect(func() -> void:
+		var f: Font = b.get_theme_font("font")
+		var room := b.size.x - 24.0
+		var fs := 18
+		while fs > 12 and f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+			fs -= 1
+		if b.get_theme_font_size("font_size") != fs:
+			b.add_theme_font_size_override("font_size", fs))
 	b.pressed.connect(func() -> void:
 		_web_fullscreen()
 		step.call(1)
@@ -1868,7 +1946,7 @@ func _notification(what: int) -> void:
 	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
 		_autosave()
 	# closed or sent to the background on purpose: not a crash (back in front: running again)
-	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST]:
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST] and not OS.has_feature("web"):
 		DirAccess.remove_absolute(RUNNING)
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		_mark_running("resumed" if game == null else "resumed a match")

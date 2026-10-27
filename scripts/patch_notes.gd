@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.66", "items": [
+		"WEB: closing the tab, reloading the page or swiping the browser away no longer shows THE GAME CLOSED UNEXPECTEDLY the next time you open the game. A real crash is still reported.",
+		"MAP EDITOR: BACK, SAVE, LOAD, HELP and the other buttons work again after you paint with a mouse, and BACK works with a tap on a phone (the editor ate the button's click).",
+		"SCREENS THAT RAN OFF THE EDGE: PATCH NOTES wraps its lines and fits a phone; MATCH LOGS and the crash report sit on a panel and wrap; the in-game MENU fits a phone held sideways and its volume bars no longer run through their words; the INTERFACE LAYOUT hotkey list no longer has its note drawn over it; long dropdown labels (RANDOM 2V2 MAP) shrink to fit instead of being cut; IDLE / ARMY / MAKE shrink further on a phone (PRODUCIR, EJÉRCITO).",
+		"REPLAYS in Portuguese and Spanish: the players' names show in your language (they said \"P1 Crown (you)\", \"(easy AI)\" in English).",
+	]},
 	{"v": "0.14.65", "items": [
 		"MUSKETEER: facing down the screen, he now aims and fires at you: the musket points toward the viewer, the flash bursts in front of his chest and the smoke rolls toward you, and his bayonet thrusts toward you. With the down-right and up-right views of the last version, every way he can face now fires the way he faces (the left-hand views are mirrors).",
 	]},

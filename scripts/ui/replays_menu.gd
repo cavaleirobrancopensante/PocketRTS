@@ -129,8 +129,9 @@ func _row(m: Dictionary) -> Control:
 			var c := int(pl.get("colour", 0))
 			var col: Color = Defs.PALETTE[c][1] if c >= 0 and c < Defs.PALETTE.size() else Color.WHITE
 			var fac := String(pl.get("faction", ""))
-			var nm := String(pl.get("name", ""))
-			var lb := UiStyle.text("■ %s%s" % [nm, "" if nm.to_lower().contains(fac) else " (%s)" % fac.capitalize()], 15, col.lightened(0.25), HORIZONTAL_ALIGNMENT_LEFT, true)
+			var raw := String(pl.get("name", ""))
+			var nm := _local_name(raw)
+			var lb := UiStyle.text("■ %s%s" % [nm, "" if raw.to_lower().contains(fac) else " (%s)" % Loc.t(fac.capitalize())], 15, col.lightened(0.25), HORIZONTAL_ALIGNMENT_LEFT, true)
 			l2.add_child(lb)
 	# the buttons
 	var bw := VBoxContainer.new()
@@ -274,3 +275,17 @@ func _web_pick() -> void:
 			inp.click();
 		})();
 	""", true)
+
+
+## A player's name as the replay stored it ("P1 Crown (you)", "P2 Brood (easy AI)": English) in
+## the language in use (it showed in English in Portuguese and Spanish).
+static func _local_name(nm: String) -> String:
+	for f in ["Crown", "Brood", "Clockwork"]:
+		nm = nm.replace(" %s" % f, " %s" % Loc.t(f))
+	if Loc.t("YOU") != "YOU":
+		nm = nm.replace("(you)", "(%s)" % Loc.t("YOU").to_lower())
+	for w in ["easy", "normal", "hard", "brutal"]:
+		var k := "%s AI" % w.to_upper()
+		if Loc.t(k) != k:
+			nm = nm.replace("(%s AI)" % w, "(%s)" % Loc.t(k).to_lower().replace("ia ", "IA "))
+	return nm
