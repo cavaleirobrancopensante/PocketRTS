@@ -260,6 +260,16 @@ const BASE_UNITS := {
 		"walk_se": 6,
 	}},
 	"winder": {"cell": Vector2i(76, 49), "anchor": Vector2(38, 43), "frames": {
+		"crank_e": 4,
+		"crank_n": 4,
+		"crank_ne": 4,
+		"crank_s": 4,
+		"crank_se": 4,
+		"push_e": 4,
+		"push_n": 4,
+		"push_ne": 4,
+		"push_s": 4,
+		"push_se": 4,
 		"carry_e": 4,
 		"carry_n": 4,
 		"carry_ne": 4,
@@ -1121,6 +1131,8 @@ const EFFECTS := {
 	"netter_net": {"frames": 1, "size": Vector2i(30, 21)},
 	"netter_net_open": {"frames": 1, "size": Vector2i(46, 38)},
 	"netter_net_open_big": {"frames": 1, "size": Vector2i(74, 60)},
+	# the Spring Ballista's screw bolt in flight, pointing right (tools/import_ballista.py, cut from its concept)
+	"ballista_bolt": {"frames": 1, "size": Vector2i(58, 24)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):

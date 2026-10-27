@@ -430,7 +430,9 @@ const ENERGY_KINDS := ["boiler", "charging_pylon", "engine_hall", "capacitor_wor
 
 ## The Clockwork's units in gear mode (the rebuilt faction, docs/clockwork_ground_up.md): every other Clockwork unit is the
 ## old roster, retired from the live game (owner, 2026-10-26), kept in the code for the shelved Line and the tests.
-const CW_NEW_UNITS := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter"]
+const CW_NEW_UNITS := ["winder", "clock_soldier", "jack", "cuckoo", "ticking_owl", "pendulum", "netter", "ballista"]
+## (the Spring Catapult, art only, was never in this list: the SPRING BALLISTA replaces it, owner 2026-10-27; its art
+## and tools stay in art/redraws/catapult_* and tools/catapult_guide/)
 
 
 ## True in gear mode for an old Clockwork unit or building that the live game no longer offers (not in CW_NEW_UNITS /
@@ -594,6 +596,27 @@ const PENDULUM_SWING := {"reach": 62.0, "arc": 60.0, "strike": 0.29, "vs_light":
 ## Spread over the caught unit: assets/effects/netter_net_open(_big).png, scaled to `cover` x its radius across.
 const NET := {"time": 4.0, "speed": 380.0, "arc": 0.12, "damage": 4.0, "strike": 0.5, "cover": 3.4, "drop": 0.12,
 	"mouth": {"s": Vector2(0, -43), "se": Vector2(22, -34), "e": Vector2(34, -32), "ne": Vector2(19, -42), "n": Vector2(0, -41)}}
+
+
+## The SPRING BALLISTA (gear mode's Clockwork tier 2, the owner's unit, 2026-10-27; scripts/ballista.gd, docs/ballista.md):
+## a crewed bolt thrower on cog wheels, made at the Movement Works once an Escapement works. Its screw BOLT flies in a
+## straight line from the bow's `mouth` (game px from its feet per drawn view, W/SW/NW mirror E/SE/NE; printed by
+## tools/import_ballista.py) at `speed` px/s and PASSES THROUGH: it goes on `line` px past the point it was aimed at and
+## hits the enemies within `width` px of that line (on the ground; never its own side's), up to `hits` of them, in order:
+## each takes the shot x its share (the first the whole, then 50%, then 30%); an ARMOURED unit x `vs_armored`, a building
+## x the unit's building_bonus, and a building stops the bolt (it sticks in it). The damage lands when it is fired, like a
+## musket ball (the bolt is the picture). NO set-up: it fires as soon as it stops, and ON THE MOVE (a MOVE order) at an
+## enemy in range ahead of it (within `move_cone`, a cosine, of the way it faces). Then it RELOADS (its UNITS cooldown):
+## the spring is wound only while it stands (slower than `still` px/s), by its crew.
+## THE CREW: one Winder is built in (part of its picture, not a unit: it always has its own crewman); up to `crew` more
+## Winders BOARD it (Balloon-style: Unit.cmd_board, room, take_aboard; UNLOAD sets them down). They stay on the field
+## beside it, drawn pushing from behind while it moves and cranking at its side while it reloads, and CAN BE HIT (the
+## counter: shoot the crew). Each extra Winder: +`per_crew` reload speed and +`per_crew` move speed. `board`: px from its
+## feet a Winder climbs on.
+const BALLISTA := {"crew": 4, "per_crew": 0.1, "board": 40.0, "line": 90.0, "width": 10.0, "hits": [1.0, 0.5, 0.3],
+	"vs_armored": 1.75, "speed": 620.0, "move_cone": 0.6, "still": 8.0,
+	"mouth": {"s": Vector2(0, -16), "se": Vector2(42, -28), "e": Vector2(62, -38), "ne": Vector2(56, -78), "n": Vector2(0, -87)}}
+const BALLISTA_KIND := "ballista"
 
 
 ## The Tension a unit, building or research costs (gear mode's Clockwork: its `tension`; 0 for anything else).
@@ -931,6 +954,21 @@ const UNITS := {
 		"requires": "escapement", "anti_air": true, "faction": "clockwork",
 		"about": "A low iron drum on four short legs with a spring cannon on top: it fires a weighted chain NET at one enemy, which then cannot move or fight for 4 s; a flyer it catches comes down to the ground for that time, where anything can hit it. By itself it picks the most dangerous enemy in reach that is not caught already (right-click one to choose). A long reload, and weak itself: keep it behind the line. Made at a Movement Works whose gear ring meshes with a Mainspring's, once an Escapement works. Costs Tension.",
 	},
+	# TIER 2 (gear mode; Defs.BALLISTA, scripts/ballista.gd, docs/ballista.md): the SPRING BALLISTA, the owner's unit
+	# (2026-10-27): against ARMOUR and BUILDINGS. Guesses (design_principles 1): a heavy screw bolt, 45 damage (x1.75 on an
+	# armoured unit: 79; x2 on a building: 90), the bolt going on through the line behind its target (50% and 30%); a
+	# shot every 7.3 s alone (aim 0.3 + strike 0.35 + a 7 s reload, wound only while it stands), 6.2 a second, 10.8 on
+	# armour, 12.3 on buildings; with 4 more Winders cranking (each +10%) 5 s of winding: 8.5, 14.9 and 17 a second. Reach
+	# 300 (a Spore Mother's; the Crown Cannon 430, the Mortar 352, a Musketeer 190), and nothing under 64 px (min_range):
+	# weak up close. 210 hp + 1 armour, "armored" (iron and brass: round shot hurts it more). Slow: 34 (a towed gun 38),
+	# 47.6 with four Winders pushing. 150 cogs + 50 Tension, 3 supply (a Cannon 170 gold + a horse, 4 supply).
+	"ballista": {
+		"tags": ["armored"],
+		"name": "Spring Ballista", "hp": 210, "armor": 1, "speed": 34, "cost": 150, "tension": 50, "time": 30.0, "supply": 3,
+		"sight": 9, "range": 300, "min_range": 64, "damage": 45, "cooldown": 7.0, "aim": 0.3, "radius": 24, "from": "movement_works",
+		"building_bonus": 2.0, "requires": "escapement", "ground_only": true, "faction": "clockwork",
+		"about": "A bolt thrower on cog wheels: its spring fires a giant screw in a straight line that goes THROUGH its target into one or two behind it. Hard on armoured units and buildings, poor against swarms of light units, and it cannot shoot anything closer than 2 tiles or in the air. No set-up: it fires as soon as it stops, and on the move at what is ahead of it, but the spring is wound again only while it stands (a slow reload). One Winder is built in; up to 4 more can BOARD it: each makes it reload and move 10% faster. They push it and crank it, and they can be shot. Made at the Movement Works once an Escapement works. Costs Tension.",
+	},
 	"windup_soldier": {
 		"tags": ["light"],
 		"name": "Wind-up Soldiers", "hp": 55, "armor": 1, "speed": 66, "cost": 75, "time": 13.0, "supply": 1, "spawn": 3,
@@ -1148,8 +1186,8 @@ const BUILDINGS := {
 	# costs like the Crown Barracks, the Regulator houses like the Spring Tower.
 	"movement_works": {
 		"name": "Movement Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack", "pendulum", "netter"], "faction": "clockwork",
-		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Springers, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
+		"supply": 0, "sight": 7, "trains": ["clock_soldier", "jack", "ballista", "pendulum", "netter"], "faction": "clockwork",
+		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Springers, Spring Ballistas, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
 	# its ring meshes with a Mainspring's. Numbers are guesses: the Movement Works' price and health.
@@ -1641,10 +1679,10 @@ const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 2
 ## FIRE AT A SPOT (BOMBARD; owner, 2026-10-26, as in Total Annihilation): Ctrl+A or the BOMBARD button, then a spot on the
 ## ground (in the fog too): the units of these kinds in the selection walk into range, set up and keep firing at it until
 ## another order, as long as their shot lasts (Unit.cmd_bombard). Area weapons only: the Field Cannon (round shot or
-## canister, whichever it is loaded with), the Mortar, the Brood's Spore Mother (her spit blobs; she roots). Next: the
-## Clockwork's Spring Catapult. `queued`: with orders Shift-queued behind it, a unit fires this many shots at the spot and
+## canister, whichever it is loaded with), the Mortar, the Brood's Spore Mother (her spit blobs; she roots). And the
+## Clockwork's Spring Ballista (its bolt through the spot, scripts/ballista.gd). `queued`: with orders Shift-queued behind it, a unit fires this many shots at the spot and
 ## then goes on to the next order (the last one it keeps firing).
-const BOMBARD := {"kinds": ["cannon", "mortar", "spore_mother"], "queued": 3}
+const BOMBARD := {"kinds": ["cannon", "mortar", "spore_mother", "ballista"], "queued": 3}
 ## AREA SHOTS DESTROY BODIES (owner, 2026-10-26): a shell, round shot or canister fired at a spot (BOMBARD) tears up the
 ## bodies lying in its blast (Game.blast_bodies): the Brood can no longer harvest them, a Missionary can no longer raise them
 ## (the Crown's own dead too: the price of blasting). The blast: a Mortar shell's splash, round shot's small splash where it
