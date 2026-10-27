@@ -2,19 +2,22 @@ class_name AIBrood
 extends RefCounted
 ## The Brood computer's own judgement (an AI holds one as `brood` when it plays the Brood). Kept apart
 ## from the shared AI code; ai.gd calls it from its Brood branches. No cheating (docs/design_principles.md):
-## it knows only what its own eyes have shown. Measured with tools/measure_brood_ai.gd
-## (docs/ai_build_timelines.md, "The Brood in a real game").
-##  ESSENCE  The Brood Pen goes up, its biomass put by, as soon as the army has caught up with its plan
-##           (at once against Horsemen), then the Gorge Pit once essence comes in: Spitters need the
-##           Pen, a fight at home feeds it, offerings are made there. Bodies left on our side of the map
-##           after a fight are harvested by a few grubs, who go back to the pits when none are left. With
-##           no bodies coming, the Raptors the army can spare are offered up for the essence the next tech
-##           creature needs (offer).
+## it knows only what its own eyes have shown. Measured with tools/measure_brood_ai.gd; the numbers and
+## why each rule is as it is: docs/brood_ai_fixes.md.
+##  GRUBS    A floor of grubs rising with the clock (grub_floor): under it grubs come first, above it the
+##           army while it is behind its plan; the enemy in our base or Horsemen about: the army first.
+##  ESSENCE  The Brood Pen goes up after the economy (PEN_GRUBS, PEN_GUARD; at once against Horsemen),
+##           its biomass put by. Bodies left on our side of the map after a fight are harvested by a few
+##           grubs, who go back to the pits when none are left. Spare Raptors are offered up at the Pen for
+##           two eggs of Spitters (offer_target), within OFFER_SHARE of the biomass earned; an egg waits for
+##           a Spitter's biomass once the essence is there (egg_choice).
 ##  SUPPLY   Clutch Mounds go up ahead of need: the margin is what the eggs could fill while one goes up
-##           (the recent income and the biomass and eggs in hand), and its 75 biomass is put by first.
+##           (the recent income and the biomass and eggs in hand); with the supply short its 75 is put by.
+##  EGGS     Every egg taken while biomass piles up: another Burrow (hall_due).
 ##  ATTACKS  Every enemy soldier seen is remembered (until seen to fall, or for MEMORY seconds). No wave
-##           goes into an army clearly stronger than ours (it defends and techs meanwhile), and a wave
-##           that is clearly losing its fight pulls back home; the next one waits for a bigger army.
+##           goes into an army clearly stronger than ours (it defends and techs meanwhile); on old news two
+##           Raptors look first; a wave that is clearly losing its fight pulls back home; the next one
+##           waits for a bigger army.
 
 const MEMORY := 240.0           # an enemy soldier seen counts this long (unless we saw it fall)
 const ATTACK_RATIO := 1.25      # a wave goes only when worth this many times the enemy army we know of

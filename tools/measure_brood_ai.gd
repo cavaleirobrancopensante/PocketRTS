@@ -7,7 +7,7 @@ extends SceneTree
 ## sacrifices), the seconds supply-blocked (a Raptor egg would not fit under the cap while 75+ biomass
 ## is banked), the army value (the match log's: cost per unit made) at 3, 5 and 7 minutes, the tech
 ## buildings' times, and every attack wave the Brood launched: when, what it sent, what it killed,
-## what it lost and how it ended. Used for the numbers in docs/ai_build_timelines.md (Brood).
+## what it lost and how it ended. Used for the numbers in docs/brood_ai_fixes.md ("off:<part>,..." switches parts of scripts/ai_brood.gd off to weigh them).
 var main: Node
 var t := 0.0
 var g
