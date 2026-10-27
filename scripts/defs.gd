@@ -623,7 +623,7 @@ const BALLISTA_KIND := "ballista"
 
 
 ## The GREAT WINDER (gear mode's Clockwork tier 2, the owner's unit, 2026-10-26/27; scripts/great_winder.gd,
-## docs/great_winder.md): the faction's big, slow, walking winding machine, its field workshop. No weapon. Three jobs:
+## docs/great_winder.md): the faction's big, slow winding machine on cog wheels, its field workshop. No weapon. Three jobs:
 ## WINDING: every Clockwork construct of its side (not the Winders, who wind themselves) within `area` px of it is wound
 ##   `wind` a second (an army off the gear ground runs down at Defs.WIND_DECAY, 0.012 a second: inside the area it never
 ##   does, and a run-down statue in it wakes and fills again). Drawn as a ring on the ground while it is selected.
@@ -637,10 +637,11 @@ const BALLISTA_KIND := "ballista"
 ##   are never swept) and sweeps it into its hopper with its rollers for `sweep_time` s: the wreck is gone and it keeps
 ##   PARTS: the wreck's price / `per_part` (the less of the wreck is left, the fewer), at least 1, up to `cap` in all.
 ##   Parts do nothing yet: they are for REASSEMBLY, a later job (docs/great_winder.md).
-## The art's walk carries it 16 game px a loop of 12 frames (docs/great_winder_legs.md): Unit.WALK_FPS_ART plays it at
-## speed x 12 / 16 frames a second, so the feet do not slide.
+## It rolls on four cog wheels (branch gw-wheels, 2026-10-27; it walked on legs before): the walk strip turns them 90 deg
+## (3 teeth) a loop of 12 frames, which rolls it 20.25 game px (their rolling radius x pi / 2; docs/great_winder.md):
+## Unit.WALK_FPS_ART plays it at speed x 12 / 20.25 frames a second (16 at 27), so the wheels do not slide.
 const GREAT_WINDER := {"area": 200.0, "wind": 0.06, "look": 224.0, "reach": 30.0, "mend": 1.5, "mend_wind": 0.3,
-	"sweep_look": 256.0, "sweep_reach": 34.0, "sweep_time": 2.0, "per_part": 10.0, "cap": 100, "stride": 16.0, "frames": 12}
+	"sweep_look": 256.0, "sweep_reach": 34.0, "sweep_time": 2.0, "per_part": 10.0, "cap": 100, "stride": 20.25, "frames": 12}
 const GREAT_WINDER_KIND := "great_winder"
 
 
@@ -998,7 +999,7 @@ const UNITS := {
 	# unit (2026-10-26/27): the Clockwork's field workshop, the job its escort of ordinary Winders does, done better by one
 	# machine. Guesses (design_principles 1): no weapon (a Powder Wagon's job in the Crown, a support unit to protect);
 	# 420 hp + 3 armour, "armored" and "massive" (a heavy iron machine: a Pendulum 340 + 2, a Powder Wagon 220 + 1); slow:
-	# 27 (its painted 4-leg walk carries it 16 px a loop: 20 frames a second at 27; a Ballista 34, a Pendulum 46); it winds
+	# 27 (kept when it went on cog wheels: slow on purpose, it falls behind a march; a Ballista 34, a Pendulum 46); it winds
 	# every construct within 200 px at 0.06 a second (5 x the run-down rate), mends one at a time at 1.5 x a Winder's rate,
 	# and sweeps its own side's wrecks into parts. 175 cogs + 75 Tension, 4 supply (about the three or four escort
 	# Winders it stands in for: 150-200 cogs and 3-4 supply, plus the Tension of a tier-2 machine).
@@ -1007,7 +1008,7 @@ const UNITS := {
 		"name": "Great Winder", "hp": 420, "armor": 3, "speed": 27, "cost": 175, "tension": 75, "time": 35.0, "supply": 4,
 		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 26, "from": "movement_works",
 		"requires": "escapement", "no_attack": true, "ground_only": true, "faction": "clockwork",
-		"about": "The Clockwork's walking winding machine, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Light Works once an Escapement works. Costs Tension.",
+		"about": "The Clockwork's winding machine on cog wheels, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Light Works once an Escapement works. Costs Tension.",
 	},
 	"windup_soldier": {
 		"tags": ["light"],

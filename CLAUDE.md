@@ -13,6 +13,7 @@
 
 - Art: the dismounted Cuirassier (dismounted_armoured) art is bad: redo it so it matches the mounted Cuirassier (the owner, 2026-10-25; 2026-10-27: "a real problem, we have to fix that"). The Armoured Musketeer borrowed its steel back plate meanwhile.
 - Crown research: the owner is thinking about spreading the Armoury's 9 researches over other buildings (e.g. Cavalry Charge at the Horse Breeder, Prepared Charges at the Powder Mill); undecided, pros and cons discussed 2026-10-27.
+- IDEA, undecided (owner, 2026-10-27): Brood buildings as walking units that root and unroot, a slow Queen as the main base, each building grown from a grub; mining unsolved. Notes in docs/idea_brood_mobile_buildings.md. Don't build it until he decides.
 - Queen animation (not started; the Queen is a still sprite at the Brood capital).
 - Armoury art polish (patch wobble, yellow specks, dummy target colour in its experiment animations): the Crown animation audit (anim-audit-crown) looks at it; wall balance check; optional player build grid; loosen the 24-tile limit in tools/test_ai_placement.gd.
 - AI wall timing and scouting: DONE for the Crown Musketeer opening (AI._wall_wanted/_wall_off/adopt_site, AIScout rush evidence by faction; tools/test_ai_wall_vs_rush.gd: wall at ~2:00 behind the Barracks and Mill, 3 Musketeers by ~2:30, vs the owner's extreme rush). Still open: the walled Brood AI scouting by a patrolling grub at the ramp foot, Clockwork's equivalent, and a Crown that holds 3 Musketeers by 2:00 (needs the early farm income, which pays in lumps).
@@ -23,6 +24,8 @@
 - Done and crossed off (2026-10-27): the in-game music player (scripts/ui/menu_music.gd); the labourer leading a horse getting stuck and the limbered guns and vanishing horses (fix-guns-horses, 0.14.37; the horse and hauler tests pass on 0.14.53); the late-game lag pass (perf-lag, 0.14.43); the Crown losing all its workers to a Raptor counterattack (obsolete, owner); Brood ground (0.14.42).
 
 ## Current work
+
+- Expansion spots (owner, 2026-10-27 23:23; cloud job on branch `expansion-spots`): show the best expansion places on each map as a few ground tiles in a different colour (the hall footprint tinted, brighter for the best), for the Crown and the Clockwork only. NOT for the Brood: "it rarely makes sense to change the capital" (no Brood capital/Pit marks). Keep it simple: tinted tiles first; the minimap marks, ghost snap and hover line are extras.
 
 - Animation packs are done (Barracks drills, Breeder coats, Armoury experiments in game); the Queen is a still sprite at the Brood capital. Status table: `docs/animation_packs.md`.
 - Animation audits (cloud jobs, 2026-10-27): every animation of each faction measured and looked at, safe fixes made, ChatGPT redraw prompts written: branches anim-audit-crown, anim-audit-brood, anim-audit-clockwork (docs/animation_audit_<faction>.md).
