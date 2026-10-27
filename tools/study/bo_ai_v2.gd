@@ -72,6 +72,49 @@ func _do(s: String) -> String:
 	return r
 
 
+## Where a building goes (v2): bo_ai.gd's rules, except the Clockwork's Mainspring, which goes where the computer's own
+## _spring_spot puts it (its ring meshing with a Movement Works', so that Works may make Tension units: THE TENSION RULE of
+## 0.14.38; a second one by the Clocktower with room for the Escapement and the Aviary). bo_ai.gd put it anywhere with
+## room near the hall, written before that rule, so the Works it should feed was often left unfed.
+func _spot_for(kind: String) -> Vector2i:
+	if kind == "mainspring" and Defs.gear_mode and _clock():
+		var c := _spring_spot(not _mine("mainspring").is_empty())
+		if c.x >= 0:
+			return c
+	return super._spot_for(kind)
+
+
+## "gear:<kind>:big|small" (v2): the Tension rule (0.14.38) makes anything that costs Tension only where a Mainspring's
+## ring meshes with the building, so the swap goes to the newest finished building of that kind that is FED (meshes with
+## a Mainspring), as the computer's own _tier3 picks its Pendulum Works; with none fed, the newest finished one (as
+## bo_ai.gd did). bo_ai.gd took the newest finished one always, which on today's rules can be a Works that can never
+## make the Pendulum.
+func _do_gear(s: String) -> String:
+	var p := s.split(":")
+	var kind := String(p[1])
+	var big := p.size() < 3 or String(p[2]) != "small"
+	var list: Array = _mine(kind).filter(func(b: Building) -> bool: return b.built)
+	if list.is_empty():
+		return "wait"
+	var fed: Array = list.filter(func(b: Building) -> bool: return GearEcon.spend_problem(game, b) == "")
+	for o in list:
+		if (o.gear_swap_to if o.gear_swap_t >= 0.0 else o.gear_big) == big and (fed.is_empty() or fed.has(o)):
+			_log(s, game.clock)
+			return "done"      # (one is on that gear already)
+	if fed.is_empty() and big:
+		return "wait"          # (none can make a Tension unit yet: wait for one that meshes, or the step's time limit)
+	var b: Building = fed[fed.size() - 1] if not fed.is_empty() else list[list.size() - 1]
+	if game.gear_swap_problem(b) != "":
+		_hold = int(Defs.GEAR["swap_cost"])
+		return "wait"
+	game.swap_gear(b)
+	_log(s, game.clock + float(Defs.GEAR["swap_time"]))
+	if game.mlog:
+		game.mlog.add("%s's scripted gear swap: %s %s onto its %s gear (%d of %d fed by a Mainspring)" % [game.mlog.who(team), kind,
+			"(fed)" if fed.has(b) else "(not fed)", "big" if big else "small", fed.size(), list.size()])
+	return "done"
+
+
 ## The fuller record: bo_ai.gd's report plus the per-step table and the hand-over.
 func report_v2() -> Dictionary:
 	var rep := report()

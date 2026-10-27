@@ -69,9 +69,9 @@ CHECK_OPP = {"crown": "brood", "brood": "clockwork", "clockwork": "crown"}
 def check_specs(names=None):
     builds = load_builds()
     out = []
-    for i, nm in enumerate(names or sorted(builds)):
+    for i, nm in enumerate(sorted(builds)):           # (the seed follows the build's place in the whole list)
         b = builds[nm]
-        if b.get("retired") and not names:
+        if (names and nm not in names) or (b.get("retired") and not names):
             continue
         out.append({"id": "check_" + nm, "a": b["faction"], "b": CHECK_OPP[b["faction"]], "oa": nm, "ob": "ai",
                     "pb": "balanced", "map": "ashford_crossing", "seed": 777001 + i, "swap": 0, "n": i})

@@ -8,7 +8,8 @@ extends "res://tools/study/study_game.gd"
 ##       [end:1800] [gg:1] [builds:/abs/extra_builds.json] [step_timeout:180] [script_timeout:720]
 ##
 ##   oa / ob     a build name (from tools/study/build_orders.json, or from the `builds:` file, which wins on a clash);
-##               leave it out (or "ai") for the plain Hard computer on plan pa / pb. A build's own faction wins over a / b.
+##               leave it out (or "ai") for the plain Hard computer on plan pa / pb, or "idle" for a sleeping opponent
+##               (its workers work, nothing else: for timing a build). A build's own faction wins over a / b.
 ##   builds      an extra file of builds in the same format ({"builds": [...]}) : the exploratory runner writes its
 ##               candidates there.
 ## Everything study_game.gd writes, plus in games/<id>.json: "opening_a", "opening_b", and per team "opening" and "bo"
@@ -50,14 +51,14 @@ func _initialize() -> void:
 	if extra_builds != "":
 		_load_builds(extra_builds)
 	for nm in [oa, ob]:
-		if nm != "" and not builds.has(nm):
+		if nm != "" and nm != "idle" and not builds.has(nm):
 			push_error("study_game_v2: unknown build " + nm)
 			quit(2)
 			return
-	if oa != "":
+	if oa != "" and oa != "idle":
 		fa = String(builds[oa]["faction"])
 		pa = String(builds[oa].get("then", "balanced"))
-	if ob != "":
+	if ob != "" and ob != "idle":
 		fb = String(builds[ob]["faction"])
 		pb = String(builds[ob].get("then", "balanced"))
 
@@ -96,6 +97,9 @@ func _swap() -> void:
 	for old in gm.ais.duplicate():
 		var nm: String = oa if old.team == a_team else ob
 		if nm == "":
+			continue
+		if nm == "idle":
+			old.process_mode = Node.PROCESS_MODE_DISABLED      # (a sleeping opponent: its workers work, nothing else; checks only)
 			continue
 		var nai = BOAI2.new()
 		nai.game = gm
