@@ -3480,20 +3480,21 @@ func _produce() -> void:
 		for hw in _mine(Defs.CW_HEAVY):
 			if hw.built and hw.queue.size() < (2 if _gold() > 600 else 1):
 				var hk := ""
-				# (the first Ballista before the Pendulums, as when it came from the Works: then the Pendulums, then the
-				# other Ballistas)
+				# (the first Ballista before the Pendulums, as when it came from the Works: then the Great Winder, the
+				# Pendulums, the other Ballistas)
 				if bals == 0 and bal_want > 0 and others >= 3 and _tension_ok(hw, Defs.BALLISTA_KIND, keep0):
 					hk = Defs.BALLISTA_KIND
+				elif _great_winder_due(hw, gws, others, keep0):
+					hk = Defs.GREAT_WINDER_KIND          # (its one Great Winder, from the Heavy Works too, after the first Ballista)
 				elif want_p and _tension_ok(hw, Defs.PENDULUM, 0.0):
 					hk = Defs.PENDULUM
 				elif bals < bal_want and others >= 3 and _tension_ok(hw, Defs.BALLISTA_KIND, keep0):
 					hk = Defs.BALLISTA_KIND
-				elif _great_winder_due(hw, gws, others, keep0):
-					hk = Defs.GREAT_WINDER_KIND          # (one Great Winder, from the Heavy Works too)
 				if hk == "":
 					# (a heavy machine is wanted but its Tension is short: it is kept from the Springers meanwhile; the
 					# Springers used to eat every bit of it, and no Ballista nor Pendulum came all game)
-					var want_k := Defs.BALLISTA_KIND if bals == 0 and bal_want > 0 and others >= 3 else (Defs.PENDULUM if want_p else "")
+					var want_k := Defs.BALLISTA_KIND if bals == 0 and bal_want > 0 and others >= 3 else \
+							(Defs.GREAT_WINDER_KIND if gws < 1 and others >= GREAT_WINDER_ARMY else (Defs.PENDULUM if want_p else ""))
 					if want_k != "" and game.gear_net.spring_for(hw) != null:
 						heavy_keep = maxf(heavy_keep, float(Defs.tension_cost(Defs.UNITS[want_k])))
 					continue

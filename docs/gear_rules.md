@@ -106,18 +106,18 @@ No clutch, flywheel or worm gates. Maybe later.
 
 ## The pictures
 
-All in docs/shots/gear_rules/, filmed by tools/shot_gear_rules.gd in the Clockwork Lab.
+All in docs/shots/gear_rules/, filmed by tools/shot_gear_rules.gd in the Clockwork Lab. They are JPEGs, 1200 by 675, to keep the repo small.
 
-- turret_too_near.png: a turret ghost too near another. Both circles red, TOO NEAR A TURRET.
-- turret_far_enough.png: a turret ghost far enough. Its circle green.
-- ghost_meshing_teeth.png and ghost_clash_teeth.png: a Regulator's ghost meshing, its teeth green; and clashing, red.
-- heavy_works_idle.png: the empty bay, the hook up.
-- heavy_ballista_12.png to heavy_ballista_93.png: a Spring Ballista rising in the bay.
-- heavy_pendulum_30.png to heavy_pendulum_93.png: a Pendulum rising.
-- heavy_great_winder_50.png and heavy_great_winder_93.png: a Great Winder rising.
-- card_heavy_works.png, card_light_works.png, card_turret.png: the cards, with the ring's trade.
-- gear_view.png and gear_view_close.png: the gear view.
-- base_plates.png: a base with brass and iron floor plates.
+- turret_too_near.jpg: a turret ghost too near another. Both circles red, TOO NEAR A TURRET.
+- turret_far_enough.jpg: a turret ghost far enough. Its circle green, and its teeth meshing in green.
+- ghost_clash_teeth.jpg: a Regulator's ghost cutting into a ring. The clashing teeth light red. (The Lab's plateau is full, so there is no picture of a Regulator meshing; the turret picture shows green teeth.)
+- heavy_works_idle.jpg: the empty bay, the hook up.
+- heavy_ballista_12.jpg to heavy_ballista_93.jpg: a Spring Ballista rising in the bay.
+- heavy_pendulum_30.jpg to heavy_pendulum_93.jpg: a Pendulum rising.
+- heavy_great_winder_50.jpg and heavy_great_winder_93.jpg: a Great Winder rising.
+- card_heavy_works.jpg, card_light_works.jpg, card_turret.jpg: the cards, with the ring's trade.
+- gear_view.jpg and gear_view_close.jpg: the gear view.
+- base_plates.jpg: a base with brass and iron floor plates.
 
 ## The computer
 
@@ -131,20 +131,73 @@ First, when it places its first Mainspring, it looks for a spot with room for bo
 
 Second, with no room by any Mainspring, it builds a new Mainspring where the big ring will fit beside it, and keeps that spot.
 
-From the Heavy Works it makes its first Spring Ballista, then a few Pendulums, then more Ballistas, and its one Great Winder. Tension is kept from the Springers for a wanted heavy machine.
+From the Heavy Works it makes its first Spring Ballista, then its one Great Winder, then a few Pendulums, then more Ballistas. Tension is kept from the Springers for the heavy machine it wants next.
 
 Its Light Works stay on their small gear. They no longer go onto the big gear for Pendulums.
 
 The other ring choices did not change.
 
-STUDY_RESULTS
+Two more things the computer does now.
+
+It keeps the Escapement's spot too, beside the Mainspring. Before, a Regulator sometimes took it, and the tech came late.
+
+It does not build its first turret in the minute it lays the Mainspring and the Escapement, unless it is under attack. The turret's cogs went to the pair before.
+
+## Crown against Clockwork: four games, twice each
+
+Hard Crown against Hard Clockwork, 15 minutes at most. The four games: Greenhold seed 11, Frostmere seed 12 swapped, Hollowfen seed 13, Kestrel Rise seed 14 swapped. Each played twice on main (0.14.84) and twice on this branch. The script is tools/study/study_game_v2.gd. Times are game clock.
+
+| run | game | Mainspring | Escapement | Heavy Works | 1st Ballista | 1st Pendulum | 1st Great Winder | result |
+|---|---|---|---|---|---|---|---|---|
+| main 1 | Greenhold | 3:01 | 3:45 | - | 5:06 | 9:16 | 7:42 | no winner by 15:00 |
+| main 1 | Frostmere | 3:37 | 3:43 | - | 5:46 | 10:00 | 8:57 | no winner |
+| main 1 | Hollowfen | 3:43 | 3:49 | - | 9:10 | 12:50 | 12:43 | no winner |
+| main 1 | Kestrel Rise | 3:30 | 3:34 | - | 6:07 | - | 10:03 | Clockwork wins 11:24 |
+| main 2 | Greenhold | 3:01 | 3:08 | - | 5:19 | 9:14 | 7:14 | Clockwork wins |
+| main 2 | Frostmere | 3:45 | 3:51 | - | 6:14 | 14:50 | 8:35 | no winner |
+| main 2 | Hollowfen | 3:32 | 3:37 | - | 5:52 | 9:41 | 7:37 | no winner |
+| main 2 | Kestrel Rise | 3:29 | 3:36 | - | 6:11 | - | - | Clockwork wins |
+| branch 1 | Greenhold | 3:48 | 3:55 | 6:47 | 7:26 | 8:42 | - | Clockwork wins 14:29 |
+| branch 1 | Frostmere | 3:51 | 3:56 | 7:40 | 8:10 | 8:55 | - | no winner |
+| branch 1 | Hollowfen | 3:50 | 3:56 | 7:12 | 7:42 | 8:17 | - | no winner |
+| branch 1 | Kestrel Rise | 3:47 | 3:52 | 8:58 | 9:29 | 10:04 | - | Clockwork wins 11:18 |
+| branch 2 | Greenhold | 3:40 | 3:47 | 6:56 | 7:26 | 8:43 | 8:01 | Clockwork wins |
+| branch 2 | Frostmere | 3:52 | 3:58 | 7:22 | 7:55 | 12:03 | 8:31 | no winner |
+| branch 2 | Hollowfen | 4:36 | 7:10 | 9:06 | 9:37 | 12:43 | 10:12 | no winner |
+| branch 2 | Kestrel Rise | 3:41 | 3:47 | 8:19 | 8:52 | 10:36 | 9:37 | Clockwork wins |
+
+What it says.
+
+The results did not move. Both builds: the Clockwork wins two of four, the other two are still open at 15 minutes.
+
+The Mainspring comes about 20 seconds later on the branch. It waits for a spot with room for the Escapement and the Heavy Works.
+
+The first Ballista comes about 2 minutes later. The Heavy Works must be built first, 45 seconds, and it waits for its spot.
+
+The first Pendulum comes earlier, often by a minute or more. On main the Movement Works had to swap to its big gear for it, and seldom did.
+
+Round 1 on the branch had no Great Winder. It was queued after the Pendulums and never got its Tension. Now it comes right after the first Ballista, and Tension is kept for it. Round 2 is with that fix: the Great Winder came at 8 to 10 minutes, as on main.
+
+Branch round 2, Hollowfen: the Mainspring came at 4:36 and the Escapement at 7:10. The first Mainspring found no spot with room for both. So the Escapement waited until 6:22, then went with a second Mainspring beside it. One game in eight, not a pattern. Worth a look if it shows again.
+
+## The Brood's extreme rush
+
+A quick check, not a test: Hard Clockwork on Balanced against a Hard Brood on Extreme rush, to 6:00, on Greenhold seed 7 and Ashford Crossing seed 4242. Same on main and the branch: the Clocktower stands, the Clockwork loses one or two units, one turret by 4:30.
+
+But the Brood computer was odd in both builds. It made one wave of raptors, then sat on about 1,000 gold with five grubs and built nothing more. That is not from this branch. It is worth its own look.
+
 
 ## The tests
 
 - tools/test_gear_rules.gd, new: the turret circle refuses a turret too close and accepts one far enough, also through the computer's spot search; the Heavy Works trains the Pendulum and the Ballista only beside a Mainspring, and the Light Works does not; the ring size changes the training speed and the turret's fire as set; the machine in the bay is drawn and grows; saves keep it all, and an old save's turrets side by side load and stay.
 - Updated for the new rules: test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_great_winder, test_gear_econ, test_clockwork_sounds.
 
-TEST_RESULTS
+All run on the branch at 0.14.85, after merging main at 0.14.84.
+
+- Pass: test_gear_rules (new), test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_great_winder, test_gear_econ, test_gear_save, test_gear_ai, test_cw_tier2, test_cw_air_ai, test_springer_compat, test_ratchet_turret, test_gear_swap, test_clockwork_sounds, test_cw_lab, test_ai_wall_vs_rush, test_files, test_i18n, test_replay.
+- tools/test_online.sh: GUEST ALL OK.
+- test_determinism: runs to the end on both builds. The hashes differ from main from the 30 second mark, as they should: the computer's choices changed. Not chased, as asked.
+- Godot ends some test runs with exit 134 after ALL PASS. That is the engine aborting at shutdown, on main too.
 
 ## What is left
 

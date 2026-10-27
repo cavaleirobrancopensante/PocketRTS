@@ -71,6 +71,7 @@ func _look(p: Vector2, zoom: float) -> void:
 
 func _run() -> void:
 	_hint(false)
+	_sandbox(false)
 	var hall: Building = _find("clocktower")
 	g.players[g.human]["gold"] = 50000
 	g.players[g.human]["tension"] = 400.0
@@ -120,10 +121,11 @@ func _run() -> void:
 			if not g.in_map(c) or not g.margin_free(c, Vector2i(2, 2)):
 				continue
 			var st: Dictionary = g.gear_net.candidate(g.human, Defs.CW_SUPPLY, c)
-			if reg_ok.x < 0 and st["state"] == "ok" and g.placement_problem(g.human, Defs.CW_SUPPLY, c) == "":
+			if reg_ok.x < 0 and st["state"] == "ok" and g.placement_problem(g.human, Defs.CW_SUPPLY, c, true) == "":
 				reg_ok = c
 			if reg_clash.x < 0 and st["state"] == "clash" and g.is_free(c):
 				reg_clash = c
+	print("teeth spots: ok %s clash %s" % [reg_ok, reg_clash])
 	if reg_ok.x >= 0:
 		g.controls.begin_place(Defs.CW_SUPPLY)
 		g.controls.ghost_cell = reg_ok
@@ -182,7 +184,7 @@ func _run() -> void:
 	# ---- THE GEAR VIEW
 	g.toggle_gear_view()
 	_look(hall.center() + Vector2(0, 40), 0.75)
-	await _snap("gear_view")
+	await _snap("gear_view", 150)          # (after its toast has gone)
 	if _find("mainspring") != null:
 		_look(_find("mainspring").center(), 1.3)
 		await _snap("gear_view_close")
