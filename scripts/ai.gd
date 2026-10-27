@@ -302,8 +302,11 @@ func _rush_failed(party0: Array) -> void:
 	_rush_state = "failed"
 	var gained := float(int(game.stats[team]["value_killed"]) - _wave_kill0)
 	var connected := gained >= maxf(1.0, _wave_value) * HARASS_CONNECTED
-	_rush_log("FAILED (%s), %d killed for %d: %s" % [_rush_why, int(gained), int(_wave_value),
-			"it connected: the economy next, Musketeers at home" if connected else "it did little: an all-in attack with Horsemen and Musketeers"])
+	if _crown():
+		_rush_log("FAILED (%s), %d killed for %d: %s" % [_rush_why, int(gained), int(_wave_value),
+				"it connected: the economy next, Musketeers at home" if connected else "it did little: an all-in attack with Horsemen and Musketeers"])
+	else:
+		_rush_log("FAILED (%s): the survivors go home, no more go out alone; it builds up and attacks only with a proper force" % _rush_why)
 	_failed += 1
 	_rush_wave = false
 	_attacking = false
@@ -318,7 +321,10 @@ func _rush_failed(party0: Array) -> void:
 	elif strategy == "rush":
 		strategy = "balanced"
 		_attack_at = maxi(_attack_at, 24)
-	_rush_after(party, connected)
+	if _crown():
+		_rush_after(party, connected)
+	else:
+		_rush_recall(party)
 
 
 ## SUCCEEDED, mop-up (the usual case): the riders pull back out of the defenders' reach, the
@@ -384,6 +390,9 @@ const HARASS_MEND := 0.4        # a rider below this share of his hit points rid
 const HARASS_END := 600.0       # the harass is over at this time (the riders come home and join the army)
 const ALLIN_AT := 16            # the all-in goes out with this much supply at home (the riders come with it)
 var _harass_log := 0.0
+var _raid_block_after := 0.0
+var _harass_set: Dictionary = {} # Unit -> true: the rush's own riders (only they go back out to harass)
+var _harass_on := false        # the rush's riders are out harassing (the verdict stays in _rush_state)
 var _harass_n := 0               # the most riders out harassing (the rush's own; mended ones go back, new ones stay home)
 
 
@@ -392,23 +401,26 @@ func _rush_after(party: Array, connected: bool) -> void:
 	for u in party:
 		if is_instance_valid(u) and not u.dead and not riders.has(u):
 			u.cmd_move(_home_spot(_front()))
-	if _harass_unsafe(riders):
-		# (the owner's pick after round 4c: harass only while it is safe; an enemy with a real army sends it at us
-		# anyway, and the riders are part of the defence then: they ride home, as before round 4)
-		_rush_state = "done"
-		_rush_recall(riders)
-		if riders.size() > 0:
-			_rush_log("its army is too strong to harass: the %d Horsemen ride home to the defence" % riders.size())
-		return
-	_rush_state = "harass"
-	_harass_n = maxi(2, riders.size())
-	_raiders = riders
-	_raid_peak = riders.size()
-	_raid_block = 0.0
 	if not connected:
 		_regroup_until = 0.0         # (the all-in: no waiting to regroup, out as soon as ALLIN_AT supply stands at home)
 		_attack_at = ALLIN_AT
 		_mop_pending = false
+	if riders.size() < GROUP_MIN or _harass_unsafe(riders):
+		# (the owner's pick after round 4c: harass only while it is safe; an enemy with a real army sends it at us
+		# anyway, and the riders are part of the defence then: they ride home, as before round 4)
+		_rush_recall(riders)
+		if riders.size() >= GROUP_MIN:
+			_rush_log("its army is too strong to harass: the %d Horsemen ride home to the defence" % riders.size())
+		return
+	_harass_on = true
+	_harass_n = maxi(2, riders.size())
+	_raiders = riders
+	_raid_peak = riders.size()
+	_raid_block_after = _raid_block      # (the verdict's own wait before a new raiding party: it starts when the harass ends)
+	_raid_block = 0.0
+	_harass_set.clear()
+	for u in riders:
+		_harass_set[u] = true
 	if riders.size() > 0:
 		_rush_log("%d Horsemen stay out and harass (never into its army)" % riders.size())
 
@@ -462,6 +474,9 @@ func _harass(party: Array) -> void:
 	for u in party:
 		c += u.position
 	c /= party.size()
+	for u in party:
+		if u.position.distance_to(c) > 260.0 and u.order != "attack":
+			u.cmd_move(c)             # (a straggler rejoins the party)
 	var mine := _army_supply(party)
 	var danger := 0
 	for o in game.units_near(c, 330.0):
@@ -479,15 +494,15 @@ func _harass(party: Array) -> void:
 		# its army is coming for us: the riders ride home and fight with the defence (coach round 4: with the riders
 		# off raiding its base, the Crown's home fell to the Clockwork's first wave in 3 games of 4; the base raid
 		# traded a few workers for the whole game)
-		_rush_state = "done"
+		_harass_on = false
 		_rush_log("its army is out or too strong now: the %d Horsemen ride home to defend" % party.size())
-		_raid_block = maxf(_raid_block, game.clock + _lv([240.0, 180.0, 150.0]))    # (and no new raiding party leaves soon: round 4d)
+		_raid_block = maxf(_raid_block_after, game.clock + _lv([240.0, 180.0, 150.0]))    # (and no new raiding party leaves soon: round 4d)
 		var spot := _threat() if _threat() != Vector2.INF else _front()
 		for u in party:
 			u.cmd_move(spot, true)
 		_raiders.clear()
 		return
-	var prey := Vector2.INF
+	var prey_u: Unit = null
 	var pd := INF
 	for o in game.workers(foe):
 		if o.dead or o.off_field or not game.is_visible_to(team, o.position):
@@ -503,10 +518,15 @@ func _harass(party: Array) -> void:
 		var d: float = o.position.distance_to(c)
 		if d < pd:
 			pd = d
-			prey = o.position
-	if prey != Vector2.INF:
+			prey_u = o
+	if prey_u != null:
+		# the party rides down ONE worker together (each after his own nearest spread them out: a lone rider in the
+		# enemy's land, which the computer never sends)
 		for u in party:
-			_hunt(u, prey)
+			if u.order == "mount" or u.order == "dismount" or _on_errand(u):
+				continue
+			if u.order != "attack" or u.order_target != prey_u:
+				u.cmd_attack(prey_u)
 		return
 	# nothing to take: hover outside, spread a little, ready
 	for u in party:
@@ -2344,29 +2364,29 @@ func _rush_raid_or_new() -> bool:
 
 func _raid() -> void:
 	_raiders = _raiders.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
-	if opening == "breeder" and strategy == "rush" and _rush_state != "harass":
+	if opening == "breeder" and strategy == "rush" and not _harass_on:
 		_raiders.clear()             # (a Horseman rush: they ride out together with the wave)
 		return
-	if _rush_state == "harass":
+	if _harass_on:
 		if game.clock > HARASS_END:
-			_rush_state = "done"
+			_harass_on = false
 			_rush_log("the harass is over: the Horsemen ride home and join the army")
 			_rush_recall(_raiders)
 			_raiders.clear()
-			_raid_block = game.clock + 120.0
+			_raid_block = maxf(_raid_block_after, game.clock + 120.0)
 			return
 		# the attack has gone out (the all-in, or the mop-up force): the riders ride with it
 		if _attacking and _wave_set.size() >= 3:
-			_rush_state = "done"
+			_harass_on = false
 			_rush_log("the attack goes out: the %d harassing Horsemen join it" % _raiders.size())
-			_raid_block = maxf(_raid_block, game.clock + 120.0)
+			_raid_block = maxf(_raid_block_after, game.clock + 120.0)
 			for u in _raiders:
 				_wave_set[u] = true
 			_raiders.clear()
 			return
 		# hurt riders mended at home go back out in pairs (fresh Horsemen stay at home for the army: the harass is the
 		# rush's riders, not a sink for every new one)
-		var pool := _rush_pool(game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.hp / u.max_hp > 0.8 and not _wave_set.has(u)))
+		var pool := _rush_pool(game.army(team).filter(func(u: Unit) -> bool: return _harass_set.has(u) and not _raiders.has(u) and not _on_errand(u) and u.hp / u.max_hp > 0.8 and not _wave_set.has(u)))
 		var room := _harass_n - _raiders.size()
 		if room > 0 and (pool.size() >= GROUP_MIN or (pool.size() >= 1 and not _raiders.is_empty())):
 			for u in pool:
