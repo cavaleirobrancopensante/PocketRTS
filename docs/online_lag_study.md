@@ -221,6 +221,102 @@ test also checks the chat both ways, the words of a refused order, sixteen kinds
 resume, and a surrender; `quick` skips those. `hide_host:5`, `freeze_host:3` and `freeze_guest:3` test the hidden and
 stalled windows; `shots:<dir>` (with a window, for example under xvfb-run) saves screenshots.
 
+## 12. Instant feedback (0.14.48, branch net-instant)
+
+What changed. Until now only a move and an attack-move answered the friend (the guest) at the click; every other
+order showed nothing until the host's answer came back, one ping later. Now every order the guest's screen can give
+reacts on the click, and the host's own orders, which wait on purpose when "Same delay for both players" is on, show
+the same reactions at once on the host's screen. The host still decides everything: what the click shows is laid over
+the guest's copy of the match, and the host's next picture replaces it.
+
+How it works. A click makes an "entry" of small changes on the guest's copy (scripts/net/net_predict.gd): the item
+added to a queue (drawn faint, with a breathing frame, until the host confirms it), the resources and supply spent,
+the progress bar started, the rally flag moved, a setting flipped, a gun or a Spore Mother starting to set up, a
+building faded (cancelled or pulled down), and a building site drawn where it was placed, faint and outlined in
+dashes, which is only a picture: the real site comes from the host. Before each picture from the host is applied,
+every entry is taken off, so the picture lands on the host's truth; after it, the entries the host has not answered
+yet are laid on again. The host's answer arrives in the same picture as its result (the picture carries the number of
+the last order it has run), so the moment an entry goes, the real queue item, site or cost is already there: nothing
+flickers. Two small exceptions keep it that way: a unit's slower values come in every other picture, so a setting or a
+timer stays one picture longer; and a building told to go stays faded until the host's picture takes it away.
+
+The units' side is the lead from section 7, widened: units told to attack a unit or a building turn to it and walk
+until it is in their weapon's range; a worker told to gather, build or board walks to it (a Winder first to the
+Clocktower for its crate, one grub for a Brood site, which turns into the building only when the host says so); a
+caster walks into range of its spot; stop and hold stand the units still at once; a deploy stops the unit and starts
+the animation; units that only turn (a toad's tongue, a cast within range) turn at once. When the host's picture
+shows the unit doing the same, the lead is taken back gently, as before.
+
+When the host refuses (not enough gold, a blocked spot), its refusal now names the order, so the guest takes that
+entry off at once: the site disappears, the queue item and the money go back, the units' leads are taken back, and the
+reason shows as before. A building the host would not place for want of money used to be dropped without a word; the
+host now says why ("Not enough gold."), so the guest's site never lingers.
+
+The host's own held orders. They still run half a ping after the click. Meanwhile the host's top bar shows the cost
+and supply spent, the queue shows the item (faint), the site is drawn, and the units turn at once. Nothing of the
+real game is changed for this: the HUD reads the real values with the waiting orders on top (NetPredict.shown_player,
+shown_queue), so the computers and the match itself never see it. The units do not walk ahead on the host: that would
+need a drawing offset on real units, and the wait is only half a ping (about 50 to 110 ms on these links).
+
+Measured with tools/test_online.sh, every order type in turn, for a Crown, a Brood and a Clockwork guest, on the
+local relay at 40 ms each way plus up to 10 (US East, a ping of about 100 ms) and 90 ms plus up to 20 (Brazil, about
+200 ms). "Seen" is the time from the click to the first frame that shows the reaction on the guest's screen (a frame
+is 16 ms; 33 ms means the next game tick); "before" is the same build with the prediction switched off (nopredict),
+which is how 0.14.47 played. Where the factions differ the range is given.
+
+| order | seen before, 40 ms | seen now, 40 ms | seen before, 90 ms | seen now, 90 ms |
+|---|---|---|---|---|
+| move, attack-move, smart move, line move | 15 to 34 ms | 16 to 34 ms | 15 to 34 ms | 17 to 19 ms |
+| stop, hold, stop after an attack | 450 to 530 ms | 15 to 18 ms | 550 to 700 ms | 15 to 18 ms |
+| attack a unit | 280 to 400 ms | 18 to 33 ms | 380 to 470 ms | 17 to 33 ms |
+| attack a building | 17 to 33 ms (a fogged building: a walk) | 18 to 34 ms | 17 to 34 ms | 14 to 33 ms |
+| gather | over 1.3 s | 16 to 33 ms | 0.4 s, or none in 2.5 s | 18 to 33 ms |
+| hold fire on, off (Crown) | 150 to 200 ms | 15 to 17 ms | 250 ms | 15 to 18 ms |
+| train, cancel, cancel one of two | 116 to 150 ms | 15 to 18 ms | 250 to 285 ms | 15 to 19 ms |
+| auto-train on, off | 17 ms (it flickered back once) | 15 to 18 ms | 15 to 18 ms (flickered) | 15 to 18 ms |
+| rally, worker rally (Brood) | 116 to 150 ms | 15 to 17 ms | 250 to 280 ms | 16 to 18 ms |
+| place a building | 117 to 146 ms | 13 to 17 ms | 233 to 266 ms | 13 to 17 ms |
+| cancel a site, pull a building down | 133 to 152 ms | 15 to 17 ms | 249 to 268 ms | 15 to 20 ms |
+| deploy, pack (Cannon, Spore Mother, Tesla Cart) | 116 to 215 ms | 15 to 18 ms | 253 to 285 ms | 15 to 18 ms |
+| cast FOG (Mist Toad) | 199 ms | 17 ms | 317 ms | 17 ms |
+| BOMBARD (the ring) | at once | at once | at once | at once |
+| a placement or training the host refuses | nothing shown | 15 to 18 ms | nothing shown | 15 to 18 ms |
+| host: its own TRAIN, held (shown in its queue) | 82 ms | 15 ms | 134 ms | 15 ms |
+
+(The low "before" numbers are units that already did what was asked: a soldier without a gun "holds fire" already, a
+unit already walking that way, a click on a fogged building, which is a walk.) Every reaction is within 50 ms of the
+click now, in all three factions and at 0, 40 and 90 ms each way.
+
+Jumps. The test watches each order's units, queue and money for 2.5 seconds after the click. Units moved further in
+one game tick than they can walk: none, in any run. A queue going up and then down, or a setting flipping back: none,
+except one rally flag in nine runs, which the prediction-off runs show too (the flag set on a spot a unit was walking
+through goes with that unit, on the host as here). Before, auto-train flickered back once at every link: the old click
+set it here, and a picture that came before the host's answer set it back.
+Money given back while an order waits: none. A refused placement or training is taken back once, which is the point.
+After a stop, a unit closes up to where the host stopped it, at a walk: 5 to 12 px for the Crown and the Clockwork, 15
+to 30 px for the faster Raptors at 90 ms. That distance is the time the order took to reach the host, walked; it cannot
+be guessed away without letting the unit walk on after the click, which is what a stop must not do.
+
+What still waits for the host, and why. Everything that decides the match: shots and damage, a unit actually firing,
+a building actually starting, a trained unit coming out, research done, a morph's result (a grub becoming a building,
+a Swift becoming an Owl), a crate carried, the gold income. The guest shows the start, never the result. Some starts
+are left to the host too, because the guest's copy cannot guess them well: a Cannon or Mortar told to BOMBARD turns
+only once it is set up (it shows the ring and answers); a Mist Toad's tongue and a cast already in range only turn;
+mount, lead, harness, ride, load and unload only answer and show the ring; a cancelled unit gives back its own price
+but not a soldier's kit fee, which the guest does not know (the host's next picture puts it right, within one ping);
+the Clockwork's batteries are not shown spent. On the host, units do not start walking before their held order runs.
+
+Tests. tools/test_online.gd now plays 26 to 30 kinds of guest orders (move, attack-move, smart move, line move, hold,
+stop, a unit's stop, attack a building and a unit, hold fire on and off, bombard, a gun's stop, deploy and pack, rally
+and the Brood's worker rally, train, cancel, train two and cancel one of them, auto-train on and off, the hall upgrade,
+gather, place a building and cancel it, a placement and a training the host refuses, demolish, and with the Brood and
+the Clockwork their own deployers and the Mist Toad's FOG), times each one's reaction (the LAG GUEST REACT lines),
+counts the jumps, and checks that nothing predicted is left once the host has answered. For the refusals the host holds
+the guest's gold at 0 while the guest's screen is told it has plenty, so the click shows the site or the queue item and
+the host refuses it. The host's own held TRAIN is timed too (LAG HOST own train). `nopredict` switches the prediction
+off, for the "before" numbers. The local relay now keeps every frame in order: two timers due in the same millisecond
+could swap, and an order then reached the host after the one sent after it.
+
 ## Screenshots
 
 Taken by `tools/test_online.gd shots:<dir>` on the local relay at 60 ± 30 ms (docs/shots/wt-online/):

@@ -108,9 +108,7 @@ func _react(who: Object, fn: String, args: Array, key: int) -> void:
 		"command_all":
 			var us := _units_of(who, args)
 			if String(args[1]) == "stop" or String(args[1]) == "hold":
-				s.lead_stop(us, key)
-				if not us.is_empty():
-					g.command_sound(us, "move", "move")
+				s.lead_stop(us, key)        # (its bugle came with NetCommands.feedback)
 		"cmd_stop":
 			var us := _units_of(who, args)
 			s.lead_stop(us, key)
@@ -175,11 +173,19 @@ func _react(who: Object, fn: String, args: Array, key: int) -> void:
 					g._ping(at, Color(1.0, 0.55, 0.2))
 					g.command_sound(us, "attack", "attack")
 		"cast_order":
-			var us := _units_of(who, args)
+			var spell := String(args[1])
 			var at: Vector2 = args[2]
-			_face(us, at)
+			var us := _units_of(who, args).filter(func(u: Unit) -> bool: return u.kind == String(Game.CASTERS.get(spell, "")) and u.order != "cast" and g.spell_problem(u, spell) == "")
+			if not us.is_empty():
+				# (cast_order sends the nearest able caster: it heads into range of the spot, turned to it)
+				us.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(at) < b.position.distance_squared_to(at))
+				var c: Unit = us[0]
+				var rng := float(Game.spell_info(spell).get("range", 0.0))
+				_face([c], at)
+				if not s.is_host and c.position.distance_to(at) > rng:
+					s.lead_to(c, null, rng, key, Rect2(at, Vector2.ZERO))
+				g.command_sound([c], "attack", "attack")
 			g._ping(at, Color(0.6, 1.0, 0.35))
-			g.command_sound(us, "attack", "attack")
 		"tongue_order", "overload_order":
 			var us := _units_of(who, args)
 			if args[1] is Entity and is_instance_valid(args[1]):

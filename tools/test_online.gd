@@ -781,6 +781,17 @@ func _host_extras(s: NetSession) -> void:
 					du.hold_fire = true
 					base["dummy"] = du
 					print("HOST: a target for the guest at %s" % str(du.position))
+			if tx.contains("test: extras") and not base.has("extras"):
+				base["extras"] = true
+				var eh: Building = null
+				for b in g.buildings:
+					if b.team == 1 and b.kind == g.faction_hall(1):
+						eh = b
+				var ek: Array = {"brood": ["spore_mother", "mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(1), [])
+				for j in ek.size():
+					if eh and Defs.UNITS.has(ek[j]) and ArtData.UNITS.has(ek[j]):
+						var ec := g.nearest_free(g.cell_of(eh.center() + Vector2(-120 + j * 60, 120 if eh.center().y < Game.H * Game.T * 0.5 else -120)), 8)
+						g._add_unit(ek[j], 1, g.cell_center(ec))
 			if tx.contains("test: drain") and not base.has("drained"):
 				base["drained"] = true
 				_drained = true
@@ -852,7 +863,8 @@ func _guest_extras(s: NetSession) -> void:
 						_orders.push_front(_ord)
 						_ord = {}
 						return
-					check("order_" + String(_ord["name"]), false, "its setup never came")
+					var du = base.get("du")
+					check("order_" + String(_ord["name"]), false, "its setup never came" + (" (%s: %s, order %s, %.1f s)" % [du.kind, du.tesla_mode, du.order, du.tesla_t] if is_instance_valid(du) else ""))
 					_ord = {}
 					return
 				if _ord.has("warm") and not _ord.has("warm_t"):
@@ -939,7 +951,8 @@ func _guest_extras(s: NetSession) -> void:
 ## whose queue is watched for flickers; "cost": what it spends (the resources must not come back while it waits).
 func _order_list() -> Array:
 	var out: Array = []
-	var soldiers: Array = _mine().filter(func(u: Unit) -> bool: return not u.is_worker() and u.kind != "cannon" and u.kind != "horse")
+	var special := ["cannon", "spore_mother", "mist_toad", "tesla_cart"]
+	var soldiers: Array = _mine().filter(func(u: Unit) -> bool: return not u.is_worker() and not special.has(u.kind) and u.kind != "horse")
 	var workers: Array = _mine().filter(func(u: Unit) -> bool: return u.is_worker())
 	var guns: Array = _mine().filter(func(u: Unit) -> bool: return u.kind == "cannon")
 	var hall: Building = base["hall"]
@@ -986,6 +999,28 @@ func _order_list() -> Array:
 			"then": func() -> bool: return gun.tesla_mode != "packed"})
 		out.append({"name": "pack", "ready": func() -> bool: return gun.tesla_mode == "deployed", "do": func() -> void: gun.cmd_pack(),
 			"react": func() -> bool: return gun.tesla_mode != "deployed"})
+	# the others that set up (the Spore Mother roots, the Tesla Cart deploys) and a spell (the Mist Toad's FOG): the host
+	# puts them by this side's hall when asked (after the entity count check: some of them count apart)
+	var extra: Array = {"brood": ["spore_mother", "mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(g.human), [])
+	for k in extra:
+		if not ["spore_mother", "tesla_cart"].has(k):
+			continue
+		out.append({"name": "deploy_" + k, "ready": func() -> bool: return _extra_unit(k) != null, "pre": func() -> void: base["du"] = _extra_unit(k),
+			"do": func() -> void: (base["du"] as Unit).cmd_deploy(), "react": func() -> bool: return (base["du"] as Unit).tesla_mode != "packed",
+			"then": func() -> bool: return (base["du"] as Unit).tesla_mode != "packed"})
+		out.append({"name": "pack_" + k, "ready": func() -> bool: return (base["du"] as Unit).tesla_mode == "deployed", "do": func() -> void: (base["du"] as Unit).cmd_pack(),
+			"react": func() -> bool: return (base["du"] as Unit).tesla_mode != "deployed"})
+	if extra.has("mist_toad"):
+		out.append({"name": "cast_fog", "ready": func() -> bool: return _extra_unit("mist_toad") != null, "pre": func() -> void:
+				var td: Unit = _extra_unit("mist_toad")
+				base["td"] = td
+				base["fp"] = td.position + Vector2(380, 0)
+				if g.spell_problem(td, "fog") != "":
+					_ord["cant"] = true,           # (no energy yet: the host only says so; nothing to show)
+			"do": func() -> void: g.cast_order([base["td"]], "fog", base["fp"]),
+			"react": func() -> bool:
+				var td: Unit = base["td"]
+				return _ord.has("cant") or (_turned([td], base["fp"]) and (td.velocity.length() > 10.0 or td.order == "cast"))})
 	if hall:
 		var rp: Vector2 = away + Vector2(30, 30)
 		out.append({"name": "rally", "do": func() -> void: g.set_rally(hall, rp),
@@ -1040,14 +1075,22 @@ func _order_list() -> Array:
 					base["gather_w"] = ws[0]
 					(ws[0] as Unit).cmd_gather(mine), "us": [], "react": func() -> bool:
 						var w = base.get("gather_w")
-						return is_instance_valid(w) and _turned([w], mine.center()) and ((w as Unit).velocity.length() > 10.0 or mine.edge_distance((w as Unit).position) < 24.0)})
+						if not is_instance_valid(w):
+							return false
+						var near: Vector2 = (w as Unit).position.clamp((mine as Building).rect().position, (mine as Building).rect().end)      # (it heads for the nearest edge)
+						if near.distance_to((w as Unit).position) < 2.0:
+							return true
+						return _turned([w], near) and ((w as Unit).velocity.length() > 10.0 or mine.edge_distance((w as Unit).position) < 24.0)})
 		# a building site: it shows at once (pending), the worker heads for it; then it is abandoned (cost back)
 		var sk: String = Defs.supply_kind(g.faction_of(g.human))
 		out.append({"name": "place", "ready": func() -> bool: return _free_spot(sk).x >= 0 and int(g.players[g.human]["gold"]) >= int(Defs.BUILDINGS[sk]["cost"]),
 			"pre": func() -> void: base["site_at"] = _free_spot(sk),
 			"do": func() -> void: g.place_building(g.human, sk, base["site_at"], _mine().filter(func(u: Unit) -> bool: return u.is_worker()).slice(0, 2), false),
-			"cost": int(Defs.BUILDINGS[sk]["cost"]), "react": func() -> bool: return not p.sites().is_empty() or _site_at(sk, base["site_at"]) != null,
-			"then": func() -> bool: return _site_at(sk, base["site_at"]) != null and p.sites().is_empty()})
+			"cost": int(Defs.BUILDINGS[sk]["cost"]), "react": func() -> bool:
+				if _site_at(sk, base["site_at"]) != null:
+					base["site_seen"] = true      # (the host's site: a grub that turns into it may swap it for a moment)
+				return not p.sites().is_empty() or _site_at(sk, base["site_at"]) != null,
+			"then": func() -> bool: return (_site_at(sk, base["site_at"]) != null or base.get("site_seen", false)) and p.sites().is_empty()})
 		out.append({"name": "abandon", "ready": func() -> bool: return _site_at(sk, base.get("site_at", Vector2i(-1, -1))) != null,
 			"pre": func() -> void: base["site_b"] = _site_at(sk, base["site_at"]),
 			"do": func() -> void: g.abandon(base["site_b"]), "refund": true,
@@ -1122,6 +1165,17 @@ func _site_at(k: String, c: Vector2i) -> Building:
 	for b in g.buildings:
 		if b.team == g.human and not b.dead and b.kind == k and b.cell == c:
 			return b
+	return null
+
+
+## A unit of kind k of this side, asked of the host in the chat the first time (it puts one by the hall).
+func _extra_unit(k: String) -> Unit:
+	if not base.has("extra_asked"):
+		base["extra_asked"] = true
+		g.chat.post(g.human, "test: extras")
+	for u in _mine():
+		if u.kind == k:
+			return u
 	return null
 
 
