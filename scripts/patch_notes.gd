@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.35", "items": [
+		"ONLINE: the automatic online test now plays every kind of order a friend gives (move, attack-move, a line, hold, stop, hold fire, bombard, rally, train and cancel, auto-train, gather, a hall upgrade the host refuses with its reason, demolish), the chat both ways, a pause and its resume, and a surrender from either player, in a 1 vs 1 with each faction and in co-op (where a friend who surrenders is out and the match goes on for the host).",
+	]},
 	{"v": "0.14.34", "items": [
 		"ONLINE: the ping counter keeps its place left of the clock (under it when a phone's top bar has no room for it), and the zoom gauge steps aside instead of covering the clock.",
 		"ONLINE ROOM: a refused colour's words stay for a moment, then the room's line comes back.",

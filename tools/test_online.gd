@@ -79,6 +79,7 @@ var nosame := false
 var rate10 := false
 var clocksnap := false
 var noterp := false
+var hostsurrender := false
 var quick := false               # quick: only the first checks (no chat, orders, pause, surrender)
 var _orders: Array = []          # guest: the order types still to send (_guest_extras)
 var _ord: Dictionary = {}        # guest: the one being checked
@@ -127,6 +128,8 @@ func _initialize() -> void:
 			nolead = true             # the guest's units wait for the host's picture (as before 0.14.33)
 		elif a == "nosame":
 			nosame = true             # the lobby's "Same delay for both players" off
+		elif a == "hostsurrender":
+			hostsurrender = true      # at the end the HOST surrenders (the guest asks in the chat), not the guest
 		elif a == "quick":
 			quick = true
 		elif a == "noterp":
@@ -691,7 +694,12 @@ func _host_extras(s: NetSession) -> void:
 		_host_saw_pause = true
 		snap("paused_by_guest")
 		check("host_saw_guest_pause", paused and int(s.pauses_left.get(1, 0)) == NetSession.PAUSES - 1, "pauses left %s" % str(s.pauses_left))
-	if g.over and not results.has("host_saw_guest_surrender") and g.end_note == "player_surrender":
+	if hostsurrender and g.chat and not g.over and not base.has("surrendered"):
+		for ln in g.chat.lines:
+			if int(ln["team"]) == 1 and String(ln["text"]).contains("surrender now"):
+				base["surrendered"] = true
+				g.player_surrender()
+	if g.over and not results.has("host_saw_guest_surrender") and g.end_note == "player_surrender" and not hostsurrender:
 		check("host_saw_guest_surrender", g.end_quitter == 1 and not g.eliminated[0], "quitter %d" % g.end_quitter)
 
 
@@ -746,6 +754,9 @@ func _guest_extras(s: NetSession) -> void:
 			if (acked and step_t > 0.8) or step_t > 6.0:
 				var sent: bool = int(_ord["seq"]) > int(_ord["seq0"])
 				var ok: bool = sent and acked and s.refusals == int(_ord["ref"])
+				if String(_ord.get("expect", "")) != "":
+					# (refused on purpose: the host must say the game's own reason, the one this screen works out too)
+					ok = sent and acked and s.refusals == int(_ord["ref"]) + 1 and s.last_msg == String(_ord["expect"])
 				if ok and _ord.has("then"):
 					ok = (_ord["then"] as Callable).call()
 				check("order_" + String(_ord["name"]), ok, "sent %s acked %s refused %d%s" % [sent, acked, s.refusals - int(_ord["ref"]), (" (" + s.last_msg + ")") if s.refusals > int(_ord["ref"]) else ""])
@@ -767,7 +778,10 @@ func _guest_extras(s: NetSession) -> void:
 		24:
 			if not s.paused() and g.hud.countdown <= 0.0 and step_t > 0.5:
 				check("guest_resume", true, "after %.1fs" % step_t)
-				g.player_surrender()
+				if hostsurrender:
+					g.chat.post(g.human, "host, surrender now")
+				else:
+					g.player_surrender()
 				step = 25
 				step_t = 0.0
 			elif step_t > 10.0:
@@ -776,9 +790,19 @@ func _guest_extras(s: NetSession) -> void:
 				step = 25
 				step_t = 0.0
 		25:
+			if coop and not hostsurrender:
+				# (co-op: the friend plays on, so the guest's side is out and the match goes on for the host)
+				if g.eliminated[g.human] or step_t > 10.0:
+					check("guest_surrender_coop_side_out", g.eliminated[g.human] and not g.over, "out %s over %s after %.1fs" % [g.eliminated[g.human], g.over, step_t])
+					step = 30
+					step_t = 0.0
+				return
 			if g.over or step_t > 10.0:
 				snap("over")
-				check("guest_surrender_ends_match", g.over and g.end_note == "player_surrender", "over %s note %s after %.1fs" % [g.over, g.end_note, step_t])
+				if hostsurrender:
+					check("guest_sees_host_surrender", g.over and g.end_note == "player_surrender" and g.end_quitter == 0 and g.winner >= 0, "over %s note %s quitter %d winner %d after %.1fs" % [g.over, g.end_note, g.end_quitter, g.winner, step_t])
+				else:
+					check("guest_surrender_ends_match", g.over and g.end_note == "player_surrender", "over %s note %s after %.1fs" % [g.over, g.end_note, step_t])
 				step = 30
 				step_t = 0.0
 
@@ -804,7 +828,7 @@ func _order_list() -> Array:
 		var one: Unit = sq[0]
 		out.append({"name": "unit_stop", "do": func() -> void: one.cmd_stop()})
 		out.append({"name": "hold_fire", "do": func() -> void: one.set_hold_fire(true),
-			"then": func() -> bool: return one.hold_fire})
+			"then": func() -> bool: return one.hold_fire or not one.has_gun()})     # (only a unit with a firearm holds it)
 		out.append({"name": "hold_fire_off", "do": func() -> void: one.set_hold_fire(false)})
 	if not guns.is_empty():
 		out.append({"name": "bombard", "do": func() -> void: g.bombard_order(guns, away + Vector2(0, 120))})
@@ -816,6 +840,9 @@ func _order_list() -> Array:
 		out.append({"name": "train", "do": func() -> void: g.train_any([hall], wk)})
 		out.append({"name": "cancel_train", "do": func() -> void: g.cancel_train(hall)})
 		out.append({"name": "auto_train", "do": func() -> void: g.net_set(hall, "auto_train", true)})
+	if hall:
+		var why := g.hall_upgrade_problem(hall)
+		out.append({"name": "hall_upgrade" if why == "" else "hall_upgrade_refused", "expect": why, "do": func() -> void: g.start_hall_upgrade(hall)})
 	if not workers.is_empty():
 		var mine: Entity = null
 		for b in g.buildings:
@@ -825,6 +852,12 @@ func _order_list() -> Array:
 		if mine:
 			var wkr: Unit = workers[0]
 			out.append({"name": "gather", "do": func() -> void: wkr.cmd_gather(mine)})
+	# last: pull down one of its own buildings (not the hall)
+	for b in g.buildings:
+		if b.team == g.human and not b.dead and b != hall and b.kind != "mine":
+			var bb: Building = b
+			out.append({"name": "demolish", "do": func() -> void: g.demolish(bb), "then": func() -> bool: return true})
+			break
 	return out
 
 

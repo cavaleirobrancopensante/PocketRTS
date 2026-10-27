@@ -337,8 +337,9 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 	for i in mini(el.size(), g.eliminated.size()):
 		g.eliminated[i] = el[i]
 	var cnt: Array = m.get("cnt", [])
-	if cnt.size() == 2:
-		# a check the tests read: the guest must now hold exactly as many as the host listed
+	if cnt.size() == 2 and m.has("ids"):
+		# a check the tests read: after a keyframe (every row whole, unseen enemies too) the guest must hold exactly as
+		# many as the host listed (in between, an enemy made out of sight comes only once seen or at the next keyframe)
 		var diff := absi(g.units.size() - int(cnt[0])) + absi(g.buildings.size() - int(cnt[1]))
 		s.count_diff_max = maxi(s.count_diff_max, diff)
 		if diff > 0:
