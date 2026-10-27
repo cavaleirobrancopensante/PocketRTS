@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.61", "items": [
+		"BROOD ANIMATIONS: Raptors and Grubs no longer hop when they turn up or down the screen or stop (those walks stood 2 px above the ground). The Raptor's run plays faster (12 frames a second, was 8), so its feet skate less. A hovering Skywing beats its wings at a real pace (was 2 frames a second), and its east attack no longer shows a frame with only a wing.",
+		"BROOD ANIMATIONS: the Mist Toad's death plays to the end: its body now lies flat instead of freezing half fallen. A Grub's wrapping takes as long as the wrap itself: the cocoon closes just as it picks it up, for small and big bodies alike.",
+		"TEAM COLOUR: the Brood Queen's crest and the Clutch Mound's frills are now in your colour (they were red for every player), and the thin red rims on Brood crests and frills follow the team colour too. Veteran Raptors walking up or down the screen now show their veteran skin on their legs.",
+	]},
 	{"v": "0.14.60", "items": [
 		"BROOD MUSIC: ten new pieces, so the Brood has twenty like the Crown, each with its own moment. Two open a match while the swamp wakes, tense under the calm: The Brood Wakes and The Hive Gathers. Three play in a lighter fight, a hunt held back from the kill: Something in the Water, The Scent of Blood and Circling. Three are the full battle, the swarm at full cry with big drums, the throat choir, brass and strings: The Swarm at Full Cry, The Queen's War-Song and Ten Thousand Mouths. Two are calm and slow: The Queen's Lullaby and Night over the Drowned Wood. The Queen Stirs may now open a match too.",
 		"THE HIVE CALL: the new Brood pieces share a short theme of six notes (a low note, a leap up, then a sigh down to the start). A flute sings it plainly in the lullaby, the skirmishes chase it in broken pieces, and in the battles the whole choir roars it in long notes.",

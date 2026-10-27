@@ -113,6 +113,8 @@ static func fps_for(a: String, an: String, n: int) -> float:
 	match an:
 		"idle", "idle_carry", "gidle", "idle_cocoon", "graze":
 			fps = 2.0 if an != "gidle" and an != "idle_cocoon" else 3.0
+			if kind == "skywing" and an == "idle":
+				fps = Unit.SKYWING_HOVER_FPS
 		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
 			fps = 7.0
 		"gattack":

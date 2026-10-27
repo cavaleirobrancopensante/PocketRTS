@@ -119,6 +119,7 @@ python3 tools/import_gait_windup_soldier.py
 # python3 tools/import_gait_winder.py
 python3 tools/import_gait_musketeer_armoured.py
 python3 tools/import_gait_raptor.py
+python3 tools/anim_audit/fix_brood.py     # Brood strips: raptor/grub up-down walks on the anchor, Skywing attack_e frame 1, team reds (docs/animation_audit_brood.md)
 python3 tools/import_crown_legs.py        # labourer's new walk legs under the Armoured Musketeer (all views) and the Musketeer (s, n)
 python3 tools/anim_audit/fix_crown.py    # Crown animation audit fixes (docs/animation_audit_crown.md): Officers' walk on the ground,
                                          # Messenger walk_e frames 4-5, Mortar idle crew, Horseman idle_se (masks follow; idempotent)
