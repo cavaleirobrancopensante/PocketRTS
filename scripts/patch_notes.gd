@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.77", "items": [
+		"A Winder walking away from you with a building's crate now shows it over his head (it is in his hands in front of him), instead of hiding it behind his back.",
+	]},
 	{"v": "0.14.76", "items": [
 		"WINDERS carry a building's crate out in front of them in their hands (it was on their backs), and at the site they lower it to the ground in front of them before it unfolds into the building.",
 	]},

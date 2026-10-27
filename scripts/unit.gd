@@ -5833,10 +5833,10 @@ func _fetch_crate(site: Building, delta: float) -> Vector2:
 
 ## Winder: where the crate he carries sits for each view ([x, y from the feet, unflipped art (facing east), drawn behind the
 ## body]): held out IN FRONT in his hands at chest height (the owner, 2026-10-27: carried forward, not on his back), over
-## the body when he faces us or side on, behind it when he walks away (its top still shows over his shoulders). One
+## the body when he faces us or side on, behind it when he walks away (seen from above, its top shows over his head). One
 ## picture for every view; it bobs with his steps. At the site he lowers it to the ground in front of him (CRATE_DROP)
 ## before it unfolds.
-const CRATE_HELD := {"s": [0, -14, false], "se": [7, -14, false], "e": [11, -15, false], "ne": [9, -21, true], "n": [0, -26, true]}
+const CRATE_HELD := {"s": [0, -14, false], "se": [7, -14, false], "e": [11, -15, false], "ne": [9, -21, true], "n": [0, -34, true]}
 const CRATE_DROP := 0.35      # seconds to set it down on the site
 
 
