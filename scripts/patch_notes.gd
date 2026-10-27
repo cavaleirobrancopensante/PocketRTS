@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.40", "items": [
+		"SMOOTHER LATE GAME: big matches run faster, and play exactly the same (a computer-vs-computer match with the same seed plays out move for move as before). Measured on The Sundered Realm, 2 against 2, at 18 minutes with about 250 units: the game does about a quarter less work per second of play, and stutters (frames slower than 33 ms) are about five times fewer. The biggest savings: the selection card (a selected Town Hall or soldier fitted its info line letter by letter 20 times a second: frames of up to 70 ms), the fog of war (half the work), the computer players and the buildings (a quarter less), and the search for nearby units.",
+	]},
 	{"v": "0.14.39", "items": [
 		"WEB VERSION LOADS FASTER: the first visit downloads about 60 MB instead of about 145 MB, and after an update usually only about 2 MB. The game is split into a small code pack and an art pack that only downloads again when the art changes; the browser keeps both (and the engine) for the next visit. The music no longer comes in the first download: each piece downloads when it is first played (the menu and match music start a moment later the first time) and is kept too. A new loading screen in the game's colours shows how far it is. The Android app is unchanged (everything inside it) and a little smaller.",
 	]},
