@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.51", "items": [
+		"REPLAYS: every match is recorded, a skirmish, a match between computers you watch and online, and the REPLAYS button on the main menu lists them, newest first, with the date, map, players (name, faction, colour, team), your result, length, game version and size. A replay is not a video: it keeps what was on the map five times a second, so while it plays you move the camera anywhere, select units and buildings to read their health, orders and queues, look through any player's fog or see everything, follow the camera of a player who recorded it, and watch at half speed up to 8x, with pause and a timeline to jump to any moment. The chat comes at its times, and the top bar shows every player's resources, supply, income per minute, army value and workers. On a computer: Space pauses, + and - change the speed, Home goes back to the start.",
+		"REPLAYS ONLINE: the host's game records every side; when the match ends the host sends the whole replay to each friend (\"Sending it to your friend: 40%\" on the end screen), never before, so nothing hidden by the fog travels during the match. Until it arrives, or if you leave early, a friend keeps a replay of what it saw itself, marked YOUR VIEW ONLY.",
+		"REPLAYS are kept on the device: the newest 30 that you have not marked KEEP stay (Settings > REPLAYS KEPT), DELETE removes one, EXPORT saves a file (in the browser, a download) and IMPORT plays a file a friend sent you. The end screen says \"Replay saved\" and has WATCH REPLAY. A replay from another version of the game still plays, with a note that some things may look different; a unit that no longer exists is shown greyed. A match closed in the middle keeps its replay up to its last few seconds.",
+		"MAIN MENU in two rows (one row got crowded with REPLAYS): ONLINE, SKIRMISH and REPLAYS on top; HOW TO PLAY, EDITOR, MATCH LOGS and SETTINGS below.",
+	]},
 	{"v": "0.14.50", "items": [
 		"HOLD has its own picture for the Clockwork (a brass shield with a blue steel arrow pointing down) and the Brood (a shield of hide and bone with a yellow arrow pointing down), the same idea as the Crown's shield, so HOLD reads the same in every faction.",
 	]},

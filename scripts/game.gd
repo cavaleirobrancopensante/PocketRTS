@@ -18,6 +18,9 @@ static var _tex_cache := {}
 var human := 0
 var puppet := false                  # online guest: the host plays the match, this game only shows it (NetPuppet)
 var net: NetSession = null           # online: the session (host or guest), else null
+var rec: ReplayRecorder = null       # the replay being recorded (scripts/replay/replay_recorder.gd), else null
+var net_next := 1                    # the next net id (NetSession.assign: the online session and the recorder share it)
+var replay: ReplayPlayer = null      # watching a replay: this game is a puppet fed from the file (replay_player.gd)
 var factions: Array = ["crown", "crown"]
 var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE
 var sides: Array = [0, 1]                   # players on the same side are allies
@@ -6397,6 +6400,8 @@ func hit_body(b: Unit, dmg: float, aimed := true) -> bool:
 		b._schedule_rot()
 	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
 		net.fx.append(["h", "", b.position, b.body_left()])
+	if rec != null and not puppet and rec.fx.size() < NetSession.FX_MAX:
+		rec.fx.append(["h", "", b.position, b.body_left()])
 	return false
 
 
@@ -6587,6 +6592,8 @@ func tear_body(b: Unit, aimed := false) -> void:
 	bodies_blasted["aimed" if aimed else "combat"] += 1
 	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
 		net.fx.append(["c", "", b.position, 0.0])       # (online: the guest's copy of it goes too)
+	if rec != null and not puppet and rec.fx.size() < NetSession.FX_MAX:
+		rec.fx.append(["c", "", b.position, 0.0])       # (and the replay's)
 	torn_fx(b.position)
 	b.tear_up()
 
@@ -7527,6 +7534,8 @@ func income_rates(t: int) -> Vector2:
 func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> Effect:
 	if net != null and not puppet:
 		net.note_effect(name, p, speed, looping)         # (online host: the guest sees it too)
+	if rec != null and not puppet:
+		rec.note_effect(name, p, speed, looping)         # (and the replay)
 	var e := Effect.new()
 	e.setup(name, speed, looping)
 	e.position = p

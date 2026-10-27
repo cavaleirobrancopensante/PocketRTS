@@ -93,6 +93,8 @@ func hotkey(n: int) -> bool:
 
 ## The player moved the camera (drag, edge or arrow pan, minimap, a jump): following stops.
 func user_moved() -> void:
+	if game.replay and game.replay.cam_team >= 0:
+		game.replay.follow_camera(-1)        # (a replay: moving the camera yourself lets go of the recorded one)
 	if mode != "follow":
 		return
 	set_mode("free", team, true)

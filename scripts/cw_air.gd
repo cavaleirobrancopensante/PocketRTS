@@ -231,6 +231,8 @@ static func drop_bomb(u: Unit, b: Building) -> OwlBomb:
 	u.last_bomb = bomb
 	if g.net != null and not g.puppet:
 		g.net.note_bomb(bomb)          # (online host: the guest sees it fall and burst)
+	if g.rec != null and not g.puppet:
+		g.rec.note_bomb(bomb)
 	if u.visible and g.view_rect.has_point(u.position):
 		Sfx.play_any(["combat/owl_drop", "ratchet"], u.position, -6.0)
 	return bomb
