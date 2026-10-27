@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.71", "items": [
+		"CLOCKWORK COMPUTER: its Winders now go with the army, at the rally point and on the attack, about one for every five soldiers. Out there they wind the soldiers up (the run-down ones first, then the lowest), and mend them second, and fetch soldiers left run down on the way. The Winders that go are extra hands: the presses keep theirs. Before, two Winders followed an attack and never wound a Clock Soldier, so a long march left half the army standing still.",
+		"COMPUTER SIEGES: an army breaking in at a gate now gathers and queues on the side it can walk up to (down the ramp below a ramp gate), not at the foot of the cliff beside it, under the muskets on the high ground.",
+	]},
 	{"v": "0.14.70", "items": [
 		"FIXES from a long test run of every map and mode: a Brood computer no longer places a Clutch Mound and drops it again every second while raiders stand near its grubs (it waits a little before trying again); a Brood swarm no longer calls its whole wave off when one of its Raptors is eaten or otherwise gone; a soldier raised by a Missionary who had been on his way to a horse no longer breaks his next order; a building whose rally point followed a unit that turned into something else (a grub that became a building, a man who mounted) lets go of it cleanly; and the dismounted Cuirassier walking east no longer asks for a picture that is not there.",
 	]},
