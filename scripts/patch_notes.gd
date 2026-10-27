@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.67", "items": [
+		"GUARDSMAN: facing down-right, he now aims, fires and thrusts the bayonet that way, like the Musketeer. His up-right and down views come next.",
+	]},
 	{"v": "0.14.66", "items": [
 		"WEB: closing the tab, reloading the page or swiping the browser away no longer shows THE GAME CLOSED UNEXPECTEDLY the next time you open the game. A real crash is still reported.",
 		"MAP EDITOR: BACK, SAVE, LOAD, HELP and the other buttons work again after you paint with a mouse, and BACK works with a tap on a phone (the editor ate the button's click).",
