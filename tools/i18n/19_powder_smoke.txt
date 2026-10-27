@@ -1,0 +1,9 @@
+# POWDER SMOKE (docs/powder_smoke.md): the setting for the black powder smoke that lingers over a firefight.
+
+> POWDER SMOKE
+pt FUMAÇA DE PÓLVORA
+es HUMO DE PÓLVORA
+
+> FULL
+pt COMPLETA
+es COMPLETO

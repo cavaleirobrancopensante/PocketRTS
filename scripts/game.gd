@@ -256,6 +256,9 @@ func _ready() -> void:
 	swipe_marks.top = true
 	swipe_marks.z_index = 2             # the Pendulum's smear: over the units it cuts through
 	add_child(swipe_marks)
+	powder_smoke = PowderSmoke.new()        # black powder smoke (looks only: scripts/powder_smoke.gd)
+	powder_smoke.setup(self, 0 if edit_mode else (PowderSmoke.force if PowderSmoke.force >= 0 else Settings.powder_smoke_level()))
+	add_child(powder_smoke)
 	body_bars = Node2D.new()
 	body_bars.z_index = 1
 	body_bars.draw.connect(_draw_body_bars)
@@ -6016,6 +6019,7 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 	if from != Vector2.INF:
 		muzzle = from
 	spawn_effect("smoke", muzzle + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+	powder("musket", muzzle + u.facing * 6.0, u.facing)
 	var hit := randf() < 0.85
 	if hit:
 		e.take_damage(dmg, u, Entity.BLOW_RANGED)
@@ -6112,6 +6116,7 @@ func canister_at(u: Unit, aim: Vector2, dmg: float, e: Entity = null) -> void:
 	Sfx.play_any(["combat/cannon_canister", "combat/cannon_attack", "cannon"], u.global_position)
 	spawn_effect("smoke", from + dir * 12.0, 0.9)
 	spawn_effect("smoke", from + dir * 30.0, 1.2).modulate = Color(1, 1, 1, 0.6)
+	powder("canister", from + dir * 14.0, dir)
 	# a spray of musket balls fanning out of the muzzle
 	var spread := acos(float(Defs.CANISTER["cone"]))
 	for i in 18:
@@ -6261,6 +6266,7 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	var muzzle := u.center() + u.facing * 30.0
 	spawn_effect("smoke", muzzle + u.facing * 10.0, 0.8)
+	powder("cannon", muzzle + u.facing * 12.0, u.facing)
 	var pr := Projectile.new()
 	pr.game = self
 	pr.from = muzzle
@@ -6432,6 +6438,7 @@ func mortar_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	area_mark("ring", u.team, pr.to, Vector2.ZERO, pr.splash, 0.0, "powder", pr.duration, true)     # (where it will land)
 	var sm := spawn_effect("smoke", muzzle + Vector2(0, -8), 0.9)
 	sm.modulate = Color(1, 1, 1, 0.8)
+	powder("mortar", muzzle + Vector2(0, -6), u.facing * 0.3 + Vector2(0, -0.7))
 	Sfx.play_any(["combat/mortar_attack", "combat/cannon_attack", "cannon"], u.global_position)
 
 
@@ -6443,6 +6450,7 @@ func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity,
 	var fx := spawn_effect(name, p, 1.0)
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
 	fx.scale = Vector2.ONE * (splash / 36.0)
+	powder("shell", p)
 	Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
 	blast_bodies(p, splash, aimed, Vector2.INF, Vector2.INF, 0.0, dmg)
 	area_mark("ring", t, p, Vector2.ZERO, splash, 0.0, "powder")
@@ -6664,6 +6672,8 @@ func ground_shot_fx(u: Unit, to: Vector2) -> void:
 			Sfx.play_any(["combat/steam_walker_attack", "steam"], from)
 		_:
 			spawn_effect("smoke", from + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+			if powder_gun(u):
+				powder("musket", from + u.facing * 6.0, u.facing)
 			var s := Shot.new()
 			s.face_offset = PI
 			s.scale = Vector2(0.45, 0.45)
@@ -7201,6 +7211,8 @@ func fog_miss(u: Unit, e: Entity) -> void:
 			spawn_effect("smoke", from + u.facing * 12.0, 0.9)
 		"balloon", "musketeer":
 			spawn_effect("smoke", from + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+	if powder_gun(u):
+		powder("cannon" if u.kind == "cannon" else "musket", from + u.facing * 8.0, u.facing)
 	if sname != "":
 		var s := Shot.new()
 		s.scale = Vector2(0.45, 0.45) if sname == "ball" else Vector2(0.8, 0.8)
@@ -7510,6 +7522,7 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 	var sc := r / (40.0 if big else 30.0)
 	fx.scale = Vector2(sc, sc)
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
+	powder("wagon" if big else "keg", p)
 	if big:
 		spawn_effect("explosion", p + Vector2(0, -10), 1.4).scale = Vector2(2.2, 2.2)
 		for i in 4:
@@ -8506,6 +8519,38 @@ func _draw_body_bars() -> void:
 
 
 var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
+
+
+# ------------------------------------------------------------------ black powder smoke (looks only)
+
+var powder_smoke: PowderSmoke = null
+
+
+## A black powder shot's smoke (PowderSmoke.KINDS: musket, cannon, canister, mortar, shell, keg,
+## wagon) at p, pushed along dir. Looks only: no random numbers of the game's, nothing read back.
+## Online the guests, and the replay, get it as an effect "powder:<kind>" (its speed field: the
+## direction's angle, or 9 for none; a version without it drops the unknown effect).
+func powder(kind: String, p: Vector2, dir := Vector2.ZERO) -> void:
+	if not puppet:
+		var f := ["e", "powder:" + kind, p, dir.angle() if dir != Vector2.ZERO else 9.0]
+		# (shots and blows first: the smoke takes only what room is left in a snapshot's effects)
+		if net != null and net.fx.size() < NetSession.FX_MAX - 15:
+			net.fx.append(f)
+		if rec != null and rec.fx.size() < NetSession.FX_MAX - 15:
+			rec.fx.append(f)
+	if powder_smoke != null:
+		powder_smoke.puff(kind, p, dir)
+
+
+## Guest / replay: a powder effect from the host's list (powder above).
+func powder_fx(name: String, p: Vector2, a: float) -> void:
+	if powder_smoke != null:
+		powder_smoke.puff(name.trim_prefix("powder:"), p, Vector2.ZERO if a > 8.0 else Vector2.from_angle(a))
+
+
+## Does this unit fire black powder (its musket, the cavalry's pistol, a gun, a mortar)?
+func powder_gun(u: Unit) -> bool:
+	return u.mode == "pistol" or u.kind in ["musketeer", "cannon", "mortar", "balloon"]
 
 
 ## Can side `t` see this target (to shoot at it from `from`)? A unit: where it stands. A

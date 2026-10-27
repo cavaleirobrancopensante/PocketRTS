@@ -714,6 +714,19 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("AREA MARKS", func() -> bool: return Settings.area_marks, func() -> void:
 		Settings.area_marks = not Settings.area_marks
 		Settings.save_all()))
+	var ph := HBoxContainer.new()
+	ph.add_theme_constant_override("separation", 12)
+	var phl := UiStyle.text("POWDER SMOKE", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	phl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ph.add_child(phl)
+	var smoke_names := ["OFF", "LIGHT", "FULL"]
+	var pb := _button(smoke_names[Settings.powder_smoke_level()], func() -> void:
+		Settings.powder_smoke = (Settings.powder_smoke_level() + 1) % 3     # (off, light, full; it applies from the next match)
+		Settings.save_all()
+		show_settings())
+	pb.custom_minimum_size = Vector2(190, 50)
+	ph.add_child(pb)
+	v.add_child(ph)
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
