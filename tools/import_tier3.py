@@ -6,18 +6,23 @@ the nets (assets/effects/netter_net.png in flight, netter_net_open.png and nette
 unit), the card icons assets/icons/{pendulum,netter}.png, and prints the scripts/cw_art.gd SHEETS lines, the Netter's
 muzzle per drawn direction (Defs.NET "mouth") and the effect sizes for ArtData.EFFECTS.
 
-PENDULUM (tools/pendulum_guide/: the idle sway, the attack swing and the walk were built in code from ChatGPT's direction
-sheet, every frame with the unit's box bottom 8 px over the cell bottom and centred across it, so a row keeps one anchor):
-  idle    pendulum_idle.png     5 x 6, cells 204 x 307
-  walk    pendulum_walk.png     5 x 8, cells 204 x 307
-  attack  pendulum_attack.png   5 x 8, cells 330 x 307 (the blade swings wide): wind-up 1-3, the blow on the 5th frame
-  death   pendulum_death_chatgpt_1.png rows S, SE, E: ChatGPT's (3 rows x 6 frames, columns 256 wide; ChatGPT moved the rows:
-          content bands y 13-330, 364-649, 669-968; drawn at the unit's scale). Rows NE, N: pendulum_death_chatgpt_2.png
-          when it exists (its two rows found by content, columns 256 wide; ChatGPT's, the back view's last two frames
-          mirrored; checked 0.14.32: its first frame stands on the idle's feet line, within 1 px of its case across and
-          2-3 px of its height, like rows S, SE, E), else the code guide pendulum_death_guide_2.png (rows at y 0 and 327,
-          6 frames of 256 x 307). In these banded sheets a falling figure's blade reaches over the column lines: each
-          frame takes the pieces whose middle is in its column (band_cells), so nothing is cut or stray.
+PENDULUM v2, two arms (tools/pendulum_v2_guide/: the idle, the walk and the two LOW SWEEPS are built in code from
+ChatGPT's direction sheet art/redraws/pendulum_v2_dirs.png; the importer runs anim.py itself and takes its RGBA cells,
+so no navy keying and the blade's see-through smear keeps its alpha; the unit's point is each cell's middle, 10 px
+over its bottom):
+  idle      4 frames (cells 236 x 302)
+  walk      8 frames (236 x 302)
+  attack_r  6 frames (314 x 368): the right arm's blow, THE HIT on the 4th frame (index 3)
+  attack_l  6 frames: the left arm's blow, the same timing (the guide's frames 7-12)
+  death     art/redraws/pendulum_v2_death_chatgpt_1.png (rows S, SE, E) and _2.png (rows NE, N), ChatGPT's, 6 frames a row.
+            ChatGPT kept no grid (sheet 2's rows sit ~50 px lower, flying arms cross the column lines): rows are found as
+            content bands, and in each band the biggest piece in each column is that frame's figure and every other piece
+            goes to the figure NEAREST it (figure_cells). CODE EDIT: a pink puff in the dust (sheet 1, row SE, frame 4) is
+            greyed like the dust round it (grey_pink). Each row is scaled so its standing first frame is as tall as that
+            direction's idle, its feet on the ground line and its case over the anchor (as on the idle). Accepted as
+            painted: the side view rolls so its clock face shows on the ground; every view falls to the screen's right.
+            Also writes art/redraws/pendulum_v2_death.gif (the imported death at game size, x3).
+The old one-armed Pendulum's sheets (art/redraws/pendulum_*.png, tools/pendulum_guide/) are no longer imported.
 NETTER (tools/netter_guide/: built in code from ChatGPT's direction sheet; the unit's box bottom 12 px over the cell bottom):
   walk    netter_walk.png       5 x 8, cells 307 x 204 (a trot); its first frame is also the IDLE (one frame)
   attack  netter_fire.png       5 x 6, cells 307 x 204: the recoil (the net leaves on the 2nd frame, the strongest kick)
@@ -266,38 +271,132 @@ def place_all(frames, scale, kind, soft=False):
     return strips, cw, ch, half, up
 
 
-# ------------------------------------------------------------------ the Pendulum
+# ------------------------------------------------------------------ the Pendulum (v2, two arms)
+
+PEND2 = 'tools/pendulum_v2_guide'
+PINK_PUFF = (1, 3, (905, 495, 955, 530))     # sheet 1, row SE (index 1), frame 4 (index 3): a pink puff in the dust (box)
+
+
+def figure_cells(rgb, bands, cols):
+    """[row][col] -> (rgba crop of the whole band, (x0, y0)) for sheets where ChatGPT kept no grid: in each band (a row of
+    figures) the biggest piece in each column is that frame's figure, and every other piece (a flying arm, a cog, a puff
+    of dust) goes to the figure it is NEAREST to (by the gap between them), whatever column line it crosses."""
+    out = []
+    for (y0, y1) in bands:
+        band = rgb[y0:y1 + 1]
+        H, W = band.shape[:2]
+        m = figure(band)
+        lab, n = ndi.label(m)
+        sizes = ndi.sum(m, lab, range(1, n + 1))
+        objs = ndi.find_objects(lab)
+        cw = W / float(cols)
+        seeds = []
+        for c in range(cols):
+            best, bs = 0, -1
+            for i in range(n):
+                xs = np.nonzero(lab[objs[i]] == i + 1)[1] + objs[i][1].start
+                if int(xs.mean() / cw) == c and sizes[i] > bs:
+                    best, bs = i + 1, sizes[i]
+            seeds.append(best)
+        dist = np.stack([ndi.distance_transform_edt(lab != sd) for sd in seeds])
+        owner = np.full(n + 1, -1)
+        for i in range(n):
+            if i + 1 in seeds:
+                owner[i + 1] = seeds.index(i + 1)
+            else:
+                owner[i + 1] = int(np.argmin(dist[:, lab == i + 1].min(1)))
+        row = []
+        P = FIG_PAD
+        padded = np.pad(band, ((0, 0), (P, P), (0, 0)))
+        lp = np.pad(owner[lab], ((0, 0), (P, P)), constant_values=-1)
+        for c in range(cols):
+            x0, x1 = int(round(c * cw)), int(round((c + 1) * cw))
+            win = lp[:, x0:x1 + 2 * P] == c
+            lost = (owner[lab] == c).sum() - win.sum()
+            if lost:
+                print('  figure_cells: %d px of frame %d fall outside its window' % (lost, c + 1))
+            row.append((rgba(padded[:, x0:x1 + 2 * P], win), (x0 - P, y0)))
+        out.append(row)
+    return out
+
+
+FIG_PAD = 160         # px each side of a column the pieces of its figure may reach (a flying arm)
+
+
+def grey_pink(rgb, box):
+    """CODE EDIT: a pink puff ChatGPT left in the dust -> the dust's own grey (by brightness, tinted like the dust round it)"""
+    x0, y0, x1, y1 = box
+    a = rgb[y0:y1, x0:x1]
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    pink = (r - g > 25) & (b - g > 5) & (r < 235) & (np.abs(a - NAVY).sum(2) >= TOL)
+    # the dust next to it: low saturation, mid grey
+    ring = rgb[y0 - 20:y1 + 20, x0 - 20:x1 + 20].reshape(-1, 3)
+    mx, mn = ring.max(1), ring.min(1)
+    dust = ring[(mx - mn < 30) & (mx > 70)]
+    tint = dust.mean(0) / max(1.0, dust.mean()) if len(dust) else np.ones(3)
+    lum = a[pink].mean(1, keepdims=True)
+    a[pink] = (lum * tint).clip(0, 255).astype(int)
+    return int(pink.sum())
+
 
 def pendulum():
-    idle = grid_cells(SRC + 'pendulum_idle.png', 5, 6, 204, 307)
-    walk = grid_cells(SRC + 'pendulum_walk.png', 5, 8, 204, 307)
-    attack = grid_cells(SRC + 'pendulum_attack.png', 5, 8, 330, 307)
-    # the anchor of each row in the 204-wide cells: under the red case, on the ground line (the 330-wide attack cells
-    # centre the same box: + 63)
-    ax = [case_x(idle[r][0]) for r in range(5)]
+    """the Pendulum v2 (tools/pendulum_v2_guide: idle, walk and the two low sweeps built in code from ChatGPT's
+    direction sheet; the death painted by ChatGPT from the code guides)"""
+    sys.path.insert(0, PEND2)
+    import anim
+    A = anim.all_anims()                     # (also rewrites the guide sheets and GIFs in art/redraws)
+    import rig
     frames = {}
+    idle = A['idle']
+    icw, ich = idle[0][0].size
+    acw, ach = A['attack'][0][0].size
+    def cells(c, cw, ch):
+        return [(np.array(im), cw / 2.0, ch - (rig.CH - rig.GROUND), 1.0) for im in c]
     for r, d in enumerate(DIRS):
-        frames[('idle', d)] = [(o, ax[r], PEND_GROUND, 1.0) for o in idle[r]]
-        frames[('walk', d)] = [(o, ax[r], PEND_GROUND, 1.0) for o in walk[r]]
-        frames[('attack', d)] = [(o, ax[r] + (330 - 204) / 2.0, PEND_GROUND, 1.0) for o in attack[r]]
-    # the death: S, SE, E from ChatGPT's part 1; NE, N from part 2 when ChatGPT's is in, else the code guide
-    p1 = band_cells(SRC + 'pendulum_death_chatgpt_1.png', [(13, 330), (364, 649), (669, 968)], 6, 256)
-    p2_file = SRC + 'pendulum_death_chatgpt_2.png'
-    if os.path.exists(p2_file):
-        p2 = band_cells(p2_file, content_bands(p2_file, 2), 6, 256)
-        print('pendulum death NE, N: ChatGPT (pendulum_death_chatgpt_2.png)')
-    else:
-        p2 = band_cells(SRC + 'pendulum_death_guide_2.png', [(0, 326), (327, 660)], 6, 256)
-        print('pendulum death NE, N: the code guide (pendulum_death_guide_2.png; ChatGPT\'s part 2 not in yet)')
-    rows = p1 + p2
+        frames[('idle', d)] = cells(idle[r], icw, ich)
+        frames[('walk', d)] = cells(A['walk'][r], icw, ich)
+        at = cells(A['attack'][r], acw, ach)
+        frames[('attack_r', d)] = at[:6]
+        frames[('attack_l', d)] = at[6:]
+    # the death: ChatGPT's sheets, cut by figure (no grid kept: sheet 2's rows sit lower, flying arms cross the lines)
+    rows = []
+    for k, n in ((1, 3), (2, 2)):
+        path = SRC + 'pendulum_v2_death_chatgpt_%d.png' % k
+        rgb = np.array(Image.open(path).convert('RGB')).astype(int)
+        if k == PINK_PUFF[0]:
+            print('pendulum death: %d pink pixels in the dust greyed' % grey_pink(rgb, PINK_PUFF[2]))
+        rows += figure_cells(rgb, content_bands(path, n), 6)
     for r, d in enumerate(DIRS):
+        i0 = np.array(idle[r][0])
+        x0, y0, x1, y1 = bbox(i0)
         f0 = rows[r][0][0]
-        a0 = (case_x(f0), bottom(f0))          # the first frame: case over the anchor, feet on the ground
-        frames[('death', d)] = [(o, a0[0], a0[1], 1.0) for o, xy in rows[r]]
-    # the scale: the S idle PEND_H px tall
-    x0, y0, x1, y1 = bbox(idle[0][0])
+        fx0, fy0, fx1, fy1 = bbox(f0)
+        k = (y1 - y0) / float(fy1 - fy0)          # the row's scale: its standing first frame as tall as the idle
+        # the anchor: under the case as on the idle (the idle's anchor is its cell's middle), feet on the ground line
+        off = icw / 2.0 - case_x(i0)
+        a0 = (case_x(f0) + off / k, bottom(f0))
+        frames[('death', d)] = [(o, a0[0], a0[1], k) for o, xy in rows[r]]
+        print('pendulum death %s: scale %.3f of the idle' % (d.upper(), k))
+    x0, y0, x1, y1 = bbox(np.array(idle[0][0]))
     scale = PEND_H / float(y1 - y0)
-    return place_all(frames, scale, 'pendulum')
+    out = place_all(frames, scale, 'pendulum')
+    death_gif(out[0], out[1])
+    return out
+
+
+def death_gif(strips, cw):
+    """art/redraws/pendulum_v2_death.gif: the imported death (palette applied, game size) of the five facings side by
+    side, x3, on the guides' navy; the last frame held"""
+    n = strips[('death', 's')].shape[1] // cw
+    ch = strips[('death', 's')].shape[0]
+    gif = []
+    for i in range(n):
+        im = Image.new('RGBA', (5 * cw, ch), tuple(NAVY) + (255,))
+        for r, d in enumerate(DIRS):
+            im.alpha_composite(Image.fromarray(strips[('death', d)][:, i * cw:(i + 1) * cw]), (r * cw, 0))
+        gif.append(im.convert('RGB').resize((5 * cw * 3, ch * 3), Image.NEAREST))
+    gif[0].save(SRC + 'pendulum_v2_death.gif', save_all=True, append_images=gif[1:], duration=[160] * (n - 1) + [1200],
+                loop=0)
 
 
 # ------------------------------------------------------------------ the Netter
@@ -429,7 +528,7 @@ def main():
     ns, ncw, nch, nhalf, nup, nscale = netter()
     pv['netter'] = (ns, ncw, nch, nhalf, nup)
     nets(nscale)
-    icon_upper(ps[('idle', 's')], pcw, 'pendulum', 0.84)      # (the tower, the clock and the blade)
+    icon_upper(ps[('idle', 's')], pcw, 'pendulum', 0.84)      # (the tower, the clock and the two arms)
     icon_whole(ns[('idle', 'se')], ncw, 'netter')
     if len(sys.argv) > 1:
         make_preview(pv, sys.argv[1])

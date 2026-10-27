@@ -89,8 +89,20 @@ func _run() -> void:
 	quit(1 if fails > 0 else 0)
 
 
+## (since 0.13.4 the capital's swamp grows on to its own bigger radius, Defs.CAPITAL_SWAMP_BONUS, in the first seconds of
+## the match: the baselines are taken once it has, or a mound's swamp would be measured against a capital still growing)
+func _capital_grown() -> void:
+	var cap: Building = g.capital(0)
+	var end: float = g.clock + 30.0
+	while g.clock < end and cap != null and cap.swamp_r < cap.swamp_target() - 0.01:
+		await physics_frame
+	g._update_swamp()
+	await physics_frame
+
+
 func _run_rules() -> void:
 	g.explored.fill(1)
+	await _capital_grown()
 	var cap: Building = g.capital(0)
 	var p: Dictionary = g.players[0]
 	p["gold"] = 2000
@@ -145,7 +157,9 @@ func _run_rules() -> void:
 	var part := swamp_cells(0)
 	await wait(14.0)
 	var cells1 := swamp_cells(0)
-	check(part < cells1 and cells1 > cells0 + 100, "   the swamp spreads over a few seconds (%d -> %d -> %d cells)" % [cells0, part, cells1])
+	# (+60: on this seed the edge of the grown capital swamp, where the mound goes, is at the map's top edge, so part of the
+	# mound's 10-tile circle is off the map)
+	check(part < cells1 and cells1 > cells0 + 60, "   the swamp spreads over a few seconds (%d -> %d -> %d cells)" % [cells0, part, cells1])
 	var mc: Vector2i = g.cell_of(m.center())
 	var covered := 0
 	for dx in range(-10, 11):
@@ -170,6 +184,7 @@ func _run_rules() -> void:
 
 
 func _run_ai() -> void:
+	await _capital_grown()
 	var cells0 := swamp_cells(0)
 	var reach0: float = g.swamp_reach[0]
 	Engine.time_scale = 8.0

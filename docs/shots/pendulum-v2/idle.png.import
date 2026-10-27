@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://nh5gn5x00dcf"
-path="res://.godot/imported/attack_e.png-2fc567062731ad1fab3f08ff17429e20.ctex"
+uid="uid://bcyskj6eyc4ax"
+path="res://.godot/imported/idle.png-ed08cdc341a8242828584c8696734c97.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/pendulum/attack_e.png"
-dest_files=["res://.godot/imported/attack_e.png-2fc567062731ad1fab3f08ff17429e20.ctex"]
+source_file="res://docs/shots/pendulum-v2/idle.png"
+dest_files=["res://.godot/imported/idle.png-ed08cdc341a8242828584c8696734c97.ctex"]
 
 [params]
 

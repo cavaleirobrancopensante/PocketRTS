@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import parts as P
+import cut
 from parts import PAD, place, shade, rotm, matrix, sub, add
 
 A_STEP = 45.0      # a foot travels +-A_STEP px forward/back of the hip (side view px)
@@ -143,10 +144,20 @@ def compose(r, pose, extra=None):
         if r == 2:
             sides.append(('left', P.E_FAR_SHADE, P.E_FAR))
         for side, dark, off in sides:
-            theta, yaw = th.get(side, (0.0, 0.0))
+            spec = th.get(side, (0.0, 0.0))
             arm = a if side == a['cfg']['robot'] else dict(a, cfg=dict(a['cfg'], robot=side))
             pv = body_pt(add(a['pivot'], off))
-            lay, depth, C1 = P.arm_layers(r, arm, pv, theta, yaw, dark=dark, e_rest=pose.get('e_rest'))
+            if isinstance(spec, dict):
+                # a sweeping blow (cut.py): the pose on the cone, blow weight, the blade's turn on its weight
+                lay, depth, C1 = cut.cut_layers(r, arm, pv, spec, dark=dark)
+                if spec.get('trail'):
+                    # the smear behind the blade's edge: where the edge was over the trail's poses, then now
+                    pts = [cut.edge_point(r, arm, pv, q_)[0] for q_ in spec['trail']]
+                    pts.append(cut.edge_point(r, arm, pv, spec)[0])
+                    lay = [('smear', pts)] + lay
+            else:
+                theta, yaw = spec
+                lay, depth, C1 = P.arm_layers(r, arm, pv, theta, yaw, dark=dark, e_rest=pose.get('e_rest'))
             hub = place(a['hub'], piv, (piv[0] + bx, piv[1] + by), Mb) if dark is None else None
             arms.append((depth, side, lay, hub, C1))
     arms.sort(key=lambda t: t[0])
@@ -154,8 +165,11 @@ def compose(r, pose, extra=None):
         extra(cv, 'back')
     for depth, side, lay, hub, C1 in arms:
         if depth < 0:
-            for _, im in lay:
-                cv.alpha_composite(im)
+            for n_, im in lay:
+                if n_ == 'smear':
+                    cut.smear(cv, im, cut.SMEAR_W)
+                else:
+                    cv.alpha_composite(im)
     bodyimg = place(D['body'], piv, (piv[0] + bx, piv[1] + by), Mb)
     lp = pose.get('legs')
     if r == 2:
@@ -172,6 +186,8 @@ def compose(r, pose, extra=None):
     for depth, side, lay, hub, C1 in arms:
         if depth >= 0:
             d = dict(lay)
+            if 'smear' in d:
+                cut.smear(cv, d['smear'], cut.SMEAR_W)
             cv.alpha_composite(d['rod'])
             if hub is not None:
                 cv.alpha_composite(hub)

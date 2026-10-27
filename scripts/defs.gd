@@ -569,11 +569,13 @@ const FLYER := {
 const PENDULUM := "pendulum"
 const NETTER := "netter"
 ## The Pendulum is made only while its Movement Works runs on the BIG gear (UNITS "big_gear": the heavy torque;
-## Game.can_train). Its blade's swing (the blow on the 5th frame of the strip) hits EVERY enemy on the ground in the ARC in
-## front of it: within `reach` px of its feet (to the victim's edge), up to `arc` degrees either side of the way it faces
-## (a third of the circle); a building it swings at takes the blow too. The machine's own units keep in step with the
-## swing: it never hits its own side. `strike`: s the swing goes on after the blow (the strip's last frames).
-const PENDULUM_SWING := {"reach": 62.0, "arc": 60.0, "strike": 0.45}
+## Game.can_train). Its arms cut in turn (right, left: scripts/pendulum.gd); each blow (on the 4th frame of its arm's
+## strip) hits EVERY enemy on the ground in the ARC in front of it: within `reach` px of its feet (to the victim's edge),
+## up to `arc` degrees either side of the way it faces (a third of the circle); a building it swings at takes the blow
+## too. The machine's own units keep in step with the swing: it never hits its own side. `strike`: s the arm goes on after
+## the blow (the strip's follow-through and settling). `vs_light`: a LIGHT unit (tag "light") takes this times the blow
+## (a GUESS, design_principles 1: a cleaving blade against unarmoured men; the Crown's canister has the same 1.5).
+const PENDULUM_SWING := {"reach": 62.0, "arc": 60.0, "strike": 0.29, "vs_light": 1.5}
 ## The Netter's NET: a weighted chain net fired from its spring cannon (its UNITS entry: reach, the long reload) at ONE enemy
 ## unit, leaving the muzzle (`mouth`: per drawn direction, game px from its feet, W/SW/NW mirror E/SE/NE; printed by
 ## tools/import_tier3.py) on the 2nd frame of the recoil; it flies `speed` px/s along a low arc (`arc` of the distance) and
@@ -889,18 +891,20 @@ const UNITS := {
 		"about": "A heavy clockwork owl with a pendulum weight under it: it SWOOPS DOWN on units with its talons and DROPS its weight as a BOMB on buildings (it bursts on impact and hurts the buildings close by). Slow; it cannot hit flyers. Made from a Swift: MORPH TO OWL, once TICKING OWL is researched at a Clock Aviary.",
 	},
 	# TIER 3 (gear mode; Defs.PENDULUM_SWING): the PENDULUM, the melee AREA DAMAGE: a tall, slow, tough clock tower on long
-	# legs whose pendulum blade swings through everything in the arc in front of it. Guesses (design_principles 1): a
-	# Brute's job with area instead of a charge: 340 hp + 2 armour (a Brute 240 + 2), 22 a swing to EVERY enemy in a third
-	# of a circle, one swing every 2.59 s (aim 0.44, the blade through the middle on the 5th frame at 9 fps, + 0.45 +
-	# cooldown 1.7): 8.5 a second per enemy caught (a Brute 10.8 on one, the old Steam Walker 6.7 in its cone); slow (46,
-	# a Brute 56 and charging, a Musketeer 62: kiting shooters, cavalry and spreading out answer it), ground only. 200 cogs +
-	# 75 Tension (a Brute 150 + 20, a Cuirassier 155 with its horse), 4 supply, and only from a BIG-gear Works.
+	# legs whose two bladed arms cut, in turn, through everything in the arc in front of it. Guesses (design_principles 1):
+	# a Brute's job with area instead of a charge: 340 hp + 2 armour (a Brute 240 + 2), 12 a blow to EVERY enemy in a third
+	# of a circle, one blow every 1.40 s, the arms taking turns (aim 0.35, the sweep's hit on the 4th frame of a 6-frame strip at
+	# 9 fps, + strike 0.29 + cooldown 0.76): 8.6 a second per enemy caught, as the one-armed Pendulum's 22 every 2.59 s
+	# (8.5; a Brute 10.8 on one, the old Steam Walker 6.7 in its cone), and x1.5 on LIGHT units (PENDULUM_SWING "vs_light":
+	# 12.9 a second; lighter blows lose a little more to armour: 7.1 a second on 2 armour, was 7.7); slow (46, a Brute 56
+	# and charging, a Musketeer 62: kiting shooters, cavalry and spreading out answer it), ground only. 200 cogs + 75
+	# Tension (a Brute 150 + 20, a Cuirassier 155 with its horse), 4 supply, and only from a BIG-gear Works.
 	"pendulum": {
 		"tags": ["armored", "massive"],
 		"name": "Pendulum", "hp": 340, "armor": 2, "speed": 46, "cost": 200, "tension": 75, "time": 35.0, "supply": 4,
-		"sight": 8, "range": 32, "damage": 22, "cooldown": 1.7, "aim": 0.44, "radius": 20, "from": "movement_works",
+		"sight": 8, "range": 32, "damage": 12, "cooldown": 0.76, "aim": 0.35, "radius": 20, "from": "movement_works",
 		"building_bonus": 1.25, "requires": "escapement", "big_gear": true, "ground_only": true, "faction": "clockwork",
-		"about": "A tall clock tower on long legs with a pendulum blade under it: every swing cuts EVERY enemy on the ground in the wide arc in front of it (never your own units). Slow and tough; it cannot reach flyers. Made at a Movement Works whose gear ring meshes with a Mainspring's, once an Escapement works, and only while the Works runs on its BIG gear (the heavy torque). Costs Tension.",
+		"about": "A tall clock tower on long legs with two arms, each a heavy weight with a crescent blade: they sweep low in turn, like scythes at ankle height, and every blow cuts EVERY enemy on the ground in the wide arc in front of it (never your own units), light units hardest. Slow and tough; it cannot reach flyers. Made at the Movement Works once an Escapement works, and only while the Works runs on its BIG gear (the heavy torque). Costs Tension.",
 	},
 	# TIER 3 (gear mode; Defs.NET): the NETTER, the STOPPER (the owner's "unit that stops one enemy", made of machinery: no
 	# magic). Its spring cannon fires a weighted chain net at ONE enemy unit: caught, it cannot move or fight for 4 s, and a

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ckjxgym3vkt0s"
-path="res://.godot/imported/attack_n.png-bfb1d498f03c4bc67121753789dfb89f.ctex"
+uid="uid://dv7gj8wv7qbkx"
+path="res://.godot/imported/walk.png-ec9eb29c366771b4345d826d6656cda9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/pendulum/attack_n.png"
-dest_files=["res://.godot/imported/attack_n.png-bfb1d498f03c4bc67121753789dfb89f.ctex"]
+source_file="res://docs/shots/pendulum-v2/walk.png"
+dest_files=["res://.godot/imported/walk.png-ec9eb29c366771b4345d826d6656cda9.ctex"]
 
 [params]
 

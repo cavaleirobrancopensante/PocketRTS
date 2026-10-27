@@ -1,6 +1,6 @@
 # Replays
 
-Version 0.14.48. Every match is recorded, and the REPLAYS button on the main menu plays them back. The map editor, the sandbox and the Clockwork lab moved from the main menu into SETTINGS, under EDITOR.
+Version 0.14.49. Every match is recorded, and the REPLAYS button on the main menu plays them back. The map editor, the sandbox and the Clockwork lab moved from the main menu into SETTINGS, under EDITOR.
 
 ## How it works
 
