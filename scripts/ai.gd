@@ -381,10 +381,7 @@ const HARASS_PREY := 15.0       # tiles round that spot where a worker is fair p
 const HARASS_COVER := 230.0     # px: a worker with this much of a guard near him is left alone
 const HARASS_MEND := 0.4        # a rider below this share of his hit points rides home to mend
 const HARASS_END := 600.0       # the harass is over at this time (the riders come home and join the army)
-const ALLIN_FOR := 240.0        # the all-in: no new halls for this long, or until the attack has gone out
 const ALLIN_AT := 16            # the all-in goes out with this much supply at home (the riders come with it)
-var _allin := false
-var _allin_t := 0.0
 var _harass_log := 0.0
 var _harass_n := 0               # the most riders out harassing (the rush's own; mended ones go back, new ones stay home)
 
@@ -399,27 +396,12 @@ func _rush_after(party: Array, connected: bool) -> void:
 	_raiders = riders
 	_raid_peak = riders.size()
 	_raid_block = 0.0
-	if connected:
-		_allin = false
-	else:
-		_allin = true
-		_allin_t = game.clock
-		_regroup_until = 0.0
+	if not connected:
+		_regroup_until = 0.0         # (the all-in: no waiting to regroup, out as soon as ALLIN_AT supply stands at home)
 		_attack_at = ALLIN_AT
 		_mop_pending = false
 	if riders.size() > 0:
 		_rush_log("%d Horsemen stay out and harass (never into its army)" % riders.size())
-
-
-## The all-in holds the next Town Hall back until the attack has gone out (or ALLIN_FOR).
-func _allin_on() -> bool:
-	if _allin and (game.clock - _allin_t > ALLIN_FOR or (_attacking and _first_wave_out())):
-		_allin = false
-	return _allin
-
-
-func _first_wave_out() -> bool:
-	return _wave_set.size() >= 4
 
 
 func _enemy_army_out(foe: int, ebase: Vector2) -> bool:
@@ -468,6 +450,16 @@ func _harass(party: Array) -> void:
 				u.cmd_move(away + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 		return
 	var out := _enemy_army_out(foe, ebase)
+	if out and _threat() != Vector2.INF:
+		# its army is coming for us: the riders ride home and fight with the defence (coach round 4: with the riders
+		# off raiding its base, the Crown's home fell to the Clockwork's first wave in 3 games of 4; the base raid
+		# traded a few workers for the whole game)
+		_rush_state = "done"
+		_rush_log("its army is at our base: the %d Horsemen ride home to defend" % party.size())
+		for u in party:
+			u.cmd_move(_threat(), true)
+		_raiders.clear()
+		return
 	if out and game.clock - _harass_log > 60.0:
 		_harass_log = game.clock
 		_rush_log("its army has moved out: the Horsemen ride into its base for the workers")
@@ -2023,7 +2015,7 @@ var _stage_t := 0.0
 func _hall_first() -> bool:
 	_hall_reserve = false
 	var hall: String = _f()["hall"]
-	if _halls().size() >= 7 or (_crown() and _allin_on()):
+	if _halls().size() >= 7:
 		return false
 	# halls with a fair share of soil left (one going up counts: it's fresh land)
 	var fresh := _halls().filter(func(h: Building) -> bool: return not h.built or _land(h) > 0.25).size()
