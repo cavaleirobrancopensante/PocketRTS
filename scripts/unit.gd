@@ -5841,7 +5841,7 @@ const CRATE_DROP := 0.35      # seconds to set it down on the site
 
 
 func _update_crate_spr() -> void:
-	if crate_site == null or dead:
+	if crate_site == null or dead or anim in ["carry", "idle_carry", "setdown"]:
 		if _crate_spr:
 			_crate_spr.visible = false
 		return
@@ -6105,6 +6105,11 @@ func _anim_name() -> String:
 			if phase != "":
 				return "attack"
 		"winder":
+			# a building's crate in his hands (owner, 2026-10-27): his carry walk, standing with it, setting it down
+			if crate_site != null and _anim_or("carry", "") != "":
+				if work == "crate_drop":
+					return "setdown"
+				return "carry" if moving else "idle_carry"
 			# his one job is winding (docs/clockwork_ground_up.md): his own spring, a Cog Press, a repair, the crate he
 			# has just set down on a site (the repair strip is the wind strip)
 			if self_wind_t > 0.0:
@@ -6255,6 +6260,8 @@ const WINDER_BEAT := {
 static func beat_of(a: String) -> String:
 	if a == "repair":
 		a = "wind"
+	elif a == "carry":
+		a = "walk"           # (the Winder's carry walk ticks like his walk)
 	return a if WINDER_BEAT.has(a) else ""
 
 

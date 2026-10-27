@@ -1,6 +1,7 @@
 extends SceneTree
-## A Winder carries the building crate IN FRONT in his hands (Unit.CRATE_HELD: over the body facing us or side on) and
-## lowers it to the ground at the site (work "crate_drop", Unit.CRATE_DROP) before it lands and unfolds (owner, 2026-10-27).
+## A Winder carries the building crate IN FRONT in his hands (his carry walk, assets/units/winder/carry_<view>.png, from
+## tools/import_winder_carry.py) and sets it down at the site (work "crate_drop", the setdown frame, Unit.CRATE_DROP) before it
+## lands and unfolds (owner, 2026-10-27). The pasted crate sprite (Unit.CRATE_HELD) stays hidden while the art draws it.
 var main: Node
 var fails := 0
 func _initialize() -> void:
@@ -41,21 +42,21 @@ func _run() -> void:
 		await physics_frame
 		if not is_instance_valid(site) or site.dead:
 			break
-		if w.crate_site == site and w._crate_spr and w._crate_spr.visible:
-			carried_seen = true
-			if w.work != "crate_drop" and w.anim_dir in ["s", "se", "e"]:
-				carried_front = carried_front or (not w._crate_spr.show_behind_parent and w._crate_spr.position.y > -20.0)
+		if w.crate_site == site:
+			if w.anim == "carry":
+				carried_seen = true
+			if w.anim == "carry" or w.anim == "idle_carry":
+				carried_front = carried_front or not (w._crate_spr and w._crate_spr.visible)
 			if w.work == "crate_drop":
 				dropped = true
-				if w.work_t < 0.05:
-					drop_low = drop_low or w._crate_spr.position.y > -10.0
+				drop_low = drop_low or w.anim == "setdown"
 		if site.crate == "" and site.seeded:
 			landed_after_drop = dropped
 			break
-	check(carried_seen, "the Winder carried the crate (its picture shown)")
-	check(carried_front, "facing us or side on, the crate is in front of him at chest height, over the body")
+	check(carried_seen, "the Winder walked with the crate: his carry walk")
+	check(carried_front, "the pasted crate is hidden while his carry art draws it")
 	check(dropped, "at the site he sets it down (crate_drop) before it lands")
-	check(drop_low, "lowered to the ground in front of him")
+	check(drop_low, "setting it down plays his set-down frame")
 	check(landed_after_drop, "it lands and unfolds after he set it down")
 	print("FAILS: %d" % fails if fails else "ALL PASS")
 	quit()

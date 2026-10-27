@@ -111,6 +111,8 @@ python3 tools/import_mound_chatgpt.py   # the Clutch Mound with the vent chimney
 python3 tools/import_winder_v2.py       # the new Winder (art/redraws/winder_*: idle, walk, wind (= repair), attack, death): its strips,
                                          # art_data entry and card portrait (after import_art, which no longer writes him, and
                                          # after import_round11, whose painted portrait of the old Winder it replaces)
+python3 tools/import_winder_carry.py    # his carry walk and set-down with a building's crate (art/redraws/winder_carry_*), added
+                                         # to his art_data entry (after import_winder_v2, which rewrites that entry)
 # Gait passes (tools/gait_lib.py, docs/animation_gait_audit.md): legs rebuilt per frame, one foot after the other;
 # each strip's torso / head / gear kept, pristine sources snapshotted in art/redraws/gait_src/<unit>/ (idempotent)
 python3 tools/import_gait_missionary.py
