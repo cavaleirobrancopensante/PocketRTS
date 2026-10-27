@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.79": ["Brood: um botão DEMOLIR novo (uma garra golpeando um monte rachado), que não se confunde mais com CONSTRUIR; o botão CUSPIR do Inchador agora tem desenho próprio, o Inchador cuspindo ácido."],
 	"0.14.78": ["Os ENROLADORES têm arte nova para levar a caixa de um prédio: andam com ela nas duas mãos, ficam parados com ela e se abaixam para pô-la no chão antes que ela se abra no prédio, em todas as direções."],
 	"0.14.77": ["Um Enrolador que se afasta de você com a caixa de um prédio agora a mostra acima da cabeça (ela está nas mãos, na frente dele), em vez de escondê-la atrás das costas."],
 	"0.14.76": ["Os ENROLADORES levam a caixa de um prédio na frente, nas mãos (antes ia nas costas), e no local a baixam até o chão à sua frente antes que ela se abra no prédio."],

@@ -56,6 +56,10 @@ BRONZE = {
     "commands_brood_b": ("brood", ["work", "more", "ab_tongue", "ab_take_off", "ab_spit", "ab_bombard"]),
     # the HOLD redraws (two versions each, the owner picked one): the Clockwork's plain blued-steel arrow
     "hold_clockwork": ("clockwork", ["hold", None]),
+    # redraws (the owner's ChatGPT answers, 2026-10-27; they replace the sheets' pictures above): a DEMOLISH that can't
+    # be taken for the Brood BUILD (a talon striking down on a split mound), SPIT drawn with the Bloater
+    "brood_demolish_2": ("brood", ["demolish"]),
+    "brood_spit_2": ("brood", ["ab_spit"]),
 }
 # Brood / Clockwork icons ChatGPT drew in the Crown's steel frame: the picture inside the steel frame's black
 # line (like the steel sheets), then set in the faction's frame like the bronze ones

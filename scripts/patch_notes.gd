@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.79", "items": [
+		"Brood: a new DEMOLISH button (a talon striking down on a split mound), so it can no longer be mistaken for BUILD; the Bloater's SPIT button now has its own picture, the Bloater spitting acid.",
+	]},
 	{"v": "0.14.78", "items": [
 		"WINDERS have new art for carrying a building's crate: they walk with it held out in both hands, stand with it, and bend down to set it on the ground before it unfolds into the building, in every direction.",
 	]},

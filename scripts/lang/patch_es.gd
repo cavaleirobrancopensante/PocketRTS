@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.79": ["Brood: un botón DEMOLER nuevo (una garra golpeando un montículo partido), que ya no se confunde con CONSTRUIR; el botón ESCUPIR del Hinchador ahora tiene su propio dibujo, el Hinchador escupiendo ácido."],
 	"0.14.78": ["Los DADORES DE CUERDA tienen arte nuevo para llevar la caja de un edificio: caminan con ella en ambas manos, se quedan quietos con ella y se agachan para dejarla en el suelo antes de que se abra en el edificio, en todas las direcciones."],
 	"0.14.77": ["Un Dador de cuerda que se aleja de ti con la caja de un edificio ahora la muestra por encima de la cabeza (la lleva en las manos, delante), en lugar de esconderla tras la espalda."],
 	"0.14.76": ["Los DADORES DE CUERDA llevan la caja de un edificio delante, en las manos (antes iba a la espalda), y en el sitio la bajan al suelo delante de ellos antes de que se abra en el edificio."],
