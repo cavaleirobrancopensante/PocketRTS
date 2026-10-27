@@ -186,6 +186,14 @@ A siege the simulation weighs up is left to the simulation.
 A wave that pulls back walks all the way to the rally, by its escort.
 On Hard, it also pulls back from a fight where the enemy close by is worth one and a half times more.
 
+### Expanding in time
+
+Against the coached Crown, which now expands every 16 Labourers, the Clockwork sat on two halls with 32 Winders while its main ran dry.
+Now, once its Escapement is laid (or from 6:00), it wants a fresh Clocktower for every 15 Winders, three at most, on Normal and Hard.
+Before the Escapement it does not: saving for a hall pauses everything else, and an expansion at 2:50 put the Escapement off by up to ten minutes.
+A Clocktower of its own that is razed leaves its spot alone for four minutes. It had laid five on one far spot and lost each one.
+The Clockwork needs ore for a new Clocktower, and on some maps there is none left near: then it cannot expand, whatever it wants.
+
 ### The kit, used well (Hard)
 
 A Netter that has picked a worker nets the most dangerous fighter in reach instead.

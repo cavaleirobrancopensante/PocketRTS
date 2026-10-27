@@ -592,6 +592,7 @@ func _turrets() -> void:
 ## flat or down: Jack.ai_tick.)
 var _tier2_t := 0.0
 var _research_keep := 0.0      # gear mode: Tension kept for a research that is wanted (SHIELD WALL, HIGH LEAP)
+var _esc_blocked := false       # gear mode: no room for the Escapement by any Mainspring (another Mainspring is saved for)
 var _tech_hold := false         # gear mode: the gold put by is for the Mainspring or the Escapement (the army pauses sooner)
 
 
@@ -644,9 +645,15 @@ func _tier2(t: float) -> void:
 	# (the Escapement is laid as soon as its Mainspring's site is: it holds the room by the spring, which other buildings
 	# took in the minute the spring took to stand up; it works once the spring does)
 	var next := "mainspring" if springs.is_empty() else (Defs.CW_TECH if esc.is_empty() else "")
-	if next != "" and _gold() < int(Defs.BUILDINGS[next]["cost"]) + 20 and (_threat() == Vector2.INF or _holds_line()):
-		_reserve = maxi(_reserve, int(Defs.BUILDINGS[next]["cost"]) + 20)
+	var next_cost := int(Defs.BUILDINGS[next]["cost"]) if next != "" else 0
+	if next == "mainspring":
+		next_cost += int(Defs.BUILDINGS[Defs.CW_TECH]["cost"])      # (the pair is laid at once: _tier2)
+	if next == Defs.CW_TECH and _esc_blocked:
+		next_cost += int(Defs.BUILDINGS["mainspring"]["cost"])      # (no room for it: another Mainspring first, saved for too)
+	if next != "" and _gold() < next_cost + 20 and (_threat() == Vector2.INF or _holds_line()):
+		_reserve = maxi(_reserve, next_cost + 20)
 		_tech_hold = true
+	_esc_spring(esc)       # (an Escapement laid first gets its Mainspring)
 	_jack_works()          # (its own clock; the gold it wants is held back on every think)
 	_research_keep = 0.0
 	if not springs.is_empty():
@@ -656,8 +663,15 @@ func _tier2(t: float) -> void:
 		return
 	_tier2_t = game.clock + 3.0
 	if springs.is_empty():
-		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
+		# the Mainspring and the Escapement are laid together: the room by the spring went to Regulators and a turret
+		# in the minute before the Escapement's cogs came in, and three games in eight had no Escapement for minutes
+		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20:
 			_construct("mainspring", _spring_spot())
+			for sp in _mine("mainspring"):
+				var ce := GearEcon.room_spot(game, team, Defs.CW_TECH, [sp])
+				if ce.x >= 0 and game.requirement_met(team, Defs.CW_TECH):
+					_construct(Defs.CW_TECH, ce)
+					break
 		return
 	if esc.is_empty():
 		if _gold() < int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20 or not game.requirement_met(team, Defs.CW_TECH):
@@ -675,15 +689,50 @@ func _tier2(t: float) -> void:
 				if c.x >= 0:
 					_construct(Defs.CW_TECH, c)
 					return
-		# (no room by its Mainspring: another Mainspring where there is room, then the Escapement by it)
-		if springs.size() < 3 and not _busy_building("mainspring") and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]):
+		# (no room by any Mainspring: the Escapement goes first where a Mainspring can still go beside it, by a hall or a
+		# Works, and the Mainspring follows by it (_esc_spring); cramped bases waited up to ten minutes, 0.14.79
+		# Hollowfen and Kestrel Rise)
+		if _gold() >= int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20:
+			var pair: Array = _halls() + _mine(_works())
+			for b in pair:
+				if b.built:
+					var r6: Array = GearEcon.room_spot_n(game, team, Defs.CW_TECH, [b], ["mainspring"])
+					if int(r6[1]) >= 1:
+						_construct(Defs.CW_TECH, r6[0])
+						if game.mlog:
+							game.mlog.add("%s lays its Escapement where a Mainspring can go beside it (no room by its Mainsprings)" % game.mlog.who(team))
+						return
+		# (else another Mainspring where there is room, then the Escapement by it; its cogs are held back like the
+		# Escapement's, _esc_blocked)
+		_esc_blocked = springs.size() < 3 and not _busy_building("mainspring")
+		if _esc_blocked and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]):
 			var ss := _spring_spot()
 			if ss.x >= 0:
 				_construct("mainspring", ss)
+				_esc_blocked = false
+			else:
+				_esc_blocked = false           # (no room for a spring either: nothing is held back for it)
 		_tier2_t = game.clock + 20.0        # (look again later)
 		return
 	_air(t)
 	_tier3()
+
+
+## Gear mode: an Escapement with no Mainspring meshing with it (laid first, _tier2) gets one beside it.
+func _esc_spring(esc: Array) -> void:
+	if esc.is_empty() or game.has_working(team, Defs.CW_TECH) or _busy_building("mainspring"):
+		return
+	for e in esc:
+		if not e.dead and game.gear_net.spring_for(e) == null:
+			var c := GearEcon.room_spot(game, team, "mainspring", [e])
+			if c.x < 0:
+				return
+			if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
+				_construct("mainspring", c)
+			elif _threat() == Vector2.INF or _holds_line():
+				_reserve = maxi(_reserve, int(Defs.BUILDINGS["mainspring"]["cost"]) + 20)
+				_tech_hold = true
+			return
 
 
 ## Gear mode: SHIELD WALL (the Clock Soldiers' SHIELD FORWARD, scripts/shield_wall.gd) once it meets a ranged army
@@ -2058,9 +2107,11 @@ func _hall_first() -> bool:
 	var need := 1 if _best_soil() >= HALL_FIRST_SOIL else 2
 	if _crown():
 		need = maxi(need, mini(3, ceili(game.workers(team).size() / 16.0)))     # (three fresh halls at most: more halls only grew more hands, round 3)
-	elif _clock() and Defs.gear_mode and difficulty >= 1:
+	elif _clock() and Defs.gear_mode and difficulty >= 1 and (not _mine(Defs.CW_TECH).is_empty() or game.clock > 360.0):
 		# (the Clockwork too, one for every 15 Winders: two presses of six and a Mainspring's crew a hall; it sat on two
-		# halls with 32 Winders while its main ran dry, and the coached Crown out-earned it from 10:00, clockwork-ai)
+		# halls with 32 Winders while its main ran dry, and the coached Crown out-earned it from 10:00, clockwork-ai.
+		# Once the Escapement is laid: saving for a hall pauses the rest, and an expansion at 2:50 put the Escapement off
+		# by up to ten minutes)
 		need = maxi(need, mini(3, ceili(game.workers(team).size() / 15.0)))
 	if fresh >= need or _busy_building(hall):
 		return false
