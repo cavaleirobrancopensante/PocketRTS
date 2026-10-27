@@ -546,7 +546,12 @@ func _lv(v: Array) -> Variant:
 
 
 func _mine(kind: String) -> Array:
-	return game.buildings.filter(func(b: Building) -> bool: return b.team == team and b.kind == kind and not b.dead)
+	# (a plain loop: the same buildings in the same order as a filter with a lambda, cheaper)
+	var out: Array = []
+	for b in game.buildings:
+		if b.team == team and b.kind == kind and not b.dead:
+			out.append(b)
+	return out
 
 
 func _f() -> Dictionary:
@@ -5036,7 +5041,7 @@ func _shell_bodies() -> void:
 func _spells() -> void:
 	for u in game.army(team):
 		# half the Bloaters keep their gas for big bursts (on walls and clumps)
-		if u.kind == "bloater" and u.mode == "" and u.get_instance_id() % 2 == 0:
+		if u.kind == "bloater" and u.mode == "" and u.serial % 2 == 0:
 			u.set_hold_gas(true)
 		if u.order == "cast" or u.order == "tongue" or u.tongue_stage != "":
 			continue

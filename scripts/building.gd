@@ -807,6 +807,9 @@ func spring_rate() -> float:
 ## Cog Press / Mainspring / Movement Works / Regulator / Escapement / Clock Aviary: the painted working loop
 ## (assets/buildings/<kind>_work_0..7.png, `frames` of them (the Escapement: 24); `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
 ## works; the built picture while it idles, and none of it once it is damaged (under half its hp).
+static var _work_tex := {}       # kind -> its work frames' textures (null where there's none), by number
+
+
 func _gear_anim(working: bool, dt := -1.0, frames := 8) -> void:
 	if sprite == null:
 		return
@@ -816,7 +819,14 @@ func _gear_anim(working: bool, dt := -1.0, frames := 8) -> void:
 			_update_sprite()
 		return
 	var i := int(game.clock / (dt if dt > 0.0 else float(Defs.GEAR["frame_dt"]))) % frames
-	var t := Game.tex("res://assets/buildings/%s_work_%d.png" % [kind, i])
+	# (the frame's texture by kind and number, looked up once: the path was put together every tick)
+	var strip = _work_tex.get(kind)
+	if strip == null:
+		strip = []
+		_work_tex[kind] = strip
+	while strip.size() <= i:
+		strip.append(Game.tex("res://assets/buildings/%s_work_%d.png" % [kind, strip.size()]))
+	var t: Texture2D = strip[i]
 	if t == null:
 		return
 	drill_anim = true
@@ -1359,7 +1369,7 @@ func _ambient(delta: float) -> void:
 		var e: Array = list[i]
 		var period: float = e[3]
 		# each emitter keeps its own rhythm
-		if fmod(_amb_t + i * 0.37 + float(get_instance_id() % 13) * 0.11, period) < delta:
+		if fmod(_amb_t + i * 0.37 + float(serial % 13) * 0.11, period) < delta:
 			if not ArtData.EFFECTS.has(e[0]):
 				continue
 			var fx := game.spawn_effect(e[0], sprite_point(e[1], e[2]) + Vector2(randf_range(-2, 2), 0), 0.8)

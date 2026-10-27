@@ -2672,12 +2672,24 @@ func _draw_panel(font: Font) -> void:
 		else:
 			info = Loc.t(info)
 		eff_txt = Loc.t(eff_txt)
-		var ifs := 15          # (a longer translation shrinks to fit the card)
-		while ifs > 10 and font.get_string_size(eff_txt + ("  ·  " if eff_txt != "" else "") + info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > r.size.x - 130:
-			ifs -= 1
-		var iroom: float = r.size.x - 110 - (font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x if eff_txt != "" else 0.0)
-		while info.length() > 12 and font.get_string_size(info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > iroom:
-			info = info.left(info.length() - 2).strip_edges() + "…"      # (still too long for the card: cut it)
+		# (the fitting measures the line again and again, a character at a time: worked out once
+		# for each text and card width, it was most of the panel's cost, drawn 20 times a second)
+		var fit_key := "%s|%s|%d" % [eff_txt, info, int(r.size.x)]
+		var fit: Array = _fit_memo.get(fit_key, [])
+		if fit.is_empty():
+			var ifs := 15          # (a longer translation shrinks to fit the card)
+			while ifs > 10 and font.get_string_size(eff_txt + ("  ·  " if eff_txt != "" else "") + info, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > r.size.x - 130:
+				ifs -= 1
+			var iroom: float = r.size.x - 110 - (font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x if eff_txt != "" else 0.0)
+			var cut := info
+			while cut.length() > 12 and font.get_string_size(cut, HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x > iroom:
+				cut = cut.left(cut.length() - 2).strip_edges() + "…"      # (still too long for the card: cut it)
+			fit = [ifs, cut]
+			if _fit_memo.size() > 400:
+				_fit_memo.clear()
+			_fit_memo[fit_key] = fit
+		var ifs: int = fit[0]
+		info = fit[1]
 		if eff_txt != "":
 			# the efficiency breakdown first, in its bar's colour, then the rest
 			_text(font, r.position + Vector2(90, 72), eff_txt, ifs, eff_col)
@@ -3462,12 +3474,22 @@ func _draw_tip() -> void:
 
 
 func _icon(name: String) -> Texture2D:
+	# (looked up once per name: ResourceLoader.exists asks the file system, two or three times
+	# an icon, and the army's 24 portraits and the card's 12 buttons are drawn many times a second)
+	var key := (game.faction_of(game.human) if game else "") + ":" + name
+	if _icon_memo.has(key):
+		return _icon_memo[key]
 	var ic := _icon_file(name)
 	if ic == null and Defs.icon_for(name) != name:
 		ic = _icon_file(Defs.icon_for(name))       # (temporary art: Defs.TEMP_ART)
 	if ic == null:
 		ic = CwArt.icon(name)                      # (the Clockwork roster prototype: drawn in code)
+	_icon_memo[key] = ic
 	return ic
+
+
+var _icon_memo := {}
+var _fit_memo := {}             # the selection card's info line, fitted: text|width -> [font size, the line]
 
 
 func _icon_file(name: String) -> Texture2D:
