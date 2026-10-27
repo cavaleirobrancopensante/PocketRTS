@@ -1,7 +1,8 @@
 extends SceneTree
 ## THE AIR of the gear-mode Clockwork (scripts/cw_air.gd; docs/clockwork_gear_prototype.md): the CLOCK AVIARY (kind
-## cuckoo_house) can only be placed with an ACTIVE Escapement (an idle one, NEEDS MAINSPRING, is refused); it trains the
-## SWIFT (kind cuckoo), paying cogs and Tension, and plays its working loop meanwhile. A Swift pecks an enemy flyer dead and
+## cuckoo_house) can only be placed with an ACTIVE Escapement (an idle one, NEEDS MAINSPRING, is refused); meshing with a
+## Mainspring (THE TENSION RULE: all it makes costs Tension) it trains the SWIFT (kind cuckoo), paying cogs and Tension, and
+## plays its working loop meanwhile. A Swift pecks an enemy flyer dead and
 ## can never target the ground (units or buildings). MORPH TO OWL needs TICKING OWL (researched at the Aviary for cogs and
 ## Tension), spends cogs and Tension, holds the Owl's supply, keeps the Swift hovering in place for its time (CANCEL pays
 ## back) and leaves a Ticking Owl (no Swift). The Owl's talon swoop hurts a ground unit (it dives); on a building it lets
@@ -58,8 +59,9 @@ func _run() -> void:
 	U.step(g, 0.6)
 	check("a Mainspring meshes with the Escapement: it works", spring != null and g.gear_net.speed_mult(esc) > 0.0)
 	check("with an ACTIVE Escapement the Aviary is allowed", g.requirement_text(0, Defs.CW_AIR) == "", g.requirement_text(0, Defs.CW_AIR))
-	var av := U.put(g, 0, Defs.CW_AIR, hall.cell)
-	check("an Aviary links to the field", av != null and g.gear_net.is_linked(av))
+	# (THE TENSION RULE, 0.14.33: all the Aviary makes costs Tension, so its ring meshes with the Mainspring's, or it is idle)
+	var av := _beside(g, Defs.CW_AIR, spring)
+	check("an Aviary links to the field, meshing with the Mainspring", av != null and g.gear_net.is_linked(av) and g.gear_net.spring_for(av) != null)
 	if av == null:
 		_end()
 		return
@@ -331,6 +333,19 @@ func _run() -> void:
 	check("in the Lab a Swift can be trained at once", lab_av != null and g2.can_train(lab_av, Defs.CUCKOO) == "", g2.can_train(lab_av, Defs.CUCKOO) if lab_av else "")
 	check("the Lab hint names the Aviary, the Swift and the Owl", CwLab.hint_text().contains("AVIARY") and CwLab.hint_text().contains("SWIFT") and CwLab.hint_text().contains("Owl"))
 	_end()
+
+
+## A finished building of `kind` whose ring meshes with b's (directly or through an idler), linked; null if none fits.
+func _beside(g: Game, kind: String, b: Building) -> Building:
+	if b == null:
+		return null
+	for deg in [0.0, 90.0, 180.0, -90.0, 45.0, 135.0, -45.0, -135.0]:
+		var c := GearNet.ring_spot(g, 0, kind, b, deg)
+		if c.x >= 0:
+			var m := g._add_building(kind, 0, c, true)
+			g.gear_net.solve()
+			return m
+	return null
 
 
 ## A finished Mainspring whose ring meshes with b's (directly or through an idler), linked; null if none fits.

@@ -47,14 +47,16 @@ jobs:
           unzip -q -j tpl.tpz 'templates/web_nothreads_*' 'templates/android_*' 'templates/version.txt' -d "$dest"
           rm tpl.tpz
 
+      # Code pack + art pack + music on demand + gzipped engine, and the loading page that ties
+      # them together: see tools/web/build_web.sh and docs/web_load.md.
       - name: Export web build
         run: |
-          mkdir -p build/web
+          set -o pipefail
           ~/godot/godot --headless --import || true
-          ~/godot/godot --headless --export-release "Web" build/web/index.html
-          test -s build/web/index.pck
+          GODOT=~/godot/godot tools/web/build_web.sh | tee build_web.log | grep -v "savepack\|Storing File"
           version=$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)
           echo "Built version $version ($(git rev-parse --short HEAD))" >> "$GITHUB_STEP_SUMMARY"
+          { echo '```'; sed -n '/^web build:/,$p' build_web.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       # The same game as an Android app, published next to the web build as Holdfast.apk.
       # (If this step fails the web build still goes out.)

@@ -305,7 +305,7 @@ func _layer_sig(n: String) -> Array:
 				var pl: Dictionary = game.players[shown]
 				vals.append_array([int(pl["gold"]), int(pl["res2"]), int(pl["cap"]), game.supply_used(shown)])
 				if game.faction_of(shown) == "clockwork":
-					vals.append_array([int(game.energy[shown]), game.blue_energy(shown), int(float(pl.get("tension", 0.0)))])
+					vals.append_array([int(game.energy[shown]), game.blue_energy(shown), int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, shown))])
 				if game.faction_of(shown) == "crown":
 					vals.append(game.horses_text(shown))
 			else:
@@ -860,6 +860,8 @@ func _build_card() -> Array:
 					why = game.requirement_text(game.human, k)
 				elif game.players[game.human]["gold"] < int(d["cost"]):
 					why = "Not enough %s." % _res()[0].to_lower()
+				elif game.tension_problem(game.human, Defs.tension_cost(d)) != "":
+					why = game.tension_problem(game.human, Defs.tension_cost(d))      # (a Tension price: the Clock Aviary)
 				elif Defs.is_econ(k) and game.econ_count(game.human, k) >= game.econ_limit(game.human, k):
 					why = "Limit reached: one Brood Pen per Burrow; raise another Burrow." if game.faction_of(game.human) == "brood" else "Limit reached: expand with another %s." % Defs.BUILDINGS[game.faction_hall(game.human)]["name"]
 				var kk: String = k
@@ -871,7 +873,7 @@ func _build_card() -> Array:
 						label = "%s %d/%d" % [label.split(" ")[0], game.econ_count(game.human, k), game.econ_limit(game.human, k)]
 				list.append([k, label, func() -> void:
 					page = ""
-					controls.begin_place(kk), why == "", why, str(d["cost"])])
+					controls.begin_place(kk), why == "", why, _price_chip([int(d["cost"]), Defs.tension_cost(d)], Defs.tension_cost(d) > 0)])
 			if pages > 1:
 				list.append(["build", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
 			list.append(["back", "BACK", func() -> void:
@@ -1680,6 +1682,9 @@ func confirm_place(queued := false) -> void:
 	if game.players[game.human]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
 		toast("Not enough %s." % _res()[0].to_lower())
 		return
+	if game.tension_problem(game.human, Defs.tension_cost(Defs.BUILDINGS[k])) != "":
+		toast(game.tension_problem(game.human, Defs.tension_cost(Defs.BUILDINGS[k])))
+		return
 	var builders := game.selected_units().filter(func(u: Unit) -> bool: return u.is_worker() or u.kind == "work_car")
 	var brood := game.faction_of(game.human) == "brood"
 	if queued and brood:
@@ -2027,7 +2032,7 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	if fac == "clockwork":
 		r2 = "%d energy (%s batteries stored)" % [int(game.energy[t]), "blue" if game.blue_energy(t) else "yellow"]
 		if Defs.gear_mode:
-			r2 = "%d tension" % int(float(pl.get("tension", 0.0)))       # (gear mode: no energy; TENSION, the Mainspring's)
+			r2 = "%d/%d tension" % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, t))]       # (gear mode: TENSION, held / what the Mainsprings store)
 	var x1 := x
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0))
 	var used := game.supply_used(t)
@@ -2367,8 +2372,10 @@ func _draw_panel(font: Font) -> void:
 						+ (" A %s is coming for it." % uu.claimed.d["name"] if uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu else "")
 				elif uu.leader and is_instance_valid(uu.leader):
 					info = "Led by a %s." % uu.leader.d["name"]
+				elif is_instance_valid(uu.into) and uu.into is Building and uu.hitch_p != Vector2.INF:
+					info = "Hitched at the %s till its rider or gun comes out: it can't be hurt or taken." % uu.into.d["name"]
 				elif is_instance_valid(uu.into) and uu.into is Building:
-					info = "Walking into the %s." % uu.into.d["name"]
+					info = "Going to the %s, to be hitched there." % uu.into.d["name"]
 				elif is_instance_valid(uu.into) and uu.into is Unit:
 					info = "Going to be harnessed to the %s." % uu.into.d["name"]
 				elif uu.claimed and is_instance_valid(uu.claimed) and uu.claimed.order_target == uu:
@@ -2589,7 +2596,11 @@ func _draw_panel(font: Font) -> void:
 				if game.gear_net.needs_spring(bb):
 					info = "NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Jacks). Build a Mainspring right beside it."
 				elif game.gear_net.speed_mult(bb) > 0.0:
-					info = "Working: its ring meshes with a Mainspring. Jacks can be made at the Movement Works%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
+					info = "Working: its ring meshes with a Mainspring. Jacks, Netters and Pendulums can be made at a Movement Works whose ring meshes with a Mainspring%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
+			if Defs.gear_mode and bb.built and not bb.dead and (e.team == game.human or game.demo):
+				var gi := GearEcon.card_info(bb)        # (the Tension rule and the store: scripts/gear_econ.gd)
+				if gi != "":
+					info = gi + ("  ·  " + info if bb.kind == Defs.CW_WORKS else "")
 			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and (e.team == game.human or game.demo):
 				if not game.gear_net.is_linked(bb):
 					info = "UNLINKED: its gear ring does not mesh with the field, so it does nothing. Build a linked building beside it, or put it back in reach.  ·  " + info
@@ -2597,7 +2608,10 @@ func _draw_panel(font: Font) -> void:
 					info = "Swapping its gear (%d s)  ·  " % int(ceil(bb.gear_swap_t)) + info
 			if bb.built and (e.team == game.human or game.demo):
 				var ef: Array = bb.efficiency()
-				if not ef.is_empty():
+				if not ef.is_empty() and Defs.gear_mode and bb.d["faction"] == "clockwork":
+					eff_txt = GearEcon.card_text(bb)       # (gear mode: crew x drive x brass, scripts/gear_econ.gd)
+					eff_col = game.eff_colour(float(ef[0]))
+				elif not ef.is_empty():
 					var who := "base Winders" if bb.kind == "ore_crusher" else ("grubs" if bb.kind == "feeding_pit" else ("Winders" if bb.d["faction"] == "clockwork" else "workers"))
 					eff_txt = "Efficiency %d%%: %d/%d %s · %s %d%%" % [int(round(float(ef[0]) * 100)), int(ef[1]), int(ef[2]), who, ef[4], int(round(float(ef[3]) * 100))]
 					eff_col = game.eff_colour(float(ef[0]))
@@ -3199,7 +3213,7 @@ func _card_tip(it: Array) -> Dictionary:
 	elif Defs.BUILDINGS.has(k) and page in ["build", "advanced"]:
 		var bd: Dictionary = Defs.BUILDINGS[k]
 		t["title"] = bd["name"]
-		var st := "%s  ·  %d s" % [_cost_text(int(bd["cost"]), int(bd.get("cost2", 0))), int(bd["time"])]
+		var st := "%s  ·  %d s" % [_cost_text(int(bd["cost"]), int(bd.get("cost2", 0)) + Defs.tension_cost(bd)), int(bd["time"])]
 		if int(bd.get("supply", 0)) > 0 and k != game.faction_hall(game.human):
 			st += "  ·  +%d supply" % int(bd["supply"])
 		if Defs.is_econ(k):
@@ -3267,7 +3281,7 @@ func _res_tip(i: int) -> Dictionary:
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
 		if Defs.gear_mode and i == 1:
-			return {"title": "Tension: %d" % int(float(pl.get("tension", 0.0))), "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring that meshes with the gear field. It pays for the strong things: the Jack and the Escapement's research. A building that uses Tension (the Escapement) must mesh its ring with a Mainspring's."}
+			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Jack, the Swift, the Netter, the Pendulum, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, and a Movement Works for its Jacks, Netters and Pendulums."}
 		if i != 2:
 			return {}
 	if i == 3:

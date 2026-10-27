@@ -757,6 +757,8 @@ func haulers_free() -> int:
 func crew_max() -> int:
 	if kind == Defs.GEAR_PRESS:
 		return int(Defs.GEAR["press"]["big" if gear_big else "small"]["crew"])      # (its connecting gear sets the crew)
+	if kind == "mainspring" and Defs.gear_mode:
+		return int(GearEcon.spring_info(gear_big)["crew"])      # (and a Mainspring's: GearEcon)
 	if Defs.gear_mode and d["faction"] == "clockwork" and (kind == "clocktower" or kind == "boiler"):
 		return 0        # (gear mode: Winders no longer haul batteries; the Clocktower and Boilers have no crew)
 	var base := Defs.crew_cap(d)
@@ -772,28 +774,34 @@ func farm_speed() -> float:
 
 
 ## Cog Press: cogs a second right now. A trickle by itself (`base` of the full rate, like a farm with nobody on it),
-## every Winder winding it adds an equal share up to its crew cap; 0 while it is unlinked, unfinished or swapping gears.
+## every Winder winding it adds an equal share up to its crew cap, times its DRIVE (GearEcon: 100% meshing with a Clocktower
+## or Mainspring, less farther out); 0 while it is unlinked, unfinished or swapping gears.
 func press_rate() -> float:
 	if kind != Defs.GEAR_PRESS or not built or dead:
 		return 0.0
-	if game.gear_net.speed_mult(self) <= 0.0:
+	var drive := game.gear_net.speed_mult(self)
+	if drive <= 0.0:
 		return 0.0
 	var gp: Dictionary = Defs.GEAR["press"]
 	var info: Dictionary = gp["big" if gear_big else "small"]
 	var cap := int(info["crew"])
 	var base := float(gp["base"])
-	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
+	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
 
 
-## Mainspring: Tension a second right now (Defs.GEAR "mainspring"): a trickle by itself, every Winder on it adds an equal
-## share up to its crew; 0 while it is unlinked or unfinished.
+## Mainspring: Tension a second right now (Defs.GEAR "mainspring", by its gear): a trickle by itself, every Winder on it
+## adds an equal share up to its crew, times its DRIVE (GearEcon); 0 while it is unlinked or unfinished, and while its
+## side's pool holds all its Mainsprings store (it stands still, wound tight).
 func spring_rate() -> float:
-	if kind != "mainspring" or not built or dead or game.gear_net.speed_mult(self) <= 0.0:
+	if kind != "mainspring" or not built or dead:
 		return 0.0
-	var info: Dictionary = Defs.GEAR["mainspring"]
-	var cap := int(d.get("crew", 3))
-	var base := float(info["base"])
-	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap))
+	var drive := game.gear_net.speed_mult(self)
+	if drive <= 0.0 or GearEcon.tension_full(game, team):
+		return 0.0
+	var info := GearEcon.spring_info(gear_big)
+	var cap := int(info["crew"])
+	var base := float(Defs.GEAR["mainspring"]["base"])
+	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
 
 
 ## Cog Press / Mainspring / Movement Works / Regulator / Escapement / Clock Aviary: the painted working loop
@@ -864,6 +872,8 @@ func barren() -> bool:
 ## share it still pays once spent (none: spent land is barren). An Ore Crusher has no crew of its own: its staffing is its Clocktower's battery
 ## carriers (the Winders on the Clocktower and its Boilers) against their full crews.
 func efficiency() -> Array:
+	if Defs.gear_mode and d["faction"] == "clockwork" and game != null:
+		return GearEcon.efficiency(self)      # (gear mode: crew x drive x brass, scripts/gear_econ.gd)
 	var have := 0
 	var want := 0
 	var left := 0.0
@@ -946,10 +956,14 @@ func _econ(delta: float) -> void:
 				game.add_gold_f(team, pay)
 			_gear_anim(working_crew() > 0 and rate > 0.0)
 		"mainspring":
-			# winds TENSION (the Clockwork's second resource, nothing spends it yet) while it is linked and crewed
+			# winds TENSION (the Clockwork's second resource) while it is linked and crewed, up to what the springs store
+			while crew.size() > crew_max():
+				var extra2: Unit = crew.pop_back()
+				if is_instance_valid(extra2) and not extra2.dead:
+					extra2.cmd_stop()          # (a swap to the small gear lets the extra Winders go)
 			var sr := spring_rate()
 			if sr > 0.0:
-				game.players[team]["tension"] = float(game.players[team].get("tension", 0.0)) + sr * delta
+				GearEcon.wind(game, team, sr * delta)
 			_gear_anim(working_crew() > 0 and sr > 0.0)
 		"movement_works":
 			# the hanging line runs while it assembles a Clock Soldier and is linked
@@ -974,7 +988,7 @@ func _econ(delta: float) -> void:
 var _fetch_t := 0.0
 
 
-## The front entry is a gun or wagon whose reserved horse hasn't walked in yet.
+## The front entry is a gun or wagon whose reserved horse hasn't reached the building yet.
 func _horse_pending(k: String) -> bool:
 	return not is_research(k) and not Defs.RIDERS.has(k) and Defs.UNITS[k].get("needs_horse", false) and int(kit_at(0).get("rid", 0)) != 0
 
@@ -1069,7 +1083,7 @@ func _tick_building(delta: float) -> void:
 		prod_t += delta * (game.asm_mult[team] * game.line_net.speed_mult(self) if d["faction"] == "clockwork" else 1.0)
 		var k: String = queue[0]
 		if prod_t >= entry_time(k) and _horse_pending(k):
-			# a gun is ready, its horse isn't here yet: it comes out when the horse walks in
+			# a gun is ready, its horse isn't here yet: it comes out once the horse is hitched here
 			prod_t = entry_time(k)
 			_fetch_t -= delta
 			if _fetch_t <= 0.0:

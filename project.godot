@@ -6,7 +6,7 @@ config_version=5
 run/flush_stdout_on_print=true
 
 config/name="Holdfast"
-config/version="0.14.36"
+config/version="0.14.39"
 config/description="A real-time strategy game of walls, ramps and three very different armies."
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Pocket RTS"
@@ -30,6 +30,10 @@ pointing/emulate_mouse_from_touch=false
 [audio]
 
 general/default_playback_type.web=0
+
+[autoload]
+
+WebBoot="*res://scripts/web_boot.gd"
 
 [debug]
 
