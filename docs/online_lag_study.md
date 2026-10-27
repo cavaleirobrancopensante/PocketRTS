@@ -314,7 +314,8 @@ the Clockwork their own deployers and the Mist Toad's FOG), times each one's rea
 counts the jumps, and checks that nothing predicted is left once the host has answered. For the refusals the host holds
 the guest's gold at 0 while the guest's screen is told it has plenty, so the click shows the site or the queue item and
 the host refuses it. The host's own held TRAIN is timed too (LAG HOST own train). `nopredict` switches the prediction
-off, for the "before" numbers. The local relay now keeps every frame in order: two timers due in the same millisecond
+off, for the "before" numbers. It passes for Crown, Brood and Clockwork guests at 0, 40 and 90 ms each way, in co-op
+and with a host surrender (after main's 0.14.54 was merged in, with the replays). The local relay now keeps every frame in order: two timers due in the same millisecond
 could swap, and an order then reached the host after the one sent after it.
 
 ## Screenshots
