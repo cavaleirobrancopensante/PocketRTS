@@ -3,7 +3,7 @@ the 5 directions on top and the new one under it, at 2x, bottom-aligned on the a
 the other.
   python3 tools/catapult_guide/compare.py OUT.gif K "label" OLD.png:CW:CH NEW.png:CW:CH:AX:AY:OAX:OAY [ms] [more pairs ...]
 (see the bottom of the file: the two calls used for art/redraws/catapult_parts_compare.gif and
-great_winder_parts_compare.gif)"""
+great_winder_parts_compare.gif; 'facing' for catapult_facing_compare.gif)"""
 import sys
 from PIL import Image, ImageDraw
 
@@ -54,6 +54,16 @@ if __name__ == '__main__':
             ((old + '/catapult_move.png', 112, 106, 56, 104), ('art/redraws/catapult_move.png',) + tuple(cell), 110),
             ((old + '/catapult_move.png', 112, 106, 56, 104), ('art/redraws/catapult_move.png',) + tuple(cell), 110)],
             label=('old (0.26)', 'new: painted cog wheels, S/N arm poses, 1.5x the Netter, smaller payload'))
+    elif which == 'facing':
+        # (art/redraws/catapult_facing_compare.gif: the cw-anim-parts sheets (cell 154x141, anchor 77,139) against the
+        # facing fixes)
+        cell = json.load(open('art/redraws/catapult_cup.json'))['cell']
+        THROW_MS = [300, 160, 60, 50, 50, 70, 90, 110, 110, 110, 130, 260]
+        compare('art/redraws/catapult_facing_compare.gif', [
+            ((old + '/catapult_throw.png', 154, 141, 77, 139), ('art/redraws/catapult_throw.png',) + tuple(cell), THROW_MS),
+            ((old + '/catapult_move.png', 154, 141, 77, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110),
+            ((old + '/catapult_move.png', 154, 141, 77, 139), ('art/redraws/catapult_move.png',) + tuple(cell), 110)],
+            label=('old', 'new: S wheels edge-on, SE wheels squashed, N/NE cup shows its back past vertical'))
     else:
         cell_o = [int(v) for v in sys.argv[3].split(',')]
         cell_n = [int(v) for v in sys.argv[4].split(',')]
