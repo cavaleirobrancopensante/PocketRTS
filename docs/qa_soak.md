@@ -1,6 +1,6 @@
 # QA soak: long games on every map and every mode (2026-10-27)
 
-One QA machine, about two hours, on branch `qa-soak` from main 0.14.53.
+One QA machine, about two hours, on branch `qa-soak` from main 0.14.53. Main moved on to 0.14.63 meanwhile; it was merged in, so these fixes are 0.14.64.
 Short sentences, to be read aloud.
 
 ## How the games were run
@@ -43,6 +43,10 @@ Every faction played on every map size: 1v1, 2v2, 3v3, 4v4 and free-for-all.
 No game hung. Every game either ended or was stopped by its time limit.
 No game had income at zero while soil was left, and no computer stopped building for long.
 
+Six shorter re-runs, 5 to 6 minutes each, checked the fixes: Pinewall Marches 3v3 three times, Twin Crowns 2v2 twice and Greenhold free-for-all once, the last two with every fix in.
+None had a script error. Two had sound errors for files that came with the merge from main before this machine had imported them; that is this machine's import cache, not the game. The last two had no errors at all.
+On Pinewall Marches the dropped sites went from 163 in 15 minutes to 8 in 10 minutes.
+
 ## Every mode checked
 
 - Save and CONTINUE, once per faction (`tools/test_qa_save_continue.gd`): a match is autosaved at 4 minutes, the menu offers CONTINUE, and the units, buildings, money and clock all come back exactly. The computer is back and keeps earning. All passed.
@@ -50,8 +54,8 @@ No game had income at zero while soil was left, and no computer stopped building
 - CLOCKWORK LAB (same test, Main.start_lab): the gear field and its units are set out, the computer is peaceful, and nothing was attacked in four minutes. All passed.
 - MAP EDITOR (`tools/test_qa_editor_play.gd`): a new map is made, two starts placed, CHECK lists a bare map's problems, the map is saved and loads back, PLAY takes it to the skirmish, and two computers play on it. All passed.
 - MAP CHECK on every built-in map, the nine classic ones and the eighteen named ones (`tools/check_maps.gd`): 27 of 27 pass.
-- REPLAYS, once per faction pairing (`tools/test_replay.gd`, now with `a:` and `b:` faction arguments and a check of the second player's fog): recording, the list, the viewer, seeking back and forth, pause, speed, each player's fog, a cut file and an old version. All passed for Crown vs Brood, Brood vs Clockwork and Clockwork vs Crown.
-- Online co-op (`tools/test_online.sh coop`): host ALL OK, guest ALL OK. The one "LOBBY FAILED: could not reach the relay" line comes after the test, when the relay is shut down.
+- REPLAYS, once per faction pairing (`tools/test_replay.gd`, now with `a:` and `b:` faction arguments and a check of the second player's fog): recording, the list, the viewer, seeking back and forth, pause, speed, each player's fog, a cut file and an old version. All passed for Crown vs Brood, Brood vs Clockwork and Clockwork vs Crown, and again for Clockwork vs Brood after the merge.
+- Online co-op (`tools/test_online.sh coop`): host ALL OK, guest ALL OK, on 0.14.53 and again after the merge. The one "LOBBY FAILED: could not reach the relay" line comes after the test, when the relay is shut down.
 - Watching the computers (`tools/test_qa_watch.gd`): a 4-player free-for-all with the spectator. All vision, each player's vision (fog hides the others), follow each player (the camera moves by itself), and the hotkeys 0 to 4. All passed.
 
 ## Bugs found and fixed
@@ -59,11 +63,12 @@ No game had income at zero while soil was left, and no computer stopped building
 1. A missing picture. The dismounted Cuirassier's east-walk trim mask was deleted long ago, but its `.import` file stayed. So the game believed the picture existed, tried to load it, and printed three errors in matches. Fixed: the stray `.import` is gone, and `tools/import_vet_trim.py` now removes the `.import` of any mask it no longer writes. Test: `tools/test_orphan_imports.gd` (no `.import` without its picture under assets).
 2. A camera warning in every match. Physics interpolation is on, so Godot switched the camera to physics updates and printed a WARNING each time. Fixed: the camera is set that way from the start. Nothing changes on screen.
 3. A raised soldier and a gone horse. A Crown soldier raised by a Missionary still had his old order to fetch a horse, and the horse was gone. Stopping him hit a SCRIPT ERROR half way, so his old work was not cleared. Fixed: the check for a living horse now comes first. Test: `tools/test_reset_work_freed_horse.gd`.
-4. The Brood placing and dropping a Clutch Mound every second. When raiders stood near, the grub sent to build fled, nobody was coming, the site was dropped and refunded, and the computer placed it again at once. Up to 163 times in one game. Fixed: a site dropped this way keeps the computer's look-again wait, and the supply mounds wait 8 seconds before trying again. Test: `tools/test_ai_abandoned_site.gd`.
+4. The Brood placing and dropping a Clutch Mound every second. When raiders stood near, the grub sent to build fled, nobody was coming, the site was dropped and refunded, and the computer placed it again at once. Up to 163 times in one game. Feeding Pits did the same, every two seconds. Fixed: a site dropped this way keeps the computer's look-again wait, and the computer waits 8 seconds before it places that kind again (AI._construct, and the Brood's supply mounds). In the last re-run on Pinewall Marches there were 8 drops in 10 minutes, at least ten seconds apart. Test: `tools/test_ai_abandoned_site.gd`.
 5. The Brood swarm losing its whole group. A swarm group could hold a Raptor that had been freed, for example eaten by a grub. The group was filtered with a typed check, which fails on a freed object, so the whole group came back empty and the wave was called off. Fixed: the check no longer types its argument. The same small change was made to the other lists the computer keeps from tick to tick: escorts, guards, raiders, the extreme-rush wave, the Brood's lookouts, and a building's crew. Test: `tools/test_ai_swarm_freed.gd`.
 6. A rally point on a unit that turns into something else. If a building's rally followed a unit that was freed without dying, such as a grub that became a building or a man who mounted, the building's tick hit a SCRIPT ERROR every frame and stopped half way. Fixed: the rally lets go and stays where the unit was. The trained units' rally code got the same guard. Test: `tools/test_rally_freed_unit.gd`.
 
-These fixes change no balance number. They follow the design principles' rule that a punishment should match the mistake.
+These fixes change no balance number.
+After the merge with main, every new test, the four mode tests and the horse, hauler, rush, extreme-rush, wall, Brood-judgement, Clock Soldier shield and file tests pass. They follow the design principles' rule that a punishment should match the mistake.
 
 ## Design questions for the owner (not changed)
 

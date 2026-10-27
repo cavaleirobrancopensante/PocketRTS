@@ -2913,6 +2913,8 @@ func site_failed(b: Building, why := "blocked") -> void:
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 		return
+	if game.clock - float(_abandoned.get(kind, -99.0)) < AIBrood.ABANDON_WAIT:
+		return          # (a site of this kind was just dropped, its builder fled: not again at once into the same danger)
 	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[kind])):
 		return          # (gear mode: a Tension price, the Clock Aviary's)
 	if not game.requirement_met(team, kind):

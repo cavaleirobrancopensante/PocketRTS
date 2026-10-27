@@ -3,7 +3,8 @@ extends SceneTree
 ## look-again wait for that kind (AI._no_room): before, AI.site_failed always cleared it, so the Brood placed a Clutch
 ## Mound again at once in the same danger, its grub fled again and the site was dropped a second later, over and over
 ## (0.14.53 QA soak: up to 160 "dropped a Clutch Mound: nobody was coming to start it" lines in one match).
-## The Brood's supply mounds (AIBrood.supply) wait AIBrood.ABANDON_WAIT s after one was dropped so, then place one.
+## Any kind the computer places (AI._construct, the Brood's supply mounds too) waits AIBrood.ABANDON_WAIT s after a
+## site of it was dropped so, then is placed (v0.14.53 soak: Feeding Pits placed and dropped every two seconds too).
 ## A site that couldn't start because its spot was blocked still clears it (plan again at once).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_ai_abandoned_site.gd
 const U := preload("res://tools/gear_test_util.gd")
@@ -62,6 +63,21 @@ func _run() -> void:
 			check("abandoned: a few seconds later supply() places one", _ghosts(g) == n0 + 1, "%d -> %d ghosts" % [n0, _ghosts(g)])
 			for x in g.buildings.duplicate():
 				if x.kind == "clutch_mound" and x.ghost:
+					g.site_failed(x, "blocked")
+			# any kind the computer places (AI._construct): a Feeding Pit dropped so waits too
+			var pit_spot := g.find_spot(0, "feeding_pit", cap, 4, 12, "near")
+			var pit := g.place_building(0, "feeding_pit", pit_spot, [g.workers(0)[0]])
+			g.site_failed(pit, "abandoned")
+			var p0 := g.buildings.filter(func(x) -> bool: return is_instance_valid(x) and not x.dead and x.kind == "feeding_pit" and x.ghost).size()
+			ai._construct("feeding_pit", pit_spot)
+			var p1 := g.buildings.filter(func(x) -> bool: return is_instance_valid(x) and not x.dead and x.kind == "feeding_pit" and x.ghost).size()
+			check("abandoned: _construct doesn't place that kind again at once", p1 == p0, "%d -> %d pit sites" % [p0, p1])
+			g.clock += AIBrood.ABANDON_WAIT + 1.0
+			ai._construct("feeding_pit", pit_spot)
+			var p2 := g.buildings.filter(func(x) -> bool: return is_instance_valid(x) and not x.dead and x.kind == "feeding_pit" and x.ghost).size()
+			check("abandoned: a few seconds later _construct places it", p2 == p0 + 1, "%d -> %d pit sites" % [p0, p2])
+			for x in g.buildings.duplicate():
+				if x.ghost and x.team == 0:
 					g.site_failed(x, "blocked")
 		else:
 			check("blocked: the wait is cleared (plan again at once)", not kept)
