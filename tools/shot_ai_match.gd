@@ -65,6 +65,7 @@ func _initialize() -> void:
 			"noretreat": noretreat = kv[1] == "1"
 			"siege_end": siege_end = kv[1] == "1"
 			"minwave": minwave = int(kv[1])
+			"copen": AI.force_opening = kv[1]      # (every Crown computer opens so: "breeder" or "mill")
 	DirAccess.make_dir_recursive_absolute(out)
 	Settings.load_all()
 	Settings.device = "pc"

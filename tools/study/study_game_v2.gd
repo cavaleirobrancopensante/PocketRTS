@@ -43,6 +43,7 @@ func _initialize() -> void:
 			"builds": extra_builds = p[1]
 			"step_timeout": step_timeout = float(p[1])
 			"script_timeout": script_timeout = float(p[1])
+			"copen": AI.force_opening = p[1]      # (every Crown computer opens so: "breeder" or "mill")
 	if oa == "ai":
 		oa = ""
 	if ob == "ai":

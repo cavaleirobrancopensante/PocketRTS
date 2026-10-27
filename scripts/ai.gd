@@ -54,6 +54,7 @@ func _s(key: String) -> Variant:
 ## Crown: the opening this game: "mill" (Powder Mill first, a Musketeer line: the default) or
 ## "breeder" (Horse Breeder first, a Horseman rush: on Rush, and else about 3 games in 10).
 var opening := "mill"
+static var force_opening := ""  # tests and studies: every Crown computer opens this way ("mill" or "breeder")
 var scout: AIScout = null       # scouts the enemy first and picks the plan from what it saw (unless rushing)
 ## The Brood's own judgement (scripts/ai_brood.gd): essence, supply ahead of need, when a wave may go and
 ## when it pulls back. null for the other factions (and with AIBrood.enabled off: the Brood as it was,
@@ -67,6 +68,8 @@ func _ready() -> void:
 	_opened = strategy
 	if game.faction_of(team) == "crown" and (strategy == "rush" or randf() < 0.3):
 		opening = "breeder"
+	if game.faction_of(team) == "crown" and force_opening != "":
+		opening = force_opening
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
 	scout = AIScout.new(self)
@@ -383,6 +386,7 @@ const ALLIN_AT := 16            # the all-in goes out with this much supply at h
 var _allin := false
 var _allin_t := 0.0
 var _harass_log := 0.0
+var _harass_n := 0               # the most riders out harassing (the rush's own; mended ones go back, new ones stay home)
 
 
 func _rush_after(party: Array, connected: bool) -> void:
@@ -391,6 +395,7 @@ func _rush_after(party: Array, connected: bool) -> void:
 		if is_instance_valid(u) and not u.dead and not riders.has(u):
 			u.cmd_move(_home_spot(_front()))
 	_rush_state = "harass"
+	_harass_n = maxi(2, riders.size())
 	_raiders = riders
 	_raid_peak = riders.size()
 	_raid_block = 0.0
@@ -1671,7 +1676,8 @@ func _horsemen() -> int:
 ## Crown: the Horseman rush is on (the Breeder opening, until its first horsemen are out):
 ## one Barracks, every spare coin on horses and horsemen.
 func _rushing() -> bool:
-	return _crown() and opening == "breeder" and strategy == _opened and _horsemen() < RUSH_HORSEMEN and game.clock < 420.0
+	return _crown() and opening == "breeder" and strategy == _opened and _horsemen() < RUSH_HORSEMEN and game.clock < 420.0 \
+			and (_rush_state == "" or _rush_state == "ongoing")      # (once the rush is judged, the Mill and Musketeers come: coach round 4)
 
 
 func _econ_spot(kind: String) -> Vector2i:
@@ -2335,12 +2341,23 @@ func _raid() -> void:
 			_raiders.clear()
 			_raid_block = game.clock + 120.0
 			return
-		# hurt riders mended at home, and fresh Horsemen, go back out in pairs
+		# the attack has gone out (the all-in, or the mop-up force): the riders ride with it
+		if _attacking and _wave_set.size() >= 3:
+			_rush_state = "done"
+			_rush_log("the attack goes out: the %d harassing Horsemen join it" % _raiders.size())
+			for u in _raiders:
+				_wave_set[u] = true
+			_raiders.clear()
+			return
+		# hurt riders mended at home go back out in pairs (fresh Horsemen stay at home for the army: the harass is the
+		# rush's riders, not a sink for every new one)
 		var pool := _rush_pool(game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.hp / u.max_hp > 0.8 and not _wave_set.has(u)))
-		if pool.size() >= GROUP_MIN or (pool.size() >= 1 and not _raiders.is_empty()):
+		var room := _harass_n - _raiders.size()
+		if room > 0 and (pool.size() >= GROUP_MIN or (pool.size() >= 1 and not _raiders.is_empty())):
 			for u in pool:
-				if _raiders.size() < 5:
+				if room > 0:
 					_raiders.append(u)
+					room -= 1
 		if _raiders.size() == 1:
 			_rush_recall(_raiders)      # (never a lone rider in the enemy's land: he waits at home for a second)
 			_raiders.clear()
