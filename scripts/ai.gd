@@ -4658,6 +4658,26 @@ func _siege_sim(piece: Building, ground: Array, flood: PackedByteArray, centre: 
 			continue
 		single += dps
 		reach = maxf(reach, o_out)
+	# gear mode's Clockwork: the rest of their army behind the wall, seen lately, comes to the face once the fight
+	# starts (at 60%, for the walk): a gate that looked bare at the first look had a dozen Musketeers on it 20 s later
+	# (0.14.73 Kestrel Rise: "0 dps of fire", the wave died in 45 s)
+	if _clock() and Defs.gear_mode:
+		for o in game.units_near(pc, 1000.0):
+			if o.dead or o.off_field or not game.hostile(o.team, team) or o.is_worker() or not o.has_attack() or o.is_air():
+				continue
+			var d2: float = o.position.distance_to(pc)
+			if d2 <= 520.0 or flood[game.idx(game.cell_of(o.position))] == 1 or not _sighted(o):
+				continue
+			var dps2 := maxf(1.0, float(o.d["damage"]) - our_armor) / _cycle(o) * 0.6
+			their_hp += o.hp
+			their_armor += float(o.d["armor"]) * o.hp
+			if SPLASH_KINDS.has(o.kind) or o.kind == "cannon":
+				all_spray += dps2
+				spray += dps2 * 0.5
+			else:
+				all_single += dps2
+				if float(o.d["range"]) >= 100.0:
+					single += dps2
 	art_reach = maxf(art_reach, reach)
 	their_armor /= maxf(their_hp, 1.0)
 	# --- our side: who can hurt the piece (spitter acid strips 2 of its armour)
