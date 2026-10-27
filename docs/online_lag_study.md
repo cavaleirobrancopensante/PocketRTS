@@ -41,6 +41,12 @@ What to re-test online, on the two devices:
 - Joining: the room should fill in within two seconds; a wrong code says "No answer from the host yet" after 8 s.
 - Hiding the host's browser tab: both games pause and come back with a 3, 2, 1.
 
+For the merge: wt-online is merged with main up to 0.14.36 and its entries are 0.14.37 to 0.14.40. The automatic
+test (tools/test_online.sh, about two minutes) passes for Crown, Brood and Clockwork guests, co-op and a host
+surrender, at 0, 60 and 120 ms each way. Main's Jack "arm" value needed a line in the snapshot's direct readers
+(0.14.40): any value added to NetSnapshot.UNIT_PROPS or BLD_PROPS must be added to unit_vals / bld_vals and their
+writers too, and the test now fails if it is not.
+
 ## 1. How an online match works, in short
 
 The host's game is the real one. It runs the whole match: every unit, the economy and the computer players. Fifteen
