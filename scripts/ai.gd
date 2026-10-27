@@ -835,6 +835,11 @@ func _workers() -> void:
 		# the Den first (save its 150), then the army before more grubs than a working minimum
 		if _warren_due() and _gold() < int(Defs.BUILDINGS["warren"]["cost"]) + 25:
 			hold_gold = true
+		elif brood != null and strategy != "xrush":
+			# (the army before more grubs, but the economy never stands still: AIBrood.army_first; and the
+			# biomass put by for a Clutch Mound, the Pen or the Gorge Pit: AIBrood.reserve)
+			if brood.army_first(labs.size() + queued) or (labs.size() + queued >= 4 and brood.holding(int(Defs.UNITS[worker]["cost"]))):
+				hold_gold = true
 		elif _army_behind() and labs.size() + queued >= (5 if strategy == "xrush" else ((6 if not _first_wave else 10) if strategy == "rush" else (9 if strategy != "economy" else 10))):
 			hold_gold = true
 		elif brood != null and labs.size() + queued >= 4 and brood.holding(int(Defs.UNITS[worker]["cost"])):
@@ -2980,6 +2985,10 @@ func _produce() -> void:
 					k = _horse_counter(h, army, k)      # (Horsemen seen: Spitters and Brutes)
 				if saving_mound and int(Defs.UNITS[k].get("cost2", 0)) > 0:
 					k = "raptor"            # (the essence goes to the Broodmound first)
+				if brood != null:
+					k = brood.egg_choice(h, army, k)      # (Spitters wait for their biomass once the essence is there)
+					if k == "":
+						break
 				if game.train(h, k) != "":
 					break
 		return

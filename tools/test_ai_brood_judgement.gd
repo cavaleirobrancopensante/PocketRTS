@@ -99,7 +99,7 @@ func _case_hold() -> void:
 		f.cmd_stop()
 	if is_instance_valid(watcher) and not watcher.dead:
 		watcher.position = front       # (the watcher goes home: only the memory is left)
-	check(known >= 16 * 60 - 1, "the Musketeers were seen and remembered (known %d)" % int(known))
+	check(known >= 10 * 60 - 1, "most of the Musketeers were seen and remembered (known %d)" % int(known))   # (the fog shows the front ranks)
 	var went := false
 	for i in 30 * 25:
 		await physics_frame

@@ -557,7 +557,7 @@ func _threats() -> Array:
 	if unit == null or not is_instance_valid(unit) or unit.dead:
 		return out
 	var cands: Array = game.units_near(unit.position, 520.0)
-	if unit.last_hitter is Unit and is_instance_valid(unit.last_hitter) and game.clock - unit.hit_clock < 3.0 and not cands.has(unit.last_hitter):
+	if is_instance_valid(unit.last_hitter) and unit.last_hitter is Unit and game.clock - unit.hit_clock < 3.0 and not cands.has(unit.last_hitter):
 		cands.append(unit.last_hitter)
 	for e in cands:
 		if not (e is Unit) or e.dead or e.off_field or e.aboard != null or not game.hostile(e.team, ai.team):

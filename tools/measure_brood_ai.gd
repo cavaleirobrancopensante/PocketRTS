@@ -192,8 +192,8 @@ func _run() -> void:
 		a.call(3), a.call(5), a.call(7), fa.call(3), fa.call(5), fa.call(7), eco.call(5), eco.call(7), int(lost_home), ", ".join(tech),
 		"waves: " + ("; ".join(ws) if not ws.is_empty() else "none"), (" | OVER winner %d at %s" % [g.winner, _mmss(g.clock)]) if g.over else ""])
 	if ai_me.brood != null:
-		print("BRX held %d, pulled back %d, grubs sent to harvest %d, offered up %d | sacrificed %d essence of %.1f earned" % [ai_me.brood.holds, ai_me.brood.retreats,
-			ai_me.brood.harvest_sent, ai_me.brood.offered, int(g.stats[me].get("sacrifice_essence", 0)), float(g.stats[me]["res2_in"])])
+		print("BRX held %d, looked %d, pulled back %d, grubs sent to harvest %d, offered up %d, burrows added %d, halls %d | sacrificed %d essence of %.1f earned" % [ai_me.brood.holds, ai_me.brood.looks, ai_me.brood.retreats,
+			ai_me.brood.harvest_sent, ai_me.brood.offered, ai_me.brood.burrows_added, ai_me._halls().size(), int(g.stats[me].get("sacrifice_essence", 0)), float(g.stats[me]["res2_in"])])
 	if OS.get_cmdline_user_args().has("log"):
 		for l in g.mlog.lines:
 			if String(l).contains("P2 Brood") and not String(l).contains("busy with"):

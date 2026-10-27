@@ -30,8 +30,10 @@ const HARVEST_CLEAR := 400.0    # no armed enemy (seen) this close to the bodies
 const HARVEST_HOME := 1100.0    # bodies this far from our nearest building at most
 const HARVEST_MIN := 2.5        # essence a group of bodies must hold to send a grub
 const HARVEST_WORKERS := 8      # no harvesting with fewer grubs than this (they are the economy)
-const GUARD := 5                # Raptors always kept at home (never offered up)
-const PEN_GUARD := 6            # army supply at home before the Pen's biomass is put by
+const GUARD := 3                # Raptors always kept at home (never offered up)
+const OFFER_ALWAYS := 2         # Raptors that may be offered up at a time even with the army under its plan
+const PEN_GRUBS := 9            # grubs before the Pen goes up
+const PEN_GUARD := 3            # army supply at home before the Pen's biomass is put by (one egg of Raptors)
 const GORGE_GUARD := 9          # ... and before the Gorge Pit's
 const GORGE_ESSENCE := 15.0     # essence earned (or in hand) before the Gorge Pit is due
 const RESERVE_MAX := 45.0       # a reserve not spent in this long (no room, no grub) ...
@@ -74,6 +76,7 @@ func tick() -> void:
 	_watch()
 	_sample()
 	_harvest()
+	_egg_watch()
 
 
 func _say(msg: String) -> void:
@@ -96,6 +99,7 @@ func _watch() -> void:
 			continue
 		if game.is_visible_to(team, u.position):
 			_foe_seen[u.get_instance_id()] = {"u": u, "v": float(Game.unit_value(u)), "t": game.clock}
+			_last_seen_t = game.clock
 	for id in _foe_seen.keys():
 		var e: Dictionary = _foe_seen[id]
 		if game.clock - float(e["t"]) > MEMORY:
@@ -127,6 +131,10 @@ func army_value(list: Array) -> float:
 ## May a wave worth `mine` go? Not into an enemy army clearly stronger than it, as far as we know it.
 ## A held wave is noted in the match log (once a minute at most).
 func attack_ok(mine: float, ratio := ATTACK_RATIO) -> bool:
+	if _looking():
+		return false        # (two Raptors are out looking: the wave waits for what they see)
+	if _need_look() and _start_look():
+		return false
 	var known := known_foe_value()
 	if known <= 0.0 or mine >= known * ratio or game.supply_used(team) >= game.max_supply(team) - 12:
 		return true         # (nothing known against it, or at the supply cap: the army cannot grow, it goes)
@@ -135,6 +143,57 @@ func attack_ok(mine: float, ratio := ATTACK_RATIO) -> bool:
 		holds += 1
 		_say("holds its attack: the enemy army it has seen is worth %d, its own %d; it defends and builds up first" % [int(known), int(mine)])
 	return false
+
+
+## A look before the leap: a wave that would go on old news (no enemy soldier seen for LOOK_FRESH seconds)
+## first sends LOOKERS Raptors to the enemy base and waits for what they see (or for them to fall: their
+## killers are seen as they do), at most LOOK_MAX seconds. Measured: with nothing seen for minutes,
+## "nothing known" let a 1,030 wave walk into an army of 1,860 and die there.
+const LOOK_FRESH := 90.0
+const LOOK_MAX := 45.0
+const LOOK_FROM := 240.0        # (no look before this: a rush goes on what the scout saw)
+const LOOKERS := 2
+var _last_seen_t := -999.0
+var _look: Array = []
+var _look_t := -999.0
+var looks := 0                  # (tools/measure_brood_ai.gd)
+
+
+func _need_look() -> bool:
+	return game.clock >= LOOK_FROM and game.clock - _last_seen_t > LOOK_FRESH and game.clock - _look_t > LOOK_FRESH
+
+
+func _start_look() -> bool:
+	var base: Vector2 = ai._enemy_base()
+	if base == Vector2.INF:
+		return false
+	var pool := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "raptor" and u.order in ["idle", "move", "amove"] and u.target == null)
+	if pool.size() < LOOKERS + 4:
+		return false
+	pool.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(base) < b.position.distance_squared_to(base))
+	_look = pool.slice(0, LOOKERS)
+	for u in _look:
+		u.cmd_move(base + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
+	_look_t = game.clock
+	looks += 1
+	_say("sends %d Raptors to look at the enemy before its wave goes (nothing seen of its army for %d s)" % [LOOKERS, int(game.clock - maxf(0.0, _last_seen_t))])
+	return true
+
+
+## The lookers are still on their way (alive, not there yet, not seen anything, within LOOK_MAX).
+func _looking() -> bool:
+	if _look.is_empty():
+		return false
+	_look = _look.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	var base: Vector2 = ai._enemy_base()
+	var there := _look.any(func(u: Unit) -> bool: return base != Vector2.INF and u.position.distance_to(base) < 300.0)
+	if _look.is_empty() or there or _last_seen_t >= _look_t + 1.0 or game.clock - _look_t > LOOK_MAX:
+		var front: Vector2 = ai._front()
+		for u in _look:
+			u.cmd_move(ai._home_spot(front))
+		_look.clear()
+		return false
+	return true
 
 
 ## Is this wave clearly losing its fight? The armed enemies in sight within FIGHT_R of any of its units
@@ -270,6 +329,106 @@ func supply() -> void:
 	ai._construct(sup, ai._mound_spot())
 
 
+# ------------------------------------------------------------------ grubs: the economy never stands still
+
+## Eggs for the army before more grubs? Grubs come first up to `grub_floor`, which rises by a grub every
+## FLOOR_STEP seconds after FLOOR_FROM (up to FLOOR_MAX); above it the eggs go to the army. The old rule
+## (the army first from 9 grubs on, but only while it was "behind" its plan) went wrong both ways: the
+## Brood sat on 9 grubs from minute 3 to minute 6 against a growing Crown army it could never catch up
+## with, so its income stood still; and once the plan's curve (260 value by 3:20) was met, every egg went
+## to grubs again (40 grubs at 9:30, no eggs left for the army, 700 biomass banked). With the enemy in our
+## base the floor drops back to the working minimum: the army first.
+const FLOOR_FROM := 150.0
+const FLOOR_STEP := 20.0
+
+
+func grub_floor() -> int:
+	var base := 10 if ai.strategy == "economy" else 9
+	if ai.strategy == "rush" and not ai._first_wave:
+		return 6            # (a rush's first wave first)
+	if ai._threat() != Vector2.INF:
+		return base         # (the enemy is in our base: every egg for the army)
+	return mini(base + int(maxf(0.0, game.clock - FLOOR_FROM) / FLOOR_STEP * float(ai._s("workers"))), FLOOR_MAX)   # (faster on Economy, slower on Rush)
+
+
+const FLOOR_MAX := 34
+
+
+## The army the plan's curve wants by now (AI.ARMY_CURVE), without the answer to an enemy army in sight.
+func army_first(grubs: int) -> bool:
+	if not game._has_built(team, "warren") or grubs < grub_floor():
+		return false
+	return ai._army_behind() or game.clock > 200.0
+
+
+# ------------------------------------------------------------------ eggs: the army's real mix, and a Burrow when eggs run short
+
+const SPITTER_SHARE := 0.6      # Spitters wanted for every Raptor once the Pen stands (by count)
+const STARVE_T := 20.0          # every egg taken this long with biomass in hand: one Burrow is not enough
+const STARVE_GOLD := 150        # ... "biomass in hand"
+var _starve := 0.0
+var _starve_last := 0.0
+var burrows_added := 0          # (tools/measure_brood_ai.gd)
+
+
+## What this egg hatches, given what AI._produce picked (`k`); "" = keep the egg and wait. The old
+## pick made a Spitter only when 90 biomass happened to be in hand at that moment, so with the income
+## spent as it came in (Raptors cost 75) the essence sat unused for minutes (12 essence banked from
+## minute 5:30 to 7:30 and two Spitters by 9:00). Now, once the Pen stands and the essence is there, the
+## egg waits for a Spitter's biomass while the Spitters are under SPITTER_SHARE of the Raptors (unless
+## the enemy is in our base: then whatever hatches now).
+func egg_choice(h: Building, army: Array, k: String) -> String:
+	if k != "raptor" or not game._has_built(team, "brood_pen") or not spitter_ok():
+		return k
+	var raptors := 0
+	var spitters := 0
+	for u in army:
+		if u.kind == "raptor":
+			raptors += 1
+		elif u.kind == "spitter":
+			spitters += 1
+	for hh in ai._halls():
+		raptors += int(Defs.UNITS["raptor"]["spawn"]) * (hh.queue as Array).count("raptor")
+		spitters += int(Defs.UNITS["spitter"]["spawn"]) * (hh.queue as Array).count("spitter")
+	if float(spitters) >= float(raptors) * SPITTER_SHARE:
+		return k
+	var why := game.can_train(h, "spitter")
+	if why == "":
+		return "spitter"
+	if why.begins_with("Not enough") and ai._res2() >= float(Defs.UNITS["spitter"]["cost2"]) and ai._threat() == Vector2.INF:
+		return ""           # (the essence is there: wait for the biomass)
+	return k
+
+
+## Every egg taken while biomass piles up: the Burrows are the limit, not the income (seen from about
+## minute 7 with one Burrow: no eggs, 200-480 biomass banked). Another Burrow goes up by the capital.
+func _egg_watch() -> void:
+	var dt := game.clock - _starve_last
+	_starve_last = game.clock
+	var eggs := 0
+	for h in ai._halls():
+		if h.built:
+			eggs += h.eggs
+	if eggs == 0 and ai._gold() >= STARVE_GOLD:
+		_starve += dt
+	else:
+		_starve = maxf(0.0, _starve - dt * 0.5)
+	if hall_due() and ai._gold() >= int(Defs.BUILDINGS[ai._f()["hall"]]["cost"]):
+		var before := ai._halls().size()
+		ai._more_halls(true)
+		if ai._halls().size() > before:
+			burrows_added += 1
+			_starve = 0.0
+			_say("lays out another Burrow: its eggs, not its biomass, were holding the army back")
+
+
+## A Burrow is due: eggs have been short with biomass in hand for STARVE_T seconds and none is going up.
+func hall_due() -> bool:
+	if ai.strategy == "xrush" or _starve < STARVE_T or ai._busy_building(ai._f()["hall"]):
+		return false
+	return ai._halls().size() < int(ai._s("halls")) + 1
+
+
 # ------------------------------------------------------------------ biomass put by for what is due
 
 ## The Brood Pen is due: the Spawning Den stands and the army has caught up with what the plan wants by
@@ -282,7 +441,11 @@ func pen_due() -> bool:
 		return false
 	if ai.strategy == "rush" and not ai._first_wave:
 		return false
-	return not ai._army_behind() or ai._horse_alert()
+	# (a few Raptors at home are enough: the army is nearly always "behind" an enemy army in sight, and
+	# waiting for it to catch up left the Pen until minute 5 or 6, so no essence and only Raptors)
+	if game.workers(team).size() < PEN_GRUBS and not ai._horse_alert():
+		return false        # (the working minimum first: a Pen at 2:56 on 8 grubs after a failed rush cost a third of its income)
+	return not ai._army_behind() or ai._horse_alert() or ai._army_supply(game.army(team)) >= PEN_GUARD
 
 
 ## The Gorge Pit (Brutes, Mist Toads, the Broodmound) is due: its time by the plan, once the Pen stands,
@@ -313,7 +476,10 @@ func reserve() -> int:
 	if supply_due:
 		r = int(Defs.BUILDINGS[ai._sup()]["cost"])
 		why = "mound"
-	if ai._threat() == Vector2.INF and game.clock >= _rest_until:
+	if hall_due():
+		r = maxi(r, int(Defs.BUILDINGS[ai._f()["hall"]]["cost"]))
+		why = "burrow"
+	if ai._threat() == Vector2.INF and game.clock >= _rest_until and why != "burrow":
 		var guard := ai._army_supply(game.army(team))
 		if pen_due() and guard >= PEN_GUARD:
 			r = maxi(r, int(Defs.BUILDINGS["brood_pen"]["cost"]))
@@ -355,16 +521,35 @@ func essence_want() -> float:
 	return want
 
 
+## What offerings are made for (less than essence_want: an offered Raptor gives back 12% of its biomass).
+## Two eggs of Spitters always (5 essence an egg: two Raptors' worth, a good trade); a Brute's 20 only with
+## Horsemen about (the Brute is the answer to them), a Skywing's 40 only against flyers, the Broodmound's
+## when it is saved for. Mist Toads and the other Brutes wait for bodies: offering Raptors for all of
+## them burned up to 32 Raptors (800 biomass) a game for 96 essence.
+func offer_target() -> float:
+	if not game._has_built(team, "brood_pen"):
+		return 0.0
+	var want := 2.0 * float(Defs.UNITS["spitter"]["cost2"])
+	if ai._horse_alert() and game._has_built(team, "gorge_pit"):
+		want = maxf(want, float(Defs.UNITS["brute"]["cost2"]) + float(Defs.UNITS["spitter"]["cost2"]))
+	if ai._foe_air() > 0 and game._has_built(team, "roost"):
+		want = maxf(want, float(Defs.UNITS["skywing"]["cost2"]))
+	if ai._mound_saving():
+		want = maxf(want, float(Defs.HALL_LEVELS[2]["cost2"]) + 20.0)
+	return want
+
+
 ## A Roost (Skywings: 40 essence each) only once the essence for one is there or the enemy has shown flyers
 ## (Skywings hunt them): without essence it is 175 biomass and a grub for nothing.
 func roost_ok() -> bool:
 	return ai._res2() >= float(Defs.UNITS["skywing"]["cost2"]) or ai._foe_air() > 0
 
 
-## An egg of Spitters (5 essence) only from essence beyond what the next Brute needs once there is a Gorge
-## Pit, unless the enemy has shown flyers (Spitters are the swarm's answer to them).
+## An egg of Spitters (5 essence) only from essence beyond what the next Brute needs when Horsemen are
+## about and there is a Gorge Pit (Brutes are the answer to them); otherwise Spitters may spend it (the
+## offerings are made for them: offer_target), and Brutes come from the bodies of a fight.
 func spitter_ok() -> bool:
-	if not game._has_built(team, "gorge_pit") or ai._foe_air() > 0:
+	if not game._has_built(team, "gorge_pit") or ai._foe_air() > 0 or not ai._horse_alert():
 		return true
 	return ai._res2() - float(Defs.UNITS["spitter"]["cost2"]) >= float(Defs.UNITS["brute"]["cost2"])
 
@@ -393,7 +578,7 @@ func offer() -> void:
 	var pen := game.nearest_of(game.center_of_team(team), team, "brood_pen")
 	if pen == null or not pen.built:
 		return
-	var want := essence_want()
+	var want := offer_target()
 	var have := ai._res2() + essence_coming()
 	if want <= 0.0 or have >= want:
 		return
@@ -408,7 +593,10 @@ func offer() -> void:
 	var raptors := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "raptor" and not in_wave.has(u) \
 		and u.order in ["idle", "move", "amove"] and u.target == null and u.can_sacrifice())
 	var per_value := float(Game.unit_value(raptors[0])) if not raptors.is_empty() else 25.0
-	var surplus := int(floor((ai._army_value() - ai._army_want()) / per_value))
+	# (the army's surplus over the plan; with too few Raptors over the plan, still one or two of
+	# them: a Raptor offered up is the essence for an egg of Spitters, which beat Raptors at a line of
+	# guns, so the army gets better, not smaller, and without essence the Brood has only Raptors)
+	var surplus := maxi(int(floor((ai._army_value() - ai._army_want()) / per_value)), OFFER_ALWAYS)
 	var spare := mini(raptors.size() - GUARD, surplus)
 	if spare <= 0:
 		return
