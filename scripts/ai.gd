@@ -3050,12 +3050,12 @@ func _produce() -> void:
 					keep += float(Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR]))       # (the Aviary's Tension price is kept too)
 				if want_p and game.can_train(w, Defs.PENDULUM) == "":
 					k = Defs.PENDULUM
-				elif _great_winder_due(w, gws, others, keep):
-					k = Defs.GREAT_WINDER_KIND
 				elif bals < bal_want and others >= 3 and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.BALLISTA_KIND])) >= keep and game.can_train(w, Defs.BALLISTA_KIND) == "":
 					k = Defs.BALLISTA_KIND
 				elif netters < mini(3, others / 5) and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.NETTER])) >= keep and game.can_train(w, Defs.NETTER) == "":
 					k = Defs.NETTER
+				elif _great_winder_due(w, gws, others, keep):
+					k = Defs.GREAT_WINDER_KIND
 				elif jacks * 2 <= others and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.JACK])) >= keep and game.can_train(w, Defs.JACK) == "":
 					k = Defs.JACK
 				if game.train(w, k) != "":
@@ -4879,7 +4879,8 @@ func _ballista_crew(army: Array) -> void:
 
 
 ## Gear mode, the GREAT WINDER (scripts/great_winder.gd), kept small and in its own functions (the clockwork-ai rework
-## edits the rest): once its Escapement works and the army has GREAT_WINDER_ARMY soldiers, ONE Great Winder (_produce:
+## edits the rest): once its Escapement works and the army has GREAT_WINDER_ARMY soldiers (after the Pendulums, Ballistas
+## and Netters it wants: the escort Winders do the winding until then), ONE Great Winder (_produce:
 ## _great_winder_due); it walks just behind the army wherever the army goes (_great_winder_follow: the attack, the
 ## rally), where its area keeps the army wound and it mends and sweeps by itself (its autocasts). It TAKES THE ESCORT'S
 ## PLACE (the owner, 2026-10-27): while one is out, the escort of ordinary Winders is GREAT_WINDER_ESCORT smaller for
