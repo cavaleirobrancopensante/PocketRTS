@@ -3203,20 +3203,9 @@ func on_unit_died(u: Unit) -> void:
 	for g in groups:
 		g.erase(u)
 	if u.kind == "horse":
-		# (a horse isn't counted in the losses; the Brood still feeds on its body: a Pen
-		# close by takes it at once, else the grubs can harvest it like any other)
+		# (a horse isn't counted in the losses; the Brood still feeds on its body: the grubs
+		# can harvest it like any other)
 		if brood_in_match():
-			for t in n_players():
-				if faction_of(t) != "brood":
-					continue
-				for b in buildings:
-					if b.team == t and b.kind == "brood_pen" and b.built and not b.dead \
-							and b.center().distance_to(u.position) < Defs.PEN_RANGE * T:
-						var ess := body_supply(u) * Defs.ESSENCE_PER_SUPPLY
-						add_res2(t, ess)
-						if t == human:
-							float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
-						return
 			corpses.append(u)
 		return
 	stats[u.team]["lost"] += 1
@@ -3224,22 +3213,11 @@ func on_unit_died(u: Unit) -> void:
 	var hitter = u.last_hitter
 	if is_instance_valid(hitter) and hitter is Unit and not hitter.dead and hostile(hitter.team, u.team):
 		(hitter as Unit).kills += 1
-	var absorbed := false
-	for t in n_players():
-		if faction_of(t) == "brood" and not absorbed:
-			for b in buildings:
-				if b.team == t and b.kind == "brood_pen" and b.built and not b.dead \
-						and b.center().distance_to(u.position) < Defs.PEN_RANGE * T:
-					var ess := body_supply(u) * Defs.ESSENCE_PER_SUPPLY
-					add_res2(t, ess)
-					if t == human:
-						float_text(u.position + Vector2(0, -20), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
-					absorbed = true          # the Pen took it: nothing left to harvest
-					break
-	if not absorbed and brood_in_match() and not u.is_air():
+	# (the fallen lie for the Brood's grubs to harvest; a Brood Pen no longer takes bodies by itself)
+	if brood_in_match() and not u.is_air():
 		corpses.append(u)
 	# a Crown soldier's body: a Missionary may raise him (not one who fell under the cross)
-	if not absorbed and not u.final_death and (Defs.REVIVE["kinds"] as Array).has(u.kind):
+	if not u.final_death and (Defs.REVIVE["kinds"] as Array).has(u.kind):
 		fallen.append(u)
 	var k := _killer(u)
 	if k >= 0:
@@ -3322,8 +3300,8 @@ func brood_in_match() -> bool:
 	return false
 
 
-## The essence a harvested body gives: Defs.HARVEST per_supply (1.25) for each point of its body_supply, plus 1 a kill.
-## A float (essence is kept as one): a Musketeer or a Raptor 1.25, a Brute 3.75, a Horseman on his horse 5.
+## The essence a harvested body gives: Defs.HARVEST per_supply (2) for each point of its body_supply, plus 1 a kill.
+## A float (essence is kept as one): a Musketeer or a Raptor 2, a Brute 6, a Horseman on his horse 8.
 func corpse_value(u: Unit) -> float:
 	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + float(u.kills)
 

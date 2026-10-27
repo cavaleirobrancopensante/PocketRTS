@@ -153,11 +153,10 @@ const PIT_CREW_MAX := 12
 ## Brood resource buildings (Feeding Pit, Brood Pen) need swamp joined to the capital's, no farther than this.
 const BROOD_RESOURCE_MAX_D := 40.0
 const GROUND_RESERVE := 10500     # (a fully worked Hive draws ~1,000-1,150 a minute: ~10 minutes)
-const ESSENCE_PER_SUPPLY := 3     # a body falling near a Brood Pen
-const PEN_RANGE := 12             # tiles
 ## Brood Pen SACRIFICE: a Brood creature offered up at a Pen gives this share of its biomass
-## cost as essence (a Raptor, 25 biomass, gives 3).
-const SACRIFICE := 0.12
+## cost as essence (a Raptor, 25 biomass, gives 9). Was 12% (3 a Raptor) until 0.14.40, when the Pen
+## also stopped turning bodies that fell near it into essence (the fallen are harvested by grubs only).
+const SACRIFICE := 0.35
 # Clockwork: Winders carry batteries from the energy buildings to the Ore Crushers.
 ## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
 ## Winders carry them to an Ore Crusher, which turns the charge into ore drawn from its
@@ -1198,7 +1197,7 @@ const BUILDINGS := {
 	"brood_pen": {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 6, "trains": [], "swamp": 4, "faction": "brood",
-		"about": "Turns every body that falls nearby (friend or foe) into essence. SACRIFICE: Brood creatures brought here are offered up for essence (12% of their biomass cost: 3 a Raptor).",
+		"about": "SACRIFICE: Brood creatures brought here are offered up for essence (35% of their biomass cost: 9 a Raptor). The fallen give essence too: grubs wrap the bodies on the field and carry them home.",
 	},
 	"roost": {
 		"name": "Roost", "hp": 700, "armor": 1, "cost": 175, "time": 35.0, "size": Vector2i(3, 3),
@@ -1570,9 +1569,9 @@ const VET := {"per_kill": 0.01, "max": 0.5, "silver": 25, "gold": 50}
 const HORSE_VET := {"tiles": 100.0, "max": 3, "hp": 0.15, "body": 1}
 const HORSE_REGEN := 0.5          # hp a second: horses heal by themselves (they're never raised)
 ## per_supply: essence a harvested body gives for each point of its supply (a float: Game.corpse_value; was 1, raised to
-## 1.25 when area shots began to tear bodies up, Defs.BODY_BLAST: a Musketeer 1.25, a Brute 3.75, a Horseman with his
-## horse 5), plus 1 for each kill it made.
-const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 1.25}
+## 1.25 when area shots began to tear bodies up, Defs.BODY_BLAST, and to 2 in 0.14.40 when the Brood Pen stopped taking the
+## bodies that fell near it: a Musketeer 2, a Brute 6, a Horseman with his horse 8), plus 1 for each kill it made.
+const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 2.0}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
@@ -1728,7 +1727,7 @@ const TIPS := {
 	"warren": "Lets your Burrows hatch Raptors and Spitters.",
 	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",
 	"feeding_pit": "Up to 5 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles).",
-	"brood_pen": "Bodies falling nearby give essence. SACRIFICE Brood creatures here for essence.",
+	"brood_pen": "SACRIFICE Brood creatures here for essence (35% of their biomass cost).",
 	"roost": "Lets your Burrows hatch Skywings and Bloaters.",
 	# Crown research
 	"armour": "Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.",
