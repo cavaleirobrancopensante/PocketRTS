@@ -5092,10 +5092,11 @@ func _draw_pit_circles() -> void:
 func _draw_pit_labels() -> void:
 	var font := ThemeDB.fallback_font
 	var r := Defs.PIT_CLAIM * T
+	# (on the circle's top edge, inside it, in the small dark box the economy labels use)
 	var label := func(c: Vector2, txt: String, col: Color, sz: int) -> void:
 		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var p := c + Vector2(-w * 0.5, r - 6.0)
-		overlay.draw_string_outline(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, 4, Color(0, 0, 0, 0.75))
+		var p := c + Vector2(-w * 0.5, -r + sz + 8.0)
+		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.55))
 		overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
 	if _pit_placing():
 		for sp in _known_pit_spots():
