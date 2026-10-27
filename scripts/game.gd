@@ -5930,8 +5930,11 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			continue
 		var dd: float = (u.position + Vector2(0, -12)).distance_to(p)
 		if dd < bd:
+			var rider := Unit.mounting_onto(u)
+			if rider != null and (rider.dead or not shown_to_commander(rider)):
+				continue
 			bd = dd
-			best = u
+			best = rider if rider != null else u    # (a horse a man is getting on: the strip there is him)
 	if best:
 		return best
 	for b in buildings:
@@ -9787,7 +9790,9 @@ func _draw_overlay_all() -> void:
 		var mp := overlay.get_global_mouse_position()
 		for e in selection:
 			if e is Unit and is_instance_valid(e) and not e.dead and e.team == controlled_team():
-				_draw_patrol(e.global_position, mp, e.global_position, 0.55)
+				# (Shift held: the patrol goes after its orders, from where they end)
+				var pa: Vector2 = e.plan_end() if Settings.pc() and Input.is_key_pressed(KEY_SHIFT) else e.global_position
+				_draw_patrol(pa, mp, pa, 0.55)
 	if not tongues.is_empty():
 		_draw_tongues()
 	for tr in _tracers:

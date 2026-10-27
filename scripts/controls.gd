@@ -245,7 +245,7 @@ func _on_input(event: InputEvent) -> void:
 		hud.hotkey((event as InputEventKey).keycode, true)
 	elif event is InputEventKey and not event.pressed and (event as InputEventKey).keycode == KEY_SHIFT:
 		# Shift let go: a mode kept open for queueing closes (the next click would replace the queue)
-		if _shift_kept and mode in ["move", "attack", "repair", "place", "bombard"]:
+		if _shift_kept and mode in ["move", "attack", "repair", "place", "bombard", "patrol"]:
 			cancel_mode()
 		_shift_kept = false
 
@@ -600,12 +600,12 @@ func _move_ghost(screen: Vector2) -> void:
 	ghost_cell = game.cell_of(p)
 
 
-## shift: a computer's Shift-click (MOVE, ATTACK and REPAIR queue the order); taps never.
+## shift: a computer's Shift-click (MOVE, ATTACK, PATROL, REPAIR and ATTACK GROUND queue the order); taps never.
 func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 	var raw := to_world(screen)
 	var p := game.on_map(raw)       # (the view may reach past the map edge: orders stay on it)
 	var units := game.selected_units()
-	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair" or mode == "bombard")
+	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair" or mode == "bombard" or mode == "patrol")
 	match mode:
 		"lay_line":
 			if line_tool != null:
@@ -785,7 +785,10 @@ func _finish_box(add := false) -> void:
 	var list: Array = []
 	for u in game.units:
 		if u.team == game.human and not u.dead and not u.off_field and r.has_point(xf * (u.position + Vector2(0, -10))):
-			list.append(u)
+			var rider := Unit.mounting_onto(u)      # (a horse a man is getting on: the strip drawn there is him)
+			var who: Unit = u if rider == null else rider
+			if who.team == game.human and not who.dead and not list.has(who):
+				list.append(who)
 	# no units in the box: your buildings in it (walls and gates only if that's all there is)
 	if list.is_empty():
 		var main: Array = []

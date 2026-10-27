@@ -467,7 +467,7 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	var best := INF
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
-	var tension := GearEcon.spends_tension(k)          # (a Tension user, or a Movement Works for its Springers, Netters, Pendulums)
+	var tension := GearEcon.spends_tension(k)          # (a Tension user, or a Light Works for its Springers, Netters, Pendulums)
 	var spring: Building = null
 	var sbest := INF
 	var across := false             # (a linked ring in reach, but on the other level: THE LEVEL RULE)
@@ -800,7 +800,7 @@ func ghost_text(t: int, k: String, c: Vector2i, big := false) -> Array:
 		else:
 			label = "MESHES MAINSPRING"
 	elif state == "ok" and st.get("spring") != null:
-		label = "MESHES MAINSPRING"        # (a Movement Works: its Springers may be made here)
+		label = "MESHES MAINSPRING"        # (a Light Works: its Springers may be made here)
 	label = Loc.t(label)
 	if state == "ok" and not (Defs.TENSION_USERS.has(k) and st.get("spring") == null):
 		label += GearEcon.ghost_note(self, t, k, c, big)     # (its efficiency before it is placed; what a Mainspring feeds)

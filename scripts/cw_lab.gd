@@ -3,7 +3,7 @@ extends RefCounted
 ## The CLOCKWORK LAB (EDITOR menu): the human Clockwork starts with plenty of cogs and, in gear mode (the default), the
 ## GEAR FIELD on show: the Clocktower on its big ring with two Cog Presses and a Mainspring meshing round it, Winders
 ## working them, a Ratchet Turret, the Escapement meshing with the Mainspring and three Springers (tier 2), the Clock Aviary
-## (internal kind cuckoo_house), three Swifts and a Ticking Owl (TICKING OWL researched), tier 3 (the Movement Works on its BIG
+## (internal kind cuckoo_house), three Swifts and a Ticking Owl (TICKING OWL researched), tier 3 (the Light Works on its BIG
 ## gear, two Pendulums and two Netters), the camera on it, and the Lab's other buildings linked beyond. (With the Line on instead: a Line run with
 ## a Rail Yard, Assembly Works, Engine Hall, Boiler and Pylon beside it.) A hint line says what to try.
 ## Also holds the Line helpers the cw tests share (run_from_hall, beside).
@@ -40,12 +40,12 @@ static func setup(game: Game) -> void:
 ## The showcase, like art/redraws/base_demo.gif: the start's Cog Press is taken away and two presses and a Mainspring are
 ## put round the Clocktower where their rings mesh with its ring (directly when the grid allows, else through an idler),
 ## at three set angles (screen: up right, down left, down right).
-## Then the new-style army: a Movement Works (training nothing yet) and a Regulator, built and linked, and SOLDIERS Clock
+## Then the new-style army: a Light Works (training nothing yet) and a Regulator, built and linked, and SOLDIERS Clock
 ## Soldiers standing in front of the Works; and a Ratchet Turret, the static defence, built and linked on the field's
 ## edge (no power in gear mode: no Charging Pylon, no Boilers; Defs.ENERGY_KINDS are not in the gear build list).
 ## Tier 2: the Escapement meshing with the Mainspring's ring (a third entry: the kind it meshes with instead of the
 ## Clocktower; it tries ESC_ANGLES round it until one fits), working, and SPRINGERS Springers beside the soldiers.
-## The Movement Works on the Clocktower's ring (down left) on its BIG gear (tier 3: the Pendulum), and a second Mainspring
+## The Light Works on the Clocktower's ring (down left) on its BIG gear (tier 3: the Pendulum), and a second Mainspring
 ## meshing with the Works (THE TENSION RULE, GearEcon: Springers, Pendulums and Netters cost Tension, so they are made only where
 ## a Mainspring meshes) and with the Clock Aviary (everything the Aviary makes costs Tension); SWIFTS Swifts and OWLS Ticking
 ## Owls hovering over the Clocktower's ring (in the Lab's first view). An entry that names a kind to mesh with tries
@@ -151,7 +151,7 @@ static func _gear_field(game: Game, t: int, cfg: Dictionary) -> void:
 			u.cmd_gather(b)
 	for u in free:
 		u.cmd_stop()
-	# the Clock Soldiers: a short rank in front of the Movement Works (else by the Clocktower)
+	# the Clock Soldiers: a short rank in front of the Light Works (else by the Clocktower)
 	var works: Building = null
 	for b in put:
 		if b.kind == Defs.CW_WORKS:
@@ -272,7 +272,7 @@ static func _hint(game: Game) -> void:
 
 static func hint_text() -> String:
 	if Defs.gear_mode:
-		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED); an idler cog fills a small gap between two rings. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The Movement Works trains the army, the Regulator adds supply, the Ratchet Turret shoots at ground and air. TIER 2: the ESCAPEMENT must mesh with the Mainspring (every Tension user must, or it shows NEEDS MAINSPRING); it unlocks the SPRINGER, which hops, shoots at ground and air and can JUMP (E, then tap a spot; up a cliff you can see only after HIGH LEAP, researched at the Escapement). THE AIR: the CLOCK AVIARY makes SWIFTS, fast flyers that peck other flyers; once TICKING OWL is researched there, a Swift's MORPH TO OWL turns it into a Ticking Owl that swoops on units and bombs buildings. TIER 3: PENDULUMS (only from a Movement Works on its BIG gear, as here; a Works' gear is swapped on its card) cut every enemy in the arc in front of them; a NETTER's chain net stops one enemy for 4 s and brings a flyer down. New buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
+		return Loc.t("CLOCKWORK LAB, the GEAR FIELD: every Clockwork building sits on a ring of ground gears that must mesh, ring to ring, back to the Clocktower's big ring, or it stops (UNLINKED); an idler cog fills a small gap between two rings. Winders crank the Cog Presses for cogs and the Mainspring for Tension. The Light Works trains the army, the Regulator adds supply, the Ratchet Turret shoots at ground and air. TIER 2: the ESCAPEMENT must mesh with the Mainspring (every Tension user must, or it shows NEEDS MAINSPRING); it unlocks the SPRINGER, which hops, shoots at ground and air and can JUMP (E, then tap a spot; up a cliff you can see only after HIGH LEAP, researched at the Escapement). THE AIR: the CLOCK AVIARY makes SWIFTS, fast flyers that peck other flyers; once TICKING OWL is researched there, a Swift's MORPH TO OWL turns it into a Ticking Owl that swoops on units and bombs buildings. TIER 3: PENDULUMS (only from a Light Works on its BIG gear, as here; a Works' gear is swapped on its card) cut every enemy in the arc in front of them; a NETTER's chain net stops one enemy for 4 s and brings a flyer down. New buildings: the ghost shows its ring turning and LINKS / NO LINK / CLASH. SANDBOX, tab CLOCK, spawns the new units. The enemy never attacks.")
 	return Loc.t("CLOCKWORK LAB: open SANDBOX, tab CLOCK, to spawn the new units (rail vehicles land on the Line). The Rail Yard and Assembly Works train them too. The enemy never attacks.")
 
 
