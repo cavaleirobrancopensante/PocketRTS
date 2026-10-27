@@ -124,6 +124,7 @@ var _swarm_phase := ""          # "", "flank" (getting into position), "strike"
 var _swarm_t := 0.0
 var _tight := false            # Brood: this wave packs tight (the enemy has little splash damage)
 var _no_room := {}              # economy kinds with no free spot, and when we looked
+var _hall_bad := {}            # Crown: a new hall's spot -> until when not to try it again (its builders fled from raiders there)
 var _abandoned := {}            # kind -> when a site of it was last dropped as "abandoned" (its builder fled): AIBrood.supply waits a little
 # how the last wave went: what it was worth going out, and the enemy value killed before it
 var _wave_value := 0.0
@@ -1883,6 +1884,8 @@ func _hall_first() -> bool:
 	if _gold() < cost:
 		return true
 	var spot := _stage_spot
+	if game.clock - float(_abandoned.get(hall, -99.0)) < 20.0:
+		return true                # (a hall site just dropped, its builders chased off: a moment before the next try)
 	if _crown():
 		# the escort walks over first; the hall goes down once it's there (or after a while)
 		var site := (Vector2(spot) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5) * Defs.TILE
@@ -1949,6 +1952,8 @@ func _safe_hall_spot() -> Vector2i:
 				score += float(u.d["supply"]) * 3.0
 		if c == ex:
 			score -= 4.0           # (the map's own expansion spot: open ground, near a ramp of ours)
+		if float(_hall_bad.get(c, -1.0)) > game.clock:
+			score += 1000.0        # (its builders were just chased off it)
 		score -= _lode_value(c)
 		if score < bs:
 			bs = score
@@ -2912,6 +2917,8 @@ func site_failed(b: Building, why := "blocked") -> void:
 		_no_room.erase(b.kind)
 	else:
 		_abandoned[b.kind] = game.clock
+		if b.kind == String(_f()["hall"]):
+			_hall_bad[b.cell] = game.clock + 90.0     # (raiders there: another spot, or this one later; coach round 2)
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
