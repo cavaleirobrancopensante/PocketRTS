@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.93", "items": [
+		"HORSEMEN AND CUIRASSIERS ATTACK ON THE MOVE, like the Cyclone: on any order (move, attack-move, attack, patrol) they strike an enemy in sabre reach as they ride past, on their normal reload and at full damage, without slowing or stopping. A plain move still goes where you sent them, cutting down what they pass.",
+		"Told to attack a unit or a building, a rider rides AT it, strikes in passing, rides on a little and swings round its far end for the next pass, instead of standing beside it. A man on the run is ridden down. His one pistol shot is fired from the gallop too (on an attack or attack-move).",
+		"HOLD POSITION, or stopped on guard, a rider stands and fights as before. Walls and gates are still hacked at standing. The Cavalry Charge doubles only the first blow after a gallop (no blow for 5 s, then 2 s at the gallop), not every pass. The Dragoon is unchanged.",
+	]},
 	{"v": "0.14.92", "items": [
 		"A soldier right-clicking a horse gets on it (Musketeer to Dragoon, Officer to Horseman...). Now a message says so and how to lead it by the reins instead: press LEAD (Q). Labourers still lead a horse on a right-click.",
 	]},

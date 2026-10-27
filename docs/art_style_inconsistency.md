@@ -309,3 +309,12 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   (Building._rise: 40% of it at the start, all of it at half built), so it rises out of the plates; a hard straight cut, no
   painted half-built stages. Wanted: two or three painted construction stages per building (plates and lower frame,
   half-built walls in scaffold, the full scaffold) to replace the clip.
+
+## The Horseman's and Cuirassier's blow in passing (code, 0.14.93)
+- Fighting on the move (scripts/ride_by.gd), a rider keeps his gallop strip and a SABRE ARC is drawn in code over him
+  (RideBy.Slash: a white blade line with a dark edge and a fading trail, sweeping 150 degrees across his front at
+  shoulder height, forehand and backhand in turn, 0.24 s). His painted attack strip stands the horse still, so it isn't
+  used on the move (it still plays on HOLD and standing on guard). The pistol shot from the gallop shows the usual musket
+  flash and smoke, with no pistol strip. Wanted: a painted "slash at the gallop" strip per facing (horse in full gallop,
+  rider leaning out with the sabre swinging through, 6-8 frames like the walk), and a "pistol at the gallop" one; both
+  would replace the arc.

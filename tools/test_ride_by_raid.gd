@@ -4,6 +4,7 @@ extends SceneTree
 ##   godot --headless --fixed-fps 30 --script res://tools/test_ride_by_raid.gd [-- only:<case>]
 ## Each case is played twice on the same open ground, RideBy.enabled off then on:
 ##  labourers / grubs / winders : 8 workers bunched at their work (standing), the riders attack-move onto them
+##  labourers_flee : the same, but the hands run from riders who come near (pulled away, as a player does)
 ##  labourers_fight / grubs_fight / winders_fight : the same, but the workers fight back (all go for the nearest rider)
 ##  musketeers_hold : 5 Musketeers on HOLD; the riders attack-move onto them
 ##  raptors : 6 Raptors on guard (they go for the riders)
@@ -109,7 +110,7 @@ func _run() -> void:
 	g.players[0]["cap"] = 300
 	g.players[1]["cap"] = 300
 	g.players[0]["tech"] = {}
-	var cases := ["labourers", "grubs", "winders", "labourers_fight", "grubs_fight", "winders_fight",
+	var cases := ["labourers", "grubs", "winders", "labourers_flee", "labourers_fight", "grubs_fight", "winders_fight",
 		"musketeers_hold", "raptors", "clock_soldiers", "walled"]
 	for c in cases:
 		if only != "" and c != only:
@@ -162,9 +163,10 @@ func _case(c: String, on: bool) -> void:
 	var kind := "labourer"
 	var n := 8
 	var fight := c.ends_with("_fight")
+	var flee := c.ends_with("_flee")
 	var secs := 30.0
 	var hold := false
-	match c.trim_suffix("_fight"):
+	match c.trim_suffix("_fight").trim_suffix("_flee"):
 		"grubs":
 			kind = "grub"
 		"winders":
@@ -229,6 +231,17 @@ func _case(c: String, on: bool) -> void:
 							best = r
 					if best and (m.order != "attack" or m.order_target != best):
 						m.cmd_attack(best)
+		if flee and g.clock - t0 >= look:
+			look = g.clock - t0 + 1.0
+			# the hands run from riders who come within 250 px (a player pulling his workers away)
+			for m in men:
+				if not is_instance_valid(m) or m.dead:
+					continue
+				for r in riders:
+					if is_instance_valid(r) and not r.dead and r.position.distance_to(m.position) < 250.0:
+						var away: Vector2 = (m.position - r.position).normalized()
+						m.cmd_move(m.position + away * 300.0)
+						break
 		var down := men.filter(func(m) -> bool: return not is_instance_valid(m) or m.dead).size()
 		if half_at < 0.0 and down * 2 >= n:
 			half_at = g.clock - t0
