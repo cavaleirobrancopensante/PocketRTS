@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.81", "items": [
+		"NEW CLOCKWORK UNIT, the GREAT WINDER (Movement Works, once an Escapement works; 175 cogs and 75 Tension): the Clockwork's big, slow, walking winding machine, with no weapon. It does the job the Winders walking with the army did, as one machine.",
+		"WINDING: every Clockwork soldier near the Great Winder (the ring on the ground when it is selected) slowly winds up, so an army off the gear ground no longer runs down beside it, and run-down soldiers there wake up again. It never runs down itself.",
+		"MEND (automatic, press to switch off): standing about, it mends the most hurt Clockwork unit near it with its key arm, one at a time and half again as fast as a Winder (it costs cogs, like a repair). Right-click a hurt unit to send it there.",
+		"SWEEP (automatic, press to switch off): with nothing to mend, it sweeps up the wrecks of your own Clockwork units with its rollers and keeps them as PARTS (up to 100, shown on its card). Parts do nothing yet: they are for rebuilding machines in the field, later. It never sweeps Crown or Brood bodies.",
+		"The Clockwork computer builds one Great Winder once it can and sends it behind its army; fewer of its Winders go with the army while it does.",
+	]},
 	{"v": "0.14.80", "items": [
 		"NEW CLOCKWORK UNIT, the SPRING BALLISTA (Movement Works, once an Escapement works; 150 cogs and 50 Tension): a bolt thrower on cog wheels whose giant screw flies in a straight line THROUGH its target into one or two enemies behind it. Hard on armoured units and buildings (a wall or gate stops the bolt), weak up close and against swarms. No set-up: it fires as soon as it stops, and on the move at what is ahead, but its spring is wound again only while it stands.",
 		"The Spring Ballista has a Winder built in. Up to 4 more Winders can BOARD it (LOAD CREW on the Ballista, BOARD on the Winders, or right-click it): each makes it reload and move 10% faster. They push it and crank it beside it, and they can be shot. UNLOAD CREW sets them down. The computer builds a couple and crews them with its escort Winders.",

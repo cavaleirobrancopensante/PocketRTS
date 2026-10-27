@@ -6720,6 +6720,25 @@ func tear_body(b: Unit, aimed := false) -> void:
 	b.tear_up()
 
 
+## A Clockwork wreck swept into a Great Winder's hopper (GreatWinder.take): off the harvest and revive lists, gone from
+## the field like a torn-up body (online and in replays too: the same "c" effect, the guest's copy goes), with a puff of
+## dust where it lay.
+var bodies_swept := 0          # wrecks swept up so far (tests)
+func sweep_body(b: Unit) -> void:
+	if b == null or not is_instance_valid(b) or not b.dead or b.torn:
+		return
+	corpses.erase(b)
+	fallen.erase(b)
+	bodies.erase(b)
+	bodies_swept += 1
+	if net != null and not puppet and net.fx.size() < NetSession.FX_MAX:
+		net.fx.append(["c", "", b.position, 0.0])
+	if rec != null and not puppet and rec.fx.size() < NetSession.FX_MAX:
+		rec.fx.append(["c", "", b.position, 0.0])
+	torn_fx(b.position)
+	b.tear_up()
+
+
 ## The little effect of a body torn up (code-made: the dust puff tinted to earth and scraps, docs/art_style_inconsistency.md).
 func torn_fx(p: Vector2) -> void:
 	var e := Effect.new()

@@ -142,5 +142,8 @@ python3 tools/import_ballista.py         # the Spring Ballista (art/redraws/ball
                                          # (from concepts/ballista_v1.png), the Winder's crew strips push_* / crank_* (art/redraws/
                                          # winder_crew_*: added to his art_data entry, so after import_winder_v2 and import_winder_carry),
                                          # its portrait and the CREW button (after round 13: same frames)
+python3 tools/import_great_winder.py     # the Great Winder (tools/great_winder_guide/anim.py's layers, recoloured at sheet size):
+                                         # walk / wind / sweep strips, idle and death made in code, MEND and SWEEP buttons
+                                         # (after round 13: the same bronze frame; its portrait is round 13's)
 echo "Now run: godot --headless --import"
 python3 tools/make_calm_grass.py

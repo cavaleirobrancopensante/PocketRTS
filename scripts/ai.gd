@@ -1097,7 +1097,7 @@ func _worker_safety() -> void:
 	for id in _known_guns:
 		var e: Dictionary = _known_guns[id]
 		_danger_pts.append([e["p"], float(e["u"].d.get("range", 200)) + 40.0])
-	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and u.kind != "powder_wagon")
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND)
 	var stand: Dictionary = {}      # workers kept out of the flee list because they fight
 	for c in clusters:
 		_raid_workers(c, labs, army, stand)
@@ -2003,7 +2003,7 @@ func _guard_new_hall(army: Array) -> Array:
 		while _guards.size() > want:
 			_guards.pop_back()
 	if _guards.size() < want:
-		var pool := army.filter(func(u: Unit) -> bool: return not _guards.has(u) and u.kind != "powder_wagon" and not u.is_air())
+		var pool := army.filter(func(u: Unit) -> bool: return not _guards.has(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND and not u.is_air())
 		pool.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(site) < b.position.distance_squared_to(site))
 		for u in pool.slice(0, want - _guards.size()):
 			_guards.append(u)
@@ -3039,7 +3039,8 @@ func _produce() -> void:
 		var netters: int = n_of.call(Defs.NETTER)
 		var bals: int = n_of.call(Defs.BALLISTA_KIND)
 		var bal_want := _ballista_want()
-		var others: int = army.size() - army.filter(func(u: Unit) -> bool: return u.kind in [Defs.JACK, Defs.PENDULUM, Defs.NETTER, Defs.BALLISTA_KIND]).size()
+		var gws: int = n_of.call(Defs.GREAT_WINDER_KIND)
+		var others: int = army.size() - army.filter(func(u: Unit) -> bool: return u.kind in [Defs.JACK, Defs.PENDULUM, Defs.NETTER, Defs.BALLISTA_KIND, Defs.GREAT_WINDER_KIND]).size()
 		for w in _mine(_works()):
 			if w.built and w.queue.size() < (3 if _gold() > 600 else 2):
 				var k := "clock_soldier"
@@ -3049,6 +3050,8 @@ func _produce() -> void:
 					keep += float(Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR]))       # (the Aviary's Tension price is kept too)
 				if want_p and game.can_train(w, Defs.PENDULUM) == "":
 					k = Defs.PENDULUM
+				elif _great_winder_due(w, gws, others, keep):
+					k = Defs.GREAT_WINDER_KIND
 				elif bals < bal_want and others >= 3 and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.BALLISTA_KIND])) >= keep and game.can_train(w, Defs.BALLISTA_KIND) == "":
 					k = Defs.BALLISTA_KIND
 				elif netters < mini(3, others / 5) and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.NETTER])) >= keep and game.can_train(w, Defs.NETTER) == "":
@@ -3065,6 +3068,8 @@ func _produce() -> void:
 					netters += 1
 				elif k == Defs.BALLISTA_KIND:
 					bals += 1
+				elif k == Defs.GREAT_WINDER_KIND:
+					gws += 1
 				else:
 					others += 1
 		# the air (a Clock Aviary): Swifts against the enemy's flyers, one more than it has shown (up to 6); two once the
@@ -3372,7 +3377,7 @@ func _tend_wagon() -> void:
 
 
 func _army() -> void:
-	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon" and u.order != "sacrifice")
+	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND and u.order != "sacrifice")      # (a Great Winder walks behind it: _great_winder_follow)
 	if _crown():
 		army = _guard_new_hall(army)
 	# Bloaters out of gas float home to fill up again (faster on the swamp)
@@ -4741,6 +4746,7 @@ func _follow_with_escort(army: Array) -> void:
 		_escort.append(pick)
 	if gear:
 		_ballista_crew(army)
+		_great_winder_follow(c)
 		_escort_wind(army, c)
 		return
 	# run-down Wind-up Soldiers first: the escort cranks them back up
@@ -4768,13 +4774,13 @@ func _follow_with_escort(army: Array) -> void:
 func _escort_want(army: Array) -> int:
 	var cons := 0
 	for u in army:
-		if not u.is_worker() and not u.is_air() and String(u.d["faction"]) == "clockwork":
+		if not u.is_worker() and not u.is_air() and String(u.d["faction"]) == "clockwork" and u.kind != Defs.GREAT_WINDER_KIND:
 			cons += 1
 	if cons == 0:
 		return 0
 	var cap := mini(10, maxi(2, game.workers(team).size() / 3))
 	var bal := army.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND).size()
-	return clampi(2 + cons / 5, 2, cap) + mini(bal, 2) * BALLISTA_CREW      # (+ the Ballistas' crew: _ballista_crew)
+	return _great_winder_escort(clampi(2 + cons / 5, 2, cap)) + mini(bal, 2) * BALLISTA_CREW      # (+ the Ballistas' crew: _ballista_crew)
 
 
 ## Gear mode: each free escort Winder winds (cmd_repair: wind first, then mends) the construct that needs it most
@@ -4870,6 +4876,57 @@ func _ballista_crew(army: Array) -> void:
 	if not sent.is_empty() and game.mlog and not game._first_of.has("%d:ai_bal_crew" % team):
 		game._first_of["%d:ai_bal_crew" % team] = true
 		game.mlog.add("%s sends %d Winders to crew its Spring Ballista" % [game.mlog.who(team), sent.size()])
+
+
+## Gear mode, the GREAT WINDER (scripts/great_winder.gd), kept small and in its own functions (the clockwork-ai rework
+## edits the rest): once its Escapement works and the army has GREAT_WINDER_ARMY soldiers, ONE Great Winder (_produce:
+## _great_winder_due); it walks just behind the army wherever the army goes (_great_winder_follow: the attack, the
+## rally), where its area keeps the army wound and it mends and sweeps by itself (its autocasts). It TAKES THE ESCORT'S
+## PLACE (the owner, 2026-10-27): while one is out, the escort of ordinary Winders is GREAT_WINDER_ESCORT smaller for
+## each, down to one Winder (for the stragglers run down outside its area); the Ballistas' crew are extra, as before.
+const GREAT_WINDER_ARMY := 4
+const GREAT_WINDER_ESCORT := 3
+
+
+## Make a Great Winder at this Works now? None yet (nor queued), its Escapement works, enough army, the Tension.
+func _great_winder_due(w: Building, have: int, others: int, keep: float) -> bool:
+	return have < 1 and others >= GREAT_WINDER_ARMY and game.has_working(team, Defs.CW_TECH) \
+			and game.tension(team) - float(Defs.tension_cost(Defs.UNITS[Defs.GREAT_WINDER_KIND])) >= keep \
+			and game.can_train(w, Defs.GREAT_WINDER_KIND) == ""
+
+
+## Our Great Winders.
+func _great_winders() -> Array:
+	return game.units.filter(func(u: Unit) -> bool: return u.team == team and not u.dead and u.kind == Defs.GREAT_WINDER_KIND)
+
+
+## The escort's base size (`base` Winders) less GREAT_WINDER_ESCORT for each Great Winder we have, at least one.
+func _great_winder_escort(base: int) -> int:
+	var n := _great_winders().size()
+	if n == 0:
+		return base
+	return maxi(1, base - GREAT_WINDER_ESCORT * n)
+
+
+## Each Great Winder walks to a spot just behind the army (toward home), unless it is mending or sweeping there.
+func _great_winder_follow(c: Vector2) -> void:
+	var gws := _great_winders()
+	if gws.is_empty():
+		return
+	var home := c
+	var hall: Array = _halls()
+	if not hall.is_empty():
+		home = (hall[0] as Building).center()
+	var behind := c + (home - c).normalized() * 60.0 if home.distance_to(c) > 1.0 else c
+	for u in gws:
+		if u.order == "mend" or u.order == "sweep":
+			if u.position.distance_to(c) < 420.0:
+				continue          # (busy by the army: its autocast)
+		if u.position.distance_to(behind) > 110.0 and not (u.order == "move" and u.order_point.distance_to(behind) < 90.0):
+			u.cmd_move(behind)
+			if game.mlog and not game._first_of.has("%d:ai_gw_out" % team):
+				game._first_of["%d:ai_gw_out" % team] = true
+				game.mlog.add("%s sends its Great Winder with the army" % game.mlog.who(team))
 
 
 ## An enemy (not a worker) within r of p.
