@@ -14,8 +14,8 @@ Cut-out parts per row (sheet px, hand-set in ROWS):
   to SQUASH_34). Far wheels turn behind the body (their rim and teeth come off it; OCC
   keeps what stands in front of them); behind a near wheel's tooth gaps the body's paint is reflected inward, shaded.
 - S/N ARM POSES: away from the loaded pose the arm is ChatGPT's own painted arm (art/redraws/catapult_arm_poses_
-  chatgpt.png: straight up, and tipped toward the viewer for the S follow-through; N, and NE's cup, from N_BACK_T
-  down: the cup seen from below, its back to us), its beam tiled.
+  chatgpt.png: straight up, and tipped toward the viewer for the S follow-through; N and NE's cup in EVERY frame:
+  the cup seen from below, its back to us, the loaded soldier peeking over its far rim), its beam tiled.
 - the BODY: the rest, with the holes the arm and wheels leave filled from the neighbouring paint (S and N: the drum
   behind the upright beam is filled row by row between its two sides).
 - the PAYLOAD: ChatGPT's curled-up Clock Soldier from the concept (art/redraws/concepts/catapult_v1.png, the flying
@@ -57,7 +57,7 @@ DEPTH = 0.36          # S/N: screen px down (S) or up (N) per px towards/away fr
 DEPTH_AWAY = 0.53     # N follow-through only (see arm_vec)
 MARGIN = (70, 175, 70, 14)   # render window around the unit's box: left, top, right, bottom (sheet px)
 SQUASH_34 = 0.72     # SE: the near wheels' faces are turned ~45 deg from us: their ellipse is this wide (of its height)
-N_BACK_T = 100.0     # N / NE (seen from behind): at this arm angle and below (up, past vertical) the cup shows its back
+N_BACK_T = 100.0     # N / NE (seen from behind): the cup always shows its back; above this angle it stays tipped as here
 
 # per row (sheet px): the unit's box; H the hinge, J the cup joint (where the beam meets the cup); bw the beam's
 # width; clean: the stretch (from J) where the beam shows whole; past it (behind the drum's rim) the beam is that
@@ -870,7 +870,7 @@ def pose_for(r, T):
     if ROWS[r]['arm'] not in ('front', 'n') or T >= POSE_UP_MAX:
         return None
     if ROWS[r]['arm'] == 'n':
-        return 'up' if T > N_BACK_T else 'under'      # (seen from behind: past vertical the cup shows its back)
+        return 'under'      # (seen from behind: the cup always shows its back, its mouth toward the enemy)
     if T >= POSE_UP_MIN:
         return 'up'
     return 'tip'
@@ -878,8 +878,8 @@ def pose_for(r, T):
 
 def pose_arm(P, pose, H, Jn):
     """the painted arm: the beam tiled (whole px, BEAM_TEX one rivet period at a time) from under the joint ball down
-    into the hinge (whose knuckle the body draws over it), the cup and ball at the joint. Returns (arm, cup's front
-    wall, the cup's middle, the rim's radii)"""
+    into the hinge (whose knuckle the body draws over it), the cup and ball at the joint. Returns (beam, cup and ball,
+    cup's front wall, the cup's middle, the rim's radii)"""
     Wd, Hh = P['size']
     pc = POSE[pose]
     arm = np.zeros((Hh, Wd, 4), np.uint8)
@@ -897,10 +897,9 @@ def pose_arm(P, pose, H, Jn):
     cup = np.zeros((Hh, Wd, 4), np.uint8)
     ox, oy = int(round(Jn[0] - pc['anchor'][0])), int(round(Jn[1] - pc['anchor'][1]))
     _paste(cup, pc['img'], ox, oy)
-    over(arm, cup)
     front = np.zeros((Hh, Wd, 4), np.uint8)
     _paste(front, pc['front'], ox, oy)
-    return arm, front, Jn + pc['rim_off'], pc['rim']
+    return arm, cup, front, Jn + pc['rim_off'], pc['rim']
 
 
 # ------------------------------------------------------------------ the arm in 3D
@@ -932,6 +931,7 @@ for _r in range(5):
     _p['vpaint'] = arm_vec(_r, _p['F'], ROWS[_r]['tpaint'])
     _p['M0'] = stretch_to(_p['vpaint'], _p['paint'])
     PARTS.append(_p)
+PARTS[4]['under'] = POSE['under']             # N: its loaded back cup the same size as the painted poses'
 PAY_GAME = 11.3 * 42.0 / 59.0                # the curled soldier, game px across: the old one (11.3 px with a 59 px
 PAY_W = PAY_GAME / GS                         # soldier) shrunk with the new Clock Soldier (42 px tall)
 PAYLOAD = payload_at(PAY_W)
@@ -967,9 +967,27 @@ def arm_now(r, T):
 
 
 def back_cup(r, T):
-    """NE: the arm is up or past vertical, the cup's back is to us"""
-    R = ROWS[r]
-    return R['arm'] == 'behind' and R.get('back_t') is not None and T <= R['back_t']
+    """NE and N (seen from behind): the cup's back is to us in EVERY pose (the owner: the cup must always read as
+    facing the enemy; its mouth, the hole, is never shown). Was: only from back_t down"""
+    return ROWS[r].get('back_t') is not None
+
+
+def back_axis(r, T):
+    """the direction the back cup's axis lies along on screen: the beam's, but never leaning back further than at
+    back_t (while the arm is cocked back toward us the cup stays tipped toward the enemy on its joint: a choice for
+    the eye, so the loaded cup shows its back too)"""
+    return arm_now(r, min(T, ROWS[r]['back_t']))
+
+
+PEEK = 0.50            # N/NE loaded: this much of the curled soldier's height shows over the back cup's far rim
+
+
+def cup_top(cup):
+    """the back cup's top on screen: (x, y) of the middle of its topmost row"""
+    ys, xs = np.nonzero(cup[..., 3])
+    y0 = ys.min()
+    row = xs[ys <= y0 + 2]
+    return float(row.min() + row.max()) / 2.0, float(y0)
 
 
 def under_on(P, Jn, v):
@@ -1001,10 +1019,15 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
     Jn = H + v
     pose = pose_for(r, T)
     arm = np.zeros((Hh, Wd, 4), np.uint8)
+    back = None            # N / NE: the cup seen from behind, drawn over the payload (which peeks over its far rim)
     if pose:
         # S / N: ChatGPT's own painted arm for this pose (no stretched beam), the cup at the joint
-        parm, cupf, mid, (rrx, rry) = pose_arm(P, pose, H, Jn)
+        parm, pcup, cupf, mid, (rrx, rry) = pose_arm(P, pose, H, Jn)
         over(arm, parm)
+        if pose == 'under':
+            back = pcup
+        else:
+            over(arm, pcup)
         rcx, rcy = mid
         to_screen = lambda img: img
     else:
@@ -1017,23 +1040,30 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
         if back_cup(r, T):
             # NE (seen from behind) once the arm is up or past vertical: the cup seen from below (its back), its axis
             # along the beam, its joint ball on the beam's end
-            cup, mid = under_on(P, Jn, v)
+            cup, mid = under_on(P, Jn, back_axis(r, T))
             cupf = np.zeros_like(cup)
             (rcx, rcy), rrx, rry = mid, 0.0, 0.0
+            back = cup
         else:
             cup = place(P['cup'], P['J'], Jn, Mc)
             cupf = place(P['cupfront'], P['J'], Jn, Mc)
             rcx, rcy, rrx, rry = P['rim']
             mid = Jn + Mc @ (np.array([rcx, rcy]) - P['J'])
         over(arm, beam)
-        over(arm, cup)
+        if back is None:
+            over(arm, cup)
         to_screen = lambda img: place(img, P['J'], Jn, Mc)
     fly = None
     pay = None
     cupf_l = None
     if payload is not None:
         ph, pw = PAYLOAD.shape[:2]
-        if payload[0] == 'cup':
+        if payload[0] == 'cup' and back is not None:
+            # N / NE: behind the cup's back, its top peeking over the far rim (the cup is visibly loaded)
+            tx, ty = cup_top(back)
+            pay = np.zeros((Hh, Wd, 4), np.uint8)
+            _paste(pay, PAYLOAD, int(round(tx - pw / 2.0)), int(round(ty - ph * PEEK - payload[1])))
+        elif payload[0] == 'cup':
             # sitting in the bowl (its lower part behind the cup's front wall); turned with the cup
             pim = np.zeros((Hh, Wd, 4), np.uint8)
             _paste(pim, PAYLOAD, int(round(rcx - pw / 2.0)), int(round(rcy + rry * 0.35 - ph * 0.70 - payload[1])))
@@ -1060,6 +1090,11 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
             add(pay, True, True)
         if cupf_l is not None:
             add(cupf_l, True)
+        if back is not None:
+            if fly is not None:
+                # N / NE: the soldier leaves over the cup's far rim, behind its back (the mouth side, away from us)
+                add(fly, False, True)
+            add(back, True)
     for wh in P['wheels']:
         if wh['kind'] == 'far' or (wh['kind'] == 'edge' and wh.get('far')):
             add(cog_layer(P, wh, wheel_frac), False)
@@ -1073,7 +1108,7 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
     if arm_front:
         add_arm()
         add(P['hub'], True)
-    if fly is not None:
+    if fly is not None and back is None:
         add(fly, False, True)
     return groups, mid
 
@@ -1210,7 +1245,7 @@ def frame_mid(r, T):
     if R['arm'] == 'behind':
         turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(P['paint'][1], P['paint'][0]))
     if back_cup(r, T):
-        return None, under_on(P, Jn, v)[1]
+        return None, under_on(P, Jn, back_axis(r, T))[1]
     rcx, rcy, rrx, rry = P['rim']
     return None, Jn + rotm(turn) @ (np.array([rcx, rcy]) - P['J'])
 
@@ -1320,11 +1355,17 @@ def save(name, rows, cell, dur):
     g[0].save('art/redraws/catapult_%s.gif' % name, save_all=True, append_images=g[1:], duration=dur, loop=0)
 
 
+KEEP_CELL = (158, 141, 79, 139)
+
+
 def main():
     frames = {(name, r): anim_frames(name, r) for name in ('throw', 'move') for r in range(5)}
     L, Rr, U, D = extents(frames)
     half = int(math.ceil(max(L, Rr) * GS)) + 1
     up, down = int(math.ceil(U * GS)) + 1, int(math.ceil(D * GS)) + 1
+    # never smaller than the last pass's cell (158x141, anchor 79, 139): the box shrink samples from the anchor, so a new
+    # cell size would resample every row (S, SE and E stay pixel for pixel as they were)
+    half, up, down = max(half, KEEP_CELL[2]), max(up, KEEP_CELL[3]), max(down, KEEP_CELL[1] - KEEP_CELL[3])
     cell = (2 * half, up + down, half, up)
     print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f)' % (cell + (GS,)))
     cups = {}
