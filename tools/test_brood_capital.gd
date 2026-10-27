@@ -2,10 +2,11 @@ extends SceneTree
 ## The Brood CAPITAL (design_principles 2 and 3: economy forces expansion, drop-offs make placement matter):
 ##   godot --headless --fixed-fps 30 --script res://tools/test_brood_capital.gd
 ##  1. grubs unload only at the capital (the first Burrow), never at a nearer second one
-##  2. the capital dies: the next oldest Burrow takes over (and its ground)
+##  2. the capital dies: the next oldest Burrow takes over (no ground passes on: the pits own it, 0.14.37)
 ##  3. cancelling a hatching egg refunds the cost but NOT the egg
 ##  4. eggs are laid every 9 s (was 6)
-##  5. pit crews grow with distance from the capital; pits need swamp joined to it and reach grows with Clutch Mounds
+##  5. pit crews grow with distance from the capital (base 6); pits need swamp joined to it and reach grows with Clutch Mounds
+## (each pit's own ground and its circle: tools/test_brood_pit_ground.gd)
 var main: Node
 var t := 0.0
 var g
@@ -103,11 +104,11 @@ func _run() -> void:
 	g.ais.clear()
 	await wait(1.0)
 	check(cap.life != null and cap.life.queen != null and cap.life.queen.visible and not h2.life.queen.visible, "   the Queen sits at the capital only (still sprite)")
-	var soil_cap0: float = cap.soil
-	var soil_h2_0: float = h2.soil
+	var soil_pit0: float = pit.soil
 	p["gold"] = 0
 	var got: bool = await wait_for(func() -> bool: return int(p["gold"]) > 0, 90.0)
-	check(got and cap.soil < soil_cap0 and h2.soil == soil_h2_0, "   food arrives, drawn from the capital's ground only (%d gold; capital %d -> %d, second %d -> %d)" % [int(p["gold"]), int(soil_cap0), int(cap.soil), int(soil_h2_0), int(h2.soil)])
+	check(got and pit.soil < soil_pit0 and cap.soil == 0.0 and h2.soil == 0.0 and cap.reserve() == 0.0,
+		"   food arrives, drawn from the pit's own ground; the Burrows have none (%d gold; pit %d -> %d, capital %d, second %d)" % [int(p["gold"]), int(soil_pit0), int(pit.soil), int(cap.soil), int(h2.soil)])
 	# 3/4. eggs
 	check(Defs.EGG_TIME == 9.0, "4. EGG_TIME is 9 s (was 6)")
 	cap.eggs = 0
@@ -131,7 +132,7 @@ func _run() -> void:
 	# 5. crew by distance and reach by swamp
 	var near_pit := pit
 	var dn: float = g.capital_dist(0, near_pit.center())
-	check(near_pit.crew_max() == 5 + maxi(0, int((dn - Defs.FOOD_NEAR) / Defs.PIT_CREW_STEP)), "5. a pit %.1f tiles out takes %d (base 5)" % [dn, near_pit.crew_max()])
+	check(int(Defs.BUILDINGS["feeding_pit"]["crew"]) == 6 and near_pit.crew_max() == 6 + maxi(0, int((dn - Defs.FOOD_NEAR) / Defs.PIT_CREW_STEP)), "5. a pit %.1f tiles out takes %d (base 6)" % [dn, near_pit.crew_max()])
 	var reach0: float = g.swamp_reach[0]
 	check(reach0 > 9.0 and reach0 <= Defs.BROOD_RESOURCE_MAX_D, "   the swamp reaches %.1f tiles from the capital" % reach0)
 	var far_cell := _cell_at(cap, reach0 + 6.0)
@@ -152,8 +153,10 @@ func _run() -> void:
 			if not g.in_map(cell) or not g._footprint_open(cell, Vector2i(2, 2)) or not g.margin_free(cell, Vector2i(2, 2)):
 				continue
 			var dd := (Vector2(cell) + Vector2(1, 1)).distance_to(c0)
-			if absf(dd - (reach0 - 3.0)) < 1.5 and g.placement_problem(0, "clutch_mound", cell, true) == "":
+			if dd > reach0 - 7.0 and dd < reach0 - 1.0 and g.placement_problem(0, "clutch_mound", cell, true) == "":
 				cands.append(cell)
+	# (the outermost first: a mound near the swamp's edge pushes the reach out the most)
+	cands.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return (Vector2(a) + Vector2.ONE).distance_to(c0) > (Vector2(b) + Vector2.ONE).distance_to(c0))
 	for edge in cands:
 		vent = g._add_building("clutch_mound", 0, edge, true)
 		g._update_swamp()
@@ -172,19 +175,19 @@ func _run() -> void:
 	if fc2.x < 0:
 		fc2 = _cell_at(cap, reach0)
 	var far_pit: Building = g._add_building("feeding_pit", 0, fc2, true)
-	check(far_pit.crew_max() > 5, "   and takes more hands than a near one (%d at %.1f tiles)" % [far_pit.crew_max(), g.capital_dist(0, far_pit.center())])
-	for i in 3:
-		g._add_building("feeding_pit", 0, _cell_at(cap, 6.0 + i * 3.0), true)
-	var many: String = g.placement_problem(0, "feeding_pit", _cell_at(cap, 11.0), true)
-	check(g.econ_count(0, "feeding_pit") > 3 and not many.contains("allows"), "   no count cap on pits (%d standing; %s)" % [g.econ_count(0, "feeding_pit"), many])
+	check(far_pit.crew_max() > 6, "   and takes more hands than a near one (%d at %.1f tiles)" % [far_pit.crew_max(), g.capital_dist(0, far_pit.center())])
+	# no count cap: any spot whose ground circle is free of our pits' takes another
+	var free_pit := _placeable(cap, 0.0)
+	var many: String = g.placement_problem(0, "feeding_pit", free_pit, true) if free_pit.x >= 0 else "no spot"
+	check(g.econ_count(0, "feeding_pit") >= 2 and many == "", "   no count cap on pits (%d standing; another fits at %s)" % [g.econ_count(0, "feeding_pit"), str(free_pit)])
 	# 2. the capital falls
-	var soil_before: float = cap.soil
+	var pit_soil: float = pit.soil
 	cap.hp = 0.0
 	cap.die()
 	await wait(0.3)
 	var nc: Building = g.capital(0)
 	check(nc == h2 and nc != cap, "2. the capital died: the next oldest Burrow is the capital")
-	check(nc != null and absf(nc.soil - soil_before) < 80.0, "   and it inherits the ground (%d vs %d)" % [int(nc.soil) if nc else -1, int(soil_before)])
+	check(nc != null and nc.soil == 0.0 and absf(pit.soil - pit_soil) < 40.0, "   no ground passes on (the new capital %d); the pits keep their own (%d vs %d)" % [int(nc.soil) if nc else -1, int(pit.soil), int(pit_soil)])
 	check(g.dropoff_hall(pit.center(), 0) == h2, "   grubs now unload there")
 	await wait(1.0)
 	check(h2.life.queen.visible, "   and the Queen is at the new capital")

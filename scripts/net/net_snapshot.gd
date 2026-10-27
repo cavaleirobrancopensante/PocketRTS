@@ -99,6 +99,10 @@ static func build(s: NetSession) -> Dictionary:
 	if fp != s.line_fp or s.snap_n % 20 == 0:
 		s.line_fp = fp
 		m["ln"] = g.line_net.save()            # the Clockwork Line (pipe segments), sent when it changes
+	var pfp := hash(g.pit_spots)
+	if pfp != s.pit_fp or s.snap_n % 20 == 0:
+		s.pit_fp = pfp
+		m["ps"] = g.pit_spots.map(func(sp: Array) -> Array: return [sp[0], snappedf(float(sp[1]), 0.1), int(sp[2])])      # old pit ground (Brood)
 	if Defs.cw_roster and (not g.cw_consists.is_empty() or s.snap_n % 10 == 0):
 		m["cpl"] = CwConsist.net_rows(s, g)     # coupled rail trains (lists of ids; the host moves the cars)
 	if not g.line_net.rails.trains.is_empty() or s.snap_n % 10 == 0:
@@ -170,6 +174,8 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 			s.count_diff_snaps += 1
 	if m.has("ln"):
 		g.line_net.load_rows(m["ln"])
+	if m.has("ps"):
+		g.pit_spots = (m["ps"] as Array).map(func(sp: Array) -> Array: return [sp[0] as Vector2, float(sp[1]), int(sp[2])])
 	if m.has("cpl") and Defs.cw_roster:
 		CwConsist.net_apply(s, g, m["cpl"])
 	if m.has("tr"):

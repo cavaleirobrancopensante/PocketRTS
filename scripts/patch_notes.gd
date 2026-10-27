@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.42", "items": [
+		"BROOD GROUND, A CIRCLE PER PIT: every Feeding Pit now has its own ground, 3,000 biomass in a circle 5 tiles round it; its grubs draw on it load by load, and a spent pit yields nothing. The Burrows (the capital too) have no ground any more: the capital is still the only drop-off and the Queen's seat. Your pits' circles may not overlap (their centres stay 10 tiles apart: about 4 or 5 pits fit on a main plateau). While you place a pit you see the circle of every pit of yours, the ghost's own circle (green where it fits, red where it would overlap, with the pit it clashes with in red) and what ground it would get; a refused spot says why (\"Too close to another Feeding Pit: their grounds would overlap.\"). A selected pit shows its circle and \"Ground: %\" on the map and on its card, and each pit warns for itself when it runs low. The ground belongs to the land: a pit that dies leaves its circle as dim old ground with what was left, and a new pit over old ground takes over the smallest amount left there, so rebuilding beside a spent pit can't refresh it. One more grub per pit: the base crew is 6 (was 5), still +1 for every 4 tiles beyond 6 from the capital, up to 12. The computer keeps to the circles, prefers fresh ground and replaces spent pits farther out on its swamp.",
+	]},
 	{"v": "0.14.41", "items": [
 		"ESSENCE: the +1 essence a harvested body gives for each kill it made now stops at 50, the same 50 kills veterancy counts (it had no cap).",
 	]},

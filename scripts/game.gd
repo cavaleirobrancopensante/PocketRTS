@@ -142,6 +142,7 @@ var winner := -1
 var clock := 0.0
 var stats: Array = []
 var soil_scars: Array = []               # [centre, soil left, hall kind, lode left] where a Town Hall, Hive or Clocktower fell
+var pit_spots: Array = []                # OLD GROUND: [centre (px), biomass left, team] where a Feeding Pit fell (Defs.PIT_CLAIM circles)
 var _sample_t := 0.0
 var mlog: MatchLog              # the playtest log (copied from the end screen)
 var chat: Chat                  # the in-game chat (YOU and the computers; the log lines go to mlog)
@@ -1908,6 +1909,11 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	var cells: Array[Vector2i] = []
 	var pair := kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0)
 	var pair_at: Array[Vector2] = []
+	var pit_at: Array[Vector2] = []
+	if kind == "feeding_pit":
+		for b in buildings:
+			if b.team == t and not b.dead and b.kind == "feeding_pit":
+				pit_at.append(b.center())
 	if pair:
 		for b in buildings:
 			if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
@@ -1927,6 +1933,22 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 					continue
 				tight = 1
 			var score := dd + (4.0 if tight == 1 else 0.0)
+			var pit_pen := 0.0
+			if kind == "feeding_pit":
+				# (the ground circles of our own pits: no overlap, checked here first as it rules out most cells)
+				var pm := (Vector2(cell) + Vector2(size) * 0.5) * T
+				var clash := false
+				for pc in pit_at:
+					if pit_circles_overlap(pc, pm):
+						clash = true
+						break
+				if clash:
+					continue
+				# a pit wants fresh ground: never over spent old ground, and tired old ground scores worse
+				var gl := pit_ground_at(pm) / float(Defs.PIT_GROUND)
+				if gl <= 0.1:
+					continue
+				pit_pen = (1.0 - gl) * 30.0
 			if prefer == "far":
 				score = -dd
 			elif prefer == "far_safe":
@@ -1943,6 +1965,7 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				# tucked behind the hall, away from the middle of the map (like minerals
 				# behind a command centre), and close to it
 				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
+			score += pit_pen
 			if pair:
 				# Boilers and crushers close together (once there's a Boiler; the starting crusher
 				# goes behind the hall): a battery fades on a long road, and a Boiler's Winders
@@ -2275,10 +2298,10 @@ func free_site(t: int, p: Vector2) -> Building:
 
 
 ## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one);
-## for a Feeding Pit, the Hive whose ground it draws on.
+## a Feeding Pit draws on its own ground (Defs.PIT_GROUND), so it is its own "hall".
 func soil_hall(farm: Building) -> Building:
-	if faction_of(farm.team) == "brood":
-		return capital(farm.team)
+	if farm.kind == "feeding_pit":
+		return farm
 	return nearest_hall(farm.center(), farm.team)
 
 
@@ -2312,6 +2335,16 @@ func _soil_check(h: Building) -> void:
 		return
 	h.soil_warned = level
 	var hive := h.kind == "hive"
+	if h.kind == "feeding_pit":
+		# a Feeding Pit's own ground (each pit warns for itself)
+		if mlog:
+			mlog.add("%s: the ground of a Feeding Pit %s" % [mlog.who(h.team), "is spent (barren: it yields nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		if h.team == human and not demo and hud:
+			hud.toast("A Feeding Pit's ground is spent: it yields nothing. Grow a new pit on fresh ground, outside the old circles." if level == 2
+				else "A Feeding Pit's ground is running low (%d%% left): plan a new pit on fresh ground." % int(round(left * 100)), false)
+			Sfx.play("done", h.center())
+		h._update_sprite()
+		return
 	if h.kind == "clocktower":
 		# Clockwork coal: the Boilers around this Clocktower
 		if mlog:
@@ -2354,6 +2387,66 @@ func _take_scar(h: Building) -> void:
 			return
 
 
+# ------------------------------------------------------------------ pit ground (Defs.PIT_GROUND, PIT_CLAIM)
+
+## Where a Feeding Pit placed at cell c would have its centre (px).
+func pit_mid(c: Vector2i) -> Vector2:
+	return (Vector2(c) + Vector2(Defs.BUILDINGS["feeding_pit"]["size"]) * 0.5) * T
+
+
+## Two pit circles overlap when their centres are closer than two radii (exactly 2 x PIT_CLAIM apart is fine).
+static func pit_circles_overlap(a: Vector2, b: Vector2) -> bool:
+	return a.distance_to(b) < 2.0 * Defs.PIT_CLAIM * Defs.TILE - 0.5
+
+
+## Team t's living Feeding Pits (planned, growing or built) whose circle overlaps a circle at p.
+func pit_overlaps(t: int, p: Vector2, skip: Building = null) -> Array:
+	var out: Array = []
+	for b in buildings:
+		if b.kind == "feeding_pit" and b.team == t and not b.dead and b != skip and pit_circles_overlap(b.center(), p):
+			out.append(b)
+	return out
+
+
+## The old ground spots (pit_spots indexes) a pit circle at p overlaps.
+func pit_spots_at(p: Vector2) -> Array:
+	var out: Array = []
+	for i in pit_spots.size():
+		if pit_circles_overlap(pit_spots[i][0], p):
+			out.append(i)
+	return out
+
+
+## The ground a new pit with its centre at p would have: the SMALLEST amount left among the old
+## spots its circle overlaps (rebuilding by a spent pit can't refresh the ground), else fresh.
+func pit_ground_at(p: Vector2) -> float:
+	var g := float(Defs.PIT_GROUND)
+	for i in pit_spots_at(p):
+		g = minf(g, float(pit_spots[i][1]))
+	return maxf(g, 0.0)
+
+
+## A new Feeding Pit takes its ground (when its site starts: _solidify): the old spots under its
+## circle merge into its claim, and it keeps the smallest amount left among them.
+func claim_pit_ground(b: Building) -> void:
+	if puppet:
+		return          # (an online guest: the host's snapshot brings each pit's ground and the old spots)
+	var p := b.center()
+	b.soil = pit_ground_at(p)
+	var idxs := pit_spots_at(p)
+	idxs.reverse()
+	for i in idxs:
+		pit_spots.remove_at(i)
+	b.soil_warned = 2 if b.soil <= 0.0 else (1 if b.soil / b.reserve() < Defs.SOIL_LOW else 0)
+
+
+## Why a Feeding Pit can't go at cell c for team t because of the circles ("" if it can).
+func pit_claim_problem(t: int, c: Vector2i) -> String:
+	if not pit_overlaps(t, pit_mid(c)).is_empty():
+		return "Too close to another Feeding Pit: their grounds would overlap."
+	return ""
+
+
 func halls_of(t: int, built_only := true) -> Array:
 	var k := faction_hall(t)
 	return buildings.filter(func(b: Building) -> bool: return b.team == t and b.kind == k and not b.dead and (b.built or not built_only))
@@ -2372,28 +2465,28 @@ func capital(t: int) -> Building:
 	var had: bool = c != null
 	if had and not is_instance_valid(c):
 		c = null
-		had = _capital_soil.has(t)
+		had = _capital_had.has(t)
 	if c != null and not c.dead and c.built:
-		_capital_soil[t] = c.soil
+		_capital_had[t] = true
 		return c
 	_capital[t] = null
 	for b in buildings:        # (creation order: the oldest first)
 		if b.team == t and b.kind == "hive" and b.built and not b.dead:
 			_capital[t] = b
 			b.queue_redraw()
-			if had and _capital_soil.has(t):
-				b.soil = float(_capital_soil.get(t, b.soil))      # (the ground is the capital's: it passes on as it was)
-				b.soil_warned = 2 if b.soil <= 0.0 else (1 if b.soil / b.reserve() < Defs.SOIL_LOW else 0)
+			if had and _capital_had.has(t):
+				# (the capital has no ground since the pits own it: nothing passes on)
 				if mlog:
 					mlog.add("%s: the capital fell; the next Burrow is the new capital" % mlog.who(t))
 				if hud and t == human:
 					notify("Your capital has fallen: the next Burrow is the new capital.")
+			_capital_had[t] = true
 			return b
 	return null
 
 
 var _capital := {}
-var _capital_soil := {}
+var _capital_had := {}          # team -> true once it has had a capital (to tell when one falls)
 
 
 ## Where workers unload: the Brood's capital; for the others the nearest hall.
@@ -2832,6 +2925,8 @@ func _solidify(b: Building, keep: Array = []) -> void:
 		b.ghost = false
 		b.block_since = -1.0
 		b.asked.clear()
+	if k == "feeding_pit":
+		claim_pit_ground(b)      # (its own ground, or what old ground under its circle has left)
 	if Defs.BUILDINGS[k].get("gate", false):
 		_mark(c, b.size, 3)
 		gate_team[idx(c)] = b.team
@@ -3368,6 +3463,9 @@ func on_building_died(b: Building) -> void:
 	# the land stays tired (its soil / ground / coal and its saltpetre / ore drawn out) for the next hall here
 	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
 		soil_scars.append([b.center(), b.soil, b.kind, b.lode])
+	# a Feeding Pit's ground stays on the land as an OLD GROUND spot (its circle, what was left)
+	if b.kind == "feeding_pit" and not puppet and (b.built or b.soil < b.reserve() - 0.5):
+		pit_spots.append([b.center(), maxf(b.soil, 0.0), b.team])
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
 	selection.erase(b)
@@ -4442,6 +4540,10 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var mp := mound_problem(t, c)
 		if mp != "":
 			return mp
+	if k == "feeding_pit":
+		var pp := pit_claim_problem(t, c)      # (each pit claims a circle of ground: they may not overlap)
+		if pp != "":
+			return pp
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
@@ -4875,6 +4977,7 @@ func _swamp_minimap() -> void:
 ## The powered field of Clockwork buildings: the selected one (anyone's), and while you
 ## place a building, the one you're placing plus your existing fields.
 func _draw_fields() -> void:
+	_draw_pit_circles()
 	var ring: Texture2D = tex("res://assets/world/field_ring.png")
 	var draw_ring := func(c: Vector2, r: float, a: float) -> void:
 		var half := Vector2(r, r * FIELD_Y)
@@ -4907,6 +5010,102 @@ func _draw_fields() -> void:
 			var size: Vector2i = Defs.BUILDINGS[k]["size"]
 			var c := Vector2(controls.ghost_cell) * T + Vector2(size) * T * 0.5
 			draw_ring.call(c, float(Defs.BUILDINGS[k]["field"]) * T * field_mult(human), 0.8)
+
+
+## PIT GROUND circles (Defs.PIT_CLAIM), flat on the ground under the buildings: while you place a
+## Feeding Pit, the circle of every pit of yours and of every old ground spot you know of, plus the
+## ghost's own circle (green when it's free, red where it overlaps one of your pits, whose circle turns
+## red too); a selected pit shows its own. Fresh ground is a soft green, tiring toward a grey-brown;
+## old ground is dashed and dimmer. Labels: _draw_pit_labels (on the overlay).
+const PIT_FRESH := Color(0.62, 0.86, 0.42)
+const PIT_SPENT := Color(0.52, 0.44, 0.36)
+
+static func pit_colour(left: float) -> Color:
+	return PIT_SPENT.lerp(PIT_FRESH, clampf(left, 0.0, 1.0))
+
+
+func _pit_placing() -> bool:
+	return controls != null and controls.mode == "place" and controls.place_kind == "feeding_pit" and controls.ghost_cell.x >= 0
+
+
+## The old ground spots this player may be shown: its own, and others' where its side has looked.
+func _known_pit_spots() -> Array:
+	var known := _known_ground()
+	var out: Array = []
+	for sp in pit_spots:
+		var c := cell_of(sp[0])
+		if int(sp[2]) == human or known.size() != W * H or (in_map(c) and known[idx(c)] == 1):
+			out.append(sp)
+	return out
+
+
+func _draw_pit_circles() -> void:
+	var r := Defs.PIT_CLAIM * T
+	var circle := func(c: Vector2, col: Color, fill_a: float, w: float, dashed: bool) -> void:
+		field_layer.draw_circle(c, r, Color(col.r, col.g, col.b, fill_a))
+		if dashed:
+			var n := 28
+			for i in n:
+				var a0 := TAU * i / n
+				field_layer.draw_arc(c, r, a0, a0 + TAU / n * 0.55, 4, Color(col, 0.55), w, true)
+		else:
+			field_layer.draw_arc(c, r, 0.0, TAU, 64, Color(col, 0.8), w, true)
+	if _pit_placing():
+		var gc := pit_mid(controls.ghost_cell)
+		var hits := pit_overlaps(human, gc)
+		for sp in _known_pit_spots():
+			circle.call(sp[0], pit_colour(float(sp[1]) / float(Defs.PIT_GROUND)), 0.05, 1.5, true)
+		for b in buildings:
+			if b.kind == "feeding_pit" and b.team == human and not b.dead:
+				var col := Color(1.0, 0.35, 0.3) if hits.has(b) else pit_colour(b.soil_left() if b.built else 1.0)
+				circle.call(b.center(), col, 0.10 if hits.has(b) else 0.07, 2.0, false)
+		var ok := hits.is_empty()
+		circle.call(gc, Color(0.45, 1.0, 0.45) if ok else Color(1.0, 0.35, 0.3), 0.14, 2.5, false)
+		return
+	for e in selection:
+		if e is Building and is_instance_valid(e) and not e.dead and e.kind == "feeding_pit" and (e.team == human or demo):
+			circle.call(e.center(), pit_colour(e.soil_left() if e.built else 1.0), 0.07, 2.0, false)
+
+
+## The labels of the pit circles (on the overlay, over the buildings): the ground left in each
+## (% of PIT_GROUND), and under the ghost what a pit there would have.
+func _draw_pit_labels() -> void:
+	var font := ThemeDB.fallback_font
+	var r := Defs.PIT_CLAIM * T
+	# (on the circle's top edge, inside it, in the small dark box the economy labels use)
+	var label := func(c: Vector2, txt: String, col: Color, sz: int) -> void:
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+		var p := c + Vector2(-w * 0.5, -r + sz + 8.0)
+		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.55))
+		overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+	if _pit_placing():
+		for sp in _known_pit_spots():
+			var left := float(sp[1]) / float(Defs.PIT_GROUND)
+			label.call(sp[0], Loc.t("Old ground: %d%%") % int(round(left * 100)) if float(sp[1]) > 0.0 else Loc.t("Old ground: spent"), Color(pit_colour(left), 0.85), 13)
+		for b in buildings:
+			if b.kind == "feeding_pit" and b.team == human and not b.dead and b.built:
+				label.call(b.center(), "%d%%" % int(round(b.soil_left() * 100)), pit_colour(b.soil_left()), 13)
+		var gc := pit_mid(controls.ghost_cell)
+		var txt := ""
+		var col := Color(0.55, 1.0, 0.55)
+		if not pit_overlaps(human, gc).is_empty():
+			txt = Loc.t("Too close: the grounds would overlap")
+			col = Color(1.0, 0.5, 0.45)
+		else:
+			var gv := pit_ground_at(gc)
+			if gv >= float(Defs.PIT_GROUND):
+				txt = Loc.t("Fresh ground: %d biomass") % Defs.PIT_GROUND
+			elif gv <= 0.0:
+				txt = Loc.t("Old ground, spent: this pit would yield nothing")
+				col = Color(0.85, 0.65, 0.45)
+			else:
+				txt = Loc.t("Old ground: %d biomass left") % int(gv)
+				col = pit_colour(gv / float(Defs.PIT_GROUND))
+		label.call(gc, txt, col, 15)
+		return
+	for e in selection:
+		if e is Building and is_instance_valid(e) and not e.dead and e.kind == "feeding_pit" and e.built and (e.team == human or demo):
+			label.call(e.center(), Loc.t("Ground: %d%%") % int(round(e.soil_left() * 100)), pit_colour(e.soil_left()), 14)
 
 
 ## A slow, cheap shimmer on the swamp: big soft waves of brightness and a little teal drift over
@@ -8662,6 +8861,7 @@ func _draw_ghosts() -> void:
 
 func _draw_overlay_all() -> void:
 	_draw_mine_labels()
+	_draw_pit_labels()
 	_draw_queues()
 	_draw_hover()
 	if controls and controls.mode == "cast" and controls.cast_spell == "jump":

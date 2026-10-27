@@ -1433,14 +1433,16 @@ func _econ_build() -> void:
 
 
 ## Brood: another Feeding Pit is wanted when the ones we have are nearly full (fewer than 3 free
-## places) and the grub limit isn't reached; pits have no count cap, only the swamp's reach.
+## places) and the grub limit isn't reached; pits have no count cap, only the swamp's reach and their
+## ground circles (Defs.PIT_CLAIM). A pit whose own ground is spent counts for nothing: it is replaced.
 func _pit_wanted() -> bool:
 	var room := 0
-	for p in _mine("feeding_pit"):
+	var live: Array = _mine("feeding_pit").filter(func(p: Building) -> bool: return not p.built or not p.barren())
+	for p in live:
 		room += p.crew_max() - p.crew.size() if p.built else p.crew_max()
 	var limit: int = 46 if difficulty >= 3 else _lv([16, 30, 40])
 	var total := 0
-	for p in _mine("feeding_pit"):
+	for p in live:
 		total += p.crew_max()
 	return room < 3 and total < limit + 6
 
@@ -1471,7 +1473,12 @@ func _econ_spot(kind: String) -> Vector2i:
 		var cap := game.capital(team)
 		if cap == null or not cap.built:
 			return Vector2i(-1, -1)
-		return game.find_spot(team, kind, cap, 7, mini(int(Defs.FOOD_PEAK), int(game.swamp_reach[team])), "far_safe")
+		# (find_spot keeps the pits' ground circles apart and prefers fresh ground; once the best stretch
+		# is taken, a pit goes as far out as the swamp reaches)
+		var sp := game.find_spot(team, kind, cap, 7, mini(int(Defs.FOOD_PEAK), int(game.swamp_reach[team])), "far_safe")
+		if sp.x < 0 and int(game.swamp_reach[team]) > int(Defs.FOOD_PEAK):
+			sp = game.find_spot(team, kind, cap, int(Defs.FOOD_PEAK) - 2, int(game.swamp_reach[team]), "near")
+		return sp
 	if kind == "farm":
 		# farms (pits) go where the soil (the Hive's ground) is freshest: tired land pays a third
 		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil_left() > b.soil_left())
