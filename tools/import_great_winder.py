@@ -1,20 +1,21 @@
 """THE GREAT WINDER (gear mode's Clockwork tier 2; the owner's unit, 2026-10-26/27; docs/great_winder.md).
 
 Its art is made by tools/great_winder_guide/anim.py (docs/great_winder_legs.md, docs/cw_anim_parts.md "Great Winder"):
-the body and its parts cut from art/redraws/great_winder_dirs.png, standing on ChatGPT's painted leg, in three strips
-(WALK 12 frames with 4 legs, WIND 12, SWEEP 8) on one cell. anim.py writes them at game size on navy for the owner to look
+the body and its parts cut from art/redraws/great_winder_dirs.png, on four cog wheels (the Spring Catapult's painted cog,
+tools/catapult_guide/cog.py; branch gw-wheels: the painted legs are gone), in three strips (WALK 12 frames, WIND 12,
+SWEEP 8) on one cell. anim.py writes them at game size on navy for the owner to look
 at; this importer builds the same frames from anim.py's own layers at SHEET size, so the Clockwork palette
 (tools/cw_palette.py: brass + player colour, no blue) is applied before the shrink, as for every other Clockwork unit.
 
 Writes (the five views s se e ne n; the west views mirror the east ones in the game):
-  assets/units/great_winder/walk_<v>.png    12 frames, 4 legs (anim.py's LEGS)
+  assets/units/great_winder/walk_<v>.png    12 frames, 4 wheels turning 90 deg a loop (anim.py's wheel_stride)
   assets/units/great_winder/wind_<v>.png    8 frames: anim.py's WIND frames 2-9, the key out and turning (they loop
                                             while it mends; the arm sliding out and back in is left out)
   assets/units/great_winder/sweep_<v>.png   8 frames: the rollers turning
   assets/units/great_winder/idle_<v>.png    2 frames, MADE HERE: the machine standing, then its body dipped 1 game px
-                                            on its planted legs (a slow breath; docs/art_style_inconsistency.md)
-  assets/units/great_winder/death_<v>.png   5 frames, MADE HERE from the standing frame: it sags onto its legs, tips a
-                                            little and goes dark (docs/art_style_inconsistency.md)
+                                            on its axles (a slow breath; docs/art_style_inconsistency.md)
+  assets/units/great_winder/death_<v>.png   5 frames, MADE HERE from its parts: the body sags and tips, the near
+                                            wheels come off and fall over, it goes dark (docs/art_style_inconsistency.md)
   assets/icons/clockwork/ab_mend.png        the MEND button: ChatGPT's painted key (great_winder_key_rollers_chatgpt.png)
   assets/icons/clockwork/ab_sweep.png       the SWEEP button: ChatGPT's painted brush roller (the same sheet)
 and prints the scripts/cw_art.gd SHEETS line. The portrait (assets/icons/great_winder.png) is round 13's: not touched.
@@ -24,7 +25,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -68,7 +69,7 @@ def compose(r, groups, cl):
 
 
 def idle_groups(r, bob):
-    """standing on all its legs, arm stowed, the body dipped `bob` game px (the legs take it, as in SWEEP)"""
+    """standing on its wheels (still), arm stowed, the body dipped `bob` game px on its axles (as in SWEEP)"""
     b = A.bob_px(bob)
     L = A.legs_layers(r, 0.0, b, stand=True)
     g = [(x, False) for x in L['far'] + L['back']] + [(A.body_layer(A.PARTS[r]['body'], b), False)] + \
@@ -76,25 +77,53 @@ def idle_groups(r, bob):
     return A.cropped(g)
 
 
-def death_frame(f, k, cay):
-    """made here: the standing machine sags onto its folding legs (squashed toward the ground), tips a little forward
-    and goes dark, frame by frame; the last is the still wreck the sweepers of its own side will come for"""
-    if k == 0:
-        return f.copy()
-    t = k / float(DEATH - 1)
-    im = Image.fromarray(f, 'RGBA')
-    W, H = im.size
-    sy = 1.0 - 0.34 * t
-    top = int(round(cay * (1 - sy)))
-    sq = im.crop((0, 0, W, cay)).resize((W, max(1, cay - top)), Image.NEAREST)
-    cv = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    cv.paste(sq, (0, top))
-    cv = cv.rotate(-4.0 * t, resample=Image.NEAREST, center=(W / 2.0, cay))
-    rgb = ImageEnhance.Brightness(cv.convert('RGB')).enhance(1.0 - 0.5 * t)
-    o = np.array(rgb.convert('RGBA'))
-    o[..., 3] = np.array(cv)[..., 3]
+def _affine(img, M, p):
+    """a full-window rgba turned / squashed by M (2x2) about the point p (window px), NEAREST"""
+    return A.place(img, p, p, np.array(M, float))
+
+
+def _dark(img, k):
+    """the frame darkened (after the palette, as the old death did: the wreck loses its colour too)"""
+    o = A.shade(img, k)
     o[o[..., 3] == 0] = 0
     return o
+
+
+def death_groups(r, k):
+    """made here (CODE, docs/art_style_inconsistency.md): the axles give: the body (with the far wheels) sags toward
+    the ground and tips a little forward, the near wheels come off and fall over outward (side and 3/4 views: flat
+    toward us; S / N: over to their side), and it all goes dark, frame by frame; the last is the still wreck its own
+    side's sweepers come for"""
+    t = k / float(DEATH - 1)
+    P = A.PARTS[r]
+    gy = A.anchor(r)[1]
+    L = A.legs_layers(r, 0.0, stand=True)
+    body = np.zeros_like(P['body'])
+    for x in L['far'] + L['back'] + [P['body']]:
+        A.over(body, x)
+    cx = A.anchor(r)[0]
+    sq = 1.0 - 0.22 * t
+    a = math.radians(4.0 * t)
+    rot = np.array([[math.cos(a), math.sin(a)], [-math.sin(a), math.cos(a)]])
+    body = _affine(body, rot @ np.diag([1.0, sq]), (cx, gy))
+    layers = [body]
+    mid = np.mean([w[1][0] for w in A.wheel_list(r)])
+    for role, c, R, layer in A.wheel_list(r):
+        if layer != 'near':
+            continue
+        w = A.wheel_layer(r, c, R, 0.0, layer, P['size'])
+        foot = (c[0], c[1] + R)
+        if r in A.EDGE_ROLL:          # S / N: edge-on, it falls over to its own side, about its foot
+            sg = 1.0 if c[0] > mid else -1.0
+            a = math.radians(-sg * 80.0 * t)
+            M = [[math.cos(a), math.sin(a)], [-math.sin(a), math.cos(a)]]
+            w = _affine(w, M, foot)
+            w = A.shift(w, int(round(sg * 0.25 * R * t)), 0)
+        else:                          # face-on: it falls flat toward us, squashed down to its foot, rolling out a little
+            w = _affine(w, [[1.0, 0.0], [0.0, 1.0 - 0.62 * t]], foot)
+            w = A.shift(w, int(round(-0.15 * R * t)), int(round(0.12 * R * t)))
+        layers.append(w)
+    return A.cropped([(x, False) for x in layers])
 
 
 def strips():
@@ -107,7 +136,7 @@ def strips():
         wind = [compose(r, wind_all[i][0], cl) for i in WIND_LOOP]
         sweep = [compose(r, g, cl) for g, _b in A.anim_frames('sweep', r)]
         idle = [compose(r, idle_groups(r, 0), cl), compose(r, idle_groups(r, 1), cl)]
-        death = [death_frame(idle[0], k, AY) for k in range(DEATH)]
+        death = [_dark(compose(r, death_groups(r, k), cl), 1.0 - 0.5 * k / float(DEATH - 1)) for k in range(DEATH)]
         for name, fr in (('walk', walk), ('wind', wind), ('sweep', sweep), ('idle', idle), ('death', death)):
             Image.fromarray(np.concatenate(fr, 1), 'RGBA').save(DST + '%s_%s.png' % (name, v))
         print(v, 'walk %d wind %d sweep %d idle %d death %d' % (len(walk), len(wind), len(sweep), len(idle), len(death)))
