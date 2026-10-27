@@ -3300,10 +3300,12 @@ func brood_in_match() -> bool:
 	return false
 
 
-## The essence a harvested body gives: Defs.HARVEST per_supply (2) for each point of its body_supply, plus 1 a kill.
+## The essence a harvested body gives: Defs.HARVEST per_supply (2) for each point of its body_supply, plus 1 a kill up
+## to the kills veterancy counts (Defs.VET max / per_kill: 50, the owner, 0.14.41; it had no cap before).
 ## A float (essence is kept as one): a Musketeer or a Raptor 2, a Brute 6, a Horseman on his horse 8.
 func corpse_value(u: Unit) -> float:
-	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + float(u.kills)
+	var vet_kills := float(Defs.VET["max"]) / float(Defs.VET["per_kill"])
+	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + minf(float(u.kills), roundf(vet_kills))
 
 
 ## An amount of essence as text: "5", "1.25", "2.5".

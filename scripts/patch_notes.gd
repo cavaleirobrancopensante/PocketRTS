@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.41", "items": [
+		"ESSENCE: the +1 essence a harvested body gives for each kill it made now stops at 50, the same 50 kills veterancy counts (it had no cap).",
+	]},
 	{"v": "0.14.40", "items": [
 		"BROOD ESSENCE: SACRIFICE pays much better: a creature offered up at a Brood Pen gives 35% of its biomass cost as essence (9 a Raptor, was 3; 53 a Brute). The Brood Pen no longer turns bodies that fall near it into essence by itself; the fallen, friend or foe, are harvested by grubs, and a harvested body is worth more: 2 essence for each point of its supply (was 1.25), plus 1 for each kill it made (a Musketeer 2, a Horseman with his horse 8).",
 	]},

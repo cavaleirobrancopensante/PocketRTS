@@ -1570,7 +1570,8 @@ const HORSE_VET := {"tiles": 100.0, "max": 3, "hp": 0.15, "body": 1}
 const HORSE_REGEN := 0.5          # hp a second: horses heal by themselves (they're never raised)
 ## per_supply: essence a harvested body gives for each point of its supply (a float: Game.corpse_value; was 1, raised to
 ## 1.25 when area shots began to tear bodies up, Defs.BODY_BLAST, and to 2 in 0.14.40 when the Brood Pen stopped taking the
-## bodies that fell near it: a Musketeer 2, a Brute 6, a Horseman with his horse 8), plus 1 for each kill it made.
+## bodies that fell near it: a Musketeer 2, a Brute 6, a Horseman with his horse 8), plus 1 for each kill it made, up
+## to 50 (the kills veterancy counts, VET; 0.14.41).
 const HARVEST := {"time": 120.0, "range": 10, "take": 1.2, "per_supply": 2.0}
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
