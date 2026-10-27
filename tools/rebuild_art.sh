@@ -123,6 +123,7 @@ python3 tools/anim_audit/fix_brood.py     # Brood strips: raptor/grub up-down wa
 python3 tools/import_crown_legs.py        # labourer's new walk legs under the Armoured Musketeer (all views) and the Musketeer (s, n)
 python3 tools/anim_audit/fix_crown.py    # Crown animation audit fixes (docs/animation_audit_crown.md): Officers' walk on the ground,
                                          # Messenger walk_e frames 4-5, Mortar idle crew, Horseman idle_se (masks follow; idempotent)
+python3 tools/import_musket_aim_dirs.py  # Musketeer / Guardsman aim, fire, bayonet toward se, ne, s (ChatGPT over tools/musket_guide/aim_dirs.py)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included
