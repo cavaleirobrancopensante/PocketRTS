@@ -768,13 +768,14 @@ func _draw_production(font: Font) -> void:
 			if not b.built:
 				items.append([b.kind, b.progress, Color(0.95, 0.75, 0.3)])
 				continue
-			var q: Array = b.queue
+			var shq := NetPredict.shown_queue(game, b)
+			var q: Array = shq[0]
 			for i in q.size():
 				var res := Building.is_research(q[i])
 				var f := -1.0
 				if i == 0 or b.uses_eggs():
-					f = (b.morph_t[i] if b.uses_eggs() and i < b.morph_t.size() else b.prod_t) / Building.entry_time(q[i])
-				items.append([_research_icon(String(q[i]).substr(1)) if res else _queue_icon(b, i), f, Color(0.75, 0.55, 1.0) if res else Color(0.4, 0.75, 1.0)])
+					f = (float(b.morph_t[i]) if b.uses_eggs() and i < b.morph_t.size() else float(shq[2])) / Building.entry_time(q[i])
+				items.append([_research_icon(String(q[i]).substr(1)) if res else (_queue_icon(b, i) if i < b.queue.size() else String(q[i])), f, Color(0.75, 0.55, 1.0) if res else Color(0.4, 0.75, 1.0)])
 		var rows := maxi(1, int(ceil(items.size() / float(PER))))
 		blocks.append([t, items])
 		h += 22 + rows * (SZ + 10)
@@ -2233,7 +2234,7 @@ func net_paused(on: bool) -> void:
 
 ## One player's resources as top-bar pills; returns where the next pill goes.
 func _res_pills(font: Font, t: int, x: float) -> float:
-	var pl: Dictionary = game.players[t]
+	var pl: Dictionary = NetPredict.shown_player(game, t)      # (online: an order just given shows spent at once)
 	var fac := game.faction_of(t)
 	var cols: Array = {"crown": [Color(0.98, 0.8, 0.2), Color(0.35, 0.33, 0.36)], "brood": [Color(0.55, 0.85, 0.3), Color(0.75, 0.45, 1.0)],
 		"clockwork": [Color(0.7, 0.72, 0.78), Color(0.45, 0.75, 1.0)]}[fac]
@@ -2247,7 +2248,7 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 	var x1 := x
 	x = _pill(font, x, cols[1], r2, Color(0.85, 0.9, 1.0), false, false,
 		_icon("tension") if fac == "clockwork" and Defs.gear_mode else null)
-	var used := game.supply_used(t)
+	var used := NetPredict.shown_supply(game, t)
 	var cap: int = pl["cap"]
 	var x2 := x
 	x = _pill(font, x, Color(0.75, 0.55, 0.3), "%d / %d" % [used, cap], UiStyle.BAD if used >= cap else UiStyle.TEXT, true)
@@ -3015,20 +3016,26 @@ func _draw_panel(font: Font) -> void:
 					var pp := Rect2(pqr.position.x, pqr.end.y + 4, pqr.size.x, 2)
 					_ci.draw_rect(pp, Color(0, 0, 0, 0.6))
 					_ci.draw_rect(Rect2(pp.position, Vector2(pp.size.x * clampf(ps[i].powder / ps[i]._pmax, 0.0, 1.0), pp.size.y)), Unit.POWDER_BAR if ps[i].powder >= 1.0 else UiStyle.BAD)
-		if e is Building and (e.team == game.human or game.spectating()) and not (e as Building).queue.is_empty():
-			var q: Array = (e as Building).queue
+		var shq: Array = NetPredict.shown_queue(game, e) if e is Building else [[], [], 0.0]     # (online: an order just given shows at once, pending)
+		if e is Building and (e.team == game.human or game.spectating()) and not (shq[0] as Array).is_empty():
+			var q: Array = shq[0]
+			var pend: Array = shq[1]
 			for i in q.size():
-				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else _queue_icon(e as Building, i))
+				var ic := _icon(_research_icon(String(q[i]).substr(1)) if Building.is_research(q[i]) else (_queue_icon(e as Building, i) if i < (e as Building).queue.size() else String(q[i])))
 				var qr := Rect2(r.end.x - 44 - (q.size() - 1 - i) * 40, r.position.y + 8, 36, 36)
+				var waiting: bool = i < pend.size() and bool(pend[i])
 				if e.team == game.human and not game.spectating():
 					_queue_rects.append({"rect": qr, "b": e, "i": i})
 					if Settings.pc() and qr.has_point(_mouse()):
 						_ci.draw_rect(qr.grow(2), UiStyle.BAD, false, 1.5)
 				if ic:
-					_ci.draw_texture_rect(ic, qr, false)
+					_ci.draw_texture_rect(ic, qr, false, Color(1, 1, 1, 0.6) if waiting else Color.WHITE)
+				if waiting:
+					# (not confirmed by the host yet: a faint breathing frame)
+					_ci.draw_rect(qr.grow(1), Color(1, 0.88, 0.4, 0.45 + 0.3 * sin(Time.get_ticks_msec() / 160.0)), false, 1.0)
 				var eb := e as Building
 				if i == 0 or eb.uses_eggs():
-					var f: float = (eb.morph_t[i] if eb.uses_eggs() else eb.prod_t) / Building.entry_time(q[i])
+					var f: float = (float(eb.morph_t[i]) if eb.uses_eggs() and i < eb.morph_t.size() else (float(shq[2]) if not eb.uses_eggs() else 0.0)) / Building.entry_time(q[i])
 					_ci.draw_rect(Rect2(qr.position.x, qr.end.y + 2, qr.size.x * f, 4), Color(0.75, 0.55, 1.0) if Building.is_research(q[i]) else Color(0.4, 0.75, 1))
 				if Building.is_research(q[i]):
 					_ci.draw_rect(qr, Color(0.75, 0.55, 1.0, 0.9), false, 1.5)     # research: a violet frame

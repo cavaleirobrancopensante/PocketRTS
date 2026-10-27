@@ -53,6 +53,8 @@ static func forward(s: NetSession, who: Object, fn: String, args: Array) -> bool
 		game.notify("That order can't be sent online.", true)
 		return true
 	feedback(game, who, fn, args)
+	if s.predict:
+		s.predict.order(who, fn, args, s.cmd_seq + 1)      # (what the click shows at once: NetPredict)
 	s.send_cmd({"o": oid, "f": fn, "a": wire})
 	return true
 
@@ -68,7 +70,8 @@ static func hold(s: NetSession, who: Object, fn: String, args: Array) -> bool:
 			game.notify(why)
 			return true
 	feedback(game, who, fn, args)
-	s.hold(who, fn, args.duplicate(true))
+	var pid: int = s.predict.order(who, fn, args, -1) if s.predict else 0
+	s.hold(who, fn, args.duplicate(true), pid)
 	return true
 
 
@@ -171,9 +174,27 @@ static func _apply(s: NetSession, team: int, c: Dictionary) -> String:
 		var why := game.placement_problem(team, String(args[1]), args[2])
 		if why != "":
 			return why
+		why = _build_cost_problem(game, team, String(args[1]))
+		if why != "":
+			return why        # (place_building would just not build: the guest's site must go, with the reason)
 	var r = game.callv(fn, args)
 	if r is String and r != "":
 		return r
+	return ""
+
+
+## Why player `team` can't pay for (or may not have) building `k` ("" if it can): place_building's own checks, in words.
+static func _build_cost_problem(game: Game, team: int, k: String) -> String:
+	if not Defs.BUILDINGS.has(k):
+		return "bad args"
+	var res: Array = Defs.FACTIONS[game.faction_of(team)]["res"]
+	if int(game.players[team]["gold"]) < int(Defs.BUILDINGS[k]["cost"]):
+		return "Not enough %s." % String(res[0]).to_lower()
+	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[k])):
+		return "Not enough %s." % "tension"
+	if not game.requirement_met(team, k):
+		var rt := game.requirement_text(team, k)
+		return rt if rt != "" and rt[0] == rt[0].to_upper() else "Can't build that yet."
 	return ""
 
 

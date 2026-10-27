@@ -12,6 +12,8 @@ static func tick_game(g: Game, delta: float) -> void:
 	g.clock += delta
 	if g.net:
 		g.net.tick_rclk(delta)
+		if g.net.predict:
+			g.net.predict.tick()          # (the clicks' progress bars and timers move on)
 	g.line_net.tick_view(delta)
 	g.gear_net.tick(delta)           # (the gear field is worked out from the synced buildings: the guest sees the turning gears)
 	g.alert_t = maxf(g.alert_t - delta, 0.0)
@@ -100,13 +102,60 @@ static func tick_unit(u: Unit, delta: float) -> void:
 static func _lead(s: NetSession, u: Unit, delta: float) -> void:
 	var ld: Dictionary = s.leads[u.net_id]
 	var off: Vector2 = ld["off"]
+	var kind := String(ld.get("kind", "walk"))
+	if kind == "stop" and not ld.get("go", false) and s.last_ack >= int(ld["seq"]) and u.velocity.length() < 1.0:
+		ld["go"] = true                         # (a stop: the pictures after the order show it standing)
+		ld["go_clk"] = s.rclk
+	if kind == "chase" and s.leading(u.net_id) and s.last_ack >= int(ld["seq"]):
+		var e = ld.get("e")
+		if is_instance_valid(e) and (u.target == e or u.order_target == e) and u.velocity.length() < 1.0:
+			ld["go"] = true                     # (the host's picture has it on the job, standing: in range already)
+			ld["go_clk"] = s.prev_clk
 	if s.leading(u.net_id):
-		var dir: Vector2 = (ld["to"] as Vector2) - (u.position + off)
-		if dir.length() > 4.0 and off.length() < u.speed * NetSession.LEAD_MAX:
-			dir = dir.normalized()
-			off += dir * u.speed * NetSession.LEAD_PACE * delta
-			u.facing = dir
-			u.velocity = dir * u.speed          # (the walk)
+		match kind:
+			"face":
+				u.facing = ld["dir"]
+			"stop":
+				# (stands where it was shown at the click while the pictures still have it walking on)
+				off = (ld["hold"] as Vector2) - u.position
+				off = off.limit_length(u.speed * NetSession.LEAD_STOP_MAX)
+				u.velocity = Vector2.ZERO
+			"chase":
+				var e = ld.get("e")
+				var at: Vector2 = u.position + off
+				var goal: Vector2
+				var gap: float
+				if e == null:
+					var box: Rect2 = ld["box"]
+					goal = at.clamp(box.position, box.end)
+					gap = goal.distance_to(at)
+				elif is_instance_valid(e) and not e.dead:
+					if e is Building:
+						goal = at.clamp((e as Building).rect().position, (e as Building).rect().end)
+						gap = goal.distance_to(at)
+					else:
+						goal = (e as Entity).position
+						gap = goal.distance_to(at) - float(e.get("radius") if e.get("radius") != null else 8.0)
+				else:
+					ld["t"] = 0                 # (its target is gone: the lead is taken back)
+					goal = at
+					gap = 0.0
+				var dir: Vector2 = goal - at
+				if dir.length() > 0.5:
+					u.facing = dir.normalized()
+				if gap > float(ld["reach"]) and off.length() < u.speed * NetSession.LEAD_MAX:
+					off += dir.normalized() * u.speed * NetSession.LEAD_PACE * delta
+					u.velocity = dir.normalized() * u.speed
+				else:
+					u.velocity = Vector2.ZERO
+				ld["to"] = goal
+			_:
+				var dir: Vector2 = (ld["to"] as Vector2) - (u.position + off)
+				if dir.length() > 4.0 and off.length() < u.speed * NetSession.LEAD_MAX:
+					dir = dir.normalized()
+					off += dir * u.speed * NetSession.LEAD_PACE * delta
+					u.facing = dir
+					u.velocity = dir * u.speed          # (the walk)
 	else:
 		# Taken back as gently as the host's walk allows: walking the same way as the lead, a little at a time (it
 		# shows at about 90% of its speed for a moment); turning off it (a path round a corner), faster; stopped on the
@@ -116,6 +165,10 @@ static func _lead(s: NetSession, u: Unit, delta: float) -> void:
 		if v.length() > 1.0 and off.length() > 0.01:
 			var align := clampf(off.normalized().dot(v.normalized()), 0.0, 1.0)
 			rate = lerpf(NetSession.LEAD_BACK_TURN, NetSession.LEAD_BACK, align)
+		if kind == "stop" and off.length() > 1.0 and v.length() < 1.0:
+			rate = 0.8                          # (it closes up to where the host stopped it at a walk, a few steps)
+			u.velocity = -off.normalized() * u.speed * rate
+			u.facing = -off.normalized()
 		off = off.move_toward(Vector2.ZERO, u.speed * rate * delta)
 		if off == Vector2.ZERO:
 			s.leads.erase(u.net_id)
