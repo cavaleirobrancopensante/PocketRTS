@@ -10,10 +10,12 @@ Cut-out parts per row (sheet px, hand-set in ROWS):
   body); S: in front (as painted); N: in front while it leans back towards us, behind once it passes the top.
 - the WHEELS: cut out of the body and replaced by ChatGPT's painted cog (art/redraws/catapult_wheel_chatgpt.png),
   rebuilt with even teeth and bolts and turned in code by cog.py (face-on squashed into each wheel's fitted ellipse;
-  N: the edge-on paint, its tread rolling up). Far wheels turn behind the body (their rim and teeth come off it; OCC
+  S and N: the edge-on paint, its tread rolling down / up; S's painted face-on wheels are erased: REWHEEL; SE: squashed
+  to SQUASH_34). Far wheels turn behind the body (their rim and teeth come off it; OCC
   keeps what stands in front of them); behind a near wheel's tooth gaps the body's paint is reflected inward, shaded.
 - S/N ARM POSES: away from the loaded pose the arm is ChatGPT's own painted arm (art/redraws/catapult_arm_poses_
-  chatgpt.png: straight up, and tipped toward the viewer for the S follow-through; N: the cup's back), its beam tiled.
+  chatgpt.png: straight up, and tipped toward the viewer for the S follow-through; N, and NE's cup, from N_BACK_T
+  down: the cup seen from below, its back to us), its beam tiled.
 - the BODY: the rest, with the holes the arm and wheels leave filled from the neighbouring paint (S and N: the drum
   behind the upright beam is filled row by row between its two sides).
 - the PAYLOAD: ChatGPT's curled-up Clock Soldier from the concept (art/redraws/concepts/catapult_v1.png, the flying
