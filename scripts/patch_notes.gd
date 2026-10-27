@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.55", "items": [
+		"JACK: it no longer slides about on its spring while it stands. Its foot plate now stays on the spot in every frame and every direction, so switching between standing, shooting and hopping no longer makes it jump sideways (up to 6 pixels before). The screws still leave from the drill tips.",
+		"CLOCK SOLDIER: facing right, the frame just before its sword comes down no longer loses its head cap, so its player colour shows all through the swing. A few stray dark pixels near its feet are gone.",
+		"CLOCK AVIARY: while it works, only its doors and the little brass bird move. Before, every frame was painted anew, so the whole tower shimmered and it changed look when it started or stopped.",
+	]},
 	{"v": "0.14.54", "items": [
 		"CLOCKWORK SOUNDS from the owner's recordings of real clocks and machines (a typewriter, an alarm clock, an old clock bell, a crank, a spring, metal clangs). The Clock Soldier, Jack, Swift, Ticking Owl, Pendulum and Netter now answer in their own machine voices when picked or ordered: typewriter keys for the Clock Soldier, a spring's boing for the Jack, quick high ticks and a little bell for the Swift, slow low ticks for the Owl, the old clock bell and a heavy crank for the Pendulum, a crank cocking the spring cannon for the Netter.",
 		"CLOCKWORK FIGHTING: bright clangs for the Clock Soldier's sword, heavy low clangs for the Pendulum's blows, a ratchet spin for each screw the Jack and the Ratchet Turret shoot, a typewriter key for the Swift's peck, a clang for the Owl's talons. The Jack's spring presses, boings and clanks as it jumps and lands; the Netter's spring lets go when it fires and the chain net rattles where it lands; the Owl's weight lets go with a wobble and lands with a heavy clang. Every Clockwork unit (the Winder too) dies with a crash of metal, pieces rattling down and a spring letting go.",
