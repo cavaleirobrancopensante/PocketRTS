@@ -92,11 +92,11 @@ func _open_ground(hall: Building) -> Vector2:
 		return false
 	var best := Vector2i(-1, -1)
 	var bd2 := INF
-	for y in range(14, Game.H - 14, 2):
-		for x in range(16, Game.W - 16, 2):
+	for y in range(26, Game.H - 26, 2):
+		for x in range(32, Game.W - 32, 2):
 			var c := Vector2i(x, y)
 			var d := Vector2(c - hall.cell).length()
-			if d >= bd2 or near_b.call(c) or g.in_field(g.human, g.cell_center(c)):
+			if d >= bd2 or d < 30.0 or near_b.call(c) or g.in_field(g.human, g.cell_center(c)):
 				continue
 			var ok := true
 			for yy in range(-6, 7):
