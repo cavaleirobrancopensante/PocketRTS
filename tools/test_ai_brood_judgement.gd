@@ -10,8 +10,9 @@ extends SceneTree
 ##            comes home, and the grubs go back to their pits when none are left.
 ##  supply  : the Brood with eggs and biomass in hand and the supply nearly full: a Clutch Mound is put by and
 ##            goes up before the cap is reached (two at once when the eggs could fill one at once).
-##  game    : a Hard Brood on Balanced against a Hard Crown that defends but never attacks, to 6:00: the Brood Pen
-##            stands by 3:30, essence comes in by 5:00, a creature that costs essence hatches by 6:00, and the
+##  game    : a Hard Brood on Balanced against a Hard Crown that defends but never attacks, to 7:00: the Brood Pen
+##            stands by 5:30 (after the economy: docs/brood_ai_fixes.md), essence comes in by 6:00, a creature
+##            that costs essence hatches by 7:00, and the
 ##            Brood is never supply-blocked with biomass in hand for more than 15 s.
 var fails := 0
 
@@ -253,7 +254,7 @@ func _case_game() -> void:
 	var tech_t := -1.0
 	var last := g.clock
 	var ess5 := 0.0
-	while g.clock < 360.0 and not g.over:
+	while g.clock < 420.0 and not g.over:
 		await physics_frame
 		var dt := g.clock - last
 		last = g.clock
@@ -266,13 +267,13 @@ func _case_game() -> void:
 			for u in g.army(1):
 				if int(u.d.get("cost2", 0)) > 0:
 					tech_t = g.clock
-		if ess5 <= 0.0 and g.clock >= 300.0:
+		if ess5 <= 0.0 and g.clock >= 360.0:
 			ess5 = float(g.stats[1]["res2_in"])
-	print("Pen at %s, essence earned by 5:00 %.1f (sacrificed %d), first essence creature at %s, supply-blocked %.0f s, army %d, workers %d" % [
+	print("Pen at %s, essence earned by 6:00 %.1f (sacrificed %d), first essence creature at %s, supply-blocked %.0f s, army %d, workers %d" % [
 		_mmss(pen_t), ess5, int(g.stats[1].get("sacrifice_essence", 0)), _mmss(tech_t), blocked, g.army_value(1), g.workers(1).size()])
-	check(pen_t >= 0.0 and pen_t <= 210.0, "the Brood Pen stands by 3:30 (%s)" % _mmss(pen_t))
-	check(ess5 > 0.0, "essence comes in by 5:00 (%.1f)" % ess5)
-	check(tech_t >= 0.0, "a creature that costs essence hatched by 6:00 (%s)" % _mmss(tech_t))
+	check(pen_t >= 0.0 and pen_t <= 330.0, "the Brood Pen stands by 5:30 (%s)" % _mmss(pen_t))
+	check(ess5 > 0.0, "essence comes in by 6:00 (%.1f)" % ess5)
+	check(tech_t >= 0.0, "a creature that costs essence hatched by 7:00 (%s)" % _mmss(tech_t))
 	check(blocked <= 15.0, "never supply-blocked with biomass in hand for long (%.0f s)" % blocked)
 	main.queue_free()
 	await process_frame

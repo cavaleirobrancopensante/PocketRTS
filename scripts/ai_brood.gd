@@ -24,6 +24,7 @@ const LOST_SHARE := 0.25        # ... after losing this share of what it took ou
 const LOST_ROUT := 2.5          # ... and at once against this many times its worth
 const LOST_MIN := 150.0         # (never over less than this much enemy)
 const FIGHT_R := 360.0          # enemies this close to any unit of the wave are its fight
+const MOUND_URGENT := 6        # free supply (two eggs of Raptors) under which a due mound's biomass is put by
 const LEAD := 30.0              # seconds from a Clutch Mound's order to its supply (the walk, 18 s building, slack)
 const HARVEST_MAX := 4          # grubs out harvesting at once
 const HARVEST_CLEAR := 400.0    # no armed enemy (seen) this close to the bodies
@@ -31,16 +32,18 @@ const HARVEST_HOME := 1100.0    # bodies this far from our nearest building at m
 const HARVEST_MIN := 2.5        # essence a group of bodies must hold to send a grub
 const HARVEST_WORKERS := 8      # no harvesting with fewer grubs than this (they are the economy)
 const GUARD := 3                # Raptors always kept at home (never offered up)
+const OFFER_SHARE := 0.05       # offerings never cost more than this share of the biomass earned
 const OFFER_ALWAYS := 2         # Raptors that may be offered up at a time even with the army under its plan
-const PEN_GRUBS := 9            # grubs before the Pen goes up
-const PEN_GUARD := 3            # army supply at home before the Pen's biomass is put by (one egg of Raptors)
-const GORGE_GUARD := 9          # ... and before the Gorge Pit's
+const PEN_GRUBS := 14           # grubs before the Pen goes up (earlier cost the army half its worth at 5:00)
+const PEN_GUARD := 6            # army supply at home before the Pen's biomass is put by (two eggs of Raptors)
 const GORGE_ESSENCE := 15.0     # essence earned (or in hand) before the Gorge Pit is due
 const RESERVE_MAX := 45.0       # a reserve not spent in this long (no room, no grub) ...
 const RESERVE_REST := 30.0      # ... is dropped for this long
 
 ## (tools switch it off before a match for a "before" number: the Brood computer as it was)
 static var enabled := true
+## (measurement only: parts switched off to weigh them one by one; empty in every real match)
+static var off := {}
 
 var ai: AI
 var game: Game
@@ -323,7 +326,9 @@ func supply() -> void:
 	var free := cap + coming - game.supply_used(team)
 	if free > margin or going >= (2 if margin > 14 else 1):
 		return
-	supply_due = true
+	# (its biomass is put by only once the supply is short: the margin itself is wide, up to 30, and putting
+	# 75 by every time it was reached held the eggs and the grubs back for much of the game)
+	supply_due = free <= MOUND_URGENT
 	if ai._gold() < int(Defs.BUILDINGS[sup]["cost"]):
 		return
 	ai._construct(sup, ai._mound_spot())
@@ -331,13 +336,15 @@ func supply() -> void:
 
 # ------------------------------------------------------------------ grubs: the economy never stands still
 
-## Eggs for the army before more grubs? Grubs come first up to `grub_floor`, which rises by a grub every
-## FLOOR_STEP seconds after FLOOR_FROM (up to FLOOR_MAX); above it the eggs go to the army. The old rule
-## (the army first from 9 grubs on, but only while it was "behind" its plan) went wrong both ways: the
-## Brood sat on 9 grubs from minute 3 to minute 6 against a growing Crown army it could never catch up
-## with, so its income stood still; and once the plan's curve (260 value by 3:20) was met, every egg went
-## to grubs again (40 grubs at 9:30, no eggs left for the army, 700 biomass banked). With the enemy in our
-## base the floor drops back to the working minimum: the army first.
+## Eggs for the army before more grubs? As before, only while the army is under what the plan wants
+## (AI._army_want: the plan's curve, or 1.2x an enemy army in sight); but never while there are fewer
+## grubs than `grub_floor`, which rises by a grub every FLOOR_STEP seconds after FLOOR_FROM (up to
+## FLOOR_MAX). The old rule held the grubs at 9 for as long as the army was behind: in the owner's game
+## against a growing Crown army it could never catch up with, the Brood sat on 13 Raptors from minute 4 to
+## 6 with an income that stood still. With the enemy in our base or Horsemen about, the floor stays at the
+## working minimum: the army first. Far above the floor (FLOOR_OVER) the eggs go to the army anyway (with
+## the plan's small curve met, every egg went to grubs: 40 grubs at 9:30, none left for the army).
+const FLOOR_OVER := 8
 const FLOOR_FROM := 150.0
 const FLOOR_STEP := 20.0
 
@@ -346,9 +353,17 @@ func grub_floor() -> int:
 	var base := 10 if ai.strategy == "economy" else 9
 	if ai.strategy == "rush" and not ai._first_wave:
 		return 6            # (a rush's first wave first)
-	if ai._threat() != Vector2.INF:
-		return base         # (the enemy is in our base: every egg for the army)
-	return mini(base + int(maxf(0.0, game.clock - FLOOR_FROM) / FLOOR_STEP * float(ai._s("workers"))), FLOOR_MAX)   # (faster on Economy, slower on Rush)
+	if ai._threat() != Vector2.INF or ai._horse_alert():
+		return base         # (the enemy is in our base, or Horsemen are hunting the grubs: the army first)
+	return mini(base + int(maxf(0.0, game.clock - FLOOR_FROM) / FLOOR_STEP * _floor_k()), FLOOR_MAX)
+
+
+## How fast the floor rises: the plan's worker share (faster on Economy); a Rush keeps its slower pace
+## after its first wave (the plan switches to Balanced then): a rush trades grubs for Raptors.
+func _floor_k() -> float:
+	if ai._opened in ["rush", "xrush"]:
+		return float(AI.STRATEGIES["rush"]["workers"])
+	return float(ai._s("workers"))
 
 
 const FLOOR_MAX := 34
@@ -356,9 +371,12 @@ const FLOOR_MAX := 34
 
 ## The army the plan's curve wants by now (AI.ARMY_CURVE), without the answer to an enemy army in sight.
 func army_first(grubs: int) -> bool:
-	if not game._has_built(team, "warren") or grubs < grub_floor():
+	if off.has("floor"):
+		return ai._army_behind() and grubs >= 9
+	if not game._has_built(team, "warren"):
 		return false
-	return ai._army_behind() or game.clock > 200.0
+	var fl := grub_floor()
+	return (ai._army_behind() and grubs >= fl) or (game.clock > 200.0 and grubs >= fl + FLOOR_OVER)
 
 
 # ------------------------------------------------------------------ eggs: the army's real mix, and a Burrow when eggs run short
@@ -395,7 +413,7 @@ func egg_choice(h: Building, army: Array, k: String) -> String:
 	var why := game.can_train(h, "spitter")
 	if why == "":
 		return "spitter"
-	if why.begins_with("Not enough") and ai._res2() >= float(Defs.UNITS["spitter"]["cost2"]) and ai._threat() == Vector2.INF:
+	if not off.has("wait") and why.begins_with("Not enough") and ai._res2() >= float(Defs.UNITS["spitter"]["cost2"]) and ai._threat() == Vector2.INF:
 		return ""           # (the essence is there: wait for the biomass)
 	return k
 
@@ -444,7 +462,7 @@ func pen_due() -> bool:
 	# (a few Raptors at home are enough: the army is nearly always "behind" an enemy army in sight, and
 	# waiting for it to catch up left the Pen until minute 5 or 6, so no essence and only Raptors)
 	if game.workers(team).size() < PEN_GRUBS and not ai._horse_alert():
-		return false        # (the working minimum first: a Pen at 2:56 on 8 grubs after a failed rush cost a third of its income)
+		return false        # (the economy first: a Pen by 3:30 cost the army half its worth at 5:00 and a fifth of the income by 7:00)
 	return not ai._army_behind() or ai._horse_alert() or ai._army_supply(game.army(team)) >= PEN_GUARD
 
 
@@ -463,10 +481,12 @@ func gorge_due(t: float) -> bool:
 
 ## Biomass to keep in hand for a building that is due (worked out once a think): eggs and grubs wait for
 ## it, or they would eat every coin as it comes in and the building would never go up. A Clutch Mound is
-## always put by (nothing hatches without supply); the Pen only with a few Raptors at home (PEN_GUARD
-## supply) and the Gorge Pit with a few more (GORGE_GUARD), and neither while the enemy is in our base.
-## A reserve that has not been spent in RESERVE_MAX seconds (no room, no grub to build it) is dropped
-## for RESERVE_REST seconds: it must never starve the eggs for good.
+## always put by (nothing hatches without supply); the Pen (100: the door to essence) only with a few
+## Raptors at home (PEN_GUARD supply) and not while the enemy is in our base. Nothing else is put by:
+## measured, holding back for the Gorge Pit (200) and a second Burrow (350) as well cost the army half
+## its worth at 5:00 and a fifth of the income by 7:00 (eggs and grubs kept waiting); those go up when
+## the biomass is there. A reserve not spent in RESERVE_MAX seconds (no room, no grub to build it) is
+## dropped for RESERVE_REST seconds: it must never starve the eggs for good.
 func reserve() -> int:
 	if _reserve_t == game.clock:
 		return _reserve
@@ -476,17 +496,10 @@ func reserve() -> int:
 	if supply_due:
 		r = int(Defs.BUILDINGS[ai._sup()]["cost"])
 		why = "mound"
-	if hall_due():
-		r = maxi(r, int(Defs.BUILDINGS[ai._f()["hall"]]["cost"]))
-		why = "burrow"
-	if ai._threat() == Vector2.INF and game.clock >= _rest_until and why != "burrow":
-		var guard := ai._army_supply(game.army(team))
-		if pen_due() and guard >= PEN_GUARD:
+	if ai._threat() == Vector2.INF and game.clock >= _rest_until:
+		if pen_due() and ai._army_supply(game.army(team)) >= PEN_GUARD and not off.has("pen"):
 			r = maxi(r, int(Defs.BUILDINGS["brood_pen"]["cost"]))
 			why = "pen"
-		elif guard >= GORGE_GUARD and gorge_due(game.clock / float(ai._s("tech")) + (60.0 if ai._gold() > 500 else 0.0)):
-			r = maxi(r, int(Defs.BUILDINGS["gorge_pit"]["cost"]))
-			why = "gorge"
 	if why != _res_why:
 		_res_why = why
 		_res_since = game.clock
@@ -499,6 +512,8 @@ func reserve() -> int:
 
 ## Would spending `price` now eat into what is put by?
 func holding(price: int) -> bool:
+	if off.has("reserve"):
+		return false
 	var r := reserve()
 	return r > 0 and ai._gold() - price < r
 
@@ -573,11 +588,15 @@ func essence_coming() -> float:
 ## (AI._army_want: an army under it needs every Raptor), never from a wave, never with the enemy in our
 ## base, never the last GUARD of them; a few at a time.
 func offer() -> void:
+	if off.has("offer"):
+		return
 	if game.clock < _offer_t or ai._hall_reserve or ai._threat() != Vector2.INF:
 		return
 	var pen := game.nearest_of(game.center_of_team(team), team, "brood_pen")
 	if pen == null or not pen.built:
 		return
+	if float(offered) * float(Defs.UNITS["raptor"]["cost"]) / float(Defs.UNITS["raptor"]["spawn"]) > OFFER_SHARE * float(game.stats[team]["gold"]):
+		return              # (offerings are dear: a Raptor gives back 12% of its biomass; a budget, not a habit)
 	var want := offer_target()
 	var have := ai._res2() + essence_coming()
 	if want <= 0.0 or have >= want:

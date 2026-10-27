@@ -48,6 +48,9 @@ func _initialize() -> void:
 			end_t = float(a.substr(4))
 		elif a == "old":
 			AIBrood.enabled = false
+		elif a.begins_with("off:"):
+			for k in a.substr(4).split(","):
+				AIBrood.off[k] = true      # (weigh one part of scripts/ai_brood.gd: reserve, wait, offer, floor)
 
 
 func _process(delta: float) -> bool:
