@@ -401,7 +401,7 @@ static func icon(name: String) -> Texture2D:
 static func _ability_glyph(img: Image, name: String) -> void:
 	match name:
 		"ab_gear_view":
-			# THE GEAR VIEW (0.14.85): two meshing gears, the big one washed green (works at full speed), the small one
+			# THE GEAR VIEW (0.14.92): two meshing gears, the big one washed green (works at full speed), the small one
 			# bright gold (a driver); a placeholder until assets/icons/clockwork/ab_gear_view.png is drawn
 			for k in 10:
 				var a := TAU * float(k) / 10.0

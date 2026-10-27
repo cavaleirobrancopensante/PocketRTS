@@ -580,7 +580,7 @@ func _turrets() -> void:
 	var want := 0
 	if game.clock > _lv([420.0, 300.0, 240.0]) or (_threat() != Vector2.INF and game.clock > 150.0):
 		want = 1
-	# (0.14.85: not in the minute the Mainspring and the Escapement are saved for, unless the army cannot hold the line: a
+	# (0.14.92: not in the minute the Mainspring and the Escapement are saved for, unless the army cannot hold the line: a
 	# turret laid then by the Clocktower took the room the pair needed on a cramped plateau, and the Escapement came three
 	# minutes late, kestrel_rise seed 14)
 	if have == 0 and _mine("mainspring").is_empty() and game.clock >= _tier2_at() - 20.0 and _holds_line():
@@ -681,7 +681,7 @@ func _tier2(t: float) -> void:
 					_construct(Defs.CW_TECH, ce)
 					break
 			if msc.x >= 0 and _busy_building("mainspring"):
-				# (0.14.85: the spots by the new Mainspring are KEPT for what goes beside it: the Escapement, when it could
+				# (0.14.92: the spots by the new Mainspring are KEPT for what goes beside it: the Escapement, when it could
 				# not be laid with it (a ring touching only the Mainspring's site does not link until it stands, and its room
 				# went to Regulators and a turret meanwhile: kestrel_rise seed 14 waited three minutes), and the Heavy
 				# Works' big ring when _spring_spot found room for it too; the Escapement then goes on its kept spot)
@@ -847,12 +847,12 @@ func _foe_high() -> bool:
 	return h != null and game.on_high(h.center())
 
 
-## Gear mode, THE HEAVY WORKS (0.14.85, docs/gear_rules.md; scripts/pendulum.gd, scripts/ballista.gd): the Pendulums and
+## Gear mode, THE HEAVY WORKS (0.14.92, docs/gear_rules.md; scripts/pendulum.gd, scripts/ballista.gd): the Pendulums and
 ## the Spring Ballistas are made only there (the Light Works no longer makes them), so as soon as its Escapement works it
 ## lays ONE Heavy Works whose BIG ring
 ## meshes with a Mainspring's (it is a Tension user: idle otherwise): by a Mainspring with room; with no room by any, a new
 ## Mainspring first where its big ring will fit beside it; its cogs are held back like the tech's (_heavy_hold). _produce then mixes a few
-## Pendulums and Ballistas into the army from it. (Before 0.14.85 a Movement Works, now the Light Works, was swapped onto its big gear for the
+## Pendulums and Ballistas into the army from it. (Before 0.14.92 a Movement Works, now the Light Works, was swapped onto its big gear for the
 ## Pendulum, and the Ballista came from any Works meshing with a Mainspring.)
 var _heavy_t := 0.0
 var _heavy_no_room := false         # no room for the Heavy Works by any Mainspring: a Mainspring with room for it is saved for
@@ -864,7 +864,7 @@ func _tier3() -> void:
 		return
 	if not game.has_working(team, Defs.CW_TECH):
 		return
-	# (laid as soon as the Escapement works: before 0.14.85 the first Ballista came from any Works meshing with a Mainspring
+	# (laid as soon as the Escapement works: before 0.14.92 the first Ballista came from any Works meshing with a Mainspring
 	# about two minutes after the Escapement; waiting for Springers first put it three minutes later, greenhold seed 11)
 	var cost := int(Defs.BUILDINGS[Defs.CW_HEAVY]["cost"])
 	if _gold() < mini(cost, int(Defs.BUILDINGS["mainspring"]["cost"])) + 20:
@@ -945,7 +945,7 @@ func _heavy_spot() -> Vector2i:
 
 ## Keep the spot for the Heavy Works by a Mainspring laid at cell `spring_cell` (Game.ai_keep): the cell _room's greedy
 ## placing found for it, with `users` (the Escapement first when it is laid with the first Mainspring), so the computer's
-## Regulators, presses and turrets do not take it in the minute before the Heavy Works may be laid (0.14.85: room by a
+## Regulators, presses and turrets do not take it in the minute before the Heavy Works may be laid (0.14.92: room by a
 ## Mainspring for its big ring was gone in most games).
 func _keep_heavy(spring_cell: Vector2i, users: Array) -> void:
 	if not _mine(Defs.CW_HEAVY).is_empty():
@@ -1037,7 +1037,7 @@ func _spring_spot(spare := false) -> Vector2i:
 		return Vector2i(-1, -1)
 	var works: Array = _mine(_works()).filter(func(b: Building) -> bool: return b.built and game.gear_net.spring_for(b) == null)
 	var fall := Vector2i(-1, -1)
-	# (0.14.85: beside a Works with room for the Escapement AND the Heavy Works' big ring, when there is such a spot: the
+	# (0.14.92: beside a Works with room for the Escapement AND the Heavy Works' big ring, when there is such a spot: the
 	# Heavy Works must mesh with a Mainspring too, and a crowded plateau had no room left for it by any)
 	if _mine(Defs.CW_HEAVY).is_empty():
 		for users in [[Defs.CW_TECH, Defs.CW_HEAVY], [Defs.CW_HEAVY, Defs.CW_TECH]]:
@@ -2335,14 +2335,55 @@ func _note_lost_halls() -> void:
 		return
 	var now := {}
 	for h in _halls():
-		if h.built:
-			now[h.cell] = true
+		# (an unfinished Clocktower razed counts too: the enemy holds that ground; 0.14.82, 8:22 "lost a Clocktower
+		# (unfinished)")
+		now[h.cell] = true
 	for c in _hall_cells.keys():
 		if not now.has(c):
-			_hall_bad[c] = game.clock + LOST_HALL_WAIT
+			note_lost_site(c)
 			_hall_cells.erase(c)
 	for c in now:
 		_hall_cells[c] = true
+
+
+## A hall of ours (or its crate on the way there) was lost at this cell: the spot waits LOST_HALL_WAIT s, and the
+## ground round it (LOST_NEAR tiles) counts as the enemy's while it does (_safe_hall_spot), so the next try isn't the
+## next base site over in the same enemy's yard (0.14.84 Greenhold: four Clocktower crates in a row lost by the
+## Crown's base). Called from _note_lost_halls (a hall gone) and by Crate.die (a Clocktower's crate shot on the road).
+const LOST_NEAR := 16.0
+const ENEMY_YARD := 22.0        # tiles: a hall spot on the enemy's side this close to its main, natural or a hall of its is never taken
+var _lost_spots := {}           # cell -> until when its ground counts as the enemy's
+
+
+func note_lost_site(c: Vector2i) -> void:
+	_hall_bad[c] = game.clock + LOST_HALL_WAIT
+	_lost_spots[c] = game.clock + LOST_HALL_WAIT
+	if _stage_spot == c:
+		_stage_spot = Vector2i(-1, -1)
+
+
+## Where the enemy is, for choosing hall ground (in tiles): its mains (known from the start), its natural expansions
+## (where anyone expands first), the halls of its we have seen or see now, and the ground where we lost a hall lately.
+func _foe_ground() -> Array:
+	var pts: Array = []
+	var hk: String = _f()["hall"]
+	for o in game.n_players():
+		if not game.hostile(team, o) or game.eliminated[o]:
+			continue
+		pts.append(Vector2(game.starts[o]) + Vector2(2.5, 2.0))
+		if game.expansions.size() > o and game.expansions[o].x >= 0:
+			pts.append(Vector2(game.expansions[o]) + Vector2(Defs.BUILDINGS[game.faction_hall(o)]["size"]) * 0.5)
+	for b in game.buildings:
+		if b.dead or b.team < 0 or not game.hostile(team, b.team) or b.kind != game.faction_hall(b.team):
+			continue
+		if scout._seen_b.has(b) or game.is_visible_to(team, b.center()):
+			pts.append(b.center() / Defs.TILE)
+	for c in _lost_spots.keys():
+		if float(_lost_spots[c]) > game.clock:
+			pts.append(Vector2(c) + Vector2(Defs.BUILDINGS[hk]["size"]) * 0.5)
+		else:
+			_lost_spots.erase(c)
+	return pts
 
 
 ## Where a new hall is safest: free ground near our main (the usual expansion
@@ -2370,23 +2411,37 @@ func _safe_hall_spot() -> Vector2i:
 	if cands.is_empty():
 		return Vector2i(-1, -1)
 	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
+	var foe := _foe_ground()
 	var best := Vector2i(-1, -1)
 	var bs := INF
 	for c in cands:
 		var cc := Vector2(c) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5
-		var score := cc.distance_to(home)
+		var home_d := cc.distance_to(home)
+		var score := home_d
 		var foe_d := INF
-		for o in game.n_players():
-			if game.hostile(team, o):
-				foe_d = minf(foe_d, cc.distance_to(Vector2(game.starts[o]) + Vector2(2.5, 2.0)))
-		score += maxf(0.0, cc.distance_to(home) - foe_d * 0.8) * 3.0
+		for fp in foe:
+			foe_d = minf(foe_d, cc.distance_to(fp))
+		score += maxf(0.0, home_d - foe_d * 0.8) * 3.0
+		# never on the enemy's side: closer to an enemy hall (or its natural, or ground where we lost one lately) than
+		# to our own main or our nearest hall, only when nothing else is left (0.14.82 / 0.14.84 Greenhold: the
+		# Clockwork's next Clocktower went "60 tiles from its main", by the Crown's base, its crate lost each time)
+		var own_d := home_d
+		for h in _halls():
+			own_d = minf(own_d, cc.distance_to(h.center() / Defs.TILE))
+		if foe_d < home_d and foe_d < ENEMY_YARD:
+			continue               # (in the enemy's yard: its crate or its builders only walk to their deaths)
+		if foe_d < home_d or foe_d < own_d + 8.0:
+			score += 600.0 + maxf(0.0, home_d - foe_d) * 4.0
+		if foe_d < LOST_NEAR:
+			score += 300.0
 		for u in game.units_near(cc * Defs.TILE, 14.0 * Defs.TILE):
 			if game.hostile(u.team, team) and not u.dead and not u.is_worker() and game.is_visible_to(team, u.position):
 				score += float(u.d["supply"]) * 3.0
 		if c == ex:
 			score -= 4.0           # (the map's own expansion spot: open ground, near a ramp of ours)
 		if float(_hall_bad.get(c, -1.0)) > game.clock:
-			score += 1000.0        # (its builders were just chased off it)
+			continue               # (its builders were just chased off it, or one was lost there: not until the wait is over,
+			                       # even if nothing else is left: a crate sent back there was lost again, 0.14.84)
 		score -= _lode_value(c)
 		if score < bs:
 			bs = score
@@ -3467,7 +3522,7 @@ func _produce() -> void:
 		var flush: bool = cap_t > 0.0 and game.tension(team) >= cap_t * 0.6
 		# (the Works that may make Tension units first: one waiting for the cogs of a Springer stops the others spending them
 		# on Clock Soldiers)
-		# (the Heavy Works first: its Pendulums and Spring Ballistas, 0.14.85; a Pendulum for every 6 others, up to 4, once
+		# (the Heavy Works first: its Pendulums and Spring Ballistas, 0.14.92; a Pendulum for every 6 others, up to 4, once
 		# three Springers are out or Tension piles up; the Ballistas as _ballista_want says)
 		var want_p: bool = pends < mini(4, 1 + others / 6) and (springers >= 3 or flush)
 		var keep0 := 0.0

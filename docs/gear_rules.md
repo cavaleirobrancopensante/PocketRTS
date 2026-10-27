@@ -1,4 +1,4 @@
-# The gear rules for base building (0.14.85)
+# The gear rules for base building (0.14.92)
 
 The owner's decisions of 2026-10-27, built. The study behind them is docs/clockwork_gear_study.md. The decisions are at the end of docs/clockwork_ground_up.md.
 
@@ -52,7 +52,7 @@ The code is scripts/heavy_works.gd.
 
 ### 4. The Light Works
 
-The Movement Works is renamed the Light Works. In Portuguese, Oficina Leve. In Spanish, Taller Ligero.
+The Movement Works is renamed the Light Works. In Portuguese, Oficina Leve. In Spanish, Taller Ligero. Main made the same rename in 0.14.88, with build keys L for the Light Works and H for the Heavy Works, while this job ran. The names agree.
 
 Only the name the player sees changed. The internal id stays movement_works, so saves, replays, the computer and the tests did not need a rename.
 
@@ -145,7 +145,7 @@ It does not build its first turret in the minute it lays the Mainspring and the 
 
 ## Crown against Clockwork: four games, twice each
 
-Hard Crown against Hard Clockwork, 15 minutes at most. The four games: Greenhold seed 11, Frostmere seed 12 swapped, Hollowfen seed 13, Kestrel Rise seed 14 swapped. Each played twice on main (0.14.84) and twice on this branch. The script is tools/study/study_game_v2.gd. Times are game clock.
+Hard Crown against Hard Clockwork, 15 minutes at most. The four games: Greenhold seed 11, Frostmere seed 12 swapped, Hollowfen seed 13, Kestrel Rise seed 14 swapped. Each played twice on main (0.14.84) and twice on this branch (before merging main's 0.14.85 to 0.14.91: crates, terracotta roofs, build keys, wall fixes, the computer's Clocktowers kept on its own side, the Great Winder on wheels). The script is tools/study/study_game_v2.gd. Times are game clock.
 
 | run | game | Mainspring | Escapement | Heavy Works | 1st Ballista | 1st Pendulum | 1st Great Winder | result |
 |---|---|---|---|---|---|---|---|---|
@@ -192,7 +192,7 @@ But the Brood computer was odd in both builds. It made one wave of raptors, then
 - tools/test_gear_rules.gd, new: the turret circle refuses a turret too close and accepts one far enough, also through the computer's spot search; the Heavy Works trains the Pendulum and the Ballista only beside a Mainspring, and the Light Works does not; the ring size changes the training speed and the turret's fire as set; the machine in the bay is drawn and grows; saves keep it all, and an old save's turrets side by side load and stay.
 - Updated for the new rules: test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_great_winder, test_gear_econ, test_clockwork_sounds.
 
-All run on the branch at 0.14.85, after merging main at 0.14.84.
+All run on the branch at 0.14.92, after merging main at 0.14.91.
 
 - Pass: test_gear_rules (new), test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_great_winder, test_gear_econ, test_gear_save, test_gear_ai, test_cw_tier2, test_cw_air_ai, test_springer_compat, test_ratchet_turret, test_gear_swap, test_clockwork_sounds, test_cw_lab, test_ai_wall_vs_rush, test_files, test_i18n, test_replay.
 - tools/test_online.sh: GUEST ALL OK.

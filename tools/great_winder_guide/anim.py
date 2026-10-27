@@ -1,4 +1,5 @@
-"""Great Winder WALK, WIND and SWEEP in code from ChatGPT's direction sheet (art/redraws/great_winder_dirs.png: rows S,
+"""Great Winder WALK, WIND and SWEEP in code (since branch gw-wheels, 2026-10-27: on COG WHEELS, MOUNT = 'wheels': see
+"the cog wheels" below and docs/great_winder.md; MOUNT = 'legs' still builds the painted-leg passes described here) from ChatGPT's direction sheet (art/redraws/great_winder_dirs.png: rows S,
 SE, E, NE, N; column 1 the machine with its winding arm stowed, column 2 the arm out), in the style of the Netter's
 walk (tools/netter_guide/walk.py): painted parts cut out and moved, little drawn.
 
@@ -893,8 +894,8 @@ def ik_leg(r, hip, sole, size, dark, u):
 IK_SHORT = []          # any pose the legs could not reach (a gap at the ankle): reported by main()
 
 
-def legs_layers(r, t, bob=0.0, stand=False):
-    """{'far': [...], 'back': [...], 'near': [...]} full-window rgba layers of the legs at walk time t (0..1 a loop;
+def painted_legs_layers(r, t, bob=0.0, stand=False):
+    """(MOUNT = 'legs') {'far': [...], 'back': [...], 'near': [...]} full-window rgba layers of the legs at walk time t (0..1 a loop;
     stand: every foot planted at rest), the hips dipped by bob (window px)"""
     P = PARTS[r]
     g = GAIT[LEGS]
@@ -918,6 +919,132 @@ def legs_layers(r, t, bob=0.0, stand=False):
                 sole = base + x_off * f - np.array([0.0, SWING_LIFT * math.sin(math.pi * w)])
         out[layer] += ik_leg(r, hp, sole, P['size'], dark, u)
     return out
+
+
+# ------------------------------------------------------------------ the cog wheels (branch gw-wheels, 2026-10-27)
+# The owner, after playing: "The Great Winder's legs look silly in game. Maybe we should make it on cogwheels." MOUNT
+# 'wheels' (the default) puts the body on the Clockwork's own wheel, the Spring Catapult's painted cog
+# (art/redraws/catapult_wheel_chatgpt.png rebuilt by tools/catapult_guide/cog.py: 12 even teeth, 8 bolts, the light
+# fixed top-left), at the body's corners where the painted legs stood (HIPS), LEGS of them (4 or 6). The body does not
+# move: it stays where the brush housing sits on the ground (the sweeper must reach the floor), so the wheels are hung
+# on its sides like a heavy cart's, their axles low on the body, the tips touching the ground under each corner.
+# E: face-on round cogs; SE / NE: the same cog squashed to SQUASH_34 (its face turned ~45 deg from us); S / N: the
+# cog's edge-on paint, its tread rolling down toward us (S) or up away (N). The far side's wheels are the same cogs
+# behind the body, darker. WALK: every wheel turns 90 deg (3 teeth) a 12-frame loop (screen clockwise: the game mirrors
+# the west views), 7.5 deg a frame; the body judders 1 game px as each tooth comes down (every 4 frames). The ground
+# speed that keeps them from sliding: rolling radius (the tips, a hair into the ground) x pi / 2 a loop: WHEEL_STRIDE.
+# WIND and SWEEP: the wheels stand still (SWEEP's rumble moves the body only).
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location('gw_cog', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..',
+                                                            'catapult_guide', 'cog.py'))
+cog = _ilu.module_from_spec(_spec)
+_spec.loader.exec_module(cog)
+
+MOUNT = 'wheels'
+WHEEL_R = {4: 44.3, 6: 34.0}     # the cog's tooth tips (body sheet px): 4 wheels ~13 game px (44.3: a stride of 20.25 game px a loop, so the
+                                 # game plays the walk at exactly 16 fps at speed 27); 6 smaller to fit three a side
+WHEEL_SINK = 0.97      # the wheel's middle stands this share of its radius above the ground (the tips bite in a hair)
+WHEEL_TURN = 90.0      # deg a 12-frame WALK loop (3 of the 12 teeth: the 8 bolts come round too, so it loops clean)
+SQUASH_34 = 0.72       # SE / NE: the cog's ellipse this wide of its height (as on the Spring Catapult)
+EDGE_W = 0.44          # S / N: the edge-on cog this wide of its height (the Spring Catapult 0.36: wider here, so it reads at 1x)
+WHEEL_DARK = 0.72      # the far side's wheels
+WHEEL_BOB = [1, 0, 0, 0] * 3     # the body judders a game px as each tooth comes down (30 deg = 4 frames)
+# per direction: (role, x, y of the axle's hip (body sheet px, column 1), layer, ground y or None (hip + REST + DROP));
+# 'near' over the body, 'far' behind it and darker. Side and 3/4 views: the near side's two (or three) wheels, the far
+# side's the same moved by FAR. S / N: edge-on, the near pair at the body's sides, the far pair behind, higher.
+WHEEL_AT = {
+    4: [
+        dict(near=[('rf', 232, 214, 'near'), ('lf', 398, 214, 'near')],
+             behind=[('rb', 240, 214, -24), ('lb', 390, 214, -24)]),
+        dict(near=[('rb', 205, 478, 'near'), ('rf', 274, 507, 'near')], far=(26, -16)),
+        dict(near=[('rb', 197, 776, 'near'), ('rf', 293, 776, 'near')], far=(16, -9)),
+        dict(near=[('rb', 206, 1057, 'near'), ('rf', 298, 1080, 'near')], far=(24, -14)),
+        dict(near=[('lb', 230, 1380, 'near'), ('rb', 382, 1380, 'near')],
+             behind=[('lf', 238, 1380, -22), ('rf', 374, 1380, -22)]),
+    ],
+    6: [
+        dict(near=[('rf', 232, 214, 'near'), ('lf', 398, 214, 'near')],
+             behind=[('rm', 238, 214, -20), ('lm', 392, 214, -20), ('rb', 244, 214, -40), ('lb', 386, 214, -40)]),
+        dict(near=[('rb', 196, 474, 'near'), ('rm', 252, 497, 'near'), ('rf', 306, 520, 'near')], far=(26, -16)),
+        dict(near=[('rb', 190, 776, 'near'), ('rm', 262, 776, 'near'), ('rf', 334, 778, 'near')], far=(16, -9)),
+        dict(near=[('rb', 198, 1054, 'near'), ('rm', 254, 1069, 'near'), ('rf', 310, 1084, 'near')], far=(24, -14)),
+        dict(near=[('lb', 222, 1380, 'near'), ('rb', 390, 1380, 'near')],
+             behind=[('lm', 228, 1380, -20), ('rm', 384, 1380, -20), ('lf', 234, 1380, -40), ('rf', 378, 1380, -40)]),
+    ],
+}
+EDGE_ROLL = {0: 1.0, 4: -1.0}
+WHEEL_FIT = [1.0, 0.0, 5.0, 0.0, 1.0]   # hand nudges (sheet px, + = lower) so the near tips stand on the unit's ground line    # S: the tread rolls down (toward us), N: up (away)
+
+
+def wheel_list(r):
+    """[(role, centre (window px), radius, layer)] of the wheels in direction r, the farthest first"""
+    x0, y0 = PARTS[r]['org']
+    R = WHEEL_R[LEGS]
+    T = WHEEL_AT[LEGS][r]
+    out = []
+    for role, x, y, layer in T['near']:
+        g = y - y0 + DROP[r] + REST[r] + WHEEL_FIT[r]
+        c = np.array([x - x0, g - WHEEL_SINK * R])
+        out.append((role, c, R, layer))
+        if T.get('far') is not None:
+            fx, fy = T['far']
+            out.append(('l' + role[1], c + np.array([fx, fy], float), R, 'far'))
+    for role, x, y, up in T.get('behind', []):
+        g = y - y0 + DROP[r] + REST[r] + WHEEL_FIT[r] + up
+        out.append((role, np.array([x - x0, g - WHEEL_SINK * R]), R, 'far'))
+    return sorted(out, key=lambda w: (w[3] != 'far', w[1][1]))
+
+
+def wheel_stride():
+    """game px the machine goes a WALK loop with the wheels not sliding: the rolling radius x the loop's turn"""
+    return WHEEL_SINK * WHEEL_R[LEGS] * GS * math.radians(WHEEL_TURN)
+
+
+_COG = {}
+
+
+def cog_img(r, R, deg, right):
+    """the rebuilt cog for direction r, radius R (sheet px), turned deg (screen clockwise / tread rolling)"""
+    h = int(round(2 * R))
+    if r in EDGE_ROLL:
+        w = int(round(EDGE_W * 2 * R)) + 3
+        key = ('e', w, h, right, round(EDGE_ROLL[r] * deg, 3))
+        if key not in _COG:
+            _COG[key] = cog.render_edge(EDGE_ROLL[r] * deg, w, h, hub_right=right, hub=True)
+    else:
+        w = int(round(2 * R * (SQUASH_34 if r in (1, 3) else 1.0)))
+        key = ('f', w, h, round(deg, 3))
+        if key not in _COG:
+            _COG[key] = cog.render_face(deg, w, h)
+    return _COG[key]
+
+
+def wheel_layer(r, c, R, deg, layer, size):
+    Wd, H = size
+    mid = np.mean([w[1][0] for w in wheel_list(r)])
+    img = cog_img(r, R, deg, c[0] > mid)
+    if layer == 'far':
+        img = shade(img, WHEEL_DARK)
+    out = np.zeros((H, Wd, 4), np.uint8)
+    _paste(out, img, int(round(c[0] - img.shape[1] / 2.0)), int(round(c[1] - img.shape[0] / 2.0)))
+    return out
+
+
+def wheels_layers(r, t, bob=0.0, stand=False):
+    """{'far': [...], 'back': [], 'near': [...]}: the wheels at walk time t (0..1 a loop), still when standing; the
+    body's bob does not move them (the body judders on its axles)"""
+    deg = 0.0 if stand else WHEEL_TURN * t
+    out = {'far': [], 'back': [], 'near': []}
+    for role, c, R, layer in wheel_list(r):
+        out[layer].append(wheel_layer(r, c, R, deg, layer, PARTS[r]['size']))
+    return out
+
+
+def legs_layers(r, t, bob=0.0, stand=False):
+    """what the machine stands on (MOUNT): the cog wheels, or the painted legs of the passes before"""
+    if MOUNT == 'wheels':
+        return wheels_layers(r, t, bob, stand)
+    return painted_legs_layers(r, t, bob, stand)
 
 
 def rest_heights():
@@ -984,7 +1111,7 @@ def bob_px(b):
 
 
 def walk_frame(r, i):
-    bob = bob_px(WALK_BOB[LEGS][i])
+    bob = bob_px((WHEEL_BOB if MOUNT == 'wheels' else WALK_BOB[LEGS])[i])
     L = legs_layers(r, i / float(N_WALK), bob)
     return [(x, False) for x in L['far'] + L['back']] + [(body_layer(PARTS[r]['body'], bob), False)] + \
         [(x, False) for x in L['near']]
@@ -1161,15 +1288,17 @@ def main():
     if IK_SHORT:
         print('warning: %d leg poses out of reach (by up to %.1f px)' % (len(IK_SHORT), max(IK_SHORT)))
     print('rest', [round(x, 1) for x in REST], 'drop', [round(x, 1) for x in DROP])
-    print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f), %d legs' % (cell + (GS, LEGS)))
-    for name, dur in (('walk', WALK_MS[LEGS]), ('wind', 110), ('sweep', 100)):
+    print('cell %dx%d, anchor (%d, %d) (game px, GS %.3f), %d %s' % (cell + (GS, LEGS, MOUNT)))
+    if MOUNT == 'wheels':
+        print('wheel stride %.3f game px a loop (Defs.GREAT_WINDER "stride")' % wheel_stride())
+    for name, dur in (('walk', WALK_MS[LEGS] if MOUNT == 'legs' else 62), ('wind', 110), ('sweep', 100)):
         rows = [[to_cell(r, g, bob, cell) for g, bob in frames[(name, r)]] for r in range(5)]
         save(name, rows, cell, dur)
         if name == 'walk':
-            save('walk_%dlegs' % LEGS, rows, cell, dur, png=False)
+            save('walk_%d%s' % (LEGS, MOUNT), rows, cell, dur, png=False)
     LEGS = other
     rows = [[to_cell(r, g, bob, cell) for g, bob in walk2[('walk', r)]] for r in range(5)]
-    save('walk_%dlegs' % other, rows, cell, WALK_MS[other], png=False)
+    save('walk_%d%s' % (other, MOUNT), rows, cell, WALK_MS[other] if MOUNT == 'legs' else 62, png=False)
     LEGS = keep
     print('ok')
 

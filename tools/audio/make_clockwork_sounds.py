@@ -260,7 +260,7 @@ SOUNDS = {
     "select/movement_works_1": [cl(8, 0.75, 0.30), cl(2, 0.7, 0.35, at=0.28, gain=0.8), keys(49.30, 0.6, at=0.05, gain=0.35)],
     "select/ratchet_turret": [ratchet(1, 0.36, pitch=0.8), cl(4, 0.6, 0.30, at=0.25, gain=0.4)],
     "select/cuckoo_house": [ticks(3, 7, pitch=1.3), ding(0, 0.5, at=0.62, gain=0.8, pitch=1.15)],
-    # the Heavy Works (0.14.85): its winch cranked slow and low, then the heavy clank of the crane's load set down
+    # the Heavy Works (0.14.92): its winch cranked slow and low, then the heavy clank of the crane's load set down
     "select/heavy_works": [("crank", 1.60, 1.00, 0.0, 0.7, 0.9, 0.35), cl(5, 0.5, 0.45, at=0.45, gain=0.9), cl(1, 0.45, 0.5, at=0.7, gain=0.6)],
 
     # ================= THE FACTION (assets/audio/clock/) and WORK (assets/audio/work/) =================

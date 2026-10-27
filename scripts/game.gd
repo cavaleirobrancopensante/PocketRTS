@@ -137,7 +137,7 @@ var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
 ## The computer keeps spots for buildings it means to lay soon (team -> {kind -> {"cell", "t", "spring"}}): its own other
 ## buildings are not put where they would take such a spot or cut into its ring (placement_problem with `ai`). Used for the
-## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.85). Not saved: the computer works it
+## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.92). Not saved: the computer works it
 ## out again.
 var ai_keep := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
@@ -4767,9 +4767,14 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		return null          # (gear mode: a building's Tension price, the Clock Aviary's)
 	if not requirement_met(t, k):
 		return null
+	var old_wall: Building = null
 	if k == "gate":
-		var old_wall := _own_wall_at(t, c)
+		old_wall = _own_wall_at(t, c)
 		if old_wall:
+			if old_wall.ghost:
+				players[t]["gold"] += int(old_wall.d["cost"])      # (a planned piece never began: its price back)
+				stats[t]["spent"] -= int(old_wall.d["cost"])
+				stats[t]["built"] = maxi(0, int(stats[t]["built"]) - 1)
 			_remove_quietly(old_wall)
 	if k == "wall":
 		var old_gate := _own_gate_at(t, c)
@@ -4793,10 +4798,63 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		b.seeded = false
 		b._update_sprite()
 		builders = _one_builder(builders, b, queued)   # one grub becomes the building
+	if old_wall:
+		_wall_piece_to_gate(old_wall, b)
 	for u in builders:
 		if u is Unit and u.is_worker() and not u.dead:
+			# a gate laid over a wall a worker is building: the gate first, then on with the rest of his wall
+			var rest: Array = _wall_work(u, b) if old_wall and not queued else []
 			u.give({"o": "build", "e": b}, queued)
+			if not rest.is_empty():
+				u.line_rest = rest
 	return b
+
+
+## A gate takes the place of a wall piece: every worker who had that piece in his work (going to it, next in his
+## wall, Shift-queued) has the gate there instead, so the rest of the wall stays planned with its builders. (The piece
+## used to vanish from under them: a Labourer on his way to it stopped, nobody was coming to the other planned pieces
+## and the whole ghost wall went, the gate too, playtest 0.14.82.)
+func _wall_piece_to_gate(old: Building, gate: Building) -> void:
+	for u in units:
+		if u.dead or u.team != gate.team or not u.is_worker():
+			continue
+		for i in u.line_rest.size():
+			if u.line_rest[i] == old:
+				u.line_rest[i] = gate
+		for o in u.queue:
+			if String(o["o"]) == "build" and o.get("e") == old:
+				o["e"] = gate
+			elif String(o["o"]) == "wall":
+				var ps: Array = o["pieces"]
+				for i in ps.size():
+					if ps[i] == old:
+						ps[i] = gate
+		if u.order == "build" and u.order_target == old:
+			var rest: Array = u.line_rest.duplicate()
+			var q: Array = u.queue.duplicate()
+			u.cmd_build(gate)
+			u.line_rest = rest
+			u.queue = q
+
+
+## The unfinished wall pieces and gates a worker still has to build (where he's going, the rest of his wall, his
+## queued walls), without `skip`: what he goes on with after a gate laid over his wall.
+func _wall_work(u: Unit, skip: Building) -> Array:
+	var out: Array = []
+	var all: Array = []
+	if u.order == "build" and u.order_target is Building:
+		all.append(u.order_target)
+	all.append_array(u.line_rest)
+	for o in u.queue:
+		if String(o["o"]) == "wall":
+			all.append_array(o["pieces"])
+		elif String(o["o"]) == "build":
+			all.append(o.get("e"))
+	for p in all:
+		if p is Building and is_instance_valid(p) and p != skip and not p.dead and not p.built \
+				and (p.kind == "wall" or p.kind == "gate") and not out.has(p):
+			out.append(p)
+	return out
 
 
 ## Winders and grubs build one site each: of the selected workers the one with the least to do
@@ -5889,8 +5947,11 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			continue
 		var dd: float = (u.position + Vector2(0, -12)).distance_to(p)
 		if dd < bd:
+			var rider := Unit.mounting_onto(u)
+			if rider != null and (rider.dead or not shown_to_commander(rider)):
+				continue
 			bd = dd
-			best = u
+			best = rider if rider != null else u    # (a horse a man is getting on: the strip there is him)
 	if best:
 		return best
 	for b in buildings:
@@ -9774,7 +9835,9 @@ func _draw_overlay_all() -> void:
 		var mp := overlay.get_global_mouse_position()
 		for e in selection:
 			if e is Unit and is_instance_valid(e) and not e.dead and e.team == controlled_team():
-				_draw_patrol(e.global_position, mp, e.global_position, 0.55)
+				# (Shift held: the patrol goes after its orders, from where they end)
+				var pa: Vector2 = e.plan_end() if Settings.pc() and Input.is_key_pressed(KEY_SHIFT) else e.global_position
+				_draw_patrol(pa, mp, pa, 0.55)
 	if not tongues.is_empty():
 		_draw_tongues()
 	for tr in _tracers:

@@ -147,6 +147,7 @@ Update (v7): the spring comes out along the building's facing, diagonally down a
 ## Crown buildings recoloured in code (0.14.27, tools/recolour_crown_buildings.py)
 - The owner (2026-10-26): the flags and the red details on the buildings wear the player's colour; the Farm's windmill roof is terracotta. Done IN CODE on the painted sprites, after the importers (one line in tools/rebuild_art.sh): the cloth's reds (flags, banners, pennants, the Town Hall's striped market awning, the Foundry's awning, wall hangings and workmen, the Horse Breeder's saddles, blankets and rosettes, the Armoury inventor's shirt in all ten strips) are flattened to the shader's two key reds (lit and shaded: the painted gradients are gone, so the cloth reads a little flatter than the rest), their darkest crimson edge goes a neutral dark and the pale pink blends round a white charge (the Church's cross, the awning's white stripes) go white, and key reds the importers had put on bricks, fire, kegs and the like are put back to a plain painted red. Where it is painted is set by hand-drawn boxes per sprite (SPEC in the script). Wanted, when the Crown buildings are redrawn: cloth painted in flat reds that snap cleanly, and the terracotta roof painted as such.
 - The Farm's windmill cap (assets/buildings/farm_*.png and the Farm icon, tools/import_windmill.py tile_cap): its painted red is mapped onto a terracotta ramp in code by each pixel's tone, so the shading is ChatGPT's but the colours are code-picked. Wanted: the windmill drawn with a terracotta roof.
+- The roofs are now TERRACOTTA in code (the owner, 2026-10-27, 0.14.86; ROOFS in tools/recolour_crown_buildings.py): the bluish slate on the Town Hall (spire, main roof, lean-to, its belfry level's roof), Barracks, Foundry, Church, Powder Mill (mill roof and lean-to) and the Armoury's turret cone, in every state that shows it, and on their portraits (assets/icons/town_hall, barracks, foundry, church, powder_mill, armoury), to set the Crown apart from the Clockwork's slate and iron and match the Cottages and the windmill. Inside hand-set polygons per sprite, the slate tiles (blue-grey) and the cool greys and black joints between them go onto a muted brown-red ramp by each pixel's tone (ROOF_RAMP), so the tile shading is ChatGPT's but the colours are code-picked; the joints read a little sooty, and a few roof-edge pixels stay grey. Left as painted: the scaffolded Foundry and Powder Mill (no roof yet) and the ruins' scattered slate. Wanted: a ChatGPT repaint of the Crown buildings with terracotta roofs.
 ## Spring Catapult and Great Winder animations (code, 2026-10-26; art only, not in the game yet)
 - tools/catapult_guide/anim.py: the Spring Catapult's THROW (art/redraws/catapult_throw.png/.gif, 5x12) and MOVE (catapult_move.png/.gif, 5x8), built in code from ChatGPT's direction sheet (art/redraws/catapult_dirs.png, which already paints the LOADED pose: arm cocked back) at game scale (0.26). CODE EDITS: the arm (beam and cup) is cut off and swung about its hinge on a small 3D model: in the picture plane in E, foreshortened along the view axis in S and N, in between in SE/NE (the beam is turned and STRETCHED along its length, its width kept: the stretched rivets show in S/N when the arm stands up); the cup turns with the beam (rotated paint, NEAREST); in E and NE the stretch of beam hidden behind the drum's gear rim is the visible beam REPEATED (whole px); the hole the beam leaves is filled from neighbouring paint (S/N: row by row between the drum's sides). The N loaded pose is BUILT (ChatGPT drew that arm nearly upright): the cup comes down over the machine's back. The payload is ChatGPT's curled Clock Soldier from the concept (art/redraws/concepts/catapult_v1.png, also art/redraws/catapult_payload.png), shrunk into the cup; its flight is code positions for two frames (the game's projectile takes over: art/redraws/catapult_cup.json has the cup per frame). The machine jolts 1 px as the arm hits its stop (code).
 - Catapult wheels (MOVE): turned in code. The tooth ring turns about the rim's middle, but only the teeth that stand against the navy (where the turn would bring in teeth hidden behind the body, they are taken one tooth pitch round); the face plate with its four bolts turns about the hub (ChatGPT drew the hubs a few px off the rims' middles); the blue hub ball stays still; the turned paint is re-lit with the painting's big light and shade (the ratio of blurred brightness), so the highlight stays put. The teeth go round 3 pitches per 8-frame loop while the bolts go a quarter turn (both loop). Behind a near wheel's teeth where they stand over the body, the gaps are filled with a flat dark brown taken from the painting (CODE COLOUR). Far wheels: only the teeth against the navy turn. N: the edge-on wheels' tooth bars are scrolled up the tread. The body rides 1 px over the cogs.
@@ -276,7 +277,39 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   replace them.
 - A swept wreck goes in the torn-body puff of dust (Game.torn_fx), not a painted sweep effect.
 
-## The gear rules: Heavy Works, brass plates, the gear view (code, 0.14.85; docs/gear_rules.md)
+## The Great Winder on cog wheels (code, branch gw-wheels, 2026-10-27; docs/great_winder.md "The art")
+The owner, after playing: the legs looked silly. The painted legs are gone from WALK, WIND, SWEEP, IDLE and DEATH
+(MOUNT = 'wheels' in tools/great_winder_guide/anim.py; the legs code is kept behind MOUNT = 'legs'). Every wheel is code:
+- The WHEELS are the Spring Catapult's painted cog (art/redraws/catapult_wheel_chatgpt.png) REBUILT by
+  tools/catapult_guide/cog.py (12 evened teeth, 8 evened bolts, the painting's light put back as a fixed map), SCALED to
+  44.3 sheet px tip radius (~13 game px) and placed by hand at the body's corners where the legs' hips were (WHEEL_AT):
+  E face-on round; SE and NE the same cog SQUASHED to 0.72 of its height (its face turned ~45 deg; the Catapult squashes
+  only SE); S and N the cog's EDGE-ON paint (cog.render_edge, with its hub ball, 0.44 as wide as tall: wider than the
+  Catapult's 0.36 so it reads at 1x), the near pair at the body's sides, the far pair behind and higher. The far side's
+  wheels are the same cogs behind the body, DARKENED x0.72 (CODE SHADE). No painting of the Great Winder on wheels exists.
+- WALK: every wheel TURNED in code, 90 deg (3 teeth) a 12-frame loop; S rolls its tread down, N up. The body JUDDERS
+  1 game px every 4 frames (a tooth coming down). WIND and SWEEP: the wheels stand still.
+- The body is unchanged and at the same height (the brush housing stays on the ground); in the side and 3/4 views the
+  belly's arch and the leftover leg scraps are covered by the near wheels. The cog's blue hub ball turns to player colour
+  with the rest (cw_palette's rule).
+- IDLE: standing on the still wheels, then the body dipped 1 game px on its axles (the wheels do not move).
+- DEATH: MADE in code from the parts: the body and the far wheels SQUASHED toward the ground (up to 22%) and TIPPED up to
+  4 degrees; the near wheels come off: in the face-on views each is SQUASHED down to its foot (falling flat toward us,
+  to 38%) and slid out a little, in S and N each is ROTATED over to its own side (up to 80 deg about its foot); all
+  darkened to 50%. A painted wreck on its side with a wheel off would replace it.
+
+## Clockwork buildings going up out of the crate (code, 0.14.84)
+- Every Clockwork building's crate unfolding strip (assets/effects/crate_unfold_<kind>.png) is the ONE painted sheet
+  art/clockwork/crate_unfold.png (closed crate, lid open, sides folding, iron plates, gantry) scaled in code by
+  tools/import_crate.py to each building's construction sprite: the same crate and gantry for every building. The gear-mode
+  buildings (Cog Press, Mainspring, Regulator, Movement Works, Ratchet Turret, Escapement, Clock Aviary) had no strip until
+  0.14.84, so they showed no crate at all; a building added later without a re-run of the importer borrows the nearest
+  strip, scaled (Building.crate_art). Wanted: per-building painted unfolds (the crate opening into that building's frame).
+- The build-up after the unfold is code: the painted construction sprite (scaffold) is clipped from the bottom
+  (Building._rise: 40% of it at the start, all of it at half built), so it rises out of the plates; a hard straight cut, no
+  painted half-built stages. Wanted: two or three painted construction stages per building (plates and lower frame,
+  half-built walls in scaffold, the full scaffold) to replace the clip.
+## The gear rules: Heavy Works, brass plates, the gear view (code, 0.14.92; docs/gear_rules.md)
 - HEAVY WORKS building: the owner's ChatGPT sheet (art/redraws/heavy_works_empty_chatgpt.png, top row only: built, under
   construction, damaged, destroyed) cut and keyed off its navy background by tools/press_anim/heavy_works_key.py, imported
   by tools/gear_art/import_buildings.py. Its WINDING KEY on the winch house is TURNED IN CODE from the built frame (the bow cut

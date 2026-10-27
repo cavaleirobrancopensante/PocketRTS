@@ -1581,6 +1581,7 @@ const NEAR_KEYS := "QWERTASDFGZXCVB"
 const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A", "guardsman": "S",
 	"horseman": "D", "cuirassier": "C", "dragoon": "F", "armoured_dragoon": "V",
 	"dismounted": "G", "dismounted_cuirassier": "B",
+	"clocktower": "T", "cog_press": "C", "movement_works": "L", "heavy_works": "H",     # (Light Works L, Heavy Works H)     # (owner, 2026-10-27: the Cog Press's G looked like a C in the font, and C built a Clocktower)
 	"tin_militia": "A", "scrapper": "D", "rail_rifleman": "F", "work_car": "S", "plate_wagon": "A", "heavy_loco": "D", "carrier_car": "F", "tesla_loco": "G", "storm_engine": "B"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 ## Commands on a Ctrl key (computer): the hint shows it, and they take no letter (A stays ATTACK).

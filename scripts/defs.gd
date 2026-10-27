@@ -200,7 +200,7 @@ const ARC := {"drain": 0.05, "speed": 420.0}
 ## behind it, inside the `cone` (cosine) away from the shooter, hit the shield instead
 ## (the shooter must be in front of it: `front`).
 const BRACE := {"armor": 7, "reach": 120.0, "cone": 0.45, "front": 0.2, "switch": 0.6, "drain": 2.5}   # drain: battery use while braced (x normal)
-## Clock Soldier: SHIELD FORWARD (research SHIELD WALL at the Movement Works; scripts/shield_wall.gd,
+## Clock Soldier: SHIELD FORWARD (research SHIELD WALL at the Light Works; scripts/shield_wall.gd,
 ## docs/clock_soldier_shield.md). Switching takes `switch` s (it stands still meanwhile); raised, it walks at `speed` of
 ## its pace, has `armor` more armour and takes `front` less from SHOTS whose shooter stands in front of it (inside the
 ## `cone`, a cosine about where it faces) and `front_melee` less from blows from in front; blows from the side or behind
@@ -430,7 +430,7 @@ static var rail_econ := true
 
 
 ## Gear mode's Clockwork barracks and supply building (the Line keeps the Assembly Works and the Spring Tower).
-## (the Movement Works was renamed the LIGHT WORKS for players in 0.14.85; its internal id stays movement_works)
+## (the Movement Works was renamed the LIGHT WORKS for players in 0.14.88; its internal id stays movement_works)
 const CW_WORKS := "movement_works"
 ## The HEAVY WORKS (owner, 2026-10-27, docs/gear_rules.md): the heavy machines' yard (the Pendulum, the Spring Ballista, the
 ## Great Winder), on its BIG ring only (GEAR "big_only"), a Tension user (TENSION_USERS: idle unless its ring meshes with a
@@ -497,7 +497,7 @@ static func energy_only(k: String) -> bool:
 ## SIZE SETS THE TEMPO (owner, 2026-10-27): on its SMALL ring it fires quick light screws (`small`), on its BIG ring slow heavy
 ## ones (`big`: about the same damage a second, but armour takes the same off every hit, so the big screw is the answer to
 ## armour); the reach is the same on both, well under the Crown's guns. `damage` / `cooldown` are the old single values (the
-## small ring's were these until 0.14.85). THE TURRET CIRCLE (owner, 2026-10-27): each turret claims a circle of ground
+## small ring's were these until 0.14.92). THE TURRET CIRCLE (owner, 2026-10-27): each turret claims a circle of ground
 ## `claim` tiles round its centre (like the Brood's Feeding Pits) and two turrets' circles may not overlap (a turret's
 ## spring draws every bit of force from the gears under it: a second one inside the circle would starve both and jam).
 ## A guess: 4 tiles, so turrets stand at least 8 tiles apart. Old saves keep the turrets they have.
@@ -650,7 +650,7 @@ const BALLISTA_KIND := "ballista"
 
 
 ## The GREAT WINDER (gear mode's Clockwork tier 2, the owner's unit, 2026-10-26/27; scripts/great_winder.gd,
-## docs/great_winder.md): the faction's big, slow, walking winding machine, its field workshop. No weapon. Three jobs:
+## docs/great_winder.md): the faction's big, slow winding machine on cog wheels, its field workshop. No weapon. Three jobs:
 ## WINDING: every Clockwork construct of its side (not the Winders, who wind themselves) within `area` px of it is wound
 ##   `wind` a second (an army off the gear ground runs down at Defs.WIND_DECAY, 0.012 a second: inside the area it never
 ##   does, and a run-down statue in it wakes and fills again). Drawn as a ring on the ground while it is selected.
@@ -664,10 +664,11 @@ const BALLISTA_KIND := "ballista"
 ##   are never swept) and sweeps it into its hopper with its rollers for `sweep_time` s: the wreck is gone and it keeps
 ##   PARTS: the wreck's price / `per_part` (the less of the wreck is left, the fewer), at least 1, up to `cap` in all.
 ##   Parts do nothing yet: they are for REASSEMBLY, a later job (docs/great_winder.md).
-## The art's walk carries it 16 game px a loop of 12 frames (docs/great_winder_legs.md): Unit.WALK_FPS_ART plays it at
-## speed x 12 / 16 frames a second, so the feet do not slide.
+## It rolls on four cog wheels (branch gw-wheels, 2026-10-27; it walked on legs before): the walk strip turns them 90 deg
+## (3 teeth) a loop of 12 frames, which rolls it 20.25 game px (their rolling radius x pi / 2; docs/great_winder.md):
+## Unit.WALK_FPS_ART plays it at speed x 12 / 20.25 frames a second (16 at 27), so the wheels do not slide.
 const GREAT_WINDER := {"area": 200.0, "wind": 0.06, "look": 224.0, "reach": 30.0, "mend": 1.5, "mend_wind": 0.3,
-	"sweep_look": 256.0, "sweep_reach": 34.0, "sweep_time": 2.0, "per_part": 10.0, "cap": 100, "stride": 16.0, "frames": 12}
+	"sweep_look": 256.0, "sweep_reach": 34.0, "sweep_time": 2.0, "per_part": 10.0, "cap": 100, "stride": 20.25, "frames": 12}
 const GREAT_WINDER_KIND := "great_winder"
 
 
@@ -1026,7 +1027,7 @@ const UNITS := {
 	# unit (2026-10-26/27): the Clockwork's field workshop, the job its escort of ordinary Winders does, done better by one
 	# machine. Guesses (design_principles 1): no weapon (a Powder Wagon's job in the Crown, a support unit to protect);
 	# 420 hp + 3 armour, "armored" and "massive" (a heavy iron machine: a Pendulum 340 + 2, a Powder Wagon 220 + 1); slow:
-	# 27 (its painted 4-leg walk carries it 16 px a loop: 20 frames a second at 27; a Ballista 34, a Pendulum 46); it winds
+	# 27 (kept when it went on cog wheels: slow on purpose, it falls behind a march; a Ballista 34, a Pendulum 46); it winds
 	# every construct within 200 px at 0.06 a second (5 x the run-down rate), mends one at a time at 1.5 x a Winder's rate,
 	# and sweeps its own side's wrecks into parts. 175 cogs + 75 Tension, 4 supply (about the three or four escort
 	# Winders it stands in for: 150-200 cogs and 3-4 supply, plus the Tension of a tier-2 machine).
@@ -1035,7 +1036,7 @@ const UNITS := {
 		"name": "Great Winder", "hp": 420, "armor": 3, "speed": 27, "cost": 175, "tension": 75, "time": 35.0, "supply": 4,
 		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 26, "from": "heavy_works",
 		"requires": "escapement", "no_attack": true, "ground_only": true, "faction": "clockwork",
-		"about": "The Clockwork's walking winding machine, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Heavy Works (once an Escapement works). Costs Tension.",
+		"about": "The Clockwork's winding machine on cog wheels, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Heavy Works (once an Escapement works). Costs Tension.",
 	},
 	"windup_soldier": {
 		"tags": ["light"],
@@ -1250,7 +1251,7 @@ const BUILDINGS := {
 		"supply": 10, "sight": 6, "trains": [], "field": 7, "faction": "clockwork",
 		"about": "10 more supply. Keeps nearby constructs wound up.",
 	},
-	# THE NEW-STYLE CLOCKWORK ARMY (gear mode; docs/clockwork_ground_up.md). Numbers are first guesses: the Movement Works
+	# THE NEW-STYLE CLOCKWORK ARMY (gear mode; docs/clockwork_ground_up.md). Numbers are first guesses: the Light Works
 	# costs like the Crown Barracks, the Regulator houses like the Spring Tower.
 	"movement_works": {
 		"name": "Light Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
@@ -1267,7 +1268,7 @@ const BUILDINGS := {
 		"about": "The yard of the heavy machines: under its gantry crane it assembles Pendulums, Spring Ballistas and Great Winders, and you can watch each one rise in the bay. It sits on a BIG gear only (slow and strong: the heavy torque), and everything it makes costs Tension, so its gear ring must mesh with a Mainspring's ring, else it stands idle (NEEDS MAINSPRING). Needs a working Escapement.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
-	# its ring meshes with a Mainspring's. Numbers are guesses: the Movement Works' price and health.
+	# its ring meshes with a Mainspring's. Numbers are guesses: the Light Works' price and health.
 	"escapement": {
 		"name": "Escapement", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 7, "trains": [], "requires": "movement_works", "faction": "clockwork",
@@ -1435,7 +1436,7 @@ const RESEARCH := {
 	"high_leap": {"name": "High Leap", "label": "HIGH LEAP", "at": "escapement", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 100,
 		"time": 60.0, "icon": "research_high_leap",
 		"about": "A stiffer spring: every Springer can JUMP UP onto high ground too (only where you can see)."},
-	# the Movement Works' research (gear mode): SHIELD FORWARD for every Clock Soldier (Defs.SHIELD_WALL). It costs
+	# the Light Works' research (gear mode): SHIELD FORWARD for every Clock Soldier (Defs.SHIELD_WALL). It costs
 	# Tension, so it is made only at a Works whose ring meshes with a Mainspring's (THE TENSION RULE). Guesses.
 	"shield_wall": {"name": "Shield Wall", "label": "SHIELD WALL", "at": "movement_works", "faction": "clockwork", "cost": 100, "cost2": 0,
 		"tension": 50, "time": 45.0, "icon": "research_shield",

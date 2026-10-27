@@ -1,5 +1,5 @@
 extends SceneTree
-## THE GREAT WINDER (scripts/great_winder.gd, Defs.GREAT_WINDER, docs/great_winder.md): made at the Heavy Works (0.14.85) once an
+## THE GREAT WINDER (scripts/great_winder.gd, Defs.GREAT_WINDER, docs/great_winder.md): made at the Heavy Works (0.14.92) once an
 ## Escapement works (cogs and Tension); its walk is played so the feet do not slide; it WINDS the constructs inside its
 ## area (a run-down one wakes) and not the ones outside, and never runs down itself; MEND (autocast, on from the start)
 ## mends a hurt Clockwork unit near it, costs cogs, and stops when switched off; it never mends a Crown unit; SWEEP
@@ -112,12 +112,12 @@ func _wreck(g: Game, u: Unit) -> void:
 
 func _roster(g: Game) -> void:
 	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_HEAVY]
-	check("the Heavy Works trains the Great Winder (0.14.85)", (wd["trains"] as Array).has(K))
+	check("the Heavy Works trains the Great Winder (0.14.92)", (wd["trains"] as Array).has(K))
 	check("the Light Works does not", not (Defs.BUILDINGS[Defs.CW_WORKS]["trains"] as Array).has(K))
 	check("it is in the gear-mode roster (not retired)", Defs.CW_NEW_UNITS.has(K) and not Defs.retired(K))
 	check("its price is cogs and Tension", g.unit_price(0, K) == [int(Defs.UNITS[K]["cost"]), int(Defs.UNITS[K]["tension"])], str(g.unit_price(0, K)))
 	check("it has no weapon", Defs.UNITS[K].get("no_attack", false) and not g._add_unit(K, 0, U.hall(g, 0).center() + Vector2(0, 200)).has_attack())
-	check("its walk is played so the feet do not slide (16 px a 12-frame loop)", is_equal_approx(Unit.walk_fps_for(K), GreatWinder.walk_fps()),
+	check("its wheels turn so they do not slide (20.25 px a 12-frame loop)", is_equal_approx(Unit.walk_fps_for(K), GreatWinder.walk_fps()),
 		"%.2f vs %.2f" % [Unit.walk_fps_for(K), GreatWinder.walk_fps()])
 	var fr: Dictionary = ArtData.UNITS[K]["frames"]
 	check("its strips are in: walk 12, wind 8, sweep 8, idle, death", int(fr.get("walk_se", 0)) == 12 and int(fr.get("wind_e", 0)) == 8 \
@@ -352,7 +352,7 @@ func _computer() -> void:
 	g.players[0]["gold"] = 8000
 	g.players[0]["tension"] = 2000.0
 	# (the Mainspring first, with room for the Escapement and the Heavy Works' big ring, as the computer places it: the
-	# Great Winder is made at the Heavy Works since 0.14.85, which the computer lays itself)
+	# Great Winder is made at the Heavy Works since 0.14.92, which the computer lays itself)
 	var spring: Building = null
 	var rs: Array = GearEcon.room_spot_n(g, 0, "mainspring", [hall], [Defs.CW_TECH, Defs.CW_HEAVY])
 	if int(rs[1]) >= 2:

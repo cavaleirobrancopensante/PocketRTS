@@ -4,13 +4,38 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.14.85", "items": [
+	{"v": "0.14.92", "items": [
 		"CLOCKWORK GEAR RULES (the owner's, from the gear study): each RATCHET TURRET now claims a circle of ground 4 tiles round it, and two turrets' circles may not overlap: a turret's spring draws all the force from the gears under it, so turrets stand at least 8 tiles apart. While you place one, the circles are drawn and the ghost says TOO NEAR A TURRET. Old saves keep the turrets they have.",
 		"NEW CLOCKWORK BUILDING, the HEAVY WORKS (175 cogs, 45 s, needs a working Escapement): a gantry crane yard where the PENDULUM, the SPRING BALLISTA and the GREAT WINDER are now made, and you can watch each machine rise in its bay as it trains. It sits on its BIG gear only and uses Tension, so its ring must mesh with a Mainspring's (else NEEDS MAINSPRING).",
-		"The MOVEMENT WORKS is renamed the LIGHT WORKS: it makes the Clock Soldier, the Springer and the Netter (no more Pendulums, Ballistas or Great Winders).",
+		"The LIGHT WORKS now makes only the light machines: the Clock Soldier, the Springer and the Netter (no more Pendulums, Ballistas or Great Winders).",
 		"SIZE SETS THE TEMPO: a small gear works fast and light, a big gear slow and strong. The Light Works trains 15% faster on its small gear, 15% slower on its big one; the Escapement and the Clock Aviary work 10% faster or slower. A Ratchet Turret on its small gear fires 11 damage every 1.2 s; on its big gear 21 every 2.2 s, better against armour, with the same reach. Each card says its gear's trade in one line.",
 		"READABILITY: the Mainspring, the Escapement, the Heavy Works and the Clock Aviary stand on a polished brass floor plate; a small spring mark shows a building fed by a Mainspring; the placing ghost lights its meshing teeth green and its clashes red and gives its reason in one red line; the GEAR VIEW (the ` key, or GEAR VIEW on a Clockwork building's card) shows the whole network: the drivers gold, every ring green to red by how well it works, each Mainspring's reach and the turret circles.",
 		"CLOCKWORK COMPUTER: it lays a Heavy Works by a Mainspring as soon as its Escapement works (its first Spring Ballista, then its Pendulums), keeps room for it by its first Mainspring, and spaces its turrets by the new rule.",
+	]},
+	{"v": "0.14.91", "items": [
+		"The Great Winder rolls on cog wheels instead of legs. Four brass cogs, the Clockwork's own wheel (as on the Spring Catapult and the Spring Ballista), turn as it moves, at just the speed it goes, and stand still while it mends or sweeps. When it is destroyed its wheels come off. Its speed is unchanged (27): it is still slow on purpose.",
+	]},
+	{"v": "0.14.90", "items": [
+		"FIX: a Gate laid over part of a planned palisade now replaces only that piece (its price comes back); the rest of the wall stays planned and its Labourers carry on with it. Before, the whole planned wall, and the gate, could vanish. Over a wall being built or a built wall, the gate still takes just that one piece.",
+		"FIX: a drag let go over the buttons or the minimap now ends there. The right-drag line no longer keeps following the mouse after its button is up (and the same for the box select, the middle-button map drag and a finger lifted over a button).",
+		"CLOCKWORK COMPUTER: it no longer sends a Clocktower into your base. A new Clocktower goes only on its own side of the map, never nearer your halls, your main or your natural expansion than its own main; and where it lost a Clocktower or its crate, it does not try that ground again for four minutes.",
+	]},
+	{"v": "0.14.89", "items": [
+		"FIX: a man getting on or off his horse, and a gun limbering or unlimbering, stays selected and in its control groups, and you can click or box-select it all the while (a click on him getting on picked the hidden horse). An order you give meanwhile waits: he finishes getting on (or off), then carries it out, and Shift-queued orders follow it.",
+		"FIX: Shift + PATROL now queues the patrol: a unit on the move finishes the move, then patrols between where it ended and the point you clicked (it used to drop the move). The PATROL mode stays on while Shift is held, and the planned patrol shows from the end of its orders.",
+	]},
+	{"v": "0.14.88", "items": [
+		"The Clockwork's Movement Works is now called the LIGHT WORKS (it makes the light machines; the Heavy Works for the big ones is coming). Its build key is L.",
+	]},
+	{"v": "0.14.87", "items": [
+		"Clockwork build keys: the Clocktower is now T and the Cog Press C (the Cog Press's G looked like a C, and C built a Clocktower you could not afford).",
+	]},
+	{"v": "0.14.86", "items": [
+		"The Crown's buildings have terracotta roofs.",
+	]},
+	{"v": "0.14.85", "items": [
+		"FIX: Clockwork buildings go up out of their crate again. Only the Clocktower showed the crate: the Cog Press, Mainspring, Regulator, Movement Works, Ratchet Turret, Escapement and Clock Aviary jumped straight to their scaffold. Now every one shows the crate the Winder set down opening up and unfolding into its frame, for you and the computer alike.",
+		"Clockwork buildings now BUILD UP: after the crate unfolds, the scaffold rises out of its plates from the bottom as the building goes up (all of it by half way), then the finished building stands.",
 	]},
 	{"v": "0.14.84", "items": [
 		"The match log now records every building or button the game refused you, with the reason and the resources you had at that moment, so a refused build can be traced afterwards.",

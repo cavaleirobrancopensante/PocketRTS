@@ -1205,7 +1205,7 @@ const PACKS := {
 ## the plates, where the gantry would tower over a low building)] of
 ## assets/effects/crate_unfold_<kind>.png (6 frames in a row, centred,
 ## feet on the bottom row). CRATE_GROUND: the crate's width in crate_ground.png.
-const CRATE := {"assembly_works": [176, 203, 84.5, 4], "boiler": [126, 144, 59.8, 5], "capacitor_works": [78, 90, 37.0, 5], "charging_pylon": [70, 78, 32.3, 5], "clocktower": [134, 154, 64.1, 5], "engine_hall": [142, 162, 67.4, 5], "ore_crusher": [112, 127, 52.7, 5], "spring_tower": [94, 107, 44.1, 5]}
+const CRATE := {"assembly_works": [176, 203, 84.5, 4], "boiler": [126, 144, 59.8, 5], "capacitor_works": [78, 90, 37.0, 5], "charging_pylon": [70, 78, 32.3, 5], "clocktower": [134, 154, 64.1, 5], "cog_press": [116, 133, 55.1, 5], "cuckoo_house": [138, 158, 65.5, 5], "engine_hall": [142, 162, 67.4, 5], "escapement": [116, 133, 55.1, 5], "mainspring": [122, 139, 57.4, 5], "movement_works": [118, 135, 56.0, 5], "ore_crusher": [112, 127, 52.7, 5], "ore_drill": [110, 126, 52.2, 5], "pressure_relay": [72, 82, 33.7, 5], "ratchet_turret": [88, 101, 41.8, 5], "regulator": [96, 109, 45.1, 5], "spring_tower": [94, 107, 44.1, 5]}
 const CRATE_GROUND := 18
 
 ## Every unit sprite set: the generated ones above plus the roster prototype's (scripts/cw_art.gd: code-drawn

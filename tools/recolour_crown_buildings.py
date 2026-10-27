@@ -1,4 +1,4 @@
-"""The Crown buildings' reds, after their importers: tools/rebuild_art.sh runs this right after the
+"""The Crown buildings' reds (and their slate roofs to terracotta: ROOFS), after their importers: tools/rebuild_art.sh runs this right after the
 last Crown building pass (tools/import_armoury_anims.py). Re-runnable: a second run changes nothing.
 
 The owner (2026-10-26): the players' flags on the buildings and the details that are red should be
@@ -38,7 +38,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -144,6 +144,71 @@ SPEC = {
 }
 
 
+# ROOFS (the owner, 2026-10-27): the Crown's bluish slate roofs are terracotta, to set the Crown
+# apart from the Clockwork's dark slate and iron tops and to match the Cottage roofs and the Farm's
+# windmill cap. Per sprite (assets/buildings/<name>.png, or assets/<dir>/<name>.png for a key with
+# a "/"), the polygons (game px, [(x, y), ...]; or a box (x0, y0, x1, y1)) round its roofs; inside
+# them roof_mask() finds the slate by colour: its blue-grey tiles (SLATE) and, between them, the
+# cool greys and the near-black joints (a region grown from the tiles, so the stone walls, the
+# chimneys and the windows in a polygon's corner stay). Those go along ROOF_RAMP by each pixel's
+# tone (ROOF_TONE), so ChatGPT's shading is kept. Terracotta is warm: a second run finds no slate.
+ROOF_TONE = (0.30, 0.45, 0.25)      # slate is blue: blue counts for its tone, unlike the red tiles'
+ROOF_RAMP = [
+    (0.04, (34, 20, 15)),           # the black joints
+    (0.09, (52, 27, 19)),
+    (0.18, (92, 43, 29)),           # the tiles' shaded undersides
+    (0.30, (132, 62, 40)),
+    (0.41, (162, 80, 53)),          # mid (a slate tile's face)
+    (0.53, (190, 106, 72)),
+    (0.66, (212, 138, 98)),         # lit
+    (0.85, (232, 180, 146)),        # glints
+]   # every stop's green is over 0.45 of its red: a muted brown-red, far off the key reds
+_ARMOURY_TURRET = [(0, 18, 36, 52)]     # the Armoury's only slate: the corner turret's cone
+ROOFS = {
+    # Town Hall: the tower's spire, the main roof round the tower, the lean-to on the left; the
+    # ruin's spire and the fallen roof in its rubble (the grey stones at the foot stay)
+    "town_hall_built": [[(79, 2), (50, 33), (79, 46), (110, 33)],
+                        [(0, 128), (0, 92), (30, 60), (60, 48), (100, 48), (125, 55), (152, 92), (152, 104),
+                         (110, 124), (60, 130), (30, 132)]],
+    "town_hall_construction": [[(0, 120), (0, 88), (30, 62), (60, 52), (100, 52), (125, 60), (148, 90), (148, 104),
+                                (110, 122), (30, 124)]],
+    "town_hall_damaged": [[(79, 2), (50, 30), (79, 46), (110, 30)],
+                          [(0, 118), (0, 88), (30, 52), (60, 44), (100, 44), (125, 52), (152, 88), (152, 100),
+                           (110, 118), (30, 122)]],
+    "town_hall_destroyed": [(0, 0, 151, 112)],
+    "town_hall_belfry_built": [(0, 0, 152, 194)],      # the belfry level's own roof (an overlay)
+    "town_hall_belfry_damaged": [(0, 0, 152, 184)],
+    # Barracks: the long roof and its dormers (the awning over the side door is wood)
+    "barracks_built": [[(0, 50), (60, 8), (90, 0), (140, 0), (140, 46), (126, 52), (40, 86), (0, 62)]],
+    "barracks_construction": [[(0, 60), (60, 10), (100, 0), (137, 0), (137, 45), (40, 95), (0, 75)]],
+    "barracks_damaged": [[(0, 50), (50, 0), (136, 0), (136, 52), (122, 58), (44, 82), (0, 66)]],
+    # Foundry: the roof behind the brick chimney (the cannon by the door is iron: left out)
+    "foundry_built": [[(0, 85), (30, 48), (60, 48), (118, 85), (118, 95), (80, 102), (30, 116), (0, 106)]],
+    "foundry_damaged": [[(0, 100), (50, 38), (70, 38), (121, 78), (121, 90), (40, 118), (0, 110)]],
+    # Church: the nave's roof (the stone tower and its cross stay)
+    "church_built": [[(34, 22), (68, 14), (90, 44), (46, 74), (30, 62)]],
+    "church_construction": [[(34, 28), (70, 18), (90, 50), (46, 77), (30, 62)]],
+    "church_damaged": [[(32, 28), (70, 20), (92, 45), (46, 74), (30, 62)]],
+    # Armoury: the turret's cone
+    "armoury_built": _ARMOURY_TURRET, "armoury_construction": _ARMOURY_TURRET,
+    "armoury_damaged": _ARMOURY_TURRET,
+    # Powder Mill: the mill's roof and the lean-to over the heaps (the charcoal heap under it stays)
+    "powder_mill_built": [[(15, 28), (65, 0), (80, 0), (106, 30), (100, 36), (45, 58), (15, 40)],
+                          [(6, 62), (22, 54), (66, 70), (42, 82), (6, 68)]],
+    "powder_mill_damaged": [[(5, 36), (65, 0), (80, 0), (108, 30), (100, 38), (46, 54), (5, 44)],
+                            [(6, 62), (22, 55), (66, 72), (46, 82), (6, 70)]],
+    "powder_mill_destroyed": [(35, 5, 65, 36)],
+    # the portraits (assets/icons/, painted apart from the sprites); their dark backdrop is kept
+    # (icon_backdrop)
+    "icons/town_hall": [(5, 5, 59, 59)],
+    "icons/barracks": [(5, 5, 59, 59)],
+    "icons/foundry": [(10, 9, 59, 46)],             # (not the smoke, not the cannon)
+    "icons/church": [(5, 5, 59, 59)],
+    "icons/powder_mill": [(5, 5, 59, 38)],          # (not the charcoal heap)
+    "icons/armoury": [(5, 5, 59, 59)],
+}
+
+
 # ---------------------------------------------------------------- colour tests
 
 def near_key(img):
@@ -166,9 +231,22 @@ def hue_red(img):
     return hue, d, r
 
 
+def on_roof_ramp(img):
+    """Pixels on ROOF_RAMP (within 1.5 of the polyline, RGB 0..255): roof() put them there."""
+    c = img[..., :3].astype(np.float32)
+    best = np.full(c.shape[:2], 1e9, np.float32)
+    for (_, p0), (_, p1) in zip(ROOF_RAMP[:-1], ROOF_RAMP[1:]):
+        p0 = np.array(p0, np.float32); seg = np.array(p1, np.float32) - p0
+        u = np.clip(((c - p0) @ seg) / float(seg @ seg), 0.0, 1.0)
+        best = np.minimum(best, np.linalg.norm(c - (p0 + u[..., None] * seg), axis=-1))
+    return best <= 1.5
+
+
 def cloth_reds(img, hue_max=HUE_MAX):
-    """(the cloth's reds, its dark crimson edge): by colour only (where SPEC says there's cloth)."""
-    a = img[..., 3] > 0
+    """(the cloth's reds, its dark crimson edge): by colour only (where SPEC says there's cloth).
+    Never the terracotta roofs (on_roof_ramp: a cloth box can overlap a roof, the Armoury's flag
+    its turret)."""
+    a = (img[..., 3] > 0) & ~on_roof_ramp(img)
     hue, d, r = hue_red(img)
     red = a & (hue >= -40.0) & (hue <= hue_max) & (d >= RED_D)
     return red & (r >= RED_R), red & (d >= EDGE_D) & (r >= EDGE_R) & (r < RED_R)
@@ -178,7 +256,7 @@ def pale_pinks(img):
     """Pale pinks: a white charge (the Church's cross) blended with the red round it; on another
     colour they would stay pink, so they go white (to_neutral). Not the gold (more orange)."""
     hue, d, r = hue_red(img)
-    return (img[..., 3] > 0) & (hue >= -40.0) & (hue <= 15.0) & (d >= 0.08) & (d < RED_D) & (lum(img) >= 90)
+    return (img[..., 3] > 0) & ~on_roof_ramp(img) & (hue >= -40.0) & (hue <= 15.0) & (d >= 0.08) & (d < RED_D) & (lum(img) >= 90)
 
 
 def lum(img):
@@ -219,6 +297,67 @@ def terracotta(img, m):
     cols = np.array([s[1] for s in TERRACOTTA], np.float32)
     out = np.stack([np.interp(t, xs, cols[:, i]) for i in range(3)], -1)
     img[m, :3] = np.clip(np.round(out[m]), 0, 255).astype(np.uint8)
+
+
+def poly_mask(shape, polys):
+    """The pixels inside the polygons (or boxes) of a ROOFS entry."""
+    im = Image.new("L", (shape[1], shape[0]), 0)
+    d = ImageDraw.Draw(im)
+    for p in polys:
+        if len(p) == 4 and not isinstance(p[0], (tuple, list)):
+            x0, y0, x1, y1 = p
+            p = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        d.polygon([tuple(q) for q in p], fill=255)
+    return np.asarray(im) > 0
+
+
+def roof_mask(img, polys):
+    """The slate inside the polygons: its blue-grey tiles, and the cool greys and near-black joints
+    in the region they span (closed and grown by a pixel)."""
+    area = poly_mask(img.shape, polys)
+    c = img[..., :3].astype(np.int32)
+    r, g, b = c[..., 0], c[..., 1], c[..., 2]
+    a = area & (img[..., 3] > 0)
+    slate = a & (b - r >= 6) & (b >= g - 4) & (b - r <= 90)
+    cool = a & (b - r >= -4) & (b >= g - 12) & (b - r <= 90)
+    v = (r * 299 + g * 587 + b * 114) / 1000.0
+    dark = a & (v < 75) & (c.max(-1) - c.min(-1) < 28) & (b - r >= -8)    # (not a warm brown: not terracotta)
+    reg = ndimage.binary_closing(slate, np.ones((3, 3), bool), iterations=2)
+    reg = ndimage.binary_dilation(ndimage.binary_fill_holes(reg), np.ones((3, 3), bool))
+    return (slate | ((cool | dark) & reg)) & a & ~icon_backdrop(img)
+
+
+ICON_BACK = (27, 30, 32)    # the dark backdrop inside a portrait's frame (assets/icons/)
+
+
+def icon_backdrop(img):
+    """A portrait's dark backdrop (cool and dark like a slate joint): the pixels near ICON_BACK
+    joined to the ring just inside its frame. Nothing on a building sprite (no such ring)."""
+    h, w = img.shape[:2]
+    if (h, w) != (64, 64):
+        return np.zeros((h, w), bool)
+    c = img[..., :3].astype(np.int32)
+    near = (np.abs(c - np.array(ICON_BACK)).max(-1) <= 12) | (c.max(-1) <= 14)
+    ring = np.zeros((h, w), bool)
+    ring[3:6, 3:-3] = ring[-6:-3, 3:-3] = ring[3:-3, 3:6] = ring[3:-3, -6:-3] = True
+    return ndimage.binary_propagation(ring & near, structure=np.ones((3, 3), bool), mask=near)
+
+
+def roof(img, polys):
+    """Slate -> terracotta along ROOF_RAMP by each pixel's tone."""
+    m = roof_mask(img, polys)
+    c = img[..., :3].astype(np.float32) / 255.0
+    t = (c * np.array(ROOF_TONE, np.float32)).sum(-1)
+    xs = np.array([s[0] for s in ROOF_RAMP], np.float32)
+    cols = np.array([s[1] for s in ROOF_RAMP], np.float32)
+    out = np.stack([np.interp(t, xs, cols[:, i]) for i in range(3)], -1)
+    img[m, :3] = np.clip(np.round(out[m]), 0, 255).astype(np.uint8)
+
+
+def sprite_path(name):
+    if "/" in name:
+        return os.path.join(ROOT, "assets", name + ".png")
+    return os.path.join(OUT, name + ".png")
 
 
 # ---------------------------------------------------------------- per sprite
@@ -288,14 +427,17 @@ def recolour(img, spec):
 def main():
     check = "--check" in sys.argv
     changed = 0
-    for name, spec in SPEC.items():
-        path = os.path.join(OUT, name + ".png")
+    for name in list(SPEC) + [n for n in ROOFS if n not in SPEC]:
+        path = sprite_path(name)
         if not os.path.exists(path):
             print("missing:", path)
             continue
         img = np.asarray(Image.open(path).convert("RGBA")).copy()
         before = img.copy()
-        recolour(img, spec)
+        if name in ROOFS:
+            roof(img, ROOFS[name])
+        if name in SPEC:
+            recolour(img, SPEC[name])
         n = int((img != before).any(-1).sum())
         if n:
             changed += 1

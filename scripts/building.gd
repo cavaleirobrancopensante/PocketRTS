@@ -550,7 +550,7 @@ static func farm_body(state: String) -> Texture2D:
 func sprite_rect() -> Rect2:
 	if sprite == null or sprite.texture == null:
 		return Rect2(global_position, Vector2.ZERO)
-	return Rect2(global_position + sprite.position + sprite.offset * sprite.scale, sprite.texture.get_size() * sprite.scale)
+	return Rect2(global_position + sprite.position + full_offset() * sprite.scale, sprite.texture.get_size() * sprite.scale)
 
 
 static func body_offset(k: String, t: Texture2D) -> Vector2:
@@ -601,6 +601,29 @@ func rect() -> Rect2:
 	return Rect2(Vector2(cell) * Defs.TILE, Vector2(size) * Defs.TILE)
 
 
+## The body sprite's offset as if its whole picture were drawn (a rising Clockwork site draws only its bottom: _rise).
+func full_offset() -> Vector2:
+	return sprite.offset - Vector2(0, sprite.region_rect.position.y) if sprite.region_enabled else sprite.offset
+
+
+## A Clockwork site builds up out of its crate: only the bottom rise_frac() of the construction sprite is drawn (the
+## ghost before the crate lands shows all of it, the plan; a finished or ruined building all of it too).
+func _rise(state: String) -> void:
+	var t := sprite.texture
+	if t == null or kind == "farm":
+		return
+	var cut := 0
+	if d["faction"] == "clockwork" and state == "construction" and seeded and not dead:
+		cut = int(float(t.get_height()) * (1.0 - rise_frac()))
+	if cut > 0:
+		sprite.region_enabled = true
+		sprite.region_rect = Rect2(0, cut, t.get_width(), t.get_height() - cut)
+		sprite.offset = body_offset(kind, t) + Vector2(0, cut)
+	elif sprite.region_enabled:
+		sprite.region_enabled = false
+		sprite.offset = body_offset(kind, t)
+
+
 ## A ghost can't be hurt, shot at or targeted.
 func untouchable() -> bool:
 	return ghost or super()
@@ -640,6 +663,33 @@ static func unfold_time() -> float:
 	return 5.0 * float(Defs.CRATE["unfold"]) + float(Defs.CRATE["hold"]) + float(Defs.CRATE["fade"])
 
 
+## A building's crate unfolding strip: [the kind whose assets/effects/crate_unfold_<kind>.png it plays, its ArtData.CRATE
+## entry, a scale]. Its own once tools/import_crate.py has cut it; a building added since borrows the strip nearest its
+## construction sprite's width, scaled to it (0.14.84: the gear-mode buildings had no strip, so no crate showed at all).
+static var _crate_art := {}
+static func crate_art(k: String) -> Array:
+	if _crate_art.has(k):
+		return _crate_art[k]
+	var res: Array = [k, ArtData.CRATE.get(k, []), 1.0]
+	if (res[1] as Array).is_empty() and not ArtData.CRATE.is_empty():
+		var con := Game.tex("res://assets/buildings/%s_construction.png" % k)
+		var w := float(con.get_width()) if con else 100.0
+		var best := ""
+		for o: String in ArtData.CRATE:
+			if best == "" or absf(float(ArtData.CRATE[o][0]) - w) < absf(float(ArtData.CRATE[best][0]) - w):
+				best = o
+		res = [best, ArtData.CRATE[best], w / float(ArtData.CRATE[best][0])]
+	_crate_art[k] = res
+	return res
+
+
+## How much of a Clockwork site's construction sprite stands (0..1, from the bottom): it rises out of the unfolded
+## crate's plates as it builds (RISE: `from` at the start, all of it by `full` of its progress).
+const RISE := {"from": 0.4, "full": 0.5}
+func rise_frac() -> float:
+	return clampf(float(RISE["from"]) + (1.0 - float(RISE["from"])) * progress / float(RISE["full"]), 0.0, 1.0)
+
+
 ## The crate unfolding (over the ghost of the site): the closed crate grows from its size on
 ## the ground as the lid opens and lets out steam, the sides fold flat, the iron plates go
 ## down, then the frame with its beam stands and fades into the construction sprite.
@@ -648,7 +698,8 @@ func _unfold_tick(delta: float) -> void:
 	var prev := int(unfold_t / per)
 	var done := unfold_t < 0.0
 	unfold_t += delta
-	var info: Array = ArtData.CRATE.get(kind, [])
+	var art := crate_art(kind)
+	var info: Array = art[1]
 	if done or dead or built or unfold_t >= unfold_time() or info.is_empty():
 		unfold_t = -1.0
 		if _unfold:
@@ -659,7 +710,7 @@ func _unfold_tick(delta: float) -> void:
 	if _unfold == null:
 		_unfold = Sprite2D.new()
 		_unfold.centered = false
-		_unfold.texture = Game.tex("res://assets/effects/crate_unfold_%s.png" % kind)
+		_unfold.texture = Game.tex("res://assets/effects/crate_unfold_%s.png" % art[0])
 		_unfold.hframes = 6
 		_unfold.offset = Vector2(-float(info[0]) * 0.5, -float(info[1]) + 6.0)
 		_unfold.material = team_material()
@@ -668,7 +719,7 @@ func _unfold_tick(delta: float) -> void:
 	var f := mini(int(unfold_t / per), int(info[3]))
 	_unfold.frame = f
 	var s0 := float(ArtData.CRATE_GROUND) / float(info[2])
-	_unfold.scale = Vector2.ONE * lerpf(s0, 1.0, ease(clampf(unfold_t / per, 0.0, 1.0), 0.4))
+	_unfold.scale = Vector2.ONE * lerpf(s0, 1.0, ease(clampf(unfold_t / per, 0.0, 1.0), 0.4)) * float(art[2])
 	var fade_from := 5.0 * per + float(Defs.CRATE["hold"])
 	_unfold.modulate.a = 1.0 - clampf((unfold_t - fade_from) / float(Defs.CRATE["fade"]), 0.0, 1.0)
 	if f != prev and f <= 4 and visible and game.view_rect.has_point(global_position):
@@ -1346,7 +1397,7 @@ var _soil_key_t := 0.0
 func sprite_point(fx: float, fy: float) -> Vector2:
 	if sprite == null or sprite.texture == null:
 		return center()
-	return global_position + sprite.position + sprite.offset + Vector2(sprite.texture.get_width() * fx, sprite.texture.get_height() * fy)
+	return global_position + sprite.position + full_offset() + Vector2(sprite.texture.get_width() * fx, sprite.texture.get_height() * fy)
 
 
 func top_point() -> Vector2:
@@ -1474,6 +1525,7 @@ func _update_sprite() -> void:
 			# it sorts at the back of its yard: the men working there are drawn over it
 			sprite.position.y = -MILL_SORT_UP
 			sprite.offset.y += MILL_SORT_UP
+	_rise(state)
 	if sails:
 		sails.visible = seeded and Array(FARM_ART["sail_states"]).has(state)
 	if _mill_horse:
@@ -1615,7 +1667,7 @@ func bar_top() -> float:
 	if kind == "farm":
 		return float(FARM_ART["top"])
 	if sprite and sprite.texture:
-		return sprite.position.y + (sprite.offset.y + game._tex_top(sprite.texture)) * sprite.scale.y + 2.0
+		return sprite.position.y + (full_offset().y + game._tex_top(sprite.texture)) * sprite.scale.y + 2.0
 	return -rect().size.y
 
 

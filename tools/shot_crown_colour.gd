@@ -70,7 +70,7 @@ func _open_area(w: int, h: int) -> Vector2i:
 
 
 func _shot(path: String) -> void:
-	await create_timer(0.6).timeout
+	await create_timer(1.0).timeout   # ~30 frames at --fixed-fps 30 after the camera moved
 	root.get_viewport().get_texture().get_image().save_png(path)
 	print("wrote ", path)
 
