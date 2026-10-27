@@ -1,6 +1,6 @@
 # AI balance study: Hard AI against Hard AI in all six matchups
 
-**Interim report, stage 12: 968 of 1,080 planned games done (161 to 162 per matchup); the batch is still running.** The data and this report are refreshed at each stage; numbers will still move a little. Data as of 2026-10-26 23:40:58 (UTC).
+**Interim report, stage final: 986 of 1,080 planned games done (164 to 165 per matchup); the batch is still running.** The data and this report are refreshed at each stage; numbers will still move a little. Data as of 2026-10-27 00:40:48 (UTC).
 
 > **Read this first: which game this measures.** Every game ran on the study build, **v0.14.1** (branch `wt-study`, made from
 > main at `e6deec6`), so that the whole sample measures one version of the code. Main has moved on since (0.14.27 when this was
@@ -21,21 +21,21 @@
 
 **The five headline findings** (sample sizes and intervals in the sections named):
 
-1. **The Brood cannot beat the other two factions on Hard AI.** It won 0 of 322
-   cross-faction side-games: the Crown beat it 161-0, the Clockwork 161-0, with every plan it has (Balanced, Rush,
+1. **The Brood cannot beat the other two factions on Hard AI.** It won 0 of 328
+   cross-faction side-games: the Crown beat it 164-0, the Clockwork 164-0, with every plan it has (Balanced, Rush,
    Extreme rush, Timing attack). Its army is worth about 300 from 4:00 to 7:00 while the others' armies double. The Clockwork's
    first two waves erase that army by 6:00 (median game: about 8 minutes); the Crown's Musketeers and Horsemen take its
    Feeding Pits and then its Burrow, in a quarter of Balanced games by about 8:30 and in half by about 14:00 (sections 2,
    3 and 4.2). The 95% upper bound on its win rate in these matchups is 1%.
-2. **The (old) Clockwork economy ran at about twice the others' pace, and the Clockwork beat the Crown 119-42
+2. **The (old) Clockwork economy ran at about twice the others' pace, and the Clockwork beat the Crown 122-42
    (74% [67%-80%]).** In mirrors, where both sides face the same faction, the median army at 5:00 was worth 1,152
-   for the Clockwork, 535 for the Crown and 300 for the Brood; by 2:00 the Clockwork had earned 1,090 ore
+   for the Clockwork, 535 for the Crown and 300 for the Brood; by 2:00 the Clockwork had earned 1,086 ore
    against 760 gold and 356 biomass (section 4.1). The Crown survives on its ramp wall and gate: Clockwork
    waves pull back from a Crown gate in most Crown-Clockwork games (section 7).
 3. **The Crown's chances against the Clockwork depend heavily on the map.** On Kestrel Rise, Cinder Steps, Glimmerdeep
    and Frostmere the Crown won 1/51 games against 40/104 on the other eight maps (Fisher p = 1.4e-07). The
-   grouping was picked after looking at the per-map results, so it was checked again on the 6 Crown-Clockwork games
-   run after it was chosen: there the Crown won 0/3 on those four maps and 1/3 on the rest (p = 1.00).
+   grouping was picked after looking at the per-map results, so it was checked again on the 9 Crown-Clockwork games
+   run after it was chosen: there the Crown won 0/4 on those four maps and 1/5 on the rest (p = 1.00).
    The cause is not established (section 9.2).
 4. **The AI often neither finishes a won game nor gives up a lost one.** In 7 side-games (crown-clockwork) the
    winner sat at its supply cap with 1,000+ banked and no wave out for 10 minutes or more, its bank growing to as much as
@@ -44,14 +44,14 @@
    And the loser never qualified for gg, because the gg rule counts "a hall and a worker" as income even when the soil is
    spent and nothing comes in. Brood mirrors that reach 30:00 are dead economies on both sides (section 10).
 5. **Leads start to decide games at about 10 minutes.** Inside mirrors, the side ahead in power at 3:00 won only
-   44% [39%-49%] of 355 decided games, and at 5:00 54% [49%-58%] of 430: the early game is open, and an early army bought ahead of the
-   opponent is if anything a handicap. At 10:00 a lead of 30% or more won 88% [84%-92%] of 224, at 15:00 97% [93%-98%] of 233, and
+   45% [40%-50%] of 363 decided games, and at 5:00 54% [49%-59%] of 439: the early game is open, and an early army bought ahead of the
+   opponent is if anything a handicap. At 10:00 a lead of 30% or more won 89% [84%-92%] of 229, at 15:00 97% [93%-98%] of 236, and
    comebacks after 15:00 are rare (section 8).
 
 **What to fix first** (the full ranked list with evidence and the design principle each follows is in section 11):
 make an army at the supply cap attack and make the gg rule look at real income (AI faults with clear examples); re-measure
 the Brood on main and then give it an early game that can hold against Musketeers, Horsemen and wind-up waves (it is far
-behind on every measure here); drop the Crown's random Horse Breeder opening from the Balanced plan (in the Crown mirror the Breeder opening scores 24% [16%-36%] against the Mill's 62% [54%-70%], and the Mill side wins 42/50 = 84% [71%-92%] head to head);
+behind on every measure here); drop the Crown's random Horse Breeder opening from the Balanced plan (in the Crown mirror the Breeder opening scores 24% [15%-35%] against the Mill's 62% [54%-70%], and the Mill side wins 43/51 = 84% [72%-92%] head to head);
 stop the Crown buying production while it is supply-blocked; and look at why the Crown falls apart on four maps.
 
 **What this cannot tell you.** These are computer-against-computer games: a result mixes the faction's strength with how well
@@ -72,8 +72,8 @@ touched; only `tools/study/` and this report were added). The first estimate was
 and this report refreshed and committed at each stage.
 
 **Cost of a game, and making it faster.**
-- Real time per game: mean 198 s, median 157 s, longest 2441 s; on average a game lasted
-  16.5 game minutes, and one game minute cost 12.0 real seconds. In all, 53 hours of game
+- Real time per game: mean 197 s, median 157 s, longest 2441 s; on average a game lasted
+  16.5 game minutes, and one game minute cost 12.0 real seconds. In all, 54 hours of game
   processes. The box has 2 cores and was shared with other jobs the whole time (two games at a time until about 930 games, one
   at a time after), so these times are inflated; a quiet core is faster.
 - The engine already runs unthrottled under `--fixed-fps 30`. A larger time scale or tick rate would change the simulation
@@ -101,7 +101,7 @@ and this report refreshed and committed at each stage.
 - **Maps.** The 12 built-in 1v1 maps in a fixed rotation, the four the owner named first (Greenhold, Frostmere, Ashford
   Crossing, Amberfall Vale), then Kestrel Rise, Glimmerdeep, Hollowfen, Highmoor, Thornwood Maze, Saltmarsh Isles, Twin Fords
   and Cinder Steps. Greenhold, Highmoor and Twin Fords are generated "classic" maps (a new layout for each seed); the rest are
-  fixed, hand-made maps. Games per map: greenhold (84), frostmere (84), ashford_crossing (84), amberfall_vale (84), kestrel_rise (84), glimmerdeep (80), hollowfen (78), highmoor (78), thornwood_maze (78), saltmarsh_isles (78), twin_fords (78), cinder_steps (78).
+  fixed, hand-made maps. Games per map: greenhold (84), frostmere (84), ashford_crossing (84), amberfall_vale (84), kestrel_rise (84), glimmerdeep (84), hollowfen (84), highmoor (84), thornwood_maze (80), saltmarsh_isles (78), twin_fords (78), cinder_steps (78).
 - **How a game ends.** At 30:00; when a side has no buildings left (victory); or when one side has been hopeless by the AI's own
   gg rule (`AIResign.verdict`) for 120 game seconds without a break. That is the 60 s the AI waits before it says gg plus the
   60 s a player has to answer it; a human would have answered, so the game is cut and counted as a win for the other side
@@ -122,12 +122,12 @@ and this report refreshed and committed at each stage.
 
 | matchup                |   games |   Balanced/Balanced |   with a Rush |   with a Timing attack |   ended by victory |   ended by gg |   reached 30:00 |   failed runs |   maps |
 |:-----------------------|--------:|--------------------:|--------------:|-----------------------:|-------------------:|--------------:|----------------:|--------------:|-------:|
-| crown vs crown         |     162 |                 102 |            30 |                     30 |                132 |             8 |              22 |             0 |     12 |
-| brood vs brood         |     162 |                 102 |            30 |                     30 |                105 |            23 |              34 |             0 |     12 |
-| clockwork vs clockwork |     161 |                 102 |            30 |                     29 |                 70 |            74 |              17 |             0 |     12 |
-| crown vs brood         |     161 |                 102 |            30 |                     29 |                128 |            33 |               0 |             0 |     12 |
-| crown vs clockwork     |     161 |                 102 |            30 |                     29 |                110 |            40 |              11 |             0 |     12 |
-| brood vs clockwork     |     161 |                 102 |            30 |                     29 |                157 |             4 |               0 |             0 |     12 |
+| crown vs crown         |     165 |                 105 |            30 |                     30 |                135 |             8 |              22 |             0 |     12 |
+| brood vs brood         |     165 |                 105 |            30 |                     30 |                108 |            23 |              34 |             0 |     12 |
+| clockwork vs clockwork |     164 |                 104 |            30 |                     30 |                 72 |            75 |              17 |             0 |     12 |
+| crown vs brood         |     164 |                 104 |            30 |                     30 |                129 |            35 |               0 |             0 |     12 |
+| crown vs clockwork     |     164 |                 104 |            30 |                     30 |                111 |            42 |              11 |             0 |     12 |
+| brood vs clockwork     |     164 |                 104 |            30 |                     30 |                160 |             4 |               0 |             0 |     12 |
 
 0 games failed to run (crash or hang); none had to be retried.
 
@@ -152,21 +152,21 @@ Each cell is the row faction's record against the column faction (wins-losses-dr
 
 | faction   | vs crown                | vs brood                 | vs clockwork            | vs both others           |
 |:----------|:------------------------|:-------------------------|:------------------------|:-------------------------|
-| crown     | (mirror)                | 161-0-0  100% [98%-100%] | 42-119-0  26% [20%-33%] | 322 games  63% [58%-68%] |
-| brood     | 0-161-0  0% [0%-2%]     | (mirror)                 | 0-161-0  0% [0%-2%]     | 322 games  0% [0%-1%]    |
-| clockwork | 119-42-0  74% [67%-80%] | 161-0-0  100% [98%-100%] | (mirror)                | 322 games  87% [83%-90%] |
+| crown     | (mirror)                | 164-0-0  100% [98%-100%] | 42-122-0  26% [20%-33%] | 328 games  63% [57%-68%] |
+| brood     | 0-164-0  0% [0%-2%]     | (mirror)                 | 0-164-0  0% [0%-2%]     | 328 games  0% [0%-1%]    |
+| clockwork | 122-42-0  74% [67%-80%] | 164-0-0  100% [98%-100%] | (mirror)                | 328 games  87% [83%-90%] |
 
 Balanced against Balanced only:
 
 | faction   | vs crown               | vs brood                 | vs clockwork           | vs both others           |
 |:----------|:-----------------------|:-------------------------|:-----------------------|:-------------------------|
-| crown     | (mirror)               | 102-0-0  100% [96%-100%] | 33-69-0  32% [24%-42%] | 204 games  66% [59%-72%] |
-| brood     | 0-102-0  0% [0%-4%]    | (mirror)                 | 0-102-0  0% [0%-4%]    | 204 games  0% [0%-2%]    |
-| clockwork | 69-33-0  68% [58%-76%] | 102-0-0  100% [96%-100%] | (mirror)               | 204 games  84% [78%-88%] |
+| crown     | (mirror)               | 104-0-0  100% [96%-100%] | 33-71-0  32% [24%-41%] | 208 games  66% [59%-72%] |
+| brood     | 0-104-0  0% [0%-4%]    | (mirror)                 | 0-104-0  0% [0%-4%]    | 208 games  0% [0%-2%]    |
+| clockwork | 71-33-0  68% [59%-76%] | 104-0-0  100% [96%-100%] | (mirror)               | 208 games  84% [79%-88%] |
 
-The order is the same in both: **Clockwork > Crown > Brood**, and the gaps are large. Crown against Brood (161-0) and
-Clockwork against Brood (161-0) are as one-sided as a sample can be. Crown against Clockwork is 42-119 for the Crown
-(26% [20%-33%]; Balanced/Balanced 33-69, 32% [24%-42%]): lopsided, but the Crown does win a quarter to a third
+The order is the same in both: **Clockwork > Crown > Brood**, and the gaps are large. Crown against Brood (164-0) and
+Clockwork against Brood (164-0) are as one-sided as a sample can be. Crown against Clockwork is 42-122 for the Crown
+(26% [20%-33%]; Balanced/Balanced 33-71, 32% [24%-41%]): lopsided, but the Crown does win a quarter to a third
 of the time, more on some maps than others (section 9).
 
 ### 2.2 Plans inside one matchup
@@ -176,31 +176,31 @@ small samples (14-32 side-games a cell):
 
 | matchup                         | this side plays   | against   |   n | score         |
 |:--------------------------------|:------------------|:----------|----:|:--------------|
-| crown vs crown (mirror)         | balanced          | Balanced  | 204 | 50% [43%-57%] |
+| crown vs crown (mirror)         | balanced          | Balanced  | 210 | 50% [43%-57%] |
 | crown vs crown (mirror)         | rush              | Balanced  |  30 | 42% [26%-59%] |
 | crown vs crown (mirror)         | timing            | Balanced  |  30 | 48% [32%-65%] |
 | crown vs crown (mirror)         | balanced          | rush      |  30 | 58% [41%-74%] |
 | crown vs crown (mirror)         | balanced          | timing    |  30 | 52% [35%-68%] |
-| brood vs brood (mirror)         | balanced          | Balanced  | 204 | 50% [43%-57%] |
+| brood vs brood (mirror)         | balanced          | Balanced  | 210 | 50% [43%-57%] |
 | brood vs brood (mirror)         | rush              | Balanced  |  16 | 28% [12%-53%] |
 | brood vs brood (mirror)         | xrush             | Balanced  |  14 | 18% [6%-44%]  |
 | brood vs brood (mirror)         | timing            | Balanced  |  30 | 37% [22%-54%] |
 | brood vs brood (mirror)         | balanced          | rush      |  16 | 72% [47%-88%] |
 | brood vs brood (mirror)         | balanced          | xrush     |  14 | 82% [56%-94%] |
 | brood vs brood (mirror)         | balanced          | timing    |  30 | 63% [46%-78%] |
-| clockwork vs clockwork (mirror) | balanced          | Balanced  | 204 | 50% [43%-57%] |
+| clockwork vs clockwork (mirror) | balanced          | Balanced  | 208 | 50% [43%-57%] |
 | clockwork vs clockwork (mirror) | rush              | Balanced  |  30 | 73% [56%-86%] |
-| clockwork vs clockwork (mirror) | timing            | Balanced  |  29 | 55% [38%-72%] |
+| clockwork vs clockwork (mirror) | timing            | Balanced  |  30 | 57% [39%-73%] |
 | clockwork vs clockwork (mirror) | balanced          | rush      |  30 | 27% [14%-44%] |
-| clockwork vs clockwork (mirror) | balanced          | timing    |  29 | 45% [28%-62%] |
-| crown vs clockwork              | balanced          | Balanced  | 102 | 32% [24%-42%] |
+| clockwork vs clockwork (mirror) | balanced          | timing    |  30 | 43% [27%-61%] |
+| crown vs clockwork              | balanced          | Balanced  | 104 | 32% [24%-41%] |
 | crown vs clockwork              | rush              | Balanced  |  15 | 13% [4%-38%]  |
 | crown vs clockwork              | timing            | Balanced  |  15 | 20% [7%-45%]  |
 | crown vs clockwork              | balanced          | rush      |  15 | 7% [1%-30%]   |
-| crown vs clockwork              | balanced          | timing    |  14 | 21% [8%-48%]  |
-| clockwork vs crown              | balanced          | Balanced  | 102 | 68% [58%-76%] |
+| crown vs clockwork              | balanced          | timing    |  15 | 20% [7%-45%]  |
+| clockwork vs crown              | balanced          | Balanced  | 104 | 68% [59%-76%] |
 | clockwork vs crown              | rush              | Balanced  |  15 | 93% [70%-99%] |
-| clockwork vs crown              | timing            | Balanced  |  14 | 79% [52%-92%] |
+| clockwork vs crown              | timing            | Balanced  |  15 | 80% [55%-93%] |
 | clockwork vs crown              | balanced          | rush      |  15 | 87% [62%-96%] |
 | clockwork vs crown              | balanced          | timing    |  15 | 80% [55%-93%] |
 
@@ -208,16 +208,16 @@ Across all matchups, as the opening plan against a Balanced opponent:
 
 | plan     | faction   | vs Balanced   |   wins |   draws | score [95% CI]   | first attack (median)   |   workers lost (mean) | game length (median)   | plan changed   |
 |:---------|:----------|:--------------|-------:|--------:|:-----------------|:------------------------|----------------------:|:-----------------------|:---------------|
-| balanced | crown     | n=408         |    233 |       8 | 58% [53%-63%]    | 6:06                    |                  19.8 | 18:10                  | 2/408          |
-| balanced | brood     | n=408         |     93 |      18 | 25% [21%-29%]    | 8:43                    |                  20.8 | 14:15                  | 0/408          |
-| balanced | clockwork | n=408         |    272 |       2 | 67% [62%-71%]    | 3:42                    |                  14.5 | 17:14                  | 0/408          |
+| balanced | crown     | n=418         |    238 |       8 | 58% [53%-63%]    | 6:02                    |                  19.8 | 18:07                  | 2/418          |
+| balanced | brood     | n=418         |     96 |      18 | 25% [21%-29%]    | 8:42                    |                  20.8 | 14:13                  | 0/418          |
+| balanced | clockwork | n=416         |    278 |       2 | 67% [62%-71%]    | 3:42                    |                  14.4 | 17:15                  | 0/416          |
 | rush     | crown     | n=60          |     29 |       1 | 49% [37%-61%]    | 2:43                    |                  18.4 | 17:45                  | 47/60          |
 | rush     | brood     | n=32          |      4 |       1 | 14% [6%-30%]     | 2:01                    |                  24.7 | 14:32                  | 32/32          |
 | rush     | clockwork | n=60          |     51 |       0 | 85% [74%-92%]    | 2:44                    |                   6.7 | 15:22                  | 45/60          |
 | xrush    | brood     | n=28          |      2 |       1 | 9% [3%-25%]      | 1:56                    |                  24.4 | 13:31                  | 28/28          |
 | timing   | crown     | n=60          |     32 |       1 | 54% [42%-66%]    | 4:29                    |                  22.0 | 17:53                  | 0/60           |
-| timing   | brood     | n=59          |      9 |       4 | 19% [11%-30%]    | 4:32                    |                  21.2 | 14:44                  | 0/59           |
-| timing   | clockwork | n=57          |     41 |       0 | 72% [59%-82%]    | 4:32                    |                  11.1 | 15:57                  | 0/57           |
+| timing   | brood     | n=60          |      9 |       4 | 18% [11%-30%]    | 4:32                    |                  21.5 | 14:42                  | 0/60           |
+| timing   | clockwork | n=60          |     44 |       0 | 73% [61%-83%]    | 4:32                    |                  10.6 | 15:16                  | 0/60           |
 
 - Rush is below Balanced for the Crown and the Brood and above it for the Clockwork (Clockwork mirror Rush
   73% [56%-86%]); Extreme rush is the worst plan the Brood has. Inside the mirrors, only those two (the Clockwork's Rush,
@@ -225,21 +225,21 @@ Across all matchups, as the opening plan against a Balanced opponent:
   matchup, compare each row with the Balanced/Balanced baseline, not with 50%.)
 - "Plan changed" counts games where the AI left its opening plan (a failed rush turns Balanced): almost every Brood rush and
   most Crown and Clockwork rushes end that way.
-- The Brood loses its cross matchups with every plan: Brood in a cross matchup: 0 wins in 322 side-games (118 with a Rush, Extreme rush or Timing plan on either side).
+- The Brood loses its cross matchups with every plan: Brood in a cross matchup: 0 wins in 328 side-games (120 with a Rush, Extreme rush or Timing plan on either side).
 
 ### 2.3 Spawn side
 
 | sample                 |   n |   spawn 0 |   spawn 1 |   draws | spawn-0 score [95% CI]   |
 |:-----------------------|----:|----------:|----------:|--------:|:-------------------------|
-| all games              | 968 |       473 |       473 |      22 | 50% [47%-53%]            |
-| cross matchups only    | 483 |       246 |       237 |       0 | 51% [46%-55%]            |
-| Balanced/Balanced only | 612 |       307 |       291 |      14 | 51% [47%-55%]            |
+| all games              | 986 |       479 |       485 |      22 | 50% [47%-53%]            |
+| cross matchups only    | 492 |       250 |       242 |       0 | 51% [46%-55%]            |
+| Balanced/Balanced only | 626 |       312 |       300 |      14 | 51% [47%-55%]            |
 
 | mirror    |   n |   spawn 0 wins |   spawn 1 wins |   draws | spawn-0 score [95% CI]   |
 |:----------|----:|---------------:|---------------:|--------:|:-------------------------|
-| crown     | 162 |             70 |             86 |       6 | 45% [38%-53%]            |
-| brood     | 162 |             72 |             75 |      15 | 49% [41%-57%]            |
-| clockwork | 161 |             85 |             75 |       1 | 53% [45%-61%]            |
+| crown     | 165 |             71 |             88 |       6 | 45% [37%-52%]            |
+| brood     | 165 |             73 |             77 |      15 | 49% [41%-56%]            |
+| clockwork | 164 |             85 |             78 |       1 | 52% [45%-60%]            |
 
 No spawn bias overall. Per map (mirrors only, so the faction cannot matter):
 
@@ -249,16 +249,16 @@ No spawn bias overall. Per map (mirrors only, so the faction cannot matter):
 | ashford_crossing |                                40 | 25/40 = 62% [47%-76%] |                       26 | 17/26 = 65% [46%-81%] |
 | cinder_steps     |                                39 | 28/39 = 72% [56%-83%] |                       27 | 17/27 = 63% [44%-78%] |
 | frostmere        |                                40 | 21/40 = 52% [37%-67%] |                       28 | 16/28 = 57% [39%-73%] |
-| glimmerdeep      |                                39 | 18/39 = 46% [32%-61%] |                       19 | 10/19 = 53% [32%-73%] |
+| glimmerdeep      |                                40 | 18/40 = 45% [31%-60%] |                       19 | 10/19 = 53% [32%-73%] |
 | greenhold        |                                41 | 20/41 = 49% [34%-64%] |                       30 | 15/30 = 50% [33%-67%] |
-| highmoor         |                                37 | 14/37 = 38% [24%-54%] |                       23 | 11/23 = 48% [29%-67%] |
-| hollowfen        |                                38 | 12/38 = 32% [19%-47%] |                       20 | 5/20 = 25% [11%-47%]  |
+| highmoor         |                                40 | 15/40 = 38% [24%-53%] |                       26 | 12/26 = 46% [29%-65%] |
+| hollowfen        |                                41 | 13/41 = 32% [20%-47%] |                       23 | 6/23 = 26% [13%-46%]  |
 | kestrel_rise     |                                40 | 22/40 = 55% [40%-69%] |                       21 | 13/21 = 62% [41%-79%] |
 | saltmarsh_isles  |                                35 | 14/35 = 40% [26%-56%] |                       23 | 10/23 = 43% [26%-63%] |
-| thornwood_maze   |                                35 | 13/35 = 37% [23%-54%] |                       25 | 9/25 = 36% [20%-55%]  |
+| thornwood_maze   |                                37 | 13/37 = 35% [22%-51%] |                       27 | 9/27 = 33% [19%-52%]  |
 | twin_fords       |                                38 | 18/38 = 47% [32%-63%] |                       26 | 12/26 = 46% [29%-65%] |
 
-Homogeneity of the spawn-0 share across the 12 maps: all plans chi-square 21.9, p = 0.025; Balanced/Balanced only chi-square 16.0, p = 0.142.
+Homogeneity of the spawn-0 share across the 12 maps: all plans chi-square 23.4, p = 0.015; Balanced/Balanced only chi-square 17.6, p = 0.091.
 
 Across all plans the maps differ a little more than chance would give (the chi-square test above), driven by a few maps
 (Hollowfen and Cinder Steps lean furthest, in opposite directions); with Balanced plans only there is no evidence of it. About
@@ -269,12 +269,12 @@ smaller ones.
 
 | matchup (first side's score)     |   30:00 games | as run (lead of 25%+ wins)   | all 30:00 games drawn   | 30:00 games left out   |
 |:---------------------------------|--------------:|:-----------------------------|:------------------------|:-----------------------|
-| brood vs brood (spawn 0)         |            34 | 49% [41%-57%]                | 49% [42%-57%]           | 49% [41%-58%]          |
+| brood vs brood (spawn 0)         |            34 | 49% [41%-56%]                | 49% [42%-57%]           | 49% [40%-57%]          |
 | brood vs clockwork               |             0 | 0% [0%-2%]                   | 0% [0%-2%]              | 0% [0%-2%]             |
-| clockwork vs clockwork (spawn 0) |            17 | 53% [45%-61%]                | 54% [47%-62%]           | 55% [47%-63%]          |
+| clockwork vs clockwork (spawn 0) |            17 | 52% [45%-60%]                | 53% [46%-61%]           | 54% [46%-62%]          |
 | crown vs brood                   |             0 | 100% [98%-100%]              | 100% [98%-100%]         | 100% [98%-100%]        |
-| crown vs clockwork               |            11 | 26% [20%-33%]                | 29% [22%-36%]           | 27% [21%-35%]          |
-| crown vs crown (spawn 0)         |            22 | 45% [38%-53%]                | 44% [37%-52%]           | 44% [36%-52%]          |
+| crown vs clockwork               |            11 | 26% [20%-33%]                | 28% [22%-36%]           | 27% [20%-34%]          |
+| crown vs crown (spawn 0)         |            22 | 45% [37%-52%]                | 44% [37%-52%]           | 43% [36%-52%]          |
 
 Counting every 30:00 game as a draw, or leaving them out, moves no matchup by more than a few points. The adjudication
 does not drive any result.
@@ -285,17 +285,17 @@ does not drive any result.
 
 | matchup                |   n | median   | 10th pct   | 90th pct   | decided (victory or gg)   |   reached 30:00 |   first 8 min |
 |:-----------------------|----:|:---------|:-----------|:-----------|:--------------------------|----------------:|--------------:|
-| crown vs crown         | 162 | 21:13    | 14:18      | 30:00      | 86%                       |              22 |             1 |
-| brood vs brood         | 162 | 16:07    | 12:46      | 30:00      | 79%                       |              34 |             1 |
-| clockwork vs clockwork | 161 | 19:19    | 14:04      | 30:00      | 89%                       |              17 |             0 |
-| crown vs brood         | 161 | 13:37    | 6:03       | 17:03      | 100%                      |               0 |            54 |
-| crown vs clockwork     | 161 | 16:50    | 11:15      | 25:37      | 93%                       |              11 |             1 |
-| brood vs clockwork     | 161 | 8:21     | 6:45       | 12:05      | 100%                      |               0 |            67 |
+| crown vs crown         | 165 | 20:59    | 14:21      | 30:00      | 87%                       |              22 |             1 |
+| brood vs brood         | 165 | 16:05    | 12:48      | 30:00      | 79%                       |              34 |             1 |
+| clockwork vs clockwork | 164 | 19:21    | 14:01      | 29:52      | 90%                       |              17 |             0 |
+| crown vs brood         | 164 | 13:40    | 6:05       | 17:07      | 100%                      |               0 |            55 |
+| crown vs clockwork     | 164 | 16:49    | 11:11      | 25:36      | 93%                       |              11 |             1 |
+| brood vs clockwork     | 164 | 8:19     | 6:46       | 11:59      | 100%                      |               0 |            69 |
 
 | winner    |   wins | median time to win   | mean   |
 |:----------|-------:|:---------------------|:-------|
-| crown     |    203 | 14:25                | 13:41  |
-| clockwork |    280 | 10:22                | 12:16  |
+| crown     |    206 | 14:25                | 13:40  |
+| clockwork |    286 | 10:22                | 12:14  |
 
 Cross games with the Brood are short (the Clockwork-Brood median is about 8 minutes); mirrors are long, and a fifth of
 Brood mirrors reach 30:00 (section 10.3). The Clockwork wins sooner than the Crown when it wins.
@@ -311,13 +311,13 @@ same opponent, so this compares the factions' own pace more fairly than the cros
 
 | at    | crown: army value / earned / workers   | brood: army value / earned / workers   | clockwork: army value / earned / workers   |
 |:------|:---------------------------------------|:---------------------------------------|:-------------------------------------------|
-| 2:00  | 60 / 760 / 9 (n=204)                   | 0 / 356 / 8 (n=204)                    | 0 / 1090 / 9 (n=204)                       |
-| 3:00  | 180 / 1140 / 10 (n=204)                | 75 / 648 / 9 (n=204)                   | 225 / 2270 / 13 (n=204)                    |
-| 4:00  | 395 / 1900 / 10 (n=204)                | 300 / 959 / 9 (n=204)                  | 825 / 3438 / 17 (n=204)                    |
-| 5:00  | 535 / 2280 / 10 (n=204)                | 300 / 1346 / 15 (n=204)                | 1152 / 4611 / 18 (n=204)                   |
-| 7:00  | 742 / 3420 / 13 (n=204)                | 325 / 2560 / 26 (n=204)                | 1465 / 7029 / 26 (n=204)                   |
-| 10:00 | 1030 / 5700 / 23 (n=202)               | 615 / 5233 / 28 (n=204)                | 2537 / 12579 / 32 (n=204)                  |
-| 15:00 | 1537 / 12040 / 39 (n=174)              | 957 / 9792 / 28 (n=136)                | 1752 / 15476 / 32 (n=190)                  |
+| 2:00  | 60 / 760 / 9 (n=210)                   | 0 / 356 / 8 (n=210)                    | 0 / 1086 / 9 (n=208)                       |
+| 3:00  | 180 / 1140 / 10 (n=210)                | 75 / 648 / 9 (n=210)                   | 225 / 2266 / 13 (n=208)                    |
+| 4:00  | 395 / 1900 / 10 (n=210)                | 300 / 959 / 9 (n=210)                  | 825 / 3437 / 17 (n=208)                    |
+| 5:00  | 535 / 2280 / 10 (n=210)                | 300 / 1346 / 15 (n=210)                | 1152 / 4610 / 18 (n=208)                   |
+| 7:00  | 740 / 3420 / 13 (n=210)                | 325 / 2560 / 26 (n=210)                | 1465 / 7029 / 26 (n=208)                   |
+| 10:00 | 1030 / 5700 / 23 (n=208)               | 615 / 5237 / 28 (n=210)                | 2577 / 12565 / 32 (n=208)                  |
+| 15:00 | 1535 / 12040 / 39 (n=178)              | 957 / 9792 / 28 (n=136)                | 1690 / 15215 / 32 (n=194)                  |
 
 - The (old) **Clockwork** earns about twice what the Crown earns at every point up to 10:00 (in its own currency, ore), and
   its army value is about double the Crown's from 4:00 to 10:00. It also builds workers fastest (17 by 4:00).
@@ -331,7 +331,7 @@ Army value standing per 100 of the faction's own currency earned so far (same mi
 | at    |   crown |   brood |   clockwork |
 |:------|--------:|--------:|------------:|
 | 3:00  |      18 |      12 |           9 |
-| 5:00  |      26 |      22 |          25 |
+| 5:00  |      25 |      22 |          25 |
 | 7:00  |      22 |      14 |          20 |
 | 10:00 |      18 |      11 |          20 |
 
@@ -344,20 +344,20 @@ mirrors):
 
 | faction   | at    |   n |   workers |   idle workers |   income/min |   bank |   2nd res |   supply |   cap |   halls |   army value |   buildings |   soil % |
 |:----------|:------|----:|----------:|---------------:|-------------:|-------:|----------:|---------:|------:|--------:|-------------:|------------:|---------:|
-| crown     | 5:00  | 646 |        11 |              0 |          487 |     26 |        26 |       24 |    38 |       1 |          530 |          11 |       75 |
-| crown     | 10:00 | 566 |        24 |              0 |          953 |     34 |       112 |       47 |    67 |       2 |         1029 |          19 |       63 |
-| crown     | 15:00 | 421 |        35 |              9 |          792 |     73 |       454 |       67 |    91 |       2 |         1495 |          24 |       30 |
-| crown     | 20:00 | 229 |        35 |              7 |         1161 |     48 |       820 |       80 |   110 |       3 |         2032 |          30 |       27 |
+| crown     | 5:00  | 658 |        11 |              0 |          489 |     26 |        26 |       24 |    38 |       1 |          531 |          11 |       75 |
+| crown     | 10:00 | 576 |        24 |              0 |          954 |     33 |       112 |       47 |    67 |       2 |         1030 |          19 |       63 |
+| crown     | 15:00 | 427 |        35 |              9 |          788 |     72 |       453 |       66 |    91 |       2 |         1492 |          24 |       29 |
+| crown     | 20:00 | 230 |        35 |              7 |         1162 |     47 |       821 |       80 |   110 |       3 |         2042 |          30 |       27 |
 | crown     | 25:00 | 102 |        35 |              9 |         1076 |     60 |      1013 |       83 |   125 |       3 |         2151 |          34 |       23 |
-| brood     | 5:00  | 645 |        12 |              0 |          362 |     35 |         0 |       22 |    28 |       1 |          199 |           6 |       88 |
-| brood     | 10:00 | 450 |        28 |              0 |          878 |    185 |        18 |       48 |    63 |       1 |          471 |          13 |       53 |
-| brood     | 15:00 | 249 |        23 |              6 |          549 |     57 |        40 |       57 |    81 |       2 |          897 |          15 |       51 |
+| brood     | 5:00  | 657 |        12 |              0 |          363 |     35 |         0 |       22 |    28 |       1 |          199 |           6 |       88 |
+| brood     | 10:00 | 458 |        28 |              0 |          878 |    185 |        18 |       48 |    63 |       1 |          472 |          13 |       53 |
+| brood     | 15:00 | 250 |        23 |              6 |          547 |     57 |        40 |       57 |    81 |       2 |          894 |          15 |       51 |
 | brood     | 20:00 |  73 |        26 |             25 |            6 |     27 |        46 |       49 |    88 |       2 |          617 |          16 |       50 |
 | brood     | 25:00 |  69 |        27 |             27 |            0 |     27 |        42 |       49 |    87 |       2 |          600 |          16 |       48 |
-| clockwork | 5:00  | 644 |        19 |              0 |         1236 |     71 |         2 |       55 |    76 |       1 |         1265 |          14 |       64 |
-| clockwork | 10:00 | 512 |        32 |              1 |         1682 |    225 |        26 |      119 |   137 |       2 |         3202 |          28 |       50 |
-| clockwork | 15:00 | 373 |        29 |              8 |          771 |    189 |        33 |      101 |   161 |       2 |         2756 |          32 |       43 |
-| clockwork | 20:00 | 182 |        27 |              6 |          396 |    312 |        33 |       87 |   163 |       2 |         2358 |          33 |       37 |
+| clockwork | 5:00  | 656 |        19 |              0 |         1237 |     71 |         2 |       55 |    76 |       1 |         1267 |          14 |       64 |
+| clockwork | 10:00 | 521 |        32 |              1 |         1674 |    224 |        26 |      119 |   137 |       2 |         3205 |          28 |       50 |
+| clockwork | 15:00 | 378 |        29 |              8 |          764 |    187 |        33 |      100 |   161 |       2 |         2742 |          32 |       44 |
+| clockwork | 20:00 | 185 |        27 |              6 |          407 |    308 |        33 |       88 |   163 |       2 |         2364 |          33 |       37 |
 | clockwork | 25:00 |  88 |        26 |              9 |          399 |   1126 |        30 |       97 |   168 |       3 |         2729 |          34 |       32 |
 
 ![Economy curves per faction](study_data/figs/economy.png)
@@ -366,10 +366,10 @@ Earned so far (median, own currency) at fixed times, all games:
 
 | at    | crown earned (median, n)   | brood earned (median, n)   | clockwork earned (median, n)   |
 |:------|:---------------------------|:---------------------------|:-------------------------------|
-| 5:00  | 2280 (646)                 | 1278 (646)                 | 4648 (644)                     |
-| 10:00 | 6080 (570)                 | 5082 (458)                 | 12906 (512)                    |
-| 15:00 | 11660 (434)                | 9610 (264)                 | 16324 (388)                    |
-| 20:00 | 17740 (244)                | 10490 (74)                 | 21882 (192)                    |
+| 5:00  | 2280 (658)                 | 1280 (658)                 | 4648 (656)                     |
+| 10:00 | 6080 (580)                 | 5085 (467)                 | 12906 (521)                    |
+| 15:00 | 11660 (440)                | 9614 (265)                 | 16208 (393)                    |
+| 20:00 | 17740 (247)                | 10490 (74)                 | 21519 (195)                    |
 | 25:00 | 23700 (111)                | 10490 (69)                 | 23658 (98)                     |
 
 ### 4.2 The Brood against the other two, minute by minute
@@ -378,20 +378,20 @@ Balanced/Balanced games, medians:
 
 | Brood vs   | at    |   games still on | Brood grubs / army value   | crown workers / army value   |   Brood units lost so far | clockwork workers / army value   |
 |:-----------|:------|-----------------:|:---------------------------|:-----------------------------|--------------------------:|:---------------------------------|
-| crown      | 3:00  |              102 | 8 / 75                     | 8 / 270                      |                         1 | -                                |
-| crown      | 4:00  |              102 | 9 / 225                    | 9 / 460                      |                         1 | -                                |
-| crown      | 5:00  |              102 | 13 / 300                   | 11 / 570                     |                         2 | -                                |
-| crown      | 6:00  |              101 | 15 / 300                   | 12 / 700                     |                         2 | -                                |
-| crown      | 7:00  |               85 | 23 / 300                   | 14 / 870                     |                         3 | -                                |
-| crown      | 8:00  |               80 | 27 / 345                   | 18 / 975                     |                         3 | -                                |
-| crown      | 10:00 |               75 | 37 / 330                   | 25 / 1360                    |                        10 | -                                |
-| clockwork  | 3:00  |              102 | 8 / 75                     | -                            |                         1 | 13 / 225                         |
-| clockwork  | 4:00  |              102 | 9 / 300                    | -                            |                         1 | 17 / 832                         |
-| clockwork  | 5:00  |              102 | 13 / 50                    | -                            |                        16 | 18 / 1490                        |
-| clockwork  | 6:00  |              101 | 11 / 0                     | -                            |                        26 | 21 / 1950                        |
-| clockwork  | 7:00  |               92 | 8 / 0                      | -                            |                        35 | 27 / 2335                        |
-| clockwork  | 8:00  |               64 | 6 / 0                      | -                            |                        45 | 32 / 2767                        |
-| clockwork  | 10:00 |               22 | 12 / 37                    | -                            |                        73 | 32 / 4380                        |
+| crown      | 3:00  |              104 | 8 / 75                     | 8 / 270                      |                         1 | -                                |
+| crown      | 4:00  |              104 | 9 / 225                    | 9 / 460                      |                         1 | -                                |
+| crown      | 5:00  |              104 | 13 / 300                   | 10 / 562                     |                         2 | -                                |
+| crown      | 6:00  |              103 | 15 / 300                   | 12 / 700                     |                         2 | -                                |
+| crown      | 7:00  |               86 | 23 / 300                   | 14 / 862                     |                         3 | -                                |
+| crown      | 8:00  |               81 | 27 / 350                   | 18 / 975                     |                         3 | -                                |
+| crown      | 10:00 |               76 | 37 / 330                   | 25 / 1357                    |                        10 | -                                |
+| clockwork  | 3:00  |              104 | 8 / 75                     | -                            |                         1 | 13 / 225                         |
+| clockwork  | 4:00  |              104 | 9 / 300                    | -                            |                         1 | 17 / 825                         |
+| clockwork  | 5:00  |              104 | 13 / 50                    | -                            |                        16 | 18 / 1485                        |
+| clockwork  | 6:00  |              103 | 11 / 0                     | -                            |                        26 | 21 / 1950                        |
+| clockwork  | 7:00  |               93 | 8 / 0                      | -                            |                        35 | 27 / 2335                        |
+| clockwork  | 8:00  |               65 | 6 / 0                      | -                            |                        45 | 32 / 2760                        |
+| clockwork  | 10:00 |               23 | 12 / 0                     | -                            |                        75 | 32 / 4385                        |
 
 Against the Clockwork the Brood's army is gone by 6:00: the first Clockwork wave leaves at about 3:40 with 18 supply (11
 Wind-up Soldiers and 3 Arc Throwers on average) and the second at about 6:50 with 39 (section 7.1). Against the Crown the
@@ -406,7 +406,7 @@ of a harvested body may help here):
 
 |   Brood side-games vs the Crown | decided to keep its army home (median time)   | Brood Pen built (median time)   | Gorge Pit built (median time)   |   Spitters made per game |   Brutes made per game | game length (median)   |
 |--------------------------------:|:----------------------------------------------|:--------------------------------|:--------------------------------|-------------------------:|-----------------------:|:-----------------------|
-|                             161 | 161 (6:11)                                    | 73% (5:54)                      | 68% (8:40)                      |                      8.1 |                    0.8 | 13:37                  |
+|                             164 | 164 (6:14)                                    | 73% (5:51)                      | 68% (8:40)                      |                      8.2 |                    0.8 | 13:40                  |
 
 Example: `crown-brood_012` (Balanced/Balanced, Greenhold): the Brood scouts
 Horsemen at 3:08 and decides "Raptors do little against them, so it keeps its army at home and builds Spitters and Brutes";
@@ -419,18 +419,18 @@ Per side-game (all plans):
 
 | faction   |   side-games |   idle worker time % |   idle army time % |   idle production % | supply-blocked s (median / p90)   |   blocked % of game |   gold>500 % of game |   gold>1000 % of game |   peak bank (median) |   peak supply (median) | reached 200 cap   | soil/ground all spent   | median spent at   |
 |:----------|-------------:|---------------------:|-------------------:|--------------------:|:----------------------------------|--------------------:|---------------------:|----------------------:|---------------------:|-----------------------:|:------------------|:------------------------|:------------------|
-| crown     |          646 |                 10.7 |               47.5 |                 9.5 | 0 / 23                            |                 1.3 |                  0.8 |                   0.1 |                575.0 |                   92.0 | 0/646             | 192/646                 | 15:03             |
-| brood     |          646 |                  8.1 |               67.6 |                 2.6 | 5 / 30                            |                 1.1 |                  0.5 |                   0.0 |                484.0 |                   61.0 | 0/646             | 32/646                  | 17:08             |
-| clockwork |          644 |                 10.6 |               15.9 |                12.3 | 3 / 63                            |                 2.7 |                  5.3 |                   2.4 |                623.0 |                  143.0 | 201/644           | 194/644                 | 16:06             |
+| crown     |          658 |                 10.7 |               47.7 |                 9.5 | 0 / 22                            |                 1.3 |                  0.8 |                   0.1 |                571.5 |                   92.0 | 0/658             | 195/658                 | 14:58             |
+| brood     |          658 |                  8.0 |               67.5 |                 2.6 | 5 / 31                            |                 1.2 |                  0.5 |                   0.0 |                484.0 |                   61.0 | 0/658             | 33/658                  | 17:10             |
+| clockwork |          656 |                 10.6 |               16.0 |                12.3 | 3 / 62                            |                 2.6 |                  5.2 |                   2.3 |                622.5 |                  143.0 | 203/656           | 196/656                 | 16:06             |
 
 How often a side is supply-capped with something in the bank, from the 30 s samples (the Brood's units cost 25-75, so a bank
 of 50 is the threshold here):
 
 | faction   |   samples |   supply-capped with 50+ in the bank (% of 30 s samples) |   within 10% of the cap (%) |   capped at 3:00-8:00 (%) |   capped after 8:00 (%) |
 |:----------|----------:|---------------------------------------------------------:|----------------------------:|--------------------------:|------------------------:|
-| crown     |     21294 |                                                      1.7 |                         7.8 |                       0.2 |                     2.7 |
-| brood     |     16157 |                                                      4.3 |                        19.2 |                       5.8 |                     3.7 |
-| clockwork |     17752 |                                                      3.0 |                        12.7 |                       2.1 |                     4.1 |
+| crown     |     21616 |                                                      1.7 |                         7.7 |                       0.2 |                     2.7 |
+| brood     |     16401 |                                                      4.3 |                        19.3 |                       5.8 |                     3.7 |
+| clockwork |     18067 |                                                      3.0 |                        12.7 |                       2.1 |                     4.1 |
 
 - **Supply blocks are rare** for all three (1-3% of game time). Blocks of 2 minutes or more happen in about 4% of Crown and
   Clockwork side-games, mostly in Crown mirrors and Clockwork games (section 10.5).
@@ -439,15 +439,15 @@ of 50 is the threshold here):
 
 | at    |   Crown sides still playing |   median powder banked | share with 500+ powder   |
 |:------|----------------------------:|-----------------------:|:-------------------------|
-| 10:00 |                         570 |                     79 | 0%                       |
-| 15:00 |                         434 |                    443 | 38%                      |
-| 20:00 |                         244 |                    817 | 96%                      |
+| 10:00 |                         580 |                     79 | 0%                       |
+| 15:00 |                         440 |                    442 | 38%                      |
+| 20:00 |                         247 |                    817 | 96%                      |
 | 25:00 |                         111 |                   1023 | 98%                      |
 
 - **Idle workers** run at about 8-11% of worker time on average, but they come in lumps: almost all of it is after the land
   is spent. Share of idle worker time taken while a hall's soil (Crown), coal (Clockwork) or the capital's ground (Brood) is
   used up: crown 99%, brood 98%, clockwork 98% (sections 4.4 and 10.4).
-- **The 200 cap**: only the Clockwork reaches it (201/644 of its side-games); the Crown and the Brood never do.
+- **The 200 cap**: only the Clockwork reaches it (203/656 of its side-games); the Crown and the Brood never do.
 
 ### 4.4 Depletion: soil, ground, ore
 
@@ -464,9 +464,9 @@ A side "stalls" when 80% or more of its workers (at least 8) stand idle for 90 s
 
 | faction   |   side-games | economy stalled   | median onset   | ground/soil already spent   | vs (side-games)        | could afford a new hall   | went on to lose   |
 |:----------|-------------:|:------------------|:---------------|:----------------------------|:-----------------------|:--------------------------|:------------------|
-| crown     |          646 | 73 (11%)          | 16:30          | 85%                         | crown 39, clockwork 34 | 0 of 73                   | 95%               |
-| brood     |          646 | 122 (19%)         | 15:30          | 100%                        | brood 109, crown 13    | 0 of 122                  | 28%               |
-| clockwork |          644 | 3 (0%)            | 16:00          | 100%                        | clockwork 3            | 0 of 3                    | 100%              |
+| crown     |          658 | 74 (11%)          | 16:45          | 85%                         | crown 40, clockwork 34 | 0 of 74                   | 95%               |
+| brood     |          658 | 123 (19%)         | 15:30          | 100%                        | brood 109, crown 14    | 0 of 123                  | 28%               |
+| clockwork |          656 | 3 (0%)            | 16:00          | 100%                        | clockwork 3            | 0 of 3                    | 100%              |
 
 - The **Crown** stalls in about one game in nine, and nearly always because the soil is spent; not one of those sides had the
   400 gold a new Town Hall costs, and almost all of them lost. Examples: `crown-clockwork_020` (crown side, from 11:00: 29 of 36 workers idle, 365 gold, 1 hall); `crown-clockwork_116` (crown side, from 12:30: 25 of 31 workers idle, 203 gold, 1 hall); `crown-clockwork_070` (crown side, from 13:30: 25 of 31 workers idle, 13 gold, 2 halls); `crown-clockwork_034` (crown side, from 14:00: 24 of 30 workers idle, 17 gold, 1 hall); `crown-clockwork_111` (crown side, from 14:00: 34 of 35 workers idle, 4 gold, 2 halls). This is the "depletion
@@ -483,11 +483,11 @@ that is drawn the pits pay nothing:
 
 | Brood side-games vs   |   n | ground spent (earned >= 10,400)   | median time it was spent   | then 80%+ of grubs idle   |   of those, won |   game went to 30:00 |
 |:----------------------|----:|:----------------------------------|:---------------------------|:--------------------------|----------------:|---------------------:|
-| brood                 | 324 | 149 (46%)                         | 15:30                      | 145 of 149                |              90 |                   68 |
-| crown                 | 161 | 17 (11%)                          | 14:00                      | 16 of 17                  |               0 |                    0 |
-| clockwork             | 161 | 0 (0%)                            | -                          | 0 of 0                    |               0 |                    0 |
+| brood                 | 330 | 149 (45%)                         | 15:30                      | 145 of 149                |              90 |                   68 |
+| crown                 | 164 | 18 (11%)                          | 14:00                      | 17 of 18                  |               0 |                    0 |
+| clockwork             | 164 | 0 (0%)                            | -                          | 0 of 0                    |               0 |                    0 |
 
-In Brood mirrors 149 of 324 side-games spend the whole reserve (at a median of about 15:30), and then nearly all of
+In Brood mirrors 149 of 330 side-games spend the whole reserve (at a median of about 15:30), and then nearly all of
 them have 80% or more of their grubs idle. Earned biomass stops at about 10,490 for good (the 20:00 and 25:00 rows of the
 "earned" table in 4.1). Against the Crown it gets that far in about one game in nine and against the Clockwork never: it is
 usually dead first. The result is a fixed budget per game, and Brood mirrors that are not decided by about 15 minutes freeze (section 10.3). CLAUDE.md lists "one
@@ -499,39 +499,39 @@ usually dead first. The result is a fixed budget per game, and Brood mirrors tha
 
 | faction   |   side-games | 2nd hall median   | 2nd hall reached   | 3rd hall reached   | no 2nd hall by 12:00 (of games lasting 12+ min)   |
 |:----------|-------------:|:------------------|:-------------------|:-------------------|:--------------------------------------------------|
-| crown     |          646 | 8:05              | 85%                | 46%                | 16/551                                            |
-| brood     |          646 | 11:37             | 51%                | 14%                | 239/427                                           |
-| clockwork |          644 | 5:57              | 100%               | 47%                | 0/474                                             |
+| crown     |          658 | 8:05              | 85%                | 46%                | 17/561                                            |
+| brood     |          658 | 11:37             | 51%                | 14%                | 243/435                                           |
+| clockwork |          656 | 5:57              | 100%               | 46%                | 0/480                                             |
 
 First time each building kind was finished (median, and the share of side-games that built one):
 
 | faction   | barracks    | powder_mill   | horse_breeder   | armoury    | foundry    | church     |
 |:----------|:------------|:--------------|:----------------|:-----------|:-----------|:-----------|
-| crown     | 1:17 (100%) | 1:12 (100%)   | 2:14 (100%)     | 5:32 (88%) | 5:32 (88%) | 6:04 (87%) |
+| crown     | 1:17 (100%) | 1:12 (100%)   | 2:14 (100%)     | 5:32 (88%) | 5:32 (88%) | 6:05 (86%) |
 
 | faction   | warren      | brood_pen   | gorge_pit   | roost      | clutch_mound   |
 |:----------|:------------|:------------|:------------|:-----------|:---------------|
-| brood     | 1:24 (100%) | 6:17 (71%)  | 9:18 (65%)  | 8:22 (66%) | 3:10 (99%)     |
+| brood     | 1:24 (100%) | 6:16 (71%)  | 9:18 (65%)  | 8:22 (66%) | 3:10 (99%)     |
 
 | faction   | assembly_works   | engine_hall   | capacitor_works   | spring_tower   | charging_pylon   |
 |:----------|:-----------------|:--------------|:------------------|:---------------|:-----------------|
-| clockwork | 2:17 (100%)      | 8:31 (86%)    | 8:51 (87%)        | 1:15 (100%)    | 5:23 (99%)       |
+| clockwork | 2:17 (100%)      | 8:31 (86%)    | 8:50 (87%)        | 1:15 (100%)    | 5:23 (99%)       |
 
 Measured openings per plan (median time of the first production building and first attack; workers / army value at
 2:00-5:00), to compare with `docs/ai_build_timelines.md`:
 
 | faction   | plan     |   n | production bldg (median)   | first attack (median)   | 2:00 wk/army   | 3:00 wk/army   | 4:00 wk/army   | 5:00 wk/army   |
 |:----------|:---------|----:|:---------------------------|:------------------------|:---------------|:---------------|:---------------|:---------------|
-| crown     | balanced | 526 | 1:17                       | 6:03                    | 9 / 60         | 9 / 240        | 10 / 400       | 11 / 522       |
+| crown     | balanced | 538 | 1:17                       | 6:02                    | 9 / 60         | 9 / 240        | 10 / 400       | 11 / 522       |
 | crown     | rush     |  60 | 1:17                       | 2:43                    | 7 / 155        | 7 / 425        | 9 / 385        | 11 / 345       |
 | crown     | timing   |  60 | 1:15                       | 4:29                    | 9 / 60         | 9 / 240        | 10 / 400       | 11 / 557       |
-| brood     | balanced | 527 | 1:24                       | 8:50                    | 8 / 0          | 9 / 75         | 9 / 300        | 14 / 300       |
+| brood     | balanced | 538 | 1:24                       | 8:50                    | 8 / 0          | 9 / 75         | 9 / 300        | 14 / 300       |
 | brood     | rush     |  32 | 0:56                       | 2:01                    | 6 / 112        | 9 / 62         | 9 / 175        | 12 / 212       |
 | brood     | xrush    |  28 | 0:38                       | 1:56                    | 5 / 150        | 5 / 50         | 8 / 75         | 9 / 187        |
-| brood     | timing   |  59 | 1:24                       | 4:32                    | 8 / 0          | 9 / 75         | 9 / 225        | 14 / 50        |
-| clockwork | balanced | 527 | 2:17                       | 3:42                    | 9 / 0          | 13 / 225       | 17 / 825       | 18 / 1305      |
+| brood     | timing   |  60 | 1:24                       | 4:32                    | 8 / 0          | 9 / 75         | 9 / 225        | 14 / 62        |
+| clockwork | balanced | 536 | 2:17                       | 3:42                    | 9 / 0          | 13 / 225       | 17 / 825       | 18 / 1305      |
 | clockwork | rush     |  60 | 2:17                       | 2:44                    | 9 / 0          | 14 / 225       | 16 / 600       | 20 / 1265      |
-| clockwork | timing   |  57 | 2:17                       | 4:32                    | 9 / 0          | 13 / 225       | 17 / 825       | 18 / 1490      |
+| clockwork | timing   |  60 | 2:17                       | 4:32                    | 9 / 0          | 13 / 225       | 17 / 825       | 18 / 1490      |
 
 - The Clockwork always expands (100%, median about 6:00), the Crown usually (85%, about 8:00), the Brood in only half its
   games and late (about 11:40); for the Brood a second Burrow brings no new ground anyway (4.6).
@@ -540,9 +540,9 @@ Measured openings per plan (median time of the first production building and fir
 
 | mirror    | both expanded: the earlier one won   | only one side expanded: it won   |
 |:----------|:-------------------------------------|:---------------------------------|
-| crown     | 87/146 = 60% [51%-67%]               | 4/4 = 100% [51%-100%]            |
-| brood     | 49/84 = 58% [48%-68%]                | 32/34 = 94% [81%-98%]            |
-| clockwork | 93/154 = 60% [53%-68%]               | -                                |
+| crown     | 90/149 = 60% [52%-68%]               | 4/4 = 100% [51%-100%]            |
+| brood     | 50/85 = 59% [48%-69%]                | 33/35 = 94% [81%-98%]            |
+| clockwork | 94/157 = 60% [52%-67%]               | -                                |
 
 - The measured timelines are close to `docs/ai_build_timelines.md` for the production buildings. Two differences: the
   Clockwork Balanced plan's first attack comes at about 3:40 here (the doc, measured against a Crown that never attacks, has
@@ -556,45 +556,45 @@ Value killed against value lost per matchup ("trade ratio" > 1 means the row fac
 
 | faction   | vs        |   side-games |   value killed |   value lost |   trade ratio |   units killed |   units lost |   peak army (median) |   workers lost (mean) |   buildings lost (mean) |
 |:----------|:----------|-------------:|---------------:|-------------:|--------------:|---------------:|-------------:|---------------------:|----------------------:|------------------------:|
-| crown     | crown     |          324 |        2717220 |      2717220 |          1.00 |          32525 |        32525 |              2800.00 |                 25.96 |                   13.13 |
-| crown     | brood     |          161 |         832040 |       163995 |          5.07 |          14395 |         2280 |              2560.00 |                  2.18 |                    0.04 |
-| crown     | clockwork |          161 |        1335610 |      1074635 |          1.24 |          23210 |        12057 |              1285.00 |                 25.89 |                   14.61 |
-| brood     | crown     |          161 |         163995 |       832040 |          0.20 |           2280 |        14395 |               450.00 |                 31.49 |                   14.23 |
-| brood     | brood     |          324 |        1553800 |      1553800 |          1.00 |          40335 |        40335 |              1537.50 |                 17.78 |                    7.70 |
-| brood     | clockwork |          161 |         111120 |       422385 |          0.26 |           3583 |         8763 |               300.00 |                 13.17 |                    6.91 |
-| clockwork | crown     |          161 |        1074635 |      1335610 |          0.80 |          12057 |        23210 |              5780.00 |                 15.76 |                    7.14 |
-| clockwork | brood     |          161 |         422385 |       111120 |          3.80 |           8763 |         3583 |              3315.00 |                  0.86 |                    0.00 |
-| clockwork | clockwork |          322 |        4038575 |      4038575 |          1.00 |          69646 |        69646 |              3900.00 |                 18.62 |                   11.73 |
+| crown     | crown     |          330 |        2748355 |      2748355 |          1.00 |          32854 |        32854 |              2800.00 |                 25.82 |                   13.10 |
+| crown     | brood     |          164 |         849800 |       168365 |          5.05 |          14732 |         2338 |              2567.50 |                  2.19 |                    0.04 |
+| crown     | clockwork |          164 |        1346500 |      1093585 |          1.23 |          23449 |        12254 |              1267.50 |                 25.95 |                   14.63 |
+| brood     | crown     |          164 |         168365 |       849800 |          0.20 |           2338 |        14732 |               450.00 |                 31.54 |                   14.24 |
+| brood     | brood     |          330 |        1577480 |      1577480 |          1.00 |          40872 |        40872 |              1537.50 |                 17.83 |                    7.72 |
+| brood     | clockwork |          164 |         112370 |       429910 |          0.26 |           3633 |         8918 |               300.00 |                 13.15 |                    6.90 |
+| clockwork | crown     |          164 |        1093585 |      1346500 |          0.81 |          12254 |        23449 |              5812.50 |                 15.55 |                    7.01 |
+| clockwork | brood     |          164 |         429910 |       112370 |          3.83 |           8918 |         3633 |              3317.50 |                  0.84 |                    0.00 |
+| clockwork | clockwork |          328 |        4097550 |      4097550 |          1.00 |          70574 |        70574 |              3890.00 |                 18.60 |                   11.71 |
 
 What each faction builds and what each unit does (per side-game; "kills per unit made" counts every kill, workers included):
 
 | faction   | unit           |   per game made | share of value made   |   per game lost |   lost / made |   kills per game |   kills per unit made |
 |:----------|:---------------|----------------:|:----------------------|----------------:|--------------:|-----------------:|----------------------:|
-| crown     | musketeer      |           52.91 | 44%                   |           34.98 |          0.66 |            77.16 |                  1.46 |
-| crown     | labourer       |           42.30 | 29%                   |           20.02 |          0.47 |             0.78 |                  0.02 |
-| crown     | cuirassier     |           10.83 | 17%                   |            8.24 |          0.76 |            24.28 |                  2.24 |
-| crown     | dismounted     |            3.74 | 4%                    |            2.68 |          0.72 |             0.59 |                  0.16 |
-| crown     | mortar         |            0.93 | 2%                    |            0.33 |          0.35 |             0.64 |                  0.69 |
-| crown     | cannon         |            0.67 | 2%                    |            0.34 |          0.50 |             3.40 |                  5.08 |
+| crown     | musketeer      |           52.62 | 44%                   |           34.71 |          0.66 |            76.72 |                  1.46 |
+| crown     | labourer       |           42.20 | 29%                   |           19.96 |          0.47 |             0.78 |                  0.02 |
+| crown     | cuirassier     |           10.76 | 17%                   |            8.18 |          0.76 |            24.15 |                  2.24 |
+| crown     | dismounted     |            3.75 | 4%                    |            2.68 |          0.72 |             0.60 |                  0.16 |
+| crown     | mortar         |            0.92 | 2%                    |            0.33 |          0.36 |             0.63 |                  0.68 |
+| crown     | cannon         |            0.67 | 2%                    |            0.34 |          0.50 |             3.36 |                  5.05 |
 | crown     | missionary     |            0.83 | 1%                    |            0.40 |          0.48 |             0.00 |                  0.00 |
-| crown     | powder_wagon   |            0.64 | 1%                    |            0.20 |          0.31 |             1.34 |                  2.08 |
+| crown     | powder_wagon   |            0.64 | 1%                    |            0.20 |          0.31 |             1.32 |                  2.07 |
 | crown     | balloon        |            0.03 | 0%                    |            0.02 |          0.74 |             0.00 |                  0.00 |
-| brood     | raptor         |           97.71 | 47%                   |           68.38 |          0.70 |            49.19 |                  0.50 |
-| brood     | grub           |           41.98 | 41%                   |           20.05 |          0.48 |             3.67 |                  0.09 |
-| brood     | spitter        |           10.30 | 9%                    |            7.81 |          0.76 |            12.96 |                  1.26 |
+| brood     | raptor         |           97.50 | 47%                   |           68.14 |          0.70 |            48.99 |                  0.50 |
+| brood     | grub           |           41.99 | 41%                   |           20.08 |          0.48 |             3.66 |                  0.09 |
+| brood     | spitter        |           10.28 | 9%                    |            7.80 |          0.76 |            12.88 |                  1.25 |
 | brood     | brute          |            0.67 | 2%                    |            0.53 |          0.79 |             2.65 |                  3.96 |
-| brood     | bloater        |            0.77 | 1%                    |            0.71 |          0.92 |             2.49 |                  3.25 |
-| brood     | skywing        |            0.25 | 0%                    |            0.22 |          0.89 |             0.30 |                  1.19 |
+| brood     | bloater        |            0.76 | 1%                    |            0.70 |          0.92 |             2.46 |                  3.24 |
+| brood     | skywing        |            0.25 | 0%                    |            0.22 |          0.88 |             0.29 |                  1.18 |
 | brood     | mist_toad      |            0.13 | 0%                    |            0.10 |          0.74 |             0.02 |                  0.15 |
-| clockwork | windup_soldier |          153.31 | 32%                   |          114.14 |          0.74 |            41.40 |                  0.27 |
-| clockwork | arc_thrower    |           17.80 | 22%                   |           10.79 |          0.61 |            63.00 |                  3.54 |
-| clockwork | winder         |           35.65 | 18%                   |           13.46 |          0.38 |             2.98 |                  0.08 |
-| clockwork | bulwark        |            7.57 | 11%                   |            4.84 |          0.64 |             7.78 |                  1.03 |
-| clockwork | thresher       |            6.83 | 9%                    |            3.34 |          0.49 |            16.64 |                  2.44 |
-| clockwork | steam_walker   |            1.88 | 4%                    |            1.10 |          0.58 |             5.20 |                  2.76 |
-| clockwork | stormcaller    |            1.75 | 2%                    |            0.94 |          0.54 |             1.01 |                  0.58 |
-| clockwork | ornithopter    |            1.09 | 1%                    |            0.62 |          0.57 |             1.25 |                  1.15 |
-| clockwork | tesla_cart     |            0.48 | 1%                    |            0.30 |          0.63 |             0.60 |                  1.23 |
+| clockwork | windup_soldier |          152.56 | 32%                   |          113.43 |          0.74 |            41.21 |                  0.27 |
+| clockwork | arc_thrower    |           17.77 | 22%                   |           10.73 |          0.60 |            62.68 |                  3.53 |
+| clockwork | winder         |           35.61 | 18%                   |           13.40 |          0.38 |             2.96 |                  0.08 |
+| clockwork | bulwark        |            7.56 | 11%                   |            4.81 |          0.64 |             7.75 |                  1.02 |
+| clockwork | thresher       |            6.83 | 9%                    |            3.32 |          0.49 |            16.52 |                  2.42 |
+| clockwork | steam_walker   |            1.89 | 4%                    |            1.10 |          0.58 |             5.31 |                  2.81 |
+| clockwork | stormcaller    |            1.74 | 2%                    |            0.93 |          0.54 |             1.01 |                  0.58 |
+| clockwork | ornithopter    |            1.09 | 1%                    |            0.62 |          0.57 |             1.23 |                  1.13 |
+| clockwork | tesla_cart     |            0.48 | 1%                    |            0.30 |          0.63 |             0.60 |                  1.24 |
 
 - The Crown's army is Musketeers (about 44% of the value it makes) and Cuirassiers/Horsemen (17%). Its artillery is barely
   built (under one Cannon and one Mortar per game), although each Cannon made accounts for about 5 kills, the most of any
@@ -617,37 +617,37 @@ riders going for workers. A wave is "good" when it killed at least the value it 
 
 | faction   |   waves |   raids |   per side-game |   median supply | first wave median   | waves that killed >= lost   |   value killed / lost |   small waves (<8 supply) after 5:00 |
 |:----------|--------:|--------:|----------------:|----------------:|:--------------------|:----------------------------|----------------------:|-------------------------------------:|
-| crown     |     621 |    1141 |            0.96 |           23.00 | 6:30                | 65%                         |                  2.01 |                                    2 |
-| brood     |     669 |       0 |            1.04 |           31.00 | 7:53                | 50%                         |                  1.74 |                                    0 |
-| clockwork |    1038 |       0 |            1.61 |           21.00 | 3:41                | 51%                         |                  1.11 |                                    0 |
+| crown     |     629 |    1163 |            0.96 |           23.00 | 6:30                | 65%                         |                  2.02 |                                    2 |
+| brood     |     679 |       0 |            1.03 |           32.00 | 7:53                | 51%                         |                  1.75 |                                    0 |
+| clockwork |    1053 |       0 |            1.61 |           21.00 | 3:41                | 51%                         |                  1.12 |                                    0 |
 
 The first wave of each plan:
 
 | faction   | plan     |   first waves | start (median)   |   supply sent |   value sent | kinds (avg per wave)                        | killed >= lost   |   value killed / lost |
 |:----------|:---------|--------------:|:-----------------|--------------:|-------------:|:--------------------------------------------|:-----------------|----------------------:|
-| crown     | balanced |           332 | 9:42             |          22.0 |       1260.0 | musketeer 12, cuirassier 3, missionary 0    | 61%              |                   2.0 |
+| crown     | balanced |           338 | 9:42             |          22.0 |       1255.0 | musketeer 12, cuirassier 3, missionary 0    | 62%              |                   2.0 |
 | crown     | rush     |            59 | 2:43             |           9.0 |        385.0 | cuirassier 3                                | 75%              |                   2.3 |
 | crown     | timing   |            49 | 5:54             |          12.0 |        595.0 | musketeer 7, cuirassier 2, cannon 0         | 78%              |                   1.9 |
-| brood     | balanced |           259 | 8:50             |          31.0 |        830.0 | raptor 26, spitter 4, brute 0               | 46%              |                   1.3 |
+| brood     | balanced |           265 | 8:50             |          31.0 |        830.0 | raptor 26, spitter 4, brute 0               | 46%              |                   1.3 |
 | brood     | rush     |            32 | 2:01             |           6.0 |        150.0 | raptor 6                                    | 50%              |                   1.2 |
 | brood     | xrush    |            28 | 1:56             |           6.0 |        150.0 | raptor 6                                    | 50%              |                   1.0 |
 | brood     | timing   |            35 | 4:32             |          12.0 |        300.0 | raptor 13, spitter 1, brute 0               | 14%              |                   0.7 |
-| clockwork | balanced |           527 | 3:42             |          18.0 |        675.0 | windup_soldier 11, arc_thrower 3, bulwark 0 | 48%              |                   1.1 |
+| clockwork | balanced |           536 | 3:42             |          18.0 |        675.0 | windup_soldier 11, arc_thrower 3, bulwark 0 | 48%              |                   1.1 |
 | clockwork | rush     |            60 | 2:44             |           6.0 |        150.0 | windup_soldier 6, arc_thrower 0, thresher 0 | 30%              |                   1.0 |
-| clockwork | timing   |            57 | 4:32             |          33.0 |       1315.0 | windup_soldier 17, arc_thrower 4, bulwark 2 | 61%              |                   1.2 |
+| clockwork | timing   |            60 | 4:32             |          33.0 |       1315.0 | windup_soldier 18, arc_thrower 4, bulwark 2 | 63%              |                   1.2 |
 
 Waves by their number in the game:
 
 | faction   | wave   |   n | median start   |   median supply | killed >= lost   |   value killed / lost |
 |:----------|:-------|----:|:---------------|----------------:|:-----------------|----------------------:|
-| crown     | 1st    | 440 | 8:30           |           21.00 | 65%              |                  2.01 |
-| crown     | 2nd    | 148 | 14:28          |           37.00 | 66%              |                  2.12 |
+| crown     | 1st    | 446 | 8:30           |           21.00 | 65%              |                  2.02 |
+| crown     | 2nd    | 150 | 14:28          |           37.50 | 67%              |                  2.13 |
 | crown     | 3rd+   |  33 | 19:29          |           53.00 | 64%              |                  1.73 |
-| brood     | 1st    | 354 | 8:26           |           30.00 | 44%              |                  1.29 |
-| brood     | 2nd    | 205 | 11:41          |           39.00 | 55%              |                  1.92 |
-| brood     | 3rd+   | 110 | 13:55          |           52.00 | 63%              |                  2.44 |
-| clockwork | 1st    | 644 | 3:42           |           18.00 | 47%              |                  1.09 |
-| clockwork | 2nd    | 270 | 6:48           |           39.00 | 52%              |                  1.08 |
+| brood     | 1st    | 360 | 8:27           |           30.00 | 44%              |                  1.28 |
+| brood     | 2nd    | 208 | 11:40          |           39.00 | 56%              |                  1.95 |
+| brood     | 3rd+   | 111 | 13:54          |           52.00 | 63%              |                  2.47 |
+| clockwork | 1st    | 656 | 3:42           |           18.00 | 48%              |                  1.10 |
+| clockwork | 2nd    | 273 | 6:49           |           39.00 | 52%              |                  1.08 |
 | clockwork | 3rd+   | 124 | 11:02          |           67.50 | 69%              |                  1.42 |
 
 - The Clockwork attacks first and most often (a first wave at about 3:40 even on Balanced), the Brood last (about 8:30-8:50
@@ -660,7 +660,7 @@ Waves by their number in the game:
 
 |   Crown side-games |   built a ramp wall | wall finished (median)   |   Horse Breeder opening |
 |-------------------:|--------------------:|:-------------------------|------------------------:|
-|                646 |                 646 | 0:37                     |                     244 |
+|                658 |                 658 | 0:37                     |                     249 |
 
 Every Crown side walls its ramp: its first Cottage is laid across the ramp at about 0:23 and stands at a median of 0:37.
 The Crown as defender, by the attacker's opening plan (any faction):
@@ -677,14 +677,14 @@ from the gate:
 
 | matchup                |   games | games with a pull-back   |   pull-backs in all | median time   | after 15:00   |   30:00 games |   of those with a pull-back | median minutes from the last pull-back to the end (30:00 games)   |
 |:-----------------------|--------:|:-------------------------|--------------------:|:--------------|:--------------|--------------:|----------------------------:|:------------------------------------------------------------------|
-| brood vs brood         |     162 | 0 (0%)                   |                   0 | -             | -             |            34 |                           0 | -                                                                 |
-| brood vs clockwork     |     161 | 0 (0%)                   |                   0 | -             | -             |             0 |                           0 | -                                                                 |
-| clockwork vs clockwork |     161 | 0 (0%)                   |                   0 | -             | -             |            17 |                           0 | -                                                                 |
-| crown vs brood         |     161 | 2 (1%)                   |                   2 | 6:16          | 0%            |             0 |                           0 | -                                                                 |
-| crown vs clockwork     |     161 | 138 (86%)                |                 269 | 6:01          | 1%            |            11 |                          11 | 18                                                                |
-| crown vs crown         |     162 | 107 (66%)                |                 162 | 6:42          | 16%           |            22 |                          15 | 23                                                                |
+| brood vs brood         |     165 | 0 (0%)                   |                   0 | -             | -             |            34 |                           0 | -                                                                 |
+| brood vs clockwork     |     164 | 0 (0%)                   |                   0 | -             | -             |             0 |                           0 | -                                                                 |
+| clockwork vs clockwork |     164 | 0 (0%)                   |                   0 | -             | -             |            17 |                           0 | -                                                                 |
+| crown vs brood         |     164 | 2 (1%)                   |                   2 | 6:16          | 0%            |             0 |                           0 | -                                                                 |
+| crown vs clockwork     |     164 | 139 (85%)                |                 270 | 6:01          | 1%            |            11 |                          11 | 18                                                                |
+| crown vs crown         |     165 | 109 (66%)                |                 164 | 6:43          | 16%           |            22 |                          15 | 23                                                                |
 
-Most frequent pull-back messages: 227 x Clockwork pulls back from the gate: it can't get through under N dps of fire (N dps on it); 94 x Crown pulls back from the gate: it can't get through under N dps of fire (N dps on it); 68 x Crown pulls back from the gate: down in ~N s, too dear under N dps of fire (N dps on it); 42 x Clockwork pulls back from the gate: down in ~N s, too dear under N dps of fire (N dps on it).
+Most frequent pull-back messages: 228 x Clockwork pulls back from the gate: it can't get through under N dps of fire (N dps on it); 95 x Crown pulls back from the gate: it can't get through under N dps of fire (N dps on it); 69 x Crown pulls back from the gate: down in ~N s, too dear under N dps of fire (N dps on it); 42 x Clockwork pulls back from the gate: down in ~N s, too dear under N dps of fire (N dps on it).
 
 ### 7.3 Scouting
 
@@ -692,21 +692,21 @@ The scout's "rush" verdict against a foe who actually played Balanced, and why i
 
 | foe (playing Balanced)   |   side-games | scout said 'rush'   | median time   | first reason                                              |
 |:-------------------------|-------------:|:--------------------|:--------------|:----------------------------------------------------------|
-| crown                    |          526 | 460 (87%)           | 4:07          | an early army 293, fast units seen (Horsemen) 167         |
-| brood                    |          527 | 466 (88%)           | 1:14          | a Spawning Den seen before 2:20 466                       |
-| clockwork                |          527 | 466 (88%)           | 4:00          | an early army 287, an Assembly Works seen before 1:40 179 |
+| crown                    |          538 | 472 (88%)           | 4:06          | an early army 300, fast units seen (Horsemen) 172         |
+| brood                    |          538 | 477 (89%)           | 1:14          | a Spawning Den seen before 2:20 477                       |
+| clockwork                |          536 | 475 (89%)           | 4:00          | an early army 294, an Assembly Works seen before 1:40 181 |
 
 The scout calls "rush" on almost every Balanced foe of every faction, so the verdict carries little information. Against
 the Brood it is mechanical: `AIScout.EARLY_PROD` counts a Spawning Den seen before 2:20 (and an Assembly Works before 1:40) as
 rush evidence, and the Brood's Balanced opening finishes its Den at about 1:20. A "rush" verdict puts the AI in a defensive
-posture for 210 s (army first, expansion slower). It does not seem to cost much: in the Crown mirror, 35 games where only one side got a 'rush' verdict by 4:00, that side won 25/35 = 71% [55%-84%]; in the Brood mirror, 1 game where only one side got a 'rush' verdict by 4:00, that side won 1/1 = 100% [21%-100%]; in the Clockwork mirror, 51 games where only one side got a 'rush' verdict by 4:00, that side won 23/51 = 45% [32%-59%]. Verdict accuracy by
+posture for 210 s (army first, expansion slower). It does not seem to cost much: in the Crown mirror, 36 games where only one side got a 'rush' verdict by 4:00, that side won 25/36 = 69% [53%-82%]; in the Brood mirror, 1 game where only one side got a 'rush' verdict by 4:00, that side won 1/1 = 100% [21%-100%]; in the Clockwork mirror, 53 games where only one side got a 'rush' verdict by 4:00, that side won 23/53 = 43% [31%-57%]. Verdict accuracy by
 the foe's real plan:
 
 | scouting side   | verdict 'rush' when foe really rushes   | verdict 'rush' when foe plays Timing   | verdict 'rush' when foe plays Balanced   |
 |:----------------|:----------------------------------------|:---------------------------------------|:-----------------------------------------|
-| crown           | 46/60 = 77%                             | 30/58 = 52%                            | 280/528 = 53%                            |
-| brood           | 51/60 = 85%                             | 48/59 = 81%                            | 325/527 = 62%                            |
-| clockwork       | 44/60 = 73%                             | 35/59 = 59%                            | 279/525 = 53%                            |
+| crown           | 46/60 = 77%                             | 31/60 = 52%                            | 284/538 = 53%                            |
+| brood           | 51/60 = 85%                             | 49/60 = 82%                            | 333/538 = 62%                            |
+| clockwork       | 44/60 = 73%                             | 35/60 = 58%                            | 286/536 = 53%                            |
 
 ---
 
@@ -719,46 +719,46 @@ All games (inflated by the one-sided Brood matchups):
 
 | at    | lead         |   games | leader went on to win   |   comebacks |
 |:------|:-------------|--------:|:------------------------|------------:|
-| 3:00  | any lead     |     829 | 589 (71%) [68%-74%]     |         240 |
-| 3:00  | lead of 30%+ |     290 | 277 (96%) [92%-97%]     |          13 |
+| 3:00  | any lead     |     846 | 604 (71%) [68%-74%]     |         242 |
+| 3:00  | lead of 30%+ |     294 | 281 (96%) [93%-97%]     |          13 |
 | 3:00  | lead of 2x+  |       7 | 7 (100%) [65%-100%]     |           0 |
-| 5:00  | any lead     |     911 | 669 (73%) [70%-76%]     |         242 |
-| 5:00  | lead of 30%+ |     437 | 391 (89%) [86%-92%]     |          46 |
-| 5:00  | lead of 2x+  |     230 | 229 (100%) [98%-100%]   |           1 |
-| 7:00  | any lead     |     842 | 608 (72%) [69%-75%]     |         234 |
-| 7:00  | lead of 30%+ |     429 | 359 (84%) [80%-87%]     |          70 |
-| 7:00  | lead of 2x+  |     192 | 190 (99%) [96%-100%]    |           2 |
-| 10:00 | any lead     |     737 | 576 (78%) [75%-81%]     |         161 |
-| 10:00 | lead of 30%+ |     422 | 367 (87%) [83%-90%]     |          55 |
-| 10:00 | lead of 2x+  |     166 | 161 (97%) [93%-99%]     |           5 |
-| 15:00 | any lead     |     479 | 431 (90%) [87%-92%]     |          48 |
-| 15:00 | lead of 30%+ |     354 | 343 (97%) [95%-98%]     |          11 |
-| 15:00 | lead of 2x+  |     227 | 225 (99%) [97%-100%]    |           2 |
-| 20:00 | any lead     |     219 | 199 (91%) [86%-94%]     |          20 |
-| 20:00 | lead of 30%+ |     174 | 170 (98%) [94%-99%]     |           4 |
-| 20:00 | lead of 2x+  |     115 | 115 (100%) [97%-100%]   |           0 |
+| 5:00  | any lead     |     928 | 683 (74%) [71%-76%]     |         245 |
+| 5:00  | lead of 30%+ |     445 | 399 (90%) [86%-92%]     |          46 |
+| 5:00  | lead of 2x+  |     234 | 233 (100%) [98%-100%]   |           1 |
+| 7:00  | any lead     |     857 | 621 (72%) [69%-75%]     |         236 |
+| 7:00  | lead of 30%+ |     437 | 366 (84%) [80%-87%]     |          71 |
+| 7:00  | lead of 2x+  |     196 | 194 (99%) [96%-100%]    |           2 |
+| 10:00 | any lead     |     751 | 590 (79%) [75%-81%]     |         161 |
+| 10:00 | lead of 30%+ |     430 | 375 (87%) [84%-90%]     |          55 |
+| 10:00 | lead of 2x+  |     170 | 165 (97%) [93%-99%]     |           5 |
+| 15:00 | any lead     |     485 | 437 (90%) [87%-92%]     |          48 |
+| 15:00 | lead of 30%+ |     359 | 348 (97%) [95%-98%]     |          11 |
+| 15:00 | lead of 2x+  |     229 | 227 (99%) [97%-100%]    |           2 |
+| 20:00 | any lead     |     221 | 201 (91%) [86%-94%]     |          20 |
+| 20:00 | lead of 30%+ |     176 | 172 (98%) [94%-99%]     |           4 |
+| 20:00 | lead of 2x+  |     117 | 117 (100%) [97%-100%]   |           0 |
 
 Mirrors only (the fair test of snowballing, since the factions are equal):
 
 | at    | lead         |   games | leader went on to win   |   comebacks |
 |:------|:-------------|--------:|:------------------------|------------:|
-| 3:00  | any lead     |     355 | 157 (44%) [39%-49%]     |         198 |
+| 3:00  | any lead     |     363 | 163 (45%) [40%-50%]     |         200 |
 | 3:00  | lead of 30%+ |       9 | 6 (67%) [35%-88%]       |           3 |
-| 5:00  | any lead     |     430 | 231 (54%) [49%-58%]     |         199 |
-| 5:00  | lead of 30%+ |      42 | 27 (64%) [49%-77%]      |          15 |
+| 5:00  | any lead     |     439 | 237 (54%) [49%-59%]     |         202 |
+| 5:00  | lead of 30%+ |      43 | 28 (65%) [50%-78%]      |          15 |
 | 5:00  | lead of 2x+  |       1 | 1 (100%) [21%-100%]     |           0 |
-| 7:00  | any lead     |     451 | 276 (61%) [57%-66%]     |         175 |
-| 7:00  | lead of 30%+ |     129 | 97 (75%) [67%-82%]      |          32 |
-| 7:00  | lead of 2x+  |       9 | 9 (100%) [70%-100%]     |           0 |
-| 10:00 | any lead     |     457 | 342 (75%) [71%-79%]     |         115 |
-| 10:00 | lead of 30%+ |     224 | 198 (88%) [84%-92%]     |          26 |
-| 10:00 | lead of 2x+  |      57 | 55 (96%) [88%-99%]      |           2 |
-| 15:00 | any lead     |     344 | 302 (88%) [84%-91%]     |          42 |
-| 15:00 | lead of 30%+ |     233 | 225 (97%) [93%-98%]     |           8 |
-| 15:00 | lead of 2x+  |     147 | 145 (99%) [95%-100%]    |           2 |
-| 20:00 | any lead     |     174 | 155 (89%) [84%-93%]     |          19 |
-| 20:00 | lead of 30%+ |     132 | 129 (98%) [94%-99%]     |           3 |
-| 20:00 | lead of 2x+  |      84 | 84 (100%) [96%-100%]    |           0 |
+| 7:00  | any lead     |     460 | 284 (62%) [57%-66%]     |         176 |
+| 7:00  | lead of 30%+ |     133 | 100 (75%) [67%-82%]     |          33 |
+| 7:00  | lead of 2x+  |      10 | 10 (100%) [72%-100%]    |           0 |
+| 10:00 | any lead     |     466 | 351 (75%) [71%-79%]     |         115 |
+| 10:00 | lead of 30%+ |     229 | 203 (89%) [84%-92%]     |          26 |
+| 10:00 | lead of 2x+  |      59 | 57 (97%) [88%-99%]      |           2 |
+| 15:00 | any lead     |     348 | 306 (88%) [84%-91%]     |          42 |
+| 15:00 | lead of 30%+ |     236 | 228 (97%) [93%-98%]     |           8 |
+| 15:00 | lead of 2x+  |     148 | 146 (99%) [95%-100%]    |           2 |
+| 20:00 | any lead     |     176 | 157 (89%) [84%-93%]     |          19 |
+| 20:00 | lead of 30%+ |     134 | 131 (98%) [94%-99%]     |           3 |
+| 20:00 | lead of 2x+  |      86 | 86 (100%) [96%-100%]    |           0 |
 
 ![Power ratio at 7:00 and 10:00 against the result](study_data/figs/snowball.png)
 
@@ -767,25 +767,25 @@ the two sides differed):
 
 | sample                    | at    |   games | power       | workers     | army_value   | halls       | buildings   | supply      | gold        |
 |:--------------------------|:------|--------:|:------------|:------------|:-------------|:------------|:------------|:------------|:------------|
-| mirrors                   | 3:00  |     463 | 44% (n=355) | 53% (n=278) | 36% (n=239)  | -           | 47% (n=166) | 47% (n=307) | 50% (n=440) |
-| mirrors                   | 5:00  |     463 | 54% (n=430) | 63% (n=374) | 47% (n=361)  | 0% (n=1)    | 61% (n=208) | 51% (n=396) | 47% (n=451) |
-| mirrors                   | 7:00  |     462 | 61% (n=451) | 62% (n=406) | 59% (n=411)  | 50% (n=8)   | 65% (n=306) | 59% (n=441) | 58% (n=457) |
-| mirrors                   | 10:00 |     458 | 75% (n=457) | 72% (n=287) | 74% (n=456)  | 82% (n=39)  | 76% (n=381) | 74% (n=451) | 55% (n=453) |
-| mirrors                   | 15:00 |     346 | 88% (n=344) | 87% (n=263) | 86% (n=346)  | 84% (n=159) | 86% (n=331) | 87% (n=341) | 65% (n=340) |
-| Balanced/Balanced mirrors | 3:00  |     292 | 44% (n=217) | 54% (n=163) | 35% (n=138)  | -           | 41% (n=103) | 49% (n=181) | 52% (n=277) |
-| Balanced/Balanced mirrors | 5:00  |     292 | 54% (n=263) | 62% (n=233) | 45% (n=198)  | 0% (n=1)    | 61% (n=130) | 50% (n=238) | 46% (n=280) |
-| Balanced/Balanced mirrors | 7:00  |     292 | 60% (n=282) | 61% (n=248) | 56% (n=248)  | 50% (n=6)   | 67% (n=174) | 57% (n=275) | 56% (n=289) |
-| Balanced/Balanced mirrors | 10:00 |     291 | 75% (n=290) | 74% (n=173) | 74% (n=289)  | 86% (n=22)  | 77% (n=235) | 73% (n=288) | 52% (n=290) |
-| Balanced/Balanced mirrors | 15:00 |     221 | 88% (n=219) | 86% (n=161) | 86% (n=221)  | 87% (n=98)  | 87% (n=206) | 87% (n=218) | 64% (n=218) |
+| mirrors                   | 3:00  |     472 | 45% (n=363) | 54% (n=285) | 36% (n=243)  | -           | 47% (n=171) | 47% (n=315) | 51% (n=449) |
+| mirrors                   | 5:00  |     472 | 54% (n=439) | 63% (n=381) | 47% (n=367)  | 0% (n=1)    | 60% (n=214) | 51% (n=403) | 47% (n=460) |
+| mirrors                   | 7:00  |     471 | 62% (n=460) | 62% (n=414) | 58% (n=419)  | 56% (n=9)   | 65% (n=311) | 59% (n=449) | 58% (n=466) |
+| mirrors                   | 10:00 |     467 | 75% (n=466) | 73% (n=292) | 74% (n=465)  | 83% (n=41)  | 76% (n=389) | 74% (n=459) | 55% (n=462) |
+| mirrors                   | 15:00 |     350 | 88% (n=348) | 87% (n=267) | 86% (n=350)  | 84% (n=161) | 86% (n=334) | 87% (n=345) | 65% (n=344) |
+| Balanced/Balanced mirrors | 3:00  |     300 | 45% (n=224) | 55% (n=169) | 34% (n=141)  | -           | 42% (n=108) | 49% (n=188) | 53% (n=285) |
+| Balanced/Balanced mirrors | 5:00  |     300 | 55% (n=271) | 62% (n=239) | 45% (n=203)  | 0% (n=1)    | 60% (n=135) | 50% (n=244) | 47% (n=288) |
+| Balanced/Balanced mirrors | 7:00  |     300 | 61% (n=290) | 62% (n=255) | 56% (n=255)  | 57% (n=7)   | 67% (n=179) | 57% (n=282) | 57% (n=297) |
+| Balanced/Balanced mirrors | 10:00 |     299 | 76% (n=298) | 75% (n=177) | 75% (n=297)  | 87% (n=23)  | 78% (n=242) | 74% (n=295) | 53% (n=298) |
+| Balanced/Balanced mirrors | 15:00 |     225 | 88% (n=223) | 87% (n=165) | 85% (n=225)  | 87% (n=100) | 87% (n=209) | 87% (n=222) | 64% (n=222) |
 
 Read against the anti-snowball principles in `docs/design_principles.md`:
-- **The early game is open.** In mirrors a power lead at 3:00 wins only 44% [39%-49%] of 355, and a lead at 5:00 little more
-  (54% [49%-58%] of 430). The side with the bigger *army* at 3:00 does worst of all (it wins about a third of the time, the
+- **The early game is open.** In mirrors a power lead at 3:00 wins only 45% [40%-50%] of 363, and a lead at 5:00 little more
+  (54% [49%-59%] of 439). The side with the bigger *army* at 3:00 does worst of all (it wins about a third of the time, the
   "army_value" column above): an early army costs workers, and in a mirror that costs the game more often than it wins it.
   Small early leads do not decide games. Good, by the anti-snowball principles; it also fits the plans table, where rushing is
   below Balanced for the Crown and the Brood.
-- **From about 10:00, leads stick.** Any lead at 10:00 wins 75% [71%-79%] of 457; a lead of 30% or more 88% [84%-92%] of 224; at 15:00
-  97% [93%-98%] of 233. Halls at 10:00 (the side with more halls wins 84-86%) and army value are the best predictors. A lead at
+- **From about 10:00, leads stick.** Any lead at 10:00 wins 75% [71%-79%] of 466; a lead of 30% or more 89% [84%-92%] of 229; at 15:00
+  97% [93%-98%] of 236. Halls at 10:00 (the side with more halls wins 84-86%) and army value are the best predictors. A lead at
   10-15 minutes is close to decisive, and there are few comebacks after that.
 - **Closing out is slow for the Clockwork.** Once a side holds 3x the other's power without a break, the Crown and the Brood
   finish in about 1.5 minutes (median), the Clockwork in about 3, and about ten Clockwork wins took 15 minutes or more from that
@@ -794,9 +794,9 @@ Read against the anti-snowball principles in `docs/design_principles.md`:
 
 | winner    |   decided games with a sustained 3x power lead |   median s to the end |   90th pct s |   10+ minutes of lead before the end |
 |:----------|-----------------------------------------------:|----------------------:|-------------:|-------------------------------------:|
-| crown     |                                            347 |                    98 |          159 |                                    0 |
-| brood     |                                            131 |                    88 |          178 |                                    3 |
-| clockwork |                                            431 |                   191 |          322 |                                   10 |
+| crown     |                                            353 |                    97 |          159 |                                    0 |
+| brood     |                                            134 |                    88 |          177 |                                    3 |
+| clockwork |                                            440 |                   190 |          322 |                                   10 |
 
 - **The defender's advantage fades, but slowly in some games.** The Crown's ramp wall and gate are up by 0:40. Most
   pull-backs at a Crown gate come in the middle game (median about 6-7 minutes); against the Clockwork almost none come after
@@ -817,13 +817,13 @@ Spawn 0's wins in decided games, average length, and each faction's wins in its 
 | ashford_crossing |      84 | 47/82         | 17:28        | 21/28   | 0/28    | 21/28       |
 | cinder_steps     |      78 | 48/78         | 15:29        | 13/26   | 0/26    | 26/26       |
 | frostmere        |      84 | 43/82         | 16:54        | 15/28   | 0/28    | 27/28       |
-| glimmerdeep      |      80 | 38/78         | 15:42        | 13/26   | 0/26    | 26/26       |
+| glimmerdeep      |      84 | 39/82         | 15:28        | 14/28   | 0/28    | 28/28       |
 | greenhold        |      84 | 41/83         | 16:18        | 20/28   | 0/28    | 22/28       |
-| highmoor         |      78 | 31/76         | 15:43        | 18/26   | 0/26    | 21/26       |
-| hollowfen        |      78 | 31/77         | 17:36        | 21/26   | 0/26    | 18/26       |
+| highmoor         |      84 | 33/82         | 15:41        | 19/28   | 0/28    | 23/28       |
+| hollowfen        |      84 | 34/83         | 17:27        | 22/28   | 0/28    | 20/28       |
 | kestrel_rise     |      84 | 43/82         | 13:53        | 14/28   | 0/28    | 28/28       |
 | saltmarsh_isles  |      78 | 34/74         | 19:17        | 17/26   | 0/26    | 22/26       |
-| thornwood_maze   |      78 | 36/74         | 17:23        | 17/26   | 0/26    | 22/26       |
+| thornwood_maze   |      80 | 36/76         | 17:19        | 17/26   | 0/26    | 22/26       |
 | twin_fords       |      78 | 38/77         | 15:52        | 16/26   | 0/26    | 23/26       |
 
 The Brood loses on every map. The Clockwork's results against the Crown vary most by map.
@@ -838,16 +838,16 @@ Map by map:
 | ashford_crossing | 7/14 = 50% [27%-73%]   | 5/9 = 56% [27%-81%]                 |
 | cinder_steps     | 0/13 = 0% [0%-23%]     | 0/9 = 0% [0%-30%]                   |
 | frostmere        | 1/14 = 7% [1%-31%]     | 0/10 = 0% [0%-28%]                  |
-| glimmerdeep      | 0/13 = 0% [0%-23%]     | 0/7 = 0% [0%-35%]                   |
+| glimmerdeep      | 0/14 = 0% [0%-22%]     | 0/7 = 0% [0%-35%]                   |
 | greenhold        | 6/14 = 43% [21%-67%]   | 6/10 = 60% [31%-83%]                |
-| highmoor         | 5/13 = 38% [18%-64%]   | 4/8 = 50% [22%-78%]                 |
-| hollowfen        | 8/13 = 62% [36%-82%]   | 6/7 = 86% [49%-97%]                 |
+| highmoor         | 5/14 = 36% [16%-61%]   | 4/9 = 44% [19%-73%]                 |
+| hollowfen        | 8/14 = 57% [33%-79%]   | 6/8 = 75% [41%-93%]                 |
 | kestrel_rise     | 0/14 = 0% [0%-22%]     | 0/7 = 0% [0%-35%]                   |
 | saltmarsh_isles  | 4/13 = 31% [13%-58%]   | 3/9 = 33% [12%-65%]                 |
 | thornwood_maze   | 4/13 = 31% [13%-58%]   | 3/9 = 33% [12%-65%]                 |
 | twin_fords       | 3/13 = 23% [8%-50%]    | 2/9 = 22% [6%-55%]                  |
 
-Homogeneity of the Crown's result across the 12 maps: all plans chi-square 32.8, p < 0.001 (the maps differ); Balanced/Balanced only chi-square 33.3, p < 0.001 (the maps differ).
+Homogeneity of the Crown's result across the 12 maps: all plans chi-square 31.7, p < 0.001 (the maps differ); Balanced/Balanced only chi-square 30.6, p = 0.001 (the maps differ).
 
 The four maps at the bottom share one base layout in `scripts/map_data.gd`: the main's ramp opens to the south, at about
 (9-12, 24), and the natural sits below it and to the west, 4.5 to 7 tiles from the ramp foot. (Hollowfen, Thornwood Maze and
@@ -856,10 +856,10 @@ Vale have the natural 13-18 tiles away; Greenhold, Highmoor and Twin Fords are g
 
 | maps                                                                 |   games | Crown won (all plans)   | Crown won (Balanced/Balanced)   | median game length   | first Crown building lost (median)   | army value at 9:00, Crown / Clockwork (median)   |
 |:---------------------------------------------------------------------|--------:|:------------------------|:--------------------------------|:---------------------|:-------------------------------------|:-------------------------------------------------|
-| south-ramp maps (Kestrel Rise, Cinder Steps, Glimmerdeep, Frostmere) |      54 | 1/54 = 2% [0%-10%]      | 0/33 = 0% [0%-10%]              | 14:44                | 8:16                                 | 657 / 2667                                       |
-| the other 8 maps                                                     |     107 | 41/107 = 38% [30%-48%]  | 33/69 = 48% [36%-59%]           | 18:11                | 10:20                                | 985 / 2435                                       |
+| south-ramp maps (Kestrel Rise, Cinder Steps, Glimmerdeep, Frostmere) |      55 | 1/55 = 2% [0%-10%]      | 0/33 = 0% [0%-10%]              | 14:42                | 8:15                                 | 650 / 2680                                       |
+| the other 8 maps                                                     |     109 | 41/109 = 38% [29%-47%]  | 33/71 = 46% [35%-58%]           | 18:11                | 10:20                                | 985 / 2385                                       |
 
-Fisher exact test, Crown wins on the south-ramp maps against the other maps: all plans p = 7.4e-08; Balanced/Balanced p = 1.3e-07 (post hoc grouping).
+Fisher exact test, Crown wins on the south-ramp maps against the other maps: all plans p = 8.1e-08; Balanced/Balanced p = 1.7e-07 (post hoc grouping).
 
 **This grouping was chosen after looking at the per-map table**, so its p-value overstates the evidence. To check it honestly,
 the Crown-Clockwork games that started after the grouping was written down (round 155 on) are counted separately:
@@ -867,17 +867,17 @@ the Crown-Clockwork games that started after the grouping was written down (roun
 | games                                              | Crown won on the 4 south-ramp maps   | Crown won on the other 8 maps   | Fisher p (two-sided)   |
 |:---------------------------------------------------|:-------------------------------------|:--------------------------------|:-----------------------|
 | rounds 0-154 (the games the grouping was found in) | 1/51 = 2% [0%-10%]                   | 40/104 = 38% [30%-48%]          | p = 1.4e-07            |
-| rounds 155 on (run after it was chosen)            | 0/3 = 0% [0%-56%]                    | 1/3 = 33% [6%-79%]              | p = 1                  |
+| rounds 155 on (run after it was chosen)            | 0/4 = 0% [0%-49%]                    | 1/5 = 20% [4%-62%]              | p = 1                  |
 
 What is different on those maps, Crown against Clockwork (Clockwork's first three waves):
 
 | maps             | Clockwork wave   |   waves | median start   |   median supply |   value it killed (mean) |   value it lost (mean) |   killed per value lost |
 |:-----------------|:-----------------|--------:|:---------------|----------------:|-------------------------:|-----------------------:|------------------------:|
-| south-ramp maps  | #1               |      54 | 3:40           |              18 |                      506 |                    549 |                     0.9 |
+| south-ramp maps  | #1               |      55 | 3:41           |              18 |                      559 |                    556 |                     1.0 |
 | south-ramp maps  | #2               |      47 | 6:39           |              46 |                     3058 |                   1578 |                     1.9 |
 | south-ramp maps  | #3               |      27 | 8:56           |              60 |                     4338 |                   2528 |                     1.7 |
-| the other 8 maps | #1               |     107 | 3:42           |              18 |                      747 |                   1222 |                     0.6 |
-| the other 8 maps | #2               |      92 | 6:41           |              45 |                     3587 |                   5212 |                     0.7 |
+| the other 8 maps | #1               |     109 | 3:42           |              18 |                      801 |                   1240 |                     0.6 |
+| the other 8 maps | #2               |      93 | 6:42           |              45 |                     3633 |                   5200 |                     0.7 |
 | the other 8 maps | #3               |      43 | 9:54           |              66 |                     3536 |                   3633 |                     1.0 |
 
 - On the four maps the Clockwork's second and third waves kill about twice the value they lose; on the other maps they lose
@@ -903,9 +903,9 @@ on the study box), the likely cause in the code, and whether main has changed it
 
 | faction   |   side-games |   capped with 1,000+ banked and no wave out for 5+ min |   for 10+ min |   of the 10+ min ones, side won | longest (min)   |
 |:----------|-------------:|-------------------------------------------------------:|--------------:|--------------------------------:|:----------------|
-| crown     |          646 |                                                      0 |             0 |                               0 | 1.5             |
-| brood     |          646 |                                                      0 |             0 |                               0 | -               |
-| clockwork |          644 |                                                      8 |             7 |                               7 | 17.5            |
+| crown     |          658 |                                                      0 |             0 |                               0 | 1.5             |
+| brood     |          658 |                                                      0 |             0 |                               0 | -               |
+| clockwork |          656 |                                                      8 |             7 |                               7 | 17.5            |
 
 - `crown-clockwork_140` clockwork side (won): at the cap with 1,000+ banked and no wave out for 17.5 minutes from 13:00, bank up to 24270, army value about 6790; the game ended by timeout_lead
 - `crown-clockwork_088` clockwork side (won): at the cap with 1,000+ banked and no wave out for 16.0 minutes from 14:30, bank up to 17936, army value about 7270; the game ended by timeout_lead
@@ -943,19 +943,19 @@ attacked: at 200/200 with up to 11,478 ore banked, an enemy was never near its b
 of its threshold the whole time. That is the threshold lock, measured directly; the "permanent threat" alternative did not
 occur.
 
-The same lock fits the stalled study games. Rebuilt from their logged waves: 5 of 2328 waves ended with a next-wave threshold (rebuilt) above 200 minus the side's workers, in 5 games: `crown-clockwork_009` (clockwork, wave of 128 supply at 11:55, threshold 180, room 168, timeout_lead), `crown-clockwork_088` (clockwork, wave of 122 supply at 12:46, threshold 171, room 168, timeout_lead), `crown-clockwork_135` (clockwork, wave of 146 supply at 18:56, threshold 205, room 168, victory), `crown-clockwork_145` (clockwork, wave of 167 supply at 20:53, threshold 234, room 168, gg), `crown-clockwork_142` (clockwork, wave of 125 supply at 30:00, threshold 175, room 168, timeout_lead). The rebuild misses some locks:
+The same lock fits the stalled study games. Rebuilt from their logged waves: 5 of 2361 waves ended with a next-wave threshold (rebuilt) above 200 minus the side's workers, in 5 games: `crown-clockwork_009` (clockwork, wave of 128 supply at 11:55, threshold 180, room 168, timeout_lead), `crown-clockwork_088` (clockwork, wave of 122 supply at 12:46, threshold 171, room 168, timeout_lead), `crown-clockwork_135` (clockwork, wave of 146 supply at 18:56, threshold 205, room 168, victory), `crown-clockwork_145` (clockwork, wave of 167 supply at 20:53, threshold 234, room 168, gg), `crown-clockwork_142` (clockwork, wave of 125 supply at 30:00, threshold 175, room 168, timeout_lead). The rebuild misses some locks:
 a big wave can leave and pull back at the gate within a second or two, between the harness's once-a-second checks (in
 `x01_saltmarsh_isles` the wave that set 122 never showed as a wave in the 5 s samples). `crown-clockwork_140` fits that
 pattern: two pull-backs at 11:29 and 11:30 with an army of about 135-140 supply, and no attack afterwards.
 
 The Crown never does this (its army rarely reaches the cap), and the Brood never reaches its cap.
 
-**The other kind of slow finish: a wave that stays out.** 274 waves stayed out 10 minutes or more in 184 games:
+**The other kind of slow finish: a wave that stays out.** 279 waves stayed out 10 minutes or more in 187 games:
 
 | attacker   | matchup                |   waves out 10+ min |   median minutes | attacker won   |   game reached 30:00 |
 |:-----------|:-----------------------|--------------------:|-----------------:|:---------------|---------------------:|
-| clockwork  | clockwork vs clockwork |                 228 |               15 | 125 of 228     |                   30 |
-| clockwork  | crown vs clockwork     |                  29 |               13 | 13 of 29       |                    3 |
+| clockwork  | clockwork vs clockwork |                 232 |               16 | 127 of 232     |                   30 |
+| clockwork  | crown vs clockwork     |                  30 |               12 | 14 of 30       |                    3 |
 | crown      | crown vs crown         |                  11 |               13 | 6 of 11        |                    6 |
 | clockwork  | brood vs clockwork     |                   5 |               11 | 5 of 5         |                    0 |
 | crown      | crown vs clockwork     |                   1 |               17 | 1 of 1         |                    0 |
@@ -971,11 +971,11 @@ is part of why Crown-Clockwork games run long.
 
 | faction   |   losing side-games | AI would say gg (hopeless 60 s)   | median time of the gg   |   of those, ended by victory not gg |   median s from gg-time to the end (victory only) |   hopeless flag flipped back (mean) |
 |:----------|--------------------:|:----------------------------------|:------------------------|------------------------------------:|--------------------------------------------------:|------------------------------------:|
-| crown     |                 275 | 77%                               | 17:26                   |                                 176 |                                                24 |                                   0 |
-| brood     |                 469 | 65%                               | 13:16                   |                                 244 |                                                17 |                                   0 |
-| clockwork |                 202 | 88%                               | 18:03                   |                                  89 |                                                30 |                                   0 |
+| crown     |                 281 | 78%                               | 17:26                   |                                 180 |                                                24 |                                   0 |
+| brood     |                 478 | 65%                               | 13:18                   |                                 247 |                                                17 |                                   0 |
+| clockwork |                 205 | 88%                               | 18:09                   |                                  91 |                                                29 |                                   0 |
 
-0 of 946 winning side-games had been flagged hopeless at some time (0 of them for 60 s or more).
+0 of 964 winning side-games had been flagged hopeless at some time (0 of them for 60 s or more).
 
 - The gg rule (`AIResign.verdict`, used by the harness to cut games) is never wrong in this sample: no winner was ever
   flagged hopeless. It is late rather than wrong.
@@ -1037,9 +1037,9 @@ spent to fresh land, which may cut the Crown's share; it cannot help a Brood wit
 
 | faction   |   side-games | blocked 120 s or more (supply at the cap, 100+ gold)   |   median production buildings added during the block |   median peak gold in the block |
 |:----------|-------------:|:-------------------------------------------------------|-----------------------------------------------------:|--------------------------------:|
-| crown     |          646 | 27 (4%)                                                |                                                    5 |                            1085 |
-| brood     |          646 | 2 (0%)                                                 |                                                    0 |                             317 |
-| clockwork |          644 | 24 (4%)                                                |                                                    2 |                            1400 |
+| crown     |          658 | 27 (4%)                                                |                                                    5 |                            1085 |
+| brood     |          658 | 2 (0%)                                                 |                                                    0 |                             317 |
+| clockwork |          656 | 24 (4%)                                                |                                                    2 |                            1400 |
 
 - `crown-crown_065` crown side: supply-blocked 528 s between 10:30 and 20:00; 6 production buildings added in that span (3 of 11 idle at its end), gold up to 1494
 - `crown-clockwork_132` crown side: supply-blocked 464 s between 11:30 and 25:30; 5 production buildings added in that span (4 of 10 idle at its end), gold up to 2085
@@ -1095,7 +1095,7 @@ all Brood mirrors (swarms that keep losing at the other side's swarm).
 
 ### 10.8 No expansion
 
-Sides still on one hall at 12:00 while the game went on: 291 (almost all Brood; Crown and Clockwork rarely,
+Sides still on one hall at 12:00 while the game went on: 295 (almost all Brood; Crown and Clockwork rarely,
 section 5). The first few:
 
 - `brood-brood_000` brood side: still one hall at 12:00 (bank 324, supply 71/76, soil 35%)
@@ -1111,24 +1111,24 @@ section 5). The first few:
 
 | faction   |   side-games |   workers lost (mean) |   p90 |   lost >= 20 workers |   min workers after 3:00 <= 3 | first worker lost (median)   |
 |:----------|-------------:|----------------------:|------:|---------------------:|------------------------------:|:-----------------------------|
-| crown     |          646 |                  20.0 |  50.5 |                  269 |                           225 | 2:20                         |
-| brood     |          646 |                  20.0 |  43.0 |                  246 |                           424 | 1:42                         |
-| clockwork |          644 |                  13.5 |  40.0 |                  197 |                           179 | 2:04                         |
+| crown     |          658 |                  20.0 |  50.0 |                  275 |                           229 | 2:20                         |
+| brood     |          658 |                  20.1 |  43.0 |                  251 |                           432 | 1:42                         |
+| clockwork |          656 |                  13.4 |  40.0 |                  200 |                           182 | 2:06                         |
 
 Sides down to 2 or fewer workers before 10:00 (after having 8+):
 
 | faction   |   side-games |   down to 2 or fewer workers before 10:00 |
 |:----------|-------------:|------------------------------------------:|
-| crown     |          646 |                                        24 |
-| brood     |          646 |                                       159 |
-| clockwork |          644 |                                         0 |
+| crown     |          658 |                                        25 |
+| brood     |          658 |                                       161 |
+| clockwork |          656 |                                         0 |
 
+- `crown-brood_059` brood side at 4:00: workers down to 2 or fewer (peak 9), army value 0
 - `crown-brood_004` brood side at 4:00: workers down to 2 or fewer (peak 9), army value 0
+- `crown-brood_047` brood side at 4:00: workers down to 2 or fewer (peak 9), army value 0
 - `crown-brood_015` brood side at 4:00: workers down to 2 or fewer (peak 8), army value 0
 - `crown-brood_037` brood side at 4:00: workers down to 2 or fewer (peak 8), army value 0
-- `crown-brood_081` brood side at 4:00: workers down to 2 or fewer (peak 9), army value 0
-- `crown-brood_059` brood side at 4:00: workers down to 2 or fewer (peak 9), army value 0
-- `crown-brood_070` brood side at 4:00: workers down to 2 or fewer (peak 9), army value 0
+- `crown-brood_048` brood side at 4:00: workers down to 2 or fewer (peak 9), army value 0
 
 Sides down to 2 or fewer workers after 4:00 (first few):
 
@@ -1141,7 +1141,7 @@ Sides down to 2 or fewer workers after 4:00 (first few):
 
 Workers are what everyone loses most of. The Brood's wiped economies are its cross games (section 4.2). The owner's backlog
 item about a Crown that lost all its workers at about 6:00 to Raptors does not show up in AI-against-AI games: Crown
-economies wiped before 10:00 number 24 (19 against the Clockwork, 5 against the Crown), and 0 of them were against the Brood. If that
+economies wiped before 10:00 number 25 (20 against the Clockwork, 5 against the Crown), and 0 of them were against the Brood. If that
 backlog game had a human Brood, this study cannot speak to it; the Hard Brood AI never does this to the Crown here.
 
 ### 10.10 Units standing still during a wave
@@ -1162,31 +1162,31 @@ home for their next wave, which is the AI's intent.
 
 | faction   | site         |   drops |   games with any | worst game                |   drops per side-game |
 |:----------|:-------------|--------:|-----------------:|:--------------------------|----------------------:|
-| brood     | Clutch Mound |    6404 |              290 | brood-brood_148 (149)     |                   9.9 |
-| brood     | Feeding Pit  |    1890 |              237 | brood-clockwork_066 (93)  |                   2.9 |
-| crown     | Farm         |     928 |              167 | crown-crown_031 (68)      |                   1.4 |
-| crown     | Cottage      |     814 |              112 | crown-clockwork_125 (100) |                   1.3 |
-| crown     | Town Hall    |     412 |              134 | crown-crown_049 (22)      |                   0.6 |
-| crown     | Barracks     |     301 |              114 | crown-clockwork_107 (15)  |                   0.5 |
+| brood     | Clutch Mound |    6575 |              297 | brood-brood_148 (149)     |                  10.0 |
+| brood     | Feeding Pit  |    1910 |              242 | brood-clockwork_066 (93)  |                   2.9 |
+| crown     | Farm         |     931 |              169 | crown-crown_031 (68)      |                   1.4 |
+| crown     | Cottage      |     816 |              113 | crown-clockwork_125 (100) |                   1.2 |
+| crown     | Town Hall    |     423 |              138 | crown-crown_049 (22)      |                   0.6 |
+| crown     | Barracks     |     303 |              116 | crown-clockwork_107 (15)  |                   0.5 |
 | crown     | Powder Mill  |     226 |               66 | crown-crown_047 (40)      |                   0.3 |
 | crown     | Church       |     185 |               32 | crown-clockwork_157 (30)  |                   0.3 |
-| brood     | Brood Pen    |     175 |               64 | crown-brood_096 (19)      |                   0.3 |
+| brood     | Brood Pen    |     178 |               67 | crown-brood_096 (19)      |                   0.3 |
 | clockwork | Clocktower   |     127 |               29 | crown-clockwork_129 (24)  |                   0.2 |
 
 | site         | reason                        | faction   |   drops | side-games with any   | most in one game         |
 |:-------------|:------------------------------|:----------|--------:|:----------------------|:-------------------------|
-| Clutch Mound | nobody was coming (abandoned) | brood     |    6402 | 370 of 646            | brood-brood_148 (149)    |
-| Feeding Pit  | nobody was coming (abandoned) | brood     |    1890 | 240 of 646            | brood-clockwork_066 (93) |
-| Farm         | nobody was coming (abandoned) | crown     |     675 | 169 of 646            | crown-clockwork_088 (30) |
-| Cottage      | nobody was coming (abandoned) | crown     |     572 | 86 of 646             | crown-clockwork_125 (99) |
-| Town Hall    | nobody was coming (abandoned) | crown     |     391 | 129 of 646            | crown-crown_049 (22)     |
-| Farm         | spot blocked                  | crown     |     253 | 29 of 646             | crown-crown_031 (67)     |
-| Cottage      | spot blocked                  | crown     |     242 | 42 of 646             | crown-clockwork_152 (40) |
-| Barracks     | nobody was coming (abandoned) | crown     |     224 | 98 of 646             | crown-clockwork_107 (15) |
-| Church       | nobody was coming (abandoned) | crown     |     185 | 33 of 646             | crown-clockwork_157 (30) |
-| Brood Pen    | nobody was coming (abandoned) | brood     |     118 | 20 of 646             | crown-brood_096 (19)     |
+| Clutch Mound | nobody was coming (abandoned) | brood     |    6573 | 378 of 658            | brood-brood_148 (149)    |
+| Feeding Pit  | nobody was coming (abandoned) | brood     |    1910 | 245 of 658            | brood-clockwork_066 (93) |
+| Farm         | nobody was coming (abandoned) | crown     |     678 | 171 of 658            | crown-clockwork_088 (30) |
+| Cottage      | nobody was coming (abandoned) | crown     |     574 | 87 of 658             | crown-clockwork_125 (99) |
+| Town Hall    | nobody was coming (abandoned) | crown     |     402 | 133 of 658            | crown-crown_049 (22)     |
+| Farm         | spot blocked                  | crown     |     253 | 29 of 658             | crown-crown_031 (67)     |
+| Cottage      | spot blocked                  | crown     |     242 | 42 of 658             | crown-clockwork_152 (40) |
+| Barracks     | nobody was coming (abandoned) | crown     |     225 | 99 of 658             | crown-clockwork_107 (15) |
+| Church       | nobody was coming (abandoned) | crown     |     185 | 33 of 658             | crown-clockwork_157 (30) |
+| Brood Pen    | nobody was coming (abandoned) | brood     |     119 | 21 of 658             | crown-brood_096 (19)     |
 
-Bursts (5+ drops of one kind within 30 s): 865; the worst:
+Bursts (5+ drops of one kind within 30 s): 878; the worst:
 
 - `brood-brood_148` brood: 35 drops of a Clutch Mound within 30 s from 14:50
 - `brood-brood_016` brood: 35 drops of a Clutch Mound within 30 s from 9:46
@@ -1201,8 +1201,8 @@ three times as many mounds as the winner:
 
 | Brood mirror side   |   side_games |   mound_drops_mean |   pit_drops_mean |   peak_supply_mean |
 |:--------------------|-------------:|-------------------:|-----------------:|-------------------:|
-| loser               |          147 |               19.0 |              6.8 |               65.1 |
-| winner              |          147 |                6.9 |              0.2 |              107.4 |
+| loser               |          150 |               19.1 |              6.7 |               65.1 |
+| winner              |          150 |                6.9 |              0.2 |              107.5 |
 
 The Crown does the same with Farms, Cottages and Town Halls, less often.
 
@@ -1219,12 +1219,12 @@ Inside the Balanced plan, the Crown opens with a Horse Breeder instead of a Powd
 
 | Crown vs   | opening   |   Balanced/Balanced side-games | score         |
 |:-----------|:----------|-------------------------------:|:--------------|
-| crown      | mill      |                            138 | 62% [54%-70%] |
-| crown      | breeder   |                             66 | 24% [16%-36%] |
+| crown      | mill      |                            143 | 62% [54%-70%] |
+| crown      | breeder   |                             67 | 24% [15%-35%] |
 | clockwork  | mill      |                             76 | 37% [27%-48%] |
-| clockwork  | breeder   |                             26 | 19% [9%-38%]  |
+| clockwork  | breeder   |                             28 | 18% [8%-36%]  |
 
-Head to head in the Balanced/Balanced Crown mirror (one Mill opening against one Breeder opening): the Mill side won 42/50 = 84% [71%-92%].
+Head to head in the Balanced/Balanced Crown mirror (one Mill opening against one Breeder opening): the Mill side won 43/51 = 84% [72%-92%].
 
 The Breeder opening does much worse in the mirror and against the Clockwork. It is a coin flip inside the AI that loses.
 
@@ -1238,14 +1238,14 @@ a sample still open; "weak" = a hint.
 
 | # | What to change | Kind | Evidence | Strength | Principle |
 |---|---|---|---|---|---|
-| 1 | Re-measure the Brood on main with this harness, then give it an early game that holds: its army must be able to meet a Crown wave of Musketeers and Horsemen at 4:00-6:00 and a Clockwork wave of 18 supply at 3:40, without giving up its economy (cheaper early defence, a faster first Spawning Den army curve, or Raptors that do something against Horsemen) | balance | 0 wins in 322 cross side-games; army value flat at about 300 from 4:00 to 7:00 (4.1, 4.2) | strong | 1. fairness and counterplay |
+| 1 | Re-measure the Brood on main with this harness, then give it an early game that holds: its army must be able to meet a Crown wave of Musketeers and Horsemen at 4:00-6:00 and a Clockwork wave of 18 supply at 3:40, without giving up its economy (cheaper early defence, a faster first Spawning Den army curve, or Raptors that do something against Horsemen) | balance | 0 wins in 328 cross side-games; army value flat at about 300 from 4:00 to 7:00 (4.1, 4.2) | strong | 1. fairness and counterplay |
 | 2 | Make an army at its supply cap attack: never let `_wave_end()` or `_siege_plan()` raise `_attack_at` above what the army can field (cap minus workers, minus a margin), or let a capped army with a bank go anyway; and check the siege verdict that sends back an army dealing several times the fire it takes ("it can't get through") | AI | 7 side-games capped with a bank and no wave for 10+ min, bank up to 26,166; the threshold lock measured in a diagnostic game (10.1) | strong | 2. a big bank must not be a win button; the winner must be able to finish |
 | 3 | Make the gg rule look at real income: "can rebuild" only if the side earned something in the last minute or two (or has the money for a hall), not "has a hall and a worker" | AI | losers of every cap stall never hopeless; `crown-clockwork_140` (10.2) | strong | 4. respect the player's time |
 | 4 | The Brood's single ground reserve: every pit draws on the capital's 10,500 and a new Burrow brings no ground, so a game's pit income is fixed. Give later Burrows ground of their own (or let the capital's ground recover slowly), so that expanding pays, then teach the AI to expand before the reserve runs out | economy + AI | 46% of Brood mirror sides spend it (median 15:30), then 80%+ of grubs idle; every 30:00 Brood mirror is a dead stalemate (4.6, 10.3); same rule on main | strong | 2. economy forces expansion, does not strangle |
-| 5 | Measure the gear-mode Clockwork with this harness before tuning it. The old Clockwork out-earned both others about 2:1 and beat the Crown 119-42; keep the new one's early income in line with the Crown's | balance | mirror medians (4.1); win matrix (2.1) | strong for the old Clockwork; unknown for the new | 1. fairness |
-| 6 | Drop the Crown's random 30% Horse Breeder opening from the Balanced plan (keep it for Rush), or fix what makes it lose | AI | in the Crown mirror the Breeder opening scores 24% [16%-36%] against the Mill's 62% [54%-70%], and the Mill side wins 42/50 = 84% [71%-92%] head to head (10.13) | strong | 4. the player is the strategist: the AI should not throw games by coin flip |
+| 5 | Measure the gear-mode Clockwork with this harness before tuning it. The old Clockwork out-earned both others about 2:1 and beat the Crown 122-42; keep the new one's early income in line with the Crown's | balance | mirror medians (4.1); win matrix (2.1) | strong for the old Clockwork; unknown for the new | 1. fairness |
+| 6 | Drop the Crown's random 30% Horse Breeder opening from the Balanced plan (keep it for Rush), or fix what makes it lose | AI | in the Crown mirror the Breeder opening scores 24% [15%-35%] against the Mill's 62% [54%-70%], and the Mill side wins 43/51 = 84% [72%-92%] head to head (10.13) | strong | 4. the player is the strategist: the AI should not throw games by coin flip |
 | 7 | When the Crown's soil runs low, save 400 gold for the next Town Hall before it is spent; on main check whether 0.14.17 already helps | AI + economy | 11% of Crown sides stall with spent soil and none could afford a hall; 96% of them lose (4.5) | strong | 2. depletion should force expansion, not strangle it |
-| 8 | Look at the four maps where the Crown cannot beat the Clockwork (natural at the ramp foot?) | map / AI | Crown 1/54 there against 41/107 elsewhere; out-of-sample check 0/3 against 1/3 (9.2) | moderate (effect); weak (cause) | 1. fairness across maps |
+| 8 | Look at the four maps where the Crown cannot beat the Clockwork (natural at the ramp foot?) | map / AI | Crown 1/55 there against 41/109 elsewhere; out-of-sample check 0/4 against 1/5 (9.2) | moderate (effect); weak (cause) | 1. fairness across maps |
 | 9 | Crown supply blocks: build Cottages first when blocked, not more production buildings | AI | median 5 production buildings added during 2+ min blocks; most idle after (10.5) | moderate (rare, but clear) | 3. buildings with a purpose |
 | 10 | The Brood's Clutch Mound site loop: do not re-place a site no grub can or will reach (back off, or pick another spot) | AI | 6,000+ drops, bursts of 35 in 30 s; losers drop 3x more (10.11) | moderate | (AI quality) |
 | 11 | Let a much bigger army commit at a gate: the siege check ("it can't get through") sends back armies that deal several times the fire they take; and in long Crown mirrors the gate still decides fights after 15:00 | AI (+ balance) | pull-backs in 85% of Crown-Clockwork and two-thirds of Crown mirror games; one in six Crown-mirror pull-backs after 15:00; the stalls of 10.1 start with one (7.2, 10.12) | moderate | 2. defender's advantage early, fading mid-game |
@@ -1258,17 +1258,17 @@ a sample still open; "weak" = a hint.
 
 | question                                                            | now                                               | half-width now   | CI excludes 50%   | games for +-5 pts   | games for +-3 pts   | games to tell it from 50% (80% power)   |
 |:--------------------------------------------------------------------|:--------------------------------------------------|:-----------------|:------------------|:--------------------|:--------------------|:----------------------------------------|
-| Crown against Clockwork: how lopsided?                              | 26% [20%-33%] in 161 games (score)                | 6.7 pts          | yes               | 300                 | 830                 | 27 (met)                                |
-| Does the first spawn win more often (all matchups)?                 | 50% [47%-53%] in 946 decided games                | 3.2 pts          | no                | 390 (met)           | 1070                | more than 5,000                         |
-| Can the Brood beat the other two at all?                            | 0 wins in 322 side-games (95% upper bound 1%)     | -                | yes               | 0 more              | 0 more              | 0 more                                  |
+| Crown against Clockwork: how lopsided?                              | 26% [20%-33%] in 164 games (score)                | 6.6 pts          | yes               | 300                 | 820                 | 26 (met)                                |
+| Does the first spawn win more often (all matchups)?                 | 50% [47%-53%] in 964 decided games                | 3.2 pts          | no                | 390 (met)           | 1070                | more than 5,000                         |
+| Can the Brood beat the other two at all?                            | 0 wins in 328 side-games (95% upper bound 1%)     | -                | yes               | 0 more              | 0 more              | 0 more                                  |
 | crown mirror: is the rush plan better or worse than Balanced?       | 42% [26%-59%] in 30 side-games (score)            | 16.6 pts         | no                | 370                 | 1040                | 275                                     |
 | crown mirror: is the timing plan better or worse than Balanced?     | 48% [32%-65%] in 30 side-games (score)            | 16.8 pts         | no                | 380                 | 1070                | more than 5,000                         |
 | brood mirror: is the rush plan better or worse than Balanced?       | 28% [12%-53%] in 16 side-games (score)            | 20.2 pts         | no                | 310                 | 860                 | 34                                      |
 | brood mirror: is the xrush plan better or worse than Balanced?      | 18% [6%-44%] in 14 side-games (score)             | 19.1 pts         | yes               | 230                 | 630                 | 12 (met)                                |
 | brood mirror: is the timing plan better or worse than Balanced?     | 37% [22%-54%] in 30 side-games (score)            | 16.3 pts         | no                | 360                 | 990                 | 103                                     |
 | clockwork mirror: is the rush plan better or worse than Balanced?   | 73% [56%-86%] in 30 side-games (score)            | 15.1 pts         | yes               | 300                 | 840                 | 29 (met)                                |
-| clockwork mirror: is the timing plan better or worse than Balanced? | 55% [38%-72%] in 29 side-games (score)            | 17.0 pts         | no                | 380                 | 1060                | 726                                     |
-| Does one map favour one spawn by 15 points (65:35)?                 | 35 to 41 decided mirror games per map (median 39) | 15 pts per map   | -                 | -                   | -                   | 80 per map                              |
+| clockwork mirror: is the timing plan better or worse than Balanced? | 57% [39%-73%] in 30 side-games (score)            | 16.7 pts         | no                | 380                 | 1050                | 434                                     |
+| Does one map favour one spawn by 15 points (65:35)?                 | 35 to 41 decided mirror games per map (median 40) | 15 pts per map   | -                 | -                   | -                   | 80 per map                              |
 
 - **Settled now:** the matchup order and the size of the gaps (Brood against anyone; Crown against Clockwork to about +-7
   points); no overall spawn bias; the early game is open in mirrors; the AI faults in section 10, each seen in many games.
