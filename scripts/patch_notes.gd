@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.74", "items": [
+		"PATHFINDING, THE HIGH GROUND: a click on the edge of a plateau now means the top. Before, a click on the rim often counted as the low ground under the cliff, and the whole group walked down the ramp and round to stand in a heap at the foot of it. A line drawn along a cliff edge puts everybody on top too, each man on his own spot.",
+		"PATHFINDING, GROUPS AT AN EDGE: a group sent near a cliff, a wall or a building spreads out on the side you clicked. Before, every man whose place in the group fell over the edge was sent to the exact spot you clicked, and they piled up there against the cliff.",
+		"PATHFINDING, NO WAY THERE: a unit sent where it can't go (up a cliff with no way round, into a walled base) walks to the nearest place it can reach and stops. Before, it walked on from there straight into the cliff or wall and pushed at it for good; computer scouts did this for minutes under the enemy base.",
+		"MELEE AND THE HIGH GROUND: Raptors, Brutes and other fighters no longer run to the foot of a cliff under an enemy they can't get at. With a wall or gate in the way they go and break it; with no way at all they leave him and look for another fight. A Raptor or Brute circling its prey no longer picks a spot below the cliff edge either.",
+		"CORNERS: a unit that walks into a corner (a step in a cliff, the corner of a building) slips round it instead of stopping dead, and big units (Horsemen, Brutes, Pendulums, guns and wagons) plan their paths a little further from corners. Details and numbers: docs/pathfinding_audit.md.",
+	]},
 	{"v": "0.14.73", "items": [
 		"CROWN COMPUTER, coached over 32 games against the Clockwork and the Brood computers: after a Horseman opening it no longer holds its Labourers at eight for ten minutes (its Horsemen now count as defenders); an ordinary Clockwork Movement Works is no longer taken for a rush (two of them early still are); it expands in time (a fresh Town Hall for every 16 Labourers, three at most) instead of waiting until its main is barren; it does not lay a new Town Hall again and again on a spot its builders were just chased from; and when powder piles up while gold runs out, Labourers go back from the Powder Mills to the farms.",
 	]},
