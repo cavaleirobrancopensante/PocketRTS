@@ -580,6 +580,11 @@ func _turrets() -> void:
 	var want := 0
 	if game.clock > _lv([420.0, 300.0, 240.0]) or (_threat() != Vector2.INF and game.clock > 150.0):
 		want = 1
+	# (0.14.85: not in the minute the Mainspring and the Escapement are saved for, unless the army cannot hold the line: a
+	# turret laid then by the Clocktower took the room the pair needed on a cramped plateau, and the Escapement came three
+	# minutes late, kestrel_rise seed 14)
+	if have == 0 and _mine("mainspring").is_empty() and game.clock >= _tier2_at() - 20.0 and _holds_line():
+		want = 0
 	if difficulty > 0 and game.clock > _lv([9999.0, 540.0, 420.0]) and _gold() > 300:
 		want = 2
 	if have < want:
@@ -670,26 +675,39 @@ func _tier2(t: float) -> void:
 		if _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20:
 			var msc := _spring_spot()
 			_construct("mainspring", msc)
-			if _spring_heavy and msc.x >= 0 and _busy_building("mainspring"):
-				# (the Heavy Works' spot by it is kept, 0.14.85, and the Escapement goes on the spot found with it: the two
-				# were worked out together, so the kept one never pushes the Escapement off the Mainspring)
-				var cells: Array = GearEcon.room_cells(game, team, "mainspring", msc, [Defs.CW_TECH, Defs.CW_HEAVY])
-				_keep_heavy(msc, [Defs.CW_TECH, Defs.CW_HEAVY])
-				for uc in cells:
-					if String(uc[0]) == Defs.CW_TECH and game.requirement_met(team, Defs.CW_TECH) \
-							and game.placement_problem(team, Defs.CW_TECH, uc[1], true) == "":
-						_construct(Defs.CW_TECH, uc[1])
-						if _busy_building(Defs.CW_TECH):
-							return
 			for sp in _mine("mainspring"):
 				var ce := GearEcon.room_spot(game, team, Defs.CW_TECH, [sp])
 				if ce.x >= 0 and game.requirement_met(team, Defs.CW_TECH):
 					_construct(Defs.CW_TECH, ce)
 					break
+			if msc.x >= 0 and _busy_building("mainspring"):
+				# (0.14.85: the spots by the new Mainspring are KEPT for what goes beside it: the Escapement, when it could
+				# not be laid with it (a ring touching only the Mainspring's site does not link until it stands, and its room
+				# went to Regulators and a turret meanwhile: kestrel_rise seed 14 waited three minutes), and the Heavy
+				# Works' big ring when _spring_spot found room for it too; the Escapement then goes on its kept spot)
+				var users: Array = _spring_users if _spring_heavy else [Defs.CW_TECH]
+				_keep_heavy(msc, users)
+				if _busy_building(Defs.CW_TECH):
+					_unkeep(Defs.CW_TECH)
+				if game.mlog and _spring_heavy:
+					game.mlog.add("%s keeps room for a Heavy Works by its first Mainspring" % game.mlog.who(team))
 		return
+	if not esc.is_empty():
+		_unkeep(Defs.CW_TECH)
 	if esc.is_empty():
 		if _gold() < int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]) + 20 or not game.requirement_met(team, Defs.CW_TECH):
 			return
+		# (the spot kept for it by its Mainspring, worked out with the Heavy Works' spot: _keep_heavy)
+		var ke := _kept(Defs.CW_TECH)
+		if not ke.is_empty():
+			var kc2: Vector2i = ke["cell"]
+			if game.placement_problem(team, Defs.CW_TECH, kc2, true) == "" and game.gear_net.candidate(team, Defs.CW_TECH, kc2)["state"] == "ok":
+				_construct(Defs.CW_TECH, kc2)
+				if _busy_building(Defs.CW_TECH):
+					_unkeep(Defs.CW_TECH)
+					return
+			elif _busy_building("mainspring"):
+				return          # (its Mainspring is still going up: the spot waits for it)
 		for sp in springs:
 			if not sp.dead:
 				var c := GearEcon.room_spot(game, team, Defs.CW_TECH, [sp], [Defs.CW_AIR])
@@ -842,7 +860,7 @@ var _heavy_no_room := false         # no room for the Heavy Works by any Mainspr
 
 func _tier3() -> void:
 	if not _mine(Defs.CW_HEAVY).is_empty():
-		game.ai_keep.erase(team)        # (laid: the spot kept for it is free again)
+		_unkeep(Defs.CW_HEAVY)        # (laid: the spot kept for it is free again)
 		return
 	if not game.has_working(team, Defs.CW_TECH):
 		return
@@ -855,22 +873,21 @@ func _tier3() -> void:
 		return
 	_heavy_t = game.clock + 6.0
 	# the spot kept for it by a Mainspring (_keep_heavy): there once that Mainspring stands; meanwhile it waits for it
-	if game.ai_keep.has(team):
-		var keep: Dictionary = game.ai_keep[team]
-		if game.clock - float(keep["t"]) > 240.0:
-			game.ai_keep.erase(team)          # (kept too long: let it go)
-		else:
-			var kc: Vector2i = keep["cell"]
-			var st: Dictionary = game.gear_net.candidate(team, Defs.CW_HEAVY, kc)
-			var pp: String = game.placement_problem(team, Defs.CW_HEAVY, kc, true)
-			if pp == "" and st["state"] == "ok" and st.get("spring") != null:
-				_construct(Defs.CW_HEAVY, kc)
-				if game.mlog:
-					game.mlog.add("%s lays a Heavy Works on the spot it kept by a Mainspring" % game.mlog.who(team))
-				return
-			if pp == "" or _busy_building("mainspring"):
-				return          # (its Mainspring is still going up, or has only just stood: the spot waits for it)
-			game.ai_keep.erase(team)          # (the spot was taken after all: look again)
+	var keep := _kept(Defs.CW_HEAVY)
+	if not keep.is_empty():
+		var kc: Vector2i = keep["cell"]
+		var st: Dictionary = game.gear_net.candidate(team, Defs.CW_HEAVY, kc)
+		var pp: String = game.placement_problem(team, Defs.CW_HEAVY, kc, true)
+		if pp == "" and st["state"] == "ok" and st.get("spring") != null:
+			_construct(Defs.CW_HEAVY, kc)
+			if game.mlog:
+				game.mlog.add("%s lays a Heavy Works on the spot it kept by a Mainspring" % game.mlog.who(team))
+			return
+		if pp == "" or _busy_building("mainspring"):
+			return          # (its Mainspring is still going up, or has only just stood: the spot waits for it)
+		_unkeep(Defs.CW_HEAVY)          # (the spot was taken after all: look again)
+		if game.mlog:
+			game.mlog.add("%s lost the spot it kept for a Heavy Works: %s" % [game.mlog.who(team), pp])
 	var c := _heavy_spot()
 	_heavy_no_room = c.x < 0
 	if c.x >= 0:
@@ -890,8 +907,7 @@ func _tier3() -> void:
 				var r7: Array = GearEcon.room_spot_n(game, team, "mainspring", [b], [Defs.CW_HEAVY])
 				if int(r7[1]) >= 1:
 					_construct("mainspring", r7[0])
-					if _busy_building("mainspring"):
-						_keep_heavy(r7[0], [Defs.CW_HEAVY])
+					_keep_heavy(r7[0], [Defs.CW_HEAVY])
 					if game.mlog:
 						game.mlog.add("%s builds a Mainspring with room for a Heavy Works beside it" % game.mlog.who(team))
 					return
@@ -934,10 +950,36 @@ func _heavy_spot() -> Vector2i:
 func _keep_heavy(spring_cell: Vector2i, users: Array) -> void:
 	if not _mine(Defs.CW_HEAVY).is_empty():
 		return
+	if not game.ai_keep.has(team):
+		game.ai_keep[team] = {}
 	for uc in GearEcon.room_cells(game, team, "mainspring", spring_cell, users):
-		if String(uc[0]) == Defs.CW_HEAVY:
-			game.ai_keep[team] = {"kind": Defs.CW_HEAVY, "cell": uc[1], "t": game.clock}
-			return
+		var uk := String(uc[0])
+		if (uk == Defs.CW_HEAVY or uk == Defs.CW_TECH) and _mine(uk).is_empty():
+			game.ai_keep[team][uk] = {"cell": uc[1], "t": game.clock, "spring": spring_cell}
+
+
+## The spot kept for a `kind` ({"cell", "t", "spring"}), {} when none or when it is let go: kept too long (KEEP_FOR s), or its
+## Mainspring was never laid or is gone.
+const KEEP_FOR := 240.0
+
+
+func _kept(kind: String) -> Dictionary:
+	if not game.ai_keep.has(team) or not game.ai_keep[team].has(kind):
+		return {}
+	var keep: Dictionary = game.ai_keep[team][kind]
+	var sc: Vector2i = keep.get("spring", Vector2i(-1, -1))
+	var has_spring := _mine("mainspring").any(func(b: Building) -> bool: return b.cell == sc)
+	if game.clock - float(keep["t"]) > KEEP_FOR or not has_spring:
+		_unkeep(kind)
+		if game.mlog:
+			game.mlog.add("%s lets go of the spot it kept for a %s (%s)" % [game.mlog.who(team), String(Defs.BUILDINGS[kind]["name"]), "too long" if has_spring else "no Mainspring there"])
+		return {}
+	return keep
+
+
+func _unkeep(kind: String) -> void:
+	if game.ai_keep.has(team):
+		game.ai_keep[team].erase(kind)
 
 
 ## Our finished gear buildings a new ring may hang on, the halls and the Works first (not a Ratchet Turret: nothing else
@@ -980,6 +1022,7 @@ func _drive_spot(kind: String) -> Vector2i:
 ## costs Tension is made only where a Mainspring meshes, GearEcon) and keeps room round it for an Escapement and a Clock
 ## Aviary; with no room by a Works, by the Clocktower; `spare`: a second one, only room for the Escapement and the Aviary.
 var _spring_heavy := false          # _spring_spot chose a spot with room for the Escapement AND the Heavy Works
+var _spring_users: Array = []       # ... and in which order its greedy count placed them (GearEcon.room_cells)
 
 
 func _spring_spot(spare := false) -> Vector2i:
@@ -997,11 +1040,14 @@ func _spring_spot(spare := false) -> Vector2i:
 	# (0.14.85: beside a Works with room for the Escapement AND the Heavy Works' big ring, when there is such a spot: the
 	# Heavy Works must mesh with a Mainspring too, and a crowded plateau had no room left for it by any)
 	if _mine(Defs.CW_HEAVY).is_empty():
-		for w in works + _halls().filter(func(h: Building) -> bool: return h.built):
-			var rh: Array = GearEcon.room_spot_n(game, team, "mainspring", [w], [Defs.CW_TECH, Defs.CW_HEAVY])
-			if int(rh[1]) >= 2:
-				_spring_heavy = true
-				return rh[0]
+		for users in [[Defs.CW_TECH, Defs.CW_HEAVY], [Defs.CW_HEAVY, Defs.CW_TECH]]:
+			# (both orders: the greedy count gives the first kind the first pick of the room)
+			for w in works + _halls().filter(func(h: Building) -> bool: return h.built):
+				var rh: Array = GearEcon.room_spot_n(game, team, "mainspring", [w], users)
+				if int(rh[1]) >= 2:
+					_spring_heavy = true
+					_spring_users = users
+					return rh[0]
 	for w in works:
 		# (room for the Escapement itself: a count of 1 over [Escapement, Aviary] was the Aviary's room in one game, and
 		# the Escapement never found a place, 0.14.72 Hollowfen)

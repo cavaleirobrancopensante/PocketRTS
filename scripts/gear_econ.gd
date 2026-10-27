@@ -432,13 +432,16 @@ static func room_cells(game: Game, t: int, kind: String, c: Vector2i, users: Arr
 	return out
 
 
-## The footprint's ground is free, off ramps, and its margin clear (no gear check: the caller does the rings).
+## The footprint's ground is free, off ramps and clear of them (the computer keeps its ramps clear), and its margin clear (no gear
+## check: the caller does the rings).
 static func _ground_ok(game: Game, c: Vector2i, size: Vector2i) -> bool:
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
 			if not game.in_map(cc) or not game.is_free(cc) or game.ramp[game.idx(cc)] == 1:
 				return false
+			if game._near_ramp(cc):
+				return false          # (the computer keeps its ramps clear: Game.placement_problem's `ai` rule)
 	return game.margin_free(c, size)
 
 

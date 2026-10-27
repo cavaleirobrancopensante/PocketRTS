@@ -1098,7 +1098,7 @@ func _build_card() -> Array:
 	if b and Defs.gear_mode and b.d["faction"] == "clockwork" and not b.dead and (b.team == game.human or game.demo or game.spectating()):
 		# THE GEAR VIEW (also the ` key): the whole network at a glance (scripts/gear.gd); phone-friendly
 		_tip_for["GEAR VIEW"] = ["Gear view", "Shows the whole gear network: the drivers glow gold, every ring is tinted by how well it works (green full speed, yellow 90%, orange 80%, red 70% or idle), each Mainspring's reach is outlined and the turrets' circles are drawn. Key: `"]
-		list.append(["gauge", ("~ " if game.gear_net.view else "") + "GEAR VIEW", func() -> void: game.toggle_gear_view(), true, "", ""])
+		list.append(["ab_gear_view", ("~ " if game.gear_net.view else "") + "GEAR VIEW", func() -> void: game.toggle_gear_view(), true, "", ""])
 	if b and b.built and b.kind != game.faction_hall(game.human):
 		list.append(["demolish", "DEMOLISH", func() -> void:
 			if Time.get_ticks_msec() - _demolish_ms > 2500:
@@ -2987,7 +2987,7 @@ func _draw_panel(font: Font) -> void:
 			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and bb.kind != "clocktower" and (e.team == game.human or game.demo):
 				var tl := GearEcon.trade_line(bb.kind, bb.gear_big)       # (SIZE SETS THE TEMPO: its ring's trade, one line)
 				if tl != "":
-					info = (Loc.t(info) + "  ·  " if info != "" else "") + tl
+					info = tl + ("  ·  " + Loc.t(info) if info != "" else "")      # (first: the about text after it is cut short)
 			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and (e.team == game.human or game.demo):
 				if not game.gear_net.is_linked(bb):
 					info = "UNLINKED: its gear ring does not mesh with the field, so it does nothing. Build a linked building beside it, or put it back in reach.  ·  " + info

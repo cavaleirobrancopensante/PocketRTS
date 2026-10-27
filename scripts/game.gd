@@ -135,9 +135,10 @@ var ais: Array = []
 
 var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
-## The computer keeps a spot for a building it means to lay soon (team -> {"kind", "cell", "t"}): its own other buildings are
-## not put where they would take that spot or cut into its ring (placement_problem with `ai`). Used for the Heavy Works'
-## big ring by a Mainspring (AI._keep_heavy, 0.14.85). Not saved: the computer works it out again.
+## The computer keeps spots for buildings it means to lay soon (team -> {kind -> {"cell", "t", "spring"}}): its own other
+## buildings are not put where they would take such a spot or cut into its ring (placement_problem with `ai`). Used for the
+## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.85). Not saved: the computer works it
+## out again.
 var ai_keep := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
 var _hash := {}
@@ -4682,8 +4683,10 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var tp := GearNet.turret_problem(self, t, c)      # (THE TURRET CIRCLE: each turret claims a circle; no overlap)
 		if tp != "":
 			return tp
-	if ai and ai_keep.has(t) and String(ai_keep[t]["kind"]) != k and _takes_kept(t, k, c):
-		return "Kept for a building the computer lays next."
+	if ai and ai_keep.has(t):
+		for kk in ai_keep[t]:
+			if String(kk) != k and _takes_kept(t, k, c, String(kk)):
+				return "Kept for a building the computer lays next."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
@@ -8860,11 +8863,10 @@ func abandon(b: Building) -> void:
 		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)
 
 
-## Would a building of kind k at cell c take the spot the computer keeps (ai_keep): its footprint on the kept one (a tile
-## of margin), or its gear ring cutting into the kept ring?
-func _takes_kept(t: int, k: String, c: Vector2i) -> bool:
-	var keep: Dictionary = ai_keep[t]
-	var kk := String(keep["kind"])
+## Would a building of kind k at cell c take the spot the computer keeps for a `kk` (ai_keep): its footprint on the kept
+## one (a tile of margin), or its gear ring cutting into the kept ring?
+func _takes_kept(t: int, k: String, c: Vector2i, kk: String) -> bool:
+	var keep: Dictionary = ai_keep[t][kk]
 	var kc: Vector2i = keep["cell"]
 	var ks: Vector2i = Defs.BUILDINGS[kk]["size"]
 	var sz: Vector2i = Defs.BUILDINGS[k]["size"]

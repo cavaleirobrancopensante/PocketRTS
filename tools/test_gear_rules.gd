@@ -185,7 +185,7 @@ func _run() -> void:
 	check("the gear view turns on", g.gear_net.view)
 	g.gear_net.queue_redraw()
 	await process_frame
-	check("the gear view colours a driver gold and a full-speed ring green", g.gear_net.view_colour(sp).r > 0.9 and g.gear_net.view_colour(sp).b < 0.6 and g.gear_net.view_colour(esc).g > 0.9)
+	check("the gear view colours a driver bright gold and a full-speed ring green", g.gear_net.view_colour(sp).r > 0.9 and g.gear_net.view_colour(sp).g > 0.9 and g.gear_net.view_colour(esc).g > 0.9 and g.gear_net.view_colour(esc).r < 0.5)
 	g.toggle_gear_view()
 	check("and off again", not g.gear_net.view)
 	# ---------------------------------------------------------------- 5. saves keep it all, and old turrets side by side

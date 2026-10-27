@@ -301,3 +301,5 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 - THE GEAR VIEW (GearNet._draw_view): the painted rings washed in code colours (gold drivers, green / yellow / orange / red by
   how well they work), a dashed ellipse for each Mainspring's reach, the ground dimmed.
 - THE TURRET CIRCLES (GearNet._draw_turret_circles): flat code-drawn circles on the ground, like the Brood's pit circles.
+- The GEAR VIEW button's icon (CwArt._ability_glyph "ab_gear_view": two meshing gears, the big one green, the small one
+  gold) is drawn in code until assets/icons/clockwork/ab_gear_view.png is painted (the HUD takes the file first).

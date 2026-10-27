@@ -24,7 +24,7 @@ The radius, 4 tiles, is the owner's guess, kept. The Brood's Feeding Pits use 5.
 
 A new building: the Heavy Works. In Portuguese, Oficina Pesada. In Spanish, Taller Pesado.
 
-It makes the heavy machines: the Pendulum and the Spring Ballista. The Great Winder will be made there too, once it lands on main.
+It makes the heavy machines: the Pendulum, the Spring Ballista and the Great Winder. The Great Winder landed on main while this job ran; it moved here from the Movement Works too.
 
 It sits on its BIG gear only. It cannot swap to the small one. Its card says so: "Big gear only: slow and strong, the heavy torque."
 
@@ -58,7 +58,7 @@ Only the name the player sees changed. The internal id stays movement_works, so 
 
 It makes the light machines: the Clock Soldier, the Springer and the Netter. The Springer and the Netter still need a Mainspring beside it, for their Tension.
 
-It no longer makes the Pendulum or the Ballista.
+It no longer makes the Pendulum, the Ballista or the Great Winder.
 
 ### 5. Size sets the tempo
 
@@ -114,6 +114,7 @@ All in docs/shots/gear_rules/, filmed by tools/shot_gear_rules.gd in the Clockwo
 - heavy_works_idle.png: the empty bay, the hook up.
 - heavy_ballista_12.png to heavy_ballista_93.png: a Spring Ballista rising in the bay.
 - heavy_pendulum_30.png to heavy_pendulum_93.png: a Pendulum rising.
+- heavy_great_winder_50.png and heavy_great_winder_93.png: a Great Winder rising.
 - card_heavy_works.png, card_light_works.png, card_turret.png: the cards, with the ring's trade.
 - gear_view.png and gear_view_close.png: the gear view.
 - base_plates.png: a base with brass and iron floor plates.
@@ -130,7 +131,7 @@ First, when it places its first Mainspring, it looks for a spot with room for bo
 
 Second, with no room by any Mainspring, it builds a new Mainspring where the big ring will fit beside it, and keeps that spot.
 
-From the Heavy Works it makes its first Spring Ballista, then a few Pendulums, then more Ballistas. Tension is kept from the Springers for a wanted heavy machine.
+From the Heavy Works it makes its first Spring Ballista, then a few Pendulums, then more Ballistas, and its one Great Winder. Tension is kept from the Springers for a wanted heavy machine.
 
 Its Light Works stay on their small gear. They no longer go onto the big gear for Pendulums.
 
@@ -141,13 +142,12 @@ STUDY_RESULTS
 ## The tests
 
 - tools/test_gear_rules.gd, new: the turret circle refuses a turret too close and accepts one far enough, also through the computer's spot search; the Heavy Works trains the Pendulum and the Ballista only beside a Mainspring, and the Light Works does not; the ring size changes the training speed and the turret's fire as set; the machine in the bay is drawn and grows; saves keep it all, and an old save's turrets side by side load and stay.
-- Updated for the new rules: test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_gear_econ, test_clockwork_sounds.
+- Updated for the new rules: test_cw_tier3, test_cw_tier3_ai, test_ballista, test_ballista_ai, test_great_winder, test_gear_econ, test_clockwork_sounds.
 
 TEST_RESULTS
 
 ## What is left
 
-- The Great Winder: when it lands on main, it goes into the Heavy Works' list. Merge main, then add it to the Heavy Works' trains.
 - The machine in the bay is the unit's own sprite, darkened and cut. A painted "being assembled" frame per machine would look better.
 - The brass plate, the spring mark and the gear view's colours are code-drawn. They are listed in docs/art_style_inconsistency.md.
 - The Heavy Works' big ring is large. On a crowded plateau the computer can lay it late. Watch for it in games.

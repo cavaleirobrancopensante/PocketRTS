@@ -385,7 +385,7 @@ static func icon(name: String) -> Texture2D:
 		var oy := 60 - big.get_height()
 		img.blend_rect(big, Rect2i(0, 0, big.get_width(), big.get_height()), Vector2i(ox, oy))
 		t = ImageTexture.create_from_image(img)
-	elif name.begins_with("ab_cw_") or name == "ab_siding" or name == "ab_shield" or name == "research_shield":
+	elif name.begins_with("ab_cw_") or name == "ab_siding" or name == "ab_shield" or name == "research_shield" or name == "ab_gear_view":
 		# (ab_shield / research_shield: placeholders until assets/icons/clockwork/ab_shield.png and research_shield.png are
 		# drawn; the HUD takes those files first, with no code)
 		var img2 := Image.create(64, 64, false, Image.FORMAT_RGBA8)
@@ -400,6 +400,28 @@ static func icon(name: String) -> Texture2D:
 
 static func _ability_glyph(img: Image, name: String) -> void:
 	match name:
+		"ab_gear_view":
+			# THE GEAR VIEW (0.14.85): two meshing gears, the big one washed green (works at full speed), the small one
+			# bright gold (a driver); a placeholder until assets/icons/clockwork/ab_gear_view.png is drawn
+			for k in 10:
+				var a := TAU * float(k) / 10.0
+				_disc(img, 25 + int(round(cos(a) * 17.0)), 38 + int(round(sin(a) * 17.0)), 4.0, INK)
+			_disc(img, 25, 38, 17.0, INK)
+			_disc(img, 25, 38, 15.0, Color(0.36, 0.78, 0.4))
+			for k in 10:
+				var a2 := TAU * float(k) / 10.0
+				_disc(img, 25 + int(round(cos(a2) * 16.0)), 38 + int(round(sin(a2) * 16.0)), 3.0, Color(0.36, 0.78, 0.4))
+			_disc(img, 25, 38, 6.0, INK)
+			_disc(img, 25, 38, 4.0, TIN)
+			for k in 7:
+				var a3 := TAU * float(k) / 7.0 + 0.3
+				_disc(img, 46 + int(round(cos(a3) * 11.0)), 19 + int(round(sin(a3) * 11.0)), 3.0, INK)
+			_disc(img, 46, 19, 11.0, INK)
+			_disc(img, 46, 19, 9.5, Color(1.0, 0.9, 0.55))
+			for k in 7:
+				var a4 := TAU * float(k) / 7.0 + 0.3
+				_disc(img, 46 + int(round(cos(a4) * 10.0)), 19 + int(round(sin(a4) * 10.0)), 2.0, Color(1.0, 0.9, 0.55))
+			_disc(img, 46, 19, 3.5, INK)
 		"ab_shield", "research_shield":
 			# a round brass shield held forward, an arrow pushing it on (the research: the shield over a soldier's cap)
 			if name == "research_shield":

@@ -114,8 +114,8 @@ func _run() -> void:
 	# ---- THE GHOST'S TEETH: a Regulator meshing (green), then one cutting into a ring (red)
 	var reg_ok := Vector2i(-1, -1)
 	var reg_clash := Vector2i(-1, -1)
-	for y in range(hall.cell.y - 14, hall.cell.y + 15):
-		for x in range(hall.cell.x - 14, hall.cell.x + 15):
+	for y in range(hall.cell.y - 26, hall.cell.y + 27):
+		for x in range(hall.cell.x - 26, hall.cell.x + 27):
 			var c := Vector2i(x, y)
 			if not g.in_map(c) or not g.margin_free(c, Vector2i(2, 2)):
 				continue
@@ -157,6 +157,12 @@ func _run() -> void:
 		for f in [0.3, 0.6, 0.93]:
 			hw.prod_t = f * Building.entry_time(Defs.PENDULUM)
 			await _snap("heavy_pendulum_%02d" % int(f * 100))
+		g.cancel_train(hw)
+		why = g.train(hw, Defs.GREAT_WINDER_KIND)
+		print("train great winder: ", why)
+		for f in [0.5, 0.93]:
+			hw.prod_t = f * Building.entry_time(Defs.GREAT_WINDER_KIND)
+			await _snap("heavy_great_winder_%02d" % int(f * 100))
 		g.cancel_train(hw)
 		# its card: big gear only, what it makes
 		g.set_selection([hw])
