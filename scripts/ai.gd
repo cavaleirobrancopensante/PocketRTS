@@ -294,7 +294,8 @@ func _rush_log(msg: String) -> void:
 
 
 ## FAILED: ride home, stay as defence, build up (economy, army, walls) and come back in force.
-func _rush_failed(party: Array) -> void:
+func _rush_failed(party0: Array) -> void:
+	var party := party0.duplicate()      # (the raiding party is _raiders itself, cleared below)
 	_rush_state = "failed"
 	var gained := float(int(game.stats[team]["value_killed"]) - _wave_kill0)
 	var connected := gained >= maxf(1.0, _wave_value) * HARASS_CONNECTED
@@ -319,10 +320,11 @@ func _rush_failed(party: Array) -> void:
 
 ## SUCCEEDED, mop-up (the usual case): the riders pull back out of the defenders' reach, the
 ## economy goes on, and one force of at least RUSH_MOP_MIN supply goes out together.
-func _rush_mop(party: Array) -> void:
+func _rush_mop(party0: Array) -> void:
+	var party := party0.duplicate()      # (the raiding party is _raiders itself, cleared below)
 	_rush_mode = "mop"
 	var need := _rush_mop_size()
-	_rush_log("SUCCEEDED, mop-up: the riders regroup at home; a force of %d+ supply goes out as one group" % need)
+	_rush_log("SUCCEEDED, mop-up: a force of %d+ supply goes out as one group" % need)
 	_rush_wave = false
 	_attacking = false
 	_wave_set.clear()
