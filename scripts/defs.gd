@@ -881,7 +881,7 @@ const UNITS := {
 	# TIER 3 (gear mode; Defs.PENDULUM_SWING): the PENDULUM, the melee AREA DAMAGE: a tall, slow, tough clock tower on long
 	# legs whose two bladed arms cut, in turn, through everything in the arc in front of it. Guesses (design_principles 1):
 	# a Brute's job with area instead of a charge: 340 hp + 2 armour (a Brute 240 + 2), 12 a blow to EVERY enemy in a third
-	# of a circle, one blow every 1.40 s, the arms taking turns (aim 0.35, the chop on the 4th frame of a 6-frame strip at
+	# of a circle, one blow every 1.40 s, the arms taking turns (aim 0.35, the sweep's hit on the 4th frame of a 6-frame strip at
 	# 9 fps, + strike 0.29 + cooldown 0.76): 8.6 a second per enemy caught, as the one-armed Pendulum's 22 every 2.59 s
 	# (8.5; a Brute 10.8 on one, the old Steam Walker 6.7 in its cone), and x1.5 on LIGHT units (PENDULUM_SWING "vs_light":
 	# 12.9 a second; lighter blows lose a little more to armour: 7.1 a second on 2 armour, was 7.7); slow (46, a Brute 56
@@ -892,7 +892,7 @@ const UNITS := {
 		"name": "Pendulum", "hp": 340, "armor": 2, "speed": 46, "cost": 200, "tension": 75, "time": 35.0, "supply": 4,
 		"sight": 8, "range": 32, "damage": 12, "cooldown": 0.76, "aim": 0.35, "radius": 20, "from": "movement_works",
 		"building_bonus": 1.25, "requires": "escapement", "big_gear": true, "ground_only": true, "faction": "clockwork",
-		"about": "A tall clock tower on long legs with two arms, each a heavy weight with a crescent blade: they cut forward in turn, and every blow cuts EVERY enemy on the ground in the wide arc in front of it (never your own units), light units hardest. Slow and tough; it cannot reach flyers. Made at the Movement Works once an Escapement works, and only while the Works runs on its BIG gear (the heavy torque). Costs Tension.",
+		"about": "A tall clock tower on long legs with two arms, each a heavy weight with a crescent blade: they sweep low in turn, like scythes at ankle height, and every blow cuts EVERY enemy on the ground in the wide arc in front of it (never your own units), light units hardest. Slow and tough; it cannot reach flyers. Made at the Movement Works once an Escapement works, and only while the Works runs on its BIG gear (the heavy torque). Costs Tension.",
 	},
 	# TIER 3 (gear mode; Defs.NET): the NETTER, the STOPPER (the owner's "unit that stops one enemy", made of machinery: no
 	# magic). Its spring cannon fires a weighted chain net at ONE enemy unit: caught, it cannot move or fight for 4 s, and a

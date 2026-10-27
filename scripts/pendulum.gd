@@ -4,13 +4,14 @@ extends RefCounted
 ## slow, tough clock tower on long legs with TWO ARMS, each a brass rod ending in a heavy weight with a crescent blade
 ## (the v2 redesign, owner 2026-10-26: nothing hangs between the legs), the Clockwork's melee AREA DAMAGE. It attacks
 ## FORWARD and the arms CUT IN TURN (Unit.arm: the right arm, then the left; each blow plays its arm's strip, attack_r /
-## attack_l): the arm winds back and up over its shoulder (the strip's frames 1-3: the telegraph), its blade's edge turned
-## at the enemy, and chops forward and down through the space in front on the 4th frame: every enemy on the ground in the
+## attack_l): each blow is a LOW SWEEP, a scythe at ankle height: the arm swings back behind its hip (the strip's frames
+## 1-2: the telegraph), its blade's edge turned at the enemy, then sweeps forward and across just above the ground in
+## front of its feet, through where small enemies stand, and lands on the 4th frame: every enemy on the ground in the
 ## ARC in front of it takes the blow (never its own side: the machine's units keep in step with the swing), a LIGHT unit
 ## (tag "light") more (PENDULUM_SWING "vs_light"), and a building it swings at takes it too. It cannot reach flyers. It is
 ## made only while its Movement Works runs on the BIG gear (the heavy torque: gear_problem, Game.can_train); a Works with
 ## Pendulums queued cannot go back to the small gear meanwhile.
-## Art: tools/import_tier3.py (the idle, the walk and the two cutting blows built in code from ChatGPT's direction sheet,
+## Art: tools/import_tier3.py (the idle, the walk and the two low sweeps built in code from ChatGPT's direction sheet,
 ## tools/pendulum_v2_guide/; the death painted by ChatGPT).
 
 

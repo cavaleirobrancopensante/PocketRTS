@@ -1,6 +1,6 @@
 extends SceneTree
 ## The two-armed Pendulum (v2): its arms CUT IN TURN (right, left, right: Unit.arm, each blow playing its own arm's strip,
-## attack_r / attack_l, the chop on the 4th frame); a blow hits the enemies in the ARC IN FRONT and not the one behind;
+## attack_r / attack_l, the hit on the 4th frame); a blow hits the enemies in the ARC IN FRONT and not the one behind;
 ## a LIGHT unit (tag "light") takes Defs.PENDULUM_SWING "vs_light" times the blow, an armoured one the plain blow less its
 ## armour; the blows come about every 1.4 s (damage a second about the one-armed Pendulum's 22 every 2.59 s); and the arm
 ## is streamed to online guests with the unit (NetSnapshot.UNIT_PROPS).
@@ -68,7 +68,7 @@ func _run() -> void:
 	check("it struck three blows", pd.swings == 3, "%d in %.1f s" % [pd.swings, t])
 	check("its arms take turns (right, left, right)", arms == [0, 1, 0], str(arms))
 	check("each blow plays its own arm's strip", strips.slice(0, 3) == ["attack_r", "attack_l", "attack_r"], str(strips))
-	check("every blow lands on the 4th frame of its strip (the chop)", frames.all(func(f) -> bool: return f == 3), str(frames))
+	check("every blow lands on the 4th frame of its strip (the sweep's hit)", frames.all(func(f) -> bool: return f == 3), str(frames))
 	if times.size() == 3:
 		var gap: float = (float(times[2]) - float(times[0])) / 2.0
 		check("a blow about every 1.4 s", absf(gap - 1.4) < 0.12, "%.2f s" % gap)

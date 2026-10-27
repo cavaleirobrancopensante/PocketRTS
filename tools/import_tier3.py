@@ -6,7 +6,7 @@ the nets (assets/effects/netter_net.png in flight, netter_net_open.png and nette
 unit), the card icons assets/icons/{pendulum,netter}.png, and prints the scripts/cw_art.gd SHEETS lines, the Netter's
 muzzle per drawn direction (Defs.NET "mouth") and the effect sizes for ArtData.EFFECTS.
 
-PENDULUM v2, two arms (tools/pendulum_v2_guide/: the idle, the walk and the two CUTTING blows are built in code from
+PENDULUM v2, two arms (tools/pendulum_v2_guide/: the idle, the walk and the two LOW SWEEPS are built in code from
 ChatGPT's direction sheet art/redraws/pendulum_v2_dirs.png; the importer runs anim.py itself and takes its RGBA cells,
 so no navy keying and the blade's see-through smear keeps its alpha; the unit's point is each cell's middle, 10 px
 over its bottom):
@@ -340,7 +340,7 @@ def grey_pink(rgb, box):
 
 
 def pendulum():
-    """the Pendulum v2 (tools/pendulum_v2_guide: idle, walk and the two cutting blows built in code from ChatGPT's
+    """the Pendulum v2 (tools/pendulum_v2_guide: idle, walk and the two low sweeps built in code from ChatGPT's
     direction sheet; the death painted by ChatGPT from the code guides)"""
     sys.path.insert(0, PEND2)
     import anim

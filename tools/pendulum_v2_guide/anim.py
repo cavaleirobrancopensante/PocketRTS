@@ -8,14 +8,16 @@ WALK (8 frames): the old Pendulum's long stride (rig.py), driven by the arms: th
   near arm swings in front of the body and legs and the far one, darker, behind them; from the front and back a
   forward arm comes towards us (lower, bigger, in front of its leg), a back arm goes away (higher, smaller, darker,
   tucked behind the hip).
-ATTACK (12 frames, two CUTTING blows: cut.py): the right arm (frames 1-6), then the left (frames 7-12). Each blow is a
-  windmill chop with the crescent turned on its weight so its convex edge LEADS: the arm winds back and up over its
-  shoulder (the edge turned forward, at the enemy), comes over the top, slashes forward and down through the space in
-  front of the unit, follows through low past the target and settles, while the other arm swings a little against it.
-  Side view: overhead to low in the picture plane; front: a diagonal from high on its own side to low across the body;
-  back: from over the head down past its own hip (cut.TILT); 3/4 in between. A steel-white smear trails the edge on the
-  slash frames. THE HITS: frames 4 and 10 (0-based 3 and 9; they were 4 and 8 when the two blows overlapped: now each
-  blow is a strip of its own in the game, attack_r = frames 1-6, attack_l = frames 7-12, starting and ending at rest).
+ATTACK (12 frames, two LOW SWEEPS: cut.py): the right arm (frames 1-6), then the left (frames 7-12). Each blow is a
+  scythe stroke at ankle height (owner, 2026-10-27: a ground unit that mostly kills Raptors sweeps the ground): the arm
+  turns on a cone round its shoulder, swings BACK behind its hip (not up), then sweeps forward and across just above the
+  ground in front of the feet, the crescent's edge leading and facing the target at the hit, follows through low and
+  settles; the knees give and the body leans into it so the weight runs low, while the other arm swings a little
+  against it. Side view: a low forward arc in front of the feet; front: across the front of the body at the feet's
+  height; back: cut short beside its own leg (CROSS: from behind nothing may pass behind the gap between the legs);
+  3/4 in between. A steel-white smear trails the edge on the sweep frames. THE HITS: frames 4 and 10 (0-based 3 and 9);
+  each blow is a strip of its own in the game (attack_r = frames 1-6, attack_l = frames 7-12, starting and ending at
+  rest).
 
 Out (sheet px; the unit's point, under the case's middle on the ground, at the middle of each cell 10 px above its
 bottom): art/redraws/pendulum_v2_idle.png (rows S, SE, E, NE, N x 4 frames) and pendulum_v2_walk.png (5 x 8), cells

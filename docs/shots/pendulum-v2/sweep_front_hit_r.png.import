@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d3gijdw4ayf7w"
-path="res://.godot/imported/front_attack_r_4.png-ca43ddf83494005afc36aa6dd197f59c.ctex"
+uid="uid://b0m1a5dccg5aj"
+path="res://.godot/imported/sweep_front_hit_r.png-5a37b326f9bc5b476a5ddfd9753a5b31.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/shots/pendulum-v2/front_attack_r_4.png"
-dest_files=["res://.godot/imported/front_attack_r_4.png-ca43ddf83494005afc36aa6dd197f59c.ctex"]
+source_file="res://docs/shots/pendulum-v2/sweep_front_hit_r.png"
+dest_files=["res://.godot/imported/sweep_front_hit_r.png-5a37b326f9bc5b476a5ddfd9753a5b31.ctex"]
 
 [params]
 

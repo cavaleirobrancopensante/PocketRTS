@@ -188,6 +188,15 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   one swung away scaled down and DARKENED. CODE-DRAWN: a see-through steel-white SMEAR (a tapering streak, up to 26
   sheet px wide) trails the blade's edge on the three slash frames of each blow. A ChatGPT pass on the wound-up and
   chopping poses (blade seen side-on, a painted motion smear) would retire all of this.
+- Pendulum v2 LOW SWEEP (branch pendulum-sweep, replaces the CUT above; tools/pendulum_v2_guide/cut.py,
+  art/redraws/pendulum_v2_attack.png/.gif, in the game as attack_r / attack_l): each blow is a scythe stroke at ankle
+  height. The arm turns on a CONE round its shoulder (back behind the hip, then forward and across low in front of the
+  feet); the body DIPS up to 30 sheet px (the knees bend: the legs' rotated paint) and leans into it. CODE EDITS as the
+  cut: the BLADE turned on its weight so its edge leads (along the travel bent forward and down: it dips under the ball
+  towards the ground), affine-mapped paint never thinner than 0.6 of its width, rod stretched/shortened, sleeve and clamp
+  squashed, a weight swung at the camera scaled up and one swung away scaled down and DARKENED; the back views stop the
+  sweep beside its own leg (a view-only choice). CODE-DRAWN: the steel-white SMEAR now trails the edge along the low path
+  on the three sweep frames. A ChatGPT pass on the swung-back and sweeping poses would retire this.
 - Pendulum v2 death (0.14.36, ChatGPT's art/redraws/pendulum_v2_death_chatgpt_1/2.png, tools/import_tier3.py): CODE EDIT:
   a pink puff in the dust (sheet 1, row SE, frame 4) recoloured to the dust's grey by brightness (grey_pink); each row
   SCALED (x1.08-1.22) so its standing first frame matches the idle's height. Otherwise as painted.

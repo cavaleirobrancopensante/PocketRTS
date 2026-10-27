@@ -5,18 +5,31 @@ one-armed art and gets its forward, alternating, cutting attack.
 
 ## What changed
 
-**The attack is a cut now.** The first guide swung each arm forward like a punch: the weight led and the blade trailed
-under it, flat face first. The new attack (tools/pendulum_v2_guide/cut.py, art/redraws/pendulum_v2_attack.png and .gif)
-turns each arm in 3D on a windmill: it winds back and up over its shoulder, comes over the top and chops forward and
-down through the space in front, follows through low past the target and settles. The blade is turned on its weight so
-the crescent's convex edge always points the way the weight is travelling: forward and up at the top of the wind-up
-(at the enemy), down and forward through the chop. Seen from the side it is an overhead-to-low arc in the picture
-plane; from the front a diagonal from high on its own side to low across the body; the 3/4 views fall in between. A
-faint steel-white smear trails the edge on the slash frames so the cut reads at game size.
+**The attack is a low sweep** (branch `pendulum-sweep`, the owner's report on the first cut: "the pendulum attack is
+overhead, but it shouldn't be, because it is a ground unit that mostly kills Raptors, so it should be sweeping the
+ground"). The first guide swung each arm forward like a punch (the blade trailing flat face first); the second was a
+windmill chop over the shoulder. Now (tools/pendulum_v2_guide/cut.py, art/redraws/pendulum_v2_attack.png and .gif)
+each blow is a SCYTHE stroke at ankle height. The arm turns on a cone round its shoulder (cut.cone_dir: the weight
+swung out of the hang by c degrees, at azimuth phi round the shoulder: -90 back, 0 its own side, 90 forward, 150 across
+the front), so it moves round at one height instead of up and over: it swings BACK behind its hip (frames 1-2), sweeps
+forward past its own side and on in front of its feet (3), lands in front of the feet at the hit (4), follows through
+low across the front past the target (5) and settles (6). The knees give (the body dips up to 30 sheet px, 8-9 game
+px) and it leans into the blow, so the swung-out weight (a cone lifts it a little) and the blade run just above the
+ground, through where Raptors and Labourers stand. The blade turns on its weight so the crescent's convex edge points
+along the travel bent forward and down (cut.LEAD_FWD, LEAD_DOWN): it leads the sweep, faces the target at the hit and
+dips under the weight towards the ground.
 
-The guide sheet keeps two blows, right arm then left. **The hits moved from frames 4 and 8 to frames 4 and 10**: each
-blow is now a strip of its own in the game (frames 1-6 and 7-12), starting and ending at rest, so the two no longer
-overlap.
+- Side view (E): a low forward arc, the blade near the ground line in front of the feet.
+- Front: across the front of the body at the feet's height (in front of the legs, never behind them).
+- Back views: the sweep is CUT SHORT beside its own leg (anim.CROSS: NE 80, N 75 degrees) so the weight never shows
+  in the gap between the legs from behind (the old pendulum's look); it reads as a swing out, back and forward-away.
+- 3/4 views: in between.
+
+The guide sheet keeps two blows, right arm then left; **the hits stay on frames 4 and 10** (each blow a strip of its own
+in the game, attack_r = frames 1-6, attack_l = frames 7-12, starting and ending at rest), so the aim and strike timings
+in defs.gd are unchanged. The sweep no longer raises anything over the head, so the unit's cell is lower: 130 x 91
+(was 130 x 110), anchor (65, 84) (scripts/cw_art.gd SHEETS). Screenshots of the sweep through Raptors, close and at 1x:
+docs/shots/pendulum-v2/sweep_*.png (tools/shot_pendulum_sweep.gd; the old chop's shots were removed).
 
 **The death** comes from ChatGPT's two sheets. They kept no grid, so the importer finds each row as a band of content,
 takes the biggest piece in each column as that frame's figure and gives every other piece (a flying arm, a cog, dust)
@@ -27,8 +40,8 @@ art/redraws/pendulum_v2_death.gif.
 
 **Into the game** (tools/import_tier3.py runs the guide itself and imports its RGBA frames): idle 4, walk 8, attack_r 6,
 attack_l 6, death 6 frames in five directions, recoloured by tools/cw_palette.py (blue joints become the player
-colour, the blades stay steel, the brass stays), the S idle 82 px tall as before; cell 130 x 110 (the raised arms need
-the room); a new card portrait. The old one-strip "attack" files are gone.
+colour, the blades stay steel, the brass stays), the S idle 82 px tall as before; cell 130 x 91 (130 x 110 while the
+chop raised its arms overhead); a new card portrait. The old one-strip "attack" files are gone.
 
 **Gameplay.** It attacks forward and its arms cut in turn (Unit.arm = blows so far mod 2, the field the Jack already
 streams to online guests, so a guest plays the same arm's strip). Each blow still cuts every enemy on the ground in the
@@ -51,14 +64,13 @@ test_unit_walk_audit, test_jack_arms. Screenshots: docs/shots/pendulum-v2/ (tool
 
 ## What still looks rough
 
-- The blade is a flat painted crescent turned in code: when the swing plane faces the camera (the hit frames from the
-  front) it is squashed and its painted light no longer matches the way it faces. A ChatGPT pass on the wound-up and
-  chopping poses, with the blade painted side-on, would fix it.
-- Seen from the front, the arm points at the camera as it passes forward: the weight sits big on the shoulder for a
-  frame. The chop is run a little further on in the front and back views to hide this, but it still reads more as
-  "comes at you" than as a sweep.
-- From behind, a cut across the front of the body would be hidden by the case, so the back views slash down past the
-  robot's own hip instead. Each view reads, but the back and front blows are not quite the same 3D motion.
+- The blade is a flat painted crescent turned in code: through the sweep it is seen at a slant, squashed (never under
+  0.6 of its width) and its painted light no longer matches the way it faces. A ChatGPT pass on the swung-back and
+  sweeping poses (blade painted at those angles, low over the ground) would fix it.
+- The arm is rigid and hangs from the shoulder, so the weight only reaches the ground because the knees give and the
+  body leans: the weight runs at shin height and the blade at the ankles. A longer reach would need longer arms.
+- From behind the sweep is cut short beside its own leg (it must never show between the legs); the back views read as
+  a swing out and forward-away rather than the full sweep across.
 - The smear is code-drawn (a plain see-through streak); at game size it is faint.
 - The legs are still the old Pendulum's walk machinery turned in code (the shin and foot seam, the turned knee balls).
 - In the death, rows are scaled by different amounts (x1.08 to x1.22) so each standing first frame matches its idle;

@@ -5,7 +5,7 @@ extends RefCounted
 
 const NOTES := [
 	{"v": "0.14.36", "items": [
-		"THE NEW PENDULUM: the Clockwork's tall clock tower now has two arms instead of a blade hanging between its legs, each a brass rod ending in a heavy weight with a crescent blade. It attacks forward and its arms cut in turn, right then left: each arm winds back and up over its shoulder and chops forward and down, the blade's edge first, through every enemy on the ground in the wide arc in front of it. New look in every view (standing, walking, attacking, dying) and a new card portrait.",
+		"THE NEW PENDULUM: the Clockwork's tall clock tower now has two arms instead of a blade hanging between its legs, each a brass rod ending in a heavy weight with a crescent blade. It attacks forward and its arms cut in turn, right then left: each blow is a LOW SWEEP, like a scythe mowing at ankle height: the arm swings back behind its hip, then sweeps forward and across just above the ground in front of its feet, the blade's edge first, through every enemy on the ground in the wide arc in front of it (Raptors, Labourers and the like stand right in its path), and follows through low past them. New look in every view (standing, walking, attacking, dying) and a new card portrait.",
 		"PENDULUM BALANCE: lighter, quicker blows (12 damage every 1.4 s, one arm at a time, instead of 22 every 2.6 s: about the same damage a second), and light units (Musketeers, Labourers, Raptors and the like) take half as much again from each blow. These numbers are a first guess.",
 	]},
 	{"v": "0.14.35", "items": [
