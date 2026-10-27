@@ -643,7 +643,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 			return
 		"load":
 			# pick men to climb into the selected balloons (it stays on until they're full)
-			var balloons := units.filter(func(u: Unit) -> bool: return u.kind == "balloon")
+			var balloons := units.filter(func(u: Unit) -> bool: return Unit.carrier(u.kind))     # (or Spring Ballistas: Winders crew them)
 			var e := game.entity_at(p, false)
 			if e is Unit and e.team == game.human and balloons.any(func(b: Unit) -> bool: return (e as Unit).can_board(b)):
 				game.load_order([e], balloons)
@@ -652,7 +652,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 					cancel_mode()
 			else:
 				if e is Unit and e.team == game.human:
-					game.notify("Only Musketeers and Labourers fit in the basket.")
+					game.notify("Only Winders crew a Spring Ballista." if balloons.any(func(b: Unit) -> bool: return b.kind == Defs.BALLISTA_KIND) else "Only Musketeers and Labourers fit in the basket.")
 				cancel_mode()
 			return
 		"unload":

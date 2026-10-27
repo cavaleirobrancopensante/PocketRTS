@@ -7,7 +7,7 @@ extends SceneTree
 ##   2.6/s; the Brutal income multiplier applies; the Clock Aviary costs 150 cogs + 50 Tension (refused without, paid when
 ##   placed, given back when cancelled: all of it from a site, three quarters once begun).
 ##   THE TENSION RULE: anything that costs Tension is made only at a building whose ring meshes with a Mainspring's: a Movement
-##   Works makes Jacks only so (Clock Soldiers always), a Clock Aviary works only so (NEEDS MAINSPRING).
+##   Works makes Springers only so (Clock Soldiers always), a Clock Aviary works only so (NEEDS MAINSPRING).
 ##   A save keeps it all (gear sizes, Tension; drive and the store come back from the field).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_gear_econ.gd
 const U := preload("res://tools/gear_test_util.gd")
@@ -177,11 +177,11 @@ func _run() -> void:
 	if works2 != null and net.spring_for(works2) != null:
 		works2 = null          # (it happened to mesh with the Mainspring: no test of the refusal there)
 	if works2 != null:
-		var why := g.can_train(works2, Defs.JACK)
-		check("a Works meshing with no Mainspring refuses the Jack", why.contains("meshes with no Mainspring"), why)
+		var why := g.can_train(works2, Defs.SPRINGER)
+		check("a Works meshing with no Mainspring refuses the Springer", why.contains("meshes with no Mainspring"), why)
 		check("but trains Clock Soldiers", g.can_train(works2, "clock_soldier") == "", g.can_train(works2, "clock_soldier"))
 		check("its card says why", GearEcon.card_info(works2).contains("No Mainspring"), GearEcon.card_info(works2))
-	check("the Works by the Mainspring trains the Jack", g.can_train(works, Defs.JACK) == "", g.can_train(works, Defs.JACK))
+	check("the Works by the Mainspring trains the Springer", g.can_train(works, Defs.SPRINGER) == "", g.can_train(works, Defs.SPRINGER))
 	check("its card says it may", GearEcon.card_info(works).contains("Meshes with a Mainspring"), GearEcon.card_info(works))
 	# the Clock Aviary: a Tension user
 	check("the Clock Aviary costs 150 cogs + 50 Tension", int(Defs.BUILDINGS[Defs.CW_AIR]["cost"]) == 150 and Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR]) == 50)
@@ -255,7 +255,7 @@ func _run() -> void:
 		check("loaded: the big Mainspring and its store (400)", sp2 != null and sp2.gear_big and is_equal_approx(GearEcon.tension_cap(g2, 0), 400.0), "%.0f" % GearEcon.tension_cap(g2, 0))
 		check("loaded: the Tension (321; it may have wound a frame since)", absf(g2.tension(0) - 321.0) < 1.0, "%.2f" % g2.tension(0))
 		check("loaded: the Works' drive comes back from the field (%d)" % drv, w2 != null and int(g2.gear_net.drive_of.get(w2, -1)) == drv)
-		check("loaded: the Works may still make Jacks (it meshes with the Mainspring)", w2 != null and g2.gear_net.spring_for(w2) != null)
+		check("loaded: the Works may still make Springers (it meshes with the Mainspring)", w2 != null and g2.gear_net.spring_for(w2) != null)
 		SaveGame.clear()
 		# the online guest: Tension comes in the players' rows, drive and the store are worked out from the buildings
 		var hs := NetSession.new()

@@ -2,7 +2,7 @@ extends SceneTree
 ## Film a computer-against-computer match: screenshots of the fights as they happen and of each side's base at set
 ## times, plus the match log. For looking closely at a few games (2026-10-27, Crown v Clockwork).
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 --script res://tools/shot_ai_match.gd -- \
-##       a:crown b:clockwork map:greenhold seed:11 swap:0 out:/abs/dir [end:1800]
+##       a:crown b:clockwork map:greenhold seed:11 swap:0 out:/abs/dir [end:1800] [da:hard db:normal]
 ## Writes <out>/fight_MMSS_<x>_<y>.png (a fight: where the most units of both sides meet, at most one every FIGHT_GAP s),
 ## <out>/base_<team>_MMSS.png (each main at BASE_AT), <out>/log.txt (the match log) and <out>/result.txt.
 const FIGHT_GAP := 25.0
@@ -20,6 +20,9 @@ var out := "/tmp/ai_match"
 var end_t := 1800.0
 var norepair := false        # norepair:1 the walls and gates are never repaired (repair orders cancelled, autocast off)
 var noretreat := false       # noretreat:1 a computer's siege is never called off (AI.siege_no_retreat)
+var noopen := false          # noopen:1 the Clockwork's waves go for the main hall only (no open targets: AI.open_targets_on)
+var da := "hard"             # da:/db: the computers' difficulty (easy, normal, hard, brutal) for a: and b:
+var db := "hard"
 var minwave := 0             # minwave:N only a siege by a wave of at least N units is watched (the flags start with it)
 var siege_end := false       # siege_end:1 stop once the first siege has played out, writing siege.txt
 var _siege_t0 := -1.0
@@ -66,6 +69,9 @@ func _initialize() -> void:
 			"siege_end": siege_end = kv[1] == "1"
 			"minwave": minwave = int(kv[1])
 			"copen": AI.force_opening = kv[1]      # (every Crown computer opens so: "breeder" or "mill")
+			"noopen": noopen = kv[1] == "1"
+			"da": da = kv[1]
+			"db": db = kv[1]
 	DirAccess.make_dir_recursive_absolute(out)
 	Settings.load_all()
 	Settings.device = "pc"
@@ -82,9 +88,10 @@ func _process(delta: float) -> bool:
 	if t > 0.2 and main.game == null:
 		seed(seed_)
 		var facs := [fb, fa] if swap else [fa, fb]
+		var whos := [db, da] if swap else [da, db]
 		var slots: Array = []
 		for i in 2:
-			slots.append({"who": "hard", "faction": facs[i], "colour": i, "side": i, "strategy": "balanced"})
+			slots.append({"who": whos[i], "faction": facs[i], "colour": i, "side": i, "strategy": "balanced"})
 		main.start({"map": map, "seed": seed_, "slots": slots})
 		return false
 	if main.game == null:
@@ -100,9 +107,12 @@ func _process(delta: float) -> bool:
 	if g.controls and g.controls.process_mode != Node.PROCESS_MODE_DISABLED:
 		g.controls.process_mode = Node.PROCESS_MODE_DISABLED       # (the mouse sits in a corner under xvfb: edge scrolling)
 	_siege_watch()
-	if noretreat and _siege_t0 >= 0.0:
+	if noopen:
 		for a in g.ais:
-			a.siege_no_retreat = true
+			a.open_targets_on = false
+	if noretreat:
+		for a in g.ais:
+			a.siege_no_retreat = true      # (from the start: a siege the computer would call off at once plays out too)
 	if norepair and _siege_t0 >= 0.0:
 		for u in g.units:
 			if is_instance_valid(u) and not u.dead and u.is_worker():
@@ -129,6 +139,7 @@ func _process(delta: float) -> bool:
 	if c >= next_check:
 		next_check = c + 2.0
 		_look_for_fight(c)
+	_event_shots(c)
 	if c >= next_wind:
 		next_wind = c + 30.0
 		_wind_line(c)
@@ -163,6 +174,61 @@ func _wind_line(c: float) -> void:
 			if u._in_field:
 				field += 1
 		wind_lines.append("%s clockwork army %d: run down %d (avg %.0f tiles from the main), low %d, on gear ground %d" % [_mmss(c), n, down, far / maxf(1, down), low, field])
+		_ai_line(c, tm)
+
+
+## Every 30 s, the Clockwork computer's tech and army (written to <out>/ai.txt): cogs, Tension (and what the Mainsprings
+## store), its Works (how many may make Springers, and why the first one may not), the Escapement, the army by kind, the wave.
+var ai_lines: Array = []
+var nets_seen := {}          # Netter id -> nets fired (the last count seen)
+var jumps_seen := {}         # Springer id -> jumps
+
+
+func _ai_line(c: float, tm: int) -> void:
+	var works := 0
+	var springer_works := 0
+	var why_not := ""
+	var esc := "none"
+	var queues: Array = []
+	var springs := 0
+	var store := 0.0
+	var army := {}
+	for b in g.buildings:
+		if b.dead or b.team != tm:
+			continue
+		if b.kind == Defs.CW_WORKS:
+			works += 1
+			queues.append("%s%s" % [str(b.queue.size()), ("/" + g.can_train(b, "clock_soldier").left(24)) if b.built and g.can_train(b, "clock_soldier") != "" else ""])
+			if b.built:
+				var w: String = g.can_train(b, Defs.SPRINGER)
+				if w == "" or w.begins_with("Not enough") or w.begins_with("Need more") or w.begins_with("Supply"):
+					springer_works += 1
+				elif why_not == "":
+					why_not = w.left(70)
+		elif b.kind == Defs.CW_TECH:
+			esc = ("working" if g.has_working(tm, Defs.CW_TECH) else "idle") if b.built else "building"
+		elif b.kind == "mainspring":
+			springs += 1
+	for u in g.units:
+		if is_instance_valid(u) and not u.dead and u.team == tm and not u.is_worker():
+			army[u.kind] = int(army.get(u.kind, 0)) + 1
+			if u.kind == Defs.NETTER:
+				nets_seen[u.get_instance_id()] = u.nets
+			elif u.kind == Defs.SPRINGER:
+				jumps_seen[u.get_instance_id()] = u.jumps
+	var nets := 0
+	for k in nets_seen:
+		nets += int(nets_seen[k])
+	var jumps := 0
+	for k in jumps_seen:
+		jumps += int(jumps_seen[k])
+	var ai = null
+	for a in g.ais:
+		if a.team == tm:
+			ai = a
+	ai_lines.append("%s cogs %d tension %d | works %d (springers at %d%s) q %s springs %d escapement %s | army %s | nets %d jumps %d | attacking %s siege %s reserve %d" % [_mmss(c),
+		int(g.players[tm]["gold"]), int(g.tension(tm)), works, springer_works, (": " + why_not.left(30)) if why_not != "" else "", str(queues), springs, esc, str(army), nets, jumps,
+		str(ai._attacking) if ai else "-", ("on" if ai and not ai._siege.is_empty() else "-"), ai._reserve if ai else 0])
 
 
 ## What each soldier in a fight shot is doing (written to <out>/why.txt): its order, what it is after, whether it can
@@ -303,6 +369,42 @@ func _look_for_fight(c: float) -> void:
 		pending.append(["fight_%s_%d_%d.png" % [_mmss(c), int(at.x), int(at.y)], at, 1.15])
 
 
+## A Clockwork computer's moments worth a picture (leap_<MMSS>.png: Springers leaping up, a second after they set off;
+## siege_<MMSS>.png: a siege begun, 8 s on), at most one of each kind every 20 s.
+var _leap_n := {}
+var _siege_on := {}
+var _later: Array = []        # [clock, file, at]
+var _event_t := {}
+
+
+func _event_shots(c: float) -> void:
+	for a in g.ais:
+		var lp = a.get("_leapt")
+		if lp is Dictionary:
+			var n: int = lp.size()
+			if n > int(_leap_n.get(a.team, 0)) and c - float(_event_t.get("leap", -99.0)) > 20.0:
+				for u in lp.keys():
+					if is_instance_valid(u) and not u.dead:
+						_later.append([c + 1.0, "leap_%s.png" % _mmss(c), u])
+						_event_t["leap"] = c
+						break
+			_leap_n[a.team] = n
+		var sg = a.get("_siege")
+		var on: bool = sg is Dictionary and not sg.is_empty() and is_instance_valid(sg.get("piece"))
+		if on and not bool(_siege_on.get(a.team, false)) and c - float(_event_t.get("siege", -99.0)) > 20.0:
+			_later.append([c + 8.0, "siege_%s.png" % _mmss(c), sg["piece"]])
+			_event_t["siege"] = c
+		_siege_on[a.team] = on
+	for i in range(_later.size() - 1, -1, -1):
+		var e: Array = _later[i]
+		if c >= float(e[0]):
+			_later.remove_at(i)
+			var who = e[2]
+			if is_instance_valid(who) and not who.dead:
+				var at: Vector2 = who.position if who is Unit else who.center()
+				pending.append([e[1], at, 1.15])
+
+
 func _shoot() -> void:
 	shooting = true
 	var p: Array = pending.pop_front()
@@ -339,6 +441,10 @@ func _finish() -> void:
 	for l in wind_lines:
 		wf.store_line(l)
 	wf.close()
+	var af := FileAccess.open(out.path_join("ai.txt"), FileAccess.WRITE)
+	for l in ai_lines:
+		af.store_line(l)
+	af.close()
 	var r := FileAccess.open(out.path_join("result.txt"), FileAccess.WRITE)
 	r.store_line("over %s winner %s clock %.0f" % [str(g.over), str(g.get("winner")), g.clock])
 	r.close()

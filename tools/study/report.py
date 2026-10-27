@@ -175,7 +175,7 @@ TEMPLATE = r"""
 > written) and nothing from main was merged here. The changes that touch these results:
 > - **The Clockwork was rebuilt** (0.14.14 to 0.14.23, "gear mode", on by default): Cog Presses and cogs instead of Ore Crushers
 >   and ore, no energy (no Boiler, Charging Pylon, Engine Hall, Capacitor Works), the Movement Works and Clock Soldier instead of the
->   Assembly Works and Wind-up Soldier, the Ratchet Turret, Mainspring and Tension, the Escapement and Jack, air units, the Pendulum
+>   Assembly Works and Wind-up Soldier, the Ratchet Turret, Mainspring and Tension, the Escapement and Springer, air units, the Pendulum
 >   and Netter. **Every Clockwork number below is about the old ore-and-energy Clockwork**, which main has shelved.
 > - **Workers and income**: Crown games no longer start with every Labourer hauling and the first Farm unworked (0.14.19);
 >   every faction's workers take primary-resource jobs first (0.14.24); workers sent to a spent Farm, Mill or Feeding Pit go to

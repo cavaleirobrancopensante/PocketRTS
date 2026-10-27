@@ -1050,7 +1050,7 @@ def vs(a_name, b_name, map_name):
 ## Winder adds about what a Labourer adds on a Farm; every Mainspring stores 200 Tension (winding stops at the cap); the
 ## Clock Aviary costs 150 cogs + 50 Tension. Its DRIVE rule (a building one ring away from the Clocktower or a Mainspring
 ## works at 90%, two rings 80%...) is taken at its best case (100%: the computer's presses and Works mesh with the
-## Clocktower), and its placement rules (a Works makes Jacks only beside a Mainspring) are not modelled.
+## Clocktower), and its placement rules (a Works makes Springers only beside a Mainspring) are not modelled.
 PRESETS = {
     "econ28": [("gear.press.small.crew", 6), ("gear.press.big.crew", 12), ("gear.mainspring.store", 200),
                ("buildings.cuckoo_house.cost", 150), ("buildings.cuckoo_house.tension", 50)],

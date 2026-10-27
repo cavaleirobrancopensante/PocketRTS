@@ -172,12 +172,12 @@ func _run() -> void:
 	target.cmd_hold()
 	target.max_hp = 5000.0
 	target.hp = 5000.0
-	var jk: Unit = g._add_unit(Defs.JACK, 1, _open_near(g, at + Vector2(150, 0)))
+	var jk: Unit = g._add_unit(Defs.SPRINGER, 1, _open_near(g, at + Vector2(150, 0)))
 	jk.max_hp = 5000.0
 	jk.hp = 5000.0
 	jk.cmd_attack(target)
 	step(g, 3.0)
-	check("the enemy Jack is shooting before the net", jk.shots > 0, "%d screws" % jk.shots)
+	check("the enemy Springer is shooting before the net", jk.shots > 0, "%d screws" % jk.shots)
 	# it walks off; a Netter comes and nets it
 	var nt: Unit = g._add_unit(N, 0, _open_near(g, jk.position + Vector2(-150, 30)))
 	jk.cmd_move(jk.position + Vector2(300, 0))
@@ -189,7 +189,7 @@ func _run() -> void:
 		t += 1.0 / 30.0
 		if nt.nets == 1 and fired_at < 0.0:
 			fired_at = g.clock
-	check("the Netter fired a net and it caught the Jack", nt.nets == 1 and jk.nets_taken == 1 and jk.net_t > 0.0, "%.2f s, net_t %.2f" % [t, jk.net_t])
+	check("the Netter fired a net and it caught the Springer", nt.nets == 1 and jk.nets_taken == 1 and jk.net_t > 0.0, "%.2f s, net_t %.2f" % [t, jk.net_t])
 	check("the net flew a while before it caught (visible in flight)", fired_at > 0.0 and g.clock - fired_at >= 0.1, "%.2f s" % (g.clock - fired_at))
 	var p0 := jk.position
 	jk.cmd_move(jk.position + Vector2(300, 0))          # (told to go on: it cannot)
@@ -228,6 +228,7 @@ func _run() -> void:
 	foot.cmd_hold()
 	g.camera.position = fly.position
 	check("a flyer: a ground melee unit cannot hit it in the air", fly.is_air() and not foot.can_hit(fly))
+	nt.phase = ""             # (its last net's follow-through done too: a new order no longer skips the reload, 0.14.73)
 	nt.cooldown = 0.0
 	nt.cmd_attack(fly)
 	t = 0.0

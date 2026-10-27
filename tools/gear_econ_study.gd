@@ -11,7 +11,7 @@ extends SceneTree
 ##   bo layout=<name> [minutes=10 map=greenhold seed=1]
 ##       A scripted Clockwork build order (no computer) on one base layout, the same order for every layout:
 ##       Winders all the time (one at a time, up to the crews plus a builder), a second Cog Press, a Movement Works,
-##       a Mainspring, an Escapement, a Clock Aviary, Regulators when supply runs short; then Jacks and Swifts as fast
+##       a Mainspring, an Escapement, a Clock Aviary, Regulators when supply runs short; then Springers and Swifts as fast
 ##       as cogs and Tension allow (no Clock Soldiers: the fastest tier 2 each layout allows). Layouts (where things go):
 ##         flower  everything meshes with the Clocktower where it fits; the Mainspring beside the Works, the
 ##                 Escapement and the Aviary beside the Mainspring and the Clocktower if they can
@@ -19,11 +19,11 @@ extends SceneTree
 ##         chain   the base strung outward: the second press hangs on the first, the Works on it, the Mainspring on the
 ##                 Works (away from the Clocktower: low drive), the Escapement and the Aviary round the Mainspring
 ##         split   an unplanned base: the Works in front of the Clocktower, the Mainspring behind it (they do not
-##                 mesh); a second Works by the Mainspring once Jacks need one (the Tension rule)
+##                 mesh); a second Works by the Mainspring once Springers need one (the Tension rule)
 ##         big     as flower, but the Cog Presses and the Mainspring on BIG gears with their bigger crews
 ##         twin    as flower, with a second Mainspring for the Aviary
 ##       Prints one line a minute (cogs and Tension earned, Winders, buildings, the average efficiency) and the times of
-##       the Works, the Mainspring, the Escapement at work, the first Jack and the first Swift.
+##       the Works, the Mainspring, the Escapement at work, the first Springer and the first Swift.
 ## Output: the lines on stdout (and a CSV row per run appended to user://gear_econ_study.csv). STUDY_DEBUG=1 in the
 ## environment prints why each candidate cell of the scripted placer was refused.
 
@@ -237,18 +237,18 @@ func _bo_run(lay: String) -> void:
 			_watch()
 		var st: Dictionary = g.stats[0]
 		var ae := _avg_eff(g, 0)
-		print("  %2d:00  cogs earned %5d  Tension earned %5.0f  bank %d/%.0f  Winders %d  buildings %d  eff %s  jacks %d swifts %d  %s" % [m + 1,
+		print("  %2d:00  cogs earned %5d  Tension earned %5.0f  bank %d/%.0f  Winders %d  buildings %d  eff %s  springers %d swifts %d  %s" % [m + 1,
 			int(st["gold"]), _tension_in(g, 0, counted), int(g.players[0]["gold"]), g.tension(0), g.workers(0).size(),
 			g.buildings.filter(func(b: Building) -> bool: return b.team == 0 and not b.dead and b.built).size(),
-			("%d%%" % int(round(ae * 100))) if ae >= 0.0 else "-", _count(Defs.JACK), _count(Defs.CUCKOO), _note(g)])
+			("%d%%" % int(round(ae * 100))) if ae >= 0.0 else "-", _count(Defs.SPRINGER), _count(Defs.CUCKOO), _note(g)])
 		if m + 1 in [3, 6, 10]:
-			_csv(["bo", layout, m + 1, int(st["gold"]), int(_tension_in(g, 0, counted)), g.workers(0).size(), _count(Defs.JACK), _count(Defs.CUCKOO), snappedf(ae, 0.01)])
+			_csv(["bo", layout, m + 1, int(st["gold"]), int(_tension_in(g, 0, counted)), g.workers(0).size(), _count(Defs.SPRINGER), _count(Defs.CUCKOO), snappedf(ae, 0.01)])
 	var parts: Array = []
-	for k in ["works", "spring", "esc_work", "jack", "aviary", "swift", "works2", "spring2", "springw", "springe", "spring3", "full"]:
+	for k in ["works", "spring", "esc_work", "springer", "aviary", "swift", "works2", "spring2", "springw", "springe", "spring3", "full"]:
 		if firsts.has(k):
 			parts.append("%s %d:%02d" % [k, int(firsts[k]) / 60, int(firsts[k]) % 60])
 	print("RESULT bo %s: %s" % [layout, ", ".join(parts)])
-	_csv(["bo_times", layout] + [firsts.get("works", -1), firsts.get("spring", -1), firsts.get("esc_work", -1), firsts.get("jack", -1), firsts.get("swift", -1)])
+	_csv(["bo_times", layout] + [firsts.get("works", -1), firsts.get("spring", -1), firsts.get("esc_work", -1), firsts.get("springer", -1), firsts.get("swift", -1)])
 	_dump(g)
 
 
@@ -274,13 +274,13 @@ func _watch() -> void:
 	var esc: Building = made.get("esc")
 	if esc != null and is_instance_valid(esc) and esc.built and not firsts.has("esc_work") and g.gear_net.speed_mult(esc) > 0.0:
 		firsts["esc_work"] = g.clock
-	if not firsts.has("jack") and _count(Defs.JACK) > 0:
-		firsts["jack"] = g.clock
+	if not firsts.has("springer") and _count(Defs.SPRINGER) > 0:
+		firsts["springer"] = g.clock
 	if not firsts.has("swift") and _count(Defs.CUCKOO) > 0:
 		firsts["swift"] = g.clock
 
 
-## The script's turn (twice a second): Winders, supply, the next building, then Jacks and Swifts.
+## The script's turn (twice a second): Winders, supply, the next building, then Springers and Swifts.
 func _bot() -> void:
 	var cogs := int(g.players[0]["gold"])
 	var next: Dictionary = steps[0] if not steps.is_empty() else {}
@@ -305,21 +305,21 @@ func _bot() -> void:
 		if cogs >= int(Defs.BUILDINGS[Defs.CW_SUPPLY]["cost"]):
 			_place({"k": Defs.CW_SUPPLY, "big": false, "id": "reg%d" % g.clock})
 		return
-	# tier 2: the first Jack as soon as a Works may make one, then the rest of the order; once the order is done, Jacks
+	# tier 2: the first Springer as soon as a Works may make one, then the rest of the order; once the order is done, Springers
 	# and Swifts all the time. The split layout builds a second Works by the Mainspring when its first Works may not
-	# make Jacks (the Tension rule: no Mainspring meshes with it) once the Escapement works.
+	# make Springers (the Tension rule: no Mainspring meshes with it) once the Escapement works.
 	var works: Array = _built(g, 0, Defs.CW_WORKS)
 	var stuck: bool = not next.is_empty() and _no_spot.has(String(next["id"]))
-	if steps.is_empty() or _count(Defs.JACK) == 0 or stuck:
+	if steps.is_empty() or _count(Defs.SPRINGER) == 0 or stuck:
 		for w in works:
-			if w.queue.is_empty() and g.can_train(w, Defs.JACK) == "":
-				g.train(w, Defs.JACK)
+			if w.queue.is_empty() and g.can_train(w, Defs.SPRINGER) == "":
+				g.train(w, Defs.SPRINGER)
 		for av in _built(g, 0, Defs.CW_AIR):
 			if av.queue.is_empty() and g.can_train(av, Defs.CUCKOO) == "":
 				g.train(av, Defs.CUCKOO)
 	if firsts.has("esc_work") and not works.is_empty() and not made.has("works2") and not made.has("springw") \
 			and not steps.any(func(s: Dictionary) -> bool: return s["id"] == "works2" or s["id"] == "springw"):
-		if works.all(func(w: Building) -> bool: return g.can_train(w, Defs.JACK).contains("meshes with no Mainspring")):
+		if works.all(func(w: Building) -> bool: return g.can_train(w, Defs.SPRINGER).contains("meshes with no Mainspring")):
 			steps.push_front({"k": Defs.CW_WORKS, "big": false, "id": "works2"})
 			next = steps[0]
 			next_cost = int(Defs.BUILDINGS[next["k"]]["cost"])

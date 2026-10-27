@@ -43,9 +43,19 @@ static func _kit_save(kt):
 
 ## Units that are no more: a saved Pikeman comes back as a Musketeer.
 ## A unit kind from an older save: the Pikeman became a Musketeer (Crown rework), the
-## Gearknight a Thresher and the Bolt Automaton an Arc Thrower (Clockwork rework).
+## Gearknight a Thresher and the Bolt Automaton an Arc Thrower (Clockwork rework); the Jack is
+## the Springer (Defs.unit_kind).
 static func _kind(k: String) -> String:
-	return {"pikeman": "musketeer", "gearknight": "thresher", "bolt": "arc_thrower"}.get(k, k)
+	return {"pikeman": "musketeer", "gearknight": "thresher", "bolt": "arc_thrower"}.get(k, Defs.unit_kind(k))
+
+
+## A dictionary keyed by unit kind (kills by kind) with old kinds as today's.
+static func _kinds_keyed(by: Dictionary) -> Dictionary:
+	var out := {}
+	for k in by:
+		var nk := Defs.unit_kind(String(k))
+		out[nk] = out.get(nk, 0) + by[k] if out.has(nk) else by[k]
+	return out
 
 
 ## A soldier from a save without his kit: a Cuirassier was always armoured; a Musketeer had
@@ -114,6 +124,10 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
 		if u.net_t > 0.0:
 			ud["net"] = snappedf(u.net_t, 0.01)      # (caught in a Netter's net)
+		if u.kind == Defs.BALLISTA_KIND and u.cooldown > 0.0:
+			ud["rl"] = snappedf(u.cooldown, 0.01)    # (a Spring Ballista's spring still being wound)
+		if u.crew_of != null and ids.has(u.crew_of):
+			ud["crew"] = ids[u.crew_of]              # (a Winder crewing a Spring Ballista: scripts/ballista.gd)
 		if u.coat != "":
 			ud["coat"] = u.coat
 		# horses: who leads it, where it grazes; riders and guns: their horse's health, a gun's
@@ -296,10 +310,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if t < d["stats"].size():
 			var st: Dictionary = d["stats"][t]
 			for k in st:
-				game.stats[t][k] = st[k]
+				game.stats[t][k] = _kinds_keyed(st[k]) if k == "kills_by" and st[k] is Dictionary else st[k]
 	for t in game.eliminated.size():
 		game.eliminated[t] = bool(d["eliminated"][t])
-	game._first_of = d.get("first_of", {})
+	game._first_of = {}
+	for fk in d.get("first_of", {}):
+		var at := String(fk).find(":")      # ("team:kind": an old kind as today's)
+		game._first_of[String(fk).left(at + 1) + Defs.unit_kind(String(fk).substr(at + 1)) if at >= 0 else fk] = d["first_of"][fk]
 	var ex := Marshalls.base64_to_raw(String(d["explored"]))
 	if ex.size() == game.explored.size():
 		game.explored = ex
@@ -427,6 +444,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if u.net_t > 0.0:
 			u.stun_t = maxf(u.stun_t, u.net_t)      # (still caught: it stays put; a flyer is down on the ground)
 			u._low = 1.0 if u.d.get("air", false) else 0.0
+		if uk == Defs.BALLISTA_KIND:
+			u.cooldown = float(ud.get("rl", 0.0))
+			u.loaded = u.cooldown <= 0.0
 		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):
 			u.coat = String(ud["coat"])      # (older saves: the coat it was just given)
 			HorseCoat.apply(u)
@@ -546,6 +566,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		var si := int(ud.get("steed", -1))
 		if si >= 0 and si < made.size() and made[si] != null:
 			u.steed = made[si]
+		var ci := int(ud.get("crew", -1))
+		if ci >= 0 and ci < made.size() and made[ci] != null and made[ci].kind == Defs.BALLISTA_KIND:
+			Ballista.take_crew(made[ci], u)       # (back on the Spring Ballista he crewed)
 	for i in units_d.size():
 		var ud: Dictionary = units_d[i]
 		var u = made[i]

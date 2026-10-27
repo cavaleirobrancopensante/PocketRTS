@@ -221,7 +221,7 @@ def align(ref, m):
 
 
 def shrink(img, scale):
-    """Box-filter downscale with premultiplied alpha, then hard alpha (tools/import_jack.py)."""
+    """Box-filter downscale with premultiplied alpha, then hard alpha (tools/import_springer.py)."""
     h, w = img.shape[:2]
     nw, nh = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
     a = img[..., 3:4].astype(np.float32) / 255.0

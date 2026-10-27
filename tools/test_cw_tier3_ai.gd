@@ -1,7 +1,7 @@
 extends SceneTree
 ## The gear-mode Clockwork COMPUTER and tier 3 (AI._tier3, AI._produce; scripts/pendulum.gd, scripts/netter.gd): a Hard
-## Clockwork with two Movement Works and a working Escapement (a Mainspring meshing with it), cogs and Tension to spare,
-## against a passive Crown. It puts ONE Works on its big gear, then mixes a few Pendulums (from that Works) and Netters
+## Clockwork with two Movement Works, a working Escapement (a Mainspring meshing with it), six Springers (the Springers come
+## first: 0.14.73), cogs and Tension to spare, against a passive Crown. It puts ONE Works on its big gear, then mixes a few Pendulums (from that Works) and Netters
 ## into its army; a Netter of its own nets the most dangerous enemy that comes in reach (a Cuirassier before a Labourer
 ## with less health left: the focus fire of AI._micro leaves the Netters to their own pick).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_tier3_ai.gd
@@ -84,6 +84,10 @@ func _run() -> void:
 	var esc: Building = _put(Defs.CW_TECH, spring) if spring else null
 	for i in 3:
 		_put(Defs.CW_SUPPLY, hall)
+	# (0.14.73: the Springers first: a Works goes on its big gear once three Springers are out and two Works may make them, or six
+	# with one, AI._tier3; six Springers stand by here)
+	for i in 6:
+		g._add_unit(Defs.SPRINGER, 0, g.cell_center(g.nearest_free(g.cell_of(hall.center() + Vector2(-120 + i * 40, 160)), 6)))
 	await physics_frame
 	g.gear_net.solve()
 	check("the computer's Escapement works (meshed with its Mainspring)", esc != null and g.gear_net.speed_mult(esc) > 0.0)
@@ -98,7 +102,7 @@ func _run() -> void:
 	var bw: Array = _mine(Defs.CW_WORKS).filter(func(b: Building) -> bool: return b.gear_big)
 	check("the small-gear Works never queued a Pendulum", _mine(Defs.CW_WORKS).all(func(b: Building) -> bool: return b.gear_big or not b.queue.has(Defs.PENDULUM)))
 	var army: Array = g.army(0)
-	var others: int = army.filter(func(u: Unit) -> bool: return not (u.kind in [Defs.JACK, Defs.PENDULUM, Defs.NETTER])).size()
+	var others: int = army.filter(func(u: Unit) -> bool: return not (u.kind in [Defs.SPRINGER, Defs.PENDULUM, Defs.NETTER])).size()
 	check("a few, not a whole army of them", _units(Defs.PENDULUM).size() <= 4 and _units(Defs.NETTER).size() <= 3,
 			"%d Pendulums, %d Netters, %d others" % [_units(Defs.PENDULUM).size(), _units(Defs.NETTER).size(), others])
 	# its Netter nets the most dangerous enemy in reach

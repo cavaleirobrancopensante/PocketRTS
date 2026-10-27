@@ -3676,7 +3676,7 @@ func refund(t: int, k: String, kit: Dictionary = {}, at: Building = null) -> voi
 
 
 ## TENSION (gear mode's Clockwork, wound by the Mainsprings: Defs.GEAR "mainspring"): what player t holds, and adding to
-## it (spending: a negative v; never below 0). Spent on the Jack and the Escapement's research (their `tension` price).
+## it (spending: a negative v; never below 0). Spent on the Springer and the Escapement's research (their `tension` price).
 func tension(t: int) -> float:
 	return float(players[t].get("tension", 0.0))
 
@@ -3805,7 +3805,7 @@ func can_train(b: Building, key: String) -> String:
 	var reqs: Array = u["requires"] if u.get("requires", "") is Array else ([u["requires"]] if u.get("requires", "") != "" else [])
 	for req in reqs:
 		if Defs.gear_mode and Defs.TENSION_USERS.has(req):
-			# (tier 2: the Jack needs an Escapement that WORKS: linked and meshed with a Mainspring)
+			# (tier 2: the Springer needs an Escapement that WORKS: linked and meshed with a Mainspring)
 			var tp := tension_user_problem(b.team, req)
 			if tp != "":
 				return tp
@@ -5669,6 +5669,8 @@ func separation(u: Unit) -> Vector2:
 					continue
 				if o == u.steed or u == o.steed:
 					continue           # (a man beside his own horse: he got off there, close by it)
+				if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
+					continue           # (a Spring Ballista and its crew: they stand pressed to it, scripts/ballista.gd)
 				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
 					continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
 				if u_mill and o._mill_in and o.home_mine == u.home_mine:
@@ -6118,7 +6120,7 @@ func tower_zap(b: Building, e: Unit) -> void:
 	Sfx.play_any(["combat/tesla_attack", "zap"], b.global_position)
 
 
-## The Ratchet Turret's screw (RatchetTurret, Defs.TURRET), and the Jack's (Defs.JACK_SHOT: `sc` / `ms` scale the screw
+## The Ratchet Turret's screw (RatchetTurret, Defs.TURRET), and the Springer's (Defs.SPRINGER_SHOT: `sc` / `ms` scale the screw
 ## and its burst, `speed` its flight): the damage lands now (like a musket ball); the screw flies from the barrel or drill
 ## tip `from`, turned toward the target and spinning (its 4 frames looping), a muzzle burst at the tip and sparks where it
 ## hits. Ground and air alike. Returns the screw (tests watch it fly).
@@ -6137,7 +6139,7 @@ func screw_shot(src: Entity, e: Entity, dmg: float, from: Vector2, _dir: Array, 
 		var mz := spawn_effect("screw_muzzle", from, 1.2)
 		# (the burst's brass rings, 0.366 of its cell from the left, sit on the barrel tip; the smoke blows forward)
 		mz.offset = Vector2(float(ArtData.EFFECTS["screw_muzzle"]["size"].x) * (0.5 - 0.366), 0.0)
-		mz.rotation = barrel.angle() if barrel != Vector2.ZERO else ang      # (along a raised barrel: the Jack shooting up)
+		mz.rotation = barrel.angle() if barrel != Vector2.ZERO else ang      # (along a raised barrel: the Springer shooting up)
 		mz.scale = Vector2(ms, ms)
 		mz.z_index = 6
 	var s := Shot.new()
@@ -6606,7 +6608,7 @@ func ground_shot_fx(u: Unit, to: Vector2) -> void:
 			s.scale = Vector2(0.45, 0.45)
 			s.impact = "smoke"
 			s.impact_scale = 0.35
-			s.launch(self, "bolt" if u.kind == Defs.JACK and ArtData.EFFECTS.has("bolt") else "ball", from, to, 950.0)
+			s.launch(self, "bolt" if u.kind == Defs.SPRINGER and ArtData.EFFECTS.has("bolt") else "ball", from, to, 950.0)
 			Sfx.play_any(["combat/%s_attack" % u.kind, "combat/musketeer_attack", "musket"], u.global_position)
 
 
@@ -6623,6 +6625,8 @@ func bombard_shot(u: Unit, p: Vector2, dmg: float) -> void:
 			mortar_shot(u, p, dmg)
 		"spore_mother":
 			blob_shot(u, p, dmg)
+		"ballista":
+			Ballista.fire_at(u, p, dmg)       # (the bolt through the spot and on: scripts/ballista.gd)
 	var told := {}
 	for o in units_near(p, float(u.d.get("splash", 40.0)) + 40.0):
 		if not o.dead and not o.off_field and hostile(o.team, u.team) and not told.has(o.team):
@@ -6811,11 +6815,11 @@ func spell_problem(u: Unit, spell: String) -> String:
 ## Units that can't ride just walk over.
 func load_order(riders: Array, balloons: Array) -> void:
 	if net_forward(self, "load_order", [riders, balloons]): return
-	var bs: Array = balloons.filter(func(b) -> bool: return b is Unit and is_instance_valid(b) and not b.dead and b.kind == "balloon")
+	var bs: Array = balloons.filter(func(b) -> bool: return b is Unit and is_instance_valid(b) and not b.dead and Unit.carrier(b.kind))
 	if bs.is_empty():
 		return
 	var why := ""
-	var men: Array = riders.filter(func(u) -> bool: return u is Unit and is_instance_valid(u) and not u.dead and u.kind != "balloon")
+	var men: Array = riders.filter(func(u) -> bool: return u is Unit and is_instance_valid(u) and not u.dead and not Unit.carrier(u.kind) and u.crew_of == null)
 	men.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(bs[0].position) < b.position.distance_squared_to(bs[0].position))
 	for u in men:
 		var best: Unit = null
@@ -6823,7 +6827,7 @@ func load_order(riders: Array, balloons: Array) -> void:
 		for b in bs:
 			if not u.can_board(b) or b.room() <= 0:
 				continue
-			if not _clear_at(b.position, 8.0, b.team):
+			if b.kind == "balloon" and not _clear_at(b.position, 8.0, b.team):
 				why = "The balloon must hover over open ground to take men aboard."
 				continue
 			var dd: float = u.position.distance_to(b.position)
@@ -6831,9 +6835,12 @@ func load_order(riders: Array, balloons: Array) -> void:
 				bd = dd
 				best = b
 		if best:
-			if best.order != "idle" and best.order != "hold" and best.incoming.is_empty():
-				best.cmd_stop()        # it stops where it is and comes down
+			if best.kind == "balloon" and best.order != "idle" and best.order != "hold" and best.incoming.is_empty():
+				best.cmd_stop()        # it stops where it is and comes down (a Ballista rolls on: its crew catch it up)
 			u.cmd_board(best)
+		elif bs.all(func(b: Unit) -> bool: return b.kind == Defs.BALLISTA_KIND):
+			if why == "":
+				why = "Only Winders crew a Spring Ballista." if u.kind != "winder" else "The Ballista's crew is full (%d Winders and its own)." % int(Defs.BALLISTA["crew"])
 		elif not (Defs.DROPSHIP["kinds"] as Array).has(u.kind):
 			if why == "":
 				why = "Only Musketeers and Labourers fit in the basket."
@@ -6850,6 +6857,9 @@ func unload_order(list: Array, p: Vector2, here := false) -> void:
 	for b in list:
 		if b is Unit and not b.dead and b.kind == "balloon" and not b.passengers.is_empty():
 			b.cmd_unload(b.position if here else p)
+			any = true
+		elif b is Unit and not b.dead and b.kind == Defs.BALLISTA_KIND and not Ballista.crew_of(b).is_empty():
+			b.cmd_unload(b.position)      # (its crew step off where they stand)
 			any = true
 	if not any and not list.is_empty() and list[0] is Unit:
 		tell(list[0].team, "Nobody aboard.")
@@ -6903,12 +6913,12 @@ func drop_spots(at: Vector2, n: int, t: int) -> Array:
 	return out
 
 
-## The selected casters: the nearest one that can cast goes and does it. ("jump": every selected Jack that can jumps, each
-## to its own spot of the group round p: Jack.jump_order.)
+## The selected casters: the nearest one that can cast goes and does it. ("jump": every selected Springer that can jumps, each
+## to its own spot of the group round p: Springer.jump_order.)
 func cast_order(list: Array, spell: String, p: Vector2) -> void:
 	if net_forward(self, "cast_order", [list, spell, p]): return
 	if spell == "jump":
-		var why := Jack.jump_order(self, list, p)
+		var why := Springer.jump_order(self, list, p)
 		if why != "" and not list.is_empty() and list[0] is Unit:
 			tell(list[0].team, why)
 		return
@@ -8631,7 +8641,9 @@ func set_selection(list: Array) -> void:
 			e.selected = false
 	selection = []
 	for e in list:
-		if is_instance_valid(e) and not e.dead and not e.off_field:
+		if e is Unit and is_instance_valid(e) and (e as Unit).crew_of != null and is_instance_valid((e as Unit).crew_of):
+			e = (e as Unit).crew_of      # (a Spring Ballista's crewman is part of it: picking him picks the machine)
+		if is_instance_valid(e) and not e.dead and not e.off_field and not selection.has(e):
 			e.selected = true
 			selection.append(e)
 
@@ -8896,7 +8908,7 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	if _horse_command(us, e, p, queued):
 		return
 	# infantry sent to one of our balloons: they climb in
-	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
+	if e is Unit and Unit.carrier(e.kind) and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
 		load_order(us, [e])
 		_ping(p, Color(0.4, 1, 0.4))
 		return
@@ -8975,7 +8987,7 @@ func _smart_choice(us: Array, p: Vector2, force_move: bool) -> Array:
 			return [Color(0.9, 0.8, 0.5), "other"]
 		if e is Unit and Defs.HARNESSED.has(e.kind) and e.team_room() and us.any(func(u: Unit) -> bool: return not u.led.is_empty()):
 			return [Color(0.9, 0.8, 0.5), "other"]
-	if e is Unit and e.kind == "balloon" and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
+	if e is Unit and Unit.carrier(e.kind) and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_board(e)):
 		return [Color(0.4, 1, 0.4), "other"]
 	if e is Building and e.team == us[0].team and e.built and Defs.crew_cap(e.d) > 0 \
 			and us.any(func(u: Unit) -> bool: return u.can_gather()):
@@ -9258,7 +9270,7 @@ func labourers(t: int) -> Array:
 func workers(t: int) -> Array:
 	var out: Array = []
 	for u in units:
-		if u.team == t and not u.dead and u.is_worker() and u.aboard == null and not u.is_hauler():
+		if u.team == t and not u.dead and u.is_worker() and u.aboard == null and u.crew_of == null and not u.is_hauler():
 			out.append(u)
 	return out
 
@@ -9691,8 +9703,8 @@ func _draw_overlay_all() -> void:
 	_draw_queues()
 	_draw_hover()
 	if controls and controls.mode == "cast" and controls.cast_spell == "jump":
-		# a Jack's JUMP target: its reach, where it would land and the arc (over the rings and buildings, so it reads)
-		Jack.draw_target(self, overlay, overlay.get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position())
+		# a Springer's JUMP target: its reach, where it would land and the arc (over the rings and buildings, so it reads)
+		Springer.draw_target(self, overlay, overlay.get_global_mouse_position() if Settings.pc() else camera.get_screen_center_position())
 	if controls and controls.mode == "patrol":
 		# choosing the patrol point: show the walk there and back from each selected unit
 		var mp := overlay.get_global_mouse_position()

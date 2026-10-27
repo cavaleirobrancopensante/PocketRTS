@@ -19,7 +19,7 @@ jitter; attack and death frames move on purpose, so every frame of a row gets th
 PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): the Clock Soldier is ALL
 BRASS BUT ITS HEAD. Its round body, painted red, is repainted along its own brass ramp, and its blue shoulders and knee
 gems go brass too (cw_palette.SOLDIER_HEAD_ONLY); its HEAD (the cap with the crown spike on top of the body) alone is
-player colour, so it reads apart from the Jack (body and shoulders in player colour); the clock face stays white. The cap is found in every frame: on the idle frame of each direction
+player colour, so it reads apart from the Springer (body and shoulders in player colour); the clock face stays white. The cap is found in every frame: on the idle frame of each direction
 by its place (on the middle of the body's top), then laid on every frame of that direction (turned, scaled and shifted
 around the body's middle until its colours and shading match: cw_palette.find_cap). The attack and death sheets use
 their own first (upright) frame's cap as the template for the rest of their row (the same drawing). In the death the
@@ -54,8 +54,8 @@ EAST_OF = {'sw': 'se', 'w': 'e', 'nw': 'ne'}
 NAVY = np.array([0, 22, 48])
 TOL = 40
 S_IDLE_H = 42.0        # px: the S idle's height in game. The owner (2026-10-26): 59 was too big; about 30% smaller, by a
-                       # Musketeer (35), a Labourer (32) and a Netter (45), and well under the Jack (59, its own size in
-                       # tools/import_jack.py), which helps tell the two apart
+                       # Musketeer (35), a Labourer (32) and a Netter (45), and well under the Springer (59, its own size in
+                       # tools/import_springer.py), which helps tell the two apart
 ICON_SCALE = 0.359     # the card portrait's own scale (the size the unit had until 0.14.32: the icon keeps its detail)
 # The death's tip, as the code guide drew it (tools/soldier_guide/death.py FALL, ANG; ChatGPT's clean-up kept the poses):
 # per row the side it falls to (-1: its top goes left), per frame the angle; the cap is searched WINDOW degrees round it.

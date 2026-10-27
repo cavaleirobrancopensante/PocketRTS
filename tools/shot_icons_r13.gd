@@ -7,7 +7,7 @@ var out := "/tmp/shots_icons"
 var fac := "clockwork"
 
 const PICKS := {
-	"clockwork": [["clock_soldier", "jack", "cuckoo"], ["jack"], ["cuckoo"], ["winder"], ["winder", "build"], ["@cog_press"]],
+	"clockwork": [["clock_soldier", "springer", "cuckoo"], ["springer"], ["cuckoo"], ["winder"], ["winder", "build"], ["@cog_press"]],
 	"brood": [["skywing"], ["mist_toad"], ["grub"], ["grub", "build"], ["spore_mother"], ["raptor", "spitter"]],
 	"crown": [["cannon"], ["balloon"], ["mortar"], ["powder_wagon"], ["labourer", "build"], ["musketeer", "cannon", "mortar", "balloon", "powder_wagon", "horseman"]],
 }

@@ -95,7 +95,7 @@ const AI_SHOOTERS := 2              # this many raise the shields
 const AI_HOLD := 2.5                # s between two switches of one soldier (no flicker)
 
 
-## Is this enemy a shooter the shield is for (musketeers, spitters, jacks ...; not guns' splash)?
+## Is this enemy a shooter the shield is for (musketeers, spitters, springers ...; not guns' splash)?
 static func shooter(o: Unit) -> bool:
 	return not o.dead and not o.off_field and not o.is_worker() and float(o.d.get("range", 0.0)) >= 100.0 \
 			and o.kind != "cannon" and o.kind != "mortar" and o.kind != "spore_mother"

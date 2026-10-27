@@ -959,6 +959,7 @@ func _build_card() -> Array:
 				page = "build"
 				build_page = 0, true, "", ""])
 			_balloon_buttons(list, units)     # labourers can ride too
+			_ballista_buttons(list, units)    # Winders BOARD a Spring Ballista as its crew
 			if Defs.line_mode and units.any(func(u: Unit) -> bool: return u.kind == "winder" or u.kind == "work_car"):
 				list.append(["build", "LINE", func() -> void: controls.begin_line(), true, "", str(int(Defs.LINE["pipe"]["cost"])) + "/seg"])
 				list.append(["gauge", ("~ " if game.line_net.overlay_on else "") + "PRESSURE", func() -> void:
@@ -1326,6 +1327,53 @@ func _balloon_buttons(list: Array, units: Array) -> void:
 		toast("Flying to the nearest powder: the pilot hauls kegs up on a rope until the store is full." if sent > 0 else "No Powder Wagon, Mill, Barracks or Town Hall to restock from."), low, "The powder store is full.", ""])
 
 
+## The Spring Ballista's crew (scripts/ballista.gd): with Ballistas selected, LOAD CREW (the Winders selected with them climb
+## on at once; otherwise tap the Winders to take) and UNLOAD CREW (they step off where they stand); with Winders selected,
+## BOARD (they crew the nearest of your Ballistas with room). The corner shows the crew (the built-in man not counted).
+func _ballista_buttons(list: Array, units: Array) -> void:
+	var bals := units.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND)
+	if not bals.is_empty():
+		var n := 0
+		var cap := 0
+		for b in bals:
+			n += Ballista.crew_of(b).size()
+			cap += int(Defs.BALLISTA["crew"])
+		var count := "%d/%d" % [n, cap]
+		var room: bool = bals.any(func(u: Unit) -> bool: return u.room() > 0)
+		list.append(["ab_crew", "LOAD CREW", func() -> void:
+			var sel := game.selected_units()
+			var bs := sel.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND)
+			var men := sel.filter(func(u: Unit) -> bool: return bs.any(func(b: Unit) -> bool: return u.can_board(b)))
+			if not men.is_empty():
+				game.load_order(men, bs)
+				toast("The Winders walk over and take their places: each pushes and cranks.")
+			else:
+				controls.mode = "load"
+				toast("Tap the Winders to take on as crew."), room, "The crew is full.", count])
+		list.append(["ab_unload", "UNLOAD CREW", func() -> void:
+			game.unload_order(game.selected_units(), Vector2.ZERO, true), n > 0, "No crew aboard (only its own man).", count])
+		return
+	var winders := units.filter(func(u: Unit) -> bool: return u.kind == "winder")
+	if winders.is_empty():
+		return
+	var mine: Array = game.units.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND and u.team == game.human and not u.dead)
+	if mine.is_empty():
+		return
+	var free: bool = mine.any(func(b: Unit) -> bool: return b.room() > 0)
+	list.append(["ab_crew", "BOARD", func() -> void:
+		var ws := game.selected_units().filter(func(u: Unit) -> bool: return u.kind == "winder")
+		if ws.is_empty():
+			return
+		var c := Vector2.ZERO
+		for w in ws:
+			c += w.position
+		c /= ws.size()
+		var bs: Array = game.units.filter(func(u: Unit) -> bool: return u.kind == Defs.BALLISTA_KIND and u.team == game.human and not u.dead and u.room() > 0)
+		bs.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(c) < b.position.distance_squared_to(c))
+		game.load_order(ws, bs)
+		toast("They crew your nearest Spring Ballista."), free, "Every Ballista's crew is full.", ""])
+
+
 ## Left edge of the i-th of n passenger icons on a balloon's card (top right, clear of the
 ## close button).
 func _pass_icon_x(r: Rect2, n: int, i: int) -> float:
@@ -1335,6 +1383,7 @@ func _pass_icon_x(r: Rect2, n: int, i: int) -> float:
 ## Crown abilities for the selected soldiers. Each button switches all of that kind.
 func _ability_buttons(list: Array, units: Array) -> void:
 	_balloon_buttons(list, units)
+	_ballista_buttons(list, units)
 	# (Musketeers pick musket or bayonet by themselves: no button)
 	# spells: pick the spot on the map; the nearest caster that can goes and does it
 	var callers := units.filter(func(u: Unit) -> bool: return u.kind == "stormcaller")
@@ -1353,22 +1402,22 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_miasma", "MIASMA", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "miasma", ok, why, ""])
-	# Jack: JUMP (a spot): every selected Jack that can leaps there (Jack.jump_order); the corner shows the spring's wind-back
-	var jacks := units.filter(func(u: Unit) -> bool: return u.kind == Defs.JACK)
-	if not jacks.is_empty():
-		var ready_n: int = jacks.filter(func(u: Unit) -> bool: return Jack.ready_problem(u) == "").size()
-		var jwhy := "" if ready_n > 0 else Jack.ready_problem(jacks[0])
+	# Springer: JUMP (a spot): every selected Springer that can leaps there (Springer.jump_order); the corner shows the spring's wind-back
+	var springers := units.filter(func(u: Unit) -> bool: return u.kind == Defs.SPRINGER)
+	if not springers.is_empty():
+		var ready_n: int = springers.filter(func(u: Unit) -> bool: return Springer.ready_problem(u) == "").size()
+		var jwhy := "" if ready_n > 0 else Springer.ready_problem(springers[0])
 		var cdl := INF
-		for u in jacks:
+		for u in springers:
 			if ready_n == 0 and u.jump.is_empty():
 				cdl = minf(cdl, u.jump_cd)          # (none ready: the soonest one's wind-back)
 		if cdl == INF:
 			cdl = 0.0
 		var up := game.has_tech(game.human, "high_leap")
 		_tip_for["JUMP"] = ["Jump", "Tap where: after a short crouch the Springer leaps up to %d tiles along an arc (each Springer selected, to its own spot of the group). Flat ground and down a cliff any time; %s Not onto water, cliffs or buildings. It cannot shoot in the air; the spring winds back in %d s." % [
-			int(round(float(Defs.JACK_JUMP["range"]) / Defs.TILE)),
+			int(round(float(Defs.SPRINGER_JUMP["range"]) / Defs.TILE)),
 			"UP onto high ground too, where you can see (HIGH LEAP)." if up else "UP onto high ground once HIGH LEAP is researched at the Escapement (and only where you can see).",
-			int(Defs.JACK_JUMP["cooldown"])]]
+			int(Defs.SPRINGER_JUMP["cooldown"])]]
 		list.append(["ab_jump", "JUMP", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "jump", ready_n > 0, jwhy, ("%ds" % int(ceil(cdl))) if ready_n == 0 and cdl > 0.0 else ""])
@@ -1426,7 +1475,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 	var sacs := units.filter(func(u: Unit) -> bool: return u.kind == "bloater")
 	if not sacs.is_empty():
 		var hold: bool = sacs.any(func(u: Unit) -> bool: return u.mode != "hold")
-		list.append(["ab_hold_gas", "HOLD GAS" if hold else "SPIT", func() -> void:
+		list.append(["ab_hold_gas" if hold else "ab_spit", "HOLD GAS" if hold else "SPIT", func() -> void:     # (SPIT: its own picture)
 			for u in game.selected_units():
 				if u.kind == "bloater":
 					u.set_hold_gas(hold), true, "", ""])
@@ -2743,11 +2792,13 @@ func _draw_panel(font: Font) -> void:
 					info = "Hunts flyers: it pecks them up close; it cannot touch the ground. Research TICKING OWL at a Clock Aviary to rebuild it into a Ticking Owl."
 			elif uu.kind == Defs.OWL:
 				info = "Swoops on units with its talons; drops its weight as a bomb on buildings. It cannot hit flyers."
-			elif uu.kind == Defs.JACK:
+			elif uu.kind == Defs.SPRINGER:
 				var jn := "In the air." if not uu.jump.is_empty() else ("JUMP ready" if uu.jump_cd <= 0.0 else "JUMP in %d s" % int(ceil(uu.jump_cd)))
 				info = jn + (" · HIGH LEAP: it can jump up onto high ground it can see." if game.has_tech(uu.team, "high_leap") else " · Flat and down only (HIGH LEAP at the Escapement: up too).")
 			elif uu.kind == Defs.NETTER:
 				info = Netter.card_line(uu)
+			elif uu.kind == Defs.BALLISTA_KIND:
+				info = Ballista.card_line(uu)
 			elif uu.kind == Defs.PENDULUM:
 				info = "Its blade cuts every enemy in the arc in front of it (never your own units). It cannot reach flyers."
 			elif uu.kind == "tesla_cart":
@@ -3174,7 +3225,7 @@ func _unit_icon(e: Entity) -> Texture2D:
 ## gets the button as an order behind his move or attack, and runs it when he gets there
 ## (the button works on the selection, so it runs with just that man selected).
 const SHIFT_QUEUE := ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch", "horse_harness",
-	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
+	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_spit", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
 	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice", "ab_shield"]
 
 
@@ -3476,6 +3527,9 @@ const CMD_TIPS := {
 	"LOAD": "Then tap Musketeers or Labourers (4 at most): they climb in. Men selected with the balloon climb in at once.",
 	"UNLOAD": "Then pick where to drop them: the balloon flies there and lets everyone off.",
 	"DROP HERE": "Let everyone off right below the balloon.",
+	"LOAD CREW": "Then tap Winders (4 at most): they crew the Spring Ballista, each +10% reload and move speed. Winders selected with it climb on at once.",
+	"UNLOAD CREW": "Its crew step off where they stand (its own built-in Winder stays).",
+	"BOARD": "These Winders crew your nearest Spring Ballista with room: they push it and crank it (each +10% reload and move speed), and can be shot.",
 	"RESTOCK": "Fly to the nearest powder (Wagon, Mill, Barracks or Hall) and haul kegs up until the 40-shot store is full.",
 	"ATTACK GROUND": "Then click a spot on the ground (in the fog too), or hold and drag a line to share it out among them: they keep attacking it until you give another order. Bodies have health and rot, faster the longer they lie; hitting them speeds that up, and a body brought to 0 is torn up: the Brood can't harvest it, a Missionary can't raise it (yours too). Guns, mortars and Spore Mothers blast them; shooters shoot along the line; melee units and workers walk up and strike them (workers slowly).",
 }

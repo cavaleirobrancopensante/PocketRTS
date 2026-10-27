@@ -2,7 +2,7 @@ extends SceneTree
 ## A unit's OWN west views (Unit.WEST_OF; owner, 2026-10-27: the Clock Soldier's sword is always in its right hand, so its
 ## west views cannot be the east ones mirrored). A Clock Soldier facing SW, W and NW draws its own sw / w / nw strip
 ## UNFLIPPED, in every animation it has (idle, walk, attack, death), with the east strip's frame count; facing SE, E and NE
-## it draws the east strips as before. A unit with no west files (the Jack, a Musketeer) still mirrors SE, E and NE.
+## it draws the east strips as before. A unit with no west files (the Springer, a Musketeer) still mirrors SE, E and NE.
 ## Per-view tables keyed by the east views read the east twin and mirror it (Unit.view_entry / view_mirror), and the
 ## animation viewer shows the own strips unflipped (no "*").
 ##   godot --headless --fixed-fps 30 --script res://tools/test_west_views.gd
@@ -45,7 +45,7 @@ func _run() -> void:
 				"%s vs %s" % [fr.get(a + "_" + w, "none"), fr.get(a + "_" + e, "none")])
 	var at := U.hall(g, 0).position + Vector2(0, 160)
 	var cs: Unit = g._add_unit("clock_soldier", 0, at)
-	var jack: Unit = g._add_unit("jack", 0, at + Vector2(60, 0))
+	var springer: Unit = g._add_unit("springer", 0, at + Vector2(60, 0))
 	var musk: Unit = g._add_unit("musketeer", 1, at + Vector2(-60, 0)) if Defs.UNITS.has("musketeer") else null
 	await process_frame
 	for a in ["idle", "walk", "attack", "death"]:
@@ -61,7 +61,7 @@ func _run() -> void:
 				check("  ... and counts as a west view (view_dir %s, view_mirrored)" % Unit.EAST_OF[v],
 					cs.view_dir() == Unit.EAST_OF[v] and cs.view_mirrored())
 	# a unit without west files mirrors the east strips, as before
-	for u in [jack, musk]:
+	for u in [springer, musk]:
 		if u == null:
 			continue
 		for o in 8:
@@ -79,11 +79,11 @@ func _run() -> void:
 	check("view_mirror: and mirrors it", cs.view_mirror(tab))
 	var tab2 := {"e": Vector2(10, -20), "w": Vector2(-7, -21)}
 	check("view_entry: a table with a W key uses it unmirrored", cs.view_entry(tab2, Vector2.ZERO) == Vector2(-7, -21) and not cs.view_mirror(tab2))
-	_face(jack, 4, "idle")
-	check("view_mirror is false for a flipped east strip (the sprite's flip does it)", not jack.view_mirror(tab) and jack.view_mirrored())
-	# the animation viewer: own west strips are not marked mirrored, the Jack's are
+	_face(springer, 4, "idle")
+	check("view_mirror is false for a flipped east strip (the sprite's flip does it)", not springer.view_mirror(tab) and springer.view_mirrored())
+	# the animation viewer: own west strips are not marked mirrored, the Springer's are
 	check("anim viewer: the soldier's SW is its own", not AnimViewer.mirrored("clock_soldier", "walk", "sw") and AnimViewer.strip_frames("clock_soldier", "walk", "sw") == int(fr["walk_sw"]))
-	check("anim viewer: the Jack's SW is SE mirrored", AnimViewer.mirrored("jack", "idle", "sw") and AnimViewer.strip_frames("jack", "idle", "sw") == int(ArtData.UNITS["jack"]["frames"]["idle_se"]))
+	check("anim viewer: the Springer's SW is SE mirrored", AnimViewer.mirrored("springer", "idle", "sw") and AnimViewer.strip_frames("springer", "idle", "sw") == int(ArtData.UNITS["springer"]["frames"]["idle_se"]))
 	# the strips: frames the cell's size
 	var cell: Vector2i = ArtData.UNITS["clock_soldier"]["cell"]
 	for a in ["idle", "walk", "attack", "death"]:

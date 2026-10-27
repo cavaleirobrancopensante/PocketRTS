@@ -336,7 +336,7 @@ The Clockwork's own commands (now Crown pictures, sprite crops or borrowed):
 
 Portraits (the steel portrait frame, a bust or three-quarter figure like `musketeer.png`; now frameless sprite crops):
 
-33. `assets/icons/clock_soldier.png`, 34. `assets/icons/jack.png`, 35. `assets/icons/cuckoo.png` (the Swift),
+33. `assets/icons/clock_soldier.png`, 34. `assets/icons/springer.png`, 35. `assets/icons/cuckoo.png` (the Swift),
 36. `assets/icons/ticking_owl.png`.
 
 The Clockwork's coming roster:

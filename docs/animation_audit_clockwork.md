@@ -65,7 +65,7 @@ strips and the Pendulum's swings (fix_specks_clock_soldier.gif, fix_specks_pendu
 
 ## What was changed in the game (0.14.55)
 
-- tools/import_jack.py: after the shrink, every idle frame, and the first frame of each attack strip (the recoil kept),
+- tools/import_springer.py: after the shrink, every idle frame, and the first frame of each attack strip (the recoil kept),
   is moved sideways so its foot plate's middle sits on the anchor column (align_plate). The drill tips it prints move
   with it. scripts/defs.gd JACK_SHOT "tips" updated to the new numbers (S, SE, NE, N; E did not move). The importer was
   run: walk, jump, raised arm and death came out pixel for pixel the same; idle and the attacks changed.
@@ -74,7 +74,7 @@ strips and the Pendulum's swings (fix_specks_clock_soldier.gif, fix_specks_pendu
 - tools/anim_audit/fix_clockwork.py (new, safe to run again): the speck clean-up, and the Clock Aviary's work frames
   rebuilt on the built picture (doors and bird kept from each frame). Run it again after tools/soldier_guide/shield.py or
   tools/import_tier3.py, which make the strips it cleans.
-- Tests run and passing: test_unit_walk_audit, test_west_views, test_anim_viewer, test_building_anim, test_jack_arms,
+- Tests run and passing: test_unit_walk_audit, test_west_views, test_anim_viewer, test_building_anim, test_springer_arms,
   test_cw_air, test_cw_tier2, test_clock_soldier_shield.
 
 Nothing about balance changed. Version 0.14.55, patch notes in English, Portuguese and Spanish.
@@ -296,8 +296,8 @@ The foot plate stays in the same spot in every frame of a row except where the h
 No text, no shadows, no ground, nothing touching.
 ```
 
-Save as art/redraws/jack_hop_twin_chatgpt.png. In tools/import_jack.py point SHEETS["walk"] at it (5 rows, 6 columns,
-"foot" alignment, since a painted sheet is not on an exact grid), run python3 tools/import_jack.py and
+Save as art/redraws/jack_hop_twin_chatgpt.png. In tools/import_springer.py point SHEETS["walk"] at it (5 rows, 6 columns,
+"foot" alignment, since a painted sheet is not on an exact grid), run python3 tools/import_springer.py and
 python3 tools/anim_audit/measure_clockwork.py. Repeat the same prompt for jack_jump.png (5 x 8, name
 jack_jump_twin_chatgpt.png), jack_death_final.png (5 x 7, the arms still come off as they do now) and
 art/redraws/jack_attack_up_body.png (5 x 6: the raised arm stays a launcher, the other arm becomes a launcher too).

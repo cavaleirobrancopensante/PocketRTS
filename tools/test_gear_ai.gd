@@ -5,7 +5,7 @@ extends SceneTree
 ## (no crash or stall is the test; the Clockwork may lose).
 ## Checks: it runs Cog Presses with Winders on them and earns cogs, every building it finishes is linked (never unlinked for
 ## long), nothing is left half-placed for ages, it keeps Winders and keeps spending. Tier 2 is reported (a NOTE line: its
-## Mainspring, Escapement, Jacks; a passive Crown usually falls first, against vs:crown minutes:11 it gets there) and every Escapement it
+## Mainspring, Escapement, Springers; a passive Crown usually falls first, against vs:crown minutes:11 it gets there) and every Escapement it
 ## finishes must mesh with a Mainspring.
 var main: Node
 var t := 0.0
@@ -74,7 +74,7 @@ func _mine(kind := "") -> Array:
 	return g.buildings.filter(func(b: Building) -> bool: return b.team == 0 and not b.dead and (kind == "" or b.kind == kind))
 
 
-var _jacks_seen := {}
+var _springers_seen := {}
 var _air_seen := {}             # Swifts (and the Owls they became) it made
 var _owls_seen := {}
 var _kinds_seen := {}           # every kind of unit it had (Defs.retired: none of the old roster)
@@ -85,8 +85,8 @@ func _watch() -> void:
 	for u in g.units:
 		if u.team == 0:
 			_kinds_seen[u.kind] = true
-		if u.team == 0 and u.kind == Defs.JACK:
-			_jacks_seen[u.get_instance_id()] = true
+		if u.team == 0 and u.kind == Defs.SPRINGER:
+			_springers_seen[u.get_instance_id()] = true
 		if u.team == 0 and (u.kind == Defs.CUCKOO or u.kind == Defs.OWL):
 			_air_seen[u.get_instance_id()] = true
 		if u.team == 0 and u.kind == Defs.OWL:
@@ -160,9 +160,9 @@ func _run() -> void:
 	# tier 2 (it may not get there before the passive Crown falls): reported; an Escapement it built must mesh with a Mainspring
 	var esc_n := _mine(Defs.CW_TECH).filter(func(b: Building) -> bool: return b.built).size()
 	var working := _mine(Defs.CW_TECH).filter(func(b: Building) -> bool: return b.built and g.gear_net.speed_mult(b) > 0.0).size()
-	print("NOTE  tier 2 at %d:%02d: %d Mainspring(s), %d Escapement(s) built (%d working), %d Jacks trained, %d alive, Tension %d, High Leap %s" % [
-		int(g.clock) / 60, int(g.clock) % 60, _mine("mainspring").size(), esc_n, working, _jacks_seen.size(),
-		g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == Defs.JACK and not u.dead).size(), int(g.tension(0)), str(g.has_tech(0, "high_leap"))])
+	print("NOTE  tier 2 at %d:%02d: %d Mainspring(s), %d Escapement(s) built (%d working), %d Springers trained, %d alive, Tension %d, High Leap %s" % [
+		int(g.clock) / 60, int(g.clock) % 60, _mine("mainspring").size(), esc_n, working, _springers_seen.size(),
+		g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == Defs.SPRINGER and not u.dead).size(), int(g.tension(0)), str(g.has_tech(0, "high_leap"))])
 	check(esc_n == working or (vs != "passive" and g.over), "every Escapement it built meshes with a Mainspring (%d of %d)" % [working, esc_n])
 	# only the rebuilt army (owner, 2026-10-26: Defs.retired): no Assembly Works, no prototype unit, ever
 	var old: Array = []

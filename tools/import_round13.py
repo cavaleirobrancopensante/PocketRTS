@@ -2,7 +2,7 @@
 """Round 13 icons (2026-10-27): the ChatGPT sheets for the TO DRAW list of
 docs/command_icons_audit.md, in art/ui/icons3/ (names in reading order, row by row):
 
-  portraits_clockwork_a.png  2x2, steel portrait frames: clock_soldier, jack, cuckoo (the Swift), ticking_owl
+  portraits_clockwork_a.png  2x2, steel portrait frames: clock_soldier, springer, cuckoo (the Swift), ticking_owl
   portraits_clockwork_b.png  3+2: pendulum, netter, winder, spring_catapult, great_winder
   commands_crown.png         3x2, steel: ab_bombard, horse_team, more, ab_restock, ab_auto_refit, ab_mortar_deploy
   commands_clockwork.png     3x3, bronze: back, cancel, demolish, (hold: turned down, redrawn later),
@@ -42,7 +42,7 @@ import import_round11 as r  # noqa: E402
 
 SRC = "art/ui/icons3"
 STEEL = {
-    "portraits_clockwork_a": ["clock_soldier", "jack", "cuckoo", "ticking_owl"],
+    "portraits_clockwork_a": ["clock_soldier", "springer", "cuckoo", "ticking_owl"],
     "portraits_clockwork_b": ["pendulum", "netter", "winder", "spring_catapult", "great_winder"],
     "commands_crown": ["ab_bombard", "horse_team", "more", "ab_restock", "ab_auto_refit", "ab_mortar_deploy"],
 }
@@ -56,6 +56,10 @@ BRONZE = {
     "commands_brood_b": ("brood", ["work", "more", "ab_tongue", "ab_take_off", "ab_spit", "ab_bombard"]),
     # the HOLD redraws (two versions each, the owner picked one): the Clockwork's plain blued-steel arrow
     "hold_clockwork": ("clockwork", ["hold", None]),
+    # redraws (the owner's ChatGPT answers, 2026-10-27; they replace the sheets' pictures above): a DEMOLISH that can't
+    # be taken for the Brood BUILD (a talon striking down on a split mound), SPIT drawn with the Bloater
+    "brood_demolish_2": ("brood", ["demolish"]),
+    "brood_spit_2": ("brood", ["ab_spit"]),
 }
 # Brood / Clockwork icons ChatGPT drew in the Crown's steel frame: the picture inside the steel frame's black
 # line (like the steel sheets), then set in the faction's frame like the bronze ones
@@ -71,7 +75,7 @@ CMDS = ["move", "attack", "stop", "build", "gather", "repair"]
 # Portrait frames drawn taller than wide: (share of the excess cropped, where: 0 top .. 1 bottom);
 # the rest is padded with the picture's own ground (round 11's FIT)
 r.FIT.update({
-    "clock_soldier": (0.6, 0.3), "jack": (0.6, 0.3), "cuckoo": (0.6, 0.5), "ticking_owl": (0.6, 0.4),
+    "clock_soldier": (0.6, 0.3), "springer": (0.6, 0.3), "cuckoo": (0.6, 0.5), "ticking_owl": (0.6, 0.4),
     "pendulum": (0.4, 0.4), "winder": (0.6, 0.4),
 })
 

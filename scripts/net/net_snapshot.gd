@@ -18,9 +18,10 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 	"cocoon", "coat", "armoured", "kills", "art", "powder", "wind", "max_hp", "off_field", "horse_hp", "harnessed",
 	"topter_bat", "courier", "supplying", "auto_repair", "hold_fire", "pistol", "bayonet", "pouch", "carry_empty",
 	"gas", "spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
-	"owl_t", "net_t", "arm", "shield_up", "shield_t"]       # (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
-	# launcher a Jack fires now, so a guest plays that arm's strip)
-const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target"]
+	"owl_t", "net_t", "arm", "shield_up", "shield_t", "loaded"]       # (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
+	# launcher a Springer fires now, so a guest plays that arm's strip; a Spring Ballista's bolt in or not: loaded or fired, its crew
+	# cranking)
+const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target", "crew_of"]      # (crew_of: a Ballista's crewman)
 const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "prod_t", "eggs", "upgrade_t", "growth",
 	"soil", "lode", "swamp_r", "batteries", "auto_train", "auto_refit", "gate_open", "locked", "vertical", "seeded",
 	"crate", "unfold_t", "max_hp", "rally", "worker_rally", "stock", "gear_big", "gear_swap_t", "gear_swap_to"]
@@ -52,7 +53,7 @@ static func unit_vals(u: Unit) -> Array:
 		u.topter_bat, u.courier, u.supplying, u.auto_repair, u.hold_fire, u.pistol, u.bayonet, u.pouch, u.carry_empty,
 		snappedf(u.gas, 0.01), snappedf(u.spin, 0.01), snappedf(u.overclock_t, 0.01), snappedf(u.cranked_t, 0.01),
 		snappedf(u.self_wind_t, 0.01), u.tongue_stage, snappedf(u.tesla_t, 0.01), snappedf(u.haul_t, 0.01), u.auto_work,
-		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm, u.shield_up, snappedf(u.shield_t, 0.01)]
+		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm, u.shield_up, snappedf(u.shield_t, 0.01), u.loaded]
 
 
 ## The building's values, in BLD_PROPS order.
@@ -153,6 +154,7 @@ static func build(s: NetSession) -> Dictionary:
 			slow.append(ref(s, u.leader))
 			slow.append(ref(s, u.aboard))
 			slow.append(ref(s, u.order_target))
+			slow.append(ref(s, u.crew_of))
 			var pas: Array = []
 			for c in u.passengers:
 				var pid := ref(s, c)
@@ -441,6 +443,9 @@ static func _set_bld_vals(b: Building, row: Array, o: int) -> void:
 	b.progress = row[o + 1]
 	b.level = row[o + 3]
 	b.queue = row[o + 4]
+	for i in b.queue.size():
+		if Defs.OLD_UNIT_KINDS.has(b.queue[i]):
+			b.queue[i] = Defs.OLD_UNIT_KINDS[b.queue[i]]      # (an old id, from an older replay)
 	b.morph_t = row[o + 5]
 	b.prod_t = row[o + 6]
 	b.eggs = row[o + 7]
@@ -450,7 +455,7 @@ static func _set_bld_vals(b: Building, row: Array, o: int) -> void:
 	b.lode = row[o + 11]
 	b.swamp_r = row[o + 12]
 	b.batteries = row[o + 13]
-	b.auto_train = row[o + 14]
+	b.auto_train = Defs.unit_kind(String(row[o + 14]))
 	b.auto_refit = row[o + 15]
 	b.gate_open = row[o + 16]
 	b.locked = row[o + 17]
@@ -482,6 +487,7 @@ static func _building_refs(s: NetSession, b: Building, row: Array) -> void:
 static func _unit_row(s: NetSession, row: Array) -> Unit:
 	var g := s.game
 	var id := int(row[0])
+	row[1] = Defs.unit_kind(String(row[1]))      # (an old id, from an older replay: Defs.OLD_UNIT_KINDS)
 	var pos: Vector2 = row[3]
 	var u = s.by_id.get(id)
 	var fresh := false
@@ -529,7 +535,7 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	if bool(row[o + 12]) and not u.armoured:
 		u.put_on_armour()
 		u.hp = float(row[4])            # (putting it on adds health of its own: the row's is the true one)
-	var art_row := String(row[o + 14])
+	var art_row := Defs.unit_kind(String(row[o + 14]))
 	if art_row != "" and art_row != u.art and ArtData.UNITS.has(art_row):
 		u.art = art_row
 	if u.coat != coat_was and u.sprite:
@@ -586,6 +592,7 @@ static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
 	u.arm = row[o + 41]
 	u.shield_up = row[o + 42]
 	u.shield_t = row[o + 43]
+	u.loaded = row[o + 44]
 
 
 static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:
@@ -599,6 +606,14 @@ static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:
 	u.leader = vals[2]
 	u.aboard = vals[3]
 	u.order_target = vals[4]
+	var co: Unit = vals[5] as Unit
+	if u.crew_of != co:
+		# (a Ballista's crew list, on the guest: kept from its crewmen's rows, for where its own crewman stands)
+		if u.crew_of != null and is_instance_valid(u.crew_of):
+			u.crew_of.crew.erase(u)
+		if co != null and not co.crew.has(u):
+			co.crew.append(u)
+		u.crew_of = co
 	var pas: Array = []
 	for pid in row[base + UNIT_REFS.size()]:
 		var p = s.by_id.get(int(pid))

@@ -302,7 +302,7 @@
   {
    "name": "cw_jack_tech",
    "faction": "clockwork",
-   "label": "Clockwork 2: Jacks (Mainspring and Escapement), the standard",
+   "label": "Clockwork 2: Springers (Mainspring and Escapement), the standard",
    "then": "balanced",
    "steps": [
     "workers:7",
@@ -313,7 +313,7 @@
     "crew:mainspring:3",
     "escapement",
     "clock_soldier*2",
-    "jack*",
+    "springer*",
     "movement_works",
     "clock_soldier*",
     "ratchet_turret",
@@ -370,7 +370,7 @@
   {
    "name": "cw_jack_rush",
    "faction": "clockwork",
-   "label": "Clockwork 5: Fast Jacks (Escapement first)",
+   "label": "Clockwork 5: Fast Springers (Escapement first)",
    "then": "balanced",
    "steps": [
     "workers:7",
@@ -378,7 +378,7 @@
     "mainspring",
     "crew:mainspring:3",
     "escapement",
-    "jack*",
+    "springer*",
     "movement_works",
     "attack@10|300",
     "cog_press",

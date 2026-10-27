@@ -145,6 +145,13 @@ var _hold_note := 0             # when this unit may next say it's holding fire 
 var passengers: Array = []      # (a balloon) the men in its basket
 var incoming: Array = []        # (a balloon) men walking over to climb in
 var aboard: Unit = null         # (a passenger) the balloon it rides in
+# the Spring Ballista's crew (scripts/ballista.gd): its boarded Winders stay on the field, beside it
+var crew: Array = []            # (a ballista) its boarded crewmen, in boarding order (the built-in one is not a unit)
+var crew_of: Unit = null        # (a Winder) the ballista he crews (order "crew"): he stands in his spot by it
+var loaded := true              # (a ballista) its bolt is in (the spring wound): drawn loaded, else fired
+var bolts := 0                  # (a ballista) bolts fired (tests)
+var bolt_hits: Array = []       # (a ballista) what its last bolt hit, in order (tests)
+var _db_t := 0.0                # (a ballista) s to the next look for a shot on the move
 var _board_t := 0.0
 var _descend := 0.0             # (a balloon) 1 = down low, taking men on or letting them off
 var haul_t := -1.0              # (a balloon) a powder keg on the rope: seconds hauled so far (-1: none)
@@ -181,14 +188,14 @@ var shield_up := false          # Clock Soldier: SHIELD FORWARD raised (or being
 var shield_t := 0.0             # Clock Soldier: the shield's switch under way (s left)
 var self_wind_t := 0.0          # Winder: stopped to wind itself
 var cranked_t := 0.0            # Wind-up Soldier: a Winder is cranking it (wind-up anim)
-var jump := {}                  # Jack: the leap under way ({} on the ground; scripts/jack.gd)
-var jump_cd := 0.0              # Jack: seconds before its spring can JUMP again
-var jumps := 0                  # Jack: leaps made (tests, the log)
-var shots := 0                  # Jack: screws fired (tests)
-var last_shot: Shot = null      # Jack: its last screw in flight (tests, screenshots)
-var last_tip := Vector2.ZERO    # Jack: where its last screw left from (the drill tip, raised at a flyer; tests)
-var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
-var _jack_t := 0.0              # Jack (the computer's): when it next thinks of jumping away
+var jump := {}                  # Springer: the leap under way ({} on the ground; scripts/springer.gd)
+var jump_cd := 0.0              # Springer: seconds before its spring can JUMP again
+var jumps := 0                  # Springer: leaps made (tests, the log)
+var shots := 0                  # Springer: screws fired (tests)
+var last_shot: Shot = null      # Springer: its last screw in flight (tests, screenshots)
+var last_tip := Vector2.ZERO    # Springer: where its last screw left from (the drill tip, raised at a flyer; tests)
+var arm := 0                    # Springer: the launcher of the shot under way (0 its right, 1 its left: Springer.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
+var _springer_t := 0.0              # Springer (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
 var last_bomb: OwlBomb = null   # Ticking Owl: its last bomb (tests, screenshots)
@@ -2687,6 +2694,9 @@ func _reset_work() -> void:
 		after = {}
 	_care_auto = false
 	work = ""
+	if phase == "strike":
+		cooldown = maxf(cooldown, _cooldown())     # (the blow has landed: a new order does not skip its reload; a Netter
+		                                           # ordered about every second fired a net a second, 2026-10-27)
 	phase = ""
 	path = PackedVector2Array()
 	path_goal = Vector2.INF
@@ -2696,12 +2706,23 @@ func _reset_work() -> void:
 
 ## Can this unit climb into that balloon?
 func can_board(b: Unit) -> bool:
+	if b != null and is_instance_valid(b) and b.kind == Defs.BALLISTA_KIND:
+		# (a Spring Ballista's crew: Winders, scripts/ballista.gd)
+		return not dead and aboard == null and crew_of == null and not off_field and kind == "winder" and not b.dead \
+			and b.team == team
 	return not dead and aboard == null and not off_field and b != null and is_instance_valid(b) and b.kind == "balloon" \
 		and not b.dead and b.team == team and (Defs.DROPSHIP["kinds"] as Array).has(kind)
 
 
+## Takes men aboard: a Balloon (its basket) or a Spring Ballista (its crew).
+static func carrier(k: String) -> bool:
+	return k == "balloon" or k == Defs.BALLISTA_KIND
+
+
 ## (a balloon) free places in the basket, counting the men already walking over.
 func room() -> int:
+	if kind == Defs.BALLISTA_KIND:
+		return Ballista.room(self)
 	incoming = incoming.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.order == "board" and u.order_target == self)
 	return int(Defs.DROPSHIP["capacity"]) - passengers.size() - incoming.size()
 
@@ -2722,15 +2743,16 @@ func cmd_board(b: Unit) -> void:
 
 func _board(delta: float) -> Vector2:
 	var b := order_target as Unit
-	if b == null or not is_instance_valid(b) or b.dead or b.passengers.size() >= int(Defs.DROPSHIP["capacity"]):
+	var bal := b != null and is_instance_valid(b) and b.kind == Defs.BALLISTA_KIND
+	if b == null or not is_instance_valid(b) or b.dead or (b.crew.size() >= int(Defs.BALLISTA["crew"]) if bal else b.passengers.size() >= int(Defs.DROPSHIP["capacity"])):
 		cmd_stop()
 		return Vector2.ZERO
 	_board_t += delta
 	if _board_t > float(Defs.DROPSHIP["give_up"]):
-		game.tell(team, "They can't reach the balloon: it must hover over ground they can walk to.")
+		game.tell(team, "They can't reach the Ballista." if bal else "They can't reach the balloon: it must hover over ground they can walk to.")
 		cmd_stop()
 		return Vector2.ZERO
-	if position.distance_to(b.position) < float(Defs.DROPSHIP["board"]):
+	if position.distance_to(b.position) < float(Defs.BALLISTA["board"] if bal else Defs.DROPSHIP["board"]) + (b.radius if bal else 0.0):
 		b.take_aboard(self)
 		return Vector2.ZERO
 	if position.distance_to(b.position) < 90.0 and game.line_clear(position, b.position, _path_margin()):
@@ -2744,6 +2766,9 @@ func _board(delta: float) -> Vector2:
 
 ## (a balloon) a man climbs into the basket: off the field until he's let off.
 func take_aboard(u: Unit) -> void:
+	if kind == Defs.BALLISTA_KIND:
+		Ballista.take_crew(self, u)      # (its crew stay on the field, in their spots: scripts/ballista.gd)
+		return
 	incoming.erase(u)
 	if dead or u.dead or u.aboard != null or passengers.size() >= int(Defs.DROPSHIP["capacity"]):
 		return
@@ -2775,6 +2800,9 @@ func _cancel_boarding() -> void:
 
 ## (a balloon) fly to a spot and let everyone off there (on the nearest open ground).
 func cmd_unload(p: Vector2) -> void:
+	if kind == Defs.BALLISTA_KIND:
+		Ballista.unload(self)            # (its crew step off where they stand)
+		return
 	if passengers.is_empty():
 		return
 	_reset_work()
@@ -3150,7 +3178,9 @@ func _tick_unit(delta: float) -> void:
 	_process_acid(delta)
 	if dead:
 		return
-	if kind != "dragoon":
+	if kind == Defs.BALLISTA_KIND:
+		Ballista.wind(self, delta)                 # (its spring is wound only while it stands, faster with crew)
+	elif kind != "dragoon":
 		cooldown = maxf(cooldown - delta, 0.0)     # (a Dragoon's reload waits while he rides)
 	spell_cd = maxf(spell_cd - delta, 0.0)
 	jump_cd = maxf(jump_cd - delta, 0.0)
@@ -3173,6 +3203,8 @@ func _tick_unit(delta: float) -> void:
 	var want := Vector2.ZERO
 	# Brood on swamp: faster, and wounds close up.
 	speed = float(d["speed"])
+	if kind == Defs.BALLISTA_KIND:
+		speed *= Ballista.rate(self)        # (each crewman pushing: +10%)
 	if kind == "horse" or horse_working():
 		_horse_upkeep(delta)
 	if not team_horses.is_empty():
@@ -3285,9 +3317,9 @@ func _tick_unit(delta: float) -> void:
 			hp = minf(max_hp, hp + float(d["regen"]) * delta)
 
 	if not jump.is_empty():
-		# a Jack's leap: the crouch, the flight along its arc, the landing (scripts/jack.gd); no walking or fighting
+		# a Springer's leap: the crouch, the flight along its arc, the landing (scripts/springer.gd); no walking or fighting
 		# meanwhile (orders given now are taken up once it has landed)
-		Jack.tick(self, delta)
+		Springer.tick(self, delta)
 		_animate(delta)
 		if visible and game.view_rect.has_point(position):
 			queue_redraw()       # (its shadow shrinks as it rises)
@@ -3299,12 +3331,12 @@ func _tick_unit(delta: float) -> void:
 		if visible and game.view_rect.has_point(position):
 			queue_redraw()       # (the clock hand and the bar)
 		return
-	if kind == Defs.JACK and jump_cd <= 0.0:
-		_jack_t -= delta
-		if _jack_t <= 0.0:
-			_jack_t = 0.3
+	if kind == Defs.SPRINGER and jump_cd <= 0.0:
+		_springer_t -= delta
+		if _springer_t <= 0.0:
+			_springer_t = 0.3
 			if game.ais.any(func(a) -> bool: return a.team == team):
-				Jack.ai_tick(self)      # (the computer's: low and in a melee, it jumps away)
+				Springer.ai_tick(self)      # (the computer's: low and in a melee, it jumps away)
 				if not jump.is_empty():
 					return
 	if kind == "skywing" and sky != "air" and sky != "ground":
@@ -3326,6 +3358,8 @@ func _tick_unit(delta: float) -> void:
 		_foot_dragoon(delta)
 	if not led.is_empty():
 		_prune_led()
+	if crew_of != null and order != "crew":
+		Ballista.leave(self)          # (a Ballista's crewman given another order: he steps off and does it)
 	match order:
 		"idle":
 			if d.get("medic", false) and scan_t <= 0.0:
@@ -3483,6 +3517,10 @@ func _tick_unit(delta: float) -> void:
 			want = _dismount_run(delta)
 		"lead":
 			want = _lead_run(delta)
+		"crew":
+			Ballista.crew_tick(self, delta)     # (a Spring Ballista's crewman: in his spot by it, not walking himself)
+	if kind == Defs.BALLISTA_KIND and order == "move":
+		Ballista.drive_by(self)                 # (no set-up: it shoots on the move at what is ahead)
 	if kind == "horse":
 		want = _horse_tick(delta, want)
 	if deploys():
@@ -3504,7 +3542,8 @@ func _tick_unit(delta: float) -> void:
 			want = Vector2.ZERO    # the shield is planted
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		want = CwUnits.steer(self, want, delta)
-	_move(want, delta)
+	if crew_of == null:
+		_move(want, delta)
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		CwUnits.post_move(self)
 	_animate(delta)
@@ -4098,6 +4137,8 @@ func _any_enemy_wall() -> bool:
 func _pick_target(r: float) -> Entity:
 	if kind == Defs.NETTER:
 		return Netter.pick(self, r)      # (the most dangerous enemy not caught already: scripts/netter.gd)
+	if kind == Defs.BALLISTA_KIND:
+		return Ballista.pick(self, r)    # (armour, buildings, and a line behind the target: scripts/ballista.gd)
 	var e := game.find_target(self, r)
 	if e == null or is_air() or float(d["range"]) > 40.0 or not e.is_unit():
 		return e
@@ -4271,8 +4312,8 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 				target = null
 			return
 		_owl_bomb = kind == Defs.OWL and e is Building      # (the Owl: a bomb on a building, the talons on a unit)
-		if kind == Defs.JACK:
-			arm = shots % 2          # (its two launchers fire in turn: scripts/jack.gd)
+		if kind == Defs.SPRINGER:
+			arm = shots % 2          # (its two launchers fire in turn: scripts/springer.gd)
 		elif kind == Defs.PENDULUM:
 			arm = swings % 2         # (its two arms cut in turn, right then left: scripts/pendulum.gd)
 		phase = "aim"
@@ -4382,12 +4423,16 @@ func _strike(e: Entity) -> void:
 				e.take_damage(dmg, self, BLOW_BROOD)      # (landed: its bite)
 				game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			Sfx.play_any(["combat/skywing_attack", "bite"], position)
-		"jack":
-			Jack.shoot(self, e, dmg)       # (a spinning screw from the drill tip, ground or air)
+		"springer":
+			Springer.shoot(self, e, dmg)       # (a spinning screw from the drill tip, ground or air)
 		"pendulum":
 			Pendulum.swing(self, e, dmg)   # (the blade through every enemy in the arc in front: scripts/pendulum.gd)
 		"netter":
 			Netter.fire(self, e)           # (the chain net flies; it catches its target where it lands: scripts/netter.gd)
+		"ballista":
+			if e.is_building():
+				dmg /= float(d.get("building_bonus", 1.0))     # (Ballista.line_shot gives each building its bonus)
+			Ballista.fire(self, e, dmg)    # (the bolt through it and the line behind: scripts/ballista.gd)
 		"ticking_owl":
 			if e is Building:
 				CwAir.drop_bomb(self, e)       # (the weight falls onto it: the damage is the bomb's, where it lands)
@@ -5885,7 +5930,7 @@ func die() -> void:
 	selected = false
 	velocity = Vector2.ZERO
 	if not jump.is_empty():
-		jump = {}                  # (a Jack killed in the air falls where it was)
+		jump = {}                  # (a Springer killed in the air falls where it was)
 		if sprite:
 			sprite.position = Vector2.ZERO
 	owl_t = -1.0                   # (a Swift killed while turning into an Owl: the price is lost)
@@ -5902,6 +5947,10 @@ func die() -> void:
 	_release_patient()
 	_drop_body()
 	_cancel_boarding()
+	if kind == Defs.BALLISTA_KIND:
+		Ballista.on_death(self)    # (its crew step off and fight on)
+	if crew_of != null:
+		Ballista.leave(self)       # (a crewman shot: the ballista loses his push and crank)
 	_cancel_refit()            # (killed on the way to a refit: the fee goes back)
 	drop_crate()               # (a Winder) the crate in his hands falls where he stood
 	release_horses()           # (his horses stay where they are)
@@ -5991,6 +6040,11 @@ func _anim_name() -> String:
 	if (work == "mounting" or work == "dismounting") and mount_strip_art() != "":
 		return "mount"
 	var moving := velocity.length() > 10.0
+	if crew_of != null:
+		return Ballista.crew_anim(self)        # (a Spring Ballista's crewman: push, crank, idle)
+	if kind == Defs.BALLISTA_KIND:
+		# the machine is a tool, not animated: loaded or fired (its crew move)
+		return ("walk" if moving else "idle") if loaded else "attack"
 	if kind == "labourer":
 		# a crowd shoves him around the 10 px/s line: stay in the walk for a moment instead of
 		# flicking walk <-> idle (every switch restarts the pose)
@@ -6193,13 +6247,13 @@ func _anim_name() -> String:
 		"pendulum":
 			if phase != "":
 				return Pendulum.attack_anim(self)   # (its two arms cut in turn: attack_r, attack_l)
-		"jack":
+		"springer":
 			if not jump.is_empty():
-				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
+				return "jump"            # (crouch, launch, air, landing: Springer.frame picks the frame)
 			if phase != "":
 				# at a flyer it raises its arm (the attack_up strip: same timing, same shot frame); at the ground its two
 				# launchers fire in turn (attack_r / attack_l)
-				return "attack_up" if Jack.aims_up(self) else Jack.attack_anim(self)
+				return "attack_up" if Springer.aims_up(self) else Springer.attack_anim(self)
 		"cuckoo":
 			if phase != "":
 				return "attack"          # (the pecking lunge)
@@ -6224,7 +6278,7 @@ const SKYWING_HOVER_FPS := 6.0
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
 		"dismounted_armoured": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
-		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
+		"thresher": 10.0, "clock_soldier": 10.0, "springer": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
 		# the Pendulum's long strides (90 sheet px a step at 0.284: one 8-frame cycle carries it 51 px, 1.1 s at 46);
 		# the Netter's quick trot (its stubby legs step faster than the ground goes by: as fast as reads)
 		"pendulum": 7.2, "netter": 14.0,
@@ -6253,6 +6307,9 @@ const WINDER_BEAT := {
 	"idle": [1.0, 1.0],
 	"attack": [1.0 / 15.0, 2.0 / 15.0, 4.0 / 15.0, 6.0 / 15.0],
 	"death": [1.0 / 15.0, 2.0 / 15.0, 3.0 / 15.0, 3.0 / 15.0, 4.0 / 15.0, 9.0],
+	# a Spring Ballista's crewman (scripts/ballista.gd): a heavy shove a step, and the crank going round
+	"push": [3.0 / 15.0, 3.0 / 15.0, 3.0 / 15.0, 3.0 / 15.0],
+	"crank": [2.0 / 15.0, 2.0 / 15.0, 2.0 / 15.0, 2.0 / 15.0],
 }
 
 
@@ -6428,7 +6485,7 @@ func _animate(delta: float) -> void:
 			fps = 0.0           # (set from how far through getting on or off he is, below)
 			loop = false
 		"jump":
-			fps = 0.0           # (a Jack's leap: the frame follows the crouch, flight and landing, below)
+			fps = 0.0           # (a Springer's leap: the frame follows the crouch, flight and landing, below)
 			loop = false
 	if kind == "labourer" and not dead and _drive_labourer(delta, n):
 		pass
@@ -6459,7 +6516,7 @@ func _animate(delta: float) -> void:
 	if kind == "mist_toad" and anim == "tongue" and tongue_stage != "":
 		shown = mini(shown, TOAD_MOUTH_OPEN)   # the mouth gapes; the drawn tongue does the reaching
 	if anim == "jump":
-		frame_i = mini(Jack.frame(self), n - 1)
+		frame_i = mini(Springer.frame(self), n - 1)
 		shown = frame_i
 	sprite.frame = clampi(shown, 0, sprite.hframes - 1)
 	if not team_horses.is_empty() or not _team_sprites.is_empty():
@@ -6503,10 +6560,12 @@ func _animate(delta: float) -> void:
 		sprite.position.y = -absf(sin(_bob_t * 5.0)) * 1.0
 	elif anim == "mount" and work == "mounting" and is_instance_valid(order_target):
 		sprite.position = order_target.position - position     # the strip's horse where the horse is
-	elif kind == Defs.JACK and not jump.is_empty() and not dead:
-		sprite.position = Vector2(0.0, -Jack.lift(self))      # (in the air: over its shadow, on the arc)
+	elif kind == Defs.SPRINGER and not jump.is_empty() and not dead:
+		sprite.position = Vector2(0.0, -Springer.lift(self))      # (in the air: over its shadow, on the arc)
 	elif kind == "winder" and not dead and _beat_dip > 0.0 and beat_of(anim) == "wind":
 		sprite.position = Vector2(0.0, 1.0)      # (a Winder's hammer blow: the body dips a pixel)
+	elif crew_of != null and not dead:
+		sprite.position = Vector2(0.0, Ballista.crew_bob(self))     # (a Ballista's pusher: a step bob, scripts/ballista.gd)
 	elif kind != "cannon":
 		sprite.position = Vector2.ZERO
 	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
@@ -6521,6 +6580,8 @@ func _animate(delta: float) -> void:
 		# rear up / tilt the crossbow at a flyer
 		var at_air: bool = target != null and is_instance_valid(target) and target.is_air() and phase != ""
 		sprite.rotation = (-0.32 if not view_mirrored() else 0.32) if at_air else 0.0
+	if kind == Defs.BALLISTA_KIND:
+		Ballista.look(self, 0.066)    # (its built-in crewman, drawn by it: scripts/ballista.gd)
 
 
 ## The cannon sheet has one frame per pose, so the crew's work is faked: the gun rocks and
@@ -6978,8 +7039,8 @@ func _draw_unit() -> void:
 		return
 	if selected and (kind == "cannon" or kind == "mortar") and team == game.human and aboard == null:
 		_draw_aim()
-	# (a Jack in the air: its shadow stays on the ground under it, a little smaller and darker so the leap reads)
-	var lifted := Jack.lift(self) if not jump.is_empty() else 0.0
+	# (a Springer in the air: its shadow stays on the ground under it, a little smaller and darker so the leap reads)
+	var lifted := Springer.lift(self) if not jump.is_empty() else 0.0
 	var shade := 1.0 - clampf(lifted / 160.0, 0.0, 0.3)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, (radius + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))

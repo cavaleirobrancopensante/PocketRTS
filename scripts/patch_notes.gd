@@ -4,6 +4,23 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.82", "items": [
+		"Internal: the Springer's files and ids renamed from Jack; old saves and replays still load.",
+	]},
+	{"v": "0.14.81", "items": [
+		"CLOCKWORK COMPUTER: its tech now comes on time. On Hard the Mainspring and the Escapement stand by about 4:00, so its first Springers, Netters and SHIELD WALL are out for the first big fight. It makes sure a Movement Works can make Springers (a Mainspring beside it, or a Works beside a Mainspring), keeps its cogs for the tech under a raid it can beat, and spends its Tension instead of leaving it at the cap. Its army is about one Springer for every one and a half Clock Soldiers, with a few Netters and Pendulums.",
+		"CLOCKWORK COMPUTER SIEGES: its Springers and Netters shoot and net the workers mending a wall or gate first, then the shooters on the edge, while the Clock Soldiers hit the gate, and its reckoning of a siege counts that. Against a walled enemy its first attack waits for four Springers (two on Normal). With HIGH LEAP its Springers jump up onto the high ground when the enemies by the landing are worth less than they are. A siege going worse than it reckoned, or a wave that keeps losing far more than it kills, is called off, all the way back to the rally.",
+		"CLOCKWORK COMPUTER TARGETS: it goes first for what it can reach without breaking a wall: an expansion, farms, outlying buildings (not a spot right under a walled plateau's guns). On Hard its Netters net fighters rather than workers, its Pendulums walk into knots of enemy soldiers, and badly hurt Clock Soldiers step back to a Winder to be mended.",
+		"FIX: a unit given a new order while its blow was landing skipped its reload. A Netter given an order every second fired a net every second (its reload is 14 s). Now the reload always follows the blow, for every unit and every player.",
+	]},
+	{"v": "0.14.80", "items": [
+		"NEW CLOCKWORK UNIT, the SPRING BALLISTA (Movement Works, once an Escapement works; 150 cogs and 50 Tension): a bolt thrower on cog wheels whose giant screw flies in a straight line THROUGH its target into one or two enemies behind it. Hard on armoured units and buildings (a wall or gate stops the bolt), weak up close and against swarms. No set-up: it fires as soon as it stops, and on the move at what is ahead, but its spring is wound again only while it stands.",
+		"The Spring Ballista has a Winder built in. Up to 4 more Winders can BOARD it (LOAD CREW on the Ballista, BOARD on the Winders, or right-click it): each makes it reload and move 10% faster. They push it and crank it beside it, and they can be shot. UNLOAD CREW sets them down. The computer builds a couple and crews them with its escort Winders.",
+		"When a Spring Ballista is destroyed, its bow snaps, a wheel comes off and the spring bursts out of its drum (the owner's painted wreck).",
+	]},
+	{"v": "0.14.79", "items": [
+		"Brood: a new DEMOLISH button (a talon striking down on a split mound), so it can no longer be mistaken for BUILD; the Bloater's SPIT button now has its own picture, the Bloater spitting acid.",
+	]},
 	{"v": "0.14.78", "items": [
 		"WINDERS have new art for carrying a building's crate: they walk with it held out in both hands, stand with it, and bend down to set it on the ground before it unfolds into the building, in every direction.",
 	]},

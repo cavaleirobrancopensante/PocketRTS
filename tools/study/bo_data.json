@@ -444,7 +444,7 @@
    "time": 40.0,
    "trains": [
     "clock_soldier",
-    "jack",
+    "springer",
     "pendulum",
     "netter"
    ]
@@ -1183,7 +1183,7 @@
    "time": 40.0
   },
   "high_leap": {
-   "about": "A stiffer spring: every Jack can JUMP UP onto high ground too (only where you can see).",
+   "about": "A stiffer spring: every Springer can JUMP UP onto high ground too (only where you can see).",
    "at": "escapement",
    "cost": 150,
    "cost2": 0,
@@ -1601,7 +1601,7 @@
    ],
    "time": 15.0
   },
-  "jack": {
+  "springer": {
    "aim": 0.11,
    "anti_air": true,
    "armor": 1,
@@ -1611,7 +1611,7 @@
    "faction": "clockwork",
    "from": "movement_works",
    "hp": 90,
-   "name": "Jack",
+   "name": "Springer",
    "range": 170,
    "requires": "escapement",
    "sight": 8,

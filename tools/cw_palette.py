@@ -9,25 +9,25 @@ The rule (units only; the buildings keep their painted reds):
     gain was slight at game size, and about 70,000 pixels of other units and buildings of all three factions lie within
     reach of a key at (80,0,0) and would turn team colour.)
   - BRASS stays brass, WHITE stays white (the clock faces), the dark OUTLINES, the STEEL and IRON greys stay as painted.
-  - STEEL that is tinted blue (the Jack's coil spring, drill tips and inner arm segments, the Pendulum's blade) is metal,
+  - STEEL that is tinted blue (the Springer's coil spring, drill tips and inner arm segments, the Pendulum's blade) is metal,
     not paint: it keeps its own colour, only greyed toward steel when it is bluer than STEEL_SAT (a ChatGPT sheet that
-    paints the steel saturated blue comes out like the older, greyer ones). The Jack's drill tips and inner arm segments
+    paints the steel saturated blue comes out like the older, greyer ones). The Springer's drill tips and inner arm segments
     (all its steel but the coil spring) go further, to TOOL_SAT: at STEEL_SAT the bright tips still read as ice blue.
   - Per unit: the CLOCK SOLDIER is all BRASS but its HEAD (owner): its round body (it was red) and its blue shoulders and
     knee gems become brass, and its head (the cap with the crown spike on top of the body) alone is player colour, so it
-    reads apart from the JACK, whose body and shoulders are player colour.
+    reads apart from the SPRINGER, whose body and shoulders are player colour.
 
 For future art (what the importers expect): paint the team parts in one clean, saturated red ramp (a light, a mid and a
 shadow red; highlights white rather than pink), the steel in neutral greys (a hint of blue at most, saturation under
 ~0.35), and no blue paint at all: anything painted saturated blue is turned into player colour by this step. Brass in
 the warm ramp of BRASS below. The dark outlines may be any very dark colour (value under 0.2): they stay as they are.
 
-Entry points (tools/import_clock_soldier.py, import_jack.py, import_cuckoo.py (Swift and Owl) and import_tier3.py
+Entry points (tools/import_clock_soldier.py, import_springer.py, import_cuckoo.py (Swift and Owl) and import_tier3.py
 (Pendulum and Netter) call them; another unit's importer switches over by calling the same two):
   recolour(o, unit, ref=None, tilt=0.0, window=16.0, info=None, tipped=False) -> o
         one keyed frame (H x W x 4 uint8, the SHEET's own resolution, alpha 0 = background), BEFORE the shrink and AFTER
         the importer has taken its anchors (they look for the red body); returns a new frame, painted colours. `unit` is
-        the art kind ('clock_soldier', 'jack', 'cuckoo', 'ticking_owl', 'pendulum', 'netter'; any other kind gets the
+        the art kind ('clock_soldier', 'springer', 'cuckoo', 'ticking_owl', 'pendulum', 'netter'; any other kind gets the
         general rule). The Clock Soldier also needs `ref`: its upright idle frame of the same direction (the cap is found
         on it by its place), or a ready template (template_from: a sheet's own upright first frame and the cap found on
         it, for the rest of that row); and, for a frame where the body tips over, `tilt` (degrees, screen clockwise: the
@@ -44,10 +44,10 @@ from scipy import ndimage as ndi
 
 TEAM_LIGHT = (255, 0, 0)
 TEAM_DARK = (150, 0, 0)
-STEEL_SAT = 0.45          # the most a steel pixel's saturation keeps (the older Jack sheet's coil spring and drill tip)
-TOOL_SAT = 0.15           # the same for the Jack's drill tips and inner arm segments (grey steel with a cool hint)
+STEEL_SAT = 0.45          # the most a steel pixel's saturation keeps (the older Springer sheet's coil spring and drill tip)
+TOOL_SAT = 0.15           # the same for the Springer's drill tips and inner arm segments (grey steel with a cool hint)
 PAINT_SAT = 0.42          # a blue region this saturated (its median) is paint, not steel (the units' blue-tinted steel: 0.38 at most)
-JACK_HUE = 213.0          # the Jack's shoulders are this deep a blue or deeper (~218-222); its steel is cyan-er (~205-211)
+SPRINGER_HUE = 213.0          # the Springer's shoulders are this deep a blue or deeper (~218-222); its steel is cyan-er (~205-211)
 SOLDIER_HEAD_ONLY = True   # the Clock Soldier is all brass but its head (owner, 2026-10-26): its blue shoulders and knee gems go brass
 # The Clock Soldier's own painted brass (measured on art/redraws/clock_soldier_idle.png: the median colour of its brass
 # pixels by value), value -> colour; its body is repainted along it.
@@ -103,9 +103,9 @@ def blue_parts(o, unit):
     """(paint, steel) masks of the frame's blue-hued pixels.
     General rule: each connected blue region is judged as a whole (the dark shading and the light highlight of a ball
     joint go with it): paint when its median saturation is PAINT_SAT or more, else steel.
-    The JACK (the owner): only its two ball SHOULDERS are paint. Its coil spring, inner arm segments and drill tips are
+    The SPRINGER (the owner): only its two ball SHOULDERS are paint. Its coil spring, inner arm segments and drill tips are
     steel however blue a sheet paints them (the two-launcher sheet paints them as saturated as the shoulders, and they
-    touch, so a region test cannot tell them apart). The shoulders are the deep blue (hue JACK_HUE and up, saturated)
+    touch, so a region test cannot tell them apart). The shoulders are the deep blue (hue SPRINGER_HUE and up, saturated)
     blobs fixed to the red body; the steel is a greener, cyan blue. Each blob grows to its whole ball (its highlight and
     dark rim)."""
     al = o[..., 3] > 0
@@ -114,8 +114,8 @@ def blue_parts(o, unit):
     paint = np.zeros_like(blue)
     if not blue.any():
         return paint, blue
-    if unit == 'jack':
-        core = ndi.binary_opening(blue & (h >= JACK_HUE) & (s >= 0.55), iterations=1)
+    if unit == 'springer':
+        core = ndi.binary_opening(blue & (h >= SPRINGER_HUE) & (s >= 0.55), iterations=1)
         red = ndi.binary_dilation(body_mask(o), iterations=6)        # (its red BODY: not the brass plate's dark rim)
         lab, n = ndi.label(core, structure=np.ones((3, 3)))
         for i, sl in enumerate(ndi.find_objects(lab)):
@@ -163,8 +163,8 @@ def steel(rgb, mask, cap=STEEL_SAT):
     return out
 
 
-def jack_spring(steel_m):
-    """The Jack's coil spring: the biggest patch of its steel (its rings joined over 1 px). The rest of its steel is the
+def springer_spring(steel_m):
+    """The Springer's coil spring: the biggest patch of its steel (its rings joined over 1 px). The rest of its steel is the
     drill tips and the inner arm segments."""
     lab, n = ndi.label(ndi.binary_dilation(steel_m, iterations=1), structure=np.ones((3, 3)))
     if n == 0:
@@ -421,8 +421,8 @@ def recolour(o, unit, ref=None, tilt=0.0, window=16.0, info=None, tipped=False):
     else:
         rgb[:] = to_team(rgb, red_parts(o))      # (the red parts on one pure red ramp: no orange seams on another team)
     rgb[:] = to_team(rgb, paint)
-    if unit == 'jack' and steel_m.any():
-        tool = steel_m & ~jack_spring(steel_m)
+    if unit == 'springer' and steel_m.any():
+        tool = steel_m & ~springer_spring(steel_m)
         rgb[:] = steel(rgb, tool, TOOL_SAT)
         rgb[:] = steel(rgb, steel_m & ~tool)
         if info is not None:
@@ -455,7 +455,7 @@ def snap_team(img):
 # ------------------------------------------------------------------ a check of a sheet
 
 def check(unit, path, rows, cols, out, only_row=None, navy=(0, 22, 48), tol=40):
-    """Each cell: the frame, the overlay (magenta: blue paint -> player colour; cyan: steel; light blue: the Jack's tool
+    """Each cell: the frame, the overlay (magenta: blue paint -> player colour; cyan: steel; light blue: the Springer's tool
     steel, greyed further; yellow: the Clock Soldier's head; orange: its body -> brass) and the result (painted colours
     before the snap)."""
     from PIL import Image
