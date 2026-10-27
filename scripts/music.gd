@@ -29,8 +29,10 @@ const HEAT_HIGH := 14.0   # a fight this hot gets the full battle pieces; a mild
 const ROLES := {"crown_battle_6": "open", "crown_battle_7": "skirmish", "crown_battle_9": "skirmish",
 	"crown_battle_11": "skirmish",
 	"clock_battle_6": "open", "clock_battle_7": "open", "clock_battle_8": "skirmish", "clock_battle_9": "skirmish",
-	"clock_battle_10": "skirmish"}
-const OPEN_CALM := ["crown_peace", "crown_peace_4", "clock_peace"]
+	"clock_battle_10": "skirmish",
+	"brood_battle_6": "open", "brood_battle_7": "open", "brood_battle_8": "skirmish",
+	"brood_battle_9": "skirmish", "brood_battle_10": "skirmish"}
+const OPEN_CALM := ["crown_peace", "crown_peace_4", "clock_peace", "brood_peace_4"]
 var _skirmish := false    # the battle piece playing is a skirmish piece, to be raised when the fight heats up
 var _piece_t := 0.0
 const FADE := 2.5

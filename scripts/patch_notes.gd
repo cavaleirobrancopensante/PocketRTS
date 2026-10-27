@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.60", "items": [
+		"BROOD MUSIC: ten new pieces, so the Brood has twenty like the Crown, each with its own moment. Two open a match while the swamp wakes, tense under the calm: The Brood Wakes and The Hive Gathers. Three play in a lighter fight, a hunt held back from the kill: Something in the Water, The Scent of Blood and Circling. Three are the full battle, the swarm at full cry with big drums, the throat choir, brass and strings: The Swarm at Full Cry, The Queen's War-Song and Ten Thousand Mouths. Two are calm and slow: The Queen's Lullaby and Night over the Drowned Wood. The Queen Stirs may now open a match too.",
+		"THE HIVE CALL: the new Brood pieces share a short theme of six notes (a low note, a leap up, then a sigh down to the start). A flute sings it plainly in the lullaby, the skirmishes chase it in broken pieces, and in the battles the whole choir roars it in long notes.",
+	]},
 	{"v": "0.14.59", "items": [
 		"JACK: it keeps both drill launchers when it hops and jumps. Before, its left launcher turned back into the old claw every time it moved. The hop and the jump are now made from the same painting as its standing and shooting, so nothing changes shape between them. (Its death and its shot up at a flyer still show the claw until they are repainted.)",
 	]},

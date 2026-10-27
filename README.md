@@ -1,6 +1,6 @@
 # Holdfast
 
-**Play in your browser (version 0.14.59): https://holdfastrts.github.io/Holdfast/**
+**Play in your browser (version 0.14.60): https://holdfastrts.github.io/Holdfast/**
 
 **Android app: https://holdfastrts.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
@@ -279,7 +279,7 @@ The music is written in code: `tools/music/compose.py` holds the first hand-writ
 
 - **Menu**: nine overtures, shuffled: *Holdfast Overture* (the Crown's call, then the Brood's swamp, the Clockwork's music box, and all three together), *The Banners Rise*, *Before the Long Night*, *Over the High Passes*, *The Iron Anthem*, *Banners and Drums*, *Roll of the Regiment*, *The Long Parade* and *Drums for the King*.
 - **The Crown**, 20 pieces: a courtly band (lute, recorder, shawm, strings, fife and drum, horns). Calm: *The King's Muster*, *The Orchard Minuet*, *Ballad of the Lost Regiment*, *Raising the Bastion*, *The Chapel at Dawn*, three waltzes (*The Elector's Waltz*, *Waltz of the Garrison Flowers*, *Court Waltz by Candlelight*) and *The Colours Furled*. Opening: *Fifes at First Light*. Skirmish: *Tattoo at Dusk*, *Beating to Quarters*, *The Grenadiers' March*. Full battle: *Pike and Shot*, *Volley Fire*, *Sabres at the Ford*, *The Forlorn Hope*, *Storm the Breach*, *Over the Parapet*, *Columns on the March*.
-- **The Brood**, 10 pieces (10 more are being composed): the swamp, with drones, a throat choir, log drums and a bone flute in phrygian and locrian modes. Calm: *The Warm Swamp*, *Spawning Pools*, *Moonlit Mudflats*, *The Queen Stirs*, *Mist on the Brood-Mere*. Battle: *Hunger*, *Teeth in the Reeds*, *The Swarm Rises*, *Blood Moon Rite*, *The Hive Unleashed*.
+- **The Brood**, 20 pieces: the swamp, with drones, a throat choir, log drums, big drums and a bone flute in phrygian and locrian modes, in loose, breathing time; the newer pieces all carry one six-note theme, the Hive Call. Calm: *The Warm Swamp*, *Spawning Pools*, *Moonlit Mudflats*, *The Queen Stirs*, *Mist on the Brood-Mere*, *The Queen's Lullaby*, *Night over the Drowned Wood*. Opening: *The Brood Wakes*, *The Hive Gathers*. Skirmish: *Something in the Water*, *The Scent of Blood*, *Circling*. Full battle: *Hunger*, *Teeth in the Reeds*, *The Swarm Rises*, *Blood Moon Rite*, *The Hive Unleashed*, *The Swarm at Full Cry*, *The Queen's War-Song*, *Ten Thousand Mouths*.
 - **The Clockwork**, 20 pieces: music boxes and machinery played on a dead-straight grid, with no human timing; the newer pieces all grow from one short motif. Calm: *Winding the Spring* (it slows down at the end as the spring runs out), *The Orrery*, *Rust and Rain*, *The Assembly Line*, *The Lantern Waltz*, *The Clockmaker's Lament*, *Canon of Perfect Order*. Opening: *The Great Escapement*, *Calibration*. Skirmish: *Tick, Tock, Alarm*, *The Watchful Gear*, *Pressure Rising*. Full battle: *Brass and Steam* (7/8 machinery, anvils, steam), *Overclock*, *Gearstorm*, *The Iron Tide*, *Calibrated Fury*, *Cathedral of Gears*, *Anvil Chorus of a Thousand Hands*, *The Grand Calculation*.
 - A victory sting per faction and a defeat sting.
 

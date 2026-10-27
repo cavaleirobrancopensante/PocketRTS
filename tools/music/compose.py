@@ -2917,6 +2917,8 @@ import crown_court  # noqa: E402
 crown_court.register(sys.modules[__name__])
 import clock_more  # noqa: E402
 clock_more.register(sys.modules[__name__])
+import brood_more  # noqa: E402
+brood_more.register(sys.modules[__name__])
 
 
 if __name__ == "__main__":
