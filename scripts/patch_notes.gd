@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.64", "items": [
+		"FAIR STARTS: on Jade Wilds with four Clockwork players, the two corner bases got their first Cog Press 9 tiles from the Clocktower and the two middle bases 7.5. A starting building one lane in from the edge of the main now counts as hugging it, so every base gets the same 7.5. Starting Farms, Feeding Pits and Cog Presses may sit a little closer to the main building on other maps too; every map was checked and is fair.",
+	]},
 	{"v": "0.14.63", "items": [
 		"MUSKETEER: facing down-right or up-right, he now aims, fires and thrusts the bayonet that way. Before, every view pointed its musket to the right, so a line firing down the screen shot sideways. The new frames were painted one direction at a time over guides made from his own frames. The south and the Guardsman come next.",
 	]},
