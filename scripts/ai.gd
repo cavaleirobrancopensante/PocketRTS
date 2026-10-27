@@ -373,8 +373,9 @@ func _rush_tick(party: Array) -> bool:
 ## and the units need to be a threat... running around close to the enemy's base so the enemy doesn't move his army
 ## out... then transition: all-in if the rush did not connect, economic if it connected a little; you can't sacrifice
 ## the horses." The riders HARASS: they hover outside the enemy's base (out of its defenders' reach), ride down
-## workers that stray from cover, flee from soldiers and ride home only to mend. When the enemy's army has moved out
-## they ride into its base for the workers. Meanwhile the economy (it connected) or an all-in (it did little) runs at home.
+## workers that stray from cover, flee from soldiers and ride home only to mend. When the enemy's army moves out (or
+## reaches our base) they ride home and fight with the defence: riding into its base instead lost the Crown's home to
+## the Clockwork's first wave (round 4). Meanwhile the economy (it connected) or an all-in (it did little) runs at home.
 const HARASS_CONNECTED := 0.5   # the rush connected: it killed at least this share of what the riders cost
 const HARASS_LURK := 13.0       # tiles from the enemy's hall, on our side, where the riders hover
 const HARASS_PREY := 15.0       # tiles round that spot where a worker is fair prey (anywhere in the base when its army is out)
@@ -450,25 +451,23 @@ func _harass(party: Array) -> void:
 				u.cmd_move(away + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 		return
 	var out := _enemy_army_out(foe, ebase)
-	if out and _threat() != Vector2.INF:
+	if out or _threat() != Vector2.INF:
 		# its army is coming for us: the riders ride home and fight with the defence (coach round 4: with the riders
 		# off raiding its base, the Crown's home fell to the Clockwork's first wave in 3 games of 4; the base raid
 		# traded a few workers for the whole game)
 		_rush_state = "done"
-		_rush_log("its army is at our base: the %d Horsemen ride home to defend" % party.size())
+		_rush_log("its army has moved out: the %d Horsemen ride home to defend" % party.size())
+		var spot := _threat() if _threat() != Vector2.INF else _front()
 		for u in party:
-			u.cmd_move(_threat(), true)
+			u.cmd_move(spot, true)
 		_raiders.clear()
 		return
-	if out and game.clock - _harass_log > 60.0:
-		_harass_log = game.clock
-		_rush_log("its army has moved out: the Horsemen ride into its base for the workers")
 	var prey := Vector2.INF
 	var pd := INF
 	for o in game.workers(foe):
 		if o.dead or o.off_field or not game.is_visible_to(team, o.position):
 			continue
-		if o.position.distance_to(ebase if out else lurk) > (22.0 if out else HARASS_PREY) * T:
+		if o.position.distance_to(lurk) > HARASS_PREY * T:
 			continue
 		var guard := 0
 		for g in game.units_near(o.position, HARASS_COVER):
@@ -480,8 +479,6 @@ func _harass(party: Array) -> void:
 		if d < pd:
 			pd = d
 			prey = o.position
-	if prey == Vector2.INF and out:
-		prey = _prey_spot(c)
 	if prey != Vector2.INF:
 		for u in party:
 			_hunt(u, prey)
