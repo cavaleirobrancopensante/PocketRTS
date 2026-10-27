@@ -283,6 +283,7 @@ func _ready() -> void:
 	camera.limit_top = -40 - cm
 	camera.limit_right = W * T + cm
 	camera.limit_bottom = H * T + 170 + cm
+	camera.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS      # (physics interpolation is on: Godot forces this anyway, with a WARNING each match)
 	add_child(camera)
 	camera.make_current()
 	_generate_map()
@@ -3218,7 +3219,7 @@ func site_failed(b: Building, why := "blocked") -> void:
 			u.site_gone()
 	for ai in ais:
 		if ai.team == t and ai.has_method("site_failed"):
-			ai.site_failed(b)
+			ai.site_failed(b, why)
 
 
 ## Take a ghost off the map (nothing was built: no rubble, no loss counted).
@@ -4394,9 +4395,9 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 			HorseCoat.apply(u)
 		if u.is_worker():
 			var site: Building = null
-			if b.dual_rally() and b.worker_rally_target is Building:
+			if b.dual_rally() and is_instance_valid(b.worker_rally_target) and b.worker_rally_target is Building:
 				site = b.worker_rally_target
-			elif not b.dual_rally() and b.rally_target is Building:
+			elif not b.dual_rally() and is_instance_valid(b.rally_target) and b.rally_target is Building:
 				site = b.rally_target
 			if site != null and not site.dead and site.haul_cap() > 0:
 				# A rally point on the Town Hall is no order to haul: a real post (farm, mine,
@@ -4433,7 +4434,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 			if b.rally != Vector2.INF:
 				u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)))
 			continue
-		if b.rally_target is Unit and is_instance_valid(b.rally_target) and not b.rally_target.dead:
+		if is_instance_valid(b.rally_target) and b.rally_target is Unit and not b.rally_target.dead:
 			u.cmd_follow(b.rally_target)
 		elif b.rally != Vector2.INF:
 			u.cmd_move(b.rally + Vector2(randf_range(-20, 20), randf_range(-20, 20)), true)

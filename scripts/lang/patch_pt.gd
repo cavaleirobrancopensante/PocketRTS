@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.14.70": ["CORREÇÕES de um longo teste em todos os mapas e modos: o computador da Ninhada não coloca mais um Montículo de Ovos e o larga de novo a cada segundo enquanto saqueadores estão perto das suas larvas (ele espera um pouco antes de tentar de novo); um enxame da Ninhada não cancela mais a onda inteira quando um dos seus Raptores é comido ou some de outro jeito; um soldado erguido por um Missionário que estava indo buscar um cavalo não quebra mais a sua próxima ordem; um prédio cujo ponto de reunião seguia uma unidade que virou outra coisa (uma larva que virou prédio, um homem que montou) a solta sem erro; e o Couraceiro desmontado andando para o leste não pede mais uma imagem que não existe."],
 	"0.14.69": ["GUARDA: virado para baixo na tela, agora ele mira e atira em você, com o cano na sua direção e o clarão na frente do peito, e investe a baioneta em você. Agora, para onde quer que o Mosqueteiro e o Guarda se virem, atiram para esse lado."],
 	"0.14.68": ["GUARDA: virado para cima à direita, agora ele mira, atira e investe com a baioneta para esse lado, de costas para você. A vista para baixo vem a seguir."],
 	"0.14.67": ["GUARDA: virado para baixo à direita, agora ele mira, atira e investe com a baioneta para esse lado, como o Mosqueteiro. As vistas para cima à direita e para baixo vêm a seguir."],

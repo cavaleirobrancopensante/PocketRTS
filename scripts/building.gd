@@ -959,7 +959,7 @@ func _econ(delta: float) -> void:
 				keep = false
 				break
 		if not keep:
-			crew = crew.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
+			crew = crew.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.home_mine == self)
 	match kind:
 		"farm":
 			if barren():
@@ -1046,8 +1046,9 @@ func _physics_process(delta: float) -> void:
 func _tick_building(delta: float) -> void:
 	_process_flash(delta)
 	_process_acid(delta)
-	if rally_target is Unit:
-		# a rally on one of ours follows him (gone: it stays where he was last)
+	if rally_target != null and (not is_instance_valid(rally_target) or rally_target is Unit):
+		# a rally on one of ours follows him (gone: it stays where he was last; freed without dying, e.g. a grub that
+		# became a building: let go too, `is` on a freed object is an error)
 		if is_instance_valid(rally_target) and not rally_target.dead:
 			if rally.distance_squared_to(rally_target.position) > 16.0:
 				rally = rally_target.position

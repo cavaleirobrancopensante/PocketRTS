@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.70", "items": [
+		"FIXES from a long test run of every map and mode: a Brood computer no longer places a Clutch Mound and drops it again every second while raiders stand near its grubs (it waits a little before trying again); a Brood swarm no longer calls its whole wave off when one of its Raptors is eaten or otherwise gone; a soldier raised by a Missionary who had been on his way to a horse no longer breaks his next order; a building whose rally point followed a unit that turned into something else (a grub that became a building, a man who mounted) lets go of it cleanly; and the dismounted Cuirassier walking east no longer asks for a picture that is not there.",
+	]},
 	{"v": "0.14.69", "items": [
 		"GUARDSMAN: facing down the screen, he now aims and fires at you, the muzzle toward you and the flash in front of his chest, and thrusts the bayonet at you. Now every way the Musketeer and the Guardsman face, they fire that way.",
 	]},

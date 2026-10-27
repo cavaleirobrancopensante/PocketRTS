@@ -22,6 +22,8 @@ var t := 0.0
 var last_fight := -999.0
 var next_check := 0.0
 var base_i := 0
+var next_wind := 30.0
+var wind_lines: Array = []
 var pending: Array = []        # [file, camera position, zoom]
 var shooting := false
 
@@ -84,10 +86,40 @@ func _process(delta: float) -> bool:
 	if c >= next_check:
 		next_check = c + 2.0
 		_look_for_fight(c)
+	if c >= next_wind:
+		next_wind = c + 30.0
+		_wind_line(c)
 	if g.over or c >= end_t:
 		_finish()
 		return true
 	return false
+
+
+## Every 30 s, the Clockwork army's wind (a Clock Soldier runs down in ~80 s off its gear ground and then stands still):
+## how many are run down (statues), low (under 0.2), on gear ground, and how far the run-down ones are from their main.
+func _wind_line(c: float) -> void:
+	for tm in 2:
+		if g.factions[tm] != "clockwork":
+			continue
+		var n := 0
+		var down := 0
+		var low := 0
+		var field := 0
+		var far := 0.0
+		var home: Building = g._own_hall(tm)
+		for u in g.units:
+			if not is_instance_valid(u) or u.dead or u.team != tm or u.is_worker() or u.is_air():
+				continue
+			n += 1
+			if u.powered_down():
+				down += 1
+				if home:
+					far += u.position.distance_to(home.center()) / Game.T
+			elif u.wind < 0.2:
+				low += 1
+			if u._in_field:
+				field += 1
+		wind_lines.append("%s clockwork army %d: run down %d (avg %.0f tiles from the main), low %d, on gear ground %d" % [_mmss(c), n, down, far / maxf(1, down), low, field])
 
 
 func _mmss(c: float) -> String:
@@ -148,6 +180,10 @@ func _finish() -> void:
 		for l in g.mlog.lines:
 			f.store_line(str(l))
 	f.close()
+	var wf := FileAccess.open(out.path_join("wind.txt"), FileAccess.WRITE)
+	for l in wind_lines:
+		wf.store_line(l)
+	wf.close()
 	var r := FileAccess.open(out.path_join("result.txt"), FileAccess.WRITE)
 	r.store_line("over %s winner %s clock %.0f" % [str(g.over), str(g.get("winner")), g.clock])
 	r.close()

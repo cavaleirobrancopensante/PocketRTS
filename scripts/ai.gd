@@ -124,6 +124,7 @@ var _swarm_phase := ""          # "", "flank" (getting into position), "strike"
 var _swarm_t := 0.0
 var _tight := false            # Brood: this wave packs tight (the enemy has little splash damage)
 var _no_room := {}              # economy kinds with no free spot, and when we looked
+var _abandoned := {}            # kind -> when a site of it was last dropped as "abandoned" (its builder fled): AIBrood.supply waits a little
 # how the last wave went: what it was worth going out, and the enemy value killed before it
 var _wave_value := 0.0
 var _wave_sup := 0
@@ -991,7 +992,7 @@ func _workers() -> void:
 			if game.train(h, worker) == "":
 				queued += 1
 	# Everyone idle goes to a post with room (escorts excepted).
-	_escort = _escort.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	_escort = _escort.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	_repair_wall()
 	_worker_safety()
 	for u in labs:
@@ -1883,7 +1884,7 @@ func _hall_first() -> bool:
 	if _crown():
 		# the escort walks over first; the hall goes down once it's there (or after a while)
 		var site := (Vector2(spot) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5) * Defs.TILE
-		var there := _guards.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and u.position.distance_to(site) < 300.0).size()
+		var there := _guards.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.position.distance_to(site) < 300.0).size()
 		if there < _guards.size() * 0.6 and game.clock - _stage_t < 35.0:
 			return true
 		# three labourers build it together (faster: less time at 10% health)
@@ -1971,7 +1972,7 @@ func _guard_new_hall(army: Array) -> Array:
 		_guard_until = 0.0
 	if _new_hall and _new_hall.built and _guard_until <= 0.0:
 		_guard_until = game.clock + 60.0
-	_guards = _guards.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	_guards = _guards.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	# two thirds while it goes up and for its first minute, then a third stays as its garrison
 	var want := maxi(4, army.size() * 2 / 3)
 	if _new_hall and _new_hall.built and game.clock > _guard_until:
@@ -2157,7 +2158,7 @@ func _rush_raid_or_new() -> bool:
 
 
 func _raid() -> void:
-	_raiders = _raiders.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	_raiders = _raiders.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	if opening == "breeder" and strategy == "rush":
 		_raiders.clear()             # (a Horseman rush: they ride out together with the wave)
 		return
@@ -2897,15 +2898,23 @@ func _tend_wall() -> void:
 
 ## One of our ghost sites couldn't start (blocked): plan again. A wall piece: the ramp gets
 ## walled again (only its gaps); anything else is simply missing and gets placed anew.
-func site_failed(b: Building) -> void:
+## "abandoned" (its builder was pulled off, e.g. fled from raiders): the kind's look-again wait (_no_room) stays, or the
+## site would be placed again at once in the same danger and dropped again a second later, over and over (0.14.53 QA
+## soak: a Brood Clutch Mound placed and refunded every second while raiders stood near).
+func site_failed(b: Building, why := "blocked") -> void:
 	if Defs.BUILDINGS[b.kind].get("line", false):
 		_walled = false
-	_no_room.erase(b.kind)
+	if why != "abandoned":
+		_no_room.erase(b.kind)
+	else:
+		_abandoned[b.kind] = game.clock
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 		return
+	if game.clock - float(_abandoned.get(kind, -99.0)) < AIBrood.ABANDON_WAIT:
+		return          # (a site of this kind was just dropped, its builder fled: not again at once into the same danger)
 	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[kind])):
 		return          # (gear mode: a Tension price, the Clock Aviary's)
 	if not game.requirement_met(team, kind):
@@ -3574,7 +3583,7 @@ func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
 		var alive := 0
 		var wave: Array = []
 		for g in _swarm:
-			g[0] = (g[0] as Array).filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead and not _on_errand(u))
+			g[0] = (g[0] as Array).filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and not _on_errand(u))      # (untyped: a freed Raptor fails a typed lambda's conversion, an error that emptied the group)
 			alive += _army_supply(g[0])
 			wave.append_array(g[0])
 		var sieging := false
@@ -3701,7 +3710,7 @@ func _xrush_army(army: Array, sup: int) -> void:
 				if u.order == "idle" and u.position.distance_to(front) > 160.0:
 					u.cmd_move(_home_spot(front), true)
 			return
-	_xr_wave = _xr_wave.filter(func(u: Unit) -> bool: return is_instance_valid(u) and not u.dead)
+	_xr_wave = _xr_wave.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	# the ones trained since wait at home and join as a group (2+), never one by one
 	var fresh: Array = army.filter(func(u: Unit) -> bool: return not _xr_wave.has(u))
 	var finishing := _rush_state == "succeeded" and _rush_mode == "finish"
