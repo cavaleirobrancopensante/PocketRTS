@@ -1,0 +1,12 @@
+id,team,faction,opp,map,t0,t1,kind,supply,value,killed_value,lost_value,kills,losses,army_end,plan,rush_state,open,attack_at,attack_at_end,comp
+brood-clockwork_002,1,clockwork,brood,ashford_crossing,1147.2,1232.8,wave,141,8390,1800,0,,,,balanced,,True,24,,"{""clock_soldier"": 67, ""cuckoo"": 2, ""jack"": 22, ""netter"": 3, ""pendulum"": 4, ""ticking_owl"": 1}"
+brood-clockwork_003,0,clockwork,brood,amberfall_vale,427.7,564.2,wave,34,2380,2275,140,,,,economy,,True,44,,"{""clock_soldier"": 34}"
+brood-clockwork_004,1,clockwork,brood,kestrel_rise,482.7,657.2,wave,17,1190,1950,140,,,,balanced,,True,24,,"{""clock_soldier"": 17}"
+brood-clockwork_007,0,clockwork,brood,highmoor,337.7,807.1,wave,17,1190,1975,210,,,,balanced,,True,24,,"{""clock_soldier"": 17}"
+brood-clockwork_008,1,clockwork,brood,thornwood_maze,901.3,954.8,wave,123,7115,1000,0,,,,balanced,,True,24,,"{""clock_soldier"": 57, ""cuckoo"": 2, ""jack"": 4, ""netter"": 3, ""pendulum"": 4, ""ticking_owl"": 8}"
+brood-clockwork_009,0,clockwork,brood,saltmarsh_isles,487.7,911.6,wave,52,3480,3020,210,44,3,8175,economy,,,44,44,"{""clock_soldier"": 44, ""pendulum"": 2}"
+brood-clockwork_010,0,brood,clockwork,twin_fords,659.5,739.9,wave,42,1405,1630,0,,,,balanced,,True,38,,"{""brute"": 1, ""raptor"": 25, ""spitter"": 14}"
+brood-clockwork_015,0,brood,clockwork,amberfall_vale,654.3,862.0,wave,32,1040,1520,815,19,27,3440,balanced,,,38,38,"{""raptor"": 20, ""spitter"": 12}"
+brood-clockwork_015,0,brood,clockwork,amberfall_vale,863.0,1023.0,wave,109,3530,5660,1025,,,,balanced,,True,46,,"{""mist_toad"": 1, ""raptor"": 67, ""spitter"": 39}"
+brood-clockwork_018,0,clockwork,brood,hollowfen,417.7,624.2,wave,34,2380,2700,540,,,,economy,,True,44,,"{""clock_soldier"": 34}"
+brood-clockwork_019,1,clockwork,brood,highmoor,383.7,644.8,wave,23,1610,1825,210,,,,balanced,,True,24,,"{""clock_soldier"": 23}"
