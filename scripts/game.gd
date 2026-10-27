@@ -3216,7 +3216,7 @@ func site_failed(b: Building, why := "blocked") -> void:
 			u.site_gone()
 	for ai in ais:
 		if ai.team == t and ai.has_method("site_failed"):
-			ai.site_failed(b)
+			ai.site_failed(b, why)
 
 
 ## Take a ghost off the map (nothing was built: no rubble, no loss counted).

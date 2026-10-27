@@ -2897,10 +2897,14 @@ func _tend_wall() -> void:
 
 ## One of our ghost sites couldn't start (blocked): plan again. A wall piece: the ramp gets
 ## walled again (only its gaps); anything else is simply missing and gets placed anew.
-func site_failed(b: Building) -> void:
+## "abandoned" (its builder was pulled off, e.g. fled from raiders): the kind's look-again wait (_no_room) stays, or the
+## site would be placed again at once in the same danger and dropped again a second later, over and over (0.14.53 QA
+## soak: a Brood Clutch Mound placed and refunded every second while raiders stood near).
+func site_failed(b: Building, why := "blocked") -> void:
 	if Defs.BUILDINGS[b.kind].get("line", false):
 		_walled = false
-	_no_room.erase(b.kind)
+	if why != "abandoned":
+		_no_room.erase(b.kind)
 
 
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:

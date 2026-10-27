@@ -2667,7 +2667,7 @@ func _reset_work() -> void:
 		keg = false
 		game.add_res2(team, _keg_cost())
 	_cancel_refit()            # (a refit called off: paid back)
-	if (order == "mount" or order == "lead") and order_target is Unit and is_instance_valid(order_target) and order_target.claimed == self:
+	if (order == "mount" or order == "lead") and is_instance_valid(order_target) and order_target is Unit and order_target.claimed == self:      # (validity first: the horse may be gone, e.g. a man raised from the dead)
 		order_target.claimed = null    # (he isn't coming for that horse any more)
 	if not _keep_queue:
 		after = {}
