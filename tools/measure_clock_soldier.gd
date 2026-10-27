@@ -43,6 +43,9 @@ func _run() -> void:
 		["6 CS vs 8 Labourers (400)", 6, "labourer", 8],
 		["3 CS vs 8 Labourers", 3, "labourer", 8],
 		["8 CS vs 6 Musketeers", 8, "musketeer", 6],
+		["6 CS vs 5 Musketeers", 6, "musketeer", 5],
+		["6 CS vs 7 Spitters", 6, "spitter", 7],
+		["6 CS vs 6 Jacks", 6, Defs.JACK, 6],
 		["6 CS vs 4 Brutes (600 + 80)", 6, "brute", 4],
 	]
 	for f in fights:
