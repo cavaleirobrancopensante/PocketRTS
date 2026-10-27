@@ -277,6 +277,27 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
   replace them.
 - A swept wreck goes in the torn-body puff of dust (Game.torn_fx), not a painted sweep effect.
 
+## The Great Winder on cog wheels (code, branch gw-wheels, 2026-10-27; docs/great_winder.md "The art")
+The owner, after playing: the legs looked silly. The painted legs are gone from WALK, WIND, SWEEP, IDLE and DEATH
+(MOUNT = 'wheels' in tools/great_winder_guide/anim.py; the legs code is kept behind MOUNT = 'legs'). Every wheel is code:
+- The WHEELS are the Spring Catapult's painted cog (art/redraws/catapult_wheel_chatgpt.png) REBUILT by
+  tools/catapult_guide/cog.py (12 evened teeth, 8 evened bolts, the painting's light put back as a fixed map), SCALED to
+  44.3 sheet px tip radius (~13 game px) and placed by hand at the body's corners where the legs' hips were (WHEEL_AT):
+  E face-on round; SE and NE the same cog SQUASHED to 0.72 of its height (its face turned ~45 deg; the Catapult squashes
+  only SE); S and N the cog's EDGE-ON paint (cog.render_edge, with its hub ball, 0.44 as wide as tall: wider than the
+  Catapult's 0.36 so it reads at 1x), the near pair at the body's sides, the far pair behind and higher. The far side's
+  wheels are the same cogs behind the body, DARKENED x0.72 (CODE SHADE). No painting of the Great Winder on wheels exists.
+- WALK: every wheel TURNED in code, 90 deg (3 teeth) a 12-frame loop; S rolls its tread down, N up. The body JUDDERS
+  1 game px every 4 frames (a tooth coming down). WIND and SWEEP: the wheels stand still.
+- The body is unchanged and at the same height (the brush housing stays on the ground); in the side and 3/4 views the
+  belly's arch and the leftover leg scraps are covered by the near wheels. The cog's blue hub ball turns to player colour
+  with the rest (cw_palette's rule).
+- IDLE: standing on the still wheels, then the body dipped 1 game px on its axles (the wheels do not move).
+- DEATH: MADE in code from the parts: the body and the far wheels SQUASHED toward the ground (up to 22%) and TIPPED up to
+  4 degrees; the near wheels come off: in the face-on views each is SQUASHED down to its foot (falling flat toward us,
+  to 38%) and slid out a little, in S and N each is ROTATED over to its own side (up to 80 deg about its foot); all
+  darkened to 50%. A painted wreck on its side with a wheel off would replace it.
+
 ## Clockwork buildings going up out of the crate (code, 0.14.84)
 - Every Clockwork building's crate unfolding strip (assets/effects/crate_unfold_<kind>.png) is the ONE painted sheet
   art/clockwork/crate_unfold.png (closed crate, lid open, sides folding, iron plates, gantry) scaled in code by
