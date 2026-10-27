@@ -7,8 +7,8 @@ extends SceneTree
 ##  1. buying horses at a Horse Breeder (40 gold, 15 s; nothing free, no income); 2 Farms a
 ##     Town Hall, breeders unlimited; the horse-needing units' prices
 ##  2. one man leading 3 horses (they follow him)
-##  3. a Horseman at the Barracks: refused without a horse, the horse walks in, cancel gives
-##     it back, the recruit rides that horse's coat
+##  3. a Horseman at the Barracks: refused without a horse, the horse waits hitched beside it,
+##     cancel frees it, the recruit rides that horse's coat
 ##  3b. one click trains rider and horse: a spare at a breeder is reserved (only the unit
 ##     paid), else the breeder trains one (40 more); no gold for the horse: refused; the
 ##     Horseman comes out on foot, mounts his horse and rides to the rally; a gun's horse
@@ -272,10 +272,10 @@ func _training() -> void:
 	check(bar.kits[0].get("coat", "") == coat, "the queue entry keeps that horse's coat")
 	check(g.free_horse_at(bar) == null, "that horse is taken (the next one gets his from a breeder)")
 	await wait(5.0)
-	check(g.horses_of(0).size() == horses0 - 1, "the horse walked in and is gone")
+	check(g.horses_of(0).size() == horses0, "the horse walked over and stands hitched beside the Barracks (it does not vanish)")
 	g.cancel_train(bar)
 	await physics_frame
-	check(g.horses_of(0).size() == horses0, "cancelling gives the horse back")
+	check(g.horses_of(0).size() == horses0, "cancelling frees the horse where it stands")
 	# again, and let him come out
 	var back: Unit = g.free_horse_at(bar)
 	check(back != null, "the horse stands at the Barracks again")

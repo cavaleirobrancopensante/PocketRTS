@@ -16,6 +16,14 @@ extends Node2D
 ## ground (Game.in_field asks here). The placement rule (placement_problem): a new building's ring must touch the
 ## connected field and may not cut deeper than Defs.GEAR.overlap into another ring (a Clocktower is the exception).
 ##
+## THE LEVEL RULE (owner, 2026-10-26): rings mesh only on the same ground level. A building's level is its footprint's
+## height (Game.height: 0 low ground, 1 high ground; a ramp counts as low ground and no building stands on one, so a
+## footprint is on one level); two rings of buildings on different levels never link, however close (a high-ground ring
+## reaching over the cliff edge, or a ring at the top of a ramp and one at its foot). And where two rings on one level meet,
+## the ground is on that level too: the contact point of a direct mesh, the idler between a gap (an idler is never put
+## across a cliff; of its two possible spots the one on the level is taken). joint_ok, level_ok; the placement ghost says
+## NO LINK: OTHER LEVEL.
+##
 ## THE TENSION RULE (Defs.TENSION_USERS, the Escapement): a building that uses Tension works only while it is connected AND
 ## its ring meshes directly with a Mainspring's ring (one hop, within the link gap: an idler between them counts). Such a
 ## building is linked last in the connection tree, hung on that Mainspring when there is one (so the drawn mesh and its
@@ -35,7 +43,8 @@ var ang := {}                    # Building -> its gear's angle now
 var version := 0                 # bumped when the connected set changes
 var idler_of := {}               # Building -> {"pos": gear space, "n": teeth, "r": pitch radius} between it and its parent
 var idler_ang := {}              # Building -> the angle of its idler now
-var spring_of := {}              # a connected Tension user (Defs.TENSION_USERS) -> the Mainspring its ring meshes with
+var spring_of := {}              # a connected building (not a Mainspring) -> the Mainspring its ring meshes with (Tension rule)
+var drive_of := {}               # a connected building -> rings from the nearest driver, a Clocktower or Mainspring (GearEcon)
 var _field := {}                 # team -> [[centre in gear space, radius px]] of the connected rings
 var _sig := -1
 var _solved_at := -10.0
@@ -96,6 +105,67 @@ static func b_c(b: Building) -> Vector2:
 	return gpos(b.center())
 
 
+## THE LEVEL RULE: the ground level of a footprint at cell c (0 low, 1 high: Game.height; a ramp is low ground). A footprint
+## is on one level in play (none stands on a ramp or a cliff); a mixed one (the editor, a forced start) goes by most of its
+## cells, a tie to the high ground.
+static func foot_level(game: Game, c: Vector2i, size: Vector2i) -> int:
+	if game == null or game.height.is_empty():
+		return 0
+	var n := 0
+	var hi := 0
+	for y in size.y:
+		for x in size.x:
+			var cc := c + Vector2i(x, y)
+			if game.in_map(cc):
+				n += 1
+				if int(game.height[game.idx(cc)]) == 1:
+					hi += 1
+	return 1 if hi > 0 and hi * 2 >= n else 0
+
+
+## A building's ground level (foot_level of its footprint).
+static func b_level(b: Building) -> int:
+	return foot_level(b.game, b.cell, b.size)
+
+
+## The ground level under a point in gear space; -1 off the map.
+static func level_at(game: Game, g: Vector2) -> int:
+	if game == null or game.height.is_empty():
+		return 0
+	var c := game.cell_of(Vector2(g.x, g.y * FY))
+	if not game.in_map(c):
+		return -1
+	return int(game.height[game.idx(c)])
+
+
+## THE LEVEL RULE where two rings on ground level `lv` meet (centres ca, cb in gear space, pitch radii ra, rb, within the link
+## gap): the ground at the contact point of a direct mesh, or at one of the idler's two possible spots, is on that level too.
+## So no mesh and no idler across a cliff, even between two rings on one level (two plateaus with low ground between).
+static func joint_ok(game: Game, ca: Vector2, ra: float, cb: Vector2, rb: float, lv: int) -> bool:
+	if game == null or game.height.is_empty():
+		return true
+	var d := ca.distance_to(cb)
+	if d < 0.001:
+		return true
+	var gap := d - ra - rb
+	if gap <= float(Defs.GEAR["mesh_tol"]):
+		return level_at(game, ca + (cb - ca) / d * (ra + gap * 0.5)) == lv
+	for pos in idler_spots(ca, ra, cb, rb):
+		if level_at(game, pos) == lv:
+			return true
+	return false
+
+
+## Would a ring of `kind` at cell c (on its big gear: `big`) mesh with b's ring by THE LEVEL RULE: the same ground level, and
+## the point where they meet on it (joint_ok). The distance (the link gap) is the caller's to check.
+static func level_ok(game: Game, kind: String, c: Vector2i, big: bool, b: Building) -> bool:
+	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
+	var lv := foot_level(game, c, size)
+	if lv != b_level(b):
+		return false
+	return joint_ok(game, gpos(Vector2(c) * T + Vector2(size) * T * 0.5), ring_r(kind, size, big), b_c(b), b_r(b), lv)
+
+
 ## Which painted ring a building wears: "tower" (a Clocktower), "big" or "small".
 static func ring_kind(kind: String, big: bool) -> String:
 	return "tower" if kind == "clocktower" else ("big" if big else "small")
@@ -123,24 +193,22 @@ static func mesh_error(pa: float, na: int, pb: float, nb: int, phi: float) -> fl
 ## of n teeth (at least Defs.GEAR.idler_min, enough to span the gap) whose pitch circle touches both, on the line of
 ## centres when it just spans the gap, else beside it (the side with more room from the `others` rings, [[centre, r]]).
 ## {} when the rings mesh directly (gap within Defs.GEAR.mesh_tol px). {"pos", "n", "r"}.
-static func idler_for(ca: Vector2, ra: float, cb: Vector2, rb: float, others: Array = []) -> Dictionary:
-	var p := float(Defs.GEAR["pitch"])
+## `game` and `lv` (THE LEVEL RULE): only a spot whose ground is on level `lv` will do (when neither is, the best of both).
+static func idler_for(ca: Vector2, ra: float, cb: Vector2, rb: float, others: Array = [], game: Game = null, lv := -1) -> Dictionary:
 	var d := ca.distance_to(cb)
 	var gap := d - ra - rb
 	if gap <= float(Defs.GEAR["mesh_tol"]) or d < 0.001:
 		return {}
-	var n := maxi(int(Defs.GEAR["idler_min"]), int(ceil(PI * gap / p)))
+	var n := idler_teeth(gap)
 	var ri := radius_of_teeth(n)
-	var a := ra + ri
-	var bb := rb + ri
-	var x := (a * a - bb * bb + d * d) / (2.0 * d)
-	var h := sqrt(maxf(0.0, a * a - x * x))
-	var u := (cb - ca) / d
-	var perp := Vector2(-u.y, u.x)
-	var best := Vector2.ZERO
+	var spots := idler_spots(ca, ra, cb, rb)
+	if game != null and lv >= 0:
+		var on_level: Array = spots.filter(func(p: Vector2) -> bool: return level_at(game, p) == lv)
+		if not on_level.is_empty():
+			spots = on_level
+	var best: Vector2 = spots[0]
 	var best_room := -INF
-	for side in [1.0, -1.0]:
-		var pos: Vector2 = ca + u * x + perp * h * side
+	for pos in spots:
 		var room := 1000.0
 		for o in others:
 			room = minf(room, pos.distance_to(o[0]) - float(o[1]) - ri)
@@ -149,6 +217,28 @@ static func idler_for(ca: Vector2, ra: float, cb: Vector2, rb: float, others: Ar
 			best_room = room
 			best = pos
 	return {"pos": best, "n": n, "r": ri}
+
+
+## The idler's teeth for a gap of `gap` px between two pitch circles: at least Defs.GEAR.idler_min, enough to span it.
+static func idler_teeth(gap: float) -> int:
+	return maxi(int(Defs.GEAR["idler_min"]), int(ceil(PI * gap / float(Defs.GEAR["pitch"]))))
+
+
+## The idler's two possible centres (gear space) for two rings with a gap: its pitch circle touching both, one each side of
+## the line of centres (the same point twice when it just spans the gap). [] when they mesh directly.
+static func idler_spots(ca: Vector2, ra: float, cb: Vector2, rb: float) -> Array:
+	var d := ca.distance_to(cb)
+	var gap := d - ra - rb
+	if gap <= float(Defs.GEAR["mesh_tol"]) or d < 0.001:
+		return []
+	var ri := radius_of_teeth(idler_teeth(gap))
+	var a := ra + ri
+	var bb := rb + ri
+	var x := (a * a - bb * bb + d * d) / (2.0 * d)
+	var h := sqrt(maxf(0.0, a * a - x * x))
+	var u := (cb - ca) / d
+	var perp := Vector2(-u.y, u.x)
+	return [ca + u * x + perp * h, ca + u * x - perp * h]
 
 
 # ------------------------------------------------------------------ the graph
@@ -160,13 +250,14 @@ func is_linked(b: Building) -> bool:
 
 
 ## Work speed of a Clockwork building: 0 while unconnected (or while its gear is being swapped, or, using Tension, while
-## its ring meshes with no Mainspring), else 1.
+## its ring meshes with no Mainspring), else its DRIVE share (GearEcon: 1 meshing with a Clocktower or Mainspring, less
+## farther out; always 1 for the Clocktower, supply and the turret).
 func speed_mult(b: Building) -> float:
 	if not enforce or not Defs.gear_mode or b.d["faction"] != "clockwork" or not b.built or b.dead:
 		return 1.0
 	if Defs.TENSION_USERS.has(b.kind) and not spring_of.has(b):
 		return 0.0
-	return 1.0 if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
+	return GearEcon.work_mult(self, b) if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
 
 
 ## A Tension user's Mainspring (its ring meshing with this one's), null when it has none (or is not connected).
@@ -198,19 +289,26 @@ func solve() -> void:
 	order = []
 	_field = {}
 	spring_of = {}
+	drive_of = {}
 	if not Defs.gear_mode or game == null:
 		return
 	var list: Array = []
 	var gp: Array = []
 	var rr: Array = []
+	var lv: Array = []
 	for b in game.buildings:
 		if is_instance_valid(b) and not b.dead and not b.ghost and b.built and b.d["faction"] == "clockwork":
 			list.append(b)
 			gp.append(b_c(b))
 			rr.append(b_r(b))
+			lv.append(b_level(b))
 	var slack := float(Defs.GEAR["slack"]) * T
+	var g0 := game
+	# (rings touch within the link gap, on the same ground level, meeting on it: THE LEVEL RULE)
 	var touch := func(a: int, j: int) -> bool:
-		return (gp[a] as Vector2).distance_to(gp[j]) <= float(rr[a]) + float(rr[j]) + slack
+		if (gp[a] as Vector2).distance_to(gp[j]) > float(rr[a]) + float(rr[j]) + slack:
+			return false
+		return int(lv[a]) == int(lv[j]) and joint_ok(g0, gp[a], rr[a], gp[j], rr[j], int(lv[a]))
 	var q: Array = []
 	for i in list.size():
 		if list[i].kind == "clocktower":
@@ -248,16 +346,18 @@ func solve() -> void:
 			parent_of[list[j]] = list[par]
 			q.append(j)
 		deferred.clear()
-	# the Tension rule: each connected Tension user's Mainspring (its parent, or one hanging on it)
+	# the Tension rule: each connected building's Mainspring (its parent, or one hanging on it): a Tension user works only
+	# with one, and anything that costs Tension is made only at a building that has one (GearEcon.spend_problem)
 	spring_of = {}
 	for j in q:
-		if not Defs.TENSION_USERS.has(list[j].kind):
+		if list[j].kind == "mainspring":
 			continue
 		for k in q:
 			if list[k].kind == "mainspring" and list[k].team == list[j].team and touch.call(k, j):
 				spring_of[list[j]] = list[k]
 				if parent_of.get(list[j]) == list[k]:
 					break
+	drive_of = GearEcon.drive_steps(list, linked, touch)      # (the efficiency: rings from a Clocktower or Mainspring)
 	idler_of = {}
 	for i in q:
 		var b: Building = list[i]
@@ -268,7 +368,7 @@ func solve() -> void:
 			for k in q:
 				if k != i and list[k] != p:
 					others.append([gp[k], rr[k]])
-			var idl := idler_for(b_c(p), b_r(p), gp[i], rr[i], others)
+			var idl := idler_for(b_c(p), b_r(p), gp[i], rr[i], others, game, int(lv[i]))
 			if not idl.is_empty():
 				idler_of[b] = idl
 		if not _field.has(b.team):
@@ -327,6 +427,8 @@ static func ring_spot(game: Game, t: int, kind: String, around: Building, deg: f
 			var score := absf(gap) + (0.0 if absf(gap) <= float(Defs.GEAR["mesh_tol"]) else 12.0) + da * 60.0
 			if score >= bs:
 				continue
+			if not level_ok(game, kind, c, false, around):
+				continue          # (THE LEVEL RULE: on around's level, meeting it there)
 			if game.placement_problem(t, kind, c, unseen) != "" or not game.margin_free(c, size):
 				continue
 			best = c
@@ -342,6 +444,8 @@ func placement_problem(t: int, k: String, c: Vector2i, big := false) -> String:
 		"clash":
 			return "Its gear ring would clash with a %s's ring: leave room for the gears to mesh." % String(Defs.BUILDINGS[st["with"].kind]["name"])
 		"far":
+			if st.get("level", false):
+				return "Gears mesh only on the same ground level: its ring would touch your field only across a cliff or a ramp."
 			return "Its gear ring must touch your gear field: mesh it with a linked building's ring."
 	return ""
 
@@ -358,27 +462,35 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	var g := gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
 	var r := ring_r(k, size, big)
+	var lv := foot_level(game, c, size)
 	var touch: Building = null
 	var best := INF
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
-	var tension := Defs.TENSION_USERS.has(k)
+	var tension := GearEcon.spends_tension(k)          # (a Tension user, or a Movement Works for its Jacks, Netters, Pendulums)
 	var spring: Building = null
 	var sbest := INF
+	var across := false             # (a linked ring in reach, but on the other level: THE LEVEL RULE)
 	for b in game.buildings:
 		if not is_instance_valid(b) or b.dead or b.team != t or b.d["faction"] != "clockwork":
 			continue
 		var gap := g.distance_to(b_c(b)) - (r + b_r(b))
 		if gap < -over:
 			return {"state": "clash", "with": b}
-		if gap <= slack and linked.has(b) and gap < best:
+		if gap > slack:
+			continue
+		var meets := b_level(b) == lv and joint_ok(game, g, r, b_c(b), b_r(b), lv)
+		if not meets:
+			across = across or linked.has(b)
+			continue
+		if linked.has(b) and gap < best:
 			touch = b
 			best = gap
-		if tension and b.kind == "mainspring" and b.built and not b.ghost and gap <= slack and gap < sbest:
+		if tension and b.kind == "mainspring" and b.built and not b.ghost and gap < sbest:
 			spring = b
 			sbest = gap
 	if touch == null:
-		return {"state": "far"}
+		return {"state": "far", "level": across}
 	var out := {"state": "ok", "with": touch}
 	if tension:
 		out["spring"] = spring
@@ -634,7 +746,7 @@ func draw_ghost(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) ->
 	if p != null and is_instance_valid(p):
 		var g := gpos(centre)
 		var others: Array = []
-		var idl := idler_for(b_c(p), b_r(p), g, radius_of_teeth(n), others)
+		var idl := idler_for(b_c(p), b_r(p), g, radius_of_teeth(n), others, game, foot_level(game, c, size))
 		var pa := float(ang.get(p, 0.0))
 		if idl.is_empty():
 			rot = mesh_phase(pa, b_n(p), (g - b_c(p)).angle(), n)
@@ -659,9 +771,26 @@ func draw_ghost_label(ci: CanvasItem, t: int, k: String, c: Vector2i, big := fal
 		return
 	var size: Vector2i = Defs.BUILDINGS[k]["size"]
 	var centre := Vector2(c) * T + Vector2(size) * T * 0.5
+	var gt := ghost_text(t, k, c, big)
+	var label: String = gt[0]
+	var col: Color = gt[1]
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	var at := centre + Vector2(-w * 0.5, -float(size.y) * T * 0.5 - 34.0)
+	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), Color(0.05, 0.05, 0.07, 0.85))
+	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), col, false, 1.5)
+	ci.draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+
+
+## The ghost's verdict for kind k at cell c, translated, and its colour: [text, Color]. LINKS (with the % it would work at:
+## GearEcon.ghost_note), NO LINK, NO LINK: OTHER LEVEL (THE LEVEL RULE), CLASH, NEW FIELD; a Tension user NEEDS MAINSPRING
+## or MESHES MAINSPRING.
+func ghost_text(t: int, k: String, c: Vector2i, big := false) -> Array:
 	var st := candidate(t, k, c, big)
 	var state: String = st["state"]
 	var label: String = {"far": "NO LINK", "clash": "CLASH", "tower": "NEW FIELD"}.get(state, "LINKS")
+	if state == "far" and st.get("level", false):
+		label = "NO LINK: OTHER LEVEL"        # (THE LEVEL RULE: it reaches the field only across a cliff or a ramp)
 	var col := ghost_colour(state)
 	if state == "ok" and Defs.TENSION_USERS.has(k):
 		# a Tension user: it links, but works only meshed with a Mainspring
@@ -670,13 +799,12 @@ func draw_ghost_label(ci: CanvasItem, t: int, k: String, c: Vector2i, big := fal
 			col = ghost_colour("far")
 		else:
 			label = "MESHES MAINSPRING"
-	var font := ThemeDB.fallback_font
+	elif state == "ok" and st.get("spring") != null:
+		label = "MESHES MAINSPRING"        # (a Movement Works: its Jacks may be made here)
 	label = Loc.t(label)
-	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	var at := centre + Vector2(-w * 0.5, -float(size.y) * T * 0.5 - 34.0)
-	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), Color(0.05, 0.05, 0.07, 0.85))
-	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), col, false, 1.5)
-	ci.draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+	if state == "ok" and not (Defs.TENSION_USERS.has(k) and st.get("spring") == null):
+		label += GearEcon.ghost_note(self, t, k, c, big)     # (its efficiency before it is placed; what a Mainspring feeds)
+	return [label, col]
 
 
 ## One toothed ring in gear space about the origin: n teeth, pitch radius r. `rot`: its angle (the caller of a node

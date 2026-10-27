@@ -8,11 +8,14 @@ Cut-out parts per row (sheet px, hand-set in ROWS):
   visible beam copied along its length (a whole number of px, no resampling). The hinge ball / knuckle stays on the
   body. Side and 3/4 views: the arm sits in the middle of the machine, BEHIND the drum's near rim (drawn under the
   body); S: in front (as painted); N: in front while it leans back towards us, behind once it passes the top.
-- the WHEELS: cut out and turned in place about the hub (S: ellipses, un-squashed for the turn). The blue hub ball
-  stays still (a sphere does not turn), and the big light and shade of the painting stay where they are (the turned
-  wheel is re-lit by the ratio of the blurred brightness before and after the turn), so only the teeth and bolts go
-  round. Far wheels (partly hidden): only their visible tooth ring turns, teeth taken one pitch round where the turn
-  would bring in a hidden part. N: the wheels are seen edge-on; their tooth bars scroll down the tread.
+- the WHEELS: cut out of the body and replaced by ChatGPT's painted cog (art/redraws/catapult_wheel_chatgpt.png),
+  rebuilt with even teeth and bolts and turned in code by cog.py (face-on squashed into each wheel's fitted ellipse;
+  S and N: the edge-on paint, its tread rolling down / up; S's painted face-on wheels are erased: REWHEEL; SE: squashed
+  to SQUASH_34). Far wheels turn behind the body (their rim and teeth come off it; OCC
+  keeps what stands in front of them); behind a near wheel's tooth gaps the body's paint is reflected inward, shaded.
+- S/N ARM POSES: away from the loaded pose the arm is ChatGPT's own painted arm (art/redraws/catapult_arm_poses_
+  chatgpt.png: straight up, and tipped toward the viewer for the S follow-through; N, and NE's cup, from N_BACK_T
+  down: the cup seen from below, its back to us), its beam tiled.
 - the BODY: the rest, with the holes the arm and wheels leave filled from the neighbouring paint (S and N: the drum
   behind the upright beam is filled row by row between its two sides).
 - the PAYLOAD: ChatGPT's curled-up Clock Soldier from the concept (art/redraws/concepts/catapult_v1.png, the flying
@@ -37,6 +40,8 @@ by side). Also art/redraws/catapult_payload.png (the curled soldier, sheet scale
 middle per THROW frame and row, in cell px from the cell's top-left, and the release frame) for the game's projectile.
   python3 tools/catapult_guide/anim.py            (python3 tools/catapult_guide/anim.py parts DIR [-v]: the cut parts)"""
 import json, math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cog
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
@@ -44,12 +49,15 @@ from scipy import ndimage as ndi
 NAVY = np.array([0, 22, 48])
 SHEET = np.array(Image.open('art/redraws/catapult_dirs.png').convert('RGB')).astype(int)
 CONCEPT = np.array(Image.open('art/redraws/concepts/catapult_v1.png').convert('RGB')).astype(int)
-GS = 0.26             # game px per sheet px (the Netter is 0.238: the Catapult comes out ~1.1x its size)
+GS = 0.357            # game px per sheet px: 1.5x the Netter's 0.238 (the owner: about 1.5x the Netter; it was 0.26)
 DIRS = ['s', 'se', 'e', 'ne', 'n']
 T0 = 168.6            # the loaded pose (deg), from the side view's painted arm
 ARM_L = 116.3         # the arm's true length, hinge to cup joint (sheet px), from the side view
 DEPTH = 0.36          # S/N: screen px down (S) or up (N) per px towards/away from us, from the S view's painted arm
+DEPTH_AWAY = 0.53     # N follow-through only (see arm_vec)
 MARGIN = (70, 175, 70, 14)   # render window around the unit's box: left, top, right, bottom (sheet px)
+SQUASH_34 = 0.72     # SE: the near wheels' faces are turned ~45 deg from us: their ellipse is this wide (of its height)
+N_BACK_T = 100.0     # N / NE (seen from behind): at this arm angle and below (up, past vertical) the cup shows its back
 
 # per row (sheet px): the unit's box; H the hinge, J the cup joint (where the beam meets the cup); bw the beam's
 # width; clean: the stretch (from J) where the beam shows whole; past it (behind the drum's rim) the beam is that
@@ -62,21 +70,36 @@ MARGIN = (70, 175, 70, 14)   # render window around the unit's box: left, top, r
 ROWS = [
     dict(box=(184, 59, 446, 298), H=(325, 186), J=(326, 122), bw=30, clean=None, cup=(292, 55, 369, 135),
          rim=(330.5, 70.5, 33, 9), hub=(306, 176, 345, 209), F=(0.0, DEPTH), tpaint=T0, arm='front',
-         wheels=[(233, 256, 31, 47, 'near', 1), (413, 256, 32, 47, 'near', -1)]),
+         # (S, facing us: the wheels are seen EDGE-ON, laid out like the N view's: the front pair (near) at the sides,
+         # the rear pair (far) at the body's ends, higher, behind it; ChatGPT painted them face-on: see REWHEEL)
+         wheels=[(227, 256, 17, 47, 'edge'), (423, 256, 17, 47, 'edge'), (251, 228, 16, 46, 'edge'),
+                 (399, 228, 16, 46, 'edge')],
+         anchor=(323.0, 303.0), roll=1, tones=(1.03, 1.03, 0.85, 0.85)),
     dict(box=(169, 354, 476, 587), H=(349, 425), J=(297, 392), bw=28, clean=None, cup=(226, 352, 300, 409),
          rim=(263, 366, 33, 10), hub=None, F=None, tpaint=T0, arm='behind',
-         wheels=[(220, 505, 44, 44, 'near'), (371, 547, 40, 40, 'near'), (440, 486, 46, 46, 'far')]),
+         wheels=[(220, 505, 44, 44, 'near'), (371, 547, 40, 40, 'near'), (440, 486, 46, 46, 'far')], squash=SQUASH_34,
+         occ=[(330, 425), (385, 425), (400, 440), (420, 444), (438, 446), (447, 455), (449, 470), (444, 484), (442, 500), (436, 512),
+              (425, 522), (412, 530), (385, 545), (330, 545)]),
     dict(box=(139, 656, 493, 856), H=(351, 706), J=(237, 683), bw=28, clean=(5, 27), cup=(162, 655, 240, 708),
          rim=(201, 671, 33, 9), hub=None, F=(1.0, 0.0), tpaint=T0, arm='behind',
-         wheels=[(233, 797, 47, 47, 'near'), (429, 810, 44, 44, 'near'), (448, 772, 47, 47, 'far')]),
+         wheels=[(233, 797, 47, 47, 'near'), (429, 810, 44, 44, 'near'), (448, 772, 47, 47, 'far')],
+         occ=[(340, 715), (395, 715), (410, 722), (430, 725), (445, 733), (450, 745), (446, 758), (440, 765), (395, 770), (340, 770)]),
     dict(box=(179, 927, 495, 1150), H=(360, 980), J=(276, 960), bw=29, clean=(4, 27), cup=(200, 926, 279, 981),
          rim=(238, 942, 33, 10), hub=None, F=None, tpaint=T0, arm='behind',
-         wheels=[(221, 1055, 45, 45, 'near'), (348, 1103, 45, 45, 'near'), (442, 1076, 44, 44, 'far')]),
+         wheels=[(221, 1055, 45, 45, 'near'), (348, 1103, 45, 45, 'near'), (442, 1076, 44, 44, 'far')],
+         occ=[(340, 1020), (395, 1020), (430, 1022), (462, 1028), (462, 1048), (450, 1056), (440, 1062), (440, 1095), (420, 1110),
+              (395, 1120), (340, 1120)], back_t=N_BACK_T),
     dict(box=(207, 1200, 465, 1452), H=(323, 1320), J=(322, 1257), bw=30, clean=None, cup=(284, 1196, 362, 1268),
          rim=(322.5, 1211, 35, 10), hub=(302, 1305, 345, 1363), F=(0.0, -DEPTH), tpaint=130.0, arm='n',
          wheels=[(249, 1407, 16, 46, 'edge'), (397, 1407, 17, 46, 'edge'), (228, 1378, 18, 48, 'edge'),
-                 (425, 1380, 17, 48, 'edge')]),
+                 (425, 1380, 17, 48, 'edge')], roll=-1, back_t=N_BACK_T),
 ]
+
+# S: ChatGPT painted the wheels face-on (as if turned 90 deg). REWHEEL erases them (and the rear wheels' face-on teeth
+# peeking out behind them) off the body: old: their ellipses (sheet px); peeks: boxes of the rear teeth; block: the
+# body's riveted base, whose ends the wheels covered: filled from its own plate further in (CODE EDIT)
+REWHEEL = dict(old=[(233, 256, 38, 55), (413, 256, 39, 55)], peeks=[(196, 186, 252, 228), (382, 160, 448, 228)],
+               block=(247, 196, 401, 271), mid=325, shift=7)
 
 
 def fg(a):
@@ -150,8 +173,66 @@ def payload_img():
     m &= lab == int(np.argmax(sz)) + 1
     m = ndi.binary_fill_holes(m)
     ys, xs = np.nonzero(m)
+    S = recolour_payload(S, m)
     im = Image.fromarray(rgba(S, m)[ys.min():ys.max() + 1, xs.min():xs.max() + 1], 'RGBA')
     return im
+
+
+KEY_LIT, KEY_SHADE = (255, 0, 0), (150, 0, 0)    # the team-colour key the game's shader turns into the player's colour
+
+
+def recolour_payload(S, m):
+    """the curled soldier coloured like the new Clock Soldier (CODE COLOUR): all brass except its head in the team
+    key. The red case (the round head with the clock face, the part that reads as the head in the curl) becomes the
+    key in two tones (KEY_LIT where it is lit, KEY_SHADE in its shade, split at the red's median brightness); the blue
+    joints and the gunmetal become brass: each takes the painting's own brass at its brightness (a ramp sampled from the
+    soldier's brass pixels); the clock face and the dark outline stay"""
+    S = S.astype(float).copy()
+    r, g, b = S[..., 0], S[..., 1], S[..., 2]
+    lum = 0.3 * r + 0.59 * g + 0.11 * b
+    red = m & (r > 90) & (g < 0.42 * r) & (b < 0.42 * r) & (np.abs(g - b) < 32)     # (brass's dark orange has g >> b)
+    blue = m & (b > r + 30) & (b > 70)
+    grey = m & (np.abs(r - g) < 28) & (np.abs(g - b) < 28) & (lum > 45) & (lum < 175) & ~red & ~blue
+    brass = m & (r > 120) & (g > 70) & (b < 110) & (r > b + 60) & ~red
+    # the brass ramp: the median brass colour per brightness band
+    ramp = np.zeros((256, 3))
+    bl = lum[brass]
+    bc = S[brass]
+    bands = np.clip((bl / 16).astype(int), 0, 15)
+    have = [k for k in range(16) if (bands == k).sum() >= 5]
+    cols = np.array([np.median(bc[bands == k], 0) for k in have])
+    lv = np.array([np.median(bl[bands == k]) for k in have])
+    for c in range(3):
+        ramp[:, c] = np.interp(np.arange(256), lv, cols[:, c])
+    for mm in (blue, grey):
+        # (stretched onto the brass's own range so a dark joint is dark brass, not black)
+        l2 = lum[mm]
+        if mm.sum():
+            t = (l2 - l2.min()) / max(1.0, l2.max() - l2.min())
+            S[mm] = ramp[np.clip((lv.min() + t * (lv.max() - lv.min())).astype(int), 0, 255)]
+    # (stray red specks in the brass's shade are brass)
+    lab, n = ndi.label(red)
+    if n > 1:
+        sz = ndi.sum(red, lab, range(1, n + 1))
+        speck = np.isin(lab, [i + 1 for i, s_ in enumerate(sz) if s_ < 12])
+        S[speck] = ramp[np.clip(lum[speck].astype(int), 0, 255)]
+        red &= ~speck
+    if red.sum():
+        thr = np.median(lum[red])
+        S[red & (lum >= thr)] = KEY_LIT
+        S[red & (lum < thr)] = KEY_SHADE
+    return S.astype(int)
+
+
+def snap_key(a):
+    """after a shrink, the payload's reds back onto the two key colours (a box filter mixes them with their
+    neighbours, and the game's team shader only knows the pure reds)"""
+    a = a.copy()
+    r, g, b = a[..., 0].astype(int), a[..., 1].astype(int), a[..., 2].astype(int)
+    red = (a[..., 3] > 0) & (r > g + 70) & (r > b + 70) & (g < 90) & (b < 90)
+    a[red & (r >= 200)] = KEY_LIT + (255,)
+    a[red & (r < 200)] = KEY_SHADE + (255,)
+    return a
 
 
 PAYLOAD_SRC = payload_img()
@@ -171,7 +252,10 @@ FACE = 0.70            # a wheel's face plate (hub, bolts) reaches this far out 
 EDGE_PITCH = 22.0      # the edge-on wheels' tooth bars (N), measured down their middles
 TEETH_PER_LOOP = 3     # MOVE: the teeth go round 3 pitches in the 8 frames (3/8 of a tooth a frame: clearly forward;
                        # at 1/2 a tooth a frame the eye cannot tell which way they turn)
-TOOTH_PITCH = 26.0     # deg between a cog's teeth when they are too irregular to measure (about 14 teeth)
+TOOTH_PITCH = 26.0
+TRIM_TOP = 13          # S/N: body px this far under the painted joint (and above) are the old arm's leftovers
+FAR_RIM = 0.58         # a far wheel is replaced from here out (of its tips' radius); its middle stays painted
+GAP_SHADE = 0.7       # the body seen through a near wheel's tooth gaps, in the wheel's shadow
 
 
 def fit_wheel(WM, cx, cy, rx, ry, circle=True):
@@ -270,6 +354,8 @@ def wheel_parts(R, W, WM, win):
             # seen edge-on: a rounded upright bar of tooth tops
             sil = (np.abs((xx - cx) / (rx + 1.5)) ** 4 + np.abs((yy - cy) / (ry + 1.5)) ** 4) <= 1
             m = WM & sil & ~taken
+            if R['arm'] == 'front':
+                m = np.zeros_like(WM)          # (S: the painted body stays whole behind them; see rewheel)
             out.append(dict(kind='edge', mask=m, img=rgba(W, m), cx=cx, cy=cy, rx=rx, ry=ry, overlap=np.zeros_like(WM)))
             taken |= m
             continue
@@ -301,6 +387,7 @@ def wheel_parts(R, W, WM, win):
             hcx, hcy = (float(hxs.mean()), float(hys.mean())) if len(hxs) else (cx, cy)
             known = tip & ~over_body          # the teeth that stand against the navy, and the navy between them
             overlap = ring & over_body
+            overb = over_body
         else:
             # a far wheel: only the teeth that stand out against the navy (no near wheel or body round them) turn
             cover = np.zeros_like(WM)
@@ -319,6 +406,7 @@ def wheel_parts(R, W, WM, win):
             hcx, hcy = cx, cy
             known = band.copy()               # the teeth there and the navy between them
             overlap = np.zeros_like(WM)
+            overb = np.zeros_like(WM)
         img = rgba(W, m)
         # the painting's big light and shade (blurred brightness over the wheel)
         lum = (0.3 * r_ + 0.59 * g_ + 0.11 * b_) * m
@@ -328,7 +416,7 @@ def wheel_parts(R, W, WM, win):
         face_r = FACE * rx
         dh = np.hypot((xx - hcx) / rx, (yy - hcy) / ry) * rx
         out.append(dict(kind=kind, cx=cx, cy=cy, rx=rx, ry=ry, mask=m, img=img, hub=rgba(W, hub), hubm=hub,
-                        known=known, light=light, rn=rn, overlap=overlap, cw=w[5] if len(w) > 5 else 1,
+                        known=known, light=light, rn=rn, overlap=overlap, overb=overb, cw=w[5] if len(w) > 5 else 1,
                         hcx=hcx, hcy=hcy, face=m & (dh <= face_r), clean=known & (dh > face_r)))
         out[-1]['pitch'] = measure_pitch(out[-1])
         taken |= m
@@ -410,6 +498,84 @@ def scroll_edge(wh, frac, pitch):
         done |= ok
     out[ys[~done], xs[~done]] = wh['img'][ys[~done], xs[~done]]      # (no bar comes round there: as painted)
     return out
+
+
+def rewheel(Wf, bodym, win, xx, yy):
+    """S: ChatGPT's face-on wheels (and the rear wheels' face-on teeth peeking out behind them) come off the body
+    (REWHEEL), the blue balls and the crank stay; where they covered the ends of the body's riveted base, the base
+    is filled from its own plate SHIFT px further in (left end; past the red band where it is in the way), and the right end is the left end mirrored about the
+    middle (the base is painted symmetric: plates, red bands, the clock in the middle); its outermost column and
+    bottom row are darkened to the base's outline (CODE EDIT). The edge-on cogs are drawn over it later."""
+    x0, y0 = win[0], win[1]
+    X, Y = xx + x0, yy + y0
+    r_, g_, b_ = Wf[..., 0], Wf[..., 1], Wf[..., 2]
+    blue = (b_ > r_ + 40) & (b_ > 100)
+    old = np.zeros_like(bodym)
+    for cx, cy, rx, ry in REWHEEL['old']:
+        old |= ((X - cx) / rx) ** 2 + ((Y - cy) / ry) ** 2 <= 1
+    keep = ndi.binary_dilation(blue & bodym & ~old, iterations=2)     # (the old hubs' balls go with their wheels)
+    for bx0_, by0_, bx1_, by1_ in REWHEEL['peeks']:
+        old |= (X >= bx0_) & (X <= bx1_) & (Y >= by0_) & (Y <= by1_)
+    kx0, ky0, kx1, ky1 = REWHEEL['block']
+    block = (X >= kx0) & (X <= kx1) & (Y >= ky0) & (Y <= ky1)
+    bodym = bodym & ~(old & ~keep & ~block)
+    Wf = Wf.copy()
+    cov = old & block
+    mid, sh = REWHEEL['mid'], REWHEEL['shift']
+    ys, xs = np.nonzero(cov & (X < mid))
+    for y, x in zip(ys, xs):
+        k = 1
+        while cov[y, x + k * sh] or (r_[y, x + k * sh] > g_[y, x + k * sh] + 60):    # (not from the red band)
+            k += 1
+        Wf[y, x] = Wf[y, x + k * sh]
+    ys, xs = np.nonzero(cov & (X >= mid))
+    for y, x in zip(ys, xs):
+        Wf[y, x] = Wf[y, x - (2 * (X[y, x] - mid))]
+    edge = cov & ((X <= kx0 + 1) | (X >= kx1 - 1) | (Y >= ky1 - 1))
+    Wf[edge] = (Wf[edge] * 0.25).astype(int)
+    bodym = bodym | cov
+    return Wf, bodym
+
+
+def squash_wheels(R, wheels, Wb, bodym2, painted, xx, yy):
+    """SE: the wheels' faces are turned about 45 deg from us, so each cog is drawn in an ellipse SQUASH_34 as wide as
+    tall (ChatGPT painted round, face-on wheels). The painted round wheel was cut out whole; the strips of it left on
+    either side of the narrower cog (lunes) are filled where they lie inside the body's outline (a smooth fill from
+    the surrounding body paint, in the wheel's shadow: CODE FILL), and left empty (navy) where they stood out of it"""
+    k = R['squash']
+    new = np.zeros_like(bodym2)
+    lune = np.zeros_like(bodym2)
+    for wh in wheels:
+        if wh['kind'] not in ('near', 'far'):
+            continue
+        wh['rx0'] = wh['rx']
+        wh['rx'] = wh['rx'] * k
+        rn2 = np.hypot((xx - wh['cx']) / wh['rx'], (yy - wh['cy']) / wh['ry'])
+        new |= rn2 <= 1.02
+        lune |= (wh['rn'] <= 1.12) & (rn2 > 0.97)
+    lune &= ~painted                  # (the gap fills made for the round wheel are redone there)
+    bodym2 = bodym2 & ~lune
+    disk = np.hypot(*np.mgrid[-6:7, -6:7]) <= 6
+    sil = ndi.binary_fill_holes(ndi.binary_closing(bodym2 | new, structure=disk, iterations=1))
+    todo = lune & sil & ~new
+    if todo.any():
+        # a smooth fill: repeated blurs of the known body paint (harmonic-like; not from the blue balls), then shaded
+        r_, g_, b_ = Wb[..., 0], Wb[..., 1], Wb[..., 2]
+        known = (bodym2 & ~((b_ > r_ + 30) & (b_ > 70))).astype(float)
+        acc = Wb.astype(float) * known[..., None]
+        wsum = known.copy()
+        for sig in (2, 4, 8, 16):
+            a_ = np.stack([ndi.gaussian_filter(acc[..., c], sig) for c in range(3)], -1)
+            w_ = ndi.gaussian_filter(wsum, sig)
+            fillc = a_ / np.maximum(w_, 1e-4)[..., None]
+            t_ = todo & (w_ > 0.02)
+            Wb = Wb.copy()
+            Wb[t_] = (fillc[t_] * GAP_SHADE).astype(int)
+            acc[t_] = Wb[t_]
+            wsum[t_] = 1.0
+            todo = todo & ~t_
+            bodym2 = bodym2 | t_
+    return Wb, bodym2
 
 
 def cut_row(r):
@@ -532,18 +698,73 @@ def cut_row(r):
                     elif cut[y, xq]:
                         fill[y, xq] = False
     bodym = body | fill
-    # the wheels come off the body. Behind a near wheel's teeth, where it stands over the body, the gaps show the
-    # body's shadow (a dark brown taken from the painting); elsewhere behind a wheel nothing is ever seen
+    if R['arm'] != 'behind':
+        # (S/N: what is left of the upright beam and the joint ball above the drum's arch, a dark scrap the row fill
+        # left standing, goes; the painted arm is drawn there in every frame)
+        bodym &= ~((yy < J[1] + TRIM_TOP) & (np.abs(xx - J[0]) <= R['bw'] / 2.0 + 8))
+    if R['arm'] == 'front':
+        Wf, bodym = rewheel(Wf, bodym, win, xx, yy)
+    # the wheels come off the body: each is replaced by the rebuilt painted cog (cog.py), turned in code
     wheels, taken = wheel_parts(R, Wf, bodym, win)
     Wb = Wf.copy()
     bodym2 = bodym & ~taken
+    near_cover = np.zeros_like(WM)
+    far_cover = np.zeros_like(WM)
     for wh in wheels:
-        o = wh['overlap'] & taken
-        if o.any():
-            dark = WM & ~taken & ndi.binary_dilation(o, iterations=4) & ((r_ + g_ + b_) < 200)
-            col = np.median(Wf[dark], axis=0) if dark.sum() > 10 else np.array([40, 30, 32])
-            Wb[o] = col
-            bodym2 |= o
+        if wh['kind'] == 'near':
+            near_cover |= wh['rn'] <= 1.12
+        elif wh['kind'] == 'far':
+            far_cover |= wh['rn'] <= 0.8      # (the far cog is solid in there)
+    ang_of = {}
+    for wh in wheels:
+        if wh['kind'] == 'far':
+            # the far wheel's visible rim and teeth come off the body (not what stands in front of it: OCC, hand-set);
+            # its painted middle (behind the chassis, only a dark face shows) stays; the new cog is drawn behind
+            occ = np.zeros_like(WM)
+            if R.get('occ'):
+                from PIL import ImageDraw
+                om = Image.new('L', (Wd, Hh), 0)
+                ImageDraw.Draw(om).polygon([(x - x0, y - y0) for x, y in R['occ']], fill=255)
+                occ = np.array(om) > 0
+            vis = bodym2 & (wh['rn'] >= FAR_RIM) & (wh['rn'] <= 1.15) & ~near_cover & ~occ
+            bodym2 &= ~vis
+            wh['cutout'] = vis
+    # behind a near wheel's tooth gaps, where it stands over the body: the body's own paint, reflected inward from
+    # just outside the wheel's tips (so its texture carries on), in the wheel's shadow (CODE SHADE x GAP_SHADE);
+    # over the far wheel nothing (the turning far cog shows through); over the navy nothing
+    painted = bodym2.copy()           # (the body as painted, before the fills under the wheels)
+    _, (iy0, ix0) = ndi.distance_transform_edt(~bodym2, return_indices=True)
+    for wh in wheels:
+        if wh['kind'] != 'near':
+            continue
+        rn = wh['rn']
+        k_ = np.ones((11, 11))
+        dens = ndi.convolve(bodym2.astype(float), k_, mode='constant') / k_.sum()
+        gap = (rn >= 0.74) & (rn <= 1.14) & (wh['overb'] | (wh['mask'] & (dens > 0.35))) & ~far_cover
+        a_ = np.arctan2((yy - wh['cy']) / wh['ry'], (xx - wh['cx']) / wh['rx'])
+        rs = np.maximum(2.28 - rn, 1.16)
+        sx = np.clip(np.rint(wh['cx'] + rs * wh['rx'] * np.cos(a_)).astype(int), 0, Wd - 1)
+        sy = np.clip(np.rint(wh['cy'] + rs * wh['ry'] * np.sin(a_)).astype(int), 0, Hh - 1)
+        ok = bodym2[sy, sx]
+        sy = np.where(ok, sy, iy0[sy, sx])
+        sx = np.where(ok, sx, ix0[sy, sx])
+        g = gap & ~bodym2
+        Wb[g] = Wf[sy[g], sx[g]] * GAP_SHADE
+        bodym2 |= g
+        wh['cutout'] = np.zeros_like(WM)
+    # what is left enclosed (between the body and the cogs' solid middles, where no gap reached): the nearest body
+    # paint, in the same shade
+    discs = np.zeros_like(WM)
+    for wh in wheels:
+        if wh['kind'] in ('near', 'far'):
+            discs |= wh['rn'] <= 0.8
+    hole = ndi.binary_fill_holes(bodym2 | discs) & ~(bodym2 | discs)
+    if hole.any():
+        _, (iy1, ix1) = ndi.distance_transform_edt(~bodym2, return_indices=True)
+        Wb[hole] = Wb[iy1[hole], ix1[hole]] * GAP_SHADE
+        bodym2 |= hole
+    if R.get('squash'):
+        Wb, bodym2 = squash_wheels(R, wheels, Wb, bodym2, painted, xx, yy)
     lab, nl = ndi.label(bodym2)
     if nl > 1:
         sz = ndi.sum(bodym2, lab, range(1, nl + 1))
@@ -556,6 +777,130 @@ def cut_row(r):
     front = cup & (yy > rcy + rry * np.sqrt(inside) - 1) & (np.abs(xx - rcx) <= rrx + 3)
     return dict(win=win, H=H, J=J, L=L, body=rgba(Wb, bodym2), cup=rgba(W, cup), cupfront=rgba(W, front),
                 beam=beam_img, hub=hub_img, wheels=wheels, rim=(rcx, rcy, rrx, rry), size=(Wd, Hh), W=W, WM=WM)
+
+
+# ------------------------------------------------------------------ the painted arm poses (S and N)
+
+POSES_SHEET = np.array(Image.open('art/redraws/catapult_arm_poses_chatgpt.png').convert('RGB')).astype(int)
+# ChatGPT's arm-pose sheet (art/redraws/catapult_arm_poses_chatgpt.png) repeated one view in every row; only these
+# cells are used (sheet px): column 2 row 1, the arm STRAIGHT UP ('up'), and column 4 row 1, the arm foreshortened
+# TOWARD the viewer with the cup's mouth facing us ('tip', the S follow-through); 'under' (N from N_BACK_T down: the
+# arm up or leaning away, the cup's back to us) is column 2 row 3 (UNDER).
+# Per piece: the box of the cup and the joint ball, the ball's middle (the joint J), the rim ellipse (cx, cy, rx, ry)
+POSE_CELLS = {
+    'up': dict(box=(355, 76, 436, 153), ball=(395, 142), rim=(395, 92, 34, 9)),
+    'tip': dict(box=(854, 104, 935, 192), ball=(891, 180), rim=(890, 135, 30, 26)),
+}
+# 'under': column 2 row 3, the cup seen from BELOW: the rim a thin line at the top, the convex outside of the bowl with
+# its rivets toward us, no mouth or inside. N and NE use it once the arm is up or past vertical (the cup's mouth faces
+# away from a camera behind the machine). ChatGPT drew it smaller than the other cups: it is scaled (LANCZOS) to the
+# 'up' cup's width (N) or to the row's own cup (NE). Box (sheet px), the joint ball's middle, the bowl's middle
+UNDER = dict(box=(366, 524, 428, 587), ball=(395.6, 578.0), bowl=(396.0, 551.0))
+BEAM_TEX = (380, 157, 411, 205)   # column 2's beam between two rivets (one period), tiled down from the joint
+BALL_R = 9                        # the joint ball's half height: the beam starts under it
+POSE_UP_MIN = 75.0                # S/N: the arm uses the straight-up paint from this angle up to POSE_UP_MAX
+POSE_UP_MAX = 155.0               # (and the painted loaded arm above it); below POSE_UP_MIN the follow-through paint
+
+
+def width(img):
+    xs = np.nonzero((img[..., 3] > 0).any(0))[0]
+    return float(xs.max() - xs.min() + 1)
+
+
+UNDER_IMG = None
+
+
+def under_piece(w):
+    """the cup seen from below (UNDER), scaled to w px wide: img, anchor (the joint ball's middle), rim_off (bowl's
+    middle from the ball), rim radii"""
+    global UNDER_IMG
+    if UNDER_IMG is None:
+        x0, y0, x1, y1 = UNDER['box']
+        C = POSES_SHEET[y0:y1, x0:x1]
+        m = solid(C)
+        lab, n = ndi.label(m)
+        if n > 1:
+            sz = ndi.sum(m, lab, range(1, n + 1))
+            m &= lab == int(np.argmax(sz)) + 1
+        UNDER_IMG = rgba(C, m)
+    k = w / width(UNDER_IMG)
+    h0, w0 = UNDER_IMG.shape[:2]
+    a = UNDER_IMG[..., 3:4].astype(float) / 255
+    pre = np.concatenate([UNDER_IMG[..., :3] * a, a * 255], -1).astype(np.uint8)
+    big = np.array(Image.fromarray(pre, 'RGBA').resize((int(round(w0 * k)), int(round(h0 * k))), Image.LANCZOS)).astype(float)
+    al = big[..., 3:4] / 255
+    img = np.zeros(big.shape, np.uint8)
+    img[..., :3] = np.clip(np.where(al > 0.02, big[..., :3] / np.maximum(al, 0.02), 0), 0, 255)
+    img[..., 3] = np.where(al[..., 0] >= 0.5, 255, 0)
+    img[img[..., 3] == 0] = 0
+    x0, y0 = UNDER['box'][:2]
+    anc = (np.array(UNDER['ball']) - (x0, y0)) * k
+    return dict(img=img, front=np.zeros_like(img), anchor=anc, rim_off=(np.array(UNDER['bowl']) - UNDER['ball']) * k,
+                rim=(width(img) / 2.0, 3.0))
+
+
+def pose_pieces():
+    out = {}
+    for name, c in POSE_CELLS.items():
+        x0, y0, x1, y1 = c['box']
+        C = POSES_SHEET[y0:y1, x0:x1]
+        m = solid(C)
+        lab, n = ndi.label(m)
+        if n > 1:
+            sz = ndi.sum(m, lab, range(1, n + 1))
+            m &= lab == int(np.argmax(sz)) + 1
+        yy, xx = np.mgrid[y0:y1, x0:x1]
+        cx, cy, rx, ry = c['rim']
+        front = m & (yy > cy + ry * np.sqrt(np.clip(1 - ((xx - cx) / rx) ** 2, 0, 1)) - 1) & (yy < c['ball'][1] - BALL_R)
+        out[name] = dict(img=rgba(C, m), front=rgba(C, front), anchor=np.array(c['ball'], float) - (x0, y0),
+                         rim_off=np.array([cx, cy], float) - c['ball'], rim=(rx, ry))
+    # 'under' (see UNDER), scaled to the 'up' cup's width
+    out['under'] = under_piece(width(out['up']['img'][: int(out['up']['anchor'][1] - BALL_R)]))
+    x0, y0, x1, y1 = BEAM_TEX
+    C = POSES_SHEET[y0:y1, x0:x1]
+    tex = rgba(C, solid(C))
+    return out, tex
+
+
+POSE, BEAM = pose_pieces()
+
+
+def pose_for(r, T):
+    """which painted pose the arm uses at angle T (S and N only), None for the stretched loaded arm"""
+    if ROWS[r]['arm'] not in ('front', 'n') or T >= POSE_UP_MAX:
+        return None
+    if ROWS[r]['arm'] == 'n':
+        return 'up' if T > N_BACK_T else 'under'      # (seen from behind: past vertical the cup shows its back)
+    if T >= POSE_UP_MIN:
+        return 'up'
+    return 'tip'
+
+
+def pose_arm(P, pose, H, Jn):
+    """the painted arm: the beam tiled (whole px, BEAM_TEX one rivet period at a time) from under the joint ball down
+    into the hinge (whose knuckle the body draws over it), the cup and ball at the joint. Returns (arm, cup's front
+    wall, the cup's middle, the rim's radii)"""
+    Wd, Hh = P['size']
+    pc = POSE[pose]
+    arm = np.zeros((Hh, Wd, 4), np.uint8)
+    top = int(round(Jn[1] + BALL_R - 1))
+    bot = int(round(H[1] + 14))
+    th, tw = BEAM.shape[:2]
+    y = top
+    while y < bot:
+        n = min(th, bot - y)
+        # the beam leans a little where the joint is not straight above the hinge
+        f = (y - top) / max(1.0, bot - top)
+        x = int(round(Jn[0] + (H[0] - Jn[0]) * f - tw / 2.0))
+        _paste(arm, BEAM[:n], x, y)
+        y += n
+    cup = np.zeros((Hh, Wd, 4), np.uint8)
+    ox, oy = int(round(Jn[0] - pc['anchor'][0])), int(round(Jn[1] - pc['anchor'][1]))
+    _paste(cup, pc['img'], ox, oy)
+    over(arm, cup)
+    front = np.zeros((Hh, Wd, 4), np.uint8)
+    _paste(front, pc['front'], ox, oy)
+    return arm, front, Jn + pc['rim_off'], pc['rim']
 
 
 # ------------------------------------------------------------------ the arm in 3D
@@ -571,6 +916,11 @@ def fwd(r, P):
 
 def arm_vec(r, F, T):
     t = math.radians(T)
+    if ROWS[r]['arm'] == 'n' and T < 90:
+        # N, the follow-through leaning AWAY from us: depth counts DEPTH_AWAY up the screen (not DEPTH), so the cup
+        # stays at least as high as at vertical instead of sinking back toward the machine, which read as the arm
+        # tipping toward us (a choice for the eye: the camera's real slope is DEPTH)
+        F = F * (DEPTH_AWAY / DEPTH)
     return ARM_L * (math.cos(t) * F + math.sin(t) * np.array([0.0, -1.0]))
 
 
@@ -582,7 +932,8 @@ for _r in range(5):
     _p['vpaint'] = arm_vec(_r, _p['F'], ROWS[_r]['tpaint'])
     _p['M0'] = stretch_to(_p['vpaint'], _p['paint'])
     PARTS.append(_p)
-PAY_W = 0.66 * 2 * ROWS[2]['rim'][2]         # the curled soldier, about two thirds of the cup across
+PAY_GAME = 11.3 * 42.0 / 59.0                # the curled soldier, game px across: the old one (11.3 px with a 59 px
+PAY_W = PAY_GAME / GS                         # soldier) shrunk with the new Clock Soldier (42 px tall)
 PAYLOAD = payload_at(PAY_W)
 LAUNCH = 40.0                                 # the payload flies off this steeply (deg)
 
@@ -615,6 +966,28 @@ def arm_now(r, T):
     return P['M0'] @ arm_vec(r, P['F'], T)
 
 
+def back_cup(r, T):
+    """NE: the arm is up or past vertical, the cup's back is to us"""
+    R = ROWS[r]
+    return R['arm'] == 'behind' and R.get('back_t') is not None and T <= R['back_t']
+
+
+def under_on(P, Jn, v):
+    """the 'under' cup (UNDER) at the joint Jn, scaled to this row's cup and turned so its axis lies along the beam
+    (v: hinge -> joint): the layer and the bowl's middle"""
+    if 'under' not in P:
+        P['under'] = under_piece(width(P['cup']))
+    u = P['under']
+    Wd, Hh = P['size']
+    canvas = np.zeros((Hh, Wd, 4), np.uint8)
+    ox, oy = int(Wd // 2 - u['anchor'][0]), int(Hh // 2 - u['anchor'][1])
+    _paste(canvas, u['img'], ox, oy)
+    a0 = np.array([ox, oy], float) + u['anchor']
+    turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(-1.0, 0.0))
+    M = rotm(turn)
+    return place(canvas, a0, Jn, M), Jn + M @ u['rim_off']
+
+
 def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
     """one frame of row r at painted scale, as layer groups [(rgba, rides)] bottom to top (rides: moves with the
     body's bob, which is added later in whole game px); and the cup's middle. Arm angle T, wheels turned on by
@@ -625,30 +998,48 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
     Wd, Hh = P['size']
     H = P['H']
     v = arm_now(r, T)
-    beam = place(P['beam'], H, H, stretch_to(P['paint'], v))
     Jn = H + v
-    # the cup: turns with the beam on screen (side and 3/4 views); S/N it only moves
-    turn = 0.0
-    if R['arm'] == 'behind':
-        turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(P['paint'][1], P['paint'][0]))
-    Mc = rotm(turn)
-    cup = place(P['cup'], P['J'], Jn, Mc)
-    cupf = place(P['cupfront'], P['J'], Jn, Mc)
-    rcx, rcy, rrx, rry = P['rim']
-    mid = Jn + Mc @ (np.array([rcx, rcy]) - P['J'])
+    pose = pose_for(r, T)
     arm = np.zeros((Hh, Wd, 4), np.uint8)
-    over(arm, beam)
-    over(arm, cup)
+    if pose:
+        # S / N: ChatGPT's own painted arm for this pose (no stretched beam), the cup at the joint
+        parm, cupf, mid, (rrx, rry) = pose_arm(P, pose, H, Jn)
+        over(arm, parm)
+        rcx, rcy = mid
+        to_screen = lambda img: img
+    else:
+        beam = place(P['beam'], H, H, stretch_to(P['paint'], v))
+        # the cup: turns with the beam on screen (side and 3/4 views); S/N it only moves
+        turn = 0.0
+        if R['arm'] == 'behind':
+            turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(P['paint'][1], P['paint'][0]))
+        Mc = rotm(turn)
+        if back_cup(r, T):
+            # NE (seen from behind) once the arm is up or past vertical: the cup seen from below (its back), its axis
+            # along the beam, its joint ball on the beam's end
+            cup, mid = under_on(P, Jn, v)
+            cupf = np.zeros_like(cup)
+            (rcx, rcy), rrx, rry = mid, 0.0, 0.0
+        else:
+            cup = place(P['cup'], P['J'], Jn, Mc)
+            cupf = place(P['cupfront'], P['J'], Jn, Mc)
+            rcx, rcy, rrx, rry = P['rim']
+            mid = Jn + Mc @ (np.array([rcx, rcy]) - P['J'])
+        over(arm, beam)
+        over(arm, cup)
+        to_screen = lambda img: place(img, P['J'], Jn, Mc)
     fly = None
+    pay = None
+    cupf_l = None
     if payload is not None:
         ph, pw = PAYLOAD.shape[:2]
         if payload[0] == 'cup':
             # sitting in the bowl (its lower part behind the cup's front wall); turned with the cup
             pim = np.zeros((Hh, Wd, 4), np.uint8)
             _paste(pim, PAYLOAD, int(round(rcx - pw / 2.0)), int(round(rcy + rry * 0.35 - ph * 0.70 - payload[1])))
-            over(arm, place(pim, P['J'], Jn, Mc))
+            pay = to_screen(pim)
             if payload[1] <= 0:
-                over(arm, cupf)
+                cupf_l = cupf
         else:
             dx, dy, spin = payload[1]
             pr = np.array(Image.fromarray(PAYLOAD, 'RGBA').rotate(spin, resample=Image.NEAREST, expand=True))
@@ -656,29 +1047,87 @@ def frame(r, T, wheel_frac, payload=None, edge_frac=0.0):
             _paste(fly, pr, int(round(dx - pr.shape[1] / 2.0)), int(round(dy - pr.shape[0] / 2.0)))
     groups = []
 
-    def add(img, rides):
-        if groups and groups[-1][1] == rides:
+    def add(img, rides, snap=False):
+        # (the payload is a layer of its own: its team-colour reds are snapped back to the key after the shrink)
+        if groups and groups[-1][1] == rides and not snap and not groups[-1][2]:
             over(groups[-1][0], img)
         else:
-            groups.append((img.copy(), rides))
+            groups.append((img.copy(), rides, snap))
+
+    def add_arm():
+        add(arm, True)
+        if pay is not None:
+            add(pay, True, True)
+        if cupf_l is not None:
+            add(cupf_l, True)
     for wh in P['wheels']:
-        if wh['kind'] == 'far':
-            add(turn_wheel(wh, wheel_frac * wh['cw'], wh['pitch']), False)
+        if wh['kind'] == 'far' or (wh['kind'] == 'edge' and wh.get('far')):
+            add(cog_layer(P, wh, wheel_frac), False)
     arm_front = R['arm'] == 'front' or (R['arm'] == 'n' and T > 90)
     if not arm_front:
-        add(arm, True)
+        add_arm()
     add(P['body'], True)
     for wh in P['wheels']:
-        if wh['kind'] == 'near':
-            add(turn_wheel(wh, wheel_frac * wh['cw'], wh['pitch']), False)
-        elif wh['kind'] == 'edge':
-            add(scroll_edge(wh, -edge_frac, wh['pitch']), False)      # (moving away: the tread we see goes up)
+        if wh['kind'] == 'near' or (wh['kind'] == 'edge' and not wh.get('far')):
+            add(cog_layer(P, wh, wheel_frac), False)
     if arm_front:
-        add(arm, True)
+        add_arm()
         add(P['hub'], True)
     if fly is not None:
-        add(fly, False)
+        add(fly, False, True)
     return groups, mid
+
+
+_COG = {}
+
+
+def cog_layer(P, wh, frac):
+    """the rebuilt painted cog (cog.py) in this wheel's place, turned on by frac of a MOVE loop (TEETH_PER_LOOP
+    teeth): face-on squashed into the wheel's fitted ellipse (cw: which way it turns on screen), or edge-on (N) with
+    its tread rolling up (moving away) and its hub to the outside"""
+    Wd, Hh = P['size']
+    deg = TEETH_PER_LOOP * 360.0 / cog.TEETH * frac
+    out = np.zeros((Hh, Wd, 4), np.uint8)
+    cx, cy, rx, ry = wh['cx'], wh['cy'], wh['rx'], wh['ry']
+    if wh['kind'] == 'edge':
+        tw = 2 * rx + 3
+        h = int(round(2 * ry + 3))
+        right = cx > Wd / 2.0
+        key = ('e', round(tw), h, right, round(P['roll'] * deg, 3))
+        if key not in _COG:
+            # (no hub: ChatGPT's N view shows none, and a near wheel's would stick out over the far one)
+            # (N: the tread rolls up, away from us; S: down, toward us)
+            _COG[key] = cog.render_edge(P['roll'] * deg, int(round(tw)), h, hub_right=right, hub=False)
+        img = _COG[key]
+        x = int(round(cx - tw / 2.0)) if right else int(round(cx + tw / 2.0)) - img.shape[1]
+        _paste(out, img, x, int(round(cy - h / 2.0)))
+        return toned(P, wh, out)
+    w, h = int(round(2 * rx)), int(round(2 * ry))
+    key = ('f', w, h, round(deg * wh['cw'], 3))
+    if key not in _COG:
+        _COG[key] = cog.render_face(deg * wh['cw'], w, h)
+    _paste(out, _COG[key], int(round(cx - w / 2.0)), int(round(cy - h / 2.0)))
+    return toned(P, wh, out)
+
+
+def toned(P, wh, layer):
+    """the cog brought to the brightness of the wheel ChatGPT painted there (CODE SHADE: one factor per wheel, so a
+    far wheel stays in the machine's shade); the factor is measured once, where the old paint and the cog overlap"""
+    if 'tone' not in wh and 'tone_set' in wh:
+        wh['tone'] = wh['tone_set']
+    if 'tone' not in wh:
+        old = wh['mask'] | wh.get('cutout', np.zeros_like(wh['mask']))
+        both = old & (layer[..., 3] > 0)
+        lum = lambda a: (a[..., 0] * 0.3 + a[..., 1] * 0.59 + a[..., 2] * 0.11)
+        if both.sum() > 30:
+            wh['tone'] = float(np.clip(lum(P['W'][both].astype(float)).mean() / max(lum(layer[both].astype(float)).mean(), 1),
+                                       0.5, 1.1))
+        else:
+            wh['tone'] = 1.0
+    if abs(wh['tone'] - 1) > 0.01:
+        layer = layer.copy()
+        layer[..., :3] = np.clip(layer[..., :3] * wh['tone'], 0, 255).astype(np.uint8)
+    return layer
 
 
 def _paste(dst, src, x, y):
@@ -697,10 +1146,14 @@ def _paste(dst, src, x, y):
 
 
 
-for _p in PARTS:
-    for _wh in _p['wheels']:
+for _r, _p in enumerate(PARTS):
+    _p['roll'] = ROWS[_r].get('roll', -1)
+    for _i, _wh in enumerate(_p['wheels']):
         if _wh['kind'] == 'edge':
             _wh['pitch'] = EDGE_PITCH
+            _wh['far'] = _i >= 2              # (edge-on wheels are listed nearest first: two near, two far)
+            if ROWS[_r]['arm'] == 'front':
+                _wh['tone_set'] = ROWS[_r]['tones'][_i]     # (S: no old edge-on paint to measure: N's tones)
         _wh.setdefault('cw', 1)
 
 
@@ -708,7 +1161,7 @@ def flat(groups, bob=0):
     """the groups composited at painted scale (for looking at), riding ones moved by bob sheet px"""
     H, W = groups[0][0].shape[:2]
     cv = np.zeros((H, W, 4), np.uint8)
-    for img, rides in groups:
+    for img, rides, _ in groups:
         over(cv, place(img, (0, 0), (0, bob), np.eye(2)) if (rides and bob) else img)
     return cv
 
@@ -750,9 +1203,14 @@ def frame_mid(r, T):
     R = ROWS[r]
     v = arm_now(r, T)
     Jn = P['H'] + v
+    pose = pose_for(r, T)
+    if pose:
+        return None, Jn + POSE[pose]['rim_off']
     turn = 0.0
     if R['arm'] == 'behind':
         turn = math.degrees(math.atan2(v[1], v[0]) - math.atan2(P['paint'][1], P['paint'][0]))
+    if back_cup(r, T):
+        return None, under_on(P, Jn, v)[1]
     rcx, rcy, rrx, rry = P['rim']
     return None, Jn + rotm(turn) @ (np.array([rcx, rcy]) - P['J'])
 
@@ -760,10 +1218,10 @@ def frame_mid(r, T):
 def cropped(groups):
     """the layer groups cut to their boxes: [(rgba, x, y, rides)]"""
     out = []
-    for img, rides in groups:
+    for img, rides, snap in groups:
         ys, xs = np.nonzero(img[..., 3])
         if len(ys):
-            out.append((img[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy(), xs.min(), ys.min(), rides))
+            out.append((img[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy(), xs.min(), ys.min(), rides, snap))
     return out
 
 
@@ -783,6 +1241,8 @@ def anim_frames(name, r):
 
 def anchor(r):
     """the unit's point in the sheet: under the middle of its wheels, on the ground (their lowest tips)"""
+    if ROWS[r].get('anchor'):
+        return ROWS[r]['anchor']          # (S: kept where the painted wheels put it, so the unit does not shift)
     ws = [w for w in ROWS[r]['wheels'] if w[4] in ('near', 'edge')]
     return (float(np.mean([w[0] for w in ws])), float(max(w[1] + w[3] for w in ws)))
 
@@ -810,10 +1270,12 @@ def to_cell(r, groups, bob, cell):
     ox, oy = int(round(ax - AX / GS)), int(round(ay - AY / GS))
     w, h = int(round(CW / GS)), int(round(CH / GS))
     out = np.zeros((CH, CW, 4), np.uint8)
-    for img, gx, gy, rides in groups:
+    for img, gx, gy, rides, snap in groups:
         crop = np.zeros((h, w, 4), np.uint8)
         _paste(crop, img, gx - ox, gy - oy)
         sm = shrink(crop, CW, CH)
+        if snap:
+            sm = snap_key(sm)
         if rides and bob:
             sm = np.roll(sm, bob, axis=0)
             if bob < 0:
@@ -832,7 +1294,7 @@ def extents(frames):
         ax -= PARTS[r]['win'][0]
         ay -= PARTS[r]['win'][1]
         for groups, bob, _ in fr:
-            for img, gx, gy, rides in groups:
+            for img, gx, gy, rides, _ in groups:
                 h, w = img.shape[:2]
                 lift = (-bob / GS) if (rides and bob < 0) else 0.0
                 L, Rr = max(L, ax - gx), max(Rr, gx + w - ax)

@@ -1,6 +1,6 @@
 extends SceneTree
-## The Cog Press: a trickle by itself, an equal share per Winder winding it up to its crew cap, small vs big gear, the
-## 2-presses-per-Clocktower limit and what spent brass does (a quarter).
+## The Cog Press: a trickle by itself, an equal share per Winder winding it up to its crew cap, small vs big gear (the numbers
+## and crews from Defs.GEAR "press"), the 2-presses-per-Clocktower limit and what spent brass does (a quarter).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_gear_press.gd
 const U := preload("res://tools/gear_test_util.gd")
 var fails := 0
@@ -65,40 +65,49 @@ func _run() -> void:
 	var base := float(gp["base"])
 	var small_full := float(gp["small"]["full"])
 	var big_full := float(gp["big"]["full"])
+	var sc := int(gp["small"]["crew"])
+	var bc := int(gp["big"]["crew"])
+	# (the crossovers worked out from Defs.GEAR: the first crew where the big gear pays more than the full small press,
+	# with a margin the measurement can tell)
+	var cross := bc
+	for n in range(1, bc + 1):
+		if big_full * (base + (1.0 - base) * float(n) / float(bc)) > small_full + 0.3:
+			cross = n
+			break
 	# SMALL gear
 	var r0 = await _measure(g, press, 0)
 	check("nobody on it: a trickle of 15%% of the full rate (%.2f/s)" % (small_full * base), absf(r0[0] - small_full * base) < 0.15, "%.2f" % r0[0])
 	var prev := r0[0] as float
 	var small_tot := {}
-	for n in [1, 2, 3]:
+	for n in [1, sc / 2, sc]:
 		var r = await _measure(g, press, n)
 		small_tot[n] = r[0]
-		var want := small_full * (base + (1.0 - base) * float(n) / 3.0)
+		var want := small_full * (base + (1.0 - base) * float(n) / float(sc))
 		check("small gear, %d Winder%s winding: %.2f cogs/s" % [n, "" if n == 1 else "s", want], absf(r[0] - want) < 0.2 and r[2] == n, "%.2f (%d at work)" % [r[0], r[2]])
 		check("  each Winder adds the same share", r[0] > prev, "%.2f > %.2f" % [r[0], prev])
 		prev = r[0]
-	var r4 = await _measure(g, press, 4)
-	check("small gear: a 4th Winder cannot join (crew cap 3)", press.crew_max() == 3 and r4[2] == 3 and absf(r4[0] - small_full) < 0.2, "%.2f, %d at work" % [r4[0], r4[2]])
+	var r4 = await _measure(g, press, sc + 1)
+	check("small gear: Winder %d cannot join (crew cap %d)" % [sc + 1, sc], press.crew_max() == sc and r4[2] == sc and absf(r4[0] - small_full) < 0.2, "%.2f, %d at work" % [r4[0], r4[2]])
 	check("the cogs reach the bank (gold rose by the same rate)", absf(r4[3] - r4[0]) < 0.6, "%.2f vs %.2f" % [r4[3], r4[0]])
 	# BIG gear
 	press.gear_big = true
 	var big_tot := {}
-	for n in [1, 3, 4, 5, 6]:
+	for n in [1, cross - 1, cross, bc]:
 		var r = await _measure(g, press, n)
 		big_tot[n] = r[0]
-		var want := big_full * (base + (1.0 - base) * float(n) / 6.0)
-		check("big gear, %d Winder%s: %.2f cogs/s (crew cap 6)" % [n, "" if n == 1 else "s", want], absf(r[0] - want) < 0.25 and r[2] == n, "%.2f (%d at work)" % [r[0], r[2]])
+		var want := big_full * (base + (1.0 - base) * float(n) / float(bc))
+		check("big gear, %d Winder%s: %.2f cogs/s (crew cap %d)" % [n, "" if n == 1 else "s", want, bc], absf(r[0] - want) < 0.25 and r[2] == n, "%.2f (%d at work)" % [r[0], r[2]])
 	check("big gear is slower per Winder at low crew (1 Winder)", big_tot[1] < small_tot[1], "%.2f < %.2f" % [big_tot[1], small_tot[1]])
-	check("big gear does NOT beat the full small press at 4 Winders", big_tot[4] <= small_full + 0.1, "%.2f <= %.2f" % [big_tot[4], small_full])
-	check("big gear beats it at 5 Winders", big_tot[5] > small_full + 0.3, "%.2f > %.2f" % [big_tot[5], small_full])
-	check("big gear has the higher total at full crew", big_tot[6] > big_tot[5] and big_tot[6] > small_full * 1.2, "%.2f" % big_tot[6])
+	check("big gear does NOT clearly beat the full small press at %d Winders" % (cross - 1), big_tot[cross - 1] <= small_full + 0.3, "%.2f <= %.2f" % [big_tot[cross - 1], small_full + 0.3])
+	check("big gear beats it at %d Winders" % cross, big_tot[cross] > small_full + 0.3, "%.2f > %.2f" % [big_tot[cross], small_full])
+	check("big gear has the higher total at full crew", big_tot[bc] > small_full * 1.2, "%.2f" % big_tot[bc])
 	# the brass: spent, it yields a quarter
 	var tower := U.hall(g, 0)
 	press.gear_big = false
 	tower.lode = 0.0
-	var rs = await _measure(g, press, 3)
+	var rs = await _measure(g, press, sc)
 	check("spent brass: the press yields a quarter (%.2f/s)" % (small_full * 0.25), absf(rs[0] - small_full * 0.25) < 0.2, "%.2f" % rs[0])
-	check("and its crew is not sent away (never barren)", not press.barren() and rs[2] == 3)
+	check("and its crew is not sent away (never barren)", not press.barren() and rs[2] == sc)
 	tower.lode = tower.lode_full()
 	# at most 2 presses per Clocktower
 	var second := U.put(g, 0, Defs.GEAR_PRESS, tower.cell)

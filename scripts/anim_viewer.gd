@@ -20,7 +20,7 @@ const NEEDS_ART := {
 	"dismounted_armoured": "armoured officer poses are code-made (prompts 12, 13)",
 	"missionary": "cassock hides the legs: whole-figure walk redraw",
 	"windup_soldier": "walk legs are code-built, tiny sprite",
-	"winder": "walk legs are code-built",
+	"winder": "wind / repair: the crank turning in his hands is code-drawn",
 	"raptor": "front and back stride is small (prompt 18)",
 	"spore_mother": "north-east walk is a copy of east; legs painted into the body",
 	"horse": "riderless horse walk (prompts 20-25)",
@@ -154,6 +154,11 @@ static func fps_for(a: String, an: String, n: int) -> float:
 		"mount":
 			fps = float(n) / 1.0
 	return maxf(fps, 0.5)
+
+
+## Does art `a` play strip `an` on the Winder's clockwork beat (Unit.WINDER_BEAT) rather than at a frame rate?
+static func on_beat(a: String, an: String) -> bool:
+	return a == "winder" and Unit.beat_of(an) != ""
 
 
 static var _kind_cache := {}
@@ -638,7 +643,13 @@ func _refresh() -> void:
 		return
 	var n := frame_count()
 	var fps := fps_for(art, anim, n)
-	_info.text = "%s  /  %s  /  %s   ·   %d frames at %.1f fps   ·   scale %.2f" % [art, anim, dir, n, fps, art_scale(art)]
+	var pace := "at %.1f fps" % fps
+	if on_beat(art, anim):
+		var held: PackedStringArray = []
+		for s in Unit.WINDER_BEAT[Unit.beat_of(anim)].slice(0, n):
+			held.append("%.2f" % float(s))
+		pace = "on the beat (held %s s)" % " ".join(held)
+	_info.text = "%s  /  %s  /  %s   ·   %d frames %s   ·   scale %.2f" % [art, anim, dir, n, pace, art_scale(art)]
 	if NEEDS_ART.has(art):
 		_info.text += "\nNEEDS ART: " + String(NEEDS_ART[art])
 	if _needs_btn != null:
@@ -655,8 +666,12 @@ func _process(delta: float) -> void:
 	var n := frame_count()
 	if n == 0 or paused:
 		return
-	_t += delta * fps_for(art, anim, n)
-	frame = int(_t) % n
+	if on_beat(art, anim):
+		_t += delta                      # (seconds: the Winder's held frames, Unit.WINDER_BEAT, looped here)
+		frame = Unit.beat_frame(anim, _t, n, true)
+	else:
+		_t += delta * fps_for(art, anim, n)
+		frame = int(_t) % n
 	if frame != _last_shown:
 		_last_shown = frame
 		_frame_lbl.text = "%d / %d" % [frame + 1, n]

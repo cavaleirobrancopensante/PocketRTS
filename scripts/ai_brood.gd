@@ -539,7 +539,7 @@ func essence_want() -> float:
 	return want
 
 
-## What offerings are made for (less than essence_want: an offered Raptor gives back 12% of its biomass).
+## What offerings are made for (less than essence_want: an offered Raptor gives back Defs.SACRIFICE (35%) of its biomass).
 ## Two eggs of Spitters always (5 essence an egg: two Raptors' worth, a good trade); a Brute's 20 only with
 ## Horsemen about (the Brute is the answer to them), a Skywing's 40 only against flyers, the Broodmound's
 ## when it is saved for. Mist Toads and the other Brutes wait for bodies: offering Raptors for all of
@@ -587,7 +587,7 @@ func essence_coming() -> float:
 
 
 ## With too little essence for the next tech creature and no bodies coming, spare Raptors at home are
-## offered up at the Pen (3 essence each): only the army's surplus over what the plan wants by now
+## offered up at the Pen (9 essence each since 0.14.40): only the army's surplus over what the plan wants by now
 ## (AI._army_want: an army under it needs every Raptor), never from a wave, never with the enemy in our
 ## base, never the last GUARD of them; a few at a time.
 func offer() -> void:
@@ -599,7 +599,7 @@ func offer() -> void:
 	if pen == null or not pen.built:
 		return
 	if float(offered) * float(Defs.UNITS["raptor"]["cost"]) / float(Defs.UNITS["raptor"]["spawn"]) > OFFER_SHARE * float(game.stats[team]["gold"]):
-		return              # (offerings are dear: a Raptor gives back 12% of its biomass; a budget, not a habit)
+		return              # (offerings are dear: a Raptor gives back only a third of its biomass; a budget, not a habit)
 	var want := offer_target()
 	var have := ai._res2() + essence_coming()
 	if want <= 0.0 or have >= want:

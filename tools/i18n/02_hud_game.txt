@@ -806,9 +806,13 @@ es Un %s viene a por él.
 pt Guiado por um(a) %s.
 es Guiado por un %s.
 
-> Walking into the %s.
-pt Entrando em %s.
-es Entrando en %s.
+> Going to the %s, to be hitched there.
+pt Indo para %s, para ficar amarrado lá.
+es Yendo a %s, para quedar atado allí.
+
+> Hitched at the %s till its rider or gun comes out: it can't be hurt or taken.
+pt Amarrado em %s até sair seu cavaleiro ou canhão: não pode ser ferido nem roubado.
+es Atado en %s hasta que salga su jinete o su cañón: no puede ser herido ni robado.
 
 > Going to be harnessed to the %s.
 pt Indo ser atrelado a %s.
@@ -1202,9 +1206,9 @@ es mineral agotado: un cuarto
 pt minério acabando
 es mineral agotándose
 
-> Bodies falling within %d tiles give essence. SACRIFICE Brood creatures here: 12%% of their biomass as essence (a Raptor: 3).
-pt Corpos que caem a até %d casas dão essência. SACRIFICAR criaturas da Ninhada aqui: 12%% do seu custo em biomassa como essência (um Raptor: 3).
-es Los cuerpos que caen a menos de %d casillas dan esencia. SACRIFICA aquí criaturas de la Nidada: el 12%% de su coste en biomasa como esencia (un Raptor: 3).
+> SACRIFICE Brood creatures here: %d%% of their biomass as essence (a Raptor: %d).
+pt SACRIFICAR criaturas da Ninhada aqui: %d%% do seu custo em biomassa como essência (um Raptor: %d).
+es SACRIFICA aquí criaturas de la Nidada: el %d%% de su coste en biomasa como esencia (un Raptor: %d).
 
 > (next in %ds)
 pt (próximo em %ds)

@@ -108,11 +108,15 @@ python3 tools/import_armoury_anims.py    # the Armoury's nine research experimen
 python3 tools/recolour_crown_buildings.py  # Crown buildings: red cloth in the player's colour, bricks / fire off the key reds (after every Crown building pass)
 python3 tools/import_queen.py           # the Brood Queen at the capital Burrow (art/brood/queen.png: still, backdrop keyed out)
 python3 tools/import_mound_chatgpt.py   # the Clutch Mound with the vent chimneys (art/redraws/clutch_mound_vent_chatgpt.png; built from the drawing, other states derived in code; after import_art, which writes the plain mound)
+python3 tools/import_winder_v2.py       # the new Winder (art/redraws/winder_*: idle, walk, wind (= repair), attack, death): its strips,
+                                         # art_data entry and card portrait (after import_art, which no longer writes him, and
+                                         # after import_round11, whose painted portrait of the old Winder it replaces)
 # Gait passes (tools/gait_lib.py, docs/animation_gait_audit.md): legs rebuilt per frame, one foot after the other;
 # each strip's torso / head / gear kept, pristine sources snapshotted in art/redraws/gait_src/<unit>/ (idempotent)
 python3 tools/import_gait_missionary.py
 python3 tools/import_gait_windup_soldier.py
-python3 tools/import_gait_winder.py
+# RETIRED 2026-10-26: the Winder's code-built walk legs (the new Winder's walk is ChatGPT's own; import_winder_v2.py below)
+# python3 tools/import_gait_winder.py
 python3 tools/import_gait_musketeer_armoured.py
 python3 tools/import_gait_raptor.py
 python3 tools/import_crown_legs.py        # labourer's new walk legs under the Armoured Musketeer (all views) and the Musketeer (s, n)
@@ -121,5 +125,8 @@ python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band
                                          # mount strips included
 python3 tools/import_vet_skin.py         # veterancy skin masks for the Brood's fighting creatures
 python3 tools/import_cursors.py          # the mouse cursors (art/ui/cursors.png) and their hotspots
+python3 tools/press_anim/escapement_work.py          # the Escapement's tick-tock from its painted cell (art/redraws/escapement.png):
+                                                     # art/clockwork/gear/escapement_built.png and _work_0..23.png (wheel and anchor in code)
+python3 tools/gear_art/import_buildings.py escapement   # ... and its game sprites (assets/buildings/escapement_*, assets/icons/escapement.png)
 echo "Now run: godot --headless --import"
 python3 tools/make_calm_grass.py

@@ -9,7 +9,10 @@ Defs.OWL "drop" points (where the pendulum weight hangs, per drawn direction) an
 
   fly     cuckoo_fly.png / ticking_owl_fly.png     5 x 4 (384 x 204.8 cells): wings up, level, down, level: the loop for
                                                     both idle and walk (the game flaps it at its own pace)
-  attack  cuckoo_attack.png                         5 x 6 (256 x 204): pull back, lunge (the hit on the 3rd frame)
+  attack  cuckoo_peck.png                           5 x 6, ChatGPT's PECK (not on an exact grid: the figures are found by
+                                                    their pieces): level, brake (wings up, head back), the STAB (beak
+                                                    driven forward and down, body pitched nose-down: the blow lands on
+                                                    this 3rd frame), held in, pull back, level
           owl_swoop.png                             5 x 6, drawn at 0.85 of the fly sheet: rise, wind up, dive, strike low
                                                     (the hit on the 4th frame), climb back
   bomb    owl_bomb.png                              5 x 6 at 0.85: the chain snaps on the 2nd frame; the falling weight
@@ -25,7 +28,12 @@ IT ON THE BODY: every frame of a direction is shifted so its body (the red case 
 from the front the dial splits the red in two) lies best on the fly loop's first frame's (overlap), so nothing jitters; the motion of the lunge, the swoop, the bob and the fall is the game's (code), not the
 drawing's. The anchor (the unit's point) is the bottom of the figure under the body on the first fly frame: the game
 lifts it to the flyers' height over its shadow. The wreck frames (death 5-6) sit with their middle on the anchor (on the
-ground). Shrink to game size (a wingspan of SPAN px with the wings level), snap the team reds to the shader's key reds.
+ground). The Clockwork palette (tools/cw_palette.py), shrink to game size (a wingspan of SPAN px with the wings level),
+snap the team reds to the shader's key reds.
+
+PALETTE (owner, 2026-10-26; the rule for every Clockwork unit is in tools/cw_palette.py): BRASS + PLAYER COLOUR. The red
+body cases stay player colour; the blue parts become player colour (the Swift's wing-root joints and eyes, the Owl's
+blue-and-white wing-root springs); the brass wings, the white dials and the Owl's iron weight stay as painted.
   python3 tools/import_cuckoo.py [preview.png]"""
 import json
 import os
@@ -33,13 +41,13 @@ import sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cw_palette
 
 SRC = 'art/redraws/'
 NAVY = np.array([0, 22, 48])
 TOL = 40
 DIRS = ['s', 'se', 'e', 'ne', 'n']
-TEAM_LIGHT = (255, 0, 0)
-TEAM_DARK = (150, 0, 0)
 UP = 1.0 / 0.85          # the owl's swoop, bomb and death sheets were drawn at 0.85 of its fly sheet
 
 # kind: the wingspan in game px of the level-wing fly frame (S view), and its sheets: anim -> (file, columns, scale up to the
@@ -47,7 +55,7 @@ UP = 1.0 / 0.85          # the owl's swoop, bomb and death sheets were drawn at 
 KINDS = {
     'cuckoo': {'span': 62.0, 'sheets': {
         'fly': ('cuckoo_fly.png', 4, 1.0),
-        'attack': ('cuckoo_attack.png', 6, 1.0),
+        'attack': ('cuckoo_peck.png', 6, 1.0),
         'death': ('cuckoo_death_final.png', 6, 1.0)}},
     'ticking_owl': {'span': 84.0, 'sheets': {
         'fly': ('ticking_owl_fly.png', 4, 1.0),
@@ -62,10 +70,9 @@ DROPPED = [1, 2]         # bomb frames whose painted falling weight is taken off
 # flying one (align) shifts it 2-5 px from frame to frame; these frames keep the CENTRE of their body (the red case and
 # dial) where the first death frame's body centre is, so the bird spins in place while the game brings it down.
 SPIN = [1, 2, 3]
-# The Swift's peck, re-timed from its own frames (cuckoo_attack.png: level, wings up, wings down, then level held): pull
-# back with the wings up, dart in on the downstroke (the blow, the 3rd frame), the beak held in a moment on the downstroke,
-# the wings up again as it pulls away, level. (The code darts it at its prey and tips it nose-down on the blow: Defs.FLYER.)
-ORDER = {('cuckoo', 'attack'): [0, 1, 2, 2, 1, 0]}
+# A strip's frames re-ordered: (kind, anim) -> the sheet's frame per strip frame. None now: the Swift's peck was its flight
+# frames re-timed until ChatGPT painted the peck (cuckoo_peck.png, in its own order).
+ORDER = {}
 
 
 def red_mask(a):
@@ -229,16 +236,6 @@ def shrink(img, scale):
     return out
 
 
-def snap_team(img):
-    """The red body -> the exact key reds the shader recolours (light and dark; its dark shading to the dark key)."""
-    r, g, b = img[..., 0].astype(int), img[..., 1].astype(int), img[..., 2].astype(int)
-    red = (img[..., 3] > 0) & (r >= 60) & (g <= r * 0.3) & (b <= r * 0.35)
-    light = red & (r >= 175)
-    img[light, :3] = TEAM_LIGHT
-    img[red & ~light, :3] = TEAM_DARK
-    return img
-
-
 def weight_centre(o, main):
     """The pendulum weight under the owl: the dark grey ball at the bottom of the main figure. Its centre in crop px."""
     r, g, b = o[..., 0].astype(int), o[..., 1].astype(int), o[..., 2].astype(int)
@@ -356,10 +353,11 @@ def import_kind(kind, info, preview):
         for i, (o, ax, ay, up) in enumerate(fl):
             s = scale * up            # this sheet's px -> game px
             BW, BH = int(round(cw / s)), int(round(ch / s))
+            o = cw_palette.recolour(o, kind)      # (after the alignment: it looks for the red body)
             big = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
             big.paste(Image.fromarray(o, 'RGBA'), (int(round(half / s - ax)), int(round(up_px / s - ay))))
             sm = shrink(np.array(big), cw / BW)[:ch, :cw]
-            sm = snap_team(sm)
+            sm = cw_palette.snap_team(sm)
             strip[:sm.shape[0], i * cw:i * cw + sm.shape[1]] = sm
         strips[(anim, d)] = strip
         names = ['idle', 'walk'] if anim == 'fly' else [anim]

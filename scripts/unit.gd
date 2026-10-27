@@ -69,6 +69,9 @@ var anim_dir := ""
 var anim_flip := false
 var anim_t := 0.0
 var frame_i := 0
+var _beat_t := 0.0              # (a Winder) seconds into the strip, played on its beat (WINDER_BEAT)
+var _beat_dip := 0.0            # (a Winder) the hammer blow just struck: the body dips a pixel this long
+var _crank_until := -1.0        # (a Winder) game clock: he winds the crate he set down until then (a picture only)
 var corpse_t := 0.0
 var _anim_art := ""             # whose sheet the sprite shows now (the mounted kind's while getting on)
 var _mount_len := 0.0           # (mounting / dismounting) how long it takes: the strip plays over it
@@ -125,7 +128,7 @@ var patrol_a := Vector2.INF     # PATROL: the two ends he walks between (INF: no
 var patrol_b := Vector2.INF
 var friendly_kills := 0         # our own men his blows finished off (splash): just for the card
 var harvester: Unit = null      # (a body) the grub coming to take it
-var cocoon := 0.0               # (a grub) essence it carries home (Game.corpse_value: 1.25 a supply)
+var cocoon := 0.0               # (a grub) essence it carries home (Game.corpse_value: 2 a supply)
 var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # A Musketeer in a balloon's basket: its pose up there (gun_state[0], "idle"/"down"/"up") and
 # how long it has held it
@@ -182,6 +185,7 @@ var jumps := 0                  # Jack: leaps made (tests, the log)
 var shots := 0                  # Jack: screws fired (tests)
 var last_shot: Shot = null      # Jack: its last screw in flight (tests, screenshots)
 var last_tip := Vector2.ZERO    # Jack: where its last screw left from (the drill tip, raised at a flyer; tests)
+var arm := 0                    # Jack: the launcher of the shot under way (0 its right, 1 its left: Jack.ARMS, in turn)
 var _jack_t := 0.0              # Jack (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
@@ -264,8 +268,10 @@ var pistol_t := 0.0             # (an Officer) how far through reloading it, in 
 var led: Array = []              # (a man) the horses he leads by the reins, in their string
 var leader: Unit = null          # (a horse) who leads it
 var claimed: Unit = null         # (a horse) the man walking over to mount or lead it
-var into: Entity = null          # (a horse) the building it walks into (training) or the gun it goes to
+var into: Entity = null          # (a horse) the building it is taken to (training) or the gun it goes to
 var _into_t := 0.0
+var hitch_p := Vector2.INF       # (a horse) its spot beside that building, where it stands hitched for its recruit or gun (INF: not hitched)
+var _hitch_t := 0.0
 var graze_at := Vector2.INF      # (a horse) where it was left: it grazes round here
 var _graze_goal := Vector2.INF
 var _graze_t := 0.0
@@ -3359,7 +3365,99 @@ func compute_path() -> void:
 		if out != Vector2.INF:
 			squeeze_t = 3.0
 			path = PackedVector2Array([out]) + game.find_path(out, path_goal, not is_worker())
+	if _towed():
+		path = _tow_gate_approach(path)
 	_open_gates(shut)
+
+
+## A limbered gun's horses lead the way: through a gate the team must go straight, so the path
+## gets a waypoint a little before and after each gate it crosses, on the gate's axis (the
+## middle of the opening when several gates stand side by side).
+func _tow_gate_approach(pts: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var cur := position
+	var done := {}
+	var skip := []                  # the middles of the gates already lined up: waypoints inside the run-out are dropped
+	for wi in pts.size():
+		var wp := pts[wi]
+		var seg := wp - cur
+		var n := int(seg.length() / 8.0) + 1
+		for s in n + 1:
+			var q: Vector2 = cur.lerp(wp, float(s) / float(n))
+			var c: Vector2i = game.cell_of(q)
+			if not game.in_map(c) or int(game.solid[game.idx(c)]) != 3 or done.has(c):
+				continue
+			# the opening: the gate cells in this one's row (or column), whichever way the wall runs
+			# (wall, building or cliff on its east / west side: an east-west wall; on both sides, or
+			# neither, the way the path crosses it decides)
+			var ew := _blocks(c + Vector2i(1, 0)) or _blocks(c + Vector2i(-1, 0))
+			var ns := _blocks(c + Vector2i(0, 1)) or _blocks(c + Vector2i(0, -1))
+			var horiz: bool = ew if ew != ns else absf(seg.y) >= absf(seg.x)
+			var step := Vector2i(1, 0) if horiz else Vector2i(0, 1)
+			var mid := game.cell_center(c)
+			var cnt := 1
+			for sgn in [1, -1]:
+				var k: Vector2i = c + step * sgn
+				while game.in_map(k) and int(game.solid[game.idx(k)]) == 3:
+					done[k] = true
+					mid += game.cell_center(k)
+					cnt += 1
+					k += step * sgn
+			done[c] = true
+			mid /= float(cnt)
+			var axis := Vector2(0, 1) if horiz else Vector2(1, 0)
+			# the way through: toward the first point of the path (or its goal) past the
+			# gateway, not the leg's own heading (a gun in the gateway gets a first waypoint
+			# at the gate's centre, a few pixels behind it: it must not turn back)
+			var dirn := 0.0
+			var last_in := wi - 1           # the last waypoint in the gateway
+			for wj in range(wi, pts.size()):
+				if absf((pts[wj] - mid).dot(axis)) < 24.0 and pts[wj].distance_to(mid) < 16.0 * float(cnt) + 24.0:
+					last_in = wj
+			for wj in range(last_in + 1, pts.size()):
+				var dd := (pts[wj] - mid).dot(axis)
+				if absf(dd) >= 24.0:
+					dirn = signf(dd)
+					break
+			if dirn == 0.0 and path_goal != Vector2.INF and absf((path_goal - mid).dot(axis)) >= 24.0:
+				dirn = signf((path_goal - mid).dot(axis))
+			if dirn == 0.0:
+				dirn = signf(seg.dot(axis))
+			if dirn == 0.0:
+				continue
+			var before_pt := mid - axis * dirn * 80.0
+			var after_pt := mid + axis * dirn * 80.0
+			# where the leg starts (the gun itself on the first): short of the opening it runs in
+			# from before_pt, unless it is lined up already or in the gateway (never back out of it)
+			var rel := cur - mid
+			var along := rel.dot(axis) * dirn
+			var lateral := absf(rel.dot(Vector2(-axis.y, axis.x)))
+			if along < -8.0:
+				if along < -24.0 and (along < -78.0 or lateral > 6.0) and game._clear_at(before_pt, 10.0, team):
+					while not out.is_empty() and out[out.size() - 1].distance_to(mid) < 78.0:
+						out.remove_at(out.size() - 1)
+					out.append(before_pt)
+				out.append(mid)
+			if game._clear_at(after_pt, 10.0, team):
+				out.append(after_pt)
+				skip.append(mid)
+		var drop := false
+		if wi < pts.size() - 1:
+			for m: Vector2 in skip:
+				if wp.distance_to(m) < 78.0:
+					drop = true
+		if not drop:
+			out.append(wp)
+		cur = wp
+	return out
+
+
+## Nothing walks on this cell (terrain, a building, a wall, a gate; off the map too).
+func _blocks(c: Vector2i) -> bool:
+	if not game.in_map(c):
+		return true
+	var v := int(game.solid[game.idx(c)])
+	return v != 0 and v != 5
 
 
 ## The pathfinder counts every gate as open (it opens for its own side): while it works out
@@ -3467,24 +3565,17 @@ func _move(want: Vector2, delta: float) -> void:
 		elif game.in_open_map(sc) and game._clear_at(position, radius, team):
 			squeeze_t = 0.0
 	else:
-		position = game.resolve_terrain(position, before, radius, team)
+		if _towed():
+			position = _tow_resolve(position, before)
+		else:
+			position = game.resolve_terrain(position, before, radius, team)
 		if not game.cw_gates.is_empty():
 			position = CwUnits.gate_push(self, before, position)     # a Plate Wagon blocks the track
-		# A limbered gun: the horses stand a length ahead of the barrel, so their spot must
-		# be clear too (they clipped through walls and palisades): slide along it instead
-		if (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and position != before:
-			var lead := facing * (radius + 14.0)
-			if not game._clear_at(position + lead, radius * 0.9, team):
-				var alt_a := Vector2(position.x, before.y)
-				var alt_b := Vector2(before.x, position.y)
-				if game._clear_at(alt_a + lead, radius * 0.9, team) and game._clear_at(alt_a, radius, team):
-					position = alt_a
-				elif game._clear_at(alt_b + lead, radius * 0.9, team) and game._clear_at(alt_b, radius, team):
-					position = alt_b
-				else:
-					position = before
 	if want.length() > 5.0 and phase == "":
-		facing = facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
+		var nf := facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
+		if _towed() and not is_air():
+			nf = _tow_turn(nf, want.normalized())
+		facing = nf
 	# Stuck detection while trying to move
 	if want.length() > 5.0:
 		if position.distance_to(last_pos) < speed * delta * 0.25:
@@ -3503,6 +3594,71 @@ func _move(want: Vector2, delta: float) -> void:
 			stuck_t = 0.9
 			_request_path(path_goal)
 	last_pos = position
+
+
+## A limbered gun or wagon: only the barrel / body is the unit; the horses are art standing
+## ahead of it along `facing`. So the whole silhouette (body + horse spots) is what must be
+## clear of cliffs, walls and buildings, and the body is narrow enough for a one-tile gate.
+func _towed() -> bool:
+	return (kind == "cannon" or kind == "mortar" or kind == "powder_wagon") and tesla_mode == "packed" and harnessed
+
+
+## Terrain width of a limbered body (the sprite is wider than a tile: its wheels may overhang).
+func _tow_body() -> float:
+	return minf(radius, 15.0)
+
+
+func _tow_clear(p: Vector2, f: Vector2) -> bool:
+	if not game._clear_at(p, _tow_body(), team):
+		return false
+	# the horses: every spot from the barrel to the lead horse, closer together than a wall or
+	# cliff ring is thick (one tile), so a thin obstacle can't be stepped over
+	var reach := radius + 22.0 + (40.0 if not team_horses.is_empty() else 0.0)
+	var d := radius
+	while d < reach + 5.0:
+		if not game._clear_at(p + f * minf(d, reach), 13.0, team):
+			return false
+		d += 11.0
+	return true
+
+
+## The new position of a limbered vehicle that tried to go from `before` to `pos`: as is, else
+## sliding along x or y, else it stays. (Wedged already: the plain terrain rule pops it out.)
+func _tow_resolve(pos: Vector2, before: Vector2) -> Vector2:
+	pos = pos.clamp(Vector2(radius, radius), Vector2(Game.W, Game.H) * Game.T - Vector2(radius, radius))
+	if _tow_clear(pos, facing):
+		return pos
+	if not _tow_clear(before, facing):
+		return game.resolve_terrain(pos, before, _tow_body(), team)
+	var a := Vector2(pos.x, before.y)
+	if _tow_clear(a, facing):
+		return a
+	var b := Vector2(before.x, pos.y)
+	if _tow_clear(b, facing):
+		return b
+	return before
+
+
+## Turn toward `nf` only as far as the horses' spots stay on legal ground (else it holds its
+## heading and slides, or swings at once to the wanted heading when that is clear): the team never swings over a cliff or through a wall.
+func _tow_turn(nf: Vector2, want_dir: Vector2) -> Vector2:
+	var ahead := position + want_dir * 4.0       # (clear here too, or the next step is refused)
+	if not _tow_clear(position, facing):
+		return nf
+	if _tow_clear(position, nf) and _tow_clear(ahead, nf):
+		return nf
+	for k in [0.5, 0.25]:
+		var h: Vector2 = facing.lerp(nf, k).normalized()
+		if _tow_clear(position, h) and _tow_clear(ahead, h):
+			return h
+	# the arc between is shut (a wall end beside the team): it swings round at once to the
+	# nearest heading to the wanted one that is clear, so it is never stuck pointing at the wall
+	for deg in [0.0, 8.0, 16.0, 26.0, 38.0, 52.0, 70.0]:
+		for sgn in [1.0, -1.0]:
+			var h: Vector2 = want_dir.rotated(deg_to_rad(deg) * sgn)
+			if _tow_clear(position, h) and _tow_clear(ahead, h):
+				return h
+	return facing
 
 
 ## Computer players: melee units hacking at a wall weigh it up rather than run at the first
@@ -3791,6 +3947,8 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 				target = null
 			return
 		_owl_bomb = kind == Defs.OWL and e is Building      # (the Owl: a bomb on a building, the talons on a unit)
+		if kind == Defs.JACK:
+			arm = shots % 2          # (its two launchers fire in turn: scripts/jack.gd)
 		phase = "aim"
 		phase_t = _aim()
 		return
@@ -4029,6 +4187,10 @@ func _leave_mine() -> void:
 	if home_mine and is_instance_valid(home_mine):
 		if home_mine is Building:
 			(home_mine as Building).crew.erase(self)
+	_mill_in = false              # (out of a Powder Mill's yard work: Game.separation shoves him again)
+	_mill_site = null
+	_mill_shed = []
+	_mill_walking = false
 
 
 ## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
@@ -4070,9 +4232,9 @@ func _gather(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if kind == "labourer" and site.kind == "farm":
 		return _farm(site, delta)
+	if kind == "labourer" and site.kind == "powder_mill":
+		return _mill_work(site, delta)
 	if work == "manning":
-		if kind == "labourer" and site.kind == "powder_mill":
-			return _mill_work(site, delta)
 		facing = (site.center() - position).normalized()
 		return Vector2.ZERO
 	work = "to_site"
@@ -4085,33 +4247,65 @@ func _gather(delta: float) -> Vector2:
 	return _follow(delta)
 
 
-## The Powder Mill: a real workflow. Each labourer walks to one of the three heaps (saltpetre,
-## sulphur, charcoal: the heap centres in art/redraws/powder_mill_shed.png as imported by
-## tools/import_mill_chatgpt.py: sprite columns 20, 31, 47 less the base column 62) under the
-## lean-to, DIGS and LIFTS a shovelful (shovel strips: dig, lift, swing, tip; 4 frames a load, a
-## load per heap), WALKS carrying the loaded shovel (walk_shovel strips) along the strip of
-## ground in front of the shed to the hopper on the right, TIPS it in (swing, tip) and walks back
-## (a lane further out) to the next heap, forever. All of it is manning: the powder the mill
-## grinds only counts the crew at work (Building.working_crew), not where they stand, so the
-## output is the same however they walk. The six are staggered (a different start phase, two
-## lanes per heap and per tipping spot, a slightly different dig time, a lane out and a lane
-## back) and soft separation does the rest.
-const MILL_PILE_DX := [-42.0, -31.0, -15.0]     # (the hopper's mouth is at column 72, row 65: +10, -42 from the base point)
-const MILL_HOPPER_DX := [2.0, 14.0, 26.0]       # three tipping spots in front of the hopper, from the footprint's middle (mouth: +10)
-const MILL_STAND_DY := 2.0
-const MILL_TIP_DY := 6.0                        # (the tipping spots stand a little further out than the heaps' stations)
-const MILL_LANE_OUT := 14.0                     # the carry lane's distance below the footprint's front edge
-const MILL_LANE_BACK := 26.0                    # the way back, further out
+## The Powder Mill: a real workflow, in the mill's own WORK YARD (Building.MILL_YARD: the front
+## row of its footprint, walkable, nothing is built on it), so no neighbour, wall or cliff can
+## block it. Each labourer walks to one of the three heaps (saltpetre, sulphur, charcoal: the heap
+## centres in art/redraws/powder_mill_shed.png as imported by tools/import_mill_chatgpt.py:
+## sprite columns 21, 32, 49 less the base column 62) under the lean-to, DIGS and LIFTS a
+## shovelful (shovel strips: dig, lift, swing, tip; 4 frames a load, a load per heap), WALKS
+## carrying the loaded shovel (walk_shovel strips) along the front of the yard to the hopper,
+## TIPS it in (swing, tip) and walks back to the next heap, forever. All of it is manning: the
+## powder the mill grinds only counts the crew at work (Building.working_crew), not where they
+## stand, so the output is the same however they walk.
+## Six men in a yard three tiles by one: each heap and each of the three tipping spots has two
+## places (MILL_DIG_AT, MILL_TIP_AT: no two nearer than 5 px), and each man takes the heap,
+## and the tipping spot, that the fewest of the others hold, at the place there nobody holds
+## (_mill_pick); they dig at the heaps' feet, behind the two lanes the walkers use. They don't
+## shove each other there (Game.separation: shoving in a yard this small only pushed men off
+## their places and dragged walkers along): they pass close by, and a man who comes up behind
+## another going his way keeps a step behind him, or waits a moment for a man crossing his way
+## (_mill_pace), instead of walking on top of him. A leg that makes no headway for MILL_STALL s
+## ends where he is, so nobody walks on the spot with a frozen stride. A man outside the yard walks in by its open
+## side (the pathfinder); when neighbours shut the yard in on every side he goes up to the shed
+## and in through it (_mill_shed_way); only a mill with no free ground round it at all is worked
+## from outside, the shovel going round where he stands.
+## Places are from the base point (the footprint's front middle), x right and y down: the yard
+## is y -32..0 (a man's middle stays 3.3 px inside it), the sprite's row 107 is y 0.
+const MILL_PILE_DX := [-40.0, -30.0, -13.0]     # the heaps' columns (21, 32, 49 in the sprite)
+const MILL_DIG_AT := [[Vector2(-42.0, -10.0), Vector2(-36.5, -10.0)], [Vector2(-30.5, -10.0), Vector2(-24.5, -10.0)],
+	[Vector2(-18.0, -9.5), Vector2(-10.0, -9.5)]]          # (two places a heap, at its foot under the lean-to's eaves)
+const MILL_TIP_AT := [[Vector2(-3.0, -16.0), Vector2(1.0, -20.0)], [Vector2(6.0, -23.0), Vector2(9.0, -18.0)],
+	[Vector2(13.0, -21.0), Vector2(15.0, -16.0)]]          # (three spots before the hopper's legs, staggered; its mouth: column 72, row 65)
+const MILL_MOUTH := Vector2(10.0, -42.0)        # (he tips facing it)
+const MILL_LANE_OUT := -3.5                     # the carry lane, along the yard's front edge
+const MILL_LANE_BACK := -5.5                    # the way back, a step further in (both well in front of the diggers)
+const MILL_WAY := 3.5                           # a crew man this near the line he walks is in his way (_mill_pace)
+const MILL_LOOK := 9.0                          # (looked for this far ahead)
+const MILL_GAP := 5.0                           # the gap he keeps behind a man walking ahead in his way
+const MILL_GAP_K := 10.0                        # (px/s of speed for each px the gap is long or short)
+const MILL_HOLD := 0.8                          # held back longer than this (the man ahead doesn't move on): he walks on
+const MILL_STALL := 0.4                         # a leg with no headway this long (not held back) ends where he is
 const MILL_CYCLE := 2.0                         # dig + tip time (the walks come on top)
 const MILL_STEP_ENDS := [0.7, 1.05, 1.35]      # dig, lift, swing end here; tip to MILL_CYCLE
 var _mill_k := -1                               # the heap he works (the load's colour)
+var _mill_j := 0                                # the tipping spot he takes
+var _mill_slot := 0                             # which of the two places at his heap / spot he takes
 var _mill_t := 0.0                              # 0..1.05 digging and lifting, 1.05..MILL_CYCLE swinging and tipping
 var _mill_walking := false
 var _mill_ph := 3                               # 0 dig at the heap, 1 carry to the hopper, 2 tip, 3 back to a heap
 var _mill_route: Array = []                     # the waypoints still to walk
 var _mill_site: Building = null
-var _mill_leg_t := 0.0                          # time on this leg (no leg lasts for ever)
+var _mill_in := false                           # at work in the yard (Game.separation: the crew there don't shove each other)
+var _mill_best := INF                           # this leg's closest approach to its waypoint so far
+var _mill_stall := 0.0                          # time without headway on this leg
+var _mill_held := 0.0                           # time held back behind another man (_mill_pace)
 var _mill_first := true
+var _mill_look_t := 0.0                         # outside: the way in is looked at again when this runs out
+var _mill_path_t := 0.0                         # (and a new path asked for at most this often)
+var _mill_gate := Vector2.INF                   # the yard shut in: the free cell beside the shed he goes in from
+var _mill_gate_way: Array = []                  # and from there through the shed into the yard
+var _mill_shed: Array = []                      # the way through the shed still to walk
+var _mill_edge := false                         # no free ground round the mill at all: he works from outside
 
 
 static func mill_step(t: float) -> int:
@@ -4121,31 +4315,118 @@ static func mill_step(t: float) -> int:
 	return MILL_STEP_ENDS.size()
 
 
-func _mill_lane(site: Building) -> float:
-	return 3.0 if site.crew.find(self) % 2 == 1 else -3.0
+## The base point of a mill on footprint `r` (its front middle), where the places are from.
+static func mill_base(r: Rect2) -> Vector2:
+	return Vector2(r.get_center().x, r.end.y)
 
 
+## Place `slot` (0, 1) to dig at heap k in the yard of a mill on footprint `r`.
+static func mill_heap_spot(r: Rect2, k: int, slot := 0) -> Vector2:
+	return mill_base(r) + Vector2(MILL_DIG_AT[k][slot])
+
+
+## Place `slot` at tipping spot j before the hopper.
+static func mill_tip_spot(r: Rect2, j: int, slot := 0) -> Vector2:
+	return mill_base(r) + Vector2(MILL_TIP_AT[j][slot])
+
+
+## Where he digs at heap k.
 func mill_station(site: Building, k: int) -> Vector2:
-	var r := site.rect()
-	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_PILE_DX[k]) + _mill_lane(site), r.end.y + MILL_STAND_DY)
+	return mill_heap_spot(site.rect(), clampi(k, 0, 2), _mill_slot)
 
 
-## Where he stands to tip into the hopper (one of three spots, by his place in the crew).
+## Where he stands to tip into the hopper (his place at his tipping spot).
 func mill_hopper_station(site: Building) -> Vector2:
-	var r := site.rect()
-	var i := maxi(site.crew.find(self), 0) % 3
-	return Vector2(r.position.x + r.size.x * 0.5 + float(MILL_HOPPER_DX[i]) + _mill_lane(site), r.end.y + MILL_TIP_DY)
+	return mill_tip_spot(site.rect(), _mill_j, _mill_slot)
 
 
-## The legs of the round: out from heap k to the hopper along the near lane, back from the
-## hopper to heap k along the far one (a waypoint on blocked ground is left out).
+## His next heap (tip false) or tipping spot (tip true): of the three, the one the fewest of the
+## others at work in the yard hold right now (going there or working there), `first` first, then
+## on in turn; and the place there that is free (two share a heap at the most: six men, three
+## heaps, three spots, two places each).
+func _mill_pick(site: Building, tip: bool, first: int) -> int:
+	var held := [0, 0, 0]
+	var taken := [0, 0, 0]          # bit 1: its first place is held, 2: its second
+	for o in site.crew:
+		if o == self or not is_instance_valid(o) or o.dead or not o._mill_in or o._mill_site != site:
+			continue
+		var o_tip: bool = o._mill_ph == 1 or o._mill_ph == 2
+		var at: int = o._mill_j if o_tip else o._mill_k
+		if o_tip != tip or at < 0 or at > 2:
+			continue
+		held[at] += 1
+		taken[at] |= 1 << clampi(o._mill_slot, 0, 1)
+	var best := posmod(first, 3)
+	for n in 3:
+		var c := (first + n) % 3
+		if held[c] < held[best]:
+			best = c
+	match int(taken[best]):
+		1:
+			_mill_slot = 1
+		2:
+			_mill_slot = 0
+		_:
+			_mill_slot = maxi(site.crew.find(self), 0) % 2
+	return best
+
+
+## How fast he may walk (INF: his own pace). They don't shove each other in the yard, and two
+## walking together would be drawn on top of each other, so he keeps MILL_GAP behind another of
+## the crew walking ahead of him in his way (within MILL_WAY of the line he walks, at most
+## MILL_LOOK ahead): no faster than that man goes along it, slower while the gap is short (a
+## standstill when it is), faster to close it again. Like traffic: a man stepping onto the lane
+## or off it (a leg more up and down than along) waits for the lane's walkers in his way, they
+## never wait for him. Between two walking the same kind of leg, who is ahead is measured along
+## both their ways together (dir plus his), the same answer for both, and of two level with each
+## other the later man (the higher id) drops back: so nobody waits for a man who waits for him
+## (the old rule, a little slower than the man ahead, let two walk on top of each other for a
+## second and more; a test each man made along his own way alone left two, or three, standing
+## stuck together where the lanes meet the hopper's spots). A man standing in his way (at his
+## place), or coming the other way, is passed close by: that is a moment.
+func _mill_pace(site: Building, dir: Vector2) -> float:
+	var cap := INF
+	var lane := absf(dir.x) >= absf(dir.y)
+	for o in site.crew:
+		if o == self or not is_instance_valid(o) or o.dead or not o._mill_in or not o._mill_walking or o._mill_site != site:
+			continue
+		var rel: Vector2 = o.position - position
+		if rel.length_squared() > MILL_LOOK * MILL_LOOK or absf(dir.cross(rel)) > MILL_WAY:
+			continue
+		var od: Vector2 = o.facing
+		if od.dot(dir) < -0.5:
+			continue             # coming the other way: they pass
+		var o_lane: bool = absf(od.x) >= absf(od.y)
+		if lane and not o_lane:
+			continue             # (stepping onto the lane or off it: he waits for me)
+		var lon := rel.dot(dir)
+		if lane == o_lane:
+			var ahead := rel.dot(dir + od)
+			if ahead < -0.5 or (ahead <= 0.5 and get_instance_id() < o.get_instance_id()):
+				continue         # (he is behind, or level and the later man: it's his to keep back)
+		elif lon <= 0.0:
+			continue             # (a lane walker I have already crossed)
+		cap = minf(cap, maxf(0.0, maxf(0.0, o.velocity.dot(dir)) + (lon - MILL_GAP) * MILL_GAP_K))
+	return cap
+
+
+## The way from where he is to his heap (out false) or tipping spot (out true): onto the lane
+## (the carry lane along the yard's front, the way back a step further in), along it, and to the
+## spot; inside the yard, all of it.
 func _mill_walk_route(site: Building, out: bool) -> Array:
 	var r := site.rect()
-	var heap := mill_station(site, _mill_k)
-	var hop := mill_hopper_station(site)
+	var goal := mill_hopper_station(site) if out else mill_station(site, _mill_k)
 	var ly := r.end.y + (MILL_LANE_OUT if out else MILL_LANE_BACK)
-	var pts: Array = [Vector2(heap.x if out else hop.x, ly), Vector2(hop.x if out else heap.x, ly), hop if out else heap]
-	return pts.filter(func(p: Vector2) -> bool: return game.is_free(game.cell_of(p)))
+	var pts: Array = []
+	if absf(position.y - ly) > 2.0 and absf(position.x - goal.x) > 4.0:
+		pts.append(Vector2(position.x, ly))
+	if absf(goal.x - position.x) > 4.0:
+		pts.append(Vector2(goal.x, ly))
+	pts.append(goal)
+	_mill_best = INF
+	_mill_stall = 0.0
+	_mill_held = 0.0
+	return pts
 
 
 func _mill_snd() -> void:
@@ -4154,72 +4435,230 @@ func _mill_snd() -> void:
 
 func _mill_work(site: Building, delta: float) -> Vector2:
 	var idx := maxi(site.crew.find(self), 0)
-	if _mill_site != site or _mill_k < 0:
+	if _mill_site != site:
 		_mill_site = site
-		_mill_k = idx % 3
+		_mill_in = false
+		_mill_k = -1
 		_mill_ph = 3
 		_mill_route = []
+		_mill_shed = []
+		_mill_gate = Vector2.INF
 		_mill_first = true
-		_mill_leg_t = 0.0
-	var heap := mill_station(site, _mill_k)
-	var hop := mill_hopper_station(site)
-	if (_mill_first and position.distance_to(heap) > 90.0) or not game.is_free(game.cell_of(heap)) or not game.is_free(game.cell_of(hop)):
-		# no way to his heap (blocked, or pushed far away): shovel where he stands, facing the mill
-		_mill_walking = false
-		_mill_ph = 0
+		_mill_edge = false
+		_mill_look_t = 0.0
+	var r := site.rect()
+	var yard := Building.mill_yard_rect(r)
+	if not _mill_in:
+		if not yard.grow(-1.0).has_point(position):
+			return _mill_enter(site, idx, delta)
+		# in the yard: to work, at the heap fewest of the others hold
+		_mill_in = true
+		work = "manning"
+		path = PackedVector2Array()
+		_mill_shed = []
+		_mill_gate = Vector2.INF
+		_mill_ph = 3
+		_mill_k = _mill_pick(site, false, _mill_k if _mill_k >= 0 else idx % 3)
+		_mill_route = _mill_walk_route(site, false)
+	elif not yard.grow(24.0).has_point(position):
+		# taken out of the yard (shoved far, or knocked back): back in, the way he can
+		_mill_in = false
 		_mill_route = []
-		facing = (site.center() - position).normalized()
-		_mill_t += delta
-		if _mill_t >= MILL_CYCLE:
-			_mill_t = 0.0
-			_mill_k = (_mill_k + 1) % 3
-		return Vector2.ZERO
-	if _mill_ph == 3 and _mill_route.is_empty() and position.distance_to(heap) > 6.0 and _mill_leg_t == 0.0:
-		_mill_route = [heap] if _mill_first else _mill_walk_route(site, false)
-	if _mill_ph == 1 and _mill_route.is_empty() and _mill_leg_t == 0.0:
-		_mill_route = _mill_walk_route(site, true)
-	if not _mill_route.is_empty():
+		_mill_look_t = 0.0
+		return _mill_enter(site, idx, delta)
+	work = "manning"
+	# the legs: straight from waypoint to waypoint (the yard is all walkable and the crew don't
+	# shove each other); a leg that gets no closer for MILL_STALL s ends where he is (time held
+	# back behind another man doesn't count: that man moves on)
+	while not _mill_route.is_empty():
 		var wp: Vector2 = _mill_route[0]
-		var final := _mill_route.size() == 1
 		var d := wp - position
-		_mill_leg_t += delta
-		if d.length() > (6.0 if final else 9.0) and _mill_leg_t < 9.0:
-			_mill_walking = true
-			facing = d.normalized()
-			return d.normalized() * minf(speed, d.length() / maxf(delta, 0.001))
+		var dist := d.length()
+		var last := _mill_route.size() == 1
+		if dist > (1.0 if last else 5.0):
+			var dir := d / dist
+			# (onto his place he slows down: the eased velocity, Unit._move, would carry him past it)
+			var v := minf(speed, dist * 8.0 + 8.0 if last else dist / maxf(delta, 0.001))
+			var pace := _mill_pace(site, dir)
+			var held := pace < v * 0.7
+			_mill_held = _mill_held + delta if held else 0.0
+			if _mill_held < MILL_HOLD:
+				v = minf(v, pace)
+			if dist < _mill_best - 0.3:
+				_mill_best = dist
+				_mill_stall = 0.0
+			elif not held:
+				_mill_stall += delta
+			if _mill_stall < MILL_STALL:
+				_mill_walking = true
+				facing = dir
+				return dir * v
 		_mill_route.remove_at(0)
-		if not _mill_route.is_empty():
-			return Vector2.ZERO
-	_mill_leg_t = 0.0
-	_mill_walking = false
-	facing = Vector2(0.0, -1.0)
+		_mill_best = INF
+		_mill_stall = 0.0
+		_mill_held = 0.0
+	if _mill_walking:
+		# arrived: he stops dead (the eased velocity and a shove taken on the way, Unit._move,
+		# would slide him a few px on, onto the next man's place)
+		_mill_walking = false
+		velocity = Vector2.ZERO
+		_push = Vector2.ZERO
 	match _mill_ph:
-		3:      # at a heap: dig (the six start at different points of the dig, then drift apart)
+		3:      # at a heap: dig (the first time, each at a different point of the dig: they drift apart)
 			_mill_ph = 0
 			_mill_t = 0.0
 			if _mill_first:
 				_mill_t = [0.0, 0.5, 0.9][(idx + idx / 3) % 3]
 				_mill_first = false
 			_mill_snd()
+			facing = Vector2(0.0, -1.0)
 		0:
+			facing = Vector2(0.0, -1.0)
 			_mill_t += delta
 			if _mill_t >= float(MILL_STEP_ENDS[1]) + 0.12 * float(idx % 3):
+				# lifted: off to the hopper with the load, to the tipping spot fewest hold
 				_mill_ph = 1
 				_mill_t = float(MILL_STEP_ENDS[1]) - 0.001       # (the lifted load stays on the blade)
+				_mill_j = _mill_pick(site, true, idx % 3)
+				_mill_route = _mill_walk_route(site, true)
 				_mill_walking = true
 		1:      # at the hopper
 			_mill_ph = 2
 			_mill_t = float(MILL_STEP_ENDS[1])
 			_mill_snd()
+			facing = (mill_base(r) + MILL_MOUTH - position).normalized()
 		2:
+			facing = (mill_base(r) + MILL_MOUTH - position).normalized()
 			_mill_t += delta
 			if _mill_t >= MILL_CYCLE:
-				_mill_k = (_mill_k + 1) % 3
+				# tipped: on to the next heap (the next in turn, unless it's busier)
 				_mill_ph = 3
 				_mill_t = 0.0
-				_mill_walking = true
+				_mill_k = _mill_pick(site, false, (_mill_k + 1) % 3)
 				_mill_route = _mill_walk_route(site, false)
+				_mill_walking = true
 	return Vector2.ZERO
+
+
+## Outside the yard: walk in. By its open side when there is one (the pathfinder: the yard's
+## cells are walkable); when neighbours shut the yard in on every side, to the free cell beside
+## the shed nearest him and in through the shed (_mill_shed_way); with no free ground round the
+## mill at all, he works from the nearest spot he can reach.
+func _mill_enter(site: Building, idx: int, delta: float) -> Vector2:
+	_mill_walking = false
+	if _mill_k < 0:
+		_mill_k = idx % 3
+		_mill_slot = idx % 2
+	if not _mill_shed.is_empty():
+		return _mill_through_shed(delta)
+	_mill_look_t -= delta
+	_mill_path_t -= delta
+	if _mill_look_t <= 0.0:
+		# (which way in: looked at again every couple of seconds, the ground may have changed)
+		_mill_look_t = 2.0
+		_mill_gate = Vector2.INF
+		_mill_edge = false
+		var mine := game.region_of(game.cell_of(position))
+		if mine >= 0 and mine != game.region_of(game.cell_of(mill_station(site, _mill_k))):
+			var way := _mill_shed_way(site, mine)
+			if way.is_empty():
+				_mill_edge = true
+			else:
+				_mill_gate = way[0]
+				_mill_gate_way = way.slice(1)
+	if _mill_edge:
+		return _mill_from_edge(site, delta)
+	work = "to_site"
+	var target := mill_station(site, _mill_k) if _mill_gate == Vector2.INF else _mill_gate
+	if _mill_gate != Vector2.INF and position.distance_to(_mill_gate) < 8.0:
+		_mill_shed = _mill_gate_way.duplicate()
+		_mill_gate = Vector2.INF
+		_mill_best = INF
+		_mill_stall = 0.0
+		return _mill_through_shed(delta)
+	if ((path.is_empty() or path_i >= path.size()) or path_goal != target) and not path_pending and _mill_path_t <= 0.0:
+		_mill_path_t = 0.5
+		_request_path(target)
+	return _follow(delta)
+
+
+## The yard shut in (no cell beside it he can walk to): the free cell beside the shed nearest
+## him that he can reach (behind it, or beside its two back rows), then the way from there
+## through the mill's own cells into the yard below, as points: [that cell's middle, the shed
+## cell he steps into, the yard cell under it]. [] when there is none.
+func _mill_shed_way(site: Building, region: int) -> Array:
+	var c0 := site.cell
+	var row: int = Building.MILL_YARD.position.y
+	var cands: Array = []          # [the free cell, the shed cell beside it]
+	for x in site.size.x:
+		cands.append([c0 + Vector2i(x, -1), c0 + Vector2i(x, 0)])
+	for y in row:
+		cands.append([c0 + Vector2i(-1, y), c0 + Vector2i(0, y)])
+		cands.append([c0 + Vector2i(site.size.x, y), c0 + Vector2i(site.size.x - 1, y)])
+	var best: Array = []
+	var bd := INF
+	for cand in cands:
+		var fc: Vector2i = cand[0]
+		if not game.is_free(fc) or game.region_of(fc) != region:
+			continue
+		var p := game.cell_center(fc)
+		if p.distance_to(position) < bd:
+			bd = p.distance_to(position)
+			var sc: Vector2i = cand[1]
+			best = [p, game.cell_center(sc), game.cell_center(Vector2i(sc.x, c0.y + row))]
+	return best
+
+
+## In through the shed, waypoint by waypoint (buildings don't stop a man squeezing through,
+## Unit._move; the way only crosses the mill's own cells). A way that gets him nowhere is given up.
+func _mill_through_shed(delta: float) -> Vector2:
+	work = "manning"
+	_mill_ph = 3
+	while not _mill_shed.is_empty():
+		var wp: Vector2 = _mill_shed[0]
+		var d := wp - position
+		var dist := d.length()
+		if dist > 4.0:
+			if dist < _mill_best - 0.3:
+				_mill_best = dist
+				_mill_stall = 0.0
+			else:
+				_mill_stall += delta
+			if _mill_stall > 1.5:
+				_mill_shed = []
+				_mill_look_t = 0.0
+				break
+			_mill_walking = true
+			squeeze_t = 0.25
+			facing = d / dist
+			return d / dist * minf(speed, dist / maxf(delta, 0.001))
+		_mill_shed.remove_at(0)
+		_mill_best = INF
+		_mill_stall = 0.0
+	_mill_walking = false
+	return Vector2.ZERO
+
+
+## No free ground round the mill to get in from (walled in on every side): he works from the
+## nearest spot he can reach, the shovel going round the three loads where he stands.
+func _mill_from_edge(site: Building, delta: float) -> Vector2:
+	if site.edge_distance(position) < radius + 18.0:
+		work = "manning"
+		path = PackedVector2Array()
+		_mill_ph = 0
+		facing = (site.center() - position).normalized()
+		_mill_t += delta
+		if _mill_t >= MILL_CYCLE:
+			_mill_t = 0.0
+			_mill_k = (_mill_k + 1) % 3
+		return Vector2.ZERO
+	if work != "manning":
+		work = "to_site"
+	var target := game.approach_point(site, position)
+	if ((path.is_empty() or path_i >= path.size()) or path_goal != target) and not path_pending and _mill_path_t <= 0.0:
+		_mill_path_t = 0.5
+		_request_path(target)
+	return _follow(delta)
 
 
 ## REPAIR autocast at work: now and then a worker at its post looks round for a damaged
@@ -4693,9 +5132,9 @@ func _haul_stuck(ref: float, delta: float) -> int:
 	return 0
 
 
-## Let the leash go at the destination: a building takes the horse in (for its recruit or
-## gun: Game.horse_arrived), a gun or wagon harnesses it, a new rider waiting on foot finds it
-## beside him and mounts.
+## Let the leash go at the destination: at a building the horse stands hitched beside it for its
+## recruit or gun (Game.hitch_horse), a gun or wagon harnesses it, a new rider waiting on foot
+## finds it beside him and mounts.
 func _hitch(h: Unit, dest: Entity) -> void:
 	led.erase(h)
 	h.leader = null
@@ -4974,6 +5413,9 @@ func _build(delta: float) -> Vector2:
 				site.seeded = true
 				site._update_sprite()
 				Sfx.play("ratchet", position)
+			# and gives it a few turns while it unfolds (one beat of his wind strip; it never holds him up: a new
+			# order walks him off at once)
+			_crank_until = game.clock + 1.2
 			if not (_continue_line() or _next_order()):
 				cmd_stop()
 			return Vector2.ZERO
@@ -5056,9 +5498,10 @@ func _fetch_crate(site: Building, delta: float) -> Vector2:
 
 
 ## Winder: where the crate on his back sits for each view ([x, y from the feet, unflipped art
-## (facing east), drawn behind the body]): behind him when he faces us, in front of him when
-## he walks away. One picture for every view; it bobs with his steps.
-const CRATE_BACK := {"s": [0, -25, true], "se": [-4, -25, true], "e": [-7, -24, true], "ne": [-4, -23, false], "n": [0, -23, false]}
+## (facing east), drawn behind the body]): behind him when he faces us (over his clock head, which
+## hides the rest), low on his back under the winding key side on, in front of him when he walks
+## away. One picture for every view; it bobs with his steps.
+const CRATE_BACK := {"s": [0, -38, true], "se": [-10, -21, true], "e": [-12, -17, true], "ne": [-5, -20, false], "n": [0, -22, false]}
 
 
 func _update_crate_spr() -> void:
@@ -5317,6 +5760,8 @@ func _anim_name() -> String:
 			if phase != "":
 				return "attack"
 		"winder":
+			# his one job is winding (docs/clockwork_ground_up.md): his own spring, a Cog Press, a repair, the crate he
+			# has just set down on a site (the repair strip is the wind strip)
 			if self_wind_t > 0.0:
 				return "wind"
 			if work == "manning":
@@ -5325,7 +5770,7 @@ func _anim_name() -> String:
 				return "repair"
 			if phase != "":
 				return "attack"
-			if not moving and not _in_field:
+			if not moving and (not _in_field or game.clock < _crank_until):
 				return "wind"
 		"steam_walker":
 			if phase != "":
@@ -5397,8 +5842,9 @@ func _anim_name() -> String:
 			if not jump.is_empty():
 				return "jump"            # (crouch, launch, air, landing: Jack.frame picks the frame)
 			if phase != "":
-				# at a flyer it raises its arm (the attack_up strip: same timing, same shot frame)
-				return "attack_up" if Jack.aims_up(self) else "attack"
+				# at a flyer it raises its arm (the attack_up strip: same timing, same shot frame); at the ground its two
+				# launchers fire in turn (attack_r / attack_l)
+				return "attack_up" if Jack.aims_up(self) else Jack.attack_anim(self)
 		"cuckoo":
 			if phase != "":
 				return "attack"          # (the pecking lunge)
@@ -5415,7 +5861,7 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## that far in a stride at WALK_FPS; 12 fps is the fastest legs that still read as walking (the
 ## strips' frame counts are as drawn, so the cadence is the only thing code can change).
 const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounted": 12.0,
-		"dismounted_armoured": 12.0, "winder": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
+		"dismounted_armoured": 12.0, "windup_soldier": 12.0, "arc_thrower": 10.0,
 		"thresher": 10.0, "clock_soldier": 10.0, "jack": 9.0, "cuckoo": 10.0, "ticking_owl": 7.0,
 		# the Pendulum's long strides (90 sheet px a step at 0.284: one 8-frame cycle carries it 51 px, 1.1 s at 46);
 		# the Netter's quick trot (its stubby legs step faster than the ground goes by: as fast as reads)
@@ -5425,6 +5871,50 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 ## Frames a second of art `a`'s walk strip at full speed.
 static func walk_fps_for(a: String) -> float:
 	return float(WALK_FPS_ART.get(a, WALK_FPS))
+
+
+## The Winder moves on a clockwork beat (docs/clockwork_ground_up.md): every frame of these strips is HELD for its time
+## and then snaps to the next, like a second hand. Seconds, in steps of the 15 Hz animation tick so the holds stay even.
+## walk     ticking steps: each step a quick swing frame, then the foot planted and held (the walk's speed scales it)
+## wind     his work (a Cog Press, a repair, his own spring, a crate he set down): hammer, hammer, pause: two quick
+##          quarter turns of the crank in his hands, then a rest (the body dips a pixel on each blow); also "repair"
+## idle     the hands on his clock face tick once a second
+## attack   the key off his back, raised, the thrust held over the blow (it lands 0.25 s in), the key back on
+## death    he runs down: each frame slower than the last, then the heap
+## Strips not listed run at their frame rate (Unit._animate). The anim viewer plays the same beat.
+const WINDER_BEAT := {
+	"walk": [1.0 / 15.0, 2.0 / 15.0, 1.0 / 15.0, 2.0 / 15.0],
+	"wind": [7.0 / 15.0, 2.0 / 15.0, 7.0 / 15.0, 2.0 / 15.0],
+	"idle": [1.0, 1.0],
+	"attack": [1.0 / 15.0, 2.0 / 15.0, 4.0 / 15.0, 6.0 / 15.0],
+	"death": [1.0 / 15.0, 2.0 / 15.0, 3.0 / 15.0, 3.0 / 15.0, 4.0 / 15.0, 9.0],
+}
+
+
+## The WINDER_BEAT key of strip `a` (repairing is winding), or "" when it plays at its frame rate.
+static func beat_of(a: String) -> String:
+	if a == "repair":
+		a = "wind"
+	return a if WINDER_BEAT.has(a) else ""
+
+
+## The frame of beat strip `a` (n frames) `t` seconds in: looped, or held on the last frame when it does not loop. The
+## beat is read half an animation tick ahead, so its boundaries fall between the 15 Hz ticks and every hold lasts its
+## whole number of ticks (on a boundary, rounding would make it one tick too long or too short).
+static func beat_frame(a: String, t: float, n: int, loop: bool) -> int:
+	var beat: Array = WINDER_BEAT[beat_of(a)]
+	var m := mini(n, beat.size())
+	var total := 0.0
+	for i in m:
+		total += float(beat[i])
+	t += 0.5 / 15.0
+	if loop:
+		t = fposmod(t, total)
+	for i in m:
+		t -= float(beat[i])
+		if t < 0.0:
+			return i
+	return m - 1
 
 
 ## Animation runs at most 15 times a second, and not at all for units nobody can see.
@@ -5514,7 +6004,7 @@ func _animate(delta: float) -> void:
 			# draw, aim, fire, lower: over the aim and the shot (Defs.PISTOL)
 			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
 			loop = false
-		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee", "attack_up", "bomb":
+		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee", "attack_up", "bomb", "attack_r", "attack_l":
 			fps = 6.0 if kind == "spore_mother" else 9.0
 			loop = false
 		"burrow":
@@ -5568,6 +6058,12 @@ func _animate(delta: float) -> void:
 			loop = false
 	if kind == "labourer" and not dead and _drive_labourer(delta, n):
 		pass
+	elif kind == "winder" and beat_of(anim) != "":
+		# the clockwork beat (WINDER_BEAT): held frames that snap on (a step walks it as fast as he goes)
+		var was := frame_i
+		_beat_t += delta * (clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3) if anim == "walk" else 1.0)
+		frame_i = beat_frame(anim, _beat_t, n, loop)
+		_beat_dip = 0.05 if frame_i != was and beat_of(anim) == "wind" else maxf(0.0, _beat_dip - delta)   # (one tick)
 	else:
 		anim_t += delta * fps
 		if anim_t >= 1.0:
@@ -5635,6 +6131,8 @@ func _animate(delta: float) -> void:
 		sprite.position = order_target.position - position     # the strip's horse where the horse is
 	elif kind == Defs.JACK and not jump.is_empty() and not dead:
 		sprite.position = Vector2(0.0, -Jack.lift(self))      # (in the air: over its shadow, on the arc)
+	elif kind == "winder" and not dead and _beat_dip > 0.0 and beat_of(anim) == "wind":
+		sprite.position = Vector2(0.0, 1.0)      # (a Winder's hammer blow: the body dips a pixel)
 	elif kind != "cannon":
 		sprite.position = Vector2.ZERO
 	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
@@ -5843,6 +6341,7 @@ func _set_anim(a: String, force: bool) -> void:
 	if a != anim:
 		frame_i = 0
 		anim_t = 0.0
+		_beat_t = 0.0
 	var frames: Dictionary = ArtData.UNITS[sa]["frames"]
 	if not frames.has(a + "_" + dr):
 		# Closest drawn direction; side-only animations face the way we're heading.
@@ -6782,31 +7281,41 @@ func _snap_to_leader(goal: Vector2) -> void:
 		path_i = 0
 
 
-## Walking into a building (taken for a recruit or a gun) or to a gun (to be harnessed).
+## Taken to a building (for a recruit or a gun): it walks there and stands HITCHED on its own
+## spot beside it until the recruit comes out (riding it, or the gun drawn by it:
+## Game.spawn_trained) or is cancelled (it is free again where it stands). Or walking to a gun
+## (to be harnessed). It never vanishes on the way: whatever happens, it is hitched or free.
 func _horse_into(delta: float) -> Vector2:
 	var e := into
 	_into_t += delta
 	if e == null or not is_instance_valid(e) or e.dead or e.team != team:
-		into = null
-		graze_at = position
+		_unhitch()
 		return Vector2.ZERO
 	if e is Building:
+		var b := e as Building
+		if order != "idle" or not queue.is_empty():
+			order = "idle"           # (taken for a recruit or a gun it takes no orders: cancelling the recruit frees it)
+			path_goal = Vector2.INF
+			queue.clear()
+		if hitch_p != Vector2.INF:
+			if not game.entry_holds(b, self):
+				_unhitch()           # (its recruit was cancelled or came out without it: free again)
+				return Vector2.ZERO
+			return _stand_hitched(b, delta)
 		if horse_rid != 0 and game.rid_owner(team, horse_rid) != e:
-			into = null              # (its recruit was cancelled: it stays where it is, free; or he came out
-			graze_at = position      # on foot meanwhile: it stays kept for him, he mounts it)
-			if game.rid_owner(team, horse_rid) == null:
+			var keep := horse_rid    # (its recruit was cancelled: it stays where it is, free; or he came out
+			_unhitch()               # on foot meanwhile: it stays kept for him, he mounts it)
+			if game.rid_owner(team, keep) == null:
 				horse_rid = 0
 			return Vector2.ZERO
-		var far: float = e.edge_distance(position)
-		if far < 4.0 or (_into_t > 4.0 and far < 40.0) or _into_t > 90.0:
-			if horse_rid != 0:
-				game.horse_arrived(e, self)
-			game.consume_unit(self)
+		if horse_rid == 0 and not game.entry_holds(b, self):
+			_unhitch()               # (the recruit it was going to is gone)
 			return Vector2.ZERO
-		if far >= 40.0:
-			return _walk_to(game.approach_point(e, position), delta)    # (a reserved horse comes by itself from the breeder)
-		speed = 60.0
-		return (e.center() - position).normalized() * speed
+		var far: float = e.edge_distance(position)
+		if far < 40.0 or _into_t > 90.0:
+			game.hitch_horse(b, self)     # (there, or it could not get there: it is hitched all the same)
+			return _stand_hitched(b, delta)
+		return _walk_to(game.approach_point(e, position), delta)    # (a reserved horse comes by itself from the breeder)
 	var g := e as Unit
 	if not g.team_room():
 		into = null
@@ -6818,7 +7327,40 @@ func _horse_into(delta: float) -> Vector2:
 	return _walk_to(g.position, delta)
 
 
-## Taken for a recruit at this building: it walks in and is gone (Game.train).
+## Hitched (hitch_p): it goes to its spot beside the building (put there if it can't get there
+## in 20 s: a wall or a crowd in the way) and stands there facing the building.
+func _stand_hitched(b: Building, delta: float) -> Vector2:
+	_hitch_t += delta
+	var hd := position.distance_to(hitch_p)
+	if hd > 3.0:
+		if _hitch_t > 20.0 and game._clear_at(hitch_p, radius, team):
+			position = hitch_p          # (it could not get there: it stands there all the same)
+			path = PackedVector2Array()
+			return Vector2.ZERO
+		var v := _walk_to(hitch_p, delta)
+		return v.limit_length(hd * 4.0 + 8.0) if path.is_empty() else v      # (slows down onto its spot)
+	var to_b: Vector2 = b.center() - position
+	if to_b.length() > 1.0:
+		facing = to_b.normalized()
+	return Vector2.ZERO
+
+
+## Free again: not going to a building nor hitched at one; it stays (and grazes) where it is.
+func _unhitch() -> void:
+	into = null
+	hitch_p = Vector2.INF
+	_hitch_t = 0.0
+	graze_at = position
+	_graze_goal = Vector2.INF
+
+
+## A horse hitched for a recruit can't be hurt or taken (it was safe inside the building before).
+func untouchable() -> bool:
+	return (hitch_p != Vector2.INF and into != null) or super()
+
+
+## Taken for a recruit or a gun at this building: it walks over and stands hitched beside it
+## (Game.train, Game.hitch_horse); or sent to a gun to be harnessed.
 func walk_into(e: Entity) -> void:
 	if team < 0 and e.team >= 0:
 		game.steal_horse(self, e)        # a loose horse sent for by a gun (HARNESS): its side's now
@@ -6828,6 +7370,8 @@ func walk_into(e: Entity) -> void:
 	claimed = null
 	into = e
 	_into_t = 0.0
+	hitch_p = Vector2.INF
+	_hitch_t = 0.0
 	order = "idle"
 	path = PackedVector2Array()
 	if selected:
