@@ -4457,6 +4457,9 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 		var r := _siege_sim(b, ground, ours, centre)
 		# once in, it keeps going unless it's clearly lost (no dithering at the wall)
 		var ok: bool = r["win"] or (b == cur and r["breach"] and r["left"] >= 0.15)
+		if ok and b == cur and _siege_stalled(ground):
+			ok = false            # (what happens at the wall is not what the race said: _siege_stalled)
+			r["stalled"] = true
 		if not ok:
 			if best.is_empty() or (not best["ok"] and r["t"] < best["t"]):
 				best = r.merged({"ok": false, "piece": b})
@@ -4473,7 +4476,7 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 		var piece: Building = best["piece"]
 		if piece != cur:
 			_siege = {"piece": piece, "out": best["out"], "stage": best["stage"], "cap": best["cap"], "spots": {}, "splash": best["splash"], "flood": ours,
-				"since": game.clock, "formed": false, "inner": inner, "at": piece.center(), "mreach": best["mreach"]}
+				"since": game.clock, "formed": false, "inner": inner, "at": piece.center(), "mreach": best["mreach"], "hp0": _ground_hp(ground)}
 		else:
 			_siege["cap"] = best["cap"]
 			_siege["mreach"] = best["mreach"]
@@ -4482,7 +4485,7 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 			_siege["inner"] = inner
 		if forced:
 			_say("forced", "%s would pull back from the %s (an experiment keeps it going): %s under %d dps of fire (%d dps on it, %d menders)" % [who, String(piece.d["name"]).to_lower(),
-				("down in ~%d s, too dear" % int(best["t"])) if best["breach"] else "it can't get through", int(best["inc"]), int(best["dps"]), int(best.get("menders", 0))])
+				"the wave is dying and the piece stands" if best.get("stalled", false) else (("down in ~%d s, too dear" % int(best["t"])) if best["breach"] else "it can't get through"), int(best["inc"]), int(best["dps"]), int(best.get("menders", 0))])
 		else:
 			_say("breach", "%s breaks in at a %s: down in ~%d s (%d dps on it) against %d dps of fire, %d menders" % [who, String(piece.d["name"]).to_lower(), int(best["t"]), int(best["dps"]), int(best["inc"]), int(best.get("menders", 0))])
 		return true
@@ -4495,7 +4498,7 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 		# them, 24 Clock Soldiers for 9 in one 0.14.72 game)
 		back = _home_spot(_front())
 	_say("back", "%s pulls back from the %s: %s under %d dps of fire (%d dps on it)" % [who, String(b0.d["name"]).to_lower(),
-		("down in ~%d s, too dear" % int(best["t"])) if best["breach"] else "it can't get through", int(best["inc"]), int(best["dps"])])
+		"the wave is dying and the piece stands" if best.get("stalled", false) else (("down in ~%d s, too dear" % int(best["t"])) if best["breach"] else "it can't get through"), int(best["inc"]), int(best["dps"])])
 	for u in wave:
 		if is_instance_valid(u) and not u.dead:
 			u.siege_t = 0.0
@@ -4513,6 +4516,29 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 	# it comes back only with a bigger army (not straight back at the same wall)
 	_attack_at = maxi(_attack_at, mini(int(ceil(_wave_sup * 1.4)), _wave_sup + 40))
 	return false
+
+
+## A siege that is not going the way the race said: 25 s in, the piece has lost under a sixth of its hit points while
+## the wave has lost over a third of its own (the men cannot get to the face, or the defence is not what was seen).
+## Then the siege is weighed up as lost. (0.14.73 Frostmere: no Clock Soldier reached the gate in 60 s, and the wave
+## died at its stage.)
+func _siege_stalled(ground: Array) -> bool:
+	var piece = _siege.get("piece")
+	if piece == null or not is_instance_valid(piece) or game.clock - float(_siege.get("since", game.clock)) < 25.0:
+		return false
+	var hp0: float = float(_siege.get("hp0", 0.0))
+	if hp0 <= 0.0:
+		return false
+	var lost: float = 1.0 - _ground_hp(ground) / hp0
+	return lost > 0.33 and piece.hp > piece.max_hp * 0.84
+
+
+func _ground_hp(ground: Array) -> float:
+	var v := 0.0
+	for u in ground:
+		if is_instance_valid(u) and not u.dead:
+			v += u.hp
+	return v
 
 
 func _say(kind: String, msg: String) -> void:
@@ -5009,6 +5035,18 @@ func _leapt_fight(u: Unit) -> void:
 ## for the wall by itself, into the defenders' fire).
 ## (They spread along the wall and back from it, never forward of the spot: into reach.)
 func _to_spot(u: Unit, pt: Vector2, spread: float) -> void:
+	# (an enemy that came out to it, close by on its own side of the wall: it fights, it does not stand and take it;
+	# 0.14.73 Frostmere: a reserve held at its stage while the Crown's army shot it down, 24 lost for none)
+	if u.has_attack():
+		if u.order == "attack" and is_instance_valid(u.order_target) and u.order_target is Unit and not u.order_target.dead \
+				and u.order_target.position.distance_to(u.position) < 220.0:
+			return
+		for o in game.units_near(u.position, 150.0):
+			if o.dead or o.off_field or o.is_air() or not game.hostile(o.team, team) or not _armed(o) or not u.can_hit(o):
+				continue
+			if game.level_of(o.position) == game.level_of(u.position) and game.line_clear(u.position, o.center()):
+				u.cmd_attack(o)
+				return
 	var out: Vector2 = _siege.get("out", Vector2.ZERO)
 	var off := u.position - pt
 	if off.length() < spread * 1.5 + 16.0 and off.dot(out) > -16.0:
@@ -5543,7 +5581,7 @@ func _enemy_base() -> Vector2:
 	var enemy := _foe()
 	if enemy < 0:
 		return game.center_of_team(team)
-	if _clock() and Defs.gear_mode and difficulty >= 1:
+	if _clock() and Defs.gear_mode and difficulty >= 1 and open_targets_on:
 		var open := _open_target(enemy)
 		if open != Vector2.INF:
 			return open
@@ -5583,6 +5621,7 @@ func _enemy_base() -> Vector2:
 ## go for: the 0.14.72 games lost wave after wave at the ramp while the Crown's new Town Hall stood open). The nearest
 ## to our base, a hall or an economy building first; INF when everything is behind a wall (then the main and the
 ## siege). Worked out every 10 s.
+var open_targets_on := true    # (experiments switch it off: tools/shot_ai_match.gd noopen:1, every wave goes for the main)
 var _open_t := -99.0
 var _open_at := Vector2.INF
 var _open_b: Building = null

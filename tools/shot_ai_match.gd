@@ -20,6 +20,7 @@ var out := "/tmp/ai_match"
 var end_t := 1800.0
 var norepair := false        # norepair:1 the walls and gates are never repaired (repair orders cancelled, autocast off)
 var noretreat := false       # noretreat:1 a computer's siege is never called off (AI.siege_no_retreat)
+var noopen := false          # noopen:1 the Clockwork's waves go for the main hall only (no open targets: AI.open_targets_on)
 var da := "hard"             # da:/db: the computers' difficulty (easy, normal, hard, brutal) for a: and b:
 var db := "hard"
 var minwave := 0             # minwave:N only a siege by a wave of at least N units is watched (the flags start with it)
@@ -67,6 +68,7 @@ func _initialize() -> void:
 			"noretreat": noretreat = kv[1] == "1"
 			"siege_end": siege_end = kv[1] == "1"
 			"minwave": minwave = int(kv[1])
+			"noopen": noopen = kv[1] == "1"
 			"da": da = kv[1]
 			"db": db = kv[1]
 	DirAccess.make_dir_recursive_absolute(out)
@@ -104,9 +106,12 @@ func _process(delta: float) -> bool:
 	if g.controls and g.controls.process_mode != Node.PROCESS_MODE_DISABLED:
 		g.controls.process_mode = Node.PROCESS_MODE_DISABLED       # (the mouse sits in a corner under xvfb: edge scrolling)
 	_siege_watch()
-	if noretreat and _siege_t0 >= 0.0:
+	if noopen:
 		for a in g.ais:
-			a.siege_no_retreat = true
+			a.open_targets_on = false
+	if noretreat:
+		for a in g.ais:
+			a.siege_no_retreat = true      # (from the start: a siege the computer would call off at once plays out too)
 	if norepair and _siege_t0 >= 0.0:
 		for u in g.units:
 			if is_instance_valid(u) and not u.dead and u.is_worker():
