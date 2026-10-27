@@ -241,9 +241,10 @@ team key reds). A ChatGPT repaint in these colours would retire each line:
 ## Spring Ballista and its crew (code, 0.14.80; docs/ballista.md, tools/import_ballista.py)
 - The machine is ChatGPT's (art/redraws/ballista_dirs.png), cut and shrunk; the front view (S) is MIRRORED in code so the crank
   sits on the machine's right in every view. Its idle and walk are the loaded frame, its "attack" the fired one: no motion.
-- DEATH made in code (assets/units/ballista/death_<view>.png, 4 frames): the fired frame squashed down onto its axles and
-  darkened, frame by frame. No painted death: ask ChatGPT for a 5-direction death sheet (the bow snapping, the cog wheels
-  coming off, the spring drum bursting) and drop the code frames.
+- DEATH: the owner's painted wreck (art/redraws/ballista_wreck_chatgpt.png, 4 frames in the SE three-quarter view: the bow
+  snaps, a wheel comes off, broken and smoking, the still wreck), the SAME four frames in every view (a heap of parts reads
+  from any side; the west views mirror it). Only its cut and placing are code. A wreck per direction would be a ChatGPT
+  job if the same heap in the N view ever looks wrong.
 - The BOLT in flight (assets/effects/ballista_bolt.png) is cut from the concept (art/redraws/concepts/ballista_v1.png) with
   its speed lines; its sparks are the Ratchet Turret's screw impact, not the concept's.
 - The crew's STEP BOB (push strips in e, se, ne: the legs barely move in the owner's sheets) is a 1 px dip of the sprite on

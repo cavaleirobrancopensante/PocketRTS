@@ -11,8 +11,11 @@ Writes:
   assets/units/ballista/idle_<v>.png    loaded (1 frame)
   assets/units/ballista/walk_<v>.png    loaded (1 frame: the machine itself is not animated, its crew is)
   assets/units/ballista/attack_<v>.png  fired (1 frame: shown while it reloads)
-  assets/units/ballista/death_<v>.png   4 frames MADE IN CODE from the fired frame (it sinks, sags and goes dark: there
-                                        is no painted death; docs/art_style_inconsistency.md)
+  assets/units/ballista/death_<v>.png   4 frames: the owner's painted wreck (art/redraws/ballista_wreck_chatgpt.png, one
+                                        row of 4 in the SE three-quarter view: bow snaps, wheel off, broken and smoking,
+                                        the still wreck), the same frames in every view (a heap of parts reads from any
+                                        side; the west views mirror it); without that sheet, made in code from the fired
+                                        frame (it sinks, sags and goes dark)
   assets/effects/ballista_bolt.png      the screw bolt in flight, pointing right
   assets/units/winder/push_<v>.png, crank_<v>.png   the crew strips (4 frames each), counts added to the "winder" entry
                                         of scripts/art_data.gd (his cell and anchor)
@@ -46,6 +49,7 @@ import import_winder_v2 as W  # noqa: E402
 SHEET = 'art/redraws/ballista_dirs.png'
 CONCEPT = 'art/redraws/concepts/ballista_v1.png'
 CREW = 'art/redraws/winder_crew_%s_chatgpt.png'
+WRECK = 'art/redraws/ballista_wreck_chatgpt.png'   # the owner's painted death (2026-10-27)
 PORTRAIT = 'art/ui/icons3/portrait_ballista.png'     # the owner's painted portrait (when there; else made from the sheet)
 DST = 'assets/units/ballista/'
 WDST = 'assets/units/winder/'
@@ -146,11 +150,66 @@ def machine():
         Image.fromarray(out[(v, 'loaded')], 'RGBA').save(DST + 'idle_%s.png' % v)
         Image.fromarray(out[(v, 'loaded')], 'RGBA').save(DST + 'walk_%s.png' % v)
         Image.fromarray(out[(v, 'fired')], 'RGBA').save(DST + 'attack_%s.png' % v)
-        Image.fromarray(np.concatenate([death_frame(out[(v, 'fired')], k, cay) for k in range(DEATH)], 1), 'RGBA') \
-            .save(DST + 'death_%s.png' % v)
+        if os.path.exists(WRECK):
+            Image.fromarray(np.concatenate(wreck_frames(frames[('se', 'fired')][0], cw, ch, cax, cay), 1), 'RGBA') \
+                .save(DST + 'death_%s.png' % v)
+        else:
+            Image.fromarray(np.concatenate([death_frame(out[(v, 'fired')], k, cay) for k in range(DEATH)], 1), 'RGBA') \
+                .save(DST + 'death_%s.png' % v)
     print('cw_art.gd SHEETS: "ballista": [%d, %d, %d, %d],' % (cw, ch, cax, cay))
     mouths(out, cw, cax, cay)
     return out, (cw, ch, cax, cay)
+
+
+_wreck_memo = []
+
+
+def wreck_frames(se_fired, cw, ch, cax, cay):
+    """The owner's painted wreck: 4 drawings in one row, cut at the empty columns between them (the debris flying off
+    each stays with it), scaled so the first (the machine just hit, still whole) is as wide as the SE fired frame, all
+    four on one shared ground line and centre (the first frame's anchor), recoloured like the machine."""
+    if _wreck_memo:
+        return _wreck_memo
+    a = np.array(Image.open(WRECK).convert('RGB')).astype(int)
+    fg, _ = keyed(a)
+    fg = ndi.binary_opening(fg, iterations=1)
+    cols = fg.any(0)
+    runs, x = [], 0
+    while x < len(cols):
+        if cols[x]:
+            x0 = x
+            gap = 0
+            while x < len(cols) and gap < 25:
+                gap = 0 if cols[x] else gap + 1
+                x += 1
+            runs.append((x0, x - gap))
+        else:
+            x += 1
+    runs = sorted(sorted(runs, key=lambda r: r[1] - r[0])[-DEATH:])
+    pieces = []
+    for x0, x1 in runs:
+        m = fg[:, x0:x1]
+        ys = np.nonzero(m.any(1))[0]
+        o = np.zeros((ys.max() + 1 - ys.min(), x1 - x0, 4), np.uint8)
+        o[..., :3] = a[ys.min():ys.max() + 1, x0:x1]
+        o[..., 3] = m[ys.min():ys.max() + 1] * 255
+        pieces.append(o)
+    def body(o):
+        """the machine's own box in a drawing (its biggest piece; the bolt and debris flying off left out):
+        (x0, x1, y0, y1)"""
+        lab, n = ndi.label(ndi.binary_dilation(o[..., 3] > 0, iterations=3))
+        sizes = ndi.sum(o[..., 3] > 0, lab, range(1, n + 1))
+        ys, xs = np.nonzero(lab == int(np.argmax(sizes)) + 1)
+        return xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+    ys, xs = np.nonzero(se_fired[..., 3])
+    bx0, bx1, by0, by1 = body(pieces[0])
+    # the first drawing (just hit, still whole) as big as the SE fired machine: the smaller of the width and height ratios
+    s = GS * min((xs.max() + 1 - xs.min()) / float(bx1 - bx0), (ys.max() + 1 - ys.min()) / float(by1 - by0))
+    for o in pieces:
+        x0, x1, y0, y1 = body(o)
+        # (each on the ground line of its own machine body, centred on it)
+        _wreck_memo.append(cw_palette.snap_team(place(recolour(o), (x0 + x1) / 2.0, float(y1), cw, ch, cax, cay, s)))
+    return _wreck_memo
 
 
 def death_frame(f, k, cay):

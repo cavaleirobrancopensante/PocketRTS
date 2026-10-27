@@ -161,7 +161,8 @@ All cut from the owner's Clockwork recordings, in `tools/audio/make_clockwork_so
 
 ## What is left
 
-- A painted death sheet. The death is the fired frame sinking and going dark.
+- The death is the owner's painted wreck: the bow snaps, a wheel comes off, it lies broken and smoking, then still.
+  It is one view, used in every direction. A wreck per direction only if one looks wrong.
 - A push sheet with a real stride in the e, se and ne views. A one pixel bob stands in.
 - The crew's spots are placed by eye. Check them in a real game and nudge `Ballista.BACK`, `SIDE` and `REAR`.
 - The numbers need a playtest. Watch three things.
