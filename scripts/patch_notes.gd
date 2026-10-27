@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.45", "items": [
+		"BROOD COMPUTER plays better. It keeps adding Grubs while it builds its army (it stopped at 9 whenever the enemy army it saw was bigger, so its income stood still), and keeps its eggs for the army once it has enough. It is no longer stuck at the supply limit with biomass in hand: Clutch Mounds go up ahead of need. Its Brood Pen goes up at about minute 5 (it often came at minute 6 or 7, or never), it offers up a few spare Raptors there and harvests the bodies after a fight, so Spitters join the Raptors, and an egg waits for a Spitter's biomass instead of always hatching Raptors. A second Burrow goes up when its eggs, not its biomass, hold the army back.",
+		"BROOD COMPUTER attacks with judgement. It remembers the enemy soldiers it has seen and does not attack into an army clearly stronger than its own (it defends and builds up instead); when it has seen nothing of the enemy for a while it first sends two Raptors to look; and an attack that is clearly losing pulls back home instead of fighting to the last Raptor. Two enemy Horsemen hunting its Grubs are answered by the Raptors as a pack.",
+	]},
 	{"v": "0.14.44", "items": [
 		"FIX (online): with the Jack's two launchers (0.14.35) a friend's game read every unit's values one place off after the new value, and stopped updating its units; it reads the Jack's launcher now, and the online test checks that the lists match.",
 		"ONLINE: the automatic online test now plays every kind of order a friend gives (move, attack-move, a line, hold, stop, hold fire, bombard, rally, train and cancel, auto-train, gather, a hall upgrade the host refuses with its reason, demolish), the chat both ways, a pause and its resume, and a surrender from either player, in a 1 vs 1 with each faction and in co-op (where a friend who surrenders is out and the match goes on for the host).",
