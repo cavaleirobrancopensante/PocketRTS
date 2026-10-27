@@ -971,7 +971,7 @@ func _workers() -> void:
 	var hold_gold: bool = _crown() and difficulty > 0 and labs.size() + queued >= 6 and not _mine("cottage").is_empty() and game.clock < 200.0 and \
 			((opening == "mill" and (_mine("barracks").is_empty() or _mine("powder_mill").is_empty())) or (not _walled and (_wall_wanted() or _cw_active())))
 	# (a feared rush with a Barracks standing: the first Musketeers before more labourers)
-	if _army_first() and labs.size() >= (6 if safe_opening else 8) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
+	if _army_first() and labs.size() >= (6 if safe_opening else 8) + (4 if opening == "breeder" else 0) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
 		hold_gold = true
 	if _clock() and _mine(_works()).is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
 			and _gold() < int(Defs.BUILDINGS[_works()]["cost"]) + 20:
@@ -2821,7 +2821,9 @@ func _army_first() -> bool:
 		return false
 	if not (scout.verdict == "rush" or scout.verdict == "uncertain"):
 		return false
-	var muskets := game.army(team).filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind)).size()
+	# (the defenders it has: Musketeers, and Horsemen when it opened with the Breeder: a Horseman opening makes no
+	# Musketeers for minutes, and counting only those held its Labourers at eight for seven minutes; coach round 1)
+	var muskets := game.army(team).filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind) or u.kind == "cuirassier").size()
 	for b in _mine("barracks"):
 		muskets += b.queue.size()
 	return muskets < 6
