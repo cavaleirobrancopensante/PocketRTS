@@ -42,6 +42,21 @@ var _harvest_t := 0.0
 var _hauls := 0
 var _spills := 0
 var _mother_shot := [90.0, 240.0, 420.0, 600.0, 780.0]
+# ROUND 2 (0.15.12+: docs/brood_new_stages.md): the new levers, as options on any plan
+var grow_on := false             # grow:1 GROW the Mother as soon as she can
+var rex_mode := "home"           # rex:home keeps the Tyrannosaur by her; rex:out sends him with every wave
+var turtle_mode := ""            # turtles:far2 sends 2 turtles 15+ tiles out (new ground); turtles:home keeps all by her
+var sac_mode := ""               # sac:late offers idle grubs after 10:00 for essence (Brutes); sac:cycle runs the grub cycle 6:00-9:00
+var mdef := ""                   # mdef:uproot: the Mother uproots to fight when enemies are at her (rooted, nothing attacks)
+var _eggs_seen := 0              # (the Mother's held eggs a moment ago: a rise is an egg made)
+var eggs_made := 0
+var eggs_laid := 0
+var _min_made: Array = []        # eggs made in each minute
+var _min_laid: Array = []
+var _snaps: Array = []
+var _sac_n := 0
+var _sac_ess := 0.0
+var _far_turtles: Array = []
 var _mi := 0
 
 
@@ -56,6 +71,11 @@ func _initialize() -> void:
 			"plan": plan = kv[1]
 			"sb": sb = kv[1]
 			"ai": ai_plays = kv[1] == "1"
+			"grow": grow_on = kv[1] == "1"
+			"rex": rex_mode = kv[1]
+			"turtles": turtle_mode = kv[1]
+			"sac": sac_mode = kv[1]
+			"mdef": mdef = kv[1]
 	if not Array(OS.get_cmdline_user_args()).any(func(x: String) -> bool: return x.begins_with("end:")):
 		end_t = 900.0
 
@@ -176,9 +196,20 @@ func _coach(delta: float) -> void:
 		if _qmode != "":
 			say("the Mother: %s -> %s (order %s, target %s, hp %d)" % [_qmode, qq.tesla_mode, qq.order, qq.target.kind if is_instance_valid(qq.target) else "-", int(qq.hp)])
 		_qmode = qq.tesla_mode
+	if qq:
+		var e := int(qq.nb.get("eggs", 0))
+		if e > _eggs_seen:
+			eggs_made += e - _eggs_seen
+			var m := int(g.clock / 60.0)
+			while _min_made.size() <= m:
+				_min_made.append(0)
+			_min_made[m] += e - _eggs_seen
+		_eggs_seen = e
 	if g.clock >= _next_line:
 		_next_line += 30.0
 		_line()
+		if int(g.clock) in [360, 600, 840]:
+			_snap()
 	if _ct > 0.0:
 		return
 	_ct = 0.5
@@ -203,9 +234,12 @@ func _coach(delta: float) -> void:
 		"best": _plan_best(q)
 		"graze": _plan_graze(q)
 	_mother(q)
+	_grow(q)
+	_mother_defends(q)
 	_rootmaws(q)
 	_turtles(q)
 	_father(q)
+	_sacrifice(q)
 	_lay(q)
 	_army(q)
 	_harvest(q)
@@ -349,7 +383,10 @@ func _rootmaws(q: Unit) -> void:
 
 func turtle_spot(q: Unit, me: Unit):
 	var home := g.region_of(g.cell_of(q.position))
-	for ring in ([16.0, 19.0, 13.0, 22.0] if plan in ["graze", "best"] else [12.0, 14.0, 9.0, 16.0, 18.0]):      # (at the edge of her swamp: each turtle widens it, room for Rootmaws)
+	var rings: Array = [16.0, 19.0, 13.0, 22.0] if plan in ["graze", "best"] else [12.0, 14.0, 9.0, 16.0, 18.0]
+	if turtle_mode == "home":
+		rings = [8.0, 10.0, 12.0, 6.0]       # (all at home: none on new ground, 15+ tiles out)
+	for ring in rings:      # (at the edge of her swamp: each turtle widens it, room for Rootmaws)
 		for i in 12:
 			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0 + ring) * ring * Defs.TILE
 			var c := g.cell_of(p)
@@ -390,6 +427,14 @@ func _turtles(q: Unit) -> void:
 				tt.cmd_move(_ramp_mid)
 				say("ramp: a Mound Turtle walks to the ramp to close it")
 				continue
+			if turtle_mode == "far2" and _far_turtles.size() < 2 and g.clock > 150.0:
+				var fs := _new_ground_spot(q)
+				if fs != Vector2.INF:
+					_far_turtles.append(tt)
+					_spots[tt.serial] = fs
+					tt.cmd_move(fs)
+					say("new ground: a Mound Turtle walks to a spot %d tiles from the Mother (far turtle %d of 2)" % [int(fs.distance_to(q.position) / Defs.TILE), _far_turtles.size()])
+					continue
 			if _want_tank():
 				_tanks.append(tt)
 				say("tanks: a Mound Turtle joins the army as a tank (%d now)" % _tanks.size())
@@ -491,6 +536,10 @@ func _lay(q: Unit) -> void:
 		k = BroodNew.TURTLE
 	elif _want_ninja() and _ninja != null and _ninja_maws.size() + _pending_ninja_maw < 2 and BroodNew.rooted(_ninja):
 		k = BroodNew.MAW
+	elif sac_mode == "cycle" and g.clock >= 360.0 and g.clock < 540.0:
+		k = "grub"            # (the grub cycle: lay a grub, offer it back for an egg and essence, lay again)
+	elif turtle_mode == "far2" and _far_turtles.size() < 2 and g.clock > 150.0 and _supply_turtles_walking() == 0:
+		k = BroodNew.TURTLE
 	elif _want_tank() and turtles <= _turtle_jobs() and BroodNew.count_of(g, 0, BroodNew.EGG) < 3 and gold >= 150:
 		k = BroodNew.TURTLE
 	elif _short():
@@ -520,6 +569,12 @@ func _lay(q: Unit) -> void:
 		else:
 			return
 	if BroodNew.lay(g, q, k) == "":
+		eggs_laid += 1
+		_eggs_seen = int(q.nb.get("eggs", 0))
+		var mm := int(g.clock / 60.0)
+		while _min_laid.size() <= mm:
+			_min_laid.append(0)
+		_min_laid[mm] += 1
 		var e: Unit = null
 		for i in range(g.units.size() - 1, maxi(-1, g.units.size() - 6), -1):
 			if g.units[i].kind == BroodNew.EGG and g.units[i].team == 0:
@@ -652,7 +707,124 @@ func _army(q: Unit) -> void:
 
 
 func _rex_fights() -> bool:
-	return plan == "rexfight"
+	return plan == "rexfight" or rex_mode == "out"
+
+
+# ------------------------------------------------------------------ round 2: GROW, SACRIFICE, the Mother's own defence
+
+var _bn: GDScript = load("res://scripts/brood_new.gd")
+
+
+func _bn_has(f: String) -> bool:
+	for m in _bn.get_script_method_list():
+		if m["name"] == f:
+			return true
+	return false
+
+
+func _stage(q: Unit) -> int:
+	return int(q.nb.get("stage", 1))
+
+
+## GROW: whatever the build calls it (a button on her card): Unit.cmd_grow, else BroodNew.grow.
+func _grow(q: Unit) -> void:
+	if not grow_on or q.nb.get("growing", false) or not BroodNew.rooted(q):
+		return
+	var why := ""
+	if q.has_method("grow_problem"):
+		why = q.grow_problem()
+	elif _bn_has("grow_problem"):
+		why = _bn.call("grow_problem", g, q)
+	else:
+		return
+	if why != "":
+		return
+	var st := _stage(q)
+	if q.has_method("cmd_grow"):
+		q.cmd_grow()
+	else:
+		_bn.call("grow", g, q)
+	say("GROW: the Mother starts growing from stage %d (food %d)" % [st, int(g.players[0]["gold"])])
+	shot("grow", q, 0.8, 0.0)
+
+
+var _last_stage := 1
+
+
+func _stage_watch(q: Unit) -> void:
+	if _stage(q) != _last_stage:
+		_last_stage = _stage(q)
+		say("the Mother is now stage %d" % _last_stage)
+		shot("stage%d" % _last_stage, q, 0.7, 0.0)
+
+
+## With mdef:uproot the Mother uproots and fights what is at her (rooted, she can't attack); back to her nest after.
+var _mfight := false
+
+
+func _mother_defends(q: Unit) -> void:
+	_stage_watch(q)
+	if mdef != "uproot" or _camp == "walking":
+		return
+	var foes := foe_army_near(q.position, 6.0 * Defs.TILE)
+	if foes.size() >= 2 and not _mfight:
+		_mfight = true
+		_mhome = q.position
+		q.cmd_move(foes[0].position, true)
+		say("the Mother uproots to fight (%d enemies within 6 tiles, %d hp)" % [foes.size(), int(q.hp)])
+		clip("mother_fights", q, 30, 4, 1.1)
+	elif _mfight and foes.is_empty() and seen_foes(q.position, 10.0 * Defs.TILE).is_empty():
+		_mfight = false
+		q.cmd_move(_mhome)
+		say("the fight at the Mother is over (%d hp): back to her nest" % int(q.hp))
+	elif _mfight and q.order == "idle" and q.tesla_mode == "packed" and not foes.is_empty():
+		q.cmd_move(foes[0].position, true)
+
+
+var _mhome := Vector2.ZERO
+
+
+## SACRIFICE (each one gives the Mother 1 egg and essence): sac:late offers spare grubs after 10:00, sac:cycle runs the
+## grub cycle (lay a grub, offer it back, lay again) from 6:00 to 9:00 to measure what it gives.
+func _sacrifice(q: Unit) -> void:
+	if sac_mode == "":
+		return
+	var cyc := sac_mode == "cycle" and g.clock >= 360.0 and g.clock < 540.0
+	var late := sac_mode == "late" and g.clock >= 600.0
+	if not cyc and not late:
+		return
+	var crew := 0
+	for m in mine(BroodNew.MAW):
+		if BroodNew.rooted(m):
+			crew += BroodNew.crew_max(g, m)
+	var grubs := mine("grub")
+	var spare := grubs.size() - (crew + 2 if late else crew)
+	var going := grubs.filter(func(u: Unit) -> bool: return u.order == "sacrifice").size()
+	for gr in grubs:
+		if spare - going <= 0:
+			break
+		if gr.order != "sacrifice" and gr.carrying == 0 and gr.can_sacrifice():
+			gr.cmd_sacrifice()
+			going += 1
+	if cyc:
+		# idle grubs that hatched from the cycle go straight back
+		for gr in grubs:
+			if gr.order == "idle" and gr.can_sacrifice():
+				gr.cmd_sacrifice()
+
+
+func _snap() -> void:
+	var q := BroodNew.queen(g, 0)
+	var arm := army()
+	var val := 0
+	for u in arm:
+		val += int(u.d["cost"]) / maxi(1, int(u.d.get("spawn", 1)))
+	var m := int(g.clock / 60.0) - 1
+	var made := int(_min_made[m]) if m < _min_made.size() else 0
+	var laid := int(_min_laid[m]) if m < _min_laid.size() else 0
+	_snaps.append("SNAP %s stage %d | eggs made last minute %d, laid %d (all game %d made, %d laid) | food unspent %d, essence %d | army supply %d value %d | earned %d | egg rate x%.2f | sacrificed %d (+%d essence)" % [_mmss(g.clock), _stage(q) if q else 0, made, laid, eggs_made, eggs_laid,
+		int(g.players[0]["gold"]), int(g.players[0]["res2"]), supply_of(arm), val, int(g.stats[0].get("gold", 0)), BroodNew.egg_rate(g, 0), int(g.stats[0].get("sacrificed", 0)), int(g.stats[0].get("sacrifice_essence", 0))])
+	say(_snaps[-1])
 
 
 ## After fights near home, two grubs harvest the bodies (essence for Brutes and Mist Toads).
@@ -763,6 +935,42 @@ func _plan_graze(q: Unit) -> void:
 	_spots[best.serial] = to
 	clip("graze_" + ("uproot" if spill else "haul"), best, 30, 5, 1.3)
 	_graze_i += 1
+
+
+## NEW GROUND for a turtle (round 2): 16 to 24 tiles from the Mother and 15+ from the other far turtles, walkable in her
+## region, off ramps, on our side of the map.
+func _new_ground_spot(q: Unit) -> Vector2:
+	var home := g.region_of(g.cell_of(q.position))
+	var best := Vector2.INF
+	var bs := -INF
+	var foe := foe_start()
+	for y in range(3, Game.H - 3, 2):
+		for x in range(3, Game.W - 3, 2):
+			var c := Vector2i(x, y)
+			if not g._walkable(c) or g.region_of(c) != home:
+				continue
+			var p := (Vector2(c) + Vector2(0.5, 0.5)) * Defs.TILE
+			var dq := p.distance_to(q.position) / Defs.TILE
+			if dq < 16.0 or dq > 24.0 or p.distance_to(foe) < q.position.distance_to(foe) * 0.75 or near_ramp(p, 3):
+				continue
+			var ok := true
+			for o in _far_turtles:
+				if is_instance_valid(o) and not o.dead and (_spots.get(o.serial, o.position) as Vector2).distance_to(p) < 15.0 * Defs.TILE:
+					ok = false
+			if not ok:
+				continue
+			var room := 0
+			for dy in range(-2, 3):
+				for dx in range(-2, 3):
+					if g._walkable(c + Vector2i(dx, dy)):
+						room += 1
+			if room < 22:
+				continue
+			var sc := p.distance_to(foe) / Defs.TILE - dq * 0.5 + randf()
+			if sc > bs:
+				bs = sc
+				best = p
+	return best
 
 
 ## (3) A lone Mound Turtle sent far away with Rootmaws: a hidden base.
@@ -1085,6 +1293,10 @@ func _finish() -> void:
 	for l in coach:
 		f.store_line(l)
 	f.store_line("hauls %d spills %d wasted eggs %d" % [_hauls, _spills, wasted])
+	for l in _snaps:
+		f.store_line(l)
+	f.store_line("eggs made per minute %s" % str(_min_made))
+	f.store_line("eggs laid per minute %s" % str(_min_laid))
 	f.close()
 	var e := FileAccess.open(out.path_join("events.txt"), FileAccess.WRITE)
 	for l in events:
