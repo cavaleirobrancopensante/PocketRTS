@@ -142,6 +142,7 @@ Both rendered with the software renderer at 1600 x 900 (and once at 320 x 180, t
 - The stress tool writes the whole state of the match every second: every unit's place, health and order.
 - All six scenarios give the same file before and after, 22 snapshots each.
 - melee and offmelee give the same file as each other: what is drawn doesn't change the game.
+- After merging origin/main of 0.15.5, melee, muskets and walk were checked again against it: the same.
 - tools/perf_bench.gd's trace, the same, before and after, over whole computer matches:
   - Greenhold, Crown against Brood, 8 minutes.
   - Ashford Crossing, Clockwork against Crown, 8 minutes, with the turning gears on.
