@@ -42,6 +42,10 @@ func _initialize() -> void:
 	_walk(Defs.ARMOURED, texts)
 	for k in Defs.TIPS:
 		texts.append(Defs.TIPS[k])
+	for k in Defs.NB_ABOUT:
+		texts.append(Defs.NB_ABOUT[k])        # (the new Brood's own text for the units it shares with the old Brood)
+	for k in Defs.NB_TIPS:
+		texts.append(Defs.NB_TIPS[k])
 	for k in MapData.NAMED:    # map names stay English (proper names)
 		var md: Dictionary = MapData.NAMED[k]
 		if md.has("about"):

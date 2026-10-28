@@ -12,6 +12,16 @@ extends SceneTree
 ## card_egg.png         an egg's card: what it will hatch and when
 ## rally_mother.png     the Mother's rally point (a flag and a dashed line), given to her eggs
 ## morph_N.png          a grub turning into a Mound Turtle: the grub's morph, the cocoon growing, the turtle coming out
+## With a second argument "fixes2" (the owner's playtest of 0.15.14; docs/shots/brood_fixes_2/):
+##   xvfb-run -a godot ... --script res://tools/shot_brood_structures.gd -- docs/shots/brood_fixes_2 fixes2
+## grub_build_menu.png   a grub's BUILD (B) menu: the Rootmaw, the Mound Turtle, the Tyrannosaur, BACK
+## grub_card.png         a grub's card: BUILD on it, its own text (Rootmaws, the Brood Mother)
+## rootmaw_count.png     a rooted Rootmaw with its worker count over it (grubs at work / the most it takes)
+## spots_map.png         the new Brood's best turtle spots in gold on the ground, and on the minimap
+## spots_placing.png     the same while placing a Mound Turtle: brighter, with the swamp it would spread
+## father_eggs.png       the Tyrannosaur still fertilising with warrior eggs in his nest
+## boxed_mother.png      the Mother boxed in by her rooted creatures: her eggs laid on them, drawn on top
+## mother_growing.png    the Mother GROWING: the bar over her and on her card, STOP GROWING
 var main: Node
 var g
 var out := ""
@@ -19,8 +29,13 @@ var t := 0.0
 var started := false
 
 
+var mode := ""
+
+
 func _initialize() -> void:
 	out = OS.get_cmdline_user_args()[0]
+	if OS.get_cmdline_user_args().size() > 1:
+		mode = OS.get_cmdline_user_args()[1]
 	DirAccess.make_dir_recursive_absolute(out)
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -72,6 +87,11 @@ func spot(k: String, p: Vector2, tiles: float, swamp := true) -> Vector2:
 
 
 func _run() -> void:
+	if mode == "fixes2":
+		await _fixes2()
+		print("shots done")
+		quit(0)
+		return
 	await wait(2.5)
 	var q: Unit = BroodNew.queen(g, 0)
 	var maw: Unit = mine(BroodNew.MAW)[0]
@@ -169,3 +189,136 @@ func _run() -> void:
 			await _snap("morph_%d" % i, 0.05)
 	print("shots done")
 	quit(0)
+
+
+## The owner's playtest of 0.15.14 (docs/brood_new.md): the pictures listed at the top.
+func _fixes2() -> void:
+	await wait(2.5)
+	var T := Defs.TILE
+	var q: Unit = BroodNew.queen(g, 0)
+	var maw: Unit = mine(BroodNew.MAW)[0]
+	g.players[0]["gold"] = 5000
+	g.players[0]["res2"] = 400.0
+	var ctl = g.controls
+	# room in the supply: a rooted turtle out of the way
+	var st := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, spot(BroodNew.TURTLE, q.position, 16.0))
+	st.nb.erase("coc")
+	BroodNew.recount(g, 0)
+	# the grub's card, then its BUILD menu
+	var gr0: Unit = mine("grub")[0]
+	g.set_selection([gr0])
+	g.hud.page = ""
+	g.camera.position = gr0.position
+	g.camera.zoom = Vector2(1.4, 1.4)
+	await _snap("grub_card", 1.0)
+	g.hud.page = "build"
+	await _snap("grub_build_menu", 0.8)
+	g.hud.page = ""
+	g.set_selection([])
+	# the Rootmaw's worker count: four grubs on it
+	maw.nb["food"] = 200.0
+	var gs: Array = mine("grub")
+	for i in mini(4, gs.size()):
+		gs[i].auto_work = true
+		gs[i].cmd_gather(maw)
+	for i in range(4, gs.size()):
+		gs[i].auto_work = false
+		gs[i].cmd_stop()
+		gs[i].position = q.position + Vector2(-200.0 + i * 20.0, -160.0)
+	await wait(3.0)
+	g.camera.position = maw.position + Vector2(0, -30)
+	g.camera.zoom = Vector2(1.8, 1.8)
+	await _snap("rootmaw_count", 1.0)
+	# the turtle spots, on the ground and the minimap
+	Settings.expansion_spots = true
+	g.exp_spots._key = "-"
+	g.exp_spots.refresh()
+	var shown: Array = g.exp_spots.shown
+	if not shown.is_empty():
+		var sp: Dictionary = shown[0]
+		var mid: Vector2 = (Vector2(sp["tc"]) + Vector2(1.5, 1.5)) * T
+		g.camera.position = mid
+		g.camera.zoom = Vector2(0.9, 0.9)
+		await _snap("spots_map", 1.2)
+		g.set_selection([gr0])
+		ctl.begin_nb_root(BroodNew.TURTLE, true)
+		ctl.ghost_cell = Vector2i(sp["tc"]) + Vector2i(1, 6)
+		g.camera.zoom = Vector2(0.7, 0.7)
+		await _snap("spots_placing", 1.2)
+		ctl.cancel_mode()
+		g.set_selection([])
+	# the Tyrannosaur fertilising, eggs in his nest
+	var f: Unit = g._add_unit(BroodNew.FATHER, 0, spot(BroodNew.FATHER, q.position, 5.5))
+	f.cmd_deploy()
+	await wait(3.5)
+	q.nb["eggs"] = 8
+	q.cmd_lay("raptor")
+	q.cmd_lay("brute")
+	q.cmd_lay("raptor")
+	await wait(3.6)
+	g.set_selection([f])
+	g.camera.position = f.position + Vector2(0, -30)
+	g.camera.zoom = Vector2(1.8, 1.8)
+	await _snap("father_eggs", 0.5)
+	g.set_selection([])
+	await wait(float(Defs.UNITS["brute"]["time"]) + 4.0)
+	# the Mother boxed in by her rooted creatures, her eggs on top
+	f.cmd_uproot(false)
+	await wait(3.0)
+	f.position = q.position + Vector2(0, 18.0 * T)
+	g.note_move(f)
+	for u in g.units:
+		if u.team == 0 and not u.dead and u != q and q.rect().grow(4.0 * T).has_point(u.position) and (u.kind == "grub" or u.kind == "raptor" or u.kind == "brute" or u.kind == BroodNew.EGG):
+			u.position = q.position + Vector2(randf_range(-300, 300), 14.0 * T)
+			g.note_move(u)
+	var qr: Rect2 = q.rect()
+	var c0 := Vector2i(qr.position / T)
+	var sz := Vector2i(qr.size / T)
+	var x := c0.x - 3
+	var n := 0
+	while x < c0.x + sz.x + 3:
+		for yy in [c0.y - 3, c0.y + sz.y]:
+			var k: String = BroodNew.TURTLE if n % 3 != 1 else BroodNew.MAW
+			var u: Unit = g._add_unit(k, 0, BroodRoot.feet_at(k, Vector2i(x, yy)))
+			u.facing = BroodNew.SE
+			u.tesla_mode = "deployed"
+			u.nb["m"] = "deployed"
+			BroodRoot.footprint_on(g, u, false)
+			if k == BroodNew.MAW:
+				BroodNew._claim(g, u)
+				u.nb["food"] = 150.0
+			n += 1
+		x += 3
+	for side in [c0.x - 3, c0.x + sz.x]:
+		var y := c0.y
+		while y < c0.y + sz.y:
+			var left: int = c0.y + sz.y - y
+			var k2: String = BroodNew.TURTLE if left >= 3 else BroodNew.MAW
+			var u2: Unit = g._add_unit(k2, 0, BroodRoot.feet_at(k2, Vector2i(side, y if left >= 3 else y - (2 - left))))
+			u2.facing = BroodNew.SE
+			u2.tesla_mode = "deployed"
+			u2.nb["m"] = "deployed"
+			BroodRoot.footprint_on(g, u2, false)
+			if k2 == BroodNew.MAW:
+				BroodNew._claim(g, u2)
+				u2.nb["food"] = 150.0
+			y += 3 if left >= 3 else left
+	BroodNew.recount(g, 0)
+	q.nb["eggs"] = 8
+	for i in 3:
+		q.cmd_lay("grub")
+		await wait(0.2)
+	await wait(BroodNew.lay_time(q) + 0.8)
+	g.camera.position = q.position + Vector2(0, 90)
+	g.camera.zoom = Vector2(1.3, 1.3)
+	await _snap("boxed_mother", 0.5)
+	# her growing: the bar over her and on her card
+	q.nb["stage"] = 0
+	BroodNew.apply_stage(q)
+	q.cmd_grow()
+	await wait(12.0)
+	g.set_selection([q])
+	g.camera.position = q.position + Vector2(0, -150)
+	g.camera.zoom = Vector2(1.0, 1.0)
+	await _snap("mother_growing", 0.8)
+	g.set_selection([])

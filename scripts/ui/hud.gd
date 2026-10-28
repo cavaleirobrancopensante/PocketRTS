@@ -3303,10 +3303,12 @@ func _draw_panel(font: Font) -> void:
 					_ci.draw_texture_rect(pic2, pqr2, false)
 				_ci.draw_rect(Rect2(pqr2.position.x, pqr2.end.y + 2, pqr2.size.x, 4), Color(0, 0, 0, 0.5))
 				_ci.draw_rect(Rect2(pqr2.position.x, pqr2.end.y + 2, pqr2.size.x * float(nb_prog["f"]), 4), nb_prog["col"])
+				# under the card's text line: its label, the time left and a wide bar
 				var plab := "%s · %ds" % [Loc.t(String(nb_prog["label"])), int(ceil(float(nb_prog["left"])))]
 				var pw := UiStyle.bold_font().get_string_size(plab, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-				_text(UiStyle.bold_font(), Vector2(pqr2.position.x - 8 - pw, pqr2.position.y + 14), plab, 13, (nb_prog["col"] as Color).lightened(0.25))
-				var bar2 := Rect2(pqr2.position.x - 8 - maxf(pw, 120.0), pqr2.position.y + 22, maxf(pw, 120.0), 6)
+				var py := r.position.y + 93.0
+				_text(UiStyle.bold_font(), Vector2(r.position.x + 90, py), plab, 13, (nb_prog["col"] as Color).lightened(0.25))
+				var bar2 := Rect2(r.position.x + 98 + pw, py - 9, clampf(r.end.x - 60 - (r.position.x + 98 + pw), 40.0, 220.0), 7)
 				_ci.draw_rect(bar2, Color(0, 0, 0, 0.55))
 				_ci.draw_rect(Rect2(bar2.position, Vector2(bar2.size.x * float(nb_prog["f"]), bar2.size.y)), nb_prog["col"])
 		var shq: Array = NetPredict.shown_queue(game, e) if e is Building else [[], [], 0.0]     # (online: an order just given shows at once, pending)
