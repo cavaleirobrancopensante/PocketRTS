@@ -15,7 +15,11 @@ const TOAD_MOUTH_OPEN := 2
 const COIL_TOP := {"s": Vector2(0, -53), "se": Vector2(1, -54), "e": Vector2(3, -57),
 		"ne": Vector2(1, -57), "n": Vector2(-1, -57)}
 
-var d: Dictionary
+var d: Dictionary:
+	set(v):
+		d = v
+		_air_k = bool(v.get("air", false))      # (is_air is asked thousands of times a tick: separation, targets)
+var _air_k := false
 var order := "idle"            # idle, move, amove, attack, hold, gather, build
 var order_point := Vector2.ZERO
 var target: Entity = null      # who we're fighting
@@ -119,6 +123,9 @@ var final_death := false        # (a body) fell under the cross: it can't be rai
 var knock := Vector2.ZERO       # being shoved back
 var stun_t := 0.0
 var _sep_n := 0
+var _hash_i := 0                # (its place in game.units at the last grid rebuild: Game._near_foe's tie-break)
+var _grid_p := Vector2.INF      # (where it stood at the last grid rebuild: Game._rebuild_hash)
+var _jumped := false            # (it moved more than Game.GRID_SLACK in its tick: _physics_process)
 var _anim_dt := 0.0
 # New units
 var charge := 0.0               # Stormcaller: fills inside a Clockwork field, spent on storms
@@ -1020,7 +1027,7 @@ var war := false
 
 
 func is_air() -> bool:
-	return d.get("air", false) and net_t <= 0.0      # (a flyer caught in a net is down on the ground: scripts/netter.gd)
+	return _air_k and net_t <= 0.0      # (a flyer caught in a net is down on the ground: scripts/netter.gd)
 
 
 ## Can this unit attack that one at all?
@@ -3218,6 +3225,9 @@ func _physics_process(delta: float) -> void:
 		return NetPuppet.tick_unit(self, delta)      # (online guest: shown from snapshots, not simulated)
 	var _p0 := Time.get_ticks_usec()
 	_tick_unit(delta)
+	if _grid_p.x != INF and position.distance_squared_to(_grid_p) > Game.GRID_SLACK * Game.GRID_SLACK:
+		_jumped = true
+		game.grid_loose = true        # (it jumped: the searches stop trusting the grid's places this tick)
 	Prof.unit_us += Time.get_ticks_usec() - _p0
 	Prof.unit_n += 1
 
@@ -6908,6 +6918,13 @@ static func own_west(art_frames: Dictionary, a: String, dr: String) -> String:
 	return ""
 
 
+var _sm_o := -1                  # (_set_anim: the last heading, pose and strip, and the view they gave)
+var _sm_a := ""
+var _sm_sa := ""
+var _sm_dr := ""
+var _sm_flip := false
+
+
 func _set_anim(a: String, force: bool) -> void:
 	# getting on or off: the mounted kind's mount strip, the way the horse is turned (_mount_face)
 	var sa := mount_strip_art() if a == "mount" else ""
@@ -6925,14 +6942,25 @@ func _set_anim(a: String, force: bool) -> void:
 		if _lab_view >= 0 and o != _lab_view and absf(wrapf(face.angle() - float(_lab_view) * PI / 4.0, -PI, PI)) < PI / 4.0 * 0.5 + 0.14:
 			o = _lab_view
 		_lab_view = o
-	var dir_flip: Array = DIR_FLIP[o]
-	var dr: String = dir_flip[0]
-	var flip: bool = dir_flip[1]
-	if flip and ArtData.UNITS.has(sa):
-		var own := own_west(ArtData.UNITS[sa]["frames"], a, dr)
-		if own != "":
-			dr = own
-			flip = false
+	var dr: String
+	var flip: bool
+	if o == _sm_o and a == _sm_a and sa == _sm_sa:
+		dr = _sm_dr          # (the view for this pose, strip and heading: as worked out last time)
+		flip = _sm_flip
+	else:
+		var dir_flip: Array = DIR_FLIP[o]
+		dr = dir_flip[0]
+		flip = dir_flip[1]
+		if flip and ArtData.UNITS.has(sa):
+			var own := own_west(ArtData.UNITS[sa]["frames"], a, dr)
+			if own != "":
+				dr = own
+				flip = false
+		_sm_o = o
+		_sm_a = a
+		_sm_sa = sa
+		_sm_dr = dr
+		_sm_flip = flip
 	if not force and a == anim and dr == anim_dir and flip == anim_flip and sa == _anim_art:
 		return
 	if a != anim:
