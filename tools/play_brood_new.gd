@@ -47,6 +47,8 @@ var grow_on := false             # grow:1 GROW the Mother as soon as she can
 var rex_mode := "home"           # rex:home keeps the Tyrannosaur by her; rex:out sends him with every wave
 var turtle_mode := ""            # turtles:far2 sends 2 turtles 15+ tiles out (new ground); turtles:home keeps all by her
 var sac_mode := ""               # sac:late offers idle grubs after 10:00 for essence (Brutes); sac:cycle runs the grub cycle 6:00-9:00
+var frush := -1.0               # frush:SECONDS forces the computer's army to rush the Mother from then on, for 150 s (its own units)
+var _frush_t := 0.0
 var mdef := ""                   # mdef:uproot: the Mother uproots to fight when enemies are at her (rooted, nothing attacks)
 var _eggs_seen := 0              # (the Mother's held eggs a moment ago: a rise is an egg made)
 var eggs_made := 0
@@ -76,6 +78,7 @@ func _initialize() -> void:
 			"turtles": turtle_mode = kv[1]
 			"sac": sac_mode = kv[1]
 			"mdef": mdef = kv[1]
+			"frush": frush = float(kv[1])
 	if not Array(OS.get_cmdline_user_args()).any(func(x: String) -> bool: return x.begins_with("end:")):
 		end_t = 900.0
 
@@ -223,6 +226,7 @@ func _coach(delta: float) -> void:
 		var f := BroodNew.father(g, 0)
 		if f and f.position.distance_to(q.position) > 6.0 * Defs.TILE:
 			pending.append(["father_%s.png" % _mmss(g.clock), f.position + Vector2(0, -30), 1.2])
+	_forced_rush(q)
 	if ai_plays:
 		return
 	match plan:
@@ -441,6 +445,8 @@ func _turtles(q: Unit) -> void:
 				continue
 			goal = turtle_spot(q, tt)
 			if goal == null:
+				if not near_ramp(tt.position, 3) and tt.order == "idle":
+					tt.cmd_deploy()          # (no free spot left round her: root where it stands)
 				continue
 			_spots[tt.serial] = goal
 			tt.cmd_move(goal)
@@ -654,6 +660,10 @@ func _army(q: Unit) -> void:
 	var f := BroodNew.father(g, 0)
 	var threat := foe_army_near(q.position, 14.0 * Defs.TILE)
 	if threat.size() > 0:
+		if not _shots_t.has("first_threat") and threat.size() >= 3:
+			_shots_t["first_threat"] = g.clock
+			say("FIRST ATTACK at the Mother: %d enemy soldiers (%s); mine there %d, the Mother %d hp, %s" % [threat.size(), _kinds(threat), arm.size(), int(q.hp), q.tesla_mode])
+			clip("first_attack", q, 36, 5, 0.9)
 		var defenders := arm.duplicate()
 		if f:
 			defenders.append(f)
@@ -811,6 +821,32 @@ func _sacrifice(q: Unit) -> void:
 		for gr in grubs:
 			if gr.order == "idle" and gr.can_sacrifice():
 				gr.cmd_sacrifice()
+
+
+var min_hp := 99999.0
+
+
+## The forced rush (round 2's early-defence test): from frush s, every soldier the computer has attack-moves to the
+## Mother, the new ones as they come, for 150 s. Its economy and its build are its own.
+func _forced_rush(q: Unit) -> void:
+	if frush < 0.0 or g.clock < frush or g.clock > frush + 150.0 or g.clock < _frush_t:
+		return
+	_frush_t = g.clock + 2.0
+	var n := 0
+	if not _shots_t.has("frush"):
+		# (the rush gathers first: it goes when it has 6 soldiers, or 90 s after its time)
+		var have := g.units.filter(func(u) -> bool: return u.team == _foe and not u.dead and not u.is_worker() and u.kind != "horse" and not u.is_air()).size()
+		if have < 6 and g.clock < frush + 90.0:
+			return
+		frush = g.clock      # (the 150 s of rushing count from when it goes)
+	for u in g.units:
+		if u.team == _foe and not u.dead and not u.is_worker() and u.kind != "horse" and not u.is_air():
+			if u.order != "amove" or u.path_goal.distance_to(q.position) > 200.0:
+				u.cmd_move(q.position, true)
+			n += 1
+	if not _shots_t.has("frush"):
+		_shots_t["frush"] = g.clock
+		say("FORCED RUSH: the computer's %d soldiers are sent at the Mother" % n)
 
 
 func _snap() -> void:
@@ -1188,6 +1224,9 @@ func _watch_stuck() -> void:
 
 func _watch_losses() -> void:
 	_watch_stuck()
+	var qm := BroodNew.queen(g, 0)
+	if qm and qm.hp < min_hp:
+		min_hp = qm.hp
 
 
 func _fstate(q: Unit) -> String:
@@ -1293,6 +1332,7 @@ func _finish() -> void:
 	for l in coach:
 		f.store_line(l)
 	f.store_line("hauls %d spills %d wasted eggs %d" % [_hauls, _spills, wasted])
+	f.store_line("the Mother's lowest health %d" % int(min_hp))
 	for l in _snaps:
 		f.store_line(l)
 	f.store_line("eggs made per minute %s" % str(_min_made))
