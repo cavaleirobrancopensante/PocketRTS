@@ -2365,6 +2365,24 @@ func _hall_first() -> bool:
 	return true
 
 
+## Round 6 (Crown, Normal and up): once the best soil left at any finished hall is under LOW_SOIL_KEEP and no new hall is
+## going up, a Town Hall's gold stays in the bank (training, research and other buildings wait for the gold above it),
+## unless enemies are at our buildings (the army is trained to defend). 0.14.100 Kestrel Rise (seed 14, film b): the
+## soil hit 0% at 11:18, the hall laid at 11:19 never stood, and the Crown sat on 5 gold with 37 Labourers until 20:00.
+const LOW_SOIL_KEEP := 0.25
+
+
+func _low_soil_keep() -> bool:
+	if not r6_cr or not _crown() or difficulty < 1 or peaceful or _halls().size() >= 7:
+		return false
+	if _best_soil() >= LOW_SOIL_KEEP:
+		return false
+	for h in _halls():
+		if not h.built:
+			return false        # (a new hall is going up: its gold is spent already)
+	return _threat() == Vector2.INF
+
+
 ## Round 6: the enemy army we can see within EXPAND_SEEN of a spot (value), and what our army could stand there with.
 const EXPAND_SEEN := 20.0       # tiles
 
@@ -2731,7 +2749,7 @@ const RESEARCH_AT := {"bayonet": ["musket", 3], "matchlock": ["musket", 4], "cha
 
 func _research() -> void:
 	_refit_army()
-	if _hall_reserve:
+	if _hall_reserve or (_low_soil_keep() and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 150):
 		return
 	var army := game.army(team)
 	var n := {"musket": 0, "horse": 0, "soldier": 0, "gun": 0}
@@ -3591,6 +3609,8 @@ func site_failed(b: Building, why := "blocked") -> void:
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 		return
+	if kind != String(_f()["hall"]) and _low_soil_keep() and _gold() - int(Defs.BUILDINGS[kind]["cost"]) < int(Defs.BUILDINGS[_f()["hall"]]["cost"]):
+		return          # (round 6: the soil is nearly spent: a Town Hall's gold stays in the bank)
 	if game.clock - float(_abandoned.get(kind, -99.0)) < AIBrood.ABANDON_WAIT:
 		return          # (a site of this kind was just dropped, its builder fled: not again at once into the same danger)
 	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[kind])):
@@ -3709,8 +3729,8 @@ func _produce() -> void:
 	var minimum := mini(40, 6 + int(game.clock / 20.0))
 	if _reserve > 0 and _horse_alert():
 		minimum = mini(minimum, 6)      # (Horsemen seen: more Raptors would not hold the line; the Pen and the Gorge Pit first)
-	if _hall_reserve and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 30:
-		return          # (Crown: the new Town Hall first, whatever the army)
+	if (_hall_reserve or _low_soil_keep()) and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 30:
+		return          # (Crown: the new Town Hall first, whatever the army; round 6: and a hall's gold kept once the soil runs low)
 	if _tech_hold:
 		minimum = mini(minimum, _lv([12, 8, 6]))     # (gear mode: the tech before more Clock Soldiers: _tier2)
 	if (_saving or (_reserve > 0 and _gold() < _reserve + 60)) and _army_supply(game.army(team)) >= minimum:
@@ -4746,10 +4766,12 @@ var _bad_spots := {}            # Vector2 -> clock until which waves leave the s
 
 ## Round 6 (Crown against the Clockwork, Normal and up): a wave goes out only worth WAVE_EDGE times the biggest enemy
 ## army seen lately, or at WAVE_ANYWAY supply (its first waves of 16 supply walked into Clockwork armies three times as
-## big, Greenhold and Frostmere, round 6's first games).
+## big, Greenhold and Frostmere, round 6's first games). OFF by default (`-- r6:wave` turns it on): with it the Crown
+## never went out at all and lost Greenhold (seed 11, other side) at 22:54; without it the same game was won, its small
+## waves draw the Clockwork army home (docs/ai_round6.md).
 const WAVE_EDGE := 1.2
 const WAVE_ANYWAY := 60
-var r6_wave := not OS.get_cmdline_user_args().has("r6:nowave")
+var r6_wave := OS.get_cmdline_user_args().has("r6:wave")
 
 
 func _wave_worth(ready: Array) -> bool:
