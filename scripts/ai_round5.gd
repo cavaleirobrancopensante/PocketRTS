@@ -48,6 +48,9 @@ const HOLD_OUT := 0.7           # (once holding: until the wave is worth less th
 const HALL_ARMY := 14           # the second hall waits for this much army supply ...
 const HALL_SEEN := 0.9          # ... worth this share of the biggest enemy army seen
 const HALL_DRY := 0.3           # (unless the main's soil is nearly gone)
+const BARRACKS_TIMES := [120.0, 300.0, 480.0]    # the 2nd, 3rd and 4th Barracks no sooner than these
+const TECH_AT := 540.0          # the Armoury and the Church wait until then ...
+const TECH_ARMY := 30           # ... or this much army supply
 const BREEDER_VS_CLOCK := 0.1   # the Horse Breeder opening against the Clockwork (it is 0.3 otherwise)
 
 var _vs_clock := -1             # (cache) -1 unknown, 0 no, 1 yes
@@ -185,6 +188,26 @@ func attack_ok(ready: Array) -> bool:
 		return true
 	_log("wait_attack", "keeps its army home: the enemy army seen (%d) is bigger than its own (%d)" % [int(seen), int(mine)])
 	return false
+
+
+## Barracks before tech against the Clockwork (the owner's winning games: 2 Barracks by 2:15, 3 by 6:00, 5-6 by
+## 9:00, the Armoury and Church only at 9:30-10:00; the computer had Armoury, Church and seven researches by 8:00
+## and 12 Musketeers). True when one more Barracks is due now.
+func barracks_due(barracks: int, labs: int) -> bool:
+	if not vs_clock() or ai._rushing() or barracks < 1 or barracks >= BARRACKS_TIMES.size() + 1:
+		return false
+	var g = ai.game
+	if g.clock < float(BARRACKS_TIMES[barracks - 1]) or labs < 10 + 4 * barracks or ai._gold() < 160:
+		return false
+	_log("barracks", "builds Barracks before tech (the Musketeer game against the Clockwork)")
+	return true
+
+
+## The Armoury and the Church wait against the Clockwork until 9:00 or a 30-supply army (gold for Musketeers).
+func tech_late() -> bool:
+	if not vs_clock():
+		return false
+	return ai.game.clock < TECH_AT and ai._army_supply(ai.game.army(ai.team)) < TECH_ARMY
 
 
 ## A wave out against the Clockwork pulls back when it trades badly (AI._losing_trade, the Clockwork's own rule).
