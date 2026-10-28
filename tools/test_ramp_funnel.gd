@@ -1,12 +1,16 @@
 extends SceneTree
 ## Every ramp of every built-in map (2 players and as many as the map holds) is a FUNNEL
 ## (docs/ramp_funnel.md): the only way between the levels is the ramp's planks.
-##  - beside the ramp's top FUNNEL rows (MapGen.FUNNEL) nothing can be walked on (the cliff wall
-##    drawn there: a unit standing on it looked as if it floated),
-##  - beside every other row no HIGH ground can be walked on (no stepping onto the ramp sideways
-##    from the plateau),
-##  - the row past the top is open high ground as wide as the planks, the row past the foot is
-##    open low ground, and a walk leads from the top to the foot over the planks.
+##  - beside the ramp's top FUNNEL rows (MapGen.FUNNEL), the cells under or against the drawn cliff
+##    wall (the cell past the top row's end is plateau) can't be walked on or built on (a unit
+##    standing there looked as if it floated),
+##  - beside every row no HIGH ground can be walked on (no stepping onto the ramp sideways),
+##  - the row past the top opens onto high ground (a lane shut by a cliff is only noted: Amberfall
+##    Vale has two such ramps, and opening them would take new tiles), the row past the foot opens
+##    onto low ground, and a walk leads from the top to the foot over the planks,
+##  - with 2 players, the map is drawn exactly as without the funnel: the heights, cliffs, ramps,
+##    water, trees and rocks and decorations are the same, and only the blocked cells differ in
+##    the walk grid.
 ## Prints a line per map (ramps by the way they go down) and "ramp funnel: PASS" / "FAIL (n)".
 ##   godot --headless --script res://tools/test_ramp_funnel.gd [-- ids...] [-- before]
 
@@ -29,6 +33,7 @@ func _make(id: String, n: int) -> Game:
 		sides.append(0 if i < n / 2 else 1)
 	g.factions = facs
 	g.sides = sides
+	g.rng.seed = 4242            # (the same map each time: the generated maps use it)
 	root.add_child(g)
 	return g
 
@@ -47,6 +52,13 @@ func _run(ids: Array) -> void:
 			var g := _make(id, n)
 			await process_frame
 			var bad: Array = check(g)
+			if n == 2 and not MapGen.no_funnel:
+				MapGen.no_funnel = true
+				var g0 := _make(id, n)
+				await process_frame
+				MapGen.no_funnel = false
+				bad.append_array(same_drawn(g0, g))
+				g0.queue_free()
 			var per := {}
 			for r in MapGen.ramp_parts(g.mapgen):
 				var dn: String = _dir_name(r["down"])
@@ -80,15 +92,26 @@ static func check(g: Game) -> Array:
 		var rows: Array = r["rows"]            # top row first: each an Array of cells
 		var funnel: int = MapGen.funnel_rows(rows.size())
 		var tag := "ramp at %s going %s" % [str(rows[0][0]), _dir_name(down)]
-		for j in rows.size():
-			var row: Array = rows[j]
-			for c in [row[0] - side, row[-1] + side]:
-				if not g.in_map(c) or not g._walkable(c):
+		for k in 2:
+			var walled := true
+			for j in rows.size():
+				var row: Array = rows[j]
+				var c: Vector2i = row[0] - side if k == 0 else row[-1] + side
+				if not g.in_map(c) or g.ramp[g.idx(c)] == 1:
+					walled = false
 					continue
+				var i := g.idx(c)
+				var low := int(g.height[i]) == 0 and g.water[i] == 0
+				if int(g.height[i]) == 1:
+					if g._walkable(c):
+						bad.append("%s: high ground %s beside its row %d can be walked on" % [tag, str(c), j + 1])
+				elif j < funnel and walled and low:
+					var above: Vector2i = c - down
+					var under_wall := j > 0 or (g.in_map(above) and int(g.height[g.idx(above)]) == 1)
+					if under_wall and (g._walkable(c) or g.is_free(c)):
+						bad.append("%s: the cell %s beside its row %d, under the drawn wall, can be walked on or built on" % [tag, str(c), j + 1])
 				if j < funnel:
-					bad.append("%s: the cell %s beside its row %d can be walked on (the funnel's wall)" % [tag, str(c), j + 1])
-				elif int(g.height[g.idx(c)]) == 1:
-					bad.append("%s: high ground %s beside its row %d can be walked on" % [tag, str(c), j + 1])
+					walled = walled and not g._walkable(c)
 		var tops := 0
 		var shut: Array = []
 		for c in rows[0]:
@@ -96,10 +119,11 @@ static func check(g: Game) -> Array:
 			if g._walkable(a) and int(g.height[g.idx(a)]) == 1 and g.ramp[g.idx(a)] == 0:
 				tops += 1
 			else:
-				var i := g.idx(a)
-				shut.append("%s (solid %d cliff %d height %d %s)" % [str(a), g.solid[i], g.cliff[i], g.height[i], g._terrain_kind.get(i, "")])
-		if tops != rows[0].size():
-			bad.append("%s: %d of its %d top lanes open onto the high ground; shut: %s" % [tag, tops, rows[0].size(), ", ".join(shut)])
+				shut.append(str(a))
+		if tops == 0:
+			bad.append("%s: no top lane opens onto the high ground" % tag)
+		elif tops != rows[0].size():
+			print("    note: %s: %d of its %d top lanes open onto the high ground (shut by the cliff: %s)" % [tag, tops, rows[0].size(), ", ".join(shut)])
 		var foots := 0
 		for c in rows[-1]:
 			var b: Vector2i = c + down
@@ -112,6 +136,26 @@ static func check(g: Game) -> Array:
 		var to: Vector2i = rows[-1][rows[-1].size() / 2] + down
 		if not _walk(g, from, to, 40):
 			bad.append("%s: no walk from %s (top) to %s (foot)" % [tag, str(from), str(to)])
+	return bad
+
+
+## The two maps (built without and with the funnel) look the same: only the walk grid differs, at
+## the blocked cells.
+static func same_drawn(g0: Game, g: Game) -> Array:
+	var bad: Array = []
+	for k in ["height", "cliff", "ramp", "water"]:
+		if g0.get(k) != g.get(k):
+			bad.append("the %s grid differs from the map without the funnel" % k)
+	if g0._terrain_kind != g._terrain_kind:
+		bad.append("the trees and rocks differ from the map without the funnel")
+	if g0.mapgen.props.size() != g.mapgen.props.size():
+		bad.append("the decorations differ from the map without the funnel")
+	for i in g.W * g.H:
+		if g0.solid[i] != g.solid[i] and not g.ramp_block.has(i):
+			bad.append("the walk grid differs at %s, not a blocked ramp side" % str(Vector2i(i % g.W, i / g.W)))
+			break
+	if g.ramp_block.is_empty():
+		bad.append("no cell was blocked")
 	return bad
 
 

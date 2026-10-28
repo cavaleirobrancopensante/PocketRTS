@@ -436,3 +436,7 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   way the band moves, growing and fading in a loop. Wanted: a painted dust-puff strip (4-6 frames) to scatter there.
 - The CHEVRONS on a turning band (under the mouse, or every band in the GEAR VIEW): gold "V" polylines with a dark outline,
   laid round the band's middle the way it turns, turning with the ring. Wanted: a painted arrow decal that fits the brass.
+
+## Ramp kerbs and shadows (code, 0.15.3; docs/ramp_funnel.md)
+
+Game._paint_ramps draws every ramp in code (no tile picture of its own). In 0.15.3 it got more drawing on the ramp's own cells, so the ramp reads as the only way through. The planks are a little darker and their steps more marked. A stone kerb runs down both sides the whole way: a dark outer line, a lit strip of stone tinted from the biome's cliff face, and a dark inner line. The walls cast a shadow on the planks beside the kerbs, deepest at the top. A shadow line runs across the top, where the planks leave the high ground. These are hard code pixels, not drawn art. A ChatGPT ramp tile set (planks, kerbs, top lip) per biome would make them match the cliff walls.

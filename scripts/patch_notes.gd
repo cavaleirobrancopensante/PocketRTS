@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.3", "items": [
+		"RAMPS, AS THE OWNER WANTS THEM: the cliff walls added beside the ramps in 0.15.2 are gone, and the map looks exactly as in 0.15.1 again, with no extra tiles. Instead, the cells beside a ramp's top two rows, under or against the drawn cliff wall, are an invisible block: nothing can walk, stand or be built there, so no unit stands on the drawn wall and looks as if it floats. The ramp keeps its three lanes, and units on it go straight up and down the planks.",
+		"RAMPS DRAWN MORE CLEARLY: the planks are a little darker, with stronger steps; a stone kerb runs down both sides; the walls cast a shadow on the planks, deepest at the top; and a shadow line marks where the planks leave the high ground. A ramp now reads as a narrow way through with walls on both sides.",
+	]},
 	{"v": "0.15.2", "items": [
 		"RAMPS ARE FUNNELS: beside the top two rows of every ramp, the ground is now cliff. The cliff wall steps down beside the planks, and nothing can stand there or be built there, so a unit no longer stands on the drawn wall beside a ramp and looks as if it floats. The only way between the high ground and the low ground is the ramp itself, exactly as wide as its planks. Units on the high ground stop at the edge; units below stop at the foot of the wall. This holds on every map: the built-in ones, generated ones, and maps made in the editor. A computer's ramp wall still takes three pieces.",
 	]},

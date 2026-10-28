@@ -2,8 +2,8 @@ extends SceneTree
 ## Pictures of the ramp funnel (docs/ramp_funnel.md, docs/shots/ramp_funnel/): at a ramp's top and
 ## at its foot, Clockwork units ordered onto the ground beside the ramp (a Great Winder and Clock
 ## Soldiers on the low ground, Musketeers on the high ground) so they press against its sides.
-## "before=1" builds the map with the old open sides (MapGen.no_funnel); "grid=1" marks the cells
-## that can't be walked on near the ramp (red).
+## "before=1" builds the map without the blocked ramp sides (MapGen.no_funnel); "grid=1" marks the
+## cells that can't be walked on near the ramp (red: cliffs and the blocked ramp sides).
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1600x900 --fixed-fps 30 --script res://tools/shot_ramp_funnel.gd -- out=docs/shots/ramp_funnel [before=1] [maps=greenhold] [dirs=south,north]
 
 var main: Node
@@ -155,12 +155,12 @@ func _ramp_case(map: String, dn: String, r: Dictionary) -> void:
 		for y in range(area.position.y, area.end.y + 1):
 			for x in range(area.position.x, area.end.x + 1):
 				var c := Vector2i(x, y)
-				if g.in_map(c) and not g._walkable(c) and g.cliff[g.idx(c)] == 1:
+				if g.in_map(c) and not g._walkable(c) and (g.cliff[g.idx(c)] == 1 or g.ramp_block.has(g.idx(c))):
 					m.cells.append(c)
 		g.add_child(m)
 	for i in 240:
 		await physics_frame
-	var tag := "%s_%s_%s%s" % ["before" if before else "after", dn, map, "_grid" if grid else ""]
+	var tag := "%s_%s_%s%s" % ["noblock" if before else "new", dn, map, "_grid" if grid else ""]
 	# (one picture holds the top and the foot: a ramp is 4 cells long)
 	await _shot(tag, (cen.call(rows[0][rows[0].size() / 2]) + cen.call(rows[-1][rows[-1].size() / 2])) * 0.5)
 	for u in us:

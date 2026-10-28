@@ -1,46 +1,41 @@
 # Ramp funnel
 
-The owner's report, 28 October 2026: a Great Winder stood just beside the top of a ramp, drawn over the cliff wall, so it looked as if it floated. He wanted the first rows beside a ramp to be a funnel, so that the only way between the high ground and the low ground is the ramp itself.
+The owner's report, 28 October 2026: a Great Winder stood just beside the top of a ramp, drawn over the cliff wall, so it looked as if it floated. He wanted the ramp to be a funnel, the only way between the high ground and the low ground.
+
+His final word, after seeing 0.15.2: "It is an invisible block, but the ramp itself is drawn with more visual clarity. No extra tiles." That is 0.15.3.
 
 ## Cause
 
-Every ramp is cut into a notch in the plateau's edge. The map maker (MapGen._ramp) makes the edge five cells wide: the three middle cells become the ramp's planks, and the two outer cells are left as plain low ground, all the way down beside the ramp.
+Every ramp is cut into a notch in the plateau's edge. The map maker (MapGen._ramp) makes the edge five cells wide. The three middle cells become the ramp's planks. The two outer cells are left as plain low ground beside the planks, right under the drawn cliff wall, or against its end. A unit could walk or stand there. Its picture then covered the wall, and it seemed to hover beside the ramp.
 
-The wall art is drawn on the plateau's last row. So on the ramp's top rows, the low ground beside the planks sits right under the drawn wall. A unit could walk there, from the low ground or by stepping sideways off the planks. Its picture then covered the wall and it seemed to hover beside the ramp. A ramp in effect had a mouth five cells wide at the top, not three.
+## What 0.15.2 did, and why it was dropped
 
-The new check found this beside every ramp on all 27 built-in maps, on ramps going down to the south, north, east and west.
+0.15.2 raised the ground beside the ramp's top two rows into the plateau. The cliff wall then stepped down beside the planks. The owner didn't want extra tiles, so 0.15.3 takes that back. The map is drawn exactly as in 0.15.1 again: the same heights, cliffs, walls, ramps, trees and decorations.
 
-## Fix
+## The fix in 0.15.3
 
-The fix is in the terrain rules, in MapGen._ramp_funnels, which runs at the start of MapGen._cliffs. So it holds on every built-in map, every generated map, custom maps and the map editor. No map layout was edited by hand.
+1. An invisible block. MapGen.block_ramp_sides runs when the walk grid is built (Game._setup_astar), so it covers built-in, generated and custom maps and the map editor. Beside each ramp's top two rows, the low-ground cell under or against the drawn wall can't be walked on or built on. It is still drawn as grass, as before. High ground touching a ramp's side can't be walked on either. Only the walk and build grid changes. The ramp keeps its normal width of three lanes, and units on it go straight up and down the planks.
+2. The ramp drawn more clearly, on its own cells only (Game._paint_ramps). The planks are a little darker and their steps more marked. A stone kerb runs down both sides the whole way: a dark outer line, a lit strip of stone, and a dark inner line. The walls' shadow falls on the planks beside the kerbs, deepest at the top. A shadow line runs across the top, where the planks leave the high ground. So the eye sees a narrow ramp with walls on both sides. This is code drawing, logged in docs/art_style_inconsistency.md.
 
-1. Beside each ramp's top two rows (MapGen.FUNNEL), the ground on both sides is raised into the plateau and becomes cliff: solid, never walked, never built on. The cliff wall now steps down beside the planks and stops two rows down the slope. Units on the low ground stop at its foot.
-2. Any high ground left touching the side of a ramp lower down is cliff too, so nobody can step onto a ramp sideways from the plateau.
-3. The landing: the high-ground cell past each lane of the ramp's top is open ground. On Amberfall Vale, a slanted plateau edge had turned one of these into a cliff, so two ramps were only two lanes wide at the top. That low ground is now raised, and both ramps are three lanes wide all the way up.
+The computer's ramp wall is back to its 0.15.1 rule. The blocked cells don't count as free ground, so the wall still covers the three cells past the ramp's top, and the gate still lets its army out.
 
-So a ramp's walkable width is now exactly its drawn planks, from the top row to the foot.
+A unit that an old save or replay had standing on a blocked cell is pushed to the nearest free cell (Game.resolve_terrain) as soon as it moves.
 
-The computer's ramp wall (AI._wall_off and AI._ramp_bands) now covers only the high cells that touch the ramp side by side. A cell that touches it only at a corner can't step onto it, because the cells in between are wall or cliff. So the wall still costs three pieces, as before.
-
-A unit that an old save or replay had standing on one of the new cliff cells is pushed out to the nearest free cell (Game.resolve_terrain) as soon as it moves.
+The Amberfall Vale fix of 0.15.2 opened a third lane at the top of two ramps by raising ground, so it added tiles, and it is gone. It isn't needed any more: on the bigger maps of 0.15.0, every top lane of every ramp opens onto the high ground, Amberfall Vale's too. The test would note it if one didn't.
 
 ## Pictures
 
-docs/shots/ramp_funnel/: one picture for each direction of ramp on Greenhold. The brown patches near the north ramp are the Brood's swamp. Each picture has four panels: before on the left, after on the right, and on the bottom row the same scene with the cells that can't be walked on shaded red. Clockwork units were ordered onto the cells beside the ramp's top: a Great Winder and Clock Soldiers from the low ground, and Clock Soldiers from the high ground.
+docs/shots/ramp_funnel/ holds ramp_south.jpg (the owner's case), ramp_north.jpg, ramp_east.jpg and ramp_west.jpg, all on Greenhold. Each picture has three columns: 0.15.1, then 0.15.2, then the new 0.15.3. The top row is the game as it looks. The bottom row shades in red the cells that can't be walked on: cliffs, and in 0.15.3 the blocked cells beside the ramp's top. Clockwork units were ordered onto the cells beside the ramp's top: a Great Winder and Clock Soldiers from the low ground, and Clock Soldiers from the high ground. In 0.15.1 the Winder stands on the cell under the wall. In 0.15.3 nothing stands there, the walls are as they were, and the ramp has its kerbs. A big machine like the Winder is wider in its picture than on the ground, so standing at the foot of a blocked cell, it can still overlap that cell's grass.
 
-- ramp_south.jpg: the owner's case. Before, the Great Winder stands on the cell under the wall, right of the planks. After, the wall steps down beside the ramp and the Winder stops on the planks.
-- ramp_north.jpg, ramp_east.jpg, ramp_west.jpg: the same at the other three kinds of ramp.
-
-The pictures are made with tools/shot_ramp_funnel.gd. Add "before=1" for the old open sides and "grid=1" for the red cells.
+The pictures are made with tools/shot_ramp_funnel.gd. Add "before=1" for no blocked cells, and "grid=1" for the red cells.
 
 ## Tests
 
-- tools/test_ramp_funnel.gd checks every ramp of every built-in map, with 2 players and with the most players the map holds. Nothing beside a funnel row can be walked on, no high ground beside any ramp row can be walked on, the top opens onto high ground as wide as the planks, the foot opens onto low ground, and there's a walk from the top to the foot. Before the fix it failed 954 times. Now it passes. Counting each map's 2-player and full layouts, it checks 62 ramps going south, 62 going north, 57 going east and 57 going west.
-- These still pass, on the bigger maps of 0.15.0: test_start_layout, test_expansion_spots, test_pathing, test_ai_placement, test_ai_wall_vs_rush (the wall is built with a gate), test_ai_army_response, test_gear_rules, test_cliff_horse, test_replay and test_files.
-- test_pathing_match, a six-minute Crown against Clockwork game on Greenhold: units were stuck for 1.6% of their moving time, none of it at a cliff, and no unit was stuck for 10 seconds or more.
-- test_terrain_same pins each map's ground. Its hashes were recorded again, because the ground beside the ramps changed on purpose.
-- The lobby's map pictures (assets/maps) were made again.
-
-## Left as it is
-
-A big machine is wider in its picture than on the ground. A Great Winder standing on the edge of a ramp's planks still hangs a little over the wall beside it. Its feet stay on the planks.
+- tools/test_ramp_funnel.gd checks every ramp of every built-in map, with 2 players and with the most each map holds:
+  - the cells under the wall beside the top two rows can't be walked on or built on;
+  - no high ground beside any ramp can be walked on;
+  - the top opens onto the high ground and the foot onto the low ground;
+  - there's a walk from the top to the foot;
+  - with 2 players, the map is drawn exactly as without the block. Only the blocked cells differ.
+- Without the block ("before"), Greenhold alone fails 28 times. With it, every map passes.
+- test_terrain_same was recorded again, because the walk grid changed. The lobby map pictures, made again, are byte for byte those of 0.15.1.
