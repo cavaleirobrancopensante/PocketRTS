@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.15", "items": [
+		"UNIT STATS ON THE CARD: the selected unit's card has a row of icons with its numbers: the attack (damage a hit, melee, ranged or area), the time between attacks, damage a second, range in tiles, bonuses (against armour, buildings, light units, flyers), whether it hits flyers, then armour, health, speed, sight and supply, and the names of its special attacks. Every number is the one it has now (veterancy, research, refits, wind, rooted...); hover over a chip, or tap it on a phone, for the full explanation and the trained value. Works for every unit of all factions.",
+		"The new Brood's Rootmaw, Mound Turtle, Tyrannosaur and Brood Mother show their bite when uprooted; rooted, the row says ROOTED (they cannot attack) and shows the extra armour. The icons are the owner's ChatGPT drawings.",
+	]},
 	{"v": "0.15.14", "items": [
 		"THE NEW BROOD (EXPERIMENT): A ROOTED CREATURE IS A BUILDING. Rooted, the Brood Mother, a Rootmaw, a Mound Turtle and the Tyrannosaur take a building's footprint on the ground (paths go round it, units standing there are pushed out), are drawn under the units round them, and have a building's card: no move, attack, stop or hold, only their own commands and RALLY. A right-click on the ground sets their rally point and never gets them up: only UPROOT does. Idle, they hold still; they move only while they work.",
 		"GRUBS TURN INTO THE ROOTMAW, THE MOUND TURTLE AND THE TYRANNOSAUR: pick one on a grub's card (no old Brood buildings there any more) and place it like a building. The grub walks there, pays and morphs in a cocoon that opens rooted. The Brood Mother lays only grubs and warriors now.",
