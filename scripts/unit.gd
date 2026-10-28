@@ -54,6 +54,7 @@ var path_pending := false
 var stuck_t := 0.0
 var squeeze_t := 0.0            # > 0: walking out of a sealed pocket through a building's edge (last resort)
 var nb_pass := 0.0              # > 0: a new-Brood creature walking out through its own side's rooted creatures (BroodRoot.pass_move)
+var _nb_top := -9999.0          # the new Brood: where its bar sits over its drawn body (Unit._draw)
 var wall_flee_t := 0.0          # (computer) pulled back from a wall that shooters behind it cover
 var siege_t := 0.0              # (computer) its army is breaking in at a wall: the AI's siege gives the orders
 var _wall_chk := 0.0
@@ -7456,6 +7457,15 @@ func _draw_unit() -> void:
 		top = -70.0    # above the raised coil's sparks (the packed body: the anchor height)
 	elif kind == "cannon":
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
+	if _k_nb and BroodNew.ROOTERS.has(kind):
+		# (the new Brood's rooting creatures: their rooted pictures and the Mother's growth stages are not their walk sheet's
+		# size: the bar and the labels go just over the body as drawn now, BroodRoot.body_rect; steady within 14 px)
+		var br := BroodRoot.body_rect(self)
+		if br.size.x > 2.0:
+			var bt := br.position.y - global_position.y - 2.0
+			if absf(bt - _nb_top) > 14.0:
+				_nb_top = bt
+			top = _nb_top
 	var bw := radius * 2.4
 	if kind != BroodNew.PILE:
 		draw_health(top, bw, true)

@@ -238,8 +238,10 @@ func _fixes2() -> void:
 		var sp: Dictionary = shown[0]
 		var mid: Vector2 = (Vector2(sp["tc"]) + Vector2(1.5, 1.5)) * T
 		g.camera.position = mid
-		g.camera.zoom = Vector2(0.9, 0.9)
+		g.camera.zoom = Vector2(1.1, 1.1)
 		await _snap("spots_map", 1.2)
+		g.camera.zoom = Vector2(0.6, 0.6)
+		await _snap("spots_far", 1.2)          # (zoomed out: the label gives way, the gold and the minimap squares stay)
 		g.set_selection([gr0])
 		ctl.begin_nb_root(BroodNew.TURTLE, true)
 		ctl.ghost_cell = Vector2i(sp["tc"]) + Vector2i(1, 6)
@@ -278,7 +280,7 @@ func _fixes2() -> void:
 	var n := 0
 	while x < c0.x + sz.x + 3:
 		for yy in [c0.y - 3, c0.y + sz.y]:
-			var k: String = BroodNew.TURTLE if n % 3 != 1 else BroodNew.MAW
+			var k: String = BroodNew.TURTLE          # (3 tiles deep: no gap left between the rows and her rim)
 			var u: Unit = g._add_unit(k, 0, BroodRoot.feet_at(k, Vector2i(x, yy)))
 			u.facing = BroodNew.SE
 			u.tesla_mode = "deployed"
@@ -309,9 +311,15 @@ func _fixes2() -> void:
 		q.cmd_lay("grub")
 		await wait(0.2)
 	await wait(BroodNew.lay_time(q) + 0.8)
-	g.camera.position = q.position + Vector2(0, 90)
-	g.camera.zoom = Vector2(1.3, 1.3)
+	g.set_selection([])
+	for e in mine(BroodNew.EGG):
+		print("    boxed: egg at %s, on a creature: %s" % [str(e.position), str(e.nb.get("top", false))])
+	g.camera.position = q.position + Vector2(0, 70)
+	g.camera.zoom = Vector2(1.0, 1.0)
 	await _snap("boxed_mother", 0.5)
+	# the hatchlings walk out through their own creatures
+	await wait(float(Defs.UNITS["grub"]["time"]) + 2.0)
+	await _snap("boxed_hatched", 0.3)
 	# her growing: the bar over her and on her card
 	q.nb["stage"] = 0
 	BroodNew.apply_stage(q)

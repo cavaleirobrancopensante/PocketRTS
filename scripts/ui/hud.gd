@@ -1467,9 +1467,10 @@ func _nb_buttons(list: Array, units: Array) -> void:
 						if w2 != "":
 							toast(w2), gwhy == "", gwhy, _price_chip([int(nx["cost"]), int(nx["cost2"])], int(nx["cost2"]) > 0)])
 		var lev := BroodNew.levers_text(game, q)
-		_tip_for[lev.to_upper()] = ["Her laying", "%s. Three things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d). Turtles at home give supply and swamp only." % [
+		var lev_lab := lev.split(":")[0].to_upper()          # (short on the button: "LAYING +15%"; the levers in the tooltip)
+		_tip_for[lev_lab] = ["Her laying", "%s. Three things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d). Turtles at home give supply and swamp only." % [
 			lev, int(float(Defs.NB["father_rate"]) * 100.0), int(Defs.NB["expansion_tiles"]), int(float(Defs.NB["expansion_rate"]) * 100.0), int(Defs.NB["expansion_max"])]]
-		list.append(["brood_mother", lev.to_upper(), func() -> void: pass, false, lev, ""])
+		list.append(["brood_mother", lev_lab, func() -> void: pass, false, lev, ""])
 	# EGGS: what it will hatch, and how (point 6)
 	var eggs := units.filter(func(u: Unit) -> bool: return u.kind == BroodNew.EGG and u.team == game.human)
 	if not eggs.is_empty():
@@ -3264,7 +3265,19 @@ func _draw_panel(font: Font) -> void:
 			_fit_memo[fit_key] = fit
 		var ifs: int = fit[0]
 		info = fit[1]
-		if eff_txt != "":
+		nb_prog = {}
+		if e is Unit and (e as Unit)._k_nb and (e.team == game.human or game.spectating()):
+			nb_prog = BroodNew.progress(game, e as Unit)
+		if not nb_prog.is_empty():
+			# THE NEW BROOD'S PROGRESS (the owner, 21:41): in the card's text line, as a building's work in hand: its label,
+			# the time left and a wide bar (the about text is in the tooltip)
+			var plab := "%s · %ds" % [Loc.t(String(nb_prog["label"])), int(ceil(float(nb_prog["left"])))]
+			var pw := UiStyle.bold_font().get_string_size(plab, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+			_text(UiStyle.bold_font(), r.position + Vector2(90, 72), plab, 14, (nb_prog["col"] as Color).lightened(0.25))
+			var bar2 := Rect2(r.position.x + 100 + pw, r.position.y + 63, clampf(r.end.x - 70 - (r.position.x + 100 + pw), 40.0, 260.0), 8)
+			_ci.draw_rect(bar2.grow(1.0), Color(0, 0, 0, 0.6))
+			_ci.draw_rect(Rect2(bar2.position, Vector2(bar2.size.x * float(nb_prog["f"]), bar2.size.y)), nb_prog["col"])
+		elif eff_txt != "":
 			# the efficiency breakdown first, in its bar's colour, then the rest
 			_text(font, r.position + Vector2(90, 72), eff_txt, ifs, eff_col)
 			var ew := font.get_string_size(eff_txt + "  ·  ", HORIZONTAL_ALIGNMENT_LEFT, -1, ifs).x
@@ -3290,27 +3303,6 @@ func _draw_panel(font: Font) -> void:
 					var pp := Rect2(pqr.position.x, pqr.end.y + 4, pqr.size.x, 2)
 					_ci.draw_rect(pp, Color(0, 0, 0, 0.6))
 					_ci.draw_rect(Rect2(pp.position, Vector2(pp.size.x * clampf(ps[i].powder / ps[i]._pmax, 0.0, 1.0), pp.size.y)), Unit.POWDER_BAR if ps[i].powder >= 1.0 else UiStyle.BAD)
-		nb_prog = {}
-		if e is Unit and (e as Unit)._k_nb and (e.team == game.human or game.spectating()):
-			# THE NEW BROOD'S PROGRESS (the owner, 21:41): her growing, a cocoon, rooting, an egg, the father's nest: an
-			# icon with its bar in the card's corner (as a building's queue), its label and the time left beside it
-			nb_prog = BroodNew.progress(game, e as Unit)
-			if not nb_prog.is_empty():
-				var pqr2 := Rect2(r.end.x - 44, r.position.y + 8, 36, 36)
-				var pic2 := _icon(String(nb_prog["icon"]))
-				_ci.draw_rect(pqr2, Color(0, 0, 0, 0.35))
-				if pic2:
-					_ci.draw_texture_rect(pic2, pqr2, false)
-				_ci.draw_rect(Rect2(pqr2.position.x, pqr2.end.y + 2, pqr2.size.x, 4), Color(0, 0, 0, 0.5))
-				_ci.draw_rect(Rect2(pqr2.position.x, pqr2.end.y + 2, pqr2.size.x * float(nb_prog["f"]), 4), nb_prog["col"])
-				# under the card's text line: its label, the time left and a wide bar
-				var plab := "%s · %ds" % [Loc.t(String(nb_prog["label"])), int(ceil(float(nb_prog["left"])))]
-				var pw := UiStyle.bold_font().get_string_size(plab, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-				var py := r.position.y + 93.0
-				_text(UiStyle.bold_font(), Vector2(r.position.x + 90, py), plab, 13, (nb_prog["col"] as Color).lightened(0.25))
-				var bar2 := Rect2(r.position.x + 98 + pw, py - 9, clampf(r.end.x - 60 - (r.position.x + 98 + pw), 40.0, 220.0), 7)
-				_ci.draw_rect(bar2, Color(0, 0, 0, 0.55))
-				_ci.draw_rect(Rect2(bar2.position, Vector2(bar2.size.x * float(nb_prog["f"]), bar2.size.y)), nb_prog["col"])
 		var shq: Array = NetPredict.shown_queue(game, e) if e is Building else [[], [], 0.0]     # (online: an order just given shows at once, pending)
 		if e is Building and (e.team == game.human or game.spectating()) and not (shq[0] as Array).is_empty():
 			var q: Array = shq[0]

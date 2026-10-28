@@ -12,7 +12,8 @@ extends Node2D
 ## walks up to it), the walk from its own main, and how much nearer it is to its own main than to the enemy's. The
 ## two best of each side are marked. The map is turned through its middle, so twin spots score the same.
 ##
-## Shown to a Crown or Clockwork player (the Brood rarely moves its capital: not to a Brood player), and when watching
+## Shown to a Crown or Clockwork player (the old Brood rarely moves its capital: not to an old-Brood player; the NEW
+## Brood sees its best Mound Turtle spots, nb_pick), with a small label (_label), and when watching
 ## (spectator, replay). A spot hides once a building the viewer knows of stands on it (his own and his allies', an
 ## enemy's once seen), and when its lode was drawn out by a hall that fell there. Settings.expansion_spots turns them
 ## off. No per-frame drawing: the tiles are drawn once and redrawn only when a spot is taken or freed, or while the
@@ -135,6 +136,53 @@ func _tile(c: Vector2i, best: bool, size: Vector2i = MapGen.HALL) -> void:
 	var r := Rect2(Vector2(c) * T, Vector2(size) * T).grow(-1.0)
 	draw_rect(r, Color(0, 0, 0, 0.35 * edge), false, 3.5)
 	draw_rect(r, Color(GOLD, edge), false, 1.75 if best else 1.25)
+
+
+## THE LABEL (the owner, 22:09: the spots must READ as such): "OPTIMAL EXPANSION SPOT" on the best, "EXPANSION SPOT"
+## on the next, small, on the tinted ground near its bottom edge. Shown while the camera is zoomed in to a normal view
+## or nearer (LABEL_ZOOM; zoomed out the gold squares speak for themselves and words would clutter), and always while
+## placing a hall or a Mound Turtle. Its size follows the zoom so it stays about LABEL_PX on screen.
+const LABEL_ZOOM := 0.85
+const LABEL_PX := 13.0
+
+
+## The label's font size in map pixels now (0: not shown).
+func _label_size() -> int:
+	if game == null or game.camera == null:
+		return 0
+	var z := game.camera.zoom.x
+	if z < LABEL_ZOOM and not _placing:
+		return 0
+	return clampi(int(round(LABEL_PX / maxf(z, 0.3))), 7, 20)
+
+
+## Drawn on the game's overlay (Game._draw_mine_labels, as the workers' counts): over the map's lighting, so it reads
+## on dark maps too; only the spots on screen.
+func draw_labels(ci: CanvasItem) -> void:
+	var fs := _label_size()
+	if fs <= 0:
+		return
+	for s in shown:
+		var sz: Vector2i = BroodRoot.fp(BroodNew.TURTLE)[0] if s.has("tc") else MapGen.HALL
+		var c: Vector2i = Vector2i(s["tc"]) if s.has("tc") else Vector2i(s["c"])
+		if game.view_rect.grow(200.0).has_point((Vector2(c) + Vector2(sz) * 0.5) * float(Game.T)):
+			_label(ci, c, sz, int(s["rank"]) == 1, fs)
+
+
+func _label(ci: CanvasItem, c: Vector2i, size: Vector2i, best: bool, fs: int) -> void:
+	var T := float(Game.T)
+	var font := UiStyle.bold_font()
+	var txt := Loc.t("OPTIMAL EXPANSION SPOT" if best else "EXPANSION SPOT")
+	var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var r := Rect2(Vector2(c) * T, Vector2(size) * T)
+	var p := Vector2(r.get_center().x - w * 0.5, r.end.y - float(fs) * 0.45)
+	var a := 1.0 if _placing else (0.95 if best else 0.8)
+	# a dark pill under it (the ground under the tint is often dark and busy), then the words in gold
+	var pad := float(fs) * 0.35
+	var pill := Rect2(p + Vector2(-pad, -float(fs) * 0.85), Vector2(w + pad * 2.0, float(fs) * 1.15))
+	ci.draw_rect(pill, Color(0.08, 0.05, 0.0, 0.62 * a))
+	ci.draw_rect(pill, Color(GOLD, 0.55 * a), false, maxf(1.0, float(fs) / 12.0))
+	ci.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(GOLD.lightened(0.4 if best else 0.2), a))
 
 
 ## The minimap's marks (hud.gd draws them): small gold squares on the spots shown now.

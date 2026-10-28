@@ -10334,6 +10334,8 @@ func _draw_mine_labels() -> void:
 			overlay.draw_rect(bar.grow(0.5), Color(0, 0, 0, 0.9), false, 1.0)
 			overlay.draw_string(font, Vector2(bx + bar_w + gap, p.y), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
 	BroodNew.draw_crew_labels(self, font)      # (the new Brood: grubs at work / the most it takes, over each Rootmaw and food pile)
+	if exp_spots:
+		exp_spots.draw_labels(overlay)          # ("OPTIMAL EXPANSION SPOT" / "EXPANSION SPOT" on the gold spots)
 	for fl in _floats:
 		var a: float = minf(float(fl[3]), 1.0)
 		var w2: float = font.get_string_size(fl[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x

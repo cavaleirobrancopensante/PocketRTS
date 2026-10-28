@@ -283,13 +283,13 @@ static func levers_text(g: Game, q: Unit) -> String:
 	var lr := lay_rate(g, q)
 	var parts: Array = []
 	if stage(q) > 0:
-		parts.append("stage %d" % (stage(q) + 1))
+		parts.append(Loc.t("stage %d") % (stage(q) + 1))
 	if int(lr[2]) > 0:
-		parts.append("%s near" % (Defs.UNITS[FATHER]["name"] if int(lr[2]) == 1 else "%d fathers" % int(lr[2])))
+		parts.append(Loc.t("%s near") % (Loc.t(String(Defs.UNITS[FATHER]["name"])) if int(lr[2]) == 1 else Loc.t("%d fathers") % int(lr[2])))
 	if int(lr[3]) > 0:
-		parts.append("%d expansion%s" % [int(lr[3]), "" if int(lr[3]) == 1 else "s"])
+		parts.append(Loc.t("1 expansion") if int(lr[3]) == 1 else Loc.t("%d expansions") % int(lr[3]))
 	var pct := int(round((float(lr[0]) - 1.0) * 100.0))
-	return "Laying +%d%%: %s" % [pct, ", ".join(parts)] if not parts.is_empty() else "Laying: no lever yet"
+	return Loc.t("Laying +%d%%: %s") % [pct, ", ".join(parts)] if not parts.is_empty() else Loc.t("Laying: no lever yet")
 
 
 ## GROW (her card): why she can't grow now ("" = she can).
@@ -817,6 +817,7 @@ static func _claim(g: Game, u: Unit) -> void:
 	g.nb_spot_next += 1
 	g.nb_spots[g.nb_spot_next] = {"p": u.position, "left": left, "maw": u.serial}
 	u.nb["spot"] = g.nb_spot_next
+	u.nb["gw"] = 0          # (its ground warnings start again on its new ground)
 
 
 static func _release(g: Game, u: Unit) -> void:
@@ -940,10 +941,25 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 					if take > 0.0:
 						s["left"] = float(s["left"]) - take
 						u.nb["food"] = food + take
+					_ground_warn(g, u, float(s["left"]) / float(Defs.PIT_GROUND))
 			elif not rooted(u) and food > 0.5:
 				u.speed *= float(Defs.NB["haul_speed"])        # HAUL: full and slow
 		FATHER:
 			father_tick(g, u, delta)
+
+
+## A Rootmaw's ground running low or spent: it warns for itself, as the old Feeding Pits did (the owner, 21:28: the new
+## Brood's alerts in its own words), once per level (nb "gw").
+static func _ground_warn(g: Game, u: Unit, left: float) -> void:
+	var level := 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
+	if level <= int(u.nb.get("gw", 0)):
+		return
+	u.nb["gw"] = level
+	if g.mlog:
+		g.mlog.add("%s: the ground of a Rootmaw %s" % [g.mlog.who(u.team), "is spent (it drinks nothing more)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+	if u.team == g.human and not g.demo and g.hud:
+		g.hud.toast("A Rootmaw's ground is spent: UPROOT it and root it on fresh ground, outside the old circles." if level == 2
+			else "A Rootmaw's ground is running low (%d%% left): plan fresh ground for it." % int(round(left * 100)), false)
 
 
 ## How hard a walking (uprooted) creature is to shove (Game.separation): the Mother a great deal; the Tyrannosaur and
@@ -1134,6 +1150,8 @@ static func crew_label(g: Game, u: Unit) -> String:
 
 ## Where its health bar sits, from its feet (Unit._draw_unit's `top`).
 static func label_top(u: Unit) -> float:
+	if u._nb_top > -9000.0:
+		return u._nb_top          # (over its body as drawn: Unit._draw)
 	return -float(ArtData.UNITS[u.art]["anchor"].y) * float(u.d.get("art_scale", 1.0)) - 4.0
 
 
