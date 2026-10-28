@@ -12,6 +12,7 @@ extends RefCounted
 
 var ai = null                   # the AI (scripts/ai.gd)
 var on := true                  # (tests switch round 5 off for a "before" number)
+var _only := ""                 # (study games: "crown" = part A only, "clock" = part B only)
 
 # ---- B: the Clockwork against Horsemen
 const RAIDER_SPEED := 95.0      # an armed ground enemy this fast is a rider (AI.FAST_SPEED)
@@ -62,8 +63,13 @@ var _ramps_done := false
 
 func _init(owner_ai) -> void:
 	ai = owner_ai
-	if OS.get_cmdline_user_args().has("r5:off"):
+	var args := OS.get_cmdline_user_args()
+	if args.has("r5:off"):
 		on = false              # (study games: `-- ... r5:off` plays the "before" computer, the same as 0.14.90)
+	elif args.has("r5:crown"):
+		_only = "crown"         # (`r5:crown`: part A only, the Clockwork as before)
+	elif args.has("r5:clock"):
+		_only = "clock"         # (`r5:clock`: part B only, the Crown as before)
 
 
 func _bands() -> Array:
@@ -84,7 +90,7 @@ func _log(key: String, msg: String) -> void:
 
 ## The Crown against a Clockwork enemy (any of its enemies), Normal and up.
 func vs_clock() -> bool:
-	if not on or ai.difficulty < 1 or not ai._crown():
+	if not on or _only == "clock" or ai.difficulty < 1 or not ai._crown():
 		return false
 	if _vs_clock < 0:
 		_vs_clock = 0
@@ -98,7 +104,7 @@ func vs_clock() -> bool:
 ## The chance of the Horse Breeder opening (AI._ready). Against the Clockwork the rush lost every game:
 ## its Clock Soldiers come out at 1:50 and the computer switches to an army on seeing a Horseman.
 func breeder_chance(normal: float) -> float:
-	if not on or ai.game.faction_of(ai.team) != "crown":
+	if not on or _only == "clock" or ai.game.faction_of(ai.team) != "crown":
 		return normal
 	var clock_foe := false
 	for t in ai.game.enemies_of(ai.team):
@@ -338,7 +344,7 @@ func rush_beaten(defv: float, mine: float, gained: float, wv: float) -> bool:
 # ============================================================ B. the Clockwork
 
 func _clock_on() -> bool:
-	if not (on and ai.difficulty >= 1 and ai._clock() and not ai.peaceful):
+	if not (on and _only != "crown" and ai.difficulty >= 1 and ai._clock() and not ai.peaceful):
 		return false
 	_bands()                    # (the ramps while the band is still free of buildings)
 	return true
