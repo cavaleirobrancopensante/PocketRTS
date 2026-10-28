@@ -54,6 +54,7 @@ var _top_t := 0.0
 var spin_w := {}                 # Building -> its ring's turn rate now, rad/s in gear space (+ = the angle grows); 0 or absent: still
 var bands: Array = []            # TURNING GEARS (scripts/gear_turn.gd): [building, centre in gear space, inner r, outer r] of each connected ring
 var _band_grid := {}             # Vector2i (gear space / BAND_CELL) -> indices into bands
+var _band_box := Rect2()          # (gear space) round every band: band_at asks it first, every unit every tick
 const BAND_CELL := 256.0
 var view := false                # THE GEAR VIEW (the ` key, or GEAR VIEW on a Clockwork card): the whole network at a glance
 
@@ -440,6 +441,7 @@ func in_field(t: int, p: Vector2) -> bool:
 func _build_bands() -> void:
 	bands = []
 	_band_grid = {}
+	_band_box = Rect2()
 	var pitch := float(Defs.GEAR["pitch"])
 	for b in order:
 		var n := b_n(b)
@@ -449,6 +451,8 @@ func _build_bands() -> void:
 		var c := b_c(b)
 		var i := bands.size()
 		bands.append([b, c, r_in, r_out])
+		var bx := Rect2(c - Vector2(r_out, r_out), Vector2(r_out, r_out) * 2.0).grow(1.0)
+		_band_box = bx if i == 0 else _band_box.merge(bx)
 		var lo := Vector2i(floori((c.x - r_out) / BAND_CELL), floori((c.y - r_out) / BAND_CELL))
 		var hi := Vector2i(floori((c.x + r_out) / BAND_CELL), floori((c.y + r_out) / BAND_CELL))
 		for y in range(lo.y, hi.y + 1):
@@ -465,6 +469,8 @@ func band_at(p: Vector2, grow := 0.0) -> int:
 	if bands.is_empty():
 		return -1
 	var g := gpos(p)
+	if not _band_box.grow(maxf(grow, 0.0)).has_point(g):
+		return -1                 # (nowhere near a ring: most units, most of the time)
 	var cell := Vector2i(floori(g.x / BAND_CELL), floori(g.y / BAND_CELL))
 	var best := -1
 	var bk := INF

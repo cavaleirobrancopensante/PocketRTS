@@ -3,23 +3,28 @@ extends SceneTree
 ## split by the Prof parts (scripts/prof.gd) as tools/perf_bench.gd does.
 ##
 ##   godot --headless --fixed-fps 60 --script res://tools/stress_swarm.gd -- <scenario> [n:200] [secs:30] [map:dune_sea]
-##       [mobile] [sound] [trace:/abs/file.txt] [out:/abs/file.json] [shot:/abs/file.png]
+##       [mobile] [sound] [spikes] [trace:/abs/file.txt] [out:/abs/file.json] [shot:/abs/file.png] [linger:s]
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1600x900 --fixed-fps 60 --script res://tools/stress_swarm.gd -- melee
+##   tools/stress_swarm.sh <outdir> [render] [mobile] [secs:30] [scenarios...]     (all of them, and a table)
 ##
 ## Scenarios (n = Raptors a side, 200 by default: a full 200-supply army of them):
 ##   idle     n Raptors a side standing in their bases (the camera on side 1's)
 ##   walk     both armies walking across the map to the other base, through each other (move orders, no fighting)
-##   melee    the two armies meeting in one big melee in front of the camera
-##   offmelee the same melee with the camera far away
+##   melee    the two armies meeting in one big melee in front of the camera (attack-move at each other)
+##   offmelee the same melee with the camera far away (nothing of it drawn)
 ##   grubs    n Grubs + n/2 Raptors a side, the same melee in view
 ##   muskets  n/2 Musketeers a side (Crown) trading fire in view, the powder smoke as set (THICK by default)
-## --fixed-fps 60: every frame moves the game on 1/60 s whatever it costs, so the frame times are what a
-## frame really costs (the game logic runs 30 ticks a second: every other frame). Headless measures the
-## game's side (simulation + the GDScript that builds the drawing); rendered adds the drawing itself
-## (on xvfb that is llvmpipe, a software renderer: far slower than any graphics card).
-## trace:FILE writes the whole state every game second (two runs must match: the work must not change
-## the game). The sounds are kept silent and the path queue's time limit lifted unless "sound" is given
-## (as perf_bench: then a run plays out the same every time).
+## Side 1's army is selected (its rings, bars and the command card, as a player has them). The armies are made in
+## one tick, but their men's timers are spread as an army made over minutes has them.
+## --fixed-fps 60: every frame moves the game on 1/60 s whatever it costs, so the frame times are what a frame
+## really costs (the game logic runs 30 ticks a second: every other frame). A frame is timed from the start of one
+## turn of the engine's loop to the next (_turn). Headless measures the game's side (simulation + the GDScript that
+## builds the drawing); rendered adds the drawing itself (on xvfb that is llvmpipe, a software renderer: far slower
+## than any graphics card). "the battle" = the frames while both sides still have a tenth of their army.
+## trace:FILE writes the whole state every game second (two runs must match: the work must not change the game).
+## The sounds are kept silent, the computers off, the music off and the path queue's time limit lifted unless
+## "sound" is given (as perf_bench: then a run plays out the same every time). spikes: every frame over 35 ms
+## printed with its parts. linger:s keeps running s seconds after the report (tools/gd_script_profiler.py).
 
 var main: Node
 var g: Game
@@ -468,6 +473,7 @@ func _report() -> void:
 	var per_tick := PackedStringArray()
 	var all_z: Array = ZONES.duplicate()
 	for z in _acc:
+		# (parts timed for a look inside, Prof.add("z/..."), while hunting a cost: printed too)
 		if not all_z.has(z) and (String(z).begins_with("u/") or String(z).begins_with("z/")):
 			all_z.append(z)
 	for z in all_z:
@@ -491,8 +497,6 @@ func _report() -> void:
 		row["grid_drift_max"] = g.get("grid_drift_max")
 		row["grid_drift_over"] = g.get("grid_drift_over")
 		print("SWARM grid drift: the most a unit moved in a tick %.1f px; moved more than the grid allows without noticing: %d times" % [g.get("grid_drift_max"), g.get("grid_drift_over")])
-	if g.get("sc_n") != null:
-		print("SWARM SEPCOUNT calls %d cells-entries %d prefilter-pass %d pushes %d" % [g.get("sc_n"), g.get("sc_a"), g.get("sc_b"), g.get("sc_c")])
 	var zm: Array = []
 	for z in _zmax:
 		if int(_zmax[z]) >= 2000 and not String(z).contains("/") or String(z) in ["hud/card build", "hud/look", "game/fog", "game/paths"]:
@@ -508,16 +512,6 @@ func _report() -> void:
 	if rec != null and int(rec.n_frames) > 0:
 		print("SWARM replay recorder: %d pictures, %.2f ms each (snapshot %.2f, compact %.2f), %d keyframes" % [rec.n_frames, rec.cost_us / 1000.0 / rec.n_frames,
 			rec.build_us / 1000.0 / rec.n_frames, rec.compact_us / 1000.0 / rec.n_frames, rec.n_keys])
-	for z in ["z/sa-fast", "z/sa-pre", "z/sa-slow"]:
-		if Prof.calls.has(z):
-			print("SWARM %s: %d calls, %.1f us each" % [z, Prof.calls[z], float(Prof.us[z]) / Prof.calls[z]])
-	var whys: Array = []
-	for z in Prof.calls:
-		if String(z).begins_with("why "):
-			whys.append([Prof.calls[z], z])
-	whys.sort_custom(func(a, b) -> bool: return a[0] > b[0])
-	for w in whys.slice(0, 12):
-		print("SWARM ", w)
 	var cb_n := int(Prof.calls.get("hud/card build", 0))
 	if cb_n > 0:
 		print("SWARM command card: built %d times, %.2f ms each on average" % [cb_n, float(Prof.us.get("hud/card build", 0)) / 1000.0 / cb_n])

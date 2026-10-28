@@ -70,14 +70,22 @@ static func computer_side(game: Game, t: int) -> bool:
 static func tick(u: Unit, want: Vector2, delta: float) -> Vector2:
 	u.gt_carry = Vector2.ZERO
 	var game := u.game
-	if not on(game) or not carriable(u):
+	if not on(game):
 		u.gt_on = 0.0
 		u.gt_off = Vector2.INF
 		return want
+	# (the band first: most units stand on none, and the band is quicker to ask than carriable; the same outcome)
 	var net := game.gear_net
 	var i := net.band_at(u.position)
 	if i < 0 or not net.band_turning(i):
-		u.gt_on = minf(0.0, u.gt_on + delta) if u.gt_on < 0.0 else 0.0      # (a give-up's rest runs out off the band too)
+		if u.gt_on < 0.0 and carriable(u):
+			u.gt_on = minf(0.0, u.gt_on + delta)      # (a give-up's rest runs out off the band too)
+		else:
+			u.gt_on = 0.0
+		u.gt_off = Vector2.INF
+		return want
+	if not carriable(u):
+		u.gt_on = 0.0
 		u.gt_off = Vector2.INF
 		return want
 	var k := Defs.GEAR_TURN
