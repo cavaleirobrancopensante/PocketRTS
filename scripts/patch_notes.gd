@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.11", "items": [
+		"THE NEW BROOD (EXPERIMENT), fixes found by playing ten games with it (docs/brood_new_play.md): a rooted Brood Mother no longer slides across the ground as her own eggs push her (in ten minutes she could drift nine tiles, her swamp with her, and leave her first Rootmaw dry), and she no longer uproots and walks off by herself after swiping at a scout.",
+		"No more creatures stuck by the Mother: eggs and food piles no longer shove anything, a creature pressed against the rooted Mother or the Tyrannosaur standing at her eggs steps round them, a walking Mound Turtle is too heavy for the grubs to wash back, and your own creatures climb over your rooted Mound Turtles as they should. A grub whose Rootmaw died no longer freezes.",
+		"The computer's new Brood no longer sends a Rootmaw, a Mound Turtle or the Tyrannosaur to a spot off the edge of the map, where it stood for good.",
+	]},
 	{"v": "0.15.10", "items": [
 		"THE NEW BROOD (EXPERIMENT): the Mound Turtle has its own pictures now (the designer's): it walks, sinks into the mud as it roots, breathes there rooted, rises and dies, and walks in every direction with the designer's drawings; its card has its own portrait.",
 		"SIZES: the Brood Mother is bigger, as wide in her nest as a Clocktower's gear ring, and the Tyrannosaur as big as a Barracks.",
