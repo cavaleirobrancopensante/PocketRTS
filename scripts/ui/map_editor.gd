@@ -42,10 +42,10 @@ const BIOME_LIST := ["grass", "autumn", "desert", "snow", "marsh", "volcanic", "
 	"ashland", "pinewood", "steppe", "coast", "oldkingdom", "bog", "glowwood", "fall", "badlands"]
 const KIND_ORDER := ["trees", "rocks", "plants", "ruins", "buildings", "camp", "farm", "stores"]
 ## New map sizes: [w, h, what it suits]
-const SIZES := [[48, 48, "tiny 1v1"], [64, 64, "small 1v1"], [84, 60, "classic"], [80, 80, "1v1"],
-	[96, 96, "1v1"], [112, 84, "wide 1v1"], [64, 104, "tall 1v1"], [88, 120, "tall 1v1"],
-	[120, 100, "2v2"], [128, 96, "2v2"], [120, 120, "2v2"], [112, 136, "tall 2v2"],
-	[160, 128, "3v3"], [144, 168, "tall 3v3"], [192, 160, "4v4"], [192, 192, "huge"]]
+const SIZES := [[64, 64, "tiny 1v1"], [84, 84, "small 1v1"], [110, 80, "classic"], [104, 104, "1v1"],
+	[116, 116, "1v1"], [128, 96, "wide 1v1"], [84, 136, "tall 1v1"], [106, 146, "tall 1v1"],
+	[158, 132, "2v2"], [168, 126, "2v2"], [158, 158, "2v2"], [146, 178, "tall 2v2"],
+	[210, 168, "3v3"], [188, 220, "tall 3v3"], [252, 210, "4v4"], [256, 256, "huge"]]
 const UNDO_DEPTH := 40
 const LETTERS := "ABCDEFGH"
 const HELP_TEXT := """MAP EDITOR
@@ -101,7 +101,7 @@ var _ui: Control
 var _undo: Array = []
 var _redo: Array = []
 var _last_touch := Vector2.INF
-var _new_size := Vector2i(120, 100)
+var _new_size := Vector2i(110, 80)
 var _left_scroll := 0
 var _drawn_xf := Transform2D()  # the view the overlay was last drawn for (phones redraw only on change)
 

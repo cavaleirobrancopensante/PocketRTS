@@ -4,6 +4,26 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.0", "items": [
+		"BIGGER MAPS: every built-in map is larger, about 1.3 times on each side (1.75 times the ground). The classic maps (Greenhold, Highmoor, Dune Sea, Frostfang, Twin Fords, Ashfall, Mirewood, Border March, Red Coast) go from 84 x 60 to 110 x 80: the walk from main to main is about 110 tiles, close to a minute for a Musketeer. The team maps grow by the same factor; the 1v1 maps that already had a long walk grow a little less (Saltmarsh Isles, Frostmere, Hollowfen, Thornwood Maze, Ashford Crossing, Amberfall Vale). Ramps, rivers and tree walls keep their width; the main plateaus are a little bigger.",
+		"MORE BASES: every map has more base sites, the same for every player (the maps are still turned through their middle). Each side's natural sits close to its main, in front of its ramp; then 3 or 4 more sites per side in corners, beside ponds and lakes and in pockets. On Greenhold (the owner's drawing): the natural moved up to the foot of the main's ramp, a new site in the bottom-left corner and one just right of the bottom-left pond, plus one along the top and one on the open ground below it. With 4 players the classic maps have two sites per corner. Each site has a hall's full reserves, for the Crown and the Clockwork.",
+		"Replays and a saved match of a built-in map from before 0.15.0 can't be shown or resumed (they were played on the old, smaller map). Your own maps keep their size; a new map in the editor starts at 110 x 80, and the editor's sizes go up to 256 x 256.",
+	]},
+	{"v": "0.14.104", "items": [
+		"TURNING GEARS (an EXPERIMENT, the owner's idea, on by default for now): only the outer toothed band of a Clockwork building's gear ring turns; the plate in the middle stays still. Any ground unit standing on a turning band is carried round with the teeth, about a tile a second, and meshed rings turn opposite ways. A unit that stays on the band keeps going round: idle units and units on HOLD ride until you move them off. A unit walking across drifts sideways for the time it is on the band and still gets where it was sent.",
+		"Workers at work (Winders going to a press, a building site, a repair) walk straight in across the band and are never carried. Flyers, limbered guns and the big machines (Field Cannon, Spring Ballista, Great Winder) are not carried either. The computer walks its own idle and HOLD units off a band after a second. A carried unit kicks up a little dust; point at a band, or open the GEAR VIEW, to see gold chevrons running the way it turns.",
+		"To switch it off: Settings > TURNING GEARS (experiment) > OFF. It applies from the next match: a match keeps the rule it started with, and an online game and a replay follow the host's.",
+	]},
+	{"v": "0.14.103", "items": [
+		"GREAT WINDER SWEEPS WRECKS INTO COGS (the owner's rule: each side gets something different from bodies; the Brood essence, the Crown raises its own, the Clockwork regains cogs). Standing idle, it rolls to a Clockwork wreck near it (yours, and the enemy's in a Clockwork mirror match), sweeps it up with its rollers and gives you 30% of that unit's cog price at once (\"+21 cogs\" for a Clock Soldier; no Tension back), then rolls back to where it stood, so it stays with the army. It leaves a wreck alone while an enemy soldier is near it. No more parts: the hopper, the 100 cap and the planned reassembly are gone. Its winding ring and MEND are unchanged, and the computer's Great Winder sweeps the same way. Old saves still load.",
+	]},
+	{"v": "0.14.102", "items": [
+		"The game is now called Working Title for RTS for the time being (the old name belongs to another game). Your settings, saves, replays and hotkeys carry over; the web address and the Android app file keep their old names for now, and the app installs over the old one.",
+	]},
+	{"v": "0.14.101", "items": [
+		"NEW COG PRESS ART (the owner's drawing): the Cog Press is now an open iron gantry press facing south-east, a stamping ram inside the frame and a crate of fresh cogs at its feet, so it no longer looks like the Mainspring. Its red bars take your side's colour. While Winders wind it, the ram falls fast onto the cog in its tray, holds for the stamp and climbs back slowly (a 12-frame loop). New pictures for the press being built (on scaffolding), damaged and destroyed, and a new portrait.",
+		"COG PRESS STAMP: a quiet, heavy stamp sounds as the ram hits the cog (cut from the owner's two stamp recordings, pitched down with a little iron under it). Only presses you can see are heard, on every other stroke, and a row of presses never drums: at most one stamp in 0.7 s.",
+	]},
 	{"v": "0.14.100", "items": [
 		"CLOCKWORK COMPUTER against Horsemen: the Winders near a raided Cog Press, Mainspring or Clocktower band together and all hit the same rider instead of scattering (riders are faster than them: running only fed them one by one), the nearest Clock Soldiers come as one group to the Winders instead of chasing a rider, and once it has seen riders and has 10 or more Clock Soldiers at home, 3 or 4 of them stand on HOLD at the top of its ramp. Against Balloons, and armies they cannot fight, the Winders still run.",
 	]},

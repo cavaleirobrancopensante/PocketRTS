@@ -40,10 +40,10 @@ NAVY = (0, 22, 48)
 LIVE = ["winder", "clock_soldier", "springer", "cuckoo", "ticking_owl", "pendulum", "netter"]
 OLD = ["gearknight", "bolt", "steam_walker", "stormcaller", "tesla_cart", "ornithopter", "arc_thrower", "thresher",
        "bulwark", "windup_soldier"]
-BUILDINGS = {"clocktower": 0, "cog_press": 8, "mainspring": 8, "escapement": 24, "movement_works": 8,
+BUILDINGS = {"clocktower": 0, "cog_press": 12, "mainspring": 8, "escapement": 24, "movement_works": 8,
              "cuckoo_house": 4, "regulator": 8, "ratchet_turret": 0}
 # seconds a work frame (Defs.GEAR frame_dt, works_dt, regulator_dt, escapement_dt, aviary_dt)
-BUILD_DT = {"cog_press": 0.11, "mainspring": 0.11, "movement_works": 0.12, "regulator": 0.15, "escapement": 0.125,
+BUILD_DT = {"cog_press": 0.09, "mainspring": 0.11, "movement_works": 0.12, "regulator": 0.15, "escapement": 0.125,
             "cuckoo_house": 0.15}
 # the coming units: sheets of 5 rows (S SE E NE N), frames per row
 COMING = {"spring_catapult": {"throw": ("art/redraws/catapult_throw.png", 12), "move": ("art/redraws/catapult_move.png", 8)},

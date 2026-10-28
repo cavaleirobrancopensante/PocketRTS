@@ -276,6 +276,8 @@ func _train_share(g: Game, b: Building, kind: String, secs: float) -> float:
 ## A Ratchet Turret on its small (or big) ring against one armoured target (armour 2) standing in its reach for 10 s:
 ## [shots, damage per shot, damage a second].
 func _turret_volley(g: Game, tr: Building, big: bool) -> Array:
+	var turn := Defs.gear_turn
+	Defs.gear_turn = false        # (TURNING GEARS would carry the target on HOLD round the ring and out of reach: this counts screws)
 	tr.gear_big = big
 	g.gear_net.solve()
 	tr.turret.cd = 0.0
@@ -297,4 +299,5 @@ func _turret_volley(g: Game, tr: Building, big: bool) -> Array:
 	await process_frame
 	tr.gear_big = false
 	g.gear_net.solve()
+	Defs.gear_turn = turn
 	return [shots, lost / maxf(shots, 1), lost / 10.0]

@@ -33,7 +33,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 SRC_DIR = os.path.join(ROOT, "art", "audio_src", "clockwork")
 SRC = {"bell": "old_clock_bell.mp3", "alarm": "alarm_clock.mp3", "crank": "turn_crank_loop.mp3",
        "spring": "metal_spring_scrape.mp3", "clang": "clang_group.mp3", "type": "typewriter.mp3",
-       "wobble": "liquid_wobble.mp3", "metal": "metallic_noise.mp3"}
+       "wobble": "liquid_wobble.mp3", "metal": "metallic_noise.mp3", "stamp": "stamp.mp3", "ostamp": "office_stamp.mp3"}
 
 # ---- where the useful bits are (measured: loudness envelopes, onsets, spectral centroid, pitch) ----
 # clang_group: twelve bright single clangs (most of the ring 6-9 kHz), one about every 0.9 s
@@ -48,6 +48,8 @@ CRANK = [0.10, 1.76, 3.23, 5.00]
 WOBBLE = [0.05, 0.76, 1.63, 2.51]
 # metallic_noise: a crash at 0-0.5 s, then pieces rattling and settling 0.6-2.7 s
 # metal_spring_scrape: one scrape of a spring 0.08-0.55 s, ringing on to ~3 s
+# stamp (sent 2026-10-28): a rubber stamp hit on a desk, clean single hits at 6.92 and 12.04 s (the others are double knocks)
+# office_stamp (sent 2026-10-28): two stamps, 1.21 and 3.15 s (the stamp lifting off 0.26 s after each: cut before it)
 # typewriter: key clacks all through; the carriage bell at 30.33 and 48.44 s; the carriage sliding back 49.30 s
 
 
@@ -264,6 +266,10 @@ SOUNDS = {
     "select/heavy_works": [("crank", 1.60, 1.00, 0.0, 0.7, 0.9, 0.35), cl(5, 0.5, 0.45, at=0.45, gain=0.9), cl(1, 0.45, 0.5, at=0.7, gain=0.6)],
 
     # ================= THE FACTION (assets/audio/clock/) and WORK (assets/audio/work/) =================
+    # the COG PRESS's stamp as its head hits the cog (Building._press_stamp, every other stroke): the owner's stamp
+    # recordings pitched down for weight, with a low clang under them for the brass and iron
+    "work/cog_press_stamp_1": [("stamp", 6.91, 0.30, 0.0, 1.0, 0.72, 0.18), cl(5, 0.42, 0.30, at=0.0, gain=0.35)],
+    "work/cog_press_stamp_2": [("ostamp", 3.14, 0.24, 0.0, 1.0, 0.7, 0.14), cl(1, 0.45, 0.28, at=0.0, gain=0.3)],
     # the alarm clock ringing: the Clockwork's alarm when its men (alert) or its base (base_alert) are attacked
     "clock/alert": [("alarm", 7.58, 1.6, 0.0, 1.0, 1.0, 0.45)],
     "clock/base_alert": [("alarm", 6.92, 0.3, 0.0, 0.5, 1.0, 0.05), ("alarm", 11.0, 1.5, 0.30, 1.0, 1.0, 0.45)],

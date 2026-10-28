@@ -7,9 +7,9 @@ extends Node2D
 signal ended(winner: int)
 
 ## The map's size in cells: set from the map before the match is built (MapGen.size_of);
-## 84 x 60 for the classic maps and custom ones.
-static var W := 84
-static var H := 60
+## 110 x 80 for the classic maps (MapGen.CLASSIC; 84 x 60 before 0.15.0), a custom map's own.
+static var W := 110
+static var H := 80
 const T := Defs.TILE
 const HASH := 64
 

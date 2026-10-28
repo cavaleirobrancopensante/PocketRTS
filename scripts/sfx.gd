@@ -115,7 +115,7 @@ const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack":
 	"combat/cuirassier_death": 150, "horse/whinny": 6000, "horse/neigh": 2500, "voice/crown_recruit/horse_breeder": 2500, "voice/crown_bugle/move": 9000, "voice/crown_bugle/amove": 7000,
 	"voice/crown_bugle/charge": 7000, "voice/crown_bugle/patrol": 9000, "voice/crown_bugle/trained": 6000,
 	"voice/crown_recruit/town_hall": 2500, "voice/crown_recruit/barracks": 2500, "voice/crown_recruit/foundry": 2500,
-	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "select/horse_breeder": 1500, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/hoe": 180,
+	"voice/crown_bugle/stop": 6000, "voice/crown_bugle/hold": 6000, "select/*": 250, "select/town_hall": 400, "select/horse_breeder": 1500, "work/crown_build": 700, "work/clock_build": 700, "work/brood_build": 700, "work/winder_crank": 900, "work/cog_press_stamp": 700, "work/hoe": 180,
 	# the Clockwork's sounds cut from the owner's recordings (tools/audio/make_clockwork_sounds.py): quick repeating hits
 	# get a gap so a crowd of them is a clatter, not a wall
 	"combat/clock_soldier_attack": 120, "combat/springer_attack": 110, "combat/ratchet_turret_attack": 120, "combat/cuckoo_attack": 100,
