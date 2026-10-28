@@ -1114,12 +1114,12 @@ const BASE_UNITS := {
 		"walk_s": 4,
 		"walk_se": 4,
 	}},
-	"brood_egg": {"cell": Vector2i(22, 24), "anchor": Vector2(11, 22), "frames": {
+	"brood_egg": {"cell": Vector2i(30, 26), "anchor": Vector2(15, 24), "frames": {
 		"death_s": 3,
-		"fert_s": 2,
-		"idle_s": 1,
+		"hatch_s": 5,
+		"idle_s": 5,
 	}},
-	"food_pile": {"cell": Vector2i(46, 26), "anchor": Vector2(23, 23), "frames": {
+	"food_pile": {"cell": Vector2i(74, 49), "anchor": Vector2(37, 47), "frames": {
 		"death_s": 1,
 		"idle_s": 4,
 	}},

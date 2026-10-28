@@ -263,11 +263,20 @@ static func egg_time(k: String) -> float:
 	return float(Defs.UNITS[k]["time"])
 
 
+## The hatching's two halves: HATCH_IN s before the creature comes out the egg cracks (the sheet's first hatch frames),
+## then the creature stands on the open shell, which breaks apart and goes after HATCH_OUT s.
+const HATCH_IN := 0.8
+const HATCH_OUT := 0.9
+
+
 static func _hatch(g: Game, e: Unit) -> void:
 	var k := String(e.nb.get("k", "grub"))
 	var t := e.team
 	var at := e.position
-	g.consume_unit(e)
+	e.nb["out"] = 0.0          # (the shell stays a moment under the creature: egg_tick lets it go)
+	e.z_index = -1
+	e.selected = false
+	g.selection.erase(e)
 	var n := int(Defs.UNITS[k].get("spawn", 1))
 	g.stats[t]["trained"] += n
 	if g.mlog and not g._first_of.has("%d:%s" % [t, k]):
@@ -288,6 +297,11 @@ static func _hatch(g: Game, e: Unit) -> void:
 
 
 static func egg_tick(g: Game, e: Unit, delta: float) -> void:
+	if e.nb.has("out"):
+		e.nb["out"] = float(e.nb["out"]) + delta
+		if float(e.nb["out"]) >= HATCH_OUT:
+			g.consume_unit(e)
+		return
 	if float(e.nb.get("drop", 0.0)) > 0.0:
 		e.nb["drop"] = maxf(0.0, float(e.nb["drop"]) - delta)
 	var k := String(e.nb.get("k", "grub"))
@@ -470,9 +484,10 @@ static func spill(g: Game, u: Unit) -> void:
 	for o in g.units_near(u.position, 40.0):
 		if o.kind == PILE and not o.dead:
 			o.nb["food"] = float(o.nb.get("food", 0.0)) + f
+			o.nb["start"] = float(o.nb.get("start", 0.0)) + f
 			return
 	var p := g._add_unit(PILE, -1, u.position + Vector2(-u.radius * 0.6, 4))
-	p.nb = {"food": f}
+	p.nb = {"food": f, "start": f, "rot": 0.0}
 	if u.team == g.human:
 		Sfx.play_any(["acid", "work/grub_deliver"], u.position, -6.0)
 
@@ -539,8 +554,10 @@ static func still_tick(g: Game, u: Unit, delta: float) -> void:
 	if u.kind == EGG:
 		egg_tick(g, u, delta)
 	elif u.kind == PILE:
-		var f := float(u.nb.get("food", 0.0)) - float(Defs.NB["pile_rot"]) * delta
+		var rot := minf(float(Defs.NB["pile_rot"]) * delta, float(u.nb.get("food", 0.0)))
+		var f := float(u.nb.get("food", 0.0)) - rot
 		u.nb["food"] = f
+		u.nb["rot"] = float(u.nb.get("rot", 0.0)) + rot
 		if f <= 0.0:
 			g.consume_unit(u)
 
@@ -697,7 +714,9 @@ static func grub_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 static func anim(u: Unit, moving: bool) -> String:
 	match u.kind:
 		EGG:
-			return "fert" if int(u.nb.get("fert", 0)) == 2 else "idle"
+			if u.nb.has("out") or (int(u.nb.get("fert", 0)) != 1 and egg_time(String(u.nb.get("k", "grub"))) - float(u.nb.get("t", 0.0)) <= HATCH_IN):
+				return "hatch"
+			return "idle"
 		PILE:
 			return "idle"
 		QUEEN, MAW:
@@ -744,11 +763,28 @@ static func animate(u: Unit, n: int) -> void:
 			s.frame = clampi(int(round(f * (n - 1))), 0, n - 1)
 		"idle":
 			if u.kind == PILE:
-				var f2 := clampf(float(u.nb.get("food", 0.0)) / float(Defs.NB["maw_cap"]), 0.0, 1.0)
-				s.frame = clampi(int(ceil(f2 * n)) - 1, 0, n - 1)
+				# fresh to rotted: by the share taken or rotted away, the rot counting more (it darkens the pile)
+				var start := maxf(float(u.nb.get("start", u.nb.get("food", 1.0))), 1.0)
+				var gone := 1.0 - clampf(float(u.nb.get("food", 0.0)) / start, 0.0, 1.0)
+				var rotted := clampf(float(u.nb.get("rot", 0.0)) / start, 0.0, 1.0)
+				s.frame = clampi(int(gone * float(n) + rotted * 1.5), 0, n - 1)
+		"hatch":
+			# cracking before the creature is out, the open shell breaking apart after
+			var k := String(u.nb.get("k", "grub"))
+			var p2: float
+			if u.nb.has("out"):
+				p2 = 0.4 + 0.6 * clampf(float(u.nb["out"]) / HATCH_OUT, 0.0, 1.0)
+			else:
+				p2 = 0.4 * clampf(1.0 - (egg_time(k) - float(u.nb.get("t", 0.0))) / HATCH_IN, 0.0, 1.0)
+			s.frame = clampi(int(p2 * n), 0, n - 1)
 	if u.kind == EGG:
 		var dr := float(u.nb.get("drop", 0.0))
 		s.position = Vector2(0.0, -46.0 * pow(dr / float(Defs.NB["drop"]), 2.0)) if dr > 0.0 else Vector2.ZERO
+		# a fertilised egg glows red-gold (code; the sheet's egg is the waiting yellow-green one)
+		var red := int(u.nb.get("fert", 0)) == 2 and not u.nb.has("out")
+		if red != bool(u.nb.get("tinted", false)):
+			u.nb["tinted"] = red
+			(s.material as ShaderMaterial).set_shader_parameter("tint", Vector3(1.45, 0.6, 0.4) if red else Vector3.ONE)
 	# HAUL without its own sheet yet: the walk, the body swollen (code; docs/art_style_inconsistency.md)
 	if u.kind == MAW and u.tesla_mode == "packed" and not ArtData.UNITS[MAW]["frames"].has("haul_se"):
 		var f3 := clampf(float(u.nb.get("food", 0.0)) / float(Defs.NB["maw_cap"]), 0.0, 1.0)
@@ -830,6 +866,7 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 		if u.nb.has(k):
 			u.nb[k] = int(u.nb[k])
 	u.nb["m"] = u.tesla_mode
+	u.nb.erase("tinted")          # (a fresh sprite: the egg's red is put on again)
 	if u.kind == QUEEN or u.kind == MAW:
 		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)
 

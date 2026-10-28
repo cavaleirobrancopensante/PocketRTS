@@ -3911,7 +3911,7 @@ func supply_used(t: int) -> int:
 	for u in units:
 		if u.team == t and not u.dead:
 			n += int(u.d["supply"])
-			if u._k_still and u.kind == BroodNew.EGG:
+			if u._k_still and u.kind == BroodNew.EGG and not u.nb.has("out"):
 				var ek := String(u.nb.get("k", "grub"))      # (a new-Brood egg holds its creature's supply)
 				n += int(Defs.UNITS[ek]["supply"]) * int(Defs.UNITS[ek].get("spawn", 1))
 			if u.owl_t >= 0.0:

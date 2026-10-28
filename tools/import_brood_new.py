@@ -250,9 +250,11 @@ def assemble(name, small, data):
     Hh = top + int(np.ceil(D)) + 1
     counts = {}
     os.makedirs(f"{ia.OUT}/units/{name}", exist_ok=True)
+    keep = {f"{a}_{d}.png" for (a, d) in small}
     for f in os.listdir(f"{ia.OUT}/units/{name}"):
-        if f.endswith(".png") or f.endswith(".png.import"):
-            os.remove(f"{ia.OUT}/units/{name}/{f}")
+        base = f[:-len(".import")] if f.endswith(".png.import") else f
+        if base.endswith(".png") and base not in keep:
+            os.remove(f"{ia.OUT}/units/{name}/{f}")      # (a strip no longer made; the others keep their .import)
     for (anim, d), lst in small.items():
         strip = np.zeros((Hh, W * len(lst), 4), np.uint8)
         for k, im in enumerate(lst):
@@ -385,79 +387,89 @@ def grub_harvest():
     print("  grub: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
 
 
-def _blob(img, cx, cy, rx, ry, base, light, dark):
-    """A shaded leathery sac: lit from the top left, a dark rim, a small shine."""
-    h, w = img.shape[:2]
-    yy, xx = np.mgrid[0:h, 0:w]
-    nx, ny = (xx + 0.5 - cx) / rx, (yy + 0.5 - cy) / ry
-    r2 = nx * nx + ny * ny
-    inside = r2 <= 1.0
-    lit = np.clip(0.55 - 0.45 * nx - 0.55 * ny, 0.0, 1.0)
-    col = np.array(base, float)[None, None, :] * (1 - lit[..., None]) + np.array(light, float)[None, None, :] * lit[..., None]
-    rim = inside & (r2 > 0.72)
-    col[rim] = col[rim] * 0.55 + np.array(dark, float) * 0.45
-    shine = ((xx + 0.5 - (cx - rx * 0.35)) / max(1.0, rx * 0.25)) ** 2 + ((yy + 0.5 - (cy - ry * 0.4)) / max(1.0, ry * 0.18)) ** 2 <= 1.0
-    col[shine & inside] = (245, 252, 200)
-    img[inside, :3] = col[inside].clip(0, 255).astype(np.uint8)
-    img[inside, 3] = 255
+EGG_SHEET = "brood_egg_chatgpt.png"      # row 1: 5 pulse frames (waiting), row 2: 5 hatching frames (ending on the open shell)
+PILE_SHEET = "food_pile_chatgpt.png"    # 4 frames: fresh to almost gone (rotted)
+EGG_H = 22                              # game px: the egg with its dirt about one grub tall
+PILE_W = 72                             # game px: the fresh pile about a Rootmaw wide
+
+
+def _drop_loose(im, keep_below=0.55):
+    """Small loose bits above the egg's middle (the yellow motion arcs drawn at the top right of the 4th pulse frame) go;
+    the egg and the dirt crumbs at its foot stay."""
+    a = im[..., 3] > 0
+    lab, n = ndimage.label(a, structure=np.ones((3, 3)))
+    if n <= 1:
+        return im
+    sizes = ndimage.sum(a, lab, range(1, n + 1))
+    big = int(np.argmax(sizes)) + 1
+    h = im.shape[0]
+    out = im.copy()
+    for i in range(1, n + 1):
+        if i == big:
+            continue
+        ys = np.nonzero(lab == i)[0]
+        if ys.mean() < h * keep_below:
+            out[lab == i] = 0
+    return out
 
 
 def still_art():
-    """The egg and the food pile, drawn in code (docs/art_style_inconsistency.md): an egg like the Mother's glowing
-    clutch (yellow-green; red-gold once the father has breathed on it; a burst shell when it is killed) and a heap of
-    food sacs in four sizes (the pile shrinks as it is taken or rots)."""
+    """The egg and the food pile from the owner's sheets (EGG_SHEET, PILE_SHEET). The egg: idle_s the waiting pulse,
+    hatch_s the hatching (the game puts the creature on the open shell and tints a fertilised egg red), death_s the
+    broken shell (the hatch's last three frames) when one is killed. The pile: idle_s, four frames from fresh to
+    rotted (the game picks the one that matches what is left and what has rotted)."""
     data = {}
-    W, H = 22, 24
-    green = ((150, 170, 30), (236, 246, 120), (60, 70, 10))
-    red = ((176, 58, 26), (250, 178, 84), (80, 20, 8))
-    strips = {}
-    e = np.zeros((H, W, 4), np.uint8)
-    _blob(e, 11, 14, 6.5, 8.5, *green)
-    strips["idle_s"] = [e]
-    f1 = np.zeros((H, W, 4), np.uint8)
-    _blob(f1, 11, 14, 6.5, 8.5, *red)
-    f2 = np.zeros((H, W, 4), np.uint8)
-    _blob(f2, 11, 14, 6.8, 8.8, (196, 76, 34), (255, 206, 110), (90, 28, 10))
-    strips["fert_s"] = [f1, f2]
-    deaths = []
-    for k in range(3):
-        d = np.zeros((H, W, 4), np.uint8)
-        _blob(d, 11, 18 + k, 6.5, 5.0 - k, *green)
-        d[: 14 + k * 2, :, 3] = 0
-        d[d[..., 3] == 0] = 0
-        for j in range(4 + k * 2):          # shell bits and splash
-            x = (3 + j * 5 + k * 3) % W
-            y = 21 - (j % 3) - k
-            d[y, x] = (200, 220, 90, 255)
-        deaths.append(d)
-    strips["death_s"] = deaths
-    _write_still("brood_egg", (W, H), (11, 22), strips, data)
-    PW, PH = 46, 26
-    piles = []
-    spots = [(23, 17, 7, 5), (14, 18, 6, 4), (31, 19, 6, 4), (19, 12, 5, 4), (28, 13, 5, 4), (9, 21, 4, 3),
-             (37, 21, 4, 3), (23, 9, 4, 3), (16, 22, 4, 3), (30, 23, 4, 3), (12, 14, 3, 3), (34, 15, 3, 3), (24, 22, 4, 3)]
-    for n in (3, 6, 9, 13):
-        im = np.zeros((PH, PW, 4), np.uint8)
-        yy, xx = np.mgrid[0:PH, 0:PW]
-        wet = (((xx + 0.5 - 23) / (8 + n * 1.2)) ** 2 + ((yy + 0.5 - 21) / (3 + n * 0.25)) ** 2) <= 1.0
-        im[wet] = (52, 58, 20, 255)
-        for (cx, cy, rx, ry) in sorted(spots[:n], key=lambda s: s[1]):
-            _blob(im, cx, cy, rx, ry, *green)
-        piles.append(im)
-    _write_still("food_pile", (PW, PH), (23, 23), {"idle_s": piles, "death_s": piles[:1]}, data)
+    px, rows = sheet_rows(EGG_SHEET)
+    if len(rows) < 2:
+        sys.exit("brood egg sheet: expected 2 rows")
+    ref = ia.cutout(px, rows[0][0])
+    scale = EGG_H / ref.shape[0]
+    pulse = [ia.unteam(ia.shrink(_drop_loose(ia.cutout(px, sp)), scale)) for sp in rows[0]]
+    hatch = [ia.unteam(ia.shrink(ia.cutout(px, sp), scale)) for sp in rows[1]]
+    small = {("idle", "s"): pulse, ("hatch", "s"): hatch, ("death", "s"): hatch[2:]}
+    _place("brood_egg", small, data)
+    pp, prow = sheet_rows(PILE_SHEET)
+    piles = [ia.cutout(pp, sp) for sp in prow[0]]
+    pscale = PILE_W / piles[0].shape[1]
+    small = {("idle", "s"): [ia.unteam(ia.shrink(im, pscale)) for im in piles]}
+    small[("death", "s")] = small[("idle", "s")][-1:]
+    _place("food_pile", small, data)
     for k, v in data.items():
         write_entry(k, v)
-    print("  brood_egg, food_pile drawn")
+    print("  brood_egg, food_pile from the owner's sheets")
 
 
-def _write_still(name, cell, anchor, strips, data):
+def _place(name, small, data):
+    """One canvas, each frame's bottom on the anchor line and its middle (columns) on the anchor column."""
+    L = R_ = U = D = 0
+    feet = {}
+    for key, lst in small.items():
+        for k, im in enumerate(lst):
+            ys, xs = np.nonzero(im[..., 3] > 0)
+            ax, ay = (xs.min() + xs.max()) / 2.0, float(ys.max())
+            feet[(key, k)] = (ax, ay)
+            L = max(L, ax); R_ = max(R_, im.shape[1] - ax); U = max(U, ay); D = max(D, im.shape[0] - ay)
+    half = int(np.ceil(max(L, R_))) + 1
+    W, top = 2 * half, int(np.ceil(U)) + 1
+    Hh = top + int(np.ceil(D)) + 1
     os.makedirs(f"{ia.OUT}/units/{name}", exist_ok=True)
+    keep = {f"{a}_{d}.png" for (a, d) in small}
+    for f in os.listdir(f"{ia.OUT}/units/{name}"):
+        base = f[:-len(".import")] if f.endswith(".png.import") else f
+        if base.endswith(".png") and base not in keep:
+            os.remove(f"{ia.OUT}/units/{name}/{f}")      # (a strip no longer made; the others keep their .import)
     counts = {}
-    for key, frames in strips.items():
-        strip = np.concatenate([ia.unteam(f.copy()) for f in frames], axis=1)
-        ia.save(strip, f"{ia.OUT}/units/{name}/{key}.png")
-        counts[key] = len(frames)
-    data[name] = {"cell": cell, "anchor": anchor, "frames": counts}
+    for (anim, d), lst in small.items():
+        strip = np.zeros((Hh, W * len(lst), 4), np.uint8)
+        for k, im in enumerate(lst):
+            ax, ay = feet[((anim, d), k)]
+            ox, oy = int(round(half - ax)), int(round(top - ay))
+            h, w = im.shape[:2]
+            m = im[..., 3] > 0
+            strip[oy:oy + h, k * W + ox:k * W + ox + w][m] = im[m]
+        ia.save(strip, f"{ia.OUT}/units/{name}/{anim}_{d}.png")
+        counts[f"{anim}_{d}"] = len(lst)
+    data[name] = {"cell": (W, Hh), "anchor": (half, top), "frames": counts}
 
 
 def contact(out_dir, kind, small):

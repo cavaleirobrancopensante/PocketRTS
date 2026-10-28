@@ -451,7 +451,6 @@ scripts/cliff_art.gd (_side_wall) draws a side wall 10 px wide along every east-
 
 ## The new Brood (code, brood-redesign; docs/brood_new.md)
 
-- The EGG (assets/units/brood_egg, tools/import_brood_new.py still_art): a shaded oval drawn in code, yellow-green like the Brood Mother's glowing clutch; red-gold once fertilised (two frames, a soft pulse); a burst shell (three frames) when killed. Its fall from under the Mother is the sprite moved down in code (BroodNew.animate). Wanted: a painted egg strip (laid, fertilised, cracking and hatching).
-- The FOOD PILE (assets/units/food_pile): a heap of shaded yellow-green sacs on a wet dark patch, four sizes, drawn in code. Wanted: a painted pile of spilled food in four sizes, rotting.
+- The EGG and the FOOD PILE are the owner's sheets (art/redraws/brood_egg_chatgpt.png, food_pile_chatgpt.png). Done in code on top: a fertilised egg is tinted red-gold (BroodNew.animate), the egg's fall from under the Mother is the sprite moved down, and the creature that hatches simply stands on the open shell. Wanted later: a painted red fertilised egg.
 - The FATHER'S BREATH: the Tyrannosaur's breath frames are painted, the red-gold mist is the game's smoke puff tinted orange-gold (BroodNew.father_tick). Wanted: a painted red-gold breath mist strip.
 - The Mother's eggs count over her and the Rootmaw's food and ground bars are drawn in code (BroodNew.draw), like the old Burrow's eggs count.

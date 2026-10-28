@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dt88emvbtjy2f"
-path="res://.godot/imported/fert_s.png-43f084096e51b449916a8ce15d36691b.ctex"
+uid="uid://rd4thfkaynp5"
+path="res://.godot/imported/hatch_s.png-3f677bbba774648cf392521ff44feb7c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/brood_egg/fert_s.png"
-dest_files=["res://.godot/imported/fert_s.png-43f084096e51b449916a8ce15d36691b.ctex"]
+source_file="res://assets/units/brood_egg/hatch_s.png"
+dest_files=["res://.godot/imported/hatch_s.png-3f677bbba774648cf392521ff44feb7c.ctex"]
 
 [params]
 

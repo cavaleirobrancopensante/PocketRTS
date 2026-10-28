@@ -20,7 +20,7 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 - Rooted creatures still fight where they stand. The Mother swipes with her paws, the Rootmaw bites.
 - Only the Mother lays eggs. She holds up to 10 and grows one every 6 seconds. Every rooted Rootmaw makes her 10% faster, up to 30%.
 - You pick a creature on her card. She lays its egg at once, rooted or walking. The egg drops behind her. The fall is drawn in code.
-- The egg hatches after the creature's normal time.
+- The egg hatches after the creature's normal time. It cracks for the last 0.8 seconds, then the creature stands on the open shell while it breaks apart.
 - The Rootmaw roots on fresh ground: 3,000 food in a 5-tile circle. Two rooted circles may not overlap. Old ground keeps what was left, like the old pits.
 - A rooted Rootmaw drinks 4 food a second from its ground into its body. It holds 300. Its 6 filling frames show how full it is.
 - Grubs take the food at its flank and carry it to the Mother. The farther, the more a trip pays, as with the old pits. Each Rootmaw takes 6 grubs, one more every 4 tiles beyond 6, up to 12.
@@ -61,7 +61,7 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 - The other fathers: the Pterodactyl and the Spitter father.
 - Research and upgrades for the new Brood.
 - The computer is simple. It does not move the Mother, does not haul food, does not use essence for much, and does not scout.
-- Code-drawn pictures for now: the egg, the food pile, the breath mist, the egg's fall. Listed in docs/art_style_inconsistency.md.
+- Done in code for now: the breath mist, the egg's red tint once fertilised, the egg's fall. Listed in docs/art_style_inconsistency.md. The egg and the food pile are the owner's sheets; the pile shows the frame that matches what is left and what has rotted.
 - Sounds reuse the old Brood's.
 - The Mother's attack shows her standing pose even when rooted.
 - Determinism: a match with the new Brood repeats exactly for about as long as an old one does (tools/test_determinism.gd, with budget: 60 seconds against the old game's 30 to 40). Neither is fully repeatable yet.

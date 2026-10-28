@@ -151,14 +151,14 @@ func _run() -> void:
 	q.cmd_deploy()
 	await create_timer(float(Defs.NB["queen_switch"]) + 0.5).timeout
 	# the father breathes on the eggs
-	var f: Unit = g._add_unit(BroodNew.FATHER, 0, walk_spot(q.position + Vector2(0, 40), 4.0))
+	var f: Unit = g._add_unit(BroodNew.FATHER, 0, walk_spot(q.position + Vector2(-110, -10), 1.5))
 	f.cmd_stop()
 	await create_timer(1.0).timeout
 	q.facing = Vector2(-1, 0.3).normalized()       # (her back to the father: the eggs drop by him)
 	for i in 4:
 		q.cmd_lay("raptor")
-	g.camera.position = (q.position + f.position) * 0.5 + Vector2(0, -30)
-	g.camera.zoom = Vector2(2.0, 2.0)
+	g.camera.position = (q.position + f.position) * 0.5 + Vector2(0, -20)
+	g.camera.zoom = Vector2(1.8, 1.8)
 	for i in 6:
 		await _snap("fertilise_%d" % i, 0.5)
 	# HAUL and a spilled pile
