@@ -369,8 +369,8 @@ const CREW_TIER := {"powder_mill": 1, "mainspring": 1, "boiler": 1}
 ## TURNING GEARS (docs/gear_turn.md). Guesses, the owner's to tune.
 const GEAR_TURN := {
 	"carry": 1.0,          # the ground's speed on a band as a share of the teeth's (1: a unit rides exactly with the teeth: ~35 px/s at the pitch circle, about a tile a second)
-	"walk": 0.3,           # a unit walking (on its way somewhere) feels only this share of it: nudged sideways, it still arrives
-	"step_off": 1.0,       # s: an idle unit (or a computer's unit on HOLD) left standing on a band this long walks off it by itself
+	"walk": 1.0,           # the share a unit WALKING across feels: the owner's call (2026-10-28): the full, correct drift for the time it is on the band, no damping
+	"step_off": 1.0,       # s: the COMPUTER's own idle (or HOLD) units left on a band this long are walked off it (its AI's choice; the player's stay and ride)
 	"give_up": 3.0,        # s: a step-off that has not got clear by then stops trying for a while (pinned against something)
 	"margin": 8.0,         # px past the band's edge (plus the unit's radius) where a step-off ends
 	"max_radius": 22.0,    # units this big or bigger are not carried (the Cannon, the Spring Ballista, the Great Winder: wheels and machines)

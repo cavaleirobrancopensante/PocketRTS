@@ -3930,6 +3930,10 @@ func _arrived() -> bool:
 		return false
 	if path_i >= path.size():
 		return true
+	# TURNING GEARS: on its last leg, on a turning band, close to the goal: there (the band would keep it hovering a few px
+	# off its spot for ever)
+	if gt_carry != Vector2.ZERO and path_i >= path.size() - 1 and position.distance_to(path_goal) < 16.0:
+		return true
 	# Close enough to a crowded goal: stop instead of shoving forever.
 	return stuck_t > 0.8 and position.distance_to(path_goal) < 60.0
 

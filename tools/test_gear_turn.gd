@@ -3,8 +3,9 @@ extends SceneTree
 ##  1. a unit parked (on HOLD) on a turning band is carried round, the way its ring turns, and stays on the band;
 ##  2. on the still floor plate inside the band (or anywhere off it) nothing moves;
 ##  3. a Winder going to a Cog Press crosses its band without drifting and gets there;
-##  4. an idle unit steps off a band by itself and stays off; a unit walking across arrives where it was sent;
-##  5. a unit on HOLD of the player stays and is carried; one of a computer-played side steps off;
+##  4. the player's idle unit stays on the band and rides round (the owner's call: no automatic step-off); a unit walking
+##     across drifts the full amount and still arrives where it was sent;
+##  5. a unit on HOLD of the player stays and is carried; the computer walks its own HOLD and idle units off;
 ##  6. the big machines and flyers are not carried; meshed rings turn opposite ways;
 ##  7. the setting off: nothing moves;
 ##  8. deterministic: the same scene twice gives the same hash.
@@ -172,18 +173,16 @@ func _run() -> void:
 	check("...gets there and repairs it, standing still meanwhile", fixing and rp.position.distance_to(at) < 3.0, "moved %.1f px" % rp.position.distance_to(at))
 	rp.die()
 	hall.hp = hall.max_hp
-	# ---------------------------------------------------------------- 4. idle units step off; walkers arrive
+	# ---------------------------------------------------------------- 4. idle units ride; walkers drift fully and arrive
 	var p1 := band_spot(g, hall, 200.0, 0.5, 12.0)
 	var cs: Unit = g._add_unit("clock_soldier", 0, p1)
 	cs.auto_work = false
 	U.step(g, 0.2)
-	check("an idle Clock Soldier on the band is carried at first", cs.gt_carry != Vector2.ZERO)
-	U.step(g, 3.5)
-	check("...then steps off by itself", net.band_at(cs.position) < 0 and cs.steps_taken >= 1, "steps %d, band %d" % [cs.steps_taken, net.band_at(cs.position)])
-	check("...without changing its order (still idle)", cs.order == "idle")
-	var off_at := cs.position
-	U.step(g, 5.0)
-	check("...and stays off (not back on the band, not wandering)", net.band_at(cs.position) < 0 and cs.position.distance_to(off_at) < 24.0, "%.1f px" % cs.position.distance_to(off_at))
+	check("an idle Clock Soldier of the player on the band is carried", cs.gt_carry != Vector2.ZERO)
+	U.step(g, 4.0)
+	check("...and STAYS on it, riding round (no step-off: the owner's call)", net.band_at(cs.position) >= 0 and cs.steps_taken == 0 and cs.position.distance_to(p1) > 40.0, "steps %d, %.0f px" % [cs.steps_taken, cs.position.distance_to(p1)])
+	check("...still idle", cs.order == "idle")
+	cs.die()
 	# walking across: from one side of the band to the other, it arrives
 	var a_out := Vector2.INF
 	var a_in := Vector2.INF
@@ -228,7 +227,17 @@ func _run() -> void:
 	var hold1: Unit = g._add_unit("musketeer", 1, p3)
 	hold1.cmd_hold()
 	U.step(g, 4.0)
-	check("a computer-played side's unit on HOLD steps off the band", net.band_at(hold1.position) < 0 and hold1.steps_taken >= 1 and hold1.order == "hold")
+	check("the computer walks its own unit on HOLD off the band", net.band_at(hold1.position) < 0 and hold1.steps_taken >= 1 and hold1.order == "hold")
+	ai.team = 0          # (its own idle unit: a Clockwork one on its own Clocktower's band, so it has nothing to shoot at)
+	var p3b := band_spot(g, hall, 160.0)
+	var idle1: Unit = g._add_unit("clock_soldier", 0, p3b)
+	idle1.auto_work = false
+	U.step(g, 4.0)
+	check("...and its idle unit too, its order unchanged", net.band_at(idle1.position) < 0 and idle1.steps_taken >= 1 and idle1.order == "idle")
+	var off1 := idle1.position
+	U.step(g, 4.0)
+	check("...which then stays off (no back and forth)", net.band_at(idle1.position) < 0 and idle1.position.distance_to(off1) < 20.0)
+	idle1.die()
 	g.ais.erase(ai)
 	ai.free()
 	hold1.die()

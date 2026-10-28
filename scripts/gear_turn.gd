@@ -8,18 +8,20 @@ extends RefCounted
 ## the still floor plate starts, out to the tooth tips; only rings that visibly turn: connected, not stopped for a gear
 ## swap). A ground unit standing on a turning band is carried round with the teeth (GearNet.carry_at: the teeth's own
 ## speed, about a tile a second at the pitch circle; meshed rings turn opposite ways, so at a mesh both carry the same way).
-## A unit WALKING across feels only Defs.GEAR_TURN "walk" of it: nudged sideways, it still arrives. A unit that stays on
-## the band (HOLD, or fighting where it stands) keeps going round.
+## A unit WALKING across drifts by the full, correct amount for the time it spends on the band (the owner's correction,
+## 2026-10-28: no damping for walkers; Defs.GEAR_TURN "walk" = 1); its path-following steers it back to its goal, so it
+## still arrives. A unit that stays on the band (idle, HOLD, or fighting where it stands) keeps going round.
 ##
 ## Not carried: flyers, the big machines (radius >= "max_radius": the Cannon, the Spring Ballista, the Great Winder), a
 ## limbered gun or wagon, a man aboard a balloon or crewing a Ballista, a Springer in the air. WORKERS at work (any order
 ## but idle / hold / move / attack-move / attack / follow: going to or from a press, a site, a repair, the hall) cross the
 ## band without drifting, as the owner asked ("workers step inside the ring to the building so they don't go round").
 ##
-## COMFORT: any side's IDLE unit (no target) left standing on a band "step_off" seconds walks off it by itself, to just
-## outside the ring (or the still plate inside), without changing its order. A unit on HOLD stays and is carried (the
-## micro: an enemy holding on a ring is shifted out of position, and a defender can be too) unless its side is played by
-## the computer: then it steps off like an idle one (the computer doesn't mean to ride a ring, and must never circle).
+## IDLE units STAY where they are and keep being carried (the owner's correction, 2026-10-28: no automatic step-off; the
+## player moves them off with an order). A unit on HOLD stays and is carried too: the micro (an enemy holding on a ring is
+## shifted out of position, and a defender can be too). The COMPUTER, though, walks its own idle and HOLD units off a band
+## once they have stood on it Defs.GEAR_TURN "step_off" seconds (its AI's choice, so none of its units circles forever):
+## to just outside the ring (or the still plate inside), without changing their orders.
 ## All of it runs in the simulation (unit ticks, sim timers, no randomness), so it is deterministic; an online guest and a
 ## replay are shown the host's positions.
 
@@ -45,13 +47,14 @@ static func at_work(u: Unit) -> bool:
 	return u.is_worker() and not FREE_ORDERS.has(u.order)
 
 
-## Does this unit walk off a band by itself?
+## Does the computer walk this unit off a band (its own idle or HOLD unit, not fighting)? The player's never: they ride
+## until he moves them.
 static func steps_off(u: Unit) -> bool:
-	if u.order == "idle":
-		return u.target == null or not is_instance_valid(u.target)
-	if u.order == "hold":
-		return computer_side(u.game, u.team)
-	return false
+	if u.order != "idle" and u.order != "hold":
+		return false
+	if u.target != null and is_instance_valid(u.target) and u.order == "idle":
+		return false
+	return computer_side(u.game, u.team)
 
 
 static func computer_side(game: Game, t: int) -> bool:

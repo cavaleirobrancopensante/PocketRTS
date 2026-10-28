@@ -1,0 +1,5 @@
+# TURNING GEARS (docs/gear_turn.md): the experiment's setting.
+
+> TURNING GEARS (experiment)
+pt ENGRENAGENS GIRANDO (experimento)
+es ENGRANAJES QUE GIRAN (experimento)
