@@ -6325,17 +6325,26 @@ func _defend(army: Array, threat: Vector2, spots: Array) -> void:
 
 
 
-## Round 6: the enemies near our buildings are a small matter next to our army (a scout, a few workers by a forward hall,
-## a lone rider): the detachments answer them and the rest of the army may still go out. Only with 20+ army supply.
+## Round 6: the enemies near our buildings are a small matter next to our army: the detachments answer them and the rest of
+## the army may still go out. Unarmed ones (a scout, workers or loose horses by a forward hall) with 20+ army supply; armed
+## ones only with MINOR_BIG supply (a big army is not held home by a couple of riders); either way worth at most MINOR_SHARE
+## of our army.
 const MINOR_SHARE := 0.25
+const MINOR_BIG := 100          # army supply: from this much even armed raiders near home are left to the detachments
 
 
 func _threat_minor(army: Array, spots: Array) -> bool:
-	if _army_supply(army) < 20:
+	var sup := _army_supply(army)
+	if sup < 20:
 		return false
 	var foe := 0.0
+	var armed := false
 	for sp in spots:
-		foe += float(_assess(sp)["value"])
+		var a: Dictionary = _assess(sp)
+		foe += float(a["value"])
+		armed = armed or not a["unarmed"]
+	if armed and sup < MINOR_BIG:
+		return false            # (armed raiders keep a middling army at home, as before: a Horseman raid still pulls it back)
 	var mine := 0.0
 	for u in army:
 		mine += _unit_value(u)
