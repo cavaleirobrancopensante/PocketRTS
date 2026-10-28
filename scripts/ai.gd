@@ -4136,6 +4136,8 @@ func _army() -> void:
 	if _clock():
 		r5.tick(army)                   # (round 5: the guards by the Winders and the ramp post against riders)
 		army = army.filter(func(u: Unit) -> bool: return not r5.busy(u))
+	if r6_cr and r6_wave and _crown() and difficulty >= 1:
+		_horse_watch()                  # (round 6: the enemy army in sight, counted every 3 s, for _wave_worth)
 	if _crown() and not r5.holding():
 		army = _guard_new_hall(army)    # (round 5: while it holds behind the wall the hall's guards come home too)
 	# Bloaters out of gas float home to fill up again (faster on the swamp)
