@@ -68,6 +68,8 @@ var r6 := not OS.get_cmdline_user_args().has("r6:off")
 ## `r6:clockonly` the army part only (minor threats, pull-back expiry, the push) plus the hall-spot rules)
 var r6_cr := r6 and not OS.get_cmdline_user_args().has("r6:clockonly")
 var r6_cw := r6 and not OS.get_cmdline_user_args().has("r6:crownonly")
+## (`r6:nosites` leaves out the hall-spot rules: the enemy's side by land and the rated sites, for study games)
+var r6_sites := r6 and not OS.get_cmdline_user_args().has("r6:nosites")
 
 
 func _ready() -> void:
@@ -2478,6 +2480,14 @@ func _safe_hall_spot() -> Vector2i:
 	for bs in game.base_sites:
 		if not cands.has(bs) and game.placement_problem(team, hall, bs, true) == "":
 			cands.append(bs)
+		elif r6_sites and not cands.has(bs) and not game.starts.has(bs):
+			# (round 6: a site the computer may not use as drawn, mostly "Keep the ramp clear": the nearest free cell
+			# beside it stands in for it, with its rating. Hollowfen's naturals touch a ramp: both computers went 40-46
+			# tiles out for their first expansion, 0.15.3)
+			var nb := _site_nudge(bs, hall)
+			if nb.x >= 0 and not cands.has(nb):
+				cands.append(nb)
+				_site_alias[nb] = bs
 	for h in _halls():
 		if not h.built:
 			continue
@@ -2511,7 +2521,7 @@ func _safe_hall_spot() -> Vector2i:
 			own_d = minf(own_d, cc.distance_to(h.center() / Defs.TILE))
 		if foe_d < home_d and foe_d < ENEMY_YARD:
 			continue               # (in the enemy's yard: its crate or its builders only walk to their deaths)
-		if r6 and _enemy_side(c):
+		if r6_sites and _enemy_side(c):
 			continue               # (round 6: nearer the enemy by land than us, never; no expansion rather than one there)
 		if foe_d < home_d or foe_d < own_d + 8.0:
 			score += 600.0 + maxf(0.0, home_d - foe_d) * 4.0
@@ -2533,9 +2543,9 @@ func _safe_hall_spot() -> Vector2i:
 			continue               # (its builders were just chased off it, or one was lost there: not until the wait is over,
 			                       # even if nothing else is left: a crate sent back there was lost again, 0.14.84)
 		score -= _lode_value(c)
-		if r6:
+		if r6_sites:
 			score -= _site_bonus(c)
-			if game.base_sites.has(c) and _own_walk(c) <= SITE_REACH:
+			if (game.base_sites.has(c) or _site_alias.has(c)) and _own_walk(c) <= SITE_REACH:
 				score -= SITE_FIRST      # (round 6: a rated base site near us before any other free ground)
 		if score < bs:
 			bs = score
@@ -2557,7 +2567,28 @@ const RANK_BONUS := [0.0, 12.0, 6.0]
 var _site_q := {}               # cell -> bonus (tiles), our side's rated sites (worked out once)
 
 
+## Round 6: the nearest cell within SITE_NUDGE tiles of a base site where our hall may stand (-1 if none).
+const SITE_NUDGE := 6
+var _site_alias := {}           # nudged cell -> the base site it stands in for
+
+
+func _site_nudge(bs: Vector2i, hall: String) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var bd := INF
+	for dy in range(-SITE_NUDGE, SITE_NUDGE + 1):
+		for dx in range(-SITE_NUDGE, SITE_NUDGE + 1):
+			var d := Vector2(dx, dy).length()
+			if d > SITE_NUDGE or d >= bd:
+				continue
+			var c := bs + Vector2i(dx, dy)
+			if game.in_map(c) and game.placement_problem(team, hall, c, true) == "":
+				bd = d
+				best = c
+	return best
+
+
 func _site_bonus(c: Vector2i) -> float:
+	c = _site_alias.get(c, c)
 	if _site_q.is_empty():
 		_site_q[Vector2i(-99, -99)] = 0.0
 		if game.exp_spots != null:
@@ -2671,6 +2702,7 @@ func _land(h: Building) -> float:
 ## saltpetre for powder, the Brood has none. Only the map's own base sites count (they have
 ## room for a hall's whole economy); other free ground is a last resort.
 func _lode_value(c: Vector2i) -> float:
+	c = _site_alias.get(c, c)       # (round 6: a cell standing in for a base site has its lode)
 	if _brood() or not game.base_sites.has(c):
 		return 0.0
 	return game.lode_at_spot(c, _f()["hall"]) * (16.0 if _clock() else 6.0)

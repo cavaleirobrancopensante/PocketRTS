@@ -3,10 +3,11 @@ extends SceneTree
 ##  - the Crown opens with the Powder Mill (Musketeers) against the Clockwork, never the Horse Breeder rush,
 ##  - each side's hall spots by land (AI._enemy_side): the enemy's main and natural are on its side, our natural on ours,
 ##    and no base site counts as both sides' own (the Clockwork's Clocktower under the Crown's cliff, 0.14.100),
+##  - the first hall spot of each side is its natural (a cell beside it when the drawn site touches a ramp),
 ##  - the Crown keeps a spot for its Armoury (or has laid it) on its main's plateau, at the main hall's height.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_ai_round6.gd -- [maps:greenhold,frostmere] [at:<s>]
 var fails := 0
-var maps := ["greenhold", "frostmere", "hollowfen", "kestrel_rise"]
+var maps := ["greenhold", "frostmere", "hollowfen", "kestrel_rise", "saltmarsh_isles", "cinder_steps"]
 var at := 330.0
 
 
@@ -63,6 +64,12 @@ func _run() -> void:
 			var o: int = 1 - a.team
 			check(a._enemy_side(g.expansions[o]), "%s %s: the enemy's natural %s is on the enemy's side" % [m, g.faction_of(a.team), str(g.expansions[o])])
 			check(not a._enemy_side(g.expansions[a.team]), "%s %s: our natural %s is on our side" % [m, g.faction_of(a.team), str(g.expansions[a.team])])
+		# the first expansion goes to our natural (or the cell beside it when the computer may not use it as drawn:
+		# Hollowfen's, Saltmarsh Isles' and Cinder Steps' naturals touch a ramp, "Keep the ramp clear")
+		for a in g.ais:
+			var sp: Vector2i = a._safe_hall_spot()
+			var nat: Vector2i = g.expansions[a.team]
+			check(sp.x >= 0 and Vector2(sp).distance_to(Vector2(nat)) <= float(a.SITE_NUDGE), "%s %s: the first hall spot %s is at our natural %s" % [m, g.faction_of(a.team), str(sp), str(nat)])
 		var both: Array = own.keys().filter(func(c) -> bool: return int(own[c]) > 1)
 		check(both.is_empty(), "%s: no base site is both sides' own %s" % [m, str(both)])
 		while g.clock < at and not g.over:
