@@ -62,3 +62,14 @@ Still not decided. This is how it could work. The owner asked for both: this pro
 - Does the Brood lose when the Queen dies, or only get badly hurt?
 - Do walking buildings fight, or only walk?
 - Start with step 1 (the pits and the Queen's Burrow) as an experiment?
+
+## THE OWNER'S DECISIONS (2026-10-28 07:16): this replaces the proposal above where they differ
+
+- The Brood mother, the QUEEN, is the Brood's losing condition: kill her and you win.
+- The Brood has NO buildings. It only has units.
+- Some units ROOT DOWN into the ground. The Queen is one of them.
+- Rooted: they get armour and defensive buffs.
+- Uprooted: they move, and they are ordinary units.
+- The Queen is the one that hoards the resources (the grubs bring the food to her).
+
+Still to settle with him (see the chat, 2026-10-28): which units root and what each does rooted (lay eggs, give supply, spread swamp, feed from the ground, unlock tech), where the food comes from (ground circles like today's Feeding Pits, grazed by rooted feeders, or grubs foraging), whether eggs come only from the Queen, and the move-or-root timing.
