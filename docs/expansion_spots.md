@@ -35,31 +35,33 @@ The maps are turned through their middle, so twin spots get the same score. The 
 
 ## Each map's spots (2 players; walk in steps, ways in)
 
-Classic maps (made anew each match, 2 corners): only the natural is free.
-- Greenhold, Dune Sea: the natural, 25 steps, 1 way in, 89% room.
-- Highmoor, Frostfang, Ashfall, Red Coast: the natural, 28 steps, 1 way in, 92% room.
-- Twin Fords, Mirewood, Border March: the natural, 25 steps, 3 ways in, 82% room.
-- With 4 players every classic map marks the corner natural: 16 steps, 2 to 3 ways in, about 63% room.
+Since 0.15.0 every map is bigger and has more base sites (docs/map_sizes.md). The two marked spots of each side:
+
+Classic maps (made anew each match, 2 corners; 4 free sites per side, natural included):
+- Greenhold, Dune Sea: the natural below the ramp (22 steps, 2 ways, 81%); then the open ground right of the main (38 steps, 1 way, 99%). The owner's drawing (2026-10-28): the natural moved up to the foot of the ramp, a site in the bottom-left corner and one just right of the bottom-left pond. Those two score lower (the corner is cramped by the pond and the edge, the pond site is far), so they are not marked.
+- Highmoor, Frostfang, Ashfall, Red Coast: the natural (23 steps, 2 ways, 83%); then the open ground right of the main (38 steps, 1 way, 91%).
+- Twin Fords, Mirewood, Border March: the open ground in front of the main (33 steps, 1 way, 99%); then the natural (22 steps, 2 ways, 81%).
+- With 4 players every classic map marks the corner's two sites: the natural by its east ramp (23 steps, 2 ways, 78%) and the open ground below it (35 steps, 1 way, about 95%).
 
 Named maps (best, then second):
-- Ashford Crossing: the natural (28 steps, 2 ways, 91%); then the third along the top (46 steps, 1 way, 95%).
-- Kestrel Rise: the natural (17 steps, 3 ways, 68%); then the third at the top (42 steps, 1 way, 70%).
-- Thornwood Maze: the natural (20 steps, 6 ways, 73%); then the far third (61 steps, 1 way, 75%).
-- Redrock Canyon: the natural (34 steps, 2 ways, 87%); then the third (38 steps, 6 ways, 90%).
-- Saltmarsh Isles: the natural (17 steps, 2 ways, 63%); then the third below it (39 steps, 2 ways, 80%).
-- Glimmerdeep: the inner third (29 steps, 3 ways, 92%); then the natural (18 steps, 4 ways, 73%).
-- Frostmere: the natural (19 steps, 3 ways, 77%); then the third across the field (49 steps, 1 way, 99%).
-- Cinder Steps: the natural (17 steps, 3 ways, 63%); then the third (38 steps, 4 ways, 90%).
-- Hollowfen: the west third (52 steps, 2 ways, 92%); then the natural (18 steps, 5 ways, 73%). Almost a tie.
-- Amberfall Vale: the natural (27 steps, 2 ways, 93%); then the east third (39 steps, 2 ways, 98%).
-- Twin Crowns: the natural (19 steps, 3 ways, 72%); then the third along the top (45 steps, 1 way, 83%).
-- Jade Wilds: the natural (19 steps, 3 ways, 77%); then the third (51 steps, 1 way, 80%).
-- Shattered Coast: the natural (19 steps, 3 ways, 85%); then the third (45 steps, 1 way, 84%).
-- Ember Reach: the natural (19 steps, 3 ways, 83%); then the third below it (44 steps, 1 way, 86%).
-- Whitecap Pass: the third in its pocket (39 steps, 1 way, 99%); then the natural (19 steps, 3 ways, 72%).
-- Kingsfield: the third (44 steps, 1 way, 95%); then the natural (19 steps, 3 ways, 79%). Almost a tie.
-- Pinewall Marches: the natural (19 steps, 3 ways, 84%); then the third (46 steps, 1 way, 98%).
-- The Sundered Realm: the natural (19 steps, 3 ways, 72%); then the third (46 steps, 3 ways, 95%).
+- Ashford Crossing: the natural (27 steps, 2 ways, 77%); then the third along the top (54 steps, 1 way, 98%).
+- Kestrel Rise: the natural (17 steps, 2 ways, 67%); then the new site in front of the main (38 steps, 2 ways, 95%).
+- Thornwood Maze: the natural (20 steps, 3 ways, 74%); then the new site between the pine walls (43 steps, 6 ways, 96%).
+- Redrock Canyon: the new natural in front of the ramp (24 steps, 1 way, 97%); then the old natural on the left (36 steps, 1 way, 99%).
+- Saltmarsh Isles: the natural (17 steps, 1 way, 63%); then the third on the home island (49 steps, 2 ways, 89%).
+- Glimmerdeep: the inner third (44 steps, 2 ways, 98%); then the natural (18 steps, 4 ways, 73%).
+- Frostmere: the new site right of the main (45 steps, 1 way, 98%); then the natural (19 steps, 4 ways, 75%).
+- Cinder Steps: the new site in front of the main (37 steps, 1 way, 93%); then the natural (17 steps, 2 ways, 65%).
+- Hollowfen: the new site along the top (41 steps, 1 way, 99%); then the natural (18 steps, 3 ways, 72%).
+- Amberfall Vale: the new natural in front of the ramp (24 steps, 1 way, 96%); then the new site in the top-left (48 steps, 1 way, 99%).
+- Twin Crowns: the new site along the top (46 steps, 1 way, 99%); then the natural (19 steps, 2 ways, 70%).
+- Jade Wilds: the new site below the natural (43 steps, 2 ways, 98%); then the natural (19 steps, 4 ways, 74%).
+- Shattered Coast: the natural (19 steps, 2 ways, 82%); then the third along the top (52 steps, 1 way, 80%).
+- Ember Reach: the natural (19 steps, 3 ways, 81%); then the new site below it (49 steps, 1 way, 99%).
+- Whitecap Pass: the natural (19 steps, 2 ways, 70%); then the new site along the top (54 steps, 1 way, 99%).
+- Kingsfield: the natural (19 steps, 2 ways, 76%); then the new site along the top (47 steps, 1 way, 99%).
+- Pinewall Marches: the natural (19 steps, 5 ways, 80%); then the new site below it (47 steps, 4 ways, 97%).
+- The Sundered Realm: the new site along the top (43 steps, 1 way, 99%); then the natural (19 steps, 2 ways, 69%).
 
 In team games each player gets his own two spots, from the sites nearest his main.
 
@@ -68,13 +70,13 @@ In team games each player gets his own two spots, from the sites nearest his mai
 - FIXED: on the classic river maps (Twin Fords, Mirewood, Border March) with 2 players, the fords were not the same on both sides. The river's wiggle is not its own twin, and a ford laid over river already drawn stayed water. One side's natural had 4 more cells of open front and 1% more room. Now every ford cell and its twin are open ford on both sides (`MapGen._rivers`). This makes those fords a little wider.
 - Thornwood Maze: the natural has 6 ways in, and the second spot is far (61 steps) and close to the enemy (78 steps). Expanding there is weak. Not changed.
 - Redrock Canyon: the third has 6 ways in. Not changed.
-- Classic maps with 4 players: the corner natural is cramped (about 63% room) and lies between two corner mains. Not changed.
+- Classic maps with 4 players: the corner natural was cramped (about 63% room). On the bigger maps (0.15.0) it has 78%.
 - Hollowfen and Kingsfield: the natural and a third score almost the same. Both are marked.
 
 ## Pictures
 
 `docs/shots/expansion_spots/`:
-- `<map>.jpg`: every built-in map, fog lifted, a Crown player against a Clockwork computer.
+- `<map>.jpg`: every built-in map, fog lifted, a Crown player against a Clockwork computer (re-made for the bigger maps of 0.15.0; the old ones are in docs/shots/map_sizes/, side by side with the new).
 - `close_crown_<map>.jpg`, `close_clockwork_<map>.jpg`: in game, with the HUD and minimap, for Ashford Crossing, Frostmere and Greenhold.
 - `place_crown_<map>.jpg`, `place_clockwork_<map>.jpg`: the same while placing a hall (the spots a touch brighter).
 

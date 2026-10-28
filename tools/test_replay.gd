@@ -260,7 +260,7 @@ func _watch() -> bool:
 			_wait = 0
 			_wstep = 6
 		6:
-			var note_ok := rp != null and rp.version_note.contains("0.0.1")
+			var note_ok := rp != null and rp.version_note.contains("9.9.1")
 			var r := _compare_at(rp, truth.size() / 2, true) if rp else {"bad": ["no viewer"], "worst": 99.0}
 			var ph := 0
 			for u in g.units:
@@ -383,7 +383,8 @@ func _make_variants() -> void:
 	f.close()
 	# an old version: other field lists (a field gone, one that no longer exists), and a unit kind that is gone
 	var h: Dictionary = (d["header"] as Dictionary).duplicate(true)
-	h["game_version"] = "0.0.1"
+	# (another version, but one with today's maps: a built-in map's replay from before MapGen.RESIZED is refused)
+	h["game_version"] = "9.9.1"
 	var up: Array = NetSnapshot.UNIT_PROPS.duplicate()
 	up.erase("arm")
 	up.insert(5, "zz_old")
@@ -423,4 +424,7 @@ func _make_variants() -> void:
 	var f2 := FileAccess.open(_old_path, FileAccess.WRITE)
 	f2.store_buffer(out)
 	f2.close()
+	check("old_layout_refused", MapGen.old_layout("hollowfen", "0.14.100") and MapGen.old_layout("greenhold", "0.9.3")
+		and not MapGen.old_layout("hollowfen", MapGen.RESIZED) and not MapGen.old_layout("custom:x", "0.1.0") and not MapGen.old_layout("hollowfen", "dev"),
+		"a built-in map's replay from before %s is refused" % MapGen.RESIZED)
 	print("VARIANTS crash file cut at %d of %d bytes; old version with '%s' renamed to a kind that is gone" % [cut, bytes.size(), gone_kind])

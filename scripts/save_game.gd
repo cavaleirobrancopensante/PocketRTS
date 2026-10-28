@@ -24,6 +24,8 @@ static func peek() -> Dictionary:
 	if f == null:
 		return {}
 	var d = JSON.parse_string(f.get_as_text())
+	if d is Dictionary and MapGen.old_layout(String((d.get("cfg", {}) as Dictionary).get("map", "")), String(d.get("version", ""))):
+		return {}                 # (its map has been made bigger since: the match can't go on on the new ground)
 	return d if d is Dictionary else {}
 
 

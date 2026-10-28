@@ -1196,7 +1196,7 @@ func show_skirmish() -> void:
 	else:
 		desc = Loc.t({"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
 			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]])
-		desc += Loc.t("  84x60, up to 4 players.  ") + _biome(String(MapGen.MAPS[mid][2])) + "."
+		desc += Loc.t("  110x80, up to 4 players.  ") + _biome(String(MapGen.MAPS[mid][2])) + "."
 	var dl := UiStyle.text(desc, 15, UiStyle.MUTED)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mv.add_child(dl)
@@ -1757,7 +1757,7 @@ class MapPreview extends Control:
 	var _pic: Texture2D
 
 	func _draw() -> void:
-		var msz := Vector2(84, 60) if MapGen.is_pool(map_id) else Vector2(MapGen.size_of(map_id))
+		var msz := Vector2(MapGen.CLASSIC) if MapGen.is_pool(map_id) else Vector2(MapGen.size_of(map_id))
 		mw = msz.x
 		mh = msz.y
 		var r := Rect2(Vector2(4, 4), size - Vector2(8, 8))
