@@ -87,6 +87,7 @@ func vs_clock() -> bool:
 		return false
 	if _vs_clock < 0:
 		_vs_clock = 0
+		_bands()                # (the ramps now, before the wall stands on the band: AI._ramp_bands skips built cells)
 		for t in ai.game.enemies_of(ai.team):
 			if ai.game.faction_of(t) == "clockwork":
 				_vs_clock = 1
@@ -333,7 +334,10 @@ func rush_beaten(defv: float, mine: float, gained: float, wv: float) -> bool:
 # ============================================================ B. the Clockwork
 
 func _clock_on() -> bool:
-	return on and ai.difficulty >= 1 and ai._clock() and not ai.peaceful
+	if not (on and ai.difficulty >= 1 and ai._clock() and not ai.peaceful):
+		return false
+	_bands()                    # (the ramps while the band is still free of buildings)
+	return true
 
 
 func _rider(o: Unit) -> bool:
