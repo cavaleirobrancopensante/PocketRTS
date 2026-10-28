@@ -496,7 +496,12 @@ func _computer() -> void:
 	check("and follows it when it moves", gw.order == "move" and gw.order_point.distance_to(c) < 170.0 or gw.position.distance_to(c) < 170.0,
 		"order %s to %s, at %s, army at %s" % [gw.order, str(gw.order_point), str(gw.position), str(c)])
 	# its idle sweep: a soldier of the army falls near it; it sweeps him into cogs and stays with the army
-	await _wait(g, func() -> bool: return army.all(func(u: Unit) -> bool: return u.dead or u.order == "idle"), 40.0)
+	# (the army is still marching to `far`, 700 px off and longer on the 0.15 maps: it is halted here, so it stands about and
+	# its Great Winder with it: the sweep is an idle job)
+	for u in army:
+		if is_instance_valid(u) and not u.dead:
+			u.cmd_stop()
+	await _wait(g, func() -> bool: return army.all(func(u: Unit) -> bool: return not is_instance_valid(u) or u.dead or u.order == "idle"), 40.0)
 	await _wait(g, func() -> bool: return gw.order == "idle", 30.0)
 	var victim: Unit = null
 	for u in army:
