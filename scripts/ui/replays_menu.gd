@@ -187,7 +187,7 @@ func _export(path: String) -> void:
 		return
 	if DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE):
 		DisplayServer.file_dialog_show("Export replay", OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS), fname, false,
-			DisplayServer.FILE_DIALOG_MODE_SAVE_FILE, PackedStringArray(["*.hfr ; Holdfast replay"]),
+			DisplayServer.FILE_DIALOG_MODE_SAVE_FILE, PackedStringArray(["*.hfr ; " + GameName.title() + " replay"]),
 			func(ok: bool, files: PackedStringArray, _f: int) -> void:
 				if ok and not files.is_empty():
 					_write_out(files[0], bytes))
@@ -200,7 +200,7 @@ func _export(path: String) -> void:
 	fd.access = FileDialog.ACCESS_FILESYSTEM
 	fd.current_dir = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
 	fd.current_file = fname
-	fd.filters = PackedStringArray(["*.hfr ; Holdfast replay"])
+	fd.filters = PackedStringArray(["*.hfr ; " + GameName.title() + " replay"])
 	fd.file_selected.connect(func(f: String) -> void: _write_out(f, bytes))
 	add_child(fd)
 	fd.popup_centered(Vector2i(900, 600))
@@ -222,7 +222,7 @@ func _import() -> void:
 		return
 	if DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE):
 		DisplayServer.file_dialog_show("Import replay", OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS), "", false,
-			DisplayServer.FILE_DIALOG_MODE_OPEN_FILE, PackedStringArray(["*.hfr ; Holdfast replay"]),
+			DisplayServer.FILE_DIALOG_MODE_OPEN_FILE, PackedStringArray(["*.hfr ; " + GameName.title() + " replay"]),
 			func(ok: bool, files: PackedStringArray, _f: int) -> void:
 				if ok and not files.is_empty():
 					import_bytes(FileAccess.get_file_as_bytes(files[0])))
@@ -234,7 +234,7 @@ func _import() -> void:
 	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	fd.access = FileDialog.ACCESS_FILESYSTEM
 	fd.current_dir = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-	fd.filters = PackedStringArray(["*.hfr ; Holdfast replay"])
+	fd.filters = PackedStringArray(["*.hfr ; " + GameName.title() + " replay"])
 	fd.file_selected.connect(func(f: String) -> void: import_bytes(FileAccess.get_file_as_bytes(f)))
 	add_child(fd)
 	fd.popup_centered(Vector2i(900, 600))
@@ -243,7 +243,7 @@ func _import() -> void:
 func import_bytes(bytes: PackedByteArray) -> void:
 	var p := ReplayFile.import_bytes(bytes)
 	if p == "":
-		say("That file is not a Holdfast replay.", false)
+		say("That file is not a replay of this game.", false)
 	else:
 		say("Replay imported.")
 	refresh()

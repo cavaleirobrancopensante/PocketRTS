@@ -5,7 +5,7 @@
   number by hand. Also add an entry for the new version to `scripts/patch_notes.gd` (the PATCH NOTES page in Settings); the script updates the version in README.md itself. The version shows in the main menu and on the first line of every match log.
 - **Art:** legs and tools drawn in code are tracked in `docs/art_style_inconsistency.md` (the owner wants them redrawn by ChatGPT later for one uniform style); add every new code-drawn edit there.
 - **Web build:** `tools/web/build_web.sh` (CI uses it): a code pack, an art pack (`assets/`, cached by the browser across updates) and the music downloaded on demand; see `docs/web_load.md`. Keep runtime files out of `docs/` and `art/`.
-- Match logs (playtest reports pasted by the user) start with `Holdfast vX.Y.Z match log`.
+- Match logs (playtest reports pasted by the user) start with `Working Title for RTS vX.Y.Z match log` (older ones: `Holdfast vX.Y.Z match log`; GameName.is_log_header accepts both). The shown name comes from project.godot `application/config/name` (scripts/game_name.gd); the user folder stays `Pocket RTS`.
 - **Design:** read `docs/design_principles.md` (fairness, anti-snowball, meaningful base building)
   before balance, economy, AI or building changes; the owner wants these followed.
 
