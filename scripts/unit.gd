@@ -4122,8 +4122,41 @@ func _move(want: Vector2, delta: float) -> void:
 				target = wall
 		if stuck_t > 1.6 and path_goal != Vector2.INF and not path_pending:
 			stuck_t = 0.9
-			_request_path(path_goal)
+			if not _nb_round():
+				_request_path(path_goal)
 	last_pos = position
+
+
+## Stuck against a rooted new-Brood creature (the Brood Mother, a Rootmaw, an enemy's Mound Turtle): paths go straight
+## through it, as it is not in the path grid, and a repath gave the same line, so a walker stood pressed to her side
+## for minutes. A waypoint round its flank, on the goal's side (the other side the next time).
+var _nb_side := 1.0
+
+
+func _nb_round() -> bool:
+	for o in game.units_near(position, radius + 100.0):
+		if o == self or o.dead or not o._k_nb or o._k_still or o.tesla_mode == "packed":
+			continue
+		if o._k_shell and (o.team == team or game.allied(o.team, team)):
+			continue           # (its own side climbs over a turtle's shell)
+		var away: Vector2 = position - o.position
+		if away.length() - (radius + o.radius) > 14.0 or away.length() < 0.01:
+			continue
+		var side := away.orthogonal().normalized()
+		if side.dot(path_goal - position) < 0.0:
+			side = -side
+		side *= _nb_side
+		_nb_side = -_nb_side
+		var p: Vector2 = o.position + (away.normalized() * 0.4 + side).normalized() * (o.radius + radius + 16.0)
+		if not game._walkable(game.cell_of(p)):
+			p = o.position + (away.normalized() * 0.4 - side).normalized() * (o.radius + radius + 16.0)
+		if path_i >= path.size():
+			path = PackedVector2Array([p, path_goal])
+			path_i = 0
+		else:
+			path.insert(path_i, p)
+		return true
+	return false
 
 
 ## A limbered gun or wagon: only the barrel / body is the unit; the horses are art standing
