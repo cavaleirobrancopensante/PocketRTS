@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.10", "items": [
+		"THE NEW BROOD (EXPERIMENT): the Mound Turtle has its own pictures now (the designer's): it walks, sinks into the mud as it roots, breathes there rooted, rises and dies, and walks in every direction with the designer's drawings; its card has its own portrait.",
+		"SIZES: the Brood Mother is bigger, as wide in her nest as a Clocktower's gear ring, and the Tyrannosaur as big as a Barracks.",
+		"FERTILISING READS AT A GLANCE: the Tyrannosaur's red-gold breath is a thick stream now, and the egg he breathes on turns red as he does it. A rooted Brood Mother's eggs roll out in front of her nest, where you can see them, instead of under her body.",
+	]},
 	{"v": "0.15.9", "items": [
 		"THE NEW BROOD (EXPERIMENT): pick \"The Brood (new, experiment)\" in the skirmish setup. The Brood as the designer is redrawing it: no buildings, only creatures, some of which ROOT into the ground (more armour and less damage while rooted). The old Brood stays as it is and is still the default.",
 		"THE BROOD MOTHER: kill her and that side is out. She roots and uproots, hoards the food the grubs bring her, and only she lays eggs, rooted or walking: pick a creature on her card and its egg drops behind her, then hatches. Rooted, she spreads swamp round her, heals, and is the base's defence: alone she beats an early all-in of Raptors, Horsemen, Musketeers or Clock Soldiers. SACRIFICE happens at her: she devours the creature offered up.",
