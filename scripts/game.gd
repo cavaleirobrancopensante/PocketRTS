@@ -135,6 +135,11 @@ var ais: Array = []
 
 var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
+## The computer keeps spots for buildings it means to lay soon (team -> {kind -> {"cell", "t", "spring"}}): its own other
+## buildings are not put where they would take such a spot or cut into its ring (placement_problem with `ai`). Used for the
+## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.94). Not saved: the computer works it
+## out again.
+var ai_keep := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
 var _hash := {}
 var _path_queue: Array = []
@@ -3725,12 +3730,16 @@ func tension_user_problem(t: int, kind: String) -> String:
 func _idle_text(kind: String) -> String:
 	if kind == Defs.CW_AIR:
 		return "The Clock Aviary stands idle: mesh its gear ring with a Mainspring's."
+	if kind == Defs.CW_HEAVY:
+		return "The Heavy Works stands idle: mesh its gear ring with a Mainspring's."
 	return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
 
 
 func _unlinked_text(kind: String) -> String:
 	if kind == Defs.CW_AIR:
 		return "The Clock Aviary is unlinked: its gear ring must mesh with the gear field."
+	if kind == Defs.CW_HEAVY:
+		return "The Heavy Works is unlinked: its gear ring must mesh with the gear field."
 	return "The Escapement is unlinked: its gear ring must mesh with the gear field."
 
 
@@ -4678,6 +4687,14 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var pp := pit_claim_problem(t, c)      # (each pit claims a circle of ground: they may not overlap)
 		if pp != "":
 			return pp
+	if k == Defs.CW_TURRET:
+		var tp := GearNet.turret_problem(self, t, c)      # (THE TURRET CIRCLE: each turret claims a circle; no overlap)
+		if tp != "":
+			return tp
+	if ai and ai_keep.has(t):
+		for kk in ai_keep[t]:
+			if String(kk) != k and _takes_kept(t, k, c, String(kk)):
+				return "Kept for a building the computer lays next."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
@@ -8915,6 +8932,23 @@ func abandon(b: Building) -> void:
 		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)
 
 
+## Would a building of kind k at cell c take the spot the computer keeps for a `kk` (ai_keep): its footprint on the kept
+## one (a tile of margin), or its gear ring cutting into the kept ring?
+func _takes_kept(t: int, k: String, c: Vector2i, kk: String) -> bool:
+	var keep: Dictionary = ai_keep[t][kk]
+	var kc: Vector2i = keep["cell"]
+	var ks: Vector2i = Defs.BUILDINGS[kk]["size"]
+	var sz: Vector2i = Defs.BUILDINGS[k]["size"]
+	if Rect2i(kc, ks).grow(1).intersects(Rect2i(c, sz)):
+		return true
+	if Defs.gear_mode and String(Defs.BUILDINGS[k]["faction"]) == "clockwork" and String(Defs.BUILDINGS[kk]["faction"]) == "clockwork":
+		var ga := GearNet.gpos(Vector2(c) * T + Vector2(sz) * T * 0.5)
+		var gb := GearNet.gpos(Vector2(kc) * T + Vector2(ks) * T * 0.5)
+		if ga.distance_to(gb) - GearNet.ring_r(k, sz, false) - GearNet.ring_r(kk, ks, false) < -float(Defs.GEAR["overlap"]) * T:
+			return true
+	return false
+
+
 ## Pull down a finished building of your own (nothing comes back).
 ## GEAR SWAP (Clockwork, gear mode): a building's connecting gear changes between SMALL and BIG. Costs Defs.GEAR.swap_cost
 ## cogs, takes Defs.GEAR.swap_time seconds; the building idles meanwhile and its ring visibly changes size. Returns "" or
@@ -8926,12 +8960,23 @@ func gear_swap_problem(b: Building) -> String:
 		return "Wait until it is built."
 	if b.gear_swap_t >= 0.0:
 		return "Its gear is already being swapped."
+	if GearNet.big_only(b.kind):
+		return "The %s runs only on its big gear: the heavy torque." % String(b.d["name"])
 	var pw := Pendulum.swap_problem(b)       # (a Pendulum in its queue keeps the Works on the big gear)
 	if pw != "":
 		return pw
 	if int(players[b.team]["gold"]) < int(Defs.GEAR["swap_cost"]):
 		return "Not enough %s." % String(Defs.FACTIONS[faction_of(b.team)]["res"][0]).to_lower()
 	return ""
+
+
+## THE GEAR VIEW (owner, 2026-10-27; the ` key, or GEAR VIEW on a Clockwork building's card): the whole gear network at a
+## glance (GearNet._draw_view). A view only: nothing in the match changes, nothing is sent online.
+func toggle_gear_view() -> void:
+	gear_net.view = not gear_net.view
+	gear_net.queue_redraw()
+	if hud != null:
+		hud.toast("GEAR VIEW: green full speed, yellow 90%, orange 80%, red 70% or idle." if gear_net.view else "Gear view off.")
 
 
 func swap_gear(b: Building) -> String:

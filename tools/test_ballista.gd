@@ -1,5 +1,5 @@
 extends SceneTree
-## THE SPRING BALLISTA (scripts/ballista.gd, Defs.BALLISTA, docs/ballista.md): made at the Movement Works once an Escapement
+## THE SPRING BALLISTA (scripts/ballista.gd, Defs.BALLISTA, docs/ballista.md): made at the Heavy Works once an Escapement
 ## works (cogs and Tension); its bolt PIERCES a line (the first enemy whole, the next ones 50% and 30%, not one off the line,
 ## never its own side); ARMOURED units and BUILDINGS take more, a building stops the bolt; the spring winds only while it
 ## stands, 10% faster per crewman (0..4), and it moves 10% faster per crewman; Winders BOARD it (4 at most), stand beside
@@ -30,27 +30,30 @@ func _run() -> void:
 	var g := U.make(root)
 	await process_frame
 	await process_frame
-	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_WORKS]
-	check("the Movement Works trains the Spring Ballista", (wd["trains"] as Array).has(K))
+	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_HEAVY]
+	check("the Heavy Works trains the Spring Ballista (0.14.94)", (wd["trains"] as Array).has(K))
+	check("the Light Works no longer does", not (Defs.BUILDINGS[Defs.CW_WORKS]["trains"] as Array).has(K))
 	check("it is in the gear-mode roster (not retired)", Defs.CW_NEW_UNITS.has(K) and not Defs.retired(K))
 	check("the Spring Catapult is not in the roster", not Defs.CW_NEW_UNITS.has("spring_catapult") and not Defs.UNITS.has("spring_catapult"))
 	check("its price is cogs and Tension", g.unit_price(0, K) == [int(Defs.UNITS[K]["cost"]), int(Defs.UNITS[K]["tension"])], str(g.unit_price(0, K)))
 	g.players[0]["gold"] = 50000
 	g.players[0]["tension"] = 5000.0
 	var hall := U.hall(g, 0)
-	var works := U.put(g, 0, Defs.CW_WORKS, hall.cell)
-	g._recount_supply(0)
-	g.players[0]["cap"] = 200
-	var why := g.can_train(works, K)
-	check("no Escapement: the Ballista is refused", why.contains("Escapement"), why)
+	var lw := U.put(g, 0, Defs.CW_WORKS, hall.cell)
 	var esc := U.put(g, 0, Defs.CW_TECH, hall.cell)
 	_spring_beside(g, esc)
+	U.step(g, 0.6)
+	g.players[0]["cap"] = 200
+	var works := U.put(g, 0, Defs.CW_HEAVY, hall.cell)
+	g._recount_supply(0)
+	g.players[0]["cap"] = 200
 	if g.gear_net.spring_for(works) == null:
 		_spring_beside(g, works)
 	U.step(g, 0.6)
 	g.players[0]["cap"] = 200
-	why = g.can_train(works, K)
-	check("with a working Escapement (and a Mainspring at the Works) it trains", why == "", why)
+	var why := g.can_train(works, K)
+	check("with a working Escapement (and a Mainspring at the Heavy Works) it trains", why == "", why)
+	check("the Light Works refuses it", lw == null or g.can_train(lw, K) != "")
 	var ten0 := g.tension(0)
 	why = g.train(works, K)
 	check("the order spends its Tension", why == "" and is_equal_approx(g.tension(0), ten0 - float(Defs.UNITS[K]["tension"])), why)

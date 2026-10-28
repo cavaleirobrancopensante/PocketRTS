@@ -16,7 +16,7 @@ extends RefCounted
 ## refund may go over it, nothing unwinds. Buildings may cost Tension (a BUILDINGS `tension` price: the Clock Aviary).
 ## THE TENSION RULE: anything that costs Tension is made only at a building whose ring meshes with a Mainspring's ring (one
 ## hop; an idler between them counts): the Escapement and the Clock Aviary work only so (Defs.TENSION_USERS: idle otherwise,
-## NEEDS MAINSPRING), and a Light Works makes Springers, Netters and Pendulums only so (its Clock Soldiers need nothing):
+## NEEDS MAINSPRING), and a Light Works makes Springers and Netters only so (the Heavy Works is a Tension user) (its Clock Soldiers need nothing):
 ## spend_problem.
 
 const DRIVE_FREE := ["clocktower", "regulator", "ratchet_turret", "spring_tower"]
@@ -179,7 +179,7 @@ static func efficiency(b: Building) -> Array:
 	if not uses_drive(b.kind) or not b.built or b.dead:
 		return []
 	var net: GearNet = b.game.gear_net
-	var work := net.speed_mult(b)            # (drive, or 0 when idle)
+	var work := net.speed_mult(b) / GearNet.tempo(b)       # (drive, or 0 when idle; the ring's tempo is not efficiency)
 	match b.kind:
 		Defs.GEAR_PRESS:
 			var gp: Dictionary = Defs.GEAR["press"]
@@ -249,6 +249,32 @@ static func card_info(b: Building) -> String:
 		if net.spring_for(b) != null:
 			return Loc.t("Meshes with a Mainspring: it can make what costs Tension (%s).") % what
 		return Loc.t("No Mainspring meshes with it: no %s until a Mainspring's ring meshes with its ring (they cost Tension).") % what
+	return ""
+
+
+## SIZE SETS THE TEMPO (owner, 2026-10-27): what a `kind` on its big (or small) ring trades, in one line for its card and
+## the gear swap's tooltip ("Small gear: works 15% faster."), translated; "" for a kind whose ring changes nothing but reach.
+static func trade_line(kind: String, big: bool) -> String:
+	if not Defs.gear_mode:
+		return ""
+	if GearNet.big_only(kind):
+		return Loc.t("Big gear only: slow and strong, the heavy torque.")
+	var tt: Dictionary = Defs.GEAR["tempo"]
+	if tt.has(kind):
+		var pct := int(round(absf(GearNet.tempo_of(kind, big) - 1.0) * 100.0))
+		return (Loc.t("Big gear: works %d%% slower, reaches farther.") if big else Loc.t("Small gear: works %d%% faster.")) % pct
+	match kind:
+		Defs.CW_TURRET:
+			var sw: Dictionary = Defs.TURRET["big" if big else "small"]
+			if big:
+				return Loc.t("Big gear: slow heavy screws, %d every %.1f s: better against armour.") % [int(sw["damage"]), float(sw["cooldown"])]
+			return Loc.t("Small gear: quick light screws, %d every %.1f s.") % [int(sw["damage"]), float(sw["cooldown"])]
+		Defs.GEAR_PRESS:
+			var gp: Dictionary = Defs.GEAR["press"]["big" if big else "small"]
+			return (Loc.t("Big gear: up to %d Winders, %.1f cogs a second at full crew.") if big else Loc.t("Small gear: up to %d Winders, %.1f cogs a second at full crew.")) % [int(gp["crew"]), float(gp["full"])]
+		"mainspring":
+			var gm := spring_info(big)
+			return (Loc.t("Big gear: up to %d Winders, stores %d Tension.") if big else Loc.t("Small gear: up to %d Winders, stores %d Tension.")) % [int(gm["crew"]), int(gm["store"])]
 	return ""
 
 
@@ -352,6 +378,12 @@ static func room_spot_n(game: Game, t: int, kind: String, must: Array, users: Ar
 ## How many of `users` (kinds, placed one after another) could still mesh with a ring of `kind` put at cell c: a greedy count
 ## that keeps the new rings off each other, off the field's rings and off the footprints (ground checks only).
 static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -> int:
+	return room_cells(game, t, kind, c, users).size()
+
+
+## _room's greedy placing, the cells it found: [[user kind, cell], ...] in the order of `users` (the computer keeps the Heavy
+## Works' cell for it: Game.ai_keep).
+static func room_cells(game: Game, t: int, kind: String, c: Vector2i, users: Array) -> Array:
 	var T := float(Defs.TILE)
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
@@ -364,7 +396,7 @@ static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -
 	for b in game.buildings:
 		if not b.dead and GearNet.has_gear(b):
 			rings.append([GearNet.b_c(b), GearNet.b_r(b)])
-	var n := 0
+	var out: Array = []
 	for uk in users:
 		var us: Vector2i = Defs.BUILDINGS[uk]["size"]
 		var ur := GearNet.ring_r(uk, us, false)
@@ -394,19 +426,22 @@ static func _room(game: Game, t: int, kind: String, c: Vector2i, users: Array) -
 				if GearNet.foot_level(game, c2, us) != lv or not GearNet.joint_ok(game, g2, ur, gc, r, lv):
 					continue          # (THE LEVEL RULE: it would mesh only on the same ground level)
 				placed.append([g2, ur, Rect2i(c2, us)])
-				n += 1
+				out.append([uk, c2])
 				found = true
 				break
-	return n
+	return out
 
 
-## The footprint's ground is free, off ramps, and its margin clear (no gear check: the caller does the rings).
+## The footprint's ground is free, off ramps and clear of them (the computer keeps its ramps clear), and its margin clear (no gear
+## check: the caller does the rings).
 static func _ground_ok(game: Game, c: Vector2i, size: Vector2i) -> bool:
 	for y in size.y:
 		for x in size.x:
 			var cc := c + Vector2i(x, y)
 			if not game.in_map(cc) or not game.is_free(cc) or game.ramp[game.idx(cc)] == 1:
 				return false
+			if game._near_ramp(cc):
+				return false          # (the computer keeps its ramps clear: Game.placement_problem's `ai` rule)
 	return game.margin_free(c, size)
 
 
@@ -418,7 +453,8 @@ static func ghost_note(net: GearNet, t: int, kind: String, c: Vector2i, big := f
 	if uses_drive(kind):
 		var steps := preview_steps(net, t, kind, c, big)
 		if steps > 0:
-			out += "  %d%%" % int(round(drive_factor(steps) * 100.0))
+			# (the % it would work at: its drive, times its ring size's tempo, Defs.GEAR "tempo")
+			out += "  %d%%" % int(round(drive_factor(steps) * GearNet.tempo_of(kind, big or GearNet.big_only(kind)) * 100.0))
 	if kind == "mainspring":
 		var fed := would_feed(net, t, c, big)
 		if not fed.is_empty():

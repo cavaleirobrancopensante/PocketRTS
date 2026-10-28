@@ -9,24 +9,24 @@ extends RefCounted
 ## front of its feet, through where small enemies stand, and lands on the 4th frame: every enemy on the ground in the
 ## ARC in front of it takes the blow (never its own side: the machine's units keep in step with the swing), a LIGHT unit
 ## (tag "light") more (PENDULUM_SWING "vs_light"), and a building it swings at takes it too. It cannot reach flyers. It is
-## made only while its Light Works runs on the BIG gear (the heavy torque: gear_problem, Game.can_train); a Works with
-## Pendulums queued cannot go back to the small gear meanwhile.
+## made only at the HEAVY WORKS (0.14.94), which always runs on its BIG gear (the heavy torque: gear_problem, Game.can_train);
+## a works with Pendulums queued cannot go back to the small gear meanwhile.
 ## Art: tools/import_tier3.py (the idle, the walk and the two low sweeps built in code from ChatGPT's direction sheet,
 ## tools/pendulum_v2_guide/; the death painted by ChatGPT).
 
 
-## "" when Light Works b may make a Pendulum as far as its gear goes: it runs on its BIG gear (or is being fitted with
+## "" when works b may make a Pendulum as far as its gear goes: it runs on its BIG gear (or is being fitted with
 ## it: the order waits through the swap like any other), else why not.
 static func gear_problem(b: Building) -> String:
 	if not Defs.gear_mode or b == null:
 		return ""
 	var big: bool = b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big
-	if big:
+	if big or GearNet.big_only(b.kind):
 		return ""
-	return "A Pendulum needs the heavy torque of the BIG gear: swap this Light Works to its big gear first."
+	return "A Pendulum needs the heavy torque of the BIG gear: swap this works to its big gear first."
 
 
-## "" when Light Works b may swap its gear now as far as the Pendulums go: going to the SMALL gear with a Pendulum in its
+## "" when works b may swap its gear now as far as the Pendulums go: going to the SMALL gear with a Pendulum in its
 ## queue is refused (the Pendulum is made only on the big gear).
 static func swap_problem(b: Building) -> String:
 	if b == null or not b.gear_big or b.gear_swap_t >= 0.0 or not b.queue.has(Defs.PENDULUM):

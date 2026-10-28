@@ -382,7 +382,7 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
 
   The mounting strips (art/crown/mount/horseman_mount.png, cuirassier_mount_b.png; tools/import_mount.py) need the same
   colours when they are redrawn: the man stepping up in the Officer's white coat and red breeches, the horse's red cloth.
-## The Horseman's and Cuirassier's blow in passing (code, 0.14.94)
+## The Horseman's and Cuirassier's blow in passing (code, 0.14.96)
 - Fighting on the move (scripts/ride_by.gd), a rider keeps his gallop strip and a SABRE ARC is drawn in code over him
   (RideBy.Slash: a white blade line with a dark edge and a fading trail, sweeping 150 degrees across his front at
   shoulder height, forehand and backhand in turn, 0.24 s). His painted attack strip stands the horse still, so it isn't
@@ -390,3 +390,30 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   flash and smoke, with no pistol strip. Wanted: a painted "slash at the gallop" strip per facing (horse in full gallop,
   rider leaning out with the sabre swinging through, 6-8 frames like the walk), and a "pistol at the gallop" one; both
   would replace the arc.
+## The gear rules: Heavy Works, brass plates, the gear view (code, 0.14.97; docs/gear_rules.md)
+- HEAVY WORKS building: the owner's ChatGPT sheet (art/redraws/heavy_works_empty_chatgpt.png, top row only: built, under
+  construction, damaged, destroyed) cut and keyed off its navy background by tools/press_anim/heavy_works_key.py, imported
+  by tools/gear_art/import_buildings.py. Its WINDING KEY on the winch house is TURNED IN CODE from the built frame (the bow cut
+  out, the shaft carried up under it, the bow squeezed by |cos| of its angle, flipped edge-on, a little darker): 8 work
+  frames, like the Movement Works' key. The sheet's bottom row (its own key turns) is not used: the owner found its key
+  badly drawn.
+- The crane's CHAIN and HOOK were CUT OFF the built frame (and its work frames) and are drawn by the game
+  (scripts/heavy_works.gd): the painted links tiled down from the beam, the painted hook at the end; idle, the hook rests where
+  it was painted; while a machine is assembled it is lowered onto the top of the work. The damaged frame keeps its own
+  painted hook (the code hook is not drawn over it).
+- THE MACHINE IN THE BAY (scripts/heavy_works.gd): the unit's own idle frame (SE view) drawn in the bay, scaled down to fit,
+  shown from its feet up in 6 steps as it trains, DARKENED in code (from 32% brightness to full), with a code-drawn hot SEAM
+  (two orange-white lines, pulsing) along the top of what is built. A painted "being assembled" frame per machine (scaffold,
+  sparks, a welder) would replace the darkening and the seam.
+- BRASS FLOOR PLATE (assets/gear/floor_plate_brass.png): made IN CODE from the iron floor plate by
+  tools/gear_art/make_brass_plate.py (its grey iron mapped onto a brass ramp, a soft diagonal sheen laid over it). Under the
+  Mainspring, Escapement, Heavy Works and Clock Aviary. A painted polished brass deck would replace it.
+- SPRING MARK over a building fed by a Mainspring (GearNet._spring_mark): a code-drawn zig-zag coil in a small dark box. An
+  icon would replace it.
+- The placing ghost's MESHING TEETH (green) and CLASHES (red): short code-drawn arcs along both rings where they meet
+  (GearNet.draw_contacts).
+- THE GEAR VIEW (GearNet._draw_view): the painted rings washed in code colours (gold drivers, green / yellow / orange / red by
+  how well they work), a dashed ellipse for each Mainspring's reach, the ground dimmed.
+- THE TURRET CIRCLES (GearNet._draw_turret_circles): flat code-drawn circles on the ground, like the Brood's pit circles.
+- The GEAR VIEW button's icon (CwArt._ability_glyph "ab_gear_view": two meshing gears, the big one green, the small one
+  gold) is drawn in code until assets/icons/clockwork/ab_gear_view.png is painted (the HUD takes the file first).

@@ -79,18 +79,18 @@ func _run() -> void:
 	if works == null and reg != null:
 		# (the Regulator landed farther out: hang the Works on whatever meshes with the Clocktower)
 		works = _hang(g, Defs.CW_WORKS, press)
-	check("a Movement Works hung on a ring next to the Clocktower's (2nd ring)", works != null and int(net.drive_of.get(works, -1)) == 2,
+	check("a Light Works hung on a ring next to the Clocktower's (2nd ring)", works != null and int(net.drive_of.get(works, -1)) == 2,
 		"steps %d" % (int(net.drive_of.get(works, -1)) if works else -1))
 	if works == null:
 		_end()
 		return
-	check("2nd ring: drive 90%", is_equal_approx(net.speed_mult(works), 0.9), "%.2f" % net.speed_mult(works))
+	check("2nd ring: drive 90% (times its ring's tempo, 0.14.94)", is_equal_approx(net.speed_mult(works) / GearNet.tempo(works), 0.9), "%.2f" % net.speed_mult(works))
 	check("supply is not touched by drive (a Regulator's speed stays 1)", reg == null or net.speed_mult(reg) == 1.0)
 	# the Works' training follows its drive
 	var t0 := g.can_train(works, "clock_soldier")
 	check("the Works trains a Clock Soldier", t0 == "" and g.train(works, "clock_soldier") == "", t0)
 	U.step(g, 10.0)
-	check("in 10 s its training got 9 s along (90%)", absf(works.prod_t - 9.0) < 0.25, "%.2f" % works.prod_t)
+	check("in 10 s its training got 9 s along (90%, times its tempo)", absf(works.prod_t - 9.0 * GearNet.tempo(works)) < 0.25, "%.2f" % works.prod_t)
 	g.cancel_train(works)
 	# a Cog Press on the 3rd ring presses at 80%
 	var p2 := _hang(g, Defs.GEAR_PRESS, works)
@@ -118,7 +118,7 @@ func _run() -> void:
 		sp = _hang(g, "mainspring", works)
 	check("a Mainspring hung on the Works", sp != null)
 	if sp != null:
-		check("the Works now meshes with a driver: 100%", int(net.drive_of.get(works, -1)) == 1 and is_equal_approx(net.speed_mult(works), 1.0), "steps %d" % int(net.drive_of.get(works, -1)))
+		check("the Works now meshes with a driver: 100%", int(net.drive_of.get(works, -1)) == 1 and is_equal_approx(net.speed_mult(works) / GearNet.tempo(works), 1.0), "steps %d" % int(net.drive_of.get(works, -1)))
 		check("the press beyond the Works is the 2nd ring from the Mainspring: 90%", p2 == null or int(net.drive_of.get(p2, -1)) == 2, "steps %d" % (int(net.drive_of.get(p2, -1)) if p2 else -1))
 		check("the Mainspring counts the other drivers only: 3rd ring from the Clocktower (80%)", int(net.drive_of.get(sp, -1)) == 3 and is_equal_approx(net.speed_mult(sp), 0.8),
 			"steps %d" % int(net.drive_of.get(sp, -1)))
@@ -129,7 +129,7 @@ func _run() -> void:
 			var note := GearEcon.ghost_note(net, 0, Defs.CW_TECH, gc)
 			var esc := g._add_building(Defs.CW_TECH, 0, gc, true)
 			net.solve()
-			check("the ghost's drive (%d) is the built drive" % steps, steps == int(net.drive_of.get(esc, -1)) and note.contains("100%"), "built %d, note '%s'" % [int(net.drive_of.get(esc, -1)), note])
+			check("the ghost's drive (%d) is the built drive" % steps, steps == int(net.drive_of.get(esc, -1)) and note.contains("%d%%" % int(round(100.0 * GearNet.tempo(esc)))), "built %d, note '%s'" % [int(net.drive_of.get(esc, -1)), note])
 			g._remove_quietly(esc)
 			net.solve()
 	# an idler is free: a ring linked through an idler to the Clocktower is still the 1st ring

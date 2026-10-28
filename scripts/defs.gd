@@ -399,9 +399,21 @@ const GEAR := {
 	# DRIVE (a building's EFFICIENCY, GearEcon): the Clocktower and every Mainspring drive the field; a building meshing with
 	# one works at the first share, each ring farther out at the next (the last one from there on). An idler is free.
 	"drive": [1.0, 0.9, 0.8, 0.7],
+	# SIZE SETS THE TEMPO (owner, 2026-10-27; docs/gear_rules.md): a small ring turns fast and works quick and light, a big
+	# ring turns slow and works heavy and strong. [small, big] work-speed multipliers (training and research) on top of the
+	# drive: the Light Works trains 15% faster on its small ring and 15% slower on its big one, the Escapement researches and
+	# the Clock Aviary trains 10% faster or slower (GearNet.tempo). Guesses. (The Cog Press and the Mainspring trade by
+	# crew instead, the Ratchet Turret by its screw: Defs.TURRET "small" / "big".)
+	"tempo": {"movement_works": [1.15, 0.85], "escapement": [1.1, 0.9], "cuckoo_house": [1.1, 0.9]},
+	# Kinds that only ever sit on their BIG ring (the Heavy Works: the heavy torque); no swap (GearNet.big_only).
+	"big_only": ["heavy_works"],
+	# The buildings that use Tension stand on a polished BRASS floor plate, the others on the dark iron one (owner,
+	# 2026-10-27; GearArt.plate, tools/gear_art/make_brass_plate.py).
+	"brass_plate": ["mainspring", "escapement", "heavy_works", "cuckoo_house"],
 	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
 	"pop": {"cog_press": 4.0, "mainspring": 6.0},     # seconds between the "+N" shown over a working press / spring (Building.pop_income)
-	"works_dt": 0.12,               # ... of the Light Works' loop (while it trains)
+	"works_dt": 0.12,               # ... of the Light Works' loop (while it trains; internal id movement_works)
+	"heavy_dt": 0.12,               # ... of the Heavy Works' winch key (while it trains)
 	"regulator_dt": 0.15,           # ... of the Regulator's pendulum (always, while built and linked)
 	"escapement_dt": 0.125,         # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring):
 	"escapement_frames": 24,        #     a tick or a tock every 4 frames (0.5 s), the wheel's half-tooth jump as the anchor swings through
@@ -418,7 +430,12 @@ static var rail_econ := true
 
 
 ## Gear mode's Clockwork barracks and supply building (the Line keeps the Assembly Works and the Spring Tower).
+## (the Movement Works was renamed the LIGHT WORKS for players in 0.14.88; its internal id stays movement_works)
 const CW_WORKS := "movement_works"
+## The HEAVY WORKS (owner, 2026-10-27, docs/gear_rules.md): the heavy machines' yard (the Pendulum, the Spring Ballista, the
+## Great Winder), on its BIG ring only (GEAR "big_only"), a Tension user (TENSION_USERS: idle unless its ring meshes with a
+## Mainspring's), needs a working Escapement.
+const CW_HEAVY := "heavy_works"
 const CW_SUPPLY := "regulator"
 
 
@@ -477,7 +494,16 @@ static func energy_only(k: String) -> bool:
 ## Head art: `head_at` (game px from the building's anchor, its footprint's bottom centre) is where the head's collar
 ## centre sits on the base's turntable (found by eye); `tips` the barrel tip per drawn facing, px from the collar centre
 ## (W/SW/NW mirror E/SE/NE); `shot_scale` the screw's size in flight (and its sparks), `muzzle_scale` the burst's.
+## SIZE SETS THE TEMPO (owner, 2026-10-27): on its SMALL ring it fires quick light screws (`small`), on its BIG ring slow heavy
+## ones (`big`: about the same damage a second, but armour takes the same off every hit, so the big screw is the answer to
+## armour); the reach is the same on both, well under the Crown's guns. `damage` / `cooldown` are the old single values (the
+## small ring's were these until 0.14.94). THE TURRET CIRCLE (owner, 2026-10-27): each turret claims a circle of ground
+## `claim` tiles round its centre (like the Brood's Feeding Pits) and two turrets' circles may not overlap (a turret's
+## spring draws every bit of force from the gears under it: a second one inside the circle would starve both and jam).
+## A guess: 4 tiles, so turrets stand at least 8 tiles apart. Old saves keep the turrets they have.
 const TURRET := {"range": 200.0, "damage": 14.0, "cooldown": 1.5, "speed": 520.0, "turn": 0.07, "scan": 0.25,
+	"small": {"damage": 11.0, "cooldown": 1.2, "shot_scale": 0.55}, "big": {"damage": 21.0, "cooldown": 2.2, "shot_scale": 0.75},
+	"claim": 4.0,
 	"head_at": Vector2(0, -70), "shot_scale": 0.6, "muzzle_scale": 0.8,
 	"tips": {"s": Vector2(0, -4), "se": Vector2(22, -3), "e": Vector2(40, -15), "ne": Vector2(21, -38), "n": Vector2(0, -40)}}
 const CW_TURRET := "ratchet_turret"
@@ -493,9 +519,9 @@ const OLD_UNIT_KINDS := {"jack": "springer"}
 ## THE TENSION RULE (owner, 2026-10-26): a building that uses Tension works only while its gear ring meshes DIRECTLY with
 ## a Mainspring's ring (one hop, within the link gap: an idler cog between the two rings counts), on top of being linked
 ## to the field. Else it is idle (no research, unlocks nothing) and shows NEEDS MAINSPRING (GearNet.spring_for).
-## The Clock Aviary too (all it makes costs Tension); a Light Works makes its Springers, Netters and Pendulums only so
+## The Clock Aviary and the Heavy Works too (all they make costs Tension); a Light Works makes its Springers and Netters only so
 ## (GearEcon.spend_problem).
-const TENSION_USERS := ["escapement", "cuckoo_house"]
+const TENSION_USERS := ["escapement", "cuckoo_house", "heavy_works"]
 ## The Springer (Defs.UNITS "springer"): a jack-in-the-box on a coil spring that hops about and shoots screws.
 ## JUMP (an ability, a point): the spring presses down for `crouch` s (a visible crouch: readable and answerable), then it
 ## flies to the point (at most `range` px) along an arc and lands; `cooldown` s before the next. It cannot attack from the
@@ -578,11 +604,12 @@ const FLYER := {
 
 
 ## TIER 3 of the gear-mode Clockwork (docs/clockwork_ground_up.md "Tier 3"): the PENDULUM, the melee AREA DAMAGE, and the
-## NETTER, the STOPPER; both from the Light Works once an Escapement works, both paid in cogs and Tension
+## NETTER, the STOPPER; once an Escapement works, the Pendulum from the Heavy Works and the Netter from the Light Works, both
+## paid in cogs and Tension
 ## (scripts/pendulum.gd, scripts/netter.gd; numbers beside their UNITS entries).
 const PENDULUM := "pendulum"
 const NETTER := "netter"
-## The Pendulum is made only while its Light Works runs on the BIG gear (UNITS "big_gear": the heavy torque;
+## The Pendulum is made only at a works on its BIG gear (UNITS "big_gear": the heavy torque; the Heavy Works always is;
 ## Game.can_train). Its arms cut in turn (right, left: scripts/pendulum.gd); each blow (on the 4th frame of its arm's
 ## strip) hits EVERY enemy on the ground in the ARC in front of it: within `reach` px of its feet (to the victim's edge),
 ## up to `arc` degrees either side of the way it faces (a third of the circle); a building it swings at takes the blow
@@ -602,7 +629,7 @@ const NET := {"time": 4.0, "speed": 380.0, "arc": 0.12, "damage": 4.0, "strike":
 
 
 ## The SPRING BALLISTA (gear mode's Clockwork tier 2, the owner's unit, 2026-10-27; scripts/ballista.gd, docs/ballista.md):
-## a crewed bolt thrower on cog wheels, made at the Light Works once an Escapement works. Its screw BOLT flies in a
+## a crewed bolt thrower on cog wheels, made at the Heavy Works once an Escapement works. Its screw BOLT flies in a
 ## straight line from the bow's `mouth` (game px from its feet per drawn view, W/SW/NW mirror E/SE/NE; printed by
 ## tools/import_ballista.py) at `speed` px/s and PASSES THROUGH: it goes on `line` px past the point it was aimed at and
 ## hits the enemies within `width` px of that line (on the ground; never its own side's), up to `hits` of them, in order:
@@ -673,7 +700,7 @@ static func build_list(faction: String) -> Array:
 			l[l.find("ore_crusher")] = GEAR_PRESS
 			l.insert(l.find(GEAR_PRESS) + 1, "mainspring")
 			# the new-style army (docs/clockwork_ground_up.md): the Regulator for supply instead of the Spring Tower, and
-			# the Light Works (the barracks) after the Mainspring
+			# the Light Works (id movement_works, the barracks) after the Mainspring
 			l[l.find("spring_tower")] = "regulator"
 			l.insert(l.find("mainspring") + 1, CW_WORKS)
 			# no power (ENERGY_KINDS), and the Ratchet Turret, the static defence, after the Works
@@ -682,7 +709,8 @@ static func build_list(faction: String) -> Array:
 			l.insert(l.find(CW_WORKS) + 1, CW_TURRET)
 			# tier 2: the Escapement (the tech building, a Tension user) after the turret, and the Clock Aviary (the flyers)
 			l.insert(l.find(CW_TURRET) + 1, CW_TECH)
-			l.insert(l.find(CW_TECH) + 1, CW_AIR)
+			l.insert(l.find(CW_TECH) + 1, CW_HEAVY)          # (the heavy machines' yard, owner 2026-10-27)
+			l.insert(l.find(CW_HEAVY) + 1, CW_AIR)
 			# the old prototype army's building is retired (owner, 2026-10-26: only the new units in the live game)
 			l.erase("assembly_works")
 		elif rail_econ:
@@ -962,9 +990,9 @@ const UNITS := {
 	"pendulum": {
 		"tags": ["armored", "massive"],
 		"name": "Pendulum", "hp": 340, "armor": 2, "speed": 46, "cost": 200, "tension": 75, "time": 35.0, "supply": 4,
-		"sight": 8, "range": 32, "damage": 12, "cooldown": 0.76, "aim": 0.35, "radius": 20, "from": "movement_works",
+		"sight": 8, "range": 32, "damage": 12, "cooldown": 0.76, "aim": 0.35, "radius": 20, "from": "heavy_works",
 		"building_bonus": 1.25, "requires": "escapement", "big_gear": true, "ground_only": true, "faction": "clockwork",
-		"about": "A tall clock tower on long legs with two arms, each a heavy weight with a crescent blade: they sweep low in turn, like scythes at ankle height, and every blow cuts EVERY enemy on the ground in the wide arc in front of it (never your own units), light units hardest. Slow and tough; it cannot reach flyers. Made at the Light Works once an Escapement works, and only while the Works runs on its BIG gear (the heavy torque). Costs Tension.",
+		"about": "A tall clock tower on long legs with two arms, each a heavy weight with a crescent blade: they sweep low in turn, like scythes at ankle height, and every blow cuts EVERY enemy on the ground in the wide arc in front of it (never your own units), light units hardest. Slow and tough; it cannot reach flyers. Made at the Heavy Works (once an Escapement works). Costs Tension.",
 	},
 	# TIER 3 (gear mode; Defs.NET): the NETTER, the STOPPER (the owner's "unit that stops one enemy", made of machinery: no
 	# magic). Its spring cannon fires a weighted chain net at ONE enemy unit: caught, it cannot move or fight for 4 s, and a
@@ -991,9 +1019,9 @@ const UNITS := {
 	"ballista": {
 		"tags": ["armored"],
 		"name": "Spring Ballista", "hp": 210, "armor": 1, "speed": 34, "cost": 150, "tension": 50, "time": 30.0, "supply": 3,
-		"sight": 9, "range": 300, "min_range": 64, "damage": 45, "cooldown": 7.0, "aim": 0.3, "radius": 24, "from": "movement_works",
+		"sight": 9, "range": 300, "min_range": 64, "damage": 45, "cooldown": 7.0, "aim": 0.3, "radius": 24, "from": "heavy_works",
 		"building_bonus": 2.0, "requires": "escapement", "ground_only": true, "faction": "clockwork",
-		"about": "A bolt thrower on cog wheels: its spring fires a giant screw in a straight line that goes THROUGH its target into one or two behind it. Hard on armoured units and buildings, poor against swarms of light units, and it cannot shoot anything closer than 2 tiles or in the air. No set-up: it fires as soon as it stops, and on the move at what is ahead of it, but the spring is wound again only while it stands (a slow reload). One Winder is built in; up to 4 more can BOARD it: each makes it reload and move 10% faster. They push it and crank it, and they can be shot. Made at the Light Works once an Escapement works. Costs Tension.",
+		"about": "A bolt thrower on cog wheels: its spring fires a giant screw in a straight line that goes THROUGH its target into one or two behind it. Hard on armoured units and buildings, poor against swarms of light units, and it cannot shoot anything closer than 2 tiles or in the air. No set-up: it fires as soon as it stops, and on the move at what is ahead of it, but the spring is wound again only while it stands (a slow reload). One Winder is built in; up to 4 more can BOARD it: each makes it reload and move 10% faster. They push it and crank it, and they can be shot. Made at the Heavy Works (once an Escapement works). Costs Tension.",
 	},
 	# TIER 2 (gear mode; Defs.GREAT_WINDER, scripts/great_winder.gd, docs/great_winder.md): the GREAT WINDER, the owner's
 	# unit (2026-10-26/27): the Clockwork's field workshop, the job its escort of ordinary Winders does, done better by one
@@ -1006,9 +1034,9 @@ const UNITS := {
 	"great_winder": {
 		"tags": ["armored", "massive"],
 		"name": "Great Winder", "hp": 420, "armor": 3, "speed": 27, "cost": 175, "tension": 75, "time": 35.0, "supply": 4,
-		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 26, "from": "movement_works",
+		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 26, "from": "heavy_works",
 		"requires": "escapement", "no_attack": true, "ground_only": true, "faction": "clockwork",
-		"about": "The Clockwork's winding machine on cog wheels, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Light Works once an Escapement works. Costs Tension.",
+		"about": "The Clockwork's winding machine on cog wheels, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Heavy Works (once an Escapement works). Costs Tension.",
 	},
 	"windup_soldier": {
 		"tags": ["light"],
@@ -1227,8 +1255,17 @@ const BUILDINGS := {
 	# costs like the Crown Barracks, the Regulator houses like the Spring Tower.
 	"movement_works": {
 		"name": "Light Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": ["clock_soldier", "springer", "ballista", "pendulum", "netter", "great_winder"], "faction": "clockwork",
-		"about": "The Clockwork's barracks: a long hall that assembles Clock Soldiers on a hanging line, and Springers, Spring Ballistas, Great Winders, Netters and Pendulums once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension; a Pendulum only while the Works runs on its BIG gear). It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
+		"supply": 0, "sight": 7, "trains": ["clock_soldier", "springer", "netter"], "faction": "clockwork",
+		"about": "The Clockwork's barracks for the light machines: a long hall that assembles Clock Soldiers on a hanging line, and Springers and Netters once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension). On its SMALL gear it trains 15% faster, on its BIG gear 15% slower. It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
+	},
+	# THE HEAVY WORKS (gear mode, owner 2026-10-27; docs/gear_rules.md): the heavy machines' yard, a gantry crane over an open
+	# bay where the machine in training is assembled (drawn by HeavyWorks, scripts/heavy_works.gd). Only on its BIG ring
+	# (Defs.GEAR "big_only"), a Tension user (its ring must mesh with a Mainspring's), needs a working Escapement.
+	# Guesses: a little more than the Light Works (175 cogs, 45 s), the Escapement's health.
+	"heavy_works": {
+		"name": "Heavy Works", "hp": 1100, "armor": 2, "cost": 175, "time": 45.0, "size": Vector2i(3, 3),
+		"supply": 0, "sight": 7, "trains": ["pendulum", "ballista", "great_winder"], "requires": "escapement", "faction": "clockwork",
+		"about": "The yard of the heavy machines: under its gantry crane it assembles Pendulums, Spring Ballistas and Great Winders, and you can watch each one rise in the bay. It sits on a BIG gear only (slow and strong: the heavy torque), and everything it makes costs Tension, so its gear ring must mesh with a Mainspring's ring, else it stands idle (NEEDS MAINSPRING). Needs a working Escapement.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
 	# its ring meshes with a Mainspring's. Numbers are guesses: the Light Works' price and health.
@@ -1255,7 +1292,7 @@ const BUILDINGS := {
 	"ratchet_turret": {
 		"name": "Ratchet Turret", "hp": 450, "armor": 1, "cost": 125, "time": 30.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 8, "trains": [], "requires": "movement_works", "anti_air": true, "faction": "clockwork",
-		"about": "Static defence: its head turns to the nearest enemy and fires big screws at ground and air alike. Must stay linked to the gear field or it does not fire. Needs a Light Works.",
+		"about": "Static defence: its head turns to the nearest enemy and fires big screws at ground and air alike. SMALL gear: quick light screws. BIG gear: slow heavy screws, better against armour. Each turret claims a circle of ground 4 tiles round it, and two turrets' circles may not overlap: its spring draws every bit of force from the gears under it. Must stay linked to the gear field or it does not fire. Needs a Light Works.",
 	},
 	"assembly_works": {
 		"name": "Assembly Works", "hp": 1400, "armor": 3, "cost": 200, "time": 45.0, "size": Vector2i(5, 4),
@@ -1326,7 +1363,7 @@ const BUILDINGS := {
 	"mainspring": {
 		"name": "Mainspring", "hp": 800, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
-		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, and a Light Works for its Springers, Netters and Pendulums. Must stay linked to the gear field.",
+		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters. Must stay linked to the gear field.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),

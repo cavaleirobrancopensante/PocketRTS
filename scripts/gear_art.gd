@@ -169,13 +169,17 @@ static func hole_r(kind: String, n: int) -> float:
 ## THE FLOOR PLATE (art/clockwork/gear/floor_plate_src.png keyed by tools/gear_art/import_buildings.py to
 ## assets/gear/floor_plate.png): the flat, bolted iron deck that fills a ring's hole, `d` game px across. Resized ONCE per
 ## whole-px diameter (BAKE times, smooth) and cached; null without the art (or headless).
-static func plate(d: int) -> Texture2D:
-	var key := "plate:%d" % d
+## `brass`: the polished BRASS deck of the buildings that use Tension (assets/gear/floor_plate_brass.png, made from the iron
+## one by tools/gear_art/make_brass_plate.py; owner 2026-10-27, docs/gear_rules.md).
+static func plate(d: int, brass := false) -> Texture2D:
+	var key := ("brass:%d" if brass else "plate:%d") % d
 	if _cache.has(key):
 		return _cache[key]
 	var out: Texture2D = null
 	if not disabled:
-		var src := _strip("floor_plate")
+		var src := _strip("floor_plate_brass" if brass else "floor_plate")
+		if src == null and brass:
+			src = _strip("floor_plate")
 		if src != null:
 			var img := src.duplicate() as Image
 			var side := maxi(8, int(round(float(d) * BAKE)))

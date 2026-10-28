@@ -530,8 +530,11 @@ func _key(e: InputEventKey) -> void:
 		KEY_H:
 			game.command_all(units, "hold")
 		KEY_QUOTELEFT:
-			game.line_net.overlay_on = not game.line_net.overlay_on
-			game.line_net.redraw()
+			if Defs.gear_mode:
+				game.toggle_gear_view()       # (THE GEAR VIEW: the whole gear network, scripts/gear.gd)
+			else:
+				game.line_net.overlay_on = not game.line_net.overlay_on
+				game.line_net.redraw()
 		KEY_B:
 			if hud and units.any(func(u: Unit) -> bool: return u.is_worker()):
 				hud.page = "build"
