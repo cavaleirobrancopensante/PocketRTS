@@ -7,9 +7,9 @@ extends Node2D
 signal ended(winner: int)
 
 ## The map's size in cells: set from the map before the match is built (MapGen.size_of);
-## 84 x 60 for the classic maps and custom ones.
-static var W := 84
-static var H := 60
+## 110 x 80 for the classic maps (MapGen.CLASSIC; 84 x 60 before 0.15.0), a custom map's own.
+static var W := 110
+static var H := 80
 const T := Defs.TILE
 const HASH := 64
 
@@ -58,7 +58,7 @@ func prey(t: int, e: Entity) -> bool:
 ## A unit that can hurt you back (not a worker, a Missionary, a horse, a Powder Wagon...):
 ## units on their own go for these first (find_target), then other units, then buildings.
 static func fights_back(e) -> bool:
-	return e is Unit and not e.dead and not e.is_worker() and not e.d.get("no_attack", false) and not e.d.get("medic", false)
+	return e is Unit and not e.dead and not e.is_worker() and not e._d_noatk and not e._d_medic
 
 
 ## A horse belonging to nobody (its rider fell and it bolted: Unit._rider_falls).
@@ -95,6 +95,10 @@ var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building, 3 gate
 var water := PackedByteArray()
 var height := PackedByteArray()          # 1 = high ground
 var ramp := PackedByteArray()
+var rails: Array = []                    # the ramp rails (MapGen.ramp_rails): low walls down a ramp's sides that no unit crosses
+var rail_bits := PackedByteArray()       # per cell: its sides with a rail (1 east, 2 west, 4 south, 8 north)
+var rail_side := {}                      # map index -> true: a cell across a rail from a ramp, shut in the pathfinder grids (path_cell)
+var rail_layer: RampRails                # draws the rails
 var cliff := PackedByteArray()
 var map_id := "random"
 var map_name := ""
@@ -301,7 +305,8 @@ func _ready() -> void:
 		# the best free hall spots of each side, tinted on the ground (scripts/expansion_spots.gd; rated on the bare map)
 		exp_spots = ExpansionSpots.new()
 		exp_spots.game = self
-		exp_spots.spots = ExpansionSpots.rate(self)
+		exp_spots.all = ExpansionSpots.rate_all(self)
+		exp_spots.spots = exp_spots.all.filter(func(s: Dictionary) -> bool: return int(s["rank"]) > 0)
 		exp_spots.z_index = -18
 		add_child(exp_spots)
 	if edit_mode:
@@ -440,9 +445,9 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 				# (a building going up over a decoration hides it: _solidify, _cover_decos)
 				_region_dirty = true
 				if astar.region.size != Vector2i.ZERO:
-					astar.set_point_solid(cc, v != 0 and v != 3 and v != 5)
+					astar.set_point_solid(cc, (v != 0 and v != 3 and v != 5) or rail_side.has(idx(cc)))
 				if astar_siege.region.size != Vector2i.ZERO:
-					astar_siege.set_point_solid(cc, v == 1 or v == 2)
+					astar_siege.set_point_solid(cc, v == 1 or v == 2 or rail_side.has(idx(cc)))
 
 
 ## Gates: map index -> the team that owns it.
@@ -482,7 +487,7 @@ func set_gate_locked(b: Building, on: bool, force := false) -> String:
 		b.queue_redraw()
 		gate_team[i] = b.team
 		if astar.region.size != Vector2i.ZERO:
-			astar.set_point_solid(b.cell, false)
+			astar.set_point_solid(b.cell, rail_side.has(i))
 	_region_dirty = true
 	b._update_sprite()
 	b.queue_redraw()
@@ -757,6 +762,7 @@ func next_site(u: Unit) -> Building:
 
 
 func _setup_astar() -> void:
+	_setup_rails()
 	astar.region = Rect2i(0, 0, W, H)
 	astar.cell_size = Vector2(T, T)
 	astar.offset = Vector2(T, T) * 0.5
@@ -780,6 +786,11 @@ func _setup_astar() -> void:
 				astar.set_point_solid(Vector2i(x, y), true)
 			if sv == 1 or sv == 2:
 				astar_siege.set_point_solid(Vector2i(x, y), true)
+	# (no path steps from beside a ramp onto it across a rail: those cells are shut to the
+	# pathfinder; a path that starts or ends on one goes by path_cell)
+	for i in rail_side:
+		astar.set_point_solid(Vector2i(i % W, i / W), true)
+		astar_siege.set_point_solid(Vector2i(i % W, i / W), true)
 	# Trees and rocks as sprites
 	for sp in _terrain_sprites:
 		sp.queue_free()
@@ -828,6 +839,204 @@ func _setup_astar() -> void:
 			if not _deco_at.has(idx(at)):
 				_deco_at[idx(at)] = []
 			_deco_at[idx(at)].append(s)
+
+
+# ------------------------------------------------------------------ ramp rails
+
+## The ramp rails (docs/ramp_funnel.md, MapGen.ramp_rails): a low wall down both sides of every
+## ramp but its bottom row. A unit gets onto a ramp only straight on at either end, or from the
+## side onto its bottom row. The ground beside a rail stays normal ground. The rule is an EDGE
+## between cells: rail_cut (walk fills), the pathfinder grids (rail_side, path_cell), the path
+## smoothing (line_clear) and movement (rail_fix, in resolve_terrain) all keep to it.
+const RAIL_GAP := 6.0                    # (px: the least a unit's middle keeps from a rail's line)
+const RAIL_LINE_PAD := 4.0               # (px: a smoothed path keeps this much more than its margin from a rail, so it never runs inside the gap rail_fix keeps: a unit would press on it)
+
+
+func _setup_rails() -> void:
+	rails = mapgen.ramp_rails()
+	rail_bits = PackedByteArray()
+	rail_bits.resize(W * H)
+	_rail_near = PackedByteArray()
+	_rail_near.resize(W * H)
+	rail_side.clear()
+	_rail_box = PackedFloat32Array()
+	for rl in rails:
+		var rr: Rect2 = rl["rect"]
+		_rail_box.append_array([rr.position.x, rr.position.y, rr.end.x, rr.end.y])
+		var o: Vector2i = rl["out"]
+		var bo := _rail_bit(o)
+		var bi := _rail_bit(-o)
+		var lanes: Array = rl["lanes"]
+		var sides: Array = rl["sides"]
+		for n in lanes.size():
+			var l: Vector2i = lanes[n]
+			var sc: Vector2i = sides[n]
+			rail_bits[idx(l)] |= bo
+			rail_bits[idx(sc)] |= bi
+			for dy in range(-2, 3):
+				for dx in range(-2, 3):
+					var nc := l + Vector2i(dx, dy)
+					if in_map(nc):
+						_rail_near[idx(nc)] = 1
+			if cliff[idx(sc)] == 0 and water[idx(sc)] == 0:
+				rail_side[idx(sc)] = true
+	if rail_layer == null and ground != null:
+		rail_layer = RampRails.new()
+		rail_layer.game = self
+		rail_layer.z_index = -17
+		add_child(rail_layer)
+	if rail_layer != null:
+		rail_layer.queue_redraw()
+
+
+static func _rail_bit(d: Vector2i) -> int:
+	if d.x > 0:
+		return 1
+	if d.x < 0:
+		return 2
+	return 4 if d.y > 0 else 8
+
+
+## A rail between two neighbouring cells (8 ways: a diagonal step is cut when a rail lies on any of
+## the four edges round the corner it passes, so no step cuts the corner past a rail's end).
+func rail_cut(a: Vector2i, b: Vector2i) -> bool:
+	if rails.is_empty() or not in_map(a) or not in_map(b):
+		return false
+	var d := b - a
+	if d.x != 0 and d.y != 0:
+		var h := a + Vector2i(d.x, 0)
+		var v := a + Vector2i(0, d.y)
+		return _rail_edge(a, h) or _rail_edge(a, v) or _rail_edge(h, b) or _rail_edge(v, b)
+	return _rail_edge(a, b)
+
+
+func _rail_edge(a: Vector2i, b: Vector2i) -> bool:
+	if not in_map(a) or not in_map(b):
+		return false
+	return rail_bits[idx(a)] & _rail_bit(b - a) != 0
+
+
+## The cell to give the pathfinder for a path that starts or ends at `c`: `c` itself, or, for a
+## cell beside a rail (shut in the pathfinder grids), the nearest cell open to it that a unit
+## walks to from `c` without crossing a rail (along the foot of the cliff, or away from the ramp).
+func path_cell(c: Vector2i, siege := false) -> Vector2i:
+	if rail_side.is_empty() or not in_map(c) or not rail_side.has(idx(c)):
+		return c
+	var grid: AStarGrid2D = astar_siege if siege else astar
+	var seen := {c: true}
+	var q: Array = [c]
+	var qi := 0
+	while qi < q.size() and qi < 64:
+		var cc: Vector2i = q[qi]
+		qi += 1
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = cc + d
+			if seen.has(n) or not in_map(n) or not open_cell(n) or rail_cut(cc, n):
+				continue
+			seen[n] = true
+			if not rail_side.has(idx(n)) and not grid.is_point_solid(n):
+				return n
+			q.append(n)
+	return c
+
+
+## Movement past the rails: `pos` (a unit of `radius` going there from `before`) moved back to
+## before's side of any rail it would cross or come closer to than its own half-width. A unit
+## already overlapping a rail (an old save or replay) is pushed out on the side its middle is on.
+func rail_fix(pos: Vector2, before: Vector2, radius: float) -> Vector2:
+	if rails.is_empty():
+		return pos
+	# (every moving unit comes here a few times a tick: away from the rails, one look at the
+	# cells it is in)
+	var ia := clampi(int(pos.y / T), 0, H - 1) * W + clampi(int(pos.x / T), 0, W - 1)
+	var ib := clampi(int(before.y / T), 0, H - 1) * W + clampi(int(before.x / T), 0, W - 1)
+	if _rail_near[ia] == 0 and _rail_near[ib] == 0:
+		return pos
+	var rx := maxf(radius * 0.6, RAIL_GAP)
+	var ry := rx         # (a kerb running east-west: the same gap, as a unit south of it is drawn up over it)
+	for rl in rails:
+		var rr: Rect2 = rl["rect"]
+		if rl["vertical"]:
+			var x := rr.position.x
+			var y0 := rr.position.y - RAIL_GAP       # (past its ends: a small cap, so a big machine still turns onto the open bottom row)
+			var y1 := rr.end.y + RAIL_GAP
+			if maxf(pos.y, before.y) < y0 or minf(pos.y, before.y) > y1 or minf(pos.x, before.x) > x + rx or maxf(pos.x, before.x) < x - rx:
+				continue
+			var s := signf(before.x - x)
+			if s == 0.0:
+				s = -signf(float((rl["out"] as Vector2i).x))
+			var hit := pos.y >= y0 and pos.y <= y1 and (pos.x - x) * s < rx
+			if not hit and (pos.x - x) * s < 0.0:
+				var yc := lerpf(before.y, pos.y, (x - before.x) / (pos.x - before.x))
+				hit = yc >= y0 and yc <= y1
+			if hit:
+				pos.x = x + s * rx
+		else:
+			var y := rr.position.y
+			var x0 := rr.position.x - RAIL_GAP
+			var x1 := rr.end.x + RAIL_GAP
+			if maxf(pos.x, before.x) < x0 or minf(pos.x, before.x) > x1 or minf(pos.y, before.y) > y + ry or maxf(pos.y, before.y) < y - ry:
+				continue
+			var s := signf(before.y - y)
+			if s == 0.0:
+				s = -signf(float((rl["out"] as Vector2i).y))
+			var hit := pos.x >= x0 and pos.x <= x1 and (pos.y - y) * s < ry
+			if not hit and (pos.y - y) * s < 0.0:
+				var xc := lerpf(before.x, pos.x, (y - before.y) / (pos.y - before.y))
+				hit = xc >= x0 and xc <= x1
+			if hit:
+				pos.y = y + s * ry
+	return pos
+
+
+## Does the straight line a-b pass a rail closer than `margin`? (the path smoothing's test)
+## (line_clear asks it thousands of times: each rail's box is first tested against the line's
+## own box, from a flat list)
+func rail_blocks_line(a: Vector2, b: Vector2, margin: float) -> bool:
+	var lx0 := minf(a.x, b.x) - margin
+	var lx1 := maxf(a.x, b.x) + margin
+	var ly0 := minf(a.y, b.y) - margin
+	var ly1 := maxf(a.y, b.y) + margin
+	var n := _rail_box.size()
+	var k := 0
+	while k < n:
+		if lx1 >= _rail_box[k] and lx0 <= _rail_box[k + 2] and ly1 >= _rail_box[k + 1] and ly0 <= _rail_box[k + 3]:
+			if _seg_hits_rect(a, b, (rails[k / 4]["rect"] as Rect2).grow(margin)):
+				return true
+		k += 4
+	return false
+
+
+var _rail_box := PackedFloat32Array()      # each rail's line: x0, y0, x1, y1
+var _rail_near := PackedByteArray()        # per cell: 1 within two cells of a rail's ramp cell
+
+
+static func _seg_hits_rect(a: Vector2, b: Vector2, box: Rect2) -> bool:
+	if box.has_point(a) or box.has_point(b):
+		return true
+	var t0 := 0.0
+	var t1 := 1.0
+	var d := b - a
+	for ax in 2:
+		var p0: float = a.x if ax == 0 else a.y
+		var dv: float = d.x if ax == 0 else d.y
+		var lo: float = box.position.x if ax == 0 else box.position.y
+		var hi: float = box.end.x if ax == 0 else box.end.y
+		if absf(dv) < 0.0001:
+			if p0 < lo or p0 > hi:
+				return false
+			continue
+		var ta := (lo - p0) / dv
+		var tb := (hi - p0) / dv
+		if ta > tb:
+			var tt := ta
+			ta = tb
+			tb = tt
+		t0 = maxf(t0, ta)
+		t1 = minf(t1, tb)
+		if t0 > t1:
+			return false
+	return true
 
 
 var _terrain_sprites: Array = []
@@ -1639,13 +1848,18 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 			var path_t := _tile(b["base"], 3)
 			# the side axis on the grid, and which cells continue the ramp on each side
 			var sa := Vector2i(1, 0) if absf(side.x) >= absf(side.y) else Vector2i(0, 1)
+			var sideways := sa.y != 0      # the ramp runs east-west (down to the east or the west)
 			var neg_open := {}
 			var pos_open := {}
+			# (the bottom row has no rail: it is open from the sides, so no kerb is painted down
+			# its sides either; docs/ramp_funnel.md)
+			var dg := Vector2i(int(signf(dir.x)), 0) if sa.y != 0 else Vector2i(0, int(signf(dir.y)))
 			for c in cells:
 				var nn: Vector2i = c - sa
 				var pp: Vector2i = c + sa
-				neg_open[c] = in_map(nn) and ramp[idx(nn)] == 1
-				pos_open[c] = in_map(pp) and ramp[idx(pp)] == 1
+				var foot := not MapGen.no_funnel and not (in_map(c + dg) and ramp[idx(c + dg)] == 1)
+				neg_open[c] = foot or (in_map(nn) and ramp[idx(nn)] == 1)
+				pos_open[c] = foot or (in_map(pp) and ramp[idx(pp)] == 1)
 			for c in cells:
 				if not area.has_point(c):
 					continue
@@ -1660,14 +1874,18 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 						var ends := a.lerp(z, f)
 						var track: Color = path_t.get_pixel(px, py)
 						var col := ends.lerp(track, smoothstep(0.0, 0.18, f) * (1.0 - smoothstep(0.82, 1.0, f)))
-						col = col.darkened(0.04 + 0.12 * f)
+						# (the planks a touch darker and stronger than the ground round them, so the
+						# ramp reads as the only way through: docs/ramp_funnel.md)
+						col = col.darkened(0.08 + 0.12 * f)
 						var step_d := fmod(p.dot(dir) - lo_p, 8.0)
 						if step_d < 1.0:
-							col = col.darkened(0.3)
+							col = col.darkened(0.38)
 						elif step_d < 2.0:
-							col = col.lightened(0.15)
-						# clear edges down both sides: a dark line with a lit rim inside it,
-						# and a wedge of cliff rock at the top that narrows down the slope
+							col = col.lightened(0.18)
+						# clear edges down both sides: a wedge of cliff rock at the top that narrows
+						# down the slope, then a stone kerb the whole way down (a dark outer line, a
+						# lit stone strip, a dark inner line) and the walls' shadow on the planks
+						# beside it, deepest at the top
 						# how far this pixel is from the ramp's side edge (the side of its cell
 						# that faces a cell which isn't ramp)
 						var sd := 99.0
@@ -1676,13 +1894,37 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 							sd = minf(sd, along)
 						if not pos_open.get(c, false):
 							sd = minf(sd, float(T) - 1.0 - along)
+						# (a sideways ramp, running east-west: its kerbs are the drawn rails alone
+						# (RampRails); no rock wedge and no painted kerb, which slanted across the
+						# planks there, only the rails' shadow as an even band along each side)
+						if sideways:
+							if sd < 6.0:
+								col = col.darkened(0.42)
+							elif sd < 9.0:
+								col = col.darkened(0.42 * (9.0 - sd) / 3.0)
+							var td_s := p.dot(dir) - lo_p
+							if td_s < 6.0:
+								col = col.darkened(0.45 * (1.0 - td_s / 6.0))
+							col.a = 1.0
+							img.set_pixel((c.x - area.position.x) * T + px, (c.y - area.position.y) * T + py, col)
+							continue
 						var wedge := 8.0 * (1.0 - f)
+						var k := sd - wedge
 						if sd < wedge:
 							col = face_t.get_pixel(px, py).darkened(0.1 + 0.25 * (1.0 - sd / maxf(wedge, 0.01)))
-						elif sd < wedge + 2.0 and f < 0.92:
-							col = col.darkened(0.6)
-						elif sd < wedge + 4.0 and f < 0.92:
-							col = col.lightened(0.3)
+						elif k < 1.0:
+							col = col.darkened(0.7)
+						elif k < 4.0:
+							var stone: Color = face_t.get_pixel(px, py).lerp(Color(0.62, 0.6, 0.55), 0.55)
+							col = stone.lightened(0.3) if k < 2.0 else stone
+						elif k < 5.0:
+							col = col.darkened(0.55)
+						elif k < 12.0:
+							col = col.darkened(0.3 * (1.0 - (k - 5.0) / 7.0) * (1.0 - 0.6 * f))
+						# a shadow line across the top, where the planks leave the high ground
+						var td := p.dot(dir) - lo_p
+						if td < 3.0 and sd >= wedge:
+							col = col.darkened(0.4 * (1.0 - td / 3.0))
 						col.a = 1.0
 						img.set_pixel((c.x - area.position.x) * T + px, (c.y - area.position.y) * T + py, col)
 
@@ -3091,6 +3333,7 @@ func _push_units_out(r: Rect2, keep: Array = []) -> void:
 		if not u.dead and not u.is_air() and not keep.has(u) and r.grow(u.radius).has_point(u.position) \
 				and not _clear_at(u.position, u.radius, u.team):
 			u.position = cell_center(nearest_free(cell_of(u.position), 8))
+			note_move(u)
 
 
 # ------------------------------------------------------------------ ghost sites
@@ -5442,15 +5685,21 @@ func find_path(from: Vector2, to: Vector2, siege := false, margin := 7.0) -> Pac
 	var a := cell_of(from) if open_cell(cell_of(from)) else nearest_free(cell_of(from), 6)
 	var b := cell_of(to) if open_cell(cell_of(to)) else nearest_free_level(cell_of(to), 8)
 	var pt := Time.get_ticks_usec()
-	var pts := astar.get_point_path(a, b, true)
+	# (beside a ramp's rail: the pathfinder starts or ends at the nearest cell open to it, and
+	# the last step is walked from there; docs/ramp_funnel.md)
+	var pa := path_cell(a)
+	var pb := path_cell(b)
+	var pts := astar.get_point_path(pa, pb, true)
 	# (allow_partial_path: when b can't be reached the path ends at the reachable cell nearest to it)
-	var whole := not pts.is_empty() and cell_of(pts[pts.size() - 1]) == b
+	var whole := not pts.is_empty() and cell_of(pts[pts.size() - 1]) == pb
 	if not whole and siege:
 		# walled out: walk up to the wall (the unit then breaks it down)
-		var sp := astar_siege.get_point_path(a, b, false)
+		var sp := astar_siege.get_point_path(path_cell(a, true), path_cell(b, true), false)
 		if not sp.is_empty():
 			pts = sp
 			whole = true
+	if whole and pb != b:
+		pts.append(cell_center(b))
 	Prof.add("game/pathfinder", pt)
 	if pts.is_empty():
 		return PackedVector2Array([to])
@@ -5525,6 +5774,8 @@ func line_clear(a: Vector2, b: Vector2, margin := 7.0) -> bool:
 		if v != 0 and v != 5:
 			return false
 		s += 4 if first else 1
+	if not _rail_box.is_empty() and rail_blocks_line(a, b, margin + RAIL_LINE_PAD):
+		return false              # (past a ramp's rail: docs/ramp_funnel.md)
 	return true
 
 
@@ -5584,6 +5835,16 @@ const CORNER_SLIP := [0.6, -0.6, 1.1, -1.1]       # (radians: the angles tried t
 
 
 func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -> Vector2:
+	if rails.is_empty():
+		return _resolve_terrain(pos, before, radius, team)
+	# the ramp rails (docs/ramp_funnel.md): kept to before the cells are looked at, and again
+	# after (a slide along x or y, or round a corner, mustn't take it over one)
+	before = rail_fix(before, before, radius)
+	pos = rail_fix(pos, before, radius)
+	return rail_fix(_resolve_terrain(pos, before, radius, team), before, radius)
+
+
+func _resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -> Vector2:
 	pos = pos.clamp(Vector2(radius, radius), Vector2(W * T, H * T) - Vector2(radius, radius))
 	if _clear_at(pos, radius, team):
 		return pos
@@ -5644,54 +5905,159 @@ func _gate_lets(i: int, v: int, t: int) -> bool:
 
 # ------------------------------------------------------------------ spatial queries
 
-## The units by HASH-px cell, rebuilt every tick. The cells over the map are a flat list
-## (row by row, null where nobody stands) and the few off it (a unit past the edge) a
-## dictionary: a look-up by index is much cheaper than one by Vector2i key, and units_near
-## and separation look at dozens of cells for every unit. The units in a cell keep the
-## order of `units`, as before.
-var _grid: Array = []
+## The units by HASH-px cell, rebuilt every tick, packed: every unit on the map in one list sorted by cell
+## (row by row) and, inside a cell, in the order of `units`; cell i holds _gunits[_gstart[i] .. _gend[i] - 1]
+## (_gstart -1: nobody). Beside each its position, team and radius as they were at the rebuild (_gpos,
+## _gteam, _grad: packed, so a search skips the men too far away without touching them, which is most of
+## them in a crowd). The few off the map (a unit past the edge) are in a dictionary by cell (_hash).
+## Units move during the tick, after the rebuild, by a step at most (GRID_SLACK allows it; the most any
+## moved is checked at each rebuild: grid_drift): a search that skips by the packed positions finds the
+## same units, in the same order, as one that looked at every unit of the cells.
+var _gunits: Array = []
+var _gpos := PackedVector2Array()
+var _gteam := PackedInt32Array()
+var _grad := PackedFloat32Array()
+var _gstart := PackedInt32Array()
+var _gend := PackedInt32Array()
+var _gused := PackedInt32Array()          # (the cells filled at the last rebuild: cleared at the next)
+var _gkeys := PackedInt64Array()
+var _tpos := PackedVector2Array()         # (the rebuild's scratch: position, team and radius by place in `units`)
+var _tteam := PackedInt32Array()
+var _trad := PackedFloat32Array()
+var grid_jumpers: Array = []              # (the units that jumped this tick: Unit._physics_process)
 var _grid_w := 0
 var _grid_h := 0
-var _grid_used := PackedInt32Array()
+var _tsuper := PackedInt32Array()        # how many of each side (slot team + 1) stand in each block of SUPER x SUPER cells
+var _super_w := 0
+var _super_n := 0
+var _super_slots := 0
+const SUPER := 8
+## How far a unit may have moved since the units' grid was rebuilt at the start of the tick (a tick's
+## walk at the fastest, a knock-back): the searches allow this much. grid_drift_max is the most any unit
+## on the field moved between two rebuilds (Unit._grid_p); grid_drift_over counts the times it was more.
+const GRID_SLACK := 7.0
+## GRID_SLACK, or more once a unit has moved farther than that since the rebuild (a Grub snapping onto the
+## site it turns into, a man getting off his horse: Unit._physics_process): the searches allow that much
+## till the next rebuild. (An online guest's and a replay's pictures: no limit, they look at everyone.)
+var grid_slack := GRID_SLACK
+var grid_drift_max := 0.0
+var grid_drift_over := 0
 
 
 func _rebuild_hash() -> void:
 	_hash.clear()
+	grid_slack = GRID_SLACK if not puppet else INF
 	var gw := int(W * T) / HASH + 2
 	var gh := int(H * T) / HASH + 2
-	if gw != _grid_w or gh != _grid_h or _grid.size() != gw * gh:
+	if gw != _grid_w or gh != _grid_h or _gstart.size() != gw * gh:
 		_grid_w = gw
 		_grid_h = gh
-		_grid = []
-		_grid.resize(gw * gh)
-		_grid_used = PackedInt32Array()
-	for i in _grid_used:
-		_grid[i] = null
-	_grid_used.clear()
+		_gstart = PackedInt32Array()
+		_gstart.resize(gw * gh)
+		_gstart.fill(-1)
+		_gend = PackedInt32Array()
+		_gend.resize(gw * gh)
+		_gused = PackedInt32Array()
+	for i in _gused:
+		_gstart[i] = -1
+	var nt := sides.size() + 1
+	var sw := gw / SUPER + 1
+	var sh := gh / SUPER + 1
+	if _tsuper.size() != nt * sw * sh:
+		_tsuper = PackedInt32Array()
+		_tsuper.resize(nt * sw * sh)
+	_tsuper.fill(0)
+	_super_w = sw
+	_super_n = sw * sh
+	_super_slots = nt
+	var n := units.size()
+	_gkeys.resize(n)
+	_tpos.resize(n)
+	_tteam.resize(n)
+	_trad.resize(n)
+	var k := 0
+	var hi := 0
+	var slack2 := GRID_SLACK * GRID_SLACK
+	var d2max := grid_drift_max * grid_drift_max
 	for u in units:
-		var kx := int(u.position.x) / HASH
-		var ky := int(u.position.y) / HASH
+		var p: Vector2 = u.position
+		var gp: Vector2 = u._grid_p
+		if gp != p:
+			if gp.x != INF and not u.dead and not u.off_field:
+				var d2 := p.distance_squared_to(gp)
+				if d2 > d2max:
+					d2max = d2
+				if d2 > slack2 and not u._jumped:
+					grid_drift_over += 1      # (moved that far without its own tick noticing: Unit._physics_process)
+			u._grid_p = p
+		u._hash_i = hi
+		var tm: int = u.team
+		_tpos[hi] = p
+		_tteam[hi] = tm
+		_trad[hi] = u.radius
+		var kx := int(p.x) / HASH
+		var ky := int(p.y) / HASH
 		if kx >= 0 and ky >= 0 and kx < gw and ky < gh:
-			var gi := ky * gw + kx
-			var cell = _grid[gi]
-			if cell == null:
-				_grid[gi] = [u]
-				_grid_used.append(gi)
-			else:
-				cell.append(u)
-			continue
-		var k := Vector2i(kx, ky)
-		var lst = _hash.get(k)
-		if lst == null:
-			_hash[k] = [u]
+			_gkeys[k] = (ky * gw + kx) * 1048576 + hi
+			k += 1
+			_tsuper[clampi(tm + 1, 0, nt - 1) * _super_n + (ky / SUPER) * sw + kx / SUPER] += 1
 		else:
-			lst.append(u)
+			var c := Vector2i(kx, ky)
+			var lst = _hash.get(c)
+			if lst == null:
+				_hash[c] = [u]
+			else:
+				lst.append(u)
+		hi += 1
+	grid_drift_max = sqrt(d2max)
+	for u in grid_jumpers:
+		if is_instance_valid(u):
+			u._jumped = false
+	grid_jumpers.clear()
+	_gkeys.resize(k)
+	_gkeys.sort()
+	_gunits.resize(k)
+	_gpos.resize(k)
+	_gteam.resize(k)
+	_grad.resize(k)
+	_gused = PackedInt32Array()
+	var last := -1
+	for j in k:
+		var key: int = _gkeys[j]
+		var gi := key >> 20
+		var ti := key & 1048575
+		_gunits[j] = units[ti]
+		_gpos[j] = _tpos[ti]
+		_gteam[j] = _tteam[ti]
+		_grad[j] = _trad[ti]
+		if gi != last:
+			if last >= 0:
+				_gend[last] = j
+			_gstart[gi] = j
+			_gused.append(gi)
+			last = gi
+	if last >= 0:
+		_gend[last] = k
 
 
-## The units in grid cell (x, y) at the last rebuild, or null.
+## Another unit (a tongue's pull, a charge's shove, a Balloon letting men off...) moved `u` during the tick:
+## if that took it farther from its grid place than the searches allow, they allow that much more.
+func note_move(u: Unit) -> void:
+	if u._grid_p.x == INF:
+		return
+	var d2 := u.position.distance_squared_to(u._grid_p)
+	if d2 > grid_slack * grid_slack:
+		grid_slack = sqrt(d2) + 1.0
+	if d2 > GRID_SLACK * GRID_SLACK and not u._jumped:
+		u._jumped = true
+		grid_jumpers.append(u)
+
+
+## The units in grid cell (x, y) at the last rebuild (in order), or null.
 func _hash_cell(x: int, y: int):
 	if x >= 0 and y >= 0 and x < _grid_w and y < _grid_h:
-		return _grid[y * _grid_w + x]
+		var s := _gstart[y * _grid_w + x]
+		return null if s < 0 else _gunits.slice(s, _gend[y * _grid_w + x])
 	return _hash.get(Vector2i(x, y))
 
 
@@ -5700,15 +6066,19 @@ func units_near(p: Vector2, r: float) -> Array:
 	var c0 := Vector2i(int(p.x - r) / HASH, int(p.y - r) / HASH)
 	var c1 := Vector2i(int(p.x + r) / HASH, int(p.y + r) / HASH)
 	var gw := _grid_w
+	var lim := (r + grid_slack) * (r + grid_slack)
 	if _hash.is_empty():
 		# (nobody off the grid: the cells past its edges are empty, so only the ones on it are looked at)
 		for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
 			var row := y * gw
 			for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
-				var lst = _grid[row + x]
-				if lst == null:
+				var s := _gstart[row + x]
+				if s < 0:
 					continue
-				for u in lst:
+				for j in range(s, _gend[row + x]):
+					if _gpos[j].distance_squared_to(p) > lim:
+						continue          # (too far even if it walked a step this way since the rebuild)
+					var u = _gunits[j]
 					if is_instance_valid(u) and u.position.distance_to(p) <= r:
 						out.append(u)
 		return out
@@ -5737,46 +6107,97 @@ func separation(u: Unit) -> Vector2:
 	var mu := 12.0 if u.kind == "cannon" or u.kind == "mortar" or u_rail else 1.0
 	var u_still := u.velocity.length() < 15.0
 	var u_mill: bool = u._mill_in
+	var ur: float = u.radius
 	var gw := _grid_w
-	var off := not _hash.is_empty()      # (anyone off the grid: then every cell is looked up the slow way)
-	var y0 := c0.y if off else maxi(c0.y, 0)
-	var y1 := c1.y if off else mini(c1.y, _grid_h - 1)
-	var x0 := c0.x if off else maxi(c0.x, 0)
-	var x1 := c1.x if off else mini(c1.x, gw - 1)
-	for y in range(y0, y1 + 1):
-		for x in range(x0, x1 + 1):
-			var lst = _hash_cell(x, y) if off else _grid[y * gw + x]
-			if lst == null:
+	if not _hash.is_empty():
+		# (anyone off the grid: every cell is looked up the slow way)
+		for y in range(c0.y, c1.y + 1):
+			for x in range(c0.x, c1.x + 1):
+				var lst = _hash_cell(x, y)
+				if lst == null:
+					continue
+				for o in lst:
+					push = _sep_push(u, o, p, rr, air, u_rail, mu, u_still, u_mill, push)
+		return push
+	# (a man pushes only from closer than (both radii) * 0.85, at most rr: the packed positions tell who
+	# can't be that close, even after a step since the rebuild, without looking at him)
+	var slack := grid_slack
+	var lim := rr + slack
+	var lim2 := lim * lim
+	for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
+		var row := y * gw
+		for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
+			var s := _gstart[row + x]
+			if s < 0:
 				continue
-			for o in lst:
-				if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
+			for j in range(s, _gend[row + x]):
+				var d2: float = _gpos[j].distance_squared_to(p)
+				if d2 > lim2:
 					continue
-				if o.dead or o.off_field or o.is_air() != air:
+				var md: float = (ur + _grad[j]) * 0.85 + slack
+				if d2 > md * md:
 					continue
-				if o == u.steed or u == o.steed:
-					continue           # (a man beside his own horse: he got off there, close by it)
-				if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
-					continue           # (a Spring Ballista and its crew: they stand pressed to it, scripts/ballista.gd)
-				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
-					continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
-				if u_mill and o._mill_in and o.home_mine == u.home_mine:
-					continue           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
+				# (_sep_push, written out: this is the hottest loop of a big fight)
+				var o = _gunits[j]
+				if o == u or not is_instance_valid(o):
+					continue
 				var dvec: Vector2 = p - o.position
 				var dist := dvec.length()
-				var min_d: float = (u.radius + o.radius) * 0.85
-				if dist < min_d:
-					if dist < 0.01:
-						dvec = Vector2.from_angle(randf() * TAU)
-						dist = 0.01
-					var strength := (min_d - dist) / min_d
-					var k := 140.0
-					# Idle units step aside for friends on the move.
-					if o.team == u.team and o.velocity.length() > 15.0 and u_still:
-						k = 260.0
-					# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
-					# anything light that bumps it gives way); equal masses push each other as before
-					var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
-					push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
+				var min_d: float = (ur + o.radius) * 0.85
+				if dist >= min_d or dist > rr:
+					continue
+				if o.dead or o.off_field or (o._air_k and o.net_t <= 0.0) != air:      # (o.is_air())
+					continue
+				if o == u.steed or u == o.steed:
+					continue
+				if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
+					continue
+				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
+					continue
+				if u_mill and o._mill_in and o.home_mine == u.home_mine:
+					continue
+				if dist < 0.01:
+					dvec = Vector2.from_angle(randf() * TAU)
+					dist = 0.01
+				var strength := (min_d - dist) / min_d
+				var k := 140.0
+				if o.team == u.team and o.velocity.length() > 15.0 and u_still:
+					k = 260.0
+				var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+				push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
+	return push
+
+
+## One neighbour's shove (separation): push plus what `o` adds to it.
+func _sep_push(u: Unit, o, p: Vector2, rr: float, air: bool, u_rail: bool, mu: float, u_still: bool, u_mill: bool, push: Vector2) -> Vector2:
+	if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
+		return push
+	if o.dead or o.off_field or o.is_air() != air:
+		return push
+	if o == u.steed or u == o.steed:
+		return push           # (a man beside his own horse: he got off there, close by it)
+	if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
+		return push           # (a Spring Ballista and its crew: they stand pressed to it, scripts/ballista.gd)
+	if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
+		return push           # (rail vehicles of one side pass through each other: the sidings decide who waits)
+	if u_mill and o._mill_in and o.home_mine == u.home_mine:
+		return push           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
+	var dvec: Vector2 = p - o.position
+	var dist := dvec.length()
+	var min_d: float = (u.radius + o.radius) * 0.85
+	if dist < min_d:
+		if dist < 0.01:
+			dvec = Vector2.from_angle(randf() * TAU)
+			dist = 0.01
+		var strength := (min_d - dist) / min_d
+		var k := 140.0
+		# Idle units step aside for friends on the move.
+		if o.team == u.team and o.velocity.length() > 15.0 and u_still:
+			k = 260.0
+		# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
+		# anything light that bumps it gives way); equal masses push each other as before
+		var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+		push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
 
 
@@ -5791,7 +6212,7 @@ func _foe_table(t: int) -> PackedByteArray:
 
 
 func find_target(u: Unit, r: float) -> Entity:
-	if u.d.get("no_attack", false):
+	if u._d_noatk:
 		return null
 	# HOLD FIRE (a gun other than the cavalry's pistol): nothing to shoot at on its own; a
 	# Musketeer still takes on a man right on top of him with the bayonet
@@ -5811,30 +6232,36 @@ func find_target(u: Unit, r: float) -> Entity:
 	var picks: Array = []
 	# (who is an enemy, by team, worked out once: hostile() was asked of every unit and building)
 	var foe := _foe_table(u.team)
-	for o in units_near(u.position, r):
-		if o.team < 0 or foe[o.team] == 0 or o.dead or not u.can_hit(o) or (held and o.is_air()):
-			continue
-		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
-			continue
-		# beyond its own sight a unit (the cannon) can only shoot what its side can see
-		if o.position.distance_to(u.position) > u.sight * T + 8.0 and not side_sees(u.team, o.position):
-			continue
-		var dd: float = o.position.distance_to(u.position)
-		if min_r > 0.0 and o.edge_distance(u.position) - u.radius < min_r:
-			continue
-		if o.kind == "horse":
-			dd += 150.0  # a horse only when there's nothing else (better stolen than shot)
-		elif not fights_back(o):
-			dd += 60.0   # prefer fighters (workers, Missionaries, wagons after them)
-		if careful:
-			picks.append([dd, o])
-		elif dd < bd:
-			bd = dd
-			best = o
+	if not careful and _hash.is_empty() and _super_slots > 0:
+		# (the same pick, found faster: only the enemies' cells, nearest ring first: _near_foe)
+		var nf := _near_foe(u, r, foe, held, min_r)
+		best = nf[0]
+		bd = nf[1]
+	else:
+		for o in units_near(u.position, r):
+			if o.team < 0 or foe[o.team] == 0 or o.dead or not u.can_hit(o) or (held and o.is_air()):
+				continue
+			if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
+				continue
+			# beyond its own sight a unit (the cannon) can only shoot what its side can see
+			if o.position.distance_to(u.position) > u.sight * T + 8.0 and not side_sees(u.team, o.position):
+				continue
+			var dd: float = o.position.distance_to(u.position)
+			if min_r > 0.0 and o.edge_distance(u.position) - u.radius < min_r:
+				continue
+			if o.kind == "horse":
+				dd += 150.0  # a horse only when there's nothing else (better stolen than shot)
+			elif not fights_back(o):
+				dd += 60.0   # prefer fighters (workers, Missionaries, wagons after them)
+			if careful:
+				picks.append([dd, o])
+			elif dd < bd:
+				bd = dd
+				best = o
 	if held:
 		return best              # (no crates or buildings: they'd be shot)
 	# a Clockwork crate on the ground: smash it (counted like a worker)
-	if not careful and not u.d.get("medic", false):
+	if not careful and not u._d_medic:
 		for c in crates:
 			if c.dead or not hostile(c.team, u.team) or not u.can_hit(c):
 				continue
@@ -5854,7 +6281,7 @@ func find_target(u: Unit, r: float) -> Entity:
 			return picks[0][1]
 	if best:
 		return best
-	if u.d.get("medic", false) or u.d.get("air_only", false):
+	if u._d_medic or u._d_aironly:
 		return null
 	for b in buildings:
 		if b.team < 0 or foe[b.team] == 0 or b.dead or b.ghost:
@@ -5877,13 +6304,142 @@ func find_target(u: Unit, r: float) -> Entity:
 		best = line_net.pipe_target(u, r)       # the Clockwork Line: the lowest priority
 	if best == null and faction_of(u.team) == "brood":
 		# nothing else in reach: a loose horse (nobody's) is cheap essence
-		for o in units_near(u.position, r):
+		for o in (_units_near_nobody(u.position, r) if _hash.is_empty() and _super_slots > 0 else units_near(u.position, r)):
 			if loose_horse(o) and not o.off_field and u.can_hit(o) and side_sees(u.team, o.position):
 				var dh: float = o.position.distance_to(u.position)
 				if dh < bd:
 					bd = dh
 					best = o
 	return best
+
+
+## find_target's search of the units, as its plain loop over units_near would find it (the same unit: the
+## nearest by its rule, and of the equally near the first in the grid's order), looking only at the
+## enemies (_gteam), ring by ring out from the unit's cell, and stopping once a ring can't hold anyone
+## nearer than the best so far. [best, its distance by the rule]
+func _near_foe(u: Unit, r: float, foe: PackedByteArray, held: bool, min_r: float) -> Array:
+	var p := u.position
+	var gw := _grid_w
+	var x0 := maxi(int(p.x - r) / HASH, 0)
+	var y0 := maxi(int(p.y - r) / HASH, 0)
+	var x1 := mini(int(p.x + r) / HASH, gw - 1)
+	var y1 := mini(int(p.y + r) / HASH, _grid_h - 1)
+	var px := int(p.x) / HASH
+	var py := int(p.y) / HASH
+	var best: Entity = null
+	var bd := INF
+	var bkey := 0
+	var any := false
+	for t in foe.size():
+		if foe[t] == 1 and _slot_in(t + 1, x0, y0, x1, y1):
+			any = true
+			break
+	if not any:
+		return [best, bd]
+	var u_high := on_high(p)
+	var sight_r := u.sight * T + 8.0
+	var kmax := maxi(maxi(px - x0, x1 - px), maxi(py - y0, y1 - py))
+	var nf := foe.size()
+	for k in kmax + 1:
+		# (anyone in ring k was at least (k - 1) cells away at the rebuild, and has moved less than
+		# GRID_SLACK since)
+		if k >= 2 and float((k - 1) * HASH) - grid_slack > bd:
+			break
+		var ring := PackedInt32Array()
+		for y in range(maxi(py - k, y0), mini(py + k, y1) + 1):
+			if y == py - k or y == py + k:
+				for x in range(maxi(px - k, x0), mini(px + k, x1) + 1):
+					ring.append(y * gw + x)
+			else:
+				if px - k >= x0:
+					ring.append(y * gw + px - k)
+				if px + k <= x1 and k > 0:
+					ring.append(y * gw + px + k)
+		for gi in ring:
+			var s := _gstart[gi]
+			if s < 0:
+				continue
+			# (nobody there can have come nearer than the best so far: its rebuild place plus a step)
+			var lim := minf(r, bd) + grid_slack
+			var lim2 := lim * lim
+			# (and a cell wholly farther than that is passed over)
+			var cx := float((gi % gw) * HASH)
+			var cy := float((gi / gw) * HASH)
+			var ex := maxf(maxf(cx - p.x, p.x - cx - HASH), 0.0)
+			var ey := maxf(maxf(cy - p.y, p.y - cy - HASH), 0.0)
+			if ex * ex + ey * ey > lim2:
+				continue
+			for j in range(s, _gend[gi]):
+				var tm: int = _gteam[j]
+				if tm < 0 or tm >= nf or foe[tm] == 0:
+					continue
+				if _gpos[j].distance_squared_to(p) > lim2:
+					continue
+				var o = _gunits[j]
+				if not is_instance_valid(o):
+					continue
+				var dd: float = o.position.distance_to(p)
+				# (the rule only adds to the distance: one farther than the best so far can't win)
+				if dd > r or dd > bd:
+					continue
+				if o.dead or not u.can_hit(o) or (held and o.is_air()):
+					continue
+				if not o.is_air() and not u_high and on_high(o.position) and not is_visible_to(u.team, o.position):
+					continue
+				if dd > sight_r and not side_sees(u.team, o.position):
+					continue
+				if min_r > 0.0 and o.edge_distance(p) - u.radius < min_r:
+					continue
+				if o.kind == "horse":
+					dd += 150.0
+				elif not fights_back(o):
+					dd += 60.0
+				var key: int = gi * 1048576 + int(o._hash_i)
+				if dd < bd or (dd == bd and key < bkey):
+					bd = dd
+					best = o
+					bkey = key
+					lim = minf(r, bd) + grid_slack
+					lim2 = lim * lim
+	return [best, bd]
+
+
+## Does anyone of slot `slot` (team + 1) stand in the cells x0..x1, y0..y1 (or near them: by blocks)?
+func _slot_in(slot: int, x0: int, y0: int, x1: int, y1: int) -> bool:
+	if slot >= _super_slots:
+		return false
+	var base := slot * _super_n
+	for sy in range(y0 / SUPER, y1 / SUPER + 1):
+		for sx in range(x0 / SUPER, x1 / SUPER + 1):
+			if _tsuper[base + sy * _super_w + sx] > 0:
+				return true
+	return false
+
+
+## The units of nobody's (team < 0: loose horses) of units_near(p, r), in the same order. (Only with nobody off the grid.)
+func _units_near_nobody(p: Vector2, r: float) -> Array:
+	var out: Array = []
+	var gw := _grid_w
+	var x0 := maxi(int(p.x - r) / HASH, 0)
+	var y0 := maxi(int(p.y - r) / HASH, 0)
+	var x1 := mini(int(p.x + r) / HASH, gw - 1)
+	var y1 := mini(int(p.y + r) / HASH, _grid_h - 1)
+	if not _slot_in(0, x0, y0, x1, y1):
+		return out
+	var lim := (r + grid_slack) * (r + grid_slack)
+	for y in range(y0, y1 + 1):
+		var row := y * gw
+		for x in range(x0, x1 + 1):
+			var s := _gstart[row + x]
+			if s < 0:
+				continue
+			for j in range(s, _gend[row + x]):
+				if _gteam[j] >= 0 or _gpos[j].distance_squared_to(p) > lim:
+					continue
+				var o = _gunits[j]
+				if is_instance_valid(o) and o.position.distance_to(p) <= r:
+					out.append(o)
+	return out
 
 
 ## Clockwork: blue energy while a Capacitor Works stands.
@@ -8630,9 +9186,15 @@ func update_view_rect() -> void:
 ## The path queue's time limit in a tick, past its first 6 paths (µs). A tool that needs a match to
 ## play out the same every time lifts it (tools/perf_bench.gd): then only the count, 24 a tick, limits it.
 var path_budget_us := 6000
+var anim_steps := 0              # (the units that stepped their pictures this tick: Unit._animate)
+var anim_crowd := false
 
 
 func _tick_game(delta: float) -> void:
+	# (a big battle on screen: the units step their pictures 10 times a second instead of 15, Unit._animate; it
+	# changes only what is drawn. On over about 160 units in view, off under about 110.)
+	anim_crowd = anim_steps > (55 if anim_crowd else 80)
+	anim_steps = 0
 	if over or edit_mode:
 		return
 	if Defs.cw_roster:
@@ -9318,7 +9880,7 @@ func _walk_fill(start: Vector2i, team: int, limit: int, max_steps: int) -> Dicti
 			continue
 		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var nb: Vector2i = cc + dv
-			if out.has(nb) or not passable(nb, team):
+			if out.has(nb) or not passable(nb, team) or (not rails.is_empty() and rail_cut(cc, nb)):
 				continue
 			out[nb] = st + 1
 			q.append(nb)

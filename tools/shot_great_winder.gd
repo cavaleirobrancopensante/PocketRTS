@@ -2,7 +2,7 @@ extends SceneTree
 ## Screenshots of the GREAT WINDER (scripts/great_winder.gd, docs/great_winder.md) in the CLOCKWORK LAB: its five views and
 ## the west mirror; walking with an army of Clock Soldiers and a Pendulum (selected: its winding ring); run-down soldiers
 ## (cold statues) inside its ring, then wound up again; mending a hurt Pendulum with its key arm; after a fight, sweeping
-## the Clockwork wrecks (the Crown bodies are left lying); its card with the parts. Plus frames for GIFs of the walk and
+## the Clockwork wrecks (the Crown bodies are left lying); its card. Plus frames for GIFs of the walk and
 ## the sweep.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1600x900 --fixed-fps 30 --script res://tools/shot_great_winder.gd -- <outdir>
 ## Writes <outdir>/*.png and <outdir>/gif_walk/, gif_sweep/ f_NNN.png (frames for GIFs, not kept in the repository:
@@ -227,11 +227,11 @@ func _run() -> void:
 		await _frames(2)
 		root.get_viewport().get_texture().get_image().save_png("%s/gif_sweep/f_%03d.png" % [out, gi])
 		gi += 1
-	await _wait(func() -> bool: return gw.order == "idle" and gw.parts > 0 and not g.bodies.any(func(b) -> bool: return is_instance_valid(b) and b.team == g.human and String(b.d["faction"]) == "clockwork"), 40.0)
+	await _wait(func() -> bool: return gw.order == "idle" and g.bodies_swept > 0 and not g.bodies.any(func(b) -> bool: return is_instance_valid(b) and b.team == g.human and String(b.d["faction"]) == "clockwork"), 40.0)
 	await _frames(20)
 	await _cam(gw.position + Vector2(100, -20), 1.6)
 	await _snap("wrecks_swept_crown_bodies_left", 0.0)
-	print("parts ", gw.parts, " swept ", g.bodies_swept)
+	print("cogs ", int(gw.get_meta("gw_cogs", 0)), " swept ", g.bodies_swept)
 	# ---- its card
 	_ui(true)
 	_hint(false)

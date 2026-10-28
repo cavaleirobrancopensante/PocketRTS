@@ -313,7 +313,7 @@ func _map_desc(mid: String, n: int) -> String:
 	if MapGen.MAPS.has(mid):
 		var d := Loc.t({"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
 			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]])
-		return d + Loc.t("  84x60, up to 4 players.  ") + main._biome(String(MapGen.MAPS[mid][2])) + "."
+		return d + Loc.t("  110x80, up to 4 players.  ") + main._biome(String(MapGen.MAPS[mid][2])) + "."
 	return ""
 
 

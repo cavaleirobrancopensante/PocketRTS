@@ -356,6 +356,10 @@ const CW := {
 ## ==========================================================================================================
 static var line_mode := false
 static var gear_mode := true
+## TURNING GEARS (the owner's experiment, 2026-10-28; scripts/gear_turn.gd, docs/gear_turn.md): units standing on the toothed
+## band of a turning Clockwork ring are carried round with it. Set per match from the setting (Settings.gear_turn) and kept
+## in the match's setup (cfg "gear_turn"), so a continued match, an online guest and a replay agree.
+static var gear_turn := true
 
 ## The cog-making building's kind (provisional name: change it here and in the loc files only).
 const GEAR_PRESS := "cog_press"
@@ -364,6 +368,16 @@ const GEAR_PRESS := "cog_press"
 ## old Boilers), and hauling at the Town Hall last. Nearest first within a tier. Kinds not listed are tier 0.
 const CREW_TIER := {"powder_mill": 1, "mainspring": 1, "boiler": 1}
 
+## TURNING GEARS (docs/gear_turn.md). Guesses, the owner's to tune.
+const GEAR_TURN := {
+	"carry": 1.0,          # the ground's speed on a band as a share of the teeth's (1: a unit rides exactly with the teeth: ~35 px/s at the pitch circle, about a tile a second)
+	"walk": 1.0,           # the share a unit WALKING across feels: the owner's call (2026-10-28): the full, correct drift for the time it is on the band, no damping
+	"step_off": 1.0,       # s: the COMPUTER's own idle (or HOLD) units left on a band this long are walked off it (its AI's choice; the player's stay and ride)
+	"give_up": 3.0,        # s: a step-off that has not got clear by then stops trying for a while (pinned against something)
+	"margin": 8.0,         # px past the band's edge (plus the unit's radius) where a step-off ends
+	"max_radius": 22.0,    # units this big or bigger are not carried (the Cannon, the Spring Ballista, the Great Winder: wheels and machines)
+	"dust": 0.22,          # s between dust puffs at a carried unit's feet (only where the player looks)
+}
 const GEAR := {
 	# THE FIELD. Every Clockwork building has a ground gear ring: radius = half its footprint + `pad` (small / big
 	# connecting gear), the Clocktower's ring is the biggest (`tower`). The radius is rounded to a whole number of
@@ -664,16 +678,26 @@ const BALLISTA_KIND := "ballista"
 ##   edge: `mend` x a Winder's repair rate (Defs.REPAIR_RATE or the unit's health over its build time, the faster),
 ##   paid in cogs as a Winder's repair is (Defs.REPAIR_COST of the price for a full mend), and winds it `mend_wind` a
 ##   second too. A right-click on a hurt unit of its own sends it there.
-## SWEEPING (autocast SWEEP, on from the start): with nothing to mend it walks to the nearest WRECK of its own side's
-##   Clockwork units within `sweep_look` px (owner, 2026-10-27: only the Clockwork's OWN wrecks; Crown and Brood bodies
-##   are never swept) and sweeps it into its hopper with its rollers for `sweep_time` s: the wreck is gone and it keeps
-##   PARTS: the wreck's price / `per_part` (the less of the wreck is left, the fewer), at least 1, up to `cap` in all.
-##   Parts do nothing yet: they are for REASSEMBLY, a later job (docs/great_winder.md).
+## SWEEPING (autocast SWEEP, on from the start): standing idle with nothing to mend, it rolls to the nearest WRECK of its
+##   Clockwork units within `sweep_look` px (any side's: in the mirror match the enemy Clockwork's wrecks too, the cogs to
+##   its own side, owner 2026-10-28; Crown and Brood bodies are never swept, owner 2026-10-27), unless an enemy soldier is within `danger` px of it, and sweeps it up with its rollers for
+##   `sweep_time` s: the wreck is gone and its side gets COGS at once: `share` of the unit's cog price (the less of the
+##   wreck is left, the fewer; at least 1; no Tension back), then it rolls back to where it stood. Owner, 2026-10-28: "The
+##   Great Winder turns Clockwork bodies into cogs ... It doesn't reassemble anything": the Brood gets essence from bodies,
+##   the Crown raises its own, the Clockwork regains cogs. Why 0.30 (design principles 1 and 2; docs/great_winder.md):
+##   the Brood Pen's SACRIFICE pays 0.35 of a LIVING creature (Defs.SACRIFICE), the grubs' harvest 2 essence a supply from
+##   every body on the field (a Clock Soldier's body would give 2), the Missionary raises a whole soldier at half health
+##   (6 s a body, one Missionary a Church, Musketeers and riders only, within 60 s of the fall); the sweep takes only
+##   Clockwork wrecks (its own losses, and the enemy's in the mirror match), needs a 175 + 75 machine on the spot and two seconds a wreck, and the cogs go straight back into
+##   the economy: a Clock Soldier 21 cogs, a Pendulum 60, a Winder 15. Mostly a refund of losses: the loser gets a little back (anti-snowball).
+## Crowded (0.14.105): soldiers round a wreck can stop it short of `sweep_reach`; making no headway for `stall` s within
+##   `sweep_near` px of its edge it sweeps from there, and after `stall_out` s anywhere it leaves that wreck for `skip` s.
 ## It rolls on four cog wheels (branch gw-wheels, 2026-10-27; it walked on legs before): the walk strip turns them 90 deg
 ## (3 teeth) a loop of 12 frames, which rolls it 20.25 game px (their rolling radius x pi / 2; docs/great_winder.md):
 ## Unit.WALK_FPS_ART plays it at speed x 12 / 20.25 frames a second (16 at 27), so the wheels do not slide.
 const GREAT_WINDER := {"area": 200.0, "wind": 0.06, "look": 224.0, "reach": 30.0, "mend": 1.5, "mend_wind": 0.3,
-	"sweep_look": 256.0, "sweep_reach": 34.0, "sweep_time": 2.0, "per_part": 10.0, "cap": 100, "stride": 20.25, "frames": 12}
+	"sweep_look": 256.0, "sweep_reach": 10.0, "sweep_near": 40.0, "stall": 1.0, "stall_out": 6.0, "skip": 10.0,
+	"sweep_time": 2.0, "share": 0.30, "danger": 300.0, "stride": 20.25, "frames": 12}
 const GREAT_WINDER_KIND := "great_winder"
 
 
@@ -1034,14 +1058,14 @@ const UNITS := {
 	# 420 hp + 3 armour, "armored" and "massive" (a heavy iron machine: a Pendulum 340 + 2, a Powder Wagon 220 + 1); slow:
 	# 27 (kept when it went on cog wheels: slow on purpose, it falls behind a march; a Ballista 34, a Pendulum 46); it winds
 	# every construct within 200 px at 0.06 a second (5 x the run-down rate), mends one at a time at 1.5 x a Winder's rate,
-	# and sweeps its own side's wrecks into parts. 175 cogs + 75 Tension, 4 supply (about the three or four escort
+	# and sweeps its own side's wrecks into cogs. 175 cogs + 75 Tension, 4 supply (about the three or four escort
 	# Winders it stands in for: 150-200 cogs and 3-4 supply, plus the Tension of a tier-2 machine).
 	"great_winder": {
 		"tags": ["armored", "massive"],
 		"name": "Great Winder", "hp": 420, "armor": 3, "speed": 27, "cost": 175, "tension": 75, "time": 35.0, "supply": 4,
 		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 26, "from": "heavy_works",
 		"requires": "escapement", "no_attack": true, "ground_only": true, "faction": "clockwork",
-		"about": "The Clockwork's winding machine on cog wheels, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: it sweeps up the WRECKS of your own Clockwork units with its rollers and keeps them as PARTS (for reassembly, later). Both are automatic; press them to switch them off. Made at the Heavy Works (once an Escapement works). Costs Tension.",
+		"about": "The Clockwork's winding machine on cog wheels, big and slow, with no weapon. It keeps the army around it WOUND: every construct near it (the ring on the ground) slowly winds up, so they do not run down off the gear ground, and run-down ones wake again. MEND: with its key arm it mends hurt Clockwork units one at a time, faster than a Winder (it costs cogs, like a repair). SWEEP: standing idle, it rolls to the Clockwork WRECKS near it (yours, and the enemy's against the Clockwork), sweeps them up with its rollers and turns them into COGS for you (30% of the unit's cog price), then rolls back; it keeps away from wrecks with enemies near them. Both are automatic; press them to switch them off. Made at the Heavy Works (once an Escapement works). Costs Tension.",
 	},
 	"windup_soldier": {
 		"tags": ["light"],

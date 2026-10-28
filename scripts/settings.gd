@@ -14,6 +14,7 @@ static var build_grid := true         # show the planning grid while placing a b
 static var area_marks := true         # area attacks lay their shape on the ground where they strike (GroundMarks)
 static var powder_smoke := -1         # black powder smoke (PowderSmoke): -1 = not chosen (THICK for now), 0 off, 1 light, 2 full, 3 thick
 static var expansion_spots := true    # the best expansion spots tinted on the ground (ExpansionSpots; Crown and Clockwork)
+static var gear_turn := true          # TURNING GEARS (experiment, on for now): a Clockwork ring's band carries units round (GearTurn); from the next match
 static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
 static var relay_url := "wss://pocketrts-relay.salgarellius-rts.workers.dev"   # online: the relay (tools/relay/README.md)
 static var language := "en"           # "en", "pt" or "es" (Loc)
@@ -38,6 +39,7 @@ static func load_all() -> void:
 		area_marks = bool(cfg.get_value("ui", "area_marks", true))
 		powder_smoke = clampi(int(cfg.get_value("ui", "powder_smoke", -1)), -1, 3)
 		expansion_spots = bool(cfg.get_value("ui", "expansion_spots", true))
+		gear_turn = bool(cfg.get_value("ui", "gear_turn", true))
 		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
 		relay_url = String(cfg.get_value("online", "relay_url", relay_url))
 		if relay_url.contains("YOURNAME") or relay_url.strip_edges() == "":
@@ -62,6 +64,7 @@ static func save_all() -> void:
 	cfg.set_value("ui", "area_marks", area_marks)
 	cfg.set_value("ui", "powder_smoke", powder_smoke)
 	cfg.set_value("ui", "expansion_spots", expansion_spots)
+	cfg.set_value("ui", "gear_turn", gear_turn)
 	cfg.set_value("input", "mini_alpha", mini_alpha)
 	cfg.set_value("online", "relay_url", relay_url)
 	cfg.set_value("ui", "language", language)

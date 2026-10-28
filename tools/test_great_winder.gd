@@ -3,9 +3,11 @@ extends SceneTree
 ## Escapement works (cogs and Tension); its walk is played so the feet do not slide; it WINDS the constructs inside its
 ## area (a run-down one wakes) and not the ones outside, and never runs down itself; MEND (autocast, on from the start)
 ## mends a hurt Clockwork unit near it, costs cogs, and stops when switched off; it never mends a Crown unit; SWEEP
-## (autocast) sweeps its own side's Clockwork wrecks into PARTS, never a Crown body, up to the cap; a save keeps its parts
-## and switches; online the guest gets its parts (the same snapshot rows a replay records); and the COMPUTER builds one and
-## sends it with its army, with a smaller escort of Winders.
+## (autocast) standing idle, it rolls to its own side's Clockwork wrecks near it and turns them into COGS at once (a share
+## of the unit's cog price; owner, 2026-10-28), then rolls back; never a Crown body, never a wreck with enemies near it,
+## never one out of its reach; a save keeps its switches (an old save's parts are dropped); online the guest gets its
+## SWEEP switch (the same snapshot rows a replay records); and the COMPUTER builds one, sends it with its army, with a
+## smaller escort of Winders, and its idle sweep keeps it by the army.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_great_winder.gd
 const U := preload("res://tools/gear_test_util.gd")
 const K := Defs.GREAT_WINDER_KIND
@@ -221,46 +223,118 @@ func _sweeping(g: Game) -> void:
 		_wreck(g, u)
 	check("the wrecks and the Crown body lie there", own.all(func(u: Unit) -> bool: return g.bodies.has(u)) and g.bodies.has(crown) and g.bodies.has(pend))
 	check("a Crown body is never sweepable", not GreatWinder.sweepable(gw, crown))
+	check("the aura and MEND are unchanged (200 px, 0.06 a second; 1.5 x a Winder)", float(G["area"]) == 200.0 and float(G["wind"]) == 0.06 and float(G["mend"]) == 1.5 and float(G["look"]) == 224.0)
+	var cs_cost := float(Defs.UNITS["clock_soldier"]["cost"])
+	check("a fresh Clock Soldier wreck gives %d%% of its cogs (%d of %d)" % [int(round(float(G["share"]) * 100.0)), GreatWinder.cogs_of(own[0]), int(cs_cost)],
+		GreatWinder.cogs_of(own[0]) == int(round(cs_cost * float(G["share"]))))
+	check("a Pendulum's wreck gives more cogs than a Clock Soldier's (its Tension is not paid back)",
+		GreatWinder.cogs_of(pend) == int(round(float(Defs.UNITS["pendulum"]["cost"]) * float(G["share"]))) and GreatWinder.cogs_of(pend) > GreatWinder.cogs_of(own[0]),
+		"%d" % GreatWinder.cogs_of(pend))
 	var expect := 0
 	for u in own + [pend]:
-		expect += GreatWinder.parts_of(u)
+		expect += GreatWinder.cogs_of(u)
+	g.income_mult[0] = 1.0
+	var gold0 := int(gw.get_meta("gw_cogs", 0))      # (cogs from its sweeping: GreatWinder.take adds them to its side's purse; the purse also has its income)
+	var purse0 := int(g.players[0]["gold"])
+	var home := gw.position
 	var t := 0.0
 	var seen_sweep := false
+	var went := 0.0
+	var shown := false
 	while (own + [pend]).any(func(u) -> bool: return is_instance_valid(u) and g.bodies.has(u)) and t < 40.0:
 		U.step(g, 0.2)
 		t += 0.2
+		went = maxf(went, gw.position.distance_to(home))
 		if gw.anim == "sweep":
 			seen_sweep = true
-	check("SWEEP: it sweeps up its own side's Clockwork wrecks", (own + [pend]).all(func(u) -> bool: return not is_instance_valid(u) or not g.bodies.has(u)), "%.1f s" % t)
+		if not shown and g._floats.any(func(f) -> bool: return String(f[1]).ends_with("cogs")):
+			shown = true
+	check("SWEEP: standing idle, it sweeps up its own side's Clockwork wrecks", (own + [pend]).all(func(u) -> bool: return not is_instance_valid(u) or not g.bodies.has(u)), "%.1f s" % t)
 	check("it plays its rollers (sweep) while sweeping", seen_sweep)
-	check("and keeps them as parts (by their price)", gw.parts == expect and gw.parts > 0, "%d (expected %d)" % [gw.parts, expect])
-	check("a Pendulum's wreck gives more parts than a Clock Soldier's", GreatWinder.parts_of(pend) > GreatWinder.parts_of(own[0]) if is_instance_valid(pend) and is_instance_valid(own[0]) else true)
-	U.step(g, 3.0)
-	check("the Crown body is left lying (its bodies are never swept)", is_instance_valid(crown) and g.bodies.has(crown) and not crown.torn)
-	# the cap
-	gw.parts = int(G["cap"]) - 1
-	var a := _man(g, "clock_soldier", 0, gw.position + Vector2(70, 40))
-	var b := _man(g, "clock_soldier", 0, gw.position + Vector2(-70, 40))
-	_wreck(g, a)
-	_wreck(g, b)
+	var got := int(gw.get_meta("gw_cogs", 0)) - gold0
+	# (a wreck rots while it waits its turn: a little less than when it fell)
+	check("each wreck pays its cogs at once (%d%% of its price)" % int(round(float(G["share"]) * 100.0)), got <= expect + 1 and got >= int(expect * 0.9) and got > 0 and int(g.players[0]["gold"]) - purse0 >= got, "%d cogs (expected %d)" % [got, expect])
+	check("a '+N cogs' line rises over it", shown)
+	check("no parts any more (owner, 2026-10-28)", not ("parts" in gw) and not NetSnapshot.UNIT_PROPS.has("parts"))
 	U.step(g, 12.0)
-	check("parts stop at the cap (%d)" % int(G["cap"]), gw.parts == int(G["cap"]), "%d" % gw.parts)
-	check("a full hopper leaves the next wreck lying", (is_instance_valid(a) and g.bodies.has(a)) or (is_instance_valid(b) and g.bodies.has(b)))
+	check("then it rolls back to where it stood", gw.position.distance_to(home) < 40.0 and gw.order == "idle", "%.0f px off, order %s (went %.0f px)" % [gw.position.distance_to(home), gw.order, went])
+	check("the Crown body is left lying (its bodies are never swept)", is_instance_valid(crown) and g.bodies.has(crown) and not crown.torn)
+	# a wreck with an enemy soldier near it is skipped
+	var risky := _man(g, "clock_soldier", 0, gw.position + Vector2(170, 0))
+	_wreck(g, risky)
+	var foe := _man(g, "musketeer", 1, risky.position + Vector2(120, 20))
+	gold0 = int(gw.get_meta("gw_cogs", 0))
+	U.step(g, 8.0)
+	check("a wreck with an enemy soldier near it is left lying", is_instance_valid(risky) and g.bodies.has(risky) and int(gw.get_meta("gw_cogs", 0)) == gold0,
+		"lying %s, order %s, enemy %.0f px from it" % [str(is_instance_valid(risky) and g.bodies.has(risky)), gw.order, foe.position.distance_to(risky.position)])
+	check("and the Great Winder stays where it is", gw.position.distance_to(home) < 40.0, "%.0f px off" % gw.position.distance_to(home))
+	foe.take_damage(100000.0, null)
+	U.step(g, 8.0)
+	check("once the enemy is gone it sweeps it", not is_instance_valid(risky) or not g.bodies.has(risky))
+	U.step(g, 10.0)
+	# an enemy turning up on the way: it gives the wreck up and rolls back
+	var late := _man(g, "clock_soldier", 0, gw.position + Vector2(-230, 30))
+	_wreck(g, late)
+	home = gw.position
+	U.step(g, 1.2)
+	var on_way: bool = gw.order == "sweep"
+	var foe2 := _man(g, "musketeer", 1, late.position + Vector2(-140, 0))
+	U.step(g, 10.0)
+	check("an enemy coming near the wreck on its way: it gives it up and rolls back", on_way and is_instance_valid(late) and g.bodies.has(late) and gw.position.distance_to(home) < 40.0,
+		"on the way %s, %.0f px off" % [str(on_way), gw.position.distance_to(home)])
+	foe2.take_damage(100000.0, null)
+	U.step(g, 10.0)
+	# a wreck out of its reach is left lying
+	var far := _man(g, "clock_soldier", 0, gw.position + Vector2(float(G["sweep_look"]) + 120.0, 0))
+	_wreck(g, far)
+	U.step(g, 6.0)
+	check("a wreck beyond %d px is left lying (it stays with the army)" % int(G["sweep_look"]), is_instance_valid(far) and g.bodies.has(far))
+	g.tear_body(far)
+	g.bodies.erase(far)
+	U.step(g, 12.0)      # (the wreck left on the way, once its enemy is gone, is swept meanwhile)
+	check("the wreck it gave up is swept once the enemy is gone", not is_instance_valid(late) or not g.bodies.has(late))
+	# a wreck in a crowd: soldiers on HOLD stand round it, so the big machine cannot roll over it (0.14.105: it sweeps
+	# from the edge of the crowd)
+	var crowded := _man(g, "clock_soldier", 0, gw.position + Vector2(150, 0))
+	var ring: Array = []
+	for k in 8:
+		var s := _man(g, "clock_soldier", 0, crowded.position + Vector2.from_angle(PI + (k - 3.5) * 0.3) * 30.0)
+		s.cmd_hold()
+		ring.append(s)
+	_wreck(g, crowded)
+	U.step(g, 14.0)
+	check("a wreck with its own soldiers crowding round it is still swept", not is_instance_valid(crowded) or not g.bodies.has(crowded),
+		"order %s, %.0f px from it" % [gw.order, gw.position.distance_to(crowded.position) if is_instance_valid(crowded) else -1.0])
+	for s in ring:
+		s.take_damage(100000.0, null)
+		if is_instance_valid(s):
+			g.tear_body(s)
+	U.step(g, 10.0)
+	# an ENEMY Clockwork's wreck (the mirror match, owner 2026-10-28): swept too, the cogs to its own side
+	var theirs := _man(g, "clock_soldier", 1, gw.position + Vector2(-90, -60))
+	_wreck(g, theirs)
+	check("an enemy Clockwork wreck is sweepable", GreatWinder.sweepable(gw, theirs))
+	gold0 = int(gw.get_meta("gw_cogs", 0))
+	U.step(g, 10.0)
+	check("an enemy Clockwork wreck is swept and pays its cogs to the sweeper's side",
+		(not is_instance_valid(theirs) or not g.bodies.has(theirs)) and abs(int(gw.get_meta("gw_cogs", 0)) - gold0 - int(round(float(Defs.UNITS["clock_soldier"]["cost"]) * float(G["share"])))) <= 1,
+		"%+d cogs, the wreck still lying %s, order %s, %.0f px from it, danger %s" % [int(gw.get_meta("gw_cogs", 0)) - gold0, str(is_instance_valid(theirs) and g.bodies.has(theirs)), gw.order,
+		gw.position.distance_to(theirs.position) if is_instance_valid(theirs) else -1.0, str(GreatWinder.danger(gw, theirs.position)) if is_instance_valid(theirs) else "-"])
+	U.step(g, 8.0)
 	# SWEEP off
-	gw.parts = 0
 	var c := _man(g, "clock_soldier", 0, gw.position + Vector2(60, -40))
 	_wreck(g, c)
 	gw.auto_sweep = false
 	gw.cmd_stop()
+	gold0 = int(gw.get_meta("gw_cogs", 0))
 	U.step(g, 6.0)
-	check("SWEEP off: it leaves the wrecks alone", gw.parts == 0 and is_instance_valid(c) and g.bodies.has(c), "%d" % gw.parts)
+	check("SWEEP off: it leaves the wrecks alone", int(gw.get_meta("gw_cogs", 0)) == gold0 and is_instance_valid(c) and g.bodies.has(c))
 	_clear(g)
 
 
 func _save(g: Game) -> void:
 	var at := _off_field(g)
 	var gw := _gw(g, at)
-	gw.parts = 37
 	gw.auto_sweep = false
 	gw.auto_repair = true
 	g.demo = false
@@ -273,8 +347,8 @@ func _save(g: Game) -> void:
 	SaveGame.restore(g3, sd)
 	await process_frame
 	var back: Array = g3.units.filter(func(u: Unit) -> bool: return u.kind == K and not u.dead)
-	check("a save keeps the Great Winder, its parts and its switches", back.size() == 1 and back[0].parts == 37 and not back[0].auto_sweep and back[0].auto_repair,
-		"%s" % str(back.map(func(u: Unit) -> Array: return [u.parts, u.auto_repair, u.auto_sweep])))
+	check("a save keeps the Great Winder and its switches", back.size() == 1 and not back[0].auto_sweep and back[0].auto_repair,
+		"%s" % str(back.map(func(u: Unit) -> Array: return [u.auto_repair, u.auto_sweep])))
 	SaveGame.clear()
 	g3.process_mode = Node.PROCESS_MODE_DISABLED
 	g3.queue_free()
@@ -302,21 +376,19 @@ func _online() -> void:
 		NetSnapshot.apply(sg, NetCodec.unpack(NetCodec.pack(m)))
 	var hall := U.hall(h, 0)
 	var gw: Unit = h._add_unit(K, 0, _spot(h, hall.center() + Vector2(0, 260)))
-	gw.parts = 12
 	gw.auto_sweep = false
 	sync.call()
 	var gg: Unit = null
 	for u in gu.units:
 		if u.net_id == gw.net_id:
 			gg = u
-	check("online: the guest sees its parts and its SWEEP switch", gg != null and gg.parts == 12 and not gg.auto_sweep)
-	gw.parts = 13
+	check("online: the guest sees its SWEEP switch", gg != null and not gg.auto_sweep)
 	gw.work = "sweeping"
 	gw.order = "sweep"
 	sync.call()
-	check("online: and the next wreck swept, sweeping", gg != null and gg.parts == 13 and gg.work == "sweeping")
+	check("online: and the next wreck swept, sweeping", gg != null and gg.work == "sweeping")
 	check("online: the check lists match", NetSnapshot.check_lists(gw, null) == "", NetSnapshot.check_lists(gw, null))
-	check("replays carry the parts (a snapshot property)", NetSnapshot.UNIT_PROPS.has("parts") and NetSnapshot.UNIT_PROPS.has("auto_sweep"))
+	check("replays carry its SWEEP switch (a snapshot property), no parts", NetSnapshot.UNIT_PROPS.has("auto_sweep") and not NetSnapshot.UNIT_PROPS.has("parts"))
 	sg.queue_free()
 	sh.queue_free()
 	h.queue_free()
@@ -423,6 +495,39 @@ func _computer() -> void:
 	# within 110 px of it, alone: so up to ~170 px from the army's middle is "following", as in the check above)
 	check("and follows it when it moves", gw.order == "move" and gw.order_point.distance_to(c) < 170.0 or gw.position.distance_to(c) < 170.0,
 		"order %s to %s, at %s, army at %s" % [gw.order, str(gw.order_point), str(gw.position), str(c)])
+	# its idle sweep: a soldier of the army falls near it; it sweeps him into cogs and stays with the army
+	# (the army is still marching to `far`, 700 px off and longer on the 0.15 maps: it is halted here, so it stands about and
+	# its Great Winder with it: the sweep is an idle job)
+	for u in army:
+		if is_instance_valid(u) and not u.dead:
+			u.cmd_stop()
+	await _wait(g, func() -> bool: return army.all(func(u: Unit) -> bool: return not is_instance_valid(u) or u.dead or u.order == "idle"), 40.0)
+	await _wait(g, func() -> bool: return gw.order == "idle", 30.0)
+	var victim: Unit = null
+	for u in army:
+		if not u.dead and u.kind != Defs.PENDULUM and (victim == null or u.position.distance_to(gw.position) < victim.position.distance_to(gw.position)):
+			victim = u
+	if victim != null and victim.position.distance_to(gw.position) < float(G["sweep_look"]):
+		var cogs0 := int(gw.get_meta("gw_cogs", 0))
+		var swept0: int = g.bodies_swept
+		_wreck(g, victim)
+		var most := 0.0
+		var t0: float = g.clock
+		while g.clock - t0 < 15.0:
+			await physics_frame
+			var mid := Vector2.ZERO
+			var n := 0
+			for u in army:
+				if is_instance_valid(u) and not u.dead:
+					mid += u.position
+					n += 1
+			if n > 0:
+				most = maxf(most, gw.position.distance_to(mid / n))
+		check("the computer's Great Winder sweeps a fallen soldier by the army into cogs", g.bodies_swept > swept0 and int(gw.get_meta("gw_cogs", 0)) > cogs0,
+			"swept %d, cogs %+d" % [g.bodies_swept - swept0, int(gw.get_meta("gw_cogs", 0)) - cogs0])
+		check("and never leaves the army (at most %d px from its middle)" % int(float(G["sweep_look"]) + 170.0), most < float(G["sweep_look"]) + 170.0, "%.0f px" % most)
+	else:
+		print("  (no soldier near the Great Winder to fall: the idle sweep check skipped)")
 	_main.queue_free()
 
 

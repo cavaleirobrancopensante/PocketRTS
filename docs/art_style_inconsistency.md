@@ -431,3 +431,20 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   the Labourer's hoe/pick frame 3 (arm out), the Musketeer's reload frame 0 (hand raised), the Winder's repair frame 0
   (hands out); the Officer and a Messenger simply stand (idle). Wanted: a painted "take the reins" strip per facing for
   each leader (hand out to the bridle, 3-4 frames), and a led-horse head toss.
+## Turning gears (code, 0.14.103; docs/gear_turn.md)
+- The DUST at a carried unit's feet (GearNet._draw_turning): three small brown-grey circles trailing behind it against the
+  way the band moves, growing and fading in a loop. Wanted: a painted dust-puff strip (4-6 frames) to scatter there.
+- The CHEVRONS on a turning band (under the mouse, or every band in the GEAR VIEW): gold "V" polylines with a dark outline,
+  laid round the band's middle the way it turns, turning with the ring. Wanted: a painted arrow decal that fits the brass.
+
+## Ramp kerbs and shadows (code, 0.15.3; docs/ramp_funnel.md)
+
+Game._paint_ramps draws every ramp in code (no tile picture of its own). In 0.15.3 it got more drawing on the ramp's own cells, so the ramp reads as the only way through. The planks are a little darker and their steps more marked. A stone kerb runs down both sides the whole way: a dark outer line, a lit strip of stone tinted from the biome's cliff face, and a dark inner line. The walls cast a shadow on the planks beside the kerbs, deepest at the top. A shadow line runs across the top, where the planks leave the high ground. These are hard code pixels, not drawn art. A ChatGPT ramp tile set (planks, kerbs, top lip) per biome would make them match the cliff walls. Since 0.15.6 a SIDEWAYS ramp (running east-west) has none of the painted wedge or kerb (they slanted across its planks; the owner, 2026-10-28: "internal diagonal lines... a bit odd, and if anything inverted"): only the drawn rails, an even shadow band along each side (6 px at 42%, fading over 3 px) and a 6 px shadow across its high end, fading downhill. North-south ramps are unchanged. Pictures: docs/shots/ramp_funnel/sideways_shadow_*.jpg.
+
+## Ramp rails (code, 0.15.4; docs/ramp_funnel.md)
+
+scripts/ramp_rails.gd draws a low stone kerb down both sides of every ramp, from its top row to the row above its bottom one, on the edge between the planks and the ground beside them (the owner's spec: a visible wall where units can't step onto the ramp from the side). It is plain code drawing in flat colours, the same on every biome: a dark outline, a pale stone top with a lit edge, joints every 10 px, the south face of a kerb that runs east-west (or the south end of one that runs north-south), and a small shadow to the south-east. Since 0.15.4 the painted kerb of 0.15.3 (Game._paint_ramps) is left off the bottom row, which has no rail. Wanted: a ChatGPT kerb or rail piece per biome (stone or timber), straight and with an end cap, in the style of the cliff walls.
+
+## East and west cliff walls (code, 0.15.5; docs/cliff_sides.md)
+
+scripts/cliff_art.gd (_side_wall) draws a side wall 10 px wide along every east- or west-facing edge of high ground, inside the solid cliff cell: the biome's south-wall picture (itself made in code from the face tile's colours) turned on its side and pressed into 10 columns (lip, crease, rock, dark foot), the rock darkened to 0.7 on east-facing walls and 0.9 on west-facing ones; where it comes down onto a south wall it covers that wall's top lip for 5 rows. East of a cliff the soft shadow on the low ground is a little deeper and wider (13 px). Wanted: ChatGPT cliff side pieces per biome (a straight east and west face, and the corners where they meet a south face and a north rim), drawn to match the south walls.

@@ -51,6 +51,11 @@ var _solved_at := -10.0
 var _clock := 0.0
 var _top: Node2D
 var _top_t := 0.0
+var spin_w := {}                 # Building -> its ring's turn rate now, rad/s in gear space (+ = the angle grows); 0 or absent: still
+var bands: Array = []            # TURNING GEARS (scripts/gear_turn.gd): [building, centre in gear space, inner r, outer r] of each connected ring
+var _band_grid := {}             # Vector2i (gear space / BAND_CELL) -> indices into bands
+var _band_box := Rect2()          # (gear space) round every band: band_at asks it first, every unit every tick
+const BAND_CELL := 256.0
 var view := false                # THE GEAR VIEW (the ` key, or GEAR VIEW on a Clockwork card): the whole network at a glance
 
 
@@ -314,6 +319,8 @@ func solve() -> void:
 	_field = {}
 	spring_of = {}
 	drive_of = {}
+	bands = []
+	_band_grid = {}
 	if not Defs.gear_mode or game == null:
 		return
 	var list: Array = []
@@ -400,6 +407,7 @@ func solve() -> void:
 		_field[b.team].append([gp[i], rr[i]])
 	if old_set.size() != was or linked.size() != old_set.size() or not _same(old_set):
 		version += 1
+	_build_bands()
 	_dirty_view()
 
 
@@ -423,6 +431,107 @@ func in_field(t: int, p: Vector2) -> bool:
 		if g.distance_squared_to(r[0]) <= rad * rad:
 			return true
 	return false
+
+
+# ------------------------------------------------------------------ TURNING GEARS (the owner's experiment, 2026-10-28;
+# scripts/gear_turn.gd, docs/gear_turn.md): the toothed BAND of every connected ring (from the hole's edge, where the
+# still floor plate starts, out to the tooth tips) carries what stands on it round with the teeth.
+
+## The bands of the connected rings, and a coarse grid over them (rebuilt by solve()).
+func _build_bands() -> void:
+	bands = []
+	_band_grid = {}
+	_band_box = Rect2()
+	var pitch := float(Defs.GEAR["pitch"])
+	for b in order:
+		var n := b_n(b)
+		var kind := ring_kind(b.kind, b.gear_big)
+		var r_out := GearArt.tip_r(radius_of_teeth(n), pitch)
+		var r_in := GearArt.hole_r(kind, n)
+		var c := b_c(b)
+		var i := bands.size()
+		bands.append([b, c, r_in, r_out])
+		var bx := Rect2(c - Vector2(r_out, r_out), Vector2(r_out, r_out) * 2.0).grow(1.0)
+		_band_box = bx if i == 0 else _band_box.merge(bx)
+		var lo := Vector2i(floori((c.x - r_out) / BAND_CELL), floori((c.y - r_out) / BAND_CELL))
+		var hi := Vector2i(floori((c.x + r_out) / BAND_CELL), floori((c.y + r_out) / BAND_CELL))
+		for y in range(lo.y, hi.y + 1):
+			for x in range(lo.x, hi.x + 1):
+				var k := Vector2i(x, y)
+				if not _band_grid.has(k):
+					_band_grid[k] = []
+				_band_grid[k].append(i)
+
+
+## The band under world point p: its index in `bands` (the one p is deepest in, where two rings' teeth meet), -1 if none.
+## `grow` widens every band by that many px both ways (the step-off target keeps clear of them).
+func band_at(p: Vector2, grow := 0.0) -> int:
+	if bands.is_empty():
+		return -1
+	var g := gpos(p)
+	if not _band_box.grow(maxf(grow, 0.0)).has_point(g):
+		return -1                 # (nowhere near a ring: most units, most of the time)
+	var cell := Vector2i(floori(g.x / BAND_CELL), floori(g.y / BAND_CELL))
+	var best := -1
+	var bk := INF
+	for i in _band_grid.get(cell, []):
+		var bd: Array = bands[i]
+		var d := g.distance_to(bd[1])
+		var r_in: float = float(bd[2]) - grow
+		var r_out: float = float(bd[3]) + grow
+		if d < r_in or d > r_out:
+			continue
+		var k := d / r_out
+		if k < bk:
+			bk = k
+			best = i
+	return best
+
+
+## Is the band at index i turning now (its ring connected and not stopped for a gear swap)?
+func band_turning(i: int) -> bool:
+	var b: Building = bands[i][0]
+	return is_instance_valid(b) and not b.dead and absf(float(spin_w.get(b, 0.0))) > 0.0001
+
+
+## The ground's velocity at world point p (world px/s): the teeth's speed there, round the ring's centre, the way it turns
+## (in gear space the ring is a circle: speed = turn rate x distance; back to the screen, y x FIELD_Y). Zero off a band or
+## on a still one.
+func carry_at(p: Vector2) -> Vector2:
+	var i := band_at(p)
+	if i < 0:
+		return Vector2.ZERO
+	var bd: Array = bands[i]
+	var b: Building = bd[0]
+	if not is_instance_valid(b) or b.dead:
+		return Vector2.ZERO
+	var w := float(spin_w.get(b, 0.0))
+	if w == 0.0:
+		return Vector2.ZERO
+	var r := gpos(p) - Vector2(bd[1])
+	var v := Vector2(-r.y, r.x) * w
+	return Vector2(v.x, v.y * FY)
+
+
+## Where a unit of this radius standing on band i at p steps off to: just outside the ring (radially, else turned a little
+## either way), on clear ground and off every band; failing that just inside the hole (the still floor plate) if that is
+## clear; else INF.
+func step_off_point(i: int, p: Vector2, radius: float, team: int) -> Vector2:
+	var bd: Array = bands[i]
+	var c: Vector2 = bd[1]
+	var g := gpos(p)
+	var dir := (g - c).normalized() if g.distance_to(c) > 0.5 else Vector2.RIGHT
+	var margin := radius + float(Defs.GEAR_TURN["margin"])
+	for rr: float in [float(bd[3]) + margin, float(bd[3]) + margin + 14.0, float(bd[2]) - margin]:
+		for a: float in [0.0, 0.35, -0.35, 0.7, -0.7, 1.1, -1.1]:
+			var q := c + dir.rotated(a) * rr
+			var w := Vector2(q.x, q.y * FY)
+			if not game.in_map(game.cell_of(w)) or not game._clear_at(w, radius, team):
+				continue
+			if band_at(w, radius * 0.5) >= 0:
+				continue
+			return w
+	return Vector2.INF
 
 
 # ------------------------------------------------------------------ THE TURRET CIRCLE (owner, 2026-10-27; docs/gear_rules.md)
@@ -637,17 +746,23 @@ func tick(delta: float) -> void:
 ## the mesh rule (mesh_phase), so the teeth interlock exactly.
 func _spin(delta: float) -> void:
 	var rate := float(Defs.GEAR["teeth_rate"])
+	spin_w = {}
 	for b in order:
 		if b.gear_swap_t >= 0.0:
+			spin_w[b] = 0.0          # (its gear is being swapped: stopped, and so is everything hanging on it)
 			continue
 		var p: Building = parent_of.get(b)
 		var nb := b_n(b)
 		if p == null:
+			spin_w[b] = TAU * rate / float(nb)
 			ang[b] = fposmod(float(ang.get(b, 0.0)) + TAU * rate / float(nb) * delta, TAU)
 			continue
 		var pa := float(ang.get(p, 0.0))
 		var np := b_n(p)
 		var idl: Dictionary = idler_of.get(b, {})
+		# (its turn rate, rad/s: the same rim speed as its parent's, the other way round when they mesh directly, the
+		# same way through an idler; mesh_phase's d/dpa is -np/nb)
+		spin_w[b] = float(spin_w.get(p, 0.0)) * float(np) / float(nb) * (-1.0 if idl.is_empty() else 1.0)
 		if idl.is_empty():
 			ang[b] = mesh_phase(pa, np, (b_c(b) - b_c(p)).angle(), nb)
 		else:
@@ -709,6 +824,8 @@ func _draw() -> void:
 	var placing: String = ctl.place_kind if ctl and ctl.mode == "place" and Defs.BUILDINGS.has(ctl.place_kind) else ""
 	if view:
 		_draw_view()
+	if Defs.gear_turn and not bands.is_empty():
+		_draw_turning()          # (over the gear view's wash, so its chevrons read)
 	# THE TURRET CIRCLES: while a turret is placed (or in the gear view), every turret's circle of ground
 	if placing == Defs.CW_TURRET or view:
 		_draw_turret_circles(placing == Defs.CW_TURRET and ctl.ghost_cell.x >= 0, ctl.ghost_cell if ctl else Vector2i(-1, -1))
@@ -716,6 +833,65 @@ func _draw() -> void:
 	if placing != "" and Defs.BUILDINGS[placing]["faction"] == "clockwork":
 		draw_ghost(self, game.human, placing, ctl.ghost_cell)
 	draw_set_transform(Vector2.ZERO)
+
+
+## TURNING GEARS, made readable (docs/gear_turn.md; code-drawn: docs/art_style_inconsistency.md): little dust puffs kicked
+## up behind every unit riding a band, and, on the band under the mouse (or every band in the GEAR VIEW), faint chevrons
+## running round it the way it turns. Worked out from positions alone, so an online guest and a replay show them too.
+func _draw_turning() -> void:
+	draw_set_transform(Vector2.ZERO)
+	var vr := game.view_rect
+	var tk := float(Time.get_ticks_msec()) * 0.001
+	# the dust at carried units' feet
+	for u in game.units:
+		if not is_instance_valid(u) or u.dead or not u.visible or not vr.has_point(u.position):
+			continue
+		if not game.puppet and u.gt_carry == Vector2.ZERO:
+			continue
+		if game.puppet and not GearTurn.carriable(u):
+			continue
+		var v: Vector2 = u.gt_carry if not game.puppet else carry_at(u.position)
+		if v.length_squared() < 4.0:
+			continue
+		var back := -v.normalized()
+		var seed_ := float(int(u.get_instance_id()) % 97) * 0.37
+		for j in 3:
+			var ph := fposmod(tk / float(Defs.GEAR_TURN["dust"]) * 0.33 + seed_ + float(j) / 3.0, 1.0)
+			var p: Vector2 = u.position + back * (4.0 + ph * 16.0) + Vector2((float(j) - 1.0) * 4.0, 2.0 - ph * 5.0)
+			draw_circle(p, 1.5 + ph * 3.5, Color(0.55, 0.47, 0.34, 0.42 * (1.0 - ph)))
+	# the chevrons: the band under the mouse, or all of them in the gear view
+	var mouse := get_global_mouse_position()
+	var hover := band_at(mouse)
+	var ft := game.fog_team()
+	var all := game.sees_all()
+	for i in bands.size():
+		if not view and i != hover:
+			continue
+		var bd: Array = bands[i]
+		var b: Building = bd[0]
+		if not is_instance_valid(b) or b.dead or not band_turning(i):
+			continue
+		if not all and ft >= 0 and not game.allied(ft, b.team) and not b.visible:
+			continue
+		var c: Vector2 = bd[1]
+		var rm := (float(bd[2]) + float(bd[3])) * 0.5
+		if not vr.grow(rm).has_point(Vector2(c.x, c.y * FY)):
+			continue
+		var w := float(spin_w.get(b, 0.0))
+		var sgn := 1.0 if w > 0.0 else -1.0
+		var n := maxi(6, int(TAU * rm / 70.0))
+		var off := float(ang.get(b, 0.0))
+		for k in n:
+			var a := off + TAU * float(k) / float(n)
+			var pc := c + Vector2.from_angle(a) * rm
+			var tg := Vector2.from_angle(a + PI * 0.5) * sgn          # (the way the band moves there)
+			var nr := Vector2.from_angle(a)
+			var tip := pc + tg * 7.0
+			var pts := PackedVector2Array([pc - tg * 3.0 + nr * 7.0, tip, pc - tg * 3.0 - nr * 7.0])
+			for q in pts.size():
+				pts[q] = Vector2(pts[q].x, pts[q].y * FY)
+			draw_polyline(pts, Color(0.05, 0.04, 0.02, 0.8), 5.0, true)
+			draw_polyline(pts, Color(1.0, 0.86, 0.45, 0.85), 2.2, true)
 
 
 ## One painted ring on `ci` in world space: centre `c` (world px), turned by `rot` and squashed onto the ground (rotate the

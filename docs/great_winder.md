@@ -1,10 +1,11 @@
 # The Great Winder
 
 The owner's unit, decided on 2026-10-26 and 2026-10-27. Built on branch `great-winder`; merged with main as version 0.14.83 (after the clockwork-ai computer, 0.14.81, and the Jack's rename to the Springer, 0.14.82).
-The owner's scope: "the unit now, reassembly later".
+The owner's scope: "the unit now, reassembly later". Changed on 2026-10-28: no reassembly. The sweep turns wrecks into cogs.
 Code: `scripts/great_winder.gd`. Numbers: `Defs.GREAT_WINDER` and `Defs.UNITS["great_winder"]`.
 Art: `tools/import_great_winder.py`, on top of `tools/great_winder_guide/anim.py`.
 Test: `tools/test_great_winder.gd`. Pictures: `tools/shot_great_winder.gd`, written to `docs/shots/great_winder/`.
+The sweep into cogs: `tools/shot_great_winder_sweep.gd`, written to `docs/shots/great_winder_sweep/`.
 
 ## What it does
 
@@ -22,8 +23,8 @@ Near it, an army does not run down. A run-down soldier near it wakes up again.
 Second, mending. It mends hurt Clockwork units with its key arm. One at a time.
 It is faster than a Winder. It costs cogs, like a repair.
 
-Third, sweeping. It sweeps up the wrecks of its own side's Clockwork units with its rollers.
-It keeps them as parts. Parts do nothing yet. They are for reassembly, a later job.
+Third, sweeping. It sweeps up Clockwork wrecks with its rollers, and turns them into cogs.
+The cogs go to its side at once.
 
 It never runs down itself. It is the winding machine.
 
@@ -46,7 +47,10 @@ These are guesses, as design principle 1 says. They are written down to be tuned
   It also winds the mended unit 0.3 a second.
 - Mending looks 7 tiles round it. Sweeping looks 8 tiles round it.
 - Sweeping a wreck takes 2 seconds.
-- Parts: a wreck's price divided by 10, less as the wreck rots. At least 1. Up to 100 in the hopper.
+- Sweeping pays 30 percent of the unit's cog price, at once. Less as the wreck rots. At least 1.
+  No Tension comes back. `Defs.GREAT_WINDER["share"]`, 0.30.
+- It stops 10 pixels past its edge to sweep (`sweep_reach`). It was 34, which left the wreck lying beside it in the pictures.
+- It leaves a wreck alone when an enemy soldier is within 300 pixels of it (`danger`).
 
 Why the speed is 27.
 It was set to 27 on legs, so the painted feet would not slide: the legs walked 16 pixels a loop of 12 frames.
@@ -112,7 +116,7 @@ A weak attack would only make it walk into fights. Without one, it stays where i
 | Brood Spore Mother | 175 biomass, 40 essence | 4 | 260, armour 1 | lobs spit; MIASMA heals the Brood in a cloud |
 | Brood Mist Toad | 100 biomass, 25 essence | 3 | 90 | fog and tongue |
 | Clockwork escort Winder | 50 cogs | 1 | 46, armour 1 | winds one soldier at a time, mends at 20 a second |
-| Clockwork Great Winder | 175 cogs, 75 Tension | 4 | 420, armour 3 | winds everything in 6 tiles; mends one at 30 a second; sweeps wrecks into parts |
+| Clockwork Great Winder | 175 cogs, 75 Tension | 4 | 420, armour 3 | winds everything in 6 tiles; mends one at 30 a second; sweeps Clockwork wrecks into cogs |
 
 The Missionary heals men fast, but they are men: they only need bandages.
 The Clockwork's soldiers need winding all the time off their ground. That is the Great Winder's real job.
@@ -142,25 +146,84 @@ The Great Winder is the field workshop.
 
 ## How sweeping works
 
+The owner decided this on 2026-10-28:
+"The Great Winder turns Clockwork bodies into cogs. It doesn't reassemble anything.
+It gets a portion of the cost of that unit."
+Each side gets something different from bodies.
+The Brood gets essence, from any body.
+The Crown raises its own dead.
+The Clockwork gets cogs back, from Clockwork wrecks.
+
 SWEEP is an autocast too, on from the start.
-With nothing to mend, it looks for the nearest wreck within 8 tiles.
-A wreck is the body of a Clockwork unit of its own side, or an ally's, lying at rest.
-It walks up to it, rollers first, and sweeps it for 2 seconds. You see the rollers turn.
-Then the wreck is gone, with a puff of dust, and the parts go in its hopper.
-A Clock Soldier's wreck gives 7 parts. A Pendulum's gives 20. A Winder's gives 5.
-A wreck that has rotted half away gives half.
+It works when the Great Winder stands idle, with nothing to mend.
+Then it looks for the nearest Clockwork wreck within 8 tiles. That is its winding ring, and a bit more.
+Any side's wreck counts. In the Clockwork mirror match it sweeps the enemy's wrecks too.
+The cogs always go to its own side.
+It rolls up to the wreck and sweeps it for 2 seconds. You see the rollers turn.
+Then the wreck is gone, with a puff of dust.
+Its side gets the cogs at once. A gold line rises over it: "+21 cogs".
+Then it looks for the next wreck, round the spot where it stood.
+When none is left, it rolls back to that spot. So it stays with the army.
+
+In a crowd (0.15.1). Soldiers standing round a wreck can stop the big machine short of it.
+If it gets no closer for a second, and it is within 40 pixels of its edge, it sweeps from there.
+If it gets no closer for 6 seconds anywhere, it leaves that wreck for 10 seconds, and sweeps another.
+Before this, the computer's Great Winder could push at its own army for good, and never sweep a soldier who fell in the middle of it.
+
+It keeps out of fights. It has no weapon.
+It skips a wreck with an enemy soldier within 300 pixels of it. Workers do not count.
+If an enemy comes near the wreck while it is on its way, it gives the wreck up and rolls back.
+It sweeps it later, once the enemy is gone.
 
 It never sweeps a Crown or a Brood body. The owner decided that on 2026-10-27.
 Denying the other sides their bodies is done another way: area shots fired at the ground.
 
-When the hopper is full, at 100 parts, it stops sweeping, and you are told once.
+What a wreck pays, fresh:
 
-The parts are on its card. Its card says: "Parts 37/100 · winds everything within 6 tiles."
+| wreck | its cog price | cogs back |
+| --- | --- | --- |
+| Winder | 50 | 15 |
+| Clock Soldier | 70 | 21 |
+| Pendulum | 200 | 60 |
+| Great Winder | 175 | 53 (its Tension is not paid back) |
+
+A wreck that has rotted half away pays half.
+
+Its card says: "Winds everything within 6 tiles." While it sweeps: "sweeping a wreck into cogs."
+
+### Why 30 percent
+
+The owner asked for about 25 to 35 percent. 30 is the middle. Here is why it fits.
+
+The Brood gets essence from bodies in two ways.
+The Brood Pen's SACRIFICE eats a living creature of its own, and pays 35 percent of its price.
+But that creature was alive. The Brood gives up a unit to get it.
+Its grubs also harvest bodies on the field: 2 essence for each supply of the dead unit.
+A Clock Soldier's body would give the Brood 2 essence. Essence is rare, so that is worth more than 2 biomass.
+And the grubs harvest every body, of every side.
+
+The Crown's Missionary raises a whole soldier, at half health.
+It takes 6 seconds a body, one Missionary a Church, Musketeers and riders only, within 60 seconds of the fall.
+That is worth more than any refund, but it is slow and narrow.
+
+The Great Winder only takes Clockwork wrecks. It needs a 175 cog and 75 Tension machine on the spot.
+It takes 2 seconds a wreck, and it will not go near enemies.
+So it pays back less than a sacrifice: 30 percent, not 35, and no Tension.
+But the cogs go straight back into the economy, with no unit given up.
+
+This is mostly a refund of losses. The side that lost the fight gets a little back.
+That is design principle 2, anti-snowball: the brake works quietly.
+In the mirror match it can sweep the enemy's wrecks too. Then it pays the winner of a fight.
+That is the owner's choice, and it needs the winner to hold the field, with a Great Winder on it.
+
+If it is too strong, 25 percent is the next step. If it is too weak, 35.
 
 ## Saves, replays and online
 
-- A save keeps its parts, and both autocast switches.
-- Online and in replays, the snapshot carries `parts` and `auto_sweep`. MEND is the unit's `auto_repair`, already sent.
+- A save keeps both autocast switches. The save's "gw" list still has three slots. The first held its parts until 0.14.103.
+  It is written as 0 now, and read as nothing. So old saves still load. Their parts are simply dropped.
+- Online and in replays, the snapshot carries `auto_sweep`. MEND is the unit's `auto_repair`, already sent.
+  `parts` is gone from the snapshot. Older replays still play: their rows are read by name, and the old field is skipped.
   Its order and work (mend, sweep) are sent too, so a guest sees the key arm and the rollers.
 - A swept wreck leaves online and in replays the way a torn-up body does: the same effect line.
 - Older replays read the new fields by name, as before.
@@ -174,6 +237,7 @@ The computer is the clockwork-ai job's to rewrite. These hooks are small and in 
 - `AI._great_winder_due`: once its Escapement works and the army has 4 soldiers, it makes ONE Great Winder.
 - `AI._great_winder_follow`: the Great Winder walks to a spot just behind the army, toward home.
   It goes wherever the army goes: the rally, the attack. There its autocasts mend and sweep.
+  When it stands idle by the army, it sweeps the wrecks near it into cogs, the same as the player's, and rolls back.
 - `AI._great_winder_escort`: the owner's point. The Great Winder takes the workers' place on the battlefield.
   While one is out, the escort of ordinary Winders is 3 smaller for each, down to one Winder.
   That one Winder fetches soldiers left run down outside the ring. The Ballistas' crew are extra, as before.
@@ -210,32 +274,15 @@ What to draw, if the owner wants it:
 - The arm sliding out and back in is in anim.py, but the game shows only the turning key.
   An "arm out" and "arm in" use could come back if the mending start and end need to read.
 
-## Reassembly, later
+## Reassembly: dropped
 
-This is for a later job. Nothing here is in the code.
-
-The idea, from the owner: the Great Winder is the field workshop. It rebuilds a machine in the field from parts,
-after a research.
-
-How the parts could be spent:
-
-- A research at the Escapement, perhaps called REASSEMBLY, unlocks a REBUILD order on the Great Winder.
-- REBUILD picks a unit kind the side can make. It costs parts instead of most of the cogs.
-  A guess: the unit's price divided by 10 in parts, plus a quarter of its cogs, and all of its Tension.
-  So a Clock Soldier would be 7 parts and 18 cogs. A Pendulum would be 20 parts, 50 cogs and 75 Tension.
-- The machine stands still and plays its WIND strip while it builds. It takes the unit's build time, or a bit more.
-  The new unit steps out in front of it, run down, and the ring winds it up.
-- The supply cap still counts. A rebuild is a unit like any other.
-- Parts come only from its own wrecks. So it pays back losses, not wins. That is design principle 2:
-  the side that lost the fight gets some of it back, the brake works quietly.
-- The other sides' bodies are never parts. Reverse-engineering enemy machines could be a later idea.
-- The hopper's cap, 100, is about five Clock Soldiers or one Pendulum and a half. A full hopper should feel worth a rebuild.
-- When the Great Winder dies, its parts could spill as a wreck of their own, for another Great Winder to sweep.
-  Today they are simply lost.
+The first plan was to keep parts, and rebuild machines from them later.
+The owner dropped it on 2026-10-28. The Great Winder turns wrecks into cogs, and reassembles nothing.
+The parts, their cap of 100, the hopper-full message and the parts on its card are gone.
 
 ## What is left
 
-- Reassembly, above.
+- The 30 percent needs a playtest, above all in the Clockwork mirror match.
 - The numbers need a playtest. Watch three things.
   First, whether the ring makes the gear ground too easy to leave.
   Second, whether 27 speed leaves it too far behind the army to matter.

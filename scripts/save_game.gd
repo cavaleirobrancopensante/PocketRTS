@@ -24,6 +24,8 @@ static func peek() -> Dictionary:
 	if f == null:
 		return {}
 	var d = JSON.parse_string(f.get_as_text())
+	if d is Dictionary and MapGen.old_layout(String((d.get("cfg", {}) as Dictionary).get("map", "")), String(d.get("version", ""))):
+		return {}                 # (its map has been made bigger since: the match can't go on on the new ground)
 	return d if d is Dictionary else {}
 
 
@@ -71,8 +73,54 @@ static func _to_v2(a) -> Vector2:
 
 
 static func save(game: Game, cfg: Dictionary) -> void:
+	var d := capture(game, cfg)
+	if not d.is_empty():
+		write(JSON.stringify(d))
+
+
+## The match as a save, in a few steps (Main's autosave every 15 s): the state is taken at once (capture), then the
+## text is written a hundred units a frame (step) and saved (write): with hundreds of units the whole text took up
+## to 20 ms in one frame. null when there is nothing to save. The text is the same as save()'s.
+static func begin(game: Game, cfg: Dictionary) -> SaveJob:
+	var d := capture(game, cfg)
+	return SaveJob.new(d) if not d.is_empty() else null
+
+
+class SaveJob:
+	const MARK := "@@UNITS@@"
+	var units: Array
+	var head := ""
+	var parts := PackedStringArray()
+	var i := 0
+
+	func _init(d: Dictionary) -> void:
+		units = (d["units"] as Array).duplicate(true)     # (its own copy: nothing in it changes meanwhile)
+		d["units"] = MARK
+		head = JSON.stringify(d)          # (the rest at once: it holds the players' live numbers)
+
+	## Writes up to n units' text; true once the save is written.
+	func step(n := 100) -> bool:
+		var e := mini(i + n, units.size())
+		for k in range(i, e):
+			parts.append(JSON.stringify(units[k]))
+		i = e
+		if i < units.size():
+			return false
+		SaveGame.write(head.replace("\"%s\"" % MARK, "[" + ",".join(parts) + "]"))
+		return true
+
+
+static func write(text: String) -> void:
+	var f := FileAccess.open(PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(text)
+		f.close()
+
+
+## The whole match as one Dictionary (what save() writes as JSON); {} when there is nothing to save.
+static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 	if game == null or game.over or game.edit_mode or game.demo:
-		return
+		return {}
 	var d := {"version": ProjectSettings.get_setting("application/config/version", "dev"),
 		"saved_at": Time.get_datetime_string_from_system(false, true), "cfg": cfg, "clock": game.clock,
 		"players": game.players, "stats": game.stats, "eliminated": game.eliminated,
@@ -129,7 +177,8 @@ static func save(game: Game, cfg: Dictionary) -> void:
 		if u.crew_of != null and ids.has(u.crew_of):
 			ud["crew"] = ids[u.crew_of]              # (a Winder crewing a Spring Ballista: scripts/ballista.gd)
 		if u.kind == Defs.GREAT_WINDER_KIND:
-			ud["gw"] = [u.parts, u.auto_repair, u.auto_sweep]     # (a Great Winder: its parts, MEND and SWEEP: scripts/great_winder.gd)
+			ud["gw"] = [0, u.auto_repair, u.auto_sweep]     # (a Great Winder: MEND and SWEEP, scripts/great_winder.gd; the first
+			# slot held its PARTS until 0.14.102, when the sweep began to pay cogs at once: kept as 0 so the layout stays)
 		if u.coat != "":
 			ud["coat"] = u.coat
 		# horses: who leads it, where it grazes; riders and guns: their horse's health, a gun's
@@ -220,10 +269,7 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			d["crates"].append([u.position.x, u.position.y, u.team, s.cell.x, s.cell.y, float(Defs.CRATE["hp"])])
 	d["trains"] = game.line_net.rails.save()    # the Clockwork's trains (and the soldiers riding them)
 	d["line"] = game.line_net.save()           # the Clockwork Line: [x, y, team, hp, progress, built]
-	var f := FileAccess.open(PATH, FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(d))
-		f.close()
+	return d
 
 
 ## Control groups and camera hotkeys back (saves from before them have none).
@@ -454,7 +500,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 			u.cooldown = float(ud.get("rl", 0.0))
 			u.loaded = u.cooldown <= 0.0
 		if uk == Defs.GREAT_WINDER_KIND and ud.get("gw") is Array and (ud["gw"] as Array).size() >= 3:
-			u.parts = clampi(int(ud["gw"][0]), 0, int(Defs.GREAT_WINDER["cap"]))
 			u.auto_repair = bool(ud["gw"][1])
 			u.auto_sweep = bool(ud["gw"][2])
 		if u.coat != "" and HorseCoat.COATS.has(String(ud.get("coat", ""))):

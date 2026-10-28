@@ -51,6 +51,19 @@ static func update_mask(u: Unit) -> void:
 static func mask_for(t: Texture2D, st: int) -> Texture2D:
 	if t == null or not DIRS.has(st):
 		return null
+	# (asked on every change of strip, of every unit on screen: by the texture's id first, no text built)
+	var ik := t.get_instance_id() * 4 + st
+	var hit = _by_id.get(ik, false)
+	if hit is bool:
+		hit = _mask_slow(t, st)
+		_by_id[ik] = hit
+	return hit
+
+
+static var _by_id := {}
+
+
+static func _mask_slow(t: Texture2D, st: int) -> Texture2D:
 	var p := t.resource_path
 	var k := "%d:%s" % [st, p]
 	if not _masks.has(k):

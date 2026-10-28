@@ -731,6 +731,9 @@ func show_settings() -> void:
 	pb.custom_minimum_size = Vector2(260, 50)
 	ph.add_child(pb)
 	v.add_child(ph)
+	v.add_child(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
+		Settings.gear_turn = not Settings.gear_turn       # (from the next match: a match keeps the rule it started with)
+		Settings.save_all()))
 	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
 		Settings.expansion_spots = not Settings.expansion_spots
 		Settings.save_all()))
@@ -1196,7 +1199,7 @@ func show_skirmish() -> void:
 	else:
 		desc = Loc.t({"crossroads": "Open ground around a central hill.", "highlands": "Main bases on high ground, one ramp down.",
 			"rivers": "Rivers you can only cross at the fords."}[MapGen.MAPS[mid][1]])
-		desc += Loc.t("  84x60, up to 4 players.  ") + _biome(String(MapGen.MAPS[mid][2])) + "."
+		desc += Loc.t("  110x80, up to 4 players.  ") + _biome(String(MapGen.MAPS[mid][2])) + "."
 	var dl := UiStyle.text(desc, 15, UiStyle.MUTED)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mv.add_child(dl)
@@ -1757,7 +1760,7 @@ class MapPreview extends Control:
 	var _pic: Texture2D
 
 	func _draw() -> void:
-		var msz := Vector2(84, 60) if MapGen.is_pool(map_id) else Vector2(MapGen.size_of(map_id))
+		var msz := Vector2(MapGen.CLASSIC) if MapGen.is_pool(map_id) else Vector2(MapGen.size_of(map_id))
 		mw = msz.x
 		mh = msz.y
 		var r := Rect2(Vector2(4, 4), size - Vector2(8, 8))
@@ -1938,12 +1941,17 @@ var _rotate_paused := false
 
 
 var _save_t := 0.0
+var _save_pf := -1
+var _save_job: SaveGame.SaveJob = null
 var _f11_hint: PanelContainer
 var _f11_t := 0.0
 
 
-## Autosave the match every 15 s (and the log with it), so closing the game loses nothing.
-func _autosave() -> void:
+## Autosave the match every 15 s (and the log with it), so closing the game loses nothing. `steps`: the periodic
+## one, written over a few frames (SaveGame.begin: the state is taken at once, its text is written a hundred units a
+## frame, on frames without a game tick when there are some); any other (leaving, the window losing focus) at once.
+func _autosave(steps := false) -> void:
+	_save_job = null                      # (one at once replaces one still being written)
 	if game == null or game.over or game.demo or game.edit_mode:
 		return
 	if game.net:
@@ -1955,8 +1963,28 @@ func _autosave() -> void:
 	var cfg := last_cfg.duplicate(true)
 	cfg.erase("resume")
 	print("[save] %d:%02d  %d units, %d buildings  mem %d MB" % [int(game.clock) / 60, int(game.clock) % 60, game.units.size(), game.buildings.size(), int(OS.get_static_memory_usage() / 1048576)])
-	SaveGame.save(game, cfg)
-	if game.mlog:
+	if steps:
+		_save_job = SaveGame.begin(game, cfg)
+		Prof.add("autosave", pt)
+		if _save_job != null:
+			return
+	else:
+		SaveGame.save(game, cfg)
+	_save_done(pt)
+
+
+## The periodic autosave's next step (a hundred units' text); once written, the log with it.
+func _save_step() -> void:
+	var pt := Time.get_ticks_usec()
+	if _save_job.step():
+		_save_job = null
+		_save_done(pt)
+	else:
+		Prof.add("autosave", pt)
+
+
+func _save_done(pt: int) -> void:
+	if game and game.mlog:
 		_write_log("user://logs/unfinished.txt", game.mlog.text())
 	Prof.add("autosave", pt)
 	print("[save] done")
@@ -1982,9 +2010,17 @@ func _notification(what: int) -> void:
 func _process(delta: float) -> void:
 	if game and not game.over and not get_tree().paused:
 		_save_t += delta
-		if _save_t >= 15.0:
+		# (on a frame with no game tick in it, when there is one: a save of a big match takes tens of ms, and
+		# on a tick's frame it was a long hitch; the state is the same between ticks)
+		var pf := Engine.get_physics_frames()
+		var ticked := pf != _save_pf
+		_save_pf = pf
+		if _save_job != null:
+			if not ticked or _save_t >= 0.1:
+				_save_step()
+		elif _save_t >= 15.0 and (not ticked or _save_t >= 15.1):
 			_save_t = 0.0
-			_autosave()
+			_autosave(true)
 	_f11_t -= delta
 	if _f11_t <= 0.0:
 		_f11_t = 0.5
@@ -2071,6 +2107,11 @@ func start(cfg: Dictionary = {}) -> void:
 		cfg["seed"] = randi()
 	cfg = cfg.duplicate(true)
 	Defs.cw_roster = (bool(cfg.get("lab", false)) or Settings.cw_lab) if not watching else bool(_replay_data["header"].get("cw_roster", false))      # (the Clockwork roster prototype: off in normal games)
+	# TURNING GEARS (the experiment): the match's own rule, from the setting when it starts, kept in its setup (a continued
+	# match, an online guest and a replay take it from there; a setup from before it existed: off)
+	if not cfg.has("gear_turn") and not watching and not cfg.has("resume"):
+		cfg["gear_turn"] = Settings.gear_turn
+	Defs.gear_turn = bool(cfg.get("gear_turn", false))
 	# a random map is picked here (among the pool's maps that hold everyone), so colours can
 	# be chosen to suit its ground
 	var pool := String(cfg.get("map", "random"))
@@ -2194,6 +2235,7 @@ func start(cfg: Dictionary = {}) -> void:
 		SaveGame.restore(game, cfg["resume"])
 		last_cfg.erase("resume")
 	_save_t = 0.0
+	_save_job = null           # (a save of the last match still being written: dropped)
 	if not game.demo:
 		hud.start_countdown(3.0)
 		hud.count_hold = cfg.has("net")      # online: held until every player has loaded (NetSession "ready"/"go")
