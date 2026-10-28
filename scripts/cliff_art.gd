@@ -10,9 +10,15 @@ extends RefCounted
 ##     streaks of a few shades, a shade that darkens toward a dark foot line) instead of one
 ##     ragged tile picture per cell; steps in the wall get a dark edge where it ends; a soft
 ##     shadow lies on the low ground under it.
-##   * HIGH GROUND side, a cell with low ground to its north, east or west (and every wall's
-##     top): a narrow dark contour along the rim, a lighter lip beside it, and a soft shadow
-##     (ambient occlusion) on the low ground right below the edge.
+##   * EAST or WEST side, the cell has low ground to its east or west (and none to its south): a
+##     narrow side wall (SIDE_W px of the cell's outer edge, the cell is solid so no unit ever
+##     stands on it) cut from the same rock as the south walls, turned on its side: the high
+##     ground's lip on its inner edge, the rock, a dark foot line on the border with the low
+##     ground. The light comes from the upper left: a west-facing wall is a little lit, an
+##     east-facing one in shadow. Under a side wall that runs into a south wall, the south wall's
+##     top corner is the side wall's end (a clean corner). (docs/cliff_sides.md)
+##   * NORTH side and every wall's top: a narrow dark contour along the rim, a lighter lip
+##     beside it, and a soft shadow (ambient occlusion) on the low ground right below the edge.
 ## A side that opens on a ramp gets none of it (a ramp must still read as a ramp). Colours come
 ## from each biome's own tiles (its cliff face, its ground), so every theme keeps its look.
 
@@ -21,6 +27,10 @@ const VARIANTS := 6
 const SHADOW_FACE := 15       # px of shadow under a wall
 const HI := 20                # px of shade on the high ground beside a wall's end
 const SHADOW_AO := 9          # px of shadow beside the other rims
+const SHADOW_E := 13          # px of shadow cast east of an east-facing wall (the light is from the west)
+const SIDE_W := 10            # px: an east or west side wall's width (lip, rock, foot)
+const SIDE_LIT := 0.9         # the rock's shade on a west-facing side wall (lit a little)
+const SIDE_DARK := 0.7        # ... and on an east-facing one (in shadow)
 
 var g: Game
 var _cache := {}              # biome name -> piece images
@@ -44,6 +54,12 @@ func _cliff(x: int, y: int) -> bool:
 ## True for a cell drawn as a wall: a cliff cell with low ground (not a ramp) to its south.
 func is_wall(x: int, y: int) -> bool:
 	return _cliff(x, y) and _low(x, y + 1)
+
+
+## True for a cell drawn with a side wall facing `dir` (1 east, -1 west): a cliff cell with low
+## ground (not a ramp) on that side and none to its south.
+func _side(x: int, y: int, dir: int) -> bool:
+	return _cliff(x, y) and _low(x + dir, y) and not _low(x, y + 1)
 
 
 ## Paints the cliffs of every cell in `cr` (and the shadows that fall into it from the
@@ -76,6 +92,11 @@ func paint(img: Image, cr: Rect2i) -> void:
 				img.blit_rect(p["wall"][(x * 7 + y * 3 + (x >> 2)) % VARIANTS], full, at)
 				var wl := is_wall(x - 1, y)
 				var wr := is_wall(x + 1, y)
+				# a side wall coming down from the cell above ends on this wall's top corner
+				if w and _side(x, y - 1, -1):
+					img.blend_rect(p["side_w"][(x * 5 + (y - 1) * 11) % VARIANTS], Rect2i(0, 0, T, 5), at)
+				if e and _side(x, y - 1, 1):
+					img.blend_rect(p["side_e"][(x * 5 + (y - 1) * 11) % VARIANTS], Rect2i(0, 0, T, 5), at)
 				if not wl:
 					img.blend_rect(p["cap_l_open"] if w else p["cap_l_step"], full, at)
 					# the ground beside the wall's end, high or low: a soft shade falling off it
@@ -83,12 +104,13 @@ func paint(img: Image, cr: Rect2i) -> void:
 				if not wr:
 					img.blend_rect(p["cap_r_open"] if e else p["cap_r_step"], full, at)
 					img.blend_rect(p["hi_l"], full, at + Vector2i(T, 0))
-			if n:
-				img.blend_rect(p["rim_n"], full, at)
 			if w and not s:
-				img.blend_rect(p["rim_w"], full, at)
+				img.blend_rect(p["side_w"][(x * 5 + y * 11) % VARIANTS], full, at)
 			if e and not s:
-				img.blend_rect(p["rim_e"], full, at)
+				img.blend_rect(p["side_e"][(x * 5 + y * 11) % VARIANTS], full, at)
+			if n:
+				# (over a side wall's top end: the north rim's contour closes the corner)
+				img.blend_rect(p["rim_n"], full, at)
 			if not (n or s or w or e):
 				# a corner open only on its diagonal
 				if _low(x - 1, y - 1):
@@ -126,13 +148,18 @@ func _pieces(bn: String) -> Dictionary:
 	for v in VARIANTS:
 		walls.append(_wall(wall, lip, dark, v))
 	p["wall"] = walls
+	var se: Array = []
+	var sw: Array = []
+	for v in VARIANTS:
+		se.append(_side_wall(walls[v], true))
+		sw.append(_side_wall(walls[(v + 3) % VARIANTS], false))
+	p["side_e"] = se
+	p["side_w"] = sw
 	p["cap_l_open"] = _cap(dark, true, true)
 	p["cap_l_step"] = _cap(dark, true, false)
 	p["cap_r_open"] = _cap(dark, false, true)
 	p["cap_r_step"] = _cap(dark, false, false)
 	p["rim_n"] = _rim(dark, lip, 0)
-	p["rim_e"] = _rim(dark, lip, 1)
-	p["rim_w"] = _rim(dark, lip, 2)
 	p["dot_tl"] = _dot(dark, 0)
 	p["dot_tr"] = _dot(dark, 1)
 	p["dot_bl"] = _dot(dark, 2)
@@ -229,6 +256,26 @@ func _wall(wall: Color, lip: Color, dark: Color, v: int) -> Image:
 	return im
 
 
+## An east or west side wall: a south wall picture turned on its side and pressed into SIDE_W
+## columns at the cell's outer edge (its lip on the inner side, its dark foot on the outer edge),
+## the wall's columns running down the cell; the rock shaded by the light (SIDE_LIT, SIDE_DARK).
+## The rest of the cell is left clear.
+static func _side_wall(wall: Image, east: bool) -> Image:
+	var im := _blank()
+	# the wall's row for each of the strip's columns, from the inner (lip) side out to the foot
+	var rows := [1, 2, 4, 6, 9, 13, 17, 22, 27, 31]
+	var f := SIDE_DARK if east else SIDE_LIT
+	for k in SIDE_W:
+		var x := T - SIDE_W + k if east else SIDE_W - 1 - k
+		var r: int = rows[k]
+		for y in T:
+			var c := wall.get_pixel(y, r)
+			if k >= 2 and k < SIDE_W - 1:
+				c = Color(c.r * f, c.g * f, c.b * f, 1.0)
+			im.set_pixel(x, y, c)
+	return im
+
+
 ## The dark end of a wall (a side seen edge on): `open` where the wall ends against low ground,
 ## a lighter single line where it steps against the plateau.
 static func _cap(dark: Color, left: bool, open: bool) -> Image:
@@ -301,8 +348,10 @@ static func _shadow_s() -> Image:
 ## north of the cliff, 1: east of it, 2: west of it.
 static func _ao(side: int) -> Image:
 	var im := _blank()
-	for d in SHADOW_AO:
-		var a := 0.32 * pow(1.0 - float(d) / SHADOW_AO, 1.6)
+	# (east of a cliff: the side wall in shadow casts a deeper, wider one)
+	var n := SHADOW_E if side == 1 else SHADOW_AO
+	for d in n:
+		var a := (0.44 if side == 1 else 0.32) * pow(1.0 - float(d) / n, 1.6)
 		for k in T:
 			var px := Vector2i(k, T - 1 - d)
 			if side == 1:
