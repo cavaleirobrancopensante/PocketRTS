@@ -254,12 +254,64 @@ func _coach(delta: float) -> void:
 	_harvest(q)
 
 
+## A move order as a player gives it since 0.15.14 (rooted = a building, docs/brood_new.md): a rooted creature is got up
+## with UPROOT first (a move order alone no longer uproots it), then walked.
+func go(u: Unit, p: Vector2, atk := false) -> void:
+	if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "deployed" and not BroodRoot.in_cocoon(u):
+		BroodNew.uproot(u, false)
+	u.cmd_move(p, atk)
+
+
+## THE STRUCTURE-UNITS COME FROM GRUBS (0.15.14, the owner): the nearest free grub walks to a spot that passes the ROOT
+## checks and turns into it there (rooted). One at a time.
+func _morph(q: Unit, k: String) -> bool:
+	for u in g.units:
+		if u.team == 0 and not u.dead and u.kind == "grub" and u.order == "nb_morph":
+			return true
+	var mp := BroodRoot.morph_problem(g, 0, k)
+	if mp != "":
+		return mp.begins_with("Not enough")      # (saving up for it; else: on with other eggs)
+	var rings: Array = [7.0, 9.0, 11.0, 13.0, 15.0]
+	if k == BroodNew.MAW:
+		rings = [8.0, 10.0, 12.0, 14.0, 17.0]
+	elif k == BroodNew.TURTLE and plan in ["graze", "best"] and turtle_mode != "home":
+		rings = [13.0, 16.0, 19.0, 10.0]
+	elif (Defs.NB["lines"] as Dictionary).has(k):
+		rings = [5.0, 4.0, 6.0]
+	var home := BroodRoot.home_region(g, q.position)
+	var spot := Vector2.INF
+	for ring in rings:
+		for i in 16:
+			var p: Vector2 = BroodRoot.snap(k, q.position + Vector2.from_angle(TAU * i / 16.0 + ring) * ring * Defs.TILE)
+			if not on_map(p) or BroodRoot.home_region(g, p) != home or BroodRoot.place_problem(g, 0, k, p, null, true) != "":
+				continue
+			if k == BroodNew.MAW and not _spot_ok(p, q):
+				continue
+			if k == BroodNew.TURTLE and mine(BroodNew.TURTLE).any(func(o) -> bool: return o.position.distance_to(p) < 5.0 * Defs.TILE):
+				continue
+			spot = p
+			break
+		if spot != Vector2.INF:
+			break
+	if spot == Vector2.INF:
+		return false
+	var best: Unit = null
+	for u in mine("grub"):
+		if u.carrying == 0 and u.cocoon <= 0.0 and (best == null or u.position.distance_squared_to(spot) < best.position.distance_squared_to(spot)):
+			best = u
+	if best != null:
+		best.give({"o": "nb_morph", "k": k, "p": spot})
+		say("a grub goes to turn into a %s, %d tiles from the Mother" % [Defs.UNITS[k]["name"], int(spot.distance_to(q.position) / Defs.TILE)])
+		return true
+	return false
+
+
 func _mother(q: Unit) -> void:
 	if _camp == "walking":
 		if q.tesla_mode == "deployed" and q.position.distance_to(_camp_at) > 80.0:
 			# (a move order to the rooted Mother uproots her and walks on at once, as a player's click does; UPROOT
 			# and then a move left her idle a moment, and an idle Mother with an enemy in reach roots again by herself)
-			q.cmd_move(_camp_at)
+			go(q, _camp_at)
 		elif q.tesla_mode == "packed":
 			if q.position.distance_to(_camp_at) < 50.0 or (q.order == "idle" and q.position.distance_to(_camp_at) < 160.0):
 				q.cmd_deploy()
@@ -267,7 +319,7 @@ func _mother(q: Unit) -> void:
 				say("the Mother roots at her new spot (%d tiles from the enemy's start)" % int(q.position.distance_to(foe_start()) / Defs.TILE))
 				shot("mother_rooted_again", q, 0.9, 0.0)
 			elif q.order == "idle":
-				q.cmd_move(_camp_at)
+				go(q, _camp_at)
 		return
 	if q.tesla_mode == "packed" and q.order == "idle" and q.target == null:
 		q.cmd_deploy()
@@ -289,7 +341,7 @@ func _grow(q: Unit) -> void:
 
 ## A spot for a Rootmaw on the swamp round `c` (in its region, not overlapping another's ground, not spent).
 func maw_spot(c: Vector2, m: Unit, rings := [6.0, 8.0, 10.0, 12.0, 14.0, 17.0]):
-	var home := g.region_of(g.cell_of(c))
+	var home := BroodRoot.home_region(g, c)
 	var best = null
 	var bs := INF
 	for ring in rings:
@@ -361,7 +413,7 @@ func _rootmaws(q: Unit) -> void:
 				if gl == null:
 					continue
 				_spots[m.serial] = gl
-				m.cmd_move(gl)
+				go(m, gl)
 				continue
 			if m.position.distance_to(gl) < 40.0 or (m.order == "idle" and m.position.distance_to(gl) < 100.0):
 				if BroodNew.root_problem(g, m) == "":
@@ -370,12 +422,12 @@ func _rootmaws(q: Unit) -> void:
 				else:
 					_spots.erase(m.serial)
 			elif m.order == "idle":
-				m.cmd_move(gl)
+				go(m, gl)
 			continue
 		if m.target != null:
 			continue
 		if _graze_watch.has(m.serial) and _spots.has(m.serial) and m.order == "idle" and m.position.distance_to(_spots[m.serial]) > 90.0:
-			m.cmd_move(_spots[m.serial])
+			go(m, _spots[m.serial])
 			continue
 		var centre := q.position
 		if _camp == "walking":
@@ -393,7 +445,7 @@ func _rootmaws(q: Unit) -> void:
 			if goal == null:
 				continue
 			_spots[m.serial] = goal
-			m.cmd_move(goal)
+			go(m, goal)
 			continue
 		if m.position.distance_to(goal) < 40.0 or (m.order == "idle" and m.position.distance_to(goal) < 90.0):
 			if BroodNew.root_problem(g, m) == "":
@@ -401,11 +453,11 @@ func _rootmaws(q: Unit) -> void:
 			else:
 				_spots.erase(m.serial)
 		elif m.order == "idle":
-			m.cmd_move(goal)
+			go(m, goal)
 
 
 func turtle_spot(q: Unit, me: Unit):
-	var home := g.region_of(g.cell_of(q.position))
+	var home := BroodRoot.home_region(g, q.position)
 	var rings: Array = [16.0, 19.0, 13.0, 22.0] if plan in ["graze", "best"] else [12.0, 14.0, 9.0, 16.0, 18.0]
 	if turtle_mode == "home":
 		rings = [8.0, 10.0, 12.0, 6.0]       # (all at home: none on new ground, 15+ tiles out)
@@ -429,6 +481,14 @@ func turtle_spot(q: Unit, me: Unit):
 
 
 func _turtles(q: Unit) -> void:
+	# (0.15.14: turtles come out of their cocoons rooted at home; a job that wants one walking gets a home turtle up)
+	var job: bool = (_want_ninja() and _ninja == null) or (_want_ramp() and _ramp_turtle == null and _ramp_mid != Vector2.INF) \
+		or (turtle_mode == "far2" and _far_turtles.size() < 2 and g.clock > 150.0) or _want_tank()
+	if job and not mine(BroodNew.TURTLE).any(func(x) -> bool: return x.tesla_mode != "deployed" and x != _ninja and x != _ramp_turtle and not _tanks.has(x) and not _far_turtles.has(x)):
+		for tt in mine(BroodNew.TURTLE):
+			if BroodNew.rooted(tt) and tt != _ninja and tt != _ramp_turtle and not _tanks.has(tt) and not _far_turtles.has(tt):
+				BroodNew.uproot(tt, true)
+				break
 	for tt in mine(BroodNew.TURTLE):
 		if tt == _ninja or tt == _ramp_turtle or _tanks.has(tt):
 			continue
@@ -442,12 +502,12 @@ func _turtles(q: Unit) -> void:
 			if _want_ninja() and _ninja == null:
 				_ninja = tt
 				_ninja_at = _far_spot(q)
-				tt.cmd_move(_ninja_at)
+				go(tt, _ninja_at)
 				say("ninja: a Mound Turtle sets off for a far spot %d tiles away (%d from the enemy)" % [int(_ninja_at.distance_to(q.position) / Defs.TILE), int(_ninja_at.distance_to(foe_start()) / Defs.TILE)])
 				continue
 			if _want_ramp() and _ramp_turtle == null and _ramp_mid != Vector2.INF:
 				_ramp_turtle = tt
-				tt.cmd_move(_ramp_mid)
+				go(tt, _ramp_mid)
 				say("ramp: a Mound Turtle walks to the ramp to close it")
 				continue
 			if turtle_mode == "far2" and _far_turtles.size() < 2 and g.clock > 150.0:
@@ -455,7 +515,7 @@ func _turtles(q: Unit) -> void:
 				if fs != Vector2.INF:
 					_far_turtles.append(tt)
 					_spots[tt.serial] = fs
-					tt.cmd_move(fs)
+					go(tt, fs)
 					say("new ground: a Mound Turtle walks to a spot %d tiles from the Mother (far turtle %d of 2)" % [int(fs.distance_to(q.position) / Defs.TILE), _far_turtles.size()])
 					continue
 			if _want_tank():
@@ -468,7 +528,7 @@ func _turtles(q: Unit) -> void:
 					tt.cmd_deploy()          # (no free spot left round her: root where it stands)
 				continue
 			_spots[tt.serial] = goal
-			tt.cmd_move(goal)
+			go(tt, goal)
 			continue
 		if tt.position.distance_to(goal) < 40.0 or tt.order == "idle":
 			tt.cmd_deploy()
@@ -503,7 +563,7 @@ func _father(q: Unit) -> void:
 		_f_away += 0.5
 		if _f_away > 20.0:
 			_f_away = 0.0
-			f.cmd_move(q.position + (f.position - q.position).normalized() * reach * 0.6)
+			go(f, q.position + (f.position - q.position).normalized() * reach * 0.6)
 			say("the Tyrannosaur was away from her for 20 s with nothing to fight: called home")
 	else:
 		_f_away = 0.0
@@ -517,10 +577,10 @@ func _father(q: Unit) -> void:
 		f.cmd_deploy()
 		return
 	if d > 14.0 * Defs.TILE and f.order != "move":
-		f.cmd_move(q.position + (f.position - q.position).normalized() * reach * 0.6)
+		go(f, q.position + (f.position - q.position).normalized() * reach * 0.6)
 		return
 	if f.order == "idle" or f.order == "hold":
-		var home := g.region_of(g.cell_of(q.position))
+		var home := BroodRoot.home_region(g, q.position)
 		var best := Vector2.INF
 		var bs := -INF
 		# (his nest away from the rim where her eggs roll out and her creatures hatch, south-east of her: a nest there
@@ -541,7 +601,7 @@ func _father(q: Unit) -> void:
 				bs = sc
 				best = p
 		if best != Vector2.INF:
-			f.cmd_move(best)
+			go(f, best)
 		return
 
 
@@ -552,7 +612,8 @@ func _short() -> bool:
 	var coming := 0
 	for u in g.units:
 		if u.team == 0 and not u.dead and ((u.kind == BroodNew.TURTLE and u.tesla_mode != "deployed" and u != _ninja and not _tanks.has(u)) \
-				or (u.kind == BroodNew.EGG and String(u.nb.get("k", "")) == BroodNew.TURTLE)):
+				or (u.kind == BroodNew.EGG and String(u.nb.get("k", "")) == BroodNew.TURTLE) \
+				or (u.kind == "grub" and u.order == "nb_morph" and String(u.nb.get("mk", "")) == BroodNew.TURTLE)):
 			coming += int(Defs.NB["turtle_supply"])
 	return g.supply_used(0) + 6 + int(g.clock / 40.0) >= cap + coming
 
@@ -647,6 +708,12 @@ func _lay(q: Unit) -> void:
 			k = "brute"
 		else:
 			k = "raptor"
+	if BroodRoot.morph_list().has(k):
+		_why_k = "%s: a grub turns into it" % k
+		if _morph(q, k):          # (0.15.14: a grub turns into it, the Mother lays only units)
+			return
+		_why_k = "%s: no spot for it now" % k
+		k = "raptor" if BroodNew.father_near(g, 0) and gold - 150 >= _reserve(q) and not _saving_to_grow(q) else ("grub" if grubs < want_grubs else "")
 	_why_k = "%s: %s" % [k, BroodNew.lay_problem(g, q, k) if k != "" else "nothing wanted"]
 	if k == "" or BroodNew.lay_problem(g, q, k) != "":
 		if k in [BroodNew.FATHER, BroodNew.MAW, BroodNew.TURTLE, "brute"]:
@@ -751,7 +818,7 @@ func _army(q: Unit) -> void:
 			defenders.append(f)
 		for u in defenders:
 			if u.target == null and (u.order == "idle" or u in _wave):
-				u.cmd_move(threat[0].position, true)
+				go(u, threat[0].position, true)
 		if threat.size() >= 3:
 			shot("defence", threat[0].position, 1.1, 30.0)
 		return
@@ -763,22 +830,22 @@ func _army(q: Unit) -> void:
 			_attacking = false
 			say("the wave is cut down (%d of %d supply left): back to the Mother" % [left, _wave_sup])
 			for u in _wave:
-				u.cmd_move(q.position + Vector2(0, q.radius + 40.0))
+				go(u, q.position + Vector2(0, q.radius + 40.0))
 			_wave.clear()
 			_attack_at += 8
 			return
 		for u in _wave:
 			if u.order == "idle" and u.target == null:
-				u.cmd_move(foe_start(), true)
+				go(u, foe_start(), true)
 		# (new hatchlings do not trickle after the wave one by one: they wait by the Mother for the next one; game 1 did
 		# trickle, and lost 300 Raptors to a walled Crown)
 		var home := q.position + Vector2(0, q.radius + 60.0)
 		for u in arm:
 			if not _wave.has(u) and u.order == "idle" and u.target == null and u.position.distance_to(home) > 200.0:
-				u.cmd_move(home)
+				go(u, home)
 		if f and not _wave.has(f) and _rex_fights():
 			_wave.append(f)
-			f.cmd_move(foe_start(), true)
+			go(f, foe_start(), true)
 		return
 	if sup >= _attack_at and _camp != "walking":
 		_wave = arm.duplicate()
@@ -787,7 +854,7 @@ func _army(q: Unit) -> void:
 		if f and _rex_fights():
 			_wave.append(f)
 		for u in _wave:
-			u.cmd_move(foe_start(), true)
+			go(u, foe_start(), true)
 		say("attack: %d supply (%s)%s" % [sup, _kinds(arm), ", the Tyrannosaur leads it" if f and _rex_fights() else ""])
 		if not arm.is_empty():
 			_later.append([g.clock + 6.0, "wave_%s.png" % _mmss(g.clock), arm[0]])
@@ -795,7 +862,7 @@ func _army(q: Unit) -> void:
 		var spot := q.position + Vector2(0, q.radius + 60.0)
 		for u in arm:
 			if u.order == "idle" and u.target == null and u.position.distance_to(spot) > 200.0:
-				u.cmd_move(spot)
+				go(u, spot)
 
 
 func _rex_fights() -> bool:
@@ -833,15 +900,15 @@ func _mother_defends(q: Unit) -> void:
 	if foes.size() >= 2 and not _mfight:
 		_mfight = true
 		_mhome = q.position
-		q.cmd_move(foes[0].position, true)
+		go(q, foes[0].position, true)
 		say("the Mother uproots to fight (%d enemies within 6 tiles, %d hp)" % [foes.size(), int(q.hp)])
 		clip("mother_fights", q, 30, 4, 1.1)
 	elif _mfight and foes.is_empty() and seen_foes(q.position, 10.0 * Defs.TILE).is_empty():
 		_mfight = false
-		q.cmd_move(_mhome)
+		go(q, _mhome)
 		say("the fight at the Mother is over (%d hp): back to her nest" % int(q.hp))
 	elif _mfight and q.order == "idle" and q.tesla_mode == "packed" and not foes.is_empty():
-		q.cmd_move(foes[0].position, true)
+		go(q, foes[0].position, true)
 
 
 var _mhome := Vector2.ZERO
@@ -909,7 +976,7 @@ func _forced_rush(q: Unit) -> void:
 	for u in g.units:
 		if u.team == _foe and not u.dead and not u.is_worker() and u.kind != "horse" and not u.is_air():
 			if u.order != "amove" or u.path_goal.distance_to(q.position) > 200.0:
-				u.cmd_move(q.position, true)
+				go(u, q.position, true)
 			n += 1
 	if not _shots_t.has("frush"):
 		_shots_t["frush"] = g.clock
@@ -951,7 +1018,7 @@ func _harvest(q: Unit) -> void:
 		return
 	for gr in mine("grub"):
 		if gr.carrying == 0 and gr.order == "gather" and not _to_harvest.has(gr):
-			gr.cmd_move(near[0].position)
+			go(gr, near[0].position)
 			_to_harvest[gr] = near[0].position
 			busy += 1
 			if busy >= 2:
@@ -982,7 +1049,7 @@ func _plan_warcamp(q: Unit) -> void:
 					at = path[i - 1].lerp(path[i], (stop - acc) / maxf(seg, 1.0))
 					break
 				acc += seg
-		_camp_at = walk_spot_near(at, g.region_of(g.cell_of(q.position)))
+		_camp_at = walk_spot_near(at, BroodRoot.home_region(g, q.position))
 		say("warcamp: the Mother uproots and walks %d tiles toward the enemy with the army and the Tyrannosaur" % int(q.position.distance_to(_camp_at) / Defs.TILE))
 		clip("warcamp_march", q, 30, 6, 0.9)
 	if _camp == "walking":
@@ -990,11 +1057,11 @@ func _plan_warcamp(q: Unit) -> void:
 		var ahead := q.position + (_camp_at - q.position).normalized() * 110.0
 		for u in army():
 			if u.target == null and u.position.distance_to(ahead) > 160.0 and (u.order == "idle" or u.position.distance_to(u.path_goal) < 60.0):
-				u.cmd_move(ahead + Vector2(randf_range(-50, 50), randf_range(-50, 50)), true)
+				go(u, ahead + Vector2(randf_range(-50, 50), randf_range(-50, 50)), true)
 		# the turtles laid on the march follow her, to root by her at the front
 		for tt in mine(BroodNew.TURTLE):
 			if tt.tesla_mode == "packed" and not _spots.has(tt.serial) and tt.order == "idle" and tt.position.distance_to(q.position) > 120.0 and not _tanks.has(tt) and tt != _ninja:
-				tt.cmd_move(q.position)
+				go(tt, q.position)
 	if _camp == "rooted" and not _shots_t.has("warcamp_front"):
 		shot("warcamp_front", q, 0.8, 0.0)
 
@@ -1043,7 +1110,7 @@ func _plan_graze(q: Unit) -> void:
 ## NEW GROUND for a turtle (round 2): 16 to 24 tiles from the Mother and 15+ from the other far turtles, walkable in her
 ## region, off ramps, on our side of the map.
 func _new_ground_spot(q: Unit) -> Vector2:
-	var home := g.region_of(g.cell_of(q.position))
+	var home := BroodRoot.home_region(g, q.position)
 	var best := Vector2.INF
 	var bs := -INF
 	var foe := foe_start()
@@ -1078,7 +1145,7 @@ func _new_ground_spot(q: Unit) -> Vector2:
 
 ## (3) A lone Mound Turtle sent far away with Rootmaws: a hidden base.
 func _far_spot(q: Unit) -> Vector2:
-	var home := g.region_of(g.cell_of(q.position))
+	var home := BroodRoot.home_region(g, q.position)
 	var best := q.position
 	var bs := -INF
 	var foe := foe_start()
@@ -1212,9 +1279,9 @@ func _plan_tanks(_q: Unit) -> void:
 						n += 1
 				if n > 0:
 					mid /= n
-					tt.cmd_move(mid + (foe_start() - mid).normalized() * 90.0)
+					go(tt, mid + (foe_start() - mid).normalized() * 90.0)
 			elif not _attacking and tt.order == "idle" and tt.position.distance_to(BroodNew.queen(g, 0).position) > 300.0:
-				tt.cmd_move(BroodNew.queen(g, 0).position + Vector2(randf_range(-150, 150), 160))
+				go(tt, BroodNew.queen(g, 0).position + Vector2(randf_range(-150, 150), 160))
 		elif tt.tesla_mode == "deployed" and foes.is_empty() and seen_foes(tt.position, 9.0 * Defs.TILE).is_empty():
 			tt.cmd_pack()
 			say("tanks: the fight is over there: the turtle uproots")
@@ -1239,16 +1306,16 @@ func _plan_flee(q: Unit) -> void:
 	if q.hp < q.max_hp * 0.7 and foes.size() > mine_n:
 		_fled = true
 		_camp = "walking"
-		_camp_at = walk_spot_near(_refuge, g.region_of(g.cell_of(q.position)))
+		_camp_at = walk_spot_near(_refuge, BroodRoot.home_region(g, q.position))
 		say("flee: the war camp's fight is lost (%d hp, %d enemies v %d of mine near her): she UPROOTS and runs %d tiles home" % [int(q.hp), foes.size(), mine_n, int(q.position.distance_to(_camp_at) / Defs.TILE)])
 		clip("flee", q, 40, 6, 0.9)
 		_attacking = false
 		_wave.clear()
 		var f := BroodNew.father(g, 0)
 		if f:
-			f.cmd_move(_camp_at)
+			go(f, _camp_at)
 		for u in army():
-			u.cmd_move(q.position + (_camp_at - q.position).normalized() * 60.0)
+			go(u, q.position + (_camp_at - q.position).normalized() * 60.0)
 		# the Rootmaws by her at the front HAUL their food home
 		for m in mine(BroodNew.MAW):
 			if BroodNew.rooted(m) and m.position.distance_to(q.position) < 20.0 * Defs.TILE:
@@ -1287,7 +1354,7 @@ func _watch_stuck() -> void:
 			r.append(true)
 			if u.kind == BroodNew.FATHER and not _wave.has(u):
 				var qh := BroodNew.queen(g, 0)
-				u.cmd_move(qh.position + (u.position - qh.position).normalized() * float(Defs.NB["father_r"]) * Defs.TILE * 0.6)      # (a player would call him home, beside her)
+				go(u, qh.position + (u.position - qh.position).normalized() * float(Defs.NB["father_r"]) * Defs.TILE * 0.6)      # (a player would call him home, beside her)
 			say("STUCK: %s #%d has not moved for 15 s (order move, %d tiles from its goal, path %d/%d, pending %s; at %s walkable %s)" % [Defs.UNITS[u.kind]["name"], u.serial, int(u.position.distance_to(u.path_goal) / Defs.TILE) if u.path_goal != Vector2.INF else -1, u.path_i, u.path.size(), str(u.path_pending), str(g.cell_of(u.position)), str(g._walkable(g.cell_of(u.position)))])
 			shot("stuck", u, 1.5, 60.0)
 
