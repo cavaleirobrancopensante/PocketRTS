@@ -1720,6 +1720,7 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 
 func _ready() -> void:
 	_sep_n = serial % 3
+	_anim_dt = 0.033 if serial % 2 == 1 else 0.0       # (half the units step their pictures on the other tick: a crowd's frames don't all change on one)
 	sprite = Sprite2D.new()
 	sprite.centered = false
 	sprite.material = team_material()
@@ -6503,8 +6504,10 @@ func _animate(delta: float) -> void:
 	_anim_dt += delta
 	# (a walking or hammering Labourer steps at 30 Hz: his frames follow the ground he covers
 	# and the hammer beat, which 15 Hz ticks would make uneven)
+	# (a big battle on screen, game.anim_crowd: 10 steps a second; the frames still keep their pace, a fast strip
+	# just shows fewer of them)
 	var tick := 0.033 if (kind == "labourer" and (anim == "build" or velocity.length() > 10.0)) \
-			or (kind == Defs.GREAT_WINDER_KIND and anim == "walk") else 0.066     # (the Great Winder's 16 fps wheels too)
+			or (kind == Defs.GREAT_WINDER_KIND and anim == "walk") else (0.1 if game.anim_crowd else 0.066)     # (the Great Winder's 16 fps wheels too)
 	if _anim_dt < tick and not dead:
 		return
 	if kind == "horse" and not dead:
@@ -6515,6 +6518,7 @@ func _animate(delta: float) -> void:
 		return
 	delta = _anim_dt
 	_anim_dt = 0.0
+	game.anim_steps += 1
 	if powered_down() and not dead:
 		# the new constructs slump (drained / run down) first, then stand still
 		var dn := _anim_name()
@@ -6660,6 +6664,9 @@ func _animate(delta: float) -> void:
 		if anim_t >= 1.0:
 			anim_t -= 1.0
 			frame_i += 1
+			while anim_t >= 1.0 and game.anim_crowd:
+				anim_t -= 1.0          # (10 steps a second: a strip faster than that skips a frame now and then)
+				frame_i += 1
 	frame_i = posmod(frame_i, n) if loop else mini(frame_i, n - 1)
 	var shown := frame_i
 	if work == "reins" and REINS_POSE.has(kind) and anim == String(REINS_POSE[kind][0]):
@@ -6861,7 +6868,7 @@ var _lab_build_t := 0.0
 var _lab_dist := 0.0
 var _lab_prev := Vector2.ZERO
 var _lab_moved_t := -10.0
-var _lab_view := -1
+var _lab_view := -1             # (the view it was last drawn in: _set_anim)
 
 
 ## Seconds into the swing at which the strike begins (view `dir`).
@@ -6949,6 +6956,7 @@ static func own_west(art_frames: Dictionary, a: String, dr: String) -> String:
 	return ""
 
 
+static var _STRIPS := {}         # "art/anim_dir" -> [texture, frames, sprite offset, walk fps] (_set_anim)
 var _an_n := 1                   # (_set_anim: the strip's frame count, ArtData frames[anim_dir])
 var _an_wfps := WALK_FPS         # (_set_anim: walk_fps_for(the strip's art))
 var _sm_o := -1                  # (_set_anim: the last heading, pose and strip, and the view they gave)
@@ -6969,12 +6977,12 @@ func _set_anim(a: String, force: bool) -> void:
 	var was_mount := anim == "mount"
 	var o := int(round(face.angle() / (PI / 4.0)))
 	o = posmod(o, 8)
-	if kind == "labourer":
-		# the view only changes once he has turned clearly past the edge (his path wobbles around
-		# the 22.5 degree lines and the drawings of two views never line up frame for frame)
-		if _lab_view >= 0 and o != _lab_view and absf(wrapf(face.angle() - float(_lab_view) * PI / 4.0, -PI, PI)) < PI / 4.0 * 0.5 + 0.14:
-			o = _lab_view
-		_lab_view = o
+	# the view only changes once it has turned clearly past the edge (a path wobbles around the 22.5 degree lines, and
+	# in a crowd every shove and every new target turned it: a big melee's sprites flicked between two views 15 times
+	# a second, and each flick changed the strip; the Labourer's rule since his redraw, for every unit since 0.14.105)
+	if _lab_view >= 0 and o != _lab_view and absf(wrapf(face.angle() - float(_lab_view) * PI / 4.0, -PI, PI)) < PI / 4.0 * 0.5 + 0.14:
+		o = _lab_view
+	_lab_view = o
 	var dr: String
 	var flip: bool
 	if o == _sm_o and a == _sm_a and sa == _sm_sa:
@@ -7021,14 +7029,21 @@ func _set_anim(a: String, force: bool) -> void:
 	anim_flip = flip
 	_anim_art = sa
 	var key := a + "_" + dr
-	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [sa, key])
-	_an_n = frames.get(key, 1)
-	_an_wfps = walk_fps_for(sa)
+	# (a strip's texture, frame count, offset and walk pace never change: worked out once for each)
+	var ck := sa + "/" + key
+	var ce = _STRIPS.get(ck)
+	if ce == null:
+		var tx := Game.tex("res://assets/units/%s/%s.png" % [sa, key])
+		var anchor: Vector2 = ArtData.UNITS[sa]["anchor"]
+		# some sheets (aiming up) have extra room on top: the feet stay where they were
+		var cell: Vector2i = ArtData.UNITS[sa]["cell"]
+		ce = [tx, int(frames.get(key, 1)), -anchor - Vector2(0, tx.get_height() - cell.y), walk_fps_for(sa)]
+		_STRIPS[ck] = ce
+	sprite.texture = ce[0]
+	_an_n = ce[1]
+	_an_wfps = ce[3]
 	sprite.hframes = _an_n
-	var anchor: Vector2 = ArtData.UNITS[sa]["anchor"]
-	# some sheets (aiming up) have extra room on top: the feet stay where they were
-	var cell: Vector2i = ArtData.UNITS[sa]["cell"]
-	sprite.offset = -anchor - Vector2(0, sprite.texture.get_height() - cell.y)
+	sprite.offset = ce[2]
 	sprite.scale = Vector2(-1.0 if flip else 1.0, 1.0) * float(d.get("art_scale", 1.0))
 	frame_i = mini(frame_i, sprite.hframes - 1)
 	if was_mount != (a == "mount"):

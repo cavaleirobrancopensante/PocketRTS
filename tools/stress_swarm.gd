@@ -104,7 +104,52 @@ func _initialize() -> void:
 	Engine.max_fps = 0
 
 
+## A frame is one turn of the engine's loop: its game ticks (none or one at 60 frames a second), then everything's
+## _process, then the drawing. The loop calls this script's _physics_process first in each tick and its _process
+## first in each frame's processing, so a frame starts at the first of them in the turn (_turn): the time from one
+## start to the next is what that frame cost, with the parts it spent it on.
+var _ticked := false
+
+
+func _physics_process(_delta: float) -> bool:
+	if not _ticked:
+		_ticked = true
+		_turn()
+	return false
+
+
+func _turn() -> void:
+	var now := Time.get_ticks_usec()
+	if not _measuring or _done or g == null:
+		_last_us = now
+		return
+	var ms := (now - _last_us) / 1000.0
+	_last_us = now
+	_frames.append(ms)
+	if _in_fight:
+		_fight.append(ms)
+	_take_frame()
+	if _frame.has("units"):
+		_ticks += 1
+	for z in _frame:
+		if int(_frame[z]) > int(_zmax.get(z, 0)):
+			_zmax[z] = int(_frame[z])
+	if ms > 35.0 and spikes:
+		print("SWARM spike %.0f ms at %.2f s: %s" % [ms, g.clock, _zones_text(_frame)])
+	if ms > _worst_ms:
+		_worst_ms = ms
+		_worst_zones = _zones_text(_frame)
+	_draw_calls += int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	if _vp_rid.is_valid():
+		_rend_cpu += RenderingServer.viewport_get_measured_render_time_cpu(_vp_rid)
+		_rend_gpu += RenderingServer.viewport_get_measured_render_time_gpu(_vp_rid)
+		_rend_n += 1
+
+
 func _process(delta: float) -> bool:
+	if not _ticked:
+		_turn()
+	_ticked = false
 	var now := Time.get_ticks_usec()
 	t += delta
 	if not begun:
@@ -141,6 +186,8 @@ func _process(delta: float) -> bool:
 			_last_us = Time.get_ticks_usec()
 		return false
 	_game_t += 1.0 / 60.0
+	if _measuring and int(_game_t * 60.0) % 15 == 0:
+		_in_fight = _alive(0) >= sides[0].size() / 10 and _alive(1) >= sides[1].size() / 10 and scen != "idle" and scen != "walk"
 	if _done:
 		linger -= 1.0 / 60.0
 		return linger <= 0.0
@@ -156,32 +203,9 @@ func _process(delta: float) -> bool:
 			_acc.clear()
 			_cpu0 = _cpu_ms()
 			_wall0 = Time.get_ticks_msec()
+			_last_us = now
 			print("SWARM measuring")
-		_last_us = now
 		return false
-	var ms := (now - _last_us) / 1000.0
-	_last_us = now
-	_frames.append(ms)
-	if int(_game_t * 60.0) % 15 == 0:
-		_in_fight = _alive(0) >= sides[0].size() / 10 and _alive(1) >= sides[1].size() / 10 and scen != "idle" and scen != "walk"
-	if _in_fight:
-		_fight.append(ms)
-	_take_frame()
-	if _frame.has("units"):
-		_ticks += 1
-	for z in _frame:
-		if int(_frame[z]) > int(_zmax.get(z, 0)):
-			_zmax[z] = int(_frame[z])
-	if ms > 50.0 and spikes:
-		print("SWARM spike %.0f ms at %.2f s: %s" % [ms, g.clock, _zones_text(_frame)])
-	if ms > _worst_ms:
-		_worst_ms = ms
-		_worst_zones = _zones_text(_frame)
-	_draw_calls += int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	if _vp_rid.is_valid():
-		_rend_cpu += RenderingServer.viewport_get_measured_render_time_cpu(_vp_rid)
-		_rend_gpu += RenderingServer.viewport_get_measured_render_time_gpu(_vp_rid)
-		_rend_n += 1
 	if _game_t >= secs + 0.5:
 		_report()
 		if _trace != null:
@@ -478,6 +502,22 @@ func _report() -> void:
 	row["frame_max"] = {}
 	for x in zm:
 		row["frame_max"][x[1]] = x[0]
+	var rec = g.find_child("ReplayRecorder", true, false)
+	if rec == null:
+		rec = root.find_child("ReplayRecorder", true, false)
+	if rec != null and int(rec.n_frames) > 0:
+		print("SWARM replay recorder: %d pictures, %.2f ms each (snapshot %.2f, compact %.2f), %d keyframes" % [rec.n_frames, rec.cost_us / 1000.0 / rec.n_frames,
+			rec.build_us / 1000.0 / rec.n_frames, rec.compact_us / 1000.0 / rec.n_frames, rec.n_keys])
+	for z in ["z/sa-fast", "z/sa-pre", "z/sa-slow"]:
+		if Prof.calls.has(z):
+			print("SWARM %s: %d calls, %.1f us each" % [z, Prof.calls[z], float(Prof.us[z]) / Prof.calls[z]])
+	var whys: Array = []
+	for z in Prof.calls:
+		if String(z).begins_with("why "):
+			whys.append([Prof.calls[z], z])
+	whys.sort_custom(func(a, b) -> bool: return a[0] > b[0])
+	for w in whys.slice(0, 12):
+		print("SWARM ", w)
 	var cb_n := int(Prof.calls.get("hud/card build", 0))
 	if cb_n > 0:
 		print("SWARM command card: built %d times, %.2f ms each on average" % [cb_n, float(Prof.us.get("hud/card build", 0)) / 1000.0 / cb_n])

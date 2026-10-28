@@ -8926,9 +8926,15 @@ func update_view_rect() -> void:
 ## The path queue's time limit in a tick, past its first 6 paths (µs). A tool that needs a match to
 ## play out the same every time lifts it (tools/perf_bench.gd): then only the count, 24 a tick, limits it.
 var path_budget_us := 6000
+var anim_steps := 0              # (the units that stepped their pictures this tick: Unit._animate)
+var anim_crowd := false
 
 
 func _tick_game(delta: float) -> void:
+	# (a big battle on screen: the units step their pictures 10 times a second instead of 15, Unit._animate; it
+	# changes only what is drawn. On over about 160 units in view, off under about 110.)
+	anim_crowd = anim_steps > (55 if anim_crowd else 80)
+	anim_steps = 0
 	if over or edit_mode:
 		return
 	if Defs.cw_roster:
