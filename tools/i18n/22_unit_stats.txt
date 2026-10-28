@@ -1,0 +1,642 @@
+# THE STATS ROW on the unit card (owner, 2026-10-28; scripts/ui/unit_stats.gd, docs/unit_stats.md): the chips' titles,
+# their tooltips and the special attacks' lines. pt "casas", es "casillas" for tiles, as elsewhere.
+
+> Melee attack
+pt Ataque corpo a corpo
+es Ataque cuerpo a cuerpo
+
+> Ranged attack
+pt Ataque à distância
+es Ataque a distancia
+
+> Area attack
+pt Ataque em área
+es Ataque de área
+
+> Attack speed
+pt Velocidade de ataque
+es Velocidad de ataque
+
+> Damage a second
+pt Dano por segundo
+es Daño por segundo
+
+> Range
+pt Alcance
+es Alcance
+
+> Hits flyers
+pt Acerta voadores
+es Alcanza voladores
+
+> Sight
+pt Visão
+es Visión
+
+> Cannot attack now
+pt Não pode atacar agora
+es No puede atacar ahora
+
+> Cannot attack
+pt Não pode atacar
+es No puede atacar
+
+> Health
+pt Vida
+es Salud
+
+> Speed
+pt Velocidade
+es Velocidad
+
+> Supply
+pt Suprimento
+es Suministro
+
+> Armour
+pt Armadura
+es Armadura
+
+> Bonus vs armoured
+pt Bônus contra blindados
+es Bonificación contra acorazados
+
+> Bonus vs buildings
+pt Bônus contra construções
+es Bonificación contra edificios
+
+> Bonus vs light
+pt Bônus contra leves
+es Bonificación contra ligeros
+
+> Bonus vs flyers
+pt Bônus contra voadores
+es Bonificación contra voladores
+
+> Bonus damage
+pt Dano bônus
+es Daño adicional
+
+> Special attacks and abilities
+pt Ataques especiais e habilidades
+es Ataques especiales y habilidades
+
+> ground
+pt chão
+es suelo
+
+> air
+pt ar
+es aire
+
+> buildings
+pt construções
+es edificios
+
+> %d damage a screw · every %.1f s · %.1f a second
+pt %d de dano por parafuso · a cada %.1f s · %.1f por segundo
+es %d de daño por tornillo · cada %.1f s · %.1f por segundo
+
+> Big screws at ground and air alike. SMALL gear: quick light screws; BIG gear: slow heavy ones, better against armour.
+pt Grandes parafusos contra o chão e o ar. Engrenagem PEQUENA: parafusos leves e rápidos; GRANDE: pesados e lentos, melhores contra armadura.
+es Grandes tornillos a tierra y aire por igual. Engranaje PEQUEÑO: tornillos ligeros y rápidos; GRANDE: pesados y lentos, mejores contra armadura.
+
+> %.1f tiles
+pt %.1f casas
+es %.1f casillas
+
+> It can hit flyers.
+pt Pode acertar voadores.
+es Puede alcanzar voladores.
+
+> %d tiles
+pt %d casas
+es %d casillas
+
+> How far it sees.
+pt Até onde enxerga.
+es Hasta dónde ve.
+
+> %s: reload x%.2f
+pt %s: recarga x%.2f
+es %s: recarga x%.2f
+
+> a Dragoon on foot: reload x%.1f
+pt um Dragão a pé: recarga x%.1f
+es un Dragón a pie: recarga x%.1f
+
+> Prepared Charges: reload x%.1f
+pt Cargas Preparadas: recarga x%.1f
+es Cargas Preparadas: recarga x%.1f
+
+> OVERLOADED: reload x%.2f
+pt SOBRECARREGADO: recarga x%.2f
+es SOBRECARGADO: recarga x%.2f
+
+> SHIELD FORWARD: reload x%.2f
+pt ESCUDO À FRENTE: recarga x%.2f
+es ESCUDO AL FRENTE: recarga x%.2f
+
+> veterancy +%d%% (%d kills)
+pt veterania +%d%% (%d abates)
+es veteranía +%d%% (%d bajas)
+
+> wound %d%%: x%.2f
+pt corda %d%%: x%.2f
+es cuerda %d%%: x%.2f
+
+> OVERLOADED x%.1f
+pt SOBRECARREGADO x%.1f
+es SOBRECARGADO x%.1f
+
+> OVERCHARGED x%.2f
+pt SUPERCARREGADO x%.2f
+es SUPERCARGADO x%.2f
+
+> %s damage a hit
+pt %s de dano por golpe
+es %s de daño por golpe
+
+> trained: %s
+pt ao ser treinado: %s
+es al entrenarse: %s
+
+> Now: %s.
+pt Agora: %s.
+es Ahora: %s.
+
+> Hits: %s.
+pt Acerta: %s.
+es Alcanza: %s.
+
+> ROOTED
+pt ENRAIZADO
+es ARRAIGADO
+
+> When it fights: %s damage a hit, every %.1f s (%.1f a second), %.1f tiles.
+pt Quando luta: %s de dano por golpe, a cada %.1f s (%.1f por segundo), %.1f casas.
+es Cuando lucha: %s de daño por golpe, cada %.1f s (%.1f por segundo), %.1f casillas.
+
+> Aim %.2f s + blow %.2f s + reload %.2f s: %.2f attacks a second.
+pt Mira %.2f s + golpe %.2f s + recarga %.2f s: %.2f ataques por segundo.
+es Apuntar %.2f s + golpe %.2f s + recarga %.2f s: %.2f ataques por segundo.
+
+> One attack every %.1f s
+pt Um ataque a cada %.1f s
+es Un ataque cada %.1f s
+
+> trained: %.1f s
+pt ao ser treinado: %.1f s
+es al entrenarse: %.1f s
+
+> DPS %s
+pt DPS %s
+es DPS %s
+
+> %.1f damage a second
+pt %.1f de dano por segundo
+es %.1f de daño por segundo
+
+> Damage a hit / time between attacks, on one target with no armour (armour takes its value off every hit).
+pt Dano por golpe / tempo entre ataques, contra um alvo sem armadura (a armadura tira o seu valor de cada golpe).
+es Daño por golpe / tiempo entre ataques, contra un objetivo sin armadura (la armadura resta su valor a cada golpe).
+
+> Every enemy in its blow takes this.
+pt Cada inimigo atingido pelo golpe recebe isso.
+es Cada enemigo alcanzado por el golpe recibe esto.
+
+> Nothing closer than %.1f tiles.
+pt Nada mais perto que %.1f casas.
+es Nada más cerca de %.1f casillas.
+
+> Gunner's Quadrant: +%.1f tiles.
+pt Quadrante do Artilheiro: +%.1f casas.
+es Cuadrante del Artillero: +%.1f casillas.
+
+> Melee: it must close in.
+pt Corpo a corpo: precisa chegar perto.
+es Cuerpo a cuerpo: debe acercarse.
+
+> %.1f tiles (%d px)
+pt %.1f casas (%d px)
+es %.1f casillas (%d px)
+
+> Canister only: round shot cannot hit flyers.
+pt Só a metralha: a bala não acerta voadores.
+es Solo la metralla: la bala no alcanza voladores.
+
+> No weapon.
+pt Sem arma.
+es Sin arma.
+
+> No weapon: he heals.
+pt Sem arma: ele cura.
+es Sin arma: él cura.
+
+> Trained: %d.
+pt Ao ser treinado: %d.
+es Al entrenarse: %d.
+
+> %d px a second (a tile is %d px).
+pt %d px por segundo (uma casa tem %d px).
+es %d px por segundo (una casilla mide %d px).
+
+> SHIELD FORWARD: x%.1f.
+pt ESCUDO À FRENTE: x%.1f.
+es ESCUDO AL FRENTE: x%.1f.
+
+> Rooted: it cannot move.
+pt Enraizado: não pode se mover.
+es Arraigado: no puede moverse.
+
+> Uprooted: %.1f tiles a second.
+pt Desenraizado: %.1f casas por segundo.
+es Desarraigado: %.1f casillas por segundo.
+
+> %.1f tiles a second
+pt %.1f casas por segundo
+es %.1f casillas por segundo
+
+> Rooted, it gives %d supply.
+pt Enraizado, dá %d de suprimento.
+es Arraigado, da %d de suministro.
+
+> She gives %d supply.
+pt Ela dá %d de suprimento.
+es Ella da %d de suministro.
+
+> %d hatch from one egg: the numbers are for each one.
+pt %d nascem de um ovo: os números são de cada um.
+es %d nacen de un huevo: los números son de cada uno.
+
+> Takes %d supply
+pt Ocupa %d de suprimento
+es Ocupa %d de suministro
+
+> Every hit loses this much damage (a hit always does at least 1).
+pt Cada golpe perde essa quantidade de dano (um golpe sempre causa pelo menos 1).
+es Cada golpe pierde esta cantidad de daño (un golpe siempre hace al menos 1).
+
+> Rooted: +%d armour, then a quarter less damage.
+pt Enraizado: +%d de armadura, e depois um quarto a menos de dano.
+es Arraigado: +%d de armadura, y luego un cuarto menos de daño.
+
+> Armour %s
+pt Armadura %s
+es Armadura %s
+
+> Armour refit +%d
+pt reforma de Armadura +%d
+es reforma de Armadura +%d
+
+> rooted +%d, and it takes %d%% of each hit
+pt enraizado +%d, e recebe %d%% de cada golpe
+es arraigado +%d, y recibe el %d%% de cada golpe
+
+> SHIELD FORWARD +%d, half from shots in front
+pt ESCUDO À FRENTE +%d, metade dos tiros vindos da frente
+es ESCUDO AL FRENTE +%d, la mitad de los disparos de frente
+
+> acid -2
+pt ácido -2
+es ácido -2
+
+> x%s damage against armoured units
+pt x%s de dano contra unidades blindadas
+es x%s de daño contra unidades acorazadas
+
+> x%s damage against buildings
+pt x%s de dano contra construções
+es x%s de daño contra edificios
+
+> x%s light
+pt x%s leves
+es x%s ligeros
+
+> x%s damage against light units
+pt x%s de dano contra unidades leves
+es x%s de daño contra unidades ligeras
+
+> x%s damage against flyers
+pt x%s de dano contra voadores
+es x%s de daño contra voladores
+
+> x%s against %s
+pt x%s contra %s
+es x%s contra %s
+
+> A musket ball at one enemy, ground or air.
+pt Uma bala de mosquete em um inimigo, no chão ou no ar.
+es Una bala de mosquete a un enemigo, en tierra o en el aire.
+
+> He gets off his horse to fire, and back on to move.
+pt Ele desmonta para atirar e monta de novo para se mover.
+es Desmonta para disparar y vuelve a montar para moverse.
+
+> The sabre.
+pt O sabre.
+es El sable.
+
+> Round shot: the ball goes on through the line behind where it lands, with a little splash.
+pt Bala: a bala segue pela fileira atrás de onde cai, com um pouco de respingo.
+es Bala: la bala sigue a través de la fila detrás de donde cae, con una pequeña salpicadura.
+
+> A shell lobbed high over men and walls: it bursts where it lands, friends too.
+pt Uma granada lançada alto sobre homens e muralhas: explode onde cai, aliados também.
+es Un proyectil lanzado alto sobre hombres y murallas: estalla donde cae, aliados también.
+
+> A big spit blob that splashes a whole area.
+pt Uma grande bolha de cuspe que respinga numa área inteira.
+es Una gran bola de escupitajo que salpica toda un área.
+
+> Scalding steam: everything in front of it.
+pt Vapor escaldante: tudo o que estiver à sua frente.
+es Vapor hirviente: todo lo que tenga delante.
+
+> Each blow cuts EVERY enemy on the ground in the arc in front of it.
+pt Cada golpe corta TODOS os inimigos no chão no arco à sua frente.
+es Cada golpe corta a TODOS los enemigos en tierra en el arco que tiene delante.
+
+> A giant screw bolt in a straight line.
+pt Um parafuso gigante em linha reta.
+es Un tornillo gigante en línea recta.
+
+> A weighted chain net at one enemy unit.
+pt Uma rede de correntes com pesos em uma unidade inimiga.
+es Una red de cadenas con pesos a una unidad enemiga.
+
+> Up close (and when his powder runs dry): %s damage every %.1f s; x2 against cannons, x1.5 against Cuirassiers. Not at flyers.
+pt De perto (e quando a pólvora acaba): %s de dano a cada %.1f s; x2 contra canhões, x1.5 contra Couraceiros. Não contra voadores.
+es De cerca (y cuando se le acaba la pólvora): %s de daño cada %.1f s; x2 contra cañones, x1.5 contra Coraceros. No contra voladores.
+
+> Carries %d shots (%d with the Shot Pouch); refills near a Mill, Barracks, Town Hall or Powder Wagon.
+pt Leva %d tiros (%d com a Cartucheira); recarrega perto de um Moinho, Quartel, Prefeitura ou Carroça de Pólvora.
+es Lleva %d disparos (%d con la Cartuchera); se rellena cerca de un Molino, Cuartel, Ayuntamiento o Carro de Pólvora.
+
+> One loaded shot: %d damage at %.1f tiles, ground units only. He reloads on foot (%d s).
+pt Um tiro carregado: %d de dano a %.1f casas, só unidades no chão. Ele recarrega a pé (%d s).
+es Un disparo cargado: %d de daño a %.1f casillas, solo unidades en tierra. Recarga a pie (%d s).
+
+> After about %d s at the gallop his next blow hits x%d and throws the enemy back.
+pt Depois de uns %d s a galope, seu próximo golpe acerta x%d e joga o inimigo para trás.
+es Tras unos %d s al galope, su siguiente golpe pega x%d y echa atrás al enemigo.
+
+> (Needs the Cavalry Charge at the Armoury.)
+pt (Precisa da Carga de Cavalaria no Arsenal.)
+es (Necesita la Carga de Caballería en la Armería.)
+
+> He strikes in passing, on the move.
+pt Ele golpeia de passagem, em movimento.
+es Golpea al pasar, en movimiento.
+
+> Close range: %d damage to everything in a cone up to %.1f tiles, every %.1f s; x%s against light units; also hits flyers.
+pt Curto alcance: %d de dano a tudo num cone de até %.1f casas, a cada %.1f s; x%s contra unidades leves; também acerta voadores.
+es Corto alcance: %d de daño a todo en un cono de hasta %.1f casillas, cada %.1f s; x%s contra unidades ligeras; también alcanza voladores.
+
+> It fires only set up (%.1f s); limbered, the horse tows it.
+pt Só atira montado em posição (%.1f s); engatado, o cavalo o reboca.
+es Solo dispara emplazado (%.1f s); enganchado, el caballo lo remolca.
+
+> Bursts over %.1f tiles round where it lands; friends are hurt too.
+pt Explode por %.1f casas em volta de onde cai; aliados também são feridos.
+es Estalla en %.1f casillas alrededor de donde cae; también hiere a aliados.
+
+> It fires only deployed (%.1f s).
+pt Só atira instalado (%.1f s).
+es Solo dispara desplegado (%.1f s).
+
+> Its acid burns and strips 2 armour for %d s.
+pt Seu ácido queima e tira 2 de armadura por %d s.
+es Su ácido quema y quita 2 de armadura durante %d s.
+
+> Every blow throws the enemy back.
+pt Cada golpe joga o inimigo para trás.
+es Cada golpe echa atrás al enemigo.
+
+> She fires only rooted; walking she cannot attack.
+pt Ela só atira enraizada; andando não pode atacar.
+es Solo dispara arraigada; caminando no puede atacar.
+
+> Spell: a cloud that heals the Brood (%d essence, every %d s).
+pt Feitiço: uma nuvem que cura a Ninhada (%d de essência, a cada %d s).
+es Hechizo: una nube que cura a la Camada (%d de esencia, cada %d s).
+
+> Every spit uses %d gas; out of gas it deflates and cannot attack.
+pt Cada cuspe gasta %d de gás; sem gás ele murcha e não pode atacar.
+es Cada escupitajo gasta %d de gas; sin gas se desinfla y no puede atacar.
+
+> It bursts as an acid bomb (up to %d damage and a cloud), and is used up.
+pt Ele estoura como uma bomba de ácido (até %d de dano e uma nuvem), e se gasta.
+es Revienta como una bomba de ácido (hasta %d de daño y una nube), y se gasta.
+
+> Flying it hits only flyers; LANDED it bites ground units (and anything can hit it).
+pt Voando acerta só voadores; POUSADO morde unidades no chão (e qualquer um pode acertá-lo).
+es Volando solo alcanza voladores; ATERRIZADO muerde unidades en tierra (y cualquiera puede alcanzarlo).
+
+> Spell (%d energy): shots from or into the fog miss half the time.
+pt Feitiço (%d de energia): tiros de dentro ou para dentro da névoa erram metade das vezes.
+es Hechizo (%d de energía): los disparos desde o hacia la niebla fallan la mitad de las veces.
+
+> Spell (%d energy): marks one enemy for %d s, then drags it to the Toad.
+pt Feitiço (%d de energia): marca um inimigo por %d s e depois o arrasta até o Sapo.
+es Hechizo (%d de energía): marca a un enemigo durante %d s y luego lo arrastra hasta el Sapo.
+
+> Spell: stuns everything inside for %.1f s, friends too; no damage.
+pt Feitiço: atordoa tudo lá dentro por %.1f s, aliados também; sem dano.
+es Hechizo: aturde todo lo que haya dentro durante %.1f s, aliados también; sin daño.
+
+> Its saws spin up while it cuts: from %d%% to %d%% damage over %d s.
+pt Suas serras aceleram enquanto corta: de %d%% a %d%% de dano em %d s.
+es Sus sierras se aceleran mientras corta: de %d%% a %d%% de daño en %d s.
+
+> Each blow bites %d enemies round its target too (%d%%).
+pt Cada golpe também morde %d inimigos em volta do alvo (%d%%).
+es Cada golpe también muerde a %d enemigos alrededor del objetivo (%d%%).
+
+> Its bolt jumps to %d more enemy at %d%%.
+pt Seu raio salta para mais %d inimigo a %d%%.
+es Su rayo salta a %d enemigo más al %d%%.
+
+> A leap of up to %.1f tiles (it cannot shoot in the air).
+pt Um salto de até %.1f casas (não pode atirar no ar).
+es Un salto de hasta %.1f casillas (no puede disparar en el aire).
+
+> On buildings it drops its weight: %d damage over a small area.
+pt Sobre construções larga seu peso: %d de dano numa área pequena.
+es Sobre edificios suelta su peso: %d de daño en un área pequeña.
+
+> Caught, it cannot move or fight for %d s; a flyer comes down to the ground.
+pt Preso, não pode se mover nem lutar por %d s; um voador desce ao chão.
+es Atrapado, no puede moverse ni luchar durante %d s; un volador baja al suelo.
+
+> The bolt goes on through: the next enemies in line take 50% and 30%.
+pt O projétil atravessa: os próximos inimigos na linha recebem 50% e 30%.
+es El proyectil atraviesa: los siguientes enemigos en la línea reciben el 50% y el 30%.
+
+> Each Winder aboard: +%d%% reload and speed.
+pt Cada Enrolador a bordo: +%d%% de recarga e velocidade.
+es Cada Dador de cuerda a bordo: +%d%% de recarga y velocidad.
+
+> Hits every enemy on the ground within %.1f tiles in a third of a circle.
+pt Acerta todos os inimigos no chão a até %.1f casas, num terço de círculo.
+es Alcanza a todos los enemigos en tierra a menos de %.1f casillas, en un tercio de círculo.
+
+> +%d armour, half damage from shots in front, slower.
+pt +%d de armadura, metade do dano de tiros pela frente, mais lento.
+es +%d de armadura, la mitad de daño de disparos de frente, más lento.
+
+> (Needs SHIELD WALL at the Light Works.)
+pt (Precisa de MURALHA DE ESCUDOS na Oficina Leve.)
+es (Necesita MURO DE ESCUDOS en el Taller Ligero.)
+
+> No weapon: it winds, mends and sweeps wrecks into cogs.
+pt Sem arma: dá corda, conserta e varre destroços em engrenagens.
+es Sin arma: da cuerda, repara y barre restos en engranajes.
+
+> Rooted: +%d armour, it takes %d%% of each hit, and it cannot attack.
+pt Enraizado: +%d de armadura, recebe %d%% de cada golpe e não pode atacar.
+es Arraigado: +%d de armadura, recibe el %d%% de cada golpe y no puede atacar.
+
+> Its blows weaken to 70% as it runs down.
+pt Seus golpes enfraquecem até 70% conforme a corda acaba.
+es Sus golpes se debilitan hasta el 70% a medida que se queda sin cuerda.
+
+> Rooted: it cannot attack. UPROOT it to fight.
+pt Enraizado: não pode atacar. DESENRAIZAR para lutar.
+es Arraigado: no puede atacar. DESARRAIGAR para luchar.
+
+> Walking: she cannot attack. ROOT her to lob spit blobs.
+pt Andando: ela não pode atacar. ENRAIZAR para lançar bolhas de cuspe.
+es Caminando: no puede atacar. ARRAIGAR para lanzar bolas de escupitajo.
+
+> Landing or taking off: it cannot attack.
+pt Pousando ou decolando: não pode atacar.
+es Aterrizando o despegando: no puede atacar.
+
+> Limbered: UNLIMBER to fire.
+pt Engatado: DESENGATAR para atirar.
+es Enganchado: DESENGANCHAR para disparar.
+
+> Packed: DEPLOY to fire.
+pt Recolhido: INSTALAR para atirar.
+es Recogido: DESPLEGAR para disparar.
+
+> Packed: DEPLOY to fight.
+pt Recolhido: INSTALAR para lutar.
+es Recogido: DESPLEGAR para luchar.
+
+> BAYONET
+pt BAIONETA
+es BAYONETA
+
+> POWDER
+pt PÓLVORA
+es PÓLVORA
+
+> PISTOL
+pt PISTOLA
+es PISTOLA
+
+> CHARGE
+pt CARGA
+es CARGA
+
+> RIDE BY
+pt DE PASSAGEM
+es AL PASO
+
+> CANISTER
+pt METRALHA
+es METRALLA
+
+> UNLIMBER
+pt DESENGATAR
+es DESENGANCHAR
+
+> SHELL
+pt GRANADA
+es PROYECTIL
+
+> DEPLOY
+pt INSTALAR
+es DESPLEGAR
+
+> ACID
+pt ÁCIDO
+es ÁCIDO
+
+> KNOCKBACK
+pt EMPURRÃO
+es EMPUJÓN
+
+> ROOT
+pt ENRAIZAR
+es ARRAIGAR
+
+> MIASMA
+pt MIASMA
+es MIASMA
+
+> GAS
+pt GÁS
+es GAS
+
+> BURST
+pt ESTOURO
+es REVENTÓN
+
+> SPINES / BITE
+pt ESPINHOS / MORDIDA
+es PÚAS / MORDISCO
+
+> TONGUE
+pt LÍNGUA
+es LENGUA
+
+> STORM
+pt TEMPESTADE
+es TORMENTA
+
+> SPIN UP
+pt ACELERAR
+es ACELERAR
+
+> CLEAVE
+pt TALHO
+es TAJO
+
+> CHAIN
+pt CORRENTE
+es CADENA
+
+> JUMP
+pt SALTAR
+es SALTAR
+
+> BOMB
+pt BOMBA
+es BOMBA
+
+> NET
+pt REDE
+es RED
+
+> PIERCE
+pt PERFURAR
+es PERFORAR
+
+> CREW
+pt TRIPULAÇÃO
+es TRIPULACIÓN
+
+> SHIELD FORWARD
+pt ESCUDO À FRENTE
+es ESCUDO AL FRENTE
+
+> WIND / MEND / SWEEP
+pt CORDA / CONSERTO / VARRER
+es CUERDA / REPARAR / BARRIDO
+
+> WIND
+pt CORDA
+es CUERDA

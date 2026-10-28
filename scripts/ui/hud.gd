@@ -432,7 +432,7 @@ func _layout() -> Dictionary:
 			"mini": mini_size(),
 			"hotbar": HotkeyBar.size_hint(),
 			"card": Vector2(b * _cols() + 4, b * _rows() + 4),
-			"panel": Vector2(0, 88)})
+			"panel": Vector2(0, 88 + UnitStats.ROW_H)})      # (the stats row under the lines: scripts/ui/unit_stats.gd)
 	return _rects
 
 
@@ -2870,6 +2870,7 @@ func _draw_groups(font: Font) -> void:
 
 func _draw_panel(font: Font) -> void:
 	_queue_rects = []
+	_stat_rects = []
 	var r := panel_rect()
 	if game.selection.is_empty():
 		return
@@ -3368,6 +3369,8 @@ func _draw_panel(font: Font) -> void:
 					lines[-1] = tryl
 			for li in mini(lines.size(), 3):
 				_text(font, Vector2(r.end.x - cw, r.position.y + 46 + li * 17), lines[li], 14, Color(0.85, 0.88, 0.95))
+		if sel.size() > mini(n, per_row * 2):
+			n = mini(n, per_row * 2 - 1)     # (two rows, the stats row under them; the last cell says "+N")
 		_portraits = []
 		for i in n:
 			var e: Entity = sel[i]
@@ -3383,7 +3386,8 @@ func _draw_panel(font: Font) -> void:
 			if e is Unit and (e as Unit).kills > 0:
 				_text(UiStyle.bold_font(), Vector2(ir.end.x - 1, ir.position.y + 11), str((e as Unit).kills), 12, Color(1, 0.82, 0.3), 2)
 		if sel.size() > n:
-			_text(font, r.end - Vector2(40, 10), "+%d" % (sel.size() - n), 16, Color.WHITE)
+			_text(font, r.position + Vector2(14 + (n % per_row) * 38, 32 + (n / per_row) * 40), "+%d" % (sel.size() - n), 16, Color.WHITE)
+	_draw_stats(sel, r)
 	# Deselect button
 	var x := Rect2(r.end.x - 30, r.position.y + 2, 28, 28)
 	if sel.size() != 1 or not (sel[0] is Building and sel[0].team == game.human and not (sel[0] as Building).queue.is_empty()):
@@ -3402,9 +3406,41 @@ func _draw_panel(font: Font) -> void:
 		for pt in _portraits:
 			var pe: Entity = pt["e"]
 			_buttons_extra.append({"rect": pt["rect"], "enabled": true, "cb": func() -> void: _portrait_pressed(pe)})
+	_stat_buttons()
 
 
 var _portraits: Array = []
+var _stat_rects: Array = []      # the stats row's chips on the card: [[rect, chip, text]] (UnitStats.layout)
+
+
+## The stats row (scripts/ui/unit_stats.gd): the selected unit's (a group's: the hovered portrait's, else the first's).
+func _draw_stats(sel: Array, r: Rect2) -> void:
+	_stat_rects = []
+	var e: Entity = sel[0] if not sel.is_empty() else null
+	if sel.size() > 1 and Settings.pc():
+		for pt in _portraits:
+			if (pt["rect"] as Rect2).has_point(_mouse()):
+				e = pt["e"]
+	if e == null or not is_instance_valid(e) or e.dead:
+		return
+	var s: Dictionary = UnitStats.of_unit(e) if e is Unit else (UnitStats.of_building(e) if e is Building else {})
+	if s.is_empty():
+		return
+	var row := Rect2(r.position.x + 10, r.end.y - UnitStats.ROW_H - 4, r.size.x - 20, UnitStats.ROW_H)
+	_stat_rects = UnitStats.draw_row(_ci, row, s)
+
+
+## Phone: a tap on a stat explains it (a computer shows it on hover: _hover_at).
+func _stat_buttons() -> void:
+	if Settings.pc():
+		return
+	for sr in _stat_rects:
+		var c: Dictionary = sr[1]
+		var at: Vector2 = (sr[0] as Rect2).get_center()
+		_buttons_extra.append({"rect": sr[0], "enabled": true, "cb": func() -> void:
+			_tip = UnitStats.tip(c)
+			_tip_at = at
+			_tip_ms = Time.get_ticks_msec()})
 
 
 ## The pistol on the unit card: "Pistol LOADED" / "Pistol EMPTY: reloading 2.1 s" ...
@@ -3947,6 +3983,9 @@ func _hover_at(p: Vector2) -> Dictionary:
 	for b in _card_buttons:
 		if (b["rect"] as Rect2).has_point(p):
 			return {"id": "card:" + String(b["item"][1]), "delay": TIP_CARD_DELAY, "item": b["item"]}
+	for sr in _stat_rects:
+		if (sr[0] as Rect2).has_point(p):
+			return {"id": "stat:%s:%s" % [sr[1].get("icon", ""), sr[1].get("title", "")], "delay": TIP_CARD_DELAY, "stat": sr[1]}
 	if _hud_has(p):
 		return {}
 	var e := game.entity_at(controls.to_world(p * ui_scale))
@@ -3958,6 +3997,8 @@ func _hover_at(p: Vector2) -> Dictionary:
 func _tip_of(c: Dictionary) -> Dictionary:
 	if c.has("item"):
 		return _card_tip(c["item"])
+	if c.has("stat"):
+		return UnitStats.tip(c["stat"])
 	if c.has("res"):
 		return _res_tip(int(c["res"]))
 	if c.has("e"):
