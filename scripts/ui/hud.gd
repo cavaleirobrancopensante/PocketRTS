@@ -866,6 +866,7 @@ func _draw_view(font: Font) -> void:
 var _demolish_ms := 0
 var _alt_for := {}             # card label -> its right-click / long-press action (auto-train)
 var _alt_press := {}           # the card button being held on a phone: {b, t, done}
+var nb_prog := {}              # the new Brood's progress shown on the card now (BroodNew.progress; tests read it)
 var _tip_for := {}             # card label -> [title, body] for its tooltip (refits)
 
 
@@ -926,7 +927,11 @@ func _build_card() -> Array:
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker() or u.kind == "work_car")
 		if BroodNew.on(game, game.human):
 			if page in ["build", "advanced"]:
-				page = ""          # (the new Brood builds nothing: its grubs' card has the creatures they turn into, _nb_buttons)
+				if page == "build" and units.any(func(u: Unit) -> bool: return u.kind == "grub" and u.team == game.human):
+					# THE GRUB'S BUILD MENU (the owner, 21:28: B / BUILD as every worker's): the structure-units it turns into
+					_nb_build_page(list)
+					return list
+				page = ""
 			if units.all(func(u: Unit) -> bool: return BroodRoot.fixed(u)):
 				# ROOTED = A BUILDING (the owner, 19:19): no MOVE, ATTACK, STOP, HOLD, PATROL; only its own commands
 				_nb_buttons(list, units)
@@ -976,7 +981,13 @@ func _build_card() -> Array:
 			# ATTACK GROUND (Ctrl+A): attack a spot, or a dragged line, until another order (Defs.BOMBARD, Defs.GROUND)
 			_tip_for["ATTACK GROUND"] = ["Attack ground", CMD_TIPS["ATTACK GROUND"]]
 			list.append(["ab_bombard", "ATTACK GROUND", func() -> void: controls.begin_bombard(), true, "", ""])
-		if has_lab and not BroodNew.on(game, game.human):      # (the new Brood builds nothing)
+		if has_lab and BroodNew.on(game, game.human) and units.any(func(u: Unit) -> bool: return u.kind == "grub"):
+			# the new Brood's grubs keep BUILD (B): its page has the creatures a grub turns into (_nb_build_page)
+			_tip_for["BUILD"] = ["Build", "The creatures a grub turns into: the Rootmaw, the Mound Turtle and the fathers. Pick one, then where it roots: a grub walks there, pays and morphs in its cocoon."]
+			list.append(["build", "BUILD", func() -> void:
+				page = "build"
+				build_page = 0, true, "", ""])
+		if has_lab and not BroodNew.on(game, game.human):      # (the new Brood builds no buildings)
 			# workers don't need HOLD: two build pages instead, basic and advanced
 			list.append(["build", "BUILD", func() -> void:
 				page = "build"
@@ -1029,6 +1040,8 @@ func _build_card() -> Array:
 									u.cmd_gather(m)
 					toast("Workers go back to work on their own." if not auto else "Automatic work off: these workers wait for orders."), true, "", ""])
 			if units.any(func(u: Unit) -> bool: return u.kind == "grub"):
+				if BroodNew.on(game, game.human):
+					_tip_for["HARVEST"] = ["Harvest", "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as essence. Bodies rot after 2 minutes."]
 				list.append(["ab_harvest", "HARVEST", func() -> void:
 					for u in game.selected_units():
 						if u.kind == "grub":
@@ -1041,13 +1054,15 @@ func _build_card() -> Array:
 			var ess := 0
 			for u in offer:
 				ess += Game.sacrifice_value(u.kind)
+			if BroodNew.on(game, game.human):
+				_tip_for["SACRIFICE"] = ["Sacrifice", "The selected creatures (not grubs) walk to the Brood Mother and she devours them: essence for each, and one egg at once if her clutch has room."]
 			list.append(["ab_sacrifice", "SACRIFICE", func() -> void:
 				var n := 0
 				for u in game.selected_units():
 					if u.can_sacrifice():
 						u.cmd_sacrifice()
 						n += 1
-				toast("%d offered up: they go to the nearest Brood Pen (+%d essence)." % [n, ess]), has_pen, "Needs a Brood Pen." if not BroodNew.on(game, game.human) else "Needs the Brood Mother.", "+%d" % ess])
+				toast(("%d offered up: they go to the Brood Mother to be devoured (+%d essence)." if BroodNew.on(game, game.human) else "%d offered up: they go to the nearest Brood Pen (+%d essence).") % [n, ess]), has_pen, "Needs a Brood Pen." if not BroodNew.on(game, game.human) else "Needs the Brood Mother.", "+%d" % ess])
 		_nb_buttons(list, units)          # (the new Brood: the Mother's eggs, ROOT / UPROOT / HAUL)
 		for dk in ["cannon", "mortar", "tesla_cart", "spore_mother"]:
 			var kk: String = dk
@@ -1432,7 +1447,14 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		# GROW (her next stage) and what raises her laying (the levers: her stage, fathers near her, expansions)
 		var st := BroodNew.stage(q)
 		var stages: Array = Defs.NB["stages"]
-		if st < stages.size() - 1:
+		if float(q.nb.get("grow_t", 0.0)) > 0.0:
+			# growing: STOP GROWING, as a hall's STOP UPGRADE (all of it paid back); her bar is in the card's corner
+			_tip_for["STOP GROWING"] = ["Stop growing", "Stop her growing: all of its price is paid back."]
+			list.append(["cancel", "STOP GROWING", func() -> void:
+				for u in game.selected_units():
+					if u.kind == BroodNew.QUEEN and u.team == game.human:
+						u.cmd_grow_stop(), true, "", ""])
+		elif st < stages.size() - 1:
 			var nx: Dictionary = stages[st + 1]
 			var gwhy := BroodNew.grow_problem(game, q)
 			_tip_for["GROW"] = ["Grow (stage %d)" % (st + 2), "She grows bigger: up to %d eggs, laying %d%% faster (stage x%.1f), but a bigger, slower target with a wider swamp. Rooted only; %d s, and she lays no eggs meanwhile (uprooting stops it and pays it back). %s" % [
@@ -1448,18 +1470,6 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		_tip_for[lev.to_upper()] = ["Her laying", "%s. Three things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d). Turtles at home give supply and swamp only." % [
 			lev, int(float(Defs.NB["father_rate"]) * 100.0), int(Defs.NB["expansion_tiles"]), int(float(Defs.NB["expansion_rate"]) * 100.0), int(Defs.NB["expansion_max"])]]
 		list.append(["brood_mother", lev.to_upper(), func() -> void: pass, false, lev, ""])
-	# GRUBS turn into the structure-units (the owner, 19:19, DECIDED; like the old Brood's grub buildings): the ROOT ghost,
-	# the grub walks there, pays and morphs (scripts/brood_root.gd). No old Brood buildings on their card.
-	if BroodNew.on(game, game.human) and units.any(func(u: Unit) -> bool: return u.kind == "grub" and u.team == game.human):
-		for k in BroodRoot.morph_list():
-			var mk: String = k
-			var mwhy := BroodRoot.morph_problem(game, game.human, mk)
-			var mlab := String(Defs.UNITS[mk]["name"]).to_upper()
-			_tip_for[mlab] = ["Turn a grub into a %s" % Defs.UNITS[mk]["name"], String(Defs.UNITS[mk].get("about", "")) + " Pick where it roots: a grub walks there, pays and morphs in its cocoon (%d s), then it is rooted." % int(BroodNew.egg_time(mk)),
-				"%s  ·  %d s" % [_cost_text(int(game.unit_price(game.human, mk)[0]), int(game.unit_price(game.human, mk)[1])), int(BroodNew.egg_time(mk))]]
-			list.append([mk, mlab, func() -> void:
-				controls.begin_nb_root(mk, true)
-				toast("Pick where it roots: a grub walks there and turns into it."), mwhy == "", mwhy, _price_chip(game.unit_price(game.human, mk), false)])
 	# EGGS: what it will hatch, and how (point 6)
 	var eggs := units.filter(func(u: Unit) -> bool: return u.kind == BroodNew.EGG and u.team == game.human)
 	if not eggs.is_empty():
@@ -1476,7 +1486,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 			st2 = ("FERTILISED %ds" if int(e0.nb.get("fert", 0)) == 2 else "%ds") % int(ceil(tl))
 			tip = "It hatches in %d s%s." % [int(ceil(tl)), " (fertilised by the father)" if int(e0.nb.get("fert", 0)) == 2 else ""]
 		var elab := "%s%s · %s" % [String(Defs.UNITS[ek]["name"]).to_upper(), (" x%d" % eggs.size()) if eggs.size() > 1 else "", st2]
-		_tip_for[elab] = ["Egg: %s" % Defs.train_name(ek), tip + " Right-click (or RALLY) sets where the hatchling goes."]
+		_tip_for[elab] = ["Egg: %s" % Defs.train_name(ek), Loc.t(tip) + " " + Loc.t("Right-click (or RALLY) sets where the hatchling goes.")]
 		list.append([ek, elab, func() -> void: toast(tip), true, "", ""])      # (an info button: lit, a tap tells more)
 	# COCOONS: a grub morphing
 	var cocs := units.filter(func(u: Unit) -> bool: return u.team == game.human and BroodRoot.in_cocoon(u))
@@ -1514,6 +1524,25 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		list.append(["rally", "RALLY", func() -> void:
 			controls.mode = "nb_rally"
 			toast("Tap where the hatchlings go."), true, "", ""])
+
+
+## THE NEW BROOD'S GRUB BUILD MENU (B / BUILD; the owner, 19:19 and 21:28): the structure-units a grub turns into (the
+## Rootmaw, the Mound Turtle, the fathers: BroodRoot.morph_list), then the ROOT ghost; the grub walks there, pays and
+## morphs (scripts/brood_root.gd). No old Brood buildings.
+func _nb_build_page(list: Array) -> void:
+	for k in BroodRoot.morph_list():
+		var mk: String = k
+		var mwhy := BroodRoot.morph_problem(game, game.human, mk)
+		var mlab := String(Defs.UNITS[mk]["name"]).to_upper()
+		_tip_for[mlab] = ["Turn a grub into a %s" % Defs.UNITS[mk]["name"], Loc.t(String(Defs.UNITS[mk].get("about", ""))) + " " + Loc.t("Pick where it roots: a grub walks there, pays and morphs in its cocoon (%d s), then it is rooted.") % int(BroodNew.egg_time(mk)),
+			"%s  ·  %d s" % [_cost_text(int(game.unit_price(game.human, mk)[0]), int(game.unit_price(game.human, mk)[1])), int(BroodNew.egg_time(mk))]]
+		list.append([mk, mlab, func() -> void:
+			page = ""
+			controls.begin_nb_root(mk, true)
+			toast("Pick where it roots: a grub walks there and turns into it."), mwhy == "", mwhy, _price_chip(game.unit_price(game.human, mk), false)])
+	list.append(["back", "BACK", func() -> void:
+		page = ""
+		build_page = 0, true, "", ""])
 
 
 func _ability_buttons(list: Array, units: Array) -> void:
@@ -2877,10 +2906,13 @@ func _draw_panel(font: Font) -> void:
 			if uu.order == "gather" and uu.home_mine is Building:
 				info = "Working at the %s." % (uu.home_mine as Building).d["name"]
 			if uu.kind == "grub" and uu.carrying > 0:
-				var home := game.nearest_hall(uu.position, uu.team)
-				info = "Hauling food worth %d to the %s." % [uu.carrying, home.d["name"] if home else "Burrow"]
+				if BroodNew.on(game, uu.team):
+					info = "Carrying food worth %d to the Brood Mother." % uu.carrying
+				else:
+					var home := game.nearest_hall(uu.position, uu.team)
+					info = "Hauling food worth %d to the %s." % [uu.carrying, home.d["name"] if home else "Burrow"]
 			elif uu.work == "feeding":
-				info = "Feeding at the pit: takes half damage."
+				info = "Taking food at the Rootmaw's flank: takes half damage." if BroodNew.on(game, uu.team) else "Feeding at the pit: takes half damage."
 			elif uu.work == "bandaging":
 				info = "Bandaging a soldier."
 			elif uu.order == "revive":
@@ -3258,6 +3290,25 @@ func _draw_panel(font: Font) -> void:
 					var pp := Rect2(pqr.position.x, pqr.end.y + 4, pqr.size.x, 2)
 					_ci.draw_rect(pp, Color(0, 0, 0, 0.6))
 					_ci.draw_rect(Rect2(pp.position, Vector2(pp.size.x * clampf(ps[i].powder / ps[i]._pmax, 0.0, 1.0), pp.size.y)), Unit.POWDER_BAR if ps[i].powder >= 1.0 else UiStyle.BAD)
+		nb_prog = {}
+		if e is Unit and (e as Unit)._k_nb and (e.team == game.human or game.spectating()):
+			# THE NEW BROOD'S PROGRESS (the owner, 21:41): her growing, a cocoon, rooting, an egg, the father's nest: an
+			# icon with its bar in the card's corner (as a building's queue), its label and the time left beside it
+			nb_prog = BroodNew.progress(game, e as Unit)
+			if not nb_prog.is_empty():
+				var pqr2 := Rect2(r.end.x - 44, r.position.y + 8, 36, 36)
+				var pic2 := _icon(String(nb_prog["icon"]))
+				_ci.draw_rect(pqr2, Color(0, 0, 0, 0.35))
+				if pic2:
+					_ci.draw_texture_rect(pic2, pqr2, false)
+				_ci.draw_rect(Rect2(pqr2.position.x, pqr2.end.y + 2, pqr2.size.x, 4), Color(0, 0, 0, 0.5))
+				_ci.draw_rect(Rect2(pqr2.position.x, pqr2.end.y + 2, pqr2.size.x * float(nb_prog["f"]), 4), nb_prog["col"])
+				var plab := "%s · %ds" % [Loc.t(String(nb_prog["label"])), int(ceil(float(nb_prog["left"])))]
+				var pw := UiStyle.bold_font().get_string_size(plab, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+				_text(UiStyle.bold_font(), Vector2(pqr2.position.x - 8 - pw, pqr2.position.y + 14), plab, 13, (nb_prog["col"] as Color).lightened(0.25))
+				var bar2 := Rect2(pqr2.position.x - 8 - maxf(pw, 120.0), pqr2.position.y + 22, maxf(pw, 120.0), 6)
+				_ci.draw_rect(bar2, Color(0, 0, 0, 0.55))
+				_ci.draw_rect(Rect2(bar2.position, Vector2(bar2.size.x * float(nb_prog["f"]), bar2.size.y)), nb_prog["col"])
 		var shq: Array = NetPredict.shown_queue(game, e) if e is Building else [[], [], 0.0]     # (online: an order just given shows at once, pending)
 		if e is Building and (e.team == game.human or game.spectating()) and not (shq[0] as Array).is_empty():
 			var q: Array = shq[0]
@@ -3782,7 +3833,7 @@ func _card_tip(it: Array) -> Dictionary:
 		t["title"] = Defs.train_name(k)
 		t["stats"] = "%s  ·  %d s  ·  %d supply%s" % [_cost_text(price[0], price[1]), int(u["time"]), int(u["supply"]) * n, ("  ·  %d an egg" % n) if n > 1 else ""]
 		var tg: Array = ["armored"] if arm else u.get("tags", [])
-		t["body"] = ("[%s] " % " ".join(tg.map(func(x: String) -> String: return x.capitalize())) if not tg.is_empty() else "") + Defs.tip(k)
+		t["body"] = ("[%s] " % " ".join(tg.map(func(x: String) -> String: return x.capitalize())) if not tg.is_empty() else "") + Defs.tip(k, BroodNew.on(game, game.human))
 		if Defs.ARMOURED.has(kd):
 			var kt := game.kit_for_new(game.human, k)
 			var parts: Array = []
@@ -3853,7 +3904,7 @@ func _entity_tip(e: Entity) -> Dictionary:
 	if e is Building and not (e as Building).built:
 		st += "  ·  %d%% built" % int((e as Building).progress * 100)
 	t["stats"] = st
-	t["body"] = Defs.tip(Defs.train_key(e.kind, (e as Unit).armoured) if e is Unit else e.kind)
+	t["body"] = Defs.tip(Defs.train_key(e.kind, (e as Unit).armoured) if e is Unit else e.kind, e.team >= 0 and BroodNew.on(game, e.team))
 	return t
 
 
@@ -3878,12 +3929,16 @@ func _res_tip(i: int) -> Dictionary:
 		var sup: String = Defs.BUILDINGS[Defs.supply_kind(fac)]["name"]
 		var sp := _supply_split(game.human)
 		return {"title": "Supply: %d of %d used" % [game.supply_used(game.human), int(pl["cap"])],
-			"body": "Workers %d · Army %d · In production %d.\nEvery unit takes supply. Each %s and %s raises the cap, up to %d." % [sp["workers"], sp["army"], sp["queued"], sup, Defs.BUILDINGS[game.faction_hall(game.human)]["name"], game.max_supply(game.human)]}
+			"body": ("Workers %d · Army %d · In production %d.\nEvery unit takes supply. The Brood Mother gives %d and each ROOTED Mound Turtle %d more, up to %d." % [sp["workers"], sp["army"], sp["queued"], int(Defs.NB["queen_supply"]), int(Defs.NB["turtle_supply"]), game.max_supply(game.human)]) if BroodNew.on(game, game.human) \
+				else "Workers %d · Army %d · In production %d.\nEvery unit takes supply. Each %s and %s raises the cap, up to %d." % [sp["workers"], sp["army"], sp["queued"], sup, Defs.BUILDINGS[game.faction_hall(game.human)]["name"], game.max_supply(game.human)]}
 	var body: String = {
 		"crown": ["Pays for everything. Labourers on Farms bring in the harvests; a Town Hall's soil runs out in time.",
 			"Black powder for muskets, cannons and mortars, and for refilling soldiers. Labourers grind it at the Powder Mill."],
 		"brood": ["Pays for everything. Grubs haul food from Feeding Pits to a Burrow: longer hauls pay more.",
 			"Bodies falling near a Brood Pen, grubs on HARVEST, and SACRIFICE at the Pen. Pays for the big creatures."]}[fac][i]
+	if BroodNew.on(game, game.human):
+		body = ["Pays for everything. Grubs carry food from the Rootmaws (and food piles) to the Brood Mother: longer trips pay more.",
+			"Grubs on HARVEST carry bodies to the Brood Mother, and she devours the creatures offered up (SACRIFICE). Pays for the big creatures and her growing."][i]
 	return {"title": "%s: %d" % [r[i], int(pl["gold"]) if i == 0 else int(pl["res2"])], "body": body}
 
 

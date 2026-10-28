@@ -1,0 +1,367 @@
+# THE NEW BROOD, the owner's playtest of 0.15.14 (docs/brood_new.md "The owner's playtest of 0.15.14"): the grub's
+# own text, the build menu, the progress bars, the alerts, and the 0.15.14 labels that were still in English (the
+# ROOT ghost's reasons, the egg and cocoon labels, the father range).
+
+> Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a father where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as essence.
+pt Leva comida dos Bocarraízes (e dos montes de comida) para a Mãe da Ninhada: quanto mais longa a viagem, mais ela rende. CONSTRUIR (B): vira um Bocarraiz, uma Tartaruga-Montículo ou um pai onde você escolher (a larva é gasta). COLHER: embrulha corpos e os leva a ela como essência.
+es Lleva comida de los Bocarraíces (y de los montones de comida) a la Madre de la Camada: cuanto más largo el viaje, más rinde. CONSTRUIR (B): se convierte en un Bocarraíz, una Tortuga Montículo o un padre donde elijas (la larva se gasta). RECOGER: envuelve cuerpos y se los lleva como esencia.
+
+> Carries food from Rootmaws and food piles to the Brood Mother (longer trips pay more). BUILD turns it into a Rootmaw, a Mound Turtle or a father.
+pt Leva comida dos Bocarraízes e dos montes de comida para a Mãe da Ninhada (viagens mais longas rendem mais). CONSTRUIR a transforma em um Bocarraiz, uma Tartaruga-Montículo ou um pai.
+es Lleva comida de los Bocarraíces y de los montones de comida a la Madre de la Camada (los viajes más largos rinden más). CONSTRUIR la convierte en un Bocarraíz, una Tortuga Montículo o un padre.
+
+> The creatures a grub turns into: the Rootmaw, the Mound Turtle and the fathers. Pick one, then where it roots: a grub walks there, pays and morphs in its cocoon.
+pt As criaturas em que uma larva se transforma: o Bocarraiz, a Tartaruga-Montículo e os pais. Escolha uma, depois onde ela enraíza: uma larva vai até lá, paga e se transforma no seu casulo.
+es Las criaturas en que se convierte una larva: el Bocarraíz, la Tortuga Montículo y los padres. Elige una y luego dónde arraiga: una larva va allí, paga y se transforma en su capullo.
+
+> Build
+pt Construir
+es Construir
+
+> Harvest
+pt Colher
+es Recoger
+
+> The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as essence. Bodies rot after 2 minutes.
+pt As larvas embrulham cada corpo por perto (amigo ou inimigo) num casulo e o levam à Mãe da Ninhada como essência. Os corpos apodrecem depois de 2 minutos.
+es Las larvas envuelven cada cuerpo cercano (amigo o enemigo) en un capullo y lo llevan a la Madre de la Camada como esencia. Los cuerpos se pudren tras 2 minutos.
+
+> Sacrifice
+pt Sacrificar
+es Sacrificar
+
+> The selected creatures (not grubs) walk to the Brood Mother and she devours them: essence for each, and one egg at once if her clutch has room.
+pt As criaturas selecionadas (não as larvas) vão até a Mãe da Ninhada e ela as devora: essência por cada uma, e um ovo na hora se a sua ninhada tiver espaço.
+es Las criaturas seleccionadas (no las larvas) van hasta la Madre de la Camada y ella las devora: esencia por cada una, y un huevo al instante si su puesta tiene sitio.
+
+> %d offered up: they go to the Brood Mother to be devoured (+%d essence).
+pt %d oferecidas: vão até a Mãe da Ninhada para serem devoradas (+%d essência).
+es %d ofrecidas: van a la Madre de la Camada para ser devoradas (+%d esencia).
+
+> No Brood Mother to offer them to.
+pt Não há Mãe da Ninhada a quem oferecê-las.
+es No hay Madre de la Camada a quien ofrecerlas.
+
+> Carrying food worth %d to the Brood Mother.
+pt Levando comida no valor de %d para a Mãe da Ninhada.
+es Llevando comida por valor de %d a la Madre de la Camada.
+
+> Taking food at the Rootmaw's flank: takes half damage.
+pt Pegando comida no flanco do Bocarraiz: sofre metade do dano.
+es Tomando comida en el flanco del Bocarraíz: recibe la mitad del daño.
+
+> Workers %d · Army %d · In production %d.\nEvery unit takes supply. The Brood Mother gives %d and each ROOTED Mound Turtle %d more, up to %d.
+pt Trabalhadores %d · Exército %d · Em produção %d.\nToda unidade ocupa suprimento. A Mãe da Ninhada dá %d e cada Tartaruga-Montículo ENRAIZADA mais %d, até %d.
+es Trabajadores %d · Ejército %d · En producción %d.\nCada unidad ocupa suministro. La Madre de la Camada da %d y cada Tortuga Montículo ARRAIGADA %d más, hasta %d.
+
+> Pays for everything. Grubs carry food from the Rootmaws (and food piles) to the Brood Mother: longer trips pay more.
+pt Paga tudo. As larvas levam comida dos Bocarraízes (e dos montes de comida) para a Mãe da Ninhada: viagens mais longas rendem mais.
+es Lo paga todo. Las larvas llevan comida de los Bocarraíces (y de los montones de comida) a la Madre de la Camada: los viajes más largos rinden más.
+
+> Grubs on HARVEST carry bodies to the Brood Mother, and she devours the creatures offered up (SACRIFICE). Pays for the big creatures and her growing.
+pt Larvas em COLHER levam corpos à Mãe da Ninhada, e ela devora as criaturas oferecidas (SACRIFICAR). Paga as criaturas grandes e o crescimento dela.
+es Las larvas en RECOGER llevan cuerpos a la Madre de la Camada, y ella devora las criaturas ofrecidas (SACRIFICAR). Paga las criaturas grandes y su crecimiento.
+
+> Your Brood Mother is under attack!
+pt Sua Mãe da Ninhada está sob ataque!
+es ¡Tu Madre de la Camada está siendo atacada!
+
+> Your rooted creatures are under attack!
+pt Suas criaturas enraizadas estão sob ataque!
+es ¡Tus criaturas arraigadas están siendo atacadas!
+
+> STOP GROWING
+pt PARAR DE CRESCER
+es DEJAR DE CRECER
+
+> Stop growing
+pt Parar de crescer
+es Dejar de crecer
+
+> Stop her growing: all of its price is paid back.
+pt Para o crescimento dela: todo o preço é devolvido.
+es Detiene su crecimiento: se devuelve todo el precio.
+
+> Growing stopped: paid back.
+pt Crescimento parado: devolvido.
+es Crecimiento detenido: devuelto.
+
+> GROWING · STAGE %d
+pt CRESCENDO · ESTÁGIO %d
+es CRECIENDO · FASE %d
+
+> MORPHING
+pt TRANSFORMANDO
+es TRANSFORMÁNDOSE
+
+> MORPHING %ds
+pt TRANSFORMANDO %ds
+es TRANSFORMÁNDOSE %ds
+
+> ROOTING
+pt ENRAIZANDO
+es ARRAIGANDO
+
+> UPROOTING
+pt DESENRAIZANDO
+es DESARRAIGANDO
+
+> FERTILISING
+pt FERTILIZANDO
+es FERTILIZANDO
+
+> HATCHING
+pt ECLODINDO
+es ECLOSIONANDO
+
+> WAITING FOR THE FATHER
+pt ESPERANDO O PAI
+es ESPERANDO AL PADRE
+
+> WAITING FOR THE FATHER %ds
+pt ESPERANDO O PAI %ds
+es ESPERANDO AL PADRE %ds
+
+> FERTILISED %ds
+pt FERTILIZADO %ds
+es FERTILIZADO %ds
+
+> Egg: %s
+pt Ovo: %s
+es Huevo: %s
+
+> It hatches in %d s%s.
+pt Eclode em %d s%s.
+es Eclosiona en %d s%s.
+
+> It hatches in %d s (fertilised by the father).
+pt Eclode em %d s (fertilizado pelo pai).
+es Eclosiona en %d s (fertilizado por el padre).
+
+> It hatches in %d s.
+pt Eclode em %d s.
+es Eclosiona en %d s.
+
+> Right-click (or RALLY) sets where the hatchling goes.
+pt O botão direito (ou PONTO DE ENCONTRO) define para onde o filhote vai.
+es El clic derecho (o REUNIÓN) fija adónde va la cría.
+
+> Not fertilised yet: the %s must breathe on it (rooted within %d tiles of the Mother). In %d s it hatches as a grub (the difference paid back).
+pt Ainda não fertilizado: o %s precisa soprar nele (enraizado a até %d quadrados da Mãe). Em %d s ele eclode como larva (a diferença é devolvida).
+es Aún sin fertilizar: el %s debe soplar sobre él (arraigado a %d casillas de la Madre como mucho). En %d s eclosiona como larva (se devuelve la diferencia).
+
+> A grub is turning into a %s: it comes out rooted in %d s.
+pt Uma larva está virando um %s: sai enraizado em %d s.
+es Una larva se está convirtiendo en un %s: sale arraigado en %d s.
+
+> Turn a grub into a %s
+pt Transformar uma larva em %s
+es Convertir una larva en %s
+
+> Pick where it roots: a grub walks there, pays and morphs in its cocoon (%d s), then it is rooted.
+pt Escolha onde ele enraíza: uma larva vai até lá, paga e se transforma no seu casulo (%d s), depois fica enraizado.
+es Elige dónde arraiga: una larva va allí, paga y se transforma en su capullo (%d s), y luego queda arraigado.
+
+> Pick where it roots: a grub walks there and turns into it.
+pt Escolha onde ele enraíza: uma larva vai até lá e se transforma nele.
+es Elige dónde arraiga: una larva va allí y se convierte en él.
+
+> Pick where it roots.
+pt Escolha onde ele enraíza.
+es Elige dónde arraiga.
+
+> No grub selected.
+pt Nenhuma larva selecionada.
+es Ninguna larva seleccionada.
+
+> None of them can root now.
+pt Nenhum deles pode enraizar agora.
+es Ninguno puede arraigar ahora.
+
+> Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 5-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; the Tyrannosaur nests within %d tiles of the Mother. No rooted creature attacks.
+pt Escolha onde ele enraíza (um fantasma na grade, como o de uma construção): ele vai até lá e enraíza naquele ponto. Enraizado, é uma construção: armadura e um quarto a menos de dano, sua área bloqueia a passagem, não aceita ordens de mover (DESENRAIZAR o levanta). Um Bocarraiz só enraíza no seu pântano, com seu círculo de 5 quadrados livre do de outro; uma Tartaruga-Montículo dá 12 de suprimento e pântano e pode fechar uma rampa; o Tiranossauro faz o ninho a até %d quadrados da Mãe. Nenhuma criatura enraizada ataca.
+es Elige dónde arraiga (un fantasma en la cuadrícula, como el de un edificio): va allí y arraiga en ese punto. Arraigado es un edificio: armadura y un cuarto menos de daño, su planta cierra el paso, no acepta órdenes de mover (DESARRAIGAR lo levanta). Un Bocarraíz solo arraiga en tu pantano, con su círculo de 5 casillas libre del de otro; una Tortuga Montículo da 12 de suministro y pantano y puede cerrar una rampa; el Tiranosaurio anida a %d casillas de la Madre como mucho. Ninguna criatura arraigada ataca.
+
+> Root
+pt Enraizar
+es Arraigar
+
+> Uproot
+pt Desenraizar
+es Desarraigar
+
+> Pull up the roots and walk: a unit again (its footprint freed). A Rootmaw spills its food as a pile on the ground (grubs still collect it; it rots slowly) and walks off thin and quick.
+pt Arranca as raízes e anda: de novo uma unidade (sua área liberada). Um Bocarraiz derrama a comida num monte no chão (as larvas ainda a recolhem; apodrece devagar) e sai magro e rápido.
+es Arranca las raíces y camina: otra vez una unidad (su planta liberada). Un Bocarraíz derrama su comida en un montón en el suelo (las larvas aún la recogen; se pudre despacio) y se va flaco y rápido.
+
+> Haul
+pt Carregar
+es Acarrear
+
+> Uproot the Rootmaw full: it walks at half speed carrying its food and keeps it when it roots again. Killed while hauling, all of it bursts out as a pile.
+pt Desenraiza o Bocarraiz cheio: ele anda a meia velocidade levando a comida e a mantém quando enraíza de novo. Morto enquanto carrega, tudo estoura num monte.
+es Desarraiga el Bocarraíz lleno: camina a media velocidad con su comida y la conserva al arraigar de nuevo. Si muere acarreando, todo revienta en un montón.
+
+> Rally point
+pt Ponto de encontro
+es Punto de reunión
+
+> Where what comes out goes: the Mother's eggs (and their hatchlings), the warriors hatching in the Tyrannosaur's nest, an egg's own hatchling. Right-click the ground does the same; it never uproots.
+pt Para onde vai o que sai: os ovos da Mãe (e seus filhotes), os guerreiros que eclodem no ninho do Tiranossauro, o filhote de um ovo. Clicar com o botão direito no chão faz o mesmo; nunca desenraiza.
+es Adónde va lo que sale: los huevos de la Madre (y sus crías), los guerreros que eclosionan en el nido del Tiranosaurio, la cría de un huevo. El clic derecho en el suelo hace lo mismo; nunca desarraiga.
+
+> Tap where the hatchlings go.
+pt Toque onde os filhotes vão.
+es Toca adónde van las crías.
+
+> Her laying
+pt A postura dela
+es Su puesta
+
+> Grow (stage %d)
+pt Crescer (estágio %d)
+es Crecer (fase %d)
+
+> Unlocks the second father, when one exists: nothing yet.
+pt Desbloqueia o segundo pai, quando houver um: nada ainda.
+es Desbloquea el segundo padre, cuando exista: nada aún.
+
+> Unlocks the third father, when one exists: nothing yet.
+pt Desbloqueia o terceiro pai, quando houver um: nada ainda.
+es Desbloquea el tercer padre, cuando exista: nada aún.
+
+> She grows bigger: up to %d eggs, laying %d%% faster (stage x%.1f), but a bigger, slower target with a wider swamp. Rooted only; %d s, and she lays no eggs meanwhile (uprooting stops it and pays it back). %s
+pt Ela cresce: até %d ovos, pondo %d%% mais rápido (estágio x%.1f), mas um alvo maior e mais lento, com um pântano mais largo. Só enraizada; %d s, e ela não põe ovos enquanto isso (desenraizar para e devolve). %s
+es Crece: hasta %d huevos, poniendo un %d%% más rápido (fase x%.1f), pero es un blanco más grande y lento, con un pantano más ancho. Solo arraigada; %d s, y entretanto no pone huevos (desarraigar lo detiene y lo devuelve). %s
+
+> %s. Three things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d). Turtles at home give supply and swamp only.
+pt %s. Três coisas fazem a Mãe da Ninhada pôr mais rápido, e elas se somam: o ESTÁGIO de crescimento dela; cada PAI perto dela (como em alguns lagartos reais, a presença dos machos acelera os ovos da fêmea: +%d%% cada); cada Tartaruga-Montículo enraizada em TERRA NOVA, a %d quadrados ou mais dela e das outras contadas (suas chaminés bombeiam cheiro na água do pântano: ela prova território novo e põe mais: +%d%% cada, até %d). Tartarugas em casa só dão suprimento e pântano.
+es %s. Tres cosas hacen que la Madre de la Camada ponga más rápido, y se suman: su FASE de crecimiento; cada PADRE cerca de ella (como en algunos lagartos reales, la presencia de los machos acelera los huevos de la hembra: +%d%% cada uno); cada Tortuga Montículo arraigada en TERRENO NUEVO, a %d casillas o más de ella y de las otras contadas (sus chimeneas bombean olor al agua del pantano: ella saborea territorio nuevo y pone más: +%d%% cada una, hasta %d). Las tortugas en casa solo dan suministro y pantano.
+
+> stage %d
+pt estágio %d
+es fase %d
+
+> %s near
+pt %s perto
+es %s cerca
+
+> %d fathers
+pt %d pais
+es %d padres
+
+> 1 expansion
+pt 1 expansão
+es 1 expansión
+
+> %d expansions
+pt %d expansões
+es %d expansiones
+
+> Laying +%d%%: %s
+pt Postura +%d%%: %s
+es Puesta +%d%%: %s
+
+> Laying: no lever yet
+pt Postura: nenhuma alavanca ainda
+es Puesta: ninguna palanca aún
+
+> A grub turns into it now: pick it on a grub's card.
+pt Agora uma larva se transforma nele: escolha-o no cartão de uma larva.
+es Ahora una larva se convierte en él: elígelo en la tarjeta de una larva.
+
+> %d eggs
+pt %d ovos
+es %d huevos
+
+> too far from the Mother
+pt longe demais da Mãe
+es demasiado lejos de la Madre
+
+> dry
+pt seco
+es seco
+
+> FATHER RANGE
+pt ALCANCE DO PAI
+es ALCANCE DEL PADRE
+
+> IN RANGE
+pt NO ALCANCE
+es EN ALCANCE
+
+> OUT OF RANGE
+pt FORA DO ALCANCE
+es FUERA DE ALCANCE
+
+> ROOT HERE
+pt ENRAIZAR AQUI
+es ARRAIGAR AQUÍ
+
+> Off the map.
+pt Fora do mapa.
+es Fuera del mapa.
+
+> A cliff is in the way.
+pt Um penhasco está no caminho.
+es Un acantilado estorba.
+
+> Blocked: trees, rocks or water.
+pt Bloqueado: árvores, pedras ou água.
+es Bloqueado: árboles, rocas o agua.
+
+> Blocked: a building or a rooted creature is in the way.
+pt Bloqueado: uma construção ou uma criatura enraizada está no caminho.
+es Bloqueado: un edificio o una criatura arraigada estorba.
+
+> Not on a ramp (only a Mound Turtle roots across one).
+pt Não numa rampa (só uma Tartaruga-Montículo enraíza atravessada numa).
+es No en una rampa (solo una Tortuga Montículo arraiga atravesada en una).
+
+> Uneven ground: it needs level ground.
+pt Terreno irregular: precisa de chão nivelado.
+es Terreno desigual: necesita suelo llano.
+
+> Blocked: another creature roots there.
+pt Bloqueado: outra criatura enraíza ali.
+es Bloqueado: otra criatura arraiga ahí.
+
+> No swamp here: a Rootmaw roots only on your swamp (root a Mound Turtle to spread it).
+pt Sem pântano aqui: um Bocarraiz só enraíza no seu pântano (enraíze uma Tartaruga-Montículo para espalhá-lo).
+es Aquí no hay pantano: un Bocarraíz solo arraiga en tu pantano (arraiga una Tortuga Montículo para extenderlo).
+
+> Too close to another Rootmaw's planned ground.
+pt Perto demais do chão planejado de outro Bocarraiz.
+es Demasiado cerca del suelo planeado de otro Bocarraíz.
+
+> Out of range: he must nest within %d tiles of the Brood Mother.
+pt Fora do alcance: ele deve fazer o ninho a até %d quadrados da Mãe da Ninhada.
+es Fuera de alcance: debe anidar a %d casillas de la Madre de la Camada como mucho.
+
+> The %s can't root there: %s
+pt O %s não pode enraizar ali: %s
+es El %s no puede arraigar ahí: %s
+
+> The %s can't get to that spot.
+pt O %s não consegue chegar àquele ponto.
+es El %s no puede llegar a ese punto.
+
+> A grub can't turn into that.
+pt Uma larva não pode virar isso.
+es Una larva no puede convertirse en eso.
+
+> The grub can't turn into a %s: %s
+pt A larva não pode virar um %s: %s
+es La larva no puede convertirse en un %s: %s
+
+> The grub can't get to that spot.
+pt A larva não consegue chegar àquele ponto.
+es La larva no puede llegar a ese punto.
+
+> A %s has grown from its cocoon, rooted.
+pt Um %s saiu do casulo, enraizado.
+es Un %s ha salido de su capullo, arraigado.
+
+> THE NEW BROOD (an experiment: pick "The Brood (new, experiment)" in the skirmish setup) has no buildings, only creatures. The Brood Mother is its heart: kill her and that side is out. Only she lays eggs, walking or rooted. Grubs carry food to her from the Rootmaws, swamp lizards that root on fresh ground on your swamp and drink it (the farther from her, the more a trip pays). A grub's BUILD (B) turns it into a Rootmaw, a Mound Turtle (supply and swamp; rooted 15 tiles or more from her it makes her lay faster) or the Tyrannosaur, the father of the warriors: rooted beside her he fertilises her warrior eggs in his nest. Rooted creatures are the new Brood's buildings: armour, a footprint on the ground, a rally point, and they do not attack; UPROOT gets one up. GROW her, rooted, for more eggs and faster laying. The fallen (HARVEST) and the creatures offered up (SACRIFICE) go to her as essence.
+pt A NOVA NINHADA (um experimento: escolha "A Ninhada (nova, experimento)" na preparação da escaramuça) não tem construções, só criaturas. A Mãe da Ninhada é o coração dela: mate-a e aquele lado está fora. Só ela põe ovos, andando ou enraizada. As larvas levam comida para ela dos Bocarraízes, lagartos do pântano que enraízam em chão fresco no seu pântano e o bebem (quanto mais longe dela, mais rende uma viagem). O CONSTRUIR (B) de uma larva a transforma num Bocarraiz, numa Tartaruga-Montículo (suprimento e pântano; enraizada a 15 quadrados ou mais dela, faz ela pôr mais rápido) ou no Tiranossauro, o pai dos guerreiros: enraizado ao lado dela, ele fertiliza os ovos de guerreiro dela no seu ninho. As criaturas enraizadas são as construções da nova Ninhada: armadura, uma área no chão, um ponto de encontro, e elas não atacam; DESENRAIZAR levanta uma. Faça-a CRESCER, enraizada, para mais ovos e postura mais rápida. Os caídos (COLHER) e as criaturas oferecidas (SACRIFICAR) vão para ela como essência.
+es LA NUEVA NIDADA (un experimento: elige "La Nidada (nueva, experimento)" al preparar la escaramuza) no tiene edificios, solo criaturas. La Madre de la Camada es su corazón: mátala y ese bando queda fuera. Solo ella pone huevos, caminando o arraigada. Las larvas le llevan comida de los Bocarraíces, lagartos del pantano que arraigan en suelo fresco de tu pantano y lo beben (cuanto más lejos de ella, más rinde un viaje). El CONSTRUIR (B) de una larva la convierte en un Bocarraíz, una Tortuga Montículo (suministro y pantano; arraigada a 15 casillas o más de ella, la hace poner más rápido) o el Tiranosaurio, el padre de los guerreros: arraigado a su lado, fertiliza sus huevos de guerrero en su nido. Las criaturas arraigadas son los edificios de la nueva Nidada: armadura, una planta en el suelo, un punto de reunión, y no atacan; DESARRAIGAR levanta una. Hazla CRECER, arraigada, para más huevos y una puesta más rápida. Los caídos (RECOGER) y las criaturas ofrecidas (SACRIFICAR) van a ella como esencia.

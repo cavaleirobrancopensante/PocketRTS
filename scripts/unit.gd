@@ -53,6 +53,7 @@ var path_goal := Vector2.INF
 var path_pending := false
 var stuck_t := 0.0
 var squeeze_t := 0.0            # > 0: walking out of a sealed pocket through a building's edge (last resort)
+var nb_pass := 0.0              # > 0: a new-Brood creature walking out through its own side's rooted creatures (BroodRoot.pass_move)
 var wall_flee_t := 0.0          # (computer) pulled back from a wall that shooters behind it cover
 var siege_t := 0.0              # (computer) its army is breaking in at a wall: the AI's siege gives the orders
 var _wall_chk := 0.0
@@ -1705,6 +1706,9 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	d = Defs.UNITS[k]
 	if Defs.ARMOURED.has(k) or k in ["cannon", "mortar"]:
 		d = d.duplicate(true)        # his own: armour (put_on_armour) and drills (Game.apply_drills) change it
+	if Defs.NB_ABOUT.has(k) and BroodNew.on(g, t):
+		d = d.duplicate(true)        # (the new Brood's own card text: no old Brood buildings in it)
+		d["about"] = Defs.NB_ABOUT[k]
 	max_hp = d["hp"]
 	hp = max_hp
 	if k == "powder_wagon":
@@ -1920,6 +1924,13 @@ func cmd_lay(k: String) -> String:
 func cmd_grow() -> String:
 	if game.net_forward(self, "cmd_grow", []): return ""
 	return BroodNew.grow(game, self)
+
+
+## THE NEW BROOD: STOP GROWING (the Mother's growth, as a hall's STOP UPGRADE: all of it paid back).
+func cmd_grow_stop() -> void:
+	if game.net_forward(self, "cmd_grow_stop", []): return
+	if kind == BroodNew.QUEEN:
+		BroodNew._grow_cancel(game, self, false)
 
 
 ## THE NEW BROOD: UPROOT (spill: a Rootmaw spills its food) or HAUL (it keeps it).
@@ -3915,7 +3926,12 @@ func compute_path() -> void:
 	squeeze_t = 0.0
 	# shut in a pocket between buildings (nothing that walks can get out): as a last resort
 	# it squeezes out through the nearest building edge, then goes on its way
-	if game.sealed_in(position) and game.region_of(game.cell_of(path_goal)) != game.region_of(game.cell_of(position)):
+	if nb_pass > 0.0 and BroodRoot.boxed(game, self):
+		# among its own side's rooted creatures: out through them first (the owner, 21:32), then on its way
+		var nex := BroodRoot.exit_point(game, position, team)
+		if nex != Vector2.INF:
+			path = PackedVector2Array([nex]) + game.find_path(nex, path_goal, not is_worker(), _path_margin())
+	elif game.sealed_in(position) and game.region_of(game.cell_of(path_goal)) != game.region_of(game.cell_of(position)):
 		var out := game.escape_point(position)
 		if out != Vector2.INF:
 			squeeze_t = 3.0
@@ -4123,6 +4139,8 @@ func _move(want: Vector2, delta: float) -> void:
 	position += velocity * delta
 	if is_air():
 		position = position.clamp(Vector2(8, 8), Vector2(Game.W, Game.H) * Game.T - Vector2(8, 8))
+	elif nb_pass > 0.0:
+		position = BroodRoot.pass_move(game, self, position, before, delta)      # (out through its own side's rooted creatures)
 	elif squeeze_t > 0.0:
 		# squeezing out of a sealed pocket: buildings don't stop it, terrain still does
 		squeeze_t -= delta
@@ -5485,7 +5503,7 @@ func cmd_sacrifice() -> void:
 	target = null
 	order_target = game.offer_place(position, team)
 	if order_target == null:
-		game.tell(team, "No Brood Pen to offer them at.")
+		game.tell(team, "No Brood Mother to offer them to." if BroodNew.on(game, team) else "No Brood Pen to offer them at.")
 		cmd_stop()
 
 

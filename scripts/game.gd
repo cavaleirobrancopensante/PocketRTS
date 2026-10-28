@@ -34,6 +34,7 @@ var nb_spots := {}
 var nb_spot_next := 0
 var nb_walls: Array = []       # (no longer filled: a rooted creature's footprint on the grid does it, nb_fp; BroodNew.push_out kept for old saves)
 var nb_fp: Array = []          # the new Brood's ROOTED creatures (and cocoons): each takes its footprint on the grid as a building (scripts/brood_root.gd)
+var nb_cells := {}             # cell index -> the team of the rooted new-Brood creature whose footprint holds it (its own side's hatchlings walk through: BroodRoot.pass_move)
 var eliminated: Array = []
 
 
@@ -3360,6 +3361,8 @@ func _push_units_out(r: Rect2, keep: Array = []) -> void:
 				and not _clear_at(u.position, u.radius, u.team):
 			u.position = cell_center(nearest_free(cell_of(u.position), 8))
 			note_move(u)
+			if u._k_fac == "brood" and BroodNew.on(self, u.team):
+				BroodRoot.start_pass(self, u)      # (put in a pocket between its own rooted creatures: it walks out through them)
 
 
 # ------------------------------------------------------------------ ghost sites
@@ -5349,6 +5352,8 @@ func needs_swamp(k: String) -> bool:
 ## A unit that turned into something else: gone, but not a loss.
 func consume_unit(u: Unit) -> void:
 	u._leave_mine()
+	if u._k_nb and BroodRoot.has_fp(u):
+		BroodRoot.footprint_off(self, u)      # (a rooted new-Brood creature taken off the map: its ground is free again)
 	units.erase(u)
 	selection.erase(u)
 	for g in groups:
@@ -6572,11 +6577,23 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			best = rider if rider != null else u    # (a horse a man is getting on: the strip there is him)
 	if best:
 		return best
-	for u in nb_fp:
-		# a rooted new-Brood creature: picked anywhere on its footprint or its body, as a building
-		if is_instance_valid(u) and not u.dead and shown_to_commander(u) and (u.rect().grow(6).has_point(p + Vector2(0, 10)) \
-				or Rect2(u.rect().position + Vector2(0, -u.rect().size.y * 0.8), u.rect().size * Vector2(1.0, 1.0)).has_point(p)):
-			return u
+	# a new-Brood creature that roots (the Mother, a Rootmaw, a turtle, a father), rooted or walking, at every growth stage:
+	# picked anywhere on its drawn body (the owner, 21:28: "a click anywhere on her sprite"), or on its footprint, as a
+	# building; units standing over it were looked at first (a unit on top wins); of two bodies, the one drawn in front
+	var nbest: Unit = null
+	var nkey := -INF
+	for u in units:
+		if not u._k_nb or u.dead or not BroodNew.ROOTERS.has(u.kind) or absf(u.position.x - p.x) > 420.0 or absf(u.position.y - p.y) > 420.0:
+			continue
+		if not shown_to_commander(u):
+			continue
+		if BroodRoot.body_hit(u, p) or (BroodRoot.has_fp(u) and u.rect().grow(6).has_point(p + Vector2(0, 10))):
+			var ky := BroodRoot.sort_y(u)
+			if ky > nkey:
+				nkey = ky
+				nbest = u
+	if nbest != null:
+		return nbest
 	for b in buildings:
 		if hidden_ghost(b, who) or not shown_to_commander(b):
 			continue                  # (both tests below need it on show to whoever gave the order)
@@ -9851,6 +9868,14 @@ func under_attack(e: Entity) -> void:
 		line = "base_attack"
 		gap = 15.0
 		text = "Your base is under attack!"
+	elif e is Unit and (e as Unit).kind == BroodNew.QUEEN:
+		line = "base_attack"          # (the new Brood: she is its base, and its losing condition)
+		gap = 15.0
+		text = "Your Brood Mother is under attack!"
+	elif e is Unit and (e as Unit)._k_nb and BroodNew.ROOTERS.has((e as Unit).kind) and (e as Unit).tesla_mode != "packed":
+		line = "base_attack"          # (a rooted creature is the new Brood's building: it says so)
+		gap = 15.0
+		text = "Your rooted creatures are under attack!"
 	elif e is Unit and (e as Unit).is_worker():
 		line = "workers_attack"
 		text = "Your workers are under attack!"
@@ -10308,6 +10333,7 @@ func _draw_mine_labels() -> void:
 			overlay.draw_rect(Rect2(bar.position, Vector2(bar_w * clampf(f, 0.0, 1.0), 8.0)), col)
 			overlay.draw_rect(bar.grow(0.5), Color(0, 0, 0, 0.9), false, 1.0)
 			overlay.draw_string(font, Vector2(bx + bar_w + gap, p.y), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
+	BroodNew.draw_crew_labels(self, font)      # (the new Brood: grubs at work / the most it takes, over each Rootmaw and food pile)
 	for fl in _floats:
 		var a: float = minf(float(fl[3]), 1.0)
 		var w2: float = font.get_string_size(fl[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x

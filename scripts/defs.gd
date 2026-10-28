@@ -1160,7 +1160,7 @@ const UNITS := {
 	},
 	"mound_turtle": {
 		"tags": ["armored"],
-		"name": "Mound Turtle", "hp": 600, "armor": 2, "speed": 26, "cost": 150, "time": 25.0, "supply": 0,
+		"name": "Mound Turtle", "hp": 600, "armor": 2, "speed": 26, "cost": 100, "time": 25.0, "supply": 0,
 		"sight": 6, "range": 22, "damage": 6, "cooldown": 1.6, "aim": 0.4, "radius": 26, "from": "brood_mother",
 		"faction": "brood", "new_brood": true,
 		"about": "A huge swamp turtle, the Brood's expansion and its tank. ROOT it: it sinks into the mud, gives 12 supply and turns the ground round it to swamp (10 tiles), where Rootmaws can root, even far from home. Rooted on NEW GROUND (15 tiles or more from the Brood Mother and from other such turtles) it makes her lay 15% faster (up to 3). Rooted it is very hard to hurt and wide enough to close a ramp; it does not attack. Uprooted it walks slowly, gives no supply and no swamp. A weak bite.",
@@ -1867,6 +1867,17 @@ const NB := {
 }
 
 
+## THE NEW BROOD'S OWN TEXT for the units it shares with the old Brood (the owner, 21:28: the grub's card said it hauls
+## "from Feeding Pits to a Burrow"; the new Brood has no buildings). A unit of a new-Brood side takes NB_ABOUT as its
+## card text (Unit.setup), and its tooltips NB_TIPS (tip(kind, true)); the old Brood keeps its own.
+const NB_ABOUT := {
+	"grub": "Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a father where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as essence.",
+}
+const NB_TIPS := {
+	"grub": "Carries food from Rootmaws and food piles to the Brood Mother (longer trips pay more). BUILD turns it into a Rootmaw, a Mound Turtle or a father.",
+}
+
+
 ## A slot's faction as the game plays it (the experiment plays as the Brood).
 static func base_faction(f: String) -> String:
 	return "brood" if f == BROOD_NEW else f
@@ -2061,7 +2072,10 @@ const GEAR_TIPS := {
 }
 
 
-static func tip(kind: String) -> String:
+## nb: for a new-Brood side (its own text for the units it shares with the old Brood: NB_TIPS).
+static func tip(kind: String, nb := false) -> String:
+	if nb and NB_TIPS.has(kind):
+		return NB_TIPS[kind]
 	if gear_mode and GEAR_TIPS.has(kind):
 		return GEAR_TIPS[kind]
 	if TIPS.has(kind):

@@ -87,6 +87,7 @@ static func footprint_on(g: Game, u: Unit, push := true) -> void:
 			if g.in_map(cc) and g.solid[g.idx(cc)] == 0:
 				g._mark(cc, Vector2i.ONE, 2)
 				marked.append(g.idx(cc))
+				g.nb_cells[g.idx(cc)] = u.team
 	u.nb["fpc"] = marked
 	if not g.nb_fp.has(u):
 		g.nb_fp.append(u)
@@ -106,6 +107,7 @@ static func footprint_off(g: Game, u: Unit) -> void:
 		var ii := int(i)
 		if ii >= 0 and ii < g.solid.size() and g.solid[ii] == 2:
 			g._mark(Vector2i(ii % Game.W, ii / Game.W), Vector2i.ONE, 0)
+		g.nb_cells.erase(ii)
 	u.nb.erase("fpx")
 	u.nb.erase("fpy")
 	u.nb.erase("fpc")
@@ -131,6 +133,106 @@ static func out_of(g: Game, r: Rect2, p: Vector2, toward := Vector2.INF) -> Vect
 		k += 8.0
 	var e := start + d * (k + T * 0.5)
 	return g.cell_center(g.nearest_free(g.cell_of(e), 8))
+
+
+# ------------------------------------------------------------------ walking out through its own side's creatures
+
+## (the owner, 21:32: a Mother boxed in by her rooted creatures) A creature of her side hatched, spawned or pushed inside
+## or among its own side's rooted footprints may WALK THROUGH them (only its own side's: enemies never) until it is clear
+## of them; then it paths as usual, so nothing is ever stuck. Unit.nb_pass > 0 while it does (Unit's movement asks
+## pass_move instead of the terrain); Unit.compute_path sends it first to the nearest open spot (exit_point).
+const PASS_TIME := 8.0
+
+
+## Is a cell solid only because of a rooted creature of team t?
+static func own_cell(g: Game, i: int, t: int) -> bool:
+	return g.solid[i] == 2 and int(g.nb_cells.get(i, -99)) == t
+
+
+## Inside or among its own side's footprints (on one of their cells, or shut in a pocket between them)?
+static func boxed(g: Game, u: Unit) -> bool:
+	if u.is_air() or g.nb_cells.is_empty():
+		return false
+	var c := g.cell_of(u.position)
+	if not g.in_map(c):
+		return false
+	if own_cell(g, g.idx(c), u.team):
+		return true
+	return g.sealed_in(u.position) or not g._clear_at(u.position, u.radius, u.team)
+
+
+static func start_pass(g: Game, u: Unit) -> void:
+	if u.is_air() or not boxed(g, u):
+		return
+	u.nb_pass = PASS_TIME
+	if u.order == "idle" or u.order == "":
+		var ex := exit_point(g, u.position, u.team)
+		if ex != Vector2.INF:
+			u.cmd_move(ex)
+	elif u.path_goal != Vector2.INF:
+		u._request_path(u.path_goal)        # (its order's path again, out through them first)
+
+
+## The nearest cell of the open map (walkable, not a pocket) reached from p through free cells and its side's
+## footprints only (never cliffs, trees, water, buildings or an enemy's creatures). Vector2.INF if none near.
+static func exit_point(g: Game, p: Vector2, t: int) -> Vector2:
+	var start := g.cell_of(p)
+	if not g.in_map(start):
+		return Vector2.INF
+	var seen := {start: true}
+	var q: Array = [start]
+	var head := 0
+	while head < q.size() and head < 2500:
+		var c: Vector2i = q[head]
+		head += 1
+		var i := g.idx(c)
+		if c != start and g._walkable(c) and g.in_open_map(c) and not own_cell(g, i, t):
+			# (a cell with room round it: not hugging a footprint's edge)
+			return g.cell_center(c)
+		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + dv
+			if seen.has(n) or not g.in_map(n):
+				continue
+			seen[n] = true
+			var ni := g.idx(n)
+			if g.cliff[ni] != 0 and not g._walkable(n):
+				continue
+			if g._walkable(n) or own_cell(g, ni, t):
+				q.append(n)
+	return Vector2.INF
+
+
+## Its own side's footprints are open to it (as free ground); everything else as the terrain says.
+static func clear_for(g: Game, p: Vector2, radius: float, t: int) -> bool:
+	var r := radius * 0.6
+	var ry := r * 0.6
+	for o in [Vector2.ZERO, Vector2(r, 0), Vector2(-r, 0), Vector2(0, ry), Vector2(0, -ry)]:
+		var c := g.cell_of(p + o)
+		if not g.in_map(c):
+			return false
+		var i := g.idx(c)
+		var v := int(g.solid[i])
+		if v == 0 or v == 5 or own_cell(g, i, t) or g._gate_lets(i, v, t):
+			continue
+		return false
+	return true
+
+
+## A step while walking out (Unit's movement): through its own creatures, stopped by anything else; out and clear on
+## the open map, it walks as any unit again.
+static func pass_move(g: Game, u: Unit, p: Vector2, before: Vector2, delta: float) -> Vector2:
+	u.nb_pass = maxf(0.0, u.nb_pass - delta)
+	var out := p
+	if not clear_for(g, p, u.radius, u.team):
+		out = before
+		if clear_for(g, Vector2(p.x, before.y), u.radius, u.team):
+			out = Vector2(p.x, before.y)
+		elif clear_for(g, Vector2(before.x, p.y), u.radius, u.team):
+			out = Vector2(before.x, p.y)
+	var c := g.cell_of(out)
+	if g._clear_at(out, u.radius, u.team) and g.in_open_map(c) and not own_cell(g, g.idx(c), u.team):
+		u.nb_pass = 0.0           # (clear of them: a unit like any other)
+	return out
 
 
 # ------------------------------------------------------------------ placement
@@ -456,6 +558,57 @@ static func layer(u: Unit) -> void:
 		u.y_sort_enabled = false
 
 
+## SELECTING A ROOTER BY ITS BODY (the owner, 21:28: the Mother was hard to pick): an ellipse over what its current
+## frame draws (the frame's painted pixels, as placed on the map: her stage's scale, a mirrored view, the building
+## layer), a little generous. Walking or rooted, every growth stage.
+static var _used := {}          # [texture rid, hframes, frame] -> the frame's painted rect (in the frame)
+
+
+static func body_rect(u: Unit) -> Rect2:
+	var s := u.sprite
+	if s == null or s.texture == null or not s.visible:
+		return Rect2()
+	var fr := s.get_rect()                        # (the whole frame cell, local)
+	var key := [s.texture.get_rid(), s.hframes, s.vframes, s.frame]
+	var ur: Rect2
+	if _used.has(key):
+		ur = _used[key]
+	else:
+		ur = Rect2(Vector2(fr.size.x * 0.12, fr.size.y * 0.2), fr.size * Vector2(0.76, 0.75))      # (no picture data: most of the cell)
+		var img := s.texture.get_image()
+		if img != null and not img.is_empty():
+			if img.is_compressed():
+				img.decompress()
+			var fw := img.get_width() / maxi(1, s.hframes)
+			var fh := img.get_height() / maxi(1, s.vframes)
+			var cell := Rect2i((s.frame % maxi(1, s.hframes)) * fw, (s.frame / maxi(1, s.hframes)) * fh, fw, fh)
+			var ui := img.get_region(cell).get_used_rect()
+			if ui.size.x > 0:
+				ur = Rect2(ui.position, ui.size)
+		_used[key] = ur
+	var xf := s.get_global_transform()
+	var a: Vector2 = xf * (fr.position + ur.position)
+	var b: Vector2 = xf * (fr.position + ur.end)
+	return Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), (b - a).abs())
+
+
+static func body_hit(u: Unit, p: Vector2) -> bool:
+	var r := body_rect(u)
+	if r.size.x < 2.0:
+		return false
+	var c := r.get_center()
+	var h := r.size * 0.5 + Vector2(8.0, 8.0)        # (generous: the ellipse a little past the drawn body)
+	var d := (p - c) / h
+	return d.length_squared() <= 1.0
+
+
+## Which of two bodies is drawn in front (rooted: sorted at its footprint's top, BroodRoot.layer; walking: its feet).
+static func sort_y(u: Unit) -> float:
+	if has_fp(u) and u.tesla_mode != "packed":
+		return rect_of(u).position.y
+	return u.position.y
+
+
 static func sort_dy(u: Unit) -> float:
 	var srt := u.get_node_or_null(SORT) as Node2D
 	return srt.position.y if srt != null else 0.0
@@ -556,8 +709,8 @@ static func draw_overlay(g: Game, ov: Node2D) -> void:
 			ov.draw_arc(q.position, rr, 0, TAU, 96, Color(1.0, 0.6, 0.3, 0.85), 2.5)
 			var font := ThemeDB.fallback_font
 			var lp := q.position + Vector2(-58.0, -rr - 8.0)
-			ov.draw_string_outline(font, lp, "FATHER RANGE", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
-			ov.draw_string(font, lp, "FATHER RANGE", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.75, 0.45))
+			ov.draw_string_outline(font, lp, Loc.t("FATHER RANGE"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
+			ov.draw_string(font, lp, Loc.t("FATHER RANGE"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.75, 0.45))
 	if g.controls and String(g.controls.mode) == "nb_root" and g.controls.ghost_cell.x >= 0:
 		draw_ghost(g, ov, String(g.controls.place_kind), g.controls.ghost_cell, g.controls.nb_sc)
 
@@ -613,7 +766,7 @@ static func draw_ghost(g: Game, ov: Node2D, k: String, c: Vector2i, sc := 1.0) -
 		lines.append(["ROOT HERE", Color(0.6, 1.0, 0.55)])
 	var y0 := r.position.y - 8.0 - 18.0 * float(lines.size() - 1)       # (over the ghost: the card covers the screen's bottom)
 	for ln in lines:
-		var txt := String(ln[0])
+		var txt := Loc.t(String(ln[0]))
 		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
 		var lp := Vector2(r.get_center().x - w * 0.5, y0)
 		ov.draw_string_outline(font, lp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.85))

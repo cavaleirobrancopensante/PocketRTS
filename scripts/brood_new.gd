@@ -327,7 +327,8 @@ static func grow(g: Game, q: Unit) -> String:
 	return ""
 
 
-static func _grow_cancel(g: Game, q: Unit) -> void:
+## up: she got up (UPROOT); else STOP GROWING on her card.
+static func _grow_cancel(g: Game, q: Unit, up := true) -> void:
 	if float(q.nb.get("grow_t", 0.0)) <= 0.0:
 		return
 	var nx: Dictionary = Defs.NB["stages"][stage(q) + 1]
@@ -335,7 +336,46 @@ static func _grow_cancel(g: Game, q: Unit) -> void:
 	g.add_res2(q.team, float(nx["cost2"]))
 	q.nb["grow_t"] = 0.0
 	if q.team == g.human:
-		g.tell(q.team, "The Brood Mother got up: her growing stopped (paid back).", true)
+		g.tell(q.team, "The Brood Mother got up: her growing stopped (paid back)." if up else "Growing stopped: paid back.", true)
+
+
+## PROGRESS (the owner, 21:41: her growing showed no bar): what a new-Brood creature is working at, shown as a building's
+## upgrade or a unit in training is: a bar over it in the world (draw) and on its card (the HUD's queue corner):
+## {label, f (0..1), left (s), icon, col} or {} for nothing. Her growing, a cocoon morphing, rooting and uprooting, an
+## egg hatching or waiting for the father, the first egg in the father's nest.
+const BAR_GROW := Color(0.75, 0.55, 1.0)       # (violet: a hall's upgrade)
+const BAR_MORPH := Color(0.85, 0.75, 0.35)     # (gold: a building going up)
+const BAR_ROOT := Color(0.55, 0.85, 0.4)
+const BAR_HATCH := Color(0.4, 0.75, 1.0)       # (blue: a unit in training)
+const BAR_WAIT := Color(1.0, 0.6, 0.35)
+
+
+static func progress(g: Game, u: Unit) -> Dictionary:
+	if u.dead:
+		return {}
+	if u.nb.has("coc"):
+		var ct := BroodRoot.cocoon_time(u)
+		return {"label": "MORPHING", "f": clampf(float(u.nb["coc"]) / maxf(ct, 0.1), 0.0, 1.0), "left": maxf(0.0, ct - float(u.nb["coc"])), "icon": u.kind, "col": BAR_MORPH}
+	if u.kind == QUEEN and float(u.nb.get("grow_t", 0.0)) > 0.0 and stage(u) < (Defs.NB["stages"] as Array).size() - 1:
+		var tt := float(Defs.NB["stages"][stage(u) + 1]["time"])
+		var left := float(u.nb["grow_t"])
+		return {"label": "GROWING · STAGE %d" % (stage(u) + 2), "f": clampf(1.0 - left / maxf(tt, 0.1), 0.0, 1.0), "left": left, "icon": "broodmound", "col": BAR_GROW}
+	if ROOTERS.has(u.kind) and (u.tesla_mode == "deploying" or u.tesla_mode == "packing"):
+		var sw := u.switch_time()
+		return {"label": "ROOTING" if u.tesla_mode == "deploying" else "UPROOTING", "f": clampf(1.0 - u.tesla_t / maxf(sw, 0.01), 0.0, 1.0), "left": maxf(0.0, u.tesla_t),
+			"icon": "ab_nb_root" if u.tesla_mode == "deploying" else "ab_uproot", "col": BAR_ROOT}
+	var e: Unit = u if u.kind == EGG else null
+	if u.kind == FATHER and rooted(u):
+		var ne := nest_eggs(g, u)
+		e = ne[0] if not ne.is_empty() else null
+	if e != null and not e.nb.has("out"):
+		var k := String(e.nb.get("k", "grub"))
+		if int(e.nb.get("fert", 0)) == 1:
+			if u.kind == FATHER:
+				return {"label": "FERTILISING", "f": clampf(float(e.nb.get("redden", 0.0)), 0.0, 1.0), "left": float(Defs.NB["fert_time"]) * (1.0 - clampf(float(e.nb.get("redden", 0.0)), 0.0, 1.0)), "icon": k, "col": BAR_WAIT}
+			return {"label": "WAITING FOR THE FATHER", "f": clampf(float(e.nb.get("wait", 0.0)) / float(Defs.NB["fert_wait"]), 0.0, 1.0), "left": maxf(0.0, float(Defs.NB["fert_wait"]) - float(e.nb.get("wait", 0.0))), "icon": k, "col": BAR_WAIT}
+		return {"label": "HATCHING", "f": clampf(float(e.nb.get("t", 0.0)) / maxf(egg_time(k), 0.1), 0.0, 1.0), "left": maxf(0.0, egg_time(k) - float(e.nb.get("t", 0.0))), "icon": k, "col": BAR_HATCH}
+	return {}
 
 
 ## Her size follows her stage: her body (radius), and her sprite (_rooted_look).
@@ -395,13 +435,21 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		# rooted, curled round her nest facing south-east: the eggs roll out in front of the nest's rim, south-west of her
 		# middle, where they can be seen (behind her they lay under her great body)
 		p = q.position + Vector2(-34.0 + float((n % 5) - 2) * 15.0, q.radius + 16.0 + float(n % 2) * 8.0)
-	if not g._walkable(g.cell_of(p)):
-		p = q.position + side * 0.3
 	var fa: Unit = father(g, q.team) if father_of(k) != "" else null
+	var on_top := false
 	if fa != null and father_near(g, q.team):
 		p = nest_point(fa)          # (a warrior's egg goes into the father's nest: fertilised and hatched there)
+	else:
+		# EGG PLACEMENT (the owner, 21:32): the nearest EMPTY spot round her (not on a rooted footprint, a cliff, water or
+		# another egg), looked for outward from her rim, her front and sides first; boxed in, ON the structure there
+		var es := egg_spot(g, q, p)
+		p = es[0]
+		on_top = bool(es[1])
 	var e := g._add_unit(EGG, q.team, p)
 	e.nb = {"k": k, "t": 0.0, "fert": 1 if father_of(k) != "" else 0, "wait": 0.0, "drop": float(Defs.NB["drop"])}
+	e.z_index = EGG_Z          # (eggs are always seen: drawn over rooted creatures)
+	if on_top:
+		e.nb["top"] = true
 	if fa == null and rooted(q):
 		# LAYING in her nest (the owner, 16:24, as the Town Hall's bell; walking, the egg just drops behind her). With her
 		# laying frames (brood_mother_rooted_lay_se_chatgpt.png) she lays it in the picture: the game's egg stays hidden
@@ -409,14 +457,16 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		# rolls out to the nest's rim and waits; her rooted loop has no extra egg. Without them: a heave in code, her
 		# clutch flaring, the egg popping out of the clutch (CLUTCH_AT).
 		var drawn: bool = ArtData.UNITS[q.art]["frames"].has("lay_se")
-		q.nb["lay_t"] = lay_time(q)
+		var busy := float(q.nb.get("lay_t", 0.0))       # (already laying: this egg comes out at the end of that show)
+		if busy <= 0.0:
+			q.nb["lay_t"] = lay_time(q)
 		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) - p
 		e.nb["pop_x"] = from.x
 		e.nb["pop_y"] = from.y
 		e.nb["pop"] = POP_TIME
 		e.nb["drop"] = 0.0
 		if drawn:
-			e.nb["hold"] = lay_time(q)
+			e.nb["hold"] = busy if busy > 0.0 else lay_time(q)
 			e.nb["big"] = float(stage_def(q)["scale"])
 	if fa != null and p == nest_point(fa):
 		e.nb["nest"] = true
@@ -429,12 +479,74 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 	return ""
 
 
+## Eggs are drawn on top of the rooted creatures (the owner, 21:32: a Tyrannosaur rooted under the Mother hid them).
+const EGG_Z := 2
+## How far beyond her rim an egg may roll before it is laid on a creature instead (tiles).
+const EGG_REACH := 3.0
+
+
+## Is p an empty spot for an egg: walkable ground (not a rooted footprint, a building, a cliff, trees or water) and no
+## other egg on it.
+static func egg_free(g: Game, p: Vector2, t: int) -> bool:
+	var c := g.cell_of(p)
+	if not g._walkable(c) or not g._clear_at(p, 9.0, t):
+		return false
+	for o in g.units_near(p, 20.0):
+		if o.kind == EGG and not o.dead and not o.nb.has("out") and o.position.distance_to(p) < 18.0:
+			return false
+	return true
+
+
+## Where her egg goes: `pref` if it is empty, else the nearest empty spot round her (outward from her rim up to
+## EGG_REACH tiles; her front and sides first: rooted she faces south-east and her front is the nest's south, walking
+## the side the egg would drop on); none: ON the creature at the nearest point past her rim. [spot, on a structure].
+static func egg_spot(g: Game, q: Unit, pref: Vector2) -> Array:
+	if egg_free(g, pref, q.team):
+		return [pref, false]
+	var rooted_q := BroodRoot.has_fp(q) and q.tesla_mode != "packed"
+	var r := BroodRoot.rect_of(q) if rooted_q else Rect2(q.position - Vector2(q.radius, q.radius), Vector2(q.radius, q.radius) * 2.0)
+	var c := r.get_center()
+	var want := (pref - c).normalized() if pref.distance_to(c) > 1.0 else Vector2.DOWN
+	if rooted_q:
+		want = Vector2(0.0, 1.0)          # (her front: the nest's south side)
+	var best := Vector2.INF
+	var bs := INF
+	var steps := int((EGG_REACH - 0.4) * 2.0)         # (from 0.4 to just under EGG_REACH tiles past her rim, half a tile at a time)
+	for di in range(0, steps + 1):
+		var dd := (0.4 + di * 0.5) * Defs.TILE
+		for ai in 32:
+			var dir := Vector2.from_angle(TAU * ai / 32.0)
+			var pt := _rim(r, dir) + dir * dd
+			var front := dir.dot(want)          # 1 front, 0 the sides, -1 behind
+			var sc := dd / Defs.TILE + (1.0 - front) * 0.7 + (1.5 if front < -0.5 else 0.0)
+			if sc >= bs:
+				continue
+			if egg_free(g, pt, q.team):
+				bs = sc
+				best = pt
+	if best != Vector2.INF:
+		return [best, false]
+	# boxed in: on the creature at her front, just past her rim
+	var top := _rim(r, want) + want * 0.6 * Defs.TILE
+	return [top.clamp(Vector2(8, 8), Vector2(Game.W, Game.H) * Defs.TILE - Vector2(8, 8)), true]
+
+
+## Where a ray from the rect's centre along dir leaves it.
+static func _rim(r: Rect2, dir: Vector2) -> Vector2:
+	var c := r.get_center()
+	var h := r.size * 0.5
+	var tx := h.x / absf(dir.x) if absf(dir.x) > 0.001 else INF
+	var ty := h.y / absf(dir.y) if absf(dir.y) > 0.001 else INF
+	return c + dir * minf(tx, ty)
+
+
 ## The rooted Mother's laying. Her sheet's 6 frames last LAY_DUR s each (the owner, 16:40: frames 3 and 4, her head
-## reared high, a big jump from frame 2, held longer); the new egg in frame 6 is at LAY_EGG_AT from her feet (its
+## reared high, a big jump from frame 2, held longer; 21:28: the whole show longer, about 2.5-3 s; only the show: an egg
+## laid while she is still laying the one before comes out with it, at the end of the same show); the new egg in frame 6 is at LAY_EGG_AT from her feet (its
 ## bottom; tools/import_brood_new.py prints it), LAY_EGG_BIG times the game egg's size. Without the sheet: LAY_TIME s of
 ## heave in code; the egg flies from her clutch (CLUTCH_AT). Either way the egg then goes to the rim in POP_TIME s, over
 ## an arc POP_ARC px high.
-const LAY_DUR := [0.14, 0.18, 0.3, 0.3, 0.18, 0.16]
+const LAY_DUR := [0.28, 0.38, 0.7, 0.7, 0.38, 0.32]      # (2.76 s in all: the owner, 21:28, "too fast"; her laying RATE is not slowed)
 const LAY_EGG_AT := Vector2(14.0, -57.0)
 const LAY_EGG_BIG := 1.6
 const LAY_TIME := 1.0
@@ -473,11 +585,8 @@ static func _hatch(g: Game, e: Unit) -> void:
 	g.selection.erase(e)
 	var n := int(Defs.UNITS[k].get("spawn", 1))
 	var rp := BroodRoot.hatch_rally(g, e)
-	# hatched inside a rooted creature's footprint (the father's nest): out at its rim, toward the rally
-	for o in g.nb_fp:
-		if is_instance_valid(o) and not o.dead and BroodRoot.has_fp(o) and BroodRoot.rect_of(o).grow(4.0).has_point(at):
-			at = BroodRoot.out_of(g, BroodRoot.rect_of(o), at, rp)
-			break
+	# hatched inside or among its side's rooted creatures (the father's nest, an egg laid on a creature when she was
+	# boxed in): it walks out through them (BroodRoot.start_pass, the owner, 21:32), then on to its rally
 	g.stats[t]["trained"] += n
 	if g.mlog and not g._first_of.has("%d:%s" % [t, k]):
 		g._first_of["%d:%s" % [t, k]] = true
@@ -489,12 +598,11 @@ static func _hatch(g: Game, e: Unit) -> void:
 		var off := Vector2.from_angle(TAU * i / maxf(1.0, n) + float(e.serial)) * (6.0 if n > 1 else 0.0)
 		var u := g._add_unit(k, t, at + off)
 		u.facing = Vector2.DOWN
-		if BroodRoot.send(g, u, rp, i):
-			continue          # (to the rally: the Mother's, the egg's own, or the father's for his nest)
-		if k == "grub":
+		if not BroodRoot.send(g, u, rp, i) and k == "grub":     # (to the rally: the Mother's, the egg's own, or the father's for his nest)
 			var src := free_source(g, t, u.position)
 			if src:
 				u.cmd_gather(src)
+		BroodRoot.start_pass(g, u)
 	recount(g, t)
 
 
@@ -667,6 +775,18 @@ static func devour(q: Unit, u: Unit) -> void:
 	q.frame_i = 0
 	q.anim_t = 0.0
 	Sfx.play_any(["combat/brute_attack", "bite"], q.position, -6.0)
+
+
+## Any warrior egg in his nest (fertilised or not, until it hatches) or lying near him waiting for his breath.
+static func father_busy(g: Game, f: Unit) -> bool:
+	if not rooted(f):
+		return false
+	if not nest_eggs(g, f).is_empty():
+		return true
+	for u in g.units_near(f.position, float(Defs.NB["father_r"]) * Defs.TILE):
+		if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1 and not u.nb.has("out"):
+			return true
+	return false
 
 
 static func fertilising(u: Unit) -> bool:
@@ -977,6 +1097,46 @@ static func load_value(g: Game, src: Unit, t: int) -> float:
 	return Game.food_at(dt, gap)
 
 
+## WORKER COUNT (the owner, 21:28): over each of your rooted Rootmaws (and each food pile, nobody's, while you play the
+## new Brood) its grubs at work / the most it takes ("4/6"), drawn as the old Feeding Pits' and the Crown's farms' crew
+## (Game._draw_mine_labels: the same look and place, just over its bars; white with room, green when full, "spent" in
+## red when its ground and body are empty).
+static func draw_crew_labels(g: Game, font: Font) -> void:
+	var see_all := g.demo or g.spectating()
+	if not see_all and not on(g, g.human):
+		return
+	for u in g.units:
+		if u.dead or not u.visible or not is_source(u):
+			continue
+		if u.kind == MAW and (not rooted(u) or (u.team != g.human and not see_all)):
+			continue
+		if not g.view_rect.has_point(u.position):
+			continue
+		var cm := crew_max(g, u)
+		var have := crew(g, u)
+		var txt := crew_label(g, u)
+		var spent := txt == Loc.t("spent")
+		var sz := 15
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+		var p := Vector2(u.position.x - w * 0.5, u.position.y + label_top(u) - 7.0)
+		g.overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.6))
+		var tc := Color(1, 0.45, 0.4) if spent else (Color(1, 1, 1) if have < cm else Color(0.45, 1, 0.45))
+		g.overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, tc)
+
+
+## "4/6": its grubs at work / the most it takes ("spent" when its ground and body are empty and nobody is on it).
+static func crew_label(g: Game, u: Unit) -> String:
+	var have := crew(g, u)
+	if have == 0 and float(u.nb.get("food", 0.0)) < 1.0 and (u.kind == PILE or ground_left(g, u) < 1.0):
+		return Loc.t("spent")
+	return "%d/%d" % [have, crew_max(g, u)]
+
+
+## Where its health bar sits, from its feet (Unit._draw_unit's `top`).
+static func label_top(u: Unit) -> float:
+	return -float(ArtData.UNITS[u.art]["anchor"].y) * float(u.d.get("art_scale", 1.0)) - 4.0
+
+
 ## Where a grub stands to take food: by the Rootmaw's flank (its left side as it faces south-east), spread out.
 static func flank_point(g: Game, src: Unit, gr: Unit) -> Vector2:
 	var i := (gr.serial % 7) - 3
@@ -1172,7 +1332,9 @@ static func producing(g: Game, u: Unit) -> bool:
 		QUEEN:
 			return float(u.nb.get("lay_t", 0.0)) > 0.0 or float(u.nb.get("grow_t", 0.0)) > 0.0 or int(u.nb.get("eggs", 0)) < eggs_max(u)
 		FATHER:
-			return fertilising(u)
+			# (the owner, 21:28: he keeps his fertilising loop while any warrior egg is in his nest or near him waiting for
+			# him, until the last one has hatched; only then still)
+			return fertilising(u) or father_busy(g, u)
 		MAW:
 			if g.clock - float(u.nb.get("hv", -99.0)) < 1.5:
 				return true
@@ -1297,8 +1459,6 @@ static func draw(u: Unit, top: float) -> void:
 	if u.kind == QUEEN and mine:
 		var font := ThemeDB.fallback_font
 		var txt := "%d/%d" % [int(u.nb.get("eggs", 0)), eggs_max(u)]
-		if float(u.nb.get("grow_t", 0.0)) > 0.0:
-			txt = "growing %ds" % int(ceil(float(u.nb["grow_t"])))
 		u.draw_string_outline(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.8))
 		u.draw_string(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if int(u.nb.get("eggs", 0)) > 0 else Color(1.0, 0.55, 0.45))
 	if u.kind == MAW and mine:
@@ -1309,8 +1469,8 @@ static func draw(u: Unit, top: float) -> void:
 		u.draw_rect(Rect2(-bw * 0.5, y, bw * f, 3), Color(0.75, 0.9, 0.25))
 		if rooted(u) and bool(u.nb.get("dry", false)):
 			var font := ThemeDB.fallback_font
-			u.draw_string_outline(font, Vector2(-14, y + 16), "dry", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.8))
-			u.draw_string(font, Vector2(-14, y + 16), "dry", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.6, 0.4))
+			u.draw_string_outline(font, Vector2(-14, y + 16), Loc.t("dry"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.8))
+			u.draw_string(font, Vector2(-14, y + 16), Loc.t("dry"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.6, 0.4))
 		if u.selected and rooted(u):
 			var gl := ground_left(g, u) / float(Defs.PIT_GROUND)
 			u.draw_rect(Rect2(-bw * 0.5, y + 4.5, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
@@ -1332,6 +1492,19 @@ static func draw(u: Unit, top: float) -> void:
 			u.draw_circle(rp - u.position, 4.5, Color(0.4, 1, 0.4, 0.95))
 			u.draw_line(rp - u.position, rp - u.position + Vector2(0, -18), Color(0.4, 1, 0.4, 0.95), 2.0)
 			u.draw_colored_polygon(PackedVector2Array([rp - u.position + Vector2(0, -18), rp - u.position + Vector2(11, -14), rp - u.position + Vector2(0, -10)]), Color(0.4, 1, 0.4, 0.95))
+	if mine and ROOTERS.has(u.kind) and not u.nb.has("coc"):
+		# her GROWING (as a hall's upgrade: a violet bar and its label), ROOTING / UPROOTING: a bar over it
+		var pg := progress(g, u)
+		if not pg.is_empty() and (pg["col"] == BAR_GROW or pg["col"] == BAR_ROOT):      # (the father's nest and the eggs have their own)
+			var font3 := ThemeDB.fallback_font
+			var bw3 := maxf(60.0, u.radius * 2.0)
+			var y3 := top - 26.0 if u.kind == QUEEN else top - 10.0
+			u.draw_rect(Rect2(-bw3 * 0.5, y3, bw3, 5).grow(1.0), Color(0, 0, 0, 0.7))
+			u.draw_rect(Rect2(-bw3 * 0.5, y3, bw3 * float(pg["f"]), 5), pg["col"])
+			var lt := Loc.t(String(pg["label"]))
+			var lw := font3.get_string_size(lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			u.draw_string_outline(font3, Vector2(-lw * 0.5, y3 - 4.0), lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.85))
+			u.draw_string(font3, Vector2(-lw * 0.5, y3 - 4.0), lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, (pg["col"] as Color).lightened(0.3))
 	if u.nb.has("coc") and mine:
 		# the cocoon's morph, as a building going up
 		var cp := clampf(float(u.nb["coc"]) / maxf(BroodRoot.cocoon_time(u), 0.1), 0.0, 1.0)
@@ -1345,7 +1518,7 @@ static func draw(u: Unit, top: float) -> void:
 		var eggs := nest_eggs(g, u)
 		var font2 := ThemeDB.fallback_font
 		var near := father_near(g, u.team)
-		var txt2 := ("%d eggs" % eggs.size()) if near else "too far from the Mother"
+		var txt2 := (Loc.t("%d eggs") % eggs.size()) if near else Loc.t("too far from the Mother")
 		u.draw_string_outline(font2, Vector2(-30, top - 6), txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, Color(0, 0, 0, 0.8))
 		u.draw_string(font2, Vector2(-30, top - 6), txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.7, 0.45) if near else Color(1.0, 0.5, 0.4))
 		if not eggs.is_empty():
@@ -1377,6 +1550,10 @@ static func draw_key(u: Unit) -> int:
 		x += (int(float(u.nb["rx"])) * 7 + int(float(u.nb["ry"])) * 13) % 997 + 1      # (its rally moved)
 	if u.nb.has("coc"):
 		x += (int(float(u.nb["coc"]) * 2.0) % 200) * 1009          # (the cocoon's bar)
+	if u.tesla_mode == "deploying" or u.tesla_mode == "packing":
+		x += int(u.tesla_t * 8.0) * 4099             # (the rooting bar)
+	if float(u.nb.get("grow_t", 0.0)) > 0.0:
+		x += int(float(u.nb["grow_t"]) * 4.0) * 7919         # (her growing bar)
 	return x + _draw_key2(u)
 
 
@@ -1426,6 +1603,8 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 			u.nb[k] = int(u.nb[k])
 	if u.kind == QUEEN:
 		apply_stage(u)
+	if u.kind == EGG and not u.nb.has("out"):
+		u.z_index = EGG_Z
 
 
 static func save(g: Game) -> Dictionary:

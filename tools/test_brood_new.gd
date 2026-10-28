@@ -18,6 +18,11 @@ extends SceneTree
 ##     a footprint on the grid that blocks paths and pushes units out; the building layer; a right-click sets the
 ##     rally (never uproots), given to her eggs and their hatchlings; ROOT like BUILD (walks to the spot, roots on it);
 ##     the building card; idle stillness; the computer's Mother doesn't flip-flop under fire from range
+##  16. THE OWNER'S PLAYTEST OF 0.15.14: the grub's BUILD menu (B), its own text (no old Brood word), the laying show
+##     2.5-3 s (her rate not slowed), the worker count over a Rootmaw and a pile, a click on her drawn body (a unit over
+##     her first), the Tyrannosaur fertilising till the last egg hatched, eggs on the nearest empty spot (boxed in: on a
+##     creature, on top; the hatchling walks out through its own side's creatures to the rally), her GROWING bar on the
+##     HUD and STOP GROWING, the other progress (egg, cocoon, uprooting)
 ## Prints PASS / FAIL lines and "brood_new: N failures".
 var main: Node
 var t := 0.0
@@ -482,6 +487,7 @@ func _run() -> void:
 	check(int(BroodNew.lay_rate(g, q)[2]) == int(nb_lr2[2]) - 1, "    away from her: he gives nothing (%s)" % BroodNew.levers_text(g, q))
 	g.consume_unit(nb_fx)
 	await _rooted_is_a_building(q, p)
+	await _fixes_2(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -627,8 +633,8 @@ func _rooted_is_a_building(q: Unit, p: Dictionary) -> void:
 	var gold0: int = int(p["gold"])
 	g.set_selection([mg])
 	labs = card_labels()
-	check(labs.has("ROOTMAW") and labs.has("MOUND TURTLE") and labs.has("TYRANNOSAUR") and not labs.has("CLUTCH MOUND") and not labs.has("BUILD"),
-		"    a grub's card has the creatures it turns into, no old Brood buildings: %s" % str(labs))
+	check(labs.has("BUILD") and not labs.has("CLUTCH MOUND") and not labs.has("FEEDING PIT"),
+		"    a grub's card has BUILD (its creatures in its build menu: 16), no old Brood buildings: %s" % str(labs))
 	mg.give({"o": "nb_morph", "k": BroodNew.TURTLE, "p": tspot})
 	var morphed: bool = await wait_for(func() -> bool: return mine(BroodNew.TURTLE).any(func(u) -> bool: return u.position.distance_to(tspot) < 1.0), 40.0)
 	var coc: Array = mine(BroodNew.TURTLE).filter(func(u) -> bool: return u.position.distance_to(tspot) < 1.0)
@@ -679,3 +685,305 @@ func _rooted_is_a_building(q: Unit, p: Dictionary) -> void:
 		back = q.tesla_mode == "deploying" or q.tesla_mode == "deployed"
 	check(back and g.clock - t_calm >= BroodNew.MOTHER_CALM, "    no enemy left: she roots again after a real calm (%.0f s)" % (g.clock - t_calm))
 	await wait_for(func() -> bool: return q.tesla_mode == "deployed", 30.0)
+
+
+## 16. THE OWNER'S PLAYTEST OF 0.15.14 (docs/brood_new.md): the grub's BUILD menu, the longer laying show, the worker
+## count, the Tyrannosaur fertilising till the last egg hatched, the grub's own text, a click on her drawn body, eggs
+## laid on the nearest empty spot (boxed in: on a creature, drawn on top, the hatchling walking out through its own
+## side's creatures), her GROWING bar and STOP GROWING.
+const OLD_WORDS := ["Burrow", "Hive", "Warren", "Broodmound", "Feeding Pit", "Clutch Mound", "Brood Pen", "Gorge Pit", "Roost", "Spawning Den", "building", "construct"]
+
+
+func _old_word(txt: String) -> String:
+	for w in OLD_WORDS:
+		if txt.contains(w):
+			return w
+	return ""
+
+
+func _item(label: String) -> Array:
+	for it in g.hud._build_card():
+		if String(it[1]) == label:
+			return it
+	return []
+
+
+func _fixes_2(q: Unit, p: Dictionary) -> void:
+	var T := Defs.TILE
+	p["gold"] = 5000
+	p["res2"] = 500.0
+	for gr in mine("grub"):
+		gr.auto_work = false
+		gr.cmd_stop()
+	for k in ["raptor", "brute", "spore_mother", "mist_toad"]:
+		for u in mine(k):
+			g.consume_unit(u)          # (room in the supply for the eggs below)
+	var grs: Array = mine("grub")
+	for i in range(6, grs.size()):
+		g.consume_unit(grs[i])
+	if mine("grub").size() < 3:
+		for i in 3:
+			g._add_unit("grub", 0, spot_near(q.position, 8.0))
+	var sup_t := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, free_spot(BroodNew.TURTLE, q.position, 20.0))
+	sup_t.nb.erase("coc")              # (a rooted turtle out of the way: supply for the eggs below)
+	BroodNew.recount(g, 0)
+	print("    (supply %d of %d; %d grubs, %d eggs)" % [g.supply_used(0), int(p["cap"]), mine("grub").size(), mine(BroodNew.EGG).size()])
+	# (1) the grub keeps BUILD; its page has the structure-units
+	var gr0: Unit = mine("grub")[0]
+	g.set_selection([gr0])
+	g.hud.page = ""
+	var labs: Array = card_labels()
+	check(labs.has("BUILD") and not labs.has("ROOTMAW") and not labs.has("MOUND TURTLE"), "16. the grub's card keeps BUILD (B), the creatures are not loose on it: %s" % str(labs))
+	var bi: Array = _item("BUILD")
+	if not bi.is_empty():
+		(bi[2] as Callable).call()
+	labs = card_labels()
+	check(g.hud.page == "build" and labs.has("ROOTMAW") and labs.has("MOUND TURTLE") and labs.has("TYRANNOSAUR") and labs.has("BACK") and not labs.has("CLUTCH MOUND") and not labs.has("FEEDING PIT"),
+		"    BUILD opens its build menu: %s" % str(labs))
+	var ri: Array = _item("ROOTMAW")
+	if not ri.is_empty():
+		(ri[2] as Callable).call()
+	check(String(g.controls.mode) == "nb_root" and String(g.controls.place_kind) == BroodNew.MAW and g.hud.page == "", "    a creature there gives the ROOT placement ghost")
+	g.controls.cancel_mode()
+	g.hud.page = "build"          # (the B key sets this for any worker)
+	check(card_labels().has("TYRANNOSAUR"), "    the B key's page is the same menu")
+	g.hud.page = ""
+	# (6) the grub's own text: no old Brood building in it
+	card_labels()
+	var texts := {"its card": String(gr0.d["about"]), "its tooltip": Defs.tip("grub", true), "the BUILD tip": String(g.hud._tip_for.get("BUILD", ["", ""])[1]),
+		"HARVEST": String(g.hud._tip_for.get("HARVEST", ["", ""])[1]), "the food": String(g.hud._res_tip(0).get("body", "")),
+		"the essence": String(g.hud._res_tip(1).get("body", "")), "the supply": String(g.hud._res_tip(2).get("body", ""))}
+	var bad := ""
+	for k in texts:
+		if _old_word(String(texts[k])) != "" or String(texts[k]) == "":
+			bad += "%s (%s) " % [k, _old_word(String(texts[k]))]
+	check(bad == "" and String(gr0.d["about"]).contains("Brood Mother"), "    the new Brood's grub text says the Rootmaws and the Brood Mother, no old Brood word: %s" % (bad if bad != "" else String(gr0.d["about"]).left(70)))
+	var old_gr: Dictionary = Defs.UNITS["grub"]
+	check(String(old_gr["about"]).contains("Burrow"), "    (the old Brood keeps its own grub text)")
+	# (2) the laying show lasts about 2.5-3 s, frames 3 and 4 the longest; her rate is not slowed
+	var lt := BroodNew.lay_time(q)
+	var ld: Array = BroodNew.LAY_DUR
+	check(lt >= 2.5 and lt <= 3.0 and float(ld[2]) >= float(ld.max()) and float(ld[3]) >= float(ld.max()) and float(Defs.NB["egg_time"]) == 6.0,
+		"    the Mother's laying show lasts %.2f s (frames 3-4 held %.2f s each); a new egg still every %.0f s" % [lt, float(ld[2]), float(Defs.NB["egg_time"])])
+	q.nb["eggs"] = 6
+	var e_before: Array = mine(BroodNew.EGG)
+	q.cmd_lay("grub")
+	await wait(0.5)
+	var lt_left := float(q.nb.get("lay_t", 0.0))
+	q.cmd_lay("grub")
+	await wait(0.05)
+	var two: Array = mine(BroodNew.EGG).filter(func(e) -> bool: return not e_before.has(e))
+	check(two.size() == 2 and float(q.nb.get("lay_t", 0.0)) < lt_left and absf(float(two[1].nb.get("hold", 0.0)) - float(q.nb.get("lay_t", 0.0))) < 0.1 and int(q.nb["eggs"]) == 4,
+		"    two eggs at once: both paid and counted at once (%d left), the second comes out at the end of the same show" % int(q.nb["eggs"]))
+	await wait(lt + 0.5)
+	# (3) the worker count over a rooted Rootmaw
+	var maw: Unit = null
+	for m in mine(BroodNew.MAW):
+		if BroodNew.rooted(m):
+			maw = m
+	if maw == null:
+		var ms := free_spot(BroodNew.MAW, q.position, 9.0)
+		maw = BroodRoot.cocoon(g, 0, BroodNew.MAW, ms)
+		maw.nb.erase("coc")
+		BroodNew.recount(g, 0)
+	maw.nb["food"] = 300.0
+	var crew_g: Array = mine("grub").slice(0, 2)
+	for c in crew_g:
+		c.cmd_gather(maw)
+	await wait(0.5)
+	var cl := BroodNew.crew_label(g, maw)
+	check(cl == "%d/%d" % [BroodNew.crew(g, maw), BroodNew.crew_max(g, maw)] and BroodNew.crew(g, maw) == 2 and cl.ends_with("/%d" % BroodNew.crew_max(g, maw)),
+		"    over a rooted Rootmaw: its grubs at work / the most it takes (%s)" % cl)
+	var pile: Unit = g._add_unit(BroodNew.PILE, -1, spot_near(q.position, 10.0))
+	pile.nb["food"] = 100.0
+	pile.nb["start"] = 100.0
+	check(BroodNew.crew_label(g, pile) == "0/%d" % int(Defs.NB["pile_crew"]), "    and over a food pile (%s)" % BroodNew.crew_label(g, pile))
+	g.consume_unit(pile)
+	for c in crew_g:
+		c.cmd_stop()
+	# (7) a click anywhere on her drawn body selects her; a unit standing over her is picked first
+	var br: Rect2 = BroodRoot.body_rect(q)
+	var far_pt := Vector2(br.get_center().x, br.position.y + br.size.y * 0.3)
+	var top_hit = g.entity_at(far_pt)
+	check(br.size.x > 100.0 and top_hit == q and far_pt.distance_to(q.position) > 60.0, "    a click high on her drawn body (%.0f px from her feet) selects her (body %dx%d px)" % [far_pt.distance_to(q.position), int(br.size.x), int(br.size.y)])
+	var side_pt := Vector2(br.position.x + br.size.x * 0.12, br.get_center().y)
+	check(g.entity_at(side_pt) == q, "    and near the edge of her body")
+	var over: Unit = mine("grub")[2]
+	over.cmd_stop()
+	over.position = far_pt + Vector2(0, 12)
+	await wait(0.1)
+	check(g.entity_at(over.position + Vector2(0, -12)) == over, "    a grub standing over her body is picked, not her")
+	over.position = spot_near(q.position, 9.0)
+	g.note_move(over)
+	# (5) the Tyrannosaur keeps fertilising until the last warrior egg in his nest has hatched
+	var f: Unit = BroodNew.father(g, 0)
+	if f == null:
+		f = g._add_unit(BroodNew.FATHER, 0, free_spot(BroodNew.FATHER, q.position, 5.0))
+	if not BroodNew.rooted(f):
+		f.position = free_spot(BroodNew.FATHER, q.position, 5.0, f)
+		g.note_move(f)
+		f.cmd_deploy()
+		await wait_for(func() -> bool: return f.tesla_mode == "deployed", 6.0)
+	q.nb["eggs"] = 6
+	var lw := q.cmd_lay("raptor")
+	await wait(0.1)
+	var ne: Array = BroodNew.nest_eggs(g, f)
+	var fe0: Unit = ne[0] if not ne.is_empty() else null
+	var fertd: bool = fe0 != null and await wait_for(func() -> bool: return int(fe0.nb.get("fert", 0)) == 2, 6.0)
+	await wait(1.0)
+	check(fertd and not BroodNew.fertilising(f) and BroodNew.producing(g, f) and f.anim == "rooted", "    fertilised, his egg incubating: he keeps his fertilising loop (%s)" % lw)
+	var fr_seen := {}
+	for i in 12:
+		await wait(0.2)
+		fr_seen[f.sprite.frame] = true
+	check(fr_seen.size() > 1, "    (his loop's frames move: %d seen)" % fr_seen.size())
+	var fid := fe0.get_instance_id() if fe0 else 0
+	await wait_for(func() -> bool: return fid == 0 or not is_instance_id_valid(fid) or (instance_from_id(fid) as Unit).nb.has("out"), float(Defs.UNITS["raptor"]["time"]) + 3.0)
+	await wait(1.5)
+	check(BroodNew.nest_eggs(g, f).is_empty() and not BroodNew.producing(g, f) and f.sprite.frame == 0, "    the last warrior egg hatched: then still")
+	# (8) eggs on the nearest EMPTY spot: the Tyrannosaur rooted right under her front does not hide them
+	f.cmd_uproot(false)
+	await wait_for(func() -> bool: return f.tesla_mode == "packed", 6.0)
+	var qr: Rect2 = q.rect()
+	var under := BroodRoot.snap(BroodNew.FATHER, Vector2(qr.get_center().x - 40.0, qr.end.y + 2.0 * T))
+	var uwhy := BroodRoot.place_problem(g, 0, BroodNew.FATHER, under, f)
+	if uwhy == "":
+		BroodRoot.start_root(f, under)
+		await wait_for(func() -> bool: return f.tesla_mode == "deployed", 20.0)
+	var fr: Rect2 = f.rect() if BroodRoot.has_fp(f) else Rect2()
+	var e_b: Array = mine(BroodNew.EGG)
+	q.cmd_lay("grub")
+	await wait(0.1)
+	var ge: Unit = mine(BroodNew.EGG).filter(func(e) -> bool: return not e_b.has(e)).back() if mine(BroodNew.EGG).size() > e_b.size() else null
+	check(ge != null and BroodRoot.has_fp(f) and not fr.grow(4.0).has_point(ge.position) and g._walkable(g.cell_of(ge.position)) and ge.z_index == BroodNew.EGG_Z,
+		"    the Tyrannosaur rooted under her front (%s): her egg goes to the nearest empty spot, %.0f px from her rim, drawn on top" % [uwhy if uwhy != "" else "rooted there", qr.grow(0).get_center().distance_to(ge.position) if ge else -1.0])
+	await _boxed(q, p, f)
+	# (9) her GROWING: a bar over her and on her card, STOP GROWING pays it back
+	var st0: int = BroodNew.stage(q)
+	q.nb["stage"] = 0
+	BroodNew.apply_stage(q)
+	BroodRoot.footprint_on(g, q)
+	var gold_g: int = int(p["gold"])
+	var gw: String = q.cmd_grow()
+	await wait(3.0)
+	var pg: Dictionary = BroodNew.progress(g, q)
+	g.set_selection([q])
+	await wait(0.2)
+	var hud_pg: Dictionary = g.hud.nb_prog
+	check(gw == "" and String(pg.get("label", "")) == "GROWING · STAGE 2" and float(pg["f"]) > 0.0 and float(pg["f"]) < 0.2 and float(pg["left"]) > 0.0,
+		"    GROWING: progress %s, %.0f%%, %.0f s left" % [String(pg.get("label", "")), float(pg.get("f", 0.0)) * 100.0, float(pg.get("left", 0.0))])
+	check(String(hud_pg.get("label", "")) == "GROWING · STAGE 2", "    her card shows it (the HUD's progress corner: %s)" % str(hud_pg.get("label", "none")))
+	labs = card_labels()
+	check(labs.has("STOP GROWING") and not labs.has("GROW"), "    her card has STOP GROWING: %s" % str(labs))
+	var si: Array = _item("STOP GROWING")
+	if not si.is_empty():
+		(si[2] as Callable).call()
+	await wait(0.2)
+	check(float(q.nb.get("grow_t", 0.0)) <= 0.0 and int(p["gold"]) >= gold_g and BroodNew.progress(g, q).is_empty(), "    STOP GROWING: stopped, paid back (%d)" % int(p["gold"]))
+	q.nb["stage"] = st0
+	BroodNew.apply_stage(q)
+	BroodRoot.footprint_on(g, q)
+	# the other progress: an egg hatching, a rooting creature, a cocoon
+	var pe: Dictionary = BroodNew.progress(g, ge) if ge != null and is_instance_valid(ge) and not ge.dead else {"label": "HATCHING", "f": 0.5}
+	var tc := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, free_spot(BroodNew.TURTLE, q.position, 14.0))
+	await wait(1.0)
+	var pc: Dictionary = BroodNew.progress(g, tc)
+	tc.nb.erase("coc")
+	tc.cmd_uproot(false)
+	await wait(0.5)
+	var pr: Dictionary = BroodNew.progress(g, tc)
+	check(String(pe.get("label", "")) == "HATCHING" and String(pc.get("label", "")) == "MORPHING" and float(pc["f"]) > 0.0 and String(pr.get("label", "")) == "UPROOTING" and float(pr["f"]) > 0.0,
+		"    and the others: an egg %s, a cocoon %s, %s" % [String(pe.get("label", "")), String(pc.get("label", "")), String(pr.get("label", ""))])
+	g.consume_unit(tc)
+	g.set_selection([])
+
+
+## (8) the Mother boxed in on every side by her rooted creatures: no empty spot within 3 tiles of her rim
+func _boxed(q: Unit, p: Dictionary, f: Unit) -> void:
+	var T := Defs.TILE
+	if BroodRoot.has_fp(f):
+		f.cmd_uproot(false)
+		await wait_for(func() -> bool: return f.tesla_mode == "packed", 6.0)
+		f.position = spot_near(q.position, 16.0)
+		g.note_move(f)
+	for e in mine(BroodNew.EGG):
+		g.consume_unit(e)
+	for o in g.units:
+		if o.team == 0 and not o.dead and o != q and o.kind != BroodNew.EGG and q.rect().grow(4.0 * T).has_point(o.position) and not BroodNew.ROOTERS.has(o.kind):
+			o.position = spot_near(q.position, 18.0)
+			g.note_move(o)
+	await wait(0.2)
+	var qr: Rect2 = q.rect()
+	var c0 := Vector2i(qr.position / T)
+	var sz := Vector2i(qr.size / T)
+	var box: Array = []
+	# a ring 3 tiles thick of rooted creatures round her footprint: Mound Turtles (3x3) along her front and back,
+	# Rootmaws (3x2) and turtles down her sides
+	var cells: Array = []
+	var x := c0.x - 3
+	while x < c0.x + sz.x + 3:
+		cells.append([BroodNew.TURTLE, Vector2i(x, c0.y - 3)])
+		cells.append([BroodNew.TURTLE, Vector2i(x, c0.y + sz.y)])
+		x += 3
+	for side in [c0.x - 3, c0.x + sz.x]:
+		var y := c0.y
+		while y < c0.y + sz.y:
+			var left: int = c0.y + sz.y - y
+			if left >= 3:
+				cells.append([BroodNew.TURTLE, Vector2i(side, y)])
+				y += 3
+			else:
+				cells.append([BroodNew.MAW, Vector2i(side, y - (2 - left))])
+				y += left
+	for cc in cells:
+		var k: String = cc[0]
+		var u: Unit = g._add_unit(k, 0, BroodRoot.feet_at(k, cc[1]))
+		u.facing = BroodNew.SE
+		u.tesla_mode = "deployed"
+		u.nb["m"] = "deployed"
+		u.nb_mass = 1000.0
+		BroodRoot.footprint_on(g, u, false)
+		box.append(u)
+	await wait(0.3)
+	var ring: Rect2 = qr.grow(3.0 * T)
+	var rally := q.position + Vector2(0, qr.size.y * 0.5 + 9.0 * T)
+	rally = g.cell_center(g.nearest_free(g.cell_of(rally), 6))
+	BroodRoot.set_rally(q, rally)
+	q.nb["eggs"] = 4
+	var e_b: Array = mine(BroodNew.EGG)
+	var lw := q.cmd_lay("grub")
+	await wait(0.1)
+	var ne: Array = mine(BroodNew.EGG).filter(func(e) -> bool: return not e_b.has(e))
+	var be: Unit = ne[0] if not ne.is_empty() else null
+	if be != null:
+		print("    (egg at %s, top %s, her rect %s, ring %s, free cells in the ring: %d)" % [str(be.position), str(be.nb.get("top", false)), str(qr), str(ring), _free_in(ring, qr)])
+	check(be != null and bool(be.nb.get("top", false)) and ring.has_point(be.position) and not qr.has_point(be.position) and be.z_index == BroodNew.EGG_Z,
+		"    BOXED IN by %d rooted creatures (no empty spot within 3 tiles of her rim): the egg is laid ON a creature at her front, drawn on top (%s)" % [box.size(), lw])
+	var g_b: Array = mine("grub")
+	var bid := be.get_instance_id() if be else 0
+	await wait_for(func() -> bool: return bid == 0 or not is_instance_id_valid(bid) or (instance_from_id(bid) as Unit).nb.has("out"), float(Defs.UNITS["grub"]["time"]) + BroodNew.lay_time(q) + 2.0)
+	await wait(0.2)
+	var hg: Array = mine("grub").filter(func(x2) -> bool: return not g_b.has(x2))
+	var h: Unit = hg[0] if not hg.is_empty() else null
+	check(h != null and h.nb_pass > 0.0, "    it hatches, and the grub may walk through its own side's creatures (%s)" % ("passing" if h and h.nb_pass > 0.0 else "no"))
+	var out: bool = h != null and await wait_for(func() -> bool: return not ring.grow(-2.0).has_point(h.position) and h.nb_pass <= 0.0, 25.0)
+	var there: bool = h != null and await wait_for(func() -> bool: return h.position.distance_to(rally) < 64.0, 25.0)
+	check(out and there, "    it walks out through them and on to the rally point (%.0f px from it)" % (h.position.distance_to(rally) if h else -1.0))
+	# enemies still can't pass: a turtle's cells are solid to them
+	var tcell: Vector2 = box[0].rect().get_center()
+	check(not BroodRoot.clear_for(g, tcell, 8.0, 1) and BroodRoot.clear_for(g, tcell, 8.0, 0), "    an enemy still can't walk through them (only their own side can)")
+	for u in box:
+		g.consume_unit(u)
+	BroodRoot.set_rally(q, Vector2.INF)
+	await wait(0.3)
+
+
+func _free_in(ring: Rect2, inner: Rect2) -> int:
+	var n := 0
+	var T := Defs.TILE
+	for y in int(ring.size.y / T):
+		for x in int(ring.size.x / T):
+			var p := ring.position + Vector2(x + 0.5, y + 0.5) * T
+			if not inner.has_point(p) and g._walkable(g.cell_of(p)):
+				n += 1
+	return n

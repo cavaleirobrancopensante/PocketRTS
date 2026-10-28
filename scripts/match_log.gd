@@ -188,7 +188,21 @@ func snapshot() -> void:
 			lines[lines.size() - 1] += " | APM %d (this minute %d actions)" % [game.apm(), game.actions_minute]
 			game.apm_minutes.append(game.actions_minute)
 			game.actions_minute = 0
-		if game.faction_hall(t) == "town_hall" or game.faction_hall(t) == "hive":
+		if BroodNew.on(game, t):
+			# the new Brood has no halls or pits: its Mother, its rooted creatures and their ground
+			var nq := BroodNew.queen(game, t)
+			var nm := PackedStringArray()
+			var nt := 0
+			for u in game.units:
+				if u.team == t and not u.dead and BroodNew.rooted(u):
+					if u.kind == BroodNew.MAW:
+						nm.append("%d%%" % int(round(BroodNew.ground_left(game, u) / float(Defs.PIT_GROUND) * 100)))
+					elif u.kind == BroodNew.TURTLE:
+						nt += 1
+			lines[lines.size() - 1] += " | new Brood: Mother stage %d %s, %d eggs | Rootmaws rooted %d (ground %s) | Mound Turtles rooted %d" % [
+				BroodNew.stage(nq) + 1 if nq else 0, ("rooted" if BroodNew.rooted(nq) else "walking") if nq else "dead", int(nq.nb.get("eggs", 0)) if nq else 0,
+				nm.size(), " ".join(nm) if not nm.is_empty() else "-", nt]
+		elif game.faction_hall(t) == "town_hall" or game.faction_hall(t) == "hive":
 			var soil := PackedStringArray()
 			if game.faction_hall(t) == "hive":
 				# (the Brood: each Feeding Pit's own ground)

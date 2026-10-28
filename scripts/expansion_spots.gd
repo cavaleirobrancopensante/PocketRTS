@@ -43,7 +43,15 @@ func active() -> bool:
 		return false
 	if game.demo or game.replay != null:
 		return true
-	return game.human >= 0 and game.human < game.n_players() and game.faction_of(game.human) != "brood"
+	if game.human < 0 or game.human >= game.n_players():
+		return false
+	# the old Brood rarely moves its capital: none; the NEW Brood expands with Mound Turtles: its turtle spots (nb_pick)
+	return game.faction_of(game.human) != "brood" or BroodNew.on(game, game.human)
+
+
+## The viewer plays the new Brood: its spots are the best TURTLE spots (nb_pick), not hall spots.
+func _nb_view() -> bool:
+	return not game.demo and game.replay == null and game.human >= 0 and BroodNew.on(game, game.human)
 
 
 func _process(delta: float) -> void:
@@ -59,12 +67,15 @@ func _process(delta: float) -> void:
 func refresh() -> void:
 	var now: Array = []
 	if active():
-		for s in spots:
-			if not _taken(s["c"]):
-				now.append(s)
+		if _nb_view():
+			now = nb_pick(game, game.human, self)
+		else:
+			for s in spots:
+				if not _taken(s["c"]):
+					now.append(s)
 	var key := str(_placing)
 	for s in now:
-		key += str(s["c"])
+		key += str(s["c"]) + str(s.get("tc", "")) + str(s["rank"])
 	if key != _key:
 		_key = key
 		shown = now
@@ -78,6 +89,8 @@ func _placing_hall() -> bool:
 	var ctl = game.controls if game else null
 	if ctl == null or game.demo or game.human < 0:
 		return false
+	if String(ctl.mode) == "nb_root" and String(ctl.place_kind) == BroodNew.TURTLE:
+		return true           # (the new Brood placing a Mound Turtle)
 	return String(ctl.mode) == "place" and String(ctl.place_kind) == game.faction_hall(game.human)
 
 
@@ -97,21 +110,29 @@ func _taken(c: Vector2i) -> bool:
 
 func _draw() -> void:
 	for s in shown:
-		_tile(s["c"], int(s["rank"]) == 1)
+		if s.has("tc"):
+			_tile(s["tc"], int(s["rank"]) == 1, BroodRoot.fp(BroodNew.TURTLE)[0])      # (a Mound Turtle's footprint)
+			if _placing:
+				# while placing a turtle: how far its swamp would reach (a faint gold ring)
+				var T := float(Game.T)
+				var mid := (Vector2(s["tc"]) + Vector2(BroodRoot.fp(BroodNew.TURTLE)[0]) * 0.5) * T
+				draw_arc(mid, float(Defs.NB["turtle_swamp"]) * T, 0, TAU, 72, Color(GOLD, 0.45 if int(s["rank"]) == 1 else 0.3), 2.0)
+		else:
+			_tile(s["c"], int(s["rank"]) == 1)
 
 
-func _tile(c: Vector2i, best: bool) -> void:
+func _tile(c: Vector2i, best: bool, size: Vector2i = MapGen.HALL) -> void:
 	var T := float(Game.T)
 	var k := 1.5 if _placing else 1.0
 	var fill := (0.3 if best else 0.2) * k
 	var edge := (0.85 if best else 0.55) * minf(k, 1.15)
-	for y in MapGen.HALL.y:
-		for x in MapGen.HALL.x:
+	for y in size.y:
+		for x in size.x:
 			var p := Vector2(c + Vector2i(x, y)) * T
 			var cell := Rect2(p + Vector2(2, 2), Vector2(T - 4, T - 4))
 			draw_rect(cell, Color(SHADE, fill * 0.6))      # (a light brown wash first: the gold then reads on snow and sand too)
 			draw_rect(cell, Color(GOLD, fill))
-	var r := Rect2(Vector2(c) * T, Vector2(MapGen.HALL) * T).grow(-1.0)
+	var r := Rect2(Vector2(c) * T, Vector2(size) * T).grow(-1.0)
 	draw_rect(r, Color(0, 0, 0, 0.35 * edge), false, 3.5)
 	draw_rect(r, Color(GOLD, edge), false, 1.75 if best else 1.25)
 
@@ -120,10 +141,134 @@ func _tile(c: Vector2i, best: bool) -> void:
 func draw_on_minimap(ci: CanvasItem, m: Rect2) -> void:
 	var k := m.size / Vector2(Game.W, Game.H)
 	for s in shown:
-		var mid := m.position + (Vector2(s["c"]) + Vector2(MapGen.HALL) * 0.5) * k
+		var mid := m.position + ((Vector2(s["tc"]) + Vector2(BroodRoot.fp(BroodNew.TURTLE)[0]) * 0.5) if s.has("tc") else (Vector2(s["c"]) + Vector2(MapGen.HALL) * 0.5)) * k
 		var h := 2.5 if int(s["rank"]) == 1 else 2.0
 		ci.draw_rect(Rect2(mid - Vector2(h, h), Vector2(h, h) * 2.0), Color(0, 0, 0, 0.6), false, 2.0)
 		ci.draw_rect(Rect2(mid - Vector2(h, h), Vector2(h, h) * 2.0), Color(GOLD, 0.95 if int(s["rank"]) == 1 else 0.7), false, 1.0)
+
+
+# ------------------------------------------------------------------ the new Brood's turtle spots
+
+## THE NEW BROOD (the owner, 21:28: "no expansion spots shown for the new Brood"): it expands by rooting a MOUND TURTLE
+## on new ground (its swamp lets Rootmaws root there; 15+ tiles from the Mother and from the turtles that already count,
+## it makes her lay faster: BroodNew.expansions). Its spots are its side's free base sites (rated as the hall spots:
+## room, ways in, walk, safety: rate_all), each with the turtle's 3x3 footprint placed in it (nb_rate) and scored up for
+## the Rootmaw circles that fit round it on its level, inside the turtle's swamp. Shown now (nb_pick): the PICKS best
+## that are fresh ground, at least expansion_tiles from the Mother and from every turtle that already counts, and not
+## taken (a building or a rooted creature on the spot, a turtle of the side rooted there, its Rootmaw ground spent).
+var nb_cands := {}          # team -> [{c, team, tc (the turtle's top-left cell), maws, score, ...}], best first
+
+
+## The side's candidate turtle spots, rated once (from the base sites' hall ratings and the ground).
+static func nb_rate(g: Game, t: int, all_sites: Array) -> Array:
+	var out: Array = []
+	var fs: Vector2i = BroodRoot.fp(BroodNew.TURTLE)[0]
+	for s in all_sites:
+		if int(s["team"]) != t:
+			continue
+		var c: Vector2i = s["c"]
+		var mid := Vector2(c) + Vector2(MapGen.HALL) * 0.5
+		var tc := Vector2i(-1, -1)
+		# the turtle's footprint in the hall spot (its middle first, then round it): level, open ground, no ramp
+		for r in 4:
+			for dy in range(-r, r + 1):
+				for dx in range(-r, r + 1):
+					if tc.x >= 0 or (absi(dx) != r and absi(dy) != r):
+						continue
+					var cc := Vector2i(int(mid.x - fs.x * 0.5), int(mid.y - fs.y * 0.5)) + Vector2i(dx, dy)
+					if _ground_ok(g, cc, fs):
+						tc = cc
+		if tc.x < 0:
+			continue
+		var maws := _maw_room(g, tc, fs)
+		if maws < 2:
+			continue           # (room for a turtle and SEVERAL Rootmaw circles)
+		var e: Dictionary = s.duplicate()
+		e["tc"] = tc
+		e["maws"] = maws
+		e["score"] = float(s["score"]) + 12.0 * float(maws)
+		out.append(e)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if absf(float(a["score"]) - float(b["score"])) > 0.001:
+			return float(a["score"]) > float(b["score"])
+		return float(a["home"]) < float(b["home"]))
+	return out
+
+
+## A footprint of `sz` at `c` on open, level ground with no ramp (the terrain only).
+static func _ground_ok(g: Game, c: Vector2i, sz: Vector2i) -> bool:
+	var lv := -999
+	for y in sz.y:
+		for x in sz.x:
+			var cc := c + Vector2i(x, y)
+			if not g.in_map(cc):
+				return false
+			var i := g.idx(cc)
+			if g.solid[i] == 1 or g.cliff[i] != 0 or g.ramp[i] != 0:
+				return false
+			if lv == -999:
+				lv = int(g.height[i])
+			elif int(g.height[i]) != lv:
+				return false
+	return true
+
+
+## How many Rootmaw circles fit round a turtle at `tc` (greedy, their middles PIT_CLAIM x 2 tiles apart, inside its
+## swamp, on its level, clear of its footprint).
+static func _maw_room(g: Game, tc: Vector2i, fs: Vector2i) -> int:
+	var mid := Vector2(tc) + Vector2(fs) * 0.5
+	var lv := int(g.height[g.idx(tc)])
+	var ms: Vector2i = BroodRoot.fp(BroodNew.MAW)[0]
+	var apart := float(Defs.PIT_CLAIM) * 2.0
+	var reach := float(Defs.NB["turtle_swamp"]) - 1.5
+	var got: Array = []
+	var trect := Rect2i(tc, fs).grow(1)
+	for ring in [3.5, 5.5, 7.5]:
+		if ring > reach:
+			break
+		for i in 16:
+			var p: Vector2 = mid + Vector2.from_angle(TAU * i / 16.0 + ring * 0.3) * ring
+			var mc := Vector2i(int(p.x - ms.x * 0.5), int(p.y - ms.y * 0.5))
+			if Rect2i(mc, ms).intersects(trect) or not _ground_ok(g, mc, ms) or int(g.height[g.idx(mc)]) != lv:
+				continue
+			if got.all(func(o: Vector2) -> bool: return o.distance_to(p) >= apart):
+				got.append(p)
+	return got.size()
+
+
+## The turtle spots shown now for side t (the PICKS best still good), ranked 1, 2.
+static func nb_pick(g: Game, t: int, es: ExpansionSpots) -> Array:
+	if not es.nb_cands.has(t):
+		es.nb_cands[t] = nb_rate(g, t, es.all)
+	var q := BroodNew.queen(g, t)
+	var far := float(Defs.NB["expansion_tiles"]) * Defs.TILE
+	var counted: Array = BroodNew.expansions(g, q) if q != null else []
+	var out: Array = []
+	for s in es.nb_cands[t]:
+		if out.size() >= PICKS:
+			break
+		var feet := BroodRoot.feet_at(BroodNew.TURTLE, s["tc"])
+		if q != null and q.position.distance_to(feet) < far:
+			continue
+		if counted.any(func(o: Unit) -> bool: return o.position.distance_to(feet) < far):
+			continue
+		var taken := false
+		for u in g.units_near(feet, 7.0 * Defs.TILE):
+			if u.team == t and u.kind == BroodNew.TURTLE and not u.dead and u.tesla_mode != "packed":
+				taken = true          # (a turtle of the side already rooted there)
+		if taken or es._taken(s["c"]) or BroodRoot.place_problem(g, t, BroodNew.TURTLE, feet).begins_with("Blocked"):
+			continue
+		var spent := false
+		for id in g.nb_spots:
+			var sp: Dictionary = g.nb_spots[id]
+			if (sp["p"] as Vector2).distance_to(feet) < float(Defs.NB["turtle_swamp"]) * Defs.TILE and float(sp["left"]) < float(Defs.PIT_GROUND) * 0.5:
+				spent = true           # (not fresh ground: Rootmaws drew it out)
+		if spent:
+			continue
+		var e: Dictionary = s.duplicate()
+		e["rank"] = out.size() + 1
+		out.append(e)
+	return out
 
 
 # ------------------------------------------------------------------ rating
