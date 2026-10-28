@@ -848,6 +848,7 @@ func _setup_astar() -> void:
 ## between cells: rail_cut (walk fills), the pathfinder grids (rail_side, path_cell), the path
 ## smoothing (line_clear) and movement (rail_fix, in resolve_terrain) all keep to it.
 const RAIL_GAP := 6.0                    # (px: the least a unit's middle keeps from a rail's line)
+const RAIL_LINE_PAD := 4.0               # (px: a smoothed path keeps this much more than its margin from a rail, so it never runs inside the gap rail_fix keeps: a unit would press on it)
 
 
 func _setup_rails() -> void:
@@ -5756,7 +5757,7 @@ func line_clear(a: Vector2, b: Vector2, margin := 7.0) -> bool:
 		if v != 0 and v != 5:
 			return false
 		s += 4 if first else 1
-	if not _rail_box.is_empty() and rail_blocks_line(a, b, margin):
+	if not _rail_box.is_empty() and rail_blocks_line(a, b, margin + RAIL_LINE_PAD):
 		return false              # (past a ramp's rail: docs/ramp_funnel.md)
 	return true
 
