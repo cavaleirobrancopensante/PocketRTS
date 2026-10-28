@@ -6548,9 +6548,9 @@ func _animate(delta: float) -> void:
 		_hot = false
 		(sprite.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE)
 	_set_anim(_anim_name(), false)
-	var key := anim + "_" + anim_dir
-	var n: int = ArtData.UNITS[_anim_art if _anim_art != "" else art]["frames"].get(key, 1)
-	var fps := walk_fps_for(_anim_art if _anim_art != "" else art) * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
+	# (the strip's frame count and walk pace: worked out when the strip was set, _set_anim)
+	var n: int = _an_n
+	var fps := _an_wfps * clampf(velocity.length() / maxf(speed, 1.0), 0.6, 1.3)
 	if anim == "walk" and GALLOPERS.has(art):
 		# 8-frame gallop: one stride ~0.57 s at full speed; the Horseman's strips have 7 to 10
 		# frames, played so that his stride takes the same time
@@ -6949,6 +6949,8 @@ static func own_west(art_frames: Dictionary, a: String, dr: String) -> String:
 	return ""
 
 
+var _an_n := 1                   # (_set_anim: the strip's frame count, ArtData frames[anim_dir])
+var _an_wfps := WALK_FPS         # (_set_anim: walk_fps_for(the strip's art))
 var _sm_o := -1                  # (_set_anim: the last heading, pose and strip, and the view they gave)
 var _sm_a := ""
 var _sm_sa := ""
@@ -7020,7 +7022,9 @@ func _set_anim(a: String, force: bool) -> void:
 	_anim_art = sa
 	var key := a + "_" + dr
 	sprite.texture = Game.tex("res://assets/units/%s/%s.png" % [sa, key])
-	sprite.hframes = frames.get(key, 1)
+	_an_n = frames.get(key, 1)
+	_an_wfps = walk_fps_for(sa)
+	sprite.hframes = _an_n
 	var anchor: Vector2 = ArtData.UNITS[sa]["anchor"]
 	# some sheets (aiming up) have extra room on top: the feet stay where they were
 	var cell: Vector2i = ArtData.UNITS[sa]["cell"]

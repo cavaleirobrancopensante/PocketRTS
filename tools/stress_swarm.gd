@@ -237,7 +237,9 @@ func _army(team: int, at: Vector2, set: Array) -> Array:
 				break
 			var u: Unit = g._add_unit(s[0], team, spots[i])
 			u.auto_work = false
-			u._sep_n = i % 3          # (an army made over minutes: its men don't all shove on the same tick)
+			# (an army made over minutes: its men don't all shove, or look round for a target, on the same tick)
+			u._sep_n = i % 3
+			u.scan_t = float(i % 10) / 30.0
 			i += 1
 			out.append(u)
 	return out

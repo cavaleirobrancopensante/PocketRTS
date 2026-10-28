@@ -6102,6 +6102,13 @@ func _near_foe(u: Unit, r: float, foe: PackedByteArray, held: bool, min_r: float
 			# (nobody there can have come nearer than the best so far: its rebuild place plus a step)
 			var lim := minf(r, bd) + grid_slack
 			var lim2 := lim * lim
+			# (and a cell wholly farther than that is passed over)
+			var cx := float((gi % gw) * HASH)
+			var cy := float((gi / gw) * HASH)
+			var ex := maxf(maxf(cx - p.x, p.x - cx - HASH), 0.0)
+			var ey := maxf(maxf(cy - p.y, p.y - cy - HASH), 0.0)
+			if ex * ex + ey * ey > lim2:
+				continue
 			for j in range(s, _gend[gi]):
 				var tm: int = _gteam[j]
 				if tm < 0 or tm >= nf or foe[tm] == 0:
