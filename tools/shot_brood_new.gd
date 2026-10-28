@@ -278,8 +278,8 @@ func _run() -> void:
 	await create_timer(float(Defs.NB["queen_switch"]) + 0.5).timeout
 	# the rooted Mother LAYING (in code until her sheet comes: a heave, her clutch flaring, the egg popping out to the
 	# nest's rim): lay_NN every 0.06 s (tools/brood_new_gif.py: lay.gif)
-	g.camera.position = q.position + Vector2(-10.0, -40.0)
-	g.camera.zoom = Vector2(2.0, 2.0)
+	g.camera.position = q.position + Vector2(-10.0, -110.0)
+	g.camera.zoom = Vector2(1.6, 1.6)
 	await create_timer(0.5).timeout
 	q.nb["eggs"] = 10
 	for j in 2:

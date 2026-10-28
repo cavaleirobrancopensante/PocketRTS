@@ -1034,6 +1034,9 @@ static func _rooted_look(u: Unit, n: int) -> void:
 			pulse = clampf(pulse * 0.75 + 0.25 * absf(sin(clk * 11.0 + sin(clk * 3.7) * 2.0)), 0.0, 1.0)     # (fire flickers)
 			lo = 0.1          # (light: his fertilising loop is drawn, its six frames hardly differ)
 			hi = 0.3
+		elif a == "lay":
+			lo = 0.08         # (her laying frames draw the clutch's glow themselves)
+			hi = 0.2
 		glow.modulate = Color(1, 1, 1, minf(1.0, (lo + hi * pulse + 0.6 * lay) * s.self_modulate.a))     # (laying: her clutch flares)
 		glow.visible = true
 	elif glow != null:

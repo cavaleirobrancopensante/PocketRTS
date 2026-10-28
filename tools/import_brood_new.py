@@ -448,6 +448,8 @@ def _snap_body(im, keep_box):
 
 # the parts of the rooted Tyrannosaur's frame left as drawn (the breath under his jaws, the nest of red eggs)
 NEST_KEEP = [(0.50, 0.53, 0.82, 0.80), (0.30, 0.68, 1.0, 1.0)]
+# (the nest sheet's frames: the nest fills their lower 40% from a fifth of the way in; the breath runs from his jaws)
+NEST_KEEP_SHEET = [(0.2, 0.6, 1.0, 1.0), (0.55, 0.45, 0.95, 0.6)]
 
 
 FEET = {}      # ((anim, dir), frame) -> (x, y) anchor: frames lined up on the creature's feet (assemble)
@@ -480,7 +482,7 @@ def rooted_extras(kind, small):
             want = small[("walk", "se")][0].shape[0]
             sc = want / float(ref.shape[0])
             for name, row in zip(["root", "rooted", "uproot"], rows[:3]):
-                fr = [_snap_body(ia.shrink(ia.cutout(npx, sp), sc), NEST_KEEP) for sp in row]
+                fr = [_snap_body(ia.shrink(ia.cutout(npx, sp), sc), NEST_KEEP_SHEET) for sp in row]
                 small[(name, "se")] = fr
                 for k, im in enumerate(fr):
                     FEET[((name, "se"), k)] = claw_feet(im)
