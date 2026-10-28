@@ -678,7 +678,7 @@ const BALLISTA_KIND := "ballista"
 ## (3 teeth) a loop of 12 frames, which rolls it 20.25 game px (their rolling radius x pi / 2; docs/great_winder.md):
 ## Unit.WALK_FPS_ART plays it at speed x 12 / 20.25 frames a second (16 at 27), so the wheels do not slide.
 const GREAT_WINDER := {"area": 200.0, "wind": 0.06, "look": 224.0, "reach": 30.0, "mend": 1.5, "mend_wind": 0.3,
-	"sweep_look": 256.0, "sweep_reach": 34.0, "sweep_time": 2.0, "share": 0.30, "danger": 300.0, "stride": 20.25, "frames": 12}
+	"sweep_look": 256.0, "sweep_reach": 10.0, "sweep_time": 2.0, "share": 0.30, "danger": 300.0, "stride": 20.25, "frames": 12}
 const GREAT_WINDER_KIND := "great_winder"
 
 

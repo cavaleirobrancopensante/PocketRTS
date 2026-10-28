@@ -223,6 +223,7 @@ func _sweeping(g: Game) -> void:
 		_wreck(g, u)
 	check("the wrecks and the Crown body lie there", own.all(func(u: Unit) -> bool: return g.bodies.has(u)) and g.bodies.has(crown) and g.bodies.has(pend))
 	check("a Crown body is never sweepable", not GreatWinder.sweepable(gw, crown))
+	check("the aura and MEND are unchanged (200 px, 0.06 a second; 1.5 x a Winder)", float(G["area"]) == 200.0 and float(G["wind"]) == 0.06 and float(G["mend"]) == 1.5 and float(G["look"]) == 224.0)
 	var cs_cost := float(Defs.UNITS["clock_soldier"]["cost"])
 	check("a fresh Clock Soldier wreck gives %d%% of its cogs (%d of %d)" % [int(round(float(G["share"]) * 100.0)), GreatWinder.cogs_of(own[0]), int(cs_cost)],
 		GreatWinder.cogs_of(own[0]) == int(round(cs_cost * float(G["share"]))))
@@ -233,7 +234,8 @@ func _sweeping(g: Game) -> void:
 	for u in own + [pend]:
 		expect += GreatWinder.cogs_of(u)
 	g.income_mult[0] = 1.0
-	var gold0 := int(g.players[0]["gold"])
+	var gold0 := int(gw.get_meta("gw_cogs", 0))      # (cogs from its sweeping: GreatWinder.take adds them to its side's purse; the purse also has its income)
+	var purse0 := int(g.players[0]["gold"])
 	var home := gw.position
 	var t := 0.0
 	var seen_sweep := false
@@ -249,8 +251,9 @@ func _sweeping(g: Game) -> void:
 			shown = true
 	check("SWEEP: standing idle, it sweeps up its own side's Clockwork wrecks", (own + [pend]).all(func(u) -> bool: return not is_instance_valid(u) or not g.bodies.has(u)), "%.1f s" % t)
 	check("it plays its rollers (sweep) while sweeping", seen_sweep)
-	var got := int(g.players[0]["gold"]) - gold0
-	check("each wreck pays its cogs at once (%d%% of its price)" % int(round(float(G["share"]) * 100.0)), abs(got - expect) <= 1 and got > 0, "%d cogs (expected %d)" % [got, expect])
+	var got := int(gw.get_meta("gw_cogs", 0)) - gold0
+	# (a wreck rots while it waits its turn: a little less than when it fell)
+	check("each wreck pays its cogs at once (%d%% of its price)" % int(round(float(G["share"]) * 100.0)), got <= expect + 1 and got >= int(expect * 0.9) and got > 0 and int(g.players[0]["gold"]) - purse0 >= got, "%d cogs (expected %d)" % [got, expect])
 	check("a '+N cogs' line rises over it", shown)
 	check("no parts any more (owner, 2026-10-28)", not ("parts" in gw) and not NetSnapshot.UNIT_PROPS.has("parts"))
 	U.step(g, 12.0)
@@ -260,9 +263,10 @@ func _sweeping(g: Game) -> void:
 	var risky := _man(g, "clock_soldier", 0, gw.position + Vector2(170, 0))
 	_wreck(g, risky)
 	var foe := _man(g, "musketeer", 1, risky.position + Vector2(120, 20))
-	gold0 = int(g.players[0]["gold"])
+	gold0 = int(gw.get_meta("gw_cogs", 0))
 	U.step(g, 8.0)
-	check("a wreck with an enemy soldier near it is left lying", is_instance_valid(risky) and g.bodies.has(risky) and int(g.players[0]["gold"]) == gold0)
+	check("a wreck with an enemy soldier near it is left lying", is_instance_valid(risky) and g.bodies.has(risky) and int(gw.get_meta("gw_cogs", 0)) == gold0,
+		"lying %s, order %s, enemy %.0f px from it" % [str(is_instance_valid(risky) and g.bodies.has(risky)), gw.order, foe.position.distance_to(risky.position)])
 	check("and the Great Winder stays where it is", gw.position.distance_to(home) < 40.0, "%.0f px off" % gw.position.distance_to(home))
 	foe.take_damage(100000.0, null)
 	U.step(g, 8.0)
@@ -285,14 +289,29 @@ func _sweeping(g: Game) -> void:
 	_wreck(g, far)
 	U.step(g, 6.0)
 	check("a wreck beyond %d px is left lying (it stays with the army)" % int(G["sweep_look"]), is_instance_valid(far) and g.bodies.has(far))
+	g.tear_body(far)
+	g.bodies.erase(far)
+	U.step(g, 12.0)      # (the wreck left on the way, once its enemy is gone, is swept meanwhile)
+	check("the wreck it gave up is swept once the enemy is gone", not is_instance_valid(late) or not g.bodies.has(late))
+	# an ENEMY Clockwork's wreck (the mirror match, owner 2026-10-28): swept too, the cogs to its own side
+	var theirs := _man(g, "clock_soldier", 1, gw.position + Vector2(-90, -60))
+	_wreck(g, theirs)
+	check("an enemy Clockwork wreck is sweepable", GreatWinder.sweepable(gw, theirs))
+	gold0 = int(gw.get_meta("gw_cogs", 0))
+	U.step(g, 10.0)
+	check("an enemy Clockwork wreck is swept and pays its cogs to the sweeper's side",
+		(not is_instance_valid(theirs) or not g.bodies.has(theirs)) and abs(int(gw.get_meta("gw_cogs", 0)) - gold0 - int(round(float(Defs.UNITS["clock_soldier"]["cost"]) * float(G["share"])))) <= 1,
+		"%+d cogs, the wreck still lying %s, order %s, %.0f px from it, danger %s" % [int(gw.get_meta("gw_cogs", 0)) - gold0, str(is_instance_valid(theirs) and g.bodies.has(theirs)), gw.order,
+		gw.position.distance_to(theirs.position) if is_instance_valid(theirs) else -1.0, str(GreatWinder.danger(gw, theirs.position)) if is_instance_valid(theirs) else "-"])
+	U.step(g, 8.0)
 	# SWEEP off
 	var c := _man(g, "clock_soldier", 0, gw.position + Vector2(60, -40))
 	_wreck(g, c)
 	gw.auto_sweep = false
 	gw.cmd_stop()
-	gold0 = int(g.players[0]["gold"])
+	gold0 = int(gw.get_meta("gw_cogs", 0))
 	U.step(g, 6.0)
-	check("SWEEP off: it leaves the wrecks alone", int(g.players[0]["gold"]) == gold0 and is_instance_valid(c) and g.bodies.has(c))
+	check("SWEEP off: it leaves the wrecks alone", int(gw.get_meta("gw_cogs", 0)) == gold0 and is_instance_valid(c) and g.bodies.has(c))
 	_clear(g)
 
 
@@ -460,7 +479,8 @@ func _computer() -> void:
 	check("and follows it when it moves", gw.order == "move" and gw.order_point.distance_to(c) < 170.0 or gw.position.distance_to(c) < 170.0,
 		"order %s to %s, at %s, army at %s" % [gw.order, str(gw.order_point), str(gw.position), str(c)])
 	# its idle sweep: a soldier of the army falls near it; it sweeps him into cogs and stays with the army
-	await _wait(g, func() -> bool: return gw.order == "idle" and army.all(func(u: Unit) -> bool: return u.dead or u.order == "idle"), 40.0)
+	await _wait(g, func() -> bool: return army.all(func(u: Unit) -> bool: return u.dead or u.order == "idle"), 40.0)
+	await _wait(g, func() -> bool: return gw.order == "idle", 30.0)
 	var victim: Unit = null
 	for u in army:
 		if not u.dead and u.kind != Defs.PENDULUM and (victim == null or u.position.distance_to(gw.position) < victim.position.distance_to(gw.position)):
@@ -476,7 +496,7 @@ func _computer() -> void:
 			var mid := Vector2.ZERO
 			var n := 0
 			for u in army:
-				if not u.dead:
+				if is_instance_valid(u) and not u.dead:
 					mid += u.position
 					n += 1
 			if n > 0:

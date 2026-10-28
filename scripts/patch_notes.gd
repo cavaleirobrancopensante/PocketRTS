@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.103", "items": [
+		"GREAT WINDER SWEEPS WRECKS INTO COGS (the owner's rule: each side gets something different from bodies; the Brood essence, the Crown raises its own, the Clockwork regains cogs). Standing idle, it rolls to a Clockwork wreck near it (yours, and the enemy's in a Clockwork mirror match), sweeps it up with its rollers and gives you 30% of that unit's cog price at once (\"+21 cogs\" for a Clock Soldier; no Tension back), then rolls back to where it stood, so it stays with the army. It leaves a wreck alone while an enemy soldier is near it. No more parts: the hopper, the 100 cap and the planned reassembly are gone. Its winding ring and MEND are unchanged, and the computer's Great Winder sweeps the same way. Old saves still load.",
+	]},
 	{"v": "0.14.102", "items": [
 		"The game is now called Working Title for RTS for the time being (the old name belongs to another game). Your settings, saves, replays and hotkeys carry over; the web address and the Android app file keep their old names for now, and the app installs over the old one.",
 	]},
