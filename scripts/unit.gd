@@ -1021,6 +1021,7 @@ var _k_ride := false             # one of the kinds that ride by (Defs.RIDE_BY "
 var _k_fac := ""                 # (d["faction"]: the kind's faction)
 var _k_nb := false               # a creature of the NEW BROOD (scripts/brood_new.gd)
 var _k_still := false            # (its egg or a food pile: stands where it is, BroodNew.still_tick)
+var _k_shell := false            # (a Mound Turtle: rooted, its own side climbs over it: Game.separation)
 ## The new Brood's own state (scripts/brood_new.gd: the Mother's eggs, a Rootmaw's food and ground, an egg's kind and
 ## incubation, the father's breath); saved and streamed as it is.
 var nb := {}
@@ -1036,6 +1037,7 @@ func _kind_flags() -> void:
 			or BroodNew.ROOTERS.has(kind)
 	_k_nb = BroodNew.is_nb(kind)
 	_k_still = kind == BroodNew.EGG or kind == BroodNew.PILE
+	_k_shell = kind == BroodNew.TURTLE
 	nb_mass = 1000.0 if _k_still else (30.0 if kind == BroodNew.QUEEN else (8.0 if kind == BroodNew.FATHER else 1.0))
 	_k_cw = CwUnits.hooked(kind)
 	_k_musket = kind == "musketeer"
