@@ -32,6 +32,7 @@ var nb_teams: Array = []
 var nb_queen := {}
 var nb_spots := {}
 var nb_spot_next := 0
+var nb_walls: Array = []       # the new Brood's ROOTED Mound Turtles: a body nothing of another side walks through (BroodNew.push_out)
 var eliminated: Array = []
 
 

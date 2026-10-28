@@ -93,7 +93,7 @@ func _run() -> void:
 	await wait(2.0)
 	check(q.tesla_mode == "deployed" and maw.tesla_mode == "deployed", "   then rooted")
 	check(int(p["cap"]) == int(Defs.NB["queen_supply"]), "   supply %d (the Mother's, as the old Burrow's)" % int(p["cap"]))
-	check(g.on_swamp(0, q.position) and g.on_swamp(0, maw.position), "   swamp round the rooted Mother and Rootmaw")
+	check(g.on_swamp(0, q.position) and g.on_swamp(0, maw.position), "   swamp round the rooted Mother, and under the Rootmaw")
 	# 1. rooting buffs
 	var a: Unit = g._add_unit(BroodNew.MAW, 0, spot_near(q.position, 30.0))
 	a.hp = a.max_hp
@@ -111,7 +111,9 @@ func _run() -> void:
 	q.cmd_uproot(true)
 	var packed: bool = await wait_for(func() -> bool: return q.tesla_mode == "packed", 8.0)
 	check(packed, "2. the Mother uproots (%.1f s)" % float(Defs.NB["queen_switch"]))
-	var walk_to := spot_near(q.position, 8.0)
+	var walk_to: Vector2 = q.position + (maw.position - q.position).normalized() * 3.0 * Defs.TILE     # (toward her Rootmaw: it stays on her swamp)
+	if not g._walkable(g.cell_of(walk_to)):
+		walk_to = spot_near(q.position, 3.0)
 	q.cmd_move(walk_to)
 	await wait(1.5)
 	var moving: bool = q.velocity.length() > 5.0
@@ -213,7 +215,7 @@ func _run() -> void:
 	check(maw.tesla_mode == "packed" and float(maw.nb.get("food", 0.0)) == 150.0, "   HAUL: it keeps its food uprooted")
 	maw.cmd_move(spot_near(maw.position, 6.0))
 	await wait(1.0)
-	check(maw.speed < float(maw.d["speed"]) * 0.6, "   and walks at half speed (%.0f of %.0f)" % [maw.speed, float(maw.d["speed"])])
+	check(maw.speed < float(maw.d["speed"]) * 0.7, "   and walks at half speed (with the swamp's speed on top) (%.0f of %.0f)" % [maw.speed, float(maw.d["speed"])])
 	var at: Vector2 = maw.position
 	maw.take_damage(99999.0, null)
 	await wait(0.1)
@@ -231,6 +233,92 @@ func _run() -> void:
 	var paid: bool = await wait_for(func() -> bool: return int(p["gold"]) >= 20, 40.0)
 	check(paid, "7. grubs carry food from the Rootmaw to the Mother (%d biomass)" % int(p["gold"]))
 	check(mine("grub").any(func(gr) -> bool: return gr.anim == "harvest" or gr.work == "feeding" or gr.carrying > 0), "   harvesting at its flank")
+	# 12. the turtle is the expansion: a Rootmaw roots only on its side's swamp (any: it need not join the Mother's)
+	var far2 := spot_near(q.position, 21.0)
+	var dir2: Vector2 = (far2 - q.position).normalized()
+	var mx: Unit = g._add_unit(BroodNew.MAW, 0, far2)
+	mx.cmd_deploy()
+	await wait(0.3)
+	check(mx.tesla_mode == "packed", "12. a Rootmaw 21 tiles out (off her swamp) may not root")
+	var tx: Unit = g._add_unit(BroodNew.TURTLE, 0, q.position + dir2 * 14.0 * Defs.TILE)
+	tx.cmd_deploy()
+	await wait(float(Defs.NB["turtle_switch"]) + 1.2)
+	check(BroodNew.on_swamp(g, 0, far2), "    a Mound Turtle rooted 14 tiles out spreads swamp there")
+	mx.cmd_deploy()
+	await wait(float(Defs.NB["maw_switch"]) + 1.0)
+	mx.nb["food"] = 0.0
+	await wait(2.0)
+	check(mx.tesla_mode == "deployed" and float(mx.nb["food"]) > 3.0, "    now the Rootmaw roots there and feeds (%.0f food)" % float(mx.nb["food"]))
+	tx.take_damage(999999.0, null)
+	var dried: bool = await wait_for(func() -> bool: return bool(mx.nb.get("dry", false)), 30.0)
+	var f0: float = float(mx.nb["food"])
+	await wait(2.0)
+	check(dried and float(mx.nb["food"]) <= f0 + 0.01, "    the turtle killed: its swamp shrinks back and the Rootmaw stops feeding")
+	mx.take_damage(999999.0, null)
+	# 13. a rooted turtle closes a ramp (body-blocks it, as the Crown's wall)
+	var ramp_c := Vector2i(-1, -1)
+	var best_d := -1.0
+	for y in Game.H:
+		for x in Game.W:
+			# (the ramp farthest from the Mother and anything of hers)
+			if g.ramp[g.idx(Vector2i(x, y))] != 0 and Vector2(x, y).distance_to(q.position / Defs.TILE) > best_d:
+				best_d = Vector2(x, y).distance_to(q.position / Defs.TILE)
+				ramp_c = Vector2i(x, y)
+	var cells: Array = [ramp_c]
+	var seen := {ramp_c: true}
+	var ki := 0
+	while ki < cells.size():
+		var c: Vector2i = cells[ki]
+		ki += 1
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if g.in_map(n) and not seen.has(n) and g.ramp[g.idx(n)] != 0:
+				seen[n] = true
+				cells.append(n)
+	var lo := Vector2i(9999, 9999)
+	var hi := Vector2i(-1, -1)
+	for c in cells:
+		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+	var mid: Vector2 = (Vector2(lo + hi) * 0.5 + Vector2(0.5, 0.5)) * Defs.TILE
+	# the way up: the axis whose two ends are at different heights
+	var my := (lo.y + hi.y) / 2
+	var mxx := (lo.x + hi.x) / 2
+	var hx: bool = g.in_map(Vector2i(lo.x - 1, my)) and g.in_map(Vector2i(hi.x + 1, my)) \
+		and g.height[g.idx(Vector2i(lo.x - 1, my))] != g.height[g.idx(Vector2i(hi.x + 1, my))]
+	var along := Vector2(1, 0) if hx else Vector2(0, 1)
+	var span: int = (hi.x - lo.x + 1) if hx else (hi.y - lo.y + 1)
+	var wide: int = (hi.y - lo.y + 1) if hx else (hi.x - lo.x + 1)
+	var half_len: float = (float(span) * 0.5 + 4.0) * Defs.TILE
+	var wall: Unit = g._add_unit(BroodNew.TURTLE, 0, mid)
+	wall.cmd_deploy()
+	await wait(float(Defs.NB["turtle_switch"]) + 0.5)
+	var runners: Array = []
+	for i in 8:
+		var r: Unit = g._add_unit("raptor", 1, mid - along * half_len + along.orthogonal() * float(i % 3 - 1) * 14.0 - along * float(i / 3) * 16.0)
+		runners.append(r)
+		r.cmd_move(mid + along * half_len)
+	await wait(25.0)
+	var through: int = runners.filter(func(r) -> bool: return is_instance_valid(r) and not r.dead and (r.position - mid).dot(along) > float(Defs.NB["turtle_rooted_r"]) + 10.0).size()
+	check(through == 0, "13. a rooted Mound Turtle closes a ramp %d tiles wide (%d long): %d of 8 Raptors got past in 25 s" % [wide, span, through])
+	wall.cmd_uproot(true)
+	await wait(float(Defs.NB["turtle_switch"]) + 0.3)
+	wall.cmd_move(mid + along.orthogonal() * 6.0 * Defs.TILE)
+	var killed: int = runners.filter(func(r) -> bool: return not is_instance_valid(r) or r.dead).size()
+	check(true, "    (meanwhile the turtle bit %d of the 8 to death: they kept at it and its shell shrugs off their claws)" % killed)
+	await wait(4.0)
+	runners.clear()
+	for i in 8:
+		var r2: Unit = g._add_unit("raptor", 1, mid - along * half_len + along.orthogonal() * float(i % 3 - 1) * 14.0 - along * float(i / 3) * 16.0)
+		runners.append(r2)
+		r2.cmd_move(mid + along * half_len)
+	await wait(12.0)
+	through = runners.filter(func(r) -> bool: return is_instance_valid(r) and not r.dead and (r.position - mid).dot(along) > float(Defs.NB["turtle_rooted_r"]) + 10.0).size()
+	check(through >= 6, "    uprooted and moved off: the ramp is open again (%d of 8 through)" % through)
+	for r in runners:
+		if is_instance_valid(r) and not r.dead:
+			g.consume_unit(r)
+	g.consume_unit(wall)
 	# 9 (after 8). a saved game keeps the new Brood: captured now, continued after the end
 	q.nb["eggs"] = 7
 	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(g, main.last_cfg)))

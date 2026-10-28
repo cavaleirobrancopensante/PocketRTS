@@ -4097,6 +4097,8 @@ func _move(want: Vector2, delta: float) -> void:
 			position = game.resolve_terrain(position, before, radius, team)
 		if not game.cw_gates.is_empty():
 			position = CwUnits.gate_push(self, before, position)     # a Plate Wagon blocks the track
+		if not game.nb_walls.is_empty():
+			position = BroodNew.push_out(game, self, position, before)    # a rooted Mound Turtle: a wall of shell
 	if want.length() > 5.0 and phase == "":
 		var nf := facing.lerp(want.normalized(), clampf(delta * 10.0, 0.0, 1.0)).normalized()
 		if _towed() and not is_air():

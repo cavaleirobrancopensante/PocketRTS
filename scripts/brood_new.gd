@@ -175,7 +175,7 @@ static func recount(g: Game, t: int) -> void:
 	g._recount_supply(t)
 
 
-## The swamp the rooted Mother and Rootmaws spread: [centre in tiles, radius in tiles].
+## The swamp the rooted Mother and Mound Turtles spread (a Rootmaw spreads none: it needs swamp to feed): [centre in tiles, radius in tiles].
 static func swamp_sources(g: Game, t: int) -> Array:
 	var out: Array = []
 	if not on(g, t):
@@ -185,11 +185,15 @@ static func swamp_sources(g: Game, t: int) -> Array:
 			continue
 		if u.kind == QUEEN:
 			out.append([u.position / Defs.TILE, float(Defs.NB["queen_swamp"])])
-		elif u.kind == MAW:
-			out.append([u.position / Defs.TILE, float(Defs.NB["maw_swamp"])])
 		elif u.kind == TURTLE:
 			out.append([u.position / Defs.TILE, float(Defs.NB["turtle_swamp"])])
 	return out
+
+
+## A Rootmaw roots and feeds on ANY swamp of its side (the owner, 13:40): the Mother's, a turtle's far away (a hidden
+## base); it need not be joined to hers. Off the swamp (its turtle killed, the swamp shrunk back) it stops feeding.
+static func on_swamp(g: Game, t: int, p: Vector2) -> bool:
+	return t >= 0 and t < g.swamp.size() and g.on_swamp(t, p)
 
 
 ## Where the new Brood's grubs unload (food and cocoons) and creatures are offered up: the Mother.
@@ -436,6 +440,8 @@ static func fertilising(u: Unit) -> bool:
 static func root_problem(g: Game, u: Unit) -> String:
 	if u.kind != MAW:
 		return ""
+	if not on_swamp(g, u.team, u.position):
+		return "A Rootmaw roots only on your swamp: root a Mound Turtle (or the Brood Mother) to spread it."
 	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
 	for o in g.units:
 		if o != u and o.kind == MAW and not o.dead and o.tesla_mode != "packed" and o.position.distance_to(u.position) < r:
@@ -533,7 +539,11 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 				u.hp = minf(u.max_hp, u.hp + float(Defs.NB["queen_regen"]) * delta)
 		MAW:
 			var food := float(u.nb.get("food", 0.0))
-			if rooted(u) and u.nb.has("spot"):
+			u.nb["wet_t"] = float(u.nb.get("wet_t", 0.0)) - delta
+			if float(u.nb["wet_t"]) <= 0.0:
+				u.nb["wet_t"] = 0.5
+				u.nb["dry"] = not on_swamp(g, u.team, u.position)      # (off the swamp: it stops feeding)
+			if rooted(u) and u.nb.has("spot") and not bool(u.nb.get("dry", false)):
 				var id := int(u.nb["spot"])
 				if g.nb_spots.has(id):
 					var s: Dictionary = g.nb_spots[id]
@@ -561,9 +571,16 @@ static func _mode_changed(g: Game, u: Unit, was: String) -> void:
 			recount(g, u.team)
 			g.swamp_dirty = true
 		"deploying":
+			if u.kind == TURTLE:
+				u.radius = float(Defs.NB["turtle_rooted_r"])       # (sunk into the mud, wide: it closes a ramp)
+				if not g.nb_walls.has(u):
+					g.nb_walls.append(u)
 			if was == "packed" and u.kind == MAW and not u.nb.has("spot"):
 				_claim(g, u)      # (rooted by any way other than the button: still takes its ground)
 		"packed":
+			if u.kind == TURTLE:
+				u.radius = float(u.d["radius"])
+				g.nb_walls.erase(u)
 			recount(g, u.team)
 
 
@@ -580,6 +597,31 @@ static func still_tick(g: Game, u: Unit, delta: float) -> void:
 			g.consume_unit(u)
 
 
+## A ROOTED Mound Turtle is a wall of shell (the owner, 13:34: it closes a ramp like the Crown's wall): a ground unit of
+## another side can't walk into its body; it is put back on its edge (it may slide round it where there is room). Its own
+## side's creatures climb over the shell (as friends pass a gate). Flyers pass over.
+static func push_out(g: Game, u: Unit, p: Vector2, before: Vector2) -> Vector2:
+	if u.is_air() or u.kind == TURTLE:
+		return p
+	for w in g.nb_walls:
+		if not is_instance_valid(w) or w.dead or w.team == u.team or g.allied(w.team, u.team):
+			continue
+		var r: float = w.radius + u.radius
+		var d: Vector2 = p - w.position
+		var dl := d.length()
+		if dl >= r:
+			continue
+		if dl < 0.01:
+			d = before - w.position
+			dl = maxf(d.length(), 0.01)
+		var out: Vector2 = w.position + d / dl * r
+		# (put back on the rim; if that is in a cliff or a building, stay where it was)
+		p = g.resolve_terrain(out, before, u.radius, u.team)
+		if p.distance_to(w.position) < r - 0.5:
+			p = before
+	return p
+
+
 ## Less damage while rooted (dug in): the root armour first, then a share off.
 static func incoming(u: Unit, amount: float) -> float:
 	if rooted(u) and ROOTERS.has(u.kind) and amount >= 1.0:
@@ -594,6 +636,7 @@ static func on_death(g: Game, u: Unit) -> void:
 		_release(g, u)
 	if u.kind == EGG:
 		g.corpses.erase(u)
+	g.nb_walls.erase(u)
 	if u.team >= 0:
 		recount(g, u.team)
 		g.swamp_dirty = true
@@ -830,6 +873,10 @@ static func draw(u: Unit, top: float) -> void:
 		var y := top + 6.0
 		u.draw_rect(Rect2(-bw * 0.5, y, bw, 3).grow(0.5), Color(0, 0, 0, 0.6))
 		u.draw_rect(Rect2(-bw * 0.5, y, bw * f, 3), Color(0.75, 0.9, 0.25))
+		if rooted(u) and bool(u.nb.get("dry", false)):
+			var font := ThemeDB.fallback_font
+			u.draw_string_outline(font, Vector2(-14, y + 16), "dry", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.8))
+			u.draw_string(font, Vector2(-14, y + 16), "dry", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.6, 0.4))
 		if u.selected and rooted(u):
 			var gl := ground_left(g, u) / float(Defs.PIT_GROUND)
 			u.draw_rect(Rect2(-bw * 0.5, y + 4.5, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
@@ -887,6 +934,10 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 			u.nb[k] = int(u.nb[k])
 	u.nb["m"] = u.tesla_mode
 	u.nb.erase("tinted")          # (a fresh sprite: the egg's red is put on again)
+	if u.kind == TURTLE and u.tesla_mode != "packed":
+		u.radius = float(Defs.NB["turtle_rooted_r"])
+		if not u.game.nb_walls.has(u):
+			u.game.nb_walls.append(u)
 	if ROOTERS.has(u.kind):
 		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)
 

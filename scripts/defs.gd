@@ -1160,10 +1160,10 @@ const UNITS := {
 	},
 	"mound_turtle": {
 		"tags": ["armored"],
-		"name": "Mound Turtle", "hp": 350, "armor": 0, "speed": 30, "cost": 75, "time": 18.0, "supply": 0,
-		"sight": 5, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 20, "from": "brood_mother",
-		"no_attack": true, "faction": "brood", "new_brood": true,
-		"about": "A huge swamp turtle (the old Clutch Mound). ROOT it: it sinks into the mud, gives 12 supply, makes the Brood Mother lay 10% faster (up to 3 turtles) and turns the ground round it to swamp (10 tiles). Uprooted it walks slowly and gives no supply. It doesn't fight.",
+		"name": "Mound Turtle", "hp": 600, "armor": 2, "speed": 26, "cost": 150, "time": 25.0, "supply": 0,
+		"sight": 6, "range": 22, "damage": 6, "cooldown": 1.6, "aim": 0.4, "radius": 26, "from": "brood_mother",
+		"faction": "brood", "new_brood": true,
+		"about": "A huge swamp turtle, the Brood's expansion and its tank. ROOT it: it sinks into the mud, gives 12 supply, makes the Brood Mother lay 10% faster (up to 3 turtles) and turns the ground round it to swamp (10 tiles): Rootmaws can root on swamp joined to the Mother's. Rooted it is very hard to hurt and wide enough to close a ramp. Uprooted it walks slowly, gives no supply and no swamp. A weak bite.",
 	},
 	"food_pile": {
 		"tags": ["light"],
@@ -1836,12 +1836,13 @@ const NB := {
 	"fert_time": 1.5, "fert_wait": 25.0,         # breath per egg; an egg not fertilised in this time hatches as a grub
 	"queen_supply": 16, "turtle_supply": 12,     # supply: the Mother (the old Burrow's), every ROOTED Mound Turtle (the old Clutch Mound's)
 	"turtle_switch": 2.5, "turtle_swamp": 10.0,  # the Mound Turtle: seconds to root or uproot, tiles of swamp round it rooted
+	"turtle_rooted_r": 60.0,                     # px: a rooted turtle's body (wider than a 3-tile ramp: nothing slips past along its rails)
 	"queen_regen": 4.0,                          # hp/s healed while rooted
 	"maw_fill": 4.0, "maw_cap": 300.0, "start_food": 120.0,           # food/s a rooted Rootmaw draws from its ground, what it holds
 	"maw_crew": 6, "pile_crew": 4,
 	"haul_speed": 0.5,                           # HAUL: the full Rootmaw walks at half speed
 	"pile_rot": 0.6,                             # food a pile loses a second
-	"queen_swamp": 9.0, "maw_swamp": 4.0,        # tiles of swamp round the rooted Mother and Rootmaws
+	"queen_swamp": 12.0,                         # tiles of swamp round the rooted Mother (her main base, as the old capital's)
 	# the fathers and the warriors they father; the others wait for their fathers (a Pterodactyl for the fliers, a
 	# Spitter father): not in the new Brood yet
 	"lines": {"tyrannosaur": ["raptor", "brute", "spore_mother", "mist_toad"]},

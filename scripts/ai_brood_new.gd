@@ -169,7 +169,7 @@ func _nb_find_spot(q: Unit, m: Unit):
 			var c := game.cell_of(p)
 			if not game._walkable(c) or game.region_of(c) != home:
 				continue
-			if not _nb_spot_ok(p, m):
+			if not _nb_spot_ok(p, m) or not BroodNew.on_swamp(game, team, p):      # (a Rootmaw roots only on its side's swamp)
 				continue
 			var s := p.distance_to(q.position) + (60.0 if int(game.height[game.idx(c)]) != h else 0.0) + p.distance_to(m.position) * 0.3
 			var foe := _nb_nearest_foe_pos(p)
