@@ -3593,9 +3593,9 @@ func _tick_unit(delta: float) -> void:
 			_walled_check(delta)
 			if target:
 				want = _engage(target, delta, true)
-				if position.distance_to(leash_from) > 320.0:
+				if position.distance_to(leash_from) > 320.0 and not (_k_nb and tesla_mode != "packed"):
 					target = null
-					cmd_move(leash_from)
+					cmd_move(leash_from)       # (not a rooted new-Brood creature: it can't chase, and the move would uproot it)
 		"hold":
 			if scan_t <= 0.0:
 				scan_t = 0.3
@@ -4067,8 +4067,8 @@ func _move(want: Vector2, delta: float) -> void:
 	var v := want + push
 	if want == Vector2.ZERO:
 		v = push
-	if stun_t > 0.0 or braced or tongue_stage != "":
-		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it)
+	if stun_t > 0.0 or braced or tongue_stage != "" or (_k_nb and tesla_mode != "packed"):
+		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it; a rooted new-Brood creature is dug in: her own eggs don't shove the Mother)
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0:
 		position = game.resolve_terrain(position + knock * delta, position, radius, team)
