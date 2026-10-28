@@ -41,22 +41,21 @@ func _run() -> void:
 		mine[i].cmd_attack(theirs[i % theirs.size()])
 		theirs[i].cmd_attack(mine[i % mine.size()])
 	var e := 0.0
-	var smoke0 := 0
 	var peak := 0
 	while e < 62.0:
 		await process_frame
 		var now := Time.get_ticks_usec()
 		if e > 2.0:
 			_ft.append((now - _last) / 1000.0)
-		elif e > 1.9:
-			Prof.flush()
-			smoke0 = int(Prof.us.get("powder smoke", 0))
+		elif e > 1.9 and g.powder_smoke:
+			g.powder_smoke.tick_us = 0
+			g.powder_smoke.ticks = 0
 		_last = now
 		e += 1.0 / 60.0
 		if g.powder_smoke:
 			peak = maxi(peak, g.powder_smoke.alive)
-	Prof.flush()
-	var smoke := int(Prof.us.get("powder smoke", 0)) - smoke0
+	var smoke: int = g.powder_smoke.tick_us if g.powder_smoke else 0
+	var ticks: int = g.powder_smoke.ticks if g.powder_smoke else 0
 	var s := _ft.duplicate()
 	s.sort()
 	var tot := 0.0
@@ -66,8 +65,9 @@ func _run() -> void:
 	var low := 0.0
 	for i in k:
 		low += s[s.size() - 1 - i]
-	print("BENCH smoke=%d frames=%d avg %.2f ms, median %.2f ms, 1%% low %.2f ms, smoke %.3f ms a frame, puffs made %d, peak alive %d" % [
-		lv, _ft.size(), tot / _ft.size(), s[s.size() / 2], low / k, smoke / 1000.0 / _ft.size(),
+	print("BENCH smoke=%d frames=%d avg %.2f ms, median %.2f ms, 1%% low %.2f ms, smoke %.3f ms a frame (%.2f ms a tick, %d ticks), puffs made %d, peak alive %d" % [
+		lv, _ft.size(), tot / _ft.size(), s[s.size() / 2], low / k, smoke / 1000.0 / _ft.size(), smoke / 1000.0 / maxf(ticks, 1), ticks,
 		g.powder_smoke.made if g.powder_smoke else 0, peak])
-	await _snap("bench_smoke%d" % lv)
+	if DisplayServer.get_name() != "headless":
+		await _snap("bench_smoke%d" % lv)
 	quit(0)

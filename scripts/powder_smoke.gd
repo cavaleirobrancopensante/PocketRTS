@@ -7,14 +7,15 @@ extends Node2D
 ## Looks only. It never touches the simulation: its own random numbers (rng), nothing it does
 ## is read by the game, and it runs (or not, Settings.powder_smoke) the same on the host, the
 ## online guest and in replays. Puffs live in packed arrays (a ring: the newest overwrite the
-## oldest) and are drawn in one MultiMesh, shown twice: the haze under the units (z -15) and a
-## thin veil over them (z 1, a third as solid), under the health bars' contrast, the orders,
-## the overlay, the fog and the UI. A puff shows only where the watching side sees now: it is
+## oldest) and are drawn in one MultiMesh, the haze under the units (z -15), and one puff in
+## three again, half as solid, in a second one: a thin veil over them (z 1), under the effects,
+## the overlay with the orders, the fog and the UI. A puff shows only where the watching side sees now: it is
 ## not made on ground out of sight, and one that drifts out of sight fades out.
 
 const Z_UNDER := -15            # over the ground marks (-16), under every building and unit
 const Z_VEIL := 1               # the thin veil over the units (body bars are z 1 too, effects 3)
-const VEIL := 0.33              # how solid the veil is, as a share of the haze
+const VEIL := 0.5               # how solid the veil's puffs are, as a share of the haze's
+const VEIL_EVERY := 3           # the veil draws one puff in three (its own MultiMesh: a third of the fill)
 const FRAMES := 3               # assets/effects/smoke.png frames 1..3 (frame 0 has the muzzle flash)
 
 ## Each kind of shot: [puffs on full, puffs on light, life min, life max, size at birth,
@@ -31,7 +32,7 @@ const KINDS := {
 }
 const CAP := {2: 720, 1: 260}          # puffs alive at most (full, light)
 const LIFE_K := {2: 1.0, 1: 0.65}      # light: shorter lives too
-const HZ := {2: 30.0, 1: 15.0}         # how often the puffs move and the MultiMesh is refilled
+const HZ := {2: 20.0, 1: 12.0}         # how often the puffs move and the MultiMesh is refilled (they move a few px a second)
 const SOFT := 0.8                      # past this share of the cap the oldest puffs age 12x faster (gone in a second or two)
 
 static var force := -1                 # tests and tools: this level in every new match (-1: the setting)
@@ -64,6 +65,11 @@ var _mm: MultiMesh
 var _under: MultiMeshInstance2D
 var _veil: MultiMeshInstance2D
 var _buf := PackedFloat32Array()
+var _mmv: MultiMesh                    # the veil's puffs
+var _bufv := PackedFloat32Array()
+var _capv := 0
+var tick_us := 0                       # time spent moving the puffs and filling the buffers (the bench)
+var ticks := 0
 var _acc := 0.0
 var _vis_t := 0.0
 var wind := Vector2(7, 2)              # px/s: a light wind shared by every puff, slowly turning
@@ -95,6 +101,9 @@ func setup(g: Game, lv: int) -> void:
 	_seen_to.resize(cap)
 	_buf.resize(cap * 16)
 	_buf.fill(0.0)
+	_capv = cap / VEIL_EVERY + 1
+	_bufv.resize(_capv * 16)
+	_bufv.fill(0.0)
 	if level == 0:
 		return
 	_mm = MultiMesh.new()
@@ -116,12 +125,19 @@ func setup(g: Game, lv: int) -> void:
 	_under.z_index = Z_UNDER
 	_under.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(_under)
+	_mmv = MultiMesh.new()
+	_mmv.transform_format = MultiMesh.TRANSFORM_2D
+	_mmv.use_colors = true
+	_mmv.use_custom_data = true
+	_mmv.mesh = _mm.mesh
+	_mmv.custom_aabb = _mm.custom_aabb
+	_mmv.instance_count = _capv
+	_mmv.visible_instance_count = 0
 	_veil = MultiMeshInstance2D.new()
-	_veil.multimesh = _mm
+	_veil.multimesh = _mmv
 	_veil.texture = tex
 	_veil.material = mat
 	_veil.z_index = Z_VEIL
-	_veil.self_modulate = Color(1, 1, 1, VEIL)
 	_veil.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(_veil)
 
@@ -190,6 +206,7 @@ func clear() -> void:
 	alive = 0
 	if _mm:
 		_mm.visible_instance_count = 0
+		_mmv.visible_instance_count = 0
 
 
 func _process(delta: float) -> void:
@@ -201,6 +218,8 @@ func _process(delta: float) -> void:
 	if _acc >= step:
 		tick(_acc)
 		_acc = 0.0
+		tick_us += Time.get_ticks_usec() - _p0
+		ticks += 1
 	Prof.add("powder smoke", _p0)
 
 
@@ -209,6 +228,7 @@ func tick(dt: float) -> void:
 	if alive == 0:
 		if _mm and _mm.visible_instance_count != 0:
 			_mm.visible_instance_count = 0
+			_mmv.visible_instance_count = 0
 		return
 	# the wind: light, turning slowly over the match (minutes for a half turn), a little gusty
 	var clk := game.clock
@@ -223,6 +243,7 @@ func tick(dt: float) -> void:
 	var all_view := vr.size == Vector2.ZERO
 	var damp := pow(0.35, dt)                        # (the shot's push dies away in about a second)
 	var n := 0
+	var nv := 0
 	var j := _w                                      # (oldest first)
 	for _i in cap:
 		var life := _life[j]
@@ -272,6 +293,12 @@ func tick(dt: float) -> void:
 					_buf[o + 11] = al
 					_buf[o + 12] = _frame[j]
 					n += 1
+					if j % VEIL_EVERY == 0 and nv < _capv:
+						var ov := nv * 16
+						for q in 13:
+							_bufv[ov + q] = _buf[o + q]
+						_bufv[ov + 11] = al * VEIL
+						nv += 1
 		j += 1
 		if j >= cap:
 			j = 0
@@ -280,7 +307,10 @@ func tick(dt: float) -> void:
 	# (per instance: transform 8 floats, colour 4, custom 4: the frame, then three unused)
 	if n > 0:
 		_mm.buffer = _buf
+	if nv > 0:
+		_mmv.buffer = _bufv
 	_mm.visible_instance_count = n
+	_mmv.visible_instance_count = nv
 
 
 ## A 1x1 quad centred on 0 (the transform scales it to the puff), UVs the right way up in 2D.
