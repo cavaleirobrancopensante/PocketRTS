@@ -1067,8 +1067,8 @@ func can_hit(e: Entity) -> bool:
 		return false
 	if _d_medic or _d_noatk or e.untouchable():
 		return false
-	if _k_nb and kind == BroodNew.QUEEN and tesla_mode != "packed":
-		return false            # (the new Brood's Mother can't attack from her nest: to fight she uproots)
+	if _k_nb and tesla_mode != "packed" and BroodNew.ROOTERS.has(kind):
+		return false            # (the new Brood: no rooted creature attacks, rooted is a building; to fight it uproots)
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
 		return false            # a deflated Bloater, a Skywing landing or taking off
 	if owl_t >= 0.0:
@@ -2239,7 +2239,7 @@ func _bombard(delta: float) -> Vector2:
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
 	if phase != "" or (dist <= rng and dist >= min_r):
 		path = PackedVector2Array()
-		if deploys() and tesla_mode != "deployed":
+		if deploys() and not _k_nb and tesla_mode != "deployed":
 			if tesla_mode == "packed":
 				tesla_mode = "deploying"
 				tesla_t = switch_time()
@@ -4462,7 +4462,8 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	var dist := e.edge_distance(position) - radius
 	var rng := _range()
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
-	if deploys() and tesla_mode != "deployed":
+	if deploys() and not _k_nb and tesla_mode != "deployed":
+		# (a gun sets up to shoot; the new Brood's rooters fight uprooted: rooted they don't attack at all)
 		if tesla_mode == "packed" and dist <= rng and dist >= min_r and game.target_seen(team, e, position):
 			tesla_mode = "deploying"
 			tesla_t = switch_time()

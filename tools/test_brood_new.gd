@@ -359,9 +359,38 @@ func _run() -> void:
 	# 11. SACRIFICE at the Mother: she devours it
 	var r1: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
 	var ess0: float = float(p["res2"])
+	q.nb["eggs"] = 2
+	q.nb["egg_t"] = -1000.0        # (no egg grows meanwhile: the count is the offering's)
+	var eggs_s0: int = 2
 	r1.cmd_sacrifice()
 	var ate: bool = await wait_for(func() -> bool: return float(p["res2"]) > ess0, 8.0)
 	check(ate and float(q.nb.get("devour", 0.0)) > 0.0 and BroodNew.anim(q, false) == "attack", "11. SACRIFICE at the Mother: essence %.0f -> %.0f, she devours it (a swipe)" % [ess0, float(p["res2"])])
+	check(int(q.nb.get("eggs", 0)) == eggs_s0 + 1, "    and she gets 1 egg at once (%d -> %d)" % [eggs_s0, int(q.nb.get("eggs", 0))])
+	q.nb["eggs"] = int(Defs.NB["eggs_max"])
+	var r2: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
+	var ess1: float = float(p["res2"])
+	r2.cmd_sacrifice()
+	await wait_for(func() -> bool: return float(p["res2"]) > ess1, 8.0)
+	check(int(q.nb.get("eggs", 0)) == int(Defs.NB["eggs_max"]), "    her clutch full: no extra egg (%d)" % int(q.nb.get("eggs", 0)))
+	q.nb["egg_t"] = 0.0
+	# 12. no rooted creature attacks (the owner, 17:14): rooted, the Mother, a Rootmaw, a turtle and the Tyrannosaur can't
+	# hit a foe beside them; uprooted, they can
+	var foe: Unit = g._add_unit("musketeer", 1, q.position + Vector2(0, 400))
+	var rooted_hit := []
+	for k in [BroodNew.QUEEN, BroodNew.MAW, BroodNew.TURTLE, BroodNew.FATHER]:
+		var c: Unit = q if k == BroodNew.QUEEN else g._add_unit(k, 0, q.position + Vector2(0, 360))
+		var was: String = c.tesla_mode
+		c.tesla_mode = "deployed"
+		if c.can_hit(foe):
+			rooted_hit.append(k)
+		c.tesla_mode = "packed"
+		if not c.can_hit(foe):
+			rooted_hit.append(k + " (not even uprooted)")
+		c.tesla_mode = was
+		if c != q:
+			g.consume_unit(c)
+	g.consume_unit(foe)
+	check(rooted_hit.is_empty(), "12. no rooted creature attacks; uprooted they do (%s)" % str(rooted_hit))
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)

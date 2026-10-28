@@ -301,8 +301,8 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 ## heave in code; the egg flies from her clutch (CLUTCH_AT). Either way the egg then goes to the rim in POP_TIME s, over
 ## an arc POP_ARC px high.
 const LAY_DUR := [0.14, 0.18, 0.3, 0.3, 0.18, 0.16]
-const LAY_EGG_AT := Vector2(14.0, -62.0)
-const LAY_EGG_BIG := 1.7
+const LAY_EGG_AT := Vector2(14.0, -57.0)
+const LAY_EGG_BIG := 1.6
 const LAY_TIME := 1.0
 const POP_TIME := 0.55
 const POP_ARC := 34.0
@@ -457,7 +457,7 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 			Sfx.play_any(["roar", "combat/brute_attack"], f.position, -10.0)
 
 
-## The computer's Mother (and the defence test's): rooted at home. She CANNOT ATTACK while rooted (the owner, 15:58):
+## The computer's Mother (and the defence test's): rooted at home. No rooted creature attacks (the owner, 15:58, 17:14):
 ## when enemies reach her (strike at her, or come within MOTHER_FIGHT tiles of her body) she uproots and fights, on a
 ## leash (MOTHER_LEASH tiles from her nest); once nothing has been at her for MOTHER_CALM s, she goes back and roots.
 ## st: the caller's own state (her nest, the calm time); dt: the time since the last call.
@@ -505,6 +505,9 @@ static func devour(q: Unit, u: Unit) -> void:
 	if q.dead:
 		return
 	q.nb["devour"] = 0.65
+	# each offering gives her one egg at once, on top of the essence (the owner, 17:20; none if her clutch is full)
+	if int(q.nb.get("eggs", 0)) < int(Defs.NB["eggs_max"]):
+		q.nb["eggs"] = int(q.nb.get("eggs", 0)) + 1
 	if u.position.distance_to(q.position) > 1.0:
 		q.facing = (u.position - q.position).normalized()
 	q.frame_i = 0
@@ -886,8 +889,6 @@ static func anim(u: Unit, moving: bool) -> String:
 			if u.tesla_mode == "deployed":
 				if u.kind == QUEEN and float(u.nb.get("lay_t", 0.0)) > 0.0 and fr.has("lay_se"):
 					return "lay"
-				if u.phase != "":
-					return "attack"         # (the Rootmaw, the turtle and the Tyrannosaur bite from where they are rooted; the Mother can't: Unit.can_hit)
 				if u.kind == MAW:
 					var lv := "fill%d" % maw_level(u)
 					return lv if fr.has(lv + "_se") else "fill"

@@ -528,8 +528,8 @@ def nest_box(im):
 
 
 def mother_lay(small):
-    """Her laying in the nest (MOTHER_LAY, one row of 6): scaled so its nest is as wide as her rooted loop's, and lined
-    up on the nest (the nest never shifts against the rooted loop); prints where frame 6 draws the new egg (BroodNew
+    """Her laying in the nest (MOTHER_LAY, one row of 6): scaled so its resting first frame covers as much as her rooted
+    loop's (the same body size), and lined up on the nest (the nest never shifts against the rooted loop); prints where frame 6 draws the new egg (BroodNew
     LAY_EGG_AT: the game's egg takes over there)."""
     npx, rows = sheet_rows(MOTHER_LAY)
     if not rows:
@@ -539,6 +539,10 @@ def mother_lay(small):
     rcx, rw, ry = nest_box(rf)
     rax, ray = anchor_of(rf)
     sc = float(np.median([rw / nest_box(c)[1] for c in cut]))
+    # (her body drawn bigger against the nest than in the rooted loop: the rest frame's area matched to the loop's,
+    # so she does not swell when she starts to lay)
+    a0 = float((ia.shrink(cut[0], sc)[..., 3] > 0).sum())
+    sc *= float(np.sqrt((rf[..., 3] > 0).sum() / a0))
     fr = [ia.snap_team(ia.shrink(c, sc)) for c in cut]
     small[("lay", "se")] = fr
     for k, im in enumerate(fr):

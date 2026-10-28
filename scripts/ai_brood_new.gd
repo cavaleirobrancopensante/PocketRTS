@@ -213,10 +213,13 @@ func _nb_father(q: Unit) -> void:
 		return
 	var d := f.position.distance_to(q.position)
 	var reach := float(Defs.NB["father_r"]) * Defs.TILE
+	var threat := _nb_threat(q) != Vector2.INF
 	if f.tesla_mode == "deployed":
-		if d > reach:
-			f.cmd_uproot(false)
+		if d > reach or threat:
+			f.cmd_uproot(false)       # (no rooted creature attacks: to fight off an attack at the Mother he gets up)
 		return
+	if threat:
+		return          # (uprooted, he fights with the others: _nb_army; he roots again when it is calm)
 	if f.tesla_mode != "packed" or f.target != null:
 		return
 	if d <= reach * 0.9 and d >= q.radius + f.radius and (f.order == "idle" or f.order == "hold"):
@@ -281,14 +284,19 @@ func _nb_army_units() -> Array:
 		and not BroodNew.is_nb(u.kind) and u.kind != "horse")
 
 
-func _nb_army(q: Unit) -> void:
-	var army := _nb_army_units()
-	# defence: anything at the Mother is fought by everything (the father too)
-	var threat := Vector2.INF
+## An enemy near the Mother (13 tiles), or Vector2.INF.
+func _nb_threat(q: Unit) -> Vector2:
 	for u in game.units_near(q.position, 13.0 * Defs.TILE):
 		if game.hostile(u.team, team) and not u.dead and not u.off_field:
-			threat = u.position
-			break
+			return u.position
+	return Vector2.INF
+
+
+func _nb_army(q: Unit) -> void:
+	var army := _nb_army_units()
+	# defence: anything at the Mother is fought by every creature that walks, and by the father, who gets up from his
+	# nest for it (rooted creatures don't attack: the Rootmaws and turtles stay rooted, the Mother: BroodNew.mother_guard)
+	var threat := _nb_threat(q)
 	if threat != Vector2.INF:
 		var f := BroodNew.father(game, team)
 		var defenders := army.duplicate()
