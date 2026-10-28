@@ -25,6 +25,8 @@
 
 ## Current work
 
+- Turning gear rings experiment (owner, 2026-10-28; cloud job branch `gear-turn`, 0.14.103, DONE; docs/gear_turn.md has the speeds and open questions): only the outer toothed band turns (gear's own speed, meshed gears opposite ways; GearNet.bands / carry_at, scripts/gear_turn.gd); any unit on a band is carried round, walkers drift the full correct amount (no damping); idle units stay where they are and keep being carried (no automatic step-off: the player moves them off; only the computer walks its own idle/HOLD units off); workers at work walk straight in to the building; hold units are carried; big machines (radius >= 22), flyers and limbered guns are not; a walker pinned in a corner by the ride grips the floor 1.5 s and repaths. Setting TURNING GEARS (experiment), on by default, kept in the match cfg ("gear_turn"). Tests tools/test_gear_turn.gd, test_gear_turn_match.gd; film docs/shots/gear_turn/.
+
 - Expansion spots (owner, 2026-10-27): DONE in 0.14.95 (branch expansion-spots): the two best free hall spots of each side tinted gold on the ground (best brighter), for Crown and Clockwork players and spectators, not the Brood; minimap squares, brighter while placing a hall; Settings SHOW EXPANSION SPOTS. scripts/expansion_spots.gd (rating: room on the hall's level, ways in, walk, safety), docs/expansion_spots.md (each map's spots, weak sites: Thornwood Maze, Redrock third, 4-player classic naturals), tools/test_expansion_spots.gd, pictures in docs/shots/expansion_spots/. Also fixed the classic river maps' fords (not the same on both sides).
 
 - Animation packs are done (Barracks drills, Breeder coats, Armoury experiments in game); the Queen is a still sprite at the Brood capital. Status table: `docs/animation_packs.md`.

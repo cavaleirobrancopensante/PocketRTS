@@ -84,6 +84,20 @@ var tesla_t := 0.0
 var _bob_t := 0.0
 var _draw_key := Vector4i(-1, -1, -1, -1)
 var _push := Vector2.ZERO
+# TURNING GEARS (scripts/gear_turn.gd): the band's push this tick (world px/s), seconds left standing on a band (< 0: resting
+# after a step-off that got nowhere), where it steps off to (INF: not stepping off), how long that has taken; counters (tests)
+var gt_carry := Vector2.ZERO
+var gt_on := 0.0
+var gt_off := Vector2.INF
+var gt_t := 0.0
+var ride_t := 0.0
+var gt_w := 0.0                 # (walking on a band) seconds since gt_wp / gt_d were taken: its progress is checked once a second
+var gt_wp := Vector2.INF         # ...the waypoint it was walking to then
+var gt_d := 0.0                  # ...and how far from it it was
+var gt_grip := 0.0               # > 0: stuck by the ride, it stands firm on the band (not carried) this long
+var gripped := 0                 # (tests) times that happened
+var steps_taken := 0
+var steps_failed := 0
 # Crown abilities
 var mode := ""                  # musketeer "" (musket) or "bayonet" (chosen by itself); cannon "" (round shot) or "canister"
 var _melee_t := 0.0             # musketeer: when it next looks for an enemy close enough for the bayonet
@@ -3609,6 +3623,8 @@ func _tick_unit(delta: float) -> void:
 			want = Vector2.ZERO    # the shield is planted
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		want = CwUnits.steer(self, want, delta)
+	if Defs.gear_turn and Defs.gear_mode:
+		want = GearTurn.tick(self, want, delta)      # (TURNING GEARS: a ring's band carries it round; idle, it steps off)
 	if crew_of == null:
 		_move(want, delta)
 	if Defs.cw_roster and CwUnits.hooked(kind):
@@ -3918,6 +3934,10 @@ func _arrived() -> bool:
 	if path_pending:
 		return false
 	if path_i >= path.size():
+		return true
+	# TURNING GEARS: on its last leg, on a turning band, close to the goal: there (the band would keep it hovering a few px
+	# off its spot for ever)
+	if gt_carry != Vector2.ZERO and path_i >= path.size() - 1 and position.distance_to(path_goal) < 16.0:
 		return true
 	# Close enough to a crowded goal: stop instead of shoving forever.
 	return stuck_t > 0.8 and position.distance_to(path_goal) < 60.0

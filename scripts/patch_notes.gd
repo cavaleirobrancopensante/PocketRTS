@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.103", "items": [
+		"TURNING GEARS (an EXPERIMENT, the owner's idea, on by default for now): only the outer toothed band of a Clockwork building's gear ring turns; the plate in the middle stays still. Any ground unit standing on a turning band is carried round with the teeth, about a tile a second, and meshed rings turn opposite ways. A unit that stays on the band keeps going round: idle units and units on HOLD ride until you move them off. A unit walking across drifts sideways for the time it is on the band and still gets where it was sent.",
+		"Workers at work (Winders going to a press, a building site, a repair) walk straight in across the band and are never carried. Flyers, limbered guns and the big machines (Field Cannon, Spring Ballista, Great Winder) are not carried either. The computer walks its own idle and HOLD units off a band after a second. A carried unit kicks up a little dust; point at a band, or open the GEAR VIEW, to see gold chevrons running the way it turns.",
+		"To switch it off: Settings > TURNING GEARS (experiment) > OFF. It applies from the next match: a match keeps the rule it started with, and an online game and a replay follow the host's.",
+	]},
 	{"v": "0.14.102", "items": [
 		"The game is now called Working Title for RTS for the time being (the old name belongs to another game). Your settings, saves, replays and hotkeys carry over; the web address and the Android app file keep their old names for now, and the app installs over the old one.",
 	]},

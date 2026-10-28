@@ -354,6 +354,10 @@ const CW := {
 ## ==========================================================================================================
 static var line_mode := false
 static var gear_mode := true
+## TURNING GEARS (the owner's experiment, 2026-10-28; scripts/gear_turn.gd, docs/gear_turn.md): units standing on the toothed
+## band of a turning Clockwork ring are carried round with it. Set per match from the setting (Settings.gear_turn) and kept
+## in the match's setup (cfg "gear_turn"), so a continued match, an online guest and a replay agree.
+static var gear_turn := true
 
 ## The cog-making building's kind (provisional name: change it here and in the loc files only).
 const GEAR_PRESS := "cog_press"
@@ -362,6 +366,16 @@ const GEAR_PRESS := "cog_press"
 ## old Boilers), and hauling at the Town Hall last. Nearest first within a tier. Kinds not listed are tier 0.
 const CREW_TIER := {"powder_mill": 1, "mainspring": 1, "boiler": 1}
 
+## TURNING GEARS (docs/gear_turn.md). Guesses, the owner's to tune.
+const GEAR_TURN := {
+	"carry": 1.0,          # the ground's speed on a band as a share of the teeth's (1: a unit rides exactly with the teeth: ~35 px/s at the pitch circle, about a tile a second)
+	"walk": 1.0,           # the share a unit WALKING across feels: the owner's call (2026-10-28): the full, correct drift for the time it is on the band, no damping
+	"step_off": 1.0,       # s: the COMPUTER's own idle (or HOLD) units left on a band this long are walked off it (its AI's choice; the player's stay and ride)
+	"give_up": 3.0,        # s: a step-off that has not got clear by then stops trying for a while (pinned against something)
+	"margin": 8.0,         # px past the band's edge (plus the unit's radius) where a step-off ends
+	"max_radius": 22.0,    # units this big or bigger are not carried (the Cannon, the Spring Ballista, the Great Winder: wheels and machines)
+	"dust": 0.22,          # s between dust puffs at a carried unit's feet (only where the player looks)
+}
 const GEAR := {
 	# THE FIELD. Every Clockwork building has a ground gear ring: radius = half its footprint + `pad` (small / big
 	# connecting gear), the Clocktower's ring is the biggest (`tower`). The radius is rounded to a whole number of
