@@ -37,11 +37,12 @@ var _horse_t := -9999.0         # when riders were last seen
 var _said := {}                 # (match log lines said once)
 
 # ---- A: the Crown against the Clockwork
-const LAB_ARMY_SHARE := 0.8     # from 4:00 no more Labourers while the army's supply is under this share of them ...
-const LAB_FLOOR := 24           # ... once there are this many
+const LAB_ARMY_SHARE := 0.6     # from 4:00 no more Labourers while the army's supply is under this share of them ...
+const LAB_FLOOR := 30           # ... once there are this many (24 and 0.8 starved the economy: halls fell, soil ran out)
 const LAB_CAP := 42             # never more Labourers than this (the owner had 36-45 at 10-13 min)
 const ATTACK_EDGE := 1.2        # a wave goes out only worth this much times the biggest army seen lately ...
 const ATTACK_ANYWAY := 60       # ... or at this much supply
+const HOLD_NEAR := 12.0         # tiles from the ramp: only a wave this close to the wall is waited for behind it
 const HOLD_IN := 0.85           # a wave worth this share of our army or more: the army holds behind the wall
 const HOLD_OUT := 0.7           # (once holding: until the wave is worth less than this share)
 const HALL_ARMY := 14           # the second hall waits for this much army supply ...
@@ -281,6 +282,7 @@ func hold_behind_wall(army: Array, spots: Array) -> bool:
 	var hs := _behind()
 	if hs.is_empty():
 		return false
+	var ramp_mid: Vector2 = _bands()[0]["mid"]
 	var g = ai.game
 	var home := (Vector2(g.starts[ai.team]) + Vector2(2.5, 2.0)) * float(Defs.TILE)
 	var hc: Vector2i = g.cell_of(home)
@@ -291,6 +293,8 @@ func hold_behind_wall(army: Array, spots: Array) -> bool:
 		if g.in_map(c) and int(g.height[g.idx(c)]) == h and int(g.ramp[g.idx(c)]) == 0 and not _outside_wall(c) \
 				and (sp as Vector2).distance_to(home) < 26.0 * float(Defs.TILE):
 			return false        # (inside our walls: fight it)
+		if Vector2(c).distance_to(ramp_mid) > HOLD_NEAR:
+			return false        # (at an expansion or elsewhere: defended the usual way, not left to fall)
 		enemy += float(ai._assess(sp)["value"])
 	var mine := 0.0
 	for u in army:
