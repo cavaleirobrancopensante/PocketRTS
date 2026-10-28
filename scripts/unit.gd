@@ -3404,6 +3404,8 @@ func _tick_unit(delta: float) -> void:
 		_bloater_gas(delta)
 	if _k_nb:
 		BroodNew.tick(game, self, delta)      # (the new Brood: eggs, food, fertilising, HAUL's pace)
+		if _k_shell and tesla_mode == "packed":
+			nb_mass = 8.0       # (a walking Mound Turtle is a huge, heavy beast: the grubs streaming to the Mother flow round it, as round the Tyrannosaur, instead of washing it back)
 	if not game.zones.is_empty() or sight != int(d["sight"]):
 		# a fog bank: inside it you see only a couple of tiles
 		sight = int(Defs.FOG["sight"]) if game.in_fog(position) else int(d["sight"])
@@ -4829,8 +4831,8 @@ var _barren_site: Building = null
 
 
 func _gather(delta: float) -> Vector2:
-	if home_mine != null and not is_instance_valid(home_mine):
-		home_mine = null          # (its Rootmaw or food pile is gone and freed)
+	if not is_instance_valid(home_mine):
+		home_mine = null          # (its Rootmaw or food pile is gone and freed; a freed one even compares equal to null)
 		if _k_worker_nb():
 			return BroodNew.grub_tick(game, self, delta)      # (the new Brood: it finds other food)
 	if home_mine is Unit:
