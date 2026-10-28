@@ -84,9 +84,9 @@ es Guardado como %s.
 pt Este celular não tem seletor de arquivos aqui: coloque o arquivo .hfr na pasta de replays do jogo.
 es Este móvil no tiene selector de archivos aquí: pon el archivo .hfr en la carpeta de repeticiones del juego.
 
-> That file is not a Holdfast replay.
-pt Esse arquivo não é um replay do Holdfast.
-es Ese archivo no es una repetición de Holdfast.
+> That file is not a replay of this game.
+pt Esse arquivo não é um replay deste jogo.
+es Ese archivo no es una repetición de este juego.
 
 > Replay imported.
 pt Replay importado.
