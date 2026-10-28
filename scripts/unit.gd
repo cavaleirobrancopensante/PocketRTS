@@ -4782,6 +4782,10 @@ func _leave_mine() -> void:
 	_mill_walking = false
 
 
+func _k_worker_nb() -> bool:
+	return kind == "grub" and BroodNew.on(game, team)
+
+
 ## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
 var _barren_t := 0.0
 var _barren_seen := false
@@ -4789,6 +4793,10 @@ var _barren_site: Building = null
 
 
 func _gather(delta: float) -> Vector2:
+	if home_mine != null and not is_instance_valid(home_mine):
+		home_mine = null          # (its Rootmaw or food pile is gone and freed)
+		if _k_worker_nb():
+			return BroodNew.grub_tick(game, self, delta)      # (the new Brood: it finds other food)
 	if home_mine is Unit:
 		return BroodNew.grub_tick(game, self, delta)      # (the new Brood: a Rootmaw or a food pile)
 	var site := home_mine as Building
