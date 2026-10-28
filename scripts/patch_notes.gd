@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.7", "items": [
+		"COMPUTER EXPANSIONS (Crown and Clockwork): a computer no longer lays a Town Hall or Clocktower on the enemy's side of the map. It now measures the walk over land, cliffs included, instead of a straight line; with no free site left on its own side, it does not expand at all. It also uses the rated expansion sites, the gold-marked best ones first. On Hollowfen, Saltmarsh Isles and Cinder Steps the natural touches a ramp, so the computer could not build there and went 40 tiles out; now it builds right beside it.",
+		"CLOCKWORK COMPUTER KEEPS ATTACKING: after it pulls a wave back, the higher bar for its next wave lasts three minutes only. An army at the supply cap, or worth three times the biggest enemy army it saw lately, goes out again. A few unarmed enemies near its buildings no longer keep its whole army at home: its detachments deal with them.",
+		"CROWN COMPUTER: against the Clockwork it opens with Musketeers, not the Horseman rush (unless its plan is Rush). It keeps a spot on its main's high ground for the Armoury and the Foundry. It expands sooner (a hall under 40% soil counts as tired), sends farmers to fresh soil, and waits when a bigger enemy army stands by the spot. A Labourer goes back to a Town Hall site its builders left. Once its soil runs low it keeps a Town Hall's gold in the bank.",
+	]},
 	{"v": "0.15.6", "items": [
 		"SIDEWAYS RAMPS: a ramp that runs east-west no longer has slanted lines across its planks along the rails. Its rails now cast an even shadow band along each side, and a soft shadow lies across its high end, where it leaves the plateau, fading downhill. North-south ramps are unchanged. Only the drawing changed.",
 	]},

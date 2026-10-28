@@ -1,6 +1,6 @@
 # AI round 6: the Crown and Clockwork computers on the bigger maps
 
-Branch `ai-round6`. Written to be read aloud: short sentences, one point at a time.
+Version 0.15.7 (branch `ai-round6`, merged into main). Written to be read aloud: short sentences, one point at a time.
 The computer only. No unit, building or cost numbers changed.
 Evidence: two filmed games on Kestrel Rise, seed 14, version 0.14.100, Hard against Hard. Film a has the Crown on the far side. Film b has the Crown on the usual side.
 `-- r6:off` on the command line plays the computer as before. Study switches: `r6:crownonly`, `r6:clockonly`, `r6:nosites`, `r6:wave`.
@@ -90,8 +90,63 @@ It stays in the code, off. `-- r6:wave` turns it on.
 
 ## Results
 
-RESULTS_HERE
+All games: Hard against Hard, Balanced, headless study games (`tools/study/study_game_v2.gd`), measured on version 0.15.3 maps. "Main" is the same build with `-- r6:off`.
+Each map was played from both sides. "Usual side" means the Crown in the first slot.
+
+### Crown against Clockwork
+
+| map (seed) | side | main | round 6 |
+|---|---|---|---|
+| Greenhold (11) | usual | Crown won 25:55 | Crown ahead at 30:00 |
+| Greenhold (11) | other | Clockwork won 21:17 | Crown won 24:34 |
+| Frostmere (12) | usual | Crown won 27:33 | Clockwork won 13:16 |
+| Frostmere (12) | other | Crown won 24:31 | Crown won 27:29 |
+| Hollowfen (13) | usual | Crown won 21:48 | Crown ahead at 30:00 |
+| Hollowfen (13) | other | Crown won 20:14 | Crown won 28:59 |
+| Kestrel Rise (14) | usual | Clockwork won 15:19 | Clockwork won 16:37 |
+| Kestrel Rise (14) | other | Crown won 20:47 | Crown won 20:22 |
+
+The Crown won 6 of 8 on main and 6 of 8 with round 6. The bar was 4 of 8.
+The two Hollowfen games were played again after the natural fix (item 7). Before it, the Crown lost both, at 16:10 and 18:37: it had gone 46 tiles out for its first hall.
+Round 6 games last longer. The Clockwork keeps attacking: 9 pull-backs in the two Hollowfen games, against 5 on main, and those games ran about 8 minutes longer.
+Frostmere from the usual side is a loss with round 6 in every version tried (7 games: full, Clockwork part only, without the hall-spot rules). The Clockwork's first wave, around 8:10, is no longer called home by a Horseman raid, and it breaks the Crown at about 10:00. That is the Clockwork playing better, not a Crown mistake.
+
+Study games used to choose what ships (one game each, so they are only hints):
+- Clockwork part only (`r6:clockonly`): Frostmere usual side lost 15:31, Greenhold other side won (30:00, ahead).
+- Without the Crown's wave check: Frostmere usual side lost 15:22, Greenhold other side won 24:03. With the wave check, Greenhold other side was lost at 22:54. So the wave check is off.
+- Without the hall-spot rules (`r6:nosites`): Frostmere usual side lost 20:46.
+
+### Crown against Brood (no worse)
+
+| map (seed) | main | round 6 |
+|---|---|---|
+| Greenhold (11) | Crown won 11:17 | Crown won 13:43 |
+| Frostmere (12) | Crown won 13:02 | Crown won 12:29 |
+| Hollowfen (13) | Crown won 12:23 | Crown won 13:47 |
+| Kestrel Rise (14) | Crown won 11:28 | Crown won 11:49 |
+
+4 of 4 both ways. The Brood computer is weak against the Crown on these maps either way.
+
+### The two Kestrel Rise films again (seed 14, 20 minutes, round 6 on 0.15.3)
+
+Film b, the Crown on the usual side.
+- The Armoury (5:39) and the Foundry (4:57) stand on the main's plateau, behind the wall.
+- No Clocktower under the Crown's cliff. The Crown's own Town Hall stands there at 15:00.
+- The Clockwork kept attacking: it pulled waves back at 8:48, 12:26 and 15:22, and it was at a Crown hall again at 15:20 (picture below).
+- At 20:00 the Crown is alive with 5 halls, 58 Labourers and 23,060 gold earned. Before: 0% soil, 5 gold and 37 idle Labourers from 12:00.
+
+Film a, the Crown on the other side.
+- The Crown opens with the Powder Mill. The Foundry stands at 4:14 and the Armoury at 5:50, both on the plateau. Before, the Armoury was killed unfinished at 9:39 below the ramp.
+- The Clockwork still out-earns the Crown and leads at 20:00 (25,674 cogs to 18,380 gold earned), but it never sat still: it pulled waves back at 10:28, 11:30 and 14:01 and went out again each time.
+
+Pictures, in `docs/shots/ai_round6/`:
+- `before_crown_main_0600.png` and `after_b_crown_main_armoury_foundry_0600.jpg`: the Crown's main at 6:00.
+- `before_clocktower_under_crown_cliff_1500.png` and `after_b_crown_hall_where_the_clocktower_was_1500.jpg`: the ground right of the Crown's main at 15:00.
+- `after_b_clockwork_wave_at_crown_hall_1520.jpg`: a Clockwork wave at a Crown hall at 15:20.
+- `after_a_crown_main_0600.jpg`: film a, the Crown's main at 6:00.
 
 ## Tests
 
-TESTS_HERE
+Run on the branch (0.15.3), and the round 6 tests, hold spots and pathing again after merging 0.15.6.
+- Pass: test_ai_round6 (now 6 maps), test_ai_round6_stall, test_ai_r5_hold_spots, test_pathing (three runs), test_ai_abandoned_site, test_ai_air_defence, test_ai_army_response, test_ai_crown_bank, test_ai_cw_horse_raid, test_ai_gg_rule, test_ai_placement, test_ai_scout, test_ai_scout_defence, test_ai_scout_threat, test_ai_swarm_freed, test_ai_wall_vs_rush, test_ai_worker_safety, test_gear_ai, test_cw_ai, test_expansion_spots, test_files, test_replay.
+- Fail, the same with `-- r6:off`, so not from this round: test_ai_brood_army, test_ai_brood_horse, test_ai_brood_judgement, test_ai_rush, test_ai_rush_followup, test_ai_scout_sentry, test_ai_xrush. Most are about the Brood computer's early army and the Brood rush.
