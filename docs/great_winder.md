@@ -165,6 +165,11 @@ Its side gets the cogs at once. A gold line rises over it: "+21 cogs".
 Then it looks for the next wreck, round the spot where it stood.
 When none is left, it rolls back to that spot. So it stays with the army.
 
+In a crowd (0.15.1). Soldiers standing round a wreck can stop the big machine short of it.
+If it gets no closer for a second, and it is within 40 pixels of its edge, it sweeps from there.
+If it gets no closer for 6 seconds anywhere, it leaves that wreck for 10 seconds, and sweeps another.
+Before this, the computer's Great Winder could push at its own army for good, and never sweep a soldier who fell in the middle of it.
+
 It keeps out of fights. It has no weapon.
 It skips a wreck with an enemy soldier within 300 pixels of it. Workers do not count.
 If an enemy comes near the wreck while it is on its way, it gives the wreck up and rolls back.

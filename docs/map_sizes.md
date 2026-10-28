@@ -115,4 +115,20 @@ The AI studies on Greenhold and the other maps (docs/ai_round5.md, docs/ai_balan
 
 ## Performance
 
-See the end of this file (the long AI game on The Sundered Realm).
+The same 2v2 match (Crown, Brood, Crown, Clockwork, Hard computers, seed 4242) was played for 12 game minutes on The Sundered Realm, the biggest map: once at its new size (252 x 210), once at its old size (192 x 160). Both ran on the same machine, one after the other. Results: docs/perf/v0.15_sizes_big_sundered_2v2_pc.md and docs/perf/v0.15_sizes_small_sundered_2v2_pc.md.
+
+- The processor time per game minute is about the same: 37.8 s against 35.7 s in minute 12, and within a few percent in every minute.
+- Both games had about 310 units at the end.
+- The frame times differ more (40 against 59 frames a second in minute 12, and some very long single frames on both maps). The machine was shared with two other jobs, so the frame times are noisy. The processor time is the fair number.
+- The fog, the pathfinder and the unit grid cost a little more on the big map (fog 0.69 against 0.49 ms a frame, the unit grid 0.55 against 0.24). They grow with the ground, not with the units.
+- The minimap and the camera limits follow the map's size. They needed no change.
+- Not measured here: a phone and the web build. The biggest map has 1.7 times the cells of before, so the fog picture and the minimap picture are 1.7 times bigger in memory. That is about 53,000 cells.
+
+## Computer games on the new maps
+
+Three Hard computer games of 16 minutes (tools/qa_soak_game.gd), on 0.15.0:
+- Greenhold, Crown against Clockwork: both expanded (the Clockwork to 3 more Clocktowers, the Crown to 2 more Town Halls) and both attacked (the Crown at 3:20, the Clockwork at 8:00). No stuck units.
+- Ashford Crossing, Clockwork against Crown: the Clockwork took 3 more Clocktowers and was winning at 16:00. The Crown expanded once.
+- Twin Crowns, 2v2: everyone expanded; the Crown and Clockwork side won at 15:03.
+
+The Crown computer sometimes drops a Town Hall it laid down because no worker came to start it (twice on Greenhold, three times on Ashford Crossing). The far sites may make this happen more often. The helper working on the computer's expansion choice may want to look at it.

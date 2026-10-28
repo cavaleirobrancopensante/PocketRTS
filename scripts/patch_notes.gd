@@ -4,6 +4,16 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.3", "items": [
+		"RAMPS, AS THE OWNER WANTS THEM: the cliff walls added beside the ramps in 0.15.2 are gone, and the map looks exactly as in 0.15.1 again, with no extra tiles. Instead, the cells beside a ramp's top two rows, under or against the drawn cliff wall, are an invisible block: nothing can walk, stand or be built there, so no unit stands on the drawn wall and looks as if it floats. The ramp keeps its three lanes, and units on it go straight up and down the planks.",
+		"RAMPS DRAWN MORE CLEARLY: the planks are a little darker, with stronger steps; a stone kerb runs down both sides; the walls cast a shadow on the planks, deepest at the top; and a shadow line marks where the planks leave the high ground. A ramp now reads as a narrow way through with walls on both sides.",
+	]},
+	{"v": "0.15.2", "items": [
+		"RAMPS ARE FUNNELS: beside the top two rows of every ramp, the ground is now cliff. The cliff wall steps down beside the planks, and nothing can stand there or be built there, so a unit no longer stands on the drawn wall beside a ramp and looks as if it floats. The only way between the high ground and the low ground is the ramp itself, exactly as wide as its planks. Units on the high ground stop at the edge; units below stop at the foot of the wall. This holds on every map: the built-in ones, generated ones, and maps made in the editor. A computer's ramp wall still takes three pieces.",
+	]},
+	{"v": "0.15.1", "items": [
+		"GREAT WINDER IN A CROWD: when soldiers stand round a wreck so the big machine cannot roll right over it, it now sweeps it from the edge of the crowd after a second, instead of pushing at them for good (the computer's Great Winder sometimes never swept a soldier that fell in the middle of its army). If it cannot get near at all for 6 seconds, it leaves that wreck for 10 seconds and sweeps another.",
+	]},
 	{"v": "0.15.0", "items": [
 		"BIGGER MAPS: every built-in map is larger, about 1.3 times on each side (1.75 times the ground). The classic maps (Greenhold, Highmoor, Dune Sea, Frostfang, Twin Fords, Ashfall, Mirewood, Border March, Red Coast) go from 84 x 60 to 110 x 80: the walk from main to main is about 110 tiles, close to a minute for a Musketeer. The team maps grow by the same factor; the 1v1 maps that already had a long walk grow a little less (Saltmarsh Isles, Frostmere, Hollowfen, Thornwood Maze, Ashford Crossing, Amberfall Vale). Ramps, rivers and tree walls keep their width; the main plateaus are a little bigger.",
 		"MORE BASES: every map has more base sites, the same for every player (the maps are still turned through their middle). Each side's natural sits close to its main, in front of its ramp; then 3 or 4 more sites per side in corners, beside ponds and lakes and in pockets. On Greenhold (the owner's drawing): the natural moved up to the foot of the main's ramp, a new site in the bottom-left corner and one just right of the bottom-left pond, plus one along the top and one on the open ground below it. With 4 players the classic maps have two sites per corner. Each site has a hall's full reserves, for the Crown and the Clockwork.",
