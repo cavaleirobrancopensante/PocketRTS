@@ -731,6 +731,9 @@ func show_settings() -> void:
 	pb.custom_minimum_size = Vector2(260, 50)
 	ph.add_child(pb)
 	v.add_child(ph)
+	v.add_child(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
+		Settings.gear_turn = not Settings.gear_turn       # (from the next match: a match keeps the rule it started with)
+		Settings.save_all()))
 	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
 		Settings.expansion_spots = not Settings.expansion_spots
 		Settings.save_all()))
@@ -2071,6 +2074,11 @@ func start(cfg: Dictionary = {}) -> void:
 		cfg["seed"] = randi()
 	cfg = cfg.duplicate(true)
 	Defs.cw_roster = (bool(cfg.get("lab", false)) or Settings.cw_lab) if not watching else bool(_replay_data["header"].get("cw_roster", false))      # (the Clockwork roster prototype: off in normal games)
+	# TURNING GEARS (the experiment): the match's own rule, from the setting when it starts, kept in its setup (a continued
+	# match, an online guest and a replay take it from there; a setup from before it existed: off)
+	if not cfg.has("gear_turn") and not watching and not cfg.has("resume"):
+		cfg["gear_turn"] = Settings.gear_turn
+	Defs.gear_turn = bool(cfg.get("gear_turn", false))
 	# a random map is picked here (among the pool's maps that hold everyone), so colours can
 	# be chosen to suit its ground
 	var pool := String(cfg.get("map", "random"))

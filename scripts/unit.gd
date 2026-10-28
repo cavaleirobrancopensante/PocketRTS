@@ -84,6 +84,15 @@ var tesla_t := 0.0
 var _bob_t := 0.0
 var _draw_key := Vector4i(-1, -1, -1, -1)
 var _push := Vector2.ZERO
+# TURNING GEARS (scripts/gear_turn.gd): the band's push this tick (world px/s), seconds left standing on a band (< 0: resting
+# after a step-off that got nowhere), where it steps off to (INF: not stepping off), how long that has taken; counters (tests)
+var gt_carry := Vector2.ZERO
+var gt_on := 0.0
+var gt_off := Vector2.INF
+var gt_t := 0.0
+var ride_t := 0.0
+var steps_taken := 0
+var steps_failed := 0
 # Crown abilities
 var mode := ""                  # musketeer "" (musket) or "bayonet" (chosen by itself); cannon "" (round shot) or "canister"
 var _melee_t := 0.0             # musketeer: when it next looks for an enemy close enough for the bayonet
@@ -3609,6 +3618,8 @@ func _tick_unit(delta: float) -> void:
 			want = Vector2.ZERO    # the shield is planted
 	if Defs.cw_roster and CwUnits.hooked(kind):
 		want = CwUnits.steer(self, want, delta)
+	if Defs.gear_turn and Defs.gear_mode:
+		want = GearTurn.tick(self, want, delta)      # (TURNING GEARS: a ring's band carries it round; idle, it steps off)
 	if crew_of == null:
 		_move(want, delta)
 	if Defs.cw_roster and CwUnits.hooked(kind):
