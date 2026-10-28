@@ -49,6 +49,9 @@ var turtle_mode := ""            # turtles:far2 sends 2 turtles 15+ tiles out (n
 var sac_mode := ""               # sac:late offers idle grubs after 10:00 for essence (Brutes); sac:cycle runs the grub cycle 6:00-9:00
 var frush := -1.0               # frush:SECONDS forces the computer's army to rush the Mother from then on, for 150 s (its own units)
 var _frush_t := 0.0
+var frush_n := 6                 # frushn:N the forced rush waits for N soldiers (or 90 s)
+var greedy := 0.0                # greedy:SECONDS no warrior eggs before then (all into the economy): the base meets a rush with
+                                 # the Mother, her father and her grubs
 var mdef := ""                   # mdef:uproot: the Mother uproots to fight when enemies are at her (rooted, nothing attacks)
 var _eggs_seen := 0              # (the Mother's held eggs a moment ago: a rise is an egg made)
 var eggs_made := 0
@@ -79,6 +82,8 @@ func _initialize() -> void:
 			"sac": sac_mode = kv[1]
 			"mdef": mdef = kv[1]
 			"frush": frush = float(kv[1])
+			"frushn": frush_n = int(kv[1])
+			"greedy": greedy = float(kv[1])
 	if not Array(OS.get_cmdline_user_args()).any(func(x: String) -> bool: return x.begins_with("end:")):
 		end_t = 900.0
 
@@ -276,7 +281,7 @@ func _grow(q: Unit) -> void:
 	var st := BroodNew.stage(q)
 	if g.clock < (270.0 if st == 0 else 480.0):
 		return
-	if int(g.players[0]["gold"]) >= int(Defs.NB["stages"][st + 1]["cost"]) + 100:
+	if int(g.players[0]["gold"]) >= int(Defs.NB["stages"][st + 1]["cost"]):
 		var w := q.cmd_grow()
 		if w == "":
 			say("the Mother grows to stage %d" % (st + 2))
@@ -483,12 +488,25 @@ func _turtles(q: Unit) -> void:
 
 ## The father: beside the Mother (clear of her nest, well inside his reach) and ROOTED on his nest (since 0.15.12 he
 ## fertilises only rooted); rooted too far from her, he gets up and follows.
+var _f_away := 0.0
+var threat_now: Array = []
+
+
 func _father(q: Unit) -> void:
 	var f := BroodNew.father(g, 0)
 	if f == null or _wave.has(f):
 		return
 	var d := f.position.distance_to(q.position)
 	var reach := float(Defs.NB["father_r"]) * Defs.TILE
+	# (away from her with nothing to fight for 20 s, e.g. jammed at the ramp's top after a defence: a player calls him home)
+	if d > reach and f.target == null and threat_now.is_empty():
+		_f_away += 0.5
+		if _f_away > 20.0:
+			_f_away = 0.0
+			f.cmd_move(q.position + (f.position - q.position).normalized() * reach * 0.6)
+			say("the Tyrannosaur was away from her for 20 s with nothing to fight: called home")
+	else:
+		_f_away = 0.0
 	if f.tesla_mode == "deployed":
 		if d > reach:
 			f.cmd_uproot(false)
@@ -499,7 +517,7 @@ func _father(q: Unit) -> void:
 		f.cmd_deploy()
 		return
 	if d > 14.0 * Defs.TILE and f.order != "move":
-		f.cmd_move(q.position)
+		f.cmd_move(q.position + (f.position - q.position).normalized() * reach * 0.6)
 		return
 	if f.order == "idle" or f.order == "hold":
 		var home := g.region_of(g.cell_of(q.position))
@@ -561,6 +579,27 @@ func _want_tank() -> bool:
 	return plan == "tanks" and _tanks.filter(func(x) -> bool: return is_instance_valid(x) and not x.dead).size() < 3 and g.clock > 200.0
 
 
+## GROW on time (round 2): from 4:30 (stage 2) and 8:00 (stage 3) the coach saves food for it instead of laying
+## warriors (grubs and supply turtles still go on), and offers Raptors for the 75 essence of stage 3.
+func _saving_to_grow(q: Unit) -> bool:
+	if no_grow or _camp == "walking":
+		return false
+	var st := BroodNew.stage(q)
+	if st >= 2 or float(q.nb.get("grow_t", 0.0)) > 0.0 or g.clock < (270.0 if st == 0 else 480.0):
+		return false
+	return int(g.players[0]["gold"]) < int(Defs.NB["stages"][st + 1]["cost"])
+
+
+## The food kept back for the next GROW while its essence is gathered (warrior eggs only out of what is above it).
+func _reserve(q: Unit) -> int:
+	if no_grow or _camp == "walking":
+		return 0
+	var st := BroodNew.stage(q)
+	if st >= 2 or float(q.nb.get("grow_t", 0.0)) > 0.0 or g.clock < (270.0 if st == 0 else 480.0):
+		return 0
+	return int(Defs.NB["stages"][st + 1]["cost"])
+
+
 func _lay(q: Unit) -> void:
 	if int(q.nb.get("eggs", 0)) <= 0:
 		return
@@ -596,11 +635,15 @@ func _lay(q: Unit) -> void:
 		k = "grub"
 	elif _camp == "walking":
 		k = BroodNew.TURTLE if _walking_turtles() < 2 else ""
+	elif g.clock < greedy or _saving_to_grow(q):
+		k = ""
 	elif BroodNew.father_near(g, 0):
 		var ess := float(g.players[0]["res2"])
-		if ess >= 25.0 and gold >= 100 and randi() % 4 == 0:
+		if gold - 150 < _reserve(q):
+			k = ""
+		elif ess >= 25.0 and gold >= 100 and randi() % 4 == 0 and _reserve(q) == 0:
 			k = "mist_toad"
-		elif ess >= 20.0 and gold >= 150:
+		elif ess >= 20.0 and gold >= 150 and _reserve(q) == 0:
 			k = "brute"
 		else:
 			k = "raptor"
@@ -697,6 +740,7 @@ func _army(q: Unit) -> void:
 	var arm := army()
 	var f := BroodNew.father(g, 0)
 	var threat := foe_army_near(q.position, 14.0 * Defs.TILE)
+	threat_now = threat
 	if threat.size() > 0:
 		if not _shots_t.has("first_threat") and threat.size() >= 3:
 			_shots_t["first_threat"] = g.clock
@@ -807,11 +851,12 @@ var _guard_st := {}
 ## SACRIFICE (each one gives the Mother 1 egg and essence): sac:late offers spare grubs after 10:00, sac:cycle runs the
 ## grub cycle (lay a grub, offer it back, lay again) from 6:00 to 9:00 to measure what it gives.
 func _sacrifice(q: Unit) -> void:
-	if sac_mode == "":
-		return
 	var cyc := sac_mode == "cycle" and g.clock >= 360.0 and g.clock < 540.0
 	var late := sac_mode == "late" and g.clock >= 600.0
-	if not cyc and not late:
+	var q3 := not no_grow and BroodNew.stage(q) == 1 and g.clock >= 480.0 and float(g.players[0]["res2"]) < 75.0
+	if q3:
+		late = true          # (stage 3 needs 75 essence: Raptors at home are offered for it)
+	if not cyc and not late and not q3:
 		return
 	var crew := 0
 	for m in mine(BroodNew.MAW):
@@ -830,8 +875,8 @@ func _sacrifice(q: Unit) -> void:
 		# grubs can't be offered (Unit.can_sacrifice: the workforce): late, Raptors idle at home beyond 12 are recycled
 		# into eggs and essence (Brutes need 20)
 		var home: Array = army().filter(func(r) -> bool: return r.kind == "raptor" and not _wave.has(r) and r.order != "sacrifice")
-		var offer := home.size() - 12
-		if offer > 0 and (g.supply_used(0) >= int(g.players[0]["cap"]) - 6 or float(g.players[0]["res2"]) < 20.0):
+		var offer := home.size() - (6 if q3 else 12)
+		if offer > 0 and (q3 or g.supply_used(0) >= int(g.players[0]["cap"]) - 6 or float(g.players[0]["res2"]) < 20.0):
 			for r in home:
 				if offer <= 0:
 					break
@@ -858,7 +903,7 @@ func _forced_rush(q: Unit) -> void:
 	if not _shots_t.has("frush"):
 		# (the rush gathers first: it goes when it has 6 soldiers, or 90 s after its time)
 		var have := g.units.filter(func(u) -> bool: return u.team == _foe and not u.dead and not u.is_worker() and u.kind != "horse" and not u.is_air()).size()
-		if have < 6 and g.clock < frush + 90.0:
+		if have < frush_n and g.clock < frush + 90.0:
 			return
 		frush = g.clock      # (the 150 s of rushing count from when it goes)
 	for u in g.units:
@@ -1240,6 +1285,9 @@ func _watch_stuck() -> void:
 			_still[u.serial] = [u.position, g.clock]
 		elif g.clock - float(r[1]) > 15.0 and not bool(r.size() > 2):
 			r.append(true)
+			if u.kind == BroodNew.FATHER and not _wave.has(u):
+				var qh := BroodNew.queen(g, 0)
+				u.cmd_move(qh.position + (u.position - qh.position).normalized() * float(Defs.NB["father_r"]) * Defs.TILE * 0.6)      # (a player would call him home, beside her)
 			say("STUCK: %s #%d has not moved for 15 s (order move, %d tiles from its goal, path %d/%d, pending %s; at %s walkable %s)" % [Defs.UNITS[u.kind]["name"], u.serial, int(u.position.distance_to(u.path_goal) / Defs.TILE) if u.path_goal != Vector2.INF else -1, u.path_i, u.path.size(), str(u.path_pending), str(g.cell_of(u.position)), str(g._walkable(g.cell_of(u.position)))])
 			shot("stuck", u, 1.5, 60.0)
 
